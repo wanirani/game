@@ -13,6 +13,7 @@
 //  스테이지 순서는 장면이 정한다 (2부를 알면 1·2부 이야기 순서. 외전 s21 은 넣지 않는다 — 순서 구간의 층 계획이 외전을 알든 모르든 같게).
 //  보스: 순서 구간은 bosses 를 단계에 맞춰, 무작위 구간(순서를 다 지난 층)은 bosses + lateBosses(외전 보스, 41층 이후) 중 시드로.
 //  방은 그 단계 ±1 의 방 중 최근 4층에 나오지 않은 것, 적 풀은 단계-1 ~ 단계 스테이지의 적 (서바이벌과 같은 제외 규칙).
+//  풀 계단 상한(POOL_STEP, 첫 안식처 뒤 순서 구간): 풀의 평균 기본 체력이 앞 전투 층 풀의 1.25배를 넘으면 가장 무거운 적부터 뺀다.
 //
 // ── 시드 (재현) ── 런 시드(state.arcade.seed, 32비트) 하나로 층마다 따로 난수를 만든다 (rngOf(seed, f, 소금)):
 //  같은 시드 + 같은 2부 여부 → 같은 방·적·정예·보스·축복 후보. 싸우는 동안의 난수(드롭 등)는 층 계획에 섞이지 않는다.
@@ -155,6 +156,8 @@ const STRIP = { '!': ' ', N: ' ', D: ' ', $: ' ', '@': ' ', S: ' ', G: ' ', X: '
 const STAND = new Set(['#', '%', '=', 'B']);
 /** 검증에서 걸러 낸 방 (도달할 수 없는 땅 자리가 많거나 전투 공간이 아님) — tools/tower_rooms.mjs 결과 */
 export const ROOM_DENY = new Set([]);
+/** 탑 적 풀 계단 상한: 순서 구간에서 층 풀의 평균 기본 체력 ≤ 앞 전투 층 풀 × 이 값 (TowerPlanner.make) */
+export const POOL_STEP = 1.25;
 /** 이 방의 적 금지 자리 (key → 숫자 표식 순번 목록; 검증이 도달 불가로 본 땅 자리) */
 export const SLOT_DENY = {};
 /** 이런 적은 탑에 나오지 않는다 (서바이벌과 같음: 생성기·위장·보너스 적·물이 있어야 하는 적) + def.noArena */
@@ -288,6 +291,14 @@ export class TowerPlanner {
     for (let i = Math.max(0, tier - 1); i <= tier; i++) for (const id of this.stages[this.order[i]]?.enemies ?? []) if (towerFoeOk(this.enemies, id)) ids.add(id);
     let pool = [...ids];
     if (!pool.length) pool = Object.keys(this.enemies ?? {}).filter((id) => towerFoeOk(this.enemies, id));
+    // 풀 계단 상한 (POLISH-6, BAL-AUDIT 권고 8): 순서 구간(첫 안식처 뒤)에서 풀의 평균 기본 체력이 앞 전투 층 풀의 POOL_STEP 배를 넘으면 가장 무거운 적부터
+    // 뺀다 (다음 층에 상한이 다시 오르므로 무거운 적은 한두 층 늦게 들어올 뿐). s12/s13 중량급이 한꺼번에 들어오던 26층 같은 한 층 튐을 막는다
+    const bh = (id) => this.enemies[id]?.hp ?? 0, avg = (a) => a.reduce((x, id) => x + bh(id), 0) / a.length;
+    const prevC = this.plans.slice().reverse().find((p) => p.pool);
+    if (f > TOWER_RULES.restEvery && Math.floor((f - 1) / 2) < this.order.length && prevC) {   // 첫 안식처까지(1–3타 구간)는 그대로
+      pool.sort((a, b) => bh(a) - bh(b) || (a < b ? -1 : 1));
+      while (pool.length > 1 && avg(pool) > POOL_STEP * avg(prevC.pool)) pool.pop();
+    }
     const n = TOWER_CURVE.count(f), eliteP = TOWER_CURVE.elite(this.eliteBase, f);
     const ground = r.shuffle(room.slots.map((s, i) => i).filter((i) => room.slots[i].ground));
     const any = r.shuffle(room.slots.map((s, i) => i));

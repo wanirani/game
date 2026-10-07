@@ -385,7 +385,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 - 아케이드(`scenes/front/arcade.js`, `arcade_run.js`): `BOSS_ORDER` + 7 (+ 외전 b_argen · b_nemain · b_hagen · b_bride · b_charon, `STORY_BOSSES = 20` 뒤), 코스 이계편·전 보스 연속 (+ 외전 `ex` 코스 5 '이계편 · 외전'·6 '전 보스 21연전'·7 '외전편(외전 2연전)'·8 '전 보스 22연전'·9 '외전편(외전 3연전)'·10 '전 보스 23연전'·11 '외전편(외전 4연전)'·12 '전 보스 24연전'·13 '외전편(외전 5연전)'·14 '전 보스 25연전' — 번호는 기록 키), 레벨 프리셋 '이계의 순례자', 무기 단계 ≤ 7, `p2Known`, `exKnown`(§11.7).
 - **무한의 탑** (아케이드 5번째 카드, 장면 `tower`·`towerBlessing` = `scenes/front/arcade_tower.js`, 데이터 `data/tower.js`): 월드 하나에 층마다 합성 스테이지(id `'tower'`, 방 하나)를 넣고 `loadRoom`.
   전투 층 = 실제 스테이지 방의 사본(`towerRoom`: 이야기·문·상자·NPC·세이브 표식을 걷고 출구를 막고 기믹 끔, 원래 숫자 표식 자리 = 적 자리; 풀 74방, `node tools/tower_rooms.mjs` 가 validate_maps `--stages` 로 땅 자리 도달성 검사),
-  5의 배수 = 보스(투기장, 단계별 보스), 10의 배수 = 안식처(회복 + 축복 1/3). 층 계획은 `TowerPlanner(state.arcade.seed)` 로 결정적. 난이도 곡선·축복 12종은 `data/tower.js` 머리말.
+  5의 배수 = 보스(투기장, 단계별 보스), 10의 배수 = 안식처(회복 + 축복 1/3). 층 계획은 `TowerPlanner(state.arcade.seed)` 로 결정적. 난이도 곡선·축복 12종은 `data/tower.js` 머리말. 적 풀 계단 상한 `POOL_STEP` 1.25 (POLISH-6, BAL-AUDIT 권고 8: 11층부터 순서 구간에서 풀 평균 기본 체력 ≤ 앞 전투 층 × 1.25, 가장 무거운 적부터 뺌 → 19·21·26층 풀에서 하나씩; 카엘 프리셋 4 기대 타수 한 층 계단 최대 +59% → +34%, 곡선 `data/tower.js:54-56` 그대로, 서버 `gamedata.mts` 는 층·점수 상한만 보므로 클라이언트만).
   축복 능력치는 장면이 영웅 `refreshStats` 를 감싸 덧씌운다. 기록: `meta.towerBest[diff]`(`front/common.js towerBests`, 클라우드 합치기 cloud.js), 명예의 전당 '무한의 탑' 부문, 온라인 `tower:<diff>`(docs/specs/online.md). 시험 `node tools/test_tower.mjs`.
 
 ### 11.7 외전 「하늘 정원의 둥지」 (s21 · EX-MAP · EX-BOSS · EX-INTEG; 설계 `docs/specs/ex_s21.md`)
