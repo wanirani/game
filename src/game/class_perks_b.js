@@ -747,7 +747,7 @@ export const PERKS_B = {
   },
 
   // ═══════════ 비전 ═══════════
-  // 은랑 사냥꾼: 달 게이지 · 만월 (은탄 +15%, 관통 +2, 대시 발톱) · 은월탄 보조
+  // 은랑 사냥꾼: 달 게이지 · 만월 (은탄 피해 ×N.dmg, 관통 +N.pierce, 대시 발톱) · 은월탄 보조
   victor_silverwolf: {
     // §2.8 조정: hit 3→2, t 8→6, dmg 1.15→1.10, pierce 2→1 (원안 단일 +14 %, 줄 선 무리 +110 %)
     N: { hit: 2, kill: 8, full: 100, t: 6, dmg: 1.10, pierce: 1, claw: 0.5, clawN: 3, clawGap: 0.05, aim: 0.35, sbKill: 30, sbCut: 0.25, sbMax: 0.5, sbLow: 0.5 },

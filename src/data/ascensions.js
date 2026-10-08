@@ -177,7 +177,7 @@ t3('bran_bloodtyrant', 'bran_bloodrage', { name: '혈귀 폭군', eng: 'BLOOD TY
 // ───────────────────────── 리아 (단검) ─────────────────────────
 t3('lia_umbra', 'lia_shadowmaster', { name: '그림자 화신', eng: 'UMBRA',
   desc: '어둠 그 자체가 된 인술의 끝.',
-  perk: '대시하면 출발 지점에 2.5초 동안 그림자 분신이 남는다(최대 2). 분신은 반경 300 안의 가장 가까운 적 쪽을 보고 내 공격을 따라 휘두른다(위력 35%, 암흑).',
+  perk: '대시하면 출발 지점에 2.5초 동안 그림자 분신이 남는다(최대 2). 분신은 반경 300 안의 가장 가까운 적 쪽을 보고 내 공격을 따라 휘두른다(위력 25%, 암흑).',
   mult: { agi: 1.06, atk: 1.10 }, flat: { critDmg: 20, dark: 15 },
   lookTop: { aura: au('dark', '#7a3aff'), scarf: { color: '#2a0a4a', long: true }, armorTrim: '#4a2a8a', trailColor: '#b060ff' },
   ult: { accent: '#7a3aff', colors: ['#b060ff', '#4a2a8a', '#e0c8ff'] },
@@ -211,7 +211,7 @@ t3('lia_soulreaper', 'lia_reaper', { name: '영혼 수확자', eng: 'SOUL REAPER
 // ───────────────────────── 아젤 (장검·안개 대시) ─────────────────────────
 t3('azel_nightlord', 'azel_nosferatu', { name: '밤의 군주', eng: 'NIGHT LORD',
   desc: '안개가 지나간 자리마다 피를 거두는 밤의 귀족.',
-  perk: '안개 대시가 지나간 자리에 2초 동안 피안개(반경 90)가 남는다(최대 3개). 피안개 속 적은 0.25초마다 위력 15% 암흑 피해를 받고, 그때마다 맞은 적 하나당 최대 HP의 0.3%를 회복한다(초당 최대 2%). 공중에서 대시하면 공중 점프 1회를 돌려받는다.',
+  perk: '안개 대시가 지나간 자리에 2초 동안 피안개(반경 90)가 남는다(최대 3개). 피안개 속 적은 0.25초마다 위력 10% 암흑 피해를 받고, 그때마다 맞은 적 하나당 최대 HP의 0.3%를 회복한다(초당 최대 2%). 공중에서 대시하면 공중 점프 1회를 돌려받는다.',
   mult: { atk: 1.08, mag: 1.08 }, flat: { dark: 15, lifesteal: 1 },
   lookTop: { aura: au('dark', '#c0103a'), wings: 'bat', armorTrim: '#8a0a1e', trailColor: '#ff2a50' },
   ult: { accent: '#c0103a', colors: ['#b0103a', '#ff2a3a', '#12060c'] },
@@ -219,7 +219,7 @@ t3('azel_nightlord', 'azel_nosferatu', { name: '밤의 군주', eng: 'NIGHT LORD
   est: { dps: 1.06, ehp: 1.06 } });
 t3('azel_bloodemperor', 'azel_bloodking', { name: '혈제', eng: 'BLOOD EMPEROR',
   desc: '흘러넘친 피마저 다스리는 혈족의 황제.',
-  perk: '피의 장벽이 최대 HP의 10% 이상이면 마무리 공격이 장벽을 모두 써서 가까운 적 최대 5명(반경 400)의 발밑에서 피의 창을 솟구치게 한다(장벽이 최대 HP의 1%일 때마다 위력 20%, 200~300%).',
+  perk: '피의 장벽이 최대 HP의 10% 이상이면 마무리 공격이 장벽을 모두 써서 가까운 적 최대 5명(반경 400)의 발밑에서 피의 창을 솟구치게 한다(장벽이 최대 HP의 1%일 때마다 위력 20%, 200~300%, 8초에 한 번).',
   mult: { atk: 1.08, hp: 1.08 }, flat: { critDmg: 25, lifesteal: 1 },
   lookTop: { aura: au('blood', '#ff0a1a'), halo: true, armorTrim: '#ffd84a', capeColor2: '#ff1a2a', trailColor: '#ff1a2a' },
   ult: { accent: '#ff0a1a', colors: ['#ff1a2a', '#ffd84a', '#5a0010'] },
@@ -235,7 +235,7 @@ t3('azel_solaris', 'azel_dawnbringer', { name: '태양의 검', eng: 'SOLARIS',
   est: { dps: 1.07, ehp: 1.00 } });
 t3('azel_nephilim', 'azel_seraph', { name: '네필림', eng: 'NEPHILIM',
   desc: '빛과 어둠이 한 몸에서 맞물린 혼혈의 천사.',
-  perk: '공격할 때마다 빛과 어둠의 깃털이 번갈아 1개 날아간다(위력 30%). 같은 적이 1.5초 안에 신성 피해와 암흑 피해를 모두 받으면 일식 — 반경 90 폭발(위력 100%, 그 적이 약한 쪽 속성, 없으면 암흑, 같은 적은 2초에 한 번).',
+  perk: '공격할 때마다 빛과 어둠의 깃털이 번갈아 1개 날아간다(위력 10%). 같은 적이 1.5초 안에 신성 피해와 암흑 피해를 모두 받으면 일식 — 반경 90 폭발(위력 60%, 그 적이 약한 쪽 속성, 없으면 암흑, 같은 적은 3초에 한 번).',
   mult: { atk: 1.06, mag: 1.08, agi: 1.04 }, flat: { holy: 10, dark: 10 },
   lookTop: { wings: 'seraph', halo: true, aura: au('dark', '#e8d8ff'), armorTrim: '#ffffff', trailColor: '#e8d8ff' },
   ult: { accent: '#e8d8ff', colors: ['#ffffff', '#b060ff', '#1a1a2a'] },

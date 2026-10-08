@@ -585,7 +585,7 @@ export const PERKS_C = {
   },
   // ── 초월 ──
   lia_umbra: {
-    N: { t: 2.5, max: 2, maxLow: 1, r: 300, mvPct: 35 },
+    N: { t: 2.5, max: 2, maxLow: 1, r: 300, mvPct: 25 },   // §2.8: 35 → 25 (출발점에서 계속 싸우면 +15 %)
     prewarm(w) { warm(w, ['#7a3aff', '#b060ff'], null); },
     onEnter(p) { const L = perkState(p).clones; if (L) L.length = 0; },
     onDash(p, w) { if (!p.dead) spawnClone(w, p, this.N); },
@@ -798,7 +798,7 @@ export const PERKS_C = {
   },
   // ── 초월 ──
   azel_nightlord: {
-    N: { t: 2, r: 90, max: 3, tickT: 0.25, mvPct: 15, healPct: 0.3, healCapPct: 2, refund: 1 },
+    N: { t: 2, r: 90, max: 3, tickT: 0.25, mvPct: 10, healPct: 0.3, healCapPct: 2, refund: 1 },   // §2.8: 15 → 10 (대시마다 피안개 하나가 0.8배 위력)
     prewarm(w) { warm(w, ['#3a0010', '#8a0a1e', '#ff2a50'], null); },
     onEnter(p) { const st = perkState(p); if (st.nlc) st.nlc.length = 0; st.nlX = null; },
     onDash(p, w) {
@@ -819,14 +819,16 @@ export const PERKS_C = {
     },
   },
   azel_bloodemperor: {
-    N: { minPct: 10, perPct: 20, mvMinPct: 200, mvMaxPct: 300, n: 5, r: 400, h: 150, wd: 26, gap: 0.05 },
+    N: { minPct: 10, perPct: 20, mvMinPct: 200, mvMaxPct: 300, n: 5, r: 400, h: 150, wd: 26, gap: 0.05, icd: 8 },   // icd: §2.8 (흡혈 넘침으로 장벽이 1.5초면 다시 차서, 마무리마다 터지면 +40 %)
     prewarm(w) { warm(w, ['#ff1a2a', '#5a0010'], ['혈액 지배!', '#ff4a5a']); },
     onSwing(p, w, mv) {
       if (!mv?.finisher || mv.skill || p.dead) return;
       const N = this.N, H = maxHp(p), s = shieldOf(p);
       if (!(s >= H * N.minPct / 100)) return;
+      if ((p._icd?.pkBe ?? -1) > nowOf(w)) return;
       const k = nearestN(w, p.cx, p.cy, N.r, N.n);
       if (!k) return;
+      icd(p, 'pkBe', N.icd, w);
       const pct = Math.max(N.mvMinPct, Math.min(N.mvMaxPct, N.perPct * s / H * 100));
       p._shield = 0;
       count('azel_bloodemperor.lances');
@@ -837,7 +839,7 @@ export const PERKS_C = {
       sfx(w, 'dark', { vol: 0.7 }); sfx(w, 'slash_heavy', { vol: 0.6, pitch: 0.8 });
     },
     drawMeter(ctx, p, w) {
-      if (!(shieldOf(p) >= maxHp(p) * this.N.minPct / 100)) return;
+      if (!(shieldOf(p) >= maxHp(p) * this.N.minPct / 100) || (p._icd?.pkBe ?? -1) > nowOf(w)) return;
       const x = p.cx, y = p.y - METER_DY, t = nowOf(w);
       ctx.globalCompositeOperation = ADD; K.glow(ctx, x, y, 20 + Math.sin(t * 7) * 2, '#ff1a2a', 0.6); ctx.globalCompositeOperation = 'source-over';
       ctx.fillStyle = '#ff2a3a'; ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 1.4;
@@ -875,7 +877,7 @@ export const PERKS_C = {
     },
   },
   azel_nephilim: {
-    N: { n: 1, mvPct: 30, speed: 800, life: 0.5, win: 1.5, r: 90, eclPct: 100, icd: 2 },
+    N: { n: 1, mvPct: 10, speed: 800, life: 0.5, win: 1.5, r: 90, eclPct: 60, icd: 3 },   // §2.8: 30/100/2 → 맞대고 치면 +30 % 이상
     prewarm(w) { warm(w, ['#fff2b0', '#b060ff', '#ffffff'], ['일식!', '#e8d8ff']); },
     onSwing(p, w, mv) {
       if (!mv || mv.skill || p.dead) return;
@@ -1093,8 +1095,13 @@ export const ACTIVES_C = {
 export const MARKS_C = {
   /** 냉기 1~5: 머리 위 얼음 마름모 */
   chill(ctx, e, n) {
-    const x0 = e.x + e.w / 2 - (n - 1) * 4.5, y = e.y - 12;
-    for (let i = 0; i < n; i++) pip(ctx, x0 + i * 9, y, 4, n >= 5 ? '#ffffff' : '#9fe8ff', 0.95);
+    // 마름모 n개를 한 경로로 (적마다 채우기·선 1번씩 — 냉기 걸린 적이 많아도 싸게)
+    const x0 = e.x + e.w / 2 - (n - 1) * 4.5, y = e.y - 12, s = 4;
+    ctx.globalAlpha = 0.95; ctx.fillStyle = n >= 5 ? '#ffffff' : '#9fe8ff'; ctx.strokeStyle = '#140610'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) { const x = x0 + i * 9; ctx.moveTo(x, y - s); ctx.lineTo(x + s * 0.7, y); ctx.lineTo(x, y + s); ctx.lineTo(x - s * 0.7, y); ctx.closePath(); }
+    ctx.stroke(); ctx.fill();
+    ctx.globalAlpha = 1;
   },
   /** 동결: 몸을 덮은 얼음 껍질 */
   frozen(ctx, e, n, k) {
