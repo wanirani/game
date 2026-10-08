@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """블러드 녹턴 APK — 웹 배포 빌드(dist/web)를 APK 에 넣을 모양으로 꾸린다. tools/apk/build_apk.sh 가 부른다.
 
-  python3 tools/apk/pack_web.py --web dist/web --out dist/apk-build/assets [--budget-mb 75] [--image-budget-mb 48] [--assets auto|full|lo|lo+td]
+  python3 tools/apk/pack_web.py --web dist/web --out dist/apk-build/assets [--budget-mb 95] [--image-budget-mb 70] [--assets auto|full|lo|lo+td]
                                 [--music auto|all|none] [--origin-file tools/apk/api_origin.txt] [--origin https://…] [--cloud-js src/core/cloud.js]
                                 [--report dist/apk-build/pack_report.json]
   크기만 보려면 (APK 를 만들지 않는 시험): --out 을 임시 폴더로 — 단계·음악 선택·어림 크기를 출력하고 --report 에 쓴다.
@@ -9,12 +9,12 @@
 하는 일 (platform §9.4-4/5, MASTER_PLAN §1.20):
  1. dist/web 을 <out>/www 로 복사한다. 빼는 것: sw.js (앱은 서비스 워커를 쓰지 않는다), downloads/ (APK 자신), _redirects (Netlify 전용).
     공개 금지 파일(키스토어·비밀번호 파일·개발 폴더)이 섞여 있으면 실패. index.html 이 가리키는 파일이 모두 있는지 확인.
- 2. 그림 단계: 소리(assets/audio/)를 뺀 크기를 그림 예산(기본 48 MB, 채색 그림 포함)에 맞춰 고른다 (--assets auto):
+ 2. 그림 단계: 소리(assets/audio/)를 뺀 크기를 그림 예산(기본 70 MB, 채색 그림 포함)에 맞춰 고른다 (--assets auto):
       full   dist/web 그대로
       lo     bg/·cg/·portraits/ 의 원본을 빼고 assets/lo/ 사본만 싣는다 (AssetServer 가 원본 경로 요청에 lo/ 사본을 준다)
       lo+td  + 채색 아틀라스(assets/painted/**)를 휴대폰 밀도로 줄인다: 원본 밀도의 0.75배
              (manifest.json td ≥ 1.25, rig.json srcTD ≥ 1.75 텍셀/논리px 아래로는 줄이지 않는다)
-    소리: 효과음 샘플(assets/audio/sfx/)은 늘 싣는다. 녹음 음악(assets/audio/music/)은 APK 전체 예산(기본 75 MB) 안에서 MUSIC_PRIORITY 순으로
+    소리: 효과음 샘플(assets/audio/sfx/)은 늘 싣는다. 녹음 음악(assets/audio/music/)은 APK 전체 예산(기본 95 MB) 안에서 MUSIC_PRIORITY 순으로
       싣고 (--music auto), 넘치는 곡은 빼고 www 의 music/index.json 을 실은 곡만으로 다시 쓴다 → 앱에서 그 곡은 합성 음원 (404 없음).
     크기는 APK 안의 모양으로 어림한다: 그림·글꼴·소리는 무압축 저장, 나머지는 deflate. 최종 확인은 build_apk.sh 가 서명한 APK 로 한다.
  3. <out>/app/apk.json 을 쓴다: {api:{origin, aliases}, assets, budgetMB, imageBudgetMB, web:{version, hash, files}, dropped, modified?,
@@ -346,8 +346,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--web', default=str(ROOT / 'dist/web'))
     ap.add_argument('--out', required=True, help='APK assets/ 폴더 (www/ 와 app/apk.json 을 쓴다)')
-    ap.add_argument('--budget-mb', type=float, default=75.0, help='APK 전체 예산 (소리 포함)')
-    ap.add_argument('--image-budget-mb', type=float, default=48.0, help='그림 단계를 고르는 기준 (소리를 뺀 크기)')
+    ap.add_argument('--budget-mb', type=float, default=95.0, help='APK 전체 예산 (소리 포함)')
+    ap.add_argument('--image-budget-mb', type=float, default=70.0, help='그림 단계를 고르는 기준 (소리를 뺀 크기)')
     ap.add_argument('--assets', default='auto', choices=['auto', 'full', 'lo', 'lo+td'])
     ap.add_argument('--music', default='auto', choices=['auto', 'all', 'none'], help='녹음 음악: 예산 안에서 우선순위대로 | 전부 | 싣지 않음')
     ap.add_argument('--origin-file', default=str(ROOT / 'tools/apk/api_origin.txt'))

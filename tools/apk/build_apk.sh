@@ -17,8 +17,8 @@
 #
 #  APK 에 들어가는 웹 파일 = dist/web (tools/deploy/build_web.mjs 결과: 번들·lo/ 변형·글꼴) − sw.js − downloads/ − _redirects
 #    (platform §9.4-4, MASTER_PLAN §1.20). tools/apk/pack_web.py 가 꾸린다.
-#  크기 예산 75 MB (채색 그림·소리 포함, MASTER_PLAN §1.20). 그림 단계는 소리를 뺀 크기로 48 MB 기준: 넘으면 휴대폰 밀도 단계로 —
-#    lo (bg/cg/portraits 원본 대신 assets/lo 사본) → lo+td (채색 아틀라스 0.75배). 효과음 샘플은 늘 싣고, 녹음 음악은 75 MB 안에서
+#  크기 예산 95 MB (채색 그림·소리 포함, MASTER_PLAN §1.20 — 2026-10-08 75→95, GitHub 파일 한도 100 MB 아래). 그림 단계는 소리를 뺀 크기로 70 MB 기준: 넘으면 휴대폰 밀도 단계로 —
+#    lo (bg/cg/portraits 원본 대신 assets/lo 사본) → lo+td (채색 아틀라스 0.75배). 효과음 샘플은 늘 싣고, 녹음 음악은 95 MB 안에서
 #    우선순위대로 (pack_web.py MUSIC_PRIORITY; 빠진 곡은 앱에서 합성 음원). 서명한 APK 가 예산을 넘으면 빌드 실패.
 #  계정 API: 앱 안의 /api/* 는 AssetServer 프록시가 tools/apk/api_origin.txt 의 사이트로 보낸다 (docs/ACCOUNTS.md §1).
 #  Android SDK 가 없으면 $ANDROID_HOME(기본 /root/android-sdk)에 자동 설치한다:
@@ -52,8 +52,8 @@
 #    KEYSTORE       키스토어 경로                          KEYSTORE_PROPS  비밀번호 파일 경로
 #    VERSION_NAME / VERSION_CODE
 #    WEB_DIR        웹 배포 빌드 폴더 (기본 dist/web)
-#    APK_BUDGET_MB  APK 크기 예산 (기본 75)                APK_ASSETS  auto(기본) | full | lo | lo+td (단계 강제)
-#    APK_IMAGE_BUDGET_MB  그림 단계 기준 (기본 48, 소리 제외)  APK_MUSIC  auto(기본) | all | none (녹음 음악)
+#    APK_BUDGET_MB  APK 크기 예산 (기본 95)                APK_ASSETS  auto(기본) | full | lo | lo+td (단계 강제)
+#    APK_IMAGE_BUDGET_MB  그림 단계 기준 (기본 70, 소리 제외)  APK_MUSIC  auto(기본) | all | none (녹음 음악)
 #    API_ORIGIN     계정 서버 주소 (기본: tools/apk/api_origin.txt)
 #
 #  앱 구조: android/app/src/main/ (AndroidManifest.xml, java/…/MainActivity.java, AssetServer.java, ApiProxy.java, WebViewCheck.java, res/, assets/app/)
@@ -81,8 +81,8 @@ KS_PROPS="${KEYSTORE_PROPS:-$ROOT/tools/android/keystore.properties}"
 CERT_FILE="${RELEASE_CERT_FILE:-$ROOT/tools/apk/release_cert.sha256}"
 # APK 에 넣을 웹 게임 파일: 웹 배포 빌드 결과 (sw.js · downloads/ · _redirects 는 pack_web.py 가 뺀다)
 WEB_DIR="${WEB_DIR:-$ROOT/dist/web}"
-BUDGET_MB="${APK_BUDGET_MB:-75}"
-IMAGE_BUDGET_MB="${APK_IMAGE_BUDGET_MB:-48}"
+BUDGET_MB="${APK_BUDGET_MB:-95}"
+IMAGE_BUDGET_MB="${APK_IMAGE_BUDGET_MB:-70}"
 ASSET_STAGE="${APK_ASSETS:-auto}"
 MUSIC_MODE="${APK_MUSIC:-auto}"
 # 이미 압축된 형식은 무압축 저장 (빠른 읽기 + openFd 로 길이/Range 지원) — pack_web.py 의 NO_COMPRESS 와 같게

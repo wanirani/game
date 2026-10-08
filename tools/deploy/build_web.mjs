@@ -34,7 +34,7 @@
 //  6. sw.js 에 BUILD (캐시 이름 bn-<buildHash>, 미리 받을 목록) 주입. APK 는 실은 웹 빌드가 buildHash 와 같을 때만 downloads/ 에
 //     (latest.json 의 built = APK 를 만든 시각, web = APK 에 실은 웹 빌드). _redirects (/apk, /download → APK).
 //  7. 글꼴 검사, 맵 검사, 크기 보고 (brotli·gzip): 첫 화면 경로, dist/web(소리 제외) ≤ 90 MB, 소리 assets/audio (녹음 음악 ≤ 64 MB, 효과음 ≤ 3 MB),
-//     APK 입력(dist/web − sw.js − downloads/): 그림 단계는 소리를 뺀 크기로 48 MB 기준(넘으면 lo 단계), 소리 포함 APK 는 75 MB — 넘치는 음악은
+//     APK 입력(dist/web − sw.js − downloads/): 그림 단계는 소리를 뺀 크기로 70 MB 기준(넘으면 lo 단계), 소리 포함 APK 는 95 MB — 넘치는 음악은
 //     tools/apk/pack_web.py 가 우선순위 낮은 곡부터 뺀다 (그 곡은 앱에서 합성 음원).
 //  8. dist/deploy/ = Netlify 업로드 묶음: web/ (dist/web 하드 링크) + netlify/functions·lib + package.json(개발 의존성 제외, 시험한 버전 고정) +
 //     package-lock.json (루트 잠금 파일에서 개발 전용 항목을 뺀 것) +
@@ -51,11 +51,11 @@ export const BUDGET = {
   siteBytes: 90 * MB,        // dist/web (downloads/·assets/audio/ 제외) — MASTER_PLAN §1.20 (채색 그림 포함)
   musicBytes: 64 * MB,       // assets/audio/music/ (녹음 배경 음악 — 서비스 워커가 미리 받지 않는다)
   sfxBytes: 3 * MB,          // assets/audio/sfx/ (효과음 샘플 m4a + ogg)
-  apkImageBytes: 48 * MB,    // APK 그림 단계 기준: APK 입력에서 소리를 뺀 크기 (넘으면 lo 단계, MASTER_PLAN §1.20 — 2026-10-05 45→48 MB, 7번째 영웅·외전 21장)
-  apkInputBytes: 75 * MB,    // APK 에 들어갈 웹 파일 전체 (dist/web − sw.js − downloads/ − build.json − _redirects, 소리 포함)
+  apkImageBytes: 70 * MB,    // APK 그림 단계 기준: APK 입력에서 소리를 뺀 크기 (넘으면 lo 단계, MASTER_PLAN §1.20 — 2026-10-05 45→48 MB, 2026-10-08 48→70 MB: 휴대폰에서도 원본 그림)
+  apkInputBytes: 110 * MB,   // APK 에 들어갈 웹 파일 전체 (압축 전; APK 파일 예산 95 MB 는 build_apk.sh 가 지킨다) (dist/web − sw.js − downloads/ − build.json − _redirects, 소리 포함)
   criticalBr: 1.6 * MB,      // 첫 화면 경로 brotli (platform §9.1) — 기본 경고, --strict 면 실패
   fileBytes: 25 * MB,        // 파일 하나 (APK 제외)
-  apkBytes: 80 * MB,         // downloads/*.apk 하나 (APK 예산 75 MB 는 APK 담당이 지킨다; 여기서는 비정상 크기만 막는다)
+  apkBytes: 98 * MB,         // downloads/*.apk 하나 (APK 예산 95 MB 는 APK 담당이 지킨다; 여기서는 비정상 크기만 막는다 — GitHub 파일 한도 100 MB 아래)
 };
 const ROOT_FILES = ['index.html', 'manifest.webmanifest', 'sw.js', 'robots.txt'];
 const COPY_DIRS = ['css', 'assets'];
@@ -498,7 +498,7 @@ function sizeReport(OUT, report, { html, chunkFiles, cssFonts, opts, warn }) {
   if (!report.budgets.site.ok) throw new BuildError(`dist/web 이 예산을 넘습니다: ${fmtMB(site)} > ${fmtMB(BUDGET.siteBytes)}`);
   if (!report.budgets.music.ok) throw new BuildError(`녹음 음악(assets/audio/music)이 예산을 넘습니다: ${fmtMB(music)} > ${fmtMB(BUDGET.musicBytes)}`);
   if (!report.budgets.sfx.ok) throw new BuildError(`효과음 샘플(assets/audio/sfx)이 예산을 넘습니다: ${fmtMB(sfx)} > ${fmtMB(BUDGET.sfxBytes)}`);
-  // MASTER_PLAN §1.20: 소리를 뺀 APK 입력이 48 MB 를 넘으면 APK 는 bg/cg/portraits 의 원본 대신 assets/lo 만 싣는다 (APK 담당). 그 경우의 크기도 보고한다.
+  // MASTER_PLAN §1.20: 소리를 뺀 APK 입력이 그림 단계 기준(70 MB)을 넘으면 APK 는 bg/cg/portraits 의 원본 대신 assets/lo 만 싣는다 (APK 담당). 그 경우의 크기도 보고한다.
   let lite = apkImage;
   if (!report.budgets.apkImage.ok) {
     let full = 0;
@@ -513,7 +513,7 @@ function sizeReport(OUT, report, { html, chunkFiles, cssFonts, opts, warn }) {
     // 정해진 경로라 경고가 아니다: tools/apk/pack_web.py --assets auto 가 알아서 lo 단계를 고른다 (최종 크기는 build_apk.sh 가 서명한 APK 로 확인)
     log(opts, `        APK 입력(소리 제외) ${fmtMB(apkImage)} > ${fmtMB(BUDGET.apkImageBytes)} → APK 는 lo 단계 (bg/cg/portraits 는 assets/lo 사본만, ${fmtMB(lite)}) — tools/apk/pack_web.py 가 고른다 (MASTER_PLAN §1.20)`);
   }
-  // 소리 포함 APK: 효과음은 늘 싣고, 음악은 75 MB 안에서 우선순위대로 (넘치는 곡은 앱에서 합성 음원 — pack_web.py)
+  // 소리 포함 APK: 효과음은 늘 싣고, 음악은 95 MB 안에서 우선순위대로 (넘치는 곡은 앱에서 합성 음원 — pack_web.py)
   const withAudio = lite + audio;
   report.budgets.apkAudio = { bytes: withAudio, budget: BUDGET.apkInputBytes, ok: withAudio <= BUDGET.apkInputBytes, musicFits: withAudio <= BUDGET.apkInputBytes, note: '그림 단계 + 소리 전부 (압축 전)' };
   if (lite + sfx > BUDGET.apkInputBytes) throw new BuildError(`APK 입력(그림 단계 ${fmtMB(lite)} + 효과음 ${fmtMB(sfx)})이 ${fmtMB(BUDGET.apkInputBytes)} 을 넘습니다`);
