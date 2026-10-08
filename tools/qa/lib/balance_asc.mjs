@@ -123,6 +123,7 @@ export function trialProbe(T, { seed = 1 } = {}) {
     id: T.id, boss: B.def.id, lvl: B.lvl, hp: B.stats.maxHp, refHp: ref.stats.maxHp, rules: B.rules, rows: out,
     min: times.length ? Math.min(...times) : null, max: times.length === out.length ? Math.max(...times) : null,
     ratio: ratios.length ? ratios.reduce((a, b) => a + b, 0) / ratios.length : null,
+    curMul: T.diffOver?.bossHp ?? 1,
   };
 }
 
@@ -250,11 +251,12 @@ function toMarkdown(out) {
   if (out.trials.length) {
     L.push('', '## 3. 시련 길이 (모형: Lv 70/75 2차 영웅, 결투장 boss 모드로 처치까지 — 회피·이동·보스 무적·두 번째 형태 없음)', '');
     L.push(`기준 = 같은 영웅·2차가 2부 마지막 보스(s20 ${out.trials[0]?.refHp ?? ''} HP, Lv 67 영웅)를 쓰러뜨리는 모형 시간. 목표 띠 40–75 s 는 실제 전투 길이라 모형 값과 바로 견줄 수 없다 — 시련끼리의 차이와 기준 대비 비율을 본다.`, '');
-    L.push('| 시련 | 보스 | 적 Lv | 보스 HP | 규칙 | 2차별 처치 시간 s (기준 s) | 최소–최대 | 기준 대비 |');
-    L.push('|---|---|---|---|---|---|---|---|');
+    L.push('「s20 과 같은 길이」 열 = 기준 대비 ×1.0 이 되려면 필요한 T.diffOver.bossHp (지금 값 ÷ 기준 대비 비율) — 제안 값이 아니라 눈금이다.', '');
+    L.push('| 시련 | 보스 | 적 Lv | 보스 HP | 규칙 | 2차별 처치 시간 s (기준 s) | 최소–최대 | 기준 대비 | bossHp 지금 → s20 과 같은 길이 |');
+    L.push('|---|---|---|---|---|---|---|---|---|');
     for (const t of out.trials) {
       const rl = Object.entries(t.rules ?? {}).filter(([k]) => k !== 'label').map(([k, v]) => `${k} ${v}`).join(' ') || '-';
-      L.push(`| ${t.id} | ${t.boss} | ${t.lvl} | ${t.hp} | ${rl} | ${t.rows.map((r) => `${r.cls.replace(/^[a-z]+_/, '')} ${r.time == null ? '—' : r1(r.time)} (${r.ref == null ? '—' : r1(r.ref)})`).join(' · ')} | ${t.min == null ? '—' : r1(t.min)}–${t.max == null ? '—' : r1(t.max)} | ×${t.ratio == null ? '—' : t.ratio.toFixed(2)} |`);
+      L.push(`| ${t.id} | ${t.boss} | ${t.lvl} | ${t.hp} | ${rl} | ${t.rows.map((r) => `${r.cls.replace(/^[a-z]+_/, '')} ${r.time == null ? '—' : r1(r.time)} (${r.ref == null ? '—' : r1(r.ref)})`).join(' · ')} | ${t.min == null ? '—' : r1(t.min)}–${t.max == null ? '—' : r1(t.max)} | ×${t.ratio == null ? '—' : t.ratio.toFixed(2)} | ${t.curMul} → ${t.ratio ? (t.curMul / t.ratio).toFixed(2) : '—'} |`);
     }
   }
   L.push('', '## 4. 판정', '');
