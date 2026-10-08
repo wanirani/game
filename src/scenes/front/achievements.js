@@ -952,11 +952,13 @@ class PickModal {
     const sy = tall ? R.y + R.h - 14 : R.y + 66;
     if (!got) glyph(ctx, 'lock', tx + 5, sy - 4, 11, '#a08a70', 1.4);
     text(ctx, fit(ctx, st, tw - (got ? 0 : 16), 12, 700), tx + (got ? 0 : 16), sy, { size: 12, weight: 700, color: cur ? PAL.good : got ? GOLD : '#d8b080', ow: 2 });
-    // 잔상 그림: 발끝 기준선 · 크기는 칸 높이에 맞춘다
-    const gx0 = tall ? R.x + 30 : R.x + tw + 40, gx1 = R.x + R.w - 34;
+    // 잔상 그림: 발끝 기준선 · 크기는 칸 높이에 맞춘다. 맨 뒤 잔상의 망토(-24s)와 흔들림(±6s)까지 gx0..gx1 안에 들도록
+    // 크기를 칸 너비로도 줄인다 (span ≥ 130s → 간격 ≥ 14s). 움직임 줄이기면 흔들지 않는다
+    const gx0 = tall ? R.x + 30 : R.x + tw + 40, gx1 = R.x + R.w - 34, span = gx1 - gx0;
+    if (span < 40) return;
     const gy = tall ? R.y + 62 + (R.h - 62 - 30) * 0.5 + 24 : R.y + R.h - 12;
-    const s = tall ? clamp((R.h - 110) / 40, 0.7, 1.9) : clamp((R.h - 20) / 38, 0.7, 2.4);
-    const run = Math.sin(t * 2.2) * 6 * s, step = Math.max(14 * s, Math.min(30 * s, (gx1 - gx0 - 30 * s) / 5));
+    const s = Math.min(tall ? clamp((R.h - 110) / 40, 0.7, 1.9) : clamp((R.h - 20) / 38, 0.7, 2.4), span / 130);
+    const run = this.sc.game.settings?.reduceMotion ? 0 : Math.sin(t * 2.2) * 6 * s, step = Math.min(30 * s, (span - 60 * s) / 5);
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(gx0 - 10, gy, gx1 - gx0 + 20, 2);
     for (let i = 0; i < 5; i++) {

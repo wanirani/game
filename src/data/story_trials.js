@@ -38,7 +38,7 @@ const EL = 'npc_elise', A = 'npc_alberto', MA = 'npc_marta', RO = 'npc_rook', G 
 // 레이븐: 가면(npc_rook) / 진엔딩 뒤 맨얼굴(npc_rook2). 조건부 두 줄 → 한 줄만 나온다
 const RVX = (text) => [{ if: '!ending_p2true', who: RO, name: '레이븐', text },
                        { if: 'ending_p2true', who: RO, name: '레이븐', portrait: 'portraits/npc_rook2', text }];
-// 알베르토 — 안쪽 방에서 (2부: 몸져누운 신부님, story_p2.js:116)
+// 알베르토 — 안쪽 방에서 (2부: 몸져누운 신부님, story_p2.js 「성당 뒤편의 작은 방에 누웠다」)
 const AB = (text) => ({ who: A, text: `(안쪽 방에서) ${text}` });
 // 가면을 벗은 네메인 (story_ex.js 22장과 같은 모양)
 const NM2 = (text) => ({ who: 'b_nemain', name: '네메인', portrait: 'portraits/b_nemain2', text });
