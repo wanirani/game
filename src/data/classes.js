@@ -6,9 +6,9 @@ function def(id, o) { C[id] = { id, next: [], mult: {}, flat: {}, look: {}, ...o
 
 // ── 카엘: 채찍 ──
 def('kael_hunter', { charId: 'kael', tier: 0, name: '헌터', eng: 'HUNTER', reqLevel: 1, next: ['kael_crusader', 'kael_stalker'],
-  desc: '발크레인 가문의 정통 사냥꾼.', perk: '채찍 공격이 부서지는 벽을 한 번에 파괴한다.' });
+  desc: '발크레인 가문의 정통 사냥꾼.', perk: '부서지는 벽을 한 번에 부순다. 숨은 부서지는 벽이 가까이 있으면 채찍 끝이 반짝여 알려 준다.' });
 def('kael_crusader', { charId: 'kael', tier: 1, parent: 'kael_hunter', name: '성광의 사냥꾼', eng: 'CRUSADER', reqLevel: 10, next: ['kael_templar', 'kael_inquisitor'],
-  desc: '신성한 빛을 채찍에 두른 사냥꾼.', perk: '채찍 공격에 신성 속성 부여, 신성 피해 +20%',
+  desc: '신성한 빛을 채찍에 두른 사냥꾼.', perk: '채찍 공격마다 위력 30%의 신성 추가타, 신성 피해 +20%',
   mult: { mag: 1.15, res: 1.1 }, flat: { holy: 20 },
   look: { primary: '#d8d0c0', secondary: '#c8a040', trim: '#e8c872', aura: { color: '#fff2b0', type: 'holy' }, headgear: 'circlet' } });
 def('kael_templar', { charId: 'kael', tier: 2, parent: 'kael_crusader', name: '성전 기사', eng: 'TEMPLAR', reqLevel: 25,
@@ -20,7 +20,7 @@ def('kael_inquisitor', { charId: 'kael', tier: 2, parent: 'kael_crusader', name:
   mult: { atk: 1.2, mag: 1.25 }, flat: { holy: 25, fire: 25, crit: 5 },
   look: { primary: '#1a1418', secondary: '#c01020', trim: '#e8c872', headgear: 'wide_hat', headColor: '#141014', cape: { color: '#1a1418', color2: '#c01020', len: 1.2 }, aura: { color: '#ff9a3a', type: 'fire' } } });
 def('kael_stalker', { charId: 'kael', tier: 1, parent: 'kael_hunter', name: '그림자 추적자', eng: 'STALKER', reqLevel: 10, next: ['kael_bloodhunter', 'kael_nightraven'],
-  desc: '어둠 속에서 사냥감을 쫓는 추적자.', perk: '이동 속도 +10%, 치명타 +8%',
+  desc: '어둠 속에서 사냥감을 쫓는 추적자.', perk: '이동 속도 +10%, 치명타 +8%. 마지막으로 때린 적에게 6초 동안 사냥감 표식 — 표식 대상에게 주는 피해 +6%, 표식 대상을 처치하면 1초 동안 이동 속도 +25%.',
   mult: { agi: 1.2, atk: 1.08 }, flat: { crit: 8, moveSpd: 10 },
   look: { primary: '#1c1a22', secondary: '#4a1a5a', trim: '#8a8a9a', headgear: 'hood', scarf: { color: '#3a1a4a' } } });
 def('kael_bloodhunter', { charId: 'kael', tier: 2, parent: 'kael_stalker', name: '블러드 헌터', eng: 'BLOOD HUNTER', reqLevel: 25,
@@ -44,11 +44,11 @@ def('sera_saint', { charId: 'sera', tier: 2, parent: 'sera_priestess', name: '�
   mult: { mag: 1.35, hp: 1.2, res: 1.3 }, flat: { holy: 40, hpRegen: 3 },
   look: { primary: '#ffffff', secondary: '#ffe7a0', trim: '#ffd84a', wings: 'angel', halo: true, headgear: 'tiara', aura: { color: '#fff8d0', type: 'holy' }, cape: { color: '#ffffff', color2: '#ffd84a', len: 1.0 } } });
 def('sera_oracle', { charId: 'sera', tier: 2, parent: 'sera_priestess', name: '신탁의 무녀', eng: 'ORACLE', reqLevel: 25,
-  desc: '시간의 흐름을 읽는 예언자.', perk: '재사용 대기 -25%, MP 재생 2배',
+  desc: '시간의 흐름을 읽는 예언자.', perk: '재사용 대기 시간 -20%, MP 재생 +3/초',
   mult: { mag: 1.3, mp: 1.4 }, flat: { cdr: 25, mpRegen: 3, luck: 10 },
   look: { primary: '#2a2a5a', secondary: '#e8c872', trim: '#8ac8ff', headgear: 'veil', aura: { color: '#8ac8ff', type: 'ice' }, halo: true } });
 def('sera_elementalist', { charId: 'sera', tier: 1, parent: 'sera_exorcist', name: '원소술사', eng: 'ELEMENTALIST', reqLevel: 10, next: ['sera_archmage', 'sera_stormcaller'],
-  desc: '화염·냉기·번개를 다루는 전투 마도사.', perk: '원소 피해 +15%',
+  desc: '화염·냉기·번개를 다루는 전투 마도사.', perk: '원소 피해 +15%. 기본 공격이 3번 맞을 때마다 맞은 자리에 원소 파열(반경 55, 위력 35%) — 화염→냉기→번개 순서. 냉기는 1초 동안 30% 감속(보스 제외), 번개는 0.2초 경직.',
   mult: { mag: 1.25 }, flat: { fire: 15, ice: 15, thunder: 15 },
   look: { primary: '#3a1a4a', secondary: '#c8a040', trim: '#e8c872', headgear: 'hat', headColor: '#2a1238', aura: { color: '#b98cff', type: 'dark' } } });
 def('sera_archmage', { charId: 'sera', tier: 2, parent: 'sera_elementalist', name: '대마법사', eng: 'ARCHMAGE', reqLevel: 25,
@@ -64,7 +64,7 @@ def('sera_stormcaller', { charId: 'sera', tier: 2, parent: 'sera_elementalist', 
 def('victor_gunslinger', { charId: 'victor', tier: 0, name: '건슬링어', eng: 'GUNSLINGER', reqLevel: 1, next: ['victor_deadeye', 'victor_desperado'],
   desc: '은탄환 쌍권총의 사냥꾼.', perk: '보조무기 권총 탄약 소모 없음' });
 def('victor_deadeye', { charId: 'victor', tier: 1, parent: 'victor_gunslinger', name: '데드아이', eng: 'DEADEYE', reqLevel: 10, next: ['victor_phantom', 'victor_executioner'],
-  desc: '백발백중의 저격수.', perk: '치명타 +10%, 치명타 피해 +25%',
+  desc: '백발백중의 저격수.', perk: '치명타 +10%, 치명타 피해 +25%. 4초 동안 내게 맞지 않은 적을 맞히는 첫 탄은 치명타 확정.',
   mult: { atk: 1.15 }, flat: { crit: 10, critDmg: 25 },
   look: { primary: '#3a3a44', secondary: '#1a1a20', trim: '#c8ccd4', scarf: { color: '#2a2a3a' }, eyes: '#ff4040', eyeGlow: true } });
 def('victor_phantom', { charId: 'victor', tier: 2, parent: 'victor_deadeye', name: '팬텀 스나이퍼', eng: 'PHANTOM', reqLevel: 25,
@@ -90,17 +90,17 @@ def('victor_gunlord', { charId: 'victor', tier: 2, parent: 'victor_desperado', n
 
 // ── 브란: 대검 ──
 def('bran_knight', { charId: 'bran', tier: 0, name: '기사', eng: 'KNIGHT', reqLevel: 1, next: ['bran_paladin', 'bran_berserker'],
-  desc: '멸망한 은빛 기사단의 기사.', perk: '공격 중 경직 저항' });
+  desc: '멸망한 은빛 기사단의 기사.', perk: '공격하는 동안 최대 HP 10% 미만의 피해로는 경직되지 않는다.' });
 def('bran_paladin', { charId: 'bran', tier: 1, parent: 'bran_knight', name: '성기사', eng: 'PALADIN', reqLevel: 10, next: ['bran_guardian', 'bran_crusader'],
-  desc: '신의 가호를 받은 기사.', perk: '받는 피해 -10%, 신성 피해 +15%',
+  desc: '신의 가호를 받은 기사.', perk: '받는 피해 -10%, 신성 피해 +15%. 10초마다 가호가 차오른다 — 가호가 있을 때 적에게 맞으면 그 피해가 절반이 되고 반경 120 신성 파동(위력 50%)이 터진다.',
   mult: { hp: 1.15, def: 1.2 }, flat: { dmgReduce: 10, holy: 15 },
   look: { primary: '#e8e4d8', secondary: '#2a4a8a', trim: '#e8c872', armor: 'holy', armorColor: '#d8dce8', headgear: 'helm', cape: { color: '#2a4a8a', color2: '#e8c872', len: 1.0 } } });
 def('bran_guardian', { charId: 'bran', tier: 2, parent: 'bran_paladin', name: '수호성기사', eng: 'GUARDIAN', reqLevel: 25,
-  desc: '결코 쓰러지지 않는 성벽.', perk: '받는 피해 -25%, HP +40%',
+  desc: '결코 쓰러지지 않는 성벽.', perk: '받는 피해 -25%, HP +40%. 8초 동안 피해를 받지 않으면 최대 HP 12%의 결계가 생겨 피해를 먼저 막는다.',
   mult: { hp: 1.4, def: 1.5 }, flat: { dmgReduce: 25, hpRegen: 2 },
   look: { primary: '#f0ece0', secondary: '#1a3a7a', trim: '#ffd84a', armor: 'holy', armorColor: '#f0f0f8', headgear: 'helm', halo: true, aura: { color: '#fff2b0', type: 'holy' }, cape: { color: '#1a3a7a', color2: '#ffd84a', len: 1.2 } } });
 def('bran_crusader', { charId: 'bran', tier: 2, parent: 'bran_paladin', name: '십자군 총사령', eng: 'CRUSADER LORD', reqLevel: 25,
-  desc: '성전의 선봉. 대검에 성광을 두른다.', perk: '대검 공격 시 성광 충격파, 신성 피해 +35%',
+  desc: '성전의 선봉. 대검에 성광을 두른다.', perk: '마무리 공격 때 성광 충격파, 신성 피해 +35%',
   mult: { atk: 1.3, hp: 1.2 }, flat: { holy: 35, reach: 15 },
   look: { primary: '#f0ece0', secondary: '#c01020', trim: '#ffd84a', armor: 'holy', armorColor: '#e8e8f0', headgear: 'crown', aura: { color: '#fff2b0', type: 'holy' }, cape: { color: '#c01020', color2: '#f0ece0', len: 1.2 } } });
 def('bran_berserker', { charId: 'bran', tier: 1, parent: 'bran_knight', name: '광전사', eng: 'BERSERKER', reqLevel: 10, next: ['bran_warlord', 'bran_bloodrage'],
@@ -112,7 +112,7 @@ def('bran_warlord', { charId: 'bran', tier: 2, parent: 'bran_berserker', name: '
   mult: { atk: 1.35, hp: 1.25, def: 1.15 }, flat: { crit: 8, critDmg: 30 },
   look: { primary: '#2a2a2a', secondary: '#a02010', trim: '#c8a040', armor: 'dark', armorColor: '#3a3a40', headgear: 'horns', cape: { color: '#5a0a0a', color2: '#2a0a0a', len: 1.2 }, aura: { color: '#ff5020', type: 'fire' } } });
 def('bran_bloodrage', { charId: 'bran', tier: 2, parent: 'bran_berserker', name: '혈귀 광전사', eng: 'BLOODRAGE', reqLevel: 25,
-  desc: '악마의 피에 잠식된 광전사.', perk: '흡혈 8%, 공격 속도 +20%',
+  desc: '악마의 피에 잠식된 광전사.', perk: '흡혈 8%, 공격 속도 +20%. HP가 40% 아래로 떨어지면 6초 동안 혈귀화 — 공격 속도 +25%, 흡혈 +6%, 경직 없음(20초에 한 번).',
   mult: { atk: 1.4, agi: 1.2 }, flat: { lifesteal: 8, atkSpd: 20 },
   // cape: null — 브란의 푸른 망토(characters.js)가 악마 날개 위에 그려지지 않게 (HERO-REVIEW #225 / 요청 #349)
   look: { primary: '#1a0a0a', secondary: '#ff1a2a', trim: '#ff1a2a', armor: 'dark', armorColor: '#2a0a0e', headgear: 'horns', wings: 'demon', cape: null, eyes: '#ff1a2a', eyeGlow: true, aura: { color: '#ff1a2a', type: 'blood' }, markings: 'runes' } });
