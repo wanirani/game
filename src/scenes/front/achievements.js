@@ -957,7 +957,7 @@ class PickModal {
     const gx0 = tall ? R.x + 30 : R.x + tw + 40, gx1 = R.x + R.w - 34, span = gx1 - gx0;
     if (span < 40) return;
     const gy = tall ? R.y + 62 + (R.h - 62 - 30) * 0.5 + 24 : R.y + R.h - 12;
-    const s = Math.min(tall ? clamp((R.h - 110) / 40, 0.7, 1.9) : clamp((R.h - 20) / 38, 0.7, 2.4), span / 130);
+    const s = Math.min(tall ? clamp((R.h - 92) / 36, 0.7, 1.9) : clamp((R.h - 20) / 38, 0.7, 2.4), span / 130);
     const run = this.sc.game.settings?.reduceMotion ? 0 : Math.sin(t * 2.2) * 6 * s, step = Math.min(30 * s, (span - 60 * s) / 5);
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(gx0 - 10, gy, gx1 - gx0 + 20, 2);
