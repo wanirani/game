@@ -8,7 +8,7 @@
 //  - 명령 {cmd:'recruit', id} (world2 §2.4): flags['recruit_'+id] = true + game.companions?.recruit?.(id). 건너뛰기도 실행한다
 //  - 초상화 (data/portrait_meta.js · render/portrait.js):
 //      · 투명 애니메 흉상: 대화창 앞에, 창의 왼쪽 위(side:'right' 화자는 오른쪽 위)에 걸쳐 크게 (높이 0.62·화면, 아래는 창 바닥에서 잘림).
-//        가장자리를 지우지 않는다 (머리카락을 먹지 않게)
+//        가장자리를 지우지 않는다 (머리카락을 먹지 않게) — 그림이 캔버스 위·옆 끝에서 잘린 흉상만 그 가장자리를 녹인다 (portrait.softBust)
 //      · 예전 불투명 그림: 같은 자리에 얼굴 중심으로 자른 액자 카드 (고딕 테두리)
 //      · 이름은 글 위(초상화 옆 글 칸 왼쪽)에 가는 금색 밑줄과 함께, 글 칸은 초상화를 비켜 선다. 이벤트 CG 가 떠 있으면 초상화 생략
 //      · 화자가 바뀌면 옆에서 스며드는 등장 (표정만 바뀌면 다시 들어오지 않는다)
@@ -34,7 +34,8 @@ import { grantItem, ownsItem } from '../game/inventory.js';
 import { bus } from '../core/events.js';
 import { saves } from '../core/save.js';
 import { clamp, ease } from '../core/math.js';
-import { linePortrait, preloadKeys, baseKeyOf, legacyCrop, cachedGrad } from '../render/portrait.js';
+import { linePortrait, preloadKeys, baseKeyOf, legacyCrop, cachedGrad, softBust } from '../render/portrait.js';
+import { hudSafe } from '../render/hud_layout.js';
 
 /** 건너뛰기(skipAll) 때 실행하지 않는 연출 전용 명령 */
 const QUIET_CMDS = new Set(['sfx', 'shake', 'flash']);
@@ -71,6 +72,11 @@ export function speakerInfo(who, state) {
 function cssPer(sc) {
   const g = sc.game;
   return Math.max(0.2, (g.cssScale || 1) * (sc.uiScale ? g.uiK || 1 : 1));
+}
+/** 기기 안전 영역 여백 (설정 safeArea 'full' 일 때만 0 이 아니다) → 이 장면 좌표. 오른쪽 위 버튼·다시 보기 창이 노치·둥근 모서리 밑에 들어가지 않게 */
+function safeOf(sc) {
+  const S = hudSafe(sc.game), k = sc.uiScale ? sc.game.uiK || 1 : 1;
+  return { l: (S.l || 0) / k, r: (S.r || 0) / k, t: (S.t || 0) / k };
 }
 /** 탭 대상 최소 높이 (44 CSS px + 여유 2) → 이 장면 좌표 */
 function tapH(sc, base = 44) {
@@ -399,7 +405,7 @@ export class DialogueScene extends Scene {
       const bottom = by + bh - 2;
       const x = (left ? Lo.slotX : Lo.slotX + Lo.slotW - w) + off;
       ctx.beginPath(); ctx.rect(0, 0, Lo.W, bottom); ctx.clip();   // 창 바닥 테두리 안에서 잘린다 (REF A)
-      ctx.drawImage(img, x, bottom - h, w, h);
+      ctx.drawImage(softBust(img), x, bottom - h, w, h);   // 그림이 캔버스 위·옆 끝에서 잘렸으면 그 가장자리만 녹인 사본 (칼로 자른 선이 화면에 뜨지 않게)
     } else {
       const cw = Lo.slotW - 40, ch = Math.round(cw * 1.22);
       const r = { x: (left ? bx + 16 : bx + bw - 16 - cw) + off, y: by + bh - 14 - ch, w: cw, h: ch };
@@ -429,12 +435,13 @@ export class DialogueScene extends Scene {
       { id: 'skip', label: '넘기기', act: 'menu', off: !!this.menu },
     ];
     const over = live && !touch ? taps.over(this) : null;
-    let x = Lo.W - 10 - items.length * cw - (items.length - 1) * gap;
-    const y = 6;
+    const S = safeOf(this);
+    let x = Lo.W - 10 - S.r - items.length * cw - (items.length - 1) * gap;
+    const y = 6 + S.t;
     // 버튼 줄 뒤 옅은 어둠 (아래 장면의 HUD 글자와 겹쳐도 읽히게)
     const gw = items.length * cw + (items.length - 1) * gap + 12;
     ctx.fillStyle = cachedGrad(ctx, `dlgCtl|${x}|${gw}`, (c) => { const g = c.createLinearGradient(x - 6, 0, x - 6 + gw, 0); g.addColorStop(0, 'rgba(6,2,8,0)'); g.addColorStop(0.12, 'rgba(6,2,8,0.7)'); g.addColorStop(1, 'rgba(6,2,8,0.78)'); return g; });
-    ctx.fillRect(x - 6, 0, gw + 6, y + ch + 4);
+    ctx.fillRect(x - 6, 0, gw + 6 + S.r, y + ch + 4);
     for (const it of items) {
       const r = { x, y, w: cw, h: ch };
       const cx = x + cw / 2, cy = y + 3 + d / 2;
@@ -528,12 +535,12 @@ export class DialogueScene extends Scene {
     const L = this.log, { W, H } = Lo;
     ctx.fillStyle = 'rgba(4,1,6,0.86)'; ctx.fillRect(0, 0, W, H);
     taps.add('logShade', { x: 0, y: 0, w: W, h: H }, { owner: this, kind: 'primary', src: 'dialogue.logShade' });   // 창 밖 탭 = 닫기
-    const btnH = tapH(this, 44);
-    const pw = Math.min(800, W - 48), px = Math.round((W - pw) / 2), py = 14 + btnH + 8, ph = H - py - 14;
+    const btnH = tapH(this, 44), S = safeOf(this), ty = 14 + S.t;
+    const pw = Math.min(800, W - 48 - S.l - S.r), px = Math.round(S.l + (W - S.l - S.r - pw) / 2), py = ty + btnH + 8, ph = H - py - 14;
     panel(ctx, px, py, pw, ph, { glow: 'rgba(180,20,40,0.4)', fill: 'rgba(20,6,14,0.98)', edge: '#7a1a2a' });
     taps.add('logPanel', { x: px, y: py, w: pw, h: ph }, { owner: this, kind: 'primary', src: 'dialogue.logPanel' });
-    text(ctx, '다시 보기', px + 8, 14 + btnH / 2 + 8, { size: 22, weight: 800, family: FONT.title, color: GOLD, ow: 3 });
-    const cr = { x: px + pw - 124, y: 14, w: 124, h: btnH };
+    text(ctx, '다시 보기', px + 8, ty + btnH / 2 + 8, { size: 22, weight: 800, family: FONT.title, color: GOLD, ow: 3 });
+    const cr = { x: px + pw - 124, y: ty, w: 124, h: btnH };
     button(ctx, cr, '닫기 ✕', { size: 17 });
     taps.add('logClose', cr, { owner: this, kind: 'primary', src: 'dialogue.logClose' });
     if (!input.touchMode) drawHints(ctx, [['dpadV', '넘겨 보기'], ['cancel', '닫기']], cr.x - 14, cr.y + cr.h / 2 + 5, { align: 'right', size: 13, color: '#c8b8a0' });

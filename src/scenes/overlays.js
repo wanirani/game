@@ -28,7 +28,7 @@ import { CHARACTERS } from '../data/characters.js';
 import { CLASSES } from '../data/classes.js';
 import { DOCS, LORE } from '../data/lore.js';
 import { clamp, ease, rgba, hexToRgb } from '../core/math.js';
-import { isBust, faceOf } from '../render/portrait.js';
+import { isBust, faceOf, softBust } from '../render/portrait.js';
 import { saves } from '../core/save.js';
 import { STAT_INFO } from '../game/stats.js';
 import { hudSafe } from '../render/hud_layout.js';
@@ -145,7 +145,7 @@ export class BossIntroScene extends Scene {
     // 초상화가 도착하면 WARNING 동안 가장자리 페더 사본을 미리 굽는다 (이름 카드가 미끄러져 들어오는 첫 프레임이 끊기지 않게)
     if (!this.fe && this.t > 0.1 && this.t < 1.4) {
       const img = assets.get(this.def.portrait);
-      if (img?.width) { this.fe = true; try { featherLeft(img); } catch (e) { console.error(e); } }
+      if (img?.width) { this.fe = true; try { featherLeft(isBust(this.def.portrait, img) ? softBust(img) : img); } catch (e) { console.error(e); } }
     }
     if (this.t > 1.3 && !this.roared) { this.roared = true; audio.sfx('boss_roar'); this.game.world?.camera?.shake(10, 0.6); }
     this.game.world?.camera?.tickShake?.(dt); // 월드가 멈춰 있어도 포효 흔들림을 소리와 함께 재생
@@ -209,7 +209,7 @@ export class BossIntroScene extends Scene {
         this._rg = rg; this._bg = bg;
       }
       ctx.fillStyle = this._rg; ctx.fillRect(dx, 0, vw - dx, vh);
-      ctx.drawImage(featherLeft(img), px, py, w, h);
+      ctx.drawImage(featherLeft(bust ? softBust(img) : img), px, py, w, h);   // 흉상: 그림이 캔버스 위에서 잘렸으면 위 가장자리를 녹인 사본 (왕관·뿔이 수평선으로 잘려 보이지 않게)
       ctx.fillStyle = this._bg; ctx.fillRect(dx, vh * 0.7, vw - dx, vh * 0.3);
       ctx.restore();
       ctx.strokeStyle = GOLD; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(dx + 80, 0); ctx.lineTo(dx, vh); ctx.stroke();

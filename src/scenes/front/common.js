@@ -19,7 +19,7 @@ import { hudSafe } from '../../render/hud_layout.js';
 import { clamp, lerp, rand, TAU, rgba, ease } from '../../core/math.js';
 import { CHARACTERS, CHAR_ORDER } from '../../data/characters.js';
 import { CLASSES, classChain } from '../../data/classes.js';
-import { isBust, keyOfImage, bustCrop, bustSilhouette } from '../../render/portrait.js';   // 애니메 흉상 (portraitIn · featherPortrait)
+import { isBust, keyOfImage, bustCrop, bustSilhouette, bustEdges } from '../../render/portrait.js';   // 애니메 흉상 (portraitIn · featherPortrait)
 
 export const GOLD = '#e8c872', BONE = '#efe4cf', CRIMSON = '#b3122e', INK = '#07030a', DIM = '#9d8f80';
 export const EL = { holy: '#fff2b0', fire: '#ff7a2a', ice: '#9fe8ff', dark: '#b060ff', thunder: '#bfe0ff' };
@@ -689,12 +689,16 @@ export function portraitIn(ctx, img, r, { fx = 0.5, fy = 0.22, zoom = 1, silhoue
 
 /**
  * 초상화 가장자리를 투명하게 녹인 캐시 캔버스 (컷신에서 CG 위에 자연스럽게 얹기 위함)
- * 투명 배경 애니메 흉상은 머리카락·어깨를 먹지 않게 옆·위는 그대로 두고 아래(가슴 잘린 면)만 녹인다 (bottom ≤ 0.22)
+ * 투명 배경 애니메 흉상은 머리카락·어깨를 먹지 않게 아래(가슴 잘린 면)만 녹인다 (bottom ≤ 0.22). 그림이 캔버스 위·옆 끝에서
+ * 잘린 흉상은 그쪽도 조금(위 8 %·옆 7 %) 녹인다 (render/portrait.bustEdges)
  */
 const FEATHER = new Map();
 export function featherPortrait(img, key, { side = 0.2, bottom = 0.42, top = 0.06 } = {}) {
   if (!img) return null;
-  if (isBust(key, img)) { side = 0; top = 0; bottom = Math.min(bottom, 0.22); }
+  if (isBust(key, img)) {   // 그림이 캔버스 위·옆 끝에서 잘린 흉상만 그쪽을 녹인다 (칼로 자른 선이 컷신 한가운데 뜨지 않게)
+    const e = bustEdges(img);
+    side = e.l || e.r ? 0.07 : 0; top = e.t ? 0.08 : 0; bottom = Math.min(bottom, 0.22);
+  }
   const k = `${key}|${side}|${bottom}|${top}|${img.width}x${img.height}`;
   if (FEATHER.has(k)) return FEATHER.get(k);
   const W = Math.min(520, img.width), H = Math.round(W * img.height / img.width);

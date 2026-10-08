@@ -13,6 +13,8 @@
 //  legacyCrop(img, key, aspect) → {sx, sy, sw, sh}   예전 그림에서 얼굴 중심 머리·어깨 카드 자르기 (대화창 액자)
 //  faceRect(img, key, pad) → {sx, sy, sw, sh}   얼굴 중심 정사각 자르기 (원형 HUD 얼굴·동료 아이콘 — 다른 화면 주인이 쓰도록)
 //  bustSilhouette(img) → 캔버스 | null   흉상 모양 그대로의 검은 실루엣 + 붉은 테두리광 (잠긴 영웅). 이미지마다 한 번 (≤ 512 px)
+//  bustEdges(img) → {t, l, r}   흉상 그림이 캔버스 위·왼쪽·오른쪽 끝에 닿아 잘렸는가 (이미지마다 한 번, 48×64 탐침)
+//  softBust(img) → 이미지 | 캔버스   잘린 가장자리만 녹인 사본 (대화창·보스 등장. 잘린 데가 없으면 그대로, 최근 6장 캐시)
 //  cachedGrad(ctx, key, make) → 그라데이션 (키마다 한 번 — 프레임마다 새로 만들지 않는다)
 import { assets } from '../core/assets.js';
 import { isBust, faceOf, expressionKey, baseKeyOf, exprOf, lineExpression, hasAlpha } from '../data/portrait_meta.js';
@@ -152,6 +154,67 @@ export function bustSilhouette(img) {
   } catch { return null; }
   shape.width = shape.height = 0;
   SIL.set(img, { src, c });
+  return c;
+}
+
+// ── 그림이 캔버스 위·옆 끝에 닿아 잘린 흉상: 잘린 가장자리만 부드럽게 (대화창·컷신·보스 등장에서 머리카락이 칼로 자른 듯한
+//    수평·수직 선으로 화면 한가운데 뜨지 않게). 닿지 않은 가장자리는 건드리지 않는다 (머리카락을 먹지 않게) ──
+const NO_EDGES = Object.freeze({ t: false, l: false, r: false });
+const EDGES = new WeakMap();   // img → { src, w, v }
+let edgeCtx = null;
+/** 흉상의 위·왼쪽·오른쪽 끝에 그림이 닿아 있는가 {t, l, r} (48×64 로 줄여 끝 줄만 본다, 이미지마다 한 번) */
+export function bustEdges(img) {
+  const [iw, ih] = dims(img);
+  if (!(iw > 2 && ih > 2) || img.complete === false) return NO_EDGES;
+  const src = img.currentSrc || img.src || '';
+  const c0 = EDGES.get(img);
+  if (c0 && c0.src === src && c0.w === iw) return c0.v;
+  let v = NO_EDGES;
+  try {
+    edgeCtx ??= mkCanvas(48, 64)?.getContext('2d', { willReadFrequently: true }) ?? null;
+    if (edgeCtx) {
+      edgeCtx.clearRect(0, 0, 48, 64);
+      edgeCtx.drawImage(img, 0, 0, 48, 64);
+      const d = edgeCtx.getImageData(0, 0, 48, 64).data, on = (x, y) => (d[(y * 48 + x) * 4 + 3] > 96 ? 1 : 0);
+      let t = 0, l = 0, r = 0;
+      for (let x = 0; x < 48; x++) t += on(x, 0);
+      for (let y = 0; y < 64; y++) { l += on(0, y); r += on(47, y); }
+      v = Object.freeze({ t: t >= 1, l: l >= 2, r: r >= 2 });
+    }
+  } catch { v = NO_EDGES; }
+  EDGES.set(img, { src, w: iw, v });
+  return v;
+}
+const SOFT = new Map();   // img → { src, w, c } — 최근 6장 (잘린 흉상만 굽는다)
+const SOFT_TOP = 0.08, SOFT_SIDE = 0.07;
+/** 잘린 가장자리(위 8 % · 옆 7 %)를 투명하게 녹인 사본. 잘린 데가 없으면 이미지 그대로 */
+export function softBust(img) {
+  const e = bustEdges(img);
+  if (!e.t && !e.l && !e.r) return img;
+  const [iw, ih] = dims(img);
+  const src = img.currentSrc || img.src || '';
+  const hit = SOFT.get(img);
+  if (hit && hit.src === src && hit.w === iw) { SOFT.delete(img); SOFT.set(img, hit); return hit.c; }
+  const c = mkCanvas(iw, ih);
+  if (!c) return img;
+  try {
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0, iw, ih);
+    g.globalCompositeOperation = 'destination-in';
+    if (e.l || e.r) {
+      const gr = g.createLinearGradient(0, 0, iw, 0);
+      gr.addColorStop(0, e.l ? 'rgba(0,0,0,0)' : '#000'); gr.addColorStop(SOFT_SIDE, '#000');
+      gr.addColorStop(1 - SOFT_SIDE, '#000'); gr.addColorStop(1, e.r ? 'rgba(0,0,0,0)' : '#000');
+      g.fillStyle = gr; g.fillRect(0, 0, iw, ih);
+    }
+    if (e.t) {
+      const gr = g.createLinearGradient(0, 0, 0, ih);
+      gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(SOFT_TOP, '#000'); gr.addColorStop(1, '#000');
+      g.fillStyle = gr; g.fillRect(0, 0, iw, ih);
+    }
+  } catch { return img; }
+  SOFT.set(img, { src, w: iw, c });
+  if (SOFT.size > 6) SOFT.delete(SOFT.keys().next().value);   // 오래된 사본은 놓기만 한다 (같은 프레임에 그리는 쪽이 있을 수 있어 0×0 으로 줄이지 않음)
   return c;
 }
 
