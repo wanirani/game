@@ -8,6 +8,7 @@
 //  · 'class'(전직) 계열: 레벨 2/5/10/15/25/28, 3단(row2)부터 1차 전직 필요, 5단/6단은 각각 다른 2차 전직 전용(둘 다 4단 선행)
 //  → 직업 선택에 따라 배울 수 있는 스킬이 갈라지며, 스킬 성장이 여러 방향으로 뻗어 나간다.
 import { CLASSES, classChain } from './classes.js';
+import { ASC_SKILLS } from './skills_asc.js';   // 비전 기술 7 (classes_t3 §2.3) — 끝에서 SKILLS 에 합친다
 
 export const SKILLS = {};
 export const SKILL_TREES = {};
@@ -349,6 +350,15 @@ tree('isolde', [
   ] },
 ]);
 
+// ─────────────────────────── 비전 기술 (classes_t3 §2.3) ───────────────────────────
+// 숨은 직업(비전) 전용 액티브 7개: 트리 밖(branch 'asc'), reqAsc = 비전 id. 배우기 canLearn · 장착 equipSkill · 초기화 resetSkills 규칙 참고
+for (const s of ASC_SKILLS) SKILLS[s.id] = { req: [], branch: 'asc', row: 0, ...s };
+/** 이 영웅의 해금된 비전 기술 (없으면 null) */
+function unlockedAscSkill(hero) {
+  const list = Array.isArray(hero?.ascUnlocked) ? hero.ascUnlocked : [];
+  return ASC_SKILLS.find((s) => s.charId === hero?.charId && list.includes(s.reqAsc)) ?? null;
+}
+
 // ─────────────────────────── 시작 스킬 ───────────────────────────
 export const STARTER_SKILLS = {
   kael: 'kael_vigilia', sera: 'sera_holy_bolt', victor: 'victor_fanning',
@@ -414,6 +424,7 @@ export function canLearn(hero, id) {
   const sk = SKILLS[id];
   if (!sk || !hero) return { ok: false, reason: '알 수 없는 스킬' };
   if (sk.charId !== hero.charId) return { ok: false, reason: '다른 캐릭터의 스킬' };
+  if (sk.reqAsc && !(Array.isArray(hero.ascUnlocked) && hero.ascUnlocked.includes(sk.reqAsc))) return { ok: false, reason: '비전 해금 필요' };
   const cur = hero.skills?.[id] ?? 0;
   if (cur >= sk.maxLv) return { ok: false, reason: '최고 레벨 달성' };
   if (!hasClass(hero, sk.reqClass)) {
@@ -451,6 +462,7 @@ export function learnSkill(hero, id) {
 export function equipSkill(hero, slot, id) {
   hero.slots ??= [null, null, null, null];
   if (id && (!SKILLS[id] || SKILLS[id].type !== 'active' || !(hero.skills?.[id] > 0))) return false;
+  if (id && SKILLS[id].reqAsc && hero.asc !== SKILLS[id].reqAsc) return false;   // 비전 기술은 그 비전 직업일 때만
   const j = id ? hero.slots.indexOf(id) : -1;
   if (j >= 0) hero.slots[j] = hero.slots[slot] ?? null;
   hero.slots[slot] = id ?? null;
@@ -461,15 +473,21 @@ export function equipSkill(hero, slot, id) {
 export function resetSkills(hero) {
   let refund = 0;
   const starter = STARTER_SKILLS[hero.charId];
+  const asc = unlockedAscSkill(hero);   // 해금된 비전 기술 1레벨도 무료 (§2.3)
   for (const id in hero.skills || {}) {
     const sk = SKILLS[id];
     const lv = hero.skills[id] ?? 0;
-    const free = id === starter ? 1 : 0;
+    const free = id === starter || id === asc?.id ? 1 : 0;
     refund += Math.max(0, lv - free) * (sk?.spCost ?? 1);
   }
   hero.skills = {};
   hero.slots = [null, null, null, null];
   if (starter) { hero.skills[starter] = 1; hero.slots[0] = starter; }
+  if (asc) {
+    hero.skills[asc.id] = 1;
+    if (hero.asc === asc.reqAsc) { const i = hero.slots.indexOf(null); if (i >= 0) hero.slots[i] = asc.id; }
+  }
+  if (hero.ascSlot) hero.ascSlot = null;   // 비전 기술에 밀려났던 스킬도 환급됐다 → 되돌릴 자리 없음
   hero.sp = (hero.sp ?? 0) + refund;
   return refund;
 }
