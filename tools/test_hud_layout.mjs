@@ -192,8 +192,9 @@ async function stageScene({ scen, settings }) {
   try { w.style.pts = top.min + 300; w.style.rank = ranks.length; } catch { /* 읽기 전용 */ }
   w.style.ann.cur = scen === 'B' ? { rank: ranks.length, r: top.r, word: top.word, sub: top.sub, c: top.c, c2: top.c2, age: 0.3 } : null;
   w.style.ann.queue = [];
-  // 버프 6개
+  // 버프 6개 + 첫 스킬 슬롯 재사용 대기 (초 글자도 글자 크기 검사에 들어가게)
   Object.assign(w.player.buffs, { haste: 20, rage: 12, magnet: 9999, holyaura: 15, invincible: 5, gunmode: 8 });
+  { const sid = w.hero.slots?.[(w.player.skillPage ?? 0) * 2]; if (sid && w.player.skillCd) w.player.skillCd[sid] = 12.5; }
   // 보스 바
   if (scen === 'B') {
     w.boss = { def: { name: '진홍의 갑주군주', title: '피로 벼린 갑옷의 주인', phases: [0.5] }, hp: 620, hpGhost: 700, stats: { maxHp: 1000 }, dead: false, dying: 0 };
