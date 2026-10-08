@@ -32,6 +32,7 @@ import * as TRIAL from '../../game/trial.js';
 import { composeLook, lookForAsc, STAT_INFO } from '../../game/stats.js';
 import { addByBase } from '../../game/inventory.js';
 import { SHOP_LINES } from '../../data/town.js';
+import { SCRIPTS } from '../../data/story.js';   // 「안쪽 방 — 신부님」 새 대사 표식 (albertoNews — 읽기만)
 import { ServiceScene, Modal, RewardPopup, makeInst, hitRect, rowBg, Snap, uiPanel, uiButton, uiHints, josa } from './common.js';
 import { vGrad, rGrad, fillGradRect, wrapC, Gesture, Scroller, clipBegin, clipEnd, scrollbar, moreBelow, pill, glyph } from '../menu/common.js';
 // 직업 카드 그라디언트 색 멈춤 (menu/common 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
@@ -46,6 +47,27 @@ const PATH_COL = { trial: '#c8a0ff', t3: '#ffd870', hidden: '#c8a0ff' };
 const own = (o, k) => !!o && typeof k === 'string' && Object.hasOwn(o, k);
 /** 초월(t3)은 시련 Ⅰ, 비전은 시련 Ⅱ 가 연다 (칸의 짧은 잠김 줄) */
 const TRIALS_N = { t3: '시련 Ⅰ을', hidden: '시련 Ⅱ를' };   // Ⅰ(일)+을 · Ⅱ(이)+를
+/** 시련을 넘지 못하고 돌아온 이유 (trial.js leaveTrial why · TRIAL_STATS.last) → 성당지기 trialBack 한마디 */
+const TRIAL_BACK = new Set(['leave', 'quit', 'fail', 'blocked']);
+/**
+ * 알베르토 신부님에게 아직 듣지 않은 대사가 있나 (2부 축복 탭 「안쪽 방 — 신부님」 줄의 NEW 표식, requests_f UCC VERIFY).
+ * data/story.js pickNpcScript 와 같은 규칙을 부작용 없이 따라간다 (그 함수는 고른 대사를 seenScripts 에 넣는다):
+ * 편지 퀘스트 전달 · 외전 뒤 반응(_ex25 … _ex21, 안 들은 것) · 지금 장 이하의 가장 새 _ch<N> 을 아직 안 들었다.
+ * seenScripts 가 없는 옛 세이브는 표식 없음 (가장 새 장 대사를 늘 다시 튼다 — 새것인지 알 수 없다)
+ */
+export function albertoNews(state, npcId = 'npc_alberto') {
+  const P = state?.progress, F = P?.flags ?? {};
+  if (npcId === 'npc_alberto' && state?.quests?.active?.el_letter && !F.letter_delivered) return true;
+  const seen = Array.isArray(P?.seenScripts) ? P.seenScripts : null;
+  if (!seen) return false;
+  for (const [k, f] of [['ex25', 'ex_s25_done'], ['ex24', 'ex_s24_done'], ['ex23', 'ex_s23_done'], ['ex22', 'ex_s22_done'], ['ex21', 'ex_s21_done']]) {
+    const id = `${npcId}_${k}`;
+    if (F[f] && SCRIPTS[id] && !seen.includes(id)) return true;
+  }
+  const ch = Number.isFinite(P?.chapter) ? P.chapter : 0;
+  for (let k = ch; k >= 0; k--) { const id = `${npcId}_ch${k}`; if (SCRIPTS[id]) return !seen.includes(id); }
+  return false;
+}
 
 export class ChurchScene extends ServiceScene {
   setup(params = {}) {
@@ -74,6 +96,8 @@ export class ChurchScene extends ServiceScene {
     if (params.trial || fresh.length) {
       this.talk(this.lines.trialDone ? 'trialDone' : 'hello');
       if (fresh.length) { audio.sfx('levelup', { vol: 0.7 }); audio.sfx('bell', { vol: 0.5 }); }
+    } else if (params.from === 'hub' && params.tab === 'class' && this.lines.trialBack && TRIAL_BACK.has(TRIAL.TRIAL_STATS?.last)) {
+      this.talk('trialBack');   // 시련을 넘지 못하고 돌아옴 (hub pendingChurch — 「성당으로」·「시련 포기」·실패 뒤)
     } else this.talk('hello');
   }
   /** 성당지기 말투로 고른 한 줄 (1부 알베르토 · 2부 엘리제) */
@@ -93,7 +117,7 @@ export class ChurchScene extends ServiceScene {
   blessOptions() {
     const o = [{ id: 'pray', icon: 'doc', title: '기도하기', desc: this.p2 ? (this.prayed ? '엘리제의 이야기를 다시 듣는다.' : '촛불을 밝히고 엘리제의 이야기를 듣는다.') : (this.prayed ? '신부님의 조언을 다시 듣는다.' : '촛불을 밝히고 신부님의 조언을 구한다.'), price: 0 }];
     // 2부: 안쪽 방에 누워 계신 신부님과 대화 (classes_t3 §8.1 — 마을에서는 보이지 않는다, npcs.js hideFlag)
-    if (this.p2) o.push({ id: 'alberto', icon: 'key', title: '안쪽 방 — 신부님', desc: '안쪽 방에서 쉬고 계신 신부님을 찾아뵙는다.', price: 0, talk: true });
+    if (this.p2) o.push({ id: 'alberto', icon: 'key', title: '안쪽 방 — 신부님', desc: '안쪽 방에서 쉬고 계신 신부님을 찾아뵙는다.', price: 0, talk: true, badge: albertoNews(this.state) });
     if (ITEMS.c_holywater) o.push({ id: 'holywater', icon: ITEMS.c_holywater.icon ?? 'sub_holywater', title: `${ITEMS.c_holywater.name} 봉헌`, desc: '성수 한 병을 축성받는다. 20초간 성광의 오라.', price: ITEMS.c_holywater.price ?? 400, item: 'c_holywater' });
     if (ITEMS.m_scroll_bless) o.push({ id: 'blessScroll', icon: 'scroll_bless', title: '축복 의식', desc: '축복 주문서 한 장을 받는다. 강화 성공률 +10%p.', price: Math.round((ITEMS.m_scroll_bless.price ?? 1500) * 1.2 / 50) * 50, item: 'm_scroll_bless' });
     return o;
@@ -333,7 +357,7 @@ export class ChurchScene extends ServiceScene {
       this.fx.burst('holy', cx, cy - 70, C.short ? 30 : 60, { speed: 380 });
       this.fx.burst('gold', cx, cy - 70, C.short ? 20 : 40, { speed: 300 });
       this.fx.ring(cx, cy - 70, { color: C.color, r0: 20, r1: C.short ? 200 : 300, life: 0.8, width: 9 });
-      this.talk(C.kind === 'asc' ? (C.A && this.lines.asc ? 'asc' : 'cls') : 'cls');
+      this.talk(C.kind === 'asc' ? (C.A ? (this.lines.asc ? 'asc' : 'cls') : this.lines.base ? 'base' : 'cls') : 'cls');   // 기본 최상급으로 = 'base'
     }
     const done = C.autoEnd > 0 && C.t > C.autoEnd;
     if (done || (C.t > C.doneAt && (input.pressed('confirm') || input.pressed('cancel') || input.pointer.tapped))) {
@@ -542,7 +566,13 @@ export class ChurchScene extends ServiceScene {
       const mods = [];
       for (const k in c.mult || {}) { const p = Math.round((c.mult[k] - 1) * 100); if (p) mods.push([STAT_INFO[k]?.name ?? k, `${p > 0 ? '+' : ''}${p}%`, p > 0]); }
       for (const k in c.flat || {}) { const v = c.flat[k]; mods.push([STAT_INFO[k]?.name ?? k, `${v > 0 ? '+' : ''}${v}${STAT_INFO[k]?.pct ? '%' : ''}`, v > 0]); }
-      const linesOf = (tw) => ({ tw, d: wrapC(ctx, c.desc ?? '', tw, 12).slice(0, 2), p: wrapC(ctx, c.perk ?? '', tw, 12).slice(0, 3) });   // 줄바꿈 캐시 (매 프레임 measureText 0)
+      // 특성: 고른 카드는 끝까지 (넘치면 그 칸이 스크롤), 나머지 카드는 두 줄 + '…' (requests_f PERKS-A-VERIFY — 예전에는 세 줄에서 말없이 잘렸다)
+      const perkLines = (tw) => {
+        const all = wrapC(ctx, c.perk ?? '', tw, 12);   // 줄바꿈 캐시 (매 프레임 measureText 0) — 캐시 배열은 고치지 않는다
+        if (sel || all.length <= 2) return all;
+        return [all[0], all[1].replace(/.{0,1}$/, '…')];
+      };
+      const linesOf = (tw) => ({ tw, d: wrapC(ctx, c.desc ?? '', tw, 12).slice(0, 2), p: perkLines(tw) });
       const y1 = yR + LF + 5;   // 설명 첫 줄
       const lastOf = (L, dMax) => { const yy = y1 + Math.min(L.d.length, dMax) * LF + LF + 9 + L.p.length * LF; return mods.length ? yy + (mods.length - 1) * LF : yy - LF - 6; };
       let L = linesOf(tw0), dMax = [2, 1, 0].find((d) => lastOf(L, d) <= r.y + r.h - 16);
@@ -724,6 +754,11 @@ export class ChurchScene extends ServiceScene {
       else drawIcon(ctx, b.icon, r.x + 40, r.y + r.h / 2, Math.min(46, rowH - 22));
       const ty = r.y + r.h / 2 - 6, dy = r.y + r.h / 2 + Math.max(18, Math.ceil(textFloor() * 1.35));
       text(ctx, b.title, r.x + 78, ty, { size: 17, weight: 800, family: FONT.title, color: sel ? '#fff4d8' : '#f3d690' });
+      if (b.badge) {   // 새 대사 표식 (안쪽 방 — 신부님: 아직 듣지 않은 대사가 있다)
+        ctx.font = font(17, 800, FONT.title);
+        const bx = Math.min(r.x + 78 + ctx.measureText(b.title).width + 10, r.x + r.w - 64), ph = Math.max(17, Math.ceil(textFloor() + 6));
+        pill(ctx, 'NEW', bx, Math.round(ty - 6 - ph / 2), { color: '#ffe070', size: 10, h: ph, bg: 'rgba(110,40,20,0.95)' });
+      }
       text(ctx, b.desc, r.x + 78, dy, { size: 12, color: '#b8a890', maxWidth: lw - 170 });
       if (b.price) { drawIcon(ctx, 'coin', r.x + r.w - 20, r.y + r.h / 2, 18); text(ctx, fmt(b.price), r.x + r.w - 34, r.y + r.h / 2 + 6, { size: 17, weight: 900, family: FONT.num, color: this.state.gold >= b.price ? '#ffd84a' : COLORS.bad, align: 'right' }); }
       else if (!b.talk) text(ctx, '무료', r.x + r.w - 16, r.y + r.h / 2 + 6, { size: 15, weight: 800, color: '#8ae0a0', align: 'right' });

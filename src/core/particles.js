@@ -66,6 +66,10 @@ function hash01(n) {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
 const qKey = (q) => (q >= 0.95 ? 'high' : q >= 0.7 ? 'medium' : 'low');
+/** proc 숫자 간격 (초): 대상마다 새 proc 숫자는 이만큼 지나야 하나 — 초당 3개 이하 (classes_t3 §3.6.3). 그 사이 피해는 떠 있는 숫자에 더한다 */
+export const PROC_GAP = 1 / 3;
+/** QA: proc 숫자 통계 { shown(새로 띄움), merged(합침) } */
+export const PROC_STATS = { shown: 0, merged: 0 };
 const DMG_CAP = { high: 24, medium: 16, low: 10 };
 
 export class Particles {
@@ -80,11 +84,13 @@ export class Particles {
     this._live = [];      // 자리를 차지한 숫자 기둥 (가로 비키기·판정 문구 차선)
     this._obst = [];      // 판정 문구 배치용 장애물 사각형 (그리기마다 재사용)
     this._seq = 0;        // 숫자 떨림 잡음 씨앗
+    this.procScope = 0;   // >0: proc 숫자 구역 (class_perks.js procStrike · K.uHit{proc:true} 가 동기 호출 동안 올린다)
+    this._gen = 0;        // clear() 세대 (방이 바뀌면 이전 proc 숫자에 합치지 않는다)
     // HUD 윗줄(초상·체력·점수·콤보·위쪽 보스 바)의 월드 좌표 사각형 — world.render 가 매 프레임 setHudBand 로 준다.
     // 숫자 기둥·판정 문구는 이 아래로 내려 그린다 (크게 뜬 치명타가 이름·체력 바 뒤에 숨지 않게, R1-REQ-331)
     this.band = { n: 0, r: [], stamp: 0 };
   }
-  clear() { this.list.length = 0; this.decals.length = 0; this._cols.length = 0; this.dmgLive = 0; this._live.length = 0; }
+  clear() { this.list.length = 0; this.decals.length = 0; this._cols.length = 0; this.dmgLive = 0; this._live.length = 0; this._gen++; }
   /**
    * HUD 윗줄 사각형을 월드 좌표로 넘긴다: rects = [{x0, x1, y0, y1}] (재사용 배열이어도 된다 — 값을 복사한다), n = 개수, cx = 화면 가운데 x,
    * hw = 화면 반폭 (월드 단위; 새 숫자 기둥을 화면 밖으로 비키지 않게).
@@ -193,6 +199,11 @@ export class Particles {
     const C = FH.DMG_STYLE?.column ?? COL_DEF;
     const x = o.x ?? target?.cx ?? 0, y = o.y ?? target?.y ?? 0;
     const color = o.color ?? null;
+    // proc·지속 피해 숫자 (classes_t3 §3.6.3: 대상마다 초당 3개 이하): o.proc · o.dmgStyle 'dot'|'proc' 또는 procScope 구역
+    // (class_perks.js procStrike · K.uHit{proc:true}) 안에서 생긴 숫자. 보통 타격·치명타·플레이어 피격은 그대로
+    const proc = (o.proc || o.dmgStyle === 'dot' || o.dmgStyle === 'proc' || this.procScope > 0) && !!target && typeof target === 'object'
+      && key !== 'hurt' && key !== 'heal' && key !== 'total';
+    if (proc && this.mergeProc(target, value, key)) return null;
     const lay = this.layoutDmg(value, key, st, color);
     let px = x, py = y, col = null;
     if (target && typeof target === 'object' && key !== 'hurt' && key !== 'heal' && key !== 'total') {
@@ -218,7 +229,43 @@ export class Particles {
       col.until = Math.max(col.until ?? 0, this.clock + p.max);   // 이 숫자가 사라질 때까지 기둥 자리를 비워 두지 않는다
       if (p.tagAbove && p.A.tag) col.tagH = Math.max(col.tagH ?? 0, (p.A.tag[3] / p.A.k) * 0.72);   // 'CRITICAL' 같은 윗 꼬리표
     }
+    if (proc) {   // 대상의 proc 숫자: 1/3초 안의 다음 proc 피해는 이 숫자에 더한다 (mergeProc)
+      const pr = (target._dmgProc ??= { p: null, t: -9, sum: 0, key: '', color: null, gen: 0, n: 0 });
+      pr.p = p; pr.t = this.clock; pr.sum = Number(value) || 0; pr.key = key; pr.color = color; pr.gen = this._gen; pr.n = 1;
+      if (p) { p.proc = true; PROC_STATS.shown++; }
+    }
     return p;
+  }
+  /**
+   * proc 숫자 합치기 (classes_t3 §3.6.3 — proc·지속 피해 숫자는 대상마다 초당 3개 이하). 대상의 마지막 proc 숫자가 1/3초 안에 떴고
+   * 아직 떠 있으면 그 숫자에 피해를 더해 다시 굽고(같은 스타일·색이면) 살짝 튀게 한 뒤 수명을 늘린다 — 떠오름은 끊기지 않는다.
+   * 기둥의 '합계'에도 더한다. → 합쳤으면 true (새 숫자를 띄우지 않는다). 1/3초가 지났거나 숫자가 사라졌으면 false (새 숫자)
+   */
+  mergeProc(target, value, key) {
+    const pr = target._dmgProc;
+    if (!pr) return false;
+    const now = this.clock;
+    if (now - pr.t >= PROC_GAP) return false;
+    const q = pr.p;
+    const live = q && q.life > 0.05 && pr.gen === this._gen && this.list.includes(q);
+    if (!live) return false;   // 상한으로 밀려났거나 방이 바뀌었다 (새 숫자 — 그때는 살아 있는 숫자 상한이 막는다)
+    const v = Number(value) || 0;
+    pr.sum += v; pr.n++;
+    PROC_STATS.merged++;
+    // 치명 proc 이 섞이면 치명 스타일로 (숫자 하나라도 치명이면 '!' 와 치명 색)
+    const k2 = key === 'crit' || pr.key === 'crit' ? 'crit' : pr.key;
+    const st = HFX.dmgStyle?.(k2) ?? {};
+    const lay = this.layoutDmg(pr.sum, k2, st, k2 === 'crit' ? null : pr.color);
+    if (lay?.A && lay.L) {
+      q.A = lay.A; q.q = lay.L.q; q.w = lay.L.w; q.key = k2; pr.key = k2;
+      if (q.col && lay.L.w > (q.col.w ?? 0)) q.col.w = lay.L.w;
+    }
+    q.bump = q.max - q.life;   // 합칠 때마다 작게 튄다 (drawDmg)
+    const want = (q.hold ?? 0.6) * 0.75 + 0.28;   // 마지막 합침 뒤에도 읽을 시간 (나이는 그대로 → 떠오름이 이어진다)
+    if (q.life < want) { const add = want - q.life; q.life += add; q.max += add; }
+    const c = q.col;
+    if (c && !c.done) { c.total += v; c.t = now; c.until = Math.max(c.until ?? 0, now + q.life); }
+    return true;
   }
   /**
    * 새 숫자 기둥의 x (R1-REQ-331): 살아 있는 다른 기둥과 (두 기둥 폭의 반 + COL_GAP) 이상 떨어진, 대상에 가장 가까운 화면 안 자리.
@@ -285,6 +332,7 @@ export class Particles {
       if (sc > bs) { bs = sc; bi = i; }
     }
     if (bi < 0) return false;
+    L[bi].life = 0;   // 뺀 숫자는 죽은 것으로 (proc 숫자 합치기가 다시 쓰지 않게)
     L[bi] = L[L.length - 1]; L.pop();
     if (this.dmgLive > 0) this.dmgLive--;
     return true;
@@ -664,7 +712,8 @@ export class Particles {
     const A = p.A, cv = A?.canvas;
     if (!cv) return;
     const age = p.max - p.life;
-    const sc = age < p.popT ? p.pop + (1 - p.pop) * (age / p.popT) : 1;
+    let sc = age < p.popT ? p.pop + (1 - p.pop) * (age / p.popT) : 1;
+    if (p.bump !== undefined) { const b = age - p.bump; if (b >= 0 && b < 0.09) sc *= 1 + 0.2 * (1 - b / 0.09); }   // proc 합침: 작게 튐
     let X = p.x, Y;
     if (p.fall) Y = p.y + 10 * age + 70 * age * age;
     else if (p.col) Y = p.y - this.colRise(p.col, p.rise);

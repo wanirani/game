@@ -11,6 +11,9 @@
 //  PERK_STATS               { calls, ms, layerMs, errors } (QA perf_budget 이 읽는다; timing=false 면 시간 재기 생략)
 //  도우미: procAtk · procStrike · mark/markOf/unmark · icd · slowEnemy · shieldAdd/shieldAbsorb/shieldOf · perkState
 //  PerkLayer: 표식(MARKS_*)·영웅 게이지(drawMeter)를 그리는 월드당 SkillFx 하나 (z 9). 방에 들어올 때(roomEntered) 붙인다
+//  마을 규칙 perkQuiet(w): 마을(mode 'town') 월드에서는 특성 없음 (영웅 perks = 빈 목록, 레이어·onEnter·onUlt 없음)
+//  게이지는 영웅이 숨었거나 연출·컷인 중이면 그리지 않는다 (meterHidden). 큰 보스의 표식은 피격 상자 위끝으로 (markTarget)
+//  proc 숫자 비율: procStrike · K.uHit{proc:true} 는 fx.procScope 구역 안에서 친다 → core/particles.js dmg 가 대상마다 초당 3개 이하로 합친다
 // 버스 구독(ascChanged/classChanged → 메모 비우기, ultimateCast → onUlt, awakenCast → onAwaken, roomEntered/stageEntered →
 // onEnter + prewarm + PerkLayer)은 첫 perksOf 때 ensureBus 가 한다 (모듈 최상단에서 bus·game 을 건드리지 않는다).
 // import 순환 (§3.5): skills.js → class_perks.js → class_perks_x.js → class_perks.js, combat.js ↔ class_perks.js.
@@ -41,8 +44,29 @@ var PENDING_KIT;   // eslint-disable-line no-var
 /** skills.js 끝에서 한 번: Object.assign(K, FXKIT) */
 export function bindPerkKit(kit) {
   if (!kit || typeof kit !== 'object') return;
-  try { Object.assign(K, kit); } catch { PENDING_KIT = kit; }
+  try { Object.assign(K, kit); wrapKit(); } catch { PENDING_KIT = kit; }
 }
+/**
+ * 도구 모음 감싸기 (묶은 직후 한 번): K.uHit 에 proc: true 를 실어 보낸 타격은 숫자 비율 제한 구역 안에서 친다
+ * (procScope — 아래 procStrike 와 같다; 내용 모듈의 strike() 가 숫자 색 때문에 K.uHit 로 보내는 proc 타격도 초당 3개 이하로 합쳐진다)
+ */
+function wrapKit() {
+  const u = K.uHit;
+  if (typeof u !== 'function' || u.__procWrap) return;
+  const f = function (w, p, mv, o) {
+    if (!o || o.proc !== true) return u(w, p, mv, o);
+    const fx = procIn(w);
+    try { return u(w, p, mv, o); } finally { procOut(fx); }
+  };
+  f.__procWrap = true;
+  K.uHit = f;
+}
+/**
+ * 데미지 숫자 비율 제한 구역 (classes_t3 §3.6.3 — proc 숫자 ≤ 3/s): 이 안에서 생긴 적의 데미지 숫자는 fx.dmg 가 proc 숫자로 보고
+ * 대상마다 1/3초에 하나만 새로 띄우고 나머지는 떠 있는 숫자에 더한다 (core/particles.js dmg · procScope). 동기 호출 안에서만 유효
+ */
+function procIn(w) { const fx = w?.fx; if (fx && typeof fx === 'object') fx.procScope = (fx.procScope | 0) + 1; return fx; }
+function procOut(fx) { if (fx && fx.procScope > 0) fx.procScope--; }
 
 // ─────────────────────────── 통계·오류 ───────────────────────────
 export const PERK_STATS = { calls: 0, ms: 0, layerMs: 0, errors: 0, timing: true, last: null };
@@ -273,10 +297,16 @@ export function procAtk(p, o = {}) {
   };
   if (o.launch) a.launch = true;
   if (o.rehit) a.rehit = o.rehit;
+  if (typeof o.dmgColor === 'string' && o.dmgColor) a.dmgColor = o.dmgColor;   // 데미지 숫자 색 (PERKS-A..C 요청: K.uHit 를 거치지 않아도 되게)
+  if (typeof o.mult === 'number' && o.mult > 0 && o.mult < Infinity) a.mult = o.mult;
   return a;
 }
-/** playerStrike(w, rect, procAtk(p, o)) → 맞힌 수 */
-export function procStrike(w, p, rect, o) { return w && rect ? playerStrike(w, rect, procAtk(p, o)) : 0; }
+/** playerStrike(w, rect, procAtk(p, o)) → 맞힌 수. 숫자 비율 제한 구역 안에서 친다 (proc 숫자 ≤ 3/s, §3.6.3) */
+export function procStrike(w, p, rect, o) {
+  if (!w || !rect) return 0;
+  const fx = procIn(w);
+  try { return playerStrike(w, rect, procAtk(p, o)); } finally { procOut(fx); }
+}
 
 // 표식: e._ck[key] = { n, until, dur } (월드 시간). 표식이 붙은 적은 MARKED 에 들어가 PerkLayer 가 그린다
 const MARKED = new Set();
@@ -386,7 +416,7 @@ function curWorld() {
 }
 function fireCurrent(h, d) {
   const w = curWorld(), p = w?.player;
-  if (!p || p.dead || (d?.charId && p.hero?.charId !== d.charId)) return;
+  if (!p || p.dead || perkQuiet(w) || (d?.charId && p.hero?.charId !== d.charId)) return;
   const L = p.perks?.[h];
   if (L) firePerks(L, p, w);
 }
@@ -396,6 +426,22 @@ function enterSoon() {
   if (ENTER_Q) return;
   ENTER_Q = true;
   Promise.resolve().then(() => { ENTER_Q = false; try { perkEnter(curWorld()); } catch (err) { console.error('[perks] enter', err); } });
+}
+/**
+ * 마을 규칙 (requests_f PERKS-B verify → 핵심부 한 곳): 마을(허브) 월드(mode 'town', 또는 perkQuiet: true 인 월드)에서는 특성이 아무것도
+ * 하지 않는다 — tick·충전·연출·게이지·표식·onEnter·onUlt 없음. 항목마다 두던 `w.mode === 'town'` 검사는 남아 있어도 무해하다.
+ */
+export function perkQuiet(w) { return !!w && typeof w === 'object' && (w.mode === 'town' || w.perkQuiet === true); }
+/**
+ * 마을 영웅의 perks 를 빈 목록(NONE)으로 고정한다. Player 는 월드마다 새로 만들어지므로(world.js new Player) 이 Player 는 마을 밖으로
+ * 나가지 않는다. refreshStats(장비·초월 바꾸기)가 perksOf 를 다시 넣어도 무시한다 — 훅 자리는 `p.perks?.tick` 등에서 바로 빠진다 (비용 0)
+ */
+function silencePlayer(p) {
+  if (!p || typeof p !== 'object' || p.__perkQuiet) return;
+  try {
+    Object.defineProperty(p, 'perks', { configurable: true, enumerable: true, get: () => NONE, set: () => {} });
+    Object.defineProperty(p, '__perkQuiet', { value: true, configurable: true });
+  } catch { try { p.perks = NONE; } catch { /* 얼린 객체 */ } }
 }
 const ENTERED = new WeakSet();   // 방 한 번 불러오기 = world.map 하나 (loadRoom 이 새로 만든다; entities 배열은 죽은 개체를 거를 때마다 바뀐다)
 /** 방 불러오기 표 (같은 방에서는 같다): world.map (없으면 entities 배열 — 시험용 가짜 월드) */
@@ -407,6 +453,7 @@ const roomTok = (w) => w.map ?? w.entities;
 export function perkEnter(w) {
   if (!w?.player || !Array.isArray(w.entities)) return false;
   CUR.w = w;
+  if (perkQuiet(w)) { silencePlayer(w.player); MARKED.clear(); return false; }   // 마을 규칙: 특성 없음 (아래 perkQuiet)
   const tok = roomTok(w);
   if (!tok || typeof tok !== 'object' || ENTERED.has(tok)) return false;
   ENTERED.add(tok);
@@ -420,7 +467,7 @@ export function perkEnter(w) {
 }
 /** PerkLayer 붙이기 (방 불러오기마다 하나). K.SkillFx 가 없으면(도구 모음이 아직 없음) 붙이지 않는다 → 레이어 | null */
 export function attachLayer(w) {
-  if (!w?.add || typeof K.SkillFx !== 'function' || w._perkLayerTok === roomTok(w)) return null;
+  if (!w?.add || typeof K.SkillFx !== 'function' || w._perkLayerTok === roomTok(w) || perkQuiet(w)) return null;
   w._perkLayerTok = roomTok(w);
   const L = new K.SkillFx({ life: Infinity, z: 9, follow: layerFollow, draw: drawPerkLayer });
   L.perkLayer = true;
@@ -438,6 +485,7 @@ function layerFollow(e, w) {
  * (k = 남은 시간 비율), 그다음 지금 영웅의 drawMeter(ctx, p, w). 새 그라디언트·캔버스·파티클·난수 없음 (그리는 쪽 규칙 §3.6)
  */
 export function drawPerkLayer(ctx, e, w) {
+  if (perkQuiet(w)) return;   // 마을 규칙 (레이어는 붙지 않지만 시험·도구가 직접 부를 때도)
   const t = PERK_STATS.timing ? now() : 0;
   const tn = w?.time ?? 0;
   if (MARKED.size) {
@@ -453,15 +501,78 @@ export function drawPerkLayer(ctx, e, w) {
         const fn = M[key];
         if (!fn || n >= MARK_CAP || en.hidden) continue;
         n++;
-        try { fn(ctx, en, m.n, (m.until - tn) / m.dur, tn); } catch (err) { markFail(key, err); }
+        try { fn(ctx, en.kind === 'boss' ? markTarget(en, w) : en, m.n, (m.until - tn) / m.dur, tn); } catch (err) { markFail(key, err); }
         ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
       }
       if (!live) MARKED.delete(en);
     }
   }
   const p = w?.player, D = p?.perks?.drawMeter;
-  if (D && !p.dead) { firePerks(D, ctx, p, w); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }
+  if (D && !p.dead && !meterHidden(p, w)) { firePerks(D, ctx, p, w); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }
   if (t) PERK_STATS.layerMs += now() - t;
+}
+/**
+ * 영웅 게이지를 그리지 않는 때: 영웅이 숨었을 때(p.hidden — 그림자 걸음·용 강하 같은 필살·각성 연출), 연출 중(world.cutscene —
+ * 필살기 컷인·보스 등장·대본), HUD 를 숨긴 각성 연출(world.hudHidden), 필살기·각성 컷인 장면이 맨 위일 때.
+ * 게이지가 사라진 영웅 자리 위에 떠 있거나 컷인 아래로 비쳐 보이지 않게 (요청: PerkLayer 게이지 숨기기)
+ */
+export function meterHidden(p, w) {
+  if (!p || p.hidden) return true;
+  if (w && (w.cutscene || w.hudHidden)) return true;
+  const top = w?.game?.top?.name;
+  return top === 'ultCutin' || top === 'awakenCutin';
+}
+
+// ── 큰 보스의 표식 자리 (requests_f PERKS-D verify): 보스 판정 상자의 위끝(e.y)은 채색 보스(4장 진홍의 갑주군주 등)에서 몸 한가운데라
+// 머리 위 표식이 데미지 숫자 기둥과 겹쳤다. 피격 상자(hitParts · hurtboxes) 중 가장 높은 위끝으로 올리되, 화면 위·HUD 윗줄 아래로
+// 묶고(공중의 보스), 이 보스의 숫자 기둥이 그 자리를 지나가면 기둥 위끝 위로 비킨다(다시 화면 안으로 묶는다). 자리는 부드럽게 따라간다.
+// 표식 함수에는 보스 대신 대리 객체(Object.create(보스) — y·h 만 덮음: 아래끝 e.y + e.h 와 x·w 는 그대로)를 넘긴다.
+const ANCHOR = new WeakMap();   // 보스 → { P: 대리 객체, ay, t }
+const ANCHOR_MIN = 8;           // 피격 상자 위끝이 이만큼(px) 넘게 높을 때만 옮긴다
+function markTarget(en, w) {
+  let top = Infinity;
+  try {
+    const B = typeof en.hitParts === 'function' ? en.hitParts() : typeof en.hurtboxes === 'function' ? en.hurtboxes() : null;
+    if (B) for (let i = 0; i < B.length; i++) { const b = B[i]; if (b && !b.off && b.h > 0 && b.y < top) top = b.y; }
+  } catch { top = Infinity; }
+  let rec = ANCHOR.get(en);
+  const y0 = en.y;
+  let ay = top < y0 - ANCHOR_MIN ? top : y0;   // 머리 상자가 판정 상자보다 높은 큰 보스만 올린다
+  // 화면 위 · HUD 윗줄 아래로 (머리 위 표식 높이 ~20 px 를 남긴다). 판정 상자 위끝보다 아래로는 내리지 않는다
+  const cam = w?.camera, fx = w?.fx;
+  const minY = (cam ? cam.y : -Infinity) + 30;
+  const clampTop = (y) => {
+    let v = Math.max(y, minY);
+    if (fx?.band?.n && typeof fx.bandPush === 'function') v += fx.bandPush(en.cx - 24, en.cx + 24, v - 22);
+    return v;
+  };
+  if (ay < y0) ay = clampTop(ay);
+  // 이 보스의 숫자 기둥 (core/particles.js dmg: e._dmgCol) 이 표식 자리를 지나가면 기둥 위로
+  const col = en._dmgCol;
+  if (col && fx && typeof fx.colTop === 'function') {
+    const clk = fx.clock ?? 0, live = clk < (col.until ?? col.t + 1.3) || (col.tp && col.tp.life > 0);
+    if (live && Math.abs((col.x ?? en.cx) - en.cx) < (col.w || 40) / 2 + 26) {
+      const sh = typeof fx.colShift === 'function' ? fx.colShift(col) : 0;
+      const cTop = fx.colTop(col) + sh, cBot = (col.y ?? cTop) + sh + 14;
+      if (ay > cTop - 18 && ay - 22 < cBot) ay = clampTop(Math.min(ay, cTop - 18));
+    }
+  }
+  if (!rec) {
+    if (Math.abs(ay - y0) < 0.5) return en;   // 옮길 일이 없다 (대리 객체도 만들지 않는다)
+    rec = { P: Object.create(en), ay, t: w?.time ?? 0 }; ANCHOR.set(en, rec);
+  }
+  const tn = w?.time ?? 0, dt = Math.min(0.1, Math.max(0, tn - rec.t));
+  rec.t = tn;
+  rec.ay += (ay - rec.ay) * Math.min(1, dt * 14);   // 부드럽게 (기둥이 쌓일 때 표식이 튀지 않게)
+  if (!Number.isFinite(rec.ay)) rec.ay = ay;
+  const P = rec.P;
+  P.y = rec.ay; P.h = Math.max(1, y0 + en.h - rec.ay);
+  return P;
+}
+/** QA: 보스 표식이 지금 그려지는 자리 (월드 좌표 { x, y } = 대리 객체의 cx, y — 표식은 보통 y − 12…16 위에 그린다) */
+export function markAnchor(en, w) {
+  const t = en?.kind === 'boss' ? markTarget(en, w) : en;
+  return t ? { x: t.cx ?? (t.x + t.w / 2), y: t.y } : null;
 }
 const MARK_ERR = new Set();
 function markFail(key, err) {
@@ -476,4 +587,4 @@ function markFail(key, err) {
 export function markedCount() { return MARKED.size; }
 
 // 순환 import 로 늦게 온 도구 모음 채우기 (bindPerkKit 참고)
-if (PENDING_KIT) { Object.assign(K, PENDING_KIT); PENDING_KIT = undefined; }
+if (PENDING_KIT) { Object.assign(K, PENDING_KIT); PENDING_KIT = undefined; wrapKit(); }

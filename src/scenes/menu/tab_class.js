@@ -399,14 +399,17 @@ export class ClassTab extends Tab {
       const gi = (br.gate || []).indexOf(c.id);
       if (gi >= 0) unlocks.push(`「${br.name}」 ${['3·4단', '5단', '6단'][gi] ?? ''}`);
     }
-    // 마지막 글줄의 기준선 (아래 그리기와 같은 계산: para 줄 높이 13 × 1.5)
-    const dN = wrapC(ctx, c.desc ?? '', w - 36, 13).length, pN = c.perk ? Math.min(2, wrapC(ctx, c.perk, w - 36, 13, 700).length) : 0;
+    // 마지막 글줄의 기준선 (아래 그리기와 같은 계산: para 줄 높이 13 × 1.5).
+    // 특성은 줄 수 제한 없이 다 보인다 (requests_f PERKS-A-VERIFY: 휴대폰에서 두 줄 + '…' 로 잘렸다) — 칸을 넘치면 상세 칸이 스크롤한다
+    // 줄 높이는 글자 하한에서 (글자 크기 '크게'·'아주 크게'에서 13 px 글자가 하한까지 커져도 줄이 붙지 않게: 보통 = 13 × 1.5 그대로)
+    const BS = Math.max(13, textFloor()), BL = BS * 1.5;
+    const dN = wrapC(ctx, c.desc ?? '', w - 36, BS).length, pN = c.perk ? wrapC(ctx, c.perk, w - 36, BS, 700).length : 0;
     const rows = Math.ceil(mods.length / 2);
     const lastOf = (dMax, tight) => {
       const dl = Math.min(dN, dMax);
-      let cy = top + 58, last = dl ? cy + (dl - 1) * 19.5 : top + 26;
-      cy += dl * 19.5 + 2;
-      if (c.perk) { last = cy + 22 + (pN - 1) * 19.5; cy += 22 + pN * 19.5 + 2; }
+      let cy = top + 58, last = dl ? cy + (dl - 1) * BL : top + 26;
+      cy += dl * BL + 2;
+      if (c.perk) { last = cy + 22 + (pN - 1) * BL; cy += 22 + pN * BL + 2; }
       if (unlocks.length) { last = cy + 6; cy += 20; }
       return rows ? cy + (tight ? 22 : 28) + (rows - 1) * (tight ? 16 : 18) : last;
     };
@@ -424,11 +427,11 @@ export class ClassTab extends Tab {
       cy += 10;
       divider(g, x + 14, cy, w - 28);
       cy += 22;
-      cy += para(g, c.desc ?? '', x + 18, cy, w - 36, { size: 13, color: PAL.text, max: dMax }) + 2;
+      cy += para(g, c.desc ?? '', x + 18, cy, w - 36, { size: BS, color: PAL.text, max: dMax }) + 2;
       if (c.perk) {
         text(g, '직업 특성', x + 18, cy + 4, { size: 12, weight: 800, color: PAL.gold });
         cy += 22;
-        cy += para(g, c.perk, x + 18, cy, w - 36, { size: 13, color: '#ffe0a8', weight: 700, max: 2 }) + 2;
+        cy += para(g, c.perk, x + 18, cy, w - 36, { size: BS, color: '#ffe0a8', weight: 700 }) + 2;   // 줄 수 제한 없음 (위 pN)
       }
       if (unlocks.length) {
         text(g, '스킬 해금', x + 18, cy + 6, { size: 12, weight: 800, color: '#9ac8ff' });
@@ -496,13 +499,14 @@ export class ClassTab extends Tab {
     const skill = known && A.skill ? SKILLS[A.skill] : null;
     const reason = st.key === 'locked' || st.key === 'unlocked' ? st.reason : '';
     // 글 높이 (para 줄 높이 13 × 1.5 · 특성은 줄 수 제한 없이 — 넘치면 칸이 스크롤)
-    const dN = known ? wrapC(ctx, A.desc ?? '', w - 36, 13).length : 0, pN = known ? wrapC(ctx, A.perk ?? '', w - 36, 13, 700).length : 0;
-    const rN = reason ? wrapC(ctx, reason, w - 36, 12, 700).length : 0;
+    const BS = Math.max(13, textFloor()), BL = BS * 1.5, RS = Math.max(12, textFloor()), RL = RS * 1.5;   // 줄 높이는 글자 하한에서 (drawDetail 과 같다)
+    const dN = known ? wrapC(ctx, A.desc ?? '', w - 36, BS).length : 0, pN = known ? wrapC(ctx, A.perk ?? '', w - 36, BS, 700).length : 0;
+    const rN = reason ? wrapC(ctx, reason, w - 36, RS, 700).length : 0;
     const rows = Math.ceil(mods.length / 2);
     const lastOf = (dMax) => {
-      let cy = top + 58 + Math.min(dN, dMax) * 19.5 + 2;
-      if (rN) cy += rN * 18 + 4;
-      if (pN) cy += 22 + pN * 19.5 + 2;
+      let cy = top + 58 + Math.min(dN, dMax) * BL + 2;
+      if (rN) cy += rN * RL + 4;
+      if (pN) cy += 22 + pN * BL + 2;
       if (skill) cy += 20;
       return rows ? cy + 22 + (rows - 1) * 16 : cy - 8;
     };
@@ -520,12 +524,12 @@ export class ClassTab extends Tab {
       cy += 10;
       divider(g, x + 14, cy, w - 28, { color: kc });
       cy += 22;
-      if (known) cy += para(g, A.desc ?? '', x + 18, cy, w - 36, { size: 13, color: PAL.text, max: dMax }) + 2;
-      if (reason) { cy += para(g, reason, x + 18, cy, w - 36, { size: 12, color: '#e89090', weight: 700, lh: 1.5 }) + 4; }
+      if (known) cy += para(g, A.desc ?? '', x + 18, cy, w - 36, { size: BS, color: PAL.text, max: dMax }) + 2;
+      if (reason) { cy += para(g, reason, x + 18, cy, w - 36, { size: RS, color: '#e89090', weight: 700, lh: 1.5 }) + 4; }
       if (known && A.perk) {
         text(g, '직업 특성', x + 18, cy + 4, { size: 12, weight: 800, color: kc });
         cy += 22;
-        cy += para(g, A.perk, x + 18, cy, w - 36, { size: 13, color: '#ffe0a8', weight: 700 }) + 2;
+        cy += para(g, A.perk, x + 18, cy, w - 36, { size: BS, color: '#ffe0a8', weight: 700 }) + 2;
       }
       if (skill) {
         const lb = '비전 기술', lw = measure(g, lb, 12, 800) + 10;

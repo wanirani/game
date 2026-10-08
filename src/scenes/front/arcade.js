@@ -1137,7 +1137,11 @@ export class ArcadeClassScene extends Scene {
     frame(ctx, D.x, D.y, D.w, D.h, { accent: o.accent, corners: false, edge: 0.45, fill0: 'rgba(14,6,16,0.88)' });
     const x = D.x + 14, w = D.w - 28, bottom = D.y + D.h - 6;
     let y = D.y + 6;
-    for (const l of this.lines(ctx, `d:${o.id}`, o.A.desc, w, L.descS, 700, 2)) {
+    // 특성 전문이 우선: 칸에 다 들어가지 않으면 (휴대폰 '아주 크게') 설명 줄을 줄인다 — 줄인 설명은 '…'
+    const pn = this.lines(ctx, `p:${o.id}`, o.A.perk, w, L.detS, 500).length;
+    let nd = 2;
+    while (nd > 0 && 6 + nd * L.descLH + 4 + pn * L.detLH > D.h - 6) nd--;
+    if (nd) for (const l of this.lines(ctx, `d:${o.id}`, o.A.desc, w, L.descS, 700, nd)) {
       if (y + L.descLH > bottom) return;
       y += L.descLH;
       text(ctx, l, x, y - Math.round(L.descLH * 0.24), { size: 13, weight: 700, color: '#f3d690', ow: 2 });
