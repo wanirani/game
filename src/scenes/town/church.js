@@ -675,7 +675,8 @@ export class ChurchScene extends ServiceScene {
     let lines = [];
     if (c.known) {
       if (c.kind === 'trial') {
-        lines = [...wrapC(ctx, c.T.desc ?? '', w0, 12).map((s) => [s, '#b8a890']), [`보스: ${BOSSES[c.T.boss]?.name ?? '???'} · 권장 Lv ${c.T.recLv}`, '#8a7a64']];
+        // 보스 줄도 줄바꿈 (좁은 칸·큰 글자에서 '권장 Lv N' 이 칸 밖으로 잘리지 않게) · 폭은 스크롤 막대 자리를 뺀다 (초월 칸과 같다)
+        lines = [...wrapC(ctx, c.T.desc ?? '', w0 - 8, 12).map((s) => [s, '#b8a890']), ...wrapC(ctx, `보스: ${BOSSES[c.T.boss]?.name ?? '???'} · 권장 Lv ${c.T.recLv}`, w0 - 8, 12).map((s) => [s, '#8a7a64'])];
       } else lines = wrapC(ctx, c.A.perk ?? '', w0 - 8, 12, 600).map((s) => [s, '#efe4cf']);
     }
     const B = { x: r.x + 3, y: ty + 6, w: r.w - 6, h: r.y + r.h - pad - footH - 2 - (ty + 6) };

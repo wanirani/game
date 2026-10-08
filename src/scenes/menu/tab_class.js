@@ -223,7 +223,7 @@ export class ClassTab extends Tab {
     const F = Math.max(11, textFloor());
     const STRIP = Math.max(20, Math.ceil(F + 8));
     const cardW = Math.min(188, (TW - 40 - 2 * 26) / 3);
-    const cardH = Math.max(Math.round(clamp((A.h - 64 - 4 * (STRIP + 2) - 18) / 4, 44, 76)), Math.ceil(2 * F + 16));
+    const cardH = Math.max(Math.floor(clamp((A.h - 64 - 4 * (STRIP + 2) - 18) / 4, 44, 76)), Math.ceil(2 * F + 16));   // 내림: 반올림하면 넉넉한 화면에서도 2차 열이 1~2 px 넘쳐 스크롤 막대가 생긴다
     const colX = [A.x + 16, A.x + 16 + cardW + 26, A.x + 16 + 2 * (cardW + 26)];
     const top = A.y + 44, ctop = top + 10, H = A.h - 64;
     const unit2 = cardH + STRIP + 2;

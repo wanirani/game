@@ -572,7 +572,8 @@ function ultGlyphOk(T) {
 }
 /** 터치 준비 문구: 이 크기로 칸 너비에 들어가는 가장 긴 문구 (휴대폰 하한 17 px 에서는 짧은 문구 — 가로로 누르지 않는다).
  *  크기·너비·글꼴 세대마다 한 번만 잰다 */
-const READY_T = ['각성 가능! 필살 버튼을 길게', '각성 가능! 버튼을 길게', '각성 가능! 길게'];
+// 마지막 문구는 '각성 가능! 길게'(무엇을 길게인지 빠진 토막말)와 같은 폭(17 px 에서 108 px)이라 동작이 드러나는 말로 쓴다
+const READY_T = ['각성 가능! 필살 버튼을 길게', '각성 가능! 버튼을 길게', '길게 눌러 각성!'];
 const READY_FIT = { key: '', str: READY_T[0] };
 function readyTouchStr(ctx, size, w) {
   const key = `${size}|${w}|${UI.fontEpoch ?? 0}`;
