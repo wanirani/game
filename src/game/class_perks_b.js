@@ -298,7 +298,7 @@ export const PERKS_B = {
     N: { cd: 10, half: 0.5, r: 120, mv: 0.5 },
     tick(p, w, dt) {
       const s = S(p);
-      if (s.grace) return;
+      if (s.grace || w.mode === 'town') return;   // 마을에서는 차오르지 않는다 (신호·효과음 없음)
       s.graceT = (s.graceT ?? 0) + dt;
       if (s.graceT < this.N.cd) return;
       s.grace = true; s.graceT = 0;
@@ -335,6 +335,7 @@ export const PERKS_B = {
     N: { wait: 8, frac: 0.12, blockInv: 0.5 },
     tick(p, w, dt) {
       const s = S(p), N = this.N;
+      if (w.mode === 'town') return;   // 마을에서는 결계를 만들지 않는다
       s.unhurt = (s.unhurt ?? 0) + dt;
       if (s.unhurt < N.wait) return;
       s.unhurt = 0;
@@ -580,7 +581,7 @@ export const PERKS_B = {
     N: { still: 0.6, tol: 40, red: 0.8, mv: 0.6, cd: 0.5 },
     tick(p, w, dt) {
       const N = this.N, s = S(p);
-      if (!p.onGround || p.mount?.riding || p.dead) { s.stance = false; s.anchor = null; s.still = 0; return; }
+      if (!p.onGround || p.mount?.riding || p.dead || w.mode === 'town') { s.stance = false; s.anchor = null; s.still = 0; return; }   // 마을: 멈출 때마다 방진 신호·효과음이 나지 않게
       if (s.anchor == null || Math.abs(p.cx - s.anchor) > N.tol) { s.stance = false; s.anchor = p.cx; s.still = 0; return; }
       if (s.stance) return;
       s.still = (s.still ?? 0) + dt;

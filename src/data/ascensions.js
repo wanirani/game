@@ -269,7 +269,7 @@ t3('isolde_soulherald', 'isolde_einherjar', { name: '영혼의 전령', eng: 'SO
   est: { dps: 1.06, ehp: 1.08 } });
 t3('isolde_speargod', 'isolde_spearsaint', { name: '창신', eng: 'SPEAR GOD',
   desc: '한 점을 꿰뚫기 위해 천 번을 찌른 창의 신.',
-  perk: '같은 적을 연달아 맞힐 때마다 일점 1중첩(공격 한 번에 1중첩, 최대 20, 2초 동안 못 맞히거나 다른 적을 맞히면 사라진다). 중첩당 그 적에게 주는 피해 +0.5%. 20중첩이면 다음 찌르기가 관통 일섬 — 앞으로 700 길이의 빛줄기(위력 250%, 치명타 확정).',
+  perk: '같은 적을 연달아 맞힐 때마다 일점 1중첩(공격 한 번에 1중첩, 최대 20, 2초 동안 못 맞히거나 다른 적을 맞히면 사라진다). 중첩당 그 적에게 주는 피해 +0.3%. 20중첩이면 다음 찌르기가 관통 일섬 — 앞으로 700 길이의 빛줄기(위력 150%, 치명타 확정).',
   mult: { atk: 1.08, agi: 1.06, res: 1.04 }, flat: { critDmg: 20 },
   lookTop: { aura: au('holy', '#ff9aac'), scarf: { color: '#ff2040', long: true }, halo: true, armorTrim: '#ffd070', trailColor: '#ffd0d8' },
   ult: { accent: '#ff9aac', colors: ['#ffd0d8', '#d02040', '#ffffff'] },

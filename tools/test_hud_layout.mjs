@@ -289,7 +289,8 @@ async function widgetChecks({ tag, relaxFixed }) {
   const part = (name) => () => H.drawHUDPart(c, w, vw, vh, name);
   // 5) 글자 크기: 부분을 그리는 동안 fillText 를 가로채 CSS px 를 잰다 (캐시 캔버스에 굽는 글자는 굽는 배율이 1 일 때 논리 px 와 같다 →
   //    먼저 배율 2 의 빈 캔버스에 HUD 를 한 번 그려 캐시(초상화·카드)를 무효로 만들어, 아래 측정에서 배율 1 로 다시 굽게 한다)
-  const OWN_TEXT = new Set(['portrait', 'vitals', 'hearts', 'skills', 'ult', 'companions', 'callouts', 'score', 'boss']);
+  // BM-FOLLOWUP: awGauge·combo·transient(배너 없을 때 포함)·meters·toasts 도 휴대폰에서 11 CSS px 이상이 됐다 → 정보가 아니라 실패로
+  const OWN_TEXT = new Set(['portrait', 'vitals', 'hearts', 'skills', 'ult', 'awGauge', 'companions', 'callouts', 'score', 'combo', 'transient', 'meters', 'toasts', 'boss']);
   const cssK = g.cssScale > 0 ? g.cssScale : 1;
   const texts = {};
   let curPart = null;

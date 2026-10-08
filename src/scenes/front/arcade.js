@@ -675,7 +675,14 @@ export class ArcadeScene extends Scene {
     else {
       const best = this.bestText();
       const blh = Math.max(16, Math.ceil(Math.max(12, L.fl) * 1.2));
-      if (best) wrap(ctx, best, L.RW, 12, 700).slice(0, 2).forEach((l, i) => text(ctx, l, L.rx + L.RW / 2, oy + 12 + i * blh, { size: 12, align: 'center', weight: 700, color: '#d8c0a0', ow: 2 }));
+      const bl = best ? wrap(ctx, best, L.RW, 12, 700).slice(0, 2) : [];
+      bl.forEach((l, i) => text(ctx, l, L.rx + L.RW / 2, oy + 12 + i * blh, { size: 12, align: 'center', weight: 700, color: '#d8c0a0', ow: 2 }));
+      // 초월 등급: 헌터를 고른 뒤 초월 길을 고른다는 안내 (시작 버튼 위에 자리가 있을 때만)
+      if (presetOf(this.cfg.preset).asc) {
+        const hl = wrap(ctx, '헌터를 고른 뒤 그 헌터의 초월 직업을 고릅니다', L.RW, 12, 800).slice(0, 2);
+        const hy = oy + 12 + (bl.length + 0.4) * blh;
+        if (hy + (hl.length - 1) * blh <= L.start.y - 8) hl.forEach((l, i) => text(ctx, l, L.rx + L.RW / 2, hy + i * blh, { size: 12, align: 'center', weight: 800, color: ASC_COLOR, ow: 2 }));
+      }
     }
     const ready = this.kind !== 'daily' || this.daily.state === 'ready';
     gbutton(ctx, L.start, this.kind === 'daily' ? '도전 시작' : '헌터 선택으로', { selected: ready, disabled: !ready && this.daily.state === 'loading', accent: M.color, size: 16, icon: '▶' });
@@ -1031,8 +1038,8 @@ export class ArcadeClassScene extends Scene {
   drawPreview(ctx, L, o, t) {
     const P = L.prev, acc = o.accent;
     frame(ctx, P.x - 3, P.y - 3, P.w + 6, P.h + 6, { accent: acc, glow: 0.5, corners: true, edge: 0.8 });
-    const heroW = Math.min(P.w * 0.42, 210), hx = P.x + heroW / 2, fy = P.y + P.h - 20;
-    const sc = clamp(P.h / 118, 0.8, 1.7);
+    const heroW = Math.min(P.w * 0.42, 210), hx = P.x + heroW * 0.46, fy = P.y + P.h - 20;
+    const sc = clamp((P.h - 8) / 128, 0.6, 1.5);   // 낮은 미리보기(글자 '아주 크게')에서도 머리가 잘리지 않게
     ctx.save();
     ctx.beginPath(); ctx.rect(P.x, P.y, P.w, P.h); ctx.clip();
     kenBurns(ctx, assets.get(HERO_BG[this.charId] ?? 'bg/s03_gate'), P.w, P.h, t, { z0: 1.12, z1: 1.2, period: 40, px: P.x, py: P.y });
@@ -1049,6 +1056,8 @@ export class ArcadeClassScene extends Scene {
     ctx.restore();
     if (this.changeT < 0.6) pulseRing(ctx, hx, fy - 40 * sc, 80 * sc, acc, this.changeT / 0.6);
     this.drawHeroAt(ctx, o, hx, fy, sc, t);
+    // 이름표 바탕: 앞으로 뻗은 무기·참격이 글 밑으로 지나가도 읽히게
+    ctx.fillStyle = 'rgba(8,3,12,0.5)'; ctx.fillRect(P.x + heroW - 6, P.y, P.w - heroW + 6, fy - P.y);
     ctx.restore();
     // 이름표
     const x = P.x + heroW + 4, w = P.x + P.w - 12 - x, bottom = P.y + P.h - 6;
@@ -1071,7 +1080,26 @@ export class ArcadeClassScene extends Scene {
     if (!line(o.A.eng, 12, rgba(acc, 0.95), { family: FONT.logo })) return;
     if (!line(`${o.parent ? `← ${o.parent} · ` : ''}Lv.${o.lv}`, 12, '#d8ccbc')) return;
     if (o.skill && !line(`비전 기술 · ${o.skill}`, 12, KIND_COL.hidden)) return;
-    for (const l of this.lines(ctx, `s:${o.id}`, o.chips.join(' · '), w, 11, 700, 3)) if (!line(l, 11, '#bfb2a0', { weight: 700 })) return;
+    for (const l of this.chipLines(ctx, o, w)) if (!line(l, 11, '#bfb2a0', { weight: 700 })) return;
+  }
+  /** 능력치 칩을 줄로: 칩 하나는 쪼개지 않고 ' · ' 로 잇는다 (줄 첫머리에 '·' 가 오지 않게) */
+  chipLines(ctx, o, w) {
+    const k = `s:${o.id}|${w}|${textFloor()}`;
+    let v = this.memo.get(k);
+    if (!v) {
+      ctx.font = font(11, 700, FONT.body);
+      v = [];
+      let cur = '';
+      for (const c of o.chips) {
+        const next = cur ? `${cur} · ${c}` : c;
+        if (!cur || ctx.measureText(next).width <= w) cur = next;
+        else { v.push(cur); cur = c; }
+      }
+      if (cur) v.push(cur);
+      v = v.slice(0, 3);
+      this.memo.set(k, v);
+    }
+    return v;
   }
   /** 미리보기 영웅 (charselect 와 같은 동작 순서 — 대기 · 연속 공격 · 차지) */
   drawHeroAt(ctx, o, x, y, sc, t) {

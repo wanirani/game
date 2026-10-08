@@ -195,6 +195,8 @@ export function startRun(board) {
 }
 /** 이명 id 형식 (core/ach_meta.js ACH_TITLES 의 키 — 이름은 화면이 그 표로 옮긴다. 자유 글은 오르지 않는다) */
 export const TITLE_RE = /^t_[a-z0-9_]{1,30}$/;
+/** 초월 id 형식 (data/ascensions.js 의 키 'kael_grandtemplar' 꼴 — 이 모듈은 데이터 표를 싣지 않는다) */
+export const ASC_RE = /^[a-z]{2,12}_[a-z0-9]{2,24}$/;
 /** 제출할 결과 정리 (§2.2: time·score·level 정수, 범위 밖은 서버가 거절) */
 export function cleanResult(r) {
   const o = { time: Math.max(0, Math.round(Number(r?.time) || 0)), score: Math.max(0, Math.min(99999999, Math.round(Number(r?.score) || 0))), hero: String(r?.hero ?? ''), cls: String(r?.cls ?? ''), level: Math.max(1, Math.min(99, Math.round(Number(r?.level) || 1))) };
@@ -203,6 +205,7 @@ export function cleanResult(r) {
   if (typeof r?.rank === 'string' && /^[SABCD]$/.test(r.rank)) o.rank = r.rank;
   if (Number.isFinite(r?.deaths)) o.deaths = Math.max(0, Math.round(r.deaths));
   if (typeof r?.ti === 'string' && TITLE_RE.test(r.ti)) o.ti = r.ti;   // [hook:ach] 이명 id (고정 목록 밖이면 서버가 오류 없이 버린다, achievements.md §8)
+  if (typeof r?.asc === 'string' && ASC_RE.test(r.asc)) o.asc = r.asc;   // 초월 id (선택 — 지금 서버는 모르는 필드라 버린다, classes_t3 §10.2)
   return o;
 }
 const okGhost = (g) => typeof g === 'string' && g.length > 0 && g.length <= GHOST_MAX && /^[A-Za-z0-9+/]+={0,2}$/.test(g);

@@ -426,7 +426,7 @@ export const PERKS_D = {
   },
   /** 창신: 같은 적 연타마다 일점 1중첩 (최대 20, 2초) · 중첩당 그 적에게 +1.5% · 20중첩이면 다음 찌르기가 관통 일섬 (700, 250%, 치명타 확정) */
   isolde_speargod: {
-    N: { max: 20, t: 2, perPct: 0.5, len: 700, x0: 30, y0: -90, h: 40, mvPct: 250, crit: 100, hitstop: 0.08, life: 0.25, icd: 1.5 },   // 중첩당 0.5% (명세 1.5% → §2.8 예산: 한 번 휘두를 때 1중첩으로 바꾸고도 단일 +16.7% → +8%)
+    N: { max: 20, t: 2, perPct: 0.3, len: 700, x0: 30, y0: -90, h: 40, mvPct: 150, crit: 100, hitstop: 0.08, life: 0.25, icd: 1.5 },   // §2.8: 명세(맞을 때마다 1중첩 · 1.5% · 일섬 250%)는 단일 +28%, 한 번 휘두를 때 1중첩 · 0.5% · 250% 도 +20% → 0.3% · 150% 로 단일 +14% · 무리 +6%
     prewarm(w) { warm(w, ['#ff9aac', '#ffd0d8', '#ff2040'], null); },
     onHit(p, tgt, info, atk, w) {
       if (!atk?.tags?.includes('melee') || !tgt || tgt.dead || tgt.kind === 'prop') return;
