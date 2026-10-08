@@ -61,6 +61,10 @@ const STEPS = [
   S('gallery', 'unit', node('tools/test_gallery.mjs'), 5 * MIN),   // 회랑 데이터·엔진·병합·크기 (docs/specs/gallery.md §9.1, 브라우저 없이)
   S('sfx', 'unit', node('tools/test_sfx.mjs'), 10 * MIN),
   S('hud_layout', 'unit', node('tools/test_hud_layout.mjs'), 15 * MIN),
+  // classes_t3 §11.3 gate (브라우저 없이): 초월·비전·시련 데이터와 규칙 · 직업 특성 등록부(훅·정적 검사·표식) · 온라인 기록 API
+  S('ascension', 'unit', node('tools/test_ascension.mjs'), 10 * MIN),
+  S('perks', 'unit', node('tools/test_perks.mjs'), 10 * MIN),
+  S('online', 'unit', node('tools/online/test_online.mjs'), 10 * MIN),
   // ── balance
   // a red --check is a data balance miss (world2 §15 targets): FIX-DATA fixes it, not the simulator's owner
   ...HEROES.map((h) => S(`balance.${h}`, 'balance', node('tools/balance.mjs', 'normal', h, '--check'), 10 * MIN, { blame: 'src/data/enemies.js', sev: 'S3' })),   // §5.3: balance outside targets = S3
@@ -68,6 +72,9 @@ const STEPS = [
   S('balance_review', 'balance', ['bash', '-c', `for d in hard inferno; do for c in ${HEROES.join(' ')}; do echo "══ $d $c"; node tools/balance.mjs $d $c || exit 1; done; done`], 10 * MIN, { script: 'tools/balance.mjs' }),
   // 회차 세기 상한 (docs/specs/ngplus.md §3.4): 난이도 4 × 영웅 7 × 회차 N 1–3 — red = NG_RULES 숫자(src/game/ngplus.js)가 상한 밖
   S('balance_ng', 'balance', ['bash', '-c', `rc=0; for d in normal hard nightmare inferno; do for c in ${HEROES.join(' ')}; do for n in 1 2 3; do echo "══ $d $c --ng $n"; node tools/balance.mjs $d $c --ng $n --check || rc=1; done; done; done; exit $rc`], 10 * MIN, { script: 'tools/balance.mjs', blame: 'src/game/ngplus.js', sev: 'S3' }),
+  // classes_t3 §11.2 (§11.3 gate): 초월 28 · 비전 7 을 2차 직업과 견준다 — red = ascensions.js 숫자가 상한 밖 (balance miss = S3)
+  S('balance_asc.t3', 'balance', node('tools/balance.mjs', '--asc', 't3', '--check'), 15 * MIN, { blame: 'src/data/ascensions.js', sev: 'S3' }),
+  S('balance_asc.hidden', 'balance', node('tools/balance.mjs', '--asc', 'hidden', '--check'), 15 * MIN, { blame: 'src/data/ascensions.js', sev: 'S3' }),
   S('balance_companions', 'balance', node('tools/balance_companions.mjs'), 10 * MIN, { optional: true }),
   S('scan_mount_fit', 'balance', node('tools/scan_mount_fit.mjs'), 10 * MIN, { optional: true }),
   // ── runtime
@@ -82,6 +89,7 @@ const STEPS = [
   S('bride', 'runtime', node('tools/test_bride.mjs'), 20 * MIN),     // 외전 보스 엘제베트 패턴 (docs/specs/ex_s24.md §8)
   S('charon', 'runtime', node('tools/test_charon.mjs'), 20 * MIN),   // 외전 보스 카론 패턴 (docs/specs/ex_s25.md §8)
   S('companions', 'runtime', node('tools/test_companions.mjs'), 40 * MIN, { optional: true }),
+  S('trials', 'runtime', node('tools/test_trials.mjs', ...(QUICK ? ['--quick'] : [])), 40 * MIN),   // 시련 14 (classes_t3 §11.1/§11.3): 정적 + 브라우저 desk·phone2 (--quick: desk 4 케이스)
   S('commands', 'runtime', node('tools/qa/commands.mjs', ...(QUICK ? ['--quick'] : [])), 60 * MIN, { report: path.join(TOOLS_DIR, 'commands.json') }),
   // ── platform (pad, touch, view, menu, bind, turntable, load, pwa)
   S('platform', 'platform', node('tools/qa/run_platform.mjs'), 60 * MIN, { platform: true }),
