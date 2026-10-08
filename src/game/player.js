@@ -20,6 +20,7 @@ import { Hitbox } from './projectiles.js';
 import { initFeel, updateGait, onJump, onLand, dashFx, squashSpring, chaseJump, takeChaseStall, pivotCommit, resetMoveFeel } from './feel_move.js';   // [hook:feel]
 import { SPRINT } from '../data/feel_move.js';
 import { handleUltInput } from './awaken.js';   // [hook:awaken]
+import { perksOf, firePerks, perkMul, perkAny, perkHurt, perkPound } from './class_perks.js';   // 직업 특성 훅 (classes_t3 §3.4)
 
 const COYOTE = 0.1, JUMP_BUF = 0.13, ATK_BUF = 0.16;
 /** 착지 충격파(groundPound) 내려찍기 뒤 다시 내리꽂기까지 (초) — handleAttackInput 의 재급강하 막기 */
@@ -75,6 +76,7 @@ export class Player extends Entity {
     this.stats = computeStats(this.state, this.hero);
     if (this.mount?.riding) addStats(this.stats, this.mount.rideStats());   // [hook:cmp] 탑승 보너스
     this.look = composeLook(this.state, this.hero);
+    this.perks = perksOf(this.hero);   // 직업 특성 목록 (heroKey 메모; 특성이 없으면 훅 배열 없음 → 훅 자리 비용 0)
     const b = this.buffs;
     if (b.whipup) this.stats.reach = (this.stats.reach ?? 0) + 25;
     this.moveSet = MOVESETS[this.stats.weaponType] || MOVESETS[this.ch.weaponType];
@@ -87,13 +89,14 @@ export class Player extends Entity {
     return this.iframes > 0 || this.buffs.invincible > 0 || (this.dashT > 0 && this.dashInvuln) || this.dead || this.world.cutscene
       || this.mount?.invulnT > 0 || this.world?.companions?.shieldT > 0;   // [hook:cmp] 탑승 돌진 무적·수호 결계 (깜빡임 없음)
   }
-  get speedMul() { return (1 + (this.stats.moveSpd ?? 0) / 100) * (this.buffs.haste ? 1.4 : 1); }
-  get atkSpeedMul() { return (1 + (this.stats.atkSpd ?? 0) / 100) * (this.buffs.haste ? 1.3 : 1); }
+  get speedMul() { return (1 + (this.stats.moveSpd ?? 0) / 100) * (this.buffs.haste ? 1.4 : 1) * (this.perks?.speedMul ? perkMul(this.perks.speedMul, this) : 1); }
+  get atkSpeedMul() { return (1 + (this.stats.atkSpd ?? 0) / 100) * (this.buffs.haste ? 1.3 : 1) * (this.perks?.atkSpdMul ? perkMul(this.perks.atkSpdMul, this) : 1); }
   get dmgMul() {
     let m = this.buffs.rage ? 2 : 1;
     // 직업 특성(일부): 광전사 계열 저체력 보너스
     if (this.hero.classId?.startsWith('bran_berserk') || this.hero.classId === 'bran_warlord' || this.hero.classId === 'bran_bloodrage') m *= 1 + 0.4 * (1 - this.hp / this.stats.hp);
     if (this.hero.classId === 'kael_bloodhunter' && this.hp < this.stats.hp * 0.5) m *= 1.3;
+    if (this.perks?.dmgMul) m *= perkMul(this.perks.dmgMul, this, this.world);
     return m;
   }
   hurtbox() {
@@ -180,7 +183,7 @@ export class Player extends Entity {
       this.vx = this.facing * this.dashSpeed;
       this.vy = this.dashAir ? 0 : this.vy;
       dashFx?.(this, world, 'step');   // [hook:feel] 잔상(0.035초, 품질별 상한)·속도선은 feel_move.js
-      if (this.dashT <= 0) { this.vx *= 0.5; this.lastDashEnd = this.t; dashFx?.(this, world, 'end'); }   // [hook:feel]
+      if (this.dashT <= 0) { this.vx *= 0.5; this.lastDashEnd = this.t; dashFx?.(this, world, 'end'); if (this.perks?.onDashEnd) firePerks(this.perks.onDashEnd, this, world); }   // [hook:feel]
     } else if (inp && input.pressed('dash') && this.dashCool <= 0 && (onGround || !this.airDashUsed) && !this.moveLocked()) {
       this.startDash(ax, world);
     }
@@ -259,6 +262,7 @@ export class Player extends Entity {
         playerStrike(world, { x: this.cx - 110, y: this.cy - 110, w: 220, h: 220 }, { owner: this, stats: this.stats, team: 'player', mv: 0.35, type: 'mag', element: 'holy', hitId: 'aura' + Math.floor(this.t * 3), kb: [60, -40], hitstop: 0, shake: 0, tags: ['skill'] });
       }
     }
+    if (this.perks?.tick) firePerks(this.perks.tick, this, world, dt);
   }
 
   physics(dt, world) {
@@ -278,6 +282,7 @@ export class Player extends Entity {
       if (this.move?.groundPound) { this.groundPound(world, this.move.groundPound); this.poundT = this.t; }
       if (this.move && (this.move.id?.endsWith('Down') || this.move.anim === 'plunge' || this.move.anim === 'dive_kick')) { this.endMove(); }
       if (!this.mount?.riding) onLand?.(this, world, vyBefore, Math.max(0, this.y - (this.apexY ?? this.y)));   // [hook:feel] [hook:cmp] 탑승 중엔 탈것이 처리
+      if (!this.mount?.riding && this.perks?.onLand) firePerks(this.perks.onLand, this, world, Math.max(0, this.y - (this.apexY ?? this.y)));
     }
     if (this.onGround) this.apexY = this.y;   // [hook:feel]
     this.dropThrough = false;
