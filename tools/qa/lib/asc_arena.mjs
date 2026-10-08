@@ -78,10 +78,12 @@ export function seeded(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let
 
 // ─────────────────────────── 영웅 모형 ───────────────────────────
 /**
- * 시험 영웅: newHero(level) · 직업 classId · asc · 7단계 희귀도 4 장비(무기 +12, 몸통 ×0.7, 머리 ×0.5, 망토, 장신구 둘) · 비전서 전부.
- * (tools/balance.mjs --ng 영웅 모형과 같은 장비 규칙). 옵션 추첨은 seed 로 고정 → 같은 seed 면 변형끼리 같은 장비.
+ * 시험 영웅: newHero(level) · 직업 classId · asc · 장비 모형 gear:
+ *   'table' (기본) = tools/balance.mjs 기준 실행의 2부 끝 모형 — 7단계 희귀도 4, 무기 +12 · 몸통 +8 · 머리 +6 · 망토, 장신구·비전서 없음
+ *   'max'          = balance.mjs --ng 모형 — 위 + 장신구 둘 + 비전서 전부
+ * 옵션 추첨은 seed 로 고정 → 같은 seed 면 변형끼리 같은 장비.
  */
-export function buildHero(charId, classId, asc, level, seed = 1, { skills = [] } = {}) {
+export function buildHero(charId, classId, asc, level, seed = 1, { skills = [], gear = 'table' } = {}) {
   const real = Math.random;
   Math.random = seeded(seed * 7919 + level);
   try {
@@ -95,22 +97,21 @@ export function buildHero(charId, classId, asc, level, seed = 1, { skills = [] }
     put('body', baseIdFor('body', 7), { rarity: 4, level: 8 });
     put('head', baseIdFor('head', 7), { rarity: 4, level: 6 });
     put('cloak', baseIdFor('cloak', 7), { rarity: 4 });
-    put('acc1', baseIdFor('acc', 7, { variant: 0 }), { rarity: 4 });
-    put('acc2', baseIdFor('acc', 7, { variant: 1 }), { rarity: 4 });
+    if (gear === 'max') { put('acc1', baseIdFor('acc', 7, { variant: 0 }), { rarity: 4 }); put('acc2', baseIdFor('acc', 7, { variant: 1 }), { rarity: 4 }); }
     h.skills = {}; h.slots = [null, null, null, null];
     skills.filter(Boolean).forEach((id, i) => { h.skills[id] = 1; if (i < 4) h.slots[i] = id; });
     // arcade: true → 수호신 오라 제외 (동료 없음) — balance.mjs 와 같다
     const state = {
       charId, difficulty: 'normal', inventory: inv, heroes: { [charId]: h }, arcade: true,
-      progress: { docs: Object.keys(ALL_DOCS), flags: { p2_done: true }, bosses: [], secrets: [], lootQueue: [] },
+      progress: { docs: gear === 'max' ? Object.keys(ALL_DOCS) : [], flags: { p2_done: true }, bosses: [], secrets: [], lootQueue: [] },
       stats: { kills: 0, maxCombo: 0 }, bestiary: {}, score: 0, lives: 3,
     };
     return { state, hero: h };
   } finally { Math.random = real; }
 }
 /** 능력치 (시드 n개 평균 — 옵션 추첨 편차 줄이기) */
-export function avgStats(charId, classId, asc, level, seeds = 5) {
-  const runs = Array.from({ length: seeds }, (_, k) => { const { state, hero } = buildHero(charId, classId, asc, level, 101 + k); return computeStats(state, hero); });
+export function avgStats(charId, classId, asc, level, seeds = 5, gear = 'table') {
+  const runs = Array.from({ length: seeds }, (_, k) => { const { state, hero } = buildHero(charId, classId, asc, level, 101 + k, { gear }); return computeStats(state, hero); });
   const s = { ...runs[0] };
   for (const k of Object.keys(s)) if (typeof s[k] === 'number') s[k] = runs.reduce((a, r) => a + (r[k] ?? 0), 0) / runs.length;
   return s;
@@ -185,7 +186,7 @@ export function fight(o) {
     // 등록부: off 는 그 asc 항목만 뺀다 (char·0~2차 항목은 그대로)
     if (variant === 'off' && asc) { const R = { ...PERK.perkRegistry() }; delete R[asc]; PERK.setPerkRegistry(R); }
     else PERK.setPerkRegistry(null);
-    const { state, hero } = buildHero(charId, classId, variant === 'base' ? null : asc, level, seed, { skills: [skill ?? COMMON_SKILL[charId], A?.kind === 'hidden' && variant === 'on' ? A.skill : null] });
+    const { state, hero } = buildHero(charId, classId, variant === 'base' ? null : asc, level, seed, { gear: o.gear ?? 'table', skills: [skill ?? COMMON_SKILL[charId], A?.kind === 'hidden' && variant === 'on' ? A.skill : null] });
     Math.random = seeded(seed * 104729 + 17);
     IMPACT_DEBUG.useHitfx(HFX_STUB);
     const w = makeWorld(state, level);
@@ -201,11 +202,14 @@ export function fight(o) {
     const killHp = o.killHp ?? Math.round(25 * Math.max(p.stats.atk ?? 0, p.stats.mag ?? 0));
     const gap = o.gap ?? GAP[CHARACTERS[charId].weaponType] ?? 40;
     const baseX = p.x + p.w + gap;
+    const BOSS = o.boss ?? null;   // 시련 길이 모형: { stats (보스 능력치·체력·약점), rules (시련 규칙), enemyLevel }
+    if (BOSS?.rules) w.rules = { ...BOSS.rules };
     const dummyAt = (i) => {
-      const e = new Enemy('zombie', baseX + 20 + i * 50, FLOOR_Y, { level, diff: w.diff, facing: -1 });
+      const e = new Enemy('zombie', baseX + 20 + i * 50, FLOOR_Y, { level: BOSS?.enemyLevel ?? level, diff: w.diff, facing: -1 });
       e.wclass = 'FIXED'; e.stats.weak = []; e.stats.resist = []; e.stats.immune = [];
       const H = mode === 'kill' ? killHp : 1e7;
       e.hp = e.stats.maxHp = e.stats.hp = H;
+      if (BOSS) { e.stats = { ...e.stats, ...BOSS.stats }; e.hp = e.stats.maxHp; }
       e.update = function (dt) { this.t += dt; this.stun = 0; if (this.dying > 0) { this.dying -= dt; if (this.dying <= 0) this.dead = true; } };
       e.harmless = true; e.onGround = true;
       if (mode === 'boss') e.kind = 'boss';
@@ -219,7 +223,8 @@ export function fight(o) {
     const onTake = (e, d0, atk) => { if (atk?.owner === p || atk?.owner?.owner === p) { dmg += d0; if (atk.proc) procDmg += d0; } };
     for (let i = 0; i < nT; i++) dummyAt(i);
     // 적 공격력: 기준 2차 영웅에게 1타 = 최대 HP 8 % (포위전 6 %) — 호출부가 enemyAtk 를 주면 그 값 (변형끼리 같은 값)
-    const enemyAtk = o.enemyAtk ?? calibAtk(p.stats, siege ? 0.06 : 0.08);
+    const enemyAtk = o.enemyAtk ?? (BOSS ? BOSS.stats.atk : calibAtk(p.stats, siege ? 0.06 : 0.08));
+    let killTime = null;
     const tk = p.takeHit;
     p.takeHit = function (d, atk, ww, info) {
       const h0 = this.hp;
@@ -239,6 +244,7 @@ export function fight(o) {
     const ms = p.moveSet;
     for (let f = 0; f < T; f++) {
       if (siege && died) break;
+      if (BOSS && (D[0].hp <= 0 || D[0].dying > 0 || D[0].dead)) { killTime = w.rt; break; }
       const tw = f * DT;
       w.rt += DT; w.game.time += DT;
       if (w.hitstop > 0) { w.hitstop -= DT; continue; }
@@ -309,7 +315,7 @@ export function fight(o) {
         nextHurt += siege ? 1.2 : 2;
         if (!siege && p.hp < p.stats.hp * 0.35) { hpAdded += p.stats.hp - p.hp; p.hp = p.stats.hp; refills++; }
         const src = target;
-        const atk = { team: 'enemy', owner: src, stats: { ...src.stats, atk: enemyAtk, crit: 0, critDmg: 0 }, mv: 1, type: 'phys', element: null, dir: -1, kb: [60, -60], hitstop: 0, shake: 0, hitId: 'arena' + f, tags: ['contact'] };
+        const atk = { team: 'enemy', owner: src, stats: { ...src.stats, atk: enemyAtk, crit: 0, critDmg: 0 }, mv: BOSS ? 1.2 : 1, type: 'phys', element: null, dir: -1, kb: [60, -60], hitstop: 0, shake: 0, hitId: 'arena' + f, tags: ['contact'] };
         hits++;
         hitTarget(w, atk, p, p.cx, p.cy);
       }
@@ -330,7 +336,7 @@ export function fight(o) {
     const healed = Math.max(0, p.hp - hp0 + taken - hpAdded);
     const time = siege ? (diedAt ?? w.time) : w.time;
     const out = {
-      dmg: Math.round(dmg), procDmg: Math.round(procDmg), kills, hits, refills, deaths, killHp,
+      dmg: Math.round(dmg), procDmg: Math.round(procDmg), kills, hits, refills, deaths, killHp, killTime: killTime == null ? null : +killTime.toFixed(2),
       taken: Math.round(taken), healed: Math.round(healed), maxHp: Math.round(p.stats.hp), enemyAtk, time: +time.toFixed(2),
       // 포위전: 쓰러지기까지 받아 낸 공격 수 (마지막 1타는 남은 HP 비율만큼) × 적 공격력 = 같은 적에게 버틴 양
       ehp: siege ? Math.round(enemyAtk * ((died ? hits - 1 : hits) + (died ? lethalPart : 0))) : null, survived: siege ? !died : null,

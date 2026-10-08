@@ -22,6 +22,12 @@
 //             --check 와 함께면 모든 난이도에서 (world2 §15 목표 대신): 회차 행(s01–s20, 외전 제외)의 최댓값 ÷ 같은 영웅·난이도
 //             1회차 기준 실행의 2부(s14–s20) 최댓값 — 받는 피해(bossTaken·takenMed) ≤ 1.15 / 1.45 / 1.65 (N = 1 / 2 / 3 이상),
 //             보스 타수(bossHits) ≤ 1.15, 표의 숫자가 모두 유한. 하나라도 벗어나면 종료 코드 1.
+//   --asc all|t3|hidden|<id>[,<id>] : 초월 28 · 비전 7 을 그 2차 직업과 견준다 (classes_t3 §2.8 · §11.2; 기본 표는 계산하지 않는다).
+//             본체는 tools/qa/lib/balance_asc.mjs (+ Node 결투장 tools/qa/lib/asc_arena.mjs — 진짜 Player·hitTarget·특성 훅).
+//             ① §2.8 자료 예산 ② 능력치 층(닫힌 식: Δ공격 효율 ≤ +12 %, ΔeHP ≤ +15 %, Lv 70/75) ③ 특성 층(대본 싸움 mob/pack/boss/kill/calm/siege:
+//             sig = asc ÷ (asc − 특성 항목), stat, tot, siege eHP) ④ 시련 14개 길이 모형. 위치 인자 영웅(예: normal kael --asc all)을 주면 그 영웅만.
+//             --check: ①·② 위반 · 특성 오류/경고 · 지속 sig > +20 % (비전 +30 %) · 시련 보스를 못 쓰러뜨림 → 종료 코드 1 (나머지는 경고).
+//             --md FILE: 마크다운 표 · --seeds N (기본 3) · --secs S (기본 40) · --modes mob,pack,… · --no-trials · --json
 //
 // 기준 실행 (world2 §15): 보통 난이도, 1레벨에서 시작해 스테이지마다 일반 적 85% + 보스 처치 경험치 + 메인 퀘스트 경험치를 쌓는다.
 // 장비 = tierForLevel(레벨) 단계(최대 7) 상위형 베이스, 희귀도 min(4, 1+floor(i/4)), 강화 min(12, floor(i*0.8))
@@ -55,7 +61,7 @@ import * as NG from '../src/game/ngplus.js';
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes('--' + n);
 const optv = (n, d) => { const i = argv.indexOf('--' + n); return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : d; };
-const pos = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && ['--seed', '--k', '--ng'].includes(argv[i - 1])));
+const pos = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && ['--seed', '--k', '--ng', '--asc', '--md', '--seeds', '--secs', '--modes'].includes(argv[i - 1])));
 const diffId = pos[0] || 'normal', charId = pos[1] || 'kael';
 const CHECK = flag('check'), STRICT = flag('strict'), JSON_OUT = flag('json'), ACC = flag('acc'), DOCS = flag('docs');
 const SEED = Number(optv('seed', 1)) || 1;
@@ -68,8 +74,21 @@ if (flag('ng') && !(Number.isInteger(NG_N) && NG_N >= 1 && NG_N <= 9)) { console
 if (!DIFF[diffId]) { console.error(`알 수 없는 난이도: ${diffId} (${Object.keys(DIFF).join(', ')})`); process.exit(2); }
 const diff = getDiff(diffId);
 if (!CHARACTERS[charId]) { console.error(`알 수 없는 영웅: ${charId} (${Object.keys(CHARACTERS).join(', ')})`); process.exit(2); }
+// ── 초월·비전 (--asc): 기본 표 대신 tools/qa/lib/balance_asc.mjs (게임 모듈은 이때만 불러온다 — 기본 실행은 그대로) ──
+const ASC_SEL = flag('asc') ? optv('asc', 'all') : null;
+if (ASC_SEL) {
+  if (diffId !== 'normal') { console.error('--asc 는 normal 난이도 모형만 (시련·결투장 = 보통 난이도)'); process.exit(2); }
+  const { runAsc } = await import('./qa/lib/balance_asc.mjs');
+  const modes = optv('modes', '') ? optv('modes', '').split(',').map((x) => x.trim()).filter(Boolean) : undefined;
+  try {
+    process.exitCode = await runAsc({
+      sel: ASC_SEL, charFilter: pos[1] ?? null, check: CHECK, mdPath: optv('md', null), json: JSON_OUT,
+      seeds: Math.max(1, Number(optv('seeds', 3)) || 3), secs: Math.max(5, Number(optv('secs', 40)) || 40), modes, trials: !flag('no-trials'),
+    });
+  } catch (e) { console.error(String(e?.message ?? e)); process.exitCode = 2; }
+}
 // world2 §15 목표는 보통 난이도 기준 실행에만 있다 (MASTER_PLAN §5.1: hard/inferno 는 --check 없이 표만 검토)
-if (CHECK && !NG_N && diffId !== 'normal') { console.error(`--check 는 normal 난이도에서만 쓴다 (world2 §15 목표 = 보통 난이도 기준). ${diffId} 는 --check 없이 표로 검토하세요.`); process.exit(2); }
+if (!ASC_SEL && CHECK && !NG_N && diffId !== 'normal') { console.error(`--check 는 normal 난이도에서만 쓴다 (world2 §15 목표 = 보통 난이도 기준). ${diffId} 는 --check 없이 표로 검토하세요.`); process.exit(2); }
 const KNOBS = {};
 for (const part of String(optv('k', '')).split(',').map((s) => s.trim()).filter(Boolean)) {
   const [name, v] = part.split('=');
@@ -232,7 +251,7 @@ const ANCHOR = ['s11', 's12', 's13'];   // 1부 기준 보정 비율을 잴 스�
 const round1 = (v) => Math.round(v * 10) / 10;
 
 // ── 회차 (--ng N): 1회차 2부 최댓값 대비 비율 (docs/specs/ngplus.md §3.4) — world2 §15 목표 대신
-if (NG_N) {
+if (NG_N && !ASC_SEL) {
   const ngRun = simulate(charId, NG_N);
   const base = simulate(charId, 0);
   const P2 = base.rows.filter((r) => P2_IDS.has(r.stage));
@@ -265,7 +284,7 @@ if (NG_N) {
   if (CHECK && fails.length) process.exitCode = 1;
 }
 
-const run = NG_N ? null : simulate(charId);
+const run = NG_N || ASC_SEL ? null : simulate(charId);
 let ratio = null;   // 영웅 ÷ 카엘 (1부 s11–s13 평균)
 if (run && charId !== 'kael' && !STRICT) {
   const k = simulate('kael');
