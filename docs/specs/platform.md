@@ -773,7 +773,7 @@ Phases:
   - `footer`/`backButton`/`gbutton` with glyphs and ≥ 44 CSS sizes.
   - `uiScale` opt-in for all front scenes.
   - Title: update prompt, audio hint, add-to-home-screen card, "안드로이드 앱(APK) 받기" (web + Android UA).
-  - Title PRESS START: a 78–100 % breathing alpha (static with `reduceMotion`), never a blink that fades out; a soft dark band behind it; placed between the logo and the hunter's head in `bg/title` (computed from the Ken Burns geometry, never over the hunter); touch hint ≥ 15 CSS px. On phones the menu-state logo subtitle is drawn at ≥ 18 UI px (≈ 15 CSS).
+  - Title PRESS START: a 78–100 % breathing alpha (static with `reduceMotion`), never a blink that fades out; a soft dark band behind it; placed between the logo and the hunter's head in `bg/title` (computed from the Ken Burns geometry, never over the hunter); touch hint ≥ 15 CSS px. The idle attract (after 10 s) draws below the PRESS block, above the © line and the bottom-right notice cards; where it does not fit there (phones with a notice card, e.g. the Android-web APK card) it draws in the PRESS slot instead and the PRESS block cross-fades with it, so text never overlaps. On phones the menu-state logo subtitle is drawn at ≥ 18 UI px (≈ 15 CSS).
   - Title accessibility: a left-edge "보기" tab (≥ 44 CSS px, press screen only) opens options on the 화면 page. Front-scene lightning reads `flashFx`/`reduceMotion` every frame (changes apply on return from options). With no saved settings (first run) the title holds lightning until the first input and skips the double flash.
   - P-29 message.
   - `setPad` calls are replaced by scene flags.

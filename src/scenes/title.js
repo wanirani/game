@@ -16,6 +16,7 @@
 //  - PRESS START (benchmark #2): 깜빡임 대신 78–100 % 숨쉬기('동작 줄이기'면 멈춤), 뒤에 부드러운 어둠 띠(어트랙트와 같은 캐시 그라데이션)
 //    + 진홍 선. 자리는 로고 아래 ~ 그림 속 사냥꾼 머리 위 (켄번스 기하로 계산, hunterTop) — 사냥꾼을 가리지 않는다.
 //    안내 줄은 휴대폰에서 15 CSS px 이상 (ceil(15/per), 15–18 UI). 휴대폰 메뉴 상태의 작은 로고는 부제만 18 UI 로 키운다 (logo.subK)
+//    어트랙트(방치 10초)는 PRESS 묶음 아래 · 저작권 줄과 알림 카드 위 (attractBox). 들어가지 않으면 PRESS 자리에서 PRESS 묶음과 엇갈려 나타난다
 //  - 접근성 (benchmark #6): 왼쪽 가장자리 '보기' 탭(누르기 화면, ≥ 44 CSS px) → push('options', {page:'screen'}).
 //    번개는 Ambience 가 설정을 매번 읽는다 (front/common.js lightningAllowed — 설정에서 돌아와도 바로 반영).
 //    '동작 줄이기'면 켄번스 줌·팬과 로고 흔들림도 멈춘다. 저장된 설정이 없는 첫 실행은 첫 입력 전까지 번개를 치지 않고 두 번째 섬광도 없다
@@ -563,8 +564,11 @@ export class TitleScene extends Scene {
   }
 
   drawPress(ctx, L, t, T) {
-    const A = this.mode === 'press' ? clamp(this.modeT / 0.5, 0, 1) : clamp((T - 1.7) / 0.5, 0, 1);
-    if (A <= 0) return;
+    const A0 = this.mode === 'press' ? clamp(this.modeT / 0.5, 0, 1) : clamp((T - 1.7) / 0.5, 0, 1);
+    if (A0 <= 0) return;
+    // 어트랙트(방치 10초)가 PRESS 묶음 아래에 들어가지 않으면(휴대폰 + 알림 카드) PRESS 자리에 겹치므로 그동안 PRESS 묶음을 흐린다
+    const at = this.mode === 'press' && this.idle > 10 ? this.attractBox(L, this.idle - 10) : null;
+    const A = at?.over ? A0 * (1 - at.a) : A0;
     const W = L.W, y = L.pressY;
     // 받침: 가장자리 없는 가로 어둠 띠 (어트랙트와 같은 캐시 그라데이션 'tAttract' 를 납작하게) + 위아래 진홍 선
     const bw = Math.min(W * 0.62, 470), bh = PRESS_UP + PRESS_DN + 42, by = y + (PRESS_DN - PRESS_UP) / 2;
@@ -595,16 +599,27 @@ export class TitleScene extends Scene {
     else drawHints(ctx, [[['confirm', 'menu'], m === 'pad' ? '버튼을 누르세요' : '키를 누르세요']], W / 2, y + PRESS_HINT_DY, { align: 'center', size: hs, color: '#e2d4bc' });
     ctx.restore();
     // 어트랙트 (방치 시)
-    if (this.mode === 'press' && this.idle > 10) this.drawAttract(ctx, L, t, this.idle - 10);
+    if (at) this.drawAttract(ctx, L, t, this.idle - 10, at);
   }
 
-  drawAttract(ctx, L, t, it) {
-    const W = L.W, H = L.H;
+  /**
+   * 어트랙트 자리·알파 (it = 방치 시간 − 10초, 9초 주기). 마지막 줄 기준선은 저작권 줄·오른쪽 아래 알림 카드 위 (bot).
+   * 기본은 PRESS START 묶음 아래 (PRESS START 가 계속 보인다, 모자라면 줄 간격 f 를 0.7 까지 줄인다). 그래도 들어가지 않으면
+   * (휴대폰 + 알림 카드) 로고 아래 PRESS 자리에 겹쳐 그리고 over = true — 그동안 PRESS 묶음이 흐려진다 (글자끼리 겹치지 않게)
+   */
+  attractBox(L, it) {
+    const u = (it % 9) / 9, a = clamp(Math.min(u * 6, (1 - u) * 6), 0, 1);
+    const bot = Math.min(L.H - L.sb - 24, L.stackTop - 4);
+    const y = Math.max(L.H * 0.52, L.pressY + PRESS_DN + 30);
+    if (bot - y >= 98 * 0.7) return { y, f: Math.min(1, (bot - y) / 98), a, over: false };
+    const y2 = Math.max(L.logoBot + 22, Math.min(L.H * 0.52, bot - 98));
+    return { y: y2, f: clamp((bot - y2) / 98, 0.7, 1), a, over: true };
+  }
+
+  drawAttract(ctx, L, t, it, box) {
+    const W = L.W;
     const cyc = 9, n = 3, idx = Math.floor(it / cyc) % n, u = (it % cyc) / cyc;
-    const a = clamp(Math.min(u * 6, (1 - u) * 6), 0, 1);
-    // PRESS START 묶음 아래에 둔다 (PRESS START 는 어트랙트 중에도 보인다). 아래 여유가 모자라면(휴대폰) 줄 간격을 줄인다 (f)
-    const y = Math.max(H * 0.52, L.pressY + PRESS_DN + 30), w = Math.min(560, W - 80), x = W / 2 - w / 2;
-    const f = clamp((H - L.sb - 14 - y) / 96, 0.72, 1);
+    const { y, f, a } = box, w = Math.min(560, W - 80), x = W / 2 - w / 2;
     ctx.save();
     ctx.globalAlpha = a;
     // 부드러운 타원형 어둠 (가장자리 없이)
