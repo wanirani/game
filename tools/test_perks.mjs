@@ -454,7 +454,7 @@ section('PerkLayer (§3.7)');
   PERK.setPerkRegistry({ 'char:kael': { drawMeter: () => { meter++; }, onEnter: () => { enter++; }, prewarm: () => { warm++; } } }, MARKS);
   let enter = 0, warm = 0;
   const mkWorld = (hero) => {
-    const w = { time: 0, entities: [], camera: { x: 0, y: 0, vw: 960, vh: 540 }, add(e) { e.world = this; this.entities.push(e); return e; } };
+    const w = { time: 0, entities: [], map: {}, camera: { x: 0, y: 0, vw: 960, vh: 540 }, add(e) { e.world = this; this.entities.push(e); return e; } };
     w.player = { hero, dead: false, perks: PERK.perksOf(hero), world: w };
     return w;
   };
@@ -464,8 +464,11 @@ section('PerkLayer (§3.7)');
   const w1 = mkWorld({ charId: 'kael', classId: 'kael_templar' });
   ok(PERK.perkEnter(w1) === true && w1.entities.filter((e) => e.perkLayer).length === 1 && enter === 1 && warm === 1, 'perkEnter: prewarm·onEnter 한 번 + PerkLayer 하나', { enter, warm, n: w1.entities.length });
   ok(PERK.perkEnter(w1) === false && w1.entities.length === 1, '같은 방 불러오기에 두 번 → 한 번만');
-  w1.entities = [w1.player]; PERK.perkEnter(w1);
-  ok(warm === 1 && enter === 2 && w1.entities.filter((e) => e.perkLayer).length === 1, '새 방(entities 새 배열): onEnter 다시 · prewarm 은 월드·특성마다 한 번 · 레이어 다시', { warm, enter });
+  w1.entities = w1.entities.filter(() => true);   // world.update 가 죽은 개체를 거를 때처럼 배열만 바뀜 (같은 방)
+  PERK.mark(w1.add({ id: 'x', cx: 0, cy: 0 }), 't', 1); PERK.perkEnter(w1);
+  ok(enter === 1 && w1.entities.filter((e) => e.perkLayer).length === 1, '같은 방에서 entities 배열이 바뀌어도 레이어·onEnter 를 다시 하지 않음 (방 표 = world.map)');
+  w1.entities = [w1.player]; w1.map = {}; PERK.perkEnter(w1);
+  ok(warm === 1 && enter === 2 && w1.entities.filter((e) => e.perkLayer).length === 1, '새 방(새 map): onEnter 다시 · prewarm 은 월드·특성마다 한 번 · 레이어 다시', { warm, enter });
   const layer = w1.entities.find((e) => e.perkLayer);
   layer.update(1 / 60, w1);
   ok(layer.x === 0 && layer.w === 960 && layer.h === 540 && layer.z === 9 && !layer.dead, '레이어는 화면 전체를 덮고 z 9 · 죽지 않음');

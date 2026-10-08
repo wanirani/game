@@ -294,7 +294,7 @@ export function mark(e, key, t, add = 1, max = 99) {
   if (m.n > 0) {
     MARKED.add(e);
     const w = e.world;
-    if (w && w._perkLayerEnts !== w.entities) attachLayer(w);
+    if (w && w._perkLayerTok !== roomTok(w)) attachLayer(w);
   }
   return m.n;
 }
@@ -397,7 +397,9 @@ function enterSoon() {
   ENTER_Q = true;
   Promise.resolve().then(() => { ENTER_Q = false; try { perkEnter(curWorld()); } catch (err) { console.error('[perks] enter', err); } });
 }
-const ENTERED = new WeakSet();   // 방 한 번 불러오기 = world.entities 배열 하나 (loadRoom 이 새로 만든다)
+const ENTERED = new WeakSet();   // 방 한 번 불러오기 = world.map 하나 (loadRoom 이 새로 만든다; entities 배열은 죽은 개체를 거를 때마다 바뀐다)
+/** 방 불러오기 표 (같은 방에서는 같다): world.map (없으면 entities 배열 — 시험용 가짜 월드) */
+const roomTok = (w) => w.map ?? w.entities;
 /**
  * 방 입장 처리 (roomEntered 가 부른다; 시험·도구가 직접 불러도 된다): 표식 비우기 · prewarm(월드·특성마다 한 번) · onEnter · PerkLayer.
  * 같은 방 불러오기에 두 번 불러도 한 번만 한다. 특성 없는 영웅은 아무것도 붙이지 않는다
@@ -405,8 +407,9 @@ const ENTERED = new WeakSet();   // 방 한 번 불러오기 = world.entities �
 export function perkEnter(w) {
   if (!w?.player || !Array.isArray(w.entities)) return false;
   CUR.w = w;
-  if (ENTERED.has(w.entities)) return false;
-  ENTERED.add(w.entities);
+  const tok = roomTok(w);
+  if (!tok || typeof tok !== 'object' || ENTERED.has(tok)) return false;
+  ENTERED.add(tok);
   MARKED.clear();
   const p = w.player, P = p.perks;
   if (!P?.any) return false;
@@ -417,8 +420,8 @@ export function perkEnter(w) {
 }
 /** PerkLayer 붙이기 (방 불러오기마다 하나). K.SkillFx 가 없으면(도구 모음이 아직 없음) 붙이지 않는다 → 레이어 | null */
 export function attachLayer(w) {
-  if (!w?.add || typeof K.SkillFx !== 'function' || w._perkLayerEnts === w.entities) return null;
-  w._perkLayerEnts = w.entities;
+  if (!w?.add || typeof K.SkillFx !== 'function' || w._perkLayerTok === roomTok(w)) return null;
+  w._perkLayerTok = roomTok(w);
   const L = new K.SkillFx({ life: Infinity, z: 9, follow: layerFollow, draw: drawPerkLayer });
   L.perkLayer = true;
   w.add(L);

@@ -234,16 +234,32 @@ export class StatusTab extends Tab {
       const chain = [...D.classChain(hero.classId), ...(asc ? [asc] : [])];
       g.font = font(12, 800, FONT.body);
       const widths = chain.map((c) => g.measureText(c.name).width + 14);
-      const total = widths.reduce((a, b) => a + b, 0) + (chain.length - 1) * 14;
-      const shrink = total > LW - 16 ? (LW - 16) / total : 1;
-      let cx = A.x + LW / 2 - (total * shrink) / 2;
+      // 넘치면 화살표 간격을 줄이고, 마지막(현재) 알약은 그대로 둔 채 앞쪽의 긴 이름부터 줄인다 (짧은 이름은 온전히).
+      let gap = 14;
+      const fit = LW - 16, sum = widths.reduce((a, b) => a + b, 0);
+      if (sum + (chain.length - 1) * gap > fit) gap = 10;
+      const caps = widths.slice();
+      const room = fit - (chain.length - 1) * gap - widths[widths.length - 1];
+      if (sum - widths[widths.length - 1] > room && chain.length > 1) {
+        const front = widths.slice(0, -1).sort((a, b) => a - b);
+        let left = room, cap = 0;
+        for (let i = 0; i < front.length; i++) {
+          const c = left / (front.length - i);
+          if (front[i] >= c) { cap = c; break; }
+          left -= front[i]; cap = front[i];
+        }
+        for (let i = 0; i < caps.length - 1; i++) caps[i] = Math.min(caps[i], Math.max(34, cap));
+      }
+      const names = chain.map((c, i) => (caps[i] < widths[i] ? ellipsize(g, c.name, caps[i] - 14, 12, 800).replace(/\s+…$/, '…') : c.name));
+      const real = names.map((nm) => g.measureText(nm).width + 14);
+      const total = real.reduce((a, b) => a + b, 0) + (chain.length - 1) * gap;
+      let cx = A.x + LW / 2 - total / 2;
       chain.forEach((c, i) => {
         const last = i === chain.length - 1;
-        const nm = shrink < 1 ? ellipsize(g, c.name, widths[i] * shrink - 14, 12, 800) : c.name;
         const kc = c === asc ? ASC_PILL[asc.kind] : null;
-        pill(g, nm, cx, y, { color: kc ? kc.color : last ? PAL.goldHi : PAL.dim, bg: kc ? kc.bg : last ? 'rgba(110,14,34,0.9)' : 'rgba(30,18,28,0.9)', size: 12, h: Math.max(20, Math.ceil(textFloor() + 7)) });
-        cx += widths[i] * shrink;
-        if (!last) { text(g, '›', cx + 7, y + 15, { size: 15, align: 'center', color: PAL.goldDim, weight: 800, ow: 0 }); cx += 14 * shrink; }
+        g.font = font(12, 800, FONT.body);
+        cx += pill(g, names[i], cx, y, { color: kc ? kc.color : last ? PAL.goldHi : PAL.dim, bg: kc ? kc.bg : last ? 'rgba(110,14,34,0.9)' : 'rgba(30,18,28,0.9)', size: 12, h: Math.max(20, Math.ceil(textFloor() + 7)) });
+        if (!last) { text(g, '›', cx + gap / 2, y + 15, { size: 15, align: 'center', color: PAL.goldDim, weight: 800, ow: 0 }); cx += gap; }
       });
       // 레벨 · 경험치
       y += 34;
