@@ -46,6 +46,12 @@ export const SCRIPTS = {
     N('그 밤이면 안개 속에서 성 하나가 솟아오른다. 사람들은 그것을 "악마성"이라 불렀다.'),
     se('thunderclap'), quake(10, 0.6, RED), cg('cg_prologue_attack'),
     N('그리고 오늘 밤, 산기슭 마을 에슈빌에 백 년 만의 비명이 울려 퍼졌다.'),
+    // 이졸데로 1부를 시작하면 (회차 · 계정 해금): 피의 윤회가 바퀴를 다른 길로 굴린다 (story_ext §5.9)
+    ifChar('isolde', 'iso'), go('iso_end'),
+    L('iso'),
+    N('종이 울리기 직전, 북쪽 숲에 은빛 섬광 하나가 떨어졌다. 날개 장식 서클릿의 기사가 창을 짚고 일어섰다.'),
+    N('피의 윤회. 한 번 끝난 밤이 다시 돌 때, 바퀴는 가끔 다른 길로 구른다.'),
+    L('iso_end'),
     S('마을 사람', '괴물이다! 박쥐 떼가… 해골이 걸어 다녀!'),
     se('bell'), cg('cg_alberto_church'), bgm('church'),
     S(A, '왔구먼. 종을 울리길 잘했어. 성당 촛불이 꺼지지 않았으니 희망도 남은 게지.'),
@@ -56,9 +62,11 @@ export const SCRIPTS = {
       bran: '새벽 서약의 마지막 기사, 브란이오. 이번에는 물러서지 않겠소.',
       lia: '결사의 명령이야. 표적은 백작의 목. 그 전에 마을 청소부터 해 주지.',
       azel: '…다시 붉은 달인가. 이번에야말로 아버지의 밤을 끝내겠다.',
+      isolde: '이 붉은 달… 꿈에서 몇 번이나 본 하늘이다. 용기사 이졸데, 오늘 밤의 창이 되겠다.',
       default: '제가 가겠습니다.' }),
     S(A, { victor: '돈은 살아 돌아오면 마르타가 넉넉히 치를 걸세. 그러니 살아 돌아오게.',
       azel: '…그 눈. 자네가 누구든 상관없네. 오늘 밤은 한 사람의 손이라도 아쉬워.',
+      isolde: '하늘에서 떨어진 기사라… 오늘 밤은 무엇이 떨어지든 반가운 손이네.',
       default: '고맙네. 정말로 고마워.' }),
     S(A, '마을 외곽이 불타고 있네. 아이들이 아직 예배당에 숨어 있어. 서두르게!'),
     cg(),
@@ -307,7 +315,7 @@ export const SCRIPTS = {
       sera: '아직 따뜻해요. 엘리제는 살아 있어요!',
       victor: '리본 하나로 추적이라… 사냥개 노릇은 오랜만이군.',
       bran: '진홍의 기사… 그 붉은 갑주, 어디서 본 것 같소.',
-      lia: '끌려간 지 사흘. 아직 늦지 않았어.',
+      lia: '끌려간 지 한나절. 아직 늦지 않았어.',
       azel: '초상화 속 여인들은 모두 아버지의 신부들이다. 눈을 마주치지 마라.',
       default: '엘리제의 리본이다…!' }),
   ],
@@ -930,6 +938,8 @@ export const SCRIPTS = {
     cg('cg_dracula_throne'), se('thunderclap'), quake(8, 0.6, RED),
     S('b_dracula', '백 년 만이로구나, 인간. 얼굴은 매번 바뀌어도 눈빛은 똑같군.'),
     S('b_dracula', '왜 싸우느냐. 인간은 서로를 불태우고 신은 침묵하는데. 나는 그저 밤을 줄 뿐이다.'),
+    S('b_dracula', '사백 년 전, 나는 이 산맥의 영주였다. 역병이 백성을 삼킬 때 신은 끝내 대답하지 않았다.'),
+    S('b_dracula', '그래서 심연과 계약했다. 영원한 밤과 맞바꾼 것이 무엇이었는지는… 이제 기억도 나지 않는군.'),
     H({ kael: '발크레인은 백 년 전의 약속을 지키러 왔다. 네 밤은 오늘로 끝이다!',
       sera: '신은 침묵하지 않아요. 지금 제 손을 통해 말씀하고 계세요!',
       victor: '철학 강의는 됐고. 네 목에 걸린 현상금이 궁금할 뿐이야.',
@@ -949,6 +959,7 @@ export const SCRIPTS = {
   b_dracula_post: [
     D2('어리석은… 인간… 나는… 죽지 않는다…'),
     D2('핏빛 달이 다시 뜨는 날… 백 년 후… 다시 만나자꾸나…'),
+    D2('…아멜리아. 그대의 아이가… 해를… 보는구나…'),
     N('백작의 몸이 재가 되어 흩어진다. 왕좌 위로 첫 새벽빛이 스며들기 시작했다.'),
     H({ azel: '…안녕히, 아버지.', kael: '끝났다… 백 년의 밤이.', default: '끝났다…!' }),
   ],
@@ -1104,7 +1115,7 @@ export const SCRIPTS = {
   ending_true: [
     bgm('ending'), cg('cg_true_ending'),
     N('혼돈이 사라진 날, 발라키르 산맥에 백 년 만에 진짜 아침이 찾아왔다.'),
-    N('다시는 붉은 달이 뜨지 않을 것이다. 악마성의 전설은 이제 옛이야기가 되었다.'),
+    N('다시는 붉은 달이 뜨지 않으리라고, 사람들은 믿었다. 악마성의 전설은 옛이야기가 되어 갔다.'),
     S(A, '허허… 머리가 하얗게 세는구먼. 백 년 치 나이가 한꺼번에 찾아오는 모양이야.'),
     S(A, '괜찮네. 이제야 사람답게 늙을 수 있게 됐어. 고맙네… 정말로 고맙네.'),
     { if: 'carmilla_trust2', who: CA, text: '햇빛이… 따갑지 않아. 굴레가 끊어졌구나. 후후, 이제 나도 늙어 볼까?' },
@@ -1118,7 +1129,7 @@ export const SCRIPTS = {
       azel: '어머니, 보고 계십니까. 처음으로… 햇빛이 따뜻합니다.',
       default: '끝났어. 이제 정말로 아침이야.' }),
     cg(),
-    N('그해 겨울, 알베르토 신부는 성당 종탑 아래에서 평온히 눈을 감았다. 그의 얼굴은 웃고 있었다.'),
+    N('그날 아침, 알베르토 신부는 종탑 아래 의자에 앉아 해가 다 뜰 때까지 하늘을 보았다. 그의 얼굴은 웃고 있었다.'),   // 그의 죽음은 2부 엔딩이 한 번만 말한다 (story_ext §5.8)
     N('— TRUE END : 영원한 새벽 —'),
   ],
 
@@ -1565,9 +1576,10 @@ function pickNpcScript(npcId, state, stageId) {
   if (stageId && SCRIPTS[`${npcId}_${stageId}`]) return `${npcId}_${stageId}`; // 스테이지 안에서 만났을 때 전용 대사
   let latest = null;
   for (let k = ch; k >= 0; k--) if (SCRIPTS[`${npcId}_ch${k}`]) { latest = `${npcId}_ch${k}`; break; }
-  // 외전은 장을 올리지 않는다 — 「시드는 장미」 뒤 카밀라는 외전 뒤 대사가 가장 새 대사 (story_ex.js npc_carmilla_ex24, ex_s24.md §10)
-  if (npcId === 'npc_carmilla' && p?.flags?.ex_s24_done && SCRIPTS.npc_carmilla_ex24) latest = 'npc_carmilla_ex24';
-  if (npcId === 'npc_greta' && p?.flags?.ex_s25_done && SCRIPTS.npc_greta_ex25) latest = 'npc_greta_ex25';   // 「불탄 목장의 밤」 뒤 그레타 (ex_s25.md §4.2)
+  // 외전은 장을 올리지 않는다 — 외전을 끝낸 뒤의 마을 반응 <npcId>_ex21…ex25 가 가장 새 대사 (story_ext §5.4: 새 외전부터, 아직 안 들은 것 하나).
+  // 한 번 들으면 평소 순환으로 돌아간다. npc_carmilla_ex24 (ex_s24.md §10) · npc_greta_ex25 (ex_s25.md §4.2) · story_extra.js 의 ex21~23 반응
+  const EX_TALK = [['ex25', 'ex_s25_done'], ['ex24', 'ex_s24_done'], ['ex23', 'ex_s23_done'], ['ex22', 'ex_s22_done'], ['ex21', 'ex_s21_done']];
+  for (const [k, f] of EX_TALK) { const id = `${npcId}_${k}`; if (p?.flags?.[f] && SCRIPTS[id] && !(p.seenScripts ?? []).includes(id)) { latest = id; break; } }
   const seen = p?.seenScripts;
   if (latest && seen && !seen.includes(latest)) { seen.push(latest); p.npcTalks ??= {}; p.npcTalks[npcId] = 0; return latest; } // 다음 대화부터 팁 순환
   if (latest && !seen) return latest;
@@ -1615,6 +1627,7 @@ export const CREDITS = [
   '여관의 고양이 — 백작님',
   '떠돌이 상인 — 로크',
   '대장장이 — 하드윈',
+  '영혼의 마구간지기 — 그레타',
   '성 루미나의 소녀 — 엘리제',
   '흡혈귀 귀부인 — 카밀라',
   '',
@@ -1662,7 +1675,9 @@ const SECRET_CREDITS = ['13장 — 혼돈의 군주'];
  *  kind: 'bad'|'normal'|'true'|'p2'|'p2true'|null, state: 세이브(없으면 null), meta: game.meta
  *  2부 (world2 §1.7): 2부 엔딩 크레딧이거나 2부 엔딩을 본 적이 있으면 CREDITS_P2 를 '— 제작 —' 바로 앞에 끼운다 (그때는 1부 보스도 모두 싣는다).
  *  2부 엔딩이면 둘째 줄(부제)에 '— 제2부 균열의 순례' 를 붙이고, 새벽의 별(p2true)이면 마지막 줄을 '새벽의 별은 지지 않는다.' 로 바꾼다.
- *  1부 엔딩은 2부 엔딩을 본 적이 없으면 2부 줄을 보여 주지 않는다. */
+ *  1부 엔딩은 2부 엔딩을 본 적이 없으면 2부 줄을 보여 주지 않는다.
+ *  외전 (story_ext §5.7): 끝낸 외전(ex_sNN_done — 이번 회차 또는 지난 회차)이 있으면 CREDITS_P2 바로 뒤('— 제작 —' 앞)에
+ *  '— 외전 —' + 끝낸 외전들의 줄(장 순서, story_ex.js CREDITS_EX) + 빈 줄. CREDITS_EX 가 없으면 아무것도 넣지 않는다. */
 export function creditsFor(kind, state, meta) {
   const p = state?.progress;
   const seen = Array.isArray(meta?.endingsSeen) ? meta.endingsSeen : []; // 옛·망가진 메타는 빈 목록으로
@@ -1670,16 +1685,34 @@ export function creditsFor(kind, state, meta) {
   const p2Known = p2Kind || seen.some((k) => typeof k === 'string' && k.startsWith('p2'));
   const known = p2Known || kind === 'true' || (Array.isArray(p?.unlocked) && p.unlocked.includes('s13')) || p?.flags?.abyss_open || seen.includes('true');
   let list = known ? CREDITS.slice() : CREDITS.filter((s) => !SECRET_CREDITS.includes(s));
-  if (!p2Known || !CREDITS_P2?.length) return list;   // [hook:p2]
+  const ex = exCredits(state);   // 외전 (story_ext §5.7)
+  const p2 = p2Known && !!CREDITS_P2?.length;   // [hook:p2]
+  if (!p2 && !ex.length) return list;
   const at = list.indexOf('— 제작 —');
-  list.splice(at >= 0 ? at : list.length, 0, ...CREDITS_P2);
+  list.splice(at >= 0 ? at : list.length, 0, ...(p2 ? CREDITS_P2 : []), ...ex);
+  if (!p2) return list;
   if (p2Kind && list[1] === '블러드 녹턴: 악마성 연대기') list[1] = '블러드 녹턴: 악마성 연대기 — 제2부 균열의 순례';
   if (kind === 'p2true' && list[list.length - 1] === '밤은 끝났다. 좋은 아침을.') list[list.length - 1] = '새벽의 별은 지지 않는다.';
   return list;
 }
 
-// ── 확장 스크립트 병합 (MASTER_PLAN §1.17): 동료 스크립트(story_companions.js) · 2부 스크립트(story_p2.js ⊃ story_p2b.js) ──
-// 두 모듈은 story.js 를 import 하지 않는다 (순환 금지). CREDITS_P2 는 creditsFor 가 읽는다 (STORY-P2-A).
+/** 끝낸 외전의 크레딧 줄 (story_ext §5.7). 장 순서(s21…), 이번 회차 flags 또는 지난 회차 ng.past.flags. CREDITS_EX 가 없으면 [] */
+function exCredits(state) {
+  const C = EX.CREDITS_EX;
+  if (!C || typeof C !== 'object') return [];
+  const f = state?.progress?.flags ?? {}, past = state?.ng?.past?.flags ?? {};
+  const rows = Object.keys(C).filter((k) => /^s\d+$/.test(k) && Array.isArray(C[k]) && (f[`ex_${k}_done`] || past[`ex_${k}_done`]))
+    .sort((a, b) => Number(a.slice(1)) - Number(b.slice(1))).flatMap((k) => C[k].filter((s) => typeof s === 'string'));
+  return rows.length ? ['— 외전 —', ...rows, ''] : [];
+}
+
+// ── 확장 스크립트 병합 (MASTER_PLAN §1.17): 동료 스크립트(story_companions.js) · 2부 스크립트(story_p2.js ⊃ story_p2b.js ⊃ story_ex.js)
+//    · 시련(story_trials.js, story_ext §3–§4) · 이야기 보강(story_extra.js: 여관의 밤 · 외전 뒤 마을 반응 · 동료 합류 한마디, §5.3–§5.6) ──
+// 이 모듈들은 story.js 를 import 하지 않는다 (순환 금지). CREDITS_P2 · CREDITS_EX 는 creditsFor 가 읽는다.
+// TRIAL_FRAME (story_trials.js) 은 SCRIPTS 에 넣지 않는다 (각 tr_*_pre 앞머리에 이미 펼쳐져 있다).
 import { SCRIPTS_P2, CREDITS_P2 } from './story_p2.js';   // [hook:p2]
 import { COMPANION_SCRIPTS } from './story_companions.js';   // [hook:cmp]
-Object.assign(SCRIPTS, COMPANION_SCRIPTS, SCRIPTS_P2);   // [hook:cmp] [hook:p2]
+import * as EX from './story_ex.js';   // CREDITS_EX (없으면 외전 크레딧 없음)
+import { SCRIPTS_TRIALS } from './story_trials.js';   // 시련 (STORY-TRIALS)
+import { SCRIPTS_EXTRA } from './story_extra.js';   // 이야기 보강 (STORY-GAPS-B)
+Object.assign(SCRIPTS, COMPANION_SCRIPTS, SCRIPTS_P2, SCRIPTS_TRIALS, SCRIPTS_EXTRA);   // [hook:cmp] [hook:p2]

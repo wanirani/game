@@ -167,7 +167,8 @@ export class StatusTab extends Tab {
     if (nav.up) { if (this.row === 0 && this.col !== E) { this.m.focusTabs(); return; } if (this.row > 0 && this.col !== E) this.row--; }
     if (nav.down) {
       if (this.col !== E && this.row < this.colLen(this.col) - 1) this.row++;
-      else if (this.col < E) { this.col = E; this.row = 0; }
+      // 열 끝에서 아래 = 속성 표. 두 쪽 배치면 속성 표가 같은 쪽에 있을 때만 (1쪽 열 끝에서 ↓ 가 쪽을 넘기고 ↑ 로 돌아오지 못하던 것)
+      else if (this.col < E && this.pageOf(this.col) === this.pageOf(E)) { this.col = E; this.row = 0; }
     }
     if (this.col === E) {
       // 속성 표에서 위: 같은 쪽의 능력치 열 (두 쪽 배치면 방어 열)
@@ -184,7 +185,8 @@ export class StatusTab extends Tab {
   /** 포커스와 무관하게 늘 되는 조작 (탭 막대에 포커스가 있을 때 메뉴 하단 막대가 덧붙인다 — 턴테이블) */
   idleHints() { return turntableHints(this.view); }
   hints() {
-    const pg = this.lay.pages ? [['A', '쪽 넘기기', '위 단추로 능력치 쪽을 넘깁니다']] : [];
+    // 터치 문구는 두지 않는다: 쪽 단추가 스스로 설명되고, 문구를 더하면 터치 안내 줄이 넘쳐 maxWidth 로 눌린다 (아주 크게 0.73배)
+    const pg = this.lay.pages ? [['A', '쪽 넘기기']] : [];
     return [['↑↓←→', '능력치 설명', '능력치를 누르면 설명이 나옵니다'], ...pg, ['Z', '동작 보기', '영웅을 터치하면 공격 동작을 봅니다'], ...turntableHints(this.view)];
   }
 
