@@ -2,6 +2,9 @@
 // 2부 「균열의 순례」 인수 테스트 (world2 §17, MASTER_PLAN §5.1) — owner: P2-QA
 //
 //   node tools/test_part2.mjs --static          §17-2 정적 검사만 (Node, 데이터 모듈 import)
+//                                               + classes_t3 §11.2 대본 검사 (story_ext): SCRIPTS_TRIALS · SCRIPTS_EXTRA 의 명령·화자·라벨·초상화·
+//                                                 길이·액자·[안내]·BANTER·cmp_join, 2부·외전·시련·여관 대본의 모든 H({…}) = 7 영웅 + default,
+//                                                 대사 face 꼬리표('angry'|'shock', 그 화자의 portrait_meta expressions 에 있을 때만)
 //   node tools/test_part2.mjs                   정적 + 실행 검사 4–12 (+ 성능) 전부
 //   node tools/test_part2.mjs --only rooms,bosses   고르기: static rooms gimmicks bosses flow legacy endings items loot mobile perf clears
 //   --boss b_nihil[,…]   보스 검사를 일부 보스만    --verbose  통과 항목도 출력
@@ -297,6 +300,186 @@ async function staticChecks() {
   check(G, 'CREDITS_P2 가 있고 2부 보스·동료 줄을 담는다', Array.isArray(CREDITS_P2) && CREDITS_P2.some((l) => /니힐/.test(l)) && CREDITS_P2.some((l) => /미라/.test(l)), CREDITS_P2?.length);
   check(G, 'SAVE_VERSION === 2', SAVE_VERSION === 2, SAVE_VERSION);
   check(G, '§4.3 기믹 표가 s14–s20 의 모든 방을 덮는다', P2.every((s) => Object.keys(STAGES[s]?.rooms ?? {}).every((r) => ROOM_GIMMICKS[s]?.[r])), P2.map((s) => [s, Object.keys(STAGES[s]?.rooms ?? {}).filter((r) => !ROOM_GIMMICKS[s]?.[r])]));
+  await storyExtChecks(G, imp, { SCRIPTS, NPCS, BOSSES, TRACKS, CMP });
+}
+
+// ═════════════════════════════ classes_t3 §11.2 대본 검사 (story_ext §1–§5) ═════════════════════════════
+// STORY-TRIALS · STORY-GAPS-A · STORY-GAPS-B 의 임시 검사기(scratchpad st/validate_trials · ga/validate · gb/validate)에서
+// 편집 전 사본과 견주는 부분을 뺀, 계속 참이어야 하는 규칙만 옮겼다.
+const HERO7 = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel', 'isolde'];
+const LEN = { hero: 79, npc: 86, narr: 134 };   // story_ext §1 줄 길이 상한 (글자 수)
+async function storyExtChecks(G, imp, { SCRIPTS, NPCS, BOSSES, TRACKS, CMP }) {
+  const [{ SCRIPTS_TRIALS, TRIAL_FRAME }, { SCRIPTS_EXTRA, BANTER }, { TRIALS }, { CHARACTERS }, PM, { SCRIPTS_P2 }, EXM] = await Promise.all([
+    imp('src/data/story_trials.js'), imp('src/data/story_extra.js'), imp('src/data/trials.js'), imp('src/data/characters.js'), imp('src/data/portrait_meta.js'),
+    imp('src/data/story_p2.js'), imp('src/data/story_ex.js'),
+  ]);
+  const asset = (key) => fs.existsSync(path.join(ROOT, 'assets', key + '.webp')) || fs.existsSync(path.join(ROOT, 'assets', key + '.png'));
+  const speaker = (who) => {   // dialogue.js speakerInfo 와 같은 차례 (hero 는 7명 모두)
+    if (!who || who === 'narrator') return { kind: 'narr', portraits: [] };
+    if (who === 'hero') return { kind: 'hero', portraits: HERO7.map((h) => CHARACTERS[h]?.portrait).filter(Boolean) };
+    if (CHARACTERS[who]) return { kind: 'hero', portraits: [CHARACTERS[who].portrait] };
+    if (NPCS[who]) return { kind: 'npc', portraits: [NPCS[who].portrait].filter(Boolean) };
+    if (BOSSES[who]) return { kind: 'npc', portraits: [BOSSES[who].portrait].filter(Boolean) };
+    const cd = CMP.companionDef?.(who);
+    if (cd) return { kind: 'npc', portraits: [cd.portrait].filter(Boolean) };
+    return { kind: 'npc', free: true, portraits: [] };   // 이름만 있는 화자 (speakerInfo 가 문자열 그대로 이름으로 쓴다)
+  };
+  const labelsOf = (L) => { const m = new Map(); L.forEach((l, i) => { if (l?.label && !l.cmd) m.set(l.label, i); }); return m; };
+  const texts = (t) => (typeof t === 'string' ? [t] : t && typeof t === 'object' ? Object.values(t) : []);
+
+  // ── 1. 시련 대본 (story_ext §1–§3 · classes_t3 §2.2) ──
+  {
+    const T14 = Object.keys(TRIALS);
+    const want = new Set(['tr_again_pre', 'tr_again_win', ...T14.flatMap((t) => [`${t}_pre`, `${t}_win`])]);
+    const have = Object.keys(SCRIPTS_TRIALS);
+    check(G, `SCRIPTS_TRIALS id = 시련 ${T14.length}개 × pre/win + tr_again_pre/win (${want.size})`, have.length === want.size && have.every((k) => want.has(k)), { missing: [...want].filter((k) => !SCRIPTS_TRIALS[k]), extra: have.filter((k) => !want.has(k)) });
+    check(G, 'SCRIPTS_TRIALS 가 SCRIPTS 에 그대로 합쳐졌다 (TRIAL_FRAME 은 SCRIPTS 에 없다)', have.every((k) => SCRIPTS[k] === SCRIPTS_TRIALS[k]) && !('TRIAL_FRAME' in SCRIPTS), have.filter((k) => SCRIPTS[k] !== SCRIPTS_TRIALS[k]));
+    const refs = T14.flatMap((t) => ['pre', 'win', 'preAgain', 'winAgain'].filter((k) => !SCRIPTS[TRIALS[t][k]]).map((k) => `${t}.${k}=${TRIALS[t][k]}`));
+    check(G, 'TRIALS 의 pre/win/preAgain/winAgain 대본이 모두 SCRIPTS 에 있다', !refs.length, refs);
+    const noFrame = T14.filter((t) => !TRIAL_FRAME.every((l, i) => SCRIPTS_TRIALS[`${t}_pre`]?.[i] === l));
+    const f0 = TRIAL_FRAME[0], fl = TRIAL_FRAME.filter((l) => l.cmd === 'flag');
+    check(G, '모든 시련 _pre 는 액자(TRIAL_FRAME)로 시작한다: ifFlag(echo_known) → … → flag(echo_known) → L(frame_end)',
+      !noFrame.length && f0?.if === 'echo_known' && f0.cmd === 'goto' && f0.label === 'frame_end' && fl.length === 1 && fl[0].key === 'echo_known' && TRIAL_FRAME.at(-1)?.label === 'frame_end', noFrame);
+    const PRE = new Set(['cg', 'flash', 'shake', 'music', 'sfx', 'flag', 'goto']), WIN = new Set([...PRE, 'bg', 'title', 'wait']);
+    const bad = [], seen = new Set();
+    let ab = 0;
+    for (const [sid, L] of Object.entries(SCRIPTS_TRIALS)) {
+      const isPre = sid.endsWith('_pre'), cmds = isPre ? PRE : WIN, labels = labelsOf(L);
+      if (!Array.isArray(L) || !L.length) { bad.push(`${sid}: 비었다`); continue; }
+      L.forEach((l, i) => {
+        const at = `${sid}[${i}]`;
+        if (l.if !== undefined && !(typeof l.if === 'string' && /^!?[a-z0-9_]+$/.test(l.if))) bad.push(`${at}: 조건 ${JSON.stringify(l.if)}`);
+        if (l.cmd) {
+          if (!cmds.has(l.cmd)) bad.push(`${at}: '${l.cmd}' 는 ${isPre ? '_pre(대화 덧창)' : '_win(컷신)'} 에서 못 쓴다`);
+          if (l.cmd === 'goto' && !labels.has(l.label)) bad.push(`${at}: goto ${l.label}`);
+          if (l.cmd === 'flag' && l.key !== 'echo_known') bad.push(`${at}: 게임 플래그 ${l.key} (시련 대본은 echo_known 만)`);
+          if (l.cmd === 'music' && !TRACKS[l.id]) bad.push(`${at}: music ${l.id}`);
+          if (l.cmd === 'bg' && !asset('bg/' + l.id)) bad.push(`${at}: bg ${l.id}`);
+          if (l.cmd === 'cg' && l.id && !asset('cg/' + l.id)) bad.push(`${at}: cg ${l.id}`);
+          return;
+        }
+        if (l.label && !l.text) return;
+        if (l.goto && !l.text) { if (!labels.has(l.goto)) bad.push(`${at}: goto ${l.goto}`); return; }
+        if (l.choice) { bad.push(`${at}: 선택지`); return; }
+        for (const k of Object.keys(l)) if (!['who', 'text', 'name', 'portrait', 'side', 'if', 'face'].includes(k)) bad.push(`${at}: 모르는 키 ${k}`);
+        const sp = speaker(l.who);
+        if (sp.kind === 'hero' && l.who === 'hero' && typeof l.text !== 'string') bad.push(`${at}: 한 영웅의 시련 대본에 H({…})`);
+        if (l.portrait && !asset(l.portrait)) bad.push(`${at}: portrait ${l.portrait}`);
+        for (const p of l.portrait ? [] : sp.portraits) if (!asset(p)) bad.push(`${at}: 화자 초상화 ${p}`);
+        const first = !seen.has(l); seen.add(l);   // 액자 줄은 14개 _pre 가 같은 객체를 쓴다 — 한 번만 센다
+        if (l.who === 'npc_alberto' && first) { ab++; if (!String(l.text).startsWith('(안쪽 방에서) ')) bad.push(`${at}: 알베르토 줄이 AB() 꼴이 아니다`); }
+        for (const t of texts(l.text)) {
+          if (/\[TIP\]/.test(t)) bad.push(`${at}: [TIP]`);
+          if (/\s{2,}|^\s|\s$/.test(t)) bad.push(`${at}: 공백`);
+          if ([...t].length > LEN[sp.kind]) bad.push(`${at}: ${sp.kind} ${[...t].length} > ${LEN[sp.kind]}자`);
+        }
+      });
+      if (sid.endsWith('_win') && sid !== 'tr_again_win') {
+        const last = L.at(-1), unlock = sid.endsWith('_1_win') ? '초월의 길이 열렸다' : '비전의 길이 열렸다';
+        if (!(last?.who === 'narrator' && /^\[안내\] /.test(last.text) && String(last.text).includes(unlock))) bad.push(`${sid}: 마지막 줄이 「[안내] … ${unlock}」 가 아니다`);
+      }
+      for (const l of L) if (l.if && l.cmd === 'goto') { const k = L.findIndex((q) => q.label === l.label && !q.cmd); if (L.slice(k + 1).some((q) => q.cmd === 'flag')) bad.push(`${sid}: 분기 도착점 ${l.label} 뒤에 flag`); }
+    }
+    if (ab !== 4) bad.push(`알베르토 AB() 줄 ${ab}개 (액자 1 + kael2 · victor2 · azel1 = 4, story_ext §3.1)`);
+    const src = fs.readFileSync(path.join(ROOT, 'src/data/story_trials.js'), 'utf8');
+    if (/^\s*import\b/m.test(src)) bad.push('story_trials.js 가 다른 모듈을 import 한다 (story.js 순환)');
+    check(G, `시련 대본 ${Object.keys(SCRIPTS_TRIALS).length}개: 명령(_pre/_win 별)·라벨·화자·초상화·bg/cg/음악·길이 ${LEN.hero}/${LEN.npc}/${LEN.narr}·[TIP] 없음·[안내] 끝줄·알베르토 4줄·분기 뒤 flag 없음`, !bad.length, bad);
+  }
+
+  // ── 2. 여관의 밤 · 마을 반응 · 합류 한마디 (story_ext §5.3 · §5.4 · §5.6) ──
+  {
+    const KNOWN = new Set(['give', 'gold', 'flag', 'quest', 'unlockChar', 'recruit', 'shake', 'flash', 'music', 'sfx', 'goto', 'relic', 'cg']);
+    const bad = [];
+    for (const [sid, L] of Object.entries(SCRIPTS_EXTRA)) {
+      if (!Array.isArray(L) || !L.length) { bad.push(`${sid}: 비었다`); continue; }
+      if (SCRIPTS[sid] !== L) bad.push(`${sid}: SCRIPTS 에 합쳐지지 않았다`);
+      const labels = labelsOf(L);
+      L.forEach((l, i) => {
+        const at = `${sid}[${i}]`;
+        if (l.label && !l.cmd) return;
+        if (l.cmd) { if (!KNOWN.has(l.cmd)) bad.push(`${at}: 모르는 명령 ${l.cmd}`); if (l.cmd === 'goto' && !labels.has(l.label)) bad.push(`${at}: goto ${l.label}`); if (l.cmd === 'flag') bad.push(`${at}: flag ${l.key} (이 대본들은 플래그를 쓰지 않는다)`); return; }
+        if (l.if !== undefined && !(typeof l.if === 'string' || HERO7.includes(l.if?.char))) bad.push(`${at}: 조건 ${JSON.stringify(l.if)}`);
+        const sp = speaker(l.who);
+        if (sp.free) bad.push(`${at}: 화자 ${l.who} (CHARACTERS·NPCS·BOSSES·동료에 없음)`);
+        if (l.portrait && !asset(l.portrait)) bad.push(`${at}: portrait ${l.portrait}`);
+        for (const t of texts(l.text)) if ([...t].length > LEN[sp.kind]) bad.push(`${at}: ${sp.kind} ${[...t].length} > ${LEN[sp.kind]}자`);
+      });
+    }
+    check(G, `SCRIPTS_EXTRA ${Object.keys(SCRIPTS_EXTRA).length}개: SCRIPTS 에 합쳐짐 · 명령·라벨·화자·초상화·길이 · 플래그 쓰지 않음`, !bad.length, bad);
+    // BANTER 표
+    const bb = [];
+    for (const b of BANTER) {
+      if (!SCRIPTS_EXTRA[b.id] || SCRIPTS[b.id] !== SCRIPTS_EXTRA[b.id]) { bb.push(`${b.id}: 대본 없음`); continue; }
+      if (b.pair === 'all') continue;
+      if (!Array.isArray(b.pair) || !b.pair.every((h) => HERO7.includes(h))) { bb.push(`${b.id}: pair ${b.pair}`); continue; }
+      const who = new Set(SCRIPTS_EXTRA[b.id].filter((l) => l.who && l.who !== 'narrator').map((l) => l.who));
+      if (!([...who].every((w) => b.pair.includes(w)) && b.pair.every((h) => who.has(h)))) bb.push(`${b.id}: 화자 ${[...who]} ≠ pair ${b.pair}`);
+      for (const h of ['lia', 'azel', 'isolde']) if (b.pair.includes(h) && !(b.req?.flags ?? []).includes(h + '_joined')) bb.push(`${b.id}: ${h}_joined 조건 없음`);
+      const sides = SCRIPTS_EXTRA[b.id].filter((l) => HERO7.includes(l.who)).map((l) => l.side);
+      if (!sides.every((x, k) => k === 0 || x !== sides[k - 1])) bb.push(`${b.id}: 좌우가 번갈지 않는다 ${sides}`);
+    }
+    check(G, `BANTER ${BANTER.length}행: 대본 있음 · pair 의 영웅만 말함 · 합류 플래그 조건(리아·아젤·이졸데) · 좌우 번갈아`, BANTER.length === 14 && !bb.length, bb);
+    // 모두의 수확: 플레이 중 헌터의 줄은 빠지고, 합류하지 않은 헌터는 말하지 않는다
+    const H = SCRIPTS_EXTRA.inn_all_harvest ?? [];
+    const play = (charId, flags) => { const lab = labelsOf(H), out = []; for (let i = 0; i < H.length; i++) { const l = H[i]; if (l.label && !l.cmd) continue; if (l.if) { const c = typeof l.if === 'string' ? (l.if.startsWith('!') ? !flags[l.if.slice(1)] : !!flags[l.if]) : l.if.char === charId; if (!c) continue; } if (l.cmd === 'goto') { i = lab.get(l.label); continue; } out.push(l.who); } return out; };
+    const all = { lia_joined: true, azel_joined: true, isolde_joined: true, p2_done: true };
+    const hv = HERO7.filter((h) => { const o = play(h, all); return o.includes(h) || !HERO7.filter((x) => x !== h).every((x) => o.includes(x)); });
+    const o2 = play('kael', { p2_done: true });
+    check(G, 'inn_all_harvest: 플레이 중 헌터는 빠지고 나머지 여섯이 말함 · 합류 전 헌터(리아·아젤·이졸데)는 말하지 않음', H.length > 0 && !hv.length && !o2.includes('isolde') && !o2.includes('lia') && !o2.includes('azel') && o2.includes('sera'), { hv, o2 });
+    // 동료 합류 한마디 = 자기 장면이 없는 1부 동료 11 (UNLOCK_ORDER 차례, 가웨인·모르스 먼저)
+    const joins = Object.keys(SCRIPTS_EXTRA).filter((k) => k.startsWith('cmp_join_')).map((k) => k.slice(9));
+    const P1 = (CMP.UNLOCK_ORDER ?? []).map((x) => (Array.isArray(x) ? x[0] : x)).filter((id) => CMP.companionDef?.(id)?.part === 1);
+    const SKIP = ['mt_warhorse', 'mt_giantbat', 'mt_direwolf'];
+    check(G, 'cmp_join_<id> = 자기 장면 없는 1부 동료 11 (가웨인·모르스 먼저, 얻기 대본 없음)', joins.length === 11 && joins.every((id) => P1.includes(id) && !SKIP.includes(id) && !CMP.companionDef(id)?.obtain?.script) && P1.filter((id) => !SKIP.includes(id)).every((id) => joins.includes(id)) && joins[0] === 'gd_knight' && joins[1] === 'gd_reaper', { joins, P1 });
+    // story_ext §5.3/§5.4/§5.6 문구가 그대로 (spec 코드 블록의 한글 문자열 = story_extra.js 의 대사 문자열)
+    const spec = fs.readFileSync(path.join(ROOT, 'docs/specs/story_ext.md'), 'utf8');
+    const lines = spec.split('\n');
+    const blk = (start) => { const s0 = lines.findIndex((l) => l.startsWith(start)); if (s0 < 0) return ''; let e = s0; while (e < lines.length && !lines[e].startsWith('```')) e++; return lines.slice(s0, e).join('\n'); };
+    const lits = (src) => [...src.matchAll(/'((?:[^'\\\n]|\\.)*)'/g)].map((m) => m[1]).filter((x) => /[가-힣]/.test(x));
+    const specStr = new Set(lits([blk('inn_kael_victor: ['), blk('npc_hadwin_ex21:'), blk('cmp_join_gd_knight: [')].join('\n')));
+    const xs = fs.readFileSync(path.join(ROOT, 'src/data/story_extra.js'), 'utf8');
+    const mine = new Set(lits(xs.slice(xs.indexOf('export const SCRIPTS_EXTRA')).replace(/\/\/.*$/gm, '')));
+    check(G, `SCRIPTS_EXTRA 의 대사가 story_ext §5.3 · §5.4 · §5.6 그대로 (${specStr.size}줄)`, specStr.size > 0 && [...specStr].every((x) => mine.has(x)) && [...mine].every((x) => specStr.has(x)), { notInCode: [...specStr].filter((x) => !mine.has(x)).slice(0, 5), notInSpec: [...mine].filter((x) => !specStr.has(x)).slice(0, 5) });
+    check(G, 'CREDITS_EX = 외전 s21–s25 의 크레딧 줄 (story_ext §5.7)', ['s21', 's22', 's23', 's24', 's25'].every((k) => Array.isArray(EXM.CREDITS_EX?.[k]) && EXM.CREDITS_EX[k].length && EXM.CREDITS_EX[k].every((r) => / — /.test(r))), EXM.CREDITS_EX);
+  }
+
+  // ── 3. H({…}): 2부·외전·시련·여관 대본의 텍스트 객체 = 7 영웅 + default (빈 문자열 없음) ──
+  //    1부 대본(story.js 본문)은 이졸데 키 없이 default 로 돌아가는 옛 규칙 — 정보로만 센다. 합류 한마디 같은 두 줄짜리 문자열 대본은 객체가 없다
+  {
+    const scope = { ...SCRIPTS_P2, ...SCRIPTS_TRIALS, ...SCRIPTS_EXTRA };
+    const bad = [];
+    let n = 0;
+    for (const [sid, L] of Object.entries(scope)) (Array.isArray(L) ? L : []).forEach((l, i) => {
+      if (!l || l.text == null || typeof l.text === 'string') return;
+      n++;
+      if (Array.isArray(l.text)) { bad.push(`${sid}[${i}]: text 가 배열`); return; }
+      const miss = [...HERO7, 'default'].filter((k) => typeof l.text[k] !== 'string' || !l.text[k]);
+      const extra = Object.keys(l.text).filter((k) => ![...HERO7, 'default'].includes(k));
+      if (miss.length || extra.length) bad.push(`${sid}[${i}] (${l.who}): 빠짐 ${miss} · 남음 ${extra}`);
+    });
+    let p1 = 0;
+    for (const [sid, L] of Object.entries(SCRIPTS)) if (!(sid in scope)) for (const l of Array.isArray(L) ? L : []) if (l?.text && typeof l.text === 'object' && typeof l.text.isolde !== 'string') p1++;
+    check(G, `2부·외전·시련·여관 대본의 H({…}) ${n}개 = 7 영웅 + default (1부 대본의 이졸데 없는 객체 ${p1}개는 default 로 — 정보)`, n > 0 && !bad.length, bad);
+  }
+
+  // ── 4. 대사 face 꼬리표: 'angry' | 'shock' 만, 그 화자의 초상화가 그 표정 파일을 가질 때만 (portrait_meta expressions) ──
+  {
+    const meta = PM.PORTRAIT_META ?? {};
+    const bad = [];
+    let n = 0;
+    for (const [sid, L] of Object.entries(SCRIPTS)) (Array.isArray(L) ? L : []).forEach((l, i) => {
+      if (!l || l.face === undefined) return;
+      n++;
+      const at = `${sid}[${i}] (${l.who})`;
+      if (l.face !== 'angry' && l.face !== 'shock') { bad.push(`${at}: face '${l.face}'`); return; }
+      const sp = speaker(l.who);
+      const keys = l.portrait ? [PM.baseKeyOf ? PM.baseKeyOf(l.portrait) : l.portrait] : sp.portraits;
+      if (!keys.length) { bad.push(`${at}: 초상화 없는 화자에 face`); return; }
+      for (const k of keys) if (!(meta[k]?.expressions ?? []).includes(l.face)) bad.push(`${at}: ${k} 에 '${l.face}' 표정이 없다`);
+      for (const k of keys) if ((meta[k]?.expressions ?? []).includes(l.face) && !asset(`${k}__${l.face}`)) bad.push(`${at}: ${k}__${l.face} 파일 없음`);
+    });
+    check(G, `대사 face 꼬리표 ${n}개: 'angry'|'shock' 이고 화자 초상화(portrait_meta.expressions)에 그 표정 파일이 있다`, !bad.length, bad);
+  }
 }
 
 // ═════════════════════════════ 실행 검사 (world2 §17 4–12 + 성능) ═════════════════════════════

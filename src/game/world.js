@@ -67,6 +67,14 @@ const TOP_EDGE_R = { x: 0, y: -2000, w: 0, h: 2004 };
 const TOP_EDGE = (vw) => { TOP_EDGE_R.w = vw; return TOP_EDGE_R; };
 /** 시련(mode 'trial') 에서 생기는 줍기 종류 (classes_t3 §9.2) — 골드·아이템·문서·1UP 은 생기지 않는다 */
 const TRIAL_PICKUPS = new Set(['heart', 'food', 'sub', 'powerup']);
+/** 각성 중 생긴 엔티티의 특성 부가 공격(attack/atk 에 proc: true, 상한 없음)에 그 각성의 보스 상한을 싣는다 (공유 객체를 고치지 않게 복사) */
+function capProcAttack(e, cf) {
+  try {
+    const a = e.attack, b = e.atk;
+    if (a && typeof a === 'object' && a.proc && !a.capFn && a.team === 'player') e.attack = { ...a, capFn: cf };
+    if (b && typeof b === 'object' && b.proc && !b.capFn && b.team === 'player') e.atk = { ...b, capFn: cf };
+  } catch { /* 읽기 전용 속성: 그대로 둔다 */ }
+}
 export function styleRank(n) { let r = STYLE_RANKS[0]; for (const s of STYLE_RANKS) if (n >= s.n) r = s; return r; }
 
 export class World {
@@ -365,7 +373,12 @@ export class World {
   makeItem(id, opts) { return makeItem(id, opts); }
 
   // ─────────────────────────── 엔티티 ───────────────────────────
-  add(e) { e.world = this; this.entities.push(e); return e; }
+  add(e) {
+    e.world = this; this.entities.push(e);
+    const cf = this.procCapFn ?? this.awProcCap;   // 각성 중 생긴 proc 탄·이펙트: 나중에 맞아도 그 각성의 보스 상한을 쓴다 (awaken.js)
+    if (cf) capProcAttack(e, cf);
+    return e;
+  }
   spawnProjectile(o) { return this.add(new Projectile(o)); }
   spawnEnemy(id, fx, fy, opts = {}) {
     const roll = this.rng ? this.rng.next() : Math.random();   // [hook:plat] 일일 도전 시드
@@ -629,7 +642,12 @@ export class World {
     if (this.combo.n % 25 === 0) { if (!SFX.combo_milestone) audio.sfx('combo'); bus.emit('combo', { count: this.combo.n }); }
     if (COMBO_MILESTONES.has(this.combo.n)) bus.emit('comboMilestone', { n: this.combo.n });   // [hook:feel]
     this.style?.onHit?.(info, attack, target);   // [hook:feel]
-    if (!guardian && attack?.owner === p && !attack.proc && p.perks?.onHit) firePerks(p.perks.onHit, p, target, info, attack, this);
+    if (!guardian && attack?.owner === p && !attack.proc && p.perks?.onHit) {
+      // 각성 타격이 부른 특성 부가 타격은 그 각성의 보스 상한(capFn)을 함께 쓴다 (combat.hitTarget 이 procCapFn 을 읽는다)
+      const cf = typeof attack.capFn === 'function' && attack.tags?.includes('awaken') ? attack.capFn : null, prev = this.procCapFn;
+      if (cf) this.procCapFn = cf;
+      try { firePerks(p.perks.onHit, p, target, info, attack, this); } finally { if (cf) this.procCapFn = prev; }
+    }
     this.awOnHit(target, info, attack);   // [hook:awaken]
     if (info.killed) this.overkillSlowmo(target, info, attack);   // [hook:feel]
     this.companions?.onHit(target, info, attack);   // [hook:cmp]

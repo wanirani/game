@@ -11,6 +11,8 @@
 //  canAwaken(p, world) → bool          castAwakening(p, world, {force}) → bool (게이지 소모·무적·적 정지·컷인 → 감독)
 //  registerDirector(charId, fn)         영웅별 각성 감독 등록 (AWAKEN-DIR-A/B 가 import 시 등록해도 되고, AWAKEN_DIRECTOR(_B) 표로 줘도 된다)
 //  bossCapFn(world)                     각성 한 번의 보스 피해 상한 함수 (attack.capFn; impact.modDamage 가 적용)
+//                                       감독이 도는 동안 world.awProcCap = 그 함수 → 특성 부가 타격(attack.proc)도 같은 상한을 나눠 쓴다
+//                                       (combat.hitTarget; 그동안 생긴 proc 탄·이펙트는 world.add 가 상한을 실어 둔다)
 //  prepareAwakening(p, world)           컷인 그림 미리 받기·디코드 (handleUltInput 이 스테이지마다 처음 한 번 부른다)
 //  loadAwakenDirectors() → Promise<bool> 감독 모듈 두 개를 동적 import 로 받는다 (lazy 조각; 스테이지 진입 때 스스로 부른다,
 //                                       main.js·월드맵의 미리 받기에서 불러도 된다). awakenDirectorsReady() → bool
@@ -386,6 +388,8 @@ function startAwakening(cast, aborted) {
   if (aborted || world.game?.world !== world || p.dead) { finishSession(cast, 'aborted'); return; }
   const v = makeContext(cast);
   cast.v = v;
+  // 특성 부가 타격(proc)도 이 각성의 보스 30% 상한을 함께 쓴다 (combat.hitTarget · world.add 가 읽는다; requests_f ULT-AWAKEN verify)
+  world.awProcCap = v.cap;
   // 진행자: 감독이 끝날 때까지 연출 상태를 붙잡고, 끝나면 되돌린다
   cast.mgr = world.add(new SkillFx({
     life: R.maxDirector + 1, z: -3, w: 1, h: 1,
@@ -421,6 +425,7 @@ function finishSession(cast, why) {
   if (cast.mgr) cast.mgr.dead = true;
   if (SESSION === cast) SESSION = null;
   if (world) {
+    if (v && world.awProcCap === v.cap) world.awProcCap = null;
     world.cutscene = false; world.freezeEnemies = false; world.hudHidden = false;
     if (world.run) { world.run.sp = 0; world.run.aw = 0; }   // 마지막 프레임의 각성 타격이 채운 SP 도 비운다
     const lb = world.letterbox || 0;

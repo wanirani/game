@@ -74,6 +74,12 @@ export function hitTarget(world, attack, target, hx, hy) {
     if (target._hits.size > 64) target._hits.delete(target._hits.keys().next().value);
   }
   const src = attack.stats || attack.owner?.stats;
+  // 각성 중 특성 부가 타격(proc)은 그 각성의 보스 30% 상한을 함께 쓴다 — 각성 타격이 부른 proc(world.procCapFn, world.onPlayerHit)
+  // 또는 감독이 도는 동안의 proc(world.awProcCap, awaken.js). 상한이 다 차면 1 / 0 ('저항') — requests_f ULT-AWAKEN verify (32.7 %)
+  if (attack.proc && !attack.capFn && attack.team === 'player') {
+    const cf = world.procCapFn ?? world.awProcCap;
+    if (typeof cf === 'function') attack = { ...attack, capFn: cf };
+  }
   if (attack.team === 'player' && attack.owner?.kind === 'player') { attack = classPerkAttack(attack, target, world); if (!attack.proc && attack.owner.perks?.onAttack) attack = perkAttack(attack.owner.perks.onAttack, attack.owner, attack, target, world); }
   const pi = preImpact(world, attack, target, rehit);
   attack = pi.attack;
