@@ -124,7 +124,7 @@ const heroContrast = (s) => s.eval(() => {
     const cw = x1 - x0, ch = y1 - y0;
     if (cw < 4 || ch < 4) return { bands, offscreen: true };
     const A = grab(x0, y0, cw, ch);
-    if (backing) p.draw = function (ctx, world) { this.drawBacking(ctx, world); }; else p.hidden = true;
+    if (backing) p.draw = function (ctx, world) { if (!world.backingLayer) this.drawBacking(ctx, world); }; else p.hidden = true;   // world.backingLayer: world draws it
     window.__qaStep(0, true);
     const Bk = grab(x0, y0, cw, ch);
     if (backing) delete p.draw; else p.hidden = false;

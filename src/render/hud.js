@@ -397,14 +397,14 @@ function drawScore(ctx, r, world, hero, p, run, T, L) {
 
 // ── 보스 체력바 (아래 칸 48 px / 위쪽 칸 36 px): 이름 왼쪽, 칭호 오른쪽 (칸이 360 px 보다 좁으면 칭호 숨김;
 //    터치는 칭호가 하한 크기로 제 몫(38 %)에 다 들어갈 때만 — 가로로 눌러 줄이지 않는다) ──
-const BT = { title: '', size: 0, w: 0 };   // 칭호 너비 기억 (매 프레임 재지 않게)
+const BT = { title: '', size: 0, ep: -1, w: 0 };   // 칭호 너비 기억 (매 프레임 재지 않게; 글꼴이 늦게 오면 다시 잰다)
 function drawBossBar(ctx, r, b, L) {
   if (!b || r.w < 60) return;
   const F = L?.textMin ?? 0, ts = Math.max(11, F);
   const x = r.x, w = r.w;
   let title = w >= 360 ? b.def.title : null;
   if (title && F > 0) {
-    if (BT.title !== title || BT.size !== ts) { ctx.font = font(ts, 500); BT.title = title; BT.size = ts; BT.w = ctx.measureText(title).width; }
+    if (BT.title !== title || BT.size !== ts || BT.ep !== fontEpoch) { ctx.font = font(ts, 500); BT.title = title; BT.size = ts; BT.ep = fontEpoch; BT.w = ctx.measureText(title).width; }
     if (BT.w > w * 0.38) title = null;
   }
   const ny = r.y + 15, by = r.y + r.h - 16;
@@ -431,23 +431,24 @@ function bandGradient(ctx, r) {
  * 칸 너비(maxW)에 맞춰 글자 크기를 줄여 그린다: 원래 크기의 75 % 까지 (터치는 글자 하한 F 아래로는 줄이지 않는다),
  * 그래도 넘치면 뒤를 말줄임(…)으로 자른다. 말줄임 결과는 (글자, 크기, 너비)마다 한 번만 계산한다 (배너는 몇 초 동안 매 프레임 그린다)
  */
-const FIT = { str: '', size: 0, maxW: 0, font: '', out: '' };
-function fitText(ctx, str, x, y, maxW, o, F = 0) {
+// 줄마다 따로 기억한다 (배너 글자와 부제가 둘 다 넘치면 한 칸을 번갈아 덮어써 매 프레임 다시 재게 되므로). 글꼴 세대도 키에 넣는다
+const FIT = [0, 1].map(() => ({ str: '', size: 0, maxW: 0, font: '', ep: -1, out: '' }));
+function fitText(ctx, str, x, y, maxW, o, F = 0, line = 0) {
   ctx.font = font(o.size, o.weight, o.family);
   const w = ctx.measureText(str).width;
   if (w <= maxW) { text(ctx, str, x, y, o); return; }
   const size = Math.max(Math.ceil(o.size * 0.75), Math.min(o.size, F), Math.floor(o.size * maxW / w));
-  const f = font(size, o.weight, o.family);
-  if (FIT.str !== str || FIT.size !== size || FIT.maxW !== maxW || FIT.font !== f) {
+  const f = font(size, o.weight, o.family), C = FIT[line];
+  if (C.str !== str || C.size !== size || C.maxW !== maxW || C.font !== f || C.ep !== fontEpoch) {
     ctx.font = f;
     let s = str;
     if (ctx.measureText(s).width > maxW) {
       while (s.length > 1 && ctx.measureText(s + '…').width > maxW) s = s.slice(0, -1);
       s = s.trimEnd() + '…';
     }
-    FIT.str = str; FIT.size = size; FIT.maxW = maxW; FIT.font = f; FIT.out = s;
+    C.str = str; C.size = size; C.maxW = maxW; C.font = f; C.ep = fontEpoch; C.out = s;
   }
-  text(ctx, FIT.out, x, y, { ...o, size, maxWidth: maxW });
+  text(ctx, C.out, x, y, { ...o, size, maxWidth: maxW });
 }
 const STAGE_CARD = { size: 40, style: 'blood', drips: 0.6, t: 0 };
 const CLEAR_CARD = { size: 40, style: 'gold' };
@@ -480,7 +481,7 @@ function drawBanner(ctx, r, world, bn, L) {
   } else {
     fitText(ctx, bn.text, cx, r.y + (bn.big ? 36 : 34), maxW, { size: bn.big ? 38 : 30, align: 'center', weight: 800, family: bn.big ? FONT.title : FONT.logo, color: bn.color, ow: 5 }, F);
   }
-  if (bn.sub) fitText(ctx, bn.sub, cx, subY, maxW, { size: Math.max(stageCard ? 13 : 14, F), align: 'center', weight: 600, color: '#e8dcc8' }, F);
+  if (bn.sub) fitText(ctx, bn.sub, cx, subY, maxW, { size: Math.max(stageCard ? 13 : 14, F), align: 'center', weight: 600, color: '#e8dcc8' }, F, 1);
   ctx.restore();
 }
 

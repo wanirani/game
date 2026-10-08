@@ -8,6 +8,8 @@ import { addItem, ensureWeapon } from './inventory.js';
 import { MAX_LEVEL } from './stats.js';
 import { ensureCompanionState, migrateCompanions } from './companion_state.js';   // [hook:cmp]
 import { normalizeNg } from './ngplus.js';   // [hook:ng] 회차 state.ng 정리 (docs/specs/ngplus.md §5.2)
+import { ASCENSIONS, HIDDEN_OF, unlocksOf } from '../data/ascensions.js';   // 초월·비전 (classes_t3 §1.2)
+import { TRIALS } from '../data/trials.js';
 
 // 세이브 스키마 버전 (MASTER_PLAN §1.6). 2 = 제2부: progress.shards/hearts + state.companions (동료) + hero.companions (편성)
 // migrateState 는 버전과 상관없이 매번 돌며 멱등이다 (두 번 돌려도 결과가 같다). 모르는 필드는 절대 지우지 않는다.
@@ -82,6 +84,56 @@ export function storyJoinedChars(state) {
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const EQUIP_SLOTS = ['weapon', 'head', 'body', 'cloak', 'acc1', 'acc2'];
 
+/**
+ * 초월·비전·시련 필드 정리 (classes_t3 §1.2, 멱등). SAVE_VERSION 은 그대로 (모르는 필드는 옛 클라이언트에서도 남는다).
+ * 옛 세이브(필드 없음)는 건드리지 않는다 — 없는 필드는 기본값(asc null · ascUnlocked [] · trials {} · ascSp false · ascSlot null)으로 읽힌다.
+ *  1. trials: 객체가 아니면 {} · TRIALS 에 없거나 다른 영웅의 키는 버림 · 기록은 {done, at, best, tries} 로
+ *  2. ascUnlocked: 이 영웅의 ASCENSIONS id 만, 중복 없이 + 통과한 시련이 여는 id 합치기 (목록을 잃은 세이브 복구)
+ *  3. asc: 모르는 id · 다른 영웅 · 지금 2차의 길이 아님 · (아케이드가 아니면) 해금 안 됨 → null
+ *  4. ascSp: 불리언 · ascSlot: {i:0..3, prev: 문자열|null} 이 아니면 null
+ *  5. 해금된 비전 기술 1레벨이 없으면 다시 준다 (옛 앱의 스킬 초기화가 환급해 버린 경우, §1.3)
+ */
+function migrateAsc(h, id, s) {
+  const own = (k) => Object.hasOwn(h, k);
+  if (own('trials')) {
+    const src = isObj(h.trials) ? h.trials : {};
+    const out = {};
+    for (const tid of Object.keys(src)) {
+      if (!Object.hasOwn(TRIALS, tid) || TRIALS[tid].charId !== id) continue;
+      const v = isObj(src[tid]) ? src[tid] : {};
+      out[tid] = {
+        done: !!v.done,
+        at: Number.isFinite(v.at) ? v.at : 0,
+        best: Number.isFinite(v.best) && v.best > 0 ? v.best : null,
+        tries: Number.isFinite(v.tries) && v.tries > 0 ? Math.floor(v.tries) : 0,
+      };
+    }
+    h.trials = out;
+  }
+  const derived = [];
+  if (isObj(h.trials)) for (const tid of Object.keys(h.trials)) if (h.trials[tid].done) derived.push(...unlocksOf(tid));
+  if (own('ascUnlocked') || derived.length) {
+    const list = [...(Array.isArray(h.ascUnlocked) ? h.ascUnlocked : []), ...derived];
+    h.ascUnlocked = [...new Set(list.filter((x) => typeof x === 'string' && Object.hasOwn(ASCENSIONS, x) && ASCENSIONS[x].charId === id))];
+  }
+  if (own('asc') && h.asc !== null) {
+    const A = typeof h.asc === 'string' && Object.hasOwn(ASCENSIONS, h.asc) ? ASCENSIONS[h.asc] : null;
+    const unlocked = Array.isArray(h.ascUnlocked) && h.ascUnlocked.includes(h.asc);
+    if (!A || A.charId !== id || !A.parents.includes(h.classId) || (!s.arcade && !unlocked)) h.asc = null;
+  }
+  if (own('ascSp')) h.ascSp = !!h.ascSp;
+  if (own('ascSlot') && h.ascSlot !== null) {
+    const v = h.ascSlot;
+    h.ascSlot = isObj(v) && Number.isInteger(v.i) && v.i >= 0 && v.i <= 3 && (v.prev === null || typeof v.prev === 'string') ? { i: v.i, prev: v.prev } : null;
+  }
+  const hid = HIDDEN_OF[id];
+  if (hid && Array.isArray(h.ascUnlocked) && h.ascUnlocked.includes(hid)) {
+    if (!isObj(h.skills)) h.skills = {};
+    const sk = ASCENSIONS[hid].skill;
+    if (!(h.skills[sk] > 0)) h.skills[sk] = 1;
+  }
+}
+
 /** 구버전·손상된 세이브 보정 (누락 필드 채움, 잘못된 값 교정 — 불러온 직후 게임이 멈추지 않도록) */
 export function migrateState(s) {
   if (typeof s.difficulty !== 'string' || !Object.hasOwn(DIFF, s.difficulty)) s.difficulty = 'normal';
@@ -115,6 +167,7 @@ export function migrateState(s) {
     if (!Number.isFinite(h.exp)) h.exp = 0;
     if (!Number.isFinite(h.sp)) h.sp = 0;
     if (!CLASSES[h.classId] || CLASSES[h.classId].charId !== id) h.classId = ch.rootClass;
+    migrateAsc(h, id, s);   // 초월·비전·시련 필드 (classes_t3 §1.2)
     if (!isObj(h.skills)) h.skills = {};
     if (!Array.isArray(h.slots)) h.slots = [null, null, null, null];
     while (h.slots.length < 4) h.slots.push(null);

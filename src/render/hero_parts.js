@@ -729,7 +729,7 @@ const WING_COL = {
  */
 export function drawWing(type, spread, flap, far, dark) {
   const c = G.c, t = G.t;
-  let cols = WING_COL[type] || WING_COL.bat;
+  let cols = (Array.isArray(G.wingCol) && G.wingCol.length >= 3 ? G.wingCol : null) ?? WING_COL[type] ?? WING_COL.bat;   // 초월 lookTop.wingCol (hero_puppet.puppetFor 가 G.wingCol 에 둔다)
   if (type === 'seraph' && far) cols = ['#241832', '#4a2a6a', '#b060ff'];
   const [c0, c1, gc] = cols;
   c.save();

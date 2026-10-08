@@ -266,6 +266,9 @@ export function summarize(s) {
     charId: s.charId ?? null, level: hero?.level ?? 1, classId: hero?.classId ?? null, chapter: s.progress?.chapter ?? 0,
     playTime: s.stats?.playTime ?? 0, difficulty: s.difficulty ?? null, gold: s.gold ?? 0, clientSavedAt: s.savedAt ?? null,
     ...(ng ? { ng } : {}),
+    // 초월·비전 id (classes_t3 §1.3) — 있을 때만: 서버 saveSummary(배포 안 함)는 asc 를 모르므로 초월 없는 세이브의 요약은 서버 것과 같게 둔다.
+    // 서버가 준 요약에는 없을 수 있다 → cloud_ui 는 ascName(sum.asc) ?? CLASSES[classId].name
+    ...(typeof hero?.asc === 'string' ? { asc: hero.asc } : {}),
   };
 }
 

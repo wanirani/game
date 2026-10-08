@@ -6,6 +6,7 @@ import { SKILLS } from '../data/skills.js';
 import { DOCS } from '../data/lore.js';
 import { findItem } from './inventory.js';
 import { companionAuraStats } from './companion_state.js';   // [hook:cmp]
+import { ascOf, heroChain, TOP_KEYS } from '../data/ascensions.js';   // 초월·비전 (classes_t3 §2.6)
 
 export const EQUIP_SLOTS = ['weapon', 'head', 'body', 'cloak', 'acc1', 'acc2'];
 export const SLOT_NAMES = { weapon: '무기', head: '머리', body: '몸', cloak: '망토', acc1: '장신구1', acc2: '장신구2' };
@@ -56,8 +57,8 @@ export function computeStats(state, hero) {
   for (const k in ch.base) s[k] = ch.base[k] + (ch.growth?.[k] ?? 0) * (lv - 1);
   s.mpRegen += 1.2;
   const mult = {};
-  // 직업 계보 (기본 → 상급 → 최상급)
-  for (const cls of classChain(hero.classId)) {
+  // 직업 계보 (기본 → 상급 → 최상급 → 초월/비전)
+  for (const cls of heroChain(hero)) {
     addStats(s, cls.flat);
     for (const k in cls.mult || {}) mult[k] = (mult[k] ?? 1) * cls.mult[k];
   }
@@ -90,8 +91,14 @@ export function computeStats(state, hero) {
   // 정리
   s.hp = Math.round(s.hp); s.mp = Math.round(s.mp);
   for (const k of ['atk', 'mag', 'def', 'res', 'agi', 'luck']) s[k] = Math.round(s[k]);
-  s.crit = Math.min(75, s.crit + s.luck * 0.1);
-  s.atkSpd = Math.min(80, s.atkSpd + s.agi * 0.15);
+  const rc = s.crit + s.luck * 0.1, ra = s.atkSpd + s.agi * 0.15;   // 상한 전 값
+  s.crit = Math.min(75, rc);
+  s.atkSpd = Math.min(80, ra);
+  // 「초월 보정」 (§2.6): 초월·비전이면 상한을 넘친 치명타 확률·공격 속도가 치명타 피해(최대 +20)·이동 속도(최대 +8)로 흘러간다
+  if (ascOf(hero)) {
+    s.critDmg += Math.min(20, Math.max(0, rc - 75) * 1.5);
+    s.moveSpd += Math.min(8, Math.max(0, ra - 80) * 0.5);
+  }
   s.airJumps = Math.round(s.airJumps);
   const wbase = weapon ? ITEMS[weapon.baseId] : null;
   s.weaponType = wbase?.wtype ?? ch.weaponType;
@@ -106,7 +113,9 @@ export function computeStats(state, hero) {
 export function composeLook(state, hero) {
   const ch = CHARACTERS[hero.charId];
   const look = structuredClone(ch.look);
-  for (const cls of classChain(hero.classId)) Object.assign(look, cls.look || {});
+  for (const cls of heroChain(hero)) Object.assign(look, cls.look || {});   // 초월/비전 look(갑옷색·망토)은 계보 끝에
+  look.classId = hero.classId;               // 채색 퍼펫이 고를 원화: 2차 id (초월은 2차 원화 + 아래 lookTop 덧칠)
+  look.asc = ascOf(hero)?.id ?? null;
   look.equip = {};
   for (const slot of EQUIP_SLOTS) {
     const inst = findItem(state, hero.equip?.[slot]);
@@ -123,7 +132,27 @@ export function composeLook(state, hero) {
     if (slot === 'cloak' && v.cape) { look.cape = { color: v.color, color2: v.color2 ?? v.color, len: v.len ?? 1, style: v.cape }; }
     if (slot === 'acc1' || slot === 'acc2') { if (v.aura) look.accAura = v.aura; }
   }
+  applyLookTop(look, ascOf(hero)?.lookTop);   // 초월 정체성은 장비(갑옷·망토)가 덮지 못하게 장비 뒤에
   const w = look.equip.weapon;
   look.weapon = { type: w?.wtype ?? ch.weaponType, style: w?.style ?? 1, color: w?.color, glow: w?.glow, level: w?.level ?? 0, rarity: w?.rarity ?? 0, element: w ? ITEMS[w.baseId]?.element : null };
   return look;
 }
+
+/**
+ * 초월/비전 lookTop 을 장비까지 합친 look 위에 덮는다 (TOP_KEYS 만). 표(ASCENSIONS)는 얼려 있으니 객체 값은 복사해서 넣는다.
+ * capeColor2 는 망토가 있을 때만 그 안감 색을 바꾸고(망토를 새로 만들지 않음), armorTrim 은 장비 장식색을 덮는다
+ */
+function applyLookTop(look, top) {
+  if (!top) return;
+  for (const k of TOP_KEYS) {
+    if (!Object.hasOwn(top, k)) continue;
+    const v = top[k];
+    if (k === 'capeColor2') { if (look.cape) look.cape = { ...look.cape, color2: v }; }
+    else if (Array.isArray(v)) look[k] = [...v];
+    else if (v && typeof v === 'object') look[k] = { ...v };
+    else look[k] = v;
+  }
+}
+
+/** 미리보기용 외형: 이 영웅이 id 초월/비전이었다면 (영웅은 바꾸지 않는다; id null = 기본 최상급) */
+export function lookForAsc(state, hero, id) { return composeLook(state, { ...hero, asc: id }); }

@@ -830,7 +830,9 @@ export class Player extends Entity {
   /** 영웅 몸 뒤 받침 (2026-10 벤치마크 1 — 배경에서 영웅 떼어 보이기): 몸 뒤 옅은 어둠 원(테마별 세기·원경 밝기로 조절, background.js
    *  drawHalo / THEMES.halo; 마을은 끔) + 발밑 그림자(마을 NPC 와 같은 타원, hub.js drawNpc). 그림자는 서 있으면 발밑, 공중이면 바로 아래
    *  바닥(타일 5칸 안)에 높이만큼 작고 옅게; 탈것을 타면 탈것이 제 그림자를 그린다. 퍼펫 윤곽 빛은 건드리지 않는다 (PUPPET_PIPELINE.md).
-   *  draw 가 맨 먼저 부른다 (피격 깜빡임에도 남음). visual_review --contrast 는 영웅 몸만 뺀 화면을 이것으로 그린다 */
+   *  draw 가 맨 먼저 부른다 (피격 깜빡임에도 남음). world.backingLayer 가 켜져 있으면 world.render 가 적·투사체보다 먼저 따로 부르고
+   *  draw 는 건너뛴다 (z 10 에서 그리면 영웅 곁의 적·탄도 같이 어두워진다 — requests_f.md hero-vis). visual_review --contrast 는 영웅
+   *  몸만 뺀 화면을 이것으로 그린다 */
   drawBacking(ctx, world) {
     const riding = !!this.mount?.riding;   // [hook:cmp]
     world.bg?.drawHalo?.(ctx, this, riding ? this.h * 0.4 : 0);   // 타면 기수가 안장 높이로 올라간다
@@ -854,7 +856,7 @@ export class Player extends Entity {
   }
 
   draw(ctx, world) {
-    this.drawBacking(ctx, world);
+    if (!world.backingLayer) this.drawBacking(ctx, world);
     if (this.iframes > 0 && !this.dead && Math.floor(this.iframes * 20) % 2 === 0) return;
     if (this.mount?.riding) {   // [hook:cmp] 탈것 뒤층 → 기수 → 탈것 앞층
       this.mount.draw(ctx, world, this, 'back');   // [hook:cmp]

@@ -349,6 +349,7 @@ class SaveSystem {
       const hero = s.heroes?.[s.charId];
       return {
         slot, empty: false, charId: s.charId, level: hero?.level ?? 1, classId: hero?.classId,
+        asc: typeof hero?.asc === 'string' ? hero.asc : null,   // 초월·비전 id (슬롯 화면: ascName(asc) ?? 직업 이름, classes_t3 §1.3)
         chapter: s.progress?.chapter ?? 0, playTime: s.stats?.playTime ?? 0, difficulty: s.difficulty,
         savedAt: s.savedAt, gold: s.gold ?? 0,
       };

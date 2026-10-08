@@ -20,7 +20,9 @@
 //  'arcadeFinished' {kind, cleared, reason, score, time, extra, charId, diff, stageId, course, daily}   아케이드 정산 (front/arcade_run.js finish)
 //                  course = 보스 러시 코스 번호 | null · daily = 일일 도전 날짜 'YYYYMMDD' | null · 보스 러시 extra {bosses, total, perfect(무피해 라운드 수)} [hook:ach]
 //  'levelUp'       {charId, level}
-//  'classChanged'  {charId, classId}
+//  'classChanged'  {charId, classId, asc}   전직·초월 전환 (asc = 초월·비전 id | null; classes_t3 §2.5)
+//  'ascChanged'    {charId, classId, asc, prev, first}   초월·비전 선택/전환/해제 (progression.ascend·switchAsc; first = 첫 초월 SP +3).
+//                  class_perks 메모 비우기·성당 의식 연출이 듣는다. 업적 이벤트(ACH_EVENTS)가 아니다
 //  'enhance'       {item, success, destroyed, level, before}
 //  'minigame'      {game, win, reward}
 //  'npcTalk'       {npcId}
@@ -34,8 +36,8 @@
 //  'hitHeavy'      {cls}                  강타 (impact.js)
 //  'shake'         {mag}                  큰 화면 흔들림 (camera.js, mag ≥ 8)
 // 손맛·필살기·각성기:
-//  'ultimateCast'  {charId, tier, classId}   필살기 시전 (skills.js castUltimate; 옛 이름 ultStart 는 쓰지 않는다)
-//  'awakenCast'    {charId, tier, classId}   각성기 시전 (awaken.js)
+//  'ultimateCast'  {charId, tier, classId, asc}   필살기 시전 (skills.js castUltimate; 옛 이름 ultStart 는 쓰지 않는다; tier 3 = 초월·비전)
+//  'awakenCast'    {charId, tier, classId, asc}   각성기 시전 (awaken.js)
 //  'styleRankUp'   {rank}
 //  'comboMilestone' {n}
 // 2부 (이계편):

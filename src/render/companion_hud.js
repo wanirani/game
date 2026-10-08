@@ -449,7 +449,7 @@ function cardCanvas(c, w, h, k, T, list, F = 0) {
     g.font = font(size, 600, FONT.body);
     while (size > min && g.measureText(ln).width > tw) { size--; g.font = font(size, 600, FONT.body); }
     let s = ln;
-    if (g.measureText(s).width > tw) { while (s.length > 1 && g.measureText(s + '…').width > tw) s = s.slice(0, -1); s += '…'; }
+    if (g.measureText(s).width > tw) { while (s.length > 1 && g.measureText(s + '…').width > tw) s = s.slice(0, -1); s = s.trimEnd() + '…'; }
     text(g, s, tx, 42, { size, weight: 600, color: '#efe4cf', ow: 3 });
   }
   if (tag) {

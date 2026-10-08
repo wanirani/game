@@ -13,6 +13,7 @@ import { CHARACTERS } from '../data/characters.js';
 import { NPCS } from '../data/npcs.js';
 import { TOWN_NPCS } from '../data/town.js';
 import { PUPPETS } from './puppet_manifest.js';
+import { ASCENSIONS } from '../data/ascensions.js';   // 초월·비전: 원화는 2차 것을 쓴다 (classes_t3 §2.7)
 import { G, sh, ra, fillGrad, ribbonPath, WS, drawWeapon, drawWing, glow, drawHalo } from './hero_parts.js';
 
 const PI = Math.PI, HP = PI / 2, TAU = PI * 2;
@@ -48,11 +49,31 @@ function effLook(classId) {
   }
   return e;
 }
+// 원화가 있는 직업으로 (classes_t3 §2.7): 그 직업 원화 → 없으면 부모 직업을 거슬러 올라가며 찾는다. 초월·비전 id 는 (그 원화가
+// 따로 없으면) 첫 2차 부모로. 원화가 하나도 없으면 null (→ 벡터). 메모
+const ART = new Map();
+export function artClass(cid, cls) {
+  if (!cid || !cls) return null;
+  const k = cid + '/' + cls;
+  let r = ART.get(k);
+  if (r !== undefined) return r;
+  r = null;
+  let c = cls;
+  if (!PUPPETS[cid]?.[c] && Object.hasOwn(ASCENSIONS, c)) c = ASCENSIONS[c].parents[0] ?? null;
+  for (let n = 0; c && n < 8; n++) {
+    if (PUPPETS[cid]?.[c]) { r = c; break; }
+    c = CLASSES[c]?.parent ?? null;
+  }
+  ART.set(k, r);
+  return r;
+}
 const CLS = new WeakMap();
-/** look 이 어느 직업의 것인지: look.classId → 색 지문(주/보조/장식색·머리 모양, 장비가 바꾸지 않는 값) → p.hero.classId */
+/** look 이 어느 직업의 것인지: (초월·비전 전용 원화) → look.classId(원화 있는 직업으로) → 색 지문(주/보조/장식색·머리 모양, 장비가 바꾸지 않는 값) → p.hero.classId */
 export function classOf(p, look) {
   if (!look) return null;
-  if (look.classId) return look.classId;
+  const cid0 = p?.ch?.id;
+  if (look.asc && PUPPETS[cid0]?.[look.asc]) return look.asc;   // 앞날의 비전 원화(PUPPETS[charId][hiddenId])가 생기면 저절로 고른다
+  if (look.classId) return artClass(cid0, look.classId) ?? look.classId;
   let c = CLS.get(look);
   if (c === undefined) {
     const cid = p?.ch?.id;
@@ -61,7 +82,7 @@ export function classOf(p, look) {
       let bt = -1;
       for (const id in CLASSES) {
         const k = CLASSES[id];
-        if (k.charId !== cid) continue;
+        if (k.charId !== cid || !PUPPETS[cid]?.[id]) continue;
         const e = effLook(id);
         if (e.primary === look.primary && e.secondary === look.secondary && e.trim === look.trim && (e.hairStyle ?? null) === (look.hairStyle ?? null) && k.tier > bt) { bt = k.tier; c = id; }
       }
@@ -86,6 +107,7 @@ function levelPeek(E, L) { return peek(akey(E, 'atlas', L)); }
 function maskImg(E, L) { return assets.get(akey(E, 'mask', L), E.man.h); }
 function maskPeek(E, L) { return peek(akey(E, 'mask', L)); }
 function entry(cid, cls, sib = false) {
+  cls = cid === NPC_CID ? cls : (artClass(cid, cls) ?? cls);   // 초월 id·원화 없는 직업 → 원화 있는 직업
   const key = cid + '/' + cls;
   let E = REG.get(key);
   if (E) return E;
@@ -121,7 +143,7 @@ function ready(E) {
   return false;
 }
 /** 미리 불러 두기 (장면 진입 시 등, 선택) */
-export function preloadPuppet(charId, classId) { const E = entry(charId, classId); return E; }
+export function preloadPuppet(charId, classId) { const E = entry(charId, classId); return E; }   // entry 가 artClass 로 원화 직업을 고른다
 // 한 직업이 준비되면 같은 영웅의 다른 직업(rig + lo/hi ≈60KB씩)을 한가할 때 받아 둔다 —
 // 교회 전직 카드·파티·직업 탭이 처음 그릴 때 벡터로 찍혀 스냅샷에 남는 일을 막는다
 const SIB = new Set();
@@ -153,14 +175,17 @@ function variantKey(E, look) {
   const base = eff.armorColor ?? E.opts?.armorBase ?? null;
   const ac = look.armorColor && look.armorColor !== base ? look.armorColor : null;
   const tc = look.armorTrim && look.armorTrim !== eff.armorTrim ? look.armorTrim : null;
-  if (!ac && !tc) return '';
-  return `${ac || '-'}|${tc || '-'}|${look.armor || '-'}`;
+  // 초월 색조 (lookTop.tint {h: 색상 회전°, s: 채도 배율}) — 원화 전체에 hue-rotate/saturate 를 건 뒤 재질 마스크로 다시 칠한다
+  const T = look.tint, tn = T && (Number.isFinite(T.h) || Number.isFinite(T.s)) ? `${Number.isFinite(T.h) ? T.h : 0}~${Number.isFinite(T.s) ? T.s : 1}` : null;
+  if (!ac && !tc && !tn) return '';
+  return `${ac || '-'}|${tc || '-'}|${look.armor || '-'}|${tn || '-'}`;
 }
 // 재질별 [명암 대비, 금속 반사]
 const FINISH = { leather: [1, 0], chain: [1.12, 0.1], plate: [1.25, 0.25], holy: [1.2, 0.3], dark: [1.3, 0.12] };
 function makeVariant(E, vk) {
-  const [ac, tc, kind] = vk.split('|');
-  return { vk, ac: ac === '-' ? null : hexRgb(ac), tc: tc === '-' ? null : hexRgb(tc), fin: FINISH[kind] || [1, 0], img: {}, dark: {}, turn: undefined };
+  const [ac, tc, kind, tn] = vk.split('|');
+  const tint = tn && tn !== '-' ? (([h, s]) => ({ h: Number(h) || 0, s: Number.isFinite(Number(s)) ? Number(s) : 1 }))(tn.split('~')) : null;
+  return { vk, ac: ac === '-' ? null : hexRgb(ac), tc: tc === '-' ? null : hexRgb(tc), fin: FINISH[kind] || [1, 0], tint, img: {}, dark: {}, turn: undefined };
 }
 const lumOf = (r, g, b) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
 /**
@@ -207,7 +232,10 @@ function recolorCanvas(src, mk, V) {
   const W = src.naturalWidth || src.width, Hh = src.naturalHeight || src.height;
   const cv = spareCanvas(W, Hh);
   const g = cv.getContext('2d', { willReadFrequently: true });
+  if (V.tint && 'filter' in g) g.filter = `hue-rotate(${V.tint.h}deg) saturate(${V.tint.s})`;   // 초월 색조: 먼저 원화 전체, 마스크 재칠은 그 위에
   g.drawImage(src, 0, 0);
+  if (V.tint && 'filter' in g) g.filter = 'none';
+  if (!V.ac && !V.tc) return cv;   // 색조만 있는 변형: 마스크 재칠 없음
   const d = g.getImageData(0, 0, W, Hh);
   const mc = MASK_TMP ??= document.createElement('canvas'); mc.width = W; mc.height = Hh;   // 마스크 확대용 작업 캔버스 (공용, 매번 새로 만들지 않음)
   const mg = mc.getContext('2d', { willReadFrequently: true });
@@ -342,6 +370,9 @@ const LAST = new WeakMap();   // 엔티티 → 마지막으로 그려진(준비�
  * 호출할 때마다 필요한 로드를 건드리므로 매 프레임 불러도 된다 (캐시).
  */
 export function puppetFor(p, look) {
+  // 이번에 그릴 영웅의 날개 색 (초월 lookTop.wingCol) — hero_parts.drawWing 이 읽는다. puppetFor 는 hero.js specOf 가 매 그리기 첫머리에
+  // 부르므로 (퍼펫·벡터 모두) 여기서 매번 덮어써 다른 영웅에 남지 않는다
+  G.wingCol = look?.wingCol ?? null;
   if (!ENABLED || !look || look.puppet === false) return null;
   if (p?.npc) return npcPuppet(p, look);
   let I = INST.get(look);
@@ -415,7 +446,7 @@ export function hasNpcPuppet(npcId) { return !!PUPPETS[NPC_CID]?.[npcId]; }
 export function isPlayable(id) { return !!(id && CHARACTERS[id]); }
 export function charDef(id) { return id ? CHARACTERS[id] || null : null; }
 /** 이 캐릭터/직업에 퍼펫 에셋이 있는가 (로드 여부와 무관) */
-export function hasPuppet(charId, classId) { return !!PUPPETS[charId]?.[classId]; }
+export function hasPuppet(charId, classId) { return !!PUPPETS[charId]?.[artClass(charId, classId) ?? classId]; }
 
 // ───────────────────────── 골격 치수 ─────────────────────────
 /** 벡터 spec(K)을 원화 비율로 덮어쓴다: 뼈 길이·어깨/엉덩이 위치·코트 피벗·망토 고정점 */
@@ -837,10 +868,12 @@ export function turnReady(I) {
 /** 턴테이블 시트: 장비 갑옷 색이 원화와 다르면 turn_mask 로 다시 칠한 캔버스(변형별 1회) */
 function turnSrc(I) {
   const E = I.E, V = I.V;
-  if (!V || !E.rig.turn.mask || typeof document === 'undefined') return E.turnImg;
+  if (!V || typeof document === 'undefined') return E.turnImg;
   if (V.turn) return V.turn;
-  if (!E.turnMask) return E.turnImg;
-  return (V.turn = recolorCanvas(E.turnImg, E.turnMask, V));
+  const recol = !!(V.ac || V.tc) && !!E.rig.turn.mask;   // 갑옷색 재칠은 turn_mask 가 있을 때만, 초월 색조(V.tint)는 마스크 없이도
+  if (recol && !E.turnMask) return E.turnImg;            // 마스크 받는 중
+  if (!recol && !V.tint) return E.turnImg;
+  return (V.turn = recolorCanvas(E.turnImg, recol ? E.turnMask : null, recol ? V : { ...V, ac: null, tc: null }));
 }
 const STEPS = [0, 45, 90, 135, 180, -135, -90, -45];
 /**
@@ -969,6 +1002,7 @@ export function drawTurnWings(ctx, I, type, yaw, front, t) {
     ctx.save();
     ctx.translate(side * 3 - cs * 5, sy);
     ctx.scale(side * w, 1);
+    G.wingCol = I.look?.wingCol ?? null;   // 초월 날개 색
     drawWing(type, spread, Math.sin(t * 2.2) * 0.06, side < 0 === back, false);
     ctx.restore();
   }
