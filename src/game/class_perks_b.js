@@ -475,7 +475,8 @@ export const PERKS_B = {
 
   // 연옥의 총잡이 「과열」 (HOOKS: 헬파이어 탄 폭발 반경·위력 × p._heatK)
   victor_purgatory: {
-    N: { per: 10, extra: 4, max: 100, idle: 0.8, cool: 25, oh: 3, r: 1.5, mv: 1.25, ringR: 140, ringMv: 0.8, vent: 2, ember: 50, emberEvery: 0.2 },
+    // §2.8 조정: r 1.5→1.2, mv 1.25→1.15 (원안 단일 대상 +19 %, 무리 +25 % — perks-b.md 균형 표)
+    N: { per: 10, extra: 4, max: 100, idle: 0.8, cool: 25, oh: 3, r: 1.2, mv: 1.15, ringR: 140, ringMv: 0.8, vent: 2, ember: 50, emberEvery: 0.2 },
     onSwing(p, w, mv) {
       const N = this.N, s = S(p);
       if (!mv?.proj || mv.skill || (s.vent ?? 0) > 0 || (s.oh ?? 0) > 0) return;
@@ -617,7 +618,8 @@ export const PERKS_B = {
 
   // 성전 선봉장 「방패 돌격」 + 성광 충격파 세 번
   bran_vanguard: {
-    N: { mv: 1.2, kbx: 420, kby: -220, hs: 0.03, hsGap: 1.5, waveMv: 0.8, gap: 0.12, n: 2, show: 0.32 },
+    // §2.8 조정: 돌격 mv 1.2→0.8, 덧파동 waveMv 0.8→0.3 (원안 +31 %)
+    N: { mv: 0.8, kbx: 420, kby: -220, hs: 0.03, hsGap: 1.5, waveMv: 0.3, gap: 0.12, n: 2, show: 0.32 },
     onDash(p, w) {
       const N = this.N, f = p.facing;
       const a = procAtk(p, { mv: N.mv, element: 'holy', kb: [N.kbx, N.kby], hitstop: icd(p, 'vgHs', N.hsGap, w) ? N.hs : 0, shake: 2, tags: ['melee'] });
@@ -662,7 +664,8 @@ export const PERKS_B = {
 
   // 정복왕 「꺾이지 않는 기세」
   bran_conqueror: {
-    N: { combo: 30, chance: 0.10, cd: 1.2, r: 160, mv: 0.6, stun: 0.4, keep: 0.15, keepCd: 0, keepFrac: 1 },
+    // §2.8 조정: 작은 피격은 콤보를 끊지 않고 keepLoss(25 %)만 깎는다 (원안: 그대로 유지 → 전의 보너스가 끝없이 쌓여 +23~47 %)
+    N: { combo: 30, chance: 0.10, cd: 1.2, r: 160, mv: 0.6, stun: 0.4, keep: 0.15, keepLoss: 0.25 },
     onHit(p, tgt, info, atk, w) {
       const N = this.N;
       if ((w.combo?.n ?? 0) < N.combo || Math.random() >= N.chance || !icd(p, 'roar', N.cd, w)) return;
@@ -673,18 +676,17 @@ export const PERKS_B = {
       callout(w, p.cx, p.y - 14, '포효!', '#ff7a3a');
       sfx(w, 'war_horn', { vol: 0.55 });
     },
-    // 작은 피격은 콤보를 끊지 않는다 — keepCd 초에 한 번 (keepCombo 는 afterHurt 보다 먼저 불린다: world.onPlayerHurt → afterHurt)
+    // 작은 피격은 콤보를 끊지 않는다 (keepCombo 는 afterHurt 보다 먼저 불린다: world.onPlayerHurt → afterHurt)
     keepCombo(p, dmg) {
-      const N = this.N, s = S(p);
-      if (!(dmg < N.keep * maxHp(p)) || p.t - (s.keepT ?? -99) < N.keepCd) return;
-      s.keepT = p.t; s.kept = true;
+      if (!(dmg < this.N.keep * maxHp(p))) return;
+      S(p).kept = true;
       return true;
     },
     afterHurt(p, dmg, atk, w) {
       const s = S(p);
       if (!s.kept) return;
       s.kept = false;
-      if (w.combo?.n > 0) w.combo.n = Math.floor(w.combo.n * this.N.keepFrac);   // 끊기는 대신 일부만 남는다
+      if (w.combo?.n > 0) w.combo.n = Math.floor(w.combo.n * (1 - this.N.keepLoss));   // 끊기는 대신 keepLoss 만큼 깎인다
       bump(p, 'keepCombo');
       if (icd(p, 'keepCue', 1, w)) callout(w, p.cx, p.y - 10, '기세!', '#ffb070');
     },
@@ -698,7 +700,8 @@ export const PERKS_B = {
 
   // 혈귀 폭군 「피의 분노」
   bran_bloodtyrant: {
-    N: { above: 0.5, burn: 0.01, max: 10, per: 0.02, idle: 2, decay: 0.5, inv: 1 },
+    // §2.8 조정: perStack 0.02→0.01 (원안 +19~22 %, 스펙이 짚은 위험 손잡이)
+    N: { above: 0.5, burn: 0.01, max: 10, per: 0.01, idle: 2, decay: 0.5, inv: 1 },
     onSwing(p, w, mv) {
       if (!mv || mv.skill) return;
       const N = this.N, s = S(p);
@@ -746,7 +749,8 @@ export const PERKS_B = {
   // ═══════════ 비전 ═══════════
   // 은랑 사냥꾼: 달 게이지 · 만월 (은탄 +15%, 관통 +2, 대시 발톱) · 은월탄 보조
   victor_silverwolf: {
-    N: { hit: 3, kill: 8, full: 100, t: 8, dmg: 1.15, pierce: 2, claw: 0.5, clawN: 3, clawGap: 0.05, aim: 0.35, sbKill: 30, sbCut: 0.25, sbMax: 0.5, sbLow: 0.5 },
+    // §2.8 조정: hit 3→2, t 8→6, dmg 1.15→1.10, pierce 2→1 (원안 단일 +14 %, 줄 선 무리 +110 %)
+    N: { hit: 2, kill: 8, full: 100, t: 6, dmg: 1.10, pierce: 1, claw: 0.5, clawN: 3, clawGap: 0.05, aim: 0.35, sbKill: 30, sbCut: 0.25, sbMax: 0.5, sbLow: 0.5 },
     onHit(p, tgt, info, atk, w) { moonAdd(p, w, this.N.hit, this.N); },
     onKill(p, e, atk, w) {
       const N = this.N, s = S(p);
