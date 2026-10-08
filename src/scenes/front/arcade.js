@@ -82,7 +82,7 @@ export const LEVEL_PRESETS = [
  * cfg.preset 번호는 LEVEL_PRESETS 뒤에 이어 붙인다 (ALL_PRESETS). 위 LEVEL_PRESETS 블록은 서버 gamedata.mts 와 같아야 해서 따로 둔다
  */
 export const ASC_PRESETS = [
-  { name: '초월자', lv: 80, tier: 2, wtier: 7, rarity: 4, enh: 14, docs: 99, potions: 7, asc: true },
+  { name: '초월자', lv: 80, tier: 2, wtier: 7, rarity: 4, enh: 14, docs: 99, potions: 7, asc: true, p2: true },   // p2: 2부 장비(wtier 7) — '이계의 순례자'처럼 2부를 아는 플레이어에게만
 ];
 export const ALL_PRESETS = [...LEVEL_PRESETS, ...ASC_PRESETS];
 /** 헌터 등급 (번호가 틀리면 숙련 사냥꾼) */
@@ -254,7 +254,7 @@ export function buildArcadeState(cfg, charId, { preview = false } = {}) {
   // 초월 (classes_t3 §10.3): cfg.asc (초월 등급인데 없으면 — ?scene= 바로 열기 — 이 계보의 초월). 초월은 그 2차 계보로 전직,
   // 비전은 위의 2차 그대로. 조건이 맞으면 hero.asc · ascUnlocked (임시 세이브 — state.js migrateAsc 는 s.arcade 면 둔다) · 레벨 A.arcade.lv
   const aid = typeof cfg.asc === 'string' && Object.hasOwn(ASCENSIONS, cfg.asc) ? cfg.asc : P.asc && !cfg.daily ? T3_OF[cls] : null;
-  const A = aid && ASCENSIONS[aid]?.charId === charId ? ASCENSIONS[aid] : null;
+  const A = aid && ASCENSIONS[aid]?.charId === charId && P.lv >= ASCENSIONS[aid].reqLevel ? ASCENSIONS[aid] : null;   // 등급 레벨이 모자라면 (?asc= + 낮은 등급) 계보도 바꾸지 않는다
   if (A?.kind === 't3' && !(cfg.cls && CLASSES[cfg.cls]?.charId === charId)) cls = A.parent;
   hero.classId = cls;
   if (A && A.parents.includes(hero.classId) && P.lv >= A.reqLevel) {
