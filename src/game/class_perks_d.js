@@ -1,5 +1,5 @@
 // 직업 특성 내용 D — 이졸데 (PERKS-D) (docs/specs/classes_t3.md §3.1 · §4.7 · §5)
-//  PERKS_D   { '<CLASSES id | ASCENSIONS id | char:<영웅>>': { only?, N?, <훅>… } }   (§3.2, 훅 이름은 class_perks.js HOOK_NAMES)
+//  PERKS_D   { '<CLASSES id | ASCENSIONS id | char:<영웅>>': { only?, N?, <hook>… } }   (§3.2, hook 이름은 class_perks.js HOOK_NAMES)
 //  ACTIVES_D { 'asc_<영웅>_<낱말>': (p, w, lv) => true|false }                          (비전 액티브, skills.js castSkill 대체 경로)
 //  MARKS_D   { '<표식 키>': (ctx, e, n, k, t) => {…} }                                 (PerkLayer 가 그린다; k = 남은 시간 비율)
 //  STATS_D   { procs: { '<항목>.<일>': 횟수 } }  — 발동 횟수 (QA 탐침이 읽는다; 발동 때만 늘어난다)
@@ -7,7 +7,7 @@
 //  초월: isolde_skysovereign(천뢰 도약) · isolde_abyssdragoon(흑룡 돌진) · isolde_soulherald(영혼 인도) · isolde_speargod(일점)
 //  비전: isolde_dragonbond(아르겐의 환영 · 용린) + asc_isolde_breath(아르겐의 숨결)
 // 규칙 (§3.5 · §3.6): ./class_perks.js 와 데이터 모듈만 import 한다 (skills.js · player.js · world.js 금지).
-// 모듈 최상단에서 가져온 바인딩(K·도우미)을 읽지 않는다 — 훅 본문 안에서만. 최상단에서 bus·game·document 를 건드리지 않는다.
+// 모듈 최상단에서 가져온 바인딩(K·도우미)을 읽지 않는다 — hook 본문 안에서만. 최상단에서 bus·game·document 를 건드리지 않는다.
 // 모든 조절 수치는 항목의 N 표 (ascensions.js 의 perk 문구 숫자와 같아야 한다). 백분율은 문구 그대로 % 값으로 적는다.
 // 특성이 만드는 공격은 proc (procAtk · K.uHit{proc:true}) — 비전 액티브의 타격만 보통 스킬 타격 (§5).
 // 그리기(표식·게이지·연출 draw)에는 난수·파티클·그라디언트·문자열 조립이 없다 (캐시 스프라이트 K.glow·K.beamH + 선 몇 개).
@@ -55,7 +55,7 @@ function pip(ctx, x, y, s, col, a) {
   ctx.beginPath(); ctx.moveTo(x, y - s); ctx.lineTo(x + s * 0.7, y); ctx.lineTo(x, y + s); ctx.lineTo(x - s * 0.7, y); ctx.closePath(); ctx.stroke(); ctx.fill();
   ctx.globalAlpha = 1;
 }
-/** 영웅 게이지 높이: 히트박스 위쪽(p.y)에서 이만큼 위 — 퍼펫 머리·날개에 가리지 않게 (PerkLayer z 9 < 영웅 z 10) */
+/** 영웅 게이지 높이: 히트박스 위쪽(p.y)에서 이만큼 위 — puppet 머리·날개에 가리지 않게 (PerkLayer z 9 < 영웅 z 10) */
 const METER_DY = 38;
 /** 용 그림 마디 (평평한 x,y 배열) — 그릴 때마다 다시 채운다 (할당 없음) */
 const PTS = new Float64Array(48);
@@ -254,7 +254,7 @@ function dragonWings(ctx, x, y, f, s, flap, col, a) {
   }
   ctx.globalAlpha = 1;
 }
-/** 아르겐의 환영: 등 뒤에서 날아와 앞뒤 640 띠를 가로지른다 (판정 창 [0.2, 0.8], proc 번개) */
+/** 아르겐의 환영: 등 뒤에서 날아와 앞뒤 640 구간을 가로지른다 (판정 창 [0.2, 0.8], proc 번개) */
 function argen(w, p, N) {
   count('isolde_dragonbond.argen');
   const f = p.facing, cx = p.cx, yy = p.bottom - N.y, x0 = cx - f * N.from, x1 = cx + f * N.from;
@@ -269,7 +269,7 @@ function argen(w, p, N) {
     draw(ctx, e) {
       const k = e.k, u = 1 - (1 - k) * (1 - k), hx = x0 + (x1 - x0) * u, a2 = Math.min(1, e.lt / 0.08) * clamp01((e.life - e.lt) / 0.14);
       ctx.globalCompositeOperation = ADD;
-      // 지나간 띠 (판정 높이 120 의 옅은 빛)
+      // 지나간 자리 (판정 높이 120 의 옅은 빛)
       K.beamH(ctx, x0 + (hx - x0) * 0.25, hx, yy, N.h * 0.4, '#9fe8ff', 0.3 * a2, '#e8fbff');
       for (let i = 0; i < 20; i++) {
         PTS[i * 2] = hx - f * i * 26;
@@ -289,9 +289,10 @@ const RET_PIN = { mult: 1 };   // onAttack 반환 (다시 쓰는 객체: perkAtt
 
 export const PERKS_D = {
   // ── 초월 ──
-  /** 천뢰의 기사: 공중 점프 발밑 번개 · 급강하 착지 낙뢰 +1/240 (3~6) · 충격파 반경 +1/10 (최대 +60) */
+  /** 천뢰의 기사: 공중 점프 발밑 번개 · 급강하 착지 낙뢰 +1/120 (3~6) · 충격파 반경 +1/10 (최대 +60)
+   *  명세 240 → 120: 점프+공중 점프+급강하의 실제 낙하 높이가 120~165 라 240 이면 높은 곳에서 뛰어내릴 때만 늘었다 */
   isolde_skysovereign: {
-    N: { icd: 0.2, r: 90, mvPct: 60, stunT: 0.2, per: 240, base: 3, maxExtra: 3, rPer: 10, rMax: 60, boltMvPct: 90, boltStunT: 0.5, spread: 130, gap: 0.07 },
+    N: { icd: 0.2, r: 90, mvPct: 60, stunT: 0.2, per: 120, base: 3, maxExtra: 3, rPer: 10, rMax: 60, boltMvPct: 90, boltStunT: 0.5, spread: 130, gap: 0.07 },
     prewarm(w) { warm(w, ['#bfe8ff', '#e0f4ff', '#ffffff'], null); },
     onJump(p, w, air) {
       if (air !== true || p.dead || !icd(p, 'pkSkyJump', this.N.icd, w)) return;
@@ -310,9 +311,9 @@ export const PERKS_D = {
       return { r: r + add };
     },
   },
-  /** 심연의 용기사: 화염 피해마다 용염 +1 (최대 30) → 다음 돌진 찌르기가 흑룡 돌진 (380 꿰뚫기 250% + 2초 불바다 0.25초마다 15%) */
+  /** 심연의 용기사: 화염·암흑 피해마다 용염 +1 (최대 20) → 다음 돌진 찌르기가 흑룡 돌진 (380 꿰뚫기 250% + 2초 불바다 0.25초마다 15%) */
   isolde_abyssdragoon: {
-    N: { add: 1, max: 30, dark: 1, len: 380, x0: 20, y0: -100, h: 90, mvPct: 250, hitstop: 0.06, t: 0.3, fireT: 2, tickT: 0.25, fireMvPct: 15 },   // dark 1: 암흑 피해도 센다 (흑룡의 검은 불길)
+    N: { add: 1, max: 20, dark: 1, len: 380, x0: 20, y0: -100, h: 90, mvPct: 250, hitstop: 0.06, t: 0.3, fireT: 2, tickT: 0.25, fireMvPct: 15 },   // dark 1: 암흑 피해도 센다 (흑룡의 검은 불길; 용의 숨결이 화염·암흑을 번갈아 친다) · 명세 max 30 → 20 (§2.8: 30 이면 단일 대상 +2~5 %, 40초에 한 번)
     prewarm(w) { warm(w, ['#c070ff', '#ff6a2a', '#ffd0a0'], ['용염!', '#d8a0ff']); },
     onHit(p, tgt, info, atk, w) {
       const el = atk?.element;

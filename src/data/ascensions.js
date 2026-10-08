@@ -245,7 +245,7 @@ t3('azel_nephilim', 'azel_seraph', { name: '네필림', eng: 'NEPHILIM',
 // ───────────────────────── 이졸데 (창) ─────────────────────────
 t3('isolde_skysovereign', 'isolde_stormlord', { name: '천뢰의 기사', eng: 'SKY SOVEREIGN',
   desc: '하늘을 디딜 때마다 천둥을 남기는 폭풍의 기사.',
-  perk: '공중 점프할 때마다 발밑에 번개가 터진다(반경 90, 위력 60%). 급강하 착지 낙뢰가 떨어진 높이 240마다 1개씩 늘어나고(3~6개), 충격파 반경은 떨어진 높이 10마다 +1(최대 +60).',
+  perk: '공중 점프할 때마다 발밑에 번개가 터진다(반경 90, 위력 60%). 급강하 착지 낙뢰가 떨어진 높이 120마다 1개씩 늘어나고(3~6개), 충격파 반경은 떨어진 높이 10마다 +1(최대 +60).',
   mult: { atk: 1.08, agi: 1.08 }, flat: { thunder: 15, jumpPow: 5 },
   lookTop: { aura: au('thunder', '#e0f4ff'), scarf: { color: '#bfe8ff', long: true }, armorTrim: '#ffffff', trailColor: '#bfe8ff' },
   ult: { accent: '#e0f4ff', colors: ['#bfe8ff', '#ffffff', '#ffe070'] },
@@ -253,7 +253,7 @@ t3('isolde_skysovereign', 'isolde_stormlord', { name: '천뢰의 기사', eng: '
   est: { dps: 1.07, ehp: 1.00 } });
 t3('isolde_abyssdragoon', 'isolde_wyrmknight', { name: '심연의 용기사', eng: 'ABYSS DRAGOON',
   desc: '균열 너머 검은 용의 불길을 갑주처럼 두른 기사.',
-  perk: '화염·암흑 피해를 줄 때마다 용염 +1(최대 30). 용염이 30이면 다음 돌진 찌르기가 흑룡 돌진 — 앞으로 380 거리를 꿰뚫는 검은 불길(위력 250%, 화염)이 지나간 자리에 2초 동안 불바다(0.25초마다 위력 15%)를 남긴다.',
+  perk: '화염·암흑 피해를 줄 때마다 용염 +1(최대 20). 용염이 20이면 다음 돌진 찌르기가 흑룡 돌진 — 앞으로 380 거리를 꿰뚫는 검은 불길(위력 250%, 화염)이 지나간 자리에 2초 동안 불바다(0.25초마다 위력 15%)를 남긴다.',
   mult: { atk: 1.08, hp: 1.08 }, flat: { fire: 10, dark: 10, lifesteal: 1 },
   lookTop: { aura: au('dark', '#c070ff'), wings: 'demon', armorTrim: '#c070ff', trailColor: '#c070ff' },
   ult: { accent: '#c070ff', colors: ['#ff6a2a', '#c070ff', '#ffd0a0'] },

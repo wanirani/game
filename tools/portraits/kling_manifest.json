@@ -1,5 +1,5 @@
 {
- "_doc": "블러드 녹턴 애니메 초상화 업그레이드(fanime) 설치 기록 — assets/portraits/*.webp, assets/cg/keyart_*.webp 의 출처. 각 항목: 설치 파일(크기·sha256 앞 16자), 그룹(heroes/npcs/bosses_human/creatures), 채택 후보와 매팅/프레이밍 메모, 해당 키의 모든 Kling 작업(generationId, 프롬프트, 크레딧; 채택되지 않은 후보 작업 포함). status: new = 그룹 최종본 설치, kept_old = 기존 그림 유지(새 후보가 뚜렷이 낫지 않음). 초상 얼굴 박스는 src/data/portrait_meta.js 와 같은 값(portrait_meta). 원본 작업 폴더: /tmp/claude-0/fanime (세션 임시).",
+ "_doc": "블러드 녹턴 애니메 초상화 업그레이드(fanime) 설치 기록 — assets/portraits/*.webp, assets/cg/keyart_*.webp 의 출처. 각 항목: 설치 파일(크기·sha256 앞 16자), 그룹(heroes/npcs/bosses_human/creatures), 채택 후보와 매팅/프레이밍 메모, 해당 키의 모든 Kling 작업(generationId, 프롬프트, 크레딧; 채택되지 않은 후보 작업 포함). status: new = 그룹 최종본 설치, fix_recut = 검증 후속 다시 오림/다시 틀잡기(Kling 없음), fix_regen = 검증 후속 Kling 다시 그림(round fix-regen 작업 추가), kept_old = 기존 그림 유지(새 후보가 뚜렷이 낫지 않음). 초상 얼굴 박스는 src/data/portrait_meta.js 와 같은 값(portrait_meta). 원본 작업 폴더: /tmp/claude-0/fanime (세션 임시).",
  "model": "kling-image-v3_0_omni",
  "credits": {
   "heroes": 102.0,
@@ -7,13 +7,15 @@
   "bosses_human": 108.0,
   "creatures": 74.0,
   "pilot": 40.0,
-  "total": 436.0
+  "total": 504.0,
+  "fix_regen": 68.0
  },
  "style": "fanime/style.md (gothic dark-fantasy anime, premium Korean gacha RPG look); busts 768x1024 RGBA, key arts 1024x1536 opaque",
  "install_notes": {
   "busts": "group finals copied, then re-encoded in place (cwebp-equivalent PIL WebP q80 method 6 alpha_quality 70): 11,586,490 -> 8,810,852 B; RGB PSNR vs group finals mean 42.6 dB (min 37.6 cmp_gd_lumen), alpha PSNR >= 45 dB",
   "lo_variants": "assets/lo/** regenerated with tools/assets/make_variants.py",
-  "face_boxes": "eye/chin landmarks replayed from each group framing script; humans: centre = eye + 0.32*(chin-eye), s = 1.6*eye_chin/768; creatures hand-measured; overrides momo/banshee/chaos"
+  "face_boxes": "eye/chin landmarks replayed from each group framing script; humans: centre = eye + 0.32*(chin-eye), s = 1.6*eye_chin/768; creatures hand-measured; overrides momo/banshee/chaos",
+  "fix_2026_10_08": "verifier follow-up round: 7 busts re-cut/reframed without Kling (status fix_recut: kael__angry/__shock, npc_carmilla x3, npc_hadwin__angry/__shock) and 13 regenerated (status fix_regen: npc_greta x3, npc_marta x3, lia x3, npc_rook2, b_banshee, b_behemoth, b_frostqueen; 34 images, 68 credits, jobs appended with round 'fix-regen'). Finals copied as-is; lo variants regenerated; face boxes re-measured (greta/marta/rook2 from the new eye/chin, banshee/behemoth hand-set). Each replaced entry keeps its earlier record under 'previous' (backup in /tmp/claude-0/fanime/fix/backup/); earlier jobs stay in 'jobs'."
  },
  "assets": {
   "portraits/azel": {
@@ -194,24 +196,34 @@
   },
   "portraits/b_banshee": {
    "file": "assets/portraits/b_banshee.webp",
-   "bytes": 48546,
-   "sha256_16": "0ee53a7450797329",
-   "status": "new",
    "group": "bosses_human",
-   "group_final": "batch/bosses_human/final/b_banshee.webp (sha256_16 dfd48a3f9ff87cf9, 56140 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "neutral",
-   "method": "i2i v2, ARIIhMwu",
-   "pick": "#2",
-   "matte": "keyonly 28 + enclosed (rembg dropped the body)",
-   "framing": "eye-chin 165",
-   "notes": "calm expression, so the wailing horror is lost; the hood is cut by the raw top edge; the translucent dress became opaque teal",
+   "bytes": 72080,
+   "sha256_16": "ffd2aa1f6efa1058",
+   "status": "fix_regen",
+   "group_final": "fix/regen/final/b_banshee.webp (sha256_16 ffd2aa1f6efa1058, 72080 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "t2i ARavwAIQ #1",
+   "notes": "Wailing horror: screaming skull-like face, hollow glowing cyan eyes, hair streaming upward, chains, tattered dress. keyonly 28 + enclosed, ban_clean.py. Face sits mid-raw, so bottom anchoring forces s 0.575: eye (294,348) = eye line 0.34, head larger than the group. Dress painted translucent but opaque alpha. Face box hand-set (open jaw).",
+   "previous": {
+    "bytes": 48546,
+    "sha256_16": "0ee53a7450797329",
+    "status": "new",
+    "group_final": "batch/bosses_human/final/b_banshee.webp (sha256_16 dfd48a3f9ff87cf9, 56140 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "#2",
+    "method": "i2i v2, ARIIhMwu",
+    "matte": "keyonly 28 + enclosed (rembg dropped the body)",
+    "framing": "eye-chin 165",
+    "notes": "calm expression, so the wailing horror is lost; the hood is cut by the raw top edge; the translucent dress became opaque teal",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/b_banshee.webp"
+   },
    "portrait_meta": {
     "bust": true,
     "face": {
-     "x": 0.4,
-     "y": 0.33,
-     "s": 0.24
+     "x": 0.43,
+     "y": 0.4,
+     "s": 0.36
     }
    },
    "jobs": [
@@ -230,29 +242,55 @@
      "note": "prompt v2",
      "prompt": "Redraw the character from 图片1 as a brand-new anime illustration. Use 图片1 only as the reference for identity, costume, colours and props; do NOT copy its realistic painting style or its realistic face: redraw the face completely in clean Japanese anime style (anime facial proportions, large anime eyes, crisp line art). The Banshee Queen, a wailing ghost woman drawn in anime style, a gaunt pale sea-green ghostly face, hollow glowing pale-green eyes, very long drifting white hair, a torn pale-teal hood and veils, rusted spectral chains draped over her shoulders, faint blue-green ectoplasm wisps clinging to her shoulders. Style: gothic dark-fantasy anime illustration like a premium Korean mobile gacha RPG, semi-painterly anime rendering, soft painted gradients with subtle painterly brush texture (not flat cel shading), moody low-key lighting from one soft key light at the front-left, desaturated deep shadows and heavy chiaroscuro: one side of the face and body falls into deep shadow, cool pale teal reflected tones inside the shadows only; no rim light, no backlight, no glowing edges, clean crisp anime line art, a clean refined anime face with large expressive detailed eyes and glossy catchlights, a small simple anime nose, hair keeps one natural colour (no dyed streaks, no coloured tips), finely detailed hair strands and fabric folds, high detail, sharp focus. Framing: Single character, medium-close bust portrait from the top of the head to mid-chest: the head takes only the upper third of the image and both shoulders and the upper chest are fully visible down to the bottom edge, the whole head and hair inside the frame with a small margin above. Three-quarter view: the body and the face are turned toward the left edge of the image, the face looks toward the left side of the picture. Eyes about 30 percent from the top, hands out of frame. Expression: mournful and haunting, lips slightly parted with no teeth showing. Background: a flat, evenly lit, solid medium grey (#808080) studio backdrop with the same mid-grey value in every corner, perfectly uniform, no glow, no light bloom, no halo, no vignette, no gradient, no darkening, no scenery, no props, sparkles or particles behind the character; the chiaroscuro lighting applies to the character only; the silhouette meets the grey backdrop with a crisp clean edge, no outline and no coloured glow around it. Normal flat teeth, no fangs, no pointed canines. No text, no letters, no logo, no watermark, no border, no frame, no sticker outline, no outer glow around the silhouette, no second character, no extra limbs, no extra fingers.",
      "ledger": "batch/bosses_human/ledger.jsonl"
+    },
+    {
+     "job": "banshee:neutral",
+     "ts": "2026-10-08T15:36:36",
+     "tool": "text_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 2,
+     "credits": 4.0,
+     "generationId": "ARavwAIQyRMvirVmnEkiRXuDM9S2Ojb8xZ3F0gmyY3SxYFdiZBMFUzIPewik8mqb9ktfszXC",
+     "ref": "none (t2i)",
+     "prompt_key": "banshee_n",
+     "note": "",
+     "prompt": "The Banshee Queen, a wailing ghost of the graveyard and a frightening horror boss, drawn in gothic dark-fantasy anime style. A gaunt dead young woman with pale sea-green, faintly translucent skin, sunken hollow cheeks and dark bruise-like shadows around the eyes; hollow black eye sockets with small cold glowing pale-cyan pupils deep inside them; her mouth stretched wide open in a piercing scream, a dark open mouth with thin lips pulled back, normal teeth, no fangs; very long white ghostly hair streaming and floating straight upward above her head as if underwater; a torn, tattered, translucent pale-teal burial dress and veil whose ragged edges dissolve into thin mist; rusted iron chains draped across her shoulders and chest; thin skeletal collarbones and bony shoulders. Anime-styled but genuinely frightening and unsettling. Style: gothic dark-fantasy anime illustration like a premium Korean mobile gacha RPG boss card, semi-painterly anime rendering with subtle painterly texture, a clean refined anime face, crisp clean line art, desaturated deep shadows and heavy chiaroscuro lighting, finely detailed hair strands and torn fabric, high detail, sharp focus on the face; no rim light, no outer glow around the figure, no sticker outline. Cold teal-green light from below shapes the face; the glow of her eyes stays small inside the sockets. Framing: single figure, bust portrait from the floating hair down to mid-chest, the head and most of the rising hair inside the frame, the head a little lower than usual so the hair has room above it; three-quarter view: the body and the screaming face are turned toward the left edge of the image; eyes about 35 percent from the top; hands out of frame. Background: a flat, evenly lit, solid medium grey (#808080) studio backdrop with the same mid-grey value in every corner, perfectly uniform, no glow, no light bloom, no halo, no vignette, no gradient, no cast shadow, no scenery, no props or particles behind the character; the silhouette edge is clean and crisp with no outline and no glow around it. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
     }
    ]
   },
   "portraits/b_behemoth": {
    "file": "assets/portraits/b_behemoth.webp",
-   "bytes": 101456,
-   "sha256_16": "2e36c873faf0922e",
-   "status": "new",
    "group": "creatures",
-   "group_final": "batch/creatures/final/b_behemoth.webp (sha256_16 1ef1231e1cc47f3c, 130190 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "neutral",
-   "pick": "w3",
-   "credits_note": "4",
-   "matte": "creature flags",
-   "eye_line": "0.29 (on the queen)",
-   "notes": "w2 was missing the queen rider. w3 is full-body, so the legs are cropped at about 0.8 and there is a large empty top band (about 250 px). The eye-line is on the rider (the speaker), so the beast is small. Weakest composition in the set.",
+   "bytes": 117714,
+   "sha256_16": "f3560b8da7665be9",
+   "status": "fix_regen",
+   "group_final": "fix/regen/final/b_behemoth.webp (sha256_16 f3560b8da7665be9, 117714 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "t2i r2 ASCo01Ne #2",
+   "notes": "Queen-centred bust (white hair, glowing green eyes, mushroom/thorn crown) with the horned boar-skull beast behind. Gradient backdrop: union of three mattes + beh_clean.py + manual pass. s 0.454, queen eye (212,338) = x 0.28; a tusk tip touches the right edge; faint fur fringes. Face box = queen face.",
+   "previous": {
+    "bytes": 101456,
+    "sha256_16": "2e36c873faf0922e",
+    "status": "new",
+    "group_final": "batch/creatures/final/b_behemoth.webp (sha256_16 1ef1231e1cc47f3c, 130190 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "w3",
+    "matte": "creature flags",
+    "eye_line": "0.29 (on the queen)",
+    "credits_note": "4",
+    "notes": "w2 was missing the queen rider. w3 is full-body, so the legs are cropped at about 0.8 and there is a large empty top band (about 250 px). The eye-line is on the rider (the speaker), so the beast is small. Weakest composition in the set.",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/b_behemoth.webp"
+   },
    "portrait_meta": {
     "bust": true,
     "face": {
-     "x": 0.4,
-     "y": 0.45,
-     "s": 0.35
+     "x": 0.294,
+     "y": 0.363,
+     "s": 0.234
     }
    },
    "jobs": [
@@ -287,6 +325,38 @@
      "note": "2nd candidate: w2 missing queen rider",
      "prompt": "Redraw the creature from 图片1 as a brand-new anime illustration. Use 图片1 only as the reference for the creature's design, anatomy, colours and props; do NOT copy its background, its full-body pose or its realistic oil-painting style: redraw it as a clean stylised anime creature illustration with crisp line art. Behemoth, the beast of rotting earth, a colossal boar-like beast whose face is a bleached cat-like skull with curved tusks and empty eye sockets glowing green, festering grey-brown hide pierced with holes, moss and glowing green fungus growing on its back, thorny dead branches. Style: painterly anime creature design like a premium Korean gacha boss card, gothic dark-fantasy anime illustration, semi-painterly anime rendering, soft painted gradients with subtle painterly brush texture, moody low-key lighting from one soft key light at the front-left, desaturated deep shadows and heavy chiaroscuro: one side of the head and body falls into deep shadow, cool sickly green reflected tones inside the shadows only; no rim light, no backlight, no glowing edges, no outline, bold clean anime line art inside the figure, painted cel shading, menacing expressive anime eyes with glossy highlights, high detail on rotting hide, moss and fungus, sharp focus on the eyes. Framing: Single creature, medium-close monster bust portrait: the huge skull face, the rotting shoulders and the hump of its back fill the frame down to the bottom edge, the head takes the upper part of the image with the eyes about 30 percent from the top, the whole head, the tusks and the queen rider inside the frame with a small margin above. Three-quarter view: the head and body turn toward the left edge of the image, the creature looks toward the left side of the picture; IMPORTANT: a small pale ghostly queen sits on the hump of its back just behind its head, clearly visible in the upper right part of the image: a slender woman in a tattered white gown with long pale hair and a thin thorny crown, her face, torso and arms fully visible, one hand resting on the beast; she is part of the boss design. Expression: a silent, rotting menace. Background: a flat, evenly lit, solid medium grey (#808080) studio backdrop with the same mid-grey value in every corner, perfectly uniform, no glow, no light bloom, no halo, no vignette, no gradient, no darkening, no scenery, no moon, no water, no smoke, no sparks, no particles behind the creature; glowing eyes, flames and magic light only the creature itself and never spill onto the backdrop; the silhouette meets the grey backdrop with a crisp clean edge, no outline and no coloured glow around it. No text, no letters, no logo, no watermark, no border, no frame, no sticker outline, no white outline, no outer glow around the silhouette, no other creature besides the beast and its small queen, no extra limbs, no extra heads.",
      "ledger": "batch/creatures/ledger.jsonl"
+    },
+    {
+     "job": "behemoth:neutral",
+     "ts": "2026-10-08T15:36:37",
+     "tool": "image_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 2,
+     "credits": 4.0,
+     "generationId": "ASKWW0xegtK6dhpatziPh5rEO1GGGxAwpssnUWuTNdShPLy-P9PH9BeRFYVqwOt5j4y1UQPo",
+     "ref": "image_1=ref/behemoth_design.png (boss atlas queen2 + skull head/jaw on grey; upload in ref/behemoth_design.upload.json)",
+     "prompt_key": "behemoth_n",
+     "note": "",
+     "prompt": "Anime bust portrait of the Mycelium Queen, the pale woman on the left of 图片1, who rides on and is fused into the back of the giant rotting beast Behemoth whose head is shown on the right of 图片1. Composition: the queen is the main subject in the foreground, a bust from the top of her head to mid-chest, her face large and clearly readable, three-quarter view with her body and face turned toward the left edge of the image; right behind her, rising over her shoulder on the right side of the image, the huge head of the beast looms: a bleached boar skull with long curved ivory tusks, dark empty eye sockets with a faint green glow, pointed furry ears and rotten brown fur with small glowing pale mushrooms; the skull is bigger than her head and partly cut by the right edge of the image. The queen: a gaunt, eerie, beautiful woman with ash-grey pale skin that turns into grey tree bark and cracked wood on her neck, shoulders and arms; long wild white hair; a crown of pale mushrooms and thorny twigs on her head; glowing pale-green eyes; dark lips slightly parted as if whispering hungrily; a tattered dress of grey bark, moss and roots; small pale mushrooms and a few green spore motes on her shoulders. Mood: rot, swamp, sickly green light from the mushrooms lighting her face from below. Style: gothic dark-fantasy anime illustration like a premium Korean mobile gacha RPG boss card, semi-painterly anime rendering with subtle painterly texture, a clean refined anime face, crisp clean line art, desaturated deep shadows and heavy chiaroscuro lighting, finely detailed hair strands and torn fabric, high detail, sharp focus on the face; no rim light, no outer glow around the figure, no sticker outline. Framing: eyes of the queen about 30 percent from the top and about 45 percent from the left edge; the whole crown inside the frame with a small margin above; hands out of frame. Background: a flat, evenly lit, solid medium grey (#808080) studio backdrop with the same mid-grey value in every corner, perfectly uniform, no glow, no light bloom, no halo, no vignette, no gradient, no cast shadow, no scenery, no props or particles behind the character; the silhouette edge is clean and crisp with no outline and no glow around it. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
+    },
+    {
+     "job": "behemoth:neutral_r2",
+     "ts": "2026-10-08T15:40:21",
+     "tool": "text_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 2,
+     "credits": 4.0,
+     "generationId": "ASCo01Ne8E_N14__5lNyq7O-p_kdE0XC6JLVA2b-__i2iEjyhNk6EXkC-bmKAnaBVIVhZilH",
+     "ref": "none (t2i)",
+     "prompt_key": "behemoth_n2",
+     "note": "r1 #1 picture-frame border + tiny queen on skull; #2 duplicated mirrored skull + western-comic face",
+     "prompt": "Boss portrait of the Mycelium Queen, the eerie pale woman who rides on and is fused into the back of Behemoth, a giant rotting boar-like beast. Composition: a bust portrait of the queen from the top of her crown to mid-chest in the foreground, her face large and clearly readable, three-quarter view with her body and face turned toward the left edge of the image, her eyes about 30 percent from the top and about 45 percent from the left edge. Behind her, on the right side of the image, exactly ONE huge beast head looms over her right shoulder: a bleached boar skull face with two long curved ivory tusks, dark eye sockets with a faint green glow, shaggy rotten brown fur and pointed ears, small pale glowing mushrooms growing from the fur; the single skull is bigger than her head and partly cut by the right edge of the image. The queen: a clean, refined anime face, gaunt and beautiful, ash-grey pale skin; her neck, shoulders and upper chest turn into cracked grey tree bark and thin roots; long wild white hair; a crown of pale mushrooms and thorny twigs on her head; glowing pale-green eyes; dark lips slightly parted in a hungry whisper, calm and eerie; a tattered high-necked dress of grey bark, moss and roots; a few green spore motes. Sickly green light from the mushrooms lights her face from below. Style: gothic dark-fantasy anime illustration like a premium Korean mobile gacha RPG boss card, semi-painterly anime rendering with subtle painterly texture, a clean refined anime face, crisp clean line art, desaturated deep shadows and heavy chiaroscuro lighting, finely detailed hair strands and torn fabric, high detail, sharp focus on the face; no rim light, no outer glow around the figure, no sticker outline. Hands out of frame. Background: a flat, evenly lit, solid medium grey (#808080) studio backdrop with the same mid-grey value in every corner, perfectly uniform, no glow, no light bloom, no halo, no vignette, no gradient, no cast shadow, no scenery, no props or particles behind the character; the silhouette edge is clean and crisp with no outline and no glow around it. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
     }
    ]
   },
@@ -854,18 +924,28 @@
   },
   "portraits/b_frostqueen": {
    "file": "assets/portraits/b_frostqueen.webp",
-   "bytes": 107040,
-   "sha256_16": "f1fa78a4049d0329",
-   "status": "new",
    "group": "bosses_human",
-   "group_final": "batch/bosses_human/final/b_frostqueen.webp (sha256_16 f1e0327e18cbed8b, 146562 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "neutral",
-   "method": "i2i v1, AXNpobAU",
-   "pick": "#1",
-   "matte": "default",
-   "framing": "eye-chin 174",
-   "notes": "the icicle crown touches the raw top edge, so the crown tips are cut by the canvas top",
+   "bytes": 106260,
+   "sha256_16": "d8aac07009e74727",
+   "status": "fix_regen",
+   "group_final": "fix/regen/final/b_frostqueen.webp (sha256_16 d8aac07009e74727, 106260 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "relight i2i AevkO5wv #2",
+   "notes": "Same design with deeper blue-grey shadows and stronger chiaroscuro; SIFT-aligned onto the installed final (scale 0.521, 216 inliers), so framing and crown fit are identical. Some shadow-side hair is dark slate.",
+   "previous": {
+    "bytes": 107040,
+    "sha256_16": "f1fa78a4049d0329",
+    "status": "new",
+    "group_final": "batch/bosses_human/final/b_frostqueen.webp (sha256_16 f1e0327e18cbed8b, 146562 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "#1",
+    "method": "i2i v1, AXNpobAU",
+    "matte": "default",
+    "framing": "eye-chin 174",
+    "notes": "the icicle crown touches the raw top edge, so the crown tips are cut by the canvas top",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/b_frostqueen.webp"
+   },
    "portrait_meta": {
     "bust": true,
     "face": {
@@ -890,6 +970,22 @@
      "note": "",
      "prompt": "Redraw the character from 图片1 as a brand-new anime illustration. Use 图片1 only as the reference for identity, costume, colours and props; do NOT copy its realistic painting style or its realistic face: redraw the face completely in clean Japanese anime style (anime facial proportions, large anime eyes, crisp line art). Isabella the Frost Queen, a regal ice witch drawn as a beautiful anime woman, pale icy-blue skin, long flowing white hair, a tall jagged crown of icicles, cold pale-blue eyes, a high-collared gown of frost-white lace and snow with sharp crystal ice spikes on the shoulders. Style: gothic dark-fantasy anime illustration like a premium Korean mobile gacha RPG, semi-painterly anime rendering, desaturated deep shadows and heavy chiaroscuro from one soft key light, subtle painterly texture, a faint icy cyan accent tint painted on the edges of the hair and clothes inside the silhouette only, clean crisp anime line art, a clean refined anime face with large expressive detailed eyes and glossy catchlights, a small simple anime nose, painted soft cel shading, hair keeps one natural colour (no dyed streaks, no coloured tips), finely detailed hair strands and fabric folds, high detail, sharp focus. Framing: Single character, bust portrait from the top of the head to mid-chest, head and shoulders fill the frame, the whole head and hair inside the frame with a small margin above. Three-quarter view: the body and the face are turned toward the left edge of the image, the face looks toward the left side of the picture. Eyes about 30 percent from the top, hands out of frame. Expression: cold regal disdain, a faint aloof smile with the mouth closed. Background: a flat, evenly lit, solid medium grey (#808080) studio backdrop with the same mid-grey value in every corner, perfectly uniform, no glow, no light bloom, no halo, no vignette, no gradient, no darkening, no scenery, no props, sparkles or particles behind the character; the chiaroscuro lighting applies to the character only; the silhouette meets the grey backdrop with a crisp clean edge, no outline and no coloured glow around it. Normal flat teeth, no fangs, no pointed canines. No text, no letters, no logo, no watermark, no border, no frame, no sticker outline, no outer glow around the silhouette, no second character, no extra limbs, no extra fingers.",
      "ledger": "batch/bosses_human/ledger.jsonl"
+    },
+    {
+     "job": "frostqueen:neutral",
+     "ts": "2026-10-08T15:38:25",
+     "tool": "image_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 2,
+     "credits": 4.0,
+     "generationId": "AevkO5wvQ3sudZfCGgWwT2Fqq5n-Bj1dXEIexasTnVuadUormznhP4pEfWxE0ghg9AAD88zI",
+     "ref": "image_1=installed source raw bosses_human b_frostqueen__n_1",
+     "prompt_key": "frost_n",
+     "note": "",
+     "prompt": "Repaint 图片1 with dramatic low-key lighting. Keep exactly the same character design: Isabella the Frost Queen, the same face, pale icy-blue skin, red lips, cold blue eyes, long white hair, the tall jagged crown of blue icicles, the white lace high-collared gown and the sharp crystal ice spikes on the shoulders, the same three-quarter pose facing the left side of the image and the plain flat grey background; zoom out very slightly so the whole crown fits inside the frame with a small margin above. Change only the rendering: semi-painterly gothic dark-fantasy anime illustration like a premium Korean mobile gacha RPG; one soft key light from the front-left, the far (right) side of the face, hair and body falls into deep soft shadow (heavy chiaroscuro); desaturated, muted, darker colours; soft painted gradients with subtle painterly brush texture instead of flat cel fills; thinner, finer, crisp line art instead of thick black outlines; soft ambient occlusion under the crown, chin, hair and collar. Cold cyan reflected light inside the shadows only; the white hair and gown are shaded with cool grey-blue values, not pure flat white. Normal flat teeth, no fangs. Background: a flat, evenly lit, solid medium grey (#808080) studio backdrop with the same mid-grey value in every corner, perfectly uniform, no glow, no light bloom, no halo, no vignette, no gradient, no cast shadow, no scenery, no props or particles behind the character; the silhouette edge is clean and crisp with no outline and no glow around it. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
     }
    ]
   },
@@ -2836,14 +2932,24 @@
   },
   "portraits/kael__angry": {
    "file": "assets/portraits/kael__angry.webp",
-   "bytes": 120244,
-   "sha256_16": "d30b1d76c7b9a93e",
-   "status": "new",
    "group": "heroes",
-   "group_final": "batch/heroes/final/kael__angry.webp (sha256_16 1402757a529f69c2, 156050 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "angry",
-   "pick": "NEW i2i from the pilot bust (pilot angry rejected for fangs); matte default + fix_alpha --eraselight 150; aligned to neutral",
+   "bytes": 123978,
+   "sha256_16": "f529343616b1f11c",
+   "status": "fix_recut",
+   "group_final": "fix/recut/final/kael__angry.webp (sha256_16 f529343616b1f11c, 123978 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "re-cut from pre-fix cut/kael_angry.png + raw (pocket.py --hardL 238)",
+   "notes": "Removes the rectangular matte notch under the bandana tail (artifact of the earlier fix_alpha --eraselight rectangle), the white sliver by the ear, the ragged white fringe at the lower-left hair and a speckled white pocket at the right collar. Installed alignment transform recovered and re-applied; geometry unchanged (eye 422,297).",
+   "previous": {
+    "bytes": 120244,
+    "sha256_16": "d30b1d76c7b9a93e",
+    "status": "new",
+    "group_final": "batch/heroes/final/kael__angry.webp (sha256_16 1402757a529f69c2, 156050 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "NEW i2i from the pilot bust (pilot angry rejected for fangs); matte default + fix_alpha --eraselight 150; aligned to neutral",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/kael__angry.webp"
+   },
    "jobs": [
     {
      "job": "kael:angry",
@@ -2876,14 +2982,24 @@
   },
   "portraits/kael__shock": {
    "file": "assets/portraits/kael__shock.webp",
-   "bytes": 113820,
-   "sha256_16": "4c554e97afa15d2f",
-   "status": "new",
    "group": "heroes",
-   "group_final": "batch/heroes/final/kael__shock.webp (sha256_16 ee2b45350d518c90, 140632 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "shock",
-   "pick": "KEPT pilot shock (pilot job kael_expr_shock_i2i), re-matted --keyadd 40 --fillholes 0.005; framed from its own eye/chin",
+   "bytes": 118622,
+   "sha256_16": "624af513710fbbba",
+   "status": "fix_recut",
+   "group_final": "fix/recut/final/kael__shock.webp (sha256_16 624af513710fbbba, 118622 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "pocket.py re-matte of pilot raw kael_shock",
+   "notes": "Grey backdrop pocket between ponytail, bandana tail, neck and collar re-matted from the pilot raw (seeded trimap + closed-form matting + ML foreground), plus 7 small pockets between the ponytail strands and 2 white pockets between the hair locks right of the cheek. Geometry unchanged (eye 454,297).",
+   "previous": {
+    "bytes": 113820,
+    "sha256_16": "4c554e97afa15d2f",
+    "status": "new",
+    "group_final": "batch/heroes/final/kael__shock.webp (sha256_16 ee2b45350d518c90, 140632 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "KEPT pilot shock (pilot job kael_expr_shock_i2i), re-matted --keyadd 40 --fillholes 0.005; framed from its own eye/chin",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/kael__shock.webp"
+   },
    "jobs": [
     {
      "job": "kael_expr_shock_i2i",
@@ -2902,14 +3018,24 @@
   },
   "portraits/lia": {
    "file": "assets/portraits/lia.webp",
-   "bytes": 51828,
-   "sha256_16": "b7b772a581d78637",
-   "status": "new",
    "group": "heroes",
-   "group_final": "batch/heroes/final/lia.webp (sha256_16 77a9be1baf396457, 72232 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "neutral",
-   "pick": "lia_t2i_5 (third t2i run; runs 1-2 masked face/halo, #6 rejected), _fx matte",
+   "bytes": 72336,
+   "sha256_16": "a77f2e2d23535add",
+   "status": "fix_regen",
+   "group_final": "fix/regen/final/lia.webp (sha256_16 a77f2e2d23535add, 72336 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "t2i Aa60d3Ok #1",
+   "notes": "Solid glossy black hair, pale natural skin, red eyes and scarf. Aligned to the installed cut (SIFT similarity, scale 0.985, 0.82 deg) and framed with the installed landmarks: framing identical (eye 426,297).",
+   "previous": {
+    "bytes": 51828,
+    "sha256_16": "b7b772a581d78637",
+    "status": "new",
+    "group_final": "batch/heroes/final/lia.webp (sha256_16 77a9be1baf396457, 72232 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "lia_t2i_5 (third t2i run; runs 1-2 masked face/halo, #6 rejected), _fx matte",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/lia.webp"
+   },
    "portrait_meta": {
     "bust": true,
     "face": {
@@ -2964,19 +3090,45 @@
      "ref": "reroll2_mask_up_red_streaks",
      "prompt": "Lia Crow, a young female human assassin of the Crow Society, short jet-black bob hair, all black with no red or coloured strands, sharp crimson red eyes, an uncovered face with a small nose and visible lips (nothing covers her mouth or nose), a black neck gaiter bunched low around her neck under the chin, a long crimson scarf wrapped around her shoulders, dark leather ninja-style outfit with light steel shoulder plates. Gothic dark-fantasy anime illustration like a premium Korean mobile gacha RPG, semi-painterly anime rendering with subtle painterly texture, desaturated deep shadows and heavy chiaroscuro lighting, clean crisp anime line art, a clean refined anime face with large expressive detailed eyes and glossy catchlights, painted soft cel shading, dramatic cold steel-blue rim light on the character only, hair keeps one natural colour (no dyed streaks, no coloured tips), finely detailed hair strands and fabric folds, high detail, sharp focus. Single character, bust portrait from the top of the head to mid-chest, head and shoulders fill the frame, the whole head and hair inside the frame with a small margin above. Three-quarter view: the body and the face are turned toward the right edge of the image, the nose points to the right side of the picture and the character looks off toward the right. Eyes about 30 percent from the top, arms relaxed at the sides, hands out of frame. Expression: calm, composed expression with a faint confident closed-mouth smile. Background: a flat, evenly lit, solid medium grey (#808080) studio backdrop with the same mid-grey value in every corner, perfectly uniform, no glow, no light bloom, no halo, no vignette, no gradient, no darkening, no scenery, no props or particles behind the character; the chiaroscuro lighting applies to the character only. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no border, no frame, no sticker outline, no outer glow around the silhouette, no second character, no extra limbs.",
      "ledger": "batch/heroes/ledger.jsonl"
+    },
+    {
+     "job": "lia:neutral",
+     "ts": "2026-10-08T15:31:55",
+     "tool": "image_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 2,
+     "credits": 4.0,
+     "generationId": "Aa60d3OkjTThPCO1cMyZa605bjuGt0-rpF891qtL7Xgi7WpCvPkvBcDBwt6j_gOgSFw7uqPH",
+     "ref": "image_1=installed raw heroes lia_t2i_5",
+     "prompt_key": "lia_n",
+     "note": "",
+     "prompt": "Edit 图片1. Keep exactly the same character, face, eyes, expression, pose, head position, framing, camera distance, costume (black leather outfit, steel shoulder plate, leather straps and buckle), the crimson-red scarf around her neck, the crimson red eyes, the anime art style and the plain flat grey background. Fix only the colours and the lighting: (1) her whole short bob hair is solid glossy jet-black on both sides of the head, including the right side, the back and the ends: no white, silver, light-grey or pale areas anywhere in the hair, only a few thin dark blue-grey glossy shine lines; (2) her skin is pale but natural and alive: a light ivory skin tone with a soft warm peach-pink tint on the cheeks, lips, ears and neck, not grey, not bluish, not white; (3) remove the cold white rim light on the right side of the hair, face and body; light comes from one soft warm-neutral key light at the front-left, the right side falls into soft deep shadow (chiaroscuro), desaturated deep shadows, subtle painterly texture. The eyes stay crimson red, the scarf stays crimson red, hair keeps one natural black colour with no dyed streaks. Background: a flat, evenly lit, solid medium grey (#808080) studio backdrop with the same mid-grey value in every corner, perfectly uniform, no glow, no light bloom, no halo, no vignette, no gradient, no cast shadow, no scenery, no props or particles behind the character; the silhouette edge is clean and crisp with no outline and no glow around it. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
     }
    ]
   },
   "portraits/lia__angry": {
    "file": "assets/portraits/lia__angry.webp",
-   "bytes": 68656,
-   "sha256_16": "0a0cb724d8a9bbd9",
-   "status": "new",
    "group": "heroes",
-   "group_final": "batch/heroes/final/lia__angry.webp (sha256_16 a2175d4d917dd647, 91472 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "angry",
-   "pick": "i2i, 1 candidate",
+   "bytes": 75592,
+   "sha256_16": "b7985d43280555bd",
+   "status": "fix_regen",
+   "group_final": "fix/regen/final/lia__angry.webp (sha256_16 b7985d43280555bd, 75592 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "i2i AWsl3BNu from lia_n_1",
+   "notes": "Clenched human teeth; aligned to lia_n_1.",
+   "previous": {
+    "bytes": 68656,
+    "sha256_16": "0a0cb724d8a9bbd9",
+    "status": "new",
+    "group_final": "batch/heroes/final/lia__angry.webp (sha256_16 a2175d4d917dd647, 91472 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "i2i, 1 candidate",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/lia__angry.webp"
+   },
    "jobs": [
     {
      "job": "lia:angry",
@@ -2991,19 +3143,45 @@
      "ref": "lia_t2i_5",
      "prompt": "The same character as in 图片1, identical anime face, hair, costume, art style, lighting, colours, framing, camera distance, head size, pose and angle; do not zoom in, do not crop differently; only the facial expression changes: fierce determination and anger, eyebrows drawn down hard, eyes narrowed and intense, jaw set, teeth gritted showing a row of flat even human teeth, canine teeth the same length as the other teeth, no fangs, no pointed teeth. Keep exactly the same plain flat background as in 图片1, perfectly uniform, no glow, no halo. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no border, no frame, no sticker outline, no outer glow around the silhouette, no second character, no extra limbs.",
      "ledger": "batch/heroes/ledger.jsonl"
+    },
+    {
+     "job": "lia:angry",
+     "ts": "2026-10-08T15:35:30",
+     "tool": "image_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 1,
+     "credits": 2.0,
+     "generationId": "AWsl3BNuJ53FRYqCn2ilrfEvmesv0aauNV1sMQW7U-7WFh4onVsmd14znsQhBuO5QzMoqlr_",
+     "ref": "image_1=lia_n_1 (picked neutral)",
+     "prompt_key": "lia_angry",
+     "note": "",
+     "prompt": "The same character as in 图片1, identical anime face, solid jet-black hair, pale warm skin, crimson eyes, crimson scarf, costume, art style, lighting, colours, framing, camera distance, head size, head position, pose and angle; do not zoom in, do not crop differently, the head stays exactly where it is in 图片1; only the facial expression changes: fierce anger, eyebrows drawn down hard, eyes narrowed and glaring, jaw set, teeth gritted showing a row of flat even human teeth, canine teeth the same length as the other teeth, no fangs, no pointed teeth. Keep exactly the same plain flat grey background as in 图片1, perfectly uniform, no glow, no halo. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
     }
    ]
   },
   "portraits/lia__shock": {
    "file": "assets/portraits/lia__shock.webp",
-   "bytes": 67764,
-   "sha256_16": "05c618a84c53eeb4",
-   "status": "new",
    "group": "heroes",
-   "group_final": "batch/heroes/final/lia__shock.webp (sha256_16 3c5d8d6810a37f22, 93386 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "shock",
-   "pick": "i2i, 1 candidate (46 SIFT inliers)",
+   "bytes": 80196,
+   "sha256_16": "626551edf197f375",
+   "status": "fix_regen",
+   "group_final": "fix/regen/final/lia__shock.webp (sha256_16 626551edf197f375, 80196 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "i2i AeVigZDh from lia_n_1",
+   "notes": "Both eyes visible, matching the installed shock; aligned to lia_n_1.",
+   "previous": {
+    "bytes": 67764,
+    "sha256_16": "05c618a84c53eeb4",
+    "status": "new",
+    "group_final": "batch/heroes/final/lia__shock.webp (sha256_16 3c5d8d6810a37f22, 93386 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "i2i, 1 candidate (46 SIFT inliers)",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/lia__shock.webp"
+   },
    "jobs": [
     {
      "job": "lia:shock",
@@ -3018,6 +3196,22 @@
      "ref": "lia_t2i_5",
      "prompt": "The same character as in 图片1, identical anime face, hair, costume, art style, lighting, colours, framing, camera distance, head size, pose and angle; do not zoom in, do not crop differently; only the facial expression changes: shocked and grieving, eyes wide with trembling pupils and glistening tears at the corners, eyebrows raised and drawn together, mouth only slightly open in a small soft gasp with no teeth showing. Keep exactly the same plain flat background as in 图片1, perfectly uniform, no glow, no halo. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no border, no frame, no sticker outline, no outer glow around the silhouette, no second character, no extra limbs.",
      "ledger": "batch/heroes/ledger.jsonl"
+    },
+    {
+     "job": "lia:shock",
+     "ts": "2026-10-08T15:35:30",
+     "tool": "image_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 1,
+     "credits": 2.0,
+     "generationId": "AeVigZDhnYrzJk7NSAtPSJcutwJ9PFvxBur3iYFML3FSZHF3NrbbbmivLBS6ipqajihtX3G-",
+     "ref": "image_1=lia_n_1 (picked neutral)",
+     "prompt_key": "lia_shock",
+     "note": "",
+     "prompt": "The same character as in 图片1, identical anime face, solid jet-black hair, pale warm skin, crimson eyes, crimson scarf, costume, art style, lighting, colours, framing, camera distance, head size, head position, pose and angle; do not zoom in, do not crop differently, the head stays exactly where it is in 图片1; only the facial expression changes: shocked and grieving, eyes wide with trembling pupils and glistening tears at the corners, eyebrows raised and drawn together, mouth only slightly open in a small soft gasp with no teeth showing. Keep exactly the same plain flat grey background as in 图片1, perfectly uniform, no glow, no halo. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
     }
    ]
   },
@@ -3176,16 +3370,26 @@
   },
   "portraits/npc_carmilla": {
    "file": "assets/portraits/npc_carmilla.webp",
-   "bytes": 109324,
-   "sha256_16": "3209c5e19627f4cd",
-   "status": "new",
    "group": "npcs",
-   "group_final": "batch/npcs/final/npc_carmilla.webp (sha256_16 1659d24b4ad8e7e8, 147926 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "neutral",
-   "pick": "pilot carmilla_i2i_1 (reused) → carmilla_neutral_b",
-   "method": "i2i (pilot)",
-   "notes": "The pilot chest hole was fixed by a re-cut. Head is about 4% larger than the T=160 target because the bust has to reach the bottom edge.",
+   "bytes": 106878,
+   "sha256_16": "36a83ba5d01ed002",
+   "status": "fix_recut",
+   "group_final": "fix/recut/final/npc_carmilla.webp (sha256_16 36a83ba5d01ed002, 106878 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "restore.py + recolor.py on the installed cut",
+   "notes": "The verifier's 'white smoke blob' was the last scrap of her bare right shoulder, keyed out with the light-grey backdrop; the shoulder is restored opaque from the raw. The warm candle-lit hair strands between arm and torso are repainted in her black-hair grey. Framing unchanged.",
+   "previous": {
+    "bytes": 109324,
+    "sha256_16": "3209c5e19627f4cd",
+    "status": "new",
+    "group_final": "batch/npcs/final/npc_carmilla.webp (sha256_16 1659d24b4ad8e7e8, 147926 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "pilot carmilla_i2i_1 (reused) → carmilla_neutral_b",
+    "method": "i2i (pilot)",
+    "notes": "The pilot chest hole was fixed by a re-cut. Head is about 4% larger than the T=160 target because the bust has to reach the bottom edge.",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/npc_carmilla.webp"
+   },
    "portrait_meta": {
     "bust": true,
     "face": {
@@ -3227,16 +3431,26 @@
   },
   "portraits/npc_carmilla__angry": {
    "file": "assets/portraits/npc_carmilla__angry.webp",
-   "bytes": 121834,
-   "sha256_16": "022eb3d04ef48476",
-   "status": "new",
    "group": "npcs",
-   "group_final": "batch/npcs/final/npc_carmilla__angry.webp (sha256_16 7e57c05bc97d2d80, 160242 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "angry",
-   "pick": "carmilla_angry_1 → _1b",
-   "method": "i2i expr (vampire: fangs allowed)",
-   "notes": "Fangs are canon (vampire).",
+   "bytes": 119422,
+   "sha256_16": "9ed68d1c58186bc0",
+   "status": "fix_recut",
+   "group_final": "fix/recut/final/npc_carmilla__angry.webp (sha256_16 9ed68d1c58186bc0, 119422 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "restore.py + recolor.py on the installed cut",
+   "notes": "Same fix as npc_carmilla: right shoulder restored, warm hair patch repainted. Framing unchanged.",
+   "previous": {
+    "bytes": 121834,
+    "sha256_16": "022eb3d04ef48476",
+    "status": "new",
+    "group_final": "batch/npcs/final/npc_carmilla__angry.webp (sha256_16 7e57c05bc97d2d80, 160242 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "carmilla_angry_1 → _1b",
+    "method": "i2i expr (vampire: fangs allowed)",
+    "notes": "Fangs are canon (vampire).",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/npc_carmilla__angry.webp"
+   },
    "jobs": [
     {
      "job": "carmilla:angry",
@@ -3258,16 +3472,26 @@
   },
   "portraits/npc_carmilla__shock": {
    "file": "assets/portraits/npc_carmilla__shock.webp",
-   "bytes": 120374,
-   "sha256_16": "a4de9362d288cffb",
-   "status": "new",
    "group": "npcs",
-   "group_final": "batch/npcs/final/npc_carmilla__shock.webp (sha256_16 ef07ef77f341da10, 160590 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "shock",
-   "pick": "carmilla_shock_1 → _1b",
-   "method": "i2i expr",
-   "notes": "OK",
+   "bytes": 118540,
+   "sha256_16": "a80076da4c7b3d0d",
+   "status": "fix_recut",
+   "group_final": "fix/recut/final/npc_carmilla__shock.webp (sha256_16 a80076da4c7b3d0d, 118540 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "restore.py + recolor.py on the installed cut",
+   "notes": "Same fix as npc_carmilla: right shoulder restored, warm hair patch repainted. Framing unchanged.",
+   "previous": {
+    "bytes": 120374,
+    "sha256_16": "a4de9362d288cffb",
+    "status": "new",
+    "group_final": "batch/npcs/final/npc_carmilla__shock.webp (sha256_16 ef07ef77f341da10, 160590 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "carmilla_shock_1 → _1b",
+    "method": "i2i expr",
+    "notes": "OK",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/npc_carmilla__shock.webp"
+   },
    "jobs": [
     {
      "job": "carmilla:shock",
@@ -3434,22 +3658,32 @@
   },
   "portraits/npc_greta": {
    "file": "assets/portraits/npc_greta.webp",
-   "bytes": 86976,
-   "sha256_16": "b9f8b211170977dc",
-   "status": "new",
    "group": "npcs",
-   "group_final": "batch/npcs/final/npc_greta.webp (sha256_16 24d3725f0dc814a1, 113862 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "neutral",
-   "pick": "greta_t_2 → greta_t_2",
-   "method": "t2i (i2i not anime + glow)",
-   "notes": "Reads younger than the canon late 40s. Both the t2i v2 reroll and the i2i \"age\" edit (greta_e_1: toothy grin, no visible ageing) were rejected, so t2i #2 was kept. The horse is kept behind her.",
+   "bytes": 92488,
+   "sha256_16": "21d2772641877980",
+   "status": "fix_regen",
+   "group_final": "fix/regen/final/npc_greta.webp (sha256_16 21d2772641877980, 92488 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "greta_n4_1 (r4 relight i2i of greta_n3_1)",
+   "notes": "Weathered horse-keeper of about 50 (crow's feet, grey-blond braid, worn hat, red scarf, black horse), sturdy build, modest chest under a buttoned vest. keyonly 22, fillholes 0.002, frame_eye T160: eye (348,297). Rendering flatter / more cel-shaded than the painterly group.",
+   "previous": {
+    "bytes": 86976,
+    "sha256_16": "b9f8b211170977dc",
+    "status": "new",
+    "group_final": "batch/npcs/final/npc_greta.webp (sha256_16 24d3725f0dc814a1, 113862 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "greta_t_2 → greta_t_2",
+    "method": "t2i (i2i not anime + glow)",
+    "notes": "Reads younger than the canon late 40s. Both the t2i v2 reroll and the i2i \"age\" edit (greta_e_1: toothy grin, no visible ageing) were rejected, so t2i #2 was kept. The horse is kept behind her.",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/npc_greta.webp"
+   },
    "portrait_meta": {
     "bust": true,
     "face": {
-     "x": 0.452,
+     "x": 0.457,
      "y": 0.34,
-     "s": 0.333
+     "s": 0.334
     },
     "expressions": [
      "angry",
@@ -3520,21 +3754,95 @@
      "note": "edit: age to ~48",
      "prompt": "Edit 图片1: keep the same character, anime art style, face shape, eyes, hair, costume, colours, lighting, pose, framing and camera distance exactly as in 图片1; only change the following: age her to about forty-eight: visible crow's feet and smile lines at the eyes, faint lines on the forehead, slightly weathered sun-tanned skin, a few silver strands in the grey-blond braid, a small pale scar on her chin; she stays a handsome mature woman with a clean anime face. Keep a plain flat solid medium grey background, perfectly uniform, no glow, no halo, no light outline around the silhouette. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no border, no second person, no extra limbs, no extra fingers.",
      "ledger": "batch/npcs/ledger.jsonl"
+    },
+    {
+     "job": "greta:neutral",
+     "ts": "2026-10-08T15:28:25",
+     "tool": "image_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 2,
+     "credits": 4.0,
+     "generationId": "ASZujs0KH3WoyMAE0lHGfb1FfHRsQgSVrPbi6jFQJUXF2T6TPDb8eYdzJrIQmc4IwP-oj14i",
+     "ref": "image_1=old npc_greta (batch/npcs/ref upload); image_2=installed raw greta_t_2 (style/composition)",
+     "prompt_key": "greta_n",
+     "note": "",
+     "prompt": "Greta, the horse-keeper woman from 图片1, redrawn as an anime bust portrait. Take her face, her real age, her weathered features and her sturdy body from 图片1; take the anime art style, colouring, line art, lighting, composition, camera distance and the plain grey background from 图片2, including the head of her black horse close behind her shoulder on the left side of the image as in 图片2. Do NOT copy the young face or the large bust of the woman in 图片2. Greta is a weathered horse-keeper of about fifty: a mature middle-aged woman's face drawn in anime style with clear signs of age, crow's feet at the eyes, smile lines from the nose to the mouth corners, faint lines on the forehead, lean sun-tanned weathered cheeks, thin lips, a strong square jaw, a small pale scar on the chin; mature calm pale blue eyes with heavier lids, not big girlish eyes; grey-blond hair with many silver strands in one thick braid over her shoulder; a wide-brimmed worn brown leather hat; a rust-red scarf knotted at the neck. Sturdy stocky working build with broad strong shoulders; a modest flat chest completely hidden under a loose heavy cream work shirt and a buttoned-up brown leather vest, no cleavage, no emphasis on the chest. Expression: gruff but calm, a faint dry smile with the mouth closed. Style: gothic dark-fantasy anime illustration like a premium Korean mobile gacha RPG, semi-painterly anime rendering with subtle painterly texture, desaturated deep shadows and heavy chiaroscuro lighting from one soft key light at the front-left, clean crisp anime line art, a clean refined anime face, painted soft cel shading with smooth gradients, no rim light, no glowing edges, hair keeps one natural colour (no dyed streaks, no coloured tips), finely detailed hair strands and fabric folds, high detail, sharp focus. Framing: single character, bust portrait from the top of the head to mid-chest, head and shoulders fill the frame, the whole head and the whole hat inside the frame with a small margin above. Three-quarter view: the body and the face are turned toward the left edge of the image, the nose points to the left side of the picture. Eyes about 30 percent from the top, hands out of frame. Background: a flat, evenly lit, solid medium grey (#808080) studio backdrop with the same mid-grey value in every corner, perfectly uniform, no glow, no light bloom, no halo, no vignette, no gradient, no cast shadow, no scenery, no props or particles behind the character; the silhouette edge is clean and crisp with no outline and no glow around it. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
+    },
+    {
+     "job": "greta:neutral_r2",
+     "ts": "2026-10-08T15:31:22",
+     "tool": "image_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 2,
+     "credits": 4.0,
+     "generationId": "Aa7_sX-U4HGn6FGqGEf6iR67_AmU3KvFVoLsTpJoENMpiJGoQUvdr3O1W3BzJDU7_Vj0R0JU",
+     "ref": "image_1=installed raw greta_t_2 (base); image_2=greta_n_1 (aged face ref)",
+     "prompt_key": "greta_n2",
+     "note": "reroll: r1 #1 ~65yo flat frontal no horse; #2 goatee/elderly profile no horse",
+     "prompt": "Edit 图片1. Keep from 图片1 exactly: the composition and camera distance, the three-quarter pose facing the left side of the image, the black horse's head close behind her shoulder, the wide-brimmed worn brown leather hat, the long grey-blond braid over her shoulder, the rust-red scarf, the cream shirt and brown leather vest, the semi-painterly gothic anime art style with deep shadows and the plain flat grey background. Change only her age, face and figure: she becomes the same weathered horse-keeper as the woman in 图片2, but about fifteen years younger than 图片2 — a woman in her late forties, clearly middle-aged, not young and not elderly: a lean weathered sun-tanned face with a strong square jaw and defined cheekbones, crow's feet at the eyes, faint smile lines from the nose to the mouth corners, two faint lines on the forehead, thin lips, a small pale scar on the chin, mature calm pale blue eyes that are smaller and narrower than in 图片1 with heavier upper lids, a few silver strands in the grey-blond hair, no beard, no earrings. Sturdy, broad-shouldered working build; her chest is small and flat, completely hidden under the loose heavy work shirt and the buttoned-up leather vest; no cleavage, no curves. Expression: gruff but calm, a faint dry smile with the mouth closed. Clean crisp anime line art, desaturated deep shadows, heavy chiaroscuro, subtle painterly texture. Background: a flat, evenly lit, solid medium grey (#808080) studio backdrop with the same mid-grey value in every corner, perfectly uniform, no glow, no light bloom, no halo, no vignette, no gradient, no cast shadow, no scenery, no props or particles behind the character; the silhouette edge is clean and crisp with no outline and no glow around it. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
+    },
+    {
+     "job": "greta:neutral_r3",
+     "ts": "2026-10-08T15:34:39",
+     "tool": "image_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 2,
+     "credits": 4.0,
+     "generationId": "AWHS9TcDslVFUC92WkE0KD_hvuEBrcXHi10bm64r4N-Xrd_Cj5QzGaIUP_QMvEwm2wdC7MtX",
+     "ref": "image_1=greta_n2_1 (age/identity); image_2=installed raw greta_t_2 (rendering + horse)",
+     "prompt_key": "greta_n3",
+     "note": "r2 #1 age/identity OK (~50) but flat cel style, no horse; #2 ~60, no horse",
+     "prompt": "Repaint 图片1 in the rendering style of 图片2. Keep from 图片1 exactly: the woman's face, her age and wrinkles, her blue eyes, her expression, her grey-blond braid, the wide-brimmed brown hat, the rust-red scarf, the cream shirt and brown leather vest, her sturdy build, her pose, framing and camera distance. Take from 图片2: the semi-painterly gothic anime rendering of 图片2: thin crisp clean line art (no thick black outlines), desaturated muted colours, soft painted gradients, deep soft shadows and heavy chiaroscuro lighting from one key light at the front-left so the far side of the face and body falls into shadow, subtle painterly texture; and add the head of her black horse with a leather bridle close behind her, rising behind her shoulder and hat brim on the left side of the image as in 图片2, partly hidden behind her. She stays a weathered woman in her late forties, chest small and covered by the buttoned vest. Background: a flat, evenly lit, solid medium grey (#808080) studio backdrop with the same mid-grey value in every corner, perfectly uniform, no glow, no light bloom, no halo, no vignette, no gradient, no cast shadow, no scenery, no props or particles behind the character; the silhouette edge is clean and crisp with no outline and no glow around it. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
+    },
+    {
+     "job": "greta:neutral_r4",
+     "ts": "2026-10-08T15:38:25",
+     "tool": "image_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 2,
+     "credits": 4.0,
+     "generationId": "ARXSD8uZ31cFA3pFqBN9x3QPGQtgWX04bZlRZ4Ptn-BbPB2zRALr1QXPO4yELg27dgMd4P8j",
+     "ref": "image_1=greta_n3_1",
+     "prompt_key": "greta_n4",
+     "note": "r3 #1 identity+horse OK but flat cel style; #2 no horse, toothy grin",
+     "prompt": "Repaint 图片1 with dramatic low-key lighting. Keep exactly the same character, face, age, wrinkles, expression, blue eyes, braid, hat, scarf, shirt, vest, the black horse behind her, pose, composition, framing, camera distance and the plain flat grey background. Change only the rendering: semi-painterly gothic dark-fantasy anime illustration like a premium Korean mobile gacha RPG; one soft key light from the front-left, the far (right) side of the face, hair and body falls into deep soft shadow (heavy chiaroscuro); desaturated, muted, darker colours; soft painted gradients with subtle painterly brush texture instead of flat cel fills; thinner, finer, crisp line art instead of thick black outlines; soft ambient occlusion under the hat brim, chin and collar. Background: a flat, evenly lit, solid medium grey (#808080) studio backdrop with the same mid-grey value in every corner, perfectly uniform, no glow, no light bloom, no halo, no vignette, no gradient, no cast shadow, no scenery, no props or particles behind the character; the silhouette edge is clean and crisp with no outline and no glow around it. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
     }
    ]
   },
   "portraits/npc_greta__angry": {
    "file": "assets/portraits/npc_greta__angry.webp",
-   "bytes": 112064,
-   "sha256_16": "e5e04135da60281b",
-   "status": "new",
    "group": "npcs",
-   "group_final": "batch/npcs/final/npc_greta__angry.webp (sha256_16 cf7ca00c9778b073, 147608 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "angry",
-   "pick": "greta_angry2_1",
-   "method": "i2i expr reroll (`angry_v2`)",
-   "notes": "The first angry (greta_angry_1) had vampire fangs and was rejected. The reroll has flat gritted teeth.",
+   "bytes": 91784,
+   "sha256_16": "02e46bd562baf244",
+   "status": "fix_regen",
+   "group_final": "fix/regen/final/npc_greta__angry.webp (sha256_16 02e46bd562baf244, 91784 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "Kling angry ATODLDNc face transplanted onto the neutral",
+   "notes": "Kling dropped the horse, so face_paste.py (SIFT on the head box + feathered ellipse) put the generated face onto the approved neutral raw; body and horse identical to the neutral.",
+   "previous": {
+    "bytes": 112064,
+    "sha256_16": "e5e04135da60281b",
+    "status": "new",
+    "group_final": "batch/npcs/final/npc_greta__angry.webp (sha256_16 cf7ca00c9778b073, 147608 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "greta_angry2_1",
+    "method": "i2i expr reroll (`angry_v2`)",
+    "notes": "The first angry (greta_angry_1) had vampire fangs and was rejected. The reroll has flat gritted teeth.",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/npc_greta__angry.webp"
+   },
    "jobs": [
     {
      "job": "greta:angry",
@@ -3567,21 +3875,47 @@
      "note": "reroll: angry_1 had vampire fangs (human)",
      "prompt": "The same character as in 图片1, identical anime face, hair, costume, props, art style, lighting, colours, framing, camera distance, head size, pose and angle; do not zoom in, do not crop differently; only the facial expression changes: furious, eyebrows drawn down hard into a deep frown, eyes narrowed and glaring, jaw clenched, lips pressed together in a hard thin line, mouth closed, no teeth visible at all. Keep exactly the same plain flat grey background as in 图片1, perfectly uniform, no glow, no halo. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
      "ledger": "batch/npcs/ledger.jsonl"
+    },
+    {
+     "job": "greta:angry",
+     "ts": "2026-10-08T15:51:11",
+     "tool": "image_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 1,
+     "credits": 2.0,
+     "generationId": "ATODLDNcdCx_ji4BuF-DWgK-7qZbya--Qo4vXjuXI31eRPkLfysekQhRy8YJ2mN1RCMf150F",
+     "ref": "image_1=greta_n4_1 (picked neutral)",
+     "prompt_key": "greta_angry",
+     "note": "",
+     "prompt": "The same character as in 图片1, identical face, age, wrinkles, hair, costume, hat, horse, art style, lighting, colours, framing, camera distance, head size, head position, pose and angle; do not zoom in, do not crop differently, the head stays exactly where it is in 图片1; only the facial expression changes: furious, eyebrows drawn down hard into a deep frown, eyes narrowed and glaring, jaw clenched, lips pressed together in a hard thin line, mouth closed, no teeth visible at all; she stays a weathered woman of about fifty. Keep exactly the same plain flat grey background as in 图片1, perfectly uniform, no glow, no halo. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
     }
    ]
   },
   "portraits/npc_greta__shock": {
    "file": "assets/portraits/npc_greta__shock.webp",
-   "bytes": 102330,
-   "sha256_16": "fe4db9fbafacea7a",
-   "status": "new",
    "group": "npcs",
-   "group_final": "batch/npcs/final/npc_greta__shock.webp (sha256_16 f02c0998cff456a4, 134928 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "shock",
-   "pick": "greta_shock_1",
-   "method": "i2i expr",
-   "notes": "OK",
+   "bytes": 97860,
+   "sha256_16": "c294bfe102af28c9",
+   "status": "fix_regen",
+   "group_final": "fix/regen/final/npc_greta__shock.webp (sha256_16 c294bfe102af28c9, 97860 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "Kling shock AeDBfpjv used directly",
+   "notes": "Aligned to the neutral at scale 0.982; tears, small gasp, horse kept.",
+   "previous": {
+    "bytes": 102330,
+    "sha256_16": "fe4db9fbafacea7a",
+    "status": "new",
+    "group_final": "batch/npcs/final/npc_greta__shock.webp (sha256_16 f02c0998cff456a4, 134928 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "greta_shock_1",
+    "method": "i2i expr",
+    "notes": "OK",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/npc_greta__shock.webp"
+   },
    "jobs": [
     {
      "job": "greta:shock",
@@ -3598,6 +3932,22 @@
      "note": "",
      "prompt": "The same character as in 图片1, identical anime face, hair, costume, props, art style, lighting, colours, framing, camera distance, head size, pose and angle; do not zoom in, do not crop differently; only the facial expression changes: shocked and grieving, eyes wide with trembling pupils and glistening tears at the corners, eyebrows raised and drawn together, mouth only slightly open in a small soft gasp with no teeth showing. Keep exactly the same plain flat grey background as in 图片1, perfectly uniform, no glow, no halo. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
      "ledger": "batch/npcs/ledger.jsonl"
+    },
+    {
+     "job": "greta:shock",
+     "ts": "2026-10-08T15:51:11",
+     "tool": "image_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 1,
+     "credits": 2.0,
+     "generationId": "AeDBfpjvFm45Qwhddot9WbGAg0Kblnyh4i0iPu63scnyN4QYEOIiO9ZAQq_YANocZSEfGYOQ",
+     "ref": "image_1=greta_n4_1 (picked neutral)",
+     "prompt_key": "greta_shock",
+     "note": "",
+     "prompt": "The same character as in 图片1, identical face, age, wrinkles, hair, costume, hat, horse, art style, lighting, colours, framing, camera distance, head size, head position, pose and angle; do not zoom in, do not crop differently, the head stays exactly where it is in 图片1; only the facial expression changes: shocked and grieving, eyes wide with glistening tears at the corners, eyebrows raised and drawn together, mouth only slightly open in a small soft gasp with no teeth showing; she stays a weathered woman of about fifty. Keep exactly the same plain flat grey background as in 图片1, perfectly uniform, no glow, no halo. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
     }
    ]
   },
@@ -3662,16 +4012,26 @@
   },
   "portraits/npc_hadwin__angry": {
    "file": "assets/portraits/npc_hadwin__angry.webp",
-   "bytes": 104542,
-   "sha256_16": "ab8fd295dea5f861",
-   "status": "new",
    "group": "npcs",
-   "group_final": "batch/npcs/final/npc_hadwin__angry.webp (sha256_16 23ea0b4d2c337ebf, 138472 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "angry",
-   "pick": "hadwin_angry_1",
-   "method": "i2i expr",
-   "notes": "Kling zoomed in about 1.2x, which framing normalised. Flat teeth. The hammer head is now off-canvas.",
+   "bytes": 108366,
+   "sha256_16": "18deb6d4f6f40288",
+   "status": "fix_recut",
+   "group_final": "fix/recut/final/npc_hadwin__angry.webp (sha256_16 18deb6d4f6f40288, 108366 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "frame_match.py reframe (s 0.4755, x0 69, y0 -47)",
+   "notes": "Reframed so the skull matches the neutral: skull centre +3.7 px, head top -3.6 px, eye line +3.6 px, head size +4 % (limited by the source right edge). Hammer pose and the frontal head turn still differ from the 3/4 neutral (needs new art).",
+   "previous": {
+    "bytes": 104542,
+    "sha256_16": "ab8fd295dea5f861",
+    "status": "new",
+    "group_final": "batch/npcs/final/npc_hadwin__angry.webp (sha256_16 23ea0b4d2c337ebf, 138472 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "hadwin_angry_1",
+    "method": "i2i expr",
+    "notes": "Kling zoomed in about 1.2x, which framing normalised. Flat teeth. The hammer head is now off-canvas.",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/npc_hadwin__angry.webp"
+   },
    "jobs": [
     {
      "job": "hadwin:angry",
@@ -3693,16 +4053,26 @@
   },
   "portraits/npc_hadwin__shock": {
    "file": "assets/portraits/npc_hadwin__shock.webp",
-   "bytes": 106150,
-   "sha256_16": "835d1b5e2b7672bc",
-   "status": "new",
    "group": "npcs",
-   "group_final": "batch/npcs/final/npc_hadwin__shock.webp (sha256_16 2c22d4bd30176ffd, 137388 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "shock",
-   "pick": "hadwin_shock_1",
-   "method": "i2i expr",
-   "notes": "The hammer was re-posed (head moved off-canvas, handle crosses to the left), so the prop differs from the neutral. Accepted, no reroll.",
+   "bytes": 119380,
+   "sha256_16": "4d7d0cd2928cd8f7",
+   "status": "fix_recut",
+   "group_final": "fix/recut/final/npc_hadwin__shock.webp (sha256_16 4d7d0cd2928cd8f7, 119380 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "frame_match.py reframe (s 0.5050, x0 105, y0 7)",
+   "notes": "Reframed so the skull matches the neutral exactly (0 px). Kling signature scribble at the lower left removed. Hammer pose and the frontal head turn still differ from the 3/4 neutral.",
+   "previous": {
+    "bytes": 106150,
+    "sha256_16": "835d1b5e2b7672bc",
+    "status": "new",
+    "group_final": "batch/npcs/final/npc_hadwin__shock.webp (sha256_16 2c22d4bd30176ffd, 137388 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "hadwin_shock_1",
+    "method": "i2i expr",
+    "notes": "The hammer was re-posed (head moved off-canvas, handle crosses to the left), so the prop differs from the neutral. Accepted, no reroll.",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/npc_hadwin__shock.webp"
+   },
    "jobs": [
     {
      "job": "hadwin:shock",
@@ -3724,22 +4094,32 @@
   },
   "portraits/npc_marta": {
    "file": "assets/portraits/npc_marta.webp",
-   "bytes": 69484,
-   "sha256_16": "12fd0d72ea67a9f6",
-   "status": "new",
    "group": "npcs",
-   "group_final": "batch/npcs/final/npc_marta.webp (sha256_16 de09e0ff176b0412, 88990 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "neutral",
-   "pick": "marta_e_1",
-   "method": "t2i + i2i edit (closed smile: every t2i candidate had fangs; mid-40s; no glow)",
-   "notes": "Still reads younger than mid-40s. The bust is exaggerated (stylised \"plump\"). Pupils are vertically elongated ovals (anime stylisation, consistent across all three). A faint warm highlight sits on the left lock.",
+   "bytes": 60762,
+   "sha256_16": "582000c5661ed5a3",
+   "status": "fix_regen",
+   "group_final": "fix/regen/final/npc_marta.webp (sha256_16 582000c5661ed5a3, 60762 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "marta_n4_1 (r4 relight i2i of marta_n3_1)",
+   "notes": "Plump, warm, mid-40s innkeeper, round face, red braid, round pupils, black cat on her shoulder. keyonly 22, fillholes 0.002, frame_eye T160 (chin at the jaw line): eye (345,297). Flatter, more cartoon-like rendering than the group.",
+   "previous": {
+    "bytes": 69484,
+    "sha256_16": "12fd0d72ea67a9f6",
+    "status": "new",
+    "group_final": "batch/npcs/final/npc_marta.webp (sha256_16 de09e0ff176b0412, 88990 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "marta_e_1",
+    "method": "t2i + i2i edit (closed smile: every t2i candidate had fangs; mid-40s; no glow)",
+    "notes": "Still reads younger than mid-40s. The bust is exaggerated (stylised \"plump\"). Pupils are vertically elongated ovals (anime stylisation, consistent across all three). A faint warm highlight sits on the left lock.",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/npc_marta.webp"
+   },
    "portrait_meta": {
     "bust": true,
     "face": {
-     "x": 0.449,
+     "x": 0.445,
      "y": 0.34,
-     "s": 0.333
+     "s": 0.334
     },
     "expressions": [
      "angry",
@@ -3810,21 +4190,95 @@
      "note": "edit: close mouth (fangs), age mid-40s, remove glow",
      "prompt": "Edit 图片1: keep the same character, anime art style, face shape, eyes, hair, costume, colours, lighting, pose, framing and camera distance exactly as in 图片1; only change the following: close her mouth into a warm closed-lip smile with the lips together and no teeth visible; make her a motherly woman in her mid-forties: soft laugh lines at the eyes, fuller round rosy cheeks, a softer rounder jaw; remove the golden glow around her outline. Keep a plain flat solid medium grey background, perfectly uniform, no glow, no halo, no light outline around the silhouette. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no border, no second person, no extra limbs, no extra fingers.",
      "ledger": "batch/npcs/ledger.jsonl"
+    },
+    {
+     "job": "marta:neutral",
+     "ts": "2026-10-08T15:28:25",
+     "tool": "image_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 2,
+     "credits": 4.0,
+     "generationId": "AYT--TGLENuIF3fUG63I4ulLplwNUtA0jYWwcevhad98ktANCMWR0oeeWqgb7bgs9qOkc7E3",
+     "ref": "image_1=old npc_marta (batch/npcs/ref upload); image_2=installed raw marta_e_1 (style/composition)",
+     "prompt_key": "marta_n",
+     "note": "",
+     "prompt": "Marta, the innkeeper woman from 图片1, redrawn as an anime bust portrait. Take her face shape, her real age, her plump round body and her black cat from 图片1; take the anime art style, colouring, line art, lighting, composition, camera distance and the plain grey background from 图片2, including the black cat lying across her shoulders as in 图片2. Do NOT copy the young slim face or the large bust of the woman in 图片2. Marta is a plump, warm, motherly innkeeper in her mid-forties: a round full face with chubby rosy cheeks, a soft double chin, laugh lines at the eyes and the mouth corners, a short neck, broad soft rounded shoulders and a heavy-set plump figure with thick arms; a modest chest under a loose high-necked cream blouse with puffed sleeves and a dark grey apron dress, no cleavage, no emphasis on the chest; auburn-red hair braided and pinned up in a crown of braids, one uniform auburn colour; kind green eyes with normal round black pupils (round pupils, not slit, not oval); a black cat with yellow-green eyes lying across her shoulders. Expression: a hearty warm smile with the mouth closed, eyes crinkled with good humour. Style: gothic dark-fantasy anime illustration like a premium Korean mobile gacha RPG, semi-painterly anime rendering with subtle painterly texture, desaturated deep shadows and heavy chiaroscuro lighting from one soft key light at the front-left, clean crisp anime line art, a clean refined anime face, painted soft cel shading with smooth gradients, no rim light, no glowing edges, hair keeps one natural colour (no dyed streaks, no coloured tips), finely detailed hair strands and fabric folds, high detail, sharp focus. Framing: single character, bust portrait from the top of the head to mid-chest, head and shoulders fill the frame, the whole head and hair inside the frame with a small margin above. Three-quarter view: the body and the face are turned toward the left edge of the image, the nose points to the left side of the picture. Eyes about 30 percent from the top, hands out of frame. Background: a flat, evenly lit, solid medium grey (#808080) studio backdrop with the same mid-grey value in every corner, perfectly uniform, no glow, no light bloom, no halo, no vignette, no gradient, no cast shadow, no scenery, no props or particles behind the character; the silhouette edge is clean and crisp with no outline and no glow around it. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
+    },
+    {
+     "job": "marta:neutral_r2",
+     "ts": "2026-10-08T15:31:22",
+     "tool": "image_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 2,
+     "credits": 4.0,
+     "generationId": "AUCPaSngF7pWz15Co45dOq-XZbdBF2-TX4WMTYWVkdkZaD_-9Cy0nhHsySisoSyffDidiDeC",
+     "ref": "image_1=installed raw marta_e_1 (base); image_2=old npc_marta",
+     "prompt_key": "marta_n2",
+     "note": "reroll: r1 #1 flat western-cartoon, cat head missing; #2 copied young slim face + huge bust",
+     "prompt": "Edit 图片1. Keep from 图片1 exactly: the composition and camera distance, the three-quarter pose facing the left side of the image, the black cat with yellow-green eyes lying across her shoulders with its face visible, the auburn-red hair braided and pinned up, the cream blouse with puffed sleeves and the dark grey apron dress, the semi-painterly gothic anime art style with deep shadows and the plain flat grey background. Change only her age, face and figure to match the plump middle-aged innkeeper in 图片2: a motherly woman in her mid-forties, not young; a round full face with chubby rosy cheeks, a soft double chin, laugh lines at the eyes and the mouth corners, a short neck, broad soft rounded shoulders, thick soft arms and a heavy-set plump figure; her chest is modest and in proportion, covered by a loose high-necked blouse, no cleavage, no emphasis on the chest. Kind green eyes, smaller than in 图片1, with normal round black pupils (round pupils, not slit, not oval). Expression: a hearty warm smile with the mouth closed, eyes crinkled with good humour. Clean crisp anime line art, desaturated deep shadows, heavy chiaroscuro, subtle painterly texture. Background: a flat, evenly lit, solid medium grey (#808080) studio backdrop with the same mid-grey value in every corner, perfectly uniform, no glow, no light bloom, no halo, no vignette, no gradient, no cast shadow, no scenery, no props or particles behind the character; the silhouette edge is clean and crisp with no outline and no glow around it. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
+    },
+    {
+     "job": "marta:neutral_r3",
+     "ts": "2026-10-08T15:34:39",
+     "tool": "image_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 2,
+     "credits": 4.0,
+     "generationId": "AXap_j6AE-Nrn_M1t4r_rYBoDWxDzKiVeMcRFEck3Gr4HzaoSLWmGGncAEu5LZvzii_VInxg",
+     "ref": "image_1=marta_n2_2 (plump middle-aged identity); image_2=installed raw marta_e_1 (rendering + cat)",
+     "prompt_key": "marta_n3",
+     "note": "r2 #1 plump but cleavage, younger, no cat; #2 plump/older but open laugh, no cat; both flat",
+     "prompt": "Repaint 图片1 in the rendering style of 图片2. Keep from 图片1 exactly: the plump woman's round face, her middle age, chubby rosy cheeks and soft double chin, her plump heavy-set body and broad soft shoulders, her braided auburn-red hair, the high-necked cream blouse and dark grey apron dress, her pose, framing and camera distance; her chest stays as in 图片1 or smaller, fully covered by the high-necked blouse. Change her expression to a warm closed-mouth smile, lips together, no teeth, eyes crinkled with good humour, green eyes with normal round pupils. Take from 图片2: the semi-painterly gothic anime rendering of 图片2: thin crisp clean line art (no thick black outlines), desaturated muted colours, soft painted gradients, deep soft shadows and heavy chiaroscuro lighting from one key light at the front-left so the far side of the face and body falls into shadow, subtle painterly texture; and add the black cat with yellow-green eyes lying across her shoulders with its face visible beside her neck, as in 图片2. Background: a flat, evenly lit, solid medium grey (#808080) studio backdrop with the same mid-grey value in every corner, perfectly uniform, no glow, no light bloom, no halo, no vignette, no gradient, no cast shadow, no scenery, no props or particles behind the character; the silhouette edge is clean and crisp with no outline and no glow around it. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
+    },
+    {
+     "job": "marta:neutral_r4",
+     "ts": "2026-10-08T15:38:25",
+     "tool": "image_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 2,
+     "credits": 4.0,
+     "generationId": "Ae8w-PW46NH4FqLr3-IsNzTd3Nt2FOe2JD81sWtsF55tXxx5UNlE8xCO8zrE0kpTNAmSM14G",
+     "ref": "image_1=marta_n3_1",
+     "prompt_key": "marta_n4",
+     "note": "r3 #1 identity+cat OK but flat cel style; #2 no cat",
+     "prompt": "Repaint 图片1 with dramatic low-key lighting. Keep exactly the same character, round plump face, age, expression, green eyes with round pupils, braided auburn hair, blouse, apron dress, the black cat on her shoulder, pose, composition, framing, camera distance and the plain flat grey background. Change only the rendering: semi-painterly gothic dark-fantasy anime illustration like a premium Korean mobile gacha RPG; one soft key light from the front-left, the far (right) side of the face, hair and body falls into deep soft shadow (heavy chiaroscuro); desaturated, muted, darker colours; soft painted gradients with subtle painterly brush texture instead of flat cel fills; thinner, finer, crisp line art instead of thick black outlines; soft ambient occlusion under the chin, braids, cat and collar. Background: a flat, evenly lit, solid medium grey (#808080) studio backdrop with the same mid-grey value in every corner, perfectly uniform, no glow, no light bloom, no halo, no vignette, no gradient, no cast shadow, no scenery, no props or particles behind the character; the silhouette edge is clean and crisp with no outline and no glow around it. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
     }
    ]
   },
   "portraits/npc_marta__angry": {
    "file": "assets/portraits/npc_marta__angry.webp",
-   "bytes": 80700,
-   "sha256_16": "36f55249daf53705",
-   "status": "new",
    "group": "npcs",
-   "group_final": "batch/npcs/final/npc_marta__angry.webp (sha256_16 2a7db02a11d5472b, 104994 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "angry",
-   "pick": "marta_angry2_1",
-   "method": "i2i expr reroll (`angry_v2`, cat and costume locked)",
-   "notes": "The first angry (marta_angry_1) had fangs and was rejected. The reroll has flat gritted teeth.",
+   "bytes": 61258,
+   "sha256_16": "e4076b7d9c0239f9",
+   "status": "fix_regen",
+   "group_final": "fix/regen/final/npc_marta__angry.webp (sha256_16 e4076b7d9c0239f9, 61258 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "Kling angry AaxPZw6q face transplanted onto the neutral",
+   "notes": "Kling dropped the cat; face_paste.py transplant (expression scale 0.947). Cat and body identical to the neutral.",
+   "previous": {
+    "bytes": 80700,
+    "sha256_16": "36f55249daf53705",
+    "status": "new",
+    "group_final": "batch/npcs/final/npc_marta__angry.webp (sha256_16 2a7db02a11d5472b, 104994 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "marta_angry2_1",
+    "method": "i2i expr reroll (`angry_v2`, cat and costume locked)",
+    "notes": "The first angry (marta_angry_1) had fangs and was rejected. The reroll has flat gritted teeth.",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/npc_marta__angry.webp"
+   },
    "jobs": [
     {
      "job": "marta:angry",
@@ -3857,21 +4311,47 @@
      "note": "reroll: angry_1 had fangs (human)",
      "prompt": "The same character as in 图片1, identical anime face, hair, costume, props, art style, lighting, colours, framing, camera distance, head size, pose and angle; do not zoom in, do not crop differently; only the facial expression changes: furious, eyebrows drawn down hard into a deep frown, eyes narrowed and glaring, jaw clenched, lips pressed together in a hard thin line, mouth closed, no teeth visible at all. Keep exactly the same plain flat grey background as in 图片1, perfectly uniform, no glow, no halo. Keep the black cat lying across her shoulders exactly as in 图片1, the same cream blouse with puffed sleeves and the same dark grey apron, the same three-quarter pose turned toward the left side of the image. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
      "ledger": "batch/npcs/ledger.jsonl"
+    },
+    {
+     "job": "marta:angry",
+     "ts": "2026-10-08T15:51:11",
+     "tool": "image_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 1,
+     "credits": 2.0,
+     "generationId": "AaxPZw6qeEatIYuG2OcaQLTRJVK8cdEGCHpr6X4mlQPzgxvza2RvkNdlLTp-ljsKH8Bb4Vt2",
+     "ref": "image_1=marta_n4_1 (picked neutral)",
+     "prompt_key": "marta_angry",
+     "note": "",
+     "prompt": "The same character as in 图片1, identical face, age, wrinkles, hair, costume, the black cat on her shoulders, art style, lighting, colours, framing, camera distance, head size, head position, pose and angle; do not zoom in, do not crop differently, the head stays exactly where it is in 图片1; only the facial expression changes: furious, eyebrows drawn down hard into a deep frown, eyes narrowed and glaring, cheeks puffed, lips pressed together in a hard thin line, mouth closed, no teeth visible at all; she stays a plump round-faced woman in her mid-forties with round pupils. Keep exactly the same plain flat grey background as in 图片1, perfectly uniform, no glow, no halo. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
     }
    ]
   },
   "portraits/npc_marta__shock": {
    "file": "assets/portraits/npc_marta__shock.webp",
-   "bytes": 71876,
-   "sha256_16": "a59353aeea154f49",
-   "status": "new",
    "group": "npcs",
-   "group_final": "batch/npcs/final/npc_marta__shock.webp (sha256_16 bbdfc5051277471b, 93416 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "shock",
-   "pick": "marta_shock2_1",
-   "method": "i2i expr reroll (`shock_v2`)",
-   "notes": "The first shock (marta_shock_1) was off-model (cat gone, blouse changed, frontal framing) and was rejected.",
+   "bytes": 61732,
+   "sha256_16": "693804853ea4024c",
+   "status": "fix_regen",
+   "group_final": "fix/regen/final/npc_marta__shock.webp (sha256_16 693804853ea4024c, 61732 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "Kling shock AY6XGzJI face transplanted onto the neutral",
+   "notes": "Kling dropped the cat; face_paste.py transplant. Cat and body identical to the neutral.",
+   "previous": {
+    "bytes": 71876,
+    "sha256_16": "a59353aeea154f49",
+    "status": "new",
+    "group_final": "batch/npcs/final/npc_marta__shock.webp (sha256_16 bbdfc5051277471b, 93416 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "marta_shock2_1",
+    "method": "i2i expr reroll (`shock_v2`)",
+    "notes": "The first shock (marta_shock_1) was off-model (cat gone, blouse changed, frontal framing) and was rejected.",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/npc_marta__shock.webp"
+   },
    "jobs": [
     {
      "job": "marta:shock",
@@ -3904,6 +4384,22 @@
      "note": "reroll: shock_1 off-model (cat gone, blouse changed, frontal)",
      "prompt": "The same character as in 图片1, identical anime face, hair, costume, props, art style, lighting, colours, framing, camera distance, head size, pose and angle; do not zoom in, do not crop differently; only the facial expression changes: shocked and grieving, eyes wide with trembling pupils and glistening tears at the corners, eyebrows raised and drawn together, mouth only slightly open in a small soft gasp with no teeth showing. Keep exactly the same plain flat grey background as in 图片1, perfectly uniform, no glow, no halo. Keep the black cat lying across her shoulders exactly as in 图片1, the same cream blouse with puffed sleeves and the same dark grey apron, the same three-quarter pose turned toward the left side of the image. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
      "ledger": "batch/npcs/ledger.jsonl"
+    },
+    {
+     "job": "marta:shock",
+     "ts": "2026-10-08T15:51:11",
+     "tool": "image_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 1,
+     "credits": 2.0,
+     "generationId": "AY6XGzJI0qIXXM-ln2XOedQ__n_UgQs3eF4Z80rh4SR7be5TdI4BafTcwMiaF1UX6PkHdH7r",
+     "ref": "image_1=marta_n4_1 (picked neutral)",
+     "prompt_key": "marta_shock",
+     "note": "",
+     "prompt": "The same character as in 图片1, identical face, age, wrinkles, hair, costume, the black cat on her shoulders, art style, lighting, colours, framing, camera distance, head size, head position, pose and angle; do not zoom in, do not crop differently, the head stays exactly where it is in 图片1; only the facial expression changes: shocked and grieving, eyes wide with glistening tears at the corners, round pupils, eyebrows raised and drawn together, mouth only slightly open in a small soft gasp with no teeth showing; she stays a plump round-faced woman in her mid-forties. Keep exactly the same plain flat grey background as in 图片1, perfectly uniform, no glow, no halo. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
     }
    ]
   },
@@ -3952,22 +4448,32 @@
   },
   "portraits/npc_rook2": {
    "file": "assets/portraits/npc_rook2.webp",
-   "bytes": 107242,
-   "sha256_16": "7d3d20b85d5e4232",
-   "status": "new",
    "group": "npcs",
-   "group_final": "batch/npcs/final/npc_rook2.webp (sha256_16 9cadf250601fc60f, 133970 B)",
-   "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
    "kind": "neutral",
-   "pick": "rook2_e_1",
-   "method": "t2i v2 + i2i edit (late 40s, stubble, no mask)",
-   "notes": "The edit removed the crow from his shoulder; the feathers and the feather mantle keep the raven motif. No expressions, as required.",
+   "bytes": 135164,
+   "sha256_16": "eaa3d8663ccd6644",
+   "status": "fix_regen",
+   "group_final": "fix/regen/final/npc_rook2.webp (sha256_16 eaa3d8663ccd6644, 135164 B)",
+   "install": "copied as-is (already WebP q80 m6 alpha_quality 70); lo variant regenerated",
+   "pick": "i2i AVz6E4zw #2",
+   "notes": "Grey-haired, lined, goatee, about 50, feather mantle. default cut + fillholes + keyadd 40, frame_eye T160: eye (346,297). Broad grin; face nearly frontal.",
+   "previous": {
+    "bytes": 107242,
+    "sha256_16": "7d3d20b85d5e4232",
+    "status": "new",
+    "group_final": "batch/npcs/final/npc_rook2.webp (sha256_16 9cadf250601fc60f, 133970 B)",
+    "install": "copied; bust re-encoded WebP q80 m6 alpha_quality 70 for the APK image budget",
+    "pick": "rook2_e_1",
+    "method": "t2i v2 + i2i edit (late 40s, stubble, no mask)",
+    "notes": "The edit removed the crow from his shoulder; the feathers and the feather mantle keep the raven motif. No expressions, as required.",
+    "backup": "/tmp/claude-0/fanime/fix/backup/portraits/npc_rook2.webp"
+   },
    "portrait_meta": {
     "bust": true,
     "face": {
-     "x": 0.45,
+     "x": 0.454,
      "y": 0.34,
-     "s": 0.333
+     "s": 0.334
     }
    },
    "jobs": [
@@ -4034,6 +4540,22 @@
      "note": "edit: age to late 40s, stubble, fold crow wings",
      "prompt": "Edit 图片1: keep the same character, anime art style, face shape, eyes, hair, costume, colours, lighting, pose, framing and camera distance exactly as in 图片1; only change the following: age him to his late forties: light grey stubble on the chin and jaw, natural grey hair at the temples (salt-and-pepper), crow's feet and laugh lines at the eyes; the crow on his shoulder sits calmly with its wings folded close to its body; his mouth is closed in a knowing smile; the background becomes flat medium grey (#808080). Keep a plain flat solid medium grey background, perfectly uniform, no glow, no halo, no light outline around the silhouette. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no border, no second person, no extra limbs, no extra fingers.",
      "ledger": "batch/npcs/ledger.jsonl"
+    },
+    {
+     "job": "rook2:neutral",
+     "ts": "2026-10-08T15:40:54",
+     "tool": "image_to_image",
+     "model": "kling-image-v3_0_omni",
+     "res": "2k",
+     "ar": "3:4",
+     "n": 2,
+     "credits": 4.0,
+     "generationId": "AVz6E4zwhUdLIcF9tU65d73DUE5sPZ4mFVgFHchwPrjvfivGmYIU6Kpne8t-c4Cte_C3eqNN",
+     "ref": "image_1=installed raw npcs rook2_e_1 (base); image_2=old npc_rook2 (age/face ref)",
+     "prompt_key": "rook2_n",
+     "note": "",
+     "prompt": "Edit 图片1. Keep from 图片1 exactly: the composition, camera distance and three-quarter pose facing the left side of the image, the ragged black feather mantle, the leather straps and pouches, the loose braid with black feathers tied in, the semi-painterly gothic anime art style with a clean anime face, crisp line art, deep shadows and the plain flat grey background. Change only his age, face and hair to match the older man in 图片2: Raven, a weathered travelling merchant in his mid-fifties, clearly older, not young: a lean lined face with deep crow's feet, forehead lines and lines from the nose to the mouth corners, slightly hollow cheeks, a short grey stubble beard and moustache, grey hair with only a few dark strands left (mostly grey, salt-and-pepper), sharp grey eyes with heavier lids, a knowing crooked smile with the mouth closed. He must still be drawn as a clean anime illustration like 图片1, not a realistic painting. Background: a flat, evenly lit, solid medium grey (#808080) studio backdrop with the same mid-grey value in every corner, perfectly uniform, no glow, no light bloom, no halo, no vignette, no gradient, no cast shadow, no scenery, no props or particles behind the character; the silhouette edge is clean and crisp with no outline and no glow around it. Human: normal flat human teeth, no fangs, no pointed canines, no glowing eyes, no pointed ears. No text, no letters, no logo, no watermark, no signature, no border, no frame, no sticker outline, no outer glow around the silhouette, no second person, no extra limbs, no extra fingers.",
+     "round": "fix-regen"
     }
    ]
   },

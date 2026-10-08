@@ -298,13 +298,16 @@ function queenSpawn(w, p, st, N) {
 function queenRelease(w, p, st, N) {
   const L = st.qd;
   if (!L || !L.length) return;
-  let n = 0;
+  let n = 0, live = 0;
+  for (let i = 0; i < L.length; i++) if (!L[i].dead) live++;
+  // 꼬리 입자는 날아가는 칼날 모두 합쳐 trailMax × 품질 개 안쪽 (§2.8 — 0.04초 간격 그대로면 8자루가 0.5초에 최대 100개)
+  const rate = Math.max(0.04, N.outLife * live / Math.max(1, N.trailMax * Math.max(0.25, w.fx?.quality ?? 1) - live));   // 칼날마다 첫 입자 1개 + 나머지
   for (let i = 0; i < L.length; i++) {
     const d = L[i];
     if (d.dead) continue;
     const a = d.orbitA ?? 0;
     d.behavior = 'straight'; d.vx = Math.cos(a) * N.outSpeed; d.vy = Math.sin(a) * N.outSpeed;
-    d.life = N.outLife; d.maxLife = N.outLife; d.pierce = N.outPierce; d.hits = 0; d.collideWalls = true; d.trail = 'gold'; d.trailRate = 0.04;
+    d.life = N.outLife; d.maxLife = N.outLife; d.pierce = N.outPierce; d.hits = 0; d.collideWalls = true; d.trail = 'gold'; d.trailRate = rate;
     d.attack = K.atk(p, { mv: N.outPct / 100, kb: [200, -160], hitstop: 0, shake: 0, tags: ['melee'], proc: true, dmgColor: '#ffe070', mult: 1, breakWalls: false });
     n++;
   }
@@ -649,7 +652,7 @@ export const PERKS_C = {
     },
   },
   lia_bladequeen: {
-    N: { every: 4, n: 2, t: 4, max: 8, mvPct: 25, rehit: 0.4, orbitR: 84, spin: 6, outPct: 60, outSpeed: 900, outLife: 0.5, outPierce: 2 },
+    N: { every: 4, n: 2, t: 4, max: 8, mvPct: 25, rehit: 0.4, orbitR: 84, spin: 6, outPct: 60, outSpeed: 900, outLife: 0.5, outPierce: 2, trailMax: 20 },
     prewarm(w) { warm(w, ['#ffd84a', '#ffe070'], null); },
     onEnter(p) { const st = perkState(p); if (st.qd) st.qd.length = 0; st.qAtk = null; },
     onSwing(p, w, mv) {
@@ -914,14 +917,14 @@ export const PERKS_C = {
     prewarm(w) { warm(w, ['#ffb060', '#fff2d0', '#ffd070'], ['빌린 시간!', '#ffb060', '여명!', '#fff2d0']); },
     onLethal(p, atk, w) {
       const st = perkState(p);
-      if (st.borrow) { p.hp = 1; return true; }   // 빌린 시간 동안에는 쓰러지지 않는다 — 끝날 때 결판 (명세: HP 1, 채우지 못하면 쓰러진다)
+      if (st.borrow) { st.borrow = null; return undefined; }   // 빌린 시간(HP 1) 중의 치명상: 그대로 쓰러진다 (§5 — 무적은 처음 0.8초뿐, borrowUsed 는 이미 켜져 있다)
       const run = w?.run;
       if (!run || run.borrowUsed) return undefined;
       run.borrowUsed = true;
       const N = this.N;
       p.hp = 1;
       p.iframes = Math.max(p.iframes ?? 0, N.inv);
-      st.borrow = { t: N.t, dealt: 0, need: maxHp(p) * N.needPct / 100, sec: Math.ceil(N.t) };
+      st.borrow = { t: N.t, dealt: 0, need: maxHp(p) * N.needPct / 100, sec: Math.ceil(N.t), d0: w.state?.stats?.deaths ?? 0 };
       count('azel_dawnblood.borrow');
       w.game?.vignette?.('#ffb060', 0.6, 0.8);
       callout(w, p.cx, p.y - 46, '빌린 시간!', '#ffb060');
@@ -933,7 +936,8 @@ export const PERKS_C = {
     tick(p, w, dt) {
       const st = p._pk, b = st?.borrow;
       if (!b) return;   // O(1)
-      if (p.dead) { st.borrow = null; return; }
+      // 쓰러진 동안에는 tick 이 돌지 않는다: 구덩이·함정으로 쓰러져 부활했거나(죽은 횟수가 늘었다) 스테이지를 깼으면 남은 빌린 시간을 버린다
+      if (p.dead || w.cleared || (w.state?.stats?.deaths ?? 0) !== b.d0) { st.borrow = null; return; }
       if (b.dealt >= b.need) { st.borrow = null; dawnBurst(w, p, this.N); return; }
       b.t -= dt;
       const s = Math.ceil(b.t);

@@ -137,8 +137,8 @@ function knightRender(ctx, pr) {
 }
 
 // ─────────────────────────── 공용 연출 ───────────────────────────
-/** 처형: 붉은 X 베기 */
-function execFx(w, x, y) {
+/** 처형: 붉은 X 베기 (피 튀김 8개는 0.25초에 한 번 — 한 발에 여럿을 처형해도 §3.6.3 파티클 상한) */
+function execFx(w, x, y, burst = true) {
   K.fx(w, {
     x: x - 70, y: y - 70, w: 140, h: 140, life: 0.32, z: 13,
     draw(ctx, e) {
@@ -149,7 +149,7 @@ function execFx(w, x, y) {
       K.cutLine(ctx, x + r, y - r, x - r, y + r, 5, '#ff2030', a);
     },
   });
-  w.fx.burst('blood', x, y, 8, { speed: 280, color: '#ff2030' });
+  if (burst) w.fx.burst('blood', x, y, 8, { speed: 280, color: '#ff2030' });
 }
 /** 은랑: 늑대 발톱 세 줄 (각각 다른 hitId 의 proc 타격, 0.05초 간격) */
 function claws(w, p, N) {
@@ -467,7 +467,7 @@ export const PERKS_B = {
       w.run.sp = Math.min(100, (w.run.sp ?? 0) + N.sp);
       bump(p, 'execute');
       callout(w, e.cx, e.y - 8, '처형!', '#ff2030');
-      execFx(w, e.cx, e.cy);
+      execFx(w, e.cx, e.cy, icd(p, 'execBurst', 0.25, w));
       sfx(w, 'crit', { vol: 0.6, pitch: 0.7 });
     },
     prewarm() { K.glowSprite?.('#ff2030'); },

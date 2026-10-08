@@ -27,6 +27,7 @@ const EXPR_SET = new Set(EXPRESSIONS);
  *  face 측정: 사람·사람 꼴 = 그룹 틀잡기 기록(눈 가운데·턱)을 768×1024 캔버스로 옮겨 가운데 = 눈 + 0.32·(턱 − 눈),
  *  s = 1.6 × 눈~턱 ÷ 768 (흉상 8장 실측 비율). 짐승·괴물 = 머리 상자를 손으로 잼. 32/48/66 px 원형 자르기 접촉 시트로 확인·손질
  *  (가면·옆얼굴·뭉툭한 동물은 손값). 예전 그림을 그대로 둔 넷(b_nihil·b_nihil2·cmp_g_imp·cmp_g_knight)은 bust:false + 손으로 잰 얼굴.
+ *  2026-10-08 수정분(다시 오림·다시 그림 20장): greta·marta·rook2 는 새 그림의 눈·턱으로 다시 잼, banshee(벌린 턱 포함 머리)·behemoth(여왕 얼굴) 는 손값.
  *  원본 기록: tools/portraits/kling_manifest.json
  */
 export const PORTRAIT_META = {
@@ -42,15 +43,15 @@ export const PORTRAIT_META = {
   'portraits/npc_alberto': { bust: true, face: { x: 0.409, y: 0.341, s: 0.337 }, expressions: ['angry', 'shock'] },
   'portraits/npc_carmilla': { bust: true, face: { x: 0.442, y: 0.342, s: 0.347 }, expressions: ['angry', 'shock'] },
   'portraits/npc_elise': { bust: true, face: { x: 0.385, y: 0.344, s: 0.36 }, expressions: ['angry', 'shock'] },
-  'portraits/npc_greta': { bust: true, face: { x: 0.452, y: 0.34, s: 0.333 }, expressions: ['angry', 'shock'] },
+  'portraits/npc_greta': { bust: true, face: { x: 0.457, y: 0.34, s: 0.334 }, expressions: ['angry', 'shock'] },
   'portraits/npc_hadwin': { bust: true, face: { x: 0.33, y: 0.34, s: 0.333 }, expressions: ['angry', 'shock'] },
-  'portraits/npc_marta': { bust: true, face: { x: 0.449, y: 0.34, s: 0.333 }, expressions: ['angry', 'shock'] },
+  'portraits/npc_marta': { bust: true, face: { x: 0.445, y: 0.34, s: 0.334 }, expressions: ['angry', 'shock'] },
   'portraits/npc_rook': { bust: true, face: { x: 0.45, y: 0.34, s: 0.333 }, expressions: ['angry', 'shock'] },
-  'portraits/npc_rook2': { bust: true, face: { x: 0.45, y: 0.34, s: 0.333 } },
+  'portraits/npc_rook2': { bust: true, face: { x: 0.454, y: 0.34, s: 0.334 } },
   // 보스 (흉상; b_nihil·b_nihil2 는 예전 그림 유지 = bust:false)
   'portraits/b_argen': { bust: true, face: { x: 0.28, y: 0.3, s: 0.3 } },
-  'portraits/b_banshee': { bust: true, face: { x: 0.4, y: 0.33, s: 0.24 } },
-  'portraits/b_behemoth': { bust: true, face: { x: 0.4, y: 0.45, s: 0.35 } },
+  'portraits/b_banshee': { bust: true, face: { x: 0.43, y: 0.4, s: 0.36 } },
+  'portraits/b_behemoth': { bust: true, face: { x: 0.294, y: 0.363, s: 0.234 } },
   'portraits/b_bonedragon': { bust: true, face: { x: 0.27, y: 0.31, s: 0.32 } },
   'portraits/b_bride': { bust: true, face: { x: 0.458, y: 0.334, s: 0.293 } },
   'portraits/b_bride2': { bust: true, face: { x: 0.45, y: 0.333, s: 0.292 } },

@@ -43,7 +43,9 @@ import { CHARACTERS } from '../../data/characters.js';
 import { DIFFICULTIES, getDiff } from '../../data/difficulty.js';
 import {
   ARCADE_MODES, LEVEL_PRESETS, COURSES, courseBosses, endArcade, arenaBosses, p2Known, exKnown, sanitizeCfg, practiceStages, buildArcadeState,
+  presetOf,
 } from './arcade.js';
+import { ascName } from '../../data/ascensions.js';   // 초월 이름 (정산 부제 · classes_t3 §10.3)
 import { frame, menuItem, fmtClock, portraitIn, qualifies, heading, kenBurns, shade, bossRushBests, towerBests, DIM, puppet } from './common.js';
 import * as ONLINE from '../../core/online.js';
 import { GhostRecorder, GhostPlayer, decodeGhost } from '../../game/ghost.js';
@@ -115,7 +117,7 @@ export class ArcadeRunScene extends Scene {
     const g = this.game;
     if (!cfg || !g.state?.arcade) cfg = this.directStart(cfg);
     this.cfg = cfg;
-    this.P = LEVEL_PRESETS[cfg.preset ?? 1] ?? LEVEL_PRESETS[1];
+    this.P = presetOf(cfg.preset ?? 1);   // 초월 등급(ASC_PRESETS)까지 (arcade.js ALL_PRESETS)
     this.diff = getDiff(cfg.diff);
     this.p2 = p2Known(g);
     this.ex = exKnown(g);   // 외전 보스(아르겐)를 서바이벌 보스 웨이브에 (docs/specs/ex_s21.md)
@@ -164,6 +166,7 @@ export class ArcadeRunScene extends Scene {
     if (num('seed') !== undefined) want.seed = num('seed') >>> 0;   // 무한의 탑: 시드 고정 (시험·재현)
     if (q?.get('diff')) want.diff = q.get('diff');
     if (q?.get('stage')) want.stageId = q.get('stage');
+    if (q?.get('asc')) want.asc = q.get('asc');   // 초월 길 (초월 등급 ?preset=5 와 함께 — 없으면 그 계보의 초월, arcade.js buildArcadeState)
     const c = sanitizeCfg(want, p2Known(g), this.modeId === 'practice' && !q?.get('stage') ? practiceStages(g) : null, exKnown(g));
     let charId = q?.get('char') || cfg?.charId || g.state?.charId || 'kael';
     if (!CHARACTERS[charId]) charId = 'kael';
@@ -283,6 +286,7 @@ export class ArcadeRunScene extends Scene {
         time: Math.round((kind === 'practice' ? w.run.time : this.clock) * 1000), score: res.score ?? 0,
         hero: this.cfg.charId, cls: hero?.classId ?? '', level: hero?.level ?? this.P.lv, deaths: st?.stats?.deaths ?? 0,
       };
+      if (hero?.asc) result.asc = hero.asc;   // 초월 (선택 필드 — 서버는 모르는 필드를 버린다, classes_t3 §10.2 · online.js cleanResult)
       if (kind === 'survival') result.wave = res.extra?.wave ?? 0;
       if (kind === 'tower') result.floor = res.extra?.floor ?? 0;   // 돌파한 층 (§1 tower:<diff>)
       if (res.rank) result.rank = res.rank;
@@ -906,7 +910,8 @@ export class ArcadeResultsScene extends Scene {
     ctx.translate(W / 2, L.titleY); ctx.scale(Math.max(0.01, k), Math.max(0.01, k));
     bloodText(ctx, r.title ?? 'RESULT', 0, 0, { ...this.titleOpts(L), t: this.t, maxWidth: W - 40 });
     ctx.restore();
-    text(ctx, `${M.name} · ${CHARACTERS[r.charId]?.name ?? ''} · ${getDiff(r.cfg?.diff).name}`, W / 2, L.subY, { size: 15, align: 'center', weight: 700, color: '#e8d8c0', ow: 3, maxWidth: W - 40 });
+    const an = ascName(r.online?.result?.asc ?? r.cfg?.asc);   // 초월 길로 뛴 판은 그 이름도
+    text(ctx, `${M.name} · ${CHARACTERS[r.charId]?.name ?? ''}${an ? ` · ${an}` : ''} · ${getDiff(r.cfg?.diff).name}`, W / 2, L.subY, { size: 15, align: 'center', weight: 700, color: '#e8d8c0', ow: 3, maxWidth: W - 40 });
     const rows = r.rows ?? [];
     frame(ctx, x, y, w, L.ph, { accent: M.color, glow: 0.6 });
     rows.slice(0, this.shown).forEach(([a, b], i) => {
