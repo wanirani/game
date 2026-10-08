@@ -676,19 +676,15 @@ export const PERKS_B = {
       callout(w, p.cx, p.y - 14, '포효!', '#ff7a3a');
       sfx(w, 'war_horn', { vol: 0.55 });
     },
-    // 작은 피격은 콤보를 끊지 않는다 (keepCombo 는 afterHurt 보다 먼저 불린다: world.onPlayerHurt → afterHurt)
+    // 작은 피격은 콤보를 끊지 않고 keepLoss 만큼만 깎는다. keepCombo 안에서 바로 깎는다 — world.onPlayerHurt 는 afterHurt 없이도
+    // 불리므로(gimmicks.js 숨막힘) afterHurt 로 미루면 깎이지 않고, 남은 표시 때문에 나중에 콤보가 끊긴 피격에 '기세!'가 뜬다
     keepCombo(p, dmg) {
       if (!(dmg < this.N.keep * maxHp(p))) return;
-      S(p).kept = true;
-      return true;
-    },
-    afterHurt(p, dmg, atk, w) {
-      const s = S(p);
-      if (!s.kept) return;
-      s.kept = false;
-      if (w.combo?.n > 0) w.combo.n = Math.floor(w.combo.n * (1 - this.N.keepLoss));   // 끊기는 대신 keepLoss 만큼 깎인다
+      const w = p.world, c = w?.combo;
+      if (c?.n > 0) c.n = Math.floor(c.n * (1 - this.N.keepLoss));
       bump(p, 'keepCombo');
-      if (icd(p, 'keepCue', 1, w)) callout(w, p.cx, p.y - 10, '기세!', '#ffb070');
+      if (w && icd(p, 'keepCue', 1, w)) callout(w, p.cx, p.y - 10, '기세!', '#ffb070');
+      return true;
     },
     drawMeter(ctx, p, w) {
       if ((w?.combo?.n ?? 0) < this.N.combo) return;

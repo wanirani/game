@@ -701,18 +701,18 @@
    "srcBytes": 162480
   },
   "portraits/b_banshee.webp": {
-   "src": "0ee53a745079",
+   "src": "ffd2aa1f6efa",
    "w": 461,
    "h": 614,
-   "bytes": 25190,
-   "srcBytes": 48546
+   "bytes": 42892,
+   "srcBytes": 72080
   },
   "portraits/b_behemoth.webp": {
-   "src": "2e36c873faf0",
+   "src": "f3560b8da766",
    "w": 461,
    "h": 614,
-   "bytes": 45558,
-   "srcBytes": 101456
+   "bytes": 67904,
+   "srcBytes": 117714
   },
   "portraits/b_bonedragon.webp": {
    "src": "014879cba88c",
@@ -806,11 +806,11 @@
    "srcBytes": 96178
   },
   "portraits/b_frostqueen.webp": {
-   "src": "f1fa78a4049d",
+   "src": "d8aac07009e7",
    "w": 461,
    "h": 614,
-   "bytes": 52908,
-   "srcBytes": 107040
+   "bytes": 50152,
+   "srcBytes": 106260
   },
   "portraits/b_grimoire.webp": {
    "src": "38888f09032b",
@@ -1128,39 +1128,39 @@
    "srcBytes": 97668
   },
   "portraits/kael__angry.webp": {
-   "src": "d30b1d76c7b9",
+   "src": "f529343616b1",
    "w": 461,
    "h": 614,
-   "bytes": 60616,
-   "srcBytes": 120244
+   "bytes": 61328,
+   "srcBytes": 123978
   },
   "portraits/kael__shock.webp": {
-   "src": "4c554e97afa1",
+   "src": "624af513710f",
    "w": 461,
    "h": 614,
-   "bytes": 53506,
-   "srcBytes": 113820
+   "bytes": 55436,
+   "srcBytes": 118622
   },
   "portraits/lia.webp": {
-   "src": "b7b772a581d7",
+   "src": "a77f2e2d2353",
    "w": 461,
    "h": 614,
-   "bytes": 26414,
-   "srcBytes": 51828
+   "bytes": 33874,
+   "srcBytes": 72336
   },
   "portraits/lia__angry.webp": {
-   "src": "0a0cb724d8a9",
+   "src": "b7985d432805",
    "w": 461,
    "h": 614,
-   "bytes": 32560,
-   "srcBytes": 68656
+   "bytes": 35556,
+   "srcBytes": 75592
   },
   "portraits/lia__shock.webp": {
-   "src": "05c618a84c53",
+   "src": "626551edf197",
    "w": 461,
    "h": 614,
-   "bytes": 33538,
-   "srcBytes": 67764
+   "bytes": 37452,
+   "srcBytes": 80196
   },
   "portraits/npc_alberto.webp": {
    "src": "91f9140050d3",
@@ -1184,25 +1184,25 @@
    "srcBytes": 66190
   },
   "portraits/npc_carmilla.webp": {
-   "src": "3209c5e19627",
+   "src": "36a83ba5d01e",
    "w": 461,
    "h": 614,
-   "bytes": 59138,
-   "srcBytes": 109324
+   "bytes": 56380,
+   "srcBytes": 106878
   },
   "portraits/npc_carmilla__angry.webp": {
-   "src": "022eb3d04ef4",
+   "src": "9ed68d1c5818",
    "w": 461,
    "h": 614,
-   "bytes": 63734,
-   "srcBytes": 121834
+   "bytes": 60832,
+   "srcBytes": 119422
   },
   "portraits/npc_carmilla__shock.webp": {
-   "src": "a4de9362d288",
+   "src": "a80076da4c7b",
    "w": 461,
    "h": 614,
-   "bytes": 63514,
-   "srcBytes": 120374
+   "bytes": 60792,
+   "srcBytes": 118540
   },
   "portraits/npc_elise.webp": {
    "src": "4a48b1019c2c",
@@ -1226,25 +1226,25 @@
    "srcBytes": 98176
   },
   "portraits/npc_greta.webp": {
-   "src": "b9f8b2111709",
+   "src": "21d277264187",
    "w": 461,
    "h": 614,
-   "bytes": 39236,
-   "srcBytes": 86976
+   "bytes": 41718,
+   "srcBytes": 92488
   },
   "portraits/npc_greta__angry.webp": {
-   "src": "e5e04135da60",
+   "src": "02e46bd562ba",
    "w": 461,
    "h": 614,
-   "bytes": 52014,
-   "srcBytes": 112064
+   "bytes": 41528,
+   "srcBytes": 91784
   },
   "portraits/npc_greta__shock.webp": {
-   "src": "fe4db9fbafac",
+   "src": "c294bfe102af",
    "w": 461,
    "h": 614,
-   "bytes": 47234,
-   "srcBytes": 102330
+   "bytes": 42948,
+   "srcBytes": 97860
   },
   "portraits/npc_hadwin.webp": {
    "src": "3ce58be993e6",
@@ -1254,39 +1254,39 @@
    "srcBytes": 76740
   },
   "portraits/npc_hadwin__angry.webp": {
-   "src": "ab8fd295dea5",
+   "src": "18deb6d4f6f4",
    "w": 461,
    "h": 614,
-   "bytes": 45914,
-   "srcBytes": 104542
+   "bytes": 45696,
+   "srcBytes": 108366
   },
   "portraits/npc_hadwin__shock.webp": {
-   "src": "835d1b5e2b76",
+   "src": "4d7d0cd2928c",
    "w": 461,
    "h": 614,
-   "bytes": 46248,
-   "srcBytes": 106150
+   "bytes": 48942,
+   "srcBytes": 119380
   },
   "portraits/npc_marta.webp": {
-   "src": "12fd0d72ea67",
+   "src": "582000c5661e",
    "w": 461,
    "h": 614,
-   "bytes": 32582,
-   "srcBytes": 69484
+   "bytes": 27752,
+   "srcBytes": 60762
   },
   "portraits/npc_marta__angry.webp": {
-   "src": "36f55249daf5",
+   "src": "e4076b7d9c02",
    "w": 461,
    "h": 614,
-   "bytes": 36158,
-   "srcBytes": 80700
+   "bytes": 27946,
+   "srcBytes": 61258
   },
   "portraits/npc_marta__shock.webp": {
-   "src": "a59353aeea15",
+   "src": "693804853ea4",
    "w": 461,
    "h": 614,
-   "bytes": 33514,
-   "srcBytes": 71876
+   "bytes": 28102,
+   "srcBytes": 61732
   },
   "portraits/npc_rook.webp": {
    "src": "95fff5c5f3aa",
@@ -1296,11 +1296,11 @@
    "srcBytes": 63978
   },
   "portraits/npc_rook2.webp": {
-   "src": "7d3d20b85d5e",
+   "src": "eaa3d8663ccd",
    "w": 461,
    "h": 614,
-   "bytes": 49540,
-   "srcBytes": 107242
+   "bytes": 59922,
+   "srcBytes": 135164
   },
   "portraits/npc_rook__angry.webp": {
    "src": "7d9109dda158",

@@ -210,7 +210,7 @@ export class TitleScene extends Scene {
   /** '보기' 탭: 설정의 화면 페이지 (글자·UI 크기, 화면 번쩍임, 동작 줄이기) */
   openView() {
     audio.sfx('menu_ok');
-    this.game.push('options', { page: 'screen' });
+    this.game.push('options', { page: 'screen', row: 'flashFx' });
   }
 
   // ── 안드로이드 앱(APK) ──

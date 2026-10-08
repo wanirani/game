@@ -377,7 +377,7 @@ export const MOUNTS = {
     role: '질주형 — 가장 빠른 군마, 허공 딛기와 새벽 말 떼',
     desc: '새벽 서약 기사단의 군마. 십 년 동안 사신의 영구 마차에 묶여 있다가 풀려나, 스스로 다시 고삐를 허락했다.',
     portrait: 'portraits/cmp_mt_morgen', iconFocus: { x: 0.27, y: 0.337, s: 0.45 },   // 초상화(EX5-BOSS Kling)의 머리 · 굴레 · 금빛 갈기
-    obtain: { type: 'flag', flag: 'recruit_mt_morgen', hint: '외전 「불탄 목장」에서 만날 수 있다' },
+    obtain: { type: 'flag', flag: 'recruit_mt_morgen', hint: '외전 「불탄 목장의 밤」에서 만날 수 있다' },
     cry: { sfx: 'neigh', pitch: 1.1 }, hoof: { sfx: 'gallop', pitch: 1.05, vol: 0.9 },
     rig: 'horse', palette: ['#e4e2dc', '#9aa0b0', '#ffd070', '#fff4c8', '#3a3040'], light: { color: '#ffe8a0', r: 80, i: 0.4 },
     body: { w: 60, h: 90 }, seat: { x: -4, y: -56 }, footY: 26,
@@ -641,7 +641,7 @@ export const GUARDIANS = {
     role: '흡혈·심부름형 — 재빠른 급습과 떨어진 물건 물어 오기',
     desc: '카밀라가 백 년 동안 편지를 맡기던 작은 박쥐. 귀에 빨간 리본을 매었고, 날갯짓마다 장미 향이 난다.',
     portrait: 'portraits/cmp_gd_vesper', iconFocus: { x: 0.38, y: 0.307, s: 0.45 },   // 머리(큰 귀·빨간 리본·붉은 눈·송곳니) — 거꾸로 매달린 초상화(EX4-BOSS)에 맞춘 크롭
-    obtain: { type: 'flag', flag: 'recruit_gd_vesper', hint: '외전 「장미 수녀원」에서 만날 수 있다' },
+    obtain: { type: 'flag', flag: 'recruit_gd_vesper', hint: '외전 「시드는 장미」에서 만날 수 있다' },
     cry: { sfx: 'bat', pitch: 1.4 }, palette: ['#140a10', '#2a1420', '#5a2a3a', '#c0143a', '#ff6a8a'],
     move: 'fly', size: { w: 26, h: 18 }, front: true, anchor: { dx: -30, dy: -112 }, speed: 1150, engage: 380, bias: 'lowhp', perch: 'shoulder',
     attack: { name: '흡혈 급습', desc: '위에서 내리꽂혀 적의 목덜미를 문다. 약해진 적을 먼저 노린다.', kind: 'dive', swoop: 0.24, box: { w: 38, h: 34 },

@@ -26,6 +26,7 @@ import { CLASSES } from '../data/classes.js';
 import { ASCENSIONS, ascOf, heroTier } from '../data/ascensions.js';
 import { drawHero } from '../render/hero.js';
 import { hudSafe } from '../render/hud_layout.js';
+import { isBust } from '../render/portrait.js';   // 흉상 초상은 옆·위를 녹이지 않는다 (requests_f: AWAKEN featherPortrait)
 
 const DEG = Math.PI / 180;
 const ANG = -7 * DEG;                      // 띠 기울기 (오른쪽이 올라간다)
@@ -302,8 +303,9 @@ function bakeTitle(caption, str, vw, S, a, acc3 = null) {
   return { c, S, w: W, h: Hh, base };
 }
 
-/** 초상 대체용: 초상(2:3)을 한 번 그려 네 가장자리를 투명하게 녹인다 (띠 안에서 네모 테두리가 보이지 않게) */
-function featherPortrait(img) {
+/** 초상 대체용: 초상(2:3)을 한 번 그려 네 가장자리를 투명하게 녹인다 (띠 안에서 네모 테두리가 보이지 않게).
+ *  애니메 흉상(투명 배경)은 옆을 녹이지 않고 위는 짧게만 (머리카락이 먹히지 않게), 아래는 그대로 녹인다 */
+function featherPortrait(img, key = null) {
   const iw = img?.naturalWidth || img?.width || 0, ih = img?.naturalHeight || img?.height || 0;
   if (!(iw > 8 && ih > 8)) return null;
   const h = 420, w = Math.max(8, Math.round(h * iw / ih));
@@ -311,12 +313,16 @@ function featherPortrait(img) {
   if (!c) return null;
   const g = c.getContext('2d');
   try { g.drawImage(img, 0, 0, w, h); } catch { return null; }
+  let bust = false;
+  try { bust = !!key && !!isBust(key, img); } catch { bust = false; }
   g.globalCompositeOperation = 'destination-in';
-  const gx = g.createLinearGradient(0, 0, w, 0);
-  gx.addColorStop(0, 'rgba(0,0,0,0)'); gx.addColorStop(0.3, 'rgba(0,0,0,1)'); gx.addColorStop(0.78, 'rgba(0,0,0,1)'); gx.addColorStop(1, 'rgba(0,0,0,0)');
-  g.fillStyle = gx; g.fillRect(0, 0, w, h);
+  if (!bust) {
+    const gx = g.createLinearGradient(0, 0, w, 0);
+    gx.addColorStop(0, 'rgba(0,0,0,0)'); gx.addColorStop(0.3, 'rgba(0,0,0,1)'); gx.addColorStop(0.78, 'rgba(0,0,0,1)'); gx.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gx; g.fillRect(0, 0, w, h);
+  }
   const gy = g.createLinearGradient(0, 0, 0, h);
-  gy.addColorStop(0, 'rgba(0,0,0,0)'); gy.addColorStop(0.12, 'rgba(0,0,0,1)'); gy.addColorStop(0.62, 'rgba(0,0,0,1)'); gy.addColorStop(0.9, 'rgba(0,0,0,0)');
+  gy.addColorStop(0, 'rgba(0,0,0,0)'); gy.addColorStop(bust ? 0.06 : 0.12, 'rgba(0,0,0,1)');   // 흉상: 위 가장자리(잘린 머리카락)만 짧게 gy.addColorStop(0.62, 'rgba(0,0,0,1)'); gy.addColorStop(0.9, 'rgba(0,0,0,0)');
   g.fillStyle = gy; g.fillRect(0, 0, w, h);
   g.globalCompositeOperation = 'source-over';
   return { c, w, h };
@@ -459,7 +465,7 @@ export class AwakenCutinScene extends Scene {
     if (ok(img)) { this.img = img; this.fallback = false; this.fb = null; this.face = a.face; this.eye = a.eye; return; }
     const por = assets.get(a.portrait);
     const next = ok(por) ? por : null;
-    if (next !== this.img || !this.fb) this.fb = next ? featherPortrait(next) : null;
+    if (next !== this.img || !this.fb) this.fb = next ? featherPortrait(next, a.portrait) : null;
     this.img = next;
     this.fallback = true;
     this.face = a.portraitFace ?? [0.5, 0.3];

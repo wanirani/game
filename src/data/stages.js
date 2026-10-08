@@ -128,7 +128,7 @@ export const STAGES = {
     music: 's17', level: 70, darkness: 0.15, darkColor: '#081020', liquid: 'water', boss: 'b_argen', rooms: S21, parTime: 600,
     enemies: ['storm_harpy', 'gale_knight', 'thunder_roc', 'cloud_jelly', 'void_herald', 'nihil_spawn', 'mimic'], docs: [], shard: null, heart: null,
     gimmick: { kind: 'wind', dir: 1, force: 850, on: 2.4, off: 3.8 }, color: '#c8e4ff', next: null, mapPos: { x: 0.8, y: 0 }, req: '2부의 끝을 본 뒤, 구름 위 하늘 정원에서 용의 울음이 들려오면 갈 수 있다' }),
-  // ── EX stage s22 (EX2-MAP 맵 · EX2-INTEG 통합) — 외전 「까마귀의 이름」 (docs/specs/ex_s22.md). 2부 엔딩(p2_done) 뒤에 열린다.
+  // ── EX stage s22 (EX2-MAP 맵 · EX2-INTEG 통합) — 외전 「이름 없는 언덕」 (docs/specs/ex_s22.md). 2부 엔딩(p2_done) 뒤에 열린다.
   //    side: true · page: 0 = 1부 지도(에슈빌 쪽)에서 2장 안개의 묘지로부터 갈라지는 외전 노드 (town/worldmap.js SIDE_FROM.s22 = 's02')
   //    해금은 s21 과 같은 세계 지도 고리 (p2_done 이면 s22 를 열고 한 번 해금 연출 — 처음 지도를 여는 2부 완주 세이브는 s21 · s22 연출이 차례로),
   //    클리어해도 progress.chapter 를 올리지 않는다 (results.js). 대본 s22_intro · s22_t1 · s22_t2 · s22_outro · b_nemain_* = data/story_ex.js ──

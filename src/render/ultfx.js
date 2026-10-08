@@ -2454,7 +2454,8 @@ function finalImpl(w, x, y, o = {}) {
     // 단계 3 (초월·비전): 화면 밖까지 천천히 퍼지는 강조색 고리 하나 + 45° 기운 흰 별 (캐시 스프라이트; 입자 0)
     fx.ring(x, y, { color: acc, r0: 60, r1: vw * 1.2, life: 1.0, width: 4 });
     const st = HFX.star?.('#ffffff');
-    if (st) fx.sprite(st, x, y, { size: 420, angle: Math.PI / 4, life: 0.38, s0: 0.15, s1: 1.5, alpha: 0.9 });
+    // 크기: 최대 459 논리 px (340 × 1.35) — 줌 펀치·연출 줌이 겹쳐도 화면 상자의 90% 를 덮지 않는다 (전면 패스로 세지 않게, perf §5.2)
+    if (st) fx.sprite(st, x, y, { size: 340, angle: Math.PI / 4, life: 0.38, s0: 0.15, s1: 1.35, alpha: 0.9 });
   }
   // 섬광 핵 · 별 · 가로 렌즈 줄
   const g = glowNear(mixC(col, '#ffffff', 0.35), s ? mixC(s.color, '#ffffff', 0.35) : null);

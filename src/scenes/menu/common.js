@@ -934,16 +934,31 @@ export function gbutton(ctx, r, label, { hot = false, disabled = false, size = 1
   ctx.fillStyle = 'rgba(255,230,190,0.10)'; ctx.fillRect(r.x + 4, r.y + 2, r.w - 8, 1);
   if (hot && !disabled) glowOval(ctx, r.x + r.w / 2, r.y + r.h / 2, r.w * 0.55, r.h * 0.9, '#ff4060', 0.18 + 0.08 * Math.sin(t * 5));
   const col = disabled ? '#6a5e60' : color || (hot ? PAL.goldHi : PAL.bone);
+  // 이름·설명 두 줄의 기준선: 보통 글자 크기면 예전 고정 간격(가운데 −6 / +13). 글자 크기 하한('크게'·'아주 크게')이 커서
+  // 두 줄이 닿으면(이름 크기·0.48 + 설명 크기·0.8 > 17) 하한에서 두 줄 묶음을 다시 잡아 가운데에 두고,
+  // 단추 높이·폭에 들어가지 않으면 설명을 뺀다 (겹치거나 말줄임하지 않는다)
+  let ly = r.y + r.h / 2 + size * 0.36, sy = 0, gk = size;   // gk: 글리프를 이름 줄 가운데(기준선 − gk·0.36)에 맞출 크기
+  if (sub) {
+    const fl = textFloor(), ls = Math.max(size, fl), ss = Math.max(11, fl);
+    if (0.8 * ss + 0.48 * ls <= 17) { ly -= 6; sy = r.y + r.h / 2 + 13; }
+    else {
+      ctx.font = font(11, 600);
+      if (r.h >= ls * 0.82 + ss + 10 && ctx.measureText(sub).width <= r.w - 12) {
+        const top = r.y + (r.h - (ls * 0.82 + 4 + ss * 0.9)) / 2;
+        ly = Math.round(top + ls * 0.82); sy = Math.round(ly + 4 + ss * 0.86); gk = ls;
+      } else sub = null;
+    }
+  }
   let tx = r.x + r.w / 2;
   if (icon) {
     ctx.font = font(size, 800, FONT.body);
     const tw = ctx.measureText(label).width;
     const ix = tx - (tw + 22) / 2 + 8;
-    glyph(ctx, icon, ix, r.y + r.h / 2 - (sub ? 6 : 0), size * 1.05, col, 1.6);
+    glyph(ctx, icon, ix, ly - gk * 0.36, size * 1.05, col, 1.6);
     tx = ix + 14 + tw / 2;
   }
-  text(ctx, label, tx, r.y + r.h / 2 + size * 0.36 - (sub ? 6 : 0), { size, align: 'center', weight: 800, color: col, ow: 3 });
-  if (sub) text(ctx, sub, r.x + r.w / 2, r.y + r.h / 2 + 13, { size: 11, align: 'center', color: disabled ? '#5a5050' : PAL.dim, weight: 600, ow: 2 });
+  text(ctx, label, tx, ly, { size, align: 'center', weight: 800, color: col, ow: 3 });
+  if (sub) text(ctx, sub, r.x + r.w / 2, sy, { size: 11, align: 'center', color: disabled ? '#5a5050' : PAL.dim, weight: 600, ow: 2 });
   ctx.restore();
 }
 

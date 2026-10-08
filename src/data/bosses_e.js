@@ -1,5 +1,5 @@
-// 외전 보스 데이터 E: b_argen (s21, 외전 「하늘 정원의 용」) — docs/specs/ex_s21.md §2. 소유: EX-BOSS
-//                   b_nemain (s22, 외전 「까마귀의 이름」) — docs/specs/ex_s22.md §2. 소유: EX2-BOSS (아래 b_nemain 머리말)
+// 외전 보스 데이터 E: b_argen (s21, 외전 「하늘 정원의 둥지」) — docs/specs/ex_s21.md §2. 소유: EX-BOSS
+//                   b_nemain (s22, 외전 「이름 없는 언덕」) — docs/specs/ex_s22.md §2. 소유: EX2-BOSS (아래 b_nemain 머리말)
 //                   b_hagen (s23, 외전 「빈칸의 현상금」) — docs/specs/ex_s23.md §2. 소유: EX3-BOSS (아래 b_hagen 머리말)
 //                   b_bride (s24, 외전 「시드는 장미」) — docs/specs/ex_s24.md §2. 소유: EX4-BOSS (아래 b_bride 머리말)
 //                   b_charon (s25, 외전 「불탄 목장의 밤」) — docs/specs/ex_s25.md §2. 소유: EX5-BOSS (아래 b_charon 머리말)

@@ -312,13 +312,15 @@ export const PERKS_D = {
   },
   /** 심연의 용기사: 화염 피해마다 용염 +1 (최대 30) → 다음 돌진 찌르기가 흑룡 돌진 (380 꿰뚫기 250% + 2초 불바다 0.25초마다 15%) */
   isolde_abyssdragoon: {
-    N: { add: 1, max: 30, len: 380, x0: 20, y0: -100, h: 90, mvPct: 250, hitstop: 0.06, t: 0.3, fireT: 2, tickT: 0.25, fireMvPct: 15 },
+    N: { add: 1, max: 30, dark: 1, len: 380, x0: 20, y0: -100, h: 90, mvPct: 250, hitstop: 0.06, t: 0.3, fireT: 2, tickT: 0.25, fireMvPct: 15 },   // dark 1: 암흑 피해도 센다 (흑룡의 검은 불길)
     prewarm(w) { warm(w, ['#c070ff', '#ff6a2a', '#ffd0a0'], ['용염!', '#d8a0ff']); },
     onHit(p, tgt, info, atk, w) {
-      if (atk?.element !== 'fire' || !tgt || tgt.kind === 'prop') return;
+      const el = atk?.element;
+      if (!(el === 'fire' || (el === 'dark' && this.N.dark)) || !tgt || tgt.kind === 'prop') return;
       const st = perkState(p), was = st.ember ?? 0;
       if (was >= this.N.max) return;
       st.ember = Math.min(this.N.max, was + this.N.add);
+      count('isolde_abyssdragoon.ember');
       if (st.ember < this.N.max) return;
       count('isolde_abyssdragoon.full');
       w.fx.ring(p.cx, p.cy, { color: '#c070ff', r0: 14, r1: 80, life: 0.4, width: 5 });

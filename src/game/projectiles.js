@@ -94,7 +94,7 @@ export class Projectile extends Entity {
     } else {
       this.x += this.vx * dt; this.y += this.vy * dt;
       if (this.collideWalls && isSolidType(world.map.typeAtPx(this.cx, this.cy))) {
-        if (this.onWall) this.onWall(this, world);
+        if (this.onWall) { this.onWall(this, world); if (this.dead) return; }   // 벽에서 사라진 탄은 같은 프레임에 적·영웅을 치지 않는다 (onWall 이 탄을 살려 두면 그대로 진행)
         else { this.hitWallFx(world); this.dead = true; return; }
       }
     }

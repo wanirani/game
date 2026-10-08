@@ -1,4 +1,4 @@
-// 보스 b_argen — 아르겐, 공허에 물든 은룡 (s21 외전 「하늘 정원의 용」) — docs/specs/ex_s21.md §2. 소유: EX-BOSS
+// 보스 b_argen — 아르겐, 공허에 물든 은룡 (s21 외전 「하늘 정원의 둥지」) — docs/specs/ex_s21.md §2. 소유: EX-BOSS
 // BossC(c_common.js) 상속. 그림은 벡터(2부 기준 디테일); 채색 퍼핏(render/painted/bosses/b_argen.js)은 이 논리를 읽기만 한다.
 //
 // 모습: 옆모습의 거대한 은빛 하늘 용 (머리 쪽 = facing). 긴 S자 목, 뒤로 뻗은 상아색 뿔, 은빛 비늘과 상아색 배 비늘,

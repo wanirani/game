@@ -1,4 +1,4 @@
-// 보스 b_nemain — 둥지어미 / 네메인 (s22 외전 「까마귀의 이름」) — docs/specs/ex_s22.md §2. 소유: EX2-BOSS
+// 보스 b_nemain — 둥지어미 / 네메인 (s22 외전 「이름 없는 언덕」) — docs/specs/ex_s22.md §2. 소유: EX2-BOSS
 // BossC(c_common.js) 상속. 구조는 e_argen.js, 소환은 c_narkissa.js(spawnMinion), 망토는 b_death 채색 렌더러를 본으로.
 // 그림은 벡터(2부 기준 디테일); 채색 퍼핏(render/painted/bosses/b_nemain.js)은 이 논리를 읽기만 한다.
 //
