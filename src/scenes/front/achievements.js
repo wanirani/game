@@ -13,19 +13,24 @@
 //  - 배경: 타이틀 키 아트(켄번스 한 장면) + 어둡게 + 고른 장식의 안개 색을 레이어 한 장에 굽고(휴대폰 등급은 반 해상도),
 //    그 위에 장식의 Ambience(불씨 수는 타이틀의 절반, 안개·번개 없음) — 장식 미리 보기 구실. 프레임마다 새 캔버스·그라디언트 0
 //  - 나가면 game.ach.markSeen() (NEW 표시를 지운다)
+//  - '이명 · 장식' 창의 두 번째 쪽 '외형' (2026-10 벤치마크 5): 대시 잔상 색 6종 (data/cosmetics.js). 잠긴 칸은 조건 글, 고르면
+//    meta.ach.cos.trail 을 적고 saves.saveMeta (엔진 API 밖 — 잔상은 업적 엔진이 모르는 꾸미기 칸). 능력치와 무관
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { assets } from '../../core/assets.js';
 import { bus } from '../../core/events.js';
 import { cloud } from '../../core/cloud.js';
+import { saves } from '../../core/save.js';
 import { text, FONT, taps, fontEpoch, textFloor } from '../../core/ui.js';
 import { drawGlyph, glyphWidth, promptMode } from '../../core/prompts.js';
-import { clamp, ease, fmt, TAU } from '../../core/math.js';
+import { clamp, ease, fmt, TAU, mix } from '../../core/math.js';
 import { hudSafe } from '../../render/hud_layout.js';
 import { ITEMS } from '../../data/items.js';
 import * as AD from '../../data/achievements.js';
 import * as AM from '../../core/ach_meta.js';
+import * as COS from '../../data/cosmetics.js';
+import { CHARACTERS } from '../../data/characters.js';
 import { Ambience, kenBurns, shade, heading as bigHeading, backButton, footer, GOLD, BONE, DIM } from './common.js';
 import {
   PAL, Nav, Gesture, Scroller, scrollbar, clipBegin, clipEnd, zone, glyph, glowOval, pill, gauge, selBar, frame, gbutton,
@@ -221,6 +226,14 @@ export class AchievementsScene extends Scene {
     const ok = !!safe(() => this.game.ach?.setDeco?.(id), false);
     this.makeAmb();
     this.refresh();
+    return ok;
+  }
+  /** 대시 잔상 (외형 쪽): meta.ach.cos.trail 에 적고 메타 저장 (로그인 중이면 클라우드가 따라 올린다). 고를 수 있는지는 창이 확인한다 */
+  setTrail(id) {
+    const g = this.game;
+    if (!g.meta) return false;
+    const ok = !!safe(() => COS.setTrail(AM.ensureAch(g.meta), id), false);
+    if (ok) safe(() => saves.saveMeta(g.meta));
     return ok;
   }
   get claimOK() { return !!this.claimInfo?.ok && this.sum.claimable > 0; }
@@ -702,20 +715,49 @@ class DetailModal {
   }
 }
 
-// ───────────────────────── 팝업: 이명 · 장식 (§7.3) ─────────────────────────
+// ───────────────────────── 팝업: 이명 · 장식 · 외형 (§7.3 + 벤치마크 5) ─────────────────────────
+// 두 쪽 (머리의 탭 둘): 0 = 이명 · 장식 (목록 0 이명 · 1 장식), 1 = 외형 (목록 2 대시 잔상 색, data/cosmetics.js — 오른쪽(넓은)·아래(좁은)에 미리 보기).
+// prevTab/nextTab 은 목록 0 → 1 → 2 → 0 으로 돈다 (쪽은 목록을 따른다). 잠긴 잔상은 칸에 조건(짧게) · 고르면 조건 한 줄
+const PICK_TABS = ['이명 · 장식', '외형'];
+const PAGE_OF = [0, 0, 1];
+const PAGE_LISTS = [[0, 1], [2]];
+const PICK_SRC = ['ach.pick.title', 'ach.pick.deco', 'ach.pick.trail'];
+const PICK_HEADS = ['이명', '타이틀 장식', '대시 잔상'];
+const PICK_NOTE = ['이명은 명예의 전당 온라인 순위표에, 장식은 타이틀 화면에 보입니다', '대시할 때 남는 잔상의 색만 바뀝니다 — 능력치와는 무관합니다'];
+const LOCK_COL = '#4a3e44';
+
+/** 대시하는 사냥꾼 실루엣 (미리 보기 잔상 한 장, 발끝 = (x, y), 오른쪽으로 달린다) — 경로만, 그라디언트·캔버스 없음 */
+function dashFigure(ctx, x, y, s) {
+  ctx.beginPath();
+  ctx.arc(x + 4 * s, y - 31 * s, 4.6 * s, 0, TAU);
+  ctx.moveTo(x - 4 * s, y - 26 * s); ctx.lineTo(x + 8 * s, y - 25 * s); ctx.lineTo(x + 5 * s, y - 12 * s);
+  ctx.lineTo(x + 14 * s, y - 2 * s); ctx.lineTo(x + 10 * s, y); ctx.lineTo(x + 1 * s, y - 9 * s);
+  ctx.lineTo(x - 10 * s, y - 2 * s); ctx.lineTo(x - 13 * s, y - 5 * s); ctx.lineTo(x - 4 * s, y - 13 * s); ctx.closePath();
+  ctx.moveTo(x - 3 * s, y - 26 * s); ctx.quadraticCurveTo(x - 17 * s, y - 23 * s, x - 24 * s, y - 12 * s); ctx.lineTo(x - 7 * s, y - 15 * s); ctx.closePath();
+  ctx.moveTo(x + 7 * s, y - 23 * s); ctx.lineTo(x + 24 * s, y - 27 * s); ctx.lineTo(x + 24 * s, y - 25.4 * s); ctx.lineTo(x + 7 * s, y - 20.6 * s); ctx.closePath();
+  ctx.fill();
+}
+
 class PickModal {
   constructor(sc) {
     this.kind = 'pick'; this.sc = sc; this.t = 0; this.open = true; this.box = null; this.msg = null;
-    this.L = 0; this.k = [0, 0]; this.zones = [[], []]; this.closeR = null;
-    this.scs = [new Scroller(), new Scroller()];
+    this.L = 0; this.L0 = 0; this.k = [0, 0, 0]; this.zones = [[], [], []]; this.closeR = null; this.tabR = [null, null];
+    this.scs = [new Scroller(), new Scroller(), new Scroller()];
+    this.cos = this.readCos();
     this.load();
-    this.k[0] = Math.max(0, this.lists[0].findIndex((it) => it.id === this.cur[0]));
-    this.k[1] = Math.max(0, this.lists[1].findIndex((it) => it.id === this.cur[1]));
+    for (let i = 0; i < 3; i++) this.k[i] = Math.max(0, this.lists[i].findIndex((it) => it.id === this.cur[i]));
     this.scs[0].follow(this.k[0]);
   }
-  /** 이명 17 · 장식 5 (+ '이명 없음' · '기본 불씨'). 숨긴 업적이 주는 것은 그 업적을 달성하기 전까지 출처를 '???' 로 */
+  get page() { return PAGE_OF[this.L] ?? 0; }
+  /** 잔상 해금 문맥 (열 때 한 번): 업적·탑 최고 층·지난 회차 — 회차는 슬롯 1–3 과 지금 슬롯을 읽는다 */
+  readCos() {
+    const g = this.sc.game, states = [g.state];
+    for (const s of [1, 2, 3]) states.push(safe(() => saves.read(s), null));
+    return safe(() => COS.cosContext(g.meta, states), null) ?? { got: {}, tower: 0, ng: 0 };
+  }
+  /** 이명 17 · 장식 5 · 잔상 6 (+ '이명 없음' · '기본 불씨' · '직업 기본'). 숨긴 업적이 주는 것은 그 업적을 달성하기 전까지 출처를 '???' 로 */
   load() {
-    const A = this.sc.game.ach;
+    const A = this.sc.game.ach, g = this.sc.game;
     const from = (achId) => {
       const def = this.sc.defById.get(achId);
       if (!def) return '';
@@ -726,17 +768,34 @@ class PickModal {
       .map((it) => ({ id: it.id, name: it.name ?? table?.[it.id]?.name ?? it.id, got: !!it.got, from: from(it.from) }));
     const titles = fixList(A ? safe(() => A.titles(), null) : null, AM.ACH_TITLES);
     const decos = fixList(A ? safe(() => A.decos(), null) : null, AM.ACH_DECOS);
-    this.lists = [[{ id: null, name: '이명 없음', got: true, from: '' }, ...titles], [{ id: null, name: '기본 불씨', got: true, from: '' }, ...decos]];
-    this.cur = [A ? safe(() => A.title(), null) : null, A ? safe(() => A.deco(), null) : null];
+    // 잔상: 고른 것은 (조건 기록이 사라졌어도) 쓸 수 있는 칸으로 — 고를 때만 확인한다 (data/cosmetics.js)
+    const curTrail = COS.trailId(g.meta);
+    const ult = CHARACTERS[g.state?.charId]?.ult?.color ?? CHARACTERS[g.world?.player?.ch?.id]?.ult?.color ?? '#8ac8ff';
+    if (this.ultC !== ult) { this.ultC = ult; this.baseRamp = [0, 1, 2, 3, 4, 5].map((i) => mix(ult, '#ffffff', i / 5)); }
+    const trails = [{ id: null, name: COS.TRAIL_DEFAULT.name, desc: COS.TRAIL_DEFAULT.desc, got: true, from: '', long: '', ramp: this.baseRamp }];
+    for (const id of COS.TRAIL_IDS) {
+      const d = COS.TRAILS[id], nt = COS.needText(d.need, from);
+      trails.push({ id, name: d.name, desc: d.desc, got: id === curTrail || COS.ownsTrail(id, this.cos), from: nt.short, long: nt.long, ramp: d.ramp });
+    }
+    this.lists = [[{ id: null, name: '이명 없음', got: true, from: '' }, ...titles], [{ id: null, name: '기본 불씨', got: true, from: '' }, ...decos], trails];
+    this.cur = [A ? safe(() => A.title(), null) : null, A ? safe(() => A.deco(), null) : null, curTrail];
   }
   close() { this.open = false; }
   cols(L) { return this.lay?.cols?.[L] ?? 1; }
+  /** 쪽 바꾸기 (탭): 외형 = 목록 2, 이명 · 장식 = 마지막으로 보던 목록 0/1 */
+  setPage(pg) {
+    if (pg === this.page) return;
+    if (this.L < 2) this.L0 = this.L;
+    this.L = pg === 1 ? 2 : this.L0;
+    this.scs[this.L].follow(this.k[this.L]);
+    audio.sfx('menu_move');
+  }
   move(dk) {
     const L = this.L, n = this.lists[L].length, c = this.cols(L);
     let k = this.k[L] + dk;
     if (k < 0 || k >= n) {
       if (this.lay?.wide) return false;
-      // 좁은 배치(위아래): 목록 끝에서 다른 목록으로
+      // 좁은 배치(위아래): 목록 끝에서 다른 목록으로 (이명 · 장식 쪽 안에서만)
       if (dk > 0 && L === 0) { this.L = 1; this.k[1] = Math.min(this.lists[1].length - 1, this.k[0] % c); this.scs[1].follow(this.k[1]); return true; }
       if (dk < 0 && L === 1) { this.L = 0; const c0 = this.cols(0), n0 = this.lists[0].length; const col = Math.min(this.k[1] % c, c0 - 1); this.k[0] = Math.min(n0 - 1, Math.floor((n0 - 1) / c0) * c0 + col); this.scs[0].follow(this.k[0]); return true; }
       return false;
@@ -748,21 +807,29 @@ class PickModal {
   choose(L, k) {
     const it = this.lists[L][k];
     if (!it) return;
-    if (!it.got) { audio.sfx('menu_cancel'); this.msg = { text: it.from && it.from !== '???' ? `「${it.from}」 업적을 달성하면 쓸 수 있습니다` : '아직 얻지 못했습니다', color: PAL.warn, t: 2.6 }; return; }
+    if (!it.got) {
+      audio.sfx('menu_cancel');
+      const why = L === 2 ? it.long || '아직 얻지 못했습니다' : it.from && it.from !== '???' ? `「${it.from}」 업적을 달성하면 쓸 수 있습니다` : '아직 얻지 못했습니다';
+      this.msg = { text: why, color: PAL.warn, t: 2.6 };
+      return;
+    }
     if (it.id === this.cur[L]) { audio.sfx('menu_move'); return; }
-    const ok = L === 0 ? this.sc.setTitle(it.id) : this.sc.setDeco(it.id);
+    const ok = L === 0 ? this.sc.setTitle(it.id) : L === 1 ? this.sc.setDeco(it.id) : this.sc.setTrail(it.id);
     if (!ok) { audio.sfx('menu_cancel'); this.msg = { text: '바꾸지 못했습니다', color: PAL.bad, t: 2.4 }; return; }
     audio.sfx('menu_ok');
     this.load();
     if (L === 0) this.msg = { text: !it.id ? '이명 없음' : cloud.loggedIn ? '이명을 정했습니다 — 순위표의 별명 옆에 보입니다' : '로그인하면 순위표의 별명 옆에 보입니다', color: PAL.goldHi, t: 3 };
-    else this.msg = { text: `타이틀 장식 「${it.name}」`, color: PAL.goldHi, t: 3 };
+    else if (L === 1) this.msg = { text: `타이틀 장식 「${it.name}」`, color: PAL.goldHi, t: 3 };
+    else this.msg = { text: it.id ? `대시 잔상 「${it.name}」 — 모든 영웅의 대시에 남습니다` : '직업 기본 잔상으로 돌아갑니다', color: PAL.goldHi, t: 3 };
   }
   update(dt, nav, ges) {
     this.t += dt;
     if (this.msg) { this.msg.t -= dt; if (this.msg.t <= 0) this.msg = null; }
-    if (this.lay) for (let L = 0; L < 2; L++) this.scs[L].update(dt, this.lay.areas[L], ges);
+    const shown = PAGE_LISTS[this.page];
+    if (this.lay) for (const L of shown) this.scs[L].update(dt, this.lay.areas[L], ges);
     if (ges.tap(this.closeR)) { audio.sfx('menu_cancel'); this.close(); return false; }
-    for (let L = 0; L < 2; L++) {
+    for (let pg = 0; pg < 2; pg++) if (this.tabR[pg] && ges.tap(this.tabR[pg])) { this.setPage(pg); return true; }
+    for (const L of shown) {
       if (this.scs[L].dragging) continue;
       for (const z of this.zones[L]) {
         if (z.r.thid) continue;
@@ -772,7 +839,12 @@ class PickModal {
     }
     if (ges.tapOK && this.box && !inRect(input.pointer.x, input.pointer.y, this.box)) { audio.sfx('menu_cancel'); this.close(); return false; }
     if (nav.cancel || nav.menu || nav.alt) { audio.sfx('menu_cancel'); this.close(); return false; }
-    if (nav.prevTab || nav.nextTab) { this.L = 1 - this.L; this.scs[this.L].follow(this.k[this.L]); audio.sfx('menu_move'); return true; }
+    if (nav.prevTab || nav.nextTab) {
+      this.L = (this.L + (nav.prevTab ? 2 : 1)) % 3;
+      if (this.L < 2) this.L0 = this.L;
+      this.scs[this.L].follow(this.k[this.L]); audio.sfx('menu_move');
+      return true;
+    }
     const c = this.cols(this.L);
     let moved = false;
     if (nav.up) moved = this.move(-c);
@@ -780,53 +852,65 @@ class PickModal {
     else if (nav.left) { moved = this.move(-1); if (!moved && this.lay?.wide && this.L === 1) { this.L = 0; moved = true; } }
     else if (nav.right) { moved = this.move(1); if (!moved && this.lay?.wide && this.L === 0) { this.L = 1; moved = true; } }
     else if (nav.confirm) this.choose(this.L, this.k[this.L]);
-    if (moved) audio.sfx('menu_move');
+    if (moved) { if (this.L < 2) this.L0 = this.L; audio.sfx('menu_move'); }
     return true;
   }
   layout(L0) {
     const W = L0.W, H = L0.H;
     if (L0.wide) {
       const w = Math.min(820, W - 48), h = Math.min(H - 40 - L0.st - L0.sb, 452), x = Math.round((W - w) / 2), y = Math.round(L0.st + (H - L0.st - L0.sb - h) / 2);
-      const lw = Math.round((w - 60) * 0.56), rx = x + 24 + lw + 12;
+      const lw = Math.round((w - 60) * 0.56), rx = x + 24 + lw + 12, ah = h - 90 - 48;
       return {
-        wide: true, x, y, w, h, cols: [1, 1], rowH: [36, 40], gap: [0, 4],
+        wide: true, x, y, w, h, cols: [1, 1, 1], rowH: [36, 40, 40], gap: [0, 4, 4],
         close: { x: x + w - 54, y: y + 8, w: 44, h: 44 },
-        heads: [{ x: x + 24, y: y + 78 }, { x: rx, y: y + 78 }],
-        areas: [{ x: x + 24, y: y + 90, w: lw, h: h - 90 - 48 }, { x: rx, y: y + 90, w: x + w - 24 - rx, h: h - 90 - 48 }],
+        tabs: [{ x: x + 20, y: y + 8, w: 142, h: 44 }, { x: x + 170, y: y + 8, w: 92, h: 44 }],
+        heads: [{ x: x + 24, y: y + 78 }, { x: rx, y: y + 78 }, { x: x + 24, y: y + 78 }],
+        areas: [{ x: x + 24, y: y + 90, w: lw, h: ah }, { x: rx, y: y + 90, w: x + w - 24 - rx, h: ah }, { x: x + 24, y: y + 90, w: lw, h: ah }],
+        prev: { x: rx, y: y + 66, w: x + w - 24 - rx, h: ah + 24 },
         noteY: y + h - 20,
       };
     }
     const x = L0.sl + 8, y = L0.st + 6, w = W - L0.sl - L0.sr - 16, h = H - L0.st - L0.sb - 12;
     const decoH = 44 * 2 + 9, top = y + 78, noteH = 26;
     const tH = h - (top - y) - 26 - decoH - noteH - 6;
+    // 외형 쪽: 잔상 2열 × 4줄(44) 목록 + 아래 미리 보기 띠 (모자라면 목록이 줄고 스크롤)
+    const avail = h - (top - y) - noteH - 6, trH = Math.max(44, Math.min(44 * 4, avail - 96)), pv = top + trH + 10;
     return {
-      wide: false, x, y, w, h, cols: [2, 3], rowH: [44, 44], gap: [0, 9],
+      wide: false, x, y, w, h, cols: [2, 3, 2], rowH: [44, 44, 44], gap: [0, 9, 0],
       close: { x: x + w - 54, y: y + 6, w: 44, h: 44 },
-      heads: [{ x: x + 18, y: top - 7 }, { x: x + 18, y: top + tH + 19 }],
-      areas: [{ x: x + 14, y: top, w: w - 28, h: tH }, { x: x + 14, y: top + tH + 26, w: w - 28, h: decoH }],
+      tabs: [{ x: x + 14, y: y + 6, w: 134, h: 44 }, { x: x + 156, y: y + 6, w: 84, h: 44 }],
+      heads: [{ x: x + 18, y: top - 7 }, { x: x + 18, y: top + tH + 19 }, { x: x + 18, y: top - 7 }],
+      areas: [{ x: x + 14, y: top, w: w - 28, h: tH }, { x: x + 14, y: top + tH + 26, w: w - 28, h: decoH }, { x: x + 14, y: top, w: w - 28, h: trH }],
+      prev: { x: x + 14, y: pv, w: w - 28, h: Math.max(40, top + avail - pv) },
       noteY: y + h - 10,
     };
   }
   render(ctx, L0, t) {
     const P = this.lay = this.layout(L0);
-    const W = L0.W, H = L0.H;
+    const W = L0.W, H = L0.H, pg = this.page;
     this.box = { x: P.x, y: P.y, w: P.w, h: P.h };
     const kk = ease.outBack(clamp(this.t / 0.16, 0, 1));
     ctx.save();
     ctx.fillStyle = `rgba(0,0,0,${0.55 * clamp(this.t / 0.12, 0, 1)})`; ctx.fillRect(0, 0, W, H);
     ctx.translate(P.x + P.w / 2, P.y + P.h / 2); ctx.scale(0.9 + 0.1 * kk, 0.9 + 0.1 * kk); ctx.translate(-(P.x + P.w / 2), -(P.y + P.h / 2));
     frame(ctx, P.x, P.y, P.w, P.h, { top: 'rgba(34,16,36,0.98)', bot: 'rgba(10,4,12,0.98)', edge: PAL.goldMid });
-    text(ctx, '이명 · 장식', P.x + 24, P.y + 36, { size: 19, weight: 800, family: FONT.title, color: GOLD, ow: 3 });
-    text(ctx, fit(ctx, '이명은 명예의 전당 온라인 순위표에, 장식은 타이틀 화면에 보입니다', P.close.x - P.x - 200, 12, 600), P.x + 150, P.y + 35, { size: 12, weight: 600, color: DIM, ow: 2 });
+    // 머리: 쪽 탭 둘 · 쪽 안내 한 줄 · 닫기
+    for (let i = 0; i < 2; i++) {
+      const r = P.tabs[i];
+      this.tabR[i] = zone(r, 'primary', this, { src: 'ach.pick.tab' });
+      gbutton(ctx, r, PICK_TABS[i], { hot: pg === i, size: 14, t: this.t, color: pg === i ? null : this.sc.ges.over(r) ? PAL.goldHi : null });
+    }
+    const nx = P.tabs[1].x + P.tabs[1].w + 14;
+    text(ctx, fit(ctx, PICK_NOTE[pg], P.close.x - 10 - nx, 12, 600), nx, P.y + 35, { size: 12, weight: 600, color: DIM, ow: 2 });
     this.closeR = zone(P.close, 'icon', this, { src: 'ach.pick.close' });
     gbutton(ctx, P.close, '', { hot: this.sc.ges.over(P.close), size: 15, t: this.t });
     glyph(ctx, 'cross', P.close.x + 22, P.close.y + 22, 16, PAL.bone, 2.2);
     divider(ctx, P.x + 20, P.y + 54, P.w - 40, { center: false, a: 0.5 });
-    const heads = ['이명', '타이틀 장식'];
-    for (let Li = 0; Li < 2; Li++) {
+    for (let Li = 0; Li < 3; Li++) if (PAGE_OF[Li] !== pg) this.zones[Li].length = 0;
+    for (const Li of PAGE_LISTS[pg]) {
       const A = P.areas[Li], items = this.lists[Li], c = P.cols[Li], rh = P.rowH[Li], gp = P.gap[Li];
       const focus = this.L === Li;
-      text(ctx, heads[Li], P.heads[Li].x, P.heads[Li].y, { size: 14, weight: 800, color: focus ? GOLD : '#c8b8a8', ow: 2 });
+      text(ctx, PICK_HEADS[Li], P.heads[Li].x, P.heads[Li].y, { size: 14, weight: 800, color: focus ? GOLD : '#c8b8a8', ow: 2 });
       const rows = Math.ceil(items.length / c), stride = rh + gp;
       const sc = this.scs[Li];
       sc.setMax(rows * stride - gp - A.h);
@@ -839,16 +923,50 @@ class PickModal {
         const r = { x: A.x + (k % c) * (cw + 9), y: A.y + Math.floor(k / c) * stride - sc.y, w: cw, h: rh };
         if (r.y + r.h < A.y - 2 || r.y > A.y + A.h + 2) return;
         const kind = Li === 1 && !P.wide ? 'primary' : 'list';
-        this.zones[Li].push({ k, r: clipZone(r, A, kind, this, Li ? 'ach.pick.deco' : 'ach.pick.title', kind === 'list' ? L0.minRow : L0.minBtn) });
+        this.zones[Li].push({ k, r: clipZone(r, A, kind, this, PICK_SRC[Li], kind === 'list' ? L0.minRow : L0.minBtn) });
         this.drawItem(ctx, Li, it, r, focus && this.k[Li] === k, it.id === this.cur[Li], t);
       });
       clipEnd(ctx, A, sc, 'rgba(14,6,16,0.95)');
       scrollbar(ctx, A.x + A.w - 4, A.y, A.h, sc, A.h);
     }
+    if (pg === 1) this.drawPreview(ctx, P, t);
     // 아래: 고른 뒤 한 줄 또는 안내
     if (this.msg) text(ctx, fit(ctx, this.msg.text, P.w - 40, 13, 700), P.x + P.w / 2, P.noteY, { size: 13, align: 'center', weight: 700, color: this.msg.color, ow: 2 });
     else if (promptMode() === 'touch') text(ctx, '누르면 바로 바뀝니다', P.x + P.w / 2, P.noteY, { size: 12, align: 'center', weight: 600, color: DIM, ow: 2 });
-    else hintRow(ctx, [['dpad', '고르기'], ['confirm', '정하기'], [['prevTab', 'nextTab'], '이명 · 장식'], ['cancel', '닫기']], P.x + P.w / 2, P.noteY, { align: 'center', size: 12 });
+    else hintRow(ctx, [['dpad', '고르기'], ['confirm', '정하기'], [['prevTab', 'nextTab'], '이명 · 장식 · 외형'], ['cancel', '닫기']], P.x + P.w / 2, P.noteY, { align: 'center', size: 12 });
+    ctx.restore();
+  }
+  /** 외형 쪽 미리 보기: 고른(초점) 잔상의 이름·설명 + 잔상 다섯 장(오래된 것 = 진한 색, 앞 = 밝은 색) + 상태 한 줄 */
+  drawPreview(ctx, P, t) {
+    const R = P.prev, it = this.lists[2][this.k[2]];
+    if (!it || R.h < 30) return;
+    ctx.fillStyle = 'rgba(255,230,200,0.035)'; ctx.fillRect(R.x, R.y, R.w, R.h);
+    ctx.strokeStyle = 'rgba(232,200,114,0.28)'; ctx.lineWidth = 1; ctx.strokeRect(R.x + 0.5, R.y + 0.5, R.w - 1, R.h - 1);
+    const ramp = it.ramp ?? this.baseRamp, got = !!it.got, cur = it.id === this.cur[2];
+    const tall = R.h >= 150;
+    // 글: 넓은 배치는 위에 두 줄, 좁은 띠는 왼쪽 칸에
+    const tx = R.x + 14, tw = tall ? R.w - 28 : Math.min(R.w * 0.42, 300);
+    text(ctx, fit(ctx, it.name, tw, 17, 800, FONT.title), tx, R.y + 26, { size: 17, weight: 800, family: FONT.title, color: got ? ramp[2] : '#8a7e80', ow: 3 });
+    text(ctx, fit(ctx, it.desc ?? '', tw, 12, 600), tx, R.y + 46, { size: 12, weight: 600, color: got ? '#c8b8a8' : '#8a7e80', ow: 2 });
+    const st = cur ? '쓰는 중' : got ? '쓸 수 있음' : it.long;
+    const sy = tall ? R.y + R.h - 14 : R.y + 66;
+    if (!got) glyph(ctx, 'lock', tx + 5, sy - 4, 11, '#a08a70', 1.4);
+    text(ctx, fit(ctx, st, tw - (got ? 0 : 16), 12, 700), tx + (got ? 0 : 16), sy, { size: 12, weight: 700, color: cur ? PAL.good : got ? GOLD : '#d8b080', ow: 2 });
+    // 잔상 그림: 발끝 기준선 · 크기는 칸 높이에 맞춘다
+    const gx0 = tall ? R.x + 30 : R.x + tw + 40, gx1 = R.x + R.w - 34;
+    const gy = tall ? R.y + 62 + (R.h - 62 - 30) * 0.5 + 24 : R.y + R.h - 12;
+    const s = clamp((tall ? (R.h - 110) : (R.h - 18)) / 40, 0.7, 1.9);
+    const run = Math.sin(t * 2.2) * 6 * s, step = Math.max(14 * s, Math.min(30 * s, (gx1 - gx0 - 30 * s) / 5));
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(gx0 - 10, gy, gx1 - gx0 + 20, 2);
+    for (let i = 0; i < 5; i++) {
+      ctx.globalAlpha = (got ? 0.2 + 0.13 * i : 0.12 + 0.05 * i);
+      ctx.fillStyle = got ? ramp[i] : LOCK_COL;
+      dashFigure(ctx, gx1 - 30 * s - (5 - i) * step + run, gy, s);
+    }
+    ctx.globalAlpha = 1; ctx.fillStyle = '#16080e';
+    dashFigure(ctx, gx1 - 30 * s + run, gy, s);
+    ctx.strokeStyle = got ? ramp[5] : '#5a4e54'; ctx.lineWidth = 1; ctx.stroke();
     ctx.restore();
   }
   drawItem(ctx, Li, it, r, sel, cur, t) {
@@ -862,9 +980,18 @@ class PickModal {
     x += 22;
     if (Li === 1) {
       const col = it.id ? AM.ACH_DECOS?.[it.id]?.amb?.emberColor ?? '#ff8a3a' : '#ff8a3a';
-      ctx.fillStyle = it.got ? col : '#4a3e44'; ctx.beginPath(); ctx.arc(x + 6, cy, 6, 0, TAU); ctx.fill();
+      ctx.fillStyle = it.got ? col : LOCK_COL; ctx.beginPath(); ctx.arc(x + 6, cy, 6, 0, TAU); ctx.fill();
       if (it.got) glowOval(ctx, x + 6, cy, 14, 14, col, 0.5);
       x += 20;
+    } else if (Li === 2) {
+      // 잔상 색 견본: 비스듬한 띠 셋 (진한 색 → 밝은 색)
+      const ramp = it.ramp ?? this.baseRamp;
+      for (let i = 0; i < 3; i++) {
+        const bx = x + i * 7;
+        ctx.fillStyle = it.got ? ramp[i * 2] : LOCK_COL;
+        ctx.beginPath(); ctx.moveTo(bx + 3, cy - 8); ctx.lineTo(bx + 8, cy - 8); ctx.lineTo(bx + 5, cy + 8); ctx.lineTo(bx, cy + 8); ctx.closePath(); ctx.fill();
+      }
+      x += 30;
     }
     const label = Li === 0 && it.id ? `「${it.name}」` : it.name;
     const fw = it.from ? Math.min(r.w * 0.42, measure(ctx, it.from, 11, 600) + 4) : 0;

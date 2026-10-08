@@ -1,13 +1,16 @@
 // 상태 탭: 영웅 턴테이블(끌어서·휠·, . 키·오른쪽 스틱으로 돌려 보기, 탭 = 공격 시연) · 이름/칭호/직업 계보 · 레벨·경험치
 //          · 전체 능력치(기본/공격/방어/특수/속성) · 설명
-// 화면이 낮으면(uiScale 로 UI 높이가 줄어든 폰 등) 무대 높이를 줄이고 능력치를 4열 + 한 줄 속성표로 배치한다 (720×400 UI 까지).
+// 화면이 낮으면(uiScale 로 UI 높이가 줄어든 폰 등) 무대 높이를 줄이고, 능력치는 글자를 줄이는 대신 두 쪽으로 나눈다 (benchmark #7:
+// 예전 4열 배치는 11/12 px 로 줄여 phone2 에서 9.2 CSS px). 1쪽 '기본·공격·특수' · 2쪽 '방어·속성·장비' — 쪽마다 넓은 화면과 같은
+// 13/15 px 글자. 판 위의 쪽 단추(터치) · ←→ 로 옆 쪽 열로 넘어감 · A(패드 Y) 로 쪽 넘김. 720×400 UI 까지.
 // 능력치 칸은 작아서 터치에선 칸마다 탭 영역을 두지 않고 능력치 판 전체가 하나의 영역: 누른 채 문지르면 손가락 밑 칸이 골라진다.
 import { text, font, FONT } from '../../core/ui.js';
 import { clamp } from '../../core/math.js';
 import { input } from '../../core/input.js';
+import { audio } from '../../core/audio.js';
 import { Tab } from './base.js';
 import { HeroView, HeroStage, PixLayer, PixCache, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
-import { PAL, EL, EL_ORDER, frame, heading, divider, diamond, gauge, pill, selBar, glow, num, para, measure, ellipsize, inRect, leanMem } from './common.js';
+import { PAL, EL, EL_ORDER, frame, heading, divider, diamond, gauge, pill, selBar, glow, num, para, measure, ellipsize, inRect, leanMem, gbutton } from './common.js';
 import * as D from './access.js';
 import { SUBWEAPONS } from '../../data/subweapons.js';
 
@@ -45,9 +48,15 @@ const G_BASE = { name: '기본', keys: ['hp', 'mp', 'atk', 'mag', 'def', 'res', 
 const G_DEF = { name: '방어', keys: ['dmgReduce', 'hpRegen', 'mpRegen'] };
 const G_ATK = { name: '공격', keys: ['crit', 'critDmg', 'atkSpd', 'skillDmg', 'subDmg', 'lifesteal', 'reach', 'cdr', 'ultGain'] };
 const G_SPC = { name: '특수', keys: ['moveSpd', 'jumpPow', 'airJumps', 'expBonus', 'goldBonus', 'dropBonus', 'heartBonus', 'magnet'] };
-// 넓은 화면: 3열 (장비 정보는 셋째 열 아래) · 낮은 화면: 4열 (넷째 열 = 방어 + 장비 정보)
+// 넓은 화면: 3열 한 쪽 (장비 정보는 셋째 열 아래) · 낮은 화면: 두 쪽 (열 번호는 쪽을 건너 이어진다 — ←→ 가 쪽을 넘는다)
 const COLS3 = [[G_BASE, G_DEF], [G_ATK], [G_SPC]];
-const COLS4 = [[G_BASE], [G_ATK], [G_SPC], [G_DEF]];
+const COLS_P = [[G_BASE], [G_ATK], [G_SPC], [G_DEF]];
+/** 낮은 화면의 쪽: vis = 그릴 열 (능력치 열 번호 또는 'info' = 장비 정보), el = 속성 표를 이 쪽에 */
+const PAGES = [
+  { name: '기본·공격·특수', vis: [0, 1, 2], el: false },
+  { name: '방어·속성·장비', vis: [3, 'info'], el: true },
+];
+const SEG_Y = 8, SEG_H = 34, SEG_GAP = 20; // 쪽 단추: 판 위 8 px, 높이 34 UI px (+ 터치 여유 → 44 CSS px), 아래 칸과 20 px 띄움 (여유가 겹치지 않게)
 const CORE = new Set(['hp', 'mp', 'atk', 'mag', 'def', 'res', 'agi', 'luck']);
 const INFO_ROWS = 3;         // 장비 정보 줄 수
 const DESC_H = 44;           // 아래 설명 줄
@@ -59,12 +68,13 @@ export function fmtStatVal(k, v) {
   return num(v);
 }
 
-/** 능력치 판 배치 (판 크기에 맞춤) */
+/** 능력치 판 배치 (판 크기에 맞춤). pages 가 있으면 낮은 화면의 두 쪽 배치 */
 function statLayout(R) {
-  if (R.h >= 400 && R.w >= 520) return { cols: COLS3, info: 2, row: 20, head: 24, top: 26, gh: 12, elH: 76, elHead: true, size: 13, vsize: 15, vsize2: 14 };
-  const elH = 50;
-  const row = clamp(Math.floor((R.h - DESC_H - elH - 26 - 12 - 12) / 9), 13, 20);
-  return { cols: COLS4, info: 3, row, head: 14, top: 22, gh: 10, elH, elHead: false, size: row >= 17 ? 12 : 11, vsize: row >= 17 ? 14 : 12, vsize2: row >= 17 ? 13 : 12 };
+  if (R.h >= 400 && R.w >= 520) return { cols: COLS3, info: 2, pages: null, row: 20, head: 24, top: 26, gh: 12, elH: 76, elHead: true, size: 13, vsize: 15, vsize2: 14 };
+  // 쪽 단추 아래에서 시작. 1쪽 공격 9줄이 설명 줄 위에 들어가는 줄 높이 (phone2 20 · phone1 22)
+  const top = SEG_Y + SEG_H + SEG_GAP + 14;
+  const row = clamp(Math.floor((R.h - DESC_H - 8 - top - 10) / 9), 16, 22);
+  return { cols: COLS_P, info: 'info', pages: PAGES, row, head: 18, top, gh: 10, elH: 76, elHead: true, size: 13, vsize: 15, vsize2: 14 };
 }
 
 export class StatusTab extends Tab {
@@ -80,6 +90,25 @@ export class StatusTab extends Tab {
     this.cells = [];            // 능력치 칸 위치 [{col,row,key,x,y,w,h}]
     this.lay = statLayout({ w: 999, h: 999 });
     this.statRect = null; this.heroRect = null;
+    this.segRects = [];         // 쪽 단추 (낮은 화면)
+  }
+  /** 쪽 수 (넓은 화면 1, 낮은 화면 2) · 지금 쪽 = 커서 열이 있는 쪽 */
+  pageCount() { return this.lay.pages ? this.lay.pages.length : 1; }
+  get page() { return this.pageOf(this.col); }
+  pageOf(col) {
+    const P = this.lay.pages;
+    if (!P) return 0;
+    if (col >= this.lay.cols.length) return Math.max(0, P.findIndex((p) => p.el));
+    return Math.max(0, P.findIndex((p) => p.vis.includes(col)));
+  }
+  /** 쪽 넘기기: 그 쪽의 첫 열 맨 위로 (커서 열이 곧 쪽) */
+  setPage(i) {
+    const P = this.lay.pages;
+    if (!P) return;
+    i = ((i % P.length) + P.length) % P.length;
+    if (i === this.page) return;
+    const c = P[i].vis.find((v) => v !== 'info');
+    this.col = c ?? this.elCol; this.row = 0;
   }
   refresh() {
     const m = this.m;
@@ -117,10 +146,15 @@ export class StatusTab extends Tab {
     this.refresh();
     this.view.control(dt, ges);     // 턴테이블 (포커스와 무관: 끌기·휠·, . /·오른쪽 스틱·R3·무대 탭)
     this.view.update(dt);
-    // 능력치 설명: 마우스 호버 / 탭 / 터치로 누른 채 문지르기
+    // 쪽 단추 (낮은 화면): 누르면 그 쪽으로 — 같은 탭이 능력치 판에 닿아도 칸을 고르지 않는다
     const p = input.pointer;
+    let segHit = false;
+    if (this.lay.pages) {
+      this.segRects.forEach((r, i) => { if (ges.tap(r)) { segHit = true; if (i !== this.page) { this.setPage(i); audio.sfx('menu_move'); } } });
+    }
+    // 능력치 설명: 마우스 호버 / 탭 / 터치로 누른 채 문지르기
     for (const c of this.cells) if (ges.hoverIn(c)) { this.col = c.col; this.row = c.row; }
-    if (this.statRect && (ges.tap(this.statRect) || (input.touchMode && p.down && !ges.swipe && inRect(p.x, p.y, this.statRect)))) {
+    if (!segHit && this.statRect && (ges.tap(this.statRect) || (input.touchMode && p.down && !ges.swipe && inRect(p.x, p.y, this.statRect)))) {
       const c = this.cellAt(p.x, p.y);
       if (c) { this.col = c.col; this.row = c.row; if (ges.tapOK || p.down) this.m.focus = 'content'; }
     }
@@ -129,13 +163,15 @@ export class StatusTab extends Tab {
     this.row = clamp(this.row, 0, this.colLen(this.col) - 1);
     if (!focused) return;
     const E = this.elCol;
+    if (nav.alt && this.lay.pages) { this.setPage(this.page + 1); audio.sfx('menu_move'); return; }
     if (nav.up) { if (this.row === 0 && this.col !== E) { this.m.focusTabs(); return; } if (this.row > 0 && this.col !== E) this.row--; }
     if (nav.down) {
       if (this.col !== E && this.row < this.colLen(this.col) - 1) this.row++;
       else if (this.col < E) { this.col = E; this.row = 0; }
     }
     if (this.col === E) {
-      if (nav.up) { this.col = 0; this.row = this.colLen(0) - 1; }
+      // 속성 표에서 위: 같은 쪽의 능력치 열 (두 쪽 배치면 방어 열)
+      if (nav.up) { const c0 = this.lay.pages ? this.lay.pages[this.pageOf(E)].vis.find((v) => v !== 'info') ?? 0 : 0; this.col = c0; this.row = this.colLen(c0) - 1; }
       if (nav.left) this.row = Math.max(0, this.row - 1);
       if (nav.right) this.row = Math.min(4, this.row + 1);
     } else {
@@ -148,7 +184,8 @@ export class StatusTab extends Tab {
   /** 포커스와 무관하게 늘 되는 조작 (탭 막대에 포커스가 있을 때 메뉴 하단 막대가 덧붙인다 — 턴테이블) */
   idleHints() { return turntableHints(this.view); }
   hints() {
-    return [['↑↓←→', '능력치 설명', '능력치를 누르면 설명이 나옵니다'], ['Z', '동작 보기', '영웅을 터치하면 공격 동작을 봅니다'], ...turntableHints(this.view)];
+    const pg = this.lay.pages ? [['A', '쪽 넘기기', '위 단추로 능력치 쪽을 넘깁니다']] : [];
+    return [['↑↓←→', '능력치 설명', '능력치를 누르면 설명이 나옵니다'], ...pg, ['Z', '동작 보기', '영웅을 터치하면 공격 동작을 봅니다'], ...turntableHints(this.view)];
   }
 
   render(ctx, A) {
@@ -230,9 +267,22 @@ export class StatusTab extends Tab {
     // ── 오른쪽: 능력치 ──
     const R = { x: A.x + LW + 12, y: A.y, w: A.w - LW - 12, h: A.h };
     this.lay = statLayout(R);
-    // 능력치 판: 틀까지 한 장으로 (복사 한 번)
-    this.layer.draw(ctx, 'st' + this.rev + '|' + hero.charId + '|' + this.lay.cols.length + '|' + this.lay.row, R.x - 3, R.y - 3, R.w + 6, R.h + 6, (c) => { frame(c, R.x, R.y, R.w, R.h); this.drawStats(c, R); });
-    this.statRect = { x: R.x + 4, y: R.y + 4, w: R.w - 8, h: R.h - DESC_H - 8 };
+    const paged = !!this.lay.pages, pgI = this.page;
+    // 능력치 판: 틀까지 한 장으로 (복사 한 번). 쪽이 바뀌면 다시 굽는다
+    this.layer.draw(ctx, 'st' + this.rev + '|' + hero.charId + '|' + this.lay.cols.length + '|' + this.lay.row + '|' + (paged ? pgI : '-'), R.x - 3, R.y - 3, R.w + 6, R.h + 6, (c) => { frame(c, R.x, R.y, R.w, R.h); this.drawStats(c, R); });
+    // 칸 고르기 영역: 두 쪽 배치면 쪽 단추 아래부터 (단추의 터치 여유와 겹치지 않게)
+    const sTop = paged ? SEG_Y + SEG_H + SEG_GAP : 4;
+    this.statRect = { x: R.x + 4, y: R.y + sTop, w: R.w - 8, h: R.h - DESC_H - 4 - sTop };
+    this.segRects.length = 0;
+    if (paged) {
+      // 쪽 단추 두 개 (매 프레임: 고른 쪽의 맥동 — 그라디언트는 common 캐시)
+      const sx = R.x + 16, sw = (R.w - 32 - 8) / 2;
+      this.lay.pages.forEach((pg, i) => {
+        const r = { x: sx + i * (sw + 8), y: R.y + SEG_Y, w: sw, h: SEG_H };
+        this.segRects.push(this.m.ges.zone(r, 'primary', { src: 'status.page' }));
+        gbutton(ctx, r, `${i + 1} · ${pg.name}`, { hot: i === pgI, size: 13, t });
+      });
+    }
     // 커서 + 설명
     const E = this.elCol;
     const cell = this.cells.find((c) => c.col === this.col && c.row === this.row);
@@ -280,14 +330,18 @@ export class StatusTab extends Tab {
   drawStats(c, R) {
     const L = this.lay;
     this.cells.length = 0;
-    const pad = 16, gap = L.cols.length > 3 ? 12 : 18;
-    const nc = L.cols.length;
+    // 그릴 열: 넓은 화면은 모든 열, 두 쪽 배치는 지금 쪽의 열 (능력치 열 번호 또는 'info' = 장비 정보 칸)
+    const pg = L.pages ? L.pages[this.page] : null;
+    const vis = pg ? pg.vis : L.cols.map((_, ci) => ci);
+    const pad = 16, gap = 18;
+    const nc = vis.length;
     const cw = (R.w - pad * 2 - gap * (nc - 1)) / nc;
-    L.cols.forEach((col, ci) => {
-      const x = R.x + pad + ci * (cw + gap);
+    const hs = L.row >= 17 ? 15 : 13;
+    vis.forEach((ci, vi) => {
+      const x = R.x + pad + vi * (cw + gap);
       let y = R.y + L.top, row = 0;
-      for (const g of col) {
-        heading(c, g.name, x, y, cw, { size: L.row >= 17 ? 15 : 13 });
+      for (const g of ci === 'info' ? [] : L.cols[ci]) {
+        heading(c, g.name, x, y, cw, { size: hs });
         y += L.gh;
         for (const k of g.keys) {
           if (row % 2 === 0) { c.fillStyle = 'rgba(255,230,200,0.025)'; c.fillRect(x, y, cw, L.row); }
@@ -299,8 +353,7 @@ export class StatusTab extends Tab {
       }
       if (ci === L.info) {
         // 기타 정보
-        if (L.cols.length > 3) y += 6;
-        heading(c, '장비 정보', x, y, cw, { size: L.row >= 17 ? 15 : 13 });
+        heading(c, '장비 정보', x, y, cw, { size: hs });
         y += L.gh;
         const s = this.stats;
         const sub = SUBWEAPONS[this.world?.run?.sub ?? this.hero.sub];
@@ -318,6 +371,7 @@ export class StatusTab extends Tab {
         }
       }
     });
+    if (pg && !pg.el) return; // 속성 표는 그 쪽에만
     // 속성 표 (한 줄 5칸: 이름 / 피해 / 저항)
     const x0 = R.x + pad, tw = R.w - pad * 2;
     const cellW = tw / 5;
@@ -339,9 +393,10 @@ export class StatusTab extends Tab {
       glow(c, x + 14, y0 + ly[0] - 5, 11, e.color, 0.45);
       text(c, e.name, x + 25, y0 + ly[0], { size: L.elHead ? 13 : 12, weight: 800, color: e.color, ow: 3 });
       const fs = L.elHead ? 13 : 12;
-      text(c, '피해', x + 10, y0 + ly[1], { size: 11, weight: 700, color: PAL.dim, ow: 2 });
+      const ls = L.pages ? 12 : 11;
+      text(c, '피해', x + 10, y0 + ly[1], { size: ls, weight: 700, color: PAL.dim, ow: 2 });
       text(c, `${dmg > 0 ? '+' : ''}${num(dmg)}%`, x + cellW - 10, y0 + ly[1], { size: fs, align: 'right', weight: 800, family: FONT.num, color: dmg ? PAL.bone : PAL.faint, ow: 2 });
-      text(c, '저항', x + 10, y0 + ly[2], { size: 11, weight: 700, color: PAL.dim, ow: 2 });
+      text(c, '저항', x + 10, y0 + ly[2], { size: ls, weight: 700, color: PAL.dim, ow: 2 });
       text(c, `${res > 0 ? '+' : ''}${num(res)}%`, x + cellW - 10, y0 + ly[2], { size: fs, align: 'right', weight: 800, family: FONT.num, color: res ? PAL.bone : PAL.faint, ow: 2 });
       this.cells.push({ col: L.cols.length, row: i, key: el, x: x + 2, y: y0, w: cellW - 4, h: ch });
     });

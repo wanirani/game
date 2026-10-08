@@ -272,6 +272,10 @@ export class SkillsTab extends Tab {
     if (h >= 66) text(ctx, ellipsize(ctx, swapTip(), 140, 11, 600), x + 10, y + 64, { size: 10, weight: 600, color: PAL.faint, ow: 2 });
     const sx0 = x + 158, sw = (w - 166) / 4;
     const nameW = sw - 58; // 아이콘 오른쪽 이름 칸. 좁은 UI(720)에서는 이름·레벨을 빼고 아이콘만 (옆 칸을 덮지 않게 — 이름은 오른쪽 상세에)
+    // 이름은 모든 칸의 스킬 이름이 12px(글자 하한 적용)로 다 들어갈 때만. 하나라도 넘치면 '비질…' 처럼 줄이는 대신 모든 칸을
+    // 아이콘 + Lv 만으로 (휴대폰 — benchmark #7; 고른 슬롯의 이름은 오른쪽 상세에 크게 나온다)
+    const names = nameW >= 30 && [0, 1, 2, 3].every((k) => { const id = hero.slots?.[k], sk = id ? D.SKILLS()[id] : null; return !sk || measure(ctx, sk.name, 12, 700) <= nameW; });
+    const lvOnly = !names && measure(ctx, 'Lv 10', 12, 700, FONT.num) <= nameW;
     for (let k = 0; k < 4; k++) {
       const id = hero.slots?.[k] ?? null, sk = id ? D.SKILLS()[id] : null;
       const cx = sx0 + k * sw + 26, cy = y + h / 2 + 2;
@@ -286,13 +290,12 @@ export class SkillsTab extends Tab {
       // 슬롯 버튼: 지금 기기의 글리프 (키보드 S/D · 패드 LB/RB · 터치 S1/S2)
       if (!drawGlyph(ctx, k % 2 ? 'skill2' : 'skill1', cx - 27, cy + 8, 16)) keycap(ctx, k % 2 ? 'S2' : 'S1', cx - 27, cy + 8, { h: 16 });
       text(ctx, k < 2 ? 'Ⅰ' : 'Ⅱ', cx + 18, cy - 12, { size: 11, weight: 900, family: FONT.num, color: PAL.gold });
-      if (nameW >= 30) {
-        // 좁은 칸(휴대폰 740×360)에서는 '비어 …' 로 잘리지 않게 더 짧은 말을 고르고, 스킬 이름은 한 단계 작은 글자로 (감사 RU-02)
+      if (names) {
+        // 빈 칸은 '비어 …' 로 잘리지 않게 들어가는 말을 고른다 (감사 RU-02)
         const empty = ['비어 있음', '빈 칸', '—'].find((s) => measure(ctx, s, 12, 700) <= nameW) ?? '—';
-        const fs = sk && measure(ctx, sk.name, 12, 700) > nameW ? 11 : 12;
-        text(ctx, sk ? ellipsize(ctx, sk.name, nameW, fs, 700) : empty, cx + 26, cy + 4, { size: fs, weight: 700, color: sk ? PAL.bone : PAL.faint, ow: 2 });
+        text(ctx, sk ? sk.name : empty, cx + 26, cy + 4, { size: 12, weight: 700, color: sk ? PAL.bone : PAL.faint, ow: 2 });
         if (sk) text(ctx, `Lv ${this.lv(id)}`, cx + 26, cy + 19, { size: 10, weight: 700, family: FONT.num, color: PAL.dim });
-      }
+      } else if (lvOnly && sk) text(ctx, `Lv ${this.lv(id)}`, cx + 26, cy + 8, { size: 12, weight: 700, family: FONT.num, color: PAL.dim, ow: 2 });
       if (sel) brackets(ctx, cx - 22, cy - 22, 44, 44, t, focused ? PAL.goldHi : PAL.goldMid);
     }
   }

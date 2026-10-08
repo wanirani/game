@@ -1,6 +1,8 @@
 // 업적 메타(meta.ach) 만들기·이관·병합·정리 — 순수 함수, 데이터 import 없음 (첫 조각에 실린다: title.js 가 ACH_DECOS 를 읽는다).
 // 계약: docs/specs/achievements.md §2. 엔진은 src/game/achievements.js, 업적 표는 src/data/achievements.js.
-//  meta.ach = { v:1, got:{id:ts}, prog:{key:n}, claimed:[id], seenAt:ts, title:'t_…'|null, deco:'d_…'|null, …모르는 필드 }
+//  meta.ach = { v:1, got:{id:ts}, prog:{key:n}, claimed:[id], seenAt:ts, title:'t_…'|null, deco:'d_…'|null, cos?:{trail:'tr_…'|null}, …모르는 필드 }
+//    cos = 외형 꾸미기 (data/cosmetics.js — 대시 잔상 색, 벤치마크 5). 선택 필드: 없으면 '직업 기본'. newAch 는 만들지 않는다.
+//    서버 검사·병합은 모르는 필드와 같다 (기기 우선 {...b, ...a}). fixInPlace 는 있으면 키 규칙 밖 칸만 버린다
 //  - ensureAch(meta)  : meta.ach 를 제자리에서 고치고(없으면 만든다) 돌려준다. 모르는 필드는 남긴다. 멱등, 던지지 않는다
 //  - mergeAch(a, b)   : a = 이 기기, b = 서버. got 합집합(가장 이른 시각) · prog 큰 값 · claimed 합집합 · seenAt·v 큰 값 · title/deco 기기 우선
 //  - cleanAch(ach)    : 올리기 전 사본 — 결과는 늘 isValidAch 참 (서버 netlify/lib/validate.mts isValidAch 와 같은 규칙, 시험 C6)
@@ -48,7 +50,8 @@ const L = ACH_LIMITS;
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const okKey = (k) => typeof k === 'string' && ACH_KEY_RE.test(k);
 const okNum = (v, max) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= max;
-const KNOWN = ['v', 'got', 'prog', 'claimed', 'seenAt', 'title', 'deco'];
+const KNOWN = ['v', 'got', 'prog', 'claimed', 'seenAt', 'title', 'deco', 'cos'];
+const COS_MAX = 8;   // 외형 칸 수 상한 (잔상 · 앞으로의 망토 등)
 
 /** 새 빈 기록 */
 export function newAch() {
@@ -70,6 +73,17 @@ function cleanKeyList(a) {
 const OK = Symbol('achOk');
 const cleanV = (v) => (Number.isInteger(v) && v >= 1 ? Math.min(v, L.vMax) : 1);
 const cleanSel = (v) => (okKey(v) ? v : null);
+/** 외형 cos: 객체가 아니면 undefined (필드를 지운다). 칸 이름·값(null 또는 키 규칙 문자열)이 맞는 것만 COS_MAX 개까지 */
+function cleanCos(c) {
+  if (!isObj(c)) return undefined;
+  const out = {};
+  let n = 0;
+  for (const k of Object.keys(c)) {
+    if (n >= COS_MAX) break;
+    if (okKey(k) && (c[k] === null || okKey(c[k]))) { out[k] = c[k]; n++; }
+  }
+  return out;
+}
 
 /** a 를 제자리에서 고친다 (알려진 필드만, 모르는 필드는 그대로) → a */
 function fixInPlace(a) {
@@ -80,6 +94,7 @@ function fixInPlace(a) {
   a.seenAt = okNum(a.seenAt, L.timeMax) ? a.seenAt : 0;
   a.title = cleanSel(a.title);
   a.deco = cleanSel(a.deco);
+  if ('cos' in a) { const c = cleanCos(a.cos); if (c) a.cos = c; else delete a.cos; }
   return a;
 }
 
@@ -172,7 +187,7 @@ export function cleanAch(ach) {
     for (const k of extra) { delete o[k]; if (size(o) <= L.maxBytes) break; }
   }
   if (size(o) > L.maxBytes) {
-    o = { v: o.v, got: o.got, prog: o.prog, claimed: o.claimed, seenAt: o.seenAt, title: o.title, deco: o.deco };
+    o = { v: o.v, got: o.got, prog: o.prog, claimed: o.claimed, seenAt: o.seenAt, title: o.title, deco: o.deco, ...(o.cos ? { cos: o.cos } : {}) };
     const trim = (k) => {
       const isArr = Array.isArray(o[k]);
       const keys = isArr ? o[k] : Object.keys(o[k]).sort();

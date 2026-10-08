@@ -8,6 +8,7 @@
 //  onJump(p, world, air)                 air: false(지상) | true(공중) | 'wall'(벽차기) → 늘어남·고리·영웅별 장식
 //  onLand(p, world, vyBefore, fallPx)    보통/무거운 착지 (탑승 중에는 불리지 않는다)
 //  dashFx(p, world, phase)               'start' | 'step' | 'end' → 잔상(0.035초, 품질별 상한)·속도선·영웅별 연출
+//                                        잔상 색: 계정의 외형 꾸미기(data/cosmetics.js trailRamp — meta.ach.cos.trail)를 고르면 그 6단 색, 아니면 영웅별 원래 색
 //  squashSpring(p, dt)                   찌그러짐 스프링(ω 30, ζ 0.35) + 가속 기울기
 //  chaseJump(p, world) → bool            띄우기 적중 0.35초 안의 점프 = 추격 점프 '추격!' (feel §4.3; impact.js 의 p.lastLaunch)
 //  takeChaseStall(p) → 0|0.5             추격 점프 뒤 첫 공중 공격의 체공 (player.startMove)
@@ -28,6 +29,7 @@ import { GAIT, CADENCE, PERSONALITY, SURFACE, SURFACES, STEP, SPRINT, SKID, LAND
 import * as FH from '../data/feel_hit.js';
 import * as HFX from '../render/hitfx.js';
 import * as IMP from './impact.js';
+import { trailRamp } from '../data/cosmetics.js';   // [hook:ach] 외형 꾸미기 — 대시 잔상 색 (벤치마크 5)
 
 const PI = Math.PI;
 const DIRS = [['left', -1], ['right', 1]];
@@ -534,7 +536,8 @@ export function dashFx(p, world, phase) {
   if (phase === 'start') {
     p.sprinting = false; fm.sprintT = 0;
     if (p.moveFx && GROUND_FX.has(p.moveFx)) endFx(p);
-    fm.dash = { type, t0: p.t, nextG: 0, nextL: 0, nextTrail: 0, ng: 0 };
+    // ramp: 고른 잔상 색 6단 (없으면 null = 직업 기본). 대시마다 한 번 읽는다 — 프레임마다 새 색 문자열을 만들지 않는다
+    fm.dash = { type, t0: p.t, nextG: 0, nextL: 0, nextTrail: 0, ng: 0, ramp: trailRamp(world.game?.meta) };   // [hook:ach]
     if (D.ring) fx.ering?.(p.cx - face * (type === 'roll' ? 0 : 16), type === 'roll' ? p.bottom - 2 : p.cy, { ...D.ring, width: 3, add: type !== 'roll' });
     if (D.dust) fx.burst('dust', p.cx, p.bottom, D.dust, { angle: back, spread: 0.6, speed: 160 });
     if (type === 'dash') {
@@ -543,7 +546,7 @@ export function dashFx(p, world, phase) {
     } else if (type === 'blink') {
       const img = HFX.glow?.('#fff2b0');
       if (img) fx.sprite?.(img, p.cx, p.cy, { size: D.flash, life: 0.16, s0: 0.4, s1: 1.2 });
-      spawnGhost(p, world, '#fff2b0');
+      spawnGhost(p, world, fm.dash.ramp ? fm.dash.ramp[0] : '#fff2b0');
     } else if (type === 'mist') {
       for (let i = 0; i < D.bats; i++) spawnBat(fx, p.cx + rand(-8, 8), p.cy - 10 + i * 8, -face * rand(120, 190), rand(-80, -20), 0.5, '#2a0612');
     }
@@ -556,7 +559,7 @@ export function dashFx(p, world, phase) {
     // 간격은 누산 (0.035초 간격이면 60Hz 에서 2·2·3 프레임 … 평균 0.035초)
     if (D.ghosts === 'trail' && e >= d.nextG - 1e-6) {
       d.nextG = Math.max(d.nextG + (D.ghostEvery ?? DASH_FX.ghostEvery), e - 0.02);
-      const col = D.ghostTint ?? mix(p.ch?.ult?.color ?? '#8ac8ff', '#ffffff', clamp(d.ng / 5, 0, 1));
+      const col = d.ramp ? d.ramp[d.ng < 5 ? d.ng : 5] : D.ghostTint ?? mix(p.ch?.ult?.color ?? '#8ac8ff', '#ffffff', clamp(d.ng / 5, 0, 1));
       if (spawnGhost(p, world, col)) d.ng++;
     }
     if (D.lines && D.lineEvery && e >= d.nextL - 1e-6) {
@@ -574,7 +577,7 @@ export function dashFx(p, world, phase) {
   }
   if (phase === 'end') {
     if (type === 'dash') fx.burst('dust', p.cx, p.bottom - 2, D.endDust, { angle: -PI / 2, spread: 1.2, speed: 70 });
-    else if (type === 'blink') { spawnGhost(p, world, '#ffffff'); fx.burst('holy', p.cx, p.cy, D.endSparkle, { speed: 110 }); }
+    else if (type === 'blink') { spawnGhost(p, world, d.ramp ? d.ramp[5] : '#ffffff'); fx.burst('holy', p.cx, p.cy, D.endSparkle, { speed: 110 }); }
     else if (type === 'mist') fx.burst('dark', p.cx, p.cy, D.endMist, { color: '#8a0a1e', speed: 60 });
     else if (type === 'roll' && D.endSkid && p.onGround && !(input.axisX === face && !world.cutscene && !world.inputLock)) {
       startFx(p, 'skid', SKID.rollSkidT, false);   // 모습만 (대시 거리는 예전 감속 그대로)
