@@ -55,7 +55,7 @@ function fail(fn, err) {
   DEAD.add(fn); DEAD_N++;
   PERK_STATS.errors++;
   PERK_STATS.last = LABEL.get(fn) ?? fn?.name ?? '?';
-  try { console.error(`[perks] ${PERK_STATS.last} 오류 — 이 훅은 이제 건너뛴다`, err); } catch { /* 콘솔 없음 */ }
+  try { console.error(`[perks] ${PERK_STATS.last} 오류 — 이후로는 건너뛴다`, err); } catch { /* 콘솔 없음 (콘솔 문구에 새 글자를 넣지 않는다: 글꼴 검사 대상) */ }
 }
 const t0 = () => (PERK_STATS.timing ? now() : 0);
 const t1 = (t) => { if (t) PERK_STATS.ms += now() - t; };
