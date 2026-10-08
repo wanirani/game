@@ -662,7 +662,7 @@ export const PERKS_B = {
 
   // 정복왕 「꺾이지 않는 기세」
   bran_conqueror: {
-    N: { combo: 30, chance: 0.10, cd: 1.2, r: 160, mv: 0.6, stun: 0.4, keep: 0.15, keepCd: 0 },
+    N: { combo: 30, chance: 0.10, cd: 1.2, r: 160, mv: 0.6, stun: 0.4, keep: 0.15, keepCd: 0, keepFrac: 1 },
     onHit(p, tgt, info, atk, w) {
       const N = this.N;
       if ((w.combo?.n ?? 0) < N.combo || Math.random() >= N.chance || !icd(p, 'roar', N.cd, w)) return;
@@ -684,6 +684,7 @@ export const PERKS_B = {
       const s = S(p);
       if (!s.kept) return;
       s.kept = false;
+      if (w.combo?.n > 0) w.combo.n = Math.floor(w.combo.n * this.N.keepFrac);   // 끊기는 대신 일부만 남는다
       bump(p, 'keepCombo');
       if (icd(p, 'keepCue', 1, w)) callout(w, p.cx, p.y - 10, '기세!', '#ffb070');
     },
