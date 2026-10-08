@@ -84,7 +84,7 @@
     "min": 9.17,
     "p10": 9.17,
     "median": 12.5,
-    "under12": 0.336
+    "under12": 0.333
    },
    "smith": {
     "min": 9.17,
@@ -120,7 +120,7 @@
     "min": 2.5,
     "p10": 9.17,
     "median": 10.83,
-    "under12": 0.647
+    "under12": 0.654
    },
    "minigame_dice": {
     "min": 9.17,
@@ -162,7 +162,7 @@
     "min": 11.67,
     "p10": 12.5,
     "median": 15,
-    "under12": 0.059
+    "under12": 0.082
    },
    "results": {
     "min": 13.33,
@@ -172,9 +172,9 @@
    },
    "menu_status": {
     "min": 9.17,
-    "p10": 9.17,
-    "median": 10,
-    "under12": 0.934
+    "p10": 10,
+    "median": 10.83,
+    "under12": 0.833
    },
    "menu_equip": {
     "min": 6.67,
@@ -192,7 +192,7 @@
     "min": 9.17,
     "p10": 9.17,
     "median": 10,
-    "under12": 0.929
+    "under12": 0.926
    },
    "menu_class": {
     "min": 9.17,
@@ -229,6 +229,12 @@
     "p10": 9.17,
     "median": 10.83,
     "under12": 0.805
+   },
+   "menu_status_p2": {
+    "min": 9.17,
+    "p10": 10,
+    "median": 10.83,
+    "under12": 0.919
    }
   },
   "phone1": {
@@ -236,7 +242,7 @@
     "min": 9.19,
     "p10": 10.86,
     "median": 22.42,
-    "under12": 0.128
+    "under12": 0.125
    },
    "title-press": {
     "min": 9.19,
@@ -248,7 +254,7 @@
     "min": 9.19,
     "p10": 9.19,
     "median": 16.71,
-    "under12": 0.304
+    "under12": 0.305
    },
    "slots": {
     "min": 10.02,
@@ -314,7 +320,7 @@
     "min": 9.19,
     "p10": 9.19,
     "median": 12.53,
-    "under12": 0.337
+    "under12": 0.335
    },
    "smith": {
     "min": 9.19,
@@ -326,7 +332,7 @@
     "min": 9.19,
     "p10": 9.19,
     "median": 10.02,
-    "under12": 0.643
+    "under12": 0.659
    },
    "questboard": {
     "min": 9.19,
@@ -350,7 +356,7 @@
     "min": 4.18,
     "p10": 9.19,
     "median": 11.28,
-    "under12": 0.645
+    "under12": 0.644
    },
    "minigame_dice": {
     "min": 9.19,
@@ -392,7 +398,7 @@
     "min": 11.69,
     "p10": 12.53,
     "median": 15.04,
-    "under12": 0.077
+    "under12": 0.082
    },
    "results": {
     "min": 14.2,
@@ -402,9 +408,9 @@
    },
    "menu_status": {
     "min": 9.19,
-    "p10": 9.19,
-    "median": 10.02,
-    "under12": 0.934
+    "p10": 10.02,
+    "median": 10.86,
+    "under12": 0.833
    },
    "menu_equip": {
     "min": 7.52,
@@ -422,7 +428,7 @@
     "min": 9.19,
     "p10": 9.19,
     "median": 10.02,
-    "under12": 0.928
+    "under12": 0.924
    },
    "menu_class": {
     "min": 9.19,
@@ -459,6 +465,960 @@
     "p10": 9.19,
     "median": 10.86,
     "under12": 0.817
+   },
+   "menu_status_p2": {
+    "min": 9.19,
+    "p10": 10.02,
+    "median": 10.86,
+    "under12": 0.919
+   }
+  }
+ },
+ "large": {
+  "phone2": {
+   "title": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 20.7,
+    "under12": 0
+   },
+   "title-press": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 20.7,
+    "under12": 0
+   },
+   "title-menu": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 16.67,
+    "under12": 0
+   },
+   "slots": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.08,
+    "under12": 0
+   },
+   "difficulty": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.08,
+    "under12": 0
+   },
+   "charselect": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.08,
+    "under12": 0
+   },
+   "highscore": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.5,
+    "under12": 0
+   },
+   "confirm": {
+    "min": 13.33,
+    "p10": 13.33,
+    "median": 14.17,
+    "under12": 0
+   },
+   "saveCode": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.5,
+    "under12": 0
+   },
+   "options": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.5,
+    "under12": 0
+   },
+   "account": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.08,
+    "under12": 0
+   },
+   "cloudConflict": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.5,
+    "under12": 0
+   },
+   "arcade": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.5,
+    "under12": 0
+   },
+   "shop": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.5,
+    "under12": 0
+   },
+   "smith": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.5,
+    "under12": 0
+   },
+   "church": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.08,
+    "under12": 0
+   },
+   "questboard": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.08,
+    "under12": 0
+   },
+   "party": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.08,
+    "under12": 0
+   },
+   "worldmap": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.08,
+    "under12": 0
+   },
+   "inn": {
+    "min": 2.5,
+    "p10": 12.08,
+    "median": 12.08,
+    "under12": 0.098
+   },
+   "minigame_dice": {
+    "min": 9.17,
+    "p10": 10.83,
+    "median": 12.08,
+    "under12": 0.2
+   },
+   "minigame_blackjack": {
+    "min": 9.17,
+    "p10": 10.83,
+    "median": 12.08,
+    "under12": 0.313
+   },
+   "minigame_slot": {
+    "min": 9.17,
+    "p10": 10.83,
+    "median": 12.08,
+    "under12": 0.119
+   },
+   "minigame_duel": {
+    "min": 8.33,
+    "p10": 10,
+    "median": 12.08,
+    "under12": 0.192
+   },
+   "minigame_memory": {
+    "min": 8.33,
+    "p10": 10,
+    "median": 12.08,
+    "under12": 0.135
+   },
+   "pause": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.5,
+    "under12": 0
+   },
+   "dialogue": {
+    "min": 12.08,
+    "p10": 12.5,
+    "median": 15,
+    "under12": 0
+   },
+   "results": {
+    "min": 13.33,
+    "p10": 13.33,
+    "median": 13.33,
+    "under12": 0
+   },
+   "menu_status": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.08,
+    "under12": 0
+   },
+   "menu_status_p2": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.08,
+    "under12": 0
+   },
+   "menu_equip": {
+    "min": 6.67,
+    "p10": 8.33,
+    "median": 12.08,
+    "under12": 0.102
+   },
+   "menu_inventory": {
+    "min": 10.83,
+    "p10": 12.08,
+    "median": 12.08,
+    "under12": 0.049
+   },
+   "menu_skills": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.08,
+    "under12": 0
+   },
+   "menu_class": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.08,
+    "under12": 0
+   },
+   "menu_companions": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.08,
+    "under12": 0
+   },
+   "menu_quests": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.08,
+    "under12": 0
+   },
+   "menu_docs": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.08,
+    "under12": 0
+   },
+   "menu_bestiary": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.08,
+    "under12": 0
+   },
+   "menu_system": {
+    "min": 12.08,
+    "p10": 12.08,
+    "median": 12.08,
+    "under12": 0
+   }
+  },
+  "phone1": {
+   "title": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 22.42,
+    "under12": 0
+   },
+   "title-press": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 22.42,
+    "under12": 0
+   },
+   "title-menu": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 16.71,
+    "under12": 0
+   },
+   "slots": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.11,
+    "under12": 0
+   },
+   "difficulty": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.11,
+    "under12": 0
+   },
+   "charselect": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.11,
+    "under12": 0
+   },
+   "highscore": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.53,
+    "under12": 0
+   },
+   "confirm": {
+    "min": 13.37,
+    "p10": 13.37,
+    "median": 14.2,
+    "under12": 0
+   },
+   "saveCode": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.53,
+    "under12": 0
+   },
+   "options": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.53,
+    "under12": 0
+   },
+   "account": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.11,
+    "under12": 0
+   },
+   "cloudConflict": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.53,
+    "under12": 0
+   },
+   "arcade": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.53,
+    "under12": 0
+   },
+   "shop": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.53,
+    "under12": 0
+   },
+   "smith": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.53,
+    "under12": 0
+   },
+   "church": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.11,
+    "under12": 0
+   },
+   "questboard": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.11,
+    "under12": 0
+   },
+   "party": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.11,
+    "under12": 0
+   },
+   "worldmap": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.11,
+    "under12": 0
+   },
+   "inn": {
+    "min": 4.18,
+    "p10": 12.11,
+    "median": 12.11,
+    "under12": 0.098
+   },
+   "minigame_dice": {
+    "min": 9.19,
+    "p10": 10.86,
+    "median": 12.11,
+    "under12": 0.2
+   },
+   "minigame_blackjack": {
+    "min": 9.19,
+    "p10": 10.86,
+    "median": 12.11,
+    "under12": 0.313
+   },
+   "minigame_slot": {
+    "min": 9.19,
+    "p10": 10.86,
+    "median": 12.11,
+    "under12": 0.119
+   },
+   "minigame_duel": {
+    "min": 8.35,
+    "p10": 10.02,
+    "median": 12.11,
+    "under12": 0.192
+   },
+   "minigame_memory": {
+    "min": 8.35,
+    "p10": 10.02,
+    "median": 12.11,
+    "under12": 0.135
+   },
+   "pause": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.53,
+    "under12": 0
+   },
+   "dialogue": {
+    "min": 12.11,
+    "p10": 12.53,
+    "median": 15.04,
+    "under12": 0
+   },
+   "results": {
+    "min": 14.2,
+    "p10": 14.2,
+    "median": 14.2,
+    "under12": 0
+   },
+   "menu_status": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.11,
+    "under12": 0
+   },
+   "menu_status_p2": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.11,
+    "under12": 0
+   },
+   "menu_equip": {
+    "min": 7.52,
+    "p10": 8.35,
+    "median": 12.11,
+    "under12": 0.113
+   },
+   "menu_inventory": {
+    "min": 10.86,
+    "p10": 12.11,
+    "median": 13.37,
+    "under12": 0.04
+   },
+   "menu_skills": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.11,
+    "under12": 0
+   },
+   "menu_class": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.11,
+    "under12": 0
+   },
+   "menu_companions": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.11,
+    "under12": 0
+   },
+   "menu_quests": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.11,
+    "under12": 0
+   },
+   "menu_docs": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.11,
+    "under12": 0
+   },
+   "menu_bestiary": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.11,
+    "under12": 0
+   },
+   "menu_system": {
+    "min": 12.11,
+    "p10": 12.11,
+    "median": 12.11,
+    "under12": 0
+   }
+  }
+ },
+ "xlarge": {
+  "phone2": {
+   "title": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 20.7,
+    "under12": 0
+   },
+   "title-press": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 20.7,
+    "under12": 0
+   },
+   "title-menu": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 16.67,
+    "under12": 0
+   },
+   "slots": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "difficulty": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "charselect": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "highscore": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "confirm": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 14.17,
+    "under12": 0
+   },
+   "saveCode": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "options": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "account": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "cloudConflict": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "arcade": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "shop": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "smith": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "church": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "questboard": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "party": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "worldmap": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "inn": {
+    "min": 2.5,
+    "p10": 13.33,
+    "median": 13.75,
+    "under12": 0.096
+   },
+   "minigame_dice": {
+    "min": 9.17,
+    "p10": 10.83,
+    "median": 13.75,
+    "under12": 0.2
+   },
+   "minigame_blackjack": {
+    "min": 9.17,
+    "p10": 10.83,
+    "median": 13.75,
+    "under12": 0.313
+   },
+   "minigame_slot": {
+    "min": 9.17,
+    "p10": 10.83,
+    "median": 13.75,
+    "under12": 0.119
+   },
+   "minigame_duel": {
+    "min": 8.33,
+    "p10": 10,
+    "median": 13.75,
+    "under12": 0.192
+   },
+   "minigame_memory": {
+    "min": 8.33,
+    "p10": 10,
+    "median": 13.75,
+    "under12": 0.135
+   },
+   "pause": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "dialogue": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 15,
+    "under12": 0
+   },
+   "results": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "menu_status": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "menu_status_p2": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "menu_equip": {
+    "min": 6.67,
+    "p10": 8.33,
+    "median": 13.75,
+    "under12": 0.102
+   },
+   "menu_inventory": {
+    "min": 10.83,
+    "p10": 13.33,
+    "median": 13.75,
+    "under12": 0.049
+   },
+   "menu_skills": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "menu_class": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "menu_companions": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "menu_quests": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "menu_docs": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "menu_bestiary": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   },
+   "menu_system": {
+    "min": 13.75,
+    "p10": 13.75,
+    "median": 13.75,
+    "under12": 0
+   }
+  },
+  "phone1": {
+   "title": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 22.42,
+    "under12": 0
+   },
+   "title-press": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 22.42,
+    "under12": 0
+   },
+   "title-menu": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 16.71,
+    "under12": 0
+   },
+   "slots": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "difficulty": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "charselect": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "highscore": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "confirm": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 14.2,
+    "under12": 0
+   },
+   "saveCode": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "options": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "account": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "cloudConflict": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "arcade": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "shop": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "smith": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "church": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "questboard": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "party": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "worldmap": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "inn": {
+    "min": 4.18,
+    "p10": 12.53,
+    "median": 13.78,
+    "under12": 0.098
+   },
+   "minigame_dice": {
+    "min": 9.19,
+    "p10": 10.86,
+    "median": 13.78,
+    "under12": 0.2
+   },
+   "minigame_blackjack": {
+    "min": 9.19,
+    "p10": 10.86,
+    "median": 13.78,
+    "under12": 0.313
+   },
+   "minigame_slot": {
+    "min": 9.19,
+    "p10": 10.86,
+    "median": 13.78,
+    "under12": 0.119
+   },
+   "minigame_duel": {
+    "min": 8.35,
+    "p10": 10.02,
+    "median": 13.78,
+    "under12": 0.192
+   },
+   "minigame_memory": {
+    "min": 8.35,
+    "p10": 10.02,
+    "median": 13.78,
+    "under12": 0.135
+   },
+   "pause": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "dialogue": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 15.04,
+    "under12": 0
+   },
+   "results": {
+    "min": 14.2,
+    "p10": 14.2,
+    "median": 14.2,
+    "under12": 0
+   },
+   "menu_status": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "menu_status_p2": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "menu_equip": {
+    "min": 7.52,
+    "p10": 8.35,
+    "median": 13.78,
+    "under12": 0.113
+   },
+   "menu_inventory": {
+    "min": 10.86,
+    "p10": 13.37,
+    "median": 13.37,
+    "under12": 0.04
+   },
+   "menu_skills": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "menu_class": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "menu_companions": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "menu_quests": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "menu_docs": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "menu_bestiary": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
+   },
+   "menu_system": {
+    "min": 13.78,
+    "p10": 13.78,
+    "median": 13.78,
+    "under12": 0
    }
   }
  }
