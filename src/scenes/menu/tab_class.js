@@ -312,7 +312,7 @@ export class ClassTab extends Tab {
     ctx.restore();
     const tx = r.x + tw + 12, w = r.w - tw - 18;
     // 카드 글자·표식은 캐시 (선택·상태가 바뀔 때만 다시 굽는다). 낮은 카드(글자 하한의 세 줄이 안 들어감)에서는 영문 줄을 뺀다
-    const eng = r.h >= 3 * F + 12;
+    const eng = r.h >= Math.max(54, 3 * F + 18);
     this.txt.draw(ctx, 'card:' + c.id, `${sel ? 1 : 0}|${st.key}|${st.text}|${this.m.rev}|${r.h}`, tx - 4, r.y + 1, r.x + r.w - tx + 3, r.h - 2, (g) => {
       const iconW = st.key === 'locked' || st.key === 'closed' || st.key === 'cur' ? 16 : 0;
       const nsz = measure(g, c.name, 14, 800) <= w - iconW ? 14 : 12.5;
@@ -356,11 +356,11 @@ export class ClassTab extends Tab {
       this.txt.draw(ctx, 'strip:' + cell.id, `${sel ? 1 : 0}|${st.key}|${label}|${this.m.rev}|${vis.w}|${vis.h}`, vis.x, vis.y, vis.w, vis.h, (g) => {
         const gw = lock ? 13 : 0, pad = 8;
         const col = cur ? PAL.goldHi : dim ? PAL.faint : lock ? PAL.dim : st.key === 'ready' ? PAL.good : kc;
-        const s = ellipsize(g, label, vis.w - pad * 2 - gw, 11, 800);
-        const tw = measure(g, s, 11, 800) + gw;
+        const s = ellipsize(g, label, vis.w - pad * 2 - gw, 12, 800);
+        const tw = measure(g, s, 12, 800) + gw;
         const x0 = vis.x + vis.w / 2 - tw / 2;
         if (lock) glyph(g, 'lock', x0 + 5, vis.y + vis.h / 2, 9, col, 1.2);
-        text(g, s, x0 + gw, vis.y + vis.h / 2 + Math.max(11, textFloor()) * 0.36, { size: 11, weight: 800, color: col, ow: 2 });
+        text(g, s, x0 + gw, vis.y + vis.h / 2 + Math.max(12, textFloor()) * 0.36, { size: 12, weight: 800, color: col, ow: 2 });
       });
       if (sel) brackets(ctx, vis.x, vis.y, vis.w, vis.h, t, focused ? PAL.goldHi : PAL.goldMid);
     }

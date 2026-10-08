@@ -10,6 +10,7 @@ import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { assets } from '../../core/assets.js';
 import { text, font, FONT } from '../../core/ui.js';
+import * as UI from '../../core/ui.js';
 import { drawGlyph, glyphWidth, promptMode } from '../../core/prompts.js';
 import { clamp, lerp, ease, fmtTime, TAU } from '../../core/math.js';
 import { drawIcon } from '../../render/icons.js';
@@ -51,6 +52,25 @@ const TAB_SEL = [0, 'rgba(150,22,44,0.95)', 0.55, 'rgba(90,10,28,0.92)', 1, 'rgb
 const CLOSE_ON = [0, '#3a1420', 1, '#12060c'], CLOSE_HOT = [0, '#8a1a2a', 1, '#12060c'];
 // 상단 막대: 탭 화살표·닫기 단추는 44 CSS px 이상 (§6.3; 폰 UI 배율에서 1 UI px ≈ 0.83 CSS px → 여유 영역 포함 52.8 UI px)
 const ARROW_W = 44, CLOSE_W = 50, BAR_GAP = 10, BAR_M = 8;
+
+/** 터치 안내 줄: 탭마다의 터치 안내를 '  ·  ' 로 잇되, 폭에 다 들어가지 않으면 뒤쪽 안내부터 뺀다 (하나도 안 들어가면 첫 안내를 말줄임).
+ *  canvas maxWidth 로 가로를 누르지 않는다 — 글자 크기 '아주 크게' 에서 글자가 0.7배로 찌그러지던 문제. (안내·폭·글자 크기·글꼴 세대)마다 한 번만 잰다 */
+const TOUCH_TIPS = ['항목을 터치해 선택하세요', '목록은 끌어서, 탭은 옆으로 밀어서 넘기세요'];
+const TIP_FIT = { key: '', str: '' };
+function fitTips(ctx, tips, maxW) {
+  ctx.font = font(13, 600);
+  const key = `${tips.join('\u0001')}|${Math.round(maxW)}|${ctx.font}|${UI.fontEpoch ?? 0}`;
+  if (TIP_FIT.key === key) return TIP_FIT.str;
+  let n = tips.length, str = tips.join('  ·  ');
+  while (n > 1 && ctx.measureText(str).width > maxW) str = tips.slice(0, --n).join('  ·  ');
+  if (ctx.measureText(str).width > maxW) {
+    let k = str.length;
+    while (k > 1 && ctx.measureText(str.slice(0, k).trimEnd() + '…').width > maxW) k--;
+    str = str.slice(0, k).trimEnd() + '…';
+  }
+  TIP_FIT.key = key; TIP_FIT.str = str;
+  return str;
+}
 
 export class MenuScene extends Scene {
   constructor(g) { super(g); this.opaque = false; this.uiScale = true; this.hidePad = true; }
@@ -420,7 +440,7 @@ export class MenuScene extends Scene {
     let items = this.cur.hints(focused) || [];
     if (promptMode() === 'touch') {
       const tips = items.filter((it) => it[2]).map((it) => it[2]);
-      text(ctx, tips.length ? tips.join('  ·  ') : '항목을 터치해 선택하세요  ·  목록은 끌어서, 탭은 옆으로 밀어서 넘기세요', lx + 2, y, { size: 13, weight: 600, color: PAL.dim, ow: 2, maxWidth: rx - lx - 16 });
+      text(ctx, fitTips(ctx, tips.length ? tips : TOUCH_TIPS, rx - lx - 16), lx + 2, y, { size: 13, weight: 600, color: PAL.dim, ow: 2 });
       return;
     }
     if (!focused) {

@@ -151,8 +151,11 @@ export class BestiaryTab extends Tab {
       const sel = kk === this.i, n = this.kills(r);
       if (sel) selBar(ctx, rect.x, rect.y, rect.w, rect.h, t, { dim: !focused });
       const ty = rect.y + rect.h / 2 + 5;
-      text(ctx, `No.${String(r.no).padStart(3, '0')}`, rect.x + 14, ty, { size: 11, weight: 700, family: FONT.num, color: n ? PAL.dim : PAL.faint, ow: 2 });
-      text(ctx, n ? ellipsize(ctx, r.def.name, rect.w - 150, 14, 800) : '???', rect.x + 74, ty, { size: 14, weight: 800, color: n ? (sel ? PAL.goldHi : r.boss ? '#ffb070' : PAL.bone) : PAL.faint, ow: 3 });
+      const noStr = `No.${String(r.no).padStart(3, '0')}`;
+      text(ctx, noStr, rect.x + 14, ty, { size: 11, weight: 700, family: FONT.num, color: n ? PAL.dim : PAL.faint, ow: 2 });
+      // 이름 자리: 번호 글자 폭에서 잡는다 (글자 크기 '아주 크게' 에서 번호가 74 px 을 넘어 이름에 붙지 않게)
+      const nx = Math.max(74, Math.ceil(14 + measure(ctx, noStr, 11, 700, FONT.num) + 8));
+      text(ctx, n ? ellipsize(ctx, r.def.name, rect.w - 76 - nx, 14, 800) : '???', rect.x + nx, ty, { size: 14, weight: 800, color: n ? (sel ? PAL.goldHi : r.boss ? '#ffb070' : PAL.bone) : PAL.faint, ow: 3 });
       if (r.boss) { if (n) glyph(ctx, 'crown', rect.x + rect.w - 18, ty - 5, 14, '#ffd070', 1.4); }
       else if (n) text(ctx, `${n.toLocaleString('ko-KR')}`, rect.x + rect.w - 12, ty, { size: 12, align: 'right', weight: 800, family: FONT.num, color: PAL.text, ow: 2 });
     });

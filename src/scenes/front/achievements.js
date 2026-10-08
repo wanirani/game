@@ -4,11 +4,11 @@
 //  - 데이터: 엔진 game.ach (§3.2 list·summary·titles·decos·canClaim·claimAll·markSeen)만 쓴다. 엔진이 없으면(받지 못함)
 //    data/achievements.js 를 직접 읽어 모두 미달성으로 그리고 '업적 정보를 불러오지 못했습니다' 한 줄 — 던지지 않는다.
 //    목록은 열 때·달성 이벤트·동기화·받기·이명/장식을 고른 뒤에만 다시 읽는다 (매 프레임 엔진을 부르지 않는다)
-//  - 배치: 넓은 화면(uiW ≥ 960 · uiH ≥ 500) = 머리(70) · 왼쪽 분류 칸(9줄 + '이명 · 장식'·'보상 받기') · 오른쪽 카드 목록(66) · 바닥 안내.
+//  - 배치: 넓은 화면(uiW ≥ 960 · uiH ≥ 500) = 머리(70) · 왼쪽 분류 칸(9줄 + '이명 · 외형'·'보상 받기') · 오른쪽 카드 목록(66) · 바닥 안내.
 //    좁은 화면(휴대폰) = 머리 · 분류 칩 띠(가로로 끌기, 고른 칩이 보이게 자동 이동) · 줄 목록(54) · 바닥 단추 줄.
 //    단추·칩은 'primary'(44 CSS px, 이웃과 9 UI px 이상 띄워 여유 영역을 받는다), 줄은 'list'(36 CSS px) — src 'ach.*'
 //  - 조작 (메뉴 의미 액션만 — 새 바인딩 없음): prevTab/nextTab 분류(돌아감) · ↑↓ 줄 (넓은 배치 ←→ = 분류 칸 ↔ 목록, 좁은 배치 ←→ = 분류) ·
-//    confirm 자세히 · alt 이명·장식 · alt2 보상 받기 · cancel 팝업 → 장면 닫기. 터치: 칩·분류·줄·단추, 목록 끌기, 목록 가로 밀기 = 분류.
+//    confirm 자세히 · alt 이명·외형 (창: 이명 · 장식 | 외형) · alt2 보상 받기 · cancel 팝업 → 장면 닫기. 터치: 칩·분류·줄·단추, 목록 끌기, 목록 가로 밀기 = 분류.
 //    마우스: 올리면 고르기, 휠 = 목록
 //  - 배경: 타이틀 키 아트(켄번스 한 장면) + 어둡게 + 고른 장식의 안개 색을 레이어 한 장에 굽고(휴대폰 등급은 반 해상도),
 //    그 위에 장식의 Ambience(불씨 수는 타이틀의 절반, 안개·번개 없음) — 장식 미리 보기 구실. 프레임마다 새 캔버스·그라디언트 0
@@ -415,7 +415,7 @@ export class AchievementsScene extends Scene {
     this.renderButtons(ctx, L, t);
     this.renderList(ctx, L, t);
     backButton(ctx, L.back.x, L.back.y, '뒤로', this.modal ? null : this);
-    footer(ctx, W, L.H, [[['prevTab', 'nextTab'], '분류'], ['dpadV', '고르기'], ['confirm', '자세히'], ['alt', '이명·장식'], ['alt2', '보상 받기'], ['cancel', '돌아가기']], HINT_TOUCH);
+    footer(ctx, W, L.H, [[['prevTab', 'nextTab'], '분류'], ['dpadV', '고르기'], ['confirm', '자세히'], ['alt', '이명·외형'], ['alt2', '보상 받기'], ['cancel', '돌아가기']], HINT_TOUCH);
   }
   renderNarrow(ctx, L, t) {
     const W = L.W, S = this.sum, xr = W - L.sr - 16;
@@ -492,13 +492,13 @@ export class AchievementsScene extends Scene {
     if (this.chipX < this.chipMax - 1) glyph(ctx, 'chevronR', R.x + R.w - 2, R.y + R.h / 2, 12, 'rgba(232,200,114,0.7)', 2);
   }
 
-  /** '이명 · 장식' · '보상 받기 (k)' 단추 */
+  /** '이명 · 외형' · '보상 받기 (k)' 단추 (이름: 창 안의 「외형」 쪽을 찾을 수 있게 — 창은 [이명 · 장식 | 외형] 두 쪽) */
   renderButtons(ctx, L, t) {
     const ges = this.ges, rt = L.btnTitles, rc = L.btnClaim;
     const ok = this.claimOK, touch = promptMode() === 'touch';
     this.zTitles = this.modal ? hiddenZone({ ...rt }, ges) : ges.zone({ ...rt }, 'primary', { src: 'ach.titles' });
     this.zClaim = this.modal ? hiddenZone({ ...rc }, ges) : ges.zone({ ...rc }, 'primary', { src: 'ach.claim' });   // 꺼져 있어도 누르면 이유를 보여 준다
-    gbutton(ctx, rt, '이명 · 장식', { hot: ges.over(rt), size: 14, t });
+    gbutton(ctx, rt, '이명 · 외형', { hot: ges.over(rt), size: 14, t });
     gbutton(ctx, rc, `보상 받기 (${this.sum.claimable})`, { hot: ok && ges.over(rc), disabled: !ok, size: 14, t, accent: '#b07a20' });
     if (ok) glowOval(ctx, rc.x + rc.w / 2, rc.y + rc.h / 2, rc.w * 0.55, rc.h * 0.8, '#ffb040', 0.12 + 0.08 * Math.sin(t * 4));
     if (!L.wide && !touch) {   // 좁은 배치 · 키보드·패드: 단추 안 오른쪽에 글리프

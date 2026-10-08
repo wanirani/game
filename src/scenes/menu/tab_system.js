@@ -4,7 +4,7 @@
 // 휴대폰 UI 배율(uiScale)에서도 넘치지 않게 줄 높이·단추 높이를 남는 자리에 맞춘다. 단추는 ui.taps 등록부 (44 CSS px 이상)
 // 업적 (docs/specs/achievements.md §7.6, ACH-UI): 둘째 줄을 반으로 나눠 [설정 | 업적] — 칸 높이는 그대로 (phone2 에서 넷째 줄을 더하면
 // 클라우드 단추와 겹친다). 행동 순서 저장 · 설정 · 업적 · 타이틀로 · (클라우드), ↑↓ 는 줄 단위, ←→ 는 설정 ↔ 업적. 업적 → push('achievements', {})
-import { text, FONT } from '../../core/ui.js';
+import { text, FONT, font, textFloor } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { clamp, fmtTime } from '../../core/math.js';
 import { input } from '../../core/input.js';
@@ -17,6 +17,33 @@ import { cloud } from '../../core/cloud.js';
 import { drawCloudIcon, accountBadge, slotsJosa } from '../front/cloud_ui.js';
 
 const RANK_COL = { D: '#a0a0a0', C: '#7ee07e', B: '#5aa8ff', A: '#c07cff', S: '#ffa640', SS: '#ff5a4a', SSS: '#ffe070' };
+/**
+ * gbutton + 이름·설명 두 줄. gbutton 은 이름(가운데 −6)·설명(가운데 +13)을 고정 간격으로 그려 글자 크기 하한('글자 크기' 크게·아주 크게)에서
+ * 두 줄이 겹친다 → 그때는 몸체만 gbutton 으로 그리고 두 줄 간격을 하한에서 다시 잡는다. 설명이 단추 폭에 들어가지 않으면
+ * 짧은 설명(subS), 그래도 넘치면 설명을 뺀다 (가로로 누르거나 말줄임하지 않는다 — 막힌 단추는 누르면 설명이 알림으로 뜬다)
+ */
+function sysButton(ctx, r, label, o) {
+  const fl = textFloor(), ls = Math.max(o.size ?? 15, fl), ss = Math.max(11, fl);
+  if (!o.sub || 0.8 * ss + 0.48 * ls <= 19) { gbutton(ctx, r, label, o); return; }
+  ctx.font = font(11, 600);
+  let sub = o.sub;
+  if (ctx.measureText(sub).width > r.w - 12) sub = o.subS && ctx.measureText(o.subS).width <= r.w - 12 ? o.subS : null;
+  if (!sub || r.h < ls * 0.82 + ss + 10) { gbutton(ctx, r, label, { ...o, sub: null }); return; }
+  gbutton(ctx, r, '', { ...o, sub: null, icon: null });   // 몸체·테두리·빛만
+  const col = o.disabled ? '#6a5e60' : o.hot ? PAL.goldHi : PAL.bone;
+  const top = r.y + (r.h - (ls * 0.82 + 4 + ss * 0.9)) / 2;
+  const ly = Math.round(top + ls * 0.82), sy = Math.round(ly + 4 + ss * 0.86);
+  let tx = r.x + r.w / 2;
+  if (o.icon) {   // gbutton 과 같은 배치 (글리프 + 이름 묶음을 가운데로)
+    ctx.font = font(o.size ?? 15, 800, FONT.body);
+    const tw = ctx.measureText(label).width, ix = tx - (tw + 22) / 2 + 8;
+    glyph(ctx, o.icon, ix, ly - ls * 0.36, ls * 1.05, col, 1.6);
+    tx = ix + 14 + tw / 2;
+  }
+  text(ctx, label, tx, ly, { size: o.size ?? 15, align: 'center', weight: 800, color: col, ow: 3 });
+  text(ctx, sub, r.x + r.w / 2, sy, { size: 11, align: 'center', color: o.disabled ? '#5a5050' : PAL.dim, weight: 600, ow: 2 });
+}
+
 /** 단추 줄: 저장 0 · [설정 | 업적] 1 · 타이틀로 2 (클라우드는 칸 맨 아래에 따로) */
 const ROW_OF = { save: 0, options: 1, ach: 1, title: 2 };
 const rowOf = (id) => ROW_OF[id] ?? 3;
@@ -27,14 +54,14 @@ export class SystemTab extends Tab {
   actions() {
     const g = this.game;
     const acts = [
-      { id: 'save', label: '저장하기', icon: 'save', disabled: !this.canSave, sub: this.canSave ? `슬롯 ${this.state.slot ?? 1}에 기록` : '세이브 포인트에서 저장할 수 있습니다', run: () => this.save() },
+      { id: 'save', label: '저장하기', icon: 'save', disabled: !this.canSave, sub: this.canSave ? `슬롯 ${this.state.slot ?? 1}에 기록` : '세이브 포인트에서 저장할 수 있습니다', subS: this.canSave ? null : '세이브 포인트에서 저장', run: () => this.save() },
       { id: 'options', label: '설정', icon: 'gear', disabled: !g.registry.options, sub: g.registry.options ? '소리 · 화면 · 조작' : '준비 중입니다', run: () => { audio.sfx('menu_ok'); g.push('options', {}); } },
       { id: 'ach', label: '업적', icon: 'star', disabled: !g.registry.achievements, sub: g.registry.achievements ? this.achSub() : '준비 중입니다', run: () => { audio.sfx('menu_ok'); g.push('achievements', {}); } },   // [hook:ach]
       { id: 'title', label: '타이틀로', icon: 'door', sub: '진행 중인 모험을 떠납니다', run: () => this.toTitle() },
     ];
     // 클라우드 (계정을 쓸 수 있는 환경에서만 버튼)
     if (cloud.eligible() && g.registry.account) {
-      if (!cloud.loggedIn) acts.push({ id: 'cloud', label: '로그인', sub: '게스트 · 로그인하면 클라우드에 보관', run: () => { audio.sfx('menu_ok'); g.push('account', { overlay: true, screen: 'login' }); } });
+      if (!cloud.loggedIn) acts.push({ id: 'cloud', label: '로그인', sub: '게스트 · 로그인하면 클라우드에 보관', subS: '로그인하면 클라우드에 보관', run: () => { audio.sfx('menu_ok'); g.push('account', { overlay: true, screen: 'login' }); } });
       else acts.push({ id: 'cloud', label: this.syncing ? '동기화 중…' : '지금 동기화', disabled: this.syncing, sub: `${cloud.id} · ${cloud.overall().short}`, run: () => this.syncNow() });
     }
     return acts;
@@ -229,7 +256,7 @@ export class SystemTab extends Tab {
           : { x: RX + 16, y: A.y + 46 + row * (bh + gap), w: RW - 32, h: bh };
       this.btns.push(this.m.ges.zone(r, 'primary', { src: 'system.' + a.id, disabled: false }));
       const sel = k === this.i;
-      gbutton(ctx, r, a.label, { hot: sel && (focused || this.m.ges.over(r)), disabled: a.disabled, icon: a.icon, size: bh < 50 ? 15 : 16, t, sub: bh < 48 && a.id !== 'cloud' ? null : a.sub, accent: a.id === 'title' ? '#6a1020' : undefined });
+      sysButton(ctx, r, a.label, { hot: sel && (focused || this.m.ges.over(r)), disabled: a.disabled, icon: a.icon, size: bh < 50 ? 15 : 16, t, sub: bh < 48 && a.id !== 'cloud' ? null : a.sub, subS: a.subS, accent: a.id === 'title' ? '#6a1020' : undefined });
       if (a.id === 'cloud') drawCloudIcon(ctx, r.x + 24, r.y + r.h / 2, 26, cloud.loggedIn ? (this.syncing ? 'pending' : accountBadge().status) : 'guest', t);
       if (sel && focused) brackets(ctx, r.x, r.y, r.w, r.h, t);
     });

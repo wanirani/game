@@ -8,7 +8,7 @@
 //   U1 들어가기   desk·phone1·phone2: 타이틀 메뉴 8줄이 안전 영역 안이고 알림 카드(새 버전·홈 화면에 추가·APK)와 겹치지 않음
 //                 (+ phone2 노치 47/47/0/21 · safeArea 'full') · '업적' → 장면 · 스크린숏 {vp}_{title,list,detail,titles}.png
 //   U2 상태       빈 메타 0/67·숨긴 줄 '숨겨진 업적'·'?' · 반쯤 채운 메타(NEW·분류 수·점수·막대 '640 / 1,000') · 모두 달성 → 모두 공개
-//   U3 조작       키보드(E·Q·↓×5·Z·X·A → t_dawn → X) · 패드(fakepad LB·RB·D-pad·A/B, 결정 위치 'east' 설정) · 터치(칩·끌기·줄·'이명 · 장식'·밀기)
+//   U3 조작       키보드(E·Q·↓×5·Z·X·A → t_dawn → X) · 패드(fakepad LB·RB·D-pad·A/B, 결정 위치 'east' 설정) · 터치(칩·끌기·줄·'이명 · 외형' 단추·밀기)
 //   U4 탭 크기    tools/qa/lib/taps.mjs auditScene phone1·phone2: 목록·자세히·이명 창 — primary ≥ 44 · list ≥ 36 CSS px, 겹침 0
 //   U5 메뉴 길    ?scene=hub → 메뉴 '기록' → [설정 | 업적] → 장면 → 닫으면 기록 탭 · ←→ · 단추 높이 ≥ 44 CSS · 클라우드 단추와 겹침 0
 //   U6 받기       마을: 골드·아이템·claimed · 두 번째는 '받을 보상이 없습니다' · 스테이지: 꺼짐 + '마을에서 받을 수 있습니다'
@@ -369,7 +369,7 @@ async function U3(C) {
     const dawn = await s.eval(() => window.__game.top.modal.zones[0].find((z) => z.k === 1 && !z.r.thid)?.r);
     await tapUi(t, s, dawn);
     const title = await s.eval(() => window.__game.meta.ach.title);
-    C.check('U3', "touch 바깥 탭 닫기 · '이명 · 장식' → 「새벽을 연 자」 탭 → 정함", outside && pick && title === 't_dawn', JSON.stringify({ outside, pick, title }));
+    C.check('U3', "touch 바깥 탭 닫기 · '이명 · 외형' 단추 → 「새벽을 연 자」 탭 → 정함", outside && pick && title === 't_dawn', JSON.stringify({ outside, pick, title }));
     await C.shot(s, 'phone2_touch_pick');
     await tapUi(t, s, await s.eval(() => window.__game.top.modal.closeR)); a = await achState(s);
     const closed = a.modal === null;

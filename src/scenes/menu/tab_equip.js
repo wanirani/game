@@ -1,7 +1,7 @@
 // 장비 탭: 6칸(무기/머리/몸/망토/장신구×2) → 칸 선택 시 장착 가능한 아이템 목록 + 능력치 비교(증감) + 영웅 외형 실시간 미리보기
 // 가운데 미리보기는 턴테이블 (hero_view.js): 끌어서·휠·, . 키·오른쪽 스틱으로 돌려 앞·옆·뒷모습의 장비 색·망토·무기를 본다.
 // 갑옷·머리·망토·장신구를 끼우면 한 바퀴 돌며 보여 준다 (움직임 줄이기면 시전 동작). 무기를 끼우면 공격 시연.
-import { text, FONT } from '../../core/ui.js';
+import { text, FONT, textFloor } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { clamp } from '../../core/math.js';
 import { input } from '../../core/input.js';
@@ -18,6 +18,8 @@ import * as D from './access.js';
 import { CHARACTERS } from '../../data/characters.js';
 
 const SUMMARY = ['hp', 'mp', 'atk', 'mag', 'def', 'res', 'crit'];
+/** 2열 요약에서 이름이 칸에 다 들어가지 않을 때 쓰는 짧은 이름 ('최대…' 처럼 말줄임으로 HP·MP 가 같아 보이지 않게) */
+const SUMMARY_SHORT = { hp: 'HP', mp: 'MP', atk: '공격', mag: '마력', def: '방어', res: '저항', crit: '치명' };
 const SLOT_ICON_EMPTY = { weapon: '무기', head: '머리', body: '몸', cloak: '망토', acc1: '장신구', acc2: '장신구' };
 
 /**
@@ -311,21 +313,26 @@ export class EquipTab extends Tab {
       let y = A.y + sh + 32;
       heading(c, '주요 능력치', MX + 14, y, MW - 28, { size: 14 });
       y += 8;
-      // 낮은 화면: 2열 (증감은 색으로만)
-      const room = A.y + A.h - 8 - y, two = room / SUMMARY.length < 15;
-      const perCol = two ? Math.ceil(SUMMARY.length / 2) : SUMMARY.length;
-      const rowS = Math.min(20, room / perCol);
+      // 줄 높이는 글자 크기 하한(설정 '글자 크기')에서 잡는다: 한 열에 다 들어가지 않으면 2열 (증감은 색으로만),
+      // 2열로도 넘치면 뒤쪽 줄을 뺀다 (크게·아주 크게에서 줄이 겹치지 않게)
+      const room = A.y + A.h - 8 - y, rowMin = Math.max(15, Math.ceil(textFloor() * 1.15));
+      const maxRows = Math.max(1, Math.floor(room / rowMin)), two = maxRows < SUMMARY.length;
+      const list = two ? SUMMARY.slice(0, maxRows * 2) : SUMMARY;
+      const perCol = two ? Math.ceil(list.length / 2) : list.length;
+      const rowS = Math.min(Math.max(20, rowMin), room / perCol);
       const colW = two ? (MW - 28) / 2 : MW - 28;
-      SUMMARY.forEach((k, i) => {
+      list.forEach((k, i) => {
         const a = cur.stats[k] ?? 0, b = ns[k] ?? 0, d = b - a;
         const cx0 = MX + 14 + (two ? Math.floor(i / perCol) * colW : 0), ry = y + (two ? i % perCol : i) * rowS;
         const by = ry + Math.min(15, rowS * 0.5 + 5);
         const col = Math.abs(d) < 0.05 ? PAL.bone : d > 0 ? PAL.good : PAL.bad;
         const val = fmtStatVal(k, b);
-        const vw = measure(c, val, 13, 800, FONT.num);
-        text(c, ellipsize(c, D.STAT_INFO[k]?.name ?? k, colW - vw - 14, 12, 600), cx0 + 4, by, { size: 12, weight: 600, color: PAL.text, ow: 2 });
+        const vw = measure(c, val, 13, 800, FONT.num), nw = colW - vw - 14;
+        const full = D.STAT_INFO[k]?.name ?? k;
+        const name = two && measure(c, full, 12, 600) > nw && SUMMARY_SHORT[k] ? SUMMARY_SHORT[k] : full;
+        text(c, ellipsize(c, name, nw, 12, 600), cx0 + 4, by, { size: 12, weight: 600, color: PAL.text, ow: 2 });
         text(c, val, cx0 + colW - 4, by, { size: 13, align: 'right', weight: 800, family: FONT.num, color: col, ow: 3 });
-        if (!two && Math.abs(d) >= 0.05) text(c, `${d > 0 ? '▲' : '▼'} ${d > 0 ? '+' : '-'}${fmtStatVal(k, Math.abs(d))}`, cx0 + colW - 4 - 48, by - 1, { size: 10, align: 'right', weight: 700, color: col, ow: 2 });
+        if (!two && Math.abs(d) >= 0.05) text(c, `${d > 0 ? '▲' : '▼'} ${d > 0 ? '+' : '-'}${fmtStatVal(k, Math.abs(d))}`, cx0 + colW - 4 - Math.max(48, vw + 6), by - 1, { size: 10, align: 'right', weight: 700, color: col, ow: 2 });
       });
     });
 

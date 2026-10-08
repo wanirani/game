@@ -2,7 +2,7 @@
 // 회차 (docs/specs/ngplus.md §4.3): 구매 재고 장은 NG.serviceChapter (회차면 20장까지 연 것처럼)
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
-import { text, button, bar, panel, FONT, COLORS, font } from '../../core/ui.js';
+import { text, button, bar, panel, FONT, COLORS, font, textFloor } from '../../core/ui.js';
 import { fmt, rand, clamp, TAU, ease, lerp, rgba } from '../../core/math.js';
 import * as Shop from '../../data/shop.js';
 import * as NG from '../../game/ngplus.js';   // [hook:ng]
@@ -340,8 +340,15 @@ export class SmithScene extends ServiceScene {
       ctx.strokeStyle = on ? '#ffe7a0' : have ? 'rgba(160,130,80,0.8)' : 'rgba(80,60,50,0.6)'; ctx.lineWidth = on ? 2 : 1; ctx.strokeRect(rr.x + 0.5, rr.y + 0.5, rr.w - 1, rr.h - 1);
       drawIcon(ctx, key === 'protect' ? 'scroll_protect' : 'scroll_bless', rr.x + 18, rr.y + 19, 24);
       ctx.globalAlpha = have ? 1 : 0.45;
-      text(ctx, label, rr.x + 34, rr.y + 17, { size: 12, weight: 800, color: on ? '#fff' : '#d8ccb8', maxWidth: rr.w - 40 });
-      text(ctx, `${on ? '사용' : '미사용'} · ${have}장${!applicable ? ' (불필요)' : ''}`, rr.x + 34, rr.y + 32, { size: 11, color: on ? '#ffe7a0' : '#9d8f80', maxWidth: rr.w - 40 });
+      // 두 줄 기준선은 글자 크기 하한('글자 크기' 크게·아주 크게)에서 잡고(보통은 예전 17 · 32), 아래 줄은 칸 폭에 들어가는
+      // 가장 긴 문구를 고른다 ('(불필요)' → '사용/미사용' 순으로 줄임 — 가로로 누르지 않게)
+      const fl = textFloor(), ly = rr.y + Math.max(17, Math.round(4 + Math.max(12, fl) * 0.8)), sy = Math.max(rr.y + 32, Math.round(ly + 2 + Math.max(11, fl) * 0.85));
+      text(ctx, label, rr.x + 34, ly, { size: 12, weight: 800, color: on ? '#fff' : '#d8ccb8', maxWidth: rr.w - 40 });
+      const st0 = on ? '사용' : '미사용';
+      const subs = [`${st0} · ${have}장${!applicable ? ' (불필요)' : ''}`, `${st0} · ${have}장`, `${have}장`];
+      ctx.font = font(11, 500);
+      const sub = subs.find((x) => ctx.measureText(x).width <= rr.w - 40) ?? subs[subs.length - 1];
+      text(ctx, sub, rr.x + 34, sy, { size: 11, color: on ? '#ffe7a0' : '#9d8f80', maxWidth: rr.w - 40 });
       ctx.globalAlpha = 1;
       this.chipRects[key] = rr;
     };

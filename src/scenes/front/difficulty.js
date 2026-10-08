@@ -6,7 +6,7 @@
 import { Scene } from '../../core/game.js';
 import { audio } from '../../core/audio.js';
 import { assets } from '../../core/assets.js';
-import { text, wrap, FONT, ListMenu, taps } from '../../core/ui.js';
+import { text, wrap, FONT, ListMenu, taps, textFloor } from '../../core/ui.js';
 import { drawHints, promptMode } from '../../core/prompts.js';
 import { clamp, ease, rgba, lerp } from '../../core/math.js';
 import { hudSafe } from '../../render/hud_layout.js';
@@ -155,16 +155,17 @@ export class DifficultyScene extends Scene {
     text(ctx, d.eng, w / 2, C.engY, { size: w < 160 ? 13 : 15, align: 'center', weight: 900, family: FONT.logo, color: d.color, ow: 3 });
     text(ctx, d.name, w / 2, C.nameY, { size: C.nameSize, align: 'center', weight: 800, family: FONT.title, color: '#fff4e0', ow: 4 });
     ornament(ctx, w / 2, C.ornY, w - 30, { color: d.color, alpha: 0.8 });
-    // 보정치 (아래에서부터) → 그 위 남는 자리에 설명
+    // 보정치 (아래에서부터) → 그 위 남는 자리에 설명. 줄 높이는 글자 크기 하한(설정 '글자 크기')에서 잡는다 (크게·아주 크게에서 겹치지 않게)
+    const fl = textFloor(), rowH = Math.max(C.rowH, Math.ceil(fl * 1.15)), descLH = Math.max(C.descLH, Math.ceil(fl * 1.2));
     const rows = diffRows(d);
-    const ry = h - rows.length * C.rowH - 8;
-    const maxLines = clamp(Math.floor((ry - 15 - 4 - C.descY + C.descLH * 0.75) / C.descLH), 0, 4);
+    const ry = h - rows.length * rowH - 8;
+    const maxLines = clamp(Math.floor((ry - 15 - 4 - C.descY + descLH * 0.75) / descLH), 0, 4);
     const lines = clampLines(ctx, wrap(ctx, d.desc, w - 18, 13, 500), maxLines, w - 18); // 잘리면 '…'
-    lines.forEach((l, j) => text(ctx, l, w / 2, C.descY + j * C.descLH, { size: 13, align: 'center', color: '#d8ccbc', ow: 2 }));
-    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(8, ry - 15, w - 16, rows.length * C.rowH + 8);
+    lines.forEach((l, j) => text(ctx, l, w / 2, C.descY + j * descLH, { size: 13, align: 'center', color: '#d8ccbc', ow: 2 }));
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(8, ry - 15, w - 16, rows.length * rowH + 8);
     rows.forEach(([k2, v, c], j) => {
-      text(ctx, k2, 14, ry + j * C.rowH, { size: 12, weight: 600, color: DIM, ow: 2 });
-      text(ctx, v, w - 14, ry + j * C.rowH, { size: 13, align: 'right', weight: 800, family: FONT.num, color: c, ow: 2 });
+      text(ctx, k2, 14, ry + j * rowH, { size: 12, weight: 600, color: DIM, ow: 2 });
+      text(ctx, v, w - 14, ry + j * rowH, { size: 13, align: 'right', weight: 800, family: FONT.num, color: c, ow: 2 });
     });
     if (d.id === 'inferno' && s > 0.3) {
       // 지옥: 가장자리 불꽃 맥동

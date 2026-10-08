@@ -29,7 +29,7 @@ import { bus } from '../core/events.js';
 import { cloud, SLOTS } from '../core/cloud.js';
 import * as platform from '../core/platform.js';
 import { NOTICE_TEXT as TELEMETRY_TEXT } from '../core/telemetry.js';
-import { text, wrap, FONT, ListMenu, taps, bloodText } from '../core/ui.js';
+import { text, wrap, FONT, ListMenu, taps, bloodText, textFloor } from '../core/ui.js';
 import { drawHints, drawGlyph, glyphWidth, promptMode } from '../core/prompts.js';
 import { clamp, ease, lerp, fmt, rand, TAU } from '../core/math.js';
 import { hudSafe } from '../render/hud_layout.js';
@@ -665,7 +665,8 @@ export class TitleScene extends Scene {
       ctx.save(); ctx.globalAlpha = k;
       const nNew = it.id === 'ach' ? this.achNew : it.id === 'gallery' ? this.galNew : 0;   // [hook:gal] 업적 · 회랑 줄의 NEW
       const achNew = nNew > 0, sel = this.menu.index === i && this.mode === 'menu', fs = h >= 48 ? 22 : 21;
-      menuItem(ctx, r, it.label, { selected: sel, disabled: it.disabled, sub: achNew ? `NEW ${nNew}` : it.sub, k, size: fs });
+      // 글자 크기 '아주 크게'(하한 > 15 UI px): 영문 부제가 한글 이름에 붙어 빽빽해지므로 부제를 빼고 이름만 가운데에 (NEW 표시는 남긴다)
+      menuItem(ctx, r, it.label, { selected: sel, disabled: it.disabled, sub: achNew ? `NEW ${nNew}` : textFloor() > 15 ? null : it.sub, k, size: fs });
       if (achNew) { // 안 본 업적 · 그림 · 곡: 이름 오른쪽 붉은 점
         ctx.font = `800 ${fs}px ${FONT.title}`;
         const dx = r.x + 28 + (sel ? 6 * k : 0) + ctx.measureText(it.label).width + 13, dy = r.y + r.h / 2 - 9, pr = 4.5 + 0.8 * Math.sin(t * 5);
