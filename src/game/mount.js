@@ -2,7 +2,7 @@
 //
 //  class MountRider                    player.mount (CompanionSystem.sync 가 new MountRider(system, id, MOUNTS[id]) 로 붙인다)
 //  class MountGhost extends Entity     잠깐 보이는 탈것 (소환 안개 · 하차 소멸 · 낙마 후 도주 · 필살기 대기)
-//  DISMOUNT_SKILLS                     탈것에서 내린 뒤 시전하는 스킬 (skills.js 에서 p.x/p.y/p.hidden 을 쓰거나 p.vy 를 -9xx 이하로 쏘는 것)
+//  DISMOUNT_SKILLS                     탈것에서 내린 뒤 시전하는 스킬 (skills.js · class_perks_*.js 비전 액티브에서 p.x/p.y/p.hidden 을 쓰거나 p.vy 를 -9xx 이하로 쏘는 것)
 //  fits(world|map, x, bottom, w, h)    AABB 가 SOLID/BREAK 타일과 겹치지 않는가 (x = 왼쪽, bottom = 발)
 //  findMountSpot(world, p, def|{w,h}, {cx, bottom}?) → {x, y, cx, bottom, dx} | null   발 중앙을 지키며 옆으로 최대 32px 밀어 본다
 //
@@ -72,7 +72,7 @@ const ZERO = Object.freeze({ dx: 0, dy: 0 });
  *   p.vy = -9xx / -1xxx 발사 → bran_warlord_leap (전장 도약, -1050) · isolde_dragon_dive (용추락, 땅에서 -1020)   (ULTS.bran -1150 도 필살기)
  * tools/test_mount.mjs 가 skills.js · skills_p2.js 를 다시 grep 해서 이 목록과 맞는지 확인한다.
  */
-export const DISMOUNT_SKILLS = ['bran_warlord_leap', 'lia_shadow_step', 'isolde_dragon_dive'];
+export const DISMOUNT_SKILLS = ['bran_warlord_leap', 'lia_shadow_step', 'isolde_dragon_dive', 'asc_lia_frostwing'];   // asc_*: 비전 액티브 (class_perks_c.js ACTIVES_C, 돌진이 p.x 를 옮긴다)
 
 const R = () => MOUNT_RULES;          // 데이터는 호출 시점에 읽는다 (순환 import 규칙)
 const NUDGE = [0, -8, 8, -16, 16, -24, 24, -32, 32];

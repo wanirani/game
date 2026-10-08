@@ -92,7 +92,8 @@ const metaOf = (s) => ({ endingsSeen: [...new Set([...(s.progress?.seenScripts ?
 // ═════════ G1 데이터 ═════════
 if (run('G1')) {
   section('G1 데이터');
-  const webp = (dir) => sorted(fs.readdirSync(path.join(ROOT, dir)).filter((f) => f.endsWith('.webp')).map((f) => f.slice(0, -5)));
+  // keyart_<hero> = 캐릭터 선택 화면의 키 아트 (애니메 초상화 설치, front/charselect.js) — 회랑 CG 가 아니다
+  const webp = (dir) => sorted(fs.readdirSync(path.join(ROOT, dir)).filter((f) => f.endsWith('.webp') && !f.startsWith('keyart_')).map((f) => f.slice(0, -5)));
   const cgIds = ids('cg'), musIds = ids('mus'), thIds = ids('th');
   eq(sorted(cgIds), webp('assets/cg'), 'GAL_CG = assets/cg/*.webp (새 CG 는 data/gallery.js 에 한 줄)');
   eq(sorted(cgIds), webp('assets/lo/cg'), 'GAL_CG = assets/lo/cg/*.webp');

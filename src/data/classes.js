@@ -121,7 +121,7 @@ def('bran_bloodrage', { charId: 'bran', tier: 2, parent: 'bran_berserker', name:
 def('lia_assassin', { charId: 'lia', tier: 0, name: '암살자', eng: 'ASSASSIN', reqLevel: 1, next: ['lia_ninja', 'lia_dancer'],
   desc: '까마귀 결사의 칼날.', perk: '적의 등 뒤를 공격하면 치명타 확정' });
 def('lia_ninja', { charId: 'lia', tier: 1, parent: 'lia_assassin', name: '닌자', eng: 'NINJA', reqLevel: 10, next: ['lia_shadowmaster', 'lia_kunoichi'],
-  desc: '동방의 인술을 익힌 그림자.', perk: '대시 거리 +30%, 대시 중 표창 투척',
+  desc: '동방의 인술을 익힌 그림자.', perk: '대시 거리 +30%, 대시할 때 표창 2개를 던진다(0.6초에 한 번)',
   mult: { agi: 1.25 }, flat: { moveSpd: 12, crit: 5 },
   look: { primary: '#141420', secondary: '#2a2a4a', trim: '#8a8aa0', headgear: 'mask', scarf: { color: '#2a2a6a', long: true } } });
 def('lia_shadowmaster', { charId: 'lia', tier: 2, parent: 'lia_ninja', name: '그림자 군주', eng: 'SHADOW LORD', reqLevel: 25,
@@ -148,9 +148,9 @@ def('lia_reaper', { charId: 'lia', tier: 2, parent: 'lia_dancer', name: '사신�
 
 // ── 아젤: 장검 ──
 def('azel_dhampir', { charId: 'azel', tier: 0, name: '담피르', eng: 'DHAMPIR', reqLevel: 1, next: ['azel_vampire', 'azel_holyblade'],
-  desc: '인간과 흡혈귀의 혼혈.', perk: '흡혈 2%, 안개 대시 중 무적' });
+  desc: '인간과 흡혈귀의 혼혈.', perk: '흡혈 2%. 안개 대시로 적을 통과하면 적 하나마다 위력 30% 암흑 피해를 주고 최대 HP의 1%를 회복한다(대시당 최대 3명).' });
 def('azel_vampire', { charId: 'azel', tier: 1, parent: 'azel_dhampir', name: '진조의 후예', eng: 'TRUE BLOOD', reqLevel: 10, next: ['azel_nosferatu', 'azel_bloodking'],
-  desc: '흡혈귀의 피를 받아들인 자.', perk: '흡혈 +3%, 암흑 피해 +20%',
+  desc: '흡혈귀의 피를 받아들인 자.', perk: '흡혈 +3%, 암흑 피해 +20%. 적을 처치하면 3초 동안 흡혈 +4%.',
   mult: { atk: 1.15, mag: 1.15 }, flat: { lifesteal: 3, dark: 20 },
   look: { primary: '#0e0a12', secondary: '#b00a24', trim: '#c8a040', eyes: '#ff2040', eyeGlow: true, cape: { color: '#0e0a12', color2: '#b00a24', len: 1.3 } } });
 def('azel_nosferatu', { charId: 'azel', tier: 2, parent: 'azel_vampire', name: '노스페라투', eng: 'NOSFERATU', reqLevel: 25,
@@ -158,7 +158,7 @@ def('azel_nosferatu', { charId: 'azel', tier: 2, parent: 'azel_vampire', name: '
   mult: { atk: 1.3, mag: 1.3, agi: 1.2 }, flat: { airJumps: 2, lifesteal: 3, dark: 25 },
   look: { primary: '#0a0610', secondary: '#8a0a1e', trim: '#ffd84a', wings: 'bat', eyes: '#ff2040', eyeGlow: true, aura: { color: '#b0103a', type: 'blood' }, cape: { color: '#0a0610', color2: '#8a0a1e', len: 1.4 } } });
 def('azel_bloodking', { charId: 'azel', tier: 2, parent: 'azel_vampire', name: '혈왕', eng: 'BLOOD KING', reqLevel: 25,
-  desc: '피의 왕관을 쓴 새로운 군주.', perk: '흡혈 +6%, 치명타 피해 +50%',
+  desc: '피의 왕관을 쓴 새로운 군주.', perk: '흡혈 +6%, 치명타 피해 +50%. 최대 HP를 넘는 회복량은 피의 장벽이 된다(최대 HP의 15%까지, 3초 동안 늘지 않으면 초당 최대 HP의 2%씩 사라진다). 장벽이 피해를 먼저 막는다.',
   mult: { atk: 1.45, hp: 1.2 }, flat: { lifesteal: 6, critDmg: 50, crit: 8 },
   look: { primary: '#2a0006', secondary: '#ff1a2a', trim: '#ffd84a', headgear: 'crown', eyes: '#ff2040', eyeGlow: true, aura: { color: '#ff1a2a', type: 'blood' }, cape: { color: '#5a0010', color2: '#1a0004', len: 1.5 } } });
 def('azel_holyblade', { charId: 'azel', tier: 1, parent: 'azel_dhampir', name: '성검사', eng: 'HOLY BLADE', reqLevel: 10, next: ['azel_dawnbringer', 'azel_seraph'],
@@ -166,7 +166,7 @@ def('azel_holyblade', { charId: 'azel', tier: 1, parent: 'azel_dhampir', name: '
   mult: { atk: 1.12, res: 1.2 }, flat: { holy: 20, resHoly: 100 },
   look: { primary: '#e8e4f0', secondary: '#5a7aff', trim: '#ffd84a', eyes: '#8ac8ff', cape: { color: '#e8e4f0', color2: '#5a7aff', len: 1.2 } } });
 def('azel_dawnbringer', { charId: 'azel', tier: 2, parent: 'azel_holyblade', name: '여명의 검', eng: 'DAWNBRINGER', reqLevel: 25,
-  desc: '밤을 끝내는 새벽의 검.', perk: '검기 발사, 신성 피해 +40%',
+  desc: '밤을 끝내는 새벽의 검.', perk: '마무리 공격 때 검기 발사, 신성 피해 +40%',
   mult: { atk: 1.35, mag: 1.2 }, flat: { holy: 40, reach: 20 },
   look: { primary: '#fff8e8', secondary: '#ffb040', trim: '#ffd84a', halo: true, aura: { color: '#ffd070', type: 'holy' }, cape: { color: '#fff8e8', color2: '#ffb040', len: 1.3 } } });
 def('azel_seraph', { charId: 'azel', tier: 2, parent: 'azel_holyblade', name: '타천사', eng: 'FALLEN SERAPH', reqLevel: 25,

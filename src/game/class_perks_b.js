@@ -662,7 +662,7 @@ export const PERKS_B = {
 
   // 정복왕 「꺾이지 않는 기세」
   bran_conqueror: {
-    N: { combo: 30, chance: 0.10, cd: 1.2, r: 160, mv: 0.6, stun: 0.4, keep: 0.15 },
+    N: { combo: 30, chance: 0.10, cd: 1.2, r: 160, mv: 0.6, stun: 0.4, keep: 0.15, keepCd: 0 },
     onHit(p, tgt, info, atk, w) {
       const N = this.N;
       if ((w.combo?.n ?? 0) < N.combo || Math.random() >= N.chance || !icd(p, 'roar', N.cd, w)) return;
@@ -673,9 +673,19 @@ export const PERKS_B = {
       callout(w, p.cx, p.y - 14, '포효!', '#ff7a3a');
       sfx(w, 'war_horn', { vol: 0.55 });
     },
-    keepCombo(p, dmg) { if (dmg < this.N.keep * maxHp(p)) return true; },
+    // 작은 피격은 콤보를 끊지 않는다 — keepCd 초에 한 번 (keepCombo 는 afterHurt 보다 먼저 불린다: world.onPlayerHurt → afterHurt)
+    keepCombo(p, dmg) {
+      const N = this.N, s = S(p);
+      if (!(dmg < N.keep * maxHp(p)) || p.t - (s.keepT ?? -99) < N.keepCd) return;
+      s.keepT = p.t; s.kept = true;
+      return true;
+    },
     afterHurt(p, dmg, atk, w) {
-      if ((w.combo?.n ?? 0) > 0 && dmg < this.N.keep * maxHp(p) && icd(p, 'keepCue', 1, w)) { bump(p, 'keepCombo'); callout(w, p.cx, p.y - 10, '기세!', '#ffb070'); }
+      const s = S(p);
+      if (!s.kept) return;
+      s.kept = false;
+      bump(p, 'keepCombo');
+      if (icd(p, 'keepCue', 1, w)) callout(w, p.cx, p.y - 10, '기세!', '#ffb070');
     },
     drawMeter(ctx, p, w) {
       if ((w?.combo?.n ?? 0) < this.N.combo) return;

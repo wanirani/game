@@ -41,6 +41,20 @@ function staticChecks() {
     const body = src.slice(mk.at, marks[i + 1]?.at ?? src.length);
     if (/\bp\.(x|y|cx|bottom|hidden)\s*(=|\+=|-=)[^=]/.test(body) || /\bp\.vy\s*=\s*-(9\d\d|1\d{3})\b/.test(body)) want.add(mk.id);
   });
+  // 비전 액티브 (classes_t3 §5): class_perks_a..d.js 의 ACTIVES_X 메서드 'asc_<영웅>_<낱말>(p, w, lv) {' — 다음 메서드·최상단 정의까지가 본문
+  for (const f of ['a', 'b', 'c', 'd']) {
+    const file = path.join(ROOT, `src/game/class_perks_${f}.js`);
+    if (!fs.existsSync(file)) continue;
+    const ps = fs.readFileSync(file, 'utf8');
+    const reA = /^(?:\s+(asc_[a-z0-9_]+)\s*\(|(?:export\s+)?(?:const|let|function)\s+[A-Za-z0-9_$]+)/gm;
+    const am = [];
+    while ((mm = reA.exec(ps))) am.push({ at: mm.index, id: mm[1] ?? null });
+    am.forEach((mk, i) => {
+      if (!mk.id) return;
+      const body = ps.slice(mk.at, am[i + 1]?.at ?? ps.length);
+      if (/\bp\.(x|y|cx|bottom|hidden)\s*(=|\+=|-=)[^=]/.test(body) || /\bp\.vy\s*=\s*-(9\d\d|1\d{3})\b/.test(body)) want.add(mk.id);
+    });
+  }
   // mount.js 는 브라우저 모듈(렌더러를 import)이라 node 에서 읽지 않고 파일에서 목록을 꺼낸다
   const t = fs.readFileSync(path.join(ROOT, 'src/game/mount.js'), 'utf8');
   const m = /export const DISMOUNT_SKILLS\s*=\s*\[([^\]]*)\]/.exec(t);
