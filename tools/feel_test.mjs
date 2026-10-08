@@ -3,7 +3,7 @@
 //
 //   node tools/feel_test.mjs                    all checks, 7 heroes = CHAR_ORDER (≈ 5–9 min; stepped, so load mostly stretches the timing checks)
 //   node tools/feel_test.mjs --quick            kael + lia only for the per-hero checks, one boss hero
-//   node tools/feel_test.mjs --only M,C5,A      run only these ids or groups (M1…M6 C1…C15 U1 U2 A1…A8 V1 X1…X3 I1 R183)
+//   node tools/feel_test.mjs --only M,C5,A      run only these ids or groups (M1…M6 C1…C15 U1 U2 A1…A8 V1 X1…X3 I1 R183 T1)
 //   node tools/feel_test.mjs --heroes kael,bran --out /tmp/x
 //
 // Output: <out>/report.json (default /tmp/claude-0/qa_feel/report.json) and <out>/shots/*.png (V1 review set).
@@ -29,6 +29,12 @@
 //    ('pre-decoded', feel §8); the class is switched mid-stage here, so without the wait the art could lose the load race.
 //  · V1 is a visual review: the harness writes the PNGs and marks V1 'review'; a person (or agent) opens them.
 //  · window.__feelStats (feel §8 instrumentation) is checked as I1: it must exist with ?feelstats and carry the six keys.
+//  · Tier 3 (classes_t3 §11.2): every hero (one per weapon family) also casts its ultimate (U1) and the 'awaken' key awakening
+//    (A3 short cut-in + A4 director) with the tier-3 ascension of its tier-2 pick active (ASC_PICK; Q.setAsc / Q.setClass(ascId)):
+//    the cast events must say tier 3. C1 runs once per hero page with the ascension and once with its tier-2 parent: the first-hit
+//    class and world hitstop of L/M/H/F must be identical (perk procs add no hitstop). T1 (trial smoke): when src/game/trial.js
+//    exports startTrial, a Lv 80 save with p2_done enters kael's first trial (mode 'trial', boss room), fights 4 s and casts the
+//    ultimate there; skipped (inconclusive) when the module is missing.
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -54,12 +60,12 @@ const SHOTS = path.join(OUT, 'shots');
 const ALL_HEROES = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel', 'isolde'];   // = src/data/characters.js CHAR_ORDER (7번째 영웅 이졸데 포함)
 const HEROES = args.heroes && args.heroes !== true ? String(args.heroes).split(',').map((s) => s.trim()).filter(Boolean) : (args.quick ? ['kael', 'lia'] : ALL_HEROES);
 for (const h of HEROES) if (!ALL_HEROES.includes(h)) { console.error(`unknown hero ${h}`); process.exit(2); }
-const ALL_IDS = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', ...Array.from({ length: 15 }, (_, i) => 'C' + (i + 1)), 'U1', 'U2', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'V1', 'X1', 'X2', 'X3', 'I1', 'R183'];
+const ALL_IDS = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', ...Array.from({ length: 15 }, (_, i) => 'C' + (i + 1)), 'U1', 'U2', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'V1', 'X1', 'X2', 'X3', 'I1', 'R183', 'T1'];
 const ONLY = args.only && args.only !== true ? String(args.only).split(',').map((s) => s.trim().toUpperCase()).filter(Boolean) : null;
 // an entry is an exact id (C2, R183) or a one-letter group (C = C1…C15); anything else (R18, C1X) would match no check and the
 // run would open browsers, test nothing and exit 0 — so validation uses the same rule as WANT
 const onlyMatches = (o, id) => o === id || (o.length === 1 && id.startsWith(o));
-if (ONLY) for (const o of ONLY) if (!ALL_IDS.some((id) => onlyMatches(o, id))) { console.error(`--only: unknown id/group ${o} (ids: ${ALL_IDS.join(' ')}; groups: M C U A V X I R)`); process.exit(2); }
+if (ONLY) for (const o of ONLY) if (!ALL_IDS.some((id) => onlyMatches(o, id))) { console.error(`--only: unknown id/group ${o} (ids: ${ALL_IDS.join(' ')}; groups: M C U A V X I R T)`); process.exit(2); }
 const WANT = (id) => !ONLY || ONLY.some((o) => onlyMatches(o, id));
 const want = WANT;
 const wantAny = (...ids) => ids.some(want);
@@ -80,12 +86,19 @@ const CLASS_PICK = {   // tier 0 · one tier 1 · one tier 2 (the tier-2 child o
   azel: ['azel_dhampir', 'azel_vampire', 'azel_nosferatu'],
   isolde: ['isolde_lancer', 'isolde_dragoon', 'isolde_stormlord'],
 };
+/** tier 3 per hero (classes_t3 §11.2): the tier-3 ascension of the CLASS_PICK tier-2 class (filled from ascensions.js below) */
+const ASC_PICK = {};
+{
+  const { ASCENSIONS } = await import(new URL('../src/data/ascensions.js', import.meta.url).href);
+  for (const [h, [, , c2]] of Object.entries(CLASS_PICK)) ASC_PICK[h] = Object.values(ASCENSIONS).find((a) => a.kind === 't3' && (a.parent ?? a.parents?.[0]) === c2)?.id ?? null;
+}
 const MATERIAL_ENEMY = { flesh: 'zombie', bone: 'skeleton', metal: 'armor_knight', ghost: 'ghost', stone: 'mud_man', slime: 'slime', paper: 'mummy', ice: 'frozen_knight', fire: 'hellhound' };
 const MATERIAL_PRESET = { flesh: ['blood'], bone: ['shard'], metal: ['spark'], ghost: ['ecto'], stone: ['gravel'], slime: ['goo'], paper: ['paper'], ice: ['ice'], fire: ['ember'] };
 
 /** fix bucket per check (MASTER_PLAN §5.3) — where a failure is most likely fixed */
 const BUCKET = {
   M: 'FIX-ENGINE (src/game/feel_move.js, src/game/player.js, src/data/feel_move.js)',
+  T: 'TRIALS-ENGINE (src/game/trial.js, src/scenes/stage.js trial mode)',
   C: 'FIX-ENGINE (src/game/impact.js, src/game/enemy.js, src/game/style.js, src/game/world.js, src/core/particles.js)',
   C11: 'FIX-RENDER (src/render/hitfx.js materialBurst) / FIX-ENGINE (src/core/particles.js)',
   C15: 'FIX-PLATFORM (src/core/game.js flash)',
@@ -162,11 +175,11 @@ async function pageLib() {
   if (window.__fq) return 'ok';
   const g = window.__game;
   const I = (p) => import(p);
-  const [IN, EN, PH, AU, CL, FH, AWm, CMB, FMD, HL, TP, AWD, EV, AS] = await Promise.all([
+  const [IN, EN, PH, AU, CL, FH, AWm, CMB, FMD, HL, TP, AWD, EV, AS, ASC] = await Promise.all([
     I('/src/core/input.js'), I('/src/game/enemy.js'), I('/src/core/physics.js'), I('/src/core/audio.js'),
     I('/src/data/classes.js'), I('/src/data/feel_hit.js'), I('/src/game/awaken.js'), I('/src/game/combat.js'),
     I('/src/data/feel_move.js'), I('/src/render/hud_layout.js'), I('/src/core/touchpad.js'), I('/src/data/awaken.js'),
-    I('/src/core/events.js'), I('/src/core/assets.js')]);
+    I('/src/core/events.js'), I('/src/core/assets.js'), I('/src/data/ascensions.js')]);
   const input = IN.input, T = PH.T, TILE = 48;
   const solid = (t) => PH.isSolidType(t);
   const realNow = performance.now.bind(performance);
@@ -297,7 +310,29 @@ async function pageLib() {
     const atk = { owner: p, stats: p.stats, team: 'player', mv: 1, type: 'atk', kb: [150, -80], hitstop: 0.05, shake: 0, dir, hitId: 'fq' + (++hn), tags: ['melee'], ...o };
     return CMB.playerStrike(w, { x: hb.x - 2, y: hb.y - 2, w: hb.w + 4, h: hb.h + 4 }, atk);
   };
-  Q.setClass = (cid) => { const p = Q.p(); p.hero.classId = cid; p.refreshStats(); p.hp = p.stats.hp; p.mp = p.stats.mp; return CL.CLASSES[cid]?.tier ?? null; };
+  /** tier-3 ascension (classes_t3 §11.2) the way progression.setAsc leaves the hero: parent class, asc, Lv ≥ 80, hidden path's
+   *  active learned and slotted; ascChanged + classChanged (perk memo, ultfx/awaken prewarm keys). → heroTier (3) */
+  Q.setAsc = (id) => {
+    const p = Q.p(), A = ASC.ASCENSIONS[id];
+    if (!A) return null;
+    const h = p.hero, prev = h.asc ?? null;
+    h.classId = A.parent ?? A.parents[0]; h.asc = id; h.ascUnlocked = [...new Set([...(h.ascUnlocked ?? []), id])];
+    if ((h.level ?? 1) < 80) h.level = 80;
+    if (A.kind === 'hidden' && A.skill) { h.skills = h.skills ?? {}; h.skills[A.skill] = Math.max(1, h.skills[A.skill] ?? 0); }
+    p.refreshStats(); p.hp = p.stats.hp; p.mp = p.stats.mp;
+    EV.bus.emit('ascChanged', { charId: h.charId, classId: h.classId, asc: id, prev, first: false });
+    EV.bus.emit('classChanged', { charId: h.charId, classId: h.classId, asc: id });
+    return ASC.heroTier(h);
+  };
+  Q.tier = () => ASC.heroTier(Q.p().hero);
+  /** a class id, or an ascension id (→ setAsc); a plain class clears any ascension left from an earlier check */
+  Q.setClass = (cid) => {
+    if (ASC.ASCENSIONS[cid]) return Q.setAsc(cid);
+    const p = Q.p(), had = p.hero.asc;
+    p.hero.classId = cid; p.hero.asc = null; p.refreshStats(); p.hp = p.stats.hp; p.mp = p.stats.mp;
+    if (had) EV.bus.emit('classChanged', { charId: p.hero.charId, classId: cid, asc: null });
+    return CL.CLASSES[cid]?.tier ?? null;
+  };
   Q.ultSetup = (cid) => {
     Q.reset();
     const tier = Q.setClass(cid);
@@ -982,7 +1017,7 @@ async function pUlt({ cid, measure, captureFinal, setup = true }) {
   }
   const res = {
     cid, tier, started, tStart, tLast, worldDur: tStart != null && tLast != null ? +(tLast - tStart).toFixed(3) : null, steps, peak, finalAt,
-    cast: Q.log.ev.slice(ev0).some((e) => e[1] === 'ultimateCast'), cutins: Q.log.scenes.slice(sc0).filter((s) => s[1] === 'push').map((s) => s[2]),
+    cast: Q.log.ev.slice(ev0).some((e) => e[1] === 'ultimateCast'), evTier: Q.log.ev.slice(ev0).find((e) => e[1] === 'ultimateCast')?.[2]?.tier ?? null, cutins: Q.log.scenes.slice(sc0).filter((s) => s[1] === 'push').map((s) => s[2]),
     classes: [...new Set(Q.log.hits.slice(h0).map((h) => h.cls))], dmg: ds.reduce((n, e, i) => n + (hp0[i] - e.hp), 0),
     zoomMin: +zoomMin.toFixed(3), zoomMax: +zoomMax.toFixed(3), frames: measure ? frames : null, paused: !!shot,
     at: { stage: w.stage?.id ?? null, room: w.roomId ?? null, px: Math.round(p.x), camX: Math.round(w.camera.x) },
@@ -1131,7 +1166,7 @@ async function pAwakenStart({ cid, key, render, holdSteps = 30, until = 0.8 }) {
   const Q = window.__fq, w = Q.w(), p = Q.p(), g = Q.g;
   if (cid) Q.setClass(cid);
   Q.reset(Q.home.x, 4);
-  const tier = Q.CLASSES[p.hero.classId]?.tier ?? 0;
+  const tier = Q.tier();
   let d = Q._a2d && !Q._a2d.dead ? Q._a2d : null;
   if (!d) d = Q._a2d = Q.dummy('skeleton', 150, {});
   const d2 = Q.dummy('zombie', -160, {});
@@ -1182,6 +1217,7 @@ async function pAwakenFinish({ render }) {
     dmg, peak, director: AD.last?.director ?? null, done: !!AD.last?.done, why: AD.last?.why ?? null, frames, sp: w.run.sp, aw: w.run.aw,
     padVisibleDuringDirector: padSeen.filter(Boolean).length, padSamples: padSeen.length, padVisibleAfter: !!tp?.visible, ridingDuringDirector: mounted.filter(Boolean).length,
     awakenCasts: Q.log.ev.slice(A.ev0).filter((e) => e[1] === 'awakenCast').length,
+    evTier: Q.log.ev.slice(A.ev0).find((e) => e[1] === 'awakenCast')?.[2]?.tier ?? null,
   };
   return res;
 }
@@ -1485,8 +1521,9 @@ async function shot(P, name, note) {
 const KAEL_ONLY = ALL_IDS.filter((id) => (id[0] === 'C' && id !== 'C2') || id === 'A8' || id === 'I1');
 async function heroSuite(hero, { onlyIds = null } = {}) {
   const [c0, c1, c2] = CLASS_PICK[hero];
+  const c3 = ASC_PICK[hero];   // tier 3 (classes_t3 §11.2): the ascension of c2
   const want = onlyIds ? (id) => onlyIds.includes(id) && WANT(id) : WANT, wantAny = (...ids) => ids.some(want);
-  const needPage = wantAny('M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'U1', 'U2', 'A1', 'A2', 'A3', 'A4', 'A6', 'V1') || (hero === 'kael' && (ALL_IDS.some((id) => id[0] === 'C' && id !== 'C2' && want(id)) || wantAny('A8', 'I1'))) || (hero === 'lia' && want('C2'));
+  const needPage = wantAny('M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'U1', 'U2', 'A1', 'A2', 'A3', 'A4', 'A6', 'V1') || (hero === 'kael' && (ALL_IDS.some((id) => id[0] === 'C' && id !== 'C2' && want(id)) || wantAny('A8', 'I1'))) || (hero === 'lia' && want('C2')) || (!!c3 && want('C1'));
   if (!needPage) return;
   const P = await openPage('hero_' + hero, `index.html?scene=stage&stage=s04&char=${hero}${hero === 'kael' ? '&feelstats' : ''}`, { pad: true });
   const ctx = { hero };
@@ -1581,11 +1618,26 @@ async function heroSuite(hero, { onlyIds = null } = {}) {
     if (want('I1')) await run(P, 'I1', ctx, pI1, {}, (r) => rec('I1', ctx, r.present && ['particles', 'dmgNums', 'ghosts', 'gradients', 'heroDraws', 'sfxStarts'].every((k) => r.keys.includes(k)) ? 'pass' : 'fail', r.present ? `window.__feelStats keys: ${r.keys.join(', ')}` : 'window.__feelStats is not defined with ?feelstats (feel §8 instrumentation missing)', r));
   }
   if (hero === 'lia' && want('C2')) await run(P, 'C2', ctx, pC2, {}, (r) => rec('C2', ctx, r.perSec.every((n) => n >= 3) && r.targets === 3 && r.worstWindow <= 0.40 + 1 / 60 + 1e-6 ? 'pass' : 'fail', `lia mashing on 3 dummies 3 s: ${r.hits} hits on ${r.targets}/3 targets (${r.perSec.join('/')} per second, ≥ 3 each), frozen ${round(r.frozenTotal, 2)} s total, worst 1 s window ${round(r.worstWindow, 3)} s (≤ 0.40)`, r));
+  // ── tier 3: the C1 first-hit class and world hitstop of L/M/H/F with the ascension = with its tier-2 parent (§11.2) ──
+  if (c3 && want('C1') && !P.fatal) {
+    const vctx = { hero, variant: 'asc ' + c3 };
+    await P.page.evaluate((c) => window.__fq.setClass(c), c2).catch(() => {});
+    const rb = await run(P, 'C1', vctx, pC1C3, {}, null);
+    const t3 = await P.page.evaluate((c) => window.__fq.setClass(c), c3).catch(() => null);
+    const ra = await run(P, 'C1', vctx, pC1C3, {}, null);
+    await P.page.evaluate((c) => window.__fq.setClass(c), c2).catch(() => {});
+    if (rb?.rows && ra?.rows) {
+      const diff = ra.rows.map((x, i) => { const b = rb.rows[i]; return !b || x.cls !== b.cls || x.moveId !== b.moveId || Math.abs((x.worldHitstop ?? -1) - (b.worldHitstop ?? -1)) > 1e-6 ? `${x.want}: ${b?.moveId}→${b?.cls} ${round(b?.worldHitstop, 3)} vs ${x.moveId}→${x.cls} ${round(x.worldHitstop, 3)}` : null; }).filter(Boolean);
+      const hits = ra.rows.filter((x) => x.cls != null).length;
+      rec('C1', vctx, t3 === 3 && hits && !diff.length ? 'pass' : 'fail', `tier ${t3} ${c3} vs tier-2 ${c2}: ${diff.length ? 'differs — ' + diff.join('; ') : `same first-hit class + world hitstop on ${hits}/${ra.rows.length} moves (${ra.rows.map((x) => `${x.want}:${x.cls ?? '-'} ${round(x.worldHitstop, 3)}`).join(', ')})`}`, { base: rb.rows, asc: ra.rows });
+    }
+  }
   // ── ultimates ──
   let gameplay = null;   // U2 gameplay baseline of this page: { b: wall-time stats, cb: CPU ms per frame }
   if (wantAny('U1', 'U2', 'V1')) {
-    for (const [i, cid] of [c0, c1, c2].entries()) {
-      if (i < 2 && !want('U1')) continue;
+    for (const [i, cid] of [c0, c1, c2, c3].entries()) {
+      if ((i < 2 || i === 3) && !want('U1')) continue;
+      if (!cid) continue;
       const measure = i === 2 && want('U2');
       const capture = i === 2 && want('V1');
       let r, m0, m1, m2, m3, m4, m5, base = null;
@@ -1614,8 +1666,9 @@ async function heroSuite(hero, { onlyIds = null } = {}) {
       const dur = r.tStart != null && tLast != null ? +(tLast - r.tStart).toFixed(3) : null;
       if (want('U1')) {
         const durOk = dur != null && Math.abs(dur - BASE.ult[hero]) <= BASE.ult[hero] * 0.1;
-        const ok = r.cast && r.started && durOk && after.overlays === 0 && after.letterbox === 0 && !after.hudHidden && Math.abs(after.zoom - 1) <= 0.01 && r.peak <= 600;
-        rec('U1', { hero, variant: cid }, ok ? 'pass' : 'fail', `tier ${r.tier}: cutscene ${dur} s world time (today ${BASE.ult[hero]} ±10%), peak particles ${r.peak} (≤ 600), afterwards overlays ${after.overlays}, letterbox ${after.letterbox}, hud hidden ${after.hudHidden}, zoom ${after.zoom}, classes ${r.classes.join('')}, cut-ins ${r.cutins.join('/')}`, { ...r, frames: undefined, dur, after, fin: fin ? { ...fin, frames: undefined } : null });
+        const tierOk = i < 3 || (r.tier === 3 && r.evTier === 3);   // tier 3: heroTier and the ultimateCast payload
+        const ok = r.cast && r.started && durOk && tierOk && after.overlays === 0 && after.letterbox === 0 && !after.hudHidden && Math.abs(after.zoom - 1) <= 0.01 && r.peak <= 600;
+        rec('U1', { hero, variant: cid }, ok ? 'pass' : 'fail', `tier ${r.tier}${i === 3 ? ` (ultimateCast tier ${r.evTier})` : ''}: cutscene ${dur} s world time (today ${BASE.ult[hero]} ±10%), peak particles ${r.peak} (≤ 600), afterwards overlays ${after.overlays}, letterbox ${after.letterbox}, hud hidden ${after.hudHidden}, zoom ${after.zoom}, classes ${r.classes.join('')}, cut-ins ${r.cutins.join('/')}`, { ...r, frames: undefined, dur, after, fin: fin ? { ...fin, frames: undefined } : null });
       }
       if (measure && base?.length && r.frames?.length) {
         const b = stats(base), u = stats(r.frames);
@@ -1682,6 +1735,18 @@ async function heroSuite(hero, { onlyIds = null } = {}) {
       if (f2 && want('A4')) {
         const ok = f2.done && !f2.cutscene && !f2.freezeEnemies && !f2.hudHidden && f2.dmg.some((d) => d > 0) && f2.director === 'hero' && f2.peak <= 700;
         rec('A4', { hero, variant: c2 }, ok ? 'pass' : 'fail', `진 각성 director ${f2.director} (${f2.why}) ${f2.dirT} s, cutscene ${f2.cutscene}, freezeEnemies ${f2.freezeEnemies}, dummy damage ${f2.dmg.map((d) => Math.round(d)).join('/')}, peak ${f2.peak}`, { ...f2, frames: undefined });
+      }
+      // third awakening: tier 3 (the ascension of c2, classes_t3 §7.2) via the 'awaken' key — 초월 각성, awakenCast tier 3
+      if (c3) {
+        const s3 = await run(P, 'A3', { hero, variant: 'tier 3 ' + c3 }, pAwakenStart, { cid: c3, key: 'awaken', render: false, until: 9 }, null);
+        const f3 = s3 ? await run(P, 'A4', { hero, variant: c3 }, pAwakenFinish, { render: false }, null) : null;
+        await P.page.evaluate(pAwakenCleanup).catch(() => {});
+        if (s3 && f3 && want('A3')) rec('A3', { hero, variant: 'tier 3 ' + c3 }, s3.tier === 3 && s3.pushAt != null && f3.popT != null && Math.abs(f3.popT - (s3.info?.short ? 0.75 : 1.45)) <= 0.05 ? 'pass' : 'fail', `'awaken' key at tier ${s3.tier}: cut-in pushed at step ${s3.pushAt}, short=${s3.info?.short}, popped at ${f3.popT} s (${s3.info?.short ? '0.75' : '1.45'} ±0.05), text '${s3.info?.renderedText ?? '-'}'`, { info: s3.info, popT: f3.popT });
+        if (f3 && want('A4')) {
+          const ok = f3.done && !f3.cutscene && !f3.freezeEnemies && !f3.hudHidden && f3.dmg.some((d) => d > 0) && f3.director === 'hero' && f3.peak <= 700 && f3.evTier === 3;
+          rec('A4', { hero, variant: c3 }, ok ? 'pass' : 'fail', `초월 각성 (awakenCast tier ${f3.evTier}) director ${f3.director} (${f3.why}) ${f3.dirT} s, cutscene ${f3.cutscene}, freezeEnemies ${f3.freezeEnemies}, dummy damage ${f3.dmg.map((d) => Math.round(d)).join('/')}, peak ${f3.peak} (≤ 700)`, { ...f3, frames: undefined });
+        }
+        await P.page.evaluate((c) => window.__fq.setClass(c), c2).catch(() => {});
       }
     }
   }

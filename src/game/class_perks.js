@@ -501,7 +501,7 @@ export function drawPerkLayer(ctx, e, w) {
         const fn = M[key];
         if (!fn || n >= MARK_CAP || en.hidden) continue;
         n++;
-        try { fn(ctx, en.kind === 'boss' ? markTarget(en, w) : en, m.n, (m.until - tn) / m.dur, tn); } catch (err) { markFail(key, err); }
+        try { fn(ctx, en.kind === 'boss' ? markTarget(en, w, markPin(fn)) : en, m.n, (m.until - tn) / m.dur, tn); } catch (err) { markFail(key, err); }
         ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
       }
       if (!live) MARKED.delete(en);
@@ -527,15 +527,47 @@ export function meterHidden(p, w) {
 // 머리 위 표식이 데미지 숫자 기둥과 겹쳤다. 피격 상자(hitParts · hurtboxes) 중 가장 높은 위끝으로 올리되, 화면 위·HUD 윗줄 아래로
 // 묶고(공중의 보스), 이 보스의 숫자 기둥이 그 자리를 지나가면 기둥 위끝 위로 비킨다(다시 화면 안으로 묶는다). 자리는 부드럽게 따라간다.
 // 표식 함수에는 보스 대신 대리 객체(Object.create(보스) — y·h 만 덮음: 아래끝 e.y + e.h 와 x·w 는 그대로)를 넘긴다.
-const ANCHOR = new WeakMap();   // 보스 → { P: 대리 객체, ay, t }
+// 숫자 기둥 비키기는 머리 위 표식(pin)에만: 몸을 덮는 표식(균열·여명 고리·서리 고리 등 e.h 로 그리는 것)은 피격 상자 위끝까지만 늘리고
+// 기둥을 따라 늘었다 줄었다 하지 않는다 (UI-CORE VERIFY: s03/s04 에서 몸 표식이 숫자가 뜰 때마다 35–104 px 위아래로 미끄러졌다)
+const ANCHOR = new WeakMap();   // 보스 → { P: 대리 객체, ay, t } (머리 위 표식)
+const ANCHOR_BODY = new WeakMap();   // 보스 → 같은 모양 (몸 표식: 숫자 기둥을 보지 않는다)
 const ANCHOR_MIN = 8;           // 피격 상자 위끝이 이만큼(px) 넘게 높을 때만 옮긴다
-function markTarget(en, w) {
+/**
+ * 표식 함수가 머리 위에만 그리나(pin) — 표식 함수마다 한 번, 기록용 가짜 ctx 에 기준 상자(y 1000 · h 300)로 그려 본 가장 아래 y 가
+ * 위끝 + 24 이하이면 pin. 던지거나 알 수 없으면 몸 표식으로 본다(숫자 기둥 비키기 없음 = 예전 자리). 캔버스·그라디언트를 만들지 않는다
+ */
+const MARK_PIN = new WeakMap();
+const NOOP = () => {};
+function markPin(fn) {
+  let v = MARK_PIN.get(fn);
+  if (v !== undefined) return v;
+  v = false;
+  try {
+    let lo = -Infinity;
+    const at = (y) => { if (Number.isFinite(y) && y > lo) lo = y; };
+    const rec = {
+      moveTo: (x, y) => at(y), lineTo: (x, y) => at(y), arc: (x, y, r) => at(y + Math.abs(r || 0)), arcTo: (a, b, c, y) => at(Math.max(b, y)),
+      ellipse: (x, y, rx, ry) => at(y + Math.abs(ry || 0)), rect: (x, y, w, h) => at(y + h), fillRect: (x, y, w, h) => at(y + h), strokeRect: (x, y, w, h) => at(y + h),
+      quadraticCurveTo: (a, b, x, y) => at(Math.max(b, y)), bezierCurveTo: (a, b, c, d, x, y) => at(Math.max(b, d, y)), fillText: (s, x, y) => at(y), strokeText: (s, x, y) => at(y),
+      drawImage: (img, ...q) => { if (q.length >= 8) at(q[5] + q[7]); else if (q.length >= 4) at(q[1] + q[3]); else at(q[1] + (img?.height ?? 0)); },
+      measureText: () => ({ width: 0 }), createRadialGradient: () => ({ addColorStop: NOOP }), createLinearGradient: () => ({ addColorStop: NOOP }),
+    };
+    const ctx = new Proxy(rec, { get: (t, k) => (k in t ? t[k] : NOOP), set: () => true });
+    const E = { kind: 'boss', x: 0, y: 1000, w: 120, h: 300, cx: 60, cy: 1150, hp: 1, maxHp: 1, stats: { maxHp: 1 }, facing: 1, _ck: {} };
+    fn(ctx, E, 1, 1, 0);
+    v = lo <= 1000 + 24;
+  } catch { v = false; }
+  MARK_PIN.set(fn, v);
+  return v;
+}
+function markTarget(en, w, pin = true) {
   let top = Infinity;
   try {
     const B = typeof en.hitParts === 'function' ? en.hitParts() : typeof en.hurtboxes === 'function' ? en.hurtboxes() : null;
     if (B) for (let i = 0; i < B.length; i++) { const b = B[i]; if (b && !b.off && b.h > 0 && b.y < top) top = b.y; }
   } catch { top = Infinity; }
-  let rec = ANCHOR.get(en);
+  const AM = pin ? ANCHOR : ANCHOR_BODY;
+  let rec = AM.get(en);
   const y0 = en.y;
   let ay = top < y0 - ANCHOR_MIN ? top : y0;   // 머리 상자가 판정 상자보다 높은 큰 보스만 올린다
   // 화면 위 · HUD 윗줄 아래로 (머리 위 표식 높이 ~20 px 를 남긴다). 판정 상자 위끝보다 아래로는 내리지 않는다
@@ -546,9 +578,9 @@ function markTarget(en, w) {
     if (fx?.band?.n && typeof fx.bandPush === 'function') v += fx.bandPush(en.cx - 24, en.cx + 24, v - 22);
     return v;
   };
-  if (ay < y0) ay = clampTop(ay);
-  // 이 보스의 숫자 기둥 (core/particles.js dmg: e._dmgCol) 이 표식 자리를 지나가면 기둥 위로
-  const col = en._dmgCol;
+  if (ay < y0 && pin) ay = clampTop(ay);
+  // 이 보스의 숫자 기둥 (core/particles.js dmg: e._dmgCol) 이 표식 자리를 지나가면 기둥 위로 (머리 위 표식만)
+  const col = pin ? en._dmgCol : null;
   if (col && fx && typeof fx.colTop === 'function') {
     const clk = fx.clock ?? 0, live = clk < (col.until ?? col.t + 1.3) || (col.tp && col.tp.life > 0);
     if (live && Math.abs((col.x ?? en.cx) - en.cx) < (col.w || 40) / 2 + 26) {
@@ -559,7 +591,7 @@ function markTarget(en, w) {
   }
   if (!rec) {
     if (Math.abs(ay - y0) < 0.5) return en;   // 옮길 일이 없다 (대리 객체도 만들지 않는다)
-    rec = { P: Object.create(en), ay, t: w?.time ?? 0 }; ANCHOR.set(en, rec);
+    rec = { P: Object.create(en), ay, t: w?.time ?? 0 }; AM.set(en, rec);
   }
   const tn = w?.time ?? 0, dt = Math.min(0.1, Math.max(0, tn - rec.t));
   rec.t = tn;

@@ -286,7 +286,7 @@ const setClassAsc = (s, cls, asc = null) => s.eval(async ({ cls, asc }) => {
  * overlap, score = share of those pixels where A is closer to C (wings, no cape) than to B (cape, no wings) = wings on top.
  * → { wingPx, capePx, visible, overlap, score } (score null without overlap — the puppet's idle cape hangs below the wings)
  */
-const wingsOverCape = (s) => s.eval(() => {
+const wingsOverCape = (s, vector = false) => s.eval((vector) => {
   const g = window.__game, w = g.world, cam = w?.camera, p = w?.player;
   if (!p || !cam || !p.look?.wings || !p.look?.cape) return null;
   const cv = g.canvas, z = cam.zoom || 1, sx = cv.width / g.viewW, sy = cv.height / g.viewH;
@@ -300,7 +300,8 @@ const wingsOverCape = (s) => s.eval(() => {
   p.buffs.invincible = 0; p.iframes = 0;
   const grab = (look) => { p.look = look; window.__qaStep(0, true); k.width = cw; k.height = ch; kx.drawImage(cv, x0, y0, cw, ch, 0, 0, cw, ch); return kx.getImageData(0, 0, cw, ch).data; };
   try {
-    const A = grab(look0), B = grab({ ...look0, wings: null }), C = grab({ ...look0, cape: null }), D = grab({ ...look0, wings: null, cape: null });
+    const L = (o) => (vector ? { ...look0, puppet: false, ...o } : { ...look0, ...o });   // look.puppet false = the vector fallback (hero.js)
+    const A = grab(L({})), B = grab(L({ wings: null })), C = grab(L({ cape: null })), D = grab(L({ wings: null, cape: null }));
     const diff = (X, Y, i) => Math.abs(X[i] - Y[i]) + Math.abs(X[i + 1] - Y[i + 1]) + Math.abs(X[i + 2] - Y[i + 2]);
     let wingPx = 0, capePx = 0, overlap = 0, top = 0, shown = 0;
     for (let i = 0; i < A.length; i += 4) {
@@ -311,7 +312,7 @@ const wingsOverCape = (s) => s.eval(() => {
     }
     return { wingPx, capePx, visible: wingPx ? +(shown / wingPx).toFixed(2) : null, overlap, score: overlap ? +(top / overlap).toFixed(2) : null };
   } finally { p.look = look0; p.buffs.invincible = inv; p.iframes = ifr; window.__qaStep(0, true); }
-});
+}, vector);
 
 // ── groups ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 const GROUP_FNS = {
@@ -508,11 +509,12 @@ const GROUP_FNS = {
           const set = await setClassAsc(s, cls.asc ? null : cls.id, cls.asc);
           await play(s, 20); await s.wait(500); await waitBakes(s, 3000);
           if (cls.asc && set.tier !== 3) harness.push(`${hero} ${cls.id}: heroTier ${set.tier} after setting the ascension (want 3)`);
-          if (cls.asc && set.wings) {   // wings over the cape, standing (idle) before the attack
-            const r = await wingsOverCape(s);
-            if (r) {
-              wingRows.push({ vp, hero, asc: cls.id, wings: set.wings, ...r });
-              if (wingBad(r)) flagged.push({ label: `${hero} ${cls.id} wings`, why: wingWhy(r, set.wings), file: 'src/render/hero_puppet.js', top: 'stage' });
+          if (cls.asc && set.wings) {   // wings over the cape, standing (idle) before the attack: painted puppet and vector fallback
+            for (const vector of [false, true]) {
+              const r = await wingsOverCape(s, vector);
+              if (!r) continue;
+              wingRows.push({ vp, hero, asc: cls.id, wings: set.wings, path: vector ? 'vector' : 'puppet', ...r });
+              if (wingBad(r)) flagged.push({ label: `${hero} ${cls.id} wings (${vector ? 'vector' : 'puppet'})`, why: wingWhy(r, set.wings), file: vector ? 'src/render/hero.js' : 'src/render/hero_puppet.js', top: 'stage' });
             }
           }
           await play(s, 24, `if (p) p.buffs.invincible = 9999; if (i === 10) key('KeyX', true); if (i === 13) key('KeyX', false);`);
@@ -544,8 +546,8 @@ const GROUP_FNS = {
     closeGroup('heroes', vp, s, shots, harness);
     // wings over the cape (tier-3 winged ascensions)
     const wr = wingRows.filter((r) => r.vp === vp), bad = wr.filter(wingBad);
-    C.add(`heroes.${vp}.wings`, !wr.length ? 'warn' : bad.length ? 'fail' : 'pass', !wr.length ? 'no winged ascension measured (no tier-3 pick with wings among --heroes, or the look had no cape)' : `${wr.map((r) => `${r.asc} (${r.wings}) ${r.wingPx} px, ${Math.round((r.visible ?? 0) * 100)} % shown with the cape on, ${r.score == null ? 'no overlap with the cape' : `${Math.round(r.score * 100)} % of ${r.overlap} overlap px wing on top`}`).join('; ')} (need ≥ ${WING_MIN_PX} px, ≥ ${WING_MIN_SCORE * 100} % shown / on top)`);
-    for (const r of bad) findings.push({ id: `visual.wings.${vp}.${r.asc}`, sev: 'S3', kind: 'visual', title: `${r.asc}: ${wingWhy(r, r.wings)} (${vp})`, detail: JSON.stringify({ wingPx: r.wingPx, capePx: r.capePx, visible: r.visible, overlap: r.overlap, score: r.score }), file: 'src/render/hero_puppet.js', ...ownerOf('src/render/hero_puppet.js'), repro: `node tools/qa/visual_review.mjs --only heroes --heroes ${r.hero} --vp ${vp}` });
+    C.add(`heroes.${vp}.wings`, !wr.length ? 'warn' : bad.length ? 'fail' : 'pass', !wr.length ? 'no winged ascension measured (no tier-3 pick with wings among --heroes, or the look had no cape)' : `${wr.map((r) => `${r.asc} ${r.path} (${r.wings}) ${r.wingPx} px, ${Math.round((r.visible ?? 0) * 100)} % shown with the cape on, ${r.score == null ? 'no overlap with the cape' : `${Math.round(r.score * 100)} % of ${r.overlap} overlap px wing on top`}`).join('; ')} (need ≥ ${WING_MIN_PX} px, ≥ ${WING_MIN_SCORE * 100} % shown / on top)`);
+    for (const r of bad) findings.push({ id: `visual.wings.${vp}.${r.asc}.${r.path}`, sev: 'S3', kind: 'visual', title: `${r.asc} (${r.path}): ${wingWhy(r, r.wings)} (${vp})`, detail: JSON.stringify({ wingPx: r.wingPx, capePx: r.capePx, visible: r.visible, overlap: r.overlap, score: r.score }), file: r.path === 'vector' ? 'src/render/hero.js' : 'src/render/hero_puppet.js', ...ownerOf(r.path === 'vector' ? 'src/render/hero.js' : 'src/render/hero_puppet.js'), repro: `node tools/qa/visual_review.mjs --only heroes --heroes ${r.hero} --vp ${vp}` });
     await s.close();
   },
 
