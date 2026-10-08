@@ -433,16 +433,16 @@ export class DialogueScene extends Scene {
     const y = 6;
     // 버튼 줄 뒤 옅은 어둠 (아래 장면의 HUD 글자와 겹쳐도 읽히게)
     const gw = items.length * cw + (items.length - 1) * gap + 12;
-    ctx.fillStyle = cachedGrad(ctx, `dlgCtl|${x}|${gw}`, (c) => { const g = c.createLinearGradient(x - 6, 0, x - 6 + gw, 0); g.addColorStop(0, 'rgba(6,2,8,0)'); g.addColorStop(0.12, 'rgba(6,2,8,0.62)'); g.addColorStop(1, 'rgba(6,2,8,0.7)'); return g; });
+    ctx.fillStyle = cachedGrad(ctx, `dlgCtl|${x}|${gw}`, (c) => { const g = c.createLinearGradient(x - 6, 0, x - 6 + gw, 0); g.addColorStop(0, 'rgba(6,2,8,0)'); g.addColorStop(0.12, 'rgba(6,2,8,0.7)'); g.addColorStop(1, 'rgba(6,2,8,0.78)'); return g; });
     ctx.fillRect(x - 6, 0, gw + 6, y + ch + 4);
     for (const it of items) {
       const r = { x, y, w: cw, h: ch };
       const cx = x + cw / 2, cy = y + 3 + d / 2;
       ctx.save();
-      if (it.off) ctx.globalAlpha *= 0.35;
       const hot = over === it.id;
-      ctx.fillStyle = it.on ? 'rgba(70,14,26,0.92)' : 'rgba(12,4,14,0.82)';
+      ctx.fillStyle = it.on ? 'rgba(70,14,26,0.92)' : 'rgba(12,4,14,0.88)';
       ctx.beginPath(); ctx.arc(cx, cy, d / 2, 0, Math.PI * 2); ctx.fill();
+      if (it.off) ctx.globalAlpha *= 0.35;   // 선택지에서는 넘기기 없음: 판은 그대로, 테두리·아이콘·이름만 흐리게
       ctx.lineWidth = it.on || hot ? 2 : 1.5;
       ctx.strokeStyle = it.on || hot ? GOLD : 'rgba(200,160,90,0.55)';
       ctx.stroke();

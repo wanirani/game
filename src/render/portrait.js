@@ -11,6 +11,7 @@
 //  bustCrop(img, key, r, { zoom, faceY }) → {dx, dy, dw, dh}   흉상을 사각형에 커버로: 얼굴(face)을 가로 가운데·세로 faceY 에 두고
 //      아래(가슴 잘린 면)와 양옆이 비지 않게 자른다. zoom 은 예전 전신 그림 기준 값을 흉상 얼굴 크기로 환산한다
 //  legacyCrop(img, key, aspect) → {sx, sy, sw, sh}   예전 그림에서 얼굴 중심 머리·어깨 카드 자르기 (대화창 액자)
+//  faceRect(img, key, pad) → {sx, sy, sw, sh}   얼굴 중심 정사각 자르기 (원형 HUD 얼굴·동료 아이콘 — 다른 화면 주인이 쓰도록)
 //  bustSilhouette(img) → 캔버스 | null   흉상 모양 그대로의 검은 실루엣 + 붉은 테두리광 (잠긴 영웅). 이미지마다 한 번 (≤ 512 px)
 //  cachedGrad(ctx, key, make) → 그라데이션 (키마다 한 번 — 프레임마다 새로 만들지 않는다)
 import { assets } from '../core/assets.js';
@@ -100,6 +101,21 @@ export function legacyCrop(img, key, aspect = 0.82) {
   const sx = Math.min(iw - sw, Math.max(0, f.x * iw - sw / 2));
   const sy = Math.min(ih - sh, Math.max(0, f.y * ih - sh * 0.38));
   return { sx, sy, sw, sh };
+}
+
+/**
+ * 얼굴 중심 정사각 자르기 (원형 아이콘·HUD 얼굴용: hud paintPortrait, hub/party/pause/worldmap/highscore, 동료 아이콘).
+ * pad = 얼굴 너비의 몇 배를 한 변으로 (1.7 ≈ 이마~턱 + 머리카락 조금). 흉상·예전 그림 모두 표의 face(없으면 기본값)를 쓴다.
+ * 반환 {sx, sy, sw, sh} (이미지 px) — ctx.drawImage(img, sx, sy, sw, sh, x, y, d, d)
+ */
+export function faceRect(img, key, pad = 1.7) {
+  const [iw, ih] = dims(img);
+  if (!(iw > 0 && ih > 0)) return null;
+  const f = faceOf(key, img);
+  const s = Math.min(iw, ih, Math.max(8, f.s * iw * pad));
+  const sx = Math.min(iw - s, Math.max(0, f.x * iw - s / 2));
+  const sy = Math.min(ih - s, Math.max(0, f.y * ih - s * 0.48));
+  return { sx, sy, sw: s, sh: s };
 }
 
 // ── 잠긴 영웅의 실루엣 (흉상 모양) ──
