@@ -192,6 +192,10 @@ export class StatusTab extends Tab {
     this.refresh();
     const t = this.t, hero = this.hero, ch = D.CHARACTERS()[hero.charId] || {};
     const LW = Math.min(330, Math.round(A.w * 0.34));
+    // 오른쪽 능력치 판 배치를 먼저 (낮은 화면 = 두 쪽 배치면 왼쪽 정보 칸의 작은 글자도 11 → 12)
+    const R = { x: A.x + LW + 12, y: A.y, w: A.w - LW - 12, h: A.h };
+    this.lay = statLayout(R);
+    const sm = this.lay.pages ? 12 : 11;
     // ── 왼쪽: 영웅 카드 (무대 높이는 아래 정보 칸(≈170 px)을 뺀 만큼) ──
     const sh = Math.round(clamp(A.h - 178, 108, 226));
     const sx = A.x + 8, sy = A.y + 8, sw = LW - 16;
@@ -212,12 +216,12 @@ export class StatusTab extends Tab {
     const pl = this.world?.player;
     const hpNow = Math.ceil(pl ? pl.hp : this.stats.hp), mpNow = Math.floor(pl ? pl.mp : this.stats.mp);
     const iy0 = sy + sh + 4;
-    this.txt.draw(ctx, 'info', `${this.rev}|${hero.charId}|${hero.classId}|${hero.level}|${hero.exp}|${hpNow}|${mpNow}|${this.stats.hp}|${this.stats.mp}`, A.x + 2, iy0, LW - 4, A.y + A.h - 2 - iy0, (g) => {
+    this.txt.draw(ctx, 'info', `${this.rev}|${hero.charId}|${hero.classId}|${hero.level}|${hero.exp}|${hpNow}|${mpNow}|${this.stats.hp}|${this.stats.mp}|${sm}`, A.x + 2, iy0, LW - 4, A.y + A.h - 2 - iy0, (g) => {
       // 이름 · 칭호
       let y = sy + sh + 30;
       text(g, ch.name ?? hero.charId, A.x + LW / 2, y, { size: 22, align: 'center', weight: 800, family: FONT.title, color: PAL.bone, ow: 4, maxWidth: LW - 24 });
       y += 18;
-      text(g, `${ch.eng ?? ''}  ·  ${ch.title ?? ''}`, A.x + LW / 2, y, { size: 11, align: 'center', weight: 700, family: FONT.num, color: PAL.dim, ow: 2, maxWidth: LW - 20 });
+      text(g, `${ch.eng ?? ''}  ·  ${ch.title ?? ''}`, A.x + LW / 2, y, { size: sm, align: 'center', weight: 700, family: FONT.num, color: PAL.dim, ow: 2, maxWidth: LW - 20 });
       // 직업 계보
       y += 12;
       const chain = D.classChain(hero.classId);
@@ -240,21 +244,21 @@ export class StatusTab extends Tab {
       text(g, String(hero.level), lx + 22, y + 24, { size: 32, weight: 900, family: FONT.num, color: PAL.goldHi, ow: 4 });
       const need = D.expToNext(hero.level), maxed = hero.level >= D.MAX_LEVEL();
       const ex = lx + 86, ew = LW - (ex - A.x) - 18;
-      text(g, 'EXP', ex, y + 6, { size: 11, weight: 800, family: FONT.num, color: PAL.dim });
-      text(g, maxed ? 'MAX' : `${num(hero.exp)} / ${num(need)}`, ex + ew, y + 6, { size: 11, align: 'right', weight: 700, family: FONT.num, color: PAL.bone });
+      text(g, 'EXP', ex, y + 6, { size: sm, weight: 800, family: FONT.num, color: PAL.dim });
+      text(g, maxed ? 'MAX' : `${num(hero.exp)} / ${num(need)}`, ex + ew, y + 6, { size: sm, align: 'right', weight: 700, family: FONT.num, color: PAL.bone });
       gauge(g, ex, y + 11, ew, 9, maxed ? 1 : hero.exp / need, '#e8c872');
-      text(g, maxed ? '최고 레벨에 도달했습니다' : `다음 레벨까지 ${num(Math.max(0, need - hero.exp))}`, ex, y + 36, { size: 11, weight: 600, color: PAL.dim, maxWidth: ew });
+      text(g, maxed ? '최고 레벨에 도달했습니다' : `다음 레벨까지 ${num(Math.max(0, need - hero.exp))}`, ex, y + 36, { size: sm, weight: 600, color: PAL.dim, maxWidth: ew });
       // HP/MP (스테이지 안이면 현재치)
       y += 50;
       const p = this.world?.player;
       const hp = p ? p.hp : this.stats.hp, mp = p ? p.mp : this.stats.mp;
       const bw = (LW - 36 - 10) / 2;
-      text(g, 'HP', lx, y + 4, { size: 11, weight: 800, family: FONT.num, color: '#ff8a9a' });
-      text(g, `${Math.ceil(hp)} / ${this.stats.hp}`, lx + bw, y + 4, { size: 11, align: 'right', weight: 700, family: FONT.num, color: PAL.bone });
+      text(g, 'HP', lx, y + 4, { size: sm, weight: 800, family: FONT.num, color: '#ff8a9a' });
+      text(g, `${Math.ceil(hp)} / ${this.stats.hp}`, lx + bw, y + 4, { size: sm, align: 'right', weight: 700, family: FONT.num, color: PAL.bone });
       gauge(g, lx, y + 9, bw, 7, hp / this.stats.hp, '#e8283c', { glowEnd: false });
       const mx = lx + bw + 10;
-      text(g, 'MP', mx, y + 4, { size: 11, weight: 800, family: FONT.num, color: '#8ac8ff' });
-      text(g, `${Math.floor(mp)} / ${this.stats.mp}`, mx + bw, y + 4, { size: 11, align: 'right', weight: 700, family: FONT.num, color: PAL.bone });
+      text(g, 'MP', mx, y + 4, { size: sm, weight: 800, family: FONT.num, color: '#8ac8ff' });
+      text(g, `${Math.floor(mp)} / ${this.stats.mp}`, mx + bw, y + 4, { size: sm, align: 'right', weight: 700, family: FONT.num, color: PAL.bone });
       gauge(g, mx, y + 9, bw, 7, mp / this.stats.mp, '#3a7aff', { glowEnd: false });
     });
     // 스킬 포인트
@@ -264,9 +268,7 @@ export class StatusTab extends Tab {
       pill(ctx, `SP ${hero.sp}`, A.x + LW - 16, A.y + 18, { align: 'right', color: PAL.goldHi, bg: 'rgba(120,20,40,0.95)', size: 12, h: 20 });
     }
 
-    // ── 오른쪽: 능력치 ──
-    const R = { x: A.x + LW + 12, y: A.y, w: A.w - LW - 12, h: A.h };
-    this.lay = statLayout(R);
+    // ── 오른쪽: 능력치 (배치 R·this.lay 는 위에서) ──
     const paged = !!this.lay.pages, pgI = this.page;
     // 능력치 판: 틀까지 한 장으로 (복사 한 번). 쪽이 바뀌면 다시 굽는다
     this.layer.draw(ctx, 'st' + this.rev + '|' + hero.charId + '|' + this.lay.cols.length + '|' + this.lay.row + '|' + (paged ? pgI : '-'), R.x - 3, R.y - 3, R.w + 6, R.h + 6, (c) => { frame(c, R.x, R.y, R.w, R.h); this.drawStats(c, R); });

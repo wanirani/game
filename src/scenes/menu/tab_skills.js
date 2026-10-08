@@ -3,7 +3,7 @@
 // 상세 칸의 효과 설명(현재 · 다음 레벨)은 넘치면 세로로 스크롤된다 (끌기 · 휠 · 패드 오른쪽 스틱). 낮은 칸(휴대폰)은 머리를 줄이고
 // 필요 조건을 설명 아래로 보내 두 효과가 스크롤 없이 보이게 한다 (감사 RU-01).
 // 습득·강화 뒤에는 m.changed() → player.refreshStats() 로 패시브가 바로 능력치에 반영된다.
-import { text, FONT } from '../../core/ui.js';
+import { text, FONT, textFloor } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { clamp, rgba, TAU } from '../../core/math.js';
 import { input } from '../../core/input.js';
@@ -219,16 +219,21 @@ export class SkillsTab extends Tab {
         // 이름 + 레벨. 좁은 계열 기둥(최소 UI 폭 720)에서는 슬롯 배지를 아이콘 아래에 달고, '액티브'는 자리가 있을 때만 (옆 기둥을 덮지 않게)
         const slotted = !!hero.slots?.includes(id), narrow = cw < 170;
         const nx = x + R + 9, right = x0 + cw - 6;
-        const nw = right - nx - (slotted && !narrow ? 50 : 0); // 슬롯 배지 자리를 비운다
+        // 슬롯 배지 크기는 실제 글자 크기로 잰다 (설정 '글자 크기'가 크면 배지도 커진다 — benchmark #7) → 이름 칸에서 그만큼 비운다
+        const lb = slotted ? slotLabel(hero.slots.indexOf(id)) : '';
+        const pfs = Math.max(9, textFloor()), ph = Math.max(14, Math.ceil(pfs + 4));
+        const pw = slotted ? measure(ctx, lb, 9, 800) + 14 : 0;
+        const nw = right - nx - (slotted && !narrow ? pw + 8 : 0); // 슬롯 배지 자리를 비운다
         text(ctx, ellipsize(ctx, sk.name, nw, 13, 800), nx, y - 1, { size: 13, weight: 800, color: sel ? PAL.goldHi : lv ? PAL.bone : chk.ok ? PAL.text : PAL.faint, ow: 3 });
         // 레벨 눈금
         const step = clamp((right - nx - 6) / max, 6, 10);
         for (let k = 0; k < max; k++) diamond(ctx, nx + 4 + k * step, y + 11, step < 9 ? 3 : 3.4, k < lv ? bc : 'rgba(90,70,60,0.8)');
-        if (D.isActive(sk) && nx + max * step + 34 <= right) text(ctx, '액티브', nx + max * step + 6, y + 15, { size: 10, weight: 700, color: lv ? '#ffb070' : PAL.faint, ow: 2 });
+        // '액티브': 자리가 있을 때만 (배지가 커져 그 줄까지 내려오면 배지 왼쪽까지만)
+        const aRight = slotted && !narrow && y - 14 + ph > y + 15 - Math.max(10, textFloor()) * 0.8 ? right - 4 - pw - 4 : right;
+        if (D.isActive(sk) && nx + max * step + 6 + measure(ctx, '액티브', 10, 700) <= aRight) text(ctx, '액티브', nx + max * step + 6, y + 15, { size: 10, weight: 700, color: lv ? '#ffb070' : PAL.faint, ow: 2 });
         if (slotted) {
-          const lb = slotLabel(hero.slots.indexOf(id));
-          if (narrow) pill(ctx, lb, x, y + R - 3, { align: 'center', size: 9, h: 13, color: PAL.goldHi, bg: 'rgba(90,10,30,0.92)' });
-          else pill(ctx, lb, x0 + cw - 10, y - 14, { align: 'right', size: 9, h: 14, color: PAL.goldHi, bg: 'rgba(90,10,30,0.9)' });
+          if (narrow) pill(ctx, lb, x, y + R - 3, { align: 'center', size: 9, h: Math.max(13, ph - 1), color: PAL.goldHi, bg: 'rgba(90,10,30,0.92)' });
+          else pill(ctx, lb, x0 + cw - 10, y - 14, { align: 'right', size: 9, h: ph, color: PAL.goldHi, bg: 'rgba(90,10,30,0.9)' });
         }
       });
       clipEnd(ctx, TR, null);
@@ -269,7 +274,9 @@ export class SkillsTab extends Tab {
     text(ctx, String(sp), x + 132, y + 26, { size: 24, align: 'right', weight: 900, family: FONT.num, color: sp ? PAL.goldHi : PAL.faint, ow: 4 });
     const ult = D.CHARACTERS()[hero.charId]?.ult;
     if (ult) text(ctx, ellipsize(ctx, `필살기 · ${ult.name}`, 132, 11, 700), x + 10, y + 50, { size: 11, weight: 700, color: ult.color ?? PAL.goldHi });
-    if (h >= 66) text(ctx, ellipsize(ctx, swapTip(), 140, 11, 600), x + 10, y + 64, { size: 10, weight: 600, color: PAL.faint, ow: 2 });
+    // 페이지 전환 안내: 필살기 줄 아래 자리가 있을 때만 (글자 크기를 키우면 줄 간격이 모자라 겹친다 — benchmark #7)
+    const tipY = y + 50 + Math.max(14, Math.ceil(Math.max(10, textFloor()) * 1.2));
+    if (h >= 66 && tipY <= y + h - 2) text(ctx, ellipsize(ctx, swapTip(), 140, 11, 600), x + 10, tipY, { size: 10, weight: 600, color: PAL.faint, ow: 2 });
     const sx0 = x + 158, sw = (w - 166) / 4;
     const nameW = sw - 58; // 아이콘 오른쪽 이름 칸. 좁은 UI(720)에서는 이름·레벨을 빼고 아이콘만 (옆 칸을 덮지 않게 — 이름은 오른쪽 상세에)
     // 이름은 모든 칸의 스킬 이름이 12px(글자 하한 적용)로 다 들어갈 때만. 하나라도 넘치면 '비질…' 처럼 줄이는 대신 모든 칸을

@@ -955,7 +955,7 @@ class PickModal {
     // 잔상 그림: 발끝 기준선 · 크기는 칸 높이에 맞춘다
     const gx0 = tall ? R.x + 30 : R.x + tw + 40, gx1 = R.x + R.w - 34;
     const gy = tall ? R.y + 62 + (R.h - 62 - 30) * 0.5 + 24 : R.y + R.h - 12;
-    const s = clamp((tall ? (R.h - 110) : (R.h - 18)) / 40, 0.7, 1.9);
+    const s = tall ? clamp((R.h - 110) / 40, 0.7, 1.9) : clamp((R.h - 20) / 38, 0.7, 2.4);
     const run = Math.sin(t * 2.2) * 6 * s, step = Math.max(14 * s, Math.min(30 * s, (gx1 - gx0 - 30 * s) / 5));
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(gx0 - 10, gy, gx1 - gx0 + 20, 2);
