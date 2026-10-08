@@ -19,6 +19,7 @@ import * as ClassM from '../../data/classes.js';
 import * as CharM from '../../data/characters.js';
 import * as StatsM from '../../game/stats.js';
 import * as NpcM from '../../data/npcs.js';
+import * as AscM from '../../data/ascensions.js';   // 초월 · 비전 (classes_t3 §2.1)
 import { STAT_INFO } from '../../game/stats.js';
 
 const fn = (...cands) => cands.find((f) => typeof f === 'function') || null;
@@ -164,6 +165,12 @@ export function reqsOf(hero, sk) {
     const ok = list.some((c) => chain.includes(c));
     const names = list.map((c) => ClassM.CLASSES?.[c]?.name ?? c).join(' 또는 ');
     out.push({ text: `직업: ${names}`, ok, short: `${names} 전직 필요` });
+  }
+  // 비전 기술 (classes_t3 §8.3): 해금되어 있고 그 비전 직업일 때만 쓸 수 있다 (배우기는 해금만으로 — skills.canLearn)
+  if (sk.reqAsc) {
+    const A = AscM.ASCENSIONS?.[sk.reqAsc];
+    const unlocked = Array.isArray(hero.ascUnlocked) && hero.ascUnlocked.includes(sk.reqAsc);
+    out.push({ text: `비전: ${A?.name ?? sk.reqAsc}`, ok: unlocked && hero.asc === sk.reqAsc, short: '비전 직업 전용' });
   }
   return out;
 }

@@ -2,7 +2,7 @@
 //  · 대화 스크립트는 data/story.js 의 resolveNpcScript(npcId, state) 가 챕터/플래그에 따라 고른다 (<npcId>_ch<N> → 팁 순환 → <npcId>_default)
 //  · role: 'inn'(여관·미니게임) 'shop'(상점) 'smith'(강화) 'church'(전직·스토리) 'villager' 'mystery' 'stable'(영혼의 마구간)
 //  · appear: 허브(마을)에 모습을 보이는 조건 — npcVisible(npcId, state) 로 판정 (맵 'N' 배치는 조건 없이 등장)
-//      { minChapter, flag, orFlag(flag 가 없어도 이 플래그면 등장), hideFrom, hideUntil }
+//      { minChapter, flag, orFlag(flag 가 없어도 이 플래그면 등장), hideFrom, hideUntil, hideFlag(이 플래그가 켜지면 숨음) }
 export const NPCS = {
   npc_marta: {
     id: 'npc_marta', name: '마르타', title: '흑묘 여관 주인', portrait: 'portraits/npc_marta', role: 'inn', services: ['inn', 'minigame', 'quest'],
@@ -26,6 +26,7 @@ export const NPCS = {
   npc_alberto: {
     id: 'npc_alberto', name: '알베르토 신부', title: '에슈빌 성당 사제', portrait: 'portraits/npc_alberto', role: 'church', services: ['church', 'classChange', 'quest'],
     desc: '에슈빌 성당을 지키는 노신부. 헌터들을 이끄는 멘토이자, 악마성에 대해 이상할 만큼 많은 것을 알고 있는 인물.',
+    appear: { hideFlag: 'p2_started' },   // 2부: 성당 안쪽 방에 누워 있다 (story_p2.js) — 성당 「안쪽 방 — 신부님」 줄로 대화 (classes_t3 §8.1)
     look: { build: 'normal', height: 0.97, skin: '#e0c0a0', hair: '#dcd8d2', hairStyle: 'short', beard: 'full', eyes: '#6a5a4a', outfit: 'priest',
       primary: '#141018', secondary: '#2a2030', trim: '#e8c872', pants: '#141018', boots: '#100c10', headgear: null },
   },
@@ -67,5 +68,6 @@ export function npcVisible(npcId, state) {
   if (a.hideFrom != null && ch >= a.hideFrom && ch < a.hideUntil && !f.elise_rescued) return false;
   if (a.minChapter != null && ch < a.minChapter) return false;
   if (a.flag && !f[a.flag] && !(a.orFlag && f[a.orFlag])) return false;   // orFlag: flag 대신 이 플래그로도 나타난다
+  if (a.hideFlag && f[a.hideFlag]) return false;   // hideFlag: 이 플래그가 켜지면 마을에서 사라진다 (2부 알베르토)
   return true;
 }

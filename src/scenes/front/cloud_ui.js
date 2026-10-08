@@ -18,6 +18,7 @@ import { drawHints, promptMode } from '../../core/prompts.js';
 import { clamp, ease, rgba, TAU } from '../../core/math.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { CLASSES } from '../../data/classes.js';
+import { ascName } from '../../data/ascensions.js';   // 초월·비전 이름 (classes_t3 §1.3 — 요약의 asc 는 있을 때만)
 import { getDiff } from '../../data/difficulty.js';
 import { frame, ornament, gbutton, portraitIn, fmtDate, fmtPlay, GOLD, BONE, DIM } from './common.js';
 
@@ -124,7 +125,7 @@ export function drawSummaryCard(ctx, r, sum, { title, sub = null, newer = false,
   const diff = sum.difficulty ? getDiff(sum.difficulty) : null;
   text(ctx, ch?.name ?? sum.charId ?? '?', tx, r.y + 58, { size: 17, weight: 800, family: FONT.title, color: '#fff2dc', ow: 3, maxWidth: maxW });
   text(ctx, `Lv.${sum.level ?? 1}`, tx, r.y + 80, { size: 15, weight: 900, family: FONT.num, color: GOLD, ow: 3 });
-  const cls = CLASSES[sum.classId]?.name ?? ch?.title ?? '';
+  const cls = ascName(sum.asc) ?? CLASSES[sum.classId]?.name ?? ch?.title ?? '';
   if (cls) text(ctx, cls, tx + 56, r.y + 80, { size: 12, weight: 700, color: '#d8c8b8', ow: 2, maxWidth: maxW - 56 });
   const rows = [
     ['진행', chapterText(sum.chapter) + ngText(sum)],   // [hook:ng]

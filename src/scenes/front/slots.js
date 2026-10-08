@@ -19,6 +19,7 @@ import { clamp, ease, fmt, rgba } from '../../core/math.js';
 import { hudSafe } from '../../render/hud_layout.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { CLASSES } from '../../data/classes.js';
+import { ascOf, ascName } from '../../data/ascensions.js';   // 초월·비전 이름 (classes_t3 §1.3)
 import { getDiff, DIFFICULTIES } from '../../data/difficulty.js';
 import { STAGES, STAGE_ORDER } from '../../data/stages.js';
 import { migrateState } from '../../game/state.js';
@@ -110,7 +111,8 @@ export class SlotsScene extends Scene {
         playTime: st?.stats?.playTime ?? s.playTime, gold: st ? st.gold : s.gold,
         relics: len(P.relics), docs: len(P.docs), shards: len(P.shards), hearts: len(P.hearts),
         heroes: Object.keys(st?.heroes ?? {}).filter((id) => own(CHARACTERS, id)),
-        cls: own(CLASSES, classId) ? CLASSES[classId].name : '', cloud: c,
+        // 직업 이름: 초월·비전이면 그 이름 (정리된 영웅이 있으면 그 영웅 기준, 없으면 목록 요약의 asc) — classes_t3 §1.3
+        cls: (hero ? ascOf(hero)?.name : ascName(s.asc)) ?? (own(CLASSES, classId) ? CLASSES[classId].name : ''), cloud: c,
         ng: st ? NG.ngOf?.(st) ?? 0 : 0, canNg: !!st && !!NG.canStartNg?.(st),   // [hook:ng] 회차 (지난 회차 수) · 피의 윤회를 열 수 있는가
       };
     });

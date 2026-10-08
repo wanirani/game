@@ -4,7 +4,7 @@
 // 예전 4열 배치는 11/12 px 로 줄여 phone2 에서 9.2 CSS px). 1쪽 '기본·공격·특수' · 2쪽 '방어·속성·장비' — 쪽마다 넓은 화면과 같은
 // 13/15 px 글자. 판 위의 쪽 단추(터치) · ←→ 로 옆 쪽 열로 넘어감 · A(패드 Y) 로 쪽 넘김. 720×400 UI 까지.
 // 능력치 칸은 작아서 터치에선 칸마다 탭 영역을 두지 않고 능력치 판 전체가 하나의 영역: 누른 채 문지르면 손가락 밑 칸이 골라진다.
-import { text, font, FONT } from '../../core/ui.js';
+import { text, font, FONT, textFloor } from '../../core/ui.js';
 import { clamp } from '../../core/math.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
@@ -13,6 +13,9 @@ import { HeroView, HeroStage, PixLayer, PixCache, pedestal, accentOf, turntableH
 import { PAL, EL, EL_ORDER, frame, heading, divider, diamond, gauge, pill, selBar, glow, num, para, measure, ellipsize, inRect, leanMem, gbutton } from './common.js';
 import * as D from './access.js';
 import { SUBWEAPONS } from '../../data/subweapons.js';
+import { ascOf } from '../../data/ascensions.js';
+/** 직업 계보 끝의 초월·비전 알약 색 (KIND_LABEL 종류별) */
+const ASC_PILL = { t3: { color: '#ffe070', bg: 'rgba(96,64,8,0.92)' }, hidden: { color: '#d8b8ff', bg: 'rgba(52,22,88,0.92)' } };
 
 export const STAT_DESC = {
   hp: '체력의 최대치. 체력이 0이 되면 쓰러진다. 레벨과 방어구로 늘어난다.',
@@ -218,7 +221,7 @@ export class StatusTab extends Tab {
     const pl = this.world?.player;
     const hpNow = Math.ceil(pl ? pl.hp : this.stats.hp), mpNow = Math.floor(pl ? pl.mp : this.stats.mp);
     const iy0 = sy + sh + 4;
-    this.txt.draw(ctx, 'info', `${this.rev}|${hero.charId}|${hero.classId}|${hero.level}|${hero.exp}|${hpNow}|${mpNow}|${this.stats.hp}|${this.stats.mp}|${sm}`, A.x + 2, iy0, LW - 4, A.y + A.h - 2 - iy0, (g) => {
+    this.txt.draw(ctx, 'info', `${this.rev}|${hero.charId}|${hero.classId}|${hero.asc ?? ''}|${hero.level}|${hero.exp}|${hpNow}|${mpNow}|${this.stats.hp}|${this.stats.mp}|${sm}`, A.x + 2, iy0, LW - 4, A.y + A.h - 2 - iy0, (g) => {
       // 이름 · 칭호
       let y = sy + sh + 30;
       text(g, ch.name ?? hero.charId, A.x + LW / 2, y, { size: 22, align: 'center', weight: 800, family: FONT.title, color: PAL.bone, ow: 4, maxWidth: LW - 24 });
@@ -226,7 +229,9 @@ export class StatusTab extends Tab {
       text(g, `${ch.eng ?? ''}  ·  ${ch.title ?? ''}`, A.x + LW / 2, y, { size: sm, align: 'center', weight: 700, family: FONT.num, color: PAL.dim, ow: 2, maxWidth: LW - 20 });
       // 직업 계보
       y += 12;
-      const chain = D.classChain(hero.classId);
+      // 초월·비전이면 끝에 그 이름 알약 하나 (초월 금빛 · 비전 보랏빛 — classes_t3 §8.3)
+      const asc = ascOf(hero);
+      const chain = [...D.classChain(hero.classId), ...(asc ? [asc] : [])];
       g.font = font(12, 800, FONT.body);
       const widths = chain.map((c) => g.measureText(c.name).width + 14);
       const total = widths.reduce((a, b) => a + b, 0) + (chain.length - 1) * 14;
@@ -235,7 +240,8 @@ export class StatusTab extends Tab {
       chain.forEach((c, i) => {
         const last = i === chain.length - 1;
         const nm = shrink < 1 ? ellipsize(g, c.name, widths[i] * shrink - 14, 12, 800) : c.name;
-        pill(g, nm, cx, y, { color: last ? PAL.goldHi : PAL.dim, bg: last ? 'rgba(110,14,34,0.9)' : 'rgba(30,18,28,0.9)', size: 12, h: 20 });
+        const kc = c === asc ? ASC_PILL[asc.kind] : null;
+        pill(g, nm, cx, y, { color: kc ? kc.color : last ? PAL.goldHi : PAL.dim, bg: kc ? kc.bg : last ? 'rgba(110,14,34,0.9)' : 'rgba(30,18,28,0.9)', size: 12, h: Math.max(20, Math.ceil(textFloor() + 7)) });
         cx += widths[i] * shrink;
         if (!last) { text(g, '›', cx + 7, y + 15, { size: 15, align: 'center', color: PAL.goldDim, weight: 800, ow: 0 }); cx += 14 * shrink; }
       });

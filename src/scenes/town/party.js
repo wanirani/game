@@ -8,7 +8,7 @@ import { TAU, clamp, ease, rgba, rand, fmt } from '../../core/math.js';
 import { Particles } from '../../core/particles.js';
 import { drawHero } from '../../render/hero.js';
 import { CHARACTERS, CHAR_ORDER } from '../../data/characters.js';
-import { CLASSES } from '../../data/classes.js';
+import { classNameOf } from '../../data/ascensions.js';   // 직업 이름: 초월·비전이면 그 이름 (classes_t3 §8.3)
 import { ensureHero, storyJoinedChars } from '../../game/state.js';
 import { composeLook, expToNext } from '../../game/stats.js';
 import { findItem } from '../../game/inventory.js';
@@ -126,7 +126,7 @@ export class PartyScene extends Scene {
     if (hero) {
       const wx = sx + 150;
       text(ctx, `Lv.${hero.level}`, wx, dy + 30, { size: 18, weight: 900, family: FONT.num, color: '#fff' });
-      text(ctx, CLASSES[hero.classId]?.name ?? '', wx, dy + 50, { size: 13, weight: 700, color: '#e8c872' });
+      text(ctx, classNameOf(hero), wx, dy + 50, { size: 13, weight: 700, color: '#e8c872' });
       const w = findItem(st, hero.equip?.weapon);
       if (w) text(ctx, nameOf(w), wx, dy + 70, { size: 12, color: COLORS.rarity[w.rarity ?? 0], maxWidth: vw - m - wx - 16 });
       bar(ctx, wx, dy + 80, Math.min(160, vw - m - wx - 20), 5, hero.exp / expToNext(hero.level), { color: '#e8c872', shine: false });
@@ -177,7 +177,7 @@ export class PartyScene extends Scene {
     }
     // 이름 · 레벨
     text(ctx, e.open ? c.name.split(' ')[0] : '???', r.x + r.w / 2, r.y + r.h - 36, { size: 16, weight: 800, family: FONT.title, align: 'center', color: e.open ? (sel ? '#fff4d8' : '#f3d690') : '#5a4a40' });
-    text(ctx, e.open ? (hero ? `Lv.${hero.level} · ${CLASSES[hero.classId]?.name ?? ''}` : c.title) : '미합류', r.x + r.w / 2, r.y + r.h - 16, { size: 11, weight: 700, align: 'center', color: e.open ? '#b8a890' : '#5a4a40', maxWidth: r.w - 8 });
+    text(ctx, e.open ? (hero ? `Lv.${hero.level} · ${classNameOf(hero)}` : c.title) : '미합류', r.x + r.w / 2, r.y + r.h - 16, { size: 11, weight: 700, align: 'center', color: e.open ? '#b8a890' : '#5a4a40', maxWidth: r.w - 8 });
     ctx.strokeStyle = sel ? COLORS.gold : cur ? 'rgba(232,200,114,0.7)' : 'rgba(110,85,48,0.55)'; ctx.lineWidth = sel ? 2.5 : 1.2;
     ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
     if (sel) { ctx.shadowColor = 'rgba(232,200,114,0.6)'; ctx.shadowBlur = 16; ctx.strokeRect(r.x, r.y, r.w, r.h); ctx.shadowBlur = 0; }

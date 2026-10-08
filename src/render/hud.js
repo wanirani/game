@@ -15,7 +15,7 @@ import { SUBWEAPONS } from '../data/subweapons.js';
 import { SKILLS } from '../data/skills.js';
 import { POWERUPS } from '../data/powerups.js';
 import { CHARACTERS } from '../data/characters.js';
-import { CLASSES } from '../data/classes.js';
+import { classNameOf } from '../data/ascensions.js';   // 직업 이름: 초월·비전이면 그 이름 (classes_t3 §8.3)
 import { expToNext } from '../game/stats.js';
 import { hudLayout, hudTouch } from './hud_layout.js';
 import { drawComboHUD, drawAnnouncer, drawAwGauge, hudOverflow } from './feel_hud.js'; // [hook:feel]
@@ -232,7 +232,7 @@ function drawVitals(ctx, r, hero, p, st, T, L) {
   }
   const s = Math.max(T ? 12 : 10, F);
   text(ctx, CHARACTERS[hero.charId].name, bx, y + 12, { size: Math.max(13, F), weight: 700, color: '#f3e2b8' });
-  text(ctx, CLASSES[hero.classId]?.name ?? '', bx + bw, y + 12, { size: Math.max(T ? 12 : 11, F), align: 'right', color: COLORS.dim });
+  text(ctx, classNameOf(hero), bx + bw, y + 12, { size: Math.max(T ? 12 : 11, F), align: 'right', color: COLORS.dim });
   bar(ctx, bx, y + 18, bw, 13, p.hp / st.hp, { color: '#d81c34', ghost: p.hpGhost / st.hp });
   text(ctx, `${Math.ceil(p.hp)} / ${st.hp}`, bx + bw - 4, y + 29, { size: s, align: 'right', weight: 700, color: '#fff', ow: 2 });
   bar(ctx, bx, y + 34, bw * 0.8, 8, p.mp / st.mp, { color: '#3a7aff' });
