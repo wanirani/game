@@ -394,7 +394,7 @@ export class UltCutinScene extends Scene {
     this.tier = clamp(Number(heroTier(hero)) || 0, 0, 3);
     this.cname = classNameOf(hero) || C?.name || '';
     this.acc3 = this.tier >= 3 ? (ASCENSIONS[hero.asc]?.ult?.accent ?? null) : null;   // 단계 3 강조색 (금테 안쪽 줄 · 둘째 마름모)
-    this.acc3Line = this.acc3 ? rgba(this.acc3, this.calm ? 0.1 : 0.24) : null;           // 단계 3: 속도선 절반을 강조색으로
+    this.acc3Line = this.acc3 ? rgba(this.acc3, this.game.settings?.reduceMotion ? 0.1 : 0.24) : null;   // 단계 3: 속도선 절반을 강조색으로 (움직임 줄이기면 흐리게; this.calm 은 아래에서 정한다)
     this.kindTag = this.acc3 ? (KIND_LABEL[ASCENSIONS[hero.asc]?.kind] ?? null) : null;    // '초월' · '비전' 꼬리표
     this._cnW = null;
     const lab = ultLabel(this.ch);

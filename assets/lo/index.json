@@ -701,11 +701,11 @@
    "srcBytes": 162480
   },
   "portraits/b_banshee.webp": {
-   "src": "ffd2aa1f6efa",
+   "src": "f158c83ba622",
    "w": 461,
    "h": 614,
-   "bytes": 42892,
-   "srcBytes": 72080
+   "bytes": 65292,
+   "srcBytes": 75960
   },
   "portraits/b_behemoth.webp": {
    "src": "f3560b8da766",
@@ -1184,25 +1184,25 @@
    "srcBytes": 66190
   },
   "portraits/npc_carmilla.webp": {
-   "src": "36a83ba5d01e",
+   "src": "510c9c227e57",
    "w": 461,
    "h": 614,
-   "bytes": 56380,
-   "srcBytes": 106878
+   "bytes": 53456,
+   "srcBytes": 103622
   },
   "portraits/npc_carmilla__angry.webp": {
-   "src": "9ed68d1c5818",
+   "src": "f03782227e13",
    "w": 461,
    "h": 614,
-   "bytes": 60832,
-   "srcBytes": 119422
+   "bytes": 58032,
+   "srcBytes": 116124
   },
   "portraits/npc_carmilla__shock.webp": {
-   "src": "a80076da4c7b",
+   "src": "90ef18bcf959",
    "w": 461,
    "h": 614,
-   "bytes": 60792,
-   "srcBytes": 118540
+   "bytes": 58032,
+   "srcBytes": 115356
   },
   "portraits/npc_elise.webp": {
    "src": "4a48b1019c2c",
@@ -1296,11 +1296,11 @@
    "srcBytes": 63978
   },
   "portraits/npc_rook2.webp": {
-   "src": "eaa3d8663ccd",
+   "src": "671c4efaae8e",
    "w": 461,
    "h": 614,
-   "bytes": 59922,
-   "srcBytes": 135164
+   "bytes": 53862,
+   "srcBytes": 128940
   },
   "portraits/npc_rook__angry.webp": {
    "src": "7d9109dda158",

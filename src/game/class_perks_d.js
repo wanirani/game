@@ -76,7 +76,7 @@ function skyBurst(w, x, y, r) {
     light(L, e) { L.add(x, y, r * 2.4, '#bfe8ff', 1.1 * (1 - e.k)); },
   });
   w.fx.ring(x, y - 4, { color: '#bfe8ff', r0: 10, r1: r, life: 0.24, width: 4 });
-  w.fx.burst('thunder', x, y - 4, 6, { speed: 260, color: '#e0f4ff' });
+  w.fx.burst('thunder', x, y - 4, 4, { speed: 260, color: '#e0f4ff' });   // ≤ 4: ICD 0.2 < 0.25 (§3.6.3)
   sfx(w, 'thunder', { vol: 0.35, pitch: 1.5 });
 }
 /** 낙뢰 한 줄기 (proc): (x, 바닥 base) 로 내리꽂는다. 판정 폭 54, 0.5초 경직. 번개 모양은 tick 에서 다시 굽는다 (그리기에 난수 없음) */
@@ -314,7 +314,7 @@ export const PERKS_D = {
   /** 심연의 용기사: 화염·암흑 피해마다 용염 +1 (최대 20) → 다음 돌진 찌르기가 흑룡 돌진 (380 꿰뚫기 250% + 2초 불바다 0.25초마다 15%) */
   isolde_abyssdragoon: {
     N: { add: 1, max: 20, dark: 1, len: 380, x0: 20, y0: -100, h: 90, mvPct: 250, hitstop: 0.06, t: 0.3, fireT: 2, tickT: 0.25, fireMvPct: 15 },   // dark 1: 암흑 피해도 센다 (흑룡의 검은 불길; 용의 숨결이 화염·암흑을 번갈아 친다) · 명세 max 30 → 20 (§2.8: 30 이면 단일 대상 +2~5 %, 40초에 한 번)
-    prewarm(w) { warm(w, ['#c070ff', '#ff6a2a', '#ffd0a0'], ['용염!', '#d8a0ff']); },
+    prewarm(w) { warm(w, ['#c070ff', '#ff6a2a', '#ffd0a0', '#14060e', '#b060ff'], ['용염!', '#d8a0ff']); K.beamSprite?.('#c070ff', '#ffd0a0', true); },
     onHit(p, tgt, info, atk, w) {
       const el = atk?.element;
       if (!(el === 'fire' || (el === 'dark' && this.N.dark)) || !tgt || tgt.kind === 'prop') return;
@@ -427,7 +427,7 @@ export const PERKS_D = {
   /** 창신: 같은 적 연타마다 일점 1중첩 (최대 20, 2초) · 중첩당 그 적에게 +1.5% · 20중첩이면 다음 찌르기가 관통 일섬 (700, 250%, 치명타 확정) */
   isolde_speargod: {
     N: { max: 20, t: 2, perPct: 0.3, len: 700, x0: 30, y0: -90, h: 40, mvPct: 150, crit: 100, hitstop: 0.08, life: 0.25, icd: 1.5 },   // §2.8: 명세(맞을 때마다 1중첩 · 1.5% · 일섬 250%)는 단일 +28%, 한 번 휘두를 때 1중첩 · 0.5% · 250% 도 +20% → 0.3% · 150% 로 단일 +14% · 무리 +6%
-    prewarm(w) { warm(w, ['#ff9aac', '#ffd0d8', '#ff2040'], null); },
+    prewarm(w) { warm(w, ['#ff9aac', '#ffd0d8', '#ff2040'], null); K.beamSprite?.('#ff9aac', '#ffffff', true); },
     onHit(p, tgt, info, atk, w) {
       if (!atk?.tags?.includes('melee') || !tgt || tgt.dead || tgt.kind === 'prop') return;
       const st = perkState(p), sw = p.curHitId ?? atk.hitId;
@@ -460,7 +460,7 @@ export const PERKS_D = {
   /** 용의 맹약자: 급강하 착지 → 아르겐의 환영 (앞뒤 640 · 높이 120 · 90% 번개, 4초에 한 번) · 용린 1중첩 (최대 3, 6초) — 중첩당 받는 피해 -5% */
   isolde_dragonbond: {
     N: { icd: 4, from: 420, half: 320, y: 80, h: 120, mvPct: 90, stunT: 0.2, life: 0.45, win0: 0.2, win1: 0.8, max: 3, t: 6, redPct: 5 },
-    prewarm(w) { warm(w, ['#9fe8ff', '#e8fbff'], null); },
+    prewarm(w) { warm(w, ['#9fe8ff', '#e8fbff', '#ffffff'], null); K.beamSprite?.('#9fe8ff', '#e8fbff', true); K.beamSprite?.('#e8fbff', '#ffffff', true); },
     onPound(p, w) {
       const N = this.N, st = perkState(p), n = Math.min(N.max, scaleOf(p, w) + 1);
       st.scale = n; st.scaleUntil = nowOf(w) + N.t;

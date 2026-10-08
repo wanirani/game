@@ -322,7 +322,8 @@ function featherPortrait(img, key = null) {
     g.fillStyle = gx; g.fillRect(0, 0, w, h);
   }
   const gy = g.createLinearGradient(0, 0, 0, h);
-  gy.addColorStop(0, 'rgba(0,0,0,0)'); gy.addColorStop(bust ? 0.06 : 0.12, 'rgba(0,0,0,1)');   // 흉상: 위 가장자리(잘린 머리카락)만 짧게 gy.addColorStop(0.62, 'rgba(0,0,0,1)'); gy.addColorStop(0.9, 'rgba(0,0,0,0)');
+  gy.addColorStop(0, 'rgba(0,0,0,0)'); gy.addColorStop(bust ? 0.06 : 0.12, 'rgba(0,0,0,1)');   // 흉상: 위 가장자리(잘린 머리카락)만 짧게
+  gy.addColorStop(0.62, 'rgba(0,0,0,1)'); gy.addColorStop(0.9, 'rgba(0,0,0,0)');   // 아래는 그대로 녹인다
   g.fillStyle = gy; g.fillRect(0, 0, w, h);
   g.globalCompositeOperation = 'source-over';
   return { c, w, h };
