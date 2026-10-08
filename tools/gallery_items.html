@@ -71,8 +71,8 @@ function row(items, cw, ch, sc) {
   items.forEach((it) => { if (x + cw > W) { x = 10; Y += ch; } cells.push({ kind: 'c', x, y: Y, w: cw, h: ch, sc, ...it }); x += cw; });
   Y += ch + 6;
 }
-// 2) 단계별 장비 세트를 입은 6인
-const WT = { kael: 'whip', sera: 'staff', victor: 'gun', bran: 'greatsword', lia: 'dagger', azel: 'sword' };
+// 2) 단계별 장비 세트를 입은 7인
+const WT = { kael: 'whip', sera: 'staff', victor: 'gun', bran: 'greatsword', lia: 'dagger', azel: 'sword', isolde: 'spear' };
 if (SEC.includes('wear')) {
   header('단계별 장비 세트 (머리·갑옷·망토·무기) — 단계 1~6');
   for (const id of CHAR_ORDER) {
@@ -91,7 +91,7 @@ if (SEC.includes('uniques')) {
   const U = UNIQUES.map((u) => ITEMS[u]);
   const list = [];
   for (const b of U) {
-    const cid = b.wtype ? Object.keys(WT).find((k) => WT[k] === b.wtype) : ['kael', 'sera', 'victor', 'bran', 'lia', 'azel'][list.length % 6];
+    const cid = b.wtype ? Object.keys(WT).find((k) => WT[k] === b.wtype) : ['kael', 'sera', 'victor', 'bran', 'lia', 'azel', 'isolde'][list.length % 7];
     const set = [[b.id, b.mythic ? 10 : 0]];
     if (!b.wtype) set.push([`w_${WT[cid]}_${b.tier * 2}`, 0, 2]);
     list.push({ label: b.name, p: () => ent({ look: wear(cid, set), ch: CHARACTERS[cid], anim: 'idle' }) });

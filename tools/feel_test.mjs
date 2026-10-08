@@ -1622,15 +1622,21 @@ async function heroSuite(hero, { onlyIds = null } = {}) {
   // ── tier 3: the C1 first-hit class and world hitstop of L/M/H/F with the ascension = with its tier-2 parent (§11.2) ──
   if (c3 && want('C1') && !P.fatal) {
     const vctx = { hero, variant: 'asc ' + c3 };
-    await P.page.evaluate((c) => window.__fq.setClass(c), c2).catch(() => {});
+    // both runs at Lv 80 (Q.setAsc raises the level to 80; a lower-level tier-2 baseline would differ in attack speed/stats,
+    // not in hitstop) — the page's own level is put back afterwards
+    const lv0 = await P.page.evaluate((c) => { const h = window.__fq.p().hero, lv = h.level; h.level = Math.max(lv ?? 1, 80); window.__fq.setClass(c); return lv; }, c2).catch(() => null);
     const rb = await run(P, 'C1', vctx, pC1C3, {}, null);
     const t3 = await P.page.evaluate((c) => window.__fq.setClass(c), c3).catch(() => null);
     const ra = await run(P, 'C1', vctx, pC1C3, {}, null);
-    await P.page.evaluate((c) => window.__fq.setClass(c), c2).catch(() => {});
+    await P.page.evaluate(([c, lv]) => { const p = window.__fq.p(); if (lv != null) p.hero.level = lv; window.__fq.setClass(c); }, [c2, lv0]).catch(() => {});
     if (rb?.rows && ra?.rows) {
-      const diff = ra.rows.map((x, i) => { const b = rb.rows[i]; return !b || x.cls !== b.cls || x.moveId !== b.moveId || Math.abs((x.worldHitstop ?? -1) - (b.worldHitstop ?? -1)) > 1e-6 ? `${x.want}: ${b?.moveId}→${b?.cls} ${round(b?.worldHitstop, 3)} vs ${x.moveId}→${x.cls} ${round(x.worldHitstop, 3)}` : null; }).filter(Boolean);
-      const hits = ra.rows.filter((x) => x.cls != null).length;
-      rec('C1', vctx, t3 === 3 && hits && !diff.length ? 'pass' : 'fail', `tier ${t3} ${c3} vs tier-2 ${c2}: ${diff.length ? 'differs — ' + diff.join('; ') : `same first-hit class + world hitstop on ${hits}/${ra.rows.length} moves (${ra.rows.map((x) => `${x.want}:${x.cls ?? '-'} ${round(x.worldHitstop, 3)}`).join(', ')})`}`, { base: rb.rows, asc: ra.rows });
+      // hitstop is compared where both runs landed the move: a move that reaches the 64 px dummy only on some timings (victor's
+      // gnUp is an anti-air shot: it hit the skeleton in the gunlord run and missed in the gunking run) is listed, not judged
+      const both = ra.rows.map((x, i) => [x, rb.rows[i]]).filter(([x, b]) => b && x.moveId === b.moveId && x.cls != null && b.cls != null);
+      const oneSided = ra.rows.map((x, i) => [x, rb.rows[i]]).filter(([x, b]) => b && (x.cls == null) !== (b.cls == null)).map(([x, b]) => `${x.want} ${x.moveId} hit only in the ${x.cls == null ? 'tier-2' : 'tier-3'} run`);
+      const diff = both.filter(([x, b]) => x.cls !== b.cls || Math.abs((x.worldHitstop ?? -1) - (b.worldHitstop ?? -1)) > 1e-6).map(([x, b]) => `${x.want}: ${b.moveId}→${b.cls} ${round(b.worldHitstop, 3)} vs ${x.moveId}→${x.cls} ${round(x.worldHitstop, 3)}`);
+      const hits = both.length, enough = hits >= Math.min(3, ra.rows.length);
+      rec('C1', vctx, t3 === 3 && enough && !diff.length ? 'pass' : 'fail', `tier ${t3} ${c3} vs tier-2 ${c2}: ${diff.length ? 'differs — ' + diff.join('; ') : !enough ? `only ${hits}/${ra.rows.length} moves hit in both runs (need 3)` : `same first-hit class + world hitstop on ${hits}/${ra.rows.length} moves (${both.map(([x]) => `${x.want}:${x.cls} ${round(x.worldHitstop, 3)}`).join(', ')})`}${oneSided.length ? ` · not compared: ${oneSided.join(', ')}` : ''}`, { base: rb.rows, asc: ra.rows });
     }
   }
   // ── ultimates ──
@@ -1854,10 +1860,13 @@ async function trialSuite() {
   for (let i = 0; i < 160 && !W?.ready; i++) { W = await P.page.evaluate(pTrialPoll).catch(() => null); if (!W?.ready) await new Promise((r) => setTimeout(r, 150)); }
   if (!W?.ready) { rec('T1', ctx, 'fail', `the trial stage never came up (top ${W?.top}, mode ${W?.mode})`, W); await closePage(P); return; }
   const enter = await run(P, 'T1', ctx, pBossEnter, {}, null);   // boss intro / walk-in, as A5
-  const r = await run(P, 'T1', ctx, pTrialFight, {}, null);
+  let r = await run(P, 'T1', ctx, pTrialFight, {}, null);
+  // one more 4 s window when the first dealt nothing (the boss can spend a whole window untouchable — banshee vanish/phase;
+  // seen 1 in 5 runs): a trial that really takes no damage fails both
+  if (r && !(r.bossDmg > 0) && !r.dead && r.mode === 'trial') { const r2 = await run(P, 'T1', ctx, pTrialFight, {}, null); if (r2) r = { ...r2, retried: true, first: { bossDmg: r.bossDmg, hits: r.hits } }; }
   if (r) {
     const ok = r.mode === 'trial' && r.trial === 'tr_kael_1' && r.rules === '시련의 규칙' && !!r.boss && r.bossDmg > 0 && r.ult && !r.cutscene && r.top === 'stage' && !r.dead;
-    rec('T1', ctx, ok ? 'pass' : 'fail', `trial ${r.trial} (mode ${r.mode}, room ${r.room}, rules '${r.rules}'): boss ${r.boss} ${enter?.active ? 'active' : 'NOT active'}, 4 s combo + ultimate dealt ${r.bossDmg} (${r.hits} hits), ultimateCast ${r.ult}, afterwards top ${r.top}, cutscene ${r.cutscene}${r.dead ? ', HERO DIED' : ''}`, { ...r, enter });
+    rec('T1', ctx, ok ? 'pass' : 'fail', `trial ${r.trial} (mode ${r.mode}, room ${r.room}, rules '${r.rules}'): boss ${r.boss} ${enter?.active ? 'active' : 'NOT active'}, 4 s combo + ultimate dealt ${r.bossDmg} (${r.hits} hits${r.retried ? `; second window — the first dealt ${r.first.bossDmg} (${r.first.hits} hits)` : ''}), ultimateCast ${r.ult}, afterwards top ${r.top}, cutscene ${r.cutscene}${r.dead ? ', HERO DIED' : ''}`, { ...r, enter });
   }
   await closePage(P);
 }
