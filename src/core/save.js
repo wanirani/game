@@ -20,6 +20,7 @@
 //  saves.loadSettings() → 이전 판(v1) 이관 + 검증된 설정 객체 (saves.settings 로도 남는다). 이관·보정이 있었으면 한 번 다시 저장
 //    · v1(settingsVersion 없음)의 quality 는 detectQuality() 가 적은 값이라 'auto' 로 되돌린다 · 모르는 키는 보존 · 범위 밖 값은 기본값
 //  saves.saveSettings(s) → 항상 settingsVersion 2 로 기록 (다음 불러오기에서 품질 선택이 초기화되지 않게)
+//  saves.hasSettings() → 이 기기에 저장된 설정 키가 있는가 (첫 실행 판단; 저장소를 못 읽으면 true)
 //  migrateSettings(obj) → { settings, changed } (순수 함수, 테스트·도구용), autoQualityTier() → 'auto' 의 시작 등급 (platform §6.4)
 import { CHARACTERS } from '../data/characters.js';
 
@@ -380,6 +381,12 @@ class SaveSystem {
     if (raw && changed) lsSet(PREFIX + 'settings', JSON.stringify(settings));
     this.settings = settings;
     return settings;
+  }
+  /** 이 기기에 저장된 설정(원본 키)이 있는가 — 없으면 첫 실행 (title.js 첫 실행 번개 미루기). 저장소를 읽을 수 없으면 있는 것으로 */
+  hasSettings() {
+    const k = PREFIX + 'settings';
+    if (Object.hasOwn(mem, k)) return true;
+    try { return localStorage.getItem(k) != null; } catch { return true; }
   }
   /** 설정 저장. 기록에는 항상 settingsVersion 2 를 붙인다 (없으면 다음 불러오기에서 v1 로 보고 품질을 초기화하므로) */
   saveSettings(s) {

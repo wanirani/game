@@ -9,7 +9,7 @@
 //  1. drawAwGauge(ctx, world, x, y, w, touch) → true = 준비 문구 칸까지 맡았다 (hud.js 는 기존 '필살기 준비!' 를 그리지 않는다)
 //                                              false = world.player/run 이 없다 (hud.js 가 기존 문구를 그린다)
 //       (x, y, w) = L.awGauge (120×20). 준비 문구는 바로 아래 칸 (x, y + 22, w + 10, 22) = L.ready 에 그린다.
-//       1차 전직(tier ≥ 1)부터: '각성'(2차 전직은 '진 각성') + 120×6 핏빛 막대 (흐르는 광택, 맺혔다 떨어지는 핏방울).
+//       1차 전직(tier ≥ 1)부터: '각성'(2차 전직은 '진 각성', 초월 '초월 각성', 비전 '비전 각성') + 120×6 핏빛 막대 (흐르는 광택, 맺혔다 떨어지는 핏방울).
 //       0차 전직은 막대를 그리지 않는다 (feel §6.1).
 //       두 게이지(SP·각성)가 가득 차면 SP 막대와 각성 막대가 함께 빛나고 문구는 '각성 가능!' + [필살 버튼 글리프] + '길게'
 //       (키보드 F 키캡 · 패드 RT · 다시 배치한 키 그대로), 터치는 '각성 가능! 필살 버튼을 길게'.
@@ -55,9 +55,9 @@ import * as UI from '../core/ui.js';
 import { text, font, FONT, COLORS } from '../core/ui.js';
 import { clamp, TAU, ease, RNG, rgba, shade, mix, fmt } from '../core/math.js';
 import { game } from '../core/game.js';
-import { CLASSES } from '../data/classes.js';
 import { STYLE } from '../data/feel_hit.js';
 import * as AWD from '../data/awaken.js';
+import { heroTier, ascOf } from '../data/ascensions.js';   // 초월·비전 = 단계 3 → 게이지 라벨 '초월 각성' / '비전 각성' (classes_t3 §7)
 import { hudLayout, hudPx } from './hud_layout.js';
 import { drawGlyph, bindingOf } from '../core/prompts.js';
 
@@ -465,7 +465,8 @@ export function drawAwGauge(ctx, world, x, y, w, touch) {
   const T = !!touch;
   const now = nowOf(world);
   const hero = world.hero ?? p.hero;
-  const tier = CLASSES[hero?.classId]?.tier ?? 0;
+  const tier = hero ? heroTier(hero) : 0;   // 0~2: 전직 단계, 3: 초월·비전 (ascOf 가 맞는 길일 때만)
+  const kind = tier >= 3 ? ascOf(hero)?.kind ?? null : null;
   const RU = AWD.AWAKEN_RULES ?? {};
   const has = tier >= (RU.minTier ?? 1) && !!AWD.AWAKEN?.[hero?.charId];
   const max = RU.gaugeMax ?? 100;
@@ -479,19 +480,39 @@ export function drawAwGauge(ctx, world, x, y, w, touch) {
   ctx.save();
   if (has) {
     ensureSprites();
-    drawGauge(ctx, world, stateOf(world), x, y, w, aw / max, awFull, ready, holdK, tier, now, T);
+    drawGauge(ctx, world, stateOf(world), x, y, w, aw / max, awFull, ready, holdK, tier, kind, now, T);
   }
   drawReady(ctx, world, x, y + 22, w + 10, spFull, ready, holdK, now, T);
   ctx.restore();
   return true;
 }
 
-function drawGauge(ctx, world, s, x, y, w, f, full, ready, holdK, tier, now, T) {
+/** 게이지 라벨: 1 '각성' · 2 '진 각성' · 3 '초월 각성' / '비전 각성' (data/awaken.js awakenPrefix).
+ *  '100%' 와 함께 칸 폭(w)에 안 들어가면(휴대폰 막대 안 라벨, 17 px) 단계 3 은 '초월' / '비전' 만 쓴다. 폭 판정은 (라벨, 크기, 폭)마다 한 번 */
+const LAB_FIT = new Map();
+function gaugeLabel(ctx, tier, kind, ls, w) {
+  const lab = AWD.awakenPrefix ? AWD.awakenPrefix(Math.max(1, tier), kind) : tier >= 2 ? (AWD.T2_PREFIX ?? '진 각성') : '각성';
+  if (tier < 3) return lab;
+  const key = lab + '|' + ls + '|' + w;
+  let fit = LAB_FIT.get(key);
+  if (fit === undefined) {
+    const f0 = ctx.font;
+    ctx.font = font(ls, 800, FONT.body); const lw = ctx.measureText(lab).width;
+    ctx.font = font(ls, 700, FONT.num); const pw = ctx.measureText('100%').width;
+    ctx.font = f0;
+    fit = lw + pw + 16 <= w;
+    if (LAB_FIT.size > 32) LAB_FIT.clear();
+    LAB_FIT.set(key, fit);
+  }
+  return fit ? lab : kind === 'hidden' ? '비전' : '초월';
+}
+
+function drawGauge(ctx, world, s, x, y, w, f, full, ready, holdK, tier, kind, now, T) {
   // 터치 글자 하한 (hudPx, 11 CSS px): 휴대폰(하한 16–17 논리 px)에서는 라벨 줄이 칸(20 px, 위 4 px 는 SP 막대)에 들어가지 않는다
   // → 막대를 F+1 px 로 키우고 라벨·% 를 막대 안에 쓴다 (체력 칸 HP 숫자와 같은 방식). 칸 L.awGauge 와 SP 막대 +14 계약은 그대로
   const ls = T ? hudPx(12, true) : 10, inl = ls > 12;
   const bh = inl ? Math.min(19, ls + 1) : 6, by = inl ? y + 1 : y + 12, low = lowOf(world);
-  const lab = tier >= 2 ? (AWD.T2_PREFIX ?? '진 각성') : '각성';
+  const lab = gaugeLabel(ctx, tier, kind, ls, w);
   const pc = Math.floor(f * 100);
   if (pc !== s.pct) { s.pct = pc; s.pctStr = `${pc}%`; }
   if (!inl) {

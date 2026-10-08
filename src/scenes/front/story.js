@@ -25,7 +25,7 @@ import { BOSSES } from '../../data/bosses.js';
 import { grantItem, ownsItem } from '../../game/inventory.js';
 import { drawHints } from '../../core/prompts.js';
 import { Ambience, kenBurns, ornament, gbutton, menuItem, goSafe, glowSprite, featherPortrait, TapZones, GOLD, BONE, DIM } from './common.js';
-import { linePortrait, resolvePortrait, faceOf, baseKeyOf } from '../../render/portrait.js';   // 애니메 흉상 · 표정
+import { linePortrait, resolvePortrait, faceOf, baseKeyOf, preloadKeys } from '../../render/portrait.js';   // 애니메 흉상 · 표정
 
 const BAR = 50;
 /** 버튼 최소 높이 (platform §6.3: 44 CSS px) → 이 장면 좌표(px) */
@@ -63,6 +63,7 @@ export class StoryScene extends Scene {
     this.labels = {};
     // { label } 줄만 이동 목표. { if, cmd:'goto', label } (ifChar/ifFlag) 은 조건부 이동 명령이다
     L.forEach((l, k) => { if (l.label && !l.cmd) this.labels[l.label] = k; });
+    this.preloadExpressions();
     const st = this.game.state;
     if (script && !this.replay && st?.progress && !st.progress.seenScripts.includes(script)) st.progress.seenScripts.push(script);   // [hook:gal] ① 다시 보기는 넣지 않음
     this.setImage(imgKey(bg) ?? 'bg/title', true);
@@ -76,6 +77,22 @@ export class StoryScene extends Scene {
     if (!this.card) this.next();
   }
   get state() { return this.replay ? this.replayState : this.game.state; }   // [hook:gal] ④ 다시 보기: 카엘로 기본 갈래
+  /**
+   * 표정이 붙은 줄(face 필드 · portrait '<키>__angry' · '?!'/'!!' 규칙)의 표정 이미지를 미리 받는다 — 그 줄이 처음 나올 때
+   * 기본 표정으로 한 번 번쩍이지 않게 (requests_f ANIME-FIX VERIFY). 표정 없는 줄은 건너뛴다 (흉상은 화자가 나올 때 받는다)
+   */
+  preloadExpressions() {
+    const keys = new Set();
+    for (const l of this.lines) {
+      if (!l || l.cmd || l.text == null) continue;
+      const p = l.portrait ?? speaker(l.who, this.state).portrait;
+      if (!p) continue;
+      const ks = preloadKeys(l, this.resolveText(l.text), p);
+      if (ks.length > 1) for (const k of ks) keys.add(k);   // [기본, 표정] — 표정을 고른 줄만
+    }
+    if (keys.size) { try { assets.preload?.([...keys]); } catch { /* 받기 실패는 그릴 때 기본 표정 */ } }
+    this.exprPreload = keys.size;   // QA
+  }
   /** 배치 크기: uiScale 이면 UI 좌표 (game.render 가 ctx.scale(uiK) 로 감싼다) */
   dims() {
     const g = this.game;
@@ -299,6 +316,7 @@ export class StoryScene extends Scene {
       const L = this.layers.find((l) => l.key === this.cg);
       hide = L ? ease.inOutQuad(clamp(L.t / 1.1, 0, 1)) : 1;
     }
+    this.bustBox = null;
     if (hide >= 1) return;
     const draw = (key, side, a, slide, cur) => {
       // 지금 화자는 대사 줄의 표정(face · portrait '__표정' · '?!'/'!!')으로, 물러나는 화자는 기본 표정으로
@@ -315,6 +333,7 @@ export class StoryScene extends Scene {
         const f = faceOf(R.base, img);
         y = Math.max(vh * 0.42 - f.y * h, vh - BAR - h * 0.9) + Math.sin(t * 0.8) * 2;
         x = side === 'left' ? 24 - slide : vw - w - 24 + slide;
+        if (cur) this.bustBox = { side, l: side === 'left' ? 24 : vw - w - 24, w };   // 글 띠가 흉상 가슴을 피하도록 (drawText, REF A)
       } else {
         h = (this.cg ? 0.84 : 0.94) * vh; w = h * img.width / img.height;
         x = side === 'left' ? 10 - slide : vw - w - 10 + slide;
@@ -352,7 +371,17 @@ export class StoryScene extends Scene {
       lines.forEach((s, i) => text(ctx, s, vw / 2, y0 + i * 30, { size: 20, align: 'center', weight: 700, family: FONT.title, color: '#e4dcf4', ow: 3 }));
     } else {
       const left = this.port.side !== 'right';
-      const x = left ? Math.max(70, vw * 0.5 - tw / 2 + 60) : vw * 0.5 - tw / 2 - 20;
+      let x = left ? Math.max(70, vw * 0.5 - tw / 2 + 60) : vw * 0.5 - tw / 2 - 20, colW = tw - 60;
+      // 애니메 흉상(REF A): 글 칸을 흉상 가슴 바깥에서 시작/끝낸다. 좁아진 칸에서 대사가 3줄을 넘으면 예전 칸 그대로 (글이 잘리지 않게)
+      const B = this.bustBox;
+      if (B && B.side === (left ? 'left' : 'right')) {
+        let nx = x, nw = colW;
+        if (left) { nx = Math.max(x, Math.round(B.l + B.w * 0.6)); nw = Math.min(colW, vw - nx - 40); }
+        else nw = Math.min(colW, Math.round(B.l + B.w * 0.4) - x - 12);
+        const fk = this.full + '|' + nw, C = this._colFit;
+        const ok = C?.k === fk ? C.ok : (this._colFit = { k: fk, ok: nw >= 300 && wrap(ctx, this.full, nw, 19, 500).length <= 3 }).ok;   // 줄·폭마다 한 번
+        if (ok) { x = nx; colW = nw; }
+      }
       const nameY = by + 52;
       ctx.save();
       ctx.shadowColor = 'rgba(179,18,46,0.9)'; ctx.shadowBlur = 12;
@@ -363,7 +392,7 @@ export class StoryScene extends Scene {
       const lg = ctx.createLinearGradient(x, 0, x + nw + 120, 0);
       lg.addColorStop(0, 'rgba(232,200,114,0.8)'); lg.addColorStop(1, 'rgba(232,200,114,0)');
       ctx.fillStyle = lg; ctx.fillRect(x, nameY + 8, nw + 120, 1.5);
-      const lines = wrap(ctx, shown, tw - 60, 19, 500).slice(0, 3);
+      const lines = wrap(ctx, shown, colW, 19, 500).slice(0, 3);
       lines.forEach((s, i) => text(ctx, s, x, nameY + 38 + i * 28, { size: 19, color: BONE, ow: 3 }));
     }
     if (this.shown >= this.full.length && !this.menu && Math.floor(t * 2.5) % 2 === 0) text(ctx, '▼', vw - 60, vh - BAR - 14, { size: 14, align: 'center', color: GOLD, ow: 2 });

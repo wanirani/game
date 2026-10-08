@@ -361,7 +361,8 @@ export class DialogueScene extends Scene {
       text(ctx, n >= s.length ? s : s.slice(0, n), Lo.textL, y0 + k * lay.lh, { size: lay.size, color: col, ow: 2 });
     }
     const done = this.shown >= this.full.length;
-    if (done && !this.menu && Math.floor(this.t * 3) % 2 === 0) text(ctx, '▼', Lo.textR - 4, by + bh - 16, { size: 14, color: COLORS.gold, align: 'right' });
+    // '▼' (다음): 휴대폰에서도 ≥ 12.5 CSS px (14 UI px 는 phone2 에서 11.7 CSS px — text_audit 최소값이었다)
+    if (done && !this.menu && Math.floor(this.t * 3) % 2 === 0) text(ctx, '▼', Lo.textR - 4, by + bh - 16, { size: Math.max(14, Math.ceil(12.5 / cssPer(this))), color: COLORS.gold, align: 'right' });
     // 키보드·패드 안내 (초상화가 없는 쪽 창 위)
     if (!input.touchMode) {
       const items = !this.menu ? [['confirm', '다음']] : done ? [['dpadV', '선택'], ['confirm', '결정']] : null;

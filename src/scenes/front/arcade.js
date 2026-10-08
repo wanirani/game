@@ -955,14 +955,27 @@ export class ArcadeClassScene extends Scene {
       perkMax = Math.max(perkMax, this.lines(ctx, `p:${o.id}`, o.A.perk, pw - 28, detS, 500).length);
       descMax = Math.max(descMax, this.lines(ctx, `d:${o.id}`, o.A.desc, pw - 28, descS, 700, 2).length);
     }
-    const detNeed = 12 + descMax * descLH + 4 + perkMax * detLH + 8;
+    const detNeed = 12 + descMax * descLH + 4 + perkMax * detLH + 8, perkNeed = 12 + perkMax * detLH + 8;
     const space = btn.y - 8 - y0;
     let prevH = Math.round(clamp((foot - y0) * 0.46, 108, 230));
     if (prevH + 8 + detNeed > space) prevH = Math.max(84, space - 8 - detNeed);
+    // 휴대폰 '크게'·'아주 크게'(미리보기가 120 px 아래로 줄 때): 「이 길로 도전」을 미리보기 칸 안 오른쪽 아래(이름표 칸)로 옮기고
+    // 그 줄(단추 46 + 8)을 미리보기 높이로 돌린다 → 영웅이 커지고 계보·레벨 줄이 보인다. 설명 한 줄은 특성 전문보다 먼저 양보한다
+    const heroW = Math.min(pw * 0.42, 210), plateW = pw - heroW - 16;
+    const inline = prevH < 120 && plateW >= 200;
+    if (inline) {
+      const sp = foot - y0;
+      prevH = sp - 8 - detNeed;
+      if (prevH < 136) prevH = Math.max(prevH, Math.min(136, sp - 8 - perkNeed));
+      prevH = Math.round(Math.max(prevH, 104));
+      const bw2 = Math.min(250, Math.floor(plateW));
+      btn.w = bw2; btn.x = px + pw - 8 - bw2; btn.y = y0 + prevH - 46 - 8;
+    }
     const prev = { x: px, y: y0, w: pw, h: prevH };
-    const det = { x: px, y: y0 + prevH + 8, w: pw, h: Math.max(40, btn.y - 8 - (y0 + prevH + 8)) };
+    const detY = y0 + prevH + 8;
+    const det = { x: px, y: detY, w: pw, h: Math.max(40, (inline ? foot : btn.y - 8) - detY) };
     return (this._L = {
-      W, H, fl, n, small, tight, top, hs, y0, foot, list, cardH, cg, nameS, perkS, pillS, prev, det, btn,
+      W, H, fl, n, small, tight, top, hs, y0, foot, list, cardH, cg, nameS, perkS, pillS, prev, det, btn, inline,
       descS, descLH, detS, detLH, back: { x: 12, y: 10, w: 104, h: 54 },
     });
   }
@@ -1059,17 +1072,24 @@ export class ArcadeClassScene extends Scene {
     // 이름표 바탕: 앞으로 뻗은 무기·참격이 글 밑으로 지나가도 읽히게
     ctx.fillStyle = 'rgba(8,3,12,0.5)'; ctx.fillRect(P.x + heroW - 6, P.y, P.w - heroW + 6, fy - P.y);
     ctx.restore();
-    // 이름표
-    const x = P.x + heroW + 4, w = P.x + P.w - 12 - x, bottom = P.y + P.h - 6;
+    // 이름표 (단추가 칸 안에 있으면(L.inline) 그 위까지 — 꼬리표·이름을 한 줄로, 영문은 뺀다)
+    const x = P.x + heroW + 4, w = P.x + P.w - 12 - x, bottom = L.inline ? L.btn.y - 4 : P.y + P.h - 6;
     if (w < 80) return;
     let y = P.y + 10;
     const ph = Math.round(Math.max(18, L.pillS * 1.5));
-    tagPill(ctx, KIND_LABEL[o.kind] ?? '', x, y, ph, 12, KIND_COL[o.kind] ?? ASC_COLOR, KIND_BG[o.kind] ?? KIND_BG.t3);
-    y += ph;
     const big = L.small ? 22 : 26, bigS = Math.max(big, L.fl);
-    if (y + bigS * 0.95 > bottom) return;
-    y += Math.round(bigS * 0.95);
-    text(ctx, o.A.name, x, y, { size: big, weight: 900, family: FONT.title, color: '#fff4e0', ow: 4, maxWidth: w });
+    if (L.inline) {
+      const rowH = Math.max(ph, Math.round(bigS * 1.05));
+      const pw2 = tagPill(ctx, KIND_LABEL[o.kind] ?? '', x, y + Math.round((rowH - ph) / 2), ph, 12, KIND_COL[o.kind] ?? ASC_COLOR, KIND_BG[o.kind] ?? KIND_BG.t3);
+      text(ctx, o.A.name, x + pw2 + 8, y + Math.round(rowH / 2 + bigS * 0.36), { size: big, weight: 900, family: FONT.title, color: '#fff4e0', ow: 4, maxWidth: Math.max(40, w - pw2 - 8) });
+      y += rowH + 2;
+    } else {
+      tagPill(ctx, KIND_LABEL[o.kind] ?? '', x, y, ph, 12, KIND_COL[o.kind] ?? ASC_COLOR, KIND_BG[o.kind] ?? KIND_BG.t3);
+      y += ph;
+      if (y + bigS * 0.95 > bottom) return;
+      y += Math.round(bigS * 0.95);
+      text(ctx, o.A.name, x, y, { size: big, weight: 900, family: FONT.title, color: '#fff4e0', ow: 4, maxWidth: w });
+    }
     const line = (str, size, color, o2 = {}) => {
       const S = Math.max(size, L.fl), lh = Math.ceil(S * 1.3);
       if (y + lh > bottom) return false;
@@ -1077,7 +1097,7 @@ export class ArcadeClassScene extends Scene {
       text(ctx, str, x, y - Math.round(S * 0.22), { size, weight: 800, color, ow: 2, maxWidth: w, ...o2 });
       return true;
     };
-    if (!line(o.A.eng, 12, rgba(acc, 0.95), { family: FONT.logo })) return;
+    if (!L.inline && !line(o.A.eng, 12, rgba(acc, 0.95), { family: FONT.logo })) return;
     if (!line(`${o.parent ? `← ${o.parent} · ` : ''}Lv.${o.lv}`, 12, '#d8ccbc')) return;
     if (o.skill && !line(`비전 기술 · ${o.skill}`, 12, KIND_COL.hidden)) return;
     for (const l of this.chipLines(ctx, o, w)) if (!line(l, 11, '#bfb2a0', { weight: 700 })) return;

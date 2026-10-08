@@ -966,3 +966,83 @@ Alberto block `'하늘에서 떨어진 기사라… 오늘 밤은 무엇이 떨�
 9. Isolde's commander **브륀힐트** ordered her to chase Argen; the order fell to Ziz's corrupted storm; oath "용이 날 수 있는 하늘을 지킨다".
 10. Victor takes an apprentice; Sera becomes Elise's second bell-ringer; Kael's whip hangs on the bell-tower post; Bran refounds
     the Dawn Oath with Mors's ledger.
+
+---------------------------------------------------------------------------------------------------------------------------
+
+## 9. As built (2026-10-08, DOCS; appended after Phase F landed — §0–§8 above stay as frozen)
+
+Sources: `/tmp/claude-0/fw0/story-trials.md`, `story-gaps-a.md`, `story-gaps-b.md` (each with a VERIFY section — all PASS),
+`/tmp/claude-0/fw1/ui-church-class.md`, `/tmp/claude-0/fw3/ui-core.md`, `/tmp/claude-0/plan/requests_f.md`. Contract map:
+`docs/ARCHITECTURE.md` §11.5 and §16.8. Player text is byte-identical to the code blocks above (extracted programmatically and
+compared both ways by each package); the points below are the only differences in structure or behaviour.
+
+### 9.1 STORY-TRIALS (`src/data/story_trials.js`)
+- 30 scripts: `tr_<hero>_<1|2>_pre/_win` ×14 + `tr_again_pre` / `tr_again_win`; 292 Korean strings identical to §4/§3.4.
+- **No fail scripts** — the fail text is the trial row's `failLine` (Elise), shown by `TrialEndScene`; none were added (they would
+  be dead data).
+- `TRIAL_FRAME` is also exported (tests only; the 14 `_pre` share its line objects — count unique objects for stats). It is never
+  spread into `SCRIPTS`. The frame's `flag('echo_known')` after the `RVX` conditional lines is kept verbatim (allowed: trial
+  scripts are not stage outros, and nothing follows `L('frame_end')`).
+- Alberto's '미안했어' (victor_2_pre) kept — he mixes ~어 endings in shipped Part 1 lines.
+- The merge line lives in `story.js` (STORY-GAPS-B): `Object.assign(SCRIPTS, COMPANION_SCRIPTS, SCRIPTS_P2, SCRIPTS_TRIALS, SCRIPTS_EXTRA)`.
+
+### 9.2 STORY-GAPS-A (`story_p2.js`, `story_p2b.js`, `story_ex.js`)
+- §5.1: 33 scripts / 40 keyed objects, verbatim by original index.
+- **Extra key fills (decision, behaviour-neutral)** so that *every* text object in `SCRIPTS_P2` (79 objects, non-hero speakers
+  included: s14_t1 '거울 속의 나', s20_t2 '에드문트의 환영', `b_nihil_form2` Nihil) has all 7 hero keys + `default`: 38 keys filled
+  with the object's existing `default` string — unreachable branch keys (p2_prologue `lia`, s15_t1 `bran`, s16_t2 `sera`; the
+  side chapters' protagonist key in the non-protagonist branch: s22 `lia` ×6, s23 `victor` ×6, s24 `sera` ×5, s25 `bran` ×5) and
+  reachable keys that already fell back to `default` (b_mara_post kael/victor/bran/lia '…잘 자.', b_behemoth_post
+  kael/victor/lia/azel '…이제 편히 쉬어.', s20_t2 Edmund sera/victor/bran/lia/azel). No new player text.
+- `b_nihil_form2` (pushed mid-fight by the phase transition) is 2 lines longer (Nihil per-hero line + hero answer), as §5.5 asks.
+- `CREDITS_EX` is exported from `story_ex.js` exactly as §5.7 (`{ s21…s25: [...] }`, two-column 'title — name' rows).
+- Open (voice, pre-existing): the informal default lines above reach Bran (~소/~오), Kael and Azel — candidates for a later pass.
+
+### 9.3 STORY-GAPS-B (`src/data/story_extra.js`, `src/game/story_director.js`, `src/data/story.js`)
+- `SCRIPTS_EXTRA` = 34 scripts: inn banter ×14 (`BANTER` = the §5.3 table, frozen), town reactions ×9
+  (`npc_hadwin/marta/greta_ex21`, `npc_rook/elise/alberto_ex22`, `npc_marta/hadwin/elise_ex23`), companion joins ×11
+  (`cmp_join_<id>` for the Part 1 companions without their own scene).
+- `pickNpcScript`: the spec snippet's local `EX` is named `EX_TALK` (the module namespace import is `EX`, §5.7). Newest unseen
+  side-chapter reaction first, each **once**; afterwards the default rotation resumes (so `npc_carmilla_ex24` / `npc_greta_ex25`
+  no longer stay in the rotation pool). `npc_alberto_ex22` is reachable only through the church row 「안쪽 방 — 신부님」 (Part 2),
+  which shows a 'NEW' pill while a new Alberto line is waiting (`albertoNews`, church.js — UI-CORE).
+- `creditsFor`: '— 외전 —' + `CREDITS_EX` rows of the done chapters in chapter order, right after `CREDITS_P2` / before
+  '— 제작 —'; a chapter counts when `ex_sNN_done` is set in this cycle **or** in `state.ng.past.flags` (same idea as the trials'
+  `flagEver`). Without any `ex_*_done` the list is the old one + the new row '영혼의 마구간지기 — 그레타'.
+- `inn_all_harvest`: the join-flag guard (`if: '<id>_joined'`) is applied to lia/azel too (the spec names isolde; same §5.3 rule).
+- Director (`hubStoryEnter(game, hub)`, called after each `CMP.companionHubEnter` in `hub.js` enter and both `onResume` paths):
+  subscribes to `companionUnlocked` lazily on its first call (a companion unlocked before that first call in a session gets its
+  card but loses its one-liner — accepted, spec-mandated laziness); queues `progress.flags['cmpq_<id>'] = true` (false = heard)
+  only for companions with a `cmp_join_` script and never in arcade; plays join lines on **any** hub arrival/resume (unlocks can
+  happen in town) in `UNLOCK_ORDER`, always before banter; banter only on back arrivals (`hub.from` ∉ {prologue, load, title, new,
+  p2, inn, church}), one per hub instance (WeakMap). The first call after a trial return (`from: 'church'`) is skipped so the church
+  opens first. `companionHubEnter` shows ≤ 3 join cards per visit, so with > 3 unlocks between visits a 4th line can play before
+  its card. No `[hook:…]` tags (hook_tags.mjs warns on unknown kinds); no `churchKeeper` export (cut in §0).
+- Two-line joins use hero-neutral `H('…')`; Bran (~소/~오) hears an informal line there.
+
+### 9.4 §5.4 town (UI-CHURCH-CLASS, UI-CORE)
+- Elise keeps the church from `p2_started` (`SHOP_LINES.elise`, hints in her voice — verbatim); Alberto is hidden from the hub
+  (`npcs.js` `appear.hideFlag: 'p2_started'`) and reached through the church row (`npcTalk` + dialogue). Keeper lines added beyond
+  this spec (no new glyphs): `SHOP_LINES.alberto/elise.base` (switching back to plain tier 2) and `.trialBack` (came back from a
+  trial without clearing).
+- §5.7 rule applied to two companion hints (ARCADE-LEFTOVERS, `src/data/companions.js`): '외전 「불탄 목장의 밤」에서 만날 수 있다',
+  '외전 「시드는 장미」에서 만날 수 있다'; code comments renamed to 「이름 없는 언덕」 / 「하늘 정원의 둥지」.
+
+### 9.5 Portraits and expressions (FANIME, same day)
+- Gothic-anime busts replaced the portraits; 28 expression files exist (`<id>__angry` / `<id>__shock` for the 7 heroes and 7 NPCs
+  alberto, carmilla, elise, greta, hadwin, marta, rook — not `npc_rook2`). Lines pick them with `face: 'angry'|'shock'|'neutral'`
+  or `portrait: '<key>__angry'`; the only automatic rule is a line ending in '?!' → shock / '!!' → angry, and only when that file
+  is listed in `PORTRAIT_META`. **No story line written so far sets `face`** (today only 4 boss lines auto-match, and bosses have
+  no expression files) — writers may add `face` to key lines; `front/story.js` preloads the expression files a cutscene uses
+  (`preloadExpressions`).
+
+### 9.6 Fonts
+New Hangul glyphs from these packages (fonts **not** rebuilt — the lead rebuilds once): 갓 닢 땋 (story_extra.js), 륀 쵸
+(story_trials.js; 닢 also there), 짚 (story.js prologue), plus 띠 (ascensions.js) and 뵙 줌 (church.js). `python3
+tools/fonts/build_fonts.py --check` lists exactly these 9: 갓닢땋띠륀뵙줌짚쵸.
+
+### 9.7 Tests
+QA-ASC's `tools/test_part2.mjs` now checks `SCRIPTS_TRIALS`/`SCRIPTS_EXTRA` (ids, known commands per play mode, speakers,
+portraits, labels, lengths 79/86/134, `H({...})` 7 hero keys + `default` across Part 2/side scripts, trial script ids). The
+packages' scratch checkers (`…/scratchpad/st/validate_trials.mjs`, `ga/validate.mjs`, `gb/validate.mjs`, `gb/sim_director.mjs`)
+were the interim gate.

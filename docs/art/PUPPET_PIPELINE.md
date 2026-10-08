@@ -74,6 +74,7 @@ build_all.py  ── 전부 + 망토 결 텍스처 + src/render/puppet_manifest.
 ### 2.1 기본 측면 원화 (직업 0단계, 영웅당 1장)
 
 초상화(`assets/portraits/<char>.webp`)를 `image_1` 로 img2img. 이 한 장의 **포즈가 7직업 전부의 리그를 결정**하므로 신중히 고른다 (후보 2~4장).
+> 2026-10-08 부터 `assets/portraits/<char>.webp` 는 고딕 애니메 **흉상**(768×1024 투명, FANIME — `docs/ARCHITECTURE.md` §12 끝)이라 퍼펫 원화의 화풍·전신 참고로 쓰지 않는다. 기존 퍼펫과 같은 채색 화풍이 필요하면 설치 전의 채색 초상화를 git 기록에서 꺼내 쓴다 (예: `git show 050203d:assets/portraits/kael.webp > /tmp/kael_old.webp` — 애니메 흉상은 그 뒤 자동 저장 커밋들에서 들어왔다), 또는 이미 있는 측면 원화(`tools/puppet/` 의 영웅 폴더)를 `image_1` 로 준다.
 카엘 기준 포즈: 오른쪽을 보고 걷는 옆모습, **가까운 팔은 뒤로 내려 손이 엉덩이 옆**, 먼 팔은 몸 앞으로 흔들림(잘라 버림), 다리는 앞뒤로 벌어짐, 무기는 허리에(채찍 똬리).
 
 ```

@@ -1012,3 +1012,146 @@ sign-off, release.
 3. Stubs (`trial.js`, `story_director.js`, `class_perks_*.js`) make every import resolve from the wave that needs it; owners
    replace bodies without changing export names.
 4. Ids in this document are frozen; renaming any id after ASC-CORE lands is a breaking change.
+
+---------------------------------------------------------------------------------------------------------------------------
+
+## 14. As built — deviations (2026-10-08, DOCS; appended after Phase F landed — §0–§13 above stay frozen)
+
+Sources: package reports and their VERIFY sections (`/tmp/claude-0/fw0/asc-core.md`, `fw1/hooks.md`, `fw1/ui-church-class.md`,
+`fw2/perks-a.md`…`perks-d.md`, `fw2/ult-awaken.md`, `fw2/trials-engine.md`, `fw2/arcade-leftovers.md`, `fw3/ui-core.md`) and
+`/tmp/claude-0/plan/requests_f.md`. The code is the source of truth; the contract map is `docs/ARCHITECTURE.md` §16. Every
+changed number below was changed in the module's `N` table and in the player-facing perk text together (text ↔ `N` checked by
+each package's comparison script and by `tools/test_perks.mjs`).
+
+### 14.1 Power numbers changed for the §2.8 budget
+| entry | spec (§4/§5) | as built | why (package measurement, scripted A/B "sig" = on vs registry-off) |
+|---|---|---|---|
+| `kael_grandtemplar` | burst 위력 100~300% | 80~250% | +14.8 / 14.7 / 10.4 % → inside the +5–10 % target band (PERKS-A, 3 seeds) |
+| `kael_bloodreaver` | crescent 위력 140%, hitstop 0.03 | 120%, hitstop 0 | +12.7…13.0 % before; §3.6.1 allows proc hitstop only on release moves ≥ 1.5 s apart and the crescent ICD is 0.8 s |
+| `sera_archsaint` | sanctum heal 2 % / 0.5 s | 1.5 % / 0.5 s (`zoneHeal`) | eHP ×1.68–3.2 at 2 % |
+| `victor_purgatory` | overheat `p._heatK {r: 1.5, mv: 1.25}` | `{r: 1.2, mv: 1.15}` (one frozen object per hero, set at overheat, null at the vent) | 19 / 25 % → 9.9 / 11.1 % mob/pack |
+| `bran_vanguard` | shield bash 위력 120%; 2nd/3rd wave 80% | bash 80%; extra waves 30% (2 delayed waves via `K.setTimeoutFx`, the legacy crusader wave stays the first) | 31 / 30 % → 14.3 / 10.0 % |
+| `bran_conqueror` | a hit under 15 % max HP keeps the combo | keeps it but takes 25 % off (`keepLoss 0.25`; text `…콤보를 끊지 않고 25%만 깎는다.`); loss and cue live inside `keepCombo` (also on the deep-water choke path) | keeping it whole read +23 % single / +44–47 % pack |
+| `bran_bloodtyrant` | +2 % per stack | +1 % per stack | 19 / 20 % → 9.4 / 10.6 % |
+| `victor_silverwolf` (hidden) | gauge +3 per hit, full moon 8 s, ×1.15, pierce +2 | +2, 6 s, ×1.10, pierce +1 | +111 % pack before (pierce on lined-up dummies); single target now ≈ est 1.08 |
+| `lia_umbra` | clone 위력 35% | 25% | — |
+| `azel_nightlord` | mist tick 15 % every 0.25 s | 10 % every 0.4 s (text 「0.4초마다 위력 10%」) | also keeps its numbers at 2.5/s, under the §3.6.3 limit |
+| `azel_bloodemperor` | fires on every finisher | 8 s ICD (text adds 「8초에 한 번」) | bloodking overheal refills the 10 % barrier in ≈ 1.5 s → +40 % before |
+| `azel_nephilim` | feather 30 %, eclipse 100 %, same-target eclipse ICD 2 s | 10 %, 60 %, 3 s | +28 % / +38 % before |
+| `isolde_skysovereign` | +1 landing bolt per 240 px fallen | per 120 px | verified falls: single jump held 3/6/10/16 frames → 89/121/156/195 px, jump + air jump → 164/223/289/360 px; at 240 tap/touch-length jumps never added a bolt. Extra bolts beyond the foe count land beside the hero (from the 2nd on, alternating behind), so a lone target takes at most one: +16–21 % sig at a dive every 2.5 s, +9 % with no extra bolt |
+| `isolde_abyssdragoon` | 용염 counts fire hits, max 30 | fire **and dark** hits (`N.dark = 1`; wyrm_breath alternates fire/dark ticks), max 20 | fire-only never filled on one target in 30 s; at 30 one 흑룡 돌진 per ≈ 40 s (+2–5 %), at 20 single +4–6 %, packs +14 % |
+| `isolde_speargod` | +1.5 % per stack, per hit; 관통 일섬 250 % | 1 stack per swing (first target that swing hits), +0.3 % per stack, 관통 일섬 150 % | spec numbers +28 % single; now +14 % single / +6 % packs |
+| `isolde_skysovereign` air-jump burst | 6 particles, ICD 0.2 s | 4 particles (same ICD) | §3.6.3: > 4 particles needs ICD ≥ 0.25 s |
+| `data/skills_asc.js` (7 hidden actives) | §5 | unchanged — every `v` key is read via `skillVal`; `asc_bran_oathbanner` stays `dmg [80, 12]` (≈ 0.22 mv/s of cooldown from its knights, mid-pack among the 7: kael 0.21 · sera 0.25 · isolde 0.25 · victor 0.32 · lia 0.38 · azel 0.40; PERKS-B's +37 % counted the banner's own +15 % aura) | PERKS-D owner review |
+
+### 14.2 Behaviour deviations by package
+- **ASC-CORE (data, API, save)**: `migrateAsc` normalises only fields that already exist (never adds `trials`/`ascUnlocked`/…),
+  so pre-ascension saves stay byte-identical (`tools/test_save_v2` "v1 data unchanged"); `newHero` adds the defaults, and every
+  reader must tolerate absent fields (`hero.trials?.[tid]`, `hero.ascUnlocked?.includes`, or the progression API). `cloud.js
+  summarize` adds `asc` only when set (client summary = server `saveSummary` for non-ascended saves); `saves.list()` uses
+  `asc ?? null`. `canAscend` 'trial' reason picks 을/를 by the trial name's last syllable. `unlockFromTrial` also grants the hidden
+  skill Lv 1 (same as the `migrateAsc` re-grant). `canStartTrial` 'hero' also fails when `state.charId` is another hero. Extra
+  reason strings not in this spec: '알 수 없는 시련이다', '다른 헌터의 시련이다', '최상급 직업에서만 초월할 수 있다', '알 수 없는 길이다',
+  '다른 헌터의 길이다'. `TRIALS` rows carry an extra `boss` id (church modal 「보스: {name}」). Extra exports `LOOK_KEYS`, `TOP_KEYS`.
+- **HOOKS (registry core, hook sites, world options)**: `firePerks` is fixed-arity (≤ 5 args, no rest arrays); `perkAny` stops at
+  the first `true`; `perkHurt` returns a reused `{dmg, armor}` (read at once); `procAtk` also takes `hitstop` (clamped ≤ 0.08),
+  `hitId`, `dir`, `launch`, `rehit`, and (UI-CORE) `dmgColor`/`mult`. Bus handlers find the world through a microtask-deferred
+  `window.__game.world` (World emits `roomEntered` before `game.world` is assigned); the PerkLayer room token is `world.map`.
+  Extra exports: `HOOK_NAMES`, `ENTRY_KEYS`, `MARK_CAP`, `setPerkRegistry`, `clearPerkMemo`, `perkChain`, `perkRegistry`,
+  `perkEnter`, `attachLayer`, `drawPerkLayer`, `markedCount` and (UI-CORE) `perkQuiet`, `meterHidden`, `markAnchor`.
+  `PERK_STATS` = `{calls, ms, layerMs, errors, timing, last}`. `onSkill` fires after cooldown/MP are set. `playerHurt` carries
+  `{amount, attack}` (gimmick choke still passes `source`). The templar `playerHurt` 20 % counter was removed from skills.js and
+  re-implemented as `PERKS_A.kael_templar.afterHurt` (same boom, legacy tags `['skill']`, colour `#ffd870`); inquisitor tip boom
+  tags `['melee', 'inq']`; hellfire wall hits count as misses.
+- **UI-CORE follow-ups**: one core town rule `perkQuiet(w)` (mode 'town' or `w.perkQuiet`) — a town world's Player perks are pinned
+  to the empty list and the layer/onEnter/onUlt refuse there (per-entry `w.mode === 'town'` guards in `class_perks_b.js` stay,
+  harmless). Meters are hidden while the hero is hidden, during `world.cutscene`/`hudHidden` and under a cut-in (`meterHidden`).
+  **No z 11 meter pass** — content modules keep their offsets (`METER_DY` 38 in A/C, `HEAD` 32 in B). Boss marks anchor through
+  `markAnchor` (highest hurtbox top, below the HUD band, above the boss's live damage column). Proc damage numbers (§3.6.3 / §12
+  "DOT style + DMG_CAP") are rate-limited in `core/particles.js` `fx.dmg`: per target a new proc number at most every `PROC_GAP`
+  1/3 s, the rest merged into the live one (`o.proc`, `o.dmgStyle 'dot'|'proc'`, or `fx.procScope` raised by `procStrike` /
+  `K.uHit{proc:true}`); projectile/SkillFx procs coalesce only once impact.js forwards `attack.proc` (request open).
+  `blockable`/`quietExpire` were **not** bound into `K` (a static `guardian.js` import would add a combat ↔ class_perks cycle);
+  `class_perks_a.js` keeps a behaviour-identical local copy. Church/keeper additions: `albertoNews` 'NEW' pill on 「안쪽 방 — 신부님」,
+  `SHOP_LINES.*.base` (switch back to plain tier 2) and `.trialBack` (returned without clearing) keeper lines.
+- **PERKS-A (kael, sera)**: `K.boom` → local `nova` (same strike, ≤ 12 particles, coloured numbers) for grandtemplar, templar C3,
+  archsaint revive, archsage burst; sealbearer adds 1 seal per swing per target (dedupe on `p.curHitId`); sanctum and first-seal
+  circles snap to the floor below (`K.groundAt`, ≤ 7 tiles); bellsaint active tolls do not feed the passive 8-hit counter (§5 "no
+  passive counter"); elementalist "기본 공격" = player attacks without skill/sub/ult/awaken/assist/companion/mount tags.
+- **PERKS-B (victor, bran)**: headsman execute burst behind `icd 0.25`; gunking/headsman read 0 % in hit-every-2 s / 1e7-HP
+  scripted sims by design (no-hit streak +10.4 / 9.2 %; execute analytic ≈ +8 %).
+- **PERKS-C (lia, azel)**: kit substitutions — own gradient-free shuriken/dagger/feather renderers (instead of `K.shurikenRender`,
+  `K.daggerRender`, `K.featherRender*`, `K.featherShape`, which build gradients per draw), own `bloodSpike` (3 particles) instead of
+  `K.spikeFx` (≈ 65), `blast()` instead of `K.boom`, frostwing feathers are self-steering SkillFx with a 500 px search. **§0.3
+  correction:** umbra clones are a vector shade — `K` has no hero-bitmap pool (`K.ghostOf` returns a snapshot that needs
+  `drawHero`); a `K.heroBitmap` was requested. Nightlord ticks share one time bucket per enemy; umbra clones share one hitId per
+  swing. Dawnblood (after VERIFY): a second lethal hit after the 0.8 s i-frames ends borrowed time (spec §5), and a borrow is
+  dropped when `stats.deaths` changes or the stage is cleared (no stale kill after a respawn). Bladequeen release trail ≤ 20 ×
+  quality particles. `asc_lia_frostwing` is in `mount.js` `DISMOUNT_SKILLS`; `tools/test_mount.mjs` also scans the `ACTIVES_X`
+  bodies.
+- **PERKS-D (isolde)**: soulherald wings are vector strokes (`K.wing` builds a gradient per call); soul javelins are procs.
+- **ULT-AWAKEN**: `ultimateCast`/`awakenCast` `asc` = `ascOf(hero)?.id ?? null` (an invalid raw `hero.asc` is never reported).
+  ultfx promotes an awakening session from tier 2 to 3 when the hero is 초월/비전 (internal `awTier`), because the directors pass a
+  literal `tier: 2` (A: `awaken_directors.js` begin/final, B: `awaken_directors_b.js` finals) — directors unchanged. New exports
+  `awakenPrefix(tier, kind)`, `ascAwakenOf(classId, asc)`. 비전 각성 uses `T3_BOOST(T2[classId])` with the T2 label/desc, so the T2
+  desc numbers understate the boosted values (no UI shows awaken desc; lead decision if one is added). Extras beyond §7 at the same
+  budgets: cut-in '초월'/'비전' tag, accent stripes/speed lines, double gleam, tier-3 name-plate line, awakening cut-in sweep, seal
+  ring, head halo, English path name, band tint, letterbox 46. Later fixes (SWEEP2): the HUD gauge label reads `heroTier` →
+  '초월 각성'/'비전 각성'; perk procs during an awakening share its 30 % boss cap (`world.awProcCap`, `world.procCapFn`).
+- **UI-CHURCH-CLASS**: the church grid's 64 px "current class" header is folded into the left 32 % preview column; tier-2 class
+  cards have a 2-text-line floor and the column becomes a scroller (follows pad/keyboard focus) when 4·(card + strip) do not fit;
+  strip taps are 36 UI px, kind 'dense'; asc status texts '해금됨' / '선택하지 않은 길' / '잠김' / 'Lv N 필요' / '초월 가능!' /
+  '현재 직업'; status-tab path pills keep the current pill whole and shorten earlier ones longest-first. The church card shows the
+  whole perk only on the selected card (others 2 lines + '…'); the class-tab detail shows the whole perk and scrolls.
+- **TRIALS-ENGINE**: `T.diffOver` keys are multiplied into the difficulty value (`boss.js` reads `bossHp` as absolute; `bossHp`
+  falls back to `enemyHp`) — hard `tr_kael_1` = 1.4 × 1.3 = 1.82. `hero.trials[tid].best` = boss-fight seconds (arena entry → defeat,
+  intro excluded), not `w.run.time`. Start banner `big: true` + a rule toast 0.9 s later. Leave/quit open the church class tab
+  (not only spawn at the church); a retry skips the pre script; a quit counts as a try only during the boss fight; §9.3
+  `rec = hero.trials[T.id] ??= {}` is `trialRecord(hero, tid)` (creates `hero.trials` on old saves). Kept from §9.2/HOOKS: trial
+  kills still emit `enemyKilled` (bestiary, `stats.kills`, kill quests and kill achievements move); no `stageCleared`/`bossKilled`/
+  `levelUp`; trial deaths still advance the achievement 'deaths' progress (`playerDied`) while lives and `stats.deaths` stay. The
+  HUD still shows score/lives in trials (never saved/decremented). Later fix: the return scroll (`c_warp`) is refused inside a
+  trial ('시련의 결계가 귀환을 가로막는다 — 일시정지의 「시련 포기」로 돌아갈 수 있다').
+- **ARCADE-LEFTOVERS (the "later" ARCADE-PICKER, §10.3)**: the 초월 preset is a separate list `ASC_PRESETS` ('초월자', Lv 80,
+  wtier 7, `asc: true`, `p2: true` — amended by VERIFY: listed only when Part 2 is known; `?preset=5` without Part 2 falls back
+  to preset 0) appended after `LEVEL_PRESETS` via `ALL_PRESETS`/`presetOf(i)` (cfg.preset 5) — `LEVEL_PRESETS` is unchanged
+  because tools/online/test_online compares it to the server. The picker `ArcadeClassScene` ('arcadeClass') runs after 헌터 선택
+  only for that preset and is registered at runtime by `startArcade` (not in reg_front.js); it lists `ascListOf(charId)` t3 + the
+  hidden ids this device has seen (`meta.ascSeen`; konami shows all), last choice in `meta.arcadeAsc[charId]`; daily never.
+  `?asc=<id>` URL param. **§0.3 / §10.2 correction:** the online result now carries an optional `asc` (client `ASC_RE` +
+  `cleanResult`); the server is untouched and drops it (`checkResult` whitelist), submissions stay valid through `cls` (tier-2
+  parent). Hidden paths play at hero Lv 85 against preset-80 enemies on shared boards (lead decision pending).
+- **QA-ASC**: `tools/balance.mjs --asc all|t3|hidden|<id> [--check]` (spec: `--asc t3|hidden`) uses a closed-form stat layer plus a
+  Node arena (`tools/qa/lib/asc_arena.mjs`: real Player, `hitTarget`, `impact`, perk hooks, no render) instead of multiplying by
+  `est.dps`.
+
+### 14.3 Factual corrections to the frozen sections
+- §0.2 table "no `skills_asc.js` runtime file": `src/data/skills_asc.js` exists as **pure data** (§2.3); the runtime actives are
+  `ACTIVES_A..D` — consistent, no runtime module.
+- §0.3 "lia_umbra … cached silhouettes (`K.ghostOf`, the awakening clone pool)" → vector shade (see 14.2 PERKS-C).
+- §0.3 / §10.2 "Online `asc` field deferred" → client sends it; server ignores it (14.2 ARCADE).
+- §1.2 step 1 "`h.trials` not an object → `{}`" → only existing fields are normalised; absent fields stay absent (14.2 ASC-CORE).
+- §2.5 events: add `playerHurt {amount, attack?}` (HOOKS). `classChanged {charId, classId, asc}`, `ascChanged {charId, classId,
+  asc, prev, first}` (not in `ACH_EVENTS`), `ultimateCast`/`awakenCast` + `asc` — as specified.
+- §2.7 `hero_parts.js` `K.L?.wingCol` → `G.wingCol` (no `K` in `drawWing`'s scope; `hero_puppet.puppetFor` sets it on every hero
+  draw, `drawTurnWings` from `I.look`).
+- §3.3 `PERK_STATS = { calls, ms, errors }` → `{ calls, ms, layerMs, errors, timing, last }`.
+- §3.7 "calls `drawMeter` of the active hero's entries" → skipped while `meterHidden(p, w)`; no meters in town (`perkQuiet`).
+- §9.2 lists exp/loot/companion only → confirmed as built: score, `enemyKilled`, bestiary and `stats.kills` still move in trials.
+- §9.3 `completeTrial` record line → `trialRecord(hero, tid)`; `best` = boss-fight time.
+- §11.2 `balance.mjs --asc t3|hidden` → `--asc all|t3|hidden|<id>` (14.2 QA-ASC).
+- §12 "DoTs … use the DOT damage-number style and the `DMG_CAP`" → proc/DoT numbers are coalesced per target by `PROC_GAP`
+  (14.2 UI-CORE).
+
+### 14.4 Balance pass
+**Pending** — the lead's sign-off file `/tmp/claude-0/fw3/balance_signoff.md` did not exist when this section was written.
+Known so far: the per-package A/B tunes in 14.1 (each signature measured inside or near the +5–10 % band in its own scripted sim).
+The first `node tools/balance.mjs normal --asc all --check` run (QA-ASC, 2026-10-08 17:19 UTC, `/tmp/claude-0/fw3/balance_asc.md`)
+exits 1: §2.8 budgets (Σmult, single mult, flats) pass for all 35, but the closed-form **stat layer** is over the §11.2 limits for
+15 entries (atk-effect > +12 %: kael_bloodreaver 16.9, kael_blackwing 19.0, victor_specter 15.7, victor_headsman 15.2,
+victor_gunking 13.9, bran_conqueror 12.9, lia_umbra 20.1, lia_mirage 15.6, lia_bladequeen 14.5, azel_bloodemperor 14.2,
+isolde_speargod 15.2, victor_silverwolf 16.7, lia_frostcrow 13.7; eHP > +15 %: kael_grandtemplar 24.8, bran_bastion 27.8 — the
+「초월 보정」 crit/agi overflow and the chain `dmgReduce` are the likely contributors), and `bran_vanguard` sustained sig is +27.6 %
+(> +20 %); warnings for bran_bastion / victor_silverwolf / bran_oathlord sig > +12 %, lia_mirage siege eHP sig +61 %, and the
+trial-length model (all 14 trials model-kill far under the 40–75 s band — the model has no dodging, boss i-frames or second forms,
+so it is a ratio check, not a verdict). No numbers were changed after this run at the time of writing; the lead decides.
