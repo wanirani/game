@@ -19,6 +19,7 @@ import { hudSafe } from '../../render/hud_layout.js';
 import { clamp, lerp, rand, TAU, rgba, ease } from '../../core/math.js';
 import { CHARACTERS, CHAR_ORDER } from '../../data/characters.js';
 import { CLASSES, classChain } from '../../data/classes.js';
+import { isBust, keyOfImage, bustCrop, bustSilhouette } from '../../render/portrait.js';   // 애니메 흉상 (portraitIn · featherPortrait)
 
 export const GOLD = '#e8c872', BONE = '#efe4cf', CRIMSON = '#b3122e', INK = '#07030a', DIM = '#9d8f80';
 export const EL = { holy: '#fff2b0', fire: '#ff7a2a', ice: '#9fe8ff', dark: '#b060ff', thunder: '#bfe0ff' };
@@ -622,12 +623,37 @@ export function clampLines(ctx, lines, n, maxW) {
 /**
  * 초상화를 사각형 안에 커버로 그림 (fx, fy: 초점 0~1). 이미지가 없으면 캐릭터 색 실루엣 대체.
  * silhouette: 잠김 표시 (검은 실루엣 + 붉은 테두리광)
+ * 투명 배경 애니메 흉상 (data/portrait_meta.js — 표 또는 알파 규칙):
+ *  - backing: 'auto'(흉상일 때만) | true | false — 사각형을 먼저 어두운 고딕 바탕(fallback 색 → 잉크, 얼굴 뒤 옅은 빛)으로 채운다
+ *  - 자르기: fx/fy 대신 얼굴 위치(표의 face, 없으면 흉상 기본값)를 가로 가운데 · 세로 faceY 에 둔다. zoom 은 예전 전신 그림 기준 값 →
+ *    흉상 얼굴 크기로 환산 (render/portrait.js bustCrop). key 를 주지 않으면 이미지 주소로 찾는다
+ *  - silhouette: 사각형 덮개 대신 흉상 모양 그대로의 검은 실루엣 + 붉은 테두리광
  */
-export function portraitIn(ctx, img, r, { fx = 0.5, fy = 0.22, zoom = 1, silhouette = false, alpha = 1, fallback = '#3a2418', fadeBottom = 0 } = {}) {
+export function portraitIn(ctx, img, r, { fx = 0.5, fy = 0.22, zoom = 1, silhouette = false, alpha = 1, fallback = '#3a2418', fadeBottom = 0, backing = 'auto', key = null, faceY = 0.36 } = {}) {
   ctx.save();
   ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
   ctx.globalAlpha *= alpha;
-  if (img) {
+  const pk = img ? key ?? keyOfImage(img) : null;
+  const bust = !!img && isBust(pk, img);
+  if (img && (backing === true || (backing === 'auto' && bust))) {
+    // 흉상 뒤 바탕 (투명한 곳으로 뒤 화면이 비치지 않게). 크기·색별 캐시 그라데이션, 사각형 왼쪽 위 원점
+    const W = R1(r.w), H = R1(r.h), c0 = silhouette ? '#1a0a10' : fallback;
+    ctx.save(); ctx.translate(r.x, r.y);
+    ctx.fillStyle = linGrad(ctx, `piBk|${c0}|${H}`, 0, 0, 0, H, [[0, rgba(c0, 0.55)], [0.55, 'rgba(16,6,18,0.96)'], [1, '#07030a']]);
+    ctx.fillRect(0, 0, r.w, r.h);
+    ctx.fillStyle = radGrad(ctx, `piBkG|${W}|${H}`, W / 2, H * faceY, 0, Math.max(W, H) * 0.6, [[0, silhouette ? 'rgba(120,10,30,0.22)' : 'rgba(150,90,200,0.2)'], [1, 'rgba(0,0,0,0)']]);
+    ctx.fillRect(0, 0, r.w, r.h);
+    ctx.restore();
+  }
+  if (img && bust) {
+    const cr = bustCrop(img, pk, r, { zoom, faceY });
+    if (cr) {
+      const sil = silhouette ? bustSilhouette(img) : null;
+      if (silhouette && sil) ctx.drawImage(sil, cr.dx, cr.dy, cr.dw, cr.dh);
+      else if (!silhouette) ctx.drawImage(img, cr.dx, cr.dy, cr.dw, cr.dh);
+      else { ctx.fillStyle = 'rgba(5,0,6,0.9)'; ctx.fillRect(r.x, r.y, r.w, r.h); }   // 실루엣 캔버스를 못 만든 환경
+    }
+  } else if (img) {
     const s = Math.max(r.w / img.width, r.h / img.height) * zoom;
     const dw = img.width * s, dh = img.height * s;
     const dx = r.x + (r.w - dw) * fx, dy = r.y + (r.h - dh) * fy;
@@ -661,21 +687,28 @@ export function portraitIn(ctx, img, r, { fx = 0.5, fy = 0.22, zoom = 1, silhoue
   ctx.restore();
 }
 
-/** 초상화 가장자리를 투명하게 녹인 캐시 캔버스 (컷신에서 CG 위에 자연스럽게 얹기 위함) */
+/**
+ * 초상화 가장자리를 투명하게 녹인 캐시 캔버스 (컷신에서 CG 위에 자연스럽게 얹기 위함)
+ * 투명 배경 애니메 흉상은 머리카락·어깨를 먹지 않게 옆·위는 그대로 두고 아래(가슴 잘린 면)만 녹인다 (bottom ≤ 0.22)
+ */
 const FEATHER = new Map();
 export function featherPortrait(img, key, { side = 0.2, bottom = 0.42, top = 0.06 } = {}) {
   if (!img) return null;
-  const k = `${key}|${side}|${bottom}`;
+  if (isBust(key, img)) { side = 0; top = 0; bottom = Math.min(bottom, 0.22); }
+  const k = `${key}|${side}|${bottom}|${top}|${img.width}x${img.height}`;
   if (FEATHER.has(k)) return FEATHER.get(k);
   const W = Math.min(520, img.width), H = Math.round(W * img.height / img.width);
   const c = mkCanvas(W, H), x = c.getContext('2d');
   x.drawImage(img, 0, 0, W, H);
   x.globalCompositeOperation = 'destination-in';
-  let g = x.createLinearGradient(0, 0, W, 0);
-  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(side, 'rgba(0,0,0,1)'); g.addColorStop(1 - side, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  let g;
+  if (side > 0) {
+    g = x.createLinearGradient(0, 0, W, 0);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(side, 'rgba(0,0,0,1)'); g.addColorStop(1 - side, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    x.fillStyle = g; x.fillRect(0, 0, W, H);
+  }
   g = x.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(top, 'rgba(0,0,0,1)'); g.addColorStop(1 - bottom, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  g.addColorStop(0, top > 0 ? 'rgba(0,0,0,0)' : 'rgba(0,0,0,1)'); g.addColorStop(top, 'rgba(0,0,0,1)'); g.addColorStop(1 - bottom, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
   x.fillStyle = g; x.fillRect(0, 0, W, H);
   if (FEATHER.size > 10) FEATHER.delete(FEATHER.keys().next().value);
   FEATHER.set(k, c);

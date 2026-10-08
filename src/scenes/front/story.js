@@ -25,6 +25,7 @@ import { BOSSES } from '../../data/bosses.js';
 import { grantItem, ownsItem } from '../../game/inventory.js';
 import { drawHints } from '../../core/prompts.js';
 import { Ambience, kenBurns, ornament, gbutton, menuItem, goSafe, glowSprite, featherPortrait, TapZones, GOLD, BONE, DIM } from './common.js';
+import { linePortrait, resolvePortrait, faceOf, baseKeyOf } from '../../render/portrait.js';   // 애니메 흉상 · 표정
 
 const BAR = 50;
 /** 버튼 최소 높이 (platform §6.3: 44 CSS px) → 이 장면 좌표(px) */
@@ -160,7 +161,7 @@ export class StoryScene extends Scene {
     if (l.name) sp.name = this.fill(l.name);
     if (l.portrait) sp.portrait = l.portrait;
     this.sp = sp;
-    const key = sp.portrait;
+    const key = baseKeyOf(sp.portrait);   // 표정 파일('<키>__angry')은 같은 화자 — 다시 미끄러져 들어오지 않게 기본 키로 (표정은 drawPortrait 가 고른다)
     if (key !== this.port.key) { this.port.prev = this.port.key; this.port.prevSide = this.port.side; this.port.key = key; this.port.t = 0; }
     this.port.side = l.side ?? sp.side;
     if (key) assets.get(key);
@@ -299,14 +300,26 @@ export class StoryScene extends Scene {
       hide = L ? ease.inOutQuad(clamp(L.t / 1.1, 0, 1)) : 1;
     }
     if (hide >= 1) return;
-    const draw = (key, side, a, slide) => {
-      const img = key ? assets.get(key) : null;
+    const draw = (key, side, a, slide, cur) => {
+      // 지금 화자는 대사 줄의 표정(face · portrait '__표정' · '?!'/'!!')으로, 물러나는 화자는 기본 표정으로
+      const R = cur ? linePortrait(this.cur, this.full, key) : resolvePortrait(key);
+      const img = R.img;
       a *= 1 - hide;
       if (!img || a <= 0) return;
-      const fp = featherPortrait(img, key);
-      const h = (this.cg ? 0.84 : 0.94) * vh, w = h * img.width / img.height;
-      const x = side === 'left' ? 10 - slide : vw - w - 10 + slide;
-      const y = vh - h - BAR + 30 + Math.sin(t * 0.8) * 2;
+      const fp = featherPortrait(img, R.key);   // 흉상은 아래(가슴 잘린 면)만 녹인다 (front/common.js)
+      let h, w, x, y;
+      if (R.bust) {
+        // 투명 흉상: 0.72·vh (CG 위 0.64) — 전신 그림의 0.94·vh 로 키우면 머리가 화면을 덮는다.
+        // 눈높이(얼굴 위치 × 높이)를 화면 0.42 에 맞추되, 녹인 아랫단이 글 띠 밑까지 내려오게 (잘린 면이 띠 위로 보이지 않게)
+        h = (this.cg ? 0.64 : 0.72) * vh; w = h * img.width / img.height;
+        const f = faceOf(R.base, img);
+        y = Math.max(vh * 0.42 - f.y * h, vh - BAR - h * 0.9) + Math.sin(t * 0.8) * 2;
+        x = side === 'left' ? 24 - slide : vw - w - 24 + slide;
+      } else {
+        h = (this.cg ? 0.84 : 0.94) * vh; w = h * img.width / img.height;
+        x = side === 'left' ? 10 - slide : vw - w - 10 + slide;
+        y = vh - h - BAR + 30 + Math.sin(t * 0.8) * 2;
+      }
       ctx.save();
       // 뒤쪽 어둠 + 은은한 역광 (배경과 분리)
       ctx.globalAlpha = a * 0.55;
@@ -320,8 +333,8 @@ export class StoryScene extends Scene {
       ctx.restore();
     };
     const k = ease.outCubic(clamp(P.t / 0.45, 0, 1));
-    if (P.prev && k < 1) draw(P.prev, P.prevSide, 1 - k, k * 40);
-    if (P.key) draw(P.key, P.side, k, (1 - k) * 60);
+    if (P.prev && k < 1) draw(P.prev, P.prevSide, 1 - k, k * 40, false);
+    if (P.key) draw(P.key, P.side, k, (1 - k) * 60, true);
   }
   drawText(ctx, vw, vh, t) {
     const l = this.cur;
