@@ -1,0 +1,465 @@
+{
+ "note": "benchmark #7 text-size ratchet: effective CSS px (game canvas + baked layers) per screen; written by tools/qa/text_audit.mjs --update",
+ "normal": {
+  "phone2": {
+   "title": {
+    "min": 9.17,
+    "p10": 10.83,
+    "median": 20.7,
+    "under12": 0.127
+   },
+   "title-press": {
+    "min": 9.17,
+    "p10": 10.83,
+    "median": 20.7,
+    "under12": 0.12
+   },
+   "title-menu": {
+    "min": 9.17,
+    "p10": 9.17,
+    "median": 16.67,
+    "under12": 0.304
+   },
+   "slots": {
+    "min": 10,
+    "p10": 10.83,
+    "median": 10.83,
+    "under12": 0.615
+   },
+   "difficulty": {
+    "min": 10,
+    "p10": 10,
+    "median": 10.83,
+    "under12": 0.914
+   },
+   "charselect": {
+    "min": 9.17,
+    "p10": 10,
+    "median": 10.83,
+    "under12": 0.722
+   },
+   "highscore": {
+    "min": 9.17,
+    "p10": 9.17,
+    "median": 12.5,
+    "under12": 0.45
+   },
+   "confirm": {
+    "min": 13.33,
+    "p10": 13.33,
+    "median": 14.17,
+    "under12": 0
+   },
+   "saveCode": {
+    "min": 10,
+    "p10": 10,
+    "median": 13.33,
+    "under12": 0.333
+   },
+   "options": {
+    "min": 10.83,
+    "p10": 10.83,
+    "median": 12.5,
+    "under12": 0.143
+   },
+   "account": {
+    "min": 10.83,
+    "p10": 10.83,
+    "median": 11.67,
+    "under12": 0.545
+   },
+   "cloudConflict": {
+    "min": 9.17,
+    "p10": 9.17,
+    "median": 12.5,
+    "under12": 0.455
+   },
+   "arcade": {
+    "min": 9.17,
+    "p10": 10,
+    "median": 12.5,
+    "under12": 0.412
+   },
+   "shop": {
+    "min": 9.17,
+    "p10": 9.17,
+    "median": 12.5,
+    "under12": 0.336
+   },
+   "smith": {
+    "min": 9.17,
+    "p10": 9.17,
+    "median": 12.5,
+    "under12": 0.457
+   },
+   "church": {
+    "min": 9.17,
+    "p10": 9.17,
+    "median": 10,
+    "under12": 0.625
+   },
+   "questboard": {
+    "min": 9.17,
+    "p10": 10,
+    "median": 11.67,
+    "under12": 0.6
+   },
+   "party": {
+    "min": 9.17,
+    "p10": 9.17,
+    "median": 10.83,
+    "under12": 0.786
+   },
+   "worldmap": {
+    "min": 10,
+    "p10": 10,
+    "median": 10.83,
+    "under12": 0.783
+   },
+   "inn": {
+    "min": 2.5,
+    "p10": 9.17,
+    "median": 10.83,
+    "under12": 0.647
+   },
+   "minigame_dice": {
+    "min": 9.17,
+    "p10": 9.17,
+    "median": 10.83,
+    "under12": 0.64
+   },
+   "minigame_blackjack": {
+    "min": 9.17,
+    "p10": 9.17,
+    "median": 10.83,
+    "under12": 0.688
+   },
+   "minigame_slot": {
+    "min": 9.17,
+    "p10": 9.17,
+    "median": 10.83,
+    "under12": 0.667
+   },
+   "minigame_duel": {
+    "min": 8.33,
+    "p10": 9.17,
+    "median": 10,
+    "under12": 0.654
+   },
+   "minigame_memory": {
+    "min": 8.33,
+    "p10": 9.17,
+    "median": 11.67,
+    "under12": 0.514
+   },
+   "pause": {
+    "min": 9.17,
+    "p10": 10,
+    "median": 12.5,
+    "under12": 0.382
+   },
+   "dialogue": {
+    "min": 11.67,
+    "p10": 12.5,
+    "median": 15,
+    "under12": 0.059
+   },
+   "results": {
+    "min": 13.33,
+    "p10": 13.33,
+    "median": 13.33,
+    "under12": 0
+   },
+   "menu_status": {
+    "min": 9.17,
+    "p10": 9.17,
+    "median": 10,
+    "under12": 0.934
+   },
+   "menu_equip": {
+    "min": 6.67,
+    "p10": 8.33,
+    "median": 10,
+    "under12": 0.949
+   },
+   "menu_inventory": {
+    "min": 10,
+    "p10": 10,
+    "median": 11.67,
+    "under12": 0.525
+   },
+   "menu_skills": {
+    "min": 9.17,
+    "p10": 9.17,
+    "median": 10,
+    "under12": 0.929
+   },
+   "menu_class": {
+    "min": 9.17,
+    "p10": 9.17,
+    "median": 10,
+    "under12": 0.939
+   },
+   "menu_companions": {
+    "min": 10,
+    "p10": 10,
+    "median": 10,
+    "under12": 0.867
+   },
+   "menu_quests": {
+    "min": 9.17,
+    "p10": 10,
+    "median": 10.83,
+    "under12": 0.903
+   },
+   "menu_docs": {
+    "min": 9.17,
+    "p10": 9.17,
+    "median": 10,
+    "under12": 0.838
+   },
+   "menu_bestiary": {
+    "min": 9.17,
+    "p10": 9.17,
+    "median": 10,
+    "under12": 0.943
+   },
+   "menu_system": {
+    "min": 9.17,
+    "p10": 9.17,
+    "median": 10.83,
+    "under12": 0.805
+   }
+  },
+  "phone1": {
+   "title": {
+    "min": 9.19,
+    "p10": 10.86,
+    "median": 22.42,
+    "under12": 0.128
+   },
+   "title-press": {
+    "min": 9.19,
+    "p10": 10.86,
+    "median": 22.42,
+    "under12": 0.12
+   },
+   "title-menu": {
+    "min": 9.19,
+    "p10": 9.19,
+    "median": 16.71,
+    "under12": 0.304
+   },
+   "slots": {
+    "min": 10.02,
+    "p10": 10.86,
+    "median": 10.86,
+    "under12": 0.615
+   },
+   "difficulty": {
+    "min": 10.02,
+    "p10": 10.02,
+    "median": 10.86,
+    "under12": 0.857
+   },
+   "charselect": {
+    "min": 9.19,
+    "p10": 10.02,
+    "median": 10.86,
+    "under12": 0.722
+   },
+   "highscore": {
+    "min": 9.19,
+    "p10": 9.19,
+    "median": 12.53,
+    "under12": 0.45
+   },
+   "confirm": {
+    "min": 13.37,
+    "p10": 13.37,
+    "median": 14.2,
+    "under12": 0
+   },
+   "saveCode": {
+    "min": 10.02,
+    "p10": 10.02,
+    "median": 13.37,
+    "under12": 0.333
+   },
+   "options": {
+    "min": 10.86,
+    "p10": 10.86,
+    "median": 12.53,
+    "under12": 0.143
+   },
+   "account": {
+    "min": 10.86,
+    "p10": 10.86,
+    "median": 11.69,
+    "under12": 0.545
+   },
+   "cloudConflict": {
+    "min": 9.19,
+    "p10": 9.19,
+    "median": 12.53,
+    "under12": 0.455
+   },
+   "arcade": {
+    "min": 9.19,
+    "p10": 10.02,
+    "median": 12.53,
+    "under12": 0.412
+   },
+   "shop": {
+    "min": 9.19,
+    "p10": 9.19,
+    "median": 12.53,
+    "under12": 0.337
+   },
+   "smith": {
+    "min": 9.19,
+    "p10": 9.19,
+    "median": 12.53,
+    "under12": 0.441
+   },
+   "church": {
+    "min": 9.19,
+    "p10": 9.19,
+    "median": 10.02,
+    "under12": 0.643
+   },
+   "questboard": {
+    "min": 9.19,
+    "p10": 10.02,
+    "median": 11.69,
+    "under12": 0.583
+   },
+   "party": {
+    "min": 9.19,
+    "p10": 9.19,
+    "median": 10.86,
+    "under12": 0.786
+   },
+   "worldmap": {
+    "min": 10.02,
+    "p10": 10.02,
+    "median": 10.86,
+    "under12": 0.783
+   },
+   "inn": {
+    "min": 4.18,
+    "p10": 9.19,
+    "median": 11.28,
+    "under12": 0.645
+   },
+   "minigame_dice": {
+    "min": 9.19,
+    "p10": 9.19,
+    "median": 10.86,
+    "under12": 0.64
+   },
+   "minigame_blackjack": {
+    "min": 9.19,
+    "p10": 9.19,
+    "median": 10.86,
+    "under12": 0.688
+   },
+   "minigame_slot": {
+    "min": 9.19,
+    "p10": 9.19,
+    "median": 10.86,
+    "under12": 0.667
+   },
+   "minigame_duel": {
+    "min": 8.35,
+    "p10": 9.19,
+    "median": 10.02,
+    "under12": 0.654
+   },
+   "minigame_memory": {
+    "min": 8.35,
+    "p10": 9.19,
+    "median": 11.69,
+    "under12": 0.514
+   },
+   "pause": {
+    "min": 9.19,
+    "p10": 10.02,
+    "median": 12.53,
+    "under12": 0.382
+   },
+   "dialogue": {
+    "min": 11.69,
+    "p10": 12.53,
+    "median": 15.04,
+    "under12": 0.077
+   },
+   "results": {
+    "min": 14.2,
+    "p10": 14.2,
+    "median": 14.2,
+    "under12": 0
+   },
+   "menu_status": {
+    "min": 9.19,
+    "p10": 9.19,
+    "median": 10.02,
+    "under12": 0.934
+   },
+   "menu_equip": {
+    "min": 7.52,
+    "p10": 8.35,
+    "median": 10.86,
+    "under12": 0.952
+   },
+   "menu_inventory": {
+    "min": 10.02,
+    "p10": 10.86,
+    "median": 13.37,
+    "under12": 0.44
+   },
+   "menu_skills": {
+    "min": 9.19,
+    "p10": 9.19,
+    "median": 10.02,
+    "under12": 0.928
+   },
+   "menu_class": {
+    "min": 9.19,
+    "p10": 9.19,
+    "median": 10.02,
+    "under12": 0.939
+   },
+   "menu_companions": {
+    "min": 10.86,
+    "p10": 10.86,
+    "median": 10.86,
+    "under12": 0.867
+   },
+   "menu_quests": {
+    "min": 9.19,
+    "p10": 10.02,
+    "median": 10.86,
+    "under12": 0.903
+   },
+   "menu_docs": {
+    "min": 9.19,
+    "p10": 9.19,
+    "median": 10.02,
+    "under12": 0.838
+   },
+   "menu_bestiary": {
+    "min": 9.19,
+    "p10": 9.19,
+    "median": 10.02,
+    "under12": 0.947
+   },
+   "menu_system": {
+    "min": 9.19,
+    "p10": 9.19,
+    "median": 10.86,
+    "under12": 0.817
+   }
+  }
+ }
+}

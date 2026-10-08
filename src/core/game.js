@@ -20,6 +20,7 @@
 import { input } from './input.js';
 import { clamp, rgba } from './math.js';
 import { font, wrap, FONT, setTextFloor, taps, onFontEpoch, fontEpoch } from './ui.js';
+import * as UI from './ui.js';
 import { touchpad } from './touchpad.js';
 import { safeInsets } from './platform.js';
 import { hudLayout, hudSafe } from '../render/hud_layout.js';
@@ -46,7 +47,19 @@ const TIER_NAME = { low: '낮음', medium: '보통', high: '높음' };
 /** 품질 조절기 (platform §6.4): 프레임 간격 EMA 가 22 ms 넘게 5초 → 한 단계 내림, 14 ms 미만 20초 → 시작 등급까지 한 단계 올림, 변경 간격 ≥ 10초 */
 const GOV = { tau: 0.2, slowMs: 22, slowT: 5, fastMs: 14, fastT: 20, gap: 10, vsyncMs: 17.5, vsyncMax: 21, failWindow: 30 };
 const UI_MIN_W = 720, UI_MIN_H = 400;   // uiScale 장면이 넘치지 않고 배치되어야 하는 최소 UI 크기 (platform §6.2)
-const UI_TEXT_FLOOR = 11;               // uiScale 장면을 그리는 동안의 글자 크기 하한
+const UI_TEXT_FLOOR = 11;               // uiScale 장면을 그리는 동안의 글자 크기 하한 (UI px, 설정 '글자 크기' 보통)
+/**
+ * 설정 '글자 크기'(textSize, benchmark #7) → uiScale 장면의 글자 하한. UI 크기(uiScale·uiK)와 따로 움직인다.
+ *  k   : 기본 하한 11 UI px 에 곱하는 값 (데스크톱·태블릿처럼 화면이 넉넉하면 이쪽이 이긴다)
+ *  css : 실제 화면에서 보장할 최소 글자 크기 (CSS px) — 휴대폰은 uiK·cssScale 이 작아 이쪽이 이긴다
+ *        (phone2 740×360: 보통 9.2 → 크게 12 → 아주 크게 13.5 CSS px. 예전 '글자·UI 크기 150%' 는 UI_MIN_H 때문에 135% 에서 멈춰 9.9)
+ * 하한은 ui.font() 를 거치는 글자(text·wrap·paragraph·button·measure)에만 걸린다. 큰 글자는 그대로라 위계가 남는다.
+ */
+export const TEXT_SIZES = Object.freeze({
+  normal: Object.freeze({ k: 1, css: 0 }),
+  large: Object.freeze({ k: 1.15, css: 12 }),
+  xlarge: Object.freeze({ k: 1.3, css: 13.5 }),
+});
 const PAD_HIDE_DELAY = 0.25;            // 입력이 패드·키보드로 바뀐 뒤 가상 패드를 숨기기까지 (초; 터치로 오면 바로 보인다)
 const FLASH_CAP = 0.7, FLASH_SOFT = 0.3; // 화면 번쩍임 상한, 1초에 강한 번쩍임이 2번 넘으면 그 뒤의 상한
 const ZERO = Object.freeze({ l: 0, r: 0, t: 0, b: 0 });
@@ -119,7 +132,8 @@ class Game {
     this._tier = 'high';
     // 품질 조절기 상태 (설정 'auto' 일 때만 등급을 바꾼다; 설정값 자체는 쓰지 않는다)
     this.gov = { start: null, tier: null, ema: STEP, slowT: 0, goodT: 0, lastChange: -Infinity, lastRaise: -Infinity, ceil: 2, top: null, toasted: false };
-    this._watch = { q: undefined, u: undefined, a: undefined };
+    this._watch = { q: undefined, u: undefined, a: undefined, t: undefined };
+    this.textFloor = UI_TEXT_FLOOR; // uiScale 장면의 글자 하한 (UI px) — resize() 가 설정 '글자 크기' 로 다시 잰다
     this._insErr = false;
     // 지연 장면 (P-09 첫 화면 분리, R1-REQ-229): lazyScenes(loader) 가 끝나기 전에는 false. 도구는 이 값이 true 가 될 때까지 기다린다
     this.scenesReady = true;
@@ -366,6 +380,13 @@ class Game {
     this.uiK = Math.round(uk * 1000) / 1000;
     this.uiW = this.viewW / this.uiK;
     this.uiH = VIEW_H / this.uiK;
+    // 글자 하한 (benchmark #7): max(11·k, 목표 CSS px ÷ (uiK·cssScale)), 0.5 UI px 단위로 올림 (하한이 목표 아래로 내려가지 않게)
+    const ts = TEXT_SIZES[this.settings?.textSize] ?? TEXT_SIZES.normal;
+    const tf = Math.max(UI_TEXT_FLOOR * ts.k, ts.css > 0 ? ts.css / (this.uiK * k) : 0);
+    const floor0 = this.textFloor;
+    this.textFloor = Math.ceil(tf * 2 - 1e-6) / 2;
+    if (this._sized && floor0 !== this.textFloor) bumpTextCaches();
+    this._sized = true;
     taps.cssScale = k; // 탭 최소 크기는 CSS px 로 잰다
     this._ptrK = -1;   // 포인터 변환 다시 맞춤
     for (const sc of this.scenes) sc.resize?.();
@@ -376,13 +397,13 @@ class Game {
     bc.toggle('portrait', this.portrait);
     bc.toggle('portrait-play', this.portraitAny && !this.portrait); // 태블릿 세로 플레이: 회전 안내 없음 (style.css)
     const s0 = this.settings, w = this._watch;
-    w.q = s0?.quality; w.u = s0?.uiScale; w.a = s0?.safeArea;
+    w.q = s0?.quality; w.u = s0?.uiScale; w.a = s0?.safeArea; w.t = s0?.textSize;
     this.dirty = true;
   }
   /** 화면 배치에 영향을 주는 설정이 바뀌었나 (옵션에서 바꾸면 다음 rAF 에 다시 배치) */
   layoutSettingsChanged() {
     const s = this.settings, w = this._watch;
-    return !!s && (s.quality !== w.q || s.uiScale !== w.u || s.safeArea !== w.a);
+    return !!s && (s.quality !== w.q || s.uiScale !== w.u || s.safeArea !== w.a || s.textSize !== w.t);
   }
 
   /** 맨 위 장면에 자동 일시정지 요청 (세로 회전·백그라운드 전환) */
@@ -704,7 +725,7 @@ class Game {
       const ui = !!sc.uiScale;
       ctx.save();
       let pf = 0, ps = 1;
-      if (ui) { if (this.uiK !== 1) ctx.scale(this.uiK, this.uiK); pf = setTextFloor(UI_TEXT_FLOOR); ps = taps.setSpace(this.uiK); }
+      if (ui) { if (this.uiK !== 1) ctx.scale(this.uiK, this.uiK); pf = setTextFloor(this.textFloor); ps = taps.setSpace(this.uiK); }
       try { this.withUiPointer(sc, () => sc.render(ctx)); } catch (e) { console.error(e); globalThis.__bnReportError?.(e, 'render'); } finally { if (ui) { setTextFloor(pf); taps.setSpace(ps); } }
       ctx.restore();
     }

@@ -283,6 +283,7 @@ Every module in this table exists after W0, with the listed exports as no-ops. T
 | quality | 'auto' | 'auto'\|'low'\|'medium'\|'high' | platform §6.4 (was detectQuality()) | 화면 | 그래픽 품질 |
 | fpsCap | 60 | 60 \| 0 | platform §6.5 | 화면 | 프레임 제한 |
 | uiScale | 'auto' | 'auto' \| 1 \| 1.15 \| 1.3 \| 1.5 | platform §6.2 | 화면 | 글자·UI 크기 |
+| textSize | 'normal' | 'normal'\|'large'\|'xlarge' | benchmark #7: minimum text size of uiScale scenes in real CSS px, independent of uiScale (game.js TEXT_SIZES; 'normal' = the old 11 UI px floor) | 화면 | 글자 크기 |
 | safeArea | 'fit' | 'fit'\|'full' | platform §6.1 | 화면 | 노치 영역 |
 | screenShake | 1 | 0..1 | existing (also scales kick/trauma, feel §7) | 화면 | 화면 흔들림 |
 | showDamage | true | bool | existing (hides numbers and callouts, not the announcer) | 화면 | 데미지 숫자 |

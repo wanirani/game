@@ -150,6 +150,7 @@ export const DEFAULT_SETTINGS = {
   settingsVersion: SETTINGS_VERSION,
   musicVol: 0.6, sfxVol: 0.8, musicSource: defaultMusicSource(), // 음악 음원 (core/audio_rec.js) — 데이터 절약·저사양은 기본 합성
   quality: 'auto', fpsCap: 60, uiScale: 'auto', safeArea: 'fit',
+  textSize: 'normal', // 글자 크기 (benchmark #7): uiScale 장면 글자 하한을 실제 화면 px 로 — 'normal' = 예전 그대로 (game.js TEXT_SIZES)
   screenShake: 1, showDamage: true, flashFx: 1, cutinMode: 'full',
   reduceMotion: prefersReducedMotion(), // 표의 기본값 false — 기기에서 '동작 줄이기'를 켰으면 처음부터 켬 (저장된 값이 있으면 그것)
   ctrlPrompts: 'auto', ctrlPreset: 'arcade', ctrlConfirm: 'auto', ctrlMap: null, keyMap: null,
@@ -178,6 +179,7 @@ export const SETTINGS_SCHEMA = Object.freeze({
   quality: oneOf('auto', 'low', 'medium', 'high'),
   fpsCap: oneOf(60, 0),
   uiScale: oneOf('auto', 1, 1.15, 1.3, 1.5),
+  textSize: oneOf('normal', 'large', 'xlarge'),
   safeArea: oneOf('fit', 'full'),
   screenShake: num(0, 1),
   showDamage: BOOL,

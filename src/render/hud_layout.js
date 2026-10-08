@@ -323,7 +323,10 @@ function build(vw, vh, T, S, pad, bossOn, nM, F) {
   const n = clamp(Math.round(nM), 0, 3);
   L.meterRows = n;   // 토스트·위쪽 보스 칸이 비켜 준 게이지 줄 수
   const bty = Math.max(148 + t, n ? meters[n - 1].y + METER_H + 4 : 0);
-  const tsl = clipSpan(gapL, gapR, bty, 36, pad, sides);
+  // 휴대폰 배치: 동료 라벨('하차 수호 AUTO')과 보스 이름이 같은 높이의 F px 글자라 8 px 사이면 한 줄로 이어 읽힌다 → 8 px 더 띄운다
+  // (그러면 240 px 보다 좁아질 때는 띄우지 않는다 — 위쪽 칸이 좁으면 보스 바가 패드 쪽 아래 칸으로 내려가므로)
+  let tsl = clipSpan(gapL + (big ? HUD_GAP : 0), gapR, bty, 36, pad, sides);
+  if (big && tsl.r - tsl.l < 240) tsl = clipSpan(gapL, gapR, bty, 36, pad, sides);
   L.bossTop = R(tsl.l, bty, tsl.r - tsl.l, 36);
   const bw = Math.min(640, vw - 260 - l - rr), by = vh - 72 - b;
   const bx = (l + right - bw) / 2;
