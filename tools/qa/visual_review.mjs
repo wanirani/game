@@ -4,7 +4,8 @@
 // ending cards, menus, the HUD matrix and every tools/gallery_*.html page, at desktop and phone sizes.
 // Tier 3 (classes_t3 §2.7, §11.2): the hero's tier-3 shot uses a tier-3 ascension with wings when the hero has one
 // (ASC_PICK); for every winged ascension shot the wings-over-cape check renders the standing hero four times (as is, no
-// wings, no cape, neither) and requires the wing colour on top where wing and cape overlap (heroes.<vp>.wings). Each shot is also checked automatically: a flat (blank/black) game frame and every page/console
+// wings, no cape, neither) — painted puppet and vector fallback (look.puppet false) — and requires the wings to show and to be
+// on top where wing and cape overlap (heroes.<vp>.wings: a puppet miss fails, a vector-fallback miss warns). Each shot is also checked automatically: a flat (blank/black) game frame and every page/console
 // error are reported; an enemy that is gone or off screen at its shot, and a mount that is not ridden / a guardian that is
 // not out, is labelled on its tile and listed.
 //
@@ -545,9 +546,11 @@ const GROUP_FNS = {
     await sheet(env, `heroes_${vp}`, `Heroes × tiers × yaws (${vp})`, shots, tileOf(vp));
     closeGroup('heroes', vp, s, shots, harness);
     // wings over the cape (tier-3 winged ascensions)
-    const wr = wingRows.filter((r) => r.vp === vp), bad = wr.filter(wingBad);
-    C.add(`heroes.${vp}.wings`, !wr.length ? 'warn' : bad.length ? 'fail' : 'pass', !wr.length ? 'no winged ascension measured (no tier-3 pick with wings among --heroes, or the look had no cape)' : `${wr.map((r) => `${r.asc} ${r.path} (${r.wings}) ${r.wingPx} px, ${Math.round((r.visible ?? 0) * 100)} % shown with the cape on, ${r.score == null ? 'no overlap with the cape' : `${Math.round(r.score * 100)} % of ${r.overlap} overlap px wing on top`}`).join('; ')} (need ≥ ${WING_MIN_PX} px, ≥ ${WING_MIN_SCORE * 100} % shown / on top)`);
-    for (const r of bad) findings.push({ id: `visual.wings.${vp}.${r.asc}.${r.path}`, sev: 'S3', kind: 'visual', title: `${r.asc} (${r.path}): ${wingWhy(r, r.wings)} (${vp})`, detail: JSON.stringify({ wingPx: r.wingPx, capePx: r.capePx, visible: r.visible, overlap: r.overlap, score: r.score }), file: r.path === 'vector' ? 'src/render/hero.js' : 'src/render/hero_puppet.js', ...ownerOf(r.path === 'vector' ? 'src/render/hero.js' : 'src/render/hero_puppet.js'), repro: `node tools/qa/visual_review.mjs --only heroes --heroes ${r.hero} --vp ${vp}` });
+    // the painted puppet is what players see: a puppet miss fails; the vector fallback (only while a puppet loads or when its
+    // atlas fails) is listed as a warning (S4)
+    const wr = wingRows.filter((r) => r.vp === vp), bad = wr.filter(wingBad), badPup = bad.filter((r) => r.path !== 'vector');
+    C.add(`heroes.${vp}.wings`, !wr.length ? 'warn' : badPup.length ? 'fail' : bad.length ? 'warn' : 'pass', !wr.length ? 'no winged ascension measured (no tier-3 pick with wings among --heroes, or the look had no cape)' : `${wr.map((r) => `${r.asc} ${r.path} (${r.wings}) ${r.wingPx} px, ${Math.round((r.visible ?? 0) * 100)} % shown with the cape on, ${r.score == null ? 'no overlap with the cape' : `${Math.round(r.score * 100)} % of ${r.overlap} overlap px wing on top`}`).join('; ')} (need ≥ ${WING_MIN_PX} px, ≥ ${WING_MIN_SCORE * 100} % shown / on top)`);
+    for (const r of bad) findings.push({ id: `visual.wings.${vp}.${r.asc}.${r.path}`, sev: r.path === 'vector' ? 'S4' : 'S3', kind: 'visual', title: `${r.asc} (${r.path}): ${wingWhy(r, r.wings)} (${vp})`, detail: JSON.stringify({ wingPx: r.wingPx, capePx: r.capePx, visible: r.visible, overlap: r.overlap, score: r.score }), file: r.path === 'vector' ? 'src/render/hero.js' : 'src/render/hero_puppet.js', ...ownerOf(r.path === 'vector' ? 'src/render/hero.js' : 'src/render/hero_puppet.js'), repro: `node tools/qa/visual_review.mjs --only heroes --heroes ${r.hero} --vp ${vp}` });
     await s.close();
   },
 

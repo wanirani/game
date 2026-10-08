@@ -35,6 +35,12 @@ function nodeOf(id) {
   return own(ASCENSIONS, id) ? { A: ASCENSIONS[id], line: ASCENSIONS[id].parent, id } : null;
 }
 const hiddenNode = (charId, line) => (HIDDEN_OF[charId] ? `${HIDDEN_OF[charId]}@${line}` : null);
+// 무대 위 방향 이름(가운데)이 양쪽 알약과 겹치면(큰 글자 · 좁은 칸) 알약 줄 아래로 내린다. null = 원래 자리 (UI-CORE VERIFY)
+function deckLabelY(ctx, view, x, y, w, ph, left, right) {
+  const name = (view.viewLabel?.() ?? '') + (view.spinning ? ' · 자동 회전' : '');
+  const side = Math.max(measure(ctx, left, 10, 800), measure(ctx, right, 10, 800)) + 14;
+  return measure(ctx, name, 11, 800) / 2 + side + 20 <= w / 2 ? null : y + 16 + ph + Math.max(11, Math.ceil(textFloor())) + 3;
+}
 
 export class ClassTab extends Tab {
   constructor(m) {
@@ -380,10 +386,10 @@ export class ClassTab extends Tab {
     this.view.stage(this.heroRect);
     pedestal(ctx, x + w / 2, y + 8 + sh - 16, 0.95 * scale / 1.45, t, acc, this.view.yaw);
     this.view.draw(ctx, x + w / 2, y + 8 + sh - 16, scale);
-    this.view.drawDeck(ctx, t);
-    ctx.strokeStyle = 'rgba(200,160,90,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(x + 8.5, y + 8.5, w - 17, sh - 1);
     const st = this.status(c);
     const ph = Math.max(17, Math.ceil(textFloor() + 6));
+    this.view.drawDeck(ctx, t, { labelY: deckLabelY(ctx, this.view, x, y, w, ph, TIER_NAME[c.tier] ?? '', st.text) });
+    ctx.strokeStyle = 'rgba(200,160,90,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(x + 8.5, y + 8.5, w - 17, sh - 1);
     pill(ctx, TIER_NAME[c.tier] ?? '', x + 16, y + 16, { color: PAL.gold, size: 10, h: ph });
     pill(ctx, st.text, x + w - 16, y + 16, { align: 'right', color: st.color, size: 10, h: ph, bg: st.key === 'ready' ? 'rgba(20,70,40,0.9)' : 'rgba(40,20,30,0.9)' });
     // 이름·설명·특성·해금·보정치 글자는 캐시 (고른 직업·상태·레벨이 바뀔 때만 다시 굽는다). 칸 = 무대 아래 ~ 아래 안내(요구 조건·성당) 위.
@@ -423,7 +429,7 @@ export class ClassTab extends Tab {
     this.txt.draw(ctx, 'detail', `${c.id}|${st.key}|${this.hero.level}|${this.m.rev}|${dMax}|${tight ? 1 : 0}`, x + 4, t0, w - 8, LH, (g) => {
       let cy = t0 + 26;
       text(g, c.name, x + 18, cy, { size: 20, weight: 800, family: FONT.title, color: PAL.bone, ow: 3 });
-      text(g, c.eng ?? '', x + w - 18, cy, { size: 11, align: 'right', weight: 700, family: FONT.num, color: PAL.dim });
+      if (measure(g, c.name, 20, 800, FONT.title) + measure(g, c.eng ?? '', 11, 700, FONT.num) + 12 <= w - 36) text(g, c.eng ?? '', x + w - 18, cy, { size: 11, align: 'right', weight: 700, family: FONT.num, color: PAL.dim });   // 큰 글자에서 이름과 겹치면 영문은 뺀다 (UI-CORE VERIFY)
       cy += 10;
       divider(g, x + 14, cy, w - 28);
       cy += 22;
@@ -485,9 +491,9 @@ export class ClassTab extends Tab {
     this.view.stage(this.heroRect);
     pedestal(ctx, x + w / 2, y + 8 + sh - 16, 0.95 * scale / 1.45, t, acc, this.view.yaw);
     this.view.draw(ctx, x + w / 2, y + 8 + sh - 16, scale);
-    this.view.drawDeck(ctx, t);
-    ctx.strokeStyle = rgba(kc, 0.4); ctx.lineWidth = 1; ctx.strokeRect(x + 8.5, y + 8.5, w - 17, sh - 1);
     const ph = Math.max(17, Math.ceil(textFloor() + 6));
+    this.view.drawDeck(ctx, t, { labelY: deckLabelY(ctx, this.view, x, y, w, ph, KIND_LABEL[A.kind] ?? TIER_NAME[3], st.text) });
+    ctx.strokeStyle = rgba(kc, 0.4); ctx.lineWidth = 1; ctx.strokeRect(x + 8.5, y + 8.5, w - 17, sh - 1);
     pill(ctx, KIND_LABEL[A.kind] ?? TIER_NAME[3], x + 16, y + 16, { color: kc, size: 10, h: ph, bg: A.kind === 'hidden' ? 'rgba(46,20,78,0.92)' : 'rgba(78,52,8,0.92)' });
     pill(ctx, st.text, x + w - 16, y + 16, { align: 'right', color: st.color, size: 10, h: ph, bg: st.key === 'ready' ? 'rgba(20,70,40,0.9)' : 'rgba(40,20,30,0.9)' });
     const top = y + sh + 10, by = y + h - 40, R = { x: x + 4, y: top, w: w - 8, h: by - 10 - top };
@@ -520,7 +526,7 @@ export class ClassTab extends Tab {
     this.txt.draw(ctx, 'detail', `${N.id}|${st.key}|${known ? 1 : 0}|${hero.level}|${this.m.rev}|${dMax}`, x + 4, t0, w - 8, LH, (g) => {
       let cy = t0 + 26;
       text(g, known ? A.name : '???', x + 18, cy, { size: 20, weight: 800, family: FONT.title, color: known ? PAL.bone : PAL.dim, ow: 3 });
-      if (known) text(g, A.eng ?? '', x + w - 18, cy, { size: 11, align: 'right', weight: 700, family: FONT.num, color: PAL.dim });
+      if (known && measure(g, A.name, 20, 800, FONT.title) + measure(g, A.eng ?? '', 11, 700, FONT.num) + 12 <= w - 36) text(g, A.eng ?? '', x + w - 18, cy, { size: 11, align: 'right', weight: 700, family: FONT.num, color: PAL.dim });   // 이름과 겹치면 영문은 뺀다
       cy += 10;
       divider(g, x + 14, cy, w - 28, { color: kc });
       cy += 22;

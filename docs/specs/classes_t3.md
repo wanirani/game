@@ -1026,8 +1026,8 @@ each package's comparison script and by `tools/test_perks.mjs`).
 ### 14.1 Power numbers changed for the §2.8 budget
 | entry | spec (§4/§5) | as built | why (package measurement, scripted A/B "sig" = on vs registry-off) |
 |---|---|---|---|
-| `kael_grandtemplar` | burst 위력 100~300% | 80~250% | +14.8 / 14.7 / 10.4 % → inside the +5–10 % target band (PERKS-A, 3 seeds) |
-| `kael_bloodreaver` | crescent 위력 140%, hitstop 0.03 | 120%, hitstop 0 | +12.7…13.0 % before; §3.6.1 allows proc hitstop only on release moves ≥ 1.5 s apart and the crescent ICD is 0.8 s |
+| `kael_grandtemplar` | burst 위력 100~300% | 80~250% | +14.8 / 14.7 / 10.4 % before (3 seeds) → +12.3 / 8.2 % after at 3 %/s damage taken, +6.5 % at 1.5 %/s (PERKS-A) |
+| `kael_bloodreaver` | crescent 위력 140%, hitstop 0.03 | 120%, hitstop 0 | +11.4…13.0 % before → +10.9 / 11.2 % after; §3.6.1 allows proc hitstop only on release moves ≥ 1.5 s apart and the crescent ICD is 0.8 s |
 | `sera_archsaint` | sanctum heal 2 % / 0.5 s | 1.5 % / 0.5 s (`zoneHeal`) | eHP ×1.68–3.2 at 2 % |
 | `victor_purgatory` | overheat `p._heatK {r: 1.5, mv: 1.25}` | `{r: 1.2, mv: 1.15}` (one frozen object per hero, set at overheat, null at the vent) | 19 / 25 % → 9.9 / 11.1 % mob/pack |
 | `bran_vanguard` | shield bash 위력 120%; 2nd/3rd wave 80% | bash 80%; extra waves 30% (2 delayed waves via `K.setTimeoutFx`, the legacy crusader wave stays the first) | 31 / 30 % → 14.3 / 10.0 % |
@@ -1151,7 +1151,7 @@ exits 1: §2.8 budgets (Σmult, single mult, flats) pass for all 35, but the clo
 15 entries (atk-effect > +12 %: kael_bloodreaver 16.9, kael_blackwing 19.0, victor_specter 15.7, victor_headsman 15.2,
 victor_gunking 13.9, bran_conqueror 12.9, lia_umbra 20.1, lia_mirage 15.6, lia_bladequeen 14.5, azel_bloodemperor 14.2,
 isolde_speargod 15.2, victor_silverwolf 16.7, lia_frostcrow 13.7; eHP > +15 %: kael_grandtemplar 24.8, bran_bastion 27.8 — the
-「초월 보정」 crit/agi overflow and the chain `dmgReduce` are the likely contributors), and `bran_vanguard` sustained sig is +27.6 %
+「초월 보정」 crit/attack-speed overflow and the chain `dmgReduce` are the likely contributors), and `bran_vanguard` sustained sig is +27.6 %
 (> +20 %); warnings for bran_bastion / victor_silverwolf / bran_oathlord sig > +12 %, lia_mirage siege eHP sig +61 %, and the
 trial-length model (all 14 trials model-kill far under the 40–75 s band — the model has no dodging, boss i-frames or second forms,
 so it is a ratio check, not a verdict). No numbers were changed after this run at the time of writing; the lead decides.

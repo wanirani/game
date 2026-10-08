@@ -1792,6 +1792,75 @@ async function bossSuite(hero, cids) {
   await closePage(P);
 }
 
+// ───────────────────────── trial smoke (T1, classes_t3 §9 / §11.2) ─────────────────────────
+/** a fresh Lv 80 kael save (tier-2 class, p2_done) → trial.startTrial(game, tid); the pre script is skipped → { ok, reason } */
+async function pTrialStart({ tid, cls }) {
+  const Q = window.__fq, g = Q.g;
+  const TR = await import('/src/game/trial.js');
+  const { newGameState } = await import('/src/game/state.js');
+  const { TRIALS } = await import('/src/data/trials.js');
+  const T = TRIALS[tid];
+  if (!T) return { ok: false, reason: `no trial ${tid}` };
+  const st = newGameState({ slot: 3, difficulty: 'normal', charId: T.charId });
+  const h = st.heroes[T.charId];
+  h.classId = cls; h.level = Math.max(h.level ?? 1, 80);
+  st.progress.flags.p2_done = true;
+  g.state = st;
+  const chk = TR.startTrial(g, tid);
+  if (!chk?.ok) return { ok: false, reason: chk?.reason ?? '?' };
+  if (g.top?.name === 'dialogue') g.top.skipAll?.();
+  Q.resume();   // the stage load is async: let the real loop run until the trial room is up
+  return { ok: true, stats: { ...TR.TRIAL_STATS } };
+}
+async function pTrialPoll() {
+  const Q = window.__fq, g = Q.g, w = g.world;
+  if (g.top?.name === 'dialogue') g.top.skipAll?.();
+  const ready = g.top?.name === 'stage' && w?.mode === 'trial' && !(g.fade?.dir > 0) && !!w.player;
+  if (ready) { Q.pause(); Q.hook(w); w.player.buffs.invincible = 99999; }
+  return { ready, top: g.top?.name ?? null, mode: w?.mode ?? null };
+}
+/** fight 4 s with the combo next to the boss, then the ultimate → boss damage, cast event, trial state */
+async function pTrialFight() {
+  const Q = window.__fq, w = Q.w(), p = Q.p();
+  const b = w.boss, hp0 = b?.hp ?? null, h0 = Q.log.hits.length, ev0 = Q.log.ev.length;
+  for (let i = 0; i < 240; i++) {
+    const dx = b && !b.dead ? b.cx - p.cx : 0;
+    Q.key('right', dx > 90); Q.key('left', dx < -90);
+    Q.key('attack', i % 12 < 2);
+    Q.step(1);
+  }
+  Q.release();
+  w.run.sp = 100; w.run.aw = 0;
+  Q.key('ult'); Q.step(2); Q.key('ult', false);
+  for (let i = 0; i < 600 && (w.cutscene || Q.top() !== 'stage'); i++) Q.step(1);
+  Q.step(10);
+  const hits = Q.log.hits.slice(h0);
+  return {
+    mode: w.mode, trial: w.trial?.id ?? null, room: w.roomId ?? null, rules: w.rules?.label ?? null, boss: b?.def?.id ?? b?.id ?? null,
+    bossHp0: hp0, bossHp: b?.hp ?? null, bossDmg: hp0 != null && b ? Math.round(hp0 - b.hp) : null, hits: hits.length,
+    ult: Q.log.ev.slice(ev0).some((e) => e[1] === 'ultimateCast'), cutscene: !!w.cutscene, top: Q.top(), dead: !!p.dead,
+  };
+}
+async function trialSuite() {
+  const ctx = { hero: 'kael', variant: 'tr_kael_1' };
+  const file = new URL('../src/game/trial.js', import.meta.url);
+  if (!fs.existsSync(file) || !/export function startTrial\b/.test(fs.readFileSync(file, 'utf8'))) { rec('T1', ctx, 'skip', 'src/game/trial.js has no startTrial (the trials package has not landed) — skipped'); return; }
+  const P = await openPage('trial_kael', 'index.html?scene=stage&stage=s04&char=kael');
+  if (P.fatal) { rec('T1', ctx, 'error', 'page did not start: ' + P.fatal); await closePage(P); return; }
+  const st = await run(P, 'T1', ctx, pTrialStart, { tid: 'tr_kael_1', cls: 'kael_templar' }, null);
+  if (!st?.ok) { if (st) rec('T1', ctx, 'fail', `startTrial refused: ${st.reason}`, st); await closePage(P); return; }
+  let W = null;
+  for (let i = 0; i < 160 && !W?.ready; i++) { W = await P.page.evaluate(pTrialPoll).catch(() => null); if (!W?.ready) await new Promise((r) => setTimeout(r, 150)); }
+  if (!W?.ready) { rec('T1', ctx, 'fail', `the trial stage never came up (top ${W?.top}, mode ${W?.mode})`, W); await closePage(P); return; }
+  const enter = await run(P, 'T1', ctx, pBossEnter, {}, null);   // boss intro / walk-in, as A5
+  const r = await run(P, 'T1', ctx, pTrialFight, {}, null);
+  if (r) {
+    const ok = r.mode === 'trial' && r.trial === 'tr_kael_1' && r.rules === '시련의 규칙' && !!r.boss && r.bossDmg > 0 && r.ult && !r.cutscene && r.top === 'stage' && !r.dead;
+    rec('T1', ctx, ok ? 'pass' : 'fail', `trial ${r.trial} (mode ${r.mode}, room ${r.room}, rules '${r.rules}'): boss ${r.boss} ${enter?.active ? 'active' : 'NOT active'}, 4 s combo + ultimate dealt ${r.bossDmg} (${r.hits} hits), ultimateCast ${r.ult}, afterwards top ${r.top}, cutscene ${r.cutscene}${r.dead ? ', HERO DIED' : ''}`, { ...r, enter });
+  }
+  await closePage(P);
+}
+
 // ───────────────────────── mobile (A7, M3 touch, R183) ─────────────────────────
 async function mobileSuite() {
   const P = await openPage('mobile_kael', 'index.html?scene=stage&stage=s04&char=kael', { viewport: { width: 844, height: 390 }, mobile: true, quality: 'medium' });
@@ -1956,6 +2025,7 @@ try {
     for (const h of bossHeroes) await bossSuite(h, [CLASS_PICK[h][1], CLASS_PICK[h][2]]);
   }
   if (wantAny('A7', 'R183', 'M3')) await mobileSuite();
+  if (want('T1')) await trialSuite();
   if (wantAny('X1', 'X2', 'X3')) await companionSuite();
   if (want('V1')) {
     for (const hero of HEROES) await wideSuite(hero);
