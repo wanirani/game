@@ -574,14 +574,14 @@ function ultGlyphOk(T) {
  *  크기·너비·글꼴 세대마다 한 번만 잰다 */
 // 마지막 문구는 '각성 가능! 길게'(무엇을 길게인지 빠진 토막말)와 같은 폭(17 px 에서 108 px)이라 동작이 드러나는 말로 쓴다
 const READY_T = ['각성 가능! 필살 버튼을 길게', '각성 가능! 버튼을 길게', '길게 눌러 각성!'];
-const READY_FIT = { key: '', str: READY_T[0] };
+const READY_FIT = { size: -1, w: -1, ep: -1, str: READY_T[0] };   // 캐시 키를 필드로 비교 (프레임마다 키 문자열을 만들지 않는다)
 function readyTouchStr(ctx, size, w) {
-  const key = `${size}|${w}|${UI.fontEpoch ?? 0}`;
-  if (READY_FIT.key === key) return READY_FIT.str;
+  const F = READY_FIT, ep = UI.fontEpoch ?? 0;
+  if (F.size === size && F.w === w && F.ep === ep) return F.str;
   ctx.font = font(size, 800);
   let str = READY_T[READY_T.length - 1];
   for (const t of READY_T) if (ctx.measureText(t).width <= w) { str = t; break; }
-  READY_FIT.key = key; READY_FIT.str = str;
+  F.size = size; F.w = w; F.ep = ep; F.str = str;
   return str;
 }
 function drawReady(ctx, world, x, y, w, spFull, ready, holdK, now, T) {

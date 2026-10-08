@@ -355,7 +355,10 @@ export class SmithScene extends ServiceScene {
     chip('protect', r.x + 12, 'm_scroll_protect', '보호 주문서', (inf.baseFail ?? inf.onFail) !== 'keep');
     chip('bless', r.x + 22 + cw, 'm_scroll_bless', '축복 주문서', true);
     const can = inf.canAfford !== false;
-    uiButton(ctx, this.actRect, can ? `강화하기  (+${inf.next})` : '재료 부족', { selected: can, size: 18, sub: can ? undefined : (inf.reason ?? '') });
+    // 단추 설명 줄(gbutton: 이름 −6 · 설명 +13 고정 간격)은 글자 크기 '크게'·'아주 크게' 하한에서 이름과 겹친다 → 그때는 빼고
+    // 이름만 둔다 (누르면 같은 이유가 알림으로 뜨고, 위 재료 칸의 붉은 수량이 무엇이 모자란지 보여 준다). 보통 크기는 그대로
+    const fl = textFloor(), subFits = 0.78 * Math.max(11, fl) + 0.51 * Math.max(18, fl) <= 18;
+    uiButton(ctx, this.actRect, can ? `강화하기  (+${inf.next})` : '재료 부족', { selected: can, size: 18, sub: can || !subFits ? undefined : (inf.reason ?? '') });
   }
 
   renderOver(ctx, L) {

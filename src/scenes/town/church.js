@@ -862,8 +862,9 @@ export class ChurchScene extends ServiceScene {
       // 특성은 길다(초월) → 두세 줄로 접어 아래에서 위로 쌓는다
       const pl = perk ? wrapC(ctx, `특성 · ${perk}`, Math.min(vw - 80, 760), C.kind === 'class' ? 15 : 13, 700).slice(0, 3) : [];
       let yy = vh - 36 - (extra.length - 1) * LH;
-      const yTop = yy - 8 - pl.length * LH;
-      pl.forEach((l, i) => text(ctx, l, cx, yTop + (i + 1) * LH - 4, { size: C.kind === 'class' ? 15 : 13, weight: 700, color: '#ffe7a0', align: 'center', ow: 3 }));
+      // 특성 마지막 줄은 아래 줄(스킬 포인트 · 비전 기술)과 한 줄 넘게 띄운다 (기준선 간격 12 px 이면 큰 글자에서 두 줄이 맞닿는다)
+      const PS = C.kind === 'class' ? 15 : 13, LP = Math.ceil(Math.max(PS, textFloor()) * 1.35), yLast = yy - LH - 6;
+      pl.forEach((l, i) => text(ctx, l, cx, yLast - (pl.length - 1 - i) * LP, { size: PS, weight: 700, color: '#ffe7a0', align: 'center', ow: 3 }));
       for (const [s, c] of extra) { text(ctx, s, cx, yy, { size: 13, weight: 800, color: c, align: 'center', ow: 3 }); yy += LH; }
       if (!C.autoEnd && t > C.doneAt && Math.floor(t * 2.5) % 2 === 0) {
         if (input.touchMode) text(ctx, '화면을 눌러 계속', cx, vh - 12, { size: 12, align: 'center', color: '#c8b8a0' });
