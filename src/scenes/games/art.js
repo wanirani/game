@@ -4,7 +4,7 @@
 //  - 블러드 슬롯 문양 7종 (스프라이트 캐시, 모션 블러 판 포함)
 //  - 금화, 카지노 칩, 리볼버, 여관 게임 문장(엠블럼)
 import { TAU, clamp, shade } from '../../core/math.js';
-import { FONT } from '../../core/ui.js';
+import { FONT, font } from '../../core/ui.js';
 
 // ───────────────────────── 공통 도우미 ─────────────────────────
 export function rr(c, x, y, w, h, r) {
@@ -795,10 +795,12 @@ export function drawChip(c, x, y, r, value, { selected = false, disabled = false
   c.beginPath(); c.arc(0, 0, r * 0.58, 0, TAU); c.stroke(); c.setLineDash([]);
   const lb = label ?? (value === 0 ? '무료' : String(value));
   if (lb) { // label '' = 글자 없는 칩 (쌓인 칩의 아래쪽)
-    c.font = `900 ${Math.round(r * (lb.length > 3 ? 0.47 : 0.56))}px ${FONT.num}`;
+    // ui.font(): 글자 크기 하한('글자 크기' 설정)을 따른다. 하한이 커져도 칩 지름 밖으로는 나가지 않게 maxWidth (보통은 닿지 않는다)
+    c.font = font(Math.round(r * (lb.length > 3 ? 0.47 : 0.56)), 900, FONT.num);
     c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,0.8)'; c.strokeText(lb, 0, 1);
-    c.fillStyle = value === 50 ? '#fff' : '#fff4d8'; c.fillText(lb, 0, 1);
+    const mw = r * 2 - 4;
+    c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,0.8)'; c.strokeText(lb, 0, 1, mw);
+    c.fillStyle = value === 50 ? '#fff' : '#fff4d8'; c.fillText(lb, 0, 1, mw);
   }
   if (selected) { c.strokeStyle = '#ffe7a0'; c.lineWidth = 2.5; c.beginPath(); c.arc(0, 0, r + 3, 0, TAU); c.stroke(); }
   c.restore();

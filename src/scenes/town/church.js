@@ -111,7 +111,13 @@ export class ChurchScene extends ServiceScene {
 
   updateBody(dt) {
     this.ges.addWheel(this.wheel); this.ges.update();
-    if (this.fresh) this.fresh.t += dt;
+    if (this.fresh) {
+      this.fresh.t += dt;
+      if (!this.fresh.burst && this.fresh.at) {   // 새로 열린 칸: 한 번 터뜨린다 (자리는 drawAscPath 가 적었다)
+        this.fresh.burst = true;
+        for (const q of this.fresh.at) { this.fx.burst('holy', q.x, q.y, 36, { speed: 240 }); this.fx.ring(q.x, q.y, { color: q.color, r0: 10, r1: 160, life: 0.7, width: 5 }); }
+      }
+    }
     if (this.cere) { this.updateCeremony(dt); return 'handled'; }
     const tab = this.tabs[this.tab].id;
     const nav = (n, horiz) => {
@@ -225,8 +231,13 @@ export class ChurchScene extends ServiceScene {
     // 고른 칸의 본문 스크롤: 끌기·휠·오른쪽 스틱 Y + (손대지 않으면) 천천히 자동 넘김
     if (this.cscRect) this.csc.update(dt, this.cscRect, this.ges);
     if (this.csc.max > 0 && !this.csc.userScrolled && !this.csc.dragging) {
+      // 한 줄씩 넘긴다 (줄 사이에 멈춰 읽을 틈 · 끝에서 잠시 뒤 처음으로) — 글자 크기가 커서 한두 줄만 보이는 칸도 반 줄에 걸치지 않게
       const S = this.autoS; S.t += dt;
-      if (S.t > 1.6) { this.csc.target = clamp(this.csc.target + S.dir * 18 * dt, 0, this.csc.max); if (this.csc.target >= this.csc.max || this.csc.target <= 0) { S.dir = this.csc.target >= this.csc.max ? -4 : 1; S.t = this.csc.target >= this.csc.max ? -0.4 : 0; } }
+      if (S.t > 2.2) {
+        S.t = 0;
+        const L = this.cscLH || 18, cur = this.csc.target;
+        this.csc.target = cur >= this.csc.max - 1 ? 0 : clamp((Math.round(cur / L) + 1) * L, 0, this.csc.max);
+      }
     }
     const dragged = this.csc.max > 0 && this.ges.moved;
     const moveTo = (i) => { if (i !== this.sel) { this.sel = i; if (i <= 3) this.cardSel = i; this.csc.reset(); this.autoS = { t: 0, dir: 1 }; audio.sfx('menu_move'); } };
@@ -614,9 +625,9 @@ export class ChurchScene extends ServiceScene {
       if (i === this.cardSel) cscMax = mx;
     });
     this.csc.setMax(cscMax);
-    if (this.fresh && !this.fresh.burst) {   // 새로 열린 칸: 한 번 터뜨린다
-      this.fresh.burst = true;
-      cards.forEach((c, i) => { const r = this.cardRects[i]; if (c?.kind === 'asc' && this.fresh.ids.has(c.A.id) && r) { this.fx.burst('holy', r.x + r.w / 2, r.y + r.h / 2, 36, { speed: 240 }); this.fx.ring(r.x + r.w / 2, r.y + r.h / 2, { color: PATH_COL[c.A.kind], r0: 10, r1: 160, life: 0.7, width: 5 }); } });
+    if (this.fresh && !this.fresh.burst && !this.fresh.at) {   // 새로 열린 칸의 자리만 적어 둔다 (터뜨리기는 updateBody — 그리기 중 FX 금지)
+      this.fresh.at = [];
+      cards.forEach((c, i) => { const r = this.cardRects[i]; if (c?.kind === 'asc' && this.fresh.ids.has(c.A.id) && r) this.fresh.at.push({ x: r.x + r.w / 2, y: r.y + r.h / 2, color: PATH_COL[c.A.kind] }); });
     }
     // ── 아래 줄: [기본 최상급으로] · 실행 단추 ──
     const by = body.y + body.h - BH - 2;
@@ -675,7 +686,7 @@ export class ChurchScene extends ServiceScene {
       if (scroll) B.h = Math.max(LH + 2, Math.floor((B.h - 2) / LH) * LH + 2);   // 온전한 줄만 보이게 (스크롤하면 반 줄씩 걸친다)
       mx = scroll ? Math.ceil(need - B.h) : 0;
       const off = scroll ? Math.min(this.csc.y, mx) : 0;
-      if (scroll) this.cscRect = B;
+      if (scroll) { this.cscRect = B; this.cscLH = LH; }
       clipBegin(ctx, B);
       const fitN = scroll ? lines.length : Math.max(0, Math.floor((B.h - 2) / LH));
       for (let k = 0; k < Math.min(lines.length, fitN); k++) {
@@ -685,8 +696,9 @@ export class ChurchScene extends ServiceScene {
       }
       clipEnd(ctx, B, null);
       if (scroll) {
-        if (off > 1) fillGradRect(ctx, vGrad(ctx, 12, sel ? FADE_SEL : FADE_OFF), B.x, B.y, B.w, 12);
-        if (off < mx - 1) fillGradRect(ctx, vGrad(ctx, 14, CARD_FADE), B.x, B.y + B.h - 14, B.w, 14);
+        const fh = Math.min(12, Math.round(B.h * 0.2));   // 한두 줄짜리 칸에서는 흐림 띠가 글자를 덮지 않게 얇게
+        if (off > 1) fillGradRect(ctx, vGrad(ctx, fh, sel ? FADE_SEL : FADE_OFF), B.x, B.y, B.w, fh);
+        if (off < mx - 1) fillGradRect(ctx, vGrad(ctx, fh, CARD_FADE), B.x, B.y + B.h - fh, B.w, fh);
         scrollbar(ctx, r.x + r.w - 6, B.y + 1, B.h - 2, { y: off, max: mx }, B.h);
       }
     }

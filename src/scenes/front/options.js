@@ -7,7 +7,7 @@
 //  - uiScale 장면: game.uiW × game.uiH 로 배치 (최소 720×400), 탭 대상은 ≥ 44 CSS px (줄·◀▶·탭·단추), ui.taps 에 등록
 //  - 입력은 메뉴 의미(input.bindings): 결정·취소·이전/다음 탭. 패드 START 는 설정을 닫는다. 휠·끌기·오른쪽 스틱으로 목록 스크롤
 //  - 바꾼 값은 바로 반영되고(볼륨·품질·UI 크기·글자 크기·바인딩·터치 패드) 0.6초 뒤·닫을 때 저장된다
-//  enter({ page: 0..4 | 'sound'|'screen'|'controls'|'touch'|'etc', sub: 'padRemap'|'keyRemap'|'guide' })
+//  enter({ page: 0..4 | 'sound'|'screen'|'controls'|'touch'|'etc', sub: 'padRemap'|'keyRemap'|'guide', row: 줄 id (처음 고를 줄, 예 'flashFx') })
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
@@ -114,7 +114,7 @@ function buildRows(sc) {
         id: 'cutinMode', label: '각성 컷인', type: 'enum', opts: [['full', '전체'], ['short', '짧게']],
         note: (s) => (s.cutinMode === 'short' ? '각성 연출을 짧게 줄입니다.' : '각성기를 쓸 때 일러스트 연출을 끝까지 보여 줍니다. 같은 스테이지의 두 번째 각성부터는 늘 짧게 나옵니다.'),
       },
-      { id: 'reduceMotion', label: '동작 줄이기', type: 'bool', note: '영웅 자동 회전처럼 화면이 도는 연출을 줄입니다.' },
+      { id: 'reduceMotion', label: '동작 줄이기', type: 'bool', note: "화면이 움직이거나 도는 연출(영웅 자동 회전, 타이틀 배경 움직임, 번개)을 줄입니다. 기기에서 '동작 줄이기'를 켰다면 처음부터 켜져 있습니다." },
     ],
     controls: [
       {
@@ -165,6 +165,8 @@ function buildRows(sc) {
       { id: 'autoSave', label: '자동 저장', type: 'bool', note: '스테이지를 마치거나 마을에 들어갈 때 자동으로 저장합니다.' },
       { id: 'keepAwake', label: '화면 꺼짐 방지', type: 'bool', note: '게임하는 동안 화면이 꺼지지 않게 합니다.' },
       { id: 'turntableAuto', label: '영웅 자동 회전', type: 'bool', note: '장비·상태 화면에서 영웅이 천천히 돌아갑니다.' },
+      // settings.dialogueAuto: 대화 장면(dialogue.js)이 읽고 쓰는 키. 스키마 밖 키지만 save.js 가 모르는 키를 보존하므로 그대로 저장된다 (없으면 끔)
+      { id: 'dialogueAuto', label: '대화 자동 진행', type: 'bool', note: '대화 글이 다 나오면 잠시 뒤 다음 줄로 넘어갑니다. 대화 중 오른쪽 위 「자동 진행」 버튼과 같은 설정입니다.' },
       {
         id: 'fullscreenAuto', label: '첫 터치에 전체 화면', type: 'bool',
         // platform.js 가 실제로 쓰는 곳에서만 (안드로이드 웹 브라우저; APK·설치 앱·아이폰은 해당 없음)
@@ -233,7 +235,7 @@ export class OptionsScene extends Scene {
   get toastY() { return (this.L ?? this.layout()).note.y - 4; }
 
   enter(params = {}) {
-    const { page, sub } = params ?? {};
+    const { page, sub, row } = params ?? {};
     this.s = this.game.settings ??= { ...DEFAULT_SETTINGS };
     let p = typeof page === 'number' ? page : PAGES.findIndex((x) => x.id === page);
     if (!(p >= 0 && p < PAGES.length)) p = lastPage;
@@ -249,6 +251,8 @@ export class OptionsScene extends Scene {
       this.page = 2;
       this.sel[2] = Math.max(0, this.rows(2).findIndex((r) => r.id === 'padRemap'));
     }
+    // row: 그 페이지에서 처음 고를 줄 id (예: 타이틀 '보기' 탭 → { page: 'screen', row: 'flashFx' })
+    if (typeof row === 'string') { const i = this.rows(this.page).findIndex((r) => r.id === row); if (i >= 0) this.sel[this.page] = i; }
     if (sub) this.openSub(sub, true);
     try { this.game.canvas?.addEventListener('wheel', this._wheel, { passive: true }); } catch { /* 캔버스 없음 */ }
   }

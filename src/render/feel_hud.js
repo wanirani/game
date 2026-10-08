@@ -58,7 +58,7 @@ import { game } from '../core/game.js';
 import { CLASSES } from '../data/classes.js';
 import { STYLE } from '../data/feel_hit.js';
 import * as AWD from '../data/awaken.js';
-import { hudLayout } from './hud_layout.js';
+import { hudLayout, hudPx } from './hud_layout.js';
 import { drawGlyph, bindingOf } from '../core/prompts.js';
 
 // ───────────────────────── 수치 ─────────────────────────
@@ -487,12 +487,17 @@ export function drawAwGauge(ctx, world, x, y, w, touch) {
 }
 
 function drawGauge(ctx, world, s, x, y, w, f, full, ready, holdK, tier, now, T) {
-  const by = y + 12, bh = 6, low = lowOf(world);
+  // 터치 글자 하한 (hudPx, 11 CSS px): 휴대폰(하한 16–17 논리 px)에서는 라벨 줄이 칸(20 px, 위 4 px 는 SP 막대)에 들어가지 않는다
+  // → 막대를 F+1 px 로 키우고 라벨·% 를 막대 안에 쓴다 (체력 칸 HP 숫자와 같은 방식). 칸 L.awGauge 와 SP 막대 +14 계약은 그대로
+  const ls = T ? hudPx(12, true) : 10, inl = ls > 12;
+  const bh = inl ? Math.min(19, ls + 1) : 6, by = inl ? y + 1 : y + 12, low = lowOf(world);
   const lab = tier >= 2 ? (AWD.T2_PREFIX ?? '진 각성') : '각성';
-  text(ctx, lab, x, y + 9, { size: T ? 12 : 10, weight: 700, color: full ? '#ff8a96' : COLORS.dim });
   const pc = Math.floor(f * 100);
   if (pc !== s.pct) { s.pct = pc; s.pctStr = `${pc}%`; }
-  text(ctx, s.pctStr, x + w, y + 9, { size: T ? 12 : 10, align: 'right', weight: 700, family: FONT.num, color: full ? '#ffb0b8' : COLORS.dim });
+  if (!inl) {
+    text(ctx, lab, x, y + 9, { size: ls, weight: 700, color: full ? '#ff8a96' : COLORS.dim });
+    text(ctx, s.pctStr, x + w, y + 9, { size: ls, align: 'right', weight: 700, family: FONT.num, color: full ? '#ffb0b8' : COLORS.dim });
+  }
   // 두 게이지가 가득(또는 길게 누르는 중): SP 막대(hud.js: L.ult 안 (x, y − 14, w, 10))와 각성 막대가 함께 빛난다
   const glowOn = (ready || holdK > 0) && SPR.glow;
   if (glowOn) {   // (요소마다 save/restore 하지 않는다: 합성·알파만 바꿨다가 되돌린다)
@@ -548,6 +553,11 @@ function drawGauge(ctx, world, s, x, y, w, f, full, ready, holdK, tier, now, T) 
   ctx.strokeStyle = ready ? '#ffe0e0' : full ? '#ff6a7a' : COLORS.goldDark;
   ctx.lineWidth = 1;
   ctx.strokeRect(x - 0.5, by - 0.5, w + 1, bh + 1);
+  if (inl) {   // 막대 안 라벨·% (외곽선 글자 — 빈 막대·채운 막대 위 모두 읽힌다)
+    const ty = by + Math.round(bh / 2 + ls * 0.36);
+    text(ctx, lab, x + 4, ty, { size: ls, weight: 800, color: full ? '#ffd0d6' : '#e6d6c4' });
+    text(ctx, s.pctStr, x + w - 4, ty, { size: ls, align: 'right', weight: 700, family: FONT.num, color: full ? '#ffe0e4' : '#e6d6c4' });
+  }
 }
 /** 광채 스프라이트의 안쪽 사각형을 (x, y, w, h) 막대에 맞춰 그린다 */
 function glowAround(ctx, x, y, w, h) {
@@ -560,13 +570,26 @@ function ultGlyphOk(T) {
   if (!T) return true;
   try { return !!bindingOf('ult')?.some?.((b) => b?.type === 'touch'); } catch { return false; }
 }
+/** 터치 준비 문구: 이 크기로 칸 너비에 들어가는 가장 긴 문구 (휴대폰 하한 17 px 에서는 짧은 문구 — 가로로 누르지 않는다).
+ *  크기·너비·글꼴 세대마다 한 번만 잰다 */
+const READY_T = ['각성 가능! 필살 버튼을 길게', '각성 가능! 버튼을 길게', '각성 가능! 길게'];
+const READY_FIT = { key: '', str: READY_T[0] };
+function readyTouchStr(ctx, size, w) {
+  const key = `${size}|${w}|${UI.fontEpoch ?? 0}`;
+  if (READY_FIT.key === key) return READY_FIT.str;
+  ctx.font = font(size, 800);
+  let str = READY_T[READY_T.length - 1];
+  for (const t of READY_T) if (ctx.measureText(t).width <= w) { str = t; break; }
+  READY_FIT.key = key; READY_FIT.str = str;
+  return str;
+}
 function drawReady(ctx, world, x, y, w, spFull, ready, holdK, now, T) {
   const base = y + 16;
   if (ready) {
     const col = holdK > 0 ? '#ffffff' : readyCol(now);
-    const size = T ? 13 : 11;
-    if (T) {   // 터치: 문구로 안내 (필살 버튼을 길게 누르면 버튼 둘레에 고리가 찬다)
-      text(ctx, '각성 가능! 필살 버튼을 길게', x, base, { size, weight: 800, color: col, maxWidth: w });
+    const size = T ? hudPx(13, true) : 11;
+    if (T) {   // 터치: 문구로만 안내 (필살 버튼에 '각성' 라벨이 뜨고, 길게 누르면 버튼 둘레에 고리가 찬다)
+      text(ctx, readyTouchStr(ctx, size, w), x, base, { size, weight: 800, color: col, maxWidth: w });
       return;
     }
     const head = '각성 가능!';
@@ -580,8 +603,9 @@ function drawReady(ctx, world, x, y, w, spFull, ready, holdK, now, T) {
   // 필살기만 가득: 예전 문구 그대로 (1초에 두 번 깜빡임)
   if (!spFull || Math.floor((Number(world.time) || 0) * 4) % 2 !== 0) return;
   const msg = '필살기 준비!';
-  text(ctx, msg, x, base, { size: T ? 14 : 11, weight: 800, color: '#ffe070' });
-  if (ultGlyphOk(T)) drawGlyph(ctx, 'ult', x + ctx.measureText(msg).width + 5, base - 12, 15);
+  text(ctx, msg, x, base, { size: T ? hudPx(14, true) : 11, weight: 800, color: '#ffe070', maxWidth: T ? w : undefined });
+  // 터치는 글자만 (글리프 15 px 안 글자가 9 px 로 하한 아래 — 필살 버튼이 가득 찬 반짝임으로 같은 것을 보여 준다)
+  if (!T && ultGlyphOk(T)) drawGlyph(ctx, 'ult', x + ctx.measureText(msg).width + 5, base - 12, 15);
 }
 
 // ───────────────────────── 2. 콤보 · 스타일 열 ─────────────────────────
@@ -592,7 +616,17 @@ const MILE_SLAM = 0.12;                    // 이정표 2 → 1 박힘 시간
 const NUMC = { w: 240, h: 88 };            // NUM 캐시 한 줄 (논리 px; 가운데 = 숫자 회전 중심). 둘째 줄 = 흰 번쩍임
 const LBLC = { x: -178, y: 58, w: 178, h: 52 };   // LBL 캐시가 덮는 열 좌표 영역 ('HITS' 기준선 76 · '총 피해' 기준선 102)
 const NUM_KEY = { str: '', size: 0, rot: NaN, rank: -1, ph: -1, a: 0, ep: -1, w: 0, row: 0, asc: 0, desc: 0, k: 1 };
-const LBL_KEY = { T: null, dmg: '', a: 0, ep: -1 };
+const LBL_KEY = { T: null, dmg: '', a: 0, ep: -1, hs: 0, ds: 0 };
+/** 'HITS' · '총 피해' 글자 크기 (열 좌표). 터치는 열이 k 배로 줄어 그려지므로 HUD 글자 하한(hudPx, 11 CSS px)을 k 로 나눠 열 좌표로 옮긴다.
+ *  위쪽 한계: 'HITS' 는 숫자 기준선(60) 아래, '총 피해' 는 콤보 시간 막대(81–85) 아래·열 높이(108) 안 (LBL 캐시 칸 58–110) */
+const LBL_SZ = { hs: 14, ds: 12 };
+function labelSizes(T, k) {
+  if (!T) { LBL_SZ.hs = 14; LBL_SZ.ds = 12; return LBL_SZ; }
+  const kk = k > 0.2 ? k : 0.2;
+  LBL_SZ.hs = Math.min(26, Math.max(16, Math.ceil(hudPx(16, true) / kk)));
+  LBL_SZ.ds = Math.min(24, Math.max(14, Math.ceil(hudPx(14, true) / kk)));
+  return LBL_SZ;
+}
 
 /** 열 기준 변환 B 가 축 정렬(회전·기울임 없음)이고 가로세로 배율이 같은가 → 기기 픽셀에 맞춘 1:1 붙이기를 쓸 수 있다 */
 const axisAligned = (B) => Math.abs(B.b) < 1e-9 && Math.abs(B.c) < 1e-9 && Math.abs(B.a - B.d) < 1e-9 && B.a > 0;
@@ -649,19 +683,21 @@ function popFit(pop, cy0, w, by, asc, desc, k, rot, colW, colH) {
 function lblSprite(T, dmg, a) {
   const c = SPR.lbl;
   if (!c) return false;
-  const K = LBL_KEY, ep = UI.fontEpoch ?? 0;
-  if (K.T === T && K.dmg === dmg && K.a === a && K.ep === ep) return true;
+  const K = LBL_KEY, ep = UI.fontEpoch ?? 0, hs = LBL_SZ.hs, ds = LBL_SZ.ds;
+  if (K.T === T && K.dmg === dmg && K.a === a && K.ep === ep && K.hs === hs && K.ds === ds) return true;
   const g = prep(c, LBLC.w * a, LBLC.h * a);
   g.setTransform(a, 0, 0, a, -LBLC.x * a, -LBLC.y * a);   // 열 좌표 그대로 그린다
   drawLabels(g, T, dmg);
-  K.T = T; K.dmg = dmg; K.a = a; K.ep = ep;
+  K.T = T; K.dmg = dmg; K.a = a; K.ep = ep; K.hs = hs; K.ds = ds;
   FEEL_HUD_STATS.lblBakes++;
   return true;
 }
 /** 'HITS' · 총 피해 (열 좌표) — LBL 캐시에 굽거나, 캐시 캔버스가 없으면 화면에 바로 그린다 */
 function drawLabels(g, T, dmg) {
-  text(g, 'HITS', NUM_R - 2, 76, { size: T ? 16 : 14, align: 'right', weight: 800, family: FONT.dmg, color: '#ffd0a0', ow: 3 });
-  if (dmg) text(g, dmg, NUM_R - 2, 102, { size: T ? 14 : 12, align: 'right', weight: 700, family: FONT.num, color: '#e8d6c0', ow: 3 });
+  const hs = LBL_SZ.hs, ds = LBL_SZ.ds;   // labelSizes() 가 이 프레임에 정한 크기 (데스크톱 14/12, 터치 ≥ 16/14 — 하한 / k)
+  text(g, 'HITS', NUM_R - 2, 76, { size: hs, align: 'right', weight: 800, family: FONT.dmg, color: '#ffd0a0', ow: 3 });
+  // 큰 글자는 기준선을 내려 콤보 시간 막대(아래 끝 85)와 띄운다 (14 px 이하는 예전 102 그대로, 24 px 에서 106)
+  if (dmg) text(g, dmg, NUM_R - 2, Math.max(102, Math.ceil(87 + ds * 0.8)), { size: ds, align: 'right', weight: 700, family: FONT.num, color: '#e8d6c0', ow: 3, maxWidth: LBLC.w + NUM_R - 6 });
 }
 /** LBL 캐시를 붙인다 (dy = 끝 연출의 떠오름). 쉴 때는 기기 픽셀에 맞춰 1:1 */
 function blitLabels(ctx, B, dy) {
@@ -751,7 +787,8 @@ export function drawComboHUD(ctx, world, vw, vh, touch) {
   let k = Math.min(1, r.w / COL_W, r.h / COL_H);
   if (k < 0.7) { small = true; k = Math.min(1, r.w / COL_W, r.h / COL_H_SMALL); }
   const calm = calmOf(world);
-  const T = !!touch;   // 휴대폰: 캔버스가 0.7배쯤으로 줄어 보이므로 작은 글자('HITS'·'총 피해')를 키운다
+  const T = !!touch;   // 휴대폰: 캔버스가 0.7배쯤으로 줄어 보이므로 작은 글자('HITS'·'총 피해'·이정표)를 키운다
+  labelSizes(T, k);
   ctx.save();
   ctx.translate(r.x + r.w, r.y);
   if (k !== 1) ctx.scale(k, k);
@@ -764,7 +801,7 @@ export function drawComboHUD(ctx, world, vw, vh, touch) {
   if (rank > 0) drawRankLetter(ctx, B, style, s, rank, now, calm, n < 2 ? 0.7 : 1);   // 콤보가 끊긴 뒤 식어 가는 랭크는 조금 흐리게
   if (n >= 2) drawComboBlock(ctx, B, world, c, s, rank, now, small, calm, T, r.w / k, r.h / k);
   else if (ending) drawComboEnd(ctx, B, s, rank, now, calm, T);
-  if (mile) drawMilestone(ctx, B, s, now, small, calm);
+  if (mile) drawMilestone(ctx, B, s, now, small, calm, T, k);
   ctx.restore();
   return true;
 }
@@ -849,7 +886,7 @@ function drawComboEnd(ctx, B, s, rank, now, calm, T) {
   const dy = -10 * t;
   drawNumberSpr(ctx, B, s.endStr, s.endSize, calm ? 0 : s.endRot, 1, 0, rank, now, dy);
   if (lblSprite(T, '', devScale(B))) blitLabels(ctx, B, dy);
-  else text(ctx, 'HITS', NUM_R - 2, 76 + dy, { size: T ? 16 : 14, align: 'right', weight: 800, family: FONT.dmg, color: '#ffd0a0', ow: 3 });
+  else text(ctx, 'HITS', NUM_R - 2, 76 + dy, { size: LBL_SZ.hs, align: 'right', weight: 800, family: FONT.dmg, color: '#ffd0a0', ow: 3 });
   ctx.globalAlpha = ga;
 }
 
@@ -893,13 +930,16 @@ function drawRankLetter(ctx, B, style, s, rank, now, calm, alphaK) {
 }
 
 /** 콤보 이정표 '{n} HIT!' — 랭크 글자 아래에서 2→1 로 박힌다. 끝나면 변환은 B, 알파는 그대로 */
-function drawMilestone(ctx, B, s, now, small, calm) {
+function drawMilestone(ctx, B, s, now, small, calm, T = false, k = 1) {
   const t = now - s.mileRt;
   const a = t < MILE_T - 0.3 ? 1 : clamp((MILE_T - t) / 0.3, 0, 1);
   if (a <= 0) return;
   const sc = calm ? 1 : t < MILE_SLAM ? 2 - ease.outCubic(t / MILE_SLAM) : 1;
   const col = s.mile >= 100 ? '#ffe070' : s.mile >= 50 ? '#ffa640' : '#ffffff';
-  const size = small ? 14 : 19, y = small ? 82 : 100;   // 기준선을 중심으로 박힌다 (아래로 커지지 않게)
+  let size = small ? 14 : 19;
+  const y = small ? 82 : 100;   // 기준선을 중심으로 박힌다 (아래로 커지지 않게)
+  // 터치: 열이 k 배로 줄어 그려지므로 HUD 글자 하한(hudPx)을 열 좌표로 (원래 크기의 2배까지 — 열 너비 안, 랭크 고리 아래)
+  if (T) size = Math.min(size * 2, Math.max(size, Math.ceil(hudPx(size, true) / (k > 0.2 ? k : 0.2))));
   const ga = ctx.globalAlpha;
   ctx.globalAlpha = ga * a;
   ctx.translate(LETTER_X, y);
@@ -986,7 +1026,7 @@ export function drawAnnouncer(ctx, world, vw, vh) {
     const sa = calm ? 1 : clamp((tA - 0.06) / 0.1, 0, 1);
     if (sa > 0) {
       ctx.globalAlpha = ga * sa;
-      text(ctx, cur.sub, cx, r.y + 58, { size: Math.max(11, Math.round(16 * Math.min(1, fit + 0.2))), align: 'center', weight: 800, family: FONT.title, color: '#f3e2c8', outline: 'rgba(20,0,4,0.92)', ow: 4, maxWidth: maxW });
+      text(ctx, cur.sub, cx, r.y + 58, { size: hudPx(Math.max(11, Math.round(16 * Math.min(1, fit + 0.2)))), align: 'center', weight: 800, family: FONT.title, color: '#f3e2c8', outline: 'rgba(20,0,4,0.92)', ow: 4, maxWidth: maxW });
     }
   }
   ctx.restore();

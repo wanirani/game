@@ -39,7 +39,7 @@ import { assets } from '../core/assets.js';
 import { bus } from '../core/events.js';
 import { text } from '../core/ui.js';
 import { clamp, approach, rand, TAU, ease } from '../core/math.js';
-import { hudLayout } from '../render/hud_layout.js';
+import { hudLayout, hudPx } from '../render/hud_layout.js';
 import { GIMMICKS_B } from './gimmicks_b.js';
 export { SporePod } from './gimmicks_b.js';
 
@@ -140,9 +140,11 @@ export function drawMeter(ctx, r, label, ratio, color, { blink = false, time = 0
   ctx.fillStyle = color; ctx.fillRect(r.x + 2, by, fw, bh);
   ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(r.x + 2, by, fw, Math.min(2, bh));
   ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
-  const ty = r.y + r.h / 2 + 1;
-  text(ctx, label, r.x + 8, ty, { size: 12, weight: 800, color: labelColor, baseline: 'middle', ow: 3 });
-  if (sub) text(ctx, sub, r.x + r.w - 8, ty, { size: 12, weight: 700, color: labelColor, align: 'right', baseline: 'middle', ow: 3 });
+  // 터치 HUD 글자 하한 (hudPx, 11 CSS px — 휴대폰 16–17 px). 큰 글자는 줄(16 px) 한가운데에 맞춰 잉크가 줄 안에 들고,
+  // 외곽선만 줄 사이 4 px 틈으로 1–2 px 나온다 (다음 줄·토스트는 METER_ROW 20 px 간격이라 닿지 않는다)
+  const fs = hudPx(12), ty = r.y + r.h / 2 + (fs > 12 ? 0 : 1);
+  text(ctx, label, r.x + 8, ty, { size: fs, weight: 800, color: labelColor, baseline: 'middle', ow: fs > 12 ? 2.5 : 3 });
+  if (sub) text(ctx, sub, r.x + r.w - 8, ty, { size: fs, weight: 700, color: labelColor, align: 'right', baseline: 'middle', ow: fs > 12 ? 2.5 : 3 });
   ctx.restore();
 }
 /** 거품 스프라이트 (캐시) */

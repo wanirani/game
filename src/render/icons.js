@@ -5,7 +5,7 @@
 // (wheart_1…6 세계의 심장, star_shard 별의 조각, rift_lantern 균열의 등불, dawnflower 새벽꽃)도 그린다.
 import { assets } from '../core/assets.js';
 import { TAU } from '../core/math.js';
-import { FONT } from '../core/ui.js';
+import { FONT, font, textFloor } from '../core/ui.js';
 
 const RARITY_GLOW = ['rgba(0,0,0,0)', '#6fe07a', '#5aa8ff', '#c07cff', '#ffa640', '#ff4a5a'];
 
@@ -51,23 +51,27 @@ export function drawSlot(ctx, x, y, s, item = null, { selected = false, empty = 
       ctx.fillStyle = g; ctx.fillRect(x, y, s, s);
     }
     drawIcon(ctx, item.icon, x + s / 2, y + s / 2, s * 0.86, item);
+    // 칸 글자는 ui.font() 로 → uiScale 화면에서는 글자 크기 하한(설정 '글자 크기')을 따른다 (하한 밖 화면은 예전 크기 그대로).
+    // 하한이 칸 비율 크기보다 크면 위 줄 기준선을 내려 칸 위로 나가지 않게 한다
+    const topBase = y + Math.max(s * 0.3, Math.max(Math.round(s * 0.26), textFloor()) * 0.78 + 1);
     if (item.level > 0) {
-      ctx.font = `800 ${Math.round(s * 0.26)}px ${FONT.num}`; ctx.textAlign = 'right';
-      ctx.lineWidth = 3; ctx.strokeStyle = '#000'; ctx.strokeText('+' + item.level, x + s - 3, y + s * 0.3);
-      ctx.fillStyle = item.level >= 10 ? '#ffb040' : '#ffe7a0'; ctx.fillText('+' + item.level, x + s - 3, y + s * 0.3);
+      ctx.font = font(Math.round(s * 0.26), 800, FONT.num); ctx.textAlign = 'right';
+      ctx.lineWidth = 3; ctx.strokeStyle = '#000'; ctx.strokeText('+' + item.level, x + s - 3, topBase);
+      ctx.fillStyle = item.level >= 10 ? '#ffb040' : '#ffe7a0'; ctx.fillText('+' + item.level, x + s - 3, topBase);
     }
     if (item.qty > 1) {
-      ctx.font = `700 ${Math.round(s * 0.24)}px ${FONT.num}`; ctx.textAlign = 'right';
+      ctx.font = font(Math.round(s * 0.24), 700, FONT.num); ctx.textAlign = 'right';
       ctx.lineWidth = 3; ctx.strokeStyle = '#000'; ctx.strokeText(item.qty, x + s - 3, y + s - 4);
       ctx.fillStyle = '#fff'; ctx.fillText(item.qty, x + s - 3, y + s - 4);
     }
     if (item.equipped) {
-      ctx.fillStyle = '#e8c872'; ctx.font = `800 ${Math.round(s * 0.22)}px ${FONT.body}`; ctx.textAlign = 'left';
-      ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.strokeText('E', x + 3, y + s * 0.3); ctx.fillText('E', x + 3, y + s * 0.3);
+      ctx.fillStyle = '#e8c872'; ctx.font = font(Math.round(s * 0.22), 800, FONT.body); ctx.textAlign = 'left';
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.strokeText('E', x + 3, topBase); ctx.fillText('E', x + 3, topBase);
     }
   } else if (empty) {
-    ctx.fillStyle = '#4a3a30'; ctx.font = `500 ${Math.round(s * 0.22)}px ${FONT.body}`; ctx.textAlign = 'center';
-    ctx.fillText(empty, x + s / 2, y + s / 2 + 4);
+    ctx.fillStyle = '#4a3a30'; ctx.font = font(Math.round(s * 0.22), 500, FONT.body); ctx.textAlign = 'center';
+    // 큰 글자 하한에서 칸에 들어가지 않으면 생략한다 (가로로 누르지 않는다 — 부르는 곳(장비 탭)은 줄 이름으로 같은 말을 보여 준다)
+    if (ctx.measureText(empty).width <= s - 6) ctx.fillText(empty, x + s / 2, y + s / 2 + 4);
   }
   ctx.restore();
 }

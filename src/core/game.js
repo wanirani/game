@@ -23,7 +23,7 @@ import { font, wrap, FONT, setTextFloor, taps, onFontEpoch, fontEpoch } from './
 import * as UI from './ui.js';
 import { touchpad } from './touchpad.js';
 import { safeInsets } from './platform.js';
-import { hudLayout, hudSafe } from '../render/hud_layout.js';
+import { hudLayout, hudSafe, hudPx } from '../render/hud_layout.js';
 import * as SAVE from './save.js';
 
 export const VIEW_H = 540;       // 논리 해상도 높이 (고정)
@@ -862,7 +862,7 @@ class Game {
    */
   drawHudToasts(ctx, L) {
     const rows = L.toastRows;
-    const size = 15, pad = 24;
+    const size = hudPx(15, !!L.touch), pad = 24;   // 터치 HUD 글자 하한 11 CSS px (휴대폰 17 px — 줄 26 px 안에 들어간다)
     ctx.textAlign = 'center';
     ctx.font = font(size, 700, FONT.body);
     let r = 0;
