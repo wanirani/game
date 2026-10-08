@@ -227,7 +227,8 @@ function build(vw, vh, T, S, pad, bossOn, nM, F) {
     L.rows = null;
   } else {
     // 휴대폰 배치: 글자 F px 가 들어가도록 체력 칸을 키우고(HP 숫자는 F+1 px 막대 안), 하트 줄·버프 칸을 늘리고,
-    // 그 아래 묶음(스킬·필살·각성·준비 문구·동료)을 하트 줄 밑으로 민다. 동료 위젯은 줄이지 않는다 (배율 1 → 글자도 F px 그대로)
+    // 그 아래 묶음(스킬·필살·각성·준비 문구·동료)을 하트 줄 밑으로 민다. 동료 위젯은 거의 줄이지 않는다 (136 px → 배율 ≈ 0.97;
+    // 140 px(배율 1)이면 노치 인셋 'full' 에서 위쪽 보스 칸이 240 px 아래로 좁아져 보스 바가 패드 쪽 아래 칸으로 내려간다)
     const vit = vitalsRows(F), buff = Math.min(26, F + 6);
     ur = ultRows(F, true);
     L.vitals = R(90 + l, 10 + t, 260, vit.h);
@@ -235,7 +236,7 @@ function build(vw, vh, T, S, pad, bossOn, nM, F) {
     const y1 = L.hearts.y + L.hearts.h + 4;
     L.skills = R(14 + l, y1, 88, 40);
     L.ult = R(106 + l, y1, 120, ur.h);
-    L.companions = R(244 + l, y1, CMP_W + CMP_INK.l + CMP_INK.r, CMP_H + CMP_INK.t);
+    L.companions = R(244 + l, y1, 136, Math.ceil(CMP_H * (136 - CMP_INK.l - CMP_INK.r) / CMP_W) + CMP_INK.t);
     L.rows = { vit, ult: ur, buff };
   }
   // 필살 막대 · 각성 게이지 · 준비 문구 (feel_hud 계약: 각성 게이지 y = SP 막대 y + 14, 준비 문구 = 각성 게이지 y + 22)

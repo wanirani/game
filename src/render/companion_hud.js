@@ -192,7 +192,8 @@ function label(ctx, action, touchStr, cx, y, T, tag = null, lo = -Infinity, hi =
   const x0 = Math.max(lo, Math.min(cx - total / 2, hi - total));
   if (glyph) drawGlyph(ctx, action, x0, y, T ? 16 : 14);
   else text(ctx, touchStr, x0, y + size, { size, weight: 800, color: '#efe4cf', ow: 3 });
-  if (tag) text(ctx, tag, x0 + w + gap, y + size, { size, weight: 800, color: GOLD, ow: 3 });
+  // 꼬리가 칸을 넘치면(글자 하한이 아주 클 때) 꼬리만 가로로 조금 눌러 [lo, hi] 안에 둔다
+  if (tag) text(ctx, tag, x0 + w + gap, y + size, { size, weight: 800, color: GOLD, ow: 3, maxWidth: total > hi - lo ? Math.max(10, hi - x0 - w - gap) : undefined });
 }
 
 function drawMountWidget(ctx, m, cx, cy, t, T) {
