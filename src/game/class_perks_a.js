@@ -160,12 +160,14 @@ function drawBell(ctx, s, col, a) {
   ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.arc(0, s * 1.06, s * 0.1, 0, TAU); ctx.fill();
   ctx.globalAlpha = 1;
 }
-/** 머리 위 작은 마름모 하나 */
+/** 머리 위 작은 마름모 하나 (어두운 테두리: 불길·밝은 배경에서도 읽히게) */
 function pip(ctx, x, y, s, col, a) {
-  ctx.globalAlpha = a; ctx.fillStyle = col;
-  ctx.beginPath(); ctx.moveTo(x, y - s); ctx.lineTo(x + s * 0.7, y); ctx.lineTo(x, y + s); ctx.lineTo(x - s * 0.7, y); ctx.closePath(); ctx.fill();
+  ctx.globalAlpha = a; ctx.fillStyle = col; ctx.strokeStyle = '#1a0610'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(x, y - s); ctx.lineTo(x + s * 0.7, y); ctx.lineTo(x, y + s); ctx.lineTo(x - s * 0.7, y); ctx.closePath(); ctx.stroke(); ctx.fill();
   ctx.globalAlpha = 1;
 }
+/** 영웅 게이지 높이: 히트박스 위쪽(p.y)에서 이만큼 위 — 퍼펫 그림(머리·후광·모자·날개)에 가리지 않게 (PerkLayer z 9 < 영웅 z 10) */
+const METER_DY = 38;
 
 // ─────────────────────────── 화형 (화형 심판장) ───────────────────────────
 function pyre(w, p, tgt, N) {
@@ -354,7 +356,7 @@ export function toll(p, w, o) {
   let n;
   if (o.proc) n = strike(w, p, circ(x, y, R), { mv: o.mv, type: 'mag', element: 'holy', stun: NB.stunT, kb: [220, -120], dmgColor: '#e8f0ff' });
   else n = K.uHit?.(w, p, o.mv, { rect: circ(x, y, R), type: 'mag', element: 'holy', stun: NB.stunT, kb: [220, -120], hitstop: 0.03, shake: 2, tags: ['skill'], dmgColor: '#e8f0ff' }) ?? 0;
-  const erased = eraseShots(w, x, y, R, '#e8f0ff');
+  const erased = NB.eraseProj ? eraseShots(w, x, y, R, '#e8f0ff') : 0;
   if (o.healPct > 0 && !p.dead) p.heal(maxHp(p) * o.healPct / 100);
   w.fx.ring(x, y, { color: '#e8f0ff', r0: 20, r1: R, life: 0.45, width: great ? 9 : 5 });
   if (great) { w.fx.ring(x, y, { color: '#ffd84a', r0: 30, r1: R * 1.05, life: 0.6, width: 4 }); callout(w, p.cx, p.y - 34, '만종!', '#ffd84a'); }
@@ -512,7 +514,7 @@ export const PERKS_A = {
       const st = perkState(p), bw = st.bw ?? 0;
       if (!(bw > 0)) return;
       const H = maxHp(p), k = bw / (H * this.N.capPct / 100), ready = bw >= H * this.N.minPct / 100;
-      const x = p.cx, y = p.y - 14;
+      const x = p.cx, y = p.y - METER_DY;
       for (let i = 0; i < 3; i++) {
         const on = k >= (i + 1) / 3 - 0.001 || (i === 0 && ready);
         pip(ctx, x + (i - 1) * 11, y, 4.5, on ? '#ffd84a' : '#5a4a2a', on ? 0.95 : 0.55);
@@ -577,7 +579,7 @@ export const PERKS_A = {
     drawMeter(ctx, p) {
       const st = perkState(p), n = Math.min(this.N.need, st.air ?? 0);
       if (p.onGround || !n) return;
-      const x0 = p.cx - (this.N.need - 1) * 4.5, y = p.y - 14;
+      const x0 = p.cx - (this.N.need - 1) * 4.5, y = p.y - METER_DY;
       for (let i = 0; i < this.N.need; i++) pip(ctx, x0 + i * 9, y, 3.6, i < n ? (n >= this.N.need ? '#e0e0ff' : '#9a8aff') : '#2a2440', i < n ? 0.95 : 0.5);
     },
   },
@@ -668,7 +670,7 @@ export const PERKS_A = {
     },
     drawMeter(ctx, p, w) {
       const st = perkState(p), f = st.fore ?? 0;
-      const x = p.cx, y = p.y - 16;
+      const x = p.cx, y = p.y - METER_DY;
       if (f >= this.N.charge) {
         const pu = 0.75 + 0.25 * Math.sin(nowOf(w) * 6);
         ctx.globalCompositeOperation = ADD;
@@ -676,8 +678,10 @@ export const PERKS_A = {
         ctx.globalCompositeOperation = 'source-over';
         pip(ctx, x, y, 5.5, '#e8fbff', 0.95);
       } else if (f > 0) {
-        ctx.globalAlpha = 0.6; ctx.strokeStyle = '#a8e0ff'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(x, y, 5, -Math.PI / 2, -Math.PI / 2 + TAU * (f / this.N.charge)); ctx.stroke();
+        ctx.globalAlpha = 0.5; ctx.strokeStyle = '#1a0610'; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.arc(x, y, 6, 0, TAU); ctx.stroke();
+        ctx.globalAlpha = 0.85; ctx.strokeStyle = '#a8e0ff'; ctx.lineWidth = 2.2;
+        ctx.beginPath(); ctx.arc(x, y, 6, -Math.PI / 2, -Math.PI / 2 + TAU * (f / this.N.charge)); ctx.stroke();
         ctx.globalAlpha = 1;
       }
     },
@@ -711,7 +715,7 @@ export const PERKS_A = {
     drawMeter(ctx, p, w) {
       const n = perkState(p).sig ?? 0;
       if (!n) return;
-      const t = nowOf(w), x = p.cx, y = p.y - 18, full = n >= this.N.max;
+      const t = nowOf(w), x = p.cx, y = p.y - METER_DY, full = n >= this.N.max;
       for (let i = 0; i < n; i++) {
         const a = t * 1.6 + i * TAU / 3, px = x + Math.cos(a) * 16, py = y + Math.sin(a) * 5;
         ctx.globalCompositeOperation = ADD;
@@ -733,7 +737,7 @@ export const PERKS_A = {
   },
   // ── 비전 ──
   sera_bellsaint: {
-    N: { every: 8, icd: 2.5, r: 200, mvPct: 50, stunT: 0.3, healPct: 2, window: 12, greatR: 300, greatMvPct: 120, greatHealPct: 4 },
+    N: { every: 8, icd: 2.5, r: 200, mvPct: 50, stunT: 0.3, healPct: 2, window: 12, greatR: 300, greatMvPct: 120, greatHealPct: 4, eraseProj: true },
     prewarm(w) { warm(w, ['#e8f0ff', '#ffd84a'], ['만종!', '#ffd84a']); },
     onHit(p, tgt, info, atk, w) {
       if (!tgt || tgt.kind === 'prop') return;
@@ -744,10 +748,12 @@ export const PERKS_A = {
     onSkill(p, w) { passiveToll(p, w); },
     drawMeter(ctx, p, w) {
       const st = perkState(p), n = st.bellN ?? 0, tn = nowOf(w);
-      const x = p.cx, y = p.y - 15;
+      const x = p.cx, y = p.y - METER_DY;
       if (n > 0) {
-        ctx.globalAlpha = 0.75; ctx.strokeStyle = '#e8f0ff'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(x, y, 6, -Math.PI / 2, -Math.PI / 2 + TAU * (n / this.N.every)); ctx.stroke();
+        ctx.globalAlpha = 0.5; ctx.strokeStyle = '#1a0610'; ctx.lineWidth = 4.5;
+        ctx.beginPath(); ctx.arc(x, y, 7, 0, TAU); ctx.stroke();
+        ctx.globalAlpha = 0.9; ctx.strokeStyle = '#e8f0ff'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(x, y, 7, -Math.PI / 2, -Math.PI / 2 + TAU * (n / this.N.every)); ctx.stroke();
         ctx.globalAlpha = 1;
       }
       const g = ((st.bell1 ?? -99) >= tn - this.N.window ? 1 : 0) + ((st.bell2 ?? -99) >= tn - this.N.window ? 1 : 0);

@@ -164,12 +164,13 @@ function claws(w, p, N) {
     },
     draw(ctx, e) {
       ctx.globalCompositeOperation = ADD;
+      // 일격마다 늑대 발톱 자국 세 줄 (평행 사선)
       for (let i = 0; i < N.clawN; i++) {
         const t = e.lt - i * N.clawGap;
         if (t < 0) continue;
-        const a = Math.max(0, 1 - t / 0.3), y = p.bottom - 92 + i * 24, x0 = p.cx + f * 34, x1 = p.cx + f * 220;
-        K.glow(ctx, (x0 + x1) / 2, y, 70, '#c8d8ff', 0.25 * a);
-        K.cutLine(ctx, x0, y - 22, x1, y + 18, 6, '#e8f0ff', a);
+        const a = Math.max(0, 1 - t / 0.36), s = i % 2 ? -1 : 1, y = p.bottom - 64, x0 = p.cx + f * 30, x1 = p.cx + f * 230;
+        K.glow(ctx, (x0 + x1) / 2, y, 90, '#c8d8ff', 0.35 * a);
+        for (let j = -1; j <= 1; j++) K.cutLine(ctx, x0 + f * j * 8, y - s * 34 + j * 13, x1 + f * j * 8, y + s * 30 + j * 13, 7, '#e8f0ff', a);
       }
     },
   });
@@ -314,12 +315,15 @@ export const PERKS_B = {
     },
     drawMeter(ctx, p, w) {
       if (!S(p).grace) return;
-      const x = p.cx - p.facing * 18, y = p.y + 4, k = 0.8 + 0.2 * Math.sin((w?.time ?? 0) * 4);
+      // 머리 위 방패 문장 (대검·망토에 가리지 않게) — 맹세 계수 고리(oathlord)와 같은 중심
+      const x = p.cx, y = p.y - 16, k = 0.8 + 0.2 * Math.sin((w?.time ?? 0) * 4);
       ctx.globalCompositeOperation = ADD;
-      K.glow(ctx, x, y, 13 * k, '#ffd84a', 0.6);
+      K.glow(ctx, x, y, 20 * k, '#ffd84a', 0.65);
       ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = '#ffd84a'; ctx.globalAlpha = 0.9;
-      ctx.beginPath(); ctx.moveTo(x - 4.5, y - 5); ctx.lineTo(x + 4.5, y - 5); ctx.lineTo(x + 4.5, y + 1); ctx.lineTo(x, y + 6); ctx.lineTo(x - 4.5, y + 1); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(x - 7, y - 7.5); ctx.lineTo(x + 7, y - 7.5); ctx.lineTo(x + 7, y + 1.5); ctx.lineTo(x, y + 9); ctx.lineTo(x - 7, y + 1.5); ctx.closePath();
+      ctx.globalAlpha = 0.95; ctx.fillStyle = '#ffd84a'; ctx.fill();
+      ctx.lineWidth = 1.5; ctx.strokeStyle = '#4a2a00'; ctx.stroke();
+      ctx.fillStyle = '#fff8d8'; ctx.fillRect(x - 1, y - 5, 2, 10); ctx.fillRect(x - 4, y - 2, 8, 2);
     },
     prewarm() { K.glowSprite?.('#ffd84a'); K.glowSprite?.('#fff2b0'); },
   },
@@ -716,10 +720,11 @@ export const PERKS_B = {
       ctx.globalCompositeOperation = ADD;
       K.glow(ctx, p.cx, p.cy, 30 + n * 3, '#ff1a2a', 0.06 + n * 0.025);
       ctx.globalCompositeOperation = 'source-over';
-      const y = p.y - 10, x0 = p.cx - (N.max - 1) * 4.5;
+      const y = p.y - 12, x0 = p.cx - (N.max - 1) * 5.5;
+      ctx.lineWidth = 1.5; ctx.strokeStyle = '#1a0004';
       for (let i = 0; i < N.max; i++) {
-        ctx.globalAlpha = i < n ? 0.95 : 0.3; ctx.fillStyle = i < n ? '#ff1a2a' : '#3a0a0e';
-        ctx.beginPath(); ctx.arc(x0 + i * 9, y - (i < n && n >= N.max ? 1.5 * Math.sin((w?.time ?? 0) * 12 + i) : 0), 3.2, 0, TAU); ctx.fill();
+        ctx.globalAlpha = i < n ? 0.95 : 0.45; ctx.fillStyle = i < n ? '#ff1a2a' : '#3a0a0e';
+        ctx.beginPath(); ctx.arc(x0 + i * 11, y - (i < n && n >= N.max ? 1.5 * Math.sin((w?.time ?? 0) * 12 + i) : 0), 4.2, 0, TAU); ctx.fill(); ctx.stroke();
       }
     },
     prewarm() { K.glowSprite?.('#ff1a2a'); },
@@ -817,8 +822,11 @@ export const PERKS_B = {
       const N = this.N, s = S(p), n = s.oathN ?? 0;
       if (inBanner(p, w, N)) { ctx.globalCompositeOperation = ADD; K.glow(ctx, p.cx, p.cy, 50, '#ffcf6a', 0.25); ctx.globalCompositeOperation = 'source-over'; }
       if (!n) return;
-      ctx.strokeStyle = '#ffcf6a'; ctx.globalAlpha = 0.7; ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.arc(p.cx - p.facing * 18, p.y + 4, 6, -Math.PI / 2, -Math.PI / 2 + TAU * Math.min(1, n / N.every)); ctx.stroke();
+      // 머리 위 가호 방패(paladin)를 두르는 맹세 계수 고리
+      ctx.strokeStyle = '#2a1800'; ctx.globalAlpha = 0.5; ctx.lineWidth = 4.5;
+      ctx.beginPath(); ctx.arc(p.cx, p.y - 16, 12, 0, TAU); ctx.stroke();
+      ctx.strokeStyle = '#ffcf6a'; ctx.globalAlpha = 0.9; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(p.cx, p.y - 16, 12, -Math.PI / 2, -Math.PI / 2 + TAU * Math.min(1, n / N.every)); ctx.stroke();
     },
     prewarm() { K.glowSprite?.('#ffcf6a'); },
   },

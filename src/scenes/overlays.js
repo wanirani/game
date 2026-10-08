@@ -607,6 +607,8 @@ export class UltCutinScene extends Scene {
     }
     // 왼쪽 가장자리 어둠: 검은 띠에 이어 붙고 글자가 읽히게 (가로로만 변하는 띠 → 세로는 상자만큼)
     if (spr?.fade && B.y1 > B.y0) ctx.drawImage(spr.fade, 0, 0, 256, 2, ix - 2, B.y0 - 2, dw * 0.46, B.y1 - B.y0 + 4);
+    // 흉상은 예전 전신 그림보다 좁아 왼쪽 끝(ix)이 띠의 밝은 쪽에 온다: 같은 어둠을 왼쪽으로 뒤집어 한 번 더 그려 경계 없이 잇는다
+    if (bust && spr?.fade && B.y1 > B.y0) { ctx.save(); ctx.translate(ix, 0); ctx.scale(-1, 1); ctx.drawImage(spr.fade, 0, 0, 256, 2, -2, B.y0 - 2, dw * 0.4, B.y1 - B.y0 + 4); ctx.restore(); }
   }
 }
 
