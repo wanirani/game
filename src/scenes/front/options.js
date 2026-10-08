@@ -6,7 +6,7 @@
 //  버튼 배치 편집 › → touchpad.openEditor() (DOM 편집기; 열려 있는 동안 이 장면은 입력을 받지 않는다)
 //  - uiScale 장면: game.uiW × game.uiH 로 배치 (최소 720×400), 탭 대상은 ≥ 44 CSS px (줄·◀▶·탭·단추), ui.taps 에 등록
 //  - 입력은 메뉴 의미(input.bindings): 결정·취소·이전/다음 탭. 패드 START 는 설정을 닫는다. 휠·끌기·오른쪽 스틱으로 목록 스크롤
-//  - 바꾼 값은 바로 반영되고(볼륨·품질·UI 크기·바인딩·터치 패드) 0.6초 뒤·닫을 때 저장된다
+//  - 바꾼 값은 바로 반영되고(볼륨·품질·UI 크기·글자 크기·바인딩·터치 패드) 0.6초 뒤·닫을 때 저장된다
 //  enter({ page: 0..4 | 'sound'|'screen'|'controls'|'touch'|'etc', sub: 'padRemap'|'keyRemap'|'guide' })
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
@@ -36,6 +36,8 @@ const PAGES = [
 ];
 const TIER_NAME = { low: '낮음', medium: '보통', high: '높음' };
 const pct = (v) => `${Math.round((v ?? 0) * 100)}%`;
+/** 지금 메뉴 글자 하한의 실제 화면 크기 (CSS px, 반올림) — 「글자 크기」 줄 안내 */
+const minTextPx = (g) => Math.round((g.textFloor || 11) * (g.uiK || 1) * (g.cssScale || 1));
 const offPct = (v) => (v <= 0.001 ? '끔' : pct(v));
 /** 세션 동안 마지막으로 본 페이지 (다시 열면 그 페이지부터) */
 let lastPage = 0;
@@ -87,8 +89,13 @@ function buildRows(sc) {
         note: (s) => (s.fpsCap === 0 ? '화면 주사율만큼 그립니다. 120Hz 화면에서 더 부드럽지만 배터리를 더 씁니다.' : '초당 60번 그립니다. 배터리를 아낍니다.'),
       },
       {
-        id: 'uiScale', label: '글자·UI 크기', type: 'enum', opts: [['auto', '자동'], [1, '100%'], [1.15, '115%'], [1.3, '130%'], [1.5, '150%']],
-        note: () => `메뉴 글자와 버튼의 크기입니다 (지금 ${Math.round((g.uiK || 1) * 100)}%). 화면이 작으면 가장 큰 크기가 제한됩니다.`,
+        id: 'uiScale', label: 'UI 크기', type: 'enum', opts: [['auto', '자동'], [1, '100%'], [1.15, '115%'], [1.3, '130%'], [1.5, '150%']],
+        note: () => `메뉴의 버튼과 글자를 함께 키웁니다 (지금 ${Math.round((g.uiK || 1) * 100)}%). 화면이 작으면 가장 큰 크기가 제한됩니다. 글자만 키우려면 「글자 크기」를 쓰세요.`,
+      },
+      {
+        // benchmark #7: UI 크기와 따로, 메뉴·대화 글자의 최소 크기를 실제 화면 px 로 올린다 (game.js TEXT_SIZES · textFloor)
+        id: 'textSize', label: '글자 크기', type: 'enum', opts: [['normal', '보통'], ['large', '크게'], ['xlarge', '아주 크게']],
+        note: () => `메뉴와 대화의 작은 글자를 키웁니다. UI 크기와 따로 바뀝니다 (지금 가장 작은 글자 ${minTextPx(g)}px).`,
       },
       {
         id: 'safeArea', label: '노치 영역', type: 'enum', opts: [['fit', '피하기'], ['full', '화면 가득']],
@@ -317,7 +324,7 @@ export class OptionsScene extends Scene {
     if (r.id === 'flashFx' && v > 0) g.flash?.('#fff4e0', 0.45, 5);
     if (r.id === 'ctrlRumble') rumbleDemo(v);
     if (r.id === 'vibration' && v) phoneBuzz(40);
-    if (r.id === 'quality' || r.id === 'uiScale' || r.id === 'safeArea') g.dirty = true; // 배치는 game 이 다음 프레임에 다시 잡는다
+    if (r.id === 'quality' || r.id === 'uiScale' || r.id === 'safeArea' || r.id === 'textSize') g.dirty = true; // 배치·글자 하한은 game 이 다음 프레임에 다시 잡는다
     audio.sfx('menu_move');
   }
   /** 슬라이더 막대를 누른 곳의 값으로 (눈금에 맞춤) */

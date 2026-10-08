@@ -975,6 +975,18 @@ function fadeRate(d, dflt) {
   return d != null && Number.isFinite(n) && n > 0 ? Math.max(0.25, n) : dflt;
 }
 
+/**
+ * 글자 하한이 바뀌었다(설정 '글자 크기'·화면 크기): 글자를 구워 둔 캐시(메뉴 Layer·PixLayer·피 글씨·줄바꿈 등)를 모두 다시 굽게 한다.
+ * 늦게 도착한 웹 글꼴과 같은 길 — ui.fontEpoch 가 오르면 캐시 키가 바뀐다. ui.js 가 bumpFontEpoch 를 내보내면 그것을, 아니면
+ * 그 함수가 듣는 document.fonts 'loadingdone' 을 보낸다 (글꼴 목록이 없는 이벤트 = 피 글씨 캐시 전체를 비운다)
+ */
+function bumpTextCaches() {
+  try {
+    if (typeof UI.bumpFontEpoch === 'function') UI.bumpFontEpoch();
+    else document.fonts?.dispatchEvent?.(new Event('loadingdone'));
+  } catch { /* 문서 없음(노드 도구) */ }
+}
+
 /** str 이 maxW 를 넘으면 뒤를 잘라 … 를 붙인다 (지금 ctx.font 로 잰다) */
 function ellipsize(ctx, str, maxW) {
   if (ctx.measureText(str).width <= maxW) return str;

@@ -502,7 +502,8 @@ export function budgetScale(ctx, w, h, scale) {
 /**
  * 정적인 그림을 픽셀 배율에 맞춘 캔버스에 한 번 그려 두고 재사용.
  * scale 을 주지 않으면(null) ctx 의 지금 변환에서 잰다 (uiScale 장면이면 uiK 까지 포함).
- * 키에 ui.fontEpoch 가 들어 있어 웹 글꼴이 늦게 도착하면 다시 굽는다 (P-28). 배율은 픽셀 예산으로 자른다 (P-11).
+ * 키에 ui.fontEpoch 가 들어 있어 웹 글꼴이 늦게 도착하면 다시 굽는다 (P-28). 글자 하한(textFloor — 설정 '글자 크기', benchmark #7)도
+ * 키에 들어 있어 uiK 가 그대로여도 글자 크기만 바꾸면 다시 굽는다. 배율은 픽셀 예산으로 자른다 (P-11).
  * 변환이 축 정렬(회전·기울임 없음)이고 장치 배율 그대로 예산 안이면, 장치 배율로 구워 단위 변환 · 정수 장치 위치로
  * 복사한다 (필터 없는 1:1 복사 — fhd2x 에서 확대 복사보다 몇 배 싸다). 아니면 예산 배율로 구워 'medium' 으로 복사.
  */
@@ -516,7 +517,7 @@ export class Layer {
     const exact = !!m && Math.abs(m.b) < 1e-9 && Math.abs(m.c) < 1e-9 && m.a > 0 && m.a <= 4 && Math.abs(m.a - m.d) < 1e-6
       && Math.round(w * m.a) * Math.round(h * m.a) <= maxPx * 1.02; // 화면 크기 레이어 = 백킹 크기 (소수 오차로 1 px 넘는 것 허용)
     scale = exact ? m.a : budgetScale(ctx, w, h, scale);
-    const k = key + '|' + w + '|' + h + '|' + scale + '|' + (exact ? 1 : 0) + '|' + fontEpoch;
+    const k = key + '|' + w + '|' + h + '|' + scale + '|' + (exact ? 1 : 0) + '|' + fontEpoch + '|' + textFloor();
     if (this.key !== k || !this.cv) {
       const pw = Math.max(1, Math.ceil(w * scale)), ph = Math.max(1, Math.ceil(h * scale));
       if (!this.cv) this.cv = takeCanvas(); // 풀에서 (스테이지 도중 새 캔버스 0 — R1-REQ-339B)
