@@ -1,7 +1,10 @@
 // Visual review — contact sheets for human review (MASTER_PLAN §5.1 "visual review"): stages, bosses × phases, every enemy
-// (91, in its home stage), the 20 companions (9 mounts ridden, 11 guardians idle + skill), heroes × 3 tiers in game and
-// × 8 turntable yaws, ult/awakening cut-ins, ending cards, menus, the HUD matrix and every tools/gallery_*.html page, at
-// desktop and phone sizes. Each shot is also checked automatically: a flat (blank/black) game frame and every page/console
+// (91, in its home stage), the 20 companions (9 mounts ridden, 11 guardians idle + skill), heroes × tiers [0,1,2,3] in game
+// (+ one hidden-path shot per hero) and × 8 turntable yaws (tier 3: 0/90/180°), ult/awakening cut-ins at tier 2 and tier 3,
+// ending cards, menus, the HUD matrix and every tools/gallery_*.html page, at desktop and phone sizes.
+// Tier 3 (classes_t3 §2.7, §11.2): the hero's tier-3 shot uses a tier-3 ascension with wings when the hero has one
+// (ASC_PICK); for every winged ascension shot the wings-over-cape check renders the standing hero four times (as is, no
+// wings, no cape, neither) and requires the wing colour on top where wing and cape overlap (heroes.<vp>.wings). Each shot is also checked automatically: a flat (blank/black) game frame and every page/console
 // error are reported; an enemy that is gone or off screen at its shot, and a mount that is not ridden / a guardian that is
 // not out, is labelled on its tile and listed.
 //
@@ -48,6 +51,17 @@ const contrastRows = [];   // --contrast: { vp, stage, pose, ratio, hero, behind
 const { STAGES } = await import(path.join(ROOT, 'src/data/stages.js'));
 const { BOSSES } = await import(path.join(ROOT, 'src/data/bosses.js'));
 const { CLASSES } = await import(path.join(ROOT, 'src/data/classes.js'));
+const { ASCENSIONS } = await import(path.join(ROOT, 'src/data/ascensions.js'));
+/** per hero: the tier-3 ascension for the tier-3 shots (a winged one when there is one: the wings-over-cape check) + the hidden one */
+const ASC_PICK = Object.fromEntries(['kael', 'sera', 'victor', 'bran', 'lia', 'azel', 'isolde'].map((h) => {
+  const all = Object.values(ASCENSIONS).filter((a) => a.charId === h);
+  const t3 = all.find((a) => a.kind === 't3' && a.lookTop?.wings) ?? all.find((a) => a.kind === 't3');
+  return [h, { t3: t3?.id ?? null, hidden: all.find((a) => a.kind === 'hidden')?.id ?? null }];
+}));
+const WING_MIN_OVERLAP = 30, WING_MIN_SCORE = 0.6, WING_MIN_PX = 100;
+const wingBad = (r) => r.wingPx < WING_MIN_PX || (r.visible ?? 0) < WING_MIN_SCORE || (r.overlap >= WING_MIN_OVERLAP && r.score < WING_MIN_SCORE);
+const wingWhy = (r, kind) => r.wingPx < WING_MIN_PX ? `the '${kind}' wings draw only ${r.wingPx} px (< ${WING_MIN_PX})` : (r.visible ?? 0) < WING_MIN_SCORE ? `only ${Math.round((r.visible ?? 0) * 100)} % of the '${kind}' wings show with the cape on` : `cape drawn over the '${kind}' wings: ${Math.round(r.score * 100)} % of ${r.overlap} overlap px show the wing on top`;
+const wingRows = [];   // { vp, hero, asc, wingPx, capePx, overlap, score }
 const STAGE_IDS = list(args.stages, QUICK ? ['s01', 's05', 's10', 's14', 's17', 's20'] : Object.keys(STAGES).filter((k) => /^s\d\d$/.test(k)));
 const HEROES = list(args.heroes, QUICK ? ['kael', 'lia'] : ['kael', 'sera', 'victor', 'bran', 'lia', 'azel', 'isolde']);
 const BOSS_FILES = fs.readdirSync(path.join(ROOT, 'src/game/bosses'));
@@ -249,6 +263,56 @@ function closeGroup(group, vp, s, shots, harness = []) {
   for (const f of flat) if (group !== 'cutins' && group !== 'endings') findings.push({ id: `visual.flat.${id}.${f.label}`, sev: 'S2', kind: 'visual', title: `flat/blank game frame: ${f.label} (${vp})`, detail: `luma mean ${f.mean}, sd ${f.sd}, top scene ${f.top}`, file: f.file || 'src/render/background.js', ...ownerOf(f.file || 'src/render/background.js'), repro: `node tools/qa/visual_review.mjs --only ${group} --vp ${vp}` });
 }
 
+/** Sets the in-game hero's class and ascension (null = none) the way progression.setAsc leaves it, then re-composes the look */
+const setClassAsc = (s, cls, asc = null) => s.eval(async ({ cls, asc }) => {
+  const g = window.__game, w = g.world, p = w.player;
+  const { bus } = await import('/src/core/events.js');
+  const { ASCENSIONS } = await import('/src/data/ascensions.js');
+  const A = asc ? ASCENSIONS[asc] : null;
+  p.hero.classId = A ? (A.parent ?? A.parents[0]) : cls;
+  p.hero.asc = asc; p.hero.ascUnlocked = asc ? [asc] : [];
+  if (asc && (p.hero.level ?? 1) < 80) p.hero.level = 80;
+  p.refreshStats?.();
+  bus.emit('classChanged', { charId: p.hero.charId, classId: p.hero.classId, asc });
+  for (const e of w.entities || []) if (e.kind === 'enemy') e.dead = true;
+  const { heroTier } = await import('/src/data/ascensions.js');
+  return { tier: heroTier(p.hero), wings: p.look?.wings ?? null, cape: !!p.look?.cape };
+}, { cls, asc });
+
+/**
+ * Wings over the cape (classes_t3 §11.2): the standing hero rendered as is (A), without wings (B), without cape (C) and without
+ * both (D), same frame. Wing footprint = C≠D (wings on the bare figure), cape footprint = B≠D. visible = share of the wing
+ * footprint still showing with the cape on (A≠B over C≠D): a cape painted over the wings hides them. Where the two footprints
+ * overlap, score = share of those pixels where A is closer to C (wings, no cape) than to B (cape, no wings) = wings on top.
+ * → { wingPx, capePx, visible, overlap, score } (score null without overlap — the puppet's idle cape hangs below the wings)
+ */
+const wingsOverCape = (s) => s.eval(() => {
+  const g = window.__game, w = g.world, cam = w?.camera, p = w?.player;
+  if (!p || !cam || !p.look?.wings || !p.look?.cape) return null;
+  const cv = g.canvas, z = cam.zoom || 1, sx = cv.width / g.viewW, sy = cv.height / g.viewH;
+  const x0 = Math.max(0, Math.floor((p.x - 60 - cam.x) * z * sx)), y0 = Math.max(0, Math.floor((p.y - 60 - cam.y) * z * sy));
+  const x1 = Math.min(cv.width, Math.ceil((p.x + p.w + 60 - cam.x) * z * sx)), y1 = Math.min(cv.height, Math.ceil((p.bottom + 4 - cam.y) * z * sy));
+  const cw = x1 - x0, ch = y1 - y0;
+  if (cw < 8 || ch < 8) return null;
+  const k = window.__vrW || (window.__vrW = document.createElement('canvas'));
+  const kx = k.getContext('2d', { willReadFrequently: true });
+  const inv = p.buffs.invincible, ifr = p.iframes, look0 = p.look;
+  p.buffs.invincible = 0; p.iframes = 0;
+  const grab = (look) => { p.look = look; window.__qaStep(0, true); k.width = cw; k.height = ch; kx.drawImage(cv, x0, y0, cw, ch, 0, 0, cw, ch); return kx.getImageData(0, 0, cw, ch).data; };
+  try {
+    const A = grab(look0), B = grab({ ...look0, wings: null }), C = grab({ ...look0, cape: null }), D = grab({ ...look0, wings: null, cape: null });
+    const diff = (X, Y, i) => Math.abs(X[i] - Y[i]) + Math.abs(X[i + 1] - Y[i + 1]) + Math.abs(X[i + 2] - Y[i + 2]);
+    let wingPx = 0, capePx = 0, overlap = 0, top = 0, shown = 0;
+    for (let i = 0; i < A.length; i += 4) {
+      const wv = diff(C, D, i) > 30, kv = diff(B, D, i) > 30;
+      if (wv) { wingPx++; if (diff(A, B, i) > 30) shown++; }
+      if (kv) capePx++;
+      if (wv && kv) { overlap++; if (diff(A, C, i) < diff(A, B, i)) top++; }
+    }
+    return { wingPx, capePx, visible: wingPx ? +(shown / wingPx).toFixed(2) : null, overlap, score: overlap ? +(top / overlap).toFixed(2) : null };
+  } finally { p.look = look0; p.buffs.invincible = inv; p.iframes = ifr; window.__qaStep(0, true); }
+});
+
 // ── groups ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 const GROUP_FNS = {
   /** P1 stages: r1 + boss arena; P2 stages: every room. */
@@ -425,29 +489,41 @@ const GROUP_FNS = {
     await s.close();
   },
 
-  /** Heroes: one class per tier in game (mid-attack), then the status-tab turntable at 8 yaws (tier-2 class). */
+  /** Heroes: one class per tier in game (mid-attack) + tier 3 (ascension) + the hidden path, the wings-over-cape check for a
+   *  winged ascension, then the status-tab turntable at 8 yaws (tier 3: 0/90/180°). */
   async heroes(env, vp) {
     const s = await stagePage(env, vp, 'index.html?scene=stage&stage=s04&room=r1');
     const shots = [];
     const harness = [];
     for (const hero of HEROES) {
-      const tiers = [0, 1, 2].map((t) => Object.values(CLASSES).find((c) => c.charId === hero && c.tier === t)).filter(Boolean);
+      const base = [0, 1, 2].map((t) => Object.values(CLASSES).find((c) => c.charId === hero && c.tier === t)).filter(Boolean).map((c) => ({ id: c.id, tier: c.tier, asc: null }));
+      const pick = ASC_PICK[hero] ?? {};
+      const t3 = pick.t3 ? { id: pick.t3, tier: 3, asc: pick.t3 } : null, hid = pick.hidden ? { id: pick.hidden, tier: 3, asc: pick.hidden, hidden: true } : null;
+      const tiers = [...base, t3].filter(Boolean);
       try {
         await gotoRoom(s, 's04', 'r1', { hero });
         await prepWorld(s);
         await play(s, 150);   // the chapter title card is gone by then
-        for (const cls of tiers) {
-          await s.eval((id) => { const p = window.__game.world.player; p.hero.classId = id; p.refreshStats?.(); for (const e of window.__game.world.entities || []) if (e.kind === 'enemy') e.dead = true; }, cls.id);
+        for (const cls of [...tiers, hid].filter(Boolean)) {
+          const set = await setClassAsc(s, cls.asc ? null : cls.id, cls.asc);
           await play(s, 20); await s.wait(500); await waitBakes(s, 3000);
+          if (cls.asc && set.tier !== 3) harness.push(`${hero} ${cls.id}: heroTier ${set.tier} after setting the ascension (want 3)`);
+          if (cls.asc && set.wings) {   // wings over the cape, standing (idle) before the attack
+            const r = await wingsOverCape(s);
+            if (r) {
+              wingRows.push({ vp, hero, asc: cls.id, wings: set.wings, ...r });
+              if (wingBad(r)) flagged.push({ label: `${hero} ${cls.id} wings`, why: wingWhy(r, set.wings), file: 'src/render/hero_puppet.js', top: 'stage' });
+            }
+          }
           await play(s, 24, `if (p) p.buffs.invincible = 9999; if (i === 10) key('KeyX', true); if (i === 13) key('KeyX', false);`);
-          await shot(s, shots, `${hero} T${cls.tier} ${cls.id} attack`, { file: 'src/render/hero.js', clip: await focusClip(s) });
+          await shot(s, shots, `${hero} ${cls.hidden ? 'hidden' : `T${cls.tier}`} ${cls.id} attack`, { file: cls.asc ? 'src/data/ascensions.js' : 'src/render/hero.js', clip: await focusClip(s) });
         }
-        // status-tab turntable: every tier × 8 yaws (§5.1 "6 heroes × 3 tiers × 8 yaws"); --quick: tier 2 at 0/90/180°
-        for (const cls of QUICK ? tiers.slice(-1) : tiers) {
-          await s.eval((id) => { const p = window.__game.world.player; p.hero.classId = id; p.refreshStats?.(); }, cls.id);
+        // status-tab turntable: every tier × 8 yaws (§5.1 "6 heroes × 3 tiers × 8 yaws"), tier 3 at 0/90/180°; --quick: tier 2 and 3 at 0/90/180°
+        for (const cls of QUICK ? tiers.slice(-2) : tiers) {
+          await setClassAsc(s, cls.asc ? null : cls.id, cls.asc);
           await s.eval(() => { const g = window.__game; g.push('menu', { world: g.world, tab: 'status' }); });
           await play(s, 30); await s.wait(600); await play(s, 10);   // the class turn atlas loads in real time
-          for (const deg of QUICK ? [0, 90, 180] : [0, 45, 90, 135, 180, 225, 270, 315]) {
+          for (const deg of QUICK || cls.tier === 3 ? [0, 90, 180] : [0, 45, 90, 135, 180, 225, 270, 315]) {
             const ok = await s.eval((a) => {
               const m = window.__game.top, v = m?.cur?.view;
               if (!v) return false;
@@ -461,14 +537,19 @@ const GROUP_FNS = {
           await s.eval(() => { const g = window.__game; for (let i = 0; i < 3 && g.top?.name === 'menu'; i++) g.pop(); });
           await play(s, 5);
         }
+        await setClassAsc(s, base.at(-1)?.id ?? null, null);   // leave the save without an ascension for the next hero/group
       } catch (e) { harness.push(`${hero}: ${String(e?.message || e).split('\n')[0]}`); }
     }
     await sheet(env, `heroes_${vp}`, `Heroes × tiers × yaws (${vp})`, shots, tileOf(vp));
     closeGroup('heroes', vp, s, shots, harness);
+    // wings over the cape (tier-3 winged ascensions)
+    const wr = wingRows.filter((r) => r.vp === vp), bad = wr.filter(wingBad);
+    C.add(`heroes.${vp}.wings`, !wr.length ? 'warn' : bad.length ? 'fail' : 'pass', !wr.length ? 'no winged ascension measured (no tier-3 pick with wings among --heroes, or the look had no cape)' : `${wr.map((r) => `${r.asc} (${r.wings}) ${r.wingPx} px, ${Math.round((r.visible ?? 0) * 100)} % shown with the cape on, ${r.score == null ? 'no overlap with the cape' : `${Math.round(r.score * 100)} % of ${r.overlap} overlap px wing on top`}`).join('; ')} (need ≥ ${WING_MIN_PX} px, ≥ ${WING_MIN_SCORE * 100} % shown / on top)`);
+    for (const r of bad) findings.push({ id: `visual.wings.${vp}.${r.asc}`, sev: 'S3', kind: 'visual', title: `${r.asc}: ${wingWhy(r, r.wings)} (${vp})`, detail: JSON.stringify({ wingPx: r.wingPx, capePx: r.capePx, visible: r.visible, overlap: r.overlap, score: r.score }), file: 'src/render/hero_puppet.js', ...ownerOf('src/render/hero_puppet.js'), repro: `node tools/qa/visual_review.mjs --only heroes --heroes ${r.hero} --vp ${vp}` });
     await s.close();
   },
 
-  /** Ultimate and awakening cut-ins (tier-2 class) per hero, two moments each. vp list adds 960×540. */
+  /** Ultimate and awakening cut-ins per hero at tier 2 and tier 3 (ASC_PICK t3), two moments each. vp list adds 960×540. */
   async cutins(env, vp) {
     const s = await stagePage(env, vp, 'index.html?scene=stage&stage=s04&room=r1');
     const shots = [];
@@ -477,15 +558,12 @@ const GROUP_FNS = {
       try {
         await gotoRoom(s, 's04', 'r1', { hero });
         await prepWorld(s);
-        for (const kind of ['ult', 'awaken']) {
-          await s.eval(async (kind) => {
-            const { CLASSES } = await import('/src/data/classes.js');
-            const g = window.__game, w = g.world, p = w.player;
-            const t2 = Object.values(CLASSES).find((c) => c.charId === p.hero.charId && c.tier === 2);
-            if (t2) { p.hero.classId = t2.id; p.refreshStats?.(); }
-            for (const e of w.entities || []) if (e.kind === 'enemy') e.dead = true;
-            w.run.sp = 100; w.run.aw = kind === 'awaken' ? 100 : 0;
-          }, kind);
+        for (const [tier, kind] of [[2, 'ult'], [2, 'awaken'], [3, 'ult'], [3, 'awaken']]) {
+          const asc = tier === 3 ? ASC_PICK[hero]?.t3 : null;
+          if (tier === 3 && !asc) continue;
+          const t2 = Object.values(CLASSES).find((c) => c.charId === hero && c.tier === 2);
+          await setClassAsc(s, t2?.id ?? null, asc);
+          await s.eval((kind) => { const w = window.__game.world; w.run.sp = 100; w.run.aw = kind === 'awaken' ? 100 : 0; }, kind);
           await play(s, 10); await s.wait(300); await waitBakes(s, 3000);
           const k = kind === 'ult' ? 'KeyF' : 'KeyV';
           await play(s, 4, `if (i === 0) key('${k}', true); if (i === 3) key('${k}', false);`);
@@ -493,7 +571,7 @@ const GROUP_FNS = {
           const moments = kind === 'ult' ? [8, 18] : [20, 30];
           for (const n of moments) {
             await play(s, n, 'if (p) p.buffs.invincible = 9999;');
-            await shot(s, shots, `${hero} ${kind} +${n}`, { file: kind === 'ult' ? 'src/scenes/overlays.js' : 'src/scenes/awaken_cutin.js' });
+            await shot(s, shots, `${hero} T${tier}${asc ? ` ${asc}` : ''} ${kind} +${n}`, { file: kind === 'ult' ? 'src/scenes/overlays.js' : 'src/scenes/awaken_cutin.js' });
           }
           await stepUntil(s.page, "!w || (!w.cutscene && g.top?.name === 'stage')", 900).catch(() => 0);
           await play(s, 30, 'if (p) p.buffs.invincible = 9999;');

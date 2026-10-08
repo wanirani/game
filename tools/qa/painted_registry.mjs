@@ -17,6 +17,15 @@
 //   cover.companions         every companion (20) has a vector drawer (mount template / MOUNT_DRAW_B / GUARDIAN_DRAW_A|B);
 //                            painted art listed
 //   cover.heroes / cover.npcs  every class (42) and NPC has a puppet manifest entry and its asset folder (rig.json + atlases)
+//   cover.asc                every ascension (classes_t3 §2.7: 28 tier-3 + 7 hidden) resolves through hero_puppet.artClass to a
+//                            class with a complete puppet (its own art when PUPPETS[charId][ascId] exists, else the first 2nd-tier
+//                            parent); lookTop only uses TOP_KEYS, wings are a drawWing kind (WING_COL), tint = {h, s} numbers
+//                            (the puppet variant key '<h>~<s>' must be stable), wingCol = 3 colours; distinct variant keys
+//   portraits.bust           every installed bust (assets/portraits/<id>.webp whose webp header carries alpha) has a
+//                            PORTRAIT_META 'portraits/<id>' entry with bust: true and a face {x, y, s} in 0..1; an entry
+//                            that says bust: true has an alpha file; bust: false entries are opaque legacy art
+//   portraits.expr           every expressions entry has its '<id>__<expr>.webp' (only EXPRESSIONS), and every expression file
+//                            on disk is listed (an unlisted file is never requested — dead weight)
 //   orphans                  asset folders under assets/painted/** that no registration uses (dead weight in dist/web)
 // A red result in a file whose package is still running (/tmp/claude-0/plan/state.json "running") is reported as pending.
 // Report: /tmp/claude-0/qa/tools/painted_registry.json (+ .md). Exit 1 on any red (non-pending) check.
@@ -253,6 +262,84 @@ const missingArt = { enemies: [], bosses: [], companions: [], heroes: [], npcs: 
   for (const id of NPC_ORDER) { const p = checkPup('npc', id); if (p) { probs.push(p); missingArt.npcs.push(id); } }
   if (probs.length) red('cover.heroes', `hero/NPC puppets incomplete: ${probs.join('; ')}`, 'src/render/puppet_manifest.js', '', 'S3');
   else C.add('cover.heroes', 'pass', `${Object.keys(CLASSES).length} classes and ${NPC_ORDER.length} NPCs have painted puppets (rig.json + atlases${''})`);
+}
+
+// ── 4b. tier 3 (classes_t3 §2.7): ascension puppets resolve through artClass; lookTop keys / tint / wings ──────────
+{
+  const { ASCENSIONS, TOP_KEYS } = await imp('src/data/ascensions.js');
+  const { PUPPETS } = await imp('src/render/puppet_manifest.js');
+  const { CLASSES } = await imp('src/data/classes.js');
+  let artClass;
+  try { ({ artClass } = await imp('src/render/hero_puppet.js')); } catch (e) { red('cover.asc.import', 'src/render/hero_puppet.js does not import in Node (artClass)', 'src/render/hero_puppet.js', String(e?.message || e).split('\n')[0]); }
+  const partsSrc = fs.readFileSync(path.join(ROOT, 'src/render/hero_parts.js'), 'utf8');
+  const wingKinds = new Set([...(partsSrc.match(/const WING_COL = \{([\s\S]*?)\};/)?.[1] ?? '').matchAll(/(\w+):\s*\[/g)].map((m) => m[1]));
+  const probs = [], own = [], variants = new Map();
+  for (const [id, A] of Object.entries(ASCENSIONS)) {
+    const cid = A.charId;
+    const art = artClass ? artClass(cid, id) : null;
+    if (!art) { probs.push(`${id}: artClass → null (no puppet on ${A.parents?.[0]} or its parents)`); continue; }
+    if (art === id) own.push(id);
+    else if (!(A.parents ?? []).length || !(() => { for (let c = A.parents[0], n = 0; c && n < 8; n++) { if (c === art) return true; c = CLASSES[c]?.parent ?? null; } return false; })()) probs.push(`${id}: artClass → ${art}, not ${A.parents?.[0]} or one of its parents`);
+    const man = PUPPETS[cid]?.[art], dir = `assets/puppets/${cid}/${art}`;
+    if (!man || !exists(`${dir}/rig.json`)) probs.push(`${id}: puppet ${cid}/${art} incomplete`);
+    const T = A.lookTop ?? {};
+    const badKeys = Object.keys(T).filter((k) => !TOP_KEYS.includes(k));
+    if (badKeys.length) probs.push(`${id}: lookTop keys ${badKeys.join(',')} not in TOP_KEYS (stats.js drops them)`);
+    if (T.wings != null && !wingKinds.has(T.wings)) probs.push(`${id}: wings '${T.wings}' is not a drawWing kind (${[...wingKinds].join('/')})`);
+    if (T.wingCol != null && !(Array.isArray(T.wingCol) && T.wingCol.length >= 3 && T.wingCol.every((c) => /^#[0-9a-f]{6}$/i.test(c)))) probs.push(`${id}: wingCol is not 3 #rrggbb colours`);
+    if (T.tint != null) {
+      const ok = T.tint && typeof T.tint === 'object' && (Number.isFinite(T.tint.h) || Number.isFinite(T.tint.s)) && (!('h' in T.tint) || (Number.isFinite(T.tint.h) && Math.abs(T.tint.h) <= 360)) && (!('s' in T.tint) || (Number.isFinite(T.tint.s) && T.tint.s >= 0 && T.tint.s <= 3));
+      if (!ok) probs.push(`${id}: tint ${JSON.stringify(T.tint)} is not {h: -360..360, s: 0..3}`);
+      const vk = `${cid}/${art}|${Number.isFinite(T.tint.h) ? T.tint.h : 0}~${Number.isFinite(T.tint.s) ? T.tint.s : 1}`;   // hero_puppet variant key part
+      if (variants.has(vk)) probs.push(`${id}: same tinted variant as ${variants.get(vk)} (${vk})`);
+      variants.set(vk, id);
+    }
+  }
+  const nT3 = Object.values(ASCENSIONS).filter((a) => a.kind === 't3').length, nH = Object.values(ASCENSIONS).filter((a) => a.kind === 'hidden').length;
+  if (probs.length) red('cover.asc', `ascension puppets: ${probs.length} problem(s)`, 'src/data/ascensions.js', probs.join('; '), 'S3');
+  else C.add('cover.asc', 'pass', `${nT3} tier-3 + ${nH} hidden ascensions resolve to complete puppets (own art: ${own.length ? own.join(', ') : 'none — all use the 2nd-tier parent'}); lookTop keys/wings/tint valid (${variants.size} tinted variant${variants.size === 1 ? '' : 's'})`);
+}
+
+// ── 4c. portraits: busts (alpha) ↔ PORTRAIT_META, expression files ↔ expressions ─────────────────────
+{
+  const PM = await imp('src/data/portrait_meta.js');
+  const META = PM.PORTRAIT_META ?? {}, EXPR = PM.EXPRESSIONS ?? ['angry', 'shock'];
+  /** webp header alpha: VP8X flag 0x10, VP8L alpha_is_used bit; plain VP8 = opaque */
+  const webpAlpha = (file) => {
+    const b = fs.readFileSync(file);
+    if (b.toString('ascii', 0, 4) !== 'RIFF' || b.toString('ascii', 8, 12) !== 'WEBP') return null;
+    const ch = b.toString('ascii', 12, 16);
+    if (ch === 'VP8X') return !!(b[20] & 0x10);
+    if (ch === 'VP8L') return !!((b.readUInt32LE(21) >> 28) & 1);
+    return false;
+  };
+  const dir = 'assets/portraits';
+  const files = exists(dir) ? fs.readdirSync(path.join(ROOT, dir)).filter((f) => f.endsWith('.webp')) : [];
+  const base = files.filter((f) => !f.includes('__')), exprFiles = files.filter((f) => f.includes('__'));
+  const bad = [], info = { bust: 0, legacy: 0 };
+  for (const f of base) {
+    const key = `portraits/${f.slice(0, -5)}`, a = webpAlpha(path.join(ROOT, dir, f)), m = META[key];
+    if (a) {
+      info.bust++;
+      if (!m) bad.push(`${key}: bust (alpha) without a PORTRAIT_META entry`);
+      else if (m.bust !== true) bad.push(`${key}: bust (alpha) but meta bust: ${m.bust}`);
+      if (m && !(m.face && ['x', 'y', 's'].every((k) => Number.isFinite(m.face[k]) && m.face[k] > 0 && m.face[k] <= 1))) bad.push(`${key}: no face {x, y, s} in 0..1`);
+    } else {
+      info.legacy++;
+      if (m?.bust === true) bad.push(`${key}: meta bust: true but the file has no alpha`);
+    }
+  }
+  for (const [key, m] of Object.entries(META)) if (!exists(`assets/${key}.webp`)) bad.push(`${key}: meta entry without assets/${key}.webp`);
+  const ex = [];
+  for (const [key, m] of Object.entries(META)) for (const e of m.expressions ?? []) {
+    if (!EXPR.includes(e)) ex.push(`${key}: expression '${e}' not in EXPRESSIONS`);
+    else if (!exists(`assets/${key}__${e}.webp`)) ex.push(`${key}: expressions lists '${e}' but assets/${key}__${e}.webp is missing`);
+  }
+  const unlisted = exprFiles.filter((f) => { const [b0, e] = f.slice(0, -5).split('__'); return !(META[`portraits/${b0}`]?.expressions ?? []).includes(e); });
+  if (bad.length) red('portraits.bust', `portrait busts ↔ PORTRAIT_META: ${bad.length} problem(s)`, 'src/data/portrait_meta.js', bad.join('; '), 'S3');
+  else C.add('portraits.bust', 'pass', `${info.bust} installed busts (alpha) all have PORTRAIT_META bust: true + face; ${info.legacy} opaque legacy portraits; ${Object.keys(META).length} meta keys all have files`);
+  if (ex.length) red('portraits.expr', `portrait expressions: ${ex.length} missing file(s)`, 'src/data/portrait_meta.js', ex.join('; '), 'S3');
+  else C.add('portraits.expr', unlisted.length ? 'warn' : 'pass', `${exprFiles.length} expression files; every listed expression has its file${unlisted.length ? `; not listed in meta (never requested): ${unlisted.join(', ')}` : ''}`);
 }
 
 // ── 5. orphan asset folders ─────────────────────────────────────────────────────────────────────────

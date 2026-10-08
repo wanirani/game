@@ -641,13 +641,12 @@ export class World {
     // [hook:feel] '{n} HIT!' 는 feel_hud 콤보 기둥 하나만 그린다 (머리 위 글자 중복 제거). 이정표 소리는 style.js 의 combo_milestone — 없을 때만 옛 'combo'
     if (this.combo.n % 25 === 0) { if (!SFX.combo_milestone) audio.sfx('combo'); bus.emit('combo', { count: this.combo.n }); }
     if (COMBO_MILESTONES.has(this.combo.n)) bus.emit('comboMilestone', { n: this.combo.n });   // [hook:feel]
+    // 각성 타격이 부른 특성 부가 타격은 그 각성의 보스 상한(capFn)을 함께 쓴다 (combat.hitTarget 이 procCapFn 을 읽는다; firePerks 는 예외를 삼킨다)
+    const pcf = !guardian && typeof attack?.capFn === 'function' && attack.tags?.includes('awaken') ? attack.capFn : null, prevPcf = this.procCapFn;
+    if (pcf) this.procCapFn = pcf;
     this.style?.onHit?.(info, attack, target);   // [hook:feel]
-    if (!guardian && attack?.owner === p && !attack.proc && p.perks?.onHit) {
-      // 각성 타격이 부른 특성 부가 타격은 그 각성의 보스 상한(capFn)을 함께 쓴다 (combat.hitTarget 이 procCapFn 을 읽는다)
-      const cf = typeof attack.capFn === 'function' && attack.tags?.includes('awaken') ? attack.capFn : null, prev = this.procCapFn;
-      if (cf) this.procCapFn = cf;
-      try { firePerks(p.perks.onHit, p, target, info, attack, this); } finally { if (cf) this.procCapFn = prev; }
-    }
+    if (!guardian && attack?.owner === p && !attack.proc && p.perks?.onHit) firePerks(p.perks.onHit, p, target, info, attack, this);
+    if (pcf) this.procCapFn = prevPcf;
     this.awOnHit(target, info, attack);   // [hook:awaken]
     if (info.killed) this.overkillSlowmo(target, info, attack);   // [hook:feel]
     this.companions?.onHit(target, info, attack);   // [hook:cmp]

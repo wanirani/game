@@ -1038,8 +1038,8 @@ compared both ways by each package); the points below are the only differences i
 
 ### 9.6 Fonts
 New Hangul glyphs from these packages (fonts **not** rebuilt — the lead rebuilds once): 갓 닢 땋 (story_extra.js), 륀 쵸
-(story_trials.js; 닢 also there), 짚 (story.js prologue), plus 띠 (ascensions.js) and 뵙 줌 (church.js). `python3
-tools/fonts/build_fonts.py --check` lists exactly these 9: 갓닢땋띠륀뵙줌짚쵸.
+(story_trials.js; 닢 also there), 짚 (story.js prologue), plus 띠 (ascensions.js) and 뵙 줌 (church.js).
+`python3 tools/fonts/build_fonts.py --check` lists exactly these 9: 갓닢땋띠륀뵙줌짚쵸.
 
 ### 9.7 Tests
 QA-ASC's `tools/test_part2.mjs` now checks `SCRIPTS_TRIALS`/`SCRIPTS_EXTRA` (ids, known commands per play mode, speakers,

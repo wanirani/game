@@ -376,8 +376,8 @@ export class StoryScene extends Scene {
       const B = this.bustBox;
       if (B && B.side === (left ? 'left' : 'right')) {
         let nx = x, nw = colW;
-        if (left) { nx = Math.max(x, Math.round(B.l + B.w * 0.6)); nw = Math.min(colW, vw - nx - 40); }
-        else nw = Math.min(colW, Math.round(B.l + B.w * 0.4) - x - 12);
+        if (left) { nx = Math.max(x, Math.round(B.l + B.w * 0.8)); nw = Math.min(colW, vw - nx - 40); }
+        else nw = Math.min(colW, Math.round(B.l + B.w * 0.2) - x - 12);
         const fk = this.full + '|' + nw, C = this._colFit;
         const ok = C?.k === fk ? C.ok : (this._colFit = { k: fk, ok: nw >= 300 && wrap(ctx, this.full, nw, 19, 500).length <= 3 }).ok;   // 줄·폭마다 한 번
         if (ok) { x = nx; colW = nw; }

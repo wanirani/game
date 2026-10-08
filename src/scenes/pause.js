@@ -372,11 +372,18 @@ export class PauseScene extends Scene {
     ctx.restore();
     ctx.strokeStyle = PAL.gold; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, 25, 0, TAU); ctx.stroke();
     const tx = px + 36, bw = cw - (tx - cx0) - 22;
-    text(ctx, chr?.name ?? '', tx, hy + 8, { size: 14, weight: 800, color: PAL.bone });
-    text(ctx, `Lv ${hero.level} · ${classNameOf(hero)}`, tx + bw, hy + 8, { size: 11, align: 'right', weight: 700, color: PAL.dim });
+    // 글자 크기 하한(아주 크게)에서 이름·직업 줄과 HP 숫자가 MP 막대·서로를 덮지 않게 실제 글자 폭으로 자리를 나눈다 (SWEEP2)
+    const name = chr?.name ?? '';
+    ctx.font = font(14, 800, FONT.body);
+    const nameW = ctx.measureText(name).width;
+    text(ctx, name, tx, hy + 8, { size: 14, weight: 800, color: PAL.bone });
+    text(ctx, `Lv ${hero.level} · ${classNameOf(hero)}`, tx + bw, hy + 8, { size: 11, align: 'right', weight: 700, color: PAL.dim, maxWidth: Math.max(60, bw - nameW - 10) });
     gauge(ctx, tx, hy + 17, bw, 8, p.hp / (p.stats?.hp || 1), '#e8283c', { glowEnd: false });
-    gauge(ctx, tx, hy + 32, bw * 0.75, 6, p.mp / (p.stats?.mp || 1), '#3a7aff', { glowEnd: false });
-    text(ctx, `${Math.ceil(p.hp)} / ${p.stats?.hp ?? 0}`, tx + bw, hy + 46, { size: 11, align: 'right', weight: 700, family: FONT.num, color: PAL.dim });
+    const hpTxt = `${Math.ceil(p.hp)} / ${p.stats?.hp ?? 0}`;
+    ctx.font = font(11, 700, FONT.num);
+    const mpW = Math.max(bw * 0.4, Math.min(bw * 0.75, bw - ctx.measureText(hpTxt).width - 10));
+    gauge(ctx, tx, hy + 32, mpW, 6, p.mp / (p.stats?.mp || 1), '#3a7aff', { glowEnd: false });
+    text(ctx, hpTxt, tx + bw, hy + 46, { size: 11, align: 'right', weight: 700, family: FONT.num, color: PAL.dim });
   }
 }
 

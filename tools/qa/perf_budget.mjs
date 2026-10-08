@@ -32,12 +32,12 @@
 //   perks       class_perks PERK_STATS per measured frame: hook errors = 0 in every scene and over the whole walk (fail);
 //               tier-3 scenes: the ascension is live (heroTier 3, perk key has the id) and the ult/awakening event says tier 3
 //   perkms      tier-3 scenes, real-clock pass of 120 frames after the counted frames (the frozen page's virtual clock would read
-//               0 ms): PERK_STATS (ms + layerMs) per frame ≤ 0.1 ms on high (fail), other tiers listed (warn) — §11.2. The page
-//               clock is coarsened to 0.1 ms (no cross-origin isolation), so one frame's 0.01 ms reads 0 or 0.1: the check takes
-//               the p95 of 10-frame means (0.01 ms resolution; the difference of two coarse reads is an unbiased estimate)
-//   perklayer   perk.marks24: drawPerkLayer itself, called 300× on the live world with 24 marks (one per enemy, every MARKS_*
-//               key) and timed as a block: < 0.05 ms per call (fail) — §3.7
-//               (real time on a loaded box: an over-budget measurement is taken once more and the better one counts)
+//               0 ms): PERK_STATS (ms + layerMs) per frame p95 ≤ 0.1 ms on high (fail), other tiers listed (warn) — §11.2.
+//               The measured page is cross-origin isolated (isolate(): 5 µs clock instead of 0.1 ms steps)
+//   perklayer   perk.marks24 (24 enemies, one mark each, every MARKS_* key): PerkLayer (layerMs) per frame p50 < 0.05 ms
+//               (fail), p95 listed (warn) — §3.7; plus the same pass per mark key (24 marks of one key, info: which mark costs)
+//               (real time on a loaded box: an over-budget pass is measured once more and the better one counts; the QA box
+//               rasterises in software (SwiftShader), so draw-heavy marks read slower here than on a GPU)
 //   clones      perk.umbra: live clones reach 2 (1 on low) — the scene is invalid otherwise
 //   livecanvas  canvases alive (WeakRef, after gc) on a fresh page (stage s04 r1, then menu equip) ≤ LIVE_MB   platform §6.7
 //               (lead decision, round 1: phone1/phone2 32 MB, phone1low 26 MB, tablet 40 MB, desktop info only) and the
@@ -91,7 +91,7 @@ const HEROES = ['kael', 'sera', 'victor', 'bran', 'lia', 'azel', 'isolde'];   //
 // tier-3 ultimate + awakening per hero (classes_t3 §11.2): §12's known risks (umbra clones, bellsaint toll loop, bloodtyrant numbers)
 // plus one hidden path (sera, isolde) and Nephilim's real-attack feathers
 const PERF_ASC = { kael: 'kael_blackwing', sera: 'sera_bellsaint', victor: 'victor_purgatory', bran: 'bran_bloodtyrant', lia: 'lia_umbra', azel: 'azel_nephilim', isolde: 'isolde_dragonbond' };
-const PERK_BUDGET = { frameMs: 0.1, layerMs: 0.05, marks: 24, timingFrames: 120, window: 10, benchCalls: 300 };   // §11.2 PERK_STATS p95 (high) · §3.7 PerkLayer at 24 marks
+const PERK_BUDGET = { frameMs: 0.1, layerMs: 0.05, marks: 24, timingFrames: 120, keyFrames: 20 };   // §11.2 PERK_STATS p95 (high) · §3.7 PerkLayer at 24 marks
 const ascScenes = (h) => [{ id: `ult3.${h}`, kind: 'ult', stage: 's01', room: 'r1', hero: h, asc: PERF_ASC[h] }, { id: `awaken3.${h}`, kind: 'awaken', stage: 's01', room: 'r1', hero: h, asc: PERF_ASC[h] }];
 const PERK_SCENES = [
   { id: 'perk.umbra', kind: 'perk', perk: 'umbra', stage: 's01', room: 'r1', hero: 'lia', asc: 'lia_umbra' },
@@ -221,46 +221,58 @@ const perkTiming = (s, n, script) => s.eval(async ([n, script]) => {
   for (const k of ['KeyX', 'KeyC', 'ArrowRight', 'ArrowLeft']) key(k, false);
   return out;
 }, [n, script]);
-/** means of consecutive k-frame windows (the 0.1 ms-coarsened clock resolves 0.1/k ms per window) */
-const windowMeans = (xs, k) => { const out = []; for (let i = 0; i + k <= xs.length; i += k) out.push(+(xs.slice(i, i + k).reduce((a, b) => a + b, 0) / k).toFixed(4)); return out; };
 const mean = (xs) => (xs.length ? +(xs.reduce((a, b) => a + b, 0) / xs.length).toFixed(4) : 0);
-/** summary of a timing pass: per-frame (ms + layerMs) as mean, p95 of 10-frame means (the check) and raw max */
+/** summary of a timing pass: per-frame (hooks + layer) and layer-only stats (layer over the frames holding ≥ 24 marks) */
 function timingStats(fr) {
-  const per = fr.map((f) => f.ms + f.lay), win = windowMeans(per, PERK_BUDGET.window);
-  return { n: fr.length, mean: mean(per), win: stats(win), max: +Math.max(0, ...per).toFixed(4), hookMean: mean(fr.map((f) => f.ms)), layerMean: mean(fr.map((f) => f.lay)), errors: fr.reduce((a, f) => a + f.err, 0), calls: stats(fr.map((f) => f.calls)), marks: Math.max(0, ...fr.map((f) => f.marks)), clones: Math.max(0, ...fr.map((f) => f.clones)) };
+  const at = fr.filter((f) => f.marks >= PERK_BUDGET.marks);
+  return {
+    n: fr.length, frame: stats(fr.map((f) => +(f.ms + f.lay).toFixed(4))), mean: mean(fr.map((f) => f.ms + f.lay)), hook: stats(fr.map((f) => f.ms)),
+    layer: stats(at.map((f) => f.lay)), layerFrames: at.length, errors: fr.reduce((a, f) => a + f.err, 0), calls: stats(fr.map((f) => f.calls)),
+    marks: Math.max(0, ...fr.map((f) => f.marks)), clones: Math.max(0, ...fr.map((f) => f.clones)),
+  };
 }
 /** one real-clock pass; when it is over budget (real time on a loaded box) one more pass, and the better one counts */
-async function perkTimingBest(s, prof, script) {
+async function perkTimingBest(s, prof, script, what = 'frame') {
+  const val = (t) => (what === 'layer' ? t.layer.p50 : t.frame.p95), lim = what === 'layer' ? PERK_BUDGET.layerMs : PERK_BUDGET.frameMs;
   let t = timingStats(await perkTiming(s, PERK_BUDGET.timingFrames, script));
-  if (t.win.p95 > PERK_BUDGET.frameMs) {
+  if (val(t) > lim) {
     const t2 = timingStats(await perkTiming(s, PERK_BUDGET.timingFrames, script));
     t2.errors += t.errors; t2.retried = true;
-    if (t2.win.p95 < t.win.p95) t = t2;
+    if (val(t2) < val(t)) t = t2;
     else { t.retried = true; t.errors = t2.errors; }   // errors of both passes count either way
   }
   return t;
 }
 /**
- * PerkLayer cost at the current marks (§3.7): drawPerkLayer called n× on the game context under the world camera, timed as one
- * block with the real clock → ms per call (+ marks drawn). Taken twice when over budget; the better block counts.
+ * PerkLayer per mark key (info for perk.marks24): all 24 enemies re-marked with one key, n real-clock frames each → layerMs per
+ * frame p50 by key; the mixed marks (one key per enemy) are put back afterwards.
  */
-const layerBench = (s, n) => s.eval(async (n) => {
-  const g = window.__game, w = g.world, P = window.__perf;
+const layerByKey = (s, n) => s.eval(async (n) => {
+  const g = window.__game, P = window.__perf;
   const S = await import('/src/game/class_perks.js');
-  const real = P?.realNow ?? g.__qaRealNow, ctx = g.ctx ?? g.canvas.getContext('2d');
-  const st = S.PERK_STATS, timing0 = st.timing;
-  st.timing = false;   // the block is timed here; the per-call performance.now pair inside would add its own cost
-  const one = () => {
-    ctx.save(); try { w.camera?.apply?.(ctx); } catch { /* */ }
-    const t0 = real();
-    for (let i = 0; i < n; i++) S.drawPerkLayer(ctx, null, w);
-    const dt = real() - t0;
-    ctx.restore();
-    return dt / n;
-  };
-  let ms;
-  try { one(); ms = one(); if (ms > 0.05) ms = Math.min(ms, one()); } finally { st.timing = timing0; }
-  return { ms: +ms.toFixed(4), marks: S.markedCount(), n };
+  const st = S.PERK_STATS, real = P?.realNow ?? g.__qaRealNow, virt = performance.now, foes = window.__pkFoes || [], keys = window.__pkKeys || [];
+  const clear = () => { for (const e of foes) if (e._ck) for (const k of Object.keys(e._ck)) S.unmark(e, k); };
+  const out = {};
+  const timing0 = st.timing;
+  st.timing = true; performance.now = real;
+  try {
+    for (const key of keys) {
+      clear(); for (const e of foes) S.mark(e, key, 9999, 1, 1);
+      const xs = [];
+      for (let i = 0; i < n; i++) {
+        const a = st.layerMs;
+        window.__qaStep(1, false);
+        try { g.input?.beginRender?.(); g.__qaRender.call(g); g.input?.endRender?.(); } catch (e) { console.error(e); }
+        xs.push(st.layerMs - a);
+      }
+      xs.sort((x, y) => x - y);
+      out[key] = +xs[Math.floor(xs.length / 2)].toFixed(4);
+    }
+  } finally {
+    performance.now = virt; st.timing = timing0;
+    clear(); foes.forEach((e, i) => S.mark(e, keys[i % keys.length], 9999, 1, 1));
+  }
+  return out;
 }, n);
 /** perk scene setup in the page: enemies around the hero (+ 24 marks / the bell) → driver script */
 async function perkSetup(s, sc) {
@@ -298,17 +310,38 @@ async function perkSetup(s, sc) {
     return { setup: r, script: `if (p) { p.buffs.invincible = 9999; p.hp = Math.max(p.hp, 1); } ${remark}` };
   }
   if (sc.perk === 'fight') return { setup: r, script: COMBAT };
-  if (sc.perk === 'umbra') return { setup: r, script: `${COMBAT}
-    if (i % 36 === 18) key('KeyC', true); if (i % 36 === 21) key('KeyC', false);` };
+  // umbra: a dash every 40 frames (clones live 2.5 s, cap 2 / 1 on low) between short combos, alternating direction
+  if (sc.perk === 'umbra') return { setup: r, script: `
+    if (i % 40 === 0 || i % 40 === 8) key('KeyX', true); if (i % 40 === 4 || i % 40 === 12) key('KeyX', false);
+    { const dir = Math.floor(i / 40) % 2 ? 'ArrowLeft' : 'ArrowRight'; if (i % 40 === 18) key(dir, true); if (i % 40 === 21) key(dir, false); }
+    if (i % 40 === 24) key('KeyC', true); if (i % 40 === 27) key('KeyC', false);
+    if (p) { p.buffs.invincible = 9999; p.hp = Math.max(p.hp, 1); }` };
   // bellsaint: the bell on frame 0 (4 s, a toll every 0.8 s) while the combo keeps hitting the 12 enemies
   return { setup: r, script: `${COMBAT}
     if (i === 0 && window.__pkCast) window.__pkResult = window.__pkCast();` };
 }
 
+/**
+ * Cross-origin isolation for the measured page (COOP same-origin + COEP require-corp on the document; every asset is same
+ * origin): a non-isolated page reads performance.now in 0.1 ms steps, an isolated one in 5 µs — the PERK_STATS budgets are
+ * 0.1 and 0.05 ms per frame (classes_t3 §11.2 / §3.7). Only the document response is rewritten; nothing else changes.
+ */
+async function isolate(s) {
+  await s.page.route('**/*', async (route) => {
+    if (route.request().resourceType() !== 'document') return route.continue();
+    const r = await route.fetch();
+    const h = { ...r.headers(), 'cross-origin-opener-policy': 'same-origin', 'cross-origin-embedder-policy': 'require-corp' };
+    delete h['content-encoding']; delete h['content-length'];
+    await route.fulfill({ status: r.status(), headers: h, body: await r.body() });
+  });
+}
+
 /** Prepared stage page (frozen) for a profile. */
 async function openProfile(env, prof) {
   const P = PROFILES[prof];
-  const s = await env.page(P.vp, 'index.html?scene=stage&stage=s01&room=r1', { settings: { quality: P.quality }, initScripts: [perfProbeInit()] });
+  const s = await env.page(P.vp, '', { settings: { quality: P.quality }, initScripts: [perfProbeInit()] });
+  await isolate(s);
+  await s.goto('index.html?scene=stage&stage=s01&room=r1');
   await s.waitGame('!!g.world?.player');
   await freeze(s.page);
   await settle(s.page, 30);
@@ -426,21 +459,24 @@ function judgePerks(prof, sc, info, extra, row) {
   if (!pf) return;
   const fr = pf.frames;
   const err = fr.reduce((a, f) => a + f.err, 0) + (tm?.errors ?? 0);
-  row.perk = { asc: sc.asc ?? null, calls: stats(fr.map((f) => f.calls)), marks: Math.max(0, ...fr.map((f) => f.marks)), clones: Math.max(0, ...fr.map((f) => f.clones)), errors: err, last: pf.last, timing: tm ?? null, bench: extra.layerBench ?? null };
+  row.perk = { asc: sc.asc ?? null, calls: stats(fr.map((f) => f.calls)), marks: Math.max(0, ...fr.map((f) => f.marks)), clones: Math.max(0, ...fr.map((f) => f.clones)), errors: err, last: pf.last, timing: tm ?? null, byKey: extra.layerByKey ?? null };
   const perkFile = sc.asc ? `src/game/class_perks_${{ kael: 'a', sera: 'a', victor: 'b', bran: 'b', lia: 'c', azel: 'c', isolde: 'd' }[sc.hero] ?? 'a'}.js` : 'src/game/class_perks.js';
   if (err || sc.asc) C.add(`${id}.perks`, err ? 'fail' : 'pass', err ? `${err} perk hook error(s) (last ${pf.last})` : `no perk hook errors (${sc.asc}; calls/frame p50 ${row.perk.calls.p50} max ${row.perk.calls.max})`);
   if (err) findings.push({ id: `perf.perks.${prof}.${sc.id}`, sev: 'S2', kind: 'errors', title: `perk hook threw in ${sc.id} (${prof}): ${pf.last}`, file: perkFile, ...ownerOf(perkFile), repro: `node tools/qa/perf_budget.mjs --profiles ${prof} --scenes ${sc.id}` });
   if (!tm) return;
   const f3 = (v) => (+v).toFixed(3);
   if (sc.perk === 'marks24') {
-    const lb = extra.layerBench, okN = row.perk.marks >= PERK_BUDGET.marks && (lb?.marks ?? 0) >= PERK_BUDGET.marks;
-    const okL = !!lb && lb.ms < PERK_BUDGET.layerMs;
-    C.add(`${id}.perklayer`, okN && okL ? 'pass' : 'fail', !okN ? `the scene never held ${PERK_BUDGET.marks} marks (counted max ${row.perk.marks}, at the bench ${lb?.marks})` : `drawPerkLayer at ${lb.marks} marked enemies: ${f3(lb.ms)} ms per call (${lb.n} calls timed as a block; budget < ${PERK_BUDGET.layerMs} ms) · in play ${f3(tm.layerMean)} ms/frame mean`);
-    if (okN && !okL) findings.push({ id: `perf.perklayer.${prof}`, sev: 'S3', kind: 'perf', title: `PerkLayer costs ${f3(lb.ms)} ms per frame at ${PERK_BUDGET.marks} marks on ${prof} (budget ${PERK_BUDGET.layerMs} ms, §3.7)`, file: 'src/game/class_perks.js', ...ownerOf('src/game/class_perks.js'), repro: `node tools/qa/perf_budget.mjs --profiles ${prof} --scenes perk.marks24` });
+    const okN = tm.layerFrames > 0 && row.perk.marks >= PERK_BUDGET.marks;
+    const okL = tm.layer.p50 < PERK_BUDGET.layerMs, okL95 = tm.layer.p95 < PERK_BUDGET.layerMs;
+    const byKey = Object.entries(extra.layerByKey ?? {}).sort((a, b) => b[1] - a[1]);
+    const keyTxt = byKey.length ? ` · per key (24 of one mark, p50 ms): ${byKey.map(([k, v]) => `${k} ${f3(v)}`).join(', ')}` : '';
+    C.add(`${id}.perklayer`, !okN || !okL ? 'fail' : okL95 ? 'pass' : 'warn', !okN ? `the scene never held ${PERK_BUDGET.marks} marks (counted max ${row.perk.marks}, timed frames at ${PERK_BUDGET.marks}: ${tm.layerFrames})` : `PerkLayer at ${tm.marks} marks: p50 ${f3(tm.layer.p50)} p95 ${f3(tm.layer.p95)} max ${f3(tm.layer.max)} ms/frame over ${tm.layerFrames} real-clock frames (budget < ${PERK_BUDGET.layerMs} ms p50, p95 listed${tm.retried ? '; measured twice' : ''})${keyTxt}`);
+    if (okN && !okL) findings.push({ id: `perf.perklayer.${prof}`, sev: 'S3', kind: 'perf', title: `PerkLayer draws ${f3(tm.layer.p50)} ms/frame (p50) at ${PERK_BUDGET.marks} marks on ${prof} (budget ${PERK_BUDGET.layerMs} ms, §3.7)`, detail: keyTxt.slice(3), file: 'src/game/class_perks.js', ...ownerOf('src/game/class_perks.js'), repro: `node tools/qa/perf_budget.mjs --profiles ${prof} --scenes perk.marks24` });
   }
-  const okF = tm.win.p95 <= PERK_BUDGET.frameMs;
-  C.add(`${id}.perkms`, okF ? 'pass' : T === 'high' ? 'fail' : 'warn', `PERK_STATS hooks + layer: mean ${f3(tm.mean)} ms/frame (hooks ${f3(tm.hookMean)}, layer ${f3(tm.layerMean)}), p95 of ${PERK_BUDGET.window}-frame means ${f3(tm.win.p95)}, worst single read ${f3(tm.max)} over ${tm.n} real-clock frames (budget ≤ ${PERK_BUDGET.frameMs} ms on high${T === 'high' ? '' : `; ${T}: listed`}${tm.retried ? '; measured twice' : ''})`);
-  if (!okF && T === 'high') findings.push({ id: `perf.perkms.${prof}.${sc.id}`, sev: 'S3', kind: 'perf', title: `${sc.asc} perks cost ${f3(tm.win.p95)} ms/frame (p95 of ${PERK_BUDGET.window}-frame means) in ${sc.id} on ${prof} (budget ${PERK_BUDGET.frameMs} ms, §11.2)`, file: perkFile, ...ownerOf(perkFile), repro: `node tools/qa/perf_budget.mjs --profiles ${prof} --scenes ${sc.id}` });
+  if (sc.perk === 'marks24') return;   // its frames are the PerkLayer at 24 marks: perklayer above is the budget for them
+  const okF = tm.frame.p95 <= PERK_BUDGET.frameMs;
+  C.add(`${id}.perkms`, okF ? 'pass' : T === 'high' ? 'fail' : 'warn', `PERK_STATS hooks + layer per frame p50 ${f3(tm.frame.p50)} p95 ${f3(tm.frame.p95)} max ${f3(tm.frame.max)} ms, mean ${f3(tm.mean)} (hooks p95 ${f3(tm.hook.p95)}) over ${tm.n} real-clock frames (budget p95 ≤ ${PERK_BUDGET.frameMs} ms on high${T === 'high' ? '' : `; ${T}: listed`}${tm.retried ? '; measured twice' : ''})`);
+  if (!okF && T === 'high') findings.push({ id: `perf.perkms.${prof}.${sc.id}`, sev: 'S3', kind: 'perf', title: `${sc.asc} perks cost ${f3(tm.frame.p95)} ms/frame (p95) in ${sc.id} on ${prof} (budget ${PERK_BUDGET.frameMs} ms, §11.2)`, file: perkFile, ...ownerOf(perkFile), repro: `node tools/qa/perf_budget.mjs --profiles ${prof} --scenes ${sc.id}` });
   if (sc.perk === 'umbra') {
     const cap = (info.fxQ ?? 1) < 0.6 ? 1 : 2, mx = Math.max(row.perk.clones, tm.clones);
     C.add(`${id}.clones`, mx === cap ? 'pass' : 'fail', `live shadow clones max ${mx} (want ${cap}: lia_umbra N.max 2, maxLow 1 at fx.quality ${info.fxQ})`);
@@ -563,8 +599,8 @@ try {
         }
         if (sc.kind === 'perk') {
           if (sc.perk === 'bellsaint') extra.cast = await s.eval(() => { const r = window.__pkResult; window.__pkResult = undefined; window.__pkCast = undefined; return r ?? null; });
-          if (sc.perk === 'marks24') extra.layerBench = await layerBench(s, PERK_BUDGET.benchCalls);
-          extra.perkTiming = await perkTimingBest(s, prof, perkScript);
+          extra.perkTiming = await perkTimingBest(s, prof, perkScript, sc.perk === 'marks24' ? 'layer' : 'frame');
+          if (sc.perk === 'marks24') extra.layerByKey = await layerByKey(s, PERK_BUDGET.keyFrames);
           await s.eval(() => { window.__pkFoes = null; window.__pkKeys = null; window.__perkMark = null; for (const e of window.__game.world?.entities || []) if (e.kind === 'enemy') e.dead = true; });
         }
         rows.push(judge(prof, sc, m, info, extra));
@@ -678,8 +714,9 @@ const table = rows.filter((r) => r.grad).map((r) => `| ${r.prof} | ${r.scene} | 
 const gradSites = {};
 for (const r of rows) for (const [k, n] of r.sites?.grad || []) gradSites[k] = (gradSites[k] || 0) + n;
 const fmt3 = (v) => (v == null ? '-' : (+v).toFixed(3));
-const perkRows = rows.filter((r) => r.perk && (r.perk.asc || r.perk.errors)).map((r) => `| ${r.prof} | ${r.scene} | ${r.perk.asc ?? '-'} | ${r.perk.errors} | ${r.perk.calls.p50}/${r.perk.calls.max} | ${r.perk.marks} | ${r.perk.clones} | ${r.perk.timing ? `${fmt3(r.perk.timing.mean)}/${fmt3(r.perk.timing.win.p95)}` : '-'} | ${r.perk.bench ? fmt3(r.perk.bench.ms) : '-'} |`).join('\n');
-const perkMd = perkRows ? `\n## Perks (PERK_STATS, classes_t3 §11.2 / §3.7)\n\nhook calls are counted on the frozen page; ms come from a separate real-clock pass of ${PERK_BUDGET.timingFrames} frames on a 0.1 ms-coarsened clock (mean, and p95 of ${PERK_BUDGET.window}-frame means; budget ≤ ${PERK_BUDGET.frameMs} ms/frame on high) and, for the layer, ${PERK_BUDGET.benchCalls} drawPerkLayer calls timed as a block (budget < ${PERK_BUDGET.layerMs} ms at ${PERK_BUDGET.marks} marks).\n\n| profile | scene | ascension | errors | calls/frame p50/max | marks max | clones max | perk ms/frame mean/p95(10f) | PerkLayer ms/call at 24 marks |\n|---|---|---|---|---|---|---|---|---|\n${perkRows}\n` : '';
+const perkRows = rows.filter((r) => r.perk && (r.perk.asc || r.perk.errors)).map((r) => `| ${r.prof} | ${r.scene} | ${r.perk.asc ?? '-'} | ${r.perk.errors} | ${r.perk.calls.p50}/${r.perk.calls.max} | ${r.perk.marks} | ${r.perk.clones} | ${r.perk.timing ? `${fmt3(r.perk.timing.frame.p50)}/${fmt3(r.perk.timing.frame.p95)}` : '-'} | ${r.perk.timing?.layerFrames ? `${fmt3(r.perk.timing.layer.p50)}/${fmt3(r.perk.timing.layer.p95)}` : '-'} |`).join('\n');
+const keyRows = rows.filter((r) => r.perk?.byKey).map((r) => `- ${r.prof}: ${Object.entries(r.perk.byKey).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${fmt3(v)}`).join(', ')}`).join('\n');
+const perkMd = perkRows ? `\n## Perks (PERK_STATS, classes_t3 §11.2 / §3.7)\n\nhook calls are counted on the frozen page; ms come from a separate real-clock pass of ${PERK_BUDGET.timingFrames} frames on the cross-origin-isolated page (5 µs clock; budgets: hooks + layer p95 ≤ ${PERK_BUDGET.frameMs} ms/frame on high, PerkLayer p50 < ${PERK_BUDGET.layerMs} ms at ${PERK_BUDGET.marks} marks; software rasteriser on the QA box).\n\n| profile | scene | ascension | errors | calls/frame p50/max | marks max | clones max | perk ms/frame p50/p95 | layer ms/frame at 24 marks p50/p95 |\n|---|---|---|---|---|---|---|---|---|\n${perkRows}\n${keyRows ? `\nPerkLayer by mark key (24 enemies with one key, layer ms/frame p50):\n\n${keyRows}\n` : ''}` : '';
 const md = `\n## Scenes\n\n| profile | scene | grad p50/p95/max | canvases | particles max | passes p95 | draw-fx | render RNG | main draws p50 | ms p50/p95 (info) | tex MB decoded/painted |\n|---|---|---|---|---|---|---|---|---|---|---|\n${table}\n\n## Top gradient sites (all scenes)\n\n${Object.entries(gradSites).sort((a, b) => b[1] - a[1]).slice(0, 25).map(([k, n]) => `- ${k} ×${n}`).join('\n')}\n${perkMd}`;
 const c = C.counts();
 const out = writeReport('perf_budget', { tool: 'perf_budget', when: new Date().toISOString(), durationMs: Date.now() - t0, profiles, quick: QUICK, frames: FR, counts: c, checks: C.list, rows, findings }, { title: 'Performance budgets (§5.2)', findings, extraMd: md });

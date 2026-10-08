@@ -1047,8 +1047,8 @@ each package's comparison script and by `tools/test_perks.mjs`).
 ### 14.2 Behaviour deviations by package
 - **ASC-CORE (data, API, save)**: `migrateAsc` normalises only fields that already exist (never adds `trials`/`ascUnlocked`/…),
   so pre-ascension saves stay byte-identical (`tools/test_save_v2` "v1 data unchanged"); `newHero` adds the defaults, and every
-  reader must tolerate absent fields (`hero.trials?.[tid]`, `hero.ascUnlocked?.includes`, or the progression API). `cloud.js
-  summarize` adds `asc` only when set (client summary = server `saveSummary` for non-ascended saves); `saves.list()` uses
+  reader must tolerate absent fields (`hero.trials?.[tid]`, `hero.ascUnlocked?.includes`, or the progression API).
+  `cloud.js summarize` adds `asc` only when set (client summary = server `saveSummary` for non-ascended saves); `saves.list()` uses
   `asc ?? null`. `canAscend` 'trial' reason picks 을/를 by the trial name's last syllable. `unlockFromTrial` also grants the hidden
   skill Lv 1 (same as the `migrateAsc` re-grant). `canStartTrial` 'hero' also fails when `state.charId` is another hero. Extra
   reason strings not in this spec: '알 수 없는 시련이다', '다른 헌터의 시련이다', '최상급 직업에서만 초월할 수 있다', '알 수 없는 길이다',
@@ -1103,7 +1103,7 @@ each package's comparison script and by `tools/test_perks.mjs`).
   strip taps are 36 UI px, kind 'dense'; asc status texts '해금됨' / '선택하지 않은 길' / '잠김' / 'Lv N 필요' / '초월 가능!' /
   '현재 직업'; status-tab path pills keep the current pill whole and shorten earlier ones longest-first. The church card shows the
   whole perk only on the selected card (others 2 lines + '…'); the class-tab detail shows the whole perk and scrolls.
-- **TRIALS-ENGINE**: `T.diffOver` keys are multiplied into the difficulty value (`boss.js` reads `bossHp` as absolute; `bossHp`
+- **TRIALS-ENGINE**: `T.diffOver` keys are multiplied into the difficulty value (`bosses/boss.js` reads `bossHp` as absolute; `bossHp`
   falls back to `enemyHp`) — hard `tr_kael_1` = 1.4 × 1.3 = 1.82. `hero.trials[tid].best` = boss-fight seconds (arena entry → defeat,
   intro excluded), not `w.run.time`. Start banner `big: true` + a rule toast 0.9 s later. Leave/quit open the church class tab
   (not only spawn at the church); a retry skips the pre script; a quit counts as a try only during the boss fight; §9.3
@@ -1131,8 +1131,8 @@ each package's comparison script and by `tools/test_perks.mjs`).
 - §0.3 "lia_umbra … cached silhouettes (`K.ghostOf`, the awakening clone pool)" → vector shade (see 14.2 PERKS-C).
 - §0.3 / §10.2 "Online `asc` field deferred" → client sends it; server ignores it (14.2 ARCADE).
 - §1.2 step 1 "`h.trials` not an object → `{}`" → only existing fields are normalised; absent fields stay absent (14.2 ASC-CORE).
-- §2.5 events: add `playerHurt {amount, attack?}` (HOOKS). `classChanged {charId, classId, asc}`, `ascChanged {charId, classId,
-  asc, prev, first}` (not in `ACH_EVENTS`), `ultimateCast`/`awakenCast` + `asc` — as specified.
+- §2.5 events: add `playerHurt {amount, attack?}` (HOOKS). `classChanged {charId, classId, asc}`,
+  `ascChanged {charId, classId, asc, prev, first}` (not in `ACH_EVENTS`), `ultimateCast`/`awakenCast` + `asc` — as specified.
 - §2.7 `hero_parts.js` `K.L?.wingCol` → `G.wingCol` (no `K` in `drawWing`'s scope; `hero_puppet.puppetFor` sets it on every hero
   draw, `drawTurnWings` from `I.look`).
 - §3.3 `PERK_STATS = { calls, ms, errors }` → `{ calls, ms, layerMs, errors, timing, last }`.
