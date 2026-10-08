@@ -39,7 +39,7 @@ function hidden(id, charId, o) {
 // ───────────────────────── 카엘 (채찍) ─────────────────────────
 t3('kael_grandtemplar', 'kael_templar', { name: '성전 기사단장', eng: 'GRAND TEMPLAR',
   desc: '성전 기사단을 이끄는 방패. 받은 상처를 빛으로 되갚는다.',
-  perk: '받는 피해 -5%. 적에게 받은 피해만큼 성광이 쌓인다(최대 HP의 30%까지). 성광이 최대 HP의 5% 이상이면 마무리 공격 때 모두 터뜨려 채찍 끝 반경 150을 타격한다(위력 100~300%, 쌓인 양에 비례, 1.5초에 한 번).',
+  perk: '받는 피해 -5%. 적에게 받은 피해만큼 성광이 쌓인다(최대 HP의 30%까지). 성광이 최대 HP의 5% 이상이면 마무리 공격 때 모두 터뜨려 채찍 끝 반경 150을 타격한다(위력 80~250%, 쌓인 양에 비례, 1.5초에 한 번).',
   mult: { hp: 1.10, def: 1.08 }, flat: { dmgReduce: 5, holy: 15 },
   look: { armorColor: '#eef0f8', cape: { color: '#f4f0e4', color2: '#c8102a', len: 1.25 } },
   lookTop: { aura: au('holy', '#ffe080'), halo: true, armorTrim: '#ffd84a', capeColor2: '#c8102a', trailColor: '#fff0a0' },
@@ -57,7 +57,7 @@ t3('kael_highinquisitor', 'kael_inquisitor', { name: '화형 심판장', eng: 'H
   est: { dps: 1.07, ehp: 1.06 } });
 t3('kael_bloodreaver', 'kael_bloodhunter', { name: '피의 처단자', eng: 'BLOOD REAVER',
   desc: '제 피를 값으로 치르고 더 깊이 베는 금기의 사냥꾼.',
-  perk: '흡혈 +2%. HP가 최대 HP의 15%보다 많으면 마무리 공격 때 현재 HP의 4%를 바쳐 핏빛 초승달을 날린다(위력 140%, 3관통, 0.8초에 한 번). 초승달이 적을 맞힐 때마다 최대 HP의 1.5%를 회복한다(초승달 하나당 최대 3회).',
+  perk: '흡혈 +2%. HP가 최대 HP의 15%보다 많으면 마무리 공격 때 현재 HP의 4%를 바쳐 핏빛 초승달을 날린다(위력 120%, 3관통, 0.8초에 한 번). 초승달이 적을 맞힐 때마다 최대 HP의 1.5%를 회복한다(초승달 하나당 최대 3회).',
   mult: { atk: 1.10, hp: 1.08 }, flat: { critDmg: 20, lifesteal: 2 },
   lookTop: { aura: au('blood', '#ff0a2a'), wings: 'bat', trailColor: '#ff2040', armorTrim: '#8a0a1a' },
   ult: { accent: '#ff0a2a', colors: ['#ff0a2a', '#ffd0d8', '#5a0010'] },
@@ -75,7 +75,7 @@ t3('kael_blackwing', 'kael_nightraven', { name: '흑익의 사냥꾼', eng: 'BLA
 // ───────────────────────── 세라 (지팡이) ─────────────────────────
 t3('sera_archsaint', 'sera_saint', { name: '대성녀', eng: 'ARCH SAINT',
   desc: '기적을 땅에 새기는 살아 있는 성인.',
-  perk: '액티브 스킬을 쓰면 발밑에 4초 동안 성역(반경 140)이 생긴다(12초에 한 번). 성역 안에서는 0.5초마다 최대 HP의 2%를 회복하고, 성역 안의 적은 0.5초마다 위력 20% 신성 피해를 받는다. 성녀의 기적이 HP 50%로 되살리고 성광 폭발(반경 200, 위력 200%)을 일으킨다.',
+  perk: '액티브 스킬을 쓰면 발밑에 4초 동안 성역(반경 140)이 생긴다(12초에 한 번). 성역 안에서는 0.5초마다 최대 HP의 1.5%를 회복하고, 성역 안의 적은 0.5초마다 위력 20% 신성 피해를 받는다. 성녀의 기적이 HP 50%로 되살리고 성광 폭발(반경 200, 위력 200%)을 일으킨다.',
   mult: { mag: 1.08, hp: 1.08, res: 1.05 }, flat: { holy: 15, hpRegen: 2 },
   lookTop: { wings: 'seraph', halo: true, aura: au('holy', '#ffe9a0'), armorTrim: '#ffd84a', capeColor2: '#ffd84a', trailColor: '#fff2b0' },
   ult: { accent: '#ffe9a0', colors: ['#fff8d0', '#ffd84a', '#ffffff'] },

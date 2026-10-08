@@ -16,6 +16,8 @@ import { SKILLS, skillVal } from '../data/skills.js';
 
 const TAU = Math.PI * 2;
 const ADD = 'lighter';
+/** 머리 위 계기 높이 (p.y 위로; 영웅 그림은 판정 상자보다 ~20 위로 솟는다 — 모자·뿔·머리칼에 가리지 않게) */
+const HEAD = 32;
 
 // ─────────────────────────── 작은 도우미 (훅 안에서만 부른다) ───────────────────────────
 const S = (p) => perkState(p);
@@ -316,7 +318,7 @@ export const PERKS_B = {
     drawMeter(ctx, p, w) {
       if (!S(p).grace) return;
       // 머리 위 방패 문장 (대검·망토에 가리지 않게) — 맹세 계수 고리(oathlord)와 같은 중심
-      const x = p.cx, y = p.y - 16, k = 0.8 + 0.2 * Math.sin((w?.time ?? 0) * 4);
+      const x = p.cx, y = p.y - HEAD, k = 0.8 + 0.2 * Math.sin((w?.time ?? 0) * 4);
       ctx.globalCompositeOperation = ADD;
       K.glow(ctx, x, y, 20 * k, '#ffd84a', 0.65);
       ctx.globalCompositeOperation = 'source-over';
@@ -428,8 +430,8 @@ export const PERKS_B = {
       const k = 1 - dt / N.win, left = N.max - (S(p).ric ?? 0);
       ctx.globalCompositeOperation = ADD;
       K.glow(ctx, p.cx, p.cy, 46, '#9ab0ff', 0.35 * k);
-      ctx.fillStyle = '#c0d0ff'; ctx.globalAlpha = 0.5 + 0.5 * k;
-      for (let i = 0; i < left; i++) { ctx.beginPath(); ctx.arc(p.cx - (N.max - 1) * 4 + i * 8, p.y - 8, 2.4, 0, TAU); ctx.fill(); }
+      ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = '#c0d0ff'; ctx.strokeStyle = '#10142a'; ctx.lineWidth = 1.2; ctx.globalAlpha = 0.6 + 0.4 * k;
+      for (let i = 0; i < left; i++) { ctx.beginPath(); ctx.arc(p.cx - (N.max - 1) * 5 + i * 10, p.y - HEAD, 3.2, 0, TAU); ctx.fill(); ctx.stroke(); }
     },
     prewarm() { K.glowSprite?.('#9ab0ff'); },
   },
@@ -554,7 +556,7 @@ export const PERKS_B = {
     },
     afterHurt(p) { S(p).streak = 0; },
     drawMeter(ctx, p, w) {
-      const N = this.N, s = S(p), t = w?.time ?? 0, x = p.cx, y = p.y - 10;
+      const N = this.N, s = S(p), t = w?.time ?? 0, x = p.cx, y = p.y - HEAD;
       if ((s.fanEnd ?? 0) > t) {
         const k = (s.fanEnd - t) / N.t;
         ctx.globalCompositeOperation = ADD;
@@ -720,7 +722,7 @@ export const PERKS_B = {
       ctx.globalCompositeOperation = ADD;
       K.glow(ctx, p.cx, p.cy, 30 + n * 3, '#ff1a2a', 0.06 + n * 0.025);
       ctx.globalCompositeOperation = 'source-over';
-      const y = p.y - 12, x0 = p.cx - (N.max - 1) * 5.5;
+      const y = p.y - HEAD - 2, x0 = p.cx - (N.max - 1) * 5.5;
       ctx.lineWidth = 1.5; ctx.strokeStyle = '#1a0004';
       for (let i = 0; i < N.max; i++) {
         ctx.globalAlpha = i < n ? 0.95 : 0.45; ctx.fillStyle = i < n ? '#ff1a2a' : '#3a0a0e';
@@ -824,9 +826,9 @@ export const PERKS_B = {
       if (!n) return;
       // 머리 위 가호 방패(paladin)를 두르는 맹세 계수 고리
       ctx.strokeStyle = '#2a1800'; ctx.globalAlpha = 0.5; ctx.lineWidth = 4.5;
-      ctx.beginPath(); ctx.arc(p.cx, p.y - 16, 12, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(p.cx, p.y - HEAD, 12, 0, TAU); ctx.stroke();
       ctx.strokeStyle = '#ffcf6a'; ctx.globalAlpha = 0.9; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(p.cx, p.y - 16, 12, -Math.PI / 2, -Math.PI / 2 + TAU * Math.min(1, n / N.every)); ctx.stroke();
+      ctx.beginPath(); ctx.arc(p.cx, p.y - HEAD, 12, -Math.PI / 2, -Math.PI / 2 + TAU * Math.min(1, n / N.every)); ctx.stroke();
     },
     prewarm() { K.glowSprite?.('#ffcf6a'); },
   },

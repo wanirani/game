@@ -481,7 +481,7 @@ export const PERKS_A = {
   },
   // ── 초월 ──
   kael_grandtemplar: {
-    N: { capPct: 30, minPct: 5, r: 150, mvMinPct: 100, mvMaxPct: 300, icd: 1.5, moteAt: 0.5, moteT: 0.3 },
+    N: { capPct: 30, minPct: 5, r: 150, mvMinPct: 80, mvMaxPct: 250, icd: 1.5, moteAt: 0.5, moteT: 0.3 },   // 위력 80~250% (명세 100~300% → §2.8 예산: 3%/초 피격 대본에서 +13% → +11%)
     prewarm(w) { warm(w, ['#ffd84a', '#fff8e0'], ['성광 응보!', '#ffe080']); },
     onEnter(p) { perkState(p).bw = 0; },
     afterHurt(p, dmg, atk) {
@@ -534,7 +534,7 @@ export const PERKS_A = {
     },
   },
   kael_bloodreaver: {
-    N: { minHpPct: 15, costPct: 4, mvPct: 140, pierce: 3, icd: 0.8, healPct: 1.5, healMax: 3, speed: 950, life: 0.45 },
+    N: { minHpPct: 15, costPct: 4, mvPct: 120, pierce: 3, icd: 0.8, healPct: 1.5, healMax: 3, speed: 950, life: 0.45 },   // 위력 120% (명세 140% → §2.8 예산: +12.4% → 약 +10.6%)
     prewarm(w) { warm(w, ['#ff2040'], null); },
     onSwing(p, w, mv) {
       if (!mv?.finisher || mv.skill || p.dead) return;
@@ -628,7 +628,7 @@ export const PERKS_A = {
   },
   // ── 초월 ──
   sera_archsaint: {
-    N: { icd: 12, t: 4, r: 140, ry: 90, tickT: 0.5, healPct: 2, mvPct: 20, reviveHpPct: 50, boomR: 200, boomMvPct: 200, iframes: 2 },
+    N: { icd: 12, t: 4, r: 140, ry: 90, tickT: 0.5, healPct: 1.5, mvPct: 20, reviveHpPct: 50, boomR: 200, boomMvPct: 200, iframes: 2 },   // 성역 회복 1.5% (명세 2%, 조절 손잡이 zoneHeal → eHP ×1.68 → 약 ×1.43)
     prewarm(w) { warm(w, ['#ffe9a0', '#ffffff'], null); },
     onSkill(p, w) { if (icd(p, 'pkAsZone', this.N.icd, w)) sanctum(w, p, this.N); },
     onLethal(p, atk, w) {
