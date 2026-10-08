@@ -25,6 +25,7 @@ import { drawHero } from '../render/hero.js';
 import * as UFX from '../render/ultfx.js';   // [hook:feel] 필살기 화면 레이어 키트 ULTFX (FX-ULTKIT; 모듈 이름공간으로만 읽는다)
 import * as HFX from '../render/hitfx.js';   // 타격 캐시 스프라이트 (별·자국)
 import { SKILL_IMPL_P2, TECH_NAMES_P2 } from './skills_p2.js';   // [hook:p2] 2부 비전서 기술 (skills_p2.js 는 이 파일을 import 하지 않는다)
+import * as PERK from './class_perks.js';   // 직업 특성 등록부: 비전 액티브 대체 경로 + 파일 끝 bindPerkKit(FXKIT) (classes_t3 §3.4; 순환 import — 함수 안·파일 끝에서만)
 
 export const SKILL_IMPL = {};
 Object.assign(SKILL_IMPL, SKILL_IMPL_P2);   // [hook:p2]
@@ -34,7 +35,7 @@ export const FXKIT = {};   // [hook:awaken]
 
 // ═══════════════════════════ 공개 API ═══════════════════════════
 export function castSkill(p, world, id, lv) {
-  const fn = SKILL_IMPL[id];
+  const fn = SKILL_IMPL[id] ?? PERK.ascActive(id);   // 비전 액티브 (asc_*) 는 class_perks_a..d 의 ACTIVES
   if (!fn) return false;
   p.mount?.beforeCast?.(world, p, id);   // [hook:cmp] DISMOUNT_SKILLS 는 탈것에서 내린 뒤 시전
   return fn(p, world, Math.max(1, lv || 1)) !== false;
@@ -4228,13 +4229,7 @@ let _busHooked = false;
 function hookBus() {
   if (_busHooked) return;
   _busHooked = true;
-  // 성전 기사: 피격 시 20% 확률로 성광 폭발
-  bus.on('playerHurt', () => {
-    const w = game.world, p = w?.player;
-    if (!p || p.dead || p.hero?.classId !== 'kael_templar' || Math.random() >= 0.2) return;
-    boom(w, p, p.cx, p.cy, 130, { mv: 1.6, element: 'holy', c1: '#ffd870', c2: '#fff8e0', shake: 6, sfx: 'holy', atk: { tags: ['skill'] } });
-    w.fx.text(p.cx, p.y - 30, '성광 반격!', { color: '#fff2b0', size: 18 });
-  });
+  // (성전 기사 피격 반격은 직업 특성 등록부로 옮겼다: class_perks_a.js kael_templar.afterHurt — classes_t3 §6 C3)
 }
 /** 방금 발사된(아직 한 프레임도 안 지난) 플레이어 탄환 목록 */
 function freshShots(w, p) {
@@ -4251,6 +4246,13 @@ function tipOf(p, mv) {
   const far = b.x >= 0 ? b.x + b.w * reach : b.x + b.w;
   return { x: p.cx + p.facing * far * 0.95, y: p.bottom + b.y + b.h / 2 };
 }
+/** 헬파이어: 빗나간 탄의 작은 화염 터짐 (반경 24, 위력 25%, proc) + 불꽃 4개, 소리는 0.08초에 한 번 */
+let _fizzSfxT = -9;
+function hellfireFizz(w, p, pr, kr = 1, km = 1) {
+  PERK.procStrike(w, p, circ(pr.cx, pr.cy, 24 * kr), { mv: 0.25 * km, element: 'fire', tags: ['projectile'], kb: [60, -40] });
+  w.fx.burst('fire', pr.cx, pr.cy, 4, { speed: 120, color: '#ff8a3a' });
+  if (w.time - _fizzSfxT >= 0.08 || w.time < _fizzSfxT) { _fizzSfxT = w.time; audio.sfx('fire', { vol: 0.35, pitch: rand(1.1, 1.3) }); }
+}
 SKILL_IMPL.__onSwing = (p, w, mv) => {
   if (!mv || mv.skill) return;
   hookBus();
@@ -4264,7 +4266,7 @@ SKILL_IMPL.__onSwing = (p, w, mv) => {
       w.fx.burst('holy', tp.x, tp.y, 4, { speed: 120 });
       playerStrike(w, p.relRect(mv.box.x, mv.box.y, mv.box.w * (1 + (p.stats.reach ?? 0) / 100), mv.box.h), atk(p, { mv: (mv.mv ?? 1) * 0.3, element: 'holy', hitId: p.curHitId + 'h', kb: [60, -40], hitstop: 0, shake: 0, tags: ['melee'] }));
       if (c === 'kael_inquisitor') {
-        setTimeoutFx(w, 0.03, (ww) => boom(ww, p, tp.x, tp.y, fin ? 90 : 55, { mv: (mv.mv ?? 1) * (fin ? 1.2 : 0.6), element: 'fire', c1: '#ff6a1a', c2: '#fff2b0', shake: fin ? 6 : 2, sfx: 'fire', atk: { tags: ['melee'], hitId: p.curHitId + 'f' } }));
+        setTimeoutFx(w, 0.03, (ww) => boom(ww, p, tp.x, tp.y, fin ? 90 : 55, { mv: (mv.mv ?? 1) * (fin ? 1.2 : 0.6), element: 'fire', c1: '#ff6a1a', c2: '#fff2b0', shake: fin ? 6 : 2, sfx: 'fire', atk: { tags: ['melee', 'inq'], hitId: p.curHitId + 'f' } }));   // 'inq': 화형 심판장 낙인 (classes_t3 §4.1)
       }
       break;
     }
@@ -4310,7 +4312,14 @@ SKILL_IMPL.__onSwing = (p, w, mv) => {
           s.color = '#ff8a3a'; s.trail = 'fire'; s.trailRate = 0.04; s.trailOpts = { size: 6 };
           const big = fin;
           const prev = s.onExpire;
-          s.onExpire = (pr, ww, byHit) => { prev?.(pr, ww, byHit); if (byHit || big) boom(ww, p, pr.cx, pr.cy, big ? 80 : 34, { mv: big ? 1.4 : 0.35, element: 'fire', shake: big ? 6 : 1, sfx: big ? 'explode' : 'fire', atk: { tags: ['projectile'] } }); };
+          // 맞히거나 마무리 탄: 폭발 · 빗나간 탄(수명 끝·벽): 작은 화염 터짐 (classes_t3 §6 C6). 과열(연옥의 총잡이 p._heatK)이면 반경·위력 배율
+          s.onExpire = (pr, ww, byHit) => {
+            prev?.(pr, ww, byHit);
+            const kr = p._heatK?.r ?? 1, km = p._heatK?.mv ?? 1;
+            if (byHit || big) boom(ww, p, pr.cx, pr.cy, (big ? 80 : 34) * kr, { mv: (big ? 1.4 : 0.35) * km, element: 'fire', shake: big ? 6 : 1, sfx: big ? 'explode' : 'fire', atk: { tags: ['projectile'] } });
+            else hellfireFizz(ww, p, pr, kr, km);
+          };
+          s.onWall ??= (pr, ww) => { pr.hitWallFx(ww); pr.expire(ww, false); };
         }
       }
       break;
@@ -4352,6 +4361,7 @@ SKILL_IMPL.__onSwing = (p, w, mv) => {
       break;
     }
     case 'lia_bladedancer': {
+      if ((w.combo?.n ?? 0) === 0) p._bdN = 0;   // 콤보가 끊기면 다시 1타부터 ('연속 공격 4타째마다', classes_t3 §6 C-x1)
       p._bdN = (p._bdN ?? 0) + 1;
       if (p._bdN % 4 === 0) {
         audio.sfx('slash_heavy', { pitch: 1.5 });
@@ -4451,3 +4461,6 @@ Object.assign(FXKIT, {
   // 이졸데: 번개의 용(경로·마디·그리기) · 빛의 투창 · 연속 찌르기
   splinePath, pathAt, dragonBody, stormDragon, throwJavelin, javelinRender, thrustFlurry,
 });
+// 직업 특성 등록부(class_perks.js)의 K 도 같은 도구 모음 (+ 투사체 그림·창끝·이졸데 번개 색) — 특성 모듈은 skills.js 를 import 하지 않는다 (§3.5)
+Object.assign(FXKIT, { featherRenderL, featherRenderD, batRender, shurikenRender, daggerRender, tipOf, ISO_BOLT });
+PERK.bindPerkKit(FXKIT);

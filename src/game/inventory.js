@@ -274,7 +274,7 @@ export function useItem(state, hero, uid, player = null) {
     return { ok: false, msg: '마을에서는 휴식으로 기력이 가득 차 있다. 전투 중에 사용하자.' };
   }
   if (player.dead) return { ok: false, msg: '지금은 사용할 수 없다.' };
-  if (w.rules?.noPotion && !u.warp) return { ok: false, msg: '오늘의 도전 규칙: 물약을 쓸 수 없다.' };   // [hook:plat] docs/specs/online.md §2.5
+  if (w.rules?.noPotion && !u.warp) return { ok: false, msg: `${w.rules?.label ?? '오늘의 도전 규칙'}: 물약을 쓸 수 없다.` };   // [hook:plat] docs/specs/online.md §2.5
   const s = player.stats;
   const parts = [];
   if (u.warp) {

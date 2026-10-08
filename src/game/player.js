@@ -325,6 +325,7 @@ export class Player extends Entity {
     const type = this.ch.move.dash;
     this.dashT = type === 'blink' ? 0.14 : type === 'mist' ? 0.24 : 0.2;
     this.dashSpeed = (this.ch.move.dashSpeed ?? 650) * (type === 'blink' ? 1.3 : 1) * (this.buffs.haste ? 1.2 : 1);
+    if (this.perks?.dashMul) this.dashSpeed *= perkMul(this.perks.dashMul, this);
     this.dashAir = !this.onGround;
     if (this.dashAir) this.airDashUsed = true;
     this.dashCool = 0.34;
@@ -335,6 +336,7 @@ export class Player extends Entity {
     if (type === 'mist') world.fx.burst('dark', this.cx, this.cy, 12, { speed: 100, color: '#8a0a1e' });
     if (type === 'blink') { world.fx.burst('holy', this.cx, this.cy, 12, { speed: 120 }); }
     dashFx?.(this, world, 'start');   // [hook:feel]
+    if (this.perks?.onDash) firePerks(this.perks.onDash, this, world);
   }
 
   handleJump(dt, world, { down, ax, wallJump = this.ch.move.wallJump }) {
@@ -355,6 +357,7 @@ export class Player extends Entity {
         audio.sfx('jump'); input.consume('jump');
         world.fx.burst('dust', this.cx - dir * 14, this.cy, 8, { speed: 90 });
         onJump?.(this, world, 'wall');   // [hook:feel] air: false | true | 'wall'
+        if (this.perks?.onJump) firePerks(this.perks.onJump, this, world, 'wall');
       } else if (this.airJumpsLeft > 0) {
         this.airJumpsLeft--;
         this.doJump(world, true); input.consume('jump');
@@ -380,6 +383,7 @@ export class Player extends Entity {
       world.fx.burst('dust', this.cx, this.bottom, 5, { angle: -Math.PI / 2, spread: 1.2, speed: 70 });
     }
     onJump?.(this, world, air);   // [hook:feel]
+    if (this.perks?.onJump) firePerks(this.perks.onJump, this, world, air);
   }
   onOneWay(world) {
     const map = world.map;
@@ -643,14 +647,15 @@ export class Player extends Entity {
   }
   groundPound(world, r) {
     const pk = SKILL_IMPL.__onPound?.(this, world, r, this.move) ?? null;   // 직업 특성: 충격파 반경·속성 (이졸데 용기사 계열; skills.js)
-    if (pk?.r > 0) r = pk.r;
+    const fall = Math.max(0, this.y - (this.apexY ?? this.y)); const pk2 = this.perks?.onPound ? perkPound(this.perks.onPound, this, world, pk?.r > 0 ? pk.r : r, fall, pk) : pk;
+    if (pk2?.r > 0) r = pk2.r;
     const k = Math.min(1, r / 110);   // 작은 충격파(창의 급강하 찌르기 72)는 파편·흔들림·소리를 줄인다 — 대검·지팡이(110 이상)는 그대로
-    world.fx.ring(this.cx, this.bottom, { color: pk?.color ?? '#ffd8a0', r0: 10, r1: r * 1.6, life: 0.35, width: 8 * k });
+    world.fx.ring(this.cx, this.bottom, { color: pk2?.color ?? '#ffd8a0', r0: 10, r1: r * 1.6, life: 0.35, width: 8 * k });
     world.fx.burst('shard', this.cx, this.bottom - 4, Math.round(16 * k), { angle: -Math.PI / 2, spread: 1.2, speed: 360, color: '#8a7a6a' });
     world.fx.burst('dust', this.cx, this.bottom, Math.round(14 * k), { speed: 200 });
     world.camera.shake(10 * k, 0.3);
     audio.sfx('explode', { vol: 0.7 * k });
-    playerStrike(world, { x: this.cx - r, y: this.bottom - 60, w: r * 2, h: 64 }, this.makeAttack(this.move || { mv: 1.5 }, { mv: (this.move?.mv ?? 1.5) * 0.8, hitId: this.curHitId + 'gp', kb: [340, -520], launch: true, ...(pk?.element ? { element: pk.element } : {}) }));
+    playerStrike(world, { x: this.cx - r, y: this.bottom - 60, w: r * 2, h: 64 }, this.makeAttack(this.move || { mv: 1.5 }, { mv: (this.move?.mv ?? 1.5) * 0.8, hitId: this.curHitId + 'gp', kb: [340, -520], launch: true, ...(pk2?.element ? { element: pk2.element } : {}) }));
   }
   gunmodeShot(world) {
     for (const dy of [-8, 8]) {
@@ -667,11 +672,12 @@ export class Player extends Entity {
         attack: this.makeAttack(mv, { mv: 1.2, element: 'holy', tags: ['skill'], hitId: undefined }) });
     }
     SKILL_IMPL.__onSwing?.(this, world, mv);
+    if (this.perks?.onSwing) firePerks(this.perks.onSwing, this, world, mv);
   }
 
   // ── 보조무기 ──
   useSub(world) {
-    if (world.rules?.noSub) { if (!this._noSubT || world.time - this._noSubT > 1.5) { this._noSubT = world.time; this.game?.toast?.('오늘의 도전 규칙: 보조 무기를 쓸 수 없다', '#ffb070', 1.4); } audio.sfx('menu_cancel', { vol: 0.4 }); return; }   // [hook:plat] docs/specs/online.md §2.5
+    if (world.rules?.noSub) { if (!this._noSubT || world.time - this._noSubT > 1.5) { this._noSubT = world.time; this.game?.toast?.(`${world.rules?.label ?? '오늘의 도전 규칙'}: 보조 무기를 쓸 수 없다`, '#ffb070', 1.4); } audio.sfx('menu_cancel', { vol: 0.4 }); return; }   // [hook:plat] docs/specs/online.md §2.5
     const id = this.run.sub;
     const sw = SUBWEAPONS[id];
     if (!sw || this.subCool > 0) return;
@@ -691,6 +697,7 @@ export class Player extends Entity {
     const sk = SKILLS[skillId];
     const lv = this.hero.skills?.[skillId] ?? 0;
     if (!sk || !lv) return;
+    if (sk.reqAsc && this.hero.asc !== sk.reqAsc) { this.game.toast('비전 직업일 때만 쓸 수 있다', '#c8a0ff', 1.4); return; }
     if ((this.skillCd[skillId] ?? 0) > 0) { audio.sfx('menu_cancel', { vol: 0.3 }); return; }
     const cost = sk.cost ?? 10;
     if (this.mp < cost) { this.game.toast('MP가 부족하다', '#5aa8ff', 1); audio.sfx('menu_cancel', { vol: 0.3 }); return; }
@@ -699,21 +706,25 @@ export class Player extends Entity {
       this.skillCd[skillId] = sk.cd ?? 3;
       this.setAnim('cast');
       this.castT = 0.3;
+      if (this.perks?.onSkill) firePerks(this.perks.onSkill, this, world, skillId);
     }
   }
 
   // ── 피격 ──
   takeHit(dmg, attack, world, info) {
     if (this.invuln) return false;
+    let armorPk = false; const ph = this.perks?.onHurt ? perkHurt(this.perks.onHurt, this, dmg, attack, world) : null; if (ph === false) return false; if (ph) { dmg = ph.dmg; armorPk = !!ph.armor; }
     // 환영 회피 (카게로우)
     if (this.hero.classId === 'lia_kunoichi' && Math.random() < 0.25) {
       this.iframes = 0.5; world.fx.text(this.cx, this.y - 10, '회피!', { color: '#ffb0c0', size: 18 });
-      this.ghostTrail(world, '#ff7a9a'); return false;
+      this.ghostTrail(world, '#ff7a9a');
+      if (this.perks?.onDodge) firePerks(this.perks.onDodge, this, world, attack);
+      return false;
     }
     const mr = world.companions?.incoming?.(this, dmg, attack) ?? null;   // [hook:cmp] 수호 방벽·탈것이 먼저 받는다
     if (mr?.cancel) return false;   // [hook:cmp]
     if (mr && Number.isFinite(mr.dmg)) dmg = Math.max(0, mr.dmg);   // [hook:cmp] (dmg 가 빠진 응답은 원래 피해 그대로 — HP 가 NaN 이 되지 않게)
-    const armored = this.superArmor > 0 || !!(mr?.mounted && mr.noStagger);   // [hook:awaken] [hook:cmp] 슈퍼아머: 경직·넉백 없음
+    const armored = this.superArmor > 0 || !!(mr?.mounted && mr.noStagger) || armorPk;   // [hook:awaken] [hook:cmp] 슈퍼아머: 경직·넉백 없음 (직업 특성 armor 포함)
     const heavyMounted = !!(mr?.mounted && !mr.noStagger);   // [hook:cmp] 탑승 중 강타: 짧은 경직, 넉백 절반
     this.hp -= dmg;
     if (armored) {
@@ -732,8 +743,9 @@ export class Player extends Entity {
     }
     audio.sfx('hurt');
     world.onPlayerHurt(dmg);
-    bus.emit('playerHurt', { amount: dmg });
+    bus.emit('playerHurt', { amount: dmg, attack }); if (this.perks?.afterHurt) firePerks(this.perks.afterHurt, this, dmg, attack, world);
     if (this.hp <= 0) {
+      if (this.perks?.onLethal && perkAny(this.perks.onLethal, this, attack, world)) return true;
       // 성녀: 치명상 1회 무효
       if (this.hero.classId === 'sera_saint' && !this.run.saintUsed) {
         this.run.saintUsed = true; this.hp = Math.ceil(this.stats.hp * 0.3); this.iframes = 2;
@@ -746,9 +758,11 @@ export class Player extends Entity {
   }
   heal(amount, showText = true) {
     if (amount > 0) amount *= this.world?.gimmick?.healMul?.() ?? 1;   // [hook:gimmick] 역병: 회복량 감소
+    if (amount > 0 && this.perks?.healMul) amount *= perkMul(this.perks.healMul, this);
     const before = this.hp;
     this.hp = Math.min(this.stats.hp, this.hp + amount);
     const got = Math.round(this.hp - before);
+    if (this.perks?.onOverheal && amount - (this.hp - before) > 0.5) firePerks(this.perks.onOverheal, this, amount - (this.hp - before), this.world);
     if (got > 0 && showText) this.world.fx.text(this.cx, this.y - 10, '+' + got, { color: '#7ee07e', size: 20 });
     return got;
   }

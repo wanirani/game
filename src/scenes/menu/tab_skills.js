@@ -3,6 +3,9 @@
 // 상세 칸의 효과 설명(현재 · 다음 레벨)은 넘치면 세로로 스크롤된다 (끌기 · 휠 · 패드 오른쪽 스틱). 낮은 칸(휴대폰)은 머리를 줄이고
 // 필요 조건을 설명 아래로 보내 두 효과가 스크롤 없이 보이게 한다 (감사 RU-01).
 // 습득·강화 뒤에는 m.changed() → player.refreshStats() 로 패시브가 바로 능력치에 반영된다.
+// 「비전 기술」 띠 (docs/specs/classes_t3.md §8.3): 영웅의 비전이 해금되어 있으면 트리 아래 한 줄에 비전 기술 노드 하나 —
+//   배우기·레벨 업·슬롯 등록은 트리 노드와 같다. 슬롯 등록은 그 비전 직업일 때만 (skills.equipSkill 이 거절 → '비전 직업일 때만 장착할 수 있다').
+//   ↓ 트리 → 비전 띠 → 슬롯 막대, ↑ 반대로. 트리 계열 수(ids.length === 6 갈래 규칙)는 건드리지 않는다.
 import { text, FONT, textFloor } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { clamp, rgba, TAU } from '../../core/math.js';
@@ -16,6 +19,10 @@ import {
   Scroller, scrollbar, clipBegin, clipEnd, vGrad, fillGradRect,
 } from './common.js';
 import * as D from './access.js';
+import { ASCENSIONS, HIDDEN_OF } from '../../data/ascensions.js';
+
+const ASC_COL = '#c8a0ff';   // 비전 빛깔 (직업 탭·성당과 같다)
+const ASC_DENY = '비전 직업일 때만 장착할 수 있다';
 
 /** 슬롯 이름 "Ⅰ · S": 페이지 + 지금 기기의 스킬 버튼 (키보드 S/D · 패드 LB/RB · 터치 S1/S2, 바꾼 키도 따른다) */
 function slotLabel(k) {
@@ -44,11 +51,19 @@ export class SkillsTab extends Tab {
     this.pop = new Map(); // 습득 연출 {id: t}
     this.sc = new Scroller(); this.treeRect = null;
     this.dsc = new Scroller(); this.detailRect = null; this.dKey = null;   // 상세 설명 스크롤
+    this.ascRect = null;   // 비전 기술 띠의 노드 (탭 영역)
   }
   get tree() { return D.TREE(this.hero.charId); }
   get branches() { return this.tree?.branches ?? []; }
   idAt(c, r) { return this.branches[c]?.skills?.[r] ?? null; }
-  get selId() { return this.sub === 'slots' ? this.hero.slots?.[this.slotI] ?? null : this.idAt(this.col, this.row); }
+  get selId() { return this.sub === 'slots' ? this.hero.slots?.[this.slotI] ?? null : this.sub === 'asc' ? this.ascSkill : this.idAt(this.col, this.row); }
+  /** 해금된 비전의 기술 id (없으면 null — 띠를 그리지 않는다) */
+  get ascSkill() {
+    const hero = this.hero, hid = HIDDEN_OF[hero.charId], A = hid ? ASCENSIONS[hid] : null;
+    return A?.skill && Array.isArray(hero.ascUnlocked) && hero.ascUnlocked.includes(hid) && D.SKILLS()[A.skill] ? A.skill : null;
+  }
+  /** 비전 기술을 지금 장착할 수 있나 (그 비전 직업일 때만) */
+  ascEquipOk(id) { const sk = D.SKILLS()[id]; return !sk?.reqAsc || this.hero.asc === sk.reqAsc; }
   lv(id) { return this.hero.skills?.[id] ?? 0; }
   check(id) { return D.canLearnOf(this.hero, id); }
 
@@ -70,7 +85,7 @@ export class SkillsTab extends Tab {
     if (typeof f === 'function') ok = f(this.hero, slot, id);
     else { this.hero.slots ??= [null, null, null, null]; const j = id ? this.hero.slots.indexOf(id) : -1; if (j >= 0) this.hero.slots[j] = this.hero.slots[slot]; this.hero.slots[slot] = id; ok = true; }
     if (ok) { audio.sfx(id ? 'item' : 'menu_cancel'); if (id) this.m.notify(`${slotLabel(slot)} 슬롯에 「${D.SKILLS()[id]?.name}」 등록`, PAL.goldHi); this.m.changed(); }
-    else audio.sfx('menu_cancel');
+    else { audio.sfx('menu_cancel'); if (id && !this.ascEquipOk(id)) this.m.notify(ASC_DENY, PAL.bad); }
   }
   /** 노드에서 확인 → 행동 팝업 */
   nodeMenu(id) {
@@ -80,9 +95,9 @@ export class SkillsTab extends Tab {
     const items = [];
     const cost = sk.spCost ?? 1;
     if (lv < (sk.maxLv ?? 5)) items.push({ label: lv ? '레벨 업' : '배우기', sub: `SP ${cost}`, disabled: !chk.ok, reason: chk.reason, run: () => this.learn(id) });
-    if (D.isActive(sk) && lv > 0) items.push({ label: '슬롯 등록', sub: this.hero.slots?.includes(id) ? slotLabel(this.hero.slots.indexOf(id)) : '', run: () => this.slotMenu(id) });
+    if (D.isActive(sk) && lv > 0) items.push({ label: '슬롯 등록', sub: this.hero.slots?.includes(id) ? slotLabel(this.hero.slots.indexOf(id)) : '', disabled: !this.ascEquipOk(id), reason: ASC_DENY, run: () => this.slotMenu(id) });
     if (!items.length) { audio.sfx('menu_cancel'); this.m.notify('최고 레벨입니다', PAL.dim); return; }
-    const r = this.nodeRects.find((n) => n.id === id);
+    const r = this.nodeRects.find((n) => n.id === id) ?? (this.ascRect?.id === id ? this.ascRect : null);
     this.m.openModal(new Popup({ title: sk.name, items, x: r ? r.x + r.w + 6 : null, y: r ? r.y - 10 : null, w: 210 }));
   }
   slotMenu(id) {
@@ -95,7 +110,7 @@ export class SkillsTab extends Tab {
   /** 슬롯에서 확인 → 넣을 스킬 선택 */
   pickForSlot(k) {
     const acts = Object.keys(this.hero.skills || {}).filter((id) => D.isActive(D.SKILLS()[id]) && this.lv(id) > 0);
-    const items = acts.map((id) => ({ label: D.SKILLS()[id].name, sub: `Lv ${this.lv(id)}`, run: () => this.assign(k, id) }));
+    const items = acts.map((id) => ({ label: D.SKILLS()[id].name, sub: `Lv ${this.lv(id)}`, disabled: !this.ascEquipOk(id), reason: ASC_DENY, run: () => this.assign(k, id) }));
     if (this.hero.slots?.[k]) items.push({ label: '비우기', color: PAL.dim, run: () => this.assign(k, null) });
     if (!items.length) { audio.sfx('menu_cancel'); this.m.notify('배운 액티브 스킬이 없습니다', PAL.dim); return; }
     this.m.openModal(new Popup({ title: `${slotLabel(k)} 슬롯`, items, w: 250 }));
@@ -124,20 +139,37 @@ export class SkillsTab extends Tab {
     for (const s of this.slotRects) {
       if (ges.tap(s)) { this.m.focus = 'content'; this.sub = 'slots'; this.slotI = s.k; this.pickForSlot(s.k); return; }
     }
+    // 비전 기술 띠: 첫 탭 = 고르기, 같은 노드를 다시 탭 = 행동 메뉴 (트리 노드와 같다) · 길게 누르기 = 행동 메뉴
+    const ar = this.ascRect;
+    if (ar && !ar.thid) {
+      if (ges.longPress && ges.held(ar)) { this.m.focus = 'content'; this.sub = 'asc'; this.nodeMenu(ar.id); return; }
+      if (ges.hoverIn(ar) && this.sub !== 'asc') this.sub = 'asc';
+      if (ges.tap(ar)) { this.m.focus = 'content'; if (this.sub === 'asc') this.nodeMenu(ar.id); else { this.sub = 'asc'; audio.sfx('menu_move'); } return; }
+    }
     for (const b of this.btnRects) if (ges.tap(b)) { this.m.focus = 'content'; b.run(); return; }
     if (!focused) return;
     const B = this.branches;
+    const asc = this.ascSkill;
+    if (this.sub === 'asc' && !asc) this.sub = 'tree';
+    if (this.sub === 'asc') {
+      if (nav.up) { this.sub = 'tree'; this.row = Math.max(0, (B[this.col]?.skills?.length ?? 1) - 1); audio.sfx('menu_move'); }
+      if (nav.down) { this.sub = 'slots'; this.slotI = 0; audio.sfx('menu_move'); }
+      if (nav.confirm) this.nodeMenu(asc);
+      if (nav.alt && D.isActive(D.SKILLS()[asc]) && this.lv(asc) > 0) { if (this.ascEquipOk(asc)) this.slotMenu(asc); else { audio.sfx('menu_cancel'); this.m.notify(ASC_DENY, PAL.bad); } }
+      if (nav.cancel) this.m.close();
+      return;
+    }
     if (this.sub === 'slots') {
       if (nav.left && this.slotI > 0) { this.slotI--; audio.sfx('menu_move'); }
       if (nav.right && this.slotI < 3) { this.slotI++; audio.sfx('menu_move'); }
-      if (nav.up) { this.sub = 'tree'; audio.sfx('menu_move'); }
+      if (nav.up) { this.sub = asc ? 'asc' : 'tree'; audio.sfx('menu_move'); }
       if (nav.confirm) this.pickForSlot(this.slotI);
       if (nav.cancel) { this.sub = 'tree'; audio.sfx('menu_cancel'); }
       return;
     }
     const n = B[this.col]?.skills?.length ?? 0;
     if (nav.up) { if (this.row === 0) { this.m.focusTabs(); return; } this.row--; audio.sfx('menu_move'); }
-    if (nav.down) { if (this.row < n - 1) { this.row++; audio.sfx('menu_move'); } else { this.sub = 'slots'; this.slotI = 0; audio.sfx('menu_move'); } }
+    if (nav.down) { if (this.row < n - 1) { this.row++; audio.sfx('menu_move'); } else if (asc) { this.sub = 'asc'; audio.sfx('menu_move'); } else { this.sub = 'slots'; this.slotI = 0; audio.sfx('menu_move'); } }
     if (nav.left && this.col > 0) { this.col--; this.row = Math.min(this.row, (B[this.col]?.skills?.length ?? 1) - 1); audio.sfx('menu_move'); }
     if (nav.right && this.col < B.length - 1) { this.col++; this.row = Math.min(this.row, (B[this.col]?.skills?.length ?? 1) - 1); audio.sfx('menu_move'); }
     const id = this.idAt(this.col, this.row);
@@ -165,7 +197,11 @@ export class SkillsTab extends Tab {
     // 계열 기둥 (줄이 최소 높이보다 작아지면 트리를 세로로 스크롤)
     const touch = input.touchMode;
     const slotH = touch ? 64 : 70;
-    const top = A.y + 58, bot = A.y + A.h - slotH - 8;
+    // 비전 기술 띠 (해금됐을 때만): 트리와 슬롯 막대 사이 한 줄. 높이는 글자 하한에서 (이름 + 눈금 두 줄)
+    const ascId = this.ascSkill;
+    const ascH = ascId ? Math.max(touch ? 46 : 38, Math.ceil(Math.max(11, textFloor()) * 2 + 14)) : 0;
+    const top = A.y + 58, bot = A.y + A.h - slotH - 8 - (ascId ? ascH + 4 : 0);
+    this.ascRect = null;
     const cw = (TW - 20) / B.length;
     const maxN = Math.max(1, ...B.map((br) => br.skills?.length ?? 0));
     const rowH = Math.max(touch ? 46 : 36, Math.min(64, (bot - top) / maxN));
@@ -239,6 +275,8 @@ export class SkillsTab extends Tab {
       clipEnd(ctx, TR, null);
     });
     if (this.sc.max > 0) { ctx.save(); clipEnd(ctx, TR, this.sc); scrollbar(ctx, TR.x + TR.w - 3, TR.y, TR.h, this.sc, TR.h); } // 위아래 페이드 + 스크롤 막대
+    // 비전 기술 띠
+    if (ascId) this.drawAscStrip(ctx, ascId, A.x + 10, bot + 2, TW - 20, ascH, t, focused);
     // 스킬 슬롯 막대
     this.drawSlots(ctx, A.x + 10, A.y + A.h - slotH - 4, TW - 20, slotH, t, focused);
     // 상세
@@ -262,6 +300,35 @@ export class SkillsTab extends Tab {
     if (!lv && can) { ctx.beginPath(); ctx.arc(x + R * 0.72, y - R * 0.72, 6.5, 0, TAU); ctx.fillStyle = '#b0182e'; ctx.fill(); ctx.strokeStyle = PAL.gold; ctx.lineWidth = 1; ctx.stroke(); text(ctx, '+', x + R * 0.72, y - R * 0.72 + 4, { size: 11, align: 'center', weight: 900, color: '#fff', ow: 0 }); }
     if (pop > 0) { ctx.strokeStyle = rgba('#ffe7a0', pop); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, R + 4 + (1 - pop) * 16, 0, TAU); ctx.stroke(); }
     if (sel) brackets(ctx, x - R - 3, y - R - 3, R * 2 + 6, R * 2 + 6, t, focused ? PAL.goldHi : PAL.goldMid);
+  }
+
+  /** 「비전 기술」 띠: 왼쪽 머리(비전 이름) · 노드 하나(트리 노드와 같은 그림) · 이름 + 레벨 눈금 · 장착 상태 */
+  drawAscStrip(ctx, id, x, y, w, h, t, focused) {
+    const hero = this.hero, sk = D.SKILLS()[id];
+    if (!sk) return;
+    const A = ASCENSIONS[sk.reqAsc];
+    rr(ctx, x, y, w, h, 6); ctx.fillStyle = 'rgba(28,14,40,0.55)'; ctx.fill();
+    ctx.strokeStyle = rgba(ASC_COL, 0.45); ctx.lineWidth = 1; ctx.stroke();
+    const F = Math.max(11, textFloor());
+    const head = '비전 기술', hw = Math.min(Math.round(w * 0.3), Math.max(measure(ctx, head, 13, 800, FONT.title), measure(ctx, A?.name ?? '', 11, 700)) + 18);
+    text(ctx, head, x + 10, y + h / 2 - 2, { size: 13, weight: 800, family: FONT.title, color: ASC_COL, ow: 3 });
+    text(ctx, ellipsize(ctx, A?.name ?? '', hw - 14, 11, 700), x + 10, y + h / 2 + F * 0.95, { size: 11, weight: 700, color: PAL.dim, ow: 2 });
+    const lv = this.lv(id), max = sk.maxLv ?? 5;
+    const chk = lv < max ? this.check(id) : { ok: false };
+    const sel = this.sub === 'asc';
+    const R = clamp(h * 0.3, 13, 18);
+    const nx0 = x + hw + 6, cx = nx0 + R + 6, cy = y + h / 2;
+    const rect = this.m.ges.zone({ x: nx0, y: y + 1, w: x + w - nx0 - 2, h: h - 2, id }, 'list', { src: 'skills.asc' });
+    this.ascRect = rect;
+    this.drawNode(ctx, sk, cx, cy, R, lv, chk.ok, sel, focused, t, sk.color && sk.color.startsWith('#') ? sk.color : ASC_COL);
+    const nx = cx + R + 9, right = x + w - 8;
+    const slotted = !!hero.slots?.includes(id), active = this.ascEquipOk(id);
+    const tag = slotted ? slotLabel(hero.slots.indexOf(id)) : active ? '' : '비전 직업 전용';
+    const tagW = tag ? measure(ctx, tag, 9, 800) + 14 : 0;
+    text(ctx, ellipsize(ctx, sk.name, right - nx - (tagW ? tagW + 8 : 0), 13, 800), nx, cy - 1, { size: 13, weight: 800, color: sel ? PAL.goldHi : lv ? PAL.bone : PAL.text, ow: 3 });
+    const step = clamp((right - nx - 6 - (tagW ? tagW + 8 : 0)) / max, 6, 10);
+    for (let k = 0; k < max; k++) diamond(ctx, nx + 4 + k * step, cy + Math.max(11, F * 0.9), step < 9 ? 3 : 3.4, k < lv ? ASC_COL : 'rgba(90,70,60,0.8)');
+    if (tag) pill(ctx, tag, right, cy - Math.max(14, F + 3) / 2 - 1, { align: 'right', size: 9, h: Math.max(14, Math.ceil(F + 3)), color: slotted ? PAL.goldHi : '#d8b8ff', bg: slotted ? 'rgba(90,10,30,0.9)' : 'rgba(46,20,78,0.92)' });
   }
 
   drawSlots(ctx, x, y, w, h, t, focused) {

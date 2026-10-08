@@ -20,6 +20,7 @@
 import { clamp, overlap } from '../core/math.js';
 import { bus } from '../core/events.js';
 import { preImpact, modDamage, hitInfo, impact, ELEMENT_COLORS, ELEMENT_NAMES } from './impact.js';
+import { perkAttack } from './class_perks.js';   // 직업 특성 onAttack (classes_t3 §3.4; 순환 import — 함수 안에서만 쓴다)
 
 export { ELEMENT_COLORS, ELEMENT_NAMES };
 
@@ -41,7 +42,8 @@ export function computeDamage(src, tgt, attack) {
   if (el && ts.resist?.includes(el)) { dmg *= 0.5; resist = true; }
   if (el && ts.immune?.includes(el)) { dmg = 0; resist = true; }
   // 대상이 플레이어면 속성 저항 %
-  if (el && ts['res' + el[0].toUpperCase() + el.slice(1)]) dmg *= 1 - clamp(ts['res' + el[0].toUpperCase() + el.slice(1)], -100, 80) / 100;
+  // 상한 80% — 100 은 그대로 무효 (성검사 계열 신성 저항 100, classes_t3 §6 C10)
+  if (el && ts['res' + el[0].toUpperCase() + el.slice(1)]) { const r = ts['res' + el[0].toUpperCase() + el.slice(1)]; dmg *= 1 - clamp(r, -100, r >= 100 ? 100 : 80) / 100; }
   if (ts.dmgReduce) dmg *= 1 - clamp(ts.dmgReduce, 0, 75) / 100;
   let crit = false;
   const critChance = (s.crit ?? 0) + (attack.crit ?? 0);
@@ -72,7 +74,7 @@ export function hitTarget(world, attack, target, hx, hy) {
     if (target._hits.size > 64) target._hits.delete(target._hits.keys().next().value);
   }
   const src = attack.stats || attack.owner?.stats;
-  if (attack.team === 'player' && attack.owner?.kind === 'player') attack = classPerkAttack(attack, target, world);
+  if (attack.team === 'player' && attack.owner?.kind === 'player') { attack = classPerkAttack(attack, target, world); if (!attack.proc && attack.owner.perks?.onAttack) attack = perkAttack(attack.owner.perks.onAttack, attack.owner, attack, target, world); }
   const pi = preImpact(world, attack, target, rehit);
   attack = pi.attack;
   const res = computeDamage(src, target, attack);

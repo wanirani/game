@@ -43,6 +43,7 @@ import { touchpad } from '../core/touchpad.js';   // [hook:plat]
 import * as HFX from '../render/hitfx.js';   // [hook:feel] 첫 타격 스프라이트 미리 굽기 (prewarmHitFx)
 import * as HL from '../render/hud_layout.js';   // 데미지 숫자·판정 문구가 HUD 윗줄 뒤에 숨지 않게 (R1-REQ-331, syncHudBand)
 import * as NG from './ngplus.js';   // [hook:ng] 회차 「피의 윤회」 세기 (docs/specs/ngplus.md §3)
+import { firePerks, perkAny } from './class_perks.js';   // 직업 특성 훅 onHit·onKill·keepCombo (classes_t3 §3.4)
 
 // ── 손맛·각성 상수 (feel.md §4.9, §6.1). AW_GAIN(data/feel_hit.js)에 값이 없으면 이 기본값을 쓴다 ──
 const SLOWMO_BASE = 0.35;                      // 기본 슬로모션 배율 (보스 격파 등 옛 호출부)
@@ -64,23 +65,28 @@ const SPAWN_SHIFT_MAX = 12;                     // 터치 스틱(왼손잡이: �
 const TOP_EDGE_R = { x: 0, y: -2000, w: 0, h: 2004 };
 /** HUD 비키기(syncHudBand)용 화면 위끝 띠 (논리 px; 재사용 객체) */
 const TOP_EDGE = (vw) => { TOP_EDGE_R.w = vw; return TOP_EDGE_R; };
+/** 시련(mode 'trial') 에서 생기는 줍기 종류 (classes_t3 §9.2) — 골드·아이템·문서·1UP 은 생기지 않는다 */
+const TRIAL_PICKUPS = new Set(['heart', 'food', 'sub', 'powerup']);
 export function styleRank(n) { let r = STYLE_RANKS[0]; for (const s of STYLE_RANKS) if (n >= s.n) r = s; return r; }
 
 export class World {
-  constructor(game, stageId, { roomId = null, mode = 'story', onExit = null } = {}) {
+  constructor(game, stageId, { roomId = null, mode = 'story', onExit = null, rules = null, diffOver = null, levelOverride = null, trial = null } = {}) {
     this.game = game;
     this.state = game.state;
     this.stage = typeof stageId === 'object' ? stageId : STAGES[stageId];
     if (!this.stage) throw new Error('Unknown stage ' + stageId);
     stageId = this.stage.id;
-    this.mode = mode; // 'story' | 'bossrush' | 'survival'
+    this.mode = mode; // 'story' | 'bossrush' | 'survival' | 'practice' | 'tower' | 'town' | 'trial' (시련: trial = TRIALS 행, classes_t3 §9.2)
     this.diff = getDiff(this.state.difficulty);
     // 일일 도전 (docs/specs/online.md §2.5, front/arcade.js buildArcadeState): 난이도 배율 · 월드 규칙 · 시드 난수 (첫 방 소환 전에)
     const ar = this.state.arcade;   // [hook:plat]
     if (ar?.diffOver && typeof ar.diffOver === 'object') this.diff = { ...this.diff, ...ar.diffOver };   // [hook:plat]
+    if (diffOver) this.diff = { ...this.diff, ...diffOver };   // 시련 등 호출부가 준 난이도 덮어쓰기 (classes_t3 §9.2)
+    if (levelOverride) this.stage = { ...this.stage, level: levelOverride };   // 적 레벨 덮어쓰기 (스테이지 복사본, 진짜 id 유지)
     this.ng = mode === 'story' && !ar ? NG.ngOf?.(this.state) ?? 0 : 0;   // [hook:ng] 지난 회차 수 (스토리만 — 마을·아케이드·보스 러시는 0; pause.js 가 읽는다)
     if (this.ng) { const r = NG.ngWorld?.(this.stage, this.diff, this.ng); if (r) { this.stage = r.stage; this.diff = r.diff; this.ngBoss = r.bossPatterns; } }   // [hook:ng] 적 레벨·배율 (스테이지 복사본, 첫 방 소환 전에)
-    this.rules = ar?.rules && typeof ar.rules === 'object' ? ar.rules : null;   // [hook:plat] {noPotion, noSub, dark, taken, dealt}
+    this.rules = rules ?? (ar?.rules && typeof ar.rules === 'object' ? ar.rules : null);   // [hook:plat] {noPotion, noSub, dark, taken, dealt, label?}
+    this.trial = trial; if (trial?.bossPatterns) this.ngBoss = true;   // 시련: 보스 회차 패턴 (boss.js inferno 가 world.ngBoss 를 읽는다)
     this.rng = Number.isInteger(ar?.seed) ? new RNG(ar.seed) : null;   // [hook:plat] 정예 출현·촛불 보상 (그 밖의 모드는 Math.random)
     this.hero = currentHero(this.state);
     this.camera = new Camera(game.viewW, game.viewH);
@@ -106,6 +112,7 @@ export class World {
     this.slowmoScale = SLOWMO_BASE; this.slowScaleT = 0; this.killSlowT = 0; this.killChain = { n: 0, t: -9 };   // [hook:feel]
     this.freezeEnemies = false; this.freezeLog = []; this.frozenRecent = 0;   // [hook:feel]
     this.overlays = []; this.hudHidden = false; this.letterbox = 0;   // [hook:feel]
+    this.backingLayer = true;   // 영웅 받침은 render 가 적·탄·이펙트보다 먼저 그린다 (Player.draw 는 건너뜀; requests_f hero-vis)
     this.roomFoes = 0;   // [hook:feel] 이 방에 나온 적 수 (마지막 적 처치 슬로모션)
     this.killPend = [];   // [hook:feel] 이번 프레임의 처치 (슬로모션 판정은 프레임 끝: 죽으며 갈라지는 적의 새끼가 생긴 뒤)
     this.style = this.makePart('style', () => new Style(this));   // [hook:feel]
@@ -196,6 +203,7 @@ export class World {
     const ms = this.map.markers;
     const counters = {};
     for (const m of ms) {
+      if (this.trial && (m.ch === '$' || m.ch === '@' || m.ch === '!' || m.ch === 'S')) continue;   // 시련: 상자·배치 아이템·이야기 트리거·세이브 지점 없음
       const n = (counters[m.ch] = (counters[m.ch] ?? -1) + 1);
       const fx = m.tx * TILE + TILE / 2, fy = (m.ty + 1) * TILE;
       switch (m.ch) {
@@ -366,7 +374,10 @@ export class World {
     this.roomFoes++;   // [hook:feel]
     return this.add(e);
   }
-  spawnPickup(type, x, y, data = {}) { return this.add(new Pickup(type, x, y, data)); }
+  spawnPickup(type, x, y, data = {}) {
+    if (this.trial && !TRIAL_PICKUPS.has(type)) return null;   // 시련: 하트·고기·보조무기·파워업만 (호출부는 null 을 견딘다 — spawnPlaced 확인)
+    return this.add(new Pickup(type, x, y, data));
+  }
   hittables() {
     return this.entities.filter((e) => (e.kind === 'enemy' || e.kind === 'boss' || (e.kind === 'prop' && e.takeHit)) && !e.dead && !e.hidden && !e.pendingBoss && !this.inUnrevealedFake(e));
   }
@@ -524,6 +535,7 @@ export class World {
     this.fx.draw(ctx, 'back');
     for (const e of list) if (e.z < 0) e.draw(ctx, this);
     for (const d of this.debrisList) this.drawDebris(ctx, d);
+    const P = this.player; if (P && list.includes(P)) P.drawBacking?.(ctx, this);   // 영웅 받침 (hero-vis): 타일·장식 위, 적·탄·이펙트 아래
     for (const e of list) if (e.z >= 0) e.draw(ctx, this);
     ctx.imageSmoothingQuality = 'low';
     this.tiles.drawLiquid(ctx, cam, this.time, this.liquid);   // [hook:gimmick] 방별 액체
@@ -617,6 +629,7 @@ export class World {
     if (this.combo.n % 25 === 0) { if (!SFX.combo_milestone) audio.sfx('combo'); bus.emit('combo', { count: this.combo.n }); }
     if (COMBO_MILESTONES.has(this.combo.n)) bus.emit('comboMilestone', { n: this.combo.n });   // [hook:feel]
     this.style?.onHit?.(info, attack, target);   // [hook:feel]
+    if (!guardian && attack?.owner === p && !attack.proc && p.perks?.onHit) firePerks(p.perks.onHit, p, target, info, attack, this);
     this.awOnHit(target, info, attack);   // [hook:awaken]
     if (info.killed) this.overkillSlowmo(target, info, attack);   // [hook:feel]
     this.companions?.onHit(target, info, attack);   // [hook:cmp]
@@ -654,11 +667,14 @@ export class World {
     this.state.bestiary[e.def.id] = (this.state.bestiary[e.def.id] ?? 0) + 1;
     const p = this.player;
     const expGain = Math.round(e.stats.exp * (1 + (p.stats.expBonus ?? 0) / 100));
-    this.gainExp(expGain);
-    this.companions?.onKill(e, expGain);   // [hook:cmp] 동료 경험치 분배
+    if (!this.trial) {   // 시련: 경험치·동료 경험치·전리품 없음 (classes_t3 §9.2)
+      this.gainExp(expGain);
+      this.companions?.onKill(e, expGain);   // [hook:cmp] 동료 경험치 분배
+    }
     this.addScore((e.def.score ?? 100) * (1 + this.combo.n / 20) * (e.elite ? 3 : 1));
-    for (const d of rollEnemyLoot(this, e)) this.spawnPickup(d.type, e.cx, e.cy, d.data);
+    if (!this.trial) for (const d of rollEnemyLoot(this, e)) this.spawnPickup(d.type, e.cx, e.cy, d.data);
     if (this.hero.classId === 'lia_reaper') p.heal(p.stats.hp * 0.03, false);
+    if (p.perks?.onKill && attack?.owner === p) firePerks(p.perks.onKill, p, e, attack, this);
     bus.emit('enemyKilled', { enemy: e, def: e.def, x: e.cx, y: e.cy, byPlayer: true });
     this.killFeel(e, attack);   // [hook:feel] [hook:awaken]
   }
@@ -764,7 +780,7 @@ export class World {
   }
   onPlayerHurt(dmg) {
     this.run.damageTaken += dmg;
-    if (this.combo.n > 0) this.endCombo();
+    if (this.combo.n > 0 && !(this.player?.perks?.keepCombo && perkAny(this.player.perks.keepCombo, this.player, dmg))) this.endCombo();
     this.style?.onHurt?.(dmg);   // [hook:feel] 스타일 한 랭크 하락
     this.game.vignette?.('#ff0020', 0.45, 3);   // [hook:feel] 가장자리 붉은 비네트
     if (dmg >= (this.player?.stats?.hp ?? Infinity) * awGain('rageFrac')) this.addAw('rage');   // [hook:awaken] 분노: 최대 HP 10% 이상 피격
@@ -880,7 +896,7 @@ export class World {
    * 배치 아이템(secretKey)은 기록하지 않았으니 다시 들어오면 또 놓인다. 일반 적 드롭은 예전처럼 두고 간 것으로 친다.
    */
   stashRoomLoot() {
-    if (this.arcade || !this.entities?.length) return 0;
+    if (this.arcade || this.trial || !this.entities?.length) return 0;
     let n = 0;
     for (const e of this.entities) {
       if (e.kind !== 'pickup' || e.dead || e.type !== 'item' || !e.data?.item || e.secretKey || !e.data.keep) continue;
@@ -892,7 +908,7 @@ export class World {
   }
   /** 보관함(가방이 가득 차 맡겨 둔 전리품) → 가방. world.update 가 1초마다 부른다 */
   deliverStash() {
-    if (this.arcade) return 0;
+    if (this.arcade || this.trial) return 0;
     const n = deliverLoot(this.state);
     if (n > 0) { audio.sfx('item'); this.game.toast(`보관함에 맡겨 둔 전리품 ${n}개를 챙겼다`, '#ffe070'); }
     return n;
