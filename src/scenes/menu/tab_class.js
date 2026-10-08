@@ -82,9 +82,9 @@ export class ClassTab extends Tab {
         try { L = known ? lookForAsc(this.state, { ...hero, classId: N.line }, N.A.id) : lookForAsc(this.state, { ...hero, classId: N.line }, null); } catch (e) { L = null; }
       } else {
         // 잠깐 바꿔 끼워 계산 (2차 카드는 초월 없이 — 비전은 2차 넷 모두가 부모라 그대로 두면 다른 2차 미리보기에 비전 장식이 붙는다)
-        const keep = hero.classId, keepAsc = hero.asc;
+        const keep = hero.classId, keepAsc = hero.asc, hadAsc = Object.hasOwn(hero, 'asc');   // 예전 세이브의 영웅에는 asc 칸이 없다 — 없던 칸은 만들지 않는다
         hero.classId = cid; hero.asc = null;
-        try { L = D.composeLook(this.state, hero); } catch (e) { L = null; } finally { hero.classId = keep; hero.asc = keepAsc; }
+        try { L = D.composeLook(this.state, hero); } catch (e) { L = null; } finally { hero.classId = keep; if (hadAsc) hero.asc = keepAsc; else delete hero.asc; }
       }
       this.looks.set(cid, L);
     }

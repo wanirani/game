@@ -383,6 +383,7 @@ export class OptionsScene extends Scene {
       msg: '모든 설정을 기본값으로 되돌릴까요?\n키·버튼 지정과 터치 버튼 배치도 초기화됩니다.',
       onYes: () => {
         Object.assign(this.s, DEFAULT_SETTINGS);
+        this.s.dialogueAuto = false;   // 스키마 밖 키 ('대화 자동 진행' 줄) — 기본값 표에 없어 Object.assign 이 건드리지 않는다
         this.stash = null;
         input.refreshBindings?.();
         applySettings(this.game);
