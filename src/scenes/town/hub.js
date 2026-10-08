@@ -32,6 +32,7 @@ import { TOWN_STAGE, BUILDINGS, TOWN_NPCS, TOWN_PROPS, TOWN_TALK, eliseInTown } 
 import { FLOOR, drawFacades, facadeLights, prebakeFacades, setFacadeScale, anvilPos, glow } from './facades.js';
 import { uiPanel, uiButton, uiHints } from './common.js';
 import { vGrad, fillGradRect } from '../menu/common.js';
+import { faceRect } from '../../render/portrait.js';
 const BANNER_BG = [0, 'rgba(0,0,0,0)', 0.5, 'rgba(6,2,10,0.65)', 1, 'rgba(0,0,0,0)'];
 
 const RELIC_IDS = ['k_relic_1', 'k_relic_2', 'k_relic_3', 'k_relic_4', 'k_relic_5'];
@@ -413,7 +414,8 @@ export class HubScene extends Scene {
     ctx.beginPath(); ctx.arc(px + 32, py + 32, 30, 0, TAU); ctx.closePath();
     ctx.fillStyle = '#12060c'; ctx.fill(); ctx.clip();
     const img = assets.get(ch.portrait);
-    if (img) ctx.drawImage(img, px + 32 - 44, py + 2, 88, 88 * (img.height / img.width));
+    const fr = img ? faceRect(img, ch.portrait, 1.5) : null;   // 얼굴 중심 정사각 (portrait_meta)
+    if (fr) ctx.drawImage(img, fr.sx, fr.sy, fr.sw, fr.sh, px + 2, py + 2, 60, 60);
     ctx.restore();
     ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(px + 32, py + 32, 31, 0, TAU); ctx.stroke();
     ctx.fillStyle = '#5a0a18'; ctx.beginPath(); ctx.arc(px + 56, py + 56, 12, 0, TAU); ctx.fill();

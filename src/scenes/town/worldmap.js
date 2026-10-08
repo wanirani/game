@@ -37,6 +37,7 @@ import * as NG from '../../game/ngplus.js';   // [hook:ng]
 import { preloadStageBosses } from '../../game/bosses/lazy.js';
 import { drawIcon } from '../../render/icons.js';
 import { ensureState, uiPanel, uiButton } from './common.js';
+import { faceRect } from '../../render/portrait.js';
 import { glow } from './facades.js';
 
 const RANK_COL = { SSS: '#ffe070', SS: '#ff5a4a', S: '#ffa640', A: '#c07cff', B: '#5aa8ff', C: '#7ee07e', D: '#a0a0a0' };
@@ -804,7 +805,8 @@ export class WorldMapScene extends Scene {
     ctx.fillStyle = '#1a0a0c'; ctx.beginPath(); ctx.moveTo(x - 7, y + 14); ctx.lineTo(x, y + 26); ctx.lineTo(x + 7, y + 14); ctx.fill();
     ctx.beginPath(); ctx.arc(x, y, 17, 0, TAU); ctx.fillStyle = '#12060c'; ctx.fill();
     ctx.save(); ctx.beginPath(); ctx.arc(x, y, 15, 0, TAU); ctx.clip();
-    if (img) ctx.drawImage(img, x - 24, y - 14, 48, 48 * (img.height / img.width));
+    const fr = img ? faceRect(img, ch.portrait, 1.4) : null;   // 얼굴 중심 정사각 (portrait_meta)
+    if (fr) ctx.drawImage(img, fr.sx, fr.sy, fr.sw, fr.sh, x - 15, y - 15, 30, 30);
     ctx.restore();
     ctx.strokeStyle = this.page === 1 ? '#d8c0ff' : '#e8c872'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, 16, 0, TAU); ctx.stroke();
     ctx.restore();

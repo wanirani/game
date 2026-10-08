@@ -27,6 +27,8 @@ import { startArcade, ARCADE_MODES } from './arcade.js';
 const WNAME = { whip: '채찍', sword: '장검', greatsword: '대검', dagger: '쌍단검', gun: '쌍권총', staff: '지팡이·성서', spear: '장창' };
 const DNAME = { dash: '돌진 대시', mist: '안개 변신', roll: '구르기', blink: '순간이동' };
 const STAGE_BG = { kael: 'bg/s03_gate', sera: 'bg/s11_chapel', victor: 'bg/s01_village', bran: 'bg/s04_hall', lia: 'bg/s09_clocktower', azel: 'bg/s12_throne', isolde: 'bg/s17_sky' };
+/** 큰 초상화 칸의 키 아트 (애니메 초상화 설치: assets/cg/keyart_<영웅>.webp 1024×1536 불투명). 받는 중·없으면 흉상 초상화로 */
+const keyArtKey = (id) => `cg/keyart_${id}`;
 const ACCENT = { kael: '#e8c872', sera: '#fff2b0', victor: '#ffb060', bran: '#8ab0ff', lia: '#ff4a6a', azel: '#ff2a4a', isolde: '#6ad0e0' };
 
 export class CharSelectScene extends Scene {
@@ -46,6 +48,7 @@ export class CharSelectScene extends Scene {
     this.selK = this.list.map((_, i) => (i === this.cur ? 1 : 0));
     for (const c of this.list) {
       assets.get(c.ch.portrait);
+      if (c.open) assets.get(keyArtKey(c.id));   // 큰 칸 키 아트 (잠긴 영웅은 흉상 실루엣이라 받지 않는다)
       assets.get(STAGE_BG[c.id] ?? 'bg/s03_gate');
       // 채색 퍼펫 (첫 직업): 미리 받아 두면 고를 때 벡터 그림이 비치지 않는다
       try { if (PUPPET.puppetEnabled?.() !== false) PUPPET.preloadPuppet?.(c.id, c.ch.rootClass); } catch (e) { console.warn(e); }
@@ -161,7 +164,9 @@ export class CharSelectScene extends Scene {
     const pr = { x: slide, y: 0, w: pw + 20, h: H };
     ctx.save();
     ctx.globalAlpha = 0.25 + 0.75 * ck;
-    portraitIn(ctx, img, pr, { fy: 0.12, zoom: 1.02 + 0.015 * Math.sin(t * 0.4), silhouette: !c.open, fallback: ch.look.primary });
+    const ka = c.open ? assets.get(keyArtKey(c.id)) : null;
+    if (ka && ka.width > 2) portraitIn(ctx, ka, pr, { fy: 0.12, zoom: 1.02 + 0.015 * Math.sin(t * 0.4), backing: false, key: keyArtKey(c.id), fallback: ch.look.primary });
+    else portraitIn(ctx, img, pr, { fy: 0.12, zoom: 1.02 + 0.015 * Math.sin(t * 0.4), silhouette: !c.open, fallback: ch.look.primary });
     // 오른쪽/아래 페이드 (화면 크기별로 한 번 만든 그라데이션)
     const fx0 = Math.round(pw * 0.55), fx1 = Math.round(pw + 20);
     ctx.fillStyle = linGrad(ctx, `csFadeR|${fx0}|${fx1}`, fx0, 0, fx1, 0, [[0, 'rgba(6,2,10,0)'], [1, 'rgba(6,2,10,1)']]);

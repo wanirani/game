@@ -9,7 +9,7 @@
 //                 원형 얼굴 자르기·카드 자르기·컷신 눈높이 맞추기에 쓴다. 없으면 BUST_FACE / LEGACY_FACE 기본값
 //   · expressions 실제로 있는 표정 파일 목록. 여기 있는 표정만 요청한다 (없는 파일을 받으러 가지 않는다 → 404 없음).
 //                 대사 줄 face:'angry'|'shock' (또는 portrait:'<키>__angry') 가 목록에 없으면 기본 표정으로 돌아간다
-//  표는 비어 있는 채로 시작하고 설치 단계(애니메 초상화 설치)가 채운다. 채우기 전에도 알파 규칙으로 흉상은 흉상으로 그려진다.
+//  표는 설치 단계(애니메 초상화 설치)가 채웠다 (70 키: 흉상 66 · 예전 그림 4). 표에 없는 키도 알파 규칙으로 흉상은 흉상으로 그려진다.
 //
 //  portraitMeta(key) → 표의 항목 (없으면 null)        setPortraitMeta(key, meta) / setPortraitMetaTable(table) — 설치·시험용 덮어쓰기
 //  baseKeyOf(key) → '__표정' 을 뗀 키                  exprOf(key) → 'angry' | 'shock' | null
@@ -22,8 +22,89 @@
 export const EXPRESSIONS = Object.freeze(['angry', 'shock']);
 const EXPR_SET = new Set(EXPRESSIONS);
 
-/** 설치 단계가 채우는 표. 비어 있으면 모든 초상화가 알파 규칙 + 기본 얼굴 위치를 쓴다 */
-export const PORTRAIT_META = {};
+/**
+ * 설치 단계가 채운 표 (애니메 초상화 설치, 2026-10-08). 없는 키는 알파 규칙 + 기본 얼굴 위치를 쓴다.
+ *  face 측정: 사람·사람 꼴 = 그룹 틀잡기 기록(눈 가운데·턱)을 768×1024 캔버스로 옮겨 가운데 = 눈 + 0.32·(턱 − 눈),
+ *  s = 1.6 × 눈~턱 ÷ 768 (흉상 8장 실측 비율). 짐승·괴물 = 머리 상자를 손으로 잼. 32/48/66 px 원형 자르기 접촉 시트로 확인·손질
+ *  (가면·옆얼굴·뭉툭한 동물은 손값). 예전 그림을 그대로 둔 넷(b_nihil·b_nihil2·cmp_g_imp·cmp_g_knight)은 bust:false + 손으로 잰 얼굴.
+ *  원본 기록: tools/portraits/kling_manifest.json
+ */
+export const PORTRAIT_META = {
+  // 영웅 (흉상 + 표정 2, 화면 오른쪽을 본다)
+  'portraits/kael': { bust: true, face: { x: 0.528, y: 0.339, s: 0.344 }, expressions: ['angry', 'shock'] },
+  'portraits/sera': { bust: true, face: { x: 0.541, y: 0.341, s: 0.344 }, expressions: ['angry', 'shock'] },
+  'portraits/victor': { bust: true, face: { x: 0.618, y: 0.343, s: 0.356 }, expressions: ['angry', 'shock'] },
+  'portraits/bran': { bust: true, face: { x: 0.55, y: 0.341, s: 0.344 }, expressions: ['angry', 'shock'] },
+  'portraits/lia': { bust: true, face: { x: 0.567, y: 0.34, s: 0.344 }, expressions: ['angry', 'shock'] },
+  'portraits/azel': { bust: true, face: { x: 0.657, y: 0.341, s: 0.344 }, expressions: ['angry', 'shock'] },
+  'portraits/isolde': { bust: true, face: { x: 0.563, y: 0.34, s: 0.344 }, expressions: ['angry', 'shock'] },
+  // NPC (흉상, 화면 왼쪽을 본다; 로크2 는 기본 표정만)
+  'portraits/npc_alberto': { bust: true, face: { x: 0.409, y: 0.341, s: 0.337 }, expressions: ['angry', 'shock'] },
+  'portraits/npc_carmilla': { bust: true, face: { x: 0.442, y: 0.342, s: 0.347 }, expressions: ['angry', 'shock'] },
+  'portraits/npc_elise': { bust: true, face: { x: 0.385, y: 0.344, s: 0.36 }, expressions: ['angry', 'shock'] },
+  'portraits/npc_greta': { bust: true, face: { x: 0.452, y: 0.34, s: 0.333 }, expressions: ['angry', 'shock'] },
+  'portraits/npc_hadwin': { bust: true, face: { x: 0.33, y: 0.34, s: 0.333 }, expressions: ['angry', 'shock'] },
+  'portraits/npc_marta': { bust: true, face: { x: 0.449, y: 0.34, s: 0.333 }, expressions: ['angry', 'shock'] },
+  'portraits/npc_rook': { bust: true, face: { x: 0.45, y: 0.34, s: 0.333 }, expressions: ['angry', 'shock'] },
+  'portraits/npc_rook2': { bust: true, face: { x: 0.45, y: 0.34, s: 0.333 } },
+  // 보스 (흉상; b_nihil·b_nihil2 는 예전 그림 유지 = bust:false)
+  'portraits/b_argen': { bust: true, face: { x: 0.28, y: 0.3, s: 0.3 } },
+  'portraits/b_banshee': { bust: true, face: { x: 0.4, y: 0.33, s: 0.24 } },
+  'portraits/b_behemoth': { bust: true, face: { x: 0.4, y: 0.45, s: 0.35 } },
+  'portraits/b_bonedragon': { bust: true, face: { x: 0.27, y: 0.31, s: 0.32 } },
+  'portraits/b_bride': { bust: true, face: { x: 0.458, y: 0.334, s: 0.293 } },
+  'portraits/b_bride2': { bust: true, face: { x: 0.45, y: 0.333, s: 0.292 } },
+  'portraits/b_chaos': { bust: true, face: { x: 0.18, y: 0.33, s: 0.25 } },
+  'portraits/b_charon': { bust: true, face: { x: 0.454, y: 0.334, s: 0.292 } },
+  'portraits/b_chimera': { bust: true, face: { x: 0.29, y: 0.36, s: 0.28 } },
+  'portraits/b_colossus': { bust: true, face: { x: 0.39, y: 0.22, s: 0.18 } },
+  'portraits/b_crimson': { bust: true, face: { x: 0.34, y: 0.26, s: 0.2 } },
+  'portraits/b_dagon': { bust: true, face: { x: 0.38, y: 0.35, s: 0.35 } },
+  'portraits/b_death': { bust: true, face: { x: 0.39, y: 0.378, s: 0.339 } },
+  'portraits/b_dracula': { bust: true, face: { x: 0.373, y: 0.349, s: 0.395 } },
+  'portraits/b_dracula2': { bust: true, face: { x: 0.3, y: 0.374, s: 0.295 } },
+  'portraits/b_dullahan': { bust: true, face: { x: 0.45, y: 0.22, s: 0.2 } },
+  'portraits/b_frostqueen': { bust: true, face: { x: 0.45, y: 0.344, s: 0.362 } },
+  'portraits/b_grimoire': { bust: true, face: { x: 0.4, y: 0.45, s: 0.3 } },
+  'portraits/b_hagen': { bust: true, face: { x: 0.331, y: 0.345, s: 0.368 } },
+  'portraits/b_hagen2': { bust: true, face: { x: 0.29, y: 0.31, s: 0.3 } },
+  'portraits/b_leviathan': { bust: true, face: { x: 0.28, y: 0.35, s: 0.3 } },
+  'portraits/b_mara': { bust: true, face: { x: 0.428, y: 0.354, s: 0.464 } },
+  'portraits/b_moloch': { bust: true, face: { x: 0.33, y: 0.29, s: 0.25 } },
+  'portraits/b_narkissa': { bust: true, face: { x: 0.432, y: 0.353, s: 0.355 } },
+  'portraits/b_narkissa2': { bust: true, face: { x: 0.366, y: 0.372, s: 0.548 } },
+  'portraits/b_nemain': { bust: true, face: { x: 0.406, y: 0.341, s: 0.344 } },
+  'portraits/b_nemain2': { bust: true, face: { x: 0.445, y: 0.344, s: 0.361 } },
+  'portraits/b_nightwing': { bust: true, face: { x: 0.2, y: 0.33, s: 0.27 } },
+  'portraits/b_nihil': { bust: false, face: { x: 0.5, y: 0.27, s: 0.2 } },
+  'portraits/b_nihil2': { bust: false, face: { x: 0.5, y: 0.27, s: 0.2 } },
+  'portraits/b_ziz': { bust: true, face: { x: 0.37, y: 0.27, s: 0.3 } },
+  // 동료 (흉상; cmp_g_imp·cmp_g_knight 는 예전 그림 유지 = bust:false)
+  'portraits/cmp_g_clock': { bust: true, face: { x: 0.325, y: 0.366, s: 0.245 } },
+  'portraits/cmp_g_fairy': { bust: true, face: { x: 0.419, y: 0.324, s: 0.226 } },
+  'portraits/cmp_g_imp': { bust: false, face: { x: 0.5, y: 0.322, s: 0.333 } },
+  'portraits/cmp_g_knight': { bust: false, face: { x: 0.47, y: 0.215, s: 0.2 } },
+  'portraits/cmp_g_owl': { bust: true, face: { x: 0.36, y: 0.28, s: 0.32 } },
+  'portraits/cmp_g_reaper': { bust: true, face: { x: 0.457, y: 0.371, s: 0.204 } },
+  'portraits/cmp_g_spiritwolf': { bust: true, face: { x: 0.33, y: 0.3, s: 0.38 } },
+  'portraits/cmp_g_whelp': { bust: true, face: { x: 0.37, y: 0.32, s: 0.38 } },
+  'portraits/cmp_gd_lumen': { bust: true, face: { x: 0.42, y: 0.338, s: 0.19 } },
+  'portraits/cmp_gd_mirra': { bust: true, face: { x: 0.403, y: 0.34, s: 0.265 } },
+  'portraits/cmp_gd_momo': { bust: true, face: { x: 0.42, y: 0.36, s: 0.55 } },
+  'portraits/cmp_gd_munin': { bust: true, face: { x: 0.4, y: 0.3, s: 0.35 } },
+  'portraits/cmp_gd_vesper': { bust: true, face: { x: 0.38, y: 0.3, s: 0.3 } },
+  'portraits/cmp_m_boar': { bust: true, face: { x: 0.3, y: 0.33, s: 0.38 } },
+  'portraits/cmp_m_direwolf': { bust: true, face: { x: 0.28, y: 0.32, s: 0.38 } },
+  'portraits/cmp_m_giantbat': { bust: true, face: { x: 0.3, y: 0.42, s: 0.35 } },
+  'portraits/cmp_m_skelsteed': { bust: true, face: { x: 0.28, y: 0.3, s: 0.3 } },
+  'portraits/cmp_m_warhorse': { bust: true, face: { x: 0.27, y: 0.33, s: 0.3 } },
+  'portraits/cmp_m_wyvern': { bust: true, face: { x: 0.38, y: 0.31, s: 0.3 } },
+  'portraits/cmp_mt_argen': { bust: true, face: { x: 0.28, y: 0.3, s: 0.32 } },
+  'portraits/cmp_mt_gale': { bust: true, face: { x: 0.35, y: 0.28, s: 0.38 } },
+  'portraits/cmp_mt_ignis': { bust: true, face: { x: 0.28, y: 0.35, s: 0.32 } },
+  'portraits/cmp_mt_morgen': { bust: true, face: { x: 0.27, y: 0.33, s: 0.3 } },
+  'portraits/cmp_mt_silva': { bust: true, face: { x: 0.38, y: 0.45, s: 0.3 } },
+};
 
 /** 흉상의 기본 얼굴 위치 (파일럿 흉상 실측: 머리 위 3.5 %, 눈 ≈ 27–33 %, 얼굴 너비 ≈ 0.25–0.45) */
 export const BUST_FACE = Object.freeze({ x: 0.52, y: 0.3, s: 0.32 });

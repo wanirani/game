@@ -32,6 +32,8 @@ import { drawGlyph, glyphWidth, promptMode } from '../core/prompts.js';
 import { companionDef } from '../data/companions.js';
 import * as MDRAW from './mounts.js';
 import * as GDRAW from './guardians.js';
+import { faceRect } from './portrait.js';
+import { portraitMeta } from '../data/portrait_meta.js';
 
 const HALF_PI = Math.PI / 2;
 const MOUNT_R = 20, GUARD_R = 19;           // 지름 40 / 38 (companions §7.1)
@@ -70,12 +72,17 @@ function glowAt(ctx, x, y, r, color, a) {
   ctx.globalCompositeOperation = op; ctx.globalAlpha = ga;
 }
 
-/** 초상화 정사각 크롭 영역 (iconFocus: 중심 x·w, y·h, 한 변 s·w). 초상화가 아직 없으면 null */
+/** 초상화 정사각 크롭 영역: 표(data/portrait_meta)에 얼굴 상자가 있으면 faceRect(·, 1.5), 없으면 iconFocus (중심 x·w, y·h, 한 변 s·w).
+ *  초상화가 아직 없으면 null */
 export function portraitCrop(id) {
   const d = companionDef(id);
   if (!d?.portrait) return null;
   const img = assets.get(d.portrait);
   if (!img || !(img.width > 8) || !(img.height > 8)) return null;   // 로드 전 · 메모리 정리로 1×1 이 된 이미지
+  if (portraitMeta(d.portrait)?.face) {
+    const r = faceRect(img, d.portrait, 1.5);
+    if (r) return { img, sx: r.sx, sy: r.sy, s: r.sw };
+  }
   const f = d.iconFocus ?? { x: 0.5, y: 0.35, s: 0.6 };
   const s = clamp(f.s, 0.05, 1) * img.width;
   const sx = clamp(f.x * img.width - s / 2, 0, img.width - s), sy = clamp(f.y * img.height - s / 2, 0, Math.max(0, img.height - s));
@@ -96,6 +103,7 @@ function iconCanvas(id, px) {
   const g = c.getContext('2d');
   g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
   g.beginPath(); g.arc(px / 2, px / 2, px / 2, 0, TAU); g.closePath(); g.clip();
+  g.fillStyle = '#140810'; g.fillRect(0, 0, px, px);   // 투명 흉상 뒤 바탕
   g.drawImage(cr.img, cr.sx, cr.sy, cr.s, cr.s, 0, 0, px, px);
   // 아래쪽을 살짝 어둡게 (고리·숫자가 잘 보이게)
   const vg = g.createRadialGradient(px / 2, px * 0.42, px * 0.2, px / 2, px / 2, px * 0.62);
@@ -418,7 +426,7 @@ function cardCanvas(c, w, h, k, T, list, F = 0) {
   if (g.roundRect) g.roundRect(px, py, ps, ps, 6); else g.rect(px, py, ps, ps);
   g.clip();
   const cr = portraitCrop(c.id);
-  if (cr) g.drawImage(cr.img, cr.sx, cr.sy, cr.s, cr.s, px, py, ps, ps);
+  if (cr) { g.fillStyle = shade(colHex, -0.78); g.fillRect(px, py, ps, ps); g.drawImage(cr.img, cr.sx, cr.sy, cr.s, cr.s, px, py, ps, ps); }   // 투명 흉상 뒤 바탕
   else {
     g.fillStyle = shade(colHex, -0.7); g.fillRect(px, py, ps, ps);
     text(g, d?.name?.[0] ?? '?', px + ps / 2, py + ps * 0.68, { size: Math.round(ps * 0.55), weight: 900, family: FONT.title, color: '#fff4d8', align: 'center', ow: 2 });

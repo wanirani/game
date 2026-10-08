@@ -15,6 +15,7 @@ import { findItem } from '../../game/inventory.js';
 import { ITEMS } from '../../data/items.js';
 import { hitRect, nameOf, Snap, padHidden, ensureState, uiPanel, uiButton, uiHints, josa } from './common.js';
 import { vGrad, fillGradRect } from '../menu/common.js';
+import { isBust, bustCrop } from '../../render/portrait.js';
 // 카드 그라디언트 색 멈춤 (menu/common 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
 const CARD_SEL = [0, 'rgba(70,20,34,0.95)', 1, 'rgba(6,3,8,0.96)'], CARD_OFF = [0, 'rgba(22,12,20,0.92)', 1, 'rgba(6,3,8,0.96)'];
 const CARD_FADE = [0, 'rgba(6,3,8,0)', 1, 'rgba(6,3,8,1)'], LOCK = [0, '#c8a060', 1, '#6a4a20'];
@@ -152,9 +153,14 @@ export class PartyScene extends Scene {
     const img = assets.get(c.portrait);
     if (img) {
       ctx.save(); ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h * 0.62); ctx.clip();
-      const s = r.w / img.width * 1.15, iw = img.width * s, ih = img.height * s;
       ctx.globalAlpha = e.open ? (sel ? 0.55 : 0.32) : 0.12;
-      ctx.drawImage(img, r.x + r.w / 2 - iw / 2, r.y - ih * 0.05, iw, ih);
+      // 애니메 흉상: 얼굴(portrait_meta)을 가운데·위 40 % 에 두는 커버 자르기. 예전 그림은 그대로
+      const cr = isBust(c.portrait, img) ? bustCrop(img, c.portrait, { x: r.x, y: r.y, w: r.w, h: r.h * 0.62 }, { faceY: 0.4 }) : null;
+      if (cr) ctx.drawImage(img, cr.dx, cr.dy, cr.dw, cr.dh);
+      else {
+        const s = r.w / img.width * 1.15, iw = img.width * s, ih = img.height * s;
+        ctx.drawImage(img, r.x + r.w / 2 - iw / 2, r.y - ih * 0.05, iw, ih);
+      }
       ctx.globalAlpha = 1;
       ctx.translate(0, r.y + r.h * 0.2); ctx.fillStyle = vGrad(ctx, r.h * 0.42, CARD_FADE); // 캐시 (0.2h → 0.62h)
       ctx.fillRect(r.x, 0, r.w, r.h * 0.43); ctx.translate(0, -(r.y + r.h * 0.2));

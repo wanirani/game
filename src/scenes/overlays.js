@@ -28,6 +28,7 @@ import { CHARACTERS } from '../data/characters.js';
 import { CLASSES } from '../data/classes.js';
 import { DOCS, LORE } from '../data/lore.js';
 import { clamp, ease, rgba, hexToRgb } from '../core/math.js';
+import { isBust, faceOf } from '../render/portrait.js';
 import { saves } from '../core/save.js';
 import { STAT_INFO } from '../game/stats.js';
 import { hudSafe } from '../render/hud_layout.js';
@@ -191,8 +192,10 @@ export class BossIntroScene extends Scene {
     const dx = vw * 0.35; // 대각 구분선: 위 dx+80 → 아래 dx
     if (img) {
       // 대각 영역을 빈틈없이 채운다: 어두운 바탕 + 화면 오른쪽·위에 붙인 초상화(아래쪽은 잘림) + 왼쪽 가장자리 페더
-      const h = vh * 1.18, w = h * img.width / img.height;
-      const px = vw - w + (1 - k) * 200;
+      // 애니메 흉상(투명)은 0.95·vh 로 화면 바닥에 붙인다 (1.18·vh 면 얼굴이 화면을 덮는다). 예전 그림은 1.18·vh 위 맞춤 그대로
+      const bust = isBust(this.def.portrait, img);
+      const h = vh * (bust ? 0.95 : 1.18), w = h * img.width / img.height;
+      const px = vw - w + (1 - k) * 200, py = bust ? vh - h : 0;
       ctx.save();
       ctx.beginPath(); ctx.moveTo(dx + 80, 0); ctx.lineTo(vw, 0); ctx.lineTo(vw, vh); ctx.lineTo(dx, vh); ctx.clip();
       ctx.fillStyle = '#12040a'; ctx.fillRect(dx, 0, vw - dx, vh);
@@ -206,7 +209,7 @@ export class BossIntroScene extends Scene {
         this._rg = rg; this._bg = bg;
       }
       ctx.fillStyle = this._rg; ctx.fillRect(dx, 0, vw - dx, vh);
-      ctx.drawImage(featherLeft(img), px, 0, w, h);
+      ctx.drawImage(featherLeft(img), px, py, w, h);
       ctx.fillStyle = this._bg; ctx.fillRect(dx, vh * 0.7, vw - dx, vh * 0.3);
       ctx.restore();
       ctx.strokeStyle = GOLD; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(dx + 80, 0); ctx.lineTo(dx, vh); ctx.stroke();
@@ -247,8 +250,11 @@ const UC = {
 };
 const ANG_BAND = -6 * DEG, ANG_STRIPE = -8.5 * DEG;
 const COS_B = Math.cos(ANG_BAND), SIN_B = Math.abs(Math.sin(ANG_BAND));
-/** 초상화 얼굴 위치 (0..1 이미지 좌표; assets/portraits/<id>.webp 800×1134 기준) */
+/** 초상화 얼굴 위치 [x, y] (0..1 이미지 좌표): 애니메 흉상 설치 뒤로는 data/portrait_meta 의 얼굴 상자(faceOf)를 그릴 때 읽는다.
+ *  이 표는 표가 없는 예전 그림(800×1134 전신)일 때의 대체값 */
 const FACE = { kael: [0.37, 0.2], sera: [0.41, 0.21], victor: [0.5, 0.25], bran: [0.48, 0.2], lia: [0.44, 0.22], azel: [0.37, 0.22], isolde: [0.5, 0.23] };
+/** 흉상 컷인 크기: 얼굴 너비(face.s × 그림 너비)가 화면 높이의 이만큼 (예전 전신 그림의 얼굴 ≈ 0.18·vh 보다 조금 크게, 검은 띠 0.38·vh 안에 이마~턱) */
+const ULT_FACE_VH = 0.25;
 const NAME_PX = 50;
 
 // 한 번 굽는 공용 그림: 망점 타일, 왼쪽 어둠 띠 (스테이지에 들어설 때 prepareUltCutin 이 만든다)
@@ -581,8 +587,9 @@ export class UltCutinScene extends Scene {
       ctx.restore();
       return;
     }
-    const [fx, fy] = this.face;
-    const pw = Math.max(680 * (vh / 540), 0.62 * vw);
+    const bust = isBust(this.ch.portrait, img), F = bust ? faceOf(this.ch.portrait, img) : null;
+    const [fx, fy] = F ? [F.x, F.y] : this.face;
+    const pw = F ? clamp(ULT_FACE_VH * vh / F.s, 0.6 * vh, 1.2 * vh) : Math.max(680 * (vh / 540), 0.62 * vw);
     const ph = pw * img.height / img.width;
     // 얼굴 x: 초상화 오른쪽 끝이 흐름(-3% vw)을 빼도 화면 끝을 넘도록
     const X = vw + 60 - (1 - fx) * pw;

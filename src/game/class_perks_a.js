@@ -89,6 +89,8 @@ function warm(w, cols, calls) {
   if (calls) for (let i = 0; i < calls.length; i += 2) callout(w, -99999, -99999, calls[i], calls[i + 1]);
 }
 const lowQ = (w) => (w?.fx?.quality ?? 1) < 0.6;
+/** 장판의 바닥 y: 공중에서 펴도 발 아래 땅(7칸 안)에 깐다, 없으면 발 위치 */
+const floorY = (w, p) => (p.onGround ? p.bottom : K.groundAt?.(w, p.cx, p.bottom - 4) ?? p.bottom);
 
 // ── 적 탄 지우기 (종의 성녀): guardian.js blockable · quietExpire 와 같은 규칙. 특성 모듈은 guardian.js 를 import 하지 않으므로
 //    K 에 묶여 있으면 그것을, 없으면 같은 동작의 사본을 쓴다 (쏜 적의 탄 장부 onExpire 는 풀되, 그 안의 폭발·연출·소리는 막는다)
@@ -233,7 +235,7 @@ function featherRain(w, p, N) {
 // ─────────────────────────── 성역 (대성녀) ───────────────────────────
 function sanctum(w, p, N) {
   count('sera_archsaint.zone');
-  const x0 = p.cx, y0 = p.bottom, R = N.r;
+  const x0 = p.cx, y0 = floorY(w, p), R = N.r;
   sfx(w, 'holy', { vol: 0.7 });
   w.fx.ring(x0, y0 - 4, { color: '#ffe9a0', r0: 20, r1: R, life: 0.4, width: 6 });
   K.fx(w, {
@@ -709,10 +711,13 @@ export const PERKS_A = {
     drawMeter(ctx, p, w) {
       const n = perkState(p).sig ?? 0;
       if (!n) return;
-      const t = nowOf(w), x = p.cx, y = p.y - 16;
+      const t = nowOf(w), x = p.cx, y = p.y - 18, full = n >= this.N.max;
       for (let i = 0; i < n; i++) {
-        const a = t * 2.4 + i * TAU / 3;
-        pip(ctx, x + Math.cos(a) * 13, y + Math.sin(a) * 4, 4, SIG_COL[i], 0.95);
+        const a = t * 1.6 + i * TAU / 3, px = x + Math.cos(a) * 16, py = y + Math.sin(a) * 5;
+        ctx.globalCompositeOperation = ADD;
+        K.glow(ctx, px, py, full ? 15 : 11, SIG_COL[i], full ? 0.9 : 0.65);
+        ctx.globalCompositeOperation = 'source-over';
+        pip(ctx, px, py, 5.5, SIG_COL[i], 1);
       }
     },
   },
@@ -758,7 +763,7 @@ export const ACTIVES_A = {
     const id = 'asc_kael_firstseal', mv = skillVal(id, 'dmg', lv) / 100, r = skillVal(id, 'r', lv), t = skillVal(id, 't', lv);
     const N = PERKS_A.kael_sealbearer.N, A = ACT_N.firstseal;
     K.pose(p, w, 'cast_up', 0.45, { sfx: 'holy' });
-    const x0 = p.cx, y0 = p.bottom;
+    const x0 = p.cx, y0 = floorY(w, p);
     count('asc_kael_firstseal.cast');
     forFoes(w, x0, y0 - r * 0.45, r, (e) => sealStack(w, p, e, N.max, N));
     sfx(w, 'seal_stamp', { vol: 0.9 });
@@ -857,16 +862,13 @@ export const MARKS_A = {
   },
   /** 정전기 (뇌우의 무녀): 푸른 불꽃 중첩 수만큼 */
   static(ctx, e, n, k, t) {
-    const x = e.cx, y = e.y - 10;
+    const x = e.cx, y = e.y - 14, fl = 0.8 + 0.2 * Math.sin(t * 23);
     ctx.globalCompositeOperation = ADD;
-    K.glow(ctx, x, y, 8 + n * 3, '#bfe0ff', 0.35 + 0.08 * n);
-    ctx.strokeStyle = '#e0f4ff'; ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    for (let i = 0; i < n; i++) {
-      const a = t * 4 + i * TAU / n, c = Math.cos(a), s = Math.sin(a);
-      ctx.moveTo(x + c * 8, y + s * 4); ctx.lineTo(x + c * 13 + s * 3, y + s * 7 - 2); ctx.lineTo(x + c * 17, y + s * 9);
-    }
-    ctx.stroke();
+    K.glow(ctx, x, y, 12 + n * 3, '#bfe0ff', (0.45 + 0.1 * n) * fl);
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.lineJoin = 'miter';
+    ctx.beginPath(); ctx.moveTo(x + 3, y - 9); ctx.lineTo(x - 3, y - 1); ctx.lineTo(x + 3, y + 1); ctx.lineTo(x - 3, y + 9); ctx.stroke();
+    ctx.globalCompositeOperation = 'source-over';
+    for (let i = 0; i < n; i++) pip(ctx, x - (n - 1) * 4 + i * 8, y + 15, 2.6, '#bfe0ff', 0.95);
   },
   /** 봉인 중첩 (발크레인 봉인자): 금빛 눈금 n/5 */
   seal(ctx, e, n, k, t) {

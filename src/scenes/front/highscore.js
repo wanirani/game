@@ -34,6 +34,7 @@ import { bus } from '../../core/events.js';
 import { cloud } from '../../core/cloud.js';
 import * as ONLINE from '../../core/online.js';
 import { Gesture, Scroller, scrollbar, clipBegin, clipEnd } from '../menu/common.js';
+import { faceRect } from '../../render/portrait.js';
 import { spinner } from './cloud_ui.js';
 import { CLASSES } from '../../data/classes.js';
 import { DIFFICULTIES } from '../../data/difficulty.js';
@@ -382,7 +383,8 @@ export class HighscoreScene extends Scene {
         const pr = Math.min(11, (rowH - 6) / 2);
         const px = x + 62, py = y + (rowH - 4) / 2;
         ctx.save(); ctx.beginPath(); ctx.arc(px, py, pr, 0, TAU); ctx.clip();
-        if (img) { const s = 34 / img.width; ctx.drawImage(img, px - 17, py - 10, 34, img.height * s); } else { ctx.fillStyle = '#3a2a2a'; ctx.fill(); }
+        const fr = img ? faceRect(img, ch.portrait, 1.35) : null;   // 얼굴 중심 정사각 (portrait_meta)
+        if (fr) { ctx.fillStyle = '#12060c'; ctx.fill(); ctx.drawImage(img, fr.sx, fr.sy, fr.sw, fr.sh, px - pr, py - pr, pr * 2, pr * 2); } else { ctx.fillStyle = '#3a2a2a'; ctx.fill(); }
         ctx.restore();
         ctx.strokeStyle = 'rgba(232,200,114,0.7)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(px, py, pr + 0.5, 0, TAU); ctx.stroke();
         const name = h.name || ch?.name?.split(' ')[0] || '???';
@@ -499,7 +501,8 @@ export class HighscoreScene extends Scene {
       text(ctx, this.recText(e), C.rec, tb, { size: 14, align: 'right', weight: 900, family: FONT.num, color: i === 0 ? '#ffe070' : '#fff', ow: 2 });
       const ch = own(CHARACTERS, e.hero) ? CHARACTERS[e.hero] : null, cl = own(CLASSES, e.cls) ? CLASSES[e.cls] : null;
       const img = ch?.portrait ? assets.get(ch.portrait) : null, pr = Math.min(10, (rowH - 8) / 2), px = C.hero - 6 - pr, py = yy + rowH / 2;
-      if (img) { ctx.save(); ctx.beginPath(); ctx.arc(px, py, pr, 0, TAU); ctx.clip(); const s2 = (pr * 3) / img.width; ctx.drawImage(img, px - pr * 1.5, py - pr, pr * 3, img.height * s2); ctx.restore(); }
+      const fr = img ? faceRect(img, ch.portrait, 1.35) : null;   // 얼굴 중심 정사각 (portrait_meta)
+      if (fr) { ctx.save(); ctx.beginPath(); ctx.arc(px, py, pr, 0, TAU); ctx.clip(); ctx.fillStyle = '#12060c'; ctx.fill(); ctx.drawImage(img, fr.sx, fr.sy, fr.sw, fr.sh, px - pr, py - pr, pr * 2, pr * 2); ctx.restore(); }
       text(ctx, `${ch?.name?.split(' ')[0] ?? e.hero}${cl ? ` · ${cl.name}` : ''}`, C.hero + 4, tb, { size: 12, weight: 700, color: DIM, ow: 2, maxWidth: lx + lw - C.hero - 14 });
     }
     clipEnd(ctx, list, this.scroll);

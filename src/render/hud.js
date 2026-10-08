@@ -9,6 +9,7 @@
 import { text, bar, bloodText, prewarmText, font, FONT, COLORS, fontEpoch } from '../core/ui.js';
 import { assets } from '../core/assets.js';
 import { fmt, fmtTime, TAU, clamp, rgba } from '../core/math.js';
+import { faceRect } from './portrait.js';
 import { drawIcon } from './icons.js';
 import { drawHeart } from '../game/pickups.js';
 import { SUBWEAPONS } from '../data/subweapons.js';
@@ -204,7 +205,9 @@ function paintPortrait(ctx, x, y, img, hero, p, F = 0) {
   ctx.beginPath(); ctx.arc(cx, cy, 30, 0, TAU); ctx.closePath();
   ctx.fillStyle = '#12060c'; ctx.fill();
   ctx.clip();
-  if (img) ctx.drawImage(img, cx - 44, y + 3, 88, 88 * (img.height / img.width));
+  // 얼굴 중심 정사각 자르기 (애니메 흉상·예전 그림 모두 data/portrait_meta 의 얼굴 상자)
+  const fr = img ? faceRect(img, CHARACTERS[hero.charId]?.portrait, 1.5) : null;
+  if (fr) ctx.drawImage(img, fr.sx, fr.sy, fr.sw, fr.sh, cx - 30, cy - 30, 60, 60);
   else { ctx.fillStyle = p.look?.primary ?? '#444'; ctx.fillRect(x + 1, y + 1, 64, 64); }
   ctx.restore();
   ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx, cy, 31, 0, TAU); ctx.stroke();
@@ -489,21 +492,22 @@ function drawBanner(ctx, r, world, bn, L) {
 function drawLifeIcon(ctx, x, y, r, hero, p) {
   const img = assets.get(CHARACTERS[hero.charId]?.portrait);
   const c = LIFE.c;
-  if (!c) { paintLifeIcon(ctx, x, y, r, img, p); return; }
+  if (!c) { paintLifeIcon(ctx, x, y, r, img, p, CHARACTERS[hero.charId]?.portrait); return; }
   const a = hudScale(ctx), m = r + 1.5, d = m * 2, K = LIFE, iw = img ? img.width * 65536 + img.height : 0, col = p.look?.primary ?? null;
   if (K.id !== hero.charId || K.iw !== iw || K.col !== col || K.r !== r || K.a !== a) {
     const g = prepSprite(c, d, d, a);
-    paintLifeIcon(g, m, m, r, img, p);
+    paintLifeIcon(g, m, m, r, img, p, CHARACTERS[hero.charId]?.portrait);
     K.id = hero.charId; K.iw = iw; K.col = col; K.r = r; K.a = a;
     HUD_SPRITE_STATS.lifeBakes++;
   }
   ctx.drawImage(c, 0, 0, c.width, c.height, x - m, y - m, c.width / a, c.height / a);
 }
-function paintLifeIcon(ctx, x, y, r, img, p) {
+function paintLifeIcon(ctx, x, y, r, img, p, key = null) {
   ctx.save();
   ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fillStyle = '#12060c'; ctx.fill();
   ctx.save(); ctx.clip();
-  if (img) ctx.drawImage(img, x - r * 1.45, y - r * 1.05, r * 2.9, r * 2.9 * (img.height / img.width));
+  const fr = img ? faceRect(img, key, 1.4) : null;   // 얼굴 중심 정사각 (portrait_meta)
+  if (fr) ctx.drawImage(img, fr.sx, fr.sy, fr.sw, fr.sh, x - r, y - r, r * 2, r * 2);
   else { ctx.fillStyle = p.look?.primary ?? '#844'; ctx.fillRect(x - r, y - r, r * 2, r * 2); }
   ctx.restore();
   ctx.strokeStyle = '#ff8a9a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke();

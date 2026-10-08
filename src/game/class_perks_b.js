@@ -154,8 +154,8 @@ function claws(w, p, N) {
   const f = p.facing;
   bump(p, 'claw');
   K.fx(w, {
-    life: 0.3, z: 12, d: { n: 0 },
-    follow(e) { e.x = p.cx - 240; e.y = p.y - 60; e.w = 480; e.h = p.h + 100; },
+    life: 0.42, z: 12, d: { n: 0 },
+    follow(e) { e.x = p.cx - 260; e.y = p.y - 60; e.w = 520; e.h = p.h + 100; },
     tick(e, ww) {
       while (e.d.n < N.clawN && e.lt >= e.d.n * N.clawGap) {
         strike(ww, p, p.relRect(20, -100, 200, 80), { mv: N.claw, kb: [260, -120], tags: ['melee'] }, '#e8f0ff');
@@ -167,8 +167,9 @@ function claws(w, p, N) {
       for (let i = 0; i < N.clawN; i++) {
         const t = e.lt - i * N.clawGap;
         if (t < 0) continue;
-        const a = Math.max(0, 1 - t / 0.2), y = p.bottom - 92 + i * 24, x0 = p.cx + f * 34, x1 = p.cx + f * 210;
-        K.cutLine(ctx, x0, y - 20, x1, y + 16, 4, '#e8f0ff', a);
+        const a = Math.max(0, 1 - t / 0.3), y = p.bottom - 92 + i * 24, x0 = p.cx + f * 34, x1 = p.cx + f * 220;
+        K.glow(ctx, (x0 + x1) / 2, y, 70, '#c8d8ff', 0.25 * a);
+        K.cutLine(ctx, x0, y - 22, x1, y + 18, 6, '#e8f0ff', a);
       }
     },
   });
@@ -325,7 +326,7 @@ export const PERKS_B = {
 
   // ── 수호성기사 (S5): 8초 동안 피해를 받지 않으면 최대 HP 12% 결계 ──
   bran_guardian: {
-    N: { wait: 8, frac: 0.12 },
+    N: { wait: 8, frac: 0.12, blockInv: 0.5 },
     tick(p, w, dt) {
       const s = S(p), N = this.N;
       s.unhurt = (s.unhurt ?? 0) + dt;
@@ -345,7 +346,11 @@ export const PERKS_B = {
       bump(p, 'absorb');
       w.fx.ring(p.cx, p.cy - 8, { color: '#9ac8ff', r0: 24, r1: 54, life: 0.2, width: 3 });
       sfx(w, 'clang', { vol: 0.4, pitch: 1.4 });
-      return rest > 0 ? rest : { dmg: 0, armor: true };
+      if (rest > 0) return rest;
+      // 결계가 다 막았다: 피격 아님 (경직·콤보 끊김·붉은 비네트 없음). 잇단 접촉 피해가 결계를 한 번에 녹이지 않게 짧은 무적, 대기 시간은 다시
+      S(p).unhurt = 0;
+      p.iframes = Math.max(p.iframes ?? 0, this.N.blockInv);
+      return false;
     },
     afterHurt(p) { S(p).unhurt = 0; },
     drawMeter(ctx, p) {
@@ -380,8 +385,11 @@ export const PERKS_B = {
     tick(p, w) { if (frenzy(p) && icd(p, 'fzMote', 0.25, w)) w.fx.burst('bloodmist', p.cx, p.cy - 10, 1, { speed: 30 }); },
     drawMeter(ctx, p, w) {
       if (!frenzy(p)) return;
+      const t = w?.time ?? 0, k = 0.5 + 0.5 * Math.sin(t * 9);
       ctx.globalCompositeOperation = ADD;
-      K.glow(ctx, p.cx, p.cy, 54, '#ff1a2a', 0.28 + 0.1 * Math.sin((w?.time ?? 0) * 9));
+      K.glow(ctx, p.cx, p.cy, 66, '#ff1a2a', 0.36 + 0.14 * k);
+      ctx.strokeStyle = '#ff4050'; ctx.globalAlpha = 0.35 + 0.3 * k; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.ellipse(p.cx, p.cy, 30 + 4 * k, p.h * 0.62, 0, 0, TAU); ctx.stroke();
     },
     prewarm() { K.glowSprite?.('#ff1a2a'); },
   },
@@ -501,16 +509,19 @@ export const PERKS_B = {
     drawMeter(ctx, p, w) {
       const N = this.N, s = S(p), oh = s.oh > 0, vent = s.vent > 0, h = s.heat ?? 0;
       if (!oh && !vent && !(h > 0)) return;
-      const x = p.cx - p.facing * 24, y0 = p.bottom - 14, H = 48;
-      const k = oh ? 1 : vent ? s.vent / N.vent : h / N.max;
-      ctx.globalAlpha = 0.45; ctx.fillStyle = '#1a0a06'; ctx.fillRect(x - 3, y0 - H, 6, H);
-      ctx.globalAlpha = 0.95; ctx.fillStyle = vent ? '#8a8078' : oh ? '#fff0c0' : h >= N.ember ? '#ff5a1a' : '#ff9a40';
-      ctx.fillRect(x - 2, y0 - H * k, 4, H * k);
+      const x = p.cx - p.facing * 26, y0 = p.bottom - 12, H = 56;
+      const k = oh ? 1 : vent ? s.vent / N.vent : h / N.max, pulse = 0.5 + 0.5 * Math.sin((w?.time ?? 0) * 16);
       if (oh) {
-        ctx.globalCompositeOperation = ADD; ctx.globalAlpha = 1;
-        K.glow(ctx, p.cx, p.cy, 58, '#ff5a1a', 0.3 + 0.12 * Math.sin((w?.time ?? 0) * 16));
-        K.glow(ctx, x, y0 - H, 14, '#ffd070', 0.8);
+        ctx.globalCompositeOperation = ADD;
+        K.glow(ctx, p.cx, p.cy, 70, '#ff5a1a', 0.4 + 0.15 * pulse);
+        K.glow(ctx, x, y0 - H, 16, '#ffd070', 0.9);
+        ctx.strokeStyle = '#ffb040'; ctx.globalAlpha = 0.3 + 0.35 * pulse; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.ellipse(p.cx, p.cy, 32 + 3 * pulse, p.h * 0.6, 0, 0, TAU); ctx.stroke();
+        ctx.globalCompositeOperation = 'source-over';
       }
+      ctx.globalAlpha = 0.55; ctx.fillStyle = '#1a0a06'; ctx.fillRect(x - 3.5, y0 - H - 1, 7, H + 2);
+      ctx.globalAlpha = 0.95; ctx.fillStyle = vent ? '#8a8078' : oh ? '#fff0c0' : h >= N.ember ? '#ff5a1a' : '#ff9a40';
+      ctx.fillRect(x - 2.5, y0 - H * k, 5, H * k);
     },
     prewarm() { K.glowSprite?.('#ff5a1a'); K.glowSprite?.('#ffd070'); },
   },
@@ -600,20 +611,21 @@ export const PERKS_B = {
 
   // 성전 선봉장 「방패 돌격」 + 성광 충격파 세 번
   bran_vanguard: {
-    N: { mv: 1.2, kbx: 420, kby: -220, hs: 0.03, hsGap: 1.5, waveMv: 0.8, gap: 0.12, n: 2 },
+    N: { mv: 1.2, kbx: 420, kby: -220, hs: 0.03, hsGap: 1.5, waveMv: 0.8, gap: 0.12, n: 2, show: 0.32 },
     onDash(p, w) {
       const N = this.N, f = p.facing;
       const a = procAtk(p, { mv: N.mv, element: 'holy', kb: [N.kbx, N.kby], hitstop: icd(p, 'vgHs', N.hsGap, w) ? N.hs : 0, shake: 2, tags: ['melee'] });
       a.dmgColor = '#ffd870';
       bump(p, 'shieldBash');
+      const hitT = Math.max(0.12, p.dashT || 0.2), life = Math.max(hitT, N.show);
       K.fx(w, {
-        life: Math.max(0.12, p.dashT || 0.2), z: 11, atk: a, win: [0, 1], d: { snd: 0 },
+        life, z: 11, atk: a, win: [0, hitT / life], d: { snd: 0 },
         follow(e) { e.x = p.cx - 90; e.y = p.y - 30; e.w = 180; e.h = p.h + 40; },
         rect() { return p.relRect(-10, -90, 90, 90); },
         tick(e, ww) { ww.fx.burst('holy', p.cx + f * 30, p.cy, 1, { speed: 80 }); },
-        onHit(e, ww) { if (!e.d.snd) { e.d.snd = 1; bump(p, 'shieldBashHit'); sfx(ww, 'clang', { vol: 0.6, pitch: 0.9 }); } },
+        onHit(e, ww) { if (!e.d.snd) { e.d.snd = 1; bump(p, 'shieldBashHit'); sfx(ww, 'clang', { vol: 0.6, pitch: 0.9 }); ww.fx.ring(p.cx + p.facing * 60, p.cy, { color: '#ffd870', r0: 10, r1: 60, life: 0.22, width: 5 }); } },
         draw(ctx, e) {
-          const a2 = Math.min(1, e.lt * 14) * (1 - e.k * 0.4);
+          const a2 = Math.min(1, e.lt * 14) * Math.min(1, (e.life - e.lt) / 0.12);
           ctx.translate(p.cx + p.facing * 38, p.cy - 6); ctx.scale(p.facing, 1);
           ctx.globalCompositeOperation = ADD;
           K.glow(ctx, 0, 0, 56, '#ffd870', 0.5 * a2);
@@ -704,10 +716,10 @@ export const PERKS_B = {
       ctx.globalCompositeOperation = ADD;
       K.glow(ctx, p.cx, p.cy, 30 + n * 3, '#ff1a2a', 0.06 + n * 0.025);
       ctx.globalCompositeOperation = 'source-over';
-      const y = p.y - 8, x0 = p.cx - (N.max - 1) * 3.5;
+      const y = p.y - 10, x0 = p.cx - (N.max - 1) * 4.5;
       for (let i = 0; i < N.max; i++) {
-        ctx.globalAlpha = i < n ? 0.95 : 0.25; ctx.fillStyle = i < n ? '#ff1a2a' : '#3a0a0e';
-        ctx.beginPath(); ctx.arc(x0 + i * 7, y - (i < n && n >= N.max ? Math.sin((w?.time ?? 0) * 12 + i) : 0), 2.4, 0, TAU); ctx.fill();
+        ctx.globalAlpha = i < n ? 0.95 : 0.3; ctx.fillStyle = i < n ? '#ff1a2a' : '#3a0a0e';
+        ctx.beginPath(); ctx.arc(x0 + i * 9, y - (i < n && n >= N.max ? 1.5 * Math.sin((w?.time ?? 0) * 12 + i) : 0), 3.2, 0, TAU); ctx.fill();
       }
     },
     prewarm() { K.glowSprite?.('#ff1a2a'); },
@@ -862,12 +874,14 @@ export const MARKS_B = {
   /** 사형 선고: 머리 위 붉은 빛 + X (처형 가능하면 더 크고 빠르게 맥동) */
   sent(ctx, e, n, k, t) {
     const x = e.cx, y = e.y - 14, ready = !isBoss(e) && hpOf(e) < PERKS_B.victor_headsman.N.exec;
-    const pulse = 0.75 + 0.25 * Math.sin(t * (ready ? 14 : 6));
+    const pulse = 0.75 + 0.25 * Math.sin(t * (ready ? 14 : 6)), a = Math.min(1, k * 4 + 0.3);
     ctx.globalCompositeOperation = ADD;
-    K.glow(ctx, x, y, (ready ? 20 : 14) * pulse, '#ff2030', 0.55 * Math.min(1, k * 4 + 0.3));
+    K.glow(ctx, x, y, (ready ? 26 : 18) * pulse, '#ff2030', 0.7 * a);
     ctx.globalCompositeOperation = 'source-over';
-    const r = ready ? 7 : 5.5;
-    ctx.strokeStyle = ready ? '#ffffff' : '#ff4050'; ctx.lineWidth = 2.5; ctx.globalAlpha = 0.95;
+    const r = ready ? 8.5 : 6.5;
+    ctx.globalAlpha = 0.9 * a; ctx.strokeStyle = '#ff2030'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, r + 5, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = ready ? '#ffffff' : '#ffb0b8'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r); ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r); ctx.stroke();
   },
 };

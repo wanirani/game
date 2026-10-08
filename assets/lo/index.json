@@ -673,221 +673,221 @@
    "srcBytes": 123478
   },
   "portraits/azel.webp": {
-   "src": "f37266683e94",
+   "src": "eb7f31d5c3df",
    "w": 461,
    "h": 614,
-   "bytes": 45140,
-   "srcBytes": 108534
+   "bytes": 36824,
+   "srcBytes": 74344
   },
   "portraits/azel__angry.webp": {
-   "src": "fe4877dab504",
+   "src": "d0fca2c2673e",
    "w": 461,
    "h": 614,
-   "bytes": 52394,
-   "srcBytes": 126496
+   "bytes": 43444,
+   "srcBytes": 88442
   },
   "portraits/azel__shock.webp": {
-   "src": "2143283f2bf1",
+   "src": "50f4dc598cec",
    "w": 461,
    "h": 614,
-   "bytes": 58238,
-   "srcBytes": 141496
+   "bytes": 49258,
+   "srcBytes": 98612
   },
   "portraits/b_argen.webp": {
-   "src": "4be2277c7e4b",
+   "src": "07e44f4f0f80",
    "w": 461,
    "h": 614,
-   "bytes": 99252,
-   "srcBytes": 234342
+   "bytes": 93112,
+   "srcBytes": 162480
   },
   "portraits/b_banshee.webp": {
-   "src": "dfd48a3f9ff8",
+   "src": "0ee53a745079",
    "w": 461,
    "h": 614,
-   "bytes": 25418,
-   "srcBytes": 56140
+   "bytes": 25190,
+   "srcBytes": 48546
   },
   "portraits/b_behemoth.webp": {
-   "src": "1ef1231e1cc4",
+   "src": "2e36c873faf0",
    "w": 461,
    "h": 614,
-   "bytes": 51812,
-   "srcBytes": 130190
+   "bytes": 45558,
+   "srcBytes": 101456
   },
   "portraits/b_bonedragon.webp": {
-   "src": "7dec940924d2",
+   "src": "014879cba88c",
    "w": 461,
    "h": 614,
-   "bytes": 61840,
-   "srcBytes": 141700
+   "bytes": 58922,
+   "srcBytes": 116270
   },
   "portraits/b_bride.webp": {
-   "src": "eb9f946fb749",
+   "src": "c39d1d180bfa",
    "w": 461,
    "h": 614,
-   "bytes": 51958,
-   "srcBytes": 122648
+   "bytes": 48356,
+   "srcBytes": 100196
   },
   "portraits/b_bride2.webp": {
-   "src": "63704eb311ea",
+   "src": "b6e8cd0fabf4",
    "w": 461,
    "h": 614,
-   "bytes": 58356,
-   "srcBytes": 134650
+   "bytes": 52668,
+   "srcBytes": 101484
   },
   "portraits/b_chaos.webp": {
-   "src": "b5ca21a1ca35",
+   "src": "cbbebbcc9bae",
    "w": 461,
    "h": 614,
-   "bytes": 42834,
-   "srcBytes": 95026
+   "bytes": 42192,
+   "srcBytes": 76492
   },
   "portraits/b_charon.webp": {
-   "src": "b0f6519217e0",
+   "src": "723f4b274378",
    "w": 461,
    "h": 614,
-   "bytes": 42298,
-   "srcBytes": 99192
+   "bytes": 39190,
+   "srcBytes": 75704
   },
   "portraits/b_chimera.webp": {
-   "src": "6c743f7fec0a",
+   "src": "f8e965fa1629",
    "w": 461,
    "h": 614,
-   "bytes": 67564,
-   "srcBytes": 158996
+   "bytes": 62256,
+   "srcBytes": 117746
   },
   "portraits/b_colossus.webp": {
-   "src": "93f3b7aec5e7",
+   "src": "8f072a73fc07",
    "w": 461,
    "h": 614,
-   "bytes": 76616,
-   "srcBytes": 183742
+   "bytes": 70372,
+   "srcBytes": 146404
   },
   "portraits/b_crimson.webp": {
-   "src": "cbeaac67b99b",
+   "src": "f08c4fbd0330",
    "w": 461,
    "h": 614,
-   "bytes": 58048,
-   "srcBytes": 133804
+   "bytes": 54160,
+   "srcBytes": 105874
   },
   "portraits/b_dagon.webp": {
-   "src": "6ce78d2b01c8",
+   "src": "aecad6ae4389",
    "w": 461,
    "h": 614,
-   "bytes": 76480,
-   "srcBytes": 185842
+   "bytes": 72660,
+   "srcBytes": 138496
   },
   "portraits/b_death.webp": {
-   "src": "f78fb2d6f15d",
+   "src": "7c91a7844e03",
    "w": 461,
    "h": 614,
-   "bytes": 51392,
-   "srcBytes": 110852
+   "bytes": 47388,
+   "srcBytes": 82226
   },
   "portraits/b_dracula.webp": {
-   "src": "11d2b7a31603",
+   "src": "ab8a309f20fb",
    "w": 461,
    "h": 614,
-   "bytes": 35788,
-   "srcBytes": 81960
+   "bytes": 31742,
+   "srcBytes": 63866
   },
   "portraits/b_dracula2.webp": {
-   "src": "7503488d9e33",
+   "src": "c6c2e37a6d08",
    "w": 461,
    "h": 614,
-   "bytes": 52318,
-   "srcBytes": 125960
+   "bytes": 51480,
+   "srcBytes": 105852
   },
   "portraits/b_dullahan.webp": {
-   "src": "0726a13f2314",
+   "src": "44ffa1de17da",
    "w": 461,
    "h": 614,
-   "bytes": 52040,
-   "srcBytes": 124632
+   "bytes": 45712,
+   "srcBytes": 96178
   },
   "portraits/b_frostqueen.webp": {
-   "src": "f1e0327e18cb",
+   "src": "f1fa78a4049d",
    "w": 461,
    "h": 614,
-   "bytes": 61266,
-   "srcBytes": 146562
+   "bytes": 52908,
+   "srcBytes": 107040
   },
   "portraits/b_grimoire.webp": {
-   "src": "4b52208c0e08",
+   "src": "38888f09032b",
    "w": 461,
    "h": 614,
-   "bytes": 54248,
-   "srcBytes": 126398
+   "bytes": 46482,
+   "srcBytes": 98222
   },
   "portraits/b_hagen.webp": {
-   "src": "32ec099e85b1",
+   "src": "49c6f0c8a25c",
    "w": 461,
    "h": 614,
-   "bytes": 33108,
-   "srcBytes": 80292
+   "bytes": 32582,
+   "srcBytes": 69360
   },
   "portraits/b_hagen2.webp": {
-   "src": "d19e867e5c90",
+   "src": "a2718629348b",
    "w": 461,
    "h": 614,
-   "bytes": 73184,
-   "srcBytes": 181260
+   "bytes": 65496,
+   "srcBytes": 129692
   },
   "portraits/b_leviathan.webp": {
-   "src": "df541acd3ae0",
+   "src": "14ff9aca6194",
    "w": 461,
    "h": 614,
-   "bytes": 52316,
-   "srcBytes": 119638
+   "bytes": 49900,
+   "srcBytes": 89596
   },
   "portraits/b_mara.webp": {
-   "src": "d8b919981035",
+   "src": "271c67116e45",
    "w": 461,
    "h": 614,
-   "bytes": 49026,
-   "srcBytes": 113152
+   "bytes": 41260,
+   "srcBytes": 80634
   },
   "portraits/b_moloch.webp": {
-   "src": "b3829e9c9ecb",
+   "src": "00fc2aa3ea46",
    "w": 461,
    "h": 614,
-   "bytes": 51716,
-   "srcBytes": 125496
+   "bytes": 49124,
+   "srcBytes": 105546
   },
   "portraits/b_narkissa.webp": {
-   "src": "d69ef8650f49",
+   "src": "c605cc860693",
    "w": 461,
    "h": 614,
-   "bytes": 72192,
-   "srcBytes": 163506
+   "bytes": 65508,
+   "srcBytes": 118248
   },
   "portraits/b_narkissa2.webp": {
-   "src": "ec86807f5d7f",
+   "src": "dd57c01e0bf0",
    "w": 461,
    "h": 614,
-   "bytes": 89418,
-   "srcBytes": 205360
+   "bytes": 81502,
+   "srcBytes": 144088
   },
   "portraits/b_nemain.webp": {
-   "src": "e2358ce56fae",
+   "src": "4d34ca68518c",
    "w": 461,
    "h": 614,
-   "bytes": 45750,
-   "srcBytes": 112876
+   "bytes": 40988,
+   "srcBytes": 85376
   },
   "portraits/b_nemain2.webp": {
-   "src": "6bc8e1ee5ed4",
+   "src": "4060a3a514ba",
    "w": 461,
    "h": 614,
-   "bytes": 61112,
-   "srcBytes": 138864
+   "bytes": 52002,
+   "srcBytes": 93620
   },
   "portraits/b_nightwing.webp": {
-   "src": "b4a22cfc39ec",
+   "src": "56cf2455f738",
    "w": 461,
    "h": 614,
-   "bytes": 50328,
-   "srcBytes": 116694
+   "bytes": 48346,
+   "srcBytes": 87756
   },
   "portraits/b_nihil.webp": {
    "src": "fabb73422ac2",
@@ -904,46 +904,46 @@
    "srcBytes": 88444
   },
   "portraits/b_ziz.webp": {
-   "src": "deda894d089a",
+   "src": "2ff8839d7db6",
    "w": 461,
    "h": 614,
-   "bytes": 39942,
-   "srcBytes": 90252
+   "bytes": 36778,
+   "srcBytes": 69830
   },
   "portraits/bran.webp": {
-   "src": "570017f425d5",
+   "src": "28de4309c3e6",
    "w": 461,
    "h": 614,
-   "bytes": 44268,
-   "srcBytes": 107802
+   "bytes": 37690,
+   "srcBytes": 78012
   },
   "portraits/bran__angry.webp": {
-   "src": "1ad09e15253e",
+   "src": "e790630c5647",
    "w": 461,
    "h": 614,
-   "bytes": 52908,
-   "srcBytes": 125216
+   "bytes": 45534,
+   "srcBytes": 92090
   },
   "portraits/bran__shock.webp": {
-   "src": "cd620fd0427a",
+   "src": "57d69c014d55",
    "w": 461,
    "h": 614,
-   "bytes": 52996,
-   "srcBytes": 125914
+   "bytes": 45064,
+   "srcBytes": 93096
   },
   "portraits/cmp_g_clock.webp": {
-   "src": "c5aaa26a38cc",
+   "src": "66cac65fd595",
    "w": 461,
    "h": 614,
-   "bytes": 45830,
-   "srcBytes": 102206
+   "bytes": 45248,
+   "srcBytes": 87594
   },
   "portraits/cmp_g_fairy.webp": {
-   "src": "55118d801232",
+   "src": "64a5264f2349",
    "w": 461,
    "h": 614,
-   "bytes": 56562,
-   "srcBytes": 132292
+   "bytes": 52414,
+   "srcBytes": 108410
   },
   "portraits/cmp_g_imp.webp": {
    "src": "ead8333b2ad0",
@@ -960,403 +960,403 @@
    "srcBytes": 71768
   },
   "portraits/cmp_g_owl.webp": {
-   "src": "a4b6fa5fd5c2",
+   "src": "99153faac369",
    "w": 461,
    "h": 614,
-   "bytes": 41082,
-   "srcBytes": 89596
+   "bytes": 38904,
+   "srcBytes": 69856
   },
   "portraits/cmp_g_reaper.webp": {
-   "src": "d060e6a0b622",
+   "src": "86d5722b5eb4",
    "w": 461,
    "h": 614,
-   "bytes": 52604,
-   "srcBytes": 116502
+   "bytes": 48374,
+   "srcBytes": 86990
   },
   "portraits/cmp_g_spiritwolf.webp": {
-   "src": "57c021315615",
+   "src": "b5537bedb854",
    "w": 461,
    "h": 614,
-   "bytes": 40922,
-   "srcBytes": 94382
+   "bytes": 39198,
+   "srcBytes": 77976
   },
   "portraits/cmp_g_whelp.webp": {
-   "src": "fab6cc302d90",
+   "src": "3dc8be4c52c0",
    "w": 461,
    "h": 614,
-   "bytes": 54100,
-   "srcBytes": 119542
+   "bytes": 49948,
+   "srcBytes": 91170
   },
   "portraits/cmp_gd_lumen.webp": {
-   "src": "db01526637a9",
+   "src": "bfd1590859fe",
    "w": 461,
    "h": 614,
-   "bytes": 64496,
-   "srcBytes": 142562
+   "bytes": 63232,
+   "srcBytes": 106746
   },
   "portraits/cmp_gd_mirra.webp": {
-   "src": "57e681006669",
+   "src": "f4f9ced326e8",
    "w": 461,
    "h": 614,
-   "bytes": 54080,
-   "srcBytes": 128506
+   "bytes": 48652,
+   "srcBytes": 91280
   },
   "portraits/cmp_gd_momo.webp": {
-   "src": "1b66a19540ba",
+   "src": "f1b747c0bb90",
    "w": 461,
    "h": 614,
-   "bytes": 40740,
-   "srcBytes": 94900
+   "bytes": 34300,
+   "srcBytes": 68066
   },
   "portraits/cmp_gd_munin.webp": {
-   "src": "504cdc7b37be",
+   "src": "4a86cf1fd6ce",
    "w": 461,
    "h": 614,
-   "bytes": 50412,
-   "srcBytes": 116850
+   "bytes": 48298,
+   "srcBytes": 86516
   },
   "portraits/cmp_gd_vesper.webp": {
-   "src": "1a21fed2782f",
+   "src": "9cc147f7e70f",
    "w": 461,
    "h": 614,
-   "bytes": 44012,
-   "srcBytes": 100074
+   "bytes": 42264,
+   "srcBytes": 73710
   },
   "portraits/cmp_m_boar.webp": {
-   "src": "1ec64f5b39ab",
+   "src": "f3d3f83b8e40",
    "w": 461,
    "h": 614,
-   "bytes": 47724,
-   "srcBytes": 120084
+   "bytes": 43566,
+   "srcBytes": 94530
   },
   "portraits/cmp_m_direwolf.webp": {
-   "src": "1ca79d96903b",
+   "src": "caa930f7d203",
    "w": 461,
    "h": 614,
-   "bytes": 66832,
-   "srcBytes": 169212
+   "bytes": 54738,
+   "srcBytes": 120236
   },
   "portraits/cmp_m_giantbat.webp": {
-   "src": "b3978b725d44",
+   "src": "8bc25b2b7cac",
    "w": 461,
    "h": 614,
-   "bytes": 35712,
-   "srcBytes": 83724
+   "bytes": 33120,
+   "srcBytes": 66442
   },
   "portraits/cmp_m_skelsteed.webp": {
-   "src": "3da61054dacc",
+   "src": "2fff128958e9",
    "w": 461,
    "h": 614,
-   "bytes": 70374,
-   "srcBytes": 167328
+   "bytes": 62388,
+   "srcBytes": 123178
   },
   "portraits/cmp_m_warhorse.webp": {
-   "src": "b3aa0da89d13",
+   "src": "7b394276b48b",
    "w": 461,
    "h": 614,
-   "bytes": 53022,
-   "srcBytes": 126290
+   "bytes": 47740,
+   "srcBytes": 93428
   },
   "portraits/cmp_m_wyvern.webp": {
-   "src": "d188bd2a3b54",
+   "src": "28017edaa065",
    "w": 461,
    "h": 614,
-   "bytes": 46598,
-   "srcBytes": 110462
+   "bytes": 45242,
+   "srcBytes": 92020
   },
   "portraits/cmp_mt_argen.webp": {
-   "src": "1d042b8a573e",
+   "src": "2cba1f1da824",
    "w": 461,
    "h": 614,
-   "bytes": 74786,
-   "srcBytes": 172562
+   "bytes": 65994,
+   "srcBytes": 123672
   },
   "portraits/cmp_mt_gale.webp": {
-   "src": "e54421b94eb8",
+   "src": "0f9cd28a722c",
    "w": 461,
    "h": 614,
-   "bytes": 62934,
-   "srcBytes": 134988
+   "bytes": 57914,
+   "srcBytes": 98218
   },
   "portraits/cmp_mt_ignis.webp": {
-   "src": "4ed674873ef2",
+   "src": "91f155fe288f",
    "w": 461,
    "h": 614,
-   "bytes": 54332,
-   "srcBytes": 125344
+   "bytes": 51370,
+   "srcBytes": 98782
   },
   "portraits/cmp_mt_morgen.webp": {
-   "src": "8023c30210e4",
+   "src": "abc13122fa26",
    "w": 461,
    "h": 614,
-   "bytes": 39670,
-   "srcBytes": 97372
+   "bytes": 39246,
+   "srcBytes": 84486
   },
   "portraits/cmp_mt_silva.webp": {
-   "src": "7244992c8e13",
+   "src": "4b1636137c44",
    "w": 461,
    "h": 614,
-   "bytes": 58040,
-   "srcBytes": 132464
+   "bytes": 56294,
+   "srcBytes": 96690
   },
   "portraits/isolde.webp": {
-   "src": "fa65890b480e",
+   "src": "01160383cf57",
    "w": 461,
    "h": 614,
-   "bytes": 39374,
-   "srcBytes": 96982
+   "bytes": 38530,
+   "srcBytes": 84502
   },
   "portraits/isolde__angry.webp": {
-   "src": "eb6e2125586b",
+   "src": "b8f592c01778",
    "w": 461,
    "h": 614,
-   "bytes": 54406,
-   "srcBytes": 134040
+   "bytes": 54178,
+   "srcBytes": 112036
   },
   "portraits/isolde__shock.webp": {
-   "src": "d1377645189b",
+   "src": "c5cc0809acd0",
    "w": 461,
    "h": 614,
-   "bytes": 61608,
-   "srcBytes": 150162
+   "bytes": 61014,
+   "srcBytes": 124584
   },
   "portraits/kael.webp": {
-   "src": "5788594b431f",
+   "src": "47e506e28c07",
    "w": 461,
    "h": 614,
-   "bytes": 51950,
-   "srcBytes": 123626
+   "bytes": 48642,
+   "srcBytes": 97668
   },
   "portraits/kael__angry.webp": {
-   "src": "1402757a529f",
+   "src": "d30b1d76c7b9",
    "w": 461,
    "h": 614,
-   "bytes": 65486,
-   "srcBytes": 156050
+   "bytes": 60616,
+   "srcBytes": 120244
   },
   "portraits/kael__shock.webp": {
-   "src": "ee2b45350d51",
+   "src": "4c554e97afa1",
    "w": 461,
    "h": 614,
-   "bytes": 57180,
-   "srcBytes": 140632
+   "bytes": 53506,
+   "srcBytes": 113820
   },
   "portraits/lia.webp": {
-   "src": "77a9be1baf39",
+   "src": "b7b772a581d7",
    "w": 461,
    "h": 614,
-   "bytes": 30238,
-   "srcBytes": 72232
+   "bytes": 26414,
+   "srcBytes": 51828
   },
   "portraits/lia__angry.webp": {
-   "src": "a2175d4d917d",
+   "src": "0a0cb724d8a9",
    "w": 461,
    "h": 614,
-   "bytes": 37590,
-   "srcBytes": 91472
+   "bytes": 32560,
+   "srcBytes": 68656
   },
   "portraits/lia__shock.webp": {
-   "src": "3c5d8d6810a3",
+   "src": "05c618a84c53",
    "w": 461,
    "h": 614,
-   "bytes": 39518,
-   "srcBytes": 93386
+   "bytes": 33538,
+   "srcBytes": 67764
   },
   "portraits/npc_alberto.webp": {
-   "src": "1f3f619e08e3",
+   "src": "91f9140050d3",
    "w": 461,
    "h": 614,
-   "bytes": 36310,
-   "srcBytes": 82570
+   "bytes": 31536,
+   "srcBytes": 62286
   },
   "portraits/npc_alberto__angry.webp": {
-   "src": "e230dbd203b9",
+   "src": "fb02f642509c",
    "w": 461,
    "h": 614,
-   "bytes": 39006,
-   "srcBytes": 88526
+   "bytes": 32964,
+   "srcBytes": 66990
   },
   "portraits/npc_alberto__shock.webp": {
-   "src": "aa265e961eef",
+   "src": "267219b24cdd",
    "w": 461,
    "h": 614,
-   "bytes": 38668,
-   "srcBytes": 88134
+   "bytes": 33286,
+   "srcBytes": 66190
   },
   "portraits/npc_carmilla.webp": {
-   "src": "1659d24b4ad8",
+   "src": "3209c5e19627",
    "w": 461,
    "h": 614,
-   "bytes": 61712,
-   "srcBytes": 147926
+   "bytes": 59138,
+   "srcBytes": 109324
   },
   "portraits/npc_carmilla__angry.webp": {
-   "src": "7e57c05bc97d",
+   "src": "022eb3d04ef4",
    "w": 461,
    "h": 614,
-   "bytes": 66448,
-   "srcBytes": 160242
+   "bytes": 63734,
+   "srcBytes": 121834
   },
   "portraits/npc_carmilla__shock.webp": {
-   "src": "ef07ef77f341",
+   "src": "a4de9362d288",
    "w": 461,
    "h": 614,
-   "bytes": 66824,
-   "srcBytes": 160590
+   "bytes": 63514,
+   "srcBytes": 120374
   },
   "portraits/npc_elise.webp": {
-   "src": "b606499bf886",
+   "src": "4a48b1019c2c",
    "w": 461,
    "h": 614,
-   "bytes": 47202,
-   "srcBytes": 109428
+   "bytes": 42778,
+   "srcBytes": 82016
   },
   "portraits/npc_elise__angry.webp": {
-   "src": "b7b8cb23f726",
+   "src": "7912c657cc08",
    "w": 461,
    "h": 614,
-   "bytes": 60794,
-   "srcBytes": 144856
+   "bytes": 53376,
+   "srcBytes": 106506
   },
   "portraits/npc_elise__shock.webp": {
-   "src": "1591333841a5",
+   "src": "c2439340f646",
    "w": 461,
    "h": 614,
-   "bytes": 55022,
-   "srcBytes": 131944
+   "bytes": 48202,
+   "srcBytes": 98176
   },
   "portraits/npc_greta.webp": {
-   "src": "24d3725f0dc8",
+   "src": "b9f8b2111709",
    "w": 461,
    "h": 614,
-   "bytes": 46466,
-   "srcBytes": 113862
+   "bytes": 39236,
+   "srcBytes": 86976
   },
   "portraits/npc_greta__angry.webp": {
-   "src": "cf7ca00c9778",
+   "src": "e5e04135da60",
    "w": 461,
    "h": 614,
-   "bytes": 59242,
-   "srcBytes": 147608
+   "bytes": 52014,
+   "srcBytes": 112064
   },
   "portraits/npc_greta__shock.webp": {
-   "src": "f02c0998cff4",
+   "src": "fe4db9fbafac",
    "w": 461,
    "h": 614,
-   "bytes": 55194,
-   "srcBytes": 134928
+   "bytes": 47234,
+   "srcBytes": 102330
   },
   "portraits/npc_hadwin.webp": {
-   "src": "d06d862ac5c5",
+   "src": "3ce58be993e6",
    "w": 461,
    "h": 614,
-   "bytes": 44346,
-   "srcBytes": 102442
+   "bytes": 38150,
+   "srcBytes": 76740
   },
   "portraits/npc_hadwin__angry.webp": {
-   "src": "23ea0b4d2c33",
+   "src": "ab8fd295dea5",
    "w": 461,
    "h": 614,
-   "bytes": 56248,
-   "srcBytes": 138472
+   "bytes": 45914,
+   "srcBytes": 104542
   },
   "portraits/npc_hadwin__shock.webp": {
-   "src": "2c22d4bd3017",
+   "src": "835d1b5e2b76",
    "w": 461,
    "h": 614,
-   "bytes": 56204,
-   "srcBytes": 137388
+   "bytes": 46248,
+   "srcBytes": 106150
   },
   "portraits/npc_marta.webp": {
-   "src": "de09e0ff176b",
+   "src": "12fd0d72ea67",
    "w": 461,
    "h": 614,
-   "bytes": 37344,
-   "srcBytes": 88990
+   "bytes": 32582,
+   "srcBytes": 69484
   },
   "portraits/npc_marta__angry.webp": {
-   "src": "2a7db02a11d5",
+   "src": "36f55249daf5",
    "w": 461,
    "h": 614,
-   "bytes": 42640,
-   "srcBytes": 104994
+   "bytes": 36158,
+   "srcBytes": 80700
   },
   "portraits/npc_marta__shock.webp": {
-   "src": "bbdfc5051277",
+   "src": "a59353aeea15",
    "w": 461,
    "h": 614,
-   "bytes": 39336,
-   "srcBytes": 93416
+   "bytes": 33514,
+   "srcBytes": 71876
   },
   "portraits/npc_rook.webp": {
-   "src": "817528232a68",
+   "src": "95fff5c5f3aa",
    "w": 461,
    "h": 614,
-   "bytes": 32850,
-   "srcBytes": 77232
+   "bytes": 30182,
+   "srcBytes": 63978
   },
   "portraits/npc_rook2.webp": {
-   "src": "9cadf250601f",
+   "src": "7d3d20b85d5e",
    "w": 461,
    "h": 614,
-   "bytes": 53434,
-   "srcBytes": 133970
+   "bytes": 49540,
+   "srcBytes": 107242
   },
   "portraits/npc_rook__angry.webp": {
-   "src": "9c7aa793b4f5",
+   "src": "7d9109dda158",
    "w": 461,
    "h": 614,
-   "bytes": 34710,
-   "srcBytes": 83600
+   "bytes": 31052,
+   "srcBytes": 68304
   },
   "portraits/npc_rook__shock.webp": {
-   "src": "ab2cc94771ab",
+   "src": "12cafdd46f6d",
    "w": 461,
    "h": 614,
-   "bytes": 38374,
-   "srcBytes": 92762
+   "bytes": 34136,
+   "srcBytes": 76844
   },
   "portraits/sera.webp": {
-   "src": "ac58a244ae99",
+   "src": "33f5be8d53c2",
    "w": 461,
    "h": 614,
-   "bytes": 61424,
-   "srcBytes": 148320
+   "bytes": 55466,
+   "srcBytes": 101338
   },
   "portraits/sera__angry.webp": {
-   "src": "23668854c136",
+   "src": "87f5615f81a9",
    "w": 461,
    "h": 614,
-   "bytes": 69522,
-   "srcBytes": 170866
+   "bytes": 61766,
+   "srcBytes": 127594
   },
   "portraits/sera__shock.webp": {
-   "src": "38251ce1434b",
+   "src": "a10c9b48cd68",
    "w": 461,
    "h": 614,
-   "bytes": 69934,
-   "srcBytes": 171946
+   "bytes": 60608,
+   "srcBytes": 121576
   },
   "portraits/victor.webp": {
-   "src": "3be752b24088",
+   "src": "ad61c324d769",
    "w": 461,
    "h": 614,
-   "bytes": 32188,
-   "srcBytes": 73058
+   "bytes": 29138,
+   "srcBytes": 55620
   },
   "portraits/victor__angry.webp": {
-   "src": "447107b9ca40",
+   "src": "f9bec30dd179",
    "w": 461,
    "h": 614,
-   "bytes": 31088,
-   "srcBytes": 73004
+   "bytes": 29400,
+   "srcBytes": 61838
   },
   "portraits/victor__shock.webp": {
-   "src": "0c3546f641d0",
+   "src": "5569fe3046d5",
    "w": 461,
    "h": 614,
-   "bytes": 31732,
-   "srcBytes": 74108
+   "bytes": 28716,
+   "srcBytes": 57988
   }
  }
 }

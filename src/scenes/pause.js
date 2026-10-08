@@ -14,6 +14,7 @@ import { assets } from '../core/assets.js';
 import { text, FONT, taps, bloodText, prewarmText, wrap } from '../core/ui.js';
 import { drawHints } from '../core/prompts.js';
 import { clamp, ease, fmtTime, TAU } from '../core/math.js';
+import { faceRect } from '../render/portrait.js';
 import { CHARACTERS } from '../data/characters.js';
 import { CLASSES } from '../data/classes.js';
 import * as NG from '../game/ngplus.js';   // [hook:ng]
@@ -343,7 +344,8 @@ export class PauseScene extends Scene {
     ctx.fillStyle = '#12060c'; ctx.fillRect(px - 24, py - 24, 48, 48);
     const chr = CHARACTERS[hero.charId];
     const img = chr?.portrait ? assets.get(chr.portrait) : null;
-    if (img) ctx.drawImage(img, px - 34, py - 22, 68, 68 * (img.height / img.width));
+    const fr = img ? faceRect(img, chr.portrait, 1.5) : null;   // 얼굴 중심 정사각 (portrait_meta)
+    if (fr) ctx.drawImage(img, fr.sx, fr.sy, fr.sw, fr.sh, px - 24, py - 24, 48, 48);
     ctx.restore();
     ctx.strokeStyle = PAL.gold; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, 25, 0, TAU); ctx.stroke();
     const tx = px + 36, bw = cw - (tx - cx0) - 22;

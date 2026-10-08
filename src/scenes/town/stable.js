@@ -27,6 +27,8 @@ import {
   STABLE_SHOP, STABLE_LINES, TRIBUTE, BOND_NAMES, COMPANION_QUESTS, CMP_TEXT, companionDef, cmpText,
 } from '../../data/companions.js';
 import { ServiceScene, Modal, RewardPopup, rowBg, uiPanel, uiButton, makeInst, pickLine } from './common.js';
+import { faceRect, isBust } from '../../render/portrait.js';
+import { portraitMeta } from '../../data/portrait_meta.js';
 import { glow, drawStallHead, drawSpiritWisp } from './facades.js';
 
 const GRETA = 'npc_greta';
@@ -50,7 +52,9 @@ function cmpIcon(ctx, id, x, y, r, { locked = false } = {}) {
   ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.closePath();
   ctx.fillStyle = '#12080e'; ctx.fill();
   ctx.clip();
-  if (img && img.width) {
+  const fr = img && img.width && portraitMeta(d.portrait)?.face ? faceRect(img, d.portrait, 1.5) : null;   // 얼굴 상자 (portrait_meta)
+  if (fr) ctx.drawImage(img, fr.sx, fr.sy, fr.sw, fr.sh, x - r, y - r, r * 2, r * 2);
+  else if (img && img.width) {
     const f = d.iconFocus ?? { x: 0.5, y: 0.35, s: 0.6 };
     const s = f.s * img.width;
     ctx.drawImage(img, f.x * img.width - s / 2, f.y * img.height - s / 2, s, s, x - r, y - r, r * 2, r * 2);
@@ -79,7 +83,12 @@ function portraitCard(ctx, id, x, y, w, h, { dim = 0, t = 0 } = {}) {
   if (img && img.width) {
     const k = Math.max(w / img.width, h / img.height) * (1.02 + Math.sin(t * 0.4) * 0.01);
     const iw = img.width * k, ih = img.height * k;
-    ctx.drawImage(img, x + (w - iw) / 2, y + (h - ih) * 0.3, iw, ih);
+    if (isBust(d.portrait, img)) {
+      // 애니메 흉상: 얼굴(portrait_meta)을 가로 가운데·세로 36 % 에 (양옆·아래가 비지 않게)
+      const f = portraitMeta(d.portrait)?.face ?? { x: 0.5, y: 0.3 };
+      const dx = clamp(x + w / 2 - f.x * iw, x + w - iw, x), dy = clamp(y + h * 0.36 - f.y * ih, y + h - ih, y);
+      ctx.drawImage(img, dx, dy, iw, ih);
+    } else ctx.drawImage(img, x + (w - iw) / 2, y + (h - ih) * 0.3, iw, ih);
   } else {
     const g = ctx.createRadialGradient(x + w / 2, y + h * 0.4, 4, x + w / 2, y + h * 0.5, h * 0.7);
     g.addColorStop(0, shade(col, -0.1)); g.addColorStop(1, '#08040a');
