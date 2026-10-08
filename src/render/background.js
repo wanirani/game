@@ -61,8 +61,9 @@ function lumaGrid(img) {
   return L;
 }
 const HERO_LUMA = 64;   // 게임 화면에서 잰 영웅 퍼펫의 평균 밝기 (visual_review --contrast: 대개 58–70)
-/** 원경 밝기 / 영웅 밝기 비 r → 어둠 원 세기 배율. 원경이 영웅과 비슷하면 1, 아주 어두우면 조금(0.35), 훨씬 밝으면 0 (누르면 같은 밝기로 만남) */
-const haloWeight = (r) => (r <= 0.3 ? 0.35 : r < 0.6 ? 0.35 + ((r - 0.3) / 0.3) * 0.65 : r <= 1.1 ? 1 : r < 1.3 ? (1.3 - r) / 0.2 : 0);
+/** 원경 밝기 / 영웅 밝기 비 r → 어둠 원 세기 배율: 원경이 영웅보다 어둡거나 비슷하면 1, 20 % 넘게 밝으면 0 (누르면 같은 밝기로 만남).
+ *  원경이 어두워도 줄이지 않는다 — 원경 그림만 보는 어림이라, 그 앞의 기믹 층·안개·장식이 밝은 곳(s16 휴대폰)을 놓치지 않게 */
+const haloWeight = (r) => (r <= 1 ? 1 : r < 1.2 ? (1.2 - r) / 0.2 : 0);
 
 // halo  = 주인공 분리 (2026-10 벤치마크 1): 주인공 몸 뒤 원경에만 까는 옅은 어둠 원의 중심 알파 (없거나 0 = 끔; 마을 town 은 끔).
 //          실제 세기는 주인공 뒤 원경 그림의 밝기로 줄인다 (haloWeight) — 원경이 주인공보다 한참 밝으면 이미 어두운 실루엣으로 읽히고,
@@ -108,7 +109,7 @@ export function createBackground(stage, map) {
     lightningT: rand(3, 8), lightning: 0,
     q: 1, wv: null, flashK: 1,        // 입자 품질 배율, 그릴 날씨 입자(품질 반영), 화면 번쩍임 배율(settings.flashFx)
     shoot: null, shootT: rand(3, 6),  // stars: 떨어지는 별똥별 하나
-    world: null, haloA: 0,            // update 가 넣는 월드 (drawMid 가 주인공 위치를 읽음), 지금 그리는 어둠 원 알파 (목표값을 부드럽게 따라감)
+    haloA: 0,                         // 지금 그리는 어둠 원 알파 (haloTarget 을 부드럽게 따라감, drawHalo)
     far: { ox: 0, oy: 0, iw: 0, ih: 0 }, // 마지막 drawFar 의 원경 배치 (화면 px) — 주인공 뒤 원경 밝기 찾기
   };
   if (theme.halo > 0) haloSprite();   // 스테이지 진입 때 굽는다 (진행 중에 캔버스를 만들지 않음)
@@ -140,16 +141,49 @@ export function createBackground(stage, map) {
     }
     bg.lightning = Math.max(0, bg.lightning - dt * 2.5);
     if (world.lighting) world.lighting.lightning = (bg.lightning > 0.5 ? bg.lightning : bg.lightning * 0.3) * bg.flashK;
+    if (theme.halo > 0) bg.haloA += (haloTarget(world) - bg.haloA) * Math.min(1, dt * 5);
+  };
+
+  /** 어둠 원의 목표 알파: 테마 세기 × 주인공 몸(위·가운데·아래 세 점) 뒤 원경 그림 밝기에 따른 배율 (haloWeight) */
+  const haloTarget = (world) => {
+    const p = world.player, cam = world.camera;
+    if (!p || p.hidden || !cam) return 0;
+    const img = assets.get(stage.bg), F = bg.far;
+    const L = img && F.iw > 0 ? lumaGrid(img) : null;
+    if (!L) return theme.halo;   // 원경 그림이 없으면 절차적 하늘(어두움) — 배율 1
+    const z = cam.zoom || 1;
+    let sx = (p.cx - cam.x) * z;
+    if (world.gimmick?.bgFlip) sx = (cam.w || 0) - sx;   // [hook:gimmick] 거울 허상: 원경만 좌우로 뒤집혀 그려진다
+    const gx = clamp(((sx - F.ox) / F.iw) * LG_W - 0.5, 0, LG_W - 1.001);
+    let sum = 0;
+    for (let k = 0; k < 3; k++) {
+      const sy = (p.y + p.h * (0.2 + k * 0.3) - cam.y) * z;
+      const gy = clamp(((sy - F.oy) / F.ih) * LG_H - 0.5, 0, LG_H - 1.001);
+      const x0 = gx | 0, y0 = gy | 0, fx = gx - x0, fy = gy - y0, i = y0 * LG_W + x0;
+      sum += lerp(lerp(L[i], L[i + 1], fx), lerp(L[i + LG_W], L[i + LG_W + 1], fx), fy);
+    }
+    return theme.halo * haloWeight((0.88 * sum) / 3 / HERO_LUMA);   // 0.88 = drawFar 의 12 % 누름 (주인공 둘레는 주인공 빛이 어둠막을 걷어 냄)
   };
 
   // 그라데이션은 프레임마다 만들지 않는다 (MASTER_PLAN §5.2 새 그라데이션 16/10/6, R1-REQ-341R): 크기·색이 같으면 캐시를 다시 쓰고,
   // 위치만 바뀌는 것(긴 방의 하늘 이음새·달)은 원점 기준으로 한 번 만들어 translate 로 옮겨 그린다
-  const G = { sky: null, skyH: 0, fog: null, fogH: 0, moon: null, sg: null, sgKey: '', fg: null, fgKey: '' };
+  const G = { sky: null, skyH: 0, fog: null, fogH: 0, moon: null, sg: null, sgKey: '', fg: null, fgKey: '', haze: null, hazeH: 0 };
   const skyGrad = (ctx, vh) => {
     if (G.sky && G.skyH === vh) return G.sky;
     const g = ctx.createLinearGradient(0, 0, 0, vh);
     g.addColorStop(0, theme.sky[0]); g.addColorStop(0.55, theme.sky[1]); g.addColorStop(1, theme.sky[2]);
     G.sky = g; G.skyH = vh;
+    return g;
+  };
+  /** 원경 누름 + 대기 원근 (THEMES.haze): 위쪽 띠는 누르지 않고 차가운 대기색으로 살짝 밝히고, 50 % 에서 0 → 56 % 부터 예전 12 % 누름.
+   *  주인공이 서는 줄(화면 56 % 아래)의 대비는 그대로라 원경만 멀어 보인다. 크기가 같으면 캐시를 다시 쓴다 */
+  const hazeGrad = (ctx, vh) => {
+    if (G.haze && G.hazeH === vh) return G.haze;
+    const [r, gg, b] = theme.haze, k = theme.hazeK ?? 0.18, c = (a) => `rgba(${r},${gg},${b},${a})`;
+    const g = ctx.createLinearGradient(0, 0, 0, vh);
+    g.addColorStop(0, c(k * 0.3)); g.addColorStop(0.3, c(k * 0.8)); g.addColorStop(0.42, c(k)); g.addColorStop(0.5, c(0));
+    g.addColorStop(0.5, rgba(theme.sky[2], 0)); g.addColorStop(0.56, rgba(theme.sky[2], 0.12)); g.addColorStop(1, rgba(theme.sky[2], 0.12));
+    G.haze = g; G.hazeH = vh;
     return g;
   };
   bg.drawFar = (ctx, cam, vw, vh, t) => {
@@ -169,12 +203,15 @@ export function createBackground(stage, map) {
       let ox = -(iw - vw) * px;
       if (iw < vw) ox = (vw - iw) / 2;
       let oy = -(ih - vh) * py;
+      const F = bg.far;
+      F.iw = iw; F.ih = ih; F.ox = ox;
       // 세로로 긴 방(화면 높이 2배 초과, 줌과 무관하게 판정): 같은 원경(지평선·바닥)이 층마다 반복되지 않도록
       // 원경은 방 바닥 근처에만 두고, 위로 올라갈수록 느린 패럴랙스로 아래로 빠지며 윗부분은 하늘/어둠으로 녹아든다
       const tall = roomH > vh * 2;
       if (tall) {
         const up = spanY * (1 - py); // 카메라가 가장 낮은 위치에서 올라간 거리
         oy = -(ih - vh) + up * TALL_PARALLAX;
+        F.oy = oy;
         const top = topColor(img, theme.sky[0]);
         const fadeH = ih * 0.25;
         if (oy > 0) {
@@ -201,11 +238,12 @@ export function createBackground(stage, map) {
           ctx.restore();
         }
       } else {
+        F.oy = oy;
         ctx.drawImage(img, ox, oy, iw, ih);
         if (iw < vw) { ctx.save(); ctx.scale(-1, 1); ctx.drawImage(img, -ox, oy, iw, ih); ctx.restore(); }
       }
-      // 어둡게 눌러서 게임 레이어와 분리
-      ctx.fillStyle = rgba(theme.sky[2], 0.12);
+      // 어둡게 눌러서 게임 레이어와 분리 (대기 원근 테마는 위쪽 띠만 대기색으로 — 긴 방은 원경이 바닥 근처에만 있어 예전처럼)
+      ctx.fillStyle = theme.haze && !tall ? hazeGrad(ctx, vh) : rgba(theme.sky[2], 0.12);
       ctx.fillRect(0, 0, vw, vh);
     } else if (theme.moon) {
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -244,6 +282,16 @@ export function createBackground(stage, map) {
       }
       ctx.restore();
     }
+  };
+
+  /** 주인공 뒤 어둠 원 (THEMES.halo): Player.drawBacking 이 영웅 몸 바로 전에 월드 좌표로 부른다 — 원경뿐 아니라 그 앞의 배경 소품
+   *  (s16 석상 등)까지 눌러야 해서 원경 층이 아니라 여기서 그린다. 64px 스프라이트 한 장, 알파는 update 의 haloTarget 을 따라간다 */
+  bg.drawHalo = (ctx, p, lift = 0) => {
+    if (!(bg.haloA > 0.01)) return;
+    const r = p.h * 1.05, a0 = ctx.globalAlpha;
+    ctx.globalAlpha = a0 * bg.haloA;
+    ctx.drawImage(haloSprite(), p.cx - r * 0.75, p.cy - lift - r, r * 1.5, r * 2);
+    ctx.globalAlpha = a0;
   };
 
   bg.drawFront = (ctx, cam, vw, vh, t) => {

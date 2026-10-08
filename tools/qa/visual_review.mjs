@@ -91,22 +91,25 @@ const frameStats = (s) => s.eval(() => {
 });
 
 /** Hero figure/ground contrast (--contrast; the 2026-10 benchmark metric, ported from its shots.mjs): renders the frame with
- *  the hero, then again with only the hero body left out — Player.drawBacking keeps the contact shadow and the background
- *  halo reads world.player, so what is "behind" includes them (older code without drawBacking: the whole player hidden).
- *  Pixels above the feet that change are the hero mask; mean hero luma vs mean luma behind it → WCAG-style ratio on the
- *  mean lumas. Also the top/middle/bottom thirds' mean luma of the frame (haze check). The QA invincibility ring and
- *  the hurt blink are switched off for the two renders. */
+ *  the hero, then again with only the hero body left out — Player.drawBacking keeps the halo and the contact shadow, so
+ *  what is "behind" includes them (older code without drawBacking: the whole player hidden). Pixels above the feet that
+ *  change are the hero mask; mean hero luma vs mean luma behind it → WCAG-style ratio on the mean lumas. Also the
+ *  top/middle/bottom thirds' mean luma of the frame (haze check). The same frame is then measured again with the hero
+ *  separation switched off in the page (bg theme halo/haze, Player.drawBacking) → `off`, a before/after pair free of
+ *  scene noise. The QA invincibility ring and the hurt blink are switched off for the renders. */
 const heroContrast = (s) => s.eval(() => {
   const g = window.__game, w = g.world, cam = w?.camera, p = w?.player;
   if (!p || !cam) return null;
   const lum = (r, gg, b) => 0.2126 * r + 0.7152 * gg + 0.0722 * b;
+  const rel = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
   const cv = g.canvas, z = cam.zoom || 1, sx = cv.width / g.viewW, sy = cv.height / g.viewH;
   const inv = p.buffs.invincible, ifr = p.iframes;
   p.buffs.invincible = 0; p.iframes = 0;
   const k = window.__vrK || (window.__vrK = document.createElement('canvas'));
   const kx = k.getContext('2d', { willReadFrequently: true });
   const grab = (x0, y0, cw, ch) => { k.width = cw; k.height = ch; kx.drawImage(cv, x0, y0, cw, ch, 0, 0, cw, ch); return kx.getImageData(0, 0, cw, ch).data; };
-  try {
+  const backing = typeof p.drawBacking === 'function';
+  const measure = () => {
     window.__qaStep(0, true);
     const bands = [];
     k.width = 192; k.height = 108; kx.drawImage(cv, 0, 0, 192, 108);   // thirds of a 192×108 copy, as in the benchmark
@@ -119,9 +122,8 @@ const heroContrast = (s) => s.eval(() => {
     const x0 = Math.max(0, Math.floor((p.x - 50 - cam.x) * z * sx)), y0 = Math.max(0, Math.floor((p.y - 50 - cam.y) * z * sy));
     const x1 = Math.min(cv.width, Math.ceil((p.x + p.w + 50 - cam.x) * z * sx)), y1 = Math.min(cv.height, Math.ceil((p.y + p.h + 8 - cam.y) * z * sy));
     const cw = x1 - x0, ch = y1 - y0;
-    if (cw < 4 || ch < 4) return { bands, off: true };
+    if (cw < 4 || ch < 4) return { bands, offscreen: true };
     const A = grab(x0, y0, cw, ch);
-    const backing = typeof p.drawBacking === 'function';
     if (backing) p.draw = function (ctx, world) { this.drawBacking(ctx, world); }; else p.hidden = true;
     window.__qaStep(0, true);
     const Bk = grab(x0, y0, cw, ch);
@@ -132,11 +134,22 @@ const heroContrast = (s) => s.eval(() => {
       if (Math.floor(i / 4 / cw) >= feet) continue;
       if (Math.abs(A[i] - Bk[i]) + Math.abs(A[i + 1] - Bk[i + 1]) + Math.abs(A[i + 2] - Bk[i + 2]) > 30) { n++; La += lum(A[i], A[i + 1], A[i + 2]); Lb += lum(Bk[i], Bk[i + 1], Bk[i + 2]); }
     }
-    const rel = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
     const hl = La / Math.max(1, n), bl = Lb / Math.max(1, n);
     const ratio = (Math.max(rel(hl), rel(bl)) + 0.05) / (Math.min(rel(hl), rel(bl)) + 0.05);
-    return { bands, maskPx: n, hero: +hl.toFixed(1), behind: +bl.toFixed(1), ratio: +ratio.toFixed(2), backing,
-      heroY: +(((p.y - cam.y) * z) / g.viewH).toFixed(2), theme: w.bg?.stage?.theme ?? null };
+    return { bands, maskPx: n, hero: +hl.toFixed(1), behind: +bl.toFixed(1), ratio: +ratio.toFixed(2) };
+  };
+  try {
+    const on = measure();
+    if (on.offscreen) return on;
+    let off = null;
+    const bg = w.bg, th = bg?.theme;
+    if (backing && th) {   // same frame without the hero separation (halo, haze, contact shadow)
+      const save = { haze: th.haze, halo: th.halo, a: bg.haloA };
+      th.haze = undefined; th.halo = 0; bg.haloA = 0; p.drawBacking = () => {};
+      try { off = measure(); } finally { th.haze = save.haze; th.halo = save.halo; bg.haloA = save.a; delete p.drawBacking; }
+    }
+    return { ...on, backing, off: off && !off.offscreen ? { ratio: off.ratio, hero: off.hero, behind: off.behind, bands: off.bands } : null,
+      haloA: +(bg?.haloA ?? 0).toFixed(2), heroY: +(((p.y - cam.y) * z) / g.viewH).toFixed(2), theme: w.bg?.stage?.theme ?? null };
   } finally {
     p.buffs.invincible = inv; p.iframes = ifr;
     window.__qaStep(0, true);
@@ -583,11 +596,11 @@ const GROUP_FNS = {
     const ids = list(args.stages, QUICK ? ['s01', 's02', 's16', 'hub'] : [...Object.keys(STAGES).filter((k) => /^s\d\d$/.test(k)), 'hub']);
     const WALKC = `if (p) p.buffs.invincible = 9999; if (i === 0) key('ArrowRight', true); if (i === WALK_N) key('ArrowRight', false);`;
     const row = (st, pose, m, r) => {
-      if (!m || m.off) { harness.push(`${st} ${pose}: hero off screen`); return; }
+      if (!m || m.offscreen) { harness.push(`${st} ${pose}: hero off screen`); return; }
       contrastRows.push({ vp, stage: st, pose, ...m });
-      r.label = `${st} ${pose} · ${m.ratio} (hero ${m.hero} / behind ${m.behind})`;
+      r.label = `${st} ${pose} · ${m.off ? `${m.off.ratio} → ` : ''}${m.ratio} (hero ${m.hero} / behind ${m.behind})`;
       if (m.ratio < CONTRAST_WARN) r.err = `contrast ${m.ratio}`;
-      C.add(`contrast.${vp}.${st}.${pose}`, m.ratio < CONTRAST_WARN ? 'warn' : 'pass', `ratio ${m.ratio} (hero luma ${m.hero}, behind ${m.behind}, ${m.maskPx} px); bands ${m.bands.join(' / ')}${m.backing ? '' : ' (no drawBacking: player hidden)'}`);
+      C.add(`contrast.${vp}.${st}.${pose}`, m.ratio < CONTRAST_WARN ? 'warn' : 'pass', `ratio ${m.ratio}${m.off ? ` (${m.off.ratio} without halo/haze/shadow)` : ''} (hero luma ${m.hero}, behind ${m.behind}, ${m.maskPx} px, halo ${m.haloA}); bands ${m.bands.join(' / ')}${m.backing ? '' : ' (no drawBacking: player hidden)'}`);
     };
     for (const st of ids) {
       try {
@@ -685,9 +698,9 @@ if (contrastRows.length) {
   const lines = contrastRows.map((r) => {
     const b = B.get(key(r));
     const d = (v, w) => (b ? ` (${v - w >= 0 ? '+' : ''}${(v - w).toFixed(2)})` : '');
-    return `| ${r.vp} | ${r.stage} | ${r.pose} | ${r.theme ?? ''} | ${r.ratio}${d(r.ratio, b?.ratio)} | ${r.hero} | ${r.behind}${d(r.behind, b?.behind)} | ${r.bands.join(' / ')}${b ? ` (top ${(r.bands[0] - b.bands[0] >= 0 ? '+' : '') + (r.bands[0] - b.bands[0]).toFixed(1)}, mid ${(r.bands[1] - b.bands[1] >= 0 ? '+' : '') + (r.bands[1] - b.bands[1]).toFixed(1)})` : ''} |`;
+    return `| ${r.vp} | ${r.stage} | ${r.pose} | ${r.theme ?? ''} | ${r.off ? `${r.off.ratio} → ` : ''}${r.ratio}${d(r.ratio, b?.ratio)} | ${r.haloA ?? ''} | ${r.hero} | ${r.behind}${d(r.behind, b?.behind)} | ${r.bands.join(' / ')}${b ? ` (top ${(r.bands[0] - b.bands[0] >= 0 ? '+' : '') + (r.bands[0] - b.bands[0]).toFixed(1)}, mid ${(r.bands[1] - b.bands[1] >= 0 ? '+' : '') + (r.bands[1] - b.bands[1]).toFixed(1)})` : ''} |`;
   });
-  contrastMd = `\n## Hero figure/ground contrast (warn < ${CONTRAST_WARN})${base ? ` — change vs ${args['contrast-base']}` : ''}\n\n| vp | stage | pose | theme | ratio | hero luma | behind luma | band luma top / mid / bottom |\n|---|---|---|---|---|---|---|---|\n${lines.join('\n')}\n\nrows: \`${file}\`\n`;
+  contrastMd = `\n## Hero figure/ground contrast (warn < ${CONTRAST_WARN})${base ? ` — change vs ${args['contrast-base']}` : ''}\n\n| vp | stage | pose | theme | ratio (separation off → on, same frame) | halo α | hero luma | behind luma | band luma top / mid / bottom |\n|---|---|---|---|---|---|---|---|---|\n${lines.join('\n')}\n\nrows: \`${file}\`\n`;
   console.log(contrastMd);
 }
 const md = `\n## Contact sheets\n\n${sheets.map((x) => `- ${x.title}: \`${x.file}\` (${x.shots} shots${x.flagged ? `, ${x.flagged} flagged` : ''})`).join('\n')}\n\n## Flagged shots\n\n${flagged.map((f) => `- ${f.label}: ${f.why}${f.file ? ` — ${f.file}` : ''}`).join('\n') || '(none)'}\n${contrastMd}`;

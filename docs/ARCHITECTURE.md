@@ -115,6 +115,7 @@ rAF ─▶ input.pollFrame() (패드 읽기·진동 정리) ─▶ (세로 잠�
 엔티티 루프 (맨 앞의 보이지 않는 GimmickDirector 가 `gimmick.beforePlayer`; Player: `mount.tick` → `updateGait` → 이동 → `physics(prePhysics … postPhysics, squashSpring)` → 공격 입력 `handleUltInput` …; CompanionDirector: `companions.update`; 적·보스·투사체 — `timeStop`·`freezeEnemies` 중엔 적 탄 정지) →
 `fx.update` → `gimmick.update` → `style.update` → 오버레이(`tickOverlays`) → 보스 페이즈 감시(`pollBossPhase`) → 처치 슬로모 → 콤보 시간 → 카메라(`camera.follow`) → 방 출구·가짜 벽·보스 트리거·클리어 → 조명 수집(`lights`, `gimmick.lights`).
 그리기: 먼 배경(거울 허상이면 뒤집기) → 중경 → `gimmick.drawWorld('under')` → 타일 → `'back'` → 엔티티(z 순) → 액체 → `'front'` → 조명 → 앞 배경 → `gimmick.drawScreen` → 손맛 오버레이(레터박스·색보정·집중선·임팩트 프레임) → fx 'top' → HUD(§9).
+영웅 분리·대기 원근 (2026-10 벤치마크 1·9): `Player.drawBacking` 이 영웅 몸 바로 전에 옅은 어둠 원(`bg.drawHalo`, 64px 캐시 스프라이트; 세기 = `THEMES.halo` × 영웅 뒤 원경 그림 밝기 배율 — 원경이 영웅보다 20 % 넘게 밝으면 0, 마을 `town` 은 끔)과 발밑 타원 그림자(마을 NPC 와 같은 모양, 공중이면 아래 바닥에 작고 옅게, 탈것은 제 그림자)를 그린다 — 프레임당 그리기 2번, 퍼펫 윤곽 빛은 그대로. `THEMES.haze`/`hazeK` 테마(1부 바깥: village·graveyard·gate·spire)는 원경 12 % 누름 대신 캐시한 세로 그라데이션 한 장 — 화면 위 30–45 % 에 차가운 대기색, 50 % 에서 0, 56 % 아래는 예전 누름 그대로(긴 방은 예전대로). 대비 측정 `node tools/qa/visual_review.mjs --contrast [--stages s01,s02,s16,hub] [--contrast-base 이전.json]` (영웅 몸만 뺀 화면과 비교한 영웅/뒤 밝기 비, 1.4 미만 경고).
 
 ## 4. 코어 API
 

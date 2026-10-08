@@ -640,7 +640,8 @@ uiScale: 'auto',          // 'auto' | 1 | 1.15 | 1.3 | 1.5
 safeArea: 'fit',          // 'fit' | 'full'
 fullscreenAuto: true,     // touch: first title tap requests fullscreen (Android web)
 keepAwake: true,
-reduceMotion: false,      // disables auto-spin/reveal spins (and future camera sway)
+reduceMotion: false,      // default = the OS 'reduce motion' (prefers-reduced-motion) when nothing is saved; disables auto-spin/reveal spins,
+                          // front lightning, and the title Ken Burns, logo bob and PRESS START breathing (and future camera sway)
 ctrlPrompts: 'auto',      // 'auto'|'keyboard'|'xbox'|'ps'|'nintendo'
 ctrlPreset: 'arcade',     // 'arcade'|'classic'|'custom'
 ctrlMap: null,            // {action:[btnIndex…]}
@@ -772,6 +773,8 @@ Phases:
   - `footer`/`backButton`/`gbutton` with glyphs and ≥ 44 CSS sizes.
   - `uiScale` opt-in for all front scenes.
   - Title: update prompt, audio hint, add-to-home-screen card, "안드로이드 앱(APK) 받기" (web + Android UA).
+  - Title PRESS START: a 78–100 % breathing alpha (static with `reduceMotion`), never a blink that fades out; a soft dark band behind it; placed between the logo and the hunter's head in `bg/title` (computed from the Ken Burns geometry, never over the hunter); touch hint ≥ 15 CSS px. On phones the menu-state logo subtitle is drawn at ≥ 18 UI px (≈ 15 CSS).
+  - Title accessibility: a left-edge "보기" tab (≥ 44 CSS px, press screen only) opens options on the 화면 page. Front-scene lightning reads `flashFx`/`reduceMotion` every frame (changes apply on return from options). With no saved settings (first run) the title holds lightning until the first input and skips the double flash.
   - P-29 message.
   - `setPad` calls are replaced by scene flags.
 - **Acceptance:**
