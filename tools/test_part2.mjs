@@ -363,6 +363,8 @@ async function storyExtChecks(G, imp, { SCRIPTS, NPCS, BOSSES, TRACKS, CMP }) {
         if (l.choice) { bad.push(`${at}: 선택지`); return; }
         for (const k of Object.keys(l)) if (!['who', 'text', 'name', 'portrait', 'side', 'if', 'face'].includes(k)) bad.push(`${at}: 모르는 키 ${k}`);
         const sp = speaker(l.who);
+        // 이름만 쓰는 화자('에드문트의 환영' 등)는 된다 — 그러나 id 꼴(npc_elize 같은 오타)이 어디에도 없으면 화면에 id 가 그대로 뜬다
+        if (sp.free && /^[a-z][a-z0-9]*_[a-z0-9_]+$/.test(String(l.who))) bad.push(`${at}: 화자 ${l.who} (id 꼴인데 CHARACTERS·NPCS·BOSSES·동료에 없음)`);
         if (sp.kind === 'hero' && l.who === 'hero' && typeof l.text !== 'string') bad.push(`${at}: 한 영웅의 시련 대본에 H({…})`);
         if (l.portrait && !asset(l.portrait)) bad.push(`${at}: portrait ${l.portrait}`);
         for (const p of l.portrait ? [] : sp.portraits) if (!asset(p)) bad.push(`${at}: 화자 초상화 ${p}`);

@@ -204,7 +204,7 @@ async function pageLib() {
     const oh = w.onPlayerHit;
     if (typeof oh === 'function') {
       w.onPlayerHit = function (target, info, attack) {
-        Q.log.hits.push({ s: Q.steps, cls: info?.cls, hs: info?.hitstop, dmg: info?.dmg, crit: !!info?.crit, counter: !!info?.counter, back: !!info?.back, air: !!info?.air, otg: !!info?.otg, cont: !!info?.cont, killed: !!info?.killed, moveId: info?.moveId ?? null, fxType: info?.fxType ?? null, tags: attack?.tags ? [...attack.tags] : [], tid: target?.__id ?? target?.kind ?? null, final: !!attack?.final, whs: w.hitstop });
+        Q.log.hits.push({ s: Q.steps, cls: info?.cls, hs: info?.hitstop, dmg: info?.dmg, crit: !!info?.crit, counter: !!info?.counter, back: !!info?.back, air: !!info?.air, otg: !!info?.otg, cont: !!info?.cont, killed: !!info?.killed, moveId: info?.moveId ?? null, fxType: info?.fxType ?? null, tags: attack?.tags ? [...attack.tags] : [], tid: target?.__id ?? target?.kind ?? null, final: !!attack?.final, proc: !!attack?.proc, whs: w.hitstop });
         cap(Q.log.hits, 4000);
         return oh.call(this, target, info, attack);
       };
@@ -561,7 +561,8 @@ async function pC1C3() {
     const n0 = Q.log.hits.length;
     p.startMove(w, mv, kind);
     let r = null, whs = null;
-    Q.step(60, () => { if (Q.log.hits.length > n0) { r = Q.log.hits[n0]; whs = w.hitstop; return false; } });
+    // the move's own first hit: perk procs (attack.proc — class_perks procAtk, hitstop 0) can land in the same step before it
+    Q.step(60, () => { const k = Q.log.hits.findIndex((h, j) => j >= n0 && !h.proc); if (k >= 0) { r = Q.log.hits[k]; whs = w.hitstop; return false; } });
     const exp = wantCls === 'L' && r?.fxType === 'bullet' ? H.gun : H[wantCls];
     out.rows.push({ want: wantCls, moveId: mv?.id, cls: r?.cls ?? null, infoHs: r?.hs ?? null, worldHitstop: whs, expected: exp, crit: r?.crit, counter: r?.counter, back: r?.back });
     if (wantCls === 'F' && r) {

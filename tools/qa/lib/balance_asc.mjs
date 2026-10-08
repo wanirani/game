@@ -28,7 +28,7 @@ import { getDiff } from '../../../src/data/difficulty.js';
 export const FLAT_CAP = Object.freeze({ crit: 8, critDmg: 25, dmgReduce: 8, lifesteal: 3, atkSpd: 12, cdr: 10, moveSpd: 8, hpRegen: 2, mpRegen: 2, skillDmg: 12, reach: 10, jumpPow: 10, luck: 10, element: 25 });
 const ELEMENTS = ['fire', 'ice', 'holy', 'dark', 'thunder'];
 export const LIMITS = Object.freeze({ atkEff: 0.12, ehp: 0.15, sigT3: 0.20, sigHidden: 0.30, sigWarn: 0.12, siegeWarn: 0.50, felt: 0.02, trial: [40, 75] });
-const pct = (x, d = 1) => (Number.isFinite(x) ? `${x >= 0 ? '+' : ''}${(x * 100).toFixed(d)}%` : '∞');
+const pct = (x, d = 1) => (x == null || Number.isNaN(x) ? '-' : Number.isFinite(x) ? `${x >= 0 ? '+' : ''}${(x * 100).toFixed(d)}%` : '∞');   // '-' = 모드를 돌리지 않음 (--modes)
 const r1 = (x) => Math.round(x * 10) / 10;
 
 // ─────────────────────────── 1) 자료 예산 ───────────────────────────
@@ -140,6 +140,8 @@ export function selectAsc(sel, charFilter) {
     L = ids.map((id) => ASCENSIONS[id]);
   }
   if (charFilter) L = L.filter((A) => A.charId === charFilter);
+  // 고른 것이 하나도 없으면 (예: normal kael --asc lia_umbra) 빈 표로 ✓ 를 내지 않는다
+  if (!L.length) throw new Error(`--asc ${sel ?? 'all'}${charFilter ? ` (영웅 ${charFilter})` : ''}: 고른 초월·비전이 없다`);
   return L;
 }
 
@@ -179,7 +181,7 @@ export async function runAsc(o) {
     if (maxSig < LIMITS.felt && siegeSig < 0.03 && maxMit < 1.03) warns.push({ id: A.id, msg: `특성이 모형에서 보이지 않는다 (모든 모드 sig < +2 %, 생존 효과 없음) — 이동·공중·회피 위주 특성이면 정상` });
     if (siegeSig > LIMITS.siegeWarn) warns.push({ id: A.id, msg: `siege eHP sig ${pct(siegeSig)} > +${LIMITS.siegeWarn * 100}%` });
     if (maxMit > 1.5) warns.push({ id: A.id, msg: `피격 모드 받은 피해 ×${(1 / maxMit).toFixed(2)} (mit ×${maxMit.toFixed(2)})` });
-    log(`  · ${A.id.padEnd(20)} sig mob ${pct(d.r.mob?.sig - 1)} pack ${pct(d.r.pack?.sig - 1)} boss ${pct(d.r.boss?.sig - 1)} kill ${pct(d.r.kill?.sig - 1)} calm ${pct(d.r.calm?.sig - 1)} siege ${pct(siegeSig)}`);
+    log(`  · ${A.id.padEnd(20)} sig mob ${pct(d.r.mob?.sig - 1)} pack ${pct(d.r.pack?.sig - 1)} boss ${pct(d.r.boss?.sig - 1)} kill ${pct(d.r.kill?.sig - 1)} calm ${pct(d.r.calm?.sig - 1)} siege ${pct(d.r.siege ? siegeSig : null)}`);
   }
   // 4)
   let tri = [];
