@@ -31,6 +31,7 @@ export const AWAKEN_RULES = Object.freeze({
   edgeDark: 0.3,                   // 누르는 동안 화면 가장자리 어두움 최대
   mvMul: 2.2,          // 각성 총 MV = 필살기 총 MV × 2.2
   t2Mul: 1.15,         // 2차 전직(진 각성) 추가 배율
+  t3Mul: 1.25,         // 초월·비전(초월 각성·비전 각성) 배율 — 2차 배율 대신 (classes_t3 §7.2)
   bossCap: 0.30,       // 각성 한 번으로 보스에게 줄 수 있는 최대 피해 (최대 HP 비율)
   bossCapSpare: 0.02,  // 상한을 넘긴 타격(각 1 피해, '저항')이 30% 를 넘지 않도록 남겨 두는 몫 (최대 HP 비율, 최대 80)
   cutin: { full: 1.45, short: 0.75, skipAfter: 0.5 },
@@ -196,6 +197,9 @@ export const T2 = {
 
 /** 진 각성 이름 앞에 붙는 말 (2차 전직) */
 export const T2_PREFIX = '진 각성';
+/** 초월(3차) · 비전(숨은 직업) 각성 제목 앞말 (classes_t3 §7.2) */
+export const T3_PREFIX = '초월 각성';
+export const HIDDEN_PREFIX = '비전 각성';
 /** 일반(1차 전직) 각성 제목 앞말 */
 export const TITLE_PREFIX = '각성';
 
@@ -203,8 +207,52 @@ export const TITLE_PREFIX = '각성';
 export function awakenOf(charId) { return AWAKEN[charId] ?? null; }
 /** classId → 진 각성 변형 (1차 전직이거나 없으면 null) */
 export function t2Of(classId) { return T2[classId] ?? null; }
-/** 컷인 끝 제목: '각성 — {name}' (2차 전직은 '진 각성 — {name}') */
-export function awakenTitle(charId, tier = 1) {
+/** 단계별 제목 앞말: 1 '각성' · 2 '진 각성' · 3 '초월 각성' (kind 'hidden' 이면 '비전 각성') */
+export function awakenPrefix(tier = 1, kind = null) {
+  return tier >= 3 ? (kind === 'hidden' ? HIDDEN_PREFIX : T3_PREFIX) : tier >= 2 ? T2_PREFIX : TITLE_PREFIX;
+}
+/** 컷인 끝 제목: '각성 — {name}' (2차 '진 각성', 초월 '초월 각성', 비전 '비전 각성') */
+export function awakenTitle(charId, tier = 1, kind = null) {
   const a = AWAKEN[charId];
-  return a ? `${tier >= 2 ? T2_PREFIX : TITLE_PREFIX} — ${a.name}` : '';
+  return a ? `${awakenPrefix(tier, kind)} — ${a.name}` : '';
+}
+
+const r4 = (x) => Math.round(x * 1e4) / 1e4;
+/**
+ * 초월 각성 상한 규칙 (classes_t3 §7.2): 2차 진 각성 변형 → 새 객체 (원본은 건드리지 않는다; 순수 함수).
+ * heal ×1.5 · lifesteal ×1.5 · dot.t +1, dot.mv ×1.33 · slow.mul −0.1, slow.t +1 · invuln +1 · critDmg +20 · comboDmg +0.01 ·
+ * shots +4 · execute +0.05 · healPerKill +0.01. 연출 깃발·이름·색은 그대로. 비전 각성은 이 결과를 그대로 쓰고,
+ * 초월 28 의 표 값(ascensions.js awaken)은 이 상한 안에 있다 (tools/test_ascension.mjs)
+ */
+export function T3_BOOST(base) {
+  if (!base || typeof base !== 'object') return null;
+  const o = { ...base };
+  if (Array.isArray(base.elements)) o.elements = [...base.elements];
+  if (Number.isFinite(base.heal)) o.heal = r4(base.heal * 1.5);
+  if (Number.isFinite(base.lifesteal)) o.lifesteal = r4(base.lifesteal * 1.5);
+  if (base.dot) o.dot = { ...base.dot, t: r4((base.dot.t ?? 0) + 1), mv: r4((base.dot.mv ?? 0) * 1.33) };
+  if (base.slow) o.slow = { ...base.slow, mul: r4((base.slow.mul ?? 1) - 0.1), t: r4((base.slow.t ?? 0) + 1) };
+  if (Number.isFinite(base.invuln)) o.invuln = r4(base.invuln + 1);
+  if (Number.isFinite(base.critDmg)) o.critDmg = r4(base.critDmg + 20);
+  if (Number.isFinite(base.comboDmg)) o.comboDmg = r4(base.comboDmg + 0.01);
+  if (Number.isFinite(base.shots)) o.shots = Math.round(base.shots + 4);
+  if (Number.isFinite(base.execute)) o.execute = r4(base.execute + 0.05);
+  if (Number.isFinite(base.healPerKill)) o.healPerKill = r4(base.healPerKill + 0.01);
+  return o;
+}
+
+/**
+ * 초월·비전 각성 변형 (game/awaken.js makeContext 가 쓴다; 순수). classId = 지금 2차 id, asc = ascensions.js 항목 또는 null.
+ *  · asc 없음 → T2[classId] 그대로 · 초월(t3) → T2 위에 asc.awaken 수치 (색·강조색 키는 무시: 감독의 미리 굽기 색이 그대로 맞다)
+ *  · 비전(hidden) 또는 awaken 표가 없는 항목 → T3_BOOST(T2[classId]) (label·desc 는 2차 그대로)
+ */
+export function ascAwakenOf(classId, asc = null) {
+  const base = T2[classId] ?? null;
+  if (!base || !asc) return base;
+  if (asc.kind !== 't3' || !asc.awaken) return T3_BOOST(base);
+  const ov = { ...asc.awaken };
+  delete ov.color; delete ov.accent;
+  if (ov.dot) ov.dot = { ...ov.dot };
+  if (ov.slow) ov.slow = { ...ov.slow };
+  return { ...base, ...ov };
 }

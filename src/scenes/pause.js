@@ -11,12 +11,13 @@ import { Scene } from '../core/game.js';
 import { input } from '../core/input.js';
 import { audio } from '../core/audio.js';
 import { assets } from '../core/assets.js';
-import { text, FONT, taps, bloodText, prewarmText, wrap } from '../core/ui.js';
+import { text, FONT, taps, bloodText, prewarmText, wrap, textFloor } from '../core/ui.js';
 import { drawHints } from '../core/prompts.js';
 import { clamp, ease, fmtTime, TAU } from '../core/math.js';
 import { faceRect } from '../render/portrait.js';
 import { CHARACTERS } from '../data/characters.js';
-import { CLASSES } from '../data/classes.js';
+import { classNameOf } from '../data/ascensions.js';   // 초월·비전 이름 (classes_t3 §8.3)
+import * as TRIAL from '../game/trial.js';   // 시련: '마을로 귀환' 대신 '시련 포기' (classes_t3 §9.4)
 import * as NG from '../game/ngplus.js';   // [hook:ng]
 import {
   PAL, frame, divider, glow, glowOval, glyph, gauge, diamond, gbutton, Nav, Gesture, Embers,
@@ -95,7 +96,8 @@ export class PauseScene extends Scene {
       { label: '메뉴', sub: '상태 · 장비 · 스킬 · 도감', icon: 'crest', disabled: !reg.menu, run: () => this.game.push('menu', { world: this.world, tab: 'status' }) },
       { label: '인벤토리', icon: 'bag', disabled: !reg.menu, run: () => this.game.push('menu', { world: this.world, tab: 'inventory' }) },
       { label: '설정', icon: 'gear', disabled: !reg.options, run: () => this.game.push('options', {}) },
-      { label: '마을로 귀환', icon: 'home', run: () => this.confirmTown() },
+      this.world?.trial ? { label: '시련 포기', icon: 'home', run: () => this.confirmQuitTrial() }   // 시련: 성당으로 (TRIAL.leaveTrial)
+        : { label: '마을로 귀환', icon: 'home', run: () => this.confirmTown() },
       { label: '타이틀로', icon: 'door', run: () => this.confirmTitle() },
     ];
     this.i = 0;
@@ -130,6 +132,15 @@ export class PauseScene extends Scene {
         // from = 스테이지 id → 마을은 동쪽 성문 앞에서 시작 (hub.js: 도착 이유가 처음 방문·이어하기가 아니면 성문)
         this.game.go(this.game.registry.hub ? 'hub' : 'title', { from: w?.stage?.id ?? 'stage' });
       },
+    });
+  }
+  /** 시련 중: 메아리에서 빠져나와 성당으로 (기록은 남고, 언제든 다시 도전할 수 있다) */
+  confirmQuitTrial() {
+    const w = this.world, tid = w?.trial?.id;
+    this.modal = new PauseConfirm({
+      title: '시련 포기', yes: '포기한다', no: '취소', danger: true,
+      text: '메아리에서 빠져나와 성당으로 돌아갑니다.\n시련은 언제든 다시 도전할 수 있습니다.',
+      onYes: () => TRIAL.leaveTrial(this.game, tid, 'quit'),
     });
   }
   confirmTitle() {
@@ -290,8 +301,9 @@ export class PauseScene extends Scene {
       }
       const col = it.disabled ? '#8a6068' : sel ? PAL.goldHi : PAL.bone;
       glyph(ctx, it.icon, r.x + 28, cy, 18, sel ? PAL.goldHi : it.disabled ? '#6a4048' : PAL.gold, 1.6);
-      text(ctx, it.label, r.x + 50, cy + (it.sub ? 0 : 6), { size: 17, weight: 800, color: col, ow: 3 });
-      if (it.sub) text(ctx, it.sub, r.x + 50, cy + 16, { size: 11, weight: 600, color: sel ? '#f0d0b0' : '#c0909a', ow: 2 });
+      const ln = rowLines(rowH, !!it.sub);
+      text(ctx, it.label, r.x + 50, cy + ln.y1, { size: ln.ls, weight: 800, color: col, ow: 3 });
+      if (ln.sub) text(ctx, it.sub, r.x + 50, cy + ln.y2, { size: ln.ss, weight: 600, color: sel ? '#f0d0b0' : '#c0909a', ow: 2 });
     });
     ctx.restore();
   }
@@ -304,7 +316,9 @@ export class PauseScene extends Scene {
     frame(ctx, cx0, cy0, cw, ch, { top: 'rgba(24,12,30,0.9)', bot: 'rgba(8,4,12,0.92)' });
     const st = w.stage || {};
     const ng = w.ng > 0 ? NG.ngLabel?.(w.ng) || `${w.ng + 1}회차` : '';   // [hook:ng]
-    text(ctx, `CHAPTER ${st.chapter ?? ''}${ng ? ` · ${ng}` : ''}`, cx0 + 22, cy0 + 30, { size: 12, weight: 800, family: FONT.num, color: PAL.goldMid });
+    const tr = w.trial;   // 시련: 머리 줄은 시련 이름 (보라)
+    if (tr) text(ctx, tr.name ?? '', cx0 + 22, cy0 + 30, { size: 13, weight: 800, color: TRIAL.TRIAL_COLOR, maxWidth: cw - 44 });
+    else text(ctx, `CHAPTER ${st.chapter ?? ''}${ng ? ` · ${ng}` : ''}`, cx0 + 22, cy0 + 30, { size: 12, weight: 800, family: FONT.num, color: PAL.goldMid });
     text(ctx, st.name ?? '', cx0 + 22, cy0 + 60, { size: 26, weight: 800, family: FONT.title, color: PAL.bone, ow: 4, maxWidth: cw - 44 });
     if (st.sub) text(ctx, st.sub, cx0 + 22, cy0 + 80, { size: 12, weight: 600, color: PAL.dim, maxWidth: cw - 44 });
     divider(ctx, cx0 + 16, cy0 + 94, cw - 32);
@@ -317,15 +331,22 @@ export class PauseScene extends Scene {
       ['최대 콤보', `${w.combo?.best ?? w.combo?.max ?? 0} HIT`],
       ['비전서', docsAll ? `${run.docsFound?.length ?? 0} / ${docsAll}` : '—'],
     ];
+    if (tr) {   // 시련: 점수·비전서 대신 규칙·도전 횟수 (점수·전리품이 남지 않는다)
+      const rn = TRIAL.trialRuleNames(tr);
+      rows.splice(1, 1, ['시련의 규칙', rn.length ? rn.join(' · ') : '없음']);
+      rows.splice(4, 1, ['도전 횟수', `${w.hero?.trials?.[tr.id]?.tries ?? 0}`]);
+    }
     rows.forEach(([a, b], k) => {
       const y = cy0 + 120 + k * 24;
       text(ctx, a, cx0 + 24, y, { size: 13, weight: 600, color: PAL.text });
-      text(ctx, b, cx0 + cw - 24, y, { size: 15, align: 'right', weight: 800, family: FONT.num, color: PAL.bone, ow: 3 });
+      const num = /^[\d:/ ,.\u2014HIT]+$/.test(b);   // 숫자 줄은 숫자 글꼴, 시련 규칙 같은 글 줄은 본문 글꼴
+      text(ctx, b, cx0 + cw - 24, y, { size: num ? 15 : 13, align: 'right', weight: 800, family: num ? FONT.num : FONT.body, color: PAL.bone, ow: 3, maxWidth: cw - 130 });
     });
-    // 목숨
+    // 목숨 (시련: 줄지 않는다)
     const ly = cy0 + 120 + rows.length * 24;
     text(ctx, '남은 목숨', cx0 + 24, ly, { size: 13, weight: 600, color: PAL.text });
-    const lives = run.lives ?? 0;
+    const lives = tr ? 0 : run.lives ?? 0;
+    if (tr) text(ctx, '줄지 않음', cx0 + cw - 24, ly, { size: 13, align: 'right', weight: 800, color: TRIAL.TRIAL_COLOR, ow: 3 });
     for (let k = 0; k < Math.min(lives, 9); k++) {
       const hx = cx0 + cw - 28 - k * 18, hy = ly - 5;
       glow(ctx, hx, hy, 9, '#ff3050', 0.4);
@@ -350,11 +371,25 @@ export class PauseScene extends Scene {
     ctx.strokeStyle = PAL.gold; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, 25, 0, TAU); ctx.stroke();
     const tx = px + 36, bw = cw - (tx - cx0) - 22;
     text(ctx, chr?.name ?? '', tx, hy + 8, { size: 14, weight: 800, color: PAL.bone });
-    text(ctx, `Lv ${hero.level} · ${CLASSES[hero.classId]?.name ?? ''}`, tx + bw, hy + 8, { size: 11, align: 'right', weight: 700, color: PAL.dim });
+    text(ctx, `Lv ${hero.level} · ${classNameOf(hero)}`, tx + bw, hy + 8, { size: 11, align: 'right', weight: 700, color: PAL.dim });
     gauge(ctx, tx, hy + 17, bw, 8, p.hp / (p.stats?.hp || 1), '#e8283c', { glowEnd: false });
     gauge(ctx, tx, hy + 32, bw * 0.75, 6, p.mp / (p.stats?.mp || 1), '#3a7aff', { glowEnd: false });
     text(ctx, `${Math.ceil(p.hp)} / ${p.stats?.hp ?? 0}`, tx + bw, hy + 46, { size: 11, align: 'right', weight: 700, family: FONT.num, color: PAL.dim });
   }
+}
+
+/**
+ * 항목 줄의 이름·부제 배치 (줄 가운데 기준 기준선 y). 글자 크기 하한(ui.textFloor — 설정 '글자 크기')이 11 이하면 예전 자리
+ * (이름 cy, 부제 cy+16). 하한이 크면 실제 글자 크기로 두 줄 덩어리를 줄 가운데에 놓고, 줄(위아래 3 px 여백)에 안 들어가면 부제를 뺀다
+ */
+function rowLines(rowH, hasSub) {
+  const F = textFloor(), ls = Math.max(17, F), ss = Math.max(11, F);
+  if (!hasSub) return { ls, ss, y1: Math.round(ls * 0.35), y2: 0, sub: false };
+  if (F <= 11) return { ls, ss, y1: 0, y2: 16, sub: true };
+  const step = ss + 4, block = ls * 0.75 + step + ss * 0.22;
+  if (block > rowH - 6) return { ls, ss, y1: Math.round(ls * 0.35), y2: 0, sub: false };
+  const y1 = Math.round(-block / 2 + ls * 0.75);
+  return { ls, ss, y1, y2: y1 + step, sub: true };
 }
 
 /** 탭 영역 id 'r3' → 3 (항목 줄이 아니면 -1) */

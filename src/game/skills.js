@@ -21,6 +21,7 @@ import { playerStrike, hitTarget } from './combat.js';
 import { SKILLS, skillVal } from '../data/skills.js';
 import { CHARACTERS } from '../data/characters.js';
 import { CLASSES } from '../data/classes.js';   // [hook:feel] ultimateCast 의 tier
+import { ASCENSIONS, ascOf, heroTier, classNameOf, ascListOf } from '../data/ascensions.js';   // 필살기 단계 3 = 초월·비전 (classes_t3 §7.1)
 import { drawHero } from '../render/hero.js';
 import * as UFX from '../render/ultfx.js';   // [hook:feel] 필살기 화면 레이어 키트 ULTFX (FX-ULTKIT; 모듈 이름공간으로만 읽는다)
 import * as HFX from '../render/hitfx.js';   // 타격 캐시 스프라이트 (별·자국)
@@ -56,7 +57,7 @@ export function castUltimate(p, world) {
   p.endMove?.();
   p.mount?.beforeCast?.(world, p, 'ult');   // [hook:cmp] 필살기는 탈것에서 내린 뒤 시전 (MASTER_PLAN §1.14)
   const v = ultCtx(p, world);
-  bus.emit('ultimateCast', { charId: p.hero.charId, tier: CLASSES[p.hero.classId]?.tier ?? 0, classId: p.hero.classId });   // [hook:feel] [hook:cmp]
+  bus.emit('ultimateCast', { charId: p.hero.charId, tier: v.tier, classId: p.hero.classId, asc: v.asc });   // [hook:feel] [hook:cmp] tier 0~3 (초월·비전 = 3), asc = 유효한 초월/비전 id | null
   world.startUltimate?.(p);
   audio.sfx('ult');
   _pendFlash = null;
@@ -2791,22 +2792,28 @@ function kitCall(name, ...a) {
   try { return UFX.ULTFX?.[name]?.(...a); } catch (e) { console.error(`[ultfx] ${name}`, e); return undefined; }
 }
 const lumOf = (hex) => { try { const [r, g, b] = hexToRgb(hex); return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255; } catch { return 1; } };
-const TIER_ZOOM = [1.12, 1.16, 1.2];
-const TIER_NAME = [22, 28, 34];
+const TIER_ZOOM = [1.12, 1.16, 1.2, 1.24];   // 단계 3 = 초월·비전 (classes_t3 §7.1)
+const TIER_NAME = [22, 28, 34, 38];
 
 /**
  * 필살기 연출 문맥 (feel §5.2): 전직 단계, 필살기 색, 직업 강조색 (look.aura.color → look.secondary → ult.color).
  * 거의 검은 강조색(victor_deadeye #1a1a20 등)은 가산 합성에서 보이지 않으므로 필살기 색으로 바꾼다.
  */
+// 단계 3 (classes_t3 §7.1): tier = heroTier (초월·비전 = 3), 강조색은 초월/비전 ult.accent 우선 (같은 어두운 색 검사),
+// title = 초월/비전 이름, asc, colors = 직업 장식 색 (ult.colors). 피해(MV)는 단계와 무관하다.
 function ultCtx(p, w) {
-  const charId = p?.hero?.charId, classId = p?.hero?.classId, C = CLASSES[classId], ch = CHARACTERS[charId];
-  const color = ch?.ult?.color ?? '#fff2b0', accent = accentFor(C, color);
+  const hero = p?.hero, charId = hero?.charId, classId = hero?.classId, C = CLASSES[classId], ch = CHARACTERS[charId];
+  const A = ascOf(hero);
+  const color = ch?.ult?.color ?? '#fff2b0', accent = accentFor(C, color, A);
   const q = clamp(Number(w?.fx?.quality) || 1, 0.3, 1);
-  return { charId, classId, tier: clamp(C?.tier ?? 0, 0, 2), color, accent, q, low: q < 0.7, name: ch?.ult?.name ?? '', title: C?.name ?? '' };
+  return {
+    charId, classId, tier: clamp(Number(heroTier(hero)) || 0, 0, 3), asc: A?.id ?? null, colors: A?.ult?.colors ?? null,
+    color, accent, q, low: q < 0.7, name: ch?.ult?.name ?? '', title: classNameOf(hero),
+  };
 }
 /** 직업 강조색 (look.aura.color → look.secondary → 필살기 색). 거의 검은 색은 필살기 색으로 */
-function accentFor(C, color) {
-  const a = C?.look?.aura?.color ?? C?.look?.secondary ?? color;
+function accentFor(C, color, A = null) {
+  const a = A?.ult?.accent ?? C?.look?.aura?.color ?? C?.look?.secondary ?? color;   // A = 초월/비전 항목 (있으면 그 강조색)
   return typeof a !== 'string' || a[0] !== '#' || lumOf(a) < 0.22 ? color : a;
 }
 /** 품질 배율을 곱한 개수 (최소 lo) */
@@ -2897,9 +2904,11 @@ function prewarmHero(w) {
   const v = ultCtx(p, w);
   prewarmUlt(v);
   const done = new Set([v.accent, v.color]), extra = [];
-  for (const C of Object.values(CLASSES)) {
+  // 이 영웅의 모든 직업 강조색 + 초월·비전 다섯의 ult.accent (교회에서 길을 바꿔도 시전 순간에 새로 구울 것이 없다)
+  const ascs = ascListOf(p.hero.charId).map((id) => ASCENSIONS[id]).filter(Boolean);
+  for (const C of [...Object.values(CLASSES), ...ascs]) {
     if (C?.charId !== p.hero.charId) continue;
-    const a = accentFor(C, v.color);
+    const a = C.ult?.accent ? accentFor(null, v.color, C) : accentFor(C, v.color);
     if (done.has(a)) continue;
     done.add(a);
     glowSprite(a); beamSprite(a, '#ffffff', false); beamSprite(a, '#ffffff', true);
@@ -3162,7 +3171,7 @@ function ultDirector(w, p, o) {
     start(e, ww) {
       ww.cutscene = true; p.vx = 0;
       e.d.kit = kitLive();
-      if (e.d.kit) kitCall('begin', ww, p, { color: v.color, accent: v.accent, tier: v.tier, classId: v.classId, charId: v.charId, dimCol: o.dimCol ?? '#05020a', kind: 'ult', dur: o.dur, maxDur: o.dur + 4, ...(o.kit || {}) });
+      if (e.d.kit) kitCall('begin', ww, p, { color: v.color, accent: v.accent, tier: v.tier, classId: v.classId, charId: v.charId, dimCol: o.dimCol ?? '#05020a', kind: 'ult', dur: o.dur, maxDur: o.dur + 4, ...(v.colors ? { colors: v.colors } : {}), ...(o.kit || {}) });
       else beginLocal(ww, p, v);
       trackUlt(e, ww);
       // 합친 번쩍임은 game.flash 처럼 줄어든다: 화면 오버레이의 update 는 실제 시간으로 흐르고(경직 중에도) 컷인이 월드를 멈춘 동안은 멈춘다.
@@ -3206,7 +3215,7 @@ function ultFinal(w, p, mv, col, o = {}, at = null) {
   const merge = !(v.q >= 0.95) && !!liveScr(w);
   if (kitLive()) {
     // 번쩍임 0.6 은 키트가 game.flash 정책으로 한 번 켠다 (2차 전직 임팩트 프레임 두 장 뒤로 미룬다)
-    kitCall('final', w, x, y, { color: col, accent: v.accent, tier: v.tier, classId: v.classId, charId: v.charId, ground: !!at?.ground, targets, flashColor: col, ...(merge ? { noFlash: true } : {}), ...(at?.kit || {}) });
+    kitCall('final', w, x, y, { color: col, accent: v.accent, tier: v.tier, classId: v.classId, charId: v.charId, ground: !!at?.ground, targets, flashColor: col, ...(v.colors ? { colors: v.colors } : {}), ...(merge ? { noFlash: true } : {}), ...(at?.kit || {}) });
     if (merge) ultFlash(w, col, 0.6, 3, v);
   } else {
     ultFlash(w, col, 0.6, 3, v);

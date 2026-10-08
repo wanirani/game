@@ -7,10 +7,18 @@ import { drawHUD } from '../render/hud.js';
 import { input } from '../core/input.js';
 import { audio } from '../core/audio.js';
 import * as PUPPET from '../render/hero_puppet.js';
+import * as TRIAL from '../game/trial.js';   // 시련 「메아리」 (classes_t3 §9.3–§9.4)
 
 export class StageScene extends Scene {
-  enter({ stageId = 's01', roomId = null, mode = 'story' } = {}) {
-    this.world = new World(this.game, stageId, { roomId, mode });
+  enter({ stageId = 's01', roomId = null, mode = 'story', trial = null } = {}) {
+    // 시련 (mode 'trial', trial = 시련 id): 본래 스테이지 복사본 + 규칙·난이도·적 레벨 덮어쓰기로 보스방을 만들고 월드를 덮어쓴다 (game/trial.js)
+    const prep = mode === 'trial' ? TRIAL.prepareTrial(this.game, trial) : null;
+    if (mode === 'trial' && !prep) {   // 모르는 시련: 기록이 남지 않는 연습 월드로 띄우고 곧장 성당으로
+      console.error('[stage] unknown trial', trial);
+      this.world = new World(this.game, stageId, { roomId, mode: 'practice' });
+      setTimeout(() => { if (this.game.top === this) TRIAL.leaveTrial(this.game, trial, 'blocked'); }, 0);
+    } else this.world = prep ? new World(this.game, prep.stage, prep.opts) : new World(this.game, stageId, { roomId, mode });
+    if (prep) TRIAL.attachTrial(this, this.world, prep.T);
     this.game.world = this.world;
     this.stageId = stageId;
     // 영웅 채색 퍼펫을 입장 페이드 동안 받아 둔다 (첫 프레임에 벡터 → 퍼펫으로 바뀌어 보이지 않게)

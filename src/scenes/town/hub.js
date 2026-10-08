@@ -28,6 +28,8 @@ import * as NpcData from '../../data/npcs.js';
 import { SCRIPTS, resolveNpcScript } from '../../data/story.js';
 import * as QuestRt from '../../game/quests.js';
 import * as CMP from '../../game/companions.js';   // [hook:cmp] companionHubEnter · companionHubNote (CMP-SYS)
+import * as STORYDIR from '../../game/story_director.js';   // 합류 한마디 · 여관의 밤 (story_ext §5.3·§5.6) — companionHubEnter 바로 뒤마다
+import { classNameOf } from '../../data/ascensions.js';   // 초월·비전 이름 (classes_t3 §8.3)
 import { TOWN_STAGE, BUILDINGS, TOWN_NPCS, TOWN_PROPS, TOWN_TALK, eliseInTown } from '../../data/town.js';
 import { FLOOR, drawFacades, facadeLights, prebakeFacades, setFacadeScale, anvilPos, glow } from './facades.js';
 import { uiPanel, uiButton, uiHints } from './common.js';
@@ -66,9 +68,11 @@ export class HubScene extends Scene {
     setFacadeScale(tier === 'low' ? 1 : Math.max(1, g.scale || 1));
     prebakeFacades();
     // 스테이지·엔딩에서 돌아옴 → 동쪽 성문 앞 / 여관에서 나옴 → 여관 앞 / 첫 도착·이어하기·2부 서막 → 마을 한가운데
-    const back = !!this.from && !ARRIVE_FROM.has(this.from) && this.from !== 'inn';
-    this.buildWorld(back ? 'gate' : this.from === 'inn' ? 'inn' : null);
+    // 시련에서 돌아옴(from 'church') → 성당 문 앞 (params.open === 'church' 면 곧바로 성당 전직 탭, classes_t3 §9.4)
+    const back = !!this.from && !ARRIVE_FROM.has(this.from) && this.from !== 'inn' && this.from !== 'church';
+    this.buildWorld(back ? 'gate' : this.from === 'inn' ? 'inn' : this.from === 'church' ? 'church' : null);
     const sub = this.from === 'p2' ? '갈라진 하늘 아래, 여섯 세계로 가는 문이 열렸다'
+      : this.from === 'church' ? '종소리를 따라 성당 앞으로 돌아왔다'
       : back ? '무사히 돌아왔다 — 잠시 숨을 고르자' : '어둠 속에 등불이 남은 마지막 마을';
     this.banner = { t: 0, text: '에슈빌', sub };
     audio.music('hub');
@@ -77,6 +81,20 @@ export class HubScene extends Scene {
     this.syncHeroUnlocks();
     if (g.settings?.autoSave) { try { saves.write(g.state.slot ?? 1, g.state); } catch (e) { /* 저장 실패 무시 */ } }
     CMP.companionHubEnter?.(g, this);   // [hook:cmp] 마구간 개장 · 2번 칸 안내 · 합류 연출 (다른 장면이 위에 있으면 다음 onResume 에)
+    STORYDIR.hubStoryEnter?.(g, this);   // 합류 한마디 · 여관의 밤 (성당 귀환의 첫 호출은 건너뛴다 — 성당을 먼저 연다)
+    // 시련 통과·포기 뒤: 성당 전직 탭을 연다 (trial · unlocked → 성당지기 한마디 · 새 칸 축하)
+    //  (위에 다른 장면 — 합류 연출 등 — 이 먼저 떴으면 그 장면이 닫힐 때 onResume 에서 연다)
+    this.pendingChurch = params.open === 'church' && g.registry.church
+      ? { from: 'hub', tab: 'class', trial: params.trial ?? null, unlocked: Array.isArray(params.unlocked) ? params.unlocked : [] } : null;
+    if (this.pendingChurch) setTimeout(() => this.openPendingChurch(), 0);
+  }
+  /** 시련 귀환의 성당 열기 (허브가 맨 위일 때 한 번) → 열었으면 true */
+  openPendingChurch() {
+    const g = this.game, o = this.pendingChurch;
+    if (!o || g.top !== this || this.menuOpen || this.entering) return false;
+    this.pendingChurch = null;
+    g.push('church', { ...o, world: this.world });
+    return true;
   }
 
   /**
@@ -127,6 +145,7 @@ export class HubScene extends Scene {
     const p = w.player;
     if (spawn === 'gate') { const gb = BUILDINGS.find((b) => b.kind === 'gate'); p.x = gb.door * TILE - 120; p.facing = -1; }
     else if (spawn === 'inn') { const ib = BUILDINGS.find((b) => b.kind === 'inn'); p.x = ib.door * TILE + 70; p.facing = 1; }
+    else if (spawn === 'church') { const cb = BUILDINGS.find((b) => b.kind === 'church'); if (cb) { p.x = cb.door * TILE + 60; p.facing = -1; } }   // 시련 귀환
     else if (typeof spawn === 'number') { p.x = spawn; if (facing) p.facing = facing; }
     p.y = FLOOR - p.h;
     w.camera.follow(p, 1 / 60, true);
@@ -241,11 +260,14 @@ export class HubScene extends Scene {
       this.world.fx.burst('magic', this.world.player.cx, this.world.player.cy, 30, { color: '#e8c872', speed: 200 });
       this.world.fx.ring(this.world.player.cx, this.world.player.cy, { color: '#e8c872', r0: 10, r1: 90, life: 0.5, width: 5 });
       CMP.companionHubEnter?.(g, this);   // [hook:cmp]
+      STORYDIR.hubStoryEnter?.(g, this);
       return;
     }
     w.player?.refreshStats();
     if (w.player) { w.player.hp = w.player.stats.hp; w.player.mp = w.player.stats.mp; }
+    if (this.pendingChurch && this.openPendingChurch()) return;   // 시련 귀환: 성당 먼저 (합류 연출·이야기는 성당을 닫은 뒤)
     CMP.companionHubEnter?.(g, this);   // [hook:cmp] 위 장면(대화·합류 연출·메뉴…)이 닫힐 때마다 남은 연출을 이어 간다
+    STORYDIR.hubStoryEnter?.(g, this);
   }
 
   refreshBoard() {
@@ -424,7 +446,7 @@ export class HubScene extends Scene {
     const bx = px + 76, bw = 210;
     ctx.fillStyle = 'rgba(8,4,10,0.55)'; ctx.fillRect(bx - 6, py + 2, bw + 12, 52);
     text(ctx, ch.name, bx, py + 18, { size: 15, weight: 800, family: FONT.title, color: '#f3e2b8' });
-    text(ctx, CLASSES[hero.classId]?.name ?? ch.title, bx + bw, py + 18, { size: 12, align: 'right', color: '#c8b8a0', weight: 700 });
+    text(ctx, classNameOf(hero) || ch.title, bx + bw, py + 18, { size: 12, align: 'right', color: '#c8b8a0', weight: 700 });
     const maxed = hero.level >= MAX_LEVEL, need = expToNext(hero.level);
     bar(ctx, bx, py + 28, bw, 7, maxed ? 1 : hero.exp / need, { color: '#e8c872' });
     text(ctx, maxed ? 'EXP MAX' : `EXP ${fmt(hero.exp)} / ${fmt(need)}`, bx, py + 49, { size: 11, color: maxed ? '#ffd84a' : '#bca88a', weight: 700 });

@@ -798,7 +798,7 @@ export const PERKS_C = {
   },
   // ── 초월 ──
   azel_nightlord: {
-    N: { t: 2, r: 90, max: 3, tickT: 0.25, mvPct: 10, healPct: 0.3, healCapPct: 2, refund: 1 },   // §2.8: 15 → 10 (대시마다 피안개 하나가 0.8배 위력)
+    N: { t: 2, r: 90, max: 3, tickT: 0.4, mvPct: 10, healPct: 0.3, healCapPct: 2, refund: 1 },   // §2.8: 위력 15 → 10, 간격 0.25 → 0.4초 (대시를 몰아 쓰면 +16 % · 숫자 ≤ 3/초, §3.6.3)
     prewarm(w) { warm(w, ['#3a0010', '#8a0a1e', '#ff2a50'], null); },
     onEnter(p) { const st = perkState(p); if (st.nlc) st.nlc.length = 0; st.nlX = null; },
     onDash(p, w) {
@@ -1106,7 +1106,7 @@ export const MARKS_C = {
   /** 동결: 몸을 덮은 얼음 껍질 */
   frozen(ctx, e, n, k) {
     const a = Math.min(1, k * 4), x = e.x - 3, y = e.y - 3, w = e.w + 6, h = e.h + 6;
-    ctx.globalCompositeOperation = ADD; K.glow(ctx, x + w / 2, y + h / 2, Math.max(w, h) * 0.8, '#9fe8ff', 0.45 * a); ctx.globalCompositeOperation = 'source-over';
+    ctx.globalCompositeOperation = ADD; K.glow(ctx, x + w / 2, y + h / 2, Math.min(48, Math.max(w, h) * 0.6), '#9fe8ff', 0.5 * a); ctx.globalCompositeOperation = 'source-over';   // 빛은 작게 (넓이만큼 비싸다)
     ctx.globalAlpha = 0.38 * a; ctx.fillStyle = '#bff4ff';
     ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x, y + h * 0.18); ctx.lineTo(x + w * 0.22, y); ctx.lineTo(x + w * 0.5, y + h * 0.1); ctx.lineTo(x + w * 0.78, y - 4); ctx.lineTo(x + w, y + h * 0.2); ctx.lineTo(x + w, y + h); ctx.closePath(); ctx.fill();
     ctx.globalAlpha = 0.85 * a; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.6; ctx.stroke();
@@ -1141,7 +1141,7 @@ export const MARKS_C = {
   /** 여명의 지속 피해: 몸을 감싸는 주황 불씨 고리 */
   dawn(ctx, e, n, k, t) {
     const x = e.x + e.w / 2, y = e.y + e.h * 0.45, r = Math.max(e.w, e.h) * 0.55, a = Math.min(1, k * 4);
-    ctx.globalCompositeOperation = ADD; K.glow(ctx, x, y, r * 1.2, '#ffb060', 0.35 * a);
+    ctx.globalCompositeOperation = ADD; K.glow(ctx, x, y, Math.min(56, r), '#ffb060', 0.4 * a);
     ctx.globalAlpha = 0.8 * a; ctx.strokeStyle = '#ffd070'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(x, y, r, t * 3, t * 3 + 2.2); ctx.stroke();
     ctx.beginPath(); ctx.arc(x, y, r * 0.8, -t * 4, -t * 4 + 1.6); ctx.stroke();

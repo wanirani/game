@@ -23,8 +23,9 @@
 // 감독 계약 (AWAKEN_DIRECTOR[charId] = (p, world, v) => 엔티티 | null):
 //  감독은 컷인이 끝난 뒤(t = 0) 시작한다. world.cutscene·freezeEnemies·hudHidden 은 이 모듈의 '진행자' 엔티티가 매 프레임 유지하고,
 //  감독이 돌려준 엔티티가 dead 가 되거나 v.finish() 를 부르면 (또는 v.dur 초가 지나면, 최대 AWAKEN_RULES.maxDirector 초) 모두 되돌린다.
-//  v = { charId, classId, tier, data(AWAKEN[charId]), t2(T2[classId] | null), color, accent, dark, scale,
-//        mv(w) → 가중치 w 의 실제 MV (feel §6.1 정규화: 합 = 필살기 총 MV × 2.2, 2차 전직 × 1.15)
+//  v = { charId, classId(2차 id), tier(0~3), asc, kind, data(AWAKEN[charId]), t2(T2[classId] | 초월·비전 변형 | null), color, accent, dark, scale,
+//        mv(w) → 가중치 w 의 실제 MV (feel §6.1 정규화: 합 = 필살기 총 MV × 2.2, 2차 전직 × 1.15, 초월·비전 × 1.25)
+//        (단계 3 = 초월·비전: t2 = data/awaken.js ascAwakenOf — 감독은 2차 classId 로 변형을 고르고 tier >= 2 분기를 그대로 탄다)
 //        atk(w, o) → 공격 객체 (tags ['awaken'], capFn = 보스 30% 상한, breakWalls false)
 //        hit(rect, w, o) → playerStrike 적중 수     final(rect, w, o) → 마무리 일격 (final: true → class A, 띄우기)
 //        view(pad) → 화면 사각형 (월드 좌표)      foes(rect?) → 화면 안 적 목록      cap → capFn
@@ -37,7 +38,8 @@ import { game } from '../core/game.js';   // 구독 시점에 이미 스테이�
 import { assets } from '../core/assets.js';
 import { clamp, rand, TAU, ease, rgba, overlap } from '../core/math.js';
 import { CLASSES } from '../data/classes.js';
-import { AWAKEN, AWAKEN_RULES, T2 } from '../data/awaken.js';
+import { AWAKEN, AWAKEN_RULES, T2, ascAwakenOf } from '../data/awaken.js';
+import { ascOf, heroTier, classNameOf } from '../data/ascensions.js';   // 초월·비전 = 단계 3 (classes_t3 §7.2)
 import { castUltimate, FXKIT, SkillFx } from './skills.js';
 import { playerStrike } from './combat.js';
 // 영웅별 각성 감독(awaken_directors.js · awaken_directors_b.js)은 첫 화면에 필요 없으므로 동적 import 로 늦게 받는다
@@ -106,7 +108,8 @@ if (typeof window !== 'undefined' && typeof setTimeout === 'function') {
 }
 
 // ───────────────────────── 규칙 ─────────────────────────
-const tierOf = (p) => CLASSES[p?.hero?.classId]?.tier ?? 0;
+/** 전직 단계 0~3 (초월·비전 = 3; classes_t3 §7.2) */
+const tierOf = (p) => heroTier(p?.hero);
 
 /** 각성을 막는 상황 (feel §6.1 blocked when, MASTER_PLAN §1.13) → 이유 문자열 | '' */
 function blockedWhy(p, world) {
@@ -325,6 +328,7 @@ export function castAwakening(p, world, { force = false } = {}) {
   const charId = p.hero?.charId, a = AWAKEN[charId];
   if (!a || !world?.game) return false;
   const classId = p.hero.classId, tier = tierOf(p);
+  const A = ascOf(p.hero), asc = A?.id ?? null, kind = A?.kind ?? null;   // 초월(t3)·비전(hidden) — 감독은 그대로 2차 classId 로 고른다
   loadAwakenDirectors();   // 아직이면 컷인이 도는 동안 받는다 (감독은 컷인이 끝난 뒤 고른다)
   endHold(p, world, 'silent');
   const run = world.run;
@@ -337,17 +341,17 @@ export function castAwakening(p, world, { force = false } = {}) {
   world.cutscene = true; world.freezeEnemies = true; world.hudHidden = true;
   awState(world).ready = false; awState(world).holdK = 0;
   const short = (world.game.settings?.cutinMode === 'short') || run.awakenN > 1;
-  const cast = { id: ++CAST_SEQ, world, p, charId, classId, tier, short, t: world.rt ?? 0, started: false, ended: false };
+  const cast = { id: ++CAST_SEQ, world, p, charId, classId, tier, asc, kind, short, t: world.rt ?? 0, started: false, ended: false };
   SESSION = cast;
   hookBus();
-  AWAKEN_DEBUG.casts++; AWAKEN_DEBUG.last = { charId, classId, tier, short, director: null, done: false };
-  bus.emit('awakenCast', { charId, tier, classId });
+  AWAKEN_DEBUG.casts++; AWAKEN_DEBUG.last = { charId, classId, tier, asc, short, director: null, done: false };
+  bus.emit('awakenCast', { charId, tier, classId, asc });
   try { input.rumble?.(0.35, 0.5, 160); } catch { /* 진동 없음 */ }
   try { audio.duck?.(0.6, (short ? R.cutin.short : R.cutin.full) + 0.15); } catch { /* 음악 없음 */ }   // 컷인 동안 음악을 낮춘다 (MASTER_PLAN §1.9)
   let pushed = false;
   try {
     if (world.game.registry?.awakenCutin) {
-      world.game.push('awakenCutin', { world, p, charId, classId, tier, short, onDone: (aborted) => startAwakening(cast, !!aborted) });
+      world.game.push('awakenCutin', { world, p, charId, classId, tier, asc, kind, className: classNameOf(p.hero), short, onDone: (aborted) => startAwakening(cast, !!aborted) });
       pushed = true;
     }
   } catch (e) { console.error('[awaken] 컷인', e); }
@@ -389,7 +393,7 @@ function startAwakening(cast, aborted) {
     tick(e, w) {
       w.cutscene = true; w.freezeEnemies = true; w.hudHidden = true;
       w.run.sp = 0; w.run.aw = 0;   // 각성 타격으로는 게이지가 다시 차지 않는다
-      w.letterbox = Math.min(40, (w.letterbox || 0) + 4);
+      w.letterbox = Math.min(cast.tier >= 3 ? 46 : 40, (w.letterbox || 0) + 4);   // 초월·비전은 필살기 단계 표처럼 46 px
       const lt = e.lt;
       const ent = cast.ent;
       const done = v.finished || (ent && (ent.dead || !w.entities.includes(ent))) || (!ent && lt >= (v.dur ?? 2.6)) || lt >= R.maxDirector;
@@ -456,14 +460,16 @@ function foesIn(world, rect) {
 function makeContext(cast) {
   const { world, p, charId, classId, tier } = cast;
   const a = AWAKEN[charId];
-  const t2 = tier >= 2 ? (T2[classId] ?? null) : null;
+  // 2차: T2[classId] · 초월: T2 위에 표의 awaken 수치 · 비전: T3_BOOST(T2) (색·강조색은 T2 그대로 → 감독 미리 굽기 색이 맞다; classes_t3 §7.2)
+  const A = tier >= 3 && cast.asc ? (ascOf({ charId, classId, asc: cast.asc }) ?? null) : null;
+  const t2 = tier >= 2 ? (A ? ascAwakenOf(classId, A) : T2[classId] ?? null) : null;
   const sum = a.mvWeights.reduce((s, w) => s + w, 0) || 1;
-  const target = a.ultMv * R.mvMul * (tier >= 2 ? R.t2Mul : 1);
+  const target = a.ultMv * R.mvMul * (tier >= 3 ? (R.t3Mul ?? R.t2Mul) : tier >= 2 ? R.t2Mul : 1);
   const scale = target / sum;
   const cap = bossCapFn(world);
   const stats = t2?.critDmg ? { ...p.stats, critDmg: (p.stats?.critDmg ?? 0) + t2.critDmg } : null;
   const v = {
-    charId, classId, tier, data: a, t2, cast: cast.id,
+    charId, classId, tier, asc: A?.id ?? null, kind: A?.kind ?? null, data: a, t2, cast: cast.id,
     color: t2?.color ?? a.color, accent: t2?.accent ?? a.accent, dark: a.dark,
     scale, cap, finished: false, dur: undefined, started: world.rt ?? 0,
     mv: (w) => (Number(w) || 0) * scale,
@@ -528,11 +534,12 @@ export function prepareAwakening(p, world) {
   if (!charId || !world) return;
   let s = PREP.get(world);
   const now = world.rt ?? 0;
-  if (s && s.charId === charId && s.classId === p.hero.classId) {
+  const ak = p.hero.asc ?? null;
+  if (s && s.charId === charId && s.classId === p.hero.classId && s.asc === ak) {
     if (s.ok && now - s.touchT > 2) { s.touchT = now; assets.touch?.(AWAKEN[charId].cutin); }   // 디코딩 메모리 정리에서 내려가지 않게
     return;
   }
-  s = { charId, classId: p.hero.classId, touchT: now, ok: false };
+  s = { charId, classId: p.hero.classId, asc: ak, touchT: now, ok: false };
   PREP.set(world, s);
   const a = AWAKEN[charId];
   if (!a || tierOf(p) < R.minTier || world.mode === 'town') return;   // 각성할 수 없는 곳에서는 받지 않는다 (디코딩 메모리 약 4 MB)
@@ -541,7 +548,7 @@ export function prepareAwakening(p, world) {
   try { edgeCanvas(); } catch { /* 캔버스 없음 */ }   // 길게 누르기 가장자리 어둠도 미리 굽는다 (스테이지 중 캔버스 생성 0개, feel §8)
   const decode = (img) => { try { img?.decode?.().catch(() => {}); } catch { /* 디코드 미지원 */ } };
   try { assets.load(a.cutin)?.then?.(decode); assets.load(a.portrait)?.then?.(decode); } catch (e) { console.error(e); }
-  try { CUTIN.prepareCutin?.(charId, tierOf(p)); } catch (e) { console.error('[awaken] 컷인 준비', e); }
+  try { CUTIN.prepareCutin?.(charId, tierOf(p), p.hero); } catch (e) { console.error('[awaken] 컷인 준비', e); }
 }
 
 // ───────────────────────── 그리기 도우미 ─────────────────────────

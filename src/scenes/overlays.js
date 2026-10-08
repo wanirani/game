@@ -26,6 +26,7 @@ import { drawHints, drawGlyph, promptMode } from '../core/prompts.js';
 import { BOSSES } from '../data/bosses.js';
 import { CHARACTERS } from '../data/characters.js';
 import { CLASSES } from '../data/classes.js';
+import { ASCENSIONS, heroTier, classNameOf } from '../data/ascensions.js';   // 필살기 컷인 단계 3 (초월·비전, classes_t3 §7.1)
 import { DOCS, LORE } from '../data/lore.js';
 import { clamp, ease, rgba, hexToRgb } from '../core/math.js';
 import { isBust, faceOf, softBust } from '../render/portrait.js';
@@ -385,7 +386,14 @@ export class UltCutinScene extends Scene {
     if (!CLASSES[classId]) { try { classId = new URLSearchParams(location.search).get('class') || classId; } catch { /* 주소 없음 */ } }
     const C = CLASSES[classId]?.charId === this.charId ? CLASSES[classId] : CLASSES[this.ch.rootClass];
     this.cls = C ?? null;
-    this.tier = clamp(Number(C?.tier) || 0, 0, 2);
+    // 단계 3 (초월·비전, classes_t3 §7.1): 영웅의 asc (같은 2차 줄일 때), 디버그 주소면 ?asc=<id>
+    const ph = world?.player?.hero;
+    let asc = p.asc ?? (ph?.charId === this.charId && ph.classId === C?.id ? ph.asc : null) ?? null;
+    if (asc == null && !p.world) { try { asc = new URLSearchParams(location.search).get('asc'); } catch { asc = null; } }
+    const hero = { charId: this.charId, classId: C?.id, asc: typeof asc === 'string' && Object.hasOwn(ASCENSIONS, asc) ? asc : null };
+    this.tier = clamp(Number(heroTier(hero)) || 0, 0, 3);
+    this.cname = classNameOf(hero) || C?.name || '';
+    this.acc3 = this.tier >= 3 ? (ASCENSIONS[hero.asc]?.ult?.accent ?? null) : null;   // 단계 3 강조색 (금테 안쪽 줄 · 둘째 마름모)
     const lab = ultLabel(this.ch);
     this.col = lab.col;
     this.skill = lab.skill;
@@ -504,6 +512,10 @@ export class UltCutinScene extends Scene {
       ctx.fillRect(-L, -hb - 4, 2 * L, 4); ctx.fillRect(-L, hb, 2 * L, 4);
       ctx.fillStyle = 'rgba(232,200,114,0.75)';
       ctx.fillRect(-L, -hb + 7, 2 * L, 1.5); ctx.fillRect(-L, hb - 8.5, 2 * L, 1.5);
+      if (this.acc3) {   // 단계 3 (초월·비전): 금테 안쪽에 강조색 1.5 px 줄 한 겹 더
+        ctx.fillStyle = this.acc3;
+        ctx.fillRect(-L, -hb + 10.5, 2 * L, 1.5); ctx.fillRect(-L, hb - 12, 2 * L, 1.5);
+      }
       const gp = (t - UC.gleam) / UC.gleamDur;
       if (gp > 0 && gp < 1) {
         const gx = -L + 2 * L * ease.inOutQuad(gp);
@@ -553,9 +565,9 @@ export class UltCutinScene extends Scene {
       }
       ctx.restore();
     }
-    // 직업명 (작게, 기술명 위). 2차 전직은 금색 + 마름모
+    // 직업명 (작게, 기술명 위). 2차 전직은 금색 + 마름모, 단계 3(초월·비전)은 그 이름 + 강조색 마름모 하나 더
     const kC = clamp((t - UC.cls) / UC.clsIn, 0, 1);
-    const cname = this.cls?.name;
+    const cname = this.cname ?? this.cls?.name;
     if (cname && kC > 0) {
       ctx.globalAlpha = fadeOut * kC;
       const cyL = ly - NAME_PX * 0.98;
@@ -564,6 +576,11 @@ export class UltCutinScene extends Scene {
         ctx.fillStyle = GOLD;
         ctx.beginPath(); ctx.moveTo(tx + 5, cyL - 11); ctx.lineTo(tx + 10, cyL - 6); ctx.lineTo(tx + 5, cyL - 1); ctx.lineTo(tx, cyL - 6); ctx.closePath(); ctx.fill();
         tx += 16;
+        if (this.acc3) {
+          ctx.fillStyle = this.acc3;
+          ctx.beginPath(); ctx.moveTo(tx + 5, cyL - 11); ctx.lineTo(tx + 10, cyL - 6); ctx.lineTo(tx + 5, cyL - 1); ctx.lineTo(tx, cyL - 6); ctx.closePath(); ctx.fill();
+          tx += 16;
+        }
       }
       text(ctx, cname, tx, cyL, { size: 17, weight: 800, family: FONT.title, color: this.tier >= 2 ? GOLD : this.tier === 1 ? '#f4e6c8' : '#d8c8b0', outline: INK, ow: 4 });
       ctx.globalAlpha = fadeOut;

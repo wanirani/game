@@ -1,5 +1,7 @@
 // 각성기 컷인 장면 'awakenCutin' — owner: AWAKEN-CORE (feel.md §6.2, §6.3, §6.6, §7; MASTER_PLAN §1.13)
-//  game.push('awakenCutin', { world, p, charId, classId, tier, short, onDone(aborted) })
+//  game.push('awakenCutin', { world, p, charId, classId, tier, asc?, kind?, className?, short, onDone(aborted) })
+//  단계 3 (초월·비전, classes_t3 §7.2): 머리말 '영웅 · 초월/비전 직업명', 제목 '초월 각성 — …' / '비전 각성 — …',
+//  초월 강조색(ascensions ult.accent)의 겹줄 · 빛줄기 쓸기 · 낙관 고리 · 금빛 먹물 · 영웅 머리 위 고리 (화면 전체 패스는 늘지 않는다)
 //  opaque=false · hidePad · deferToasts · world.hudHidden. 월드는 멈춰 있고(맨 위 장면만 갱신) 이 장면이 그 위에 그린다.
 //  전체 1.45초 / 짧게 0.75초 (설정 cutinMode 'short' 또는 같은 스테이지 두 번째 각성부터). 0.5초 뒤 아무 버튼이나 누르면 퇴장(1.30)으로 건너뛴다.
 //  끝나면 먼저 pop 한 뒤 onDone(false) — 각성 감독이 시작된다. 장면이 통째로 닫히면(go 등) onDone(true).
@@ -21,6 +23,7 @@ import { clamp, ease, rgba, rand, TAU, lerp } from '../core/math.js';
 import { AWAKEN, AWAKEN_RULES, awakenTitle } from '../data/awaken.js';
 import { CHARACTERS } from '../data/characters.js';
 import { CLASSES } from '../data/classes.js';
+import { ASCENSIONS, ascOf, heroTier } from '../data/ascensions.js';
 import { drawHero } from '../render/hero.js';
 import { hudSafe } from '../render/hud_layout.js';
 
@@ -243,8 +246,9 @@ function bakeSeal(ch, S) {
   return { c, S, w: 72, h: 72 };
 }
 
-/** 퇴장 제목: 작은 금색 머리말 + '각성 — 이름' (흰 글자·붉은 테·피 흘러내리는 밑줄) */
-function bakeTitle(caption, str, vw, S, a) {
+/** 퇴장 제목: 작은 금색 머리말 + '각성 — 이름' (흰 글자·붉은 테·피 흘러내리는 밑줄).
+ *  acc3 (단계 3 강조색)가 있으면 머리말 양옆 금 마름모 · 밑줄 위 금줄 · 강조색 광채 */
+function bakeTitle(caption, str, vw, S, a, acc3 = null) {
   const probe = pooled('probe', 8, 8);
   if (!probe) return null;
   const pg = probe.getContext('2d');
@@ -265,8 +269,19 @@ function bakeTitle(caption, str, vw, S, a) {
   g.font = `700 ${capSize}px ${FONT.title}`; g.textAlign = 'center'; g.textBaseline = 'alphabetic';
   g.lineJoin = 'round'; g.strokeStyle = 'rgba(0,0,0,0.85)'; g.lineWidth = 4; g.strokeText(caption, cx, capSize + 4);
   g.fillStyle = GOLD; g.fillText(caption, cx, capSize + 4);
-  // 밑줄 붓질 (피)
   const uy = base + size * 0.22, ux0 = cx - tw * 0.54, ux1 = cx + tw * 0.54;
+  if (acc3) {
+    // 머리말 양옆 마름모 두 쌍 (금 · 강조색) + 밑줄 위 가는 금줄
+    for (const sd of [-1, 1]) {
+      const dx = cx + sd * (cw / 2 + 16), dy = capSize - 2;
+      for (const [o, r, c] of [[0, 6, GOLD], [sd * 13, 4, acc3]]) {
+        g.fillStyle = c; g.beginPath(); g.moveTo(dx + o, dy - r); g.lineTo(dx + o + r, dy); g.lineTo(dx + o, dy + r); g.lineTo(dx + o - r, dy); g.closePath(); g.fill();
+      }
+    }
+    g.fillStyle = GOLD; g.fillRect(ux0 + 6, uy - 7, ux1 - ux0 - 12, 2);
+    g.fillStyle = acc3; g.fillRect(ux0 + 30, uy - 3.5, ux1 - ux0 - 60, 1.5);
+  }
+  // 밑줄 붓질 (피)
   g.fillStyle = '#7a0012';
   g.beginPath(); g.moveTo(ux0, uy); g.quadraticCurveTo(cx, uy - 5, ux1, uy - 2); g.lineTo(ux1 - 10, uy + 7); g.quadraticCurveTo(cx, uy + 9, ux0 + 16, uy + 8); g.closePath(); g.fill();
   g.fillStyle = '#c0142a';
@@ -280,7 +295,7 @@ function bakeTitle(caption, str, vw, S, a) {
   g.font = `400 ${size}px ${FONT.brush}`;
   g.strokeStyle = INK; g.lineWidth = 11; g.strokeText(str, cx, base);
   g.strokeStyle = SEAL_RED; g.lineWidth = 5; g.strokeText(str, cx, base);
-  g.shadowColor = rgba(a?.color ?? '#ffffff', 0.8); g.shadowBlur = 14;
+  g.shadowColor = rgba(acc3 ?? a?.color ?? '#ffffff', acc3 ? 0.95 : 0.8); g.shadowBlur = acc3 ? 20 : 14;
   g.fillStyle = '#ffffff'; g.fillText(str, cx, base);
   g.shadowColor = 'transparent'; g.shadowBlur = 0;
   return { c, S, w: W, h: Hh, base };
@@ -306,8 +321,8 @@ function featherPortrait(img) {
   return { c, w, h };
 }
 
-/** 한 영웅의 글자 굽기 묶음 (띠 폭에 맞춘 크기) */
-function bakeText(a, vw, S, tier, charId, classId) {
+/** 한 영웅의 글자 굽기 묶음 (띠 폭에 맞춘 크기). X = { className, kind, acc3 } (단계 3: 초월·비전 직업명·앞말·강조색) */
+function bakeText(a, vw, S, tier, charId, classId, X = null) {
   const zoneW = vw * 0.52 - textLeft(vw);
   const n = a.lines.length;
   const probe = pooled('probe', 8, 8);
@@ -322,23 +337,29 @@ function bakeText(a, vw, S, tier, charId, classId) {
   const seal = bakeSeal(a.seal, S);
   const ch = CHARACTERS[charId];
   const cls = CLASSES[classId];
-  const caption = [ch?.name, cls?.name].filter(Boolean).join(' · ');
-  const title = bakeTitle(caption, awakenTitle(charId, tier), vw, S, a);
+  const caption = [ch?.name, X?.className || cls?.name].filter(Boolean).join(' · ');
+  const title = bakeTitle(caption, awakenTitle(charId, tier, X?.kind ?? null), vw, S, a, tier >= 3 ? (X?.acc3 ?? null) : null);
   return { lines, seal, title, P, leadSize, brush: faceReady('BN Brush') };
 }
 
 // 준비 상태 (prepareCutin → 장면 enter 가 이어받는다)
 const PREP = { key: '', band: null, text: null };
-function prepKey(charId, tier, classId, vw, S) { return `${charId}|${tier}|${classId}|${vw}|${textLeft(vw)}|${S}|${faceReady('BN Brush') ? 1 : 0}`; }
-function ensureBaked(charId, tier, classId, vw, vh, S) {
+function prepKey(charId, tier, classId, vw, S, X) { return `${charId}|${tier}|${classId}|${X?.className ?? ''}|${X?.kind ?? ''}|${vw}|${textLeft(vw)}|${S}|${faceReady('BN Brush') ? 1 : 0}`; }
+/** 단계 3 정보: 영웅(또는 asc id) → { className, kind, acc3 } | null */
+function ascInfo(charId, classId, hero = null, ascId = null) {
+  const A = hero ? ascOf(hero) : (typeof ascId === 'string' && Object.hasOwn(ASCENSIONS, ascId) ? ascOf({ charId, classId, asc: ascId }) : null);
+  if (!A) return null;
+  return { className: A.name, kind: A.kind, acc3: A.ult?.accent ?? null };
+}
+function ensureBaked(charId, tier, classId, vw, vh, S, X = null) {
   const a = AWAKEN[charId];
   if (!a) return null;
-  const key = prepKey(charId, tier, classId, vw, S);
+  const key = prepKey(charId, tier, classId, vw, S, X);
   if (PREP.key === key && PREP.band && PREP.text) return PREP;
   sprites();
   initPool();
   PREP.band = bakeBand(a, vw, vh, Math.min(S, 1.25));
-  PREP.text = bakeText(a, vw, S, tier, charId, classId);
+  PREP.text = bakeText(a, vw, S, tier, charId, classId, X);
   PREP.key = key;
   return PREP;
 }
@@ -347,14 +368,14 @@ function ensureBaked(charId, tier, classId, vw, vh, S) {
  * 스테이지 시작 무렵 한 번 (awaken.js prepareAwakening): 붓글씨를 받고, 한가할 때 캔버스·글자를 미리 굽는다.
  * 첫 각성 컷인이 끊기지 않게 하는 용도 (feel §6.2 hitch prevention).
  */
-export function prepareCutin(charId, tier = 1) {
+export function prepareCutin(charId, tier = 1, hero = null) {
   if (!AWAKEN[charId] || typeof document === 'undefined') return;
   const run = () => {
     try {
       const g = game();
-      const p = g?.world?.player;
-      const classId = p?.hero?.charId === charId ? p.hero.classId : null;
-      ensureBaked(charId, tier, classId, g?.viewW ?? 960, g?.viewH ?? 540, bakeScale(g?.ctx));
+      const h = hero?.charId === charId ? hero : g?.world?.player?.hero?.charId === charId ? g.world.player.hero : null;
+      const classId = h?.classId ?? null;
+      ensureBaked(charId, tier, classId, g?.viewW ?? 960, g?.viewH ?? 540, bakeScale(g?.ctx), tier >= 3 ? ascInfo(charId, classId, h) : null);
     } catch (e) { console.error('[awakenCutin] 미리 굽기', e); }
   };
   const idle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 2500 }) : setTimeout(fn, 400));
@@ -382,7 +403,17 @@ export class AwakenCutinScene extends Scene {
     this.charId = charId;
     this.a = AWAKEN[charId];
     this.classId = params.classId ?? this.p?.hero?.classId ?? CHARACTERS[charId]?.rootClass;
-    this.tier = params.tier ?? CLASSES[this.classId]?.tier ?? 1;
+    // 단계 3 (초월·비전): 진행 중이면 영웅에서, 디버그 주소면 ?asc=<id> (2차 id 는 그 항목의 첫 부모)
+    let ascId = params.asc ?? (this.p?.hero?.charId === charId ? this.p.hero.asc : null) ?? null;
+    if (!ascId && !params.world) { try { ascId = new URLSearchParams(location.search).get('asc'); } catch { ascId = null; } }
+    const AX = typeof ascId === 'string' && Object.hasOwn(ASCENSIONS, ascId) && ASCENSIONS[ascId].charId === charId ? ASCENSIONS[ascId] : null;
+    if (AX && !AX.parents.includes(this.classId)) this.classId = AX.parents[0];
+    const hero = { charId, classId: this.classId, asc: AX?.id ?? null };
+    this.tier = params.tier ?? (AX ? heroTier(hero) : CLASSES[this.classId]?.tier ?? 1);
+    this.X = this.tier >= 3 ? ascInfo(charId, this.classId, hero) : null;
+    if (this.X && params.className) this.X.className = params.className;
+    if (this.X && params.kind) this.X.kind = params.kind;
+    this.acc3 = this.X?.acc3 ?? null;   // 단계 3 강조색 (없으면 단계 3 장식을 그리지 않는다)
     this.preview = !this.w || !this.p;   // 월드 없이 떠 있음 (디버그 주소) → 검은 바탕 미리보기
     if (this.preview) this.opaque = true;
     this.T = params.short ? SHORT : FULL;
@@ -410,7 +441,7 @@ export class AwakenCutinScene extends Scene {
   }
 
   bake() {
-    const prep = ensureBaked(this.charId, this.tier, this.classId, this.game.viewW, this.game.viewH, this.S);
+    const prep = ensureBaked(this.charId, this.tier, this.classId, this.game.viewW, this.game.viewH, this.S, this.X);
     this.band = prep?.band ?? null;
     this.text = prep?.text ?? null;
     this.vw = this.game.viewW; this.vh = this.game.viewH;
@@ -540,7 +571,8 @@ export class AwakenCutinScene extends Scene {
     }
     for (let i = 0; i < n; i++) {
       const a = rand(0, TAU), s = rand(60, gi < 0 ? 260 : 180);
-      this.ink.push({ x: x + rand(-8, 8), y: y + rand(-8, 8), vx: Math.cos(a) * s, vy: Math.sin(a) * s - 60, r: rand(1.4, gi < 0 ? 4.8 : 3.6), t: 0, life: rand(0.35, 0.6), c: Math.random() < 0.5 ? '#6a0010' : '#12000a' });
+      const u = Math.random();
+      this.ink.push({ x: x + rand(-8, 8), y: y + rand(-8, 8), vx: Math.cos(a) * s, vy: Math.sin(a) * s - 60, r: rand(1.4, gi < 0 ? 4.8 : 3.6), t: 0, life: rand(0.35, 0.6), c: this.acc3 && u < 0.34 ? (u < 0.17 ? GOLD : this.acc3) : u < 0.5 ? '#6a0010' : '#12000a' });   // 단계 3: 금·강조색 먹물이 섞인다
     }
     if (this.ink.length > 60) this.ink.splice(0, this.ink.length - 60);
   }
@@ -700,6 +732,14 @@ export class AwakenCutinScene extends Scene {
       ctx.globalCompositeOperation = 'lighter';
       ctx.strokeStyle = rgba(this.a.color, 0.4 * k); ctx.lineWidth = 3;
       ctx.beginPath(); ctx.ellipse(p.cx, p.bottom - 2, 46 + 10 * Math.sin(t * 9), 9, 0, 0, TAU); ctx.stroke();
+      if (this.acc3) {
+        // 단계 3: 발밑 두 번째 고리(강조색, 더 넓게) + 머리 위 빛 고리 — 초월한 영웅임을 컷인 첫 순간에 보여 준다
+        const k3 = clamp((t - 0.04) / 0.16, 0, 1);
+        ctx.strokeStyle = rgba(this.acc3, 0.55 * k3); ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.ellipse(p.cx, p.bottom - 2, (62 + 14 * k3) + 6 * Math.sin(t * 7 + 1), 12, 0, 0, TAU); ctx.stroke();
+        ctx.strokeStyle = rgba(GOLD, 0.8 * k3); ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.ellipse(p.cx, p.y - 10 - 4 * k3, 15 + 3 * k3, 4.5, 0, 0, TAU); ctx.stroke();
+      }
     } catch (e) { console.error('[awakenCutin] hero', e); }
     ctx.restore();
   }
@@ -802,6 +842,14 @@ export class AwakenCutinScene extends Scene {
     ctx.fillRect(-L / 2, H / 2 + 8, L, 2);
     ctx.fillStyle = rgba(a.accent, 0.85);
     ctx.fillRect(-L / 2, H / 2 + 13, L, 5);
+    if (this.acc3) {
+      // 단계 3 겹줄: 위 강조색 1.5 px + 금 1 px, 아래 금 2 px + 강조색 1.5 px (띠 밖이라 잘라내기·전면 패스 없음)
+      ctx.fillStyle = fw ? mixWhite(this.acc3, flashK) : this.acc3;
+      ctx.fillRect(-L / 2, -H / 2 - 28, L, 1.5); ctx.fillRect(-L / 2, H / 2 + 24, L, 1.5);
+      ctx.fillStyle = GOLD;
+      ctx.fillRect(-L / 2, -H / 2 - 31.5, L, 1); ctx.fillRect(-L / 2, H / 2 + 20, L, 2);
+      this.drawSweep(ctx, L, H, t);
+    }
     // 착지 순간 띠 가장자리 섬광
     if (landK > 0) {
       ctx.globalCompositeOperation = 'lighter';
@@ -834,7 +882,7 @@ export class AwakenCutinScene extends Scene {
     if (eyeX !== null && t >= T.glint && t < T.glint + 0.22) {
       const sp = sprites();
       if (sp) {
-        const k = (t - T.glint) / 0.2, s = Math.sin(clamp(k, 0, 1) * Math.PI) * 1.25;
+        const k = (t - T.glint) / 0.2, s = Math.sin(clamp(k, 0, 1) * Math.PI) * (this.acc3 ? 1.6 : 1.25);   // 단계 3: 더 큰 눈빛
         // 눈 위치는 회전하지 않은 화면 좌표 (띠 원점 기준) → 화면으로
         const ex = ox + eyeX, ey = oy + eyeY;
         ctx.save();
@@ -846,6 +894,26 @@ export class AwakenCutinScene extends Scene {
         ctx.drawImage(sp.flare, -44 * s, -44 * s, 88 * s, 88 * s);
         ctx.restore();
       }
+    }
+  }
+
+  /**
+   * 단계 3: 띠를 가로지르는 빛줄기 (띠 좌표). 띠가 자리 잡은 직후와 스팅어 때 두 번, 왼쪽→오른쪽으로 쓸고 지나간다.
+   * 그라디언트 없이 알파가 다른 직사각형 세 겹 (lighter) — 띠 안쪽만 칠하므로 전면 패스가 아니다
+   */
+  drawSweep(ctx, L, H, t) {
+    const T = this.T;
+    for (const [t0, dur] of [[T.band + T.bandIn, 0.3], [T.stinger, 0.24]]) {
+      const u = (t - t0) / dur;
+      if (u <= 0 || u >= 1) continue;
+      const x = -L / 2 + (L + 400) * ease.inOutQuad(u) - 200, k = Math.sin(u * Math.PI);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.transform(1, 0, -0.45, 1, 0, 0);   // 기울인 빛줄기
+      for (const [w, al, c] of [[150, 0.08, this.acc3], [70, 0.14, GOLD], [22, 0.38, '#ffffff']]) {
+        ctx.globalAlpha = al * k; ctx.fillStyle = c; ctx.fillRect(x - w / 2, -H / 2, w, H);
+      }
+      ctx.restore();
     }
   }
 
@@ -894,6 +962,21 @@ export class AwakenCutinScene extends Scene {
       ctx.drawImage(tx.seal.c, -36, -36, 72, 72);
       ctx.restore();
       ctx.globalAlpha = 1;
+      if (this.acc3) {
+        // 단계 3: 낙관을 두르는 고리 (금 + 강조색 눈금 8개; 찍힐 때 바깥에서 조여 든다, 그 뒤 천천히 돈다)
+        const r = 40 + 26 * (1 - ease.outCubic(k)), rot = (this.reduce ? 0 : (t - lay.sealT) * 0.9) - 8 * DEG;
+        ctx.save();
+        ctx.translate(lay.sealX, lay.sealY); ctx.rotate(rot);
+        ctx.globalAlpha = clamp(k * 1.2, 0, 1) * 0.9;
+        ctx.strokeStyle = GOLD; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke();
+        ctx.strokeStyle = this.acc3; ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) { const th = i * TAU / 8; ctx.moveTo(Math.cos(th) * (r + 3), Math.sin(th) * (r + 3)); ctx.lineTo(Math.cos(th) * (r + 9), Math.sin(th) * (r + 9)); }
+        ctx.stroke();
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      }
     }
   }
 
@@ -909,7 +992,11 @@ export class AwakenCutinScene extends Scene {
     ctx.globalAlpha = clamp(k * 1.6, 0, 1);
     ctx.drawImage(tt.c, x, y, dw, dh);
     // 쾅 찍히는 순간 흰 잔상
-    if (k < 1) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = (1 - k) * 0.5; ctx.drawImage(tt.c, x - dw * 0.05, y - dh * 0.05, dw * 1.1, dh * 1.1); ctx.globalCompositeOperation = 'source-over'; }
+    if (k < 1) {
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = (1 - k) * 0.5; ctx.drawImage(tt.c, x - dw * 0.05, y - dh * 0.05, dw * 1.1, dh * 1.1);
+      if (this.acc3) { ctx.globalAlpha = (1 - k) * 0.35; ctx.drawImage(tt.c, x - dw * 0.12, y - dh * 0.12, dw * 1.24, dh * 1.24); }   // 단계 3: 한 겹 더 큰 잔상
+      ctx.globalCompositeOperation = 'source-over';
+    }
     ctx.globalAlpha = 1;
   }
 }

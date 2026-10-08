@@ -18,7 +18,10 @@
 //  ULTFX.end(w, p?, {quick}) → 줌·기울기·레터박스 복구, 화면 층 0.25초 페이드 후 제거
 //  (추가) ULTFX.prepare(w, p?) 미리 굽기 · ULTFX.flourish(w, classId, x, y, o) 직업 장식만 · ULTFX.active(w) · ULTFX.tierOf(p) ·
 //         ULTFX.accentOf(classId) · ULTFX.glow(color) 빛 스프라이트(품질별 256/192/128px) · ULTFX.sprite(name) 장식 스프라이트
-//  ULT_TIERS[0|1|2] (= ULT_TIERS.T0/T1/T2) 단계 표 · ULT_FLOURISH[classId] {name, colors, sprites} (2차 전직 28종) · ULTFX_STATS (시험용 계수)
+//  ULT_TIERS[0|1|2|3] (= ULT_TIERS.T0/T1/T2/T3) 단계 표 · ULT_FLOURISH[classId] {name, colors, sprites} (2차 전직 28종) · ULTFX_STATS (시험용 계수)
+//  단계 3 = 초월·비전 (classes_t3 §7.1): 영웅(hero.asc)에서 단계·강조색(ult.accent)·속성 입자(lookTop.aura)·직업명·장식 색(ult.colors)을 읽는다.
+//  직업 장식(ULT_FLOURISH)은 여전히 2차 classId 로 고르고, 단계 3 이면 색만 ult.colors (fctx c = o.colors ?? 세션 colors ?? def.colors).
+//  마무리에 고리 하나(4겹) + 강조색 바깥 고리·흰 별(ascRing) — 입자 최대치(Q[q].peak/room())·번쩍임 0.6·설정(flashFx·reduceMotion)은 그대로.
 //
 // 성능 (feel §8, MASTER_PLAN §5.2)
 //  · 프레임마다 그라디언트를 만들지 않는다 (굽기 때만: ULTFX_STATS.gradients). 모든 빛·문양은 캐시 스프라이트.
@@ -35,6 +38,7 @@ import { isSolidType } from '../core/physics.js';
 import { Entity } from '../game/entity.js';
 import { CLASSES } from '../data/classes.js';
 import { CHARACTERS } from '../data/characters.js';
+import { ascOf, heroTier, heroKey, classNameOf } from '../data/ascensions.js';   // 단계 3 (초월·비전; 순수 데이터 — classes.js 만 import)
 import * as AWD from '../data/awaken.js';   // 각성 색 (미리 굽기용; 이름공간 import — 내보내기가 바뀌어도 연결 오류 없음)
 import * as HFX from './hitfx.js';
 import * as UI from '../core/ui.js';
@@ -49,7 +53,7 @@ const Q = {
 };
 
 // ═══════════════════════════ 단계 표 (feel §5.2) ═══════════════════════════
-/** 필살기 연출 단계: 0 = 기본 직업, 1 = Lv10 전직, 2 = Lv25 전직. 피해량은 단계와 무관 (순수 연출) */
+/** 필살기 연출 단계: 0 = 기본 직업, 1 = Lv10 전직, 2 = Lv25 전직, 3 = 초월·비전 (classes_t3 §7.1). 피해량은 단계와 무관 (순수 연출) */
 export const ULT_TIERS = {
   0: {
     tier: 0, zoom: 1.12, zin: 0.2, zhold: 0.2, zout: 0.3, roll: 0, letterbox: 0, lbSlide: 0.15,
@@ -72,8 +76,15 @@ export const ULT_TIERS = {
     final: { flash: 0.6, rings: 3, embers: 40, impact: true, crack: true, flourish: true, roll: 1.2 * DEG, star: true },
     name: { size: 34, style: 'gold', drips: 0, prefix: true },
   },
+  3: {
+    tier: 3, zoom: 1.24, zin: 0.2, zhold: 0.22, zout: 0.3, roll: 1.0 * DEG, letterbox: 46, lbSlide: 0.15,
+    lines: { a: 0.62, spin: 0.35, accent: true }, grade: { src: 'accent', a: 0.26, vig: 0.4 },
+    beat: { rings: 3, ground: true, dust: 8 }, ghosts: 6, element: { n: 96, back: 28 },
+    final: { flash: 0.6, rings: 4, embers: 48, impact: true, crack: true, flourish: true, roll: 1.4 * DEG, star: true, ascRing: true },
+    name: { size: 38, style: 'gold', drips: 0, prefix: true },
+  },
 };
-ULT_TIERS.T0 = ULT_TIERS[0]; ULT_TIERS.T1 = ULT_TIERS[1]; ULT_TIERS.T2 = ULT_TIERS[2];
+ULT_TIERS.T0 = ULT_TIERS[0]; ULT_TIERS.T1 = ULT_TIERS[1]; ULT_TIERS.T2 = ULT_TIERS[2]; ULT_TIERS.T3 = ULT_TIERS[3];
 
 /** 2차 전직 직업 장식 (feel §5.2 표). colors 는 각성기 2차 변형도 같이 쓴다 (feel §6.4) */
 export const ULT_FLOURISH = {
@@ -166,21 +177,30 @@ function qk(w) {
 function flashK() { const k = Number(game?.settings?.flashFx ?? 1); return Number.isFinite(k) ? clamp(k, 0, 1) : 1; }
 function calm() { return !!game?.settings?.reduceMotion; }
 function sfx(name, o) { try { audio.sfx(name, o); } catch { /* 소리 없음 */ } }
-function clampTier(t) { t = Number(t); return t >= 2 ? 2 : t >= 1 ? 1 : 0; }
+function clampTier(t) { t = Number(t); return t >= 3 ? 3 : t >= 2 ? 2 : t >= 1 ? 1 : 0; }
 function tierOfClass(classId) { return clampTier(CLASSES[classId]?.tier ?? 0); }
+/** 영웅의 단계 0~3 (초월·비전 = 3; classes_t3 §7.1) */
+function tierOfHero(hero) { return clampTier(heroTier(hero)); }
+/** classId 와 같은 2차 줄의 영웅이면 그 초월/비전 항목 (아니면 null: 다른 직업을 미리 굽거나 시험할 때) */
+function ascFor(classId, hero) { return hero && (classId == null || hero.classId === classId) ? ascOf(hero) : null; }
 function ultColor(charId) { return CHARACTERS[charId]?.ult?.color ?? '#fff2b0'; }
-/** 직업 강조색 = look.aura.color ?? look.secondary ?? 캐릭터 필살기 색 (feel §5.2) */
-export function accentOf(classId, fallback) {
+/** 직업 강조색 = 초월/비전 ult.accent ?? look.aura.color ?? look.secondary ?? 캐릭터 필살기 색 (feel §5.2; hero 는 선택) */
+export function accentOf(classId, fallback, hero = null) {
+  const A = ascFor(classId, hero);
+  if (A?.ult?.accent) return A.ult.accent;
   const L = CLASSES[classId]?.look;
   return L?.aura?.color ?? L?.secondary ?? fallback ?? '#fff2b0';
 }
 /** 화면에서 보이는 강조색: 거의 검은 색(가산 합성에서 사라짐, 예: victor_deadeye #1a1a20)은 필살기 색으로 바꾼다 */
-function visAccent(classId, col) {
-  const a = accentOf(classId, col), v = rgbOf(a);
+function visAccent(classId, col, hero = null) {
+  const a = accentOf(classId, col, hero), v = rgbOf(a);
   return (0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]) / 255 < 0.22 ? col : a;
 }
 const AURA_DEF = { kael: 'holy', sera: 'holy', victor: 'fire', bran: 'fire', lia: 'dark', azel: 'blood', isolde: 'thunder' };
-function auraOf(classId, charId, accent) {
+/** 속성 입자층: 초월/비전 lookTop.aura → 직업 look.aura → 영웅 기본 (hero 는 선택) */
+function auraOf(classId, charId, accent, hero = null) {
+  const T = ascFor(classId, hero)?.lookTop?.aura;
+  if (T?.type) return { type: T.type, color: T.color ?? accent };
   const A = CLASSES[classId]?.look?.aura;
   if (A?.type) return { type: A.type, color: A.color ?? accent };
   return { type: AURA_DEF[charId] ?? 'holy', color: accent };
@@ -927,7 +947,7 @@ function liveGhosts(tr) { return tr?.d?.list?.length ?? 0; }
 function afterimageImpl(w, p, tint, o = {}) {
   if (!w?.fx || !p || p.dead) return false;
   const s = live(w);
-  const tier = clampTier(o.tier ?? s?.tier ?? tierOfClass(p.hero?.classId));
+  const tier = clampTier(o.tier ?? s?.tier ?? tierOfHero(p.hero));
   let max = ULT_TIERS[tier].ghosts;
   if (o.min != null) max = Math.max(max, o.min);
   if (o.max != null) max = o.max;
@@ -942,7 +962,7 @@ function afterimageImpl(w, p, tint, o = {}) {
   const slot = ghostSlot(w);
   if (!slot) { ULTFX_STATS.ghostSkips++; return false; }
   if (s) s.ghostAt = now; else st.at = now;
-  const col = tint ?? (tier >= 2 ? (s?.accent ?? visAccent(p.hero?.classId, ultColor(p.hero?.charId))) : (s?.color ?? ultColor(p.hero?.charId)));
+  const col = tint ?? (tier >= 2 ? (s?.accent ?? visAccent(p.hero?.classId, ultColor(p.hero?.charId), p.hero)) : (s?.color ?? ultColor(p.hero?.charId)));
   const snap = typeof p.snapshot === 'function' ? p.snapshot() : p;
   const b = captureGhost(w, snap, col, slot, B.rs);
   const life = o.life ?? 0.26;
@@ -959,10 +979,14 @@ class Session {
     const hero = this.p?.hero ?? w.hero ?? null;
     this.charId = o.charId ?? hero?.charId ?? null;
     this.classId = o.classId ?? hero?.classId ?? null;
-    this.tier = clampTier(o.tier ?? tierOfClass(this.classId));
+    // 같은 영웅·같은 2차 줄일 때만 영웅의 초월/비전을 읽는다 (다른 직업을 시험·미리 굽는 세션은 직업 표만)
+    this.hero = hero && hero.charId === this.charId && hero.classId === this.classId ? hero : null;
+    this.tier = clampTier(o.tier ?? (this.hero ? tierOfHero(this.hero) : tierOfClass(this.classId)));
     this.T = ULT_TIERS[this.tier];
     this.color = o.color ?? ultColor(this.charId);
-    this.accent = o.accent ?? visAccent(this.classId, this.color);
+    this.accent = o.accent ?? visAccent(this.classId, this.color, this.hero);
+    // 단계 3: 직업 장식 색 = 초월/비전 ult.colors (각성 감독의 ULTFX.flourish 도 이 세션 색을 쓴다)
+    this.colors = o.colors ?? (this.tier >= 3 ? ascFor(this.classId, this.hero)?.ult?.colors ?? null : null);
     this.awaken = o.awaken ?? !!w.hudHidden;
     this.q = qk(w);
     this.dir = (this.p?.facing ?? 1) < 0 ? -1 : 1;
@@ -973,7 +997,7 @@ class Session {
     this.emitDur = Number.isFinite(o.dur) && o.dur > 0 ? o.dur : (this.awaken ? 2.0 : 1.3);
     this.sawCut = false; this.noCut = 0; this.finalAt = null; this.finals = 0; this.impacts = 0; this.ghostAt = -9; this.bt = -9; this.bn = 0;
     const E = this.T.element, fq = w.fx?.quality ?? 1;
-    this.aura = auraOf(this.classId, this.charId, this.accent);
+    this.aura = auraOf(this.classId, this.charId, this.accent, this.hero);
     this.elemN = Math.round(E.n * fq); this.backN = Math.round(E.back * fq); this.elemDone = 0; this.backDone = 0;
     this.cx = this.p?.cx ?? 0; this.cy = this.p?.cy ?? 0; this.ph = this.p?.h ?? 64;
     // medium 각성: 각성 연출(감독)이 화면 전체 어둡게·빛 층을 이미 두 장 쓰므로 집중선 층까지 얹으면 예산(medium 2)을 넘는다 → 생략
@@ -987,8 +1011,8 @@ class Session {
     if (o.name === false || (this.awaken && o.name == null)) return null;
     const base = typeof o.name === 'string' ? o.name : CHARACTERS[this.charId]?.ult?.name;
     if (!base) return null;
-    const N = this.T.name, cls = CLASSES[this.classId];
-    const text = N.prefix && cls?.name ? `${cls.name} · ${base}` : base;
+    const N = this.T.name, cname = this.hero ? classNameOf(this.hero) : CLASSES[this.classId]?.name;   // 초월·비전이면 그 이름
+    const text = N.prefix && cname ? `${cname} · ${base}` : base;
     return { text, size: N.size, style: N.style, drips: N.drips, w: text.length * N.size * 0.8, t0: 0.04, dur: 1.55 };
   }
   start() {
@@ -1105,6 +1129,16 @@ class Session {
       const u = ease.outCubic(clamp((t - 0.05) / 0.25, 0, 1));
       ctx.globalAlpha = a * 0.9; ctx.fillStyle = this.accent;
       ctx.fillRect(x - N.w / 2 * u, y + N.size * 0.55, N.w * u, 3);
+      if (this.tier >= 3) {
+        // 단계 3: 금줄 한 겹 더 + 양끝 마름모 (초월·비전 이름표)
+        const u2 = ease.outCubic(clamp((t - 0.1) / 0.25, 0, 1)), hw = N.w / 2 * u2 + 8, yy = y + N.size * 0.55 + 6.5;
+        ctx.fillStyle = '#e8c872'; ctx.fillRect(x - N.w / 2 * u2, yy, N.w * u2, 1.5);
+        if (u2 > 0.05) {
+          ctx.beginPath();
+          for (const sx of [x - hw, x + hw]) { ctx.moveTo(sx, yy - 4); ctx.lineTo(sx + 4, yy + 0.75); ctx.lineTo(sx, yy + 5.5); ctx.lineTo(sx - 4, yy + 0.75); ctx.closePath(); }
+          ctx.fill();
+        }
+      }
       ctx.globalAlpha = 1;
     }
     try {
@@ -1296,7 +1330,7 @@ function fctx(w, s, classId, x, y, o) {
   const def = ULT_FLOURISH[classId], p = w.player ?? null;
   let foes = null;
   return {
-    w, s, p, classId, x, y, o, def, c: def.colors, q: qk(w), qf: w.fx?.quality ?? 1, aw: s?.awaken ?? !!w.hudHidden,
+    w, s, p, classId, x, y, o, def, c: o.colors ?? s?.colors ?? def.colors, q: qk(w), qf: w.fx?.quality ?? 1, aw: s?.awaken ?? !!w.hudHidden,   // 단계 3: 초월/비전 ult.colors
     cam: w.camera, dir: (p?.facing ?? 1) < 0 ? -1 : 1,
     get foes() { return foes ?? (foes = foesNear(w, x, y, o, 8)); },
     get ground() { const g = groundBelow(w, x, y - 10, 8 * TILE); return g ?? (p ? p.bottom : y); },
@@ -2256,16 +2290,16 @@ function playFlourish(w, s, classId, x, y, o = {}) {
 const PREP = { key: null };
 function prepareFor(w, p) {
   if (typeof document === 'undefined' || !w || !p?.hero) return false;
-  const q = qk(w), cls = p.hero.classId, ch = p.hero.charId, key = `${cls}|${q}`;
+  const hero = p.hero, q = qk(w), cls = hero.classId, ch = hero.charId, key = `${heroKey(hero)}|${q}`;   // 초월·비전을 바꾸면 다시 굽는다
   ensurePools();
   if (PREP.key === key) return true;
-  const tier = tierOfClass(cls), col = ultColor(ch), acc = visAccent(cls, col);
+  const tier = tierOfHero(hero), col = ultColor(ch), acc = visAccent(cls, col, hero), AX = tier >= 3 ? ascFor(cls, hero) : null;
   // 필살기 색 + 각성 색 (awaken.js 가 v.color = T2.color ?? AWAKEN.color 로 부른다)
   const A = AWD.AWAKEN?.[ch], A2 = AWD.T2?.[cls];
   const awCol = A2?.color ?? A?.color, awAcc = A2?.accent ?? A?.accent;
   const pairs = [[col, acc]];
   if (awCol && tier >= 1) pairs.push([awCol, awAcc ?? awCol]);
-  const au = auraOf(cls, ch, acc);
+  const au = auraOf(cls, ch, acc, hero);
   glowSprite('#ffffff', true); glowSprite(au.color, true);
   for (const [c, a] of pairs) {
     glowSprite(c, true); glowSprite(a, true); glowSprite(mixC(c, '#ffffff', 0.35), true);
@@ -2277,17 +2311,20 @@ function prepareFor(w, p) {
   if (au.type === 'fire' || au.type === 'dark' || au.type === 'blood') soft.push(au.color);
   const def = ULT_FLOURISH[cls];
   if (tier >= 2 && def) {
+    // 단계 3: 장식은 같은 2차 그림, 색은 초월/비전 ult.colors (그 색의 빛·고리·자국·별·부드러운 원도 지금 굽는다)
+    const fc = AX?.ult?.colors ?? def.colors;
     for (const n of def.sprites) spriteOf(n);
-    for (const c of def.colors) glowSprite(c, true);
-    try { HFX.ring?.(def.colors[0]); HFX.cut?.(def.colors[0]); HFX.star?.(def.colors[0]); HFX.star?.('#ffffff'); } catch { /* hitfx 캐시 */ }
+    for (const c of fc) glowSprite(c, true);
+    try { HFX.ring?.(fc[0]); HFX.cut?.(fc[0]); HFX.star?.(fc[0]); HFX.star?.('#ffffff'); } catch { /* hitfx 캐시 */ }
     soft.push(...(def.soft ?? []));
+    if (AX) soft.push(...fc);
   }
   try { for (const c of soft) HFX.soft?.(c); } catch { /* hitfx 캐시 */ }
   // 기술 이름 (피 글씨 비트맵): 실제 화면 배율로 미리 굽는다
   try {
-    const T = ULT_TIERS[tier], base = CHARACTERS[ch]?.ult?.name, c = POOL.scratch;
+    const T = ULT_TIERS[tier], base = CHARACTERS[ch]?.ult?.name, c = POOL.scratch, cname = classNameOf(hero);
     if (base && c) {
-      const text = T.name.prefix && CLASSES[cls]?.name ? `${CLASSES[cls].name} · ${base}` : base;
+      const text = T.name.prefix && cname ? `${cname} · ${base}` : base;
       const g = c.getContext('2d'), k = game?.scale || 1;
       g.setTransform(k, 0, 0, k, 0, 0);
       UI.prewarmText?.(g, text, { size: T.name.size, style: T.name.style, drips: T.name.drips });
@@ -2308,7 +2345,7 @@ function schedulePrepare() {
 /** 미리 구운 상태가 지금 (직업, 품질)과 다른가: 품질 조절기('auto')가 스테이지 도중 등급을 바꾸면 달라진다 */
 function prepStale() {
   const w = game?.world, p = w?.player;
-  return !!(p?.hero && !live(w) && `${p.hero.classId}|${qk(w)}` !== PREP.key);
+  return !!(p?.hero && !live(w) && `${heroKey(p.hero)}|${qk(w)}` !== PREP.key);
 }
 let HOOKED = false, PREP_POLL = 0;
 function hookBus() {
@@ -2353,7 +2390,7 @@ function safe(name, fn) {
 function beatImpl(w, x, y, o = {}) {
   if (!w?.fx || !Number.isFinite(x) || !Number.isFinite(y)) return;
   const s = live(w);
-  const tier = clampTier(o.tier ?? s?.tier ?? tierOfClass(w.player?.hero?.classId));
+  const tier = clampTier(o.tier ?? s?.tier ?? tierOfHero(w.player?.hero));
   const T = ULT_TIERS[tier], pw = clamp(o.power ?? 0.5, 0, 1);
   const col = o.color ?? s?.color ?? '#ffffff', acc = o.accent ?? s?.accent ?? col, aw = s?.awaken ?? !!w.hudHidden;
   const fx = w.fx, cam = w.camera;
@@ -2365,6 +2402,7 @@ function beatImpl(w, x, y, o = {}) {
   const r1 = 60 + 120 * pw;
   fx.ring(x, y, { color: col, r0: 8, r1, life: 0.26 + 0.12 * pw, width: 5 + 7 * pw });
   if (T.beat.rings >= 2) fx.ring(x, y, { color: acc, r0: 4, r1: r1 * 1.45, life: 0.36 + 0.14 * pw, width: 3 + 4 * pw });
+  if (T.beat.rings >= 3 && !lite) fx.ring(x, y, { color: '#ffffff', r0: 2, r1: r1 * 1.9, life: 0.44 + 0.14 * pw, width: 2 + 2 * pw });   // 단계 3: 바깥 흰 고리
   if (!lite) {
     const g = glowNear(col, s?.color);
     if (g) fx.sprite(g, x, y, { size: 110 + 150 * pw, life: 0.18, s0: 0.5, s1: 1.15, alpha: 0.85 });
@@ -2396,15 +2434,22 @@ function finalImpl(w, x, y, o = {}) {
   if (!w?.fx || !Number.isFinite(x) || !Number.isFinite(y)) return;
   const s = live(w), p = w.player;
   const classId = o.classId ?? s?.classId ?? p?.hero?.classId;
-  const tier = clampTier(o.tier ?? s?.tier ?? tierOfClass(classId));
+  const hero = p?.hero && p.hero.classId === classId ? p.hero : null;
+  const tier = clampTier(o.tier ?? s?.tier ?? (hero ? tierOfHero(hero) : tierOfClass(classId)));
   const T = ULT_TIERS[tier];
-  const col = o.color ?? s?.color ?? ultColor(p?.hero?.charId), acc = o.accent ?? s?.accent ?? visAccent(classId, col);
+  const col = o.color ?? s?.color ?? ultColor(p?.hero?.charId), acc = o.accent ?? s?.accent ?? visAccent(classId, col, hero);
   const aw = s?.awaken ?? !!w.hudHidden, q = qk(w), cam = w.camera, fx = w.fx, vw = cam?.vw ?? 960;
   ULTFX_STATS.finals++;
   if (s) { s.finalAt = s.t; s.finals++; }
   // 고리 1/2/3
-  const RING = [[col, 0.42, 0.5, 20], [acc, 0.62, 0.62, 13], ['#ffffff', 0.85, 0.74, 7]];
-  for (let i = 0; i < T.final.rings; i++) { const [c, r, life, wd] = RING[i]; fx.ring(x, y, { color: c, r0: 16 + 14 * i, r1: vw * r, life, width: wd }); }
+  const RING = [[col, 0.42, 0.5, 20], [acc, 0.62, 0.62, 13], ['#ffffff', 0.85, 0.74, 7], ['#e8c872', 1.0, 0.82, 5]];
+  for (let i = 0; i < Math.min(T.final.rings, RING.length); i++) { const [c, r, life, wd] = RING[i]; fx.ring(x, y, { color: c, r0: 16 + 14 * i, r1: vw * r, life, width: wd }); }
+  if (T.final.ascRing) {
+    // 단계 3 (초월·비전): 화면 밖까지 천천히 퍼지는 강조색 고리 하나 + 45° 기운 흰 별 (캐시 스프라이트; 입자 0)
+    fx.ring(x, y, { color: acc, r0: 60, r1: vw * 1.2, life: 1.0, width: 4 });
+    const st = HFX.star?.('#ffffff');
+    if (st) fx.sprite(st, x, y, { size: 420, angle: Math.PI / 4, life: 0.38, s0: 0.15, s1: 1.5, alpha: 0.9 });
+  }
   // 섬광 핵 · 별 · 가로 렌즈 줄
   const g = glowNear(mixC(col, '#ffffff', 0.35), s ? mixC(s.color, '#ffffff', 0.35) : null);
   // 핵 크기: 최대 배율(1.25)에서, 마무리 줌 펀치(≤1.25)가 더해져도 화면 넓이의 70% 를 넘지 않게 (넘으면 화면 전체 층 하나가 는다, perf §5.2)
@@ -2483,7 +2528,7 @@ export const ULTFX = {
   flourish: safe('flourish', (w, classId, x, y, o) => playFlourish(w, live(w), classId, x, y, o || {})),
   /** 지금 진행 중인 세션 | null */
   active: (w) => live(w),
-  tierOf: (p) => tierOfClass(p?.hero?.classId),
+  tierOf: (p) => tierOfHero(p?.hero),
   accentOf,
   glow: (color) => { try { return glowSprite(color); } catch { return null; } },
   sprite: (name) => { try { return spriteOf(name); } catch { return null; } },

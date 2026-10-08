@@ -14,7 +14,7 @@
 const G = 'npc_greta';
 const N = (text) => ({ who: 'narrator', text });
 const H = (text) => ({ who: 'hero', text });
-const S = (text) => ({ who: G, text });
+const S = (text, x) => ({ who: G, text, ...x });
 const se = (id) => ({ cmd: 'sfx', id });
 const flag = (key, value = true) => ({ cmd: 'flag', key, value });
 
@@ -54,11 +54,11 @@ export const COMPANION_SCRIPTS = {
   q_cq_skoll_done: [S('서리 냄새가 나… 왔구나. 스콜이 너를 인정했어.')],
 
   // ── 알 · 녹티스 · 수호신 2번 칸 ──
-  cmp_egg_ready: [S('알에 금이 가기 시작했어! 어서 제단으로!')],
+  cmp_egg_ready: [S('알에 금이 가기 시작했어! 어서 제단으로!', { face: 'shock' })],
   cmp_bat_arrive: [
     se('screech'),
     N('마구간 지붕 위에 거대한 그림자가 거꾸로 매달려 있다.'),
-    S('저 박쥐… 유물의 피 냄새를 따라온 거야. 백작의 옛 권속, 녹티스.'),
+    S('저 박쥐… 유물의 피 냄새를 따라온 거야. 백작의 옛 권속, 녹티스.', { face: 'shock' }),
     S('이상하지. 너한테 고개를 숙이네.'),
   ],
   cmp_slot2: [S('제단을 넓혀 뒀어. 이제 수호신 둘을 함께 모실 수 있어.')],

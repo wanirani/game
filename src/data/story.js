@@ -1,7 +1,9 @@
 // 스토리 스크립트 (대사·컷신). dialogue 장면이 재생한다.
 // SCRIPTS[id] = [ line... ]
 //  line = { who:'hero'|charId|npcId|bossId|'narrator'|'임의 이름', text: '문자열' 또는 {kael:'..', sera:'..', victor:'..', bran:'..', lia:'..', azel:'..', isolde:'..', default:'..'}, side?:'left'|'right',
-//           name?:'명패 이름 덮어쓰기(이름을 밝히기 전 등)', portrait?:'portraits/… 초상화 덮어쓰기' }
+//           name?:'명패 이름 덮어쓰기(이름을 밝히기 전 등)', portrait?:'portraits/… 초상화 덮어쓰기',
+//           face?:'angry'|'shock' 표정 — 화자 초상화에 그 표정 파일이 있을 때만 (portrait_meta expressions; 영웅 7 + NPC 7, npc_rook2 없음).
+//                 H({…}) 줄의 face 는 모든 영웅 변형에 함께 걸린다 → 일곱 대사가 다 그 표정일 때만. 도우미 S·H·N·R·RN 의 마지막 인자 x 로 붙인다 }
 //       | { choice:[{ text, set:{flag:true}, goto:'label' }] , who, text }
 //       | { label:'이름' } | { goto:'label' } | { if:'flag' | '!flag' | {char:'kael'} | {gave:true}, ...line }   (gave = 이번 재생에서 앞의 give 가 하나라도 실제로 건넸다)
 //       | { cmd:'give', item, qty, name, once?(이미 가졌으면 건너뜀), silent?(토스트·소리 없음) } | { cmd:'gold', amount } | { cmd:'flag', key, value } | { cmd:'quest', id }
@@ -17,8 +19,8 @@
 const N = (text, x) => ({ who: 'narrator', text, ...x });
 const H = (text, x) => ({ who: 'hero', text, ...x });
 const S = (who, text, x) => ({ who, text, ...x });
-const R = (who, text) => ({ who, text, side: 'right' }); // 합류 전 영웅이 NPC로 말할 때
-const RN = (who, name, text) => ({ who, name, text, side: 'right' }); // 이름을 밝히기 전: 명패에 name 을 대신 표시
+const R = (who, text, x) => ({ who, text, side: 'right', ...x }); // 합류 전 영웅이 NPC로 말할 때
+const RN = (who, name, text, x) => ({ who, name, text, side: 'right', ...x }); // 이름을 밝히기 전: 명패에 name 을 대신 표시
 // 변신한 드라큘라 (2페이즈 초상화 portraits/b_dracula2, 이름은 bosses_b form2 와 동일)
 const D2 = (text) => ({ who: 'b_dracula', name: '진·드라큘라', portrait: 'portraits/b_dracula2', text });
 const NOCT = '붉은 눈의 검사', CROW = '수수께끼의 소녀', VOICE = '수수께끼의 목소리', PALE = '창백한 귀부인';
@@ -68,7 +70,7 @@ export const SCRIPTS = {
       azel: '…그 눈. 자네가 누구든 상관없네. 오늘 밤은 한 사람의 손이라도 아쉬워.',
       isolde: '하늘에서 떨어진 기사라… 오늘 밤은 무엇이 떨어지든 반가운 손이네.',
       default: '고맙네. 정말로 고마워.' }),
-    S(A, '마을 외곽이 불타고 있네. 아이들이 아직 예배당에 숨어 있어. 서두르게!'),
+    S(A, '마을 외곽이 불타고 있네. 아이들이 아직 예배당에 숨어 있어. 서두르게!', { face: 'shock' }),
     cg(),
   ],
 
@@ -136,11 +138,11 @@ export const SCRIPTS = {
     bgm('story'),
     N('불길이 잦아들 무렵, 예배당 쪽에서 비명이 들려왔다.'),
     cg('cg_elise_taken'), se('thunderclap'), quake(8, 0.5, RED),
-    S(EL, '살려 주세요! 신부님! 마르타 이모——!'),
+    S(EL, '살려 주세요! 신부님! 마르타 이모——!', { face: 'shock' }),
     S('b_crimson', '성녀의 피를 이은 아이라… 백작님께 좋은 선물이 되겠군.'),
     N('백작의 거대한 박쥐가 소녀를 낚아채, 붉은 달 아래 안개 속 성으로 날아갔다.'),
     cg(),
-    S(A, '엘리제…! 그 아이는 성 루미나의 혈통일세. 놈들이 그걸 어떻게…'),
+    S(A, '엘리제…! 그 아이는 성 루미나의 혈통일세. 놈들이 그걸 어떻게…', { face: 'shock' }),
     H({ kael: '반드시 데려오겠습니다. 발크레인의 이름을 걸고.',
       sera: '성 루미나의 혈통이라면 제 자매나 다름없어요. 꼭 구하겠어요.',
       victor: '…그래, 이번 건은 공짜로 해 주지. 이번만이야.',
@@ -360,9 +362,9 @@ export const SCRIPTS = {
     S('b_crimson', '입만 산 사냥꾼이로군. 진홍의 창 맛을 보여 주마!'),
     go('end'),
     L('bran'),
-    H('그 문장… 그 목소리…! 가레스 단장님?! 살아 계셨습니까!'),
+    H('그 문장… 그 목소리…! 가레스 단장님?! 살아 계셨습니까!', { face: 'shock' }),
     S('b_crimson', '브란… 종자 꼬마로군. 새벽 서약은 죽었다. 나는 이제 백작의 창이다.'),
-    H('그렇다면… 단장님께 배운 검으로, 단장님을 멈추겠습니다!'),
+    H('그렇다면… 단장님께 배운 검으로, 단장님을 멈추겠습니다!', { face: 'angry' }),
     L('end'),
   ],
   b_crimson_post: [
@@ -746,7 +748,7 @@ export const SCRIPTS = {
       bran: '강철이라 해도 기사의 검은 꺾이지 않소!',
       lia: '관절 이음새. 톱니. 거기다.',
       azel: '어릴 적엔 네가 무서웠다. 지금은 아니다.',
-      default: '멈춰 주마!' }),
+      default: '멈춰 주마!' }, { face: 'angry' }),
   ],
   b_colossus_post: [
     S('b_colossus', '……오류. 시간… 정지… 불가…… 째깍… 째…깍…'),
@@ -867,7 +869,7 @@ export const SCRIPTS = {
       bran: '기사단의 원수…! 오늘 이 자리에서 결판을 내겠다!',
       lia: '말 많은 해골. 목부터 떨군다.',
       azel: '데스. 아버지의 그림자 노릇도 오늘로 끝이다.',
-      default: '여기서 끝낸다!' }),
+      default: '여기서 끝낸다!' }, { face: 'angry' }),
     S('b_death', '좋다. 네 영혼의 무게를 달아 보자꾸나!'),
     cg(),
   ],
@@ -946,7 +948,7 @@ export const SCRIPTS = {
       bran: '새벽은 반드시 온다. 그것이 기사의 서약이다!',
       lia: '결사의 이름으로. 네 목을 가져간다, 백작.',
       azel: '아버지. 어머니가 믿었던 당신은 이미 죽었습니다. 제가 보내 드리겠습니다.',
-      default: '오늘 밤, 끝낸다!' }),
+      default: '오늘 밤, 끝낸다!' }, { face: 'angry' }),
     S('b_dracula', { azel: '아들아… 아직도 그 여자의 꿈을 좇느냐. 좋다, 아비의 힘을 보여 주마!', default: '좋다. 그 오만함, 피로 씻어 주마!' }),
     cg(),
   ],
@@ -975,8 +977,8 @@ export const SCRIPTS = {
     N('그 순간, 품속의 다섯 유물이 동시에 뜨겁게 맥동했다. 송곳니, 늑골, 심장, 눈, 반지.'),
     cg('cg_abyss_gate'), quake(8, 1.0, VOID),
     N('무너진 왕좌 아래, 거꾸로 선 성으로 이어지는 심연의 문이 입을 벌리고 있었다.'),
-    S(A, '헉… 헉… 종을 치다 말고 뛰어왔네! 유물이 부르는 소리를 들었어.'),
-    S(A, '저것이 백작을 되살리는 근원일세! 지금 끝내지 못하면 또 백 년이야!'),
+    S(A, '헉… 헉… 종을 치다 말고 뛰어왔네! 유물이 부르는 소리를 들었어.', { face: 'shock' }),
+    S(A, '저것이 백작을 되살리는 근원일세! 지금 끝내지 못하면 또 백 년이야!', { face: 'shock' }),
     H({ kael: '…끝이 아니었군. 좋다, 뿌리까지 뽑아 주지.',
       sera: '모든 밤의 근원… 빛을 가져가겠어요.',
       victor: '추가 근무라. 좋아, 이번엔 특별 수당이다.',
@@ -1037,8 +1039,8 @@ export const SCRIPTS = {
       bran: '새벽 서약의 마지막 기사가, 새벽을 가져왔다!',
       lia: '눈이 많네. 전부 찌른다.',
       azel: '아버지를 삼킨 어둠. 네가 모든 비극의 뿌리였군.',
-      default: '모든 걸 끝낸다!' }),
-    { if: 'carmilla_trust2', who: CA, text: '(어둠 너머로 카밀라의 목소리가 들린다) 나도 여기 있어. 이 사슬, 함께 끊자.' },
+      default: '모든 걸 끝낸다!' }, { face: 'angry' }),
+    { if: 'carmilla_trust2', who: CA, text: '(어둠 너머로 카밀라의 목소리가 들린다) 나도 여기 있어. 이 사슬, 함께 끊자.', face: 'angry' },
   ],
   b_chaos_post: [
     S('b_chaos', '……빛이… 이토록… 뜨거운 것이었나……'),
@@ -1065,7 +1067,7 @@ export const SCRIPTS = {
     N('그러나 무너진 왕좌 위에서, 흩어진 재를 조용히 쓸어 담는 하얀 손이 있었다.'),
     { if: 'carmilla_trust1', who: CA, text: '처음엔 믿어 주더니, 마지막엔 등을 돌렸구나. …괜찮아. 기대한 내가 바보였지.' },
     { if: '!carmilla_trust1', who: CA, text: '끝까지 날 믿지 않았지. 괜찮아. 그럼 이 굴레는 내 방식대로 쓰면 되니까.' },
-    S(CA, '백 년 후 붉은 달 아래서 다시 만나자꾸나. 그땐… 내가 왕좌에 앉아 있을 거야.'),
+    S(CA, '백 년 후 붉은 달 아래서 다시 만나자꾸나. 그땐… 내가 왕좌에 앉아 있을 거야.', { face: 'angry' }),
     cg(),
     N('헌터는 마을의 영웅이 되었다. 그러나 아무도 알지 못했다. 밤은 끝나지 않았다는 것을.'),
     H({ kael: '…이상하게 개운하지 않다. 발크레인의 일은 아직 끝나지 않은 걸까.',
@@ -1365,7 +1367,7 @@ export const SCRIPTS = {
 
   // ═══════════════════════════ NPC: 엘리제 ═══════════════════════════
   npc_elise_ch0: [
-    S(EL, '헌터님! 마을이… 마을이 불타고 있어요!'),
+    S(EL, '헌터님! 마을이… 마을이 불타고 있어요!', { face: 'shock' }),
     S(EL, '신부님이 예배당에 숨어 있으랬는데, 마르타 이모네 백작님이 안 보여서 찾으러 나왔어요.'),
     H({ kael: '여긴 위험해. 고양이는 내가 찾아 줄 테니 예배당으로 가.',
       sera: '백작님은 제가 꼭 찾아 드릴게요. 엘리제는 예배당으로 가요. 어서요.',
@@ -1417,7 +1419,7 @@ export const SCRIPTS = {
   npc_elise_tip1: [S(EL, '백작님(고양이)이 까마귀 깃털을 엄청 좋아해요. 마르타 이모한테 물어보세요!')],
   npc_elise_s01: [
     ifFlag('elise_warned', 'again'),
-    S(EL, '헌터님! 마을이… 마을이 불타고 있어요!'),
+    S(EL, '헌터님! 마을이… 마을이 불타고 있어요!', { face: 'shock' }),
     S(EL, '신부님이 예배당에 숨어 있으랬는데, 마르타 이모네 백작님이 안 보여서 찾으러 나왔어요.'),
     H({ kael: '여긴 위험해. 고양이는 내가 찾아 줄 테니 예배당으로 가.',
       sera: '백작님은 제가 꼭 찾아 드릴게요. 엘리제는 예배당으로 가요. 어서요.',
