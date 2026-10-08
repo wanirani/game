@@ -8,6 +8,10 @@
 //   node tools/qa/visual_review.mjs [--only stages,bosses,enemies,companions,heroes,cutins,endings,menus,hud,galleries]
 //                                   [--vp desk,phone1] [--quick] [--stages s01,s14] [--heroes kael,lia]
 //   --quick: fewer stages/heroes, one boss phase, 2 enemies per stage, 2 mounts + 2 guardians, tier-2 yaws 0/90/180 only
+//   --contrast [--stages s01,s02,s16,hub] [--contrast-out f.json] [--contrast-base f.json]: hero figure/ground contrast
+//     (opt-in group 'contrast', alone unless --only names other groups too): per stage r1 (and 'hub') the hero standing
+//     after a short walk and at a jump apex; hero luma vs the luma behind it as a WCAG-style ratio, warn < 1.4 (report
+//     only), plus top/middle/bottom band luma of the frame (haze check). --contrast-base prints the change per row.
 //
 // Pages run frozen (lib/step.mjs): every shot is "N game steps, then one render", so the machine load does not change
 // what is on screen. Shots are page screenshots (the DOM touch overlay #tpadcv is included on phones).
@@ -18,19 +22,20 @@ import path from 'node:path';
 import { openEnv, ROOT } from './lib/server.mjs';
 import { VIEWPORTS } from './lib/viewports.mjs';
 import { freeze, step, settle, stepUntil } from './lib/step.mjs';
-import { gotoRoom, waitBakes, enterFight, prepWorld } from './lib/rooms.mjs';
+import { gotoRoom, waitBakes, enterFight, prepWorld, idleFlush } from './lib/rooms.mjs';
 import { Checks, writeReport, parseFlags, list, QA_DIR } from './lib/report.mjs';
 import { ownerOf } from './lib/owners.mjs';
 
 const args = parseFlags();
 const QUICK = !!args.quick;
 const ALL = ['stages', 'bosses', 'enemies', 'companions', 'heroes', 'cutins', 'endings', 'menus', 'hud', 'galleries'];
-const GROUPS = list(args.only, ALL);
+const OPT_IN = ['contrast'];   // not in the default run (it renders every stage twice more); --contrast or --only contrast
+const GROUPS = args.contrast ? [...new Set([...list(args.only, []), 'contrast'])] : list(args.only, ALL);
 const VPS = list(args.vp, ['desk', 'phone1']);
 {
   // an unknown group or viewport must not turn into a vacuous green run
-  const badG = GROUPS.filter((g) => !ALL.includes(g)), badV = VPS.filter((v) => v !== 'w960' && !VIEWPORTS[v]);
-  if (badG.length || badV.length || !GROUPS.length) { console.error(`${badG.length ? `unknown --only ${badG.join(', ')} (${ALL.join(', ')}) ` : ''}${badV.length ? `unknown --vp ${badV.join(', ')} (${Object.keys(VIEWPORTS).join(', ')}, w960)` : ''}`.trim() || 'no groups'); process.exit(2); }
+  const badG = GROUPS.filter((g) => !ALL.includes(g) && !OPT_IN.includes(g)), badV = VPS.filter((v) => v !== 'w960' && !VIEWPORTS[v]);
+  if (badG.length || badV.length || !GROUPS.length) { console.error(`${badG.length ? `unknown --only ${badG.join(', ')} (${[...ALL, ...OPT_IN].join(', ')}) ` : ''}${badV.length ? `unknown --vp ${badV.join(', ')} (${Object.keys(VIEWPORTS).join(', ')}, w960)` : ''}`.trim() || 'no groups'); process.exit(2); }
 }
 const OUT = path.join(QA_DIR, 'visual');
 fs.mkdirSync(OUT, { recursive: true });
@@ -38,6 +43,7 @@ const C = new Checks(true);
 const findings = [];
 const sheets = [];
 const flagged = [];
+const contrastRows = [];   // --contrast: { vp, stage, pose, ratio, hero, behind, bands, … }
 
 const { STAGES } = await import(path.join(ROOT, 'src/data/stages.js'));
 const { BOSSES } = await import(path.join(ROOT, 'src/data/bosses.js'));
@@ -83,6 +89,60 @@ const frameStats = (s) => s.eval(() => {
   const mean = sum / n;
   return { mean: +mean.toFixed(1), sd: +Math.sqrt(Math.max(0, sq / n - mean * mean)).toFixed(1), top: g.top?.name ?? null };
 });
+
+/** Hero figure/ground contrast (--contrast; the 2026-10 benchmark metric, ported from its shots.mjs): renders the frame with
+ *  the hero, then again with only the hero body left out — Player.drawBacking keeps the contact shadow and the background
+ *  halo reads world.player, so what is "behind" includes them (older code without drawBacking: the whole player hidden).
+ *  Pixels above the feet that change are the hero mask; mean hero luma vs mean luma behind it → WCAG-style ratio on the
+ *  mean lumas. Also the top/middle/bottom thirds' mean luma of the frame (haze check). The QA invincibility ring and
+ *  the hurt blink are switched off for the two renders. */
+const heroContrast = (s) => s.eval(() => {
+  const g = window.__game, w = g.world, cam = w?.camera, p = w?.player;
+  if (!p || !cam) return null;
+  const lum = (r, gg, b) => 0.2126 * r + 0.7152 * gg + 0.0722 * b;
+  const cv = g.canvas, z = cam.zoom || 1, sx = cv.width / g.viewW, sy = cv.height / g.viewH;
+  const inv = p.buffs.invincible, ifr = p.iframes;
+  p.buffs.invincible = 0; p.iframes = 0;
+  const k = window.__vrK || (window.__vrK = document.createElement('canvas'));
+  const kx = k.getContext('2d', { willReadFrequently: true });
+  const grab = (x0, y0, cw, ch) => { k.width = cw; k.height = ch; kx.drawImage(cv, x0, y0, cw, ch, 0, 0, cw, ch); return kx.getImageData(0, 0, cw, ch).data; };
+  try {
+    window.__qaStep(0, true);
+    const bands = [];
+    k.width = 192; k.height = 108; kx.drawImage(cv, 0, 0, 192, 108);   // thirds of a 192×108 copy, as in the benchmark
+    const band = kx.getImageData(0, 0, 192, 108).data;
+    for (let t = 0; t < 3; t++) {
+      let L = 0;
+      for (let i = t * 36 * 192 * 4; i < (t + 1) * 36 * 192 * 4; i += 4) L += lum(band[i], band[i + 1], band[i + 2]);
+      bands.push(+(L / (36 * 192)).toFixed(1));
+    }
+    const x0 = Math.max(0, Math.floor((p.x - 50 - cam.x) * z * sx)), y0 = Math.max(0, Math.floor((p.y - 50 - cam.y) * z * sy));
+    const x1 = Math.min(cv.width, Math.ceil((p.x + p.w + 50 - cam.x) * z * sx)), y1 = Math.min(cv.height, Math.ceil((p.y + p.h + 8 - cam.y) * z * sy));
+    const cw = x1 - x0, ch = y1 - y0;
+    if (cw < 4 || ch < 4) return { bands, off: true };
+    const A = grab(x0, y0, cw, ch);
+    const backing = typeof p.drawBacking === 'function';
+    if (backing) p.draw = function (ctx, world) { this.drawBacking(ctx, world); }; else p.hidden = true;
+    window.__qaStep(0, true);
+    const Bk = grab(x0, y0, cw, ch);
+    if (backing) delete p.draw; else p.hidden = false;
+    let n = 0, La = 0, Lb = 0;
+    const feet = Math.floor((p.bottom - 3 - cam.y) * z * sy) - y0;   // rows at/below the feet = contact shadow, not the figure
+    for (let i = 0; i < A.length; i += 4) {
+      if (Math.floor(i / 4 / cw) >= feet) continue;
+      if (Math.abs(A[i] - Bk[i]) + Math.abs(A[i + 1] - Bk[i + 1]) + Math.abs(A[i + 2] - Bk[i + 2]) > 30) { n++; La += lum(A[i], A[i + 1], A[i + 2]); Lb += lum(Bk[i], Bk[i + 1], Bk[i + 2]); }
+    }
+    const rel = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    const hl = La / Math.max(1, n), bl = Lb / Math.max(1, n);
+    const ratio = (Math.max(rel(hl), rel(bl)) + 0.05) / (Math.min(rel(hl), rel(bl)) + 0.05);
+    return { bands, maskPx: n, hero: +hl.toFixed(1), behind: +bl.toFixed(1), ratio: +ratio.toFixed(2), backing,
+      heroY: +(((p.y - cam.y) * z) / g.viewH).toFixed(2), theme: w.bg?.stage?.theme ?? null };
+  } finally {
+    p.buffs.invincible = inv; p.iframes = ifr;
+    window.__qaStep(0, true);
+  }
+});
+const CONTRAST_WARN = 1.4;
 
 /** CSS-px clip (16:9, about half the game canvas) centred on the hero, or on the hero–enemy midpoint for 'enemy', so a
  *  creature stays readable in its sheet tile. null when there is no world. */
@@ -514,6 +574,57 @@ const GROUP_FNS = {
     await s.close();
   },
 
+  /** --contrast: hero figure/ground contrast in each stage's first room (and the town with 'hub'): standing after a short
+   *  walk, then at a jump apex. Report only (warn < CONTRAST_WARN); rows go to --contrast-out for before/after diffs. */
+  async contrast(env, vp) {
+    const s = await stagePage(env, vp);
+    const shots = [];
+    const harness = [];
+    const ids = list(args.stages, QUICK ? ['s01', 's02', 's16', 'hub'] : [...Object.keys(STAGES).filter((k) => /^s\d\d$/.test(k)), 'hub']);
+    const WALKC = `if (p) p.buffs.invincible = 9999; if (i === 0) key('ArrowRight', true); if (i === WALK_N) key('ArrowRight', false);`;
+    const row = (st, pose, m, r) => {
+      if (!m || m.off) { harness.push(`${st} ${pose}: hero off screen`); return; }
+      contrastRows.push({ vp, stage: st, pose, ...m });
+      r.label = `${st} ${pose} · ${m.ratio} (hero ${m.hero} / behind ${m.behind})`;
+      if (m.ratio < CONTRAST_WARN) r.err = `contrast ${m.ratio}`;
+      C.add(`contrast.${vp}.${st}.${pose}`, m.ratio < CONTRAST_WARN ? 'warn' : 'pass', `ratio ${m.ratio} (hero luma ${m.hero}, behind ${m.behind}, ${m.maskPx} px); bands ${m.bands.join(' / ')}${m.backing ? '' : ' (no drawBacking: player hidden)'}`);
+    };
+    for (const st of ids) {
+      try {
+        const hub = st === 'hub';
+        if (hub) {
+          await s.eval(() => window.__game.go('hub', {}, { fade: false }));
+          for (let i = 0; i < 60; i++) {
+            if (await s.eval(() => window.__game.top?.name === 'hub' && !!window.__game.world?.player).catch(() => false)) break;
+            await step(s.page, 2, false); await s.wait(100);
+          }
+          await waitBakes(s); await idleFlush(s);
+        } else {
+          if (!STAGES[st]) { harness.push(`${st}: unknown stage`); continue; }
+          await gotoRoom(s, st, Object.keys(STAGES[st].rooms || {})[0] || 'r1');
+          await prepWorld(s);
+        }
+        // the QA invincibility ring and the hurt blink are not part of the scene (the measurement turns them off too)
+        const calm = () => s.eval(() => { const p = window.__game.world?.player; if (p) { p.buffs.invincible = 0; p.iframes = 0; } window.__qaStep(0, true); });
+        await play(s, hub ? 200 : 170, WALKC.replace('WALK_N', hub ? '60' : '40'));   // the chapter title card is gone by then
+        await calm();
+        let r = await shot(s, shots, st, { file: 'src/render/background.js' });
+        row(st, 'stand', await heroContrast(s), r);
+        await s.eval(() => { const p = window.__game.world?.player; if (p) p.buffs.invincible = 9999; window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyZ', key: 'KeyZ', bubbles: true })); });
+        await step(s.page, 2, false);
+        await stepUntil(s.page, '!p.onGround && p.vy >= -40', 90);
+        await calm();
+        r = await shot(s, shots, st, { file: 'src/render/background.js' });
+        row(st, 'jump', await heroContrast(s), r);
+        await s.eval(() => window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyZ', key: 'KeyZ', bubbles: true })));
+        await play(s, 40);
+      } catch (e) { harness.push(`${st}: ${String(e?.message || e).split('\n')[0]}`); }
+    }
+    await sheet(env, `contrast_${vp}`, `Hero figure/ground contrast (${vp}; red = ratio < ${CONTRAST_WARN})`, shots, tileOf(vp));
+    closeGroup('contrast', vp, s, shots, harness);
+    await s.close();
+  },
+
   /** Every tools/gallery_*.html (smoke: loads without page errors, draws something), first screen at this viewport. */
   async galleries(env, vp) {
     const shots = [];
@@ -562,7 +673,24 @@ try {
 
 for (const r of C.list) if (r.status !== 'pass') console.log(`${r.status.padEnd(5)} ${r.id} — ${r.detail}`);
 const c = C.counts();
-const md = `\n## Contact sheets\n\n${sheets.map((x) => `- ${x.title}: \`${x.file}\` (${x.shots} shots${x.flagged ? `, ${x.flagged} flagged` : ''})`).join('\n')}\n\n## Flagged shots\n\n${flagged.map((f) => `- ${f.label}: ${f.why}${f.file ? ` — ${f.file}` : ''}`).join('\n') || '(none)'}\n`;
+let contrastMd = '';
+if (contrastRows.length) {
+  const file = typeof args['contrast-out'] === 'string' ? args['contrast-out'] : path.join(QA_DIR, 'tools', 'visual_contrast.json');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify({ when: new Date().toISOString(), rows: contrastRows }, null, 1));
+  let base = null;
+  if (typeof args['contrast-base'] === 'string') { try { base = JSON.parse(fs.readFileSync(args['contrast-base'], 'utf8')).rows; } catch (e) { console.log(`contrast base unreadable: ${e.message}`); } }
+  const key = (r) => `${r.vp}|${r.stage}|${r.pose}`;
+  const B = new Map((base || []).map((r) => [key(r), r]));
+  const lines = contrastRows.map((r) => {
+    const b = B.get(key(r));
+    const d = (v, w) => (b ? ` (${v - w >= 0 ? '+' : ''}${(v - w).toFixed(2)})` : '');
+    return `| ${r.vp} | ${r.stage} | ${r.pose} | ${r.theme ?? ''} | ${r.ratio}${d(r.ratio, b?.ratio)} | ${r.hero} | ${r.behind}${d(r.behind, b?.behind)} | ${r.bands.join(' / ')}${b ? ` (top ${(r.bands[0] - b.bands[0] >= 0 ? '+' : '') + (r.bands[0] - b.bands[0]).toFixed(1)}, mid ${(r.bands[1] - b.bands[1] >= 0 ? '+' : '') + (r.bands[1] - b.bands[1]).toFixed(1)})` : ''} |`;
+  });
+  contrastMd = `\n## Hero figure/ground contrast (warn < ${CONTRAST_WARN})${base ? ` — change vs ${args['contrast-base']}` : ''}\n\n| vp | stage | pose | theme | ratio | hero luma | behind luma | band luma top / mid / bottom |\n|---|---|---|---|---|---|---|---|\n${lines.join('\n')}\n\nrows: \`${file}\`\n`;
+  console.log(contrastMd);
+}
+const md = `\n## Contact sheets\n\n${sheets.map((x) => `- ${x.title}: \`${x.file}\` (${x.shots} shots${x.flagged ? `, ${x.flagged} flagged` : ''})`).join('\n')}\n\n## Flagged shots\n\n${flagged.map((f) => `- ${f.label}: ${f.why}${f.file ? ` — ${f.file}` : ''}`).join('\n') || '(none)'}\n${contrastMd}`;
 const out = writeReport('visual_review', { tool: 'visual_review', when: new Date().toISOString(), durationMs: Date.now() - t0, groups: GROUPS, vps: VPS, quick: QUICK, counts: c, checks: C.list, sheets, flagged, findings }, { title: 'Visual review', findings, extraMd: md });
 console.log(`\nvisual_review: ${sheets.length} sheet(s) in ${OUT}; ${c.pass} pass, ${c.warn} warn, ${c.fail} fail, ${c.error} error — ${out.json}`);
 process.exit(C.red.length ? 1 : 0);

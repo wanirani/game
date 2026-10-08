@@ -179,11 +179,20 @@ export function shade(ctx, vw, vh, { top = 0.55, bottom = 0.75, vig = 0.7, tint 
 }
 
 // ───────────────────────── 분위기 입자 ─────────────────────────
-/** 불씨·먼지·안개·박쥐·번개를 한 번에 관리하는 가벼운 연출기 (미리 할당, 프레임당 할당 없음) */
+/**
+ * 번개 섬광을 쳐도 되는가 (지금 설정을 매번 읽는다): '화면 번쩍임' 끔이거나 '동작 줄이기'면 치지 않는다.
+ * 설정 화면에서 바꾸고 돌아와도 장면을 다시 열 필요가 없다 (benchmark #6 — 예전에는 장면 enter 에서 한 번만 정했다)
+ */
+export function lightningAllowed(s = game.settings) {
+  return !(s && (Number(s.flashFx ?? 1) <= 0 || s.reduceMotion));
+}
+/** 불씨·먼지·안개·박쥐·번개를 한 번에 관리하는 가벼운 연출기 (미리 할당, 프레임당 할당 없음)
+ *  번개는 useLightning(장면이 켠 것) && lightningAllowed()(설정) 일 때만 친다. 화면 섬광 세기는 settings.flashFx 를 곱한다.
+ *  secondP: 번개 뒤 두 번째 섬광 확률 (타이틀 첫 실행은 0) */
 export class Ambience {
   constructor({ embers = 60, motes = 30, bats = 12, fog = true, lightning = true, emberColor = '#ff8a3a', fogTint = '#5a4a6a' } = {}) {
     this.E = []; this.M = []; this.B = []; this.F = [];
-    this.emberColor = emberColor; this.fogTint = fogTint; this.useFog = fog; this.useLightning = lightning;
+    this.emberColor = emberColor; this.fogTint = fogTint; this.useFog = fog; this.useLightning = lightning; this.secondP = 0.6;
     for (let i = 0; i < embers; i++) this.E.push({ x: rand(0, 1), y: rand(0, 1), vx: rand(-0.01, 0.01), vy: -rand(0.02, 0.08), s: rand(0.8, 2.4), ph: rand(0, TAU), life: rand(0, 1) });
     for (let i = 0; i < motes; i++) this.M.push({ x: rand(0, 1), y: rand(0, 1), vx: rand(-0.004, 0.004), vy: rand(-0.004, 0.004), s: rand(0.6, 1.4), ph: rand(0, TAU) });
     for (let i = 0; i < bats; i++) this.B.push(this.newBat(true));
@@ -229,10 +238,14 @@ export class Ambience {
       if (b.x < -0.15 || b.x > 1.15) { this.B[i] = this.newBat(false); }
     }
     for (const f of this.F) { f.x += f.v * dt; if (f.x > 1.2) f.x = -0.5; if (f.x < -0.6) f.x = 1.1; }
-    if (this.useLightning) {
+    if (this.useLightning && lightningAllowed()) {
       this.nextBolt -= dt;
-      if (this.nextBolt <= 0) { this.strike(vw, vh); this.nextBolt = rand(5, 10); this.second = Math.random() < 0.6 ? 0.14 : 0; }
+      if (this.nextBolt <= 0) { this.strike(vw, vh); this.nextBolt = rand(5, 10); this.second = Math.random() < this.secondP ? 0.14 : 0; }
       if (this.second > 0) { this.second -= dt; if (this.second <= 0) this.flash = 0.8; }
+    } else if (this.flash > 0 || this.second > 0 || this.boltT > 0) {
+      // 설정에서 막혔으면 치던 번개·대기 중인 두 번째 섬광도 거둔다 (돌아오자마자 번쩍이지 않게)
+      this.flash = 0; this.second = 0; this.boltT = 0;
+      if (this.nextBolt < 2.5) this.nextBolt = 2.5;
     }
     this.flash = Math.max(0, this.flash - dt * 3.2);
     if (this.boltT > 0) this.boltT -= dt;
@@ -269,7 +282,7 @@ export class Ambience {
         ctx.drawImage(ms, m.x * vw - s / 2 + px * 0.3, m.y * vh - s / 2, s, s);
       }
       if (this.flash > 0) {
-        ctx.globalAlpha = this.flash * 0.32;
+        ctx.globalAlpha = this.flash * 0.32 * clamp(Number(game.settings?.flashFx ?? 1), 0, 1);   // '약하게'(0.5)면 절반
         ctx.fillStyle = '#b8c8ff'; ctx.fillRect(0, 0, vw, vh);
       }
     }

@@ -27,30 +27,72 @@ function topColor(img, fallback) {
 }
 const rgbCss = (c, a = 1, k = 1) => `rgba(${Math.round(c[0] * k)},${Math.round(c[1] * k)},${Math.round(c[2] * k)},${a})`;
 
+// ── 주인공 뒤 어둠 원 (THEMES.halo) ──
+// 64px 방사형 스프라이트 하나를 페이지에서 한 번 굽고 늘여 쓴다 (프레임마다 그라데이션·캔버스를 만들지 않음, 스테이지 진입 때 생성)
+let _halo = null;
+function haloSprite() {
+  if (_halo) return _halo;
+  _halo = document.createElement('canvas');
+  _halo.width = _halo.height = 64;
+  const g = _halo.getContext('2d'), rg = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  rg.addColorStop(0, 'rgba(0,0,0,1)'); rg.addColorStop(0.55, 'rgba(0,0,0,0.56)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = rg; g.fillRect(0, 0, 64, 64);
+  return _halo;
+}
+// 원경 그림의 저해상도 밝기 격자 (그림마다 한 번, 공용 작은 캔버스 하나로 읽음) — 주인공 바로 뒤가 얼마나 밝은지 어림한다
+const LG_W = 48, LG_H = 18;
+const lumaGrids = new WeakMap();
+let _lgc = null;
+function lumaGrid(img) {
+  let L = lumaGrids.get(img);
+  if (L !== undefined) return L;
+  L = null;
+  try {
+    _lgc ??= document.createElement('canvas');
+    _lgc.width = LG_W; _lgc.height = LG_H;
+    const g = _lgc.getContext('2d', { willReadFrequently: true });
+    g.imageSmoothingQuality = 'high';   // 큰 그림을 한 번에 줄일 때 점 몇 개만 집지 않게
+    g.drawImage(img, 0, 0, LG_W, LG_H);
+    const d = g.getImageData(0, 0, LG_W, LG_H).data;
+    L = new Float32Array(LG_W * LG_H);
+    for (let i = 0; i < L.length; i++) L[i] = 0.2126 * d[i * 4] + 0.7152 * d[i * 4 + 1] + 0.0722 * d[i * 4 + 2];
+  } catch { L = null; }
+  lumaGrids.set(img, L);
+  return L;
+}
+const HERO_LUMA = 64;   // 게임 화면에서 잰 영웅 퍼펫의 평균 밝기 (visual_review --contrast: 대개 58–70)
+/** 원경 밝기 / 영웅 밝기 비 r → 어둠 원 세기 배율. 원경이 영웅과 비슷하면 1, 아주 어두우면 조금(0.35), 훨씬 밝으면 0 (누르면 같은 밝기로 만남) */
+const haloWeight = (r) => (r <= 0.3 ? 0.35 : r < 0.6 ? 0.35 + ((r - 0.3) / 0.3) * 0.65 : r <= 1.1 ? 1 : r < 1.3 ? (1.3 - r) / 0.2 : 0);
+
+// halo  = 주인공 분리 (2026-10 벤치마크 1): 주인공 몸 뒤 원경에만 까는 옅은 어둠 원의 중심 알파 (없거나 0 = 끔; 마을 town 은 끔).
+//          실제 세기는 주인공 뒤 원경 그림의 밝기로 줄인다 (haloWeight) — 원경이 주인공보다 한참 밝으면 이미 어두운 실루엣으로 읽히고,
+//          그때 누르면 둘이 같은 밝기에서 만나 오히려 묻힌다. 중간 밝기 원경(s02 묘지, s16 심해)이 가장 세다.
+// haze/hazeK = 대기 원근 (벤치마크 9): 화면 위쪽 띠(30–45 % 높이)에만 차가운 대기색 [r,g,b] 을 최대 알파 hazeK 로 깔고 50 % 에서 0,
+//          56 % 아래(주인공이 서는 줄)는 예전 12 % 누름 그대로. 원경 누름과 같은 한 번 칠하기라 칠하기 수는 늘지 않는다. 1부 바깥 테마만.
 export const THEMES = {
-  village:   { sky: ['#1a0610', '#3a0e10', '#120408'], fog: '#ff6a2a', mid: 'houses', weather: 'embers', moon: '#ff3a2a' },
-  graveyard: { sky: ['#0a1418', '#12242a', '#05080a'], fog: '#6ad0c0', mid: 'trees', weather: 'fog', moon: '#e8f0e0' },
-  gate:      { sky: ['#140a24', '#2a1a3a', '#08040e'], fog: '#8a6aaa', mid: 'towers', weather: 'rain', moon: null },
-  hall:      { sky: ['#1a0808', '#2a0e0e', '#0a0404'], fog: '#c04030', mid: 'pillars', weather: 'dust', moon: null },
-  catacombs: { sky: ['#0a0c08', '#141a10', '#040504'], fog: '#8ad06a', mid: 'arches', weather: 'drips', moon: null },
-  library:   { sky: ['#140c08', '#241410', '#080404'], fog: '#b98cff', mid: 'shelves', weather: 'pages', moon: null },
-  alchemy:   { sky: ['#081208', '#102010', '#040804'], fog: '#6aff6a', mid: 'pipes', weather: 'bubbles', moon: null },
-  waterway:  { sky: ['#040c18', '#0a1a2a', '#02060c'], fog: '#4ab0ff', mid: 'arches', weather: 'drips', moon: null },
-  clock:     { sky: ['#0a0e1a', '#1a1a2a', '#05060a'], fog: '#e8c872', mid: 'gears', weather: 'dust', moon: '#f0e8d0' },
-  spire:     { sky: ['#06101c', '#12243a', '#02060c'], fog: '#bfe8ff', mid: 'towers', weather: 'snow', moon: '#e0f0ff' },
-  chapel:    { sky: ['#1a0406', '#300810', '#0a0204'], fog: '#ff2a3a', mid: 'windows', weather: 'ash', moon: null },
-  throne:    { sky: ['#1a0206', '#3a0610', '#0a0103'], fog: '#ff1a2a', mid: 'pillars', weather: 'bats', moon: '#ff2020' },
-  abyss:     { sky: ['#10041a', '#2a0830', '#06020a'], fog: '#ff5aff', mid: 'rocks', weather: 'embers', moon: null },
-  arena:     { sky: ['#1a0a08', '#3a1a10', '#0a0404'], fog: '#ff8a3a', mid: 'pillars', weather: 'dust', moon: '#f0e0d0' },
+  village:   { sky: ['#1a0610', '#3a0e10', '#120408'], fog: '#ff6a2a', mid: 'houses', weather: 'embers', moon: '#ff3a2a', halo: 0.4, haze: [96, 108, 160], hazeK: 0.2 },
+  graveyard: { sky: ['#0a1418', '#12242a', '#05080a'], fog: '#6ad0c0', mid: 'trees', weather: 'fog', moon: '#e8f0e0', halo: 0.5, haze: [120, 140, 175], hazeK: 0.16 },
+  gate:      { sky: ['#140a24', '#2a1a3a', '#08040e'], fog: '#8a6aaa', mid: 'towers', weather: 'rain', moon: null, halo: 0.45, haze: [110, 112, 170], hazeK: 0.18 },
+  hall:      { sky: ['#1a0808', '#2a0e0e', '#0a0404'], fog: '#c04030', mid: 'pillars', weather: 'dust', moon: null, halo: 0.4 },
+  catacombs: { sky: ['#0a0c08', '#141a10', '#040504'], fog: '#8ad06a', mid: 'arches', weather: 'drips', moon: null, halo: 0.4 },
+  library:   { sky: ['#140c08', '#241410', '#080404'], fog: '#b98cff', mid: 'shelves', weather: 'pages', moon: null, halo: 0.4 },
+  alchemy:   { sky: ['#081208', '#102010', '#040804'], fog: '#6aff6a', mid: 'pipes', weather: 'bubbles', moon: null, halo: 0.35 },
+  waterway:  { sky: ['#040c18', '#0a1a2a', '#02060c'], fog: '#4ab0ff', mid: 'arches', weather: 'drips', moon: null, halo: 0.45 },
+  clock:     { sky: ['#0a0e1a', '#1a1a2a', '#05060a'], fog: '#e8c872', mid: 'gears', weather: 'dust', moon: '#f0e8d0', halo: 0.45 },
+  spire:     { sky: ['#06101c', '#12243a', '#02060c'], fog: '#bfe8ff', mid: 'towers', weather: 'snow', moon: '#e0f0ff', halo: 0.3, haze: [150, 180, 215], hazeK: 0.12 },
+  chapel:    { sky: ['#1a0406', '#300810', '#0a0204'], fog: '#ff2a3a', mid: 'windows', weather: 'ash', moon: null, halo: 0.45 },
+  throne:    { sky: ['#1a0206', '#3a0610', '#0a0103'], fog: '#ff1a2a', mid: 'pillars', weather: 'bats', moon: '#ff2020', halo: 0.3 },
+  abyss:     { sky: ['#10041a', '#2a0830', '#06020a'], fog: '#ff5aff', mid: 'rocks', weather: 'embers', moon: null, halo: 0.45 },
+  arena:     { sky: ['#1a0a08', '#3a1a10', '#0a0404'], fog: '#ff8a3a', mid: 'pillars', weather: 'dust', moon: '#f0e0d0', halo: 0.35 },
   town:      { sky: ['#0c0814', '#1c1224', '#06040a'], fog: '#ffb070', mid: 'houses', weather: 'fireflies', moon: '#ffe0c0' },
   // ── 2부 (world2 §4.1): 새 날씨 spores(포자) · stars(별빛, 원경에 그림). 선택 필드 bubble = bubbles 날씨 거품 색 ──
-  mirror:    { sky: ['#0a0e18', '#1a2232', '#04060c'], fog: '#bfe8ff', mid: 'windows', weather: 'dust',    moon: '#e8f4ff' },
-  forge:     { sky: ['#1a0602', '#3a1204', '#0a0200'], fog: '#ff7a2a', mid: 'pipes',   weather: 'embers',  moon: null },
-  sunken:    { sky: ['#01101a', '#06283a', '#00060c'], fog: '#3ad0c8', mid: 'arches',  weather: 'bubbles', moon: null, bubble: 'rgba(150,236,255,0.4)' },
-  sky:       { sky: ['#1a2a44', '#4a6a8a', '#0a1422'], fog: '#dfe8ff', mid: 'towers',  weather: 'rain',    moon: '#fff4d0' },
-  nightmare: { sky: ['#0c0210', '#24062a', '#040008'], fog: '#c060ff', mid: 'pillars', weather: 'ash',     moon: '#f0e0ff' },
-  blight:    { sky: ['#0c1004', '#1e2a08', '#040602'], fog: '#b8e04a', mid: 'trees',   weather: 'spores',  moon: null },
-  void:      { sky: ['#000000', '#08040e', '#000000'], fog: '#ffffff', mid: 'rocks',   weather: 'stars',   moon: null },
+  mirror:    { sky: ['#0a0e18', '#1a2232', '#04060c'], fog: '#bfe8ff', mid: 'windows', weather: 'dust',    moon: '#e8f4ff', halo: 0.3 },
+  forge:     { sky: ['#1a0602', '#3a1204', '#0a0200'], fog: '#ff7a2a', mid: 'pipes',   weather: 'embers',  moon: null, halo: 0.4 },
+  sunken:    { sky: ['#01101a', '#06283a', '#00060c'], fog: '#3ad0c8', mid: 'arches',  weather: 'bubbles', moon: null, bubble: 'rgba(150,236,255,0.4)', halo: 0.5 },
+  sky:       { sky: ['#1a2a44', '#4a6a8a', '#0a1422'], fog: '#dfe8ff', mid: 'towers',  weather: 'rain',    moon: '#fff4d0', halo: 0.25 },
+  nightmare: { sky: ['#0c0210', '#24062a', '#040008'], fog: '#c060ff', mid: 'pillars', weather: 'ash',     moon: '#f0e0ff', halo: 0.35 },
+  blight:    { sky: ['#0c1004', '#1e2a08', '#040602'], fog: '#b8e04a', mid: 'trees',   weather: 'spores',  moon: null, halo: 0.4 },
+  void:      { sky: ['#000000', '#08040e', '#000000'], fog: '#ffffff', mid: 'rocks',   weather: 'stars',   moon: null, halo: 0.4 },
 };
 // 날씨 입자 수 (world.fx.quality 로 줄여 그림). spores = dust 의 60%
 const WEATHER_N = { rain: 140, snow: 110, embers: 70, ash: 80, dust: 40, pages: 16, bubbles: 30, drips: 20, fog: 0, bats: 10, fireflies: 30, spores: 24, stars: 70 };
@@ -66,7 +108,10 @@ export function createBackground(stage, map) {
     lightningT: rand(3, 8), lightning: 0,
     q: 1, wv: null, flashK: 1,        // 입자 품질 배율, 그릴 날씨 입자(품질 반영), 화면 번쩍임 배율(settings.flashFx)
     shoot: null, shootT: rand(3, 6),  // stars: 떨어지는 별똥별 하나
+    world: null, haloA: 0,            // update 가 넣는 월드 (drawMid 가 주인공 위치를 읽음), 지금 그리는 어둠 원 알파 (목표값을 부드럽게 따라감)
+    far: { ox: 0, oy: 0, iw: 0, ih: 0 }, // 마지막 drawFar 의 원경 배치 (화면 px) — 주인공 뒤 원경 밝기 찾기
   };
+  if (theme.halo > 0) haloSprite();   // 스테이지 진입 때 굽는다 (진행 중에 캔버스를 만들지 않음)
   // 중경 실루엣 요소 생성 (방 폭에 맞춰)
   const W = (map?.pxW ?? 2000) + 800;
   const H = map?.pxH ?? 540;

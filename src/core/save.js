@@ -140,12 +140,18 @@ export function defaultMusicSource() {
   } catch { return 'recorded'; }
 }
 
+/** 기기의 '동작 줄이기'(CSS prefers-reduced-motion: reduce)가 켜져 있는가 → 저장된 값이 없을 때 reduceMotion 기본값 (benchmark #6). Node·오류는 false */
+export function prefersReducedMotion() {
+  try { return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches === true; } catch { return false; }
+}
+
 /** 모든 설정 키의 기본값 (MASTER_PLAN §1.5 표 순서). 새 키는 여기와 SETTINGS_SCHEMA 에 함께 추가한다 */
 export const DEFAULT_SETTINGS = {
   settingsVersion: SETTINGS_VERSION,
   musicVol: 0.6, sfxVol: 0.8, musicSource: defaultMusicSource(), // 음악 음원 (core/audio_rec.js) — 데이터 절약·저사양은 기본 합성
   quality: 'auto', fpsCap: 60, uiScale: 'auto', safeArea: 'fit',
-  screenShake: 1, showDamage: true, flashFx: 1, cutinMode: 'full', reduceMotion: false,
+  screenShake: 1, showDamage: true, flashFx: 1, cutinMode: 'full',
+  reduceMotion: prefersReducedMotion(), // 표의 기본값 false — 기기에서 '동작 줄이기'를 켰으면 처음부터 켬 (저장된 값이 있으면 그것)
   ctrlPrompts: 'auto', ctrlPreset: 'arcade', ctrlConfirm: 'auto', ctrlMap: null, keyMap: null,
   ctrlDeadzone: 0.2, ctrlRumble: 0.8, autoSprint: false,
   touchOpacity: 0.55, touchScale: 1, touchStick: 'float', touchSlide: true, touchLeftHanded: false, touchLayout: null,

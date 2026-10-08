@@ -13,6 +13,12 @@
 //    (박쥐·먼지 수 배율, 불씨·안개 색, '핏빛 달'은 로고 뒤 오른쪽 위 달 하나). decoOf · decoAmbience · drawDecoMoon 은 업적 화면도 쓴다
 //  - 회랑 (docs/specs/gallery.md §5.7, GAL-UI): 메뉴 8번째 줄 '크레딧' 자리가 '회랑' (줄 수 8 그대로 — 크레딧은 회랑의 극장 안으로)
 //    → go('gallery', {back:'title', backIndex}) · 안 본 그림·곡이 있으면 업적 줄과 같은 붉은 점 + NEW n (g.gal.summary().unseen, 1초마다)
+//  - PRESS START (benchmark #2): 깜빡임 대신 78–100 % 숨쉬기('동작 줄이기'면 멈춤), 뒤에 부드러운 어둠 띠(어트랙트와 같은 캐시 그라데이션)
+//    + 진홍 선. 자리는 로고 아래 ~ 그림 속 사냥꾼 머리 위 (켄번스 기하로 계산, hunterTop) — 사냥꾼을 가리지 않는다.
+//    안내 줄은 휴대폰에서 15 CSS px 이상 (ceil(15/per), 15–18 UI). 휴대폰 메뉴 상태의 작은 로고는 부제만 18 UI 로 키운다 (logo.subK)
+//  - 접근성 (benchmark #6): 왼쪽 가장자리 '보기' 탭(누르기 화면, ≥ 44 CSS px) → push('options', {page:'screen'}).
+//    번개는 Ambience 가 설정을 매번 읽는다 (front/common.js lightningAllowed — 설정에서 돌아와도 바로 반영).
+//    '동작 줄이기'면 켄번스 줌·팬과 로고 흔들림도 멈춘다. 저장된 설정이 없는 첫 실행은 첫 입력 전까지 번개를 치지 않고 두 번째 섬광도 없다
 import { Scene } from '../core/game.js';
 import { input } from '../core/input.js';
 import { audio } from '../core/audio.js';
@@ -24,14 +30,14 @@ import * as platform from '../core/platform.js';
 import { NOTICE_TEXT as TELEMETRY_TEXT } from '../core/telemetry.js';
 import { text, wrap, FONT, ListMenu, taps, bloodText } from '../core/ui.js';
 import { drawHints, drawGlyph, glyphWidth, promptMode } from '../core/prompts.js';
-import { clamp, ease, lerp, fmt, rand } from '../core/math.js';
+import { clamp, ease, lerp, fmt, rand, TAU } from '../core/math.js';
 import { hudSafe } from '../render/hud_layout.js';
 import { CHARACTERS, CHAR_ORDER } from '../data/characters.js';
 import * as ACHM from '../core/ach_meta.js';
 // 아케이드 장면(arcade.js → 보스·아이템·퀘스트 데이터)은 정적으로 싣지 않는다: endArcade 는 front/common.js 의 것 (R1-REQ-229)
 import {
   Ambience, kenBurns, shade, menuItem, ornament, applySettings, installRecordScore, gbutton, frame, linGrad, radGrad, glowSprite,
-  GOLD, BONE, DIM, follow, modeName, scoreList, endArcade,
+  GOLD, BONE, DIM, follow, modeName, scoreList, endArcade, lightningAllowed,
 } from './front/common.js';
 import { drawCloudBadge, accountBadge } from './front/cloud_ui.js';
 
@@ -59,6 +65,15 @@ const TITLE = 'BLOOD NOCTURNE', SUBTITLE = '블러드 녹턴 : 악마성 연대�
 const TITLE_OPTS = { size: 96, style: 'blood', spacing: 2, drips: 0.45 };
 const SUB_OPTS = { size: 30, style: 'gold', family: FONT.title, weight: 800, spacing: 6, glow: false };
 const GLINTS = [[-330, -38], [-150, -52], [40, -40], [210, -50], [350, -34], [-40, 78], [120, 74]];
+const LOGO_BOT = 112;                                     // 로고 묶음 아래 끝 (아래 금선 108 + 여유, 로고 좌표)
+const SUB_MIN = 18;                                       // 휴대폰 메뉴 상태(로고가 오른쪽으로 비켜 섬)의 부제 최소 크기 (UI px ≈ 15 CSS px)
+
+// ── 배경 켄번스 (render 와 layout 이 같은 값을 쓴다) ──
+const KB = { z0: 1.03, z1: 1.1, period: 50, panX: 0.012, panY: 0.01, oy: 0.4 };
+// 그림(bg/title.webp, lo/ 변형도 같은 비율) 속 사냥꾼 두건 꼭대기의 세로 비율 — 원화 1912×1005 에서 y ≈ 700
+const HUNTER_TOP_V = 0.696;
+// PRESS START 묶음: 기준선 y 에서 위로 PRESS_UP, 아래로 PRESS_DN (안내 줄 포함). 어둠 띠는 그 가운데에 둔다
+const PRESS_UP = 25, PRESS_DN = 36, PRESS_HINT_DY = 30;
 
 // ── 타이틀 장식 (업적 보상, docs/specs/achievements.md §5.2) ──
 /** 고른 타이틀 장식 {name, amb} (meta.ach.deco; 없거나 모르는 id 면 null) */
@@ -98,6 +113,12 @@ const APK_DEFAULT = 'downloads/BloodNocturne.apk';
 /** 기록의 이름 (이니셜이 없으면 영웅 이름 앞부분; 알 수 없는 영웅 id 는 '???') */
 const scoreName = (h) => (h.name ? String(h.name) : (typeof h.charId === 'string' && Object.hasOwn(CHARACTERS, h.charId) ? CHARACTERS[h.charId].name.split(' ')[0] : '???'));
 const MAX_ROW_CSS = 38; // 메뉴 줄 목표 높이 (CSS px, §6.3 목록 줄 36 + 여유)
+/** 이번 실행에서 타이틀이 첫 입력을 받았는가 (첫 실행의 번개 미루기는 한 번만) */
+let firstInputSeen = false;
+/** 이 기기에 저장된 설정이 있는가 (없으면 첫 실행 — save.js loadSettings 는 저장된 값이 없으면 쓰지 않는다). 저장소를 못 읽으면 있는 것으로 */
+function hasSavedSettings() {
+  try { return localStorage.getItem('bloodnocturne_settings') != null; } catch { return true; }
+}
 
 export class TitleScene extends Scene {
   constructor(g) { super(g); this.uiScale = true; this.hidePad = true; }
@@ -109,16 +130,18 @@ export class TitleScene extends Scene {
     installRecordScore(g);
     scoreList(g.meta); // 손상된 명예의 전당 기록(배열 아님·null 항목)을 한 번 정리 → 이후 모든 화면이 같은 목록을 읽는다
     audio.music('title');
-    const st = g.settings ?? {};
     const q = g.tier === 'low' ? 0.5 : g.tier === 'medium' ? 0.75 : 1;
-    // 번개(화면 번쩍임)는 '화면 번쩍임'·'동작 줄이기' 설정을 따른다
-    const bolts = Number(st.flashFx ?? 1) > 0 && !st.reduceMotion;
     const deco = decoOf(g.meta);   // 업적 보상 타이틀 장식 (§5.2)
-    this.amb = new Ambience(decoAmbience({ embers: Math.round(70 * q), motes: Math.round(24 * q), bats: Math.round(14 * q), lightning: bolts }, deco));
+    // 번개(화면 번쩍임)는 '화면 번쩍임'·'동작 줄이기' 설정을 따른다 — Ambience 가 프레임마다 설정을 읽는다 (lightningAllowed)
+    this.amb = new Ambience(decoAmbience({ embers: Math.round(70 * q), motes: Math.round(24 * q), bats: Math.round(14 * q), lightning: true }, deco));
     this.moon = !!deco?.amb?.moon;
     this.achNew = 0; this.achPoll = 0;
     this.galNew = 0;   // [hook:gal] 회랑: 안 본 그림·곡 수 (achPoll 과 같이 1초마다)
-    this.amb.nextBolt = 0.9;
+    // 첫 실행(저장된 설정 없음): 설정을 고를 기회가 오기 전에는 번개를 치지 않는다 → 첫 입력 뒤 2.5초. 두 번째 섬광도 없다
+    this.boltHold = !firstInputSeen && !hasSavedSettings();
+    this.amb.nextBolt = this.boltHold ? Infinity : 0.9;
+    if (this.boltHold) this.amb.secondP = 0;
+    this.syncMotion();
     this.mode = params.menu ? 'menu' : 'intro';
     this.modeT = params.menu ? 1 : 0;
     this.idle = 0;
@@ -169,7 +192,25 @@ export class TitleScene extends Scene {
     const i = this.items.findIndex((it) => it.id === 'account');
     this.game.go('account', { backIndex: i >= 0 ? i : 0 });
   }
-  onResume() { applySettings(this.game); this.buildMenu(this.menu.index); }
+  onResume() { applySettings(this.game); this.syncMotion(); this.buildMenu(this.menu.index); }
+  /** '동작 줄이기'·'화면 번쩍임'을 다시 읽는다 (enter · 설정에서 돌아올 때). 번개 자체는 Ambience 가 매 프레임 설정을 본다 */
+  syncMotion() {
+    const st = this.game.settings ?? {};
+    this.rm = !!st.reduceMotion;
+    if (!lightningAllowed(st)) { this.amb.flash = 0; this.amb.second = 0; this.amb.boltT = 0; }
+  }
+  /** 첫 입력: 미뤄 둔 첫 번개를 2.5초 뒤로 (이번 실행 동안 다시 미루지 않는다) */
+  releaseBolt() {
+    firstInputSeen = true;
+    if (!this.boltHold) return;
+    this.boltHold = false;
+    this.amb.nextBolt = 2.5;
+  }
+  /** '보기' 탭: 설정의 화면 페이지 (글자·UI 크기, 화면 번쩍임, 동작 줄이기) */
+  openView() {
+    audio.sfx('menu_ok');
+    this.game.push('options', { page: 'screen' });
+  }
 
   // ── 안드로이드 앱(APK) ──
   fetchApk() {
@@ -242,7 +283,7 @@ export class TitleScene extends Scene {
     saves.saveMeta(m);
     audio.sfx('secret'); audio.sfx('extra_life');
     g.flash('#ffe8a0', 0.8, 2.5);
-    this.amb.strike(g.uiW || g.viewW, g.uiH || g.viewH, (g.uiW || g.viewW) / 2);
+    if (lightningAllowed()) this.amb.strike(g.uiW || g.viewW, g.uiH || g.viewH, (g.uiW || g.viewW) / 2);
     g.toast(already ? '비밀 코드는 이미 발동되어 있습니다' : '★ 비밀 코드 발동! 모든 헌터가 해금되었습니다 ★', '#ffe070', 3.2);
     this.konamiT = 2.5;
   }
@@ -268,7 +309,7 @@ export class TitleScene extends Scene {
     if (this.achPoll <= 0) { this.achPoll = 1; this.achNew = Math.max(0, Number(safe(() => g.ach?.summary?.()?.unseen)) || 0); this.galNew = Math.max(0, Number(safe(() => g.gal?.summary?.()?.unseen)) || 0); }   // [hook:gal]
     if (this.checkKonami()) { this.unlockAll(); return; }
 
-    if (input.anyPressed() || input.pointer.justDown) this.idle = 0; else this.idle += dt;
+    if (input.anyPressed() || input.pointer.justDown) { this.idle = 0; if (!firstInputSeen || this.boltHold) this.releaseBolt(); } else this.idle += dt;
     if (this.mode !== 'intro' && this.notes?.some((c) => c.id === 'telemetry')) this.telNoticeT = (this.telNoticeT ?? 0) + dt;
     // 버튼 (알림 카드·계정 표시): 그 뒤의 '아무 곳이나 누르기'보다 먼저
     const tap = taps.hit(this);
@@ -277,6 +318,7 @@ export class TitleScene extends Scene {
     if (tap === 'telemetry') { audio.sfx('menu_cancel'); safe(() => g.telemetry?.dismissNotice?.()); return; }
     if (tap === 'apk') { audio.sfx('menu_ok'); this.downloadApk(); return; }
     if (tap === 'account' && this.mode !== 'intro') { audio.sfx('menu_ok'); this.openAccount(); return; }
+    if (tap === 'view' && this.mode === 'press') { this.openView(); return; }
     // 키보드·패드로 업데이트 (sub = 키보드 A · 패드 Y/△)
     if (this.upd && this.mode !== 'intro' && input.pressed('sub')) { this.applyUpdate(); return; }
 
@@ -348,13 +390,30 @@ export class TitleScene extends Scene {
     } else {
       const rx0 = x + w + 28, rx1 = W - 16 - sr, ry0 = st + 112, ry1 = Math.max(ry0 + 80, stackTop - 10);
       const sc = clamp(Math.min((rx1 - rx0) / LOGO_W, (ry1 - ry0) / LOGO_H, 0.62), 0.2, 0.62);
-      logo = { cx: (rx0 + rx1) / 2, cy: (ry0 + ry1) / 2, sc, side: true };
+      // 휴대폰에서 작아진 로고: 부제만 고정 최소 크기(SUB_MIN UI)로 키운다 (로고 폭 안에서). 비트맵은 같은 것을 확대해 그린다
+      const subK = clamp(SUB_MIN / (SUB_OPTS.size * sc), 1, Math.min(1.5, (LOGO_W * 0.98) / (this.subW || 560)));
+      logo = { cx: (rx0 + rx1) / 2, cy: (ry0 + ry1) / 2, sc, side: true, subK };
     }
     // 인트로·PRESS START 의 큰 로고
     const bsc = Math.min(1, (W - 40) / LOGO_W, (H * 0.46) / LOGO_H);
     const big = { cx: W / 2, cy: Math.max(H * 0.3, st + 10 + (LOGO_H * bsc) / 2), sc: bsc };
-    const pressY = Math.max(big.cy + (LOGO_H * bsc) / 2 + 40, Math.min(H * 0.8, stackTop - 40));
-    return { W, H, per, sl, sr, st, sb, n, rowH, gap, x, w, y0, bottom, logo, big, cards, stackTop, pressY };
+    const logoBot = big.cy + (LOGO_BOT - LOGO_CY) * bsc + 2;   // 큰 로고 아래 끝 (흔들림 2 포함)
+    // PRESS START: 로고 아래 끝과 그림 속 사냥꾼 머리 사이의 가운데 (사냥꾼·로고를 가리지 않는다, 오른쪽 아래 알림 카드 위).
+    // 그림이 아직 없으면 로고 아래. 틈이 모자라면(아주 납작한 화면) 로고 쪽을 지킨다
+    const head = this.hunterTop(W, H);
+    const mid = head != null ? (logoBot + head) / 2 - (PRESS_DN - PRESS_UP) / 2 : logoBot + 40 + PRESS_UP;
+    const pressY = Math.max(logoBot + PRESS_UP + 4, Math.min(mid, stackTop - PRESS_DN - 4));
+    // '보기' 탭 (누르기 화면 왼쪽 가장자리): 44 CSS px 이상, 로고 아래 · 화면 높이 42 % 쯤
+    const vw = Math.max(50, Math.ceil(48 / per)), vh = Math.max(58, Math.ceil(56 / per));
+    const view = { x: sl, y: clamp(Math.max(H * 0.42 - vh / 2, logoBot + 12), st + 8, H - sb - 34 - vh), w: vw, h: vh };
+    return { W, H, per, sl, sr, st, sb, n, rowH, gap, x, w, y0, bottom, logo, big, cards, stackTop, pressY, logoBot, head, view };
+  }
+  /** 그림 속 사냥꾼 두건 꼭대기의 화면 y (UI) — 켄번스 한 주기에서 가장 높이 올라갈 때 (줌 z0 · 팬 위 끝, 마우스 시차 여유 4). 그림이 없으면 null */
+  hunterTop(W, H) {
+    const img = assets.get('bg/title');
+    if (!(img?.width > 0 && img.height > 0)) return null;
+    const dh = img.height * Math.max(W / img.width, H / img.height) * KB.z0;
+    return (H - dh) * KB.oy + dh * HUNTER_TOP_V - KB.panY * H - 4;
   }
   /** 알림 카드 목록 (높이 포함). 내용은 platform 상태를 따른다 */
   collectNotes(ctx, W) {
@@ -388,8 +447,8 @@ export class TitleScene extends Scene {
     else { this.toastX = W / 2; this.toastY = L.big.cy + (LOGO_H * L.big.sc) / 2 + 26; }
     const T = this.mode === 'intro' ? this.modeT : 99;
     const img = assets.get('bg/title');
-    // 배경 켄번스 (초점: 달·성 중앙 상단)
-    kenBurns(ctx, img, W, H, t, { z0: 1.03, z1: 1.1, period: 50, panX: 0.012, panY: 0.01, px: this.px, py: this.py, oy: 0.4 });
+    // 배경 켄번스 (초점: 달·성 중앙 상단). '동작 줄이기'면 줌·팬을 멈춘다 (시차는 사용자가 움직인 만큼만)
+    kenBurns(ctx, img, W, H, this.rm ? 0 : t, { ...KB, px: this.px, py: this.py });
     if (this.moon) drawDecoMoon(ctx, W * 0.8 + this.px * 1.5, H * 0.17 + L.st, H * 0.075, t);   // 장식 '핏빛 달' (로고 뒤 오른쪽 위)
     this.amb.draw(ctx, W, H, 'back', t, this.px * 2);
     // 달빛 맥동 (원점 그라데이션 + 알파)
@@ -435,6 +494,7 @@ export class TitleScene extends Scene {
       text(ctx, '© 2026 BLOOD NOCTURNE PROJECT', W - 14 - L.sr, H - 12 - L.sb, { size: 10, align: 'right', weight: 700, family: FONT.num, color: 'rgba(200,180,160,0.55)', ow: 2 });
       if (this.game.meta?.konami) text(ctx, '✦ 비밀 코드 적용됨', W - 14 - L.sr, H - 28 - L.sb, { size: 10, align: 'right', weight: 700, color: 'rgba(255,224,112,0.7)', ow: 2 });
       this.drawNotes(ctx, L, t);
+      if (mk < 0.99) this.drawView(ctx, L, 1 - mk);   // '보기' 탭 (메뉴가 열리면 사라진다 — 메뉴에 '설정')
       ctx.restore();
     }
     if (this.konamiT > 0) {
@@ -451,8 +511,9 @@ export class TitleScene extends Scene {
     const reveal = ease.outCubic(clamp((T - 0.5) / 1.1, 0, 1));
     if (reveal <= 0) return;
     const B = L.big, M = L.logo;
-    const cx = lerp(B.cx, M.cx, mk), cy = lerp(B.cy, M.cy, mk) + Math.sin(t * 0.8) * 2 * (1 - mk);
+    const cx = lerp(B.cx, M.cx, mk), cy = lerp(B.cy, M.cy, mk) + (this.rm ? 0 : Math.sin(t * 0.8) * 2 * (1 - mk));
     const sc = lerp(B.sc, M.sc, mk) * lerp(1.12, 1, reveal);
+    const subK = lerp(1, M.subK ?? 1, mk);   // 휴대폰 메뉴 상태의 부제 확대 (layout)
     ctx.save();
     // 뒤쪽 어둠 (가독성): 로고 폭만 한 타원
     ctx.save();
@@ -473,14 +534,18 @@ export class TitleScene extends Scene {
     // 장식선 + 가운데 마름모
     ctx.fillStyle = linGrad(ctx, 'tLine', -330, 0, 330, 0, [[0, 'rgba(232,200,114,0)'], [0.5, '#e8c872'], [1, 'rgba(232,200,114,0)']]);
     ctx.fillRect(-330, 38, 660, 2);
-    ctx.fillRect(-200, 108, 400, 1.5);
+    ctx.fillRect(-200 * subK, 108 + (subK - 1) * 8, 400 * subK, 1.5);
     ctx.save(); ctx.translate(0, 39); ctx.rotate(Math.PI / 4);
     ctx.fillStyle = '#1a0206'; ctx.fillRect(-7, -7, 14, 14);
     ctx.strokeStyle = GOLD; ctx.lineWidth = 2; ctx.strokeRect(-7, -7, 14, 14);
     ctx.fillStyle = '#c0102a'; ctx.fillRect(-3.5, -3.5, 7, 7);
     ctx.restore();
-    // 한글 부제 (금박)
-    bloodText(ctx, SUBTITLE, 0, 92, SUB_OPTS);
+    // 한글 부제 (금박). 휴대폰 메뉴 상태에서는 기준선 아래로 조금 내려 같은 비트맵을 subK 배로
+    if (subK > 1.001) {
+      ctx.save(); ctx.translate(0, 92 + (subK - 1) * 8); ctx.scale(subK, subK);
+      this.subW = bloodText(ctx, SUBTITLE, 0, 0, SUB_OPTS).w;
+      ctx.restore();
+    } else this.subW = bloodText(ctx, SUBTITLE, 0, 92, SUB_OPTS).w;
     // 반짝임: 글자 윗면을 스치는 빛 한 점
     if (this.glint >= 0) {
       const [gx, gy] = GLINTS[this.glintI];
@@ -501,16 +566,33 @@ export class TitleScene extends Scene {
     const A = this.mode === 'press' ? clamp(this.modeT / 0.5, 0, 1) : clamp((T - 1.7) / 0.5, 0, 1);
     if (A <= 0) return;
     const W = L.W, y = L.pressY;
-    const blink = 0.55 + 0.45 * Math.sin(t * 4.2);
+    // 받침: 가장자리 없는 가로 어둠 띠 (어트랙트와 같은 캐시 그라데이션 'tAttract' 를 납작하게) + 위아래 진홍 선
+    const bw = Math.min(W * 0.62, 470), bh = PRESS_UP + PRESS_DN + 42, by = y + (PRESS_DN - PRESS_UP) / 2;
     ctx.save();
-    ctx.globalAlpha = A * blink;
+    ctx.globalAlpha = A;
+    ctx.translate(W / 2, by); ctx.scale(bw / 180, bh / 180);
+    ctx.fillStyle = radGrad(ctx, 'tAttract', 0, 0, 10, 90, [[0, 'rgba(6,2,8,0.8)'], [0.6, 'rgba(6,2,8,0.6)'], [1, 'rgba(6,2,8,0)']]);
+    ctx.fillRect(-90, -90, 180, 180);
+    ctx.restore();
+    ctx.save();
+    ctx.globalAlpha = A * 0.8;
+    ctx.fillStyle = linGrad(ctx, 'tPressLine', -100, 0, 100, 0, [[0, 'rgba(179,18,46,0)'], [0.5, 'rgba(214,40,60,0.9)'], [1, 'rgba(179,18,46,0)']]);
+    ctx.translate(W / 2, 0); ctx.scale((bw * 0.72) / 200, 1);
+    ctx.fillRect(-100, y - PRESS_UP - 7, 200, 1.5);
+    ctx.fillRect(-100, y + PRESS_DN + 5, 200, 1.5);
+    ctx.restore();
+    // 글자: 깜빡임 대신 78–100 % 숨쉬기 (0.4 Hz). '동작 줄이기'면 그대로 멈춘다
+    const breath = this.rm ? 1 : 0.89 + 0.11 * Math.sin(t * TAU * 0.4);
+    ctx.save();
+    ctx.globalAlpha = A * breath;
     ctx.shadowColor = '#ff2a40'; ctx.shadowBlur = 16;
     text(ctx, 'PRESS START', W / 2, y, { size: 30, align: 'center', weight: 900, family: FONT.logo, color: '#fff4dc', ow: 5, outline: 'rgba(30,0,6,0.95)' });
     ctx.shadowBlur = 0;
-    ctx.globalAlpha = A * 0.85;
-    const m = promptMode();
-    if (m === 'touch') text(ctx, '— 화면을 터치하세요 —', W / 2, y + 28, { size: 15, align: 'center', weight: 700, color: '#d8c8b0', ow: 3 });
-    else drawHints(ctx, [[['confirm', 'menu'], m === 'pad' ? '버튼을 누르세요' : '키를 누르세요']], W / 2, y + 28, { align: 'center', size: 15, color: '#d8c8b0' });
+    ctx.globalAlpha = A * 0.95;
+    // 안내 줄: 휴대폰에서도 15 CSS px 이상 (15–18 UI)
+    const hs = clamp(Math.ceil(15 / L.per), 15, 18), m = promptMode();
+    if (m === 'touch') text(ctx, '— 화면을 터치하세요 —', W / 2, y + PRESS_HINT_DY, { size: hs, align: 'center', weight: 700, color: '#e2d4bc', ow: 3 });
+    else drawHints(ctx, [[['confirm', 'menu'], m === 'pad' ? '버튼을 누르세요' : '키를 누르세요']], W / 2, y + PRESS_HINT_DY, { align: 'center', size: hs, color: '#e2d4bc' });
     ctx.restore();
     // 어트랙트 (방치 시)
     if (this.mode === 'press' && this.idle > 10) this.drawAttract(ctx, L, t, this.idle - 10);
@@ -520,12 +602,14 @@ export class TitleScene extends Scene {
     const W = L.W, H = L.H;
     const cyc = 9, n = 3, idx = Math.floor(it / cyc) % n, u = (it % cyc) / cyc;
     const a = clamp(Math.min(u * 6, (1 - u) * 6), 0, 1);
-    const y = H * 0.52, w = Math.min(560, W - 80), x = W / 2 - w / 2;
+    // PRESS START 묶음 아래에 둔다 (PRESS START 는 어트랙트 중에도 보인다). 아래 여유가 모자라면(휴대폰) 줄 간격을 줄인다 (f)
+    const y = Math.max(H * 0.52, L.pressY + PRESS_DN + 30), w = Math.min(560, W - 80), x = W / 2 - w / 2;
+    const f = clamp((H - L.sb - 14 - y) / 96, 0.72, 1);
     ctx.save();
     ctx.globalAlpha = a;
     // 부드러운 타원형 어둠 (가장자리 없이)
     ctx.save();
-    ctx.translate(W / 2, y + 45); ctx.scale((w + 120) / 180, 1);
+    ctx.translate(W / 2, y + 45 * f); ctx.scale((w + 120) / 180, f);
     ctx.fillStyle = radGrad(ctx, 'tAttract', 0, 0, 10, 90, [[0, 'rgba(6,2,8,0.8)'], [0.6, 'rgba(6,2,8,0.6)'], [1, 'rgba(6,2,8,0)']]);
     ctx.fillRect(-90, -90, 180, 180);
     ctx.restore();
@@ -533,14 +617,14 @@ export class TitleScene extends Scene {
       ATTRACT_STORY.forEach((s, i) => {
         const k = clamp(u * 5 - i * 0.7, 0, 1);
         ctx.globalAlpha = a * k;
-        text(ctx, s, W / 2, y + i * 30, { size: i === 3 ? 20 : 17, align: 'center', weight: 800, family: FONT.title, color: i === 3 ? '#ffd890' : '#e8dccb', ow: 3 });
+        text(ctx, s, W / 2, y + i * 30 * f, { size: i === 3 ? 20 : 17, align: 'center', weight: 800, family: FONT.title, color: i === 3 ? '#ffd890' : '#e8dccb', ow: 3 });
       });
     } else if (idx === 1) {
       text(ctx, 'HALL OF FAME', W / 2, y - 6, { size: 18, align: 'center', weight: 900, family: FONT.logo, color: GOLD, ow: 4 });
       const hs = scoreList(this.game.meta).slice(0, 4);
-      if (!hs.length) text(ctx, '아직 기록이 없습니다. 첫 번째 전설이 되어라!', W / 2, y + 40, { size: 15, align: 'center', color: BONE });
+      if (!hs.length) text(ctx, '아직 기록이 없습니다. 첫 번째 전설이 되어라!', W / 2, y + 40 * f, { size: 15, align: 'center', color: BONE });
       hs.forEach((h, i) => {
-        const yy = y + 26 + i * 24;
+        const yy = y + (26 + i * 24) * f;
         text(ctx, `${i + 1}${['ST', 'ND', 'RD', 'TH'][Math.min(i, 3)]}`, x + 70, yy, { size: 14, weight: 900, family: FONT.num, color: i === 0 ? '#ffe070' : BONE });
         text(ctx, scoreName(h), x + 130, yy, { size: 14, weight: 800, color: '#fff' });
         text(ctx, modeName(h.mode), x + 260, yy, { size: 12, color: DIM });
@@ -549,8 +633,8 @@ export class TitleScene extends Scene {
     } else {
       const tip = TIPS[Math.floor(it / (cyc * n)) % TIPS.length];
       text(ctx, 'HUNTER\'S TIP', W / 2, y, { size: 16, align: 'center', weight: 900, family: FONT.logo, color: GOLD, ow: 4 });
-      ornament(ctx, W / 2, y + 14, 260, { alpha: a });
-      text(ctx, tip, W / 2, y + 52, { size: 17, align: 'center', weight: 700, color: '#f0e4d0', ow: 3, maxWidth: W - 60 });
+      ornament(ctx, W / 2, y + 14 * f, 260, { alpha: a });
+      text(ctx, tip, W / 2, y + 52 * f, { size: 17, align: 'center', weight: 700, color: '#f0e4d0', ow: 3, maxWidth: W - 60 });
     }
     ctx.restore();
   }
@@ -582,6 +666,35 @@ export class TitleScene extends Scene {
     // 저장된 기록 수: 로고가 메뉴 위에 있을 때 그 사이에
     if (this.saveCount && !L.logo.side && y0 - (L.logo.cy + (LOGO_H * L.logo.sc) / 2) > 18) text(ctx, `저장된 기록 ${this.saveCount}개`, x + 8, y0 - 6, { size: 11, weight: 700, color: DIM, ow: 2 });
     ctx.restore();
+  }
+
+  /** 왼쪽 가장자리 '보기' 탭 (누르기 화면): 범용 접근성 인물 기호 + '보기'. 누르면 설정의 화면 페이지 (그라데이션·캔버스 없이 경로만) */
+  drawView(ctx, L, k) {
+    const r = L.view, rad = 10;
+    ctx.save();
+    ctx.globalAlpha *= k;
+    // 판: 왼쪽은 화면 끝에 붙고 오른쪽만 둥글다
+    ctx.beginPath();
+    ctx.moveTo(r.x, r.y); ctx.lineTo(r.x + r.w - rad, r.y); ctx.arcTo(r.x + r.w, r.y, r.x + r.w, r.y + rad, rad);
+    ctx.lineTo(r.x + r.w, r.y + r.h - rad); ctx.arcTo(r.x + r.w, r.y + r.h, r.x + r.w - rad, r.y + r.h, rad); ctx.lineTo(r.x, r.y + r.h);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(14,5,14,0.78)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(232,200,114,0.55)'; ctx.lineWidth = 1.2; ctx.stroke();
+    // 접근성 기호: 원 + 팔 벌린 사람
+    const cx = r.x + r.w / 2, cy = r.y + r.h * 0.38, ir = Math.min(r.w, r.h) * 0.24;
+    ctx.strokeStyle = BONE; ctx.fillStyle = BONE; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(1.4, ir * 0.12);
+    ctx.beginPath(); ctx.arc(cx, cy, ir, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy - ir * 0.52, ir * 0.17, 0, TAU); ctx.fill();
+    ctx.lineWidth = Math.max(1.4, ir * 0.14);
+    ctx.beginPath();
+    ctx.moveTo(cx - ir * 0.62, cy - ir * 0.22); ctx.lineTo(cx + ir * 0.62, cy - ir * 0.22);
+    ctx.moveTo(cx, cy - ir * 0.22); ctx.lineTo(cx, cy + ir * 0.18);
+    ctx.moveTo(cx - ir * 0.36, cy + ir * 0.68); ctx.lineTo(cx, cy + ir * 0.18); ctx.lineTo(cx + ir * 0.36, cy + ir * 0.68);
+    ctx.stroke();
+    text(ctx, '보기', cx, r.y + r.h - 10, { size: Math.max(13, Math.ceil(13 / L.per)), align: 'center', weight: 800, color: BONE, ow: 2 });
+    ctx.restore();
+    if (this.mode === 'press' && k > 0.5) taps.add('view', r, { owner: this, kind: 'primary', src: 'title.view' });
   }
 
   /** 오른쪽 아래 알림 카드 (새 버전 · 홈 화면에 추가 · APK · 소리 안내) */
