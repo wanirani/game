@@ -4,6 +4,7 @@
 //   node tools/test_trials.mjs --vp desk       브라우저 화면 고르기 (desk,phone2)
 //   node tools/test_trials.mjs --only kael     브라우저 영웅 고르기 (쉼표)
 //   --shots DIR   스크린숏 (JPEG) 저장 폴더 (기본: 저장 안 함)
+//   --quick       데스크톱은 4 케이스만 (기본: 14 시련 모두 — 나머지 9개는 통과 경로만)
 // 정적: TRIALS 행 ↔ STAGES 보스방 · 대본 존재 · 규칙/난이도 덮어쓰기(prepareTrial) · 시작 조건 · 옛 세이브(trials 없음) · NG+ 가 기록을 지킴 · 장면 연결 줄
 // 브라우저: 고정 세이브(tools/fixtures/save_p2done.json — 영웅에 trials 필드가 없는 옛 세이브)로
 //   성당(전직 탭) → pre 대본 → 시련 보스방 (전리품·경험치·상자·세이브 지점 없음, 「시련의 결계」, 규칙 토스트) → 보스 처치 →
@@ -20,6 +21,7 @@ const imp = (p) => import(pathToFileURL(path.join(ROOT, p)).href);
 const argv = process.argv.slice(2);
 const arg = (k, d = null) => { const i = argv.indexOf(k); return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : d; };
 const STATIC_ONLY = argv.includes('--static');
+const QUICK = argv.includes('--quick');   // 브라우저: 데스크톱 4 케이스만 (14 시련 전부 대신)
 const VPS = (arg('--vp', 'desk,phone2')).split(',').map((s) => s.trim()).filter(Boolean);
 const ONLY = arg('--only') ? new Set(arg('--only').split(',').map((s) => s.trim())) : null;
 const SHOTS = arg('--shots');
@@ -172,6 +174,8 @@ async function browserSuite() {
       { c: 'kael', t: 'tr_kael_2', cont: true },
       { c: 'bran', t: 'tr_bran_1' },
       { c: 'isolde', t: 'tr_isolde_1' },
+      // §11.1 "14 시련 모두": 나머지 9개 (prep = 외전 플래그 + Ⅱ 는 Ⅰ 통과 기록을 미리 넣는다). --quick 이면 건너뛴다
+      ...(QUICK ? [] : ['tr_sera_1', 'tr_sera_2', 'tr_victor_1', 'tr_victor_2', 'tr_bran_2', 'tr_lia_1', 'tr_lia_2', 'tr_azel_2', 'tr_isolde_2'].map((t) => ({ c: TRIALS[t].charId, t, prep: true }))),
     ],
     phone2: [
       { c: 'bran', t: 'tr_bran_1', full: true, ui: true },
@@ -261,7 +265,7 @@ const SNAP = () => {
 async function runCase(s, vp, P) {
   const T = TRIALS[P.t], tag = `[${vp}] ${P.t}`;
   // ── 세이브 준비 (옛 세이브: 영웅에 trials 없음) → 마을 → 성당 전직 탭
-  await s.eval(async ({ fix, c, cont }) => {
+  await s.eval(async ({ fix, c, cont, prep, t }) => {
     const g = window.__game;
     const { migrateState } = await import('/src/game/state.js');
     if (!cont) {
@@ -271,11 +275,20 @@ async function runCase(s, vp, P) {
       g.state = st;
     }
     g.state.charId = c;
+    if (prep) {   // 고정 세이브에 없는 외전 플래그(빅터 Ⅰ) · 시련 Ⅱ 는 Ⅰ 통과 기록과 해금
+      g.state.progress.flags.ex_s23_done = true;
+      if (t.endsWith('_2')) {
+        const TR = await import('/src/game/trial.js'), { unlockFromTrial } = await import('/src/game/progression.js');
+        const h = g.state.heroes[c], t1 = t.replace(/_2$/, '_1'), r = TR.trialRecord(h, t1);
+        r.done = true; r.tries = 1; r.best = 50; r.at = 1;
+        unlockFromTrial(h, t1);
+      }
+    }
     g.go('hub', { from: 'load' }, { fade: false });
-  }, { fix: FIX, c: P.c, cont: !!P.cont });
+  }, { fix: FIX, c: P.c, cont: !!P.cont, prep: !!P.prep, t: P.t });
   ok(await until(s, () => window.__game.top?.name === 'hub' && window.__game.world?.mode === 'town', null, 30000), `${tag}: 마을`);
   await s.wait(400);
-  if (!P.cont) ok(await s.eval((c) => !Object.hasOwn(window.__game.state.heroes[c], 'trials'), P.c), `${tag}: 옛 세이브 영웅 (trials 필드 없음)`);
+  if (!P.cont && !(P.prep && T.n === 2)) ok(await s.eval((c) => !Object.hasOwn(window.__game.state.heroes[c], 'trials'), P.c), `${tag}: 옛 세이브 영웅 (trials 필드 없음)`);
   const snap0 = await s.eval(SNAP);
   const tries0 = await s.eval(({ c, t }) => window.__game.state.heroes[c].trials?.[t]?.tries ?? 0, { c: P.c, t: P.t });
   await s.eval(() => { const g = window.__game; g.push('church', { world: g.world, from: 'hub', tab: 'class' }); });

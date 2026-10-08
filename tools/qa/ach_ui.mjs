@@ -16,6 +16,7 @@
 //   U8 장식       d_gold 불씨 색 · d_crow 박쥐 두 배 · d_moon 달 (스크린숏)
 //   U9 순위표     /api/boards 흉내: t_dawn → '「새벽을 연 자」' · t_zzz → 별명만 · 좁은 열에서 별명 그대로
 //   U10 오류·성능 모든 사례 페이지·콘솔 오류 0 · phone1 그리기 p95 ≤ 3 ms (perfprobe, 품질 medium) · 10초 동안 canvasPoolStats().free 그대로
+//   U11 외형 쪽   이명 창 '외형' 탭(터치) · 잠긴 잔상 → 조건 한 줄 · 가진 잔상 → meta.ach.cos.trail (+ 기기 메타) · 키보드 E·Q 순환 · 탭 크기 phone1·phone2
 // 결과 /tmp/claude-0/ach_ui/ach_ui.json, 스크린숏 /tmp/claude-0/ach_ui/*.png
 import fs from 'node:fs';
 import path from 'node:path';
@@ -29,7 +30,7 @@ import { freeze, unfreeze } from './lib/step.mjs';
 import { Touch, ensureTouchMode } from './lib/touch.mjs';
 
 const OUT = '/tmp/claude-0/ach_ui';
-const ALL = ['U1', 'U2', 'U3', 'U4', 'U5', 'U6', 'U7', 'U8', 'U9', 'U10'];
+const ALL = ['U1', 'U2', 'U3', 'U4', 'U5', 'U6', 'U7', 'U8', 'U9', 'U10', 'U11'];
 const IOS_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 /** 아이폰 사파리처럼 전체 화면 API 없음 → '홈 화면에 추가' 카드 */
 const NO_FS = () => { try { Object.defineProperty(Document.prototype, 'fullscreenEnabled', { get: () => false }); Object.defineProperty(Document.prototype, 'webkitFullscreenEnabled', { get: () => false }); } catch { /* 무시 */ } };
@@ -61,7 +62,7 @@ export default async function run(opts = {}) {
   const close = async (s) => { if (!live.has(s)) return; live.delete(s); for (const e of s.errs) R.errors.push(`${s.tag}: ${e}`); await s.close(); };
   const shot = async (s, name) => { const f = path.join(OUT, `${name}.png`); await s.screenshot(f); R.shots.push(f); };
   const C = { env, open, close, shot, check, vps, R };
-  const cases = { U1, U2, U3, U4, U5, U6, U7, U8, U9, U10 };
+  const cases = { U1, U2, U3, U4, U5, U6, U7, U8, U9, U10, U11 };
   try {
     for (const id of ALL) {
       if (!want(id)) continue;
@@ -722,6 +723,84 @@ async function U10(C) {
   await waitFrames(s.page, { ms: 500, frames: 5, ticks: 3 });
   const f2 = await s.eval(async () => (await import('/src/scenes/menu/common.js')).canvasPoolStats().free);
   C.check('U10', `장면을 닫으면 레이어 캔버스를 풀로 (${f1} → ${f2})`, f2 === f1 + 1, `${f1} → ${f2}`);
+}
+
+// ───────────────────────── U11 외형 쪽 (BM-FOLLOWUP) ─────────────────────────
+/** 이명 창 상태 (외형 쪽 = page 1 · 목록 2) */
+function pickState(s) {
+  return s.eval(() => {
+    const g = window.__game, m = g.top?.modal;
+    if (m?.kind !== 'pick') return null;
+    return { page: m.page, L: m.L, k: m.k[m.L], id: m.lists[m.L][m.k[m.L]]?.id ?? null, n: m.lists[2].length, zones: m.zones[2].filter((z) => !z.r.thid).length, msg: m.msg?.text ?? null, trail: g.meta.ach?.cos?.trail ?? null };
+  });
+}
+async function U11(C) {
+  // 터치 (phone2): '외형' 탭 → 잠긴 칸은 조건 한 줄 · 가진 칸은 meta.ach.cos.trail (+ 기기 메타에 저장)
+  {
+    const s = await C.open('phone2');
+    await grant(s, ['cb_style_s']);   // 잔상 「핏빛」
+    await openAch(s, {});
+    const t = new Touch(s.cdp, s.page);
+    const [hx, hy] = await ui2css(s, 444, 24);
+    await ensureTouchMode(t, s.page, [hx, hy]); await waitFrames(s.page, { ms: 300, frames: 4, ticks: 2 });
+    await tapUi(t, s, await s.eval(() => window.__game.top.zTitles));
+    let p = await pickState(s);
+    const opened = p?.page === 0;
+    await tapUi(t, s, await s.eval(() => window.__game.top.modal.tabR[1]));
+    await waitFrames(s.page, { ms: 200, frames: 4, ticks: 2 });
+    p = await pickState(s);
+    C.check('U11', "touch '외형' 탭 → 잔상 쪽 (목록 2 · 7칸 · 칸 4곳 이상 보임)", opened && p?.page === 1 && p.L === 2 && p.n === 7 && p.zones >= 4, JSON.stringify(p));
+    const zoneOf = (id) => s.eval((id) => { const m = window.__game.top.modal, k = m.lists[2].findIndex((it) => it.id === id); return m.zones[2].find((z) => z.k === k && !z.r.thid)?.r ?? null; }, id);
+    const moon = await zoneOf('tr_moon');
+    if (moon) await tapUi(t, s, moon);
+    p = await pickState(s);
+    C.check('U11', 'touch 잠긴 칸 「월광」 → 조건 한 줄 · 잔상 그대로', !!moon && p?.id === 'tr_moon' && /달성하면 쓸 수 있습니다/.test(p.msg ?? '') && p.trail === null, JSON.stringify(p));
+    await C.shot(s, 'phone2_trail_locked');
+    const blood = await zoneOf('tr_blood');
+    if (blood) await tapUi(t, s, blood);
+    p = await pickState(s);
+    const stored = await s.eval(() => { try { const k = window.localStorage; return [k.getItem('bloodnocturne_meta'), k.getItem('bloodnocturne_meta_debug')].map((x) => JSON.parse(x ?? 'null')?.ach?.cos?.trail ?? null); } catch { return []; } });
+    C.check('U11', "touch 가진 칸 「핏빛」 → meta.ach.cos.trail === 'tr_blood' · 기기 메타에도", !!blood && p?.trail === 'tr_blood' && /핏빛/.test(p.msg ?? '') && stored.includes('tr_blood'), JSON.stringify({ p, stored }));
+    await C.shot(s, 'phone2_trail_chosen');
+    await tapUi(t, s, await s.eval(() => window.__game.top.modal.tabR[0]));
+    p = await pickState(s);
+    C.check('U11', "touch '이명 · 장식' 탭 → 첫 쪽 (잔상은 그대로)", p?.page === 0 && p.L < 2 && p.trail === 'tr_blood', JSON.stringify(p));
+    await C.close(s);
+  }
+  // 키보드 (desk, 넓은 배치): A 이명 창 → E·E 목록 2 → ↓ 「핏빛」 → Z → Q 목록 1
+  {
+    const s = await C.open('desk');
+    await grant(s, ['cb_style_s']);
+    await openAch(s, {});
+    await s.key('KeyA'); await s.key('KeyE'); await s.key('KeyE');
+    let p = await pickState(s);
+    const onTrail = p?.page === 1 && p.L === 2;
+    await s.key('ArrowDown'); p = await pickState(s);
+    const onBlood = p?.id === 'tr_blood';
+    await s.key('KeyZ'); p = await pickState(s);
+    const chosen = p?.trail === 'tr_blood';
+    await s.key('KeyQ'); p = await pickState(s);
+    C.check('U11', "kb A · E·E → 외형 쪽 · ↓ 「핏빛」 · Z → 정함 · Q → 장식 목록", onTrail && onBlood && chosen && p?.page === 0 && p.L === 1, JSON.stringify({ onTrail, onBlood, chosen, p }));
+    await C.shot(s, 'desk_trail');
+    await C.close(s);
+  }
+  // 탭 크기 (phone1·phone2): 외형 쪽 — primary ≥ 44 · list ≥ 36 CSS px, 겹침 0
+  for (const vp of ['phone1', 'phone2']) {
+    const s = await C.open(vp);
+    await grant(s, ['cb_style_s']);
+    await installTapRecorder(s.page);
+    await auditScene(s.page, "__game.go('achievements', {back:'title'}, {fade:false})", { wait: 1300 });
+    const a = await auditScene(s.page, '(__game.top.modal = null, __game.top.openPick(), __game.top.modal.setPage(1), 0)', { wait: 800 });
+    const regs = a.regions ?? [];
+    let ov = 0;
+    const contains = (u, v) => u.x <= v.x && u.y <= v.y && u.x + u.w >= v.x + v.w && u.y + u.h >= v.y + v.h;
+    for (let i = 0; i < regs.length; i++) for (let j = i + 1; j < regs.length; j++) {
+      const P = { x: regs[i].lx, y: regs[i].ly, w: regs[i].lw, h: regs[i].lh }, Q = { x: regs[j].lx, y: regs[j].ly, w: regs[j].lw, h: regs[j].lh };
+      if (inter(P, Q) && !contains(P, Q) && !contains(Q, P)) ov++;
+    }
+    C.check('U11', `${vp} 외형 쪽: primary ≥ 44 · list ≥ 36 CSS px, 겹침 0 (${a.n ?? 0}곳)`, !a.error && a.ok && ov === 0 && (a.n ?? 0) > 0, `${describeAudit(a)} · 겹침 ${ov}`);
+    await C.close(s);
+  }
 }
 
 // ───────────────────────── 명령줄 ─────────────────────────
