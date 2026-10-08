@@ -106,7 +106,7 @@ export class TrialEndScene extends Scene {
     const line = T?.failLine ?? '';
     const lines = line ? wrap(ctx, `「${line}」`, tw, 17, 600, FONT.body) : [];
     const lh = 24, cardH = Math.max(80, 44 + lines.length * lh);
-    const gap1 = 30 * f, gap2 = 22 * f, gap3 = 26 * f, gap4 = 20 * f;
+    const gap1 = ts * 0.8 + 8, gap2 = 22 * f, gap3 = 26 * f, gap4 = 20 * f;   // gap1: 피 글씨 방울 아래로 (시련 이름이 방울에 가리지 않게)
     const total = ts * 0.75 + gap1 + 18 + gap2 + cardH + gap3 + 16 + gap4 + bh;
     const avail = H - S.b - 30 - S.t - 10;
     let y = S.t + 10 + Math.max(0, (avail - total) * 0.45) + ts * 0.75;
@@ -115,7 +115,7 @@ export class TrialEndScene extends Scene {
     ctx.save(); ctx.globalAlpha = kIn;
     bloodText(ctx, TITLE, W / 2, y, { size: ts, t });
     ctx.restore();
-    y += gap1 + 6;
+    y += gap1;
     if (T) text(ctx, T.name, W / 2, y, { size: 17, align: 'center', weight: 800, family: FONT.title, color: PURPLE, ow: 3, maxWidth: W - 60 });
     y += gap2;
     // 엘리제의 한마디

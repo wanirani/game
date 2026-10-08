@@ -181,6 +181,11 @@ function clampTier(t) { t = Number(t); return t >= 3 ? 3 : t >= 2 ? 2 : t >= 1 ?
 function tierOfClass(classId) { return clampTier(CLASSES[classId]?.tier ?? 0); }
 /** 영웅의 단계 0~3 (초월·비전 = 3; classes_t3 §7.1) */
 function tierOfHero(hero) { return clampTier(heroTier(hero)); }
+/**
+ * 각성 감독(awaken_directors.js)은 단계 3 이 생기기 전 계약대로 '최고 단계'를 tier: 2 로 넘긴다.
+ * 초월·비전 영웅의 각성이면 그 2 를 3 으로 올린다 (세션·마무리·박자 모두; 2 미만은 그대로)
+ */
+function awTier(t, awaken, hero) { return awaken && t === 2 && hero && tierOfHero(hero) >= 3 ? 3 : t; }
 /** classId 와 같은 2차 줄의 영웅이면 그 초월/비전 항목 (아니면 null: 다른 직업을 미리 굽거나 시험할 때) */
 function ascFor(classId, hero) { return hero && (classId == null || hero.classId === classId) ? ascOf(hero) : null; }
 function ultColor(charId) { return CHARACTERS[charId]?.ult?.color ?? '#fff2b0'; }
@@ -981,13 +986,13 @@ class Session {
     this.classId = o.classId ?? hero?.classId ?? null;
     // 같은 영웅·같은 2차 줄일 때만 영웅의 초월/비전을 읽는다 (다른 직업을 시험·미리 굽는 세션은 직업 표만)
     this.hero = hero && hero.charId === this.charId && hero.classId === this.classId ? hero : null;
-    this.tier = clampTier(o.tier ?? (this.hero ? tierOfHero(this.hero) : tierOfClass(this.classId)));
+    this.awaken = o.awaken ?? !!w.hudHidden;
+    this.tier = clampTier(o.tier != null ? awTier(clampTier(o.tier), this.awaken, this.hero) : this.hero ? tierOfHero(this.hero) : tierOfClass(this.classId));
     this.T = ULT_TIERS[this.tier];
     this.color = o.color ?? ultColor(this.charId);
     this.accent = o.accent ?? visAccent(this.classId, this.color, this.hero);
     // 단계 3: 직업 장식 색 = 초월/비전 ult.colors (각성 감독의 ULTFX.flourish 도 이 세션 색을 쓴다)
     this.colors = o.colors ?? (this.tier >= 3 ? ascFor(this.classId, this.hero)?.ult?.colors ?? null : null);
-    this.awaken = o.awaken ?? !!w.hudHidden;
     this.q = qk(w);
     this.dir = (this.p?.facing ?? 1) < 0 ? -1 : 1;
     this.t = 0; this.env = 0; this.started = false; this.ending = false; this.endT = 0; this.dead = false;
@@ -2390,7 +2395,7 @@ function safe(name, fn) {
 function beatImpl(w, x, y, o = {}) {
   if (!w?.fx || !Number.isFinite(x) || !Number.isFinite(y)) return;
   const s = live(w);
-  const tier = clampTier(o.tier ?? s?.tier ?? tierOfHero(w.player?.hero));
+  const tier = clampTier(o.tier != null ? Math.max(clampTier(o.tier), s?.awaken && s.tier >= 3 && o.tier >= 2 ? 3 : 0) : s?.tier ?? tierOfHero(w.player?.hero));   // 각성 감독의 tier: 2 → 세션이 3 이면 3
   const T = ULT_TIERS[tier], pw = clamp(o.power ?? 0.5, 0, 1);
   const col = o.color ?? s?.color ?? '#ffffff', acc = o.accent ?? s?.accent ?? col, aw = s?.awaken ?? !!w.hudHidden;
   const fx = w.fx, cam = w.camera;
@@ -2435,7 +2440,8 @@ function finalImpl(w, x, y, o = {}) {
   const s = live(w), p = w.player;
   const classId = o.classId ?? s?.classId ?? p?.hero?.classId;
   const hero = p?.hero && p.hero.classId === classId ? p.hero : null;
-  const tier = clampTier(o.tier ?? s?.tier ?? (hero ? tierOfHero(hero) : tierOfClass(classId)));
+  let tier = clampTier(o.tier ?? s?.tier ?? (hero ? tierOfHero(hero) : tierOfClass(classId)));
+  if (tier === 2 && o.tier != null && s?.awaken && s.tier >= 3) tier = 3;   // 각성 감독은 tier: 2 를 넘긴다 → 초월·비전 각성 세션이면 3
   const T = ULT_TIERS[tier];
   const col = o.color ?? s?.color ?? ultColor(p?.hero?.charId), acc = o.accent ?? s?.accent ?? visAccent(classId, col, hero);
   const aw = s?.awaken ?? !!w.hudHidden, q = qk(w), cam = w.camera, fx = w.fx, vw = cam?.vw ?? 960;

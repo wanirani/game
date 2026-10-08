@@ -11,7 +11,7 @@ import { Scene } from '../core/game.js';
 import { input } from '../core/input.js';
 import { audio } from '../core/audio.js';
 import { assets } from '../core/assets.js';
-import { text, FONT, taps, bloodText, prewarmText, wrap, textFloor } from '../core/ui.js';
+import { text, font, FONT, taps, bloodText, prewarmText, wrap, textFloor } from '../core/ui.js';
 import { drawHints } from '../core/prompts.js';
 import { clamp, ease, fmtTime, TAU } from '../core/math.js';
 import { faceRect } from '../render/portrait.js';
@@ -339,8 +339,10 @@ export class PauseScene extends Scene {
     rows.forEach(([a, b], k) => {
       const y = cy0 + 120 + k * 24;
       text(ctx, a, cx0 + 24, y, { size: 13, weight: 600, color: PAL.text });
-      const num = /^[\d:/ ,.\u2014HIT]+$/.test(b);   // 숫자 줄은 숫자 글꼴, 시련 규칙 같은 글 줄은 본문 글꼴
-      text(ctx, b, cx0 + cw - 24, y, { size: num ? 15 : 13, align: 'right', weight: 800, family: num ? FONT.num : FONT.body, color: PAL.bone, ow: 3, maxWidth: cw - 130 });
+      const num = /^[\d:/ ,.\u2014HIT]+$/.test(b);   // 숫자 줄은 숫자 글꼴, 시련 규칙 같은 글 줄은 본문 글꼴 (이름 칸을 침범하지 않게 폭 제한)
+      ctx.font = font(13, 600, FONT.body);
+      const room = cw - 48 - ctx.measureText(a).width - 14;
+      text(ctx, b, cx0 + cw - 24, y, { size: num ? 15 : 13, align: 'right', weight: 800, family: num ? FONT.num : FONT.body, color: PAL.bone, ow: 3, maxWidth: Math.max(60, room) });
     });
     // 목숨 (시련: 줄지 않는다)
     const ly = cy0 + 120 + rows.length * 24;

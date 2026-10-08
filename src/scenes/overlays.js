@@ -26,7 +26,7 @@ import { drawHints, drawGlyph, promptMode } from '../core/prompts.js';
 import { BOSSES } from '../data/bosses.js';
 import { CHARACTERS } from '../data/characters.js';
 import { CLASSES } from '../data/classes.js';
-import { ASCENSIONS, heroTier, classNameOf } from '../data/ascensions.js';   // 필살기 컷인 단계 3 (초월·비전, classes_t3 §7.1)
+import { ASCENSIONS, KIND_LABEL, heroTier, classNameOf } from '../data/ascensions.js';   // 필살기 컷인 단계 3 (초월·비전, classes_t3 §7.1)
 import { DOCS, LORE } from '../data/lore.js';
 import { clamp, ease, rgba, hexToRgb } from '../core/math.js';
 import { isBust, faceOf, softBust } from '../render/portrait.js';
@@ -394,6 +394,9 @@ export class UltCutinScene extends Scene {
     this.tier = clamp(Number(heroTier(hero)) || 0, 0, 3);
     this.cname = classNameOf(hero) || C?.name || '';
     this.acc3 = this.tier >= 3 ? (ASCENSIONS[hero.asc]?.ult?.accent ?? null) : null;   // 단계 3 강조색 (금테 안쪽 줄 · 둘째 마름모)
+    this.acc3Line = this.acc3 ? rgba(this.acc3, this.calm ? 0.1 : 0.24) : null;           // 단계 3: 속도선 절반을 강조색으로
+    this.kindTag = this.acc3 ? (KIND_LABEL[ASCENSIONS[hero.asc]?.kind] ?? null) : null;    // '초월' · '비전' 꼬리표
+    this._cnW = null;
     const lab = ultLabel(this.ch);
     this.col = lab.col;
     this.skill = lab.skill;
@@ -468,6 +471,7 @@ export class UltCutinScene extends Scene {
     }
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.fillRect(-L, -hs + 5, 2 * L, 2); ctx.fillRect(-L, hs - 7, 2 * L, 3);
+    if (this.acc3) { ctx.fillStyle = this.acc3; ctx.fillRect(-L, -hs + 9, 2 * L, 2); ctx.fillRect(-L, hs - 12, 2 * L, 2); }   // 단계 3: 색 띠에도 강조색 줄
     ctx.restore();
 
     // 3) 검은 띠 (앞, 오른쪽에서 들어온다): 바탕 → 초상화 → 왼쪽 어둠 → 속도선 (띠 안으로 자른다)
@@ -497,9 +501,11 @@ export class UltCutinScene extends Scene {
     ctx.globalCompositeOperation = 'lighter';
     ctx.fillStyle = this.calm ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.13)';
     const span = 2 * L + 240, speed = this.calm ? 500 : 1800;
+    const lineW = ctx.fillStyle;
     for (let i = 0; i < 20; i++) {
       const x = L + 120 - ((i * 137 + t * speed) % span);
       const y = -hb + ((i * 53) % Math.max(1, Math.floor(2 * hb - 4))) + 2;
+      if (this.acc3Line) ctx.fillStyle = i & 1 ? this.acc3Line : lineW;
       ctx.fillRect(x, y, 150 + (i % 4) * 30, i % 3 === 0 ? 3 : 2);
     }
     ctx.globalCompositeOperation = 'source-over';
@@ -516,8 +522,9 @@ export class UltCutinScene extends Scene {
         ctx.fillStyle = this.acc3;
         ctx.fillRect(-L, -hb + 10.5, 2 * L, 1.5); ctx.fillRect(-L, hb - 12, 2 * L, 1.5);
       }
-      const gp = (t - UC.gleam) / UC.gleamDur;
-      if (gp > 0 && gp < 1) {
+      for (let pass = 0; pass < (this.acc3 ? 2 : 1); pass++) {   // 단계 3: 반짝임이 한 번 더 (0.2초 뒤) 지나간다
+        const gp = (t - UC.gleam - pass * 0.2) / UC.gleamDur;
+        if (!(gp > 0 && gp < 1)) continue;
         const gx = -L + 2 * L * ease.inOutQuad(gp);
         ctx.globalCompositeOperation = 'lighter';
         ctx.fillStyle = 'rgba(255,248,220,0.85)';
@@ -583,6 +590,15 @@ export class UltCutinScene extends Scene {
         }
       }
       text(ctx, cname, tx, cyL, { size: 17, weight: 800, family: FONT.title, color: this.tier >= 2 ? GOLD : this.tier === 1 ? '#f4e6c8' : '#d8c8b0', outline: INK, ow: 4 });
+      if (this.kindTag) {
+        // 단계 3: 직업명 뒤 '초월' / '비전' 꼬리표 (강조색 바탕 + 짙은 글자; 폭은 처음 한 번 잰다)
+        if (this._cnW == null) this._cnW = ctx.measureText(cname).width;
+        const px = tx + this._cnW + 9, pw = 34, ph = 17, py = cyL - 14;
+        ctx.fillStyle = this.acc3;
+        ctx.beginPath(); ctx.moveTo(px + 4, py); ctx.lineTo(px + pw, py); ctx.lineTo(px + pw - 4, py + ph); ctx.lineTo(px, py + ph); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = GOLD; ctx.lineWidth = 1; ctx.stroke();
+        text(ctx, this.kindTag, px + pw / 2, py + ph - 4, { size: 12, weight: 800, family: FONT.title, color: '#1a0610', outline: null, align: 'center' });
+      }
       ctx.globalAlpha = fadeOut;
     }
     ctx.restore();

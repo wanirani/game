@@ -140,15 +140,19 @@ function blackDragon(w, p, N) {
     draw(ctx, e) {
       const a2 = Math.min(1, e.lt / 0.05) * (1 - clamp01((e.k - 0.6) / 0.4)), y = d.y;
       const x0 = f > 0 ? rc.x : rc.x + rc.w, x1 = f > 0 ? rc.x + rc.w : rc.x;
-      // 검은 불길 몸통 (덧칠하지 않는 어두운 띠) + 보라·주홍 불빛 + 흑룡 머리
-      ctx.globalAlpha = 0.55 * a2; ctx.fillStyle = '#14060e';
-      ctx.fillRect(rc.x, y - rc.h * 0.32, rc.w, rc.h * 0.64);
-      ctx.globalAlpha = 1;
+      // 검은 불길 몸통 (덧칠하지 않는 어두운 연기 덩이) + 보라·주홍 불빛 테 + 흑룡 (몸통·머리)
+      for (let i = 0; i < 7; i++) {
+        const u = (i + 0.5) / 7, fl = 0.8 + 0.2 * Math.sin(e.lt * 24 + i * 1.9);
+        K.glow(ctx, x0 + (x1 - x0) * u, y + Math.sin(e.lt * 20 + i * 2.3) * 8, rc.h * 0.62 * fl, '#14060e', 0.85 * a2);
+      }
       ctx.globalCompositeOperation = ADD;
-      K.beamH(ctx, rc.x, rc.x + rc.w, y, rc.h * 0.42, '#c070ff', 0.55 * a2, '#ffd0a0');
-      for (let i = 0; i < 5; i++) K.glow(ctx, x0 + (x1 - x0) * (i + 0.5) / 5, y + Math.sin(e.lt * 30 + i * 2) * 6, 34, i % 2 ? '#ff6a2a' : '#c070ff', 0.5 * a2);
-      for (let i = 0; i < 14; i++) { PTS[i * 2] = x1 - f * (8 + i * 24); PTS[i * 2 + 1] = y + Math.sin(e.lt * 18 - i * 0.7) * 10 * (i / 14); }
-      K.stormDragon(ctx, PTS, 14, 0.85, '#c070ff', 0.9 * a2, e.lt);
+      K.beamH(ctx, rc.x, rc.x + rc.w, y, rc.h * 0.36, '#c070ff', 0.42 * a2, '#ffd0a0');
+      for (let i = 0; i < 5; i++) K.glow(ctx, x0 + (x1 - x0) * (i + 0.5) / 5, y - 14 + Math.sin(e.lt * 30 + i * 2) * 8, 30, i % 2 ? '#ff6a2a' : '#c070ff', 0.5 * a2);
+      ctx.globalCompositeOperation = 'source-over';
+      for (let i = 0; i < 16; i++) { PTS[i * 2] = x1 - f * (6 + i * 22); PTS[i * 2 + 1] = y + Math.sin(e.lt * 18 - i * 0.7) * 12 * Math.min(1, i / 5); }
+      K.stormDragon(ctx, PTS, 16, 1.35, '#b060ff', a2, e.lt);
+      ctx.globalCompositeOperation = ADD;
+      K.glow(ctx, x1, y, 70, '#ff6a2a', 0.55 * a2);
     },
     light(L) { L.add((rc.x + rc.w / 2), d.y, rc.w, '#c070ff', 1.2); },
     end(e, ww) { floorFire(ww, p, d.lo, d.hi, gy, N); },
@@ -171,9 +175,18 @@ function floorFire(w, p, lo, hi, gy, N) {
       ctx.globalCompositeOperation = ADD;
       for (let i = 0; i < n; i++) {
         const x = lo + (hi - lo) * (i + 0.5) / n, fl = 0.75 + 0.25 * Math.sin(e.lt * 17 + i * 1.7);
-        K.glow(ctx, x, gy - 14 * fl, 30 * fl, '#ff6a2a', 0.55 * a);
-        K.glow(ctx, x, gy - 26 * fl, 20 * fl, '#c070ff', 0.6 * a);
+        K.glow(ctx, x, gy - 14 * fl, 34 * fl, '#ff6a2a', 0.6 * a);
+        K.glow(ctx, x, gy - 30 * fl, 22 * fl, '#c070ff', 0.65 * a);
       }
+      // 불 혀 (위로 날름거리는 보라 불꽃; 한 경로)
+      ctx.globalAlpha = 0.55 * a; ctx.fillStyle = '#c070ff';
+      ctx.beginPath();
+      for (let i = 0; i < n * 2; i++) {
+        const x = lo + (hi - lo) * (i + 0.5) / (n * 2), h = 26 + 18 * Math.sin(e.lt * 13 + i * 2.7), sw = 9 + 3 * Math.sin(e.lt * 9 + i);
+        ctx.moveTo(x - sw, gy); ctx.quadraticCurveTo(x - sw * 0.6, gy - h * 0.6, x + Math.sin(e.lt * 11 + i) * 5, gy - h); ctx.quadraticCurveTo(x + sw * 0.6, gy - h * 0.6, x + sw, gy); ctx.closePath();
+      }
+      ctx.fill();
+      ctx.globalAlpha = 1;
     },
     light(L) { L.add((lo + hi) / 2, gy - 30, hi - lo, '#ff6a2a', 0.8); },
   });
@@ -225,6 +238,22 @@ function pinBeam(w, p, N) {
 // ─────────────────────────── 아르겐 (용의 맹약자) ───────────────────────────
 /** 용린 중첩 (만료 → 0) */
 function scaleOf(p, w) { const st = perkState(p); return (st.scaleUntil ?? -1) > nowOf(w) ? (st.scale ?? 0) : 0; }
+/** 용 날개 한 쌍 (x, y = 어깨, f = 날아가는 쪽, flap -1..1): 반투명 막 + 흰 뼈대 선. 그라디언트 없음 */
+function dragonWings(ctx, x, y, f, s, flap, col, a) {
+  ctx.globalCompositeOperation = ADD;
+  for (let k = 0; k < 2; k++) {
+    const lift = (k ? 0.75 : 1) * (0.55 + 0.45 * flap), tx = x - f * (52 + k * 18) * s, ty = y - (78 - k * 14) * s * lift;
+    ctx.globalAlpha = (k ? 0.22 : 0.32) * a; ctx.fillStyle = col;
+    ctx.beginPath(); ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(x - f * 10 * s, ty - 10 * s, tx, ty);
+    ctx.quadraticCurveTo(tx - f * 6 * s, y - 20 * s * lift, x - f * 74 * s, y + 6 * s);
+    ctx.quadraticCurveTo(x - f * 40 * s, y - 2 * s, x - f * 26 * s, y + 10 * s);
+    ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = (k ? 0.45 : 0.8) * a; ctx.strokeStyle = '#e8fbff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x - f * 10 * s, ty - 10 * s, tx, ty); ctx.lineTo(x - f * 74 * s, y + 6 * s); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
 /** 아르겐의 환영: 등 뒤에서 날아와 앞뒤 640 띠를 가로지른다 (판정 창 [0.2, 0.8], proc 번개) */
 function argen(w, p, N) {
   count('isolde_dragonbond.argen');
@@ -243,11 +272,13 @@ function argen(w, p, N) {
       // 지나간 띠 (판정 높이 120 의 옅은 빛)
       K.beamH(ctx, x0 + (hx - x0) * 0.25, hx, yy, N.h * 0.4, '#9fe8ff', 0.3 * a2, '#e8fbff');
       for (let i = 0; i < 20; i++) {
-        PTS[i * 2] = hx - f * i * 24;
-        PTS[i * 2 + 1] = yy + Math.sin((hx - f * i * 24) * 0.018 + e.lt * 6) * 18 * Math.min(1, i / 4);
+        PTS[i * 2] = hx - f * i * 26;
+        PTS[i * 2 + 1] = yy + Math.sin((hx - f * i * 26) * 0.018 + e.lt * 6) * 18 * Math.min(1, i / 4);
       }
-      K.stormDragon(ctx, PTS, 20, 1.05, '#9fe8ff', 0.95 * a2, e.lt);
-      K.glow(ctx, hx, yy, 70, '#e8fbff', 0.45 * a2);
+      // 날개 (어깨 마디에서 위로 펼친 막 두 장 — 날갯짓은 시간 sin)
+      dragonWings(ctx, PTS[8], PTS[9], f, 1.25, Math.sin(e.lt * 16), '#9fe8ff', a2);
+      K.stormDragon(ctx, PTS, 20, 1.6, '#9fe8ff', a2, e.lt);
+      K.glow(ctx, hx, yy, 90, '#e8fbff', 0.5 * a2);
     },
     light(L, e) { L.add(x0 + (x1 - x0) * e.k, yy, 320, '#9fe8ff', 1.3); },
   });
@@ -392,11 +423,13 @@ export const PERKS_D = {
   },
   /** 창신: 같은 적 연타마다 일점 1중첩 (최대 20, 2초) · 중첩당 그 적에게 +1.5% · 20중첩이면 다음 찌르기가 관통 일섬 (700, 250%, 치명타 확정) */
   isolde_speargod: {
-    N: { max: 20, t: 2, perPct: 1.5, len: 700, x0: 30, y0: -90, h: 40, mvPct: 250, crit: 100, hitstop: 0.08, life: 0.25, icd: 1.5 },
+    N: { max: 20, t: 2, perPct: 0.5, len: 700, x0: 30, y0: -90, h: 40, mvPct: 250, crit: 100, hitstop: 0.08, life: 0.25, icd: 1.5 },   // 중첩당 0.5% (명세 1.5% → §2.8 예산: 한 번 휘두를 때 1중첩으로 바꾸고도 단일 +16.7% → +8%)
     prewarm(w) { warm(w, ['#ff9aac', '#ffd0d8', '#ff2040'], null); },
     onHit(p, tgt, info, atk, w) {
       if (!atk?.tags?.includes('melee') || !tgt || tgt.dead || tgt.kind === 'prop') return;
-      const st = perkState(p);
+      const st = perkState(p), sw = p.curHitId ?? atk.hitId;
+      // 한 번 휘두를 때 1중첩: 그 휘두르기에 처음 맞은 적만 센다 (같은 휘두르기의 연타·투창·여러 적 관통은 쌓지도 끊지도 않는다)
+      if (sw != null) { if (st.pinSw === sw) return; st.pinSw = sw; }
       if (st.pinT !== tgt) { if (st.pinT) unmark(st.pinT, 'pin'); st.pinT = tgt; }
       const was = markOf(tgt, 'pin'), n = mark(tgt, 'pin', this.N.t, 1, this.N.max);
       if (n >= this.N.max && was < this.N.max) {
@@ -504,7 +537,9 @@ export const ACTIVES_D = {
           PTS[i * 2] = mx - f * (4 + i * 8);
           PTS[i * 2 + 1] = my - 4 - Math.sin(u * Math.PI) * 30 + u * 26 + Math.sin(e.lt * 7 + i) * 1.5;
         }
-        K.stormDragon(ctx, PTS, 12, 0.5, '#9fe8ff', 0.9 * a, e.lt);
+        dragonWings(ctx, PTS[12], PTS[13], f, 0.55, Math.sin(e.lt * 12), '#9fe8ff', 0.9 * a);
+        ctx.globalCompositeOperation = 'source-over';
+        K.stormDragon(ctx, PTS, 12, 0.62, '#9fe8ff', 0.95 * a, e.lt);
       },
       light(L) { L.add(p.cx + f * (A.mouthX + A.reach / 2), p.bottom - A.endY, A.reach + 80, '#9fe8ff', 1.2); },
     });

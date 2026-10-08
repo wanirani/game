@@ -138,7 +138,7 @@ function eraseShots(w, x, y, R, color) {
     const qx = q.cx, qy = q.cy;
     q.dead = true;
     QE(w, q);
-    if (n++ < 6) w.fx.burst('spark', qx, qy, 2, { speed: 160, color });
+    if (n++ < 2) w.fx.burst('spark', qx, qy, 2, { speed: 160, color });   // 종소리 하나에 파티클 ≤ 12 (만종 8 + 4)
   }
   return n;
 }
@@ -284,6 +284,8 @@ function fuseBurst(pr, w) {
   p.mp = Math.min(p.stats?.mp ?? p.mp, p.mp + N.mp);
   w.fx.text(p.cx, p.y - 24, 'MP +' + N.mp, { color: '#5aa8ff', size: 16 });
 }
+/** 벽에 닿아 사라질 때도 터진다 (명세 「맞거나 사라질 때」 — onWall 이 없으면 projectiles.js 가 onExpire 없이 지운다) */
+function fuseWall(pr, w) { pr.expire(w, false); }
 
 // ─────────────────────────── 정전기 연쇄 (뇌우의 무녀) ───────────────────────────
 const CH_E = [null, null, null], CH_D = [0, 0, 0];   // 연쇄 후보 (가까운 3) — 발동마다 다시 쓴다
@@ -338,12 +340,15 @@ function sealStack(w, p, tgt, add, N) {
     count('kael_sealbearer.sealed');
   }
   unmark(tgt, 'seal');
-  callout(w, tgt.cx, tgt.y - 20, '봉인!', '#ffd84a');
   w.fx.ring(tgt.cx, tgt.cy, { color: '#ffd84a', r0: 10, r1: 70, life: 0.35, width: 5 });
-  w.fx.burst('gold', tgt.cx, tgt.cy, 6, { speed: 200 });
-  sfx(w, 'seal_stamp', { vol: 0.6 });
+  if (SEAL_FX-- > 0) {   // 제1봉인이 여러 적을 한꺼번에 봉인할 때 문구·파티클은 3명까지 (해방기 파티클 ≤ 24, §12)
+    callout(w, tgt.cx, tgt.y - 20, '봉인!', '#ffd84a');
+    w.fx.burst('gold', tgt.cx, tgt.cy, 6, { speed: 200 });
+    sfx(w, 'seal_stamp', { vol: 0.6 });
+  }
   return true;
 }
+let SEAL_FX = Infinity;
 
 // ─────────────────────────── 종소리 (종의 성녀; 패시브·액티브 공용) ───────────────────────────
 /**
@@ -355,12 +360,12 @@ export function toll(p, w, o) {
   const x = o.x ?? p.cx, y = o.y ?? p.cy, R = o.R, great = !!o.great, NB = PERKS_A.sera_bellsaint.N;
   let n;
   if (o.proc) n = strike(w, p, circ(x, y, R), { mv: o.mv, type: 'mag', element: 'holy', stun: NB.stunT, kb: [220, -120], dmgColor: '#e8f0ff' });
-  else n = K.uHit?.(w, p, o.mv, { rect: circ(x, y, R), type: 'mag', element: 'holy', stun: NB.stunT, kb: [220, -120], hitstop: 0.03, shake: 2, tags: ['skill'], dmgColor: '#e8f0ff' }) ?? 0;
+  else n = K.uHit?.(w, p, o.mv, { rect: circ(x, y, R), type: 'mag', element: 'holy', stun: NB.stunT, kb: [220, -120], hitstop: 0.03, shake: 2, tags: ['skill'], dmgColor: '#e8f0ff', pkBell: true }) ?? 0;   // pkBell: 패시브 적중 계수에 넣지 않는다 (§5 'no passive counter')
   const erased = NB.eraseProj ? eraseShots(w, x, y, R, '#e8f0ff') : 0;
   if (o.healPct > 0 && !p.dead) p.heal(maxHp(p) * o.healPct / 100);
   w.fx.ring(x, y, { color: '#e8f0ff', r0: 20, r1: R, life: 0.45, width: great ? 9 : 5 });
   if (great) { w.fx.ring(x, y, { color: '#ffd84a', r0: 30, r1: R * 1.05, life: 0.6, width: 4 }); callout(w, p.cx, p.y - 34, '만종!', '#ffd84a'); }
-  w.fx.burst('holy', x, y - 20, great ? 10 : 5, { speed: R * 1.6, color: '#e8f0ff' });
+  w.fx.burst('holy', x, y - 20, great ? 8 : 5, { speed: R * 1.6, color: '#e8f0ff' });
   if (o.bellFx !== false) bellFlash(w, p, great);
   sfx(w, 'bell', { vol: great ? 0.9 : 0.6, pitch: great ? 0.8 : 1.05 });
   if (erased) count('sera_bellsaint.erase');
@@ -451,20 +456,21 @@ export const PERKS_A = {
     N: { t: 6, dmgPct: 6, sprintT: 1, sprintPct: 25 },
     prewarm(w) { warm(w, ['#b060ff'], null); },
     onHit(p, tgt, info, atk, w) {
-      if (!tgt || tgt.dead || tgt.kind === 'prop') return;
+      if (!tgt || tgt.dead || tgt.dying > 0 || tgt.kind === 'prop') return;
       const st = perkState(p);
-      if (st.qry && st.qry !== tgt) unmark(st.qry, 'quarry');
+      if (st.qry && st.qry !== tgt) { st.qryOld = st.qry; st.qryAt = nowOf(w); unmark(st.qry, 'quarry'); }
       st.qry = tgt;
       mark(tgt, 'quarry', this.N.t, 1, 1);
     },
-    onAttack(p, atk, tgt) {
-      if (!markOf(tgt, 'quarry')) return undefined;
+    onAttack(p, atk, tgt, w) {
+      if (!markOf(tgt, 'quarry')) { const st = perkState(p); if (!(st.qryOld === tgt && st.qryAt === nowOf(w))) return undefined; }   // 같은 휘두르기 안에서 옮겨 간 표식도 (onKill 과 같은 규칙)
       RET_QUARRY.mult = 1 + this.N.dmgPct / 100;
       return RET_QUARRY;
     },
     onKill(p, e, atk, w) {
-      if (!markOf(e, 'quarry')) return;
       const st = perkState(p);
+      // 한 번 휘두른 채찍이 다른 적을 먼저 맞혀 표식이 같은 프레임에 옮겨 간 뒤 표식 대상이 쓰러져도 사냥감 처치로 친다
+      if (!markOf(e, 'quarry') && !(st.qryOld === e && st.qryAt === nowOf(w))) return;
       unmark(e, 'quarry');
       if (st.qry === e) st.qry = null;
       st.sprint = nowOf(w) + this.N.sprintT;
@@ -524,6 +530,8 @@ export const PERKS_A = {
   kael_highinquisitor: {
     N: { stacks: 3, markT: 4, pyreT: 1.5, tickT: 0.25, ticks: 6, mvPct: 30, icd: 5, icdBoss: 8, maxPyres: 6, pad: 10 },
     prewarm(w) { warm(w, ['#ff5a1a', '#ffb040'], ['화형!', '#ff8a3a']); },
+    // 방을 옮기면 화형 연출이 end() 없이 지워진다 → 살아 있는 화형 수를 방마다 0 부터 (안 그러면 6 에 막혀 스테이지 끝까지 화형이 안 나온다)
+    onEnter(p, w) { w._pkPyres = 0; },
     onHit(p, tgt, info, atk, w) {
       if (!atk?.tags?.includes('inq') || !tgt || tgt.dead) return;
       const n = mark(tgt, 'brand', this.N.markT, 1, this.N.stacks);
@@ -622,7 +630,7 @@ export const PERKS_A = {
       strike(w, p, circ(x, y, r), { mv: this.N.mvPct / 100, type: 'mag', element: el, stun: el === 'thunder' ? this.N.stunT : undefined, kb: [60, -40], dmgColor: col });
       if (el === 'ice') { const k = 1 - this.N.slowPct / 100, t = this.N.slowT; forFoes(w, x, y, r, (e) => { if (!isBoss(e)) slowEnemy(e, k, t, w); }); }
       w.fx.ring(x, y, { color: col, r0: 8, r1: r * 1.15, life: 0.28, width: 4 });
-      w.fx.burst(el, x, y, 5, { speed: 180, color: col });
+      w.fx.burst(el, x, y, 4, { speed: 180, color: col });   // ≤ 4: 시간 재사용 대기가 없는 발동 (§3.6.3)
       sfx(w, el, { vol: 0.35, pitch: 1.2 });
     },
   },
@@ -708,7 +716,7 @@ export const PERKS_A = {
         x: p.cx + f * 34, y: p.bottom - 60, vx: f * this.N.speed, vy: 0, w: 34, h: 34, render: 'orb', color: '#ffe0b0', scale: 1.6, life: this.N.life, pierce: 1,
         light: { r: 110, color: '#ffe0b0', i: 0.9 }, trail: 'magic',
         attack: K.atk(p, { mv: this.N.orbMvPct / 100, type: 'mag', tags: ['skill'], proc: true, hitstop: 0, shake: 0, kb: [120, -80], dmgColor: '#ffe0b0' }),
-        onExpire: fuseBurst,
+        onExpire: fuseBurst, onWall: fuseWall,
       });
       sfx(w, 'magic', { vol: 0.7, pitch: 0.8 });
     },
@@ -740,7 +748,7 @@ export const PERKS_A = {
     N: { every: 8, icd: 2.5, r: 200, mvPct: 50, stunT: 0.3, healPct: 2, window: 12, greatR: 300, greatMvPct: 120, greatHealPct: 4, eraseProj: true },
     prewarm(w) { warm(w, ['#e8f0ff', '#ffd84a'], ['만종!', '#ffd84a']); },
     onHit(p, tgt, info, atk, w) {
-      if (!tgt || tgt.kind === 'prop') return;
+      if (!tgt || tgt.kind === 'prop' || atk?.pkBell) return;   // 일곱 번째 종(액티브)의 타격은 세지 않는다
       const st = perkState(p);
       st.bellN = Math.min(this.N.every, (st.bellN ?? 0) + 1);
       if (st.bellN >= this.N.every && passiveToll(p, w)) st.bellN = 0;
@@ -771,7 +779,8 @@ export const ACTIVES_A = {
     K.pose(p, w, 'cast_up', 0.45, { sfx: 'holy' });
     const x0 = p.cx, y0 = floorY(w, p);
     count('asc_kael_firstseal.cast');
-    forFoes(w, x0, y0 - r * 0.45, r, (e) => sealStack(w, p, e, N.max, N));
+    SEAL_FX = 3;
+    try { forFoes(w, x0, y0 - r * 0.45, r, (e) => sealStack(w, p, e, N.max, N)); } finally { SEAL_FX = Infinity; }
     sfx(w, 'seal_stamp', { vol: 0.9 });
     w.fx.ring(x0, y0 - 6, { color: '#ffd84a', r0: 20, r1: r, life: 0.45, width: 8 });
     w.camera?.shake?.(5, 0.2);
@@ -845,6 +854,7 @@ const ACT_N = {
 
 // ─────────────────────────── 표식 그리기 (PerkLayer) ───────────────────────────
 // (ctx, e, n, k, t): n = 중첩, k = 남은 시간 비율 0..1, t = 월드 시간. 머리 위 = (e.cx, e.y)
+const DASH_CHAIN = [6, 4], DASH_NONE = [];   // setLineDash 인자 (그리기마다 배열을 만들지 않게)
 export const MARKS_A = {
   /** 사냥감 (그림자 추적자): 보라 갈매기표 */
   quarry(ctx, e, n, k, t) {
@@ -894,9 +904,9 @@ export const MARKS_A = {
     ctx.globalCompositeOperation = ADD;
     K.glow(ctx, x, cy, Math.max(hw, hh) * 1.3, '#ffd84a', 0.35 * a);
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = a; ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 3; ctx.setLineDash?.([6, 4]);
+    ctx.globalAlpha = a; ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 3; ctx.setLineDash?.(DASH_CHAIN);
     ctx.beginPath(); ctx.moveTo(x - hw, cy - hh); ctx.lineTo(x + hw, cy + hh); ctx.moveTo(x + hw, cy - hh); ctx.lineTo(x - hw, cy + hh); ctx.stroke();
-    ctx.setLineDash?.([]);
+    ctx.setLineDash?.(DASH_NONE);
   },
   /** 봉인 균열 (보스 4초): 몸을 가르는 들쭉날쭉한 금빛 선 */
   crack(ctx, e, n, k, t) {

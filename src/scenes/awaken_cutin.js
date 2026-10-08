@@ -150,17 +150,18 @@ function textLeft(vw) {
 }
 
 /** 띠 바탕: 검정 → 영웅 어두운 색 그라데이션 + 망점 + 위아래 그늘 (띠 좌표, 가운데 기준) */
-function bakeBand(a, vw, vh, S) {
+function bakeBand(a, vw, vh, S, acc3 = null) {
   const { H, L } = bandSize(vw, vh);
   const c = pooled('band', L * S, H * S);
   if (!c) return null;
   const g = c.getContext('2d');
   g.setTransform(S, 0, 0, S, 0, 0);
   const gr = g.createLinearGradient(0, 0, L, 0);
-  gr.addColorStop(0, '#000000'); gr.addColorStop(0.42, '#050104'); gr.addColorStop(1, a.dark ?? '#1a0508');
+  // 단계 3 (acc3): 오른쪽 끝을 초월/비전 강조색 쪽으로 물들이고 망점도 그 색으로 (굽는 때만 — 그리는 프레임에는 그라디언트 없음)
+  gr.addColorStop(0, '#000000'); gr.addColorStop(0.42, '#050104'); gr.addColorStop(1, acc3 ? mixHex(a.dark ?? '#1a0508', acc3, 0.3) : a.dark ?? '#1a0508');
   g.fillStyle = gr; g.fillRect(0, 0, L, H);
   // 망점 (오른쪽·가장자리로 갈수록 굵게)
-  g.fillStyle = rgba(a.color, 0.18);
+  g.fillStyle = rgba(acc3 ?? a.color, acc3 ? 0.24 : 0.18);
   g.beginPath();
   const step = 9;
   for (let row = 0, y = 4; y < H; y += step, row++) {
@@ -358,7 +359,7 @@ function ensureBaked(charId, tier, classId, vw, vh, S, X = null) {
   if (PREP.key === key && PREP.band && PREP.text) return PREP;
   sprites();
   initPool();
-  PREP.band = bakeBand(a, vw, vh, Math.min(S, 1.25));
+  PREP.band = bakeBand(a, vw, vh, Math.min(S, 1.25), tier >= 3 ? (X?.acc3 ?? null) : null);
   PREP.text = bakeText(a, vw, S, tier, charId, classId, X);
   PREP.key = key;
   return PREP;
@@ -414,6 +415,7 @@ export class AwakenCutinScene extends Scene {
     if (this.X && params.className) this.X.className = params.className;
     if (this.X && params.kind) this.X.kind = params.kind;
     this.acc3 = this.X?.acc3 ?? null;   // 단계 3 강조색 (없으면 단계 3 장식을 그리지 않는다)
+    this.engAsc = this.acc3 ? (AX?.eng ?? null) : null; this._nmW = null;   // 이름표 옆 영문 직업명 (GRAND TEMPLAR 등)
     this.preview = !this.w || !this.p;   // 월드 없이 떠 있음 (디버그 주소) → 검은 바탕 미리보기
     if (this.preview) this.opaque = true;
     this.T = params.short ? SHORT : FULL;
@@ -867,6 +869,16 @@ export class AwakenCutinScene extends Scene {
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.strokeText(nm, nx, ny);
       ctx.fillStyle = GOLD; ctx.fillText(nm, nx, ny);
       ctx.fillStyle = rgba(a.color, 0.8); ctx.fillRect(nx, ny + 6, Math.min(vw * 0.3, 22 + nm.length * 9) * k, 2);
+      if (this.acc3 && this.engAsc) {
+        // 단계 3: 이름표 옆에 초월/비전 영문 이름 (강조색, 마름모로 잇는다; 폭은 처음 한 번 잰다)
+        if (this._nmW == null) this._nmW = ctx.measureText(nm).width;
+        const ex = nx + this._nmW + 12;
+        ctx.fillStyle = this.acc3;
+        ctx.beginPath(); ctx.moveTo(ex + 4, ny - 9); ctx.lineTo(ex + 8, ny - 5); ctx.lineTo(ex + 4, ny - 1); ctx.lineTo(ex, ny - 5); ctx.closePath(); ctx.fill();
+        ctx.font = `700 13px ${FONT.title}`;
+        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.strokeText(this.engAsc, ex + 14, ny);
+        ctx.fillText(this.engAsc, ex + 14, ny);
+      }
       ctx.globalAlpha = 1;
     }
     // ── 시그니처 대사 + 낙관 ──
@@ -994,7 +1006,7 @@ export class AwakenCutinScene extends Scene {
     // 쾅 찍히는 순간 흰 잔상
     if (k < 1) {
       ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = (1 - k) * 0.5; ctx.drawImage(tt.c, x - dw * 0.05, y - dh * 0.05, dw * 1.1, dh * 1.1);
-      if (this.acc3) { ctx.globalAlpha = (1 - k) * 0.35; ctx.drawImage(tt.c, x - dw * 0.12, y - dh * 0.12, dw * 1.24, dh * 1.24); }   // 단계 3: 한 겹 더 큰 잔상
+      if (this.acc3) { ctx.globalAlpha = (1 - k) * 0.22; ctx.drawImage(tt.c, x - dw * 0.12, y - dh * 0.12, dw * 1.24, dh * 1.24); }   // 단계 3: 한 겹 더 큰 잔상
       ctx.globalCompositeOperation = 'source-over';
     }
     ctx.globalAlpha = 1;
@@ -1021,6 +1033,12 @@ function nextCut(L, gi) {
   let j = gi + 1;
   while (j < L.cuts.length - 1 && !L.str[j]?.trim?.()) j++;
   return Math.min(j, L.cuts.length - 1);
+}
+/** 두 #rrggbb 색을 t 만큼 섞은 #rrggbb (굽는 때만 쓴다) */
+function mixHex(a, b, t) {
+  const p = (h) => { const s = String(h).replace('#', ''); const n = parseInt(s.length === 3 ? s.split('').map((c) => c + c).join('') : s, 16) || 0; return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const A = p(a), B = p(b), m = (i) => Math.round(A[i] + (B[i] - A[i]) * clamp(t, 0, 1)).toString(16).padStart(2, '0');
+  return `#${m(0)}${m(1)}${m(2)}`;
 }
 function mixWhite(hex, k) {
   const h = String(hex).replace('#', '');
