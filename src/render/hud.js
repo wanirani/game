@@ -35,21 +35,23 @@ export function drawHUD(ctx, world, vw, vh) {
   const p = world.player;
   if (!p) return;
   const hero = world.hero, run = world.run, st = p.stats;
-  const T = hudTouch(); // 휴대폰에서는 작은 글자를 키운다 (캔버스가 0.7배 정도로 축소되어 보임)
+  const T = hudTouch();
+  // 터치: 모든 글자는 L.textMin(= 11 CSS px 를 논리 px 로) 이상 — 휴대폰 캔버스는 0.67–0.72배로 줄어 보인다 (platform §6.2).
+  // 휴대폰 배치(L.big)는 칸도 키우고 중복 문구(직업명 · 'SCORE')를 뺀다. 터치는 페이지 안내·슬롯 S1/S2 표시도 뺀다 (패드 버튼에 있다)
   const L = hudLayout(world, vw, vh);
   ctx.save();
-  drawPortrait(ctx, L.portrait, hero, p);
-  drawVitals(ctx, L.vitals, hero, p, st, T);
-  drawHeartsRow(ctx, L.hearts, world, run, p);
-  drawSkills(ctx, L.skills, hero, p, T);
-  drawUltGauge(ctx, L.ult, world, run, T);
+  drawPortrait(ctx, L.portrait, hero, p, L);
+  drawVitals(ctx, L.vitals, hero, p, st, T, L);
+  drawHeartsRow(ctx, L.hearts, world, run, p, L);
+  drawSkills(ctx, L.skills, hero, p, T, L);
+  drawUltGauge(ctx, L.ult, world, run, T, L);
   // 각성 게이지 + 준비 문구 칸 L.ready ('필살기 준비!' · '각성 가능!' 모두 FEEL-HUD). SP 막대 위에 빛을 겹치므로 필살 게이지 다음에
   drawAwGauge(ctx, world, L.awGauge.x, L.awGauge.y, L.awGauge.w, T); // [hook:feel]
   // 동료 위젯 (companions §7.1): 칸 L.companions 안쪽 사각형 L.companionsDraw 에 (탑승·기력 고리가 칸 밖 하트 줄을 덮지 않게).
   // 탭 판정용 사각형은 world.companions.hudRects 에 둔다
   const cr = drawCompanionHUD(ctx, world, cmpOpts(L, T)); // [hook:cmp]
   if (world.companions) { if (!cr) NO_RECTS.length = 0; try { world.companions.hudRects = cr || NO_RECTS; } catch { /* 읽기 전용이면 동료 쪽이 직접 관리 */ } } // [hook:cmp]
-  drawScore(ctx, L.score, world, hero, p, run, T);
+  drawScore(ctx, L.score, world, hero, p, run, T, L);
   // 콤보·스타일 열 (L.combo). 랭크 글자 등장·이정표 박힘 첫 프레임은 칸 위·왼쪽으로 잠깐 넘치므로 그동안만 다른 영역(점수·동료 카드 줄
   // 등)을 빼고 자른다 (feel_hud.hudOverflow). 숫자 튀기기는 feel_hud 가 칸 안에 가두고(popFit), 쉬는 그림도 칸 안에 있으므로
   // 매 프레임 화면 크기 클립을 걸지 않는다 (R1-REQ-330)
@@ -57,10 +59,10 @@ export function drawHUD(ctx, world, vw, vh) {
   if (cc) { ctx.save(); ctx.clip(cc, 'evenodd'); }
   drawComboHUD(ctx, world, vw, vh, T); // [hook:feel]
   if (cc) ctx.restore();
-  if (L.bossShown) drawBossBar(ctx, L.bossBar, world.boss);
+  if (L.bossShown) drawBossBar(ctx, L.bossBar, world.boss, L);
   // 알림 칸 하나: 배너(스테이지 제목·STAGE CLEAR·LEVEL UP …)가 이긴다. 배너가 없을 때만 알림을 그린다
   // (알림 단어가 2.2배로 박히는 첫 프레임은 칸 위로 16 px 까지 넘친다 → 그동안만 토스트 줄·다른 영역은 빼고 자른다)
-  if (world.banner) drawBanner(ctx, L.transient, world, world.banner);
+  if (world.banner) drawBanner(ctx, L.transient, world, world.banner, L);
   else if (world.style?.ann?.cur) { // [hook:feel]
     const ac = hudOverflow(world, 'transient') ? avoidClip(L, 'transient') : null;
     if (ac) { ctx.save(); ctx.clip(ac, 'evenodd'); }
@@ -133,18 +135,18 @@ export function drawHUDPart(ctx, world, vw, vh, part) {
   ctx.save();
   let r = null;
   switch (part) {
-    case 'portrait': drawPortrait(ctx, L.portrait, hero, p); break;
-    case 'vitals': drawVitals(ctx, L.vitals, hero, p, st, T); break;
-    case 'hearts': drawHeartsRow(ctx, L.hearts, world, run, p); break;
-    case 'skills': drawSkills(ctx, L.skills, hero, p, T); break;
-    case 'ult': drawUltGauge(ctx, L.ult, world, run, T); break;
+    case 'portrait': drawPortrait(ctx, L.portrait, hero, p, L); break;
+    case 'vitals': drawVitals(ctx, L.vitals, hero, p, st, T, L); break;
+    case 'hearts': drawHeartsRow(ctx, L.hearts, world, run, p, L); break;
+    case 'skills': drawSkills(ctx, L.skills, hero, p, T, L); break;
+    case 'ult': drawUltGauge(ctx, L.ult, world, run, T, L); break;
     case 'awGauge': r = drawAwGauge(ctx, world, L.awGauge.x, L.awGauge.y, L.awGauge.w, T); break;
     case 'companions': r = drawCompanionHUD(ctx, world, cmpOpts(L, T)); break;
-    case 'score': drawScore(ctx, L.score, world, hero, p, run, T); break;
+    case 'score': drawScore(ctx, L.score, world, hero, p, run, T, L); break;
     case 'combo': { const cc = hudOverflow(world, 'combo') ? avoidClip(L, 'combo') : null; if (cc) ctx.clip(cc, 'evenodd'); r = drawComboHUD(ctx, world, vw, vh, T); break; }
-    case 'boss': if (L.bossShown) drawBossBar(ctx, L.bossBar, world.boss); break;
+    case 'boss': if (L.bossShown) drawBossBar(ctx, L.bossBar, world.boss, L); break;
     case 'transient': {
-      if (world.banner) { drawBanner(ctx, L.transient, world, world.banner); r = 'banner'; break; }
+      if (world.banner) { drawBanner(ctx, L.transient, world, world.banner, L); r = 'banner'; break; }
       const ac = hudOverflow(world, 'transient') ? avoidClip(L, 'transient') : null; if (ac) ctx.clip(ac, 'evenodd');
       r = drawAnnouncer(ctx, world, vw, vh); break;
     }
@@ -159,7 +161,7 @@ export function drawHUDPart(ctx, world, vw, vh, part) {
 // 그림 준비 상태가 바뀔 때만 작은 캔버스에 구워 한 번에 붙인다. 목숨 아이콘·스킬 문장도 같은 방식.
 // 캔버스는 이 모듈을 불러올 때 만든다 (스테이지 도중 새 캔버스 0, MASTER_PLAN §5.2). 굽는 배율 = 지금 HUD 변환의 기기 배율 (0.25 단위 올림).
 const mkCanvas = () => { try { if (typeof document === 'undefined' || !document.createElement) return null; const c = document.createElement('canvas'); c.width = c.height = 1; return c; } catch { return null; } };
-const PORT = { c: mkCanvas(), id: null, iw: 0, col: null, lv: -1, a: 0, ep: -1 };   // 초상화 + 금테 + 레벨 배지 (칸 66×66 + 둘레 1 px)
+const PORT = { c: mkCanvas(), id: null, iw: 0, col: null, lv: -1, a: 0, ep: -1, f: -1 };   // 초상화 + 금테 + 레벨 배지 (칸 66×66 + 둘레 1 px)
 const LIFE = { c: mkCanvas(), id: null, iw: 0, col: null, r: 0, a: 0 };           // 점수 칸의 목숨 아이콘
 const SKG = { c: mkCanvas(), keys: ['', ''], a: 0 };  // 스킬 슬롯 2칸의 문장 (38×38 칸 두 개를 가로로)
 export const HUD_SPRITE_STATS = { portraitBakes: 0, lifeBakes: 0, skillBakes: 0 };
@@ -182,21 +184,21 @@ function prepSprite(c, w, h, a) {
 }
 
 // ── 왼쪽 위: 초상화 + 레벨 배지 (66×66) ──
-function drawPortrait(ctx, r, hero, p) {
+function drawPortrait(ctx, r, hero, p, L) {
   const img = assets.get(CHARACTERS[hero.charId]?.portrait);
-  const c = PORT.c;
-  if (!c) { paintPortrait(ctx, r.x, r.y, img, hero, p); return; }
+  const c = PORT.c, F = L?.textMin ?? 0;
+  if (!c) { paintPortrait(ctx, r.x, r.y, img, hero, p, F); return; }
   const a = hudScale(ctx), K = PORT, iw = img ? img.width * 65536 + img.height : 0, col = p.look?.primary ?? null;
-  if (K.id !== hero.charId || K.iw !== iw || K.col !== col || K.lv !== hero.level || K.a !== a || K.ep !== fontEpoch) {
+  if (K.id !== hero.charId || K.iw !== iw || K.col !== col || K.lv !== hero.level || K.a !== a || K.ep !== fontEpoch || K.f !== F) {
     const g = prepSprite(c, 68, 68, a);
-    paintPortrait(g, 1, 1, img, hero, p);
-    K.id = hero.charId; K.iw = iw; K.col = col; K.lv = hero.level; K.a = a; K.ep = fontEpoch;
+    paintPortrait(g, 1, 1, img, hero, p, F);
+    K.id = hero.charId; K.iw = iw; K.col = col; K.lv = hero.level; K.a = a; K.ep = fontEpoch; K.f = F;
     HUD_SPRITE_STATS.portraitBakes++;
   }
   ctx.drawImage(c, 0, 0, c.width, c.height, r.x - 1, r.y - 1, c.width / a, c.height / a);
 }
-/** 초상화 한 장을 (x, y) 칸(66×66)에 칠한다 (캐시에 굽거나, 캐시 캔버스가 없으면 화면에 바로) */
-function paintPortrait(ctx, x, y, img, hero, p) {
+/** 초상화 한 장을 (x, y) 칸(66×66)에 칠한다 (캐시에 굽거나, 캐시 캔버스가 없으면 화면에 바로). F = 터치 글자 하한 (배지 글자·원을 키운다) */
+function paintPortrait(ctx, x, y, img, hero, p, F = 0) {
   const cx = x + 33, cy = y + 33;
   ctx.save();
   ctx.beginPath(); ctx.arc(cx, cy, 30, 0, TAU); ctx.closePath();
@@ -207,29 +209,42 @@ function paintPortrait(ctx, x, y, img, hero, p) {
   ctx.restore();
   ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx, cy, 31, 0, TAU); ctx.stroke();
   ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, cy, 32.5, 0, TAU); ctx.stroke();
-  // 레벨 배지 (영역 안쪽 오른쪽 아래)
-  ctx.fillStyle = '#5a0a18'; ctx.beginPath(); ctx.arc(x + 53, y + 53, 12, 0, TAU); ctx.fill();
+  // 레벨 배지 (영역 안쪽 오른쪽 아래). 글자 하한이 12 를 넘으면(휴대폰) 배지를 반지름 14 로 키워 칸 안(66)에 맞춘다
+  const fs = Math.max(12, F), br = fs > 12 ? 14 : 12, bc = fs > 12 ? 52 : 53;
+  ctx.fillStyle = '#5a0a18'; ctx.beginPath(); ctx.arc(x + bc, y + bc, br, 0, TAU); ctx.fill();
   ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 1.5; ctx.stroke();
-  text(ctx, hero.level, x + 53, y + 58, { size: 12, align: 'center', weight: 800, family: FONT.num, color: '#fff' });
+  text(ctx, hero.level, x + bc, y + bc + Math.round(fs * 0.42), { size: fs, align: 'center', weight: 800, family: FONT.num, color: '#fff', maxWidth: br * 2 - 3 });
 }
 
-// ── 이름 / HP / MP / EXP (230×50) ──
-function drawVitals(ctx, r, hero, p, st, T) {
-  const bx = r.x, bw = r.w, y = r.y;
-  text(ctx, CHARACTERS[hero.charId].name, bx, y + 12, { size: 13, weight: 700, color: '#f3e2b8' });
-  text(ctx, CLASSES[hero.classId]?.name ?? '', bx + bw, y + 12, { size: T ? 12 : 11, align: 'right', color: COLORS.dim });
+// ── 이름 / HP / MP / EXP (230×50; 휴대폰 배치 260×(F 기준, phone2 53)) ──
+function drawVitals(ctx, r, hero, p, st, T, L) {
+  const bx = r.x, bw = r.w, y = r.y, F = L.textMin;
+  if (L.big) {
+    // 휴대폰: 직업명은 뺀다 (메뉴에 있다). HP 숫자는 F+1 px 막대 안에 F px, MP 숫자는 MP 막대 오른쪽에 F px
+    const v = L.rows.vit;
+    text(ctx, CHARACTERS[hero.charId].name, bx, y + v.name, { size: Math.max(13, F), weight: 700, color: '#f3e2b8', maxWidth: bw });
+    bar(ctx, bx, y + v.hpTop, bw, v.hpH, p.hp / st.hp, { color: '#d81c34', ghost: p.hpGhost / st.hp });
+    text(ctx, `${Math.ceil(p.hp)} / ${st.hp}`, bx + bw - 4, y + v.hpTop + Math.round((v.hpH + F * 0.7) / 2), { size: F, align: 'right', weight: 700, color: '#fff', ow: 3, maxWidth: bw - 8 });
+    bar(ctx, bx, y + v.mpTop, bw * 0.8, v.mpH, p.mp / st.mp, { color: '#3a7aff' });
+    text(ctx, `${Math.floor(p.mp)}`, bx + bw * 0.8 + 6, y + v.mpTop + Math.round(v.mpH / 2 + F * 0.36), { size: F, weight: 700, color: '#8ac8ff', ow: 3, maxWidth: bw * 0.2 - 6 });
+    bar(ctx, bx, y + v.expTop, bw * 0.8, v.expH, hero.exp / expToNext(hero.level), { color: '#e8c872', shine: false });
+    return;
+  }
+  const s = Math.max(T ? 12 : 10, F);
+  text(ctx, CHARACTERS[hero.charId].name, bx, y + 12, { size: Math.max(13, F), weight: 700, color: '#f3e2b8' });
+  text(ctx, CLASSES[hero.classId]?.name ?? '', bx + bw, y + 12, { size: Math.max(T ? 12 : 11, F), align: 'right', color: COLORS.dim });
   bar(ctx, bx, y + 18, bw, 13, p.hp / st.hp, { color: '#d81c34', ghost: p.hpGhost / st.hp });
-  text(ctx, `${Math.ceil(p.hp)} / ${st.hp}`, bx + bw - 4, y + 29, { size: T ? 12 : 10, align: 'right', weight: 700, color: '#fff', ow: 2 });
+  text(ctx, `${Math.ceil(p.hp)} / ${st.hp}`, bx + bw - 4, y + 29, { size: s, align: 'right', weight: 700, color: '#fff', ow: 2 });
   bar(ctx, bx, y + 34, bw * 0.8, 8, p.mp / st.mp, { color: '#3a7aff' });
-  text(ctx, `${Math.floor(p.mp)}`, bx + bw * 0.8 + 6, y + 42, { size: T ? 12 : 10, weight: 700, color: '#8ac8ff', ow: 2 });
+  text(ctx, `${Math.floor(p.mp)}`, bx + bw * 0.8 + 6, y + 42, { size: s, weight: 700, color: '#8ac8ff', ow: 2 });
   bar(ctx, bx, y + 46, bw * 0.8, 3, hero.exp / expToNext(hero.level), { color: '#e8c872', shine: false });
 }
 
-// ── 하트 + 보조무기 + 버프 (260×26; 버프 아이콘은 칸 오른쪽 끝에서 자른다) ──
-function drawHeartsRow(ctx, r, world, run, p) {
-  const sx = r.x, sy = r.y + 2;
+// ── 하트 + 보조무기 + 버프 (260×26, 휴대폰 배치 290×(버프 칸 + 4); 버프 아이콘은 칸 오른쪽 끝에서 자른다) ──
+function drawHeartsRow(ctx, r, world, run, p, L) {
+  const sx = r.x, sy = r.y + 2, F = L.textMin, bs = L.rows?.buff ?? 22, gs = Math.max(12, F);
   drawHudHeart(ctx, sx + 8, sy + 10, world.time);
-  text(ctx, `× ${run.hearts}`, sx + 20, sy + 15, { size: 14, weight: 800, family: FONT.num, color: '#ffb0b8' });
+  text(ctx, `× ${run.hearts}`, sx + 20, sy + 15, { size: Math.max(14, F), weight: 800, family: FONT.num, color: '#ffb0b8', maxWidth: 48 });
   // 보조무기 프레임 (클래식)
   const fx = sx + 70, fy = r.y;
   ctx.fillStyle = 'rgba(10,4,12,0.8)'; ctx.fillRect(fx, fy, 44, 26);
@@ -237,20 +252,20 @@ function drawHeartsRow(ctx, r, world, run, p) {
   const sw = SUBWEAPONS[run.sub];
   if (sw) drawIcon(ctx, sw.icon, fx + 22, fy + 13, 24);
   const multi = p.buffs.triple ? 'III' : p.buffs.double ? 'II' : '';
-  if (multi) text(ctx, multi, fx + 48, fy + 18, { size: 12, weight: 900, family: FONT.num, color: '#8ac8ff' });
-  // 버프 아이콘
+  if (multi) text(ctx, multi, fx + 48, fy + Math.round(13 + gs * 0.4), { size: gs, weight: 900, family: FONT.num, color: '#8ac8ff', maxWidth: L.big ? 18 : undefined });
+  // 버프 아이콘 (휴대폰 배치: 칸 bs = F + 6, 'III' 가 커진 만큼 8 px 오른쪽에서 시작)
   let bi = 0;
-  const xMax = r.x + r.w;
+  const xMax = r.x + r.w, x0 = sx + (L.big ? 138 : 130), gy = Math.round(bs / 2 + gs * 0.4);
   for (const k in p.buffs) {
     const pu = POWERUPS[k];
     if (!pu) continue;
-    const x = sx + 130 + bi * 26, y = sy + 1;
-    if (x + 22 > xMax) break;
-    ctx.fillStyle = rgba(pu.color, 0.25); ctx.fillRect(x, y, 22, 22);
-    ctx.strokeStyle = pu.color; ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.5, y + 0.5, 21, 21);
-    text(ctx, BUFF_GLYPH[k] ?? pu.name[0], x + 11, y + 16, { size: 12, align: 'center', weight: 800, color: '#fff' });
+    const x = x0 + bi * (bs + 4), y = sy + 1;
+    if (x + bs > xMax) break;
+    ctx.fillStyle = rgba(pu.color, 0.25); ctx.fillRect(x, y, bs, bs);
+    ctx.strokeStyle = pu.color; ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.5, y + 0.5, bs - 1, bs - 1);
+    text(ctx, BUFF_GLYPH[k] ?? pu.name[0], x + bs / 2, y + gy, { size: gs, align: 'center', weight: 800, color: '#fff' });
     const left = p.buffs[k];
-    if (left < 9000) { const f = clamp(left / (pu.time || 1), 0, 1); ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(x, y + 22 * f, 22, 22 * (1 - f)); }
+    if (left < 9000) { const f = clamp(left / (pu.time || 1), 0, 1); ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(x, y + bs * f, bs, bs * (1 - f)); }
     bi++;
   }
 }
@@ -294,9 +309,9 @@ function useGlyph(action, T) {
   return ok;
 }
 
-// ── 스킬 슬롯 2칸 + 페이지 안내 (88×62) ──
-function drawSkills(ctx, r, hero, p, T) {
-  const kx = r.x, ky = r.y;
+// ── 스킬 슬롯 2칸 + 페이지 안내 (88×62; 터치 88×40 — 슬롯 S1/S2 표시와 페이지 안내는 패드 버튼(S1·S2·⇄ n/2)에 있으므로 뺀다) ──
+function drawSkills(ctx, r, hero, p, T, L) {
+  const kx = r.x, ky = r.y, cs = Math.max(11, L.textMin);
   for (let i = 0; i < 2; i++) {
     const sid = hero.slots?.[p.skillPage * 2 + i];
     const x = kx + i * 44, y = ky;
@@ -310,15 +325,17 @@ function drawSkills(ctx, r, hero, p, T) {
         const f = clamp(cd / (sk.cd || 1), 0, 1);
         ctx.fillStyle = 'rgba(0,0,0,0.65)';
         ctx.beginPath(); ctx.moveTo(x + 19, y + 19); ctx.arc(x + 19, y + 19, 26, -Math.PI / 2, -Math.PI / 2 + TAU * f); ctx.fill();
-        text(ctx, cd.toFixed(1), x + 19, y + 24, { size: 11, align: 'center', weight: 800, color: '#fff' });
+        text(ctx, cd.toFixed(1), x + 19, y + 19 + Math.round(cs * 0.42), { size: cs, align: 'center', weight: 800, color: '#fff', maxWidth: 36 });
       } else if (p.mp < (sk.cost ?? 0)) { ctx.fillStyle = 'rgba(20,40,120,0.5)'; ctx.fillRect(x, y, 38, 38); }
     }
+    if (T) continue;   // 터치: 패드의 S1·S2 버튼이 같은 문장과 이름을 보여 준다 (13 px 글리프 안 글자는 6 CSS px — 하한 미만)
     const act = i ? 'skill2' : 'skill1';
     if (useGlyph(act, T)) drawGlyph(ctx, act, x + 1, y + 24, 13); // [hook:plat]
     else text(ctx, i ? 'S2' : 'S1', x + 3, y + 36, { size: 12, weight: 800, color: '#e8c872' });
   }
+  if (T) return;   // 터치: 스킬 페이지는 패드의 ⇄ 버튼이 'n/2' 로 보여 준다
   // 스킬 페이지: [swap] 페이지 n/2 — 슬롯 바로 아래
-  const hy = ky + (T ? 54 : 51), size = T ? 12 : 10;
+  const hy = ky + 51, size = 10;
   const label = `페이지 ${p.skillPage + 1}/2`;
   if (useGlyph('swap', T)) {
     const gw = drawGlyph(ctx, 'swap', kx, hy - 12, 14); // [hook:plat]
@@ -340,11 +357,13 @@ function spGradient(ctx, ux, uw, step) {
   if (!g) { g = spFull[step] = ctx.createLinearGradient(ux, 0, ux + uw, 0); g.addColorStop(0, '#ff8a2a'); g.addColorStop(1, `hsl(${step * 10},90%,60%)`); }
   return g;
 }
-function drawUltGauge(ctx, r, world, run, T) {
-  const ux = r.x, uy = r.y + 16, uw = r.w;
+function drawUltGauge(ctx, r, world, run, T, L) {
+  // 막대 = L.spBar (feel_hud 의 각성 게이지가 그 14 px 아래, SP 막대 위에 빛을 겹친다). 라벨은 막대 위 (휴대폰 배치는 F px)
+  const sb = L.spBar, ux = sb.x, uy = sb.y, uw = sb.w;
   const full = run.sp >= 100;
-  text(ctx, '필살', ux, uy - 6, { size: T ? 12 : 10, weight: 700, color: COLORS.dim });
-  text(ctx, `${Math.floor(run.sp)}%`, ux + uw, uy - 6, { size: T ? 12 : 10, align: 'right', weight: 700, family: FONT.num, color: full ? '#ffe070' : COLORS.dim });
+  const ly = L.big ? r.y + L.rows.ult.label : uy - 6, ls = Math.max(T ? 12 : 10, L.textMin);
+  text(ctx, '필살', ux, ly, { size: ls, weight: 700, color: COLORS.dim });
+  text(ctx, `${Math.floor(run.sp)}%`, ux + uw, ly, { size: ls, align: 'right', weight: 700, family: FONT.num, color: full ? '#ffe070' : COLORS.dim });
   ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(ux, uy, uw, 10);
   const g = spGradient(ctx, ux, uw, full ? Math.floor(Math.abs(world.time * 30)) % 36 || 0 : -1); // 가득 차면 색이 돈다 (300°/s)
   ctx.fillStyle = g; ctx.fillRect(ux, uy, uw * clamp(run.sp / 100, 0, 1), 10);
@@ -353,12 +372,16 @@ function drawUltGauge(ctx, r, world, run, T) {
   ctx.strokeStyle = full ? '#fff' : COLORS.goldDark; ctx.lineWidth = 1.5; ctx.strokeRect(ux - 0.5, uy - 0.5, uw + 1, 11);
 }
 
-// ── 오른쪽 위: 점수/목숨/골드/시간 (150×62, 터치 150×70) ──
-function drawScore(ctx, r, world, hero, p, run, T) {
-  const rx = r.x + r.w, lx = r.x, y0 = r.y - 10, s1 = T ? 13 : 11, s2 = T ? 14 : 12, ly = T ? 3 : 0;
-  text(ctx, 'SCORE', lx, y0 + 26, { size: s1, weight: 700, family: FONT.num, color: COLORS.dim });
-  const labelW = ctx.measureText('SCORE').width;
-  text(ctx, fmt(run.score), rx, y0 + 28, { size: 20, align: 'right', weight: 800, family: FONT.num, color: '#fff', maxWidth: r.w - labelW - 6 });
+// ── 오른쪽 위: 점수/목숨/골드/시간 (150×62, 터치 150×70, 휴대폰 배치 170×70 — 'SCORE' 글자 없이 숫자만) ──
+function drawScore(ctx, r, world, hero, p, run, T, L) {
+  const F = L.textMin;
+  const rx = r.x + r.w, lx = r.x, y0 = r.y - 10, s1 = Math.max(T ? 13 : 11, F), s2 = Math.max(T ? 14 : 12, F), ly = T ? 3 : 0;
+  let labelW = 0;
+  if (!L.big) {
+    text(ctx, 'SCORE', lx, y0 + 26, { size: s1, weight: 700, family: FONT.num, color: COLORS.dim });
+    labelW = ctx.measureText('SCORE').width;
+  }
+  text(ctx, fmt(run.score), rx, y0 + 28, { size: Math.max(20, F), align: 'right', weight: 800, family: FONT.num, color: '#fff', maxWidth: r.w - labelW - 6 });
   const hi = Math.max(world.game.meta?.highScores?.[0]?.score ?? 0, run.score);
   // 목숨: 하트(보조무기 탄약)와 헷갈리지 않도록 영웅 얼굴 아이콘 × 남은 목숨
   drawLifeIcon(ctx, lx + 8, y0 + 41 + ly, T ? 8.5 : 7.5, hero, p);
@@ -372,19 +395,27 @@ function drawScore(ctx, r, world, hero, p, run, T) {
   text(ctx, `${fmt(world.state.gold)} G`, rx, y0 + 64 + ly * 2, { size: s2, align: 'right', weight: 700, color: '#ffd84a', maxWidth: r.w - tw - 8 });
 }
 
-// ── 보스 체력바 (아래 칸 48 px / 위쪽 칸 36 px): 이름 왼쪽, 칭호 오른쪽 (칸이 360 px 보다 좁으면 칭호 숨김) ──
-function drawBossBar(ctx, r, b) {
+// ── 보스 체력바 (아래 칸 48 px / 위쪽 칸 36 px): 이름 왼쪽, 칭호 오른쪽 (칸이 360 px 보다 좁으면 칭호 숨김;
+//    터치는 칭호가 하한 크기로 제 몫(38 %)에 다 들어갈 때만 — 가로로 눌러 줄이지 않는다) ──
+const BT = { title: '', size: 0, w: 0 };   // 칭호 너비 기억 (매 프레임 재지 않게)
+function drawBossBar(ctx, r, b, L) {
   if (!b || r.w < 60) return;
-  const x = r.x, w = r.w, title = w >= 360 ? b.def.title : null;
+  const F = L?.textMin ?? 0, ts = Math.max(11, F);
+  const x = r.x, w = r.w;
+  let title = w >= 360 ? b.def.title : null;
+  if (title && F > 0) {
+    if (BT.title !== title || BT.size !== ts) { ctx.font = font(ts, 500); BT.title = title; BT.size = ts; BT.w = ctx.measureText(title).width; }
+    if (BT.w > w * 0.38) title = null;
+  }
   const ny = r.y + 15, by = r.y + r.h - 16;
-  text(ctx, b.def.name, x, ny, { size: 16, weight: 800, family: FONT.title, color: '#ffd0d0', maxWidth: title ? w * 0.6 : w });
-  if (title) text(ctx, title, x + w, ny, { size: 11, align: 'right', color: COLORS.dim, maxWidth: w * 0.38 });
+  text(ctx, b.def.name, x, ny, { size: Math.max(16, F), weight: 800, family: FONT.title, color: '#ffd0d0', maxWidth: title ? w * 0.6 : w });
+  if (title) text(ctx, title, x + w, ny, { size: ts, align: 'right', color: COLORS.dim, maxWidth: w * 0.38 });
   bar(ctx, x, by, w, 14, b.hp / b.stats.maxHp, { color: '#b0102a', ghost: b.hpGhost / b.stats.maxHp, edge: '#e8c872' });
   ctx.fillStyle = '#e8c872';
   for (const ph of b.def.phases || []) ctx.fillRect(x + w * ph - 1, by - 2, 2, 18);
 }
 
-// ── 배너 (알림 칸 안): 스테이지 제목은 피 글씨, STAGE CLEAR 는 금박 글씨, 나머지는 기존 글씨. 칸보다 길면 40 % 까지 줄인다 ──
+// ── 배너 (알림 칸 안): 스테이지 제목은 피 글씨, STAGE CLEAR 는 금박 글씨, 나머지는 기존 글씨. 칸보다 길면 75 % 까지 줄이고 말줄임 (fitText) ──
 let bandG = null, bandKey = '';
 function bandGradient(ctx, r) {
   const key = `${r.x}|${r.w}`;
@@ -396,17 +427,33 @@ function bandGradient(ctx, r) {
   }
   return bandG;
 }
-/** 칸 너비(maxW)에 맞춰 글자 크기를 줄여 그린다 (원래 크기의 40 % 까지) */
-function fitText(ctx, str, x, y, maxW, o) {
+/**
+ * 칸 너비(maxW)에 맞춰 글자 크기를 줄여 그린다: 원래 크기의 75 % 까지 (터치는 글자 하한 F 아래로는 줄이지 않는다),
+ * 그래도 넘치면 뒤를 말줄임(…)으로 자른다. 말줄임 결과는 (글자, 크기, 너비)마다 한 번만 계산한다 (배너는 몇 초 동안 매 프레임 그린다)
+ */
+const FIT = { str: '', size: 0, maxW: 0, font: '', out: '' };
+function fitText(ctx, str, x, y, maxW, o, F = 0) {
   ctx.font = font(o.size, o.weight, o.family);
   const w = ctx.measureText(str).width;
-  const size = w > maxW ? Math.max(o.size * 0.4, Math.floor(o.size * maxW / w)) : o.size;
-  text(ctx, str, x, y, size === o.size ? o : { ...o, size, maxWidth: maxW });
+  if (w <= maxW) { text(ctx, str, x, y, o); return; }
+  const size = Math.max(Math.ceil(o.size * 0.75), Math.min(o.size, F), Math.floor(o.size * maxW / w));
+  const f = font(size, o.weight, o.family);
+  if (FIT.str !== str || FIT.size !== size || FIT.maxW !== maxW || FIT.font !== f) {
+    ctx.font = f;
+    let s = str;
+    if (ctx.measureText(s).width > maxW) {
+      while (s.length > 1 && ctx.measureText(s + '…').width > maxW) s = s.slice(0, -1);
+      s = s.trimEnd() + '…';
+    }
+    FIT.str = str; FIT.size = size; FIT.maxW = maxW; FIT.font = f; FIT.out = s;
+  }
+  text(ctx, FIT.out, x, y, { ...o, size, maxWidth: maxW });
 }
 const STAGE_CARD = { size: 40, style: 'blood', drips: 0.6, t: 0 };
 const CLEAR_CARD = { size: 40, style: 'gold' };
-function drawBanner(ctx, r, world, bn) {
+function drawBanner(ctx, r, world, bn, L) {
   if (r.w < 40) return;
+  const F = L?.textMin ?? 0;
   if (bn._t0 == null) bn._t0 = bn.t; // 배너 객체는 남은 시간만 가지므로 처음 본 값을 적어 둔다 (등장 연출용)
   const age = bn._t0 - bn.t;
   const a = clamp(Math.min(bn.t * 2, age * 5 + 0.2, 1), 0, 1);
@@ -423,16 +470,17 @@ function drawBanner(ctx, r, world, bn) {
     const opts = stageCard ? STAGE_CARD : CLEAR_CARD;
     if (stageCard) STAGE_CARD.t = age;
     const tw = prewarmText(ctx, bn.text, opts);
-    const k = clamp(maxW / (tw || 1), 0.4, 1);
+    // 피 글씨는 말줄임 없이 줄이기만 한다 (40 %까지, 터치는 글자 하한 F px 아래로는 줄이지 않는다 — 스테이지 이름은 짧다)
+    const k = clamp(maxW / (tw || 1), Math.min(1, Math.max(0.4, F / opts.size)), 1);
     const ty = stageCard ? r.y + 56 : r.y + 40;
     if (stageCard) subY = r.y + 15;
     ctx.save(); ctx.translate(cx, ty); ctx.scale(k, k);
     bloodText(ctx, bn.text, 0, 0, opts);
     ctx.restore();
   } else {
-    fitText(ctx, bn.text, cx, r.y + (bn.big ? 36 : 34), maxW, { size: bn.big ? 38 : 30, align: 'center', weight: 800, family: bn.big ? FONT.title : FONT.logo, color: bn.color, ow: 5 });
+    fitText(ctx, bn.text, cx, r.y + (bn.big ? 36 : 34), maxW, { size: bn.big ? 38 : 30, align: 'center', weight: 800, family: bn.big ? FONT.title : FONT.logo, color: bn.color, ow: 5 }, F);
   }
-  if (bn.sub) fitText(ctx, bn.sub, cx, subY, maxW, { size: stageCard ? 13 : 14, align: 'center', weight: 600, color: '#e8dcc8' });
+  if (bn.sub) fitText(ctx, bn.sub, cx, subY, maxW, { size: Math.max(stageCard ? 13 : 14, F), align: 'center', weight: 600, color: '#e8dcc8' }, F);
   ctx.restore();
 }
 

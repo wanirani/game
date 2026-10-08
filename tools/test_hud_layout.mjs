@@ -20,6 +20,10 @@
 //     장면 B 는 연출 첫 프레임(콤보 숫자 튀기기·랭크 글자·이정표 박힘·알림 단어 2.2배 박힘)도 다시 잰다 (@pop: 빈 곳으로 넘치는 것은 정보).
 //     각성 연출(world.hudHidden) 중 drawHUD 가 동료 탭 사각형을 비우는지도 본다 (요청 198).
 //  4) 스크린샷: 장면 A/B + 영역 윤곽선 → --out 폴더
+//  5) 글자 크기 (벤치마크 3, platform §6.2 'HUD 글자는 터치에서 ≥ 11 CSS px'): 3) 의 부분 그리기 동안 fillText 를 가로채
+//     글꼴 px × 변환 배율 × cssScale 로 실제 화면 CSS px 를 잰다. 터치 보기에서 hud.js · companion_hud.js 가 그리는 부분
+//     (초상화·체력·하트·스킬·필살·동료·카드·점수·보스 바·배너)이 11 CSS px 미만이면 실패, 다른 파일이 그리는 부분(각성 게이지·준비 문구,
+//     콤보 열, 알림, 기믹 게이지, 토스트)은 정보로 적는다. 배치 행렬은 변형마다 그 캔버스 배율의 하한(textMin)으로 휴대폰 배치를 만든다.
 // 추가 조합(정보용이 아니라 실패로 센다): 휴대폰의 왼손 모드, touchScale 1.3, safeArea 'fit' + 인셋.
 import { chromium } from 'playwright-core';
 import { start } from './serve.mjs';
@@ -119,13 +123,14 @@ async function pageChecks({ view, INSETS }) {
   for (const v of variants) {
     const mv = M.modelView(view.w, view.h, v.inset, v.mode);
     const pad = !view.touch ? [] : (realPad.length && v.tag === 'plain' ? realPad : M.modelPadRects({ vw: mv.vw, cssW: view.w, cssH: view.h, canvas: mv.canvas, inset: v.inset, touchScale: v.touchScale, leftHanded: v.leftHanded }));
+    const textMin = view.touch ? Math.ceil(M.HUD_MIN_CSS / mv.cs - 1e-6) : 0;   // 이 변형의 캔버스 배율에서 터치 글자 하한
     for (const boss of [false, true]) {
       for (let meters = 0; meters <= 3; meters++) {
-        const L = M.hudLayout(null, mv.vw, 540, pad, { touch: view.touch, safe: mv.safe, boss, meters });
+        const L = M.hudLayout(null, mv.vw, 540, pad, { touch: view.touch, safe: mv.safe, boss, meters, textMin });
         check(`${view.id}/${v.tag}/boss${boss ? 1 : 0}/m${meters}`, L, { boss, meters, safe: mv.safe, vw: mv.vw, vh: 540, sizes: !v.touchScale });
         combos++;
         slots[v.tag] = L.bossSlot;
-        if (boss && meters === 3) notes.push(`${v.tag}: vw ${mv.vw} slot ${L.bossSlot} boss${f1(L.bossBar)} transient${f1(L.transient)} combo${f1(L.combo)} toast0${f1({ x: L.toast(0).l, y: L.toast(0).top, w: L.toast(0).w, h: 26 })} padLeft ${L.padLeft == null ? '-' : Math.round(L.padLeft)} padTop ${L.padTop == null ? '-' : Math.round(L.padTop)}`);
+        if (boss && meters === 3) notes.push(`${v.tag}: vw ${mv.vw} 글자 하한 ${L.textMin}${L.big ? ' (휴대폰 배치)' : ''} slot ${L.bossSlot} boss${f1(L.bossBar)} transient${f1(L.transient)} combo${f1(L.combo)} toast0${f1({ x: L.toast(0).l, y: L.toast(0).top, w: L.toast(0).w, h: 26 })} padLeft ${L.padLeft == null ? '-' : Math.round(L.padLeft)} padTop ${L.padTop == null ? '-' : Math.round(L.padTop)}`);
       }
     }
   }
@@ -281,6 +286,25 @@ async function widgetChecks({ tag, relaxFixed }) {
     try { return fn(); } finally { cs.hudInfo = h0; cs.callouts = c0; }
   };
   const part = (name) => () => H.drawHUDPart(c, w, vw, vh, name);
+  // 5) 글자 크기: 부분을 그리는 동안 fillText 를 가로채 CSS px 를 잰다 (캐시 캔버스에 굽는 글자는 굽는 배율이 1 일 때 논리 px 와 같다 →
+  //    먼저 배율 2 의 빈 캔버스에 HUD 를 한 번 그려 캐시(초상화·카드)를 무효로 만들어, 아래 측정에서 배율 1 로 다시 굽게 한다)
+  const OWN_TEXT = new Set(['portrait', 'vitals', 'hearts', 'skills', 'ult', 'companions', 'callouts', 'score', 'boss']);
+  const cssK = g.cssScale > 0 ? g.cssScale : 1;
+  const texts = {};
+  let curPart = null;
+  const P2D = CanvasRenderingContext2D.prototype, fill0 = P2D.fillText;
+  P2D.fillText = function (str, ...rest) {
+    if (curPart) {
+      const m = /(\d+(?:\.\d+)?)px/.exec(this.font);
+      const t = this.getTransform();
+      const css = m ? Number(m[1]) * Math.hypot(t.a, t.b) * cssK : NaN;
+      const a = (texts[curPart] ??= { min: Infinity, minStr: '', n: 0 });
+      a.n++;
+      if (css < a.min) { a.min = css; a.minStr = String(str).slice(0, 24); }
+    }
+    return fill0.call(this, str, ...rest);
+  };
+  { const pre = document.createElement('canvas'); pre.width = vw * 2; pre.height = vh * 2; const pc = pre.getContext('2d'); pc.setTransform(2, 0, 0, 2, 0, 0); H.drawHUD(pc, w, vw, vh); pre.width = pre.height = 1; }
   const PARTS = [
     ['portrait', part('portrait'), ['portrait']],
     ['vitals', part('vitals'), ['vitals']],
@@ -304,7 +328,9 @@ async function widgetChecks({ tag, relaxFixed }) {
     c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
     c.clearRect(0, 0, vw, vh);
     let ret;
-    try { ret = fn(); } catch (e) { fails.push(`${tag}/${name}: 그리다 오류 ${e.message}`); continue; }
+    curPart = peak ? null : name0;
+    try { ret = fn(); } catch (e) { curPart = null; fails.push(`${tag}/${name}: 그리다 오류 ${e.message}`); continue; }
+    curPart = null;
     const allow = allowKeys.map((k) => REG[k]).filter(Boolean);
     const foreign = Object.keys(REG).filter((k) => !allowKeys.includes(k)).map((k) => [k, REG[k]]);
     const d = c.getImageData(0, 0, vw, vh).data;
@@ -349,7 +375,16 @@ async function widgetChecks({ tag, relaxFixed }) {
     else if (maxSpill > SPILL_MAX) info.push(`${tag}/${name}: 잠깐 뜨는 그림이 제 칸 밖 빈 곳으로 ${parts[name].maxSpill}px (${spill}px, 다른 영역·패드와 겹침 없음)`);
     else if (spill) info.push(`${tag}/${name}: 제 칸 밖 ${spill}px (최대 ${parts[name].maxSpill}px, 빈 곳)`);
   } };
-  measure(PARTS, false);
+  try { measure(PARTS, false); } finally { P2D.fillText = fill0; }
+  // 글자 크기 판정 (터치만): 이 꾸러미(hud.js·companion_hud.js)가 그리는 부분은 실패, 나머지는 정보
+  const textSizes = {};
+  for (const k in texts) {
+    const a = texts[k], own = OWN_TEXT.has(k) || (k === 'transient' && w.banner);
+    textSizes[k] = Math.round(a.min * 10) / 10;
+    if (!T || !(a.min < 11 - 0.05)) continue;
+    const msg = `${tag}/${k}: 가장 작은 글자 ${a.min.toFixed(1)} CSS px ('${a.minStr}') < 11`;
+    if (own) fails.push(msg); else info.push(msg + ' (다른 파일 — 요청)');
+  }
   // 연출 첫 프레임: 콤보 숫자 1.35배 튀기기 + 랭크 글자 등장 + 이정표 2배 박힘, 알림 단어 2.2배 박힘 + 색수차 (장면 B 만)
   const st = FHD?.stateOf?.(w);
   if (st && w.style?.ann?.cur) {
@@ -368,8 +403,8 @@ async function widgetChecks({ tag, relaxFixed }) {
   if ((cs.hudRects?.length ?? 0) !== 0) fails.push(`${tag}/hudRects: 각성 연출(hudHidden) 중에도 탭 사각형 ${cs.hudRects.length}개가 남았다`);
   w.hudHidden = false;
   H.drawHUD(c, w, vw, vh);
-  const layout = { vw, touch: T, safeArea: g.settings.safeArea, bossSlot: L.bossSlot, pad: L.pad.length, companions: f1(L.companions), callouts: f1(L.callouts), combo: f1(L.combo), transient: f1(L.transient), toastRows: L.toastRows };
-  return { fails, info, parts, layout };
+  const layout = { vw, touch: T, textMin: L.textMin, big: L.big, safeArea: g.settings.safeArea, bossSlot: L.bossSlot, pad: L.pad.length, companions: f1(L.companions), callouts: f1(L.callouts), combo: f1(L.combo), transient: f1(L.transient), toastRows: L.toastRows };
+  return { fails, info, parts, layout, textSizes };
 }
 
 /** 스크린샷용 영역 윤곽선 (캔버스 위 DOM 오버레이) */
@@ -451,7 +486,7 @@ for (const view of VIEWS) {
   report.push({ view: view.id, ...res, widgets: wres, errs: [...new Set(errs)] });
   console.log(`${fails.length ? '✗' : '✓'} ${view.id}  vw ${res.vw}  pad ${res.padSource}  조합 ${res.combos}  위젯 검사 ${wres.length}  실제 보스 칸 ${res.liveSlot}${fails.length ? '\n    ' + fails.slice(0, 16).join('\n    ') + (fails.length > 16 ? `\n    … 외 ${fails.length - 16}건` : '') : ''}`);
   for (const n of res.notes ?? []) console.log('    · ' + n);
-  for (const r of wres) console.log(`    · 위젯 ${r.tag}: vw ${r.layout.vw} ${r.layout.safeArea} 보스 칸 ${r.layout.bossSlot} 패드 ${r.layout.pad} 동료${r.layout.companions} 카드${r.layout.callouts} 콤보${r.layout.combo} 알림${r.layout.transient} 토스트 ${r.layout.toastRows}줄`);
+  for (const r of wres) console.log(`    · 위젯 ${r.tag}: vw ${r.layout.vw} ${r.layout.safeArea} 글자 하한 ${r.layout.textMin}${r.layout.big ? ' 휴대폰 배치' : ''} 최소 CSS px {${Object.entries(r.textSizes ?? {}).map(([k, v]) => `${k} ${v}`).join(', ')}} 보스 칸 ${r.layout.bossSlot} 패드 ${r.layout.pad} 동료${r.layout.companions} 카드${r.layout.callouts} 콤보${r.layout.combo} 알림${r.layout.transient} 토스트 ${r.layout.toastRows}줄`);
   for (const n of res.info ?? []) console.log('    (정보) ' + n);
   for (const n of [...new Set(wres.flatMap((r) => r.info))]) console.log('    (정보) ' + n);
 }

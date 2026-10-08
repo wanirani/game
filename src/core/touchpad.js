@@ -1012,7 +1012,7 @@ function drawButton(c, L, id, b, pressed, alpha, p, run, w, tsec) {
     case 'ult': drawUlt(c, cx, cy, r, pressed, run, w, tsec); break;
     case 'swap': {
       const page = num(p?.skillPage, 0) + 1;
-      label(c, '⇄', cx, cy - r * 0.38, Math.max(10, r * 0.42), pressed, COL.gold);
+      label(c, '⇄', cx, cy - r * 0.38, Math.max(11, r * 0.42), pressed, COL.gold);
       label(c, `${page}/2`, cx, cy + r * 0.14, Math.max(12, r * 0.56), pressed, null, FONT.num);
       break;
     }
@@ -1056,7 +1056,7 @@ function drawSkill(c, id, cx, cy, r, pressed, p) {
     try { glyphFn(c, sk, cx, cy - r * 0.06, r * 1.4); } catch { /* 문양 실패 → 글자만 */ }
     c.restore();
   }
-  label(c, LABEL[id], cx, cy + r * 0.66, Math.max(10, r * 0.34), pressed, COL.gold, FONT.num);
+  label(c, LABEL[id], cx, cy + r * 0.66, Math.max(11, r * 0.34), pressed, COL.gold, FONT.num);
   if (cd > 0) cooldown(c, cx, cy, r, cd / Math.max(0.1, num(sk.cd, 3)), cd);
   else if (noMp) { // MP 부족: 푸른 막 + 'MP'
     c.save();
@@ -1072,7 +1072,7 @@ function drawSub(c, cx, cy, r, pressed, run) {
     if (num(run.hearts, 0) < num(sw.cost, 1)) c.globalAlpha *= 0.4;
     try { iconFn(c, sw.icon, cx, cy - r * 0.12, r * 1.05, null, { glow: false }); } catch { /* 아이콘 없음 */ }
     c.restore();
-    label(c, LABEL.sub, cx, cy + r * 0.62, Math.max(10, r * 0.34), pressed, COL.gold);
+    label(c, LABEL.sub, cx, cy + r * 0.62, Math.max(11, r * 0.34), pressed, COL.gold);
   } else label(c, LABEL.sub, cx, cy + 1, Math.max(12, r * 0.5), pressed);
 }
 function drawUlt(c, cx, cy, r, pressed, run, w, tsec) {
@@ -1104,7 +1104,7 @@ function drawUlt(c, cx, cy, r, pressed, run, w, tsec) {
     }
   }
   label(c, LABEL.ult, cx, cy + (aw?.ready ? -r * 0.12 : 1), Math.max(12, r * 0.5), pressed, full ? '#fff2c0' : null);
-  if (aw?.ready) label(c, '각성', cx, cy + r * 0.42, Math.max(10, r * 0.3), pressed, '#ff8090');
+  if (aw?.ready) label(c, '각성', cx, cy + r * 0.42, Math.max(11, r * 0.3), pressed, '#ff8090');
   // 길게 누르기 (각성): 바깥 고리가 시계 방향으로 찬다 (feel §6.1)
   const hk = clamp(num(aw?.holdK, 0), 0, 1);
   if (hk > 0) {

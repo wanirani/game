@@ -14,10 +14,14 @@
 //   touch, safe {l,r,t,b} (HUD 여백: safeArea 'full' 일 때만 game.safe), pad [패드 사각형 복사본; 숫자가 아니거나 크기 0 인 것은 뺀다],
 //   padLeft/padTop (오른쪽 패드 묶음 | null). 패드 쪽이 사각형을 제자리에서 고쳐도 다음 호출에서 알아채고 다시 계산한다
 //   터치: 상시 영역은 y 297 위에만 둔다 (TOUCH_FLOOR; 아래 보스 칸은 예외 — 태블릿 띠, 위쪽 칸이 240 px 보다 좁을 때)
+//   textMin    이 배치의 HUD 글자 하한 (논리 px; 터치 = ceil(11 CSS px / cssScale), 아니면 0 — platform §6.2, hudPx)
+//   big        휴대폰 배치 (터치이고 textMin ≥ 14): 글자가 커진 만큼 체력·하트·필살·동료·점수 칸을 키우고 왼쪽 묶음을 아래로 민다.
+//              rows = { vit: vitalsRows(F), ult: ultRows(F), buff } (hud.js 가 같은 줄 위치로 그린다)
+//   spBar      필살(SP) 막대 사각형 (각성 게이지 = spBar.y + 14 — feel_hud 가 SP 막대 위에 빛을 겹치는 계약)
 // pad 를 생략하면 터치 모드에서 touchpad.occupiedRects() 를 쓰고, 그것이 비어 있으면(PLAT-TOUCH 이전 스텁)
 // §1.4 기본 터치 배치를 본뜬 모형(modelPadRects)을 쓴다. 키보드·패드 모드에서는 패드가 없다.
-// opts (시험·도구용 덮어쓰기): { touch, safe, boss, meters }  — meters = 토스트가 비켜 줄 기믹 게이지 줄 수 (기본:
-//   world.gimmick.meterRows 가 숫자면 그 값, 아니면 3줄을 늘 비워 둔다)
+// opts (시험·도구용 덮어쓰기): { touch, safe, boss, meters, textMin }  — meters = 토스트가 비켜 줄 기믹 게이지 줄 수 (기본:
+//   world.gimmick.meterRows 가 숫자면 그 값, 아니면 3줄을 늘 비워 둔다), textMin = 글자 하한 (기본: hudTextMin(touch))
 // hudRegions(L, opts) → 겹침 검사용 목록 (tools/test_hud_layout.mjs, HUD-FINAL)
 // 주의 (순환 import): game.js 가 이 파일을 import 해도 되도록 모듈 최상위에서는 import 값에 접근하지 않는다.
 import { input } from '../core/input.js';
@@ -35,6 +39,35 @@ export const TOUCH_FLOOR = 296;  // 터치: 상시 영역의 아래 끝 한계 (
  */
 export const CMP_INK = Object.freeze({ l: 8, t: 8, r: 4 });
 const CMP_W = 128, CMP_H = 68;   // companion_hud 의 BASE_W × BASE_H (이 크기를 기준으로 줄여 그린다)
+
+// ── 터치 HUD 글자 하한 (platform §6.2, 벤치마크 3) ──
+// HUD 는 uiScale 장면이 아니라 논리 1 px = cssScale CSS px 이다 (휴대폰 ≈ 0.67–0.72). 터치에서는 전투 HUD 의 모든 글자를
+// 실제 화면 11 CSS px 이상으로 그린다 → 논리 px 하한 = ceil(11 / cssScale) (phone2 17, phone1 16, 태블릿 11, 큰 터치 화면 ≤ 9).
+export const HUD_MIN_CSS = 11;
+export const HUD_BIG_MIN = 14;   // 하한이 이 논리 px 이상이면 휴대폰 배치(L.big)를 쓴다
+const HUD_TEXT_MAX = 20;         // 하한의 상한 (캔버스가 아주 작아도 칸이 넘치지 않게; cssScale < 0.55 에서만 걸린다)
+/** 이 기기의 HUD 글자 하한 (논리 px). 터치가 아니면 0 */
+export function hudTextMin(touch = hudTouch(), g = game) {
+  if (!touch) return 0;
+  const cs = Number(g?.cssScale);
+  return Math.min(HUD_TEXT_MAX, Math.ceil(HUD_MIN_CSS / (cs > 0.05 ? cs : 1) - 1e-6));
+}
+/** HUD 글자 크기 n 에 하한을 적용한다 (feel_hud·토스트·기믹 게이지도 이것을 쓰면 같은 규칙이 된다) */
+export function hudPx(n, touch = hudTouch()) {
+  const m = hudTextMin(touch);
+  return n < m ? m : n;
+}
+/** 휴대폰 배치 체력 칸의 세로 줄 (칸 위 기준 상대 y): 이름 기준선 · HP 막대(숫자는 막대 안) · MP 막대 · EXP 막대 · 칸 높이 */
+export function vitalsRows(F) {
+  const name = Math.ceil(F * 0.82), hpTop = name + 4, hpH = F + 1, mpTop = hpTop + hpH + 3, mpH = 8, expTop = mpTop + mpH + 3;
+  return { name, hpTop, hpH, mpTop, mpH, expTop, expH: 3, h: expTop + 3 };
+}
+/** 필살 칸의 세로 줄: 휴대폰 배치는 라벨을 F px 로 (막대는 그 아래), 아니면 예전 위치 (라벨 기준선 +10, 막대 +16) */
+export function ultRows(F, big) {
+  if (!big) return { label: 10, barTop: 16, h: 28 };
+  const label = Math.ceil(F * 0.82), barTop = label + 4;
+  return { label, barTop, h: barTop + 11 };
+}
 
 const R = (x, y, w, h) => ({ x, y, w, h });
 const ZERO = Object.freeze({ l: 0, r: 0, t: 0, b: 0 });
@@ -175,24 +208,47 @@ function clipSpan(l, r, top, h, pad, sides) {
   return { l, r: Math.max(l, r) };
 }
 
-function build(vw, vh, T, S, pad, bossOn, nM) {
+function build(vw, vh, T, S, pad, bossOn, nM, F) {
   const l = S.l || 0, rr = S.r || 0, t = S.t || 0, b = S.b || 0;
   const right = vw - rr;
-  const L = { vw, vh, touch: T, safe: S, pad };
+  const big = !!T && F >= HUD_BIG_MIN;
+  const L = { vw, vh, touch: T, safe: S, pad, textMin: F, big };
   // 왼쪽 위 묶음 (초상화·체력·하트·스킬·필살·각성·준비 문구·동료)
+  // 터치: 스킬 슬롯 아래 '페이지 n/2' 줄이 없다 (패드 ⇄ 버튼이 같은 것을 보여 준다) → 스킬 칸 높이 40
   L.portrait = R(14 + l, 12 + t, 66, 66);
-  L.vitals = R(90 + l, 12 + t, 230, 50);
-  L.hearts = R(90 + l, 64 + t, 260, 26);
-  L.skills = R(14 + l, 92 + t, 88, 62);
-  L.ult = R(106 + l, 96 + t, 120, 28);
-  L.awGauge = R(106 + l, 126 + t, 120, 20);
-  L.ready = R(106 + l, 148 + t, 130, 22);
-  L.companions = R(244 + l, 92 + t, 128, 68);
-  // 동료 위젯 그리기 칸: 원점을 바깥 고리 폭만큼 안쪽으로, 크기는 남는 너비에 맞춘 배율(≈ 0.91)로 → 잉크 x 244–372, y 92–155
+  let ur;
+  if (!big) {
+    ur = ultRows(F, false);
+    L.vitals = R(90 + l, 12 + t, 230, 50);
+    L.hearts = R(90 + l, 64 + t, 260, 26);
+    L.skills = R(14 + l, 92 + t, 88, T ? 40 : 62);
+    L.ult = R(106 + l, 96 + t, 120, ur.h);
+    L.companions = R(244 + l, 92 + t, 128, 68);
+    L.rows = null;
+  } else {
+    // 휴대폰 배치: 글자 F px 가 들어가도록 체력 칸을 키우고(HP 숫자는 F+1 px 막대 안), 하트 줄·버프 칸을 늘리고,
+    // 그 아래 묶음(스킬·필살·각성·준비 문구·동료)을 하트 줄 밑으로 민다. 동료 위젯은 줄이지 않는다 (배율 1 → 글자도 F px 그대로)
+    const vit = vitalsRows(F), buff = Math.min(26, F + 6);
+    ur = ultRows(F, true);
+    L.vitals = R(90 + l, 10 + t, 260, vit.h);
+    L.hearts = R(90 + l, L.vitals.y + vit.h + 3, 290, buff + 4);
+    const y1 = L.hearts.y + L.hearts.h + 4;
+    L.skills = R(14 + l, y1, 88, 40);
+    L.ult = R(106 + l, y1, 120, ur.h);
+    L.companions = R(244 + l, y1, CMP_W + CMP_INK.l + CMP_INK.r, CMP_H + CMP_INK.t);
+    L.rows = { vit, ult: ur, buff };
+  }
+  // 필살 막대 · 각성 게이지 · 준비 문구 (feel_hud 계약: 각성 게이지 y = SP 막대 y + 14, 준비 문구 = 각성 게이지 y + 22)
+  L.spBar = R(L.ult.x, L.ult.y + ur.barTop, L.ult.w, 10);
+  L.awGauge = R(106 + l, L.spBar.y + 14, 120, 20);
+  L.ready = R(106 + l, L.awGauge.y + 22, 130, 22);
+  // 동료 위젯 그리기 칸: 원점을 바깥 고리 폭만큼 안쪽으로, 크기는 남는 너비에 맞춘 배율(≈ 0.91; 휴대폰 배치 1)로 → 잉크 x 244–372, y 92–155
   const cmpK = (L.companions.w - CMP_INK.l - CMP_INK.r) / CMP_W;
   L.companionsDraw = R(L.companions.x + CMP_INK.l, L.companions.y + CMP_INK.t, CMP_W * cmpK, CMP_H * cmpK);
-  // 오른쪽 위 점수 (고정 영역: 패드가 여기까지 올라오면 패드 배치(PLAT-TOUCH)가 크기를 줄여야 한다)
-  L.score = R(right - 164, 10 + t, 150, T ? 70 : 62);
+  // 오른쪽 위 점수 (고정 영역: 패드가 여기까지 올라오면 패드 배치(PLAT-TOUCH)가 크기를 줄여야 한다). 휴대폰 배치는 'SCORE' 글자를 빼고 20 px 넓힌다
+  L.score = big ? R(right - 184, 10 + t, 170, 70) : R(right - 164, 10 + t, 150, T ? 70 : 62);
+  // 동료 스킬 카드 줄의 기본 자리: 왼쪽 묶음 바로 아래 (휴대폰 배치는 묶음이 내려온 만큼)
+  const laneY = big ? Math.max(L.skills.y + L.skills.h, L.ready.y + L.ready.h, L.companions.y + L.companions.h) + 4 : 176 + t;
 
   // 패드 분석: 위쪽 가운데 시스템 버튼 / 버튼 묶음 (오른쪽, 왼손 모드면 왼쪽)
   const sides = padSides(pad, vw, vh);
@@ -213,13 +269,14 @@ function build(vw, vh, T, S, pad, bossOn, nM) {
   // 터치에서는 y 297 아래(엄지·떠 있는 스틱 자리)에 상시 영역을 두지 않는다 (§1.8 '터치 패드' 행) → 대체 칸은 y 236–296
   let combo = shrinkBottom(R(right - 320, 90 + t, 306, 0), pad, 200 + t);
   if (combo.h < 40) {
-    const alt = R(14 + l, 236 + t, 300, T ? Math.min(104, TOUCH_FLOOR - 236 - t) : 104);
+    const ay = Math.max(236 + t, laneY + 52 + HUD_GAP);
+    const alt = R(14 + l, ay, 300, T ? Math.min(104, TOUCH_FLOOR - ay) : 104);
     if (alt.h >= 40 && !hitsAny(alt, pad)) combo = alt;
   }
   L.combo = combo;
 
   // 동료 스킬 카드 줄 (왼손 모드로 왼쪽 아래에 패드가 있으면 오른쪽 콤보 열 아래로 옮긴다)
-  let lane = R(14 + l, 176 + t, 300, 52);
+  let lane = R(14 + l, laneY, 300, 52);
   if (hitsAny(lane, pad)) {
     const alt = R(right - 314, combo.y + combo.h + HUD_GAP, 300, 52);
     if (!hitsAny(alt, pad) && !overlaps(alt, combo) && (!T || alt.y + alt.h <= TOUCH_FLOOR)) lane = alt;
@@ -250,8 +307,8 @@ function build(vw, vh, T, S, pad, bossOn, nM) {
   L.meters = meters;
   L.meter = (i) => meters[i] ?? R(mcx - half, mTop + i * METER_ROW, half * 2, METER_H);
 
-  // 가운데 빈 칸 (토스트, 위쪽 보스 칸)
-  const gapL = 380 + l, gapR = vw - 328 - rr;
+  // 가운데 빈 칸 (토스트, 위쪽 보스 칸): 왼쪽은 동료 칸 오른쪽 + 8 (기본 배치 380, 휴대폰 배치는 동료 칸이 넓어진 만큼)
+  const gapL = Math.max(380 + l, L.companions.x + L.companions.w + HUD_GAP), gapR = vw - 328 - rr;
   L.gap = { l: gapL, r: gapR };
 
   // 알림·배너 칸: y 230–294, 좌우 322 여백, 패드에 닿으면 패드에서 8 px 떨어진 곳까지
@@ -331,11 +388,12 @@ export function hudLayout(world, vw, vh, pad, opts) {
   const bossOn = !!(opts?.boss ?? bossBarShown(world));
   const gm = world?.gimmick?.meterRows;
   const nM = clamp(Math.round(Number(opts?.meters ?? (Number.isFinite(gm) ? gm : 3))) || 0, 0, 3);
+  const F = T ? clamp(Math.round(Number(opts?.textMin ?? hudTextMin(true))) || 0, 0, HUD_TEXT_MAX) : 0;
   const a = memoArgs;
   if (memo && a[0] === vw && a[1] === vh && a[2] === T && a[3] === (S.l || 0) && a[4] === (S.r || 0) && a[5] === (S.t || 0) && a[6] === (S.b || 0)
-    && a[7] === bossOn && a[8] === nM && samePad(memoPad, pad)) return memo;
-  memo = build(vw, vh, T, S, cleanPad(pad), bossOn, nM);
-  a.length = 0; a.push(vw, vh, T, S.l || 0, S.r || 0, S.t || 0, S.b || 0, bossOn, nM);
+    && a[7] === bossOn && a[8] === nM && a[9] === F && samePad(memoPad, pad)) return memo;
+  memo = build(vw, vh, T, S, cleanPad(pad), bossOn, nM, F);
+  a.length = 0; a.push(vw, vh, T, S.l || 0, S.r || 0, S.t || 0, S.b || 0, bossOn, nM, F);
   memoPad.length = 0;
   for (const p of pad) memoPad.push(p?.x, p?.y, p?.w, p?.h);
   return memo;

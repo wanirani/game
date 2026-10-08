@@ -61,13 +61,15 @@ function lumaGrid(img) {
   return L;
 }
 const HERO_LUMA = 64;   // 게임 화면에서 잰 영웅 퍼펫의 평균 밝기 (visual_review --contrast: 대개 58–70)
-/** 원경 밝기 / 영웅 밝기 비 r → 어둠 원 세기 배율: 원경이 영웅보다 어둡거나 비슷하면 1, 20 % 넘게 밝으면 0 (누르면 같은 밝기로 만남).
- *  원경이 어두워도 줄이지 않는다 — 원경 그림만 보는 어림이라, 그 앞의 기믹 층·안개·장식이 밝은 곳(s16 휴대폰)을 놓치지 않게 */
-const haloWeight = (r) => (r <= 1 ? 1 : r < 1.2 ? (1.2 - r) / 0.2 : 0);
+/** 원경 밝기 / 영웅 밝기 비 r → 어둠 원 세기 배율: 원경이 영웅보다 어둡거나 비슷하면 1, 10 % 넘게 밝으면 0. 밝은 원경을 반쯤만
+ *  누르면 영웅과 같은 밝기로 만나 대비가 오히려 줄어서(측정) 중간 구간을 좁게 둔다. 원경이 어두워도 줄이지 않는다 — 원경 그림만 보는
+ *  어림이라, 그 앞의 배경 소품·기믹 층이 밝은 곳(s16 석상)을 놓치지 않게 */
+const haloWeight = (r) => (r <= 1 ? 1 : r < 1.1 ? (1.1 - r) / 0.1 : 0);
 
 // halo  = 주인공 분리 (2026-10 벤치마크 1): 주인공 몸 뒤 원경에만 까는 옅은 어둠 원의 중심 알파 (없거나 0 = 끔; 마을 town 은 끔).
 //          실제 세기는 주인공 뒤 원경 그림의 밝기로 줄인다 (haloWeight) — 원경이 주인공보다 한참 밝으면 이미 어두운 실루엣으로 읽히고,
-//          그때 누르면 둘이 같은 밝기에서 만나 오히려 묻힌다. 중간 밝기 원경(s02 묘지, s16 심해)이 가장 세다.
+//          그때 누르면 둘이 같은 밝기에서 만나 오히려 묻힌다. 중간 밝기 원경(s02 묘지, s16 심해)이 가장 세다. 끈 테마: town · alchemy ·
+//          mirror · sky · blight (원경이 거의 늘 영웅보다 밝거나 빛 번짐이 커서 눌러도 대비가 줄었다 — visual_review --contrast 로 잼).
 // haze/hazeK = 대기 원근 (벤치마크 9): 화면 위쪽 띠(30–45 % 높이)에만 차가운 대기색 [r,g,b] 을 최대 알파 hazeK 로 깔고 50 % 에서 0,
 //          56 % 아래(주인공이 서는 줄)는 예전 12 % 누름 그대로. 원경 누름과 같은 한 번 칠하기라 칠하기 수는 늘지 않는다. 1부 바깥 테마만.
 export const THEMES = {
@@ -77,7 +79,7 @@ export const THEMES = {
   hall:      { sky: ['#1a0808', '#2a0e0e', '#0a0404'], fog: '#c04030', mid: 'pillars', weather: 'dust', moon: null, halo: 0.4 },
   catacombs: { sky: ['#0a0c08', '#141a10', '#040504'], fog: '#8ad06a', mid: 'arches', weather: 'drips', moon: null, halo: 0.4 },
   library:   { sky: ['#140c08', '#241410', '#080404'], fog: '#b98cff', mid: 'shelves', weather: 'pages', moon: null, halo: 0.4 },
-  alchemy:   { sky: ['#081208', '#102010', '#040804'], fog: '#6aff6a', mid: 'pipes', weather: 'bubbles', moon: null, halo: 0.35 },
+  alchemy:   { sky: ['#081208', '#102010', '#040804'], fog: '#6aff6a', mid: 'pipes', weather: 'bubbles', moon: null },
   waterway:  { sky: ['#040c18', '#0a1a2a', '#02060c'], fog: '#4ab0ff', mid: 'arches', weather: 'drips', moon: null, halo: 0.45 },
   clock:     { sky: ['#0a0e1a', '#1a1a2a', '#05060a'], fog: '#e8c872', mid: 'gears', weather: 'dust', moon: '#f0e8d0', halo: 0.45 },
   spire:     { sky: ['#06101c', '#12243a', '#02060c'], fog: '#bfe8ff', mid: 'towers', weather: 'snow', moon: '#e0f0ff', halo: 0.3, haze: [150, 180, 215], hazeK: 0.12 },
@@ -87,12 +89,12 @@ export const THEMES = {
   arena:     { sky: ['#1a0a08', '#3a1a10', '#0a0404'], fog: '#ff8a3a', mid: 'pillars', weather: 'dust', moon: '#f0e0d0', halo: 0.35 },
   town:      { sky: ['#0c0814', '#1c1224', '#06040a'], fog: '#ffb070', mid: 'houses', weather: 'fireflies', moon: '#ffe0c0' },
   // ── 2부 (world2 §4.1): 새 날씨 spores(포자) · stars(별빛, 원경에 그림). 선택 필드 bubble = bubbles 날씨 거품 색 ──
-  mirror:    { sky: ['#0a0e18', '#1a2232', '#04060c'], fog: '#bfe8ff', mid: 'windows', weather: 'dust',    moon: '#e8f4ff', halo: 0.3 },
+  mirror:    { sky: ['#0a0e18', '#1a2232', '#04060c'], fog: '#bfe8ff', mid: 'windows', weather: 'dust',    moon: '#e8f4ff' },
   forge:     { sky: ['#1a0602', '#3a1204', '#0a0200'], fog: '#ff7a2a', mid: 'pipes',   weather: 'embers',  moon: null, halo: 0.4 },
   sunken:    { sky: ['#01101a', '#06283a', '#00060c'], fog: '#3ad0c8', mid: 'arches',  weather: 'bubbles', moon: null, bubble: 'rgba(150,236,255,0.4)', halo: 0.5 },
-  sky:       { sky: ['#1a2a44', '#4a6a8a', '#0a1422'], fog: '#dfe8ff', mid: 'towers',  weather: 'rain',    moon: '#fff4d0', halo: 0.25 },
+  sky:       { sky: ['#1a2a44', '#4a6a8a', '#0a1422'], fog: '#dfe8ff', mid: 'towers',  weather: 'rain',    moon: '#fff4d0' },
   nightmare: { sky: ['#0c0210', '#24062a', '#040008'], fog: '#c060ff', mid: 'pillars', weather: 'ash',     moon: '#f0e0ff', halo: 0.35 },
-  blight:    { sky: ['#0c1004', '#1e2a08', '#040602'], fog: '#b8e04a', mid: 'trees',   weather: 'spores',  moon: null, halo: 0.4 },
+  blight:    { sky: ['#0c1004', '#1e2a08', '#040602'], fog: '#b8e04a', mid: 'trees',   weather: 'spores',  moon: null },
   void:      { sky: ['#000000', '#08040e', '#000000'], fog: '#ffffff', mid: 'rocks',   weather: 'stars',   moon: null, halo: 0.4 },
 };
 // 날씨 입자 수 (world.fx.quality 로 줄여 그림). spores = dust 의 60%
@@ -141,7 +143,10 @@ export function createBackground(stage, map) {
     }
     bg.lightning = Math.max(0, bg.lightning - dt * 2.5);
     if (world.lighting) world.lighting.lightning = (bg.lightning > 0.5 ? bg.lightning : bg.lightning * 0.3) * bg.flashK;
-    if (theme.halo > 0) bg.haloA += (haloTarget(world) - bg.haloA) * Math.min(1, dt * 5);
+    if (theme.halo > 0) {   // 켜질 땐 천천히(0.2초), 꺼질 땐 빨리(0.08초) — 밝은 원경 앞으로 뛰어오를 때 반쯤 눌린 채 남지 않게
+      const tgt = haloTarget(world);
+      bg.haloA += (tgt - bg.haloA) * Math.min(1, dt * (tgt < bg.haloA ? 12 : 5));
+    }
   };
 
   /** 어둠 원의 목표 알파: 테마 세기 × 주인공 몸(위·가운데·아래 세 점) 뒤 원경 그림 밝기에 따른 배율 (haloWeight) */

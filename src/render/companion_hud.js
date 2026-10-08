@@ -2,6 +2,8 @@
 //
 //  drawCompanionHUD(ctx, world, o) → 탭 판정 사각형 배열 [{x,y,w,h, act:'mount'|'guard', slot?}] | null
 //      o = { x, y, touch, rect: L.companionsDraw, lane: L.callouts (300×52 카드 줄), layout: L }
+//        글자 하한 (터치, platform §6.2): layout.textMin (논리 px; 11 CSS px) — 위젯은 배율 k 로 줄여 그리므로 위젯 좌표에서는
+//        ceil(textMin / k) 이상으로 쓴다 (휴대폰 배치는 k = 1). 터치에서는 수호신마다 붙던 AUTO 알약(9 px) 대신 '수호' 라벨 옆에 AUTO 를 한 번 쓴다
 //        rect 는 그리기 상자: hud.js 가 L.companions (x 244–372, y 92–160) 를 hud_layout.js 의 CMP_INK {l:8, t:8, r:4} 만큼 안으로
 //        줄여 넘긴다 (116×61.6 at (252,100) → 위젯 배율 ≈0.906). 탈것 위젯의 받침 원판(r+3.5) · 탑승 금빛 고리 · 비행형 스태미나 호(r+7)
 //        · 수호신 받침 원판(r+3)은 이 상자 밖으로 왼쪽·위 최대 8px, 오른쪽 4px 번진다 — 그래도 L.companions 안이다 (MASTER_PLAN §1.8).
@@ -168,19 +170,29 @@ function arcRing(ctx, x, y, r, frac, color, lw) {
   ctx.beginPath(); ctx.arc(x, y, r, -HALF_PI, -HALF_PI + TAU * clamp(frac, 0, 1)); ctx.stroke();
   ctx.lineCap = 'butt';
 }
+let FW = 0;   // 이번 그리기의 위젯 좌표 글자 하한 (drawCompanionHUD 가 정한다; 0 = 없음)
 function secText(ctx, s, x, y, T) {
   const n = s >= 10 ? Math.ceil(s) : s >= 1 ? Math.ceil(s) : Math.ceil(s * 10) / 10;
-  text(ctx, String(n), x, y, { size: T ? 16 : 14, weight: 800, family: FONT.num, color: '#ffffff', align: 'center', ow: 3, baseline: 'middle' });
+  text(ctx, String(n), x, y, { size: Math.max(T ? 16 : 14, FW), weight: 800, family: FONT.num, color: '#ffffff', align: 'center', ow: 3, baseline: 'middle' });
 }
-/** 위젯 아래 라벨: 키보드·패드 = 기기 글리프, 터치 = 글자 */
-function label(ctx, action, touchStr, cx, y, T) {
+/**
+ * 위젯 아래 라벨: 키보드·패드 = 기기 글리프, 터치 = 글자. tag = 라벨 뒤에 금색으로 붙이는 꼬리 (터치의 AUTO) — 둘을 함께 가운데 맞추고
+ * [lo, hi] (위젯 좌표) 안에 넣는다 (수호신 1마리면 왼쪽 탈것 라벨과 겹치지 않게 왼쪽 끝을 수호신 위젯에 맞춘다)
+ */
+function label(ctx, action, touchStr, cx, y, T, tag = null, lo = -Infinity, hi = Infinity) {
   const mode = promptMode();
-  if (mode !== 'touch') {
-    const h = T ? 16 : 14;
-    const w = glyphWidth(action, h);
-    if (w > 0) { drawGlyph(ctx, action, cx - w / 2, y, h); return; }
-  }
-  text(ctx, touchStr, cx, y + (T ? 13 : 11), { size: T ? 13 : 11, weight: 800, color: '#efe4cf', align: 'center', ow: 3 });
+  const size = Math.max(T ? 13 : 11, FW);
+  let w = 0, glyph = false;
+  if (mode !== 'touch') { w = glyphWidth(action, T ? 16 : 14); glyph = w > 0; }
+  if (!glyph && !tag) { text(ctx, touchStr, cx, y + size, { size, weight: 800, color: '#efe4cf', align: 'center', ow: 3 }); return; }
+  if (!glyph) { ctx.font = font(size, 800, FONT.body); w = ctx.measureText(touchStr).width; }
+  let tw = 0;
+  if (tag) { ctx.font = font(size, 800, FONT.body); tw = ctx.measureText(tag).width; }
+  const gap = tag ? Math.round(size * 0.3) : 0, total = w + gap + tw;
+  const x0 = Math.max(lo, Math.min(cx - total / 2, hi - total));
+  if (glyph) drawGlyph(ctx, action, x0, y, T ? 16 : 14);
+  else text(ctx, touchStr, x0, y + size, { size, weight: 800, color: '#efe4cf', ow: 3 });
+  if (tag) text(ctx, tag, x0 + w + gap, y + size, { size, weight: 800, color: GOLD, ow: 3 });
 }
 
 function drawMountWidget(ctx, m, cx, cy, t, T) {
@@ -247,7 +259,7 @@ function drawGuardWidget(ctx, g, cx, cy, t, T, auto) {
     glowAt(ctx, cx, cy, r * (1.6 + k), GOLD, 0.7 * (1 - k));
   }
   if (!ready && g.cd > 0) secText(ctx, g.cd, cx, cy + 1, T);
-  if (auto) {
+  if (auto && !T) {   // 터치는 '수호 AUTO' 라벨로 (알약 글자가 하한보다 작다)
     const s = T ? 9 : 8, w = T ? 28 : 24, h = T ? 11 : 10, px = cx - w / 2, py = cy + r - h + 3;
     ctx.fillStyle = 'rgba(20,10,4,0.9)';
     ctx.beginPath();
@@ -272,7 +284,7 @@ export function drawCompanionHUD(ctx, world, o = {}) {
   try { info = cs.hudInfo?.() ?? null; } catch { info = null; }
   // 스킬 카드 줄은 위젯과 따로 (수호신을 막 해제해도 이미 뜬 카드는 끝까지)
   if (cs.callouts?.length) {
-    try { drawCallouts(ctx, world, cs.callouts, o.lane ?? { x: 14, y: 176, w: 300, h: 52 }, T); } catch (e) { warnOnce('callout', e); }
+    try { drawCallouts(ctx, world, cs.callouts, o.lane ?? { x: 14, y: 176, w: 300, h: 52 }, T, T ? Number(o.layout?.textMin) || 0 : 0); } catch (e) { warnOnce('callout', e); }
   }
   if (!info || info.town) return null;
   const m = info.mount, gs = info.guards ?? [];
@@ -280,6 +292,8 @@ export function drawCompanionHUD(ctx, world, o = {}) {
   const R0 = o.rect ?? { x: o.x ?? 244, y: o.y ?? 92, w: BASE_W, h: BASE_H };
   const k = Math.min(1, (R0.w || BASE_W) / BASE_W, (R0.h || BASE_H) / BASE_H);
   const x = R0.x, y = R0.y;
+  const tmin = T ? Number(o.layout?.textMin) || 0 : 0;
+  FW = tmin > 0 ? Math.ceil(tmin / k - 1e-6) : 0;
   RECTS.length = 0;
   ctx.save();
   try {
@@ -301,10 +315,13 @@ export function drawCompanionHUD(ctx, world, o = {}) {
     }
     if (n) {
       const lx = n > 1 ? (GUARD_DX[0] + GUARD_DX[1] + GUARD_R * 2) / 2 : GUARD_DX[0] + GUARD_R;
-      label(ctx, 'guard', '수호', lx, labelY, T);
+      let auto = false;
+      if (T) for (let i = 0; i < n; i++) if (gs[i].auto ?? info.auto) { auto = true; break; }
+      label(ctx, 'guard', '수호', lx, labelY, T, auto ? 'AUTO' : null, GUARD_DX[0] - 2, BASE_W + 2);
     }
   } catch (e) { warnOnce('widget', e); }
   ctx.restore();
+  FW = 0;
   // 터치: 공용 탭 등록부에도 올린다 — 가상 패드가 위젯 위(왼쪽 45 % 떠다니는 스틱 자리)에서 스틱을 만들지 않고
   // 탭을 캔버스로 넘기도록 (touchpad onCanvasUi). 주인 = 이 월드의 장면 (위에 다른 장면이 쌓이면 그 장면 것만 판정된다)
   // 돌려주는 판정 사각형은 등록부와 같은 여유(손가락 44 CSS px)만큼 넓힌 것 — 패드가 캔버스로 넘기는 영역(위젯 + 여유)과
@@ -369,10 +386,10 @@ function cardSlot(c, list) {
   c._cv = s.cv; c._cvKey = null;
   return s.cv;
 }
-function cardCanvas(c, w, h, k, T, list) {
+function cardCanvas(c, w, h, k, T, list, F = 0) {
   const d = companionDef(c.id);
   const port = !!portraitCrop(c.id);
-  const key = `${w}|${h}|${k}|${T ? 1 : 0}|${port ? 1 : 0}|${fontEpoch}`;
+  const key = `${w}|${h}|${k}|${T ? 1 : 0}|${port ? 1 : 0}|${fontEpoch}|${F}`;
   if (c._cv && c._cvKey === key) return c._cv;
   const pw = Math.max(1, Math.ceil(w * k)), ph = Math.max(1, Math.ceil(h * k));
   const cv = cardSlot(c, list);
@@ -410,30 +427,33 @@ function cardCanvas(c, w, h, k, T, list) {
   g.beginPath();
   if (g.roundRect) g.roundRect(px, py, ps, ps, 6); else g.rect(px, py, ps, ps);
   g.stroke();
-  // 이름 · 스킬 이름 · 외침
+  // 꼬리표 (공명 / AUTO) 너비를 먼저 잰다 — 스킬 이름이 그 자리를 비워 둔다
+  const tag = c.resonance ? '공명' : c.auto ? 'AUTO' : null;
+  const ts = Math.max(T ? 10 : 9, F);
+  let bw = 0;
+  if (tag) { g.font = font(ts, 800, FONT.body); bw = g.measureText(tag).width + 12; }
+  // 이름 · 스킬 이름 · 외침 (터치 글자 하한 F: 카드는 줄 칸에 1:1 로 붙는다)
   const tx = px + ps + 10, tw = w - tx - 10;
   const name = c.name || d?.name || '';
-  const nameSize = T ? 17 : 16;
+  const nameSize = Math.max(T ? 17 : 16, F);
   g.font = font(nameSize, 800, FONT.title);
-  const nw = g.measureText(name).width;
-  text(g, name, tx, 21, { size: nameSize, weight: 800, family: FONT.title, color: colHex, ow: 3 });
-  if (c.skill) text(g, '· ' + c.skill, tx + nw + 6, 21, { size: T ? 15 : 14, weight: 800, family: FONT.title, color: '#ffe7a0', ow: 3, maxWidth: Math.max(20, tw - nw - 6 - 34) });
+  const nw = Math.min(g.measureText(name).width, tw * 0.5);
+  text(g, name, tx, 21, { size: nameSize, weight: 800, family: FONT.title, color: colHex, ow: 3, maxWidth: tw * 0.5 });
+  if (c.skill) text(g, '· ' + c.skill, tx + nw + 6, 21, { size: Math.max(T ? 15 : 14, F), weight: 800, family: FONT.title, color: '#ffe7a0', ow: 3, maxWidth: Math.max(20, tw - nw - 6 - (tag ? bw + 4 : 34)) });
   const ln = c.line ? String(c.line) : '';
   if (ln) {
-    // 넘치면 먼저 글자를 11 px 까지 줄이고, 그래도 넘치면 말줄임
-    let size = T ? 14 : 13;
+    // 넘치면 먼저 글자를 11 px (터치는 하한 F) 까지 줄이고, 그래도 넘치면 말줄임
+    const min = Math.max(11, F);
+    let size = Math.max(T ? 14 : 13, F);
     g.font = font(size, 600, FONT.body);
-    while (size > 11 && g.measureText(ln).width > tw) { size--; g.font = font(size, 600, FONT.body); }
+    while (size > min && g.measureText(ln).width > tw) { size--; g.font = font(size, 600, FONT.body); }
     let s = ln;
     if (g.measureText(s).width > tw) { while (s.length > 1 && g.measureText(s + '…').width > tw) s = s.slice(0, -1); s += '…'; }
     text(g, s, tx, 42, { size, weight: 600, color: '#efe4cf', ow: 3 });
   }
-  // 꼬리표: 공명 / AUTO
-  const tag = c.resonance ? '공명' : c.auto ? 'AUTO' : null;
   if (tag) {
-    const ts = T ? 10 : 9;
     g.font = font(ts, 800, FONT.body);
-    const bw = g.measureText(tag).width + 12, bx = w - bw - 8, by = 5, bh = ts + 5;
+    const bx = w - bw - 8, by = 5, bh = ts + 5;
     g.fillStyle = c.resonance ? 'rgba(140,16,40,0.92)' : 'rgba(30,18,10,0.9)';
     g.beginPath();
     if (g.roundRect) g.roundRect(bx, by, bw, bh, bh / 2); else g.rect(bx, by, bw, bh);
@@ -446,7 +466,7 @@ function cardCanvas(c, w, h, k, T, list) {
   return cv;
 }
 
-function drawCallouts(ctx, world, list, lane, T) {
+function drawCallouts(ctx, world, list, lane, T, F = 0) {
   if (!lane || !(lane.w > 40) || !(lane.h > 20)) return;
   // 맨 앞 카드 = 아직 끝나지 않은 첫 카드
   let head = null, next = null;
@@ -473,7 +493,7 @@ function drawCallouts(ctx, world, list, lane, T) {
   }
   const W = lane.w, H = Math.min(lane.h, 60);
   const k = Math.max(1, Math.min(4, pxK(ctx)));
-  const cv = cardCanvas(head, W, H, Math.round(k * 4) / 4, T, list);
+  const cv = cardCanvas(head, W, H, Math.round(k * 4) / 4, T, list, F);
   // 들어옴 / 머묾 / 나감
   const rm = !!world?.game?.settings?.reduceMotion;
   let a = 1, dx = 0;
