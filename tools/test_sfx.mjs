@@ -460,7 +460,7 @@ if (!args['no-v2']) {
   else if (V2.index) {
     const ix = V2.index;
     for (const m of V2.missing) fail(`v2 파일 없음: ${m}`);
-    if (!only) {
+    {   // 용량·형식은 --only 와 상관없이 디스크에서 잰다
       if (shipped > SHIP_MAX) fail(`싣는 효과음 ${shipped} B > 예산 ${SHIP_MAX} B (기준 ${SHIP_BASE} + 0.6 MB)`);
       if (oggLeft.length) fail(`싣는 효과음에 ogg ${oggLeft.length}개 남음 (m4a 만): ${oggLeft.slice(0, 4).map((f) => path.basename(f)).join(' ')}`);
       if ((ix.formats || []).join() !== 'm4a' || (SM.index?.formats || []).join() !== 'm4a') fail(`index formats 가 m4a 만이 아님 (v2 ${ix.formats}, sfx ${SM.index?.formats})`);

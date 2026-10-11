@@ -46,6 +46,7 @@ if (opt('music')) {
 await page.goto(`http://localhost:${port}/__ab__.html`);
 const setup = await page.evaluate(async ({ SR, hasMusic }) => {
   const A = await import('/src/core/audio.js'), REC = await import('/src/core/audio_rec.js');
+  await import('/src/core/audio_companions.js');   // 동료·탈것 효과음 (gallop·wing_flap …) 도 게임처럼 등록
   const dc = new OfflineAudioContext(2, SR, SR);
   const rec = new REC.RecBank(); rec.attach(dc);
   const ix = await rec.sfxIndex(); await rec.loadSfx(Object.keys(ix.sfx));
@@ -129,10 +130,13 @@ if (opt('list')) {
     const of = V2IX.sfx[n]?.of;   // 몸 종류 변형: 예전 = 그 이름(enemy_die) 그대로, v2 = v2alt 로 변형 묶음
     const evts = ts.map((t) => ({ t, name: of || n, o: of ? { vol: 1, v2alt: n.slice(of.length + 1) } : { vol: 1 } }));
     const tail = LONG.has(n) ? 2.8 : 1.4;
-    const a = trim(await render(evts, span + tail, false)), b = trim(await render(evts, span + tail, true));
-    const row = { name: n, cur: +tCur.toFixed(2) };
+    const a = trim(await render(evts, span + tail, false)), b0 = trim(await render(evts, span + tail, true));
+    // 들려주는 A/B 는 쌍마다 귀에 같은 크기로 (K-가중 순간 라우드니스) — 더 커서 좋게 들리는 일 없게. 게임 안 차이(보정 전)는 row.lmV2 에 그대로 남긴다
+    const lmA = lufsM(a.L, a.R), lmB = lufsM(b0.L, b0.R), kB = opt('no-match') ? 1 : Math.pow(10, (lmA - lmB) / 20);
+    const b = kB === 1 ? b0 : { ...b0, L: Float32Array.from(b0.L, (v) => v * kB), R: Float32Array.from(b0.R, (v) => v * kB) };
+    const row = { name: n, cur: +tCur.toFixed(2), matchDb: +(20 * Math.log10(kB)).toFixed(1) };
     push(a); push(sil(GAP_IN)); row.v2 = +tCur.toFixed(2); push(b); push(sil(GAP_OUT));
-    row.lmCur = +lufsM(a.L, a.R).toFixed(1); row.lmV2 = +lufsM(b.L, b.R).toFixed(1); row.pkCur = +db(peakOf(a.L, a.R)).toFixed(1); row.pkV2 = +db(peakOf(b.L, b.R)).toFixed(1);
+    row.lmCur = +lmA.toFixed(1); row.lmV2 = +lmB.toFixed(1); row.pkCur = +db(peakOf(a.L, a.R)).toFixed(1); row.pkV2 = +db(peakOf(b.L, b.R)).toFixed(1);
     row.v2Starts = b.v2Starts; row.curStats = a.stats;
     rows.push(row);
     console.log(`${n.padEnd(11)} 지금 ${row.cur.toFixed(1).padStart(5)}s  v2 ${row.v2.toFixed(1).padStart(5)}s   LUFS-M 지금 ${row.lmCur} / v2 ${row.lmV2} (${row.lmV2 - row.lmCur >= 0 ? '+' : ''}${(row.lmV2 - row.lmCur).toFixed(1)} dB)   피크 ${row.pkCur} / ${row.pkV2} dBFS   v2 재생 ${b.v2Starts}`);

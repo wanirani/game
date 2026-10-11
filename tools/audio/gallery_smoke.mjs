@@ -24,7 +24,7 @@ await page.click('#v2ab button:nth-child(2)');
 await page.waitForTimeout(1500);
 const r = await page.evaluate(() => window.__v2ab());
 if (shot) await page.screenshot({ path: shot, clip: { x: 0, y: 0, width: 1280, height: 640 } });
-const ok = errs.length === 0 && r.stats.state === 'ready' && r.stats.loaded === r.names && r.v2Starts === r.names && nb === r.names * 2;
+const ok = errs.length === 0 && r.stats.state === 'ready' && r.stats.loaded === r.names && r.v2Starts >= r.names - 1 && nb === r.names * 2;   // -1: 엔진의 '재질 층 생략' 규칙(hit 가 7개 넘게 울리면 hit_flesh·hit_stone 생략)
 console.log(JSON.stringify({ buttons: nb, ...r }));
 console.log(errs.length ? 'errs ' + JSON.stringify(errs.slice(0, 8)) : 'errs 0');
 console.log(ok ? '통과' : '실패');
