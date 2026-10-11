@@ -25,6 +25,12 @@
 //  audio.prefetch(id) 다음 곡 미리 받기 · audio.setMusicSource(v) 엔진 바꾸기 · audio.recStats() 메모리·상태 (QA)
 //  audio.analyser(on) 음악 버스(duckG) 분석기 — 회랑 음악실 시각화, 소리 경로 그대로 [hook:gal]
 //  효과음 샘플: SFX 이름에 샘플이 있으면 샘플(+ 합성음 몫 s)으로 — assets/audio/sfx/index.json, 받기 전·실패 시 합성음만.
+//
+// 고급 효과음 v2 시범 (docs/specs/anime_motion_sfx.md §4·§5.1) — pilot.sfx2 (URL ?sfx=v2 또는 localStorage 'bn.sfx'='v2') 일 때만:
+//  assets/audio/sfx_v2/index.json 의 이름(타격 10종)은 녹음 층을 쌓아 만든 v2 샘플만 튼다 (합성음 층 없음, tools/audio/sfx_v2/build_sfx_v2.py).
+//  변형 3~5개 중 무작위 (바로 앞 변형은 피함) · 피치(정의 vary) + 음량 ±0.8 dB 흔들림 · 호출부가 o.x(월드 x)를 주면 화면 위치로 좌우 팬 ·
+//  장소(스테이지 theme)별 짧은 방 잔향 (생성 임펄스 하나를 공유하는 컨볼버, 품질 'low' 에서는 끔). 받기 전이면 지금 소리 그대로.
+//  스위치가 꺼져 있으면 V2Bank 를 만들지도 받지도 않는다 → 소리·노드·요청이 지금과 같다.
 import { TRACKS } from '../data/music.js';
 import { FEEL_SFX } from './sfx_feel.js';
 import { RecBank } from './audio_rec.js';
@@ -1070,6 +1076,120 @@ export function defineSfx(name, def, vol) {
   return true;
 }
 
+// ─────────────────────────────── 고급 효과음 v2 (시범, pilot.sfx2) ───────────────────────────────
+// index.json = { version:2, rate, formats:['m4a','ogg'], names:[…], sfx:{이름:{f:[id], g, rev?}}, files:{id:{dur, on, ch, lufs, peak, m4a, ogg}} }
+export const V2_DIR = 'audio/sfx_v2/';
+const V2_JIT = 0.09;                          // 음량 흔들림 ±9 % (≈ ±0.8 dB)
+// 장소별 방 잔향 (theme → 공간): 길이(초) · 초기 반사 수 · 고역 감쇠 · v2 소리마다 보내는 양
+const V2_ROOMS = {
+  open: { sec: 0.32, refl: 4, damp: 0.55, send: 0.07 },
+  hall: { sec: 0.62, refl: 9, damp: 0.42, send: 0.13 },
+  cave: { sec: 0.95, refl: 12, damp: 0.30, send: 0.17 },
+};
+const V2_SPACE = {
+  village: 'open', graveyard: 'open', sky: 'open', blight: 'open', spire: 'open',
+  catacombs: 'cave', waterway: 'cave', sunken: 'cave', abyss: 'cave', nightmare: 'cave', void: 'cave',
+}; // 나머지 theme (gate·hall·library·chapel·throne·mirror·forge·clock·alchemy·arena …) 는 'hall'
+const V2_SEND = { step_stone: 0.6, hurt: 0.8, ult_impact: 1.4, enemy_die: 1.2, clang: 1.2 }; // 방 잔향 송신 배율 (이름별)
+/** 짧은 방 임펄스 (스테레오, 좌우 다른 초기 반사 + 고역이 빨리 죽는 감쇠 노이즈) — 컨텍스트마다 공간별 한 번 */
+function makeRoomIR(c, room) {
+  const sr = c.sampleRate, n = Math.max(1, Math.floor(sr * room.sec)), b = c.createBuffer(2, n, sr);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = b.getChannelData(ch); let lp = 0;
+    for (let i = 0; i < n; i++) {
+      const x = i / n, k = room.damp * (1 - 0.7 * x);
+      lp += (R() * 2 - 1 - lp) * k;
+      d[i] = lp * Math.pow(1 - x, 2.2) * 0.5;
+    }
+    for (let r = 0; r < room.refl; r++) { const i = Math.floor(sr * (0.006 + R() * room.sec * 0.35)); if (i < n) d[i] += (R() * 2 - 1) * 0.6 * (1 - r / room.refl); }
+  }
+  return b;
+}
+function v2CodecOk(fmt) {
+  try {
+    const f = typeof window !== 'undefined' ? window.__BN_AUDIO_CODECS : null;
+    if (Array.isArray(f)) return f.includes(fmt);
+    const a = document.createElement('audio');
+    const t = fmt === 'm4a' ? 'audio/mp4; codecs="mp4a.40.2"' : fmt === 'ogg' ? 'audio/ogg; codecs="vorbis"' : '';
+    return !!(t && a.canPlayType && a.canPlayType(t));
+  } catch { return false; }
+}
+async function v2Bytes(rel, q = '') {
+  try {
+    if (assets.packSrc?.length) {
+      const u8 = await assets._bytes(rel);
+      if (u8) return u8.slice().buffer;
+      if (u8 === null || assets._packComplete()) return null;
+    }
+    if (typeof fetch !== 'function') return null;
+    const r = await fetch(`${ASSET_ROOT}${rel}${q}`, { credentials: 'same-origin' });
+    return r.ok ? await r.arrayBuffer() : null;
+  } catch { return null; }
+}
+/** v2 샘플 뱅크: attach(ctx) 에서 목록과 모든 이름(10종, 약 0.6 MB)을 받아 푼다. sample(name) → {bufs:[{buf,off}], g, rev?} | null */
+export class V2Bank {
+  constructor(root = V2_DIR) { this.root = root; this.ctx = null; this.ix = null; this.ixP = null; this.fmt = null; this.smp = new Map(); this.files = new Map(); this.bytes = 0; this.state = 'idle'; this.err = null; }
+  attach(ctx) {
+    this.ctx = ctx;
+    return (this.readyP = this.index().then((ix) => (ix ? this.load(ix.names || Object.keys(ix.sfx)) : null)));
+  }
+  index() {
+    if (this.ixP) return this.ixP;
+    this.state = 'loading';
+    this.ixP = v2Bytes(this.root + 'index.json').then((b) => {
+      let ix = null;
+      try { ix = b ? JSON.parse(new TextDecoder().decode(b)) : null; } catch { ix = null; }
+      if (!ix || typeof ix.sfx !== 'object' || typeof ix.files !== 'object') { this.state = 'off'; this.err = 'index'; return null; }
+      const fm = (Array.isArray(ix.formats) ? ix.formats : ['m4a']).filter((f) => v2CodecOk(f));
+      if (!fm.length) { this.state = 'off'; this.err = 'codec'; return null; }
+      this.fmt = fm; this.ix = ix;
+      return ix;
+    });
+    return this.ixP;
+  }
+  load(names) {
+    const ix = this.ix;
+    if (!ix || !this.ctx) return Promise.resolve();
+    const jobs = [];
+    for (const n of names) {
+      const d = Object.hasOwn(ix.sfx, n) ? ix.sfx[n] : null;
+      if (!d || this.smp.has(n) || !Array.isArray(d.f)) continue;
+      this.smp.set(n, undefined);   // 받는 중
+      jobs.push(Promise.all(d.f.map((fid) => this._file(fid))).then((bs) => {
+        const bufs = bs.filter(Boolean);
+        this.smp.set(n, bufs.length ? { bufs, g: Number(d.g) || 1, rev: d.rev, last: -1 } : null);
+      }));
+    }
+    return Promise.all(jobs).then(() => { this.state = 'ready'; });
+  }
+  _file(fid) {
+    if (this.files.has(fid)) return this.files.get(fid);
+    const f = this.ix.files[fid];
+    const p = (async () => {
+      if (!f) return null;
+      for (const fmt of this.fmt) {
+        const data = await v2Bytes(`${this.root}${fid}.${fmt}`, f[fmt] ? `?h=${f[fmt]}` : '');
+        if (!data) continue;
+        try {
+          const buf = await new Promise((res, rej) => { const q = this.ctx.decodeAudioData(data, res, rej); if (q && q.then) q.then(res, rej); });
+          const d = buf.getChannelData(0), m = Math.min(d.length, Math.ceil(buf.sampleRate * 0.25));
+          let i = 0; while (i < m && d[i] < 0.003 && d[i] > -0.003) i++;
+          const off = Math.max(0, Math.min(0.1, (i < m ? i : 0) / buf.sampleRate - (Number(f.on) || 0)));   // 디코더 앞 지연(프라이밍) 건너뛰기
+          this.bytes += buf.length * buf.numberOfChannels * 4;
+          return { buf, off };
+        } catch { /* 다른 형식으로 */ }
+      }
+      return null;
+    })();
+    this.files.set(fid, p);
+    return p;
+  }
+  /** 이 이름이 v2 이름인가 (받기 전이어도) */
+  has(name) { return !!this.ix && Object.hasOwn(this.ix.sfx, name); }
+  sample(name) { const m = this.smp.get(name); return m || null; }
+  stats() { let n = 0; for (const v of this.smp.values()) if (v) n++; return { state: this.state, err: this.err, fmt: this.fmt?.[0] ?? null, names: this.ix ? Object.keys(this.ix.sfx).length : 0, loaded: n, bytes: this.bytes }; }
+}
+
 // ─────────────────────────────── 엔진 ───────────────────────────────
 /** 한 AudioContext(실시간 또는 Offline) 위의 믹서·잔향·신스·시퀀서 */
 export class Engine {
@@ -1077,6 +1197,8 @@ export class Engine {
     const c = this.ctx = ctx;
     this.waves = {}; this.voices = 0; this.live = []; this.lastT = {}; this.lastV = {}; this.players = []; this.compiled = {}; this._curves = {};
     this.bank = null; // 효과음 샘플 공급자 (RecBank: sample(name) → {bufs, g, s, r} | null). 없으면 합성음만
+    this.v2 = null;   // 고급 효과음 v2 (V2Bank, pilot.sfx2 일 때만) — sample(name) → {bufs, g, rev?, last} | null. 없으면 지금 경로 그대로
+    this.v2Space = 'hall'; this.v2Quality = 'high'; this.room = null; this.roomSpace = null; this.v2Starts = 0;
     // 체감 효과음 예산: 최근 100ms 시작 시각 / 창당 상한 (품질별 10·8·6) / 통계 (starts 전체, feel 체감, dropped 예산 초과, skipped 레이어 생략)
     this.feelT = []; this.feelCap = FEEL_CAP.high; this.stats = { starts: 0, feel: 0, dropped: 0, skipped: 0 };
     const nb = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), nd = nb.getChannelData(0);
@@ -1183,18 +1305,42 @@ export class Engine {
     }
     if (same >= (def.max ?? 4) && oldest) { this.steal(oldest, now); act--; if (o2 === oldest) { o2 = null; for (const x of this.live) if (x.end > now && !x.stolen && (!o2 || x.st < o2.st)) o2 = x; } }
     if (act >= MAX_SFX && o2) this.steal(o2, now);
+    const v2 = this.v2 ? this.v2.sample(name) : null;   // [pilot.sfx2] v2 이름이면 녹음 층 샘플만 (합성음 없음)
     const out = c.createGain(); let node = out;
     if (o.pan && c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, o.pan)); out.connect(p); node = p; }
     node.connect(this.sfxG);
     let wet = null;
-    if (def.rev) { wet = c.createGain(); wet.gain.value = def.rev; node.connect(wet); wet.connect(this.sfxRev); }
+    const rev = v2 && v2.rev != null ? v2.rev : def.rev;
+    if (rev) { wet = c.createGain(); wet.gain.value = rev; node.connect(wet); wet.connect(this.sfxRev); }
     const S = { e: this, c, t: now + 0.004 + (o.delay || 0), p: pitch * (1 + (R() * 2 - 1) * (def.vary ?? 0.035)), v: vol * (def.vol ?? 1), out, end: 0 };
+    if (v2) {
+      // 변형 무작위 (바로 앞 변형은 피함) + 음량 ±0.8 dB · 피치는 위 S.p (정의 vary) · 장소별 방 잔향
+      const k = v2.bufs.length; let i = 0;
+      if (k > 1) { if (v2.last < 0) i = (R() * k) | 0; else { i = (R() * (k - 1)) | 0; if (i >= v2.last) i++; } }
+      v2.last = i;
+      const room = this._v2Room(node, name);
+      playSample(S, v2.bufs[i], vol * v2.g * (1 + (R() * 2 - 1) * V2_JIT), 1);
+      this.v2Starts++;
+      this.live.push({ name, st: now, end: now + (o.delay || 0) + S.end + 0.05, out, node, wet, room });
+      if (def.duck) this.duck(def.duck[0] * Math.min(1, vol), def.duck[1]);
+      return;
+    }
     // 녹음 샘플: 샘플 한 벌(무작위) + 합성음 몫 s (0 = 샘플만)
     const sm = this.bank ? this.bank.sample(name) : null;
     if (sm) { playSample(S, sm.bufs.length > 1 ? sm.bufs[(R() * sm.bufs.length) | 0] : sm.bufs[0], vol * sm.g, sm.r); S.v *= sm.s; }
     // 정의(외부 등록 포함)가 도중에 throw 해도 이미 만든 소리는 live 로 추적해 정리·스틸되게 한다
     try { if (!sm || sm.s > 0) def.fn(S, H); } finally { this.live.push({ name, st: now, end: now + (o.delay || 0) + S.end + 0.05, out, node, wet }); }
     if (def.duck) this.duck(def.duck[0] * Math.min(1, vol), def.duck[1]);
+  }
+  /** [pilot.sfx2] v2 소리를 장소별 방 잔향(공유 컨볼버 하나)으로 보낸다 → 송신 게인 | null (품질 'low' 는 끔) */
+  _v2Room(node, name) {
+    if (this.v2Quality === 'low' || !this.ctx.createConvolver) return null;
+    const c = this.ctx, sp = V2_ROOMS[this.v2Space] ? this.v2Space : 'hall', room = V2_ROOMS[sp];
+    if (!this.room) { this.room = c.createConvolver(); this.room.connect(this.sfxG); }
+    if (this.roomSpace !== sp) { this.room.buffer = makeRoomIR(c, room); this.roomSpace = sp; }
+    const g = c.createGain(); g.gain.value = room.send * (V2_SEND[name] ?? 1);
+    node.connect(g); g.connect(this.room);
+    return g;
   }
   steal(x, now) { x.stolen = true; x.out.gain.cancelScheduledValues(now); x.out.gain.setTargetAtTime(0, now, 0.012); x.end = Math.min(x.end, now + 0.06); }
   /** 이름이 prefix 로 시작하는, 아직 울리는 효과음 수 */
@@ -1214,7 +1360,7 @@ export class Engine {
     for (let i = 0; i < this.live.length; i++) {
       const x = this.live[i];
       if (x.end > now - 0.3) this.live[j++] = x;
-      else { x.node.disconnect(); if (x.node !== x.out) x.out.disconnect(); if (x.wet) x.wet.disconnect(); }
+      else { x.node.disconnect(); if (x.node !== x.out) x.out.disconnect(); if (x.wet) x.wet.disconnect(); if (x.room) x.room.disconnect(); }
     }
     this.live.length = j;
   }
@@ -1354,6 +1500,7 @@ export { INST, SFX };
 class AudioSystem {
   constructor() {
     this.ctx = null; this.eng = null; this.musicVol = 0.6; this.sfxVol = 0.8;
+    this.v2 = null; // [pilot.sfx2] V2Bank (unlock 에서 스위치가 켜져 있을 때만)
     this.want = null; this.player = null; this.hidden = false; this.timer = 0;
     // 녹음 음원: rec = 뱅크, pend = 풀리기를 기다리는 곡 {id, at, fade, cut(이전 곡을 내렸는가)}, _src = setMusicSource 로 정한 값 (없으면 설정)
     this.rec = new RecBank(); this.pend = null; this._src = null; this._trimT = 0;
@@ -1375,6 +1522,7 @@ class AudioSystem {
         this.eng = new Engine(this.ctx);
         this.eng.setVolumes(this.musicVol, this.sfxVol);
         this.eng.bank = this.rec; this.rec.attach(this.ctx); // 효과음 샘플 core 묶음 받기 시작
+        if (pilot.sfx2) { this.v2 = new V2Bank(); this.eng.v2 = this.v2; this.v2.attach(this.ctx); } // [pilot.sfx2] 고급 효과음 v2 (10종) 받기
         if (this.recorded) this.rec.index();
         // iOS 사파리 잠금 해제용 무음 버퍼
         const b = this.ctx.createBuffer(1, 1, 22050), s = this.ctx.createBufferSource(); s.buffer = b; s.connect(this.ctx.destination); s.start(0);
@@ -1426,8 +1574,22 @@ class AudioSystem {
   sfx(name, opts) {
     if (!this.eng || this.ctx.state !== 'running') return;
     this.eng.feelCap = FEEL_CAP[this.quality] ?? FEEL_CAP.high;
+    if (this.v2 && this.v2.has(name)) opts = this._v2Opts(opts);   // [pilot.sfx2]
     try { this.eng.sfx(name, opts || E0); } catch { /* 효과음 실패는 무시 */ }
   }
+  /** [pilot.sfx2] 장소(스테이지 theme)·품질을 엔진에 알리고, 호출부가 o.x(월드 x)를 주면 화면 위치로 좌우 팬 (가장자리 ±0.6) */
+  _v2Opts(opts) {
+    const g = typeof window !== 'undefined' ? window.__game : null, w = g?.world;
+    this.eng.v2Space = V2_SPACE[w?.stage?.theme] || 'hall';
+    this.eng.v2Quality = this.quality;
+    const x = opts?.x;
+    if (x == null || opts.pan != null || !w?.camera) return opts;
+    const cam = w.camera, z = cam._zoom || 1, half = (cam.w || 960) / (2 * z), cx = cam.x + half;
+    if (!Number.isFinite(x) || !Number.isFinite(cx) || half <= 0) return opts;
+    return { ...opts, pan: Math.max(-1, Math.min(1, (x - cx) / half)) * 0.6 };
+  }
+  /** [pilot.sfx2] v2 뱅크 상태 (QA): {on, state, fmt, names, loaded, bytes, starts} */
+  v2Stats() { return this.v2 ? { on: true, ...this.v2.stats(), starts: this.eng?.v2Starts ?? 0 } : { on: false }; }
   /** 체감 효과음 예산용 품질: setQuality 로 고정하지 않으면 월드 파티클 품질(fx.quality) → 설정값 순으로 따른다 */
   get quality() {
     if (this._quality) return this._quality;

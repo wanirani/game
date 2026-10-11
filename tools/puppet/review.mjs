@@ -1,5 +1,5 @@
 // 퍼펫 QA 검사대 구동: tools/puppet/review.html 에 셀 목록(spec)을 보내 PNG 와 구멍/이음선 분석을 받는다.
-// node tools/puppet/review.mjs <plan.json|preset> <outDir> [--sheet cols] [--only-flagged]
+// node tools/puppet/review.mjs <plan.json|preset> <outDir> [--sheet cols] [--only-flagged] [--anime (애니풍 시범 원화)]
 //  preset: atk:<cls>:<wt>  (그 무기의 모든 기술 × 5프레임) · anims:<cls> (모든 비공격 동작 연속 프레임) · all (7직업 × 6무기 × 모든 기술, 구멍 통계만)
 //  결과: <outDir>/NNN_<label>.png, <outDir>/report.json (셀별 holes/seam/ms), 페이지 오류 출력
 import { chromium } from 'playwright-core';
@@ -44,8 +44,18 @@ const errs = [];
 page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message + ' ' + (e.stack || '').split('\n').slice(1, 3).join(' | ')));
 page.on('console', (m) => { if (m.type() === 'error') errs.push('CONSOLE ' + m.text().slice(0, 300)); });
 page.on('response', (r) => { if (r.status() >= 400) errs.push('HTTP ' + r.status() + ' ' + r.url()); });
-await page.goto(`http://localhost:${port}/tools/puppet/review.html`);
+// --anime: 애니풍 시범 원화(assets/puppets_anime, pilot.anime)로 그린다 — 주소에 ?anime=1. 목록·리그를 받을 때까지 한 번 그려 보고 기다린다
+const ANIME = !!opt('anime', false);
+await page.goto(`http://localhost:${port}/tools/puppet/review.html${ANIME ? '?anime=1' : ''}`);
 await page.waitForFunction('window.__ready', null, { timeout: 30000 });
+if (ANIME && plan.length) {
+  for (let k = 0; k < 60; k++) {
+    await page.evaluate((s) => window.__api.render({ ...s, noPng: true, noHoles: true }), plan[0]);
+    const ok = await page.evaluate(async () => { const m = await import('/src/render/hero_puppet.js'); return Object.entries(m.puppetStatus()).some(([k2, v]) => k2.endsWith('@anime') && v.state === 1); });
+    if (ok) break;
+    await page.waitForTimeout(250);
+  }
+}
 const report = [];
 let i = 0;
 for (const s of plan) {

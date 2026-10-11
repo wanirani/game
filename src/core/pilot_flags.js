@@ -1,14 +1,14 @@
-// 시범 기능 스위치 (docs/specs/anime_motion_sfx.md §5.1) — 끄면 지금 그대로.
-//  anime: 애니풍 영웅 (URL ?anime=1 또는 localStorage 'bn.anime' = '1')
-//  sfx2 : 고급 효과음 v2 (URL ?sfx=v2 또는 localStorage 'bn.sfx' = 'v2')
-function read() {
-  let q = null, ls = null;
-  try { q = new URLSearchParams(location.search); } catch { q = null; }
-  try { ls = localStorage; } catch { ls = null; }
-  const get = (k) => { try { return ls ? ls.getItem(k) : null; } catch { return null; } };
-  let anime = false, sfx2 = false;
-  try { anime = q?.get('anime') === '1' || get('bn.anime') === '1'; } catch { anime = false; }
-  try { sfx2 = q?.get('sfx') === 'v2' || get('bn.sfx') === 'v2'; } catch { sfx2 = false; }
-  return { anime, sfx2 };
+// 시범 플래그 (docs/specs/anime_motion_sfx.md §5.1) — 둘 다 꺼져 있으면 게임은 지금과 똑같이 보이고 들린다.
+//   anime: 애니풍 퍼펫·메시 변형·16방향 회전  ← 주소 ?anime=1 또는 localStorage 'bn.anime' = '1'
+//   sfx2 : 고급 효과음 v2                      ← 주소 ?sfx=v2  또는 localStorage 'bn.sfx'  = 'v2'
+// 모듈을 불러올 때 한 번만 읽는다 (바꾸면 새로 고침). Node·사생활 보호 모드처럼 location/localStorage 가 없거나 막혀 있으면 꺼짐.
+function qs(name) {
+  try { return new URLSearchParams(location.search).get(name); } catch { return null; }
 }
-export const pilot = read();
+function ls(key) {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+export const pilot = {
+  anime: qs('anime') === '1' || ls('bn.anime') === '1',
+  sfx2: qs('sfx') === 'v2' || ls('bn.sfx') === 'v2',
+};

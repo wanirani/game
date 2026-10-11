@@ -36,7 +36,7 @@ ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
 SR = 48000          # 작업 rate
 OUT_RATE = 44100    # 내보내기 rate (assets/audio/sfx 와 같음)
-TARGET = -16.0      # LUFS-M (최대 순간 라우드니스)
+TARGET = -16.0      # 사건 라우드니스 LUFS (lufs_ev: 소리가 울리는 구간의 K-가중 평균 — 짧은 타격음은 400 ms 창 LUFS-M 이 길이에 따라 크게 달라서)
 CEIL = -1.0         # dBTP
 LREF = -20.0        # 층 기준 크기 (사건 라우드니스)
 
@@ -317,7 +317,8 @@ def limiter(y, ceil_db):
     return y * (out if y.ndim == 1 else out[:, None]), 20 * np.log10(out.min() + 1e-12)
 
 
-def build_var(src, rec, v):
+def build_var(src, rec, v, ceil=CEIL):
+    """변형 v 를 48 kHz 로 만든다 → (소리, 리미터 최대 감쇠 dB). ceil: 트루 피크 상한 (인코딩 뒤 피크가 넘으면 main 이 낮춰 다시 부른다)"""
     spec = rec['var'](v)
     ch = rec['ch']
     parts = []
@@ -345,15 +346,15 @@ def build_var(src, rec, v):
     # 라우드니스 → 리미터
     mix *= 10 ** ((TARGET - lufs_ev(mix)) / 20)
     red = 0.0
-    if true_peak(mix) > CEIL:
-        lim, red = limiter(mix, CEIL - 0.1)
+    if true_peak(mix) > ceil:
+        lim, red = limiter(mix, ceil - 0.1)
         if red < -4.0:                         # 너무 눌러야 하면 목표를 낮춰 순간음을 지킨다
             mix *= 10 ** ((red + 4.0) / 20)
-            lim, red = limiter(mix, CEIL - 0.1)
+            lim, red = limiter(mix, ceil - 0.1)
         mix = lim
     tp = true_peak(mix)
-    if tp > CEIL - 0.05:                       # 리미터는 샘플 피크 기준이라 트루 피크가 남으면 그만큼 내린다
-        mix *= 10 ** ((CEIL - 0.1 - tp) / 20)
+    if tp > ceil - 0.05:                       # 리미터는 샘플 피크 기준이라 트루 피크가 남으면 그만큼 내린다
+        mix *= 10 ** ((ceil - 0.1 - tp) / 20)
     # 꼬리 정리
     env = np.abs(mix if mix.ndim == 1 else mix.max(1))
     thr = env.max() * 10 ** (-60 / 20)
@@ -382,6 +383,13 @@ def encode(y, base, ch):
         run(['ffmpeg', '-v', 'error', '-y', '-i', wav, '-c:a', 'libvorbis', '-q:a', '4', '-map_metadata', '-1', str(base) + '.ogg'])
     finally:
         os.unlink(wav)
+
+
+def decoded_peak(path, ch):
+    """인코딩한 파일을 다시 풀어 잰 샘플 피크 (dBFS) — 손실 압축은 피크를 0.1~0.3 dB 올린다"""
+    raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', str(path), '-f', 'f32le', '-ac', str(ch), 'pipe:1'], capture_output=True, check=True).stdout
+    x = np.frombuffer(raw, dtype=np.float32)
+    return 20 * np.log10(max(1e-9, float(np.abs(x).max()) if x.size else 1e-9))
 
 
 def h8(p):
@@ -437,26 +445,34 @@ def main():
     sfx = dict(old.get('sfx', {})) if a.only else {}
     if a.wav:
         Path(a.wav).mkdir(parents=True, exist_ok=True)
-    print('name         var  dur    LUFS-ev LUFS-M  dBTP   lim')
+    print('name         var  dur    LUFS-ev LUFS-M  dBTP   dec-pk  lim')
     for name in names:
         rec = RECIPES[name]
         ids = []
         for v in range(rec['n']):
-            y, red = build_var(src, rec, v)
             fid = f'{name}_{v + 1}'
             ids.append(fid)
+            ceil = CEIL
+            for _ in range(5):                     # 인코딩(AAC·Vorbis)을 다시 푼 피크가 CEIL 을 넘으면 리미터 상한을 그만큼 낮춰 다시 만든다 (순간음만 눌림)
+                y, red = build_var(src, rec, v, ceil)
+                yo = to_out(y)
+                encode(yo, out / fid, rec['ch'])
+                dpk = max(decoded_peak(out / f'{fid}.{ext}', rec['ch']) for ext in ('m4a', 'ogg'))
+                if dpk <= CEIL:
+                    break
+                ceil -= dpk - CEIL + 0.15
             if a.wav:
                 run(['ffmpeg', '-v', 'error', '-y', '-f', 'f32le', '-ar', str(SR), '-ac', str(rec['ch']), '-i', 'pipe:0', '-c:a', 'pcm_s16le',
                      str(Path(a.wav) / f'{fid}.wav')], np.clip(y, -1, 1).astype(np.float32).tobytes())
+            if dpk > CEIL:
+                sys.exit(f'{fid}: 인코딩 뒤 피크 {dpk:.2f} dBFS > {CEIL} — 레시피를 고쳐야 한다')
             lu, lm, tp = lufs_ev(y), lufs_m(y), true_peak(y)
-            yo = to_out(y)
-            encode(yo, out / fid, rec['ch'])
             env = np.abs(yo if yo.ndim == 1 else yo.max(1))
             on = float(np.argmax(env > 10 ** (-40 / 20) * env.max())) / OUT_RATE
-            files[fid] = {'dur': round(len(yo) / OUT_RATE, 4), 'on': round(on, 4), 'ch': rec['ch'], 'lufs': round(lu, 1), 'lufs_m': round(lm, 1), 'peak': round(tp, 2),
+            files[fid] = {'dur': round(len(yo) / OUT_RATE, 4), 'on': round(on, 4), 'ch': rec['ch'], 'lufs': round(lu, 1), 'lufs_m': round(lm, 1), 'peak': round(tp, 2), 'dpk': round(dpk, 2),
                           'm4a': h8(out / f'{fid}.m4a'), 'ogg': h8(out / f'{fid}.ogg'),
                           'bytes': (out / f'{fid}.m4a').stat().st_size + (out / f'{fid}.ogg').stat().st_size}
-            print(f'{name:12s} {v + 1:>3}  {len(y) / SR:5.2f}  {lu:6.1f}  {lm:6.1f}  {tp:5.1f}  {red:5.1f}')
+            print(f'{name:12s} {v + 1:>3}  {len(y) / SR:5.2f}  {lu:6.1f}  {lm:6.1f}  {tp:5.1f}  {dpk:5.1f}  {red:5.1f}')
         e = {'f': ids, 'g': old.get('sfx', {}).get(name, {}).get('g', 1.0) if (a.keep_gains or a.only) else 1.0}
         if name in REV:
             e['rev'] = REV[name]
