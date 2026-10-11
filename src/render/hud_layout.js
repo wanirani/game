@@ -489,7 +489,8 @@ function buildFold(vw, vh, T, S, pad, bossOn, nM, F, k) {
   // 알림·배너: 화면 가운데 조금 위 (콤보 열·원호와 겹치지 않게)
   // 콤보 열·동료 카드 줄 아래 가운데 (넓게) — 패드에 닿으면 그만큼 줄인다
   const ty = Math.round(Math.max(bty + 36 + TOAST_ROW + 8, L.combo.y + L.combo.h + HUD_GAP, L.callouts.y + L.callouts.h + HUD_GAP));
-  const ts = clipSpan(12 + l, right - 12, ty, 64, pad, sides);
+  const padX = L.arc ? [...pad, L.arc] : pad, sidesX = L.arc ? [...sides, 1] : sides;   // 데스크톱 원호 칸도 패드처럼 피한다
+  const ts = clipSpan(12 + l, right - 12, ty, 64, padX, sidesX);
   const tw = Math.min(560, ts.r - ts.l);
   L.transient = R(Math.round((ts.l + ts.r - tw) / 2), ty, tw, 64);
   let top0 = n ? meters[n - 1].y + METER_H + 4 : mTop;

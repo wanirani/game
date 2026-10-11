@@ -6,7 +6,7 @@
   --src : Kenney 팩을 푼 폴더 (impact-sounds/ rpg-audio/ interface-sounds/ sci-fi-sounds/, 각자 Audio/ 와 License.txt)
           받기: https://kenney.nl/assets/{impact-sounds,rpg-audio,interface-sounds,sci-fi-sounds} (CC0 1.0)
   하는 일: 파일마다 ffmpeg 로 모노 → 앞뒤 무음 자르기 → 끝 8 ms 페이드 → 피크 -1 dBFS → 44.1 kHz
-           → .m4a (AAC-LC 80 kbps) + .ogg (Vorbis q4) 두 형식 (헤드리스 Chromium·일부 리눅스 브라우저는 AAC 를 풀지 못하고,
+           → .m4a (AAC-LC 80 kbps) 만 (음악과 같음; 예전에는 .ogg 도 — 2차 롤아웃에서 뺐다. 헤드리스 Chromium·일부 리눅스 브라우저는 AAC 를 풀지 못하고,
            옛 사파리는 Vorbis 를 풀지 못한다 → audio.js 가 canPlayType 으로 고르고, 풀기에 실패하면 다른 형식을 시도한다).
            index.json = { version, rate, formats, core:[먼저 받을 이름], sfx:{이름:{f:[파일 id], g, s, r?}}, files:{id:{dur, on, m4a, ogg}} }
              g = 샘플 음량 (호출 vol 에 곱한다), s = 합성음 몫 (0 = 샘플만, 0.6 = 합성음을 0.6배로 겹침), r = 재생 속도 배율
@@ -126,9 +126,19 @@ def encode(y, out_base):
         if p.returncode != 0:
             sys.exit('wav 쓰기 실패: ' + p.stderr.decode(errors='replace')[-400:])
         run(['ffmpeg', '-v', 'error', '-y', '-i', wav, '-c:a', 'aac', '-b:a', '80k', '-movflags', '+faststart', '-map_metadata', '-1', str(out_base) + '.m4a'])
-        run(['ffmpeg', '-v', 'error', '-y', '-i', wav, '-c:a', 'libvorbis', '-q:a', '4', '-map_metadata', '-1', str(out_base) + '.ogg'])
     finally:
         os.unlink(wav)
+
+
+def _v2_names():
+    try:
+        ix = json.loads((ROOT / 'assets/audio/sfx_v2/index.json').read_text(encoding='utf-8'))
+        return {d.get('of') or n for n, d in ix['sfx'].items()}
+    except (OSError, ValueError, KeyError):
+        return set()
+
+
+V2_NAMES = _v2_names()
 
 
 def file_id(src):
@@ -142,8 +152,11 @@ def main():
     ap.add_argument('--src', default='/tmp/claude-0/audio_rt')
     ap.add_argument('--out', default=str(ROOT / 'assets/audio/sfx'))
     ap.add_argument('--keep-gains', action='store_true')
+    ap.add_argument('--prune', action='store_true', help='다시 만들지 않고 v2 이름·ogg 만 뺀다')
     a = ap.parse_args()
     src, out = Path(a.src), Path(a.out)
+    if a.prune:
+        return prune(out)
     for p in PACKS:
         lic = (src / p / 'License.txt')
         if not lic.is_file() or 'CC0' not in lic.read_text(encoding='utf-8', errors='replace'):
@@ -154,6 +167,8 @@ def main():
         old = json.loads((out / 'index.json').read_text(encoding='utf-8')).get('sfx', {})
     files, sfx = {}, {}
     for name, (srcs, s, r) in MAP.items():
+        if name in V2_NAMES:                     # 고급 효과음 v2 가 맡은 이름은 싣지 않는다 (v2 는 합성음·옛 샘플 없이 녹음 층만)
+            continue
         ids = []
         for sp in srcs:
             fid = file_id(sp)
@@ -162,23 +177,40 @@ def main():
                 continue
             y, on = tidy(decode(src / sp.split('/')[0] / 'Audio' / (sp.split('/')[1] + '.ogg')))
             encode(y, out / fid)
-            files[fid] = {'dur': round(len(y) / RATE, 4), 'on': round(on, 4), 'm4a': (out / f'{fid}.m4a').stat().st_size,
-                          'ogg': (out / f'{fid}.ogg').stat().st_size, 'src': f'kenney/{sp}.ogg'}
+            files[fid] = {'dur': round(len(y) / RATE, 4), 'on': round(on, 4), 'm4a': (out / f'{fid}.m4a').stat().st_size, 'src': f'kenney/{sp}.ogg'}
         e = {'f': ids, 'g': old.get(name, {}).get('g', 1.0), 's': s}
         if r != 1:
             e['r'] = r
         sfx[name] = e
     # 쓰지 않는 옛 파일 정리
-    keep = {f'{fid}.{ext}' for fid in files for ext in ('m4a', 'ogg')} | {'index.json', 'LICENSE-kenney.txt'}
+    keep = {f'{fid}.m4a' for fid in files} | {'index.json', 'LICENSE-kenney.txt'}
     for p in out.iterdir():
         if p.is_file() and p.name not in keep:
             p.unlink()
     lic = '\n\n'.join(f'── kenney.nl/assets/{p} ──\n' + (src / p / 'License.txt').read_text(encoding='utf-8', errors='replace').strip() for p in PACKS)
     (out / 'LICENSE-kenney.txt').write_text('블러드 녹턴 효과음 샘플 출처 — Kenney (www.kenney.nl), CC0 1.0 (퍼블릭 도메인). 원본 팩의 License.txt 사본:\n\n' + lic + '\n', encoding='utf-8')
-    idx = {'version': 1, 'rate': RATE, 'formats': ['m4a', 'ogg'], 'core': [n for n in CORE if n in sfx], 'sfx': sfx, 'files': files}
+    idx = {'version': 1, 'rate': RATE, 'formats': ['m4a'], 'core': [n for n in CORE if n in sfx], 'sfx': sfx, 'files': files}
     (out / 'index.json').write_text(json.dumps(idx, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
-    tot = {ext: sum(f[ext] for f in files.values()) for ext in ('m4a', 'ogg')}
-    print(f'효과음 {len(sfx)}종 · 파일 {len(files)}개 · m4a {tot["m4a"] / 1024:.0f} KB · ogg {tot["ogg"] / 1024:.0f} KB → {out}')
+    print(f'효과음 {len(sfx)}종 · 파일 {len(files)}개 · m4a {sum(f["m4a"] for f in files.values()) / 1024:.0f} KB → {out}')
+
+
+def prune(out):
+    """지금 뱅크에서 v2 가 맡은 이름을 빼고(파일도), ogg 를 지운다 — 원본 소재 없이 (--prune)"""
+    ip = out / 'index.json'
+    ix = json.loads(ip.read_text(encoding='utf-8'))
+    gone = sorted(n for n in ix['sfx'] if n in V2_NAMES)
+    for n in gone:
+        del ix['sfx'][n]
+    used = {fid for d in ix['sfx'].values() for fid in d['f']}
+    ix['files'] = {k: {kk: vv for kk, vv in v.items() if kk != 'ogg'} for k, v in ix['files'].items() if k in used}
+    ix['core'] = [n for n in ix.get('core', []) if n in ix['sfx']]
+    ix['formats'] = ['m4a']
+    keep = {f'{fid}.m4a' for fid in ix['files']} | {'index.json', 'LICENSE-kenney.txt'}
+    removed = [p.name for p in out.iterdir() if p.is_file() and p.name not in keep]
+    for name in removed:
+        (out / name).unlink()
+    ip.write_text(json.dumps(ix, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
+    print(f'prune: 이름 {len(gone)}개 뺌 ({", ".join(gone)}) · 파일 {len(removed)}개 지움 · 남은 이름 {len(ix["sfx"])} · 파일 {len(ix["files"])}')
 
 
 if __name__ == '__main__':

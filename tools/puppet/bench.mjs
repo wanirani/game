@@ -1,5 +1,6 @@
 // 영웅 그리기 시간 벤치마크: 채색 퍼펫 vs 벡터 인형 (같은 자세·같은 변환·역광 패스 포함)
-// node tools/puppet/bench.mjs [--n 400] [--scale 2] [--cls kael_hunter]
+// node tools/puppet/bench.mjs [--n 400] [--scale 2] [--cls kael_hunter] [--q high|medium|low (world.qualityNow)] [--modes puppet,vector]
+//   world.player = 그리는 영웅 (조종 중인 영웅 경로: 메시 관절·잔상 — heroes.md)
 // 게임 화면과 같은 조건: 1920×1080 캔버스, 논리→장치 배율 2 (1280×720 @ DPR 1.5), HERO_DRAW_SCALE, world 전달(역광 테두리 켬)
 import { chromium } from 'playwright-core';
 import { start } from '../serve.mjs';
@@ -13,7 +14,7 @@ const errs = [];
 page.on('pageerror', (e) => errs.push(e.message));
 await page.goto(`http://localhost:${port}/tools/gallery_hero.html?sec=none`);
 await page.waitForFunction('window.__ready', null, { timeout: 60000 });
-const res = await page.evaluate(async ({ N, SC, cls }) => {
+const res = await page.evaluate(async ({ N, SC, cls, Q, MODES }) => {
   const H = await import('/src/render/hero.js');
   const { CHARACTERS } = await import('/src/data/characters.js');
   const { classChain } = await import('/src/data/classes.js');
@@ -23,7 +24,7 @@ const res = await page.evaluate(async ({ N, SC, cls }) => {
   const look = structuredClone(CHARACTERS.kael.look);
   for (const c of classChain(cls)) Object.assign(look, structuredClone(c.look || {}));
   look.weapon = { type: 'whip', style: 3, level: 7, rarity: 2 };
-  const world = { time: 0 };
+  const world = { time: 0, qualityNow: () => Q, player: null };
   const mk = () => ({ look, ch: CHARACTERS.kael, facing: 1, anim: 'idle', animT: 0, move: null, moveT: 0, vx: 0, vy: 0, onGround: true, rig: {}, t: 0, stats: { reach: 0 }, charging: 0, muzzleT: 0, cx: 480, bottom: 400 });
   // 퍼펫 로드 대기
   H.preloadPuppet('kael', cls);
@@ -35,10 +36,10 @@ const res = await page.evaluate(async ({ N, SC, cls }) => {
     jump: (p, t) => { p.anim = 'jump'; p.onGround = false; p.vy = -400; },
   };
   const out = {};
-  for (const mode of ['puppet', 'vector']) {
+  for (const mode of MODES) {
     H.setPuppetEnabled(mode === 'puppet');
     for (const [name, f] of Object.entries(cases)) {
-      const p = mk();
+      const p = mk(); world.player = p;
       for (let i = 0; i < 40; i++) { f(p, i / 60); p.t = i / 60; ctx.setTransform(SC, 0, 0, SC, 0, 0); H.drawHero(ctx, p, world, {}); }
       const ts = [];
       for (let i = 0; i < N; i++) {
@@ -52,7 +53,7 @@ const res = await page.evaluate(async ({ N, SC, cls }) => {
   }
   H.setPuppetEnabled(true);
   return out;
-}, { N: Number(opt('n', 300)), SC: Number(opt('scale', 2)), cls: opt('cls', 'kael_hunter') });
+}, { N: Number(opt('n', 300)), SC: Number(opt('scale', 2)), cls: opt('cls', 'kael_hunter'), Q: opt('q', 'high'), MODES: String(opt('modes', 'puppet,vector')).split(',') });
 console.table(res);
 if (errs.length) console.log('ERRORS', errs);
 await browser.close(); srv.close();

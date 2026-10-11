@@ -1024,7 +1024,7 @@ export function drawLayers(c, E, K, P, W, tt) {
   MOT = !!E.rig && G.fx && !G.tint && !G.lowq;   // 살아 있는 퍼펫(잔상·스냅샷 아님) + 보통·높음 화질
   MESH = !!E.rig && !G.tint && !G.lowq && G.main && !!R.mo;   // 메시 관절: 조종 중인 영웅만 (파티·NPC·메뉴·잔상은 판)
   let T0M = null;
-  if (MOT) { motionBegin(c, E, P, s, ST, tt); T0M = c.getTransform(); AE_MV = ST.mv || null; }
+  if (MOT) { motionBegin(c, E, P, s, ST, tt); if (ST.coil || R.opts.chains) T0M = c.getTransform(); AE_MV = ST.mv || null; }
   if (R.opts.cape !== false) drawCapePup(c, E, K, s);   // NPC 원화에 이미 자락·숄이 그려진 경우 runtime.cape=false (카밀라: look.cape 데이터와 겹침)
   if (MOT) rigChains(c, E, K, s, T0M);
   if (K.scarf?.long && H.drawScarfTail) H.drawScarfTail(s, K, E);

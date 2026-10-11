@@ -1,6 +1,7 @@
 // Virtual touch pad suite — platform.md §11 WP-2 (acceptance 1–6), §5.2–5.5; MASTER_PLAN §1.4 touch layout (P-20, P-31).
 //
-//   node tools/qa/platform_touch.mjs [--only layout,slide,multi,stick,cooldown,band,editor] [--vp phone1,phone2,tablet] [--strict]
+//   node tools/qa/platform_touch.mjs [--only layout,slide,multi,stick,cooldown,band,editor,fold] [--vp phone1,phone2,tablet,fold_open] [--strict]
+//   fold (hud_mobile §3): fold_open → 폴드 배치(스킬 원호·아이콘 줄), HUD 탭 자리(빠른 칸 0 → 보조무기, 미니맵 → 큰 지도), 편집기 저장은 'fold:<id>'
 //   node tools/qa/platform_touch.mjs --layout      # only the layout matrix: 10 buttons incl. mount/guard at size classes S/M/L
 //                                                  # and touchScale 0.8 / 1 / 1.3: gaps ≥ 12 px, ≥ 44 CSS px, inside the safe rect
 // Button positions come from the canvas pad API (touchpad.buttons({all}) in CSS px; see lib/touch.mjs). Until PLAT-TOUCH
@@ -15,7 +16,7 @@ import { prepPlayer } from './lib/play.mjs';
 
 const args = parseArgs();
 if (args.layout) { args.only = args.only || ['layout', 'matrix']; args.tag = 'layout'; }
-else if (!args.only) args.only = ['layout', 'slide', 'multi', 'stick', 'cooldown', 'band', 'editor']; // the matrix runs with --layout
+else if (!args.only) args.only = ['layout', 'slide', 'multi', 'stick', 'cooldown', 'band', 'editor', 'fold']; // the matrix runs with --layout
 const suite = new Suite('platform_touch', args);
 const env = await openEnv();
 const PKG = 'PLAT-TOUCH';
@@ -50,7 +51,7 @@ function judgeLayout(L, W, H, insets, expect) {
 try {
   // ── 1. layout at the default settings with notch insets (phone1, phone2, tablet) ─────────────────
   await suite.group('layout', async () => {
-    for (const vp of suite.vps(['phone1', 'phone2', 'tablet'])) {
+    for (const vp of suite.vps(['phone1', 'phone2', 'tablet', 'fold_open'])) {
       const { s, W, H } = await touchStage(vp, { insets: NOTCH_INSETS });
       const L = await padLayout(s.page, { all: true });
       await suite.check({ id: `layout.${vp}`, group: 'layout', issue: 'P-20', gate: PKG, title: '10 buttons + Ⅱ/가방: ≥ 44 CSS px, gaps ≥ 12 px, inside the safe rect (47/47/0/21)', session: s }, async () => judgeLayout(L, W, H, NOTCH_INSETS, [...PAD_BUTTON_IDS, 'pause', 'bag']));
@@ -164,7 +165,8 @@ try {
 
   // ── 5. tablet 4:3: canvas top-aligned, the main buttons sit in the bottom band ────────────────────
   await suite.group('band', async () => {
-    const { s } = await touchStage('tablet');
+    // hud_mobile §2: 4:3 는 이제 세로 확장 시야로 화면을 채운다 → 띠는 '화면 배치: 휴대폰'(settings.hud.preset 'wide') 에서만 생긴다
+    const { s } = await touchStage('tablet', { settings: { hud: { preset: 'wide', scale: 1 } } });
     const box = await canvasBox(s.page);
     const L = await padLayout(s.page);
     const main = ['attack', 'jump', 'dash'].map((id) => L.buttons[id]).filter(Boolean);
@@ -199,6 +201,25 @@ try {
       detail: opened !== true ? `editor did not open (${opened}; needs #tpad)` : `attack ${A0 ? `${A0.cx.toFixed(0)},${A0.cy.toFixed(0)}` : '?'} → saved ${fmt(saved)} → after reload ${after ? `${after.cx.toFixed(0)},${after.cy.toFixed(0)}` : 'n/a'}`,
     }));
     await suite.errors({ id: 'editor.errors', group: 'editor' }, s);
+    await s.close();
+  }, env);
+  // ── 7. fold preset (hud_mobile §3): 원호 배치, HUD 탭 자리, 탑승 버튼 늘 표시 ─────────────────────────────
+  await suite.group('fold', async () => {
+    const { s, t, W, H } = await touchStage('fold_open');
+    const info = await s.eval(async () => { const tp = (await import('/src/core/touchpad.js')).touchpad; const L = await import('/src/render/hud_layout.js'); const g = window.__game; const hl = L.hudLayout(g.world, g.viewW, g.viewH); return { preset: hl.preset, li: tp.layoutInfo(), quick: hl.quick?.[0] ?? null, mm: hl.minimap ?? null, vw: g.viewW, vh: g.viewH }; });
+    const L = await padLayout(s.page);
+    const A = L.buttons.attack, need = ['attack', 'jump', 'dash', 'sub', 'skill1', 'skill2', 'ult', 'swap', 'mount', 'guard'];
+    const miss = need.filter((id) => !L.buttons[id]);
+    const arcOk = !!A && A.cx > W * 0.75 && A.cy > H * 0.7 && ['skill1', 'skill2', 'ult', 'sub'].every((id) => L.buttons[id] && Math.hypot(L.buttons[id].cx - A.cx, L.buttons[id].cy - A.cy) < 200);
+    await suite.check({ id: 'fold.layout', group: 'fold', gate: PKG, title: 'fold_open: fold preset, attack bottom-right, sub/skills/ult on an arc around it, mount+guard always shown', session: s }, async () => ({ pass: info.preset === 'fold' && !miss.length && arcOk, detail: `preset ${info.preset} view ${info.vw}×${info.vh}; missing ${fmt(miss)}; attack ${A ? `${A.cx.toFixed(0)},${A.cy.toFixed(0)}` : '?'} [${L.source}]` }));
+    // HUD 탭 자리: 빠른 칸 0 → 'sub' 누름, 미니맵 → 큰 지도 열고 닫기
+    const box = await canvasBox(s.page);
+    const toCss = (r) => [box.x + ((r.x + r.w / 2) * box.w) / info.vw, box.y + ((r.y + r.h / 2) * box.h) / info.vh];
+    let sub = null, map1 = null, map2 = null;
+    if (info.quick) { const [x, y] = toCss(info.quick); await t.down(61, x, y); await s.wait(90); sub = await s.eval(() => window.__game.input.down('sub')); await t.up(61); await s.wait(120); }
+    if (info.mm) { const [x, y] = toCss(info.mm); await t.tap(x, y, 50); await s.wait(200); map1 = await s.eval(() => !!window.__game.hudMapBig); await t.tap(W * 0.5, H * 0.5, 50); await s.wait(200); map2 = await s.eval(() => !!window.__game.hudMapBig); }
+    await suite.check({ id: 'fold.hudtaps', group: 'fold', gate: PKG, title: 'fold: quick slot 0 presses sub; minimap tap opens the big map, a tap anywhere closes it', session: s }, async () => ({ pass: sub === true && map1 === true && map2 === false, detail: `sub ${sub}; big map after tap ${map1}, after 2nd tap ${map2}` }));
+    await suite.errors({ id: 'fold.errors', group: 'fold' }, s);
     await s.close();
   }, env);
 } catch (e) {
