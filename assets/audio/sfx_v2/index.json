@@ -143,7 +143,7 @@
     "ult_impact_2",
     "ult_impact_3"
    ],
-   "g": 2.88
+   "g": 2.719
   },
   "step_stone": {
    "f": [
@@ -529,8 +529,8 @@
     "wing_flap_3",
     "wing_flap_4"
    ],
-   "g": 0.444,
-   "ref": -28.24
+   "g": 0.341,
+   "ref": -27.56
   },
   "footstep": {
    "f": [
@@ -541,8 +541,8 @@
     "step_stone_5"
    ],
    "g": 0.172,
-   "alias": "step_stone",
-   "ref": -34.67
+   "ref": -35.71,
+   "alias": "step_stone"
   }
  },
  "files": {
@@ -2585,45 +2585,45 @@
    "dur": 0.22,
    "on": 0.0002,
    "ch": 1,
-   "lufs": -17.6,
-   "lufs_m": -22.5,
-   "peak": -1.6,
-   "dpk": -1.07,
-   "m4a": "ac479b1a",
-   "bytes": 3365
+   "lufs": -16.8,
+   "lufs_m": -21.7,
+   "peak": -2.13,
+   "dpk": -1.08,
+   "m4a": "c40af459",
+   "bytes": 3487
   },
   "wing_flap_2": {
    "dur": 0.22,
    "on": 0.0004,
    "ch": 1,
-   "lufs": -21.1,
-   "lufs_m": -24.7,
-   "peak": -1.59,
-   "dpk": -1.72,
-   "m4a": "f608aa1c",
-   "bytes": 3557
+   "lufs": -19,
+   "lufs_m": -22.4,
+   "peak": -1.45,
+   "dpk": -1.6,
+   "m4a": "f2f69bcb",
+   "bytes": 3501
   },
   "wing_flap_3": {
    "dur": 0.22,
-   "on": 0.0001,
+   "on": 0.0002,
    "ch": 1,
    "lufs": -16,
-   "lufs_m": -22,
-   "peak": -1.36,
-   "dpk": -1.34,
-   "m4a": "1a5ac428",
-   "bytes": 3511
+   "lufs_m": -19,
+   "peak": -3.26,
+   "dpk": -3.67,
+   "m4a": "f672f5cd",
+   "bytes": 3549
   },
   "wing_flap_4": {
    "dur": 0.22,
-   "on": 0.0003,
+   "on": 0.0001,
    "ch": 1,
-   "lufs": -24.1,
-   "lufs_m": -27.8,
-   "peak": -1.6,
-   "dpk": -1.6,
-   "m4a": "faff2c13",
-   "bytes": 3543
+   "lufs": -18.7,
+   "lufs_m": -22.7,
+   "peak": -3.1,
+   "dpk": -1.37,
+   "m4a": "ae5f6ddb",
+   "bytes": 3584
   }
  }
 }

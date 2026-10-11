@@ -373,7 +373,8 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
 
 // ── 결과 판정 ──
 if (res.cmpErr) fail('audio_companions.js import 오류: ' + res.cmpErr);
-if (res.unknownOnly.length) fail(`--only 에 등록되지 않은 이름: ${res.unknownOnly.join(' ')}`);
+const unk = res.unknownOnly.filter((n) => !res.v2?.index?.sfx?.[n]?.of);   // v2 몸 종류 변형(of)은 등록 이름이 아니어도 된다
+if (unk.length) fail(`--only 에 등록되지 않은 이름: ${unk.join(' ')}`);
 for (const m of res.api) fail('API: ' + m);
 for (const m of res.budget) fail('예산: ' + m);
 const names = new Set(res.names);
@@ -476,7 +477,7 @@ if (!args['no-v2']) {
       (d.f || []).forEach((id, i) => {
         const f = fs_[i];
         if (!f) { fail(`v2 ${n}: files 에 ${id} 없음`); return; }
-        if (!(f.lufs >= -19 && f.lufs <= -14.5)) fail(`v2 ${id}: 사건 라우드니스 ${f.lufs} LUFS (기대 -19 ~ -14.5, 목표 -16)`);
+        if (!(f.lufs >= -22.5 && f.lufs <= -14.5)) fail(`v2 ${id}: 사건 라우드니스 ${f.lufs} LUFS (기대 -22.5 ~ -14.5, 목표 -16 — 동전·물·얼음·번개처럼 순간음이 뾰족한 소리는 리미터 뒤 몸통 기준이 넓어져 낮게 잰다; 게임 안 크기는 g 로 맞춤)`);
         if (!(f.peak <= -1.0)) fail(`v2 ${id}: 트루 피크 ${f.peak} dBTP > -1`);
         const dp = V2.dec[id]?.peak;
         if (dp != null && db(dp) > -0.95) fail(`v2 ${id}: 푼 피크 ${db(dp).toFixed(2)} dBFS > -1`);
