@@ -37,7 +37,7 @@
 </header>
 <main>
   <h2>배경음악</h2><div id="tracks" class="grid"></div>
-  <h2>고급 효과음 v2 시범 — 지금 ↔ v2 비교 <small style="color:var(--dim);font-weight:normal">(docs/specs/anime_motion_sfx.md §4 · 게임에서는 ?sfx=v2 로 켬)</small></h2>
+  <h2>고급 효과음 v2 — 예전 ↔ v2 비교 <small style="color:var(--dim);font-weight:normal">(docs/specs/anime_motion_sfx.md §4 · 게임 기본값, ?sfx=v1 로 끄면 예전 소리)</small></h2>
   <div class="bar" style="margin:0 0 8px">
     <label>장소 울림 <select id="v2space"><option value="open">트인 곳 (마을·묘지)</option><option value="hall" selected>홀 (성·성당)</option><option value="cave">동굴 (지하묘지·수로)</option></select></label>
     <label><input id="v2low" type="checkbox"> 저사양 (울림 끔)</label>
@@ -81,18 +81,19 @@ async function v2ensure() {
   if (v2bank) { await v2bank.readyP; $('v2stat').textContent = `v2 뱅크: ${JSON.stringify(v2bank.stats())}`; }
   return v2bank;
 }
+let v2ix = null;
 function v2play(n, useV2) {
   const e = audio.eng; if (!e) return;
-  const keep = e.v2;
+  const keep = e.v2, of = v2ix?.sfx[n]?.of;   // of: 몸 종류 변형 (enemy_die_bone = enemy_die + v2alt 'bone')
   e.v2 = useV2 ? v2bank : null; e.v2Space = $('v2space').value; e.v2Quality = $('v2low').checked ? 'low' : 'high';
-  try { e.feelCap = 99; e.sfx(n, { vol: 1 }); } finally { e.v2 = keep; }
+  try { e.feelCap = 99; delete e.lastT[of || n]; e.sfx(of || n, { vol: 1, v2alt: of ? n.slice(of.length + 1) : undefined }); } finally { e.v2 = keep; }
 }
 fetch('../assets/audio/sfx_v2/index.json').then((r) => (r.ok ? r.json() : null)).then((ix) => {
-  v2names = ix ? ix.names : [];
+  v2ix = ix; v2names = ix ? ix.names : [];
   for (const n of v2names) {
     const row = document.createElement('div'); row.style.cssText = 'display:flex;gap:4px';
     const a = document.createElement('button'), b = document.createElement('button');
-    a.innerHTML = `${n}<small>지금</small>`; b.innerHTML = `${n}<small>v2 · 변형 ${ix.sfx[n].f.length}개</small>`;
+    a.innerHTML = `${n}<small>예전${ix.sfx[n].of ? ' (' + ix.sfx[n].of + ')' : ''}</small>`; b.innerHTML = `${n}<small>v2 · 변형 ${ix.sfx[n].f.length}개</small>`;
     a.style.flex = b.style.flex = '1'; b.style.borderColor = '#7a5a2a';
     a.onclick = () => { ensure(); v2play(n, false); };
     b.onclick = async () => { await v2ensure(); v2play(n, true); };

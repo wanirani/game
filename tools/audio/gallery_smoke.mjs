@@ -1,0 +1,32 @@
+// tools/gallery_audio.html 스모크: 페이지·콘솔·요청 오류 0, v2 버튼, v2 뱅크 받기(m4a — 헤드리스는 m4a_route 로 WAV), 이름마다 예전/v2 한 번씩
+//   node tools/audio/gallery_smoke.mjs [--shot out.png]
+import { chromium } from 'playwright-core';
+import { start } from '../serve.mjs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { routeM4a } from './m4a_route.mjs';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const shot = process.argv.includes('--shot') ? process.argv[process.argv.indexOf('--shot') + 1] : null;
+const srv = await start(0), port = srv.address().port;
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+await routeM4a(ctx, root);
+const page = await ctx.newPage();
+const errs = [];
+page.on('pageerror', (e) => errs.push('PAGE ' + e.message));
+page.on('console', (m) => { if (m.type() === 'error') errs.push('CONSOLE ' + m.text()); });
+page.on('requestfailed', (r) => errs.push('REQ ' + r.url()));
+page.on('response', (r) => { if (r.status() >= 400) errs.push(`HTTP ${r.status()} ${r.url()}`); });
+await page.goto(`http://localhost:${port}/tools/gallery_audio.html`);
+await page.waitForSelector('#v2ab button');
+const nb = await page.$$eval('#v2ab button', (b) => b.length);
+await page.click('#v2ab button:nth-child(2)');
+await page.waitForTimeout(1500);
+const r = await page.evaluate(() => window.__v2ab());
+if (shot) await page.screenshot({ path: shot, clip: { x: 0, y: 0, width: 1280, height: 640 } });
+const ok = errs.length === 0 && r.stats.state === 'ready' && r.stats.loaded === r.names && r.v2Starts === r.names && nb === r.names * 2;
+console.log(JSON.stringify({ buttons: nb, ...r }));
+console.log(errs.length ? 'errs ' + JSON.stringify(errs.slice(0, 8)) : 'errs 0');
+console.log(ok ? '통과' : '실패');
+await browser.close(); srv.close();
+process.exitCode = ok ? 0 : 1;

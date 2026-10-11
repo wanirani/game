@@ -353,7 +353,7 @@ def build_var(src, rec, v, ceil=CEIL):
     mix *= 10 ** ((TARGET - lufs_ev(mix)) / 20)
     need = true_peak(mix) - (ceil - 0.1)
     if need > 4.0:                             # 동전·얼음·번개처럼 크레스트가 큰 소리: 리미터만으로 4 dB 넘게 누르면 목표가 -19 LUFS 아래로 떨어진다
-        cdb = min(CLIP_MAX, need - 3.5)
+        cdb = min(rec.get('cmax', CLIP_MAX), need - 3.5)   # cmax: 레시피별 상한 (동전·물·얼음·번개는 순간음이 아주 뾰족하다)
         t = np.abs(mix).max() * 10 ** (-cdb / 20)
         mix = t * np.tanh(mix / t)
         mix *= 10 ** ((TARGET - lufs_ev(mix)) / 20)

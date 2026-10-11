@@ -149,7 +149,7 @@ R2 = {
         L(KI(f'footstep_concrete_00{v}.ogg'), len=0.06, g=-10, lp=600, tau=0.03),
     ], eq=EQ_STEP)},
     # 발소리: 얕은 물
-    'step_water': {'n': 5, 'var': lambda v: dict(layers=[
+    'step_water': {'n': 5, 'cmax': 10, 'var': lambda v: dict(layers=[
         L(B([1529, 1530, 1531, 1532, 1529][v]), len=0.22, g=0, st=[3, 2, 4, 1, 5][v], hp=200, tau=0.08, hold=0.01),
         L(KI(f'footstep_concrete_00{v}.ogg'), len=0.07, g=-7, lp=900, tau=0.03),
     ], eq=EQ_STEP)},
@@ -177,7 +177,7 @@ R2 = {
         L(KI(f'impactWood_light_00{v}.ogg'), len=0.04, g=-12, st=7, hp=900, tau=0.015),
     ])},
     # 금화 — 동전 무더기 + 컵에 떨어지는 동전 + 손에 쥔 동전
-    'coin': {'n': 4, 'var': lambda v: dict(layers=[
+    'coin': {'n': 4, 'cmax': 10, 'var': lambda v: dict(layers=[
         L(RD(f'item_coins_0{v + 1}.ogg'), len=0.35, g=0, hp=400, tau=0.15, hold=0.02),
         L(B([339, 340, 339, 340][v]), len=0.3, g=-5, st=[2, 0, 4, 1][v], hp=800, tau=0.12, dly=10),
         L(K(['handleCoins.ogg', 'handleCoins2.ogg'][v % 2]), al='pk', len=0.14, g=-13, hp=1000, tau=0.06),
@@ -205,13 +205,13 @@ R2 = {
         L(B(4), at=0.27, len=0.15, g=-11, st=[0, 2, -2, 4][v], hp=1500, tau=0.05),
     ], eq=[('ls', 120, 2.0, 0.7)], sat=(1.6, 0.2))},
     # 얼음 — 얼음 깨짐 + 유리컵 속 얼음 + 유리 울림
-    'ice': {'n': 4, 'var': lambda v: dict(layers=[
+    'ice': {'n': 4, 'cmax': 10, 'var': lambda v: dict(layers=[
         L(B([2205, 2206, 2207, 2208][v]), at=[0.62, 0.32, 0.05, 0.21][v], len=0.3, g=0, hp=400, tau=0.1),
         L(B([2123, 2124, 2125, 2123][v]), len=0.3, g=-4, st=[2, 0, 3, -1][v], hp=1500, tau=0.12, dly=20),
         L(B([1325, 1330, 1328, 1325][v]), len=0.5, g=-10, st=[0, 2, -2, 4][v], hp=2500, tau=0.2, dly=40),
     ], eq=[('hs', 9000, -2.0, 0.7)], sat=(1.3, 0.1))},
     # 번개 (마법) — 채찍 같은 '딱' + 전기 지지직 + 천둥 몸통
-    'thunder': {'n': 4, 'var': lambda v: dict(layers=[
+    'thunder': {'n': 4, 'cmax': 10, 'var': lambda v: dict(layers=[
         L(B([2949, 2951, 2950, 2952][v]), len=0.12, g=0, hp=800, tau=0.04, clip=4),
         L(B(134), at=[4.02, 8.42, 8.88, 2.32][v], len=0.25, g=-3, hp=600, tau=0.1),
         L(B(3113), at=0.98, al='pk', len=0.6, g=-5, st=[0, 2, -2, 1][v], lp=2500, hp=40, tau=0.25, dly=30),

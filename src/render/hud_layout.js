@@ -448,10 +448,9 @@ function buildFold(vw, vh, T, S, pad, bossOn, nM, F, k) {
   const cxs = clamp(Math.round(vw / 2 - cw / 2), L.stage.x + L.stage.w + 12, Math.max(L.stage.x + L.stage.w + 12, (sysLeft ?? right) - 12 - cw));
   L.score = R(cxs, 8 + t, cw, chh);
 
-  // ── 오른쪽: 콤보 열 (아이콘 줄 아래 ~ 원호 위) ──
-  const topR = Math.max(76 + t, (sysBottom ?? 0) + HUD_GAP);
-  const comboBottom = Math.min(topR + 230, (padTop ?? vh) - HUD_GAP);
-  L.combo = R(right - 302, topR, 290, Math.max(0, comboBottom - topR));
+  // ── 오른쪽: 콤보 열 (아이콘 줄 아래 ~ 원호 위; 보스 바가 보이면 그 아래) — 보스 칸을 정한 뒤 아래에서 ──
+  let topR = Math.max(76 + t, (sysBottom ?? 0) + HUD_GAP);
+  L.combo = R(right - 302, topR, 290, 0);
 
   // ── 가운데 아래: 초상화 + 큰 HP 막대 + 빠른 칸 ──
   const q = Math.max(44, Math.round(50 * k)), qg = 12, qn = 4;
@@ -476,13 +475,17 @@ function buildFold(vw, vh, T, S, pad, bossOn, nM, F, k) {
   L.meter = (i) => meters[i] ?? R(midX - half, mTop + i * METER_ROW, half * 2, METER_H);
   const n = clamp(Math.round(nM), 0, 3);
   L.meterRows = n;
-  const bty = n ? meters[n - 1].y + METER_H + 4 : mTop;
-  const bw = Math.min(560, gapR - gapL);
-  L.bossTop = R(Math.round(midX - bw / 2), bty, bw, 36);
+  // 보스 바: 기믹 게이지 아래, 왼쪽 위 묶음 오른쪽부터 화면 오른쪽 끝까지 (오른쪽 위 아이콘 줄 아래로) — 콤보 열은 그 아래로 내려간다
+  const bty = Math.max(n ? meters[n - 1].y + METER_H + 4 : mTop, (sysBottom ?? 0) + HUD_GAP);
+  const bR = right - 12, bw = Math.min(560, bR - gapL);
+  L.bossTop = R(Math.round((gapL + bR) / 2 - bw / 2), bty, bw, 36);
   L.bossBottom = L.bossTop;
   L.bossSlot = 'top';
   L.bossBar = L.bossTop;
   L.bossShown = !!bossOn;
+  if (bossOn) topR = Math.max(topR, L.bossTop.y + L.bossTop.h + HUD_GAP);
+  const comboBottom = Math.min(topR + 230, (padTop ?? vh) - HUD_GAP);
+  L.combo = R(right - 302, topR, 290, Math.max(0, comboBottom - topR));
   // 알림·배너: 화면 가운데 조금 위 (콤보 열·원호와 겹치지 않게)
   // 콤보 열·동료 카드 줄 아래 가운데 (넓게) — 패드에 닿으면 그만큼 줄인다
   const ty = Math.round(Math.max(bty + 36 + TOAST_ROW + 8, L.combo.y + L.combo.h + HUD_GAP, L.callouts.y + L.callouts.h + HUD_GAP));

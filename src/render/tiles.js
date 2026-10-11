@@ -701,7 +701,8 @@ export class TileRenderer {
       if (info.count) this.liquidBody(ctx, cam, this.lastT, DEEP_UNDER, info);
     }
     // 세로 확장 시야 (hud_mobile §2): 방이 화면보다 낮아 위·아래가 보이면 스테이지 padTop/padBottom 으로 채운다
-    if (cam.y < -0.5 || cam.y + cam.vh > m.pxH + 0.5) this.drawPads(ctx, v);
+    // (16:9 이상 — 논리 높이 540 — 은 예전과 픽셀 단위로 같게 그리지 않는다: 줌 아웃 연출로 방 밖이 잠깐 보여도 원경 그대로)
+    if (cam.h > 540 && (cam.y < -0.5 || cam.y + cam.vh > m.pxH + 0.5)) this.drawPads(ctx, v);
     // 방 밖(좌우)으로 이어지는 벽 표현: 방 경계 바깥을 어둡게
     ctx.fillStyle = '#050206';
     if (!m.openLeft) ctx.fillRect(-400, -400, 400, m.pxH + 800);

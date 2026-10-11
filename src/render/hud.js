@@ -23,6 +23,74 @@ import { drawComboHUD, drawAnnouncer, drawAwGauge, hudOverflow } from './feel_hu
 import { drawCompanionHUD } from './companion_hud.js'; // [hook:cmp]
 import { drawGlyph, bindingOf, promptMode } from '../core/prompts.js'; // [hook:plat]
 import { input } from '../core/input.js';
+import { ASSET_ROOT } from '../core/assets.js';
+import { PAD_LAYOUT_FOLD } from '../core/touchpad.js';
+import { ITEMS } from '../data/items.js';
+import { drawMinimap, drawBigMap } from './minimap.js';
+
+// ── 그린 HUD 그림 (hud_mobile §4): 테(assets/ui/hud/*.webp) · 스킬/UI 아이콘(assets/icons/skills/<id>.webp 96 px, 48/<id>.webp 48 px) ──
+// 이미지는 한 번 받아 두고 drawImage 만 한다 (원형 알파는 그림에 구워져 있다 — 클립 없음). 없는 아이콘은 요청하지 않는다(ICON_IDS).
+const ICON_IDS = new Set('asc_azel_lullaby asc_bran_oathbanner asc_isolde_breath asc_kael_firstseal asc_lia_frostwing asc_sera_seventhbell asc_victor_silverbullet awaken_azel awaken_bran awaken_isolde awaken_kael awaken_lia awaken_sera awaken_victor azel_bat_storm azel_blood_lance azel_crimson_feast azel_dawn_rush azel_dawnbreaker azel_fallen_wings azel_moon_slash azel_phantom_blades bran_aegis bran_blood_frenzy bran_crusade_sword bran_ground_split bran_shield_charge bran_warcry bran_warlord_leap bran_whirlwind isolde_dragon_dive isolde_javelin isolde_piercing_gale isolde_storm_dragon isolde_thousand_thrusts isolde_thunder_lance isolde_valhalla isolde_wyrm_breath kael_autodafe kael_blood_hunt kael_holy_cross kael_raven_storm kael_sanctuary kael_silver_fan kael_tempest kael_vigilia lia_blade_waltz lia_cross_cut lia_kagerou lia_reaper_scythe lia_shadow_clones lia_shadow_step lia_shuriken lia_thousand_blades sera_archangel sera_chrono sera_fireball sera_heal sera_holy_bolt sera_light_pillar sera_meteor sera_thunderstorm ui_ach ui_bag ui_boss ui_door ui_guard ui_jump ui_lock ui_map ui_menu ui_mount ui_quest ui_swap ult_azel ult_bran ult_isolde ult_kael ult_lia ult_sera ult_victor victor_bullet_dance victor_dynamite victor_execution victor_fanning victor_gatling victor_hellfire_burst victor_phantom_bullet victor_pierce_shot'.split(' '));
+const FRAME_NAMES = ['ring_map', 'stick_base', 'ring_attack', 'ring_small', 'frame_ult', 'frame_slot', 'ring_lock', 'gem'];
+const UI_ICONS = ['ui_jump', 'ui_mount', 'ui_guard', 'ui_swap', 'ui_lock', 'ui_menu', 'ui_map', 'ui_bag'];
+const ART = new Map();
+const ART_FNS = [];
+let artFrames = 0, artReady = false;
+export const HUD_ART_STATS = { loaded: 0, failed: 0 };
+function artImg(path) {
+  let e = ART.get(path);
+  if (!e) {
+    e = { img: null, ok: false };
+    ART.set(path, e);
+    if (typeof Image !== 'undefined') {
+      const img = new Image();
+      img.decoding = 'async';
+      const done = (ok) => {
+        e.ok = ok; HUD_ART_STATS[ok ? 'loaded' : 'failed']++;
+        if (path.startsWith('ui/hud/') && ++artFrames >= FRAME_NAMES.length) artReady = true;
+        for (const f of ART_FNS) { try { f(path); } catch (er) { console.error('[hud] art', er); } }
+      };
+      img.onload = () => done(true);
+      img.onerror = () => done(false);
+      img.src = `${ASSET_ROOT}${path}.webp?v=${assets.version ?? ''}`;
+      e.img = img;
+    }
+  }
+  return e.ok ? e.img : null;
+}
+/** HUD 테 그림 (이름: ring_map stick_base ring_attack ring_small frame_ult frame_slot ring_lock gem) | null (아직·실패) */
+export function hudArt(name) { return artImg('ui/hud/' + name); }
+/** 테 그림을 다 받았나 (받은 뒤 패드가 버튼 그림을 다시 굽는다) */
+export function hudArtReady() { return artReady; }
+/** 테·UI 아이콘을 미리 받는다. fn(path) = 그림 하나가 올 때마다 (패드 다시 그리기) */
+export function preloadHudArt(fn) {
+  if (typeof fn === 'function' && !ART_FNS.includes(fn)) ART_FNS.push(fn);
+  for (const f of FRAME_NAMES) hudArt(f);
+  for (const u of UI_ICONS) artImg('icons/skills/' + u);
+}
+/** 아이콘 그림 (그릴 지름 d → 기기 px 60 이하면 48 px 판) | null */
+function iconImg(id, d, ctx) {
+  if (!id || !ICON_IDS.has(id)) return null;
+  let a = 1;
+  try { const m = ctx?.getTransform?.(); if (m) a = Math.hypot(m.a, m.b) || 1; } catch { /* 변환 없음 */ }
+  if (d * a <= 60) return artImg('icons/skills/48/' + id) ?? artImg('icons/skills/' + id);
+  return artImg('icons/skills/' + id) ?? artImg('icons/skills/48/' + id);
+}
+/** 그린 아이콘(원형)을 지름 d 로 (alpha 배) → 그렸으면 true */
+export function drawArtIcon(c, id, cx, cy, d, alpha = 1) {
+  const img = iconImg(id, d, c);
+  if (!img) return false;
+  if (alpha !== 1) { const a0 = c.globalAlpha; c.globalAlpha = a0 * alpha; c.drawImage(img, cx - d / 2, cy - d / 2, d, d); c.globalAlpha = a0; }
+  else c.drawImage(img, cx - d / 2, cy - d / 2, d, d);
+  return true;
+}
+/** 스킬 그림 아이콘 (스킬 id) → 그렸으면 true (없으면 부른 쪽이 drawSkillGlyph 로) */
+export function drawSkillArt(c, sid, cx, cy, d, alpha = 1) { return drawArtIcon(c, sid, cx, cy, d, alpha); }
+/** 스킬 아이콘: 그림이 있으면 그림, 없으면 벡터 문장 (예전 drawSkillGlyph 크기 s 기준) */
+export function drawSkillIcon(c, sk, cx, cy, s) {
+  if (sk?.id && drawArtIcon(c, sk.id, cx, cy, s * 1.1)) return;
+  drawSkillGlyph(c, sk, cx, cy, s);
+}
 
 // 버프 칸 글자 (이름 첫 글자는 '무적의 물약'·'무기 강화'처럼 겹치므로 버프마다 고유하게)
 const BUFF_GLYPH = { rage: '광', haste: '신', invincible: '무', magnet: '자', gunmode: '총', holyaura: '성', whipup: '강', double: 'Ⅱ', triple: 'Ⅲ' };
@@ -30,6 +98,7 @@ const NO_RECTS = [];
 
 export function drawHUD(ctx, world, vw, vh) {
   if (world.hudHidden) { // [hook:awaken] 각성 컷인·연출 중: 동료 위젯·기믹 게이지까지 통째로 숨긴다
+    if (world.game?.hudTaps?.length) world.game.hudTaps.length = 0;
     if (world.companions) { NO_RECTS.length = 0; try { world.companions.hudRects = NO_RECTS; } catch { /* 읽기 전용이면 동료 쪽이 직접 관리 */ } } // [hook:cmp] 보이지 않는 위젯 자리를 누른 탭이 탈것·수호신을 부르지 않게
     return;
   }
@@ -40,6 +109,9 @@ export function drawHUD(ctx, world, vw, vh) {
   // 터치: 모든 글자는 L.textMin(= 11 CSS px 를 논리 px 로) 이상 — 휴대폰 캔버스는 0.67–0.72배로 줄어 보인다 (platform §6.2).
   // 휴대폰 배치(L.big)는 칸도 키우고 중복 문구(직업명 · 'SCORE')를 뺀다. 터치는 페이지 안내·슬롯 S1/S2 표시도 뺀다 (패드 버튼에 있다)
   const L = hudLayout(world, vw, vh);
+  if (L.fold) { drawFoldHUD(ctx, world, vw, vh, L, T); return; }   // 폴드·태블릿 배치 (hud_mobile §3)
+  const g0 = world.game;
+  if (g0?.hudTaps?.length) g0.hudTaps.length = 0;
   ctx.save();
   drawPortrait(ctx, L.portrait, hero, p, L);
   drawVitals(ctx, L.vitals, hero, p, st, T, L);
@@ -71,6 +143,187 @@ export function drawHUD(ctx, world, vw, vh) {
     if (ac) ctx.restore();
   }
   ctx.restore();
+}
+
+// ───────────────────────── 폴드·태블릿 배치 (hud_mobile §1·§3) ─────────────────────────
+// 그리는 순서는 넓은 배치와 같은 계약(필살 → 각성 게이지 → 동료 → 점수 자리 → 콤보 → 보스 → 알림)에 미니맵·이름판·큰 HP·빠른 칸·원호를 더한다.
+// 탭 자리(미니맵 → 큰 지도, 빠른 칸 0 → 보조무기, 1–3 → 가방)는 game.hudTaps 에 둔다 (터치일 때만; touchpad 가 판정).
+const TAPS = [];
+function pushTap(i, act, r) {
+  let z = TAPS[i];
+  if (!z) z = TAPS[i] = { act: '', x: 0, y: 0, w: 0, h: 0 };
+  z.act = act; z.x = r.x; z.y = r.y; z.w = r.w; z.h = r.h;
+}
+function drawFoldHUD(ctx, world, vw, vh, L, T) {
+  const p = world.player, hero = world.hero, run = world.run, st = p.stats, g = world.game;
+  ctx.save();
+  drawMinimap(ctx, L.minimap, world, hudArt('ring_map'));
+  drawStagePlate(ctx, L.stage, world, L);
+  drawHeartsRow(ctx, L.hearts, world, run, p, L);
+  drawUltGauge(ctx, L.ult, world, run, T, L);
+  drawAwGauge(ctx, world, L.awGauge.x, L.awGauge.y, L.awGauge.w, T); // [hook:feel]
+  const cr = drawCompanionHUD(ctx, world, cmpOpts(L, T)); // [hook:cmp]
+  if (world.companions) { if (!cr) NO_RECTS.length = 0; try { world.companions.hudRects = cr || NO_RECTS; } catch { /* 읽기 전용 */ } } // [hook:cmp]
+  drawCurrency(ctx, L.score, world, hero, p, run, L);
+  drawPortrait(ctx, L.portrait, hero, p, L);
+  drawVitalsFold(ctx, L.vitals, hero, p, st, L);
+  drawQuick(ctx, L, world, run, T);
+  if (L.arc) drawArcHUD(ctx, L.arc, world, p, run, L);
+  const cc = hudOverflow(world, 'combo') ? avoidClip(L, 'combo') : null; // [hook:feel]
+  if (cc) { ctx.save(); ctx.clip(cc, 'evenodd'); }
+  drawComboHUD(ctx, world, vw, vh, T); // [hook:feel]
+  if (cc) ctx.restore();
+  if (L.bossShown) drawBossBar(ctx, L.bossBar, world.boss, L);
+  if (world.banner) drawBanner(ctx, L.transient, world, world.banner, L);
+  else if (world.style?.ann?.cur) { // [hook:feel]
+    const ac = hudOverflow(world, 'transient') ? avoidClip(L, 'transient') : null;
+    if (ac) { ctx.save(); ctx.clip(ac, 'evenodd'); }
+    drawAnnouncer(ctx, world, vw, vh); // [hook:feel]
+    if (ac) ctx.restore();
+  }
+  let bigR = null;
+  if (g?.hudMapBig) bigR = drawBigMap(ctx, world, vw, vh, hudArt('ring_map'));
+  ctx.restore();
+  // 탭 자리 (터치): 큰 지도가 열려 있으면 화면 전체가 '닫기'
+  if (g) {
+    if (!T) { if (g.hudTaps?.length) g.hudTaps.length = 0; return; }
+    let n = 0;
+    if (bigR) pushTap(n++, 'hudmap', { x: 0, y: 0, w: vw, h: vh });
+    else {
+      pushTap(n++, 'hudmap', L.minimap);
+      pushTap(n++, 'sub', L.quick[0]);
+      for (let i = 1; i < L.quick.length; i++) pushTap(n++, 'map', L.quick[i]);
+    }
+    TAPS.length = n;
+    g.hudTaps = TAPS; g.hudTapsT = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  }
+}
+
+/** 스테이지 이름판 (왼쪽 위, 미니맵 오른쪽): 어두운 판 + 핏빛 아랫줄 + 'n장 · 이름' */
+function drawStagePlate(ctx, r, world, L) {
+  const st = world.stage;
+  if (!st || r.w < 40) return;
+  ctx.fillStyle = 'rgba(10,4,10,0.72)'; ctx.fillRect(r.x, r.y, r.w, r.h);
+  ctx.fillStyle = '#8a1424'; ctx.fillRect(r.x, r.y + r.h - 2, r.w, 2);
+  ctx.strokeStyle = 'rgba(214,170,110,0.55)'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+  const F = Math.max(13, L.textMin);
+  const ch = st.chapter ? `${st.chapter}장 · ` : '';
+  text(ctx, ch + (st.name ?? ''), r.x + 8, r.y + Math.round(r.h / 2 + F * 0.36), { size: F, weight: 800, family: FONT.title, color: '#f3d38a', maxWidth: r.w - 14 });
+}
+
+/** 재화 줄 (가운데 위): 골드 · 점수 · 목숨 */
+function drawCurrency(ctx, r, world, hero, p, run, L) {
+  ctx.fillStyle = 'rgba(10,4,10,0.7)'; ctx.fillRect(r.x, r.y, r.w, r.h);
+  ctx.strokeStyle = 'rgba(214,170,110,0.6)'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+  ctx.fillStyle = '#8a1424'; ctx.fillRect(r.x + 4, r.y + r.h - 2, r.w - 8, 2);
+  const F = Math.max(13, L.textMin), cy = r.y + r.h / 2, by = Math.round(cy + F * 0.36);
+  const third = r.w / 3;
+  // 골드: 금화
+  const gx = r.x + 14;
+  ctx.fillStyle = '#c8962a'; ctx.beginPath(); ctx.arc(gx, cy, 7, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#ffe28a'; ctx.beginPath(); ctx.arc(gx - 1, cy - 1, 4.5, 0, TAU); ctx.fill();
+  text(ctx, fmt(world.state.gold), gx + 11, by, { size: F, weight: 800, family: FONT.num, color: '#ffd84a', maxWidth: third - 26 });
+  // 점수
+  text(ctx, fmt(run.score), r.x + third * 1.5 + 6, by, { size: F, align: 'center', weight: 800, family: FONT.num, color: '#fff', maxWidth: third - 8 });
+  // 목숨
+  const lx = r.x + third * 2 + 14;
+  drawLifeIcon(ctx, lx, cy, 7.5, hero, p);
+  text(ctx, `×${run.lives}`, lx + 11, by, { size: F, weight: 800, family: FONT.num, color: '#ff8a9a', maxWidth: third - 28 });
+}
+
+/** 큰 HP 막대 (가운데 아래): 이름·레벨 / HP(숫자 안) / MP / EXP 줄 — 어두운 판 위 */
+function drawVitalsFold(ctx, r, hero, p, st, L) {
+  const F = Math.max(12, L.textMin), x = r.x, w = r.w, y = r.y;
+  ctx.fillStyle = 'rgba(8,3,8,0.62)'; ctx.fillRect(x - 6, y - 4, w + 12, r.h + 8);
+  ctx.strokeStyle = 'rgba(214,170,110,0.45)'; ctx.lineWidth = 1; ctx.strokeRect(x - 5.5, y - 3.5, w + 11, r.h + 7);
+  text(ctx, `Lv ${hero.level}  ${CHARACTERS[hero.charId]?.name ?? ''}`, x, y + 11, { size: F, weight: 800, color: '#f3e2b8', maxWidth: w * 0.6 });
+  text(ctx, classNameOf(hero), x + w, y + 11, { size: Math.max(11, F - 1), align: 'right', color: COLORS.dim, maxWidth: w * 0.38 });
+  const hy = y + 15, hh = Math.max(18, F + 4);
+  bar(ctx, x, hy, w, hh, p.hp / st.hp, { color: '#d81c34', ghost: p.hpGhost / st.hp, edge: '#e8c872' });
+  text(ctx, `${fmt(Math.ceil(p.hp))} / ${fmt(st.hp)}`, x + w / 2, hy + Math.round(hh / 2 + F * 0.36), { size: F, align: 'center', weight: 800, family: FONT.num, color: '#fff', ow: 3, maxWidth: w - 8 });
+  const my = hy + hh + 4;
+  bar(ctx, x, my, w * 0.78, 7, p.mp / st.mp, { color: '#3a7aff' });
+  text(ctx, `${Math.floor(p.mp)}`, x + w * 0.78 + 6, my + 7, { size: Math.max(11, F - 1), weight: 700, family: FONT.num, color: '#8ac8ff', ow: 2, maxWidth: w * 0.22 - 6 });
+  bar(ctx, x, r.y + r.h - 3, w, 3, hero.exp / expToNext(hero.level), { color: '#e8c872', shine: false });
+}
+
+// 빠른 칸 내용: 0 = 보조무기(하트 수), 1–3 = 가방의 소모품 (많은 것부터; 0.5초마다 다시 센다)
+const QK = { t: -1, inv: null, n: -1, list: [] };
+function consumables(state, t) {
+  const inv = state?.inventory;
+  if (QK.inv === inv && QK.n === (inv?.length ?? 0) && t - QK.t < 0.5) return QK.list;
+  QK.inv = inv; QK.n = inv?.length ?? 0; QK.t = t;
+  const out = [];
+  for (const it of inv ?? []) if (ITEMS[it.baseId]?.slot === 'consumable') out.push(it);
+  out.sort((a, b) => (b.qty ?? 1) - (a.qty ?? 1));
+  QK.list = out.slice(0, 3);
+  return QK.list;
+}
+function drawQuick(ctx, L, world, run, T) {
+  const fr = hudArt('frame_slot'), F = Math.max(12, L.textMin);
+  const list = consumables(world.state, world.time ?? 0);
+  for (let i = 0; i < L.quick.length; i++) {
+    const r = L.quick[i], cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+    ctx.fillStyle = 'rgba(10,4,10,0.72)'; ctx.fillRect(r.x + 3, r.y + 3, r.w - 6, r.h - 6);
+    let count = null, dim = false;
+    if (i === 0) {
+      const sw = SUBWEAPONS[run.sub];
+      if (sw) { dim = run.hearts < (sw.cost ?? 1); if (dim) ctx.globalAlpha = 0.45; drawIcon(ctx, sw.icon, cx, cy - 2, r.w * 0.62); ctx.globalAlpha = 1; }
+      count = run.hearts;
+    } else {
+      const it = list[i - 1];
+      if (it) { drawIcon(ctx, it.icon, cx, cy - 2, r.w * 0.6, null, { glow: false }); count = it.qty ?? 1; }
+    }
+    if (fr) ctx.drawImage(fr, r.x - r.w * 0.06, r.y - r.h * 0.06, r.w * 1.12, r.h * 1.12);
+    else { ctx.strokeStyle = COLORS.goldDark; ctx.lineWidth = 1.5; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1); }
+    if (count != null) text(ctx, String(count), r.x + r.w - 4, r.y + r.h - 4, { size: F, align: 'right', weight: 800, family: FONT.num, color: i === 0 ? '#ffb0b8' : '#fff', ow: 3, maxWidth: r.w - 6 });
+    if (!T && i === 0 && useGlyph('sub', T)) drawGlyph(ctx, 'sub', r.x + 2, r.y + 2, 13); // [hook:plat]
+  }
+}
+
+/** 데스크톱·패드 폴드: 스킬 원호를 HUD 에 그린다 (패드 원호와 같은 자리·그림, 누르지 않고 키·버튼 글리프를 붙인다) */
+const ARC_ACT = { attack: 'attack', jump: 'jump', dash: 'dash', sub: 'sub', skill1: 'skill1', skill2: 'skill2', ult: 'ult', swap: 'swap', mount: 'mount', guard: 'guard' };
+function drawArcHUD(ctx, r, world, p, run, L) {
+  const s = r.w / 330, hero = world.hero;
+  for (const id in PAD_LAYOUT_FOLD) {
+    const [rt, bt, d0] = PAD_LAYOUT_FOLD[id];
+    const d = d0 * s * 0.92, cx = r.x + r.w - rt * s + 6, cy = r.y + r.h - bt * s + 6, rad = d / 2;
+    ctx.fillStyle = 'rgba(14,4,10,0.78)'; ctx.beginPath(); ctx.arc(cx, cy, rad * 0.88, 0, TAU); ctx.fill();
+    let alpha = 1;
+    if (id === 'skill1' || id === 'skill2') {
+      const sid = hero.slots?.[(p.skillPage ?? 0) * 2 + (id === 'skill2' ? 1 : 0)];
+      const sk = SKILLS[sid];
+      if (sk) {
+        const cd = p.skillCd?.[sid] ?? 0, noMp = p.mp < (sk.cost ?? 0);
+        if (!drawArtIcon(ctx, sid, cx, cy, d * 0.83, noMp && cd <= 0 ? 0.4 : 1)) drawSkillGlyph(ctx, sk, cx, cy, d * 0.7);
+        if (cd > 0) {
+          const f = clamp(cd / (sk.cd || 1), 0, 1);
+          ctx.fillStyle = 'rgba(0,0,0,0.62)'; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, rad * 0.84, -Math.PI / 2, -Math.PI / 2 + TAU * f); ctx.fill();
+          text(ctx, cd < 1 ? cd.toFixed(1) : String(Math.ceil(cd)), cx, cy + 6, { size: Math.max(14, d * 0.3), align: 'center', weight: 800, family: FONT.num, color: '#fff', ow: 3 });
+        }
+      } else drawArtIcon(ctx, 'ui_lock', cx, cy, d * 0.75, 0.55);
+    } else if (id === 'ult') {
+      const full = run.sp >= 100;
+      drawArtIcon(ctx, (world.awakenState?.ready ? 'awaken_' : 'ult_') + hero.charId, cx, cy, d * 0.8, full ? 1 : 0.55);
+      ctx.strokeStyle = full ? '#ffe070' : '#ff8a2a'; ctx.lineWidth = 3;
+      if (run.sp > 0) { ctx.beginPath(); ctx.arc(cx, cy, rad * 0.8, -Math.PI / 2, -Math.PI / 2 + TAU * clamp(run.sp / 100, 0, 1)); ctx.stroke(); }
+    } else if (id === 'attack') {
+      const uid = hero.equip?.weapon, it = uid ? world.state.inventory?.find?.((i) => i.uid === uid) : null;
+      if (it?.icon) drawIcon(ctx, it.icon, cx, cy, d * 0.55, null, { glow: false });
+    } else if (id === 'sub') {
+      const sw = SUBWEAPONS[run.sub];
+      if (sw) drawIcon(ctx, sw.icon, cx, cy, d * 0.5);
+    } else if (id === 'mount') { const m = world.companions?.hudInfo?.()?.mount; alpha = m && !m.blocked ? 1 : 0.4; drawArtIcon(ctx, 'ui_mount', cx, cy, d * 0.83, alpha); }
+    else if (id === 'guard') drawArtIcon(ctx, 'ui_guard', cx, cy, d * 0.83, world.companions?.hudInfo?.()?.guards?.length ? 1 : 0.4);
+    else if (id === 'jump') drawArtIcon(ctx, 'ui_jump', cx, cy, d * 0.83);
+    else if (id === 'swap') drawArtIcon(ctx, 'ui_swap', cx, cy, d * 0.83);
+    else if (id === 'dash') text(ctx, '≫', cx, cy + d * 0.14, { size: d * 0.42, align: 'center', weight: 900, color: '#e8c872' });
+    const ring = hudArt(id === 'attack' ? 'ring_attack' : id === 'ult' ? 'frame_ult' : 'ring_small');
+    if (ring) { const z = d * 1.16; ctx.drawImage(ring, cx - z / 2, cy - z / 2, z, z); }
+    const act = ARC_ACT[id];
+    if (act && useGlyph(act, false)) drawGlyph(ctx, act, cx + rad * 0.35, cy + rad * 0.35, 14); // [hook:plat]
+  }
+  void L;
 }
 
 /**
@@ -127,7 +380,7 @@ function cmpOpts(L, T) {
  * 시험·도구용 (tools/test_hud_layout.mjs): drawHUD 의 한 부분만 같은 인자로 그린다 → 부분마다 실제로 칠한 픽셀이 제 칸 안에 있는지 잰다.
  * part: HUD_PARTS 중 하나. 'companions' 는 위젯과 스킬 카드 줄을 함께 그린다 (시험이 카드·위젯 중 하나만 켜서 잰다).
  */
-export const HUD_PARTS = ['portrait', 'vitals', 'hearts', 'skills', 'ult', 'awGauge', 'companions', 'score', 'combo', 'boss', 'transient'];
+export const HUD_PARTS = ['portrait', 'vitals', 'hearts', 'skills', 'ult', 'awGauge', 'companions', 'score', 'combo', 'boss', 'transient', 'minimap', 'stage', 'quick', 'arc'];
 export function drawHUDPart(ctx, world, vw, vh, part) {
   const p = world?.player;
   if (!p || world.hudHidden) return null;
@@ -137,13 +390,17 @@ export function drawHUDPart(ctx, world, vw, vh, part) {
   let r = null;
   switch (part) {
     case 'portrait': drawPortrait(ctx, L.portrait, hero, p, L); break;
-    case 'vitals': drawVitals(ctx, L.vitals, hero, p, st, T, L); break;
+    case 'vitals': if (L.fold) drawVitalsFold(ctx, L.vitals, hero, p, st, L); else drawVitals(ctx, L.vitals, hero, p, st, T, L); break;
+    case 'minimap': if (L.fold) drawMinimap(ctx, L.minimap, world, hudArt('ring_map')); break;
+    case 'stage': if (L.fold) drawStagePlate(ctx, L.stage, world, L); break;
+    case 'quick': if (L.fold) drawQuick(ctx, L, world, run, T); break;
+    case 'arc': if (L.fold && L.arc) drawArcHUD(ctx, L.arc, world, p, run, L); break;
     case 'hearts': drawHeartsRow(ctx, L.hearts, world, run, p, L); break;
-    case 'skills': drawSkills(ctx, L.skills, hero, p, T, L); break;
+    case 'skills': if (!L.fold) drawSkills(ctx, L.skills, hero, p, T, L); break;
     case 'ult': drawUltGauge(ctx, L.ult, world, run, T, L); break;
     case 'awGauge': r = drawAwGauge(ctx, world, L.awGauge.x, L.awGauge.y, L.awGauge.w, T); break;
     case 'companions': r = drawCompanionHUD(ctx, world, cmpOpts(L, T)); break;
-    case 'score': drawScore(ctx, L.score, world, hero, p, run, T, L); break;
+    case 'score': if (L.fold) drawCurrency(ctx, L.score, world, hero, p, run, L); else drawScore(ctx, L.score, world, hero, p, run, T, L); break;
     case 'combo': { const cc = hudOverflow(world, 'combo') ? avoidClip(L, 'combo') : null; if (cc) ctx.clip(cc, 'evenodd'); r = drawComboHUD(ctx, world, vw, vh, T); break; }
     case 'boss': if (L.bossShown) drawBossBar(ctx, L.bossBar, world.boss, L); break;
     case 'transient': {

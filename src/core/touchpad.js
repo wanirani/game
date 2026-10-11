@@ -1027,10 +1027,15 @@ function roundRect(g, x, y, w, h, r) {
 const SYS_ART = { pause: 'ui_menu', bag: 'ui_bag', maptog: 'ui_map' };
 function drawSysBase(g, id, cx, cy, d, pressed, art = false) {
   const h = d / 2;
-  if (art && SYS_ART[id]) { // 그린 아이콘 (오른쪽 위 아이콘 줄): 리벳 테 + 원형 그림
+  if (art && (SYS_ART[id] || id === 'fullscreen')) { // 그린 아이콘 (오른쪽 위 아이콘 줄): 리벳 테 + 원형 그림 (⛶ 는 어두운 원판 + 금빛 모서리)
     g.save();
     g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.arc(cx, cy + 1.5, h * 0.98, 0, TAU); g.fill();
-    if (!HUDM.drawArtIcon(g, SYS_ART[id], cx, cy, d * 0.8)) { g.fillStyle = 'rgba(22,6,12,0.9)'; g.beginPath(); g.arc(cx, cy, h * 0.86, 0, TAU); g.fill(); }
+    if (!SYS_ART[id] || !HUDM.drawArtIcon(g, SYS_ART[id], cx, cy, d * 0.8)) { g.fillStyle = 'rgba(22,6,12,0.92)'; g.beginPath(); g.arc(cx, cy, h * 0.86, 0, TAU); g.fill(); }
+    if (id === 'fullscreen') {
+      const u = d / 52, a = 9 * u, b = 4 * u;
+      g.strokeStyle = COL.gold; g.lineWidth = 2.2 * u; g.lineCap = 'round';
+      for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { g.beginPath(); g.moveTo(cx + sx * a, cy + sy * (a - b)); g.lineTo(cx + sx * a, cy + sy * a); g.lineTo(cx + sx * (a - b), cy + sy * a); g.stroke(); }
+    }
     const ring = HUDM.hudArt('ring_small');
     if (ring) { const z = d * 1.12; g.drawImage(ring, cx - z / 2, cy - z / 2, z, z); }
     if (pressed) { g.fillStyle = 'rgba(255,214,140,0.32)'; g.beginPath(); g.arc(cx, cy, h * 0.82, 0, TAU); g.fill(); }
@@ -1087,7 +1092,8 @@ function draw(L, w) {
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   S.drawn = true;
   const st = settings();
-  const op = clamp(num(st.touchOpacity, 0.55), 0.15, 1);
+  // 그린 테 버튼은 너무 흐리면 그림이 뭉개진다 → 폴드 배치에서는 투명도 하한 0.8 (넓은 배치는 설정 그대로)
+  const op = clamp(num(st.touchOpacity, 0.55), L.fold && artOn() ? 0.8 : 0.15, 1);
   const tsec = now() / 1000;
   if (S.editor) { drawEditor(c, L, tsec); return; }
   drawStick(c, L, op);

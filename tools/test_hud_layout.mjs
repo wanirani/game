@@ -44,7 +44,9 @@ const VIEWS = [
   { id: 'desk1280', w: 1280, h: 540, dpr: 1, touch: false },   // 21:9 창 → vw 1280
   { id: 'phone1', w: 844, h: 390, dpr: 3, touch: true, expectSlot: 'top' },
   { id: 'phone2', w: 740, h: 360, dpr: 3, touch: true, expectSlot: 'top' },
-  { id: 'tablet', w: 1024, h: 768, dpr: 2, touch: true, expectSlot: 'bottom' },
+  { id: 'tablet', w: 1024, h: 768, dpr: 2, touch: true, expectSlot: 'top' },   // 4:3 → 세로 확장 시야 960×720 → fold 프리셋 (보스 바는 위)
+  { id: 'fold_open', w: 1000, h: 756, dpr: 2.6, touch: true, expectSlot: 'top' }, // 갤럭시 폴드 펼침 (hud_mobile §5) → fold 프리셋
+  { id: 'desk43', w: 1024, h: 768, dpr: 1, touch: false },                        // 4:3 데스크톱 창 → fold 프리셋 + HUD 스킬 원호(L.arc)
   { id: 'touch960L', w: 1280, h: 720, dpr: 1, touch: true },    // 16:9 터치 화면, 크기 등급 L
   { id: 'touch1280', w: 1000, h: 420, dpr: 2, touch: true },    // 초광폭 휴대폰 → vw 1280, 크기 등급 M
   { id: 'phone1notch', w: 844, h: 390, dpr: 3, touch: true, notch: INSETS },
@@ -92,7 +94,7 @@ async function pageChecks({ view, INSETS }) {
       if (r.w < 0 || r.h < 0) bad(`${n} 음수 크기 ${f1(r)}`);
     }
     // 터치: y 297 아래(엄지·떠 있는 스틱 자리)에는 상시 영역이 없다 (§1.8 '터치 패드' 행; 아래 보스 칸만 예외)
-    if (L.touch && R.pad.length) {
+    if (L.touch && R.pad.length && !L.fold) {   // fold: 아래 가운데는 큰 HP·빠른 칸 자리 (패드·스틱과 겹치지 않기만)
       for (const [n, r] of R.persistent) if (n !== 'boss' && r.h > 0 && r.y + r.h > M.TOUCH_FLOOR + 1 + 0.01) bad(`${n}${f1(r)} 가 터치 y 297 아래로 내려온다`);
     }
     // 최소 크기
@@ -122,15 +124,21 @@ async function pageChecks({ view, INSETS }) {
   const slots = {};
   for (const v of variants) {
     const mv = M.modelView(view.w, view.h, v.inset, v.mode);
-    const pad = !view.touch ? [] : (realPad.length && v.tag === 'plain' ? realPad : M.modelPadRects({ vw: mv.vw, cssW: view.w, cssH: view.h, canvas: mv.canvas, inset: v.inset, touchScale: v.touchScale, leftHanded: v.leftHanded }));
+    const preset = mv.vw / mv.vh < M.FOLD_ASPECT ? 'fold' : 'wide';   // hud_mobile §3: 'auto' 와 같은 규칙
+    const pad = !view.touch ? [] : (realPad.length && v.tag === 'plain' ? realPad : M.modelPadRects({ vw: mv.vw, vh: mv.vh, preset, cssW: view.w, cssH: view.h, canvas: mv.canvas, inset: v.inset, touchScale: v.touchScale, leftHanded: v.leftHanded }));
     const textMin = view.touch ? Math.ceil(M.HUD_MIN_CSS / mv.cs - 1e-6) : 0;   // 이 변형의 캔버스 배율에서 터치 글자 하한
     for (const boss of [false, true]) {
       for (let meters = 0; meters <= 3; meters++) {
-        const L = M.hudLayout(null, mv.vw, 540, pad, { touch: view.touch, safe: mv.safe, boss, meters, textMin });
-        check(`${view.id}/${v.tag}/boss${boss ? 1 : 0}/m${meters}`, L, { boss, meters, safe: mv.safe, vw: mv.vw, vh: 540, sizes: !v.touchScale });
+        const L = M.hudLayout(null, mv.vw, mv.vh, pad, { touch: view.touch, safe: mv.safe, boss, meters, textMin, preset });
+        check(`${view.id}/${v.tag}/boss${boss ? 1 : 0}/m${meters}`, L, { boss, meters, safe: mv.safe, vw: mv.vw, vh: mv.vh, sizes: !v.touchScale });
+        // fold (hud_mobile §3): 빠른 칸·미니맵 탭 자리 ≥ 44 CSS px, 빠른 칸 사이 ≥ 12 CSS px
+        if (L.fold && view.touch && !boss && meters === 0) {
+          for (const q of [...L.quick, L.minimap]) if (Math.min(q.w, q.h) * mv.cs < 44 - 0.5) fails.push(`${view.id}/${v.tag}: 탭 자리 ${f1(q)} < 44 CSS px`);
+          for (let i = 1; i < L.quick.length; i++) { const gap = (L.quick[i].x - L.quick[i - 1].x - L.quick[i - 1].w) * mv.cs; if (gap < 12 - 0.5) fails.push(`${view.id}/${v.tag}: 빠른 칸 간격 ${gap.toFixed(1)} < 12 CSS px`); }
+        }
         combos++;
         slots[v.tag] = L.bossSlot;
-        if (boss && meters === 3) notes.push(`${v.tag}: vw ${mv.vw} 글자 하한 ${L.textMin}${L.big ? ' (휴대폰 배치)' : ''} slot ${L.bossSlot} boss${f1(L.bossBar)} transient${f1(L.transient)} combo${f1(L.combo)} toast0${f1({ x: L.toast(0).l, y: L.toast(0).top, w: L.toast(0).w, h: 26 })} padLeft ${L.padLeft == null ? '-' : Math.round(L.padLeft)} padTop ${L.padTop == null ? '-' : Math.round(L.padTop)}`);
+        if (boss && meters === 3) notes.push(`${v.tag}: ${L.preset} ${mv.vw}×${mv.vh} 글자 하한 ${L.textMin}${L.big ? ' (휴대폰 배치)' : ''} slot ${L.bossSlot} boss${f1(L.bossBar)} transient${f1(L.transient)} combo${f1(L.combo)} toast0${f1({ x: L.toast(0).l, y: L.toast(0).top, w: L.toast(0).w, h: 26 })} padLeft ${L.padLeft == null ? '-' : Math.round(L.padLeft)} padTop ${L.padTop == null ? '-' : Math.round(L.padTop)}`);
       }
     }
   }
@@ -146,17 +154,18 @@ async function pageChecks({ view, INSETS }) {
   // 기억: 패드 쪽이 같은 사각형 객체를 제자리에서 고쳐도 배치를 다시 계산한다 / 숫자가 아닌 사각형은 무시하고, 매번 다시 계산하지도 않는다
   if (view.touch && !view.notch) {
     const mv = M.modelView(view.w, view.h);
-    const pad = M.modelPadRects({ vw: mv.vw, cssW: view.w, cssH: view.h, canvas: mv.canvas, inset: { l: 0, r: 0, t: 0, b: 0 } });
-    const o = { touch: true, safe: { l: 0, r: 0, t: 0, b: 0 }, boss: false, meters: 3 };
-    const A = M.hudLayout(null, mv.vw, 540, pad, o);
+    const preset = mv.vw / mv.vh < M.FOLD_ASPECT ? 'fold' : 'wide';
+    const pad = M.modelPadRects({ vw: mv.vw, vh: mv.vh, preset, cssW: view.w, cssH: view.h, canvas: mv.canvas, inset: { l: 0, r: 0, t: 0, b: 0 } });
+    const o = { touch: true, safe: { l: 0, r: 0, t: 0, b: 0 }, boss: false, meters: 3, preset };
+    const A = M.hudLayout(null, mv.vw, mv.vh, pad, o);
     const top = pad.filter((p) => p.y > 162).reduce((m, p) => (p.y < m.y ? p : m));
-    const y0 = top.y; top.y = 60; // 제자리 수정 (touchScale 편집 흉내)
-    const B = M.hudLayout(null, mv.vw, 540, pad, o);
+    const y0 = top.y; top.y = preset === 'fold' ? Math.round(mv.vh * 0.35) : 60; // 제자리 수정 (touchScale 편집 흉내)
+    const B = M.hudLayout(null, mv.vw, mv.vh, pad, o);
     if (B === A || B.combo.h === A.combo.h) fails.push(`${view.id}/memo: 패드 사각형을 제자리에서 고쳤는데 배치가 그대로다 (combo h ${A.combo.h} → ${B.combo.h})`);
     top.y = y0;
     const withNaN = [...pad, { id: 'nan', x: NaN, y: NaN, w: 44, h: 44 }];
-    const C = M.hudLayout(null, mv.vw, 540, withNaN, o);
-    if (M.hudLayout(null, mv.vw, 540, withNaN, o) !== C) fails.push(`${view.id}/memo: NaN 사각형이 있으면 매번 다시 계산한다`);
+    const C = M.hudLayout(null, mv.vw, mv.vh, withNaN, o);
+    if (M.hudLayout(null, mv.vw, mv.vh, withNaN, o) !== C) fails.push(`${view.id}/memo: NaN 사각형이 있으면 매번 다시 계산한다`);
     for (const k of ['combo', 'transient', 'bossTop', 'bossBottom']) if (![C[k].x, C[k].y, C[k].w, C[k].h].every(Number.isFinite)) fails.push(`${view.id}/nan: ${k} 가 숫자가 아니다 ${JSON.stringify(C[k])}`);
     if (C.pad.some((p) => p.id === 'nan')) fails.push(`${view.id}/nan: 숫자가 아닌 패드 사각형이 L.pad 에 남았다`);
   }
@@ -269,10 +278,11 @@ async function widgetChecks({ tag, relaxFixed }) {
   const REG = {};
   for (const k of ['portrait', 'vitals', 'hearts', 'skills', 'ult', 'awGauge', 'ready', 'companions', 'callouts', 'score', 'combo', 'transient']) REG[k] = L[k];
   for (let i = 0; i < 3; i++) REG['meter' + i] = L.meter(i);
+  if (L.fold) { REG.minimap = L.minimap; REG.stage = L.stage; L.quick.forEach((q, i) => { REG['quick' + i] = q; }); if (L.arc) REG.arc = L.arc; delete REG.skills; }
   if (L.bossShown) REG.boss = L.bossBar;
   for (let i = 0; i < L.toastRows; i++) { const q = L.toast(i); REG['toast' + i] = { x: q.l, y: q.top, w: q.w, h: q.h }; }
   const toastKeys = Object.keys(REG).filter((k) => k.startsWith('toast'));
-  const FIXED = new Set(['portrait', 'vitals', 'hearts', 'skills', 'ult', 'awGauge', 'companions', 'score']);
+  const FIXED = new Set(['portrait', 'vitals', 'hearts', 'skills', 'ult', 'awGauge', 'companions', 'score', 'minimap', 'stage', 'quick', 'arc']);
   const TRANSIENT = new Set(['transient', 'toasts']);
   const inR = (r, x, y) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
   const dist = (r, x, y) => Math.hypot(Math.max(r.x - x, 0, x - (r.x + r.w)), Math.max(r.y - y, 0, y - (r.y + r.h)));
@@ -290,7 +300,7 @@ async function widgetChecks({ tag, relaxFixed }) {
   // 5) 글자 크기: 부분을 그리는 동안 fillText 를 가로채 CSS px 를 잰다 (캐시 캔버스에 굽는 글자는 굽는 배율이 1 일 때 논리 px 와 같다 →
   //    먼저 배율 2 의 빈 캔버스에 HUD 를 한 번 그려 캐시(초상화·카드)를 무효로 만들어, 아래 측정에서 배율 1 로 다시 굽게 한다)
   // BM-FOLLOWUP: awGauge·combo·transient(배너 없을 때 포함)·meters·toasts 도 휴대폰에서 11 CSS px 이상이 됐다 → 정보가 아니라 실패로
-  const OWN_TEXT = new Set(['portrait', 'vitals', 'hearts', 'skills', 'ult', 'awGauge', 'companions', 'callouts', 'score', 'combo', 'transient', 'meters', 'toasts', 'boss']);
+  const OWN_TEXT = new Set(['portrait', 'vitals', 'hearts', 'skills', 'ult', 'awGauge', 'companions', 'callouts', 'score', 'combo', 'transient', 'meters', 'toasts', 'boss', 'stage', 'quick', 'arc']);
   const cssK = g.cssScale > 0 ? g.cssScale : 1;
   const texts = {};
   let curPart = null;
@@ -323,6 +333,11 @@ async function widgetChecks({ tag, relaxFixed }) {
     ['toasts', () => g.drawHudToasts(c, L), toastKeys],
   ];
   if (L.bossShown) PARTS.push(['boss', part('boss'), ['boss']]);
+  if (L.fold) {   // hud_mobile §3 폴드 위젯 (스킬 칸은 원호에 있어 비어 있다)
+    PARTS.splice(PARTS.findIndex(([n]) => n === 'skills'), 1);
+    PARTS.push(['minimap', part('minimap'), ['minimap']], ['stage', part('stage'), ['stage']], ['quick', part('quick'), L.quick.map((_, i) => 'quick' + i)]);
+    if (L.arc) PARTS.push(['arc', part('arc'), ['arc']]);
+  }
 
   // peak = 튀기기·박힘 연출의 첫 프레임 (feel_hud: 칸 위·왼쪽으로 잠깐 넘쳐도 되지만 다른 영역·패드는 덮지 않는다)
   const measure = (list, peak) => { for (const [name0, fn, allowKeys] of list) {
@@ -338,7 +353,7 @@ async function widgetChecks({ tag, relaxFixed }) {
     const d = c.getImageData(0, 0, vw, vh).data;
     let ink = 0, spill = 0, maxSpill = 0, unsafe = 0, floor = 0, x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
     const hits = {};
-    const floorOk = name0 === 'transient' || name0 === 'toasts' || (name0 === 'boss' && L.bossSlot === 'bottom') || !T || !L.pad.length;
+    const floorOk = L.fold || name0 === 'transient' || name0 === 'toasts' || (name0 === 'boss' && L.bossSlot === 'bottom') || !T || !L.pad.length;
     for (let y = 0, i = 3; y < vh; y++) {
       for (let x = 0; x < vw; x++, i += 4) {
         if (d[i] < A_MIN) continue;
@@ -361,7 +376,7 @@ async function widgetChecks({ tag, relaxFixed }) {
     const bbox = ink ? { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 } : null;
     parts[name] = { ink, bbox, spill, maxSpill: Math.round(maxSpill * 10) / 10, hits, ret: typeof ret === 'object' ? (ret ? 'rects' : null) : ret };
     // 판정
-    const must = { portrait: 1, vitals: 1, hearts: 1, skills: 1, ult: 1, awGauge: 1, companions: 1, callouts: 1, score: 1, combo: 1, transient: 1, meters: 1, toasts: 1, boss: 1 };
+    const must = { portrait: 1, vitals: 1, hearts: 1, skills: 1, ult: 1, awGauge: 1, companions: 1, callouts: 1, score: 1, combo: 1, transient: 1, meters: 1, toasts: 1, boss: 1, minimap: 1, stage: 1, quick: 1, arc: 1 };
     if (must[name0] && ink < 20) fails.push(`${tag}/${name}: 거의 그려지지 않았다 (잉크 ${ink}px) — 실제 위젯이 빠졌다`);
     for (const k in hits) {
       const isPad = k.startsWith('pad:');

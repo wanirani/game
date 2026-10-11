@@ -15,12 +15,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { routeM4a } from '../m4a_route.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const argv = process.argv.slice(2);
 const opt = (k, d) => { const i = argv.indexOf('--' + k); return i >= 0 && argv[i + 1] != null && !argv[i + 1].startsWith('--') ? argv[i + 1] : d; };
 const SR = 48000, WARM = 0.6;
-const V2NAMES = JSON.parse(fs.readFileSync(path.join(root, 'assets/audio/sfx_v2/index.json'), 'utf8')).names;
+const V2IX = JSON.parse(fs.readFileSync(path.join(root, 'assets/audio/sfx_v2/index.json'), 'utf8')), V2NAMES = V2IX.names;
 
 // ── 브라우저 ──
 const srv = await start(0), port = srv.address().port;
@@ -29,6 +30,7 @@ const page = await (await browser.newContext()).newPage();
 const errs = [];
 page.on('pageerror', (e) => errs.push(e.message));
 page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+await routeM4a(page, root);   // 헤드리스 Chromium 은 AAC 를 못 푼다 → 같은 내용의 WAV
 await page.route('**/__ab__.html', (r) => r.fulfill({ contentType: 'text/html; charset=utf-8', body: '<!doctype html><meta charset="utf-8"><title>ab</title>' }));
 let music = null;
 if (opt('music')) {
@@ -108,7 +110,8 @@ function lufsM(L, R) {
 if (opt('list')) {
   // ── 1) 소리 비교표 ──
   const names = opt('names') ? opt('names').split(',') : V2NAMES;
-  const pattern = (n) => (n === 'step_stone' ? [0, 0.3, 0.6, 0.9, 1.2, 1.5] : n === 'ult_impact' ? [0, 1.9] : [0, 0.45, 0.9]);
+  const LONG = new Set(['ult_impact', 'thunderclap', 'levelup', 'holy']);
+  const pattern = (n) => (/^(step_|footstep|gallop)/.test(n) ? [0, 0.3, 0.6, 0.9, 1.2, 1.5] : LONG.has(n) ? [0, 2.0] : /^(menu_move|type)$/.test(n) ? [0, 0.16, 0.32, 0.48] : [0, 0.45, 0.9]);
   const GAP_IN = 0.6, GAP_OUT = 1.2;
   const L = [], R = [], rows = [];
   let tCur = 0;
@@ -123,8 +126,9 @@ if (opt('list')) {
   push(sil(0.5));
   for (const n of names) {
     const ts = pattern(n), span = ts[ts.length - 1];
-    const evts = ts.map((t) => ({ t, name: n, o: { vol: 1 } }));
-    const tail = n === 'ult_impact' ? 2.6 : 1.4;
+    const of = V2IX.sfx[n]?.of;   // 몸 종류 변형: 예전 = 그 이름(enemy_die) 그대로, v2 = v2alt 로 변형 묶음
+    const evts = ts.map((t) => ({ t, name: of || n, o: of ? { vol: 1, v2alt: n.slice(of.length + 1) } : { vol: 1 } }));
+    const tail = LONG.has(n) ? 2.8 : 1.4;
     const a = trim(await render(evts, span + tail, false)), b = trim(await render(evts, span + tail, true));
     const row = { name: n, cur: +tCur.toFixed(2) };
     push(a); push(sil(GAP_IN)); row.v2 = +tCur.toFixed(2); push(b); push(sil(GAP_OUT));

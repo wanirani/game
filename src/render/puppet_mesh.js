@@ -30,8 +30,9 @@ export function boneAffine(a, b, AX, AY, BX, BY, PS, out) {
 }
 const MA = new Float64Array(6), MB = new Float64Array(6);
 
-// 띠 꼭짓점 버퍼 (원화 좌표 S, 화면 좌표 D): 띠 경계 최대 16개 × 좌우 2점
-const S = new Float64Array(64), D = new Float64Array(64), TA = new Float64Array(6);
+// 띠 꼭짓점 버퍼 (원화 좌표 S, 화면 좌표 D): 띠 경계 최대 16개 × (왼쪽·가운데·오른쪽) 3점
+const S = new Float64Array(96), D = new Float64Array(96), TA = new Float64Array(6);
+const MAXB = 1.15;
 /** 원화 삼각형 (s0,s1,s2) → 화면 삼각형 (d0,d1,d2) 아핀 */
 function triAffine(s, i0, i1, i2, d, out) {
   const x0 = s[i0], y0 = s[i0 + 1], x1 = s[i1], y1 = s[i1 + 1], x2 = s[i2], y2 = s[i2 + 1];
@@ -60,10 +61,10 @@ function clipPoly(c, d, idx) {
   c.clip();
 }
 const I3 = [0, 0, 0], I4 = [0, 0, 0, 0];
-// 이번 그리기의 띠 경계·가중치 (관절 각에 맞춰 나눔 — 깊게 접힐수록 촘촘히: 띠 하나가 0.24 rad 넘게 돌지 않게, 한쪽 1~6개)
+// 이번 그리기의 띠 경계·가중치 (관절 각에 맞춰 나눔 — 깊게 접힐수록 촘촘히: 띠 하나가 0.3 rad 넘게 돌지 않게, 한쪽 1~3개)
 const ROWS = new Float64Array(16), WTS = new Float64Array(16);
 function planRows(P, dth) {
-  const { t0, t1, h, hb } = P, m = clamp(Math.ceil((Math.abs(dth) * 0.5) / 0.24), 1, 6);
+  const { t0, t1, h, hb } = P, m = clamp(Math.ceil((Math.abs(dth) * 0.5) / 0.3), 1, 3);
   let n = 0;
   const push = (t, w) => { if (t < t0 - 0.03 || t > t1 + 0.03) return; if (n && t <= ROWS[n - 1] + 0.004) return; ROWS[n] = t; WTS[n] = w; n++; };
   if (P.joint === 'end') {
@@ -125,8 +126,12 @@ export function drawSkinned(c, img, rc, pt, plan, own, other, PS) {
   if (!plan) return false;
   const rA = boneAffine(own[0], own[1], own[2], own[3], own[4], own[5], PS, MA);
   const rB = boneAffine(other[0], other[1], other[2], other[3], other[4], other[5], PS, MB);
-  const dth = wrapPI(rB - rA);                       // 이웃 뼈의 상대 회전 (모든 꼭짓점 공통)
-  if (Math.abs(dth) < 0.1) { meshStats.rigid++; return false; }
+  const dfull = wrapPI(rB - rA);                     // 이웃 뼈의 상대 회전 (모든 꼭짓점 공통)
+  if (Math.abs(dfull) < 0.1) { meshStats.rigid++; return false; }
+  // 메시가 나눠 맡는 굽힘은 최대 MAXB rad: 그 이상(공중제비처럼 깊게 접힘)은 예전처럼 두 판이 관절에서 겹쳐 덮는다 —
+  // 바깥쪽 띠가 크게 늘어나 원화가 톱니처럼 갈라지거나 무릎이 풍선처럼 부푸는 것을 막는다
+  const dth = dfull > MAXB ? MAXB : dfull < -MAXB ? -MAXB : dfull;
+  const full = dth === dfull;
   const { v0, v1, ux, uy, nx, ny, len, a } = plan;
   const n = planRows(plan, dth);
   if (n < 2) return false;
@@ -137,14 +142,14 @@ export function drawSkinned(c, img, rc, pt, plan, own, other, PS) {
   for (let r = 0; r < n; r++) {
     const t = rows[r], w = W[r];
     const cw = Math.cos(dth * w), sw = Math.sin(dth * w);
-    for (let side = 0; side < 2; side++) {
-      const v = side ? v1 : v0, x = a[0] + ux * t * len + nx * v, y = a[1] + uy * t * len + ny * v, i = (r * 2 + side) * 2;
+    for (let side = 0; side < 3; side++) {
+      const v = side === 0 ? v0 : side === 2 ? v1 : (v0 + v1) * 0.5, x = a[0] + ux * t * len + nx * v, y = a[1] + uy * t * len + ny * v, i = (r * 3 + side) * 2;
       S[i] = x; S[i + 1] = y;
       // 제 뼈로 옮긴 점 pA, 이웃 뼈로 옮긴 점 pB (관절 기준 벡터)
       const ax = MA[0] * x + MA[2] * y + MA[4] - jx, ay = MA[1] * x + MA[3] * y + MA[5] - jy;
       if (w < 1e-4) { D[i] = jx + ax; D[i + 1] = jy + ay; continue; }
       const bx = MB[0] * x + MB[2] * y + MB[4] - jx, by = MB[1] * x + MB[3] * y + MB[5] - jy;
-      if (w > 0.9999) { D[i] = jx + bx; D[i + 1] = jy + by; continue; }
+      if (w > 0.9999 && full) { D[i] = jx + bx; D[i + 1] = jy + by; continue; }
       // 각도·거리 섞기: pA 를 관절 둘레로 w·dth 만큼 돌리고 길이는 |pA|→|pB| 사이 (늘임 k 차이만큼)
       const la = Math.hypot(ax, ay), lb = Math.hypot(bx, by), k = la > 1e-6 ? (la + (lb - la) * w) / la : 1;
       D[i] = jx + (ax * cw - ay * sw) * k; D[i + 1] = jy + (ax * sw + ay * cw) * k;
@@ -152,20 +157,23 @@ export function drawSkinned(c, img, rc, pt, plan, own, other, PS) {
   }
   meshStats.parts++;
   for (let r = 0; r < n - 1; r++) {
-    const i00 = r * 4, i01 = r * 4 + 2, i10 = r * 4 + 4, i11 = r * 4 + 6;
-    // 이 띠의 네 꼭짓점이 모두 가중치 0(제 뼈) 또는 1(이웃 뼈)이면 그 뼈 변환 하나로 (사각형 한 번)
-    const r0 = W[r] < 1e-4 && W[r + 1] < 1e-4, r1 = W[r] > 0.9999 && W[r + 1] > 0.9999;
+    // 꼭짓점: 줄 r 의 왼쪽·가운데·오른쪽 = (r*3 + 0/1/2)*2
+    const a0 = r * 6, a1 = a0 + 2, a2 = a0 + 4, b0 = a0 + 6, b1 = a0 + 8, b2 = a0 + 10;
+    // 이 띠의 네 꼭짓점이 모두 가중치 0(제 뼈) 또는 1(이웃 뼈, 굽힘 전부를 메시가 맡을 때)이면 그 뼈 변환 하나로 (사각형 한 번)
+    const r0 = W[r] < 1e-4 && W[r + 1] < 1e-4, r1 = full && W[r] > 0.9999 && W[r + 1] > 0.9999;
     if (r0 || r1) {
       const M = r0 ? MA : MB;
       c.save();
-      I4[0] = i00; I4[1] = i01; I4[2] = i11; I4[3] = i10; clipPoly(c, D, I4);
+      I4[0] = a0; I4[1] = a2; I4[2] = b2; I4[3] = b0; clipPoly(c, D, I4);
       c.transform(M[0], M[1], M[2], M[3], M[4], M[5]);
       c.drawImage(img, rc[0], rc[1], rc[2], rc[3], pt.x0, pt.y0, pt.w, pt.h);
       c.restore(); meshStats.tris++;
       continue;
     }
-    for (let k = 0; k < 2; k++) {
-      if (k) { I3[0] = i01; I3[1] = i11; I3[2] = i10; } else { I3[0] = i00; I3[1] = i01; I3[2] = i10; }
+    // 휘는 띠: 가운데 세로선으로 둘로 나눠 삼각형 4개 (사다리꼴 띠를 두 개로만 자르면 대각선을 따라 원화가 어긋난다)
+    for (let k = 0; k < 4; k++) {
+      if (k === 0) { I3[0] = a0; I3[1] = a1; I3[2] = b0; } else if (k === 1) { I3[0] = a1; I3[1] = b1; I3[2] = b0; }
+      else if (k === 2) { I3[0] = a1; I3[1] = a2; I3[2] = b1; } else { I3[0] = a2; I3[1] = b2; I3[2] = b1; }
       if (!triAffine(S, I3[0], I3[1], I3[2], D, TA)) continue;
       c.save();
       clipPoly(c, D, I3);
