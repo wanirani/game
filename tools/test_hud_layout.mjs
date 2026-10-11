@@ -115,8 +115,8 @@ async function pageChecks({ view, INSETS }) {
     if (L.combo.h < 40) small(`combo 너무 낮다 ${f1(L.combo)}`);
     if (boss && L.bossBar.w < 240) small(`boss 너무 좁다 ${f1(L.bossBar)}`);
     for (let i = 0; i < meters; i++) if (L.meter(i).w < 100) small(`meter${i} 너무 좁다 ${f1(L.meter(i))}`);
-    // 토스트 줄 수: 위쪽 보스 바가 보이면 1, 아니면 3
-    const want = boss && L.bossSlot === 'top' ? 1 : 3;
+    // 토스트 줄 수: 위쪽 보스 바가 보이면 1 (폴드 배치는 2 — hudfix: 보스 바 아래 두 줄), 아니면 3
+    const want = boss && L.bossSlot === 'top' ? (L.fold ? 2 : 1) : 3;
     if (L.toastRows !== want) small(`toastRows ${L.toastRows} (기대 ${want})`);
     return R;
   }
@@ -697,7 +697,7 @@ async function redoPage({ dev, mode, scene, coverageOnly }) {
     m.clusterH = r1(100 * hk);
     if (hk > 0.42) fails.push(`버튼 묶음 높이 ${r1(100 * hk)}% > 42%`);
   }
-  if (scene === 'stage' && mode === 'overlay') { const br = tp.bottomReserve?.(); m.bottomReserve = br == null ? null : r1(100 * br); if (br != null && !(br > 0.08 && br < 0.3)) fails.push(`bottomReserve ${br} (기대 0.08–0.3, 카메라 경기장 바닥용)`); }
+  if (scene === 'stage' && mode === 'overlay') { const br = tp.bottomReserve?.(); m.bottomReserve = br == null ? null : r1(100 * br); if (br != null && !(br > 0.08 && br < 0.45)) fails.push(`bottomReserve ${br} (기대 0.08–0.45, 카메라 경기장 바닥용 — 카메라는 0.26 에서 자른다)`); }
   if (dev.mmPerDp && mode === 'overlay' && scene === 'stage') {
     const k = dev.mmPerDp, mmOf = (b) => r1(2 * rimR(b) * k);
     // [hudfix] 공격 76 · 점프 60 · 나머지 56 · 넘김/수호 52 dp (폴드 DPR 2) — 의견 2 '버튼마다 조금씩 작게'. 화면 확대(fold26)도 같은 mm

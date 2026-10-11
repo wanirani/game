@@ -5,7 +5,9 @@
 //   #tpad    화면 전체 이벤트 층. 평소에는 pointer-events:none: 터치는 window 캡처 단계에서 받는다. 버튼·스틱 자리를 누른 손가락만
 //            패드가 가져가고(stopPropagation, 그래서 그 밑의 캔버스 탭은 생기지 않는다), 나머지 탭은 캔버스로 그대로 간다.
 //            배치 편집기가 열리면 .edit 가 붙어 모든 입력을 받는다 (DOM 도구 막대 + 어두운 배경).
-//   #tpadcv  버튼·스틱을 그리는 투명 캔버스 (pointer-events:none). 백킹 DPR = min(기기 DPR, game.dpr, 1.2 MP 예산).
+//   #tpadcv  버튼·스틱을 그리는 투명 캔버스 (pointer-events:none). 백킹 DPR = min(기기 DPR, 3, 6.5 MP 예산) — 화질 등급과 무관
+//            (hudfix: 자동 화질이 낮음으로 내려가도 흐려지지 않게; 메모리 ≤ 2 GB 기기만 1.5 · 1.5 MP). 버튼 아래에는 상시 HUD 칸
+//            (hud_crisp.js 가 같은 DPR 로 구운 빠른 칸·체력·재화·퀘스트·지도 테)을 붙인다 → HUD 와 버튼이 같은 선명도.
 //            상태가 바뀔 때만, 최대 30 Hz 로 다시 그린다. 패드가 숨으면 display:none (합성 비용 없음).
 //            숨은 동안에는 백킹을 0×0 으로 놓고(R1-REQ-342), 다시 보일 때 같은 작업 안에서 되살려 그린 뒤 보인다.
 //   예전 DOM 패드(#touch)는 초기화할 때 지운다 (예전 도우미 setPad·hidePad·padPush·townPad 는 #touch 가 없으면 조용히 넘어간다).
@@ -23,7 +25,10 @@
 //   touchpad.buttons({ all }) → [{id,cx,cy,d}] CSS px (QA 드라이버). all: 상태 때문에 숨긴 버튼(탈것·수호)까지 전부
 //   touchpad.setTechRadial(fn | null)         ⇄ 350ms 길게 누르기 → fn({x, y}) (기술 원형 메뉴, platform §5.5 P2).
 //                                             없으면 길게 눌러도 손을 뗄 때 페이지를 넘긴다
-//   touchpad.layoutInfo()                     디버그: {sizeClass, k, kEff, band, bandH, left, custom, yMin}
+//   touchpad.layoutInfo()                     디버그: {sizeClass, k, kEff, band, bandH, left, custom, yMin, preset, dpr, backing, opacity…}
+//   touchpad.bottomReserve() → 0–0.5           (hudfix) 게임 화면 아래에서 쉬는 스틱·아래 줄 버튼이 차지하는 높이 비 → camera 경기장 바닥
+//   touchpad.crispDpr() · hudLayer(id, c, x, y, ver, dpr) · hudLayerShown(id)   (hudfix) HUD 선명 칸 — hud_crisp.js 가 쓴다
+//   touchpad.layoutVersion()                  (hudfix) 배치를 다시 계산할 때마다 바뀌는 번호 (아래 띠 빠른 칸 캐시 키)
 //
 // 버튼 id: attack jump dash sub skill1 skill2 ult swap mount guard · 시스템 pause bag fullscreen (+ fold: maptog = 큰 지도 열고 닫기)
 // 프리셋 (hud_mobile §3): settings.hud.preset 'auto'(논리 화면비 < 1.55 → fold) | 'wide' | 'fold'. fold = 큰 공격 버튼 둘레 스킬 원호
@@ -71,7 +76,9 @@ export const rimOf = (id) => RIM[id] ?? 1.02;
  *  여백 m 은 배율과 상관없이 그대로 (그린 테 바깥까지)
  */
 export function padPlan(kind = 'overlay', k = 1, m = PAD_M, town = false) {
-  const A = PAD_SIZE.A * k, J = PAD_SIZE.J * k, B = PAD_SIZE.B * k, U = PAD_SIZE.U * k, S = PAD_SIZE.S * k, G = Math.max(12, PAD_GAP * k);
+  // 최소 지름 44 dp(MIN_D)를 자리 계산 전에 적용 (hudfix): 작은 배율에서 나중에 키우면 밀어내기(settle)가 대시를 여백 안으로 밀었다 (fold26)
+  const fl = (v) => Math.max(44, v);
+  const A = fl(PAD_SIZE.A * k), J = fl(PAD_SIZE.J * k), B = fl(PAD_SIZE.B * k), U = fl(PAD_SIZE.U * k), S = fl(PAD_SIZE.S * k), G = Math.max(12, PAD_GAP * k);
   const rA = (A / 2) * RIM.attack, rB = (B / 2) * 1.02;
   const yb = m + rA;                                     // 아래 줄 중심 높이 (공격 테가 여백에 닿게)
   const P = {};

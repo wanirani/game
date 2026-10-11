@@ -370,8 +370,22 @@ function build(vw, vh, T, S, pad, bossOn, nM, F) {
   L.gap = { l: gapL, r: gapR };
 
   // 알림·배너 칸: y 230–294, 좌우 322 여백, 패드에 닿으면 패드에서 8 px 떨어진 곳까지
-  const ty = 230 + t, th = 64;
-  const ts = clipSpan(322 + l, right - 322, ty, th, pad, sides);
+  // [hudfix] 휴대폰 두 줄 버튼 묶음(윗줄이 가운데 쪽으로 넓다)이 칸 바로 아래까지 오면 칸을 그 위로 올린다
+  //   (알림 글자는 칸 아래로 ~26 px 넘쳐 그려진다 → 그만큼 띄운다). 토스트 3줄 자리(게이지 아래)보다 위로는 올리지 않는다
+  let ty = 230 + t;
+  const th = 64, below = TOAST_ROW;
+  let ts = clipSpan(322 + l, right - 322, ty, th, pad, sides);
+  if (T) {
+    let ptop = Infinity;
+    for (const p of pad) if (p.x < right - 322 && p.x + p.w > 322 + l && p.y < ty + th + below && p.y + p.h > ty) ptop = Math.min(ptop, p.y);
+    const n0 = clamp(Math.round(nM), 0, 3);
+    const minTy = Math.ceil((n0 ? meters[n0 - 1].y + METER_H + 4 : mTop) + 3 * TOAST_ROW + 4);
+    const ty2 = Math.max(minTy, Math.floor(ptop - th - below));
+    if (Number.isFinite(ptop) && ty2 < ty) {
+      const s2 = clipSpan(322 + l, right - 322, ty2, th, pad, sides);
+      if (s2.r - s2.l >= ts.r - ts.l) { ty = ty2; ts = s2; }
+    }
+  }
   const tw = Math.min(560, ts.r - ts.l);
   L.transient = R(ts.l + (ts.r - ts.l - tw) / 2, ty, tw, th);
 
@@ -549,6 +563,8 @@ function buildFold(vw, vh, T, S, pad, bossOn, nM, F, k, cs, qcIn = false) {
     let r = right - 12;
     if (L.combo.h > 0 && L.combo.y < bot && L.combo.y + L.combo.h > top) r = Math.min(r, L.combo.x - HUD_GAP);
     if (qOn && L.quest.y < bot && L.quest.y + L.quest.h + HUD_GAP > top) r = Math.min(r, L.quest.x - HUD_GAP);
+    for (const p of pad) if (p.y < bot && p.y + p.h > top && p.x + p.w > gapL && p.x < r) r = Math.min(r, p.x - HUD_GAP);   // 오른쪽 위 아이콘 줄 등
+    r = Math.max(r, gapL);
     return { x: (gapL + r) / 2, y: top + 18, l: gapL, r, w: r - gapL, top, h: TOAST_ROW, hidden: i >= rows };
   };
   const toastList = [0, 1, 2].map(rowAt);
