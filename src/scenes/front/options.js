@@ -169,6 +169,13 @@ function buildRows(sc) {
       },
       { id: 'touchSlide', label: '버튼 사이 밀어 누르기', type: 'bool', note: '손가락을 떼지 않고 옆 버튼으로 밀면 그 버튼이 눌립니다.' },
       { id: 'touchLeftHanded', label: '왼손 모드', type: 'bool', note: '스틱과 버튼의 좌우를 바꿉니다.' },
+      { // [hudredo] 버튼 배치: 게임 화면 위(기본) | 아래 띠(예전 판 — 16:9 게임 아래 어두운 띠에 버튼). settings.hud 는 새 객체로, 바꾸면 바로 다시 배치
+        id: 'hudPad', label: '버튼 배치', type: 'enum', opts: [['overlay', '게임 화면 위'], ['band', '아래 띠']],
+        get: () => sc.s.hud?.pad ?? 'overlay', set: (v) => { sc.s.hud = { ...(sc.s.hud ?? {}), pad: v }; g.dirty = true; },
+        note: (s) => (s.hud?.pad === 'band'
+          ? '게임 화면을 위로 올리고 아래 어두운 띠에 버튼을 둡니다. 폴드·태블릿처럼 네모난 화면에서만 띠가 생깁니다.'
+          : '버튼을 게임 화면 위에 얹고 화면을 끝까지 씁니다.'),
+      },
       { id: 'touchLayout', label: '버튼 배치 편집', type: 'link', value: () => (sc.s.touchLayout ? '사용자 지정' : '기본'), run: () => sc.openEditor(), note: '버튼을 끌어서 옮기고, 모서리를 끌어 크기를 바꿉니다.' },
       { id: 'vibration', label: '진동', type: 'bool', note: '휴대폰 진동을 켜고 끕니다.' },
     ],

@@ -302,6 +302,7 @@ function lput(x) {
 function layout(force = false) {
   if (!hasDom()) return null;
   const g = game(), st = settings();
+  upgradeLayoutRev(g, st);
   const W = window.innerWidth || 1, H = window.innerHeight || 1;
   const ins = insetsCss(), cr = canvasBox();
   const vw = g?.viewW || Math.round(clamp((540 * cr.w) / cr.h, 960, 1280)), vh = g?.viewH || 540;
@@ -439,13 +440,22 @@ function apply(on, hb) {
   if (!on) releaseCanvas();    // R1-REQ-342: 메뉴·마을·컷신 동안 전체 화면 백킹(phone1 ≈ 2.8 MB)을 들고 있지 않는다
   else noteLayoutReset();
 }
-/** HUD-REDO: 예전 배치(순서·크기)로 저장한 사용자 배치는 설정을 불러올 때 지웠다 (save.js hud.padReset) → 패드가 처음 보일 때 한 번 알린다 */
-function noteLayoutReset() {
-  const g = game(), st = g?.settings;
-  if (!st?.hud?.padReset) return;
-  st.hud = { ...st.hud, padReset: false };
+/**
+ * HUD-REDO 배치 개편 (settings.hud.rev 2): 개편 전(rev < 2)에 편집기로 저장한 사용자 배치는 예전 순서·크기 기준이라
+ * 새 배치에서 버튼이 겹치거나 예전 순서로 남는다 → 한 번 지우고 (패드가 처음 보일 때 토스트로 알린다) rev 를 2 로 올려 저장한다
+ */
+function upgradeLayoutRev(g, st) {
+  if (!g || g.settings !== st || Number(st.hud?.rev) >= 2) return;
+  if (st.touchLayout && typeof st.touchLayout === 'object' && Object.keys(st.touchLayout).length) { st.touchLayout = null; S.resetToast = true; }
+  st.hud = { ...(st.hud && typeof st.hud === 'object' ? st.hud : {}), rev: 2 };
   try { (g.saves ?? SAVE.saves)?.saveSettings?.(st); } catch (e) { console.error('[touchpad] saveSettings', e); }
-  try { g.toast?.('버튼 배치가 새로 바뀌어, 직접 옮겨 둔 버튼 위치를 처음 상태로 되돌렸습니다', '#ffd890', 5); } catch { /* 토스트 없음 */ }
+}
+function noteLayoutReset() {
+  if (!S.resetToast) return;
+  const g = game();
+  if (typeof g?.toast !== 'function') return;
+  S.resetToast = false;
+  try { g.toast('버튼 배치가 새로 바뀌어, 직접 옮겨 둔 버튼 위치를 처음 상태로 되돌렸습니다', '#ffd890', 5); } catch { /* 토스트 없음 */ }
 }
 /** 숨기는 동안 기억해 둔 스틱 손가락이 아직 화면에 있으면 같은 받침에서 이어 간다 (다시 떼었다 누르지 않아도 계속 달린다) */
 function resumeStick() {
@@ -783,6 +793,7 @@ function onUp(e) {
     if (p.id === 'maptog' && !cancel) toggleBigMap();
   } else if (p.kind === 'hud') {
     if (p.act === 'hudmap') { if (!cancel) toggleBigMap(); } else if (ACT_OK.has(p.act)) actOff(p.act);
+    else if (!cancel) { const g = game(); try { g?.hudTapFn?.(p.act); } catch (er) { console.error('[touchpad] hud tap', er); } }   // 퀘스트 칸 등 (hud.js)
   } else {
     for (const id of p.ids) releaseBtn(p, id, !cancel);
   }

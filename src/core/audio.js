@@ -1079,8 +1079,9 @@ export function defineSfx(name, def, vol) {
 }
 
 // ─────────────────────────────── 고급 효과음 v2 (기본, ?sfx=v1 로 끔) ───────────────────────────────
-// index.json = { version:2, rate, formats:['m4a'], names:[…], sfx:{이름:{f:[id], g, rev?, room?, of?, ref?, alias?}}, files:{id:{dur, on, ch, lufs, peak, m4a}} }
+// index.json = { version:2, rate, formats:['m4a'], names:[…], sfx:{이름:{f:[id], g, rev?, room?, of?, ref?, alias?, lazy?, vr?}}, files:{id:{dur, on, ch, lufs, peak, m4a}} }
 //   room: 방 잔향 송신 배율 (0 = 없음) · of: 다른 이름의 변형 묶음 (enemy_die_bone → enemy_die) · ref: 보정 때 잰 지금 소리 크기 (QA)
+//   lazy: 드문 소리 — 핵심 소리 뒤에 나눠 받음 (휴대폰은 24 kHz 로 풂) · vr: 재생 속도 변형 [1, 0.95, 1.055] (녹음 1벌로 변형 3개 — 용량)
 /** v2 끄기 (A/B 비교용): ?sfx=v1 또는 localStorage 'bn.sfx' = 'v1'. 막혀 있으면 켜짐 */
 export const SFX_V1 = (() => {
   try { if (new URLSearchParams(location.search).get('sfx') === 'v1') return true; } catch { /* 없음 */ }
@@ -1191,7 +1192,8 @@ export class V2Bank {
       const rate = d.lazy && this.lazyRate ? this.lazyRate : this.rate;
       jobs.push(Promise.all(d.f.map((fid) => this._file(fid, rate))).then((bs) => {
         const bufs = bs.filter(Boolean);
-        this.smp.set(n, bufs.length ? { bufs, g: Number(d.g) || 1, rev: d.rev, room: d.room, last: -1 } : null);
+        const vr = Array.isArray(d.vr) && d.vr.length && d.vr.every((x) => Number(x) > 0) ? d.vr.map(Number) : null;
+        this.smp.set(n, bufs.length ? { bufs, g: Number(d.g) || 1, rev: d.rev, room: d.room, vr, last: -1 } : null);
       }));
     }
     return Promise.all(jobs).then(() => { this.state = 'ready'; });
@@ -1359,11 +1361,12 @@ export class Engine {
     const S = { e: this, c, t: now + 0.004 + (o.delay || 0), p: pitch * (1 + (R() * 2 - 1) * (def.vary ?? 0.035)), v: vol * (def.vol ?? 1), out, end: 0 };
     if (v2) {
       // 변형 무작위 (바로 앞 변형은 피함) + 음량 ±0.8 dB · 피치는 위 S.p (정의 vary) · 장소별 방 잔향
-      const k = v2.bufs.length; let i = 0;
+      // vr (드문 소리): 녹음 1벌을 재생 속도 변형 vr[i] 로 — 변형 수 = vr 길이
+      const vr = v2.vr, k = vr ? vr.length : v2.bufs.length; let i = 0;
       if (k > 1) { if (v2.last < 0) i = (R() * k) | 0; else { i = (R() * (k - 1)) | 0; if (i >= v2.last) i++; } }
       v2.last = i;
       const room = this._v2Room(node, name, v2.room);
-      playSample(S, v2.bufs[i], vol * v2.g * (1 + (R() * 2 - 1) * V2_JIT), 1);
+      playSample(S, v2.bufs[i % v2.bufs.length], vol * v2.g * (1 + (R() * 2 - 1) * V2_JIT), vr ? vr[i] : 1);
       this.v2Starts++;
       this.live.push({ name, st: now, end: now + (o.delay || 0) + S.end + 0.05, out, node, wet, room });
       if (def.duck) this.duck(def.duck[0] * Math.min(1, vol), def.duck[1]);

@@ -17,7 +17,7 @@
 //  초월 8: 그림자 화신(분신) · 신기루(잔상 폭발·등 뒤 순간이동) · 칼춤의 여왕(도는 칼날) · 영혼 수확자(영혼·망자의 낫)
 //          밤의 군주(피안개) · 혈제(피의 창) · 태양의 검(정오 광선) · 네필림(빛·어둠 깃털, 일식)
 //  비전 2: lia_frostcrow(냉기·동결·산산조각) + asc_lia_frostwing · azel_dawnblood(빌린 시간) + asc_azel_lullaby
-import { K, procStrike, mark, markOf, unmark, icd, slowEnemy, shieldAdd, shieldAbsorb, shieldOf, perkState, markReady, markCell, drawCell, drawCellRot, markGlow, markStep } from './class_perks.js';
+import { K, procStrike, mark, markOf, unmark, icd, slowEnemy, shieldAdd, shieldAbsorb, shieldOf, perkState, markReady, markCell, drawCell, markGlow, markStep } from './class_perks.js';
 import { skillVal } from '../data/skills.js';
 
 const TAU = Math.PI * 2;
@@ -261,6 +261,7 @@ function spawnClone(w, p, N) {
 // BALANCE-PERF (perf_budget perk.umbra cloneSwing p95 ≤ 0.1 ms): 휘두를 때마다 적 목록을 한 번만 돌며 분신마다 가장 가까운 적을 함께 찾고
 // (분신 수 × O(적) → O(적)), 판정 사각형·타격 옵션은 모듈 객체를 다시 쓴다 (분신마다 객체를 만들지 않는다). 닿을 수 없는 분신
 // (가장 가까운 적까지 판정 길이 + 몸 반폭보다 멀다)은 판정(playerStrike: 맞을 수 있는 것 전부 순회)을 건너뛰고 휘두르는 그림만 낸다.
+// 분신의 판정은 프레임마다 하나씩 (둘째 분신은 다음 프레임 tick) — 판정 비용이 한 프레임에 겹치지 않게.
 const CL_FOE = [null, null, null, null], CL_D = [0, 0, 0, 0], CL_C = [null, null, null, null];
 const CL_RECT = { x: 0, y: 0, w: 0, h: 0 }, CL_KB = [100, -60];
 const CL_HIT = { mv: 1, element: 'dark', kb: CL_KB, dmgColor: '#c080ff', hitId: '', dir: 1 };
@@ -285,24 +286,42 @@ function cloneSwing(w, p, mv, N) {
     }
   }
   const b = mv.box, reach = 1 + (p.stats.reach ?? 0) / 100, bw = b.w * (b.x >= 0 ? reach : 1);
-  const sl = mv.slash, sa = sl?.angle ?? 0;
-  CL_HIT.mv = (mv.mv ?? 1) * N.mvPct / 100; CL_HIT.hitId = 'um' + p.curHitId;
-  CL_SLASH.radius = sl?.r ?? 60; CL_SLASH.arc = sl?.arc ?? 1.6; CL_SLASH.width = sl?.width ?? 14;
+  const sl = mv.slash, sa = sl?.angle ?? 0, hid = 'um' + p.curHitId, cmv = (mv.mv ?? 1) * N.mvPct / 100;
   for (let j = 0; j < m; j++) {
     const c = CL_C[j], d = c.d, e = CL_FOE[j];
+    if (d.q) cloneFire(w, p, c);   // 앞 휘두르기에서 남은 분신 (빠른 연타) — 먼저 친다
     if (e) d.face = Math.sign(e.cx - d.x) || d.face;
-    let n = 0;
     // 판정은 닿을 수 있을 때만: 가장 가까운 적까지 가로 거리 ≤ 판정 앞끝(b.x + bw) + 적 반폭 (적이 없으면 부서지는 것 때문에 그대로 친다)
-    if (!e || Math.abs(e.cx - d.x) <= Math.abs(b.x) + bw + e.w * 0.5 + 8) {
-      CL_RECT.x = d.face > 0 ? d.x + b.x : d.x - b.x - bw; CL_RECT.y = d.b + b.y; CL_RECT.w = bw; CL_RECT.h = b.h;
-      CL_HIT.dir = d.face;
-      n = strike(w, p, CL_RECT, CL_HIT);
-    }
-    d.sw = c.lt;
-    w.fx.slash(d.x + d.face * 24, d.b - d.h * 0.55, d.face > 0 ? sa : Math.PI - sa, CL_SLASH);
-    count(n ? 'lia_umbra.hit' : 'lia_umbra.swing');
+    d.qs = !e || Math.abs(e.cx - d.x) <= Math.abs(b.x) + bw + e.w * 0.5 + 8;
+    d.qx = d.face > 0 ? d.x + b.x : d.x - b.x - bw; d.qy = d.b + b.y; d.qw = bw; d.qh = b.h;
+    d.qmv = cmv; d.qhid = hid; d.qsa = sa; d.qr = sl?.r ?? 60; d.qarc = sl?.arc ?? 1.6; d.qwid = sl?.width ?? 14;
+    d.q = 1;
     CL_C[j] = null; CL_FOE[j] = null;
   }
+  // 첫 분신은 지금, 나머지는 다음 프레임부터 한 프레임에 하나씩 (tick) — 한 프레임에 판정(playerStrike) 두 번이 겹치지 않게 (p95)
+  for (let i = 0; i < L.length; i++) if (L[i].d.q) { cloneFire(w, p, L[i]); break; }
+}
+/** 분신 하나의 휘두르기 실행 (cloneSwing 이 d.q* 에 적어 둔 판정·베기 그림) */
+function cloneFire(w, p, c) {
+  const d = c.d;
+  d.q = 0;
+  if (c.dead) return;
+  let n = 0;
+  if (d.qs) {
+    CL_RECT.x = d.qx; CL_RECT.y = d.qy; CL_RECT.w = d.qw; CL_RECT.h = d.qh;
+    CL_HIT.mv = d.qmv; CL_HIT.hitId = d.qhid; CL_HIT.dir = d.face;
+    n = strike(w, p, CL_RECT, CL_HIT);
+  }
+  d.sw = c.lt;
+  CL_SLASH.radius = d.qr; CL_SLASH.arc = d.qarc; CL_SLASH.width = d.qwid;
+  w.fx.slash(d.x + d.face * 24, d.b - d.h * 0.55, d.face > 0 ? d.qsa : Math.PI - d.qsa, CL_SLASH);
+  count(n ? 'lia_umbra.hit' : 'lia_umbra.swing');
+}
+/** 남은 분신 휘두르기: 한 프레임에 하나 */
+function cloneTick(w, p) {
+  const L = perkState(p).clones;
+  if (!L) return;
+  for (let i = 0; i < L.length; i++) if (L[i].d.q) { cloneFire(w, p, L[i]); return; }
 }
 
 // ─────────────────────────── 칼춤의 여왕: 도는 칼날 ───────────────────────────
@@ -622,6 +641,7 @@ export const PERKS_C = {
     onEnter(p) { const L = perkState(p).clones; if (L) L.length = 0; },
     onDash(p, w) { if (!p.dead) spawnClone(w, p, this.N); },
     onSwing(p, w, mv) { if (mv?.box && !mv.skill) cloneSwing(w, p, mv, this.N); },
+    tick(p, w) { cloneTick(w, p); },
   },
   lia_mirage: {
     N: { delay: 0.3, r: 120, mvPct: 150, window: 2, r2: 300, back: 24 },
@@ -1182,7 +1202,7 @@ const VEC_C = {
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   },
 };
-// 표식 (BALANCE-PERF): 모양은 아틀라스 칸(markCell)에 굽고 drawImage(회전하는 것은 drawCellRot), 빛은 markGlow — VEC_C 와 같은 그림
+// 표식 (BALANCE-PERF): 빛·채운 모양은 아틀라스 칸(markCell)에 굽고 drawImage 한 번, 가는 선뿐인 표식(서리 고리·여명 고리)은 벡터가 더 싸서 VEC_C 그대로 — VEC_C 와 같은 그림
 export const MARKS_C = {
   /** 냉기 1~5: 머리 위 얼음 마름모 */
   chill(ctx, e, n, k, t) {
@@ -1218,24 +1238,9 @@ export const MARKS_C = {
     ctx.globalAlpha = 1;
   },
 
-  /** 보스 냉기 감속: 발밑 서리 고리 + 머리 위 눈꽃 (눈꽃은 한 장을 돌려 그린다) */
-  frost(ctx, e, n, k, t) {
-    const rw = markStep(e.w * 0.65);
-    const ring = markReady() && markCell('frostR' + rw, rw * 2 + 6, 24, rw + 3, 12, (g) => {
-      g.strokeStyle = '#bff4ff'; g.lineWidth = 3;
-      g.beginPath(); g.ellipse(0, 0, rw, 9, 0, 0, TAU); g.stroke();
-    });
-    const flake = ring && markCell('frostF', 24, 24, 12, 12, (g) => {
-      g.lineWidth = 2; g.strokeStyle = '#e8fbff';
-      for (let i = 0; i < 3; i++) { const q = i * Math.PI / 3, c = Math.cos(q) * 9, s = Math.sin(q) * 9; g.beginPath(); g.moveTo(-c, -s); g.lineTo(c, s); g.stroke(); }
-    });
-    if (!flake) return VEC_C.frost(ctx, e, n, k, t);
-    const x = e.x + e.w / 2, a = Math.min(1, k * 3);
-    ctx.globalAlpha = 0.8 * a;
-    drawCell(ctx, ring, x, e.y + e.h - 2);
-    drawCellRot(ctx, flake, x, e.y - 16, t * 0.8);
-    ctx.globalAlpha = 1;
-  },
+  /** 보스 냉기 감속: 발밑 서리 고리 + 머리 위 눈꽃 — 가는 선뿐이라 벡터가 스프라이트보다 싸다 (perf_budget 키별 24개: 벡터 0.09 ms, 칸 2장 0.13–0.18 ms) */
+  frost(ctx, e, n, k, t) { return VEC_C.frost(ctx, e, n, k, t); },
+
   /** 일식 반쪽: 신성 (흰 왼쪽 반달) */
   ecH(ctx, e, n, k, t) {
     const c = markReady() && markCell('ecH', 18, 18, 9, 9, (g) => {
@@ -1256,22 +1261,8 @@ export const MARKS_C = {
     ctx.globalAlpha = 0.95 * Math.min(1, k * 3); drawCell(ctx, c, e.x + e.w / 2, e.y - 14);
     ctx.globalAlpha = 1;
   },
-  /** 여명의 지속 피해: 몸을 감싸는 주황 불씨 고리 (두 호를 각각 한 장씩 돌려 그린다) */
-  dawn(ctx, e, n, k, t) {
-    const r = markStep(Math.max(e.w, e.h) * 0.55);
-    const a1 = markReady() && r <= 100 && markCell('dawnA' + r, r * 2 + 6, r * 2 + 6, r + 3, r + 3, (g) => {
-      g.strokeStyle = '#ffd070'; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, r, 0, 2.2); g.stroke();
-    });
-    const a2 = a1 && markCell('dawnB' + r, r * 1.6 + 6, r * 1.6 + 6, r * 0.8 + 3, r * 0.8 + 3, (g) => {
-      g.strokeStyle = '#ffd070'; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, r * 0.8, 0, 1.6); g.stroke();
-    });
-    if (!a2) return VEC_C.dawn(ctx, e, n, k, t);
-    const x = e.x + e.w / 2, y = e.y + e.h * 0.45, a = Math.min(1, k * 4);
-    ctx.globalCompositeOperation = ADD; markGlow(ctx, x, y, Math.min(56, r), '#ffb060', 0.4 * a);
-    ctx.globalAlpha = 0.8 * a;
-    drawCellRot(ctx, a1, x, y, t * 3);
-    drawCellRot(ctx, a2, x, y, -t * 4);
-    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-  },
+  /** 여명 고리: 빛 + 가는 호 둘 — 벡터(빛은 K.glow 캐시 스프라이트)가 돌린 칸 2장보다 싸다 (키별 24개: 벡터 0.13–0.19 ms, 칸 0.21–0.38 ms) */
+  dawn(ctx, e, n, k, t) { return VEC_C.dawn(ctx, e, n, k, t); },
+
 };
 

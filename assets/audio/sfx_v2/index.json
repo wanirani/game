@@ -52,6 +52,110 @@
   "enemy_die_stone",
   "gallop",
   "wing_flap",
+  "shotgun",
+  "cross",
+  "holywater_burn",
+  "stopwatch",
+  "mist",
+  "splash",
+  "death",
+  "heart",
+  "powerup",
+  "extra_life",
+  "save",
+  "secret",
+  "bat",
+  "ghost",
+  "boss_roar",
+  "warning",
+  "ult",
+  "combo",
+  "charge_ready",
+  "enhance_success",
+  "enhance_fail",
+  "enhance_destroy",
+  "dice",
+  "slot_spin",
+  "slot_win",
+  "win",
+  "lose",
+  "ready",
+  "go",
+  "chest",
+  "heal",
+  "candle",
+  "door",
+  "break_wall",
+  "bell",
+  "clock_tick",
+  "boss_die",
+  "enhance_hit",
+  "card",
+  "coin_insert",
+  "step_bone",
+  "step_push",
+  "skid",
+  "pivot",
+  "dash_burst",
+  "launch",
+  "down_hit",
+  "back_attack",
+  "land_heavy",
+  "wall_bounce",
+  "ground_bounce",
+  "counter",
+  "hit_bone",
+  "hit_ghost",
+  "impact_crack",
+  "kill_slowmo",
+  "rank_up",
+  "announce",
+  "combo_milestone",
+  "impact_frame",
+  "awaken_hold",
+  "awaken_charge",
+  "cutin_whoosh",
+  "brush_stroke",
+  "seal_stamp",
+  "eye_glint",
+  "awaken_stinger",
+  "awaken_boom",
+  "heartbeat",
+  "crow_caw",
+  "finger_snap",
+  "cylinder_spin",
+  "choir_gate",
+  "war_horn",
+  "sheath",
+  "summon",
+  "dismiss",
+  "mount_up",
+  "neigh",
+  "hoof_land",
+  "boar_grunt",
+  "wolf_howl",
+  "wolf_bite",
+  "roar_small",
+  "fire_breath",
+  "screech",
+  "bone_rattle",
+  "fairy_chime",
+  "knight_guard",
+  "imp_cackle",
+  "owl_hoot",
+  "gear_whir",
+  "scythe",
+  "soul_reap",
+  "egg_crack",
+  "companion_join",
+  "bond_up",
+  "knock_off",
+  "assist",
+  "stag_call",
+  "griffin_cry",
+  "mirror_chime",
+  "jelly_zap",
+  "momo_gulp",
   "footstep"
  ],
  "sfx": {
@@ -532,6 +636,1144 @@
    "g": 0.341,
    "ref": -27.56
   },
+  "shotgun": {
+   "f": [
+    "shotgun_1",
+    "shotgun_2",
+    "shotgun_3"
+   ],
+   "g": 1.0
+  },
+  "cross": {
+   "f": [
+    "cross_1",
+    "cross_2",
+    "cross_3"
+   ],
+   "g": 1.0
+  },
+  "holywater_burn": {
+   "f": [
+    "holywater_burn_1",
+    "holywater_burn_2",
+    "holywater_burn_3"
+   ],
+   "g": 1.0
+  },
+  "stopwatch": {
+   "f": [
+    "stopwatch_1"
+   ],
+   "g": 1.0,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "mist": {
+   "f": [
+    "mist_1"
+   ],
+   "g": 1.0,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "splash": {
+   "f": [
+    "splash_1",
+    "splash_2",
+    "splash_3"
+   ],
+   "g": 1.0
+  },
+  "death": {
+   "f": [
+    "death_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "heart": {
+   "f": [
+    "heart_1",
+    "heart_2",
+    "heart_3"
+   ],
+   "g": 1.0
+  },
+  "powerup": {
+   "f": [
+    "powerup_1"
+   ],
+   "g": 1.0,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "extra_life": {
+   "f": [
+    "extra_life_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "save": {
+   "f": [
+    "save_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "secret": {
+   "f": [
+    "secret_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "bat": {
+   "f": [
+    "bat_1",
+    "bat_2",
+    "bat_3"
+   ],
+   "g": 1.0
+  },
+  "ghost": {
+   "f": [
+    "ghost_1",
+    "ghost_2",
+    "ghost_3"
+   ],
+   "g": 1.0
+  },
+  "boss_roar": {
+   "f": [
+    "boss_roar_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "warning": {
+   "f": [
+    "warning_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "ult": {
+   "f": [
+    "ult_1"
+   ],
+   "g": 1.0,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "combo": {
+   "f": [
+    "combo_1",
+    "combo_2",
+    "combo_3"
+   ],
+   "g": 1.0
+  },
+  "charge_ready": {
+   "f": [
+    "charge_ready_1"
+   ],
+   "g": 1.0,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "enhance_success": {
+   "f": [
+    "enhance_success_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "enhance_fail": {
+   "f": [
+    "enhance_fail_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "enhance_destroy": {
+   "f": [
+    "enhance_destroy_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "dice": {
+   "f": [
+    "dice_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "slot_spin": {
+   "f": [
+    "slot_spin_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "slot_win": {
+   "f": [
+    "slot_win_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "win": {
+   "f": [
+    "win_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "lose": {
+   "f": [
+    "lose_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "ready": {
+   "f": [
+    "ready_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "go": {
+   "f": [
+    "go_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "chest": {
+   "f": [
+    "chest_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "heal": {
+   "f": [
+    "heal_1"
+   ],
+   "g": 1.0,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "candle": {
+   "f": [
+    "candle_1",
+    "candle_2",
+    "candle_3"
+   ],
+   "g": 1.0
+  },
+  "door": {
+   "f": [
+    "door_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "break_wall": {
+   "f": [
+    "break_wall_1",
+    "break_wall_2",
+    "break_wall_3"
+   ],
+   "g": 1.0
+  },
+  "bell": {
+   "f": [
+    "bell_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "clock_tick": {
+   "f": [
+    "clock_tick_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "boss_die": {
+   "f": [
+    "boss_die_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "enhance_hit": {
+   "f": [
+    "enhance_hit_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "card": {
+   "f": [
+    "card_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "coin_insert": {
+   "f": [
+    "coin_insert_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "step_bone": {
+   "f": [
+    "step_bone_1",
+    "step_bone_2",
+    "step_bone_3",
+    "step_bone_4"
+   ],
+   "g": 1.0
+  },
+  "step_push": {
+   "f": [
+    "step_push_1",
+    "step_push_2",
+    "step_push_3"
+   ],
+   "g": 1.0
+  },
+  "skid": {
+   "f": [
+    "skid_1",
+    "skid_2",
+    "skid_3"
+   ],
+   "g": 1.0
+  },
+  "pivot": {
+   "f": [
+    "pivot_1",
+    "pivot_2",
+    "pivot_3"
+   ],
+   "g": 1.0
+  },
+  "dash_burst": {
+   "f": [
+    "dash_burst_1",
+    "dash_burst_2",
+    "dash_burst_3"
+   ],
+   "g": 1.0
+  },
+  "launch": {
+   "f": [
+    "launch_1",
+    "launch_2",
+    "launch_3"
+   ],
+   "g": 1.0
+  },
+  "down_hit": {
+   "f": [
+    "down_hit_1",
+    "down_hit_2",
+    "down_hit_3",
+    "down_hit_4"
+   ],
+   "g": 1.0
+  },
+  "back_attack": {
+   "f": [
+    "back_attack_1",
+    "back_attack_2",
+    "back_attack_3"
+   ],
+   "g": 1.0
+  },
+  "land_heavy": {
+   "f": [
+    "land_heavy_1",
+    "land_heavy_2",
+    "land_heavy_3"
+   ],
+   "g": 1.0
+  },
+  "wall_bounce": {
+   "f": [
+    "wall_bounce_1",
+    "wall_bounce_2",
+    "wall_bounce_3"
+   ],
+   "g": 1.0
+  },
+  "ground_bounce": {
+   "f": [
+    "ground_bounce_1",
+    "ground_bounce_2",
+    "ground_bounce_3"
+   ],
+   "g": 1.0
+  },
+  "counter": {
+   "f": [
+    "counter_1",
+    "counter_2",
+    "counter_3"
+   ],
+   "g": 1.0
+  },
+  "hit_bone": {
+   "f": [
+    "hit_bone_1",
+    "hit_bone_2",
+    "hit_bone_3",
+    "hit_bone_4"
+   ],
+   "g": 1.0
+  },
+  "hit_ghost": {
+   "f": [
+    "hit_ghost_1",
+    "hit_ghost_2",
+    "hit_ghost_3",
+    "hit_ghost_4"
+   ],
+   "g": 1.0
+  },
+  "impact_crack": {
+   "f": [
+    "impact_crack_1",
+    "impact_crack_2",
+    "impact_crack_3"
+   ],
+   "g": 1.0
+  },
+  "kill_slowmo": {
+   "f": [
+    "kill_slowmo_1"
+   ],
+   "g": 1.0,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "rank_up": {
+   "f": [
+    "rank_up_1"
+   ],
+   "g": 1.0,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "announce": {
+   "f": [
+    "announce_1"
+   ],
+   "g": 1.0,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "combo_milestone": {
+   "f": [
+    "combo_milestone_1"
+   ],
+   "g": 1.0,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "impact_frame": {
+   "f": [
+    "impact_frame_1",
+    "impact_frame_2",
+    "impact_frame_3"
+   ],
+   "g": 1.0
+  },
+  "awaken_hold": {
+   "f": [
+    "awaken_hold_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "awaken_charge": {
+   "f": [
+    "awaken_charge_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "cutin_whoosh": {
+   "f": [
+    "cutin_whoosh_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "brush_stroke": {
+   "f": [
+    "brush_stroke_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "seal_stamp": {
+   "f": [
+    "seal_stamp_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "eye_glint": {
+   "f": [
+    "eye_glint_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "awaken_stinger": {
+   "f": [
+    "awaken_stinger_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "awaken_boom": {
+   "f": [
+    "awaken_boom_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "heartbeat": {
+   "f": [
+    "heartbeat_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "crow_caw": {
+   "f": [
+    "crow_caw_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "finger_snap": {
+   "f": [
+    "finger_snap_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "cylinder_spin": {
+   "f": [
+    "cylinder_spin_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "choir_gate": {
+   "f": [
+    "choir_gate_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "war_horn": {
+   "f": [
+    "war_horn_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "sheath": {
+   "f": [
+    "sheath_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "summon": {
+   "f": [
+    "summon_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "dismiss": {
+   "f": [
+    "dismiss_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "mount_up": {
+   "f": [
+    "mount_up_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "neigh": {
+   "f": [
+    "neigh_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "hoof_land": {
+   "f": [
+    "hoof_land_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "boar_grunt": {
+   "f": [
+    "boar_grunt_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "wolf_howl": {
+   "f": [
+    "wolf_howl_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "wolf_bite": {
+   "f": [
+    "wolf_bite_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "roar_small": {
+   "f": [
+    "roar_small_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "fire_breath": {
+   "f": [
+    "fire_breath_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "screech": {
+   "f": [
+    "screech_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "bone_rattle": {
+   "f": [
+    "bone_rattle_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "fairy_chime": {
+   "f": [
+    "fairy_chime_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "knight_guard": {
+   "f": [
+    "knight_guard_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "imp_cackle": {
+   "f": [
+    "imp_cackle_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "owl_hoot": {
+   "f": [
+    "owl_hoot_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "gear_whir": {
+   "f": [
+    "gear_whir_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "scythe": {
+   "f": [
+    "scythe_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "soul_reap": {
+   "f": [
+    "soul_reap_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "egg_crack": {
+   "f": [
+    "egg_crack_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "companion_join": {
+   "f": [
+    "companion_join_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "bond_up": {
+   "f": [
+    "bond_up_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "knock_off": {
+   "f": [
+    "knock_off_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "assist": {
+   "f": [
+    "assist_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "stag_call": {
+   "f": [
+    "stag_call_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "griffin_cry": {
+   "f": [
+    "griffin_cry_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "mirror_chime": {
+   "f": [
+    "mirror_chime_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "jelly_zap": {
+   "f": [
+    "jelly_zap_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
+  "momo_gulp": {
+   "f": [
+    "momo_gulp_1"
+   ],
+   "g": 1.0,
+   "lazy": 1,
+   "vr": [
+    1.0,
+    0.95,
+    1.055
+   ]
+  },
   "footstep": {
    "f": [
     "step_stone_1",
@@ -546,6 +1788,72 @@
   }
  },
  "files": {
+  "announce_1": {
+   "dur": 0.55,
+   "on": 0.002,
+   "ch": 1,
+   "lufs": -17.4,
+   "lufs_m": -19.0,
+   "peak": -1.78,
+   "dpk": -1.73,
+   "m4a": "b02ae498",
+   "bytes": 5049
+  },
+  "assist_1": {
+   "dur": 0.2203,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -20.9,
+   "peak": -2.4,
+   "dpk": -3.04,
+   "m4a": "d57e2191",
+   "bytes": 2226
+  },
+  "awaken_boom_1": {
+   "dur": 1.43,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -17.1,
+   "lufs_m": -13.2,
+   "peak": -2.21,
+   "dpk": -2.2,
+   "m4a": "63ffd6db",
+   "bytes": 8459
+  },
+  "awaken_charge_1": {
+   "dur": 0.9,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -14.9,
+   "peak": -1.8,
+   "dpk": -1.93,
+   "m4a": "d45585a9",
+   "bytes": 5770
+  },
+  "awaken_hold_1": {
+   "dur": 0.55,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -15.6,
+   "peak": -2.0,
+   "dpk": -2.2,
+   "m4a": "be26f9ac",
+   "bytes": 3953
+  },
+  "awaken_stinger_1": {
+   "dur": 1.4,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -17.5,
+   "lufs_m": -13.9,
+   "peak": -3.52,
+   "dpk": -1.22,
+   "m4a": "df9542ad",
+   "bytes": 8360
+  },
   "axe_1": {
    "dur": 0.38,
    "on": 0.0009,
@@ -578,6 +1886,259 @@
    "dpk": -1.4,
    "m4a": "4a4af41b",
    "bytes": 5119
+  },
+  "back_attack_1": {
+   "dur": 0.16,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -24.2,
+   "peak": -1.35,
+   "dpk": -2.28,
+   "m4a": "b13135de",
+   "bytes": 2253
+  },
+  "back_attack_2": {
+   "dur": 0.16,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -23.0,
+   "peak": -1.27,
+   "dpk": -2.16,
+   "m4a": "b5c906e1",
+   "bytes": 2277
+  },
+  "back_attack_3": {
+   "dur": 0.16,
+   "on": 0.0006,
+   "ch": 1,
+   "lufs": -17.2,
+   "lufs_m": -23.7,
+   "peak": -1.49,
+   "dpk": -1.27,
+   "m4a": "074383cb",
+   "bytes": 2200
+  },
+  "bat_1": {
+   "dur": 0.1748,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -20.3,
+   "peak": -2.65,
+   "dpk": -3.21,
+   "m4a": "d621ed7a",
+   "bytes": 2431
+  },
+  "bat_2": {
+   "dur": 0.1703,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -20.3,
+   "peak": -1.06,
+   "dpk": -1.96,
+   "m4a": "6fba2d86",
+   "bytes": 2358
+  },
+  "bat_3": {
+   "dur": 0.19,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -20.3,
+   "peak": -3.21,
+   "dpk": -3.1,
+   "m4a": "d1a2f193",
+   "bytes": 2432
+  },
+  "bell_1": {
+   "dur": 1.4,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.5,
+   "lufs_m": -14.5,
+   "peak": -1.81,
+   "dpk": -1.9,
+   "m4a": "9ba92425",
+   "bytes": 8322
+  },
+  "boar_grunt_1": {
+   "dur": 0.3962,
+   "on": 0.0016,
+   "ch": 1,
+   "lufs": -17.2,
+   "lufs_m": -21.2,
+   "peak": -1.59,
+   "dpk": -1.67,
+   "m4a": "35d132fc",
+   "bytes": 3237
+  },
+  "bond_up_1": {
+   "dur": 0.6,
+   "on": 0.0012,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -16.2,
+   "peak": -1.86,
+   "dpk": -1.53,
+   "m4a": "9c6e3917",
+   "bytes": 4148
+  },
+  "bone_rattle_1": {
+   "dur": 0.26,
+   "on": 0.002,
+   "ch": 1,
+   "lufs": -18.2,
+   "lufs_m": -20.8,
+   "peak": -1.1,
+   "dpk": -2.69,
+   "m4a": "bea69d69",
+   "bytes": 2424
+  },
+  "boss_die_1": {
+   "dur": 1.66,
+   "on": 0.0012,
+   "ch": 1,
+   "lufs": -16.7,
+   "lufs_m": -13.3,
+   "peak": -2.29,
+   "dpk": -2.27,
+   "m4a": "04db106a",
+   "bytes": 9904
+  },
+  "boss_roar_1": {
+   "dur": 1.3,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -17.2,
+   "lufs_m": -13.6,
+   "peak": -1.59,
+   "dpk": -1.26,
+   "m4a": "eba0d64a",
+   "bytes": 7731
+  },
+  "break_wall_1": {
+   "dur": 0.5505,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -18.7,
+   "lufs_m": -18.9,
+   "peak": -1.47,
+   "dpk": -1.08,
+   "m4a": "678ebba0",
+   "bytes": 5166
+  },
+  "break_wall_2": {
+   "dur": 0.72,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -20.8,
+   "lufs_m": -20.3,
+   "peak": -1.69,
+   "dpk": -1.36,
+   "m4a": "f7f80c0a",
+   "bytes": 6579
+  },
+  "break_wall_3": {
+   "dur": 0.4681,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -18.1,
+   "lufs_m": -19.2,
+   "peak": -1.1,
+   "dpk": -1.7,
+   "m4a": "8aed0503",
+   "bytes": 4600
+  },
+  "brush_stroke_1": {
+   "dur": 0.14,
+   "on": 0.0,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -20.9,
+   "peak": -2.76,
+   "dpk": -5.28,
+   "m4a": "cbf6211c",
+   "bytes": 1958
+  },
+  "candle_1": {
+   "dur": 0.1881,
+   "on": 0.0,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -21.6,
+   "peak": -3.27,
+   "dpk": -4.32,
+   "m4a": "394dea29",
+   "bytes": 2519
+  },
+  "candle_2": {
+   "dur": 0.23,
+   "on": 0.0,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -21.2,
+   "peak": -4.68,
+   "dpk": -4.62,
+   "m4a": "2ebd3ea2",
+   "bytes": 2803
+  },
+  "candle_3": {
+   "dur": 0.2149,
+   "on": 0.0,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -21.6,
+   "peak": -2.47,
+   "dpk": -2.41,
+   "m4a": "6a72f7d7",
+   "bytes": 2639
+  },
+  "card_1": {
+   "dur": 0.18,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -17.7,
+   "lufs_m": -23.7,
+   "peak": -1.89,
+   "dpk": -1.01,
+   "m4a": "1b40be09",
+   "bytes": 2098
+  },
+  "charge_ready_1": {
+   "dur": 0.415,
+   "on": 0.0015,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -17.8,
+   "peak": -1.97,
+   "dpk": -3.1,
+   "m4a": "49d1efe0",
+   "bytes": 4023
+  },
+  "chest_1": {
+   "dur": 0.7206,
+   "on": 0.0012,
+   "ch": 1,
+   "lufs": -16.1,
+   "lufs_m": -15.4,
+   "peak": -1.54,
+   "dpk": -1.82,
+   "m4a": "cf5d26ca",
+   "bytes": 4819
+  },
+  "choir_gate_1": {
+   "dur": 1.5,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -12.8,
+   "peak": -2.21,
+   "dpk": -3.25,
+   "m4a": "39834b6b",
+   "bytes": 8885
   },
   "clang_1": {
    "dur": 0.2639,
@@ -634,6 +2195,17 @@
    "m4a": "1f3bbbef",
    "bytes": 4965
   },
+  "clock_tick_1": {
+   "dur": 0.12,
+   "on": 0.0006,
+   "ch": 1,
+   "lufs": -16.7,
+   "lufs_m": -22.0,
+   "peak": -1.32,
+   "dpk": -1.14,
+   "m4a": "8737d5bb",
+   "bytes": 1838
+  },
   "coin_1": {
    "dur": 0.342,
    "on": 0.0008,
@@ -678,6 +2250,105 @@
    "m4a": "873139a4",
    "bytes": 4743
   },
+  "coin_insert_1": {
+   "dur": 0.35,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -18.0,
+   "lufs_m": -21.0,
+   "peak": -1.59,
+   "dpk": -4.42,
+   "m4a": "6ffeb262",
+   "bytes": 2808
+  },
+  "combo_1": {
+   "dur": 0.16,
+   "on": 0.0015,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -23.0,
+   "peak": -5.95,
+   "dpk": -6.36,
+   "m4a": "5e4b2207",
+   "bytes": 2318
+  },
+  "combo_2": {
+   "dur": 0.16,
+   "on": 0.0013,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.5,
+   "peak": -2.92,
+   "dpk": -4.54,
+   "m4a": "f6739ef6",
+   "bytes": 2322
+  },
+  "combo_3": {
+   "dur": 0.16,
+   "on": 0.0012,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -23.0,
+   "peak": -2.24,
+   "dpk": -3.44,
+   "m4a": "1e15b328",
+   "bytes": 2289
+  },
+  "combo_milestone_1": {
+   "dur": 0.42,
+   "on": 0.0018,
+   "ch": 1,
+   "lufs": -16.2,
+   "lufs_m": -18.1,
+   "peak": -1.1,
+   "dpk": -1.57,
+   "m4a": "ea9907a4",
+   "bytes": 4162
+  },
+  "companion_join_1": {
+   "dur": 1.43,
+   "on": 0.0012,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -13.2,
+   "peak": -1.21,
+   "dpk": -1.86,
+   "m4a": "bc9277e1",
+   "bytes": 8454
+  },
+  "counter_1": {
+   "dur": 0.2483,
+   "on": 0.0019,
+   "ch": 1,
+   "lufs": -18.2,
+   "lufs_m": -23.5,
+   "peak": -2.72,
+   "dpk": -1.69,
+   "m4a": "274f5036",
+   "bytes": 2953
+  },
+  "counter_2": {
+   "dur": 0.2883,
+   "on": 0.0019,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -21.2,
+   "peak": -2.58,
+   "dpk": -1.36,
+   "m4a": "0c26021b",
+   "bytes": 3293
+  },
+  "counter_3": {
+   "dur": 0.2782,
+   "on": 0.0019,
+   "ch": 1,
+   "lufs": -16.3,
+   "lufs_m": -21.5,
+   "peak": -1.1,
+   "dpk": -3.05,
+   "m4a": "36dc120c",
+   "bytes": 3091
+  },
   "crit_1": {
    "dur": 0.463,
    "on": 0.0005,
@@ -721,6 +2392,72 @@
    "dpk": -1.89,
    "m4a": "9e21ed15",
    "bytes": 5675
+  },
+  "cross_1": {
+   "dur": 0.2971,
+   "on": 0.0008,
+   "ch": 1,
+   "lufs": -16.5,
+   "lufs_m": -19.3,
+   "peak": -1.6,
+   "dpk": -1.43,
+   "m4a": "f9645f6e",
+   "bytes": 3276
+  },
+  "cross_2": {
+   "dur": 0.2959,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -18.4,
+   "peak": -2.49,
+   "dpk": -2.61,
+   "m4a": "460cc82b",
+   "bytes": 3232
+  },
+  "cross_3": {
+   "dur": 0.3266,
+   "on": 0.0008,
+   "ch": 1,
+   "lufs": -16.3,
+   "lufs_m": -18.9,
+   "peak": -1.59,
+   "dpk": -1.16,
+   "m4a": "8df0e399",
+   "bytes": 3492
+  },
+  "crow_caw_1": {
+   "dur": 0.6,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -15.8,
+   "peak": -4.46,
+   "dpk": -4.59,
+   "m4a": "943c1fb5",
+   "bytes": 4128
+  },
+  "cutin_whoosh_1": {
+   "dur": 0.2691,
+   "on": 0.0011,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.4,
+   "peak": -1.11,
+   "dpk": -1.26,
+   "m4a": "5b6fca22",
+   "bytes": 2581
+  },
+  "cylinder_spin_1": {
+   "dur": 0.5072,
+   "on": 0.0012,
+   "ch": 1,
+   "lufs": -23.3,
+   "lufs_m": -23.3,
+   "peak": -1.1,
+   "dpk": -2.6,
+   "m4a": "e1e0305d",
+   "bytes": 3773
   },
   "dagger_1": {
    "dur": 0.1264,
@@ -854,6 +2591,83 @@
    "m4a": "3452b5a9",
    "bytes": 3540
   },
+  "dash_burst_1": {
+   "dur": 0.217,
+   "on": 0.001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -23.0,
+   "peak": -4.12,
+   "dpk": -4.2,
+   "m4a": "6b49dcd7",
+   "bytes": 2674
+  },
+  "dash_burst_2": {
+   "dur": 0.2029,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.5,
+   "peak": -2.52,
+   "dpk": -2.77,
+   "m4a": "6da2b259",
+   "bytes": 2558
+  },
+  "dash_burst_3": {
+   "dur": 0.2078,
+   "on": 0.001,
+   "ch": 1,
+   "lufs": -16.1,
+   "lufs_m": -22.5,
+   "peak": -1.1,
+   "dpk": -1.38,
+   "m4a": "a577ce13",
+   "bytes": 2568
+  },
+  "death_1": {
+   "dur": 1.72,
+   "on": 0.0006,
+   "ch": 1,
+   "lufs": -16.7,
+   "lufs_m": -13.8,
+   "peak": -1.59,
+   "dpk": -1.4,
+   "m4a": "87acf087",
+   "bytes": 9925
+  },
+  "dice_1": {
+   "dur": 0.5996,
+   "on": 0.0018,
+   "ch": 1,
+   "lufs": -20.9,
+   "lufs_m": -23.1,
+   "peak": -1.58,
+   "dpk": -1.86,
+   "m4a": "5f9dcfb8",
+   "bytes": 4275
+  },
+  "dismiss_1": {
+   "dur": 0.53,
+   "on": 0.0328,
+   "ch": 1,
+   "lufs": -17.4,
+   "lufs_m": -18.4,
+   "peak": -1.6,
+   "dpk": -1.46,
+   "m4a": "b71f459a",
+   "bytes": 5025
+  },
+  "door_1": {
+   "dur": 0.68,
+   "on": 0.0013,
+   "ch": 1,
+   "lufs": -17.6,
+   "lufs_m": -17.1,
+   "peak": -3.13,
+   "dpk": -1.43,
+   "m4a": "92c4626d",
+   "bytes": 4744
+  },
   "double_jump_1": {
    "dur": 0.1685,
    "on": 0.0002,
@@ -897,6 +2711,61 @@
    "dpk": -1.76,
    "m4a": "474ddd68",
    "bytes": 2907
+  },
+  "down_hit_1": {
+   "dur": 0.2,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -24.2,
+   "peak": -3.71,
+   "dpk": -3.73,
+   "m4a": "28b7ff55",
+   "bytes": 2543
+  },
+  "down_hit_2": {
+   "dur": 0.2,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.5,
+   "peak": -2.27,
+   "dpk": -2.39,
+   "m4a": "633e20d8",
+   "bytes": 2534
+  },
+  "down_hit_3": {
+   "dur": 0.2,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -21.6,
+   "peak": -2.35,
+   "dpk": -2.56,
+   "m4a": "a417d984",
+   "bytes": 2550
+  },
+  "down_hit_4": {
+   "dur": 0.2,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -23.5,
+   "peak": -3.2,
+   "dpk": -3.14,
+   "m4a": "b6771bd6",
+   "bytes": 2550
+  },
+  "egg_crack_1": {
+   "dur": 0.26,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -18.5,
+   "lufs_m": -23.0,
+   "peak": -1.44,
+   "dpk": -2.72,
+   "m4a": "bbeaa2cc",
+   "bytes": 2393
   },
   "enemy_die_1": {
    "dur": 0.67,
@@ -1074,6 +2943,50 @@
    "m4a": "9be922f6",
    "bytes": 7297
   },
+  "enhance_destroy_1": {
+   "dur": 1.24,
+   "on": 0.002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -14.1,
+   "peak": -2.25,
+   "dpk": -2.26,
+   "m4a": "566561fd",
+   "bytes": 7505
+  },
+  "enhance_fail_1": {
+   "dur": 0.86,
+   "on": 0.0024,
+   "ch": 1,
+   "lufs": -16.2,
+   "lufs_m": -15.3,
+   "peak": -1.58,
+   "dpk": -1.72,
+   "m4a": "4126e904",
+   "bytes": 5409
+  },
+  "enhance_hit_1": {
+   "dur": 0.45,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.3,
+   "lufs_m": -17.7,
+   "peak": -1.52,
+   "dpk": -1.3,
+   "m4a": "bb8fd0e9",
+   "bytes": 3415
+  },
+  "enhance_success_1": {
+   "dur": 1.26,
+   "on": 0.0019,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -14.6,
+   "peak": -2.25,
+   "dpk": -3.23,
+   "m4a": "c6ac9367",
+   "bytes": 7719
+  },
   "explode_1": {
    "dur": 0.73,
    "on": 0.0005,
@@ -1106,6 +3019,50 @@
    "dpk": -1.41,
    "m4a": "abf2e28a",
    "bytes": 8772
+  },
+  "extra_life_1": {
+   "dur": 1.055,
+   "on": 0.0012,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -14.8,
+   "peak": -3.41,
+   "dpk": -2.57,
+   "m4a": "3457e58b",
+   "bytes": 6515
+  },
+  "eye_glint_1": {
+   "dur": 0.415,
+   "on": 0.001,
+   "ch": 1,
+   "lufs": -17.3,
+   "lufs_m": -18.5,
+   "peak": -1.1,
+   "dpk": -2.66,
+   "m4a": "8992b445",
+   "bytes": 3199
+  },
+  "fairy_chime_1": {
+   "dur": 0.5988,
+   "on": 0.0018,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -16.6,
+   "peak": -4.64,
+   "dpk": -4.62,
+   "m4a": "e3026c3a",
+   "bytes": 4277
+  },
+  "finger_snap_1": {
+   "dur": 0.1742,
+   "on": 0.0008,
+   "ch": 1,
+   "lufs": -20.1,
+   "lufs_m": -27.1,
+   "peak": -1.1,
+   "dpk": -2.44,
+   "m4a": "6b04b193",
+   "bytes": 2193
   },
   "fire_1": {
    "dur": 0.5,
@@ -1151,6 +3108,17 @@
    "m4a": "743301ae",
    "bytes": 6131
   },
+  "fire_breath_1": {
+   "dur": 0.7,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -16.2,
+   "peak": -1.54,
+   "dpk": -1.52,
+   "m4a": "3ef79c7a",
+   "bytes": 4643
+  },
   "gallop_1": {
    "dur": 0.0787,
    "on": 0.0004,
@@ -1195,6 +3163,105 @@
    "m4a": "a888c8e6",
    "bytes": 1849
   },
+  "gear_whir_1": {
+   "dur": 0.5,
+   "on": 0.0019,
+   "ch": 1,
+   "lufs": -18.0,
+   "lufs_m": -17.3,
+   "peak": -1.1,
+   "dpk": -1.47,
+   "m4a": "f8316e36",
+   "bytes": 3853
+  },
+  "ghost_1": {
+   "dur": 0.9,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -13.4,
+   "peak": -2.87,
+   "dpk": -2.97,
+   "m4a": "1efb5a05",
+   "bytes": 7523
+  },
+  "ghost_2": {
+   "dur": 0.9,
+   "on": 0.0,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -13.7,
+   "peak": -4.65,
+   "dpk": -4.85,
+   "m4a": "2ae9954c",
+   "bytes": 7537
+  },
+  "ghost_3": {
+   "dur": 0.9,
+   "on": 0.0,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -13.4,
+   "peak": -3.03,
+   "dpk": -3.27,
+   "m4a": "e5947429",
+   "bytes": 7547
+  },
+  "go_1": {
+   "dur": 0.8,
+   "on": 0.0013,
+   "ch": 1,
+   "lufs": -16.9,
+   "lufs_m": -15.9,
+   "peak": -1.35,
+   "dpk": -1.31,
+   "m4a": "d4099f86",
+   "bytes": 5120
+  },
+  "griffin_cry_1": {
+   "dur": 0.7,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -14.1,
+   "peak": -3.65,
+   "dpk": -3.31,
+   "m4a": "ed6961bc",
+   "bytes": 4714
+  },
+  "ground_bounce_1": {
+   "dur": 0.35,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -21.2,
+   "peak": -4.07,
+   "dpk": -3.94,
+   "m4a": "c7e05d02",
+   "bytes": 3583
+  },
+  "ground_bounce_2": {
+   "dur": 0.35,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -18.4,
+   "lufs_m": -22.1,
+   "peak": -1.6,
+   "dpk": -1.55,
+   "m4a": "1b11fd74",
+   "bytes": 3510
+  },
+  "ground_bounce_3": {
+   "dur": 0.3463,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -21.6,
+   "peak": -2.57,
+   "dpk": -2.83,
+   "m4a": "b288ba8b",
+   "bytes": 3584
+  },
   "gun_1": {
    "dur": 0.35,
    "on": 0.0007,
@@ -1238,6 +3305,61 @@
    "dpk": -3.72,
    "m4a": "56ea0b02",
    "bytes": 4075
+  },
+  "heal_1": {
+   "dur": 0.92,
+   "on": 0.0006,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -14.0,
+   "peak": -2.19,
+   "dpk": -6.43,
+   "m4a": "4865e906",
+   "bytes": 7779
+  },
+  "heart_1": {
+   "dur": 0.48,
+   "on": 0.0018,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -16.2,
+   "peak": -5.33,
+   "dpk": -4.93,
+   "m4a": "48180f40",
+   "bytes": 4580
+  },
+  "heart_2": {
+   "dur": 0.48,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -17.7,
+   "peak": -4.46,
+   "dpk": -3.99,
+   "m4a": "fef313b3",
+   "bytes": 4598
+  },
+  "heart_3": {
+   "dur": 0.4692,
+   "on": 0.0015,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -16.8,
+   "peak": -1.84,
+   "dpk": -3.03,
+   "m4a": "8a5d233d",
+   "bytes": 4527
+  },
+  "heartbeat_1": {
+   "dur": 0.3862,
+   "on": 0.0016,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -17.9,
+   "peak": -1.32,
+   "dpk": -1.98,
+   "m4a": "6250e1a9",
+   "bytes": 3027
   },
   "hit_1": {
    "dur": 0.26,
@@ -1294,6 +3416,50 @@
    "m4a": "4c8e475b",
    "bytes": 4404
   },
+  "hit_bone_1": {
+   "dur": 0.148,
+   "on": 0.0022,
+   "ch": 1,
+   "lufs": -18.0,
+   "lufs_m": -23.2,
+   "peak": -1.1,
+   "dpk": -3.08,
+   "m4a": "97c18832",
+   "bytes": 2241
+  },
+  "hit_bone_2": {
+   "dur": 0.148,
+   "on": 0.0007,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -24.2,
+   "peak": -1.54,
+   "dpk": -1.96,
+   "m4a": "c74531c5",
+   "bytes": 2219
+  },
+  "hit_bone_3": {
+   "dur": 0.148,
+   "on": 0.0009,
+   "ch": 1,
+   "lufs": -16.7,
+   "lufs_m": -21.9,
+   "peak": -1.6,
+   "dpk": -1.88,
+   "m4a": "03f836de",
+   "bytes": 2238
+  },
+  "hit_bone_4": {
+   "dur": 0.148,
+   "on": 0.002,
+   "ch": 1,
+   "lufs": -19.4,
+   "lufs_m": -24.6,
+   "peak": -1.6,
+   "dpk": -3.16,
+   "m4a": "8d7c8711",
+   "bytes": 2293
+  },
   "hit_flesh_1": {
    "dur": 0.24,
    "on": 0.0002,
@@ -1337,6 +3503,50 @@
    "dpk": -1.96,
    "m4a": "edf582a8",
    "bytes": 4180
+  },
+  "hit_ghost_1": {
+   "dur": 0.305,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.1,
+   "lufs_m": -19.3,
+   "peak": -1.1,
+   "dpk": -1.07,
+   "m4a": "d1e5b195",
+   "bytes": 3345
+  },
+  "hit_ghost_2": {
+   "dur": 0.305,
+   "on": 0.0,
+   "ch": 1,
+   "lufs": -16.3,
+   "lufs_m": -20.0,
+   "peak": -1.54,
+   "dpk": -3.12,
+   "m4a": "636fa902",
+   "bytes": 3239
+  },
+  "hit_ghost_3": {
+   "dur": 0.305,
+   "on": 0.0,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -19.4,
+   "peak": -1.38,
+   "dpk": -1.76,
+   "m4a": "59953c5e",
+   "bytes": 3198
+  },
+  "hit_ghost_4": {
+   "dur": 0.305,
+   "on": 0.0,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -20.5,
+   "peak": -3.34,
+   "dpk": -4.11,
+   "m4a": "30d49a22",
+   "bytes": 3221
   },
   "hit_heavy_1": {
    "dur": 0.4155,
@@ -1459,6 +3669,50 @@
    "m4a": "2faf322c",
    "bytes": 14814
   },
+  "holywater_burn_1": {
+   "dur": 0.59,
+   "on": 0.0019,
+   "ch": 1,
+   "lufs": -18.7,
+   "lufs_m": -17.6,
+   "peak": -2.08,
+   "dpk": -1.7,
+   "m4a": "134c9c24",
+   "bytes": 5420
+  },
+  "holywater_burn_2": {
+   "dur": 0.59,
+   "on": 0.0016,
+   "ch": 1,
+   "lufs": -16.9,
+   "lufs_m": -15.5,
+   "peak": -1.13,
+   "dpk": -1.66,
+   "m4a": "ee5a7189",
+   "bytes": 5467
+  },
+  "holywater_burn_3": {
+   "dur": 0.59,
+   "on": 0.0007,
+   "ch": 1,
+   "lufs": -17.8,
+   "lufs_m": -16.3,
+   "peak": -1.1,
+   "dpk": -3.03,
+   "m4a": "1d98e868",
+   "bytes": 5324
+  },
+  "hoof_land_1": {
+   "dur": 0.1373,
+   "on": 0.002,
+   "ch": 1,
+   "lufs": -17.8,
+   "lufs_m": -25.4,
+   "peak": -1.6,
+   "dpk": -1.74,
+   "m4a": "c33911e3",
+   "bytes": 1830
+  },
   "hurt_1": {
    "dur": 0.3,
    "on": 0.0013,
@@ -1547,6 +3801,83 @@
    "m4a": "e8e0016b",
    "bytes": 4490
   },
+  "imp_cackle_1": {
+   "dur": 0.75,
+   "on": 0.0012,
+   "ch": 1,
+   "lufs": -18.6,
+   "lufs_m": -16.9,
+   "peak": -2.98,
+   "dpk": -2.79,
+   "m4a": "1a9e9e73",
+   "bytes": 4791
+  },
+  "impact_crack_1": {
+   "dur": 0.3268,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.0,
+   "peak": -2.1,
+   "dpk": -1.72,
+   "m4a": "557e80a5",
+   "bytes": 3459
+  },
+  "impact_crack_2": {
+   "dur": 0.3598,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -19.1,
+   "lufs_m": -21.5,
+   "peak": -1.32,
+   "dpk": -1.33,
+   "m4a": "bed7be57",
+   "bytes": 3682
+  },
+  "impact_crack_3": {
+   "dur": 0.3598,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -16.6,
+   "lufs_m": -20.8,
+   "peak": -1.36,
+   "dpk": -1.77,
+   "m4a": "1a89e8ee",
+   "bytes": 3742
+  },
+  "impact_frame_1": {
+   "dur": 0.2559,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -21.6,
+   "peak": -2.56,
+   "dpk": -2.6,
+   "m4a": "4b79e794",
+   "bytes": 2914
+  },
+  "impact_frame_2": {
+   "dur": 0.2547,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.0,
+   "peak": -2.01,
+   "dpk": -1.84,
+   "m4a": "373dcdd0",
+   "bytes": 2892
+  },
+  "impact_frame_3": {
+   "dur": 0.251,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.0,
+   "peak": -2.54,
+   "dpk": -2.87,
+   "m4a": "bb4e5ce9",
+   "bytes": 2909
+  },
   "item_1": {
    "dur": 0.96,
    "on": 0.0004,
@@ -1579,6 +3910,17 @@
    "dpk": -1.45,
    "m4a": "3d9c6755",
    "bytes": 13031
+  },
+  "jelly_zap_1": {
+   "dur": 0.32,
+   "on": 0.0008,
+   "ch": 1,
+   "lufs": -18.0,
+   "lufs_m": -19.4,
+   "peak": -1.44,
+   "dpk": -5.64,
+   "m4a": "1e22b1e6",
+   "bytes": 2735
   },
   "jump_1": {
    "dur": 0.14,
@@ -1624,6 +3966,39 @@
    "m4a": "0e601d76",
    "bytes": 2597
   },
+  "kill_slowmo_1": {
+   "dur": 0.73,
+   "on": 0.0016,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -16.2,
+   "peak": -2.11,
+   "dpk": -2.1,
+   "m4a": "5091d5d6",
+   "bytes": 6409
+  },
+  "knight_guard_1": {
+   "dur": 0.3121,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -17.1,
+   "lufs_m": -22.7,
+   "peak": -1.6,
+   "dpk": -1.56,
+   "m4a": "44449162",
+   "bytes": 2773
+  },
+  "knock_off_1": {
+   "dur": 0.6,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -17.6,
+   "lufs_m": -17.0,
+   "peak": -1.9,
+   "dpk": -1.32,
+   "m4a": "e4fe02ff",
+   "bytes": 4344
+  },
   "land_1": {
    "dur": 0.1364,
    "on": 0.0007,
@@ -1668,6 +4043,72 @@
    "m4a": "e7860939",
    "bytes": 2333
   },
+  "land_heavy_1": {
+   "dur": 0.3,
+   "on": 0.001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.4,
+   "peak": -2.99,
+   "dpk": -2.61,
+   "m4a": "1595b20b",
+   "bytes": 3206
+  },
+  "land_heavy_2": {
+   "dur": 0.3,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -21.6,
+   "peak": -2.22,
+   "dpk": -2.13,
+   "m4a": "f9d953fd",
+   "bytes": 3218
+  },
+  "land_heavy_3": {
+   "dur": 0.3,
+   "on": 0.001,
+   "ch": 1,
+   "lufs": -16.8,
+   "lufs_m": -21.6,
+   "peak": -1.6,
+   "dpk": -1.64,
+   "m4a": "10e5e4e9",
+   "bytes": 3230
+  },
+  "launch_1": {
+   "dur": 0.2501,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -20.9,
+   "peak": -4.16,
+   "dpk": -3.72,
+   "m4a": "be9841a1",
+   "bytes": 2902
+  },
+  "launch_2": {
+   "dur": 0.2092,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -21.2,
+   "peak": -3.11,
+   "dpk": -3.2,
+   "m4a": "dbe2f66e",
+   "bytes": 2502
+  },
+  "launch_3": {
+   "dur": 0.2142,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -21.6,
+   "peak": -2.48,
+   "dpk": -2.59,
+   "m4a": "884eb50d",
+   "bytes": 2555
+  },
   "levelup_1": {
    "dur": 1.88,
    "on": 0.0012,
@@ -1700,6 +4141,17 @@
    "dpk": -2.69,
    "m4a": "d9622a8e",
    "bytes": 24416
+  },
+  "lose_1": {
+   "dur": 1.32,
+   "on": 0.0008,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -13.8,
+   "peak": -1.23,
+   "dpk": -1.67,
+   "m4a": "f2c62f1c",
+   "bytes": 7973
   },
   "magic_1": {
    "dur": 0.5505,
@@ -1855,6 +4307,281 @@
    "m4a": "7539b3c7",
    "bytes": 6146
   },
+  "mirror_chime_1": {
+   "dur": 0.64,
+   "on": 0.0017,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -15.4,
+   "peak": -2.35,
+   "dpk": -2.57,
+   "m4a": "fbd5169c",
+   "bytes": 4416
+  },
+  "mist_1": {
+   "dur": 0.6,
+   "on": 0.0006,
+   "ch": 1,
+   "lufs": -16.5,
+   "lufs_m": -15.3,
+   "peak": -1.34,
+   "dpk": -1.71,
+   "m4a": "aa3d0cde",
+   "bytes": 5364
+  },
+  "momo_gulp_1": {
+   "dur": 0.3,
+   "on": 0.0007,
+   "ch": 1,
+   "lufs": -17.6,
+   "lufs_m": -19.0,
+   "peak": -1.57,
+   "dpk": -1.39,
+   "m4a": "4677e59c",
+   "bytes": 2555
+  },
+  "mount_up_1": {
+   "dur": 0.6,
+   "on": 0.0,
+   "ch": 1,
+   "lufs": -17.4,
+   "lufs_m": -16.9,
+   "peak": -1.58,
+   "dpk": -1.05,
+   "m4a": "deb3e72a",
+   "bytes": 4311
+  },
+  "neigh_1": {
+   "dur": 1.2,
+   "on": 0.001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -13.1,
+   "peak": -7.68,
+   "dpk": -7.56,
+   "m4a": "8f3b2928",
+   "bytes": 7330
+  },
+  "owl_hoot_1": {
+   "dur": 0.9979,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -14.8,
+   "peak": -3.91,
+   "dpk": -4.03,
+   "m4a": "5e06336b",
+   "bytes": 6203
+  },
+  "pivot_1": {
+   "dur": 0.1,
+   "on": 0.0,
+   "ch": 1,
+   "lufs": -17.2,
+   "lufs_m": -23.7,
+   "peak": -1.6,
+   "dpk": -2.17,
+   "m4a": "164dbe51",
+   "bytes": 1825
+  },
+  "pivot_2": {
+   "dur": 0.1,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -17.1,
+   "lufs_m": -24.7,
+   "peak": -1.6,
+   "dpk": -2.02,
+   "m4a": "efec841b",
+   "bytes": 1866
+  },
+  "pivot_3": {
+   "dur": 0.1,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -17.3,
+   "lufs_m": -24.8,
+   "peak": -1.55,
+   "dpk": -1.89,
+   "m4a": "d67a2109",
+   "bytes": 1821
+  },
+  "powerup_1": {
+   "dur": 0.74,
+   "on": 0.0012,
+   "ch": 1,
+   "lufs": -16.4,
+   "lufs_m": -14.2,
+   "peak": -1.46,
+   "dpk": -1.76,
+   "m4a": "f27c1eff",
+   "bytes": 6452
+  },
+  "rank_up_1": {
+   "dur": 0.4785,
+   "on": 0.0012,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -17.0,
+   "peak": -4.09,
+   "dpk": -3.84,
+   "m4a": "e151f510",
+   "bytes": 4611
+  },
+  "ready_1": {
+   "dur": 0.49,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -16.5,
+   "lufs_m": -17.8,
+   "peak": -1.19,
+   "dpk": -6.68,
+   "m4a": "5dd36dfd",
+   "bytes": 3815
+  },
+  "roar_small_1": {
+   "dur": 0.7,
+   "on": 0.0006,
+   "ch": 1,
+   "lufs": -16.3,
+   "lufs_m": -14.9,
+   "peak": -1.55,
+   "dpk": -1.2,
+   "m4a": "80d19e85",
+   "bytes": 4713
+  },
+  "save_1": {
+   "dur": 1.3,
+   "on": 0.002,
+   "ch": 1,
+   "lufs": -16.7,
+   "lufs_m": -14.4,
+   "peak": -1.2,
+   "dpk": -3.67,
+   "m4a": "b835e275",
+   "bytes": 7859
+  },
+  "screech_1": {
+   "dur": 0.55,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -14.8,
+   "peak": -3.95,
+   "dpk": -6.04,
+   "m4a": "3d9629f4",
+   "bytes": 4046
+  },
+  "scythe_1": {
+   "dur": 0.3673,
+   "on": 0.0601,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -20.8,
+   "peak": -3.8,
+   "dpk": -3.81,
+   "m4a": "dbf4a83e",
+   "bytes": 5105
+  },
+  "seal_stamp_1": {
+   "dur": 0.1742,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -24.2,
+   "peak": -3.21,
+   "dpk": -3.12,
+   "m4a": "8512f461",
+   "bytes": 2024
+  },
+  "secret_1": {
+   "dur": 0.86,
+   "on": 0.0012,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -12.8,
+   "peak": -1.74,
+   "dpk": -1.66,
+   "m4a": "b7cd9a72",
+   "bytes": 5484
+  },
+  "sheath_1": {
+   "dur": 0.3473,
+   "on": 0.0007,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -18.4,
+   "peak": -2.48,
+   "dpk": -4.07,
+   "m4a": "20bc035e",
+   "bytes": 2836
+  },
+  "shotgun_1": {
+   "dur": 0.45,
+   "on": 0.0007,
+   "ch": 1,
+   "lufs": -16.4,
+   "lufs_m": -18.1,
+   "peak": -3.01,
+   "dpk": -1.68,
+   "m4a": "d053fd84",
+   "bytes": 4391
+  },
+  "shotgun_2": {
+   "dur": 0.4466,
+   "on": 0.0008,
+   "ch": 1,
+   "lufs": -16.6,
+   "lufs_m": -18.5,
+   "peak": -1.6,
+   "dpk": -1.2,
+   "m4a": "953e5a49",
+   "bytes": 4296
+  },
+  "shotgun_3": {
+   "dur": 0.45,
+   "on": 0.0007,
+   "ch": 1,
+   "lufs": -16.4,
+   "lufs_m": -17.6,
+   "peak": -2.65,
+   "dpk": -2.91,
+   "m4a": "45b78a1d",
+   "bytes": 4352
+  },
+  "skid_1": {
+   "dur": 0.25,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -18.2,
+   "lufs_m": -23.7,
+   "peak": -1.53,
+   "dpk": -1.14,
+   "m4a": "3a429f22",
+   "bytes": 2846
+  },
+  "skid_2": {
+   "dur": 0.25,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -19.9,
+   "lufs_m": -23.6,
+   "peak": -1.44,
+   "dpk": -1.84,
+   "m4a": "80b815e1",
+   "bytes": 2806
+  },
+  "skid_3": {
+   "dur": 0.25,
+   "on": 0.0008,
+   "ch": 1,
+   "lufs": -18.5,
+   "lufs_m": -22.5,
+   "peak": -1.56,
+   "dpk": -1.49,
+   "m4a": "3b7da1f1",
+   "bytes": 2855
+  },
   "slash_1": {
    "dur": 0.2,
    "on": 0.0005,
@@ -1953,6 +4680,127 @@
    "dpk": -3.76,
    "m4a": "6d9a1556",
    "bytes": 5129
+  },
+  "slot_spin_1": {
+   "dur": 0.7,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -24.0,
+   "lufs_m": -23.5,
+   "peak": -1.1,
+   "dpk": -4.08,
+   "m4a": "73eeee70",
+   "bytes": 4690
+  },
+  "slot_win_1": {
+   "dur": 1.04,
+   "on": 0.0013,
+   "ch": 1,
+   "lufs": -20.0,
+   "lufs_m": -17.5,
+   "peak": -1.1,
+   "dpk": -1.52,
+   "m4a": "90d29cec",
+   "bytes": 6589
+  },
+  "soul_reap_1": {
+   "dur": 1.28,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -13.5,
+   "peak": -2.65,
+   "dpk": -2.53,
+   "m4a": "6b4436bf",
+   "bytes": 7684
+  },
+  "splash_1": {
+   "dur": 0.4,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -17.4,
+   "lufs_m": -21.9,
+   "peak": -1.1,
+   "dpk": -2.92,
+   "m4a": "67898446",
+   "bytes": 3968
+  },
+  "splash_2": {
+   "dur": 0.4,
+   "on": 0.0016,
+   "ch": 1,
+   "lufs": -20.3,
+   "lufs_m": -21.1,
+   "peak": -1.28,
+   "dpk": -1.37,
+   "m4a": "cc3f5f1d",
+   "bytes": 4077
+  },
+  "splash_3": {
+   "dur": 0.4,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -19.2,
+   "lufs_m": -20.1,
+   "peak": -1.22,
+   "dpk": -2.47,
+   "m4a": "fb7c8501",
+   "bytes": 3985
+  },
+  "stag_call_1": {
+   "dur": 0.7,
+   "on": 0.0025,
+   "ch": 1,
+   "lufs": -16.6,
+   "lufs_m": -14.4,
+   "peak": -1.77,
+   "dpk": -1.38,
+   "m4a": "7d643b1e",
+   "bytes": 4702
+  },
+  "step_bone_1": {
+   "dur": 0.0705,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -16.1,
+   "lufs_m": -29.1,
+   "peak": -1.1,
+   "dpk": -3.78,
+   "m4a": "2dd1086c",
+   "bytes": 1650
+  },
+  "step_bone_2": {
+   "dur": 0.0816,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -27.2,
+   "peak": -2.2,
+   "dpk": -3.23,
+   "m4a": "ea33cc12",
+   "bytes": 1693
+  },
+  "step_bone_3": {
+   "dur": 0.0757,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -29.0,
+   "peak": -1.1,
+   "dpk": -3.26,
+   "m4a": "ba706365",
+   "bytes": 1675
+  },
+  "step_bone_4": {
+   "dur": 0.0861,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -27.2,
+   "peak": -2.43,
+   "dpk": -4.74,
+   "m4a": "efcadcf1",
+   "bytes": 1729
   },
   "step_dirt_1": {
    "dur": 0.16,
@@ -2118,6 +4966,39 @@
    "dpk": -3.78,
    "m4a": "ea97094d",
    "bytes": 2618
+  },
+  "step_push_1": {
+   "dur": 0.25,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -17.6,
+   "lufs_m": -19.7,
+   "peak": -1.6,
+   "dpk": -1.54,
+   "m4a": "d65b060b",
+   "bytes": 2996
+  },
+  "step_push_2": {
+   "dur": 0.25,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -17.3,
+   "lufs_m": -19.5,
+   "peak": -1.56,
+   "dpk": -1.66,
+   "m4a": "d8be4d76",
+   "bytes": 2847
+  },
+  "step_push_3": {
+   "dur": 0.25,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -17.2,
+   "lufs_m": -19.4,
+   "peak": -1.59,
+   "dpk": -1.54,
+   "m4a": "1868ab9b",
+   "bytes": 2831
   },
   "step_snow_1": {
    "dur": 0.18,
@@ -2339,6 +5220,28 @@
    "m4a": "e56d888c",
    "bytes": 3048
   },
+  "stopwatch_1": {
+   "dur": 1.15,
+   "on": 0.0018,
+   "ch": 1,
+   "lufs": -17.4,
+   "lufs_m": -15.3,
+   "peak": -1.1,
+   "dpk": -1.45,
+   "m4a": "73a4e0db",
+   "bytes": 9465
+  },
+  "summon_1": {
+   "dur": 1.06,
+   "on": 0.0743,
+   "ch": 1,
+   "lufs": -17.5,
+   "lufs_m": -14.9,
+   "peak": -1.43,
+   "dpk": -1.68,
+   "m4a": "f5cadb2d",
+   "bytes": 7443
+  },
   "thunder_1": {
    "dur": 0.63,
    "on": 0.0012,
@@ -2460,6 +5363,17 @@
    "m4a": "4d95ea2e",
    "bytes": 1701
   },
+  "ult_1": {
+   "dur": 1.23,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.5,
+   "lufs_m": -13.5,
+   "peak": -1.57,
+   "dpk": -1.04,
+   "m4a": "11e8f9dd",
+   "bytes": 9914
+  },
   "ult_impact_1": {
    "dur": 1.3794,
    "on": 0.0007,
@@ -2492,6 +5406,61 @@
    "dpk": -2.22,
    "m4a": "bab28807",
    "bytes": 23126
+  },
+  "wall_bounce_1": {
+   "dur": 0.3,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.4,
+   "peak": -1.98,
+   "dpk": -2.26,
+   "m4a": "36809e81",
+   "bytes": 3216
+  },
+  "wall_bounce_2": {
+   "dur": 0.3,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.4,
+   "lufs_m": -21.6,
+   "peak": -1.6,
+   "dpk": -1.21,
+   "m4a": "5512c5c4",
+   "bytes": 3218
+  },
+  "wall_bounce_3": {
+   "dur": 0.3,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -17.8,
+   "lufs_m": -22.0,
+   "peak": -1.6,
+   "dpk": -1.4,
+   "m4a": "ad364319",
+   "bytes": 3214
+  },
+  "war_horn_1": {
+   "dur": 1.3,
+   "on": 0.0013,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -13.8,
+   "peak": -4.19,
+   "dpk": -4.4,
+   "m4a": "f1dce3af",
+   "bytes": 7795
+  },
+  "warning_1": {
+   "dur": 1.48,
+   "on": 0.0022,
+   "ch": 1,
+   "lufs": -17.8,
+   "lufs_m": -15.3,
+   "peak": -1.59,
+   "dpk": -1.41,
+   "m4a": "067801f2",
+   "bytes": 8892
   },
   "whip_1": {
    "dur": 0.22,
@@ -2581,6 +5550,17 @@
    "m4a": "eb849f5a",
    "bytes": 3488
   },
+  "win_1": {
+   "dur": 0.9071,
+   "on": 0.0012,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -14.3,
+   "peak": -3.09,
+   "dpk": -2.43,
+   "m4a": "c2ea8170",
+   "bytes": 5754
+  },
   "wing_flap_1": {
    "dur": 0.22,
    "on": 0.0002,
@@ -2624,6 +5604,28 @@
    "dpk": -1.37,
    "m4a": "ae5f6ddb",
    "bytes": 3584
+  },
+  "wolf_bite_1": {
+   "dur": 0.25,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -18.4,
+   "peak": -1.22,
+   "dpk": -1.66,
+   "m4a": "9837e87c",
+   "bytes": 2496
+  },
+  "wolf_howl_1": {
+   "dur": 1.5,
+   "on": 0.0021,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -12.8,
+   "peak": -3.71,
+   "dpk": -3.71,
+   "m4a": "71d9691d",
+   "bytes": 8859
   }
  }
 }

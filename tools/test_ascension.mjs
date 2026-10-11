@@ -167,7 +167,7 @@ for (const tid of TRIAL_IDS) {
   ok(!!S?.rooms?.boss && T.room === 'boss', `${tid}: ${T.stage} 에 boss 방`);
   ok(S && T.boss === (S.rooms?.boss?.bossId ?? S.boss) && T.boss === S.boss, `${tid}: ${T.boss} 는 ${T.stage} 본래 보스`, [S?.boss, S?.rooms?.boss?.bossId]);
   ok(Array.isArray(T.mods) && !T.mods.includes('dark') && (!DAILY_MODS || T.mods.every((m) => Object.hasOwn(DAILY_MODS, m))), `${tid}: mods ⊂ DAILY_MODS, 'dark' 없음`, T.mods);
-  ok(T.diffOver === null || (Object.keys(T.diffOver).every((k) => k === 'bossHp') && T.diffOver.bossHp > 1 && T.diffOver.bossHp <= 1.3), `${tid}: diffOver 는 bossHp 만`, T.diffOver);
+  ok(T.diffOver === null || (Object.keys(T.diffOver).every((k) => k === 'bossHp') && T.diffOver.bossHp >= 0.4 && T.diffOver.bossHp <= 10), `${tid}: diffOver 는 bossHp 만 (0.4–10: BALANCE-PERF 가 영웅끼리 처치 시간을 맞춘 배율)`, T.diffOver);
   ok(T.level >= T.reqLevel && T.recLv >= T.reqLevel && T.recLv <= T.level, `${tid}: reqLevel ${T.reqLevel} ≤ recLv ${T.recLv} ≤ level ${T.level}`);
   ok(T.n === 1 ? T.reqLevel === 70 && T.level === 74 && T.recLv === 72 && T.unlock === 't3' : T.reqLevel === 75 && T.level === 80 && T.recLv === 78 && T.unlock === 'hidden', `${tid}: 공통 수치 (§2)`);
   ok(T.pre === `${tid}_pre` && T.win === `${tid}_win` && T.preAgain === 'tr_again_pre' && T.winAgain === 'tr_again_win', `${tid}: 대본 id`);

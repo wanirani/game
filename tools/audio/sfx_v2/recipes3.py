@@ -147,7 +147,7 @@ R3 = {
     # 필살기 발동 — 거꾸로 차오르는 심벌 + 징 '쾅' + 풍경
     'ult': {'n': 3, 'var': lambda v: dict(layers=[
         L(B([2311, 2315, 2311][v]), len=0.45, g=-2, rev=True, hp=600, tau=0),
-        L(B([1485, 1484, 1485][v]), len=1.0, g=0, st=[-3, -5, -2][v], hp=60, tau=0.4, dly=430),
+        L(B([1485, 1484, 1485][v]), len=0.8, g=0, st=[-3, -5, -2][v], hp=60, tau=0.32, dly=430),
         L(B([2338, 2341, 2338][v]), len=0.5, g=-3, st=-2, hp=35, tau=0.2, dly=430),
         L(B(CHIME[v + 1]), len=0.6, g=-10, hp=1500, tau=0.25, dly=440),
     ], sat=(1.8, 0.25))},
@@ -194,12 +194,12 @@ R3 = {
     ])},
     # 슬롯 당첨 — 동전 쏟아짐 + 종 + 오르골 화음
     'slot_win': {'n': 3, 'var': lambda v: dict(layers=[
-        L(B(193), at=[0.0, 0.5, 1.0][v], len=0.9, g=0, hp=400, tau=0.35, hold=0.2),
+        L(B(193), at=[0.0, 3.0, 6.0][v], al='pk', pre=0.05, win=3.0, len=0.9, g=0, hp=400, tau=0.35, hold=0.2),
         *arp([['C', 'D#', 'G', 'C2'], ['G#', 'C', 'D#', 'G#2'], ['D#', 'G', 'A#', 'D#2']][v], 60, g=-3, len_=0.5, tau=0.22),
         L(B(2117), len=0.8, g=-7, hp=800, tau=0.35, dly=240),
     ])},
     # 승리 — 밝은 오르골 화음 + 나비 풍경 + 종
-    'win': {'n': 3, 'var': lambda v: dict(layers=arp([['C', 'D#', 'G', 'C2', 'D#2'], ['G#', 'C', 'D#', 'G#2', 'C2'], ['D#', 'G', 'A#', 'D#2', 'G2']][v], 75, len_=0.55, tau=0.25) + [
+    'win': {'n': 3, 'cmax': 9, 'var': lambda v: dict(lp=11000, layers=arp([['C', 'D#', 'G', 'C2', 'D#2'], ['G#', 'C', 'D#', 'G#2', 'C2'], ['D#', 'G', 'A#', 'D#2', 'G2']][v], 75, len_=0.55, tau=0.25) + [
         L(B(BUTTERFLY[v]), len=0.7, g=-6, hp=1500, tau=0.3, dly=300),
         L(B([292, 293, 294][v]), len=0.6, g=-8, hp=900, tau=0.25, dly=300),
     ])},
@@ -234,7 +234,7 @@ R3 = {
     'candle': {'n': 3, 'var': lambda v: dict(layers=[
         L(KI(f'impactMetal_light_00{v}.ogg'), len=0.2, g=0, hp=300, tau=0.07),
         L(BFH(f'bfh1_glass_hit_0{v % 2 + 1}.ogg'), len=0.25, g=-6, hp=1000, tau=0.09, dly=10),
-        L(B(49), at=[0.5, 3.0, 6.0][v], len=0.2, g=-12, hp=1500, tau=0.07, dly=20),
+        L(B(49), at=[0.04, 6.64, 0.04][v], len=0.2, g=-12, st=[0, 0, 2][v], hp=1500, tau=0.07, dly=20),
     ])},
     # 문 — 나무 문 열림 + 경첩 + 닫힘 '쿵'
     'door': {'n': 3, 'var': lambda v: dict(layers=[
@@ -642,8 +642,20 @@ awaken_hold awaken_charge awaken_stinger awaken_boom
 summon dismiss mount_up neigh hoof_land boar_grunt wolf_howl wolf_bite roar_small fire_breath screech bone_rattle fairy_chime
 knight_guard imp_cackle owl_hoot gear_whir scythe soul_reap egg_crack companion_join bond_up knock_off assist stag_call griffin_cry
 mirror_chime jelly_zap momo_gulp'''.split())
-for _n, _r in R3.items():          # 3차 묶음: 64 kbps 모노 (용량 예산 — 보고서 참고)
-    _r.setdefault('br', '64k')
+# 용량 (이 묶음의 APK 예산 +1.0 MB 안 — /tmp/claude-0/g9/motionsfx.md): 자주 울리는 소리는 서로 다른 녹음 3~4벌 · 56 kbps · 44.1 kHz,
+# 드문 소리는 녹음 1벌 · 40 kbps · 32 kHz 에 index 'vr'(재생 속도 변형 3개: 원래·−약 1반음·+약 1반음)로 '변형 3개'를 만든다 (같은 소리 연타 방지는 그대로).
+VR = [1.0, 0.95, 1.055]
+# 드물게 울리는 긴 소리 (발동·연출·획득) — 한 벌만 싣고 재생 속도로 변형 (용량)
+ONE = set('ult stopwatch heal powerup mist charge_ready kill_slowmo announce rank_up combo_milestone'.split())
+for _n, _r in R3.items():
     if _n in LAZY:
         _r['lazy'] = 1
+        _r['n'] = 1
+        _r['vr'] = VR
+        _r.setdefault('rate', 32000)
+        _r.setdefault('br', '40k')
+    else:
+        _r.setdefault('br', '56k')
+        if _n in ONE:
+            _r['n'] = 1; _r['vr'] = VR
 assert LAZY <= set(R3), LAZY - set(R3)

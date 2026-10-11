@@ -21,6 +21,7 @@ import { expToNext, MAX_LEVEL } from '../../game/stats.js';
 import { drawHero } from '../../render/hero.js';
 import { drawIcon } from '../../render/icons.js';
 import { hudLayout } from '../../render/hud_layout.js';
+import { touchpad } from '../../core/touchpad.js';   // [hudredo] 시스템 아이콘 줄 자리 (오른쪽 위를 비켜 그린다)
 import { CHARACTERS } from '../../data/characters.js';
 import { CLASSES } from '../../data/classes.js';
 import { ITEMS } from '../../data/items.js';
@@ -412,6 +413,19 @@ export class HubScene extends Scene {
     if (this.menuOpen) this.drawMenu(ctx, vw, vh);
   }
 
+  /** 터치 패드 시스템 아이콘 줄(오른쪽 위; 메뉴·가방)의 범위 → UI 좌표 사각형 | null (패드가 없거나 위쪽 가운데 배치면 null) */
+  sysRowUi(k) {
+    if (!input.touchMode) return null;
+    let rs = null;
+    try { rs = touchpad.occupiedRects?.(); } catch { rs = null; }
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const r of rs ?? []) {
+      if (r.id !== 'pause' && r.id !== 'bag' && r.id !== 'fullscreen' && r.id !== 'maptog') continue;
+      x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y); x1 = Math.max(x1, r.x + r.w); y1 = Math.max(y1, r.y + r.h);
+    }
+    if (!(x1 > x0) || x0 < this.game.viewW * 0.55) return null;   // 위쪽 가운데(넓은 배치)면 오른쪽 위를 막지 않는다
+    return { x: x0 / k, y: y0 / k, w: (x1 - x0) / k, h: (y1 - y0) / k };
+  }
   /** HUD·마을 메뉴 배율: 휴대폰(작은 CSS 화면)에서 game.uiK 배 (데스크톱 1) */
   uiK() { return Math.max(1, this.game.uiK || 1); }
   /** css CSS px 가 되는 HUD·메뉴 좌표(UI px) 크기 — 터치 주 버튼·메뉴 줄은 보이는 높이도 44 CSS px 이상 (platform §6.3, 일시정지 메뉴와 같게) */
@@ -453,27 +467,36 @@ export class HubScene extends Scene {
     if ((hero.sp ?? 0) > 0) text(ctx, `SP ${hero.sp}`, bx + bw, py + 49, { size: 11, align: 'right', color: '#8ae0ff', weight: 800, family: FONT.num });
 
     // ── 우상단: 골드 · 유물(2부: 세계의 심장) · 버튼 ──
-    const gw = 190, gx = W - gw - 14, gy = 12;
+    // HUD-REDO: 터치 패드의 시스템 아이콘 줄(메뉴·가방 — 오른쪽 위)이 있으면 그 왼쪽·아래로 비킨다 (예전에는 골드 숫자가 아이콘 밑에 깔렸다)
+    const sysR = this.sysRowUi(k);
+    const gw = 190, gx = (sysR ? sysR.x - 12 : W - 14) - gw, gy = sysR ? Math.round(sysR.y + sysR.h / 2 - 20) : 12;
     uiPanel(ctx, gx, gy, gw, 40, { corner: false });
     drawIcon(ctx, 'coin', gx + 22, gy + 20, 24);
-    text(ctx, fmt(st.gold ?? 0), gx + gw - 14, gy + 27, { size: 19, weight: 900, family: FONT.num, color: '#ffd84a', align: 'right' });
+    text(ctx, fmt(st.gold ?? 0), gx + gw - 14, gy + 27, { size: 19, weight: 900, family: FONT.num, color: '#ffd84a', align: 'right', maxWidth: gw - 64 });
     text(ctx, 'G', gx + 40, gy + 26, { size: 12, weight: 800, family: FONT.num, color: '#b89a50' });
+    // 유물(1부 5개) · 세계의 심장(2부 6개): 모은 것은 그림, 아직인 것은 빈 홈 — '?' 대신 '유물 n/5' 로 무엇인지 알린다
     const p2 = !!st.progress?.flags?.p2_started;
     const ids = p2 ? HEART_IDS : RELIC_IDS, got = (p2 ? st.progress?.hearts : st.progress?.relics) ?? [];
-    const sp = p2 ? 29 : 34;
+    const sp = 26, rowR = sysR ? W - 14 : gx + gw, ry = Math.max(gy + 40, sysR ? sysR.y + sysR.h : 0) + 20;
+    const nGot = ids.filter((id) => got.includes(id)).length;
+    const x1 = rowR - 12 - (ids.length - 1) * sp;
+    const lab = `${p2 ? '심장' : '유물'} ${nGot}/${ids.length}`;
+    ctx.font = font(12, 800, FONT.body); const lw = ctx.measureText(lab).width;
+    ctx.fillStyle = 'rgba(8,4,10,0.6)'; ctx.fillRect(x1 - lw - 30, ry - 14, rowR - (x1 - lw - 30), 28);
+    text(ctx, lab, x1 - 18, ry + 5, { size: 12, weight: 800, color: '#d8c4a0', align: 'right' });
     for (let i = 0; i < ids.length; i++) {
-      const rx = gx + 24 + i * sp, ry = gy + 58;
+      const rx = x1 + i * sp;
       const has = got.includes(ids[i]);
-      ctx.fillStyle = has ? 'rgba(120,10,24,0.8)' : 'rgba(10,4,10,0.6)';
-      ctx.beginPath(); ctx.arc(rx, ry, 12, 0, TAU); ctx.fill();
-      ctx.strokeStyle = has ? '#ff6a7a' : '#4a3a30'; ctx.lineWidth = 1.5; ctx.stroke();
-      if (has) drawIcon(ctx, ITEMS[ids[i]]?.icon ?? (p2 ? 'wheart_' : 'relic_') + (i + 1), rx, ry, 22);
-      else text(ctx, '?', rx, ry + 5, { size: 12, weight: 800, color: '#4a3a30', align: 'center', ow: 0 });
+      ctx.fillStyle = has ? 'rgba(120,10,24,0.85)' : 'rgba(14,6,12,0.75)';
+      ctx.beginPath(); ctx.arc(rx, ry, 11, 0, TAU); ctx.fill();
+      ctx.strokeStyle = has ? '#ff6a7a' : 'rgba(184,150,96,0.45)'; ctx.lineWidth = 1.5; ctx.stroke();
+      if (has) drawIcon(ctx, ITEMS[ids[i]]?.icon ?? (p2 ? 'wheart_' : 'relic_') + (i + 1), rx, ry, 20);
+      else { ctx.fillStyle = 'rgba(184,150,96,0.35)'; ctx.beginPath(); ctx.arc(rx, ry, 2.5, 0, TAU); ctx.fill(); }
     }
     const touch = !!input.touchMode;
-    const bwd = 88, bh = touch ? Math.max(40, this.tapUi(46)) : 40, by = gy + 80;
+    const bwd = 96, bh = touch ? Math.max(40, this.tapUi(46)) : 40, by = ry + 20;
     const rParty = { x: W - 14 - bwd * 2 - 8, y: by, w: bwd, h: bh }, rMenu = { x: W - 14 - bwd, y: by, w: bwd, h: bh };
-    if (g.registry.party) { uiButton(ctx, rParty, '헌터 교체', { size: 14 }); rects.party = this.zone('party', rParty, k, off); }
+    if (g.registry.party) { uiButton(ctx, rParty, '헌터 교체', { size: 15 }); rects.party = this.zone('party', rParty, k, off); }
     uiButton(ctx, rMenu, '메뉴', { size: 15 }); rects.menu = this.zone('menu', rMenu, k, off);
 
     // ── 하단: 상호작용 안내 ──

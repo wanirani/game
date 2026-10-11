@@ -278,7 +278,8 @@ export class InventoryTab extends Tab {
     this.sortRect = { x: A.x + GW - sw - 12, y: fy, w: sw, h: fh };
     gbutton(ctx, this.sortRect, '정렬', { icon: 'sort', size: 13, hot: this.m.ges.over(this.sortRect), t });
     if (this.m.ges.over(this.sortRect)) text(ctx, SORTS[this.sortMode].name, this.sortRect.x + sw / 2, this.sortRect.y + fh + 14, { size: 11, align: 'center', color: PAL.gold, weight: 700 });
-    if (fx < this.sortRect.x - measure(ctx, cnt, 12, 700) - 16) text(ctx, cnt, this.sortRect.x - 10, fy + fh / 2 + 5, { size: 12, align: 'right', weight: 700, family: FONT.num, color: PAL.dim });
+    const cntUp = fx < this.sortRect.x - measure(ctx, cnt, 12, 700) - 16;
+    if (cntUp) text(ctx, cnt, this.sortRect.x - 10, fy + fh / 2 + 5, { size: 12, align: 'right', weight: 700, family: FONT.num, color: PAL.dim });
     divider(ctx, A.x + 12, fy + fh + 8, GW - 24, { center: false, a: 0.5 });
     // ── 격자 ──
     const footH = touch ? 48 : 32;   // [qol] 아래 단추 줄 (가방 칸 수 · 거르기 · 일괄 처분)
@@ -320,7 +321,8 @@ export class InventoryTab extends Tab {
       const mk = marks.get(e.inst.uid);
       if (mk?.mark === 'up') drawMark(ctx, x + cell - 9, y + 9, 11, 'up');
       else if (mk?.other) drawFace(ctx, x + cell - 10, y + 10, 16, mk.other);
-      if (e.inst.isNew) pill(ctx, 'NEW', x + 2, y + 2, { color: '#fff4d8', bg: 'rgba(160,20,40,0.92)', size: 9, h: 13 });
+      // NEW: 칸 왼쪽 위 붉은 점 (업적 화면의 새 항목 점과 같은 말 — 칸마다 작은 글자를 늘어놓지 않게)
+      if (e.inst.isNew) { ctx.fillStyle = '#ff3050'; ctx.strokeStyle = '#fff0e0'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x + 8, y + 8, 4.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
       if (e.inst.locked) { ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x + 2, y + cell - 17, 15, 15); glyph(ctx, 'lock', x + 9.5, y + cell - 9.5, 10, PAL.gold, 1.4); }
       if (sel && focused) brackets(ctx, x, y, cell, cell, t);
     });
@@ -334,14 +336,16 @@ export class InventoryTab extends Tab {
     {
       const fy2 = GR.y + GR.h + 6, free = freeSlots(this.state);
       const low = free <= 5;
-      text(ctx, `가방 ${cnt}`, A.x + 16, fy2 + footH / 2 + 5, { size: 12, weight: 700, family: FONT.num, color: low ? PAL.bad : PAL.dim });
-      if (low) text(ctx, free <= 0 ? '가득 찼습니다' : `남은 칸 ${free}`, A.x + 16 + measure(ctx, `가방 ${cnt}`, 12, 700, FONT.num) + 10, fy2 + footH / 2 + 5, { size: 12, weight: 800, color: PAL.bad });
+      // 칸 수는 위 줄에 이미 있으면 되풀이하지 않는다 (남은 칸이 적을 때만 경고와 함께)
+      const cw0 = cntUp && !low ? 0 : measure(ctx, `가방 ${cnt}`, 13, 700, FONT.num) + 10;
+      if (cw0) text(ctx, `가방 ${cnt}`, A.x + 16, fy2 + footH / 2 + 5, { size: 13, weight: 700, family: FONT.num, color: low ? PAL.bad : PAL.dim });
+      if (low) text(ctx, free <= 0 ? '가득 찼습니다' : `남은 칸 ${free}`, A.x + 16 + cw0, fy2 + footH / 2 + 5, { size: 13, weight: 800, color: PAL.bad });
       const fl = this.minR || this.usable ? `거르기 · ${[this.minR ? MIN_RARITY[this.minR].name : '', this.usable ? '쓸 수 있는 것' : ''].filter(Boolean).join(' · ')}` : '거르기';
-      const bw2 = 116, bw1 = Math.min(220, Math.max(84, measure(ctx, fl, 12, 800) + 28));
+      const bw2 = 120, bw1 = Math.min(220, Math.max(88, measure(ctx, fl, 13, 800) + 28));
       const r2 = { x: A.x + GW - 12 - bw2, y: fy2, w: bw2, h: footH }, r1 = { x: r2.x - 8 - bw1, y: fy2, w: bw1, h: footH };
       this.footRects = [this.m.ges.zone(r1, 'primary', { src: 'inv.filter2' }), this.m.ges.zone(r2, 'primary', { src: 'inv.dispose' })];
-      gbutton(ctx, r1, fl, { size: 12, hot: this.sub === 'foot' && this.fi2 === 0 && focused, t, color: this.minR || this.usable ? PAL.goldHi : null });
-      gbutton(ctx, r2, '일괄 처분', { size: 12, hot: (this.sub === 'foot' && this.fi2 === 1 && focused) || low, t });
+      gbutton(ctx, r1, fl, { size: 13, hot: this.sub === 'foot' && this.fi2 === 0 && focused, t, color: this.minR || this.usable ? PAL.goldHi : null });
+      gbutton(ctx, r2, '일괄 처분', { size: 13, hot: (this.sub === 'foot' && this.fi2 === 1 && focused) || low, t });
       if (this.sub === 'foot' && focused) { const rr2 = this.footRects[this.fi2]; brackets(ctx, rr2.x, rr2.y, rr2.w, rr2.h, t); }
     }
 
@@ -392,9 +396,9 @@ export class InventoryTab extends Tab {
     // [qol] 착용 중 장비와 비교 (장비 탭과 같은 표 — 지금 영웅 기준)
     if (equipKind && footer - cy > 130) {
       const ci = compareInfo(this.state, hero, inst);
-      if (ci) {
+      if (ci && !ci.here) {   // 지금 영웅이 입고 있는 장비는 위 '장착 중' 줄로 충분
         cy += 6;
-        const used = drawCompare(ctx, { x: x + 18, y: cy, w: w - 36, h: Math.min(124, footer - cy - 40) }, ci, { maxRows: 2, size: 12 });
+        const used = drawCompare(ctx, { x: x + 18, y: cy, w: w - 36, h: Math.min(124, footer - cy - 40) }, ci, { maxRows: 2, size: 13 });
         cy += used + 4;
         divider(ctx, x + 18, cy, w - 36, { center: false, a: 0.35 });
       }

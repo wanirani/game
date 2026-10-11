@@ -241,13 +241,13 @@ function checkSetting(spec, v) {
       }
       return out;
     }
-    case 'hud': { // {preset, scale, pad, rev, padReset?} — 모르는 값은 기본값으로 (항목별)
+    case 'hud': { // {preset, scale, pad, rev} — 모르는 값은 기본값으로 (항목별)
       if (!isObj(v)) return INVALID;
       const pr = ['auto', 'wide', 'fold'].includes(v.preset) ? v.preset : 'auto';
       const sc = typeof v.scale === 'number' && Number.isFinite(v.scale) ? Math.round(Math.min(1.2, Math.max(0.85, v.scale)) * 100) / 100 : 1;
       const pad = v.pad === 'band' ? 'band' : 'overlay';   // [hudredo]
       const rev = Number.isInteger(v.rev) && v.rev >= 0 ? v.rev : 0;
-      return v.padReset === true ? { preset: pr, scale: sc, pad, rev, padReset: true } : { preset: pr, scale: sc, pad, rev };
+      return { preset: pr, scale: sc, pad, rev };
     }
     case 'gear': { // 장비 편의 — 항목별로 모르는 값은 기본값, 모르는 키는 보존 (새 앱이 더한 항목을 옛 앱이 지우지 않게)
       if (!isObj(v)) return INVALID;
@@ -312,14 +312,9 @@ export function migrateSettings(saved) {
     else if ((spec.type === 'map' || spec.type === 'layout' || spec.type === 'hud' || spec.type === 'gear') && v !== null && JSON.stringify(v) !== JSON.stringify(saved[k])) changed = true;
     out[k] = v;
   }
-  // [hudredo] 버튼 배치 개편 (hud.rev 2): 예전 기본 투명도 0.55 → 새 기본 0.95, 예전 순서·크기로 저장한 사용자 배치는 지우고 알린다 (touchpad 가 토스트)
-  if (!(Number(saved.hud?.rev) >= 2)) {
-    if (out.touchOpacity === 0.55) out.touchOpacity = DEFAULT_SETTINGS.touchOpacity;
-    const hadLayout = !!(out.touchLayout && Object.keys(out.touchLayout).length);
-    if (hadLayout) out.touchLayout = null;
-    out.hud = { ...(isObj(out.hud) ? out.hud : cloneDefault('hud', DEFAULT_SETTINGS.hud)), rev: 2, ...(hadLayout ? { padReset: true } : {}) };
-    changed = true;
-  }
+  // [hudredo] 버튼 배치 개편 전(hud.rev < 2)의 설정: 예전 기본 투명도 0.55 → 새 기본 0.95.
+  // (예전 순서·크기로 저장한 사용자 배치는 터치 기기에서 touchpad 가 처음 배치할 때 지우고 알린 뒤 hud.rev 를 2 로 올린다)
+  if (!(Number(saved.hud?.rev) >= 2) && out.touchOpacity === 0.55) { out.touchOpacity = DEFAULT_SETTINGS.touchOpacity; changed = true; }
   return { settings: out, changed };
 }
 

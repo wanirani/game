@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""assets/audio/CREDITS.md 의 '고급 효과음 v2' 절을 build_sfx_v2.py --credits 가 쓴 JSON(쓰인 소재 → 출처·used_in)으로 다시 쓴다.
+"""assets/audio/LICENSE-CREDITS.txt (옛 CREDITS.md — build_web 이 .md 를 건너뛰어 배포본에 빠지던 것을 라이선스 사본으로 함께 싣는다) 의 '고급 효과음 v2' 절을 build_sfx_v2.py --credits 가 쓴 JSON(쓰인 소재 → 출처·used_in)으로 다시 쓴다.
   python3 tools/audio/sfx_v2/credits_md.py /tmp/claude-0/g7/sfx_sources.json"""
 import json, sys
 from collections import defaultdict
@@ -32,8 +32,8 @@ for au in sorted(by, key=lambda a: -len(by[a])):
     for k, s in rows:
         origin = s['page'] + (f" (`{s['member']}` in {s['url'].rsplit('/', 1)[-1]})" if 'member' in s else f" ({s['url']})")
         parts.append(f"| {s['title']} | {', '.join(s['used_in'])} | {origin} |")
-p = ROOT / 'assets/audio/CREDITS.md'
+p = ROOT / 'assets/audio/LICENSE-CREDITS.txt'
 txt = p.read_text(encoding='utf-8')
 i = txt.index('## 고급 효과음 v2')
 p.write_text(txt[:i] + '\n'.join(parts) + '\n', encoding='utf-8')
-print(f'CREDITS.md v2 절: 소재 {len(src)}개 · 작가 {len(by)}명')
+print(f'LICENSE-CREDITS.txt v2 절: 소재 {len(src)}개 · 작가 {len(by)}명')

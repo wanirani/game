@@ -20,7 +20,7 @@
   index.json = { version, rate, formats:['m4a'], names:[…], sfx:{이름:{f:[파일 id], g, ref?, rev?, room?, of?, alias?}}, files:{id:{dur, on, ch, lufs, lufs_m, peak, dpk, m4a, bytes}} }
     g = 엔진 음량 (호출 vol 에 곱함) — tools/test_sfx.mjs --calibrate-v2 가 지금 소리(샘플+합성)와 귀에 같은 크기(K-가중 순간
     라우드니스)가 되게 맞춘다. 다시 빌드하면 g 가 1 로 돌아가므로 --keep-gains 를 쓰거나 --calibrate-v2 를 두세 번 다시 돌린다.
-  sources.json 의 출처는 assets/audio/CREDITS.md 의 'v2' 표와 /tmp/claude-0/g3/sfx_sources.json 에 그대로 옮긴다 (--credits).
+  sources.json 의 출처는 assets/audio/LICENSE-CREDITS.txt (옛 CREDITS.md) 의 'v2' 표와 /tmp/claude-0/g3/sfx_sources.json 에 그대로 옮긴다 (--credits).
 """
 import argparse
 import hashlib
@@ -386,19 +386,20 @@ def build_var(src, rec, v, ceil=CEIL):
     return mix, red
 
 
-def to_out(y):
-    """48 kHz → 44.1 kHz"""
-    return signal.resample_poly(y, 147, 160, axis=0)
+def to_out(y, rate=OUT_RATE):
+    """48 kHz → 44.1 kHz (또는 레시피 'rate' — 3차 묶음의 드문 소리는 32 kHz)"""
+    fr = Fraction(rate, SR)
+    return signal.resample_poly(y, fr.numerator, fr.denominator, axis=0)
 
 
-def encode(y, base, ch, br=None):
+def encode(y, base, ch, br=None, rate=OUT_RATE):
     y = np.clip(y, -1, 1).astype(np.float32)
     with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as t:
         wav = t.name
     try:
-        run(['ffmpeg', '-v', 'error', '-y', '-f', 'f32le', '-ar', str(OUT_RATE), '-ac', str(ch), '-i', 'pipe:0', '-c:a', 'pcm_s16le', wav], y.tobytes())
+        run(['ffmpeg', '-v', 'error', '-y', '-f', 'f32le', '-ar', str(rate), '-ac', str(ch), '-i', 'pipe:0', '-c:a', 'pcm_s16le', wav], y.tobytes())
         run(['ffmpeg', '-v', 'error', '-y', '-i', wav, '-c:a', 'aac', '-b:a', br or ('128k' if ch == 2 else '96k'), '-movflags', '+faststart',
-             '-map_metadata', '-1', str(base) + '.m4a'])
+             '-map_metadata', '-1', '-fflags', '+bitexact', str(base) + '.m4a'])
     finally:
         os.unlink(wav)
 
@@ -467,14 +468,15 @@ def main():
     for name in names:
         rec = RECIPES[name]
         ids = []
+        orate = rec.get('rate', OUT_RATE)
         for v in range(rec['n']):
             fid = f'{name}_{v + 1}'
             ids.append(fid)
             ceil = CEIL
             for _ in range(8):                     # 인코딩(AAC·Vorbis)을 다시 푼 피크가 CEIL 을 넘으면 리미터 상한을 그만큼 낮춰 다시 만든다 (순간음만 눌림)
                 y, red = build_var(src, rec, v, ceil)
-                yo = to_out(y)
-                encode(yo, out / fid, rec.get('ch', 1), rec.get('br'))
+                yo = to_out(y, orate)
+                encode(yo, out / fid, rec.get('ch', 1), rec.get('br'), orate)
                 dpk = decoded_peak(out / f'{fid}.m4a', rec.get('ch', 1))
                 if dpk <= CEIL:
                     break
@@ -482,24 +484,26 @@ def main():
             if a.wav:
                 run(['ffmpeg', '-v', 'error', '-y', '-f', 'f32le', '-ar', str(SR), '-ac', str(rec.get('ch', 1)), '-i', 'pipe:0', '-c:a', 'pcm_s16le',
                      str(Path(a.wav) / f'{fid}.wav')], np.clip(y, -1, 1).astype(np.float32).tobytes())
-            if dpk > CEIL:                             # 리미터로 못 잡으면 (AAC 가 순간음 꼭지를 넘김) 남은 만큼 전체 음량을 내린다 (g 보정이 메운다)
-                y *= 10 ** ((CEIL - 0.15 - dpk) / 20)
-                yo = to_out(y)
-                encode(yo, out / fid, rec.get('ch', 1), rec.get('br'))
+            for _ in range(4):                         # 리미터로 못 잡으면 (AAC 가 순간음 꼭지를 넘김) 남은 만큼 전체 음량을 내린다 (g 보정이 메운다)
+                if dpk <= CEIL:
+                    break
+                y *= 10 ** ((CEIL - 0.25 - dpk) / 20)
+                yo = to_out(y, orate)
+                encode(yo, out / fid, rec.get('ch', 1), rec.get('br'), orate)
                 dpk = decoded_peak(out / f'{fid}.m4a', rec.get('ch', 1))
             if dpk > CEIL:
                 sys.exit(f'{fid}: 인코딩 뒤 피크 {dpk:.2f} dBFS > {CEIL} — 레시피를 고쳐야 한다')
             lu, lm, tp = lufs_ev(y), lufs_m(y), true_peak(y)
             env = np.abs(yo if yo.ndim == 1 else yo.max(1))
-            on = float(np.argmax(env > 10 ** (-40 / 20) * env.max())) / OUT_RATE
-            files[fid] = {'dur': round(len(yo) / OUT_RATE, 4), 'on': round(on, 4), 'ch': rec.get('ch', 1), 'lufs': round(lu, 1), 'lufs_m': round(lm, 1), 'peak': round(tp, 2), 'dpk': round(dpk, 2),
+            on = float(np.argmax(env > 10 ** (-40 / 20) * env.max())) / orate
+            files[fid] = {'dur': round(len(yo) / orate, 4), 'on': round(on, 4), 'ch': rec.get('ch', 1), 'lufs': round(lu, 1), 'lufs_m': round(lm, 1), 'peak': round(tp, 2), 'dpk': round(dpk, 2),
                           'm4a': h8(out / f'{fid}.m4a'), 'bytes': (out / f'{fid}.m4a').stat().st_size}
             print(f'{name:12s} {v + 1:>3}  {len(y) / SR:5.2f}  {lu:6.1f}  {lm:6.1f}  {tp:5.1f}  {dpk:5.1f}  {red:5.1f}')
         o = old.get('sfx', {}).get(name, {})
         e = {'f': ids, 'g': o.get('g', 1.0) if (a.keep_gains or a.only) else 1.0}
         if 'ref' in o and (a.keep_gains or a.only):
             e['ref'] = o['ref']
-        for k in ('of', 'room', 'lazy'):
+        for k in ('of', 'room', 'lazy', 'vr'):
             if k in rec:
                 e[k] = rec[k]
         if name in REV:

@@ -359,8 +359,10 @@ class Game {
     const fit = this.settings?.safeArea !== 'full';
     const ax = fit ? ins.l : 0, ay = fit ? ins.t : 0;
     const aw = Math.max(1, fit ? W - ins.l - ins.r : W), ah = Math.max(1, fit ? H - ins.t - ins.b : H);
-    // 세로 확장 시야 (hud_mobile §2): 16:9 보다 네모난 화면은 논리 높이를 늘린다 (설정 hud.preset 'wide' 면 예전처럼 540)
-    const tall = this.settings?.hud?.preset !== 'wide';
+    // 세로 확장 시야 (hud_mobile §2): 16:9 보다 네모난 화면은 논리 높이를 늘린다 (설정 hud.preset 'wide' 면 예전처럼 540).
+    // [hudredo] 버튼 배치 '아래 띠'(settings.hud.pad 'band', 터치 기기): 예전 판 — 16:9(높이 540) 게임을 위에, 남는 아래 띠에 버튼
+    const bandPad = this.settings?.hud?.pad === 'band' && this.touchDevice();
+    const tall = this.settings?.hud?.preset !== 'wide' && !bandPad;
     const V = viewSize(aw, ah, tall);
     this.viewW = V.vw;
     this.viewH = V.vh;
@@ -418,7 +420,7 @@ class Game {
     bc.toggle('portrait', this.portrait);
     bc.toggle('portrait-play', this.portraitAny && !this.portrait); // 태블릿 세로 플레이: 회전 안내 없음 (style.css)
     const s0 = this.settings, w = this._watch;
-    w.q = s0?.quality; w.u = s0?.uiScale; w.a = s0?.safeArea; w.t = s0?.textSize; w.h = s0?.hud?.preset;
+    w.q = s0?.quality; w.u = s0?.uiScale; w.a = s0?.safeArea; w.t = s0?.textSize; w.h = s0?.hud?.preset; w.p = s0?.hud?.pad;
     this.applySurround();
     this.dirty = true;
   }
@@ -444,7 +446,7 @@ class Game {
   /** 화면 배치에 영향을 주는 설정이 바뀌었나 (옵션에서 바꾸면 다음 rAF 에 다시 배치) */
   layoutSettingsChanged() {
     const s = this.settings, w = this._watch;
-    return !!s && (s.quality !== w.q || s.uiScale !== w.u || s.safeArea !== w.a || s.textSize !== w.t || s.hud?.preset !== w.h);
+    return !!s && (s.quality !== w.q || s.uiScale !== w.u || s.safeArea !== w.a || s.textSize !== w.t || s.hud?.preset !== w.h || s.hud?.pad !== w.p);
   }
 
   /** 맨 위 장면에 자동 일시정지 요청 (세로 회전·백그라운드 전환) */

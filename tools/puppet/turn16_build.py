@@ -23,7 +23,10 @@ from PIL import Image
 from scipy import ndimage as ndi
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib.pup import OUT, ensure, load_json, bleed, rembg_alpha, on_green, hsv_arrays  # noqa: E402
+import build_turn  # noqa: E402
 from build_turn import floor_shadow  # noqa: E402
+from build_rig import load_rig  # noqa: E402
+from lib.pup import RIGS  # noqa: E402
 
 MAN = os.path.join(OUT, 'turn16.json')
 N = 16
@@ -226,6 +229,49 @@ def prep(im):
     return Image.fromarray(A, 'RGBA')
 
 
+def make_mask(ui, views, cid, cls):
+    """장비 갑옷색 재칠 마스크 (R = 갑옷, G = 장식 — build_turn.turn_mask 와 같은 색 모델·띠 규칙을 칸마다 돌린다).
+    turn_mask 는 저장 위치가 고정(OUT/cid/cls/turn_mask.webp)이라 rig.json·ui 아틀라스·마스크 사본을 임시 폴더에 두고 OUT 을 바꿔 부른다.
+    반환: 반 해상도 RGB 마스크 Image | None (리그에 armor/trim 재질이 없으면)"""
+    rig = load_rig(os.path.join(RIGS, cid, cls + '.json'))
+    mats = rig.get('materials') or {}
+    if not (mats.get('armor') or mats.get('trim')):
+        return None
+    src = os.path.join(OUT, cid, cls)
+    rj = load_json(os.path.join(src, 'rig.json'))
+    tmp = tempfile.mkdtemp(prefix='t16m_', dir=os.environ.get('TMPDIR') or None)
+    old_out = build_turn.OUT
+    try:
+        d = ensure(os.path.join(tmp, cid, cls))
+        for f in os.listdir(src):
+            if f == 'rig.json' or f.startswith('atlas_') or f.startswith('mask_'):
+                shutil.copy(os.path.join(src, f), d)
+        build_turn.OUT = tmp
+        U = np.asarray(ui)
+        full = Image.new('RGB', (max(1, ui.width // 2), max(1, ui.height // 2)), (0, 0, 0))
+        for v in views:
+            if v.get('m'):
+                continue
+            x0, y0 = int(round(v['x'])), int(round(v['y']))
+            w, h = int(round(v['w'])), int(round(v['h']))
+            cell = Image.fromarray(U[y0:y0 + h, x0:x0 + w].copy(), 'RGBA')
+            al = np.asarray(cell)[..., 3] > 100
+            ys = np.where(al.any(1))[0]
+            if not len(ys):
+                continue
+            dg = v['deg']
+            name = 'y90' if 60 <= dg <= 120 else 'y45' if 30 <= dg < 60 else 'y135' if 120 < dg <= 150 else \
+                   'ym90' if -120 <= dg <= -60 else 'ym45' if -60 < dg <= -30 else 'ym135' if -150 <= dg < -120 else 'side'
+            meta = {name: dict(x=0, w=w, topY=float(ys[0]), footY=float(v['fy']), axisX=float(v['ax']), shW=max(8.0, float(v['bw']) / 2))}
+            build_turn.turn_mask(cell, meta, rig, cid, cls)
+            m = Image.open(os.path.join(d, 'turn_mask.webp')).convert('RGB')
+            full.paste(m.resize((max(1, w // 2), max(1, h // 2)), Image.BILINEAR), (x0 // 2, y0 // 2))
+        return full
+    finally:
+        build_turn.OUT = old_out
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def enc(im, q, aq=80):
     b = io.BytesIO()
     im.save(b, 'WEBP', quality=q, alpha_quality=aq, method=6)
@@ -381,8 +427,17 @@ def main():
             if src:
                 views.append(dict(src, deg=p['deg'], m=1, ax=round(src['w'] - src['ax'], 2)))
     views.sort(key=lambda v: v['deg'])
+    mask = None
+    try:
+        mask = make_mask(ui, views, cid, a.cls)
+    except Exception as e:  # 아틀라스 없음 등 — 마스크 없이 (런타임은 원화 색)
+        print(f'[{a.cls}] mask failed: {e}')
+    data_mk = None
+    if mask is not None:
+        b = io.BytesIO(); mask.save(b, 'WEBP', quality=60, method=6); data_mk = b.getvalue()
     entry = dict(th=th_ui, sc=round(sc, 5), ui=dict(w=sheet.width, h=sheet.height, v=hashlib.sha1(data_ui).hexdigest()[:10], kb=round(len(data_ui) / 1024, 1), q=q_ui),
                  lo=dict(w=lo.width, h=lo.height, v=hashlib.sha1(data_lo).hexdigest()[:10], kb=round(len(data_lo) / 1024, 1), q=q_lo, kx=round(kx, 5), ky=round(ky, 5)),
+                 mask=(dict(w=mask.width, h=mask.height, v=hashlib.sha1(data_mk).hexdigest()[:10], kb=round(len(data_mk) / 1024, 1)) if data_mk else None),
                  views=views, dir=d, frames=[p['i'] for p in picks], anchors=info,
                  src=f'kling turntable {os.path.basename(a.video)} (tools/puppet/turn16_build.py)')
     # 디버그: 칸 + 정보
@@ -392,7 +447,9 @@ def main():
     rep = dict(cls=a.cls, th=th_ui, info=info, picks=picks, warn=[(p['k'], p['hist'], p['hratio']) for p in warn], ui_kb=entry['ui']['kb'], q_ui=q_ui, lo_kb=entry['lo']['kb'], sc=entry['sc'])
     with open(os.path.join(a.dbg, f'{a.cls}_turn16.json'), 'w') as fh:
         json.dump(rep, fh, ensure_ascii=False, indent=1)
-    print(f'[{a.cls}] th {th_ui} views {len(views)} (mirror {sum(1 for v in views if v.get("m"))}) sheet {sheet.width}x{sheet.height} ui {entry["ui"]["kb"]} KB q{q_ui} · lo {entry["lo"]["kb"]} KB q{q_lo} · sc {entry["sc"]}')
+    if data_mk:
+        on_green(Image.merge('RGBA', (*mask.split(), mask.convert('L').point(lambda q: 255 if q > 8 else 0))), 1).save(os.path.join(a.dbg, f'{a.cls}_turn16_mask.jpg'), quality=80)
+    print(f'[{a.cls}] th {th_ui} mask {entry["mask"] and entry["mask"]["kb"]} KB · views {len(views)} (mirror {sum(1 for v in views if v.get("m"))}) sheet {sheet.width}x{sheet.height} ui {entry["ui"]["kb"]} KB q{q_ui} · lo {entry["lo"]["kb"]} KB q{q_lo} · sc {entry["sc"]}')
     print(f'[{a.cls}] identity (k:yaw f# θest old8 hist h): ' + ' '.join(f'{p["k"]}:{p["deg"]:g} f{p["i"]} {p["est"]} {p.get("old")} {p.get("hist", "-")} {p.get("hratio", "-")}' for p in picks))
     if warn:
         print(f'[{a.cls}] WARN identity/size drift at k=' + ','.join(str(p['k']) for p in warn))
@@ -403,6 +460,12 @@ def main():
         fh.write(data_ui)
     with open(os.path.join(d_out, 'turn16_lo.webp'), 'wb') as fh:
         fh.write(data_lo)
+    mp = os.path.join(d_out, 'turn16_mask.webp')
+    if data_mk:
+        with open(mp, 'wb') as fh:
+            fh.write(data_mk)
+    elif os.path.exists(mp):
+        os.remove(mp)
     man = load_json(MAN) if os.path.exists(MAN) else {'v': 1, 'looks': {}}
     man.setdefault('looks', {})[f'{cid}/{a.cls}'] = entry
     man['looks'] = dict(sorted(man['looks'].items()))

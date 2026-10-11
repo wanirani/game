@@ -73,13 +73,13 @@ function bestOf(filter) {
   }
   return best?.id ?? null;
 }
-function lookFor(cid, which) {
+function lookFor(cid, which, clsOverride = null) {
   const ch = CHARACTERS[cid];
   const cls = classesOf(cid);
   const base = cls.find((c) => c.tier === 0) || cls[0];
   const t2 = cls.filter((c) => c.tier === 2);
   const promo = t2[(heroes.indexOf(cid) * 3) % Math.max(1, t2.length)] || base;
-  const classId = which === 0 ? base.id : promo.id;
+  const classId = clsOverride || (which === 0 ? base.id : promo.id);
   const state = { inventory: [], heroes: {} };
   const hero = { charId: cid, classId, level: 60, equip: {} };
   if (which === 2) {
@@ -192,6 +192,11 @@ document.getElementById('legacy').addEventListener('change', (e) => {
 });
 
 // ── 로딩: 칸을 한 번 그리면 필요한 퍼펫·턴테이블 시트를 요청한다 → 모두 준비되거나 20초가 지나면 __ready ──
+function t16ReadyLook(look, cid, lo = false) {
+  const p = { look, ch: CHARACTERS[cid] };
+  const I = PUP.puppetFor(p, look);
+  return !!(I && PUP.turn16Entry(I) && PUP.turn16Ready(I, lo));
+}
 function readyCount() {
   let n = 0;
   for (const row of rows) { const S = HERO.heroViewInfo?.({ look: row.look, ch: CHARACTERS[row.cid] }); if (S?.painted) n++; }
@@ -212,8 +217,8 @@ window.__tt = {
   },
   readyCount,
   /**
-   * 애니풍 시범 (?anime=1): 메뉴와 같은 HeroView(턴테이블) 경로로 한 칸 — 16방향 뷰(turn16)가 있으면 이웃 두 뷰 교차.
-   * zoom: 확대(1.0~1.6). 반환 canvas. turn16 이 없거나 플래그가 꺼져 있으면 예전 drawHero 경로와 같다
+   * 메뉴와 같은 HeroView(턴테이블) 경로로 한 칸 — 16방향 뷰(assets/puppets/turn16.json)가 있는 외형이면 이웃 두 뷰 교차 + 장비 덧그리기.
+   * zoom: 확대(1.0~1.6). 반환 canvas. 16방향이 없는 외형은 예전 drawHero(yaw) 8방향 경로와 같다
    */
   render16(hi, li, deg, w = 160, h = 190, zoom = 1) {
     const row = rows[hi * 3 + li];
@@ -224,10 +229,24 @@ window.__tt = {
     v.draw(c.getContext('2d'), w / 2, h - 12, (h - 30) / 96, { noFx: true, rim: false });
     return c;
   },
-  /** 애니풍 시범 QA: 한 칸의 HeroView (턴테이블) — support()·zoomBy()·resetYaw() 확인용 */
+  /** 16방향 QA: 한 칸의 HeroView (턴테이블) — support()·zoomBy()·resetYaw() 확인용 */
   view16(hi, li) { const row = rows[hi * 3 + li]; const v = new HeroView({ turntable: true, game: null }); v.set(row.look, CHARACTERS[row.cid]); return v; },
-  /** 애니풍 시범: 16방향 뷰가 준비됐는가 */
-  a16Ready(hi, li) { const row = rows[hi * 3 + li]; const v = new HeroView({ turntable: true }); v.set(row.look, CHARACTERS[row.cid]); return !!v.anime16(); },
+  /** 16방향 뷰가 준비됐는가 (목록 항목 + 시트 로드). 아직이면 시트를 요청하고 false */
+  a16Ready(hi, li) { const row = rows[hi * 3 + li]; return t16ReadyLook(row.look, row.cid); },
+  /**
+   * 임의 직업 한 칸 (16방향 QA·대조표): cid, classId, which(0 맨몸 · 2 풀 장비), deg, w, h, zoom. 반환 {canvas, a16, ready}
+   */
+  renderClass(cid, classId, which, deg, w = 160, h = 190, zoom = 1, lo = false) {
+    const { look } = lookFor(cid, which, classId);
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const v = new HeroView({ turntable: true, game: lo ? { tier: 'low', settings: {} } : null });
+    v.set(look, CHARACTERS[cid]);
+    v.yaw = (deg * Math.PI) / 180; v.zoom = zoom; v.p.t = 3;
+    v.draw(c.getContext('2d'), w / 2, h - 12, (h - 30) / 96, { noFx: which !== 2, rim: false });
+    return { canvas: c, a16: !!v.t16(), ready: t16ReadyLook(look, cid, lo) };
+  },
+  /** 16방향 목록에 든 외형 키 ("cid/cls") */
+  async t16Looks() { try { return Object.keys((await (await fetch('assets/puppets/turn16.json', { cache: 'no-store' })).json()).looks || {}); } catch { return []; } },
   /**
    * QA 비용 측정: 목록의 영웅마다 2차 전직 외형을 n 번씩 그린다 (deg = null → 옆모습 경로, 숫자·배열 → opts.yaw, 배열이면 차례로).
    * 캔버스는 하나를 다시 쓴다 (할당 비용 제외). 시간은 바깥(CDP CPU 시간)에서 잰다 (platform §7.3: yaw ≤ 1.5 × 옆모습)

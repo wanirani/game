@@ -288,7 +288,8 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
     const pick = Object.keys(ix.sfx || {}).filter((n) => !only || only.includes(n));
     const oneV = async (name, d, v) => {
       const base = d.of || name, alt = d.of ? name.slice(d.of.length + 1) : undefined;   // of: 다른 이름의 변형 묶음 (enemy_die_bone = enemy_die + v2alt 'bone')
-      const mk = () => ({ sample: (n) => (n === name ? { bufs: [vb[d.f[v]]], g: d.g, rev: d.rev, room: d.room, last: -1 } : null) });
+      const vr1 = Array.isArray(d.vr) ? [d.vr[v]] : null;   // vr: 녹음 1벌 × 재생 속도 변형 — 변형 v 는 파일 f[v % 길이] 를 vr[v] 로
+      const mk = () => ({ sample: (n) => (n === name ? { bufs: [vb[d.f[v % d.f.length]]], g: d.g, rev: d.rev, room: d.room, vr: vr1, last: -1 } : null) });
       const def = SFX[base], fn0 = def.fn; let syn = 0;
       def.fn = function (...a) { syn++; return fn0.apply(this, a); };
       try {
@@ -304,8 +305,8 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
     for (const n of pick) {
       const d = ix.sfx[n];
       if (!Object.prototype.hasOwnProperty.call(SFX, d.of || n) || !Array.isArray(d.f) || !d.f.every((id) => vb[id])) continue;
-      const vs = [];
-      for (let v = 0; v < d.f.length; v++) vs.push(await oneV(n, d, v));
+      const vs = [], nv = Array.isArray(d.vr) ? d.vr.length : d.f.length;
+      for (let v = 0; v < nv; v++) vs.push(await oneV(n, d, v));
       out.v2.renders[n] = vs;
     }
     // 실행 규칙
@@ -319,6 +320,17 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
       if (rep) RT(`${nm}: 같은 변형이 연달아 ${rep}번 (80번 중)`);
       if (seen.size !== d.f.length) RT(`${nm}: 80번 중 쓰인 변형 ${seen.size}/${d.f.length}`);
       if (eng.v2Starts !== 80) RT(`${nm}: v2Starts ${eng.v2Starts} ≠ 80`);
+      // vr (녹음 1벌 + 재생 속도 변형): 변형 순환·연속 금지·속도 적용
+      const nr = pick.find((n) => Array.isArray(ix.sfx[n].vr) && ix.sfx[n].f.every((id) => vb[id]));
+      if (nr) {
+        const dr = ix.sfx[nr], sr = { bufs: dr.f.map((id) => vb[id]), g: dr.g, vr: dr.vr, last: -1 }, er = new Engine(new OfflineAudioContext(2, 4410, SR));
+        er.v2 = { sample: (n) => (n === nr ? sr : null) };
+        const rates = new Set(); let pv = -1, rr = 0;
+        const orig = er.ctx.createBufferSource.bind(er.ctx); er.ctx.createBufferSource = () => { const b = orig(); const set = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(b.playbackRate), 'value'); const pr = b.playbackRate; Object.defineProperty(pr, 'value', { get: () => set.get.call(pr), set: (x) => { rates.add(+(x / 1).toFixed(2)); set.set.call(pr, x); } }); return b; };
+        for (let i = 0; i < 60; i++) { delete er.lastT[nr]; er.feelT.length = 0; er.sfx(nr); if (sr.last === pv) rr++; pv = sr.last; }
+        if (rr) RT(`${nr} (vr): 같은 변형이 연달아 ${rr}번`);
+        if (new Set([...rates].map((x) => Math.round(x * 10))).size < 2) RT(`${nr} (vr): 재생 속도 변형이 적용되지 않음 (${[...rates].join(',')})`);
+      }
       const e2 = new Engine(new OfflineAudioContext(2, 4410, SR)); e2.v2 = bank; e2.v2Quality = 'low';
       e2.sfx(nm); if (e2.live[e2.live.length - 1].room || e2.room) RT("품질 'low' 인데 방 잔향을 씀");
       e2.v2Quality = 'high'; delete e2.lastT[nm]; e2.feelT.length = 0; e2.sfx(nm);
@@ -471,7 +483,8 @@ if (!args['no-v2']) {
       if (only && !only.includes(n)) continue;
       if (!names.has(d.of || n)) { fail(`v2: 등록되지 않은 효과음 이름 ${d.of || n}${d.of ? ` (${n} 의 of)` : ''}`); continue; }
       if (d.of && !(n.startsWith(d.of + '_'))) fail(`v2 ${n}: of '${d.of}' 의 변형 이름은 '${d.of}_…' 이어야 함`);
-      if (!Array.isArray(d.f) || d.f.length < 3 || d.f.length > 5) fail(`v2 ${n}: 변형 ${d.f?.length ?? 0}개 (3~5 이어야 함)`);
+      const nvar = Array.isArray(d.vr) ? (d.f?.length >= 1 && d.vr.every((x) => x > 0.8 && x < 1.25) ? d.vr.length : 0) : (d.f?.length ?? 0);   // vr: 녹음 1벌 × 재생 속도 변형 (드문 소리, 용량)
+      if (!Array.isArray(d.f) || nvar < 3 || nvar > 5) fail(`v2 ${n}: 변형 ${nvar}개 (3~5 이어야 함${d.vr ? ', vr 은 0.8~1.25 배' : ''})`);
       if (!(Number(d.g) > 0)) fail(`v2 ${n}: g 이상 (${d.g})`);
       const fs_ = (d.f || []).map((id) => ix.files[id]);
       (d.f || []).forEach((id, i) => {
