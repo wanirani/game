@@ -371,7 +371,7 @@ function drawNeck(ctx, C) {
   const k0 = C.q === 0 ? 5 : 8;
   const flame = !!pal.fire;
   const mc = col(C, C.aw && flame ? pal.awake : pal.mane);
-  const t = C.t, blow = P.mane;
+  const t = C.t, blow = P.mane, mv = P.maneV ?? 0;              // mv: 갈기 위아래 출렁임 (리그 스프링, TURNMOUNT)
   if (!boar) {
     ctx.strokeStyle = mc; ctx.lineWidth = stag ? 2.2 : 3;
     ctx.beginPath();
@@ -379,13 +379,13 @@ function drawNeck(ctx, C) {
       const u = k / (k0 - 1) * 0.92, bx = lerp(x0, x1, u) + nx * (lerp(w0, w1, u) / 2 - 1.5), by = lerp(y0, y1, u) + ny * (lerp(w0, w1, u) / 2 - 1.5);
       const len = (stag ? 5 : flame ? 12 : 11) * (1 - u * 0.35), sw = C.q === 0 ? 0 : Math.sin(t * (flame ? 9 : 4) + k * 1.3) * (flame ? 3 : 1.6);
       ctx.moveTo(bx, by);
-      ctx.quadraticCurveTo(bx - 4 - blow * 4, by - 2 + sw * 0.5, bx - 7 - blow * 9 + sw, by + len * (flame ? -0.4 : 0.5));
+      ctx.quadraticCurveTo(bx - 4 - blow * 4, by - 2 + sw * 0.5 - mv * 2, bx - 7 - blow * 9 + sw, by + len * (flame ? -0.4 : 0.5) - mv * (2 + 4 * u));
     }
     ctx.stroke();
     if (!C.tint && !stag) {
       ctx.strokeStyle = col(C, C.aw && flame ? '#ffffff' : pal.maneHi); ctx.lineWidth = 1;
       ctx.beginPath();
-      for (let k = 1; k < k0; k += 2) { const u = k / (k0 - 1) * 0.9, bx = lerp(x0, x1, u) + nx * (lerp(w0, w1, u) / 2), by = lerp(y0, y1, u) + ny * (lerp(w0, w1, u) / 2); ctx.moveTo(bx, by); ctx.quadraticCurveTo(bx - 3, by - 2, bx - 6 - blow * 6, by + 3); }
+      for (let k = 1; k < k0; k += 2) { const u = k / (k0 - 1) * 0.9, bx = lerp(x0, x1, u) + nx * (lerp(w0, w1, u) / 2), by = lerp(y0, y1, u) + ny * (lerp(w0, w1, u) / 2); ctx.moveTo(bx, by); ctx.quadraticCurveTo(bx - 3, by - 2 - mv, bx - 6 - blow * 6, by + 3 - mv * 3); }
       ctx.stroke();
     }
     // 각성 그림메인: 갈기 끝 불씨

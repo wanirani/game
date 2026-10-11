@@ -16,7 +16,7 @@ for k, s in src.items():
 head = f"""## 고급 효과음 v2 / Premium SFX v2 (`assets/audio/sfx_v2/`)
 
 게임 기본값 (끄기: `?sfx=v1` 또는 localStorage `bn.sfx`=`v1`, docs/specs/anime_motion_sfx.md §4·§5.1). {len(names)}종 ({', '.join(names)}) — 파일 {nfiles}개 (.m4a 만).
-모든 소리는 아래 **녹음 소재(전부 CC0 1.0)** 를 잘라 층으로 쌓고(순간음 + 몸통 + 꼬리) EQ·가벼운 새츄레이션·라우드니스(-16 LUFS)·클리퍼·리미터(≤ -1 dBFS)로 오프라인 가공한 2차 저작물이다 — 합성음 층 없음. 만드는 법: `tools/audio/sfx_v2/build_sfx_v2.py` + `recipes2.py` (레시피), 소재 받기: `tools/audio/sfx_v2/fetch_sources.py`, 파일별 출처 원본: `tools/audio/sfx_v2/sources.json`.
+모든 소리는 아래 **녹음 소재(전부 CC0 1.0)** 를 잘라 층으로 쌓고(순간음 + 몸통 + 꼬리) EQ·가벼운 새츄레이션·라우드니스(-16 LUFS)·클리퍼·리미터(≤ -1 dBFS)로 오프라인 가공한 2차 저작물이다 — 합성음 층 없음. 만드는 법: `tools/audio/sfx_v2/build_sfx_v2.py` + `recipes2.py`·`recipes3.py` (레시피), 소재 받기: `tools/audio/sfx_v2/fetch_sources.py`, 파일별 출처 원본: `tools/audio/sfx_v2/sources.json`.
 All v2 sounds are derivative works layered from the recordings below, every one released under **CC0 1.0** (public domain dedication — no attribution required, credited here anyway). No synthesized layers.
 
 라이선스 근거 / Licence evidence:

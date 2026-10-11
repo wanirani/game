@@ -30,7 +30,7 @@ of the game engine's own cathedral impulse response (`makeIR`).
 
 ## 효과음 / SFX
 
-녹음 효과음 샘플 (`assets/audio/sfx/`, 46종 · 파일 72개 · m4a + ogg 합계 약 0.86 MB). 모두 **Kenney (www.kenney.nl)** 의 CC0 1.0 (퍼블릭 도메인) 팩에서 골라
+녹음 효과음 샘플 (`assets/audio/sfx/`, 18종 · 파일 23개 · m4a 합계 약 0.15 MB — `?sfx=v1` 때만 쓰인다. 예전 46종 가운데 28종은 v2 로 옮기며 뺐다). 모두 **Kenney (www.kenney.nl)** 의 CC0 1.0 (퍼블릭 도메인) 팩에서 골라
 모노·앞뒤 무음 자르기·피크 −1 dBFS 로 다듬었다 (`tools/audio/sfx/build_sfx.py`, 음량은 `node tools/test_sfx.mjs --calibrate` 로 합성음에 맞춤).
 출처 표기 의무는 없지만 감사의 뜻으로 적는다. 원본 라이선스 사본: `assets/audio/sfx/LICENSE-kenney.txt`.
 
@@ -41,61 +41,33 @@ of the game engine's own cathedral impulse response (`makeIR`).
 | Interface Sounds | https://kenney.nl/assets/interface-sounds | CC0 1.0 |
 | Sci-fi Sounds | https://kenney.nl/assets/sci-fi-sounds | CC0 1.0 |
 
-효과음 이름 → 샘플 (팩/파일). 표에 없는 효과음은 합성음 그대로다 (src/core/audio.js · sfx_feel.js · audio_companions.js).
+효과음 이름 → 샘플 (팩/파일). `?sfx=v1` 에서 표에 없는 효과음은 합성음 그대로다 (src/core/audio.js · sfx_feel.js · audio_companions.js). 기본(v2)에서는 모든 효과음이 아래 '고급 효과음 v2' 의 녹음 소재로 울린다.
 
 | 효과음 | 샘플 | 방식 |
 |---|---|---|
-| hit | impact-sounds/impactPunch_medium_000, impact-sounds/impactPunch_medium_001, impact-sounds/impactPunch_medium_002 | 샘플 + 합성 ×0.6 |
-| hit_heavy | impact-sounds/impactPunch_heavy_000, impact-sounds/impactPunch_heavy_001, impact-sounds/impactPunch_heavy_002 | 샘플 + 합성 ×0.6 |
-| crit | impact-sounds/impactPunch_heavy_003 | 샘플 + 합성 ×0.75 |
-| hit_flesh | impact-sounds/impactSoft_heavy_000, impact-sounds/impactSoft_heavy_001 | 샘플 + 합성 ×0.5 |
 | hit_bone | impact-sounds/impactWood_light_000, impact-sounds/impactWood_light_001 | 샘플 + 합성 ×0.5 |
-| hit_stone | impact-sounds/impactMining_000, impact-sounds/impactMining_001 | 샘플 + 합성 ×0.5 |
-| clang | impact-sounds/impactMetal_heavy_000, impact-sounds/impactMetal_heavy_001 | 샘플 + 합성 ×0.5 |
 | counter | impact-sounds/impactMetal_medium_000 | 샘플 + 합성 ×0.7 |
 | enhance_hit | impact-sounds/impactMetal_heavy_002 | 샘플 + 합성 ×0.6 |
-| enemy_die | impact-sounds/impactSoft_heavy_002 | 샘플 + 합성 ×0.7 |
-| hurt | impact-sounds/impactPunch_medium_003 | 샘플 + 합성 ×0.7 |
 | wall_bounce | impact-sounds/impactPlank_medium_000 | 샘플 + 합성 ×0.6 |
 | ground_bounce | impact-sounds/impactSoft_heavy_003 | 샘플 + 합성 ×0.6 |
-| land | impact-sounds/impactSoft_medium_000, impact-sounds/impactSoft_medium_001 | 샘플 + 합성 ×0.5 |
 | land_heavy | impact-sounds/impactSoft_heavy_004 | 샘플 + 합성 ×0.6 |
-| explode | sci-fi-sounds/explosionCrunch_000, sci-fi-sounds/explosionCrunch_001 | 샘플 + 합성 ×0.6 |
 | break_wall | impact-sounds/impactMining_002, impact-sounds/impactMining_003 | 샘플 + 합성 ×0.6 |
 | boss_die | sci-fi-sounds/lowFrequency_explosion_000 | 샘플 + 합성 ×0.8 |
-| ult_impact | sci-fi-sounds/lowFrequency_explosion_001 | 샘플 + 합성 ×0.7 |
 | candle | impact-sounds/impactGlass_light_000, impact-sounds/impactGlass_light_001 | 샘플 + 합성 ×0.5 |
 | bell | impact-sounds/impactBell_heavy_000 | 샘플 + 합성 ×0.7 |
 | seal_stamp | impact-sounds/impactPlate_heavy_000 | 샘플 + 합성 ×0.6 |
-| slash | rpg-audio/knifeSlice, rpg-audio/knifeSlice2 | 샘플 + 합성 ×0.5 |
-| slash_heavy | rpg-audio/knifeSlice, rpg-audio/knifeSlice2 | 샘플 + 합성 ×0.6 · 속도 ×0.8 |
-| dagger | rpg-audio/drawKnife1, rpg-audio/drawKnife2 | 샘플 + 합성 ×0.5 |
 | sheath | rpg-audio/drawKnife3 | 샘플 + 합성 ×0.4 |
-| axe | rpg-audio/chop | 샘플 + 합성 ×0.6 |
-| footstep | rpg-audio/footstep00, rpg-audio/footstep01, rpg-audio/footstep02 | 샘플만 |
-| step_stone | impact-sounds/footstep_concrete_000, impact-sounds/footstep_concrete_001, impact-sounds/footstep_concrete_002 | 샘플만 |
-| step_dirt | impact-sounds/footstep_grass_000, impact-sounds/footstep_grass_001, impact-sounds/footstep_grass_002 | 샘플만 |
-| step_wood | impact-sounds/footstep_wood_000, impact-sounds/footstep_wood_001, impact-sounds/footstep_wood_002 | 샘플만 |
-| step_snow | impact-sounds/footstep_snow_000, impact-sounds/footstep_snow_001, impact-sounds/footstep_snow_002 | 샘플만 |
-| jump | rpg-audio/cloth1 | 샘플 + 합성 ×0.7 |
-| double_jump | rpg-audio/cloth2 | 샘플 + 합성 ×0.7 · 속도 ×1.1 |
-| dash | rpg-audio/cloth3, rpg-audio/cloth4 | 샘플 + 합성 ×0.6 |
-| coin | rpg-audio/handleCoins | 샘플 + 합성 ×0.8 |
 | coin_insert | rpg-audio/handleCoins2 | 샘플 + 합성 ×0.7 |
 | door | rpg-audio/doorOpen_1 | 샘플 + 합성 ×0.3 |
 | chest | rpg-audio/creak1 | 샘플 + 합성 ×0.8 |
 | heal | interface-sounds/glass_001 | 샘플 + 합성 ×0.8 |
 | card | rpg-audio/bookFlip1, rpg-audio/bookFlip2, rpg-audio/bookFlip3 | 샘플만 |
-| magic | sci-fi-sounds/forceField_000 | 샘플 + 합성 ×0.7 |
 | clock_tick | interface-sounds/tick_004 | 샘플만 |
-| menu_move | interface-sounds/tick_001 | 샘플 + 합성 ×0.5 |
-| menu_ok | interface-sounds/confirmation_001 | 샘플 + 합성 ×0.4 |
-| menu_cancel | interface-sounds/back_001 | 샘플 + 합성 ×0.4 |
 
 ## 고급 효과음 v2 / Premium SFX v2 (`assets/audio/sfx_v2/`)
 
-게임 기본값 (끄기: `?sfx=v1` 또는 localStorage `bn.sfx`=`v1`, docs/specs/anime_motion_sfx.md §4·§5.1). 48종 (hit, hit_heavy, crit, hit_flesh, hit_stone, enemy_die, hurt, clang, ult_impact, step_stone, whip, whip_crack, slash, slash_heavy, dagger, axe, gun, jump, double_jump, land, dash, step_dirt, step_wood, step_metal, step_flesh, step_snow, step_water, menu_move, menu_ok, menu_cancel, type, coin, item, levelup, fire, ice, thunder, thunderclap, holy, dark, magic, explode, enemy_die_bone, enemy_die_ghost, enemy_die_stone, gallop, wing_flap, footstep) — 파일 189개 (.m4a 만).
-모든 소리는 아래 **녹음 소재(전부 CC0 1.0)** 를 잘라 층으로 쌓고(순간음 + 몸통 + 꼬리) EQ·가벼운 새츄레이션·라우드니스(-16 LUFS)·클리퍼·리미터(≤ -1 dBFS)로 오프라인 가공한 2차 저작물이다 — 합성음 층 없음. 만드는 법: `tools/audio/sfx_v2/build_sfx_v2.py` + `recipes2.py` (레시피), 소재 받기: `tools/audio/sfx_v2/fetch_sources.py`, 파일별 출처 원본: `tools/audio/sfx_v2/sources.json`.
+게임 기본값 (끄기: `?sfx=v1` 또는 localStorage `bn.sfx`=`v1`, docs/specs/anime_motion_sfx.md §4·§5.1). 152종 (hit, hit_heavy, crit, hit_flesh, hit_stone, enemy_die, hurt, clang, ult_impact, step_stone, whip, whip_crack, slash, slash_heavy, dagger, axe, gun, jump, double_jump, land, dash, step_dirt, step_wood, step_metal, step_flesh, step_snow, step_water, menu_move, menu_ok, menu_cancel, type, coin, item, levelup, fire, ice, thunder, thunderclap, holy, dark, magic, explode, enemy_die_bone, enemy_die_ghost, enemy_die_stone, gallop, wing_flap, shotgun, cross, holywater_burn, stopwatch, mist, splash, death, heart, powerup, extra_life, save, secret, bat, ghost, boss_roar, warning, ult, combo, charge_ready, enhance_success, enhance_fail, enhance_destroy, dice, slot_spin, slot_win, win, lose, ready, go, chest, heal, candle, door, break_wall, bell, clock_tick, boss_die, enhance_hit, card, coin_insert, step_bone, step_push, skid, pivot, dash_burst, launch, down_hit, back_attack, land_heavy, wall_bounce, ground_bounce, counter, hit_bone, hit_ghost, impact_crack, kill_slowmo, rank_up, announce, combo_milestone, impact_frame, awaken_hold, awaken_charge, cutin_whoosh, brush_stroke, seal_stamp, eye_glint, awaken_stinger, awaken_boom, heartbeat, crow_caw, finger_snap, cylinder_spin, choir_gate, war_horn, sheath, summon, dismiss, mount_up, neigh, hoof_land, boar_grunt, wolf_howl, wolf_bite, roar_small, fire_breath, screech, bone_rattle, fairy_chime, knight_guard, imp_cackle, owl_hoot, gear_whir, scythe, soul_reap, egg_crack, companion_join, bond_up, knock_off, assist, stag_call, griffin_cry, mirror_chime, jelly_zap, momo_gulp, footstep) — 파일 349개 (.m4a 만).
+모든 소리는 아래 **녹음 소재(전부 CC0 1.0)** 를 잘라 층으로 쌓고(순간음 + 몸통 + 꼬리) EQ·가벼운 새츄레이션·라우드니스(-16 LUFS)·클리퍼·리미터(≤ -1 dBFS)로 오프라인 가공한 2차 저작물이다 — 합성음 층 없음. 만드는 법: `tools/audio/sfx_v2/build_sfx_v2.py` + `recipes2.py`·`recipes3.py` (레시피), 소재 받기: `tools/audio/sfx_v2/fetch_sources.py`, 파일별 출처 원본: `tools/audio/sfx_v2/sources.json`.
 All v2 sounds are derivative works layered from the recordings below, every one released under **CC0 1.0** (public domain dedication — no attribution required, credited here anyway). No synthesized layers.
 
 라이선스 근거 / Licence evidence:
@@ -105,123 +77,203 @@ All v2 sounds are derivative works layered from the recordings below, every one 
 - 쓰지 않은 것 / Rejected: freesound.org·sonniss.com (이 환경에서 접속 403), StarNinjas 묶음(원본이 클리핑), 출처가 불분명한 재업로드 묶음, CC0 가 아닌 파일(MIT/zlib 등), mp3 로만 받을 수 있는 BigSoundBank 소리(#0437·#0438 — 손실 원본), AI 생성 오디오
 
 
-### Joseph SARDIN — BigSoundBank.com — CC0 1.0 (104)
+### Joseph SARDIN — BigSoundBank.com — CC0 1.0 (184)
 
 | 소재 / Source | 쓰인 곳 / Used in | 원본 / Origin |
 |---|---|---|
 | Match #1 (#0004) | fire | https://bigsoundbank.com/match-1-s0004.html (https://bigsoundbank.com/UPLOAD/bwf-en/0004.wav) |
+| Lighter (#0049) | candle | https://bigsoundbank.com/lighter-s0049.html (https://bigsoundbank.com/UPLOAD/bwf-en/0049.wav) |
+| Glass of Soda (#0117) | holywater_burn | https://bigsoundbank.com/glass-of-soda-s0117.html (https://bigsoundbank.com/UPLOAD/bwf-en/0117.wav) |
 | Sword That Cuts (#0127) | hit | https://bigsoundbank.com/sword-that-cuts-s0127.html (https://bigsoundbank.com/UPLOAD/flac/0127.flac) |
 | Sword Through the Air (#0128) | dagger, magic, slash | https://bigsoundbank.com/sword-through-the-air-s0128.html (https://bigsoundbank.com/UPLOAD/flac/0128.flac) |
 | Electric shock (#0134) | thunder | https://bigsoundbank.com/electric-shock-s0134.html (https://bigsoundbank.com/UPLOAD/bwf-en/0134.wav) |
+| Church Bell (#0135) | bell, death | https://bigsoundbank.com/church-bell-s0135.html (https://bigsoundbank.com/UPLOAD/bwf-en/0135.wav) |
+| Glass Burst (#0148) | enhance_destroy | https://bigsoundbank.com/glass-burst-s0148.html (https://bigsoundbank.com/UPLOAD/bwf-en/0148.wav) |
+| Turned Page (#0164) | card | https://bigsoundbank.com/turned-page-s0164.html (https://bigsoundbank.com/UPLOAD/bwf-en/0164.wav) |
 | Man Footsteps on the Wooden Floor (#0165) | step_wood | https://bigsoundbank.com/man-footsteps-on-the-wooden-floor-s0165.html (https://bigsoundbank.com/UPLOAD/bwf-en/0165.wav) |
 | Heels #1 (#0166) | step_metal, step_stone | https://bigsoundbank.com/heels-s0166.html (https://bigsoundbank.com/UPLOAD/bwf-en/0166.wav) |
+| Coins #1 (#0193) | slot_win | https://bigsoundbank.com/coins-1-s0193.html (https://bigsoundbank.com/UPLOAD/bwf-en/0193.wav) |
 | Footstep in the Snow #1 (#0208) | step_snow | https://bigsoundbank.com/on-snow-s0208.html (https://bigsoundbank.com/UPLOAD/bwf-en/0208.wav) |
-| Small Bell #1 (#0292) | holy, item, levelup | https://bigsoundbank.com/small-bell-1-s0292.html (https://bigsoundbank.com/UPLOAD/bwf-en/0292.wav) |
-| Small bell #2 (#0293) | holy, item, levelup | https://bigsoundbank.com/small-bell-2-s0293.html (https://bigsoundbank.com/UPLOAD/bwf-en/0293.wav) |
-| Small Bell #3 (#0294) | holy, item, levelup | https://bigsoundbank.com/small-bell-3-s0294.html (https://bigsoundbank.com/UPLOAD/bwf-en/0294.wav) |
+| Heartbeat #1 (#0243) | heartbeat, kill_slowmo | https://bigsoundbank.com/heartbeat-1-s0243.html (https://bigsoundbank.com/UPLOAD/bwf-en/0243.wav) |
+| Heartbeat #2 (#0244) | heartbeat | https://bigsoundbank.com/heartbeat-2-s0244.html (https://bigsoundbank.com/UPLOAD/bwf-en/0244.wav) |
+| Breath of a horse #1 (#0285) | knock_off, mount_up | https://bigsoundbank.com/breath-of-a-horse-1-s0285.html (https://bigsoundbank.com/UPLOAD/bwf-en/0285.wav) |
+| Small Bell #1 (#0292) | bell, charge_ready, heart, holy, item, levelup, save, win | https://bigsoundbank.com/small-bell-1-s0292.html (https://bigsoundbank.com/UPLOAD/bwf-en/0292.wav) |
+| Small bell #2 (#0293) | heart, holy, item, levelup | https://bigsoundbank.com/small-bell-2-s0293.html (https://bigsoundbank.com/UPLOAD/bwf-en/0293.wav) |
+| Small Bell #3 (#0294) | heart, holy, item, levelup | https://bigsoundbank.com/small-bell-3-s0294.html (https://bigsoundbank.com/UPLOAD/bwf-en/0294.wav) |
 | Switch #5 (#0321) | menu_move | https://bigsoundbank.com/switch-5-s0321.html (https://bigsoundbank.com/UPLOAD/bwf-en/0321.wav) |
-| Coin in cup #1 (#0339) | coin | https://bigsoundbank.com/coin-in-cup-1-s0339.html (https://bigsoundbank.com/UPLOAD/bwf-en/0339.wav) |
+| Coin in cup #1 (#0339) | coin, coin_insert | https://bigsoundbank.com/coin-in-cup-1-s0339.html (https://bigsoundbank.com/UPLOAD/bwf-en/0339.wav) |
 | Coin in cup #2 (#0340) | coin | https://bigsoundbank.com/coin-in-cup-2-s0340.html (https://bigsoundbank.com/UPLOAD/bwf-en/0340.wav) |
 | Heavy chain (#0359) | dark | https://bigsoundbank.com/heavy-chain-s0359.html (https://bigsoundbank.com/UPLOAD/bwf-en/0359.wav) |
 | Medium Chain #1 (#0360) | dark | https://bigsoundbank.com/medium-chain-1-s0360.html (https://bigsoundbank.com/UPLOAD/bwf-en/0360.wav) |
-| Shot of Winchester Magnum XTR (#0397) | gun | https://bigsoundbank.com/shot-of-winchester-magnum-xtr-s0397.html (https://bigsoundbank.com/UPLOAD/bwf-en/0397.wav) |
+| Shot of Winchester Magnum XTR (#0397) | gun, shotgun | https://bigsoundbank.com/shot-of-winchester-magnum-xtr-s0397.html (https://bigsoundbank.com/UPLOAD/bwf-en/0397.wav) |
+| Cries of bats (#0458) | bat, screech | https://bigsoundbank.com/cries-of-bats-s0458.html (https://bigsoundbank.com/UPLOAD/bwf-en/0458.wav) |
+| Neighing of a horse (#0460) | neigh | https://bigsoundbank.com/neighing-of-a-horse-s0460.html (https://bigsoundbank.com/UPLOAD/bwf-en/0460.wav) |
 | Flight of a pigeon (#0476) | wing_flap | https://bigsoundbank.com/flight-of-a-pigeon-s0476.html (https://bigsoundbank.com/UPLOAD/bwf-en/0476.wav) |
+| Counter bell #1 (#0479) | go, ready | https://bigsoundbank.com/counter-bell-s0479.html (https://bigsoundbank.com/UPLOAD/bwf-en/0479.wav) |
+| Finger clashes (#0483) | finger_snap | https://bigsoundbank.com/finger-clashes-s0483.html (https://bigsoundbank.com/UPLOAD/bwf-en/0483.wav) |
+| Grunts (#0486) | boss_roar, roar_small | https://bigsoundbank.com/grunts-s0486.html (https://bigsoundbank.com/UPLOAD/bwf-en/0486.wav) |
 | Steps in the Mud (#0495) | step_flesh | https://bigsoundbank.com/steps-in-the-mud-s0495.html (https://bigsoundbank.com/UPLOAD/bwf-en/0495.wav) |
-| Whoosh #1 (#0572) | slash | https://bigsoundbank.com/whoosh-1-s0572.html (https://bigsoundbank.com/UPLOAD/bwf-en/0572.wav) |
-| Whoosh #2 (#0573) | dark, double_jump, enemy_die_ghost, slash, slash_heavy | https://bigsoundbank.com/whoosh-2-s0573.html (https://bigsoundbank.com/UPLOAD/flac/0573.flac) |
-| Bones cracking #1 (#0596) | enemy_die, enemy_die_bone, hit_heavy | https://bigsoundbank.com/bones-cracking-s0596.html (https://bigsoundbank.com/UPLOAD/bwf-en/0596.wav) |
-| Horse Gallop (#0611) | gallop | https://bigsoundbank.com/horse-gallop-s0611.html (https://bigsoundbank.com/UPLOAD/flac/0611.flac) |
+| Footsteps on gravels #1 (#0510) | skid | https://bigsoundbank.com/steps-on-gravels-s0510.html (https://bigsoundbank.com/UPLOAD/bwf-en/0510.wav) |
+| Whoosh #1 (#0572) | scythe, slash | https://bigsoundbank.com/whoosh-1-s0572.html (https://bigsoundbank.com/UPLOAD/bwf-en/0572.wav) |
+| Whoosh #2 (#0573) | dark, dismiss, double_jump, enemy_die_ghost, ghost, kill_slowmo, mist, slash, slash_heavy, soul_reap, summon | https://bigsoundbank.com/whoosh-2-s0573.html (https://bigsoundbank.com/UPLOAD/flac/0573.flac) |
+| Two dice on wooden table (#0581) | dice | https://bigsoundbank.com/two-dice-on-wooden-table-s0581.html (https://bigsoundbank.com/UPLOAD/bwf-en/0581.wav) |
+| Bones cracking #1 (#0596) | enemy_die, enemy_die_bone, hit_bone, hit_heavy | https://bigsoundbank.com/bones-cracking-s0596.html (https://bigsoundbank.com/UPLOAD/bwf-en/0596.wav) |
+| Horse Gallop (#0611) | gallop, hoof_land | https://bigsoundbank.com/horse-gallop-s0611.html (https://bigsoundbank.com/UPLOAD/flac/0611.flac) |
+| Blow on hand (#0747) | mist, wolf_howl | https://bigsoundbank.com/blow-on-hand-s0747.html (https://bigsoundbank.com/UPLOAD/bwf-en/0747.wav) |
+| Small ratchet (#0794) | cylinder_spin, gear_whir, slot_spin | https://bigsoundbank.com/small-ratchet-s0794.html (https://bigsoundbank.com/UPLOAD/bwf-en/0794.wav) |
 | Punch #3 (#0806) | hurt | https://bigsoundbank.com/punches-3-s0806.html (https://bigsoundbank.com/UPLOAD/bwf-en/0806.wav) |
-| Flight of a Pigeon (#0840) | wing_flap | https://bigsoundbank.com/flight-of-a-pigeon-s0840.html (https://bigsoundbank.com/UPLOAD/flac/0840.flac) |
+| Flight of a Pigeon (#0840) | bat, wing_flap | https://bigsoundbank.com/flight-of-a-pigeon-s0840.html (https://bigsoundbank.com/UPLOAD/flac/0840.flac) |
 | Glockenspiel (#0920) | levelup | https://bigsoundbank.com/glockenspiel-s0920.html (https://bigsoundbank.com/UPLOAD/bwf-en/0920.wav) |
+| Short welds (#0952) | jelly_zap | https://bigsoundbank.com/short-welds-s0952.html (https://bigsoundbank.com/UPLOAD/bwf-en/0952.wav) |
+| Crows #2 (#0956) | crow_caw | https://bigsoundbank.com/crows-2-s0956.html (https://bigsoundbank.com/UPLOAD/bwf-en/0956.wav) |
 | Big Branching Fire #1 (#0987) | fire | https://bigsoundbank.com/big-branching-fire-1-s0987.html (https://bigsoundbank.com/UPLOAD/flac/0987.flac) |
-| Explosion far Away #1 (#1023) | ult_impact | https://bigsoundbank.com/explosion-far-away-s1023.html (https://bigsoundbank.com/UPLOAD/flac/1023.flac) |
+| Explosion far Away #1 (#1023) | awaken_charge, ult_impact | https://bigsoundbank.com/explosion-far-away-s1023.html (https://bigsoundbank.com/UPLOAD/flac/1023.flac) |
 | Typewriter #1 (#1065) | type | https://bigsoundbank.com/typewriter-1-s1065.html (https://bigsoundbank.com/UPLOAD/flac/1065.flac) |
 | Shot of shovel (#1084) | clang, hurt | https://bigsoundbank.com/shot-shovel-s1084.html (https://bigsoundbank.com/UPLOAD/flac/1084.flac) |
+| Brush on wood (#1106) | brush_stroke | https://bigsoundbank.com/brush-on-wood-s1106.html (https://bigsoundbank.com/UPLOAD/bwf-en/1106.wav) |
+| Tibetan bowl singing (#1109) | choir_gate | https://bigsoundbank.com/tibetan-bowl-singing-s1109.html (https://bigsoundbank.com/UPLOAD/bwf-en/1109.wav) |
+| Tibetan Bowl Struck #1 (#1110) | companion_join, heal, save, summon | https://bigsoundbank.com/tibetan-bowl-struck-s1110.html (https://bigsoundbank.com/UPLOAD/bwf-en/1110.wav) |
+| Broken Christmas Ball #1 (#1121) | egg_crack, impact_frame | https://bigsoundbank.com/broken-christmas-ball-1-s1121.html (https://bigsoundbank.com/UPLOAD/bwf-en/1121.wav) |
+| Broken christmas ball #2 (#1122) | impact_frame | https://bigsoundbank.com/broken-christmas-ball-2-s1122.html (https://bigsoundbank.com/UPLOAD/bwf-en/1122.wav) |
 | Sparkling Candle #1 (#1278) | enemy_die_ghost, magic | https://bigsoundbank.com/sparkling-candle-1-s1278.html (https://bigsoundbank.com/UPLOAD/flac/1278.flac) |
-| Fast Steps on Concrete (#1318) | dash | https://bigsoundbank.com/fast-steps-on-concrete-s1318.html (https://bigsoundbank.com/UPLOAD/flac/1318.flac) |
-| Cheers, small wineglass #1 (#1325) | holy, ice | https://bigsoundbank.com/cheers-small-wineglass-1-s1325.html (https://bigsoundbank.com/UPLOAD/flac/1325.flac) |
-| Cheers, red wine glass #1 (#1328) | holy, ice | https://bigsoundbank.com/cheers-red-wine-glass-1-s1328.html (https://bigsoundbank.com/UPLOAD/flac/1328.flac) |
-| Cheers, red wine glass #3 (#1330) | holy, ice | https://bigsoundbank.com/cheers-red-wine-glass-3-s1330.html (https://bigsoundbank.com/UPLOAD/flac/1330.flac) |
-| Bones cracking #2 (#1408) | enemy_die_bone, hit_heavy | https://bigsoundbank.com/bones-cracking-2-s1408.html (https://bigsoundbank.com/UPLOAD/flac/1408.flac) |
-| Bones cracking #3 (#1409) | enemy_die, enemy_die_bone, hit_heavy | https://bigsoundbank.com/bones-cracking-3-s1409.html (https://bigsoundbank.com/UPLOAD/flac/1409.flac) |
-| Gong, sweet (#1482) | holy, levelup | https://bigsoundbank.com/gong-sweet-s1482.html (https://bigsoundbank.com/UPLOAD/flac/1482.flac) |
-| Gong, strong #1 (#1483) | dark | https://bigsoundbank.com/gong-strong-1-s1483.html (https://bigsoundbank.com/UPLOAD/flac/1483.flac) |
-| Splash, Small #1 (#1529) | step_water | https://bigsoundbank.com/splash-small-1-s1529.html (https://bigsoundbank.com/UPLOAD/flac/1529.flac) |
-| Splash, small #2 (#1530) | step_water | https://bigsoundbank.com/splash-small-2-s1530.html (https://bigsoundbank.com/UPLOAD/flac/1530.flac) |
-| Splash, small #3 (#1531) | step_water | https://bigsoundbank.com/splash-small-3-s1531.html (https://bigsoundbank.com/UPLOAD/flac/1531.flac) |
-| Splash, small #4 (#1532) | step_water | https://bigsoundbank.com/splash-small-4-s1532.html (https://bigsoundbank.com/UPLOAD/flac/1532.flac) |
+| Fast Steps on Concrete (#1318) | dash, pivot, skid | https://bigsoundbank.com/fast-steps-on-concrete-s1318.html (https://bigsoundbank.com/UPLOAD/flac/1318.flac) |
+| Cheers, small wineglass #1 (#1325) | assist, combo, cross, finger_snap, heal, hit_ghost, holy, ice, mirror_chime, scythe | https://bigsoundbank.com/cheers-small-wineglass-1-s1325.html (https://bigsoundbank.com/UPLOAD/flac/1325.flac) |
+| Cheers, red wine glass #1 (#1328) | bond_up, counter, cross, heart, hit_ghost, holy, ice | https://bigsoundbank.com/cheers-red-wine-glass-1-s1328.html (https://bigsoundbank.com/UPLOAD/flac/1328.flac) |
+| Cheers, red wine glass #3 (#1330) | charge_ready, combo, counter, cross, heart, hit_ghost, holy, ice, knight_guard, mirror_chime, rank_up | https://bigsoundbank.com/cheers-red-wine-glass-3-s1330.html (https://bigsoundbank.com/UPLOAD/flac/1330.flac) |
+| Cheers, big red wine glass #1 (#1332) | counter, heart, hit_ghost | https://bigsoundbank.com/cheers-big-red-wine-glass-1-s1332.html (https://bigsoundbank.com/UPLOAD/bwf-en/1332.wav) |
+| Cheers, Champagne Flute #1 (#1335) | combo, eye_glint | https://bigsoundbank.com/cheers-champagne-flute-1-s1335.html (https://bigsoundbank.com/UPLOAD/bwf-en/1335.wav) |
+| Gasoline fire #1 (#1340) | fire_breath | https://bigsoundbank.com/gasoline-fire-1-s1340.html (https://bigsoundbank.com/UPLOAD/bwf-en/1340.wav) |
+| Tic Tac mechanical alarm clock #1 (#1372) | clock_tick | https://bigsoundbank.com/tic-tac-mechanical-alarm-clock-s1372.html (https://bigsoundbank.com/UPLOAD/bwf-en/1372.wav) |
+| Bones cracking #2 (#1408) | back_attack, bone_rattle, enemy_die_bone, hit_bone, hit_heavy, step_bone, wolf_bite | https://bigsoundbank.com/bones-cracking-2-s1408.html (https://bigsoundbank.com/UPLOAD/flac/1408.flac) |
+| Bones cracking #3 (#1409) | back_attack, enemy_die, enemy_die_bone, hit_bone, hit_heavy, step_bone | https://bigsoundbank.com/bones-cracking-3-s1409.html (https://bigsoundbank.com/UPLOAD/flac/1409.flac) |
+| Fishing reel, fast (#1435) | slot_spin | https://bigsoundbank.com/fishing-reel-fast-s1435.html (https://bigsoundbank.com/UPLOAD/bwf-en/1435.wav) |
+| Gong, sweet (#1482) | holy, kill_slowmo, levelup, stopwatch | https://bigsoundbank.com/gong-sweet-s1482.html (https://bigsoundbank.com/UPLOAD/flac/1482.flac) |
+| Gong, strong #1 (#1483) | awaken_boom, awaken_hold, boss_die, dark, death, enhance_destroy, enhance_fail, lose, soul_reap | https://bigsoundbank.com/gong-strong-1-s1483.html (https://bigsoundbank.com/UPLOAD/flac/1483.flac) |
+| Gong, strong #2 (#1484) | announce, warning | https://bigsoundbank.com/gong-strong-2-s1484.html (https://bigsoundbank.com/UPLOAD/bwf-en/1484.wav) |
+| Gong, very strong (#1485) | awaken_stinger, ult | https://bigsoundbank.com/gong-very-strong-s1485.html (https://bigsoundbank.com/UPLOAD/bwf-en/1485.wav) |
+| Splash, Small #1 (#1529) | holywater_burn, splash, step_water | https://bigsoundbank.com/splash-small-1-s1529.html (https://bigsoundbank.com/UPLOAD/flac/1529.flac) |
+| Splash, small #2 (#1530) | splash, step_water | https://bigsoundbank.com/splash-small-2-s1530.html (https://bigsoundbank.com/UPLOAD/flac/1530.flac) |
+| Splash, small #3 (#1531) | holywater_burn, step_water | https://bigsoundbank.com/splash-small-3-s1531.html (https://bigsoundbank.com/UPLOAD/flac/1531.flac) |
+| Splash, small #4 (#1532) | holywater_burn, splash, step_water | https://bigsoundbank.com/splash-small-4-s1532.html (https://bigsoundbank.com/UPLOAD/flac/1532.flac) |
 | Gavel, 1 blow (#1588) | hit_stone | https://bigsoundbank.com/gavel-1-blow-s1588.html (https://bigsoundbank.com/UPLOAD/flac/1588.flac) |
+| Raw carrot cut #1 (#1598) | egg_crack | https://bigsoundbank.com/raw-carrot-cut-1-s1598.html (https://bigsoundbank.com/UPLOAD/flac/1598.flac) |
+| Wheelbarrow of limestone, reversed (#1634) | step_push | https://bigsoundbank.com/wheelbarrow-of-limestone-reversed-s1634.html (https://bigsoundbank.com/UPLOAD/bwf-en/1634.wav) |
+| Gargle #1 (#1652) | momo_gulp | https://bigsoundbank.com/gargle-1-s1652.html (https://bigsoundbank.com/UPLOAD/bwf-en/1652.wav) |
+| Grumpy pig, with the mouth #1 (#1658) | boar_grunt | https://bigsoundbank.com/grumpy-pig-1-s1658.html (https://bigsoundbank.com/UPLOAD/bwf-en/1658.wav) |
+| Grumpy Pig, with the Mouth #2 (#1659) | stag_call | https://bigsoundbank.com/grumpy-pig-2-s1659.html (https://bigsoundbank.com/UPLOAD/bwf-en/1659.wav) |
+| Winder #1 (#1674) | gear_whir, stopwatch | https://bigsoundbank.com/winder-1-s1674.html (https://bigsoundbank.com/UPLOAD/bwf-en/1674.wav) |
+| Triangle #1 (#1687) | combo_milestone | https://bigsoundbank.com/triangle-1-s1687.html (https://bigsoundbank.com/UPLOAD/bwf-en/1687.wav) |
+| Triangle #3 (#1689) | eye_glint | https://bigsoundbank.com/triangle-3-s1689.html (https://bigsoundbank.com/UPLOAD/bwf-en/1689.wav) |
+| Burp #1 (#1707) | momo_gulp | https://bigsoundbank.com/burp-1-s1707.html (https://bigsoundbank.com/UPLOAD/bwf-en/1707.wav) |
+| Screaming Piha (#1762) | griffin_cry, screech | https://bigsoundbank.com/screaming-piha-s1762.html (https://bigsoundbank.com/UPLOAD/bwf-en/1762.wav) |
+| Tawny Owl #1 (#1763) | owl_hoot | https://bigsoundbank.com/tawny-owl-1-s1763.html (https://bigsoundbank.com/UPLOAD/bwf-en/1763.wav) |
+| Flag #1 (#1787) | cutin_whoosh, dash_burst | https://bigsoundbank.com/flag-1-s1787.html (https://bigsoundbank.com/UPLOAD/bwf-en/1787.wav) |
+| Flag #2 (#1788) | dash_burst | https://bigsoundbank.com/flag-2-s1788.html (https://bigsoundbank.com/UPLOAD/bwf-en/1788.wav) |
 | Whoosh #3 (#1795) | whip | https://bigsoundbank.com/whoosh-3-s1795.html (https://bigsoundbank.com/UPLOAD/flac/1795.flac) |
 | Whoosh #4 (#1796) | whip | https://bigsoundbank.com/whoosh-4-s1796.html (https://bigsoundbank.com/UPLOAD/flac/1796.flac) |
-| Whoosh #5 (#1797) | dagger, jump, magic, slash, whip_crack | https://bigsoundbank.com/whoosh-5-s1797.html (https://bigsoundbank.com/UPLOAD/flac/1797.flac) |
-| Whoosh #10 (#1798) | axe, slash_heavy | https://bigsoundbank.com/whoosh-10-s1798.html (https://bigsoundbank.com/UPLOAD/flac/1798.flac) |
-| Whoosh #6 (#1799) | axe, jump, slash_heavy | https://bigsoundbank.com/whoosh-6-s1799.html (https://bigsoundbank.com/UPLOAD/flac/1799.flac) |
-| Whoosh #7 (#1800) | dash, slash_heavy | https://bigsoundbank.com/whoosh-7-s1800.html (https://bigsoundbank.com/UPLOAD/flac/1800.flac) |
-| Whoosh #8 (#1801) | axe, dash, slash_heavy | https://bigsoundbank.com/whoosh-8-s1801.html (https://bigsoundbank.com/UPLOAD/flac/1801.flac) |
-| Whoosh #9 (#1802) | dagger, jump, magic, whip_crack | https://bigsoundbank.com/whoosh-9-s1802.html (https://bigsoundbank.com/UPLOAD/flac/1802.flac) |
-| Explosion far away #2 (#1806) | explode, ult_impact | https://bigsoundbank.com/explosion-far-away-2-s1806.html (https://bigsoundbank.com/UPLOAD/flac/1806.flac) |
-| Explosion #1 (#1807) | explode, ult_impact | https://bigsoundbank.com/explosion-1-s1807.html (https://bigsoundbank.com/UPLOAD/flac/1807.flac) |
-| Explosion #2 (#1808) | explode, ult_impact | https://bigsoundbank.com/explosion-2-s1808.html (https://bigsoundbank.com/UPLOAD/flac/1808.flac) |
-| Jumping on concrete #1 (#1835) | land | https://bigsoundbank.com/jumping-on-concrete-1-s1835.html (https://bigsoundbank.com/UPLOAD/flac/1835.flac) |
-| Jumping on Concrete #2 (#1836) | land | https://bigsoundbank.com/jumping-on-concrete-2-s1836.html (https://bigsoundbank.com/UPLOAD/flac/1836.flac) |
-| Jumping on dirt road #1 (#1837) | land | https://bigsoundbank.com/jumping-on-dirt-road-1-s1837.html (https://bigsoundbank.com/UPLOAD/flac/1837.flac) |
+| Whoosh #5 (#1797) | assist, dagger, hit_ghost, jump, launch, magic, powerup, slash, whip_crack | https://bigsoundbank.com/whoosh-5-s1797.html (https://bigsoundbank.com/UPLOAD/flac/1797.flac) |
+| Whoosh #10 (#1798) | axe, cross, cutin_whoosh, dash_burst, fire_breath, slash_heavy | https://bigsoundbank.com/whoosh-10-s1798.html (https://bigsoundbank.com/UPLOAD/flac/1798.flac) |
+| Whoosh #6 (#1799) | axe, counter, cross, jump, launch, slash_heavy | https://bigsoundbank.com/whoosh-6-s1799.html (https://bigsoundbank.com/UPLOAD/flac/1799.flac) |
+| Whoosh #7 (#1800) | counter, dash, dash_burst, slash_heavy | https://bigsoundbank.com/whoosh-7-s1800.html (https://bigsoundbank.com/UPLOAD/flac/1800.flac) |
+| Whoosh #8 (#1801) | axe, counter, cross, dash, dash_burst, slash_heavy | https://bigsoundbank.com/whoosh-8-s1801.html (https://bigsoundbank.com/UPLOAD/flac/1801.flac) |
+| Whoosh #9 (#1802) | dagger, hit_ghost, jump, launch, magic, whip_crack | https://bigsoundbank.com/whoosh-9-s1802.html (https://bigsoundbank.com/UPLOAD/flac/1802.flac) |
+| Explosion far away #2 (#1806) | explode, impact_frame, ult_impact | https://bigsoundbank.com/explosion-far-away-2-s1806.html (https://bigsoundbank.com/UPLOAD/flac/1806.flac) |
+| Explosion #1 (#1807) | boss_die, explode, impact_frame, ult_impact | https://bigsoundbank.com/explosion-1-s1807.html (https://bigsoundbank.com/UPLOAD/flac/1807.flac) |
+| Explosion #2 (#1808) | awaken_boom, explode, impact_frame, ult_impact | https://bigsoundbank.com/explosion-2-s1808.html (https://bigsoundbank.com/UPLOAD/flac/1808.flac) |
+| Jumping on concrete #1 (#1835) | hoof_land, land, land_heavy | https://bigsoundbank.com/jumping-on-concrete-1-s1835.html (https://bigsoundbank.com/UPLOAD/flac/1835.flac) |
+| Jumping on Concrete #2 (#1836) | land, land_heavy | https://bigsoundbank.com/jumping-on-concrete-2-s1836.html (https://bigsoundbank.com/UPLOAD/flac/1836.flac) |
+| Jumping on dirt road #1 (#1837) | land, land_heavy | https://bigsoundbank.com/jumping-on-dirt-road-1-s1837.html (https://bigsoundbank.com/UPLOAD/flac/1837.flac) |
 | Jumping on dirt road #2 (#1838) | land | https://bigsoundbank.com/jumping-on-dirt-road-2-s1838.html (https://bigsoundbank.com/UPLOAD/flac/1838.flac) |
-| Pistol, cocking #1 (#1984) | gun | https://bigsoundbank.com/pistol-cocking-1-s1984.html (https://bigsoundbank.com/UPLOAD/flac/1984.flac) |
-| Pistol, cocking #2 (#1985) | gun | https://bigsoundbank.com/pistol-cocking-2-s1985.html (https://bigsoundbank.com/UPLOAD/flac/1985.flac) |
-| Chimes "Dream" #1 (#2079) | holy, levelup | https://bigsoundbank.com/chimes-dream-1-s2079.html (https://bigsoundbank.com/UPLOAD/flac/2079.flac) |
-| Chimes "dream" #2 (#2080) | enemy_die_ghost, item, magic, menu_ok | https://bigsoundbank.com/chimes-dream-2-s2080.html (https://bigsoundbank.com/UPLOAD/flac/2080.flac) |
-| Chimes "dream" #3 (#2081) | enemy_die_ghost, item, magic, menu_ok | https://bigsoundbank.com/chimes-dream-3-s2081.html (https://bigsoundbank.com/UPLOAD/flac/2081.flac) |
-| Chimes "dream" #4 (#2082) | enemy_die_ghost, holy, levelup | https://bigsoundbank.com/chimes-dream-4-s2082.html (https://bigsoundbank.com/UPLOAD/flac/2082.flac) |
-| Chimes "dream" #5 (#2083) | enemy_die_ghost, item, menu_ok | https://bigsoundbank.com/chimes-dream-5-s2083.html (https://bigsoundbank.com/UPLOAD/flac/2083.flac) |
-| Chimes "butterfly" #1 (#2087) | magic | https://bigsoundbank.com/chimes-butterfly-1-s2087.html (https://bigsoundbank.com/UPLOAD/flac/2087.flac) |
+| Music box, C #1 (#1867) | bond_up, companion_join, enhance_success, extra_life, lose, powerup, rank_up, secret, slot_win, win | https://bigsoundbank.com/music-box-c-1-s1867.html (https://bigsoundbank.com/UPLOAD/bwf-en/1867.wav) |
+| Music box, D# #1 (#1869) | companion_join, extra_life, lose, powerup, rank_up, slot_win, win | https://bigsoundbank.com/music-box-dd-1-s1869.html (https://bigsoundbank.com/UPLOAD/bwf-en/1869.wav) |
+| Music box, F #1 (#1870) | secret | https://bigsoundbank.com/music-box-f-1-s1870.html (https://bigsoundbank.com/UPLOAD/bwf-en/1870.wav) |
+| Music box, G #1 (#1871) | bond_up, companion_join, enhance_success, extra_life, lose, powerup, rank_up, slot_win, win | https://bigsoundbank.com/music-box-g-1-s1871.html (https://bigsoundbank.com/UPLOAD/bwf-en/1871.wav) |
+| Music box, G# #2 (#1872) | secret | https://bigsoundbank.com/music-box-gd-2-s1872.html (https://bigsoundbank.com/UPLOAD/bwf-en/1872.wav) |
+| Music box, C #2 (#1874) | charge_ready, combo_milestone, companion_join, enhance_success, extra_life, fairy_chime, heart, rank_up, slot_win, win | https://bigsoundbank.com/music-box-c-2-s1874.html (https://bigsoundbank.com/UPLOAD/bwf-en/1874.wav) |
+| Music box, D# #2 (#1876) | heart, win | https://bigsoundbank.com/music-box-dd-2-s1876.html (https://bigsoundbank.com/UPLOAD/bwf-en/1876.wav) |
+| Music box, G #2 (#1878) | combo, combo_milestone, fairy_chime, heart | https://bigsoundbank.com/music-box-g-2-s1878.html (https://bigsoundbank.com/UPLOAD/bwf-en/1878.wav) |
+| Music box, G# #3 (#1879) | combo | https://bigsoundbank.com/music-box-gd-3-s1879.html (https://bigsoundbank.com/UPLOAD/bwf-en/1879.wav) |
+| Cat roar #1 (#1881) | boss_roar, roar_small | https://bigsoundbank.com/cat-roar-1-s1881.html (https://bigsoundbank.com/UPLOAD/bwf-en/1881.wav) |
+| Cat roar #3 (#1883) | griffin_cry | https://bigsoundbank.com/cat-roar-3-s1883.html (https://bigsoundbank.com/UPLOAD/bwf-en/1883.wav) |
+| Growling cat #1 (#1885) | wolf_bite | https://bigsoundbank.com/growling-cat-1-s1885.html (https://bigsoundbank.com/UPLOAD/bwf-en/1885.wav) |
+| Boxing bell #1 (#1926) | go | https://bigsoundbank.com/boxing-bell-1-s1926.html (https://bigsoundbank.com/UPLOAD/bwf-en/1926.wav) |
+| Brush (#1961) | brush_stroke | https://bigsoundbank.com/brush-s1961.html (https://bigsoundbank.com/UPLOAD/bwf-en/1961.wav) |
+| Pistol, cocking #1 (#1984) | cylinder_spin, gun, shotgun | https://bigsoundbank.com/pistol-cocking-1-s1984.html (https://bigsoundbank.com/UPLOAD/flac/1984.flac) |
+| Pistol, cocking #2 (#1985) | gun, shotgun | https://bigsoundbank.com/pistol-cocking-2-s1985.html (https://bigsoundbank.com/UPLOAD/flac/1985.flac) |
+| Ghost #1 (#2046) | ghost | https://bigsoundbank.com/ghost-1-s2046.html (https://bigsoundbank.com/UPLOAD/bwf-en/2046.wav) |
+| Ghost #2 (#2047) | ghost, hit_ghost | https://bigsoundbank.com/ghost-2-s2047.html (https://bigsoundbank.com/UPLOAD/bwf-en/2047.wav) |
+| Ghost #3 (#2048) | ghost, hit_ghost | https://bigsoundbank.com/ghost-3-s2048.html (https://bigsoundbank.com/UPLOAD/bwf-en/2048.wav) |
+| Ghost #4 (#2049) | hit_ghost, soul_reap | https://bigsoundbank.com/ghost-4-s2049.html (https://bigsoundbank.com/UPLOAD/bwf-en/2049.wav) |
+| Ghost #5 (#2050) | hit_ghost | https://bigsoundbank.com/ghost-5-s2050.html (https://bigsoundbank.com/UPLOAD/bwf-en/2050.wav) |
+| Chimes "Dream" #1 (#2079) | eye_glint, holy, levelup, powerup | https://bigsoundbank.com/chimes-dream-1-s2079.html (https://bigsoundbank.com/UPLOAD/flac/2079.flac) |
+| Chimes "dream" #2 (#2080) | choir_gate, enemy_die_ghost, item, magic, menu_ok, soul_reap, ult | https://bigsoundbank.com/chimes-dream-2-s2080.html (https://bigsoundbank.com/UPLOAD/flac/2080.flac) |
+| Chimes "dream" #3 (#2081) | enemy_die_ghost, item, magic, menu_ok, mist, summon | https://bigsoundbank.com/chimes-dream-3-s2081.html (https://bigsoundbank.com/UPLOAD/flac/2081.flac) |
+| Chimes "dream" #4 (#2082) | companion_join, enemy_die_ghost, heal, holy, levelup | https://bigsoundbank.com/chimes-dream-4-s2082.html (https://bigsoundbank.com/UPLOAD/flac/2082.flac) |
+| Chimes "dream" #5 (#2083) | dismiss, enemy_die_ghost, item, menu_ok, save | https://bigsoundbank.com/chimes-dream-5-s2083.html (https://bigsoundbank.com/UPLOAD/flac/2083.flac) |
+| Chimes "dream" #6 (#2084) | awaken_charge, mirror_chime | https://bigsoundbank.com/chimes-dream-6-s2084.html (https://bigsoundbank.com/UPLOAD/bwf-en/2084.wav) |
+| Chimes "butterfly" #1 (#2087) | enhance_success, extra_life, fairy_chime, magic, secret, win | https://bigsoundbank.com/chimes-butterfly-1-s2087.html (https://bigsoundbank.com/UPLOAD/flac/2087.flac) |
 | Chimes "butterfly" #2 (#2088) | holy, levelup, magic | https://bigsoundbank.com/chimes-butterfly-2-s2088.html (https://bigsoundbank.com/UPLOAD/flac/2088.flac) |
+| Delirious laughter #2 (#2092) | imp_cackle | https://bigsoundbank.com/delirious-laughter-2-s2092.html (https://bigsoundbank.com/UPLOAD/bwf-en/2092.wav) |
+| Bell #3 (#2115) | enhance_success, extra_life | https://bigsoundbank.com/bell-3-s2115.html (https://bigsoundbank.com/UPLOAD/bwf-en/2115.wav) |
+| Bell #5 (#2117) | slot_win | https://bigsoundbank.com/bell-5-s2117.html (https://bigsoundbank.com/UPLOAD/bwf-en/2117.wav) |
 | Ice cubes in a glass #1 (#2123) | ice | https://bigsoundbank.com/ice-cubes-in-a-glass-1-s2123.html (https://bigsoundbank.com/UPLOAD/flac/2123.flac) |
 | Ice cubes in a glass #2 (#2124) | ice | https://bigsoundbank.com/ice-cubes-in-a-glass-2-s2124.html (https://bigsoundbank.com/UPLOAD/flac/2124.flac) |
 | Ice cubes in a glass #3 (#2125) | ice | https://bigsoundbank.com/ice-cubes-in-a-glass-3-s2125.html (https://bigsoundbank.com/UPLOAD/flac/2125.flac) |
-| Cracking ice #1 (#2205) | ice | https://bigsoundbank.com/cracking-ice-1-s2205.html (https://bigsoundbank.com/UPLOAD/flac/2205.flac) |
-| Cracking ice #2 (#2206) | ice | https://bigsoundbank.com/cracking-ice-2-s2206.html (https://bigsoundbank.com/UPLOAD/flac/2206.flac) |
-| Cracking ice #3 (#2207) | ice | https://bigsoundbank.com/cracking-ice-3-s2207.html (https://bigsoundbank.com/UPLOAD/flac/2207.flac) |
+| Zapping (#2134) | jelly_zap | https://bigsoundbank.com/zapping-s2134.html (https://bigsoundbank.com/UPLOAD/bwf-en/2134.wav) |
+| Chronograph #1 (#2137) | clock_tick, stopwatch | https://bigsoundbank.com/stopwatch-1-s2137.html (https://bigsoundbank.com/UPLOAD/bwf-en/2137.wav) |
+| Cracking ice #1 (#2205) | ice, impact_crack | https://bigsoundbank.com/cracking-ice-1-s2205.html (https://bigsoundbank.com/UPLOAD/flac/2205.flac) |
+| Cracking ice #2 (#2206) | ice, impact_crack | https://bigsoundbank.com/cracking-ice-2-s2206.html (https://bigsoundbank.com/UPLOAD/flac/2206.flac) |
+| Cracking ice #3 (#2207) | ice, impact_crack | https://bigsoundbank.com/cracking-ice-3-s2207.html (https://bigsoundbank.com/UPLOAD/flac/2207.flac) |
 | Cracking ice #4 (#2208) | ice | https://bigsoundbank.com/cracking-ice-4-s2208.html (https://bigsoundbank.com/UPLOAD/flac/2208.flac) |
-| Body Fall #1 (#2452) | enemy_die, enemy_die_bone, hit_heavy | https://bigsoundbank.com/body-fall-1-s2452.html (https://bigsoundbank.com/UPLOAD/flac/2452.flac) |
-| Body Fall #2 (#2453) | enemy_die, enemy_die_bone, hit_heavy | https://bigsoundbank.com/body-fall-2-s2453.html (https://bigsoundbank.com/UPLOAD/flac/2453.flac) |
-| Body fall #3 (#2454) | explode, ult_impact | https://bigsoundbank.com/body-fall-3-s2454.html (https://bigsoundbank.com/UPLOAD/flac/2454.flac) |
-| Body fall #4 (#2455) | enemy_die, enemy_die_bone, hit_heavy | https://bigsoundbank.com/body-fall-4-s2455.html (https://bigsoundbank.com/UPLOAD/flac/2455.flac) |
-| Body fall #5 (#2456) | enemy_die, enemy_die_bone, hit_heavy | https://bigsoundbank.com/body-fall-5-s2456.html (https://bigsoundbank.com/UPLOAD/flac/2456.flac) |
+| Cymbale 16" #1 (#2311) | awaken_hold, awaken_stinger, ult | https://bigsoundbank.com/cymbale-16-1-s2311.html (https://bigsoundbank.com/UPLOAD/bwf-en/2311.wav) |
+| Cymbale 16" #5 (#2315) | announce, awaken_charge | https://bigsoundbank.com/cymbale-16-5-s2315.html (https://bigsoundbank.com/UPLOAD/bwf-en/2315.wav) |
+| Bass Tom, #1 (#2338) | announce, awaken_stinger, go, ult, warning | https://bigsoundbank.com/bass-tom-1-s2338.html (https://bigsoundbank.com/UPLOAD/bwf-en/2338.wav) |
+| Bass tom, #4 (#2341) | war_horn, warning | https://bigsoundbank.com/bass-tom-4-s2341.html (https://bigsoundbank.com/UPLOAD/bwf-en/2341.wav) |
+| Dog singing #1 (#2450) | wolf_howl | https://bigsoundbank.com/dog-singing-1-s2450.html (https://bigsoundbank.com/UPLOAD/bwf-en/2450.wav) |
+| Body Fall #1 (#2452) | death, down_hit, enemy_die, enemy_die_bone, hit_heavy, land_heavy, wall_bounce | https://bigsoundbank.com/body-fall-1-s2452.html (https://bigsoundbank.com/UPLOAD/flac/2452.flac) |
+| Body Fall #2 (#2453) | down_hit, enemy_die, enemy_die_bone, ground_bounce, hit_heavy, knock_off, land_heavy, wall_bounce | https://bigsoundbank.com/body-fall-2-s2453.html (https://bigsoundbank.com/UPLOAD/flac/2453.flac) |
+| Body fall #3 (#2454) | awaken_boom, boss_die, explode, ult_impact | https://bigsoundbank.com/body-fall-3-s2454.html (https://bigsoundbank.com/UPLOAD/flac/2454.flac) |
+| Body fall #4 (#2455) | down_hit, enemy_die, enemy_die_bone, ground_bounce, hit_heavy, land_heavy, wall_bounce | https://bigsoundbank.com/body-fall-4-s2455.html (https://bigsoundbank.com/UPLOAD/flac/2455.flac) |
+| Body fall #5 (#2456) | down_hit, enemy_die, enemy_die_bone, ground_bounce, hit_heavy | https://bigsoundbank.com/body-fall-5-s2456.html (https://bigsoundbank.com/UPLOAD/flac/2456.flac) |
 | Punch #5 (#2460) | crit, enemy_die, hit, whip_crack | https://bigsoundbank.com/punch-5-s2460.html (https://bigsoundbank.com/UPLOAD/flac/2460.flac) |
-| Punch #6 (#2461) | crit, enemy_die, hit, hit_heavy, whip_crack | https://bigsoundbank.com/punch-6-s2461.html (https://bigsoundbank.com/UPLOAD/flac/2461.flac) |
-| Punch #8 (#2463) | crit, hit, hit_heavy, whip_crack | https://bigsoundbank.com/punch-8-s2463.html (https://bigsoundbank.com/UPLOAD/flac/2463.flac) |
-| Punch #10 (#2465) | enemy_die, hit, hit_heavy, whip_crack | https://bigsoundbank.com/punch-10-s2465.html (https://bigsoundbank.com/UPLOAD/flac/2465.flac) |
+| Punch #6 (#2461) | back_attack, crit, enemy_die, hit, hit_heavy, whip_crack | https://bigsoundbank.com/punch-6-s2461.html (https://bigsoundbank.com/UPLOAD/flac/2461.flac) |
+| Punch #8 (#2463) | back_attack, crit, hit, hit_heavy, whip_crack | https://bigsoundbank.com/punch-8-s2463.html (https://bigsoundbank.com/UPLOAD/flac/2463.flac) |
+| Punch #10 (#2465) | back_attack, enemy_die, hit, hit_heavy, whip_crack | https://bigsoundbank.com/punch-10-s2465.html (https://bigsoundbank.com/UPLOAD/flac/2465.flac) |
 | Punch #13 (#2468) | crit, enemy_die, hit, hit_heavy | https://bigsoundbank.com/punch-13-s2468.html (https://bigsoundbank.com/UPLOAD/flac/2468.flac) |
-| Knife blade #1 (#2574) | dagger | https://bigsoundbank.com/knife-blade-1-s2574.html (https://bigsoundbank.com/UPLOAD/flac/2574.flac) |
+| Horn #3 (#2522) | war_horn | https://bigsoundbank.com/horn-3-s2522.html (https://bigsoundbank.com/UPLOAD/bwf-en/2522.wav) |
+| Horn #7 (#2526) | stag_call | https://bigsoundbank.com/horn-7-s2526.html (https://bigsoundbank.com/UPLOAD/bwf-en/2526.wav) |
+| Knife blade #1 (#2574) | dagger, sheath | https://bigsoundbank.com/knife-blade-1-s2574.html (https://bigsoundbank.com/UPLOAD/flac/2574.flac) |
 | Knife blade #2 (#2575) | dagger | https://bigsoundbank.com/knife-blade-2-s2575.html (https://bigsoundbank.com/UPLOAD/flac/2575.flac) |
 | Knife blade #3 (#2576) | dagger | https://bigsoundbank.com/knife-blade-3-s2576.html (https://bigsoundbank.com/UPLOAD/flac/2576.flac) |
 | Knife blade #4 (#2577) | dagger | https://bigsoundbank.com/knife-blade-4-s2577.html (https://bigsoundbank.com/UPLOAD/flac/2577.flac) |
-| Gore (zucchini) #1 (#2582) | enemy_die, hit, hit_flesh, step_flesh | https://bigsoundbank.com/gore-zucchini-1-s2582.html (https://bigsoundbank.com/UPLOAD/flac/2582.flac) |
+| Gore (zucchini) #1 (#2582) | back_attack, enemy_die, hit, hit_flesh, step_flesh | https://bigsoundbank.com/gore-zucchini-1-s2582.html (https://bigsoundbank.com/UPLOAD/flac/2582.flac) |
 | Gore (zucchini) #4 (#2585) | hit, hit_flesh, step_flesh | https://bigsoundbank.com/gore-zucchini-4-s2585.html (https://bigsoundbank.com/UPLOAD/flac/2585.flac) |
-| Gore (zucchini) #5 (#2586) | hit, hit_flesh, step_flesh | https://bigsoundbank.com/gore-zucchini-5-s2586.html (https://bigsoundbank.com/UPLOAD/flac/2586.flac) |
+| Gore (zucchini) #5 (#2586) | back_attack, hit, hit_flesh, step_flesh | https://bigsoundbank.com/gore-zucchini-5-s2586.html (https://bigsoundbank.com/UPLOAD/flac/2586.flac) |
 | Gore (pepper) #1 (#2589) | enemy_die, hit, hit_flesh, step_flesh | https://bigsoundbank.com/gore-pepper-1-s2589.html (https://bigsoundbank.com/UPLOAD/flac/2589.flac) |
-| Gore (pepper) #3 (#2591) | enemy_die, hit, hit_flesh, step_flesh | https://bigsoundbank.com/gore-pepper-3-s2591.html (https://bigsoundbank.com/UPLOAD/flac/2591.flac) |
+| Gore (pepper) #3 (#2591) | back_attack, enemy_die, hit, hit_flesh, step_flesh | https://bigsoundbank.com/gore-pepper-3-s2591.html (https://bigsoundbank.com/UPLOAD/flac/2591.flac) |
 | Gore (grapefruit) #5 (#2599) | enemy_die, hit_flesh | https://bigsoundbank.com/gore-grapefruit-5-s2599.html (https://bigsoundbank.com/UPLOAD/flac/2599.flac) |
 | Thunder #1 (#2718) | thunderclap | https://bigsoundbank.com/thunder-s2718.html (https://bigsoundbank.com/UPLOAD/flac/2718.flac) |
 | Rifle: Shot #1 (#2853) | gun | https://bigsoundbank.com/rifle-shot-1-s2853.html (https://bigsoundbank.com/UPLOAD/flac/2853.flac) |
-| Rifle: Shot #2 (#2854) | gun | https://bigsoundbank.com/rifle-shot-2-s2854.html (https://bigsoundbank.com/UPLOAD/flac/2854.flac) |
+| Rifle: Shot #2 (#2854) | gun, shotgun | https://bigsoundbank.com/rifle-shot-2-s2854.html (https://bigsoundbank.com/UPLOAD/flac/2854.flac) |
 | Whip crack #1 (#2949) | crit, thunder, thunderclap, whip, whip_crack | https://bigsoundbank.com/whip-crack-1-s2949.html (https://bigsoundbank.com/UPLOAD/flac/2949.flac) |
 | Whip crack #2 (#2950) | thunder, thunderclap, whip, whip_crack | https://bigsoundbank.com/whip-crack-2-s2950.html (https://bigsoundbank.com/UPLOAD/flac/2950.flac) |
 | Whip crack #3 (#2951) | thunder, whip, whip_crack | https://bigsoundbank.com/whip-crack-3-s2951.html (https://bigsoundbank.com/UPLOAD/flac/2951.flac) |
 | Whip crack #4 (#2952) | thunder, thunderclap, whip, whip_crack | https://bigsoundbank.com/whip-crack-4-s2952.html (https://bigsoundbank.com/UPLOAD/flac/2952.flac) |
-| Thunder #2 (#3113) | thunder, thunderclap | https://bigsoundbank.com/thunder-2-s3113.html (https://bigsoundbank.com/UPLOAD/flac/3113.flac) |
+| Overtone singing, C (#3033) | awaken_stinger, choir_gate | https://bigsoundbank.com/overtone-singing-c-s3033.html (https://bigsoundbank.com/UPLOAD/bwf-en/3033.wav) |
+| Thunder #2 (#3113) | awaken_boom, boss_roar, thunder, thunderclap | https://bigsoundbank.com/thunder-2-s3113.html (https://bigsoundbank.com/UPLOAD/flac/3113.flac) |
 | Thunder #3 (#3114) | thunderclap | https://bigsoundbank.com/thunder-3-s3114.html (https://bigsoundbank.com/UPLOAD/flac/3114.flac) |
 | Thunder #4 (#3115) | thunderclap | https://bigsoundbank.com/thunder-4-s3115.html (https://bigsoundbank.com/UPLOAD/flac/3115.flac) |
+| Anvil #1 (#3589) | enhance_destroy, enhance_hit, enhance_success | https://bigsoundbank.com/anvil-1-s3589.html (https://bigsoundbank.com/UPLOAD/bwf-en/3589.wav) |
+| Anvil #2 (#3590) | enhance_fail | https://bigsoundbank.com/anvil-2-s3590.html (https://bigsoundbank.com/UPLOAD/bwf-en/3590.wav) |
 
-### Kenney (www.kenney.nl) — CC0 1.0 (72)
+### Kenney (www.kenney.nl) — CC0 1.0 (92)
 
 | 소재 / Source | 쓰인 곳 / Used in | 원본 / Origin |
 |---|---|---|
 | footstep_concrete_000.ogg | gallop, jump, step_dirt, step_metal, step_snow, step_stone, step_water | https://kenney.nl/assets/impact-sounds (`Audio/footstep_concrete_000.ogg` in kenney_impact-sounds.zip) |
-| footstep_concrete_001.ogg | gallop, jump, step_dirt, step_metal, step_snow, step_stone, step_water | https://kenney.nl/assets/impact-sounds (`Audio/footstep_concrete_001.ogg` in kenney_impact-sounds.zip) |
-| footstep_concrete_002.ogg | gallop, jump, step_dirt, step_metal, step_snow, step_stone, step_water | https://kenney.nl/assets/impact-sounds (`Audio/footstep_concrete_002.ogg` in kenney_impact-sounds.zip) |
-| footstep_concrete_003.ogg | gallop, jump, step_dirt, step_metal, step_snow, step_stone, step_water | https://kenney.nl/assets/impact-sounds (`Audio/footstep_concrete_003.ogg` in kenney_impact-sounds.zip) |
+| footstep_concrete_001.ogg | gallop, jump, step_dirt, step_metal, step_push, step_snow, step_stone, step_water | https://kenney.nl/assets/impact-sounds (`Audio/footstep_concrete_001.ogg` in kenney_impact-sounds.zip) |
+| footstep_concrete_002.ogg | gallop, jump, step_dirt, step_metal, step_push, step_snow, step_stone, step_water | https://kenney.nl/assets/impact-sounds (`Audio/footstep_concrete_002.ogg` in kenney_impact-sounds.zip) |
+| footstep_concrete_003.ogg | gallop, jump, step_dirt, step_metal, step_push, step_snow, step_stone, step_water | https://kenney.nl/assets/impact-sounds (`Audio/footstep_concrete_003.ogg` in kenney_impact-sounds.zip) |
 | footstep_concrete_004.ogg | step_dirt, step_metal, step_snow, step_stone, step_water | https://kenney.nl/assets/impact-sounds (`Audio/footstep_concrete_004.ogg` in kenney_impact-sounds.zip) |
 | footstep_grass_000.ogg | step_dirt | https://kenney.nl/assets/impact-sounds (`Audio/footstep_grass_000.ogg` in kenney_impact-sounds.zip) |
 | footstep_grass_001.ogg | step_dirt | https://kenney.nl/assets/impact-sounds (`Audio/footstep_grass_001.ogg` in kenney_impact-sounds.zip) |
@@ -233,38 +285,53 @@ All v2 sounds are derivative works layered from the recordings below, every one 
 | footstep_snow_002.ogg | step_snow | https://kenney.nl/assets/impact-sounds (`Audio/footstep_snow_002.ogg` in kenney_impact-sounds.zip) |
 | footstep_snow_003.ogg | step_snow | https://kenney.nl/assets/impact-sounds (`Audio/footstep_snow_003.ogg` in kenney_impact-sounds.zip) |
 | footstep_snow_004.ogg | step_snow | https://kenney.nl/assets/impact-sounds (`Audio/footstep_snow_004.ogg` in kenney_impact-sounds.zip) |
-| footstep_wood_000.ogg | step_wood | https://kenney.nl/assets/impact-sounds (`Audio/footstep_wood_000.ogg` in kenney_impact-sounds.zip) |
-| footstep_wood_001.ogg | step_wood | https://kenney.nl/assets/impact-sounds (`Audio/footstep_wood_001.ogg` in kenney_impact-sounds.zip) |
-| footstep_wood_002.ogg | step_wood | https://kenney.nl/assets/impact-sounds (`Audio/footstep_wood_002.ogg` in kenney_impact-sounds.zip) |
-| footstep_wood_003.ogg | step_wood | https://kenney.nl/assets/impact-sounds (`Audio/footstep_wood_003.ogg` in kenney_impact-sounds.zip) |
+| footstep_wood_000.ogg | step_bone, step_wood | https://kenney.nl/assets/impact-sounds (`Audio/footstep_wood_000.ogg` in kenney_impact-sounds.zip) |
+| footstep_wood_001.ogg | step_bone, step_wood | https://kenney.nl/assets/impact-sounds (`Audio/footstep_wood_001.ogg` in kenney_impact-sounds.zip) |
+| footstep_wood_002.ogg | step_bone, step_wood | https://kenney.nl/assets/impact-sounds (`Audio/footstep_wood_002.ogg` in kenney_impact-sounds.zip) |
+| footstep_wood_003.ogg | step_bone, step_wood | https://kenney.nl/assets/impact-sounds (`Audio/footstep_wood_003.ogg` in kenney_impact-sounds.zip) |
 | footstep_wood_004.ogg | step_wood | https://kenney.nl/assets/impact-sounds (`Audio/footstep_wood_004.ogg` in kenney_impact-sounds.zip) |
-| impactMetal_heavy_000.ogg | enemy_die_stone | https://kenney.nl/assets/impact-sounds (`Audio/impactMetal_heavy_000.ogg` in kenney_impact-sounds.zip) |
+| impactMetal_heavy_000.ogg | enemy_die_stone, enhance_hit | https://kenney.nl/assets/impact-sounds (`Audio/impactMetal_heavy_000.ogg` in kenney_impact-sounds.zip) |
 | impactMetal_heavy_001.ogg | enemy_die_stone | https://kenney.nl/assets/impact-sounds (`Audio/impactMetal_heavy_001.ogg` in kenney_impact-sounds.zip) |
 | impactMetal_heavy_002.ogg | enemy_die_stone | https://kenney.nl/assets/impact-sounds (`Audio/impactMetal_heavy_002.ogg` in kenney_impact-sounds.zip) |
 | impactMetal_heavy_003.ogg | enemy_die_stone | https://kenney.nl/assets/impact-sounds (`Audio/impactMetal_heavy_003.ogg` in kenney_impact-sounds.zip) |
-| impactMetal_light_000.ogg | step_metal | https://kenney.nl/assets/impact-sounds (`Audio/impactMetal_light_000.ogg` in kenney_impact-sounds.zip) |
-| impactMetal_light_001.ogg | step_metal | https://kenney.nl/assets/impact-sounds (`Audio/impactMetal_light_001.ogg` in kenney_impact-sounds.zip) |
-| impactMetal_light_002.ogg | step_metal | https://kenney.nl/assets/impact-sounds (`Audio/impactMetal_light_002.ogg` in kenney_impact-sounds.zip) |
+| impactMetal_light_000.ogg | candle, step_metal | https://kenney.nl/assets/impact-sounds (`Audio/impactMetal_light_000.ogg` in kenney_impact-sounds.zip) |
+| impactMetal_light_001.ogg | candle, step_metal | https://kenney.nl/assets/impact-sounds (`Audio/impactMetal_light_001.ogg` in kenney_impact-sounds.zip) |
+| impactMetal_light_002.ogg | candle, step_metal | https://kenney.nl/assets/impact-sounds (`Audio/impactMetal_light_002.ogg` in kenney_impact-sounds.zip) |
 | impactMetal_light_003.ogg | step_metal | https://kenney.nl/assets/impact-sounds (`Audio/impactMetal_light_003.ogg` in kenney_impact-sounds.zip) |
 | impactMetal_light_004.ogg | step_metal | https://kenney.nl/assets/impact-sounds (`Audio/impactMetal_light_004.ogg` in kenney_impact-sounds.zip) |
+| impactMining_001.ogg | break_wall | https://kenney.nl/assets/impact-sounds (`Audio/impactMining_001.ogg` in kenney_impact-sounds.zip) |
+| impactMining_002.ogg | break_wall | https://kenney.nl/assets/impact-sounds (`Audio/impactMining_002.ogg` in kenney_impact-sounds.zip) |
+| impactMining_003.ogg | break_wall | https://kenney.nl/assets/impact-sounds (`Audio/impactMining_003.ogg` in kenney_impact-sounds.zip) |
+| impactPlank_medium_000.ogg | wall_bounce | https://kenney.nl/assets/impact-sounds (`Audio/impactPlank_medium_000.ogg` in kenney_impact-sounds.zip) |
+| impactPlank_medium_001.ogg | wall_bounce | https://kenney.nl/assets/impact-sounds (`Audio/impactPlank_medium_001.ogg` in kenney_impact-sounds.zip) |
+| impactPlank_medium_002.ogg | wall_bounce | https://kenney.nl/assets/impact-sounds (`Audio/impactPlank_medium_002.ogg` in kenney_impact-sounds.zip) |
+| impactPlate_heavy_000.ogg | knight_guard | https://kenney.nl/assets/impact-sounds (`Audio/impactPlate_heavy_000.ogg` in kenney_impact-sounds.zip) |
 | impactPlate_light_000.ogg | step_metal | https://kenney.nl/assets/impact-sounds (`Audio/impactPlate_light_000.ogg` in kenney_impact-sounds.zip) |
 | impactPlate_light_001.ogg | step_metal | https://kenney.nl/assets/impact-sounds (`Audio/impactPlate_light_001.ogg` in kenney_impact-sounds.zip) |
 | impactPlate_light_002.ogg | step_metal | https://kenney.nl/assets/impact-sounds (`Audio/impactPlate_light_002.ogg` in kenney_impact-sounds.zip) |
 | impactPlate_light_003.ogg | step_metal | https://kenney.nl/assets/impact-sounds (`Audio/impactPlate_light_003.ogg` in kenney_impact-sounds.zip) |
 | impactPlate_light_004.ogg | step_metal | https://kenney.nl/assets/impact-sounds (`Audio/impactPlate_light_004.ogg` in kenney_impact-sounds.zip) |
-| impactPunch_heavy_000.ogg | crit, gun, hit_heavy | https://kenney.nl/assets/impact-sounds (`Audio/impactPunch_heavy_000.ogg` in kenney_impact-sounds.zip) |
-| impactPunch_heavy_001.ogg | crit, gun, hit_heavy | https://kenney.nl/assets/impact-sounds (`Audio/impactPunch_heavy_001.ogg` in kenney_impact-sounds.zip) |
-| impactPunch_heavy_002.ogg | gun, hit_heavy | https://kenney.nl/assets/impact-sounds (`Audio/impactPunch_heavy_002.ogg` in kenney_impact-sounds.zip) |
-| impactPunch_heavy_003.ogg | crit, gun | https://kenney.nl/assets/impact-sounds (`Audio/impactPunch_heavy_003.ogg` in kenney_impact-sounds.zip) |
-| impactPunch_heavy_004.ogg | crit, hit_heavy | https://kenney.nl/assets/impact-sounds (`Audio/impactPunch_heavy_004.ogg` in kenney_impact-sounds.zip) |
+| impactPunch_heavy_000.ogg | crit, gun, hit_heavy, impact_frame, launch | https://kenney.nl/assets/impact-sounds (`Audio/impactPunch_heavy_000.ogg` in kenney_impact-sounds.zip) |
+| impactPunch_heavy_001.ogg | crit, gun, hit_heavy, impact_frame, land_heavy, launch, shotgun | https://kenney.nl/assets/impact-sounds (`Audio/impactPunch_heavy_001.ogg` in kenney_impact-sounds.zip) |
+| impactPunch_heavy_002.ogg | gun, hit_heavy, impact_crack, impact_frame, land_heavy, launch, shotgun | https://kenney.nl/assets/impact-sounds (`Audio/impactPunch_heavy_002.ogg` in kenney_impact-sounds.zip) |
+| impactPunch_heavy_003.ogg | crit, gun, impact_crack, land_heavy, shotgun | https://kenney.nl/assets/impact-sounds (`Audio/impactPunch_heavy_003.ogg` in kenney_impact-sounds.zip) |
+| impactPunch_heavy_004.ogg | crit, hit_heavy, impact_crack | https://kenney.nl/assets/impact-sounds (`Audio/impactPunch_heavy_004.ogg` in kenney_impact-sounds.zip) |
+| impactPunch_medium_000.ogg | down_hit | https://kenney.nl/assets/impact-sounds (`Audio/impactPunch_medium_000.ogg` in kenney_impact-sounds.zip) |
+| impactPunch_medium_001.ogg | assist, down_hit | https://kenney.nl/assets/impact-sounds (`Audio/impactPunch_medium_001.ogg` in kenney_impact-sounds.zip) |
+| impactPunch_medium_002.ogg | down_hit | https://kenney.nl/assets/impact-sounds (`Audio/impactPunch_medium_002.ogg` in kenney_impact-sounds.zip) |
+| impactPunch_medium_003.ogg | down_hit | https://kenney.nl/assets/impact-sounds (`Audio/impactPunch_medium_003.ogg` in kenney_impact-sounds.zip) |
+| impactSoft_heavy_000.ogg | ground_bounce | https://kenney.nl/assets/impact-sounds (`Audio/impactSoft_heavy_000.ogg` in kenney_impact-sounds.zip) |
+| impactSoft_heavy_001.ogg | ground_bounce | https://kenney.nl/assets/impact-sounds (`Audio/impactSoft_heavy_001.ogg` in kenney_impact-sounds.zip) |
+| impactSoft_heavy_002.ogg | ground_bounce | https://kenney.nl/assets/impact-sounds (`Audio/impactSoft_heavy_002.ogg` in kenney_impact-sounds.zip) |
 | impactSoft_medium_000.ogg | land, step_flesh | https://kenney.nl/assets/impact-sounds (`Audio/impactSoft_medium_000.ogg` in kenney_impact-sounds.zip) |
 | impactSoft_medium_001.ogg | land, step_flesh | https://kenney.nl/assets/impact-sounds (`Audio/impactSoft_medium_001.ogg` in kenney_impact-sounds.zip) |
 | impactSoft_medium_002.ogg | land, step_flesh | https://kenney.nl/assets/impact-sounds (`Audio/impactSoft_medium_002.ogg` in kenney_impact-sounds.zip) |
 | impactSoft_medium_003.ogg | land, step_flesh | https://kenney.nl/assets/impact-sounds (`Audio/impactSoft_medium_003.ogg` in kenney_impact-sounds.zip) |
 | impactSoft_medium_004.ogg | step_flesh | https://kenney.nl/assets/impact-sounds (`Audio/impactSoft_medium_004.ogg` in kenney_impact-sounds.zip) |
-| impactWood_light_000.ogg | menu_move, step_wood, type | https://kenney.nl/assets/impact-sounds (`Audio/impactWood_light_000.ogg` in kenney_impact-sounds.zip) |
-| impactWood_light_001.ogg | menu_move, step_wood, type | https://kenney.nl/assets/impact-sounds (`Audio/impactWood_light_001.ogg` in kenney_impact-sounds.zip) |
-| impactWood_light_002.ogg | menu_move, step_wood, type | https://kenney.nl/assets/impact-sounds (`Audio/impactWood_light_002.ogg` in kenney_impact-sounds.zip) |
+| impactWood_heavy_000.ogg | seal_stamp | https://kenney.nl/assets/impact-sounds (`Audio/impactWood_heavy_000.ogg` in kenney_impact-sounds.zip) |
+| impactWood_light_000.ogg | dice, menu_move, step_wood, type | https://kenney.nl/assets/impact-sounds (`Audio/impactWood_light_000.ogg` in kenney_impact-sounds.zip) |
+| impactWood_light_001.ogg | bone_rattle, menu_move, step_wood, type | https://kenney.nl/assets/impact-sounds (`Audio/impactWood_light_001.ogg` in kenney_impact-sounds.zip) |
+| impactWood_light_002.ogg | egg_crack, menu_move, step_wood, type | https://kenney.nl/assets/impact-sounds (`Audio/impactWood_light_002.ogg` in kenney_impact-sounds.zip) |
 | impactWood_light_003.ogg | menu_move, step_wood, type | https://kenney.nl/assets/impact-sounds (`Audio/impactWood_light_003.ogg` in kenney_impact-sounds.zip) |
 | impactWood_light_004.ogg | step_wood | https://kenney.nl/assets/impact-sounds (`Audio/impactWood_light_004.ogg` in kenney_impact-sounds.zip) |
 | impactWood_medium_000.ogg | menu_ok | https://kenney.nl/assets/impact-sounds (`Audio/impactWood_medium_000.ogg` in kenney_impact-sounds.zip) |
@@ -272,46 +339,58 @@ All v2 sounds are derivative works layered from the recordings below, every one 
 | impactWood_medium_002.ogg | menu_ok | https://kenney.nl/assets/impact-sounds (`Audio/impactWood_medium_002.ogg` in kenney_impact-sounds.zip) |
 | beltHandle1.ogg | item | https://kenney.nl/assets/rpg-audio (`Audio/beltHandle1.ogg` in kenney_rpg-audio.zip) |
 | bookClose.ogg | menu_cancel | https://kenney.nl/assets/rpg-audio (`Audio/bookClose.ogg` in kenney_rpg-audio.zip) |
-| bookPlace1.ogg | menu_cancel | https://kenney.nl/assets/rpg-audio (`Audio/bookPlace1.ogg` in kenney_rpg-audio.zip) |
+| bookFlip1.ogg | card | https://kenney.nl/assets/rpg-audio (`Audio/bookFlip1.ogg` in kenney_rpg-audio.zip) |
+| bookPlace1.ogg | menu_cancel, seal_stamp | https://kenney.nl/assets/rpg-audio (`Audio/bookPlace1.ogg` in kenney_rpg-audio.zip) |
 | bookPlace2.ogg | menu_cancel | https://kenney.nl/assets/rpg-audio (`Audio/bookPlace2.ogg` in kenney_rpg-audio.zip) |
-| cloth1.ogg | dash, double_jump, jump, land, slash, wing_flap | https://kenney.nl/assets/rpg-audio (`Audio/cloth1.ogg` in kenney_rpg-audio.zip) |
-| cloth2.ogg | dash, double_jump, jump, land, menu_cancel, slash, wing_flap | https://kenney.nl/assets/rpg-audio (`Audio/cloth2.ogg` in kenney_rpg-audio.zip) |
-| cloth3.ogg | dash, double_jump, jump, land, menu_cancel, slash, wing_flap | https://kenney.nl/assets/rpg-audio (`Audio/cloth3.ogg` in kenney_rpg-audio.zip) |
-| cloth4.ogg | dash, double_jump, jump, land, menu_cancel, slash, wing_flap | https://kenney.nl/assets/rpg-audio (`Audio/cloth4.ogg` in kenney_rpg-audio.zip) |
+| cloth1.ogg | dash, double_jump, jump, land, mount_up, pivot, slash, wing_flap | https://kenney.nl/assets/rpg-audio (`Audio/cloth1.ogg` in kenney_rpg-audio.zip) |
+| cloth2.ogg | dash, double_jump, jump, knock_off, land, launch, menu_cancel, pivot, slash, wing_flap | https://kenney.nl/assets/rpg-audio (`Audio/cloth2.ogg` in kenney_rpg-audio.zip) |
+| cloth3.ogg | dash, double_jump, jump, land, launch, menu_cancel, pivot, slash, wing_flap | https://kenney.nl/assets/rpg-audio (`Audio/cloth3.ogg` in kenney_rpg-audio.zip) |
+| cloth4.ogg | dash, double_jump, jump, land, launch, menu_cancel, slash, wing_flap | https://kenney.nl/assets/rpg-audio (`Audio/cloth4.ogg` in kenney_rpg-audio.zip) |
 | clothBelt.ogg | double_jump | https://kenney.nl/assets/rpg-audio (`Audio/clothBelt.ogg` in kenney_rpg-audio.zip) |
 | clothBelt2.ogg | double_jump | https://kenney.nl/assets/rpg-audio (`Audio/clothBelt2.ogg` in kenney_rpg-audio.zip) |
+| creak1.ogg | chest | https://kenney.nl/assets/rpg-audio (`Audio/creak1.ogg` in kenney_rpg-audio.zip) |
+| doorClose_1.ogg | door | https://kenney.nl/assets/rpg-audio (`Audio/doorClose_1.ogg` in kenney_rpg-audio.zip) |
+| doorOpen_1.ogg | door | https://kenney.nl/assets/rpg-audio (`Audio/doorOpen_1.ogg` in kenney_rpg-audio.zip) |
 | drawKnife1.ogg | slash, slash_heavy | https://kenney.nl/assets/rpg-audio (`Audio/drawKnife1.ogg` in kenney_rpg-audio.zip) |
 | drawKnife2.ogg | slash, slash_heavy | https://kenney.nl/assets/rpg-audio (`Audio/drawKnife2.ogg` in kenney_rpg-audio.zip) |
 | drawKnife3.ogg | slash, slash_heavy | https://kenney.nl/assets/rpg-audio (`Audio/drawKnife3.ogg` in kenney_rpg-audio.zip) |
 | handleCoins.ogg | coin | https://kenney.nl/assets/rpg-audio (`Audio/handleCoins.ogg` in kenney_rpg-audio.zip) |
 | handleCoins2.ogg | coin | https://kenney.nl/assets/rpg-audio (`Audio/handleCoins2.ogg` in kenney_rpg-audio.zip) |
-| handleSmallLeather.ogg | item | https://kenney.nl/assets/rpg-audio (`Audio/handleSmallLeather.ogg` in kenney_rpg-audio.zip) |
+| handleSmallLeather.ogg | item, mount_up | https://kenney.nl/assets/rpg-audio (`Audio/handleSmallLeather.ogg` in kenney_rpg-audio.zip) |
 | handleSmallLeather2.ogg | item | https://kenney.nl/assets/rpg-audio (`Audio/handleSmallLeather2.ogg` in kenney_rpg-audio.zip) |
 | knifeSlice.ogg | dagger | https://kenney.nl/assets/rpg-audio (`Audio/knifeSlice.ogg` in kenney_rpg-audio.zip) |
 | knifeSlice2.ogg | dagger | https://kenney.nl/assets/rpg-audio (`Audio/knifeSlice2.ogg` in kenney_rpg-audio.zip) |
-| metalLatch.ogg | menu_ok | https://kenney.nl/assets/rpg-audio (`Audio/metalLatch.ogg` in kenney_rpg-audio.zip) |
+| metalClick.ogg | coin_insert | https://kenney.nl/assets/rpg-audio (`Audio/metalClick.ogg` in kenney_rpg-audio.zip) |
+| metalLatch.ogg | chest, menu_ok, sheath | https://kenney.nl/assets/rpg-audio (`Audio/metalLatch.ogg` in kenney_rpg-audio.zip) |
 
-### rubberduck — CC0 1.0 (34)
+### rubberduck — CC0 1.0 (44)
 
 | 소재 / Source | 쓰인 곳 / Used in | 원본 / Origin |
 |---|---|---|
-| bfh1_metal_falling_01.ogg | enemy_die_stone | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_metal_falling_01.ogg` in sfx_breaking_and_falling.zip) |
+| bfh1_glass_hit_01.ogg | candle | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_glass_hit_01.ogg` in sfx_breaking_and_falling.zip) |
+| bfh1_glass_hit_02.ogg | candle | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_glass_hit_02.ogg` in sfx_breaking_and_falling.zip) |
+| bfh1_metal_falling_01.ogg | enemy_die_stone, enhance_fail | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_metal_falling_01.ogg` in sfx_breaking_and_falling.zip) |
 | bfh1_metal_falling_02.ogg | enemy_die_stone | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_metal_falling_02.ogg` in sfx_breaking_and_falling.zip) |
 | bfh1_metal_falling_03.ogg | enemy_die_stone | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_metal_falling_03.ogg` in sfx_breaking_and_falling.zip) |
-| bfh1_metal_falling_04.ogg | enemy_die_stone | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_metal_falling_04.ogg` in sfx_breaking_and_falling.zip) |
-| bfh1_rock_breaking_01.ogg | enemy_die_stone, explode, ult_impact | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_rock_breaking_01.ogg` in sfx_breaking_and_falling.zip) |
-| bfh1_rock_breaking_02.ogg | enemy_die_stone, explode, ult_impact | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_rock_breaking_02.ogg` in sfx_breaking_and_falling.zip) |
-| bfh1_rock_breaking_03.ogg | enemy_die_stone, explode, ult_impact | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_rock_breaking_03.ogg` in sfx_breaking_and_falling.zip) |
-| bfh1_rock_falling_03.ogg | ult_impact | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_rock_falling_03.ogg` in sfx_breaking_and_falling.zip) |
+| bfh1_metal_falling_04.ogg | enemy_die_stone, enhance_destroy | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_metal_falling_04.ogg` in sfx_breaking_and_falling.zip) |
+| bfh1_rock_breaking_01.ogg | break_wall, enemy_die_stone, explode, impact_crack, ult_impact | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_rock_breaking_01.ogg` in sfx_breaking_and_falling.zip) |
+| bfh1_rock_breaking_02.ogg | break_wall, enemy_die_stone, explode, impact_crack, ult_impact | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_rock_breaking_02.ogg` in sfx_breaking_and_falling.zip) |
+| bfh1_rock_breaking_03.ogg | break_wall, enemy_die_stone, explode, impact_crack, ult_impact | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_rock_breaking_03.ogg` in sfx_breaking_and_falling.zip) |
+| bfh1_rock_falling_02.ogg | break_wall | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_rock_falling_02.ogg` in sfx_breaking_and_falling.zip) |
+| bfh1_rock_falling_03.ogg | boss_die, ult_impact | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_rock_falling_03.ogg` in sfx_breaking_and_falling.zip) |
+| bfh1_rock_falling_04.ogg | break_wall | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_rock_falling_04.ogg` in sfx_breaking_and_falling.zip) |
 | bfh1_rock_falling_05.ogg | ult_impact | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_rock_falling_05.ogg` in sfx_breaking_and_falling.zip) |
+| bfh1_rock_falling_06.ogg | break_wall | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_rock_falling_06.ogg` in sfx_breaking_and_falling.zip) |
 | bfh1_rock_falling_07.ogg | ult_impact | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_rock_falling_07.ogg` in sfx_breaking_and_falling.zip) |
-| bfh1_rock_hit_01.ogg | hit_stone | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_rock_hit_01.ogg` in sfx_breaking_and_falling.zip) |
+| bfh1_rock_hit_01.ogg | ground_bounce, hit_stone | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_rock_hit_01.ogg` in sfx_breaking_and_falling.zip) |
 | bfh1_wood_falling_01.ogg | enemy_die_bone | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_wood_falling_01.ogg` in sfx_breaking_and_falling.zip) |
 | bfh1_wood_falling_02.ogg | enemy_die_bone | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx (`bfh1_wood_falling_02.ogg` in sfx_breaking_and_falling.zip) |
+| blade_01.ogg | scythe | https://opengameart.org/content/80-cc0-rpg-sfx (`blade_01.ogg` in 80-CC0-RPG-SFX_0.zip) |
 | chain_01.ogg | hurt, whip, whip_crack | https://opengameart.org/content/80-cc0-rpg-sfx (`chain_01.ogg` in 80-CC0-RPG-SFX_0.zip) |
 | chain_02.ogg | hurt, whip, whip_crack | https://opengameart.org/content/80-cc0-rpg-sfx (`chain_02.ogg` in 80-CC0-RPG-SFX_0.zip) |
 | chain_03.ogg | hurt, whip, whip_crack | https://opengameart.org/content/80-cc0-rpg-sfx (`chain_03.ogg` in 80-CC0-RPG-SFX_0.zip) |
-| item_coins_01.ogg | coin | https://opengameart.org/content/80-cc0-rpg-sfx (`item_coins_01.ogg` in 80-CC0-RPG-SFX_0.zip) |
+| creature_slime_01.ogg | jelly_zap | https://opengameart.org/content/80-cc0-rpg-sfx (`creature_slime_01.ogg` in 80-CC0-RPG-SFX_0.zip) |
+| item_coins_01.ogg | chest, coin | https://opengameart.org/content/80-cc0-rpg-sfx (`item_coins_01.ogg` in 80-CC0-RPG-SFX_0.zip) |
 | item_coins_02.ogg | coin | https://opengameart.org/content/80-cc0-rpg-sfx (`item_coins_02.ogg` in 80-CC0-RPG-SFX_0.zip) |
 | item_coins_03.ogg | coin | https://opengameart.org/content/80-cc0-rpg-sfx (`item_coins_03.ogg` in 80-CC0-RPG-SFX_0.zip) |
 | item_coins_04.ogg | coin | https://opengameart.org/content/80-cc0-rpg-sfx (`item_coins_04.ogg` in 80-CC0-RPG-SFX_0.zip) |
@@ -322,12 +401,15 @@ All v2 sounds are derivative works layered from the recordings below, every one 
 | item_stone_02.ogg | hit_stone | https://opengameart.org/content/80-cc0-rpg-sfx (`item_stone_02.ogg` in 80-CC0-RPG-SFX_0.zip) |
 | item_stone_03.ogg | hit_stone | https://opengameart.org/content/80-cc0-rpg-sfx (`item_stone_03.ogg` in 80-CC0-RPG-SFX_0.zip) |
 | item_stone_04.ogg | hit_stone | https://opengameart.org/content/80-cc0-rpg-sfx (`item_stone_04.ogg` in 80-CC0-RPG-SFX_0.zip) |
-| item_wood_01.ogg | enemy_die_bone | https://opengameart.org/content/80-cc0-rpg-sfx (`item_wood_01.ogg` in 80-CC0-RPG-SFX_0.zip) |
-| item_wood_02.ogg | enemy_die_bone | https://opengameart.org/content/80-cc0-rpg-sfx (`item_wood_02.ogg` in 80-CC0-RPG-SFX_0.zip) |
-| item_wood_03.ogg | enemy_die_bone | https://opengameart.org/content/80-cc0-rpg-sfx (`item_wood_03.ogg` in 80-CC0-RPG-SFX_0.zip) |
-| spell_fire_01.ogg | fire | https://opengameart.org/content/80-cc0-rpg-sfx (`spell_fire_01.ogg` in 80-CC0-RPG-SFX_0.zip) |
+| item_wood_01.ogg | bone_rattle, enemy_die_bone, hit_bone | https://opengameart.org/content/80-cc0-rpg-sfx (`item_wood_01.ogg` in 80-CC0-RPG-SFX_0.zip) |
+| item_wood_02.ogg | enemy_die_bone, hit_bone | https://opengameart.org/content/80-cc0-rpg-sfx (`item_wood_02.ogg` in 80-CC0-RPG-SFX_0.zip) |
+| item_wood_03.ogg | enemy_die_bone, hit_bone | https://opengameart.org/content/80-cc0-rpg-sfx (`item_wood_03.ogg` in 80-CC0-RPG-SFX_0.zip) |
+| spell_fire_01.ogg | fire, fire_breath | https://opengameart.org/content/80-cc0-rpg-sfx (`spell_fire_01.ogg` in 80-CC0-RPG-SFX_0.zip) |
+| spell_fire_02.ogg | holywater_burn | https://opengameart.org/content/80-cc0-rpg-sfx (`spell_fire_02.ogg` in 80-CC0-RPG-SFX_0.zip) |
 | spell_fire_03.ogg | fire | https://opengameart.org/content/80-cc0-rpg-sfx (`spell_fire_03.ogg` in 80-CC0-RPG-SFX_0.zip) |
+| spell_fire_04.ogg | holywater_burn | https://opengameart.org/content/80-cc0-rpg-sfx (`spell_fire_04.ogg` in 80-CC0-RPG-SFX_0.zip) |
 | spell_fire_05.ogg | fire | https://opengameart.org/content/80-cc0-rpg-sfx (`spell_fire_05.ogg` in 80-CC0-RPG-SFX_0.zip) |
+| spell_fire_06.ogg | holywater_burn | https://opengameart.org/content/80-cc0-rpg-sfx (`spell_fire_06.ogg` in 80-CC0-RPG-SFX_0.zip) |
 | spell_fire_07.ogg | fire | https://opengameart.org/content/80-cc0-rpg-sfx (`spell_fire_07.ogg` in 80-CC0-RPG-SFX_0.zip) |
 
 ### Fantozzi (freesound.org pack 10338, CC0) — 잘라 올림: qubodup — CC0 1.0 (10)
@@ -349,20 +431,20 @@ All v2 sounds are derivative works layered from the recordings below, every one 
 
 | 소재 / Source | 쓰인 곳 / Used in | 원본 / Origin |
 |---|---|---|
-| qubodupImpactMeat01.flac | hit, hit_flesh | https://opengameart.org/content/impact (`qubodupImpact/qubodupImpactMeat01.flac` in qubodupImpact.7z) |
-| qubodupImpactMeat02.flac | hit, hit_flesh | https://opengameart.org/content/impact (`qubodupImpact/qubodupImpactMeat02.flac` in qubodupImpact.7z) |
+| qubodupImpactMeat01.flac | hit, hit_flesh, splash, wolf_bite | https://opengameart.org/content/impact (`qubodupImpact/qubodupImpactMeat01.flac` in qubodupImpact.7z) |
+| qubodupImpactMeat02.flac | hit, hit_flesh, splash | https://opengameart.org/content/impact (`qubodupImpact/qubodupImpactMeat02.flac` in qubodupImpact.7z) |
 | qubodupImpactStone.flac | hit_stone | https://opengameart.org/content/impact (`qubodupImpact/qubodupImpactStone.flac` in qubodupImpact.7z) |
-| qubodupPunch01.flac | clang, crit, hit, hit_flesh, hit_heavy, slash_heavy | https://opengameart.org/content/punch (`qubodupPunch/qubodupPunch01.flac` in qubodupPunch.7z) |
-| qubodupPunch02.flac | clang, hit, hit_flesh, hit_heavy, hurt, slash_heavy | https://opengameart.org/content/punch (`qubodupPunch/qubodupPunch02.flac` in qubodupPunch.7z) |
-| qubodupPunch03.flac | clang, crit, hit, hit_flesh, hit_heavy, hurt, slash_heavy | https://opengameart.org/content/punch (`qubodupPunch/qubodupPunch03.flac` in qubodupPunch.7z) |
-| qubodupPunch04.flac | clang, crit, hit, hit_flesh, hit_heavy, hurt, slash_heavy | https://opengameart.org/content/punch (`qubodupPunch/qubodupPunch04.flac` in qubodupPunch.7z) |
+| qubodupPunch01.flac | clang, crit, dash_burst, hit, hit_bone, hit_flesh, hit_heavy, slash_heavy | https://opengameart.org/content/punch (`qubodupPunch/qubodupPunch01.flac` in qubodupPunch.7z) |
+| qubodupPunch02.flac | clang, dash_burst, hit, hit_bone, hit_flesh, hit_heavy, hurt, slash_heavy, wall_bounce | https://opengameart.org/content/punch (`qubodupPunch/qubodupPunch02.flac` in qubodupPunch.7z) |
+| qubodupPunch03.flac | clang, crit, dash_burst, hit, hit_bone, hit_flesh, hit_heavy, hurt, seal_stamp, slash_heavy, wall_bounce | https://opengameart.org/content/punch (`qubodupPunch/qubodupPunch03.flac` in qubodupPunch.7z) |
+| qubodupPunch04.flac | clang, crit, hit, hit_bone, hit_flesh, hit_heavy, hurt, slash_heavy, wall_bounce | https://opengameart.org/content/punch (`qubodupPunch/qubodupPunch04.flac` in qubodupPunch.7z) |
 | qubodupPunch05.flac | clang, crit, hit, hurt | https://opengameart.org/content/punch (`qubodupPunch/qubodupPunch05.flac` in qubodupPunch.7z) |
 
 ### MedicineStorm (OGA) — Still North Media / Free Firearm Sound Library 팀 녹음, CC0 — CC0 1.0 (4)
 
 | 소재 / Source | 쓰인 곳 / Used in | 원본 / Origin |
 |---|---|---|
-| Mace Norse Sword Blade.wav | crit | https://opengameart.org/content/medieval-sound-effects-weapon-impacts (`Mace Norse Sword Blade.wav` in medieval_sfx_weapon_on_weapon_1_of_2.7z) |
-| Norse Sword Katana Blade on Blade.wav | clang, crit, ult_impact | https://opengameart.org/content/medieval-sound-effects-weapon-impacts (`Norse Sword Katana Blade on Blade.wav` in medieval_sfx_weapon_on_weapon_1_of_2.7z) |
-| Sabre Katana Blade on Blade.wav | clang, crit, ult_impact | https://opengameart.org/content/medieval-sound-effects-weapon-impacts (`Sabre Katana Blade on Blade.wav` in medieval_sfx_weapon_on_weapon_1_of_2.7z) |
-| Sabre Norse Sword Blade on Blade.wav | clang | https://opengameart.org/content/medieval-sound-effects-weapon-impacts (`Sabre Norse Sword Blade on Blade.wav` in medieval_sfx_weapon_on_weapon_1_of_2.7z) |
+| Mace Norse Sword Blade.wav | crit, knight_guard | https://opengameart.org/content/medieval-sound-effects-weapon-impacts (`Mace Norse Sword Blade.wav` in medieval_sfx_weapon_on_weapon_1_of_2.7z) |
+| Norse Sword Katana Blade on Blade.wav | clang, counter, crit, ult_impact | https://opengameart.org/content/medieval-sound-effects-weapon-impacts (`Norse Sword Katana Blade on Blade.wav` in medieval_sfx_weapon_on_weapon_1_of_2.7z) |
+| Sabre Katana Blade on Blade.wav | clang, counter, crit, ult_impact | https://opengameart.org/content/medieval-sound-effects-weapon-impacts (`Sabre Katana Blade on Blade.wav` in medieval_sfx_weapon_on_weapon_1_of_2.7z) |
+| Sabre Norse Sword Blade on Blade.wav | clang, counter | https://opengameart.org/content/medieval-sound-effects-weapon-impacts (`Sabre Norse Sword Blade on Blade.wav` in medieval_sfx_weapon_on_weapon_1_of_2.7z) |

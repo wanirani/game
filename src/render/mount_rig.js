@@ -158,13 +158,28 @@ export function footCycle(u, duty, sweep, lift, out = FC) {
   out[2] = s;
   return out;
 }
-/** 발걸음 위상 차 (다리 순서: 먼 뒤 · 먼 앞 · 가까운 뒤 · 가까운 앞) */
+/**
+ * 발걸음 위상 차 (다리 순서: 먼 뒤 · 먼 앞 · 가까운 뒤 · 가까운 앞). 다리 i 는 보폭 위상 ph 가 (−off[i]) mod 1 일 때 땅에 닿는다.
+ * TURNMOUNT: 걷기 = 4박자 옆걸음 (뒤 → 같은 쪽 앞), 질주 = 3박자 (뒤 하나 → 대각선 한 쌍 → 이끄는 앞발 → 체공).
+ */
 export const GAIT = {
-  walk: [0, 0.25, 0.5, 0.75],          // 4박자 옆걸음 (LH 0, LF .25, RH .5, RF .75)
-  trot: [0, 0.5, 0.5, 0],              // 대각선 쌍
-  rotary: [0, 0.55, 0.12, 0.45],       // 질주 (LH 0, RH .12, RF .45, LF .55)
-  bound: [0, 0.58, 0.08, 0.5],         // 도약 (앞 한 쌍 · 뒤 한 쌍)
+  walk: [0, 0.75, 0.5, 0.25],          // 4박자: 먼 뒤 0 → 먼 앞 .25 → 가까운 뒤 .5 → 가까운 앞 .75
+  trot: [0, 0.5, 0.5, 0],              // 2박자 대각선 쌍
+  canter: [0, 0.7, 0.7, 0.45],         // 3박자 질주 (말 · 멧돼지): 먼 뒤 0 → (가까운 뒤 + 먼 앞) .3 → 가까운 앞 .55 → 체공
+  bound: [0, 0.64, 0, 0.5],            // 3박자 도약 (늑대 · 사슴 · 그리핀): 두 뒷발 0 → 먼 앞 .36 → 가까운 앞 .5 → 체공
+  rotary: [0, 0.55, 0.12, 0.45],       // (예전 4박자 질주 — 참고용, 엔진은 쓰지 않는다)
 };
+/** 걸음새의 발 위상 차 (질주는 템플릿의 gallop 종류) */
+export function gaitOffsets(T, gait) {
+  if (gait === 'gallop') return T?.gallop === 'bound' ? GAIT.bound : GAIT.canter;
+  return gait === 'trot' ? GAIT.trot : GAIT.walk;
+}
+/** 착지 위상 (보폭 위상 0..1, 겹치는 박자는 하나로) — 발굽 소리를 그림과 맞출 때: footfalls(templateFor(m), 'gallop') */
+export function footfalls(T, gait) {
+  const out = [];
+  for (const o of gaitOffsets(T, gait)) { const f = Math.round(((1 - o) % 1) * 1000) / 1000; if (!out.some((x) => Math.abs(x - f) < 0.02)) out.push(f); }
+  return out.sort((a, b) => a - b);
+}
 
 // ───────────────────────── 공개 API ─────────────────────────
 export function mountPose(m, dt) {
@@ -196,9 +211,10 @@ function newPose(T, m) {
     legs: [leg(), leg(), leg(), leg()],
     nx: 0, ny: 0, na: 0, hx: 0, hy: 0, ha: 0, jaw: 0, ear: 0, blink: 0, snort: 0, look: 0,
     tx: 0, ty: 0, ta: new Array(n).fill(T.tail?.a ?? 2), tl: T.tail?.len ?? 5, mane: 0,
-    seat: { x: 0, y: 0, lean: 0 }, sl: { x: 0, y: 0 },
+    seat: { x: 0, y: 0, lean: 0 }, sl: { x: 0, y: 0 }, maneV: 0,
     paw: 0, dig: 0, howl: 0, charge: 0, hurt: 0, fire: 0,
-    s: { na: T.neck?.a ?? -1, nav: 0, ha: T.head?.a ?? 0.5, hav: 0, ta: new Array(n).fill(T.tail?.a ?? 2), tav: new Array(n).fill(0), bob: 0, sq: 0, lastAnim: '', idleSeed: (hashId(m.id) % 97) + 1 },
+    s: { na: T.neck?.a ?? -1, nav: 0, ha: T.head?.a ?? 0.5, hav: 0, ta: new Array(n).fill(T.tail?.a ?? 2), tav: new Array(n).fill(0), bob: 0, sq: 0, lastAnim: '', idleSeed: (hashId(m.id) % 97) + 1,
+      sqv: 0, pb: null, mn: 0, mnv: 0, mv: 0, mvv: 0, ln: 0, lnv: 0, lp: 0, sk: 0 },
   };
 }
 function hashId(s) { let h = 7; s = String(s ?? ''); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
@@ -237,30 +253,43 @@ export function quadPose(m, dt, P, T) {
   else if (walk) gait = speedK > 0.55 ? 'trot' : 'walk';
   P.gait = gait;
   const ph = fin(m.phase, 0);
-  const duty = gait === 'gallop' ? T.duty.gallop : gait === 'trot' ? T.duty.trot : T.duty.walk;
+  // 속도 → 보폭 모양 (TURNMOUNT): 빠를수록 딛는 비율 ↓ (체공 ↑) · 발을 높이 · 앞발을 멀리. 위상 속도(m.phase)는 mount.js 그대로라
+  // 딛는 동안 발이 미끄러지지 않는다 (sweep = 보폭 × duty)
+  const spd = gait === 'gallop' ? clamp((speedK - 0.6) / 0.8, 0, 1) : gait === 'walk' || gait === 'trot' ? clamp(speedK / 0.55, 0, 1) : 0;
+  S.sk = dt > 0 ? lerp(S.sk ?? spd, spd, clamp(dt * 4, 0, 1)) : spd;
+  const sk = S.sk;
+  const duty = (gait === 'gallop' ? T.duty.gallop * (1.08 - 0.16 * sk) : gait === 'trot' ? T.duty.trot : T.duty.walk * (1.03 - 0.06 * sk));
   const strideLen = gait === 'gallop' ? 110 : 70;
-  const sweep = strideLen * duty * (gait === 'gallop' && T.gallop === 'trot' ? 0.8 : 1);
-  const lift = gait === 'gallop' ? T.lift[1] : T.lift[0];
-  const offs = gait === 'gallop' ? GAIT[T.gallop === 'trot' ? 'trot' : T.gallop === 'bound' ? 'bound' : 'rotary'] : gait === 'trot' ? GAIT.trot : GAIT.walk;
-  // 들썩임 (+ = 아래): 걸음은 두 번 오르내림, 질주는 체공 때 높다
+  const sweep = strideLen * duty;
+  const lift = (gait === 'gallop' ? T.lift[1] * (0.85 + 0.35 * sk) : T.lift[0] * (0.85 + 0.25 * sk));
+  const offs = gaitOffsets(T, gait);
+  // 들썩임 (+ = 아래): 걸음은 앞발이 닿을 때마다 (두 번), 질주는 이끄는 앞발로 받을 때 가장 낮고 체공 때 가장 높다
   let bob = 0;
   const cyc = ph * TAU;
   if (gait === 'walk') bob = -Math.abs(Math.sin(cyc * 2)) * T.bob[0] + T.bob[0] * 0.5;
   else if (gait === 'trot') bob = Math.cos(cyc * 4) * T.bob[1] * 0.5;
-  else if (gait === 'gallop') bob = Math.sin(cyc + (T.gallop === 'rotary' ? 0.9 : 0.4)) * T.bob[2];
+  else if (gait === 'gallop') bob = Math.cos(TAU * (ph - 0.45)) * T.bob[2] * (0.8 + 0.2 * sk);   // 진폭 ≤ 예전 (안장 → 기수 피격 상자 범위 그대로)
   else if (gait === 'stand') bob = Math.sin(t * 2.2 + S.idleSeed) * 0.6;          // 숨쉬기
   else if (gait === 'swim') bob = 6 + Math.sin(t * 3.2) * 1.5;                      // 물속으로 가라앉음
   else if (gait === 'knocked') bob = 6 * clamp(at / 0.18, 0, 1);
   // 착지 찌그러짐 (land · special 내리찍기)
+  // 착지 찌그러짐: 닿는 순간 눌렸다가 (스프링) 살짝 튀어 오른다 — 다리는 IK 로 굽는다
   let sq = 0;
-  if (a === 'land') sq = Math.max(0, 1 - at / 0.22);
-  else if (a === 'special' && !rearK) sq = Math.max(0, 1 - at / 0.2) * 0.9;
-  S.sq = dt > 0 ? lerp(S.sq, sq, clamp(dt * 30, 0, 1)) : sq;
-  bob += S.sq * 5;
+  if (a === 'land') sq = at < 0.07 ? 1 : 0;
+  else if (a === 'special' && !rearK) sq = at < 0.06 ? 0.9 : 0;
+  if (dt > 0) { spring(S, 'sq', 'sqv', sq, dt, 420, 15); S.sq = clamp(S.sq, -0.35, 1.25); }
+  else { S.sq = sq; S.sqv = 0; }
+  bob += S.sq * 5.5;
   // 몸 기울기: 런타임 pitch (앞들기·공중·피격) + 걸음 흔들림
-  let pitch = fin(m.pitch, -0.7 * rearK);
-  if (gait === 'walk') pitch += Math.sin(cyc * 2) * 0.02;
-  else if (gait === 'gallop' && m.pitch == null) pitch += Math.sin(cyc) * 0.07;
+  // 런타임 기울기에서 MountRider 자신의 질주 흔들림(mount.js: run 이면 sin(위상)·0.05)을 빼고 이 엔진의 3박자 흔들림을 쓴다
+  const rtOsc = a === 'run' && m.rideO ? Math.sin(cyc) * 0.05 : 0;
+  let pitch = fin(m.pitch, -0.7 * rearK) - rtOsc;
+  const pitch0 = pitch;                                 // 흔들림을 뺀 기울기 — 기수 상체 맞받기 기준
+  let osc = 0;
+  if (gait === 'walk') osc = Math.sin(cyc * 2) * 0.02;
+  else if (gait === 'gallop') osc = Math.sin(TAU * (ph - 0.3)) * 0.06 * (0.8 + 0.4 * sk);   // 뒷발로 밀 때 앞이 들리고, 앞발로 받을 때 숙인다
+  pitch += osc;
+  if (gait === 'gallop') pitch += 0.025 + 0.035 * sk;  // 빠를수록 앞으로 숙인다
   if (gait === 'swim') pitch -= 0.1;
   if (a === 'charge') pitch += 0.035;
   if (a === 'dig') pitch += 0.08 * Math.min(1, at / 0.08);
@@ -282,9 +311,17 @@ export function quadPose(m, dt, P, T) {
   // 안장
   const sx0 = T.seat[0], sy0 = T.seat[1];
   P.sl.x = X(sx0, sy0); P.sl.y = Y(sx0, sy0);
+  // 기수 (TURNMOUNT): 골반은 등뼈(안장점)를 따라 오르내리고, 체공 때 살짝 떠오른다 (± 1.5 px 이내 — 피격 상자 영향 없음 수준).
+  // 상체는 몸의 흔들림을 반대로 받아 (스프링, 지연) 머리가 덜 흔들리고, 빠를수록 앞으로 숙인다.
+  let post = 0;
+  if (gait === 'gallop' && ph > 0.86) post = -1.0 * Math.sin(Math.PI * (ph - 0.86) / 0.14);   // 체공 (이끄는 앞발이 뜬 뒤)
+  else if (gait === 'trot') post = -0.8 * Math.max(0, Math.sin(cyc * 4));
+  const lnT = clamp(pitch0 * 0.55, -0.45, 0.25) - osc * 0.45 + (gait === 'gallop' ? 0.04 + 0.06 * sk : gait === 'trot' ? 0.03 : 0) - S.sq * 0.06;
+  if (dt > 0) spring(S, 'ln', 'lnv', lnT, dt, 70, 12); else { S.ln = lnT; S.lnv = 0; }
   const f = (m.facing ?? 1) < 0 ? -1 : 1;
-  P.seat.x = (m.cx ?? 0) + f * P.sl.x; P.seat.y = (m.bottom ?? 0) + P.sl.y;
-  P.seat.lean = clamp(pitch * 0.55, -0.45, 0.25) + (gait === 'gallop' ? Math.sin(cyc * 2) * 0.02 : 0);
+  P.seat.x = (m.cx ?? 0) + f * P.sl.x; P.seat.y = (m.bottom ?? 0) + P.sl.y + post;
+  P.seat.lean = clamp(Number.isFinite(S.ln) ? S.ln : lnT, -0.5, 0.35);
+  S.lc = P.seat.lean - clamp(pitch0 * 0.55, -0.45, 0.25); S.post = post;   // B 탈것(mounts_b finishSeat)이 이어 쓴다
   // ── 다리 ──
   for (let i = 0; i < 4; i++) {
     const fore = i === 1 || i === 3, near = i >= 2;
@@ -298,7 +335,7 @@ export function quadPose(m, dt, P, T) {
     if (gait === 'walk' || gait === 'trot' || gait === 'gallop') {
       const fc = footCycle(ph + offs[i], duty, sweep, lift);
       tx = restX + fc[0]; ty = fc[1]; up = fc[2];
-      if (fore && up > 0) tx += up * (gait === 'gallop' ? 6 : 3);          // 앞다리는 들 때 앞으로 뻗는다
+      if (fore && up > 0) tx += up * (gait === 'gallop' ? 6 + 4 * sk : 3 + sk);          // 앞다리는 들 때 앞으로 뻗는다 (빠를수록 멀리)
     } else if (gait === 'air') {
       const rising = (m.vy ?? 0) < 0;
       if (fore) { tx = L.rx + (rising ? 11 : 10); ty = L.ry + (rising ? len * 0.52 : len * 0.8); }
@@ -353,9 +390,10 @@ export function quadPose(m, dt, P, T) {
   // ── 목 · 머리 ──
   const N = T.neck, H = T.head;
   let na = N.a, ha = H.a, jaw = 0;
-  if (gait === 'walk') na += Math.sin(cyc * 2 + 0.6) * 0.05;
+  // 걷기: 앞발이 닿을 때마다 고개를 끄덕인다 (보폭당 두 번) · 질주: 이끄는 앞발로 받을 때 목을 내리고 체공 때 든다
+  if (gait === 'walk') na += Math.cos(TAU * 2 * (ph - 0.3)) * 0.06 * (0.8 + 0.4 * sk);
   else if (gait === 'trot') na += Math.sin(cyc * 4) * 0.04;
-  else if (gait === 'gallop') { na += 0.22 + Math.sin(cyc + 0.3) * T.pump; ha += Math.sin(cyc + 1.2) * 0.06; }
+  else if (gait === 'gallop') { na += 0.22 + Math.cos(TAU * (ph - 0.62)) * T.pump * (0.8 + 0.4 * sk); ha += Math.cos(TAU * (ph - 0.75)) * 0.07; }
   else if (gait === 'stand') { na += look * 0.05; ha += Math.sin(t * 0.7 + S.idleSeed) * 0.04; }
   else if (gait === 'air') na += (m.vy ?? 0) < 0 ? -0.1 : 0.12;
   else if (gait === 'swim') { na -= 0.25; ha -= 0.15; }
@@ -388,12 +426,21 @@ export function quadPose(m, dt, P, T) {
   else if (gait === 'rear') base -= 0.25 * rearK;
   if (a === 'hurt') base += 0.5 * P.hurt;
   const sway = gait === 'stand' ? Math.sin(t * 1.6 + S.idleSeed) * 0.12 : Math.sin(t * (gait === 'gallop' ? 9 : 5)) * 0.08;
+  // 몸이 오르내리는 속도 → 꼬리·갈기가 반대로 출렁 (뿌리 마디만 받고, 나머지는 사슬 스프링이 늦게 따른다)
+  const bvel = dt > 0 && S.pb != null ? clamp((bob - S.pb) / dt, -160, 160) : 0;
+  S.pb = bob;
+  base += bvel * 0.0022;
   for (let k = 0; k < n; k++) {
     const want = (k === 0 ? base + pitch : S.ta[k - 1]) + sway * (0.4 + k * 0.3) + (k > 0 ? 0.06 : 0);
     if (dt > 0) { const kk = 220 - k * 25, cc = 18 - k; const acc = (want - S.ta[k]) * kk - S.tav[k] * cc; S.tav[k] += acc * dt; S.ta[k] += S.tav[k] * dt; }
     else { S.ta[k] = want; S.tav[k] = 0; }
     P.ta[k] = S.ta[k];
   }
-  P.mane = clamp(speedK * 0.8 + (gait === 'air' ? 0.4 : 0) + (a === 'charge' ? 0.3 : 0), 0, 1);
+  // 갈기 (스프링): 흩날림(속도 · 공중 · 돌진)은 약간 늦게 따라가고 넘친다, maneV = 위아래 출렁임 (−1 아래 … 1 위, 몸 속도의 반대)
+  const mnT = clamp(speedK * 0.8 + (gait === 'air' ? 0.4 : 0) + (a === 'charge' ? 0.3 : 0), 0, 1);
+  if (dt > 0) { spring(S, 'mn', 'mnv', mnT, dt, 60, 9); spring(S, 'mv', 'mvv', clamp(bvel * 0.012, -1, 1) - S.nav * 0.04, dt, 110, 10); }
+  else { S.mn = mnT; S.mnv = 0; S.mv = 0; S.mvv = 0; }
+  P.mane = clamp(Number.isFinite(S.mn) ? S.mn : mnT, 0, 1.15);
+  P.maneV = clamp(Number.isFinite(S.mv) ? S.mv : 0, -1, 1);
   return P;
 }

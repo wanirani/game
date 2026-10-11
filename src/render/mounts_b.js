@@ -143,10 +143,17 @@ function viewSpecial(m, T) {
   o.anim = a; o.rearK = 0; o.pitch = 0;
   return o;
 }
-function finishSeat(P, m) {
-  const f = (m.facing ?? 1) < 0 ? -1 : 1;
-  P.seat.x = fin(m.cx, 0) + f * P.sl.x; P.seat.y = fin(m.bottom, 0) + P.sl.y;
-  P.seat.lean = clamp(P.pitch * 0.55, -0.45, 0.3);
+function finishSeat(P, m, extra = 0) {
+  const f = (m.facing ?? 1) < 0 ? -1 : 1, S = P.s;
+  // 네발 엔진이 푼 기수 맞받기(상체 지연 · 속도 숙임 · 체공 들림)는 땅에서만 이어 쓴다 (TURNMOUNT)
+  const ground = P.gait !== 'air' && P.gait !== 'swim';
+  P.seat.x = fin(m.cx, 0) + f * P.sl.x; P.seat.y = fin(m.bottom, 0) + P.sl.y + (ground ? fin(S?.post, 0) : 0);
+  P.seat.lean = clamp(P.pitch * 0.55 + (ground ? fin(S?.lc, 0) : 0) + extra, -0.5, 0.35);
+}
+/** 날갯짓 몸 들썩임 (+ = 아래): 내려칠 때 몸이 떠오르고 들어 올릴 때 가라앉는다 (st.down = 내려치기 비율, 짧을수록 빠른 내려치기) */
+function flapBob(S, W, amp) {
+  if (!(S.cw > 0.02)) return 0;
+  return amp * stroke(S.wph - 0.06, W.down) * S.cw;
 }
 /** 속도 방향 → 몸 기울기 (코 아래 = +) */
 function velPitch(m, def, lo, hi) {
@@ -384,11 +391,16 @@ function flyQuadPose(m, dt, P, T) {
   if (a === 'hurt') base += 0.3 * P.hurt;
   const sway = gait === 'stand' ? Math.sin(t * 1.3 + S.seed) * 0.1 : Math.sin(t * (flying ? 4 : gait === 'gallop' ? 8 : 4.5) + S.seed) * (flying ? 0.07 : 0.09);
   tailSolve(dt, P, T, base, sway, flying ? 0.45 : gait === 'gallop' ? 0.6 : 1);
-  // 날개
+  // 날개 (TURNMOUNT: 빠른 내려치기 · 느린 들어올리기 → 몸이 날갯짓에 맞춰 오르내리고 앞뒤로 살짝 흔들린다; 기수 상체는 반대로 받는다)
   const st = wingState(m, a, at, t, onG, T), W = T.wing;
+  let fb = 0;
+  if (!onG && a !== 'swim') {
+    fb = flapBob(S, W, gri ? 2.6 : 3.4);
+    if (fb) { rigidRot(P, P.sl.x, P.sl.y, fb * 0.008); shift(P, 0, fb); }
+  }
   const r0 = qBody(P, T, W.x, W.y, _p0), r1 = qBody(P, T, W.x + W.far[0], W.y + W.far[1], _p1);
   wingSolve(dt, P, T, st, r0[0], r0[1], r1[0], r1[1]);
-  finishSeat(P, m);
+  finishSeat(P, m, -fb * 0.012);
   return P;
 }
 const _p0 = [0, 0], _p1 = [0, 0];
@@ -423,7 +435,7 @@ function batPose(m, dt, P, T) {
     bobT = 8 + Math.sin(t * 3) * 1.2; pitchT = -0.05; headT = -0.1;
   } else {
     const hov = a === 'hover' || a === 'fall';
-    bobT = -Math.sin(S.wph * TAU) * (hov ? 1.2 : 2.2);                           // 내려칠 때 몸이 떠오른다
+    bobT = S.we == null ? 0 : stroke(S.wph - 0.06, T.wing.down) * (hov ? 1.4 : 2.6) * Math.max(0.3, S.cw);   // 내려칠 때 몸이 떠오른다 (빠른 내려치기)
     pitchT = a === 'flap' || a === 'jump' || a === 'takeoff' ? -0.12 : a === 'fall' ? 0.06 : a === 'glide' ? 0.04 : 0;
     legT = 0.3 + Math.sin(t * 3.1 + S.seed) * 0.12;
     if (a === 'dive') { pitchT = velPitch(m, 0.6, 0.3, 1.1); legT = 0.9; headT = 0.12; }
@@ -516,7 +528,7 @@ RIG.registerTemplate('wyvern', {
   gallop: 'rotary', lift: [8, 14], bob: [1.4, 2.8, 4], pump: 0.08, stretch: 0.03,
   duty: { walk: 0.64, trot: 0.5, gallop: 0.38 },
   wing: wingT([-7.55, -65.77], [7.97, -107.44], [-91.7, -128.68], {
-    fold: [-0.15, -0.3, -0.47, 0.14], sweep: [-0.42, -0.62, -0.93, 0.06], far: [7, -3], period: 0.4, down: 0.45, glide: [0.5, 0.28], fingers: 3,
+    fold: [-0.15, -0.3, -0.47, 0.14], sweep: [-0.42, -0.62, -0.93, 0.06], far: [7, -3], period: 0.4, down: 0.34, glide: [0.5, 0.28], fingers: 3,
   }),
   jawMax: 0.5, diveA: 0.87, headLim: [-0.45, 0.3],
 });
@@ -533,7 +545,7 @@ RIG.registerTemplate('griffin', {
   gallop: 'bound', lift: [8, 16], bob: [1.3, 2.8, 4.6], pump: 0.09, stretch: 0.05,
   duty: { walk: 0.62, trot: 0.5, gallop: 0.34 },
   wing: wingT([-0.77, -54.02], [-10.18, -86.08], [-76.39, -116.05], {
-    fold: [-0.25, -0.4, -0.62, 0.18], sweep: [-0.45, -0.6, -0.95, 0.04], far: [6, -3], period: 0.42, down: 0.45, glide: [0.55, 0.3], feather: true,
+    fold: [-0.25, -0.4, -0.62, 0.18], sweep: [-0.45, -0.6, -0.95, 0.04], far: [6, -3], period: 0.42, down: 0.34, glide: [0.55, 0.3], feather: true,
   }),
   jawMax: 0.4, diveA: 1.2, headLim: [-0.4, 0.18],
 });
@@ -546,7 +558,7 @@ RIG.registerTemplate('bat', {
   leg: { a: [-33.35, -22.29], b: [-53.22, -2.16] },
   seat: [-3.97, -52.27],
   wing: wingT([-1.81, -53.57], [1.21, -101.09], [-93.83, -128.74], {
-    fold: [-0.1, -0.6, -0.62, -0.12], sweep: [-0.35, -0.62, -0.95, -0.02], far: [6, -3], period: 0.28, down: 0.5, glide: [0.45, 0.25],
+    fold: [-0.1, -0.6, -0.62, -0.12], sweep: [-0.35, -0.62, -0.95, -0.02], far: [6, -3], period: 0.28, down: 0.4, glide: [0.45, 0.25],
     hover: { per: 0.2, amp: 0.45, bias: 0.4 }, gx: 22, fingers: 4,
   }),
   crawlSink: 9, jawMax: 0.6,
