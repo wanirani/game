@@ -50,7 +50,7 @@ import { minify } from './lib/minify.mjs';
 export const BUDGET = {
   siteBytes: 90 * MB,        // dist/web (downloads/·assets/audio/ 제외) — MASTER_PLAN §1.20 (채색 그림 포함)
   musicBytes: 64 * MB,       // assets/audio/music/ (녹음 배경 음악 — 서비스 워커가 미리 받지 않는다)
-  sfxBytes: 3 * MB,          // assets/audio/sfx/ (효과음 샘플 m4a + ogg)
+  sfxBytes: 3 * MB,          // assets/audio/sfx/ + sfx_v2/ (효과음 샘플 m4a + ogg)
   apkImageBytes: 70 * MB,    // APK 그림 단계 기준: APK 입력에서 소리를 뺀 크기 (넘으면 lo 단계, MASTER_PLAN §1.20 — 2026-10-05 45→48 MB, 2026-10-08 48→70 MB: 휴대폰에서도 원본 그림)
   apkInputBytes: 110 * MB,   // APK 에 들어갈 웹 파일 전체 (압축 전; APK 파일 예산 95 MB 는 build_apk.sh 가 지킨다) (dist/web − sw.js − downloads/ − build.json − _redirects, 소리 포함)
   criticalBr: 1.6 * MB,      // 첫 화면 경로 brotli (platform §9.1) — 기본 경고, --strict 면 실패
@@ -457,7 +457,7 @@ function sizeReport(OUT, report, { html, chunkFiles, cssFonts, opts, warn }) {
     byDir[top] = (byDir[top] || 0) + b;
     if (rel.startsWith('downloads/')) { downloads += b; continue; }
     count++;
-    if (rel.startsWith('assets/audio/')) { audio += b; if (rel.startsWith('assets/audio/music/')) music += b; else if (rel.startsWith('assets/audio/sfx/')) sfx += b; }
+    if (rel.startsWith('assets/audio/')) { audio += b; if (rel.startsWith('assets/audio/music/')) music += b; else if (/^assets\/audio\/sfx(_v2)?\//.test(rel)) sfx += b; }   // v2 효과음 묶음(기본 소리)도 효과음 예산에
     else site += b;
     if (!/^(sw\.js|build\.json|_redirects)$/.test(rel)) apkInput += b;
     if (/^src\/.*\.js$/.test(rel)) {
@@ -497,7 +497,7 @@ function sizeReport(OUT, report, { html, chunkFiles, cssFonts, opts, warn }) {
   log(opts, `        JS ${fmtMB(jsRaw)} → brotli ${fmtMB(jsBr)} / gzip ${fmtMB(jsGz)}; 첫 화면 경로 brotli ${fmtMB(critBr)} (예산 ${fmtMB(BUDGET.criticalBr)})`);
   if (!report.budgets.site.ok) throw new BuildError(`dist/web 이 예산을 넘습니다: ${fmtMB(site)} > ${fmtMB(BUDGET.siteBytes)}`);
   if (!report.budgets.music.ok) throw new BuildError(`녹음 음악(assets/audio/music)이 예산을 넘습니다: ${fmtMB(music)} > ${fmtMB(BUDGET.musicBytes)}`);
-  if (!report.budgets.sfx.ok) throw new BuildError(`효과음 샘플(assets/audio/sfx)이 예산을 넘습니다: ${fmtMB(sfx)} > ${fmtMB(BUDGET.sfxBytes)}`);
+  if (!report.budgets.sfx.ok) throw new BuildError(`효과음 샘플(assets/audio/sfx + sfx_v2)이 예산을 넘습니다: ${fmtMB(sfx)} > ${fmtMB(BUDGET.sfxBytes)}`);
   // MASTER_PLAN §1.20: 소리를 뺀 APK 입력이 그림 단계 기준(70 MB)을 넘으면 APK 는 bg/cg/portraits 의 원본 대신 assets/lo 만 싣는다 (APK 담당). 그 경우의 크기도 보고한다.
   let lite = apkImage;
   if (!report.budgets.apkImage.ok) {

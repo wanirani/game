@@ -254,7 +254,7 @@ export class ResultsScene extends Scene {
     }
     // 줄 간격·바닥 여백은 실제 글자 크기(글자 크기 설정의 하한 textFloor 포함)로 — 아주 크게에서 「▼ 목록」이 상자 바닥에 닿았다 (qafix)
     const s1 = Math.max(13, textFloor()), s2 = Math.max(11, textFloor());
-    const lh = Math.ceil(s1 * 1.3), top = Math.ceil(s1 * 1.22), foot = Math.ceil(s2 * 1.45), h = top + (lines.length - 1) * lh + foot + Math.ceil(s2 * 0.35) + 3;
+    const lh = Math.ceil(s1 * 1.2), top = Math.ceil(s1 * 1.12), foot = Math.ceil(s2 * 1.35), h = top + (lines.length - 1) * lh + foot + Math.ceil(s2 * 0.3) + 2;
     const r = { x, y: yb - h, w, h };
     Q.rect = taps.add('qol.list', r, { owner: this, kind: 'primary', src: 'results.qol' });
     ctx.fillStyle = 'rgba(10,4,12,0.72)'; ctx.fillRect(r.x, r.y, r.w, r.h);

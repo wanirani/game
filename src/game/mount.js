@@ -112,6 +112,20 @@ export function findMountSpot(world, p, def, o = {}) {
 }
 
 // ───────────────────────── 탈것 기수 ─────────────────────────
+/** 발굽 소리 박자 (qafix · TURNMOUNT 요청): mount_rig 의 걸음새 착지 위상 footfalls(templateFor(m), gait) — 걷기 4박자, 질주 3박자(말·멧돼지
+ *  canter / 늑대·사슴 bound). 템플릿이 없으면(날개 탈것 등) 예전 박자. 탈것·걸음새마다 한 번만 계산 */
+const HOOF_BEATS = new Map();
+function hoofBeats(m, gait) {
+  const k = `${m?.def?.rig ?? ''}|${m?.id ?? m?.def?.id ?? ''}|${gait}`;
+  let b = HOOF_BEATS.get(k);
+  if (!b) {
+    try { const T = RIG.templateFor?.(m); b = T && RIG.footfalls ? RIG.footfalls(T, gait) : null; } catch { b = null; }
+    if (!b?.length) b = gait === 'gallop' ? [0, 0.12, 0.45, 0.55] : [0, 0.25, 0.5, 0.75];
+    HOOF_BEATS.set(k, b);
+  }
+  return b;
+}
+
 export class MountRider {
   constructor(system, id, def) {
     this.system = system ?? null;
@@ -952,7 +966,7 @@ export class MountRider {
     if (onG) this.phase = (this.phase + sp * dt / stride) % 1;
     else if (this.inWater) this.phase = (this.phase + dt * 1.6) % 1;
     if (onG && sp > 20) {
-      const beats = this.galloping || this.chargeT > 0 ? [0, 0.12, 0.45, 0.55] : [0, 0.25, 0.5, 0.75];
+      const beats = hoofBeats(this, this.galloping || this.chargeT > 0 ? 'gallop' : 'walk');   // 그림의 다리 착지와 같은 박자 (TURNMOUNT GAIT)
       for (const b of beats) if (crossed(prev, this.phase, b)) {
         this.hoof(world, this.galloping ? 0.5 : 0.28);
         if (this.galloping && Math.random() < 0.6 * q(world)) world.fx?.emit('dust', p.cx - p.facing * rand(10, 30), p.bottom, { speed: 60, size: rand(6, 10), angle: -Math.PI / 2 - p.facing * 0.8, spread: 0.6 });

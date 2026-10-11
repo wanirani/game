@@ -118,3 +118,11 @@ node tools/deploy/smoke_deployed.mjs https://blood-nocturne.netlify.app
 - 결정 대기: 비전 길 아케이드는 영웅 Lv 85 · 적 Lv 80 · 초월과 같은 순위표; 비전 각성 설명 숫자가 실제(올린 값)보다 작게 읽힘(보여 주는 화면은 아직 없음).
 - APK 그림 단계 68.25 / 70 MiB (초상화 설치 뒤) — 새 그림 여유 ≈ 1.75 MiB.
 - 열린 요청은 `/tmp/claude-0/plan/requests_f.md` (impact.js 의 proc 숫자 넘기기, `reg_front.js` 'arcadeClass' 등록, run_all 에 `test_trials`, 망토 색 외형 칸 등).
+
+## 6. 2단계 묶음 QA 메모 (2026-10-11, qafix)
+
+- 「바로 장착」(주운 장비 토스트): 이번 출시는 터치 탭 · 마우스 클릭만. 패드·키보드는 메뉴 › 장비 「최적 장착」(R / Y). `docs/specs/qol_equip.md` 결정 줄.
+- 직업 특성 성능 예산(PerkLayer 표식 24개 < 0.05 ms, umbra·bellsaint p95 ≤ 0.1 ms)은 출시를 막지 않는다. 부하가 큰 소프트웨어 렌더 상자에서 잰 값: PerkLayer p50 0.13–0.21 ms, umbra p95 0.14–0.30 ms, bellsaint p95 ≈ 0.15 ms (`/tmp/claude-0/g6/bal.md`, `ver.md`). 실제 기기에서 다시 잰다.
+- 터치 덧캔버스(#tpadcv)는 모든 품질 단계에서 기기 DPR(상한 3, 6.5 MP)로 그린다 — `perf_budget` 의 `tpadcv.dpr` 규칙도 그렇게 바뀌었다 (메모리 ≤ 2 GB 기기만 1.5 / 1.5 MP).
+- 쉬는 스틱: 떠 있는 스틱도 기본 자리에 그린 받침 + 금빛 손잡이를 버튼과 같은 불투명도로 보인다 (영웅·보스가 겹치면 0.35).
+

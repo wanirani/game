@@ -531,25 +531,26 @@ function legacyVisuals(world, fx, attack, info, cls, px, py, dir, mat, rim, el, 
 
 function hitSounds(world, attack, target, info, cls, cmp) {
   const pitch = rand(0.92, 1.08);
-  if (info.prop) { sfxPlay('hit', { vol: 0.5, pitch }); return; }
-  if (cls === 'U') { if (!info.cont) sfxPlay(info.crit ? 'crit' : 'hit', { vol: 0.35, pitch }); return; }
+  const x = target?.cx ?? (Number.isFinite(target?.x) ? target.x + (target.w || 0) / 2 : undefined);   // v2 효과음 좌우 (화면 위치 · audio._v2Opts)
+  if (info.prop) { sfxPlay('hit', { vol: 0.5, pitch, x }); return; }
+  if (cls === 'U') { if (!info.cont) sfxPlay(info.crit ? 'crit' : 'hit', { vol: 0.35, pitch, x }); return; }
   const L = HIT_SFX[cls] ?? HIT_SFX.L;
   const main = (n) => (sfxHas(n) ? n : 'hit_heavy');   // ult_impact·awaken_boom 이 아직 없으면 기존 소리로
   const vol = cmp ? 0.55 : info.cont ? 0.6 : 0.9;
-  sfxPlay(info.crit ? 'crit' : L[0] ? main(L[0]) : 'hit', { vol, pitch });
-  if (info.crit && L[0] && L[0] !== 'hit') sfxPlay(main(L[0]), { vol: vol * 0.7, pitch });
+  sfxPlay(info.crit ? 'crit' : L[0] ? main(L[0]) : 'hit', { vol, pitch, x });
+  if (info.crit && L[0] && L[0] !== 'hit') sfxPlay(main(L[0]), { vol: vol * 0.7, pitch, x });
   if (info.cont || cmp) return;
   const mat = info.part?.armor ? 'metal' : target.def?.material ?? 'flesh';
   const M = MATERIAL[mat];
   for (const layer of L.slice(1)) {
     if (layer === 'mat') {
-      if (M?.sfx) sfxPlay(M.sfx, { vol: 0.6, pitch });
+      if (M?.sfx) sfxPlay(M.sfx, { vol: 0.6, pitch, x });
       const w = weightOf(target);
-      if (M?.clang && (w === 'HEAVY' || w === 'FIXED')) sfxPlay('clang', { vol: 0.45, pitch });
-    } else sfxPlay(layer, { vol: 0.8, pitch });
+      if (M?.clang && (w === 'HEAVY' || w === 'FIXED')) sfxPlay('clang', { vol: 0.45, pitch, x });
+    } else sfxPlay(layer, { vol: 0.8, pitch, x });
   }
-  if (info.counter) sfxPlay(COUNTER.sfx, { vol: 0.9 });
-  if (info.back) sfxPlay(BACK.sfx, { vol: 0.7 });
+  if (info.counter) sfxPlay(COUNTER.sfx, { vol: 0.9, x });
+  if (info.back) sfxPlay(BACK.sfx, { vol: 0.7, x });
 }
 
 /** 창 상한을 다 쓴 타격(info.capMute)의 소리: 작은 쇳소리 하나, 0.35초에 한 번까지 (숫자 없이 '막혔다' 만 들리게) */

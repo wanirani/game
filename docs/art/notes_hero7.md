@@ -78,7 +78,7 @@ PUPPET_PIPELINE.md 와 heroes3(아젤) 노트를 따라 7번째 영웅 이졸데
 | 게임 | 데스크톱 s01·s13·s10·s04, 모바일 844×390 s05·s11·s13 + 재빌드 후 s10 흑룡기사·s05 에인헤랴르(모바일): 퍼펫 state 1, 페이지 오류 0, 4xx/5xx 0, atlas_ui/turn 요청 0, 왼쪽 보기 정상, 어두운 스테이지에서 읽힘 |
 | 대체 경로 | isolde 퍼펫 차단·rig 404 → 벡터(state −1, 오류 0), 4초 지연 → 벡터 후 퍼펫으로 바뀜 |
 | `tools/qa/painted_registry.mjs` | 35 pass / 0 fail, cover.heroes = 49직업 |
-| 웹 빌드 (`dist/web_h7art`, 확인 후 삭제) | 위 §0 예산 표. 경고 2개는 기존 것(옛 APK, CREDITS.md) |
+| 웹 빌드 (`dist/web_h7art`, 확인 후 삭제) | 위 §0 예산 표. 경고 2개는 기존 것(옛 APK, CREDITS.md — 지금은 `assets/audio/LICENSE-CREDITS.txt` 로 바뀌어 경고 없음) |
 
 ## 5. 알려진 문제
 - 4타(g3)·charge 와인드업 f≈1.02 에서 먼 팔이 닿지 않아 먼 주먹이 자루 옆으로 ≈5–6px 뜸 → H7-PLAY 에 요청(무기 손을 덜 당기거나 그 구간 P.two ↓).

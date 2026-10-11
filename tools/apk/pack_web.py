@@ -289,7 +289,7 @@ def check_painted(www):
 
 def pack_music(www, sizes, budget, how):
     """www 의 녹음 음악을 예산 안에서 우선순위대로 남긴다. sizes 를 고친다. → {music, musicDropped, musicFiles, sfx, rewrote}"""
-    sfx = sum(1 for r in sizes if r.startswith(AUDIO + 'sfx/'))
+    sfx = sum(1 for r in sizes if (r.startswith(AUDIO + 'sfx/') or r.startswith(AUDIO + 'sfx_v2/')))
     ip = www / MUSIC / 'index.json'
     out = {'music': 0, 'musicDropped': [], 'musicFiles': [], 'sfx': sfx, 'rewrote': False}
     if not ip.is_file():

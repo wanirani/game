@@ -237,7 +237,7 @@ class ModalBase {
 const SLOT_LABEL = (s) => SLOT_NAMES[s] ?? s;
 const nameOfUid = (state, uid) => { const it = findItem(state, uid); return it ? itemName(it) : '비어 있음'; };
 const colOfUid = (state, uid) => { const it = findItem(state, uid); return it ? RARITY_COL[it.rarity ?? 0] : PAL.faint; };
-const FIX_WHY = { locked: '잠긴 장비라 그대로 둡니다', special: '고유·신화 장비라 그대로 둡니다' };
+const FIX_WHY = { locked: '잠긴 장비라 바꾸지 않습니다', special: '고유·신화 장비라 바꾸지 않습니다' };   // 「둡」 은 부분 글꼴에 없다 (qafix)
 
 /**
  * 최적 장착 미리보기. plans = bestLoadout 결과 1개(장비 탭) 또는 planAll().plans(파티 화면).
@@ -307,7 +307,7 @@ export class LoadoutModal extends ModalBase {
         text(ctx, ellipsize(ctx, b, half, 13, 800), nx + half + 24, cy, { size: 13, weight: 800, color: colOfUid(this.state, l.to), ow: 2 });
       } else {
         text(ctx, SLOT_LABEL(l.slot), x + 20, cy, { size: 12, weight: 700, color: PAL.faint, ow: 2 });
-        text(ctx, ellipsize(ctx, `${nameOfUid(this.state, this.plans[0].before[l.slot])} — ${FIX_WHY[l.why] ?? '그대로 둡니다'}`, w - 104, 12, 600), x + 84, cy, { size: 12, weight: 600, color: PAL.faint, ow: 2 });
+        text(ctx, ellipsize(ctx, `${nameOfUid(this.state, this.plans[0].before[l.slot])} — ${FIX_WHY[l.why] ?? '바꾸지 않습니다'}`, w - 104, 12, 600), x + 84, cy, { size: 12, weight: 600, color: PAL.faint, ow: 2 });
       }
       if (l.score != null) {
         drawMark(ctx, x + w - 70, cy - 5, 11, l.score > 0.05 ? 'up' : l.score < -0.05 ? 'down' : 'eq');

@@ -107,7 +107,8 @@ function afterToasts(g, top) {
     if (!r0 || r0.hidden) break;
     const n = Math.max(1, t._lines?.length || 1);
     if (t._qol && !t._qol.done) {
-      const rect = { x: r0.l, y: r0.top, w: r0.r - r0.l, h: n * r0.h };
+      const pl = t._plan, l = Number.isFinite(pl?.l) ? pl.l : r0.l, rr = Number.isFinite(pl?.r) ? pl.r : r0.r;   // hudfix: 줄마다 폭이 다르다 → 그 토스트가 실제로 쓴 가로 범위
+      const rect = { x: l, y: r0.top, w: rr - l, h: n * r0.h };
       taps.add('qol.toast', rect, { kind: 'primary', src: 'qol.pickup' });
       const p = input.pointer;
       if (p?.tapped && p.x >= rect.x && p.x <= rect.x + rect.w && p.y >= rect.y && p.y <= rect.y + rect.h) {
