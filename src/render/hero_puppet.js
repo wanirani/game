@@ -312,7 +312,7 @@ function releaseEntry(E) {
   let b = 0;
   for (const L of E.levels) b += assets.release(akey(E, 'atlas', L)) + assets.release(akey(E, 'mask', L));
   b += assets.release(`${E.root}/${E.key}/turn`) + assets.release(`${E.root}/${E.key}/turn_mask`);
-  b += assets.release(`${E.root}/${E.key}/turn16_ui`) + assets.release(`${E.root}/${E.key}/turn16_lo`);   // 16방향 시트 (메뉴 턴테이블)
+  b += assets.release(`${E.root}/${E.key}/turn16_ui`) + assets.release(`${E.root}/${E.key}/turn16_lo`) + assets.release(`${E.root}/${E.key}/turn16_mask`);   // 16방향 시트 (메뉴 턴테이블)
   E.turnImg = null; E.turnMask = null;
   for (const k in E.dark) recycle(E.dark[k]);
   E.dark = {};
@@ -1173,12 +1173,18 @@ function t16Img(I, lo) {
   const kx = k === 1 ? 1 : k.kx, ky = k === 1 ? 1 : k.ky;
   return { img: t16Src(I, img, kx === 1 ? 'ui' : 'lo'), kx, ky };
 }
-/** 초월 색조(V.tint)는 마스크 없이 시트 전체에 (갑옷색 재칠은 16방향 마스크가 없어 원화 색 그대로) — 변형·시트별 1회 */
+/** 장비 갑옷색(V.ac/V.tc)은 16방향 재질 마스크(turn16_mask, 반 해상도)로 다시 칠하고, 초월 색조(V.tint)는 시트 전체에 — 변형·시트별 1회.
+ *  마스크를 받는 중이면 원화 색 그대로 (받으면 다음 프레임부터 재칠) */
 function t16Src(I, img, lv) {
-  const V = I.V;
-  if (!V || !V.tint || typeof document === 'undefined') return img;
+  const V = I.V, T = turn16Entry(I);
+  if (!V || typeof document === 'undefined' || (!V.tint && !V.ac && !V.tc)) return img;
   V.t16 = V.t16 || {};
-  return V.t16[lv] || (V.t16[lv] = recolorCanvas(img, null, { ...V, ac: null, tc: null }));
+  if (V.t16[lv]) return V.t16[lv];
+  const recol = !!(V.ac || V.tc) && !!T?.mask;
+  let mk = null;
+  if (recol) { mk = assets.get(`${I.E.root}/${I.E.key}/turn16_mask`, T.mask.v); if (!mk) return img; }
+  if (!recol && !V.tint) return img;
+  return (V.t16[lv] = recolorCanvas(img, mk, recol ? V : { ...V, ac: null, tc: null }));
 }
 /** 이 퍼펫이 16방향 뷰를 그릴 수 있는가 (시트 로드 전이면 요청하고 false) */
 export function turn16Ready(I, lo = false) { return !!t16Img(I, lo); }

@@ -1,7 +1,7 @@
 // 장비 비교 공용 컴포넌트 (docs/specs/qol_equip.md §3) — owner: QOL
 //  장비 탭 · 가방 상세 · 상점 · 대장간(강화 전/후) · 결과 화면이 같은 모양으로 쓴다.
 //   compareInfo(state, hero, inst, opts) → gear_score.gearDelta 결과 (같은 장비·같은 영웅 상태면 캐시)
-//   summaryText(info) → "종합 ▲ +3.2 · 초당 피해 +12%" (한 줄)
+//   summaryText(info) → "종합 +3.2 · 초당 피해 +12%" (한 줄 — ▲▼= 는 drawMark 로 따로)
 //   drawMark(ctx, x, y, s, mark) — ▲(초록) ▼(빨강) =(회색) 도형 · drawFace(ctx, cx, cy, d, charId) — 영웅 얼굴 작은 원
 //   drawCompare(ctx, r, info, {maxRows}) → 쓴 높이 — "착용 중인 ○○과 비교" 표 (종합 점수 · 능력치 증감 · 초당 피해 어림 · +효과)
 //   LoadoutModal — 최적 장착 미리보기 (칸별 바뀌는 것 · 고정 칸 · 총 증감 → 확인) · DisposeModal — 일괄 처분 미리보기
@@ -48,7 +48,7 @@ function equipSig(state, hero) {
 export function compareInfo(state, hero, inst, opts = {}) {
   if (!state || !hero || !inst) return null;
   const mode = opts.mode ?? gearSettings().weights;
-  const key = `${equipSig(state, hero)}|${inst.uid}|${inst.level | 0}|${inst.rarity | 0}|${mode}|${opts.slot ?? ''}`;
+  const key = `${equipSig(state, hero)}|${inst.uid ?? inst.baseId}|${inst.baseId}|${inst.level | 0}|${inst.rarity | 0}|${mode}|${opts.slot ?? ''}`;
   const hit = CACHE.get(key);
   if (hit) return hit;
   let info = null;
@@ -95,7 +95,8 @@ export function summaryText(info) {
   if (!info) return '';
   if (!info.comparable) return info.reason || '비교할 수 없는 장비';
   if (info.here) return '지금 장착 중';
-  const parts = [`종합 ${info.mark === 'up' ? '▲' : info.mark === 'down' ? '▼' : '='} ${scoreStr(info.score)}`];
+  // 표시(▲▼=)는 그리는 쪽이 모양(drawMark)으로 붙인다 — 글자에는 되풀이하지 않는다
+  const parts = [`종합 ${scoreStr(info.score)}`];
   if (info.dps && Math.abs(info.dps.pct) >= 0.5) parts.push(`초당 피해 ${info.dps.pct > 0 ? '+' : '−'}${Math.round(Math.abs(info.dps.pct))}%`);
   if (info.effect) parts.push('+효과');
   return parts.join(' · ');

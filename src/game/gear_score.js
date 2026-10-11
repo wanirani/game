@@ -142,6 +142,15 @@ export function statRows(a, b) {
  * opts: { mode: 'atk'|'bal'|'def', slot: 'acc1'|'acc2'(장신구 칸 지정), base: 미리 계산한 지금 능력치 }
  */
 export function gearDelta(state, hero, inst, opts = {}) {
+  // 가방에 없는 장비(상점 진열품 · 되사기 목록 · 보상 미리보기)는 계산하는 동안만 가방에 잠시 넣는다 (능력치 계산이 uid 로 찾으므로)
+  if (inst && Array.isArray(state?.inventory) && !(inst.uid && findItem(state, inst.uid))) {
+    const tmp = inst.uid ? inst : Object.assign(Object.create(Object.getPrototypeOf(inst)), inst, { uid: '__qol_tmp' });
+    state.inventory.push(tmp);
+    try { return gearDelta0(state, hero, tmp, opts); } finally { const i = state.inventory.lastIndexOf(tmp); if (i >= 0) state.inventory.splice(i, 1); }
+  }
+  return gearDelta0(state, hero, inst, opts);
+}
+function gearDelta0(state, hero, inst, opts = {}) {
   const out = { comparable: false, reason: '', slot: null, vs: null, here: false, by: null, lvOk: true, score: null, mark: null, rows: [], dps: null, ehp: null, effect: hasEffect(inst), loseEffect: false };
   if (!state || !hero || !inst) return out;
   const c = comparable(state, hero, inst);

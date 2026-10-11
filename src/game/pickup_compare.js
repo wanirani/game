@@ -90,9 +90,13 @@ function onTap(g, q) {
 }
 
 // ── 토스트 줄 사각형 → 탭 등록 · 판정 (game.drawToasts 뒤) ──
+/** 토스트가 HUD 토스트 줄에 그려지는 장면인가 (스테이지 · 마을) — 메뉴·상점처럼 자리를 따로 잡는 장면은 아니다 */
+function canTap(g, top = g?.top) {
+  return !!g?.hudScene?.()?.world && !!top && top.toastX === undefined && top.toastY === undefined && !top.uiScale;
+}
 function afterToasts(g, top) {
-  const base = g.hudScene?.();
-  if (!base?.world || top?.toastX !== undefined || top?.toastY !== undefined || top?.uiScale) return;
+  if (!canTap(g, top)) return;
+  const base = g.hudScene();
   if (!g.toasts.some((t) => t._qol)) return;
   const L = hudLayout(base.world, g.viewW, g.viewH);
   const rows = L?.toastRows | 0;
@@ -131,7 +135,8 @@ function decorate(g, item) {
   const st = g?.state;
   if (!st?.heroes || !findItem(st, item.uid)) return;
   const hero = st.heroes[st.charId];
-  if (!hero || isEquipped(st, item.uid)) return;
+  if (!hero) return;
+  if (isEquipped(st, item.uid)) { delete item.isNew; return; }   // 받자마자 끼운 장비(새 게임 · 아케이드 준비물)는 NEW 아님
   const mode = gearSettings(g.settings).weights;
   let mark = null, score = null, slot = null, other = null;
   if (canEquip(st, hero, item).ok) {
@@ -151,7 +156,9 @@ function decorate(g, item) {
   let suf = '';
   if (mark) suf += ` ${mark === 'up' ? '▲' : mark === 'down' ? '▼' : '='} ${sc}`;
   // 패드에는 새 단축키를 두지 않는다 (qol_equip 정리: 토스트 터치·클릭만) → 패드면 안내 없이 표시만
-  if (mark === 'up' && input.mode !== 'pad') suf += input.touchMode ? ' · 눌러서 장착' : ' · 클릭해 장착';
+  // 누를 수 있는 곳(스테이지·마을 HUD 위 토스트)에서만 「장착」 안내 — 상점·메뉴 같은 화면의 토스트는 표시만
+  const tappable = mark === 'up' && input.mode !== 'pad' && canTap(g);
+  if (tappable) suf += input.touchMode ? ' · 눌러서 장착' : ' · 클릭해 장착';
   else if (other) suf += ` · ${CHARACTERS[other]?.name?.split(' ')[0] ?? ''}에게 ▲`;
   const name = itemName(item);
   const head = `획득: ${name}`;
@@ -160,7 +167,7 @@ function decorate(g, item) {
   if (t) retext(t, t.text + suf);
   else { g.toast(head + suf, '#efe4cf', 3); t = g.toasts[g.toasts.length - 1]; }
   if (!t) return;
-  if (mark === 'up') { t._qol = { uid: item.uid, slot, mark }; t.t = t.max = Math.max(t.max ?? 0, 4); }
+  if (tappable) { t._qol = { uid: item.uid, slot, mark }; t.t = t.max = Math.max(t.max ?? 0, 4); }
   hook(g);
 }
 

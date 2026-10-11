@@ -381,7 +381,12 @@ class Game {
     st.width = cssW + 'px'; st.height = cssH + 'px';
     this.canvasRect = { x, y, w: cssW, h: cssH };
     this.cssScale = cssH / this.viewH;
+    const bandWas = this.viewBand;
     this.viewBand = band;   // 캔버스 아래에 패드 띠가 있나 (touchpad·hud_layout 이 읽는다)
+    // [hudredo] 띠가 생기면 캔버스 아래 가장자리에 가는 금빛 선 (띠와 게임 화면을 나눈다) + 띠 바탕을 거의 검게
+    const bs = band ? '0 1px 0 rgba(232,200,114,0.28), 0 6px 14px rgba(0,0,0,0.55)' : '';
+    if (st.boxShadow !== bs) st.boxShadow = bs;
+    if (bandWas !== band) this.applySurround();
     this.safeCss = ins;
     const k = this.cssScale;
     this.safe = { l: ins.l / k, r: ins.r / k, t: ins.t / k, b: ins.b / k };
@@ -440,7 +445,10 @@ class Game {
     const el = typeof document !== 'undefined' ? document.getElementById('app') : null;
     if (!el) return;
     const t = this._surround, top = t?.top || '#1a0812', bot = t?.bottom || t?.top || '#0c0408';
-    const css = `radial-gradient(ellipse at 50% 45%, rgba(120,20,36,0.20) 0%, rgba(0,0,0,0) 60%), linear-gradient(${top}, #0a0307 50%, ${bot})`;
+    // [hudredo] 버튼 배치 '아래 띠': 예전 판처럼 아래 띠는 거의 검은 바탕 (스테이지 색은 아래 가장자리에만 살짝)
+    const css = this.viewBand
+      ? `radial-gradient(ellipse at 50% 120%, rgba(110,18,32,0.22) 0%, rgba(0,0,0,0) 65%), linear-gradient(#050207, #070306 70%, #0b0408)`
+      : `radial-gradient(ellipse at 50% 45%, rgba(120,20,36,0.20) 0%, rgba(0,0,0,0) 60%), linear-gradient(${top}, #0a0307 50%, ${bot})`;
     if (el.style.background !== css) el.style.background = css;
   }
   /** 화면 배치에 영향을 주는 설정이 바뀌었나 (옵션에서 바꾸면 다음 rAF 에 다시 배치) */

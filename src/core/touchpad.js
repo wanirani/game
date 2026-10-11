@@ -313,7 +313,7 @@ function layout(force = false) {
   LSIG.i = 0; LSIG.ch = false;
   lput(W); lput(H); lput(ins.l); lput(ins.r); lput(ins.t); lput(ins.b); lput(cr.x); lput(cr.y); lput(cr.w); lput(cr.h); lput(vw); lput(vh); lput(safeT);
   lput(st.touchScale); lput(st.touchLeftHanded); lput(st.touchLayout); lput(st.safeArea); lput(st.touchStick); lput(fsShown()); lput(g?.dpr); lput(S.fontEpoch);
-  lput(st.hud?.preset); lput(st.hud?.scale); lput(st.hud?.pad); lput(town ? 1 : 0); lput(g?.tier);
+  lput(st.hud?.preset); lput(st.hud?.scale); lput(st.hud?.pad); lput(town ? 1 : 0); lput(g?.tier); lput(S.hiddenKey);
   if (!force && S.L && !LSIG.ch) return S.L;
   S.lver++;
 
@@ -350,7 +350,8 @@ function layout(force = false) {
     const d = Math.max(MIN_D, d0);
     btnList.push({ id, cx: left ? ins.l + r : W - ins.r - r, cy: H - ins.b - b, d });
   }
-  settle(btnList, bounds, null, 120, gap);
+  // 장면이 숨긴 버튼(마을의 공격·스킬 등)은 밀어내기에서 뺀다 — 숨은 공격 버튼 자리 때문에 마을의 점프·탈것이 밀려나지 않게
+  settle(S.editor ? btnList : btnList.filter((b) => !S.hidden.has(b.id)), bounds, null, 120, gap);
   const btn = {};
   for (const b of btnList) btn[b.id] = b;
 
@@ -394,8 +395,9 @@ function layout(force = false) {
 function shownBtn(id) {
   if (S.editor) return true;
   if (S.hidden.has(id)) return false;
-  if (id === 'mount') return !!S.shown.mount || !!S.L?.fold;   // 폴드: 늘 보이고, 쓸 수 없으면 어둡게 (hud_mobile §3 맨 아래 줄)
-  if (id === 'guard') return !!S.shown.guard || !!S.L?.fold;
+  // 폴드·아래 띠: 늘 보이고, 쓸 수 없으면 어둡게 (hud_mobile §3 맨 아래 줄; 띠는 빈 칸이 생기지 않게 — hudredo)
+  if (id === 'mount') return !!S.shown.mount || !!S.L?.fold || !!S.L?.band;
+  if (id === 'guard') return !!S.shown.guard || !!S.L?.fold || !!S.L?.band;
   return true;
 }
 /** 편집기가 열려 있으면 편집 중인 위치, 아니면 배치 */

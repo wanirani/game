@@ -241,7 +241,7 @@ export class ResultsScene extends Scene {
   drawQol(ctx, L) {
     const Q = this.qol;
     if (!Q || (!Q.dispose && !Q.gear.length)) return;
-    const x = L.x + L.w + GAP, w = RANK_W, yb = L.y + L.ph - 8;
+    const x = L.x + L.w + GAP, w = RANK_W, yb = L.y + L.ph + 30;   // 등급 문장(흘러내린 핏자국 포함) 아래 — 점수판 바닥보다 조금 내려 겹치지 않게
     const lines = [];
     const D = Q.dispose;
     if (D?.count) {
@@ -258,7 +258,7 @@ export class ResultsScene extends Scene {
     ctx.fillStyle = 'rgba(10,4,12,0.72)'; ctx.fillRect(r.x, r.y, r.w, r.h);
     ctx.strokeStyle = 'rgba(200,160,90,0.55)'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
     lines.forEach(([t, c], i) => text(ctx, t, x + w / 2, r.y + 16 + i * lh, { size: 13, align: 'center', weight: 700, color: c, maxWidth: w - 10 }));
-    text(ctx, '▼ 목록', x + w / 2, r.y + h - 3, { size: 10, align: 'center', weight: 700, color: COLORS.dim });
+    text(ctx, '▼ 목록', x + w / 2, r.y + h - 3, { size: 11, align: 'center', weight: 700, color: COLORS.dim });
   }
   /** [qol] 펼친 목록: 처분한 장비 · 이번에 얻은 장비 (지금 영웅 기준 ▲/▼) */
   drawQolList(ctx, L) {

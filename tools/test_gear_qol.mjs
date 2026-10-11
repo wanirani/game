@@ -18,6 +18,8 @@ const near = (a, b, e = 1e-6) => Math.abs(a - b) <= e;
 const LS = new Map();
 Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: (k) => (LS.has(k) ? LS.get(k) : null), setItem: (k, v) => LS.set(k, String(v)), removeItem: (k) => LS.delete(k) } });
 
+// 장비 능력치 굴림이 무작위라 결과가 흔들리지 않게 Math.random 을 고정 씨앗으로 (mulberry32)
+{ let a = 0x9e3779b9; Math.random = () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const imp = (p) => import(path.join(ROOT, p));
 const { newGameState, ensureHero, migrateState } = await imp('src/game/state.js');
 const INV = await imp('src/game/inventory.js');
@@ -160,7 +162,9 @@ section('자동 처분 (절대 금지 · 예외)');
   const rare = add(st, 'a_cloak_2', { rarity: 2 });
   const epic = add(st, 'a_cloak_1', { rarity: 3 });
   const uniq = add(st, 'u_goldbat');
-  const better = add(st, 'a_ring_9', { rarity: 1 });     // 카엘에게 ▲ (더 높은 단계 반지)
+  // 카엘에게 ▲ (더 높은 단계 반지) — 붙는 능력치가 무작위라 확실히 좋은 것이 나올 때까지 다시 만든다
+  let better = add(st, 'a_ring_9', { rarity: 1 });
+  for (let i = 0; i < 40 && !((G.gearDelta(st, h, better, {}).score ?? 0) > 1); i++) { INV.removeItem ? INV.removeItem(st, better.uid) : st.inventory.splice(st.inventory.indexOf(better), 1); better = add(st, 'a_ring_9', { rarity: 1 }); }
   const forBran = add(st, 'w_greatsword_7', { rarity: 1 });   // 브란 전용 계열 무기, 브란에게 ▲
   const eqd = INV.findItem(st, h.equip.body);             // 시작 갑옷 (장착 중, 일반)
   const key = INV.findItem(st, st.inventory.find((i) => ITEMS[i.baseId]?.slot === 'key')?.uid) ?? (INV.addByBase(st, 'k_rift_lantern', 1, {}, { silent: true }), st.inventory.find((i) => i.baseId === 'k_rift_lantern'));
