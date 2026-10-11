@@ -554,10 +554,11 @@ function toT0(P, x, y) { H.tx(P, x, y, TXO); return TXO; }
 let MESH = false;
 const BA = [null, null, 0, 0, 0, 0], BB = [null, null, 0, 0, 0, 0];
 function bone(o, a, b, AX, AY, BX, BY) { o[0] = a; o[1] = b; o[2] = AX; o[3] = AY; o[4] = BX; o[5] = BY; return o; }
-const meshOK = (p1, p2) => MESH && R.parts[p1] && R.parts[p2] && LV.rects[p1] && LV.rects[p2];
+// 먼 팔·다리(dark)는 어둡게 몸 뒤에 있어 휘어짐이 거의 안 보인다 → 예전 판 그대로 (메시 비용 절반)
+const meshOK = (p1, p2, dark = false) => MESH && !dark && R.parts[p1] && R.parts[p2] && LV.rects[p1] && LV.rects[p2];
 function legPup(c, K, hx, hy, kx, ky, ax, ay, t, dark) {
   const J = R.J;
-  if (meshOK('thigh', 'shin')) {
+  if (meshOK('thigh', 'shin', dark)) {
     const img = dark ? DARK : IMG;
     bone(BA, J.hip, J.knee, hx, hy, kx, ky); bone(BB, J.knee, J.ankle, kx, ky, ax, ay);
     drawSkinned(c, img, LV.rects.thigh, R.parts.thigh, BA, BB, 'end', R.PS);
@@ -570,7 +571,7 @@ function legPup(c, K, hx, hy, kx, ky, ax, ay, t, dark) {
 }
 function armPup(c, sx, sy, ex, ey, hx, hy, dark, hand) {
   const J = R.J;
-  if (meshOK('uarm', 'farm')) {
+  if (meshOK('uarm', 'farm', dark)) {
     const img = dark ? DARK : IMG;
     bone(BA, J.shoulder, J.elbow, sx, sy, ex, ey); bone(BB, J.elbow, J.hand, ex, ey, hx, hy);
     drawSkinned(c, img, LV.rects.uarm, R.parts.uarm, BA, BB, 'end', R.PS);
