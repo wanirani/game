@@ -531,8 +531,8 @@ const BEFORE = {   // node tools/test_hud_layout.mjs --coverage-only 를 f395dcd
   'phone1/overlay/stage': { pad: 13.1, hud: 3.6, union: 16.8, padInk: 11.2 },
 };
 const REDO_DEVS = [
-  { id: 'fold2', w: 1000, h: 755, dpr: 2, fold: true, bandable: true, quality: 'medium', mmPerDp: 0.1626, hub: true },   // 사용자 기기 (WebView DPR 2.0)
-  { id: 'fold26', w: 762, h: 575, dpr: 2.625, fold: true, bandable: true, quality: 'medium' },
+  { id: 'fold2', w: 1000, h: 755, dpr: 2, fold: true, bandable: true, quality: 'medium', mmPerDp: 0.1626, hub: true, lefty: true },   // 사용자 기기 (WebView DPR 2.0)
+  { id: 'fold26', w: 762, h: 575, dpr: 2.625, fold: true, bandable: true, quality: 'medium', mmPerDp: 0.2130 },   // 같은 폴드, 화면 확대 (hudfix: mm 가 그대로여야)
   { id: 'fold_open', w: 1000, h: 756, dpr: 2.6, fold: true, bandable: true, quality: 'high' },
   { id: 'tablet', w: 1024, h: 768, dpr: 2, fold: false, bandable: true, quality: 'medium', hub: true },
   { id: 'phone2', w: 740, h: 360, dpr: 3, fold: false, bandable: false, quality: 'medium', hub: true },
@@ -633,19 +633,16 @@ async function redoPage({ dev, mode, scene, coverageOnly }) {
     }
   } else {
     const [mo, j, d] = [by.mount, by.jump, by.dash];
-    // 넓은 배치(휴대폰)의 탈것은 탈것이 있을 때만 보인다 → 없으면 점프–대시 두 칸만 본다
-    if (!mo && j && d && I.preset === 'wide') {
-      if (!(I.left ? j.cx > d.cx : j.cx < d.cx) || Math.abs(j.cy - d.cy) > 2) fails.push('마을 줄: 점프–대시가 한 줄이 아니다');
-      m.town = { gaps: [r1(Math.abs(d.cx - j.cx) - (d.d + j.d) / 2)], dy: r1(Math.abs(j.cy - d.cy)), mount: 'hidden (no mount owned)' };
-    } else if (!mo || !j || !d) fails.push(`마을: 탈것·점프·대시 중 빠진 버튼 (${Object.keys(by).join(',')})`);
+    // [hudfix] 마을 줄 = 탈것 · 점프 · (공격 자리 비움) · 대시. 점프·대시는 스테이지 자리 그대로 (스테이지와의 비교는 밖에서: m.town.pos)
+    if (!mo || !j || !d) fails.push(`마을: 탈것·점프·대시 중 빠진 버튼 (${Object.keys(by).join(',')})`);
     else {
       const ok = I.left ? mo.cx > j.cx && j.cx > d.cx : mo.cx < j.cx && j.cx < d.cx;
       if (!ok) fails.push('마을 줄 순서가 탈것–점프–대시가 아니다');
       const dy = Math.max(Math.abs(mo.cy - j.cy), Math.abs(j.cy - d.cy));
       if (dy > 2) fails.push(`마을 줄 높이 차 ${r1(dy)} dp > 2`);
-      const g1 = Math.abs(j.cx - mo.cx) - (j.d + mo.d) / 2, g2 = Math.abs(d.cx - j.cx) - (d.d + j.d) / 2;
-      if (Math.abs(g1 - g2) > 2) fails.push(`마을 줄 간격이 다르다 (${r1(g1)} / ${r1(g2)} dp)`);
-      m.town = { gaps: [r1(g1), r1(g2)], dy: r1(dy) };
+      const g1 = Math.abs(j.cx - mo.cx) - (j.d + mo.d) / 2;
+      if (g1 < 12 - 0.5 || g1 > 24) fails.push(`마을 줄 탈것–점프 사이 ${r1(g1)} dp (기대 12–24)`);
+      m.town = { gaps: [r1(g1), r1(Math.abs(d.cx - j.cx) - (d.d + j.d) / 2)], dy: r1(dy), pos: { mount: [r1(mo.cx), r1(mo.cy), r1(mo.d)], jump: [r1(j.cx), r1(j.cy)], dash: [r1(d.cx), r1(d.cy)] } };
     }
     const tb = g.top?.topBoxes;
     if (!tb) info.push('마을 오른쪽 위 판 정보 없음');
@@ -673,14 +670,41 @@ async function redoPage({ dev, mode, scene, coverageOnly }) {
   const L = HL.hudLayout(w, g.viewW, g.viewH);
   if (scene === 'stage' && L?.quick?.length && I.preset === 'fold') {
     for (const q of L.quick) if (q.w * cs < 44 - 0.5) fails.push(`빠른 칸 ${r1(q.w * cs)} dp < 44`);
+    // [hudfix] 왼손 모드에서 빠른 칸 줄이 화면 밖으로 나가던 결함: 모든 칸이 캔버스 안에
+    for (let i = 0; i < L.quick.length; i++) { const q = L.quick[i]; if (q.x < -0.5 || q.y < -0.5 || q.x + q.w > g.viewW + 0.5 || q.y + q.h > g.viewH + 0.5) fails.push(`빠른 칸 ${i} 이 화면 밖 ${f1(q)} (논리 ${g.viewW}×${g.viewH})`); }
     m.quick = r1(L.quick[0].w * cs);
   }
+  // [hudfix] 아래 띠: 빠른 칸 줄이 띠 안(스틱과 버튼 묶음 사이)에 있어야 (물약을 가방 없이)
+  if (scene === 'stage' && mode === 'band' && dev.bandable) {
+    if (!L?.quick?.length) fails.push('아래 띠: 빠른 칸 줄이 없다');
+    else {
+      const bottom = cr.y + cr.h;
+      for (let i = 0; i < L.quick.length; i++) {
+        const q = L.quick[i], qx = cr.x + q.x * cs, qy = cr.y + q.y * cs, qw = q.w * cs, qh = q.h * cs;
+        if (qy < bottom - 0.5 || qy + qh > Hh - ins.b + 0.5 || qx < ins.l - 0.5 || qx + qw > W - ins.r + 0.5) fails.push(`아래 띠: 빠른 칸 ${i} 이 띠 밖 (${r1(qx)},${r1(qy)} ${r1(qw)}×${r1(qh)})`);
+        const ccx = qx + qw / 2, ccy = qy + qh / 2, hr = Math.hypot(qw, qh) / 2;
+        for (const b of act) if (Math.hypot(b.cx - ccx, b.cy - ccy) < rimR(b) + hr * 0.8) fails.push(`아래 띠: 빠른 칸 ${i} ↔ ${b.id} 겹침`);
+        if (Math.hypot(I.home.x - ccx, I.home.y - ccy) < stickR + hr * 0.8) fails.push(`아래 띠: 빠른 칸 ${i} ↔ 스틱 겹침`);
+      }
+      m.bandQuick = r1(L.quick[0].w * cs);
+    }
+  }
+  // [hudfix] 휴대폰(넓은 배치): 버튼 묶음 높이 ≤ 화면의 42 % (예전 원호는 수호가 탈것 위로 올라가 41–59 %)
+  if (scene === 'stage' && I.preset !== 'fold' && !I.band) {
+    let top = Infinity;
+    for (const b of act) top = Math.min(top, b.cy - rimR(b));
+    const hk = (cr.y + cr.h - top) / cr.h;
+    m.clusterH = r1(100 * hk);
+    if (hk > 0.42) fails.push(`버튼 묶음 높이 ${r1(100 * hk)}% > 42%`);
+  }
+  if (scene === 'stage' && mode === 'overlay') { const br = tp.bottomReserve?.(); m.bottomReserve = br == null ? null : r1(100 * br); if (br != null && !(br > 0.08 && br < 0.3)) fails.push(`bottomReserve ${br} (기대 0.08–0.3, 카메라 경기장 바닥용)`); }
   if (dev.mmPerDp && mode === 'overlay' && scene === 'stage') {
     const k = dev.mmPerDp, mmOf = (b) => r1(2 * rimR(b) * k);
-    const RANGE = { attack: [13.5, 15.5], ult: [9.5, 11.5], swap: [9, 10.8], guard: [9, 10.8] };
+    // [hudfix] 공격 76 · 점프 60 · 나머지 56 · 넘김/수호 52 dp (폴드 DPR 2) — 의견 2 '버튼마다 조금씩 작게'. 화면 확대(fold26)도 같은 mm
+    const RANGE = { attack: [13.5, 15.5], jump: [9.5, 10.8], ult: [9.6, 11], swap: [8.2, 9.7], guard: [8.2, 9.7] };
     const mmTab = {};
     for (const b of act) {
-      const [lo, hi] = RANGE[b.id] ?? [9.3, 11];
+      const [lo, hi] = RANGE[b.id] ?? [8.9, 10.2];
       const v = mmOf(b); mmTab[b.id] = v;
       if (v < lo || v > hi) fails.push(`${b.id}: 테 ${v} mm (기대 ${lo}–${hi})`);
     }
@@ -708,9 +732,11 @@ async function redoPage({ dev, mode, scene, coverageOnly }) {
     }
   }
   // 덧캔버스 선명도·불투명도
-  if (dev.fold && (I.tier === 'medium' || I.tier === 'high')) {
-    const want = Math.min(I.devDpr, 2.75);
-    if (!(I.dpr >= want - 0.01)) fails.push(`덧캔버스 DPR ${I.dpr} < ${want} (기기 ${I.devDpr}, 등급 ${I.tier})`);
+  {   // [hudfix] 화질 등급과 상관없이 (자동 화질이 낮음으로 내려가도) 기기 해상도 — 상한 DPR 3 · 6.5 MP, 메모리 ≤ 2 GB 기기만 예외
+    let want = Math.min(I.devDpr, 3);
+    if (W * Hh * want * want > 6.5e6) want = Math.sqrt(6.5e6 / (W * Hh));
+    if ((navigator.deviceMemory ?? 8) <= 2) want = Math.min(want, 1.5);
+    if (!(I.dpr >= want - 0.01)) fails.push(`덧캔버스 DPR ${I.dpr} < ${r1(want)} (기기 ${I.devDpr}, 등급 ${I.tier})`);
     if (I.backing && I.backing.w < Math.floor(W * I.dpr) - 2) fails.push(`덧캔버스 백킹 ${I.backing.w}px < ${Math.floor(W * I.dpr)}`);
   }
   if (!I.art) fails.push('버튼 그림(HUD art)이 아직 안 올라왔다');
@@ -733,22 +759,24 @@ const redo = [];
 if (!NO_REDO) {
   for (const dev of REDO_DEVS) {
     if (ONLY && !ONLY.includes(dev.id)) continue;
-    const runs = [['overlay', 'stage'], ...(COVERAGE_ONLY ? [] : [['band', 'stage'], ...(dev.hub ? [['overlay', 'hub']] : [])])];
-    for (const [mode, scene] of runs) {
-      const tag = `${dev.id}/${mode}/${scene}`;
+    const runs = [['overlay', 'stage'], ...(COVERAGE_ONLY ? [] : [['band', 'stage'], ...(dev.hub ? [['overlay', 'hub']] : []), ...(dev.lefty ? [['overlay', 'stage', true], ['overlay', 'hub', true]] : [])])];
+    const rows = {};   // 스테이지 아래 줄 자리 (마을과 비교)
+    for (const [mode, scene, lefty] of runs) {
+      const tag = `${dev.id}/${mode}${lefty ? '-lefthand' : ''}/${scene}`;
       const ctx = await browser.newContext({ viewport: { width: dev.w, height: dev.h }, deviceScaleFactor: dev.dpr, hasTouch: true, isMobile: true });
       const page = await ctx.newPage();
       const errs = [];
       page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message));
-      await page.addInitScript(({ quality, mode }) => {
+      await page.addInitScript(({ quality, mode, lefty }) => {
         try {
           const key = 'bloodnocturne_settings';
           const cur = JSON.parse(localStorage.getItem(key) || '{}');
           cur.quality = quality; cur.hud = { ...(cur.hud ?? {}), preset: 'auto', scale: 1, pad: mode, rev: 2 };
+          cur.touchLeftHanded = !!lefty;
           if (!cur.settingsVersion) cur.settingsVersion = 2;
           localStorage.setItem(key, JSON.stringify(cur));
         } catch { /* 저장소 없음 */ }
-      }, { quality: dev.quality, mode });
+      }, { quality: dev.quality, mode, lefty: !!lefty });
       let r;
       try {
         const url = scene === 'hub' ? 'index.html?scene=hub&char=sera&nosw' : 'index.html?scene=stage&stage=s01&char=sera&nosw';
@@ -767,10 +795,22 @@ if (!NO_REDO) {
         });
         await page.waitForTimeout(900);
         r = await page.evaluate(redoPage, { dev, mode, scene, coverageOnly: COVERAGE_ONLY });
-        if (SHOTS && !COVERAGE_ONLY) await page.screenshot({ path: `${OUT}/redo_${dev.id}_${mode}_${scene}.png` });
+        if (SHOTS && !COVERAGE_ONLY) await page.screenshot({ path: `${OUT}/redo_${dev.id}_${mode}${lefty ? '-lefthand' : ''}_${scene}.png` });
       } catch (e) { r = { fails: ['HARNESS ' + e.message], info: [], m: {} }; }
       await ctx.close();
-      const before = BEFORE[tag];
+      // [hudfix] 마을 점프·대시 = 스테이지 점프·대시 자리 (±8 dp), 스테이지 점프 자리를 누르면 마을에서 탈것이 눌리지 않게
+      const rk = `${mode}${lefty ? 'L' : ''}`;
+      if (scene === 'stage' && r.m.row) rows[rk] = r.m.row;
+      if (scene === 'hub' && r.m.town?.pos && rows[rk]) {
+        const st = rows[rk], tp = r.m.town.pos;
+        const dj = Math.hypot(tp.jump[0] - st.jump[0], tp.jump[1] - st.jump[1]), dd = Math.hypot(tp.dash[0] - st.dash[0], tp.dash[1] - st.dash[1]);
+        if (dj > 8) r.fails.push(`마을 점프가 스테이지 점프에서 ${dj.toFixed(1)} dp 떨어졌다 (> 8)`);
+        if (dd > 8) r.fails.push(`마을 대시가 스테이지 대시에서 ${dd.toFixed(1)} dp 떨어졌다 (> 8)`);
+        const dm = Math.hypot(tp.mount[0] - st.jump[0], tp.mount[1] - st.jump[1]);
+        if (dm < tp.mount[2] / 2 + 10) r.fails.push(`스테이지 점프 자리가 마을 탈것의 터치 범위 안 (${dm.toFixed(1)} dp)`);
+        r.m.town.vsStage = { jump: Math.round(dj * 10) / 10, dash: Math.round(dd * 10) / 10, mountFromStageJump: Math.round(dm * 10) / 10 };
+      }
+      const before = lefty ? null : BEFORE[tag];
       if (!COVERAGE_ONLY && before && r.m.coverage && r.m.coverage.union > before.union + 0.5) r.fails.push(`게임 화면 가림 ${r.m.coverage.union}% > 예전 ${before.union}%`);
       const fails = [...r.fails, ...new Set(errs)];
       failTotal += fails.length;

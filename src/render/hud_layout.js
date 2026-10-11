@@ -632,12 +632,16 @@ export function hudLayout(world, vw, vh, pad, opts) {
   const qc = opts?.questCollapsed ?? questCollapsed();   // [hudfix] 퀘스트 칸 접힘 → 토스트 줄 폭
   const band = !!g0?.viewBand && T;                      // [hudfix] 아래 띠: 빠른 칸을 띠에
   const lh = !!g0?.settings?.touchLeftHanded;
+  const bv = band ? (touchpad.layoutVersion?.() ?? 0) : 0;   // 띠 빠른 칸은 버튼 자리를 따른다 (패드 배치가 늦게 잡혀도 다시 계산)
   const a = memoArgs;
   if (memo && a[0] === vw && a[1] === vh && a[2] === T && a[3] === (S.l || 0) && a[4] === (S.r || 0) && a[5] === (S.t || 0) && a[6] === (S.b || 0)
-    && a[7] === bossOn && a[8] === nM && a[9] === F && a[10] === pr && a[11] === hk && a[12] === (Number(g0?.cssScale) || 1) && a[13] === qc && a[14] === band && a[15] === lh && samePad(memoPad, pad)) return memo;
+    && a[7] === bossOn && a[8] === nM && a[9] === F && a[10] === pr && a[11] === hk && a[12] === (Number(g0?.cssScale) || 1) && a[13] === qc && a[14] === band && a[15] === lh && a[16] === bv && samePad(memoPad, pad)) {
+    if (band && !memo.quick && pr !== 'fold') bandQuick(memo, g0, vw, vh, band);   // 패드가 아직 안 보여 버튼 자리가 없던 첫 프레임 → 다시 시도
+    return memo;
+  }
   memo = pr === 'fold' ? buildFold(vw, vh, T, S, cleanPad(pad), bossOn, nM, F, hk, Number(g0?.cssScale) || 1, qc) : build(vw, vh, T, S, cleanPad(pad), bossOn, nM, F);
   if (pr !== 'fold') { memo.preset = 'wide'; memo.fold = false; memo.arc = null; memo.quest = null; memo.questShown = false; bandQuick(memo, g0, vw, vh, band); }
-  a.length = 0; a.push(vw, vh, T, S.l || 0, S.r || 0, S.t || 0, S.b || 0, bossOn, nM, F, pr, hk, Number(g0?.cssScale) || 1, qc, band, lh);
+  a.length = 0; a.push(vw, vh, T, S.l || 0, S.r || 0, S.t || 0, S.b || 0, bossOn, nM, F, pr, hk, Number(g0?.cssScale) || 1, qc, band, lh, bv);
   memoPad.length = 0;
   for (const p of pad) memoPad.push(p?.x, p?.y, p?.w, p?.h);
   return memo;

@@ -1946,6 +1946,8 @@ export const touchpad = {
     for (const id of ['jump', 'attack', 'dash']) { if (S.hidden.has(id)) continue; const b = btnPos(L, id); top = Math.min(top, b.cy - (b.d / 2) * rimOf(id)); }
     return clamp((L.cr.y + L.cr.h - top) / Math.max(1, L.cr.h), 0, 0.5);
   },
+  /** 배치 판 번호 (hudfix): 배치를 다시 계산할 때마다 바뀐다 — 아래 띠 빠른 칸처럼 버튼 자리에 기대는 HUD 배치의 캐시 키 */
+  layoutVersion() { if (hasDom()) layout(); return S.lver; },
   /** HUD 선명 칸을 구울 DPR (= 덧캔버스 백킹 DPR). 패드가 없거나 터치 모드가 아니면 0 → HUD 는 게임 캔버스에 그린다 */
   crispDpr() {
     if (!hasDom() || !S.inited || !S.cv || S.editor || !touchMode()) return 0;
