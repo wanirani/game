@@ -1,6 +1,6 @@
 // Turntable suite — platform.md §7.1–7.3, §11 WP-5 acceptance 1–6 (user request #6: rotate the hero in the menu).
 //
-//   node tools/qa/turntable.mjs [--only drag,fling,keys,stick,wheel,auto,showcase,reveal,touch,edges,fallback,taps,gallery,perf] [--strict] [--shots]
+//   node tools/qa/turntable.mjs [--only drag,fling,keys,stick,wheel,auto,showcase,reveal,touch,edges,fallback,taps,gallery,perf,anime16] [--strict] [--shots]
 //
 // Checks (status, equip and class tabs unless noted):
 //   drag      mouse drag of 1.1 × stage width rotates 180° ± 10° (right = yaw decreases, grab-the-surface)       — acceptance 1
@@ -24,6 +24,9 @@
 //             front vs back differ > 8 %, front view left-right symmetric, cape covers the back (gated on ART-HERO-B)  — acceptance 5
 //             + a yaw view costs ≤ 1.5 × the side view per drawHero (CPU time; gated on ART-HERO-B)                      — §7.3
 //   perf      menu equip tab at fhd2x high renders in ≤ 20 ms per frame (main-thread CPU, chrome/tab split)     — acceptance 6, P-11
+//   anime16   애니풍 시범 (docs/specs/anime_motion_sfx.md §5.1, ?anime=1 — kael 헌터만): 16방향 뷰 준비 · 16칸이 모두 다른 그림 ·
+//             0° 오른쪽 / 180° 왼쪽 옆모습(서로 거울상) · 사이 각도는 이웃 두 장의 중간 · 확대 1.0~1.6 · 두 번 탭 = 정면(90°) ·
+//             2차 전직 외형(16방향 없음)은 예전 8방향 그대로 · 플래그를 끄면 16방향 경로가 꺼짐 (예전 퍼펫은 gallery 그룹이 그대로 검사)
 // Gameplay-time checks run on a frozen, stepped clock (requestAnimationFrame/performance.now replaced; step(n) advances n
 // frames of 1/60 s) so a loaded machine cannot change the result. Report: /tmp/claude-0/qa/platform/turntable.json
 import fs from 'node:fs';
@@ -622,6 +625,71 @@ try {
       }));
     }
     await s.close();
+  }, env);
+
+  // ── anime16: 애니풍 시범 16방향 턴테이블 (?anime=1, kael 헌터) ──────────────────────────────────
+  await suite.group('anime16', async () => {
+    const A = { pkg: 'ANIME-ART-PILOT' };
+    const s = await env.page('desk', 'tools/gallery_turntable.html?heroes=kael&anime=1', { wait: false });
+    await s.page.waitForFunction('window.__ready === true', null, { timeout: 90000, polling: 200 });
+    await s.page.waitForFunction('window.__tt.a16Ready(0, 0)', null, { timeout: 30000, polling: 250 }).catch(() => {});
+    const r = await s.eval(() => {
+      const T = window.__tt, W = 150, H = 180;
+      const ready = !!T.a16Ready(0, 0), ready2 = !!T.a16Ready(0, 1);
+      // 시트가 그려질 때까지 한 번씩 그려 둔다
+      for (let k = 0; k < 2; k++) T.render16(0, 0, 45, W, H);
+      const px = (deg, li = 0, z = 1) => T.render16(0, li, deg, W, H, z).getContext('2d').getImageData(0, 0, W, H).data;
+      const cover = (a) => { let n = 0; for (let i = 3; i < a.length; i += 4) if (a[i] > 40) n++; return n / (a.length / 4); };
+      const dist = (a, b) => { let d = 0, n = 0; for (let i = 0; i < a.length; i += 4) { if (a[i + 3] > 40 || b[i + 3] > 40) { n++; d += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) + Math.abs(a[i + 3] - b[i + 3]); } } return n ? d / n / 4 : 0; };
+      const iou = (a, b, flip) => { let I = 0, U = 0; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const p = a[(y * W + x) * 4 + 3] > 40, q = b[(y * W + (flip ? W - 1 - x : x)) * 4 + 3] > 40; if (p && q) I++; if (p || q) U++; } return U ? I / U : 0; };
+      const V = Array.from({ length: 16 }, (_, i) => px(i * 22.5));
+      const covers = V.map(cover);
+      const neigh = V.map((a, i) => dist(a, V[(i + 1) % 16]));
+      // 0° 와 180°: 서로 거울상이면 뒤집은 쪽이 더 잘 겹친다
+      const mirror = { flip: iou(V[0], V[8], true), plain: iou(V[0], V[8], false) };
+      const mid = px(101.25), d90 = dist(mid, V[4]), d112 = dist(mid, V[5]), dEnds = dist(V[4], V[5]);
+      // 2차 전직(16방향 없음): render16 이 예전 drawHero(yaw) 와 같은 그림
+      const old90 = T.render(0, 1, 90, W, H).getContext('2d').getImageData(0, 0, W, H).data, new90 = px(90, 1);
+      const legacySame = dist(old90, new90);
+      const v = T.view16(0, 0), sup = v.support();
+      v.zoomBy(-100); const zMax = v.zoom; v.zoomBy(100); const zMin = v.zoom;
+      v.resetYaw(); const reset = v.userYaw;
+      const v2 = T.view16(0, 1), sup2 = v2.support();
+      return { ready, ready2, covers, neigh, mirror, d90, d112, dEnds, legacySame, steps: sup.steps, a16: !!sup.a16, steps2: sup2.steps, a16b: !!sup2.a16, zMax, zMin, reset };
+    });
+    const f2 = (x) => x.toFixed(2);
+    await suite.check({ id: 'anime16.ready', group: 'anime16', ...A, title: '?anime=1: kael 헌터의 16방향 뷰가 준비되고 HeroView 가 16칸 지원을 알린다' }, async () => ({
+      pass: r.ready && r.a16 && r.steps === 16, detail: `a16Ready ${r.ready}, support().steps ${r.steps}, a16 ${r.a16}`,
+    }));
+    await suite.check({ id: 'anime16.distinct', group: 'anime16', ...A, title: '16칸이 모두 그려지고(덮임 ≥ 8 %) 이웃 칸끼리 서로 다르다 (평균 차이 ≥ 4)' }, async () => ({
+      pass: r.covers.every((c) => c >= 0.08) && r.neigh.every((d) => d >= 4),
+      detail: `덮임 ${r.covers.map((c) => (c * 100).toFixed(0)).join('/')} %; 이웃 차이 ${r.neigh.map((d) => d.toFixed(0)).join('/')}`,
+    }));
+    await suite.check({ id: 'anime16.mirror', group: 'anime16', ...A, title: '0°(오른쪽 옆)과 180°(왼쪽 옆)은 서로 거울상 (뒤집어 겹친 IoU > 그대로 겹친 IoU)' }, async () => ({
+      pass: r.mirror.flip > r.mirror.plain && r.mirror.flip >= 0.6, detail: `뒤집어 ${f2(r.mirror.flip)}, 그대로 ${f2(r.mirror.plain)}`,
+    }));
+    await suite.check({ id: 'anime16.blend', group: 'anime16', ...A, title: '사이 각도 101.25° 는 90° 와 112.5° 의 중간 (두 끝 사이 거리보다 각각 가깝다)' }, async () => ({
+      pass: r.d90 < r.dEnds && r.d112 < r.dEnds, detail: `d(중간,90°) ${f2(r.d90)}, d(중간,112.5°) ${f2(r.d112)}, d(90°,112.5°) ${f2(r.dEnds)}`,
+    }));
+    await suite.check({ id: 'anime16.zoom', group: 'anime16', ...A, title: '확대는 1.0~1.6 사이로 묶인다 · 두 번 탭(resetYaw) = 정면 90°' }, async () => ({
+      pass: Math.abs(r.zMax - 1.6) < 1e-9 && Math.abs(r.zMin - 1) < 1e-9 && Math.abs(r.reset - PI / 2) < 1e-9,
+      detail: `zoom ${r.zMin}~${r.zMax}, reset yaw ${(r.reset / DEG).toFixed(1)}°`,
+    }));
+    await suite.check({ id: 'anime16.legacy', group: 'anime16', ...A, title: '16방향 원화가 없는 외형(2차 전직)은 예전 경로 그대로 (8방향, 같은 그림)' }, async () => ({
+      pass: !r.ready2 && !r.a16b && r.steps2 !== 16 && r.legacySame < 0.5, detail: `a16Ready ${r.ready2}, steps ${r.steps2}, render16 vs render 차이 ${f2(r.legacySame)}`,
+    }));
+    await suite.errors({ id: 'anime16.errors', group: 'anime16' }, s);
+    await s.close();
+    // 플래그 끔: 같은 페이지에서 16방향 경로가 꺼지고 HeroView 는 예전 지원표를 쓴다
+    const o = await env.page('desk', 'tools/gallery_turntable.html?heroes=kael', { wait: false });
+    await o.page.waitForFunction('window.__ready === true', null, { timeout: 90000, polling: 200 });
+    await o.wait(800);
+    const q = await o.eval(() => { const T = window.__tt, v = T.view16(0, 0), sup = v.support(); return { ready: !!T.a16Ready(0, 0), steps: sup.steps, a16: !!sup.a16 }; });
+    await suite.check({ id: 'anime16.flagoff', group: 'anime16', ...A, title: '플래그 끔: 16방향 경로가 꺼지고 예전 지원표 (a16 없음)' }, async () => ({
+      pass: !q.ready && !q.a16 && q.steps !== 16, detail: `a16Ready ${q.ready}, steps ${q.steps}, a16 ${q.a16}`,
+    }));
+    await suite.errors({ id: 'anime16.flagoff.errors', group: 'anime16' }, o);
+    await o.close();
   }, env);
 
   // ── perf: menu equip at fhd2x high (acceptance 6, P-11) ───────────────────────────────────────

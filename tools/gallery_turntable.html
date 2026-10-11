@@ -224,6 +224,8 @@ window.__tt = {
     v.draw(c.getContext('2d'), w / 2, h - 12, (h - 30) / 96, { noFx: true, rim: false });
     return c;
   },
+  /** 애니풍 시범 QA: 한 칸의 HeroView (턴테이블) — support()·zoomBy()·resetYaw() 확인용 */
+  view16(hi, li) { const row = rows[hi * 3 + li]; const v = new HeroView({ turntable: true, game: null }); v.set(row.look, CHARACTERS[row.cid]); return v; },
   /** 애니풍 시범: 16방향 뷰가 준비됐는가 */
   a16Ready(hi, li) { const row = rows[hi * 3 + li]; const v = new HeroView({ turntable: true }); v.set(row.look, CHARACTERS[row.cid]); return !!v.anime16(); },
   /**

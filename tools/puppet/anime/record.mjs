@@ -1,11 +1,11 @@
 // 애니풍 시범: 결정적(프레임 단위) 게임 녹화 — 같은 입력 대본을 플래그 끔/켬으로 똑같이 재생해 비교 영상을 만든다.
 // node tools/puppet/anime/record.mjs --out DIR [--anime] [--stage s01] [--w 1280 --h 720 --dpr 1] [--mobile]
-//        [--script "wait:30,right:40,jump:6,..."] [--every 2] [--crop 420x480] [--q 0.9] [--hud 1]
+//        [--script "wait:30,right:40,jump:6,..."] [--every 2] [--crop 420x480] [--q 0.9] [--cores 8]
 // 게임 루프를 멈추고(tools/qa/lib/step.mjs freeze) 1/60 초씩 진행 → every 프레임마다 게임 캔버스를 JPEG 로 저장 (DIR/f00000.jpg).
 // --crop WxH: 플레이어 발을 따라가는 상자(부드럽게)만 잘라 저장 (비교 영상용). 없으면 캔버스 전체.
 // 대본 토큰: key:n (n 프레임 누름; right left up down jump attack dash sub skill1 skill2 ult) · a+b:n · wait:n · hurt (피격 1회) ·
 //           eval=JS (;; 는 ,) · face=1|-1 (방향 맞추기)
-// 출력 끝에 JSON {errs, frames, pup} — pup 은 퍼펫 상태 (애니면 'kael/kael_hunter@anime').
+// 출력 끝에 JSON {errs, frames, tier, feet, pup} — pup 은 퍼펫 상태 (애니면 'kael/kael_hunter@anime').
 import { chromium } from 'playwright-core';
 import { start } from '../../serve.mjs';
 import { freeze } from '../../qa/lib/step.mjs';
@@ -25,6 +25,9 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
 const ctx = await browser.newContext(mobile
   ? { viewport: { width: Number(opt('w', 740)), height: Number(opt('h', 360)) }, deviceScaleFactor: Number(opt('dpr', 3)), hasTouch: true, isMobile: true }
   : { viewport: { width: Number(opt('w', 1280)), height: Number(opt('h', 720)) }, deviceScaleFactor: Number(opt('dpr', 1)) });
+// --cores N: navigator.hardwareConcurrency 흉내 (터치 기기는 4코어 이하면 시작 화질이 'low' → 메시 변형 꺼짐. 보통 폰(8코어)은 'medium')
+const cores = Number(opt('cores', 0));
+if (cores > 0) await ctx.addInitScript((n) => { try { Object.defineProperty(Navigator.prototype, 'hardwareConcurrency', { get: () => n }); } catch {} }, cores);
 const page = await ctx.newPage();
 const errs = [];
 page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message));
@@ -48,7 +51,7 @@ for (let k = 0; k < 120; k++) {
 }
 await freeze(page);
 const KEY = { right: 'ArrowRight', left: 'ArrowLeft', up: 'ArrowUp', down: 'ArrowDown', jump: 'KeyZ', attack: 'KeyX', dash: 'KeyC', sub: 'KeyA', skill1: 'KeyS', skill2: 'KeyD', ult: 'KeyF' };
-let fi = 0, saved = 0;
+let fi = 0, saved = 0, lastP = null;
 const cam = { x: null, y: null };
 async function frame() {
   const r = await page.evaluate(([doShot, crop, q, cx0, cy0]) => {
@@ -74,6 +77,7 @@ async function frame() {
     return { url: o.toDataURL('image/jpeg', q), px, py, cx, cy };
   }, [fi % every === 0, crop, q, cam.x, cam.y]);
   if (r) {
+    lastP = [Math.round(r.px), Math.round(r.py)];
     if (r.cx != null) { cam.x = r.cx; cam.y = r.cy; }
     fs.writeFileSync(path.join(out, `f${String(saved++).padStart(5, '0')}.jpg`), Buffer.from(r.url.split(',')[1], 'base64'));
   }
@@ -92,5 +96,5 @@ for (const tok of script.split(',').map((s) => s.trim()).filter(Boolean)) {
 }
 const pup = await page.evaluate(() => Object.fromEntries(Object.entries(window.__hero.puppetStatus()).filter(([k]) => k.startsWith('kael/')).map(([k, v]) => [k, v.state])));
 const tier = await page.evaluate(() => window.__game.tier ?? null);
-console.log(JSON.stringify({ errs, frames: saved, steps: fi, tier, pup }));
+console.log(JSON.stringify({ errs, frames: saved, steps: fi, tier, feet: lastP, pup }));   // feet: 마지막 저장 프레임의 플레이어 발 (캔버스 px)
 await browser.close(); srv.close();
