@@ -164,7 +164,7 @@ const SWAP_LONG = 350;     // ms
 const SWAP_HOLD_MS = 100, SWAP_HOLD_STEPS = 3;
 const DRAW_MS = 32;        // 다시 그리기 간격 하한 (≤ 30 Hz; 60/120 Hz 화면에서 33.3ms 마다)
 const OVERLAY_MP = { low: 1.5e6, medium: 6.5e6, high: 6.5e6 };   // 오버레이 백킹 픽셀 상한 (품질 등급별; HUD-REDO: 기기 해상도로)
-const OVERLAY_DPR = { low: 1.5, medium: 3, high: 3 };
+const OVERLAY_DPR = { low: 1, medium: 3, high: 3 };   // low = 게임 캔버스와 같은 1 (약한 기기 — perf_budget dprCap.low), medium·high = 기기 DPR (흐림 없음, HUD-REDO 4번)
 
 /** 버튼 → 입력 액션 (예전 DOM 패드와 같다: 점프는 결정, Ⅱ 는 취소도) */
 const ACTS = {
@@ -958,7 +958,7 @@ function loadDrawAssets() {
   }).catch((e) => { console.error('[touchpad] draw assets', e); });
 }
 
-/** 오버레이 백킹 DPR (HUD-REDO §1): 보통·높음 품질은 기기 해상도 그대로 (상한 3, 6.5 MP), 낮음 품질은 1.5 / 1.5 MP.
+/** 오버레이 백킹 DPR (HUD-REDO §1): 보통·높음 품질은 기기 해상도 그대로 (상한 3, 6.5 MP), 낮음 품질은 1 (게임 캔버스와 같게).
  *  버튼 그림은 이 배율로 구워 1:1 로 붙인다 (예전: 게임 캔버스 DPR·1.2 MP 상한 → 폴드에서 1.26 = 기기의 63 % 로 흐렸다) */
 function overlayDpr(L) {
   const g = game();

@@ -71,7 +71,7 @@ def estimate_progress(ws, start):
     W_f = float(np.max(ws[s:min(n, s + 4)]))
     m0 = float(np.min(ws[s:]))
     depth = W_f - m0
-    if depth < 0.22 * W_f:
+    if depth < 0.12 * W_f:
         raise ValueError(f'no rotation (width {W_f:.0f} → min {m0:.0f})')
     deep = W_f - 0.45 * depth            # 옆모습 골은 이보다 좁다
     rise = 0.3 * depth                   # 뒷모습 마루는 골보다 이만큼 넓다

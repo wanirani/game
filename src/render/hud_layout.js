@@ -476,7 +476,7 @@ function buildFold(vw, vh, T, S, pad, bossOn, nM, F, k, cs) {
   // ── 아래: 빠른 칸 (터치: 스틱 받침 오른쪽, 아래 여백 PAD_M dp) ──
   // 칸 사이 ≥ 12 CSS px (hud_mobile §3: 옆 칸을 잘못 누르지 않게)
   const csK = cs > 0.05 ? cs : 1, mB = T ? PAD_M / csK : 14;
-  const q = Math.max(44, Math.round(52 * k)), qg = T ? Math.ceil(12 / csK) : 10, qn = 4;
+  const q = Math.max(T ? Math.ceil(44 / csK) : 44, Math.round(52 * k)), qg = T ? Math.ceil(12 / csK) : 10, qn = 4;   // 터치: 칸 ≥ 44 CSS px
   let qx = 24 + l;
   if (T) {
     let sr = null;

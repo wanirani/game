@@ -633,7 +633,11 @@ async function redoPage({ dev, mode, scene, coverageOnly }) {
     }
   } else {
     const [mo, j, d] = [by.mount, by.jump, by.dash];
-    if (!mo || !j || !d) fails.push(`마을: 탈것·점프·대시 중 빠진 버튼 (${Object.keys(by).join(',')})`);
+    // 넓은 배치(휴대폰)의 탈것은 탈것이 있을 때만 보인다 → 없으면 점프–대시 두 칸만 본다
+    if (!mo && j && d && I.preset === 'wide') {
+      if (!(I.left ? j.cx > d.cx : j.cx < d.cx) || Math.abs(j.cy - d.cy) > 2) fails.push('마을 줄: 점프–대시가 한 줄이 아니다');
+      m.town = { gaps: [r1(Math.abs(d.cx - j.cx) - (d.d + j.d) / 2)], dy: r1(Math.abs(j.cy - d.cy)), mount: 'hidden (no mount owned)' };
+    } else if (!mo || !j || !d) fails.push(`마을: 탈것·점프·대시 중 빠진 버튼 (${Object.keys(by).join(',')})`);
     else {
       const ok = I.left ? mo.cx > j.cx && j.cx > d.cx : mo.cx < j.cx && j.cx < d.cx;
       if (!ok) fails.push('마을 줄 순서가 탈것–점프–대시가 아니다');
