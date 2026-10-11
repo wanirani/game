@@ -1062,49 +1062,53 @@
    "f": [
     "boss_die_1"
    ],
-   "g": 1,
+   "g": 1.122,
    "lazy": 1,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -9.32
   },
   "enhance_hit": {
    "f": [
     "enhance_hit_1"
    ],
-   "g": 1,
+   "g": 0.472,
    "lazy": 1,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -20.92
   },
   "card": {
    "f": [
     "card_1"
    ],
-   "g": 1,
+   "g": 0.955,
    "lazy": 1,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -22.04
   },
   "coin_insert": {
    "f": [
     "coin_insert_1"
    ],
-   "g": 1,
+   "g": 1.342,
    "lazy": 1,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -16.47
   },
   "step_bone": {
    "f": [
@@ -1113,7 +1117,8 @@
     "step_bone_3",
     "step_bone_4"
    ],
-   "g": 1
+   "g": 0.311,
+   "ref": -36.15
   },
   "step_push": {
    "f": [
@@ -1121,7 +1126,8 @@
     "step_push_2",
     "step_push_3"
    ],
-   "g": 1
+   "g": 0.101,
+   "ref": -36.1
   },
   "skid": {
    "f": [
@@ -1129,7 +1135,8 @@
     "skid_2",
     "skid_3"
    ],
-   "g": 1
+   "g": 0.587,
+   "ref": -25.19
   },
   "pivot": {
    "f": [
@@ -1137,7 +1144,8 @@
     "pivot_2",
     "pivot_3"
    ],
-   "g": 1
+   "g": 0.36,
+   "ref": -30.4
   },
   "dash_burst": {
    "f": [
@@ -1145,7 +1153,8 @@
     "dash_burst_2",
     "dash_burst_3"
    ],
-   "g": 1
+   "g": 0.435,
+   "ref": -27.13
   },
   "launch": {
    "f": [
@@ -1153,7 +1162,8 @@
     "launch_2",
     "launch_3"
    ],
-   "g": 1
+   "g": 0.69,
+   "ref": -21.19
   },
   "down_hit": {
    "f": [
@@ -1162,7 +1172,8 @@
     "down_hit_3",
     "down_hit_4"
    ],
-   "g": 1
+   "g": 0.845,
+   "ref": -21.52
   },
   "back_attack": {
    "f": [
@@ -1170,7 +1181,8 @@
     "back_attack_2",
     "back_attack_3"
    ],
-   "g": 1
+   "g": 0.53,
+   "ref": -26.88
   },
   "land_heavy": {
    "f": [
@@ -1178,7 +1190,8 @@
     "land_heavy_2",
     "land_heavy_3"
    ],
-   "g": 1
+   "g": 0.791,
+   "ref": -21.01
   },
   "wall_bounce": {
    "f": [
@@ -1186,7 +1199,8 @@
     "wall_bounce_2",
     "wall_bounce_3"
    ],
-   "g": 1
+   "g": 1.173,
+   "ref": -18.25
   },
   "ground_bounce": {
    "f": [
@@ -1194,7 +1208,8 @@
     "ground_bounce_2",
     "ground_bounce_3"
    ],
-   "g": 1
+   "g": 0.739,
+   "ref": -21.17
   },
   "counter": {
    "f": [
@@ -1202,7 +1217,8 @@
     "counter_2",
     "counter_3"
    ],
-   "g": 1
+   "g": 1.031,
+   "ref": -19.26
   },
   "hit_bone": {
    "f": [
@@ -1211,7 +1227,8 @@
     "hit_bone_3",
     "hit_bone_4"
    ],
-   "g": 1
+   "g": 0.479,
+   "ref": -27.11
   },
   "hit_ghost": {
    "f": [
@@ -1220,7 +1237,8 @@
     "hit_ghost_3",
     "hit_ghost_4"
    ],
-   "g": 1
+   "g": 0.34,
+   "ref": -25.89
   },
   "impact_crack": {
    "f": [
@@ -1228,51 +1246,56 @@
     "impact_crack_2",
     "impact_crack_3"
    ],
-   "g": 1
+   "g": 1.099,
+   "ref": -18.19
   },
   "kill_slowmo": {
    "f": [
     "kill_slowmo_1"
    ],
-   "g": 1,
+   "g": 0.711,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -16.21
   },
   "rank_up": {
    "f": [
     "rank_up_1"
    ],
-   "g": 1,
+   "g": 0.421,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -20.45
   },
   "announce": {
    "f": [
     "announce_1"
    ],
-   "g": 1,
+   "g": 0.821,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -17.9
   },
   "combo_milestone": {
    "f": [
     "combo_milestone_1"
    ],
-   "g": 1,
+   "g": 0.411,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -22.61
   },
   "impact_frame": {
    "f": [
@@ -1280,151 +1303,164 @@
     "impact_frame_2",
     "impact_frame_3"
    ],
-   "g": 1
+   "g": 0.786,
+   "ref": -21.28
   },
   "awaken_hold": {
    "f": [
     "awaken_hold_1"
    ],
-   "g": 1,
+   "g": 0.318,
    "lazy": 1,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -22.16
   },
   "awaken_charge": {
    "f": [
     "awaken_charge_1"
    ],
-   "g": 1,
+   "g": 0.651,
    "lazy": 1,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -16.61
   },
   "cutin_whoosh": {
    "f": [
     "cutin_whoosh_1"
    ],
-   "g": 1,
+   "g": 0.709,
    "lazy": 1,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -22.25
   },
   "brush_stroke": {
    "f": [
     "brush_stroke_1"
    ],
-   "g": 1,
+   "g": 0.317,
    "lazy": 1,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -29.29
   },
   "seal_stamp": {
    "f": [
     "seal_stamp_1"
    ],
-   "g": 1,
+   "g": 0.853,
    "lazy": 1,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -22.71
   },
   "eye_glint": {
    "f": [
     "eye_glint_1"
    ],
-   "g": 1,
+   "g": 0.624,
    "lazy": 1,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -21.84
   },
   "awaken_stinger": {
    "f": [
     "awaken_stinger_1"
    ],
-   "g": 1,
+   "g": 0.933,
    "lazy": 1,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -11.19
   },
   "awaken_boom": {
    "f": [
     "awaken_boom_1"
    ],
-   "g": 1,
+   "g": 1.074,
    "lazy": 1,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -9.75
   },
   "heartbeat": {
    "f": [
     "heartbeat_1"
    ],
-   "g": 1,
+   "g": 0.583,
    "lazy": 1,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -19.79
   },
   "crow_caw": {
    "f": [
     "crow_caw_1"
    ],
-   "g": 1,
+   "g": 0.266,
    "lazy": 1,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -23.82
   },
   "finger_snap": {
    "f": [
     "finger_snap_1"
    ],
-   "g": 1,
+   "g": 0.851,
    "lazy": 1,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -26.86
   },
   "cylinder_spin": {
    "f": [
     "cylinder_spin_1"
    ],
-   "g": 1,
+   "g": 0.522,
    "lazy": 1,
    "vr": [
     1,
     0.95,
     1.055
-   ]
+   ],
+   "ref": -27.35
   },
   "choir_gate": {
    "f": [
