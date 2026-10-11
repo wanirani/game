@@ -43,12 +43,38 @@ def main():
         return
     al = rembg_alpha(rgb) > 127
     bg = bg_flood(rgb)
-    al = (al | ~bg) & ~bg                     # 배경 홍수 채움이 이긴다 (윤곽선이 있어 옷 안쪽은 막힘)
-    al = ndi.binary_fill_holes(al)
+    al &= ~bg
+    # 갇힌 배경 주머니(다리 사이·팔과 몸 사이): 테두리와 이어지지 않았지만 배경색인 덩어리
+    f = rgb.astype(np.float32)
+    bgrow = np.median(np.concatenate([f[:, :24], f[:, -24:]], 1), axis=1)
+    dist = np.abs(f - bgrow[:, None, :]).max(2)
+    filled = ndi.binary_fill_holes(al)
+    hole = filled & ~al
+    lab, n = ndi.label(hole | (filled & (dist < 9)))
+    if n:
+        idx = np.arange(1, n + 1)
+        med = ndi.median(dist, lab, idx); sz = ndi.sum(np.ones_like(dist), lab, idx)
+        bad = np.zeros(n + 1, bool); bad[1:] = (med < 12) & (sz > 150)
+        al = filled & ~bad[lab]
+    else:
+        al = filled
     if a.deshadow:
-        sys.path.insert(0, os.path.dirname(HERE))
-        from build_turn import floor_shadow
-        al = floor_shadow(rgb, al, {'band': 0.1, 'T': 0.14, 'sd': 8.0})
+        # 발밑 바닥 그림자: 인물 아래쪽 12% 띠에서 무채색·중간 밝기(배경보다 어두운 회보라) 화소
+        ys = np.where(al.any(1))[0]; top, bot = ys[0], ys[-1]
+        y0 = int(bot - 0.12 * (bot - top))
+        mx, mn = f.max(2), f.min(2); sat = (mx - mn) / np.maximum(mx, 1); lum = f.mean(2)
+        sh = (sat < 0.16) & (lum > 85) & (lum < 215)
+        sh[:y0] = False
+        sh = ndi.binary_opening(sh, iterations=2)
+        al &= ~sh
+        al = ndi.binary_opening(al, iterations=1)
+        # 그림자 규칙에 걸린 장화 반사광 같은 작은 갇힌 구멍은 다시 메움
+        h2 = ndi.binary_fill_holes(al) & ~al
+        lab2, n2 = ndi.label(h2)
+        if n2:
+            sz2 = ndi.sum(h2, lab2, range(1, n2 + 1))
+            small = np.zeros(n2 + 1, bool); small[1:] = sz2 < 2500
+            al |= small[lab2]
     lab, n = ndi.label(al)
     if n > 1:
         sz = ndi.sum(al, lab, range(1, n + 1))

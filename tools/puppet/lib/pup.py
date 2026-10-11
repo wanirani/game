@@ -12,6 +12,10 @@ REPO = os.path.abspath(os.path.join(PUP, '..', '..'))        # 저장소 루트
 SRC = os.path.join(PUP, 'src')                               # 원화(클링 결과, 워터마크 제거본) + 알파
 RIGS = os.path.join(PUP, 'rigs')                             # 리그 테이블 JSON
 OUT = os.path.join(REPO, 'assets', 'puppets')                # 게임 에셋 출력
+# 애니풍 시범(tools/puppet/anime/): 같은 도구를 다른 폴더로 돌린다 — 환경 변수가 없으면 위 기본값 그대로
+SRC = os.environ.get('PUP_SRC') or SRC
+RIGS = os.environ.get('PUP_RIGS') or RIGS
+OUT = os.environ.get('PUP_OUT') or OUT
 DBG = os.environ.get('PUP_DBG', '/tmp/claude-0/puppet_dbg')  # 디버그 이미지(저장소 밖)
 
 

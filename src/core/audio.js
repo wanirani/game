@@ -29,6 +29,8 @@ import { TRACKS } from '../data/music.js';
 import { FEEL_SFX } from './sfx_feel.js';
 import { RecBank } from './audio_rec.js';
 import { saves } from './save.js';
+import { assets, ASSET_ROOT } from './assets.js';
+import { pilot } from './pilot_flags.js';
 
 const LOOKAHEAD = 0.16;          // 스케줄 선행 시간(초)
 const TICK_MS = 25;              // 스케줄러 주기
