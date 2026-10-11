@@ -248,13 +248,17 @@ const missingArt = { enemies: [], bosses: [], companions: [], heroes: [], npcs: 
   const { CLASSES } = await imp('src/data/classes.js');
   const { NPC_ORDER } = await imp('src/data/npcs.js');
   const probs = [];
+  // 16방향 턴테이블 (TURNMOUNT 2026-10-11): turn16.json 에 있는 모습은 옛 8방향 turn.webp 대신 turn16_ui/lo.webp 를 싣는다 (옛 시트는 지웠다 — APK 예산)
+  let T16 = {};
+  try { T16 = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/puppets/turn16.json'), 'utf8')).looks || {}; } catch { T16 = {}; }
   const checkPup = (char, cls) => {
     const man = PUPPETS[char]?.[cls];
     if (!man) { return `${cls}: no puppet manifest entry`; }
     const dir = `assets/puppets/${char}/${cls}`;
     if (!exists(dir)) return `${cls}: missing ${dir}`;
     const files = fs.readdirSync(path.join(ROOT, dir));
-    const need = ['rig.json', ...(man.lv || ['hi']).map((l) => `atlas_${l}.webp`), ...(man.turn ? ['turn.webp'] : [])];
+    const t16 = Object.hasOwn(T16, `${char}/${cls}`);
+    const need = ['rig.json', ...(man.lv || ['hi']).map((l) => `atlas_${l}.webp`), ...(t16 ? ['turn16_ui.webp', 'turn16_lo.webp'] : man.turn ? ['turn.webp'] : [])];
     const miss = need.filter((f) => !files.includes(f));
     return miss.length ? `${cls}: missing ${miss.join(', ')}` : null;
   };

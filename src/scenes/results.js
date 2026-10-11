@@ -7,7 +7,7 @@ import { Scene } from '../core/game.js';
 import { input } from '../core/input.js';
 import { audio } from '../core/audio.js';
 import { assets } from '../core/assets.js';
-import { text, panel, FONT, COLORS, drawCover, vignette, bloodText, prewarmText } from '../core/ui.js';
+import { text, panel, FONT, COLORS, drawCover, vignette, bloodText, prewarmText, textFloor } from '../core/ui.js';
 import { drawHints } from '../core/prompts.js';
 import { fmt, fmtTime, clamp, ease } from '../core/math.js';
 import { saves } from '../core/save.js';
@@ -252,13 +252,15 @@ export class ResultsScene extends Scene {
       const up = Q.gear.filter((g) => g.mark === 'up').length;
       lines.push([`새 장비 ${Q.gear.length}개${up ? ` · ▲ ${up}` : ''}`, up ? '#7ee07e' : '#c8b8a0']);
     }
-    const lh = 17, h = lines.length * lh + 18;
+    // 줄 간격·바닥 여백은 실제 글자 크기(글자 크기 설정의 하한 textFloor 포함)로 — 아주 크게에서 「▼ 목록」이 상자 바닥에 닿았다 (qafix)
+    const s1 = Math.max(13, textFloor()), s2 = Math.max(11, textFloor());
+    const lh = Math.ceil(s1 * 1.3), top = Math.ceil(s1 * 1.22), foot = Math.ceil(s2 * 1.45), h = top + (lines.length - 1) * lh + foot + Math.ceil(s2 * 0.35) + 3;
     const r = { x, y: yb - h, w, h };
     Q.rect = taps.add('qol.list', r, { owner: this, kind: 'primary', src: 'results.qol' });
     ctx.fillStyle = 'rgba(10,4,12,0.72)'; ctx.fillRect(r.x, r.y, r.w, r.h);
     ctx.strokeStyle = 'rgba(200,160,90,0.55)'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
-    lines.forEach(([t, c], i) => text(ctx, t, x + w / 2, r.y + 16 + i * lh, { size: 13, align: 'center', weight: 700, color: c, maxWidth: w - 10 }));
-    text(ctx, '▼ 목록', x + w / 2, r.y + h - 3, { size: 11, align: 'center', weight: 700, color: COLORS.dim });
+    lines.forEach(([t, c], i) => text(ctx, t, x + w / 2, r.y + top + i * lh, { size: 13, align: 'center', weight: 700, color: c, maxWidth: w - 10 }));
+    text(ctx, '▼ 목록', x + w / 2, r.y + top + (lines.length - 1) * lh + foot, { size: 11, align: 'center', weight: 700, color: COLORS.dim });
   }
   /** [qol] 펼친 목록: 처분한 장비 · 이번에 얻은 장비 (지금 영웅 기준 ▲/▼) */
   drawQolList(ctx, L) {

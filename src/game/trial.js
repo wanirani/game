@@ -51,7 +51,7 @@ export function trialRecord(hero, tid) {
 /** 규칙 이름 목록 (성당 확인 창과 같은 표기) */
 export function trialRuleNames(T) {
   if (!T) return [];
-  return [...(T.mods ?? []).map((m) => modName(m)), ...(T.diffOver?.bossHp ? [`보스 체력 ${T.diffOver.bossHp}배`] : [])];
+  return [...(T.mods ?? []).map((m) => modName(m)), ...(T.diffOver?.bossHp > 1 ? [`보스 체력 ${T.diffOver.bossHp}배`] : [])];   // 1 이하(영웅별 보정)는 규칙으로 보이지 않는다 (qafix)
 }
 
 /** 성당 「도전한다」: 조건 확인 → 저장 → pre 대본(다시 하면 preAgain) → 시련 스테이지. 반환: canStartTrial 결과 */

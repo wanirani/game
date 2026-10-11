@@ -39,6 +39,8 @@ const rows = sec.split('\n').filter((l) => l.startsWith('| ') && !/^\| key \|/.t
 const lit = (s) => {
   s = s.trim();
   if (/^'.*'$/.test(s)) return s.slice(1, -1);
+  // 객체 기본값 (hud·gear — qafix): 표의 기본값 칸에 JSON 그대로 (`{"preset":"auto",…}`)
+  if (/^`?\{.*\}`?$/.test(s)) { try { return JSON.parse(s.replace(/^`|`$/g, '')); } catch { return Symbol(s); } }
   if (s === 'true') return true; if (s === 'false') return false; if (s === 'null') return null;
   const n = Number(s); return Number.isFinite(n) ? n : Symbol(s);
 };
@@ -71,6 +73,14 @@ for (const [key, dflt, values] of rows) {
   }
 }
 for (const k of Object.keys(DEFAULT_SETTINGS)) ok(tableKeys.has(k), `DEFAULT_SETTINGS 의 ${k} 가 §1.5 표에 없음`);
+// 객체 설정 (schema type 'hud'|'gear'): 표의 값 칸은 모양만 적으므로 여기서 직접 본다 — 잘못된 형식 → 기본값, 맞는 값 유지, 기본값은 복사본
+for (const [k, s] of Object.entries(SETTINGS_SCHEMA)) {
+  if (s?.type !== 'hud' && s?.type !== 'gear') continue;
+  const keep = (v) => migrateSettings({ settingsVersion: 2, [k]: v }).settings[k];
+  for (const bad of ['x', 7, null, [1]]) ok(isDeepStrictEqual(keep(bad), DEFAULT_SETTINGS[k]), `${k}: 형식 틀림 ${JSON.stringify(bad)} → 기본값`);
+  ok(isDeepStrictEqual(keep(JSON.parse(JSON.stringify(DEFAULT_SETTINGS[k]))), DEFAULT_SETTINGS[k]), `${k}: 기본값 객체 유지`);
+  ok(migrateSettings({ settingsVersion: 2 }).settings[k] !== DEFAULT_SETTINGS[k] || Object.isFrozen(DEFAULT_SETTINGS[k]), `${k}: 기본값 객체를 그대로 내주면 얼어 있어야 한다`);
+}
 for (const k of Object.keys(SETTINGS_SCHEMA)) ok(Object.hasOwn(DEFAULT_SETTINGS, k), `SETTINGS_SCHEMA 의 ${k} 에 기본값 없음`);
 ok(SETTINGS_VERSION === 2 && DEFAULT_SETTINGS.settingsVersion === 2, 'settingsVersion 2');
 ok(['low', 'medium', 'high'].includes(autoQualityTier()), 'autoQualityTier() 는 low|medium|high');

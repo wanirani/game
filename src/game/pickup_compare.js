@@ -124,12 +124,24 @@ function hook(g) {
   g._qolToastHook = true;
   const orig = g.drawToasts;
   g.drawToasts = function drawToastsQol(ctx, top) {
+    try { hintSync(this, top); } catch (e) { console.warn('[pickup_compare]', e); }
     orig.call(this, ctx, top);
     try { afterToasts(this, top); } catch (e) { console.warn('[pickup_compare]', e); }
   };
 }
-/** 토스트 글자를 바꾼 뒤 game.js 의 줄바꿈·폭 캐시를 비운다 */
-function retext(t, s) { t.text = s; t._fk = t._wk = t._mk = undefined; }
+/** 토스트 글자를 바꾼 뒤 game.js 의 줄바꿈·폭 캐시를 비운다 (_pk: hudfix 토스트 줄 계획 캐시) */
+function retext(t, s) { t.text = s; t._fk = t._wk = t._mk = undefined; t._pk = null; }
+/** 「눌러서 장착」 안내는 지금 누를 수 있을 때만 (qafix): 마을에서 받은 토스트가 상점·설정·메뉴 위에 그려지는 동안은 안내를 뗀다 */
+function hintSync(g, top) {
+  const on = canTap(g, top) && input.mode !== 'pad';
+  for (const t of g.toasts) {
+    const h = t._qolHint;
+    if (!h || typeof t.text !== 'string') continue;
+    const has = t.text.endsWith(h);
+    if (on && !has) retext(t, t.text + h);
+    else if (!on && has) retext(t, t.text.slice(0, -h.length));
+  }
+}
 
 function decorate(g, item) {
   const st = g?.state;
@@ -158,7 +170,8 @@ function decorate(g, item) {
   // 패드에는 새 단축키를 두지 않는다 (qol_equip 정리: 토스트 터치·클릭만) → 패드면 안내 없이 표시만
   // 누를 수 있는 곳(스테이지·마을 HUD 위 토스트)에서만 「장착」 안내 — 상점·메뉴 같은 화면의 토스트는 표시만
   const tappable = mark === 'up' && input.mode !== 'pad' && canTap(g);
-  if (tappable) suf += input.touchMode ? ' · 눌러서 장착' : ' · 클릭해 장착';
+  const hint = input.touchMode ? ' · 눌러서 장착' : ' · 클릭해 장착';
+  if (tappable) suf += hint;
   else if (other) suf += ` · ${CHARACTERS[other]?.name?.split(' ')[0] ?? ''}에게 ▲`;
   const name = itemName(item);
   const head = `획득: ${name}`;
@@ -167,7 +180,7 @@ function decorate(g, item) {
   if (t) retext(t, t.text + suf);
   else { g.toast(head + suf, '#efe4cf', 3); t = g.toasts[g.toasts.length - 1]; }
   if (!t) return;
-  if (tappable) { t._qol = { uid: item.uid, slot, mark }; t.t = t.max = Math.max(t.max ?? 0, 4); }
+  if (tappable) { t._qol = { uid: item.uid, slot, mark }; t._qolHint = hint; t.t = t.max = Math.max(t.max ?? 0, 4); }
   hook(g);
 }
 

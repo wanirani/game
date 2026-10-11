@@ -452,10 +452,13 @@ async function waitPuppets() {
     await new Promise((r) => setTimeout(r, 50));
   }
   const loads = [assets.load('puppets/_shared/cape_tex')];
+  // 16방향 모습(assets/puppets/turn16.json)은 옛 turn 시트가 없다 (TURNMOUNT: 지웠다) — 요청하면 404
+  let T16 = {};
+  try { T16 = (await (await fetch('assets/puppets/turn16.json')).json()).looks || {}; } catch { T16 = {}; }
   for (const [cid, cls] of keys) {
     const h = PUPPETS[cid][cls].h;
     for (const lv of PUPPETS[cid][cls].lv) { loads.push(assets.load(`puppets/${cid}/${cls}/atlas_${lv}`, h), assets.load(`puppets/${cid}/${cls}/mask_${lv}`, h)); }
-    if (PUPPETS[cid][cls].turn) loads.push(assets.load(`puppets/${cid}/${cls}/turn`, h));
+    if (PUPPETS[cid][cls].turn && !T16[`${cid}/${cls}`]) loads.push(assets.load(`puppets/${cid}/${cls}/turn`, h));
   }
   await Promise.all(loads);
   window.__pupStatus = puppetStatus();

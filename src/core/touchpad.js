@@ -1098,6 +1098,21 @@ function bakeSprites(L) {
   };
   for (const id of PAD_IDS) { const d = btnPos(L, id).d; make(id, d, false); make(id, d, true); }
   for (const id of SYS_IDS) { make(id, L.sd, false, true); make(id, L.sd, true, true); }
+  // 스틱 받침 (qafix): 그린 철판 원판 + 네 방향 눈금을 덧캔버스 DPR 로 한 번 구워 버튼처럼 기기 픽셀 1:1 로 붙인다
+  const base = art ? HUDM.hudArt('stick_base') : null, sc = (S.spr.stick ??= [document.createElement('canvas')])[0];
+  const R = L.R, half = R * 1.15 + 2, sz = Math.max(1, Math.ceil(half * 2 * S.dpr));
+  if (sc.width !== sz || sc.height !== sz) { sc.width = sz; sc.height = sz; }
+  const g = sc.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, sz, sz); g.setTransform(S.dpr, 0, 0, S.dpr, 0, 0);
+  g.imageSmoothingQuality = 'high';
+  if (base) { const z = R * 2.3; g.drawImage(base, half - z / 2, half - z / 2, z, z); }
+  else {
+    g.fillStyle = 'rgba(18,4,10,0.38)'; g.beginPath(); g.arc(half, half, R, 0, TAU); g.fill();
+    g.lineWidth = 2; g.strokeStyle = 'rgba(232,200,114,0.7)'; g.beginPath(); g.arc(half, half, R, 0, TAU); g.stroke();
+  }
+  g.fillStyle = 'rgba(232,200,114,0.55)';
+  for (let i = 0; i < 4; i++) { const t = i * Math.PI / 2; g.beginPath(); g.arc(half + Math.cos(t) * R * 0.78, half + Math.sin(t) * R * 0.78, 2.2, 0, TAU); g.fill(); }
+  sc._half = half; sc._R = R;
 }
 function blit(c, id, cx, cy, d, pressed) {
   const sp = S.spr[id]?.[pressed ? 1 : 0];
@@ -1520,57 +1535,43 @@ function ultVector(c, cx, cy, r, pressed, sp, full, aw, reduce, pulse, tsec) {
 }
 
 /**
- * 스틱. 쉬는 동안 (hudfix — 보스방에서 받침이 영웅을 가렸다):
- *  · 떠 있는 스틱(기본): 받침 그림 대신 옅은 고리 하나만 (어디를 누르면 되는지만 알려 준다)
- *  · 고정 스틱: 받침 그림을 그리되, 영웅·보스가 받침 뒤에 있으면 OCC_A 로 옅게
- * 누르고 있는 동안은 받침·손잡이를 진하게.
+ * 스틱. 쉬는 동안 (qafix — 사용자 의견 5: 옅은 고리만 있으면 버튼과 달리 붙여 놓은 듯 보인다 → 예전처럼 그린 받침 + 금빛 손잡이):
+ *  · 떠 있는 스틱(기본)·고정 스틱 모두 기본 자리에 받침 + 손잡이를 버튼과 같은 투명도로 (받침은 구운 그림을 기기 픽셀 1:1)
+ *  · 영웅·보스가 받침 뒤에 있으면 OCC_A 로 옅게 (hudfix — 보스방에서 받침이 영웅을 가렸다)
+ *  · 떠 있는 스틱을 떼면 손가락 자리의 스틱이 사라지는 동안(0.3 s) 기본 자리 스틱이 다시 나타난다
+ * 누르고 있는 동안은 받침·손잡이를 진하게. 돌려주는 값 = 칠한 사각형 (다음 그리기에서 지울 곳)
  */
 function drawStick(c, L, op) {
-  const s = S.stick, R = L.R;
-  const fixed = settings().touchStick === 'fixed';
-  let ax, ay, fx, fy, a, ghost = false;
-  if (s.active) { ax = s.ax; ay = s.ay; fx = s.fx; fy = s.fy; a = Math.max(0.85, op); }
-  else {
-    const f = (now() - s.relT) / (STICK_FADE * 1000);
-    if (f < 1 && !fixed) { ax = s.ex; ay = s.ey; fx = ax; fy = ay; a = Math.max(0.85, op) * (1 - f); }
-    else if (S.visible) {
-      ax = L.home.x; ay = L.home.y; fx = ax; fy = ay;
-      const occ = !!(OCC.mask & OCC_STICK);
-      if (fixed) a = occ ? Math.min(op, OCC_A) : op;
-      else { ghost = true; a = occ ? 0.22 : Math.min(0.6, op * 0.6); }
-    } else return null;
-  }
+  const s = S.stick;
+  if (s.active) return stickAt(c, L, s.ax, s.ay, s.fx, s.fy, Math.max(0.85, op), s.sprint);
+  const f = settings().touchStick === 'fixed' ? 1 : clamp((now() - s.relT) / (STICK_FADE * 1000), 0, 1);
+  const away = f < 1 ? stickAt(c, L, s.ex, s.ey, s.ex, s.ey, Math.max(0.85, op) * (1 - f), false) : null;
+  if (!S.visible) return away;
+  const home = stickAt(c, L, L.home.x, L.home.y, L.home.x, L.home.y, ((OCC.mask & OCC_STICK) ? Math.min(op, OCC_A) : op) * f, false);
+  if (!away || !home) return away || home;
+  const x = Math.min(away.x, home.x), y = Math.min(away.y, home.y);
+  return { x, y, w: Math.max(away.x + away.w, home.x + home.w) - x, h: Math.max(away.y + away.h, home.y + home.h) - y };
+}
+function stickAt(c, L, ax, ay, fx, fy, a, sprint) {
   if (a <= 0.01) return null;
+  const R = L.R;
   c.save();
   c.globalAlpha = a;
-  if (ghost) { // 떠 있는 스틱의 쉬는 자리: 어두운 얇은 원판 + 금빛 고리 + 가운데 점 (받침 그림·손잡이 없이)
-    c.fillStyle = 'rgba(8,3,8,0.22)'; c.beginPath(); c.arc(ax, ay, R, 0, TAU); c.fill();
-    c.lineWidth = 2; c.strokeStyle = 'rgba(232,200,114,0.75)'; c.beginPath(); c.arc(ax, ay, R, 0, TAU); c.stroke();
-    c.lineWidth = 1; c.strokeStyle = 'rgba(0,0,0,0.6)'; c.beginPath(); c.arc(ax, ay, R + 1.5, 0, TAU); c.stroke();
-    c.fillStyle = 'rgba(232,200,114,0.8)'; c.beginPath(); c.arc(ax, ay, 3, 0, TAU); c.fill();
-    c.restore();
-    const e = R + 6;
-    return { x: ax - e, y: ay - e, w: e * 2, h: e * 2 };
-  }
-  // 받침 (그린 철판 원판이 있으면 그것 — hud_mobile §3 '바탕 원판 그림')
-  const base = artOn() ? HUDM.hudArt('stick_base') : null;
-  if (base) { const z = R * 2.3; c.drawImage(base, ax - z / 2, ay - z / 2, z, z); }
-  else {
+  // 받침 (구운 그림: 그린 철판 원판 + 네 방향 눈금 — 없으면 그 자리에서 그린다)
+  const sp = S.spr.stick?.[0], k = S.dpr || 1;
+  if (sp && sp._R === R && sp.width > 1) {
+    const x = Math.round((ax - sp._half) * k) / k, y = Math.round((ay - sp._half) * k) / k;
+    c.drawImage(sp, x, y, sp.width / k, sp.height / k);
+  } else {
     c.fillStyle = 'rgba(18,4,10,0.38)';
     c.beginPath(); c.arc(ax, ay, R, 0, TAU); c.fill();
     c.lineWidth = 2; c.strokeStyle = 'rgba(232,200,114,0.7)';
     c.beginPath(); c.arc(ax, ay, R, 0, TAU); c.stroke();
   }
-  // 네 방향 눈금
-  c.fillStyle = 'rgba(232,200,114,0.55)';
-  for (let i = 0; i < 4; i++) {
-    const t = i * Math.PI / 2, x = ax + Math.cos(t) * R * 0.78, y = ay + Math.sin(t) * R * 0.78;
-    c.beginPath(); c.arc(x, y, 2.2, 0, TAU); c.fill();
-  }
   // 질주 고리 (1.15R): 넘어가면 붉게 빛난다
-  c.lineWidth = s.sprint ? 3 : 1.5;
-  c.strokeStyle = s.sprint ? '#ff5064' : 'rgba(255,90,110,0.35)';
-  if (!s.sprint) c.setLineDash([5, 6]);
+  c.lineWidth = sprint ? 3 : 1.5;
+  c.strokeStyle = sprint ? '#ff5064' : 'rgba(255,90,110,0.35)';
+  if (!sprint) c.setLineDash([5, 6]);
   c.beginPath(); c.arc(ax, ay, R * SPRINT_K, 0, TAU); c.stroke();
   c.setLineDash([]);
   // 손잡이 (질주 고리까지만)
@@ -1580,7 +1581,7 @@ function drawStick(c, L, op) {
   const kr = KNOB_R * (R / STICK_R);
   const kx = ax + dx, ky = ay + dy;
   c.translate(kx, ky); // 원점 기준 그라데이션을 재사용 (매번 새로 만들지 않는다)
-  c.fillStyle = knobGradient(c, kr, s.sprint);
+  c.fillStyle = knobGradient(c, kr, sprint);
   c.beginPath(); c.arc(0, 0, kr, 0, TAU); c.fill();
   c.lineWidth = 1.5; c.strokeStyle = 'rgba(0,0,0,0.6)'; c.stroke();
   c.restore();

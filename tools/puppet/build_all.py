@@ -18,7 +18,25 @@ def one(args):
     t0 = time.time()
     meta = build(path, quiet=True)
     tr = build_turn(path, quiet=True) if turn else None
-    return path, meta['charId'], meta['classId'], round(time.time() - t0, 1), bool(tr)
+    if tr and drop_old_turn(meta['charId'], meta['classId']):
+        tr = 'turn16'
+    return path, meta['charId'], meta['classId'], round(time.time() - t0, 1), tr
+
+
+def drop_old_turn(cid, cls):
+    """16방향 턴테이블(assets/puppets/turn16.json)이 있는 모습은 옛 8방향 시트를 싣지 않는다 (런타임은 읽지 않는다 — hero_puppet
+    turnReady() 가 false; 다시 만들면 APK +190 KB × 49). rig.json 의 turn 항목(앵커)은 HeroView 장비 겹침이 읽으므로 그대로 둔다."""
+    try:
+        looks = load_json(os.path.join(OUT, 'turn16.json')).get('looks', {})
+    except Exception:
+        return False
+    if f'{cid}/{cls}' not in looks:
+        return False
+    for f in ('turn.webp', 'turn_mask.webp'):
+        p = os.path.join(OUT, cid, cls, f)
+        if os.path.exists(p):
+            os.remove(p)
+    return True
 
 
 def main():
@@ -34,7 +52,7 @@ def main():
     subprocess.run([sys.executable, os.path.join(here, 'build_cape.py')], check=True)
     with ProcessPoolExecutor(max_workers=a.j) as ex:
         for path, cid, clsid, dt, tr in ex.map(one, [(r, not a.no_turn) for r in rigs]):
-            print(f'  ✓ {cid}/{clsid}  {dt}s{"  +turn" if tr else ""}')
+            print(f'  ✓ {cid}/{clsid}  {dt}s{"  +turn16 (옛 turn.webp 지움)" if tr == "turn16" else "  +turn" if tr else ""}')
     write_manifest()
     subprocess.run([sys.executable, os.path.join(here, 'sheet.py')] + ([a.only] if a.only else []), check=False)
     report()

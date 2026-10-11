@@ -292,7 +292,7 @@ export class ChurchScene extends ServiceScene {
     audio.sfx('menu_ok');
     if (c.kind === 'trial') {
       const T = c.T;
-      const rules = [...(T.mods ?? []).map((m) => modName(m)), ...(T.diffOver?.bossHp ? [`보스 체력 ${T.diffOver.bossHp}배`] : [])];
+      const rules = [...(T.mods ?? []).map((m) => modName(m)), ...(T.diffOver?.bossHp > 1 ? [`보스 체력 ${T.diffOver.bossHp}배`] : [])];   // 1 이하(영웅별 보정)는 규칙으로 보이지 않는다 (qafix)
       this.modal = new Modal({
         title: '시련에 도전하시겠습니까?', width: 500,
         lines: [`보스: ${BOSSES[T.boss]?.name ?? STAGES[T.stage]?.name ?? '???'} · 권장 Lv ${T.recLv}`, '시련 중에는 전리품·경험치가 없고 목숨이 줄지 않습니다.', ...(rules.length ? [`규칙: ${rules.join(' · ')}`] : [])],

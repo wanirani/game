@@ -298,12 +298,14 @@ Every module in this table exists after W0, with the listed exports as no-ops. T
 | ctrlDeadzone | 0.2 | 0.1..0.4 | platform §4.3 | 조작 | 스틱 데드존 |
 | ctrlRumble | 0.8 | 0..1 | platform §4.6 | 조작 | 컨트롤러 진동 세기 |
 | autoSprint | false | bool | feel §7 | 조작 | 자동 달리기 |
-| touchOpacity | 0.55 | 0..1 | existing | 터치 | 투명도 |
+| touchOpacity | 0.95 | 0..1 | existing; default 0.55 → 0.95 in HUD-REDO (2026-10-11: buttons read solid over the painted scene). migrateSettings moves a saved 0.55 to 0.95 once (only while `hud.rev` < 2) | 터치 | 투명도 |
 | touchScale | 1 | 0.8..1.3 | platform §5.2 | 터치 | 크기 |
 | touchStick | 'float' | 'float'\|'fixed' | platform §5.2 | 터치 | 스틱 방식 |
 | touchSlide | true | bool | platform §5.2 | 터치 | 버튼 사이 밀어 누르기 |
 | touchLeftHanded | false | bool | platform §5.2 | 터치 | 왼손 모드 |
 | touchLayout | null | {id:{right,bottom,d}} | platform §5.3 | 터치 | 버튼 배치 편집 › |
+| hud | `{"preset":"auto","scale":1,"pad":"overlay","rev":2}` | {preset:'auto'\|'wide'\|'fold', scale:0.85..1.2, pad:'overlay'\|'band', rev:int} | hud_mobile §3; HUD-REDO 2026-10-11 (`pad` = 터치 › 버튼 배치 「게임 화면 위」/「아래 띠」, `rev` = layout generation: a pre-rev-2 touchLayout is dropped once by touchpad.js) | 화면 · 터치 | 화면 배치 · 버튼 배치 |
+| gear | `{"autoDispose":"off","maxRarity":0,"weights":"bal","fixSpecial":true,"keep":{"enhanced":true,"better":true,"other":true,"special":true}}` | {autoDispose:'off'\|'sell'\|'salvage', maxRarity:0..2, weights:'atk'\|'bal'\|'def', fixSpecial:bool, keep:{enhanced,better,other,special:bool}} | docs/specs/qol_equip.md (QOL 2026-10-11); unknown sub-keys are kept | 장비 | 장비 점수 기준 · 고유·신화 장비 고정 · 자동 처분 · 처분 기준 · 남김 4줄 |
 | vibration | true | bool | existing (phone vibrate) | 터치 | 진동 |
 | autoSave | true | bool | existing | 기타 | 자동 저장 |
 | keepAwake | true | bool | platform §6.6 | 기타 | 화면 꺼짐 방지 |

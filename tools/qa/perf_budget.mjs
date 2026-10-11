@@ -28,7 +28,8 @@
 //   textures    assets.stats(): total ≤ budget (160 MB touch / 400 MB desktop), painted ≤ paintedBudget        #59
 //               (phones 32 MB · touch tablets 40 MB · desktop 64 MB: assets.paintedBudget, R1-RUN-TEX-TOUCH)
 //   backing     game canvas backing store ≤ 1.0 / 1.6 / 3.7 MP                                                     platform §6.4
-//   tpadcv      touch overlay backing DPR ≤ the game's DPR cap (1.0 low, 1.5 medium) and ≤ game.dpr; idle redraws ≤ 30 Hz
+//   tpadcv      touch overlay backing DPR ≤ min(devicePixelRatio, 3) and ≤ 6.5 MP on every tier (HUD-REDO/hudfix: crisp buttons at
+//               device resolution); navigator.deviceMemory ≤ 2 GB → ≤ 1.5 DPR and ≤ 1.5 MP; idle redraws ≤ 30 Hz
 //   perks       class_perks PERK_STATS per measured frame: hook errors = 0 in every scene and over the whole walk (fail);
 //               tier-3 scenes: the ascension is live (heroTier 3, perk key has the id) and the ult/awakening event says tier 3
 //   perkms      tier-3 scenes, real-clock pass of 120 frames after the counted frames (the frozen page's virtual clock would read
@@ -632,14 +633,17 @@ try {
           const run = g.world?.run; if (run) { run.sp = 0; run.aw = 0; }
           await new Promise((res) => setTimeout(res, 2000));
           ctx.clearRect = o;
-          return { dpr: +dpr.toFixed(3), gameDpr: g.dpr ?? null, w: cv.width, h: cv.height, cssW: css.width, cssH: css.height, redraws2s: n, visible: getComputedStyle(cv).display !== 'none' };
+          const mem = Number(navigator.deviceMemory);
+          return { dpr: +dpr.toFixed(3), gameDpr: g.dpr ?? null, devDpr: window.devicePixelRatio || 1, lowMem: Number.isFinite(mem) && mem > 0 && mem <= 2, w: cv.width, h: cv.height, cssW: css.width, cssH: css.height, redraws2s: n, visible: getComputedStyle(cv).display !== 'none' };
         });
         await freeze(s.page);
         if (!r) C.add(`${prof}.tpadcv`, 'fail', 'no #tpadcv canvas');
         else {
-          const cap = Math.min(BUDGET.dprCap[P.tier], r.gameDpr ?? 99);
-          const okD = r.dpr <= cap + 0.02, okR = r.redraws2s / 2 <= 30;
-          C.add(`${prof}.tpadcv.dpr`, okD ? 'pass' : 'fail', `#tpadcv ${r.w}×${r.h} for ${r.cssW.toFixed(0)}×${r.cssH.toFixed(0)} CSS px: DPR ${r.dpr} (cap ${cap}: tier ${BUDGET.dprCap[P.tier]}, game ${r.gameDpr})`);
+          // qafix (lead decision, requests_g HUD-REDO FIX): the overlay renders at the device DPR on every tier (cap 3, 6.5 MP);
+          // only ≤ 2 GB-RAM devices are capped at 1.5 DPR / 1.5 MP (touchpad.js overlayDpr)
+          const cap = r.lowMem ? Math.min(1.5, r.devDpr) : Math.min(r.devDpr, 3), mpCap = r.lowMem ? 1.5 : 6.5, mp = r.w * r.h / 1e6;
+          const okD = r.dpr <= cap + 0.02 && mp <= mpCap + 0.01, okR = r.redraws2s / 2 <= 30;
+          C.add(`${prof}.tpadcv.dpr`, okD ? 'pass' : 'fail', `#tpadcv ${r.w}×${r.h} for ${r.cssW.toFixed(0)}×${r.cssH.toFixed(0)} CSS px: DPR ${r.dpr} (cap ${cap}${r.lowMem ? ', deviceMemory ≤ 2 GB' : ''}: device ${r.devDpr}, game ${r.gameDpr}) · ${mp.toFixed(2)} MP (cap ${mpCap})`);
           C.add(`${prof}.tpadcv.redraw`, okR ? (r.redraws2s > 4 ? 'warn' : 'pass') : 'fail', `${r.redraws2s} redraws in 2 s idle (≤ 30 Hz; ideally only on state change)`);
           if (!okD) findings.push({ id: `perf.tpadcv.dpr.${prof}`, sev: 'S3', kind: 'perf', title: `#tpadcv backing DPR ${r.dpr} above the cap ${cap} (${prof})`, file: 'src/core/touchpad.js', ...ownerOf('src/core/touchpad.js') });
           if (!okR) findings.push({ id: `perf.tpadcv.redraw.${prof}`, sev: 'S3', kind: 'perf', title: `#tpadcv redraws ${r.redraws2s / 2} Hz while idle (${prof})`, file: 'src/core/touchpad.js', ...ownerOf('src/core/touchpad.js') });

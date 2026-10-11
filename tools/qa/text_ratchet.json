@@ -185,8 +185,8 @@
    "menu_inventory": {
     "min": 10,
     "p10": 10,
-    "median": 11.67,
-    "under12": 0.525
+    "median": 10.83,
+    "under12": 0.614
    },
    "menu_skills": {
     "min": 9.17,
@@ -421,8 +421,8 @@
    "menu_inventory": {
     "min": 10.02,
     "p10": 10.86,
-    "median": 13.37,
-    "under12": 0.44
+    "median": 11.69,
+    "under12": 0.515
    },
    "menu_skills": {
     "min": 9.19,
@@ -663,10 +663,10 @@
     "under12": 0.102
    },
    "menu_inventory": {
-    "min": 10.83,
+    "min": 12.08,
     "p10": 12.08,
     "median": 12.08,
-    "under12": 0.049
+    "under12": 0
    },
    "menu_skills": {
     "min": 12.08,
@@ -899,10 +899,10 @@
     "under12": 0.113
    },
    "menu_inventory": {
-    "min": 10.86,
+    "min": 12.11,
     "p10": 12.11,
-    "median": 13.37,
-    "under12": 0.04
+    "median": 12.11,
+    "under12": 0
    },
    "menu_skills": {
     "min": 12.11,
