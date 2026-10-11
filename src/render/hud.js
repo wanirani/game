@@ -467,7 +467,8 @@ function avoidClip(L, self) {
       try {
         p = new Path2D();
         p.rect(0, 0, L.vw, L.vh);
-        for (const r of near) p.rect(r.x, r.y, r.w, r.h);
+        // 빼는 칸은 바깥쪽 정수 px 로 1 px 넓힌다 (칸 경계가 소수 px 이면 안티에일리어싱으로 넘친 글자가 몇 px 스며든다 — hudfix)
+        for (const r of near) { const x0 = Math.floor(r.x) - 1, y0 = Math.floor(r.y) - 1; p.rect(x0, y0, Math.ceil(r.x + r.w) + 1 - x0, Math.ceil(r.y + r.h) + 1 - y0); }
       } catch { p = null; }
     }
   }

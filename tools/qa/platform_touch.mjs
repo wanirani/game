@@ -165,8 +165,9 @@ try {
 
   // ── 5. tablet 4:3: canvas top-aligned, the main buttons sit in the bottom band ────────────────────
   await suite.group('band', async () => {
-    // hud_mobile §2: 4:3 는 이제 세로 확장 시야로 화면을 채운다 → 띠는 '화면 배치: 휴대폰'(settings.hud.preset 'wide') 에서만 생긴다
-    const { s } = await touchStage('tablet', { settings: { hud: { preset: 'wide', scale: 1 } } });
+    // hud_mobile §2: 4:3 는 이제 세로 확장 시야로 화면을 채운다 → 띠는 '버튼 배치: 아래 띠'(settings.hud.pad 'band') 에서만 생긴다
+    // (hudfix: 예전엔 '화면 배치: 휴대폰'(preset 'wide')도 몰래 띠를 만들었다 — 검토 의견 2. 이제 띠는 버튼 배치 설정만 따른다)
+    const { s } = await touchStage('tablet', { settings: { hud: { preset: 'wide', pad: 'band', scale: 1 } } });
     const box = await canvasBox(s.page);
     const L = await padLayout(s.page);
     const main = ['attack', 'jump', 'dash'].map((id) => L.buttons[id]).filter(Boolean);

@@ -264,7 +264,7 @@ function clipSpan(l, r, top, h, pad, sides) {
   return { l, r: Math.max(l, r) };
 }
 
-function build(vw, vh, T, S, pad, bossOn, nM, F) {
+function build(vw, vh, T, S, pad, bossOn, nM, F, mReal = true) {
   const l = S.l || 0, rr = S.r || 0, t = S.t || 0, b = S.b || 0;
   const right = vw - rr;
   const big = !!T && F >= HUD_BIG_MIN;
@@ -378,7 +378,7 @@ function build(vw, vh, T, S, pad, bossOn, nM, F) {
   if (ts.r - ts.l < 160 && T) {
     // 왼쪽 322 여백은 왼쪽 위 묶음·동료 카드 줄을 피하려는 것 — 그 높이에 걸리는 것이 없으면 왼쪽으로 넓혀 본다 (오른쪽 버튼 윗줄을 옆으로 피함)
     let lo = l + 14;
-    for (const q of [L.callouts, L.combo, L.skills, L.hearts, L.vitals, L.companions, L.portrait]) if (q && q.w > 0 && q.y < ty + th + over && q.y + q.h > ty && q.x < 322 + l) lo = Math.max(lo, q.x + q.w + HUD_GAP);
+    for (const q of [L.callouts, L.combo, L.skills, L.hearts, L.vitals, L.companions, L.portrait]) if (q && q.w > 0 && q.y < ty + th + over && q.y + q.h > ty - 16 && q.x < 322 + l) lo = Math.max(lo, q.x + q.w + HUD_GAP);
     const sL = clipSpan(lo, right - 322, ty, th + over, pad, sides);
     if (sL.r - sL.l >= 160) ts = sL;
   }
@@ -390,9 +390,19 @@ function build(vw, vh, T, S, pad, bossOn, nM, F) {
     if (Number.isFinite(ptop)) {
       const n0 = clamp(Math.round(nM), 0, 3), top0 = n0 ? meters[n0 - 1].y + METER_H + 4 : mTop;
       const bty0 = Math.max(148 + t, n0 ? meters[n0 - 1].y + METER_H + 4 : 0);
-      const minTy = Math.ceil((bossOn ? Math.max(top0, bty0 + 40) + TOAST_ROW + 4 : top0 + 3 * TOAST_ROW + 4) + 16);   // +16: 알림이 튀어나올 때 위로 넘치는 높이
-      const ty2 = Math.max(minTy, Math.floor(ptop - th - over - 2));
+      // 토스트 3줄을 지키면 버튼 윗줄 위로 못 올라가는 경우(노치 + 실제 게이지 2–3줄)는 토스트를 2줄 → 1줄로 줄여서라도 올린다
+      // (보스 중엔 1줄 고정. 기믹이 없어 게이지 3줄을 비워 두기만 한 방은 줄이지 않는다 — 평소 토스트 3줄 유지)
+      const want = Math.floor(ptop - th - over - 2);
+      let ty2 = want, cap = 3;
+      for (const nr of bossOn || !mReal ? [bossOn ? 1 : 3] : [3, 2, 1]) {
+        const minTy = Math.ceil((bossOn ? Math.max(top0, bty0 + 40) + nr * TOAST_ROW + 4 : top0 + nr * TOAST_ROW + 4) + 16);   // +16: 알림이 튀어나올 때 위로 넘치는 높이
+        ty2 = Math.max(minTy, want);
+        cap = nr;
+        if (ty2 <= want) break;
+      }
+      if (ty2 > want && cap < 3) { cap = 3; ty2 = Math.max(Math.ceil(top0 + 3 * TOAST_ROW + 4 + 16), want); }   // 1줄로도 안 되면 줄이지 않는다
       if (ty2 < ty) {
+        if (cap < 3) L.toastCap = cap;
         const s2 = clipSpan(322 + l, right - 322, ty2, th + over, pad, sides);
         ty = ty2; ts = s2.r - s2.l >= 160 ? s2 : clipSpan(322 + l, right - 322, ty2, th, pad, sides);
       }
@@ -435,7 +445,7 @@ function build(vw, vh, T, S, pad, bossOn, nM, F) {
   let top0 = n ? meters[n - 1].y + METER_H + 4 : mTop;
   const bossTopOn = L.bossShown && L.bossSlot === 'top';
   if (bossTopOn) top0 = Math.max(top0, L.bossTop.y + L.bossTop.h + 4);
-  const rows = Math.max(0, Math.min(bossTopOn ? 1 : 3, Math.floor((L.transient.y - 4 - top0) / TOAST_ROW)));
+  const rows = Math.max(0, Math.min(bossTopOn ? 1 : 3, L.toastCap ?? 3, Math.floor((L.transient.y - 4 - top0) / TOAST_ROW)));
   const rowAt = (i) => {
     const top = top0 + i * TOAST_ROW;
     const s = clipSpan(gapL, gapR, top, TOAST_ROW, pad, sides);
@@ -658,6 +668,7 @@ export function hudLayout(world, vw, vh, pad, opts) {
   const bossOn = !!(opts?.boss ?? bossBarShown(world));
   const gm = world?.gimmick?.meterRows;
   const nM = clamp(Math.round(Number(opts?.meters ?? (Number.isFinite(gm) ? gm : 3))) || 0, 0, 3);
+  const mReal = opts?.meters != null || Number.isFinite(gm);   // [hudfix] 실제 게이지 줄 (아니면 3줄을 비워 둔 것뿐)
   const F = T ? clamp(Math.round(Number(opts?.textMin ?? hudTextMin(true))) || 0, 0, HUD_TEXT_MAX) : 0;
   const g0 = world?.game ?? game;
   const pr = opts?.preset ?? hudPreset(g0, vw, vh);
@@ -668,13 +679,13 @@ export function hudLayout(world, vw, vh, pad, opts) {
   const bv = band ? (touchpad.layoutVersion?.() ?? 0) : 0;   // 띠 빠른 칸은 버튼 자리를 따른다 (패드 배치가 늦게 잡혀도 다시 계산)
   const a = memoArgs;
   if (memo && a[0] === vw && a[1] === vh && a[2] === T && a[3] === (S.l || 0) && a[4] === (S.r || 0) && a[5] === (S.t || 0) && a[6] === (S.b || 0)
-    && a[7] === bossOn && a[8] === nM && a[9] === F && a[10] === pr && a[11] === hk && a[12] === (Number(g0?.cssScale) || 1) && a[13] === qc && a[14] === band && a[15] === lh && a[16] === bv && samePad(memoPad, pad)) {
+    && a[7] === bossOn && a[8] === nM && a[9] === F && a[10] === pr && a[11] === hk && a[12] === (Number(g0?.cssScale) || 1) && a[13] === qc && a[14] === band && a[15] === lh && a[16] === bv && a[17] === mReal && samePad(memoPad, pad)) {
     if (band && !memo.quick && pr !== 'fold') bandQuick(memo, g0, vw, vh, band);   // 패드가 아직 안 보여 버튼 자리가 없던 첫 프레임 → 다시 시도
     return memo;
   }
-  memo = pr === 'fold' ? buildFold(vw, vh, T, S, cleanPad(pad), bossOn, nM, F, hk, Number(g0?.cssScale) || 1, qc) : build(vw, vh, T, S, cleanPad(pad), bossOn, nM, F);
+  memo = pr === 'fold' ? buildFold(vw, vh, T, S, cleanPad(pad), bossOn, nM, F, hk, Number(g0?.cssScale) || 1, qc) : build(vw, vh, T, S, cleanPad(pad), bossOn, nM, F, mReal);
   if (pr !== 'fold') { memo.preset = 'wide'; memo.fold = false; memo.arc = null; memo.quest = null; memo.questShown = false; bandQuick(memo, g0, vw, vh, band); }
-  a.length = 0; a.push(vw, vh, T, S.l || 0, S.r || 0, S.t || 0, S.b || 0, bossOn, nM, F, pr, hk, Number(g0?.cssScale) || 1, qc, band, lh, bv);
+  a.length = 0; a.push(vw, vh, T, S.l || 0, S.r || 0, S.t || 0, S.b || 0, bossOn, nM, F, pr, hk, Number(g0?.cssScale) || 1, qc, band, lh, bv, mReal);
   memoPad.length = 0;
   for (const p of pad) memoPad.push(p?.x, p?.y, p?.w, p?.h);
   return memo;

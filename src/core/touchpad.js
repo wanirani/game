@@ -367,7 +367,7 @@ function layout(force = false) {
     kEff = Math.max(0.5, kEff * f * 0.995);
     T = padPlan(kind, kEff, PAD_M, town);
   }
-  const gap = Math.max(12, PAD_GAP * kEff);
+  const gap = Math.max(12.5, PAD_GAP * kEff);   // 12.5: 바닥값 12 에 딱 붙으면 px 반올림으로 11.98 이 된다 (hudfix)
   const bounds = { x0: ins.l, x1: W - ins.r, y0: yMin, y1: H - ins.b };
   const btnList = [];
   for (const id of PAD_IDS) {
