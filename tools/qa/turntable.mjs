@@ -703,8 +703,9 @@ try {
           }
         }
         const f = v[12], bk = v[4];                       // -180 + 12·22.5 = 90° front, -90° back
-        // 확대: 넓은 캔버스(같은 배율)에서 앞모습 실루엣 폭 — 날개·창이 가장자리에 잘리지 않게
-        const WZ = 480, wide = (zoom) => { const c = T.renderClass(cid, cls, 0, 90, WZ, H, zoom).canvas; const d = c.getContext('2d').getImageData(0, 0, WZ, H).data; let x0 = WZ, x1 = -1; for (let y = 0; y < H; y++) for (let x = 0; x < WZ; x++) if (d[(y * WZ + x) * 4 + 3] > 40) { if (x < x0) x0 = x; if (x > x1) x1 = x; } return { w: x1 - x0 + 1, n: 0 }; };
+        // 확대: 넓은 캔버스(같은 배율)에서 앞모습 다리 띠(허리 축 아래 몸 좌표 6…26)의 폭 — 확대 축이 허리라 이 띠는 두 배율 모두 캔버스 안이고,
+        // 날개·창·망토 끝(어깨 위로 펼쳐져 1.6 배에서 위 가장자리에 잘림)은 들어오지 않는다
+        const WZ = 480, s0 = (H - 30) / 96, py = H - 12 - 40 * s0, wide = (zoom) => { const c = T.renderClass(cid, cls, 0, 90, WZ, H, zoom).canvas; const d = c.getContext('2d').getImageData(0, 0, WZ, H).data; const y0 = Math.round(py + zoom * 6 * s0), y1 = Math.min(H - 1, Math.round(py + zoom * 26 * s0)); let x0 = WZ, x1 = -1; for (let y = y0; y <= y1; y++) for (let x = 0; x < WZ; x++) if (d[(y * WZ + x) * 4 + 3] > 40) { if (x < x0) x0 = x; if (x > x1) x1 = x; } return { w: x1 - x0 + 1, n: 0 }; };
         const z1 = wide(1), z16 = wide(1.6);
         const lo = R(90, 1, true);
         out.push({ key: k, a16, minN: Math.min(...st.map((x) => x.n)), hMin: hs[0] / hMed, hMax: hs[15] / hMed, cross: worst, crossAt: worstAt, frontBack: diff(f, bk), zoomW: z16.w / Math.max(1, z1.w), zoomN: z16.n / Math.max(1, z1.n), lo: lo.a16 && lo.ready && stats(px(lo.canvas)).n > 800 });

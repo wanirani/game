@@ -1204,7 +1204,7 @@ export function turn16Pick(I, yaw) {
   let b = a, bd = 1e9;
   for (const e of L) { const dd = pos360(pos360(e.deg) - pos360(a.deg)); if (dd > 0.5 && dd < bd) { bd = dd; b = e; } }
   const f = clamp(best / Math.max(1, bd < 1e8 ? bd : step), 0, 1);
-  const x = clamp((f - 0.15) / 0.7, 0, 1);
+  const x = clamp((f - 0.1) / 0.8, 0, 1);              // 칸 양끝 10 % 는 그 칸 그대로, 가운데 80 % 에서 교차
   T16.a = a; T16.b = b; T16.k = x * x * (3 - 2 * x); T16.f = f;
   return T16;
 }
@@ -1295,16 +1295,21 @@ export function drawTurnCape(ctx, I, cape, yaw, behind, t) {
   const s = PUP_H / (v.footY - v.topY);
   const sy = (v.shY - v.footY) * s, shw = v.shW * s * 0.82, hem = -PUP_H * (1 - 0.8 * cape.len) + 2;
   const sn = Math.sin(yaw), cs = Math.cos(yaw);
-  const back = sn < 0;
-  if (behind === back) return;                          // 앞모습: 몸 뒤 패스 / 뒷모습: 몸 앞 패스
+  const back = sn < 0, an = Math.abs(sn);
+  // 앞모습: 몸 뒤 패스 / 뒷모습: 몸 앞 패스. 옆모습 둘레(|sin| < 0.15)에서는 몸 뒤 패스를 그대로 두고 몸 앞 패스를 서서히 올린다
+  // (16칸 교차 뷰에서 0°·180° 를 지날 때 망토가 몸 앞뒤로 한 번에 튀지 않게)
+  const fa = back ? Math.min(1, an / 0.15) : 0;
+  if (behind ? (back && fa >= 1) : !back) return;
   // 앞모습(몸 뒤 패스): 어깨 너머로 옆만 보임. 뒷모습(몸을 덮는 패스): 화면에 보이는 폭은 |sin| 에 비례 —
-  // 옆모습 가까이(−160°, −20°)에서 망토가 몸 전체를 덮어 버리지 않게 등 쪽으로 좁게
-  const wTop = back ? shw * (0.22 + 0.78 * Math.abs(sn)) : shw * (0.55 + 0.45 * Math.abs(sn));
-  const wBot = back ? shw * (0.4 + 0.9 * Math.abs(sn)) + 4 * Math.abs(cs) : shw * (1.05 + 0.5 * Math.abs(sn)) + 6 * Math.abs(cs);
-  const dx = -cs * shw * (back ? 0.62 : 0.55);         // 옆으로 돌면 등 쪽으로 밀림
+  // 옆모습 가까이(−160°, −20°)에서 망토가 몸 전체를 덮어 버리지 않게 등 쪽으로 좁게. 앞모습 폭도 옆모습(sin 0)에서 뒷모습 폭과 이어진다
+  const q = back ? 1 : Math.min(1, an / 0.35), qs = q * q * (3 - 2 * q);
+  const wTop = back ? shw * (0.22 + 0.78 * an) : shw * (0.22 + (0.33 + 0.45 * an) * qs);
+  const wBot = back ? shw * (0.4 + 0.9 * an) + 4 * Math.abs(cs) : shw * (0.4 + (0.65 + 0.5 * an) * qs) + (4 + 2 * qs) * Math.abs(cs);
+  const dx = -cs * shw * (back ? 0.62 : 0.62 - 0.07 * qs);   // 옆으로 돌면 등 쪽으로 밀림
   const sway = Math.sin(t * 1.6) * 1.2;
   const c = ctx;
   c.save();
+  if (back && !behind && fa < 1) c.globalAlpha *= fa;
   c.beginPath();
   c.moveTo(dx - wTop, sy); c.quadraticCurveTo(dx, sy - 2.5, dx + wTop, sy);
   c.quadraticCurveTo(dx + wBot * 1.02 + sway, (sy + hem) / 2, dx + wBot + sway, hem);
@@ -1340,16 +1345,20 @@ export function drawTurnWings(ctx, I, type, yaw, front, t) {
   const s = PUP_H / (v.footY - v.topY);
   const sy = (v.shY - v.footY) * s + 4, sn = Math.sin(yaw), cs = Math.cos(yaw);
   const back = sn < 0;
-  if (front !== back) return;
+  // 옆모습(sin 0) 둘레: 몸 뒤 패스(앞에서 본 날개)를 그대로 두고 몸 앞 패스(뒤에서 본 날개)를 서서히 올린다 — 0°·180° 에서 튀지 않게
+  const fa = back ? Math.min(1, -sn / 0.15) : 0;
+  if (front ? fa <= 0 : fa >= 1) return;
+  const face = front;                                     // 날개 면: 몸 앞 패스 = 뒤에서 본 면
   const spread = 0.55 + Math.sin(t * 2.2) * 0.05;
   for (const side of [-1, 1]) {
     const k = side * cs;                                  // 옆으로 돌면 한쪽이 몸에 가려 좁아진다
     const w = Math.max(0.15, Math.abs(sn) * 0.85 + (k > 0 ? 0.25 : 0.05) * Math.abs(cs));
     ctx.save();
+    if (front && fa < 1) ctx.globalAlpha *= fa;
     ctx.translate(side * 3 - cs * 5, sy);
     ctx.scale(side * w, 1);
     G.wingCol = I.look?.wingCol ?? null;   // 초월 날개 색
-    drawWing(type, spread, Math.sin(t * 2.2) * 0.06, side < 0 === back, false);
+    drawWing(type, spread, Math.sin(t * 2.2) * 0.06, side < 0 === face, false);
     ctx.restore();
   }
 }

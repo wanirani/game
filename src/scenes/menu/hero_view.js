@@ -252,18 +252,27 @@ function t16Weapon(ctx, I, L, ch, yaw, front, t) {
   const s = PUP.PUP_H / (v.footY - v.topY), hx = v.shW * s * 0.98, sn = Math.sin(yaw), cs = Math.cos(yaw);
   const W = w && w.type ? w : Object.assign(T16_W, w || {}, { type });
   if (type === 'greatsword') {                                // 등에 멘 대검: 앞모습은 몸 뒤, 뒷모습은 등을 덮음
-    if ((sn < 0) !== front) return;
+    // 옆모습(sin 0) 둘레에서는 몸 뒤 그림을 남긴 채 몸 앞 그림을 서서히 올린다 (0°·180° 를 지날 때 한 번에 앞뒤로 튀지 않게)
+    const fa = sn < 0 ? Math.min(1, -sn / 0.15) : 0;
+    if (front ? fa <= 0 : fa >= 1) return;
     const xs = -sn * v.shW * s * 0.55 - cs * 4;
-    HERO.drawWeaponPreview(ctx, W, xs, -76, PI / 2 + (xs >= 0 ? 0.5 : -0.5), 1, t);
+    t16Draw(ctx, W, xs, -76, PI / 2 + 0.5 * Math.tanh(xs / 2.5), t, front ? fa : 1);   // 기울기는 xs 0 을 지나며 부드럽게 뒤집힌다 (옆모습 근처에서 칼이 튀지 않게)
     return;
   }
   for (const side of (type === 'dagger' || type === 'gun' ? [1, -1] : [1])) {
     const x = -sn * hx * side, depth = cs * side;
-    if ((depth > -0.2) !== front) continue;
+    const fa = clamp((depth + 0.3) / 0.2, 0, 1);              // 몸 앞으로 넘어오는 구간(깊이 −0.3…−0.1)은 앞 그림을 서서히
+    if (front ? fa <= 0 : fa >= 1) continue;
     const upright = type === 'staff' || type === 'spear';
     const ang = upright ? -PI / 2 - (type === 'spear' ? 0.06 : 0.08) * cs : type === 'gun' ? PI / 2 - 0.45 * cs : PI / 2 - 0.28 * cs;
-    HERO.drawWeaponPreview(ctx, W, x, -43 + (type === 'staff' ? -2 : type === 'spear' ? 4 : 0), ang, 1, t);
+    t16Draw(ctx, W, x, -43 + (type === 'staff' ? -2 : type === 'spear' ? 4 : 0), ang, t, front ? fa : 1);
   }
+}
+function t16Draw(ctx, W, x, y, ang, t, a) {
+  if (a >= 1) { HERO.drawWeaponPreview(ctx, W, x, y, ang, 1, t); return; }
+  const ga = ctx.globalAlpha;
+  ctx.globalAlpha = ga * a;
+  try { HERO.drawWeaponPreview(ctx, W, x, y, ang, 1, t); } finally { ctx.globalAlpha = ga; }
 }
 
 const VIEW_NAMES = { 0: '옆모습(오른쪽)', 45: '3/4 앞모습', 90: '앞모습', 135: '3/4 앞모습', 180: '옆모습(왼쪽)', '-180': '옆모습(왼쪽)', '-135': '3/4 뒷모습', '-90': '뒷모습', '-45': '3/4 뒷모습' };
