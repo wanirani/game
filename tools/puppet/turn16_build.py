@@ -136,6 +136,39 @@ def estimate_progress(ws, start):
                     end=round(float(np.max(th)), 1), seg=[p1 - s, int(b) - p1, int(p2v) - int(b), (e - p2) if e is not None else None], gamma=round(g, 2), rate=round(r, 2))
 
 
+def manual_progress(n, keys):
+    """--keys s,p1,b,p2,e (눈으로 고른 기준 프레임: 돌기 시작, 첫 옆모습, 뒷모습, 둘째 옆모습, 다시 앞모습). p2·e 를 '-' 로 두면 반 바퀴.
+    추정기(estimate_progress)가 폭 곡선에서 엉뚱한 골을 고른 영상용 — 구간 보간은 추정기와 같다"""
+    v = [None if x.strip() in ('-', '') else int(x) for x in keys.split(',')]
+    v += [None] * (5 - len(v))
+    s, p1, b, p2, e = v[:5]
+    if s is None or p1 is None or b is None or not (s < p1 < b):
+        raise ValueError(f'bad --keys {keys}')
+    half = p2 is None
+    if not half and not (b < p2 and (e is None or p2 < e)):
+        raise ValueError(f'bad --keys {keys}')
+    r = 90.0 / max(1, b - p1)
+    g = float(np.clip(r * (p1 - s) / 90.0, 1.0, 2.5))
+    r3 = 90.0 / max(1, p2 - b) if not half else r
+    r4 = 90.0 / max(1, e - p2) if (not half and e is not None) else r3
+    th = np.zeros(n)
+    for k in range(n):
+        if k <= s:
+            th[k] = 0
+        elif k <= p1:
+            th[k] = 90.0 * ((k - s) / max(1, p1 - s)) ** g
+        elif k <= b or half:
+            th[k] = min(180.0, 90.0 + r * (k - p1))
+        elif k <= p2:
+            th[k] = 180.0 + r3 * (k - b)
+        else:
+            th[k] = 270.0 + r4 * (k - p2)
+    th = np.maximum.accumulate(th)
+    p2v = b if half else p2
+    return th, dict(est='manual', keys=keys, start=s, p1=p1, back=b, p2=p2v, half=half, end=round(float(np.max(th)), 1),
+                    seg=[p1 - s, b - p1, p2v - b, (e - p2) if (not half and e is not None) else None], gamma=round(g, 2), rate=round(r, 2))
+
+
 def turn_start(frames_small, masks, upto):
     """돌기 시작 프레임: 몸통 광류의 가로 크기가 0.35 px/프레임(반 해상도)을 두 번 연속 넘는 첫 곳 (숨쉬기·잡음은 그 아래)"""
     prev = False
@@ -338,6 +371,7 @@ def main():
     ap.add_argument('--dbg', default='/tmp/claude-0/g8/dbg')
     ap.add_argument('--dry', action='store_true', help='에셋·목록을 쓰지 않고 디버그 그림만')
     ap.add_argument('--dir', type=int, default=0, help='도는 방향 강제 (+1 먼저 오른쪽, −1 먼저 왼쪽)')
+    ap.add_argument('--keys', default='', help='기준 프레임 직접 지정 "s,p1,b,p2,e" (반 바퀴는 p2·e 를 -) — 추정기를 건너뛴다')
     a = ap.parse_args()
     cid = a.cls.split('_')[0]
     tmp = tempfile.mkdtemp(prefix='t16_', dir=os.environ.get('TMPDIR') or None)
@@ -354,10 +388,12 @@ def main():
     p1g = int(np.argmin(ndi.median_filter(np.asarray(ws, float), 5)[4:int(len(ws) * 0.6)]) + 4)
     s = turn_start(small, masks, p1g)
     try:
-        th, info = estimate_progress(ws, s)
+        th, info = manual_progress(len(ws), a.keys) if a.keys else estimate_progress(ws, s)
     except ValueError as e:
         # 쓸 수 없는 영상(안 돌았다 / 옆모습에서 앞으로 녹아 돌아왔다): 예전에 만든 이 외형의 16방향 항목·시트를 지운다 (깨진 시트를 싣지 않게)
         print(f'[{a.cls}] REJECT video: {e}')
+        if a.keys:
+            sys.exit(2)                               # 손으로 준 기준 프레임이 틀렸다: 지금 시트는 그대로 둔다
         if not a.dry:
             drop_look(cid, a.cls)
         sys.exit(3)

@@ -56,6 +56,8 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
 const page = await (await browser.newContext()).newPage();
 const pageErrs = [];
 page.on('pageerror', (e) => pageErrs.push('PAGEERROR ' + e.message));
+// 렌더러가 죽으면(메모리 부족·외부 kill) page.evaluate 가 끝나지 않고 멈춰 있을 수 있다 → 바로 실패로 끝낸다
+page.on('crash', () => { console.log('  ✗ 페이지 렌더러가 죽음 (메모리 부족 또는 외부 종료) — --only 로 나눠 돌려 보세요'); browser.close().catch(() => {}); srv.close(); process.exit(1); });
 page.on('console', (m) => {
   const t = m.text();
   if (m.type() === 'error') pageErrs.push('CONSOLE ' + t.slice(0, 300));
@@ -477,6 +479,10 @@ if (!args['no-v2']) {
       if (shipped > SHIP_MAX) fail(`싣는 효과음 ${shipped} B > 예산 ${SHIP_MAX} B (G7 ${SHIP_G7} + 0.75 MB)`);
       if (oggLeft.length) fail(`싣는 효과음에 ogg ${oggLeft.length}개 남음 (m4a 만): ${oggLeft.slice(0, 4).map((f) => path.basename(f)).join(' ')}`);
       if ((ix.formats || []).join() !== 'm4a' || (SM.index?.formats || []).join() !== 'm4a') fail(`index formats 가 m4a 만이 아님 (v2 ${ix.formats}, sfx ${SM.index?.formats})`);
+      // 덮개(G9): 등록된 효과음 이름은 모두 v2 녹음이 있어야 한다 (합성음만 나는 이름 없음). '_' 로 시작하는 내부 이름(_default)은 제외
+      const bare = res.names.filter((n) => !n.startsWith('_') && !(Object.hasOwn(ix.sfx, n) && Array.isArray(ix.sfx[n].f) && ix.sfx[n].f.length));
+      if (bare.length) fail(`v2 녹음이 없는 효과음 ${bare.length}종 (합성음만): ${bare.slice(0, 12).join(' ')}${bare.length > 12 ? ' …' : ''}`);
+      else info(`v2 덮개: 등록 이름 ${res.names.filter((n) => !n.startsWith('_')).length}종 모두 녹음 있음`);
     }
     for (const m of V2.rt) fail('v2 실행: ' + m);
     console.log('v2     이름          변형  LUFS-ev(빌드)                    dBTP(빌드)                 ogg 피크 dBFS   v2−지금 LUFS-M  노드 v2/지금 (소스·합성)');
