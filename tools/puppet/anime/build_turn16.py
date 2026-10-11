@@ -5,7 +5,7 @@
   turn = {th, size, views:{라벨:{x,y,w,h,footX,axisX,footY,topY,shY,shW,hemY,bw}}, steps:{"0":{v,m}, … 45° 8개 — hero.js drawHeroYaw 호환},
           turn16:[{deg, v}] (−157.5 … 180, 22.5° 간격), mask:false, src}
 각도 규칙(hero.js drawHeroYaw · hero_view.js): 0 = 오른쪽을 봄(게임 옆모습), 90 = 앞모습, 180 = 왼쪽을 봄, −90 = 뒷모습.
-영상은 앞모습(90°)에서 시작해 왼쪽을 보는 옆모습(180°) → 뒷모습(270°) → 오른쪽 옆모습(360°) → 앞모습 쪽으로 돈다 (yaw 가 시간에 따라 증가).
+영상은 앞모습에서 시작해 오른쪽을 보는 옆모습 → 뒷모습 → 왼쪽을 보는 옆모습 → 앞모습 쪽으로 돈다 (진행각 t = 90…450 → 게임 yaw = 180 − t).
 프레임마다 yaw 추정: 어깨 띠(키의 25~45%) 실루엣 폭 w — 앞/뒤 폭 W, 옆 두께 D 일 때 cos²φ = (w² − D²)/(W² − D²) (φ = 앞 또는 뒤에서 벗어난 각),
 옆모습(폭 최소)·뒷모습(폭 최대) 프레임을 기준점으로 사분면을 정하고 단조 증가로 다듬는다. 좌우 반전은 쓰지 않는다 (실제로 돈 영상이라 채찍·가르마가 맞다).
 배경: rembg(isnet) + 테두리 배경색 홍수 채움, 발밑 그림자는 build_turn.floor_shadow."""
@@ -157,7 +157,7 @@ def main():
         crop = np.dstack([col, (soft * 255).astype(np.uint8)])[y0:y1, x0:x1]
         im = Image.fromarray(crop, 'RGBA')
         im = im.resize((max(1, round(im.width * S)), max(1, round(im.height * S))), Image.LANCZOS)
-        lab_, d = label(t)
+        lab_, d = label(180 - t)                     # 영상은 앞모습 → 오른쪽을 보는 옆모습(게임 0°) → 뒷모습 → 왼쪽(180°): 게임 yaw = 180 − 진행각
         bw, bc, _, _ = band_width(np.asarray(im)[..., 3] > 100)
         cells.append((lab_, d, im, bw, bc, i, y))
     cw = max(c[2].width for c in cells) + 4

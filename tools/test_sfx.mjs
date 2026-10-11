@@ -13,7 +13,7 @@
 //     샘플을 얹은 렌더도 5 의 검사 + 단기 RMS 가 합성음만일 때의 0.6~1.6배 (같은 호출 음량에서 크기가 크게 달라지지 않게)
 //  7. 고급 효과음 v2 시범 (assets/audio/sfx_v2, 스위치 pilot.sfx2 — docs/specs/anime_motion_sfx.md §4·§5.1):
 //     이름이 모두 등록된 효과음 · 변형 3~5개 · 파일(m4a·ogg) 모두 있음 · 합계 ≤ 1.2 MB · 빌드가 잰 사건 라우드니스 -19~-14.5 LUFS, 트루 피크 ≤ -1 dBTP ·
-//     푼 ogg 피크 ≤ -0.5 dBFS · 변형마다 엔진 렌더: 합성음 층이 한 번도 안 울림(합성 단독 0) + 5 의 검사 + 지금 게임 소리(샘플+합성)와 단기 RMS 0.75~1.35배 ·
+//     푼 ogg 피크 ≤ -0.5 dBFS · 변형마다 엔진 렌더: 합성음 층이 한 번도 안 울림(합성 단독 0) + 5 의 검사 + 지금 게임 소리(샘플+합성)와 K-가중 순간 라우드니스 ±1.5 dB ·
 //     실행 규칙(같은 변형 연달아 안 나옴, 모든 변형 쓰임, 품질 low 면 방 잔향 끔, pan, 화면 x → pan, theme → 공간) · 노드 수 (v2 대 지금) 표
 //     --calibrate-v2  v2 g 를 지금 게임 소리 크기에 맞춰 assets/audio/sfx_v2/index.json 에 쓴다 (build_sfx_v2.py 뒤에 — 공정한 A/B: 더 커서 좋게 들리는 일 없게)
 //     --ref <커밋>     스위치 꺼짐 = 지금과 같음: 그 커밋의 audio.js 와 지금 audio.js 로 모든 효과음을 같은 난수열로 렌더 — 노드 그래프·난수 호출 수가 같고
@@ -169,8 +169,33 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
     const w = Math.floor(SR * 0.05); let st = 0;
     for (let i = 0; i + w <= n; i += w >> 1) { let s = 0; for (let j = i; j < i + w; j++) { const v = (L[j] + Rr[j]) * 0.5; s += v * v; } st = Math.max(st, Math.sqrt(s / w)); }
     const tw = Math.floor(SR * 0.1); for (let i = n - tw; i < n; i++) { const v = (L[i] + Rr[i]) * 0.5; ss += v * v; }
-    return { peak: pk, st, tail: Math.sqrt(ss / tw), bad };
+    return { peak: pk, st, tail: Math.sqrt(ss / tw), bad, lm: lufsM(L, Rr) };
   };
+  // ITU-R BS.1770 K-가중 순간 라우드니스(400 ms 창) 최댓값 — 귀에 들리는 크기. 비교·보정은 이걸로 한다
+  // (50 ms RMS 는 저음이 많은 합성음을 크게, 중고음이 많은 녹음 소리를 작게 재서 'v2 가 더 커서 좋게 들리는' 착시를 만든다)
+  function kw(x) {
+    const out = new Float64Array(x.length), fs = SR;
+    let K = Math.tan(Math.PI * 1681.974450955533 / fs), Q = 0.7071752369554196, Vh = Math.pow(10, 3.999843853973347 / 20), Vb = Math.pow(Vh, 0.4996667741545416);
+    let a0 = 1 + K / Q + K * K;
+    const s1 = [(Vh + Vb * K / Q + K * K) / a0, 2 * (K * K - Vh) / a0, (Vh - Vb * K / Q + K * K) / a0, 2 * (K * K - 1) / a0, (1 - K / Q + K * K) / a0];
+    K = Math.tan(Math.PI * 38.13547087602444 / fs); Q = 0.5003270373238773; a0 = 1 + K / Q + K * K;
+    const s2 = [1, -2, 1, 2 * (K * K - 1) / a0, (1 - K / Q + K * K) / a0];
+    let x1 = 0, x2 = 0, y1 = 0, y2 = 0, u1 = 0, u2 = 0, z1 = 0, z2 = 0;
+    for (let i = 0; i < x.length; i++) {
+      const v = x[i], y = s1[0] * v + s1[1] * x1 + s1[2] * x2 - s1[3] * y1 - s1[4] * y2; x2 = x1; x1 = v; y2 = y1; y1 = y;
+      const z = s2[0] * y + s2[1] * u1 + s2[2] * u2 - s2[3] * z1 - s2[4] * z2; u2 = u1; u1 = y; z2 = z1; z1 = z; out[i] = z;
+    }
+    return out;
+  }
+  function lufsM(L, Rr) {
+    const a = kw(L), b = kw(Rr), w = Math.floor(SR * 0.4), hop = Math.floor(SR * 0.05);
+    let s = 0, best = 0;
+    const sq = (i) => a[i] * a[i] + b[i] * b[i];
+    for (let i = 0; i < Math.min(w, a.length); i++) s += sq(i);
+    best = s;
+    for (let i = w; i < a.length; i++) { s += sq(i) - sq(i - w); if ((i - w) % hop === 0 && s > best) best = s; }
+    return -0.691 + 10 * Math.log10(best / w + 1e-20);
+  }
   const one = async (name) => {
     try {
       // 1) 길이 측정 (렌더 없이)
@@ -396,7 +421,6 @@ if (args.calibrate && !SM.err) {
 
 // ── 고급 효과음 v2 판정 (+ --calibrate-v2) ──
 const V2 = res.v2, V2_BUDGET = 1.2 * 1048576;
-const geo = (xs) => { const ok = xs.filter((x) => x > 0); return ok.length ? Math.exp(ok.reduce((a, x) => a + Math.log(x), 0) / ok.length) : 0; };
 const db = (x) => (x > 0 ? 20 * Math.log10(x) : -Infinity);
 let v2N = 0;
 const calibV2 = {};
@@ -407,7 +431,7 @@ if (!args['no-v2']) {
     for (const m of V2.missing) fail(`v2 파일 없음: ${m}`);
     if (V2.bytes > V2_BUDGET) fail(`v2 합계 ${(V2.bytes / 1024).toFixed(0)} KB > 1.2 MB`);
     for (const m of V2.rt) fail('v2 실행: ' + m);
-    console.log('v2     이름          변형  LUFS-ev(빌드)                    dBTP(빌드)                 ogg 피크 dBFS   v2/지금 RMS  노드 v2/지금 (소스·합성)');
+    console.log('v2     이름          변형  LUFS-ev(빌드)                    dBTP(빌드)                 ogg 피크 dBFS   v2−지금 LUFS-M  노드 v2/지금 (소스·합성)');
     for (const [n, d] of Object.entries(ix.sfx)) {
       if (only && !only.includes(n)) continue;
       if (!names.has(n)) { fail(`v2: 등록되지 않은 효과음 이름 ${n}`); continue; }
@@ -436,14 +460,15 @@ if (!args['no-v2']) {
         if (r.tail > 0.003) fail(`${tag}: 소리가 끝나지 않음`);
       });
       const okv = vs.filter((r) => !r.err);
-      const v2st = geo(okv.map((r) => r.st));
-      const cs = SM.renders?.[n] ? geo(SM.renders[n].vs.filter((r) => !r.err).map((r) => r.st)) : res.renders[n]?.st;
-      const k = cs ? v2st / cs : NaN;
-      if (args['calibrate-v2']) { if (cs && v2st > 1e-4) calibV2[n] = +Math.min(8, Math.max(0.05, d.g * cs / v2st)).toFixed(3); }
-      else if (!(k >= 0.75 && k <= 1.35)) fail(`v2 ${n}: 지금 게임 소리와 크기 차이 ${k.toFixed(2)}배 (단기 RMS v2 ${v2st.toFixed(3)} / 지금 ${cs?.toFixed(3)}) — --calibrate-v2 로 g 맞추기`);
+      const mean = (xs) => (xs.length ? xs.reduce((a, x) => a + x, 0) / xs.length : NaN);
+      const v2lm = mean(okv.map((r) => r.lm));   // 변형들의 K-가중 순간 라우드니스 평균 (dB)
+      const clm = SM.renders?.[n] ? mean(SM.renders[n].vs.filter((r) => !r.err).map((r) => r.lm)) : res.renders[n]?.lm;
+      const k = v2lm - clm;                      // dB: + 면 v2 가 더 큼
+      if (args['calibrate-v2']) { if (Number.isFinite(k)) calibV2[n] = +Math.min(8, Math.max(0.05, d.g * Math.pow(10, -k / 20))).toFixed(3); }
+      else if (!(Math.abs(k) <= 1.5)) fail(`v2 ${n}: 지금 게임 소리와 크기 차이 ${k >= 0 ? '+' : ''}${k.toFixed(1)} dB (K-가중 순간 라우드니스 v2 ${v2lm.toFixed(1)} / 지금 ${clm?.toFixed(1)} LUFS) — --calibrate-v2 로 g 맞추기`);
       const curN = SM.renders?.[n]?.vs?.[0] ?? res.renders[n];
       const nodeV = okv.length ? Math.max(...okv.map((r) => r.nodes - r.conv)) : 0;
-      console.log(`v2     ${n.padEnd(13)} ${String(d.f.length).padStart(3)}  ${fs_.map((f) => (f ? f.lufs.toFixed(1) : '?').padStart(5)).join(' ').padEnd(31)}  ${fs_.map((f) => (f ? f.peak.toFixed(1) : '?').padStart(4)).join(' ').padEnd(25)}  ${(d.f || []).map((id) => (V2.dec[id] ? db(V2.dec[id].peak).toFixed(1) : '?')).join(' ').padEnd(14)}  ${Number.isFinite(k) ? k.toFixed(2).padStart(5) : '    ?'}        ${nodeV}${okv.some((r) => r.conv) ? '+잔향1' : ''} / ${curN?.nodes ?? '?'}  (${okv[0]?.srcs ?? '?'}·${okv[0]?.osc ?? '?'} / ${curN?.srcs ?? '?'}·${curN?.osc ?? '?'})`);
+      console.log(`v2     ${n.padEnd(13)} ${String(d.f.length).padStart(3)}  ${fs_.map((f) => (f ? f.lufs.toFixed(1) : '?').padStart(5)).join(' ').padEnd(31)}  ${fs_.map((f) => (f ? f.peak.toFixed(1) : '?').padStart(4)).join(' ').padEnd(25)}  ${(d.f || []).map((id) => (V2.dec[id] ? db(V2.dec[id].peak).toFixed(1) : '?')).join(' ').padEnd(14)}  ${Number.isFinite(k) ? ((k >= 0 ? '+' : '') + k.toFixed(1) + 'dB').padStart(7) : '      ?'}      ${nodeV}${okv.some((r) => r.conv) ? '+잔향1' : ''} / ${curN?.nodes ?? '?'}  (${okv[0]?.srcs ?? '?'}·${okv[0]?.osc ?? '?'} / ${curN?.srcs ?? '?'}·${curN?.osc ?? '?'})`);
       v2N++;
     }
   }
@@ -453,7 +478,7 @@ if (args['calibrate-v2'] && V2.index) {
   const ix = JSON.parse(fs.readFileSync(f, 'utf8'));
   for (const [n, g] of Object.entries(calibV2)) { console.log(`--calibrate-v2: ${n.padEnd(12)} g ${ix.sfx[n].g} → ${g}`); ix.sfx[n].g = g; }
   fs.writeFileSync(f, JSON.stringify(ix, null, 1) + '\n');
-  console.log(`--calibrate-v2: v2 음량 ${Object.keys(calibV2).length}종을 ${path.relative(root, f)} 에 썼다 (한 번 더 돌려 0.75~1.35배 확인)`);
+  console.log(`--calibrate-v2: v2 음량 ${Object.keys(calibV2).length}종을 ${path.relative(root, f)} 에 썼다 (한 번 더 돌려 ±1.5 dB 확인)`);
 }
 
 // ── 스위치 꺼짐 = 바이트 동일 (--ref <커밋>): 그 커밋의 audio.js 와 지금 audio.js 로 같은 난수열·같은 호출을 렌더해 샘플 단위 비교 ──
