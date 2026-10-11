@@ -51,6 +51,8 @@ export const SCRIPT = {
 };
 /** 허수아비까지 간격(px, 영웅 오른쪽 끝 → 허수아비 왼쪽 끝): 무기마다 기본 콤보 판정이 허수아비 몸통에 닿는 거리.
  *  채찍·창은 끝(tip)에서 터지는 효과(이단심문관 화염 폭발 등)가 맞도록 멀리, 총은 탐침과 같은 140 */
+/** boss 모드 허수아비 최대 HP = 기준 2차 kill 모드 체력 × 이 값 (40초에 대략 2–3 바퀴: HP 100 % → 10 % → 다시 가득) */
+export const BOSS_CYCLE = 8;
 export const GAP = { whip: 95, sword: 35, greatsword: 45, dagger: 12, gun: 140, spear: 85, staff: 40 };
 
 // ─────────────────────────── 소음 없는 대역 ───────────────────────────
@@ -135,11 +137,11 @@ function makeGame() {
   return new Proxy(G, { get: (t, k) => (k in t ? t[k] : typeof k === 'string' ? noop({}) : undefined) });
 }
 
-export function makeWorld(state, level) {
+export function makeWorld(state, level, diff = 'normal') {
   const w = Object.create(World.prototype);
   const game = makeGame();
   Object.assign(w, {
-    game, state, stage: { id: 'arena', level, name: 'arena', rooms: { arena: ROOM } }, mode: 'story', diff: getDiff('normal'),
+    game, state, stage: { id: 'arena', level, name: 'arena', rooms: { arena: ROOM } }, mode: 'story', diff: getDiff(diff),
     rules: null, trial: ARENA_TRIAL, ng: 0, rng: null, hero: state.heroes[state.charId],
     camera: noop({ x: 0, y: 0, vw: 960, vh: 540, zoom: 1, bounds: null, focus: null }), fx: noop({ quality: 1, list: [], max: 1400 }),
     lighting: noop({ res: 0.5 }), bg: noop({}), tiles: null,
@@ -170,7 +172,7 @@ export function makeWorld(state, level) {
  *   결계·피해 감소·회피·치명상 무효(onLethal)·재생처럼 '맞는 쪽' 생존력만 (흡혈·적중 회복 같은 공격 쪽 회복은 빠진다)
  */
 export function fight(o) {
-  const { charId, classId, asc = null, variant = 'on', mode = 'mob', seed = 1, level = 80 } = o;
+  const { charId, classId, asc = null, variant = 'on', mode = 'mob', seed = 1, level = 80, diff = 'normal' } = o;
   const siege = mode === 'siege';
   const secs = siege ? (o.siegeSecs ?? 150) : (o.secs ?? 40);
   const S = siege ? {} : { ...(SCRIPT[asc] ?? {}), ...(o.script ?? {}) };
@@ -189,7 +191,8 @@ export function fight(o) {
     const { state, hero } = buildHero(charId, classId, variant === 'base' ? null : asc, level, seed, { gear: o.gear ?? 'table', skills: [skill ?? COMMON_SKILL[charId], A?.kind === 'hidden' && variant === 'on' ? A.skill : null] });
     Math.random = seeded(seed * 104729 + 17);
     IMPACT_DEBUG.useHitfx(HFX_STUB);
-    const w = makeWorld(state, level);
+    state.difficulty = diff;
+    const w = makeWorld(state, level, diff);
     globalThis.__game = { world: w };
     const p = new Player(w, state, hero);
     w.player = p; w.entities.push(p);
@@ -204,11 +207,17 @@ export function fight(o) {
     const baseX = p.x + p.w + gap;
     const BOSS = o.boss ?? null;   // 시련 길이 모형: { stats (보스 능력치·체력·약점), rules (시련 규칙), enemyLevel }
     if (BOSS?.rules) w.rules = { ...BOSS.rules };
+    // boss 모드 (시련 모형이 아닐 때): 진짜 보스처럼 체력이 줄어드는 허수아비 — 최대 HP = killHp × BOSS_CYCLE, 10 % 밑으로 내려가면
+    // 다시 가득 (죽지 않음 → 처치 훅 없음). 싸움 시간의 약 1/3 이 HP 40 % 아래 = 「체력 n % 미만」 특성(사형 집행자의 보스 선고 등)이
+    // 모형에 보인다 (예전: HP 1e7 이라 늘 99 % — 그런 특성은 보스 모드에서 0 으로 읽혔다)
+    const cycle = mode === 'boss' && !BOSS;
+    const bossHp = o.bossHp ?? Math.round(BOSS_CYCLE * killHp);
     const dummyAt = (i) => {
       const e = new Enemy('zombie', baseX + 20 + i * 50, FLOOR_Y, { level: BOSS?.enemyLevel ?? level, diff: w.diff, facing: -1 });
       e.wclass = 'FIXED'; e.stats.weak = []; e.stats.resist = []; e.stats.immune = [];
-      const H = mode === 'kill' ? killHp : 1e7;
+      const H = mode === 'kill' ? killHp : cycle ? bossHp : 1e7;
       e.hp = e.stats.maxHp = e.stats.hp = H;
+      if (cycle) e._ascCycle = true;
       if (BOSS) { e.stats = { ...e.stats, ...BOSS.stats }; e.hp = e.stats.maxHp; }
       e.update = function (dt) { this.t += dt; this.stun = 0; if (this.dying > 0) { this.dying -= dt; if (this.dying <= 0) this.dead = true; } };
       e.harmless = true; e.onGround = true;
@@ -219,8 +228,12 @@ export function fight(o) {
       return e;
     };
     // ── 기록 ──
+    let bossRefills = 0;
     let dmg = 0, procDmg = 0, kills = 0, hits = 0, refills = 0, deaths = 0, hpAdded = 0, taken = 0, lethalPart = 0, died = false, diedAt = null;
-    const onTake = (e, d0, atk) => { if (atk?.owner === p || atk?.owner?.owner === p) { dmg += d0; if (atk.proc) procDmg += d0; } };
+    const onTake = (e, d0, atk) => {
+      if (atk?.owner === p || atk?.owner?.owner === p) { dmg += d0; if (atk.proc) procDmg += d0; }
+      if (e._ascCycle && e.hp < e.stats.maxHp * 0.1 && !e.dead && !(e.dying > 0)) { e.hp = e.stats.maxHp; bossRefills++; }
+    };
     for (let i = 0; i < nT; i++) dummyAt(i);
     // 적 공격력: 기준 2차 영웅에게 1타 = 최대 HP 8 % (포위전 6 %) — 호출부가 enemyAtk 를 주면 그 값 (변형끼리 같은 값)
     const enemyAtk = o.enemyAtk ?? (BOSS ? BOSS.stats.atk : calibAtk(p.stats, siege ? 0.06 : 0.08));
@@ -336,7 +349,7 @@ export function fight(o) {
     const healed = Math.max(0, p.hp - hp0 + taken - hpAdded);
     const time = siege ? (diedAt ?? w.time) : w.time;
     const out = {
-      dmg: Math.round(dmg), procDmg: Math.round(procDmg), kills, hits, refills, deaths, killHp, killTime: killTime == null ? null : +killTime.toFixed(2),
+      dmg: Math.round(dmg), procDmg: Math.round(procDmg), kills, hits, refills, deaths, killHp, bossHp: cycle ? bossHp : null, bossRefills, killTime: killTime == null ? null : +killTime.toFixed(2),
       taken: Math.round(taken), healed: Math.round(healed), maxHp: Math.round(p.stats.hp), enemyAtk, time: +time.toFixed(2),
       // 포위전: 쓰러지기까지 받아 낸 공격 수 (마지막 1타는 남은 HP 비율만큼) × 적 공격력 = 같은 적에게 버틴 양
       ehp: siege ? Math.round(enemyAtk * ((died ? hits - 1 : hits) + (died ? lethalPart : 0))) : null, survived: siege ? !died : null,
@@ -366,16 +379,17 @@ function wrapTake(e, cb) {
  * 반환 rows[mode] = { dmg{base,off,on}, proc{off,on}, kills, taken, healed, maxHp, ehp (siege), errors, warns, procs }
  * 비율은 ratios(row) 로: stat = off/base, sig = on/off, tot = on/base (피해) · ehp 같은 식 (siege) · mit = 받은 피해(최대 HP 비율) 역수 비
  */
-export function measure({ charId, classId, asc, modes = ['mob', 'pack', 'boss', 'kill', 'calm', 'siege'], seeds = [1, 2], secs = 40, level, onRun }) {
+export function measure({ charId, classId, asc, modes = ['mob', 'pack', 'boss', 'kill', 'calm', 'siege'], seeds = [1, 2], secs = 40, level, onRun, diff = 'normal' }) {
   const lv = level ?? ASCENSIONS[asc]?.arcade?.lv ?? 80;
   const rows = {};
   for (const mode of modes) {
     const acc = { base: [], off: [], on: [] };
     for (const seed of seeds) {
-      const b = fight({ charId, classId, asc, variant: 'base', mode, secs, seed, level: lv });
+      const b = fight({ charId, classId, asc, variant: 'base', mode, secs, seed, level: lv, diff });
       acc.base.push(b);
-      acc.off.push(fight({ charId, classId, asc, variant: 'off', mode, secs, seed, level: lv, enemyAtk: b.enemyAtk, killHp: b.killHp }));
-      acc.on.push(fight({ charId, classId, asc, variant: 'on', mode, secs, seed, level: lv, enemyAtk: b.enemyAtk, killHp: b.killHp }));
+      const same = { enemyAtk: b.enemyAtk, killHp: b.killHp, bossHp: b.bossHp ?? undefined, diff };
+      acc.off.push(fight({ charId, classId, asc, variant: 'off', mode, secs, seed, level: lv, ...same }));
+      acc.on.push(fight({ charId, classId, asc, variant: 'on', mode, secs, seed, level: lv, ...same }));
       onRun?.(mode, seed);
     }
     const sum = (L, k) => L.reduce((a, r) => a + (r[k] ?? 0), 0);
@@ -388,7 +402,7 @@ export function measure({ charId, classId, asc, modes = ['mob', 'pack', 'boss', 
       warns: sum(all, 'warns'), warnSample: all.flatMap((r) => r.warnSample).slice(0, 3), procs: acc.on[0]?.procs ?? {},
     };
   }
-  return { asc, charId, classId, level: lv, seeds: seeds.length, secs, rows };
+  return { asc, charId, classId, level: lv, seeds: seeds.length, secs, rows, diff };
 }
 /** 한 모드 행의 비율 (1 = 같음) */
 export function ratios(r) {

@@ -2,7 +2,9 @@
 //  findItem(state, uid) / addItem(state, inst) / addByBase(state, baseId, qty, opts) / removeItem(state, uid, qty)
 //  countItem(state, baseId) / consumeByBase(state, baseId, qty) / equipItem(state, hero, uid, slot?) / unequip(state, hero, slot)
 //  isEquipped(state, uid) / canEquip(state, hero, inst) / useItem(state, hero, uid, player) → {ok, msg}
-//  sortInventory(state, mode:'type'|'rarity'|'new') / sellItem(state, uid, qty) → 골드 / sellJunk(state, maxRarity) → {count, gold}
+//  sortInventory(state, mode:'type'|'rarity'|'new') / sellItem(state, uid, qty) → 골드 / sellJunk(state, maxRarity|crit, opts) → {count, gold, items}
+//  처분 (qol_equip §4): neverDispose(state, it) → 이유|null · disposeCandidates(state, crit) · disposeJunk(state, crit, {mode:'sell'|'salvage', buyback})
+//    salvageYield(inst) · 되사기 buybackList / pushBuyback / buybackTick / buyBack(state, i) (state.buyback, 최대 30, 스테이지 3번)
 //  toggleLock(state, uid) → locked / buyItem(state, baseId, {rarity, price, qty}) → {ok, msg, item}
 //  quickHeal(state, hero, player) → {ok, msg} (전투 중 가장 알맞은 회복약 자동 사용) / freeSlots(state) / usedSlots(state) / canAdd(state, inst)
 //  queueLoot(state, inst) / deliverLoot(state) → 넣은 개수 (가방이 가득 차 받지 못한 전리품 보관함 progress.lootQueue)
@@ -132,12 +134,12 @@ export function ownsItem(state, baseId) {
   return has(state?.inventory) || has(state?.progress?.lootQueue);
 }
 
-export function addByBase(state, baseId, qty = 1, opts = {}) {
+export function addByBase(state, baseId, qty = 1, opts = {}, add = {}) {
   const inst = makeItem(baseId, opts);
   if (!inst) return null;
-  if (ITEMS[baseId]?.stack) { inst.qty = qty; return addItem(state, inst); }
+  if (ITEMS[baseId]?.stack) { inst.qty = qty; return addItem(state, inst, add); }
   let last = null;
-  for (let i = 0; i < qty; i++) last = addItem(state, i === 0 ? inst : makeItem(baseId, opts)) || last;
+  for (let i = 0; i < qty; i++) last = addItem(state, i === 0 ? inst : makeItem(baseId, opts), add) || last;
   return last;
 }
 
@@ -379,14 +381,132 @@ export function sellItem(state, uid, qty = 1) {
   return gold;
 }
 
-/** 잡동사니 일괄 판매: 잠기지 않고 장착하지 않은 장비 중 희귀도 maxRarity 이하 */
-export function sellJunk(state, maxRarity = 1) {
-  let gold = 0, count = 0;
-  for (const it of [...state.inventory]) {
-    if (!isEquipment(it) || (it.rarity ?? 0) > maxRarity || (it.level ?? 0) > 0 || !canSell(state, it).ok) continue;
-    gold += sellItem(state, it.uid, 1); count++;
+/**
+ * 잡동사니 일괄 판매 (예전 호출 sellJunk(state, maxRarity) 그대로: 강화한 장비는 남긴다).
+ * 두 번째 인자로 처분 기준 객체를 줄 수도 있다 — disposeJunk 와 같은 기준 (qol_equip §4). 반환 { count, gold, items, mats }
+ */
+export function sellJunk(state, maxRarity = 1, opts = {}) {
+  const crit = typeof maxRarity === 'object' && maxRarity ? maxRarity : { ...opts, maxRarity };
+  return disposeJunk(state, crit, { mode: 'sell', buyback: !!opts.buyback || !!crit.buyback });
+}
+
+// ───────────────────────────── 처분 (qol_equip §4) ─────────────────────────────
+/** 다시 얻을 수 없거나 이야기에 쓰이는 장비 (한 벌 신화 · 퀘스트 · 유물) */
+export function irreplaceable(b) { return !!(b && (b.set || b.quest || b.relic || b.worldHeart || b.starShard || b.slot === 'key')); }
+/**
+ * 어떤 기준으로도 처분하지 않는 이유 (없으면 null): 장비가 아님 · 중요 물품 · 다시 얻을 수 없는 보상 · 잠김 · 장착 중
+ * (보관함 progress.lootQueue 의 물건은 가방에 없으므로 애초에 후보가 아니다)
+ */
+export function neverDispose(state, it) {
+  const b = ITEMS[it?.baseId];
+  if (!b) return '알 수 없는 아이템';
+  if (b.slot === 'key') return '중요 물품';
+  if (!isEquipment(b)) return '장비가 아님';
+  if (irreplaceable(b)) return '다시 얻을 수 없는 장비';
+  if (it.locked) return '잠김';
+  if (isEquipped(state, it.uid)) return '장착 중';
+  return null;
+}
+/**
+ * 처분 후보 목록 → [{ inst, gold }] (판매가 기준). crit:
+ *  maxRarity 0..2 (영웅 이상은 받지 않는다) · keep: { enhanced, better, other, special } (true = 그런 장비는 남긴다, 기본 모두 true)
+ *  better(inst) → 'self' | 'other' | null  (지금 영웅 / 다른 영웅에게 더 좋은가 — game/gear_score.js 가 만든다; 없으면 그 예외는 보지 않는다)
+ */
+export function disposeCandidates(state, crit = {}) {
+  const maxR = Math.max(0, Math.min(2, crit.maxRarity | 0));
+  const keep = { enhanced: true, better: true, other: true, special: true, ...(crit.keep || {}) };
+  const out = [];
+  for (const it of state?.inventory || []) {
+    if (neverDispose(state, it)) continue;
+    const b = ITEMS[it.baseId];
+    if ((it.rarity ?? 0) > maxR) continue;
+    if (keep.enhanced && (it.level ?? 0) > 0) continue;
+    if (keep.special && (b.unique || b.mythic || b.effect)) continue;
+    if ((keep.better || keep.other) && typeof crit.better === 'function') {
+      let who = null;
+      try { who = crit.better(it); } catch (e) { console.warn(e); who = 'self'; }   // 판정 실패 = 남긴다
+      if (keep.better && who === 'self') continue;
+      if (keep.other && who === 'other') continue;
+    }
+    out.push({ inst: it, gold: sellPrice(it) * (it.qty ?? 1) });
   }
-  return { count, gold };
+  return out;
+}
+const STONE_OF_TIER = [1, 1, 2, 3, 4, 5, 6];
+/** 분해하면 나오는 강화석 { baseId, qty } (단계 → 강화석 등급, 희귀도 + 1 개) */
+export function salvageYield(inst) {
+  const b = ITEMS[inst?.baseId];
+  if (!b || !isEquipment(b)) return null;
+  const st = STONE_OF_TIER[Math.max(0, Math.min(6, (b.tier ?? 1) - 1))];
+  return { baseId: `m_stone_${st}`, qty: 1 + Math.max(0, Math.min(2, inst.rarity | 0)) };
+}
+/**
+ * 처분 실행. how: { mode: 'sell'|'salvage', buyback: true(판 것을 되사기 목록에) , list: 미리 고른 후보(없으면 crit 로 고른다) }
+ * 반환 { count, gold, mats: {baseId: qty}, items: [{ baseId, name, rarity, level, gold }] }
+ */
+export function disposeJunk(state, crit = {}, { mode = 'sell', buyback = false, list = null } = {}) {
+  const res = { count: 0, gold: 0, mats: {}, items: [], mode };
+  const cands = list ?? disposeCandidates(state, crit);
+  for (const c of cands) {
+    const it = c.inst ?? c;
+    if (!findItem(state, it.uid) || neverDispose(state, it)) continue;   // 미리보기 뒤 바뀐 것 (잠금·장착)은 건너뛴다
+    const name = itemName(it);
+    if (mode === 'salvage') {
+      const y = salvageYield(it);
+      removeItem(state, it.uid, it.qty ?? 1);
+      if (y) { addByBase(state, y.baseId, y.qty, {}, { silent: true }); res.mats[y.baseId] = (res.mats[y.baseId] ?? 0) + y.qty; }
+      res.items.push({ baseId: it.baseId, name, rarity: it.rarity ?? 0, level: it.level ?? 0, gold: 0, mats: y });
+    } else {
+      const g = sellItem(state, it.uid, it.qty ?? 1);
+      if (!g) continue;
+      res.gold += g;
+      if (buyback) pushBuyback(state, it, g);
+      res.items.push({ baseId: it.baseId, name, rarity: it.rarity ?? 0, level: it.level ?? 0, gold: g });
+    }
+    res.count++;
+  }
+  return res;
+}
+
+// ── 되사기 (state.buyback: 최근 처분 30개, 판 값 그대로 · 스테이지를 3번 마치면 사라진다) ──
+export const BUYBACK_MAX = 30, BUYBACK_STAGES = 3;
+/** 되사기 목록 (옛 세이브는 없다 → 빈 배열; 알 수 없는 항목은 버린다) */
+export function buybackList(state) {
+  if (!state) return [];
+  if (!Array.isArray(state.buyback)) state.buyback = [];
+  state.buyback = state.buyback.filter((e) => e && typeof e === 'object' && e.item && ITEMS[e.item.baseId] && Number.isFinite(e.price));
+  return state.buyback;
+}
+export function pushBuyback(state, inst, price) {
+  const list = buybackList(state);
+  const item = JSON.parse(JSON.stringify(inst));
+  delete item.locked;
+  list.unshift({ item, price: Math.max(0, Math.round(price)), left: BUYBACK_STAGES, t: Date.now() });
+  while (list.length > BUYBACK_MAX) list.pop();
+}
+/** 스테이지를 마칠 때마다 (results.js) — 3번 지나면 사라진다. 반환: 사라진 수 */
+export function buybackTick(state) {
+  const list = buybackList(state);
+  let gone = 0;
+  for (let i = list.length - 1; i >= 0; i--) {
+    list[i].left = (Number.isFinite(list[i].left) ? list[i].left : BUYBACK_STAGES) - 1;
+    if (list[i].left <= 0) { list.splice(i, 1); gone++; }
+  }
+  return gone;
+}
+/** 되사기 → {ok, msg, item} */
+export function buyBack(state, index) {
+  const list = buybackList(state);
+  const e = list[index];
+  if (!e) return { ok: false, msg: '되살 물건이 없다.' };
+  if ((state.gold ?? 0) < e.price) return { ok: false, msg: '골드가 부족하다.' };
+  if (!canAdd(state, e.item)) return { ok: false, msg: '가방이 가득 찼다.' };
+  const item = addItem(state, { ...e.item, t: undefined }, { silent: true });
+  if (!item) return { ok: false, msg: '가방이 가득 찼다.' };
+  state.gold -= e.price;
+  list.splice(index, 1);
+  bus.emit('itemBought', { baseId: item.baseId, qty: 1, gold: e.price, item, buyback: true });
+  return { ok: true, msg: `${itemName(item)} 되사기 (-${e.price.toLocaleString('ko-KR')}G)`, item };
 }
 
 export function toggleLock(state, uid) {

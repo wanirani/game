@@ -619,8 +619,9 @@ export const PERKS_B = {
 
   // 성전 선봉장 「방패 돌격」 + 성광 충격파 세 번
   bran_vanguard: {
-    // §2.8 조정: 돌격 mv 1.2→0.8, 덧파동 waveMv 0.8→0.3 (원안 +31 %)
-    N: { mv: 0.8, kbx: 420, kby: -220, hs: 0.03, hsGap: 1.5, waveMv: 0.3, gap: 0.12, n: 2, show: 0.32 },
+    // §2.8 조정: 돌격 mv 1.2→0.8, 덧파동 waveMv 0.8→0.3 (원안 +31 %) → BALANCE-PERF 0.8→0.4, 0.3→0.15
+    //  (balance --asc 지속 sig mob/pack/boss 가운데값 +27.6 % → +14.4 %, pack +7.6 %, kill +9.3 %; 한도 +20 %)
+    N: { mv: 0.4, kbx: 420, kby: -220, hs: 0.03, hsGap: 1.5, waveMv: 0.15, gap: 0.12, n: 2, show: 0.32 },
     onDash(p, w) {
       const N = this.N, f = p.facing;
       const a = procAtk(p, { mv: N.mv, element: 'holy', kb: [N.kbx, N.kby], hitstop: icd(p, 'vgHs', N.hsGap, w) ? N.hs : 0, shake: 2, tags: ['melee'] });

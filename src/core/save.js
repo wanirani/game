@@ -157,6 +157,8 @@ export const DEFAULT_SETTINGS = {
   ctrlPrompts: 'auto', ctrlPreset: 'arcade', ctrlConfirm: 'auto', ctrlMap: null, keyMap: null,
   ctrlDeadzone: 0.2, ctrlRumble: 0.8, autoSprint: false,
   touchOpacity: 0.55, touchScale: 1, touchStick: 'float', touchSlide: true, touchLeftHanded: false, touchLayout: null,
+  // 장비 편의 (docs/specs/qol_equip.md §6): 자동 처분 끔/판매/분해 · 기준 희귀도 0..2 · 예외(남길 것) · 점수 기준 · 최적 장착 때 고유/신화/세트 칸 고정
+  gear: Object.freeze({ autoDispose: 'off', maxRarity: 0, weights: 'bal', fixSpecial: true, keep: Object.freeze({ enhanced: true, better: true, other: true, special: true }) }),
   hud: Object.freeze({ preset: 'auto', scale: 1 }), // 화면 배치 (hud_mobile §3): preset 'auto'(화면비) | 'wide'(휴대폰) | 'fold'(폴드·태블릿), scale 0.85–1.2 — 바꿀 때는 새 객체로
   vibration: true, autoSave: true, keepAwake: true, turntableAuto: true, fullscreenAuto: true,
   telemetry: !privacySignal(), // 익명 통계·오류 보내기 (core/telemetry.js) — GPC 를 켠 브라우저는 기본 끔
@@ -203,11 +205,18 @@ export const SETTINGS_SCHEMA = Object.freeze({
   touchLeftHanded: BOOL,
   touchLayout: Object.freeze({ type: 'layout' }),
   hud: Object.freeze({ type: 'hud' }),
+  gear: Object.freeze({ type: 'gear' }),
   vibration: BOOL, autoSave: BOOL, keepAwake: BOOL, turntableAuto: BOOL, fullscreenAuto: BOOL, telemetry: BOOL,
   language: oneOf('ko'),
 });
 
 const INVALID = Symbol('invalid');
+/** 객체 기본값(hud·gear)은 복사해서 쓴다 (얼린 기본값을 설정 객체가 그대로 물지 않게) */
+function cloneDefault(k, v) {
+  if (k === 'hud') return { ...v };
+  if (k === 'gear') return { ...v, keep: { ...v.keep } };
+  return v;
+}
 /** 설정 값 하나 검증 → 정규화된 값 또는 INVALID */
 function checkSetting(spec, v) {
   switch (spec.type) {
@@ -237,6 +246,20 @@ function checkSetting(spec, v) {
       const sc = typeof v.scale === 'number' && Number.isFinite(v.scale) ? Math.round(Math.min(1.2, Math.max(0.85, v.scale)) * 100) / 100 : 1;
       return { preset: pr, scale: sc };
     }
+    case 'gear': { // 장비 편의 — 항목별로 모르는 값은 기본값, 모르는 키는 보존 (새 앱이 더한 항목을 옛 앱이 지우지 않게)
+      if (!isObj(v)) return INVALID;
+      const d = DEFAULT_SETTINGS.gear, k = isObj(v.keep) ? v.keep : {};
+      const out = {};
+      for (const [kk, vv] of Object.entries(v)) if (!UNSAFE_KEYS.has(kk)) out[kk] = vv;
+      out.autoDispose = ['off', 'sell', 'salvage'].includes(v.autoDispose) ? v.autoDispose : d.autoDispose;
+      out.maxRarity = [0, 1, 2].includes(v.maxRarity) ? v.maxRarity : d.maxRarity;
+      out.weights = ['atk', 'bal', 'def'].includes(v.weights) ? v.weights : d.weights;
+      out.fixSpecial = typeof v.fixSpecial === 'boolean' ? v.fixSpecial : d.fixSpecial;
+      out.keep = {};
+      for (const [kk, vv] of Object.entries(k)) if (!UNSAFE_KEYS.has(kk)) out.keep[kk] = vv;
+      for (const kk of Object.keys(d.keep)) out.keep[kk] = typeof k[kk] === 'boolean' ? k[kk] : d.keep[kk];
+      return out;
+    }
     case 'layout': {
       if (v === null) return null;
       if (!isObj(v)) return INVALID;
@@ -264,7 +287,7 @@ export function migrateSettings(saved) {
   const out = {};
   let changed = false;
   if (!isObj(saved)) {
-    for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) out[k] = k === 'hud' ? { ...v } : v;
+    for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) out[k] = cloneDefault(k, v);
     return { settings: out, changed: saved != null };
   }
   const ver = saved.settingsVersion;
@@ -279,11 +302,11 @@ export function migrateSettings(saved) {
   for (const [k, spec] of Object.entries(SETTINGS_SCHEMA)) {
     const dflt = DEFAULT_SETTINGS[k];
     if (v1 && k === 'quality') { out[k] = dflt; continue; }
-    if (!Object.hasOwn(saved, k)) { out[k] = spec.type === 'hud' ? { ...dflt } : dflt; continue; }
+    if (!Object.hasOwn(saved, k)) { out[k] = cloneDefault(k, dflt); continue; }
     const v = checkSetting(spec, saved[k]);
-    if (v === INVALID) { out[k] = spec.type === 'hud' ? { ...dflt } : dflt; changed = true; continue; }
+    if (v === INVALID) { out[k] = cloneDefault(k, dflt); changed = true; continue; }
     if (v !== saved[k] && (spec.type === 'num' || spec.type === 'enum')) changed = true;
-    else if ((spec.type === 'map' || spec.type === 'layout' || spec.type === 'hud') && v !== null && JSON.stringify(v) !== JSON.stringify(saved[k])) changed = true;
+    else if ((spec.type === 'map' || spec.type === 'layout' || spec.type === 'hud' || spec.type === 'gear') && v !== null && JSON.stringify(v) !== JSON.stringify(saved[k])) changed = true;
     out[k] = v;
   }
   return { settings: out, changed };

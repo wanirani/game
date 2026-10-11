@@ -16,6 +16,9 @@ import {
 import { fmtStatVal } from './tab_status.js';
 import * as D from './access.js';
 import { CHARACTERS } from '../../data/characters.js';
+import { promptMode } from '../../core/prompts.js';
+import { compareInfo, drawCompare, drawMark, scoreStr, LoadoutModal, MARK_COL } from './gear_compare.js';   // [qol] 비교 · 최적 장착 (qol_equip §2–§3)
+import { bestLoadout, applyLoadout, undoLoadout } from '../../game/gear_score.js';
 
 const SUMMARY = ['hp', 'mp', 'atk', 'mag', 'def', 'res', 'crit'];
 /** 2열 요약에서 이름이 칸에 다 들어가지 않을 때 쓰는 짧은 이름 ('최대…' 처럼 말줄임으로 HP·MP 가 같아 보이지 않게) */
@@ -53,6 +56,7 @@ export class EquipTab extends Tab {
     this.rev = -1; this.list = []; this.pv = null;
     this.slotRects = []; this.rowRects = []; this.btnRect = null;
     this.flashT = 0; this.flashSlot = null;
+    this.optRect = null; this.undo = null;   // [qol] 「최적 장착」 단추 · 되돌리기 {token, t}
   }
   get slots() { return D.EQUIP_SLOTS(); }
   get slot() { return this.slots[this.si]; }
@@ -202,28 +206,61 @@ export class EquipTab extends Tab {
       }
     }
     if (this.btnRect && ges.tap(this.btnRect)) { this.m.focus = 'content'; this.doRow(this.list[this.li]); return; }
+    // [qol] 최적 장착: 단추 터치 · 키보드 R · 패드 Y (패드의 Y 는 원래 '해제' — 해제는 목록 맨 위 「장착 해제」 줄로)
+    if (this.undo) { this.undo.t -= dt; if (this.undo.t <= 0) this.undo = null; }
+    if (this.optRect && ges.tap(this.optRect)) { this.m.focus = 'content'; if (this.undo) this.doUndo(); else this.openOptimize(); return; }
+    const padY = focused && nav.alt && input.mode === 'pad';
+    if (padY || (input.pressed('mount') && input.mode !== 'pad')) { if (this.undo) this.doUndo(); else this.openOptimize(); return; }
     if (!focused) return;
     if (this.sub === 'slots') {
       const n = this.slots.length;
       if (nav.up) { if (this.si === 0) { this.m.focusTabs(); return; } this.si--; this.li = 0; this.sc.reset(); this.rebuild(); audio.sfx('menu_move'); }
       if (nav.down && this.si < n - 1) { this.si++; this.li = 0; this.sc.reset(); this.rebuild(); audio.sfx('menu_move'); }
       if (nav.right || nav.confirm) { if (this.list.length) { this.sub = 'list'; this.li = 0; audio.sfx('menu_ok'); } else { audio.sfx('menu_cancel'); this.m.notify('교체할 수 있는 장비가 없습니다', PAL.dim); } }
-      if (nav.alt) this.unequipCurrent();
+      if (nav.alt && input.mode !== 'pad') this.unequipCurrent();
       if (nav.cancel) this.m.close();
     } else {
       const n = this.list.length;
       if (nav.up && this.li > 0) { this.li--; audio.sfx('menu_move'); }
       if (nav.down && this.li < n - 1) { this.li++; audio.sfx('menu_move'); }
       if (nav.confirm) this.doRow(this.list[this.li]);
-      if (nav.alt) this.unequipCurrent();
+      if (nav.alt && input.mode !== 'pad') this.unequipCurrent();
       if (nav.left || nav.cancel) { this.sub = 'slots'; audio.sfx('menu_cancel'); }
     }
   }
   /** 포커스와 무관하게 늘 되는 조작 (탭 막대에 포커스가 있을 때 메뉴 하단 막대가 덧붙인다 — 턴테이블) */
   idleHints() { return turntableHints(this.view); }
   hints(focused) {
-    if (this.sub === 'list') return [['↑↓', '고르기'], ['Z', '장착', '한 번 더 터치하면 장착'], [['←', 'X'], '장비 칸'], ...turntableHints(this.view)];
-    return [['↑↓', '장비 칸'], ['Z', '교체', '장비 칸을 터치해 교체할 장비를 고르세요'], ['A', '해제'], ...turntableHints(this.view)];
+    const pad = promptMode() === 'pad';
+    const opt = [pad ? 'A' : 'R', this.undo ? '되돌리기' : '최적 장착'];   // 'A' = 보조 기능(패드 Y), 'R' = 키보드 R
+    if (this.sub === 'list') return [['↑↓', '고르기'], ['Z', '장착', '한 번 더 터치하면 장착'], [['←', 'X'], '장비 칸'], opt, ...turntableHints(this.view)];
+    return [['↑↓', '장비 칸'], ['Z', '교체', '장비 칸을 터치해 교체할 장비를 고르세요'], ...(pad ? [] : [['A', '해제']]), opt, ...turntableHints(this.view)];
+  }
+  /** [qol] 최적 장착 미리보기 → 확인하면 적용 + 5초 되돌리기 */
+  openOptimize() {
+    let plan = null;
+    try { plan = bestLoadout(this.state, this.hero.charId, { settings: this.game?.settings }); } catch (e) { console.warn(e); }
+    if (!plan) { audio.sfx('menu_cancel'); return; }
+    audio.sfx('menu_ok');
+    this.m.openModal(new LoadoutModal({
+      state: this.state, plans: [plan], title: `최적 장착 — ${D.CHARACTERS()[this.hero.charId]?.name?.split(' ')[0] ?? ''}`,
+      onApply: () => {
+        const token = applyLoadout(this.state, plan);
+        this.undo = { token, t: 5 };
+        this.flashT = 1; this.flashSlot = plan.changes[0]?.slot ?? null;
+        this.m.changed(); this.base();
+        if (plan.changes.some((c) => c.slot === 'weapon')) this.view.showcase(); else this.view.reveal();
+        this.m.notify(`최적 장착 완료 — ${plan.changes.length}칸 교체 · 종합 ${scoreStr(plan.total)}`, PAL.good);
+      },
+    }));
+  }
+  doUndo() {
+    if (!this.undo) return;
+    undoLoadout(this.state, this.undo.token);
+    this.undo = null;
+    audio.sfx('menu_cancel');
+    this.m.changed(); this.base();
+    this.m.notify('최적 장착을 되돌렸습니다', PAL.dim);
   }
 
   render(ctx, A) {
@@ -262,7 +299,8 @@ export class EquipTab extends Tab {
     }
     // ── 왼쪽: 장비 칸 ──
     this.slotRects.length = 0;
-    const rowH = Math.min(62, (A.h - top - 8) / 6);
+    const optH = touch ? 40 : 32;   // [qol] 「최적 장착」 단추 자리
+    const rowH = Math.min(62, (A.h - top - 14 - optH) / 6);
     this.slots.forEach((slot, i) => {
       const y = A.y + top + i * rowH, x = A.x + 10, w = LW - 20;
       const r = { x, y, w, h: rowH - gapS };
@@ -291,6 +329,15 @@ export class EquipTab extends Tab {
       if (this.flashT > 0 && this.flashSlot === slot) glow(ctx, x + 12 + s / 2, y + 4 + s / 2, s * 1.2, '#ffe0a0', this.flashT);
       if (sel && focused && this.sub === 'slots') brackets(ctx, x + 12, y + 4, s, s, t);
     });
+    // [qol] 최적 장착 · 되돌리기 (5초)
+    {
+      const r = { x: A.x + 10, y: A.y + A.h - optH - 8, w: LW - 20, h: optH };
+      this.optRect = typeof this.m.ges?.zone === 'function' ? this.m.ges.zone(r, 'primary', { src: 'equip.optimize' }) : r;
+      if (this.undo) {
+        gbutton(ctx, r, `되돌리기 (${Math.ceil(this.undo.t)})`, { hot: true, t, size: 13, accent: '#3a6a3a' });
+        ctx.fillStyle = 'rgba(126,224,126,0.55)'; ctx.fillRect(r.x + 4, r.y + r.h - 3, (r.w - 8) * Math.max(0, this.undo.t / 5), 2);
+      } else gbutton(ctx, r, '최적 장착', { hot: this.m.ges?.over?.(r), t, size: 13, icon: 'crown' });
+    }
 
     // ── 가운데: 영웅 미리보기 + 요약 ──
     // 턴테이블 무대: 끌어서·휠·, . 키·오른쪽 스틱으로 돌려 장비의 앞·옆·뒷모습을 본다 (hero_view.js)
@@ -384,6 +431,16 @@ export class EquipTab extends Tab {
         else if (row.by) pill(c, `${D.CHARACTERS()[row.by]?.name?.split(' ')[0] ?? row.by} 장착`, r.x + r.w - 8, y0 + 7, { align: 'right', color: PAL.dim, size: 10, h: 16 });
       });
       if (sel && focused) brackets(ctx, r.x + 10, r.y + 4, s, s, t);
+      // [qol] 지금 영웅 기준 ▲/▼ · 점수 (장착 중인 줄 제외)
+      if (row.ok && !row.here) {
+        const ci = compareInfo(st, hero, row.inst, { slot: this.slot });
+        if (ci?.comparable && ci.mark) {
+          const sx = r.x + r.w - 10, sy = r.y + r.h - 9;
+          const lab = scoreStr(ci.score);
+          text(ctx, lab, sx, sy + 4, { size: 11, align: 'right', weight: 800, family: FONT.num, color: MARK_COL[ci.mark], ow: 2 });
+          drawMark(ctx, sx - measure(ctx, lab, 11, 800, FONT.num) - 8, sy, 9, ci.mark);
+        }
+      }
     });
     clipEnd(ctx, LR, this.sc);
     scrollbar(ctx, LR.x + LR.w - 5, LR.y + 2, LR.h - 4, this.sc, LR.h);
@@ -400,6 +457,13 @@ export class EquipTab extends Tab {
         const lines = wrapC(c, msg, RW - 24, 13, 500).slice(0, 2);
         const y0 = lines.length > 1 ? cy + 34 : cy + 44;
         lines.forEach((ln, i) => text(c, ln, RX + RW / 2, y0 + i * 18, { size: 13, align: 'center', color: PAL.dim, maxWidth: RW - 16 }));
+        return;
+      }
+      // [qol] 장비 줄: 공용 비교 표 (종합 점수 · 실제 능력치 증감 · 초당 피해 어림 · +효과)
+      if (!hr.unequip) {
+        const ci = compareInfo(st, hero, hr.inst, { slot: this.slot });
+        const btnW = canDoN(hr) ? 138 : 0;
+        drawCompare(c, { x: RX + 18, y: cy + 8, w: RW - 36, h: cmpH - 16 - (btnW ? 34 : 0) }, ci, { maxRows: canDoN(hr) ? 2 : 3, size: 12 });
         return;
       }
       const diffs = [];

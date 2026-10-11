@@ -26,7 +26,9 @@
 //             본체는 tools/qa/lib/balance_asc.mjs (+ Node 결투장 tools/qa/lib/asc_arena.mjs — 진짜 Player·hitTarget·특성 훅).
 //             ① §2.8 자료 예산 ② 능력치 층(닫힌 식: Δ공격 효율 ≤ +12 %, ΔeHP ≤ +15 %, Lv 70/75) ③ 특성 층(대본 싸움 mob/pack/boss/kill/calm/siege:
 //             sig = asc ÷ (asc − 특성 항목), stat, tot, siege eHP) ④ 시련 14개 길이 모형. 위치 인자 영웅(예: normal kael --asc all)을 주면 그 영웅만.
-//             --check: ①·② 위반 · 특성 오류/경고 · 지속 sig > +20 % (비전 +30 %) · 시련 보스를 못 쓰러뜨림 → 종료 코드 1 (나머지는 경고).
+//             --check: ①·② 위반 · 특성 오류/경고 · 지속 sig > +20 % (비전 +30 %) · 시련 보스를 못 쓰러뜨림 · 시련 처치 시간 비율이
+//             Ⅰ/Ⅱ 목표(balance_asc.mjs TRIAL_TARGET)의 ×0.75–×1.33 밖 · 특성 문구 숫자가 N 표에 없음(⑤) → 종료 코드 1 (나머지는 경고).
+//             난이도 위치 인자(normal | hard | …)는 결투장·시련 모형에 그대로 쓴다 (예: node tools/balance.mjs hard --asc all --check).
 //             --md FILE: 마크다운 표 · --seeds N (기본 3) · --secs S (기본 40) · --modes mob,pack,… · --no-trials · --json
 //
 // 기준 실행 (world2 §15): 보통 난이도, 1레벨에서 시작해 스테이지마다 일반 적 85% + 보스 처치 경험치 + 메인 퀘스트 경험치를 쌓는다.
@@ -77,12 +79,12 @@ if (!CHARACTERS[charId]) { console.error(`알 수 없는 영웅: ${charId} (${Ob
 // ── 초월·비전 (--asc): 기본 표 대신 tools/qa/lib/balance_asc.mjs (게임 모듈은 이때만 불러온다 — 기본 실행은 그대로) ──
 const ASC_SEL = flag('asc') ? optv('asc', 'all') : null;
 if (ASC_SEL) {
-  if (diffId !== 'normal') { console.error('--asc 는 normal 난이도 모형만 (시련·결투장 = 보통 난이도)'); process.exit(2); }
+  // 난이도: 결투장 월드·허수아비(Enemy diff)·시련 보스(prepareTrial 의 그 난이도 bossHp × 시련 배율)·s20 기준이 같은 난이도 (능력치 층은 난이도와 무관)
   const { runAsc } = await import('./qa/lib/balance_asc.mjs');
   const modes = optv('modes', '') ? optv('modes', '').split(',').map((x) => x.trim()).filter(Boolean) : undefined;
   try {
     process.exitCode = await runAsc({
-      sel: ASC_SEL, charFilter: pos[1] ?? null, check: CHECK, mdPath: optv('md', null), json: JSON_OUT,
+      sel: ASC_SEL, charFilter: pos[1] ?? null, check: CHECK, mdPath: optv('md', null), json: JSON_OUT, diff: diffId,
       seeds: Math.max(1, Number(optv('seeds', 3)) || 3), secs: Math.max(5, Number(optv('secs', 40)) || 40), modes, trials: !flag('no-trials'),
     });
   } catch (e) { console.error(String(e?.message ?? e)); process.exitCode = 2; }
