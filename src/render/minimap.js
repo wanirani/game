@@ -160,6 +160,13 @@ export function drawMinimap(ctx, r, world, ring = null) {
     ctx.drawImage(SMALL.c, x + o, y + o, d, d);
     dots(ctx, world, x + o, y + o, cur, d);
   }
+  if (ring !== false) drawMinimapRing(ctx, r, ring);   // false = 테는 따로 (hud_crisp 선명 칸 — hudfix)
+}
+/** 미니맵 테만 (그림 테 ring, 없으면 금빛 선). 칸 r 둘레로 D·0.04 넘친다 */
+export function drawMinimapRing(ctx, r, ring = null) {
+  const D = Math.min(r.w, r.h);
+  if (D < 20) return;
+  const x = r.x + (r.w - D) / 2, y = r.y + (r.h - D) / 2;
   if (ring) ctx.drawImage(ring, x - D * 0.04, y - D * 0.04, D * 1.08, D * 1.08);
   else { ctx.strokeStyle = '#c8a050'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x + D / 2, y + D / 2, D * 0.43, 0, TAU); ctx.stroke(); }
 }

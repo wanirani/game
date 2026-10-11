@@ -24,10 +24,12 @@ import { drawCompanionHUD } from './companion_hud.js'; // [hook:cmp]
 import { drawGlyph, bindingOf, promptMode } from '../core/prompts.js'; // [hook:plat]
 import { input } from '../core/input.js';
 import { ASSET_ROOT } from '../core/assets.js';
-import { PAD_LAYOUT_FOLD } from '../core/touchpad.js';
-import { drawQuestTracker, toggleQuestTracker } from './quest_tracker.js';   // [hudredo]
+import { PAD_LAYOUT_FOLD, planExtent } from '../core/touchpad.js';
+import { drawQuestTracker, toggleQuestTracker, questTrackerState } from './quest_tracker.js';   // [hudredo]
+import { crisp, crispActive, hashStart, hashNum, hashStr } from './hud_crisp.js';   // [hudfix] 상시 HUD 를 기기 해상도 덧캔버스로
+import { useItem } from '../game/inventory.js';   // [hudfix] 빠른 칸 탭 = 물약 사용
 import { ITEMS } from '../data/items.js';
-import { drawMinimap, drawBigMap } from './minimap.js';
+import { drawMinimap, drawMinimapRing, drawBigMap } from './minimap.js';
 
 // ── 그린 HUD 그림 (hud_mobile §4): 테(assets/ui/hud/*.webp) · 스킬/UI 아이콘(assets/icons/skills/<id>.webp 96 px, 48/<id>.webp 48 px) ──
 // 이미지는 한 번 받아 두고 drawImage 만 한다 (원형 알파는 그림에 구워져 있다 — 클립 없음). 없는 아이콘은 요청하지 않는다(ICON_IDS).
@@ -85,6 +87,8 @@ export function drawArtIcon(c, id, cx, cy, d, alpha = 1) {
   else c.drawImage(img, cx - d / 2, cy - d / 2, d, d);
   return true;
 }
+/** UI·스킬 그림 아이콘을 받았나 (선명 칸 키용) */
+export function artIconReady(id) { return !!iconImg(id, 100, null); }
 /** 스킬 그림 아이콘 (스킬 id) → 그렸으면 true (없으면 부른 쪽이 drawSkillGlyph 로) */
 export function drawSkillArt(c, sid, cx, cy, d, alpha = 1) { return drawArtIcon(c, sid, cx, cy, d, alpha); }
 /** 스킬 아이콘: 그림이 있으면 그림, 없으면 벡터 문장 (예전 drawSkillGlyph 크기 s 기준) */
@@ -112,10 +116,12 @@ export function drawHUD(ctx, world, vw, vh) {
   const L = hudLayout(world, vw, vh);
   if (L.fold) { drawFoldHUD(ctx, world, vw, vh, L, T); return; }   // 폴드·태블릿 배치 (hud_mobile §3)
   const g0 = world.game;
-  if (g0?.hudTaps?.length) g0.hudTaps.length = 0;
   ctx.save();
-  drawPortrait(ctx, L.portrait, hero, p, L);
-  drawVitals(ctx, L.vitals, hero, p, st, T, L);
+  // 초상화+체력·점수 칸: 터치일 때 기기 해상도 덧캔버스로 (hud_crisp — hudfix)
+  const po = L.portrait, vi = L.vitals;
+  const vx = Math.min(po.x, vi.x) - 3, vy = Math.min(po.y, vi.y) - 3;
+  crisp(ctx, world, 'vitals', crr(CRR.vit, vx, vy, Math.max(po.x + po.w, vi.x + vi.w) + 4 - vx, Math.max(po.y + po.h, vi.y + vi.h) + 4 - vy),
+    vitalsKey(hero, p, st, L, vi.w), (c) => { drawPortrait(c, po, hero, p, L); drawVitals(c, vi, hero, p, st, T, L); });
   drawHeartsRow(ctx, L.hearts, world, run, p, L);
   drawSkills(ctx, L.skills, hero, p, T, L);
   drawUltGauge(ctx, L.ult, world, run, T, L);
@@ -125,7 +131,21 @@ export function drawHUD(ctx, world, vw, vh) {
   // 탭 판정용 사각형은 world.companions.hudRects 에 둔다
   const cr = drawCompanionHUD(ctx, world, cmpOpts(L, T)); // [hook:cmp]
   if (world.companions) { if (!cr) NO_RECTS.length = 0; try { world.companions.hudRects = cr || NO_RECTS; } catch { /* 읽기 전용이면 동료 쪽이 직접 관리 */ } } // [hook:cmp]
-  drawScore(ctx, L.score, world, hero, p, run, T, L);
+  const sc = L.score, pimg = assets.get(CHARACTERS[hero.charId]?.portrait), hi = world.game.meta?.highScores?.[0]?.score ?? 0;
+  hashStart(); hashNum(world.state.gold); hashNum(run.score); hashNum(hi); hashNum(run.lives); hashNum(Math.floor(run.time ?? 0)); hashStr(hero.charId); hashStr(p.look?.primary); hashNum(pimg ? pimg.width : 0); hashNum(L.textMin);
+  crisp(ctx, world, 'score', crr(CRR.score, sc.x - 4, sc.y - 12, sc.w + 8, sc.h + 16), hashNum(fontEpoch), (c) => drawScore(c, sc, world, hero, p, run, T, L));
+  // 아래 띠의 빠른 칸 (hudfix: 버튼 배치 '아래 띠' — 띠의 스틱과 버튼 묶음 사이 빈 곳; 게임 캔버스 밖이라 덧캔버스로만 그린다)
+  const qs = L.quick?.length ? consumables(world.state, world.time ?? 0) : null;
+  if (qs && L.quickRow) {
+    const qrow = L.quickRow, e = Math.ceil(qrow.h * 0.08) + 2;
+    crisp(ctx, world, 'quick', crr(CRR.quick, qrow.x - e, qrow.y - e, qrow.w + 2 * e, qrow.h + 2 * e), quickKey(world, run, qs, L), (c) => drawQuick(c, L, world, run, T), ONLY);
+  }
+  if (g0) { // 탭 자리: 아래 띠 빠른 칸만 (넓은 배치의 다른 칸은 누르지 않는다)
+    let n = 0;
+    if (T && qs) { if (!g0.hudTapFn) g0.hudTapFn = hudTapAct; n = pushQuickTaps(n, L, run, qs); }
+    TAPS.length = n;
+    if (n) { g0.hudTaps = TAPS; g0.hudTapsT = typeof performance !== 'undefined' ? performance.now() : Date.now(); } else if (g0.hudTaps?.length) g0.hudTaps.length = 0;
+  }
   // 콤보·스타일 열 (L.combo). 랭크 글자 등장·이정표 박힘 첫 프레임은 칸 위·왼쪽으로 잠깐 넘치므로 그동안만 다른 영역(점수·동료 카드 줄
   // 등)을 빼고 자른다 (feel_hud.hudOverflow). 숫자 튀기기는 feel_hud 가 칸 안에 가두고(popFit), 쉬는 그림도 칸 안에 있으므로
   // 매 프레임 화면 크기 클립을 걸지 않는다 (R1-REQ-330)
@@ -148,29 +168,64 @@ export function drawHUD(ctx, world, vw, vh) {
 
 // ───────────────────────── 폴드·태블릿 배치 (hud_mobile §1·§3) ─────────────────────────
 // 그리는 순서는 넓은 배치와 같은 계약(필살 → 각성 게이지 → 동료 → 점수 자리 → 콤보 → 보스 → 알림)에 미니맵·이름판·큰 HP·빠른 칸·원호를 더한다.
-// 탭 자리(미니맵 → 큰 지도, 빠른 칸 0 → 보조무기, 1–3 → 가방)는 game.hudTaps 에 둔다 (터치일 때만; touchpad 가 판정).
+// 탭 자리(미니맵 → 큰 지도, 빠른 칸 0 → 보조무기, 1–3 → 물약 사용·길게 = 가방, 퀘스트 칸 → 접기·길게 = 퀘스트 창)는 game.hudTaps 에 둔다 (터치일 때만; touchpad 가 판정).
 const TAPS = [];
-function pushTap(i, act, r) {
+function pushTap(i, act, r, long = null) {
   let z = TAPS[i];
-  if (!z) z = TAPS[i] = { act: '', x: 0, y: 0, w: 0, h: 0 };
-  z.act = act; z.x = r.x; z.y = r.y; z.w = r.w; z.h = r.h;
+  if (!z) z = TAPS[i] = { act: '', long: null, x: 0, y: 0, w: 0, h: 0 };
+  z.act = act; z.long = long; z.x = r.x; z.y = r.y; z.w = r.w; z.h = r.h;
+}
+// [hudfix] 선명 칸 사각형 (논리 px; 매 프레임 새 객체를 만들지 않는다)
+const CRR = { mm: { x: 0, y: 0, w: 0, h: 0 }, stage: { x: 0, y: 0, w: 0, h: 0 }, vit: { x: 0, y: 0, w: 0, h: 0 }, cur: { x: 0, y: 0, w: 0, h: 0 }, quest: { x: 0, y: 0, w: 0, h: 0 }, quick: { x: 0, y: 0, w: 0, h: 0 }, score: { x: 0, y: 0, w: 0, h: 0 } };
+function crr(o, x, y, w, h) { o.x = x; o.y = y; o.w = w; o.h = h; return o; }
+/** 체력 칸(초상화 + 이름·HP·MP·EXP) 키: 숫자·막대 길이(반 px)·이름·직업·그림 준비 */
+function vitalsKey(hero, p, st, L, bw) {
+  const img = assets.get(CHARACTERS[hero.charId]?.portrait);
+  hashStart(); hashStr(hero.charId); hashNum(hero.level); hashStr(p.look?.primary); hashNum(img ? img.width : 0); hashNum(fontEpoch); hashNum(L.textMin);
+  hashNum(Math.ceil(p.hp)); hashNum(st.hp); hashNum(Math.round((p.hp / st.hp) * bw * 2)); hashNum(Math.round(((p.hpGhost ?? 0) / st.hp) * bw * 2));
+  hashNum(Math.floor(p.mp)); hashNum(st.mp); hashNum(Math.round((p.mp / st.mp) * bw * 2)); hashNum(Math.round((hero.exp / expToNext(hero.level)) * bw * 2));
+  return hashStr(classNameOf(hero));
 }
 function drawFoldHUD(ctx, world, vw, vh, L, T) {
   const p = world.player, hero = world.hero, run = world.run, st = p.stats, g = world.game;
   ctx.save();
-  drawMinimap(ctx, L.minimap, world, hudArt('ring_map'));
-  drawStagePlate(ctx, L.stage, world, L);
-  drawPortrait(ctx, L.portrait, hero, p, L);
-  drawVitalsFold(ctx, L.vitals, hero, p, st, L);
+  // 상시 칸(미니맵 테·이름판·체력·재화·퀘스트·빠른 칸)은 터치일 때 기기 해상도 덧캔버스로 (hud_crisp — 버튼과 같은 선명도)
+  const ring = hudArt('ring_map'), crOn = crispActive(ctx, world), mm = L.minimap;
+  drawMinimap(ctx, mm, world, crOn ? false : ring);
+  if (crOn && world.stage) {
+    const e = Math.ceil(Math.min(mm.w, mm.h) * 0.06) + 2;
+    hashStart();
+    crisp(ctx, world, 'mmring', crr(CRR.mm, mm.x - e, mm.y - e, mm.w + 2 * e, mm.h + 2 * e), hashNum(ring ? 1 : 0), (c) => drawMinimapRing(c, mm, ring));
+  }
+  const sg = L.stage, stg = world.stage;
+  hashStart(); hashStr(stg?.chapter); hashStr(stg?.name); hashNum(L.textMin); hashNum(fontEpoch);
+  crisp(ctx, world, 'stage', crr(CRR.stage, sg.x - 2, sg.y - 2, sg.w + 4, sg.h + 4), hashNum(sg.w), (c) => drawStagePlate(c, sg, world, L));
+  const po = L.portrait, vi = L.vitals;
+  const vx = Math.min(po.x, vi.x - 4) - 3, vy = Math.min(po.y, vi.y - 2) - 3;
+  crisp(ctx, world, 'vitals', crr(CRR.vit, vx, vy, Math.max(po.x + po.w, vi.x + vi.w + 2) + 3 - vx, Math.max(po.y + po.h, vi.y + vi.h + 2) + 3 - vy),
+    vitalsKey(hero, p, st, L, vi.w), (c) => { drawPortrait(c, po, hero, p, L); drawVitalsFold(c, vi, hero, p, st, L); });
   drawHeartsRow(ctx, L.hearts, world, run, p, L);
   drawUltGauge(ctx, L.ult, world, run, T, L);
   drawAwGauge(ctx, world, L.awGauge.x, L.awGauge.y, L.awGauge.w, T); // [hook:feel]
   const cr = drawCompanionHUD(ctx, world, cmpOpts(L, T)); // [hook:cmp]
   if (world.companions) { if (!cr) NO_RECTS.length = 0; try { world.companions.hudRects = cr || NO_RECTS; } catch { /* 읽기 전용 */ } } // [hook:cmp]
-  drawCurrency(ctx, L.score, world, hero, p, run, L);
+  const sc = L.score, pimg = assets.get(CHARACTERS[hero.charId]?.portrait);
+  hashStart(); hashNum(world.state.gold); hashNum(run.score); hashNum(run.lives); hashStr(hero.charId); hashStr(p.look?.primary); hashNum(pimg ? pimg.width : 0); hashNum(L.textMin);
+  crisp(ctx, world, 'currency', crr(CRR.cur, sc.x - 2, sc.y - 2, sc.w + 4, sc.h + 4), hashNum(fontEpoch), (c) => drawCurrency(c, sc, world, hero, p, run, L));
   // 퀘스트 칸 (HUD-REDO): 보스 바·연출 중에는 숨김
-  const qr = L.quest && L.questShown && !world.cutscene ? drawQuestTracker(ctx, L.quest, world, L.textMin) : null;
-  drawQuick(ctx, L, world, run, T);
+  let qr = null;
+  const qst = L.quest && L.questShown && !world.cutscene ? questTrackerState(L.quest, world, L.textMin) : null;
+  if (qst) {
+    const q = L.quest;
+    hashStart(); hashStr(qst.key); hashNum(artIconReady('ui_quest') ? 1 : 0);
+    crisp(ctx, world, 'quest', crr(CRR.quest, q.x - 2, q.y - 2, q.w + 4, qst.h + 4), hashNum(fontEpoch), (c) => drawQuestTracker(c, q, world, L.textMin, qst, c !== ctx));
+    qr = { x: q.x, y: q.y, w: q.w, h: qst.h, head: qst.M.head };
+  }
+  const qs = consumables(world.state, world.time ?? 0), qrow = L.quickRow;
+  if (qrow) {
+    const e = Math.ceil(qrow.h * 0.08) + 2;
+    crisp(ctx, world, 'quick', crr(CRR.quick, qrow.x - e, qrow.y - e, qrow.w + 2 * e, qrow.h + 2 * e), quickKey(world, run, qs, L), (c) => drawQuick(c, L, world, run, T));
+  }
   if (L.arc) drawArcHUD(ctx, L.arc, world, p, run, L);
   const cc = hudOverflow(world, 'combo') ? avoidClip(L, 'combo') : null; // [hook:feel]
   if (cc) { ctx.save(); ctx.clip(cc, 'evenodd'); }
@@ -185,7 +240,7 @@ function drawFoldHUD(ctx, world, vw, vh, L, T) {
     if (ac) ctx.restore();
   }
   let bigR = null;
-  if (g?.hudMapBig) bigR = drawBigMap(ctx, world, vw, vh, hudArt('ring_map'));
+  if (g?.hudMapBig) bigR = drawBigMap(ctx, world, vw, vh, ring);
   ctx.restore();
   // 탭 자리 (터치): 큰 지도가 열려 있으면 화면 전체가 '닫기'
   if (g) {
@@ -195,27 +250,56 @@ function drawFoldHUD(ctx, world, vw, vh, L, T) {
     if (bigR) pushTap(n++, 'hudmap', { x: 0, y: 0, w: vw, h: vh });
     else {
       pushTap(n++, 'hudmap', L.minimap);
-      pushTap(n++, 'sub', L.quick[0]);
-      for (let i = 1; i < L.quick.length; i++) pushTap(n++, 'map', L.quick[i]);
-      if (qr) { // 퀘스트 칸: 머리 줄 ▸ 칸 = 접기/펼치기, 나머지 = 메뉴 › 퀘스트
-        QT_TOG.x = qr.x; QT_TOG.y = qr.y; QT_TOG.w = 34; QT_TOG.h = qr.head;
-        QT_OPEN.x = qr.x + 34; QT_OPEN.y = qr.y; QT_OPEN.w = qr.w - 34; QT_OPEN.h = qr.h;
-        pushTap(n++, 'qt_toggle', QT_TOG); pushTap(n++, 'qt_open', QT_OPEN);
+      n = pushQuickTaps(n, L, run, qs);
+      if (qr) { // 퀘스트 칸 (hudfix): 탭 = 접기/펼치기, 길게 누르기 = 메뉴 › 퀘스트. 누르는 칸은 ≥ 44 CSS px 높이 (보이지 않는 여유)
+        const h44 = 44 / (Number(g.cssScale) || 1), zh = Math.max(qr.h, h44);
+        QT_TOG.x = qr.x; QT_TOG.y = qr.y - (zh - qr.h) / 2; QT_TOG.w = qr.w; QT_TOG.h = zh;
+        pushTap(n++, 'qt_toggle', QT_TOG, 'qt_open');
       }
     }
     TAPS.length = n;
     g.hudTaps = TAPS; g.hudTapsT = typeof performance !== 'undefined' ? performance.now() : Date.now();
   }
 }
-const QT_TOG = { x: 0, y: 0, w: 0, h: 0 }, QT_OPEN = { x: 0, y: 0, w: 0, h: 0 };
-/** HUD 탭 자리 중 입력 액션이 아닌 것 (touchpad 가 손을 뗄 때 game.hudTapFn(act) 로 부른다) */
+const QT_TOG = { x: 0, y: 0, w: 0, h: 0 };
+/** 빠른 칸 탭 자리 (hudfix): 0 = 보조무기 (누르는 동안 'sub'), 1–3 = 탭하면 그 칸의 소모품 사용 · 길게 누르면 가방 (예전: 탭 = 가방 열기). 빈 칸은 탭 자리 없음 */
+function pushQuickTaps(n, L, run, qs) {
+  if (!L.quick?.length) return n;
+  if (SUBWEAPONS[run.sub]) pushTap(n++, 'sub', L.quick[0]);
+  for (let i = 1; i < L.quick.length; i++) if (qs[i - 1]) pushTap(n++, QS_ACT[i], L.quick[i], 'bag');
+  return n;
+}
+const QS_ACT = ['', 'qs1', 'qs2', 'qs3'];
+const ONLY = Object.freeze({ only: true });
+/** 빠른 칸 키: 보조무기·하트·소모품(아이콘·개수·그림 준비)·테 그림 */
+function quickKey(world, run, qs, L) {
+  const sw = SUBWEAPONS[run.sub];
+  hashStart(); hashNum(hudArt('frame_slot') ? 1 : 0); hashStr(run.sub); hashNum(run.hearts); hashNum(sw && run.hearts < (sw.cost ?? 1) ? 1 : 0);
+  hashNum(sw ? (assets.get('icons/' + sw.icon) ? 1 : 0) : 2); hashNum(L.textMin); hashNum(fontEpoch); hashNum(L.quick?.length ?? 0);
+  for (let i = 0; i < 3; i++) { const it = qs[i]; hashStr(it?.icon); hashNum(it ? it.qty ?? 1 : -1); hashNum(it && assets.get('icons/' + it.icon) ? 1 : 0); }
+  return H_();
+}
+const H_ = () => hashNum(0);
+/** HUD 탭 자리 중 입력 액션이 아닌 것 (touchpad 가 손을 뗄 때 game.hudTapFn(act) 로 부른다; 길게 누르면 그 칸의 long 을) */
 function hudTapAct(act) {
   const g = this && this.top ? this : null;
-  if (act === 'qt_toggle') { toggleQuestTracker(); return; }
-  if (act === 'qt_open') {
-    const gm = g ?? globalThis.__game;
-    const top = gm?.top;
-    if (gm?.registry?.menu && top && (top.canPause?.() ?? true) && top.world) gm.push('menu', { world: top.world, tab: 'quests' });
+  const gm = g ?? globalThis.__game;
+  const top = gm?.top;
+  if (act === 'qt_toggle') { toggleQuestTracker(); try { gm?.audio?.sfx?.('menu_move'); } catch { /* 소리 없음 */ } return; }
+  if (act === 'qt_open' || act === 'bag') {
+    if (gm?.registry?.menu && top && (top.canPause?.() ?? true) && top.world) gm.push('menu', { world: top.world, tab: act === 'bag' ? 'inventory' : 'quests' });
+    return;
+  }
+  const qi = QS_ACT.indexOf(act);
+  if (qi > 0) { // 빠른 칸 소모품 사용 (그 칸에 보이는 물건 — 0.5초마다 다시 센 목록)
+    const w = top?.world;
+    if (!w?.player || !w.state) return;
+    const it = consumables(w.state, w.time ?? 0)[qi - 1];
+    if (!it) return;
+    let r = null;
+    try { r = useItem(w.state, w.hero, it.uid, w.player); } catch (e) { console.error('[hud] quick use', e); }
+    QK.t = -1; // 개수가 바뀌었으니 다음 프레임에 다시 센다
+    if (r && !r.ok && r.msg) { try { gm.toast?.(r.msg, '#ffd0a0', 1.8); gm.audio?.sfx?.('menu_ng'); } catch { /* 토스트 없음 */ } }
   }
 }
 
@@ -291,18 +375,17 @@ function drawQuick(ctx, L, world, run, T) {
   const list = consumables(world.state, world.time ?? 0);
   for (let i = 0; i < L.quick.length; i++) {
     const r = L.quick[i], cx = r.x + r.w / 2, cy = r.y + r.h / 2;
-    ctx.fillStyle = 'rgba(10,4,10,0.72)'; ctx.fillRect(r.x + 3, r.y + 3, r.w - 6, r.h - 6);
-    let count = null, dim = false;
-    if (i === 0) {
-      const sw = SUBWEAPONS[run.sub];
-      if (sw) { dim = run.hearts < (sw.cost ?? 1); if (dim) ctx.globalAlpha = 0.45; drawIcon(ctx, sw.icon, cx, cy - 2, r.w * 0.62); ctx.globalAlpha = 1; }
-      count = run.hearts;
-    } else {
-      const it = list[i - 1];
-      if (it) { drawIcon(ctx, it.icon, cx, cy - 2, r.w * 0.6, null, { glow: false }); count = it.qty ?? 1; }
-    }
+    let count = null, dim = false, empty = false;
+    const sw = i === 0 ? SUBWEAPONS[run.sub] : null, it = i > 0 ? list[i - 1] : null;
+    empty = i === 0 ? !sw : !it;
+    // 빈 칸 (hudfix): 어두운 판 없이 테만 옅게 — 누를 것이 없다는 것이 보이게 (탭 자리도 없다)
+    if (empty) ctx.globalAlpha = 0.35;
+    else { ctx.fillStyle = 'rgba(10,4,10,0.72)'; ctx.fillRect(r.x + 3, r.y + 3, r.w - 6, r.h - 6); }
+    if (sw) { dim = run.hearts < (sw.cost ?? 1); if (dim) ctx.globalAlpha = 0.45; drawIcon(ctx, sw.icon, cx, cy - 2, r.w * 0.62); ctx.globalAlpha = 1; count = run.hearts; }
+    else if (it) { drawIcon(ctx, it.icon, cx, cy - 2, r.w * 0.6, null, { glow: false }); count = it.qty ?? 1; }
     if (fr) ctx.drawImage(fr, r.x - r.w * 0.06, r.y - r.h * 0.06, r.w * 1.12, r.h * 1.12);
     else { ctx.strokeStyle = COLORS.goldDark; ctx.lineWidth = 1.5; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1); }
+    ctx.globalAlpha = 1;
     if (count != null) text(ctx, String(count), r.x + r.w - 4, r.y + r.h - 4, { size: F, align: 'right', weight: 800, family: FONT.num, color: i === 0 ? '#ffb0b8' : '#fff', ow: 3, maxWidth: r.w - 6 });
     if (!T && i === 0 && useGlyph('sub', T)) drawGlyph(ctx, 'sub', r.x + 2, r.y + 2, 13); // [hook:plat]
   }
@@ -311,7 +394,7 @@ function drawQuick(ctx, L, world, run, T) {
 /** 데스크톱·패드 폴드: 스킬 원호를 HUD 에 그린다 (패드 원호와 같은 자리·그림, 누르지 않고 키·버튼 글리프를 붙인다) */
 const ARC_ACT = { attack: 'attack', jump: 'jump', dash: 'dash', sub: 'sub', skill1: 'skill1', skill2: 'skill2', ult: 'ult', swap: 'swap', mount: 'mount', guard: 'guard' };
 function drawArcHUD(ctx, r, world, p, run, L) {
-  const s = r.w / 390, hero = world.hero;   // padPlan 표 범위 378 × 246 dp (hud_layout L.arc 390 × 260)
+  const s = r.w / (planExtent(PAD_LAYOUT_FOLD).extent + 12), hero = world.hero;   // padPlan 표 범위 + 12 (hud_layout L.arc 와 같은 비율)
   for (const id in PAD_LAYOUT_FOLD) {
     const [rt, bt, d0] = PAD_LAYOUT_FOLD[id];
     const d = d0 * s * 0.92, cx = r.x + r.w - rt * s, cy = r.y + r.h - bt * s, rad = d / 2;
@@ -661,15 +744,13 @@ function drawUltGauge(ctx, r, world, run, T, L) {
   ctx.strokeStyle = full ? '#fff' : COLORS.goldDark; ctx.lineWidth = 1.5; ctx.strokeRect(ux - 0.5, uy - 0.5, uw + 1, 11);
 }
 
-// ── 오른쪽 위: 점수/목숨/골드/시간 (150×62, 터치 150×70, 휴대폰 배치 170×70 — 'SCORE' 글자 없이 숫자만) ──
+// ── 오른쪽 위: 점수/목숨/골드/시간 (150×62, 터치 150×70, 휴대폰 배치 170×70 — 이름표 '점수' + 숫자) ──
 function drawScore(ctx, r, world, hero, p, run, T, L) {
   const F = L.textMin;
   const rx = r.x + r.w, lx = r.x, y0 = r.y - 10, s1 = Math.max(T ? 13 : 11, F), s2 = Math.max(T ? 14 : 12, F), ly = T ? 3 : 0;
-  let labelW = 0;
-  if (!L.big) {
-    text(ctx, 'SCORE', lx, y0 + 26, { size: s1, weight: 700, family: FONT.num, color: COLORS.dim });
-    labelW = ctx.measureText('SCORE').width;
-  }
+  // 이름표 '점수' (hudfix: 폴드 재화 줄과 같은 말 — 예전엔 넓은 배치 'SCORE', 휴대폰은 이름표 없이 숫자만)
+  text(ctx, '점수', lx, y0 + 26, { size: s1, weight: 700, color: COLORS.dim });
+  ctx.font = font(s1, 700); const labelW = ctx.measureText('점수').width;
   text(ctx, fmt(run.score), rx, y0 + 28, { size: Math.max(20, F), align: 'right', weight: 800, family: FONT.num, color: '#fff', maxWidth: r.w - labelW - 6 });
   const hi = Math.max(world.game.meta?.highScores?.[0]?.score ?? 0, run.score);
   // 목숨: 하트(보조무기 탄약)와 헷갈리지 않도록 영웅 얼굴 아이콘 × 남은 목숨

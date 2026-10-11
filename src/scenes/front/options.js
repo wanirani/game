@@ -105,7 +105,7 @@ function buildRows(sc) {
       { // hud_mobile §3: 화면비별 인터페이스 배치 (자동 = 폴드 펼침·태블릿처럼 네모난 화면이면 폴드 배치). settings.hud 는 새 객체로 바꾼다
         id: 'hudPreset', label: '화면 배치', type: 'enum', opts: [['auto', '자동'], ['wide', '휴대폰'], ['fold', '폴드·태블릿']],
         get: () => sc.s.hud?.preset ?? 'auto', set: (v) => { sc.s.hud = { ...(sc.s.hud ?? {}), preset: v }; g.dirty = true; },
-        note: '전투 화면의 정보 표시와 버튼 배치입니다. 자동은 화면 비율에 맞춰 고릅니다.',
+        note: '전투 화면의 정보 표시 배치입니다. 자동은 화면 비율에 맞춰 고릅니다. 버튼을 아래 띠에 두려면 터치 › 버튼 배치에서 고릅니다.',   // [hudfix] 띠는 '버튼 배치' 하나로만
       },
       {
         id: 'hudScale', label: '인터페이스 크기', type: 'enum', opts: [[0.85, '85%'], [0.9, '90%'], [1, '100%'], [1.1, '110%'], [1.2, '120%']],

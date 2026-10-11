@@ -30,7 +30,7 @@
 //   fold 터치에서는 TOUCH_FLOOR 규칙 대신 '패드·스틱 자리와 겹치지 않기'만 지킨다 (아래 가운데는 체력·빠른 칸 자리).
 // 주의 (순환 import): game.js 가 이 파일을 import 해도 되도록 모듈 최상위에서는 import 값에 접근하지 않는다.
 import { input } from '../core/input.js';
-import { touchpad, padPlan, planExtent, foldScale, foldSysPlan, PAD_M, SYS_D, SYS_M_WIDE } from '../core/touchpad.js';
+import { touchpad, padPlan, planExtent, foldScale, foldSysPlan, deviceDpr, PAD_M, SYS_D, SYS_M_WIDE, PAD_LAYOUT_FOLD } from '../core/touchpad.js';
 import * as GAME from '../core/game.js';
 import { game, VIEW_H } from '../core/game.js';
 
@@ -67,6 +67,17 @@ export function hudPx(n, touch = hudTouch()) {
 export function vitalsRows(F) {
   const name = Math.ceil(F * 0.82), hpTop = name + 4, hpH = F + 1, mpTop = hpTop + hpH + 3, mpH = 8, expTop = mpTop + mpH + 3;
   return { name, hpTop, hpH, mpTop, mpH, expTop, expH: 3, h: expTop + 3 };
+}
+// 퀘스트 칸 접힘 (quest_tracker.js 가 읽고 바꾼다 — 기기 localStorage 'bn.qt', 기본 접힘). 배치도 본다: 접혀 있으면 퀘스트 칸이
+// 머리 줄 높이뿐이라 그 아래로 토스트 줄을 화면 오른쪽 끝까지 넓힌다 (hudfix, 검토 의견 '토스트가 268 dp 칸에서 잘린다')
+let QC = null;
+export function questCollapsed() {
+  if (QC == null) { try { const v = localStorage.getItem('bn.qt'); QC = v == null ? true : v === '1'; } catch { QC = true; } }
+  return QC;
+}
+export function setQuestCollapsed(v) {
+  QC = !!v;
+  try { localStorage.setItem('bn.qt', QC ? '1' : '0'); } catch { /* 저장 못 함 — 이번 실행만 */ }
 }
 /** 필살 칸의 세로 줄: 휴대폰 배치는 라벨을 F px 로 (막대는 그 아래), 아니면 예전 위치 (라벨 기준선 +10, 막대 +16) */
 export function ultRows(F, big) {
@@ -162,25 +173,26 @@ export function modelPadRects(v) {
   // touchpad.layout() 과 같은 계산 (padPlan · foldScale · foldSysPlan; 편집·settle 없이 기본값) — HUD-REDO 배치
   const band = v.cssH - ins.b - (v.canvas.y + v.canvas.h) >= 120;
   const fold = !band && v.preset === 'fold';
-  const kd = fold || band ? foldScale(v.cssH, v.touchScale, v.hudScale) : foldScale(v.cssH, v.touchScale, 1, true);
+  const dpr = v.dpr ?? 2;
+  const kd = fold || band ? foldScale(v.cssH, v.touchScale, v.hudScale, false, dpr) : foldScale(v.cssH, v.touchScale, 1, true);
   const csH = v.canvas.h / (v.vh ?? VIEW_H);
   const yMin = band ? v.canvas.y + v.canvas.h : v.canvas.y + (fold ? 160 : v.leftHanded ? 172 : 88) * csH;
   const availH = v.cssH - ins.b - yMin - (band ? 4 : 0), availW = (v.cssW - ins.l - ins.r) * 0.56;
-  let k = kd, T = padPlan(band ? 'band' : 'overlay', k, PAD_M, !!v.town);
+  const kind = band ? 'band' : fold ? 'overlay' : 'wide';
+  let k = kd, T = padPlan(kind, k, PAD_M, !!v.town);
   for (let i = 0; i < 6; i++) {
     const e = planExtent(T);
     const f = Math.min(1, (availH - PAD_M) / Math.max(1, e.top - PAD_M), (availW - PAD_M) / Math.max(1, e.extent - PAD_M));
     if (f >= 0.999) break;
     k = Math.max(0.5, k * f * 0.995);
-    T = padPlan(band ? 'band' : 'overlay', k, PAD_M, !!v.town);
+    T = padPlan(kind, k, PAD_M, !!v.town);
   }
   for (const id in T) {
-    if (v.companions === false && !fold && (id === 'mount' || id === 'guard')) continue;
     const [right, bottom, d] = T[id];
     add(id, v.leftHanded ? ins.l + right : v.cssW - ins.r - right, v.cssH - ins.b - bottom, Math.max(44, d));
   }
   if (fold) {
-    const sys = foldSysPlan(v.cssW, ins, Math.max(44, SYS_D * clamp(kd, 0.95, 1.15)), false, v.town ? ['pause', 'bag'] : null);
+    const sys = foldSysPlan(v.cssW, ins, Math.max(44, SYS_D * clamp(kd, 0.95 * Math.min(1, 2 / Math.max(1, dpr)), 1.15)), false, v.town ? ['pause', 'bag'] : null);
     for (const id in sys) add(id, sys[id].cx, sys[id].cy, sys[id].d);
     return out;
   }
@@ -212,7 +224,7 @@ function liveModelPad() {
     vw: g.viewW, vh: g.viewH || VIEW_H, preset: hudPreset(g), hudScale: hudScaleK(g), cssW: window.innerWidth, cssH: window.innerHeight,
     canvas: { x: r.left, y: r.top, w: r.width, h: r.height },
     inset: { l: (s.l || 0) * cs, r: (s.r || 0) * cs, t: (s.t || 0) * cs, b: (s.b || 0) * cs },
-    touchScale: st.touchScale, leftHanded: !!st.touchLeftHanded,
+    touchScale: st.touchScale, leftHanded: !!st.touchLeftHanded, dpr: deviceDpr(),
   });
   return liveRects;
 }
@@ -415,7 +427,7 @@ function build(vw, vh, T, S, pad, bossOn, nM, F) {
  *  아래: 빠른 칸 4개(L.quick) — 스틱 받침 오른쪽부터 아래 여백(PAD_M dp) 위에 한 줄 (터치), 데스크톱은 왼쪽 아래
  *  오른쪽 아래: 터치는 패드 원호, 데스크톱·패드는 L.arc (hud.js 가 같은 그림으로 그린다, 누르지는 않는다)
  */
-function buildFold(vw, vh, T, S, pad, bossOn, nM, F, k, cs) {
+function buildFold(vw, vh, T, S, pad, bossOn, nM, F, k, cs, qcIn = false) {
   const l = S.l || 0, rr = S.r || 0, t = S.t || 0, b = S.b || 0;
   const right = vw - rr;
   const L = { vw, vh, touch: T, safe: S, pad, textMin: F, big: false, preset: 'fold', fold: true, hudK: k, rows: null };
@@ -429,8 +441,9 @@ function buildFold(vw, vh, T, S, pad, bossOn, nM, F, k, cs) {
     }
     if (sides[i] > 0) { padLeft = padLeft == null ? p.x : Math.min(padLeft, p.x); padTop = padTop == null ? p.y : Math.min(padTop, p.y); }
   }
-  // 데스크톱·패드: 스킬 원호 칸 (터치는 패드가 그린다) — 패드 배치표(padPlan) 범위 378 × 246 dp 에 맞춘 390 × 260
-  const aw = Math.round(390 * k), ah = Math.round(260 * k);
+  // 데스크톱·패드: 스킬 원호 칸 (터치는 패드가 그린다) — 패드 배치표(padPlan) 범위 + 여유 12 (hud.js drawArcHUD 가 같은 비율로 그린다)
+  const PE = planExtent(PAD_LAYOUT_FOLD);
+  const aw = Math.round((PE.extent + 12) * k), ah = Math.round((PE.top + 12) * k);
   L.arc = T ? null : R(right - aw - 8, vh - b - ah - 8, aw, ah);
   if (L.arc) { padLeft = L.arc.x; padTop = L.arc.y; }
   L.padLeft = padLeft; L.padRight = null; L.padTop = padTop;
@@ -469,24 +482,32 @@ function buildFold(vw, vh, T, S, pad, bossOn, nM, F, k, cs) {
 
   // ── 오른쪽: 퀘스트 칸 (아이콘 줄 아래) ──
   const qTop = Math.max(L.score.y + L.score.h + HUD_GAP, (sysBottom ?? 0) + HUD_GAP, 12 + t);
-  const qw = Math.round(240 * k), qh = questPanelH(F);
-  L.quest = R(right - 12 - qw, qTop, qw, qh);
+  const qw = Math.round(240 * k), qh = questPanelH(F), qc = !!qcIn;
+  // 접힘이면 칸 = 머리 줄 높이 (그 아래는 토스트가 쓴다). 콤보 열은 펼친 높이 기준 그대로 (접고 펼 때 움직이지 않게)
+  L.quest = R(right - 12 - qw, qTop, qw, qc ? questHeadH(F) : qh);
+  L.questFull = qh;
   L.questShown = !bossOn;
 
   // ── 아래: 빠른 칸 (터치: 스틱 받침 오른쪽, 아래 여백 PAD_M dp) ──
   // 칸 사이 ≥ 12 CSS px (hud_mobile §3: 옆 칸을 잘못 누르지 않게)
   const csK = cs > 0.05 ? cs : 1, mB = T ? PAD_M / csK : 14;
   const q = Math.max(T ? Math.ceil(44 / csK) : 44, Math.round(52 * k)), qg = T ? Math.ceil(12 / csK) : 10, qn = 4;   // 터치: 칸 ≥ 44 CSS px
+  const rowW = qn * q + (qn - 1) * qg;
   let qx = 24 + l;
   if (T) {
-    let sr = null;
-    try { const z = touchpad.stickZone?.(); if (z) sr = z.x + z.w; } catch { sr = null; }
-    qx = Math.max(qx, (sr ?? (PAD_M + 2.28 * 57 + 24) / csK) + 4);
+    // 스틱 받침 옆 (hudfix: 왼손 모드는 스틱이 오른쪽 → 스틱 왼쪽에 오른쪽 끝을 맞춘다; 예전엔 화면 밖으로 나갔다).
+    // 줄은 화면 안 [여백, 화면 − 여백] 에 가둔다 (버튼 묶음과 겹치면 hud 시험 §6 이 잡는다)
+    let z = null;
+    try { z = touchpad.stickZone?.(); } catch { z = null; }
+    const lh = !!game?.settings?.touchLeftHanded;
+    if (lh) qx = (z ? z.x : vw - rr - (PAD_M + 2.28 * 57 + 24) / csK) - 4 - rowW;
+    else qx = Math.max(qx, (z ? z.x + z.w : (PAD_M + 2.28 * 57 + 24) / csK) + 4);
+    qx = clamp(qx, l + PAD_M / csK, Math.max(l + PAD_M / csK, right - PAD_M / csK - rowW));
   }
   const qy = vh - b - mB - q;
   L.quick = [];
   for (let i = 0; i < qn; i++) L.quick.push(R(qx + i * (q + qg), qy, q, q));
-  L.quickRow = R(qx, qy, qn * q + (qn - 1) * qg, q);
+  L.quickRow = R(qx, qy, rowW, q);
 
   // ── 기믹 게이지 · 위쪽 보스 바 · 토스트 (가운데 위 빈 칸) ──
   const gapR0 = L.quest.x - HUD_GAP;
@@ -506,26 +527,35 @@ function buildFold(vw, vh, T, S, pad, bossOn, nM, F, k, cs) {
   L.bossSlot = 'top';
   L.bossBar = L.bossTop;
   L.bossShown = !!bossOn;
-  let topR = bossOn ? L.bossTop.y + L.bossTop.h + HUD_GAP : L.quest.y + L.quest.h + HUD_GAP;
+  let topR = bossOn ? L.bossTop.y + L.bossTop.h + HUD_GAP : L.quest.y + L.questFull + HUD_GAP;
   const comboBottom = Math.min(topR + 230, (padTop ?? vh) - HUD_GAP);
   L.combo = R(right - 302, topR, 290, Math.max(0, comboBottom - topR));
   const gapR = Math.min(gapR0, L.combo.x - HUD_GAP);
   L.gap = { l: gapL, r: bossOn ? L.combo.x - HUD_GAP : gapR0 };
   // 알림·배너: 가운데 (콤보 열·동료 카드 줄·보스 바 아래, 패드에 닿으면 그만큼 줄인다)
-  const ty = Math.round(Math.max(bty + 36 + TOAST_ROW + 8, L.callouts.y + L.callouts.h + HUD_GAP, L.combo.y + L.combo.h + HUD_GAP));
+  const ty = Math.round(Math.max(bty + 36 + 4 + 2 * TOAST_ROW + 4, L.callouts.y + L.callouts.h + HUD_GAP, L.combo.y + L.combo.h + HUD_GAP));
   const padX = L.arc ? [...pad, L.arc] : pad, sidesX = L.arc ? [...sides, 1] : sides;   // 데스크톱 원호 칸도 패드처럼 피한다
   const ts = clipSpan(12 + l, right - 12, ty, 64, padX, sidesX);
   const tw = Math.min(560, ts.r - ts.l);
   L.transient = R(Math.round((ts.l + ts.r - tw) / 2), ty, tw, 64);
   let top0 = n ? meters[n - 1].y + METER_H + 4 : mTop;
   if (L.bossShown) top0 = Math.max(top0, L.bossTop.y + L.bossTop.h + 4);
-  const rows = Math.max(0, Math.min(L.bossShown ? 1 : 3, Math.floor((L.transient.y - 4 - top0) / TOAST_ROW)));
-  const tR = L.bossShown ? L.gap.r : gapR;
-  const rowAt = (i) => { const top = top0 + i * TOAST_ROW; return { x: (gapL + tR) / 2, y: top + 18, l: gapL, r: tR, w: tR - gapL, top, h: TOAST_ROW, hidden: i >= rows }; };
+  // 토스트 줄 (hudfix: 예전엔 왼쪽 묶음 ~ 콤보 열 사이 266 px 한 칸 폭이라 긴 알림이 '…' 로 잘렸다):
+  //  줄마다 오른쪽 끝 = 그 줄 높이에 걸리는 것(콤보 열 · 퀘스트 칸) 왼쪽 8 px, 없으면 화면 오른쪽 여백까지. 보스 바 아래는 2줄
+  const rows = Math.max(0, Math.min(L.bossShown ? 2 : 3, Math.floor((L.transient.y - 4 - top0) / TOAST_ROW)));
+  const qOn = L.quest && L.questShown;
+  const rowAt = (i) => {
+    const top = top0 + i * TOAST_ROW, bot = top + TOAST_ROW;
+    let r = right - 12;
+    if (L.combo.h > 0 && L.combo.y < bot && L.combo.y + L.combo.h > top) r = Math.min(r, L.combo.x - HUD_GAP);
+    if (qOn && L.quest.y < bot && L.quest.y + L.quest.h + HUD_GAP > top) r = Math.min(r, L.quest.x - HUD_GAP);
+    return { x: (gapL + r) / 2, y: top + 18, l: gapL, r, w: r - gapL, top, h: TOAST_ROW, hidden: i >= rows };
+  };
   const toastList = [0, 1, 2].map(rowAt);
   L.toastRows = rows;
   L.toasts = toastList;
   L.toast = (i) => toastList[i] ?? rowAt(i);
+  const tR = rows ? Math.max(...toastList.slice(0, rows).map((q) => q.r)) : gapR;
   L.toastArea = R(gapL, top0, tR - gapL, rows * TOAST_ROW);
   return L;
 }
@@ -536,6 +566,8 @@ export function vitalsFoldRows(F) {
 }
 /** 퀘스트 칸 높이 (펼친 크기: 머리 줄 + 3줄) — quest_tracker.js 가 같은 줄 높이로 그린다 */
 export function questPanelH(F) { const fs = Math.max(12, F); return Math.round(fs + 14) + 3 * Math.round(fs + 6) + 4; }
+/** 퀘스트 칸 머리 줄 높이 (접힌 칸) */
+export function questHeadH(F) { return Math.round(Math.max(12, F) + 14); }
 
 // 한 칸짜리 기억 (같은 입력 → 같은 객체).
 // 패드는 사각형 객체가 아니라 숫자 값(x,y,w,h)을 적어 둔다: 패드 쪽이 같은 객체를 제자리에서 고쳐도(크기·배치 편집) 바뀐 것을 알아챈다
@@ -560,6 +592,31 @@ function cleanPad(pad) {
   return out;
 }
 
+/**
+ * 아래 띠의 빠른 칸 (hudfix, 버튼 배치 '아래 띠'): 띠 안에서 스틱 받침과 버튼 묶음 사이 빈 곳의 가운데, 스틱 높이에 4칸.
+ * 게임 캔버스 밖(논리 y > vh)이라 hud.js 는 덧캔버스 선명 칸으로만 그리고, 탭은 game.hudTaps 로 같다. 자리가 모자라면 없음 (L.quick = null)
+ */
+function bandQuick(L, g, vw, vh, band) {
+  L.quick = null; L.quickRow = null;
+  if (!band || typeof window === 'undefined') return;
+  let I = null;
+  try { I = touchpad.layoutInfo?.(); } catch { I = null; }
+  const cr = g?.canvasRect;
+  if (!I || !I.band || !I.home || !cr || !(cr.h > 0)) return;
+  const cs = cr.h / vh, gap = 16, sr = 1.14 * I.R;
+  const q = Math.max(44, Math.round(54 * Math.min(1.1, Math.max(0.85, I.kEff || 1)))), qg = 12, rowW = 4 * q + 3 * qg;
+  // 버튼 묶음의 가로 범위 (CSS px): 띠 안 버튼들
+  let bx0 = Infinity, bx1 = -Infinity;
+  try { for (const b of touchpad.buttons?.() ?? []) { if (b.cy < cr.y + cr.h) continue; bx0 = Math.min(bx0, b.cx - b.d * 0.6); bx1 = Math.max(bx1, b.cx + b.d * 0.6); } } catch { /* 버튼 없음 */ }
+  if (!(bx1 > bx0)) return;
+  const lo = I.left ? bx1 + gap : I.home.x + sr + gap, hi = I.left ? I.home.x - sr - gap : bx0 - gap;
+  if (hi - lo < rowW) return;
+  const x0 = (lo + hi) / 2 - rowW / 2, y0 = I.home.y - q / 2;
+  L.quick = [];
+  for (let i = 0; i < 4; i++) L.quick.push(R((x0 + i * (q + qg) - cr.x) / cs, (y0 - cr.y) / cs, q / cs, q / cs));
+  L.quickRow = R((x0 - cr.x) / cs, (y0 - cr.y) / cs, rowW / cs, q / cs);
+}
+
 export function hudLayout(world, vw, vh, pad, opts) {
   vw = vw ?? game.viewW; vh = vh ?? game.viewH ?? VIEW_H;
   const T = !!(opts?.touch ?? hudTouch());
@@ -572,12 +629,15 @@ export function hudLayout(world, vw, vh, pad, opts) {
   const g0 = world?.game ?? game;
   const pr = opts?.preset ?? hudPreset(g0, vw, vh);
   const hk = opts?.hudScale ?? hudScaleK(g0);
+  const qc = opts?.questCollapsed ?? questCollapsed();   // [hudfix] 퀘스트 칸 접힘 → 토스트 줄 폭
+  const band = !!g0?.viewBand && T;                      // [hudfix] 아래 띠: 빠른 칸을 띠에
+  const lh = !!g0?.settings?.touchLeftHanded;
   const a = memoArgs;
   if (memo && a[0] === vw && a[1] === vh && a[2] === T && a[3] === (S.l || 0) && a[4] === (S.r || 0) && a[5] === (S.t || 0) && a[6] === (S.b || 0)
-    && a[7] === bossOn && a[8] === nM && a[9] === F && a[10] === pr && a[11] === hk && a[12] === (Number(g0?.cssScale) || 1) && samePad(memoPad, pad)) return memo;
-  memo = pr === 'fold' ? buildFold(vw, vh, T, S, cleanPad(pad), bossOn, nM, F, hk, Number(g0?.cssScale) || 1) : build(vw, vh, T, S, cleanPad(pad), bossOn, nM, F);
-  if (pr !== 'fold') { memo.preset = 'wide'; memo.fold = false; memo.arc = null; memo.quest = null; memo.questShown = false; }
-  a.length = 0; a.push(vw, vh, T, S.l || 0, S.r || 0, S.t || 0, S.b || 0, bossOn, nM, F, pr, hk, Number(g0?.cssScale) || 1);
+    && a[7] === bossOn && a[8] === nM && a[9] === F && a[10] === pr && a[11] === hk && a[12] === (Number(g0?.cssScale) || 1) && a[13] === qc && a[14] === band && a[15] === lh && samePad(memoPad, pad)) return memo;
+  memo = pr === 'fold' ? buildFold(vw, vh, T, S, cleanPad(pad), bossOn, nM, F, hk, Number(g0?.cssScale) || 1, qc) : build(vw, vh, T, S, cleanPad(pad), bossOn, nM, F);
+  if (pr !== 'fold') { memo.preset = 'wide'; memo.fold = false; memo.arc = null; memo.quest = null; memo.questShown = false; bandQuick(memo, g0, vw, vh, band); }
+  a.length = 0; a.push(vw, vh, T, S.l || 0, S.r || 0, S.t || 0, S.b || 0, bossOn, nM, F, pr, hk, Number(g0?.cssScale) || 1, qc, band, lh);
   memoPad.length = 0;
   for (const p of pad) memoPad.push(p?.x, p?.y, p?.w, p?.h);
   return memo;

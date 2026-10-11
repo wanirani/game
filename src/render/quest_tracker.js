@@ -2,26 +2,24 @@
 // 자리: hud_layout 의 L.quest (폴드 배치: 오른쪽 위 아이콘 줄 아래). 보스 바가 보이거나 연출 중(world.cutscene)이면 그리지 않는다.
 //  접힘(기본): 머리 줄 한 줄 — ▸ + 퀘스트 그림 + 주 퀘스트 이름 + 진행 (예: '구울 소탕 의뢰 7/12')
 //  펼침: 머리 줄 + 진행 중인 퀘스트 ≤ 3줄 (주 퀘스트 먼저, 금빛)
-// 탭 (터치, game.hudTaps → touchpad → game.hudTapFn): 머리 줄 왼쪽 ▸ 칸 = 접기/펼치기 ('qt_toggle'), 나머지 = 메뉴 › 퀘스트 탭 ('qt_open').
+// 탭 (터치, game.hudTaps → touchpad → game.hudTapFn): 칸 어디든 탭 = 접기/펼치기 ('qt_toggle'), 길게 누르기 = 메뉴 › 퀘스트 탭 ('qt_open')
+//  (hudfix: 예전엔 ▸ 칸 35×27 dp 를 놓치면 전투 중에 메뉴가 열렸다. 누르는 칸은 보이지 않는 여유로 ≥ 44 CSS px 높이).
 //  스테이지 목표는 방 안 좌표가 없어 길 안내 화살표 대신 퀘스트 탭을 연다.
 // 그리기: 줄 내용(0.5초마다 다시 읽음)·접힘·크기·배율·글꼴 세대가 바뀔 때만 작은 캔버스에 굽고, 매 프레임 drawImage 한 번 (그라디언트 없음).
 // 접힘 상태는 이 기기의 localStorage 'bn.qt' ('1' 접힘 / '0' 펼침) — 세이브와 무관한 화면 취향.
 import { text, font, FONT, fontEpoch } from '../core/ui.js';
 import { activeQuests, questProgress } from '../game/quests.js';
 import { drawArtIcon } from './hud.js';
+import { questCollapsed as layoutQuestCollapsed, setQuestCollapsed } from './hud_layout.js';
 
 const mkCanvas = () => { try { if (typeof document === 'undefined' || !document.createElement) return null; const c = document.createElement('canvas'); c.width = c.height = 1; return c; } catch { return null; } };
-const Q = { collapsed: null, rows: [], t: -1e9, state: null, key: '', c: mkCanvas(), a: 0, w: 0, h: 0 };
+const Q = { rows: [], t: -1e9, state: null, key: '', c: mkCanvas(), a: 0, w: 0, h: 0 };
 export const QUEST_TRACKER_STATS = { bakes: 0 };
 
-/** 접혀 있나 (기본 접힘 — 게임 화면을 덜 가리게) */
-export function questCollapsed() {
-  if (Q.collapsed == null) { try { const v = localStorage.getItem('bn.qt'); Q.collapsed = v == null ? true : v === '1'; } catch { Q.collapsed = true; } }
-  return Q.collapsed;
-}
+/** 접혀 있나 (기본 접힘 — 게임 화면을 덜 가리게). 상태는 hud_layout 이 갖는다 (접히면 토스트 줄이 그 아래로 넓어진다 — hudfix) */
+export function questCollapsed() { return layoutQuestCollapsed(); }
 export function toggleQuestTracker() {
-  Q.collapsed = !questCollapsed();
-  try { localStorage.setItem('bn.qt', Q.collapsed ? '1' : '0'); } catch { /* 저장 못 함 — 이번 실행만 */ }
+  setQuestCollapsed(!layoutQuestCollapsed());
   Q.key = '';
 }
 /** 진행 중인 퀘스트 줄 (≤ 3, 주 퀘스트 먼저) — 0.5초마다 다시 센다 */
@@ -119,6 +117,11 @@ function paint(g, x, y, w, h, rows, col, M) {
       const qw = g.measureText(rw.prog).width;
       text(g, rw.name, x + 22, by, { size: M.fs, weight: 700, color: rw.main ? '#f3d38a' : '#e0d4c0', maxWidth: Math.max(20, maxR - x - 22 - qw - 8) });
       text(g, rw.prog, maxR, by, { size: M.fs, align: 'right', weight: 700, family: FONT.num, color: rw.done ? '#9fe0a0' : '#fff2c0' });
+    }
+    // 빈 줄이 남으면 안내 (hudfix: 탭 = 접기, 길게 누르기 = 퀘스트 창)
+    if (rows.length < 3) {
+      const hy2 = y + M.head + (rows.length - 1) * M.row + M.row / 2 + 2 + Math.round(M.fs * 0.36);
+      text(g, '길게 누르면 퀘스트 목록', x + 14, hy2, { size: Math.max(11, M.fs - 1), weight: 600, color: 'rgba(214,190,150,0.75)', maxWidth: w - 24 });
     }
   }
   g.restore();

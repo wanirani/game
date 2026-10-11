@@ -361,8 +361,10 @@ class Game {
     const aw = Math.max(1, fit ? W - ins.l - ins.r : W), ah = Math.max(1, fit ? H - ins.t - ins.b : H);
     // 세로 확장 시야 (hud_mobile §2): 16:9 보다 네모난 화면은 논리 높이를 늘린다 (설정 hud.preset 'wide' 면 예전처럼 540).
     // [hudredo] 버튼 배치 '아래 띠'(settings.hud.pad 'band', 터치 기기): 예전 판 — 16:9(높이 540) 게임을 위에, 남는 아래 띠에 버튼
+    // [hudfix] 띠를 고르는 스위치는 '버튼 배치' 하나: 터치 기기에서 '화면 배치 = 휴대폰'(preset 'wide')은 정보 표시만 넓은 배치로 바꾸고
+    // 확장 시야는 그대로 둔다 (예전: 폴드에서 높이 540 + 띠가 되어 '게임 화면 위'를 골라도 띠가 생겼다). 데스크톱의 'wide' 는 예전 그대로 540
     const bandPad = this.settings?.hud?.pad === 'band' && this.touchDevice();
-    const tall = this.settings?.hud?.preset !== 'wide' && !bandPad;
+    const tall = !bandPad && (this.settings?.hud?.preset !== 'wide' || this.touchDevice());
     const V = viewSize(aw, ah, tall);
     this.viewW = V.vw;
     this.viewH = V.vh;
@@ -913,27 +915,23 @@ class Game {
    */
   drawHudToasts(ctx, L) {
     const rows = L.toastRows;
-    const size = hudPx(15, !!L.touch), pad = 24;   // 터치 HUD 글자 하한 11 CSS px (휴대폰 17 px — 줄 26 px 안에 들어간다)
+    const size0 = hudPx(15, !!L.touch), pad = 24;   // 터치 HUD 글자 하한 11 CSS px (휴대폰 17 px — 줄 26 px 안에 들어간다)
     ctx.textAlign = 'center';
-    ctx.font = font(size, 700, FONT.body);
     let r = 0;
     for (const t of this.toasts) {
       if (r >= rows) { t.shown = false; continue; }
       const r0 = L.toast(r);
       if (r0.hidden || r0.w < 80) { t.shown = false; r = rows; continue; }
-      const r1 = r + 1 < rows ? L.toast(r + 1) : null;
-      const pair = !!r1 && !r1.hidden && r1.w >= 80;
-      let lft = r0.l, rgt = r0.r, lines;
-      if (rows < 2 || this.toastWidth(ctx, t, size) <= r0.w - pad) lines = this.wrapToast(ctx, t, r0.w - pad, size, 1);
-      else if (pair) { lft = Math.max(r0.l, r1.l); rgt = Math.min(r0.r, r1.r); lines = this.wrapToast(ctx, t, rgt - lft - pad, size, 2); }
-      else if (r > 0 && r + 1 >= rows) { t.shown = false; r = rows; continue; } // 두 줄 칸이 날 때까지 기다린다
-      else lines = this.wrapToast(ctx, t, r0.w - pad, size, 1);
+      const plan = this.planToast(ctx, t, L, r, rows, size0, pad);
+      if (!plan) { t.shown = false; r = rows; continue; } // 줄이 모자라면 앞 토스트가 사라질 때까지 기다린다
+      const { lines, size, l: lft, r: rgt } = plan;
       const cx = (lft + rgt) / 2;
       const w = Math.min(rgt - lft, t._ww + pad);
       t.shown = true;
       const a = Math.min(1, t.t * 3, (t.max - t.t) * 6);
       if (a > 0) {
         ctx.globalAlpha = a;
+        ctx.font = font(size, 700, FONT.body);
         const top = r0.top + 2, h = lines.length * r0.h - 4;
         ctx.fillStyle = 'rgba(10,4,12,0.8)';
         ctx.fillRect(cx - w / 2, top, w, h);
@@ -946,27 +944,83 @@ class Game {
       r += lines.length;
     }
   }
+  /**
+   * 토스트 하나를 줄 r 부터 어떻게 놓을까 (hudfix, 검토 의견 '긴 토스트가 … 로 잘린다'): 한 줄 → 두 줄 → (글자 한 단계 작게) →
+   * 세 줄 (남은 줄이 있으면) 순서로 '…' 없이 들어가는 첫 방법. 여러 줄은 그 줄들의 가로 범위가 겹치는 곳에 맞추고, 마지막 줄이 너무
+   * 짧으면(외톨이 낱말) 줄 폭을 고르게 다시 나눈다. 다 안 되면: 첫 줄(r = 0)이면 남은 줄 전부에 '…', 아니면 null (기다린다)
+   * → { lines, size, l, r }
+   */
+  planToast(ctx, t, L, r, rows, size0, pad) {
+    const span = (n) => { let l = -Infinity, rr = Infinity; for (let k = 0; k < n; k++) { const q = L.toast(r + k); l = Math.max(l, q.l); rr = Math.min(rr, q.r); } return [l, rr]; };
+    let avail = 1;
+    while (avail < 3 && r + avail < rows) { const q = L.toast(r + avail); if (q.hidden || q.w < 80) break; avail++; }
+    // 같은 줄 자리·글자 크기·글꼴 세대면 지난 계획 그대로 (매 프레임 여러 폭으로 다시 줄바꿈하지 않게)
+    let pk = `${r}|${avail}|${size0}|${fontEpoch}`;
+    for (let k = 0; k < avail; k++) { const q = L.toast(r + k); pk += `|${Math.round(q.l)},${Math.round(q.r)}`; }
+    if (t._pk === pk) { if (t._plan) { t._lines = t._plan.lines; t._ww = t._planW; } return t._plan; }
+    const res = this.planToast0(ctx, t, L, r, avail, size0, pad, span);
+    t._pk = pk; t._plan = res; t._planW = t._ww;
+    return res;
+  }
+  planToast0(ctx, t, L, r, avail, size0, pad, span) {
+    const small = Math.max(hudPx(11, !!L.touch), size0 - 2);
+    const sizes = small < size0 ? [size0, small] : [size0];
+    for (let n = 1; n <= avail; n++) {
+      const [l, rr] = span(n);
+      if (rr - l < 80) break;
+      for (const sz of sizes) {
+        ctx.font = font(sz, 700, FONT.body);
+        if (n === 1) { if (this.toastWidth(ctx, t, sz) <= rr - l - pad) return { lines: this.wrapToast(ctx, t, rr - l - pad, sz, 1), size: sz, l, r: rr }; continue; }
+        const lines = this.wrapToast(ctx, t, rr - l - pad, sz, n);
+        if (!t._wOver) return { lines, size: sz, l, r: rr };
+      }
+    }
+    if (r > 0) return null;
+    const [l, rr] = span(avail);
+    ctx.font = font(small, 700, FONT.body);
+    return { lines: this.wrapToast(ctx, t, rr - l - pad, small, avail), size: small, l, r: rr };
+  }
   /** 토스트 전체 문자열 한 줄 폭 (지금 ctx.font; 크기·글꼴 세대별로 한 번만 잰다) */
   toastWidth(ctx, t, size) {
     const key = `${size}|${fontEpoch}`;
     if (t._mk !== key) { t._mk = key; t._mw = ctx.measureText(t.text.replace(/\n/g, ' ')).width; }
     return t._mw;
   }
-  /** HUD 토스트 줄바꿈 (≤ maxLines 줄, 넘치면 마지막 줄 … ). t._ww = 가장 긴 줄 폭. 같은 폭·글꼴 세대면 다시 재지 않는다 */
+  /**
+   * HUD 토스트 줄바꿈 (≤ maxLines 줄, 넘치면 마지막 줄 … — t._wOver = true). 두 줄 이상인데 마지막 줄이 줄 폭의 35 % 보다 짧으면
+   * (외톨이 '3개' 같은 줄) 줄 수가 같은 범위에서 폭을 좁혀 고르게 다시 나눈다 (hudfix). t._ww = 가장 긴 줄 폭. 같은 폭·글꼴 세대면 다시 재지 않는다
+   */
   wrapToast(ctx, t, maxW, size, maxLines) {
     const key = `${maxLines}|${size}|${Math.round(maxW)}|${fontEpoch}`;
     if (t._wk === key) return t._lines;
     const fnt = ctx.font;
-    let lines = wrap(ctx, t.text, Math.max(20, maxW), size, 700, FONT.body).filter((s) => s.length);
+    const W = Math.max(20, maxW);
+    const wr = (w) => wrap(ctx, t.text, w, size, 700, FONT.body).filter((x) => x.length);
+    let lines = wr(W);
+    if (lines.length >= 2 && lines.length <= maxLines) {
+      ctx.font = fnt;
+      const last = ctx.measureText(lines[lines.length - 1]).width;
+      if (last < W * 0.35) {
+        let tot = 0; for (const x of lines) tot += ctx.measureText(x).width;
+        for (const f of [0.92, 0.84, 0.76, 0.68]) {
+          const w2 = Math.max(tot / lines.length + size, W * f);
+          if (w2 >= W) continue;
+          const alt = wr(w2);
+          if (alt.length === lines.length) { lines = alt; ctx.font = fnt; if (ctx.measureText(alt[alt.length - 1]).width >= w2 * 0.45) break; }
+        }
+      }
+    }
     ctx.font = fnt;
     if (!lines.length) lines = [''];
+    t._wOver = false;
     if (lines.length > maxLines) {
       const head = lines.slice(0, maxLines - 1);
       const rest = lines.slice(maxLines - 1).join(' ');
       lines = [...head, ellipsize(ctx, rest, maxW)];
+      t._wOver = true;
     }
-    t._wk = key; t._lines = lines;
-    t._ww = Math.max(...lines.map((s) => ctx.measureText(s).width));
+    t._wk = key; t._lines = lines; t._wOverK = t._wOver;
+    t._ww = Math.max(...lines.map((x) => ctx.measureText(x).width));
     return lines;
   }
 }

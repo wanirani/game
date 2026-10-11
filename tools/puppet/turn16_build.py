@@ -566,6 +566,8 @@ def main():
             json.dump(man, fh, ensure_ascii=False, separators=(',', ':'))
         os.replace(tmpm, MAN)
     print(f'[{a.cls}] → {d_out}/turn16_{{ui,lo}}.webp + {MAN}')
+    # 몸 안 구멍 메우기 (입력 그림의 알파 구멍이 회색 얼룩으로 영상에 남아 배경과 함께 잘려 나간 곳) — TURNMOUNT 검증
+    subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'turn16_fill_holes.py'), f'{cid}/{a.cls}'], check=False)
 
 
 def drop_look(cid, cls):

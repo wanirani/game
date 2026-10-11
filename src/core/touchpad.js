@@ -173,6 +173,7 @@ const STICK_DZ = 10;       // 데드존 (CSS px)
 const SPRINT_K = 1.15, REANCHOR_K = 1.4;
 const STICK_FADE = 0.3;    // 뗀 뒤 사라지는 시간 (s)
 const SWAP_LONG = 350;     // ms
+const HUD_LONG = 450;      // HUD 칸 길게 누르기 (ms)
 const SWAP_HOLD_MS = 100, SWAP_HOLD_STEPS = 3;
 const DRAW_MS = 32;        // 다시 그리기 간격 하한 (≤ 30 Hz; 60/120 Hz 화면에서 33.3ms 마다)
 // 오버레이 백킹 (hudfix): 품질 등급과 상관없이 기기 해상도 (상한 DPR 3 · 6.5 MP). 품질 조절기가 '낮음'으로 내려도 버튼이 흐려지지 않게
@@ -679,8 +680,7 @@ function inStickZone(L, x, y) {
 function hitHudZone(L, x, y) {
   const g = game(), Z = g?.hudTaps;
   if (!Z || !Z.length || now() - (g.hudTapsT || 0) > 400) return null;
-  const cr = L.cr;
-  if (x < cr.x || y < cr.y || x > cr.x + cr.w || y > cr.y + cr.h) return null;
+  const cr = L.cr;   // 캔버스 밖(아래 띠의 빠른 칸)도 같은 변환으로 판정한다 (hudfix)
   const lx = ((x - cr.x) * L.vw) / cr.w, ly = ((y - cr.y) * L.vh) / cr.h, m = 4;
   for (let i = Z.length - 1; i >= 0; i--) {
     const z = Z[i];
@@ -748,7 +748,7 @@ function onDown(e) {
   const hz = hitHudZone(L, x, y);
   if (hz) {   // HUD 의 미니맵·빠른 칸 (fold): 입력 액션이면 누르고 있는 동안 누름, 'hudmap' 은 뗄 때 큰 지도 열고 닫기
     claim(e);
-    const p = { kind: 'hud', act: hz.act, ids: [], t0: now(), x, y };
+    const p = { kind: 'hud', act: hz.act, long: hz.long ?? null, longDone: false, ids: [], t0: now(), x, y, x0: x, y0: y };
     S.ptrs.set(e.pointerId, p);
     if (hz.act !== 'hudmap' && ACT_OK.has(hz.act)) actOn(hz.act);
     buzz(); unlockAudio(); S.pending = true; startLoop();
@@ -811,7 +811,7 @@ function onUp(e) {
     if (p.id === 'maptog' && !cancel) toggleBigMap();
   } else if (p.kind === 'hud') {
     if (p.act === 'hudmap') { if (!cancel) toggleBigMap(); } else if (ACT_OK.has(p.act)) actOff(p.act);
-    else if (!cancel) { const g = game(); try { g?.hudTapFn?.(p.act); } catch (er) { console.error('[touchpad] hud tap', er); } }   // 퀘스트 칸 등 (hud.js)
+    else if (!cancel && !p.longDone) { const g = game(); try { g?.hudTapFn?.(p.act); } catch (er) { console.error('[touchpad] hud tap', er); } }   // 퀘스트 칸·빠른 칸 물약 등 (hud.js)
   } else {
     for (const id of p.ids) releaseBtn(p, id, !cancel);
   }
@@ -854,6 +854,14 @@ function tick(t) {
   tickSwap();
   tickLate();
   const w = readState();
+  // HUD 칸 길게 누르기 (hudfix: 빠른 칸 → 가방, 퀘스트 칸 → 퀘스트 창): 누르고 있는 동안 HUD_LONG ms 가 지나면 바로 (뗄 때 탭은 없다)
+  for (const [, p] of S.ptrs) {
+    if (p.kind !== 'hud' || !p.long || p.longDone || now() - p.t0 < HUD_LONG) continue;
+    if (Math.hypot(p.x - p.x0, p.y - p.y0) > 24) continue;   // 밀어서 벗어난 손가락은 길게 누르기가 아니다
+    p.longDone = true; buzz();
+    const g = game();
+    try { g?.hudTapFn?.(p.long); } catch (er) { console.error('[touchpad] hud long', er); }
+  }
   // ⇄ 길게 누르기 → 기술 원형 메뉴
   if (S.radialFn) {
     for (const [, p] of S.ptrs) {
