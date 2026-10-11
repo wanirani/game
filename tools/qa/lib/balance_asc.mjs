@@ -239,7 +239,7 @@ export async function runAsc(o) {
       if (p.max == null) fails.push({ id: T.id, what: 'trial', msg: `모형 영웅이 200초 안에 보스를 쓰러뜨리지 못했다 (${p.rows.filter((r) => r.time == null).map((r) => r.cls).join(', ')})` });
       else if (tgt && p.ratio != null && (p.ratio < tgt * LIMITS.trialSpread[0] || p.ratio > tgt * LIMITS.trialSpread[1])) fails.push({ id: T.id, what: 'trial', msg: `처치 시간 비율 ×${p.ratio.toFixed(2)} (s20 기준) — 시련 ${T.n === 1 ? 'Ⅰ' : 'Ⅱ'} 목표 ×${tgt} 의 ${LIMITS.trialSpread.join('–')} 배 밖 (영웅끼리 길이가 다르다; bossHp ${p.curMul} → ${p.fitMul} 이면 목표)` });
       if (p.max == null) { /* 위에서 실패 */ }
-      else if (p.max < LIMITS.trial[0]) warns.push({ id: T.id, msg: `모형 처치 ${r1(p.min)}–${r1(p.max)} s (쉬지 않고 칠 때) — 목표 ${LIMITS.trial.join('–')} s 띠보다 짧다 · 2부 마지막 보스 대비 ×${p.ratio?.toFixed(2)}` });
+      else if (p.max < LIMITS.trial[0]) warns.push({ id: T.id, msg: `모형 처치 ${r1(p.min)}–${r1(p.max)} s (쉬지 않고 칠 때) — 목표 ${LIMITS.trial.join('–')} s 띠보다 짧다 · s20(중립) 기준 대비 ×${p.ratio?.toFixed(2)}` });
       else if (p.min > LIMITS.trial[1]) warns.push({ id: T.id, msg: `모형 처치 ${r1(p.min)}–${r1(p.max)} s — 목표 띠보다 길다` });
     }
   }

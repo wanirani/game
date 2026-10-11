@@ -88,7 +88,7 @@ for (const diff of Object.keys(DIFF)) {
   }
 }
 ok(TRIAL.prepareTrial({ state: {} }, 'tr_nobody_1') === null && TRIAL.prepareTrial({ state: {} }, '__proto__') === null, '모르는 시련 → null');
-ok(TRIAL.trialRuleNames(TRIALS.tr_kael_1).join(' · ') === '보조 무기 금지 · 보스 체력 1.3배', '규칙 이름 (성당 확인 창과 같은 표기)', TRIAL.trialRuleNames(TRIALS.tr_kael_1));
+ok(TRIAL.trialRuleNames(TRIALS.tr_kael_1).join(' · ') === `보조 무기 금지 · 보스 체력 ${TRIALS.tr_kael_1.diffOver.bossHp}배`, '규칙 이름 (성당 확인 창과 같은 표기)', TRIAL.trialRuleNames(TRIALS.tr_kael_1));   // 배율은 trials.js 값 (BALANCE-PERF 가 영웅끼리 맞춤)
 
 // ═════════ S3 시작 조건 · 옛 세이브 · 기록 ═════════
 section('S3 시작 조건 (canStartTrial) · 옛 세이브(trials 없음) · trialRecord');

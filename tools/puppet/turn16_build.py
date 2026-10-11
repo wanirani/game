@@ -65,20 +65,24 @@ def estimate_progress(ws, start):
     s = max(start, 0)
     rest = n - s
     p1 = int(np.argmin(ws[s + 2:s + max(6, int(rest * 0.6))]) + s + 2)       # 첫 옆모습 (θ 90)
-    b = int(np.argmax(ws[p1:p1 + max(4, int(rest * 0.45))]) + p1)            # 뒷모습 (θ 180)
-    p2 = int(np.argmin(ws[b:]) + b) if b < n - 1 else n - 1                   # 둘째 옆모습 (θ 270)
+    p2 = int(np.argmin(ws[p1 + 6:]) + p1 + 6) if p1 + 6 < n else n - 1         # 둘째 옆모습 (θ 270) — 뒷모습 너머의 최소
+    # 두 옆모습 사이는 등속 (뒷모습 = 가운데; 폭 최대는 망토·옷자락이 퍼져 앞당겨지기 쉽다)
+    b = (p1 + p2) // 2
     W_f = float(np.max(ws[:max(3, s + 1)])); W_b = float(ws[b]); D = float(min(ws[p1], ws[p2]))
+    r = 180.0 / max(1, p2 - p1)                                                 # 정속 (도/프레임)
+    # 시작 구간은 천천히 빨라진다: θ = 90·u^γ, p1 에서 속도가 r 이 되게 γ = r·(p1 − s)/90 (1 … 2.5)
+    g = float(np.clip(r * (p1 - s) / 90.0, 1.0, 2.5))
     th = np.zeros(n)
-    knots = [(s, 0.0), (p1, 90.0), (b, 180.0), (p2, 270.0)]
-    for (i0, a0), (i1, a1) in zip(knots, knots[1:]):
-        for i in range(i0, i1 + 1):
-            th[i] = a0 + (a1 - a0) * (i - i0) / max(1, i1 - i0)
-    rate = 90.0 / max(1, p2 - b) * 0.5 + 90.0 / max(1, b - p1) * 0.5           # 마지막 구간 속도 = 직전 두 구간 평균
-    for i in range(p2 + 1, n):
-        th[i] = 270 + rate * (i - p2)
+    for i in range(n):
+        if i <= s:
+            th[i] = 0
+        elif i <= p1:
+            th[i] = 90.0 * ((i - s) / max(1, p1 - s)) ** g
+        else:
+            th[i] = 90.0 + r * (i - p1)
     th = np.maximum.accumulate(th)
-    return th, dict(start=s, p1=p1, back=b, p2=p2, W_front=round(W_f, 1), W_back=round(W_b, 1), D=round(D, 1), end=round(float(th[-1]), 1),
-                    seg=[p1 - s, b - p1, p2 - b])
+    return th, dict(start=s, p1=p1, back=b, p2=p2, W_front=round(W_f, 1), W_back=round(W_b, 1), D=round(D, 1), end=round(float(np.max(th)), 1),
+                    seg=[p1 - s, b - p1, p2 - b], gamma=round(g, 2), rate=round(r, 2))
 
 
 def turn_start(frames_small, masks, upto):
@@ -359,6 +363,7 @@ def main():
     # 디버그: 칸 + 정보
     ensure(a.dbg)
     on_green(sheet, 0.6).save(os.path.join(a.dbg, f'{a.cls}_turn16.jpg'), quality=82)
+    sheet.save(os.path.join(a.dbg, f'{a.cls}_turn16_full.png'))
     rep = dict(cls=a.cls, info=info, picks=picks, warn=[(p['k'], p['hist'], p['hratio']) for p in warn], ui_kb=entry['ui']['kb'], q_ui=q_ui, lo_kb=entry['lo']['kb'], sc=entry['sc'])
     with open(os.path.join(a.dbg, f'{a.cls}_turn16.json'), 'w') as fh:
         json.dump(rep, fh, ensure_ascii=False, indent=1)
