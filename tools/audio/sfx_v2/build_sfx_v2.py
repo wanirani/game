@@ -3,7 +3,7 @@
 
   python3 tools/audio/sfx_v2/fetch_sources.py --src /tmp/claude-0/g3/sfx_src      # 소재 받기 (sources.json 의 주소에서)
   python3 tools/audio/sfx_v2/build_sfx_v2.py --src /tmp/claude-0/g3/sfx_src [--out assets/audio/sfx_v2] [--only hit,crit]
-                                             [--sheet out.png] [--wav dir] [--keep-gains]
+                                             [--wav dir] [--keep-gains] [--credits out.json]
 
   소재: sources.json — 키마다 파일 경로·받은 주소·원본 페이지·작가·라이선스. 쓰는 소재는 모두 CC0 1.0
         (BigSoundBank.com · Kenney.nl · OpenGameArt.org 의 CC0 표기 묶음). 출처가 불명확한 소재는 쓰지 않는다.
@@ -14,9 +14,12 @@
        의 평균 제곱; 짧은 효과음에는 400 ms 창의 LUFS-M 이 소리 길이에 따라 들쭉날쭉해서) 를 목표 -16 LUFS 로, 트루 피크 ≤ -1 dBTP
        (4배 오버샘플; 넘으면 부드러운 리미터 — 4 dB 넘게 눌러야 하면 목표를 그만큼 낮춘다). 보고에는 LUFS-M(400 ms 최대)도 같이 적는다.
     4. 꼬리: -60 dB 아래 자르기 + 끝 12 ms 페이드. 44.1 kHz 로 → .ogg (Vorbis q4) + .m4a (AAC-LC 96 kbps 모노 / 128 kbps 스테레오)
+       인코딩한 두 파일을 다시 풀어 샘플 피크(dpk)를 재고, -1 dBFS 를 넘으면 리미터 상한을 그만큼 낮춰 다시 만든다 (AAC 는 날카로운
+       순간음에서 피크를 최대 4 dB 넘긴다 — 그래서 hit_heavy·hit_stone 은 12·10 kHz 저역 통과)
        두 형식인 까닭은 assets/audio/sfx 와 같다: 헤드리스 Chromium·일부 리눅스는 AAC 를 못 풀고, 옛 사파리는 Vorbis 를 못 푼다.
-  index.json = { version, rate, formats, names:[…], sfx:{이름:{f:[파일 id], g, rev?}}, files:{id:{dur, on, ch, lufs, peak, m4a, ogg}} }
-    g = 엔진 음량 (호출 vol 에 곱함) — tools/test_sfx.mjs --calibrate-v2 가 지금 소리(샘플+합성)와 같은 크기가 되게 맞춘다.
+  index.json = { version, rate, formats, names:[…], sfx:{이름:{f:[파일 id], g, rev?}}, files:{id:{dur, on, ch, lufs, lufs_m, peak, dpk, m4a, ogg, bytes}} }
+    g = 엔진 음량 (호출 vol 에 곱함) — tools/test_sfx.mjs --calibrate-v2 가 지금 소리(샘플+합성)와 귀에 같은 크기(K-가중 순간
+    라우드니스)가 되게 맞춘다. 다시 빌드하면 g 가 1 로 돌아가므로 --keep-gains 를 쓰거나 --calibrate-v2 를 두세 번 다시 돌린다.
   sources.json 의 출처는 assets/audio/CREDITS.md 의 'v2' 표와 /tmp/claude-0/g3/sfx_sources.json 에 그대로 옮긴다 (--credits).
 """
 import argparse

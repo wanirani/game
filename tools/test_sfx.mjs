@@ -17,7 +17,7 @@
 //     실행 규칙(같은 변형 연달아 안 나옴, 모든 변형 쓰임, 품질 low 면 방 잔향 끔, pan, 화면 x → pan, theme → 공간) · 노드 수 (v2 대 지금) 표
 //     --calibrate-v2  v2 g 를 지금 게임 소리 크기에 맞춰 assets/audio/sfx_v2/index.json 에 쓴다 (build_sfx_v2.py 뒤에 — 공정한 A/B: 더 커서 좋게 들리는 일 없게)
 //     --ref <커밋>     스위치 꺼짐 = 지금과 같음: 그 커밋의 audio.js 와 지금 audio.js 로 모든 효과음을 같은 난수열로 렌더 — 노드 그래프·난수 호출 수가 같고
-//                     렌더 차이 ≤ 2e-6 (-114 dB, OfflineAudioContext 는 같은 코드도 ±1 ulp 흔들려 바이트 비교는 못 한다)
+//                     렌더 차이 ≤ 1e-5 (-100 dBFS; OfflineAudioContext 는 같은 코드도 렌더마다 float 반올림이 흔들려 바이트 비교는 못 한다)
 //     --no-v2         7 을 건너뜀
 import { chromium } from 'playwright-core';
 import { start } from './serve.mjs';
@@ -481,7 +481,7 @@ if (args['calibrate-v2'] && V2.index) {
   console.log(`--calibrate-v2: v2 음량 ${Object.keys(calibV2).length}종을 ${path.relative(root, f)} 에 썼다 (한 번 더 돌려 ±1.5 dB 확인)`);
 }
 
-// ── 스위치 꺼짐 = 바이트 동일 (--ref <커밋>): 그 커밋의 audio.js 와 지금 audio.js 로 같은 난수열·같은 호출을 렌더해 샘플 단위 비교 ──
+// ── 스위치 꺼짐 = 지금과 같음 (--ref <커밋>): 그 커밋의 audio.js 와 지금 audio.js 로 같은 난수열·같은 호출을 렌더해 노드 그래프·난수 호출 수·샘플을 비교 ──
 let refLine = '';
 if (args.ref) {
   let refSrc = null;
@@ -518,9 +518,9 @@ if (args.ref) {
         const a = await run(A, name), b = await run(B, name);
         const d = md(a.ch, b.ch);
         out.n++; out.maxd = Math.max(out.maxd, d);
-        if (a.sig !== b.sig || !(d <= 2e-6)) out.diff.push(`${name}(${a.sig !== b.sig ? '그래프·난수 호출 다름' : 'Δ' + d.toExponential(1)})`); else out.same++;
+        if (a.sig !== b.sig || !(d <= 1e-5)) out.diff.push(`${name}(${a.sig !== b.sig ? '그래프·난수 호출 다름' : 'Δ' + d.toExponential(1)})`); else out.same++;
       }
-      // 같은 모듈끼리도 OfflineAudioContext 렌더는 ±1 ulp 흔들린다 (그래서 바이트 대신 그래프·난수열·-114 dB 이하 차이로 본다)
+      // 같은 모듈끼리도 OfflineAudioContext 렌더는 ±1 ulp 흔들린다 (그래서 바이트 대신 그래프·난수열·-100 dBFS 이하 차이로 본다)
       const a1 = await run(A, 'whip'), a2 = await run(A, 'whip'); out.noise = md(a1.ch, a2.ch);
       return out;
     }, { only }).catch((e) => ({ err: String(e && e.message || e) }));

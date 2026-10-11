@@ -31,6 +31,8 @@ page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message));
 page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|fonts\.g/.test(m.text())) errs.push('CONSOLE ' + m.text().slice(0, 200)); });
 await page.goto(`http://localhost:${port}/index.html?scene=stage&stage=${stage}&char=kael${anime ? '&anime=1' : ''}`);
 await page.waitForFunction(() => window.__game?.world?.player, null, { timeout: 60000 });
+// 녹화 중 자동 화질 조절(느린 헤드리스 프레임 → '보통'으로 낮춤 + 알림)이 끼어들지 않게 끈다: 두 녹화(플래그 끔/켬)가 같은 화질이어야 비교가 공정하다
+await page.evaluate(() => { const g = window.__game; g.autoQualityOn = () => false; if (g.gov) g.gov.toasted = true; });
 // 퍼펫 준비 (애니: '@anime' 항목) + 대사 창 닫기
 await page.evaluate(async () => { window.__hero = await import('/src/render/hero.js'); });
 for (let k = 0; k < 120; k++) {
@@ -89,5 +91,6 @@ for (const tok of script.split(',').map((s) => s.trim()).filter(Boolean)) {
   for (const kk of keys) await page.keyboard.up(kk);
 }
 const pup = await page.evaluate(() => Object.fromEntries(Object.entries(window.__hero.puppetStatus()).filter(([k]) => k.startsWith('kael/')).map(([k, v]) => [k, v.state])));
-console.log(JSON.stringify({ errs, frames: saved, steps: fi, pup }));
+const tier = await page.evaluate(() => window.__game.tier ?? null);
+console.log(JSON.stringify({ errs, frames: saved, steps: fi, tier, pup }));
 await browser.close(); srv.close();
