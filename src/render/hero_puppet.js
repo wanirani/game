@@ -1110,6 +1110,8 @@ function weaponPup(c, W, x, y, ang, fire) {
 export function turnReady(I) {
   const E = I?.E;
   if (!E?.rig?.turn) return false;
+  // 16방향 시트가 있는 외형은 예전 8방향 시트(turn.webp)를 쓰지 않는다 (APK 에서 빠질 수 있다) — 목록을 받는 중이면 아직 요청하지 않는다
+  if (typeof window !== 'undefined' && (!turn16Known() || turn16Entry(I))) return false;
   touchUse(E, performance.now());
   if (!E.turnImg) E.turnImg = assets.get(`${E.root}/${E.key}/turn`, E.man.h);
   if (E.rig.turn.mask && !E.turnMask) E.turnMask = assets.get(`${E.root}/${E.key}/turn_mask`, E.man.h);

@@ -16,7 +16,7 @@
 //     이름이 모두 등록된 효과음 (of = 다른 이름의 변형 묶음) · 변형 3~5개 · m4a 파일 모두 있음 · ogg 0개 · 빌드가 잰 사건 라우드니스 -19~-14.5 LUFS,
 //     트루 피크 ≤ -1 dBTP · 푼 피크 ≤ -0.95 dBFS · 변형마다 엔진 렌더: 합성음 층이 한 번도 안 울림(합성 단독 0) + 5 의 검사 + 바꾸기 전 게임 소리(index ref,
 //     없으면 지금 샘플+합성)와 K-가중 순간 라우드니스 ±1.5 dB · 실행 규칙(같은 변형 연달아 안 나옴, 모든 변형 쓰임, 품질 low·room 0 이면 방 잔향 끔, pan,
-//     화면 x → pan, theme → 공간, enemy_die 몸 종류 변형) · 용량: 싣는 효과음(두 뱅크 m4a + index) ≤ 기준 900,000 B + 0.6 MB · 노드 수 (v2 대 지금) 표
+//     화면 x → pan, theme → 공간, enemy_die 몸 종류 변형, vr 재생 속도 변형) · 용량: 싣는 효과음(두 뱅크 m4a + index) ≤ G7 1,301,216 B + 0.75 MB · 노드 수 (v2 대 지금) 표
 //     --calibrate-v2  v2 g 를 지금 게임 소리 크기에 맞추고 그 크기를 ref 로 assets/audio/sfx_v2/index.json 에 쓴다 (build_sfx_v2.py 뒤에 — 공정한 A/B) · 이미 ref 가 있으면 그 ref 에 맞춘다 (--reset-ref 로만 ref 를 다시 잼 — v2 가 기본이라 지금 소리 = v2 자신)
 //     --ref <커밋>     스위치 꺼짐 = 지금과 같음: 그 커밋의 audio.js 와 지금 audio.js 로 모든 효과음을 같은 난수열로 렌더 — 노드 그래프·난수 호출 수가 같고
 //                     렌더 차이 ≤ 1e-5 (-100 dBFS; OfflineAudioContext 는 같은 코드도 렌더마다 float 반올림이 흔들려 바이트 비교는 못 한다)
@@ -459,7 +459,8 @@ if (args.calibrate && !SM.err) {
 // ── 고급 효과음 v2 판정 (+ --calibrate-v2) ──
 const V2 = res.v2;
 // 싣는 효과음 용량 (build_web 이 옮기는 m4a·ogg·json·LICENSE*.txt): 기준 = 2차 묶음 전 배포본 dist/web/assets/audio/sfx 900,000 B (sfx_v2 없음)
-const SHIP_BASE = 900000, SHIP_MAX = SHIP_BASE + Math.round(0.6 * 1048576);
+// 상한: G7 배포본 1,301,216 B (v2 48종) + 0.75 MB — G9 3차 묶음(남은 104종 전부 녹음, 드문 이름은 1벌 + 재생 속도 변형)이 작업 전체 APK 예산 +1.0 MB 안에서 쓰는 몫
+const SHIP_BASE = 900000, SHIP_G7 = 1301216, SHIP_MAX = SHIP_G7 + Math.round(0.75 * 1048576);
 const shipFiles = (dir) => { try { return fs.readdirSync(path.join(root, dir)).filter((f) => /\.(m4a|ogg|json)$|LICENSE[^/]*\.txt$/.test(f)).map((f) => path.join(root, dir, f)); } catch { return []; } };
 const shipList = [...shipFiles('assets/audio/sfx'), ...shipFiles('assets/audio/sfx_v2')];
 const shipped = shipList.reduce((a, f) => a + fs.statSync(f).size, 0);
@@ -473,7 +474,7 @@ if (!args['no-v2']) {
     const ix = V2.index;
     for (const m of V2.missing) fail(`v2 파일 없음: ${m}`);
     {   // 용량·형식은 --only 와 상관없이 디스크에서 잰다
-      if (shipped > SHIP_MAX) fail(`싣는 효과음 ${shipped} B > 예산 ${SHIP_MAX} B (기준 ${SHIP_BASE} + 0.6 MB)`);
+      if (shipped > SHIP_MAX) fail(`싣는 효과음 ${shipped} B > 예산 ${SHIP_MAX} B (G7 ${SHIP_G7} + 0.75 MB)`);
       if (oggLeft.length) fail(`싣는 효과음에 ogg ${oggLeft.length}개 남음 (m4a 만): ${oggLeft.slice(0, 4).map((f) => path.basename(f)).join(' ')}`);
       if ((ix.formats || []).join() !== 'm4a' || (SM.index?.formats || []).join() !== 'm4a') fail(`index formats 가 m4a 만이 아님 (v2 ${ix.formats}, sfx ${SM.index?.formats})`);
     }
@@ -594,7 +595,7 @@ if (args.json) fs.writeFileSync(args.json === true ? '/tmp/test_sfx.json' : Stri
 
 const cnt = (g) => Object.keys(res.renders).filter((n) => group(n) === g).length;
 console.log(`효과음 ${played}/${Object.keys(res.renders).length}종 렌더 (내장 ${cnt('base')} · 체감 ${cnt('feel')} · 동료 ${cnt('cmp')} · 기타 ${cnt('extra')}), API ${res.api.length ? '✗' : '✓'}, 예산 ${res.budget.length ? '✗' : '✓'}, 녹음 샘플 ${smpN}종 (${(SM.bytes / 1024).toFixed(0)} KB)`);
-if (!args['no-v2']) console.log(`고급 효과음 v2 ${v2N}종 (${(V2.bytes / 1024).toFixed(0)} KB) · 싣는 효과음 합계 ${shipped} B (기준 ${SHIP_BASE} B, ${shipped - SHIP_BASE >= 0 ? '+' : ''}${shipped - SHIP_BASE} B, 예산 +${SHIP_MAX - SHIP_BASE} B) · ogg ${oggLeft.length}개${refLine ? ' · ' + refLine : ''}`);
+if (!args['no-v2']) console.log(`고급 효과음 v2 ${v2N}종 (${(V2.bytes / 1024).toFixed(0)} KB) · 싣는 효과음 합계 ${shipped} B (기준 ${SHIP_BASE} B, ${shipped - SHIP_BASE >= 0 ? '+' : ''}${shipped - SHIP_BASE} B · G7 대비 ${shipped - SHIP_G7 >= 0 ? '+' : ''}${shipped - SHIP_G7} B, 상한 ${SHIP_MAX} B) · ogg ${oggLeft.length}개${refLine ? ' · ' + refLine : ''}`);
 for (const m of infos) console.log('  · ' + m);
 for (const m of warns) console.log('  ! ' + m);
 for (const m of fails) console.log('  ✗ ' + m);

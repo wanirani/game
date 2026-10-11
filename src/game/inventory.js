@@ -391,8 +391,9 @@ export function sellJunk(state, maxRarity = 1, opts = {}) {
 }
 
 // ───────────────────────────── 처분 (qol_equip §4) ─────────────────────────────
-/** 다시 얻을 수 없거나 이야기에 쓰이는 장비 (한 벌 신화 · 퀘스트 · 유물) */
-export function irreplaceable(b) { return !!(b && (b.set || b.quest || b.relic || b.worldHeart || b.starShard || b.slot === 'key')); }
+/** 다시 얻을 수 없거나 이야기에 쓰이는 장비 (한 벌 신화 · 고유(보스 확정 드롭 — 보관함도 밀어내지 않는 것) · 퀘스트 · 유물).
+ *  [verify] 고유를 넣은 까닭: 2026-09-26 전 세이브의 고유 장비는 인스턴스 희귀도가 0 일 수 있어, 「고유·한 벌」 예외를 끄면 처분 후보가 됐다 */
+export function irreplaceable(b) { return !!(b && (b.set || b.unique || b.quest || b.relic || b.worldHeart || b.starShard || b.slot === 'key')); }
 /**
  * 어떤 기준으로도 처분하지 않는 이유 (없으면 null): 장비가 아님 · 중요 물품 · 다시 얻을 수 없는 보상 · 잠김 · 장착 중
  * (보관함 progress.lootQueue 의 물건은 가방에 없으므로 애초에 후보가 아니다)

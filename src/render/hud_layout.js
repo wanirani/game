@@ -30,7 +30,7 @@
 //   fold 터치에서는 TOUCH_FLOOR 규칙 대신 '패드·스틱 자리와 겹치지 않기'만 지킨다 (아래 가운데는 체력·빠른 칸 자리).
 // 주의 (순환 import): game.js 가 이 파일을 import 해도 되도록 모듈 최상위에서는 import 값에 접근하지 않는다.
 import { input } from '../core/input.js';
-import { touchpad, padPlan, planExtent, foldScale, foldSysPlan, PAD_M, SYS_D } from '../core/touchpad.js';
+import { touchpad, padPlan, planExtent, foldScale, foldSysPlan, PAD_M, SYS_D, SYS_M_WIDE } from '../core/touchpad.js';
 import * as GAME from '../core/game.js';
 import { game, VIEW_H } from '../core/game.js';
 
@@ -184,7 +184,7 @@ export function modelPadRects(v) {
     for (const id in sys) add(id, sys[id].cx, sys[id].cy, sys[id].d);
     return out;
   }
-  const mid = ins.l + (v.cssW - ins.l - ins.r) / 2, S = Math.max(44, SYS_D * clamp(kd, 0.96, 1.1)), top = ins.t + PAD_M;
+  const mid = ins.l + (v.cssW - ins.l - ins.r) / 2, S = Math.max(44, SYS_D * clamp(kd, 0.96, 1.1)), top = ins.t + SYS_M_WIDE;
   add('pause', mid - 6 - S / 2, top + S / 2, S);
   add('bag', mid + 6 + S / 2, top + S / 2, S);
   return out;
@@ -312,8 +312,9 @@ function build(vw, vh, T, S, pad, bossOn, nM, F) {
   // 콤보·스타일 열 (DNF): 아래 끝 = min(200, 패드 위 − 8). 큰 패드(touchScale 1.3 등)가 오른쪽을 다 덮어
   // 40 px 도 남지 않으면 왼쪽 동료 카드 줄 아래(알림 칸 왼쪽)로 옮긴다
   // 터치에서는 y 297 아래(엄지·떠 있는 스틱 자리)에 상시 영역을 두지 않는다 (§1.8 '터치 패드' 행) → 대체 칸은 y 236–296
+  // (터치는 52 px 미만이면 옮긴다: 그보다 낮으면 'HITS' 글자가 11 CSS px 아래로 줄어든다 — hudredo, 큰 패드 touchScale 1.3)
   let combo = shrinkBottom(R(right - 320, 90 + t, 306, 0), pad, 200 + t);
-  if (combo.h < 40) {
+  if (combo.h < (T ? 52 : 40)) {
     const ay = Math.max(236 + t, laneY + 52 + HUD_GAP);
     const alt = R(14 + l, ay, 300, T ? Math.min(104, TOUCH_FLOOR - ay) : 104);
     if (alt.h >= 40 && !hitsAny(alt, pad)) combo = alt;
@@ -473,8 +474,9 @@ function buildFold(vw, vh, T, S, pad, bossOn, nM, F, k, cs) {
   L.questShown = !bossOn;
 
   // ── 아래: 빠른 칸 (터치: 스틱 받침 오른쪽, 아래 여백 PAD_M dp) ──
-  const q = Math.max(44, Math.round(52 * k)), qg = 8, qn = 4;
+  // 칸 사이 ≥ 12 CSS px (hud_mobile §3: 옆 칸을 잘못 누르지 않게)
   const csK = cs > 0.05 ? cs : 1, mB = T ? PAD_M / csK : 14;
+  const q = Math.max(44, Math.round(52 * k)), qg = T ? Math.ceil(12 / csK) : 10, qn = 4;
   let qx = 24 + l;
   if (T) {
     let sr = null;

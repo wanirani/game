@@ -108,15 +108,40 @@ function ent(row, pose, rig) {
   return { cx: 0, bottom: 0, facing: 1, anim: pose, animT: pose === 'hurt' ? 0.05 : pose === 'cast' ? 0.15 : 0.5, move: null, moveT: 0, atkSpeedMul: 1, charging: pose === 'charge' ? 0.5 : 0, muzzleT: 0,
     look: row.look, ch: CHARACTERS[row.cid], vx: 0, vy: 0, onGround: true, rig, t: 3, stats: { reach: 0 } };
 }
+/**
+ * 16방향 뷰(assets/puppets/turn16.json)가 있는 외형은 메뉴와 같은 HeroView 경로(이웃 두 뷰 교차 + 장비 덧그리기)로,
+ * 없는 외형은 예전 drawHero(yaw) 8방향 경로로 그린다 (TURNMOUNT: 16방향 외형은 8방향 시트를 쓰지 않는다)
+ */
+const VIEWS = new Map();
+function viewOf(row, look = row.look, key = '') {
+  const k = `${row.cid}|${row.li}|${key}`;
+  let v = VIEWS.get(k);
+  if (!v) { v = new HeroView({ turntable: true, game: null }); v.set(look, CHARACTERS[row.cid]); VIEWS.set(k, v); }
+  return v;
+}
+const isA16 = (row, look = row.look) => { const I = PUP.puppetFor({ look, ch: CHARACTERS[row.cid] }, look); return !!(I && PUP.turn16Entry(I)); };
+function drawYaw(g, row, deg, x, y, scale, t, pose = 'idle', rig = {}, noFx = true, look = row.look, key = '') {
+  if (pose === 'idle' && isA16(row, look)) {
+    const v = viewOf(row, look, key);
+    v.yaw = (deg * Math.PI) / 180; v.zoom = 1; v.p.t = t;
+    v.draw(g, x, y, scale, { noFx, rim: false });
+    return;
+  }
+  const p = ent({ ...row, look }, pose, rig);
+  p.cx = x; p.bottom = y; p.t = t;
+  HERO.drawHero(g, p, null, { yaw: (deg * Math.PI) / 180, scale, noFx });
+}
 /** 한 칸 (QA 도 쓴다): 투명 배경 캔버스 w×h, 발 = 아래 가운데 */
 function renderCell(hi, li, deg, w = 160, h = 190, pose = 'idle') {
   const row = rows[hi * 3 + li];
   const c = document.createElement('canvas'); c.width = w; c.height = h;
-  const g = c.getContext('2d');
-  const p = ent(row, pose, {});
-  p.cx = w / 2; p.bottom = h - 12;
-  HERO.drawHero(g, p, null, { yaw: (deg * Math.PI) / 180, scale: (h - 30) / 96, noFx: true });
+  drawYaw(c.getContext('2d'), row, deg, w / 2, h - 12, (h - 30) / 96, 3, pose, {}, true);
   return c;
+}
+/** 행의 채색 뷰가 준비됐는가: 16방향 외형 = 16방향 시트, 그 밖 = 예전 8방향 (heroViewInfo) */
+function rowPainted(row) {
+  if (isA16(row)) return t16ReadyLook(row.look, row.cid);
+  return !!HERO.heroViewInfo?.({ look: row.look, ch: CHARACTERS[row.cid] })?.painted;
 }
 
 let pose = 'idle', off = 0;
@@ -137,17 +162,15 @@ function drawGrid(t = 3) {
     ctx.fillStyle = '#a89880'; ctx.font = '12px sans-serif';
     ctx.fillText(LOOK_NAMES[row.li], 10, y + 48);
     ctx.fillText(row.className, 10, y + 66);
-    const S = HERO.heroViewInfo?.({ look: row.look, ch: CHARACTERS[row.cid] });
-    ctx.fillStyle = S?.painted ? '#6ad08a' : '#d0a060';
-    ctx.fillText(S?.painted ? '채색 8방향' : '옆모습 대체', 10, y + 86);
+    const a16 = isA16(row), okP = rowPainted(row);
+    ctx.fillStyle = okP ? '#6ad08a' : '#d0a060';
+    ctx.fillText(okP ? (a16 ? '채색 16방향' : '채색 8방향') : '옆모습 대체', 10, y + 86);
     YAWS.forEach((d, i) => {
       const x = LABEL_W + CW * i;
       ctx.strokeStyle = '#2a1a22'; ctx.strokeRect(x + 0.5, y + 0.5, CW - 1, RH - 1);
       // 받침대 타원 (방향 점 포함)
       pedestal(ctx, x + CW / 2, y + RH - 16, 0.62, t, accentOf(row.look), ((d + off) * Math.PI) / 180);
-      const p = ent(row, pose, row.rig[i]);
-      p.cx = x + CW / 2; p.bottom = y + RH - 16; p.t = t;
-      try { HERO.drawHero(ctx, p, null, { yaw: ((d + off) * Math.PI) / 180, scale: 1.45, noFx: false }); } catch (e) { console.error(e); }
+      try { drawYaw(ctx, row, d + off, x + CW / 2, y + RH - 16, 1.45, t, pose, row.rig[i], false, row.look, `g${i}`); } catch (e) { console.error(e); }
     });
   });
 }
@@ -199,11 +222,11 @@ function t16ReadyLook(look, cid, lo = false) {
 }
 function readyCount() {
   let n = 0;
-  for (const row of rows) { const S = HERO.heroViewInfo?.({ look: row.look, ch: CHARACTERS[row.cid] }); if (S?.painted) n++; }
+  for (const row of rows) if (rowPainted(row)) n++;
   return n;
 }
 window.__tt = {
-  heroes, looks: LOOK_NAMES, yaws: YAWS, rows: rows.map((r) => ({ cid: r.cid, li: r.li, classId: r.classId, cape: !!r.look.cape, painted: !!HERO.heroViewInfo?.({ look: r.look, ch: CHARACTERS[r.cid] })?.painted })),
+  heroes, looks: LOOK_NAMES, yaws: YAWS, rows: rows.map((r) => ({ cid: r.cid, li: r.li, classId: r.classId, cape: !!r.look.cape, painted: rowPainted(r), a16: isA16(r) })),
   heroView: HERO.HERO_VIEW ?? null,
   render: renderCell,
   /** 같은 외형에서 망토만 뺀 칸 (QA: 뒷모습에서 망토가 등을 덮는지) */
@@ -211,8 +234,7 @@ window.__tt = {
     const row = rows[hi * 3 + li];
     const look = { ...row.look, cape: null };
     const c = document.createElement('canvas'); c.width = w; c.height = h;
-    const p = ent({ ...row, look }, 'idle', {}); p.cx = w / 2; p.bottom = h - 12;
-    HERO.drawHero(c.getContext('2d'), p, null, { yaw: (deg * Math.PI) / 180, scale: (h - 30) / 96, noFx: true });
+    drawYaw(c.getContext('2d'), row, deg, w / 2, h - 12, (h - 30) / 96, 3, 'idle', {}, true, look, 'nocape');
     return c;
   },
   readyCount,
@@ -259,18 +281,17 @@ window.__tt = {
       for (let hi = 0; hi < heroes.length; hi++) {
         const row = rows[hi * 3 + 1];
         g.clearRect(0, 0, w, h);
+        const dd = Array.isArray(deg) ? deg[(i * heroes.length + hi) % deg.length] : deg;
+        if (dd !== null && dd !== undefined) { drawYaw(g, row, dd, w / 2, h - 12, (h - 30) / 96, 3 + i / 60, 'idle', row.benchRig || (row.benchRig = {}), true, row.look, 'bench'); continue; }
         const p = ent(row, 'idle', row.benchRig || (row.benchRig = {}));
         p.cx = w / 2; p.bottom = h - 12; p.t = 3 + i / 60;
-        const o = { scale: (h - 30) / 96, noFx: true };
-        const dd = Array.isArray(deg) ? deg[(i * heroes.length + hi) % deg.length] : deg;
-        if (dd !== null && dd !== undefined) o.yaw = (dd * Math.PI) / 180;
-        HERO.drawHero(g, p, null, o);
+        HERO.drawHero(g, p, null, { scale: (h - 30) / 96, noFx: true });
       }
     }
     g.getImageData(0, 0, 1, 1);
   },
 };
-const heroReady = (hi) => rows.slice(hi * 3, hi * 3 + 3).every((row) => HERO.heroViewInfo?.({ look: row.look, ch: CHARACTERS[row.cid] })?.painted);
+const heroReady = (hi) => rows.slice(hi * 3, hi * 3 + 3).every((row) => rowPainted(row));
 (async () => {
   requestAnimationFrame(liveFrame);
   const per = Number(Q.get('wait')) || 8000;   // 영웅 하나당 최대 대기 (ms)
@@ -285,7 +306,7 @@ const heroReady = (hi) => rows.slice(hi * 3, hi * 3 + 3).every((row) => HERO.her
     }
   }
   loadUpTo = heroes.length;
-  for (const [i, r] of window.__tt.rows.entries()) r.painted = !!HERO.heroViewInfo?.({ look: rows[i].look, ch: CHARACTERS[r.cid] })?.painted;
+  for (const [i, r] of window.__tt.rows.entries()) { r.painted = rowPainted(rows[i]); r.a16 = isA16(rows[i]); }
   await new Promise((r) => setTimeout(r, 300));
   drawGrid();
   document.getElementById('status').textContent = `채색 뷰 ${readyCount()}/${rows.length} · HERO_VIEW ${HERO.HERO_VIEW ? `steps ${HERO.HERO_VIEW.steps}` : '없음 (임시 대체)'}`;

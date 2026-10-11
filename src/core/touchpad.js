@@ -125,6 +125,8 @@ export function foldScale(cssH, touchScale = 1, hudScale = 1, wide = false) {
 }
 /** 시스템 아이콘 지름 (dp) */
 export const SYS_D = 46;
+/** 넓은 배치(휴대폰·띠) 시스템 줄의 위쪽 여백 dp — 위쪽 가운데라 모서리·엄지와 멀다. 세로가 좁아 토스트·게이지 줄을 지키려고 PAD_M 보다 작게 */
+export const SYS_M_WIDE = 8;
 /** 폴드 시스템 아이콘 줄 (오른쪽 위, 오른쪽부터 메뉴(Ⅱ)·가방·지도·⛶; 그린 테 바깥이 위·오른쪽 여백 PAD_M) → {id: {id,cx,cy,d}} CSS px.
  *  ids 를 주면 그 순서로 (마을은 지도 없음) */
 export function foldSysPlan(W, ins, sd, fs, ids = null) {
@@ -357,7 +359,7 @@ function layout(force = false) {
 
   // 시스템 버튼: 폴드 = 오른쪽 위 아이콘 줄 (마을은 지도 없음), 넓은 배치·띠 = 위쪽 가운데 (Ⅱ 왼쪽, 가방 오른쪽, ⛶ 는 되는 곳에서만)
   const sd = Math.max(MIN_D, SYS_D * (fold ? clamp(kBase, 0.95, 1.15) : clamp(kBase, 0.96, 1.1)));
-  const mid = ins.l + (W - ins.l - ins.r) / 2, sy = ins.t + PAD_M + sd / 2;
+  const mid = ins.l + (W - ins.l - ins.r) / 2, sy = ins.t + SYS_M_WIDE + sd / 2;
   let sys;
   if (fold) sys = foldSysPlan(W, ins, sd, fsShown(), town ? (fsShown() ? ['pause', 'bag', 'fullscreen'] : ['pause', 'bag']) : null);
   else {

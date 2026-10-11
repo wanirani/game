@@ -1,6 +1,6 @@
 // Turntable suite — platform.md §7.1–7.3, §11 WP-5 acceptance 1–6 (user request #6: rotate the hero in the menu).
 //
-//   node tools/qa/turntable.mjs [--only drag,fling,keys,stick,wheel,auto,showcase,reveal,touch,edges,fallback,taps,gallery,perf] [--strict] [--shots]
+//   node tools/qa/turntable.mjs [--only drag,fling,keys,stick,wheel,auto,showcase,reveal,touch,edges,fallback,taps,gallery,turn16,perf] [--strict] [--shots]
 //
 // Checks (status, equip and class tabs unless noted):
 //   drag      mouse drag of 1.1 × stage width rotates 180° ± 10° (right = yaw decreases, grab-the-surface)       — acceptance 1
@@ -23,6 +23,9 @@
 //   gallery   tools/gallery_turntable.html: CHAR_ORDER heroes (7) × 3 looks × 8 yaws, zero page errors; with the renderer contract:
 //             front vs back differ > 8 %, front view left-right symmetric, cape covers the back (gated on ART-HERO-B)  — acceptance 5
 //             + a yaw view costs ≤ 1.5 × the side view per drawHero (CPU time; gated on ART-HERO-B)                      — §7.3
+//   turn16    every look in assets/puppets/turn16.json (16-view sheets, TURNMOUNT): ui + lo sheets load, 16 views at 22.5°
+//             all drawn at a steady height, a half-step yaw is a crossfade between its two neighbours (no pop), front ≠ back,
+//             zoom 1.6 enlarges the figure; zero page errors. Looks with a turn16 entry: wheel = zoom, double tap = front
 //   perf      menu equip tab at fhd2x high renders in ≤ 20 ms per frame (main-thread CPU, chrome/tab split)     — acceptance 6, P-11
 // Gameplay-time checks run on a frozen, stepped clock (requestAnimationFrame/performance.now replaced; step(n) advances n
 // frames of 1/60 s) so a loaded machine cannot change the result. Report: /tmp/claude-0/qa/platform/turntable.json
@@ -90,6 +93,8 @@ function view(s) {
     return {
       yaw: v.yaw, vel: v.yawVel, goal: v.yawGoal, user: v.userYaw, mode: v.mode, auto: v.autoSpin, spinning: v.spinning, idle: v.idleT,
       seq: !!(v.seq || v.pending), anim: v.p.anim, label: v.viewLabel(), full: v.support().full, step: v.stepSize(), def: v.defaultYaw,
+      // 16방향 외형(turn16): 휠 = 확대, 두 번 탭·R3·'/''/' 초기화 = 앞모습(90°). home = 초기화 목표
+      a16: !!v.support().a16, zoom: v.zoom ?? 1, home: v.support().a16 ? Math.PI / 2 : v.defaultYaw,
       time: g.time, ti: g.top.ti, k,
       rect: r && { x: cv.x + r.x * k, y: cv.y + r.y * k, w: r.w * k, h: r.h * k, uw: r.w },
       btns: (v.btns || []).map((b) => ({ id: b.id, x: cv.x + b.x * k, y: cv.y + b.y * k, r: b.r * k })),
@@ -194,14 +199,33 @@ try {
       await key(s, 'Slash'); await step(s, 6); await key(s, 'Slash'); await settle(s, 90);
       const t3 = await view(s);
       await suite.check({ id: `keys.slash.${tab}`, group: 'keys', ...G, title: `${tab}: / toggles auto-spin (spins at once); a double / resets the view` }, async () => ({
-        pass: t1.auto === true && (t1.spinning || !t1.full) && t2.auto === false && Math.abs(t3.yaw - t3.def) < 0.01 && Math.abs(moved.yaw - moved.def) > 0.3 && t3.auto === false,
-        detail: `after '/': auto ${t1.auto} spinning ${t1.spinning}; after 2nd '/' (0.6 s later): auto ${t2.auto}; rotated to ${d(moved.yaw)} → '/''/' → ${d(t3.yaw)} (default ${d(t3.def)}), auto ${t3.auto}`,
+        pass: t1.auto === true && (t1.spinning || !t1.full) && t2.auto === false && Math.abs(t3.yaw - t3.home) < 0.01 && Math.abs(moved.yaw - moved.home) > 0.3 && t3.auto === false,
+        detail: `after '/': auto ${t1.auto} spinning ${t1.spinning}; after 2nd '/' (0.6 s later): auto ${t2.auto}; rotated to ${d(moved.yaw)} → '/''/' → ${d(t3.yaw)} (reset target ${d(t3.home)}), auto ${t3.auto}`,
       }));
     });
 
     await suite.group('wheel', async () => {
       await rest(s); await step(s, 2);
       const a = await view(s);
+      if (a.a16) {
+        // 16방향 외형: 휠 = 확대 1.0~1.6 (각도는 그대로), 다른 패널 위 휠은 무시
+        await s.eval(() => { window.__game.top.cur.view.zoom = 1; });
+        await mmove(s, a.rect.x + a.rect.w / 2, a.rect.y + a.rect.h / 2); await step(s, 2);
+        await s.page.mouse.wheel(0, -100); await flush(s); await flush(s); await step(s, 4);
+        const z1 = await view(s);
+        for (let i = 0; i < 10; i++) { await s.page.mouse.wheel(0, -100); await flush(s); await step(s, 2); }
+        const zMax = await view(s);
+        for (let i = 0; i < 10; i++) { await s.page.mouse.wheel(0, 100); await flush(s); await step(s, 2); }
+        const zMin = await view(s);
+        await mmove(s, a.rect.x + a.rect.w + 260, a.rect.y + a.rect.h * 0.8); await step(s, 2);
+        await s.page.mouse.wheel(0, -300); await flush(s); await flush(s); await step(s, 10);
+        const e1 = await view(s);
+        await suite.check({ id: `wheel.${tab}`, group: 'wheel', ...G, title: `${tab}: (16-view look) one wheel notch over the stage zooms by 0.1 within 1.0–1.6, the angle stays; wheel elsewhere does nothing` }, async () => ({
+          pass: Math.abs(z1.zoom - 1.1) < 0.02 && Math.abs(zMax.zoom - 1.6) < 1e-6 && Math.abs(zMin.zoom - 1) < 1e-6 && Math.abs(z1.yaw - a.yaw) < 1e-6 && Math.abs(zMax.yaw - a.yaw) < 1e-6 && Math.abs(e1.zoom - 1) < 1e-6 && Math.abs(e1.yaw - a.yaw) < 1e-6,
+          detail: `notch → zoom ${z1.zoom.toFixed(2)}, 11 notches → ${zMax.zoom.toFixed(2)}, back down → ${zMin.zoom.toFixed(2)}; yaw moved ${d(zMax.yaw - a.yaw)}; wheel over another panel → zoom ${e1.zoom.toFixed(2)}, yaw ${d(e1.yaw - a.yaw)}`,
+        }));
+        return;
+      }
       await mmove(s, a.rect.x + a.rect.w / 2, a.rect.y + a.rect.h / 2); await step(s, 2);
       await s.page.mouse.wheel(0, 100); await flush(s); await flush(s); await step(s, 12);
       const b = await view(s);
@@ -266,8 +290,8 @@ try {
       await settle(s, 240);
       const r = await view(s);
       await suite.check({ id: `doubletap.${tab}`, group: 'showcase', ...G, title: `${tab}: a double tap on the hero resets the view` }, async () => ({
-        pass: Math.abs(rot.yaw - rot.def) > 0.3 && Math.abs(r.yaw - r.def) < 0.01,
-        detail: `rotated to ${d(rot.yaw)} → double tap → ${d(r.yaw)} (default ${d(r.def)})`,
+        pass: Math.abs(rot.yaw - rot.home) > 0.3 && Math.abs(r.yaw - r.home) < 0.01,
+        detail: `rotated to ${d(rot.yaw)} → double tap → ${d(r.yaw)} (reset target ${d(r.home)}${r.a16 ? ', 16-view front' : ''})`,
       }));
     });
 
@@ -315,8 +339,8 @@ try {
       detail: `0.5 s of RS X = 1 → ${(b.yaw - a.yaw).toFixed(3)} rad (right stick right = rotate right)`,
     }));
     await suite.check({ id: 'stick.r3', group: 'stick', ...G, title: 'R3 resets to the default view and toggles auto-spin' }, async () => ({
-      pass: Math.abs(c.yaw - c.def) > 0.3 && (Math.abs(r.yaw - r.def) < 0.01 || r.spinning) && r.auto === true,
-      detail: `before R3: ${d(c.yaw)}, auto ${c.auto}; after R3: ${d(r.yaw)} (default ${d(r.def)}), auto ${r.auto}, spinning ${r.spinning}`,
+      pass: Math.abs(c.yaw - c.home) > 0.3 && (Math.abs(r.yaw - r.home) < 0.01 || r.spinning) && r.auto === true,
+      detail: `before R3: ${d(c.yaw)}, auto ${c.auto}; after R3: ${d(r.yaw)} (reset target ${d(r.home)}), auto ${r.auto}, spinning ${r.spinning}`,
     }));
     // the right stick also scrolls lists (Scroller, Y): pushing it mostly up/down must not turn the hero
     await rest(s); await step(s, 4);
@@ -621,6 +645,69 @@ try {
         detail: `front/back differ ${(r.frontBack * 100).toFixed(1)} %, front mirror IoU ${r.sym.toFixed(2)}, cape covers ${(r.cape * 100).toFixed(0)} % of the back torso${r.hasCape ? '' : ' (no cape item)'}`,
       }));
     }
+    await s.close();
+  }, env);
+
+  // ── turn16: 16-view sheets of every converted look (TURNMOUNT) ─────────────────────────────────
+  await suite.group('turn16', async () => {
+    const s = await env.page('desk', 'tools/gallery_turntable.html', { wait: false });
+    await s.page.waitForFunction('window.__tt && typeof window.__tt.renderClass === "function"', null, { timeout: 60000, polling: 200 });
+    const keys = await s.eval(() => window.__tt.t16Looks());
+    const T16 = { pkg: 'TURNMOUNT', gate: 'TURNMOUNT' };
+    if (!keys.length) {
+      await suite.check({ id: 'turn16.list', group: 'turn16', ...T16, title: 'turn16.json lists the converted looks' }, async () => ({ pass: false, detail: 'no looks listed' }));
+      await s.close(); return;
+    }
+    // request every sheet (ui + lo), then wait until all are decoded (or 60 s)
+    const t0 = Date.now();
+    let ready = [];
+    while (Date.now() - t0 < 60000) {
+      ready = await s.eval((K) => K.map((k) => { const [cid, cls] = k.split('/'); const T = window.__tt; const a = T.renderClass(cid, cls, 0, 90, 40, 48); const b = T.renderClass(cid, cls, 0, 90, 40, 48, 1, true); return a.ready && b.ready; }), keys);
+      if (ready.every(Boolean)) break;
+      await new Promise((r) => setTimeout(r, 400));
+    }
+    const M = await s.eval((K) => {
+      const T = window.__tt, W = 160, H = 190;
+      const px = (c) => c.getContext('2d').getImageData(0, 0, W, H).data;
+      const stats = (d) => { let n = 0, x0 = W, x1 = -1, y0 = H, y1 = -1; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] > 40) { n++; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } return { n, w: x1 - x0 + 1, h: y1 - y0 + 1 }; };
+      // mean colour/alpha difference over the union of both silhouettes (0..1)
+      const diff = (a, b) => { let u = 0, s = 0; for (let i = 0; i < a.length; i += 4) { if (a[i + 3] > 20 || b[i + 3] > 20) { u++; s += (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) + Math.abs(a[i + 3] - b[i + 3])) / 1020; } } return u ? s / u : 0; };
+      const out = [];
+      for (const k of K) {
+        const [cid, cls] = k.split('/');
+        const R = (deg, zoom = 1, lo = false) => T.renderClass(cid, cls, 0, deg, W, H, zoom, lo);
+        const v = [], st = [];
+        let a16 = true;
+        for (let i = 0; i < 16; i++) { const r = R(-180 + i * 22.5); a16 = a16 && r.a16 && r.ready; const d = px(r.canvas); v.push(d); st.push(stats(d)); }
+        const hs = st.map((x) => x.h).sort((a, b) => a - b), hMed = hs[8];
+        let worst = 0, worstAt = 0;
+        for (let i = 0; i < 16; i++) {
+          const a = v[i], b = v[(i + 1) % 16], m = px(R(-180 + i * 22.5 + 11.25).canvas);
+          const ab = diff(a, b), r = Math.max(diff(m, a), diff(m, b)) / Math.max(ab, 0.02);
+          if (r > worst) { worst = r; worstAt = -180 + i * 22.5 + 11.25; }
+        }
+        const f = v[12], bk = v[4];                       // -180 + 12·22.5 = 90° front, -90° back
+        const z1 = stats(px(R(90, 1).canvas)), z16 = stats(px(R(90, 1.6).canvas));
+        const lo = R(90, 1, true);
+        out.push({ key: k, a16, minN: Math.min(...st.map((x) => x.n)), hMin: hs[0] / hMed, hMax: hs[15] / hMed, cross: worst, crossAt: worstAt, frontBack: diff(f, bk), zoomW: z16.w / Math.max(1, z1.w), zoomN: z16.n / Math.max(1, z1.n), lo: lo.a16 && lo.ready && stats(px(lo.canvas)).n > 800 });
+      }
+      return out;
+    }, keys);
+    for (const r of M) {
+      await suite.check({ id: `turn16.${r.key.split('/')[1]}`, group: 'turn16', ...T16, title: `${r.key}: ui+lo 16-view sheets load; 16 views drawn at a steady height; half steps crossfade; front ≠ back; zoom 1.6 enlarges` }, async () => ({
+        pass: r.a16 && r.lo && r.minN > 1500 && r.hMin >= 0.8 && r.hMax <= 1.2 && r.cross <= 0.85 && r.frontBack > 0.06 && r.zoomW >= 1.35 && r.zoomW <= 1.85,
+        detail: `16 views ${r.a16 ? 'loaded' : 'NOT loaded'}, lo ${r.lo}; min ${r.minN} px; height ${r.hMin.toFixed(2)}–${r.hMax.toFixed(2)} × median; worst half-step ${r.cross.toFixed(2)} of the neighbour gap at ${r.crossAt}°; front/back ${(r.frontBack * 100).toFixed(1)} %; zoom 1.6 → width ×${r.zoomW.toFixed(2)}`,
+        metrics: r,
+      }));
+    }
+    await suite.check({ id: 'turn16.count', group: 'turn16', ...T16, title: 'turn16 looks listed and all ready within 60 s' }, async () => ({
+      pass: ready.every(Boolean), detail: `${keys.length} looks, ${ready.filter(Boolean).length} ready (ui + lo)`,
+    }));
+    if (suite.args.shots) {
+      fs.mkdirSync(SHOT_DIR, { recursive: true });
+      await s.page.screenshot({ path: path.join(SHOT_DIR, 'turn16.png') });
+    }
+    await suite.errors({ id: 'turn16.errors', group: 'turn16' }, s);
     await s.close();
   }, env);
 

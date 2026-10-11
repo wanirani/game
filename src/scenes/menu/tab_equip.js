@@ -208,7 +208,9 @@ export class EquipTab extends Tab {
     if (this.btnRect && ges.tap(this.btnRect)) { this.m.focus = 'content'; this.doRow(this.list[this.li]); return; }
     // [qol] 최적 장착: 단추 터치 · 키보드 R · 패드 Y (패드의 Y 는 원래 '해제' — 해제는 목록 맨 위 「장착 해제」 줄로)
     if (this.undo) { this.undo.t -= dt; if (this.undo.t <= 0) this.undo = null; }
-    if (this.optRect && ges.tap(this.optRect)) { this.m.focus = 'content'; if (this.undo) this.doUndo(); else this.openOptimize(); return; }
+    // [verify] 터치: 미리보기의 「장착하기」 단추가 이 단추(되돌리기) 바로 위에 겹친다 — 두 번 톡톡 누르면 적용하자마자 되돌려졌다.
+    //  적용 뒤 0.4초 동안은 이 단추의 되돌리기를 받지 않는다 (키보드 R · 패드 Y 는 그대로)
+    if (this.optRect && ges.tap(this.optRect)) { this.m.focus = 'content'; if (this.undo) { if (this.undo.t <= 4.6) this.doUndo(); } else this.openOptimize(); return; }
     const padY = focused && nav.alt && input.mode === 'pad';
     if (padY || (input.pressed('mount') && input.mode !== 'pad')) { if (this.undo) this.doUndo(); else this.openOptimize(); return; }
     if (!focused) return;
