@@ -1233,7 +1233,8 @@ export function drawTurn16(ctx, I, yaw, t, alpha = 1, lo = false) {
     ctx.save();
     ctx.globalAlpha *= a * alpha;
     ctx.scale((v.m ? -1 : 1) * sc * (wT / (v.bw || wT)), sc * breath);
-    ctx.drawImage(S.img, v.x * S.kx, v.y * S.ky, v.w * S.kx, v.h * S.ky, -v.ax, -v.fy, v.w, v.h);
+    // 거울 칸(m:1)의 ax 는 뒤집힌 그림 기준 축(= w − 원본 축) → 원본을 뒤집어 그릴 때는 원본 축(w − ax)에 맞춘다
+    ctx.drawImage(S.img, v.x * S.kx, v.y * S.ky, v.w * S.kx, v.h * S.ky, -(v.m ? v.w - v.ax : v.ax), -v.fy, v.w, v.h);
     ctx.restore();
   };
   one(va, Math.min(1, 2 * (1 - P.k)));
