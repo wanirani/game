@@ -78,7 +78,7 @@ export const rimOf = (id) => RIM[id] ?? 1.02;
 export function padPlan(kind = 'overlay', k = 1, m = PAD_M, town = false) {
   // 최소 지름 44 dp(MIN_D)를 자리 계산 전에 적용 (hudfix): 작은 배율에서 나중에 키우면 밀어내기(settle)가 대시를 여백 안으로 밀었다 (fold26)
   const fl = (v) => Math.max(44, v);
-  const A = fl(PAD_SIZE.A * k), J = fl(PAD_SIZE.J * k), B = fl(PAD_SIZE.B * k), U = fl(PAD_SIZE.U * k), S = fl(PAD_SIZE.S * k), G = Math.max(12, PAD_GAP * k);
+  const A = fl(PAD_SIZE.A * k), J = fl(PAD_SIZE.J * k), B = fl(PAD_SIZE.B * k), U = fl(PAD_SIZE.U * k), S = fl(PAD_SIZE.S * k), G = Math.max(12.5, PAD_GAP * k);   // 12.5 = settle 간격 하한과 같게 (밀어내기가 대시를 여백 안으로 밀지 않게)
   const rA = (A / 2) * RIM.attack, rB = (B / 2) * 1.02;
   const yb = m + rA;                                     // 아래 줄 중심 높이 (공격 테가 여백에 닿게)
   const P = {};

@@ -116,7 +116,12 @@ async function pageChecks({ view, INSETS }) {
     if (boss && L.bossBar.w < 240) small(`boss 너무 좁다 ${f1(L.bossBar)}`);
     for (let i = 0; i < meters; i++) if (L.meter(i).w < 100) small(`meter${i} 너무 좁다 ${f1(L.meter(i))}`);
     // 토스트 줄 수: 위쪽 보스 바가 보이면 1 (폴드 배치는 2 — hudfix: 보스 바 아래 두 줄), 아니면 3
-    const want = boss && L.bossSlot === 'top' ? (L.fold ? 2 : 1) : 3;
+    const want0 = boss && L.bossSlot === 'top' ? (L.fold ? 2 : 1) : 3;
+    // hudfix: 휴대폰 두 줄 버튼 묶음 + 안전 영역 인셋 + 실제 기믹 게이지 줄이면 알림 칸이 버튼 윗줄 위로 올라가야 해서 토스트 줄을 줄인다
+    // (L.toastCap — 게이지가 실제로 있을 때만, 1줄 아래로는 줄이지 않는다. 넘치는 토스트는 사라지지 않고 줄을 기다린다)
+    if (L.toastCap != null && (boss || !(L.toastCap >= 1 && L.toastCap < 3) || !(meters >= 1))) bad(`toastCap ${L.toastCap} 가 잘못 걸렸다 (boss ${boss}, meters ${meters})`);
+    const want = L.toastCap != null && !boss ? Math.min(want0, L.toastCap) : want0;
+    if (L.toastCap != null) info.add(`${tag.split('/').slice(0, 2).join('/')}: 토스트 ${L.toastCap}줄로 줄임 (알림 칸이 버튼 윗줄 위로, 게이지 ${meters}줄)`);
     if (L.toastRows !== want) small(`toastRows ${L.toastRows} (기대 ${want})`);
     return R;
   }

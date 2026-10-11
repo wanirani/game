@@ -393,14 +393,11 @@ function build(vw, vh, T, S, pad, bossOn, nM, F, mReal = true) {
       // 토스트 3줄을 지키면 버튼 윗줄 위로 못 올라가는 경우(노치 + 실제 게이지 2–3줄)는 토스트를 2줄 → 1줄로 줄여서라도 올린다
       // (보스 중엔 1줄 고정. 기믹이 없어 게이지 3줄을 비워 두기만 한 방은 줄이지 않는다 — 평소 토스트 3줄 유지)
       const want = Math.floor(ptop - th - over - 2);
-      let ty2 = want, cap = 3;
-      for (const nr of bossOn || !mReal ? [bossOn ? 1 : 3] : [3, 2, 1]) {
-        const minTy = Math.ceil((bossOn ? Math.max(top0, bty0 + 40) + nr * TOAST_ROW + 4 : top0 + nr * TOAST_ROW + 4) + 16);   // +16: 알림이 튀어나올 때 위로 넘치는 높이
-        ty2 = Math.max(minTy, want);
-        cap = nr;
-        if (ty2 <= want) break;
+      const minTyFor = (nr) => Math.ceil((bossOn ? Math.max(top0, bty0 + 40) + nr * TOAST_ROW + 4 : top0 + nr * TOAST_ROW + 4) + 16);   // +16: 알림이 튀어나올 때 위로 넘치는 높이
+      let cap = 3, ty2 = Math.max(minTyFor(bossOn ? 1 : 3), want);
+      if (ty2 > want && mReal && !bossOn) {
+        for (const nr of [2, 1]) { const t2 = Math.max(minTyFor(nr), want); if (t2 <= want) { cap = nr; ty2 = t2; break; } }   // 1줄로도 안 되면 줄이지 않는다
       }
-      if (ty2 > want && cap < 3) { cap = 3; ty2 = Math.max(Math.ceil(top0 + 3 * TOAST_ROW + 4 + 16), want); }   // 1줄로도 안 되면 줄이지 않는다
       if (ty2 < ty) {
         if (cap < 3) L.toastCap = cap;
         const s2 = clipSpan(322 + l, right - 322, ty2, th + over, pad, sides);
