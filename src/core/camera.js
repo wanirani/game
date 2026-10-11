@@ -22,6 +22,7 @@ import { clamp, lerp, ease } from './math.js';
 const BASE_VIEW_H = 540;   // core/game.js VIEW_H (16:9 이상 화면의 논리 높이)
 import { game } from './game.js';
 import { input } from './input.js';
+import { touchpad } from './touchpad.js';
 import { bus } from './events.js';
 
 const KICK_K = 260, KICK_C = 22, KICK_MAX = 28;
@@ -30,6 +31,7 @@ const ROLL_MAX = 0.03;
 const PUNCH_OUT = 0.18;
 const TOUCH_BIAS = 0.06;               // 화면 폭 대비 (platform §5.4)
 const ARENA_FLOOR = 0.1;               // 경기장: 바닥 아래로 보여 줄 화면 높이 비율
+const ARENA_FLOOR_TOUCH_MAX = 0.26;    // 터치(게임 화면 위 패드): 바닥을 조작 줄 위로 올릴 때의 상한 (hudfix)
 const ARENA_HEAD = 0.14;               // 경기장: 플레이어 머리 위로 최소한 남길 화면 높이 비율
 const BOSS_W_HERO = 0.6;               // 보스 경기장 구도: 영웅 가중치 (보스 0.4)
 const BOSS_EDGE = 0.15;                // 보스 경기장 구도: 영웅과 화면 가장자리 사이 최소 거리 (화면 폭 비율)
@@ -52,6 +54,17 @@ function shakeK() {
   return (k > 0 ? Math.min(1, k) : 0) * (s?.reduceMotion ? 0.5 : 1);
 }
 /** 화면 회전 허용: low 품질·동작 줄이기에선 끔 */
+/**
+ * 경기장 바닥 아래로 남길 화면 비율 (hudfix, 사용자 의견 8): 터치 패드가 게임 화면 위에 있으면 바닥이 쉬고 있는 스틱 받침·아래 줄
+ * 버튼(점프·공격·대시) 위에 오도록 그 높이 + 2 % (보통 방은 바닥 아래 땅이 두 칸이라 이미 그 위다). 폴드 ≈ 0.22, 휴대폰은 상한 0.26.
+ * 키보드·패드·아래 띠는 예전 그대로 0.1
+ */
+function arenaFloorK() {
+  if (!input.touchMode) return ARENA_FLOOR;
+  let r = 0;
+  try { r = touchpad.bottomReserve?.() ?? 0; } catch { r = 0; }
+  return r > 0 ? clamp(r + 0.02, ARENA_FLOOR, ARENA_FLOOR_TOUCH_MAX) : ARENA_FLOOR;
+}
 function rotOK() {
   const s = game.settings;
   if (s?.reduceMotion) return false;
@@ -208,10 +221,12 @@ export class Camera {
       }
     }
     if (this.floorY != null) {
-      // [hook:plat] 보스 경기장: 바닥이 화면 아래 10% 지점에 오게 (높은 방에서 땅 속만 보이던 문제). 높이 뛰면 머리 위 여백을 지키며 따라간다
-      const floorFy = this.floorY + vhB * ARENA_FLOOR - vhB / 2;
+      // [hook:plat] 보스 경기장: 바닥이 화면 아래 10% 지점에 오게 (높은 방에서 땅 속만 보이던 문제; 터치는 조작 줄 위 — arenaFloorK).
+      // 높이 뛰면 머리 위 여백을 지키며 따라간다
+      const fk = arenaFloorK();   // 터치: 바닥을 조작 줄 위로 (hudfix)
+      const floorFy = this.floorY + vhB * fk - vhB / 2;
       const headFy = t.y - vhB * ARENA_HEAD + vhB / 2;
-      const feetFy = t.y + t.h + vhB * ARENA_FLOOR - vhB / 2;
+      const feetFy = t.y + t.h + vhB * fk - vhB / 2;
       fy = Math.max(Math.min(floorFy, headFy), Math.min(feetFy, headFy));
     }
     if (this.focus) {

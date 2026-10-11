@@ -50,9 +50,10 @@ function devScale(ctx) {
 }
 
 /**
- * 퀘스트 칸을 그린다. r = L.quest, F = 글자 하한. → 실제로 그린 칸 {x,y,w,h, head} | null (탭 자리용; 퀘스트가 없으면 null)
+ * 지금 퀘스트 칸 상태 (그리지 않는다): {rows, col, M, h, key} | null (퀘스트 없음·칸이 너무 좁음).
+ * key = 내용·접힘·크기·글꼴 세대 (hud_crisp 의 선명 칸 키로도 쓴다)
  */
-export function drawQuestTracker(ctx, r, world, F = 0) {
+export function questTrackerState(r, world, F = 0) {
   const state = world?.state ?? world?.game?.state;
   if (!r || !state || r.w < 80) return null;
   const rows = questRows(state, world.time ?? 0);
@@ -60,10 +61,21 @@ export function drawQuestTracker(ctx, r, world, F = 0) {
   const col = questCollapsed();
   const M = metrics(F);
   const h = col ? M.head : Math.min(r.h, M.head + rows.length * M.row + 4);
-  const a = devScale(ctx);
-  const key = `${col ? 1 : 0}|${r.w}|${h}|${a}|${fontEpoch}|${M.fs}|` + rows.map((x) => `${x.main ? 1 : 0}${x.name}:${x.prog}`).join('|');
+  const key = `${col ? 1 : 0}|${r.w}|${h}|${fontEpoch}|${M.fs}|` + rows.map((x) => `${x.main ? 1 : 0}${x.name}:${x.prog}`).join('|');
+  return { rows, col, M, h, key };
+}
+/**
+ * 퀘스트 칸을 그린다. r = L.quest, F = 글자 하한. → 실제로 그린 칸 {x,y,w,h, head} | null (탭 자리용; 퀘스트가 없으면 null)
+ * st = questTrackerState 결과 (없으면 여기서 구한다). direct = 캐시 없이 바로 칠한다 (hud_crisp 의 선명 칸이 이미 캐시다)
+ */
+export function drawQuestTracker(ctx, r, world, F = 0, st = null, direct = false) {
+  st ??= questTrackerState(r, world, F);
+  if (!st) return null;
+  const { rows, col, M, h } = st;
   const c = Q.c;
-  if (!c) { paint(ctx, r.x, r.y, r.w, h, rows, col, M); return { x: r.x, y: r.y, w: r.w, h, head: M.head }; }
+  if (!c || direct) { paint(ctx, r.x, r.y, r.w, h, rows, col, M); return { x: r.x, y: r.y, w: r.w, h, head: M.head }; }
+  const a = devScale(ctx);
+  const key = st.key + '|' + a;
   if (key !== Q.key) {
     const W = Math.ceil(r.w * a), H = Math.ceil(h * a);
     if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
