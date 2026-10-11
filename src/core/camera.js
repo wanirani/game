@@ -18,6 +18,8 @@
 //  reset()                      방 로딩 시 줌·연출·흔들림 초기화
 // 터치 모드에서 오른쪽을 볼 때는 추적점을 화면 폭의 6% 앞쪽으로 당긴다 (platform §5.4: 버튼 묶음에 적이 가리기 전에 보이게).
 import { clamp, lerp, ease } from './math.js';
+
+const BASE_VIEW_H = 540;   // core/game.js VIEW_H (16:9 이상 화면의 논리 높이)
 import { game } from './game.js';
 import { input } from './input.js';
 import { bus } from './events.js';
@@ -234,7 +236,15 @@ export class Camera {
     if (!b) return;
     const vw = this.w / this.baseZoom, vh = this.h / this.baseZoom;
     this.cx = b.w <= vw ? b.x + b.w / 2 : clamp(this.cx, b.x + vw / 2, b.x + b.w - vw / 2);
-    this.cy = b.h <= vh ? b.y + b.h - vh / 2 : clamp(this.cy, b.y + vh / 2, b.y + b.h - vh / 2);
+    this.cy = b.h <= vh ? b.y + b.h - vh / 2 + this.padLift(b.h, vh, this.baseZoom) : clamp(this.cy, b.y + vh / 2, b.y + b.h - vh / 2);
+  }
+  /**
+   * 방이 시야보다 낮을 때 화면을 바닥 맞춤에서 얼마나 올리나 (hud_mobile §2 세로 확장 시야).
+   * 논리 높이 540(16:9 이상)을 넘는 만큼만 위아래로 나눠 방을 가운데에 둔다 — 540 화면은 예전처럼 바닥 맞춤(0)이라 픽셀 단위로 같다.
+   */
+  padLift(bh, vh, z) {
+    const extra = Math.max(0, (this.h - BASE_VIEW_H) / (z || 1));
+    return extra > 0 ? Math.min(Math.max(0, vh - bh), extra) / 2 : 0;
   }
   /**
    * 흔들림·반동 스프링·줌 연출·연출 구도를 dt 만큼 진행하고 화면 위치를 다시 계산한다.
@@ -295,7 +305,7 @@ export class Camera {
     const vw = this.vw, vh = this.vh;
     if (b.w <= vw) this.x = b.x + (b.w - vw) / 2;
     else this.x = clamp(this.x, b.x, b.x + b.w - vw);
-    if (b.h <= vh) this.y = b.y + b.h - vh; // 방이 화면보다 낮으면 바닥에 맞춤
+    if (b.h <= vh) this.y = b.y + b.h - vh + this.padLift(b.h, vh, this._zoom); // 방이 화면보다 낮으면 바닥에 맞춤 (세로 확장 시야는 가운데)
     else this.y = clamp(this.y, b.y, b.y + b.h - vh);
   }
   /** 월드 그리기 직전에 호출 (기울기는 뷰 중심 기준) */

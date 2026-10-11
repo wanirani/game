@@ -422,6 +422,25 @@ class Game {
     this.applySurround();
     this.dirty = true;
   }
+  /**
+   * 캔버스 둘레(안전 영역 여백·아주 네모난 화면의 위아래 띠)의 바탕 (hud_mobile §2 — 검은 칸 금지).
+   * 테마 {top, bottom} 은 스테이지가 setSurround 로 넣는다 (stages.js padTop/padBottom 색). 없으면 고딕 기본색.
+   * CSS 배경 한 번만 바꾼다 (매 프레임 비용 없음).
+   */
+  setSurround(theme) {
+    const t = theme && theme.top ? theme : null;
+    const key = t ? t.top + '|' + (t.bottom || t.top) : '';
+    if (key === this._surKey) return;
+    this._surKey = key; this._surround = t;
+    this.applySurround();
+  }
+  applySurround() {
+    const el = typeof document !== 'undefined' ? document.getElementById('app') : null;
+    if (!el) return;
+    const t = this._surround, top = t?.top || '#1a0812', bot = t?.bottom || t?.top || '#0c0408';
+    const css = `radial-gradient(ellipse at 50% 45%, rgba(120,20,36,0.20) 0%, rgba(0,0,0,0) 60%), linear-gradient(${top}, #0a0307 50%, ${bot})`;
+    if (el.style.background !== css) el.style.background = css;
+  }
   /** 화면 배치에 영향을 주는 설정이 바뀌었나 (옵션에서 바꾸면 다음 rAF 에 다시 배치) */
   layoutSettingsChanged() {
     const s = this.settings, w = this._watch;

@@ -1,0 +1,420 @@
+{
+ "kael": [
+  [
+   "kael_vigilia",
+   "a holy golden whip lashing forward in a straight piercing beam of light"
+  ],
+  [
+   "kael_tempest",
+   "a chain whip spinning overhead into a golden whirlwind"
+  ],
+  [
+   "kael_holy_cross",
+   "a giant glowing holy cross spinning like a boomerang"
+  ],
+  [
+   "kael_sanctuary",
+   "a golden sanctuary dome barrier with radiating holy rings"
+  ],
+  [
+   "kael_autodafe",
+   "pillars of holy orange fire erupting from the ground"
+  ],
+  [
+   "kael_silver_fan",
+   "a fan spread of silver throwing daggers"
+  ],
+  [
+   "kael_blood_hunt",
+   "a crimson blood streak dash with glowing red afterimage"
+  ],
+  [
+   "kael_raven_storm",
+   "a flock of violet night ravens swirling"
+  ],
+  [
+   "ult_kael",
+   "an enormous radiant grand cross of white-gold light splitting the darkness"
+  ]
+ ],
+ "sera": [
+  [
+   "sera_holy_bolt",
+   "three homing orbs of holy white light"
+  ],
+  [
+   "sera_light_pillar",
+   "a pillar of holy light crashing down from the sky"
+  ],
+  [
+   "sera_fireball",
+   "a blazing fireball"
+  ],
+  [
+   "sera_meteor",
+   "burning meteors falling from a torn red sky"
+  ],
+  [
+   "sera_thunderstorm",
+   "a dark storm cloud striking pale blue lightning"
+  ],
+  [
+   "sera_heal",
+   "praying hands with green healing light and small white wings"
+  ],
+  [
+   "sera_archangel",
+   "an archangel silhouette with spears of light"
+  ],
+  [
+   "sera_chrono",
+   "an ornate gothic clock face with frozen hands and blue glow"
+  ],
+  [
+   "ult_sera",
+   "a heavenly gate of light opening in clouds with descending judgment beams"
+  ]
+ ],
+ "victor": [
+  [
+   "victor_pierce_shot",
+   "a silver bullet piercing forward with a long white trail"
+  ],
+  [
+   "victor_phantom_bullet",
+   "ghostly blue phantom gunslinger firing"
+  ],
+  [
+   "victor_execution",
+   "a red crosshair reticle over a skull"
+  ],
+  [
+   "victor_dynamite",
+   "a bundle of lit dynamite sticks with sparks"
+  ],
+  [
+   "victor_hellfire_burst",
+   "a shotgun blast spreading hellfire"
+  ],
+  [
+   "victor_gatling",
+   "rotating gatling gun barrels spitting golden bullets"
+  ],
+  [
+   "victor_fanning",
+   "an old revolver fanning six muzzle flashes"
+  ],
+  [
+   "victor_bullet_dance",
+   "bullets spiraling out in all directions"
+  ],
+  [
+   "ult_victor",
+   "playing cards aces and eights pierced by bullets beside a revolver"
+  ]
+ ],
+ "bran": [
+  [
+   "bran_ground_split",
+   "a greatsword slamming the ground with rocks erupting in a line"
+  ],
+  [
+   "bran_whirlwind",
+   "a spinning greatsword whirlwind of steel"
+  ],
+  [
+   "bran_shield_charge",
+   "a glowing holy kite shield charging forward"
+  ],
+  [
+   "bran_aegis",
+   "a wall of blue light barrier"
+  ],
+  [
+   "bran_crusade_sword",
+   "a giant holy sword falling from heaven"
+  ],
+  [
+   "bran_warcry",
+   "a roaring knight helmet with a red shockwave"
+  ],
+  [
+   "bran_warlord_leap",
+   "an armored knight leaping and crashing down with shockwave"
+  ],
+  [
+   "bran_blood_frenzy",
+   "a blood-soaked greatsword with red slash marks"
+  ],
+  [
+   "ult_bran",
+   "the earth shattering with glowing molten fissures"
+  ]
+ ],
+ "lia": [
+  [
+   "lia_shadow_step",
+   "a shadow assassin with a crimson backstab slash"
+  ],
+  [
+   "lia_cross_cut",
+   "two crossing pink wind blades forming an X"
+  ],
+  [
+   "lia_shuriken",
+   "spinning steel shuriken throwing stars"
+  ],
+  [
+   "lia_shadow_clones",
+   "purple shadow clones of a ninja"
+  ],
+  [
+   "lia_kagerou",
+   "drifting flame petals in heat haze"
+  ],
+  [
+   "lia_blade_waltz",
+   "a ring of golden blades orbiting"
+  ],
+  [
+   "lia_thousand_blades",
+   "a rain of golden swords from the sky"
+  ],
+  [
+   "lia_reaper_scythe",
+   "a huge spectral green soul scythe"
+  ],
+  [
+   "ult_lia",
+   "a web of crimson threads of light trapping the dark"
+  ]
+ ],
+ "azel": [
+  [
+   "azel_moon_slash",
+   "a crescent moon shaped pink sword wave"
+  ],
+  [
+   "azel_phantom_blades",
+   "violet phantom swords floating"
+  ],
+  [
+   "azel_blood_lance",
+   "crimson blood spikes erupting from the ground"
+  ],
+  [
+   "azel_bat_storm",
+   "a swarm of crimson vampire bats"
+  ],
+  [
+   "azel_crimson_feast",
+   "a blood red moon with streams of blood"
+  ],
+  [
+   "azel_dawn_rush",
+   "a golden light dash trail with slashes"
+  ],
+  [
+   "azel_dawnbreaker",
+   "a radiant sun-like great sword wave"
+  ],
+  [
+   "azel_fallen_wings",
+   "one white and one black angel wing with feathers"
+  ],
+  [
+   "ult_azel",
+   "a huge red full moon over a gothic castle with blood rain"
+  ]
+ ],
+ "isolde": [
+  [
+   "isolde_piercing_gale",
+   "a lance thrust with a cyan wind spiral"
+  ],
+  [
+   "isolde_dragon_dive",
+   "a lance diving down from the sky with impact"
+  ],
+  [
+   "isolde_thunder_lance",
+   "a lightning-wreathed lance"
+  ],
+  [
+   "isolde_storm_dragon",
+   "a lightning dragon ascending"
+  ],
+  [
+   "isolde_wyrm_breath",
+   "a black dragon head breathing orange fire"
+  ],
+  [
+   "isolde_javelin",
+   "javelins of golden light"
+  ],
+  [
+   "isolde_valhalla",
+   "ghostly warrior spirits with spears in a golden hall"
+  ],
+  [
+   "isolde_thousand_thrusts",
+   "many rapid lance thrust afterimages"
+  ],
+  [
+   "ult_isolde",
+   "a sky dragon descending in cyan light"
+  ]
+ ],
+ "awaken": [
+  [
+   "awaken_kael",
+   "a golden whip coiled before a blinding white dawn sun"
+  ],
+  [
+   "awaken_sera",
+   "a six-winged seraph of light"
+  ],
+  [
+   "awaken_victor",
+   "a revolver cylinder loaded with six silver bullets glowing"
+  ],
+  [
+   "awaken_bran",
+   "a burning iron heart inside a knight breastplate"
+  ],
+  [
+   "awaken_lia",
+   "black raven feathers falling with red eyes"
+  ],
+  [
+   "awaken_azel",
+   "a crimson eclipse sun with vampire fangs"
+  ],
+  [
+   "awaken_isolde",
+   "a knight riding a cyan sky dragon"
+  ],
+  [
+   "ui_lock",
+   "a heavy iron padlock with chains"
+  ],
+  [
+   "ui_menu",
+   "an ornate gothic iron gear cog"
+  ]
+ ],
+ "asc": [
+  [
+   "asc_kael_firstseal",
+   "a golden magic seal circle sigil"
+  ],
+  [
+   "asc_sera_seventhbell",
+   "a phantom bronze bell glowing white"
+  ],
+  [
+   "asc_victor_silverbullet",
+   "one silver bullet engraved with a crescent moon"
+  ],
+  [
+   "asc_bran_oathbanner",
+   "a war banner of dawn planted in the ground"
+  ],
+  [
+   "asc_lia_frostwing",
+   "an icy wing with frost feathers"
+  ],
+  [
+   "asc_azel_lullaby",
+   "a dawn crescent moon with soft amber glow"
+  ],
+  [
+   "asc_isolde_breath",
+   "a silver lightning dragon breath"
+  ],
+  [
+   "ui_map",
+   "an old parchment map with a compass rose"
+  ],
+  [
+   "ui_bag",
+   "a leather adventurer satchel bag"
+  ]
+ ],
+ "ui": [
+  [
+   "ui_jump",
+   "winged boots leaping upward"
+  ],
+  [
+   "ui_dash",
+   "a dashing silhouette with speed streaks"
+  ],
+  [
+   "ui_mount",
+   "a black horse head rearing"
+  ],
+  [
+   "ui_guard",
+   "a small glowing guardian spirit with wings"
+  ],
+  [
+   "ui_swap",
+   "two curved arrows cycling around a rune circle"
+  ],
+  [
+   "ui_quest",
+   "a sealed scroll with a red wax seal"
+  ],
+  [
+   "ui_ach",
+   "a golden laurel medal with a star"
+  ],
+  [
+   "ui_boss",
+   "a horned demon skull"
+  ],
+  [
+   "ui_door",
+   "a gothic arched iron door"
+  ]
+ ],
+ "frames": [
+  [
+   "ring_map",
+   "minimap ring"
+  ],
+  [
+   "stick_base",
+   "joystick base"
+  ],
+  [
+   "ring_attack",
+   "attack bezel"
+  ],
+  [
+   "ring_small",
+   "small ring"
+  ],
+  [
+   "frame_ult",
+   "ult frame"
+  ],
+  [
+   "frame_slot",
+   "slot frame"
+  ],
+  [
+   "ring_lock",
+   "lock ring"
+  ],
+  [
+   "ring_bat",
+   "bat ring"
+  ],
+  [
+   "gem",
+   "gem badge"
+  ]
+ ]
+}

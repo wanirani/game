@@ -1,5 +1,6 @@
 // 통합 스모크: 여러 화면/스테이지를 차례로 열어 페이지 오류를 수집하고 스크린샷을 남긴다.
-// 사용: node tools/integration.mjs [--only s03,hub,s14_boss] [--out dir] [--mobile] [--dist [dir]] [--list]
+// 사용: node tools/integration.mjs [--only s03,hub,s14_boss] [--out dir] [--mobile] [--device <id>] [--dist [dir]] [--list]
+//   --device <id> : tools/qa/lib/viewports.mjs 의 기기 (phone2, fold_open, tablet, desk …). --mobile 은 예전 844×390 ×2 터치
 //   --dist [dir] : 원본 대신 빌드 결과(dist/web, CSP 적용)를 tools/deploy/serve_dist.mjs 로 띄워 검사 (build_web.mjs 먼저)
 //   --list       : 케이스 id 만 출력
 // 종료 코드: 0 = 모든 케이스 오류 없음, 1 = 오류가 난 케이스가 있음, 2 = --only 에 없는 케이스 id (조용히 통과하지 않게)
@@ -7,9 +8,13 @@ import { chromium } from 'playwright-core';
 import { start } from './serve.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
+import { VIEWPORTS } from './qa/lib/viewports.mjs';
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => { if (v.startsWith('--')) a.push([v.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true]); return a; }, []));
 const out = args.out || '/tmp/claude-0/integ';
-const mobile = !!args.mobile;
+const DEV = args.device ? VIEWPORTS[String(args.device)] : null;
+if (args.device && !DEV) { console.error(`✗ --device: 모르는 기기 '${args.device}' (${Object.keys(VIEWPORTS).join(', ')})`); process.exit(2); }
+const mobile = !!args.mobile || !!DEV?.touch;
+const ctxOpts = () => (DEV ? structuredClone(DEV.context) : mobile ? { viewport: { width: 844, height: 390 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true } : { viewport: { width: 1280, height: 720 } });
 const KEY = { right: 'ArrowRight', left: 'ArrowLeft', up: 'ArrowUp', down: 'ArrowDown', jump: 'KeyZ', attack: 'KeyX', dash: 'KeyC', sub: 'KeyA', skill1: 'KeyS', skill2: 'KeyD', ult: 'KeyF', menu: 'Escape', enter: 'Enter', swap: 'KeyQ' };
 // 1부 s01–s13 + 2부 s14–s20 (P2-QA) + 외전 s21 (EX-INTEG, docs/specs/ex_s21.md) · s22 (EX2-INTEG, docs/specs/ex_s22.md) · s23 (EX3-INTEG, docs/specs/ex_s23.md) · s24 (EX4-INTEG, docs/specs/ex_s24.md) · s25 (EX5-INTEG, docs/specs/ex_s25.md). 보스방 케이스 <id>_boss 는 끝에 world.boss 가 있어야 통과한다.
 const STAGES = ['s01','s02','s03','s04','s05','s06','s07','s08','s09','s10','s11','s12','s13','s14','s15','s16','s17','s18','s19','s20','s21','s22','s23','s24','s25'];
@@ -51,7 +56,7 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
 const report = [];
 for (const c of CASES) {
   if (only && !only.includes(c.id)) continue;
-  const ctx = await browser.newContext(mobile ? { viewport: { width: 844, height: 390 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true } : { viewport: { width: 1280, height: 720 } });
+  const ctx = await browser.newContext(ctxOpts());
   const page = await ctx.newPage();
   const errs = [];
   page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message + ' @ ' + (e.stack || '').split('\n').slice(1, 3).join(' | ')));

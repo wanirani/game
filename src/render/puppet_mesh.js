@@ -149,3 +149,6 @@ export function stateOf(ent) {
   if (!s) ST.set(ent, (s = {}));
   return s;
 }
+
+/** 리그별 메시 관절·2차 움직임 설정 (임시: 자동값만) */
+export function meshOverride(key, rig) { return null; }
