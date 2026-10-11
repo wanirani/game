@@ -1967,6 +1967,12 @@ export const HERO_DRAW_SCALE = 1.14;
 let drawScale = HERO_DRAW_SCALE;
 /** 테스트·옵션용: 플레이어 그리기 배율 바꾸기 (판정 상자와 무관) */
 export function setHeroDrawScale(v) { drawScale = v > 0 ? v : HERO_DRAW_SCALE; }
+/** 화면 비율에 맞춘 영웅 크기 (hud_mobile §2): 16:9 = 1, 폴드·태블릿처럼 네모난 화면은 최대 1.12 배. stage.js 가 스테이지 진입 때 부른다 */
+export function heroScaleFor(viewW, viewH) {
+  const k = typeof PUP.heroScaleFor === 'function' ? PUP.heroScaleFor(viewW, viewH) : 1;
+  setHeroDrawScale(HERO_DRAW_SCALE * (Number.isFinite(k) && k > 0 ? k : 1));
+  return k;
+}
 /** 턴테이블 계약 (docs/specs/platform.md §7.3): 8방향 스냅 + 사이 구간은 가로 압축 교차 */
 export const HERO_VIEW = { continuous: false, steps: 8, painted: true };
 /** 이 엔티티가 턴테이블에서 채색 8방향을 쓰는가 (false 면 옆모습 카드 뒤집기 대체) */

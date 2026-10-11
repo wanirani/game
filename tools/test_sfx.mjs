@@ -17,7 +17,7 @@
 //     트루 피크 ≤ -1 dBTP · 푼 피크 ≤ -0.95 dBFS · 변형마다 엔진 렌더: 합성음 층이 한 번도 안 울림(합성 단독 0) + 5 의 검사 + 바꾸기 전 게임 소리(index ref,
 //     없으면 지금 샘플+합성)와 K-가중 순간 라우드니스 ±1.5 dB · 실행 규칙(같은 변형 연달아 안 나옴, 모든 변형 쓰임, 품질 low·room 0 이면 방 잔향 끔, pan,
 //     화면 x → pan, theme → 공간, enemy_die 몸 종류 변형) · 용량: 싣는 효과음(두 뱅크 m4a + index) ≤ 기준 900,000 B + 0.6 MB · 노드 수 (v2 대 지금) 표
-//     --calibrate-v2  v2 g 를 지금 게임 소리 크기에 맞추고 그 크기를 ref 로 assets/audio/sfx_v2/index.json 에 쓴다 (build_sfx_v2.py 뒤에 — 공정한 A/B)
+//     --calibrate-v2  v2 g 를 지금 게임 소리 크기에 맞추고 그 크기를 ref 로 assets/audio/sfx_v2/index.json 에 쓴다 (build_sfx_v2.py 뒤에 — 공정한 A/B) · 이미 ref 가 있으면 그 ref 에 맞춘다 (--reset-ref 로만 ref 를 다시 잼 — v2 가 기본이라 지금 소리 = v2 자신)
 //     --ref <커밋>     스위치 꺼짐 = 지금과 같음: 그 커밋의 audio.js 와 지금 audio.js 로 모든 효과음을 같은 난수열로 렌더 — 노드 그래프·난수 호출 수가 같고
 //                     렌더 차이 ≤ 1e-5 (-100 dBFS; OfflineAudioContext 는 같은 코드도 렌더마다 float 반올림이 흔들려 바이트 비교는 못 한다)
 //     --no-v2         7 을 건너뜀
@@ -499,7 +499,7 @@ if (!args['no-v2']) {
       const mean = (xs) => (xs.length ? xs.reduce((a, x) => a + x, 0) / xs.length : NaN);
       const v2lm = mean(okv.map((r) => r.lm));   // 변형들의 K-가중 순간 라우드니스 평균 (dB)
       const b = d.of || n, cur = SM.renders?.[b] ? mean(SM.renders[b].vs.filter((r) => !r.err).map((r) => r.lm)) : res.renders[b]?.lm;
-      const clm = Number.isFinite(d.ref) && !args['calibrate-v2'] ? d.ref : cur;   // ref: 보정 때 잰 바꾸기 전 게임 소리 크기 (옛 샘플을 뺀 뒤에도 같은 기준)
+      const clm = Number.isFinite(d.ref) && !args['reset-ref'] ? d.ref : cur;   // ref: 보정 때 잰 바꾸기 전 게임 소리 크기 (옛 샘플을 뺀 뒤에도 같은 기준). v2 가 기본이 된 뒤 cur 는 v2 자신이라 --calibrate-v2 도 ref 를 쓴다 (--reset-ref 로만 다시 잼)
       const k = v2lm - clm;                      // dB: + 면 v2 가 더 큼
       if (args['calibrate-v2']) { if (Number.isFinite(k)) calibV2[n] = { g: +Math.min(8, Math.max(0.05, d.g * Math.pow(10, -k / 20))).toFixed(3), ref: +clm.toFixed(2) }; }
       else if (!(Math.abs(k) <= 1.5)) fail(`v2 ${n}: 지금 게임 소리와 크기 차이 ${k >= 0 ? '+' : ''}${k.toFixed(1)} dB (K-가중 순간 라우드니스 v2 ${v2lm.toFixed(1)} / 지금 ${clm?.toFixed(1)} LUFS) — --calibrate-v2 로 g 맞추기`);
