@@ -800,7 +800,8 @@ try {
 const TAP_MIN = { primary: 44, list: 36, icon: 44, dense: 28 };
 const TAP_TINY = 32;
 const TAP_SLOP_MAX = 28; // 여유 상한 (논리 px)
-const VIEW_H = 540; // 논리 화면 높이 (core/game.js)
+const VIEW_H = 540; // 기본 논리 화면 높이 (core/game.js — 세로 확장 시야에서는 game.viewH 를 쓴다)
+const viewH = () => globalThis.__game?.viewH || VIEW_H;
 let TAP_CSSK = 0; // 논리 px → CSS px (0 = 다시 잰다)
 const tapNow = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 function tapCssK() {
@@ -809,7 +810,7 @@ function tapCssK() {
     try {
       const c = document.getElementById('screen');
       const h = c ? c.getBoundingClientRect().height : 0;
-      TAP_CSSK = h > 0 ? h / VIEW_H : 1;
+      TAP_CSSK = h > 0 ? h / viewH() : 1;
     } catch { TAP_CSSK = 1; }
   }
   return TAP_CSSK;
@@ -833,7 +834,7 @@ function tapSeal() {
   if (taps.debug && !taps._drawn) {
     try {
       const c = document.getElementById('screen'), ctx = c?.getContext('2d');
-      if (ctx) { ctx.save(); const s = c.height / VIEW_H; ctx.setTransform(s, 0, 0, s, 0, 0); taps.drawDebug(ctx); ctx.restore(); }
+      if (ctx) { ctx.save(); const s = c.height / viewH(); ctx.setTransform(s, 0, 0, s, 0, 0); taps.drawDebug(ctx); ctx.restore(); }
     } catch { /* 디버그 그리기 실패는 무시 */ }
   }
   taps._drawn = false;

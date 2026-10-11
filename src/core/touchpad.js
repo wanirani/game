@@ -25,7 +25,13 @@
 //                                             없으면 길게 눌러도 손을 뗄 때 페이지를 넘긴다
 //   touchpad.layoutInfo()                     디버그: {sizeClass, k, kEff, band, bandH, left, custom, yMin}
 //
-// 버튼 id: attack jump dash sub skill1 skill2 ult swap mount guard · 시스템 pause bag fullscreen
+// 버튼 id: attack jump dash sub skill1 skill2 ult swap mount guard · 시스템 pause bag fullscreen (+ fold: maptog = 큰 지도 열고 닫기)
+// 프리셋 (hud_mobile §3): settings.hud.preset 'auto'(논리 화면비 < 1.55 → fold) | 'wide' | 'fold'. fold = 큰 공격 버튼 둘레 스킬 원호
+//   (PAD_LAYOUT_FOLD, 오른쪽 아래) + 오른쪽 위 아이콘 줄(지도·가방·메뉴) + 탈것·수호 버튼 늘 표시(쓸 수 없으면 어둡게).
+//   배율 = foldScale(화면 높이, touchScale, settings.hud.scale). 편집기 저장은 프리셋마다 (fold 는 touchLayout 의 'fold:<id>' 키).
+//   HUD 가 그리는 탭 자리 (미니맵·빠른 칸): game.hudTaps = [{act, x,y,w,h}] (논리 px, game.hudTapsT 갱신 시각) — 패드가 판정해
+//   act 가 입력 액션이면 누름/뗌을 보내고, 'hudmap' 이면 game.hudMapBig 를 뒤집는다.
+// 그림 (hud_mobile §4): hud.js 의 hudArt/drawArtIcon/drawSkillArt (assets/ui/hud · assets/icons/skills) — 받기 전에는 예전 벡터 그림.
 // 입력: input.touch.set(action, on) (버튼), input.touch.axis(x, y, {sprint}) (스틱; 반지름 단위, 방향 구역은 input 이 정한다), clear()
 // 규칙 (MASTER_PLAN §1.4): 누르는 반경 = 보이는 반지름 + 10 px, 겹치면 가장 가까운 버튼. 손가락을 밀면 버튼이 바뀐다 (touchSlide).
 //   공격·점프 사이 띠(가운데 약 12 px)는 둘 다. ⇄ 는 손을 뗄 때(350ms 미만) 누른다 (길게 누르기 = 기술 원형 메뉴 자리),
@@ -43,13 +49,38 @@ import * as HAP from './haptics.js';
 // ───────────────────────── 배치 ─────────────────────────
 /** 동작 버튼 (편집기에서 옮길 수 있는 것) */
 export const PAD_IDS = ['attack', 'jump', 'dash', 'sub', 'skill1', 'skill2', 'ult', 'swap', 'mount', 'guard'];
-export const SYS_IDS = ['pause', 'bag', 'fullscreen'];
+export const SYS_IDS = ['pause', 'bag', 'fullscreen', 'maptog'];
 /** 크기 등급 S 기준 [right, bottom, 지름] (CSS px, 안전 영역 오른쪽 아래 모서리에서 버튼 중심까지) — MASTER_PLAN §1.4 */
 export const PAD_LAYOUT_S = {
   attack: [108, 58, 72], jump: [36, 118, 68], dash: [190, 44, 56], sub: [118, 146, 54],
   skill1: [190, 122, 54], skill2: [50, 200, 54], ult: [262, 96, 58], swap: [128, 214, 44],
   mount: [262, 176, 48], guard: [196, 200, 48],
 };
+/** 폴드 펼침·태블릿 배치 (hud_mobile §3 오른쪽 아래 스킬 원호): 큰 공격 버튼 둘레로 보조·스킬1·스킬2·필살(위), 바깥에 점프·대시·탑승·⇄·수호.
+ *  [right, bottom, 지름] CSS px (foldScale 1 기준 — 화면 높이 760 CSS px 쯤) */
+export const PAD_LAYOUT_FOLD = {
+  attack: [128, 100, 104], jump: [40, 186, 72], dash: [36, 52, 54],
+  sub: [241, 59, 60], skill1: [243, 135, 60], skill2: [199, 197, 60], ult: [124, 220, 68],
+  mount: [216, 270, 52], swap: [300, 196, 50], guard: [316, 108, 50],
+};
+export const FOLD_ASPECT = 1.55;
+/** 폴드 배치 배율: 화면 높이 760 CSS px = 1 (0.7–1.25) × touchScale × settings.hud.scale */
+export function foldScale(cssH, touchScale = 1, hudScale = 1) {
+  return clamp((Number(cssH) || 760) / 760, 0.7, 1.25) * clamp(Number(touchScale) || 1, 0.8, 1.3) * clamp(Number(hudScale) || 1, 0.85, 1.2);
+}
+/** 폴드 시스템 아이콘 줄 (오른쪽 위, 오른쪽부터 메뉴(Ⅱ)·가방·지도·⛶) → {id: {id,cx,cy,d}} CSS px */
+export function foldSysPlan(W, ins, sd, fs) {
+  const y = ins.t + 8 + sd / 2, out = {};
+  let x = W - ins.r - 8 - sd / 2;
+  for (const id of fs ? ['pause', 'bag', 'maptog', 'fullscreen'] : ['pause', 'bag', 'maptog']) { out[id] = { id, cx: x, cy: y, d: sd }; x -= sd + 12; }
+  return out;
+}
+/** 프리셋 ('wide' | 'fold'): settings.hud.preset, 'auto' 면 논리 화면비 */
+export function presetOf(st, vw, vh) {
+  const p = st?.hud?.preset;
+  if (p === 'wide' || p === 'fold') return p;
+  return (Number(vw) || 960) / (Number(vh) || 540) < FOLD_ASPECT ? 'fold' : 'wide';
+}
 /** 태블릿 띠 배치 (캔버스 아래 남는 세로 ≥ 120 CSS px): 두 줄로 납작하게. 윗줄 위 끝 157 (× 배율) */
 export const PAD_LAYOUT_BAND = {
   jump: [36, 46, 68], attack: [124, 46, 72], dash: [206, 46, 56], swap: [284, 46, 44], guard: [356, 46, 48],
@@ -76,8 +107,10 @@ const OVERLAY_MP = 1.2e6;  // 오버레이 백킹 픽셀 상한
 /** 버튼 → 입력 액션 (예전 DOM 패드와 같다: 점프는 결정, Ⅱ 는 취소도) */
 const ACTS = {
   attack: ['attack'], jump: ['jump', 'confirm'], dash: ['dash'], sub: ['sub'], skill1: ['skill1'], skill2: ['skill2'],
-  ult: ['ult'], swap: ['swap'], mount: ['mount'], guard: ['guard'], pause: ['menu', 'cancel'], bag: ['map'], fullscreen: [],
+  ult: ['ult'], swap: ['swap'], mount: ['mount'], guard: ['guard'], pause: ['menu', 'cancel'], bag: ['map'], fullscreen: [], maptog: [],
 };
+/** HUD 탭 자리가 보낼 수 있는 입력 액션 */
+const ACT_OK = new Set(['sub', 'map', 'menu', 'mount', 'guard', 'skill1', 'skill2', 'ult', 'swap']);
 const LABEL = {
   attack: '공격', jump: '점프', dash: '대시', sub: '보조', skill1: 'S1', skill2: 'S2', ult: '필살', swap: '⇄', mount: '탑승', guard: '수호',
 };
@@ -150,12 +183,12 @@ function fsShown() {
   } catch { return false; }
 }
 /** 저장된 사용자 배치 (검증된 항목만) → {id:[right,bottom,d]} | null */
-function customLayout(st) {
+function customLayout(st, fold = false) {
   const v = st.touchLayout;
   if (!v || typeof v !== 'object') return null;
   let out = null;
   for (const id of PAD_IDS) {
-    const b = v[id];
+    const b = v[fold ? 'fold:' + id : id];
     if (!b || typeof b !== 'object') continue;
     const r = b.right, bt = b.bottom, d = b.d;
     if (![r, bt, d].every((x) => typeof x === 'number' && Number.isFinite(x)) || d < 20 || d > 400) continue;
@@ -215,6 +248,7 @@ function layout(force = false) {
   LSIG.i = 0; LSIG.ch = false;
   lput(W); lput(H); lput(ins.l); lput(ins.r); lput(ins.t); lput(ins.b); lput(cr.x); lput(cr.y); lput(cr.w); lput(cr.h); lput(vw); lput(vh); lput(safeT);
   lput(st.touchScale); lput(st.touchLeftHanded); lput(st.touchLayout); lput(st.safeArea); lput(st.touchStick); lput(fsShown()); lput(g?.dpr); lput(S.fontEpoch);
+  lput(st.hud?.preset); lput(st.hud?.scale);
   if (!force && S.L && !LSIG.ch) return S.L;
   S.lver++;
 
@@ -225,14 +259,17 @@ function layout(force = false) {
   const cs = cr.h / vh;
   const bandH = H - ins.b - (cr.y + cr.h);
   const band = bandH >= BAND_MIN;
-  const yMin = Math.max(ins.t, cr.y + ((left ? HUD_TOP_LEFT : HUD_TOP) + safeT) * cs);
-  const T = band ? PAD_LAYOUT_BAND : PAD_LAYOUT_S;
-  const custom = customLayout(st);
+  const fold = !band && presetOf(st, vw, vh) === 'fold';
+  // 폴드: 왼쪽 위 묶음(미니맵·이름판·필살)과 오른쪽 위 아이콘 줄 아래(논리 y 160)부터 버튼을 둘 수 있다
+  const yMin = Math.max(ins.t, cr.y + ((fold ? 160 : left ? HUD_TOP_LEFT : HUD_TOP) + safeT) * cs);
+  const T = band ? PAD_LAYOUT_BAND : fold ? PAD_LAYOUT_FOLD : PAD_LAYOUT_S;
+  const custom = customLayout(st, fold);
   // 기본 배치: 점수 칸(y 88) 위로, 화면 폭 56 % 너머로 올라가지 않게 배율을 줄인다 (touchScale 1.3 도 phone2 에서 SCORE 를 덮지 않게)
   let tallest = 0, extent = 0;
   for (const id of PAD_IDS) { const [r, b, d] = T[id]; tallest = Math.max(tallest, b + d / 2); extent = Math.max(extent, r + d / 2); }
   const availH = H - ins.b - yMin, availW = (W - ins.l - ins.r) * 0.56;
-  let kEff = Math.min(k, availH / tallest, availW / extent);
+  const kBase = fold ? foldScale(H, ts, st.hud?.scale) : k;
+  let kEff = Math.min(kBase, availH / tallest, availW / extent);
   if (band) kEff = Math.min(kEff, Math.max((bandH - 4) / tallest, Math.min(1, k)));
   kEff = Math.max(0.5, kEff);
   const bounds = { x0: ins.l, x1: W - ins.r, y0: yMin, y1: H - ins.b };
@@ -240,7 +277,7 @@ function layout(force = false) {
   for (const id of PAD_IDS) {
     const c = custom?.[id];
     const [r, b, d0] = c ?? T[id];
-    const kk = c ? k : kEff;
+    const kk = c ? kBase : kEff;
     const d = Math.max(MIN_D, d0 * kk);
     btnList.push({ id, cx: left ? ins.l + r * kk : W - ins.r - r * kk, cy: H - ins.b - b * kk, d });
   }
@@ -249,22 +286,26 @@ function layout(force = false) {
   for (const b of btnList) btn[b.id] = b;
 
   // 시스템 버튼: 안전 영역 위쪽 가운데 (Ⅱ 왼쪽, 가방 오른쪽, ⛶ 는 되는 곳에서만 가방 오른쪽)
-  const sd = Math.max(MIN_D, 44 * cls[1]);
+  const sd = Math.max(MIN_D, 44 * (fold ? Math.min(1.15, kBase) : cls[1]));
   const mid = ins.l + (W - ins.l - ins.r) / 2, sy = ins.t + 6 + sd / 2;
-  const sys = {
-    pause: { id: 'pause', cx: mid - 6 - sd / 2, cy: sy, d: sd },
-    bag: { id: 'bag', cx: mid + 6 + sd / 2, cy: sy, d: sd },
-  };
-  if (fsShown()) sys.fullscreen = { id: 'fullscreen', cx: mid + 6 + sd + 12 + sd / 2, cy: sy, d: sd };
+  let sys;
+  if (fold) sys = foldSysPlan(W, ins, sd, fsShown());
+  else {
+    sys = {
+      pause: { id: 'pause', cx: mid - 6 - sd / 2, cy: sy, d: sd },
+      bag: { id: 'bag', cx: mid + 6 + sd / 2, cy: sy, d: sd },
+    };
+    if (fsShown()) sys.fullscreen = { id: 'fullscreen', cx: mid + 6 + sd + 12 + sd / 2, cy: sy, d: sd };
+  }
 
   // 스틱
-  const R = STICK_R * cls[1] * ts;
+  const R = STICK_R * (fold ? clamp(kBase, 0.9, 1.25) : cls[1] * ts);
   const off = 24 + SPRINT_K * R;
   const home = { x: left ? W - ins.r - off : ins.l + off, y: H - ins.b - off };
   const zw = 0.45 * (W - ins.l - ins.r);
   const zone = left ? { x0: W - ins.r - zw, x1: W - ins.r, y0: ins.t + 64, y1: H } : { x0: ins.l, x1: ins.l + zw, y0: ins.t + 64, y1: H };
 
-  S.L = { W, H, ins, cr, cs, vw, vh, k, kEff, ts, cls: cls[0], band, bandH, left, custom: !!custom, yMin, bounds, btn, sys, sd, R, home, zone };
+  S.L = { W, H, ins, cr, cs, vw, vh, k: kBase, kEff, ts, cls: cls[0], band, bandH, left, custom: !!custom, yMin, bounds, btn, sys, sd, R, home, zone, fold, preset: fold ? 'fold' : 'wide' };
   S.spriteKey = ''; // 크기가 바뀌었을 수 있다 → 버튼 그림 다시 굽기
   S.pending = true;
   if (S.editor) editorRelayout();
@@ -275,8 +316,8 @@ function layout(force = false) {
 function shownBtn(id) {
   if (S.editor) return true;
   if (S.hidden.has(id)) return false;
-  if (id === 'mount') return !!S.shown.mount;
-  if (id === 'guard') return !!S.shown.guard;
+  if (id === 'mount') return !!S.shown.mount || !!S.L?.fold;   // 폴드: 늘 보이고, 쓸 수 없으면 어둡게 (hud_mobile §3 맨 아래 줄)
+  if (id === 'guard') return !!S.shown.guard || !!S.L?.fold;
   return true;
 }
 /** 편집기가 열려 있으면 편집 중인 위치, 아니면 배치 */
@@ -520,6 +561,20 @@ function inStickZone(L, x, y) {
   if (settings().touchStick === 'fixed') return Math.hypot(x - L.home.x, y - L.home.y) <= 2 * L.R;
   return true;
 }
+/** HUD 가 그린 탭 자리 (game.hudTaps, 논리 px; 0.4초 안에 갱신된 것만) 중 (x, y) 에 걸리는 것 → {act} | null */
+function hitHudZone(L, x, y) {
+  const g = game(), Z = g?.hudTaps;
+  if (!Z || !Z.length || now() - (g.hudTapsT || 0) > 400) return null;
+  const cr = L.cr;
+  if (x < cr.x || y < cr.y || x > cr.x + cr.w || y > cr.y + cr.h) return null;
+  const lx = ((x - cr.x) * L.vw) / cr.w, ly = ((y - cr.y) * L.vh) / cr.h, m = 4;
+  for (let i = Z.length - 1; i >= 0; i--) {
+    const z = Z[i];
+    if (z && z.w > 0 && lx >= z.x - m && lx <= z.x + z.w + m && ly >= z.y - m && ly <= z.y + z.h + m) return z;
+  }
+  return null;
+}
+function toggleBigMap() { const g = game(); if (g) { g.hudMapBig = !g.hudMapBig; try { g.audio?.sfx?.('menu_move'); } catch { /* 소리 없음 */ } } }
 /**
  * (x, y) 가 캔버스에 그린 UI 버튼 위인가: 그러면 스틱을 만들지 않고 탭을 캔버스로 보낸다.
  * 예: 마을의 '▲ 대화 · 들어가기' 버튼(아래 가운데, 왼쪽 부분이 스틱 자리 45 % 안), 왼손 모드에서 오른쪽 위 '동료'·'메뉴' 버튼.
@@ -573,6 +628,15 @@ function onDown(e) {
     const p = { kind: 'btn', ids, t0: now(), x, y, swapT: 0, radial: false, swapOn: false };
     S.ptrs.set(e.pointerId, p);
     for (const id of ids) pressBtn(p, id);
+    buzz(); unlockAudio(); S.pending = true; startLoop();
+    return;
+  }
+  const hz = hitHudZone(L, x, y);
+  if (hz) {   // HUD 의 미니맵·빠른 칸 (fold): 입력 액션이면 누르고 있는 동안 누름, 'hudmap' 은 뗄 때 큰 지도 열고 닫기
+    claim(e);
+    const p = { kind: 'hud', act: hz.act, ids: [], t0: now(), x, y };
+    S.ptrs.set(e.pointerId, p);
+    if (hz.act !== 'hudmap' && ACT_OK.has(hz.act)) actOn(hz.act);
     buzz(); unlockAudio(); S.pending = true; startLoop();
     return;
   }
@@ -630,6 +694,9 @@ function onUp(e) {
   } else if (p.kind === 'sys') {
     releaseBtn(p, p.id, false);
     if (p.id === 'fullscreen' && !cancel) toggleFs();
+    if (p.id === 'maptog' && !cancel) toggleBigMap();
+  } else if (p.kind === 'hud') {
+    if (p.act === 'hudmap') { if (!cancel) toggleBigMap(); } else if (ACT_OK.has(p.act)) actOff(p.act);
   } else {
     for (const id of p.ids) releaseBtn(p, id, !cancel);
   }
@@ -766,7 +833,9 @@ function isPressed(id) {
 }
 
 // ───────────────────────── 그리기 ─────────────────────────
-let drawAssetsReady = false, drawAssetsAsked = false, SKILL_DB = null, SUB_DB = null, glyphFn = null, iconFn = null;
+let drawAssetsReady = false, drawAssetsAsked = false, SKILL_DB = null, SUB_DB = null, glyphFn = null, iconFn = null, HUDM = null;
+/** 그린 테·아이콘(hud.js)을 쓸 수 있나 (테 그림을 다 받았을 때) */
+const artOn = () => !!HUDM?.hudArtReady?.();
 /**
  * 스킬·보조무기 버튼 그림(hud.js·icons.js·스킬 데이터)은 첫 화면 뒤에 받는다 (R1-REQ-229: 이 모듈들은 나머지 장면과 같은 lazy 조각에
  * 있다) — 지연 장면(game.whenScenes)이 다 오면, 늦어도 패드가 처음 보일 때. 그 전에는 버튼 글자만 그린다 (drawAssetsReady)
@@ -782,6 +851,8 @@ function loadDrawAssets() {
   drawAssetsAsked = true;
   Promise.all([import('../render/hud.js'), import('../render/icons.js'), import('../data/skills.js'), import('../data/subweapons.js')]).then(([h, ic, sk, sw]) => {
     glyphFn = h.drawSkillGlyph ?? null; iconFn = ic.drawIcon ?? null; SKILL_DB = sk.SKILLS ?? null; SUB_DB = sw.SUBWEAPONS ?? null;
+    HUDM = h;
+    try { h.preloadHudArt?.(() => { S.spriteKey = ''; S.pending = true; startLoop(); }); } catch (e) { console.error('[touchpad] hud art', e); }
     drawAssetsReady = true; S.pending = true;
   }).catch((e) => { console.error('[touchpad] draw assets', e); });
 }
@@ -832,24 +903,28 @@ function paintNow(L) {
  * 캔버스는 버튼 id × (보통, 눌림) 26개를 처음 한 번만 만들고, 다시 구울 때(회전·크기 조절·touchScale·글꼴)는 같은 캔버스에
  * 크기만 바꿔 그린다 → 스테이지 도중 새 캔버스 0개 (MASTER_PLAN §5.2). 매 그리기마다 부르므로 바뀌었는지는 숫자로만 본다
  */
-const BAKE = { lver: -1, dpr: 0, epoch: -1, dk: '' };
+const BAKE = { lver: -1, dpr: 0, epoch: -1, dk: '', art: false };
+/** 버튼 그림 캔버스의 둘레 여백 (그린 테의 모서리 장식이 원 밖으로 0.16r 나온다) */
+const spritePad = (d) => Math.ceil(d * 0.1) + 5;
 function bakeSprites(L) {
   let dk = '';
   if (S.editor) for (const id of PAD_IDS) dk += S.editor.pos[id].d.toFixed(1) + ','; // 편집기에서 크기를 바꾸는 중
   const B = BAKE;
-  if (S.spriteKey === 'ok' && B.lver === S.lver && B.dpr === S.dpr && B.epoch === S.fontEpoch && B.dk === dk) return;
-  S.spriteKey = 'ok'; B.lver = S.lver; B.dpr = S.dpr; B.epoch = S.fontEpoch; B.dk = dk;
+  const art = artOn();
+  if (S.spriteKey === 'ok' && B.lver === S.lver && B.dpr === S.dpr && B.epoch === S.fontEpoch && B.dk === dk && B.art === art) return;
+  S.spriteKey = 'ok'; B.lver = S.lver; B.dpr = S.dpr; B.epoch = S.fontEpoch; B.dk = dk; B.art = art;
   const make = (id, d, pressed, sys) => {
     const pair = (S.spr[id] ??= [null, null]), k = pressed ? 1 : 0;
     let c = pair[k];
     if (!c) { c = document.createElement('canvas'); pair[k] = c; }
-    const pad = 6, sz = Math.max(1, Math.ceil((d + pad * 2) * S.dpr));
+    const pad = spritePad(d), sz = Math.max(1, Math.ceil((d + pad * 2) * S.dpr));
     if (c.width !== sz || c.height !== sz) { c.width = sz; c.height = sz; }
     const g = c.getContext('2d');
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.clearRect(0, 0, c.width, c.height);
     g.setTransform(S.dpr, 0, 0, S.dpr, 0, 0);
-    if (sys) drawSysBase(g, id, d / 2 + pad, d / 2 + pad, d, pressed);
+    if (sys) drawSysBase(g, id, d / 2 + pad, d / 2 + pad, d, pressed, art);
+    else if (art) paintedDisc(g, id, d / 2 + pad, d / 2 + pad, d / 2, pressed);
     else drawDisc(g, id, d / 2 + pad, d / 2 + pad, d / 2, pressed);
     c._d = d;
   };
@@ -859,7 +934,7 @@ function bakeSprites(L) {
 function blit(c, id, cx, cy, d, pressed) {
   const sp = S.spr[id]?.[pressed ? 1 : 0];
   if (!sp || Math.abs(sp._d - d) > 0.05) return false;
-  const pad = 6, s = d + pad * 2;
+  const pad = spritePad(d), s = d + pad * 2;
   c.drawImage(sp, cx - s / 2, cy - s / 2, s, s);
   return true;
 }
@@ -900,6 +975,24 @@ function drawDisc(g, id, cx, cy, r, pressed) {
   }
   g.restore();
 }
+/** 그린 고딕 금속 테 버튼 (hud_mobile §4): 어두운 원판 + 테 그림(공격 = 가시 테, 필살 = 금빛 팔각 테, 나머지 = 리벳 테).
+ *  테 그림 크기 2.32r → 안쪽 구멍 반지름 ≈ 0.83r (아이콘 자리), 바깥 원 ≈ r, 모서리 장식 ≈ 1.16r */
+function paintedDisc(g, id, cx, cy, r, pressed) {
+  const ring = HUDM.hudArt(id === 'attack' ? 'ring_attack' : id === 'ult' ? 'frame_ult' : 'ring_small');
+  g.save();
+  g.fillStyle = 'rgba(0,0,0,0.4)';
+  g.beginPath(); g.arc(cx, cy + 2, r * 0.98, 0, TAU); g.fill();
+  g.fillStyle = discGradient(g, cx, cy, r * 0.9, pressed, id);
+  g.beginPath(); g.arc(cx, cy, r * 0.88, 0, TAU); g.fill();
+  if (ring) { const z = r * 2.32; g.drawImage(ring, cx - z / 2, cy - z / 2, z, z); }
+  if (pressed) { g.fillStyle = 'rgba(255,214,140,0.3)'; g.beginPath(); g.arc(cx, cy, r * 0.86, 0, TAU); g.fill(); }
+  if (id === 'dash') { // 대시: 그림 아이콘이 없다 → 금빛 쐐기 문양 + 글자
+    g.save(); g.globalAlpha = 0.85; g.fillStyle = COL.gold; g.strokeStyle = COL.gold;
+    g.translate(cx, cy - r * 0.12); emblem(g, id, r * 0.5); g.restore();
+    label(g, LABEL.dash, cx, cy + r * 0.48, Math.max(11, r * 0.34), pressed);
+  }
+  g.restore();
+}
 function emblem(g, id, s) {
   g.lineCap = 'round'; g.lineJoin = 'round';
   if (id === 'attack') { // 교차한 두 검
@@ -931,8 +1024,19 @@ function roundRect(g, x, y, w, h, r) {
   g.lineTo(x + r, y + h); g.quadraticCurveTo(x, y + h, x, y + h - r);
   g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.closePath();
 }
-function drawSysBase(g, id, cx, cy, d, pressed) {
+const SYS_ART = { pause: 'ui_menu', bag: 'ui_bag', maptog: 'ui_map' };
+function drawSysBase(g, id, cx, cy, d, pressed, art = false) {
   const h = d / 2;
+  if (art && SYS_ART[id]) { // 그린 아이콘 (오른쪽 위 아이콘 줄): 리벳 테 + 원형 그림
+    g.save();
+    g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.arc(cx, cy + 1.5, h * 0.98, 0, TAU); g.fill();
+    if (!HUDM.drawArtIcon(g, SYS_ART[id], cx, cy, d * 0.8)) { g.fillStyle = 'rgba(22,6,12,0.9)'; g.beginPath(); g.arc(cx, cy, h * 0.86, 0, TAU); g.fill(); }
+    const ring = HUDM.hudArt('ring_small');
+    if (ring) { const z = d * 1.12; g.drawImage(ring, cx - z / 2, cy - z / 2, z, z); }
+    if (pressed) { g.fillStyle = 'rgba(255,214,140,0.32)'; g.beginPath(); g.arc(cx, cy, h * 0.82, 0, TAU); g.fill(); }
+    g.restore();
+    return;
+  }
   g.save();
   g.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(g, cx - h, cy - h + 1.5, d, d, d * 0.23); g.fill();
   g.fillStyle = pressed ? '#e8c872' : 'rgba(22,6,12,0.9)'; roundRect(g, cx - h, cy - h, d, d, d * 0.23); g.fill();
@@ -948,6 +1052,11 @@ function drawSysBase(g, id, cx, cy, d, pressed) {
     g.fillStyle = pressed ? '#e8c872' : 'rgba(22,6,12,0.9)';
     g.fillRect(cx - 11 * u, cy - 1 * u, 22 * u, 2 * u);
     g.fillStyle = pressed ? '#8a2a1a' : COL.gold; g.fillRect(cx - 2.5 * u, cy - 2.5 * u, 5 * u, 5 * u);
+  } else if (id === 'maptog') { // 접힌 지도
+    g.lineWidth = 2 * u;
+    g.beginPath(); g.moveTo(cx - 11 * u, cy - 7 * u); g.lineTo(cx - 4 * u, cy - 10 * u); g.lineTo(cx + 4 * u, cy - 7 * u); g.lineTo(cx + 11 * u, cy - 10 * u);
+    g.lineTo(cx + 11 * u, cy + 7 * u); g.lineTo(cx + 4 * u, cy + 10 * u); g.lineTo(cx - 4 * u, cy + 7 * u); g.lineTo(cx - 11 * u, cy + 10 * u); g.closePath(); g.stroke();
+    g.beginPath(); g.moveTo(cx - 4 * u, cy - 10 * u); g.lineTo(cx - 4 * u, cy + 7 * u); g.moveTo(cx + 4 * u, cy - 7 * u); g.lineTo(cx + 4 * u, cy + 10 * u); g.stroke();
   } else if (id === 'fullscreen') { // 네 모서리
     g.lineWidth = 2.4 * u;
     const a = 10 * u, b = 4 * u;
@@ -996,6 +1105,10 @@ function draw(L, w) {
     const pressed = isPressed(id);
     c.globalAlpha = pressed ? Math.max(0.9, op) : Math.max(0.5, op);
     blit(c, id, b.cx, b.cy, b.d, pressed);
+    if (id === 'bag' && L.fold) { // 가방 찬 비율 (가방 한도 300 칸, 중요 물품 포함 어림)
+      const n = w?.state?.inventory?.length ?? 0;
+      if (n > 0) label(c, `${Math.min(100, Math.round((n / 300) * 100))}%`, b.cx + b.d * 0.3, b.cy + b.d * 0.36, Math.max(11, b.d * 0.26), false, n >= 270 ? '#ff8a8a' : '#fff2c0', FONT.num);
+    }
   }
   c.globalAlpha = 1;
 }
@@ -1006,11 +1119,18 @@ function drawButton(c, L, id, b, pressed, alpha, p, run, w, tsec) {
   c.globalAlpha = alpha;
   if (pressed) { c.translate(cx, cy); c.scale(0.94, 0.94); c.translate(-cx, -cy); }
   if (!blit(c, id, cx, cy, b.d, pressed)) drawDisc(c, id, cx, cy, r, pressed);
+  const art = artOn();
   switch (id) {
+    case 'attack': // 그린 테: 지금 무기 그림 (없으면 글자)
+      if (art) { const ic = weaponIcon(w); if (!(ic && iconFn && drawIconSafe(c, ic, cx, cy, r * 1.15))) label(c, LABEL.attack, cx, cy + 1, Math.max(13, r * 0.42), pressed); }
+      break;
+    case 'jump': if (art && !HUDM.drawArtIcon(c, 'ui_jump', cx, cy, r * 1.66)) label(c, LABEL.jump, cx, cy + 1, Math.max(12, r * 0.42), pressed); break;
     case 'skill1': case 'skill2': drawSkill(c, id, cx, cy, r, pressed, p); break;
     case 'sub': drawSub(c, cx, cy, r, pressed, run); break;
     case 'ult': drawUlt(c, cx, cy, r, pressed, run, w, tsec); break;
-    case 'swap': {
+    case 'swap': if (art && HUDM.drawArtIcon(c, 'ui_swap', cx, cy, r * 1.66)) { label(c, `${num(p?.skillPage, 0) + 1}/2`, cx, cy + r * 0.62, Math.max(11, r * 0.42), pressed, null, FONT.num); break; }
+    // falls through (그림이 없으면 예전 글자)
+    case 'swap_txt': {
       const page = num(p?.skillPage, 0) + 1;
       label(c, '⇄', cx, cy - r * 0.38, Math.max(11, r * 0.42), pressed, COL.gold);
       label(c, `${page}/2`, cx, cy + r * 0.14, Math.max(12, r * 0.56), pressed, null, FONT.num);
@@ -1018,8 +1138,9 @@ function drawButton(c, L, id, b, pressed, alpha, p, run, w, tsec) {
     }
     case 'mount': {
       const m = S.cmp?.mount;
-      if (m?.blocked && !m.riding) c.globalAlpha *= 0.45; // 보스전 등 탈것 금지
-      label(c, m?.riding ? '하차' : LABEL.mount, cx, cy + 1, Math.max(12, r * 0.52), pressed);
+      if (!m || (m.blocked && !m.riding)) c.globalAlpha *= 0.4; // 탈것이 없거나 보스전 등 탈것 금지 → 어둡게 (쓸 수 있을 때만 밝다)
+      if (art && HUDM.drawArtIcon(c, 'ui_mount', cx, cy, r * 1.66)) { if (m?.riding) label(c, '하차', cx, cy + r * 0.55, Math.max(11, r * 0.36), pressed); }
+      else label(c, m?.riding ? '하차' : LABEL.mount, cx, cy + 1, Math.max(12, r * 0.52), pressed);
       const cd = num(m?.cd, 0);
       if (cd > 0 && !pressed) cooldown(c, cx, cy, r, cd / Math.max(0.1, num(m?.cdMax, cd) || cd), cd);
       if (m && num(m.maxHp, 0) > 0) ring(c, cx, cy, r - 2.5, num(m.hp, 0) / m.maxHp, num(m.hp, 0) / m.maxHp < 0.3 ? '#ff5050' : '#e8a040', 2.5);
@@ -1027,7 +1148,8 @@ function drawButton(c, L, id, b, pressed, alpha, p, run, w, tsec) {
     }
     case 'guard': {
       const gc = guardCd(S.cmp);
-      label(c, LABEL.guard, cx, cy + 1, Math.max(12, r * 0.52), pressed, gc.ready ? '#fff2c0' : null);
+      if (!gc.n) c.globalAlpha *= 0.4;   // 수호신이 없으면 어둡게
+      if (!(art && HUDM.drawArtIcon(c, 'ui_guard', cx, cy, r * 1.66))) label(c, LABEL.guard, cx, cy + 1, Math.max(12, r * 0.52), pressed, gc.ready ? '#fff2c0' : null);
       if (gc.cd > 0 && !pressed) cooldown(c, cx, cy, r, gc.cd / gc.max, gc.cd);
       else if (gc.ready) ring(c, cx, cy, r - 2.5, 1, '#9fd8ff', 2.5);
       break;
@@ -1047,9 +1169,18 @@ function drawSkill(c, id, cx, cy, r, pressed, p) {
   const k = id === 'skill2' ? 1 : 0;
   const sid = p?.hero?.slots?.[num(p?.skillPage, 0) * 2 + k] ?? null;
   const sk = sid && SKILL_DB ? SKILL_DB[sid] : null;
-  if (!sk) { label(c, LABEL[id], cx, cy + 1, Math.max(12, r * 0.5), pressed, 'rgba(243,226,184,0.55)', FONT.num); return; }
+  const art = artOn();
+  if (!sk) { // 빈 칸: 자물쇠 그림 (잠긴 칸)
+    if (art && HUDM.drawArtIcon(c, 'ui_lock', cx, cy, r * 1.5, 0.55)) return;
+    label(c, LABEL[id], cx, cy + 1, Math.max(12, r * 0.5), pressed, 'rgba(243,226,184,0.55)', FONT.num); return;
+  }
   const cd = num(p.skillCd?.[sid], 0);
   const noMp = num(p.mp, 0) < num(sk.cost, 10);
+  if (art && HUDM.drawSkillArt(c, sid, cx, cy, r * 1.66, noMp && cd <= 0 ? 0.4 : 1)) {
+    if (cd > 0) cooldown(c, cx, cy, r * 0.84, cd / Math.max(0.1, num(sk.cd, 3)), cd);
+    else if (noMp) label(c, 'MP', cx, cy + r * 0.5, Math.max(11, r * 0.36), false, '#8ec8ff', FONT.num);
+    return;
+  }
   if (glyphFn) {
     c.save();
     if (noMp && cd <= 0) c.globalAlpha *= 0.45;
@@ -1065,6 +1196,14 @@ function drawSkill(c, id, cx, cy, r, pressed, p) {
     c.restore();
   }
 }
+/** 지금 무기 아이콘 id (장착 uid → 가방 항목의 icon; uid 가 바뀔 때만 찾는다) */
+const WPN = { uid: null, icon: null };
+function weaponIcon(w) {
+  const hero = w?.hero ?? w?.player?.hero, uid = hero?.equip?.weapon ?? null;
+  if (uid !== WPN.uid) { WPN.uid = uid; WPN.icon = (uid && w?.state?.inventory?.find?.((i) => i.uid === uid)?.icon) || null; }
+  return WPN.icon;
+}
+function drawIconSafe(c, id, cx, cy, size) { try { iconFn(c, id, cx, cy, size, null, { glow: false }); return true; } catch { return false; } }
 function drawSub(c, cx, cy, r, pressed, run) {
   const sw = run?.sub && SUB_DB ? SUB_DB[run.sub] : null;
   if (sw && iconFn) {
@@ -1081,6 +1220,38 @@ function drawUlt(c, cx, cy, r, pressed, run, w, tsec) {
   const aw = w?.awakenState;
   const reduce = settings().reduceMotion === true;
   const pulse = reduce ? 0.6 : 0.5 + 0.5 * Math.sin(tsec * 6);
+  const cid = w?.hero?.charId ?? w?.player?.hero?.charId;
+  if (artOn() && cid && HUDM.drawArtIcon(c, aw?.ready ? 'awaken_' + cid : 'ult_' + cid, cx, cy, r * 1.62, full || aw?.ready ? 1 : 0.55)) {
+    // 그린 팔각 테 (hud_mobile §3 궁극기): 안쪽에 SP 고리, 가득 차면 금빛 맥동 + 도는 광택
+    const gr = r * 0.8;
+    c.save();
+    c.lineWidth = Math.max(3, r * 0.1); c.lineCap = 'round';
+    c.strokeStyle = 'rgba(0,0,0,0.55)'; c.beginPath(); c.arc(cx, cy, gr, 0, TAU); c.stroke();
+    c.strokeStyle = aw?.ready ? '#ff3050' : full ? '#ffe070' : '#ff8a2a';
+    if (sp > 0) { c.beginPath(); c.arc(cx, cy, gr, -Math.PI / 2, -Math.PI / 2 + TAU * sp / 100); c.stroke(); }
+    if (full && !pressed) {
+      c.globalAlpha *= 0.3 + 0.5 * pulse;
+      c.lineWidth = Math.max(4, r * 0.18); c.strokeStyle = aw?.ready ? 'rgba(255,60,90,0.9)' : 'rgba(255,224,120,0.9)';
+      c.beginPath(); c.arc(cx, cy, r * 1.02, 0, TAU); c.stroke();
+      if (!reduce) { const a = (tsec * 3) % TAU; c.globalAlpha = 0.8; c.strokeStyle = '#fff'; c.lineWidth = Math.max(2, r * 0.1); c.beginPath(); c.arc(cx, cy, gr, a, a + 0.5); c.stroke(); }
+    }
+    c.restore();
+    if (!full && !aw?.ready) label(c, `${Math.floor(sp)}%`, cx, cy + r * 0.5, Math.max(11, r * 0.32), pressed, null, FONT.num);
+    if (aw?.ready) label(c, '각성', cx, cy + r * 0.5, Math.max(11, r * 0.32), pressed, '#ff8090');
+  } else ultVector(c, cx, cy, r, pressed, sp, full, aw, reduce, pulse, tsec);
+  // 길게 누르기 (각성): 바깥 고리가 시계 방향으로 찬다 (feel §6.1)
+  const hk = clamp(num(aw?.holdK, 0), 0, 1);
+  if (hk > 0) {
+    c.save();
+    c.lineWidth = 5; c.lineCap = 'round';
+    c.strokeStyle = 'rgba(0,0,0,0.5)'; c.beginPath(); c.arc(cx, cy, r + 6, 0, TAU); c.stroke();
+    c.strokeStyle = hk >= 1 ? '#ffe070' : '#ff3050';
+    c.beginPath(); c.arc(cx, cy, r + 6, -Math.PI / 2, -Math.PI / 2 + TAU * hk); c.stroke();
+    c.restore();
+  }
+}
+/** 그림 없는 필살 버튼 (예전 벡터 그림) */
+function ultVector(c, cx, cy, r, pressed, sp, full, aw, reduce, pulse, tsec) {
   // 게이지 고리 (테두리 안쪽)
   const gr = r - Math.max(3, r * 0.1);
   c.save();
@@ -1105,16 +1276,6 @@ function drawUlt(c, cx, cy, r, pressed, run, w, tsec) {
   }
   label(c, LABEL.ult, cx, cy + (aw?.ready ? -r * 0.12 : 1), Math.max(12, r * 0.5), pressed, full ? '#fff2c0' : null);
   if (aw?.ready) label(c, '각성', cx, cy + r * 0.42, Math.max(11, r * 0.3), pressed, '#ff8090');
-  // 길게 누르기 (각성): 바깥 고리가 시계 방향으로 찬다 (feel §6.1)
-  const hk = clamp(num(aw?.holdK, 0), 0, 1);
-  if (hk > 0) {
-    c.save();
-    c.lineWidth = 5; c.lineCap = 'round';
-    c.strokeStyle = 'rgba(0,0,0,0.5)'; c.beginPath(); c.arc(cx, cy, r + 6, 0, TAU); c.stroke();
-    c.strokeStyle = hk >= 1 ? '#ffe070' : '#ff3050';
-    c.beginPath(); c.arc(cx, cy, r + 6, -Math.PI / 2, -Math.PI / 2 + TAU * hk); c.stroke();
-    c.restore();
-  }
 }
 
 function drawStick(c, L, op) {
@@ -1131,11 +1292,15 @@ function drawStick(c, L, op) {
   if (a <= 0.01) return;
   c.save();
   c.globalAlpha = a;
-  // 받침
-  c.fillStyle = 'rgba(18,4,10,0.38)';
-  c.beginPath(); c.arc(ax, ay, R, 0, TAU); c.fill();
-  c.lineWidth = 2; c.strokeStyle = 'rgba(232,200,114,0.7)';
-  c.beginPath(); c.arc(ax, ay, R, 0, TAU); c.stroke();
+  // 받침 (그린 철판 원판이 있으면 그것 — hud_mobile §3 '바탕 원판 그림')
+  const base = artOn() ? HUDM.hudArt('stick_base') : null;
+  if (base) { const z = R * 2.3; c.drawImage(base, ax - z / 2, ay - z / 2, z, z); }
+  else {
+    c.fillStyle = 'rgba(18,4,10,0.38)';
+    c.beginPath(); c.arc(ax, ay, R, 0, TAU); c.fill();
+    c.lineWidth = 2; c.strokeStyle = 'rgba(232,200,114,0.7)';
+    c.beginPath(); c.arc(ax, ay, R, 0, TAU); c.stroke();
+  }
   // 네 방향 눈금
   c.fillStyle = 'rgba(232,200,114,0.55)';
   for (let i = 0; i < 4; i++) {
@@ -1182,7 +1347,7 @@ function editorRelayout() {
   E.ver++;
 }
 function defaultPositions(L) {
-  const T = L.band ? PAD_LAYOUT_BAND : PAD_LAYOUT_S;
+  const T = L.band ? PAD_LAYOUT_BAND : L.fold ? PAD_LAYOUT_FOLD : PAD_LAYOUT_S;
   const list = PAD_IDS.map((id) => {
     const [r, b, d0] = T[id];
     const d = Math.max(MIN_D, d0 * L.kEff);
@@ -1224,7 +1389,13 @@ function closeEditor(opts = {}) {
   let saved = false;
   if (save) {
     const g = game(), L = S.L;
-    const out = E.reset && !E.moved ? null : toStored(E.pos, L);
+    const mine = E.reset && !E.moved ? null : toStored(E.pos, L);
+    // 프리셋마다 따로 저장: fold 는 'fold:<id>' 키, wide 는 그냥 <id>. 다른 프리셋의 저장분은 그대로 둔다
+    const prev = g?.settings?.touchLayout && typeof g.settings.touchLayout === 'object' ? g.settings.touchLayout : {};
+    const keep = {};
+    for (const k of Object.keys(prev)) if (L?.fold ? !k.startsWith('fold:') : k.startsWith('fold:')) keep[k] = prev[k];
+    if (mine) for (const id of Object.keys(mine)) keep[L?.fold ? 'fold:' + id : id] = mine[id];
+    const out = Object.keys(keep).length ? keep : null;
     if (g?.settings) {
       g.settings.touchLayout = out;
       try { (g.saves ?? SAVE.saves)?.saveSettings?.(g.settings); } catch (e) { console.error('[touchpad] saveSettings', e); }

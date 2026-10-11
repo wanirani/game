@@ -13,11 +13,11 @@
     3. 라우드니스 맞춤: '사건 라우드니스' (BS.1770 K-가중, 게이트 대신 소리 몸통 — 10 ms 엔벨로프가 최대의 -20 dB 위인 구간 —
        의 평균 제곱; 짧은 효과음에는 400 ms 창의 LUFS-M 이 소리 길이에 따라 들쭉날쭉해서) 를 목표 -16 LUFS 로, 트루 피크 ≤ -1 dBTP
        (4배 오버샘플; 넘으면 부드러운 리미터 — 4 dB 넘게 눌러야 하면 목표를 그만큼 낮춘다). 보고에는 LUFS-M(400 ms 최대)도 같이 적는다.
-    4. 꼬리: -60 dB 아래 자르기 + 끝 12 ms 페이드. 44.1 kHz 로 → .ogg (Vorbis q4) + .m4a (AAC-LC 96 kbps 모노 / 128 kbps 스테레오)
+    4. 꼬리: -60 dB 아래 자르기 + 끝 12 ms 페이드. 44.1 kHz 로 → .m4a 만 (AAC-LC 레시피 br, 기본 96 kbps 모노 / 128 kbps 스테레오; 2차 묶음 80 kbps)
        인코딩한 두 파일을 다시 풀어 샘플 피크(dpk)를 재고, -1 dBFS 를 넘으면 리미터 상한을 그만큼 낮춰 다시 만든다 (AAC 는 날카로운
        순간음에서 피크를 최대 4 dB 넘긴다 — 그래서 hit_heavy·hit_stone 은 12·10 kHz 저역 통과)
        두 형식인 까닭은 assets/audio/sfx 와 같다: 헤드리스 Chromium·일부 리눅스는 AAC 를 못 풀고, 옛 사파리는 Vorbis 를 못 푼다.
-  index.json = { version, rate, formats, names:[…], sfx:{이름:{f:[파일 id], g, rev?}}, files:{id:{dur, on, ch, lufs, lufs_m, peak, dpk, m4a, ogg, bytes}} }
+  index.json = { version, rate, formats:['m4a'], names:[…], sfx:{이름:{f:[파일 id], g, ref?, rev?, room?, of?, alias?}}, files:{id:{dur, on, ch, lufs, lufs_m, peak, dpk, m4a, bytes}} }
     g = 엔진 음량 (호출 vol 에 곱함) — tools/test_sfx.mjs --calibrate-v2 가 지금 소리(샘플+합성)와 귀에 같은 크기(K-가중 순간
     라우드니스)가 되게 맞춘다. 다시 빌드하면 g 가 1 로 돌아가므로 --keep-gains 를 쓰거나 --calibrate-v2 를 두세 번 다시 돌린다.
   sources.json 의 출처는 assets/audio/CREDITS.md 의 'v2' 표와 /tmp/claude-0/g3/sfx_sources.json 에 그대로 옮긴다 (--credits).
@@ -42,6 +42,7 @@ OUT_RATE = 44100    # 내보내기 rate (assets/audio/sfx 와 같음)
 TARGET = -16.0      # 사건 라우드니스 LUFS (lufs_ev: 소리가 울리는 구간의 K-가중 평균 — 짧은 타격음은 400 ms 창 LUFS-M 이 길이에 따라 크게 달라서)
 CEIL = -1.0         # dBTP
 LREF = -20.0        # 층 기준 크기 (사건 라우드니스)
+CLIP_MAX = 6.0      # 버스 부드러운 클리퍼 최대 감쇠 (dB) — 2차 묶음
 
 # ───────────────────────────── 레시피 ─────────────────────────────
 # 층: s 소재 키 · at 찾기 시작(초) · al 'pk' = 가장 센 곳 기준(기본: 첫 소리) · len 길이 · g dB(층을 같은 크기로 맞춘 뒤의 상대 비율)
@@ -97,12 +98,12 @@ RECIPES = {
         L(BSB(2949), al='pk', len=0.06, g=-12, hp=2200, tau=0.02, clip=6),
     ], eq=[('ls', 100, 2.5, 0.7), ('pk', 360, -2.5, 1.0), ('hs', 6000, 1.5, 0.7)], sat=(2.4, 0.35))},
     # 살 재질 층 (M·H 등급에 겹침) — 찌르기·베기가 살에 박히는 젖은 '퍽'
-    'hit_flesh': {'n': 4, 'ch': 1, 'var': lambda v: dict(layers=[
-        L(BSB(GORE[v]), al='pk', len=0.20, g=0, hp=220, tau=0.07, hold=0.01, clip=5),
-        L(BSB(GORE[(v + 2) % 6]), al='pk', len=0.14, g=-5, st=-4, hp=150, lp=5000, tau=0.06, dly=10),
-        L(MEAT[v % 2], len=0.16, g=-4, st=[-2, 0, -3, -1][v], hp=90, tau=0.07, clip=8),
-        L(BSB([1598, 1599, 1600, 1598][v]), al='pk', len=0.06, g=-10, hp=1600, tau=0.025, dly=2, clip=6),
-    ], eq=[('ls', 140, 2.0, 0.7), ('pk', 2500, -1.5, 1.0), ('hs', 9000, -3.0, 0.7)], sat=(1.8, 0.25))},
+    'hit_flesh': {'n': 4, 'ch': 1, 'var': lambda v: dict(layers=[      # 2차: 더 무거운 '퍽' (밝은 '착' → 둔탁한 몸통 중심, 사용자 의견)
+        L(QPUNCH[v], len=0.24, g=0, st=-5, hp=40, lp=600, tau=0.09, clip=4),
+        L(BSB(GORE[v]), al='pk', len=0.18, g=-3, hp=180, lp=3500, tau=0.06, hold=0.01, clip=5),
+        L(MEAT[v % 2], len=0.16, g=-3, st=[-4, -2, -5, -3][v], hp=70, lp=2500, tau=0.07, clip=8),
+        L(BSB(GORE[(v + 2) % 6]), al='pk', len=0.12, g=-9, st=-5, hp=150, lp=3000, tau=0.05, dly=10),
+    ], eq=[('ls', 120, 3.0, 0.7), ('pk', 2500, -3.0, 1.0), ('hs', 6000, -6.0, 0.7)], sat=(2.0, 0.3))},
     # 단단한 재질 층 (돌·갑옷·얼음) — 돌이 깨지는 '딱' + 둔탁한 노크
     'hit_stone': {'n': 4, 'ch': 1, 'var': lambda v: dict(layers=[
         L('oga:qubodup_impact/qubodupImpactStone.flac', len=0.26, g=0, st=[0, 2, -2, -4][v], hp=60, tau=0.08),
@@ -121,9 +122,9 @@ RECIPES = {
     'hurt': {'n': 4, 'ch': 1, 'var': lambda v: dict(layers=[
         L(BSB(806), at=[0.06, 1.10, 2.15, 3.20][v], len=0.14, g=0, hp=120, tau=0.05, clip=6),
         L(QPUNCH[(v + 1) % 5], len=0.30, g=-2, st=-3, lp=1800, hp=50, tau=0.1),
-        L(f'oga:rubberduck_rpg/chain_0{[1, 2, 3, 1][v]}.ogg', at=[0, 0, 0, 0.12][v], len=0.28, g=-12, hp=1500, tau=0.1, dly=14),
+        L(f'oga:rubberduck_rpg/chain_0{[1, 2, 3, 1][v]}.ogg', at=[0, 0, 0, 0.12][v], len=0.22, g=-20, hp=1500, lp=6500, tau=0.07, dly=14),   # 2차: 사슬 '찡'(≈10.5 kHz) 낮춤
         L(BSB(1084), at=[0.15, 3.20, 6.90, 10.37][v], len=0.20, g=-12, lp=4000, hp=200, tau=0.07, dly=2),
-    ], eq=[('ls', 120, 2.0, 0.7), ('pk', 1800, -2.0, 1.0), ('hs', 8000, -3.0, 0.7)], sat=(2.4, 0.4))},
+    ], eq=[('ls', 120, 2.0, 0.7), ('pk', 1800, -2.0, 1.0), ('pk', 10500, -9.0, 3.0), ('hs', 8000, -4.0, 0.7)], sat=(2.4, 0.4), lp=12000)},
     # 막기·쳐내기 (쇠와 쇠) — 칼날이 부딪히는 '챙' + 방패의 두꺼운 몸통 + 오래 남는 울림
     'clang': {'n': 5, 'ch': 1, 'var': lambda v: dict(layers=[
         L(MED + CLASH[v][0], at=CLASH[v][1] - 0.05, len=0.65, g=0, hp=220, tau=0.24, hold=0.02, clip=3),
@@ -147,6 +148,8 @@ RECIPES = {
         L(f'ken:impact-sounds/footstep_concrete_00{v}.ogg', len=0.07, g=-4, lp=900, tau=0.03),
     ], eq=[('pk', 250, -1.5, 1.0), ('hs', 8000, -2.0, 0.7)], sat=(1.3, 0.15))},
 }
+from recipes2 import R2, ALIAS  # noqa: E402  (2차 묶음)
+RECIPES.update(R2)
 NAMES = list(RECIPES)
 REV = {}   # 이름별 잔향 송신을 바꾸려면 (없으면 audio.js 정의의 rev)
 
@@ -323,7 +326,7 @@ def limiter(y, ceil_db):
 def build_var(src, rec, v, ceil=CEIL):
     """변형 v 를 48 kHz 로 만든다 → (소리, 리미터 최대 감쇠 dB). ceil: 트루 피크 상한 (인코딩 뒤 피크가 넘으면 main 이 낮춰 다시 부른다)"""
     spec = rec['var'](v)
-    ch = rec['ch']
+    ch = rec.get('ch', 1)
     parts = []
     for d in spec['layers']:
         y, _ = layer(src, d)
@@ -346,8 +349,14 @@ def build_var(src, rec, v, ceil=CEIL):
     mix = hpf(mix, 28, 2)
     if spec.get('lp'):
         mix = lpf(mix, spec['lp'])
-    # 라우드니스 → 리미터
+    # 라우드니스 → (순간음이 너무 뾰족하면 부드러운 클리퍼로 최대 CLIP_MAX dB 먼저 둥글게) → 리미터
     mix *= 10 ** ((TARGET - lufs_ev(mix)) / 20)
+    need = true_peak(mix) - (ceil - 0.1)
+    if need > 4.0:                             # 동전·얼음·번개처럼 크레스트가 큰 소리: 리미터만으로 4 dB 넘게 누르면 목표가 -19 LUFS 아래로 떨어진다
+        cdb = min(CLIP_MAX, need - 3.5)
+        t = np.abs(mix).max() * 10 ** (-cdb / 20)
+        mix = t * np.tanh(mix / t)
+        mix *= 10 ** ((TARGET - lufs_ev(mix)) / 20)
     red = 0.0
     if true_peak(mix) > ceil:
         lim, red = limiter(mix, ceil - 0.1)
@@ -375,15 +384,14 @@ def to_out(y):
     return signal.resample_poly(y, 147, 160, axis=0)
 
 
-def encode(y, base, ch):
+def encode(y, base, ch, br=None):
     y = np.clip(y, -1, 1).astype(np.float32)
     with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as t:
         wav = t.name
     try:
         run(['ffmpeg', '-v', 'error', '-y', '-f', 'f32le', '-ar', str(OUT_RATE), '-ac', str(ch), '-i', 'pipe:0', '-c:a', 'pcm_s16le', wav], y.tobytes())
-        run(['ffmpeg', '-v', 'error', '-y', '-i', wav, '-c:a', 'aac', '-b:a', '128k' if ch == 2 else '96k', '-movflags', '+faststart',
+        run(['ffmpeg', '-v', 'error', '-y', '-i', wav, '-c:a', 'aac', '-b:a', br or ('128k' if ch == 2 else '96k'), '-movflags', '+faststart',
              '-map_metadata', '-1', str(base) + '.m4a'])
-        run(['ffmpeg', '-v', 'error', '-y', '-i', wav, '-c:a', 'libvorbis', '-q:a', '4', '-map_metadata', '-1', str(base) + '.ogg'])
     finally:
         os.unlink(wav)
 
@@ -459,36 +467,45 @@ def main():
             for _ in range(5):                     # 인코딩(AAC·Vorbis)을 다시 푼 피크가 CEIL 을 넘으면 리미터 상한을 그만큼 낮춰 다시 만든다 (순간음만 눌림)
                 y, red = build_var(src, rec, v, ceil)
                 yo = to_out(y)
-                encode(yo, out / fid, rec['ch'])
-                dpk = max(decoded_peak(out / f'{fid}.{ext}', rec['ch']) for ext in ('m4a', 'ogg'))
+                encode(yo, out / fid, rec.get('ch', 1), rec.get('br'))
+                dpk = decoded_peak(out / f'{fid}.m4a', rec.get('ch', 1))
                 if dpk <= CEIL:
                     break
                 ceil -= dpk - CEIL + 0.15
             if a.wav:
-                run(['ffmpeg', '-v', 'error', '-y', '-f', 'f32le', '-ar', str(SR), '-ac', str(rec['ch']), '-i', 'pipe:0', '-c:a', 'pcm_s16le',
+                run(['ffmpeg', '-v', 'error', '-y', '-f', 'f32le', '-ar', str(SR), '-ac', str(rec.get('ch', 1)), '-i', 'pipe:0', '-c:a', 'pcm_s16le',
                      str(Path(a.wav) / f'{fid}.wav')], np.clip(y, -1, 1).astype(np.float32).tobytes())
             if dpk > CEIL:
                 sys.exit(f'{fid}: 인코딩 뒤 피크 {dpk:.2f} dBFS > {CEIL} — 레시피를 고쳐야 한다')
             lu, lm, tp = lufs_ev(y), lufs_m(y), true_peak(y)
             env = np.abs(yo if yo.ndim == 1 else yo.max(1))
             on = float(np.argmax(env > 10 ** (-40 / 20) * env.max())) / OUT_RATE
-            files[fid] = {'dur': round(len(yo) / OUT_RATE, 4), 'on': round(on, 4), 'ch': rec['ch'], 'lufs': round(lu, 1), 'lufs_m': round(lm, 1), 'peak': round(tp, 2), 'dpk': round(dpk, 2),
-                          'm4a': h8(out / f'{fid}.m4a'), 'ogg': h8(out / f'{fid}.ogg'),
-                          'bytes': (out / f'{fid}.m4a').stat().st_size + (out / f'{fid}.ogg').stat().st_size}
+            files[fid] = {'dur': round(len(yo) / OUT_RATE, 4), 'on': round(on, 4), 'ch': rec.get('ch', 1), 'lufs': round(lu, 1), 'lufs_m': round(lm, 1), 'peak': round(tp, 2), 'dpk': round(dpk, 2),
+                          'm4a': h8(out / f'{fid}.m4a'), 'bytes': (out / f'{fid}.m4a').stat().st_size}
             print(f'{name:12s} {v + 1:>3}  {len(y) / SR:5.2f}  {lu:6.1f}  {lm:6.1f}  {tp:5.1f}  {dpk:5.1f}  {red:5.1f}')
-        e = {'f': ids, 'g': old.get('sfx', {}).get(name, {}).get('g', 1.0) if (a.keep_gains or a.only) else 1.0}
+        o = old.get('sfx', {}).get(name, {})
+        e = {'f': ids, 'g': o.get('g', 1.0) if (a.keep_gains or a.only) else 1.0}
+        if 'ref' in o and (a.keep_gains or a.only):
+            e['ref'] = o['ref']
+        for k in ('of', 'room'):
+            if k in rec:
+                e[k] = rec[k]
         if name in REV:
             e['rev'] = REV[name]
         sfx[name] = e
-    keep = {f'{fid}.{ext}' for fid in files for ext in ('m4a', 'ogg')} | {'index.json'}
+    for al, src_name in ALIAS.items():          # 같은 파일을 쓰는 이름 (footstep = step_stone)
+        if src_name in sfx:
+            sfx[al] = {**sfx[src_name], 'g': old.get('sfx', {}).get(al, {}).get('g', sfx[src_name]['g']), 'alias': src_name}
+    keep = {f'{fid}.m4a' for fid in files} | {'index.json'}
     for p in out.iterdir():
         if p.is_file() and p.name not in keep:
             p.unlink()
-    idx = {'version': 2, 'rate': OUT_RATE, 'formats': ['m4a', 'ogg'], 'names': [n for n in NAMES if n in sfx], 'sfx': {n: sfx[n] for n in NAMES if n in sfx},
+    order = NAMES + [al for al in ALIAS if al in sfx]
+    idx = {'version': 2, 'rate': OUT_RATE, 'formats': ['m4a'], 'names': [n for n in order if n in sfx], 'sfx': {n: sfx[n] for n in order if n in sfx},
            'files': {k: files[k] for k in sorted(files)}}
     idx_p.write_text(json.dumps(idx, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
     tot = sum(f['bytes'] for f in files.values())
-    print(f'v2 효과음 {len(idx["sfx"])}종 · 파일 {len(files)}개 · m4a+ogg {tot / 1024:.0f} KB → {out}')
+    print(f'v2 효과음 {len(idx["sfx"])}종 · 파일 {len(files)}개 · m4a {tot / 1024:.0f} KB → {out}')
 
 
 if __name__ == '__main__':

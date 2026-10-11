@@ -101,6 +101,16 @@ function buildRows(sc) {
         id: 'safeArea', label: '노치 영역', type: 'enum', opts: [['fit', '피하기'], ['full', '화면 가득']],
         note: (s) => (s.safeArea === 'full' ? '화면 끝까지 쓰고, 정보 표시만 안전한 곳으로 옮깁니다.' : '노치와 둥근 모서리를 피해서 화면을 그립니다.'),
       },
+      { // hud_mobile §3: 화면비별 인터페이스 배치 (자동 = 폴드 펼침·태블릿처럼 네모난 화면이면 폴드 배치). settings.hud 는 새 객체로 바꾼다
+        id: 'hudPreset', label: '화면 배치', type: 'enum', opts: [['auto', '자동'], ['wide', '휴대폰'], ['fold', '폴드·태블릿']],
+        get: () => sc.s.hud?.preset ?? 'auto', set: (v) => { sc.s.hud = { ...(sc.s.hud ?? {}), preset: v }; g.dirty = true; },
+        note: '전투 화면의 정보 표시와 버튼 배치입니다. 자동은 화면 비율에 맞춰 고릅니다.',
+      },
+      {
+        id: 'hudScale', label: '인터페이스 크기', type: 'enum', opts: [[0.85, '85%'], [0.9, '90%'], [1, '100%'], [1.1, '110%'], [1.2, '120%']],
+        get: () => sc.s.hud?.scale ?? 1, set: (v) => { sc.s.hud = { ...(sc.s.hud ?? {}), scale: v }; g.dirty = true; },
+        note: '전투 화면의 지도·체력 막대·빠른 칸 크기입니다.',
+      },
       {
         id: 'fullscreen', label: '전체 화면', type: 'action', vis: () => !!platform.canFullscreen?.(),
         value: () => (platform.isFullscreen?.() ? '끄기' : '켜기'),

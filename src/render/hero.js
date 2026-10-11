@@ -2153,7 +2153,11 @@ export function drawHero(ctx, p, world, opts = {}) {
   let dt = 0;
   if (rig) { dt = rig.lastT === undefined ? 0 : clamp(tt - rig.lastT, 0, 0.05); rig.lastT = tt; }
   G.c = ctx; G.tint = opts.tint || null; G.t = tt; G.fx = !opts.tint && !opts.noFx;
-  G.lowq = (world?.qualityNow?.() ?? world?.game?.quality) === 'low';   // 저품질: 무기 궤적·찌르기 섬광의 그라디언트를 단색으로 (§5.2 그라디언트 6/프레임)
+  G.qual = world?.qualityNow?.() ?? world?.game?.quality ?? 'high';
+  G.lowq = G.qual === 'low';   // 저품질: 무기 궤적·찌르기 섬광의 그라디언트를 단색으로 (§5.2 그라디언트 6/프레임)
+  // 채색 퍼펫 (hero_puppet.js): 조종 중인 영웅만 메시 관절·잔상 (G.main), 보통·높음 화질은 윤곽선·역광을 구운 원화 (G.rim = 무대 빛 색)
+  G.main = !opts._inner && (opts.main === true || (!!world && p === world.player));   // opts.main: 도구(검사대)가 조종 영웅 경로를 강제
+  G.rim = G.lowq ? null : rimOf(world);
   // ── 자세 ──
   const P = rig ? (rig.P || (rig.P = newPose())) : P_TMP;
   resetPose(P);
@@ -2230,6 +2234,7 @@ export function drawHero(ctx, p, world, opts = {}) {
   // 확장 훅: 찌그러짐·기울기 오버레이(WP1) → 탈것 자세·원점(C6)
   const feel = heroHooks.feel ? heroHooks.feel(P, p, K) : (p.ride ? null : GAIT.applyFeelOverlay?.(P, p) || null);
   const ride = p.ride ? (heroHooks.rider || riderPose)(P, K, p, p.ride, hs) : null;
+  if (rig && !G.lowq && !ride) leanFollow(P, rig, dt, anim);
   solve(P, K, SK);
   LEG_T1 = P.t1; LEG_T2 = P.t2;
   E0.p = ride ? rideProxy(p, ride) : p; E0.rig = rig; E0.hs = hs; E0.fac = fac; E0.dt = dt; E0.P = P; E0.K = K; E0.skipFarLeg = !!ride?.skipFarLeg;
@@ -2239,7 +2244,8 @@ export function drawHero(ctx, p, world, opts = {}) {
   // ── 실루엣 패스: 역광 테두리(플레이어) · 피격 섬광 · feel 색 섬광 ──
   let flashK = ST.hurt > 0 && !G.tint ? ST.hurt : 0, flashCol = FLASH_COL;
   if (feel && feel.a > flashK && feel.tint && !G.tint) { flashK = clamp(feel.a, 0, 1); flashCol = feel.tint; }
-  const wantRim = !opts._inner && G.fx && (opts.rim ?? !p.npc);
+  // 채색 퍼펫은 보통·높음 화질에서 역광·윤곽선을 원화에 구워 그린다(G.rim) → 오프스크린 역광 패스(본체를 한 번 더 그림)가 필요 없다
+  const wantRim = !opts._inner && G.fx && (opts.rim ?? !p.npc) && !(K.pup && G.rim && !G.tint);
   const off = (wantRim || flashK > 0) && typeof document !== 'undefined';
 
   // ── 그리기 ──
@@ -2262,6 +2268,7 @@ export function drawHero(ctx, p, world, opts = {}) {
       if (ck >= 1) drawMagicCircle(0, -1, 26 + Math.sin(tt * 20) * 1.5, '#fff2b0', 0.8, 0.3, 3);
     }
     if (ST.dash && ST.dashK > 0) drawDashFx(K, ST.dash, ST.dashK, tt);
+    if (!G.tint && !opts._inner && !ride && p.onGround !== false && !G.lowq) contactShadow(c, P);
   }
   // 본체: 역광 테두리(뒤-위로 비켜 찍은 차가운 단색 복사본) → 본체 → 섬광
   if (off) {
@@ -2333,16 +2340,14 @@ export function drawHero(ctx, p, world, opts = {}) {
 /** 몸 전체(날개 → 체인 천/머리카락 → 본체·무기). 실루엣 패스에서도 그대로 재사용 */
 function drawLayers(c, E, K, P, W, tt) {
   if (K.pup && PUP.drawLayers(c, E, K, P, W, tt)) return;   // 채색 퍼펫
-  // 날개 (몸 변환)
-  c.save(); applyT1(c, P);
-  if (K.wings) drawWings(SK, K, P, E.p, tt);
-  c.restore();
   // 망토·머리카락·스카프 꼬리 (월드 체인)
   drawCape(SK, K, E);
   drawHairChains(SK, K, E);
   drawBandTails(SK, K, E);
   drawVeil(SK, K, E);
   drawScarfTail(SK, K, E);
+  // 날개 (몸 변환) — 망토·머리카락 다음 (FIX-QA: 날개가 망토에 덮이지 않게, 채색 퍼펫과 같은 순서)
+  if (K.wings) { c.save(); applyT1(c, P); drawWings(SK, K, P, E.p, tt); c.restore(); }
   // 본체
   c.save(); applyT1(c, P);
   // 먼 팔 + 보조 무기
@@ -2529,15 +2534,78 @@ function drawDashFx(K, type, k, t) {
     c.strokeStyle = ra('#fff8d8', 0.7 * k); c.lineWidth = 1;
     for (let i = 0; i < 6; i++) { const y = -76 + i * 13 + h01(i + Math.floor(t * 30)) * 4; c.beginPath(); c.moveTo(-10, y); c.lineTo(-40 - 30 * h01(i * 3), y); c.stroke(); }
   } else if (type !== 'mist') {
-    // 속도선
+    // 속도선: 한 번 구운 가로 띠(진함 → 투명) 한 장을 선마다 길이만큼 늘여 찍는다 (FIX-QA: 선마다 새 그라디언트 7개/프레임 → 0)
+    const sv = dashStrip(), a0 = c.globalAlpha;
     for (let i = 0; i < 7; i++) {
       const y = -74 + i * 11 + h01(i * 7 + Math.floor(t * 40)) * 5, L = 26 + 34 * h01(i * 13 + Math.floor(t * 40));
-      const g = c.createLinearGradient(-8, y, -8 - L, y);
-      g.addColorStop(0, ra('#cfe0ff', 0.55 * k)); g.addColorStop(1, ra('#cfe0ff', 0));
-      c.strokeStyle = g; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-8, y); c.lineTo(-8 - L, y); c.stroke();
+      if (sv) { c.globalAlpha = a0 * k; c.drawImage(sv, -8 - L, y - 0.6, L, 1.2); }
+      else { c.strokeStyle = ra('#cfe0ff', 0.3 * k); c.lineWidth = 1.2; c.beginPath(); c.moveTo(-8, y); c.lineTo(-8 - L, y); c.stroke(); }
     }
   }
   c.restore();
+}
+// 대시 속도선 띠: 64×4, 왼쪽 투명 → 오른쪽 '#cfe0ff' 0.55 (모듈을 불러올 때 한 번 — 스테이지 도중 새 캔버스·그라디언트 0)
+let DASH_STRIP = null;
+function dashStrip() {
+  if (DASH_STRIP !== null || typeof document === 'undefined') return DASH_STRIP;
+  const cv = document.createElement('canvas'); cv.width = 64; cv.height = 4;
+  const g = cv.getContext('2d'), gr = g.createLinearGradient(0, 0, 64, 0);
+  gr.addColorStop(0, ra('#cfe0ff', 0)); gr.addColorStop(1, ra('#cfe0ff', 0.55));
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 4);
+  return (DASH_STRIP = cv);
+}
+if (typeof document !== 'undefined') dashStrip();
+// 발밑 접지 그림자: 부드러운 타원 한 장(모듈 로드 때 구움)을 두 발 아래에 — 발이 들리면 옅어진다 (보통·높음 화질, 땅에 있을 때)
+let CONTACT = null;
+if (typeof document !== 'undefined') {
+  const cv = document.createElement('canvas'); cv.width = 48; cv.height = 12;
+  const g = cv.getContext('2d'), gr = g.createRadialGradient(24, 6, 0, 24, 6, 24);
+  gr.addColorStop(0, 'rgba(0,0,0,0.75)'); gr.addColorStop(0.55, 'rgba(0,0,0,0.35)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.setTransform(1, 0, 0, 0.25, 0, 4.5); g.fillStyle = gr; g.fillRect(0, -18, 48, 48);
+  CONTACT = cv;
+}
+function contactShadow(c, P) {
+  if (!CONTACT) return;
+  const a0 = c.globalAlpha;
+  for (let f = 0; f < 2; f++) {
+    tx0(P, f ? SK.a2x : SK.a1x, f ? SK.a2y : SK.a1y);
+    const lift = Math.max(0, -TY - 3), k = 1 - lift / 12;
+    if (k <= 0.05) continue;
+    const w = (f ? 9 : 11) * (0.7 + 0.3 * k);
+    c.globalAlpha = a0 * 0.55 * k;
+    c.drawImage(CONTACT, TX + 1.5 - w / 2, -1.6, w, 3.2);
+  }
+  c.globalAlpha = a0;
+}
+// 무대 빛 → 퍼펫 역광색: 배경 테마의 달빛(없으면 안개빛)을 차가운 흰빛과 반씩 섞는다 (테마 객체별 한 번)
+const RIM_DEF = '#c8d2f0', RIMQ = new WeakMap();
+function rimOf(world) {
+  const th = world?.bg?.theme;
+  if (!th || typeof th !== 'object') return RIM_DEF;
+  let r = RIMQ.get(th);
+  if (!r) {
+    const src = typeof th.moon === 'string' ? th.moon : typeof th.fog === 'string' ? th.fog : null;
+    const m = src && /^#([0-9a-f]{6})$/i.exec(src);
+    if (!m) r = RIM_DEF;
+    else {
+      const n = parseInt(m[1], 16), mix = (v, w) => Math.round(v * 0.5 + w * 0.5);
+      r = '#' + [mix((n >> 16) & 255, 0xe0), mix((n >> 8) & 255, 0xe6), mix(n & 255, 0xff)].map((v) => v.toString(16).padStart(2, '0')).join('');
+    }
+    RIMQ.set(th, r);
+  }
+  return r;
+}
+// 몸 기울기 따라오기 (2차 움직임): 기울기 목표를 스프링으로 늦게 따라가 달리기 시작·멈춤·방향 전환에 몸이 넘쳤다 돌아오고,
+// 머리는 반대로 조금 버틴다 (잔상·스냅샷·저품질·탈것·죽음은 그대로). 상태는 rig 에 — dt 0(멈춤·같은 프레임 두 번째)이면 진행 없음
+const LEAN_SKIP = new Set(['death', 'flip', 'hurt']);
+function leanFollow(P, rig, dt, anim) {
+  const s = rig.lnS || (rig.lnS = { x: P.lean, v: 0 });
+  if (LEAN_SKIP.has(anim)) { s.x = P.lean; s.v = 0; return; }
+  const h = clamp(dt, 0, 0.034);
+  if (h > 0) { s.v += (230 * (P.lean - s.x) - 17 * s.v) * h; s.x += s.v * h; }
+  if (!Number.isFinite(s.x) || Math.abs(s.x - P.lean) > 0.5) { s.x = P.lean; s.v = 0; }
+  const d = s.x - P.lean;
+  P.lean = s.x; P.hd -= d * 0.6;
 }
 function drawMist(k, t) {
   const c = G.c;

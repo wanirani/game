@@ -36,7 +36,8 @@ PACKS = {
     'fantozzi': ('/content/fantozzis-footsteps-grasssand-stone', '/sites/default/files/Fantozzi-footsteps.7z', 'Fantozzi-footsteps/flac/',
                  'Fantozzi (freesound.org pack 10338, CC0) — 잘라 올림: qubodup'),
 }
-KENNEY = {'impact-sounds': 'https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip'}
+KENNEY = {'impact-sounds': 'https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip',
+          'rpg-audio': 'https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip'}
 
 
 def curl(url):

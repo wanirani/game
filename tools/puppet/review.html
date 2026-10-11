@@ -142,14 +142,15 @@ async function render(s) {
     if (s.animate) { e.animT = Math.max(0, baseAnimT - (NW - 1 - f) / 60); if (m) e.moveT = Math.max(0, baseMoveT - (NW - 1 - f) / 60); }
     if (w0) w0.time = e.t;
     sctx.setTransform(sc, 0, 0, sc, 400, 600);
-    drawHero(sctx, e, w0, {});
+    drawHero(sctx, e, w0, { main: s.main !== false });
   }
   e.cx = 0; e.bottom = 0;
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H);
   if (s.bg && s.bg !== 'none') { ctx.fillStyle = s.bg; ctx.fillRect(0, 0, W, H); }
   if (s.floor) { ctx.fillStyle = s.floor; ctx.fillRect(0, fy, W, 1); }
   ctx.setTransform(sc, 0, 0, sc, fx, fy);
-  const opts = { rim: s.rim ?? false, noFx: s.noFx ?? true };
+  // main: 이 영웅을 '조종 중인 영웅'으로 그린다 → 보통·높음 화질 경로(메시 관절·잔상)를 검사. s.main === false 면 파티 영웅처럼 판
+  const opts = { rim: s.rim ?? false, noFx: s.noFx ?? true, main: s.main !== false };
   if (s.tint) opts.tint = s.tint;
   if (s.alpha !== undefined) opts.alpha = s.alpha;
   if (s.yaw !== undefined) opts.yaw = s.yaw;

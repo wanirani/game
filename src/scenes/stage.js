@@ -7,6 +7,7 @@ import { drawHUD } from '../render/hud.js';
 import { input } from '../core/input.js';
 import { audio } from '../core/audio.js';
 import * as PUPPET from '../render/hero_puppet.js';
+import * as HERO from '../render/hero.js';   // [hook:plat] heroScaleFor (MOTION, 있을 때만)
 import * as TRIAL from '../game/trial.js';   // 시련 「메아리」 (classes_t3 §9.3–§9.4)
 
 export class StageScene extends Scene {
@@ -21,12 +22,21 @@ export class StageScene extends Scene {
     if (prep) TRIAL.attachTrial(this, this.world, prep.T);
     this.game.world = this.world;
     this.stageId = stageId;
+    this.viewHooks();
     // 영웅 채색 퍼펫을 입장 페이드 동안 받아 둔다 (첫 프레임에 벡터 → 퍼펫으로 바뀌어 보이지 않게)
     const h = this.world.player?.hero;
     try { if (h?.charId && PUPPET.puppetEnabled?.() !== false) PUPPET.preloadPuppet?.(h.charId, h.classId); } catch (e) { console.error(e); }   // [hook:plat]
   }
-  exit() { this._pauseWanted = false; if (this.game.world === this.world) this.game.world = null; }
-  resize() { this.world?.camera.setView(this.game.viewW, this.game.viewH); }
+  exit() { this._pauseWanted = false; if (this.game.world === this.world) this.game.world = null; this.game.setSurround?.(null); }
+  resize() { this.world?.camera.setView(this.game.viewW, this.game.viewH); this.viewHooks(); }
+  /**
+   * 세로 확장 시야 (hud_mobile §2): 캔버스 둘레 바탕을 스테이지 여백 색으로, 영웅 크기는 화면에 맞게 (MOTION heroScaleFor 가 있을 때만).
+   */
+  viewHooks() {
+    const g = this.game, st = this.world?.stage;
+    try { g.setSurround?.(st?.padTop ? { top: st.padTop.color, bottom: st.padBottom?.color } : null); } catch (e) { console.error(e); }
+    try { if (typeof HERO.heroScaleFor === 'function') { const k = HERO.heroScaleFor(g.viewW, g.viewH); if (Number.isFinite(k)) g.heroScale = k; } } catch (e) { console.error(e); }   // [hook:plat]
+  }
   onResume() { this.world.player?.refreshStats(); }
   canPause() { const w = this.world; return !!w?.player && !w.cleared && !w.player.dead && !w.cutscene; }
   /**

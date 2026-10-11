@@ -6,13 +6,14 @@
 // 액체: 'deep'(수영 구역) 팔레트, 좁고 긴 세로 물줄기는 흘러내리는 폭포로 그린다.
 // 비밀 방(가짜 벽 h 로 메운 공간) 속에 남은 액체·가시·발판은 드러나기 전까지 벽으로 구워 밖에서 비쳐 보이지 않게 한다.
 // 청크 캔버스는 최대 MAX_CHUNKS 장만 두고 재사용한다 (모바일 메모리).
-import { TILE } from '../core/game.js';
+import { TILE, game } from '../core/game.js';
 import { T } from '../core/physics.js';
 import { assets } from '../core/assets.js';
 import { RNG, hashStr, rgba, shade, mix, TAU } from '../core/math.js';
 
 const CHUNK = 16; // 타일 단위 청크 크기
 const DEPTH_R = 3; // 깊이 음영: 빈칸까지의 거리를 찾는 반경(타일)
+const PAD_FADE = 120; // 세로 확장 시야 여백: 방 경계에서 테마색으로 다 녹기까지 (px)
 const MAX_CHUNKS = 8; // 구워 둔 청크 캔버스 상한 (청크 하나 768×768 ≈ 2.4MB). 화면 밖의 오래된 청크부터 버리고 캔버스는 재사용
 const PHASE_CH = new Set(['a', 'b', 'z', 'Z']); // 위상 타일 문자 (tilemap.js PHASE 와 같음)
 const DARK_CACHE = new Map();   // 톤다운 소품 사본 (모든 TileRenderer 공용: 방을 오갈 때 다시 굽지 않는다)
@@ -699,10 +700,53 @@ export class TileRenderer {
       const info = this.liquidInfo('deep');
       if (info.count) this.liquidBody(ctx, cam, this.lastT, DEEP_UNDER, info);
     }
+    // 세로 확장 시야 (hud_mobile §2): 방이 화면보다 낮아 위·아래가 보이면 스테이지 padTop/padBottom 으로 채운다
+    if (cam.y < -0.5 || cam.y + cam.vh > m.pxH + 0.5) this.drawPads(ctx, v);
     // 방 밖(좌우)으로 이어지는 벽 표현: 방 경계 바깥을 어둡게
     ctx.fillStyle = '#050206';
     if (!m.openLeft) ctx.fillRect(-400, -400, 400, m.pxH + 800);
     if (!m.openRight) ctx.fillRect(m.pxW, -400, 400, m.pxH + 800);
+  }
+  /**
+   * 방 위·아래 여백 채우기 (세로 확장 시야, hud_mobile §2). 스테이지의 padTop / padBottom = { mode, color }:
+   *  mode 'sky'   : 아무것도 그리지 않는다 (원경 하늘이 그대로 보임 — 열린 하늘 테마의 위쪽)
+   *  mode 'tiles' : 방 맨 끝 줄 타일을 바깥으로 이어 붙이고(구운 청크에서 한 줄 복사) 테마색으로 점점 눌러 녹인다
+   *  mode 'fill'  : 테마색 한 번 칠하기
+   * 저사양(game.tier 'low')은 언제나 'fill'. 녹임 그라데이션은 방마다 한 번 만들어 둔다 (방 경계가 월드 좌표에 고정 — 매 프레임 새로 만들지 않음).
+   * padTop/padBottom 이 없는 스테이지(마을 등)는 그리지 않는다 (예전 그대로).
+   */
+  drawPads(ctx, v) {
+    const m = this.map, st = this.stage, low = game?.tier === 'low';
+    const S = CHUNK * TILE, x0 = Math.max(v.l, -400), x1 = Math.min(v.r, m.pxW + 400);
+    for (const side of [0, 1]) {
+      const P = side ? st.padBottom : st.padTop;
+      if (!P || P.mode === 'sky') continue;
+      const y0 = side ? m.pxH : Math.floor(v.t) - 1, y1 = side ? Math.ceil(v.b) + 1 : 0;
+      if (y1 <= y0) continue;
+      const col = P.color || '#0a0508';
+      if (low || P.mode === 'fill' || !m.h) { ctx.fillStyle = col; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); continue; }
+      // 끝 줄 이어 붙이기: 보이는 청크 열마다 끝 줄(48 px)을 바깥쪽으로 반복
+      const row = side ? m.h - 1 : 0, cy = Math.floor(row / CHUNK), sy = (row - cy * CHUNK) * TILE;
+      const cx0 = Math.max(0, Math.floor(v.l / S)), cx1 = Math.min(Math.floor((m.w - 1) / CHUNK), Math.floor(v.r / S));
+      for (let cx = cx0; cx <= cx1; cx++) {
+        const ox = cx * S, sx = Math.max(0, Math.floor(v.l - ox)), sw = Math.min(S, Math.ceil(v.r - ox)) - sx;
+        if (sw <= 0) continue;
+        const c = this.chunk(cx, cy);
+        if (side) for (let y = m.pxH; y < y1; y += TILE) ctx.drawImage(c, sx, sy, sw, TILE, ox + sx, y, sw, TILE);
+        else for (let y = -TILE; y + TILE > y0; y -= TILE) ctx.drawImage(c, sx, sy, sw, TILE, ox + sx, y, sw, TILE);
+      }
+      // 테마색으로 녹이기 (방 경계 0.3 → 120 px 밖 0.8 — 타일 결이 조금 남게)
+      const key = side ? 'padB' : 'padT';
+      let g = this[key];
+      if (!g || g.col !== col) {
+        const ya = side ? m.pxH : 0, yb = side ? m.pxH + PAD_FADE : -PAD_FADE;
+        const gr = ctx.createLinearGradient(0, ya, 0, yb);
+        gr.addColorStop(0, rgba(col, 0.3)); gr.addColorStop(1, rgba(col, 0.8));
+        g = this[key] = { col, gr };
+      }
+      ctx.fillStyle = g.gr;
+      ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    }
   }
   /** 보이는 영역(v)과 겹치는 청크마다 fn(cx, cy) */
   eachVisible(v, fn) {

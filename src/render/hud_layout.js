@@ -23,9 +23,15 @@
 // opts (시험·도구용 덮어쓰기): { touch, safe, boss, meters, textMin }  — meters = 토스트가 비켜 줄 기믹 게이지 줄 수 (기본:
 //   world.gimmick.meterRows 가 숫자면 그 값, 아니면 3줄을 늘 비워 둔다), textMin = 글자 하한 (기본: hudTextMin(touch))
 // hudRegions(L, opts) → 겹침 검사용 목록 (tools/test_hud_layout.mjs, HUD-FINAL)
+// 프리셋 (hud_mobile §3): L.preset 'wide'(16:9~21:9 휴대폰·데스크톱 — 예전 배치) | 'fold'(1.1~1.5 : 1 폴드 펼침·태블릿 — 참고 캡처 구조).
+//   hudPreset() = settings.hud.preset ('auto' 면 논리 화면비 vw/vh < 1.55 → fold), hudScaleK() = settings.hud.scale (0.85–1.2).
+//   fold 에서 더 생기는 칸: minimap(원형, 왼쪽 위) · stage(스테이지 이름판) · quick[0..3](빠른 칸, 가운데 아래) · arc(데스크톱·패드: 스킬 원호;
+//   터치는 패드가 원호를 그리므로 null). score = 가운데 위 재화 줄, vitals = 가운데 아래 큰 HP 막대, skills 는 크기 0 (원호에 있다).
+//   fold 터치에서는 TOUCH_FLOOR 규칙 대신 '패드·스틱 자리와 겹치지 않기'만 지킨다 (아래 가운데는 체력·빠른 칸 자리).
 // 주의 (순환 import): game.js 가 이 파일을 import 해도 되도록 모듈 최상위에서는 import 값에 접근하지 않는다.
 import { input } from '../core/input.js';
-import { touchpad } from '../core/touchpad.js';
+import { touchpad, PAD_LAYOUT_FOLD, foldScale, foldSysPlan } from '../core/touchpad.js';
+import * as GAME from '../core/game.js';
 import { game, VIEW_H } from '../core/game.js';
 
 export const HUD_GAP = 8;        // 영역 사이 최소 간격
@@ -89,6 +95,20 @@ export function hudSafe(g = game) {
   return s && (s.l || s.r || s.t || s.b) ? s : ZERO;
 }
 
+/** 지금 HUD 프리셋: settings.hud.preset ('wide'|'fold') 또는 'auto' → 논리 화면비 (vw/vh) 1.55 미만이면 'fold' */
+export const FOLD_ASPECT = 1.55;
+export function hudPreset(g = game, vw = g?.viewW, vh = g?.viewH) {
+  const p = g?.settings?.hud?.preset;
+  if (p === 'wide' || p === 'fold') return p;
+  const a = (Number(vw) || 960) / (Number(vh) || VIEW_H);
+  return a < FOLD_ASPECT ? 'fold' : 'wide';
+}
+/** 인터페이스 크기 배율 (settings.hud.scale, 0.85–1.2) */
+export function hudScaleK(g = game) {
+  const k = Number(g?.settings?.hud?.scale);
+  return Number.isFinite(k) && k > 0 ? clamp(k, 0.85, 1.2) : 1;
+}
+
 /** 보스 체력바가 지금 보이는가 (등장 연출·대화 중·쓰러지는 중에는 숨김) */
 export function bossBarShown(world) {
   const b = world?.boss;
@@ -111,18 +131,21 @@ export function padSizeK(cssH, touchScale = 1) {
  * 캔버스 배치 모형 (platform §6.1 fit/full, §5.2 태블릿 띠: 남는 세로가 120 CSS px 이상이면 캔버스를 위에 붙인다).
  * inset = CSS px 안전 영역. 반환 { vw, cs, canvas:{x,y,w,h}, cssW, cssH, inset, safe(논리 px HUD 여백) }
  */
-export function modelView(cssW, cssH, inset = ZERO, safeArea = 'fit') {
+export function modelView(cssW, cssH, inset = ZERO, safeArea = 'fit', { tall = true } = {}) {
   const fit = safeArea !== 'full';
   const ax = fit ? inset.l : 0, ay = fit ? inset.t : 0;
   const aw = fit ? cssW - inset.l - inset.r : cssW, ah = fit ? cssH - inset.t - inset.b : cssH;
-  const vw = Math.round(clamp((VIEW_H * aw) / ah, 960, 1280));
-  const s = Math.min(aw / vw, ah / VIEW_H);
-  const w = Math.floor(vw * s), h = Math.floor(VIEW_H * s);
+  // 세로 확장 시야 (hud_mobile §2): game.viewSize 가 있으면 그 계산 (16:9 보다 네모나면 높이 540–760), 없으면 예전 규칙
+  const V = typeof GAME.viewSize === 'function' ? GAME.viewSize(aw, ah, tall) : { vw: Math.round(clamp((VIEW_H * aw) / ah, 960, 1280)), vh: VIEW_H };
+  const vw = V.vw, vh = V.vh;
+  const s = Math.min(aw / vw, ah / vh);
+  let w = Math.floor(vw * s), h = Math.floor(vh * s);
+  if (vh !== VIEW_H) { if (aw - w <= 2) w = Math.floor(aw); if (ah - h <= 2) h = Math.floor(ah); }
   const spare = ah - h;
   const canvas = { x: ax + (aw - w) / 2, y: spare >= 120 ? ay : ay + spare / 2, w, h };
-  const cs = h / VIEW_H;
+  const cs = h / vh;
   const safe = fit ? ZERO : { l: inset.l / cs, r: inset.r / cs, t: inset.t / cs, b: inset.b / cs };
-  return { vw, cs, canvas, cssW, cssH, inset, safe };
+  return { vw, vh, cs, canvas, cssW, cssH, inset, safe };
 }
 
 /**
@@ -133,9 +156,19 @@ export function modelView(cssW, cssH, inset = ZERO, safeArea = 'fit') {
 export function modelPadRects(v) {
   const k = padSizeK(v.cssH, v.touchScale);
   const ins = v.inset ?? ZERO;
-  const csx = v.canvas.w / v.vw, csy = v.canvas.h / VIEW_H;
+  const csx = v.canvas.w / v.vw, csy = v.canvas.h / (v.vh ?? VIEW_H);
   const out = [];
   const add = (id, cx, cy, d) => out.push({ id, x: (cx - d / 2 - v.canvas.x) / csx, y: (cy - d / 2 - v.canvas.y) / csy, w: d / csx, h: d / csy });
+  if (v.preset === 'fold') { // 폴드 배치 (touchpad PAD_LAYOUT_FOLD · foldSysPlan 과 같은 계산; 편집·settle 없이 기본값)
+    const kf = foldScale(v.cssH, v.touchScale, v.hudScale);
+    for (const id in PAD_LAYOUT_FOLD) {
+      const [right, bottom, d] = PAD_LAYOUT_FOLD[id];
+      add(id, v.leftHanded ? ins.l + right * kf : v.cssW - ins.r - right * kf, v.cssH - ins.b - bottom * kf, Math.max(44, d * kf));
+    }
+    const sys = foldSysPlan(v.cssW, ins, Math.max(44, 44 * Math.min(1.15, kf)), false);
+    for (const id in sys) add(id, sys[id].cx, sys[id].cy, sys[id].d);
+    return out;
+  }
   for (const id in PAD_LAYOUT) {
     if (v.companions === false && (id === 'mount' || id === 'guard')) continue;
     const [right, bottom, d] = PAD_LAYOUT[id];
@@ -148,7 +181,7 @@ export function modelPadRects(v) {
 }
 
 // 실제 화면에 맞춘 모형 (창 크기·배율·안전 영역·터치 설정이 바뀔 때만 다시 잰다; 매 프레임 할당 없음)
-const LV_N = 12;
+const LV_N = 14;
 const liveVals = new Array(LV_N).fill(undefined);
 let liveOk = false, liveRects = NO_PAD;
 function liveModelPad() {
@@ -157,15 +190,16 @@ function liveModelPad() {
   const s = g.safe ?? ZERO, st = g.settings ?? ZERO, v = liveVals;
   const iw = window.innerWidth, ih = window.innerHeight;
   if (liveOk && v[0] === iw && v[1] === ih && v[2] === g.viewW && v[3] === g.scale && v[4] === g.dpr && v[5] === s.l && v[6] === s.r
-    && v[7] === s.t && v[8] === s.b && v[9] === st.touchScale && v[10] === st.touchLeftHanded && v[11] === st.safeArea) return liveRects;
+    && v[7] === s.t && v[8] === s.b && v[9] === st.touchScale && v[10] === st.touchLeftHanded && v[11] === st.safeArea
+    && v[12] === g.viewH && v[13] === st.hud) return liveRects;
   v[0] = iw; v[1] = ih; v[2] = g.viewW; v[3] = g.scale; v[4] = g.dpr; v[5] = s.l; v[6] = s.r; v[7] = s.t; v[8] = s.b;
-  v[9] = st.touchScale; v[10] = st.touchLeftHanded; v[11] = st.safeArea;
+  v[9] = st.touchScale; v[10] = st.touchLeftHanded; v[11] = st.safeArea; v[12] = g.viewH; v[13] = st.hud;
   const r = cv.getBoundingClientRect();
   liveOk = !!(r.width && r.height); // 캔버스가 잠깐 숨겨져 크기가 0 이면 기억하지 않고 다음 호출에 다시 잰다
   if (!liveOk) return (liveRects = NO_PAD);
-  const cs = r.height / VIEW_H;
+  const cs = r.height / (g.viewH || VIEW_H);
   liveRects = modelPadRects({
-    vw: g.viewW, cssW: window.innerWidth, cssH: window.innerHeight,
+    vw: g.viewW, vh: g.viewH || VIEW_H, preset: hudPreset(g), hudScale: hudScaleK(g), cssW: window.innerWidth, cssH: window.innerHeight,
     canvas: { x: r.left, y: r.top, w: r.width, h: r.height },
     inset: { l: (s.l || 0) * cs, r: (s.r || 0) * cs, t: (s.t || 0) * cs, b: (s.b || 0) * cs },
     touchScale: st.touchScale, leftHanded: !!st.touchLeftHanded,
@@ -361,6 +395,113 @@ function build(vw, vh, T, S, pad, bossOn, nM, F) {
   return L;
 }
 
+/**
+ * 폴드·태블릿 배치 (hud_mobile §1 참고 캡처 구조). 논리 높이 vh 는 540–760 (세로 확장 시야). k = settings.hud.scale.
+ *  왼쪽 위: 원형 미니맵 + 오른쪽에 스테이지 이름판 · 하트 줄 · 필살/각성 열(+준비 문구), 미니맵 아래 동료 위젯 · 동료 카드 줄
+ *  가운데 위: 재화 줄(L.score) → 그 아래 기믹 게이지 · 위쪽 보스 바 · 토스트 (동료/필살 열과 콤보 열 사이)
+ *  오른쪽 위: 패드의 아이콘 줄(지도·가방·메뉴) — 데스크톱은 비워 둔다 · 그 아래 콤보 열
+ *  가운데 아래: 초상화 + 큰 HP 막대(L.vitals) + 빠른 칸 4개(L.quick) — 스틱 자리(왼쪽)와 스킬 원호(오른쪽) 사이
+ *  오른쪽 아래: 터치는 패드 원호, 데스크톱·패드는 L.arc (hud.js 가 같은 그림으로 그린다, 누르지는 않는다)
+ */
+function buildFold(vw, vh, T, S, pad, bossOn, nM, F, k) {
+  const l = S.l || 0, rr = S.r || 0, t = S.t || 0, b = S.b || 0;
+  const right = vw - rr;
+  const L = { vw, vh, touch: T, safe: S, pad, textMin: F, big: false, preset: 'fold', fold: true, hudK: k, rows: null };
+  const sides = padSides(pad, vw, vh);
+  let padLeft = null, padTop = null, sysLeft = null, sysBottom = null;
+  for (let i = 0; i < pad.length; i++) {
+    const p = pad[i];
+    if (!sides[i] || p.y < vh * 0.3) { // 위쪽 아이콘 줄
+      if (p.x + p.w / 2 > vw / 2) { sysLeft = sysLeft == null ? p.x : Math.min(sysLeft, p.x); sysBottom = Math.max(sysBottom ?? 0, p.y + p.h); }
+      continue;
+    }
+    if (sides[i] > 0) { padLeft = padLeft == null ? p.x : Math.min(padLeft, p.x); padTop = padTop == null ? p.y : Math.min(padTop, p.y); }
+  }
+  // 데스크톱·패드: 스킬 원호 칸 (터치는 패드가 그린다)
+  const aw = Math.round(330 * k), ah = Math.round(300 * k);
+  L.arc = T ? null : R(right - aw - 8, vh - b - ah - 8, aw, ah);
+  if (L.arc) { padLeft = L.arc.x; padTop = L.arc.y; }
+  L.padLeft = padLeft; L.padRight = null; L.padTop = padTop;
+
+  // ── 왼쪽 위 ──
+  const mm = Math.round(128 * k);
+  L.minimap = R(12 + l, 12 + t, mm, mm);
+  const cx0 = L.minimap.x + mm + 12;
+  L.stage = R(cx0, 14 + t, Math.round(196 * k), Math.max(24, F + 10));
+  L.hearts = R(cx0, L.stage.y + L.stage.h + 6, 236, 26);
+  const ur = ultRows(F, false);
+  L.ult = R(cx0, L.hearts.y + L.hearts.h + 6, 120, ur.h);
+  L.spBar = R(L.ult.x, L.ult.y + ur.barTop, L.ult.w, 10);
+  L.awGauge = R(L.ult.x, L.spBar.y + 14, 120, 20);
+  L.ready = R(L.ult.x, L.awGauge.y + 22, 130, 22);
+  L.portrait = R(0, 0, 66, 66);   // 아래에서 다시 정한다
+  L.skills = R(l, t, 0, 0);       // 원호에 있다
+  const cmpY = Math.max(L.minimap.y + mm + 10, 0);
+  L.companions = R(12 + l, cmpY, 128, 68);
+  const cmpK = (L.companions.w - CMP_INK.l - CMP_INK.r) / CMP_W;
+  L.companionsDraw = R(L.companions.x + CMP_INK.l, L.companions.y + CMP_INK.t, CMP_W * cmpK, CMP_H * cmpK);
+  L.callouts = R(12 + l, L.companions.y + L.companions.h + 6, 300, 52);
+  const leftEdge = Math.max(L.ready.x + L.ready.w, L.hearts.x + L.hearts.w) + HUD_GAP;   // 왼쪽 위 묶음 오른쪽 끝 (+8)
+
+  // ── 가운데 위: 재화 줄 ──
+  const cw = Math.round(250 * k), chh = Math.max(28, F + 14);
+  const cxs = clamp(Math.round(vw / 2 - cw / 2), L.stage.x + L.stage.w + 12, Math.max(L.stage.x + L.stage.w + 12, (sysLeft ?? right) - 12 - cw));
+  L.score = R(cxs, 8 + t, cw, chh);
+
+  // ── 오른쪽: 콤보 열 (아이콘 줄 아래 ~ 원호 위) ──
+  const topR = Math.max(76 + t, (sysBottom ?? 0) + HUD_GAP);
+  const comboBottom = Math.min(topR + 230, (padTop ?? vh) - HUD_GAP);
+  L.combo = R(right - 302, topR, 290, Math.max(0, comboBottom - topR));
+
+  // ── 가운데 아래: 초상화 + 큰 HP 막대 + 빠른 칸 ──
+  const q = Math.max(44, Math.round(50 * k)), qg = 12, qn = 4;
+  const vwid = Math.round(320 * k), vh0 = 50;
+  const blockW = 74 + vwid;
+  const spanL = (T ? 210 : 24) + l, spanR = (padLeft ?? right) - HUD_GAP - 4;
+  const bx = clamp(Math.round((spanL + spanR) / 2 - blockW / 2), 12 + l, Math.max(12 + l, spanR - blockW));
+  const qy = vh - b - 10 - q;
+  L.vitals = R(bx + 74, qy - 8 - vh0, vwid, vh0);
+  L.portrait = R(bx, L.vitals.y - 6, 66, 66);
+  L.quick = [];
+  for (let i = 0; i < qn; i++) L.quick.push(R(L.vitals.x + i * (q + qg), qy, q, q));
+  L.quickRow = R(L.vitals.x, qy, qn * q + (qn - 1) * qg, q);
+
+  // ── 기믹 게이지 · 위쪽 보스 바 · 토스트 (가운데 위 빈 칸) ──
+  const gapL = leftEdge, gapR = L.combo.x - HUD_GAP;
+  L.gap = { l: gapL, r: gapR };
+  const mTop = L.score.y + L.score.h + 6;
+  const midX = (gapL + gapR) / 2, half = Math.max(0, Math.min(100, (gapR - gapL) / 2));
+  const meters = [0, 1, 2].map((i) => R(midX - half, mTop + i * METER_ROW, half * 2, METER_H));
+  L.meters = meters;
+  L.meter = (i) => meters[i] ?? R(midX - half, mTop + i * METER_ROW, half * 2, METER_H);
+  const n = clamp(Math.round(nM), 0, 3);
+  L.meterRows = n;
+  const bty = n ? meters[n - 1].y + METER_H + 4 : mTop;
+  const bw = Math.min(560, gapR - gapL);
+  L.bossTop = R(Math.round(midX - bw / 2), bty, bw, 36);
+  L.bossBottom = L.bossTop;
+  L.bossSlot = 'top';
+  L.bossBar = L.bossTop;
+  L.bossShown = !!bossOn;
+  // 알림·배너: 화면 가운데 조금 위 (콤보 열·원호와 겹치지 않게)
+  // 콤보 열·동료 카드 줄 아래 가운데 (넓게) — 패드에 닿으면 그만큼 줄인다
+  const ty = Math.round(Math.max(bty + 36 + TOAST_ROW + 8, L.combo.y + L.combo.h + HUD_GAP, L.callouts.y + L.callouts.h + HUD_GAP));
+  const ts = clipSpan(12 + l, right - 12, ty, 64, pad, sides);
+  const tw = Math.min(560, ts.r - ts.l);
+  L.transient = R(Math.round((ts.l + ts.r - tw) / 2), ty, tw, 64);
+  let top0 = n ? meters[n - 1].y + METER_H + 4 : mTop;
+  const bossTopOn = L.bossShown;
+  if (bossTopOn) top0 = Math.max(top0, L.bossTop.y + L.bossTop.h + 4);
+  const rows = Math.max(0, Math.min(bossTopOn ? 1 : 3, Math.floor((L.transient.y - 4 - top0) / TOAST_ROW)));
+  const rowAt = (i) => { const top = top0 + i * TOAST_ROW; return { x: (gapL + gapR) / 2, y: top + 18, l: gapL, r: gapR, w: gapR - gapL, top, h: TOAST_ROW, hidden: i >= rows }; };
+  const toastList = [0, 1, 2].map(rowAt);
+  L.toastRows = rows;
+  L.toasts = toastList;
+  L.toast = (i) => toastList[i] ?? rowAt(i);
+  L.toastArea = R(gapL, top0, gapR - gapL, rows * TOAST_ROW);
+  return L;
+}
+
 // 한 칸짜리 기억 (같은 입력 → 같은 객체).
 // 패드는 사각형 객체가 아니라 숫자 값(x,y,w,h)을 적어 둔다: 패드 쪽이 같은 객체를 제자리에서 고쳐도(크기·배치 편집) 바뀐 것을 알아챈다
 let memo = null;
@@ -393,11 +534,15 @@ export function hudLayout(world, vw, vh, pad, opts) {
   const gm = world?.gimmick?.meterRows;
   const nM = clamp(Math.round(Number(opts?.meters ?? (Number.isFinite(gm) ? gm : 3))) || 0, 0, 3);
   const F = T ? clamp(Math.round(Number(opts?.textMin ?? hudTextMin(true))) || 0, 0, HUD_TEXT_MAX) : 0;
+  const g0 = world?.game ?? game;
+  const pr = opts?.preset ?? hudPreset(g0, vw, vh);
+  const hk = opts?.hudScale ?? hudScaleK(g0);
   const a = memoArgs;
   if (memo && a[0] === vw && a[1] === vh && a[2] === T && a[3] === (S.l || 0) && a[4] === (S.r || 0) && a[5] === (S.t || 0) && a[6] === (S.b || 0)
-    && a[7] === bossOn && a[8] === nM && a[9] === F && samePad(memoPad, pad)) return memo;
-  memo = build(vw, vh, T, S, cleanPad(pad), bossOn, nM, F);
-  a.length = 0; a.push(vw, vh, T, S.l || 0, S.r || 0, S.t || 0, S.b || 0, bossOn, nM, F);
+    && a[7] === bossOn && a[8] === nM && a[9] === F && a[10] === pr && a[11] === hk && samePad(memoPad, pad)) return memo;
+  memo = pr === 'fold' ? buildFold(vw, vh, T, S, cleanPad(pad), bossOn, nM, F, hk) : build(vw, vh, T, S, cleanPad(pad), bossOn, nM, F);
+  if (pr !== 'fold') { memo.preset = 'wide'; memo.fold = false; memo.arc = null; }
+  a.length = 0; a.push(vw, vh, T, S.l || 0, S.r || 0, S.t || 0, S.b || 0, bossOn, nM, F, pr, hk);
   memoPad.length = 0;
   for (const p of pad) memoPad.push(p?.x, p?.y, p?.w, p?.h);
   return memo;
@@ -410,6 +555,11 @@ export function hudLayout(world, vw, vh, pad, opts) {
 export function hudRegions(L, { boss = L.bossShown, meters = 3, toasts = L.toastRows } = {}) {
   const persistent = [];
   for (const k of ['portrait', 'vitals', 'hearts', 'skills', 'ult', 'awGauge', 'ready', 'companions', 'callouts', 'score', 'combo']) persistent.push([k, L[k]]);
+  if (L.fold) {
+    persistent.push(['minimap', L.minimap], ['stage', L.stage]);
+    L.quick.forEach((q, i) => persistent.push(['quick' + i, q]));
+    if (L.arc) persistent.push(['arc', L.arc]);
+  }
   for (let i = 0; i < meters; i++) persistent.push(['meter' + i, L.meter(i)]);
   if (boss) persistent.push(['boss', L.bossBar]);
   const tl = [];

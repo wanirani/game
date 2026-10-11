@@ -2,8 +2,7 @@
  "version": 2,
  "rate": 44100,
  "formats": [
-  "m4a",
-  "ogg"
+  "m4a"
  ],
  "names": [
   "hit",
@@ -15,7 +14,45 @@
   "hurt",
   "clang",
   "ult_impact",
-  "step_stone"
+  "step_stone",
+  "whip",
+  "whip_crack",
+  "slash",
+  "slash_heavy",
+  "dagger",
+  "axe",
+  "gun",
+  "jump",
+  "double_jump",
+  "land",
+  "dash",
+  "step_dirt",
+  "step_wood",
+  "step_metal",
+  "step_flesh",
+  "step_snow",
+  "step_water",
+  "menu_move",
+  "menu_ok",
+  "menu_cancel",
+  "type",
+  "coin",
+  "item",
+  "levelup",
+  "fire",
+  "ice",
+  "thunder",
+  "thunderclap",
+  "holy",
+  "dark",
+  "magic",
+  "explode",
+  "enemy_die_bone",
+  "enemy_die_ghost",
+  "enemy_die_stone",
+  "gallop",
+  "wing_flap",
+  "footstep"
  ],
  "sfx": {
   "hit": {
@@ -109,32 +146,413 @@
     "step_stone_5"
    ],
    "g": 0.15
+  },
+  "whip": {
+   "f": [
+    "whip_1",
+    "whip_2",
+    "whip_3",
+    "whip_4"
+   ],
+   "g": 1.0
+  },
+  "whip_crack": {
+   "f": [
+    "whip_crack_1",
+    "whip_crack_2",
+    "whip_crack_3",
+    "whip_crack_4"
+   ],
+   "g": 1.0
+  },
+  "slash": {
+   "f": [
+    "slash_1",
+    "slash_2",
+    "slash_3",
+    "slash_4",
+    "slash_5"
+   ],
+   "g": 1.0
+  },
+  "slash_heavy": {
+   "f": [
+    "slash_heavy_1",
+    "slash_heavy_2",
+    "slash_heavy_3",
+    "slash_heavy_4"
+   ],
+   "g": 1.0
+  },
+  "dagger": {
+   "f": [
+    "dagger_1",
+    "dagger_2",
+    "dagger_3",
+    "dagger_4"
+   ],
+   "g": 1.0
+  },
+  "axe": {
+   "f": [
+    "axe_1",
+    "axe_2",
+    "axe_3"
+   ],
+   "g": 1.0
+  },
+  "gun": {
+   "f": [
+    "gun_1",
+    "gun_2",
+    "gun_3",
+    "gun_4"
+   ],
+   "g": 1.0
+  },
+  "jump": {
+   "f": [
+    "jump_1",
+    "jump_2",
+    "jump_3",
+    "jump_4"
+   ],
+   "g": 1.0
+  },
+  "double_jump": {
+   "f": [
+    "double_jump_1",
+    "double_jump_2",
+    "double_jump_3",
+    "double_jump_4"
+   ],
+   "g": 1.0
+  },
+  "land": {
+   "f": [
+    "land_1",
+    "land_2",
+    "land_3",
+    "land_4"
+   ],
+   "g": 1.0
+  },
+  "dash": {
+   "f": [
+    "dash_1",
+    "dash_2",
+    "dash_3",
+    "dash_4"
+   ],
+   "g": 1.0
+  },
+  "step_dirt": {
+   "f": [
+    "step_dirt_1",
+    "step_dirt_2",
+    "step_dirt_3",
+    "step_dirt_4",
+    "step_dirt_5"
+   ],
+   "g": 1.0
+  },
+  "step_wood": {
+   "f": [
+    "step_wood_1",
+    "step_wood_2",
+    "step_wood_3",
+    "step_wood_4",
+    "step_wood_5"
+   ],
+   "g": 1.0
+  },
+  "step_metal": {
+   "f": [
+    "step_metal_1",
+    "step_metal_2",
+    "step_metal_3",
+    "step_metal_4",
+    "step_metal_5"
+   ],
+   "g": 1.0
+  },
+  "step_flesh": {
+   "f": [
+    "step_flesh_1",
+    "step_flesh_2",
+    "step_flesh_3",
+    "step_flesh_4",
+    "step_flesh_5"
+   ],
+   "g": 1.0
+  },
+  "step_snow": {
+   "f": [
+    "step_snow_1",
+    "step_snow_2",
+    "step_snow_3",
+    "step_snow_4",
+    "step_snow_5"
+   ],
+   "g": 1.0
+  },
+  "step_water": {
+   "f": [
+    "step_water_1",
+    "step_water_2",
+    "step_water_3",
+    "step_water_4",
+    "step_water_5"
+   ],
+   "g": 1.0
+  },
+  "menu_move": {
+   "f": [
+    "menu_move_1",
+    "menu_move_2",
+    "menu_move_3",
+    "menu_move_4"
+   ],
+   "g": 1.0,
+   "room": 0
+  },
+  "menu_ok": {
+   "f": [
+    "menu_ok_1",
+    "menu_ok_2",
+    "menu_ok_3"
+   ],
+   "g": 1.0,
+   "room": 0
+  },
+  "menu_cancel": {
+   "f": [
+    "menu_cancel_1",
+    "menu_cancel_2",
+    "menu_cancel_3"
+   ],
+   "g": 1.0,
+   "room": 0
+  },
+  "type": {
+   "f": [
+    "type_1",
+    "type_2",
+    "type_3",
+    "type_4"
+   ],
+   "g": 1.0,
+   "room": 0
+  },
+  "coin": {
+   "f": [
+    "coin_1",
+    "coin_2",
+    "coin_3",
+    "coin_4"
+   ],
+   "g": 1.0
+  },
+  "item": {
+   "f": [
+    "item_1",
+    "item_2",
+    "item_3"
+   ],
+   "g": 1.0
+  },
+  "levelup": {
+   "f": [
+    "levelup_1",
+    "levelup_2",
+    "levelup_3"
+   ],
+   "g": 1.0
+  },
+  "fire": {
+   "f": [
+    "fire_1",
+    "fire_2",
+    "fire_3",
+    "fire_4"
+   ],
+   "g": 1.0
+  },
+  "ice": {
+   "f": [
+    "ice_1",
+    "ice_2",
+    "ice_3",
+    "ice_4"
+   ],
+   "g": 1.0
+  },
+  "thunder": {
+   "f": [
+    "thunder_1",
+    "thunder_2",
+    "thunder_3",
+    "thunder_4"
+   ],
+   "g": 1.0
+  },
+  "thunderclap": {
+   "f": [
+    "thunderclap_1",
+    "thunderclap_2",
+    "thunderclap_3"
+   ],
+   "g": 1.0
+  },
+  "holy": {
+   "f": [
+    "holy_1",
+    "holy_2",
+    "holy_3"
+   ],
+   "g": 1.0
+  },
+  "dark": {
+   "f": [
+    "dark_1",
+    "dark_2",
+    "dark_3",
+    "dark_4"
+   ],
+   "g": 1.0
+  },
+  "magic": {
+   "f": [
+    "magic_1",
+    "magic_2",
+    "magic_3",
+    "magic_4"
+   ],
+   "g": 1.0
+  },
+  "explode": {
+   "f": [
+    "explode_1",
+    "explode_2",
+    "explode_3"
+   ],
+   "g": 1.0
+  },
+  "enemy_die_bone": {
+   "f": [
+    "enemy_die_bone_1",
+    "enemy_die_bone_2",
+    "enemy_die_bone_3",
+    "enemy_die_bone_4"
+   ],
+   "g": 1.0,
+   "of": "enemy_die"
+  },
+  "enemy_die_ghost": {
+   "f": [
+    "enemy_die_ghost_1",
+    "enemy_die_ghost_2",
+    "enemy_die_ghost_3",
+    "enemy_die_ghost_4"
+   ],
+   "g": 1.0,
+   "of": "enemy_die"
+  },
+  "enemy_die_stone": {
+   "f": [
+    "enemy_die_stone_1",
+    "enemy_die_stone_2",
+    "enemy_die_stone_3",
+    "enemy_die_stone_4"
+   ],
+   "g": 1.0,
+   "of": "enemy_die"
+  },
+  "gallop": {
+   "f": [
+    "gallop_1",
+    "gallop_2",
+    "gallop_3",
+    "gallop_4"
+   ],
+   "g": 1.0
+  },
+  "wing_flap": {
+   "f": [
+    "wing_flap_1",
+    "wing_flap_2",
+    "wing_flap_3",
+    "wing_flap_4"
+   ],
+   "g": 1.0
+  },
+  "footstep": {
+   "f": [
+    "step_stone_1",
+    "step_stone_2",
+    "step_stone_3",
+    "step_stone_4",
+    "step_stone_5"
+   ],
+   "g": 0.15,
+   "alias": "step_stone"
   }
  },
  "files": {
+  "axe_1": {
+   "dur": 0.38,
+   "on": 0.0009,
+   "ch": 1,
+   "lufs": -16.7,
+   "lufs_m": -17.4,
+   "peak": -1.6,
+   "dpk": -1.33,
+   "m4a": "3868016f",
+   "bytes": 6026
+  },
+  "axe_2": {
+   "dur": 0.38,
+   "on": 0.0009,
+   "ch": 1,
+   "lufs": -16.6,
+   "lufs_m": -17.2,
+   "peak": -1.6,
+   "dpk": -1.73,
+   "m4a": "4f405750",
+   "bytes": 6001
+  },
+  "axe_3": {
+   "dur": 0.38,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -16.6,
+   "peak": -1.85,
+   "dpk": -1.82,
+   "m4a": "8b8124bc",
+   "bytes": 6009
+  },
   "clang_1": {
    "dur": 0.2639,
    "on": 0.0019,
    "ch": 1,
-   "lufs": -16,
+   "lufs": -16.0,
    "lufs_m": -23.5,
    "peak": -1.53,
    "dpk": -1.08,
    "m4a": "a8c69ddd",
-   "ogg": "59e36e1c",
-   "bytes": 10619
+   "bytes": 4607
   },
   "clang_2": {
    "dur": 0.2715,
    "on": 0.0018,
    "ch": 1,
-   "lufs": -16,
+   "lufs": -16.0,
    "lufs_m": -23.5,
    "peak": -3.1,
    "dpk": -2.47,
    "m4a": "df0acfe1",
-   "ogg": "64bbd915",
-   "bytes": 10785
+   "bytes": 4674
   },
   "clang_3": {
    "dur": 0.2618,
@@ -145,56 +563,95 @@
    "peak": -1.55,
    "dpk": -1.63,
    "m4a": "e068b53c",
-   "ogg": "07f52ddf",
-   "bytes": 10547
+   "bytes": 4565
   },
   "clang_4": {
    "dur": 0.297,
    "on": 0.0019,
    "ch": 1,
-   "lufs": -16,
+   "lufs": -16.0,
    "lufs_m": -22.4,
    "peak": -2.93,
    "dpk": -3.79,
    "m4a": "01ff90a3",
-   "ogg": "43799ce1",
-   "bytes": 11214
+   "bytes": 4960
   },
   "clang_5": {
    "dur": 0.2928,
    "on": 0.0019,
    "ch": 1,
-   "lufs": -16,
+   "lufs": -16.0,
    "lufs_m": -22.4,
    "peak": -3.92,
-   "dpk": -3.51,
+   "dpk": -3.94,
    "m4a": "1f3bbbef",
-   "ogg": "bd07e1ec",
-   "bytes": 11284
+   "bytes": 4965
+  },
+  "coin_1": {
+   "dur": 0.3409,
+   "on": 0.0018,
+   "ch": 1,
+   "lufs": -22.6,
+   "lufs_m": -26.1,
+   "peak": -1.27,
+   "dpk": -1.82,
+   "m4a": "eb35d9f9",
+   "bytes": 5501
+  },
+  "coin_2": {
+   "dur": 0.35,
+   "on": 0.0007,
+   "ch": 1,
+   "lufs": -23.1,
+   "lufs_m": -23.9,
+   "peak": -1.21,
+   "dpk": -1.35,
+   "m4a": "90e96e67",
+   "bytes": 5500
+  },
+  "coin_3": {
+   "dur": 0.35,
+   "on": 0.0008,
+   "ch": 1,
+   "lufs": -22.6,
+   "lufs_m": -24.5,
+   "peak": -1.32,
+   "dpk": -1.59,
+   "m4a": "658d2c1d",
+   "bytes": 5466
+  },
+  "coin_4": {
+   "dur": 0.35,
+   "on": 0.0007,
+   "ch": 1,
+   "lufs": -21.8,
+   "lufs_m": -24.2,
+   "peak": -1.53,
+   "dpk": -2.06,
+   "m4a": "99f21e51",
+   "bytes": 5572
   },
   "crit_1": {
    "dur": 0.463,
    "on": 0.0005,
    "ch": 1,
-   "lufs": -16,
-   "lufs_m": -22,
+   "lufs": -16.0,
+   "lufs_m": -22.0,
    "peak": -1.23,
    "dpk": -1.25,
    "m4a": "9442c7e6",
-   "ogg": "158c3310",
-   "bytes": 14285
+   "bytes": 6812
   },
   "crit_2": {
    "dur": 0.3671,
    "on": 0.0005,
    "ch": 1,
-   "lufs": -16,
+   "lufs": -16.0,
    "lufs_m": -21.6,
    "peak": -2.04,
-   "dpk": -1.64,
+   "dpk": -1.79,
    "m4a": "4e466082",
-   "ogg": "5e58132f",
-   "bytes": 12639
+   "bytes": 5841
   },
   "crit_3": {
    "dur": 0.3925,
@@ -205,8 +662,7 @@
    "peak": -1.1,
    "dpk": -1.78,
    "m4a": "420444da",
-   "ogg": "e5c52594",
-   "bytes": 13008
+   "bytes": 5999
   },
   "crit_4": {
    "dur": 0.3601,
@@ -217,32 +673,205 @@
    "peak": -1.1,
    "dpk": -1.89,
    "m4a": "9e21ed15",
-   "ogg": "5699c610",
-   "bytes": 12296
+   "bytes": 5675
+  },
+  "dagger_1": {
+   "dur": 0.1264,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -23.0,
+   "peak": -2.52,
+   "dpk": -3.14,
+   "m4a": "ddf8f12c",
+   "bytes": 2904
+  },
+  "dagger_2": {
+   "dur": 0.1254,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -24.2,
+   "peak": -2.41,
+   "dpk": -2.74,
+   "m4a": "7d1664e3",
+   "bytes": 2840
+  },
+  "dagger_3": {
+   "dur": 0.1274,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -23.6,
+   "peak": -5.94,
+   "dpk": -6.3,
+   "m4a": "0a2dd716",
+   "bytes": 2909
+  },
+  "dagger_4": {
+   "dur": 0.1446,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -24.2,
+   "peak": -4.84,
+   "dpk": -4.99,
+   "m4a": "400f30d7",
+   "bytes": 3143
+  },
+  "dark_1": {
+   "dur": 0.9,
+   "on": 0.004,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -13.9,
+   "peak": -2.3,
+   "dpk": -2.32,
+   "m4a": "96491364",
+   "bytes": 12227
+  },
+  "dark_2": {
+   "dur": 0.9,
+   "on": 0.0036,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -14.0,
+   "peak": -2.6,
+   "dpk": -1.66,
+   "m4a": "bc60dafb",
+   "bytes": 12244
+  },
+  "dark_3": {
+   "dur": 0.9,
+   "on": 0.0045,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -13.4,
+   "peak": -2.01,
+   "dpk": -2.02,
+   "m4a": "dbc3633d",
+   "bytes": 12227
+  },
+  "dark_4": {
+   "dur": 0.9,
+   "on": 0.0038,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -13.8,
+   "peak": -2.47,
+   "dpk": -2.46,
+   "m4a": "93a729e0",
+   "bytes": 12193
+  },
+  "dash_1": {
+   "dur": 0.22,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.0,
+   "peak": -4.04,
+   "dpk": -3.97,
+   "m4a": "89557410",
+   "bytes": 4015
+  },
+  "dash_2": {
+   "dur": 0.2195,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -21.2,
+   "peak": -4.26,
+   "dpk": -4.21,
+   "m4a": "60166d82",
+   "bytes": 4028
+  },
+  "dash_3": {
+   "dur": 0.2157,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.0,
+   "peak": -2.76,
+   "dpk": -2.84,
+   "m4a": "527c4241",
+   "bytes": 3895
+  },
+  "dash_4": {
+   "dur": 0.22,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -21.2,
+   "peak": -4.57,
+   "dpk": -4.67,
+   "m4a": "4b4115e2",
+   "bytes": 3986
+  },
+  "double_jump_1": {
+   "dur": 0.1685,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -23.0,
+   "peak": -2.86,
+   "dpk": -2.86,
+   "m4a": "346cddb4",
+   "bytes": 3302
+  },
+  "double_jump_2": {
+   "dur": 0.1692,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.9,
+   "lufs_m": -22.1,
+   "peak": -2.83,
+   "dpk": -2.01,
+   "m4a": "d45c8c6b",
+   "bytes": 3230
+  },
+  "double_jump_3": {
+   "dur": 0.1688,
+   "on": 0.0,
+   "ch": 1,
+   "lufs": -19.2,
+   "lufs_m": -24.8,
+   "peak": -1.5,
+   "dpk": -1.77,
+   "m4a": "1687ad39",
+   "bytes": 3366
+  },
+  "double_jump_4": {
+   "dur": 0.1694,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -18.9,
+   "lufs_m": -23.5,
+   "peak": -1.57,
+   "dpk": -1.54,
+   "m4a": "3601ac7e",
+   "bytes": 3210
   },
   "enemy_die_1": {
    "dur": 0.67,
    "on": 0.0012,
    "ch": 1,
-   "lufs": -16,
+   "lufs": -16.0,
    "lufs_m": -19.7,
    "peak": -1.73,
    "dpk": -1.79,
    "m4a": "440266af",
-   "ogg": "099b1e59",
-   "bytes": 19664
+   "bytes": 9520
   },
   "enemy_die_2": {
    "dur": 0.5101,
    "on": 0.0016,
    "ch": 1,
-   "lufs": -16,
+   "lufs": -16.0,
    "lufs_m": -19.7,
    "peak": -2.89,
-   "dpk": -2.93,
+   "dpk": -3.2,
    "m4a": "ffb91dfe",
-   "ogg": "2d7c09be",
-   "bytes": 15471
+   "bytes": 7364
   },
   "enemy_die_3": {
    "dur": 0.5768,
@@ -251,10 +880,9 @@
    "lufs": -17.2,
    "lufs_m": -18.9,
    "peak": -1.57,
-   "dpk": -1.51,
+   "dpk": -1.62,
    "m4a": "ab367153",
-   "ogg": "06895a17",
-   "bytes": 17119
+   "bytes": 8372
   },
   "enemy_die_4": {
    "dur": 0.5139,
@@ -263,10 +891,306 @@
    "lufs": -16.2,
    "lufs_m": -19.9,
    "peak": -1.6,
-   "dpk": -2.24,
+   "dpk": -2.86,
    "m4a": "b145b8ae",
-   "ogg": "887bcfb9",
-   "bytes": 16115
+   "bytes": 7561
+  },
+  "enemy_die_bone_1": {
+   "dur": 0.5398,
+   "on": 0.0025,
+   "ch": 1,
+   "lufs": -17.7,
+   "lufs_m": -19.1,
+   "peak": -1.1,
+   "dpk": -1.35,
+   "m4a": "5ecd2a03",
+   "bytes": 7933
+  },
+  "enemy_die_bone_2": {
+   "dur": 0.3809,
+   "on": 0.0008,
+   "ch": 1,
+   "lufs": -16.8,
+   "lufs_m": -19.2,
+   "peak": -1.1,
+   "dpk": -1.59,
+   "m4a": "1728dfdc",
+   "bytes": 6054
+  },
+  "enemy_die_bone_3": {
+   "dur": 0.5413,
+   "on": 0.0008,
+   "ch": 1,
+   "lufs": -16.4,
+   "lufs_m": -18.0,
+   "peak": -1.41,
+   "dpk": -1.42,
+   "m4a": "60e174b6",
+   "bytes": 7794
+  },
+  "enemy_die_bone_4": {
+   "dur": 0.39,
+   "on": 0.0196,
+   "ch": 1,
+   "lufs": -20.3,
+   "lufs_m": -22.0,
+   "peak": -1.34,
+   "dpk": -2.91,
+   "m4a": "19dce89b",
+   "bytes": 6054
+  },
+  "enemy_die_ghost_1": {
+   "dur": 0.93,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.9,
+   "lufs_m": -14.6,
+   "peak": -1.56,
+   "dpk": -1.55,
+   "m4a": "ef3ff5ba",
+   "bytes": 12626
+  },
+  "enemy_die_ghost_2": {
+   "dur": 0.93,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -17.0,
+   "lufs_m": -14.4,
+   "peak": -1.1,
+   "dpk": -1.36,
+   "m4a": "642cb8d4",
+   "bytes": 12771
+  },
+  "enemy_die_ghost_3": {
+   "dur": 0.93,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.8,
+   "lufs_m": -14.1,
+   "peak": -1.1,
+   "dpk": -1.51,
+   "m4a": "f2e99873",
+   "bytes": 12576
+  },
+  "enemy_die_ghost_4": {
+   "dur": 0.93,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.2,
+   "lufs_m": -14.1,
+   "peak": -1.43,
+   "dpk": -1.74,
+   "m4a": "7e4e6f0b",
+   "bytes": 12813
+  },
+  "enemy_die_stone_1": {
+   "dur": 0.5575,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -23.3,
+   "lufs_m": -22.8,
+   "peak": -1.6,
+   "dpk": -1.61,
+   "m4a": "fb8a0802",
+   "bytes": 8143
+  },
+  "enemy_die_stone_2": {
+   "dur": 0.6,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -26.2,
+   "lufs_m": -25.0,
+   "peak": -1.6,
+   "dpk": -1.61,
+   "m4a": "955f989f",
+   "bytes": 8723
+  },
+  "enemy_die_stone_3": {
+   "dur": 0.418,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -24.1,
+   "lufs_m": -25.8,
+   "peak": -1.29,
+   "dpk": -1.21,
+   "m4a": "dcdb6098",
+   "bytes": 6412
+  },
+  "enemy_die_stone_4": {
+   "dur": 0.5917,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -22.9,
+   "lufs_m": -24.0,
+   "peak": -1.6,
+   "dpk": -1.64,
+   "m4a": "018d6448",
+   "bytes": 8441
+  },
+  "explode_1": {
+   "dur": 0.73,
+   "on": 0.0007,
+   "ch": 1,
+   "lufs": -20.2,
+   "lufs_m": -19.3,
+   "peak": -1.6,
+   "dpk": -2.04,
+   "m4a": "ca5b8c0e",
+   "bytes": 10012
+  },
+  "explode_2": {
+   "dur": 0.5849,
+   "on": 0.0008,
+   "ch": 1,
+   "lufs": -16.6,
+   "lufs_m": -18.6,
+   "peak": -1.6,
+   "dpk": -1.84,
+   "m4a": "94d48e39",
+   "bytes": 8412
+  },
+  "explode_3": {
+   "dur": 0.5849,
+   "on": 0.0009,
+   "ch": 1,
+   "lufs": -16.9,
+   "lufs_m": -18.3,
+   "peak": -1.59,
+   "dpk": -1.41,
+   "m4a": "abf2e28a",
+   "bytes": 8772
+  },
+  "fire_1": {
+   "dur": 0.5,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -17.4,
+   "lufs_m": -16.9,
+   "peak": -1.55,
+   "dpk": -2.07,
+   "m4a": "591045cc",
+   "bytes": 7396
+  },
+  "fire_2": {
+   "dur": 0.5,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -18.2,
+   "lufs_m": -17.5,
+   "peak": -1.33,
+   "dpk": -1.33,
+   "m4a": "b761db0c",
+   "bytes": 7640
+  },
+  "fire_3": {
+   "dur": 0.5,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.2,
+   "lufs_m": -15.5,
+   "peak": -1.54,
+   "dpk": -1.61,
+   "m4a": "067139b6",
+   "bytes": 7410
+  },
+  "fire_4": {
+   "dur": 0.4743,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -19.9,
+   "lufs_m": -20.4,
+   "peak": -1.39,
+   "dpk": -1.55,
+   "m4a": "f632e309",
+   "bytes": 7130
+  },
+  "gallop_1": {
+   "dur": 0.0787,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -29.0,
+   "peak": -5.6,
+   "dpk": -6.15,
+   "m4a": "0d1de5a9",
+   "bytes": 2258
+  },
+  "gallop_2": {
+   "dur": 0.0859,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -29.0,
+   "peak": -1.6,
+   "dpk": -1.56,
+   "m4a": "8d7ff742",
+   "bytes": 2380
+  },
+  "gallop_3": {
+   "dur": 0.0803,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -29.0,
+   "peak": -2.12,
+   "dpk": -2.17,
+   "m4a": "7550d025",
+   "bytes": 2328
+  },
+  "gallop_4": {
+   "dur": 0.0712,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -29.0,
+   "peak": -4.19,
+   "dpk": -4.19,
+   "m4a": "d9648fab",
+   "bytes": 2071
+  },
+  "gun_1": {
+   "dur": 0.35,
+   "on": 0.0007,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -20.8,
+   "peak": -3.24,
+   "dpk": -3.04,
+   "m4a": "8b25552e",
+   "bytes": 5475
+  },
+  "gun_2": {
+   "dur": 0.2413,
+   "on": 0.0009,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.4,
+   "peak": -2.31,
+   "dpk": -2.23,
+   "m4a": "bd64a9cd",
+   "bytes": 4284
+  },
+  "gun_3": {
+   "dur": 0.35,
+   "on": 0.0007,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -20.5,
+   "peak": -3.84,
+   "dpk": -3.91,
+   "m4a": "c013e888",
+   "bytes": 5433
+  },
+  "gun_4": {
+   "dur": 0.2336,
+   "on": 0.0007,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.4,
+   "peak": -3.92,
+   "dpk": -3.72,
+   "m4a": "56ea0b02",
+   "bytes": 4075
   },
   "hit_1": {
    "dur": 0.26,
@@ -275,22 +1199,20 @@
    "lufs": -17.4,
    "lufs_m": -23.4,
    "peak": -1.1,
-   "dpk": -1.94,
+   "dpk": -2.26,
    "m4a": "8fd7ce8a",
-   "ogg": "00e4b077",
-   "bytes": 10292
+   "bytes": 4354
   },
   "hit_2": {
    "dur": 0.2551,
    "on": 0.0005,
    "ch": 1,
-   "lufs": -16,
+   "lufs": -16.0,
    "lufs_m": -22.5,
    "peak": -1.93,
-   "dpk": -1.31,
+   "dpk": -1.63,
    "m4a": "2e52d9cb",
-   "ogg": "43a9a184",
-   "bytes": 10189
+   "bytes": 4312
   },
   "hit_3": {
    "dur": 0.26,
@@ -301,128 +1223,117 @@
    "peak": -1.6,
    "dpk": -1.63,
    "m4a": "2b237591",
-   "ogg": "0ff08fb5",
-   "bytes": 10731
+   "bytes": 4340
   },
   "hit_4": {
    "dur": 0.26,
    "on": 0.0003,
    "ch": 1,
-   "lufs": -16,
-   "lufs_m": -22,
+   "lufs": -16.0,
+   "lufs_m": -22.0,
    "peak": -3.02,
    "dpk": -3.59,
    "m4a": "97e7c626",
-   "ogg": "a62fe7d1",
-   "bytes": 10572
+   "bytes": 4326
   },
   "hit_5": {
    "dur": 0.26,
    "on": 0.0003,
    "ch": 1,
-   "lufs": -16,
-   "lufs_m": -22,
+   "lufs": -16.0,
+   "lufs_m": -22.0,
    "peak": -2.2,
-   "dpk": -2,
+   "dpk": -2.08,
    "m4a": "4c8e475b",
-   "ogg": "833d5f04",
-   "bytes": 10349
+   "bytes": 4404
   },
   "hit_flesh_1": {
-   "dur": 0.2,
-   "on": 0.0001,
+   "dur": 0.24,
+   "on": 0.0002,
    "ch": 1,
-   "lufs": -16.4,
-   "lufs_m": -20.6,
-   "peak": -1.56,
-   "dpk": -1.69,
-   "m4a": "df6284a3",
-   "ogg": "4d637ecd",
-   "bytes": 9520
+   "lufs": -16.0,
+   "lufs_m": -20.5,
+   "peak": -2.36,
+   "dpk": -2.4,
+   "m4a": "a8c03b73",
+   "bytes": 4251
   },
   "hit_flesh_2": {
-   "dur": 0.2,
-   "on": 0.0002,
+   "dur": 0.24,
+   "on": 0.0006,
    "ch": 1,
-   "lufs": -16,
+   "lufs": -16.0,
    "lufs_m": -21.6,
-   "peak": -1.62,
-   "dpk": -1.59,
-   "m4a": "c77beda8",
-   "ogg": "3bc79894",
-   "bytes": 9856
+   "peak": -2.6,
+   "dpk": -2.69,
+   "m4a": "c70048ad",
+   "bytes": 4179
   },
   "hit_flesh_3": {
-   "dur": 0.2,
-   "on": 0.0002,
+   "dur": 0.24,
+   "on": 0.0003,
    "ch": 1,
-   "lufs": -17.5,
-   "lufs_m": -20.9,
-   "peak": -1.41,
-   "dpk": -1.12,
-   "m4a": "086fd4f1",
-   "ogg": "d387a0f9",
-   "bytes": 9818
+   "lufs": -16.5,
+   "lufs_m": -21.1,
+   "peak": -1.6,
+   "dpk": -1.61,
+   "m4a": "12dd9328",
+   "bytes": 4155
   },
   "hit_flesh_4": {
-   "dur": 0.2,
+   "dur": 0.24,
    "on": 0.0002,
    "ch": 1,
-   "lufs": -17.5,
-   "lufs_m": -22,
-   "peak": -1.38,
-   "dpk": -2.1,
-   "m4a": "750f30da",
-   "ogg": "ed21d20b",
-   "bytes": 9966
+   "lufs": -16.9,
+   "lufs_m": -22.1,
+   "peak": -3.88,
+   "dpk": -1.96,
+   "m4a": "edf582a8",
+   "bytes": 4180
   },
   "hit_heavy_1": {
    "dur": 0.4155,
    "on": 0.0008,
    "ch": 1,
-   "lufs": -16,
+   "lufs": -16.0,
    "lufs_m": -19.7,
    "peak": -1.65,
-   "dpk": -1.56,
+   "dpk": -1.68,
    "m4a": "e5cc0247",
-   "ogg": "62ad93b0",
-   "bytes": 13162
+   "bytes": 6260
   },
   "hit_heavy_2": {
    "dur": 0.4132,
    "on": 0.0003,
    "ch": 1,
-   "lufs": -16,
+   "lufs": -16.0,
    "lufs_m": -20.5,
    "peak": -3.06,
    "dpk": -1.06,
    "m4a": "5797387d",
-   "ogg": "2c4e95c8",
-   "bytes": 13613
+   "bytes": 6349
   },
   "hit_heavy_3": {
    "dur": 0.419,
    "on": 0.0004,
    "ch": 1,
-   "lufs": -16,
+   "lufs": -16.0,
    "lufs_m": -20.8,
    "peak": -1.08,
-   "dpk": -1.11,
+   "dpk": -1.22,
    "m4a": "21c359d6",
-   "ogg": "18c3f81d",
-   "bytes": 13086
+   "bytes": 6244
   },
   "hit_heavy_4": {
    "dur": 0.4147,
    "on": 0.0001,
    "ch": 1,
-   "lufs": -16,
+   "lufs": -16.0,
    "lufs_m": -20.2,
    "peak": -2.82,
    "dpk": -2.71,
    "m4a": "cf3fb90b",
-   "ogg": "af57c82a",
-   "bytes": 13303
+   "bytes": 6294
   },
   "hit_stone_1": {
    "dur": 0.1645,
@@ -433,152 +1344,1074 @@
    "peak": -1.52,
    "dpk": -1.33,
    "m4a": "6d2eff28",
-   "ogg": "56a8c532",
-   "bytes": 8668
+   "bytes": 3269
   },
   "hit_stone_2": {
    "dur": 0.1489,
    "on": 0.0003,
    "ch": 1,
-   "lufs": -16,
-   "lufs_m": -26,
+   "lufs": -16.0,
+   "lufs_m": -26.0,
    "peak": -3.5,
    "dpk": -4.03,
    "m4a": "e1ee3b9d",
-   "ogg": "8d8c60bc",
-   "bytes": 8256
+   "bytes": 3093
   },
   "hit_stone_3": {
    "dur": 0.1833,
    "on": 0.0003,
    "ch": 1,
-   "lufs": -16,
-   "lufs_m": -25,
+   "lufs": -16.0,
+   "lufs_m": -25.0,
    "peak": -4.75,
-   "dpk": -4.42,
+   "dpk": -5.11,
    "m4a": "62ca06bb",
-   "ogg": "d12a8c63",
-   "bytes": 8769
+   "bytes": 3434
   },
   "hit_stone_4": {
    "dur": 0.1676,
    "on": 0.0004,
    "ch": 1,
-   "lufs": -16,
+   "lufs": -16.0,
    "lufs_m": -24.2,
    "peak": -2.63,
    "dpk": -2.26,
    "m4a": "2156d58b",
-   "ogg": "37fee4f2",
-   "bytes": 8880
+   "bytes": 3361
+  },
+  "holy_1": {
+   "dur": 1.1,
+   "on": 0.0008,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -13.6,
+   "peak": -2.25,
+   "dpk": -3.01,
+   "m4a": "e8859767",
+   "bytes": 14816
+  },
+  "holy_2": {
+   "dur": 1.1,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -13.9,
+   "peak": -3.76,
+   "dpk": -4.6,
+   "m4a": "f224e01d",
+   "bytes": 14664
+  },
+  "holy_3": {
+   "dur": 1.1,
+   "on": 0.0012,
+   "ch": 1,
+   "lufs": -18.4,
+   "lufs_m": -15.7,
+   "peak": -1.1,
+   "dpk": -1.11,
+   "m4a": "ad0220bc",
+   "bytes": 14986
   },
   "hurt_1": {
    "dur": 0.3,
-   "on": 0.0012,
+   "on": 0.0013,
    "ch": 1,
-   "lufs": -17.1,
-   "lufs_m": -20.5,
-   "peak": -1.55,
-   "dpk": -1.44,
-   "m4a": "179c3247",
-   "ogg": "d5514f50",
-   "bytes": 11132
+   "lufs": -16.0,
+   "lufs_m": -22.4,
+   "peak": -2.75,
+   "dpk": -2.07,
+   "m4a": "8596fdf4",
+   "bytes": 4918
   },
   "hurt_2": {
    "dur": 0.3,
    "on": 0.0017,
    "ch": 1,
-   "lufs": -16,
-   "lufs_m": -21.6,
-   "peak": -1.66,
-   "dpk": -1.61,
-   "m4a": "a0adc6c8",
-   "ogg": "1f837c8d",
-   "bytes": 11100
+   "lufs": -16.0,
+   "lufs_m": -22.4,
+   "peak": -2.12,
+   "dpk": -2.16,
+   "m4a": "0f18fea8",
+   "bytes": 4815
   },
   "hurt_3": {
    "dur": 0.3,
-   "on": 0.0016,
+   "on": 0.0017,
    "ch": 1,
-   "lufs": -16.3,
-   "lufs_m": -21.2,
-   "peak": -1.91,
-   "dpk": -1.27,
-   "m4a": "be665357",
-   "ogg": "b91035bd",
-   "bytes": 11569
+   "lufs": -16.4,
+   "lufs_m": -22.4,
+   "peak": -2.49,
+   "dpk": -2.75,
+   "m4a": "8a960d4b",
+   "bytes": 4834
   },
   "hurt_4": {
    "dur": 0.3,
    "on": 0.0012,
    "ch": 1,
-   "lufs": -16.9,
+   "lufs": -16.0,
+   "lufs_m": -22.9,
+   "peak": -1.4,
+   "dpk": -1.42,
+   "m4a": "39ffc955",
+   "bytes": 4866
+  },
+  "ice_1": {
+   "dur": 0.3017,
+   "on": 0.0012,
+   "ch": 1,
+   "lufs": -19.3,
+   "lufs_m": -22.1,
+   "peak": -1.1,
+   "dpk": -2.71,
+   "m4a": "2c1f5fab",
+   "bytes": 4988
+  },
+  "ice_2": {
+   "dur": 0.3145,
+   "on": 0.002,
+   "ch": 1,
+   "lufs": -21.1,
+   "lufs_m": -22.8,
+   "peak": -1.6,
+   "dpk": -1.83,
+   "m4a": "3a6cb42b",
+   "bytes": 5060
+  },
+  "ice_3": {
+   "dur": 0.3075,
+   "on": 0.0008,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -18.2,
+   "peak": -1.74,
+   "dpk": -1.9,
+   "m4a": "03b175de",
+   "bytes": 5025
+  },
+  "ice_4": {
+   "dur": 0.3165,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -21.0,
+   "lufs_m": -22.9,
+   "peak": -1.1,
+   "dpk": -2.92,
+   "m4a": "f4dec999",
+   "bytes": 5208
+  },
+  "item_1": {
+   "dur": 0.96,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -16.5,
+   "lufs_m": -14.6,
+   "peak": -1.17,
+   "dpk": -1.73,
+   "m4a": "f8eba170",
+   "bytes": 13077
+  },
+  "item_2": {
+   "dur": 0.96,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -14.6,
+   "peak": -1.79,
+   "dpk": -2.7,
+   "m4a": "213822dd",
+   "bytes": 13052
+  },
+  "item_3": {
+   "dur": 0.96,
+   "on": 0.0008,
+   "ch": 1,
+   "lufs": -16.6,
+   "lufs_m": -15.4,
+   "peak": -1.34,
+   "dpk": -1.45,
+   "m4a": "3d9c6755",
+   "bytes": 13031
+  },
+  "jump_1": {
+   "dur": 0.14,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -20.2,
+   "lufs_m": -25.7,
+   "peak": -1.48,
+   "dpk": -1.61,
+   "m4a": "9261e288",
+   "bytes": 2893
+  },
+  "jump_2": {
+   "dur": 0.14,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -17.8,
+   "lufs_m": -25.3,
+   "peak": -1.53,
+   "dpk": -1.63,
+   "m4a": "45b1599f",
+   "bytes": 2948
+  },
+  "jump_3": {
+   "dur": 0.14,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -17.1,
+   "lufs_m": -24.1,
+   "peak": -1.58,
+   "dpk": -1.6,
+   "m4a": "4c861539",
+   "bytes": 2892
+  },
+  "jump_4": {
+   "dur": 0.14,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.4,
    "lufs_m": -22.4,
    "peak": -1.6,
-   "dpk": -1.5,
-   "m4a": "8bdada71",
-   "ogg": "8ff56ae7",
-   "bytes": 10925
+   "dpk": -1.63,
+   "m4a": "39138d45",
+   "bytes": 2854
+  },
+  "land_1": {
+   "dur": 0.1364,
+   "on": 0.0007,
+   "ch": 1,
+   "lufs": -17.8,
+   "lufs_m": -23.8,
+   "peak": -1.59,
+   "dpk": -1.12,
+   "m4a": "e806405d",
+   "bytes": 2874
+  },
+  "land_2": {
+   "dur": 0.144,
+   "on": 0.0007,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -23.6,
+   "peak": -3.39,
+   "dpk": -1.84,
+   "m4a": "2d5b6d8d",
+   "bytes": 3013
+  },
+  "land_3": {
+   "dur": 0.1393,
+   "on": 0.0008,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -24.2,
+   "peak": -1.44,
+   "dpk": -1.47,
+   "m4a": "97003ad9",
+   "bytes": 2917
+  },
+  "land_4": {
+   "dur": 0.1216,
+   "on": 0.0008,
+   "ch": 1,
+   "lufs": -17.5,
+   "lufs_m": -26.6,
+   "peak": -1.6,
+   "dpk": -1.38,
+   "m4a": "3ddb578f",
+   "bytes": 2642
+  },
+  "levelup_1": {
+   "dur": 1.88,
+   "on": 0.0012,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -12.8,
+   "peak": -2.6,
+   "dpk": -3.68,
+   "m4a": "a1056cba",
+   "bytes": 24196
+  },
+  "levelup_2": {
+   "dur": 1.88,
+   "on": 0.0018,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -12.4,
+   "peak": -2.56,
+   "dpk": -2.79,
+   "m4a": "92ab975d",
+   "bytes": 24229
+  },
+  "levelup_3": {
+   "dur": 1.88,
+   "on": 0.0018,
+   "ch": 1,
+   "lufs": -16.6,
+   "lufs_m": -12.6,
+   "peak": -1.94,
+   "dpk": -2.69,
+   "m4a": "d9622a8e",
+   "bytes": 24416
+  },
+  "magic_1": {
+   "dur": 0.5505,
+   "on": 0.0012,
+   "ch": 1,
+   "lufs": -17.8,
+   "lufs_m": -18.1,
+   "peak": -1.54,
+   "dpk": -1.53,
+   "m4a": "9b0d62b7",
+   "bytes": 7954
+  },
+  "magic_2": {
+   "dur": 0.6,
+   "on": 0.0017,
+   "ch": 1,
+   "lufs": -17.1,
+   "lufs_m": -19.5,
+   "peak": -1.1,
+   "dpk": -1.78,
+   "m4a": "c9e2b719",
+   "bytes": 8947
+  },
+  "magic_3": {
+   "dur": 0.6,
+   "on": 0.0012,
+   "ch": 1,
+   "lufs": -17.2,
+   "lufs_m": -15.8,
+   "peak": -1.1,
+   "dpk": -2.61,
+   "m4a": "69dfc948",
+   "bytes": 8656
+  },
+  "magic_4": {
+   "dur": 0.6,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -17.0,
+   "lufs_m": -16.2,
+   "peak": -1.1,
+   "dpk": -3.33,
+   "m4a": "08962b4e",
+   "bytes": 8676
+  },
+  "menu_cancel_1": {
+   "dur": 0.14,
+   "on": 0.0007,
+   "ch": 1,
+   "lufs": -16.9,
+   "lufs_m": -24.5,
+   "peak": -1.56,
+   "dpk": -1.6,
+   "m4a": "3551f0b5",
+   "bytes": 2854
+  },
+  "menu_cancel_2": {
+   "dur": 0.14,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -23.0,
+   "peak": -1.94,
+   "dpk": -1.95,
+   "m4a": "1163b291",
+   "bytes": 2859
+  },
+  "menu_cancel_3": {
+   "dur": 0.14,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.9,
+   "peak": -3.62,
+   "dpk": -3.6,
+   "m4a": "34389fc9",
+   "bytes": 2860
+  },
+  "menu_move_1": {
+   "dur": 0.059,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -29.0,
+   "peak": -3.93,
+   "dpk": -4.1,
+   "m4a": "f83183f2",
+   "bytes": 1894
+  },
+  "menu_move_2": {
+   "dur": 0.0554,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -29.0,
+   "peak": -2.04,
+   "dpk": -2.78,
+   "m4a": "a7037b89",
+   "bytes": 1864
+  },
+  "menu_move_3": {
+   "dur": 0.0556,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -29.0,
+   "peak": -1.11,
+   "dpk": -1.68,
+   "m4a": "5ba73cd5",
+   "bytes": 1856
+  },
+  "menu_move_4": {
+   "dur": 0.0553,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -32.0,
+   "peak": -4.19,
+   "dpk": -4.41,
+   "m4a": "b7d91cb3",
+   "bytes": 1846
+  },
+  "menu_ok_1": {
+   "dur": 0.475,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -20.2,
+   "lufs_m": -20.8,
+   "peak": -2.02,
+   "dpk": -1.69,
+   "m4a": "db9a0faa",
+   "bytes": 7251
+  },
+  "menu_ok_2": {
+   "dur": 0.475,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -20.8,
+   "lufs_m": -20.5,
+   "peak": -1.6,
+   "dpk": -1.88,
+   "m4a": "4c0194dd",
+   "bytes": 7131
+  },
+  "menu_ok_3": {
+   "dur": 0.475,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -18.7,
+   "lufs_m": -20.7,
+   "peak": -1.6,
+   "dpk": -2.39,
+   "m4a": "65f6c782",
+   "bytes": 7269
+  },
+  "slash_1": {
+   "dur": 0.2,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.0,
+   "peak": -4.35,
+   "dpk": -4.31,
+   "m4a": "cc24945a",
+   "bytes": 3818
+  },
+  "slash_2": {
+   "dur": 0.1683,
+   "on": 0.001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -24.2,
+   "peak": -3.88,
+   "dpk": -4.96,
+   "m4a": "6c83a9e2",
+   "bytes": 3204
+  },
+  "slash_3": {
+   "dur": 0.1951,
+   "on": 0.0017,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -23.0,
+   "peak": -3.03,
+   "dpk": -3.14,
+   "m4a": "7546f645",
+   "bytes": 3669
+  },
+  "slash_4": {
+   "dur": 0.1683,
+   "on": 0.0008,
+   "ch": 1,
+   "lufs": -16.5,
+   "lufs_m": -22.9,
+   "peak": -1.52,
+   "dpk": -1.02,
+   "m4a": "aee4b0f6",
+   "bytes": 3281
+  },
+  "slash_5": {
+   "dur": 0.199,
+   "on": 0.0011,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.0,
+   "peak": -2.47,
+   "dpk": -2.77,
+   "m4a": "3830f1ce",
+   "bytes": 3839
+  },
+  "slash_heavy_1": {
+   "dur": 0.38,
+   "on": 0.0042,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -21.2,
+   "peak": -2.62,
+   "dpk": -2.55,
+   "m4a": "308e7aa7",
+   "bytes": 6110
+  },
+  "slash_heavy_2": {
+   "dur": 0.38,
+   "on": 0.0012,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -19.7,
+   "peak": -2.44,
+   "dpk": -2.4,
+   "m4a": "2590c4cf",
+   "bytes": 5894
+  },
+  "slash_heavy_3": {
+   "dur": 0.38,
+   "on": 0.004,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.4,
+   "peak": -3.55,
+   "dpk": -3.5,
+   "m4a": "4ce11063",
+   "bytes": 5937
+  },
+  "slash_heavy_4": {
+   "dur": 0.38,
+   "on": 0.0037,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -20.2,
+   "peak": -3.67,
+   "dpk": -3.74,
+   "m4a": "8d3be1b5",
+   "bytes": 5858
+  },
+  "step_dirt_1": {
+   "dur": 0.16,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.4,
+   "lufs_m": -23.3,
+   "peak": -1.45,
+   "dpk": -1.2,
+   "m4a": "62a6b3c7",
+   "bytes": 3121
+  },
+  "step_dirt_2": {
+   "dur": 0.16,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -19.3,
+   "lufs_m": -23.8,
+   "peak": -1.55,
+   "dpk": -1.97,
+   "m4a": "b4813ea6",
+   "bytes": 3147
+  },
+  "step_dirt_3": {
+   "dur": 0.16,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -27.2,
+   "peak": -5.09,
+   "dpk": -5.1,
+   "m4a": "3b47430f",
+   "bytes": 3169
+  },
+  "step_dirt_4": {
+   "dur": 0.16,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -17.1,
+   "lufs_m": -22.3,
+   "peak": -2.61,
+   "dpk": -1.69,
+   "m4a": "6055d155",
+   "bytes": 3171
+  },
+  "step_dirt_5": {
+   "dur": 0.16,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.9,
+   "lufs_m": -26.9,
+   "peak": -1.38,
+   "dpk": -1.36,
+   "m4a": "3a52368e",
+   "bytes": 3119
+  },
+  "step_flesh_1": {
+   "dur": 0.2,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -16.8,
+   "lufs_m": -21.0,
+   "peak": -1.56,
+   "dpk": -1.48,
+   "m4a": "d23b6cb3",
+   "bytes": 3777
+  },
+  "step_flesh_2": {
+   "dur": 0.2,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -16.9,
+   "lufs_m": -21.4,
+   "peak": -1.52,
+   "dpk": -1.8,
+   "m4a": "617dd0e2",
+   "bytes": 3724
+  },
+  "step_flesh_3": {
+   "dur": 0.2,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -17.3,
+   "lufs_m": -20.6,
+   "peak": -1.4,
+   "dpk": -1.69,
+   "m4a": "588e079b",
+   "bytes": 3694
+  },
+  "step_flesh_4": {
+   "dur": 0.2,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -18.6,
+   "lufs_m": -23.2,
+   "peak": -1.51,
+   "dpk": -1.65,
+   "m4a": "20b18141",
+   "bytes": 3825
+  },
+  "step_flesh_5": {
+   "dur": 0.2,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -17.8,
+   "lufs_m": -22.1,
+   "peak": -1.1,
+   "dpk": -1.58,
+   "m4a": "8e13014d",
+   "bytes": 3664
+  },
+  "step_metal_1": {
+   "dur": 0.14,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -18.1,
+   "lufs_m": -28.1,
+   "peak": -1.58,
+   "dpk": -1.85,
+   "m4a": "637f283f",
+   "bytes": 2960
+  },
+  "step_metal_2": {
+   "dur": 0.14,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -26.0,
+   "peak": -2.27,
+   "dpk": -2.24,
+   "m4a": "c71ab6e9",
+   "bytes": 2969
+  },
+  "step_metal_3": {
+   "dur": 0.138,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -27.2,
+   "peak": -4.03,
+   "dpk": -4.22,
+   "m4a": "f30798d1",
+   "bytes": 2965
+  },
+  "step_metal_4": {
+   "dur": 0.14,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -26.0,
+   "peak": -3.27,
+   "dpk": -3.56,
+   "m4a": "5d23b47b",
+   "bytes": 2980
+  },
+  "step_metal_5": {
+   "dur": 0.14,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -27.2,
+   "peak": -3.87,
+   "dpk": -4.03,
+   "m4a": "71a3f4d2",
+   "bytes": 2973
+  },
+  "step_snow_1": {
+   "dur": 0.18,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -17.1,
+   "lufs_m": -22.3,
+   "peak": -1.58,
+   "dpk": -1.63,
+   "m4a": "2ee2dc82",
+   "bytes": 3488
+  },
+  "step_snow_2": {
+   "dur": 0.18,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -17.0,
+   "lufs_m": -20.7,
+   "peak": -1.57,
+   "dpk": -1.74,
+   "m4a": "7ff930fb",
+   "bytes": 3401
+  },
+  "step_snow_3": {
+   "dur": 0.18,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.8,
+   "lufs_m": -22.4,
+   "peak": -1.6,
+   "dpk": -1.58,
+   "m4a": "8cf84aa8",
+   "bytes": 3471
+  },
+  "step_snow_4": {
+   "dur": 0.18,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -18.5,
+   "lufs_m": -23.7,
+   "peak": -1.6,
+   "dpk": -1.65,
+   "m4a": "9e5ed193",
+   "bytes": 3450
+  },
+  "step_snow_5": {
+   "dur": 0.18,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -17.1,
+   "lufs_m": -21.3,
+   "peak": -1.6,
+   "dpk": -1.59,
+   "m4a": "4ce3b48b",
+   "bytes": 3458
   },
   "step_stone_1": {
    "dur": 0.16,
    "on": 0.0003,
    "ch": 1,
-   "lufs": -16,
+   "lufs": -16.0,
    "lufs_m": -24.2,
    "peak": -1.97,
    "dpk": -2.08,
    "m4a": "520b11a9",
-   "ogg": "c86be953",
-   "bytes": 8355
+   "bytes": 3207
   },
   "step_stone_2": {
    "dur": 0.16,
    "on": 0.0003,
    "ch": 1,
-   "lufs": -16,
+   "lufs": -16.0,
    "lufs_m": -23.5,
    "peak": -3.67,
-   "dpk": -3.58,
+   "dpk": -3.71,
    "m4a": "813f26be",
-   "ogg": "6a2bf664",
-   "bytes": 8257
+   "bytes": 3228
   },
   "step_stone_3": {
    "dur": 0.16,
    "on": 0.0003,
    "ch": 1,
-   "lufs": -16,
+   "lufs": -16.0,
    "lufs_m": -21.6,
    "peak": -2.3,
    "dpk": -2.18,
    "m4a": "f2e5a134",
-   "ogg": "5bfc5c28",
-   "bytes": 8451
+   "bytes": 3243
   },
   "step_stone_4": {
    "dur": 0.16,
    "on": 0.0003,
    "ch": 1,
-   "lufs": -16,
-   "lufs_m": -23,
+   "lufs": -16.0,
+   "lufs_m": -23.0,
    "peak": -1.44,
-   "dpk": -1.45,
+   "dpk": -1.46,
    "m4a": "580e9097",
-   "ogg": "6d244fd8",
-   "bytes": 8185
+   "bytes": 3134
   },
   "step_stone_5": {
    "dur": 0.16,
    "on": 0.0003,
    "ch": 1,
    "lufs": -16.8,
-   "lufs_m": -21,
+   "lufs_m": -21.0,
    "peak": -1.6,
    "dpk": -1.58,
    "m4a": "cedba623",
-   "ogg": "fafad48b",
-   "bytes": 8371
+   "bytes": 3199
+  },
+  "step_water_1": {
+   "dur": 0.22,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -19.1,
+   "lufs_m": -24.3,
+   "peak": -1.1,
+   "dpk": -1.28,
+   "m4a": "78b789e8",
+   "bytes": 4135
+  },
+  "step_water_2": {
+   "dur": 0.22,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -21.3,
+   "lufs_m": -25.5,
+   "peak": -1.09,
+   "dpk": -1.23,
+   "m4a": "2fd554b5",
+   "bytes": 3962
+  },
+  "step_water_3": {
+   "dur": 0.22,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -21.2,
+   "lufs_m": -26.7,
+   "peak": -1.52,
+   "dpk": -1.6,
+   "m4a": "6a36b632",
+   "bytes": 4099
+  },
+  "step_water_4": {
+   "dur": 0.22,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -21.1,
+   "lufs_m": -25.3,
+   "peak": -1.6,
+   "dpk": -3.78,
+   "m4a": "af46d0d0",
+   "bytes": 4086
+  },
+  "step_water_5": {
+   "dur": 0.22,
+   "on": 0.0004,
+   "ch": 1,
+   "lufs": -18.4,
+   "lufs_m": -24.0,
+   "peak": -1.1,
+   "dpk": -3.89,
+   "m4a": "c0c49a30",
+   "bytes": 4104
+  },
+  "step_wood_1": {
+   "dur": 0.18,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -27.2,
+   "peak": -5.48,
+   "dpk": -5.64,
+   "m4a": "4e953f1d",
+   "bytes": 3476
+  },
+  "step_wood_2": {
+   "dur": 0.18,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -25.0,
+   "peak": -3.06,
+   "dpk": -3.05,
+   "m4a": "6bbd126b",
+   "bytes": 3288
+  },
+  "step_wood_3": {
+   "dur": 0.18,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.9,
+   "peak": -3.92,
+   "dpk": -4.06,
+   "m4a": "408a128d",
+   "bytes": 3472
+  },
+  "step_wood_4": {
+   "dur": 0.18,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -17.5,
+   "lufs_m": -21.2,
+   "peak": -1.6,
+   "dpk": -1.65,
+   "m4a": "eb115e52",
+   "bytes": 3391
+  },
+  "step_wood_5": {
+   "dur": 0.18,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -27.2,
+   "peak": -5.87,
+   "dpk": -5.74,
+   "m4a": "c917e7b4",
+   "bytes": 3433
+  },
+  "thunder_1": {
+   "dur": 0.63,
+   "on": 0.0014,
+   "ch": 1,
+   "lufs": -22.3,
+   "lufs_m": -22.5,
+   "peak": -1.19,
+   "dpk": -1.67,
+   "m4a": "7c42f970",
+   "bytes": 8968
+  },
+  "thunder_2": {
+   "dur": 0.63,
+   "on": 0.001,
+   "ch": 1,
+   "lufs": -20.0,
+   "lufs_m": -19.2,
+   "peak": -1.33,
+   "dpk": -1.63,
+   "m4a": "16f81309",
+   "bytes": 8994
+  },
+  "thunder_3": {
+   "dur": 0.63,
+   "on": 0.0009,
+   "ch": 1,
+   "lufs": -18.5,
+   "lufs_m": -18.9,
+   "peak": -1.24,
+   "dpk": -1.28,
+   "m4a": "f470a42c",
+   "bytes": 8951
+  },
+  "thunder_4": {
+   "dur": 0.63,
+   "on": 0.0003,
+   "ch": 1,
+   "lufs": -19.1,
+   "lufs_m": -18.2,
+   "peak": -1.24,
+   "dpk": -1.76,
+   "m4a": "c5299b6d",
+   "bytes": 8888
+  },
+  "thunderclap_1": {
+   "dur": 2.2,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.7,
+   "lufs_m": -13.2,
+   "peak": -1.6,
+   "dpk": -1.61,
+   "m4a": "5a5ab72d",
+   "bytes": 28025
+  },
+  "thunderclap_2": {
+   "dur": 2.2,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -17.1,
+   "lufs_m": -11.9,
+   "peak": -1.6,
+   "dpk": -1.6,
+   "m4a": "a8e06f93",
+   "bytes": 28957
+  },
+  "thunderclap_3": {
+   "dur": 2.2,
+   "on": 0.0,
+   "ch": 1,
+   "lufs": -16.4,
+   "lufs_m": -12.4,
+   "peak": -1.6,
+   "dpk": -1.6,
+   "m4a": "cd618679",
+   "bytes": 28105
+  },
+  "type_1": {
+   "dur": 0.05,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -27.2,
+   "peak": -1.8,
+   "dpk": -1.99,
+   "m4a": "d800be53",
+   "bytes": 1816
+  },
+  "type_2": {
+   "dur": 0.05,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -17.2,
+   "lufs_m": -27.2,
+   "peak": -1.59,
+   "dpk": -2.05,
+   "m4a": "91fdfd0d",
+   "bytes": 1811
+  },
+  "type_3": {
+   "dur": 0.05,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -17.3,
+   "lufs_m": -27.3,
+   "peak": -1.47,
+   "dpk": -1.59,
+   "m4a": "588b10c4",
+   "bytes": 1873
+  },
+  "type_4": {
+   "dur": 0.05,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -29.0,
+   "peak": -2.06,
+   "dpk": -2.31,
+   "m4a": "ff670659",
+   "bytes": 1831
   },
   "ult_impact_1": {
    "dur": 1.3794,
@@ -589,8 +2422,7 @@
    "peak": -1.1,
    "dpk": -1.35,
    "m4a": "098be730",
-   "ogg": "25b91e15",
-   "bytes": 49164
+   "bytes": 23094
   },
   "ult_impact_2": {
    "dur": 1.5469,
@@ -599,22 +2431,152 @@
    "lufs": -17.5,
    "lufs_m": -16.4,
    "peak": -1.1,
-   "dpk": -1.32,
+   "dpk": -1.42,
    "m4a": "c691aa8e",
-   "ogg": "e86f4187",
-   "bytes": 52757
+   "bytes": 25894
   },
   "ult_impact_3": {
    "dur": 1.3857,
    "on": 0.001,
    "ch": 2,
-   "lufs": -16,
+   "lufs": -16.0,
    "lufs_m": -17.8,
    "peak": -3.07,
    "dpk": -2.22,
    "m4a": "bab28807",
-   "ogg": "ab731c86",
-   "bytes": 46534
+   "bytes": 23126
+  },
+  "whip_1": {
+   "dur": 0.22,
+   "on": 0.0011,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.0,
+   "peak": -3.64,
+   "dpk": -3.86,
+   "m4a": "6e39e83e",
+   "bytes": 3938
+  },
+  "whip_2": {
+   "dur": 0.22,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -20.3,
+   "peak": -2.03,
+   "dpk": -2.37,
+   "m4a": "cbd0b42a",
+   "bytes": 4005
+  },
+  "whip_3": {
+   "dur": 0.2185,
+   "on": 0.0011,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -23.0,
+   "peak": -2.43,
+   "dpk": -2.67,
+   "m4a": "0bc42473",
+   "bytes": 4015
+  },
+  "whip_4": {
+   "dur": 0.22,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -20.0,
+   "peak": -2.16,
+   "dpk": -2.3,
+   "m4a": "130e832d",
+   "bytes": 4027
+  },
+  "whip_crack_1": {
+   "dur": 0.2628,
+   "on": 0.0019,
+   "ch": 1,
+   "lufs": -16.6,
+   "lufs_m": -22.6,
+   "peak": -1.14,
+   "dpk": -1.45,
+   "m4a": "a9e9146c",
+   "bytes": 4624
+  },
+  "whip_crack_2": {
+   "dur": 0.2395,
+   "on": 0.0006,
+   "ch": 1,
+   "lufs": -17.4,
+   "lufs_m": -23.8,
+   "peak": -1.56,
+   "dpk": -1.43,
+   "m4a": "1db47e70",
+   "bytes": 4437
+  },
+  "whip_crack_3": {
+   "dur": 0.2867,
+   "on": 0.0018,
+   "ch": 1,
+   "lufs": -17.3,
+   "lufs_m": -23.7,
+   "peak": -1.44,
+   "dpk": -1.3,
+   "m4a": "a1e9240b",
+   "bytes": 4909
+  },
+  "whip_crack_4": {
+   "dur": 0.2156,
+   "on": 0.0006,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.4,
+   "peak": -1.32,
+   "dpk": -1.71,
+   "m4a": "b54e9e94",
+   "bytes": 4006
+  },
+  "wing_flap_1": {
+   "dur": 0.22,
+   "on": 0.0002,
+   "ch": 1,
+   "lufs": -18.7,
+   "lufs_m": -23.6,
+   "peak": -1.59,
+   "dpk": -2.02,
+   "m4a": "82350f4c",
+   "bytes": 3899
+  },
+  "wing_flap_2": {
+   "dur": 0.22,
+   "on": 0.0009,
+   "ch": 1,
+   "lufs": -25.8,
+   "lufs_m": -29.8,
+   "peak": -1.53,
+   "dpk": -1.52,
+   "m4a": "9b3982e4",
+   "bytes": 4044
+  },
+  "wing_flap_3": {
+   "dur": 0.22,
+   "on": 0.0001,
+   "ch": 1,
+   "lufs": -16.0,
+   "lufs_m": -22.0,
+   "peak": -1.36,
+   "dpk": -1.8,
+   "m4a": "8aa2977c",
+   "bytes": 4085
+  },
+  "wing_flap_4": {
+   "dur": 0.22,
+   "on": 0.0005,
+   "ch": 1,
+   "lufs": -29.0,
+   "lufs_m": -32.7,
+   "peak": -1.09,
+   "dpk": -1.47,
+   "m4a": "0b800851",
+   "bytes": 4042
   }
  }
 }

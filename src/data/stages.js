@@ -45,7 +45,23 @@ import { ROOMS as S24 } from './maps/s24.js';
 // ── EX map import s25 (EX5-MAP) — 외전 ──
 import { ROOMS as S25 } from './maps/s25.js';
 
-const S = (o) => ({ start: 'r1', parTime: 300, darkColor: '#06020c', liquid: 'water', docs: [], relic: null, unlocks: [], ...o, intro: o.intro ?? `${o.id}_intro`, outro: o.outro ?? `${o.id}_outro` });
+/**
+ * 세로 확장 시야 여백 (hud_mobile §2): 16:9 보다 네모난 화면에서 방이 화면보다 낮으면 위·아래로 보이는 곳을 채우는 규칙.
+ * [위 mode, 위 색, 아래 mode, 아래 색] — mode 'sky'(원경 하늘이 그대로) · 'tiles'(끝 줄 타일을 이어 붙이고 색으로 녹임) · 'fill'(색만).
+ * 스테이지에 padTop / padBottom ({ mode, color }) 을 직접 쓰면 그쪽이 이긴다. 저사양은 언제나 색 칠하기 (render/tiles.js drawPads).
+ */
+export const PAD_THEMES = {
+  village: ['sky', '#371124', 'tiles', '#372015'], graveyard: ['sky', '#192c33', 'tiles', '#1c2824'], gate: ['sky', '#2c194a', 'tiles', '#28242f'],
+  hall: ['tiles', '#2f1919', 'tiles', '#281515'], catacombs: ['tiles', '#201c15', 'tiles', '#1c1911'], library: ['tiles', '#2c1c15', 'tiles', '#281911'],
+  alchemy: ['tiles', '#192819', 'tiles', '#152415'], waterway: ['tiles', '#112437', 'tiles', '#0d1c2c'], clock: ['tiles', '#20202f', 'tiles', '#1c1924'],
+  spire: ['sky', '#11243b', 'tiles', '#192c42'], chapel: ['tiles', '#371115', 'tiles', '#2c0d11'], throne: ['sky', '#370911', 'tiles', '#2f0d15'],
+  abyss: ['sky', '#240d37', 'tiles', '#241137'], arena: ['tiles', '#371c15', 'tiles', '#2c1911'], mirror: ['tiles', '#1c2433', 'tiles', '#191c2c'],
+  forge: ['tiles', '#37150d', 'tiles', '#2f1109'], sunken: ['tiles', '#092837', 'tiles', '#071c28'], sky: ['sky', '#375587', 'sky', '#375587'],
+  nightmare: ['tiles', '#2c0d37', 'tiles', '#24092c'], blight: ['sky', '#1c240d', 'tiles', '#202811'], void: ['sky', '#150d20', 'tiles', '#150d20'],
+};
+const padOf = (theme, i) => { const p = PAD_THEMES[theme] ?? PAD_THEMES.hall; return { mode: p[i], color: p[i + 1] }; };
+const S = (o) => ({ start: 'r1', parTime: 300, darkColor: '#06020c', liquid: 'water', docs: [], relic: null, unlocks: [], ...o, intro: o.intro ?? `${o.id}_intro`, outro: o.outro ?? `${o.id}_outro`,
+  padTop: o.padTop ?? padOf(o.theme, 0), padBottom: o.padBottom ?? padOf(o.theme, 2) });
 
 export const STAGES = {
   s01: S({ id: 's01', chapter: 1, name: '불타는 마을', sub: '에슈빌 외곽', theme: 'village', bg: 'bg/s01_village', tex: 'tex/tex_wood', tex2: 'tex/tex_dirt', tileStyle: 'wood',

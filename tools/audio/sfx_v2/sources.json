@@ -1,9 +1,45 @@
 {
+ "bsb:0004": {
+  "path": "bsb/0004.wav",
+  "url": "https://bigsoundbank.com/UPLOAD/bwf-en/0004.wav",
+  "page": "https://bigsoundbank.com/match-1-s0004.html",
+  "title": "Match #1 (#0004)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
  "bsb:0127": {
   "path": "bsb/0127.flac",
   "url": "https://bigsoundbank.com/UPLOAD/flac/0127.flac",
   "page": "https://bigsoundbank.com/sword-that-cuts-s0127.html",
   "title": "Sword That Cuts (#0127)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:0128": {
+  "path": "bsb/0128.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/0128.flac",
+  "page": "https://bigsoundbank.com/sword-through-the-air-s0128.html",
+  "title": "Sword Through the Air (#0128)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:0134": {
+  "path": "bsb/0134.wav",
+  "url": "https://bigsoundbank.com/UPLOAD/bwf-en/0134.wav",
+  "page": "https://bigsoundbank.com/electric-shock-s0134.html",
+  "title": "Electric shock (#0134)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:0165": {
+  "path": "bsb/0165.wav",
+  "url": "https://bigsoundbank.com/UPLOAD/bwf-en/0165.wav",
+  "page": "https://bigsoundbank.com/man-footsteps-on-the-wooden-floor-s0165.html",
+  "title": "Man Footsteps on the Wooden Floor (#0165)",
   "author": "Joseph SARDIN — BigSoundBank.com",
   "license": "CC0 1.0",
   "license_url": "https://bigsoundbank.com/droits.html"
@@ -17,11 +53,146 @@
   "license": "CC0 1.0",
   "license_url": "https://bigsoundbank.com/droits.html"
  },
+ "bsb:0208": {
+  "path": "bsb/0208.wav",
+  "url": "https://bigsoundbank.com/UPLOAD/bwf-en/0208.wav",
+  "page": "https://bigsoundbank.com/on-snow-s0208.html",
+  "title": "Footstep in the Snow #1 (#0208)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:0292": {
+  "path": "bsb/0292.wav",
+  "url": "https://bigsoundbank.com/UPLOAD/bwf-en/0292.wav",
+  "page": "https://bigsoundbank.com/small-bell-1-s0292.html",
+  "title": "Small Bell #1 (#0292)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:0293": {
+  "path": "bsb/0293.wav",
+  "url": "https://bigsoundbank.com/UPLOAD/bwf-en/0293.wav",
+  "page": "https://bigsoundbank.com/small-bell-2-s0293.html",
+  "title": "Small bell #2 (#0293)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:0294": {
+  "path": "bsb/0294.wav",
+  "url": "https://bigsoundbank.com/UPLOAD/bwf-en/0294.wav",
+  "page": "https://bigsoundbank.com/small-bell-3-s0294.html",
+  "title": "Small Bell #3 (#0294)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:0321": {
+  "path": "bsb/0321.wav",
+  "url": "https://bigsoundbank.com/UPLOAD/bwf-en/0321.wav",
+  "page": "https://bigsoundbank.com/switch-5-s0321.html",
+  "title": "Switch #5 (#0321)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:0339": {
+  "path": "bsb/0339.wav",
+  "url": "https://bigsoundbank.com/UPLOAD/bwf-en/0339.wav",
+  "page": "https://bigsoundbank.com/coin-in-cup-1-s0339.html",
+  "title": "Coin in cup #1 (#0339)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:0340": {
+  "path": "bsb/0340.wav",
+  "url": "https://bigsoundbank.com/UPLOAD/bwf-en/0340.wav",
+  "page": "https://bigsoundbank.com/coin-in-cup-2-s0340.html",
+  "title": "Coin in cup #2 (#0340)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:0359": {
+  "path": "bsb/0359.wav",
+  "url": "https://bigsoundbank.com/UPLOAD/bwf-en/0359.wav",
+  "page": "https://bigsoundbank.com/heavy-chain-s0359.html",
+  "title": "Heavy chain (#0359)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:0360": {
+  "path": "bsb/0360.wav",
+  "url": "https://bigsoundbank.com/UPLOAD/bwf-en/0360.wav",
+  "page": "https://bigsoundbank.com/medium-chain-1-s0360.html",
+  "title": "Medium Chain #1 (#0360)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:0397": {
+  "path": "bsb/0397.wav",
+  "url": "https://bigsoundbank.com/UPLOAD/bwf-en/0397.wav",
+  "page": "https://bigsoundbank.com/shot-of-winchester-magnum-xtr-s0397.html",
+  "title": "Shot of Winchester Magnum XTR (#0397)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:0476": {
+  "path": "bsb/0476.wav",
+  "url": "https://bigsoundbank.com/UPLOAD/bwf-en/0476.wav",
+  "page": "https://bigsoundbank.com/flight-of-a-pigeon-s0476.html",
+  "title": "Flight of a pigeon (#0476)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:0495": {
+  "path": "bsb/0495.wav",
+  "url": "https://bigsoundbank.com/UPLOAD/bwf-en/0495.wav",
+  "page": "https://bigsoundbank.com/steps-in-the-mud-s0495.html",
+  "title": "Steps in the Mud (#0495)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:0572": {
+  "path": "bsb/0572.wav",
+  "url": "https://bigsoundbank.com/UPLOAD/bwf-en/0572.wav",
+  "page": "https://bigsoundbank.com/whoosh-1-s0572.html",
+  "title": "Whoosh #1 (#0572)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:0573": {
+  "path": "bsb/0573.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/0573.flac",
+  "page": "https://bigsoundbank.com/whoosh-2-s0573.html",
+  "title": "Whoosh #2 (#0573)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
  "bsb:0596": {
   "path": "bsb/0596.wav",
   "url": "https://bigsoundbank.com/UPLOAD/bwf-en/0596.wav",
   "page": "https://bigsoundbank.com/bones-cracking-s0596.html",
   "title": "Bones cracking #1 (#0596)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:0611": {
+  "path": "bsb/0611.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/0611.flac",
+  "page": "https://bigsoundbank.com/horse-gallop-s0611.html",
+  "title": "Horse Gallop (#0611)",
   "author": "Joseph SARDIN — BigSoundBank.com",
   "license": "CC0 1.0",
   "license_url": "https://bigsoundbank.com/droits.html"
@@ -35,6 +206,33 @@
   "license": "CC0 1.0",
   "license_url": "https://bigsoundbank.com/droits.html"
  },
+ "bsb:0840": {
+  "path": "bsb/0840.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/0840.flac",
+  "page": "https://bigsoundbank.com/flight-of-a-pigeon-s0840.html",
+  "title": "Flight of a Pigeon (#0840)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:0920": {
+  "path": "bsb/0920.wav",
+  "url": "https://bigsoundbank.com/UPLOAD/bwf-en/0920.wav",
+  "page": "https://bigsoundbank.com/glockenspiel-s0920.html",
+  "title": "Glockenspiel (#0920)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:0987": {
+  "path": "bsb/0987.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/0987.flac",
+  "page": "https://bigsoundbank.com/big-branching-fire-1-s0987.html",
+  "title": "Big Branching Fire #1 (#0987)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
  "bsb:1023": {
   "path": "bsb/1023.flac",
   "url": "https://bigsoundbank.com/UPLOAD/flac/1023.flac",
@@ -44,11 +242,65 @@
   "license": "CC0 1.0",
   "license_url": "https://bigsoundbank.com/droits.html"
  },
+ "bsb:1065": {
+  "path": "bsb/1065.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1065.flac",
+  "page": "https://bigsoundbank.com/typewriter-1-s1065.html",
+  "title": "Typewriter #1 (#1065)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
  "bsb:1084": {
   "path": "bsb/1084.flac",
   "url": "https://bigsoundbank.com/UPLOAD/flac/1084.flac",
   "page": "https://bigsoundbank.com/shot-shovel-s1084.html",
   "title": "Shot of shovel (#1084)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1278": {
+  "path": "bsb/1278.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1278.flac",
+  "page": "https://bigsoundbank.com/sparkling-candle-1-s1278.html",
+  "title": "Sparkling Candle #1 (#1278)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1318": {
+  "path": "bsb/1318.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1318.flac",
+  "page": "https://bigsoundbank.com/fast-steps-on-concrete-s1318.html",
+  "title": "Fast Steps on Concrete (#1318)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1325": {
+  "path": "bsb/1325.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1325.flac",
+  "page": "https://bigsoundbank.com/cheers-small-wineglass-1-s1325.html",
+  "title": "Cheers, small wineglass #1 (#1325)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1328": {
+  "path": "bsb/1328.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1328.flac",
+  "page": "https://bigsoundbank.com/cheers-red-wine-glass-1-s1328.html",
+  "title": "Cheers, red wine glass #1 (#1328)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1330": {
+  "path": "bsb/1330.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1330.flac",
+  "page": "https://bigsoundbank.com/cheers-red-wine-glass-3-s1330.html",
+  "title": "Cheers, red wine glass #3 (#1330)",
   "author": "Joseph SARDIN — BigSoundBank.com",
   "license": "CC0 1.0",
   "license_url": "https://bigsoundbank.com/droits.html"
@@ -67,6 +319,60 @@
   "url": "https://bigsoundbank.com/UPLOAD/flac/1409.flac",
   "page": "https://bigsoundbank.com/bones-cracking-3-s1409.html",
   "title": "Bones cracking #3 (#1409)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1482": {
+  "path": "bsb/1482.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1482.flac",
+  "page": "https://bigsoundbank.com/gong-sweet-s1482.html",
+  "title": "Gong, sweet (#1482)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1483": {
+  "path": "bsb/1483.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1483.flac",
+  "page": "https://bigsoundbank.com/gong-strong-1-s1483.html",
+  "title": "Gong, strong #1 (#1483)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1529": {
+  "path": "bsb/1529.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1529.flac",
+  "page": "https://bigsoundbank.com/splash-small-1-s1529.html",
+  "title": "Splash, Small #1 (#1529)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1530": {
+  "path": "bsb/1530.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1530.flac",
+  "page": "https://bigsoundbank.com/splash-small-2-s1530.html",
+  "title": "Splash, small #2 (#1530)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1531": {
+  "path": "bsb/1531.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1531.flac",
+  "page": "https://bigsoundbank.com/splash-small-3-s1531.html",
+  "title": "Splash, small #3 (#1531)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1532": {
+  "path": "bsb/1532.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1532.flac",
+  "page": "https://bigsoundbank.com/splash-small-4-s1532.html",
+  "title": "Splash, small #4 (#1532)",
   "author": "Joseph SARDIN — BigSoundBank.com",
   "license": "CC0 1.0",
   "license_url": "https://bigsoundbank.com/droits.html"
@@ -107,6 +413,78 @@
   "license": "CC0 1.0",
   "license_url": "https://bigsoundbank.com/droits.html"
  },
+ "bsb:1795": {
+  "path": "bsb/1795.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1795.flac",
+  "page": "https://bigsoundbank.com/whoosh-3-s1795.html",
+  "title": "Whoosh #3 (#1795)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1796": {
+  "path": "bsb/1796.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1796.flac",
+  "page": "https://bigsoundbank.com/whoosh-4-s1796.html",
+  "title": "Whoosh #4 (#1796)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1797": {
+  "path": "bsb/1797.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1797.flac",
+  "page": "https://bigsoundbank.com/whoosh-5-s1797.html",
+  "title": "Whoosh #5 (#1797)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1798": {
+  "path": "bsb/1798.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1798.flac",
+  "page": "https://bigsoundbank.com/whoosh-10-s1798.html",
+  "title": "Whoosh #10 (#1798)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1799": {
+  "path": "bsb/1799.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1799.flac",
+  "page": "https://bigsoundbank.com/whoosh-6-s1799.html",
+  "title": "Whoosh #6 (#1799)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1800": {
+  "path": "bsb/1800.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1800.flac",
+  "page": "https://bigsoundbank.com/whoosh-7-s1800.html",
+  "title": "Whoosh #7 (#1800)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1801": {
+  "path": "bsb/1801.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1801.flac",
+  "page": "https://bigsoundbank.com/whoosh-8-s1801.html",
+  "title": "Whoosh #8 (#1801)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1802": {
+  "path": "bsb/1802.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1802.flac",
+  "page": "https://bigsoundbank.com/whoosh-9-s1802.html",
+  "title": "Whoosh #9 (#1802)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
  "bsb:1806": {
   "path": "bsb/1806.flac",
   "url": "https://bigsoundbank.com/UPLOAD/flac/1806.flac",
@@ -130,6 +508,186 @@
   "url": "https://bigsoundbank.com/UPLOAD/flac/1808.flac",
   "page": "https://bigsoundbank.com/explosion-2-s1808.html",
   "title": "Explosion #2 (#1808)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1835": {
+  "path": "bsb/1835.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1835.flac",
+  "page": "https://bigsoundbank.com/jumping-on-concrete-1-s1835.html",
+  "title": "Jumping on concrete #1 (#1835)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1836": {
+  "path": "bsb/1836.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1836.flac",
+  "page": "https://bigsoundbank.com/jumping-on-concrete-2-s1836.html",
+  "title": "Jumping on Concrete #2 (#1836)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1837": {
+  "path": "bsb/1837.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1837.flac",
+  "page": "https://bigsoundbank.com/jumping-on-dirt-road-1-s1837.html",
+  "title": "Jumping on dirt road #1 (#1837)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1838": {
+  "path": "bsb/1838.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1838.flac",
+  "page": "https://bigsoundbank.com/jumping-on-dirt-road-2-s1838.html",
+  "title": "Jumping on dirt road #2 (#1838)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1984": {
+  "path": "bsb/1984.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1984.flac",
+  "page": "https://bigsoundbank.com/pistol-cocking-1-s1984.html",
+  "title": "Pistol, cocking #1 (#1984)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:1985": {
+  "path": "bsb/1985.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/1985.flac",
+  "page": "https://bigsoundbank.com/pistol-cocking-2-s1985.html",
+  "title": "Pistol, cocking #2 (#1985)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2079": {
+  "path": "bsb/2079.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2079.flac",
+  "page": "https://bigsoundbank.com/chimes-dream-1-s2079.html",
+  "title": "Chimes \"Dream\" #1 (#2079)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2080": {
+  "path": "bsb/2080.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2080.flac",
+  "page": "https://bigsoundbank.com/chimes-dream-2-s2080.html",
+  "title": "Chimes \"dream\" #2 (#2080)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2081": {
+  "path": "bsb/2081.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2081.flac",
+  "page": "https://bigsoundbank.com/chimes-dream-3-s2081.html",
+  "title": "Chimes \"dream\" #3 (#2081)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2082": {
+  "path": "bsb/2082.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2082.flac",
+  "page": "https://bigsoundbank.com/chimes-dream-4-s2082.html",
+  "title": "Chimes \"dream\" #4 (#2082)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2083": {
+  "path": "bsb/2083.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2083.flac",
+  "page": "https://bigsoundbank.com/chimes-dream-5-s2083.html",
+  "title": "Chimes \"dream\" #5 (#2083)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2087": {
+  "path": "bsb/2087.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2087.flac",
+  "page": "https://bigsoundbank.com/chimes-butterfly-1-s2087.html",
+  "title": "Chimes \"butterfly\" #1 (#2087)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2088": {
+  "path": "bsb/2088.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2088.flac",
+  "page": "https://bigsoundbank.com/chimes-butterfly-2-s2088.html",
+  "title": "Chimes \"butterfly\" #2 (#2088)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2123": {
+  "path": "bsb/2123.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2123.flac",
+  "page": "https://bigsoundbank.com/ice-cubes-in-a-glass-1-s2123.html",
+  "title": "Ice cubes in a glass #1 (#2123)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2124": {
+  "path": "bsb/2124.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2124.flac",
+  "page": "https://bigsoundbank.com/ice-cubes-in-a-glass-2-s2124.html",
+  "title": "Ice cubes in a glass #2 (#2124)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2125": {
+  "path": "bsb/2125.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2125.flac",
+  "page": "https://bigsoundbank.com/ice-cubes-in-a-glass-3-s2125.html",
+  "title": "Ice cubes in a glass #3 (#2125)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2205": {
+  "path": "bsb/2205.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2205.flac",
+  "page": "https://bigsoundbank.com/cracking-ice-1-s2205.html",
+  "title": "Cracking ice #1 (#2205)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2206": {
+  "path": "bsb/2206.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2206.flac",
+  "page": "https://bigsoundbank.com/cracking-ice-2-s2206.html",
+  "title": "Cracking ice #2 (#2206)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2207": {
+  "path": "bsb/2207.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2207.flac",
+  "page": "https://bigsoundbank.com/cracking-ice-3-s2207.html",
+  "title": "Cracking ice #3 (#2207)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2208": {
+  "path": "bsb/2208.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2208.flac",
+  "page": "https://bigsoundbank.com/cracking-ice-4-s2208.html",
+  "title": "Cracking ice #4 (#2208)",
   "author": "Joseph SARDIN — BigSoundBank.com",
   "license": "CC0 1.0",
   "license_url": "https://bigsoundbank.com/droits.html"
@@ -224,6 +782,42 @@
   "license": "CC0 1.0",
   "license_url": "https://bigsoundbank.com/droits.html"
  },
+ "bsb:2574": {
+  "path": "bsb/2574.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2574.flac",
+  "page": "https://bigsoundbank.com/knife-blade-1-s2574.html",
+  "title": "Knife blade #1 (#2574)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2575": {
+  "path": "bsb/2575.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2575.flac",
+  "page": "https://bigsoundbank.com/knife-blade-2-s2575.html",
+  "title": "Knife blade #2 (#2575)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2576": {
+  "path": "bsb/2576.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2576.flac",
+  "page": "https://bigsoundbank.com/knife-blade-3-s2576.html",
+  "title": "Knife blade #3 (#2576)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2577": {
+  "path": "bsb/2577.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2577.flac",
+  "page": "https://bigsoundbank.com/knife-blade-4-s2577.html",
+  "title": "Knife blade #4 (#2577)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
  "bsb:2582": {
   "path": "bsb/2582.flac",
   "url": "https://bigsoundbank.com/UPLOAD/flac/2582.flac",
@@ -278,11 +872,92 @@
   "license": "CC0 1.0",
   "license_url": "https://bigsoundbank.com/droits.html"
  },
+ "bsb:2718": {
+  "path": "bsb/2718.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2718.flac",
+  "page": "https://bigsoundbank.com/thunder-s2718.html",
+  "title": "Thunder #1 (#2718)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2853": {
+  "path": "bsb/2853.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2853.flac",
+  "page": "https://bigsoundbank.com/rifle-shot-1-s2853.html",
+  "title": "Rifle: Shot #1 (#2853)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2854": {
+  "path": "bsb/2854.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2854.flac",
+  "page": "https://bigsoundbank.com/rifle-shot-2-s2854.html",
+  "title": "Rifle: Shot #2 (#2854)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
  "bsb:2949": {
   "path": "bsb/2949.flac",
   "url": "https://bigsoundbank.com/UPLOAD/flac/2949.flac",
   "page": "https://bigsoundbank.com/whip-crack-1-s2949.html",
   "title": "Whip crack #1 (#2949)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2950": {
+  "path": "bsb/2950.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2950.flac",
+  "page": "https://bigsoundbank.com/whip-crack-2-s2950.html",
+  "title": "Whip crack #2 (#2950)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2951": {
+  "path": "bsb/2951.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2951.flac",
+  "page": "https://bigsoundbank.com/whip-crack-3-s2951.html",
+  "title": "Whip crack #3 (#2951)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:2952": {
+  "path": "bsb/2952.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/2952.flac",
+  "page": "https://bigsoundbank.com/whip-crack-4-s2952.html",
+  "title": "Whip crack #4 (#2952)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:3113": {
+  "path": "bsb/3113.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/3113.flac",
+  "page": "https://bigsoundbank.com/thunder-2-s3113.html",
+  "title": "Thunder #2 (#3113)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:3114": {
+  "path": "bsb/3114.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/3114.flac",
+  "page": "https://bigsoundbank.com/thunder-3-s3114.html",
+  "title": "Thunder #3 (#3114)",
+  "author": "Joseph SARDIN — BigSoundBank.com",
+  "license": "CC0 1.0",
+  "license_url": "https://bigsoundbank.com/droits.html"
+ },
+ "bsb:3115": {
+  "path": "bsb/3115.flac",
+  "url": "https://bigsoundbank.com/UPLOAD/flac/3115.flac",
+  "page": "https://bigsoundbank.com/thunder-4-s3115.html",
+  "title": "Thunder #4 (#3115)",
   "author": "Joseph SARDIN — BigSoundBank.com",
   "license": "CC0 1.0",
   "license_url": "https://bigsoundbank.com/droits.html"
@@ -337,6 +1012,296 @@
   "license": "CC0 1.0",
   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
  },
+ "ken:impact-sounds/footstep_grass_000.ogg": {
+  "path": "kenney/impact-sounds/Audio/footstep_grass_000.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/footstep_grass_000.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "footstep_grass_000.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/footstep_grass_001.ogg": {
+  "path": "kenney/impact-sounds/Audio/footstep_grass_001.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/footstep_grass_001.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "footstep_grass_001.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/footstep_grass_002.ogg": {
+  "path": "kenney/impact-sounds/Audio/footstep_grass_002.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/footstep_grass_002.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "footstep_grass_002.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/footstep_grass_003.ogg": {
+  "path": "kenney/impact-sounds/Audio/footstep_grass_003.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/footstep_grass_003.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "footstep_grass_003.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/footstep_grass_004.ogg": {
+  "path": "kenney/impact-sounds/Audio/footstep_grass_004.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/footstep_grass_004.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "footstep_grass_004.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/footstep_snow_000.ogg": {
+  "path": "kenney/impact-sounds/Audio/footstep_snow_000.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/footstep_snow_000.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "footstep_snow_000.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/footstep_snow_001.ogg": {
+  "path": "kenney/impact-sounds/Audio/footstep_snow_001.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/footstep_snow_001.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "footstep_snow_001.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/footstep_snow_002.ogg": {
+  "path": "kenney/impact-sounds/Audio/footstep_snow_002.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/footstep_snow_002.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "footstep_snow_002.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/footstep_snow_003.ogg": {
+  "path": "kenney/impact-sounds/Audio/footstep_snow_003.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/footstep_snow_003.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "footstep_snow_003.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/footstep_snow_004.ogg": {
+  "path": "kenney/impact-sounds/Audio/footstep_snow_004.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/footstep_snow_004.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "footstep_snow_004.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/footstep_wood_000.ogg": {
+  "path": "kenney/impact-sounds/Audio/footstep_wood_000.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/footstep_wood_000.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "footstep_wood_000.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/footstep_wood_001.ogg": {
+  "path": "kenney/impact-sounds/Audio/footstep_wood_001.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/footstep_wood_001.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "footstep_wood_001.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/footstep_wood_002.ogg": {
+  "path": "kenney/impact-sounds/Audio/footstep_wood_002.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/footstep_wood_002.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "footstep_wood_002.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/footstep_wood_003.ogg": {
+  "path": "kenney/impact-sounds/Audio/footstep_wood_003.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/footstep_wood_003.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "footstep_wood_003.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/footstep_wood_004.ogg": {
+  "path": "kenney/impact-sounds/Audio/footstep_wood_004.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/footstep_wood_004.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "footstep_wood_004.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactMetal_heavy_000.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactMetal_heavy_000.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactMetal_heavy_000.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactMetal_heavy_000.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactMetal_heavy_001.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactMetal_heavy_001.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactMetal_heavy_001.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactMetal_heavy_001.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactMetal_heavy_002.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactMetal_heavy_002.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactMetal_heavy_002.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactMetal_heavy_002.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactMetal_heavy_003.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactMetal_heavy_003.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactMetal_heavy_003.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactMetal_heavy_003.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactMetal_light_000.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactMetal_light_000.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactMetal_light_000.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactMetal_light_000.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactMetal_light_001.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactMetal_light_001.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactMetal_light_001.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactMetal_light_001.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactMetal_light_002.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactMetal_light_002.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactMetal_light_002.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactMetal_light_002.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactMetal_light_003.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactMetal_light_003.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactMetal_light_003.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactMetal_light_003.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactMetal_light_004.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactMetal_light_004.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactMetal_light_004.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactMetal_light_004.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactPlate_light_000.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactPlate_light_000.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactPlate_light_000.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactPlate_light_000.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactPlate_light_001.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactPlate_light_001.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactPlate_light_001.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactPlate_light_001.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactPlate_light_002.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactPlate_light_002.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactPlate_light_002.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactPlate_light_002.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactPlate_light_003.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactPlate_light_003.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactPlate_light_003.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactPlate_light_003.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactPlate_light_004.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactPlate_light_004.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactPlate_light_004.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactPlate_light_004.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
  "ken:impact-sounds/impactPunch_heavy_000.ogg": {
   "path": "kenney/impact-sounds/Audio/impactPunch_heavy_000.ogg",
   "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
@@ -384,6 +1349,386 @@
   "page": "https://kenney.nl/assets/impact-sounds",
   "title": "impactPunch_heavy_004.ogg",
   "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactSoft_medium_000.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactSoft_medium_000.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactSoft_medium_000.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactSoft_medium_000.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactSoft_medium_001.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactSoft_medium_001.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactSoft_medium_001.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactSoft_medium_001.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactSoft_medium_002.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactSoft_medium_002.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactSoft_medium_002.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactSoft_medium_002.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactSoft_medium_003.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactSoft_medium_003.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactSoft_medium_003.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactSoft_medium_003.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactSoft_medium_004.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactSoft_medium_004.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactSoft_medium_004.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactSoft_medium_004.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactWood_light_000.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactWood_light_000.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactWood_light_000.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactWood_light_000.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactWood_light_001.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactWood_light_001.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactWood_light_001.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactWood_light_001.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactWood_light_002.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactWood_light_002.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactWood_light_002.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactWood_light_002.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactWood_light_003.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactWood_light_003.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactWood_light_003.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactWood_light_003.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactWood_light_004.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactWood_light_004.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactWood_light_004.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactWood_light_004.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactWood_medium_000.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactWood_medium_000.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactWood_medium_000.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactWood_medium_000.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactWood_medium_001.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactWood_medium_001.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactWood_medium_001.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactWood_medium_001.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:impact-sounds/impactWood_medium_002.ogg": {
+  "path": "kenney/impact-sounds/Audio/impactWood_medium_002.ogg",
+  "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+  "member": "Audio/impactWood_medium_002.ogg",
+  "page": "https://kenney.nl/assets/impact-sounds",
+  "title": "impactWood_medium_002.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/beltHandle1.ogg": {
+  "path": "kenney/rpg-audio/Audio/beltHandle1.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/beltHandle1.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "beltHandle1.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/bookClose.ogg": {
+  "path": "kenney/rpg-audio/Audio/bookClose.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/bookClose.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "bookClose.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/bookPlace1.ogg": {
+  "path": "kenney/rpg-audio/Audio/bookPlace1.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/bookPlace1.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "bookPlace1.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/bookPlace2.ogg": {
+  "path": "kenney/rpg-audio/Audio/bookPlace2.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/bookPlace2.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "bookPlace2.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/cloth1.ogg": {
+  "path": "kenney/rpg-audio/Audio/cloth1.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/cloth1.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "cloth1.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/cloth2.ogg": {
+  "path": "kenney/rpg-audio/Audio/cloth2.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/cloth2.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "cloth2.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/cloth3.ogg": {
+  "path": "kenney/rpg-audio/Audio/cloth3.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/cloth3.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "cloth3.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/cloth4.ogg": {
+  "path": "kenney/rpg-audio/Audio/cloth4.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/cloth4.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "cloth4.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/clothBelt.ogg": {
+  "path": "kenney/rpg-audio/Audio/clothBelt.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/clothBelt.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "clothBelt.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/clothBelt2.ogg": {
+  "path": "kenney/rpg-audio/Audio/clothBelt2.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/clothBelt2.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "clothBelt2.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/drawKnife1.ogg": {
+  "path": "kenney/rpg-audio/Audio/drawKnife1.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/drawKnife1.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "drawKnife1.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/drawKnife2.ogg": {
+  "path": "kenney/rpg-audio/Audio/drawKnife2.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/drawKnife2.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "drawKnife2.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/drawKnife3.ogg": {
+  "path": "kenney/rpg-audio/Audio/drawKnife3.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/drawKnife3.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "drawKnife3.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/handleCoins.ogg": {
+  "path": "kenney/rpg-audio/Audio/handleCoins.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/handleCoins.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "handleCoins.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/handleCoins2.ogg": {
+  "path": "kenney/rpg-audio/Audio/handleCoins2.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/handleCoins2.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "handleCoins2.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/handleSmallLeather.ogg": {
+  "path": "kenney/rpg-audio/Audio/handleSmallLeather.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/handleSmallLeather.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "handleSmallLeather.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/handleSmallLeather2.ogg": {
+  "path": "kenney/rpg-audio/Audio/handleSmallLeather2.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/handleSmallLeather2.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "handleSmallLeather2.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/knifeSlice.ogg": {
+  "path": "kenney/rpg-audio/Audio/knifeSlice.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/knifeSlice.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "knifeSlice.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/knifeSlice2.ogg": {
+  "path": "kenney/rpg-audio/Audio/knifeSlice2.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/knifeSlice2.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "knifeSlice2.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "ken:rpg-audio/metalLatch.ogg": {
+  "path": "kenney/rpg-audio/Audio/metalLatch.ogg",
+  "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+  "member": "Audio/metalLatch.ogg",
+  "page": "https://kenney.nl/assets/rpg-audio",
+  "title": "metalLatch.ogg",
+  "author": "Kenney (www.kenney.nl)",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:fantozzi/Fantozzi-SandL1.flac": {
+  "path": "oga/fantozzi/Fantozzi-SandL1.flac",
+  "url": "https://opengameart.org/sites/default/files/Fantozzi-footsteps.7z",
+  "member": "Fantozzi-footsteps/flac/Fantozzi-SandL1.flac",
+  "page": "https://opengameart.org/content/fantozzis-footsteps-grasssand-stone",
+  "title": "Fantozzi-SandL1.flac",
+  "author": "Fantozzi (freesound.org pack 10338, CC0) — 잘라 올림: qubodup",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:fantozzi/Fantozzi-SandL2.flac": {
+  "path": "oga/fantozzi/Fantozzi-SandL2.flac",
+  "url": "https://opengameart.org/sites/default/files/Fantozzi-footsteps.7z",
+  "member": "Fantozzi-footsteps/flac/Fantozzi-SandL2.flac",
+  "page": "https://opengameart.org/content/fantozzis-footsteps-grasssand-stone",
+  "title": "Fantozzi-SandL2.flac",
+  "author": "Fantozzi (freesound.org pack 10338, CC0) — 잘라 올림: qubodup",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:fantozzi/Fantozzi-SandL3.flac": {
+  "path": "oga/fantozzi/Fantozzi-SandL3.flac",
+  "url": "https://opengameart.org/sites/default/files/Fantozzi-footsteps.7z",
+  "member": "Fantozzi-footsteps/flac/Fantozzi-SandL3.flac",
+  "page": "https://opengameart.org/content/fantozzis-footsteps-grasssand-stone",
+  "title": "Fantozzi-SandL3.flac",
+  "author": "Fantozzi (freesound.org pack 10338, CC0) — 잘라 올림: qubodup",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:fantozzi/Fantozzi-SandR1.flac": {
+  "path": "oga/fantozzi/Fantozzi-SandR1.flac",
+  "url": "https://opengameart.org/sites/default/files/Fantozzi-footsteps.7z",
+  "member": "Fantozzi-footsteps/flac/Fantozzi-SandR1.flac",
+  "page": "https://opengameart.org/content/fantozzis-footsteps-grasssand-stone",
+  "title": "Fantozzi-SandR1.flac",
+  "author": "Fantozzi (freesound.org pack 10338, CC0) — 잘라 올림: qubodup",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:fantozzi/Fantozzi-SandR2.flac": {
+  "path": "oga/fantozzi/Fantozzi-SandR2.flac",
+  "url": "https://opengameart.org/sites/default/files/Fantozzi-footsteps.7z",
+  "member": "Fantozzi-footsteps/flac/Fantozzi-SandR2.flac",
+  "page": "https://opengameart.org/content/fantozzis-footsteps-grasssand-stone",
+  "title": "Fantozzi-SandR2.flac",
+  "author": "Fantozzi (freesound.org pack 10338, CC0) — 잘라 올림: qubodup",
   "license": "CC0 1.0",
   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
  },
@@ -557,6 +1902,46 @@
   "license": "CC0 1.0",
   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
  },
+ "oga:rubberduck_bfh/bfh1_metal_falling_01.ogg": {
+  "path": "oga/rubberduck_bfh/bfh1_metal_falling_01.ogg",
+  "url": "https://opengameart.org/sites/default/files/sfx_breaking_and_falling.zip",
+  "member": "bfh1_metal_falling_01.ogg",
+  "page": "https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx",
+  "title": "bfh1_metal_falling_01.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:rubberduck_bfh/bfh1_metal_falling_02.ogg": {
+  "path": "oga/rubberduck_bfh/bfh1_metal_falling_02.ogg",
+  "url": "https://opengameart.org/sites/default/files/sfx_breaking_and_falling.zip",
+  "member": "bfh1_metal_falling_02.ogg",
+  "page": "https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx",
+  "title": "bfh1_metal_falling_02.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:rubberduck_bfh/bfh1_metal_falling_03.ogg": {
+  "path": "oga/rubberduck_bfh/bfh1_metal_falling_03.ogg",
+  "url": "https://opengameart.org/sites/default/files/sfx_breaking_and_falling.zip",
+  "member": "bfh1_metal_falling_03.ogg",
+  "page": "https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx",
+  "title": "bfh1_metal_falling_03.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:rubberduck_bfh/bfh1_metal_falling_04.ogg": {
+  "path": "oga/rubberduck_bfh/bfh1_metal_falling_04.ogg",
+  "url": "https://opengameart.org/sites/default/files/sfx_breaking_and_falling.zip",
+  "member": "bfh1_metal_falling_04.ogg",
+  "page": "https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx",
+  "title": "bfh1_metal_falling_04.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
  "oga:rubberduck_bfh/bfh1_rock_breaking_01.ogg": {
   "path": "oga/rubberduck_bfh/bfh1_rock_breaking_01.ogg",
   "url": "https://opengameart.org/sites/default/files/sfx_breaking_and_falling.zip",
@@ -627,6 +2012,26 @@
   "license": "CC0 1.0",
   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
  },
+ "oga:rubberduck_bfh/bfh1_wood_falling_01.ogg": {
+  "path": "oga/rubberduck_bfh/bfh1_wood_falling_01.ogg",
+  "url": "https://opengameart.org/sites/default/files/sfx_breaking_and_falling.zip",
+  "member": "bfh1_wood_falling_01.ogg",
+  "page": "https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx",
+  "title": "bfh1_wood_falling_01.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:rubberduck_bfh/bfh1_wood_falling_02.ogg": {
+  "path": "oga/rubberduck_bfh/bfh1_wood_falling_02.ogg",
+  "url": "https://opengameart.org/sites/default/files/sfx_breaking_and_falling.zip",
+  "member": "bfh1_wood_falling_02.ogg",
+  "page": "https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx",
+  "title": "bfh1_wood_falling_02.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
  "oga:rubberduck_rpg/chain_01.ogg": {
   "path": "oga/rubberduck_rpg/chain_01.ogg",
   "url": "https://opengameart.org/sites/default/files/80-CC0-RPG-SFX_0.zip",
@@ -653,6 +2058,76 @@
   "member": "chain_03.ogg",
   "page": "https://opengameart.org/content/80-cc0-rpg-sfx",
   "title": "chain_03.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:rubberduck_rpg/item_coins_01.ogg": {
+  "path": "oga/rubberduck_rpg/item_coins_01.ogg",
+  "url": "https://opengameart.org/sites/default/files/80-CC0-RPG-SFX_0.zip",
+  "member": "item_coins_01.ogg",
+  "page": "https://opengameart.org/content/80-cc0-rpg-sfx",
+  "title": "item_coins_01.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:rubberduck_rpg/item_coins_02.ogg": {
+  "path": "oga/rubberduck_rpg/item_coins_02.ogg",
+  "url": "https://opengameart.org/sites/default/files/80-CC0-RPG-SFX_0.zip",
+  "member": "item_coins_02.ogg",
+  "page": "https://opengameart.org/content/80-cc0-rpg-sfx",
+  "title": "item_coins_02.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:rubberduck_rpg/item_coins_03.ogg": {
+  "path": "oga/rubberduck_rpg/item_coins_03.ogg",
+  "url": "https://opengameart.org/sites/default/files/80-CC0-RPG-SFX_0.zip",
+  "member": "item_coins_03.ogg",
+  "page": "https://opengameart.org/content/80-cc0-rpg-sfx",
+  "title": "item_coins_03.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:rubberduck_rpg/item_coins_04.ogg": {
+  "path": "oga/rubberduck_rpg/item_coins_04.ogg",
+  "url": "https://opengameart.org/sites/default/files/80-CC0-RPG-SFX_0.zip",
+  "member": "item_coins_04.ogg",
+  "page": "https://opengameart.org/content/80-cc0-rpg-sfx",
+  "title": "item_coins_04.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:rubberduck_rpg/item_gem_01.ogg": {
+  "path": "oga/rubberduck_rpg/item_gem_01.ogg",
+  "url": "https://opengameart.org/sites/default/files/80-CC0-RPG-SFX_0.zip",
+  "member": "item_gem_01.ogg",
+  "page": "https://opengameart.org/content/80-cc0-rpg-sfx",
+  "title": "item_gem_01.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:rubberduck_rpg/item_gem_02.ogg": {
+  "path": "oga/rubberduck_rpg/item_gem_02.ogg",
+  "url": "https://opengameart.org/sites/default/files/80-CC0-RPG-SFX_0.zip",
+  "member": "item_gem_02.ogg",
+  "page": "https://opengameart.org/content/80-cc0-rpg-sfx",
+  "title": "item_gem_02.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:rubberduck_rpg/item_gem_03.ogg": {
+  "path": "oga/rubberduck_rpg/item_gem_03.ogg",
+  "url": "https://opengameart.org/sites/default/files/80-CC0-RPG-SFX_0.zip",
+  "member": "item_gem_03.ogg",
+  "page": "https://opengameart.org/content/80-cc0-rpg-sfx",
+  "title": "item_gem_03.ogg",
   "author": "rubberduck",
   "license": "CC0 1.0",
   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
@@ -693,6 +2168,76 @@
   "member": "item_stone_04.ogg",
   "page": "https://opengameart.org/content/80-cc0-rpg-sfx",
   "title": "item_stone_04.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:rubberduck_rpg/item_wood_01.ogg": {
+  "path": "oga/rubberduck_rpg/item_wood_01.ogg",
+  "url": "https://opengameart.org/sites/default/files/80-CC0-RPG-SFX_0.zip",
+  "member": "item_wood_01.ogg",
+  "page": "https://opengameart.org/content/80-cc0-rpg-sfx",
+  "title": "item_wood_01.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:rubberduck_rpg/item_wood_02.ogg": {
+  "path": "oga/rubberduck_rpg/item_wood_02.ogg",
+  "url": "https://opengameart.org/sites/default/files/80-CC0-RPG-SFX_0.zip",
+  "member": "item_wood_02.ogg",
+  "page": "https://opengameart.org/content/80-cc0-rpg-sfx",
+  "title": "item_wood_02.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:rubberduck_rpg/item_wood_03.ogg": {
+  "path": "oga/rubberduck_rpg/item_wood_03.ogg",
+  "url": "https://opengameart.org/sites/default/files/80-CC0-RPG-SFX_0.zip",
+  "member": "item_wood_03.ogg",
+  "page": "https://opengameart.org/content/80-cc0-rpg-sfx",
+  "title": "item_wood_03.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:rubberduck_rpg/spell_fire_01.ogg": {
+  "path": "oga/rubberduck_rpg/spell_fire_01.ogg",
+  "url": "https://opengameart.org/sites/default/files/80-CC0-RPG-SFX_0.zip",
+  "member": "spell_fire_01.ogg",
+  "page": "https://opengameart.org/content/80-cc0-rpg-sfx",
+  "title": "spell_fire_01.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:rubberduck_rpg/spell_fire_03.ogg": {
+  "path": "oga/rubberduck_rpg/spell_fire_03.ogg",
+  "url": "https://opengameart.org/sites/default/files/80-CC0-RPG-SFX_0.zip",
+  "member": "spell_fire_03.ogg",
+  "page": "https://opengameart.org/content/80-cc0-rpg-sfx",
+  "title": "spell_fire_03.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:rubberduck_rpg/spell_fire_05.ogg": {
+  "path": "oga/rubberduck_rpg/spell_fire_05.ogg",
+  "url": "https://opengameart.org/sites/default/files/80-CC0-RPG-SFX_0.zip",
+  "member": "spell_fire_05.ogg",
+  "page": "https://opengameart.org/content/80-cc0-rpg-sfx",
+  "title": "spell_fire_05.ogg",
+  "author": "rubberduck",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+ },
+ "oga:rubberduck_rpg/spell_fire_07.ogg": {
+  "path": "oga/rubberduck_rpg/spell_fire_07.ogg",
+  "url": "https://opengameart.org/sites/default/files/80-CC0-RPG-SFX_0.zip",
+  "member": "spell_fire_07.ogg",
+  "page": "https://opengameart.org/content/80-cc0-rpg-sfx",
+  "title": "spell_fire_07.ogg",
   "author": "rubberduck",
   "license": "CC0 1.0",
   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"

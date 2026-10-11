@@ -1,7 +1,7 @@
 // 녹음 음원 뱅크 — 녹음 배경 음악(assets/audio/music) + 효과음 샘플(assets/audio/sfx) 받기·풀기·메모리 회계. audio.js 의 AudioSystem 이 쓴다.
 //  (공개 API 는 audio.js 그대로: audio.music(id) 는 녹음 파일이 있으면 그것을, 없거나 실패하면 합성 트랙을 튼다. MASTER_PLAN §1.5 musicSource, §1.20)
 //
-// ── 배경 음악 (index.json = { version, rate, format:'m4a', tracks:{id:{file, bytes, duration, loop, loopStart, loopEnd, priming, lufs, peak}}, alias:{id:id} }) ──
+// ── 배경 음악 (index.json = { version, rate, format:'m4a', tracks:{id:{file, bytes, duration, loop, loopStart, loopEnd, priming, lufs, peak, trim?}}, alias:{id:id} }) ──
 //  · 받기: fetch (배포 빌드는 서비스 워커가 bn-audio-v1 에 크기 제한 캐시) 또는 에셋 팩(assets._bytes). 압축 바이트는 최근 MAX_RAW 곡만 메모리에.
 //  · 풀기: OfflineAudioContext(rate).decodeAudioData → 그 rate 로 리샘플된 PCM. rate 는 기기 묶음(REC_PROFILE)별, 곡이 길면 상한(cap)에
 //          맞춰 더 낮춘다 (16 kHz 아래가 필요하면 그 곡은 합성음). 풀린 바이트 = 프레임 × 채널 × 4. 한 번에 하나씩 푼다.
@@ -10,9 +10,9 @@
 //  · 프라이밍: 풀린 길이 − duration ≥ priming/2 샘플이면 브라우저가 인코더 앞 무음을 자르지 않은 것 → 시작·루프 지점을 priming 만큼 민다.
 //  · 고리: AudioBufferSourceNode loop/loopStart/loopEnd (샘플 단위, audio.js RecPlayer). loop:false 곡은 한 번 (victory·gameover).
 //  · 쓰지 않음(→ 합성음): 설정 musicSource 'synth', index 없음·404, AAC 를 못 푸는 브라우저(canPlayType), 받기·풀기 실패, 상한 초과.
-// ── 효과음 샘플 (index.json = { formats:['m4a','ogg'], core:[이름], sfx:{이름:{f:[id], g, s, r?}}, files:{id:{dur, on, m4a, ogg}} }) ──
+// ── 효과음 샘플 (index.json = { formats:['m4a'], core:[이름], sfx:{이름:{f:[id], g, s, r?}}, files:{id:{dur, on, m4a}} }) ──
 //  · core 묶음은 첫 사용자 입력(attach) 뒤 곧바로, 나머지는 처음 울릴 때 받는다 (그동안은 합성음만). tools/audio/sfx/build_sfx.py 가 만든다.
-//  · 형식: m4a(AAC) 를 풀 수 있으면 m4a, 아니면 ogg(Vorbis). 풀기에 실패하면 다른 형식을 한 번 더.
+//  · 형식: m4a(AAC) 만 싣는다 (음악과 같음 — Chromium/WebView·사파리·파이어폭스가 푼다). 못 푸는 브라우저는 합성음만.
 //  · 휴대폰·저사양은 32 kHz 로 푼다. 앞 지연(디코더 프라이밍)은 첫 소리 위치로 재서 건너뛴다 (files[id].on 기준).
 import { assets, ASSET_ROOT } from './assets.js';
 import { saves, autoQualityTier } from './save.js';
@@ -81,7 +81,7 @@ async function fetchJson(rel) {
 }
 const DEC = new Map(); // rate → 풀기 전용 OfflineAudioContext (렌더하지 않고 decodeAudioData 에만 쓴다 — 하나를 다시 쓴다)
 /** rate 로 풀기 (rate 0 = ctx 그대로). 콜백·프라미스 둘 다 받는 브라우저 대비 */
-function decodeAt(ctx, data, rate) {
+export function decodeAt(ctx, data, rate) {
   return new Promise((res, rej) => {
     let c = ctx;
     if (rate && rate !== ctx.sampleRate) {
@@ -219,8 +219,8 @@ export class RecBank {
     const sec = (k) => (Number.isInteger(t[k + 'Sample']) && t[k + 'Sample'] >= 0 ? t[k + 'Sample'] / fr : Number(t[k]));
     let ls = (sec('loopStart') || 0) + off, le = (sec('loopEnd') > 0 ? sec('loopEnd') : dur) + off;
     le = Math.min(le, buf.duration);
-    const lufs = Number(t.lufs);
-    const gain = Number.isFinite(lufs) ? Math.min(2, Math.max(0.25, Math.pow(10, (REF_LUFS - lufs) / 20))) : 1;
+    const lufs = Number(t.lufs), trim = Number(t.trim) || 0;   // trim: 곡별 크기 맞춤 표 (dB, index.json — 다시 인코딩하지 않음, tools/audio/music_trim.py)
+    const gain = Number.isFinite(lufs) ? Math.min(2, Math.max(0.25, Math.pow(10, (REF_LUFS - lufs + Math.max(-6, Math.min(6, trim))) / 20))) : 1;
     const e = { id: k, buf, bytes, rate: buf.sampleRate, ch: buf.numberOfChannels, off, ls, le, loop: loop && le - ls > 0.25, dur: Math.min(dur, buf.duration - off), gain, refs: 0, t: performance.now() };
     this.dec.set(k, e);
     this.bytes += bytes;

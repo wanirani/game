@@ -102,12 +102,12 @@ function tabletEnv() {
     return side >= ASSET_BUDGET.tabletMinSide;
   } catch { return false; }
 }
-/** game 이 아직 없을 때 백킹 높이 추정 (game.resize 와 같은 계산: 논리 높이 540, 폭 960~1280) */
+/** game 이 아직 없을 때 백킹 높이 추정 (game.resize 와 같은 계산: 16:9 이상은 화면 높이, 더 네모나면 세로 확장 시야 상한 760 까지 — 폭 960 기준) */
 function estimateBackingH(tier) {
   try {
     if (!hasWin) return 1080;
     const w = window.innerWidth || 960, h = window.innerHeight || 540;
-    const cssH = Math.min(h, w * 540 / 960);
+    const cssH = Math.min(h, w * 760 / 960);
     const cap = tier === 'low' ? 1 : tier === 'medium' ? 1.5 : 2;
     return cssH * Math.min(window.devicePixelRatio || 1, cap);
   } catch { return 1080; }

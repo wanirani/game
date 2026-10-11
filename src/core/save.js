@@ -157,6 +157,7 @@ export const DEFAULT_SETTINGS = {
   ctrlPrompts: 'auto', ctrlPreset: 'arcade', ctrlConfirm: 'auto', ctrlMap: null, keyMap: null,
   ctrlDeadzone: 0.2, ctrlRumble: 0.8, autoSprint: false,
   touchOpacity: 0.55, touchScale: 1, touchStick: 'float', touchSlide: true, touchLeftHanded: false, touchLayout: null,
+  hud: Object.freeze({ preset: 'auto', scale: 1 }), // 화면 배치 (hud_mobile §3): preset 'auto'(화면비) | 'wide'(휴대폰) | 'fold'(폴드·태블릿), scale 0.85–1.2 — 바꿀 때는 새 객체로
   vibration: true, autoSave: true, keepAwake: true, turntableAuto: true, fullscreenAuto: true,
   telemetry: !privacySignal(), // 익명 통계·오류 보내기 (core/telemetry.js) — GPC 를 켠 브라우저는 기본 끔
   language: 'ko',
@@ -201,6 +202,7 @@ export const SETTINGS_SCHEMA = Object.freeze({
   touchSlide: BOOL,
   touchLeftHanded: BOOL,
   touchLayout: Object.freeze({ type: 'layout' }),
+  hud: Object.freeze({ type: 'hud' }),
   vibration: BOOL, autoSave: BOOL, keepAwake: BOOL, turntableAuto: BOOL, fullscreenAuto: BOOL, telemetry: BOOL,
   language: oneOf('ko'),
 });
@@ -229,6 +231,12 @@ function checkSetting(spec, v) {
       }
       return out;
     }
+    case 'hud': { // {preset, scale} — 모르는 값은 기본값으로 (항목별)
+      if (!isObj(v)) return INVALID;
+      const pr = ['auto', 'wide', 'fold'].includes(v.preset) ? v.preset : 'auto';
+      const sc = typeof v.scale === 'number' && Number.isFinite(v.scale) ? Math.round(Math.min(1.2, Math.max(0.85, v.scale)) * 100) / 100 : 1;
+      return { preset: pr, scale: sc };
+    }
     case 'layout': {
       if (v === null) return null;
       if (!isObj(v)) return INVALID;
@@ -256,7 +264,7 @@ export function migrateSettings(saved) {
   const out = {};
   let changed = false;
   if (!isObj(saved)) {
-    for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) out[k] = v;
+    for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) out[k] = k === 'hud' ? { ...v } : v;
     return { settings: out, changed: saved != null };
   }
   const ver = saved.settingsVersion;
@@ -271,11 +279,11 @@ export function migrateSettings(saved) {
   for (const [k, spec] of Object.entries(SETTINGS_SCHEMA)) {
     const dflt = DEFAULT_SETTINGS[k];
     if (v1 && k === 'quality') { out[k] = dflt; continue; }
-    if (!Object.hasOwn(saved, k)) { out[k] = dflt; continue; }
+    if (!Object.hasOwn(saved, k)) { out[k] = spec.type === 'hud' ? { ...dflt } : dflt; continue; }
     const v = checkSetting(spec, saved[k]);
-    if (v === INVALID) { out[k] = dflt; changed = true; continue; }
+    if (v === INVALID) { out[k] = spec.type === 'hud' ? { ...dflt } : dflt; changed = true; continue; }
     if (v !== saved[k] && (spec.type === 'num' || spec.type === 'enum')) changed = true;
-    else if ((spec.type === 'map' || spec.type === 'layout') && v !== null && JSON.stringify(v) !== JSON.stringify(saved[k])) changed = true;
+    else if ((spec.type === 'map' || spec.type === 'layout' || spec.type === 'hud') && v !== null && JSON.stringify(v) !== JSON.stringify(saved[k])) changed = true;
     out[k] = v;
   }
   return { settings: out, changed };

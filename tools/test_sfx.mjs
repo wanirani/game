@@ -9,13 +9,15 @@
 //  3. API: defineSfx(name, def, vol) / SFX_KIT {T, N, R} / fn(S, H) 의 H = {T, N, FM, ARP, BOOM, CRACKLE, mtof, R} / audio 도우미
 //  4. 체감 예산: 100ms 창 상한(10·8·6), prio 예외, hit* 7개 이상이면 재질 레이어 생략, stopName
 //  5. 렌더: 예외·NaN 없음, 무음 아님, 클리핑 없음, 꼬리가 사라짐(멈추지 않는 소리 없음), 길이·노드 수 예산, 체감 효과음 음량 범위
-//  6. 녹음 샘플 (assets/audio/sfx/index.json, 헤드리스는 ogg 로 푼다): 매핑된 이름이 모두 등록된 효과음, 파일이 모두 있음, 합계 ≤ 3 MB,
+//  6. 녹음 샘플 (assets/audio/sfx/index.json, m4a 만 — 헤드리스 Chromium 은 AAC 를 못 풀어 tools/audio/m4a_route.mjs 가 같은 내용의 WAV 로 돌려준다):
+//     매핑된 이름이 모두 등록된 효과음, 파일이 모두 있음, 합계 ≤ 3 MB,
 //     샘플을 얹은 렌더도 5 의 검사 + 단기 RMS 가 합성음만일 때의 0.6~1.6배 (같은 호출 음량에서 크기가 크게 달라지지 않게)
-//  7. 고급 효과음 v2 시범 (assets/audio/sfx_v2, 스위치 pilot.sfx2 — docs/specs/anime_motion_sfx.md §4·§5.1):
-//     이름이 모두 등록된 효과음 · 변형 3~5개 · 파일(m4a·ogg) 모두 있음 · 합계 ≤ 1.2 MB · 빌드가 잰 사건 라우드니스 -19~-14.5 LUFS, 트루 피크 ≤ -1 dBTP ·
-//     푼 ogg 피크 ≤ -0.5 dBFS · 변형마다 엔진 렌더: 합성음 층이 한 번도 안 울림(합성 단독 0) + 5 의 검사 + 지금 게임 소리(샘플+합성)와 K-가중 순간 라우드니스 ±1.5 dB ·
-//     실행 규칙(같은 변형 연달아 안 나옴, 모든 변형 쓰임, 품질 low 면 방 잔향 끔, pan, 화면 x → pan, theme → 공간) · 노드 수 (v2 대 지금) 표
-//     --calibrate-v2  v2 g 를 지금 게임 소리 크기에 맞춰 assets/audio/sfx_v2/index.json 에 쓴다 (build_sfx_v2.py 뒤에 — 공정한 A/B: 더 커서 좋게 들리는 일 없게)
+//  7. 고급 효과음 v2 (assets/audio/sfx_v2, 기본으로 켜짐 · ?sfx=v1 로 끔 — docs/specs/anime_motion_sfx.md §4·§5.1):
+//     이름이 모두 등록된 효과음 (of = 다른 이름의 변형 묶음) · 변형 3~5개 · m4a 파일 모두 있음 · ogg 0개 · 빌드가 잰 사건 라우드니스 -19~-14.5 LUFS,
+//     트루 피크 ≤ -1 dBTP · 푼 피크 ≤ -0.95 dBFS · 변형마다 엔진 렌더: 합성음 층이 한 번도 안 울림(합성 단독 0) + 5 의 검사 + 바꾸기 전 게임 소리(index ref,
+//     없으면 지금 샘플+합성)와 K-가중 순간 라우드니스 ±1.5 dB · 실행 규칙(같은 변형 연달아 안 나옴, 모든 변형 쓰임, 품질 low·room 0 이면 방 잔향 끔, pan,
+//     화면 x → pan, theme → 공간, enemy_die 몸 종류 변형) · 용량: 싣는 효과음(두 뱅크 m4a + index) ≤ 기준 900,000 B + 0.6 MB · 노드 수 (v2 대 지금) 표
+//     --calibrate-v2  v2 g 를 지금 게임 소리 크기에 맞추고 그 크기를 ref 로 assets/audio/sfx_v2/index.json 에 쓴다 (build_sfx_v2.py 뒤에 — 공정한 A/B)
 //     --ref <커밋>     스위치 꺼짐 = 지금과 같음: 그 커밋의 audio.js 와 지금 audio.js 로 모든 효과음을 같은 난수열로 렌더 — 노드 그래프·난수 호출 수가 같고
 //                     렌더 차이 ≤ 1e-5 (-100 dBFS; OfflineAudioContext 는 같은 코드도 렌더마다 float 반올림이 흔들려 바이트 비교는 못 한다)
 //     --no-v2         7 을 건너뜀
@@ -25,6 +27,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { routeM4a } from './audio/m4a_route.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => { if (v.startsWith('--')) a.push([v.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true]); return a; }, []));
@@ -59,6 +62,7 @@ page.on('console', (m) => {
   else if (m.type() === 'warning' && !t.includes("defineSfx: 'hit'")) warn('콘솔 경고: ' + t.slice(0, 200));
 });
 await page.route('**/__test_sfx__.html', (r) => r.fulfill({ contentType: 'text/html; charset=utf-8', body: '<!doctype html><meta charset="utf-8"><title>sfx test</title>' }));
+await routeM4a(page, root);
 await page.goto(`http://localhost:${port}/__test_sfx__.html`);
 
 const only = args.only ? String(args.only).split(',') : null;
@@ -235,7 +239,7 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
     const ix = await r.json(); out.smp.index = ix;
     const dc = new OfflineAudioContext(1, 1, SR), bufs = {};
     for (const [id, f] of Object.entries(ix.files)) {
-      for (const fmt of ix.formats) { const rr = await fetch(`/assets/audio/sfx/${id}.${fmt}`); if (!rr.ok) { out.smp.missing.push(`${id}.${fmt}`); continue; } out.smp.bytes += (await rr.clone().arrayBuffer()).byteLength; if (fmt === 'ogg') bufs[id] = { buf: await dc.decodeAudioData(await rr.arrayBuffer()), off: 0 }; }
+      for (const fmt of ix.formats) { const rr = await fetch(`/assets/audio/sfx/${id}.${fmt}`); if (!rr.ok) { out.smp.missing.push(`${id}.${fmt}`); continue; } const ab = await rr.arrayBuffer(); out.smp.bytes += Number(rr.headers.get('x-orig-bytes')) || ab.byteLength; if (!bufs[id]) bufs[id] = { buf: await dc.decodeAudioData(ab), off: 0 }; }
     }
     const pick = (only ? Object.keys(ix.sfx).filter((n) => only.includes(n)) : Object.keys(ix.sfx));
     for (const n of pick) if (!Object.prototype.hasOwnProperty.call(SFX, n)) out.smp.unknown.push(n);
@@ -274,8 +278,8 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
       for (const fmt of ix.formats || []) {
         const rr = await fetch(`/assets/audio/sfx_v2/${id}.${fmt}`);
         if (!rr.ok) { out.v2.missing.push(`${id}.${fmt}`); continue; }
-        const ab = await rr.arrayBuffer(); out.v2.bytes += ab.byteLength;
-        if (fmt !== 'ogg') continue;
+        const ab = await rr.arrayBuffer(); out.v2.bytes += Number(rr.headers.get('x-orig-bytes')) || ab.byteLength;
+        if (vb[id]) continue;
         const b = await dc.decodeAudioData(ab); vb[id] = { buf: b, off: 0 };
         let pk = 0; for (let ch = 0; ch < b.numberOfChannels; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < d.length; i++) { const a = d[i] < 0 ? -d[i] : d[i]; if (a > pk) pk = a; } }
         out.v2.dec[id] = { peak: pk, dur: b.duration, ch: b.numberOfChannels };
@@ -283,29 +287,30 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
     }
     const pick = Object.keys(ix.sfx || {}).filter((n) => !only || only.includes(n));
     const oneV = async (name, d, v) => {
-      const mk = () => ({ sample: (n) => (n === name ? { bufs: [vb[d.f[v]]], g: d.g, rev: d.rev, last: -1 } : null) });
-      const def = SFX[name], fn0 = def.fn; let syn = 0;
+      const base = d.of || name, alt = d.of ? name.slice(d.of.length + 1) : undefined;   // of: 다른 이름의 변형 묶음 (enemy_die_bone = enemy_die + v2alt 'bone')
+      const mk = () => ({ sample: (n) => (n === name ? { bufs: [vb[d.f[v]]], g: d.g, rev: d.rev, room: d.room, last: -1 } : null) });
+      const def = SFX[base], fn0 = def.fn; let syn = 0;
       def.fn = function (...a) { syn++; return fn0.apply(this, a); };
       try {
-        const dry = new Engine(new OfflineAudioContext(2, 4410, SR)); dry.v2 = mk(); dry.sfx(name, { delay: DELAY });
+        const dry = new Engine(new OfflineAudioContext(2, 4410, SR)); dry.v2 = mk(); dry.sfx(base, { delay: DELAY, v2alt: alt });
         const ent = dry.live[dry.live.length - 1], len = ent ? ent.end - ent.st - DELAY - 0.05 : 0;
         const oc = new OfflineAudioContext(2, Math.ceil(SR * Math.min(9, DELAY + len + 3.8)), SR);
         const eng = new Engine(oc); eng.setVolumes(0.6, 0.8); eng.v2 = mk();
         const n = counted(oc);
-        eng.sfx(name, { delay: DELAY });
+        eng.sfx(base, { delay: DELAY, v2alt: alt });
         return { len: +len.toFixed(3), syn, ...n, ...stat(await oc.startRendering()) };
       } catch (e) { return { err: String(e && e.stack || e) }; } finally { def.fn = fn0; }
     };
     for (const n of pick) {
       const d = ix.sfx[n];
-      if (!Object.prototype.hasOwnProperty.call(SFX, n) || !Array.isArray(d.f) || !d.f.every((id) => vb[id])) continue;
+      if (!Object.prototype.hasOwnProperty.call(SFX, d.of || n) || !Array.isArray(d.f) || !d.f.every((id) => vb[id])) continue;
       const vs = [];
       for (let v = 0; v < d.f.length; v++) vs.push(await oneV(n, d, v));
       out.v2.renders[n] = vs;
     }
     // 실행 규칙
     const RT = (m) => out.v2.rt.push(m);
-    const nm = pick.find((n) => ix.sfx[n].f.length >= 3 && ix.sfx[n].f.every((id) => vb[id]));
+    const nm = pick.find((n) => !ix.sfx[n].of && ix.sfx[n].f.length >= 3 && ix.sfx[n].f.every((id) => vb[id]));
     if (nm) {
       const d = ix.sfx[nm], sm = { bufs: d.f.map((id) => vb[id]), g: d.g, last: -1 }, bank = { sample: (n) => (n === nm ? sm : null) };
       const eng = new Engine(new OfflineAudioContext(2, 4410, SR)); eng.v2 = bank;
@@ -327,8 +332,27 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
       try { e3.sfx('whip'); } finally { def.fn = fn0; }
       if (syn !== 1 || e3.v2Starts !== 1) RT('v2 에 없는 이름(whip)이 지금 경로(합성음)로 가지 않음');
     }
-    // AudioSystem: 이 페이지는 스위치가 꺼져 있다 → v2 없음. _v2Opts: theme → 공간, 화면 x → pan (가장자리 ±0.6)
-    if (audio.v2 || audio.v2Stats().on !== false) RT('스위치가 꺼져 있는데 audio.v2 가 있음');
+    // v2 는 기본으로 켜짐 (?sfx=v1 로만 끔). room 0 (메뉴 소리) 은 방 잔향 없음
+    if (A.SFX_V1) RT('v2 가 기본으로 켜져 있지 않음 (SFX_V1 = true)');
+    const r0 = pick.find((n) => ix.sfx[n].room === 0 && ix.sfx[n].f.every((id) => vb[id]));
+    if (r0) {
+      const d = ix.sfx[r0], e0 = new Engine(new OfflineAudioContext(2, 4410, SR)); e0.v2 = { sample: (n) => (n === r0 ? { bufs: d.f.map((id) => vb[id]), g: d.g, room: 0, last: -1 } : null) };
+      e0.v2Quality = 'high'; e0.sfx(r0); if (e0.live[e0.live.length - 1].room || e0.room) RT(`${r0}: room 0 인데 방 잔향을 씀`);
+    }
+    // enemy_die 몸 종류: 같은 프레임에 뒤따르는 재질 층(hit_bone)으로 변형을 고른다 (마이크로태스크), 재질 층이 없으면 기본 enemy_die
+    {
+      const seen = [], eng = new Engine(new OfflineAudioContext(2, 4410, SR)), any = vb[Object.keys(vb)[0]];
+      eng.v2 = { sample: (n) => { seen.push(n); return n.startsWith('enemy_die') ? { bufs: [any], g: 1, last: -1 } : null; } };
+      const sys = Object.create(Object.getPrototypeOf(audio));
+      Object.assign(sys, { eng, ctx: { state: 'running' }, _seq: 0, _mat: null, _quality: 'high', v2: { has: (n) => n === 'enemy_die' || n.startsWith('hit_') } });
+      sys.sfx('enemy_die'); sys.sfx('hit_bone');
+      if (seen.includes('enemy_die')) RT('enemy_die 가 재질 층을 기다리지 않고 바로 울림');
+      await Promise.resolve(); await Promise.resolve();
+      if (!seen.includes('enemy_die_bone')) RT(`enemy_die + hit_bone → enemy_die_bone 이 골라지지 않음 (${seen.join(',')})`);
+      seen.length = 0; eng.lastT = {}; sys.sfx('enemy_die'); await Promise.resolve(); await Promise.resolve();
+      if (seen[0] !== 'enemy_die') RT(`재질 층 없는 enemy_die 가 기본 묶음으로 가지 않음 (${seen.join(',')})`);
+    }
+    // _v2Opts: theme → 공간, 화면 x → pan (가장자리 ±0.6)
     const g0 = window.__game, fake = { eng: {}, quality: 'medium' };
     window.__game = { world: { stage: { theme: 'catacombs' }, camera: { x: 100, w: 960, _zoom: 1 } } };
     const o1 = audio._v2Opts.call(fake, { x: 820, vol: 0.8 }), o2 = audio._v2Opts.call(fake, { x: 99999 }), o3 = audio._v2Opts.call(fake, { pan: 0.2, x: 0 }), o4 = audio._v2Opts.call(fake, undefined);
@@ -420,7 +444,13 @@ if (args.calibrate && !SM.err) {
 }
 
 // ── 고급 효과음 v2 판정 (+ --calibrate-v2) ──
-const V2 = res.v2, V2_BUDGET = 1.2 * 1048576;
+const V2 = res.v2;
+// 싣는 효과음 용량 (build_web 이 옮기는 m4a·ogg·json·LICENSE*.txt): 기준 = 2차 묶음 전 배포본 dist/web/assets/audio/sfx 900,000 B (sfx_v2 없음)
+const SHIP_BASE = 900000, SHIP_MAX = SHIP_BASE + Math.round(0.6 * 1048576);
+const shipFiles = (dir) => { try { return fs.readdirSync(path.join(root, dir)).filter((f) => /\.(m4a|ogg|json)$|LICENSE[^/]*\.txt$/.test(f)).map((f) => path.join(root, dir, f)); } catch { return []; } };
+const shipList = [...shipFiles('assets/audio/sfx'), ...shipFiles('assets/audio/sfx_v2')];
+const shipped = shipList.reduce((a, f) => a + fs.statSync(f).size, 0);
+const oggLeft = shipList.filter((f) => f.endsWith('.ogg'));
 const db = (x) => (x > 0 ? 20 * Math.log10(x) : -Infinity);
 let v2N = 0;
 const calibV2 = {};
@@ -429,12 +459,17 @@ if (!args['no-v2']) {
   else if (V2.index) {
     const ix = V2.index;
     for (const m of V2.missing) fail(`v2 파일 없음: ${m}`);
-    if (V2.bytes > V2_BUDGET) fail(`v2 합계 ${(V2.bytes / 1024).toFixed(0)} KB > 1.2 MB`);
+    if (!only) {
+      if (shipped > SHIP_MAX) fail(`싣는 효과음 ${shipped} B > 예산 ${SHIP_MAX} B (기준 ${SHIP_BASE} + 0.6 MB)`);
+      if (oggLeft.length) fail(`싣는 효과음에 ogg ${oggLeft.length}개 남음 (m4a 만): ${oggLeft.slice(0, 4).map((f) => path.basename(f)).join(' ')}`);
+      if ((ix.formats || []).join() !== 'm4a' || (SM.index?.formats || []).join() !== 'm4a') fail(`index formats 가 m4a 만이 아님 (v2 ${ix.formats}, sfx ${SM.index?.formats})`);
+    }
     for (const m of V2.rt) fail('v2 실행: ' + m);
     console.log('v2     이름          변형  LUFS-ev(빌드)                    dBTP(빌드)                 ogg 피크 dBFS   v2−지금 LUFS-M  노드 v2/지금 (소스·합성)');
     for (const [n, d] of Object.entries(ix.sfx)) {
       if (only && !only.includes(n)) continue;
-      if (!names.has(n)) { fail(`v2: 등록되지 않은 효과음 이름 ${n}`); continue; }
+      if (!names.has(d.of || n)) { fail(`v2: 등록되지 않은 효과음 이름 ${d.of || n}${d.of ? ` (${n} 의 of)` : ''}`); continue; }
+      if (d.of && !(n.startsWith(d.of + '_'))) fail(`v2 ${n}: of '${d.of}' 의 변형 이름은 '${d.of}_…' 이어야 함`);
       if (!Array.isArray(d.f) || d.f.length < 3 || d.f.length > 5) fail(`v2 ${n}: 변형 ${d.f?.length ?? 0}개 (3~5 이어야 함)`);
       if (!(Number(d.g) > 0)) fail(`v2 ${n}: g 이상 (${d.g})`);
       const fs_ = (d.f || []).map((id) => ix.files[id]);
@@ -444,7 +479,7 @@ if (!args['no-v2']) {
         if (!(f.lufs >= -19 && f.lufs <= -14.5)) fail(`v2 ${id}: 사건 라우드니스 ${f.lufs} LUFS (기대 -19 ~ -14.5, 목표 -16)`);
         if (!(f.peak <= -1.0)) fail(`v2 ${id}: 트루 피크 ${f.peak} dBTP > -1`);
         const dp = V2.dec[id]?.peak;
-        if (dp != null && db(dp) > -0.5) fail(`v2 ${id}: 푼 ogg 피크 ${db(dp).toFixed(2)} dBFS > -0.5`);
+        if (dp != null && db(dp) > -0.95) fail(`v2 ${id}: 푼 피크 ${db(dp).toFixed(2)} dBFS > -1`);
       });
       const vs = V2.renders[n];
       if (!vs) { fail(`v2 ${n}: 렌더 못 함 (파일을 못 풀었거나 이름 없음)`); continue; }
@@ -462,11 +497,12 @@ if (!args['no-v2']) {
       const okv = vs.filter((r) => !r.err);
       const mean = (xs) => (xs.length ? xs.reduce((a, x) => a + x, 0) / xs.length : NaN);
       const v2lm = mean(okv.map((r) => r.lm));   // 변형들의 K-가중 순간 라우드니스 평균 (dB)
-      const clm = SM.renders?.[n] ? mean(SM.renders[n].vs.filter((r) => !r.err).map((r) => r.lm)) : res.renders[n]?.lm;
+      const b = d.of || n, cur = SM.renders?.[b] ? mean(SM.renders[b].vs.filter((r) => !r.err).map((r) => r.lm)) : res.renders[b]?.lm;
+      const clm = Number.isFinite(d.ref) && !args['calibrate-v2'] ? d.ref : cur;   // ref: 보정 때 잰 바꾸기 전 게임 소리 크기 (옛 샘플을 뺀 뒤에도 같은 기준)
       const k = v2lm - clm;                      // dB: + 면 v2 가 더 큼
-      if (args['calibrate-v2']) { if (Number.isFinite(k)) calibV2[n] = +Math.min(8, Math.max(0.05, d.g * Math.pow(10, -k / 20))).toFixed(3); }
+      if (args['calibrate-v2']) { if (Number.isFinite(k)) calibV2[n] = { g: +Math.min(8, Math.max(0.05, d.g * Math.pow(10, -k / 20))).toFixed(3), ref: +clm.toFixed(2) }; }
       else if (!(Math.abs(k) <= 1.5)) fail(`v2 ${n}: 지금 게임 소리와 크기 차이 ${k >= 0 ? '+' : ''}${k.toFixed(1)} dB (K-가중 순간 라우드니스 v2 ${v2lm.toFixed(1)} / 지금 ${clm?.toFixed(1)} LUFS) — --calibrate-v2 로 g 맞추기`);
-      const curN = SM.renders?.[n]?.vs?.[0] ?? res.renders[n];
+      const curN = SM.renders?.[b]?.vs?.[0] ?? res.renders[b];
       const nodeV = okv.length ? Math.max(...okv.map((r) => r.nodes - r.conv)) : 0;
       console.log(`v2     ${n.padEnd(13)} ${String(d.f.length).padStart(3)}  ${fs_.map((f) => (f ? f.lufs.toFixed(1) : '?').padStart(5)).join(' ').padEnd(31)}  ${fs_.map((f) => (f ? f.peak.toFixed(1) : '?').padStart(4)).join(' ').padEnd(25)}  ${(d.f || []).map((id) => (V2.dec[id] ? db(V2.dec[id].peak).toFixed(1) : '?')).join(' ').padEnd(14)}  ${Number.isFinite(k) ? ((k >= 0 ? '+' : '') + k.toFixed(1) + 'dB').padStart(7) : '      ?'}      ${nodeV}${okv.some((r) => r.conv) ? '+잔향1' : ''} / ${curN?.nodes ?? '?'}  (${okv[0]?.srcs ?? '?'}·${okv[0]?.osc ?? '?'} / ${curN?.srcs ?? '?'}·${curN?.osc ?? '?'})`);
       v2N++;
@@ -476,7 +512,7 @@ if (!args['no-v2']) {
 if (args['calibrate-v2'] && V2.index) {
   const f = path.join(root, 'assets/audio/sfx_v2/index.json');
   const ix = JSON.parse(fs.readFileSync(f, 'utf8'));
-  for (const [n, g] of Object.entries(calibV2)) { console.log(`--calibrate-v2: ${n.padEnd(12)} g ${ix.sfx[n].g} → ${g}`); ix.sfx[n].g = g; }
+  for (const [n, { g, ref }] of Object.entries(calibV2)) { console.log(`--calibrate-v2: ${n.padEnd(16)} g ${ix.sfx[n].g} → ${g} (ref ${ref} LUFS)`); ix.sfx[n].g = g; ix.sfx[n].ref = ref; }
   fs.writeFileSync(f, JSON.stringify(ix, null, 1) + '\n');
   console.log(`--calibrate-v2: v2 음량 ${Object.keys(calibV2).length}종을 ${path.relative(root, f)} 에 썼다 (한 번 더 돌려 ±1.5 dB 확인)`);
 }
@@ -492,6 +528,7 @@ if (args.ref) {
     p2.on('pageerror', (e) => errs2.push(e.message));
     await p2.route('**/__test_sfx__.html', (r) => r.fulfill({ contentType: 'text/html; charset=utf-8', body: '<!doctype html><meta charset="utf-8"><title>sfx ref</title>' }));
     await p2.route('**/src/core/__audio_ref.js', (r) => r.fulfill({ contentType: 'text/javascript; charset=utf-8', body: refSrc }));
+    await routeM4a(p2, root);
     await p2.goto(`http://localhost:${port}/__test_sfx__.html`);
     const idr = await p2.evaluate(async ({ only }) => {
       let seed = 1, calls = 0;
@@ -501,7 +538,7 @@ if (args.ref) {
       // 지금 녹음 샘플 뱅크도 얹는다 (샘플 경로도 같은지)
       const ix = await (await fetch('/assets/audio/sfx/index.json')).json(), dc = new OfflineAudioContext(1, 1, 44100), bufs = {};
       const names = (only || Object.keys(A.SFX)).filter((n) => Object.prototype.hasOwnProperty.call(A.SFX, n) && Object.prototype.hasOwnProperty.call(B.SFX, n));
-      for (const n of names) { const d = ix.sfx[n]; if (d) for (const id of d.f) if (!bufs[id]) bufs[id] = { buf: await dc.decodeAudioData(await (await fetch(`/assets/audio/sfx/${id}.ogg`)).arrayBuffer()), off: 0 }; }
+      for (const n of names) { const d = ix.sfx[n]; if (d) for (const id of d.f) if (!bufs[id]) bufs[id] = { buf: await dc.decodeAudioData(await (await fetch(`/assets/audio/sfx/${id}.m4a`)).arrayBuffer()), off: 0 }; }
       const bank = { sample: (n) => { const d = ix.sfx[n]; return d ? { bufs: d.f.map((id) => bufs[id]), g: d.g, s: d.s, r: d.r || 1 } : null; } };
       const KINDS = ['createOscillator', 'createBufferSource', 'createGain', 'createBiquadFilter', 'createStereoPanner', 'createConvolver', 'createWaveShaper', 'createDelay', 'createBuffer', 'createPeriodicWave'];
       const run = async (M, name) => {
@@ -543,7 +580,7 @@ if (args.json) fs.writeFileSync(args.json === true ? '/tmp/test_sfx.json' : Stri
 
 const cnt = (g) => Object.keys(res.renders).filter((n) => group(n) === g).length;
 console.log(`효과음 ${played}/${Object.keys(res.renders).length}종 렌더 (내장 ${cnt('base')} · 체감 ${cnt('feel')} · 동료 ${cnt('cmp')} · 기타 ${cnt('extra')}), API ${res.api.length ? '✗' : '✓'}, 예산 ${res.budget.length ? '✗' : '✓'}, 녹음 샘플 ${smpN}종 (${(SM.bytes / 1024).toFixed(0)} KB)`);
-if (!args['no-v2']) console.log(`고급 효과음 v2 ${v2N}종 (${(V2.bytes / 1024).toFixed(0)} KB, 예산 1.2 MB)${refLine ? ' · ' + refLine : ''}`);
+if (!args['no-v2']) console.log(`고급 효과음 v2 ${v2N}종 (${(V2.bytes / 1024).toFixed(0)} KB) · 싣는 효과음 합계 ${shipped} B (기준 ${SHIP_BASE} B, ${shipped - SHIP_BASE >= 0 ? '+' : ''}${shipped - SHIP_BASE} B, 예산 +${SHIP_MAX - SHIP_BASE} B) · ogg ${oggLeft.length}개${refLine ? ' · ' + refLine : ''}`);
 for (const m of infos) console.log('  · ' + m);
 for (const m of warns) console.log('  ! ' + m);
 for (const m of fails) console.log('  ✗ ' + m);

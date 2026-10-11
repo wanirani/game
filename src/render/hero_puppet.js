@@ -123,7 +123,8 @@ function entry(cid, cls, sib = false) {
     E.levels = Object.entries(rig.levels).map(([name, L]) => ({ name, scale: L.scale, rects: L.rects, size: L.size })).sort((a, b) => a.scale - b.scale);
     E.levels.forEach((L, i) => { E.lvIdx[L.name] = i; });
     E.opts = rig.opts || {};
-    E.mo = meshOverride(key, rig);   // 메시 관절·2차 움직임 설정 (리그 관절에서 자동 + 리그별 덮어쓰기, puppet_mesh.js)
+    E.mo = meshOverride(key, rig);   // 메시 관절 설정 (리그 관절·부위 크기에서 자동 + 리그별 덮어쓰기, puppet_mesh.js)
+    E.lit = {};                      // 윤곽선·역광을 구워 넣은 레벨 캔버스 {레벨: {k: 역광 키, cv}} (bakeLit)
     // 게임 화면용 두 레벨 + 그 재질 마스크(≈14KB, 장비 색을 바꿀 때 원래 색이 한 프레임 비치지 않게). ui 레벨은 메뉴에서 필요할 때.
     // 형제 직업 미리 받기(sib)는 아틀라스만: 마스크는 디코딩하면 아틀라스와 같은 크기라 폰 텍스처 예산을 두 배로 먹는다 — 처음 그릴 때 받는다
     requestLevels(E, !sib);
@@ -187,7 +188,7 @@ const FINISH = { leather: [1, 0], chain: [1.12, 0.1], plate: [1.25, 0.25], holy:
 function makeVariant(E, vk) {
   const [ac, tc, kind, tn] = vk.split('|');
   const tint = tn && tn !== '-' ? (([h, s]) => ({ h: Number(h) || 0, s: Number.isFinite(Number(s)) ? Number(s) : 1 }))(tn.split('~')) : null;
-  return { vk, ac: ac === '-' ? null : hexRgb(ac), tc: tc === '-' ? null : hexRgb(tc), fin: FINISH[kind] || [1, 0], tint, img: {}, dark: {}, turn: undefined };
+  return { vk, ac: ac === '-' ? null : hexRgb(ac), tc: tc === '-' ? null : hexRgb(tc), fin: FINISH[kind] || [1, 0], tint, img: {}, dark: {}, lit: {}, turn: undefined };
 }
 const lumOf = (r, g, b) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
 /**
@@ -314,7 +315,9 @@ function releaseEntry(E) {
   E.turnImg = null; E.turnMask = null;
   for (const k in E.dark) recycle(E.dark[k]);
   E.dark = {};
-  for (const V of E.vars.values()) { for (const k in V.img) recycle(V.img[k]); for (const k in V.dark) recycle(V.dark[k]); recycle(V.turn); }
+  for (const k in E.lit || {}) { recycle(E.lit[k].cv); recycle(E.lit[k].dark); }
+  E.lit = {};
+  for (const V of E.vars.values()) { for (const k in V.img) recycle(V.img[k]); for (const k in V.dark) recycle(V.dark[k]); for (const k in V.lit || {}) { recycle(V.lit[k].cv); recycle(V.lit[k].dark); } recycle(V.turn); }
   E.vars.clear();
   E.state = 0; E.req = false; E.gen++;
   return b;
@@ -500,11 +503,81 @@ function useLevel(I, c) {
   R = E; LV = pickLevel(I, c);
   if (!LV) return false;
   let img = levelPeek(E, LV);
-  let dk = E.dark;
-  if (I.V) { const v = variantLevel(E, I.V, LV); if (v) { img = v; dk = I.V.dark; } }
+  let dk = E.dark, host = E;
+  if (I.V) { const v = variantLevel(E, I.V, LV); if (v) { img = v; dk = I.V.dark; host = I.V; } }
+  // 보통·높음 화질: 윤곽선 + 무대 빛 역광을 구워 넣은 캔버스 (G.rim = hero.js 가 무대 테마에서 고른 역광색). 저품질은 예전 그대로
+  if (G.rim && !G.lowq && typeof document !== 'undefined') {
+    const lit = host.lit || (host.lit = {});
+    let lt = lit[LV.name];
+    if (!lt || lt.k !== G.rim || lt.src !== img) {
+      if (lt) { recycle(lt.cv); recycle(lt.dark); }
+      lt = lit[LV.name] = { k: G.rim, src: img, cv: bakeLit(E, LV, img, G.rim), dark: null };
+    }
+    IMG = lt.cv;
+    DARK = lt.dark || (lt.dark = bakeDark(lt.cv));
+    return true;
+  }
   IMG = img;
   DARK = dk[LV.name] || (typeof document !== 'undefined' ? (dk[LV.name] = bakeDark(img)) : img);
   return true;
+}
+// ── 읽기 좋게: 가는 어두운 윤곽선 + 부드러운 역광 (레벨 캔버스에 한 번 구움 — 프레임마다 필터·그라디언트 없음) ──
+// 윤곽선: 부위 알파의 안쪽 가장자리 1 아틀라스 px(≈ 화면 1px — pickLevel 이 장치 px 에 맞는 레벨을 고른다)를 어둡게.
+// 역광: 빛이 오는 쪽(원화 공간 뒤-위, LDIR)을 향한 가장자리 두 겹(1.3·2.8 px, 옅게)을 무대 빛 색으로. 부위가 뼈와 함께 돌면 역광도 함께 돈다.
+// 부위를 자른 자리(관절: 허벅지-정강이 무릎, 몸통 허리 등)는 다른 부위에 덮이므로 그 둘레의 윤곽·역광은 지운다 (ATT) — 이음매에 선이 생기지 않게.
+const OUT_COL = '#0b0612', OUT_A = 0.7, LDIR = [-0.6, -0.8];
+const ATT = {
+  torso: [['pivot', 0.5], ['end', 0.32]], thigh: [['pivot', 0.5], ['end', 0.44]], shin: [['pivot', 0.5], ['end', 0.42]],
+  uarm: [['pivot', 0.46], ['end', 0.46]], farm: [['pivot', 0.5], ['end', 0.46]], hand: [['pivot', 0.5]], grip: [['end', 0.5]], open: [['pivot', 0.5]],
+  foot: [['pivot', 0.46]], head: [['pivot', 0.34]], skirt: [['pivot', 0.4]], skirtFar: [['pivot', 0.4]], pony: [['pivot', 0.45]],
+};
+function eraseJoints(c, E, L) {
+  c.save();
+  c.globalCompositeOperation = 'destination-out'; c.fillStyle = '#000';
+  for (const name in ATT) {
+    const pt = E.parts[name], rc = L.rects[name];
+    if (!pt || !rc || !(pt.w > 0)) continue;
+    const kx = rc[2] / pt.w, ky = rc[3] / pt.h;
+    c.save(); c.beginPath(); c.rect(rc[0], rc[1], rc[2], rc[3]); c.clip();   // 원 하나가 아틀라스의 이웃 부위를 지우지 않게
+    for (const [k, f] of ATT[name]) {
+      const q = pt[k];
+      if (!q) continue;
+      const x = rc[0] + (q[0] - pt.x0) * kx, y = rc[1] + (q[1] - pt.y0) * ky, rad = f * Math.min(pt.w, pt.h) * kx;
+      for (const [m, a] of [[1, 0.35], [0.8, 0.5], [0.58, 1]]) { c.globalAlpha = a; c.beginPath(); c.arc(x, y, rad * m, 0, TAU); c.fill(); }
+    }
+    c.restore();
+  }
+  c.restore();
+}
+function bakeLit(E, L, src, rim) {
+  const W = src.naturalWidth || src.width, Hh = src.naturalHeight || src.height;
+  const o = Math.max(1, Math.round(L.scale / 0.2));          // 윤곽 두께 (아틀라스 px). ui 레벨(0.36)은 2
+  const out = spareCanvas(W, Hh), g = out.getContext('2d');
+  const ring = spareCanvas(W, Hh), r = ring.getContext('2d');
+  const tmp = spareCanvas(W, Hh), t = tmp.getContext('2d');
+  // 깎은 모양(네 방향으로 o 만큼 비킨 것과의 교집합) → 원래 − 깎은 = 안쪽 가장자리 띠
+  t.drawImage(src, 0, 0);
+  t.globalCompositeOperation = 'destination-in';
+  t.drawImage(src, o, 0); t.drawImage(src, -o, 0); t.drawImage(src, 0, o); t.drawImage(src, 0, -o);
+  r.drawImage(src, 0, 0);
+  r.globalCompositeOperation = 'destination-out'; r.drawImage(tmp, 0, 0);
+  r.globalCompositeOperation = 'source-in'; r.fillStyle = OUT_COL; r.fillRect(0, 0, W, Hh);
+  r.globalCompositeOperation = 'source-over';
+  eraseJoints(r, E, L);
+  g.drawImage(src, 0, 0);
+  g.globalCompositeOperation = 'source-atop'; g.globalAlpha = OUT_A; g.drawImage(ring, 0, 0);
+  // 역광: 빛 쪽 이웃이 비어 있는 가장자리 (두 겹: 가까운 진한 띠 + 넓고 옅은 띠)
+  for (const [d, a] of [[1.3 * o, 0.5], [2.8 * o, 0.2]]) {
+    t.globalCompositeOperation = 'source-over'; t.globalAlpha = 1; t.clearRect(0, 0, W, Hh); t.drawImage(src, 0, 0);
+    t.globalCompositeOperation = 'destination-out'; t.drawImage(src, -LDIR[0] * d, -LDIR[1] * d);
+    t.globalCompositeOperation = 'source-in'; t.fillStyle = rim; t.fillRect(0, 0, W, Hh);
+    t.globalCompositeOperation = 'source-over';
+    eraseJoints(t, E, L);
+    g.globalAlpha = a; g.drawImage(tmp, 0, 0);
+  }
+  g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+  recycle(ring); recycle(tmp);
+  return out;
 }
 function blit(c, name, dark) {
   const pt = R.parts[name], rc = LV.rects[name];
@@ -537,20 +610,23 @@ function torsoPt(s, K, q) {
 const TXO = [0, 0];
 function toT0(P, x, y) { H.tx(P, x, y, TXO); return TXO; }
 
-// ── 애니풍 시범: 메시 변형(puppet_mesh.js) — MESH 는 drawLayers 가 이번 그리기마다 정한다 (애니 퍼펫 + 저품질 아님) ──
+// ── 메시 관절 (puppet_mesh.js) — MESH 는 drawLayers 가 이번 그리기마다 정한다 (보통·높음 화질 + 조종 중인 영웅 G.main) ──
 let MESH = false;
 const BA = [null, null, 0, 0, 0, 0], BB = [null, null, 0, 0, 0, 0];
 function bone(o, a, b, AX, AY, BX, BY) { o[0] = a; o[1] = b; o[2] = AX; o[3] = AY; o[4] = BX; o[5] = BY; return o; }
 // 먼 팔·다리(dark)는 어둡게 몸 뒤에 있어 휘어짐이 거의 안 보인다 → 예전 판 그대로 (메시 비용 절반)
-const meshOK = (p1, p2, dark = false) => MESH && !dark && R.parts[p1] && R.parts[p2] && LV.rects[p1] && LV.rects[p2];
+const meshOK = (p1, p2, dark = false) => MESH && !dark && R.mo && R.mo[p1] && R.mo[p2] && LV.rects[p1] && LV.rects[p2];
+/** 위 부위(p1)·아래 부위(p2)를 메시로 (관절이 거의 곧으면 false → 호출측이 판으로) */
+function limbMesh(c, img, p1, p2) {
+  if (!drawSkinned(c, img, LV.rects[p1], R.parts[p1], R.mo[p1], BA, BB, R.PS)) return false;
+  if (!drawSkinned(c, img, LV.rects[p2], R.parts[p2], R.mo[p2], BB, BA, R.PS)) { c.save(); boneXf(c, BB[0], BB[1], BB[2], BB[3], BB[4], BB[5]); blit(c, p2); c.restore(); }
+  return true;
+}
 function legPup(c, K, hx, hy, kx, ky, ax, ay, t, dark) {
   const J = R.J;
-  if (meshOK('thigh', 'shin', dark)) {
-    const img = dark ? DARK : IMG;
-    bone(BA, J.hip, J.knee, hx, hy, kx, ky); bone(BB, J.knee, J.ankle, kx, ky, ax, ay);
-    drawSkinned(c, img, LV.rects.thigh, R.parts.thigh, BA, BB, 'end', R.PS);
-    drawSkinned(c, img, LV.rects.shin, R.parts.shin, BB, BA, 'start', R.PS);
-  } else {
+  let done = false;
+  if (meshOK('thigh', 'shin', dark)) { bone(BA, J.hip, J.knee, hx, hy, kx, ky); bone(BB, J.knee, J.ankle, kx, ky, ax, ay); done = limbMesh(c, IMG, 'thigh', 'shin'); }
+  if (!done) {
     c.save(); boneXf(c, J.hip, J.knee, hx, hy, kx, ky); blit(c, 'thigh', dark); c.restore();
     c.save(); boneXf(c, J.knee, J.ankle, kx, ky, ax, ay); blit(c, 'shin', dark); c.restore();
   }
@@ -559,12 +635,11 @@ function legPup(c, K, hx, hy, kx, ky, ax, ay, t, dark) {
 function armPup(c, sx, sy, ex, ey, hx, hy, dark, hand) {
   const J = R.J;
   if (meshOK('uarm', 'farm', dark)) {
-    const img = dark ? DARK : IMG;
     bone(BA, J.shoulder, J.elbow, sx, sy, ex, ey); bone(BB, J.elbow, J.hand, ex, ey, hx, hy);
-    drawSkinned(c, img, LV.rects.uarm, R.parts.uarm, BA, BB, 'end', R.PS);
-    drawSkinned(c, img, LV.rects.farm, R.parts.farm, BB, BA, 'start', R.PS);
-    if (hand) { c.save(); boneXf(c, J.elbow, J.hand, ex, ey, hx, hy); blit(c, 'hand', dark); c.restore(); }
-    return;
+    if (limbMesh(c, IMG, 'uarm', 'farm')) {
+      if (hand) { c.save(); boneXf(c, J.elbow, J.hand, ex, ey, hx, hy); blit(c, 'hand', dark); c.restore(); }
+      return;
+    }
   }
   c.save(); boneXf(c, J.shoulder, J.elbow, sx, sy, ex, ey); blit(c, 'uarm', dark); c.restore();
   c.save(); boneXf(c, J.elbow, J.hand, ex, ey, hx, hy); blit(c, 'farm', dark); if (hand) blit(c, 'hand', dark); c.restore();
@@ -609,6 +684,7 @@ function openPup(c, K, ex, ey, hx, hy, dark) {
 // ── 코트 자락: 허리 피벗 회전 + 가로 띠 전단 (띠 경계에서 연속이라 틈이 없다) ──
 const SKN = 6, SK_B = new Float32Array(SKN + 2), SK_SL = new Float32Array(SKN + 1), SK_OFF = new Float32Array(SKN + 2);
 const SKS = { ax: 0, ay: 0, rot: 0, v: 1, on: false };
+const SKIRT_K = [150, 10];
 function skirtSetup(K, s, P) {
   const pt = R.parts.skirt;
   SKS.on = !!(pt && pt.strip);
@@ -620,11 +696,13 @@ function skirtSetup(K, s, P) {
   // 쉴 때는 거의 수직(약간 뒤로), 몸 기울기 절반 + 달리면 뒤로 흩날림 + 무릎이 앞자락을 밀어냄
   SKS.rot = 0.1 + P.lean * 0.45 + clamp(run, 0, 1.2) * 0.26 + lift * 0.2 - kneeFwd * 0.22 - (R.opts.skirtRest ?? 0);
   if (P.rot) SKS.rot += 0;
-  if (R.anime) SKS.rot = spring(AE.p, 'skirtRot', SKS.rot, AE.dt, 150, 10);   // 애니 시범: 코트 자락이 몸을 늦게 따라오고 넘쳐 흔들림
+  // 2차 움직임: 코트 자락이 몸을 늦게 따라오고 넘쳐 흔들림 (리그 runtime.skirtSpring = [강성, 감쇠] 로 조절). 범위를 묶어 순간이동·공중제비에도 터지지 않게
+  const ks = R.opts.skirtSpring || SKIRT_K;
+  if (MOT) SKS.rot = spring(AE.p, 'skirtRot', SKS.rot, AE.dt, ks[0], ks[1], -0.7, 1.5);
   // 전단: 아래로 갈수록 뒤로 굽음(+펄럭임). 띠 좌표 = 스트립 v (피벗 기준, 축 방향)
   const v0 = st.oy, v1 = st.oy + pt.h, top = Math.max(0, v0);
   let bend = -(0.04 + run * 0.22 + lift * 0.28 + SW.fl * 0.04) + kneeFwd * 0.08;
-  if (R.anime) bend = spring(AE.p, 'skirtBend', bend, AE.dt, 90, 7);
+  if (MOT) bend = spring(AE.p, 'skirtBend', bend, AE.dt, ks[0] * 0.6, ks[1] * 0.7, -0.9, 0.5);
   SK_B[0] = v0; SK_OFF[0] = 0; SK_SL[0] = 0;
   SK_B[1] = top; SK_OFF[1] = 0;
   for (let i = 1; i <= SKN; i++) {
@@ -809,22 +887,31 @@ function drawCapePup(c, E, K, s) {
   }
 }
 
-// ───────────────────────── 애니풍 시범: 동작 연출 (그림만 — 판정·타이밍은 그대로) ─────────────────────────
-// 착지 찌그러짐(발 기준) · 기본 공격 앤티시페이션(휘두르기 전 반대로 젖힘)·팔로스루(지나쳐 돌아옴) · 휘두를 때 스미어(번진 잔상)
-// 공격 방향은 활성 구간에서 손이 어깨를 도는 방향을 재서 기술(move 정의)별로 기억 → 다음 같은 기술의 준비 동작에 쓴다
+// ───────────────────────── 동작 연출 (그림만 — 판정·타이밍은 그대로) ─────────────────────────
+// 보통·높음 화질의 살아 있는 퍼펫(MOT): 착지 찌그러짐(발 기준, 떨어진 속도만큼 눌렸다 살짝 늘어남) · 기본 공격 앤티시페이션(휘두르기 전
+// 반대로 젖힘)·팔로스루(지나쳐 돌아옴) · 주 휘두르기의 옅은 잔상(조종 중인 영웅만) · 채찍 똬리 끈·리그 장식끈(스프링 체인).
+// 공격 방향은 활성 구간에서 손이 어깨를 도는 방향을 재서 기술(move 정의)별로 기억 → 다음 같은 기술의 준비 동작에 쓴다.
+// 상태는 엔티티별(stateOf)이고 '이번 프레임'(tt)이 바뀔 때만 진행 — 같은 프레임 두 번 그리기·멈춤·히트스톱(시간 정지)에서 두 번 진행하지 않는다.
+let MOT = false;
 let AE = null;                       // 이번 drawLayers 의 그리기 문맥 (스프링 상태 키 = AE.p)
 const SWSIGN = new WeakMap();        // 기술 정의 → 휘두르는 회전 방향 (+1 / −1)
 const ABK = { on: false, e1x: 0, e1y: 0, h1x: 0, h1y: 0, e2x: 0, e2y: 0, h2x: 0, h2y: 0, w1: 0, sq: 0 };
 const rotAbout = (x, y, cx, cy, a, o, i) => { const cs = Math.cos(a), sn = Math.sin(a), dx = x - cx, dy = y - cy; o[i] = cx + dx * cs - dy * sn; o[i + 1] = cy + dx * sn + dy * cs; };
 const RA = [0, 0];
-function animeBegin(c, E, P, s, ST, tt) {
+function motionBegin(c, E, P, s, ST, tt) {
   AE = E;
-  const st = stateOf(E.p);
-  // 착지: player.landT (0.12 → 0) 동안 발 기준으로 눌렸다 펴짐 (기존 P.sq 위에 조금 더)
-  const lt = E.p?.landT > 0 ? clamp(E.p.landT / 0.12, 0, 1) : 0;
-  const k = lt > 0 ? 0.075 * Math.sin(lt * PI) * (0.6 + 0.4 * lt) : 0;
+  const p = E.p, st = stateOf(p);
+  // 착지: 공중 → 땅으로 바뀐 프레임의 낙하 속도로 세기를 정하고 0.22초 동안 눌렸다 늘어났다 가라앉음
+  if (st && st.t !== tt) {
+    const air = p?.onGround === false;
+    if (st.air && !air && (st.vy ?? 0) > 260) { st.landAt = tt; st.landK = clamp((st.vy - 200) / 1600, 0.025, 0.07); }
+    st.air = air; st.vy = p?.vy || 0;
+    if (st.landAt !== undefined && (tt < st.landAt || tt - st.landAt > 0.3)) st.landAt = undefined;
+  }
+  let k = 0;
+  if (st?.landAt !== undefined) { const u = (tt - st.landAt) / 0.22; if (u >= 0 && u < 1) k = st.landK * (1 - u) * (1 - u) * Math.cos(u * PI * 1.6); }
   ABK.sq = k;
-  if (k > 0.002) { c.save(); c.scale(1 + k * 0.6, 1 - k); }
+  if (Math.abs(k) > 0.002) { c.save(); c.scale(1 + k * 0.6, 1 - k); }
   // 앤티시페이션 / 팔로스루
   ABK.on = false;
   const def = ST.atk;
@@ -835,7 +922,7 @@ function animeBegin(c, E, P, s, ST, tt) {
     }
     const sg = SWSIGN.get(def) || 0;
     let da = 0;
-    if (sg && ST.ph === 0) da = -sg * 0.3 * Math.sin(PI * clamp(ST.u, 0, 1));                       // 반대로 젖힘
+    if (sg && ST.ph === 0) { const u = clamp(ST.u, 0, 1); da = -sg * 0.3 * Math.sin(PI * Math.pow(u, 0.7)); }        // 반대로 젖힘 (빨리 젖혔다 놓음)
     else if (sg && ST.ph === 2) { const u = clamp(ST.u, 0, 1); da = sg * 0.26 * Math.sin(PI * u) * (1 - u * 0.5); }   // 지나쳐 돌아옴
     if (Math.abs(da) > 0.003) {
       ABK.on = true;
@@ -848,41 +935,43 @@ function animeBegin(c, E, P, s, ST, tt) {
     if (st.t !== tt) { st.pa = ang; }
   } else if (st && st.t !== tt) st.pa = undefined;
 }
-function animeEnd(c, E, P, s, tt) {
+function motionEnd(c, E, P, s, tt) {
   if (ABK.on) {
     s.e1x = ABK.e1x; s.e1y = ABK.e1y; s.h1x = ABK.h1x; s.h1y = ABK.h1y; s.e2x = ABK.e2x; s.e2y = ABK.e2y; s.h2x = ABK.h2x; s.h2y = ABK.h2y; P.w1 = ABK.w1;
     ABK.on = false;
   }
-  if (ABK.sq > 0.002) c.restore();
-  // 다음 프레임 스미어용: 이번 프레임의 가까운 팔 (같은 프레임에 두 번 그려도 한 번만 넘긴다)
+  if (Math.abs(ABK.sq) > 0.002) c.restore();
+  // 다음 프레임 잔상용: 이번 프레임의 가까운 팔 (같은 프레임에 두 번 그려도 한 번만 넘긴다)
   const st = stateOf(E.p);
   if (st && st.t !== tt) {
     st.t = tt;
-    st.e1x = s.e1x; st.e1y = s.e1y; st.h1x = s.h1x; st.h1y = s.h1y; st.w1 = P.w1; st.ok = true;
+    st.e1x = s.e1x; st.e1y = s.e1y; st.h1x = s.h1x; st.h1y = s.h1y; st.w1 = P.w1; st.ok = true; st.mv = AE_MV;
   }
   AE = null;
 }
-/** 스미어: 활성 구간에 가까운 아래팔·주먹(+무기)을 지난 프레임 → 이번 프레임 사이 두 자리에 옅게 */
-function animeSmear(c, E, K, P, W, s, ST, hasMain) {
-  if (!G.fx || G.tint || ST.ph !== 1 || !ST.mv) return;
+let AE_MV = null;
+/** 잔상: 활성 구간에 가까운 아래팔·주먹(+무기)을 지난 프레임 → 이번 프레임 사이에 옅게 (높음 2장, 보통 1장). 지난 프레임이 같은 기술일 때만 */
+function swingSmear(c, E, K, P, W, s, ST, hasMain, tt) {
+  if (!G.fx || G.tint || !G.main || ST.ph !== 1 || !ST.mv) return;
   const st = stateOf(E.p);
-  if (!st?.ok) return;
+  if (!st?.ok || st.mv !== ST.mv || !(tt - st.t < 0.1)) return;
   const dx = s.h1x - st.h1x, dy = s.h1y - st.h1y;
   if (dx * dx + dy * dy < 6) return;
   const J = R.J, a0 = c.globalAlpha;
-  for (const k of [0.3, 0.65]) {
+  for (const k of G.qual === 'high' ? SMEAR2 : SMEAR1) {
     const ex = lerp(st.e1x, s.e1x, k), ey = lerp(st.e1y, s.e1y, k), hx = lerp(st.h1x, s.h1x, k), hy = lerp(st.h1y, s.h1y, k);
     const w = st.w1 + wrapPI(P.w1 - st.w1) * k;
-    c.globalAlpha = a0 * (0.16 + 0.2 * k);
+    c.globalAlpha = a0 * (0.14 + 0.18 * k);
     c.save(); boneXf(c, J.elbow, J.hand, ex, ey, hx, hy); blit(c, 'farm'); c.restore();
     if (hasMain) { drawWeapon(W, hx, hy, w, {}); gripPup(c, K, ex, ey, hx, hy, w, W.type, false); }
     else { c.save(); boneXf(c, J.elbow, J.hand, ex, ey, hx, hy); blit(c, 'hand'); c.restore(); }
   }
   c.globalAlpha = a0;
 }
+const SMEAR2 = [0.3, 0.65], SMEAR1 = [0.5];
 /** 채찍 똬리에서 늘어진 끈 끝 (스프링 체인) — T0 좌표에서 그린다 */
 const STRAP_CFG = { g: 900, d: 0.86, push: 200, rest: 0.9, curl: 0.04, flut: 18 };
-function animeStrap(c, E, K, s, T0M) {
+function coilStrap(c, E, K, s, T0M) {
   const pt = R.parts.coil;
   if (!pt || !T0M || G.tint) return;
   torsoPt(s, K, [pt.x0 + pt.w * 0.42, pt.y0 + pt.h * 0.86]);
@@ -895,22 +984,49 @@ function animeStrap(c, E, K, s, T0M) {
   c.strokeStyle = ra('#120604', 0.7); c.lineWidth = 0.3; c.stroke();
   c.restore();
 }
+/**
+ * 리그 장식끈 (rig.json runtime.chains — 망토 사슬과 같은 베를레 체인을 리그 데이터로 늘린다):
+ *   [{ at: 관절 이름 | [x, y] (원화 좌표), frame: 'head' | 'torso', n: 5, seg: 3 (논리 px), w: [시작 폭, 끝 폭], col: '#hex', cfg: {g, d, push, rest, curl, flut} }]
+ * 몸 뒤에 그린다 (망토 다음). 저품질·실루엣 패스에서는 그리지 않는다
+ */
+const CHAIN_CFG = { g: 1000, d: 0.88, push: 220, rest: 0.5, curl: 0.05, flut: 30, up: 6 };
+function rigChains(c, E, K, s, T0M) {
+  const L = R.opts.chains;
+  if (!Array.isArray(L) || !L.length || !T0M || G.tint) return;
+  c.save(); c.setTransform(T0M);
+  for (let j = 0; j < L.length; j++) {
+    const ch = L[j], q = Array.isArray(ch.at) ? ch.at : R.J[ch.at];
+    if (!q) continue;
+    if (ch.frame === 'head') headPt(s, K, q[0], q[1]); else torsoPt(s, K, q);
+    const T = toT0(E.P, Q[0], Q[1]), ax = T[0], ay = T[1];
+    const n = clamp(ch.n | 0 || 5, 3, 8);
+    const cfg = ch.cfgFull || (ch.cfgFull = { ...CHAIN_CFG, ...(ch.cfg || {}) });
+    const pts = H.chain('rc' + j, E, ax, ay, n, ch.seg || 3, cfg, ax + 1);
+    const w0 = ch.w?.[0] ?? 0.9, w1 = ch.w?.[1] ?? 0.4;
+    for (let i = 0; i < n; i++) WS[i] = lerp(w0, w1, i / (n - 1));
+    ribbonPath(c, pts, n, WS, false);
+    c.fillStyle = ch.col || '#3a1f12'; c.fill();
+    c.strokeStyle = ra('#0a0306', 0.6); c.lineWidth = 0.3; c.stroke();
+  }
+  c.restore();
+}
 
 // ───────────────────────── 레이어 ─────────────────────────
 /**
  * 퍼펫 본체 레이어 (hero.js drawLayers 대신). E = hero.js 의 그리기 문맥 {p, rig, hs, fac, dt, P, K, skipFarLeg}
- * 순서: 망토 → 머리띠 꼬리·포니테일 → [T1] 날개 → 먼 무기·먼 팔 → 머리 → 안쪽 자락 → 먼 다리 → 가까운 다리 → 바깥 자락
- *       → 몸통(+채찍 똬리) → 가까운 위팔 → 어깨 덮개 → 가까운 아래팔 → 주무기 → 주먹 → (양손 무기) 먼 주먹
+ * 순서: 망토 → 리그 장식끈 → 머리띠 꼬리·포니테일 → [T1] 날개 → 먼 무기·먼 팔 → 머리 → 안쪽 자락 → 먼 다리 → 가까운 다리 → 바깥 자락
+ *       → 몸통(+채찍 똬리·끈) → 휘두르기 잔상 → 가까운 위팔 → 어깨 덮개 → 가까운 아래팔 → 주무기 → 주먹 → (양손 무기) 먼 주먹
  */
 export function drawLayers(c, E, K, P, W, tt) {
   const I = K.pup;
   if (!useLevel(I, c)) return false;
   const s = H.SK, ST = H.ST, J = R.J;
-  const AN = R.anime === true;                 // 애니풍 시범 원화 (플래그가 꺼져 있으면 언제나 false → 아래 분기 모두 건너뜀)
-  MESH = AN && !G.lowq;
+  MOT = !!E.rig && G.fx && !G.tint && !G.lowq;   // 살아 있는 퍼펫(잔상·스냅샷 아님) + 보통·높음 화질
+  MESH = !!E.rig && !G.tint && !G.lowq && G.main && !!R.mo;   // 메시 관절: 조종 중인 영웅만 (파티·NPC·메뉴·잔상은 판)
   let T0M = null;
-  if (AN) { animeBegin(c, E, P, s, ST, tt); T0M = ST.coil ? c.getTransform() : null; }
+  if (MOT) { motionBegin(c, E, P, s, ST, tt); T0M = c.getTransform(); AE_MV = ST.mv || null; }
   if (R.opts.cape !== false) drawCapePup(c, E, K, s);   // NPC 원화에 이미 자락·숄이 그려진 경우 runtime.cape=false (카밀라: look.cape 데이터와 겹침)
+  if (MOT) rigChains(c, E, K, s, T0M);
   if (K.scarf?.long && H.drawScarfTail) H.drawScarfTail(s, K, E);
   drawBandPup(c, E, K, s);
   drawPonyPup(c, E, K, s);
@@ -941,17 +1057,22 @@ export function drawLayers(c, E, K, P, W, tt) {
   drawSkirtPup(c, false);
   // ── 몸통 (+ 허리의 채찍 똬리) ──
   c.save(); boneXf(c, J.pelvis, J.neck, s.px, s.py, s.nx, s.ny); blit(c, 'torso'); if (ST.coil) blit(c, 'coil'); c.restore();
-  if (AN && ST.coil) animeStrap(c, E, K, s, T0M);
+  if (MOT && ST.coil) coilStrap(c, E, K, s, T0M);
   // ── 가까운 팔: 위팔 → 어깨 덮개 → 아래팔 → 주무기 → 주먹 ──
   const hasMain = (W.type !== 'none' && W.type !== 'whip') || (W.type === 'whip' && !ST.coil);
-  if (AN) animeSmear(c, E, K, P, W, s, ST, hasMain);
+  if (MOT) swingSmear(c, E, K, P, W, s, ST, hasMain, tt);
+  let meshed = false;
   if (meshOK('uarm', 'farm')) {
     bone(BA, J.shoulder, J.elbow, s.s1x, s.s1y, s.e1x, s.e1y); bone(BB, J.elbow, J.hand, s.e1x, s.e1y, s.h1x, s.h1y);
-    drawSkinned(c, IMG, LV.rects.uarm, R.parts.uarm, BA, BB, 'end', R.PS);
-    c.save(); boneXf(c, J.pelvis, J.neck, s.px, s.py, s.nx, s.ny); blit(c, 'pad'); c.restore();
-    drawSkinned(c, IMG, LV.rects.farm, R.parts.farm, BB, BA, 'start', R.PS);
-    if (!hasMain && !throwing) { c.save(); boneXf(c, J.elbow, J.hand, s.e1x, s.e1y, s.h1x, s.h1y); blit(c, 'hand'); c.restore(); }
-  } else {
+    // 어깨 덮개가 위팔과 아래팔 사이에 오도록 두 부위를 따로 그린다 (관절이 곧으면 판)
+    if (drawSkinned(c, IMG, LV.rects.uarm, R.parts.uarm, R.mo.uarm, BA, BB, R.PS)) {
+      meshed = true;
+      c.save(); boneXf(c, J.pelvis, J.neck, s.px, s.py, s.nx, s.ny); blit(c, 'pad'); c.restore();
+      if (!drawSkinned(c, IMG, LV.rects.farm, R.parts.farm, R.mo.farm, BB, BA, R.PS)) { c.save(); boneXf(c, J.elbow, J.hand, s.e1x, s.e1y, s.h1x, s.h1y); blit(c, 'farm'); c.restore(); }
+      if (!hasMain && !throwing) { c.save(); boneXf(c, J.elbow, J.hand, s.e1x, s.e1y, s.h1x, s.h1y); blit(c, 'hand'); c.restore(); }
+    }
+  }
+  if (!meshed) {
     c.save(); boneXf(c, J.shoulder, J.elbow, s.s1x, s.s1y, s.e1x, s.e1y); blit(c, 'uarm'); c.restore();
     c.save(); boneXf(c, J.pelvis, J.neck, s.px, s.py, s.nx, s.ny); blit(c, 'pad'); c.restore();
     c.save(); boneXf(c, J.elbow, J.hand, s.e1x, s.e1y, s.h1x, s.h1y); blit(c, 'farm'); if (!hasMain && !throwing) blit(c, 'hand'); c.restore();
@@ -964,8 +1085,8 @@ export function drawLayers(c, E, K, P, W, tt) {
     if (!openPup(c, K, s.e1x, s.e1y, s.h1x, s.h1y, false)) { c.save(); boneXf(c, J.elbow, J.hand, s.e1x, s.e1y, s.h1x, s.h1y); blit(c, 'hand'); c.restore(); }
   }
   c.restore();
-  if (AN) animeEnd(c, E, P, s, tt);
-  MESH = false;
+  if (MOT) motionEnd(c, E, P, s, tt);
+  MESH = false; MOT = false;
   return true;
 }
 /** 절차적 무기를 채색 원화 옆에 어울리게: 윤곽선을 조금 가늘게, 부드러운 접지 그림자 한 겹 */
@@ -1018,11 +1139,11 @@ export function drawTurnStep(ctx, I, deg, sx, alpha, t) {
   ctx.save();
   if (alpha < 1) ctx.globalAlpha *= alpha;
   ctx.scale((st.m ? -1 : 1) * s * sx, s * breath);
-  ctx.drawImage(turnSrc(I), v.x, v.y ?? 0, v.w, v.h, -v.axisX, -v.footY, v.w, v.h);   // v.y: 여러 줄 시트(애니 시범 turn16). 옛 시트는 한 줄 → 0
+  ctx.drawImage(turnSrc(I), v.x, v.y ?? 0, v.w, v.h, -v.axisX, -v.footY, v.w, v.h);   // v.y: 여러 줄 시트(turn16). 옛 시트는 한 줄 → 0
   ctx.restore();
   return { s, v, m: st.m };
 }
-// ── 애니풍 시범: 16방향 턴테이블 (rig.turn.turn16 — tools/puppet/anime/build_turn16.py, 클링 360° 영상에서 22.5° 간격) ──
+// ── 16방향 턴테이블 (rig.turn.turn16 — 지금은 이 시트를 가진 퍼펫이 없어 쉬는 경로. 시트가 생기면 hero_view 가 쓴다; 22.5° 간격) ──
 // 각도 규칙은 drawHeroYaw 와 같다: 0 = 오른쪽을 봄, π/2 = 앞모습, π = 왼쪽을 봄, −π/2 = 뒷모습. 좌우 반전 없음 (실제로 돈 영상).
 /** 이 퍼펫이 16방향 뷰를 가졌는가 (시트 로드 전이면 요청하고 false) */
 export function turn16Ready(I) {
@@ -1196,6 +1317,16 @@ export function drawTurnHalo(ctx, col, t, I) {
   drawHalo(0, -top - 4 + Math.sin(t * 2) * 0.6, 7, col || '#ffe9a0');
 }
 
+/**
+ * 화면 비율에 맞춘 영웅 그리기 배율 (HUD·카메라 쪽이 hero.setHeroDrawScale 등에 곱해 쓴다): 16:9 이상 넓은 화면 = 1.0,
+ * 4:3 에 가까운(태블릿·접이식) 화면일수록 커져 1.25:1 이하에서 1.12. 세로 화면도 긴 변 / 짧은 변으로 본다. 잘못된 값이면 1
+ */
+export function heroScaleFor(viewW, viewH) {
+  if (!(viewW > 0) || !(viewH > 0)) return 1;
+  const ar = Math.max(viewW, viewH) / Math.min(viewW, viewH);
+  const k = clamp((16 / 9 - ar) / (16 / 9 - 1.25), 0, 1);
+  return 1 + 0.12 * k * k * (3 - 2 * k);
+}
 /** 디버그·갤러리: 로드 상태 */
 export function puppetStatus() {
   const out = {};

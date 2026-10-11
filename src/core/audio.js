@@ -26,21 +26,23 @@
 //  audio.analyser(on) 음악 버스(duckG) 분석기 — 회랑 음악실 시각화, 소리 경로 그대로 [hook:gal]
 //  효과음 샘플: SFX 이름에 샘플이 있으면 샘플(+ 합성음 몫 s)으로 — assets/audio/sfx/index.json, 받기 전·실패 시 합성음만.
 //
-// 고급 효과음 v2 시범 (docs/specs/anime_motion_sfx.md §4·§5.1) — pilot.sfx2 (URL ?sfx=v2 또는 localStorage 'bn.sfx'='v2') 일 때만:
-//  assets/audio/sfx_v2/index.json 의 이름(타격 10종)은 녹음 층을 쌓아 만든 v2 샘플만 튼다 (합성음 층 없음, tools/audio/sfx_v2/build_sfx_v2.py).
-//  변형 3~5개 중 무작위 (바로 앞 변형은 피함) · 피치(정의 vary) + 음량 ±0.8 dB 흔들림 · 호출부가 o.x(월드 x)를 주면 화면 위치로 좌우 팬 ·
-//  장소(스테이지 theme)별 짧은 방 잔향 (생성 임펄스 하나를 공유하는 컨볼버, 품질 'low' 에서는 끔). 받기 전이면 지금 소리 그대로.
-//  스위치가 꺼져 있으면 V2Bank 를 만들지도 받지도 않는다 → 소리·노드·요청이 지금과 같다.
+// 고급 효과음 v2 (docs/specs/anime_motion_sfx.md §4·§5.1) — 기본으로 켜짐. 끄기(비교용): URL ?sfx=v1 또는 localStorage 'bn.sfx'='v1'.
+//  assets/audio/sfx_v2/index.json 의 이름(타격·휘두르기·이동·발소리·UI·원소 마법·사망·탈것)은 녹음 층을 쌓아 만든 v2 샘플만 튼다
+//  (합성음 층 없음, tools/audio/sfx_v2/build_sfx_v2.py). 변형 3~5개 중 무작위 (바로 앞 변형은 피함) · 피치(정의 vary) + 음량 ±0.8 dB 흔들림 ·
+//  호출부가 o.x(월드 x)를 주면 화면 위치로 좌우 팬 · 장소(스테이지 theme)별 짧은 방 잔향 (생성 임펄스 하나를 공유하는 컨볼버, 품질 'low' 끔,
+//  index 의 room 0 = 메뉴 소리처럼 방 울림 없음). enemy_die 는 같은 프레임의 마지막 재질 층(hit_bone·hit_ghost·hit_stone)으로 몸 종류 변형을 고른다.
+//  받기 전·코덱 없음(m4a 를 못 푸는 브라우저)·끔이면 지금 소리(녹음 샘플 + 합성음) 그대로.
 import { TRACKS } from '../data/music.js';
 import { FEEL_SFX } from './sfx_feel.js';
-import { RecBank } from './audio_rec.js';
+import { RecBank, decodeAt, REC_PROFILE, recProfileName } from './audio_rec.js';
 import { saves } from './save.js';
 import { assets, ASSET_ROOT } from './assets.js';
-import { pilot } from './pilot_flags.js';
 
 const LOOKAHEAD = 0.16;          // 스케줄 선행 시간(초)
 const TICK_MS = 25;              // 스케줄러 주기
 const MUSIC_TRIM = 1.0, SFX_TRIM = 1.1;
+const DUCK_FLOOR = Math.pow(10, -6 / 20); // 음악 덕킹 최대 깊이 -6 dB — 궁극기·각성·보스 등장에서 음악이 '꺼지는' 느낌 없이 물러나게
+const XFADE = { out: 1.1, in: 0.7, gap: 0.12 }; // 장면 전환 기본 교차 페이드 (fade 를 지정하지 않을 때): 이전 곡 1.1초 내림, 새 곡 0.12초 뒤 0.7초에 걸쳐 올림
 const MAX_SFX = 26;              // 동시 효과음 인스턴스 상한
 const FEEL_WIN = 0.1;            // 체감 효과음 예산 창(초)
 const FEEL_CAP = { high: 10, medium: 8, low: 6 }; // 창당 체감 효과음 시작 상한 (feel §8)
@@ -962,7 +964,7 @@ const SFX = {
     BOOM(S, 1.75, 2.2, 1, 70);
     N(S, 1.75, 2.8, 0.25, { f: ['highpass', 3000, 800], a: 0.1 });
   } },
-  warning: { max: 1, rev: 0.25, fn(S) {
+  warning: { max: 1, rev: 0.25, duck: [0.35, 1.2], fn(S) { // 보스 등장 경고: 음악을 살짝 물린다
     for (let i = 0; i < 3; i++) { T(S, 'square', 880, 0, i * 0.34, 0.16, 0.09, { hold: 0.12 }); T(S, 'square', 622, 0, i * 0.34 + 0.17, 0.16, 0.09, { hold: 0.12 }); T(S, 'sawtooth', 110, 0, i * 0.34, 0.32, 0.12, { hold: 0.25, f: ['lowpass', 800] }); }
   } },
   ult: { max: 1, rev: 0.45, duck: [0.6, 1.4], fn(S) {
@@ -1076,8 +1078,16 @@ export function defineSfx(name, def, vol) {
   return true;
 }
 
-// ─────────────────────────────── 고급 효과음 v2 (시범, pilot.sfx2) ───────────────────────────────
-// index.json = { version:2, rate, formats:['m4a','ogg'], names:[…], sfx:{이름:{f:[id], g, rev?}}, files:{id:{dur, on, ch, lufs, peak, m4a, ogg}} }
+// ─────────────────────────────── 고급 효과음 v2 (기본, ?sfx=v1 로 끔) ───────────────────────────────
+// index.json = { version:2, rate, formats:['m4a'], names:[…], sfx:{이름:{f:[id], g, rev?, room?, of?, ref?, alias?}}, files:{id:{dur, on, ch, lufs, peak, m4a}} }
+//   room: 방 잔향 송신 배율 (0 = 없음) · of: 다른 이름의 변형 묶음 (enemy_die_bone → enemy_die) · ref: 보정 때 잰 지금 소리 크기 (QA)
+/** v2 끄기 (A/B 비교용): ?sfx=v1 또는 localStorage 'bn.sfx' = 'v1'. 막혀 있으면 켜짐 */
+export const SFX_V1 = (() => {
+  try { if (new URLSearchParams(location.search).get('sfx') === 'v1') return true; } catch { /* 없음 */ }
+  try { return localStorage.getItem('bn.sfx') === 'v1'; } catch { return false; }
+})();
+/** 재질 층 → enemy_die 몸 종류 변형 (impact.js hitSounds 의 MATERIAL.sfx: 금속·얼음은 hit_stone) */
+const DIE_ALT = { hit_bone: 'bone', hit_ghost: 'ghost', hit_stone: 'stone', hit_flesh: '' };
 export const V2_DIR = 'audio/sfx_v2/';
 const V2_JIT = 0.09;                          // 음량 흔들림 ±9 % (≈ ±0.8 dB)
 // 장소별 방 잔향 (theme → 공간): 길이(초) · 초기 반사 수 · 고역 감쇠 · v2 소리마다 보내는 양
@@ -1126,11 +1136,13 @@ async function v2Bytes(rel, q = '') {
     return r.ok ? await r.arrayBuffer() : null;
   } catch { return null; }
 }
-/** v2 샘플 뱅크: attach(ctx) 에서 목록과 모든 이름(10종, 약 0.6 MB)을 받아 푼다. sample(name) → {bufs:[{buf,off}], g, rev?} | null */
+/** v2 샘플 뱅크: attach(ctx) 에서 목록과 모든 이름을 받아 푼다 (휴대폰·저사양은 32 kHz 로 — REC_PROFILE.sfxRate).
+ *  sample(name) → {bufs:[{buf,off}], g, rev?, room?, last} | null */
 export class V2Bank {
-  constructor(root = V2_DIR) { this.root = root; this.ctx = null; this.ix = null; this.ixP = null; this.fmt = null; this.smp = new Map(); this.files = new Map(); this.bytes = 0; this.state = 'idle'; this.err = null; }
+  constructor(root = V2_DIR) { this.root = root; this.ctx = null; this.ix = null; this.ixP = null; this.fmt = null; this.smp = new Map(); this.files = new Map(); this.bytes = 0; this.state = 'idle'; this.err = null; this.rate = 0; }
   attach(ctx) {
     this.ctx = ctx;
+    try { const r = REC_PROFILE[recProfileName()]?.sfxRate || 0; this.rate = r && r < ctx.sampleRate ? r : 0; } catch { this.rate = 0; }
     return (this.readyP = this.index().then((ix) => (ix ? this.load(ix.names || Object.keys(ix.sfx)) : null)));
   }
   index() {
@@ -1157,7 +1169,7 @@ export class V2Bank {
       this.smp.set(n, undefined);   // 받는 중
       jobs.push(Promise.all(d.f.map((fid) => this._file(fid))).then((bs) => {
         const bufs = bs.filter(Boolean);
-        this.smp.set(n, bufs.length ? { bufs, g: Number(d.g) || 1, rev: d.rev, last: -1 } : null);
+        this.smp.set(n, bufs.length ? { bufs, g: Number(d.g) || 1, rev: d.rev, room: d.room, last: -1 } : null);
       }));
     }
     return Promise.all(jobs).then(() => { this.state = 'ready'; });
@@ -1171,7 +1183,7 @@ export class V2Bank {
         const data = await v2Bytes(`${this.root}${fid}.${fmt}`, f[fmt] ? `?h=${f[fmt]}` : '');
         if (!data) continue;
         try {
-          const buf = await new Promise((res, rej) => { const q = this.ctx.decodeAudioData(data, res, rej); if (q && q.then) q.then(res, rej); });
+          const buf = await decodeAt(this.ctx, data, this.rate);
           const d = buf.getChannelData(0), m = Math.min(d.length, Math.ceil(buf.sampleRate * 0.25));
           let i = 0; while (i < m && d[i] < 0.003 && d[i] > -0.003) i++;
           const off = Math.max(0, Math.min(0.1, (i < m ? i : 0) / buf.sampleRate - (Number(f.on) || 0)));   // 디코더 앞 지연(프라이밍) 건너뛰기
@@ -1187,7 +1199,7 @@ export class V2Bank {
   /** 이 이름이 v2 이름인가 (받기 전이어도) */
   has(name) { return !!this.ix && Object.hasOwn(this.ix.sfx, name); }
   sample(name) { const m = this.smp.get(name); return m || null; }
-  stats() { let n = 0; for (const v of this.smp.values()) if (v) n++; return { state: this.state, err: this.err, fmt: this.fmt?.[0] ?? null, names: this.ix ? Object.keys(this.ix.sfx).length : 0, loaded: n, bytes: this.bytes }; }
+  stats() { let n = 0; for (const v of this.smp.values()) if (v) n++; return { state: this.state, err: this.err, fmt: this.fmt?.[0] ?? null, names: this.ix ? Object.keys(this.ix.sfx).length : 0, loaded: n, bytes: this.bytes, rate: this.rate || this.ctx?.sampleRate || 0 }; }
 }
 
 // ─────────────────────────────── 엔진 ───────────────────────────────
@@ -1197,7 +1209,8 @@ export class Engine {
     const c = this.ctx = ctx;
     this.waves = {}; this.voices = 0; this.live = []; this.lastT = {}; this.lastV = {}; this.players = []; this.compiled = {}; this._curves = {};
     this.bank = null; // 효과음 샘플 공급자 (RecBank: sample(name) → {bufs, g, s, r} | null). 없으면 합성음만
-    this.v2 = null;   // 고급 효과음 v2 (V2Bank, pilot.sfx2 일 때만) — sample(name) → {bufs, g, rev?, last} | null. 없으면 지금 경로 그대로
+    this.v2 = null;   // 고급 효과음 v2 (V2Bank, AudioSystem 이 붙인다) — sample(name) → {bufs, g, rev?, room?, last} | null. 없으면 지금 경로 그대로
+    this._duckUntil = 0; this._duckLvl = 1;
     this.v2Space = 'hall'; this.v2Quality = 'high'; this.room = null; this.roomSpace = null; this.v2Starts = 0;
     // 체감 효과음 예산: 최근 100ms 시작 시각 / 창당 상한 (품질별 10·8·6) / 통계 (starts 전체, feel 체감, dropped 예산 초과, skipped 레이어 생략)
     this.feelT = []; this.feelCap = FEEL_CAP.high; this.stats = { starts: 0, feel: 0, dropped: 0, skipped: 0 };
@@ -1272,13 +1285,17 @@ export class Engine {
     this.musicG.gain.setTargetAtTime(mg, t, 0.03); this.musicRevG.gain.setTargetAtTime(mg, t, 0.03);
     this.sfxG.gain.setTargetAtTime(sg, t, 0.03); this.sfxRev.gain.setTargetAtTime(sg * 0.6, t, 0.03);
   }
+  /** 음악 덕킹 (궁극기·각성·보스 등장): 부드럽게 — 깊이 최대 -6 dB, 들어가기 60 ms·돌아오기 0.45 s 시상수. 겹치면 더 깊고 더 긴 쪽을 따른다 */
   duck(amount = 0.5, time = 0.5) {
-    const t = this.ctx.currentTime, lvl = Math.max(0.05, 1 - amount);
+    const t = this.ctx.currentTime, lvl = Math.max(DUCK_FLOOR, 1 - amount), until = t + time, on = this._duckUntil > t;
+    if (on && lvl >= this._duckLvl && until <= this._duckUntil) return;   // 이미 더 깊고 더 길게 눌려 있다
+    this._duckLvl = on ? Math.min(lvl, this._duckLvl) : lvl; this._duckUntil = on ? Math.max(until, this._duckUntil) : until;
     for (const p of [this.duckG.gain, this.duckR.gain]) {
       if (p.cancelAndHoldAtTime) p.cancelAndHoldAtTime(t); else { p.cancelScheduledValues(t); p.setValueAtTime(p.value, t); }
-      p.setTargetAtTime(lvl, t, 0.03); p.setTargetAtTime(1, t + time, 0.28);
+      p.setTargetAtTime(this._duckLvl, t, 0.06); p.setTargetAtTime(1, this._duckUntil, 0.45);
     }
   }
+
   // ── 효과음 ──
   sfx(name, o = E0) {
     const c = this.ctx, now = c.currentTime, def = (HAS.call(SFX, name) && SFX[name]) || SFX._default; // 'toString' 같은 이름도 _default 로
@@ -1305,7 +1322,7 @@ export class Engine {
     }
     if (same >= (def.max ?? 4) && oldest) { this.steal(oldest, now); act--; if (o2 === oldest) { o2 = null; for (const x of this.live) if (x.end > now && !x.stolen && (!o2 || x.st < o2.st)) o2 = x; } }
     if (act >= MAX_SFX && o2) this.steal(o2, now);
-    const v2 = this.v2 ? this.v2.sample(name) : null;   // [pilot.sfx2] v2 이름이면 녹음 층 샘플만 (합성음 없음)
+    const v2 = this.v2 ? (o.v2alt && this.v2.sample(name + '_' + o.v2alt)) || this.v2.sample(name) : null;   // v2 이름이면 녹음 층 샘플만 (합성음 없음)
     const out = c.createGain(); let node = out;
     if (o.pan && c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, o.pan)); out.connect(p); node = p; }
     node.connect(this.sfxG);
@@ -1318,7 +1335,7 @@ export class Engine {
       const k = v2.bufs.length; let i = 0;
       if (k > 1) { if (v2.last < 0) i = (R() * k) | 0; else { i = (R() * (k - 1)) | 0; if (i >= v2.last) i++; } }
       v2.last = i;
-      const room = this._v2Room(node, name);
+      const room = this._v2Room(node, name, v2.room);
       playSample(S, v2.bufs[i], vol * v2.g * (1 + (R() * 2 - 1) * V2_JIT), 1);
       this.v2Starts++;
       this.live.push({ name, st: now, end: now + (o.delay || 0) + S.end + 0.05, out, node, wet, room });
@@ -1332,13 +1349,14 @@ export class Engine {
     try { if (!sm || sm.s > 0) def.fn(S, H); } finally { this.live.push({ name, st: now, end: now + (o.delay || 0) + S.end + 0.05, out, node, wet }); }
     if (def.duck) this.duck(def.duck[0] * Math.min(1, vol), def.duck[1]);
   }
-  /** [pilot.sfx2] v2 소리를 장소별 방 잔향(공유 컨볼버 하나)으로 보낸다 → 송신 게인 | null (품질 'low' 는 끔) */
-  _v2Room(node, name) {
-    if (this.v2Quality === 'low' || !this.ctx.createConvolver) return null;
+  /** v2 소리를 장소별 방 잔향(공유 컨볼버 하나)으로 보낸다 → 송신 게인 | null (품질 'low'·room 0 은 끔) */
+  _v2Room(node, name, k) {
+    const send = k ?? V2_SEND[name] ?? 1;
+    if (!(send > 0) || this.v2Quality === 'low' || !this.ctx.createConvolver) return null;
     const c = this.ctx, sp = V2_ROOMS[this.v2Space] ? this.v2Space : 'hall', room = V2_ROOMS[sp];
     if (!this.room) { this.room = c.createConvolver(); this.room.connect(this.sfxG); }
     if (this.roomSpace !== sp) { this.room.buffer = makeRoomIR(c, room); this.roomSpace = sp; }
-    const g = c.createGain(); g.gain.value = room.send * (V2_SEND[name] ?? 1);
+    const g = c.createGain(); g.gain.value = room.send * send;
     node.connect(g); g.connect(this.room);
     return g;
   }
@@ -1500,7 +1518,8 @@ export { INST, SFX };
 class AudioSystem {
   constructor() {
     this.ctx = null; this.eng = null; this.musicVol = 0.6; this.sfxVol = 0.8;
-    this.v2 = null; // [pilot.sfx2] V2Bank (unlock 에서 스위치가 켜져 있을 때만)
+    this.v2 = null; // V2Bank (unlock 에서 만든다, ?sfx=v1 이면 없음)
+    this._seq = 0; this._mat = null; // enemy_die 몸 종류: 같은 프레임의 마지막 재질 층 {alt, seq}
     this.want = null; this.player = null; this.hidden = false; this.timer = 0;
     // 녹음 음원: rec = 뱅크, pend = 풀리기를 기다리는 곡 {id, at, fade, cut(이전 곡을 내렸는가)}, _src = setMusicSource 로 정한 값 (없으면 설정)
     this.rec = new RecBank(); this.pend = null; this._src = null; this._trimT = 0;
@@ -1522,7 +1541,7 @@ class AudioSystem {
         this.eng = new Engine(this.ctx);
         this.eng.setVolumes(this.musicVol, this.sfxVol);
         this.eng.bank = this.rec; this.rec.attach(this.ctx); // 효과음 샘플 core 묶음 받기 시작
-        if (pilot.sfx2) { this.v2 = new V2Bank(); this.eng.v2 = this.v2; this.v2.attach(this.ctx); } // [pilot.sfx2] 고급 효과음 v2 (10종) 받기
+        if (!SFX_V1) { this.v2 = new V2Bank(); this.eng.v2 = this.v2; this.v2.attach(this.ctx); } // 고급 효과음 v2 받기 (?sfx=v1 이면 지금 소리)
         if (this.recorded) this.rec.index();
         // iOS 사파리 잠금 해제용 무음 버퍼
         const b = this.ctx.createBuffer(1, 1, 22050), s = this.ctx.createBufferSource(); s.buffer = b; s.connect(this.ctx.destination); s.start(0);
@@ -1574,10 +1593,24 @@ class AudioSystem {
   sfx(name, opts) {
     if (!this.eng || this.ctx.state !== 'running') return;
     this.eng.feelCap = FEEL_CAP[this.quality] ?? FEEL_CAP.high;
-    if (this.v2 && this.v2.has(name)) opts = this._v2Opts(opts);   // [pilot.sfx2]
+    if (this.v2 && this.v2.has(name)) {
+      opts = this._v2Opts(opts);
+      const seq = ++this._seq;
+      if (HAS.call(DIE_ALT, name)) this._mat = { alt: DIE_ALT[name], seq };
+      // enemy_die 는 몸 종류 변형이 있으면 이 프레임의 처리(타격 재질 층은 die() 뒤에 울린다)가 끝난 뒤 고른다 — 마이크로태스크, 시각은 같다
+      if (name === 'enemy_die' && !opts?.v2alt && typeof queueMicrotask === 'function') {
+        const o = opts;
+        queueMicrotask(() => {
+          const m = this._mat, alt = m && m.seq > seq ? m.alt : '';
+          if (!this.eng || this.ctx.state !== 'running') return;
+          try { this.eng.sfx(name, alt ? { ...(o || E0), v2alt: alt } : (o || E0)); } catch { /* 무시 */ }
+        });
+        return;
+      }
+    }
     try { this.eng.sfx(name, opts || E0); } catch { /* 효과음 실패는 무시 */ }
   }
-  /** [pilot.sfx2] 장소(스테이지 theme)·품질을 엔진에 알리고, 호출부가 o.x(월드 x)를 주면 화면 위치로 좌우 팬 (가장자리 ±0.6) */
+  /** v2: 장소(스테이지 theme)·품질을 엔진에 알리고, 호출부가 o.x(월드 x)를 주면 화면 위치로 좌우 팬 (가장자리 ±0.6) */
   _v2Opts(opts) {
     const g = typeof window !== 'undefined' ? window.__game : null, w = g?.world;
     this.eng.v2Space = V2_SPACE[w?.stage?.theme] || 'hall';
@@ -1588,7 +1621,7 @@ class AudioSystem {
     if (!Number.isFinite(x) || !Number.isFinite(cx) || half <= 0) return opts;
     return { ...opts, pan: Math.max(-1, Math.min(1, (x - cx) / half)) * 0.6 };
   }
-  /** [pilot.sfx2] v2 뱅크 상태 (QA): {on, state, fmt, names, loaded, bytes, starts} */
+  /** v2 뱅크 상태 (QA): {on, state, fmt, names, loaded, bytes, rate, starts} */
   v2Stats() { return this.v2 ? { on: true, ...this.v2.stats(), starts: this.eng?.v2Starts ?? 0 } : { on: false }; }
   /** 체감 효과음 예산용 품질: setQuality 로 고정하지 않으면 월드 파티클 품질(fx.quality) → 설정값 순으로 따른다 */
   get quality() {
@@ -1650,7 +1683,7 @@ class AudioSystem {
         if (this.pend?.id !== want) {
           const f = this.fade, prev = this.player;
           const pd = this.pend = { id: want, at: now, fade: f, cut: !!prev, busy: true };
-          if (prev) { prev.kill(f ?? 0.6); this.player = null; }
+          if (prev) { prev.kill(f ?? XFADE.out); this.player = null; }
           this.fade = undefined;
           const go = () => { pd.busy = false; if (this.pend === pd) this._sync(); };
           this.rec.load(want).then(go, go);
@@ -1663,8 +1696,8 @@ class AudioSystem {
     const pd = this.pend?.id === want ? this.pend : null;
     const f = pd ? pd.fade : this.fade, prev = this.player;
     let at = now + 0.06, fin = 0.02;
-    if (prev) { prev.kill(f ?? 0.6); if (f == null) at = now + 0.25; else fin = f * 0.7; }
-    else if (pd?.cut) { if (f == null) at = Math.max(at, pd.at + 0.25); else fin = Math.max(0.02, f * 0.7 - (now - pd.at)); }
+    if (prev) { prev.kill(f ?? XFADE.out); if (f == null) { at = now + XFADE.gap; fin = XFADE.in; } else fin = f * 0.7; }
+    else if (pd?.cut) { if (f == null) { at = Math.max(at, pd.at + XFADE.gap); fin = Math.max(0.02, XFADE.in - (now - pd.at)); } else fin = Math.max(0.02, f * 0.7 - (now - pd.at)); }
     try { this.player = ent ? this.eng.playRec(want, ent, at, fin, this.rec) : this.eng.playTrack(want, at, fin); }
     catch { this.player = null; }
     this.fade = undefined; this.pend = null;
