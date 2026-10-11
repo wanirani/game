@@ -1837,7 +1837,14 @@ export const touchpad = {
   },
   layoutInfo() {
     const L = layout();
-    return L ? { sizeClass: L.cls, k: L.k, kEff: L.kEff, band: L.band, bandH: L.bandH, left: L.left, custom: L.custom, yMin: L.yMin, R: L.R, dpr: S.dpr ?? null } : null;
+    if (!L) return null;
+    // [hudredo] 시험용: 배치 종류·여백·마을 줄·스틱 자리·불투명도·덧캔버스 백킹 크기·기기 DPR
+    return {
+      sizeClass: L.cls, k: L.k, kEff: L.kEff, band: L.band, bandH: L.bandH, left: L.left, custom: L.custom, yMin: L.yMin, R: L.R, dpr: S.dpr ?? null,
+      preset: L.preset, town: !!L.town, gap: L.gap, margin: PAD_M, sysMarginWide: SYS_M_WIDE, W: L.W, H: L.H, ins: L.ins, cr: L.cr, home: L.home,
+      opacity: opacityNow(), art: artOn(), devDpr: (typeof window !== 'undefined' && window.devicePixelRatio) || 1,
+      backing: S.cv ? { w: S.cv.width, h: S.cv.height } : null, tier: game()?.tier ?? null,
+    };
   },
 };
 const NO_RECTS = Object.freeze([]);

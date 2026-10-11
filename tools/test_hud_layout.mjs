@@ -25,6 +25,17 @@
 //     (초상화·체력·하트·스킬·필살·동료·카드·점수·보스 바·배너)이 11 CSS px 미만이면 실패, 다른 파일이 그리는 부분(각성 게이지·준비 문구,
 //     콤보 열, 알림, 기믹 게이지, 토스트)은 정보로 적는다. 배치 행렬은 변형마다 그 캔버스 배율의 하한(textMin)으로 휴대폰 배치를 만든다.
 // 추가 조합(정보용이 아니라 실패로 센다): 휴대폰의 왼손 모드, touchScale 1.3, safeArea 'fit' + 인셋.
+//  6) HUD-REDO (hudredo, /tmp/claude-0/g10/hudredo_design.md): 기기별(폴드 2.0·2.625·2.6, 태블릿, 휴대폰 2종) × 버튼 배치 2가지
+//     ('게임 화면 위' overlay / '아래 띠' band) × 장면(스테이지 s01, 마을)에서 실제 패드(touchpad.buttons·layoutInfo)를 잰다:
+//       · 모든 터치 조작(버튼·시스템 아이콘·스틱 받침)의 그린 테 바깥 ↔ 화면 가장자리 여백 ≥ 규칙 (PAD_M 25 dp; 넓은 배치 시스템 줄 위쪽 SYS_M_WIDE)
+//       · 아래 줄 순서 점프.x < 공격.x < 대시.x, 세 버튼 |Δy| ≤ 2 dp · 마을: 탈것–점프–대시 한 줄(|Δy| ≤ 2 dp, 같은 간격 ±2 dp)
+//       · 크기: 모든 터치 칸 ≥ 44 dp, 버튼 사이 ≥ 12 dp. 사용자 기기(fold2, 1 dp = 0.163 mm)는 mm 범위
+//         (공격 테 13.5–15.5 · 일반 9.3–11 · 필살 9.5–11.5 · ⇄/수호 9–10.8 · 빠른 칸 8.2–9.4 · 스틱 받침 19.5–22.5 · 사이 ≥ 2 mm)
+//       · 겹침: 버튼끼리·버튼↔시스템 줄·버튼↔스틱, 점수(재화) 칸·퀘스트 칸 ↔ 시스템 아이콘, 콤보 열 ↔ 빠른 칸, 빠른 칸 ↔ 패드·스틱, 마을 오른쪽 위 판 ↔ 시스템 아이콘
+//       · 덧캔버스 DPR ≥ min(devicePixelRatio, 2.75) (폴드, 품질 medium/high) · 평소 불투명도 ≥ 0.92 (그림 버튼)
+//       · '아래 띠': 폴드·태블릿은 띠가 생기고(캔버스 위에 붙음) 모든 버튼·스틱이 띠 안, 휴대폰은 띠 없이 '게임 화면 위'와 같게
+//       · 게임 화면 가림 %: 덧캔버스(패드) 알파 ∪ HUD(drawHUD) 알파 > 0.25 인 칸 / 캔버스 넓이 — 예전(BEFORE, f395dcd) 값보다 크면 실패
+//     --redo-only: 1)–5) 를 건너뛴다 · --coverage-only: 가림 % 만 잰다 (예전 트리에서 BEFORE 값을 다시 잴 때) · --no-redo: 6) 을 건너뛴다
 import { chromium } from 'playwright-core';
 import { start } from './serve.mjs';
 import fs from 'node:fs';
@@ -35,6 +46,7 @@ const OUT = arg('out', '/tmp/claude-0/proto/HUD-FINAL/test');
 const SHOTS = !argv.includes('--no-shots');
 const WIDGETS = !argv.includes('--no-widgets');
 const ONLY = arg('only', null) ? String(arg('only')).split(',') : null;
+const REDO_ONLY = argv.includes('--redo-only'), COVERAGE_ONLY = argv.includes('--coverage-only'), NO_REDO = argv.includes('--no-redo');
 fs.mkdirSync(OUT, { recursive: true });
 
 const INSETS = { l: 47, r: 47, t: 0, b: 21 };
@@ -451,6 +463,7 @@ async function overlay(page, on) {
 const report = [];
 let failTotal = 0, comboTotal = 0, widgetRuns = 0;
 for (const view of VIEWS) {
+  if (REDO_ONLY || COVERAGE_ONLY) break;
   if (ONLY && !ONLY.includes(view.id)) continue;
   const ctx = await browser.newContext(view.touch
     ? { viewport: { width: view.w, height: view.h }, deviceScaleFactor: view.dpr, hasTouch: true, isMobile: true }
@@ -507,6 +520,265 @@ for (const view of VIEWS) {
   for (const n of res.info ?? []) console.log('    (정보) ' + n);
   for (const n of [...new Set(wres.flatMap((r) => r.info))]) console.log('    (정보) ' + n);
 }
+// ───────────────────────── 6) HUD-REDO ─────────────────────────
+// 예전 배치(f395dcd: 아래 가운데 체력, 큰 버튼, 여백 없음)의 가림 % — 같은 시험을 예전 트리에서 --coverage-only 로 잰 값
+const BEFORE = {   // node tools/test_hud_layout.mjs --coverage-only 를 f395dcd 트리에서 (2026-10-11): 패드 겉넓이 · HUD 그린 칸 · 합 · 덧캔버스 잉크
+  'fold2/overlay/stage': { pad: 7.6, hud: 9.3, union: 16.9, padInk: 8.8 },
+  'fold26/overlay/stage': { pad: 9.4, hud: 9.3, union: 18.7, padInk: 10.6 },
+  'fold_open/overlay/stage': { pad: 7.6, hud: 9.4, union: 17.0, padInk: 8.8 },
+  'tablet/overlay/stage': { pad: 7.6, hud: 9.3, union: 16.9, padInk: 8.7 },
+  'phone2/overlay/stage': { pad: 16.2, hud: 3.9, union: 20.1, padInk: 13.7 },
+  'phone1/overlay/stage': { pad: 13.1, hud: 3.6, union: 16.8, padInk: 11.2 },
+};
+const REDO_DEVS = [
+  { id: 'fold2', w: 1000, h: 755, dpr: 2, fold: true, bandable: true, quality: 'medium', mmPerDp: 0.1626, hub: true },   // 사용자 기기 (WebView DPR 2.0)
+  { id: 'fold26', w: 762, h: 575, dpr: 2.625, fold: true, bandable: true, quality: 'medium' },
+  { id: 'fold_open', w: 1000, h: 756, dpr: 2.6, fold: true, bandable: true, quality: 'high' },
+  { id: 'tablet', w: 1024, h: 768, dpr: 2, fold: false, bandable: true, quality: 'medium', hub: true },
+  { id: 'phone2', w: 740, h: 360, dpr: 3, fold: false, bandable: false, quality: 'medium', hub: true },
+  { id: 'phone1', w: 844, h: 390, dpr: 3, fold: false, bandable: false, quality: 'low' },
+];
+
+/** 페이지 안: 실제 패드·HUD 를 재서 {fails, info, m} */
+async function redoPage({ dev, mode, scene, coverageOnly }) {
+  const TP = await import('/src/core/touchpad.js');
+  const HL = await import('/src/render/hud_layout.js');
+  const g = window.__game, w = g.world;
+  const fails = [], info = [], m = {};
+  const tp = TP.touchpad;
+  const r1 = (v) => Math.round(v * 10) / 10;
+  const ov = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  const f1 = (r) => `(${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.w)}×${Math.round(r.h)})`;
+  const W = innerWidth, Hh = innerHeight;
+  const cv = g.canvas, crr = cv.getBoundingClientRect();
+  const cr = { x: crr.left, y: crr.top, w: crr.width, h: crr.height };
+  const cs = cr.h / g.viewH;
+  // ── 가림 % (예전 트리에서도 돈다: 공개 API 만 쓴다) ──
+  if (scene === 'stage') {
+    const pc = document.getElementById('tpadcv');
+    let pd = null, pw = 0, ph = 0, pr = null;
+    if (pc && pc.width > 0) { pw = pc.width; ph = pc.height; pr = pc.getBoundingClientRect(); pd = pc.getContext('2d').getImageData(0, 0, pw, ph).data; }
+    const H = await import('/src/render/hud.js');
+    const hc = document.createElement('canvas'); hc.width = g.viewW; hc.height = g.viewH;
+    const hx = hc.getContext('2d');
+    // 상시 HUD 만: 잠깐 뜨는 것(스테이지 제목 배너·알림 단어)은 재는 순간에 따라 달라지므로 뺀다
+    const keepB = w.banner, keepA = w.style?.ann?.cur;
+    w.banner = null; if (w.style?.ann) w.style.ann.cur = null;
+    try { H.drawHUD(hx, w, g.viewW, g.viewH); } catch (e) { info.push('drawHUD ' + e.message); }
+    w.banner = keepB; if (w.style?.ann) w.style.ann.cur = keepA;
+    const hd = hx.getImageData(0, 0, hc.width, hc.height).data;
+    // 패드 자리(겉넓이): 보이는 버튼·시스템 아이콘의 그린 테 원 + 스틱 받침 원 (불투명도와 상관없이 차지하는 넓이)
+    const SYSI = new Set(['pause', 'bag', 'maptog', 'fullscreen']);
+    const rimF = (id) => (SYSI.has(id) ? 1.02 : id === 'attack' ? 1.14 : id === 'ult' ? 1.12 : 1.02);
+    const discs = (TP.touchpad.buttons?.() ?? []).map((b) => [b.cx, b.cy, (b.d / 2) * rimF(b.id)]);
+    const LI = TP.touchpad.layoutInfo?.() ?? {};
+    const sz = TP.touchpad.stickZone?.();
+    if (LI.home && LI.R) discs.push([LI.home.x, LI.home.y, 1.14 * LI.R]);
+    else if (sz && LI.R) { const k = cr.h / g.viewH; discs.push([cr.x + (sz.x + sz.w / 2) * k, cr.y + (sz.y + sz.h / 2) * k, 1.14 * LI.R]); }
+    let n = 0, nP = 0, nH = 0, nU = 0, nF = 0, nFU = 0;
+    for (let y = cr.y + 1; y < cr.y + cr.h; y += 2) {
+      for (let x = cr.x + 1; x < cr.x + cr.w; x += 2) {
+        n++;
+        let a = false, b = false, f = false;
+        if (pd) { const px = Math.floor((x - pr.left) * pw / pr.width), py = Math.floor((y - pr.top) * ph / pr.height); if (px >= 0 && py >= 0 && px < pw && py < ph) a = pd[(py * pw + px) * 4 + 3] > 64; }
+        const lx = Math.floor((x - cr.x) / cs), ly = Math.floor((y - cr.y) / cs);
+        if (lx >= 0 && ly >= 0 && lx < hc.width && ly < hc.height) b = hd[(ly * hc.width + lx) * 4 + 3] > 64;
+        for (const [cx, cy, r] of discs) if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= r * r) { f = true; break; }
+        if (a) nP++; if (b) nH++; if (a || b) nU++; if (f) nF++; if (f || b) nFU++;
+      }
+    }
+    // union = 패드 겉넓이 ∪ HUD 그린 칸 (판정에 쓰는 값) · padInk = 덧캔버스에 실제로 칠해진 칸(알파 > 0.25, 정보)
+    m.coverage = { pad: r1(100 * nF / n), hud: r1(100 * nH / n), union: r1(100 * nFU / n), padInk: r1(100 * nP / n), inkUnion: r1(100 * nU / n) };
+  }
+  if (coverageOnly) return { fails, info, m };
+
+  const I = tp.layoutInfo?.();
+  if (!I || I.preset === undefined) { fails.push('touchpad.layoutInfo() 에 preset 이 없다 (HUD-REDO 이전 코드?)'); return { fails, info, m }; }
+  const btns = tp.buttons?.() ?? [];
+  const SYS = new Set(['pause', 'bag', 'maptog', 'fullscreen']);
+  const act = btns.filter((b) => !SYS.has(b.id)), sys = btns.filter((b) => SYS.has(b.id));
+  const by = Object.fromEntries(btns.map((b) => [b.id, b]));
+  const rimR = (b) => (b.d / 2) * (SYS.has(b.id) ? 1.02 : TP.rimOf(b.id));
+  const ins = I.ins, M0 = I.margin;
+  m.preset = I.preset; m.band = I.band; m.kEff = r1(I.kEff); m.dpr = I.dpr; m.opacity = I.opacity; m.tier = I.tier;
+  m.sizes = Object.fromEntries(act.map((b) => [b.id, r1(b.d)]));
+  if (!act.length) fails.push('보이는 터치 버튼이 없다');
+  // 여백 (그린 테 바깥 ↔ 안전 영역 가장자리)
+  const edge = (b, r) => ({ l: b.cx - r - ins.l, r: W - ins.r - (b.cx + r), t: b.cy - r - ins.t, b: Hh - ins.b - (b.cy + r) });
+  let minM = Infinity;
+  for (const b of act) {
+    const e = edge(b, rimR(b)), mm = Math.min(e.l, e.r, e.b, e.t);
+    minM = Math.min(minM, mm);
+    if (mm < M0 - 0.5) fails.push(`${b.id}: 가장자리 여백 ${r1(mm)} dp < ${M0}`);
+  }
+  for (const b of sys) {
+    const e = edge(b, rimR(b)), top = I.preset === 'fold' ? M0 : I.sysMarginWide;
+    if (e.t < top - 0.5) fails.push(`${b.id}: 위쪽 여백 ${r1(e.t)} dp < ${top}`);
+    if (Math.min(e.l, e.r) < (I.preset === 'fold' ? M0 : 8) - 0.5) fails.push(`${b.id}: 옆 여백 ${r1(Math.min(e.l, e.r))} dp`);
+  }
+  const stickR = 1.14 * I.R;
+  const se = { l: I.home.x - stickR - ins.l, b: Hh - ins.b - (I.home.y + stickR), r: W - ins.r - (I.home.x + stickR) };
+  if (Math.min(I.left ? se.r : se.l, se.b) < M0 - 0.5) fails.push(`스틱 받침 여백 ${r1(Math.min(I.left ? se.r : se.l, se.b))} dp < ${M0}`);
+  m.minMargin = r1(Math.min(minM, I.left ? se.r : se.l, se.b));
+  // 순서·줄
+  if (scene === 'stage') {
+    const [j, a, d] = [by.jump, by.attack, by.dash];
+    if (!j || !a || !d) fails.push('점프·공격·대시 중 빠진 버튼');
+    else {
+      const ok = I.left ? j.cx > a.cx && a.cx > d.cx : j.cx < a.cx && a.cx < d.cx;
+      if (!ok) fails.push(`아래 줄 순서가 점프–공격–대시가 아니다 (x ${r1(j.cx)}, ${r1(a.cx)}, ${r1(d.cx)})`);
+      const dy = Math.max(Math.abs(j.cy - a.cy), Math.abs(a.cy - d.cy));
+      if (dy > 2) fails.push(`아래 줄 높이 차 ${r1(dy)} dp > 2`);
+      m.row = { jump: [r1(j.cx), r1(j.cy)], attack: [r1(a.cx), r1(a.cy)], dash: [r1(d.cx), r1(d.cy)] };
+    }
+  } else {
+    const [mo, j, d] = [by.mount, by.jump, by.dash];
+    if (!mo || !j || !d) fails.push(`마을: 탈것·점프·대시 중 빠진 버튼 (${Object.keys(by).join(',')})`);
+    else {
+      const ok = I.left ? mo.cx > j.cx && j.cx > d.cx : mo.cx < j.cx && j.cx < d.cx;
+      if (!ok) fails.push('마을 줄 순서가 탈것–점프–대시가 아니다');
+      const dy = Math.max(Math.abs(mo.cy - j.cy), Math.abs(j.cy - d.cy));
+      if (dy > 2) fails.push(`마을 줄 높이 차 ${r1(dy)} dp > 2`);
+      const g1 = Math.abs(j.cx - mo.cx) - (j.d + mo.d) / 2, g2 = Math.abs(d.cx - j.cx) - (d.d + j.d) / 2;
+      if (Math.abs(g1 - g2) > 2) fails.push(`마을 줄 간격이 다르다 (${r1(g1)} / ${r1(g2)} dp)`);
+      m.town = { gaps: [r1(g1), r1(g2)], dy: r1(dy) };
+    }
+    const tb = g.top?.topBoxes;
+    if (!tb) info.push('마을 오른쪽 위 판 정보 없음');
+    else {
+      const occ = tp.occupiedRects?.() ?? [];
+      for (const [k, r] of Object.entries(tb)) for (const p of occ) if (SYS.has(p.id) && ov(r, p)) fails.push(`마을 ${k}${f1(r)} ↔ ${p.id}${f1(p)} 겹침`);
+    }
+  }
+  // 크기·사이
+  let minGap = Infinity;
+  const all = [...act, ...sys];
+  for (const b of all) if (b.d < 44 - 0.01) fails.push(`${b.id}: 지름 ${r1(b.d)} dp < 44`);
+  for (let i = 0; i < act.length; i++) {
+    for (let k = i + 1; k < all.length; k++) {
+      const a = act[i], b = all[k];
+      if (a === b) continue;
+      const gap = Math.hypot(a.cx - b.cx, a.cy - b.cy) - a.d / 2 - b.d / 2;
+      if (!SYS.has(b.id)) minGap = Math.min(minGap, gap);
+      if (gap < 12 - 0.5) fails.push(`${a.id}↔${b.id}: 사이 ${r1(gap)} dp < 12`);
+    }
+    const a = act[i], gs = Math.hypot(a.cx - I.home.x, a.cy - I.home.y) - a.d / 2 - stickR;
+    if (gs < 0) fails.push(`${a.id} 가 스틱 받침에 겹친다 (${r1(gs)} dp)`);
+  }
+  m.minGap = r1(minGap);
+  const L = HL.hudLayout(w, g.viewW, g.viewH);
+  if (scene === 'stage' && L?.quick?.length && I.preset === 'fold') {
+    for (const q of L.quick) if (q.w * cs < 44 - 0.5) fails.push(`빠른 칸 ${r1(q.w * cs)} dp < 44`);
+    m.quick = r1(L.quick[0].w * cs);
+  }
+  if (dev.mmPerDp && mode === 'overlay' && scene === 'stage') {
+    const k = dev.mmPerDp, mmOf = (b) => r1(2 * rimR(b) * k);
+    const RANGE = { attack: [13.5, 15.5], ult: [9.5, 11.5], swap: [9, 10.8], guard: [9, 10.8] };
+    const mmTab = {};
+    for (const b of act) {
+      const [lo, hi] = RANGE[b.id] ?? [9.3, 11];
+      const v = mmOf(b); mmTab[b.id] = v;
+      if (v < lo || v > hi) fails.push(`${b.id}: 테 ${v} mm (기대 ${lo}–${hi})`);
+    }
+    const stickMm = r1(2.28 * I.R * k);
+    if (stickMm < 19.5 || stickMm > 22.5) fails.push(`스틱 받침 ${stickMm} mm (기대 19.5–22.5)`);
+    if (L?.quick?.length) { const qm = r1(L.quick[0].w * cs * 0.99 * k); mmTab.quick = qm; if (qm < 8.2 || qm > 9.4) fails.push(`빠른 칸 ${qm} mm (기대 8.2–9.4)`); }
+    if (minGap * k < 2 - 0.05) fails.push(`버튼 사이 ${r1(minGap * k)} mm < 2`);
+    mmTab.stick = stickMm; mmTab.minGap = r1(minGap * k); mmTab.minMargin = r1(m.minMargin * k);
+    m.mm = mmTab;
+  }
+  // HUD 겹침 (논리 px)
+  if (scene === 'stage' && L) {
+    const occ = tp.occupiedRects?.() ?? [];
+    const sysR = occ.filter((p) => SYS.has(p.id)), padR = occ;
+    const chk = (n1, a, n2, b) => { if (a && b && a.w > 0 && a.h > 0 && ov(a, b)) fails.push(`${n1}${f1(a)} ↔ ${n2}${f1(b)} 겹침`); };
+    for (const p of sysR) { chk('점수(재화)', L.score, p.id, p); if (L.questShown) chk('퀘스트', L.quest, p.id, p); }
+    if (L.quest && L.questShown) chk('점수', L.score, '퀘스트', L.quest);
+    if (L.fold && L.quick) {
+      const sz = tp.stickZone?.();
+      for (let i = 0; i < L.quick.length; i++) {
+        chk('콤보', L.combo, 'quick' + i, L.quick[i]);
+        for (const p of padR) chk('quick' + i, L.quick[i], p.id, p);
+        if (sz) chk('quick' + i, L.quick[i], '스틱', sz);
+      }
+    }
+  }
+  // 덧캔버스 선명도·불투명도
+  if (dev.fold && (I.tier === 'medium' || I.tier === 'high')) {
+    const want = Math.min(I.devDpr, 2.75);
+    if (!(I.dpr >= want - 0.01)) fails.push(`덧캔버스 DPR ${I.dpr} < ${want} (기기 ${I.devDpr}, 등급 ${I.tier})`);
+    if (I.backing && I.backing.w < Math.floor(W * I.dpr) - 2) fails.push(`덧캔버스 백킹 ${I.backing.w}px < ${Math.floor(W * I.dpr)}`);
+  }
+  if (!I.art) fails.push('버튼 그림(HUD art)이 아직 안 올라왔다');
+  else if (I.opacity < 0.92) fails.push(`평소 불투명도 ${I.opacity} < 0.92`);
+  // 버튼 배치 모드
+  if (mode === 'band') {
+    if (dev.bandable) {
+      if (!I.band) fails.push("'아래 띠' 인데 띠가 없다");
+      if (Math.abs(cr.y - ins.t) > 1) fails.push(`띠: 캔버스가 위에 붙지 않았다 (y ${r1(cr.y)})`);
+      const bottom = cr.y + cr.h;
+      for (const b of act) if (b.cy - rimR(b) < bottom - 0.5) fails.push(`띠: ${b.id} 가 게임 화면에 걸친다 (위 ${r1(b.cy - rimR(b))} < ${r1(bottom)})`);
+      if (I.home.y - stickR < bottom - 0.5) fails.push('띠: 스틱 받침이 게임 화면에 걸친다');
+      m.bandH = r1(Hh - bottom);
+    } else if (I.band) fails.push("휴대폰: '아래 띠' 를 골라도 띠가 없어야 한다 (세로 여유 없음)");
+  } else if (I.band) fails.push("'게임 화면 위' 인데 띠가 생겼다");
+  return { fails, info, m };
+}
+
+const redo = [];
+if (!NO_REDO) {
+  for (const dev of REDO_DEVS) {
+    if (ONLY && !ONLY.includes(dev.id)) continue;
+    const runs = [['overlay', 'stage'], ...(COVERAGE_ONLY ? [] : [['band', 'stage'], ...(dev.hub ? [['overlay', 'hub']] : [])])];
+    for (const [mode, scene] of runs) {
+      const tag = `${dev.id}/${mode}/${scene}`;
+      const ctx = await browser.newContext({ viewport: { width: dev.w, height: dev.h }, deviceScaleFactor: dev.dpr, hasTouch: true, isMobile: true });
+      const page = await ctx.newPage();
+      const errs = [];
+      page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message));
+      await page.addInitScript(({ quality, mode }) => {
+        try {
+          const key = 'bloodnocturne_settings';
+          const cur = JSON.parse(localStorage.getItem(key) || '{}');
+          cur.quality = quality; cur.hud = { ...(cur.hud ?? {}), preset: 'auto', scale: 1, pad: mode, rev: 2 };
+          if (!cur.settingsVersion) cur.settingsVersion = 2;
+          localStorage.setItem(key, JSON.stringify(cur));
+        } catch { /* 저장소 없음 */ }
+      }, { quality: dev.quality, mode });
+      let r;
+      try {
+        const url = scene === 'hub' ? 'index.html?scene=hub&char=sera&nosw' : 'index.html?scene=stage&stage=s01&char=sera&nosw';
+        await page.goto(`http://localhost:${port}/${url}`, { timeout: 60000 });
+        await page.waitForFunction((sc) => { const g = window.__game; return sc === 'hub' ? g?.top?.name === 'hub' : !!(g?.world?.player && g.scenes?.some((s) => s.name === 'stage')); }, scene, { timeout: 75000 });
+        await page.waitForTimeout(1200);
+        await page.evaluate(() => { const g = window.__game; let n = 0; while (g.top && g.top.name !== 'stage' && g.top.name !== 'hub' && g.scenes.length > 1 && n++ < 5) g.pop(); g.input?.setMode?.('touch'); });
+        // 그림 버튼·덧캔버스가 구워질 때까지 (최대 8초)
+        await page.evaluate(async () => {
+          const TP = await import('/src/core/touchpad.js');
+          for (let i = 0; i < 40; i++) {
+            const I = TP.touchpad.layoutInfo?.();
+            if (I && (I.art === true || (I.art === undefined && i >= 15))) return;
+            await new Promise((res) => setTimeout(res, 200));
+          }
+        });
+        await page.waitForTimeout(900);
+        r = await page.evaluate(redoPage, { dev, mode, scene, coverageOnly: COVERAGE_ONLY });
+        if (SHOTS && !COVERAGE_ONLY) await page.screenshot({ path: `${OUT}/redo_${dev.id}_${mode}_${scene}.png` });
+      } catch (e) { r = { fails: ['HARNESS ' + e.message], info: [], m: {} }; }
+      await ctx.close();
+      const before = BEFORE[tag];
+      if (!COVERAGE_ONLY && before && r.m.coverage && r.m.coverage.union > before.union + 0.5) r.fails.push(`게임 화면 가림 ${r.m.coverage.union}% > 예전 ${before.union}%`);
+      const fails = [...r.fails, ...new Set(errs)];
+      failTotal += fails.length;
+      redo.push({ tag, ...r, before: before ?? null, errs: [...new Set(errs)] });
+      const cov = r.m.coverage ? ` 가림 ${r.m.coverage.union}% (패드 겉넓이 ${r.m.coverage.pad} · HUD ${r.m.coverage.hud} · 덧캔버스 잉크 ${r.m.coverage.padInk})${before ? ` ← 예전 ${before.union}% (${before.pad} · ${before.hud} · ${before.padInk ?? '-'})` : ''}` : '';
+      console.log(`${fails.length ? '✗' : '✓'} redo ${tag}${cov}${fails.length ? '\n    ' + fails.slice(0, 20).join('\n    ') : ''}`);
+      if (!COVERAGE_ONLY) console.log(`    · ${JSON.stringify({ ...r.m, coverage: undefined })}`);
+      for (const n of r.info ?? []) console.log('    (정보) ' + n);
+    }
+  }
+}
+report.push({ redo });
 fs.writeFileSync(`${OUT}/report.json`, JSON.stringify(report, null, 1));
 console.log(`\n${failTotal ? '실패' : '통과'}: 배치 조합 ${comboTotal}개, 실제 위젯 검사 ${widgetRuns}개, 문제 ${failTotal}건${SHOTS ? ` — 스크린샷 ${OUT}` : ''}`);
 await browser.close(); srv.close();

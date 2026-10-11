@@ -367,8 +367,9 @@ def build_var(src, rec, v, ceil=CEIL):
     red = 0.0
     if true_peak(mix) > ceil:
         lim, red = limiter(mix, ceil - 0.1)
-        if red < -4.0:                         # 너무 눌러야 하면 목표를 낮춰 순간음을 지킨다
-            mix *= 10 ** ((red + 4.0) / 20)
+        lmax = rec.get('lmax', 4.0)            # lmax: 레시피별 리미터 최대 감쇠 (톱니·태엽처럼 짧은 딸깍이 띄엄띄엄한 소리는 크게 눌러도 들리는 차이가 없다)
+        if red < -lmax:                        # 너무 눌러야 하면 목표를 낮춰 순간음을 지킨다
+            mix *= 10 ** ((red + lmax) / 20)
             lim, red = limiter(mix, ceil - 0.1)
         mix = lim
     tp = true_peak(mix)
@@ -405,10 +406,16 @@ def encode(y, base, ch, br=None, rate=OUT_RATE):
 
 
 def decoded_peak(path, ch):
-    """인코딩한 파일을 다시 풀어 잰 샘플 피크 (dBFS) — 손실 압축은 피크를 0.1~0.3 dB 올린다"""
-    raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', str(path), '-f', 'f32le', '-ac', str(ch), 'pipe:1'], capture_output=True, check=True).stdout
-    x = np.frombuffer(raw, dtype=np.float32)
-    return 20 * np.log10(max(1e-9, float(np.abs(x).max()) if x.size else 1e-9))
+    """인코딩한 파일을 다시 풀어 잰 샘플 피크 (dBFS) — 손실 압축은 피크를 0.1~0.3 dB 올린다.
+    원래 rate 와 48 kHz(브라우저 AudioContext 가 decodeAudioData 때 다시 표본화하는 rate) 둘 다 재서 큰 값 — 32 kHz 로 실은 드문 소리는
+    다시 표본화하면 표본 사이 꼭지가 1 dB 넘게 드러난다 (test_sfx 의 '푼 피크')"""
+    pk = 1e-9
+    for extra in ([], ['-ar', '48000']):
+        raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', str(path), *extra, '-f', 'f32le', '-ac', str(ch), 'pipe:1'], capture_output=True, check=True).stdout
+        x = np.frombuffer(raw, dtype=np.float32)
+        if x.size:
+            pk = max(pk, float(np.abs(x).max()))
+    return 20 * np.log10(pk)
 
 
 def h8(p):
@@ -472,7 +479,7 @@ def main():
         for v in range(rec['n']):
             fid = f'{name}_{v + 1}'
             ids.append(fid)
-            ceil = CEIL
+            ceil = rec.get('ceil', CEIL)              # ceil: 레시피별 트루 피크 상한 (낮은 비트레이트 AAC 가 다시 풀 때 꼭지를 넘기는 소리)
             for _ in range(8):                     # 인코딩(AAC·Vorbis)을 다시 푼 피크가 CEIL 을 넘으면 리미터 상한을 그만큼 낮춰 다시 만든다 (순간음만 눌림)
                 y, red = build_var(src, rec, v, ceil)
                 yo = to_out(y, orate)

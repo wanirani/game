@@ -61,31 +61,84 @@ def band(m, a=0.25, b=0.45):
 
 def estimate_progress(ws, start):
     """ws: 프레임별 어깨 폭. start: 돌기 시작한 프레임. → θ(도, 0 = 앞모습, 단조 증가), 기준점
-    기준점(첫 옆모습 = 폭 최소 θ 90, 뒷모습 = 폭 최대 θ 180, 둘째 옆모습 = 폭 최소 θ 270) 사이는 시간에 비례 (클링 회전은 거의 등속 —
-    폭 역산은 3/4 각에서 팔·망토 때문에 크게 틀린다). 마지막 구간은 직전 구간 속도로 이어 간다 (영상이 덜/더 돌았는지 θ_end 로 안다)"""
+    기준점(첫 옆모습 = 폭의 첫 깊은 골 θ 90, 뒷모습 = 그 다음 마루 θ 180, 둘째 옆모습 = 그 다음 골 θ 270) 사이는 시간에 비례
+    (클링 회전은 거의 등속 — 폭 역산은 3/4 각에서 팔·망토 때문에 크게 틀린다). 마지막 구간은 직전 구간 속도로 이어 간다.
+    · 골이 하나도 없으면(안 돌았다) ValueError — 이 영상은 쓰지 않는다
+    · 둘째 골이 없으면(뒷모습 뒤로 영상이 앞모습으로 '녹아' 돌아온다) 반 바퀴: θ 는 뒷모습(180)에서 멈추고 나머지 각은 거울 칸이 된다"""
     n = len(ws)
-    ws = ndi.median_filter(np.asarray(ws, float), 5)
+    ws = ndi.gaussian_filter1d(ndi.median_filter(np.asarray(ws, float), 5), 1.2)
     s = max(start, 0)
-    rest = n - s
-    p1 = int(np.argmin(ws[s + 2:s + max(6, int(rest * 0.6))]) + s + 2)       # 첫 옆모습 (θ 90)
-    p2 = int(np.argmin(ws[p1 + 6:]) + p1 + 6) if p1 + 6 < n else n - 1         # 둘째 옆모습 (θ 270) — 뒷모습 너머의 최소
-    # 두 옆모습 사이는 등속 (뒷모습 = 가운데; 폭 최대는 망토·옷자락이 퍼져 앞당겨지기 쉽다)
-    b = (p1 + p2) // 2
-    W_f = float(np.max(ws[:max(3, s + 1)])); W_b = float(ws[b]); D = float(min(ws[p1], ws[p2]))
-    r = 180.0 / max(1, p2 - p1)                                                 # 정속 (도/프레임)
-    # 시작 구간은 천천히 빨라진다: θ = 90·u^γ, p1 에서 속도가 r 이 되게 γ = r·(p1 − s)/90 (1 … 2.5)
+    W_f = float(np.max(ws[s:min(n, s + 4)]))
+    m0 = float(np.min(ws[s:]))
+    depth = W_f - m0
+    if depth < 0.22 * W_f:
+        raise ValueError(f'no rotation (width {W_f:.0f} → min {m0:.0f})')
+    deep = W_f - 0.45 * depth            # 옆모습 골은 이보다 좁다
+    rise = 0.3 * depth                   # 뒷모습 마루는 골보다 이만큼 넓다
+
+    def first_min(a, lim=None):
+        """a 부터 deep 아래로 내려간 첫 구간의 최소"""
+        i = a
+        while i < n and ws[i] > deep:
+            i += 1
+        if i >= n:
+            return None
+        j = i
+        while j < n and ws[j] <= deep + 0.15 * depth:
+            j += 1
+        return int(i + np.argmin(ws[i:j]))
+
+    p1 = first_min(s + 2)
+    if p1 is None:
+        raise ValueError('no side view')
+    # 뒷모습 = p1 뒤에서 rise 만큼 오른 뒤의 첫 마루
+    i = p1
+    while i < n and ws[i] < ws[p1] + rise:
+        i += 1
+    half = False
+    if i >= n:
+        b = n - 1; p2 = None; half = True
+    else:
+        j = i
+        while j + 1 < n and not (ws[j + 1] < ws[j] and ws[j] - min(ws[j:min(n, j + 8)]) > 0.04 * depth):
+            j += 1
+        b = int(i + np.argmax(ws[i:j + 1]))
+        p2 = first_min(b + 3)
+        if p2 is not None and ws[b] - ws[p2] < rise:
+            p2 = None
+        if p2 is None:
+            half = True
+    if half and (b - p1) < 0.45 * (p1 - s):
+        # 옆모습 직후 앞모습으로 녹아 돌아왔다 (뒷모습 없음) — 거울로도 뒤를 만들 수 없다
+        raise ValueError(f'quarter turn only (side {p1}, then {b - p1} frames)')
+    # 구간마다 따로 (클링 회전 속도는 구간마다 다르다): s→p1 가속(γ), p1→b 90→180, b→p2 180→270, p2→e 270→360
+    # e = p2 뒤 처음으로 폭이 앞모습 가까이(W_f − 0.1·깊이) 돌아온 곳 (없으면 b→p2 속도로 이어 간다)
+    r = 90.0 / max(1, b - p1)
     g = float(np.clip(r * (p1 - s) / 90.0, 1.0, 2.5))
+    e = None
+    if not half:
+        k = p2 + 3
+        while k < n and ws[k] < W_f - 0.1 * depth:
+            k += 1
+        e = k if k < n else None
+    r3 = 90.0 / max(1, p2 - b) if not half else r
+    r4 = 90.0 / max(1, e - p2) if e is not None else r3
     th = np.zeros(n)
-    for i in range(n):
-        if i <= s:
-            th[i] = 0
-        elif i <= p1:
-            th[i] = 90.0 * ((i - s) / max(1, p1 - s)) ** g
+    for k in range(n):
+        if k <= s:
+            th[k] = 0
+        elif k <= p1:
+            th[k] = 90.0 * ((k - s) / max(1, p1 - s)) ** g
+        elif k <= b or half:
+            th[k] = min(180.0, 90.0 + r * (k - p1))
+        elif k <= p2:
+            th[k] = 180.0 + r3 * (k - b)
         else:
-            th[i] = 90.0 + r * (i - p1)
+            th[k] = 270.0 + r4 * (k - p2)
+    p2v = b if half else p2
     th = np.maximum.accumulate(th)
-    return th, dict(start=s, p1=p1, back=b, p2=p2, W_front=round(W_f, 1), W_back=round(W_b, 1), D=round(D, 1), end=round(float(np.max(th)), 1),
-                    seg=[p1 - s, b - p1, p2 - b], gamma=round(g, 2), rate=round(r, 2))
+    return th, dict(start=s, p1=p1, back=int(b), p2=int(p2v), half=half, W_front=round(W_f, 1), W_back=round(float(ws[b]), 1), D=round(float(ws[p1]), 1),
+                    end=round(float(np.max(th)), 1), seg=[p1 - s, int(b) - p1, int(p2v) - int(b), (e - p2) if e is not None else None], gamma=round(g, 2), rate=round(r, 2))
 
 
 def turn_start(frames_small, masks, upto):
@@ -305,7 +358,14 @@ def main():
     ws = [m[0] for m in meas]
     p1g = int(np.argmin(ndi.median_filter(np.asarray(ws, float), 5)[4:int(len(ws) * 0.6)]) + 4)
     s = turn_start(small, masks, p1g)
-    th, info = estimate_progress(ws, s)
+    try:
+        th, info = estimate_progress(ws, s)
+    except ValueError as e:
+        # 쓸 수 없는 영상(안 돌았다 / 옆모습에서 앞으로 녹아 돌아왔다): 예전에 만든 이 외형의 16방향 항목·시트를 지운다 (깨진 시트를 싣지 않게)
+        print(f'[{a.cls}] REJECT video: {e}')
+        if not a.dry:
+            drop_look(cid, a.cls)
+        sys.exit(3)
     d, flow = turn_dir(small, masks, info['start'], info['p1'])
     if a.dir:
         d = a.dir
@@ -466,12 +526,47 @@ def main():
             fh.write(data_mk)
     elif os.path.exists(mp):
         os.remove(mp)
-    man = load_json(MAN) if os.path.exists(MAN) else {'v': 1, 'looks': {}}
-    man.setdefault('looks', {})[f'{cid}/{a.cls}'] = entry
-    man['looks'] = dict(sorted(man['looks'].items()))
-    with open(MAN, 'w', encoding='utf-8') as fh:
-        json.dump(man, fh, ensure_ascii=False, separators=(',', ':'))
+    with man_lock():                                   # 여러 빌드가 동시에 돌아도 목록 읽고-고쳐-쓰기가 섞이지 않게
+        man = load_json(MAN) if os.path.exists(MAN) else {'v': 1, 'looks': {}}
+        man.setdefault('looks', {})[f'{cid}/{a.cls}'] = entry
+        man['looks'] = dict(sorted(man['looks'].items()))
+        tmpm = MAN + '.tmp'
+        with open(tmpm, 'w', encoding='utf-8') as fh:
+            json.dump(man, fh, ensure_ascii=False, separators=(',', ':'))
+        os.replace(tmpm, MAN)
     print(f'[{a.cls}] → {d_out}/turn16_{{ui,lo}}.webp + {MAN}')
+
+
+def drop_look(cid, cls):
+    """turn16.json 에서 이 외형을 빼고 시트 파일을 지운다 (없으면 그대로)"""
+    d = os.path.join(OUT, cid, cls)
+    for f in ('turn16_ui.webp', 'turn16_lo.webp', 'turn16_mask.webp'):
+        q = os.path.join(d, f)
+        if os.path.exists(q):
+            os.remove(q)
+    with man_lock():
+        if os.path.exists(MAN):
+            man = load_json(MAN)
+            if man.get('looks', {}).pop(f'{cid}/{cls}', None) is not None:
+                tmpm = MAN + '.tmp'
+                with open(tmpm, 'w', encoding='utf-8') as fh:
+                    json.dump(man, fh, ensure_ascii=False, separators=(',', ':'))
+                os.replace(tmpm, MAN)
+                print(f'[{cls}] removed from {MAN}')
+
+
+class man_lock:
+    """turn16.json 읽고-고쳐-쓰기 잠금 (fcntl, 같은 기계의 동시 빌드끼리)"""
+    def __enter__(self):
+        import fcntl
+        self.fh = open(os.path.join(tempfile.gettempdir(), 'turn16_manifest.lock'), 'w')
+        fcntl.flock(self.fh, fcntl.LOCK_EX)
+        return self
+
+    def __exit__(self, *a):
+        import fcntl
+        fcntl.flock(self.fh, fcntl.LOCK_UN)
+        self.fh.close()
 
 
 if __name__ == '__main__':

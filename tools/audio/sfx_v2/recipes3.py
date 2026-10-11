@@ -191,7 +191,7 @@ R3 = {
     'slot_spin': {'n': 3, 'var': lambda v: dict(layers=[
         L(B(1435), at=[0.95, 2.43, 4.13][v], len=0.7, g=0, hp=800, tau=0.4, hold=0.3),
         L(B(794), at=[2.26, 1.29, 2.26][v], len=0.35, g=-6, st=-4, hp=600, tau=0.15),
-    ])},
+    ], sat=(4.0, 0.6)), 'cmax': 10, 'lmax': 9},
     # 슬롯 당첨 — 동전 쏟아짐 + 종 + 오르골 화음
     'slot_win': {'n': 3, 'var': lambda v: dict(layers=[
         L(B(193), at=[0.0, 3.0, 6.0][v], al='pk', pre=0.05, win=3.0, len=0.9, g=0, hp=400, tau=0.35, hold=0.2),
@@ -457,7 +457,7 @@ R3 = {
     'cylinder_spin': {'n': 3, 'var': lambda v: dict(layers=[
         L(B(794), at=[2.26, 1.29, 3.17][v], len=0.45, g=0, st=-2, hp=700, tau=0.25, hold=0.2),
         L(B([1984, 1985, 1984][v]), at=[1.45, 0.3, 0.1][v], al='pk', len=0.12, g=-3, hp=900, tau=0.04, dly=430),
-    ])},
+    ], sat=(4.0, 0.6)), 'cmax': 10, 'lmax': 9},
     # 성가 (문) — 배음 노래(사람 목소리 화음) + 싱잉볼 + 풍경
     'choir_gate': {'n': 3, 'var': lambda v: dict(layers=[
         L(B(3033), at=[2.0, 6.0, 10.0][v], len=1.5, g=0, st=[2, 0, 4][v], hp=150, tau=0.6, hold=0.4),
