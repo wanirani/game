@@ -26,9 +26,22 @@ import { safeInsets } from './platform.js';
 import { hudLayout, hudSafe, hudPx } from '../render/hud_layout.js';
 import * as SAVE from './save.js';
 
-export const VIEW_H = 540;       // 논리 해상도 높이 (고정)
+export const VIEW_H = 540;       // 기본 논리 높이 (16:9 이상 화면은 고정 — 오늘의 휴대폰과 픽셀 단위로 같다)
 export const MIN_VIEW_W = 960;   // 16:9
 export const MAX_VIEW_W = 1280;  // 초광폭 휴대폰 대응
+export const MAX_VIEW_H = 760;   // 16:9 보다 네모난 화면(폴드 펼침·태블릿)의 '세로 확장 시야' 상한 (hud_mobile §2)
+/**
+ * 논리 화면 크기 (hud_mobile §2 세로 확장 시야). aw×ah = 캔버스를 놓을 CSS 영역.
+ *  16:9 이상: { vw: clamp(540·화면비, 960, 1280), vh: 540 } — 예전과 같다
+ *  더 네모남: { vw: 960, vh: clamp(960 / 화면비, 540, 760) } — 가로 시야(앞을 보는 거리)는 줄이지 않고 세로를 늘린다
+ *  tall = false 면 언제나 예전 규칙 (설정 hud.preset 'wide': 높이 540 + 위아래 여백/패드 띠)
+ * hud_layout.modelView · QA 기기 표가 같은 계산을 쓴다 (따로 베끼지 말고 이 함수를 부를 것)
+ */
+export function viewSize(aw, ah, tall = true) {
+  const a = Math.max(1e-6, aw) / Math.max(1e-6, ah);
+  if (!tall || a >= MIN_VIEW_W / VIEW_H - 1e-9) return { vw: Math.round(clamp(VIEW_H * a, MIN_VIEW_W, MAX_VIEW_W)), vh: VIEW_H };
+  return { vw: MIN_VIEW_W, vh: Math.round(clamp(MIN_VIEW_W / a, VIEW_H, MAX_VIEW_H)) };
+}
 export const TILE = 48;          // 타일 한 칸 (논리 px)
 export const STEP = 1 / 60;
 // 가상 패드를 보여 주는 게임플레이 장면 (그 외 장면이 맨 위에 있으면 패드를 숨긴다)
@@ -346,11 +359,18 @@ class Game {
     const fit = this.settings?.safeArea !== 'full';
     const ax = fit ? ins.l : 0, ay = fit ? ins.t : 0;
     const aw = Math.max(1, fit ? W - ins.l - ins.r : W), ah = Math.max(1, fit ? H - ins.t - ins.b : H);
-    this.viewW = Math.round(clamp((VIEW_H * aw) / ah, MIN_VIEW_W, MAX_VIEW_W));
-    this.viewH = VIEW_H;
-    const s = Math.min(aw / this.viewW, ah / VIEW_H);
-    const cssW = Math.max(1, Math.floor(this.viewW * s)), cssH = Math.max(1, Math.floor(VIEW_H * s));
-    // 태블릿 띠 (platform §5.2): 남는 세로가 120 CSS px 이상이면 캔버스를 위에 붙이고 남는 띠는 모두 아래(가상 패드 자리)로
+    // 세로 확장 시야 (hud_mobile §2): 16:9 보다 네모난 화면은 논리 높이를 늘린다 (설정 hud.preset 'wide' 면 예전처럼 540)
+    const tall = this.settings?.hud?.preset !== 'wide';
+    const V = viewSize(aw, ah, tall);
+    this.viewW = V.vw;
+    this.viewH = V.vh;
+    const s = Math.min(aw / this.viewW, ah / this.viewH);
+    let cssW = Math.max(1, Math.floor(this.viewW * s)), cssH = Math.max(1, Math.floor(this.viewH * s));
+    // 확장 시야는 논리 높이를 정수로 반올림하므로 한쪽이 1~2 CSS px 모자랄 수 있다 → 채운다 (늘어남 0.2 % 미만, 검은 줄 없음).
+    // 16:9 이상(예전 규칙)은 건드리지 않는다 — 휴대폰 화면이 예전과 픽셀 단위로 같게
+    if (this.viewH !== VIEW_H) { if (aw - cssW <= 2) cssW = Math.floor(aw); if (ah - cssH <= 2) cssH = Math.floor(ah); }
+    // 태블릿 띠 (platform §5.2): 남는 세로가 120 CSS px 이상이면 캔버스를 위에 붙이고 남는 띠는 모두 아래(가상 패드 자리)로.
+    // 확장 시야(상한 760)로도 다 못 채운 아주 네모난 화면(1.26 : 1 미만)·'wide' 설정에서만 생긴다. 띠·여백 바탕은 setSurround 의 테마색
     const spare = ah - cssH;
     const band = spare >= 120 && this.touchDevice();
     const x = Math.round(ax + (aw - cssW) / 2), y = Math.round(band ? ay : ay + spare / 2);
@@ -358,7 +378,8 @@ class Game {
     st.position = 'absolute'; st.left = x + 'px'; st.top = y + 'px';
     st.width = cssW + 'px'; st.height = cssH + 'px';
     this.canvasRect = { x, y, w: cssW, h: cssH };
-    this.cssScale = cssH / VIEW_H;
+    this.cssScale = cssH / this.viewH;
+    this.viewBand = band;   // 캔버스 아래에 패드 띠가 있나 (touchpad·hud_layout 이 읽는다)
     this.safeCss = ins;
     const k = this.cssScale;
     this.safe = { l: ins.l / k, r: ins.r / k, t: ins.t / k, b: ins.b / k };
@@ -376,10 +397,10 @@ class Game {
     // UI 배율 (platform §6.2): 자동 = clamp(10 / (12·cssScale), 1, 1.35), 설정값은 절대 배율. 최소 UI 크기 720×400 을 지킨다
     const us = this.settings?.uiScale, un = Number(us);
     let uk = us == null || us === 'auto' || !(un > 0) ? clamp(10 / (12 * k), 1, 1.35) : clamp(un, 1, 1.5);
-    uk = Math.max(1, Math.min(uk, VIEW_H / UI_MIN_H, this.viewW / UI_MIN_W));
+    uk = Math.max(1, Math.min(uk, this.viewH / UI_MIN_H, this.viewW / UI_MIN_W));
     this.uiK = Math.round(uk * 1000) / 1000;
     this.uiW = this.viewW / this.uiK;
-    this.uiH = VIEW_H / this.uiK;
+    this.uiH = this.viewH / this.uiK;
     // 글자 하한 (benchmark #7): max(11·k, 목표 CSS px ÷ (uiK·cssScale)), 0.5 UI px 단위로 올림 (하한이 목표 아래로 내려가지 않게)
     const ts = TEXT_SIZES[this.settings?.textSize] ?? TEXT_SIZES.normal;
     const tf = Math.max(UI_TEXT_FLOOR * ts.k, ts.css > 0 ? ts.css / (this.uiK * k) : 0);
@@ -397,13 +418,14 @@ class Game {
     bc.toggle('portrait', this.portrait);
     bc.toggle('portrait-play', this.portraitAny && !this.portrait); // 태블릿 세로 플레이: 회전 안내 없음 (style.css)
     const s0 = this.settings, w = this._watch;
-    w.q = s0?.quality; w.u = s0?.uiScale; w.a = s0?.safeArea; w.t = s0?.textSize;
+    w.q = s0?.quality; w.u = s0?.uiScale; w.a = s0?.safeArea; w.t = s0?.textSize; w.h = s0?.hud?.preset;
+    this.applySurround();
     this.dirty = true;
   }
   /** 화면 배치에 영향을 주는 설정이 바뀌었나 (옵션에서 바꾸면 다음 rAF 에 다시 배치) */
   layoutSettingsChanged() {
     const s = this.settings, w = this._watch;
-    return !!s && (s.quality !== w.q || s.uiScale !== w.u || s.safeArea !== w.a || s.textSize !== w.t);
+    return !!s && (s.quality !== w.q || s.uiScale !== w.u || s.safeArea !== w.a || s.textSize !== w.t || s.hud?.preset !== w.h);
   }
 
   /** 맨 위 장면에 자동 일시정지 요청 (세로 회전·백그라운드 전환) */

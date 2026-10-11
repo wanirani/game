@@ -15,8 +15,7 @@ import { TOWN_NPCS } from '../data/town.js';
 import { PUPPETS } from './puppet_manifest.js';
 import { ASCENSIONS } from '../data/ascensions.js';   // 초월·비전: 원화는 2차 것을 쓴다 (classes_t3 §2.7)
 import { G, sh, ra, fillGrad, ribbonPath, WS, drawWeapon, drawWing, glow, drawHalo } from './hero_parts.js';
-import { pilot } from '../core/pilot_flags.js';
-import { drawSkinned, spring, stateOf } from './puppet_mesh.js';
+import { drawSkinned, spring, stateOf, meshOverride } from './puppet_mesh.js';
 
 const PI = Math.PI, HP = PI / 2, TAU = PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -95,16 +94,6 @@ export function classOf(p, look) {
   return c;
 }
 
-// ───────────────────────── 애니풍 시범 (pilot.anime) ─────────────────────────
-// 플래그가 켜져 있으면 assets/puppets_anime/manifest.json 에 있는 직업(시범: kael_hunter)은 assets/puppets_anime/<char>/<cls>/ 의 원화·리그를 쓴다
-// (같은 rig.json 형식). 키는 'puppets/../puppets_anime/...' — assets.js 의 폴더별 확장자 규칙(puppets → .webp)을 그대로 쓰려고 puppets/ 에서
-// 한 단계 올라간다 (주소는 브라우저가 assets/puppets_anime/... 로 정규화). 플래그가 꺼져 있으면 AMAN = null → 아래 모든 경로가 예전과 같다.
-const ANIME_ROOT = 'puppets/../puppets_anime';
-let AMAN = pilot.anime ? undefined : null;   // undefined = 목록 받는 중 (그동안 퍼펫 없음 = 벡터), null = 없음, 객체 = {charId: {classId: {h, turn16}}}
-if (pilot.anime) assets.json(`${ANIME_ROOT}/manifest`).then((m) => { AMAN = m && typeof m === 'object' && m.classes ? m.classes : null; REV++; });
-/** 이 퍼펫 인스턴스가 애니풍 시범 원화인가 */
-export function isAnime(I) { return !!I?.E?.anime; }
-
 // ───────────────────────── 로딩 ─────────────────────────
 const REG = new Map();              // 'kael/kael_hunter' → 퍼펫 항목
 const NONE = { state: -1 };
@@ -120,15 +109,13 @@ function maskImg(E, L) { return assets.get(akey(E, 'mask', L), E.man.h); }
 function maskPeek(E, L) { return peek(akey(E, 'mask', L)); }
 function entry(cid, cls, sib = false) {
   cls = cid === NPC_CID ? cls : (artClass(cid, cls) ?? cls);   // 초월 id·원화 없는 직업 → 원화 있는 직업
-  if (AMAN === undefined) return NONE;                          // 애니 시범: 목록 받는 중 (기억하지 않음 → 받은 뒤 다시)
-  const am = AMAN && cid !== NPC_CID ? AMAN[cid]?.[cls] ?? null : null;
-  const key = cid + '/' + cls, rk = am ? key + '@anime' : key;
-  let E = REG.get(rk);
+  const key = cid + '/' + cls;
+  let E = REG.get(key);
   if (E) return E;
-  const man = am || PUPPETS[cid]?.[cls];
-  if (!man) { REG.set(rk, NONE); return NONE; }
-  E = { key, root: am ? ANIME_ROOT : 'puppets', anime: !!am, cid, cls, man, state: 0, rig: null, PS: 1, J: null, parts: null, levels: [], lvIdx: {}, dark: {}, vars: new Map(), turnImg: null, turnMask: null, req: false, used: 0, gen: 0, born: typeof performance !== 'undefined' ? performance.now() : 0 };
-  REG.set(rk, E);
+  const man = PUPPETS[cid]?.[cls];
+  if (!man) { REG.set(key, NONE); return NONE; }
+  E = { key, root: 'puppets', cid, cls, man, state: 0, rig: null, PS: 1, J: null, parts: null, levels: [], lvIdx: {}, dark: {}, vars: new Map(), turnImg: null, turnMask: null, req: false, used: 0, gen: 0, born: typeof performance !== 'undefined' ? performance.now() : 0 };
+  REG.set(key, E);
   assets.json(`${E.root}/${key}/rig`, man.h).then((rig) => {
     if (!rig || !rig.levels || !rig.parts) { E.state = -1; return; }
     E.rig = rig; E.J = rig.joints; E.parts = rig.parts;
@@ -136,6 +123,7 @@ function entry(cid, cls, sib = false) {
     E.levels = Object.entries(rig.levels).map(([name, L]) => ({ name, scale: L.scale, rects: L.rects, size: L.size })).sort((a, b) => a.scale - b.scale);
     E.levels.forEach((L, i) => { E.lvIdx[L.name] = i; });
     E.opts = rig.opts || {};
+    E.mo = meshOverride(key, rig);   // 메시 관절·2차 움직임 설정 (리그 관절에서 자동 + 리그별 덮어쓰기, puppet_mesh.js)
     // 게임 화면용 두 레벨 + 그 재질 마스크(≈14KB, 장비 색을 바꿀 때 원래 색이 한 프레임 비치지 않게). ui 레벨은 메뉴에서 필요할 때.
     // 형제 직업 미리 받기(sib)는 아틀라스만: 마스크는 디코딩하면 아틀라스와 같은 크기라 폰 텍스처 예산을 두 배로 먹는다 — 처음 그릴 때 받는다
     requestLevels(E, !sib);
@@ -388,7 +376,6 @@ export function puppetFor(p, look) {
   // 부르므로 (퍼펫·벡터 모두) 여기서 매번 덮어써 다른 영웅에 남지 않는다
   G.wingCol = look?.wingCol ?? null;
   if (!ENABLED || !look || look.puppet === false) return null;
-  if (AMAN === undefined) return null;   // 애니 시범: 목록 받는 중 (플래그 꺼짐이면 AMAN = null 이라 여기 오지 않는다)
   if (p?.npc) return npcPuppet(p, look);
   let I = INST.get(look);
   if (I === undefined) {
