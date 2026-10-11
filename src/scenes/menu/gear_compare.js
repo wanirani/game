@@ -16,7 +16,7 @@ import { CHARACTERS } from '../../data/characters.js';
 import { ITEMS, itemName, josa, RARITIES } from '../../data/items.js';
 import { STAT_INFO, EQUIP_SLOTS, SLOT_NAMES } from '../../game/stats.js';
 import { findItem } from '../../game/inventory.js';
-import { gearDelta, gearSettings } from '../../game/gear_score.js';
+import { gearDelta, gearSettings, statsWith, powerOf, scoreBetween, weightsFor } from '../../game/gear_score.js';
 import { PAL, RARITY_COL, frame, divider, gbutton, zone, glowOval, ellipsize, measure, wrapC, selBar } from './common.js';
 
 export const MARK_COL = { up: '#7ee07e', down: '#ff7a6a', eq: '#b8a890' };
@@ -56,6 +56,39 @@ export function compareInfo(state, hero, inst, opts = {}) {
   if (CACHE.size > 64) CACHE.delete(CACHE.keys().next().value);
   CACHE.set(key, info);
   return info;
+}
+/**
+ * 대장간 강화 전/후: 이 장비를 끼고 있는 영웅(없으면 지금 영웅)에게 +1 강화가 주는 변화.
+ * 끼고 있으면 { worn: true, score, dpsPct } (강화 전 → 후), 아니면 { worn: false, before, after } (지금 장비와 비교한 종합 점수 전 → 후)
+ */
+export function enhanceDelta(state, hero, inst, wearerId = null) {
+  if (!state || !inst) return null;
+  const h = (wearerId && state.heroes?.[wearerId]) || hero;
+  if (!h) return null;
+  const mode = gearSettings().weights;
+  const key = `enh|${equipSig(state, h)}|${inst.uid}|${inst.level | 0}|${mode}`;
+  if (CACHE.has(key)) return CACHE.get(key);
+  let out = null;
+  const L = inst.level | 0;
+  try {
+    if (wearerId) {
+      const s0 = statsWith(state, h, { ...h.equip });
+      inst.level = L + 1;
+      const s1 = statsWith(state, h, { ...h.equip });
+      inst.level = L;
+      const w = weightsFor(h, mode), p0 = powerOf(s0, h), p1 = powerOf(s1, h);
+      out = { worn: true, score: scoreBetween(p0, p1, h, w), dpsPct: (p1.off / p0.off - 1) * 100 };
+    } else {
+      const a = gearDelta(state, h, inst, { mode });
+      inst.level = L + 1;
+      const b = gearDelta(state, h, inst, { mode });
+      inst.level = L;
+      out = a.comparable ? { worn: false, before: a.score, after: b.score, mark: b.mark } : null;
+    }
+  } catch (e) { console.warn('[gear_compare]', e); out = null; } finally { inst.level = L; }
+  if (CACHE.size > 64) CACHE.delete(CACHE.keys().next().value);
+  CACHE.set(key, out);
+  return out;
 }
 /** 한 줄 요약 */
 export function summaryText(info) {

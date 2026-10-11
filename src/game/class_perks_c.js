@@ -17,7 +17,7 @@
 //  초월 8: 그림자 화신(분신) · 신기루(잔상 폭발·등 뒤 순간이동) · 칼춤의 여왕(도는 칼날) · 영혼 수확자(영혼·망자의 낫)
 //          밤의 군주(피안개) · 혈제(피의 창) · 태양의 검(정오 광선) · 네필림(빛·어둠 깃털, 일식)
 //  비전 2: lia_frostcrow(냉기·동결·산산조각) + asc_lia_frostwing · azel_dawnblood(빌린 시간) + asc_azel_lullaby
-import { K, procStrike, mark, markOf, unmark, icd, slowEnemy, shieldAdd, shieldAbsorb, shieldOf, perkState } from './class_perks.js';
+import { K, procStrike, mark, markOf, unmark, icd, slowEnemy, shieldAdd, shieldAbsorb, shieldOf, perkState, markReady, markCell, drawCell, drawCellRot, markGlow, markStep } from './class_perks.js';
 import { skillVal } from '../data/skills.js';
 
 const TAU = Math.PI * 2;
@@ -1096,7 +1096,8 @@ export const ACTIVES_C = {
 
 // ═════════════════════════════════════════ 표식 ═════════════════════════════════════════
 // (ctx, e, n, k, t): 캐시 빛 + 선 몇 개. e.x/y/w/h 를 바로 읽는다 (hurtbox() 는 새 객체를 만든다)
-export const MARKS_C = {
+/** 예전 벡터 그림 — 아틀라스가 없을 때(도구 모음 전·Node) 그대로 쓴다 */
+const VEC_C = {
   /** 냉기 1~5: 머리 위 얼음 마름모 */
   chill(ctx, e, n) {
     // 마름모 n개를 한 경로로 (적마다 채우기·선 1번씩 — 냉기 걸린 적이 많아도 싸게)
@@ -1152,3 +1153,92 @@ export const MARKS_C = {
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   },
 };
+// 표식 (BALANCE-PERF): 모양은 아틀라스 칸(markCell)에 굽고 drawImage(회전하는 것은 drawCellRot), 빛은 markGlow — VEC_C 와 같은 그림
+export const MARKS_C = {
+  /** 냉기 1~5: 머리 위 얼음 마름모 */
+  chill(ctx, e, n, k, t) {
+    const m = Math.max(1, Math.min(9, n | 0));
+    const c = markReady() && markCell('chill' + m, m * 9 + 6, 12, (m * 9 + 6) / 2, 6, (g) => {
+      const x0 = -(m - 1) * 4.5, s = 4;
+      g.fillStyle = m >= 5 ? '#ffffff' : '#9fe8ff'; g.strokeStyle = '#140610'; g.lineWidth = 1.5;
+      g.beginPath();
+      for (let i = 0; i < m; i++) { const x = x0 + i * 9; g.moveTo(x, -s); g.lineTo(x + s * 0.7, 0); g.lineTo(x, s); g.lineTo(x - s * 0.7, 0); g.closePath(); }
+      g.stroke(); g.fill();
+    });
+    if (!c) return VEC_C.chill(ctx, e, n, k, t);
+    ctx.globalAlpha = 0.95; drawCell(ctx, c, e.x + e.w / 2, e.y - 12);
+    ctx.globalAlpha = 1;
+  },
+  /** 동결: 몸을 덮은 얼음 껍질 (크기 2 px 단계로 굽는다) */
+  frozen(ctx, e, n, k, t) {
+    const w = markStep(e.w + 6, 2), h = markStep(e.h + 6, 2);
+    const c = markReady() && markCell(`frozen${w}x${h}`, w + 4, h + 8, 2, 6, (g) => {
+      g.globalAlpha = 0.38; g.fillStyle = '#bff4ff';
+      g.beginPath(); g.moveTo(0, h); g.lineTo(0, h * 0.18); g.lineTo(w * 0.22, 0); g.lineTo(w * 0.5, h * 0.1); g.lineTo(w * 0.78, -4); g.lineTo(w, h * 0.2); g.lineTo(w, h); g.closePath(); g.fill();
+      g.globalAlpha = 0.85; g.strokeStyle = '#ffffff'; g.lineWidth = 1.6; g.stroke();
+      g.globalAlpha = 0.6; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(w * 0.3, h * 0.2); g.lineTo(w * 0.45, h * 0.5); g.lineTo(w * 0.35, h * 0.8); g.moveTo(w * 0.45, h * 0.5); g.lineTo(w * 0.7, h * 0.62); g.stroke();
+    });
+    if (!c) return VEC_C.frozen(ctx, e, n, k, t);
+    const a = Math.min(1, k * 4), x = e.x - 3, y = e.y - 3;
+    ctx.globalCompositeOperation = ADD; markGlow(ctx, x + w / 2, y + h / 2, Math.min(48, Math.max(w, h) * 0.6), '#9fe8ff', 0.5 * a); ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = a; drawCell(ctx, c, x, y);
+    ctx.globalAlpha = 1;
+  },
+  /** 보스 냉기 감속: 발밑 서리 고리 + 머리 위 눈꽃 (눈꽃은 한 장을 돌려 그린다) */
+  frost(ctx, e, n, k, t) {
+    const rw = markStep(e.w * 0.65);
+    const ring = markReady() && markCell('frostR' + rw, rw * 2 + 6, 24, rw + 3, 12, (g) => {
+      g.strokeStyle = '#bff4ff'; g.lineWidth = 3;
+      g.beginPath(); g.ellipse(0, 0, rw, 9, 0, 0, TAU); g.stroke();
+    });
+    const flake = ring && markCell('frostF', 24, 24, 12, 12, (g) => {
+      g.lineWidth = 2; g.strokeStyle = '#e8fbff';
+      for (let i = 0; i < 3; i++) { const q = i * Math.PI / 3, c = Math.cos(q) * 9, s = Math.sin(q) * 9; g.beginPath(); g.moveTo(-c, -s); g.lineTo(c, s); g.stroke(); }
+    });
+    if (!flake) return VEC_C.frost(ctx, e, n, k, t);
+    const x = e.x + e.w / 2, a = Math.min(1, k * 3);
+    ctx.globalAlpha = 0.8 * a;
+    drawCell(ctx, ring, x, e.y + e.h - 2);
+    drawCellRot(ctx, flake, x, e.y - 16, t * 0.8);
+    ctx.globalAlpha = 1;
+  },
+  /** 일식 반쪽: 신성 (흰 왼쪽 반달) */
+  ecH(ctx, e, n, k, t) {
+    const c = markReady() && markCell('ecH', 18, 18, 9, 9, (g) => {
+      g.fillStyle = '#ffffff'; g.strokeStyle = '#1a1a2a'; g.lineWidth = 1.4;
+      g.beginPath(); g.arc(0, 0, 7, Math.PI / 2, Math.PI * 1.5); g.closePath(); g.fill(); g.stroke();
+    });
+    if (!c) return VEC_C.ecH(ctx, e, n, k, t);
+    ctx.globalAlpha = 0.95 * Math.min(1, k * 3); drawCell(ctx, c, e.x + e.w / 2, e.y - 14);
+    ctx.globalAlpha = 1;
+  },
+  /** 일식 반쪽: 암흑 (보랏빛 오른쪽 반달) */
+  ecD(ctx, e, n, k, t) {
+    const c = markReady() && markCell('ecD', 18, 18, 9, 9, (g) => {
+      g.fillStyle = '#7a3aff'; g.strokeStyle = '#e8d8ff'; g.lineWidth = 1.4;
+      g.beginPath(); g.arc(0, 0, 7, -Math.PI / 2, Math.PI / 2); g.closePath(); g.fill(); g.stroke();
+    });
+    if (!c) return VEC_C.ecD(ctx, e, n, k, t);
+    ctx.globalAlpha = 0.95 * Math.min(1, k * 3); drawCell(ctx, c, e.x + e.w / 2, e.y - 14);
+    ctx.globalAlpha = 1;
+  },
+  /** 여명의 지속 피해: 몸을 감싸는 주황 불씨 고리 (두 호를 각각 한 장씩 돌려 그린다) */
+  dawn(ctx, e, n, k, t) {
+    const r = markStep(Math.max(e.w, e.h) * 0.55);
+    const a1 = markReady() && r <= 100 && markCell('dawnA' + r, r * 2 + 6, r * 2 + 6, r + 3, r + 3, (g) => {
+      g.strokeStyle = '#ffd070'; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, r, 0, 2.2); g.stroke();
+    });
+    const a2 = a1 && markCell('dawnB' + r, r * 1.6 + 6, r * 1.6 + 6, r * 0.8 + 3, r * 0.8 + 3, (g) => {
+      g.strokeStyle = '#ffd070'; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, r * 0.8, 0, 1.6); g.stroke();
+    });
+    if (!a2) return VEC_C.dawn(ctx, e, n, k, t);
+    const x = e.x + e.w / 2, y = e.y + e.h * 0.45, a = Math.min(1, k * 4);
+    ctx.globalCompositeOperation = ADD; markGlow(ctx, x, y, Math.min(56, r), '#ffb060', 0.4 * a);
+    ctx.globalAlpha = 0.8 * a;
+    drawCellRot(ctx, a1, x, y, t * 3);
+    drawCellRot(ctx, a2, x, y, -t * 4);
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  },
+};
+

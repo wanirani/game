@@ -210,6 +210,22 @@ def old_hists(cid, cls):
     return out
 
 
+def prep(im):
+    """인코딩 전: 알파를 깔끔하게(단단한 마스크 + 0.6 px 가장자리) · 투명 화소의 색을 부드럽게 채움 (bleed 무늬는 바이트를 먹는다)"""
+    A = np.asarray(im).copy()
+    al = A[..., 3].astype(np.float32) / 255
+    hard = (al > 0.5).astype(np.float32)
+    clean = np.maximum(cv2.GaussianBlur(hard, (0, 0), 0.6), np.minimum(al, hard))
+    A[..., 3] = np.clip(clean * 255, 0, 255).astype(np.uint8)
+    rgb = A[..., :3].astype(np.float32); w = (al > 0.03).astype(np.float32)
+    num = cv2.GaussianBlur(rgb * w[..., None], (0, 0), 5); den = cv2.GaussianBlur(w, (0, 0), 5)[..., None]
+    num2 = cv2.GaussianBlur(rgb * w[..., None], (0, 0), 20); den2 = cv2.GaussianBlur(w, (0, 0), 20)[..., None]
+    fill = np.where(den > 0.04, num / np.maximum(den, 1e-4), num2 / np.maximum(den2, 1e-4))
+    out = np.where((al > 0.03)[..., None], rgb, fill)
+    A[..., :3] = np.clip(out, 0, 255).astype(np.uint8)
+    return Image.fromarray(A, 'RGBA')
+
+
 def enc(im, q, aq=80):
     b = io.BytesIO()
     im.save(b, 'WEBP', quality=q, alpha_quality=aq, method=6)
@@ -219,7 +235,9 @@ def enc(im, q, aq=80):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('video'); ap.add_argument('cls')
-    ap.add_argument('--th', type=int, default=330, help='ui 시트 앞모습 인물 키(px)')
+    ap.add_argument('--th', type=int, default=250, help='ui 시트 앞모습 인물 키(px) — 상한에 맞게 줄어든다')
+    ap.add_argument('--th0', type=int, default=320, help='기준(작업) 시트 인물 키')
+    ap.add_argument('--th-min', type=int, default=170)
     ap.add_argument('--lo', type=float, default=0.55, help='lo 시트 배율')
     ap.add_argument('--max-kb', type=float, default=60, help='ui 시트 상한 (KB)')
     ap.add_argument('--max-lo-kb', type=float, default=22)
@@ -270,7 +288,7 @@ def main():
     ys0 = np.where(a0.any(1))[0]
     G = int(ys0[-1])                                  # 땅선 = 첫 프레임 발바닥 (카메라 고정)
     H0 = float(ys0[-1] - ys0[0])
-    S = a.th / H0
+    S = a.th0 / H0
     h0 = hsv_hist(f0, ndi.binary_erosion(a0, iterations=3))
     OH = old_hists(cid, a.cls)
     cells, report = [], []
@@ -307,7 +325,7 @@ def main():
     warn = [c['p'] for c in cells if (c['p'].get('old') or 0) > 0.5 or not (0.86 < c['p']['hratio'] < 1.14)]
     # 시트 (8 × 2, 칸 폭은 제각각 — 줄마다 왼쪽부터)
     COLS = 8
-    gap = 2
+    gap = 8                                          # 줄인 시트(lo ≈ 0.3 배)에서도 이웃 칸이 번지지 않게
     rows = [cells[r * COLS:(r + 1) * COLS] for r in range((len(cells) + COLS - 1) // COLS)]
     rowH = [max(c['im'].height for c in row) for row in rows]
     Wsh = max(sum(c['im'].width + gap for c in row) for row in rows)
@@ -321,32 +339,39 @@ def main():
             c['x'], c['y'] = x, y
             x += c['im'].width + gap
         y += rh + gap
-    Sa = np.asarray(sheet).copy()
-    mm = Sa[..., 3] > 8
-    Sa[..., :3] = bleed(Sa[..., :3], mm)
-    sheet = Image.fromarray(Sa, 'RGBA')
-    # 크기 상한에 맞춰 품질을 고른다
-    data_ui, q_ui = None, None
-    for q in (82, 76, 70, 64, 58, 52, 46):
-        b = enc(sheet, q, 75)
-        data_ui, q_ui = b, q
-        if len(b) <= a.max_kb * 1024:
+    base = sheet                                     # 기준 시트 (인물 키 = a.th0)
+    # 크기 상한: 인물 키를 a.th 에서 6 % 씩 줄여 가며 q ≥ 50 으로 max-kb 안에 드는 첫 배율 (그래도 넘으면 마지막 것)
+    th_ui = a.th
+    while True:
+        f = th_ui / a.th0
+        ui = prep(base.resize((max(1, round(base.width * f)), max(1, round(base.height * f))), Image.LANCZOS))
+        data_ui, q_ui = None, None
+        for q in (78, 72, 66, 60, 55, 50):
+            b = enc(ui, q, 60)
+            data_ui, q_ui = b, q
+            if len(b) <= a.max_kb * 1024:
+                break
+        if len(data_ui) <= a.max_kb * 1024 or th_ui <= a.th_min:
             break
+        th_ui = max(a.th_min, int(th_ui * 0.94))
+    fx, fy = ui.width / base.width, ui.height / base.height
     k = a.lo
-    lo = sheet.resize((max(1, round(sheet.width * k)), max(1, round(sheet.height * k))), Image.LANCZOS)
+    lo = prep(base.resize((max(1, round(ui.width * k)), max(1, round(ui.height * k))), Image.LANCZOS))
     data_lo, q_lo = None, None
-    for q in (80, 72, 64, 56, 48):
-        b = enc(lo, q, 70)
+    for q in (76, 68, 60, 52, 46):
+        b = enc(lo, q, 55)
         data_lo, q_lo = b, q
         if len(b) <= a.max_lo_kb * 1024:
             break
-    kx, ky = lo.width / sheet.width, lo.height / sheet.height
+    kx, ky = lo.width / ui.width, lo.height / ui.height
+    sheet = ui
     hpx = old_front_height(cid, a.cls)
-    sc = (hpx / a.th) if hpx else (90.0 / a.th)
+    sc = (hpx / th_ui) if hpx else (90.0 / th_ui)
     views = []
     by_deg = {}
     for c in cells:
-        v = dict(deg=c['p']['deg'], x=c['x'], y=c['y'], w=c['im'].width, h=c['im'].height, ax=c['ax'], fy=c['fy'], bw=c['bw'])
+        v = dict(deg=c['p']['deg'], x=round(c['x'] * fx, 2), y=round(c['y'] * fy, 2), w=round(c['im'].width * fx, 2), h=round(c['im'].height * fy, 2),
+                 ax=round(c['ax'] * fx, 2), fy=round(c['fy'] * fy, 2), bw=round(c['bw'] * fx, 2))
         views.append(v); by_deg[v['deg']] = v
     for p in picks:
         if p['mirror']:
@@ -354,9 +379,9 @@ def main():
             md = ((md + 180) % 360) - 180 if md != 180 else 180
             src = by_deg.get(md)
             if src:
-                views.append(dict(src, deg=p['deg'], m=1, ax=round(src['w'] - src['ax'], 1)))
+                views.append(dict(src, deg=p['deg'], m=1, ax=round(src['w'] - src['ax'], 2)))
     views.sort(key=lambda v: v['deg'])
-    entry = dict(th=a.th, sc=round(sc, 5), ui=dict(w=sheet.width, h=sheet.height, v=hashlib.sha1(data_ui).hexdigest()[:10], kb=round(len(data_ui) / 1024, 1), q=q_ui),
+    entry = dict(th=th_ui, sc=round(sc, 5), ui=dict(w=sheet.width, h=sheet.height, v=hashlib.sha1(data_ui).hexdigest()[:10], kb=round(len(data_ui) / 1024, 1), q=q_ui),
                  lo=dict(w=lo.width, h=lo.height, v=hashlib.sha1(data_lo).hexdigest()[:10], kb=round(len(data_lo) / 1024, 1), q=q_lo, kx=round(kx, 5), ky=round(ky, 5)),
                  views=views, dir=d, frames=[p['i'] for p in picks], anchors=info,
                  src=f'kling turntable {os.path.basename(a.video)} (tools/puppet/turn16_build.py)')
@@ -364,10 +389,10 @@ def main():
     ensure(a.dbg)
     on_green(sheet, 0.6).save(os.path.join(a.dbg, f'{a.cls}_turn16.jpg'), quality=82)
     sheet.save(os.path.join(a.dbg, f'{a.cls}_turn16_full.png'))
-    rep = dict(cls=a.cls, info=info, picks=picks, warn=[(p['k'], p['hist'], p['hratio']) for p in warn], ui_kb=entry['ui']['kb'], q_ui=q_ui, lo_kb=entry['lo']['kb'], sc=entry['sc'])
+    rep = dict(cls=a.cls, th=th_ui, info=info, picks=picks, warn=[(p['k'], p['hist'], p['hratio']) for p in warn], ui_kb=entry['ui']['kb'], q_ui=q_ui, lo_kb=entry['lo']['kb'], sc=entry['sc'])
     with open(os.path.join(a.dbg, f'{a.cls}_turn16.json'), 'w') as fh:
         json.dump(rep, fh, ensure_ascii=False, indent=1)
-    print(f'[{a.cls}] views {len(views)} (mirror {sum(1 for v in views if v.get("m"))}) sheet {sheet.width}x{sheet.height} ui {entry["ui"]["kb"]} KB q{q_ui} · lo {entry["lo"]["kb"]} KB q{q_lo} · sc {entry["sc"]}')
+    print(f'[{a.cls}] th {th_ui} views {len(views)} (mirror {sum(1 for v in views if v.get("m"))}) sheet {sheet.width}x{sheet.height} ui {entry["ui"]["kb"]} KB q{q_ui} · lo {entry["lo"]["kb"]} KB q{q_lo} · sc {entry["sc"]}')
     print(f'[{a.cls}] identity (k:yaw f# θest old8 hist h): ' + ' '.join(f'{p["k"]}:{p["deg"]:g} f{p["i"]} {p["est"]} {p.get("old")} {p.get("hist", "-")} {p.get("hratio", "-")}' for p in picks))
     if warn:
         print(f'[{a.cls}] WARN identity/size drift at k=' + ','.join(str(p['k']) for p in warn))

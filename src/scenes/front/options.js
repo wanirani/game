@@ -1,13 +1,13 @@
 // 설정 (OPTIONS) — owner: PLAT-OPTIONS · platform §10 (페이지), §4.7 (키 지정), §5.3 (터치 배치 편집), §6.2–6.3 (UI 배율·탭 크기),
 // feel §7 (화면 번쩍임·각성 컷인·자동 달리기), companions §6 (조작 안내의 탈것·수호신), MASTER_PLAN §1.4 · §1.5 (설정 키와 줄 이름)
 //
-//  페이지 5개 (탭: 터치 · LB/RB · Q/E): 소리 · 화면 · 조작 · 터치 · 기타 — §1.5 표의 모든 줄 + 전체 화면(화면) + 기본값 복원(기타)
+//  페이지 6개 (탭: 터치 · LB/RB · Q/E): 소리 · 화면 · 조작 · 터치 · 장비([qol] qol_equip §4) · 기타 — §1.5 표의 모든 줄 + 전체 화면(화면) + 기본값 복원(기타)
 //  하위 화면 (장면이 아님, options_controls.js): 게임패드 버튼 지정 › · 키보드 키 지정 › · 조작 안내 ›
 //  버튼 배치 편집 › → touchpad.openEditor() (DOM 편집기; 열려 있는 동안 이 장면은 입력을 받지 않는다)
 //  - uiScale 장면: game.uiW × game.uiH 로 배치 (최소 720×400), 탭 대상은 ≥ 44 CSS px (줄·◀▶·탭·단추), ui.taps 에 등록
 //  - 입력은 메뉴 의미(input.bindings): 결정·취소·이전/다음 탭. 패드 START 는 설정을 닫는다. 휠·끌기·오른쪽 스틱으로 목록 스크롤
 //  - 바꾼 값은 바로 반영되고(볼륨·품질·UI 크기·글자 크기·바인딩·터치 패드) 0.6초 뒤·닫을 때 저장된다
-//  enter({ page: 0..4 | 'sound'|'screen'|'controls'|'touch'|'etc', sub: 'padRemap'|'keyRemap'|'guide', row: 줄 id (처음 고를 줄, 예 'flashFx') })
+//  enter({ page: 0..5 | 'sound'|'screen'|'controls'|'touch'|'etc', sub: 'padRemap'|'keyRemap'|'guide', row: 줄 id (처음 고를 줄, 예 'flashFx') })
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
@@ -32,6 +32,7 @@ const PAGES = [
   { id: 'screen', name: '화면' },
   { id: 'controls', name: '조작' },
   { id: 'touch', name: '터치' },
+  { id: 'gear', name: '장비' },   // [qol] 장비 편의 (qol_equip §4·§1): 점수 기준 · 최적 장착 · 자동 처분
   { id: 'etc', name: '기타' },
 ];
 const TIER_NAME = { low: '낮음', medium: '보통', high: '높음' };
@@ -171,6 +172,38 @@ function buildRows(sc) {
       { id: 'touchLayout', label: '버튼 배치 편집', type: 'link', value: () => (sc.s.touchLayout ? '사용자 지정' : '기본'), run: () => sc.openEditor(), note: '버튼을 끌어서 옮기고, 모서리를 끌어 크기를 바꿉니다.' },
       { id: 'vibration', label: '진동', type: 'bool', note: '휴대폰 진동을 켜고 끕니다.' },
     ],
+    // [qol] settings.gear 는 새 객체로 바꾼다 (기본값 객체는 얼려 있다 — save.js DEFAULT_SETTINGS.gear)
+    gear: (() => {
+      const G = () => sc.s.gear ?? DEFAULT_SETTINGS.gear;
+      const setG = (patch) => { const cur = G(); sc.s.gear = { ...cur, ...patch, keep: { ...cur.keep, ...(patch.keep || {}) } }; };
+      const keepRow = (k, label, note) => ({ id: `gearKeep_${k}`, label, type: 'bool', get: () => G().keep?.[k] !== false, set: (v) => setG({ keep: { [k]: v } }), note, vis: () => G().autoDispose !== 'off' });
+      return [
+        {
+          id: 'gearWeights', label: '장비 점수 기준', type: 'enum', opts: [['atk', '공격 우선'], ['bal', '균형'], ['def', '생존 우선']],
+          get: () => G().weights ?? 'bal', set: (v) => setG({ weights: v }),
+          note: '장비 비교의 ▲▼ 와 「최적 장착」이 무엇을 더 중요하게 볼지 정합니다. 직업마다 공격·생존 비중이 다르고, 이 설정이 그 비중을 기울입니다.',
+        },
+        {
+          id: 'gearFixSpecial', label: '고유·신화 장비 고정', type: 'bool', get: () => G().fixSpecial !== false, set: (v) => setG({ fixSpecial: v }),
+          note: '켜면 「최적 장착」이 이미 낀 고유·신화·세트 장비를 빼지 않습니다. 숫자로 잡히지 않는 효과가 있기 때문입니다.',
+        },
+        {
+          id: 'gearAutoDispose', label: '자동 처분', type: 'enum', opts: [['off', '끔'], ['sell', '판매'], ['salvage', '분해']],
+          get: () => G().autoDispose ?? 'off', set: (v) => setG({ autoDispose: v }),
+          note: (s) => ((s.gear?.autoDispose ?? 'off') === 'off' ? '스테이지를 마칠 때 기준 이하의 장비를 저절로 팔거나 분해합니다. 지금은 꺼져 있습니다.'
+            : '스테이지 결과 화면에서 한 번에 처리합니다. 잠긴 장비·장착 중인 장비·중요 물품은 어떤 경우에도 남깁니다. 판 장비는 상점 「되사기」에서 다시 살 수 있습니다.'),
+        },
+        {
+          id: 'gearMaxRarity', label: '처분 기준', type: 'enum', opts: [[0, '일반 이하'], [1, '고급 이하'], [2, '희귀 이하']],
+          get: () => G().maxRarity ?? 0, set: (v) => setG({ maxRarity: v }), vis: () => G().autoDispose !== 'off',
+          note: '이 희귀도 이하의 장비만 처분합니다. 영웅 등급 이상은 처분하지 않습니다.',
+        },
+        keepRow('enhanced', '강화한 장비 남기기', '한 번이라도 강화한 장비는 처분하지 않습니다.'),
+        keepRow('better', '지금 영웅에게 좋은 장비 남기기', '지금 영웅이 낀 것보다 좋은 장비(▲)는 처분하지 않습니다.'),
+        keepRow('other', '다른 영웅에게 좋은 장비 남기기', '다른 헌터에게 더 좋은 장비는 처분하지 않습니다.'),
+        keepRow('special', '고유 장비 남기기', '고유·신화·세트 장비는 처분하지 않습니다.'),
+      ];
+    })(),
     etc: [
       { id: 'autoSave', label: '자동 저장', type: 'bool', note: '스테이지를 마치거나 마을에 들어갈 때 자동으로 저장합니다.' },
       { id: 'keepAwake', label: '화면 꺼짐 방지', type: 'bool', note: '게임하는 동안 화면이 꺼지지 않게 합니다.' },

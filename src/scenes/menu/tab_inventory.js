@@ -21,9 +21,8 @@ import { bagMarks, disposeCriteria, gearSettings } from '../../game/gear_score.j
 import { disposeCandidates, disposeJunk, salvageYield, freeSlots } from '../../game/inventory.js';
 import { compareInfo, drawCompare, drawMark, drawFace, DisposeModal, RARITY_LIMIT_NAMES } from './gear_compare.js';
 
-/** 다음에 가방 탭이 열릴 때 「일괄 처분」 창을 바로 연다 (스테이지 입장 경고 토스트의 바로가기) */
-let pendingDispose = false;
-export function requestDispose() { pendingDispose = true; }
+// 다음에 가방 탭이 열릴 때 「일괄 처분」 창을 바로 연다 (스테이지 입장 경고 토스트의 바로가기 — pickup_compare.requestDispose)
+import { takeDisposeRequest } from '../../game/pickup_compare.js';
 const MIN_RARITY = [{ r: 0, name: '전체' }, { r: 1, name: '고급 이상' }, { r: 2, name: '희귀 이상' }, { r: 3, name: '영웅 이상' }, { r: 4, name: '전설 이상' }];
 /** 가방 처분 미리보기·실행 (가방 탭 · 결과 화면이 같이 쓴다) */
 export function disposePreview(state, settings, maxRarity, mode) {
@@ -58,7 +57,7 @@ export class InventoryTab extends Tab {
   }
   onShow() {
     this.rebuild();
-    if (pendingDispose) { pendingDispose = false; this.m.focus = 'content'; this.openDispose(); }
+    if (takeDisposeRequest()) { this.m.focus = 'content'; this.openDispose(); }
   }
   rebuild() {
     this.rev = this.m.rev;

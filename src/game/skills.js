@@ -4466,7 +4466,7 @@ Object.assign(FXKIT, {
   shieldShape, scytheShape, spectralSword, setTimeoutFx, handOf, aimAng, bullet, ROCK, BLOOD,
   // 필살기 공용 도구 (FX-ULTS): 문맥·기본 줌 화면·키트 박자·불씨 비·색조·잔상·캐시 스프라이트
   ultCtx, ultView, ultBeat, ultFinal, ultDirector, ultAfter, emberRain, grade, holdOverlay, spiralMotes, glassRose,
-  glowSprite, beamSprite, blit, kitLive, qn, ultRoom, flashK,
+  glowSprite, beamSprite, blit, kitLive, qn, ultRoom, flashK, spr,   // spr: 풀 캔버스 캐시 (BALANCE-PERF: class_perks.js 표식 아틀라스)
   // 이졸데: 번개의 용(경로·마디·그리기) · 빛의 투창 · 연속 찌르기
   splinePath, pathAt, dragonBody, stormDragon, throwJavelin, javelinRender, thrustFlurry,
 });

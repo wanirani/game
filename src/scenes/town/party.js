@@ -20,6 +20,10 @@ import { isBust, bustCrop } from '../../render/portrait.js';
 const CARD_SEL = [0, 'rgba(70,20,34,0.95)', 1, 'rgba(6,3,8,0.96)'], CARD_OFF = [0, 'rgba(22,12,20,0.92)', 1, 'rgba(6,3,8,0.96)'];
 const CARD_FADE = [0, 'rgba(6,3,8,0)', 1, 'rgba(6,3,8,1)'], LOCK = [0, '#c8a060', 1, '#6a4a20'];
 import { glow } from './facades.js';
+// [qol] 「모두 최적 장착」 (qol_equip §2): 지금 영웅 먼저, 공유 가방 경합은 앞 영웅 우선 → 미리보기 → 확인 → 5초 되돌리기
+import { planAll, applyLoadout, undoLoadout } from '../../game/gear_score.js';
+import { LoadoutModal, scoreStr } from '../menu/gear_compare.js';
+import { Nav, Gesture } from '../menu/common.js';
 
 const STAR_KEYS = ['공격', '방어', '속도', '마법', '사거리'];
 
@@ -38,18 +42,54 @@ export class PartyScene extends Scene {
     this.index = Math.max(0, this.list.findIndex((e) => e.id === st.charId));
     this.fx = new Particles(300);
     this.leaving = null;
+    this.modal = null; this.undo = null; this.nav = null; this.ges = null;
     audio.sfx('menu_ok');
+  }
+  /** [qol] 파티 전체 최적 장착 미리보기 */
+  openOptimizeAll() {
+    let all = null;
+    try { all = planAll(this.state, { settings: this.game.settings }); } catch (e) { console.error(e); }
+    if (!all) { audio.sfx('menu_cancel'); return; }
+    audio.sfx('menu_ok');
+    this.nav ??= new Nav(); this.ges ??= new Gesture();
+    this.modal = new LoadoutModal({
+      state: this.state, plans: all.plans, title: '모두 최적 장착',
+      onApply: () => {
+        const token = applyLoadout(this.state, all.plans);
+        this.undo = { token, t: 5 };
+        for (const e of this.list) e.snap = new Snap();
+        const n = all.plans.reduce((a, p) => a + p.changes.length, 0);
+        this.game.toast(`모두 최적 장착 — ${n}칸 교체 · 종합 ${scoreStr(all.total)}`, '#7ee07e');
+      },
+    });
+  }
+  doUndo() {
+    if (!this.undo) return;
+    undoLoadout(this.state, this.undo.token);
+    this.undo = null;
+    for (const e of this.list) e.snap = new Snap();
+    audio.sfx('menu_cancel');
+    this.game.toast('최적 장착을 되돌렸습니다', '#c8b8a0');
   }
   get state() { return this.game.state; }
 
   update(dt) {
     this.fx.update(dt, null);
     if (this.leaving) { this.leaving.t += dt; if (this.leaving.t > 0.7) { this.game.pop(); } return; }
+    // [qol] 미리보기 창 (메뉴 모달 규약) · 되돌리기 시간
+    if (this.modal) {
+      this.ges.update();
+      const nav = this.nav.poll(dt);
+      if (!this.modal.update(dt, nav, this.ges) || !this.modal.open) this.modal = null;
+      return;
+    }
+    if (this.undo) { this.undo.t -= dt; if (this.undo.t <= 0) this.undo = null; }
     const n = this.list.length;
     if (input.pressed('left')) { this.index = (this.index + n - 1) % n; audio.sfx('menu_move'); }
     if (input.pressed('right')) { this.index = (this.index + 1) % n; audio.sfx('menu_move'); }
     const id = input.pointer.tapped ? taps.hit(this) : null;
     if (id === 'close') { audio.sfx('menu_cancel'); this.game.pop(); return; }
+    if (id === 'optAll' || input.pressed('alt') || (input.pressed('mount') && input.mode !== 'pad')) { if (this.undo) this.doUndo(); else this.openOptimizeAll(); return; }
     if (id === 'act') { this.choose(); return; }
     if (typeof id === 'string' && id.startsWith('card:')) {
       const i = Number(id.slice(5));
@@ -89,6 +129,9 @@ export class PartyScene extends Scene {
     text(ctx, 'PARTY  ·  함께 싸울 헌터를 고르세요', 24 + ctx.measureText('헌터 교체').width + 14, 38, { size: 12, weight: 800, family: FONT.num, color: '#8a7a64' });
     this.closeRect = tz('close', { x: vw - 64, y: 10, w: 52, h: 40 }, 'icon');
     uiButton(ctx, this.closeRect, '✕', { size: 20 });
+    // [qol] 모두 최적 장착 / 되돌리기
+    this.optRect = tz('optAll', { x: vw - 64 - 10 - 176, y: 10, w: 176, h: 40 });
+    uiButton(ctx, this.optRect, this.undo ? `되돌리기 (${Math.ceil(this.undo.t)})` : '모두 최적 장착', { size: 15, selected: !!this.undo });
     ctx.fillStyle = 'rgba(232,200,114,0.45)'; ctx.fillRect(0, 58, vw, 1.5);
     // 카드 · 상세 높이: 화면 높이에 맞춘다 (UI 높이 540 → 카드 237, 432 → 166)
     const n = this.list.length, gap = 10, m = 18;
@@ -137,9 +180,10 @@ export class PartyScene extends Scene {
     this.actRect = tz('act', { x: vw / 2 - 170, y: vh - 76, w: 340, h: 46 });
     const label = !e.open ? '잠겨 있음' : e.id === st.charId ? '현재 동행 중' : `${josa(c.name.split(' ')[0], '과', '와')} 함께 간다`;
     uiButton(ctx, this.actRect, label, { selected: e.open && e.id !== st.charId, disabled: !e.open, size: 17 });
-    uiHints(ctx, [['dpadH', '선택'], ['confirm', '결정'], ['cancel', '닫기']], vw / 2, vh - 8);
+    uiHints(ctx, [['dpadH', '선택'], ['confirm', '결정'], ['alt', this.undo ? '되돌리기' : '모두 최적 장착'], ['cancel', '닫기']], vw / 2, vh - 8);
     this.fx.draw(ctx, 'front');
     if (this.leaving) { ctx.fillStyle = `rgba(255,240,200,${Math.max(0, 0.5 - this.leaving.t)})`; ctx.fillRect(0, 0, vw, vh); }
+    if (this.modal) this.modal.render(ctx, vw, vh);
   }
 
   drawCard(ctx, r, e, sel) {

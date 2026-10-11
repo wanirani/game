@@ -6,7 +6,9 @@ import { button, COLORS } from '../../core/ui.js';
 import { fmt } from '../../core/math.js';
 import * as Shop from '../../data/shop.js';
 import * as NG from '../../game/ngplus.js';   // [hook:ng]
-import { removeItem, countItem } from '../../game/inventory.js';
+import { removeItem, countItem, buybackList, buyBack } from '../../game/inventory.js';
+import { text } from '../../core/ui.js';
+import { compareInfo, summaryText, drawMark, MARK_COL } from '../menu/gear_compare.js';   // [qol] 장착 비교 요약 줄 · 되사기 탭 (qol_equip §3–§4)
 import { SHOP_LINES } from '../../data/town.js';
 import { ServiceScene, ScrollList, Modal, itemRow, drawItemDetail, baseOf, nameOf, makeInst, sellPriceOf, isEquippedAny, SLOT_LABEL, WTYPE_LABEL, EQUIP_KINDS, hitRect, openBuy, mergeLines, uiButton } from './common.js';
 
@@ -15,7 +17,7 @@ export class ShopScene extends ServiceScene {
     this.bgKey = 'bg/shop'; this.title = '로크의 잡화점'; this.eng = "ROOK'S CURIOS"; this.npcId = 'npc_rook';
     this.lines = mergeLines(SHOP_LINES.rook, Shop.SHOPKEEPERS?.npc_rook);
     this.music = 'shop'; this.portraitGlow = '#ffb45a'; this.emberColor = '#ffc070';
-    this.tabs = [{ id: 'buy', label: '구매' }, { id: 'sell', label: '판매' }];
+    this.tabs = [{ id: 'buy', label: '구매' }, { id: 'sell', label: '판매' }, { id: 'buyback', label: '되사기' }];
     this.list = this.addList(58);
     this.refresh();
     this.talk('hello');
@@ -31,6 +33,9 @@ export class ShopScene extends ServiceScene {
         const inst = makeInst(s.baseId, { rarity: s.rarity ?? 0, affixes: [] });
         return inst ? { inst, price: s.price ?? baseOf(s).price ?? 10, tag: s.tag, note: s.note } : null;
       }).filter(Boolean);
+    } else if (this.tab === 2) {
+      // [qol] 되사기: 최근 처분(자동·일괄)한 장비 30개 — 판 값 그대로, 스테이지를 3번 마치면 사라진다
+      this.entries = buybackList(st).map((e, i) => ({ inst: e.item, price: e.price, bb: i, left: e.left }));
     } else {
       this.entries = st.inventory
         .filter((it) => { const b = baseOf(it); return b && b.slot !== 'key' && !b.relic && !it.locked && !isEquippedAny(st, it.uid); })
@@ -53,6 +58,7 @@ export class ShopScene extends ServiceScene {
     const e = this.cur;
     if (!e) return;
     if (this.tab === 0) { openBuy(this, e); return; }
+    if (this.tab === 2) { this.buyBack(e); return; }
     audio.sfx('menu_ok');
     const q = e.inst.qty ?? 1;
     if (q > 1) {
@@ -70,6 +76,24 @@ export class ShopScene extends ServiceScene {
         onResult: (res) => { if (res.value === 'ok') this.sell(e, 1); },
       });
     }
+  }
+  /** [qol] 되사기 확인 → inventory.buyBack */
+  buyBack(e) {
+    const st = this.state;
+    if (st.gold < e.price) { audio.sfx('menu_cancel'); this.game.toast('골드가 부족하다.', '#ff8a7a'); return; }
+    audio.sfx('menu_ok');
+    this.modal = new Modal({
+      title: '되사기', lines: [nameOf(e.inst), `${fmt(e.price)} G에 다시 사시겠습니까?`],
+      buttons: [{ label: '되사기', value: 'ok', primary: true }, { label: '취소', value: 'cancel' }],
+      onResult: (res) => {
+        if (res.value !== 'ok') return;
+        const r = buyBack(st, e.bb);
+        if (!r.ok) { audio.sfx('menu_cancel'); this.game.toast(r.msg, '#ff8a7a'); return; }
+        audio.sfx('coin'); this.talk('buy');
+        this.game.toast(r.msg, '#ffd84a');
+        this.refresh();
+      },
+    });
   }
   sell(e, qty) {
     const st = this.state;
@@ -96,14 +120,24 @@ export class ShopScene extends ServiceScene {
       if (this.tab === 0) {
         const own = b.stack ? countItem(st, b.id) : 0;
         itemRow(c, r, sel, e.inst, { right: fmt(e.price), rightColor: st.gold >= e.price ? '#ffd84a' : COLORS.bad, sub: kind + (own ? `  ·  보유 ${own}` : ''), badge: e.tag ?? '' });
-      } else itemRow(c, r, sel, e.inst, { right: '+' + fmt(e.price), rightColor: '#ffd84a', sub: kind });
-    }, this.tab === 0 ? '오늘은 팔 물건이 없다네.' : '팔 수 있는 물건이 없다.');
-    const dr = { x: body.x + lw + 10, y: body.y, w: body.w - lw - 10, h: body.h - 60 };
-    this.detailRect = dr;
+      } else if (this.tab === 2) itemRow(c, r, sel, e.inst, { right: fmt(e.price), rightColor: st.gold >= e.price ? '#ffd84a' : COLORS.bad, sub: `${kind}  ·  ${e.left ?? 3}번 남음` });
+      else itemRow(c, r, sel, e.inst, { right: '+' + fmt(e.price), rightColor: '#ffd84a', sub: kind });
+    }, this.tab === 0 ? '오늘은 팔 물건이 없다네.' : this.tab === 2 ? '되살 물건이 없다. 자동·일괄 처분으로 판 장비가 여기 남는다.' : '팔 수 있는 물건이 없다.');
     const e = this.cur;
-    drawItemDetail(ctx, dr, e?.inst ?? null, { state: st, price: e ? e.price : null, priceLabel: this.tab === 0 ? '구매 가격' : '판매 가격 (개당)', priceOk: this.tab === 1 || (e && st.gold >= e.price), note: e?.note, tag: e?.tag });
-    this.actRect = this.tz('act', { x: dr.x, y: dr.y + dr.h + 10, w: dr.w, h: 50 });
+    const eq = e && EQUIP_KINDS.has(baseOf(e.inst)?.slot);
+    const stripH = eq ? 26 : 0;   // [qol] 장착 비교 요약 줄 (지금 영웅 기준 종합 점수 · 초당 피해)
+    const dr = { x: body.x + lw + 10, y: body.y, w: body.w - lw - 10, h: body.h - 60 - stripH };
+    this.detailRect = dr;
+    drawItemDetail(ctx, dr, e?.inst ?? null, { state: st, price: e ? e.price : null, priceLabel: this.tab === 0 ? '구매 가격' : this.tab === 2 ? '되사는 가격' : '판매 가격 (개당)', priceOk: this.tab === 1 || (e && st.gold >= e.price), note: e?.note, tag: e?.tag });
+    if (eq) {
+      const ci = compareInfo(st, this.hero, e.inst);
+      const y = dr.y + dr.h + 4;
+      ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(dr.x, y, dr.w, stripH - 4);
+      if (ci?.comparable && !ci.here) drawMark(ctx, dr.x + 14, y + (stripH - 4) / 2, 10, ci.mark);
+      text(ctx, summaryText(ci), dr.x + 26, y + (stripH - 4) / 2 + 5, { size: 13, weight: 700, color: ci?.comparable ? MARK_COL[ci.mark] ?? '#c8b8a0' : '#9d8f80', maxWidth: dr.w - 34 });
+    }
+    this.actRect = this.tz('act', { x: dr.x, y: dr.y + dr.h + 10 + stripH, w: dr.w, h: 50 });
     const can = e && (this.tab === 1 || st.gold >= e.price);
-    uiButton(ctx, this.actRect, e ? (this.tab === 0 ? (can ? '구매하기' : '골드 부족') : '판매하기') : '—', { selected: !!can, disabled: !e, size: 18, color: e ? undefined : '#6a6060' });
+    uiButton(ctx, this.actRect, e ? (this.tab === 0 ? (can ? '구매하기' : '골드 부족') : this.tab === 2 ? (can ? '되사기' : '골드 부족') : '판매하기') : '—', { selected: !!can, disabled: !e, size: 18, color: e ? undefined : '#6a6060' });
   }
 }

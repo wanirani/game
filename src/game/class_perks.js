@@ -490,6 +490,7 @@ export function drawPerkLayer(ctx, e, w) {
   const tn = w?.time ?? 0;
   if (MARKED.size) {
     const M = marksTable();
+    markAtlas();   // 이번 프레임 아틀라스 (표식 스프라이트 — 없으면 표식이 벡터로 그린다)
     let n = 0;
     for (const en of MARKED) {
       if (en.dead || !en._ck || (en.world && en.world !== w)) { MARKED.delete(en); continue; }
@@ -615,6 +616,74 @@ function markFail(key, err) {
   M[key] = () => {};
   try { console.error(`[perks] 표식 ${key} 오류`, err); } catch { /* 콘솔 없음 */ }
 }
+// ─────────────────────────── 표식 스프라이트 아틀라스 (BALANCE-PERF: PerkLayer 24 표식 p50 < 0.05 ms) ───────────────────────────
+// 표식 그림(MARKS_*)의 모양을 키 × 변형(중첩 수·크기 단계)마다 한 번 아틀라스 한 장에 굽고 drawImage 한다. 빛(K.glow)도 색마다
+// 한 칸으로 구워 반지름만큼 늘여 그린다 (매 프레임 경로 래스터·getTransform 없음). 아틀라스는 K.spr 풀 캔버스(부팅 때 만든 풀 —
+// 스테이지 도중 캔버스 생성 없음, §12). LRU 에서 밀려 다시 구워지면 칸 표를 비우고 처음 쓸 때 다시 굽는다.
+// 아틀라스를 못 얻으면(도구 모음 전·Node) markReady() = false → 표식 함수는 예전 벡터 그림(VEC_*)으로 그린다.
+const MA = { c: null, g: null, cells: new Map(), x: 0, y: 0, row: 0, W: 1024, H: 512, ready: false, bakes: 0, resets: 0 };
+export const MARK_ATLAS = MA;   // QA: 굽기·비우기 수
+function maReset() { MA.cells.clear(); MA.x = 0; MA.y = 0; MA.row = 0; MA.resets++; }
+/** 이번 프레임의 아틀라스 (drawPerkLayer 가 표식을 그리기 전에 한 번) → 캔버스 | null */
+export function markAtlas() {
+  let c = null;
+  try { c = typeof K.spr === 'function' ? K.spr('perk:marks', MA.W, MA.H, () => maReset()) : null; } catch { c = null; }
+  if (c !== MA.c) { MA.c = c; MA.g = c ? c.getContext('2d') : null; maReset(); }
+  MA.ready = !!(MA.c && MA.g);
+  return MA.ready ? MA.c : null;
+}
+/** 표식 함수: 아틀라스로 그려도 되는가 (아니면 벡터 그림) */
+export function markReady() { return MA.ready; }
+/**
+ * 아틀라스 칸: id 마다 한 번 bake(g) — g 는 칸의 기준점 (ox, oy) 으로 옮겨져 있고 sc 배로 커져 있다(선명도: 카메라 확대·고해상도).
+ * w·h·ox·oy 는 월드 px. 너무 크면 null (호출부가 벡터로 그린다). 아틀라스가 차면 통째로 비우고 다시 쌓는다
+ */
+export function markCell(id, w, h, ox, oy, bake, sc = 2) {
+  let cell = MA.cells.get(id);
+  if (cell) return cell;
+  if (!MA.g) return null;
+  if ((w + 2) * sc > 256 || (h + 2) * sc > 256) sc = 1;
+  const cw = Math.ceil((w + 2) * sc), ch = Math.ceil((h + 2) * sc);
+  if (cw > MA.W || ch > MA.H) return null;
+  if (MA.x + cw > MA.W) { MA.x = 0; MA.y += MA.row; MA.row = 0; }
+  if (MA.y + ch > MA.H) { MA.g.setTransform(1, 0, 0, 1, 0, 0); MA.g.clearRect(0, 0, MA.W, MA.H); maReset(); }
+  cell = { x: MA.x, y: MA.y, w: cw, h: ch, ox: (ox + 1) * sc, oy: (oy + 1) * sc, sc };
+  const g = MA.g;
+  g.save();
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.beginPath(); g.rect(cell.x, cell.y, cw, ch); g.clip();
+  g.translate(cell.x + cell.ox, cell.y + cell.oy); g.scale(sc, sc);
+  g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+  try { bake(g); } catch (err) { markFail('bake:' + id, err); }
+  g.restore();
+  MA.x += cw; MA.row = Math.max(MA.row, ch);
+  MA.cells.set(id, cell); MA.bakes++;
+  return cell;
+}
+/** 구운 칸을 기준점이 (x, y) 에 오게 s 배로 그린다 (globalAlpha·globalCompositeOperation 은 호출부) */
+export function drawCell(ctx, cell, x, y, s = 1) {
+  const k = s / cell.sc;
+  ctx.drawImage(MA.c, cell.x, cell.y, cell.w, cell.h, x - cell.ox * k, y - cell.oy * k, cell.w * k, cell.h * k);
+}
+/** 회전해 그린다 (기준점 중심, 라디안). save/restore 없이 되돌린다 */
+export function drawCellRot(ctx, cell, x, y, ang, s = 1) {
+  ctx.translate(x, y); ctx.rotate(ang);
+  drawCell(ctx, cell, 0, 0, s);
+  ctx.rotate(-ang); ctx.translate(-x, -y);
+}
+const GLOW_R = 32;
+/** K.glow 와 같은 빛 (색 col, 반지름 r, 투명도 a) — 색마다 한 번 구운 칸을 늘여 그린다. 아틀라스가 없으면 K.glow */
+export function markGlow(ctx, x, y, r, col, a = 1) {
+  if (!(r > 1) || !(a > 0.01)) return;
+  const cell = MA.ready ? markCell('glow' + col, GLOW_R * 2, GLOW_R * 2, GLOW_R, GLOW_R, (g) => K.glow(g, 0, 0, GLOW_R, col, 1), 1) : null;
+  if (!cell) { K.glow?.(ctx, x, y, r, col, a); return; }
+  const ga = ctx.globalAlpha;
+  ctx.globalAlpha = ga * Math.min(1, a);
+  drawCell(ctx, cell, x, y, r / GLOW_R);
+  ctx.globalAlpha = ga;
+}
+/** 크기 단계 (q px 단위로 반올림) — 몸통 크기에 따라 굽는 표식의 변형 수를 묶는다 */
+export function markStep(v, q = 4) { return Math.max(q, Math.round(v / q) * q); }
 /** QA·시험용: 표식 붙은 적 수 */
 export function markedCount() { return MARKED.size; }
 

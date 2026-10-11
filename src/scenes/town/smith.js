@@ -15,6 +15,7 @@ import { SHOP_LINES } from '../../data/town.js';
 import { vGrad, fillGradRect } from '../menu/common.js';
 import { ServiceScene, ScrollList, Modal, itemRow, drawItemDetail, fitItemName, baseOf, nameOf, makeInst, statsOf, statName, fmtStat, isEquippedAny, SLOT_LABEL, WTYPE_LABEL, EQUIP_KINDS, hitRect, openBuy, mergeLines, rarityColor, uiPanel, uiButton, uiHints, josa } from './common.js';
 import { glow } from './facades.js';
+import { enhanceDelta, scoreStr, drawMark, MARK_COL } from '../menu/gear_compare.js';   // [qol] 강화 전/후 장착 비교 (qol_equip §5)
 // 주문서 칩 그라디언트 색 멈춤 (menu/common 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
 const CHIP_PROT = [0, 'rgba(40,80,150,0.95)', 1, 'rgba(8,4,10,0.95)'], CHIP_BLESS = [0, 'rgba(150,110,20,0.95)', 1, 'rgba(8,4,10,0.95)'], CHIP_OFF = [0, 'rgba(24,14,22,0.9)', 1, 'rgba(8,4,10,0.95)'];
 
@@ -253,7 +254,8 @@ export class SmithScene extends ServiceScene {
       M = q; // 촘촘한 크기로도 안 되면 아래에서 줄 수를 줄인다
     }
     while (nStats > 0 && !fit(M, nStats, false)) nStats--;
-    const showParts = fit(M, nStats, true);
+    const showCmp = !inf.maxed && fit(M, nStats + 1, false);   // [qol] 강화 전/후 비교 줄 (자리가 남을 때만)
+    const showParts = fit(M, nStats + (showCmp ? 1 : 0), true);
     // 머리글: 아이콘 · 이름 · 종류 (+ 오른쪽 끝에 +10/+15 보너스 표시)
     const s = M.s;
     drawSlot(ctx, r.x + 16, r.y + M.pad, s, inst);
@@ -286,6 +288,23 @@ export class SmithScene extends ServiceScene {
       text(ctx, statName(p.stat), r.x + 22, y + 4, { size: 13, color: '#d8ccb8', maxWidth: r.w * 0.36 });
       text(ctx, statPair(p.stat, p.from, p.to), r.x + r.w - 80, y + 4, { size: 13, weight: 800, family: FONT.num, color: '#fff', align: 'right' });
       text(ctx, `▲${fmtStat(p.stat, p.diff).replace('+', '')}`, r.x + r.w - 20, y + 4, { size: 12, weight: 800, color: COLORS.good, align: 'right' });
+      y += M.rowH;
+    }
+    // [qol] 강화 전/후: 끼고 있는 영웅이면 종합 점수·초당 피해가 얼마나 오르는지, 아니면 지금 영웅 장비와 견준 점수 전 → 후
+    if (showCmp) {
+      const owner = isEquippedAny(st, inst.uid);
+      const ed = enhanceDelta(st, this.hero, inst, owner || null);
+      if (ed) {
+        const who = owner ? CHARACTERS[owner]?.name?.split(' ')[0] ?? '' : '지금 영웅';
+        text(ctx, owner ? `${who} 종합` : '장착 비교', r.x + 22, y + 4, { size: 13, color: '#d8ccb8', maxWidth: r.w * 0.36 });
+        if (ed.worn) {
+          const s1 = `${scoreStr(ed.score)}${Math.abs(ed.dpsPct) >= 0.5 ? `  ·  초당 피해 +${Math.round(ed.dpsPct * 10) / 10}%` : ''}`;
+          text(ctx, s1, r.x + r.w - 20, y + 4, { size: 12, weight: 800, color: MARK_COL.up, align: 'right', maxWidth: r.w * 0.6 });
+        } else {
+          drawMark(ctx, r.x + r.w - 128, y, 9, ed.mark);
+          text(ctx, `${scoreStr(ed.before)} → ${scoreStr(ed.after)}`, r.x + r.w - 20, y + 4, { size: 12, weight: 800, family: FONT.num, color: MARK_COL[ed.mark] ?? '#efe4cf', align: 'right' });
+        }
+      }
       y += M.rowH;
     }
     y += M.gap;

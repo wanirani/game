@@ -11,7 +11,7 @@
 // 모든 조절 수치는 항목의 N 표 (ascensions.js 의 perk 문구 숫자와 같아야 한다). 백분율은 문구 그대로 % 값으로 적는다.
 // 특성이 만드는 공격은 proc (procAtk · K.uHit{proc:true}) — 비전 액티브의 타격만 보통 스킬 타격 (§5).
 // 그리기(표식·게이지·연출 draw)에는 난수·파티클·그라디언트·문자열 조립이 없다 (캐시 스프라이트 K.glow·K.beamH + 선 몇 개).
-import { procAtk, mark, markOf, unmark, icd, perkState, procStrike, K } from './class_perks.js';
+import { procAtk, mark, markOf, unmark, icd, perkState, procStrike, K, markReady, markCell, drawCell, markGlow } from './class_perks.js';
 import { skillVal } from '../data/skills.js';
 
 const TAU = Math.PI * 2;
@@ -552,7 +552,8 @@ export const ACTIVES_D = {
 
 // ─────────────────────────── 표식 그리기 (PerkLayer) ───────────────────────────
 // (ctx, e, n, k, t): n = 중첩, k = 남은 시간 비율 0..1, t = 월드 시간. 머리 위 = (e.cx, e.y)
-export const MARKS_D = {
+/** 예전 벡터 그림 — 아틀라스가 없을 때(도구 모음 전·Node) 그대로 쓴다 */
+const VEC_D = {
   /** 일점 (창신): 머리 위 붉은 과녁 — 중첩만큼 차는 고리, 20이면 맥동하는 붉은 빛 + 흰 점 */
   pin(ctx, e, n, k, t) {
     const M = PERKS_D.isolde_speargod.N.max, x = e.x + e.w / 2, y = e.y - 16, full = n >= M, a = 0.55 + 0.45 * Math.min(1, k * 3);
@@ -567,3 +568,25 @@ export const MARKS_D = {
     ctx.beginPath(); ctx.arc(x, y, full ? 3.2 : 1.6 + n * 0.06, 0, TAU); ctx.fill();
   },
 };
+// 표식 (BALANCE-PERF): 과녁은 중첩 수마다 아틀라스 칸(markCell)에 굽고 drawImage, 빛은 markGlow — VEC_D 와 같은 그림
+export const MARKS_D = {
+  /** 일점 (창신): 머리 위 붉은 과녁 — 중첩만큼 차는 고리, 20이면 맥동하는 붉은 빛 + 흰 점 */
+  pin(ctx, e, n, k, t) {
+    const M = PERKS_D.isolde_speargod.N.max, m = Math.max(0, Math.min(M, n | 0)), full = m >= M;
+    const c = markReady() && markCell('pin' + m, 26, 26, 13, 13, (g) => {
+      g.globalAlpha = 0.55; g.strokeStyle = '#1a0610'; g.lineWidth = 4.5;
+      g.beginPath(); g.arc(0, 0, 8, 0, TAU); g.stroke();
+      g.globalAlpha = 1; g.strokeStyle = full ? '#ffffff' : '#ff9aac'; g.lineWidth = 2.5;
+      g.beginPath(); g.arc(0, 0, 8, -Math.PI / 2, -Math.PI / 2 + TAU * Math.min(1, m / M)); g.stroke();
+      g.fillStyle = full ? '#ffffff' : '#ff2040';
+      g.beginPath(); g.arc(0, 0, full ? 3.2 : 1.6 + m * 0.06, 0, TAU); g.fill();
+    });
+    if (!c) return VEC_D.pin(ctx, e, n, k, t);
+    const x = e.x + e.w / 2, y = e.y - 16, a = 0.55 + 0.45 * Math.min(1, k * 3);
+    ctx.globalCompositeOperation = ADD;
+    markGlow(ctx, x, y, full ? 24 + 4 * Math.sin(t * 14) : 10 + n * 0.5, full ? '#ff2040' : '#ff9aac', (full ? 0.75 : 0.4) * a);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = a; drawCell(ctx, c, x, y);
+  },
+};
+

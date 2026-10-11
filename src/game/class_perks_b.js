@@ -11,7 +11,7 @@
 //  비전 2: victor_silverwolf (달 게이지 · 만월) + asc_victor_silverbullet · bran_oathlord (서약 기사 영혼) + asc_bran_oathbanner
 // 보이는 신호: 짧은 빛 고리·캐시 빛(K.glow)·데미지 숫자 색(dmgColor)·짧은 문구·작은 효과음. 그라디언트·새 캔버스·그리기 중 난수 없음.
 // 발동 횟수는 perkState(p).cnt[키] 에 센다 (QA 탐침이 읽는다).
-import { K, procAtk, procStrike, mark, markOf, unmark, icd, shieldAdd, shieldAbsorb, shieldOf, perkState } from './class_perks.js';
+import { K, procAtk, procStrike, mark, markOf, unmark, icd, shieldAdd, shieldAbsorb, shieldOf, perkState, markReady, markCell, drawCell, markGlow } from './class_perks.js';
 import { SKILLS, skillVal } from '../data/skills.js';
 
 const TAU = Math.PI * 2;
@@ -893,7 +893,8 @@ export const ACTIVES_B = {
 };
 
 // ═════════════════════════════════════ 적 표식 ═════════════════════════════════════
-export const MARKS_B = {
+/** 예전 벡터 그림 — 아틀라스가 없을 때(도구 모음 전·Node) 그대로 쓴다 */
+const VEC_B = {
   /** 사형 선고: 머리 위 붉은 빛 + X (처형 가능하면 더 크고 빠르게 맥동) */
   sent(ctx, e, n, k, t) {
     const x = e.cx, y = e.y - 14, ready = !isBoss(e) && hpOf(e) < PERKS_B.victor_headsman.N.exec;
@@ -908,3 +909,24 @@ export const MARKS_B = {
     ctx.beginPath(); ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r); ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r); ctx.stroke();
   },
 };
+// 표식 (BALANCE-PERF): 고리·X 는 아틀라스 칸(markCell)에 굽고 drawImage, 빛은 markGlow — VEC_B 와 같은 그림
+export const MARKS_B = {
+  /** 사형 선고: 머리 위 붉은 빛 + X (처형 가능하면 더 크고 빠르게 맥동) */
+  sent(ctx, e, n, k, t) {
+    const ready = !isBoss(e) && hpOf(e) < PERKS_B.victor_headsman.N.exec;
+    const c = markReady() && markCell(ready ? 'sent1' : 'sent0', 32, 32, 16, 16, (g) => {
+      const r = ready ? 8.5 : 6.5;
+      g.strokeStyle = '#ff2030'; g.lineWidth = 2;
+      g.beginPath(); g.arc(0, 0, r + 5, 0, TAU); g.stroke();
+      g.strokeStyle = ready ? '#ffffff' : '#ffb0b8'; g.lineWidth = 3;
+      g.beginPath(); g.moveTo(-r, -r); g.lineTo(r, r); g.moveTo(r, -r); g.lineTo(-r, r); g.stroke();
+    });
+    if (!c) return VEC_B.sent(ctx, e, n, k, t);
+    const x = e.cx, y = e.y - 14, pulse = 0.75 + 0.25 * Math.sin(t * (ready ? 14 : 6)), a = Math.min(1, k * 4 + 0.3);
+    ctx.globalCompositeOperation = ADD;
+    markGlow(ctx, x, y, (ready ? 26 : 18) * pulse, '#ff2030', 0.7 * a);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 0.9 * a; drawCell(ctx, c, x, y);
+  },
+};
+

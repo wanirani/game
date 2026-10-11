@@ -13,6 +13,13 @@ import { fmt, fmtTime, clamp, ease } from '../core/math.js';
 import { saves } from '../core/save.js';
 import { SCRIPTS } from '../data/story.js';
 import { bus } from '../core/events.js';
+// [qol] 자동 처분 · 되사기 시간 · 이번 스테이지에서 얻은 장비 (qol_equip §3–§4). pickup_compare 는 여기서 불러 둔다 (장면 조각과 함께 — 획득 토스트 비교)
+import { disposeCandidates, disposeJunk, buybackTick, findItem } from '../game/inventory.js';
+import { disposeCriteria, gearSettings, gearDelta } from '../game/gear_score.js';
+import { stageGear } from '../game/pickup_compare.js';
+import { itemName, ITEMS } from '../data/items.js';
+import { taps } from '../core/ui.js';
+import { drawMark, scoreStr } from './menu/gear_compare.js';
 
 const RANKS = [
   { r: 'S', c: '#ffe070', min: 90, style: 'gold' }, { r: 'A', c: '#ffa640', min: 75, style: 'blood' }, { r: 'B', c: '#5aa8ff', min: 55, style: 'bone' },
@@ -83,12 +90,37 @@ export class ResultsScene extends Scene {
     for (const u of stage.unlocks || []) if (!st.progress.unlocked.includes(u)) st.progress.unlocked.push(u);
     if (!stage.side) st.progress.chapter = Math.max(st.progress.chapter ?? 0, stage.chapter ?? 0);   // 외전(s21, side)은 이야기 장 진행에 들지 않는다
     st.lives = Math.max(run.lives, world.diff.lives);
+    this.qolSettle(world, st);
     this.game.recordScore?.(this.finalScore, stage.id);
     bus.emit('stageCleared', { stageId: stage.id, rank: this.rank.r, time: run.time, score: this.finalScore, noDamage: run.damageTaken === 0, diff: st.difficulty, charId: st.charId });   // [hook:ach] 무결 (ch_nodmg_stage) — 여기서는 game.world 가 이미 비었다
     saves.write(st.slot, st);
     this.shownRows = 0; this.rowT = 0; this.scoreShown = this.baseScore;
     this.rankShown = 0; this.left = false;
     this.prewarm();
+  }
+  /**
+   * [qol] 스테이지를 마칠 때 한 번: 되사기 목록 시간 (3번 지나면 사라짐) → 자동 처분 (설정 「장비」, 기본 끔) →
+   * 이번 스테이지에서 얻은 장비의 비교 표시. 잠금·장착 중·중요 물품·다시 얻을 수 없는 장비는 inventory.neverDispose 가 막는다
+   */
+  qolSettle(world, st) {
+    this.qol = { dispose: null, gear: [], open: false, rect: null, scroll: 0 };
+    try {
+      buybackTick(st);
+      const gs = gearSettings(this.game.settings);
+      if (gs.autoDispose !== 'off' && !world.arcade && !world.trial) {
+        const crit = disposeCriteria(st, this.game.settings);
+        const list = disposeCandidates(st, crit);
+        if (list.length) this.qol.dispose = disposeJunk(st, null, { mode: gs.autoDispose, buyback: gs.autoDispose === 'sell', list });
+      }
+      const hero = st.heroes?.[st.charId];
+      for (const uid of stageGear()) {
+        const it = findItem(st, uid);
+        if (!it || this.qol.gear.some((g) => g.uid === uid)) continue;
+        let d = null;
+        try { d = hero ? gearDelta(st, hero, it, { mode: gs.weights }) : null; } catch (e) { console.warn(e); }
+        this.qol.gear.push({ uid, name: itemName(it), rarity: it.rarity ?? 0, mark: d?.comparable ? d.mark : null, score: d?.comparable ? d.score : null });
+      }
+    } catch (e) { console.warn('[results] qol', e); }
   }
   /** 피 글씨 비트맵을 미리 굽는다 (첫 프레임·랭크 등장 프레임이 끊기지 않게). 실패해도 그릴 때 굽는다 */
   prewarm() {
@@ -109,6 +141,16 @@ export class ResultsScene extends Scene {
     if (this.shownRows >= this.rows.length) {
       this.scoreShown = Math.min(this.finalScore, this.scoreShown + Math.max(1, (this.finalScore - this.baseScore) * dt * 1.5));
       if (!this.rankShown && this.scoreShown >= this.finalScore) { this.rankShown = this.t; audio.sfx('levelup'); }
+    }
+    // [qol] 처분·획득 목록: 요약 줄 터치 · 보조 기능(A / 패드 Y) 로 펼치고, 펼친 동안은 결정·취소·터치로 접는다
+    const Q = this.qol;
+    if (Q && this.rankShown && (Q.dispose || Q.gear.length)) {
+      const hit = input.pointer.tapped ? taps.hit(this) : null;
+      if (Q.open) {
+        if (input.pressed('confirm') || input.pressed('cancel') || input.pressed('alt') || input.pressed('menu') || input.pointer.tapped) { Q.open = false; audio.sfx('menu_cancel'); }
+        return;
+      }
+      if (hit === 'qol.list' || input.pressed('alt')) { Q.open = true; audio.sfx('menu_ok'); return; }
     }
     const skip = input.pressed('confirm') || input.pressed('attack') || input.pressed('menu') || input.pointer.tapped;
     if (skip) {
@@ -186,10 +228,70 @@ export class ResultsScene extends Scene {
       bloodText(ctx, this.rank.r, 0, L.rankSize * 0.26, { size: L.rankSize, style: this.rank.style, drips: 0.6, t: rt });
       ctx.restore();
       text(ctx, `보상 ${fmt(this.goldReward)} G`, L.midX, Math.min(L.rewardY, L.hintY - 24), { size: 18, align: 'center', weight: 800, color: '#ffd84a' });
-      if (Math.floor(this.t * 2) % 2 === 0) {
+      this.drawQol(ctx, L);
+      if (Math.floor(this.t * 2) % 2 === 0 && !this.qol?.open) {
         if (input.touchMode) text(ctx, '화면을 터치하세요', W / 2, L.hintY, { size: 15, align: 'center', color: COLORS.dim });
-        else drawHints(ctx, [['confirm', '계속']], W / 2, L.hintY, { align: 'center', size: 15, color: COLORS.dim });
+        else drawHints(ctx, [['confirm', '계속'], ...(this.qol?.dispose || this.qol?.gear?.length ? [['alt', '목록']] : [])], W / 2, L.hintY, { align: 'center', size: 15, color: COLORS.dim });
       }
+      if (this.qol?.open) this.drawQolList(ctx, L);
     }
+  }
+
+  /** [qol] 랭크 칸 아래: 자동 처분 한 줄 + 새 장비 한 줄 (터치하면 목록) */
+  drawQol(ctx, L) {
+    const Q = this.qol;
+    if (!Q || (!Q.dispose && !Q.gear.length)) return;
+    const x = L.x + L.w + GAP, w = RANK_W, yb = L.y + L.ph - 8;
+    const lines = [];
+    const D = Q.dispose;
+    if (D?.count) {
+      if (D.mode === 'salvage') lines.push([`자동 분해 ${D.count}개`, '#c8b8a0'], [`강화석 ${Object.values(D.mats).reduce((a, b) => a + b, 0)}개`, '#8ac8ff']);
+      else lines.push([`자동 판매 ${D.count}개`, '#c8b8a0'], [`+${fmt(D.gold)} G`, '#ffd84a']);
+    }
+    if (Q.gear.length) {
+      const up = Q.gear.filter((g) => g.mark === 'up').length;
+      lines.push([`새 장비 ${Q.gear.length}개${up ? ` · ▲ ${up}` : ''}`, up ? '#7ee07e' : '#c8b8a0']);
+    }
+    const lh = 17, h = lines.length * lh + 18;
+    const r = { x, y: yb - h, w, h };
+    Q.rect = taps.add('qol.list', r, { owner: this, kind: 'primary', src: 'results.qol' });
+    ctx.fillStyle = 'rgba(10,4,12,0.72)'; ctx.fillRect(r.x, r.y, r.w, r.h);
+    ctx.strokeStyle = 'rgba(200,160,90,0.55)'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+    lines.forEach(([t, c], i) => text(ctx, t, x + w / 2, r.y + 16 + i * lh, { size: 13, align: 'center', weight: 700, color: c, maxWidth: w - 10 }));
+    text(ctx, '▼ 목록', x + w / 2, r.y + h - 3, { size: 10, align: 'center', weight: 700, color: COLORS.dim });
+  }
+  /** [qol] 펼친 목록: 처분한 장비 · 이번에 얻은 장비 (지금 영웅 기준 ▲/▼) */
+  drawQolList(ctx, L) {
+    const Q = this.qol;
+    const W = L.W, H = L.H;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, W, H);
+    const w = Math.min(560, W - 40), h = Math.min(H - 60, 360), x = (W - w) / 2, y = (H - h) / 2;
+    panel(ctx, x, y, w, h);
+    const rows = [];
+    const D = Q.dispose;
+    if (D?.count) {
+      rows.push({ head: D.mode === 'salvage' ? `자동 분해 ${D.count}개` : `자동 판매 ${D.count}개 · +${fmt(D.gold)} G` });
+      for (const it of D.items) rows.push({ name: it.name, rarity: it.rarity, right: D.mode === 'salvage' ? `${ITEMS[it.mats?.baseId]?.name ?? ''} ×${it.mats?.qty ?? 0}` : `+${fmt(it.gold)} G` });
+      if (D.mode === 'sell') rows.push({ note: '마을 상점 「되사기」에서 판 값 그대로 다시 살 수 있습니다 (스테이지 3번 동안)' });
+    }
+    if (Q.gear.length) {
+      rows.push({ head: `이번에 얻은 장비 ${Q.gear.length}개` });
+      for (const g of Q.gear) rows.push({ name: g.name, rarity: g.rarity, mark: g.mark, right: g.score == null ? '' : scoreStr(g.score) });
+    }
+    const lh = 22, max = Math.floor((h - 50) / lh);
+    let yy = y + 26;
+    const RC = ['#d8d0c0', '#6fe07a', '#5aa8ff', '#c07cff', '#ffa640', '#ff4a5a'];
+    for (const r of rows.slice(0, max)) {
+      if (r.head) text(ctx, r.head, x + 20, yy + 4, { size: 14, weight: 800, color: '#e8c872' });
+      else if (r.note) text(ctx, r.note, x + 20, yy + 2, { size: 11, color: COLORS.dim, maxWidth: w - 40 });
+      else {
+        text(ctx, r.name, x + 34, yy + 4, { size: 13, weight: 700, color: RC[r.rarity] ?? '#ddd', maxWidth: w - 150 });
+        if (r.mark) drawMark(ctx, x + w - 92, yy - 1, 10, r.mark);
+        text(ctx, r.right, x + w - 20, yy + 4, { size: 13, align: 'right', weight: 800, family: FONT.num, color: r.mark === 'up' ? '#7ee07e' : r.mark === 'down' ? '#ff7a6a' : '#ffd84a' });
+      }
+      yy += lh;
+    }
+    if (rows.length > max) text(ctx, `외 ${rows.length - max}줄`, x + w - 20, y + h - 30, { size: 11, align: 'right', color: COLORS.dim });
+    text(ctx, input.touchMode ? '화면을 터치하면 닫습니다' : '결정 · 취소로 닫기', W / 2, y + h - 10, { size: 12, align: 'center', color: COLORS.dim });
   }
 }
