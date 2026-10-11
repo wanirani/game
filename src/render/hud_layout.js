@@ -373,8 +373,15 @@ function build(vw, vh, T, S, pad, bossOn, nM, F) {
   // [hudfix] 휴대폰 두 줄 버튼 묶음은 윗줄이 가운데 쪽으로 넓다: 알림 글자는 칸 아래로 ~26 px 넘쳐 그려지므로(터치) 그 높이까지 패드를 피해
   //   옆으로 줄인다. 그러면 160 px 보다 좁아질 때는 칸을 버튼 윗줄 위로 올린다 — 토스트 줄 수(보스 바 없으면 3, 위쪽 보스 바 아래 1)는 지킨다
   let ty = 230 + t;
-  const th = 64, over = T ? TOAST_ROW : 0;
+  const th = 64, over = T ? TOAST_ROW + 4 : 0;
   let ts = clipSpan(322 + l, right - 322, ty, th + over, pad, sides);
+  if (ts.r - ts.l < 160 && T) {
+    // 왼쪽 322 여백은 왼쪽 위 묶음·동료 카드 줄을 피하려는 것 — 그 높이에 걸리는 것이 없으면 왼쪽으로 넓혀 본다 (오른쪽 버튼 윗줄을 옆으로 피함)
+    let lo = l + 14;
+    for (const q of [L.callouts, L.combo, L.skills, L.hearts, L.vitals, L.companions, L.portrait]) if (q && q.w > 0 && q.y < ty + th + over && q.y + q.h > ty && q.x < 322 + l) lo = Math.max(lo, q.x + q.w + HUD_GAP);
+    const sL = clipSpan(lo, right - 322, ty, th + over, pad, sides);
+    if (sL.r - sL.l >= 160) ts = sL;
+  }
   if (ts.r - ts.l < 160) {
     const plain = clipSpan(322 + l, right - 322, ty, th, pad, sides);
     ts = plain;
@@ -388,6 +395,11 @@ function build(vw, vh, T, S, pad, bossOn, nM, F) {
       if (ty2 < ty) {
         const s2 = clipSpan(322 + l, right - 322, ty2, th + over, pad, sides);
         ty = ty2; ts = s2.r - s2.l >= 160 ? s2 : clipSpan(322 + l, right - 322, ty2, th, pad, sides);
+      }
+      // 그래도 좁으면(버튼 윗줄이 칸 아래 끝에 몇 px 걸친 경우 — 안전 영역 여백 등) 칸만 비키게 최대 12 px 올린다
+      if (ts.r - ts.l < 160) {
+        const ty3 = Math.floor(ptop - th - 2);
+        if (ty3 < ty && ty3 >= 230 + t - 12) { const s3 = clipSpan(322 + l, right - 322, ty3, th, pad, sides); if (s3.r - s3.l > ts.r - ts.l) { ty = ty3; ts = s3; } }
       }
     }
   }
