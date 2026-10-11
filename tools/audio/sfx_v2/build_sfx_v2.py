@@ -150,6 +150,8 @@ RECIPES = {
 }
 from recipes2 import R2, ALIAS  # noqa: E402  (2차 묶음)
 RECIPES.update(R2)
+from recipes3 import R3  # noqa: E402  (3차 묶음: 남은 이름 전부 — 합성 단독 0)
+RECIPES.update(R3)
 NAMES = list(RECIPES)
 REV = {}   # 이름별 잔향 송신을 바꾸려면 (없으면 audio.js 정의의 rev)
 
@@ -266,6 +268,9 @@ def layer(src, d):
     if d.get('clip'):                             # 부드러운 클리퍼: 순간음 꼭지를 clip dB 만큼 둥글게 (크레스트를 줄여 몸통을 살린다)
         t = np.abs(y).max() * 10 ** (-d['clip'] / 20) + 1e-12
         y = t * np.tanh(y / t)
+    if lufs_ev(y) < -60:
+        print(f'  경고: 층 {d["s"]} (at={d.get("at", 0)}) 이 거의 무음 — at/len 을 고칠 것', file=sys.stderr)
+        return np.pad(np.zeros_like(y), (int(d.get('dly', 0) * SR / 1000), 0)), 0.0
     y *= 10 ** ((LREF - lufs_ev(y)) / 20)        # 층마다 같은 크기(LREF)로 맞춘 뒤 g 로 섞는다 → g 는 순수한 상대 비율
     y *= 10 ** (d.get('g', 0) / 20)
     pk = np.abs(x[i:i + n]).max() if n else 1
@@ -299,6 +304,8 @@ def lufs_ev(y):
         return -70.0
     env = p[:n * w].reshape(n, w).mean(1)
     on = np.nonzero(env > env.max() * 0.01)[0]
+    if not len(on):                              # 무음 (잘못 고른 구간) — 호출부가 경고한다
+        return -70.0
     seg = p[on[0] * w:(on[-1] + 1) * w]
     return -0.691 + 10 * np.log10(seg.mean() + 1e-12)
 
@@ -464,7 +471,7 @@ def main():
             fid = f'{name}_{v + 1}'
             ids.append(fid)
             ceil = CEIL
-            for _ in range(5):                     # 인코딩(AAC·Vorbis)을 다시 푼 피크가 CEIL 을 넘으면 리미터 상한을 그만큼 낮춰 다시 만든다 (순간음만 눌림)
+            for _ in range(8):                     # 인코딩(AAC·Vorbis)을 다시 푼 피크가 CEIL 을 넘으면 리미터 상한을 그만큼 낮춰 다시 만든다 (순간음만 눌림)
                 y, red = build_var(src, rec, v, ceil)
                 yo = to_out(y)
                 encode(yo, out / fid, rec.get('ch', 1), rec.get('br'))
@@ -475,6 +482,11 @@ def main():
             if a.wav:
                 run(['ffmpeg', '-v', 'error', '-y', '-f', 'f32le', '-ar', str(SR), '-ac', str(rec.get('ch', 1)), '-i', 'pipe:0', '-c:a', 'pcm_s16le',
                      str(Path(a.wav) / f'{fid}.wav')], np.clip(y, -1, 1).astype(np.float32).tobytes())
+            if dpk > CEIL:                             # 리미터로 못 잡으면 (AAC 가 순간음 꼭지를 넘김) 남은 만큼 전체 음량을 내린다 (g 보정이 메운다)
+                y *= 10 ** ((CEIL - 0.15 - dpk) / 20)
+                yo = to_out(y)
+                encode(yo, out / fid, rec.get('ch', 1), rec.get('br'))
+                dpk = decoded_peak(out / f'{fid}.m4a', rec.get('ch', 1))
             if dpk > CEIL:
                 sys.exit(f'{fid}: 인코딩 뒤 피크 {dpk:.2f} dBFS > {CEIL} — 레시피를 고쳐야 한다')
             lu, lm, tp = lufs_ev(y), lufs_m(y), true_peak(y)
@@ -487,7 +499,7 @@ def main():
         e = {'f': ids, 'g': o.get('g', 1.0) if (a.keep_gains or a.only) else 1.0}
         if 'ref' in o and (a.keep_gains or a.only):
             e['ref'] = o['ref']
-        for k in ('of', 'room'):
+        for k in ('of', 'room', 'lazy'):
             if k in rec:
                 e[k] = rec[k]
         if name in REV:

@@ -256,6 +256,7 @@ export function fight(o) {
     let air = null;   // { kind:'jump'|'dive', t, stage } | { dashAtk: true }
     const ms = p.moveSet;
     for (let f = 0; f < T; f++) {
+      o.onFrame?.(f, w, p);   // QA: 프레임마다 (특성 시간 표본 등)
       if (siege && died) break;
       if (BOSS && (D[0].hp <= 0 || D[0].dying > 0 || D[0].dead)) { killTime = w.rt; break; }
       const tw = f * DT;

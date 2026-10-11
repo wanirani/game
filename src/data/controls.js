@@ -169,7 +169,7 @@ export function keyLabel(code) {
 
 /** 터치 글리프 (가상 패드 버튼과 같은 말) */
 export const TOUCH_LABELS = {
-  jump: '점프', attack: '공격', dash: '대시', sub: '보조', skill1: 'S1', skill2: 'S2', ult: '필살', swap: '⇄',
+  jump: '점프', attack: '공격', dash: '대시', sub: '보조', skill1: 'S1', skill2: 'S2', ult: '필살', swap: '넘김',
   bag: '가방', pause: 'Ⅱ', mount: '탑승', guard: '수호', stick: '스틱',
 };
 

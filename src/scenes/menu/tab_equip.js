@@ -299,8 +299,9 @@ export class EquipTab extends Tab {
     }
     // ── 왼쪽: 장비 칸 ──
     this.slotRects.length = 0;
-    const optH = touch ? 40 : 32;   // [qol] 「최적 장착」 단추 자리
-    const rowH = Math.min(62, (A.h - top - 14 - optH) / 6);
+    // [qol] 「최적 장착」 단추 자리: 마우스·키보드는 장비 칸 아래, 터치는 가운데 판 아래 (칸 줄을 36 CSS px 이상으로 두려고)
+    const optH = touch ? 44 : 32, optL = touch ? 0 : optH;
+    const rowH = Math.min(62, (A.h - top - 14 - optL) / 6);
     this.slots.forEach((slot, i) => {
       const y = A.y + top + i * rowH, x = A.x + 10, w = LW - 20;
       const r = { x, y, w, h: rowH - gapS };
@@ -331,7 +332,7 @@ export class EquipTab extends Tab {
     });
     // [qol] 최적 장착 · 되돌리기 (5초)
     {
-      const r = { x: A.x + 10, y: A.y + A.h - optH - 8, w: LW - 20, h: optH };
+      const r = touch ? { x: MX + 10, y: A.y + A.h - optH - 8, w: MW - 20, h: optH } : { x: A.x + 10, y: A.y + A.h - optH - 8, w: LW - 20, h: optH };
       this.optRect = typeof this.m.ges?.zone === 'function' ? this.m.ges.zone(r, 'primary', { src: 'equip.optimize' }) : r;
       if (this.undo) {
         gbutton(ctx, r, `되돌리기 (${Math.ceil(this.undo.t)})`, { hot: true, t, size: 13, accent: '#3a6a3a' });
@@ -354,15 +355,15 @@ export class EquipTab extends Tab {
     if (pv) pill(ctx, '미리보기', MX + MW / 2, A.y + 14, { align: 'center', color: PAL.goldHi, bg: 'rgba(110,14,34,0.92)', size: 11, h: 18 });
     const ns = pv?.stats || cur.stats;
     // 주요 능력치 (글자 캐시: 값이 바뀔 때만 다시 굽는다)
-    const sumKey = SUMMARY.map((k) => `${cur.stats[k] ?? 0}:${ns[k] ?? 0}`).join(',');
-    const sy0 = A.y + sh + 10;
-    this.txt.draw(ctx, 'sum', sumKey, MX + 4, sy0, MW - 8, A.y + A.h - 4 - sy0, (c) => {
+    const sumKey = SUMMARY.map((k) => `${cur.stats[k] ?? 0}:${ns[k] ?? 0}`).join(',') + (touch ? '|t' : '');
+    const sy0 = A.y + sh + 10, sBot = A.y + A.h - (touch ? optH + 12 : 0);   // [qol] 터치: 아래에 「최적 장착」 단추
+    this.txt.draw(ctx, 'sum', sumKey, MX + 4, sy0, MW - 8, sBot - 4 - sy0, (c) => {
       let y = A.y + sh + 32;
       heading(c, '주요 능력치', MX + 14, y, MW - 28, { size: 14 });
       y += 8;
       // 줄 높이는 글자 크기 하한(설정 '글자 크기')에서 잡는다: 한 열에 다 들어가지 않으면 2열 (증감은 색으로만),
       // 2열로도 넘치면 뒤쪽 줄을 뺀다 (크게·아주 크게에서 줄이 겹치지 않게)
-      const room = A.y + A.h - 8 - y, rowMin = Math.max(15, Math.ceil(textFloor() * 1.15));
+      const room = sBot - 8 - y, rowMin = Math.max(15, Math.ceil(textFloor() * 1.15));
       const maxRows = Math.max(1, Math.floor(room / rowMin)), two = maxRows < SUMMARY.length;
       const list = two ? SUMMARY.slice(0, maxRows * 2) : SUMMARY;
       const perCol = two ? Math.ceil(list.length / 2) : list.length;

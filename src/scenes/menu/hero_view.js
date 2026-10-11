@@ -33,7 +33,7 @@ import * as UI from '../../core/ui.js';
 import { glow, glowOval, PAL, inRect } from './common.js';
 import * as MENU from './common.js';
 import * as PUP from '../../render/hero_puppet.js';
-import { pilot } from '../../core/pilot_flags.js';
+import { G as PG, glow as pglow, drawAuraMotes, sh } from '../../render/hero_parts.js';
 
 const PI = Math.PI;
 const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -206,19 +206,63 @@ function viewSupport(p) {
   return { steps, continuous: !!HV.continuous, painted, full: painted, legacy: false };
 }
 const LEGACY_SUP = Object.freeze({ steps: 2, continuous: false, painted: false, full: false, legacy: true });
-// ── 애니풍 시범 (pilot.anime, docs/specs/anime_motion_sfx.md §3) ──
-// 16방향 뷰(rig.turn.turn16)가 있는 퍼펫: 22.5° 칸 · 이웃 두 뷰 교차 + 실루엣 폭 보간(hero_puppet.drawTurn16) · 두 번 탭 = 앞모습 ·
-// 휠·두 손가락 벌리기 = 확대 1.0~1.6 배 (휠 회전 대신). 플래그가 꺼져 있거나 turn16 이 없으면 아래 모든 경로가 예전과 같다.
+// ── 16방향 턴테이블 (assets/puppets/turn16.json — 지금 유화풍 원화를 클링 360° 턴테이블 영상에서 뽑은 16칸, render/hero_puppet.js turn16*) ──
+// 16방향 시트가 있는 외형: 22.5° 칸 · 이웃 두 뷰 교차 + 실루엣 폭 보간 · 관성 · 두 번 탭/두 번 클릭 = 앞모습 ·
+// 휠·두 손가락 벌리기·+/− 키 = 확대 1.0~1.6 배 (휠 회전 대신). 망토·날개·후광·오라·무기는 그 각도에 맞춰 덧그린다 (draw16).
+// 16방향 시트가 없는 외형(1차 직업 등)은 아래 모든 경로가 예전과 같다 (8방향 채색 뷰 + 휠 회전).
 const A16_SUP = Object.freeze({ steps: 16, continuous: false, painted: true, full: true, legacy: false, a16: true });
-const ZOOM = Object.freeze({ MIN: 1, MAX: 1.6, NOTCH: 0.1 });
+const ZOOM = Object.freeze({ MIN: 1, MAX: 1.6, NOTCH: 0.1, KEY_RATE: 1.2 });
 const PINCH = { k: 0, active: false };      // 두 손가락 거리 변화 (로그 누적) — 다음 control 에서 소비
-if (pilot.anime && typeof window !== 'undefined' && window.addEventListener) {
+const KZ = { dir: 0 };                      // +/− 키 누르고 있는 방향 (+1 확대, −1 축소)
+if (typeof window !== 'undefined' && window.addEventListener) {
   let d0 = 0;
   const dist = (e) => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
   window.addEventListener('touchstart', (e) => { if (e.touches.length === 2) { d0 = dist(e); PINCH.active = true; } }, { passive: true });
   window.addEventListener('touchmove', (e) => { if (PINCH.active && e.touches.length === 2) { const d = dist(e); if (d0 > 0 && d > 0) PINCH.k += Math.log(d / d0); d0 = d; } }, { passive: true });
   window.addEventListener('touchend', (e) => { if (e.touches.length < 2) { PINCH.active = false; d0 = 0; } }, { passive: true });
   window.addEventListener('touchcancel', () => { PINCH.active = false; d0 = 0; }, { passive: true });
+  const ZK = { Equal: 1, NumpadAdd: 1, Minus: -1, NumpadSubtract: -1 };
+  window.addEventListener('keydown', (e) => { const d = ZK[e.code]; if (d && !e.ctrlKey && !e.metaKey && !e.altKey) KZ.dir = d; }, { passive: true });
+  window.addEventListener('keyup', (e) => { if (ZK[e.code] === KZ.dir) KZ.dir = 0; }, { passive: true });
+  window.addEventListener('blur', () => { KZ.dir = 0; PINCH.active = false; }, { passive: true });
+}
+const T16_COL = (c, d) => (typeof c === 'string' && c ? c : d);
+const T16_EQ = new WeakMap();
+/** 장비 덧그리기 사양 (hero.js buildSpec 의 망토·날개·후광·오라 부분과 같은 규칙) — look 객체별 캐시 */
+function t16Equip(L) {
+  let K = T16_EQ.get(L);
+  if (K) return K;
+  const pr = T16_COL(L.primary, '#4a3a30'), se = T16_COL(L.secondary, sh(pr, -0.3));
+  const aura = L.aura || L.accAura || null;
+  K = {
+    cape: L.cape ? { c: T16_COL(L.cape.color, pr), c2: T16_COL(L.cape.color2, se), len: L.cape.len ?? 1, style: L.cape.style || null } : null,
+    wings: L.wings || null, halo: !!L.halo, aura, auraK: L.aura ? 1 : 0.55, auraC: aura?.color || '#b98cff',
+  };
+  T16_EQ.set(L, K);
+  return K;
+}
+const T16_W = {};
+/** 턴테이블 무기 (hero_puppet.drawTurnWeapon 과 같은 손 자리 규칙 — 무기 사양은 hero.js drawWeaponPreview 가 만든다) */
+function t16Weapon(ctx, I, L, ch, yaw, front, t) {
+  const w = L.weapon || null, type = w?.type || ch?.weaponType;
+  if (!type || type === 'none' || type === 'whip') return;
+  const T = I.E?.rig?.turn, v = T && (T.views.y90 || Object.values(T.views)[0]);
+  if (!v) return;
+  const s = PUP.PUP_H / (v.footY - v.topY), hx = v.shW * s * 0.98, sn = Math.sin(yaw), cs = Math.cos(yaw);
+  const W = w && w.type ? w : Object.assign(T16_W, w || {}, { type });
+  if (type === 'greatsword') {                                // 등에 멘 대검: 앞모습은 몸 뒤, 뒷모습은 등을 덮음
+    if ((sn < 0) !== front) return;
+    const xs = -sn * v.shW * s * 0.55 - cs * 4;
+    HERO.drawWeaponPreview(ctx, W, xs, -76, PI / 2 + (xs >= 0 ? 0.5 : -0.5), 1, t);
+    return;
+  }
+  for (const side of (type === 'dagger' || type === 'gun' ? [1, -1] : [1])) {
+    const x = -sn * hx * side, depth = cs * side;
+    if ((depth > -0.2) !== front) continue;
+    const upright = type === 'staff' || type === 'spear';
+    const ang = upright ? -PI / 2 - (type === 'spear' ? 0.06 : 0.08) * cs : type === 'gun' ? PI / 2 - 0.45 * cs : PI / 2 - 0.28 * cs;
+    HERO.drawWeaponPreview(ctx, W, x, -43 + (type === 'staff' ? -2 : type === 'spear' ? 4 : 0), ang, 1, t);
+  }
 }
 
 const VIEW_NAMES = { 0: '옆모습(오른쪽)', 45: '3/4 앞모습', 90: '앞모습', 135: '3/4 앞모습', 180: '옆모습(왼쪽)', '-180': '옆모습(왼쪽)', '-135': '3/4 뒷모습', '-90': '뒷모습', '-45': '3/4 뒷모습' };
@@ -259,7 +303,7 @@ export class HeroView {
     this.introT = 0;
     this._sup = null; this._supLook = undefined; this._supT = -9; this._full = null;
     this._err = false;
-    this.zoom = 1;               // 애니 시범 16방향 전용 확대 (1.0~1.6)
+    this.zoom = 1;               // 16방향 뷰 전용 확대 (1.0~1.6)
   }
   // ───────────────────────── 예전 API ─────────────────────────
   /** look 객체가 바뀌면(장비 미리보기 등) 체인 상태를 새로 만든다 */
@@ -316,7 +360,7 @@ export class HeroView {
     p.cx = cx; p.bottom = bottom; p.facing = facing;
     const useRim = rim ?? (HERO_Q.rim && !this.lowTier() ? undefined : false);
     const o = useRim === undefined ? { scale, noFx } : { scale, noFx, rim: useRim };
-    if (this.tt && pilot.anime) { this.drawAnime(ctx, cx, bottom, scale, o); return; }
+    if (this.tt && this.t16()) { this.draw16(ctx, cx, bottom, scale, o); return; }
     try {
       if (!this.tt) { HERO.drawHero(ctx, p, null, o); return; }
       if (HERO.HERO_VIEW) { o.yaw = this.yaw; HERO.drawHero(ctx, p, null, o); return; }
@@ -330,30 +374,52 @@ export class HeroView {
     } catch (e) { if (!this._err) { console.error(e); this._err = true; } }
   }
 
-  /** 애니 시범: 16방향 뷰가 준비된 퍼펫 인스턴스 (없으면 null → 예전 경로) */
-  anime16() {
-    if (!pilot.anime || !this.p.look) return null;
-    // 16방향 시트(영상에서 뽑은 맨몸 그림)는 망토·날개·후광·오라를 그리지 못한다 → 그런 장비가 보이면 예전 8방향 경로(장비 반영 계약 유지)
+  /** 16방향 항목이 있는 퍼펫 인스턴스 (시트 로드 전이어도 — 그동안 draw16 은 옆모습 카드로) | null → 예전 경로 */
+  t16() {
     const L = this.p.look;
-    if (L.cape || L.wings || L.halo || L.aura || L.accAura) return null;
-    try { const I = PUP.puppetFor(this.p, this.p.look); return I && PUP.turn16Ready(I) ? I : null; } catch { return null; }
+    if (!L || !this.tt) return null;
+    try { const I = PUP.puppetFor(this.p, L); return I && PUP.turn16Entry(I) ? I : null; } catch { return null; }
   }
-  /** 애니 시범 그리기: 서 있으면 16방향 교차 뷰, 시연 동작 중이면 drawHero(옆모습). 확대는 허리 높이를 중심으로 */
-  drawAnime(ctx, cx, bottom, scale, o) {
-    const p = this.p, I = this.anime16();
+  /**
+   * 16방향 그리기: 서 있으면 16칸 교차 뷰 + 장비(오라·망토·날개·무기·후광)를 그 각도에 맞춰, 시연 동작 중이거나 시트를 받는 중이면
+   * 옆모습 퍼펫 카드 뒤집기(drawHero, yaw 없이 — 예전 8방향 시트를 요청하지 않는다). 확대는 허리 높이를 중심으로
+   */
+  draw16(ctx, cx, bottom, scale, o) {
+    const p = this.p, L = p.look, I = this.t16();
     const posed = (p.anim && p.anim !== 'idle') || p.move;
-    const hs = scale * (p.look.height ?? 1), z = I ? this.zoom || 1 : 1;   // 확대는 16방향 뷰에서만 (다른 외형으로 바꾸면 확대가 남지 않게)
+    const lo = this.lowTier();
+    const hs = scale * (L.height ?? 1), z = this.zoom || 1;
     ctx.save();
     try {
       if (z !== 1) { const py = bottom - 40 * hs; ctx.translate(cx, py); ctx.scale(z, z); ctx.translate(-cx, -py); }
-      if (I && !posed) {
+      if (I && !posed && PUP.turn16Ready(I, lo)) {
+        const yaw = wrapA(this.yaw), tt = p.t, fx = !o.noFx;
+        const K = t16Equip(L);
         ctx.translate(cx, bottom); ctx.scale(hs, hs);
-        PUP.drawTurn16(ctx, I, this.yaw, p.t);
-      } else HERO.drawHero(ctx, p, null, Object.assign(o, { yaw: this.yaw }));
+        PG.c = ctx; PG.tint = null; PG.t = tt; PG.fx = fx; PG.olw = 0.85;
+        if (fx && K.aura) pglow(0, -44, 46, K.auraC, (0.2 + 0.06 * Math.sin(tt * 3)) * K.auraK);
+        PUP.drawTurnWings(ctx, I, K.wings, yaw, false, tt);
+        PUP.drawTurnCape(ctx, I, K.cape, yaw, true, tt);
+        t16Weapon(ctx, I, L, p.ch, yaw, false, tt);
+        PUP.drawTurn16(ctx, I, yaw, tt, 1, lo);
+        PG.c = ctx; PG.tint = null; PG.t = tt; PG.fx = fx; PG.olw = 0.85;
+        PUP.drawTurnCape(ctx, I, K.cape, yaw, false, tt);
+        PUP.drawTurnWings(ctx, I, K.wings, yaw, true, tt);
+        t16Weapon(ctx, I, L, p.ch, yaw, true, tt);
+        PG.c = ctx;
+        if (K.halo && fx) PUP.drawTurnHalo(ctx, K.aura?.color, tt, I);
+        if (K.aura && fx) drawAuraMotes(K.aura.type || 'holy', K.auraC, K.auraK, K.auraK < 1 ? 5 : 8, 84);
+      } else {
+        // 옆모습 카드 뒤집기 (시연 동작·시트 받는 중): facing = sign(cos), 가로 배율 = |cos|
+        const cs = Math.cos(this.yaw);
+        p.facing = cs >= 0 ? 1 : -1;
+        ctx.translate(cx, bottom); ctx.scale(Math.max(posed ? 0.35 : 0.12, Math.abs(cs)), 1); ctx.translate(-cx, -bottom);
+        HERO.drawHero(ctx, p, null, o);
+      }
     } catch (e) { if (!this._err) { console.error(e); this._err = true; } }
     ctx.restore();
   }
-  /** 확대 (애니 시범 16방향): k = 휠 칸(+ = 아래로 = 축소) */
+  /** 확대 (16방향 뷰): k = 휠 칸(+ = 아래로 = 축소) */
   zoomBy(k) { this.zoom = clamp((this.zoom || 1) - k * ZOOM.NOTCH, ZOOM.MIN, ZOOM.MAX); }
 
   // ───────────────────────── 턴테이블 ─────────────────────────
@@ -370,7 +436,8 @@ export class HeroView {
   support() {
     const look = this.p.look;
     if (!this._sup || this._supLook !== look || this.clock - this._supT > 0.5) {
-      this._sup = (this.tt && this.anime16() ? A16_SUP : viewSupport(this.p)) ?? LEGACY_SUP;
+      // 16방향 목록(turn16.json)을 받기 전에는 예전 8방향 시트도 요청하지 않는다 (16방향 외형이면 쓸모없는 시트) — 받으면 다시 묻는다
+      this._sup = this.tt && this.t16() ? A16_SUP : this.tt && !PUP.turn16Known() ? LEGACY_SUP : viewSupport(this.p) ?? LEGACY_SUP;
       this._supLook = look; this._supT = this.clock;
     }
     return this._sup;
@@ -449,7 +516,7 @@ export class HeroView {
   }
   resetYaw() {
     this.beginUser();
-    this.userYaw = this.support().a16 ? PI / 2 : this.defaultYaw;   // 애니 시범 16방향: 두 번 탭 = 앞모습
+    this.userYaw = this.support().a16 ? PI / 2 : this.defaultYaw;   // 16방향: 두 번 탭/두 번 클릭 = 앞모습
     this.tweenTo(this.userYaw, TT.RESET_T, { user: true });
   }
   /** 장비 공개: 한 바퀴 (움직임 줄이기·옆모습 대체면 예전처럼 시전 동작) */
@@ -596,12 +663,13 @@ export class HeroView {
     const over = r && p.active && inRect(p.x, p.y, r);
     const a16 = this.support().a16;
     if (a16) {
-      // 애니 시범: 두 손가락 벌리기/모으기 = 확대 (그동안 끌기 회전은 쉰다)
+      // 16방향: 두 손가락 벌리기/모으기 = 확대 (그동안 끌기 회전은 쉰다) · +/− 키 누르고 있기 = 확대/축소
       if (PINCH.k) { this.zoom = clamp((this.zoom || 1) * Math.exp(PINCH.k), ZOOM.MIN, ZOOM.MAX); PINCH.k = 0; any = true; }
       if (PINCH.active && this.drag) { this.drag = null; if (this.mode === 'drag') this.settleTo(this.snapOf(this.yaw)); }
-    }
+      if (KZ.dir) { this.zoom = clamp((this.zoom || 1) * Math.exp(KZ.dir * ZOOM.KEY_RATE * dt * 0.5), ZOOM.MIN, ZOOM.MAX); any = true; }
+    } else PINCH.k = 0;   // 16방향이 아닌 외형·다른 화면에서 쌓인 벌리기는 버린다
     if (over && ges && a16) {
-      // 애니 시범: 휠 = 확대 (회전은 끌기·버튼·키·스틱)
+      // 16방향: 휠 = 확대 (회전은 끌기·버튼·키·스틱)
       if (typeof ges.wheelNotches === 'number' && ges.wheelNotches) this.zoomBy(ges.wheelNotches);
       else if (ges.wheel) {
         this.wAcc += ges.wheel; this.wIdle = 0;

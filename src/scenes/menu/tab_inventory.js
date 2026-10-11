@@ -281,7 +281,7 @@ export class InventoryTab extends Tab {
     if (fx < this.sortRect.x - measure(ctx, cnt, 12, 700) - 16) text(ctx, cnt, this.sortRect.x - 10, fy + fh / 2 + 5, { size: 12, align: 'right', weight: 700, family: FONT.num, color: PAL.dim });
     divider(ctx, A.x + 12, fy + fh + 8, GW - 24, { center: false, a: 0.5 });
     // ── 격자 ──
-    const footH = touch ? 40 : 32;   // [qol] 아래 단추 줄 (가방 칸 수 · 거르기 · 일괄 처분)
+    const footH = touch ? 48 : 32;   // [qol] 아래 단추 줄 (가방 칸 수 · 거르기 · 일괄 처분)
     const GR = { x: A.x + 12, y: fy + fh + 16, w: GW - 24, h: A.h - (fh + 16) - 20 - footH - 6 };
     this.gridRect = GR;
     const cell = touch ? 60 : 56, gap = 6;

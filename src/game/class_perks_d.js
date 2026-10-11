@@ -572,8 +572,10 @@ const VEC_D = {
 export const MARKS_D = {
   /** 일점 (창신): 머리 위 붉은 과녁 — 중첩만큼 차는 고리, 20이면 맥동하는 붉은 빛 + 흰 점 */
   pin(ctx, e, n, k, t) {
-    const M = PERKS_D.isolde_speargod.N.max, m = Math.max(0, Math.min(M, n | 0)), full = m >= M;
-    const c = markReady() && markCell('pin' + m, 26, 26, 13, 13, (g) => {
+    const M = PERKS_D.isolde_speargod.N.max, m = Math.max(0, Math.min(M, n | 0)), full = m >= M, R = full ? 13 : 10 + m * 0.5;
+    // 20 중첩 전: 빛(반지름 10+0.5n, 0.4)·고리·점을 한 칸에 (덮어 그리기 한 번). 20 중첩: 맥동하는 빛은 따로
+    const c = markReady() && markCell('pin' + m, R * 2 + 4, R * 2 + 4, R + 2, R + 2, (g) => {
+      if (!full) { g.globalCompositeOperation = ADD; K.glow(g, 0, 0, R, '#ff9aac', 0.4); g.globalCompositeOperation = 'source-over'; }
       g.globalAlpha = 0.55; g.strokeStyle = '#1a0610'; g.lineWidth = 4.5;
       g.beginPath(); g.arc(0, 0, 8, 0, TAU); g.stroke();
       g.globalAlpha = 1; g.strokeStyle = full ? '#ffffff' : '#ff9aac'; g.lineWidth = 2.5;
@@ -583,10 +585,10 @@ export const MARKS_D = {
     });
     if (!c) return VEC_D.pin(ctx, e, n, k, t);
     const x = e.x + e.w / 2, y = e.y - 16, a = 0.55 + 0.45 * Math.min(1, k * 3);
-    ctx.globalCompositeOperation = ADD;
-    markGlow(ctx, x, y, full ? 24 + 4 * Math.sin(t * 14) : 10 + n * 0.5, full ? '#ff2040' : '#ff9aac', (full ? 0.75 : 0.4) * a);
+    if (full) { ctx.globalCompositeOperation = ADD; markGlow(ctx, x, y, 24 + 4 * Math.sin(t * 14), '#ff2040', 0.75 * a); }
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = a; drawCell(ctx, c, x, y);
   },
+
 };
 

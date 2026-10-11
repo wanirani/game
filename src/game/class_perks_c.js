@@ -258,21 +258,50 @@ function spawnClone(w, p, N) {
   L.push(K.fx(w, { life: N.t, z: 9, d, x: d.x - 70, y: d.b - p.h - 30, w: 140, h: p.h + 40, draw: drawClone, light: cloneLight }));
   w.fx.burst('dark', d.x, d.b - p.h * 0.5, 5, { speed: 90, color: '#3a1a5a' });
 }
+// BALANCE-PERF (perf_budget perk.umbra cloneSwing p95 ≤ 0.1 ms): 휘두를 때마다 적 목록을 한 번만 돌며 분신마다 가장 가까운 적을 함께 찾고
+// (분신 수 × O(적) → O(적)), 판정 사각형·타격 옵션은 모듈 객체를 다시 쓴다 (분신마다 객체를 만들지 않는다). 닿을 수 없는 분신
+// (가장 가까운 적까지 판정 길이 + 몸 반폭보다 멀다)은 판정(playerStrike: 맞을 수 있는 것 전부 순회)을 건너뛰고 휘두르는 그림만 낸다.
+const CL_FOE = [null, null, null, null], CL_D = [0, 0, 0, 0], CL_C = [null, null, null, null];
+const CL_RECT = { x: 0, y: 0, w: 0, h: 0 }, CL_KB = [100, -60];
+const CL_HIT = { mv: 1, element: 'dark', kb: CL_KB, dmgColor: '#c080ff', hitId: '', dir: 1 };
+const CL_SLASH = { radius: 60, arc: 1.6, width: 14, color: '#b060ff', life: 0.13 };
 function cloneSwing(w, p, mv, N) {
   const L = perkState(p).clones;
   if (!L || !L.length) return;
-  const b = mv.box, reach = 1 + (p.stats.reach ?? 0) / 100, bw = b.w * (b.x >= 0 ? reach : 1), hid = 'um' + p.curHitId;
-  const sl = mv.slash, sa = sl?.angle ?? 0;
-  for (let i = 0; i < L.length; i++) {
+  let m = 0;
+  for (let i = 0; i < L.length && m < CL_C.length; i++) {
     const c = L[i];
     if (c.dead || !c.started || c.lt >= c.life - 0.12) continue;
-    const d = c.d, e = nearestFoe(w, d.x, d.b - d.h * 0.5, N.r);
+    CL_C[m] = c; CL_FOE[m] = null; CL_D[m] = N.r * N.r; m++;
+  }
+  if (!m) return;
+  const E = w.entities;
+  for (let i = 0; i < E.length; i++) {
+    const e = E[i];
+    if (!liveFoe(e, w)) continue;
+    for (let j = 0; j < m; j++) {
+      const d = CL_C[j].d, dx = e.cx - d.x, dy = e.cy - (d.b - d.h * 0.5), q = dx * dx + dy * dy;
+      if (q < CL_D[j]) { CL_D[j] = q; CL_FOE[j] = e; }
+    }
+  }
+  const b = mv.box, reach = 1 + (p.stats.reach ?? 0) / 100, bw = b.w * (b.x >= 0 ? reach : 1);
+  const sl = mv.slash, sa = sl?.angle ?? 0;
+  CL_HIT.mv = (mv.mv ?? 1) * N.mvPct / 100; CL_HIT.hitId = 'um' + p.curHitId;
+  CL_SLASH.radius = sl?.r ?? 60; CL_SLASH.arc = sl?.arc ?? 1.6; CL_SLASH.width = sl?.width ?? 14;
+  for (let j = 0; j < m; j++) {
+    const c = CL_C[j], d = c.d, e = CL_FOE[j];
     if (e) d.face = Math.sign(e.cx - d.x) || d.face;
-    const x = d.face > 0 ? d.x + b.x : d.x - b.x - bw;
-    const n = strike(w, p, { x, y: d.b + b.y, w: bw, h: b.h }, { mv: (mv.mv ?? 1) * N.mvPct / 100, element: 'dark', kb: [100, -60], dmgColor: '#c080ff', hitId: hid, dir: d.face });
+    let n = 0;
+    // 판정은 닿을 수 있을 때만: 가장 가까운 적까지 가로 거리 ≤ 판정 앞끝(b.x + bw) + 적 반폭 (적이 없으면 부서지는 것 때문에 그대로 친다)
+    if (!e || Math.abs(e.cx - d.x) <= Math.abs(b.x) + bw + e.w * 0.5 + 8) {
+      CL_RECT.x = d.face > 0 ? d.x + b.x : d.x - b.x - bw; CL_RECT.y = d.b + b.y; CL_RECT.w = bw; CL_RECT.h = b.h;
+      CL_HIT.dir = d.face;
+      n = strike(w, p, CL_RECT, CL_HIT);
+    }
     d.sw = c.lt;
-    w.fx.slash(d.x + d.face * 24, d.b - d.h * 0.55, d.face > 0 ? sa : Math.PI - sa, { radius: sl?.r ?? 60, arc: sl?.arc ?? 1.6, width: sl?.width ?? 14, color: '#b060ff', life: 0.13 });
+    w.fx.slash(d.x + d.face * 24, d.b - d.h * 0.55, d.face > 0 ? sa : Math.PI - sa, CL_SLASH);
     count(n ? 'lia_umbra.hit' : 'lia_umbra.swing');
+    CL_C[j] = null; CL_FOE[j] = null;
   }
 }
 
@@ -1171,8 +1200,12 @@ export const MARKS_C = {
   },
   /** 동결: 몸을 덮은 얼음 껍질 (크기 2 px 단계로 굽는다) */
   frozen(ctx, e, n, k, t) {
-    const w = markStep(e.w + 6, 2), h = markStep(e.h + 6, 2);
-    const c = markReady() && markCell(`frozen${w}x${h}`, w + 4, h + 8, 2, 6, (g) => {
+    const w = markStep(e.w + 6, 2), h = markStep(e.h + 6, 2), R = Math.min(48, Math.max(w, h) * 0.6);
+    const W = Math.max(w / 2 + 2, R + 2), H = Math.max(h / 2 + 6, R + 2);
+    // 빛(0.5)과 얼음 껍질을 한 칸에 — 덮어 그리기 한 번 (칸 기준점 = 몸 가운데)
+    const c = markReady() && markCell(`frozen${w}x${h}`, W * 2, H * 2, W, H, (g) => {
+      g.globalCompositeOperation = ADD; K.glow(g, 0, 0, R, '#9fe8ff', 0.5); g.globalCompositeOperation = 'source-over';
+      g.translate(-w / 2, -h / 2);
       g.globalAlpha = 0.38; g.fillStyle = '#bff4ff';
       g.beginPath(); g.moveTo(0, h); g.lineTo(0, h * 0.18); g.lineTo(w * 0.22, 0); g.lineTo(w * 0.5, h * 0.1); g.lineTo(w * 0.78, -4); g.lineTo(w, h * 0.2); g.lineTo(w, h); g.closePath(); g.fill();
       g.globalAlpha = 0.85; g.strokeStyle = '#ffffff'; g.lineWidth = 1.6; g.stroke();
@@ -1180,11 +1213,11 @@ export const MARKS_C = {
       g.beginPath(); g.moveTo(w * 0.3, h * 0.2); g.lineTo(w * 0.45, h * 0.5); g.lineTo(w * 0.35, h * 0.8); g.moveTo(w * 0.45, h * 0.5); g.lineTo(w * 0.7, h * 0.62); g.stroke();
     });
     if (!c) return VEC_C.frozen(ctx, e, n, k, t);
-    const a = Math.min(1, k * 4), x = e.x - 3, y = e.y - 3;
-    ctx.globalCompositeOperation = ADD; markGlow(ctx, x + w / 2, y + h / 2, Math.min(48, Math.max(w, h) * 0.6), '#9fe8ff', 0.5 * a); ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = a; drawCell(ctx, c, x, y);
+    ctx.globalAlpha = Math.min(1, k * 4);
+    drawCell(ctx, c, e.x - 3 + w / 2, e.y - 3 + h / 2);
     ctx.globalAlpha = 1;
   },
+
   /** 보스 냉기 감속: 발밑 서리 고리 + 머리 위 눈꽃 (눈꽃은 한 장을 돌려 그린다) */
   frost(ctx, e, n, k, t) {
     const rw = markStep(e.w * 0.65);

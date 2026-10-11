@@ -312,12 +312,13 @@ function releaseEntry(E) {
   let b = 0;
   for (const L of E.levels) b += assets.release(akey(E, 'atlas', L)) + assets.release(akey(E, 'mask', L));
   b += assets.release(`${E.root}/${E.key}/turn`) + assets.release(`${E.root}/${E.key}/turn_mask`);
+  b += assets.release(`${E.root}/${E.key}/turn16_ui`) + assets.release(`${E.root}/${E.key}/turn16_lo`);   // 16방향 시트 (메뉴 턴테이블)
   E.turnImg = null; E.turnMask = null;
   for (const k in E.dark) recycle(E.dark[k]);
   E.dark = {};
   for (const k in E.lit || {}) { recycle(E.lit[k].cv); recycle(E.lit[k].dark); }
   E.lit = {};
-  for (const V of E.vars.values()) { for (const k in V.img) recycle(V.img[k]); for (const k in V.dark) recycle(V.dark[k]); for (const k in V.lit || {}) { recycle(V.lit[k].cv); recycle(V.lit[k].dark); } recycle(V.turn); }
+  for (const V of E.vars.values()) { for (const k in V.img) recycle(V.img[k]); for (const k in V.dark) recycle(V.dark[k]); for (const k in V.lit || {}) { recycle(V.lit[k].cv); recycle(V.lit[k].dark); } recycle(V.turn); for (const k in V.t16 || {}) recycle(V.t16[k]); }
   E.vars.clear();
   E.state = 0; E.req = false; E.gen++;
   return b;
@@ -1143,60 +1144,93 @@ export function drawTurnStep(ctx, I, deg, sx, alpha, t) {
   ctx.restore();
   return { s, v, m: st.m };
 }
-// ── 16방향 턴테이블 (rig.turn.turn16 — 지금은 이 시트를 가진 퍼펫이 없어 쉬는 경로. 시트가 생기면 hero_view 가 쓴다; 22.5° 간격) ──
-// 각도 규칙은 drawHeroYaw 와 같다: 0 = 오른쪽을 봄, π/2 = 앞모습, π = 왼쪽을 봄, −π/2 = 뒷모습. 좌우 반전 없음 (실제로 돈 영상).
-/** 이 퍼펫이 16방향 뷰를 가졌는가 (시트 로드 전이면 요청하고 false) */
-export function turn16Ready(I) {
-  const T = I?.E?.rig?.turn;
-  if (!T?.turn16?.length) return false;
-  return turnReady(I);
+// ── 16방향 턴테이블 (지금 유화풍 원화를 클링 360° 턴테이블 영상에서 뽑은 16칸, 22.5° 간격 — tools/puppet/turn16_build.py) ──
+// 목록 assets/puppets/turn16.json looks["<cid>/<cls>"] (원화 직업 키 = entry 키, 초월은 artClass 로 2차 원화를 쓴다)
+// 시트 assets/puppets/<cid>/<cls>/turn16_ui.webp (메뉴 해상도) · turn16_lo.webp (같은 배치를 lo.kx 배로 줄인 것, 낮은 화질 등급)
+// 각도 규칙은 drawHeroYaw 와 같다: 0 = 오른쪽을 봄, π/2 = 앞모습, π = 왼쪽을 봄, −π/2 = 뒷모습. 실제로 돈 영상이라 좌우 반전 없음
+// (영상이 한 바퀴를 다 못 돌아 빠진 각만 반대편 칸의 거울 m:1). 목록이 없거나 이 외형 항목이 없으면 hero_view 가 예전 8방향 경로를 쓴다.
+let T16M = null, T16Q = false;
+function t16Man() {
+  if (T16M || T16Q || typeof window === 'undefined') return T16M;
+  T16Q = true;
+  Promise.resolve(assets.json('puppets/turn16')).then((j) => { T16M = (j && typeof j === 'object' && j.looks) || {}; REV++; }, () => { T16M = {}; });
+  return T16M;
 }
-const T16 = { a: null, b: null, k: 0, wa: 0, wb: 0 };
-/** yaw(라디안)에서 이웃한 두 뷰와 섞는 비율. 가운데 50% 에서만 교차 (멈춘 칸에서는 한 장) */
+t16Man();
+/** 16방향 목록을 받았는가 (받기 전에는 어느 경로도 확정하지 않는다) */
+export function turn16Known() { return t16Man() !== null; }
+/** 이 퍼펫 인스턴스의 16방향 항목 (없으면 null) */
+export function turn16Entry(I) { const M = t16Man(); return (M && I?.E && Object.prototype.hasOwnProperty.call(M, I.E.key) && M[I.E.key]) || null; }
+/** 16방향 시트 이미지: lo = 낮은 화질 등급(작은 시트). ui 가 이미 있으면 그것을, lo 를 받는 동안은 받아 둔 쪽을 쓴다 → {img, kx, ky} | null */
+function t16Img(I, lo) {
+  const T = turn16Entry(I); if (!T) return null;
+  const E = I.E, ui = `${E.root}/${E.key}/turn16_ui`, lk = `${E.root}/${E.key}/turn16_lo`;
+  touchUse(E, performance.now());
+  let img = null, k = null;
+  if (!lo || peek(ui)) { img = assets.get(ui, T.ui.v); k = 1; }
+  if (!img) { const l = lo ? assets.get(lk, T.lo.v) : peek(lk); if (l) { img = l; k = T.lo; } }
+  if (!img) return null;
+  const kx = k === 1 ? 1 : k.kx, ky = k === 1 ? 1 : k.ky;
+  return { img: t16Src(I, img, kx === 1 ? 'ui' : 'lo'), kx, ky };
+}
+/** 초월 색조(V.tint)는 마스크 없이 시트 전체에 (갑옷색 재칠은 16방향 마스크가 없어 원화 색 그대로) — 변형·시트별 1회 */
+function t16Src(I, img, lv) {
+  const V = I.V;
+  if (!V || !V.tint || typeof document === 'undefined') return img;
+  V.t16 = V.t16 || {};
+  return V.t16[lv] || (V.t16[lv] = recolorCanvas(img, null, { ...V, ac: null, tc: null }));
+}
+/** 이 퍼펫이 16방향 뷰를 그릴 수 있는가 (시트 로드 전이면 요청하고 false) */
+export function turn16Ready(I, lo = false) { return !!t16Img(I, lo); }
+const T16 = { a: null, b: null, k: 0, f: 0 };
+const pos360 = (d) => ((d % 360) + 360) % 360;
+/** yaw(라디안)에서 이웃한 두 뷰와 섞는 비율 k (0 = a 만, 1 = b 만). 칸 가운데 70 % 에서 교차 — 멈춘 칸에서는 한 장 */
 export function turn16Pick(I, yaw) {
-  const L = I.E.rig.turn.turn16, n = L.length;
-  let deg = ((yaw * 180) / PI) % 360; if (deg < 0) deg += 360;
-  const step = 360 / n;
-  // turn16 은 −157.5 … 180 순서 → 0 … 360 기준 위치
-  const pos = (d) => ((d % 360) + 360) % 360;
+  const T = turn16Entry(I), L = T?.views;
+  if (!L?.length) return null;
+  const n = L.length, step = 360 / n;
+  const deg = pos360((yaw * 180) / PI);
   let i0 = 0, best = 1e9;
-  for (let i = 0; i < n; i++) { const d = deg - pos(L[i].deg); const dd = d < 0 ? d + 360 : d; if (dd < best) { best = dd; i0 = i; } }
-  const a = L[i0], b = L.find((e) => Math.abs(pos(e.deg) - pos(pos(a.deg) + step)) < 0.5) || a;
-  const f = clamp(best / step, 0, 1);
-  const x = clamp((f - 0.25) / 0.5, 0, 1);
-  T16.a = a.v; T16.b = b.v; T16.k = x * x * (3 - 2 * x); T16.f = f;
+  for (let i = 0; i < n; i++) { const dd = pos360(deg - pos360(L[i].deg)); if (dd < best) { best = dd; i0 = i; } }
+  const a = L[i0];
+  let b = a, bd = 1e9;
+  for (const e of L) { const dd = pos360(pos360(e.deg) - pos360(a.deg)); if (dd > 0.5 && dd < bd) { bd = dd; b = e; } }
+  const f = clamp(best / Math.max(1, bd < 1e8 ? bd : step), 0, 1);
+  const x = clamp((f - 0.15) / 0.7, 0, 1);
+  T16.a = a; T16.b = b; T16.k = x * x * (3 - 2 * x); T16.f = f;
   return T16;
 }
+/** 16방향 앞모습의 그리기 키(논리 px, 발바닥 → 정수리)와 배율 — 망토·후광 배치용. 항목 없음 = null */
+export function turn16Size(I) {
+  const T = turn16Entry(I); if (!T) return null;
+  const v = T.views.find((e) => e.deg === 90) || T.views[0];
+  return { sc: T.sc, h: v.fy * T.sc };
+}
 /**
- * 16방향 몸 그리기. ctx 는 발 중앙 원점·논리 배율(hs) 적용 상태. 반환: 그린 뷰 정보(가장 비중 큰 뷰)
+ * 16방향 몸 그리기. ctx 는 발 중앙 원점·논리 배율(hs) 적용 상태. 반환: {a, b, k} (그린 두 뷰와 교차 비율) | null (시트 없음)
  * 교차: 앞 뷰를 먼저(불투명도 min(1, 2(1−k))), 다음 뷰를 위에(min(1, 2k)) — 둘 다 반투명해지는 '유령' 구간이 없다.
  * 실루엣 폭 보간: 두 뷰의 어깨 띠 폭(bw)을 k 로 섞은 폭에 맞춰 각각 가로로 늘이고 줄인다 → 바뀌는 순간 몸 폭이 튀지 않는다.
- * 배율: 모든 뷰에 앞모습 한 장의 배율 (카메라가 고정된 영상이라 뷰마다 키를 맞추면 머리카락 높이 차이로 몸이 커졌다 작아진다).
- * 게임 퍼펫과 같은 키: 리그 artTop(머리카락 꼭대기)·figTop(배율 기준) 비율만큼 PUP_H 보다 크게.
+ * 배율: 모든 칸에 같은 배율 sc (카메라가 고정된 영상) — 예전 8방향 앞모습과 같은 키. 땅선(fy)도 모든 칸이 같다.
  */
-export function drawTurn16(ctx, I, yaw, t, alpha = 1) {
-  const E = I.E, T = E.rig.turn, r = E.rig;
-  if (!E.turnImg) return null;
-  const P = turn16Pick(I, yaw);
-  const v0 = T.views.y90 || T.views[T.turn16[0].v];
-  const ratio = r.artTop != null ? (r.sole - r.artTop) / (r.sole - r.figTop) : 1;
-  const s = (PUP_H * ratio) / (v0.footY - v0.topY);
-  const va = T.views[P.a], vb = T.views[P.b];
-  if (!va) return null;
+export function drawTurn16(ctx, I, yaw, t, alpha = 1, lo = false) {
+  const S = t16Img(I, lo);
+  if (!S) return null;
+  const T = turn16Entry(I), P = turn16Pick(I, yaw);
+  if (!P) return null;
+  const va = P.a, vb = P.b, sc = T.sc;
   const breath = 1 + Math.sin(t * 2.2) * 0.006;
-  const wT = vb ? lerp(va.bw, vb.bw, P.k) : va.bw;
-  const img = turnSrc(I);
+  const wT = lerp(va.bw, vb.bw, P.k);
   const one = (v, a) => {
     if (a <= 0.002) return;
     ctx.save();
     ctx.globalAlpha *= a * alpha;
-    ctx.scale(s * (wT / (v.bw || wT)), s * breath);
-    ctx.drawImage(img, v.x, v.y ?? 0, v.w, v.h, -v.axisX, -v.footY, v.w, v.h);
+    ctx.scale((v.m ? -1 : 1) * sc * (wT / (v.bw || wT)), sc * breath);
+    ctx.drawImage(S.img, v.x * S.kx, v.y * S.ky, v.w * S.kx, v.h * S.ky, -v.ax, -v.fy, v.w, v.h);
     ctx.restore();
   };
   one(va, Math.min(1, 2 * (1 - P.k)));
-  if (vb && vb !== va && P.k > 0.002) one(vb, Math.min(1, 2 * P.k));
-  return { s, v: P.k < 0.5 ? va : vb, k: P.k, a: P.a, b: P.b };
+  if (vb !== va && P.k > 0.002) one(vb, Math.min(1, 2 * P.k));
+  return P;
 }
 /**
  * 턴테이블 채색 뷰의 무기 (원화에는 허리의 채찍 똬리만 있다). platform.md §7.3: 장착 무기가 8방향 모두에서 보이게.

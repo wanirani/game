@@ -150,7 +150,8 @@ function decorate(g, item) {
   const sc = score == null ? '' : Math.abs(score) < 0.05 ? '±0' : `${score > 0 ? '+' : '−'}${(Math.round(Math.abs(score) * 10) / 10).toFixed(1)}`;
   let suf = '';
   if (mark) suf += ` ${mark === 'up' ? '▲' : mark === 'down' ? '▼' : '='} ${sc}`;
-  if (mark === 'up') suf += input.touchMode ? ' · 눌러서 장착' : ' · 클릭해 장착';
+  // 패드에는 새 단축키를 두지 않는다 (qol_equip 정리: 토스트 터치·클릭만) → 패드면 안내 없이 표시만
+  if (mark === 'up' && input.mode !== 'pad') suf += input.touchMode ? ' · 눌러서 장착' : ' · 클릭해 장착';
   else if (other) suf += ` · ${CHARACTERS[other]?.name?.split(' ')[0] ?? ''}에게 ▲`;
   const name = itemName(item);
   const head = `획득: ${name}`;
@@ -184,7 +185,7 @@ bus.on('stageEntered', () => {
   // 스테이지 입장 때 가방 경고 (qol_equip §5) — 누르면 일괄 처분 창
   const msg = free <= 0 ? '가방이 가득 찼습니다' : `가방 남은 칸 ${free}`;
   const run = () => {
-    g.toast(`${msg} — ${input.touchMode ? '눌러서' : '클릭해'} 일괄 처분`, '#ffb060', 5);
+    g.toast(input.mode === 'pad' ? `${msg} — 메뉴 › 인벤토리에서 일괄 처분` : `${msg} — ${input.touchMode ? '눌러서' : '클릭해'} 일괄 처분`, '#ffb060', 5);
     const t = g.toasts[g.toasts.length - 1];
     if (t) t._qol = { action: 'dispose' };
     hook(g);

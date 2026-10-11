@@ -1090,6 +1090,8 @@ export const SFX_V1 = (() => {
 const DIE_ALT = { hit_bone: 'bone', hit_ghost: 'ghost', hit_stone: 'stone', hit_flesh: '' };
 export const V2_DIR = 'audio/sfx_v2/';
 const V2_JIT = 0.09;                          // 음량 흔들림 ±9 % (≈ ±0.8 dB)
+const V2_LAZY_RATE = 24000;                   // 휴대폰·저사양: index lazy(드문) 소리를 푸는 rate (핵심 소리는 REC_PROFILE.sfxRate)
+const V2_TRICKLE = 6;                         // 드문 소리를 한 번에 받는 이름 수
 // 장소별 방 잔향 (theme → 공간): 길이(초) · 초기 반사 수 · 고역 감쇠 · v2 소리마다 보내는 양
 const V2_ROOMS = {
   open: { sec: 0.32, refl: 4, damp: 0.55, send: 0.07 },
@@ -1143,7 +1145,26 @@ export class V2Bank {
   attach(ctx) {
     this.ctx = ctx;
     try { const r = REC_PROFILE[recProfileName()]?.sfxRate || 0; this.rate = r && r < ctx.sampleRate ? r : 0; } catch { this.rate = 0; }
-    return (this.readyP = this.index().then((ix) => (ix ? this.load(ix.names || Object.keys(ix.sfx)) : null)));
+    // index 의 lazy 이름(미니게임·대장간·연출 징글·동료 울음 등 드문 소리)은 핵심 소리를 다 푼 뒤 조금씩 나눠 푼다 — 첫 입력 직후의 디코드·메모리 몰림을 줄인다.
+    // 휴대폰·저사양 묶음(sfxRate 가 있는 기기)은 드문 소리를 24 kHz 로 풀어 메모리를 아낀다. 끝나기 전에 불리면 sample() 이 바로 받기 시작한다.
+    this.lazyRate = this.rate ? Math.min(this.rate, V2_LAZY_RATE) : 0;
+    return (this.readyP = this.index().then((ix) => {
+      if (!ix) return null;
+      const names = ix.names || Object.keys(ix.sfx), lazy = (n) => !!(Object.hasOwn(ix.sfx, n) && ix.sfx[n]?.lazy);
+      return this.load(names.filter((n) => !lazy(n))).then(() => this._trickle(names.filter(lazy)));
+    }));
+  }
+  /** 드문 이름을 V2_TRICKLE 개씩 짧은 간격으로 받는다 (모두 끝나면 풀림) */
+  _trickle(names) {
+    return new Promise((res) => {
+      let i = 0;
+      const step = () => {
+        if (i >= names.length) { res(); return; }
+        const part = names.slice(i, (i += V2_TRICKLE));
+        this.load(part).then(() => setTimeout(step, 60), () => setTimeout(step, 60));
+      };
+      setTimeout(step, 250);
+    });
   }
   index() {
     if (this.ixP) return this.ixP;
@@ -1167,14 +1188,15 @@ export class V2Bank {
       const d = Object.hasOwn(ix.sfx, n) ? ix.sfx[n] : null;
       if (!d || this.smp.has(n) || !Array.isArray(d.f)) continue;
       this.smp.set(n, undefined);   // 받는 중
-      jobs.push(Promise.all(d.f.map((fid) => this._file(fid))).then((bs) => {
+      const rate = d.lazy && this.lazyRate ? this.lazyRate : this.rate;
+      jobs.push(Promise.all(d.f.map((fid) => this._file(fid, rate))).then((bs) => {
         const bufs = bs.filter(Boolean);
         this.smp.set(n, bufs.length ? { bufs, g: Number(d.g) || 1, rev: d.rev, room: d.room, last: -1 } : null);
       }));
     }
     return Promise.all(jobs).then(() => { this.state = 'ready'; });
   }
-  _file(fid) {
+  _file(fid, rate = this.rate) {
     if (this.files.has(fid)) return this.files.get(fid);
     const f = this.ix.files[fid];
     const p = (async () => {
@@ -1183,7 +1205,7 @@ export class V2Bank {
         const data = await v2Bytes(`${this.root}${fid}.${fmt}`, f[fmt] ? `?h=${f[fmt]}` : '');
         if (!data) continue;
         try {
-          const buf = await decodeAt(this.ctx, data, this.rate);
+          const buf = await decodeAt(this.ctx, data, rate);
           const d = buf.getChannelData(0), m = Math.min(d.length, Math.ceil(buf.sampleRate * 0.25));
           let i = 0; while (i < m && d[i] < 0.003 && d[i] > -0.003) i++;
           const off = Math.max(0, Math.min(0.1, (i < m ? i : 0) / buf.sampleRate - (Number(f.on) || 0)));   // 디코더 앞 지연(프라이밍) 건너뛰기
@@ -1198,7 +1220,12 @@ export class V2Bank {
   }
   /** 이 이름이 v2 이름인가 (받기 전이어도) */
   has(name) { return !!this.ix && Object.hasOwn(this.ix.sfx, name); }
-  sample(name) { const m = this.smp.get(name); return m || null; }
+  sample(name) {
+    const m = this.smp.get(name);
+    if (m) return m;
+    if (m === undefined && !this.smp.has(name) && this.ix && this.ctx && Object.hasOwn(this.ix.sfx, name)) this.load([name]);   // 아직 차례가 안 온 드문 이름: 지금 받기 시작 (이번 한 번은 지금 소리)
+    return null;
+  }
   stats() { let n = 0; for (const v of this.smp.values()) if (v) n++; return { state: this.state, err: this.err, fmt: this.fmt?.[0] ?? null, names: this.ix ? Object.keys(this.ix.sfx).length : 0, loaded: n, bytes: this.bytes, rate: this.rate || this.ctx?.sampleRate || 0 }; }
 }
 

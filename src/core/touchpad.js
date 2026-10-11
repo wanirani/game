@@ -50,29 +50,87 @@ import * as HAP from './haptics.js';
 /** 동작 버튼 (편집기에서 옮길 수 있는 것) */
 export const PAD_IDS = ['attack', 'jump', 'dash', 'sub', 'skill1', 'skill2', 'ult', 'swap', 'mount', 'guard'];
 export const SYS_IDS = ['pause', 'bag', 'fullscreen', 'maptog'];
-/** 크기 등급 S 기준 [right, bottom, 지름] (CSS px, 안전 영역 오른쪽 아래 모서리에서 버튼 중심까지) — MASTER_PLAN §1.4 */
-export const PAD_LAYOUT_S = {
-  attack: [108, 58, 72], jump: [36, 118, 68], dash: [190, 44, 56], sub: [118, 146, 54],
-  skill1: [190, 122, 54], skill2: [50, 200, 54], ult: [262, 96, 58], swap: [128, 214, 44],
-  mount: [262, 176, 48], guard: [196, 200, 48],
-};
-/** 폴드 펼침·태블릿 배치 (hud_mobile §3 오른쪽 아래 스킬 원호): 큰 공격 버튼 둘레로 보조·스킬1·스킬2·필살(위), 바깥에 점프·대시·탑승·⇄·수호.
- *  [right, bottom, 지름] CSS px (foldScale 1 기준 — 화면 높이 760 CSS px 쯤) */
-export const PAD_LAYOUT_FOLD = {
-  attack: [128, 100, 104], jump: [40, 186, 72], dash: [36, 52, 54],
-  sub: [241, 59, 60], skill1: [243, 135, 60], skill2: [199, 197, 60], ult: [124, 220, 68],
-  mount: [216, 270, 52], swap: [300, 196, 50], guard: [316, 108, 50],
-};
-export const FOLD_ASPECT = 1.55;
-/** 폴드 배치 배율: 화면 높이 760 CSS px = 1 (0.7–1.25) × touchScale × settings.hud.scale */
-export function foldScale(cssH, touchScale = 1, hudScale = 1) {
-  return clamp((Number(cssH) || 760) / 760, 0.7, 1.25) * clamp(Number(touchScale) || 1, 0.8, 1.3) * clamp(Number(hudScale) || 1, 0.85, 1.2);
+// ── HUD-REDO 배치 (사용자 피드백 2026-10-11, /tmp/claude-0/g10/hudredo_design.md) ──
+// 단위 dp = CSS px (폴드 8 펼침 DPR 2: 1 dp = 0.163 mm). 가장자리 여백 PAD_M 은 화면 끝(+안전 영역)에서 '그린 테' 바깥까지.
+// 아래 줄 (왼쪽→오른쪽): 점프 · 공격 · 대시 (대시가 모서리). 탈것은 대시 위 (예전 점프 자리), 수호는 탈것 위.
+// 스킬 원호는 공격 위에서 왼쪽 아래로 납작하게: 필살 → 스킬2 → 스킬1 → ⇄(넘김). 보조는 원호 위 (예전 탈것 자리).
+// 마을(공격 버튼을 숨긴 장면): 탈것 · 점프 · 대시 를 대시의 아래 줄에 같은 간격으로.
+// 아래 띠(band): 띠 안에 두 줄 — 아랫줄 넘김 · 수호 · 점프 · 공격 · 대시, 윗줄은 그 사이사이 (보조 · 스킬1 · 스킬2 · 필살 · 탈것).
+export const PAD_M = 25;                                  // 가장자리 여백 dp (폴드 4.1 mm) — 그린 테 바깥까지
+export const PAD_GAP = 14;                                // 버튼 사이 (누르는 원 사이) 최소 dp (2.3 mm)
+export const PAD_SIZE = Object.freeze({ A: 78, B: 60, U: 58, S: 58 });   // 공격 · 일반(점프·대시·탈것·보조·스킬) · 필살 · ⇄/수호
+/** 그린 테의 지름 / 버튼 지름 (assets/ui/hud 알파에서 잰 값: ring_attack 1.14, frame_ult 1.12, ring_small 1.02) */
+export const RIM = Object.freeze({ attack: 1.14, ult: 1.12 });
+export const rimOf = (id) => RIM[id] ?? 1.02;
+const SZ = { attack: 'A', ult: 'U', swap: 'S', guard: 'S' };
+/**
+ * 버튼 배치 생성 → {id: [right, bottom, d]} (dp, 안전 영역 오른쪽 아래 모서리에서 버튼 중심까지)
+ *  kind 'overlay'(게임 화면 위 — 폴드·태블릿·휴대폰 공통) | 'band'(아래 띠) · k 크기 배율 · town = 공격 버튼이 없는 장면 (탈것·점프·대시 한 줄)
+ *  여백 m 은 배율과 상관없이 그대로 (그린 테 바깥까지)
+ */
+export function padPlan(kind = 'overlay', k = 1, m = PAD_M, town = false) {
+  const A = PAD_SIZE.A * k, B = PAD_SIZE.B * k, U = PAD_SIZE.U * k, S = PAD_SIZE.S * k, G = Math.max(12, PAD_GAP * k);
+  const rA = (A / 2) * RIM.attack, rB = (B / 2) * 1.02;
+  const yb = m + rA;                                     // 아래 줄 중심 높이 (공격 테가 여백에 닿게)
+  const P = {};
+  P.dash = [m + rB, yb, B];
+  P.attack = [P.dash[0] + B / 2 + G + A / 2, yb, A];
+  P.jump = [P.attack[0] + A / 2 + G + B / 2, yb, B];
+  P.mount = [P.dash[0], yb + B + G, B];
+  if (kind === 'band') {
+    // 띠 안 두 줄: 아랫줄 오른쪽부터 대시 · 공격 · 점프 · 수호 · ⇄, 윗줄은 아랫줄 버튼 사이에 벽돌처럼
+    P.guard = [P.jump[0] + B / 2 + G + S / 2, yb, S];
+    P.swap = [P.guard[0] + S + G, yb, S];
+    const ux = (P.attack[0] + P.jump[0]) / 2, dxA = ux - P.attack[0];
+    const uy = Math.max(yb + Math.sqrt(Math.max(0, (A / 2 + U / 2 + G) ** 2 - dxA * dxA)), yb + B + G);   // 대시 위 탈것과 같은 높이
+    P.ult = [ux, uy, U];
+    P.skill2 = [ux + U / 2 + G + B / 2 + 4 * k, uy, B];
+    P.skill1 = [P.skill2[0] + B + G + 2 * k, uy, B];
+    P.sub = [P.skill1[0] + B + G + 2 * k, uy, B];
+    P.mount = [P.dash[0], uy, B];
+  } else {
+    P.guard = [P.dash[0], P.mount[1] + B / 2 + G + S / 2, S];
+    P.ult = [P.attack[0], yb + A / 2 + G + U / 2 + 4 * k, U];
+    const step = (from, dist, deg) => { const a = (deg * Math.PI) / 180; return [from[0] + dist * Math.cos(a), from[1] - dist * Math.sin(a)]; };
+    const s2 = step(P.ult, U / 2 + B / 2 + G + 2 * k, 8);
+    P.skill2 = [s2[0], s2[1], B];
+    const s1 = step(P.skill2, B + G + 2 * k, 18);
+    P.skill1 = [s1[0], s1[1], B];
+    const sw = step(P.skill1, B / 2 + S / 2 + G + 2 * k, 32);
+    P.swap = [sw[0], sw[1], S];
+    // 보조: 스킬1·스킬2 위 (세 원이 같은 간격의 삼각형)
+    const mx = (P.skill1[0] + P.skill2[0]) / 2, my = (P.skill1[1] + P.skill2[1]) / 2;
+    const vx = P.skill1[0] - P.skill2[0], vy = P.skill1[1] - P.skill2[1], vl = Math.hypot(vx, vy) || 1;
+    const h = Math.sqrt(Math.max(0, (B + G + 2 * k) ** 2 - (vl / 2) ** 2));
+    P.sub = [mx - (vy / vl) * h, my + (vx / vl) * h, B];
+    if (P.sub[1] < my) P.sub = [mx + (vy / vl) * h, my - (vx / vl) * h, B];
+  }
+  if (town) { // 마을: 대시 자리는 그대로, 점프·탈것은 대시 옆 같은 줄 (같은 간격)
+    P.jump = [P.dash[0] + B + G, yb, B];
+    P.mount = [P.jump[0] + B + G, yb, B];
+  }
+  for (const id in P) P[id] = P[id].map((v) => Math.round(v * 10) / 10);
+  return P;
 }
-/** 폴드 시스템 아이콘 줄 (오른쪽 위, 오른쪽부터 메뉴(Ⅱ)·가방·지도·⛶) → {id: {id,cx,cy,d}} CSS px */
-export function foldSysPlan(W, ins, sd, fs) {
-  const y = ins.t + 8 + sd / 2, out = {};
-  let x = W - ins.r - 8 - sd / 2;
-  for (const id of fs ? ['pause', 'bag', 'maptog', 'fullscreen'] : ['pause', 'bag', 'maptog']) { out[id] = { id, cx: x, cy: y, d: sd }; x -= sd + 12; }
+/** 예전 이름 (도구·조작 안내·데스크톱 원호 HUD 가 읽는다): 배율 1 의 표 */
+export const PAD_LAYOUT_FOLD = Object.freeze(padPlan('overlay', 1));
+export const PAD_LAYOUT_S = PAD_LAYOUT_FOLD;
+export const PAD_LAYOUT_BAND = Object.freeze(padPlan('band', 1));
+export const FOLD_ASPECT = 1.55;
+/** 버튼 크기 배율: 폴드·태블릿 화면 높이 750 dp = 1 (0.88–1.1), 휴대폰(넓은 배치) 430 dp = 1 (0.82–1) — × touchScale × settings.hud.scale */
+export function foldScale(cssH, touchScale = 1, hudScale = 1, wide = false) {
+  const h = Number(cssH) || 750;
+  const base = wide ? clamp(h / 430, 0.82, 1) : clamp(h / 750, 0.88, 1.1);
+  return base * clamp(Number(touchScale) || 1, 0.8, 1.3) * clamp(Number(hudScale) || 1, 0.85, 1.2);
+}
+/** 시스템 아이콘 지름 (dp) */
+export const SYS_D = 46;
+/** 폴드 시스템 아이콘 줄 (오른쪽 위, 오른쪽부터 메뉴(Ⅱ)·가방·지도·⛶; 그린 테 바깥이 위·오른쪽 여백 PAD_M) → {id: {id,cx,cy,d}} CSS px.
+ *  ids 를 주면 그 순서로 (마을은 지도 없음) */
+export function foldSysPlan(W, ins, sd, fs, ids = null) {
+  const y = ins.t + PAD_M + sd / 2, out = {};
+  let x = W - ins.r - PAD_M - sd / 2;
+  for (const id of ids ?? (fs ? ['pause', 'bag', 'maptog', 'fullscreen'] : ['pause', 'bag', 'maptog'])) { out[id] = { id, cx: x, cy: y, d: sd }; x -= sd + 12; }
   return out;
 }
 /** 프리셋 ('wide' | 'fold'): settings.hud.preset, 'auto' 면 논리 화면비 */
@@ -81,11 +139,12 @@ export function presetOf(st, vw, vh) {
   if (p === 'wide' || p === 'fold') return p;
   return (Number(vw) || 960) / (Number(vh) || 540) < FOLD_ASPECT ? 'fold' : 'wide';
 }
-/** 태블릿 띠 배치 (캔버스 아래 남는 세로 ≥ 120 CSS px): 두 줄로 납작하게. 윗줄 위 끝 157 (× 배율) */
-export const PAD_LAYOUT_BAND = {
-  jump: [36, 46, 68], attack: [124, 46, 72], dash: [206, 46, 56], swap: [284, 46, 44], guard: [356, 46, 48],
-  skill2: [44, 128, 54], sub: [124, 128, 54], skill1: [204, 128, 54], ult: [284, 128, 58], mount: [356, 128, 48],
-};
+/** 배치 표의 그린 테까지 크기: {top, extent} (dp; 아래·오른쪽 끝에서 가장 먼 테 바깥) */
+export function planExtent(P) {
+  let top = 0, extent = 0;
+  for (const id in P) { const [r, b, d] = P[id], h = (d / 2) * rimOf(id); top = Math.max(top, b + h); extent = Math.max(extent, r + h); }
+  return { top, extent };
+}
 const MIN_D = 44;          // 버튼 최소 지름 (CSS px)
 const MAX_D_EDIT = 96;     // 편집기 크기 조절 상한 (§5.3)
 const GAP = 14;            // 버튼 사이 최소 간격 (수용 조건 12 px + 여유)
@@ -94,7 +153,7 @@ const SYS_SLOP = 8;
 const BAND_MIN = 120;      // 태블릿 띠로 보는 캔버스 아래 여백 (CSS px)
 const HUD_TOP = 88;        // 오른손: 점수 칸 아래 (논리 px, MASTER_PLAN §1.8)
 const HUD_TOP_LEFT = 172;  // 왼손 모드: 왼쪽 위 HUD 묶음(준비 문구까지) 아래
-const STICK_R = 60;        // 스틱 받침 반지름 (Ø120), 손잡이 Ø52
+const STICK_R = 57;        // 스틱 이동 반지름 (dp) — 받침 그림 2.3R ≈ 131 dp ≈ 21 mm (폴드), 손잡이 Ø ≈ 0.87R
 const KNOB_R = 26;
 const STICK_DZ = 10;       // 데드존 (CSS px)
 const SPRINT_K = 1.15, REANCHOR_K = 1.4;
@@ -102,7 +161,8 @@ const STICK_FADE = 0.3;    // 뗀 뒤 사라지는 시간 (s)
 const SWAP_LONG = 350;     // ms
 const SWAP_HOLD_MS = 100, SWAP_HOLD_STEPS = 3;
 const DRAW_MS = 32;        // 다시 그리기 간격 하한 (≤ 30 Hz; 60/120 Hz 화면에서 33.3ms 마다)
-const OVERLAY_MP = 1.2e6;  // 오버레이 백킹 픽셀 상한
+const OVERLAY_MP = { low: 1.5e6, medium: 6.5e6, high: 6.5e6 };   // 오버레이 백킹 픽셀 상한 (품질 등급별; HUD-REDO: 기기 해상도로)
+const OVERLAY_DPR = { low: 1.5, medium: 3, high: 3 };
 
 /** 버튼 → 입력 액션 (예전 DOM 패드와 같다: 점프는 결정, Ⅱ 는 취소도) */
 const ACTS = {
@@ -112,7 +172,7 @@ const ACTS = {
 /** HUD 탭 자리가 보낼 수 있는 입력 액션 */
 const ACT_OK = new Set(['sub', 'map', 'menu', 'mount', 'guard', 'skill1', 'skill2', 'ult', 'swap']);
 const LABEL = {
-  attack: '공격', jump: '점프', dash: '대시', sub: '보조', skill1: 'S1', skill2: 'S2', ult: '필살', swap: '⇄', mount: '탑승', guard: '수호',
+  attack: '공격', jump: '점프', dash: '대시', sub: '보조', skill1: 'S1', skill2: 'S2', ult: '필살', swap: '넘김', mount: '탑승', guard: '수호',
 };
 /** padHideButtons 를 정하지 않은 마을: 전투 버튼 숨김 (hub.js NO_COMBAT + 수호; 탈것은 남긴다) */
 const HUB_HIDE = ['attack', 'sub', 'skill1', 'skill2', 'ult', 'swap', 'guard'];
@@ -183,12 +243,12 @@ function fsShown() {
   } catch { return false; }
 }
 /** 저장된 사용자 배치 (검증된 항목만) → {id:[right,bottom,d]} | null */
-function customLayout(st, fold = false) {
+function customLayout(st, prefix = '') {
   const v = st.touchLayout;
   if (!v || typeof v !== 'object') return null;
   let out = null;
   for (const id of PAD_IDS) {
-    const b = v[fold ? 'fold:' + id : id];
+    const b = v[prefix + id];
     if (!b || typeof b !== 'object') continue;
     const r = b.right, bt = b.bottom, d = b.d;
     if (![r, bt, d].every((x) => typeof x === 'number' && Number.isFinite(x)) || d < 20 || d > 400) continue;
@@ -197,9 +257,11 @@ function customLayout(st, fold = false) {
   }
   return out;
 }
+/** 저장 키 앞머리: 아래 띠 'band:' · 폴드 'fold:' · 넓은 배치 '' (프리셋마다 따로 저장) */
+const layoutPrefix = (band, fold) => (band ? 'band:' : fold ? 'fold:' : '');
 
 /** 버튼들을 서로 GAP 이상 떨어뜨리고 경계 안에 둔다 (pinned 는 움직이지 않는다). 이미 맞으면 아무것도 바꾸지 않는다 */
-function settle(list, B, pinned = null, iters = 120) {
+function settle(list, B, pinned = null, iters = 120, gap = GAP) {
   const fit = (b) => {
     b.cx = clamp(b.cx, B.x0 + b.d / 2, Math.max(B.x0 + b.d / 2, B.x1 - b.d / 2));
     b.cy = clamp(b.cy, B.y0 + b.d / 2, Math.max(B.y0 + b.d / 2, B.y1 - b.d / 2));
@@ -211,7 +273,7 @@ function settle(list, B, pinned = null, iters = 120) {
       for (let j = i + 1; j < list.length; j++) {
         const A = list[i], C = list[j];
         let dx = C.cx - A.cx, dy = C.cy - A.cy, dist = Math.hypot(dx, dy);
-        const need = A.d / 2 + C.d / 2 + GAP;
+        const need = A.d / 2 + C.d / 2 + gap;
         if (dist >= need - 0.05) continue;
         if (dist < 0.001) { dx = -1; dy = -0.5; dist = Math.hypot(dx, dy); }
         const push = need - dist + 0.1, ux = dx / dist, uy = dy / dist;
@@ -244,52 +306,58 @@ function layout(force = false) {
   const ins = insetsCss(), cr = canvasBox();
   const vw = g?.viewW || Math.round(clamp((540 * cr.w) / cr.h, 960, 1280)), vh = g?.viewH || 540;
   const safeT = st.safeArea === 'full' ? num(g?.safe?.t, 0) : 0;
+  // 공격 버튼을 숨긴 장면(마을): 탈것·점프·대시 를 한 줄로 (편집기에서는 전투 배치)
+  const town = !S.editor && S.hidden.has('attack');
   // 바뀌었나: 매 프레임 두 번쯤 불리므로 배열을 새로 만들지 않고 제자리에서 비교·기록한다
   LSIG.i = 0; LSIG.ch = false;
   lput(W); lput(H); lput(ins.l); lput(ins.r); lput(ins.t); lput(ins.b); lput(cr.x); lput(cr.y); lput(cr.w); lput(cr.h); lput(vw); lput(vh); lput(safeT);
   lput(st.touchScale); lput(st.touchLeftHanded); lput(st.touchLayout); lput(st.safeArea); lput(st.touchStick); lput(fsShown()); lput(g?.dpr); lput(S.fontEpoch);
-  lput(st.hud?.preset); lput(st.hud?.scale);
+  lput(st.hud?.preset); lput(st.hud?.scale); lput(st.hud?.pad); lput(town ? 1 : 0); lput(g?.tier);
   if (!force && S.L && !LSIG.ch) return S.L;
   S.lver++;
 
   const cls = sizeClass(H);
   const ts = clamp(num(Number(st.touchScale), 1) || 1, 0.8, 1.3);
-  const k = cls[1] * ts;
   const left = !!st.touchLeftHanded;
   const cs = cr.h / vh;
   const bandH = H - ins.b - (cr.y + cr.h);
   const band = bandH >= BAND_MIN;
   const fold = !band && presetOf(st, vw, vh) === 'fold';
-  // 폴드: 왼쪽 위 묶음(미니맵·이름판·필살)과 오른쪽 위 아이콘 줄 아래(논리 y 160)부터 버튼을 둘 수 있다
-  const yMin = Math.max(ins.t, cr.y + ((fold ? 160 : left ? HUD_TOP_LEFT : HUD_TOP) + safeT) * cs);
-  const T = band ? PAD_LAYOUT_BAND : fold ? PAD_LAYOUT_FOLD : PAD_LAYOUT_S;
-  const custom = customLayout(st, fold);
-  // 기본 배치: 점수 칸(y 88) 위로, 화면 폭 56 % 너머로 올라가지 않게 배율을 줄인다 (touchScale 1.3 도 phone2 에서 SCORE 를 덮지 않게)
-  let tallest = 0, extent = 0;
-  for (const id of PAD_IDS) { const [r, b, d] = T[id]; tallest = Math.max(tallest, b + d / 2); extent = Math.max(extent, r + d / 2); }
-  const availH = H - ins.b - yMin, availW = (W - ins.l - ins.r) * 0.56;
-  const kBase = fold ? foldScale(H, ts, st.hud?.scale) : k;
-  let kEff = Math.min(kBase, availH / tallest, availW / extent);
-  if (band) kEff = Math.min(kEff, Math.max((bandH - 4) / tallest, Math.min(1, k)));
-  kEff = Math.max(0.5, kEff);
+  // 폴드: 왼쪽 위 묶음(미니맵·체력·필살)과 오른쪽 위 아이콘 줄·퀘스트 칸 아래(논리 y 160)부터 버튼을 둘 수 있다
+  const yMin = band ? cr.y + cr.h : Math.max(ins.t, cr.y + ((fold ? 160 : left ? HUD_TOP_LEFT : HUD_TOP) + safeT) * cs);
+  const kind = band ? 'band' : 'overlay';
+  const prefix = layoutPrefix(band, fold);
+  const custom = customLayout(st, prefix);
+  // 크기 배율 (hudredo §1): 폴드·태블릿·띠 = 화면 높이 750 dp 기준, 휴대폰 = 430 dp 기준 (× touchScale, 폴드는 × 인터페이스 크기)
+  const kBase = fold || band ? foldScale(H, ts, st.hud?.scale) : foldScale(H, ts, 1, true);
+  // 기본 배치가 들어갈 자리: 세로 = 위쪽 HUD 아래 (띠: 띠 높이), 가로 = 화면 폭 56 %. 넘치면 배율을 줄인다 (여백 PAD_M 은 그대로)
+  const availH = H - ins.b - yMin - (band ? 4 : 0), availW = (W - ins.l - ins.r) * 0.56;
+  let kEff = kBase, T = padPlan(kind, kEff, PAD_M, town);
+  for (let i = 0; i < 6; i++) {
+    const e = planExtent(T);
+    const f = Math.min(1, (availH - PAD_M) / Math.max(1, e.top - PAD_M), (availW - PAD_M) / Math.max(1, e.extent - PAD_M));
+    if (f >= 0.999) break;
+    kEff = Math.max(0.5, kEff * f * 0.995);
+    T = padPlan(kind, kEff, PAD_M, town);
+  }
+  const gap = Math.max(12, PAD_GAP * kEff);
   const bounds = { x0: ins.l, x1: W - ins.r, y0: yMin, y1: H - ins.b };
   const btnList = [];
   for (const id of PAD_IDS) {
     const c = custom?.[id];
-    const [r, b, d0] = c ?? T[id];
-    const kk = c ? kBase : kEff;
-    const d = Math.max(MIN_D, d0 * kk);
-    btnList.push({ id, cx: left ? ins.l + r * kk : W - ins.r - r * kk, cy: H - ins.b - b * kk, d });
+    const [r, b, d0] = c ? [c[0] * kBase, c[1] * kBase, c[2] * kBase] : T[id];
+    const d = Math.max(MIN_D, d0);
+    btnList.push({ id, cx: left ? ins.l + r : W - ins.r - r, cy: H - ins.b - b, d });
   }
-  settle(btnList, bounds);
+  settle(btnList, bounds, null, 120, gap);
   const btn = {};
   for (const b of btnList) btn[b.id] = b;
 
-  // 시스템 버튼: 안전 영역 위쪽 가운데 (Ⅱ 왼쪽, 가방 오른쪽, ⛶ 는 되는 곳에서만 가방 오른쪽)
-  const sd = Math.max(MIN_D, 44 * (fold ? Math.min(1.15, kBase) : cls[1]));
-  const mid = ins.l + (W - ins.l - ins.r) / 2, sy = ins.t + 6 + sd / 2;
+  // 시스템 버튼: 폴드 = 오른쪽 위 아이콘 줄 (마을은 지도 없음), 넓은 배치·띠 = 위쪽 가운데 (Ⅱ 왼쪽, 가방 오른쪽, ⛶ 는 되는 곳에서만)
+  const sd = Math.max(MIN_D, SYS_D * (fold ? clamp(kBase, 0.95, 1.15) : clamp(kBase, 0.96, 1.1)));
+  const mid = ins.l + (W - ins.l - ins.r) / 2, sy = ins.t + PAD_M + sd / 2;
   let sys;
-  if (fold) sys = foldSysPlan(W, ins, sd, fsShown());
+  if (fold) sys = foldSysPlan(W, ins, sd, fsShown(), town ? (fsShown() ? ['pause', 'bag', 'fullscreen'] : ['pause', 'bag']) : null);
   else {
     sys = {
       pause: { id: 'pause', cx: mid - 6 - sd / 2, cy: sy, d: sd },
@@ -298,16 +366,25 @@ function layout(force = false) {
     if (fsShown()) sys.fullscreen = { id: 'fullscreen', cx: mid + 6 + sd + 12 + sd / 2, cy: sy, d: sd };
   }
 
-  // 스틱
-  const R = STICK_R * (fold ? clamp(kBase, 0.9, 1.25) : cls[1] * ts);
-  const off = 24 + SPRINT_K * R;
+  // 스틱: 받침 그림(2.3R, 테 ≈ 2.28R) 바깥이 왼쪽·아래 여백 PAD_M
+  const R = STICK_R * clamp(kBase, 0.85, 1.15);
+  const off = PAD_M + 1.14 * R;
   const home = { x: left ? W - ins.r - off : ins.l + off, y: H - ins.b - off };
   const zw = 0.45 * (W - ins.l - ins.r);
   const zone = left ? { x0: W - ins.r - zw, x1: W - ins.r, y0: ins.t + 64, y1: H } : { x0: ins.l, x1: ins.l + zw, y0: ins.t + 64, y1: H };
 
-  S.L = { W, H, ins, cr, cs, vw, vh, k: kBase, kEff, ts, cls: cls[0], band, bandH, left, custom: !!custom, yMin, bounds, btn, sys, sd, R, home, zone, fold, preset: fold ? 'fold' : 'wide' };
+  // 다시 칠할 사각형 (CSS px): 버튼 묶음·시스템 줄 — 그린 테·눌림 고리·각성 고리(r+8)까지
+  const box = (list) => {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const b of list) { const h = b.d * 0.62 + 10; x0 = Math.min(x0, b.cx - h); y0 = Math.min(y0, b.cy - h); x1 = Math.max(x1, b.cx + h); y1 = Math.max(y1, b.cy + h); }
+    return x1 > x0 ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
+  };
+  const dirty = [box(btnList), box(Object.values(sys))].filter(Boolean);
+
+  S.L = { W, H, ins, cr, cs, vw, vh, k: kBase, kEff, ts, cls: cls[0], band, bandH, left, custom: !!custom, yMin, bounds, btn, sys, sd, R, home, zone, fold, town, gap, prefix, dirty, preset: band ? 'band' : fold ? 'fold' : 'wide' };
   S.spriteKey = ''; // 크기가 바뀌었을 수 있다 → 버튼 그림 다시 굽기
   S.pending = true;
+  S.fullClear = true;
   if (S.editor) editorRelayout();
   return S.L;
 }
@@ -360,6 +437,15 @@ function apply(on, hb) {
   }
   if (S.cv && !S.editor) S.cv.style.display = on ? '' : 'none';
   if (!on) releaseCanvas();    // R1-REQ-342: 메뉴·마을·컷신 동안 전체 화면 백킹(phone1 ≈ 2.8 MB)을 들고 있지 않는다
+  else noteLayoutReset();
+}
+/** HUD-REDO: 예전 배치(순서·크기)로 저장한 사용자 배치는 설정을 불러올 때 지웠다 (save.js hud.padReset) → 패드가 처음 보일 때 한 번 알린다 */
+function noteLayoutReset() {
+  const g = game(), st = g?.settings;
+  if (!st?.hud?.padReset) return;
+  st.hud = { ...st.hud, padReset: false };
+  try { (g.saves ?? SAVE.saves)?.saveSettings?.(st); } catch (e) { console.error('[touchpad] saveSettings', e); }
+  try { g.toast?.('버튼 배치가 새로 바뀌어, 직접 옮겨 둔 버튼 위치를 처음 상태로 되돌렸습니다', '#ffd890', 5); } catch { /* 토스트 없음 */ }
 }
 /** 숨기는 동안 기억해 둔 스틱 손가락이 아직 화면에 있으면 같은 받침에서 이어 간다 (다시 떼었다 누르지 않아도 계속 달린다) */
 function resumeStick() {
@@ -857,11 +943,14 @@ function loadDrawAssets() {
   }).catch((e) => { console.error('[touchpad] draw assets', e); });
 }
 
+/** 오버레이 백킹 DPR (HUD-REDO §1): 보통·높음 품질은 기기 해상도 그대로 (상한 3, 6.5 MP), 낮음 품질은 1.5 / 1.5 MP.
+ *  버튼 그림은 이 배율로 구워 1:1 로 붙인다 (예전: 게임 캔버스 DPR·1.2 MP 상한 → 폴드에서 1.26 = 기기의 63 % 로 흐렸다) */
 function overlayDpr(L) {
   const g = game();
   const dev = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
-  const cap = num(g?.dpr, 1.5) || 1.5;
-  return clamp(Math.min(dev, cap, Math.sqrt(OVERLAY_MP / (L.W * L.H))), 0.5, 3);
+  const tier = g?.tier ?? 'medium';
+  const cap = OVERLAY_DPR[tier] ?? 3, mp = OVERLAY_MP[tier] ?? OVERLAY_MP.medium;
+  return clamp(Math.min(dev, cap, Math.sqrt(mp / Math.max(1, L.W * L.H))), 0.5, 3);
 }
 function ensureCanvasSize(L) {
   const cv = S.cv;
@@ -934,8 +1023,10 @@ function bakeSprites(L) {
 function blit(c, id, cx, cy, d, pressed) {
   const sp = S.spr[id]?.[pressed ? 1 : 0];
   if (!sp || Math.abs(sp._d - d) > 0.05) return false;
-  const pad = spritePad(d), s = d + pad * 2;
-  c.drawImage(sp, cx - s / 2, cy - s / 2, s, s);
+  const k = S.dpr || 1, pad = spritePad(d), s = d + pad * 2;
+  // 기기 픽셀에 맞춰 1:1 로 붙인다 (구운 크기 그대로 — 다시 늘이거나 줄이지 않아 흐려지지 않게). 눌림 축소 변환이 걸려 있으면 그대로 따른다
+  const x = Math.round((cx - s / 2) * k) / k, y = Math.round((cy - s / 2) * k) / k;
+  c.drawImage(sp, x, y, sp.width / k, sp.height / k);
   return true;
 }
 
@@ -980,8 +1071,11 @@ function drawDisc(g, id, cx, cy, r, pressed) {
 function paintedDisc(g, id, cx, cy, r, pressed) {
   const ring = HUDM.hudArt(id === 'attack' ? 'ring_attack' : id === 'ult' ? 'frame_ult' : 'ring_small');
   g.save();
-  g.fillStyle = 'rgba(0,0,0,0.4)';
-  g.beginPath(); g.arc(cx, cy + 2, r * 0.98, 0, TAU); g.fill();
+  // 어두운 받침 원 + 그림자 (밝은·붉은 배경 위에서도 버튼 윤곽이 서도록 — HUD-REDO 점 5)
+  g.fillStyle = 'rgba(0,0,0,0.55)';
+  g.beginPath(); g.arc(cx, cy + 2, r * 1.0, 0, TAU); g.fill();
+  g.fillStyle = 'rgba(8,2,6,0.92)';
+  g.beginPath(); g.arc(cx, cy, r * 0.95, 0, TAU); g.fill();
   g.fillStyle = discGradient(g, cx, cy, r * 0.9, pressed, id);
   g.beginPath(); g.arc(cx, cy, r * 0.88, 0, TAU); g.fill();
   if (ring) { const z = r * 2.32; g.drawImage(ring, cx - z / 2, cy - z / 2, z, z); }
@@ -1082,41 +1176,74 @@ function cooldown(c, cx, cy, r, f, secs) {
   c.restore();
 }
 
+/** 기본 투명도 (설정 touchOpacity 의 새 기본값 — save.js DEFAULT_SETTINGS 와 같다) */
+const OP_DEFAULT = 0.95;
+/** 지금 그릴 투명도: 설정값 (그린 테 버튼은 0.5 아래로 내리지 않는다 — 그림이 뭉개져 보이지 않게) */
+function opacityNow() { return clamp(num(settings().touchOpacity, OP_DEFAULT), artOn() ? 0.5 : 0.15, 1); }
+/** 지운 뒤 다시 칠할 사각형들 (CSS px) → 기기 픽셀 정수로 지운다 */
+function clearRects(c, list, dpr) {
+  for (const r of list) {
+    if (!r) continue;
+    const x = Math.max(0, Math.floor(r.x * dpr) - 1), y = Math.max(0, Math.floor(r.y * dpr) - 1);
+    c.clearRect(x, y, Math.ceil((r.x + r.w) * dpr) + 1 - x, Math.ceil((r.y + r.h) * dpr) + 1 - y);
+  }
+}
+const DIRTY = [];
 function draw(L, w) {
   const c = S.ctx;
   if (!c) return;
   const dpr = ensureCanvasSize(L);
   bakeSprites(L);
   c.setTransform(1, 0, 0, 1, 0, 0);
-  c.clearRect(0, 0, S.cv.width, S.cv.height);
+  // 다시 칠하는 곳만 지운다 (HUD-REDO: 기기 해상도 오버레이 — 폴드 2000×1510 전체를 매번 지우지 않게): 버튼 묶음·시스템 줄·스틱(지난번과 이번)
+  if (S.editor || S.fullClear || !S.drawn || S.wasEditor) { c.clearRect(0, 0, S.cv.width, S.cv.height); S.fullClear = false; }
+  else {
+    DIRTY.length = 0;
+    for (const r of L.dirty) DIRTY.push(r);
+    if (S.stickBox) DIRTY.push(S.stickBox);
+    clearRects(c, DIRTY, dpr);
+  }
+  S.wasEditor = !!S.editor;
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   S.drawn = true;
-  const st = settings();
-  // 그린 테 버튼은 너무 흐리면 그림이 뭉개진다 → 폴드 배치에서는 투명도 하한 0.8 (넓은 배치는 설정 그대로)
-  const op = clamp(num(st.touchOpacity, 0.55), L.fold && artOn() ? 0.8 : 0.15, 1);
+  const op = opacityNow();
   const tsec = now() / 1000;
   if (S.editor) { drawEditor(c, L, tsec); return; }
-  drawStick(c, L, op);
+  S.stickBox = drawStick(c, L, op);
   if (!S.visible) return;
   const p = w?.player, run = w?.run;
   for (const id of PAD_IDS) {
     if (!shownBtn(id)) continue;
     const b = btnPos(L, id);
     const pressed = isPressed(id);
-    drawButton(c, L, id, b, pressed, pressed ? Math.max(0.9, op) : op, p, run, w, tsec);
+    drawButton(c, L, id, b, pressed, pressed ? Math.max(0.95, op) : op, p, run, w, tsec);
   }
   for (const id of SYS_IDS) {
     const b = L.sys[id];
     if (!b) continue;
     const pressed = isPressed(id);
-    c.globalAlpha = pressed ? Math.max(0.9, op) : Math.max(0.5, op);
+    c.globalAlpha = pressed ? Math.max(0.95, op) : Math.max(0.5, op);
     blit(c, id, b.cx, b.cy, b.d, pressed);
-    if (id === 'bag' && L.fold) { // 가방 찬 비율 (가방 한도 300 칸, 중요 물품 포함 어림)
+    if (id === 'bag') { // 가방 찬 비율 알약 (가방 한도 300 칸, 중요 물품 포함 어림) — 글자 ≥ 12 CSS px, 어두운 알약 위
       const n = w?.state?.inventory?.length ?? 0;
-      if (n > 0) label(c, `${Math.min(100, Math.round((n / 300) * 100))}%`, b.cx + b.d * 0.3, b.cy + b.d * 0.36, Math.max(11, b.d * 0.26), false, n >= 270 ? '#ff8a8a' : '#fff2c0', FONT.num);
+      if (n > 0) bagPill(c, b, Math.min(100, Math.round((n / 300) * 100)), n >= 270);
     }
   }
   c.globalAlpha = 1;
+}
+/** 가방 % 알약: 아이콘 오른쪽 아래에 걸친 어두운 알약 + 금테 + 숫자 */
+function bagPill(c, b, pct, full) {
+  const fs = Math.max(12, Math.round(b.d * 0.3)), str = pct + '%';
+  c.save();
+  c.font = `800 ${fs}px ${FONT.num}`;
+  const tw = c.measureText(str).width, h = fs + 6, w = Math.max(h, tw + 10);
+  const x = Math.min(b.cx + b.d * 0.5 + 2, b.cx + b.d * 0.62) - w, y = b.cy + b.d * 0.5 - h * 0.55;
+  roundRect(c, x, y, w, h, h / 2);
+  c.fillStyle = full ? 'rgba(90,8,16,0.95)' : 'rgba(14,6,10,0.92)'; c.fill();
+  c.lineWidth = 1.25; c.strokeStyle = full ? '#ff8a8a' : 'rgba(232,200,114,0.9)'; c.stroke();
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = full ? '#ffd0d0' : '#fff2c0';
+  c.fillText(str, x + w / 2, y + h / 2 + 0.5);
+  c.restore();
 }
 
 function drawButton(c, L, id, b, pressed, alpha, p, run, w, tsec) {
@@ -1134,14 +1261,7 @@ function drawButton(c, L, id, b, pressed, alpha, p, run, w, tsec) {
     case 'skill1': case 'skill2': drawSkill(c, id, cx, cy, r, pressed, p); break;
     case 'sub': drawSub(c, cx, cy, r, pressed, run); break;
     case 'ult': drawUlt(c, cx, cy, r, pressed, run, w, tsec); break;
-    case 'swap': if (art && HUDM.drawArtIcon(c, 'ui_swap', cx, cy, r * 1.66)) { label(c, `${num(p?.skillPage, 0) + 1}/2`, cx, cy + r * 0.62, Math.max(11, r * 0.42), pressed, null, FONT.num); break; }
-    // falls through (그림이 없으면 예전 글자)
-    case 'swap_txt': {
-      const page = num(p?.skillPage, 0) + 1;
-      label(c, '⇄', cx, cy - r * 0.38, Math.max(11, r * 0.42), pressed, COL.gold);
-      label(c, `${page}/2`, cx, cy + r * 0.14, Math.max(12, r * 0.56), pressed, null, FONT.num);
-      break;
-    }
+    case 'swap': drawSwap(c, cx, cy, r, pressed, p, art); break;
     case 'mount': {
       const m = S.cmp?.mount;
       if (!m || (m.blocked && !m.riding)) c.globalAlpha *= 0.4; // 탈것이 없거나 보스전 등 탈것 금지 → 어둡게 (쓸 수 있을 때만 밝다)
@@ -1169,6 +1289,29 @@ function ring(c, cx, cy, r, f, color, lw) {
   c.save();
   c.lineWidth = lw; c.strokeStyle = color; c.lineCap = 'round';
   c.beginPath(); c.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + TAU * clamp(f, 0, 1)); c.stroke();
+  c.restore();
+}
+/** ⇄ = 스킬 넘김 (player.skillPage 0↔1): 다음 쪽의 스킬 두 개를 작게 겹쳐 보이고 '넘김' + 쪽 점 (●○). 다음 쪽이 비었으면 어둡게 */
+function drawSwap(c, cx, cy, r, pressed, p, art) {
+  const page = num(p?.skillPage, 0), next = page ? 0 : 1;
+  const slots = p?.hero?.slots ?? [];
+  const ids = [slots[next * 2], slots[next * 2 + 1]].filter((sid) => sid && SKILL_DB?.[sid]);
+  if (!ids.length) c.globalAlpha *= 0.45;
+  const s = r * 0.78, oy = cy - r * 0.16;
+  if (art && ids.length) {
+    if (ids.length === 2) {
+      if (!HUDM.drawSkillArt(c, ids[1], cx + r * 0.24, oy, s)) glyphFn?.(c, SKILL_DB[ids[1]], cx + r * 0.24, oy, s * 0.8);
+      if (!HUDM.drawSkillArt(c, ids[0], cx - r * 0.24, oy, s)) glyphFn?.(c, SKILL_DB[ids[0]], cx - r * 0.24, oy, s * 0.8);
+    } else if (!HUDM.drawSkillArt(c, ids[0], cx, oy, s)) glyphFn?.(c, SKILL_DB[ids[0]], cx, oy, s * 0.8);
+  } else if (!(art && HUDM.drawArtIcon(c, 'ui_swap', cx, oy, r * 1.2))) label(c, '⇄', cx, oy, Math.max(12, r * 0.5), pressed, COL.gold);
+  label(c, LABEL.swap, cx, cy + r * 0.5, Math.max(11, r * 0.36), pressed);
+  // 쪽 점: 지금 쪽이 채운 점
+  c.save();
+  for (let i = 0; i < 2; i++) {
+    c.beginPath(); c.arc(cx + (i ? 1 : -1) * r * 0.13, cy + r * 0.78, Math.max(1.6, r * 0.06), 0, TAU);
+    c.fillStyle = i === page ? '#ffe7a0' : 'rgba(0,0,0,0.6)'; c.fill();
+    c.lineWidth = 1; c.strokeStyle = 'rgba(232,200,114,0.85)'; c.stroke();
+  }
   c.restore();
 }
 function drawSkill(c, id, cx, cy, r, pressed, p) {
@@ -1292,10 +1435,10 @@ function drawStick(c, L, op) {
   else {
     const f = (now() - s.relT) / (STICK_FADE * 1000);
     if (f < 1 && !fixed) { ax = s.ex; ay = s.ey; fx = ax; fy = ay; a = Math.max(0.85, op) * (1 - f); }
-    else if (S.visible) { ax = L.home.x; ay = L.home.y; fx = ax; fy = ay; a = fixed ? op : op * 0.45; }
-    else return;
+    else if (S.visible) { ax = L.home.x; ay = L.home.y; fx = ax; fy = ay; a = fixed ? op : op * 0.6; }
+    else return null;
   }
-  if (a <= 0.01) return;
+  if (a <= 0.01) return null;
   c.save();
   c.globalAlpha = a;
   // 받침 (그린 철판 원판이 있으면 그것 — hud_mobile §3 '바탕 원판 그림')
@@ -1330,6 +1473,9 @@ function drawStick(c, L, op) {
   c.beginPath(); c.arc(0, 0, kr, 0, TAU); c.fill();
   c.lineWidth = 1.5; c.strokeStyle = 'rgba(0,0,0,0.6)'; c.stroke();
   c.restore();
+  // 칠한 사각형 (다음 그리기에서 지울 곳): 받침 그림 2.3R · 질주 고리 1.15R · 손잡이
+  const e = Math.max(R * 1.2, Math.hypot(dx, dy) + kr) + 4;
+  return { x: ax - e, y: ay - e, w: e * 2, h: e * 2 };
 }
 const KNOB_GRAD = { kr: 0, ctx: null, n: null, s: null };
 function knobGradient(c, kr, sprint) {
@@ -1349,17 +1495,17 @@ function editorRelayout() {
   const E = S.editor, L = S.L;
   if (!E || !L) return;
   E.bounds = L.bounds;
-  settle(PAD_IDS.map((id) => E.pos[id]), E.bounds, null, 200);
+  settle(PAD_IDS.map((id) => E.pos[id]), E.bounds, null, 200, L.gap ?? GAP);
   E.ver++;
 }
 function defaultPositions(L) {
-  const T = L.band ? PAD_LAYOUT_BAND : L.fold ? PAD_LAYOUT_FOLD : PAD_LAYOUT_S;
+  const T = padPlan(L.band ? 'band' : 'overlay', L.kEff, PAD_M, false);
   const list = PAD_IDS.map((id) => {
     const [r, b, d0] = T[id];
-    const d = Math.max(MIN_D, d0 * L.kEff);
-    return { id, cx: L.left ? L.ins.l + r * L.kEff : L.W - L.ins.r - r * L.kEff, cy: L.H - L.ins.b - b * L.kEff, d };
+    const d = Math.max(MIN_D, d0);
+    return { id, cx: L.left ? L.ins.l + r : L.W - L.ins.r - r, cy: L.H - L.ins.b - b, d };
   });
-  settle(list, L.bounds);
+  settle(list, L.bounds, null, 120, L.gap ?? GAP);
   const out = {};
   for (const b of list) out[b.id] = b;
   return out;
@@ -1396,11 +1542,12 @@ function closeEditor(opts = {}) {
   if (save) {
     const g = game(), L = S.L;
     const mine = E.reset && !E.moved ? null : toStored(E.pos, L);
-    // 프리셋마다 따로 저장: fold 는 'fold:<id>' 키, wide 는 그냥 <id>. 다른 프리셋의 저장분은 그대로 둔다
+    // 프리셋마다 따로 저장: 띠 'band:<id>', fold 'fold:<id>', wide 는 그냥 <id>. 다른 프리셋의 저장분은 그대로 둔다
     const prev = g?.settings?.touchLayout && typeof g.settings.touchLayout === 'object' ? g.settings.touchLayout : {};
+    const pre = L?.prefix ?? '', keyPre = (k) => (k.startsWith('band:') ? 'band:' : k.startsWith('fold:') ? 'fold:' : '');
     const keep = {};
-    for (const k of Object.keys(prev)) if (L?.fold ? !k.startsWith('fold:') : k.startsWith('fold:')) keep[k] = prev[k];
-    if (mine) for (const id of Object.keys(mine)) keep[L?.fold ? 'fold:' + id : id] = mine[id];
+    for (const k of Object.keys(prev)) if (keyPre(k) !== pre) keep[k] = prev[k];
+    if (mine) for (const id of Object.keys(mine)) keep[pre + id] = mine[id];
     const out = Object.keys(keep).length ? keep : null;
     if (g?.settings) {
       g.settings.touchLayout = out;
@@ -1499,7 +1646,7 @@ function editMove(e) {
   const B = E.bounds, r = b.d / 2;
   b.cx = clamp(b.cx, B.x0 + r, Math.max(B.x0 + r, B.x1 - r));
   b.cy = clamp(b.cy, B.y0 + r, Math.max(B.y0 + r, B.y1 - r));
-  settle(PAD_IDS.map((id) => E.pos[id]), E.bounds, D.id, 200);
+  settle(PAD_IDS.map((id) => E.pos[id]), E.bounds, D.id, 200, S.L?.gap ?? GAP);
   E.moved = true; E.ver++; S.pending = true; startLoop();
 }
 function editUp(e) {
@@ -1508,7 +1655,7 @@ function editUp(e) {
   claim(e);
   E.drag = null;
   // 놓은 뒤 한 번 더 정리 (놓은 버튼은 그 자리) — 저장된 배치가 다음 실행에서 움직이지 않게
-  settle(PAD_IDS.map((id) => E.pos[id]), E.bounds, D.id, 200);
+  settle(PAD_IDS.map((id) => E.pos[id]), E.bounds, D.id, 200, S.L?.gap ?? GAP);
   E.ver++; S.pending = true; startLoop();
 }
 function drawEditor(c, L, tsec) {

@@ -156,10 +156,11 @@ export const DEFAULT_SETTINGS = {
   reduceMotion: prefersReducedMotion(), // 표의 기본값 false — 기기에서 '동작 줄이기'를 켰으면 처음부터 켬 (저장된 값이 있으면 그것)
   ctrlPrompts: 'auto', ctrlPreset: 'arcade', ctrlConfirm: 'auto', ctrlMap: null, keyMap: null,
   ctrlDeadzone: 0.2, ctrlRumble: 0.8, autoSprint: false,
-  touchOpacity: 0.55, touchScale: 1, touchStick: 'float', touchSlide: true, touchLeftHanded: false, touchLayout: null,
+  touchOpacity: 0.95, touchScale: 1, touchStick: 'float', touchSlide: true, touchLeftHanded: false, touchLayout: null,
   // 장비 편의 (docs/specs/qol_equip.md §6): 자동 처분 끔/판매/분해 · 기준 희귀도 0..2 · 예외(남길 것) · 점수 기준 · 최적 장착 때 고유/신화/세트 칸 고정
   gear: Object.freeze({ autoDispose: 'off', maxRarity: 0, weights: 'bal', fixSpecial: true, keep: Object.freeze({ enhanced: true, better: true, other: true, special: true }) }),
-  hud: Object.freeze({ preset: 'auto', scale: 1 }), // 화면 배치 (hud_mobile §3): preset 'auto'(화면비) | 'wide'(휴대폰) | 'fold'(폴드·태블릿), scale 0.85–1.2 — 바꿀 때는 새 객체로
+  hud: Object.freeze({ preset: 'auto', scale: 1, pad: 'overlay', rev: 2 }), // 화면 배치 (hud_mobile §3): preset 'auto'(화면비) | 'wide'(휴대폰) | 'fold'(폴드·태블릿), scale 0.85–1.2 — 바꿀 때는 새 객체로
+  // [hudredo] pad 버튼 배치 'overlay'(게임 화면 위) | 'band'(아래 띠) · rev 2 = 버튼 배치 개편(점프·공격·대시) 뒤의 설정 (migrateSettings)
   vibration: true, autoSave: true, keepAwake: true, turntableAuto: true, fullscreenAuto: true,
   telemetry: !privacySignal(), // 익명 통계·오류 보내기 (core/telemetry.js) — GPC 를 켠 브라우저는 기본 끔
   language: 'ko',
@@ -240,11 +241,13 @@ function checkSetting(spec, v) {
       }
       return out;
     }
-    case 'hud': { // {preset, scale} — 모르는 값은 기본값으로 (항목별)
+    case 'hud': { // {preset, scale, pad, rev, padReset?} — 모르는 값은 기본값으로 (항목별)
       if (!isObj(v)) return INVALID;
       const pr = ['auto', 'wide', 'fold'].includes(v.preset) ? v.preset : 'auto';
       const sc = typeof v.scale === 'number' && Number.isFinite(v.scale) ? Math.round(Math.min(1.2, Math.max(0.85, v.scale)) * 100) / 100 : 1;
-      return { preset: pr, scale: sc };
+      const pad = v.pad === 'band' ? 'band' : 'overlay';   // [hudredo]
+      const rev = Number.isInteger(v.rev) && v.rev >= 0 ? v.rev : 0;
+      return v.padReset === true ? { preset: pr, scale: sc, pad, rev, padReset: true } : { preset: pr, scale: sc, pad, rev };
     }
     case 'gear': { // 장비 편의 — 항목별로 모르는 값은 기본값, 모르는 키는 보존 (새 앱이 더한 항목을 옛 앱이 지우지 않게)
       if (!isObj(v)) return INVALID;
@@ -308,6 +311,14 @@ export function migrateSettings(saved) {
     if (v !== saved[k] && (spec.type === 'num' || spec.type === 'enum')) changed = true;
     else if ((spec.type === 'map' || spec.type === 'layout' || spec.type === 'hud' || spec.type === 'gear') && v !== null && JSON.stringify(v) !== JSON.stringify(saved[k])) changed = true;
     out[k] = v;
+  }
+  // [hudredo] 버튼 배치 개편 (hud.rev 2): 예전 기본 투명도 0.55 → 새 기본 0.95, 예전 순서·크기로 저장한 사용자 배치는 지우고 알린다 (touchpad 가 토스트)
+  if (!(Number(saved.hud?.rev) >= 2)) {
+    if (out.touchOpacity === 0.55) out.touchOpacity = DEFAULT_SETTINGS.touchOpacity;
+    const hadLayout = !!(out.touchLayout && Object.keys(out.touchLayout).length);
+    if (hadLayout) out.touchLayout = null;
+    out.hud = { ...(isObj(out.hud) ? out.hud : cloneDefault('hud', DEFAULT_SETTINGS.hud)), rev: 2, ...(hadLayout ? { padReset: true } : {}) };
+    changed = true;
   }
   return { settings: out, changed };
 }

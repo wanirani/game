@@ -755,17 +755,27 @@ export const PERKS_A = {
     },
     onSkill(p, w) { passiveToll(p, w); },
     drawMeter(ctx, p, w) {
-      const st = perkState(p), n = st.bellN ?? 0, tn = nowOf(w);
+      const st = perkState(p), n = Math.max(0, Math.min(this.N.every, st.bellN ?? 0)), tn = nowOf(w), E = this.N.every;
       const x = p.cx, y = p.y - METER_DY;
-      if (n > 0) {
-        ctx.globalAlpha = 0.5; ctx.strokeStyle = '#1a0610'; ctx.lineWidth = 4.5;
-        ctx.beginPath(); ctx.arc(x, y, 7, 0, TAU); ctx.stroke();
-        ctx.globalAlpha = 0.9; ctx.strokeStyle = '#e8f0ff'; ctx.lineWidth = 2.5;
-        ctx.beginPath(); ctx.arc(x, y, 7, -Math.PI / 2, -Math.PI / 2 + TAU * (n / this.N.every)); ctx.stroke();
-        ctx.globalAlpha = 1;
-      }
       const g = ((st.bell1 ?? -99) >= tn - this.N.window ? 1 : 0) + ((st.bell2 ?? -99) >= tn - this.N.window ? 1 : 0);
-      for (let i = 0; i < g; i++) pip(ctx, x - 13 + i * 26, y, 3.2, '#ffd84a', 0.9);
+      // BALANCE-PERF: 고리(중첩 n/8)와 종 표시(0–2)를 아틀라스 칸으로 (매 프레임 경로 4–6개 → drawImage 1–2개). 아틀라스가 없으면 벡터
+      const ring = n > 0 && markReady() ? markCell('bellM' + n + '/' + E, 22, 22, 11, 11, (q) => {
+        q.globalAlpha = 0.5; q.strokeStyle = '#1a0610'; q.lineWidth = 4.5; q.beginPath(); q.arc(0, 0, 7, 0, TAU); q.stroke();
+        q.globalAlpha = 0.9; q.strokeStyle = '#e8f0ff'; q.lineWidth = 2.5; q.beginPath(); q.arc(0, 0, 7, -Math.PI / 2, -Math.PI / 2 + TAU * (n / E)); q.stroke();
+      }) : null;
+      const pips = g > 0 && markReady() ? markCell('bellG' + g, 40, 12, 20, 6, (q) => { for (let i = 0; i < g; i++) pip(q, -13 + i * 26, 0, 3.2, '#ffd84a', 0.9); }) : null;
+      if (n > 0) {
+        if (ring) drawCell(ctx, ring, x, y);
+        else {
+          ctx.globalAlpha = 0.5; ctx.strokeStyle = '#1a0610'; ctx.lineWidth = 4.5;
+          ctx.beginPath(); ctx.arc(x, y, 7, 0, TAU); ctx.stroke();
+          ctx.globalAlpha = 0.9; ctx.strokeStyle = '#e8f0ff'; ctx.lineWidth = 2.5;
+          ctx.beginPath(); ctx.arc(x, y, 7, -Math.PI / 2, -Math.PI / 2 + TAU * (n / E)); ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+      }
+      if (pips) drawCell(ctx, pips, x, y);
+      else for (let i = 0; i < g; i++) pip(ctx, x - 13 + i * 26, y, 3.2, '#ffd84a', 0.9);
     },
   },
 };
@@ -924,18 +934,18 @@ const VEC_A = {
 export const MARKS_A = {
   /** 사냥감 (그림자 추적자): 보라 갈매기표 */
   quarry(ctx, e, n, k, t) {
-    const c = markReady() && markCell('quarry', 20, 18, 10, 9, (g) => {
+    // 빛(반지름 16, 0.5)과 갈매기표를 한 칸에 — 더하기(ADD) 한 번 (밝은 보라 선: 어두운 배경에서 원본의 덮어 그리기와 같게 보인다)
+    const c = markReady() && markCell('quarry', 36, 36, 18, 18, (g) => {
+      g.globalCompositeOperation = ADD; K.glow(g, 0, 0, 16, '#b060ff', 0.5); g.globalCompositeOperation = 'source-over';
       g.strokeStyle = '#d8a0ff'; g.lineWidth = 2.5; g.lineJoin = 'round';
       g.beginPath(); g.moveTo(-7, -6); g.lineTo(0, 0); g.lineTo(7, -6); g.stroke();
       g.beginPath(); g.moveTo(-7, -1); g.lineTo(0, 5); g.lineTo(7, -1); g.stroke();
     });
     if (!c) return VEC_A.quarry(ctx, e, n, k, t);
-    const x = e.cx, y = e.y - 14 + Math.sin(t * 5) * 2, a = 0.55 + 0.45 * Math.min(1, k * 4);
-    ctx.globalCompositeOperation = ADD;
-    markGlow(ctx, x, y, 16, '#b060ff', 0.5 * a);
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = a; drawCell(ctx, c, x, y);
+    ctx.globalCompositeOperation = ADD; ctx.globalAlpha = 0.55 + 0.45 * Math.min(1, k * 4);
+    drawCell(ctx, c, e.cx, e.y - 14 + Math.sin(t * 5) * 2);
   },
+
   /** 낙인 (화형 심판장): 붉은 불씨 1–3 (불씨 하나 = 빛 두 겹을 한 칸에) */
   brand(ctx, e, n, k, t) {
     const c = markReady() && markCell('brand', 30, 30, 15, 15, (g) => {
@@ -949,22 +959,24 @@ export const MARKS_A = {
   },
   /** 정전기 (뇌우의 무녀): 푸른 불꽃 중첩 수만큼 */
   static(ctx, e, n, k, t) {
-    const m = Math.max(1, Math.min(9, n | 0));
-    const bolt = markReady() && markCell('static.bolt', 10, 22, 5, 11, (g) => {
+    const m = Math.max(1, Math.min(9, n | 0)), R = 12 + m * 3;
+    // 빛(반지름 12+3n, 0.45+0.1n)과 번개를 한 칸에 (원본도 둘 다 더하기) — 깜빡임(0.8–1)은 칸 전체의 투명도로
+    const bolt = markReady() && markCell('static.g' + m, R * 2 + 4, R * 2 + 4, R + 2, R + 2, (g) => {
+      g.globalCompositeOperation = ADD; K.glow(g, 0, 0, R, '#bfe0ff', 0.45 + 0.1 * m);
       g.strokeStyle = '#ffffff'; g.lineWidth = 2; g.lineJoin = 'miter';
       g.beginPath(); g.moveTo(3, -9); g.lineTo(-3, -1); g.lineTo(3, 1); g.lineTo(-3, 9); g.stroke();
-    });
+    }, 1);
     const pips = bolt && markCell('static.p' + m, m * 8 + 6, 10, (m * 8 + 6) / 2, 5, (g) => {
       for (let i = 0; i < m; i++) pip(g, -(m - 1) * 4 + i * 8, 0, 2.6, '#bfe0ff', 0.95);
     });
     if (!pips) return VEC_A.static(ctx, e, n, k, t);
-    const x = e.cx, y = e.y - 14, fl = 0.8 + 0.2 * Math.sin(t * 23);
-    ctx.globalCompositeOperation = ADD;
-    markGlow(ctx, x, y, 12 + n * 3, '#bfe0ff', (0.45 + 0.1 * n) * fl);
+    const x = e.cx, y = e.y - 14;
+    ctx.globalCompositeOperation = ADD; ctx.globalAlpha = 0.8 + 0.2 * Math.sin(t * 23);
     drawCell(ctx, bolt, x, y);
-    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
     drawCell(ctx, pips, x, y + 15);
   },
+
   /** 봉인 중첩 (발크레인 봉인자): 금빛 눈금 n/5 */
   seal(ctx, e, n, k, t) {
     const m = Math.max(0, Math.min(5, n | 0));
@@ -984,33 +996,34 @@ export const MARKS_A = {
   },
   /** 봉인됨 (일반 적 2초): 금빛 사슬 두 줄이 몸을 가로지른다 */
   sealed(ctx, e, n, k, t) {
-    const hw = markStep(Math.max(18, e.w * 0.6)), hh = markStep(Math.max(18, e.h * 0.45));
-    const c = markReady() && markCell(`sealed${hw}x${hh}`, hw * 2 + 4, hh * 2 + 4, hw + 2, hh + 2, (g) => {
+    const hw = markStep(Math.max(18, e.w * 0.6)), hh = markStep(Math.max(18, e.h * 0.45)), R = Math.max(hw, hh) * 1.3;
+    // 빛(0.35)과 사슬을 한 칸에 — 더하기 한 번 (금빛 사슬: 어두운 몸 위에서 덮어 그리기와 같게 보인다)
+    const c = markReady() && markCell(`sealed${hw}x${hh}`, R * 2 + 4, R * 2 + 4, R + 2, R + 2, (g) => {
+      g.globalCompositeOperation = ADD; K.glow(g, 0, 0, R, '#ffd84a', 0.35); g.globalCompositeOperation = 'source-over';
       g.strokeStyle = '#ffd84a'; g.lineWidth = 3; g.setLineDash?.(DASH_CHAIN);
       g.beginPath(); g.moveTo(-hw, -hh); g.lineTo(hw, hh); g.moveTo(hw, -hh); g.lineTo(-hw, hh); g.stroke();
       g.setLineDash?.(DASH_NONE);
     });
     if (!c) return VEC_A.sealed(ctx, e, n, k, t);
-    const x = e.cx, cy = e.y + e.h * 0.5, a = Math.min(1, k * 3);
-    ctx.globalCompositeOperation = ADD;
-    markGlow(ctx, x, cy, Math.max(hw, hh) * 1.3, '#ffd84a', 0.35 * a);
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = a; drawCell(ctx, c, x, cy);
+    ctx.globalCompositeOperation = ADD; ctx.globalAlpha = Math.min(1, k * 3);
+    drawCell(ctx, c, e.cx, e.y + e.h * 0.5);
   },
+
   /** 봉인 균열 (보스 4초): 몸을 가르는 들쭉날쭉한 금빛 선 */
   crack(ctx, e, n, k, t) {
-    const h = markStep(e.h * 0.7);
-    const c = markReady() && markCell('crack' + h, 54, h + 34, 27, 17, (g) => {
+    const h = markStep(e.h * 0.7), R = markStep(Math.max(30, e.w * 0.45)), W = Math.max(27, R + 2), H = Math.max(h / 2 + 17, R + 2);
+    // 빛(0.3)과 금빛 선을 한 칸에 (원본도 둘 다 더하기) — 칸 기준점 = 선의 가운데
+    const c = markReady() && markCell(`crack${h}x${R}`, W * 2, H * 2, W, H, (g) => {
+      g.globalCompositeOperation = ADD; K.glow(g, 0, 0, R, '#ffd84a', 0.3);
       g.strokeStyle = '#fff2b0'; g.lineWidth = 3; g.lineJoin = 'miter';
-      g.beginPath(); g.moveTo(-4, 0);
-      for (let i = 1; i <= 6; i++) g.lineTo(i % 2 ? 9 : -9, h * i / 6);
+      g.beginPath(); g.moveTo(-4, -h / 2);
+      for (let i = 1; i <= 6; i++) g.lineTo(i % 2 ? 9 : -9, -h / 2 + h * i / 6);
       g.stroke();
     });
     if (!c) return VEC_A.crack(ctx, e, n, k, t);
-    const x = e.cx, top = e.y + e.h * 0.15, a = Math.min(1, k * 3) * (0.8 + 0.2 * Math.sin(t * 14));
-    ctx.globalCompositeOperation = ADD;
-    markGlow(ctx, x, top + h / 2, Math.max(30, e.w * 0.45), '#ffd84a', 0.3 * a);
-    ctx.globalAlpha = a; drawCell(ctx, c, x, top);
+    ctx.globalCompositeOperation = ADD; ctx.globalAlpha = Math.min(1, k * 3) * (0.8 + 0.2 * Math.sin(t * 14));
+    drawCell(ctx, c, e.cx, e.y + e.h * 0.15 + h / 2);
   },
+
 };
 
