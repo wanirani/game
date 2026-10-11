@@ -656,6 +656,12 @@ async function redoPage({ dev, mode, scene, coverageOnly }) {
     else {
       const occ = tp.occupiedRects?.() ?? [];
       for (const [k, r] of Object.entries(tb)) for (const p of occ) if (SYS.has(p.id) && ov(r, p)) fails.push(`마을 ${k}${f1(r)} ↔ ${p.id}${f1(p)} 겹침`);
+      // [qamatrix] 토스트 줄이 마을 오른쪽 위 판(헌터 교체·메뉴·유물·골드)을 덮지 않는다 (hub.js → hud_layout setHudAvoid)
+      const LT = HL.hudLayout(w, g.viewW, g.viewH);
+      for (let i = 0; i < (LT?.toastRows ?? 0); i++) {
+        const q = LT.toast(i), tr = { x: q.l, y: q.top, w: q.w, h: q.h };
+        for (const [k, r] of Object.entries(tb)) if (ov(tr, r)) fails.push(`마을 토스트 줄 ${i}${f1(tr)} ↔ ${k}${f1(r)} 겹침`);
+      }
     }
   }
   // 크기·사이

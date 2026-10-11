@@ -356,9 +356,13 @@ async function runCase(s, vp, P) {
   const blk2 = await s.eval(() => ({ room: window.__game.world.roomId, x: window.__game.world.player.x, tr: window.__game.world.transitioning }));
   ok(blk.room === 'boss' && !blk.tr && blk.toast && blk2.room === 'boss' && !blk2.tr && blk2.x >= -1, `${tag}: 「시련의 결계」 (방 이동 막힘 + 토스트)`, { blk, blk2 });
   // 규칙 토스트 (시작 규칙 안내 · 보조 무기 금지)
-  if ((T.mods ?? []).length || T.diffOver) {
-    const want = `시련의 규칙: ${TRIAL.trialRuleNames(T).join(' · ')}`;
+  // [qamatrix] 규칙 이름이 없으면(보스 체력 ≤ 1배만 있는 시련 — qafix: 1 이하는 규칙으로 보이지 않는다) trial.js 는 토스트를 띄우지 않는다
+  const ruleNames = TRIAL.trialRuleNames(T);
+  if (ruleNames.length) {
+    const want = `시련의 규칙: ${ruleNames.join(' · ')}`;
     ok(await until(s, (w) => window.__tt.toasts.includes(w) || (window.__game.toasts ?? []).some((t) => t.text === w), want, 3000), `${tag}: 시작 규칙 토스트 '${want}'`);
+  } else {
+    ok(!(await until(s, () => window.__tt.toasts.some((t) => t.startsWith('시련의 규칙:')) || (window.__game.toasts ?? []).some((t) => String(t.text).startsWith('시련의 규칙:')), null, 1500)), `${tag}: 규칙 없음 → 빈 「시련의 규칙:」 토스트 없음`);
   }
   if ((T.mods ?? []).includes('no_sub')) {
     await s.eval(() => { window.__game.world.run.hearts = 20; });
