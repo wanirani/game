@@ -333,13 +333,16 @@ export class HeroView {
   /** 애니 시범: 16방향 뷰가 준비된 퍼펫 인스턴스 (없으면 null → 예전 경로) */
   anime16() {
     if (!pilot.anime || !this.p.look) return null;
+    // 16방향 시트(영상에서 뽑은 맨몸 그림)는 망토·날개·후광·오라를 그리지 못한다 → 그런 장비가 보이면 예전 8방향 경로(장비 반영 계약 유지)
+    const L = this.p.look;
+    if (L.cape || L.wings || L.halo || L.aura || L.accAura) return null;
     try { const I = PUP.puppetFor(this.p, this.p.look); return I && PUP.turn16Ready(I) ? I : null; } catch { return null; }
   }
   /** 애니 시범 그리기: 서 있으면 16방향 교차 뷰, 시연 동작 중이면 drawHero(옆모습). 확대는 허리 높이를 중심으로 */
   drawAnime(ctx, cx, bottom, scale, o) {
     const p = this.p, I = this.anime16();
     const posed = (p.anim && p.anim !== 'idle') || p.move;
-    const hs = scale * (p.look.height ?? 1), z = this.zoom || 1;
+    const hs = scale * (p.look.height ?? 1), z = I ? this.zoom || 1 : 1;   // 확대는 16방향 뷰에서만 (다른 외형으로 바꾸면 확대가 남지 않게)
     ctx.save();
     try {
       if (z !== 1) { const py = bottom - 40 * hs; ctx.translate(cx, py); ctx.scale(z, z); ctx.translate(-cx, -py); }
