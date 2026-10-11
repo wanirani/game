@@ -370,20 +370,25 @@ function build(vw, vh, T, S, pad, bossOn, nM, F) {
   L.gap = { l: gapL, r: gapR };
 
   // 알림·배너 칸: y 230–294, 좌우 322 여백, 패드에 닿으면 패드에서 8 px 떨어진 곳까지
-  // [hudfix] 휴대폰 두 줄 버튼 묶음(윗줄이 가운데 쪽으로 넓다)이 칸 바로 아래까지 오면 칸을 그 위로 올린다
-  //   (알림 글자는 칸 아래로 ~26 px 넘쳐 그려진다 → 그만큼 띄운다). 토스트 3줄 자리(게이지 아래)보다 위로는 올리지 않는다
+  // [hudfix] 휴대폰 두 줄 버튼 묶음은 윗줄이 가운데 쪽으로 넓다: 알림 글자는 칸 아래로 ~26 px 넘쳐 그려지므로(터치) 그 높이까지 패드를 피해
+  //   옆으로 줄인다. 그러면 160 px 보다 좁아질 때는 칸을 버튼 윗줄 위로 올린다 — 토스트 줄 수(보스 바 없으면 3, 위쪽 보스 바 아래 1)는 지킨다
   let ty = 230 + t;
-  const th = 64, below = TOAST_ROW;
-  let ts = clipSpan(322 + l, right - 322, ty, th, pad, sides);
-  if (T) {
+  const th = 64, over = T ? TOAST_ROW : 0;
+  let ts = clipSpan(322 + l, right - 322, ty, th + over, pad, sides);
+  if (ts.r - ts.l < 160) {
+    const plain = clipSpan(322 + l, right - 322, ty, th, pad, sides);
+    ts = plain;
     let ptop = Infinity;
-    for (const p of pad) if (p.x < right - 322 && p.x + p.w > 322 + l && p.y < ty + th + below && p.y + p.h > ty) ptop = Math.min(ptop, p.y);
-    const n0 = clamp(Math.round(nM), 0, 3);
-    const minTy = Math.ceil((n0 ? meters[n0 - 1].y + METER_H + 4 : mTop) + 3 * TOAST_ROW + 4);
-    const ty2 = Math.max(minTy, Math.floor(ptop - th - below));
-    if (Number.isFinite(ptop) && ty2 < ty) {
-      const s2 = clipSpan(322 + l, right - 322, ty2, th, pad, sides);
-      if (s2.r - s2.l >= ts.r - ts.l) { ty = ty2; ts = s2; }
+    for (const p of pad) if (p.x < right - 322 && p.x + p.w > 322 + l && p.y < ty + th + over && p.y + p.h > ty) ptop = Math.min(ptop, p.y);
+    if (Number.isFinite(ptop)) {
+      const n0 = clamp(Math.round(nM), 0, 3), top0 = n0 ? meters[n0 - 1].y + METER_H + 4 : mTop;
+      const bty0 = Math.max(148 + t, n0 ? meters[n0 - 1].y + METER_H + 4 : 0);
+      const minTy = Math.ceil((bossOn ? Math.max(top0, bty0 + 40) + TOAST_ROW + 4 : top0 + 3 * TOAST_ROW + 4) + 16);   // +16: 알림이 튀어나올 때 위로 넘치는 높이
+      const ty2 = Math.max(minTy, Math.floor(ptop - th - over - 2));
+      if (ty2 < ty) {
+        const s2 = clipSpan(322 + l, right - 322, ty2, th + over, pad, sides);
+        ty = ty2; ts = s2.r - s2.l >= 160 ? s2 : clipSpan(322 + l, right - 322, ty2, th, pad, sides);
+      }
     }
   }
   const tw = Math.min(560, ts.r - ts.l);

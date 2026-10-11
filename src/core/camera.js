@@ -250,8 +250,11 @@ export class Camera {
     const b = this.bounds;
     if (!b) return;
     const vw = this.w / this.baseZoom, vh = this.h / this.baseZoom;
+    const cy0 = this.cy;
     this.cx = b.w <= vw ? b.x + b.w / 2 : clamp(this.cx, b.x + vw / 2, b.x + b.w - vw / 2);
     this.cy = b.h <= vh ? b.y + b.h - vh / 2 + this.padLift(b.h, vh, this.baseZoom) : clamp(this.cy, b.y + vh / 2, b.y + b.h - vh / 2);
+    const lim = this.arenaLowLimit(b, vh);   // [hudfix] 터치 보스 경기장: 바닥을 조작 줄 위로 올리는 목표(fy)는 방 경계 맞춤보다 조금 더 내려가도 된다
+    if (lim != null) this.cy = Math.max(this.cy, Math.min(cy0, lim + vh / 2));
   }
   /**
    * 방이 시야보다 낮을 때 화면을 바닥 맞춤에서 얼마나 올리나 (hud_mobile §2 세로 확장 시야).
@@ -318,10 +321,22 @@ export class Camera {
     const b = this.bounds;
     if (!b) return;
     const vw = this.vw, vh = this.vh;
+    const y0 = this.y;
     if (b.w <= vw) this.x = b.x + (b.w - vw) / 2;
     else this.x = clamp(this.x, b.x, b.x + b.w - vw);
     if (b.h <= vh) this.y = b.y + b.h - vh + this.padLift(b.h, vh, this._zoom); // 방이 화면보다 낮으면 바닥에 맞춤 (세로 확장 시야는 가운데)
     else this.y = clamp(this.y, b.y, b.y + b.h - vh);
+    const lim = this.arenaLowLimit(b, vh);
+    if (lim != null) this.y = Math.max(this.y, Math.min(y0, lim));
+  }
+  /**
+   * [hudfix] 터치(게임 화면 위 패드) 보스 경기장에서 화면 위쪽 끝(y)이 내려갈 수 있는 한계, 아니면 null.
+   * 방 경계 맞춤은 바닥을 화면 88–95 % (조작 줄 아래)에 두었다 → 바닥을 arenaFloorK 높이까지 올리도록 방 아래를 조금 더 보여 준다:
+   * 방이 화면보다 낮으면 방 위 끝이 화면 위 끝에 닿을 때까지, 높으면 방 아래로 화면의 20 % 까지
+   */
+  arenaLowLimit(b, vh) {
+    if (this.floorY == null || !(arenaFloorK() > ARENA_FLOOR)) return null;
+    return b.h <= vh ? b.y : b.y + b.h - vh + vh * 0.2;
   }
   /** 월드 그리기 직전에 호출 (기울기는 뷰 중심 기준) */
   apply(ctx) {
