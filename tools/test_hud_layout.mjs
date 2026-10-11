@@ -28,7 +28,7 @@
 //  6) HUD-REDO (hudredo, /tmp/claude-0/g10/hudredo_design.md): 기기별(폴드 2.0·2.625·2.6, 태블릿, 휴대폰 2종) × 버튼 배치 2가지
 //     ('게임 화면 위' overlay / '아래 띠' band) × 장면(스테이지 s01, 마을)에서 실제 패드(touchpad.buttons·layoutInfo)를 잰다:
 //       · 모든 터치 조작(버튼·시스템 아이콘·스틱 받침)의 그린 테 바깥 ↔ 화면 가장자리 여백 ≥ 규칙 (PAD_M 25 dp; 넓은 배치 시스템 줄 위쪽 SYS_M_WIDE)
-//       · 아래 줄 순서 점프.x < 공격.x < 대시.x, 세 버튼 |Δy| ≤ 2 dp · 마을: 탈것–점프–대시 한 줄(|Δy| ≤ 2 dp, 같은 간격 ±2 dp)
+//       · 아래 줄 순서 점프.x < 공격.x < 대시.x, 세 버튼 |Δy| ≤ 2 dp · 마을: 점프–탈것–대시 한 줄(|Δy| ≤ 2 dp, 같은 간격 ±2 dp, 점프·대시 = 스테이지 자리)
 //       · 크기: 모든 터치 칸 ≥ 44 dp, 버튼 사이 ≥ 12 dp. 사용자 기기(fold2, 1 dp = 0.163 mm)는 mm 범위
 //         (공격 테 13.5–15.5 · 일반 9.3–11 · 필살 9.5–11.5 · ⇄/수호 9–10.8 · 빠른 칸 8.2–9.4 · 스틱 받침 19.5–22.5 · 사이 ≥ 2 mm)
 //       · 겹침: 버튼끼리·버튼↔시스템 줄·버튼↔스틱, 점수(재화) 칸·퀘스트 칸 ↔ 시스템 아이콘, 콤보 열 ↔ 빠른 칸, 빠른 칸 ↔ 패드·스틱, 마을 오른쪽 위 판 ↔ 시스템 아이콘
@@ -638,16 +638,18 @@ async function redoPage({ dev, mode, scene, coverageOnly }) {
     }
   } else {
     const [mo, j, d] = [by.mount, by.jump, by.dash];
-    // [hudfix] 마을 줄 = 탈것 · 점프 · (공격 자리 비움) · 대시. 점프·대시는 스테이지 자리 그대로 (스테이지와의 비교는 밖에서: m.town.pos)
+    // [hudfix] 점프·대시는 스테이지 자리 그대로 (스테이지와의 비교는 밖에서: m.town.pos)
+    // [verify] 마을 줄 = 점프 · 탈것(마을에 없는 공격 자리) · 대시 — 빈 자리 없이 대시 쪽에 나란히 (사용자 의견 1), 두 사이 같음 ±2 dp
     if (!mo || !j || !d) fails.push(`마을: 탈것·점프·대시 중 빠진 버튼 (${Object.keys(by).join(',')})`);
     else {
-      const ok = I.left ? mo.cx > j.cx && j.cx > d.cx : mo.cx < j.cx && j.cx < d.cx;
-      if (!ok) fails.push('마을 줄 순서가 탈것–점프–대시가 아니다');
-      const dy = Math.max(Math.abs(mo.cy - j.cy), Math.abs(j.cy - d.cy));
+      const ok = I.left ? j.cx > mo.cx && mo.cx > d.cx : j.cx < mo.cx && mo.cx < d.cx;
+      if (!ok) fails.push('마을 줄 순서가 점프–탈것–대시가 아니다');
+      const dy = Math.max(Math.abs(mo.cy - j.cy), Math.abs(mo.cy - d.cy));
       if (dy > 2) fails.push(`마을 줄 높이 차 ${r1(dy)} dp > 2`);
-      const g1 = Math.abs(j.cx - mo.cx) - (j.d + mo.d) / 2;
-      if (g1 < 12 - 0.5 || g1 > 24) fails.push(`마을 줄 탈것–점프 사이 ${r1(g1)} dp (기대 12–24)`);
-      m.town = { gaps: [r1(g1), r1(Math.abs(d.cx - j.cx) - (d.d + j.d) / 2)], dy: r1(dy), pos: { mount: [r1(mo.cx), r1(mo.cy), r1(mo.d)], jump: [r1(j.cx), r1(j.cy)], dash: [r1(d.cx), r1(d.cy)] } };
+      const g1 = Math.abs(mo.cx - j.cx) - (j.d + mo.d) / 2, g2 = Math.abs(d.cx - mo.cx) - (d.d + mo.d) / 2;
+      if (g1 < 12 - 0.5 || g1 > 32 || g2 < 12 - 0.5 || g2 > 32) fails.push(`마을 줄 사이 ${r1(g1)} / ${r1(g2)} dp (기대 12–32)`);
+      if (Math.abs(g1 - g2) > 2) fails.push(`마을 줄 사이가 고르지 않다 (${r1(g1)} / ${r1(g2)} dp)`);
+      m.town = { gaps: [r1(g1), r1(g2)], dy: r1(dy), pos: { mount: [r1(mo.cx), r1(mo.cy), r1(mo.d)], jump: [r1(j.cx), r1(j.cy)], dash: [r1(d.cx), r1(d.cy)] } };
     }
     const tb = g.top?.topBoxes;
     if (!tb) info.push('마을 오른쪽 위 판 정보 없음');
