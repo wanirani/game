@@ -76,38 +76,33 @@ def estimate_progress(ws, start):
     deep = W_f - 0.45 * depth            # 옆모습 골은 이보다 좁다
     rise = 0.3 * depth                   # 뒷모습 마루는 골보다 이만큼 넓다
 
-    def first_min(a, lim=None):
-        """a 부터 deep 아래로 내려간 첫 구간의 최소"""
-        i = a
-        while i < n and ws[i] > deep:
+    from scipy.signal import find_peaks
+    # 옆모습 골 = 폭의 뚜렷한 극소 (돌출도 ≥ 0.18·깊이, 8 프레임 이상 떨어짐, deep 보다 좁음). 뒷모습이 앞모습보다 좁아도
+    # (땋은 머리·망토가 앞에서만 옆으로 퍼진다) 두 옆모습이 따로 잡힌다
+    mins = [int(i) for i in find_peaks(-ws, prominence=0.18 * depth, distance=8)[0] if i >= s + 2 and ws[i] < deep]
+    if not mins:
+        raise ValueError('no side view')
+    p1 = mins[0]
+    half = False
+    p2 = None
+    if len(mins) >= 2:
+        p2 = mins[1]
+        b = int(p1 + np.argmax(ws[p1:p2 + 1]))
+        if ws[b] - max(ws[p1], ws[p2]) < 0.15 * depth:
+            p2 = None
+    if p2 is None:
+        # 둘째 옆모습이 없다: 뒷모습 = p1 뒤에서 rise 만큼 오른 뒤의 첫 마루 (반 바퀴)
+        half = True
+        i = p1
+        while i < n and ws[i] < ws[p1] + rise:
             i += 1
         if i >= n:
-            return None
-        j = i
-        while j < n and ws[j] <= deep + 0.15 * depth:
-            j += 1
-        return int(i + np.argmin(ws[i:j]))
-
-    p1 = first_min(s + 2)
-    if p1 is None:
-        raise ValueError('no side view')
-    # 뒷모습 = p1 뒤에서 rise 만큼 오른 뒤의 첫 마루
-    i = p1
-    while i < n and ws[i] < ws[p1] + rise:
-        i += 1
-    half = False
-    if i >= n:
-        b = n - 1; p2 = None; half = True
-    else:
-        j = i
-        while j + 1 < n and not (ws[j + 1] < ws[j] and ws[j] - min(ws[j:min(n, j + 8)]) > 0.04 * depth):
-            j += 1
-        b = int(i + np.argmax(ws[i:j + 1]))
-        p2 = first_min(b + 3)
-        if p2 is not None and ws[b] - ws[p2] < rise:
-            p2 = None
-        if p2 is None:
-            half = True
+            b = n - 1
+        else:
+            j = i
+            while j + 1 < n and not (ws[j + 1] < ws[j] and ws[j] - min(ws[j:min(n, j + 8)]) > 0.04 * depth):
+                j += 1
+            b = int(i + np.argmax(ws[i:j + 1]))
     if half and (b - p1) < 0.45 * (p1 - s):
         # 옆모습 직후 앞모습으로 녹아 돌아왔다 (뒷모습 없음) — 거울로도 뒤를 만들 수 없다
         raise ValueError(f'quarter turn only (side {p1}, then {b - p1} frames)')
@@ -137,7 +132,7 @@ def estimate_progress(ws, start):
             th[k] = 270.0 + r4 * (k - p2)
     p2v = b if half else p2
     th = np.maximum.accumulate(th)
-    return th, dict(start=s, p1=p1, back=int(b), p2=int(p2v), half=half, W_front=round(W_f, 1), W_back=round(float(ws[b]), 1), D=round(float(ws[p1]), 1),
+    return th, dict(est='v3', start=s, p1=p1, back=int(b), p2=int(p2v), half=half, W_front=round(W_f, 1), W_back=round(float(ws[b]), 1), D=round(float(ws[p1]), 1),
                     end=round(float(np.max(th)), 1), seg=[p1 - s, int(b) - p1, int(p2v) - int(b), (e - p2) if e is not None else None], gamma=round(g, 2), rate=round(r, 2))
 
 

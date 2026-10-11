@@ -653,7 +653,7 @@ try {
     const s = await env.page('desk', 'tools/gallery_turntable.html', { wait: false });
     await s.page.waitForFunction('window.__tt && typeof window.__tt.renderClass === "function"', null, { timeout: 60000, polling: 200 });
     const keys = await s.eval(() => window.__tt.t16Looks());
-    const T16 = { pkg: 'TURNMOUNT', gate: 'TURNMOUNT' };
+    const T16 = { pkg: 'TURNMOUNT' };
     if (!keys.length) {
       await suite.check({ id: 'turn16.list', group: 'turn16', ...T16, title: 'turn16.json lists the converted looks' }, async () => ({ pass: false, detail: 'no looks listed' }));
       await s.close(); return;
@@ -680,23 +680,31 @@ try {
         let a16 = true;
         for (let i = 0; i < 16; i++) { const r = R(-180 + i * 22.5); a16 = a16 && r.a16 && r.ready; const d = px(r.canvas); v.push(d); st.push(stats(d)); }
         const hs = st.map((x) => x.h).sort((a, b) => a - b), hMed = hs[8];
+        // 교차 연속성: 한 칸(22.5°)을 8 걸음으로 나눠 그렸을 때 한 걸음의 변화가 두 이웃 뷰 차이의 60 % 를 넘지 않는다 (한 번에 '탁' 바뀌지 않음)
         let worst = 0, worstAt = 0;
         for (let i = 0; i < 16; i++) {
-          const a = v[i], b = v[(i + 1) % 16], m = px(R(-180 + i * 22.5 + 11.25).canvas);
-          const ab = diff(a, b), r = Math.max(diff(m, a), diff(m, b)) / Math.max(ab, 0.02);
-          if (r > worst) { worst = r; worstAt = -180 + i * 22.5 + 11.25; }
+          const ab = diff(v[i], v[(i + 1) % 16]);
+          let prev = v[i];
+          for (let j = 1; j <= 8; j++) {
+            const cur = j === 8 ? v[(i + 1) % 16] : px(R(-180 + i * 22.5 + j * 2.8125).canvas);
+            const r = diff(prev, cur) / Math.max(ab, 0.02);
+            if (r > worst) { worst = r; worstAt = -180 + i * 22.5 + j * 2.8125; }
+            prev = cur;
+          }
         }
         const f = v[12], bk = v[4];                       // -180 + 12·22.5 = 90° front, -90° back
-        const z1 = stats(px(R(90, 1).canvas)), z16 = stats(px(R(90, 1.6).canvas));
+        // 확대: 넓은 캔버스(같은 배율)에서 앞모습 실루엣 폭 — 날개·창이 가장자리에 잘리지 않게
+        const WZ = 480, wide = (zoom) => { const c = T.renderClass(cid, cls, 0, 90, WZ, H, zoom).canvas; const d = c.getContext('2d').getImageData(0, 0, WZ, H).data; let x0 = WZ, x1 = -1; for (let y = 0; y < H; y++) for (let x = 0; x < WZ; x++) if (d[(y * WZ + x) * 4 + 3] > 40) { if (x < x0) x0 = x; if (x > x1) x1 = x; } return { w: x1 - x0 + 1, n: 0 }; };
+        const z1 = wide(1), z16 = wide(1.6);
         const lo = R(90, 1, true);
         out.push({ key: k, a16, minN: Math.min(...st.map((x) => x.n)), hMin: hs[0] / hMed, hMax: hs[15] / hMed, cross: worst, crossAt: worstAt, frontBack: diff(f, bk), zoomW: z16.w / Math.max(1, z1.w), zoomN: z16.n / Math.max(1, z1.n), lo: lo.a16 && lo.ready && stats(px(lo.canvas)).n > 800 });
       }
       return out;
     }, keys);
     for (const r of M) {
-      await suite.check({ id: `turn16.${r.key.split('/')[1]}`, group: 'turn16', ...T16, title: `${r.key}: ui+lo 16-view sheets load; 16 views drawn at a steady height; half steps crossfade; front ≠ back; zoom 1.6 enlarges` }, async () => ({
-        pass: r.a16 && r.lo && r.minN > 1500 && r.hMin >= 0.8 && r.hMax <= 1.2 && r.cross <= 0.85 && r.frontBack > 0.06 && r.zoomW >= 1.35 && r.zoomW <= 1.85,
-        detail: `16 views ${r.a16 ? 'loaded' : 'NOT loaded'}, lo ${r.lo}; min ${r.minN} px; height ${r.hMin.toFixed(2)}–${r.hMax.toFixed(2)} × median; worst half-step ${r.cross.toFixed(2)} of the neighbour gap at ${r.crossAt}°; front/back ${(r.frontBack * 100).toFixed(1)} %; zoom 1.6 → width ×${r.zoomW.toFixed(2)}`,
+      await suite.check({ id: `turn16.${r.key.split('/')[1]}`, group: 'turn16', ...T16, title: `${r.key}: ui+lo 16-view sheets load; 16 views at a steady height; no pop inside a 22.5° step (≤ 60 % per 2.8°); front ≠ back; zoom 1.6 ≈ ×1.6` }, async () => ({
+        pass: r.a16 && r.lo && r.minN > 1500 && r.hMin >= 0.8 && r.hMax <= 1.2 && r.cross <= 0.6 && r.frontBack > 0.06 && r.zoomW >= 1.4 && r.zoomW <= 1.8,
+        detail: `16 views ${r.a16 ? 'loaded' : 'NOT loaded'}, lo ${r.lo}; min ${r.minN} px; height ${r.hMin.toFixed(2)}–${r.hMax.toFixed(2)} × median; largest 2.8° sub-step ${r.cross.toFixed(2)} of the neighbour gap (at ${r.crossAt}°); front/back ${(r.frontBack * 100).toFixed(1)} %; zoom 1.6 → width ×${r.zoomW.toFixed(2)}`,
         metrics: r,
       }));
     }
