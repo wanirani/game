@@ -20,7 +20,7 @@ import { newGameState, currentHero, storyJoinedChars } from '../../game/state.js
 import { expToNext, MAX_LEVEL } from '../../game/stats.js';
 import { drawHero } from '../../render/hero.js';
 import { drawIcon } from '../../render/icons.js';
-import { hudLayout } from '../../render/hud_layout.js';
+import { hudLayout, setHudAvoid } from '../../render/hud_layout.js';
 import { touchpad } from '../../core/touchpad.js';   // [hudredo] 시스템 아이콘 줄 자리 (오른쪽 위를 비켜 그린다)
 import { CHARACTERS } from '../../data/characters.js';
 import { CLASSES } from '../../data/classes.js';
@@ -501,6 +501,7 @@ export class HubScene extends Scene {
     // 시험용 (tools/test_hud_layout.mjs §6): 오른쪽 위 판들의 논리 px 사각형 — 시스템 아이콘 줄과 겹치지 않아야 한다
     const LR = (r) => ({ x: r.x * k, y: r.y * k, w: r.w * k, h: r.h * k });
     this.topBoxes = { gold: LR({ x: gx, y: gy, w: gw, h: 40 }), relics: LR({ x: x1 - lw - 30, y: ry - 14, w: rowR - (x1 - lw - 30), h: 28 }), menu: LR(rMenu), ...(g.registry.party ? { party: LR(rParty) } : {}) };
+    setHudAvoid(this.world, Object.values(this.topBoxes));   // [qamatrix] 토스트 줄이 이 판들(특히 헌터 교체·메뉴)을 덮지 않게
 
     // ── 하단: 상호작용 안내 ──
     const h = this.hint;

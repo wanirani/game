@@ -443,9 +443,11 @@ function build(vw, vh, T, S, pad, bossOn, nM, F, mReal = true) {
   const bossTopOn = L.bossShown && L.bossSlot === 'top';
   if (bossTopOn) top0 = Math.max(top0, L.bossTop.y + L.bossTop.h + 4);
   const rows = Math.max(0, Math.min(bossTopOn ? 1 : 3, L.toastCap ?? 3, Math.floor((L.transient.y - 4 - top0) / TOAST_ROW)));
+  const avoid = curAvoid;
   const rowAt = (i) => {
     const top = top0 + i * TOAST_ROW;
-    const s = clipSpan(gapL, gapR, top, TOAST_ROW, pad, sides);
+    let s = clipSpan(gapL, gapR, top, TOAST_ROW, pad, sides);
+    if (avoid.length) s = clipSpan(s.l, s.r, top, TOAST_ROW, avoid, NO_SIDES);   // [qamatrix] 장면이 직접 그리는 판 (setHudAvoid)
     return { x: (s.l + s.r) / 2, y: top + 18, l: s.l, r: s.r, w: s.r - s.l, top, h: TOAST_ROW, hidden: i >= rows };
   };
   const toastList = [0, 1, 2].map(rowAt);
@@ -582,12 +584,14 @@ function buildFold(vw, vh, T, S, pad, bossOn, nM, F, k, cs, qcIn = false) {
   //  줄마다 오른쪽 끝 = 그 줄 높이에 걸리는 것(콤보 열 · 퀘스트 칸) 왼쪽 8 px, 없으면 화면 오른쪽 여백까지. 보스 바 아래는 2줄
   const rows = Math.max(0, Math.min(L.bossShown ? 2 : 3, Math.floor((L.transient.y - 4 - top0) / TOAST_ROW)));
   const qOn = L.quest && L.questShown;
+  const avoid = curAvoid;
   const rowAt = (i) => {
     const top = top0 + i * TOAST_ROW, bot = top + TOAST_ROW;
     let r = right - 12;
     if (L.combo.h > 0 && L.combo.y < bot && L.combo.y + L.combo.h > top) r = Math.min(r, L.combo.x - HUD_GAP);
     if (qOn && L.quest.y < bot && L.quest.y + L.quest.h + HUD_GAP > top) r = Math.min(r, L.quest.x - HUD_GAP);
     for (const p of pad) if (p.y < bot && p.y + p.h > top && p.x + p.w > gapL && p.x < r) r = Math.min(r, p.x - HUD_GAP);   // 오른쪽 위 아이콘 줄 등
+    for (const p of avoid) if (p.y < bot && p.y + p.h > top && p.x + p.w > gapL && p.x < r) r = Math.min(r, p.x - HUD_GAP);   // [qamatrix] 마을 오른쪽 위 판 (setHudAvoid)
     r = Math.max(r, gapL);
     return { x: (gapL + r) / 2, y: top + 18, l: gapL, r, w: r - gapL, top, h: TOAST_ROW, hidden: i >= rows };
   };
@@ -614,6 +618,16 @@ export function questHeadH(F) { return Math.round(Math.max(12, F) + 14); }
 let memo = null;
 const memoArgs = [];
 const memoPad = [];
+// [qamatrix] 장면이 HUD 밖 경로로 직접 그리는 판 (마을 오른쪽 위 골드·유물·헌터 교체·메뉴 — hub.js topBoxes). 폴드에서 토스트 둘째 줄이
+// 화면 오른쪽 끝까지 넓어져 「헌터 교체」·「메뉴」 단추를 덮던 것: 토스트 줄이 이 사각형들을 피한다. 같은 world 일 때만 쓴다 (스테이지에는 없음).
+const NO_SIDES = [];
+let avoidWorld = null, avoidRects = [], avoidVer = 0, curAvoid = [];
+/** 장면이 그리는 판을 토스트 줄이 피하게 등록 (논리 px 사각형 배열; null = 지움). 값이 같으면 아무것도 하지 않는다 (매 프레임 불러도 된다) */
+export function setHudAvoid(world, rects) {
+  const list = (rects || []).filter((r) => r && [r.x, r.y, r.w, r.h].every(Number.isFinite) && r.w > 0 && r.h > 0);
+  if (world === avoidWorld && list.length === avoidRects.length && list.every((r, i) => { const o = avoidRects[i]; return o.x === r.x && o.y === r.y && o.w === r.w && o.h === r.h; })) return;
+  avoidWorld = world || null; avoidRects = list.map((r) => ({ x: r.x, y: r.y, w: r.w, h: r.h })); avoidVer++;
+}
 function samePad(snap, pad) {
   if (snap.length !== pad.length * 4) return false;
   for (let i = 0, j = 0; i < pad.length; i++, j += 4) {
@@ -674,15 +688,18 @@ export function hudLayout(world, vw, vh, pad, opts) {
   const band = !!g0?.viewBand && T;                      // [hudfix] 아래 띠: 빠른 칸을 띠에
   const lh = !!g0?.settings?.touchLeftHanded;
   const bv = band ? (touchpad.layoutVersion?.() ?? 0) : 0;   // 띠 빠른 칸은 버튼 자리를 따른다 (패드 배치가 늦게 잡혀도 다시 계산)
+  const av = world && world === avoidWorld && avoidRects.length ? avoidVer : 0;   // [qamatrix] 마을 판 (setHudAvoid)
   const a = memoArgs;
   if (memo && a[0] === vw && a[1] === vh && a[2] === T && a[3] === (S.l || 0) && a[4] === (S.r || 0) && a[5] === (S.t || 0) && a[6] === (S.b || 0)
-    && a[7] === bossOn && a[8] === nM && a[9] === F && a[10] === pr && a[11] === hk && a[12] === (Number(g0?.cssScale) || 1) && a[13] === qc && a[14] === band && a[15] === lh && a[16] === bv && a[17] === mReal && samePad(memoPad, pad)) {
+    && a[7] === bossOn && a[8] === nM && a[9] === F && a[10] === pr && a[11] === hk && a[12] === (Number(g0?.cssScale) || 1) && a[13] === qc && a[14] === band && a[15] === lh && a[16] === bv && a[17] === mReal && a[18] === av && samePad(memoPad, pad)) {
     if (band && !memo.quick && pr !== 'fold') bandQuick(memo, g0, vw, vh, band);   // 패드가 아직 안 보여 버튼 자리가 없던 첫 프레임 → 다시 시도
     return memo;
   }
+  curAvoid = av ? avoidRects : NO_SIDES;
   memo = pr === 'fold' ? buildFold(vw, vh, T, S, cleanPad(pad), bossOn, nM, F, hk, Number(g0?.cssScale) || 1, qc) : build(vw, vh, T, S, cleanPad(pad), bossOn, nM, F, mReal);
   if (pr !== 'fold') { memo.preset = 'wide'; memo.fold = false; memo.arc = null; memo.quest = null; memo.questShown = false; bandQuick(memo, g0, vw, vh, band); }
-  a.length = 0; a.push(vw, vh, T, S.l || 0, S.r || 0, S.t || 0, S.b || 0, bossOn, nM, F, pr, hk, Number(g0?.cssScale) || 1, qc, band, lh, bv, mReal);
+  curAvoid = NO_SIDES;
+  a.length = 0; a.push(vw, vh, T, S.l || 0, S.r || 0, S.t || 0, S.b || 0, bossOn, nM, F, pr, hk, Number(g0?.cssScale) || 1, qc, band, lh, bv, mReal, av);
   memoPad.length = 0;
   for (const p of pad) memoPad.push(p?.x, p?.y, p?.w, p?.h);
   return memo;
