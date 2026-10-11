@@ -84,7 +84,7 @@ RECIPES = {
         L(BSB(FALL[v][0]), at=FALL[v][1], al='pk', win=1.2, len=0.42, g=-3, st=-3, lp=1400, hp=35, tau=0.14, hold=0.02),
         L(QPUNCH[v], len=0.40, g=-6, st=-9, lp=220, tau=0.16),
         L(BSB(BONE[v][0]), at=BONE[v][1], al='pk', len=0.16, g=-12, hp=1300, tau=0.06, dly=8),
-    ], eq=[('ls', 90, 3.0, 0.7), ('pk', 330, -3.0, 0.9), ('pk', 2600, 1.0, 0.8)], sat=(2.6, 0.4))},
+    ], eq=[('ls', 90, 3.0, 0.7), ('pk', 330, -3.0, 0.9), ('pk', 2600, 1.0, 0.8)], sat=(2.6, 0.4), lp=12000)},   # lp: 12 kHz 위는 들리지 않고 AAC 가 순간음 피크를 4 dB 넘기게 만든다
     # 치명타 — 무거운 타격 위에 쇠가 울리는 '챙' 과 채찍 같은 날카로운 '짝', 꼬리가 조금 길다
     'crit': {'n': 4, 'ch': 1, 'var': lambda v: dict(layers=[
         L(BSB([2463, 2460, 2468, 2461][v]), len=0.12, g=0, hp=400, tau=0.04, clip=7),
@@ -106,7 +106,7 @@ RECIPES = {
         L(f'oga:rubberduck_rpg/item_stone_0{v + 1}.ogg', al='pk', len=0.14, g=-6, hp=900, tau=0.05, dly=4),
         L('oga:rubberduck_bfh/bfh1_rock_hit_01.ogg', len=0.12, g=-6, st=[0, 2, -2, 1][v], hp=500, tau=0.05, dly=1),
         L(BSB(1588), len=0.12, g=-9, st=[-3, -1, -4, -2][v], lp=2200, tau=0.05),
-    ], eq=[('ls', 120, 1.5, 0.7), ('pk', 500, -2.0, 1.0), ('pk', 4000, 1.5, 0.9)], sat=(1.8, 0.25))},
+    ], eq=[('ls', 120, 1.5, 0.7), ('pk', 500, -2.0, 1.0), ('pk', 4000, 1.5, 0.9)], sat=(1.8, 0.25), lp=10000)},   # lp: AAC 가 돌 깨지는 순간음 피크를 넘기지 않게
     # 적 사망 — 마지막 일격 + 몸이 무너지는 무게 + 뼈·살 + 흩어지는 숨결
     'enemy_die': {'n': 4, 'ch': 1, 'var': lambda v: dict(layers=[
         L(BSB(PUNCH[[1, 3, 0, 4][v]]), len=0.12, g=-4, hp=400, tau=0.04, clip=7),

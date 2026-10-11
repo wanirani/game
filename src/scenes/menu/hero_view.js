@@ -32,6 +32,8 @@ import { text, taps } from '../../core/ui.js';
 import * as UI from '../../core/ui.js';
 import { glow, glowOval, PAL, inRect } from './common.js';
 import * as MENU from './common.js';
+import * as PUP from '../../render/hero_puppet.js';
+import { pilot } from '../../core/pilot_flags.js';
 
 const PI = Math.PI;
 const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -204,6 +206,20 @@ function viewSupport(p) {
   return { steps, continuous: !!HV.continuous, painted, full: painted, legacy: false };
 }
 const LEGACY_SUP = Object.freeze({ steps: 2, continuous: false, painted: false, full: false, legacy: true });
+// ── 애니풍 시범 (pilot.anime, docs/specs/anime_motion_sfx.md §3) ──
+// 16방향 뷰(rig.turn.turn16)가 있는 퍼펫: 22.5° 칸 · 이웃 두 뷰 교차 + 실루엣 폭 보간(hero_puppet.drawTurn16) · 두 번 탭 = 앞모습 ·
+// 휠·두 손가락 벌리기 = 확대 1.0~1.6 배 (휠 회전 대신). 플래그가 꺼져 있거나 turn16 이 없으면 아래 모든 경로가 예전과 같다.
+const A16_SUP = Object.freeze({ steps: 16, continuous: false, painted: true, full: true, legacy: false, a16: true });
+const ZOOM = Object.freeze({ MIN: 1, MAX: 1.6, NOTCH: 0.1 });
+const PINCH = { k: 0, active: false };      // 두 손가락 거리 변화 (로그 누적) — 다음 control 에서 소비
+if (pilot.anime && typeof window !== 'undefined' && window.addEventListener) {
+  let d0 = 0;
+  const dist = (e) => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+  window.addEventListener('touchstart', (e) => { if (e.touches.length === 2) { d0 = dist(e); PINCH.active = true; } }, { passive: true });
+  window.addEventListener('touchmove', (e) => { if (PINCH.active && e.touches.length === 2) { const d = dist(e); if (d0 > 0 && d > 0) PINCH.k += Math.log(d / d0); d0 = d; } }, { passive: true });
+  window.addEventListener('touchend', (e) => { if (e.touches.length < 2) { PINCH.active = false; d0 = 0; } }, { passive: true });
+  window.addEventListener('touchcancel', () => { PINCH.active = false; d0 = 0; }, { passive: true });
+}
 
 const VIEW_NAMES = { 0: '옆모습(오른쪽)', 45: '3/4 앞모습', 90: '앞모습', 135: '3/4 앞모습', 180: '옆모습(왼쪽)', '-180': '옆모습(왼쪽)', '-135': '3/4 뒷모습', '-90': '뒷모습', '-45': '3/4 뒷모습' };
 
@@ -243,6 +259,7 @@ export class HeroView {
     this.introT = 0;
     this._sup = null; this._supLook = undefined; this._supT = -9; this._full = null;
     this._err = false;
+    this.zoom = 1;               // 애니 시범 16방향 전용 확대 (1.0~1.6)
   }
   // ───────────────────────── 예전 API ─────────────────────────
   /** look 객체가 바뀌면(장비 미리보기 등) 체인 상태를 새로 만든다 */
@@ -299,6 +316,7 @@ export class HeroView {
     p.cx = cx; p.bottom = bottom; p.facing = facing;
     const useRim = rim ?? (HERO_Q.rim && !this.lowTier() ? undefined : false);
     const o = useRim === undefined ? { scale, noFx } : { scale, noFx, rim: useRim };
+    if (this.tt && pilot.anime) { this.drawAnime(ctx, cx, bottom, scale, o); return; }
     try {
       if (!this.tt) { HERO.drawHero(ctx, p, null, o); return; }
       if (HERO.HERO_VIEW) { o.yaw = this.yaw; HERO.drawHero(ctx, p, null, o); return; }
@@ -311,6 +329,29 @@ export class HeroView {
       ctx.restore();
     } catch (e) { if (!this._err) { console.error(e); this._err = true; } }
   }
+
+  /** 애니 시범: 16방향 뷰가 준비된 퍼펫 인스턴스 (없으면 null → 예전 경로) */
+  anime16() {
+    if (!pilot.anime || !this.p.look) return null;
+    try { const I = PUP.puppetFor(this.p, this.p.look); return I && PUP.turn16Ready(I) ? I : null; } catch { return null; }
+  }
+  /** 애니 시범 그리기: 서 있으면 16방향 교차 뷰, 시연 동작 중이면 drawHero(옆모습). 확대는 허리 높이를 중심으로 */
+  drawAnime(ctx, cx, bottom, scale, o) {
+    const p = this.p, I = this.anime16();
+    const posed = (p.anim && p.anim !== 'idle') || p.move;
+    const hs = scale * (p.look.height ?? 1), z = this.zoom || 1;
+    ctx.save();
+    try {
+      if (z !== 1) { const py = bottom - 40 * hs; ctx.translate(cx, py); ctx.scale(z, z); ctx.translate(-cx, -py); }
+      if (I && !posed) {
+        ctx.translate(cx, bottom); ctx.scale(hs, hs);
+        PUP.drawTurn16(ctx, I, this.yaw, p.t);
+      } else HERO.drawHero(ctx, p, null, Object.assign(o, { yaw: this.yaw }));
+    } catch (e) { if (!this._err) { console.error(e); this._err = true; } }
+    ctx.restore();
+  }
+  /** 확대 (애니 시범 16방향): k = 휠 칸(+ = 아래로 = 축소) */
+  zoomBy(k) { this.zoom = clamp((this.zoom || 1) - k * ZOOM.NOTCH, ZOOM.MIN, ZOOM.MAX); }
 
   // ───────────────────────── 턴테이블 ─────────────────────────
   get reduceMotion() { return !!this.game?.settings?.reduceMotion; }
@@ -326,7 +367,7 @@ export class HeroView {
   support() {
     const look = this.p.look;
     if (!this._sup || this._supLook !== look || this.clock - this._supT > 0.5) {
-      this._sup = viewSupport(this.p) ?? LEGACY_SUP;
+      this._sup = (this.tt && this.anime16() ? A16_SUP : viewSupport(this.p)) ?? LEGACY_SUP;
       this._supLook = look; this._supT = this.clock;
     }
     return this._sup;
@@ -346,7 +387,7 @@ export class HeroView {
     if (this.mode === 'settle') return this.yawGoal;
     if (this.mode === 'tween') return this.tw?.user ? this.tw.to : this.userYaw;
     if (this.mode === 'idle') return this.seq || this.pending ? this.userYaw : this.yaw;
-    const st = TAU / Math.max(1, Math.round(Number(HERO.HERO_VIEW?.steps) || 8));
+    const st = TAU / (this.support().a16 ? 16 : Math.max(1, Math.round(Number(HERO.HERO_VIEW?.steps) || 8)));
     return Math.round(this.yaw / st) * st;
   }
 
@@ -405,7 +446,7 @@ export class HeroView {
   }
   resetYaw() {
     this.beginUser();
-    this.userYaw = this.defaultYaw;
+    this.userYaw = this.support().a16 ? PI / 2 : this.defaultYaw;   // 애니 시범 16방향: 두 번 탭 = 앞모습
     this.tweenTo(this.userYaw, TT.RESET_T, { user: true });
   }
   /** 장비 공개: 한 바퀴 (움직임 줄이기·옆모습 대체면 예전처럼 시전 동작) */
@@ -550,7 +591,21 @@ export class HeroView {
     }
     // ── 휠 (무대 위에서만) ──
     const over = r && p.active && inRect(p.x, p.y, r);
-    if (over && ges) {
+    const a16 = this.support().a16;
+    if (a16) {
+      // 애니 시범: 두 손가락 벌리기/모으기 = 확대 (그동안 끌기 회전은 쉰다)
+      if (PINCH.k) { this.zoom = clamp((this.zoom || 1) * Math.exp(PINCH.k), ZOOM.MIN, ZOOM.MAX); PINCH.k = 0; any = true; }
+      if (PINCH.active && this.drag) { this.drag = null; if (this.mode === 'drag') this.settleTo(this.snapOf(this.yaw)); }
+    }
+    if (over && ges && a16) {
+      // 애니 시범: 휠 = 확대 (회전은 끌기·버튼·키·스틱)
+      if (typeof ges.wheelNotches === 'number' && ges.wheelNotches) this.zoomBy(ges.wheelNotches);
+      else if (ges.wheel) {
+        this.wAcc += ges.wheel; this.wIdle = 0;
+        const k = Math.trunc(this.wAcc / TT.WHEEL_UNIT);
+        if (k) { this.wAcc -= k * TT.WHEEL_UNIT; this.zoomBy(k); }
+      }
+    } else if (over && ges) {
       if (typeof ges.wheelNotches === 'number' && ges.wheelNotches) this.wheelBy(ges.wheelNotches);
       else if (ges.wheel) {
         this.wAcc += ges.wheel; this.wIdle = 0;

@@ -212,6 +212,21 @@ window.__tt = {
   },
   readyCount,
   /**
+   * 애니풍 시범 (?anime=1): 메뉴와 같은 HeroView(턴테이블) 경로로 한 칸 — 16방향 뷰(turn16)가 있으면 이웃 두 뷰 교차.
+   * zoom: 확대(1.0~1.6). 반환 canvas. turn16 이 없거나 플래그가 꺼져 있으면 예전 drawHero 경로와 같다
+   */
+  render16(hi, li, deg, w = 160, h = 190, zoom = 1) {
+    const row = rows[hi * 3 + li];
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const v = new HeroView({ turntable: true, game: null });
+    v.set(row.look, CHARACTERS[row.cid]);
+    v.yaw = (deg * Math.PI) / 180; v.zoom = zoom; v.p.t = 3;
+    v.draw(c.getContext('2d'), w / 2, h - 12, (h - 30) / 96, { noFx: true, rim: false });
+    return c;
+  },
+  /** 애니풍 시범: 16방향 뷰가 준비됐는가 */
+  a16Ready(hi, li) { const row = rows[hi * 3 + li]; const v = new HeroView({ turntable: true }); v.set(row.look, CHARACTERS[row.cid]); return !!v.anime16(); },
+  /**
    * QA 비용 측정: 목록의 영웅마다 2차 전직 외형을 n 번씩 그린다 (deg = null → 옆모습 경로, 숫자·배열 → opts.yaw, 배열이면 차례로).
    * 캔버스는 하나를 다시 쓴다 (할당 비용 제외). 시간은 바깥(CDP CPU 시간)에서 잰다 (platform §7.3: yaw ≤ 1.5 × 옆모습)
    */

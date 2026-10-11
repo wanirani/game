@@ -1030,9 +1030,64 @@ export function drawTurnStep(ctx, I, deg, sx, alpha, t) {
   ctx.save();
   if (alpha < 1) ctx.globalAlpha *= alpha;
   ctx.scale((st.m ? -1 : 1) * s * sx, s * breath);
-  ctx.drawImage(turnSrc(I), v.x, 0, v.w, v.h, -v.axisX, -v.footY, v.w, v.h);
+  ctx.drawImage(turnSrc(I), v.x, v.y ?? 0, v.w, v.h, -v.axisX, -v.footY, v.w, v.h);   // v.y: 여러 줄 시트(애니 시범 turn16). 옛 시트는 한 줄 → 0
   ctx.restore();
   return { s, v, m: st.m };
+}
+// ── 애니풍 시범: 16방향 턴테이블 (rig.turn.turn16 — tools/puppet/anime/build_turn16.py, 클링 360° 영상에서 22.5° 간격) ──
+// 각도 규칙은 drawHeroYaw 와 같다: 0 = 오른쪽을 봄, π/2 = 앞모습, π = 왼쪽을 봄, −π/2 = 뒷모습. 좌우 반전 없음 (실제로 돈 영상).
+/** 이 퍼펫이 16방향 뷰를 가졌는가 (시트 로드 전이면 요청하고 false) */
+export function turn16Ready(I) {
+  const T = I?.E?.rig?.turn;
+  if (!T?.turn16?.length) return false;
+  return turnReady(I);
+}
+const T16 = { a: null, b: null, k: 0, wa: 0, wb: 0 };
+/** yaw(라디안)에서 이웃한 두 뷰와 섞는 비율. 가운데 50% 에서만 교차 (멈춘 칸에서는 한 장) */
+export function turn16Pick(I, yaw) {
+  const L = I.E.rig.turn.turn16, n = L.length;
+  let deg = ((yaw * 180) / PI) % 360; if (deg < 0) deg += 360;
+  const step = 360 / n;
+  // turn16 은 −157.5 … 180 순서 → 0 … 360 기준 위치
+  const pos = (d) => ((d % 360) + 360) % 360;
+  let i0 = 0, best = 1e9;
+  for (let i = 0; i < n; i++) { const d = deg - pos(L[i].deg); const dd = d < 0 ? d + 360 : d; if (dd < best) { best = dd; i0 = i; } }
+  const a = L[i0], b = L.find((e) => Math.abs(pos(e.deg) - pos(pos(a.deg) + step)) < 0.5) || a;
+  const f = clamp(best / step, 0, 1);
+  const x = clamp((f - 0.25) / 0.5, 0, 1);
+  T16.a = a.v; T16.b = b.v; T16.k = x * x * (3 - 2 * x); T16.f = f;
+  return T16;
+}
+/**
+ * 16방향 몸 그리기. ctx 는 발 중앙 원점·논리 배율(hs) 적용 상태. 반환: 그린 뷰 정보(가장 비중 큰 뷰)
+ * 교차: 앞 뷰를 먼저(불투명도 min(1, 2(1−k))), 다음 뷰를 위에(min(1, 2k)) — 둘 다 반투명해지는 '유령' 구간이 없다.
+ * 실루엣 폭 보간: 두 뷰의 어깨 띠 폭(bw)을 k 로 섞은 폭에 맞춰 각각 가로로 늘이고 줄인다 → 바뀌는 순간 몸 폭이 튀지 않는다.
+ * 배율: 모든 뷰에 앞모습 한 장의 배율 (카메라가 고정된 영상이라 뷰마다 키를 맞추면 머리카락 높이 차이로 몸이 커졌다 작아진다).
+ * 게임 퍼펫과 같은 키: 리그 artTop(머리카락 꼭대기)·figTop(배율 기준) 비율만큼 PUP_H 보다 크게.
+ */
+export function drawTurn16(ctx, I, yaw, t, alpha = 1) {
+  const E = I.E, T = E.rig.turn, r = E.rig;
+  if (!E.turnImg) return null;
+  const P = turn16Pick(I, yaw);
+  const v0 = T.views.y90 || T.views[T.turn16[0].v];
+  const ratio = r.artTop != null ? (r.sole - r.artTop) / (r.sole - r.figTop) : 1;
+  const s = (PUP_H * ratio) / (v0.footY - v0.topY);
+  const va = T.views[P.a], vb = T.views[P.b];
+  if (!va) return null;
+  const breath = 1 + Math.sin(t * 2.2) * 0.006;
+  const wT = vb ? lerp(va.bw, vb.bw, P.k) : va.bw;
+  const img = turnSrc(I);
+  const one = (v, a) => {
+    if (a <= 0.002) return;
+    ctx.save();
+    ctx.globalAlpha *= a * alpha;
+    ctx.scale(s * (wT / (v.bw || wT)), s * breath);
+    ctx.drawImage(img, v.x, v.y ?? 0, v.w, v.h, -v.axisX, -v.footY, v.w, v.h);
+    ctx.restore();
+  };
+  one(va, Math.min(1, 2 * (1 - P.k)));
+  if (vb && vb !== va && P.k > 0.002) one(vb, Math.min(1, 2 * P.k));
+  return { s, v: P.k < 0.5 ? va : vb, k: P.k, a: P.a, b: P.b };
 }
 /**
  * 턴테이블 채색 뷰의 무기 (원화에는 허리의 채찍 똬리만 있다). platform.md §7.3: 장착 무기가 8방향 모두에서 보이게.

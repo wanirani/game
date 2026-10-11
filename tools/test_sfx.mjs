@@ -16,7 +16,8 @@
 //     푼 ogg 피크 ≤ -0.5 dBFS · 변형마다 엔진 렌더: 합성음 층이 한 번도 안 울림(합성 단독 0) + 5 의 검사 + 지금 게임 소리(샘플+합성)와 단기 RMS 0.75~1.35배 ·
 //     실행 규칙(같은 변형 연달아 안 나옴, 모든 변형 쓰임, 품질 low 면 방 잔향 끔, pan, 화면 x → pan, theme → 공간) · 노드 수 (v2 대 지금) 표
 //     --calibrate-v2  v2 g 를 지금 게임 소리 크기에 맞춰 assets/audio/sfx_v2/index.json 에 쓴다 (build_sfx_v2.py 뒤에 — 공정한 A/B: 더 커서 좋게 들리는 일 없게)
-//     --ref <커밋>     스위치 꺼짐 = 바이트 동일: 그 커밋의 audio.js 와 지금 audio.js 로 모든 효과음을 같은 난수열로 렌더해 샘플 단위로 비교
+//     --ref <커밋>     스위치 꺼짐 = 지금과 같음: 그 커밋의 audio.js 와 지금 audio.js 로 모든 효과음을 같은 난수열로 렌더 — 노드 그래프·난수 호출 수가 같고
+//                     렌더 차이 ≤ 2e-6 (-114 dB, OfflineAudioContext 는 같은 코드도 ±1 ulp 흔들려 바이트 비교는 못 한다)
 //     --no-v2         7 을 건너뜀
 import { chromium } from 'playwright-core';
 import { start } from './serve.mjs';
@@ -468,33 +469,41 @@ if (args.ref) {
     await p2.route('**/src/core/__audio_ref.js', (r) => r.fulfill({ contentType: 'text/javascript; charset=utf-8', body: refSrc }));
     await p2.goto(`http://localhost:${port}/__test_sfx__.html`);
     const idr = await p2.evaluate(async ({ only }) => {
-      let seed = 1;
-      Math.random = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; // 두 모듈 모두 const R = Math.random 으로 잡는다
+      let seed = 1, calls = 0;
+      Math.random = () => { calls++; seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; // 두 모듈 모두 const R = Math.random 으로 잡는다
       const A = await import('/src/core/audio.js'), B = await import('/src/core/__audio_ref.js');
-      const out = { diff: [], same: 0, n: 0, v2on: A.audio.v2Stats().on, aV2: A.audio.v2 };
+      const out = { diff: [], same: 0, n: 0, v2on: A.audio.v2Stats().on, aV2: A.audio.v2, noise: 0, maxd: 0 };
       // 지금 녹음 샘플 뱅크도 얹는다 (샘플 경로도 같은지)
       const ix = await (await fetch('/assets/audio/sfx/index.json')).json(), dc = new OfflineAudioContext(1, 1, 44100), bufs = {};
       const names = (only || Object.keys(A.SFX)).filter((n) => Object.prototype.hasOwnProperty.call(A.SFX, n) && Object.prototype.hasOwnProperty.call(B.SFX, n));
       for (const n of names) { const d = ix.sfx[n]; if (d) for (const id of d.f) if (!bufs[id]) bufs[id] = { buf: await dc.decodeAudioData(await (await fetch(`/assets/audio/sfx/${id}.ogg`)).arrayBuffer()), off: 0 }; }
       const bank = { sample: (n) => { const d = ix.sfx[n]; return d ? { bufs: d.f.map((id) => bufs[id]), g: d.g, s: d.s, r: d.r || 1 } : null; } };
+      const KINDS = ['createOscillator', 'createBufferSource', 'createGain', 'createBiquadFilter', 'createStereoPanner', 'createConvolver', 'createWaveShaper', 'createDelay', 'createBuffer', 'createPeriodicWave'];
+      const run = async (M, name) => {
+        seed = 12345; calls = 0;
+        const oc = new OfflineAudioContext(2, Math.ceil(44100 * 2.6), 44100), eng = new M.Engine(oc); eng.setVolumes(0.6, 0.8); eng.bank = bank;
+        const g = {}; for (const k of KINDS) { if (typeof oc[k] !== 'function') continue; const f = oc[k].bind(oc); oc[k] = (...a) => { g[k] = (g[k] || 0) + 1; return f(...a); }; }
+        const c0 = calls;
+        eng.sfx(name, { delay: 0.05 }); eng.sfx(name, { delay: 0.35, vol: 1.2, pitch: 1.12, pan: -0.4 });
+        const sig = JSON.stringify([c0, calls - c0, g, eng.live.length, eng.stats]);
+        const b = await oc.startRendering(); return { sig, ch: [b.getChannelData(0), b.getChannelData(1)] };
+      };
+      const md = (x, y) => { let m = 0; for (let c = 0; c < 2; c++) for (let i = 0; i < x[c].length; i++) { const d = Math.abs(x[c][i] - y[c][i]); if (d > m || d !== d) m = d !== d ? Infinity : d; } return m; };
       for (const name of names) {
-        const rr = [];
-        for (const M of [A, B]) {
-          seed = 12345;
-          const oc = new OfflineAudioContext(2, Math.ceil(44100 * 2.6), 44100), eng = new M.Engine(oc); eng.setVolumes(0.6, 0.8); eng.bank = bank;
-          eng.sfx(name, { delay: 0.05 }); eng.sfx(name, { delay: 0.35, vol: 1.2, pitch: 1.12, pan: -0.4 });
-          const b = await oc.startRendering(); rr.push([b.getChannelData(0), b.getChannelData(1)]);
-        }
-        let d = 0; for (let c = 0; c < 2; c++) { const x = rr[0][c], y = rr[1][c]; for (let i = 0; i < x.length; i++) if (x[i] !== y[i] && !(x[i] !== x[i] && y[i] !== y[i])) d++; }
-        out.n++; if (d) out.diff.push(`${name}(${d})`); else out.same++;
+        const a = await run(A, name), b = await run(B, name);
+        const d = md(a.ch, b.ch);
+        out.n++; out.maxd = Math.max(out.maxd, d);
+        if (a.sig !== b.sig || !(d <= 2e-6)) out.diff.push(`${name}(${a.sig !== b.sig ? '그래프·난수 호출 다름' : 'Δ' + d.toExponential(1)})`); else out.same++;
       }
+      // 같은 모듈끼리도 OfflineAudioContext 렌더는 ±1 ulp 흔들린다 (그래서 바이트 대신 그래프·난수열·-114 dB 이하 차이로 본다)
+      const a1 = await run(A, 'whip'), a2 = await run(A, 'whip'); out.noise = md(a1.ch, a2.ch);
       return out;
     }, { only }).catch((e) => ({ err: String(e && e.message || e) }));
     if (idr.err) fail('--ref: ' + idr.err);
     else {
       if (idr.v2on || idr.aV2) fail('--ref: 스위치가 꺼져 있는데 audio.v2 가 있음');
       if (idr.diff.length) fail(`스위치 꺼짐인데 ${args.ref} 와 다른 렌더 ${idr.diff.length}종: ${idr.diff.slice(0, 12).join(' ')}`);
-      refLine = `스위치 꺼짐 = ${args.ref} 와 바이트 동일 ${idr.same}/${idr.n}종`;
+      refLine = `스위치 꺼짐 = ${args.ref} 와 같음 ${idr.same}/${idr.n}종 (노드 그래프·난수 호출 수 동일, 렌더 최대 차이 ${idr.maxd.toExponential(1)} — 같은 모듈 두 번 렌더 잡음 ${idr.noise.toExponential(1)})`;
     }
     for (const e of errs2) fail('--ref 페이지 오류: ' + e);
   }
