@@ -191,8 +191,9 @@ function glyphHints() {
 export function turntableHints(view = null) {
   // 자동 회전을 못 쓰는 동안(채색 뷰 없음·움직임 줄이기)은 '자동 회전' 안내를 뺀다
   const auto = !view || view.spinAllowed();
-  if (glyphHints()) return [['stickR', '회전', '영웅을 끌어서 돌려 보기'], ...(auto ? [['viewReset', '자동 회전']] : [])];
-  if (input.mode === 'pad') return [['RS', '회전'], ...(auto ? [['R3', '자동 회전']] : [])];
+  const zoomPad = input.mode === 'pad' && !!view?.support?.().a16;   // 16방향 외형: RT 당기면 확대
+  if (glyphHints()) return [['stickR', '회전', '영웅을 끌어서 돌려 보기'], ...(auto ? [['viewReset', '자동 회전']] : []), ...(zoomPad ? [['RT', '확대']] : [])];
+  if (input.mode === 'pad') return [['RS', '회전'], ...(auto ? [['R3', '자동 회전']] : []), ...(zoomPad ? [['RT', '확대']] : [])];
   return [[', .', '회전', '영웅을 끌어서 돌려 보기'], ...(auto ? [['/', '자동 회전']] : [])];
 }
 
@@ -304,6 +305,7 @@ export class HeroView {
     this._sup = null; this._supLook = undefined; this._supT = -9; this._full = null;
     this._err = false;
     this.zoom = 1;               // 16방향 뷰 전용 확대 (1.0~1.6)
+    this.rtBase = null;          // 패드 RT 로 다가가 보는 동안 원래 배율
   }
   // ───────────────────────── 예전 API ─────────────────────────
   /** look 객체가 바뀌면(장비 미리보기 등) 체인 상태를 새로 만든다 */
@@ -667,6 +669,10 @@ export class HeroView {
       if (PINCH.k) { this.zoom = clamp((this.zoom || 1) * Math.exp(PINCH.k), ZOOM.MIN, ZOOM.MAX); PINCH.k = 0; any = true; }
       if (PINCH.active && this.drag) { this.drag = null; if (this.mode === 'drag') this.settleTo(this.snapOf(this.yaw)); }
       if (KZ.dir) { this.zoom = clamp((this.zoom || 1) * Math.exp(KZ.dir * ZOOM.KEY_RATE * dt * 0.5), ZOOM.MIN, ZOOM.MAX); any = true; }
+      // 패드: RT 를 당긴 만큼 다가가 보기 (아날로그, 떼면 원래 배율로) — 메뉴에서 RT 는 다른 액션이 없다 (LT = 보조 기능 2)
+      const rt = input.mode === 'pad' ? (input.activePad?.()?.buttons?.[7]?.value || 0) : 0;
+      if (rt > 0.05) { if (this.rtBase == null) this.rtBase = this.zoom || 1; this.zoom = clamp(this.rtBase + (ZOOM.MAX - this.rtBase) * Math.min(1, rt), ZOOM.MIN, ZOOM.MAX); any = true; }
+      else if (this.rtBase != null) { this.zoom = this.rtBase; this.rtBase = null; any = true; }
     } else PINCH.k = 0;   // 16방향이 아닌 외형·다른 화면에서 쌓인 벌리기는 버린다
     if (over && ges && a16) {
       // 16방향: 휠 = 확대 (회전은 끌기·버튼·키·스틱)

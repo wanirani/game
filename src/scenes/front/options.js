@@ -173,7 +173,7 @@ function buildRows(sc) {
         id: 'hudPad', label: '버튼 배치', type: 'enum', opts: [['overlay', '게임 화면 위'], ['band', '아래 띠']],
         get: () => sc.s.hud?.pad ?? 'overlay', set: (v) => { sc.s.hud = { ...(sc.s.hud ?? {}), pad: v }; g.dirty = true; },
         note: (s) => (s.hud?.pad === 'band'
-          ? '게임 화면을 위로 올리고 아래 어두운 띠에 버튼을 둡니다. 폴드·태블릿처럼 네모난 화면에서만 띠가 생깁니다.'
+          ? '게임 화면을 위로 올리고, 버튼은 아래 어두운 띠에 놓습니다. 폴드·태블릿처럼 네모난 화면에서만 띠가 생깁니다.'
           : '버튼을 게임 화면 위에 얹고 화면을 끝까지 씁니다.'),
       },
       { id: 'touchLayout', label: '버튼 배치 편집', type: 'link', value: () => (sc.s.touchLayout ? '사용자 지정' : '기본'), run: () => sc.openEditor(), note: '버튼을 끌어서 옮기고, 모서리를 끌어 크기를 바꿉니다.' },

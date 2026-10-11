@@ -351,6 +351,16 @@ try {
       pass: Math.abs(v1.yaw - v0.yaw) < 1e-6,
       detail: `RS (0.25, 0.95) for 1 s → ${d(v1.yaw - v0.yaw)}`,
     }));
+    // 16-view looks (TURNMOUNT): RT pulled = look closer (analog 1.0 → 1.6), released = back to the previous zoom; yaw untouched
+    if (v1.a16) {
+      await setButton(s.page, BTN.RT, 0.5); await step(s, 3); const z1 = await view(s);
+      await setButton(s.page, BTN.RT, 1); await step(s, 3); const z2 = await view(s);
+      await setButton(s.page, BTN.RT, 0); await step(s, 3); const z3 = await view(s);
+      await suite.check({ id: 'stick.rtzoom', group: 'stick', pkg: 'TURNMOUNT', title: '16-view look: RT pulled zooms in (analog, max 1.6), release restores', session: s }, async () => ({
+        pass: Math.abs(z1.zoom - 1.3) < 0.02 && Math.abs(z2.zoom - 1.6) < 0.01 && Math.abs(z3.zoom - 1) < 0.01 && Math.abs(z3.yaw - v1.yaw) < 1e-6,
+        detail: `RT 0.5 → ${z1.zoom.toFixed(3)}, RT 1 → ${z2.zoom.toFixed(3)}, released → ${z3.zoom.toFixed(3)}; yaw ${d(z3.yaw - v1.yaw)}`,
+      }));
+    }
     // every turntable tab (#371): the real pad flow — RB moves to the tab (no seeding, no rest()), the stick is pushed
     // right away (whatever the tab-entry state is: intro delay, spin-in tween), then again while a showcase plays
     // (the intro's showcase), so a tab whose entry/showcase state swallows the stick shows up here
