@@ -134,7 +134,7 @@ const PATTERNS = {
 | (재시도 예비) | | ≤ 6 | ≤ 12 | 머리·팔 시트가 실패하던 ex4/ex5 교훈 — 좌우를 뒤집은 원본으로 다시 |
 | **합계** | | **9 (+6)** | **18 · 최대 30** | **상한 15장 · 30크레딧** |
 
-- 기록: `tools/kling/manifest_ex6-boss.json` (`creditsCap: 30`, `imagesCap: 15`, 시작·끝 잔액, 장마다 결정), 프롬프트 `tools/painted/prompts/ex6-boss.mjs`, 원본 `tools/painted/raw/b_paracel/*.webp`(q95), 설정 `tools/painted/configs/b_paracel.json`, 자세 `tools/painted/poses/b_paracel.mjs`. 프롬프트 방향: 기존 1부 보스 초상화와 같은 **채색 다크 판타지 화풍** (애니메 화풍 아님 — 리드 결정), 한 인물, 글자 · 워터마크 없음. **새 배경 그림 없음.**
+- 기록: `tools/kling/manifest_ex6-boss.json` (**계획본은 만들었다** — `status: planned`, `generations: []`, 샷·프롬프트는 `planned.shots` 에; 그림 묶음이 `creditsCap: 30`, `imagesCap: 15`, 시작·끝 잔액, 장마다 결정을 채운다), 프롬프트 `tools/painted/prompts/ex6-boss.mjs` (그림 묶음이 `planned.shots` 를 옮겨 만든다), 원본 `tools/painted/raw/b_paracel/*.webp`(q95), 설정 `tools/painted/configs/b_paracel.json`, 자세 `tools/painted/poses/b_paracel.mjs`. 프롬프트 방향: 기존 1부 보스 초상화와 같은 **채색 다크 판타지 화풍** (애니메 화풍 아님 — 리드 결정), 한 인물, 글자 · 워터마크 없음. **새 배경 그림 없음.**
 
 ### 2.3 체급과 확인 방법
 

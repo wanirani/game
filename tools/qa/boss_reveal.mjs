@@ -380,13 +380,20 @@ if (PERF) {
     // 필살기 컷인 (같은 방·같은 기기·같은 화질): 카엘 궁극기
     const s2 = await openRoom(boss, { quality: PQ });
     await runReveal(s2, boss, {});
-    await s2.eval(() => { const w = window.__game.world, p = w.player; p.buffs.invincible = 9999; w.run.sp = 100; p.iframes = 9; });
+    // 보스의 'intro' 상태(등장 장면이 닫힌 뒤 잠깐 무적·화면 밖)가 끝나야 필살기가 나간다 (skills.castUltimate 가 거절) — 끝날 때까지 기다린다
+    for (let i = 0; i < 360; i++) {
+      const busy = await s2.eval(() => { const w = window.__game.world, b = w.boss; return !!(b && !b.dead && (b.pendingBoss || b.state === 'intro')) || !!w.cutscene; });
+      if (!busy) break;
+      await step(s2.page, 1, false);
+    }
+    await s2.eval(() => { const w = window.__game.world, p = w.player; p.buffs.invincible = 9999; w.run.sp = 100; p.iframes = 9; p.hurtT = 0; window.__p4aUlt = 0; });
+    await s2.eval(async () => { const { bus } = await import('/src/core/events.js'); if (!window.__p4aUltHook) { window.__p4aUltHook = true; bus.on('ultimateCast', () => { window.__p4aUlt = (window.__p4aUlt || 0) + 1; }); } });
     await s2.page.keyboard.down('KeyF'); await step(s2.page, 3, false); await s2.page.keyboard.up('KeyF');
     const ult = [];
     let seen = false;
     for (let i = 0; i < 150; i++) {
-      const m = await s2.eval(() => { const g = window.__game, now = g.__qaRealNow; const t0 = now(); window.__qaStep(1, false); const t1 = now(); try { g.input?.beginRender?.(); g.__qaRender.call(g); g.input?.endRender?.(); } catch (e) { console.error(e); } return { ms: now() - t0, top: g.top?.name, cut: !!g.world?.cutscene }; });
-      if (m.top === 'ultCutin' || m.cut) seen = true;
+      const m = await s2.eval(() => { const g = window.__game, now = g.__qaRealNow; const t0 = now(); window.__qaStep(1, false); const t1 = now(); try { g.input?.beginRender?.(); g.__qaRender.call(g); g.input?.endRender?.(); } catch (e) { console.error(e); } return { ms: now() - t0, top: g.top?.name, cut: !!g.world?.cutscene, cast: window.__p4aUlt || 0 }; });
+      if (m.top === 'ultCutin' || m.cast > 0) seen = true;
       ult.push(m.ms);
     }
     await s2.close();
