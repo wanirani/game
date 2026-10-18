@@ -764,9 +764,9 @@ export class ChurchScene extends ServiceScene {
   }
 
   // ── 「악몽」 (Stage 5 P3b · docs/specs/nightmare.md §7) ──
-  //  25 칸 (5열 · 낮은 화면은 4·3열, 넘치면 세로 스크롤): 장 · 보스 · 상태 (잠김 · 비틀기 이름 · 최고 기록 ✓ 첫 격파 표식)
+  //  26 칸 (NM_IDS 수 — 외전 26장 포함, 5열 · 낮은 화면은 4·3열, 넘치면 세로 스크롤): 장 · 보스 · 상태 (잠김 · 비틀기 이름 · 최고 기록 ✓ 첫 격파 표식)
   //  아래 판 = 고른 악몽: 비틀기 설명 · 악몽/권장 레벨 · 첫 격파 보상 또는 기록 + 「악몽에 도전」. 첫 탭 = 고르기, 둘째 탭 = 확인 창
-  /** 악몽 칸 25: { id, e, S, s: nmStatus, known, name, chap, twist } — 이야기에서 아직 열리지 않은 장의 보스는 이름을 숨긴다 */
+  /** 악몽 칸 (NM_IDS 수, 지금 26): { id, e, S, s: nmStatus, known, name, chap, twist } — 이야기에서 아직 열리지 않은 장의 보스는 이름을 숨긴다 */
   nmCards() {
     const st = this.state, P = st?.progress ?? {};
     return NM_IDS.map((id) => {
