@@ -965,25 +965,34 @@ function swingSmear(c, E, K, P, W, s, ST, hasMain, tt) {
   const dw = wrapPI(P.w1 - st.w1);
   if (dx * dx + dy * dy < 6 && Math.abs(dw) < 0.12) return;
   const J = R.J, a0 = c.globalAlpha;
-  // ① 휩쓴 쐐기 (칼·대검·단검·지팡이·창 — 총·채찍 끈은 제외)
+  // ① 휩쓴 띠 (칼·대검·단검·지팡이·창 — 총·채찍 끈은 제외)
+  //    손에서부터 채운 넓은 부채는 한 프레임에 크게 돌 때 납작한 판때기처럼 보인다 → 칼날(지팡이는 머리) 쪽 띠만,
+  //    최근 1.1rad 만, 두 겹(전체 옅게 + 최근 절반 한 번 더)으로 뒤쪽이 흐려지게. 색은 밝은 쇳빛(지팡이는 빛, 가산)
   if (hasMain && W.type !== 'gun' && W.type !== 'whip' && Math.abs(dw) > 0.1) {
-    const Lw = weaponReach(W) * 0.98, L0 = W.type === 'spear' ? Lw * 0.45 : Lw * 0.12;
+    const staff = W.type === 'staff', Lw = weaponReach(W) * 0.98;
+    const L0 = staff ? Lw * 0.62 : W.type === 'spear' ? Lw * 0.5 : Lw * 0.28;
+    const span = Math.abs(dw), k0 = span > 1.1 ? 1 - 1.1 / span : 0;
     for (let i = 0; i <= SW_N; i++) {
-      const k = i / SW_N, hx = lerp(st.h1x, s.h1x, k), hy = lerp(st.h1y, s.h1y, k), w = st.w1 + dw * k, cw = Math.cos(w), sw = Math.sin(w);
+      const k = k0 + (1 - k0) * i / SW_N, hx = lerp(st.h1x, s.h1x, k), hy = lerp(st.h1y, s.h1y, k), w = st.w1 + dw * k, cw = Math.cos(w), sw = Math.sin(w);
       SWX[i] = hx + cw * Lw; SWY[i] = hy + sw * Lw;                                      // 칼끝 줄
-      SWX[SW_N * 2 + 1 - i] = hx + cw * L0; SWY[SW_N * 2 + 1 - i] = hy + sw * L0;      // 손잡이 줄 (거꾸로)
+      SWX[SW_N * 2 + 1 - i] = hx + cw * L0; SWY[SW_N * 2 + 1 - i] = hy + sw * L0;      // 안쪽 줄 (거꾸로)
     }
+    const big = W.type === 'greatsword' ? 1.2 : 1, gco = c.globalCompositeOperation, h = SW_N >> 1;
+    if (staff) c.globalCompositeOperation = 'lighter';
+    c.fillStyle = staff ? (W.glowC || '#fff2b0') : '#e2e5ee';
+    c.globalAlpha = a0 * (G.qual === 'high' ? 0.15 : 0.12) * big * (staff ? 0.8 : 1);
     c.beginPath(); c.moveTo(SWX[0], SWY[0]);
     for (let i = 1; i < SW_N * 2 + 2; i++) c.lineTo(SWX[i], SWY[i]);
-    c.closePath();
-    const big = W.type === 'greatsword' ? 1.25 : 1;
-    c.globalAlpha = a0 * (G.qual === 'high' ? 0.3 : 0.24) * big;
-    c.fillStyle = W.type === 'staff' ? (W.glowC || '#fff2b0') : (W.blade || '#c8ccd8'); c.fill();   // 지팡이: 나무색 대신 빛 (갈색 부채처럼 보이지 않게)
+    c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(SWX[h], SWY[h]);                                              // 최근 절반 (칼끝 h..N + 안쪽 짝)
+    for (let i = h + 1; i <= SW_N * 2 + 1 - h; i++) c.lineTo(SWX[i], SWY[i]);
+    c.closePath(); c.fill();
+    if (staff) c.globalCompositeOperation = gco;
     // 앞날(지금 칼끝 쪽) 밝은 테두리: 칼끝 줄의 최근 절반
     c.globalAlpha = a0 * 0.5;
     c.strokeStyle = '#f4f2ea'; c.lineWidth = 0.9 * big;
-    c.beginPath(); c.moveTo(SWX[SW_N >> 1], SWY[SW_N >> 1]);
-    for (let i = (SW_N >> 1) + 1; i <= SW_N; i++) c.lineTo(SWX[i], SWY[i]);
+    c.beginPath(); c.moveTo(SWX[h], SWY[h]);
+    for (let i = h + 1; i <= SW_N; i++) c.lineTo(SWX[i], SWY[i]);
     c.stroke();
   }
   // ② 사이 잔상
