@@ -168,3 +168,6 @@ boss.nmScale = { hpMul, atkMul, spMul }             // 시험·도구용 ('nm' �
 
 ### 10.6 소유 밖 문구 (p3a_requests 1–3, P3b 가 처리)
 `pause.js` 「악몽 포기」 · 확인 글 · 진홍 머리 줄 · 「악몽의 규칙」 · 도전 횟수 = `state.nm` / `autoplay.js` 「악몽에서는 AUTO 를 쓸 수 없다」 / `inventory.js` 「악몽의 결계…「악몽 포기」…」.
+
+### 10.7 모습 수정 (P3b)
+`registry.js` 의 악몽 연기 색 `NM_SMOKE` 가 `'rgba(40,4,12,0.9)'` 였다. kit `puff()` 는 `math.rgba(hex, a)` 로 가장자리를 투명하게 굽는데 `#hex` 가 아니면 색을 그대로 돌려줘, 연기 입자가 꽉 찬 어두운 64×64 사각형으로 보였다 (채색 보스 악몽 모두). `#28040c` 로 고쳤다 (같은 색, 새 굽기 0). `test_nightmare` N10 이 악몽 후광·눈·연기·불씨 색이 `#hex` 인지 본다.
