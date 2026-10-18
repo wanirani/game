@@ -707,7 +707,8 @@ export class TowerScene extends ArcadeRunScene {
       this.hasteT = 3;
       if (!was) p?.refreshStats();
     }
-    if (!M || !e || e.kind !== 'enemy' || this.phase !== 'fight') return;
+    if (!M || !e || e.kind !== 'enemy' || this.phase !== 'fight' || e._towerKilled) return;
+    e._towerKilled = true;   // 같은 적의 처치 알림이 두 번 와도 분열·폭발은 한 번
     if (M.split && !e._towerSplit) this.splitFoe(e, M);
     if (M.id === 'bomb') w.add(new TowerHazard(this, 'bomb', e.cx, e.bottom, M));
     if (M.killHeal && p && !p.dead) p.heal(p.stats.hp * M.killHeal, false);

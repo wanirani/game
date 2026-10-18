@@ -194,6 +194,111 @@ test('층 계획: 같은 시드 → 같은 방·적·보스, 다른 시드 → �
   assert.match(r.stdout, /오류 0개/);
 });
 
+// ───────────────────────── 시즌 2 계획 (Node) ─────────────────────────
+test('시즌 2 계획: 같은 시드 → 세 번 모두 같은 변이·계약·상인·갈림길 · 난이도 5개 × 1~100층 · 시즌 1 필드는 그대로 · 변이 10 · 계약 6', async () => {
+  const T = await import(path.join(ROOT, 'src/data/tower.js'));
+  const { STAGES, STAGE_ORDER, STAGE_ORDER_P1 } = await import(path.join(ROOT, 'src/data/stages.js'));
+  const { ENEMIES } = await import(path.join(ROOT, 'src/data/enemies.js'));
+  const { DIFFICULTIES } = await import(path.join(ROOT, 'src/data/difficulty.js'));
+  assert.equal(DIFFICULTIES.length, 5);
+  const B1 = ['b_nightwing', 'b_banshee', 'b_dullahan', 'b_crimson', 'b_bonedragon', 'b_grimoire', 'b_chimera', 'b_leviathan', 'b_colossus', 'b_frostqueen', 'b_death', 'b_dracula', 'b_chaos'];
+  const src = fs.readFileSync(path.join(ROOT, 'src/scenes/front/arcade.js'), 'utf8'), at = src.indexOf('export const BOSS_ORDER = [');
+  const B2 = [...src.slice(at, src.indexOf('];', at)).matchAll(/'(b_\w+)'/g)].map((m) => m[1]).slice(0, 20);
+  const P2ORDER = STAGE_ORDER.filter((id) => !STAGES[id]?.side);
+  // 시즌 1 계획표 = season2() 를 비운 계획표 (시즌 2 는 따로 뽑는 난수 줄기만 쓴다 → 옛 필드가 하나도 바뀌지 않아야 한다)
+  class Season1 extends T.TowerPlanner { season2() { /* 시즌 1 */ } }
+  const old = (p) => JSON.stringify([p.kind, p.key, p.bossId, p.level, p.sid, p.rid, p.enemies, p.pool ?? null]);
+  const s2 = (p) => JSON.stringify([p.mut ?? null, p.mutBlood ?? null, p.pacts ?? null, !!p.merchant, !!p.route, p.extra ?? null]);
+  const seen = { mut: new Set(), blood: new Set(), pact: new Set() }, mutN = {};
+  let floors = 0;
+  for (const [i, d] of DIFFICULTIES.entries()) {
+    for (const [order, bosses, P] of [[STAGE_ORDER_P1, B1, [10, 25, 40, 60, 60][i]], [P2ORDER, B2, 68]]) {
+      for (const seed of [1, 4242, 0x9e3779b9 >>> 0, 77 + i]) {
+        const opts = { stages: STAGES, order, enemies: ENEMIES, bosses, P, eliteBase: d.elite ?? 0 };
+        // 같은 시드로 세 판 (계획표 셋) — 하나는 100층부터 거꾸로 묻는다 (층은 1부터 차례로 기억된다)
+        const runs = [new T.TowerPlanner(seed, opts), new T.TowerPlanner(seed, opts), new T.TowerPlanner(seed, opts)];
+        runs[2].plan(100);
+        const dumps = runs.map((R) => Array.from({ length: 100 }, (_, k) => { const p = R.plan(k + 1); return old(p) + s2(p); }));
+        assert.deepEqual(dumps[1], dumps[0], `${d.id} 시드 ${seed}: 둘째 판 = 첫 판`);
+        assert.deepEqual(dumps[2], dumps[0], `${d.id} 시드 ${seed}: 셋째 판 = 첫 판`);
+        const S1 = new Season1(seed, opts);
+        const R = runs[0];
+        let prevMut = null, prevBlood = null;
+        for (let f = 1; f <= 100; f++) {
+          const p = R.plan(f), q = S1.plan(f);
+          floors++;
+          assert.equal(old(p), old(q), `${d.id} ${seed} ${f}층: 시즌 1 필드 그대로`);
+          const tag = `${d.id} 시드 ${seed} ${f}층 (${p.kind})`;
+          if (p.kind !== 'combat' || f < T.MUT_FROM) { assert.equal(p.mut ?? null, null, `${tag} 변이 없음`); assert.equal(p.mutBlood ?? null, null, `${tag} 센 변이 없음`); }
+          else {
+            assert.ok(T.MUTATOR[p.mut], `${tag} 변이 ${p.mut}`);
+            assert.equal(T.MUTATOR[p.mutBlood]?.tier, 2, `${tag} 피의 길 변이 ${p.mutBlood} = 센 것`);
+            assert.notEqual(p.mut, prevMut, `${tag} 같은 변이가 연달아`);
+            assert.notEqual(p.mutBlood, prevBlood, `${tag} 같은 센 변이가 연달아`);
+            assert.equal(p.mut, T.mutatorOf(seed, f, false, prevMut), `${tag} rngOf(seed,'mut',f)`);
+            prevMut = p.mut; prevBlood = p.mutBlood;
+            seen.mut.add(p.mut); seen.blood.add(p.mutBlood); mutN[p.mut] = (mutN[p.mut] ?? 0) + 1;
+          }
+          if (p.kind === 'combat') {
+            // 질주의 계약: 계획의 추가 적 셋 (방의 자리 · 날지 않으면 바닥 자리)
+            assert.equal(p.extra?.length, 3, `${tag} 추가 적`);
+            const room = T.towerRoom(STAGES, p.sid, p.rid);
+            for (const e of p.extra) {
+              assert.ok(T.towerFoeOk(ENEMIES, e.id), `${tag} 추가 적 ${e.id}`);
+              const s = room.slots[e.slot];
+              assert.ok(s && (ENEMIES[e.id].flying || s.ground), `${tag} 추가 적 자리 ${e.slot}`);
+            }
+          } else assert.equal(p.extra ?? null, null);
+          if (p.kind === 'rest') {
+            assert.equal(p.pacts?.length, 2, `${tag} 계약 둘`);
+            assert.equal(new Set(p.pacts).size, 2);
+            assert.ok(p.pacts.every((id) => T.PACT[id]), `${tag} 계약 ${p.pacts}`);
+            assert.deepEqual(p.pacts, T.pactOffer(seed, f, {}), `${tag} rngOf(seed,'pact',f)`);
+            p.pacts.forEach((id) => seen.pact.add(id));
+          } else assert.equal(p.pacts ?? null, null);
+          assert.equal(!!p.route, p.kind === 'boss', `${tag} 갈림길 = 보스 층`);
+          assert.equal(!!p.merchant, p.kind === 'boss' && [15, 35, 55, 75, 95].includes(f), `${tag} 상인 = 15·35·55·75·95층`);
+        }
+      }
+    }
+  }
+  assert.equal(floors, 5 * 2 * 4 * 100);
+  assert.deepEqual([...seen.mut].sort(), T.MUTATORS.map((m) => m.id).sort(), '변이 10종이 모두 나온다');
+  assert.deepEqual([...seen.blood].sort(), T.MUTATORS.filter((m) => m.tier === 2).map((m) => m.id).sort(), '센 변이 모두');
+  assert.deepEqual([...seen.pact].sort(), T.PACTS.map((p) => p.id).sort(), '계약 6종이 모두 나온다');
+  const tot = Object.values(mutN).reduce((a, b) => a + b, 0);
+  for (const [id, n] of Object.entries(mutN)) assert.ok(n / tot > 0.03 && n / tot < 0.25, `변이 ${id} 비율 ${(n / tot).toFixed(3)}`);
+  // 변이 10종 · 계약 6종의 모양: 이름·설명·아이콘 파일 · 피해 변이는 0.6초 이상 예고 · 계약마다 진짜 손해
+  assert.equal(T.MUTATORS.length, 10);
+  assert.equal(new Set(T.MUTATORS.map((m) => m.name)).size, 10);
+  const icon = (id) => ['png', 'webp'].some((x) => fs.existsSync(path.join(ROOT, `assets/icons/${id}.${x}`)));
+  for (const m of T.MUTATORS) {
+    assert.ok(m.name && m.desc && /^#[0-9a-f]{6}$/i.test(m.color) && m.w > 0 && [1, 2].includes(m.tier), `변이 ${m.id}`);
+    assert.ok(icon(m.icon), `변이 아이콘 ${m.icon}`);
+    if (m.frac) assert.ok(m.warn >= 0.6 && m.frac <= 0.1, `${m.id}: 예고 ${m.warn}초 · 피해 ${m.frac}`);
+  }
+  assert.equal(T.MUTATOR.gold.gold, 3, '황금 층 = 골드 ×3');
+  assert.equal(T.MUTATOR.rush.rushSec, 30, '속공 = 30초');
+  assert.equal(T.PACTS.length, 6);
+  const base = { atk: 100, mag: 100, def: 40, res: 40, hp: 500, mp: 100, crit: 10, critDmg: 50, lifesteal: 0, moveSpd: 0, atkSpd: 0, goldBonus: 0 };
+  for (const P of T.PACTS) {
+    assert.ok(P.name && P.up && P.down && icon(P.icon), `계약 ${P.id}`);
+    const s = T.applyPactStats({ ...base }, { [P.id]: true });
+    const statDown = Object.keys(base).some((k) => (s[k] ?? 0) < base[k]);
+    assert.ok(statDown || P.rules || P.noRestHeal || P.bossHp > 1 || P.extraFoes > 0, `${P.id}: 손해가 있어야 한다`);
+    const statUp = Object.keys(base).some((k) => (s[k] ?? 0) > base[k]);
+    assert.ok(statUp || P.bless > 0, `${P.id}: 이득이 있어야 한다`);
+  }
+  // 상인 값: 층 레벨에 따라 오른다 (10G 단위)
+  assert.equal(T.merchantPrice(30, 1), 30);
+  assert.ok(T.merchantPrice(70, 60) > T.merchantPrice(70, 30) && T.merchantPrice(70, 60) % 10 === 0);
+  // 서버 사본과 같은 규칙 (netlify/lib/gamedata.mts — 욕심 판 시험이 이 값으로 잰다)
+  const GD = await import(path.join(ROOT, 'netlify/lib/gamedata.mts'));
+  assert.deepEqual({ ...GD.TOWER_RULES }, { ...T.TOWER_RULES });
+  const PH = T.TOWER_PHASE;
+  assert.ok(PH.enter + PH.clear + PH.gateOpen >= T.TOWER_RULES.minFloorSec - 1e-9 && PH.restEnter + PH.gateOpen + 1.4 >= T.TOWER_RULES.minFloorSec, '건너뛸 수 없는 연출 ≥ minFloorSec');
+});
+
 // ───────────────────────── 한 판 (데스크톱) ─────────────────────────
 test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스·축복 → 축복 12종 → 10층 안식처 → 일시정지 → 부활 → 결과·기록·온라인 제출', async () => {
   const M = makeMock();

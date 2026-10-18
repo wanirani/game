@@ -73,11 +73,13 @@ function canvases() {
 const hash = (n) => { n = (n ^ 61) ^ (n >>> 16); n = Math.imul(n, 9); n ^= n >>> 4; n = Math.imul(n, 0x27d4eb2d); n ^= n >>> 15; return (n >>> 0) / 4294967296; };
 const sstep = (x) => x * x * (3 - 2 * x);
 
+/** 굽는 빛 반경 배율: 불빛(일렁임 ≥ 0.8)은 그림 속 불보다 넓게 번져 둘레를 물들인다 */
+const glowScale = (l) => ((l.flicker ?? 1) >= 0.8 ? 1.55 : 1.15);
 /** 그림 기준 빛들이 차지하는 상자 (u0,v0,u1,v1) — 빛 스프라이트는 이 상자만 굽고 그린다 (채우기 면적 절약) */
 function lightBox(lights, aspect) {
   let u0 = 1, v0 = 1, u1 = 0, v1 = 0;
   for (const l of lights) {
-    const ru = (l.r * 1.05) / aspect, rv = l.r * 1.05;
+    const k = glowScale(l) * 1.05, ru = (l.r * k) / aspect, rv = l.r * k;
     u0 = Math.min(u0, l.u - ru); u1 = Math.max(u1, l.u + ru); v0 = Math.min(v0, l.v - rv); v1 = Math.max(v1, l.v + rv);
   }
   return { u0: clamp(u0, 0, 1), v0: clamp(v0, 0, 1), u1: clamp(u1, 0, 1), v1: clamp(v1, 0, 1) };
@@ -99,10 +101,13 @@ function bakeGlow(key, e, aspect) {
       e.lights.forEach((l, i) => {
         const fl = clamp(l.flicker ?? 1, 0, 1);
         const m = k === 0 ? 1 : 1 - fl * (0.18 + 0.42 * hash(i * 131 + k * 977 + 7));
-        const x = (l.u - box.u0) * pxU, y = ((l.v - box.v0) * pxV) * sy + k * gh, R = Math.max(2, l.r * pxV);
+        const x = (l.u - box.u0) * pxU, y = ((l.v - box.v0) * pxV) * sy + k * gh, R = Math.max(2, l.r * glowScale(l) * pxV);
+        const warm = fl >= 0.8;
         g.save(); g.translate(x, y); g.scale(1, sy);
         const gr = g.createRadialGradient(0, 0, 0, 0, 0, R);
-        gr.addColorStop(0, rgba(l.color, 0.62 * m)); gr.addColorStop(0.3, rgba(l.color, 0.3 * m)); gr.addColorStop(0.65, rgba(l.color, 0.09 * m)); gr.addColorStop(1, rgba(l.color, 0));
+        if (warm) { gr.addColorStop(0, rgba(l.color, 0.7 * m)); gr.addColorStop(0.25, rgba(l.color, 0.4 * m)); gr.addColorStop(0.6, rgba(l.color, 0.13 * m)); }
+        else { gr.addColorStop(0, rgba(l.color, 0.62 * m)); gr.addColorStop(0.3, rgba(l.color, 0.3 * m)); gr.addColorStop(0.65, rgba(l.color, 0.09 * m)); }
+        gr.addColorStop(1, rgba(l.color, 0));
         g.fillStyle = gr; g.fillRect(-R, -R, R * 2, R * 2);
         g.restore();
       });
@@ -226,7 +231,7 @@ export function createAtmos(stage) {
       const breathe = 0.86 + 0.14 * Math.sin(t * 1.3);
       const b = G.box;
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = a0 * 0.8 * breathe;
+      ctx.globalAlpha = a0 * 0.88 * breathe;
       ctx.drawImage(C.glow, 0, vi * G.gh, G.gw, G.gh, F.ox + b.u0 * F.iw, F.oy + b.v0 * F.ih, (b.u1 - b.u0) * F.iw, (b.v1 - b.v0) * F.ih);
       atm.stats.draws++;
     }
@@ -273,14 +278,15 @@ export function createAtmos(stage) {
       if (flip) sx = vw - sx;
       if (sx < -80 || sx > vw + 80 || sy < -80 || sy > vh + 80) continue;
       const d = Math.hypot(sx - px, (sy - py) * 1.4);
-      const wt = clamp(1 - d / (vh * 0.95), 0, 1) * (0.6 + l.r * 4);
+      const wt = clamp(1 - d / (vh * 1.1), 0, 1) * (0.6 + l.r * 4);
       if (wt > bw) { bw = wt; best = l; bx = sx; by = sy; }
     }
     if (!best) return;
     const fl = clamp(best.flicker ?? 1, 0, 1);
     const flick = 1 - fl * 0.25 * (0.5 + 0.5 * Math.sin(atm.t * 9.1 + best.u * 40) * Math.sin(atm.t * 5.3 + best.v * 31));
-    const radius = Math.max(150, best.r * F.ih * 2.8) / z;
-    w.lighting.add(cam.x + (cam.shakeX || 0) + bx / z, cam.y + (cam.shakeY || 0) + by / z, radius, best.color, clamp(bw, 0, 1) * 0.95 * flick, true);
+    const radius = Math.max(190, best.r * F.ih * 3.4) / z;
+    // 세기 0.55–1.25: 어둠 구멍은 1 에서 꽉 차고, 색광(가산)은 세기/2 × 0.44 → 가까운 불 앞에서 주인공·적이 따뜻하게 물든다
+    w.lighting.add(cam.x + (cam.shakeX || 0) + bx / z, cam.y + (cam.shakeY || 0) + by / z, radius, best.color, (0.55 + 0.7 * clamp(bw, 0, 1)) * flick, true);
     atm.stats.fed = 1;
   };
 

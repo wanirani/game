@@ -105,7 +105,7 @@ const LIP = {
   alchemy: 'shards', waterway: 'pebbles', clock: 'rubble', chapel: 'rubble', throne: 'dust', abyss: 'rubble', arena: 'rubble',
   mirror: 'shards', forge: 'rubble', sunken: 'shells', sky: 'grass', nightmare: 'bones', blight: 'grass',
 };
-const AO_H = 22;   // 어둠 띠 높이 (px)
+const AO_H = 26;   // 어둠 띠 높이 (px)
 const WINDOW_MOON = ['rgba(160,180,255,0.5)', 'rgba(60,40,120,0.25)', 'rgba(140,160,255,0.12)'];
 // 액체 팔레트 [몸통, 수면·물줄기 빛] (world2 §3.3: deep 추가)
 const LIQUID = {
@@ -535,7 +535,7 @@ export class TileRenderer {
       }
     }
   }
-  /** 어둠 띠 스프라이트 48 × (22 × 4): 판 0 = 이어진 바닥, 1 = 왼쪽 끝, 2 = 오른쪽 끝, 3 = 외딴 한 칸 (prewarm 에서 한 번) */
+  /** 어둠 띠 스프라이트 48 × (26 × 4): 판 0 = 이어진 바닥, 1 = 왼쪽 끝, 2 = 오른쪽 끝, 3 = 외딴 한 칸 (prewarm 에서 한 번) */
   aoStrip() {
     if (this.aoCanvas) return this.aoCanvas;
     if (typeof document === 'undefined') return null;
@@ -544,7 +544,7 @@ export class TileRenderer {
     const g = c.getContext('2d');
     const col = mix(this.style.edge, '#000000', 0.5);
     const gr = g.createLinearGradient(0, 0, 0, AO_H);
-    gr.addColorStop(0, rgba(col, 0)); gr.addColorStop(0.55, rgba(col, 0.16)); gr.addColorStop(1, rgba(col, 0.46));
+    gr.addColorStop(0, rgba(col, 0)); gr.addColorStop(0.5, rgba(col, 0.2)); gr.addColorStop(1, rgba(col, 0.55));
     for (let v = 0; v < 4; v++) {
       g.save(); g.translate(0, v * AO_H);
       g.fillStyle = gr; g.fillRect(0, 0, TILE, AO_H);
@@ -561,9 +561,9 @@ export class TileRenderer {
     this.aoCanvas = c;
     return c;
   }
-  /** 바닥 가장자리 잔해 (굽기 때만): 빈칸 아래쪽 (x … x+48, 바닥 윗면 fy) 에 작은 조각 1–3개, 칸의 45 % 정도 */
+  /** 바닥 가장자리 잔해 (굽기 때만): 빈칸 아래쪽 (x … x+48, 바닥 윗면 fy) 에 작은 조각 1–3개, 칸의 55 % 정도 */
   lipDeco(ctx, x, fy, kind, rng) {
-    if (rng.next() > 0.45) return;
+    if (rng.next() > 0.55) return;
     const st = this.style, n = 1 + Math.floor(rng.next() * 3);
     const dark = mix(st.edge, st.base, 0.4), mid = mix(st.base, st.top, 0.45);
     for (let k = 0; k < n; k++) {

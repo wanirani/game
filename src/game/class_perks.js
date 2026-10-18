@@ -502,7 +502,7 @@ export function drawPerkLayer(ctx, e, w) {
         const fn = M[key];
         if (!fn || n >= MARK_CAP || en.hidden) continue;
         n++;
-        if (!globalThis.__pkNoMarks) try { fn(ctx, en.kind === 'boss' ? markTarget(en, w, markPin(fn)) : en, m.n, (m.until - tn) / m.dur, tn); } catch (err) { markFail(key, err); }   // TEMP-BENCH flag
+        try { fn(ctx, en.kind === 'boss' ? markTarget(en, w, markPin(fn)) : en, m.n, (m.until - tn) / m.dur, tn); } catch (err) { markFail(key, err); }
         ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
       }
       if (!live) MARKED.delete(en);
@@ -675,8 +675,7 @@ function maPattern(ctx) {
 /** 구운 칸을 기준점이 (x, y) 에 오게 s 배로 그린다 (globalAlpha·globalCompositeOperation 은 호출부) */
 export function drawCell(ctx, cell, x, y, s = 1) {
   const k = s / cell.sc;
-  if (globalThis.__pkNoDraw) return;   // TEMP-BENCH
-  const pat = globalThis.__pkNoPat ? null : maPattern(ctx);   // TEMP-BENCH
+  const pat = maPattern(ctx);
   if (!pat || !(k > 0)) { ctx.drawImage(MA.c, cell.x, cell.y, cell.w, cell.h, x - cell.ox * k, y - cell.oy * k, cell.w * k, cell.h * k); return; }
   // 아틀라스 좌표 (cell.x, cell.y) 가 화면의 (x - ox·k, y - oy·k) 에 오도록 옮겨 칸 사각형만 패턴으로 칠하고 그대로 되돌린다
   const tx = x - (cell.ox + cell.x) * k, ty = y - (cell.oy + cell.y) * k;
