@@ -23,7 +23,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/, '').split('=')).map(([k, v]) => [k, v ?? true]));
 const FILTER = typeof args.filter === 'string' ? args.filter : null;
 const SHOTS = typeof args.shots === 'string' ? args.shots : '/tmp/claude-0/tower_shots';
-fs.mkdirSync(SHOTS, { recursive: true });
+const NO_SHOTS = SHOTS === 'off';   // --shots=off: 검사는 그대로, 확인용 스크린숏만 찍지 않는다 (다른 작업이 브라우저를 쓰는 동안 부하·장수 줄이기)
+if (!NO_SHOTS) fs.mkdirSync(SHOTS, { recursive: true });
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav', '.woff2': 'font/woff2' };
 const TOKEN = 'T'.repeat(43);
 const AUTH = { bn_auth: JSON.stringify({ id: 'hunter01', token: TOKEN }) };
@@ -127,7 +128,7 @@ async function openGame(ctx, { init = null, initScripts = [] } = {}) {
   return { page, errs };
 }
 const waitTop = (page, name, ms = 20000) => page.waitForFunction((n) => window.__game.top?.name === n && (window.__game.fade?.a ?? 0) < 0.05, name, { timeout: ms });
-const shot = (page, name) => page.screenshot({ path: path.join(SHOTS, `${name}.png`) });
+const shot = (page, name) => (NO_SHOTS ? Promise.resolve() : page.screenshot({ path: path.join(SHOTS, `${name}.png`) }));
 const freeze = (page) => page.evaluate(() => { window.__game._pageHidden = true; });
 const thaw = (page) => page.evaluate(() => { const g = window.__game; g._pageHidden = false; g.last = performance.now(); });
 /** 고정 스텝 n 번 (패드 읽기 포함), 끝에 한 번 그림 */

@@ -498,7 +498,9 @@ if (FOLD) {
   });
   await waitTop(page, 'arcade');
   await page.waitForTimeout(600);
-  await page.evaluate(() => { const t = window.__game.top; t.row = 3; });   // 코스 줄을 고른 모습
+  // 코스 줄을 고른 모습 (row 0 = 모드 카드, 1.. = 옵션 줄 → 3 = 옵션[2] 코스)
+  const sel = await page.evaluate(() => { const t = window.__game.top; t.row = 3; const o = t.options(); return { name: t.name, kind: t.kind, ids: o.map((x) => x.id), course: o[2]?.value, seed: o[3]?.value }; });
+  assert.deepEqual(sel, { name: 'arcade', kind: 'bossrush', ids: ['diff', 'preset', 'course', 'seed'], course: '무작위 6 · 아는 보스 중 여섯', seed: '오늘의 시드' }, `Fold 화면 준비 ${JSON.stringify(sel)}`);
   await page.waitForTimeout(900);
   await page.screenshot({ path: path.join(FOLD, 'rush_course_row.png') });
   assert.deepEqual(errs, []);
