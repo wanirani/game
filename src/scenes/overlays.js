@@ -1,6 +1,7 @@
 // 인게임 오버레이 장면 — owner: OVERLAYS (feel §5.3 · MASTER_PLAN §1.13·§1.16 · platform §4.5·§6.2·§6.3·§8)
-//  bossIntro : WARNING(피 글씨, 붉은 경고 띠) → 초상화 + 보스 이름(피 글씨). 1.5초 뒤 결정/탭으로 건너뛰기(안내 글리프). 끝나면 pop → onDone.
-//              화면 전체 붉은 깜빡임은 설정 flashFx 를 따른다 (0 이면 깜빡이지 않음).
+//  bossIntro : [s5:p4a] 이야기 모드는 월드 쪽 등장 연출(world.reveal: 레터박스·카메라·보스 변형·포효)을 이끈 뒤, 첫 대면이면 초상화 + 이름(피 글씨)
+//              카드, 그 밖(다시 만남·아케이드·보스 러시·탑·시련·악몽·보스방 입구 재도전)은 붓글씨 이름판 — 카드·이름판 1.2초, 전체 ≤ 3.2초.
+//              악몽(world.opts.nightmare, K2)은 진홍판 + 「악몽」 낙관. 0.8초부터 결정/탭으로 건너뛰기(안내 글리프). 끝나면 pop → onDone.
 //  bossIntro·ultCutin 이 떠 있는 동안 game.autoPause(탭 숨김·기기 회전·패드 끊김)가 오면 닫힐 때 아래 장면에 넘긴다.
 //  ultCutin  : 필살기 컷인 0.9초 (각성 컷인보다 한 단계 가벼운 연출). 캐릭터 색 띠와 검은 띠 두 줄이 엇갈려 들어오고,
 //              검은 띠 안으로 초상화가 미끄러져 들어와 1.0→1.06 으로 천천히 확대된다 (속도선 유지).
@@ -15,7 +16,7 @@
 //  gameover  : GAME OVER(피 글씨) → CONTINUE?(금박 글씨) 카운트다운. uiScale, 버튼 ≥ 44 CSS px (ui.taps), 안내 글리프, 토스트는 미룬다.
 //              포기·크레딧 소진 → 마을 {from: 스테이지 id} (마을은 동쪽 성문 앞에서 시작; pause '마을로 귀환' 과 같은 규칙)
 //              [retryart] 이야기 모드 보스방에서 쓰러졌으면 이어하기(자동 카운트다운 포함) = world.retryAtBossDoor (보스방 입구에서 보스전을 처음부터,
-//              버튼 아랫줄 「보스방 입구에서 재도전」). 그 밖은 예전처럼 world.respawn(true). 다음 bossIntro 는 { short: true } (WARNING 없이 이름 카드 2.2초)
+//              버튼 아랫줄 「보스방 입구에서 재도전」). 그 밖은 예전처럼 world.respawn(true). 다음 bossIntro 는 { short: true } (경고음 없이 이름판 1.2초)
 // 모든 장면은 스택에 혼자 남아도(?scene=ultCutin&char=lia 같은 디버그 주소) 오류 없이 그리고, 닫히면 타이틀로 간다 (game.pop).
 import { Scene, game as GAME } from '../core/game.js';
 import { input } from '../core/input.js';
@@ -26,6 +27,7 @@ import * as UI from '../core/ui.js';
 import { text, panel, paragraph, font, wrap, FONT, COLORS, ListMenu, button, bloodText, prewarmText, taps } from '../core/ui.js';
 import { drawHints, drawGlyph, promptMode } from '../core/prompts.js';
 import { BOSSES } from '../data/bosses.js';
+import * as BI from '../data/boss_intro.js';   // [s5:p4a] 이름판 색·악몽 진홍판·등장 시간표
 import { CHARACTERS } from '../data/characters.js';
 import { CLASSES } from '../data/classes.js';
 import { ASCENSIONS, KIND_LABEL, heroTier, classNameOf } from '../data/ascensions.js';   // 필살기 컷인 단계 3 (초월·비전, classes_t3 §7.1)
@@ -102,7 +104,6 @@ function featherLeft(img) {
 }
 
 // ═══════════════════════════ 보스 등장 ═══════════════════════════
-const WARN_OPTS = { size: 64, drips: 0.7 };
 const NAME_OPTS = { align: 'left', drips: 0.5 };
 const NAME_MAX = 52, NAME_MIN = 26;
 /** 이름 카드 세로 위치 (이름 기준선) */
@@ -113,51 +114,113 @@ function nameAvail(vw, vh, hasImg) {
   return Math.max(160, (hasImg ? dx + 80 * (1 - nameY(vh) / vh) : vw) - 60 - 18);
 }
 
-/** 보스 등장: WARNING 경고 → 초상화 + 이름 (피 글씨) */
+/**
+ * 보스 등장 장면 — [s5:p4a 「보스는 사건이다」, plan §5 P4a]
+ *  mode 'card'  : 이야기 모드에서 그 보스를 처음 만났을 때만 — 초상화 + 칭호 + 이름(피 글씨) 카드, REVEAL.card(1.2초).
+ *  mode 'plate' : 그 밖 모두 (다시 만남·아케이드·보스 러시·탑·시련·악몽·[retryart] 보스방 입구 재도전) — 붓글씨 이름판, REVEAL.card(1.2초).
+ *                 악몽(K2: world.opts.nightmare 가 참)은 진홍판(PLATE_NIGHTMARE) + 「악몽」 낙관.
+ *  reveal(BossReveal, world.startBoss 가 이야기 모드에서 준다): 이 장면이 월드 쪽 등장 연출을 이끈다 (begin → 착지 → plateAt 에 카드/이름판).
+ *    updateBelow — 월드는 살아 움직이고(먼지·빛·카메라) 보스는 world.cutscene 이 붙잡는다. 전체 ≤ REVEAL.total(3.2초).
+ *  reveal 이 없으면 예전처럼 월드가 멈춘 채 이름판(또는 카드)만 — 포효·흔들림은 이 장면이 낸다.
+ *  건너뛰기: 결정·탭, 장면 시작 REVEAL.skipAfter(0.8초)부터. [retryart] short 는 0.3초부터 (예전 규칙 그대로).
+ *  finish() → reveal.finish() → pop → onDone (한 번만). 도구가 그냥 pop 하면(exit) 등장 연출만 정리하고 onDone 은 부르지 않는다 (예전과 같다).
+ *  첫 대면 기록: state.progress.flags['bi_' + 보스 id] (예전 세이브는 처치한 보스면 이미 '다시 만남' — 저장 형식은 그대로).
+ */
+export function bossIntroMode(game, world, bossId, short = false) {
+  if (short) return 'plate';
+  const w = world ?? game?.world, st = game?.state;
+  const story = !!w && w.mode === 'story' && !w.trial && !w.arcade && !st?.arcade && !w.opts?.nightmare;
+  if (!story) return 'plate';
+  const met = !!st?.progress?.bosses?.includes?.(bossId) || !!st?.progress?.flags?.['bi_' + bossId];
+  return met ? 'plate' : 'card';
+}
+const PLATE_IN = 0.26, PLATE_OUT = 0.22, CARD_IN = 0.3, CARD_OUT = 0.25;
+/** 이름판 먹 띠의 흔들린 가장자리 (보스 id 로 정해진다: 그리기 경로에서 난수를 쓰지 않는다) */
+function plateJitter(id) {
+  let h = 2166136261;
+  for (const c of String(id ?? 'boss')) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
+  const out = [];
+  for (let i = 0; i < 40; i++) { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; out.push(((h >>> 0) % 1000) / 1000); }
+  return out;
+}
+
+/** 보스 등장: (이야기 모드) 월드 쪽 등장 연출 → 첫 대면 초상화 카드 또는 붓글씨 이름판 */
 export class BossIntroScene extends Scene {
   constructor(g) { super(g); this.opaque = false; }
-  enter({ bossId, onDone, short = false } = {}) {
+  enter({ bossId, onDone, short = false, world = null, reveal = null, mode = null, warned = false } = {}) {
     this.def = BOSSES[bossId] || { name: bossId ?? '???' };
+    this.bossId = bossId;
     this.bossName = String(this.def.name ?? '???');
-    this.onDone = onDone; this.dur = 3.6; this.done = false;
-    // [retryart] 보스방 입구 재도전 (world.retryAtBossDoor → startBoss): WARNING 을 건너뛰고 이름 카드부터 (3.6초 → 2.2초), 0.3초 뒤부터 건너뛸 수 있다
-    this.short = !!short; this.t0 = this.short ? 1.4 : 0;
-    if (this.short) this.t = this.t0;
-    this._nk = null; this._ns = NAME_MAX;
+    const cb = onDone;
+    this.onDone = () => { if (this._cbDone) return; this._cbDone = true; cb?.(); };   // 한 번만 (도구가 pop 뒤 onDone 을 또 불러도)
+    this.done = false;
+    const w = world ?? this.game.world ?? null;
+    this.world = w;   // game.syncPad 가 top.world?.hudHidden 을 본다
+    this.rv = reveal && typeof reveal.begin === 'function' ? reveal : null;
+    this.short = !!short;
+    this.mode = mode === 'card' || mode === 'plate' ? mode : bossIntroMode(this.game, w, bossId, this.short);
+    this.nightmare = !!w?.opts?.nightmare;   // K2
+    this.row = BI.introOf(bossId, this.def);
+    this.el = BI.elementOf(bossId, this.def);
+    this.plateColor = this.nightmare ? BI.PLATE_NIGHTMARE : this.row.plateColor || BI.PLATE_DEFAULT;
+    this.dur = BI.REVEAL.card;
+    this.skipAt = this.short ? 0.3 : BI.REVEAL.skipAfter;
+    this.updateBelow = !!this.rv;   // 이야기 모드 등장 연출: 월드가 살아 움직인다
+    this.pt0 = this.rv ? null : 0;   // 카드·이름판이 시작한 장면 시각 (등장 연출이 있으면 착지 뒤)
+    this.J = plateJitter(bossId);
+    this._nk = null; this._ns = NAME_MAX; this._pk = null; this._ps = 46;
     this.fe = !this.def.portrait;
-    // 초상화는 WARNING 동안(1.4초) 받아 둔다: 보스 초상화는 스테이지가 미리 받지 않으므로 이름 카드가 나올 때 비어 있지 않게
-    if (this.def.portrait) { try { assets.get(this.def.portrait); } catch (e) { console.error(e); } }
-    if (!this.short) audio.sfx('warning');
-    const g = this.game;
-    prewarm(g, 1, [['WARNING', WARN_OPTS], [this.bossName, { ...NAME_OPTS, size: NAME_MAX }]]);
-    // 긴 이름은 줄인 크기로 그리므로 그 크기도 미리 굽는다 (초상화가 있는 배치 기준: 이름 카드 첫 프레임이 끊기지 않게)
-    if (g?.ctx) {
-      try {
-        const ns = this.nameSize(g.ctx, nameAvail(g.viewW, g.viewH, !!this.def.portrait));
-        if (ns !== NAME_MAX) prewarm(g, 1, [[this.bossName, { ...NAME_OPTS, size: ns }]]);
-      } catch { /* 그릴 때 굽는다 */ }
+    if (this.mode === 'card') {
+      if (this.def.portrait) { try { assets.get(this.def.portrait); } catch (e) { console.error(e); } }
+      const st = this.game.state;
+      if (st?.progress) { st.progress.flags ??= {}; st.progress.flags['bi_' + bossId] = true; }   // 첫 대면은 한 번
     }
+    try { UI.loadBrush?.(); } catch { /* 붓글씨 없음: 제목 글꼴 */ }
+    if (!this.short && !warned && !this.rv) audio.sfx('warning');
+    const g = this.game;
+    if (this.mode === 'card') {
+      prewarm(g, 1, [[this.bossName, { ...NAME_OPTS, size: NAME_MAX }]]);
+      if (g?.ctx) {
+        try {
+          const ns = this.nameSize(g.ctx, nameAvail(g.viewW, g.viewH, !!this.def.portrait));
+          if (ns !== NAME_MAX) prewarm(g, 1, [[this.bossName, { ...NAME_OPTS, size: ns }]]);
+        } catch { /* 그릴 때 굽는다 */ }
+      }
+    }
+    this.rv?.begin();
   }
   /** 탭 숨김·기기 회전·패드 끊김 (game.autoPause): 연출은 그대로 두고, 끝나서 싸움이 시작될 때 아래 장면이 일시정지 메뉴를 띄운다 */
   autoPause() { this.pauseAfter = true; }
   finish() {
     if (this.done) return;
     this.done = true;
+    this.rv?.finish();
     this.game.pop();
     this.onDone?.();
     if (this.pauseAfter) this.game.autoPause();
   }
+  /** 도구·다른 장면이 이 장면을 그냥 닫았을 때: 등장 연출(레터박스·카메라·붙잡기)만 정리한다 */
+  exit() { if (!this.done) { this.done = true; this.rv?.finish(true); } }
+  /** 카드·이름판 시각 (아직이면 -1) */
+  get pt() { return this.pt0 == null ? -1 : this.t - this.pt0; }
   update(dt) {
-    // 초상화가 도착하면 WARNING 동안 가장자리 페더 사본을 미리 굽는다 (이름 카드가 미끄러져 들어오는 첫 프레임이 끊기지 않게)
-    if (!this.fe && this.t > 0.1 && this.t < 1.4) {
+    const rv = this.rv;
+    if (rv && this.pt0 == null && rv.plateAt != null && rv.t >= rv.plateAt) this.pt0 = this.t;
+    if (rv && this.pt0 == null && this.t > BI.REVEAL.total) this.pt0 = this.t;   // 안전망: 등장 연출이 멈춰도 이름판은 뜬다
+    // 초상화 가장자리 페더 사본을 카드가 나오기 전에 미리 굽는다 (첫 프레임이 끊기지 않게)
+    if (this.mode === 'card' && !this.fe && (this.pt0 == null || this.pt < 0.1)) {
       const img = assets.get(this.def.portrait);
       if (img?.width) { this.fe = true; try { featherLeft(isBust(this.def.portrait, img) ? softBust(img) : img); } catch (e) { console.error(e); } }
     }
-    if (this.t > 1.3 && !this.roared) { this.roared = true; audio.sfx('boss_roar'); this.game.world?.camera?.shake(10, 0.6); }
-    this.game.world?.camera?.tickShake?.(dt); // 월드가 멈춰 있어도 포효 흔들림을 소리와 함께 재생
-    if (this.t > this.dur || (this.t > Math.max(1.5, this.t0 + 0.3) && (input.pressed('confirm') || input.pointer.tapped))) this.finish();
+    if (!rv) {
+      // 월드가 멈춘 이름판: 포효와 흔들림은 이 장면이 (예전 카드와 같은 소리)
+      if (this.t > 0.12 && !this.roared) { this.roared = true; audio.sfx('boss_roar'); this.game.world?.camera?.shake(10, 0.6); }
+      this.game.world?.camera?.tickShake?.(dt);
+    }
+    const skip = this.t >= this.skipAt && (input.pressed('confirm') || input.pointer.tapped);
+    if ((this.pt0 != null && this.pt >= this.dur) || skip) this.finish();
   }
-  /** 이름 글자 크기: 대각 구분선 안에 들어가도록 줄인다 (폭이 바뀔 때만 다시 잰다) */
+  /** 이름 글자 크기 (카드): 대각 구분선 안에 들어가도록 줄인다 (폭이 바뀔 때만 다시 잰다) */
   nameSize(ctx, avail) {
     const key = Math.round(avail);
     if (this._nk !== key) {
@@ -168,32 +231,27 @@ export class BossIntroScene extends Scene {
     return this._ns;
   }
   render(ctx) {
-    const vw = this.game.viewW, vh = this.game.viewH, t = this.t;
+    const vw = this.game.viewW, vh = this.game.viewH;
     if (alone(this)) { ctx.fillStyle = '#07030a'; ctx.fillRect(0, 0, vw, vh); }
-    if (t < 1.4) {
-      // 화면 전체 붉은 깜빡임(초당 3번)은 번쩍임 설정을 따른다 (feel §4.9 광과민 대책 · R12): 약하게 0.5 = 폭 절반, 끔 0 = 깜빡이지 않음
-      const fk = Number(this.game.settings?.flashFx ?? 1), blink = Number.isFinite(fk) ? clamp(fk, 0, 1) : 1;
-      const on = Math.floor(t * 6) % 2 === 0;
-      ctx.fillStyle = `rgba(120,0,10,${(0.25 + (on ? 0.1 : -0.1) * blink).toFixed(3)})`; ctx.fillRect(0, 0, vw, vh);
-      for (const y of [vh * 0.38, vh * 0.62]) {
-        ctx.fillStyle = 'rgba(180,0,20,0.85)'; ctx.fillRect(0, y - 14, vw, 28);
-        ctx.save(); ctx.beginPath(); ctx.rect(0, y - 14, vw, 28); ctx.clip();
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        const off = (t * 300) % 60;
-        ctx.beginPath();
-        for (let x = -60; x < vw + 60; x += 60) { ctx.moveTo(x + off, y - 14); ctx.lineTo(x + off + 30, y - 14); ctx.lineTo(x + off + 10, y + 14); ctx.lineTo(x + off - 20, y + 14); ctx.closePath(); }
-        ctx.fill();
-        ctx.restore();
-      }
-      // 피 글씨 WARNING: 깜빡이는 동안에도 핏방울은 처음부터 흘러내린다 (t). 번쩍임을 끄면 깜빡이지 않고 계속 보인다
-      if (on || blink === 0) bloodText(ctx, 'WARNING', vw / 2, vh / 2 + 22, { ...WARN_OPTS, t });
-      return;
+    const pt = this.pt;
+    if (pt >= 0) { if (this.mode === 'card') this.drawCard(ctx, vw, vh, pt); else this.drawPlate(ctx, vw, vh, pt); }
+    // 건너뛰기 안내 (건너뛸 수 있게 된 뒤)
+    const out = pt >= 0 ? clamp((this.dur - pt) / 0.3, 0, 1) : 1;
+    if (this.t > this.skipAt && out > 0) {
+      const S = safeOf(this);
+      ctx.save();
+      ctx.globalAlpha = clamp((this.t - this.skipAt) / 0.3, 0, 1) * out * 0.9;
+      hintLine(ctx, [['confirm', '건너뛰기']], '화면을 터치하면 넘어갑니다', vw - 22 - S.r, vh - 16 - S.b - (this.world?.letterbox > 4 ? this.world.letterbox * 0.5 : 0), { align: 'right', size: 13, color: '#d8c8b8' });
+      ctx.restore();
     }
-    const k = ease.outCubic(clamp((t - 1.4) / 0.5, 0, 1));
-    const out = clamp((this.dur - t) / 0.4, 0, 1);
+  }
+  /** 첫 대면 카드: 대각 초상화 + 칭호 + 피 글씨 이름 (예전 카드를 1.2초로) */
+  drawCard(ctx, vw, vh, t) {
+    const k = ease.outCubic(clamp(t / CARD_IN, 0, 1));
+    const out = clamp((this.dur - t) / CARD_OUT, 0, 1);
     ctx.save();
     ctx.globalAlpha = out;
-    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, 0, vw, vh);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, vw, vh);
     const img = this.def.portrait ? assets.get(this.def.portrait) : null;
     const dx = vw * 0.35; // 대각 구분선: 위 dx+80 → 아래 dx
     if (img) {
@@ -222,23 +280,75 @@ export class BossIntroScene extends Scene {
     }
     const x = 60 - (1 - k) * 300;
     const ny = nameY(vh);
-    // 이름이 대각 구분선을 넘지 않도록 글자 크기를 줄인다
     const avail = nameAvail(vw, vh, !!img);
     const ns = this.nameSize(ctx, avail);
     text(ctx, this.def.title ?? '', x, vh * 0.42, { size: 18, weight: 700, family: FONT.title, color: '#e8c8a8', maxWidth: avail });
-    // 금색 밑줄을 먼저 그려 핏방울이 그 위로 흘러내리게
-    ctx.fillStyle = GOLD; ctx.fillRect(x, ny + 16, Math.min(320, avail) * k, 3);
-    bloodText(ctx, this.bossName, x, ny, { ...NAME_OPTS, size: ns, t: t - 1.4, maxWidth: avail });
+    ctx.fillStyle = GOLD; ctx.fillRect(x, ny + 16, Math.min(320, avail) * k, 3);   // 금색 밑줄을 먼저 그려 핏방울이 그 위로 흘러내리게
+    bloodText(ctx, this.bossName, x, ny, { ...NAME_OPTS, size: ns, t, maxWidth: avail });
     ctx.restore();
-    // 건너뛰기 안내 (1.5초부터)
-    const ht = Math.max(1.5, this.t0 + 0.3);
-    if (t > ht && out > 0) {
-      const S = safeOf(this);
+  }
+  /** 붓글씨 이름판: 먹 띠가 왼쪽에서 칠해지고 이름이 번져 나온다. 악몽(K2)은 진홍판 + 「악몽」 낙관 */
+  drawPlate(ctx, vw, vh, t) {
+    const kIn = ease.outCubic(clamp(t / PLATE_IN, 0, 1));
+    const out = clamp((this.dur - t) / PLATE_OUT, 0, 1);
+    if (!(out > 0)) return;
+    const J = this.J, lb = this.world?.letterbox || 0;
+    const bh = 84, by = Math.min(vh * 0.66, vh - lb - bh / 2 - 34), x0 = vw * 0.07, x1 = vw * 0.93, bw = x1 - x0;
+    ctx.save();
+    ctx.globalAlpha = out;
+    // 먹 띠: 왼쪽에서 오른쪽으로 칠해진다 (끝은 붓이 갈라진 모양)
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x0 - 30, by - bh, (bw + 60) * kIn, bh * 2); ctx.clip();
+    const band = (dy, thick, col, a) => {
+      ctx.beginPath();
+      const n = 16, top = by - thick / 2 + dy, bot = by + thick / 2 + dy;
+      ctx.moveTo(x0 - 6 * J[0], top + 6 * (J[1] - 0.5));
+      for (let i = 1; i <= n; i++) ctx.lineTo(x0 + (bw * i) / n, top + 7 * (J[(i * 2) % 40] - 0.5));
+      ctx.lineTo(x1 + 14 * J[3], by + dy - thick * 0.15);
+      ctx.lineTo(x1 + 22 * J[5], by + dy + thick * 0.1);
+      for (let i = n; i >= 0; i--) ctx.lineTo(x0 + (bw * i) / n - (i === 0 ? 10 * J[7] : 0), bot + 7 * (J[(i * 2 + 1) % 40] - 0.5));
+      ctx.closePath();
+      ctx.globalAlpha = a * out; ctx.fillStyle = col; ctx.fill();
+    };
+    band(5, bh, '#000000', 0.45);   // 그림자
+    band(0, bh, this.plateColor, 0.92);
+    band(-bh * 0.28, 6, this.el.color, 0.55);   // 속성 색 머리선
+    ctx.restore();
+    ctx.globalAlpha = out;
+    // 이름 (붓글씨, 받기 전이면 제목 글꼴)
+    const brush = !!UI.faceReady?.('BN Brush');
+    const fam = brush ? FONT.brush : FONT.title, wgt = brush ? 400 : 900;
+    const pk = `${vw}|${brush ? 1 : 0}`;
+    const sealW = this.nightmare ? 58 : 0;
+    if (this._pk !== pk) {
+      this._pk = pk;
+      ctx.font = `${wgt} 50px ${fam}`;
+      const adv = Math.max(1, ctx.measureText(this.bossName).width), avail = bw * 0.8 - sealW;
+      this._ps = adv > avail ? Math.max(28, Math.floor(50 * avail / adv)) : 50;
+    }
+    const ns = this._ps, kn = ease.outCubic(clamp((t - 0.08) / 0.24, 0, 1));
+    const nx = x0 + bw * 0.08 + sealW + (1 - kn) * -24, ny = by + ns * 0.36;
+    // 칭호 (띠 위)
+    if (this.def.title) text(ctx, String(this.def.title), nx, by - bh / 2 - 8, { size: 16, weight: 700, family: FONT.title, color: this.nightmare ? '#ffb0b8' : '#e8c8a8', maxWidth: bw * 0.8 });
+    ctx.globalAlpha = out * kn;
+    ctx.font = `${wgt} ${ns}px ${fam}`; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
+    ctx.lineWidth = 6; ctx.strokeStyle = INK_SHADOW; ctx.strokeText(this.bossName, nx + 3, ny + 3);
+    ctx.strokeStyle = INK; ctx.strokeText(this.bossName, nx, ny);
+    ctx.fillStyle = this.nightmare ? '#ffe0e0' : '#f6ecdc'; ctx.fillText(this.bossName, nx, ny);
+    // 악몽 낙관 (K2)
+    if (this.nightmare) {
+      const sx = x0 + bw * 0.08 + 22, sy = by, s = 46;
       ctx.save();
-      ctx.globalAlpha = clamp((t - ht) / 0.3, 0, 1) * out * 0.9;
-      hintLine(ctx, [['confirm', '건너뛰기']], '화면을 터치하면 넘어갑니다', vw - 22 - S.r, vh - 16 - S.b, { align: 'right', size: 13, color: '#d8c8b8' });
+      ctx.translate(sx, sy); ctx.rotate(-0.1);
+      ctx.globalAlpha = out * kIn;
+      ctx.fillStyle = '#000000'; ctx.fillRect(-s / 2 + 3, -s / 2 + 4, s, s);
+      ctx.fillStyle = INK_RED; ctx.fillRect(-s / 2, -s / 2, s, s);
+      ctx.strokeStyle = 'rgba(255,230,220,0.85)'; ctx.lineWidth = 2; ctx.strokeRect(-s / 2 + 5, -s / 2 + 5, s - 10, s - 10);
+      ctx.font = `${wgt} ${brush ? 21 : 17}px ${fam}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff1e8'; ctx.fillText('악몽', 0, 1);
       ctx.restore();
     }
+    ctx.restore();
   }
 }
 

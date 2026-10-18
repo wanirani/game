@@ -5,7 +5,7 @@ import { Particles } from '../core/particles.js';
 import { Lighting } from '../core/lighting.js';
 import { T, Debris, isSolidType } from '../core/physics.js';
 import { input } from '../core/input.js';
-import { rand, randi, chance, clamp, overlap, TAU, pick, RNG } from '../core/math.js';
+import { rand, randi, chance, clamp, overlap, TAU, pick, RNG, ease } from '../core/math.js';
 import { audio, SFX } from '../core/audio.js';
 import { bus } from '../core/events.js';
 import { saves } from '../core/save.js';
@@ -44,6 +44,9 @@ import * as HFX from '../render/hitfx.js';   // [hook:feel] 첫 타격 스프라
 import * as HL from '../render/hud_layout.js';   // 데미지 숫자·판정 문구가 HUD 윗줄 뒤에 숨지 않게 (R1-REQ-331, syncHudBand)
 import * as NG from './ngplus.js';   // [hook:ng] 회차 「피의 윤회」 세기 (docs/specs/ngplus.md §3)
 import { firePerks, perkAny } from './class_perks.js';   // 직업 특성 훅 onHit·onKill·keepCombo (classes_t3 §3.4)
+import * as BI from '../data/boss_intro.js';   // [s5:p4a] 보스 등장·격파 연출 표 (순수 데이터)
+import { ULTFX } from '../render/ultfx.js';   // [s5:p4a] 격파 임팩트 프레임 — 내보낸 ULTFX.final 만 부른다 (ultfx.js 는 고치지 않는다)
+import * as UI from '../core/ui.js';   // [s5:p4a] 붓글씨(FONT.brush) — 격파 낙관
 
 // ── 손맛·각성 상수 (feel.md §4.9, §6.1). AW_GAIN(data/feel_hit.js)에 값이 없으면 이 기본값을 쓴다 ──
 const SLOWMO_BASE = 0.35;                      // 기본 슬로모션 배율 (보스 격파 등 옛 호출부)
@@ -96,8 +99,307 @@ bus.on('levelUp', ({ level } = {}) => {
   if (typeof queueMicrotask === 'function') queueMicrotask(run); else Promise.resolve().then(run);
 });
 
+// ═══════════ [s5:p4a] 「보스는 사건이다」 (plan §5 P4a) — 등장 연출 BossReveal · 격파 연출 BossFinale ═══════════
+// 등장 (이야기 모드이고 보스방 입구 재도전이 아닐 때): world.startBoss 가 만들고(_pre 대사 동안에도 보스는 숨어 있다) bossIntro 장면이
+//   begin()·finish() 로 이끈다. 장면은 updateBelow 라 월드가 살아 움직이고, 이 객체는 world.update 맨 앞에서 실제 시간으로 흐른다:
+//   레터박스 → camera.cine(보스, ≤1.15, 0.6) → 보스 그리기 변형(BI.introOf: drop·rise·descend·emerge·assemble·fade) → 착지: 먼지 고리·속성 섬광·
+//   빛·포효·흔들림(진동) → 장면이 이름판(첫 대면이면 초상화 카드)을 살아 있는 장면 위에 그린다. 전체 ≤ REVEAL.total, 0.8초부터 건너뛰기.
+//   K3: 보스는 world.cutscene 으로만 붙잡는다 (보스 파일은 고치지 않는다). 그동안 다른 적·적 탄·적 판정은 갱신하지 않고(hold), 끝날 때
+//   보스의 상태 시계(stateT)를 0 으로 돌려 예전처럼 월드가 멈춰 있던 것과 같은 첫 박자로 싸움이 시작된다.
+//   보스 모듈을 받는 중(PendingBoss)이면 진짜 보스를 최대 REVEAL.readyWait 초 기다리고, 그래도 없으면 변형 없이 곧장 이름판으로 간다.
+//   그리기 변형은 보스와 그 대리 개체(채색 PaintedBody·컬링 ArtCull: e.host === 보스)에만, world.render 가 drawEntity 로 입힌다.
+class BossReveal {
+  constructor(w, id) {
+    this.w = w; this.id = id;
+    const def = BOSSES[id];
+    this.row = BI.introOf(id, def); this.el = BI.elementOf(id, def);
+    this.t = 0; this.started = false; this.done = false; this.hold = true;
+    this.tReady = null; this.tStart = null; this.tLand = null; this.plateAt = null; this.timedOut = false;
+    this.dur = this.row.dur; this.flash = 0; this.lb = 0; this.lbOut = 0; this.sfxRoar = false;
+    this.xf = { on: true, dy: 0, sx: 1, sy: 1, a: 0, clipY: null, px: 0, py: 0 };
+    this.calc();
+  }
+  /** bossIntro 장면이 열릴 때: 시계 시작 · 레터박스 · 카메라 · HUD 숨김 · 진짜 보스 재촉 */
+  begin() {
+    if (this.started || this.done) return;
+    const w = this.w, R = BI.REVEAL;
+    this.started = true; this.t = 0;
+    w.hudHidden = true;
+    const b = w.boss, cam = w.camera;
+    if (b && cam) {
+      const ab = typeof b.artBounds === 'function' ? b.artBounds({ x: 0, y: 0, w: 0, h: 0 }) : null;
+      const h = Math.max(80, ab?.h > 0 ? ab.h : (b.h || 120) * 1.4);
+      const fit = (w.game.viewH * 0.78) / h;   // 큰 보스는 전신이 담기도록 덜 당긴다
+      const z = clamp(Math.min(R.camZoom, fit), Math.min(cam.zoomTarget || 1, 0.74), R.camZoom);
+      this.camZ = z;
+      try { cam.cine(b.x + b.w / 2, b.y + b.h - Math.min(h, w.game.viewH / z * 0.8) * 0.5, z, R.camIn); } catch (e) { console.warn('[reveal] cine', e); }
+    }
+    try { w.bossReady?.().then((rb) => { if (rb && this.tReady == null && this.started && !this.done) this.tReady = this.t; }, () => {}); } catch { /* update 가 대역 교체를 지켜본다 */ }
+  }
+  update(dt) {
+    const w = this.w, R = BI.REVEAL;
+    if (this.done) {   // 퇴장: 레터박스만 걷어 낸다 (싸움은 이미 시작)
+      this.lbOut = Math.max(0, this.lbOut - dt / 0.3);
+      if ((w.letterbox || 0) > 0) w.letterbox = this.lb * this.lbOut;
+      if (this.lbOut <= 0) { w.letterbox = 0; if (w.reveal === this) w.reveal = null; }
+      return;
+    }
+    if (!this.started) return;
+    this.t += dt;
+    const t = this.t, b = w.boss;
+    this.lb = Math.round(w.game.viewH * R.letterbox);
+    w.letterbox = this.lb * ease.outCubic(clamp(t / R.letterIn, 0, 1));
+    if (this.tReady == null && b && !b.pendingBoss) this.tReady = t;
+    if (this.tStart == null) {
+      if (this.tReady != null && t >= R.start) {
+        this.tStart = Math.max(R.start, this.tReady);
+        this.dur = clamp(this.row.dur, 0.25, R.total - R.card - R.hold - this.tStart);
+        this.onStart();
+      } else if (t >= R.readyWait) { this.timedOut = true; this.tStart = t; this.dur = 0; }   // 모듈이 늦다: 변형 없이 곧장 이름판
+    }
+    if (this.tStart != null && this.tLand == null && t >= this.tStart + this.dur) this.land();
+    if (this.tLand != null && this.plateAt == null) this.plateAt = this.tLand + (this.timedOut ? 0 : R.hold);
+    this.flash = Math.max(0, this.flash - dt * 2.4);
+    this.calc();
+  }
+  /** 변형이 시작될 때 방식별 입자 (그리기 경로 밖) */
+  onStart() {
+    const w = this.w, b = w.boss, fx = w.fx, el = this.el;
+    if (!b || !fx) return;
+    const cx = b.x + b.w / 2, cy = b.y + b.h / 2, fy = b.y + b.h;
+    switch (this.row.style) {
+      case 'emerge': fx.burst('smoke', cx, cy, 16, { jitter: b.w * 0.45, speed: 60, color: '#1a1020' }); fx.burst('dark', cx, cy, 10, { jitter: b.w * 0.4 }); break;
+      case 'assemble':
+        for (let i = 0; i < 26; i++) {
+          const a = (i / 26) * Math.PI * 2, r = 180 + (i % 3) * 40;
+          fx.emit(el.burst2 === 'shard' || el.burst === 'shard' ? 'shard' : 'magic', cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.7,
+            { vx: -Math.cos(a) * r / Math.max(0.3, this.dur * 0.8), vy: -Math.sin(a) * r * 0.7 / Math.max(0.3, this.dur * 0.8), speed: 0, grav: 0, drag: 1, life: Math.max(0.3, this.dur * 0.85), collide: false, ...(el.shardColor ? { color: el.shardColor } : {}) });
+        }
+        break;
+      case 'rise': fx.burst('gravel', cx, fy - 4, 14, { jitter: b.w * 0.4, angle: -Math.PI / 2, spread: 0.7, speed: 320 }); fx.burst(el.burst2, cx, fy - 8, 10, { jitter: b.w * 0.4 }); break;
+      case 'descend': fx.burst(el.mote, cx, b.y, 18, { jitter: b.w * 0.6, ...(el.moteColor ? { color: el.moteColor } : {}) }); break;
+      case 'fade': fx.burst(el.mote, cx, cy, 20, { jitter: b.w * 0.5, ...(el.moteColor ? { color: el.moteColor } : {}) }); break;
+      default: break;   // drop: 착지 때만
+    }
+  }
+  /** 착지: 먼지 고리 · 속성 섬광 · 빛 · 포효 · 흔들림(bus 'shake' → 진동) */
+  land(quiet = false) {
+    if (this.tLand != null) return;
+    this.tLand = this.t;
+    const w = this.w, b = w.boss, fx = w.fx, el = this.el;
+    if (!b || this.timedOut && b.pendingBoss) { if (!quiet) { audio.sfx('boss_roar'); w.camera?.shake?.(10, 0.6); } return; }
+    const cx = b.x + b.w / 2, fy = b.y + b.h;
+    if (fx) {
+      fx.ering?.(cx, fy, { color: '#d8c8b0', r0: 20, r1: Math.max(220, b.w * 1.6), ry: 0.22, life: 0.55, width: 8 });
+      fx.ring(cx, b.y + b.h * 0.45, { color: el.color, r0: 16, r1: Math.max(200, b.w * 1.3), life: 0.5, width: 6 });
+      fx.burst('dust', cx, fy - 6, 18, { jitter: b.w * 0.55, speed: 140 });
+      fx.burst(el.burst, cx, b.y + b.h * 0.45, 12, { jitter: b.w * 0.3, speed: 260, ...(el.shardColor ? { color: el.shardColor } : {}) });
+    }
+    this.flash = 1;
+    if (!quiet) { audio.sfx('boss_roar'); w.camera?.shake?.(10, 0.6); }
+  }
+  /** 그리기 변형 (update 가 계산, render 가 drawEntity 로 입힌다 — 그리기 경로에서는 난수·입자 없음) */
+  calc() {
+    const X = this.xf, b = this.w.boss;
+    if (!b || this.done) { X.on = false; return; }
+    if (this.timedOut && this.tLand != null) { X.on = false; return; }
+    X.px = b.x + b.w / 2; X.py = b.y + b.h;
+    X.dy = 0; X.sx = 1; X.sy = 1; X.a = 1; X.clipY = null;
+    const k0 = this.tStart == null ? 0 : this.dur > 0 ? clamp((this.t - this.tStart) / this.dur, 0, 1) : 1;
+    const H = Math.max(80, b.h), V = this.w.game.viewH / (this.w.camera?.zoom || 1);
+    const sinceLand = this.tLand == null ? -1 : this.t - this.tLand;
+    switch (this.row.style) {
+      case 'drop': {
+        X.dy = -(V * 0.9 + H) * (1 - ease.inQuad(k0)); X.a = k0 > 0 ? 1 : 0;
+        if (sinceLand >= 0 && sinceLand < 0.24) { const s = Math.sin((sinceLand / 0.24) * Math.PI); X.sy = 1 - 0.13 * s; X.sx = 1 + 0.1 * s; }
+        break;
+      }
+      case 'rise': X.dy = H * 1.08 * (1 - ease.outCubic(k0)); X.clipY = X.py + 2; break;
+      case 'descend': X.dy = -H * 1.1 * (1 - ease.outCubic(k0)); X.a = k0 > 0 ? 0.2 + 0.8 * k0 : 0; break;
+      case 'emerge': { const k = ease.outCubic(k0); X.a = k; X.sx = X.sy = 0.86 + 0.14 * k; break; }
+      case 'assemble': X.a = clamp(k0 * 2.5, 0, 1); X.sx = X.sy = 0.4 + 0.6 * ease.outBack(k0); break;
+      case 'fade': { const f = 0.62 + 0.38 * Math.sin(this.t * 37) * Math.sin(this.t * 13 + 1); X.a = k0 >= 1 ? 1 : k0 * f; break; }
+      default: break;
+    }
+    // 착지하고 잠깐 뒤에는 변형을 끈다 (그리기 비용 0)
+    X.on = !(sinceLand > 0.3);
+  }
+  /** 이 개체를 변형해 그리나: 보스 자신과 그 대리 개체 */
+  owns(e) { const b = this.w.boss; return !!b && (e === b || e.host === b); }
+  drawEntity(ctx, e) {
+    const X = this.xf;
+    if (!(X.a > 0.01)) return;
+    ctx.save();
+    try {
+      if (X.clipY != null) { ctx.beginPath(); ctx.rect(X.px - 4000, X.clipY - 8000, 8000, 8000); ctx.clip(); }
+      if (X.dy || X.sx !== 1 || X.sy !== 1) { ctx.translate(X.px, X.py + X.dy); ctx.scale(X.sx, X.sy); ctx.translate(-X.px, -X.py); }
+      if (X.a < 1) ctx.globalAlpha *= X.a;
+      e.draw(ctx, this.w);
+    } finally { ctx.restore(); }
+  }
+  lights(L) {
+    if (!this.started || this.done || !L) return;
+    const b = this.w.boss;
+    if (!b) return;
+    const k0 = this.tStart == null ? 0 : this.dur > 0 ? clamp((this.t - this.tStart) / this.dur, 0, 1) : 1;
+    const cx = b.x + b.w / 2, cy = b.y + b.h * 0.5;
+    if (k0 > 0) L.add(cx, cy, 160 + 120 * k0, this.el.color, 0.35 + 0.35 * k0);
+    if (this.flash > 0) L.add(cx, b.y + b.h, 260 + 340 * this.flash, this.el.glow, 0.6 + 0.9 * this.flash);
+  }
+  /** 끝 (장면이 닫힐 때 · 건너뛰기 · 방 이동): 변형·붙잡기를 풀고 카메라·HUD 를 돌려준다. 레터박스는 0.3초에 걸쳐 걷힌다 */
+  finish(now = false) {
+    if (this.done) return;
+    this.done = true; this.hold = false; this.xf.on = false;
+    const w = this.w;
+    if (this.started) {
+      try { w.camera?.cineEnd?.(0.45); } catch { /* 카메라 없음 */ }
+      w.hudHidden = false;
+      this.lbOut = now ? 0 : 1;
+      if (now) { w.letterbox = 0; if (w.reveal === this) w.reveal = null; }
+    } else if (w.reveal === this) w.reveal = null;
+    const b = w.boss;
+    if (b && !b.pendingBoss && Number.isFinite(b.stateT)) b.stateT = 0;   // 월드가 멈춰 있던 예전과 같은 첫 박자
+  }
+}
+
+/** 격파 연출 (world.onBossDefeated): 속성 폭발 · 임팩트 프레임(ULTFX.final) · 카메라 밀어 넣기 · 「격파」 먹 낙관 · 금빛 알갱이 · 빛기둥 → (STAGE CLEAR 배너) */
+const FIN = Object.freeze({ bursts: 20, gap: 0.06, seal: 0.35, sealLife: 2.5, motes: [0.5, 2.6], pillar: [0.25, 2.6], camOut: 1.3, end: 3.2 });
+class BossFinale {
+  constructor(w, boss) {
+    this.w = w; this.id = boss?.def?.id ?? null;
+    this.el = BI.elementOf(this.id, boss?.def);
+    this.cx = boss.cx; this.cy = boss.cy; this.fy = boss.y + boss.h; this.bw = Math.max(80, boss.w);
+    this.t = 0; this.n = 0; this.moteAcc = 0; this.sealOn = false; this.camOn = false; this.camDone = false;
+    const fx = w.fx, el = this.el;
+    // 0초: 속성 폭발 두 겹 + 속성 고리 (예전 'fire' ×20 자리)
+    fx.burst(el.burst, this.cx, this.cy, 28, { speed: 380, jitter: this.bw * 0.25, ...(el.shardColor ? { color: el.shardColor } : {}) });
+    fx.burst(el.burst2, this.cx, this.cy, 16, { speed: 240, jitter: this.bw * 0.3 });
+    fx.ring(this.cx, this.cy, { color: el.color, r0: 20, r1: 340, life: 0.6, width: 10 });
+    // 임팩트 프레임: 필살기 마무리와 같은 내보낸 함수 (번쩍임은 onBossDefeated 가 이미 했다 · 소리는 boss_die 하나로)
+    try { ULTFX.final(w, this.cx, this.cy, { color: el.color, accent: el.glow, tier: 2, impact: true, flourish: false, silent: true, noFlash: true, shake: false }); } catch (e) { console.warn('[finale] ultfx', e); }
+    // 카메라 밀어 넣기 (다른 연출이 구도를 잡고 있지 않을 때만)
+    const cam = w.camera;
+    if (cam && !cam.cineActive) { try { cam.cine(this.cx, this.cy, clamp((cam.zoom || 1) * 1.12, 0.6, 1.5), 0.35); this.camOn = true; } catch { /* 카메라 없음 */ } }
+  }
+  update(dt) {
+    const w = this.w, fx = w.fx, el = this.el;
+    this.t += dt;
+    const t = this.t;
+    while (this.n < FIN.bursts && t >= this.n * FIN.gap) {
+      const i = this.n++;
+      fx.burst(i % 3 === 2 ? el.burst2 : el.burst, this.cx + rand(-80, 80), this.cy + rand(-80, 80), 8, { speed: 200, ...(el.shardColor && i % 3 !== 2 ? { color: el.shardColor } : {}) });
+    }
+    if (!this.sealOn && t >= FIN.seal) { this.sealOn = true; w.addOverlay(makeSealOverlay(this)); w.addOverlay(makePillarOverlay(this)); }
+    if (t >= FIN.motes[0] && t < FIN.motes[1]) {
+      this.moteAcc += dt * 26 * (fx.quality ?? 1);
+      while (this.moteAcc >= 1) {
+        this.moteAcc -= 1;
+        const gold = Math.random() < 0.55;
+        fx.emit(gold ? 'gold' : el.mote, this.cx + rand(-this.bw * 0.6, this.bw * 0.6), this.fy - rand(0, 40),
+          { angle: -Math.PI / 2, spread: 0.35, speed: rand(60, 150), grav: -30, life: rand(1.0, 1.8), ...(!gold && el.moteColor ? { color: el.moteColor } : {}) });
+      }
+    }
+    if (this.camOn && !this.camDone && t >= FIN.camOut) { this.camDone = true; try { w.camera?.cineEnd?.(0.6); } catch { /* */ } }
+    if (t >= FIN.end && w.finale === this) w.finale = null;
+  }
+  lights(L) {
+    if (!L) return;
+    const t = this.t, k = clamp(1 - t / 1.2, 0, 1);
+    if (k > 0) L.add(this.cx, this.cy, 140 + 260 * k, this.el.color, 0.3 + 1.0 * k);
+    const p = pillarK(t);
+    if (p > 0) for (let i = 0; i < 3; i++) L.add(this.cx, this.fy - 140 - i * 180, 150, this.el.glow, 0.7 * p);
+  }
+}
+/** 빛기둥 세기 0..1 (오르고 → 머물고 → 사라짐) */
+function pillarK(t) {
+  const [a, b] = FIN.pillar;
+  if (t < a || t > b) return 0;
+  return Math.min(1, (t - a) / 0.25, (b - t) / 0.6);
+}
+/** 화면 층: 보스 자리에 세로 빛기둥 (3겹 사각형, 'lighter' — 그라디언트 없음) */
+function makePillarOverlay(F) {
+  return {
+    life: FIN.pillar[1] - FIN.seal + 0.05,
+    draw(ctx, vw, vh, w) {
+      const k = pillarK(F.t);
+      if (!(k > 0.01)) return;
+      const cam = w.camera, z = cam?.zoom || 1;
+      const sx = (F.cx - (cam?.x ?? 0) - (cam?.shakeX ?? 0)) * z, sy = (F.fy - (cam?.y ?? 0) - (cam?.shakeY ?? 0)) * z;
+      if (sx < -200 || sx > vw + 200) return;
+      const base = Math.max(46, F.bw * 0.55 * z);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = F.el.glow;
+      for (const [wk, a] of [[1.0, 0.07], [0.55, 0.12], [0.22, 0.3]]) {
+        const ww = base * wk * (0.75 + 0.25 * k);
+        ctx.globalAlpha = a * k;
+        ctx.fillRect(sx - ww / 2, 0, ww, Math.max(0, sy));
+      }
+      ctx.globalAlpha = 0.5 * k; ctx.fillStyle = F.el.color;
+      ctx.fillRect(sx - base * 0.9, sy - 5, base * 1.8, 6);
+    },
+  };
+}
+/** 낙관 테두리 흔들림 (보스 id 로 정해지는 값: 그리기 경로 난수 없음) */
+function sealJitter(id) {
+  let h = 2166136261;
+  for (const c of String(id ?? 'boss')) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
+  const out = [];
+  for (let i = 0; i < 16; i++) { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; out.push(((h >>> 0) % 1000) / 1000); }
+  return out;
+}
+/** 화면 층: 「격파」 먹 낙관 (붉은 인주 네모 + 붓글씨 두 글자, 위에서 찍히듯 1.7 → 1배). 배너 부제가 다른 말이면(정화·결착 …) 그 말 */
+function makeSealOverlay(F) {
+  const J = sealJitter(F.id);
+  const o = {
+    t: 0, life: FIN.sealLife, word: null,
+    update() {
+      if (o.word) return;
+      const sub = String(F.w.banner?.sub ?? '');
+      const m = /(\S+)!\s*$/.exec(sub);
+      o.word = m && m[1].length === 2 ? m[1] : '격파';
+    },
+    draw(ctx, vw, vh, w) {
+      const t = o.t, life = o.life;
+      const kIn = clamp(t / 0.16, 0, 1), out = clamp((life - t) / 0.45, 0, 1);
+      if (!(out > 0)) return;
+      const cam = w.camera, z = cam?.zoom || 1;
+      const x = clamp((F.cx - (cam?.x ?? 0)) * z + 70, vw * 0.22, vw * 0.78);
+      const y = clamp((F.cy - (cam?.y ?? 0)) * z - 30, vh * 0.36, vh * 0.68);
+      const s = 1.7 - 0.7 * ease.outCubic(kIn), S = 108;
+      ctx.translate(x, y); ctx.rotate(-0.13); ctx.scale(s, s);
+      ctx.globalAlpha = (kIn < 1 ? 0.35 + 0.65 * kIn : 1) * out;
+      // 먹 그림자 → 인주 네모 (흔들린 테두리)
+      const edge = (dx, dy) => {
+        ctx.beginPath();
+        for (let i = 0; i < 16; i++) {
+          const side = i >> 2, f = (i & 3) / 4, j = (J[i] - 0.5) * 7;
+          const px = side === 0 ? -S / 2 + f * S : side === 1 ? S / 2 + j : side === 2 ? S / 2 - f * S : -S / 2 + j;
+          const py = side === 0 ? -S / 2 + j : side === 1 ? -S / 2 + f * S : side === 2 ? S / 2 + j : S / 2 - f * S;
+          if (i === 0) ctx.moveTo(px + dx, py + dy); else ctx.lineTo(px + dx, py + dy);
+        }
+        ctx.closePath();
+      };
+      edge(4, 5); ctx.fillStyle = F.el.ink; ctx.fill();
+      edge(0, 0); ctx.fillStyle = '#b0102a'; ctx.fill();
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,236,214,0.85)';
+      ctx.strokeRect(-S / 2 + 9, -S / 2 + 9, S - 18, S - 18);
+      // 두 글자 (세로)
+      const word = o.word || '격파';
+      const brush = !!UI.faceReady?.('BN Brush');
+      ctx.font = brush ? `400 46px ${UI.FONT.brush}` : `900 38px ${UI.FONT.title}`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff1dc';
+      ctx.fillText(word[0] ?? '', 0, -S * 0.2);
+      ctx.fillText(word[1] ?? '', 0, S * 0.22);
+    },
+  };
+  return o;
+}
+
 export class World {
-  constructor(game, stageId, { roomId = null, mode = 'story', onExit = null, rules = null, diffOver = null, levelOverride = null, trial = null } = {}) {
+  constructor(game, stageId, opts = {}) {
+    const { roomId = null, mode = 'story', onExit = null, rules = null, diffOver = null, levelOverride = null, trial = null } = opts ?? {};
+    this.opts = opts ?? {};   // [s5:p4a] 만든 쪽이 준 옵션 그대로 (K2: opts.nightmare 가 있으면 보스 이름판이 진홍 「악몽」판)
     this.game = game;
     this.state = game.state;
     this.stage = typeof stageId === 'object' ? stageId : STAGES[stageId];
@@ -198,6 +500,7 @@ export class World {
     if (!room) { console.error('room not found', roomId); return; }
     this.gimmick?.dispose?.(); this.gimmick = null;   // [hook:gimmick]
     this.fx.clearDecals?.(); this.overlays.length = 0; this.roomFoes = 0; this.killPend.length = 0;   // [hook:feel]
+    if (this.reveal || this.finale) { this.reveal?.finish?.(true); this.reveal = null; this.finale = null; }   // [s5:p4a] 방이 바뀌면 보스 등장·격파 연출도 끝 (보스방 입구 재도전의 방 다시 불러오기 포함)
     this.stashRoomLoot();   // 가방이 가득 차 못 주운 상자·보스 전리품은 방을 떠나도 보관함으로
     this.room = room; this.roomId = roomId;
     this.map = new TileMap(room);
@@ -461,6 +764,8 @@ export class World {
     this.debugRects.length = 0;
     if (this.qualityNow() !== this.qualityApplied) this.applyQuality();
     this.rt += dt;   // [hook:feel]
+    if (this.reveal) this.reveal.update(dt);   // [s5:p4a] 보스 등장 연출 (실제 시간: 히트스톱·슬로모션과 무관)
+    if (this.finale) this.finale.update(dt);   // [s5:p4a] 보스 격파 연출
     if (this.killSlowT > 0) this.killSlowT -= dt;   // [hook:feel]
     // 히트스톱: 월드 정지. 파티클은 0.3배속으로 피어나고, 흔들림·반동 스프링·화면 오버레이는 실제 시간으로 움직인다 (feel §4.1)
     if (this.hitstop > 0) {
@@ -482,10 +787,12 @@ export class World {
     this.bg.update?.(sdt, this);
 
     const holdFoeShots = this.timeStop > 0 || this.freezeEnemies;   // [hook:feel] 각성 중엔 적 탄도 멈춘다 (timeStop 과 같은 규칙, 회색 화면 없음)
+    const holdFoes = !!this.reveal?.hold;   // [s5:p4a] K3 보스 등장 연출 동안: 보스 말고 다른 적·적 탄·적 판정은 갱신하지 않는다 (보스는 world.cutscene 이 붙잡는다)
     for (let i = 0; i < this.entities.length; i++) {
       const e = this.entities[i];
       if (e.dead && e !== this.player) continue; // 죽은 플레이어는 사망 연출(updateDeath)을 위해 계속 갱신
       if (holdFoeShots && e.kind === 'projectile' && e.team === 'enemy') continue;   // [hook:feel]
+      if (holdFoes && e !== this.boss && (e.kind === 'enemy' || e.team === 'enemy')) continue;   // [s5:p4a]
       e.update(sdt, this);
     }
     for (const d of this.debrisList) d.update(sdt, this.map);
@@ -540,6 +847,7 @@ export class World {
     this.lighting.begin();
     for (const e of this.entities) if (!e.dead && !this.inUnrevealedFake(e)) e.lights?.(this.lighting);
     this.gimmick?.lights?.(this.lighting);   // [hook:gimmick]
+    this.reveal?.lights(this.lighting); this.finale?.lights(this.lighting);   // [s5:p4a] 등장 섬광 · 격파 빛기둥
   }
 
   // ─────────────────────────── 화면 오버레이 (필살기·각성 레이어) ───────────────────────────
@@ -592,10 +900,11 @@ export class World {
     const list = this.entities.filter((e) => (!e.dead || e === this.player) && !e.hidden && !this.inUnrevealedFake(e) && (e.kind === 'player' || cam.visible(e.x, e.y, e.w, e.h, 200)));
     list.sort((a, b) => a.z - b.z);
     this.fx.draw(ctx, 'back');
-    for (const e of list) if (e.z < 0) e.draw(ctx, this);
+    const RV = this.reveal?.xf.on ? this.reveal : null;   // [s5:p4a] 등장 연출 중인 보스(와 채색·컬링 대리 개체)는 변형(y·크기·알파·바닥 자르기)을 입혀 그린다
+    for (const e of list) if (e.z < 0) { if (RV?.owns(e)) RV.drawEntity(ctx, e); else e.draw(ctx, this); }
     for (const d of this.debrisList) this.drawDebris(ctx, d);
     const P = this.player; if (P && list.includes(P)) P.drawBacking?.(ctx, this);   // 영웅 받침 (hero-vis): 타일·장식 위, 적·탄·이펙트 아래
-    for (const e of list) if (e.z >= 0) e.draw(ctx, this);
+    for (const e of list) if (e.z >= 0) { if (RV?.owns(e)) RV.drawEntity(ctx, e); else e.draw(ctx, this); }
     ctx.imageSmoothingQuality = 'low';
     this.tiles.drawLiquid(ctx, cam, this.time, this.liquid);   // [hook:gimmick] 방별 액체
     gm?.drawWorld?.(ctx, cam, 'front');   // [hook:gimmick] 용암 수면·공허의 벽·기포 기둥
@@ -1299,16 +1608,25 @@ export class World {
     this.cutscene = true;
     const short = !!this._retryIntro && this.bossDoor?.roomId === this.roomId;   // [retryart] 보스방 입구 재도전: 경고 없이 이름 카드만 짧게
     this._retryIntro = false;
+    // [s5:p4a] 이야기 모드(재도전 아님)는 월드 쪽 등장 연출(BossReveal, _pre 대사 동안에도 보스를 숨긴다) + 이름판/첫 대면 카드.
+    //  아케이드·시련·악몽·연습·재도전은 bossIntro 가 이름판만 (≤ 1.2초)
+    this.reveal?.finish?.(true);
+    this.reveal = !short && this.revealable() ? new BossReveal(this, id) : null;
+    if (this.reveal) { try { UI.loadBrush?.(); } catch { /* 글꼴 없음: 제목 글꼴 */ } }
     const intro = () => {
       this.cutscene = true;
       if (!short) audio.sfx('warning');
-      this.game.push('bossIntro', { bossId: id, world: this, short, onDone: () => { this.cutscene = false; if (this.player) this.player.iframes = Math.max(this.player.iframes ?? 0, 0.8); this.addAw('bossIntro'); audio.music(this.boss?.def?.music ?? 'boss'); } });   // [hook:awaken] 보스 등장 +25 · [playb] P25 연출이 닫힌 뒤 0.8초 무적 (깜박임)
+      this.game.push('bossIntro', { bossId: id, world: this, short, warned: !short, reveal: this.reveal, onDone: () => { this.reveal?.finish(); this.cutscene = false; if (this.player) this.player.iframes = Math.max(this.player.iframes ?? 0, 0.8); this.addAw('bossIntro'); audio.music(this.boss?.def?.music ?? 'boss'); } });   // [hook:awaken] 보스 등장 +25 · [playb] P25 연출이 닫힌 뒤 0.8초 무적 (깜박임)
     };
     const preId = `${id}_pre`;
     if (!short && SCRIPTS[preId] && !this.state.progress.seenScripts.includes(preId) && this.mode === 'story') {
       this.state.progress.seenScripts.push(preId);
       this.game.push('dialogue', { script: preId, world: this, onEnd: intro });
     } else intro();
+  }
+  /** [s5:p4a] 월드 쪽 보스 등장 연출을 하는가: 이야기 모드만 (시련·악몽(K2 opts.nightmare)·아케이드 계열·일일 도전·순위는 이름판만) */
+  revealable() {
+    return this.mode === 'story' && !this.trial && !this.arcade && !this.state?.arcade && !this.opts?.nightmare;
   }
   /**
    * 보스 등장 x (R1-RUN-BOSSFRAME 리드 결정). 기본은 경기장 0.72 지점이지만 들어온 영웅에서 화면 너비(vw, 경기장 줌 기준 월드 px)의
@@ -1396,7 +1714,9 @@ export class World {
     if (lvUp > 0) { if (LV_SP.queued && !(this.game.state?.arcade || this.arcade || this.trial)) LV_SP.loud = true; else this.game.toast(`LEVEL UP! Lv.${this.hero.level} — 스킬 포인트 획득`, '#ffe070', 3.2); }
     this.addScore((boss.def.score ?? 20000));
     for (const d of rollBossLoot(this, boss)) this.spawnPickup(d.type, boss.cx + rand(-40, 40), boss.cy, { ...d.data, keep: true });   // keep: 첫 처치 확정 고유 장비 등 — 가방이 가득 차도 보관함으로 (stashRoomLoot · collectLeftovers)
-    for (let i = 0; i < 20; i++) setTimeout(() => this.fx.burst('fire', boss.cx + rand(-80, 80), boss.cy + rand(-80, 80), 8, { speed: 200 }), i * 60);
+    // [s5:p4a] 격파 연출: 보스 속성(data/boss_intro.js) 폭발 20회(0.06초 간격, 게임 시간) · 임팩트 프레임 · 카메라 밀어 넣기 · 「격파」 낙관 · 금빛 알갱이 · 빛기둥
+    this.reveal?.finish?.(true);
+    try { this.finale = new BossFinale(this, boss); } catch (e) { this.finale = null; console.error('[world] finale', e); }
     bus.emit('bossKilled', { bossId: boss.def.id, stageId: this.stage.id, time: this.run.time, mode: this.mode, charId: this.hero?.charId, assisted: !!this.run?.assisted });   // [hook:ach] mode·charId: 업적 (sc_lia·sc_isolde 스토리, cb_nodmg 스토리·연습)
     this.banner = { text: 'STAGE CLEAR', sub: boss.def.name + ' 격파!', t: 4, color: '#ffe070', big: true };
   }

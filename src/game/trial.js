@@ -20,6 +20,7 @@ import { saves } from '../core/save.js';
 import { audio } from '../core/audio.js';
 import { canStartTrial, unlockFromTrial } from './progression.js';
 import { preloadStageBosses } from './bosses/lazy.js';
+import * as NM from './nightmare.js';   // [nightmare] 악몽 재대결 'nm_<stage>' — 같은 엔진을 쓴다 (docs/specs/nightmare.md §1)
 
 export const TRIAL_STATS = { started: 0, cleared: 0, failed: 0, left: 0, retried: 0, last: null };
 /** 시련 색 (배너·토스트·결계) */
@@ -27,7 +28,8 @@ export const TRIAL_COLOR = '#c8a0ff';
 const SLOWMO_BOSS = 0.35;   // world.js SLOWMO_BASE 와 같은 값 (보스 격파 슬로모션 배율)
 const BLOCK_GAP = 1.5;      // 「시련의 결계」 토스트 최소 간격 (초)
 
-const trialOf = (tid) => (typeof tid === 'string' && Object.hasOwn(TRIALS, tid) ? TRIALS[tid] : null);
+/** 시련 행 또는 악몽 행 (T 모양: NM.nightmareTrial — T.nightmare === true) */
+export const trialOf = (tid) => (typeof tid === 'string' && Object.hasOwn(TRIALS, tid) ? TRIALS[tid] : NM.nightmareTrial(tid));
 const heroOf = (game) => game?.state?.heroes?.[game?.state?.charId] ?? null;
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 function toast(game, text, sec = 1.8) { try { game?.toast?.(text, TRIAL_COLOR, sec); } catch (e) { console.warn('[trial]', e); } }
@@ -51,11 +53,13 @@ export function trialRecord(hero, tid) {
 /** 규칙 이름 목록 (성당 확인 창과 같은 표기) */
 export function trialRuleNames(T) {
   if (!T) return [];
+  if (T.nightmare) return T.twistName ? [T.twistName] : [];   // [nightmare] 비틀기 이름 (일시정지 「규칙」 줄)
   return [...(T.mods ?? []).map((m) => modName(m)), ...(T.diffOver?.bossHp > 1 ? [`보스 체력 ${T.diffOver.bossHp}배`] : [])];   // 1 이하(영웅별 보정)는 규칙으로 보이지 않는다 (qafix)
 }
 
 /** 성당 「도전한다」: 조건 확인 → 저장 → pre 대본(다시 하면 preAgain) → 시련 스테이지. 반환: canStartTrial 결과 */
 export function startTrial(game, tid) {
+  if (NM.isNightmareId(tid)) return NM.startNightmare(game, tid);   // [nightmare]
   const T = trialOf(tid), st = game?.state;
   const chk = canStartTrial(heroOf(game), tid, st);
   if (!chk.ok || !T) { toast(game, chk.reason || '시련을 시작할 수 없다'); return chk; }
@@ -75,6 +79,7 @@ function goTrialStage(game, T) {
 
 /** 시련 월드 준비물 → { T, stage, opts } | null (모르는 시련·스테이지) */
 export function prepareTrial(game, tid) {
+  if (NM.isNightmareId(tid)) return NM.prepareNightmare(game, tid);   // [nightmare] 규칙 = 비틀기 · 레벨 = 악몽 레벨 · opts.nightmare (K2)
   const T = trialOf(tid);
   const base = T ? STAGES[T.stage] : null;
   if (!T || !base) return null;
@@ -126,6 +131,7 @@ export function attachTrial(scene, w, T) {
   w.finishStage = () => completeTrial(game, w, T);
   w.onPlayerDeath = () => failTrial(game, w, T);
   w.banner = { text: '시련', sub: T.name, t: 2.4, color: TRIAL_COLOR, big: true };
+  if (T.nightmare) { NM.attachNightmare(scene, w, T); return; }   // [nightmare] 배너 · 격파/종료 · 비틀기 감독 (규칙 알림도 그쪽)
   const rn = trialRuleNames(T);
   if (rn.length) setTimeout(() => { if (game.world === w && !w.cleared) toast(game, `시련의 규칙: ${rn.join(' · ')}`, 3); }, 900);
   void scene;
@@ -176,8 +182,8 @@ function failTrial(game, w, T) {
   if (w.cleared) { w.reviveAfterClear?.(); return; }   // 보스를 쓰러뜨린 뒤 쓰러짐: 제자리에서 일으킨다 (world.js 와 같다)
   if (w.trialEnded) return;
   w.trialEnded = 'fail';
-  const rec = trialRecord(w.hero ?? heroOf(game), T.id);
-  if (rec) rec.tries++;
+  if (T.nightmare) NM.noteFail(game, T.id);   // [nightmare] 도전 횟수는 state.nm 에 (hero.trials 를 쓰지 않는다)
+  else { const rec = trialRecord(w.hero ?? heroOf(game), T.id); if (rec) rec.tries++; }
   TRIAL_STATS.failed++; TRIAL_STATS.last = 'fail';
   if (game.registry?.trialEnd) game.push('trialEnd', { world: w, tid: T.id });
   else leaveTrial(game, T.id, 'fail');
@@ -185,6 +191,7 @@ function failTrial(game, w, T) {
 
 /** 「다시 도전」: 새 월드로 보스방 (조건이 깨졌으면 성당으로) */
 export function retryTrial(game, tid) {
+  if (NM.isNightmareId(tid)) return NM.retryNightmare(game, tid);   // [nightmare]
   const T = trialOf(tid);
   const chk = canStartTrial(heroOf(game), tid, game?.state);
   if (!T || !chk.ok) { toast(game, chk.reason || '시련을 시작할 수 없다'); leaveTrial(game, tid, 'blocked'); return chk; }
@@ -198,6 +205,7 @@ export function retryTrial(game, tid) {
 /** 「성당으로」·「시련 포기」: 마을 성당 앞 → 성당 전직 탭. why: 'leave' | 'quit' | 'fail' | 'blocked' */
 export function leaveTrial(game, tid, why = 'leave') {
   if (!game) return;
+  if (NM.isNightmareId(tid)) { NM.leaveNightmare(game, tid, why); return; }   // [nightmare] 마을로 (성당 앞 또는 동쪽 문)
   const w = game.world;
   if (w?.trial && w.trial.id === tid) {
     // 보스전 도중 포기한 것은 한 번의 도전으로 센다 (실패 화면에서 떠날 때는 failTrial 이 이미 셌다)

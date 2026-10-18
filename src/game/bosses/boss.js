@@ -37,12 +37,18 @@ export class Boss extends Entity {
     this.world = world;
     this.def = def; this.id = def.id;
     const diff = world.diff;
+    // [nightmare] 악몽 재대결 (docs/specs/nightmare.md §3, K2): world.opts.nightmare = { hpMul, atkMul, spMul, baseLevel, … } — 없으면 예전 그대로
+    const nm = world.opts?.nightmare || null;
     const s = enemyStats({ ...def, lv: world.stage.level }, world.stage.level, { ...diff, enemyHp: (diff.bossHp ?? diff.enemyHp) }, false);
+    // 초반·후반 보정의 기준 레벨: 악몽은 이야기 레벨 (레벨이 +8 올라도 싸움 길이의 모양은 이야기 그대로 — hpMul 이 곧 길이 배율)
+    const shapeLv = Number.isFinite(nm?.baseLevel) ? nm.baseLevel : world.stage.level;
     // 초반 보스는 짧게 끝나지 않도록 보정 (레벨 1: ×2.0 → 레벨 11 이상: ×1.0)
-    const early = 1 + Math.max(0, 10 - (world.stage.level - 1)) * 0.1;
+    const early = 1 + Math.max(0, 10 - (shapeLv - 1)) * 0.1;
     // 후반(Lv25~) 보스는 체력 곡선이 가팔라 전투가 늘어지므로 완만하게 깎는다 (목표: 기본기 100~160타)
-    const late = 1 / (1 + Math.max(0, world.stage.level - 24) * 0.035);
-    s.maxHp = Math.round(s.maxHp * (def.hpMul ?? 1) * early * late);
+    const late = 1 / (1 + Math.max(0, shapeLv - 24) * 0.035);
+    const nmMul = (k) => (Number.isFinite(nm?.[k]) && nm[k] > 0 ? nm[k] : 1);
+    s.maxHp = Math.round(s.maxHp * (def.hpMul ?? 1) * early * late * nmMul('hpMul'));
+    if (nm) s.atk = Math.round(s.atk * nmMul('atkMul'));
     s.hp = s.maxHp;
     s.exp = Math.round((def.exp ?? 400) * (1 + world.stage.level * 0.35) * (diff.exp ?? 1));
     this.stats = s;
@@ -54,8 +60,10 @@ export class Boss extends Entity {
     this.noGravity = !!def.flying;
     this.facing = -1;
     this.z = 4;
-    this.aggro = diff.aggro ?? 1;
+    this.aggro = (diff.aggro ?? 1) * nmMul('spMul');   // [nightmare] 쉼만 짧아진다 (예고 시간은 그대로)
     this.inferno = world.state.difficulty === 'inferno' || world.state.difficulty === 'nightmare' || !!world.ngBoss;   // [hook:ng] 회차(2회차부터)도 강화 패턴
+    this.inferno ||= !!nm;   // [nightmare] 악몽 재대결은 강화 패턴
+    if (nm) this.nm = { hpMul: nmMul('hpMul'), atkMul: nmMul('atkMul'), spMul: nmMul('spMul') };   // 시험·도구용
     this.anim = 'idle'; this.animT = 0;
     this.dying = 0;
     this._tgT = 0; this._tgOn = false;   // [hook:feel] 예고(윈드업) 창 — get telegraph
