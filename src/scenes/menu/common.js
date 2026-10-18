@@ -15,6 +15,7 @@ import { text, font, wrap, FONT, taps, fontEpoch, textFloor } from '../../core/u
 import { drawHints } from '../../core/prompts.js';
 import { TAU, clamp, lerp, rgba, ease } from '../../core/math.js';
 import { audio } from '../../core/audio.js';
+import { SKILLS, canLearn } from '../../data/skills.js';   // 스킬 알림 배지 (PLAY P06)
 
 export const PAL = {
   ink: '#07040a', night: '#0e0818', indigo: '#1a1030',
@@ -462,6 +463,68 @@ export function para(ctx, str, x, y, w, { size = 14, lh = 1.5, color = PAL.text,
 export function measure(ctx, str, size, weight = 500, family = FONT.body) {
   ctx.font = font(size, weight, family);
   return ctx.measureText(String(str)).width;
+}
+/**
+ * 한 줄 글을 너비 w 안에 그린다 (PLAY P14 — 스킬·직업 이름이 '비질리아 …' 처럼 잘렸다): 크기를 size → minSize(기본 11, 글자 하한
+ * 아래로는 font() 가 올린다) 까지 0.5 씩 줄여 보고, 그래도 넘치면 가로로 최대 18 % 눌러(fillText maxWidth) 넣는다. 그래도 넘칠 때만 '…'.
+ * opts 는 text() 옵션 (size 는 시작 크기). 반환: 그린 크기
+ */
+export function fitText(ctx, str, x, y, w, opts = {}) {
+  const { size = 13, minSize = 11, weight = 500, family = FONT.body } = opts;
+  str = String(str ?? '');
+  let s = size;
+  while (s > minSize && measure(ctx, str, s, weight, family) > w) s -= 0.5;
+  const mw = measure(ctx, str, s, weight, family);
+  if (mw <= w) text(ctx, str, x, y, { ...opts, size: s });
+  else if (mw * SQUEEZE <= w) text(ctx, str, x, y, { ...opts, size: s, maxWidth: w });
+  else text(ctx, ellipsize(ctx, str, w / SQUEEZE, s, weight, family), x, y, { ...opts, size: s, maxWidth: w });
+  return s;
+}
+/** fitText 가 글을 끝까지 넣을 수 있는가 (말줄임 없이) */
+export function fitsText(ctx, str, w, { minSize = 11, weight = 500, family = FONT.body } = {}) {
+  return measure(ctx, String(str ?? ''), minSize, weight, family) * SQUEEZE <= w;
+}
+const SQUEEZE = 0.82;
+// ───────────────────────── 스킬 알림 배지 (PLAY P06) ─────────────────────────
+/**
+ * 이 영웅에게 스킬 알림을 띄울까 → { n, sp, learn, slot } (n = 0 이면 없음).
+ *  - SP 가 있고 지금 배우거나 올릴 수 있는 스킬이 하나라도 있으면: n = SP (배지에 숫자)
+ *  - 아니면 빈 슬롯이 있고 배운 액티브 중 장착하지 않은 것이 있으면: n = 1, slot = true (배지에 '!')
+ * 메뉴 '스킬' 탭 · 일시정지 '메뉴' 줄이 쓴다 (마을 '메뉴' 단추 · HUD 는 PLAY-B 요청)
+ */
+export function skillAlert(hero) {
+  const out = { n: 0, sp: 0, learn: 0, slot: false };
+  if (!hero || typeof hero !== 'object') return out;
+  try {
+    out.sp = Math.max(0, Math.floor(Number(hero.sp) || 0));
+    if (out.sp > 0) for (const id in SKILLS) { if (SKILLS[id].charId === hero.charId && canLearn(hero, id).ok) out.learn++; }
+    if (out.sp > 0 && out.learn > 0) { out.n = out.sp; return out; }
+    const slots = Array.isArray(hero.slots) ? hero.slots : [];
+    if (slots.some((x) => !x)) {
+      for (const id in hero.skills ?? {}) {
+        const sk = SKILLS[id];
+        if (sk && sk.type === 'active' && hero.skills[id] > 0 && !slots.includes(id) && (!sk.reqAsc || hero.asc === sk.reqAsc)) { out.slot = true; out.n = 1; break; }
+      }
+    }
+  } catch { /* 손상된 영웅 기록: 배지 없음 */ }
+  return out;
+}
+/** 붉은 알림 배지 (가운데 x, y). label: 숫자·'!' (없으면 점만). 반환: 반지름 */
+export function redBadge(ctx, x, y, label = null, { size = 11, t = 0 } = {}) {
+  const s = label == null ? '' : String(label);
+  ctx.font = font(size, 900, FONT.num);
+  const tw = s ? ctx.measureText(s).width : 0;
+  const r = s ? Math.max(size * 0.78, tw / 2 + 4) : 5;
+  const pr = r + 0.8 * Math.sin(t * 5);
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  ctx.beginPath(); ctx.arc(x, y, pr + 1.6, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#e8203c';
+  ctx.beginPath(); ctx.arc(x, y, pr, 0, TAU); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,210,200,0.85)'; ctx.lineWidth = 1; ctx.stroke();
+  if (s) text(ctx, s, x, y + size * 0.36, { size, align: 'center', weight: 900, family: FONT.num, color: '#fff', ow: 2 });
+  ctx.restore();
+  return r;
 }
 /** 너비를 넘으면 말줄임 */
 export function ellipsize(ctx, str, w, size, weight = 500, family = FONT.body) {

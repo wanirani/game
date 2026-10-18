@@ -11,7 +11,7 @@ import { drawHints, promptMode } from '../../core/prompts.js';
 import { clamp, ease, rgba, lerp } from '../../core/math.js';
 import { hudSafe } from '../../render/hud_layout.js';
 import { DIFFICULTIES } from '../../data/difficulty.js';
-import { Ambience, kenBurns, shade, frame, heading, gbutton, backButton, footer, skull, ornament, follow, glowSprite, linGrad, radGrad, parseHints, clampLines, GOLD, BONE, DIM } from './common.js';
+import { Ambience, kenBurns, shade, frame, heading, gbutton, backButton, footer, skull, ornament, follow, glowSprite, linGrad, radGrad, parseHints, clampLines, fitLines, GOLD, BONE, DIM } from './common.js';
 
 const pct = (v) => `×${Number(v).toFixed(2).replace(/0$/, '')}`;
 
@@ -84,7 +84,8 @@ export class DifficultyScene extends Scene {
     const y0 = compact ? headY + headSize * 0.72 + 32 : 106 + st;
     const cw = Math.min(176, (W - sl - sr - 60 - gap * (n - 1)) / n);
     // 좁은 화면: 시작 버튼은 오른쪽 아래(안내 줄과 같은 높이), 카드는 그 위까지
-    const ch = compact ? Math.min(332, H - sb - 64 - y0) : 332;
+    // 세로가 넉넉하면(폴드) 카드를 키운다 (PLAY P19 · P14: 설명이 더 많은 줄로 들어간다)
+    const ch = compact ? Math.min(332, H - sb - 64 - y0) : clamp(H - sb - y0 - 120, 332, 400);
     const x0 = sl + (W - sl - sr) / 2 - (n * cw + (n - 1) * gap) / 2;
     const br = compact ? { x: W - sr - 16 - 270, y: H - sb - 54, w: 270, h: 46 } : { x: W / 2 - 130, y: y0 + ch + 14, w: 260, h: 46 };
     return { W, H, sl, sr, st, sb, compact, n, gap, headY, headSize, y0, cw, ch, x0, br, C: ch >= 320 ? CARD_FULL : CARD_COMPACT };
@@ -159,9 +160,17 @@ export class DifficultyScene extends Scene {
     const fl = textFloor(), rowH = Math.max(C.rowH, Math.ceil(fl * 1.15)), descLH = Math.max(C.descLH, Math.ceil(fl * 1.2));
     const rows = diffRows(d);
     const ry = h - rows.length * rowH - 8;
-    const maxLines = clamp(Math.floor((ry - 15 - 4 - C.descY + descLH * 0.75) / descLH), 0, 4);
-    const lines = clampLines(ctx, wrap(ctx, d.desc, w - 18, 13, 500), maxLines, w - 18); // 잘리면 '…'
-    lines.forEach((l, j) => text(ctx, l, w / 2, C.descY + j * descLH, { size: 13, align: 'center', color: '#d8ccbc', ow: 2 }));
+    // 설명: 13 → 12 → 11 px 로 줄여 다 들어가면 그 크기 (PLAY P14 — 휴대폰 '지옥' 카드가 '…' 로 잘렸다). 줄 간격도 크기에 맞춘다
+    const avail = ry - 15 - 4 - C.descY;
+    let fit = null;
+    for (const sz of [13, 12, 11]) {
+      const lh = Math.max(Math.round(descLH * sz / 13), Math.ceil(Math.max(fl, sz) * 1.15));
+      const n = clamp(Math.floor((avail + lh * 0.75) / lh), 0, 6);
+      const f = fitLines(ctx, d.desc, w - 18, n, [sz], 500);
+      fit = { ...f, lh };
+      if (wrap(ctx, d.desc, w - 18, sz, 500).length <= n) break;
+    }
+    fit.lines.forEach((l, j) => text(ctx, l, w / 2, C.descY + j * fit.lh, { size: fit.size, align: 'center', color: '#d8ccbc', ow: 2 }));
     ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(8, ry - 15, w - 16, rows.length * rowH + 8);
     rows.forEach(([k2, v, c], j) => {
       text(ctx, k2, 14, ry + j * rowH, { size: 12, weight: 600, color: DIM, ow: 2 });

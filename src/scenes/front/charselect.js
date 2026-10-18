@@ -20,7 +20,7 @@ import { drawHero } from '../../render/hero.js';
 import * as PUPPET from '../../render/hero_puppet.js';
 import {
   Ambience, kenBurns, shade, frame, ornament, portraitIn, gbutton, backButton, stars, puppet,
-  glowSprite, follow, linGrad, radGrad, clampLines, GOLD, BONE, DIM,
+  glowSprite, follow, linGrad, radGrad, clampLines, fitLines, GOLD, BONE, DIM,
 } from './common.js';
 import { startArcade, ARCADE_MODES } from './arcade.js';
 
@@ -127,18 +127,21 @@ export class CharSelectScene extends Scene {
     const S = hudSafe(g);
     const sl = (S.l || 0) / k, sr = (S.r || 0) / k, st = (S.t || 0) / k, sb = (S.b || 0) / k;
     const compact = H < 500;
+    const tall = !compact && H - st - sb >= 640;   // 폴드처럼 세로가 넉넉한 화면 (PLAY P19): 미리보기 창·글자를 키운다
     const pw = W * 0.5;
     const ix = pw + 10, iw = W - ix - 24 - sr;
     const n = this.list.length, gap = 8;
     const ts = Math.min(compact ? 58 : 64, (iw - (n - 1) * gap) / n);
     const tilesY = H - sb - (compact ? 120 : 132);
-    const winH = compact ? 168 : 180;
-    const win = { x: 16 + sl, y: H - sb - winH - 16, w: Math.min(340, pw - 40 - sl), h: winH };
+    const winH = compact ? 168 : tall ? 250 : 180;
+    const win = { x: 16 + sl, y: H - sb - winH - 16, w: Math.min(tall ? 410 : 340, pw - 40 - sl), h: winH };
     const br = { x: ix, y: H - sb - (compact ? 54 : 58), w: Math.min(250, iw * 0.6), h: 46 };
     const T = compact
       ? { hdrY: st + 30, engY: st + 58, nameY: st + 92, nameSize: 30, titleY: st + 116, titleSize: 15, ornY: st + 130, descY: st + 152, descLH: 19, rowH: 21 }
-      : { hdrY: st + 40, engY: st + 82, nameY: st + 122, nameSize: 36, titleY: st + 148, titleSize: 16, ornY: st + 164, descY: st + 192, descLH: 22, rowH: 24 };
-    return { W, H, sl, sr, st, sb, compact, pw, ix, iw, n, gap, ts, tilesY, win, br, T };
+      : tall
+        ? { hdrY: st + 40, engY: st + 86, nameY: st + 130, nameSize: 40, titleY: st + 158, titleSize: 17, ornY: st + 176, descY: st + 206, descLH: 24, rowH: 28, descSize: 15, maxDesc: 6, statSize: 14, starSize: 16 }
+        : { hdrY: st + 40, engY: st + 82, nameY: st + 122, nameSize: 36, titleY: st + 148, titleSize: 16, ornY: st + 164, descY: st + 192, descLH: 22, rowH: 24 };
+    return { W, H, sl, sr, st, sb, compact, tall, pw, ix, iw, n, gap, ts, tilesY, win, br, T };
   }
 
   render(ctx) {
@@ -193,7 +196,7 @@ export class CharSelectScene extends Scene {
     ctx.fillRect(0, 0, win.w, 34);
     ctx.restore();
     ctx.fillStyle = rgba(acc, 0.35); ctx.fillRect(win.x, win.y + win.h - 29, win.w, 1);
-    this.drawPreview(ctx, win.x + Math.min(96, win.w * 0.28), win.y + win.h - 28, c, acc, t, L.compact ? 1.4 : 1.5);
+    this.drawPreview(ctx, win.x + Math.min(L.tall ? 120 : 96, win.w * 0.28), win.y + win.h - 28, c, acc, t, L.compact ? 1.4 : L.tall ? 1.95 : 1.5);
     ctx.restore();
     text(ctx, 'BATTLE PREVIEW', win.x + 10, win.y + 18, { size: 11, weight: 900, family: FONT.num, color: rgba(acc, 0.9), ow: 3 });
 
@@ -216,21 +219,24 @@ export class CharSelectScene extends Scene {
     const entries = Object.entries(ch.stars ?? {});
     const statRows = Math.ceil(entries.length / 2);
     const below = statRows * T.rowH + 8 + (c.open ? 2 * (T.rowH - 3) : 0) + 10;
-    const maxLines = clamp(Math.floor((L.tilesY - 8 - below - T.descY + T.descLH * 0.4) / T.descLH), 1, 4);
-    const lines = clampLines(ctx, wrap(ctx, desc, iw, 14, 500), maxLines, iw); // 잘리면 '…'
-    lines.forEach((l, i) => text(ctx, l, ix, T.descY + i * T.descLH, { size: 14, color: c.open ? '#e8dccb' : '#b89a9a', ow: 2 }));
+    const maxLines = clamp(Math.floor((L.tilesY - 8 - below - T.descY + T.descLH * 0.4) / T.descLH), 1, T.maxDesc ?? 4);
+    // 설명: 다 들어가는 크기까지 줄인다 (14 → 13 → 12 → 11, PLAY P14 — 휴대폰에서 '…' 로 잘렸다). 그래도 넘치면 '…'
+    const ds = T.descSize ?? 14;
+    const { lines, size: dsz } = fitLines(ctx, desc, iw, maxLines, [ds, ds - 1, ds - 2, ds - 3].filter((v) => v >= 11), 500);
+    const dlh = Math.round(T.descLH * Math.min(1, (dsz + 8) / (ds + 8)));
+    lines.forEach((l, i) => text(ctx, l, ix, T.descY + i * dlh, { size: dsz, color: c.open ? '#e8dccb' : '#b89a9a', ow: 2 }));
     // 능력치
-    const sy = T.descY + lines.length * T.descLH + 4;
+    const sy = T.descY + lines.length * dlh + 4;
     entries.forEach(([k, v], i) => {
       const col = i % 2, row = Math.floor(i / 2);
       const x = ix + col * (iw / 2), y = sy + row * T.rowH;
-      text(ctx, k, x, y + 5, { size: 13, weight: 700, color: DIM, ow: 2 });
-      stars(ctx, x + 52, y, c.open ? v : 0, 5, { color: acc, size: 14 });
+      text(ctx, k, x, y + 5, { size: T.statSize ?? 13, weight: 700, color: DIM, ow: 2 });
+      stars(ctx, x + (L.tall ? 58 : 52), y, c.open ? v : 0, 5, { color: acc, size: T.starSize ?? 14 });
     });
     const wy = sy + statRows * T.rowH + 8;
     if (c.open) {
-      text(ctx, `무기  ${WNAME[ch.weaponType] ?? ch.weaponType}    이동  ${DNAME[ch.move?.dash] ?? '대시'}${ch.move?.airJumps > 1 ? ` · ${ch.move.airJumps + 1}단 점프` : ''}`, ix, wy, { size: 13, weight: 700, color: BONE, ow: 2, maxWidth: iw });
-      text(ctx, `필살기  「${ch.ult?.name ?? '???'}」`, ix, wy + T.rowH - 3, { size: 13, weight: 800, color: ch.ult?.color ?? GOLD, ow: 2, maxWidth: iw });
+      text(ctx, `무기  ${WNAME[ch.weaponType] ?? ch.weaponType}    이동  ${DNAME[ch.move?.dash] ?? '대시'}${ch.move?.airJumps > 1 ? ` · ${ch.move.airJumps + 1}단 점프` : ''}`, ix, wy, { size: T.statSize ?? 13, weight: 700, color: BONE, ow: 2, maxWidth: iw });
+      text(ctx, `필살기  「${ch.ult?.name ?? '???'}」`, ix, wy + T.rowH - 3, { size: T.statSize ?? 13, weight: 800, color: ch.ult?.color ?? GOLD, ow: 2, maxWidth: iw });
     }
     ctx.restore();
 

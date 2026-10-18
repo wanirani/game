@@ -12,7 +12,7 @@ import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { saves } from '../../core/save.js';
 import { game } from '../../core/game.js';
-import { text, FONT, COLORS, hovered, taps, ListMenu } from '../../core/ui.js';
+import { text, wrap, FONT, COLORS, hovered, taps, ListMenu } from '../../core/ui.js';
 import { drawHints, legacyKey, promptMode } from '../../core/prompts.js';
 import { ACTIONS } from '../../data/controls.js';
 import { hudSafe } from '../../render/hud_layout.js';
@@ -623,6 +623,27 @@ export function pulseRing(ctx, x, y, r, color, k) {
   ctx.strokeStyle = color; ctx.lineWidth = 4 * (1 - k) + 1;
   ctx.beginPath(); ctx.arc(x, y, r * (0.4 + k * 0.9), 0, TAU); ctx.stroke();
   ctx.restore();
+}
+/**
+ * 글을 n 줄 안에 맞춘다 (PLAY P14): sizes 의 큰 크기부터 한 단계씩 줄여(글자 크기 하한 아래로는 font() 가 올린다) 다 들어가는
+ * 크기를 고른다. 그래도 넘치면 가장 작은 크기에서 마지막 줄 끝을 '…'. 반환 { lines, size } — 같은 size·weight 로 그릴 것
+ */
+export function fitLines(ctx, str, maxW, maxLines, sizes = [13, 12, 11], weight = 500, family = FONT.body) {
+  let lines = [], size = sizes[0];
+  for (const s of sizes) {
+    size = s;
+    lines = wrap(ctx, str, maxW, s, weight, family);
+    if (lines.length <= maxLines) return { lines, size };
+  }
+  return { lines: clampLines(ctx, lines, maxLines, maxW), size };
+}
+/** 한 줄 글이 maxW 안에 들어가는 가장 큰 크기 (sizes 차례로; 다 넘치면 마지막 크기 — text 의 maxWidth 로 마저 줄인다) */
+export function fitSize(ctx, str, maxW, sizes = [16, 15, 14, 13, 12], weight = 700, family = FONT.body) {
+  for (const s of sizes) {
+    ctx.font = `${weight} ${s}px ${family}`;
+    if (ctx.measureText(String(str)).width <= maxW) return s;
+  }
+  return sizes[sizes.length - 1];
 }
 /**
  * wrap() 결과를 n 줄까지만 남긴다. 잘렸으면 마지막 줄 끝을 '…' 로 (문장이 중간에서 뚝 끊겨 보이지 않게).

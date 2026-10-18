@@ -15,7 +15,7 @@ import { drawSkillGlyph } from '../../render/hud.js';
 import * as SkillD from '../../data/skills.js';
 import { Tab } from './base.js';
 import {
-  PAL, frame, heading, divider, brackets, glow, glowOval, gbutton, pill, para, diamond, glyph, Popup, ellipsize, measure, keycap, rr,
+  PAL, frame, heading, divider, brackets, glow, glowOval, gbutton, pill, para, diamond, glyph, Popup, ellipsize, measure, keycap, rr, fitText, fitsText,
   Scroller, scrollbar, clipBegin, clipEnd, vGrad, fillGradRect,
 } from './common.js';
 import * as D from './access.js';
@@ -259,17 +259,20 @@ export class SkillsTab extends Tab {
         const lb = slotted ? slotLabel(hero.slots.indexOf(id)) : '';
         const pfs = Math.max(9, textFloor()), ph = Math.max(14, Math.ceil(pfs + 4));
         const pw = slotted ? measure(ctx, lb, 9, 800) + 14 : 0;
-        const nw = right - nx - (slotted && !narrow ? pw + 8 : 0); // 슬롯 배지 자리를 비운다
-        text(ctx, ellipsize(ctx, sk.name, nw, 13, 800), nx, y - 1, { size: 13, weight: 800, color: sel ? PAL.goldHi : lv ? PAL.bone : chk.ok ? PAL.text : PAL.faint, ow: 3 });
+        let nw = right - nx - (slotted && !narrow ? pw + 8 : 0); // 슬롯 배지 자리를 비운다
+        // 배지 자리를 비우면 이름이 잘릴 때(PLAY P14 '비질리아 …'): 배지를 눈금 줄 오른쪽으로 내리고 이름에 줄 전체를 준다
+        const pillLow = slotted && !narrow && !fitsText(ctx, sk.name, nw, { weight: 800 });
+        if (pillLow) nw = right - nx;
+        fitText(ctx, sk.name, nx, y - 1, nw, { size: 13, weight: 800, color: sel ? PAL.goldHi : lv ? PAL.bone : chk.ok ? PAL.text : PAL.faint, ow: 3 });
         // 레벨 눈금
         const step = clamp((right - nx - 6) / max, 6, 10);
         for (let k = 0; k < max; k++) diamond(ctx, nx + 4 + k * step, y + 11, step < 9 ? 3 : 3.4, k < lv ? bc : 'rgba(90,70,60,0.8)');
         // '액티브': 자리가 있을 때만 (배지가 커져 그 줄까지 내려오면 배지 왼쪽까지만)
-        const aRight = slotted && !narrow && y - 14 + ph > y + 15 - Math.max(10, textFloor()) * 0.8 ? right - 4 - pw - 4 : right;
+        const aRight = slotted && !narrow && (pillLow || y - 14 + ph > y + 15 - Math.max(10, textFloor()) * 0.8) ? right - 4 - pw - 4 : right;
         if (D.isActive(sk) && nx + max * step + 6 + measure(ctx, '액티브', 10, 700) <= aRight) text(ctx, '액티브', nx + max * step + 6, y + 15, { size: 10, weight: 700, color: lv ? '#ffb070' : PAL.faint, ow: 2 });
         if (slotted) {
           if (narrow) pill(ctx, lb, x, y + R - 3, { align: 'center', size: 9, h: Math.max(13, ph - 1), color: PAL.goldHi, bg: 'rgba(90,10,30,0.92)' });
-          else pill(ctx, lb, x0 + cw - 10, y - 14, { align: 'right', size: 9, h: ph, color: PAL.goldHi, bg: 'rgba(90,10,30,0.9)' });
+          else pill(ctx, lb, x0 + cw - 10, pillLow ? y + 4 : y - 14, { align: 'right', size: 9, h: ph, color: PAL.goldHi, bg: 'rgba(90,10,30,0.9)' });
         }
       });
       clipEnd(ctx, TR, null);
@@ -325,7 +328,7 @@ export class SkillsTab extends Tab {
     const slotted = !!hero.slots?.includes(id), active = this.ascEquipOk(id);
     const tag = slotted ? slotLabel(hero.slots.indexOf(id)) : active ? '' : '비전 직업 전용';
     const tagW = tag ? measure(ctx, tag, 9, 800) + 14 : 0;
-    text(ctx, ellipsize(ctx, sk.name, right - nx - (tagW ? tagW + 8 : 0), 13, 800), nx, cy - 1, { size: 13, weight: 800, color: sel ? PAL.goldHi : lv ? PAL.bone : PAL.text, ow: 3 });
+    fitText(ctx, sk.name, nx, cy - 1, right - nx - (tagW ? tagW + 8 : 0), { size: 13, weight: 800, color: sel ? PAL.goldHi : lv ? PAL.bone : PAL.text, ow: 3 });
     const step = clamp((right - nx - 6 - (tagW ? tagW + 8 : 0)) / max, 6, 10);
     for (let k = 0; k < max; k++) diamond(ctx, nx + 4 + k * step, cy + Math.max(11, F * 0.9), step < 9 ? 3 : 3.4, k < lv ? ASC_COL : 'rgba(90,70,60,0.8)');
     if (tag) pill(ctx, tag, right, cy - Math.max(14, F + 3) / 2 - 1, { align: 'right', size: 9, h: Math.max(14, Math.ceil(F + 3)), color: slotted ? PAL.goldHi : '#d8b8ff', bg: slotted ? 'rgba(90,10,30,0.9)' : 'rgba(46,20,78,0.92)' });
@@ -392,7 +395,7 @@ export class SkillsTab extends Tab {
     ctx.restore();
     ctx.strokeStyle = PAL.gold; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(icx, icy, IR, 0, TAU); ctx.stroke();
     const tx = x + (compact ? 68 : 94), ns = compact ? 16 : 18;
-    text(ctx, ellipsize(ctx, sk.name, x + w - 10 - tx, ns, 800, FONT.title), tx, y + (compact ? 30 : 42), { size: ns, weight: 800, family: FONT.title, color: PAL.bone, ow: 3 });
+    fitText(ctx, sk.name, tx, y + (compact ? 30 : 42), x + w - 10 - tx, { size: ns, minSize: 12, weight: 800, family: FONT.title, color: PAL.bone, ow: 3 });   // 상세 머리: 이름 전체 (P14)
     let px = tx;
     const py = y + (compact ? 38 : 52);
     px += pill(ctx, D.isActive(sk) ? '액티브' : '패시브', px, py, { color: D.isActive(sk) ? '#ffb070' : '#9ac8ff', size: 11, h: 18 }) + 6;

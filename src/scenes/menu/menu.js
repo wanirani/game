@@ -18,7 +18,7 @@ import * as PUPPET from '../../render/hero_puppet.js';
 import { currentHero } from '../../game/state.js';
 import {
   PAL, glow, glowOval, diamond, glyph, hintRow, Layer, Nav, Gesture, Embers, brackets, inRect, ellipsize,
-  takeCanvas, giveCanvas, leanMem, ctxScale, vGrad, hGrad, rGrad, fillGradRect, fillPathGrad,
+  takeCanvas, giveCanvas, leanMem, ctxScale, vGrad, hGrad, rGrad, fillGradRect, fillPathGrad, skillAlert, redBadge,
 } from './common.js';
 import * as HERO_R from '../../render/hero.js';
 import { heroPerfSample } from './hero_view.js';
@@ -116,6 +116,13 @@ export class MenuScene extends Scene {
     try { this.world?.player?.refreshStats(); } catch (e) { console.warn(e); }
   }
   get hero() { return this.state ? currentHero(this.state) : null; }
+  /** 탭 알림 배지 (PLAY P06): '스킬' 탭 = 배울 수 있는 SP 수 · 빈 슬롯에 넣을 스킬 '!'. 데이터 버전(rev)·영웅이 바뀔 때만 다시 센다 */
+  tabBadge(id) {
+    if (id !== 'skills') return null;
+    const h = this.hero, key = `${this.rev}|${h?.charId}|${h?.sp}|${h?.level}`;
+    if (this._badgeKey !== key) { this._badgeKey = key; const a = skillAlert(h); this._skillBadge = a.n > 0 ? (a.slot ? '!' : a.n) : null; }
+    return this._skillBadge;
+  }
   get cur() {
     const d = MENU_TABS[this.ti];
     return this.tabs[d.id] || (this.tabs[d.id] = new (d.C())(this));
@@ -394,6 +401,8 @@ export class MenuScene extends Scene {
       if (sel) glow(ctx, x + tw / 2, 22, 16, '#ffd070', 0.35);
       glyph(ctx, d.glyph, x + tw / 2, 22, 17, col, sel ? 1.8 : 1.5);
       text(ctx, ellipsize(ctx, d.name, tw - 6, nameSize, sel ? 800 : 700), x + tw / 2, 50, { size: nameSize, align: 'center', weight: sel ? 800 : 700, color: col, ow: 3 });
+      const bd = this.tabBadge(d.id);
+      if (bd != null) redBadge(ctx, x + tw / 2 + 15, 12, bd, { size: 10, t });   // 스킬 알림 (P06)
       if (i > 0 && !sel && i - 1 !== this.ti) { ctx.fillStyle = 'rgba(200,160,90,0.18)'; ctx.fillRect(x, 16, 1, TOP_H - 30); }
     }
     if (this.focus === 'tabs') brackets(ctx, sx + 4, py + 2, tw - 8, ph - 4, t, PAL.goldHi);

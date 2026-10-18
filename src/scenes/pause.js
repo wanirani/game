@@ -20,7 +20,7 @@ import { classNameOf } from '../data/ascensions.js';   // 초월·비전 이름 
 import * as TRIAL from '../game/trial.js';   // 시련: '마을로 귀환' 대신 '시련 포기' (classes_t3 §9.4)
 import * as NG from '../game/ngplus.js';   // [hook:ng]
 import {
-  PAL, frame, divider, glow, glowOval, glyph, gauge, diamond, gbutton, Nav, Gesture, Embers,
+  PAL, frame, divider, glow, glowOval, glyph, gauge, diamond, gbutton, Nav, Gesture, Embers, skillAlert, redBadge,
 } from './menu/common.js';
 
 const BANNER_W = 316;
@@ -93,7 +93,8 @@ export class PauseScene extends Scene {
     const reg = this.game.registry;
     this.items = [
       { label: '계속하기', icon: 'play', run: () => this.resume() },
-      { label: '메뉴', sub: '상태 · 장비 · 스킬 · 도감', icon: 'crest', disabled: !reg.menu, run: () => this.game.push('menu', { world: this.world, tab: 'status' }) },
+      // 배울 수 있는 SP 가 있으면 '메뉴' 줄에 붉은 배지 + 스킬 탭으로 바로 연다 (PLAY P06)
+      { id: 'menu', label: '메뉴', sub: '상태 · 장비 · 스킬 · 도감', icon: 'crest', disabled: !reg.menu, run: () => this.game.push('menu', { world: this.world, tab: this.skillBadge != null ? 'skills' : 'status' }) },
       { label: '인벤토리', icon: 'bag', disabled: !reg.menu, run: () => this.game.push('menu', { world: this.world, tab: 'inventory' }) },
       { label: '설정', icon: 'gear', disabled: !reg.options, run: () => this.game.push('options', {}) },
       this.world?.trial ? { label: '시련 포기', icon: 'home', run: () => this.confirmQuitTrial() }   // 시련: 성당으로 (TRIAL.leaveTrial)
@@ -101,13 +102,22 @@ export class PauseScene extends Scene {
       { label: '타이틀로', icon: 'door', run: () => this.confirmTitle() },
     ];
     this.i = 0;
+    this.refreshBadge();
     this.nav = new Nav(); this.ges = new Gesture(); this.embers = new Embers(14);
     this.modal = null; this.snap = null; this.closing = 0; this.L = null;
     audio.duck?.(0.5, 0.3);
     this.prewarm();
   }
   exit() { this.snap = null; }
-  onResume() { this.opaque = !!this.snap; }
+  onResume() { this.opaque = !!this.snap; this.refreshBadge(); }
+  /** '메뉴' 줄의 스킬 알림 (P06): SP 수 · 빈 슬롯 '!' · 없으면 null */
+  refreshBadge() {
+    const st = this.game.state, hero = this.world?.player?.hero ?? st?.heroes?.[st?.charId];
+    const a = skillAlert(hero);
+    this.skillBadge = a.n > 0 ? (a.slot ? '!' : a.n) : null;
+    const row = this.items?.find((it) => it.id === 'menu');
+    if (row) row.sub = this.skillBadge == null ? '상태 · 장비 · 스킬 · 도감' : a.slot ? '빈 스킬 슬롯 — 스킬 장착' : `스킬 포인트 ${a.sp} — 배울 스킬이 있습니다`;
+  }
   /** 토스트 줄 (UI 좌표): 오른쪽 정보 카드 아래 — 기본 자리(가운데 y 92)는 카드 제목을 가린다 */
   get toastX() { return (this.L ?? this.layout()).toastX; }
   get toastY() { return (this.L ?? this.layout()).toastY; }
@@ -303,6 +313,7 @@ export class PauseScene extends Scene {
       glyph(ctx, it.icon, r.x + 28, cy, 18, sel ? PAL.goldHi : it.disabled ? '#6a4048' : PAL.gold, 1.6);
       const ln = rowLines(rowH, !!it.sub);
       text(ctx, it.label, r.x + 50, cy + ln.y1, { size: ln.ls, weight: 800, color: col, ow: 3 });
+      if (it.id === 'menu' && this.skillBadge != null && !it.disabled) { ctx.font = font(ln.ls, 800, FONT.body); redBadge(ctx, r.x + 50 + ctx.measureText(it.label).width + 14, cy + ln.y1 - ln.ls * 0.36, this.skillBadge, { size: 11, t: this.t }); }
       if (ln.sub) text(ctx, it.sub, r.x + 50, cy + ln.y2, { size: ln.ss, weight: 600, color: sel ? '#f0d0b0' : '#c0909a', ow: 2 });
     });
     ctx.restore();

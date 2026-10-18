@@ -17,7 +17,7 @@ import { TRIALS, trialsOf } from '../../data/trials.js';
 import { SKILLS } from '../../data/skills.js';
 import { Tab } from './base.js';
 import { HeroView, HeroStage, PixLayer, PixCache, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
-import { PAL, frame, heading, divider, brackets, glow, glowOval, pill, para, rr, glyph, ellipsize, measure, leanMem, takeCanvas, giveCanvas, vGrad, fillPathGrad, wrapC, Scroller, clipBegin, clipEnd, scrollbar, moreBelow } from './common.js';
+import { PAL, frame, heading, divider, brackets, glow, glowOval, pill, para, rr, glyph, ellipsize, measure, fitText, leanMem, takeCanvas, giveCanvas, vGrad, fillPathGrad, wrapC, Scroller, clipBegin, clipEnd, scrollbar, moreBelow } from './common.js';
 // 카드 그라디언트 색 멈춤 (common.js 캐시 키 — 같은 배열이면 매 프레임 새 그라디언트 0, R1-REQ-341B)
 const CARD_ON = [0, 'rgba(70,16,32,0.96)', 1, 'rgba(8,4,10,0.96)'], CARD_OFF = [0, 'rgba(30,18,30,0.94)', 1, 'rgba(8,4,10,0.96)'];
 import { fmtStatVal } from './tab_status.js';
@@ -322,7 +322,8 @@ export class ClassTab extends Tab {
     this.txt.draw(ctx, 'card:' + c.id, `${sel ? 1 : 0}|${st.key}|${st.text}|${this.m.rev}|${r.h}`, tx - 4, r.y + 1, r.x + r.w - tx + 3, r.h - 2, (g) => {
       const iconW = st.key === 'locked' || st.key === 'closed' || st.key === 'cur' ? 16 : 0;
       const nsz = measure(g, c.name, 14, 800) <= w - iconW ? 14 : 12.5;
-      text(g, ellipsize(g, c.name, w - iconW, nsz, 800), tx, r.y + (eng ? Math.round(r.h * 0.32) : Math.round(Math.max(F, nsz) + 4)), { size: nsz, weight: 800, color: st.key === 'closed' ? PAL.faint : sel ? PAL.goldHi : PAL.bone, ow: 3 });
+      // 이름이 넘치면 줄이고 가로로 눌러 넣는다 (PLAY P14 '성광의 사…') — '…' 는 마지막 수단
+      fitText(g, c.name, tx, r.y + (eng ? Math.round(r.h * 0.32) : Math.round(Math.max(F, nsz) + 4)), w - iconW, { size: nsz, weight: 800, color: st.key === 'closed' ? PAL.faint : sel ? PAL.goldHi : PAL.bone, ow: 3 });
       if (eng) text(g, c.eng ?? '', tx, r.y + Math.round(r.h * 0.53), { size: 10, weight: 700, family: FONT.num, color: PAL.dim, ow: 2, maxWidth: w });
       text(g, st.text, tx, r.y + r.h - (r.h >= 70 ? 12 : 9), { size: 11, weight: 800, color: st.color, ow: 2 });
       if (st.key === 'locked' || st.key === 'closed') glyph(g, 'lock', r.x + r.w - 14, r.y + 14, 10, PAL.faint, 1.3);
@@ -362,11 +363,11 @@ export class ClassTab extends Tab {
       this.txt.draw(ctx, 'strip:' + cell.id, `${sel ? 1 : 0}|${st.key}|${label}|${this.m.rev}|${vis.w}|${vis.h}`, vis.x, vis.y, vis.w, vis.h, (g) => {
         const gw = lock ? 13 : 0, pad = 8;
         const col = cur ? PAL.goldHi : dim ? PAL.faint : lock ? PAL.dim : st.key === 'ready' ? PAL.good : kc;
-        const s = ellipsize(g, label, vis.w - pad * 2 - gw, 12, 800);
-        const tw = measure(g, s, 12, 800) + gw;
+        const avail = vis.w - pad * 2 - gw;
+        const tw = Math.min(avail, measure(g, label, 12, 800)) + gw;
         const x0 = vis.x + vis.w / 2 - tw / 2;
         if (lock) glyph(g, 'lock', x0 + 5, vis.y + vis.h / 2, 9, col, 1.2);
-        text(g, s, x0 + gw, vis.y + vis.h / 2 + Math.max(12, textFloor()) * 0.36, { size: 12, weight: 800, color: col, ow: 2 });
+        fitText(g, label, x0 + gw, vis.y + vis.h / 2 + Math.max(12, textFloor()) * 0.36, avail, { size: 12, weight: 800, color: col, ow: 2 });   // P14: '성전 기사…' 대신 줄여 넣기
       });
       if (sel) brackets(ctx, vis.x, vis.y, vis.w, vis.h, t, focused ? PAL.goldHi : PAL.goldMid);
     }

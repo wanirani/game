@@ -57,6 +57,9 @@ export const K = Object.freeze({
   LOW_HP: 0.35, ENGAGE_T: 0.7, LOW_BACK_T: 0.9,   // 보스전 · 체력 낮음: 붙어 치는 시간 ≤ 0.7초 → 0.9초 물러선다 (치고 빠지기)
   LOCK_FRONT: 850, LOCK_ANY: 600, LOCK_CYCLE: 900, LOCK_DROP: 1300, LOCK_HOLD: 0.45, LOCK_DOUBLE: 0.3,
   AUTO_HOLD_OFF: 0.45,
+  // [autofix] 이야기 트리거 여유 · 닿지 않는 적에게 맞음 · 막힘 감시 · 헛 시전
+  STORY_PAD: 64, UNREACH_WIN: 8, FLEE_T: 1.6, UNREACH_SHOW: 4, STALL_T: 2.5, PUSH_T: 0.7, CAST_CHECK: 1.2, CAST_MUTE: 4,
+  SEG_TTL: 0.5,
 });
 
 // ───────────────────────── 설정 ─────────────────────────
@@ -77,23 +80,54 @@ export function levelOf(g) {
   const s = g?.state?.auto?.level;
   return LEVELS.includes(s) ? s : autoSettings(g?.settings).level;
 }
-/** 단계 바꾸기 (세이브 슬롯에 기억). toast: 알림 */
-export function setLevel(g, lv, { toast = true } = {}) {
+/** 단계 짧은 이름 (알약 · 토스트) */
+export const LEVEL_SHORT = Object.freeze({ off: '끔', skill: '스킬', battle: '전투' });
+/** [autofix] 마지막으로 켠 단계 (탭 = 끔 ↔ 이 단계): 슬롯 state.auto.last → 설정 기본 단계(끔이 아니면) → 「자동 전투」 */
+export function lastLevel(g) {
+  const l = g?.state?.auto?.last;
+  if (l === 'skill' || l === 'battle') return l;
+  const d = autoSettings(g?.settings).level;
+  return d !== 'off' ? d : 'battle';
+}
+/** 단계 바꾸기 (세이브 슬롯에 기억 — 켠 단계는 last 로도). toast: 알림 「AUTO: 전투」/「AUTO: 스킬」/「AUTO 끔」 (hint: 뒤에 붙일 안내) */
+export function setLevel(g, lv, { toast = true, hint = '' } = {}) {
   if (!g || !LEVELS.includes(lv)) return false;
   const st = g.state;
-  if (st && typeof st === 'object') st.auto = { ...(st.auto && typeof st.auto === 'object' ? st.auto : {}), level: lv };
+  if (st && typeof st === 'object') st.auto = { ...(st.auto && typeof st.auto === 'object' ? st.auto : {}), level: lv, ...(lv !== 'off' ? { last: lv } : {}) };
   else { g.settings ??= {}; g.settings.auto = { ...autoSettings(g.settings), level: lv }; }
   if (toast && typeof g.toast === 'function') {
-    try { g.toast(`자동 전투: ${LEVEL_NAMES[lv]}`, lv === 'off' ? '#c8b8a0' : '#ffd890', 1.6); } catch { /* 토스트 없음 */ }
+    try { g.toast((lv === 'off' ? 'AUTO 끔' : `AUTO: ${LEVEL_SHORT[lv]}`) + (hint ? ` · ${hint}` : ''), lv === 'off' ? '#c8b8a0' : '#ffd890', hint ? 2.2 : 1.6); } catch { /* 토스트 없음 */ }
   }
   if (g.autoHud) g.autoHud.level = lv;
   if (g) g.dirty = true;
   return true;
 }
-/** 다음 단계 (끔 → 자동 스킬 → 자동 전투 → 끔) */
+/** [autofix] AUTO 단추 탭: 끔 ↔ 마지막 단계 (켠 상태에서 한 번 누르면 언제나 끔) */
+export function toggleLevel(g, opts = {}) {
+  const on = levelOf(g) === 'off';
+  if (on && !g?.state?.auto?.tipped) { if (g?.state && typeof g.state === 'object') g.state.auto = { ...(g.state.auto ?? {}), tipped: true }; return setLevel(g, lastLevel(g), { hint: '길게 누르면 단계 변경', ...opts }); }
+  return setLevel(g, on ? lastLevel(g) : 'off', opts);
+}
+/** [autofix] AUTO 단추 길게: 단계 바꾸기 (자동 스킬 ↔ 자동 전투; 꺼져 있으면 마지막 단계의 반대로 켠다) */
+export function switchLevel(g, opts) {
+  const cur = levelOf(g);
+  const nx = cur === 'skill' ? 'battle' : cur === 'battle' ? 'skill' : lastLevel(g) === 'battle' ? 'skill' : 'battle';
+  return setLevel(g, nx, opts);
+}
+/** 다음 단계 (끔 → 자동 스킬 → 자동 전투 → 끔) — 옵션 화면 · 예전 시험용 */
 export function cycleLevel(g, opts) {
   const i = LEVELS.indexOf(levelOf(g));
   return setLevel(g, LEVELS[(i + 1) % LEVELS.length], opts);
+}
+/**
+ * [autofix 공정성] AUTO 를 쓸 수 없는 월드: 이야기 모드(mode 'story')가 아닌 모든 기록 모드 — 연습·일일 도전(practice), 보스 러시, 서바이벌,
+ * 탑, 시련(trial). 순위표·고스트·기록이 사람 플레이만 담게 한다 → 이유 문자열 | null
+ */
+export function autoBlockedIn(w) {
+  if (!w) return null;
+  if (w.trial || w.mode === 'trial') return 'trial';
+  if (w.arcade || (w.mode && w.mode !== 'story')) return 'ranked';
+  return null;
 }
 
 // ───────────────────────── 순수: 바닥 구간 ─────────────────────────
@@ -247,6 +281,10 @@ export function weaponReach(ms, stats = {}, riding = false) {
   out.low = riding || !c ? null : c.box ? boxOf(c.box) : c.proj ? (() => { const P = c.proj, oy = P.offY ?? -34; return { bx: P.offX ?? 30, bw: Math.max(120, (P.speed ?? 900) * (P.life ?? 0.6) * 0.8), y0: oy - 30, y1: Math.min(-2, oy + 30) }; })() : null;
   const u = ms?.up;
   out.up = u?.box ? { bx: u.box.x, bw: u.box.w, y0: u.box.y, y1: u.box.y + u.box.h, vy: u.vy ?? 0 } : null;
+  if (!out.up && u?.proj) {   // 위로 쏘는 탄 (총 ↑ — 비스듬한 줄을 상자로 어림)
+    const P = u.proj, a = P.angle ?? -Math.PI / 2, L = (P.speed ?? 900) * (P.life ?? 0.5) * 0.6, oy = P.offY ?? -80, ox = P.offX ?? 0;
+    out.up = { bx: ox - 10, bw: Math.max(40, L * Math.abs(Math.cos(a))) + 20, y0: oy + L * Math.sin(a), y1: oy + 20, vy: 0 };
+  }
   let yMin = out.y0, yMax = out.y1, xMax = out.bx + out.bw;
   for (const b of [...out.combo, out.low, out.up]) { if (!b) continue; yMin = Math.min(yMin, b.y0); yMax = Math.max(yMax, b.y1); xMax = Math.max(xMax, b.bx + b.bw); }
   out.yMin = yMin; out.yMax = yMax; out.xMax = xMax;
@@ -299,19 +337,25 @@ export function inBox(p, f, box, dir) {
 // ───────────────────────── 순수: 판단 ─────────────────────────
 /** 기억 (월드마다 하나) */
 export function newMem() {
-  return { n: 0, atkPh: 0, skillT: -9, swapT: -9, ultT: -9, guardT: -9, potionT: -9, turnT: -9, retreatT: -9, retreatDir: 0, engageT: 0, safeT: 0, lastDanger: -9, why: '', jumpHold: 0, airDir: 0, airT: -9, airUntil: -9 };
+  return {
+    n: 0, atkPh: 0, skillT: -9, swapT: -9, ultT: -9, guardT: -9, potionT: -9, turnT: -9, retreatT: -9, retreatDir: 0, engageT: 0, safeT: 0, lastDanger: -9, why: '', jumpHold: 0, airDir: 0, airT: -9, airUntil: -9,
+    // [autofix] 막힘 감시 · 헛 시전 · 닿지 않는 적에게 맞음
+    lastAtkT: -9, tgt: null, tgtT: -9, pushUntil: -9, pushDir: 0, cast: null, skillMuteT: -9, wasHurt: false, unreach: [], unreachShowT: -9,
+  };
 }
+const MODE_RANK = { main: 0, low: 1, combo: 2, up: 3 };
 /**
  * snap (snapshot 결과 · 시험은 손으로 만든다):
  *  { t, level, cfg:{ult,potion,pickup,dodge},
- *    p:{cx, bottom, halfW, facing, onGround, hpFrac, mp, sp, awReady, dashReady, moving, dead, hurt, riding, noMove, inBoss},
+ *    p:{cx, bottom, halfW, facing, onGround, oneWay, hpFrac, mp, sp, awReady, dashReady, moving, dead, hurt, riding, noMove, inBoss},
  *    w: weaponReach, skills:[{key:'skill1'|'skill2', page, id, cost, ready, range}], page,
- *    seg: segmentAt | null, foes:[{id, cx, bottom, x0, x1, y0, y1, boss, heavy, flying, tele, windup, invuln, locked}],
+ *    seg: segmentAt | null, foes:[{id, e?, hp?, cx, bottom, x0, x1, y0, y1, boss, heavy, flying, tele, windup, invuln, locked}],
  *    propsNear, pickups:[{cx, bottom}], potion: uid|null, guardReady, humanDir }
- * → { act: {left,right,up,attack,dash,skill1,skill2,swap,awaken,guard}, potion: uid|null, target: foe|null, why }
+ * → { act: {left,right,up,down,attack,dash,skill1,skill2,swap,awaken,guard}, potion: uid|null, target: foe|null, why,
+ *     hold: null | 'forward' (이야기 트리거·보스 문턱 앞 — 사람이 앞으로) | 'unreach' (적은 있는데 닿지 않음·닿지 않는 적에게 맞음) | 'idle' (적 없음) }
  */
 export function decide(s, mem) {
-  const act = {}, out = { act, potion: null, target: null, why: '' };
+  const act = {}, out = { act, potion: null, target: null, why: '', hold: null };
   if (!s || s.level === 'off') { out.why = 'off'; return out; }
   const p = s.p, t = s.t, battle = s.level === 'battle', cfg = s.cfg ?? DEFAULTS;
   mem.n++;
@@ -319,8 +363,39 @@ export function decide(s, mem) {
   // 물약 (자동 전투): 문턱 아래 · 간격 · 회복 물약 있음 (보스전 문턱 +0.1)
   const thr = (cfg.potion ?? 0) + (p.inBoss ? 0.1 : 0);
   if (battle && s.potion && cfg.potion > 0 && p.hpFrac < thr && t - mem.potionT >= K.POTION_GAP) { out.potion = s.potion; mem.potionT = t; }
-  if (p.hurt) { out.why = 'hurt'; return out; }
   const foes = (s.foes ?? []).filter((f) => !f.invuln);
+  const seg = s.seg, W = s.w, oneWay = !!p.oneWay;
+  const upOk = !!W.up && !s.propsNear && !p.riding;
+  const fyAt = (f) => (seg ? floorAt(seg, clamp(f.cx, seg.x0, seg.x1)) : p.bottom);
+  /**
+   * 닿는 적: 구간(+공격 사거리) 안에 있고 ① 그 자리 바닥에 서 있거나 ② 땅에서 어느 공격 상자(첫 타·앉아·콤보·위)든 높이로 닿거나
+   * ③ 낮게 나는 적 ④ (자동 전투) 나는 보스 — 밑에서 기다렸다가 내려올 때 친다
+   */
+  const reachable = (f) => {
+    if (!seg) return false;
+    const rx = W.xMax ?? W.bx + W.bw;
+    if (!(f.x1 > seg.x0 - rx && f.x0 < seg.x1 + rx)) return false;
+    const fy = fyAt(f);
+    if (!f.flying && Math.abs(f.bottom - fy) <= K.FOOT_TOL) return true;
+    if (attackBoxFor(W, f, fy, { oneWay, upOk })) return true;
+    if (f.flying) return (f.y1 > fy - K.FLY_UP && f.y0 < fy + 10) || (f.boss && battle);
+    return false;
+  };
+  // 닿지 않는 적에게 맞고 있으면 (8초 안 두 번) 물러서고 HUD 에 「도달 불가」 (사람이 받아 가게)
+  if (p.hurt && !mem.wasHurt) {
+    if (!foes.some((f) => Math.abs(f.cx - p.cx) < 520 && reachable(f))) {
+      mem.unreach.push(t);
+      while (mem.unreach.length && t - mem.unreach[0] > K.UNREACH_WIN) mem.unreach.shift();
+      if (mem.unreach.length >= 2) {
+        let nf = null, nd = Infinity;
+        for (const f of foes) { const d = Math.abs(f.cx - p.cx) + Math.abs(f.y1 - p.bottom) * 0.5; if (d < nd) { nd = d; nf = f; } }
+        mem.retreatDir = nf ? sgn(p.cx - nf.cx) || -p.facing : -p.facing;
+        mem.retreatT = t + K.FLEE_T; mem.unreachShowT = t + K.UNREACH_SHOW; mem.unreach.length = 0;
+      }
+    }
+  }
+  mem.wasHurt = !!p.hurt;
+  if (p.hurt) { out.why = 'hurt'; if (t < mem.unreachShowT) out.hold = 'unreach'; return out; }
   // 위험 (큰 예고): 보스 예고 또는 무거운·정예 적의 윈드업
   let threat = null, td = Infinity;
   for (const f of foes) {
@@ -331,15 +406,6 @@ export function decide(s, mem) {
   const near = foes.some((f) => Math.abs(f.cx - p.cx) < K.SAFE_R && Math.abs(f.bottom - p.bottom) < 300);
   if (near || threat) mem.lastDanger = t;
   // 대상: 고정 대상(닿을 수 있으면) → 가장 가까운 닿는 적 → (자동 스킬) 가장 가까운 적
-  const seg = s.seg;
-  const reachable = (f) => {
-    if (!seg) return false;
-    const inX = f.x1 > seg.x0 - s.w.bw - s.w.bx && f.x0 < seg.x1 + s.w.bw + s.w.bx;
-    if (!inX) return false;
-    const fy = floorAt(seg, clamp(f.cx, seg.x0, seg.x1));   // 그 자리의 바닥 (턱을 넘은 구간이면 높이가 다르다)
-    if (Math.abs(f.bottom - fy) <= K.FOOT_TOL) return true;
-    return f.flying && f.y1 > fy - K.FLY_UP && f.y0 < fy + 10;
-  };
   const dist = (f) => Math.abs(f.cx - p.cx) + Math.abs(f.bottom - p.bottom) * 0.5;
   let target = null;
   const locked = foes.find((f) => f.locked) ?? null;
@@ -349,37 +415,59 @@ export function decide(s, mem) {
     for (const f of foes) { if (battle && !reachable(f)) continue; const d = dist(f); if (d < bd) { bd = d; target = f; } }
   }
   out.target = target;
+  const tk = target ? target.e ?? target.id ?? target : null;
+  if (tk !== mem.tgt) { mem.tgt = tk; mem.tgtT = t; }
   let retreating = t < mem.retreatT;
-  const front = (f) => inBox(p, f, s.w, p.facing);
-  const back = (f) => inBox(p, f, s.w, -p.facing);
+  // 지금 서 있는 자리에서 f 를 어떤 공격으로 치나 (dir 쪽을 볼 때): 첫 타 → 높이로 가장 많이 겹치는 앉아·콤보·위 공격
+  const upHere = upOk && p.onGround && (!(W.up?.vy < 0) || (seg && p.cx - seg.x0 > 60 && seg.x1 - p.cx > 60));
+  const modeAt = (f, dir) => {
+    if (inBox(p, f, W, dir)) return 'main';
+    let best = null, bo = 0;
+    // 콤보 막타(채찍 회전 등)는 뒤까지 닿지만, 뒤의 적은 돌아서서 친다 — 그래서 앉아·콤보·위 공격은 적의 중심이 보는 쪽(조금 뒤 허용)일 때만
+    if ((f.cx - p.cx) * dir < -20) return null;
+    const c = (box, kind) => { if (!box || !inBox(p, f, box, dir)) return; const o = vOverlap(box, p.bottom, f); if (o > bo) { bo = o; best = kind; } };
+    if (!oneWay) c(W.low, 'low');
+    for (const b of W.combo ?? []) c(b, 'combo');
+    if (upHere) c(W.up, 'up');
+    return best;
+  };
   // ── 공격 ──
-  let hitF = null, behind = null;
-  for (const f of foes) { if (front(f)) { if (!hitF || f.locked) hitF = f; } else if (!behind && back(f)) behind = f; }
+  let hitF = null, hitMode = null, behind = null;
+  for (const f of foes) {
+    const m = modeAt(f, p.facing);
+    if (m) { if (!hitF || (f.locked && !hitF.locked) || (!hitF.locked && MODE_RANK[m] < MODE_RANK[hitMode])) { hitF = f; hitMode = m; } } else if (!behind && modeAt(f, -p.facing)) behind = f;
+  }
   // 보스전에서 체력이 낮으면 치고 빠진다 (물약이 없거나 아직 못 쓸 때 오래 붙어 있지 않는다)
   if (battle && p.inBoss && p.hpFrac < K.LOW_HP && hitF?.boss && !retreating) {
     if (!mem.engageT) mem.engageT = t;
     else if (t - mem.engageT > K.ENGAGE_T) { mem.retreatT = t + K.LOW_BACK_T; mem.retreatDir = sgn(p.cx - hitF.cx) || -p.facing; mem.engageT = 0; retreating = true; out.why = 'hit-run'; }
   } else if (!hitF) mem.engageT = 0;
-  if (!retreating) {
-    if (hitF) {
-      if ((mem.atkPh = (mem.atkPh + 1) % K.ATK_EVERY) === 0) act.attack = true;
-      out.why = 'attack';
-    } else if (s.w.up && !s.propsNear && p.onGround && !p.riding && seg && p.cx - seg.x0 > 60 && seg.x1 - p.cx > 60) {
-      const up = foes.find((f) => f.flying && inBox(p, f, s.w.up, p.facing));
-      if (up) { act.up = true; if ((mem.atkPh = (mem.atkPh + 1) % K.ATK_EVERY) === 0) act.attack = true; out.why = 'up-attack'; }
-    }
+  if (!retreating && hitF) {
+    if ((mem.atkPh = (mem.atkPh + 1) % K.ATK_EVERY) === 0) { act.attack = true; mem.lastAtkT = t; }
+    if (hitMode === 'low') act.down = true;   // ↓+공격 = 앉아 공격 (점프는 같이 누르지 않는다 — 발판에서 내려가지 않게)
+    else if (hitMode === 'up') act.up = true;
+    out.why = hitMode === 'up' ? 'up-attack' : hitMode === 'low' ? 'low-attack' : 'attack';
   }
   // ── 스킬 (0.35초 간격, 한 번에 하나) ──
-  if (!retreating && t - mem.skillT >= K.SKILL_GAP && !act.up) {
+  // 헛 시전 막기: 지난 시전 뒤 1.2초에 그때 노린 적들의 HP 합이 그대로면 4초 동안 쉰다
+  if (mem.cast && t - mem.cast.t >= K.CAST_CHECK) {
+    let hp = 0;
+    for (const k of mem.cast.keys) { const f = (s.foes ?? []).find((x) => (x.e ?? x.id) === k); hp += f && Number.isFinite(f.hp) ? f.hp : 0; }
+    if (hp >= mem.cast.hp - 0.01) mem.skillMuteT = t + K.CAST_MUTE;
+    mem.cast = null;
+  }
+  if (!retreating && t - mem.skillT >= K.SKILL_GAP && t >= mem.skillMuteT && !act.up && !act.down) {
     for (const sk of s.skills ?? []) {
       if (!sk.ready || (sk.page !== s.page && !battle)) continue;
       const R = sk.range ?? skillRange(null);
-      const ok = foes.some((f) => {
-        const dx = (f.cx - p.cx) * p.facing, dy = f.bottom - p.bottom;
-        return dx > -R.back && dx < R.fx && dy > -R.up - 40 && dy < R.dn + 40;
-      });
-      if (!ok) continue;
-      if (sk.page === s.page) { act[sk.key] = true; mem.skillT = t; out.why = 'skill'; break; }
+      // 몸이 발 높이 띠에 걸친 적만 (두 칸 아래 · 물속 · 높이 뜬 적에게 MP 를 버리지 않는다)
+      const tg = foes.filter((f) => skillHits(p, f, R) && (!battle || reachable(f)));
+      if (!tg.length) continue;
+      if (sk.page === s.page) {
+        act[sk.key] = true; mem.skillT = t; out.why = 'skill';
+        if (tg.every((f) => Number.isFinite(f.hp))) mem.cast = { t, keys: tg.map((f) => f.e ?? f.id), hp: tg.reduce((a, f) => a + f.hp, 0) };
+        break;
+      }
       if (t - mem.swapT >= K.SWAP_GAP) { act.swap = true; mem.swapT = t; mem.skillT = t - K.SKILL_GAP + 0.1; out.why = 'swap'; break; }
     }
   }
@@ -394,10 +482,21 @@ export function decide(s, mem) {
   // ── 수호신 (자동 전투) ──
   if (battle && s.guardReady && t - mem.guardT >= K.GUARD_GAP && foes.some((f) => Math.abs(f.cx - p.cx) < K.GUARD_R && Math.abs(f.bottom - p.bottom) < 200)) { act.guard = true; mem.guardT = t; }
   // ── 이동 ──
-  let move = 0;
+  let move = 0, holdFace = 0;
   // 자동으로 뛴 턱 넘기: 공중에서는 뛴 쪽으로 계속 (땅에 닿으면 끝)
   if (p.onGround) { if (mem.airDir && t > mem.airT + 0.05) mem.airDir = 0; }
   else if (battle && mem.airDir && t < mem.airUntil && !p.noMove) move = mem.airDir;
+  const halfW = p.halfW ?? 16;
+  /** x 에서 dir 쪽으로 바닥 높이가 fy 인 첫 칸을 찾아, 몸이 그 칸 위에 다 들어가는 중심 x (턱에서 내려서기) | null */
+  const pastEdge = (x, dir, fy) => {
+    if (Math.abs(floorAt(seg, x) - fy) <= K.FOOT_TOL && Math.abs(floorAt(seg, x - dir * halfW) - fy) <= K.FOOT_TOL) return null;   // 이미 그 바닥 위
+    for (let i = 0; i < 100; i++, x += dir * 12) {
+      if (Math.abs(floorAt(seg, x) - fy) > K.FOOT_TOL) continue;
+      const col = Math.floor(x / TILE), edgeX = dir > 0 ? col * TILE : (col + 1) * TILE;
+      return edgeX + dir * (halfW + 6);
+    }
+    return null;
+  };
   if (battle && seg && !p.noMove && p.onGround) {
     const roomL = p.cx - seg.x0, roomR = seg.x1 - p.cx;
     if (threat && cfg.dodge !== false) {
@@ -409,22 +508,37 @@ export function decide(s, mem) {
       }
     } else if (retreating && mem.retreatDir) {
       if ((mem.retreatDir > 0 ? roomR : roomL) >= K.BACK_ROOM * 0.5) move = mem.retreatDir;
+      out.why ||= 'retreat';
     } else if (target && reachable(target)) {
       const dir = sgn(target.cx - p.cx) || p.facing;
-      const nearEdge = dir > 0 ? target.x0 : target.x1;
-      const stand = s.w.bx + s.w.bw * (target.boss ? K.STAND_BOSS_K : K.STAND_K);
-      let want = nearEdge - dir * stand;
-      if (s.w.ranged) want = target.cx - dir * Math.min(s.w.bw * 0.5, 360);
+      const fy = fyAt(target);
+      const onFloor = !target.flying && Math.abs(target.bottom - fy) <= K.FOOT_TOL;
+      const ab = attackBoxFor(W, target, onFloor ? target.bottom : fy, { oneWay: false, upOk });
+      const box = ab?.box ?? (target.flying && upOk ? W.up : W);
+      let want;
+      if (W.ranged && box === W) want = target.cx - dir * Math.min(W.bw * 0.5, 360);
+      else if (box === W.up) want = target.cx - dir * (box.bx + box.bw * 0.5);   // 머리 위 (나는 적·높은 보스): 밑으로
+      else { const nearEdge = dir > 0 ? target.x0 : target.x1; want = nearEdge - dir * (box.bx + box.bw * (target.boss ? K.STAND_BOSS_K : K.STAND_K)); }
+      const raw = want;
+      if (onFloor) {
+        // 선 자리가 대상과 다른 높이 바닥이면 (상자 위 등) 대상 쪽으로 같은 높이 바닥에 몸이 다 올라서는 곳까지
+        if (Math.abs(floorAt(seg, clamp(want, seg.x0, seg.x1)) - target.bottom) > K.FOOT_TOL) { const e = pastEdge(want, dir, target.bottom); want = e ?? target.cx; }
+        // 영웅이 아직 다른 높이 바닥에 서 있으면 (턱 끝에 걸쳐 섰을 때도) 턱 너머까지 걸어 내려선다 — 도착은 같은 바닥에서만
+        if (Math.abs(p.bottom - target.bottom) > K.FOOT_TOL) { const e = pastEdge(p.cx, dir, target.bottom); if (e != null && (e - want) * dir > 0) want = e; }
+      }
       want = clamp(want, seg.x0, seg.x1);
-      // 그 자리 바닥이 대상과 다른 높이면 (턱 위·아래) 대상 쪽으로 같은 높이 바닥이 시작하는 곳까지 간다
-      if (!target.flying && Math.abs(floorAt(seg, want) - target.bottom) > K.FOOT_TOL) {
-        let x = want, found = null;
-        for (let i = 0; i < 80 && (target.cx - x) * dir > 0; i++) { x += dir * 12; if (Math.abs(floorAt(seg, x) - target.bottom) <= K.FOOT_TOL) { found = x + dir * 6; break; } }
-        want = clamp(found ?? target.cx, seg.x0, seg.x1);
+      const clamped = Math.abs(want - raw) > 1;
+      if (hitF !== target) {
+        if (modeAt(target, dir) && dir !== p.facing) holdFace = dir;   // 돌아서기만 하면 닿는다: 걷지 않고 돌아서서 친다
+        else {
+          const d = want - p.cx, away = d * dir < 0;
+          // 히스테리시스: 간격을 벌리려고(뒤로) 조금 움직이는 것은 안 한다 — 구간 끝에 눌렸거나 방금 돌아섰으면 그대로 서서 대상 쪽을 본다
+          if (Math.abs(d) > 10 && !(away && (Math.abs(d) < 28 || clamped || t - mem.turnT < 0.5))) { move = sgn(d); out.why ||= 'approach'; } else if (away || Math.abs(d) <= 10) holdFace = dir;
+        }
       }
-      if (!hitF || hitF !== target) {
-        if (Math.abs(want - p.cx) > 10) { move = sgn(want - p.cx); out.why ||= 'approach'; }
-      }
+      // 막힘 감시: 닿는 대상이 STALL_T 초 동안 한 번도 공격을 못 받았으면 대상 쪽으로 밀고 들어간다
+      if (!move && !hitF && t - Math.max(mem.lastAtkT, mem.tgtT) > K.STALL_T && t >= mem.pushUntil) { mem.pushUntil = t + K.PUSH_T; mem.pushDir = dir; mem.lastAtkT = t; }
+      if (!move && !hitF && t < mem.pushUntil && mem.pushDir) { move = mem.pushDir; out.why = 'push'; }
     } else if (cfg.pickup !== false && !near && t - mem.lastDanger >= K.SAFE_T) {
       let best = null, bd = K.PICK_R;
       for (const k of s.pickups ?? []) {
@@ -438,21 +552,37 @@ export function decide(s, mem) {
     if (move > 0 && roomR <= 2) move = 0;
     if (move < 0 && roomL <= 2) move = 0;
     // 오르는 턱 앞: 짧게 뛴다 (1칸 = 9스텝 누름, 2칸 = 끝까지) — 공중에서도 뛴 쪽으로 계속 간다
-    if (move && !act.dash && !(mem.jumpHold > 0)) {
-      const h = stepAhead(seg, p.cx, p.halfW ?? 16, move, 26);
+    if (move && !act.dash && !act.down && !(mem.jumpHold > 0)) {
+      const h = stepAhead(seg, p.cx, halfW, move, 26);
       if (h > 0) { mem.jumpHold = h >= 2 ? 30 : 9; mem.airDir = move; mem.airT = t; mem.airUntil = t + 1.0; out.why = 'step'; }
     }
   }
   if (mem.jumpHold > 0) { act.jump = true; mem.jumpHold--; }
+  if (act.jump) delete act.down;   // ↓+점프 = 발판 아래로 내려가기 — 절대 같이 내지 않는다
+  if (act.down) move = 0;
   // 돌아서기: 이동하지 않고 공격 중이 아닐 때 대상이 뒤에 있으면 한 스텝 방향 탭 (사람 입력이 없을 때만 input 이 통과시킨다)
-  if (!move && !act.dash && !p.moving && t - mem.turnT >= K.TURN_GAP) {
-    const tf = hitF ?? target ?? behind;
-    const want = tf ? sgn(tf.cx - p.cx) : 0;
-    if (want && want !== p.facing && (behind || Math.abs(tf.cx - p.cx) > 24) && (battle || behind || tf.locked)) { move = want; mem.turnT = t; out.why ||= 'turn'; }
+  if (!move && !act.dash && !act.down && !p.moving && t - mem.turnT >= K.TURN_GAP) {
+    let want = holdFace;
+    if (!want) {
+      const tf = hitF ?? target ?? behind;
+      want = tf ? sgn(tf.cx - p.cx) : 0;
+      if (!(want && (behind || Math.abs(tf.cx - p.cx) > 24) && (battle || behind || tf.locked))) want = 0;
+    }
+    if (want && want !== p.facing) { move = want; mem.turnT = t; out.why ||= 'turn'; }
   }
   if (move > 0) act.right = true; else if (move < 0) act.left = true;
   if (act.dash && !move) delete act.dash;
   if (!out.why) out.why = target ? 'wait' : 'idle';
+  // HUD 에 보일 기다림 이유 (버튼 고리를 멈추고 흐리게 + 알약 글자)
+  if (t < mem.unreachShowT) out.hold = 'unreach';
+  else if (battle && !target && !move && !hitF) {
+    let nf = null, nd = Infinity;
+    for (const f of foes) { const d = Math.abs(f.cx - p.cx); if (d < 900 && d < nd) { nd = d; nf = f; } }
+    const side = (x) => (seg ? (x > p.cx ? seg.why1 : seg.why0) : null);
+    const blocked = (w) => w === 'story' || w === 'boss';
+    if (nf) out.hold = blocked(side(nf.cx)) ? 'forward' : 'unreach';
+    else out.hold = seg && (blocked(seg.why0) || blocked(seg.why1)) ? 'forward' : 'idle';
+  }
   return out;
 }
 
@@ -510,6 +640,34 @@ function rectOf(e) {
 }
 const HEAVY = new Set(['HEAVY', 'FIXED']);
 
+/** 발밑이 한쪽 발판인가 (앉아 공격을 쓰지 않는다) */
+function oneWayUnder(world, p) {
+  if (!p.onGround) return false;
+  try { if (typeof p.onOneWay === 'function') return !!p.onOneWay(world); } catch { /* 모양이 다르면 지도에서 */ }
+  const t = world.map?.typeAt?.(Math.floor(p.cx / TILE), Math.floor((p.bottom + 2) / TILE));
+  return t === T.ONEWAY;
+}
+/**
+ * [autofix 성능] 바닥 구간은 영웅이 선 칸 · 기둥(트리거·경기장) · 몸 폭이 같으면 SEG_TTL 초 동안 다시 훑지 않는다
+ * (구간 훑기가 한 스텝 AI 비용의 대부분 — 칸마다 typeAt 여러 번). 기둥 안에 들어가 있으면(넉백) 매번 새로 (중심 x 에 따라 달라진다)
+ */
+const SEGC = new WeakMap();
+function segCached(world, p, halfW, blocks) {
+  const tx = Math.floor(p.cx / TILE), ty = Math.floor((p.bottom + 2) / TILE), t = world.time ?? 0;
+  let key = tx * 4096 + ty + halfW * 1e7, inside = false;
+  for (const b of blocks) {
+    key = (key * 31 + Math.round(b.x0) * 7 + Math.round(b.x1)) % 2147483647;
+    const pad = b.pad ?? 0;
+    if (p.cx > b.x0 - pad - halfW - 2 && p.cx < b.x1 + pad + halfW + 2) inside = true;
+  }
+  const c = SEGC.get(world);
+  // 칸 안에서 중심이 서 있을 수 없는 칸 위(턱 끝)면 매번 (디딘 칸 고르기가 중심 x 에 따라 달라진다)
+  const edgeStand = !standable(world.map?.typeAt?.(tx, ty));
+  if (!inside && !edgeStand && c && c.key === key && c.map === world.map && t - c.t < K.SEG_TTL && t >= c.t) return c.seg;
+  const seg = segmentAt(world.map, p.cx, p.bottom, { halfW, bodyTiles: Math.max(1, Math.ceil(p.h / TILE)), blocks });
+  SEGC.set(world, { key, map: world.map, t, seg });
+  return seg;
+}
 /** 월드 → snap (decide 입력) */
 export function snapshot(world, level, cfg) {
   const p = world.player, g = world.game;
@@ -522,7 +680,7 @@ export function snapshot(world, level, cfg) {
   // 막는 기둥: 이야기 트리거(아직 안 본 것) · 보스방 문턱 · 경기장 벽
   const blocks = [];
   for (const e of world.entities) {
-    if (e.kind === 'trigger' && !e.dead) blocks.push({ x0: e.x, x1: e.x + e.w, why: 'story' });
+    if (e.kind === 'trigger' && !e.dead) blocks.push({ x0: e.x, x1: e.x + e.w, why: 'story', pad: K.STORY_PAD });   // [autofix] 여유: 넉백에 밀려 들어가지 않게
   }
   if (world.arenaX !== undefined && world.room?.boss && !world.bossActive && !world.cleared) blocks.push({ x0: world.arenaX + TILE + p.w / 2 - 6, x1: 1e9, why: 'boss' });
   if (world.arena) { blocks.push({ x0: -1e9, x1: world.arena.x0 + p.w / 2 + 4, why: 'arena' }); blocks.push({ x0: world.arena.x1 - p.w / 2 - 4, x1: 1e9, why: 'arena' }); }
@@ -532,7 +690,7 @@ export function snapshot(world, level, cfg) {
       const pl = p.platform;
       seg = { x0: pl.x + halfW + 6, x1: pl.x + pl.w - halfW - 6, why0: 'platform', why1: 'platform' };
       if (seg.x1 < seg.x0) seg.x0 = seg.x1 = p.cx;
-    } else seg = segmentAt(world.map, p.cx, p.bottom, { halfW, bodyTiles: Math.max(1, Math.ceil(p.h / TILE)), blocks });
+    } else seg = segCached(world, p, halfW, blocks);
   }
   // 적
   const lockT = world.lockTarget ?? null;
@@ -548,7 +706,7 @@ export function snapshot(world, level, cfg) {
     const windup = !isBoss && (e.elite || HEAVY.has(e.wclass)) && COUNTER.states.includes(e.state) && (e.stateT ?? 9) < K.TELE_STATE_T;
     foes.push({
       e, id: e.id, cx: (r.x0 + r.x1) / 2, bottom: r.y1, x0: r.x0, x1: r.x1, y0: r.y0, y1: r.y1, boss: isBoss, elite: !!e.elite, heavy: HEAVY.has(e.wclass),
-      flying: !!e.noGravity, tele: isBoss && !!e.telegraph, windup, invuln: !!e.invuln || (isBoss && bossIntro), locked: e === lockT,
+      flying: !!e.noGravity, tele: isBoss && !!e.telegraph, windup, invuln: !!e.invuln || (isBoss && bossIntro), locked: e === lockT, hp: Number.isFinite(e.hp) ? e.hp : undefined,
     });
   }
   // 스킬 (지금 쪽 · 다른 쪽)
@@ -600,7 +758,7 @@ export function snapshot(world, level, cfg) {
   return {
     t: world.time ?? 0, level, cfg,
     p: {
-      cx: p.cx, bottom: p.bottom, halfW, facing: p.facing || 1, onGround: !!p.onGround, hpFrac: (p.hp ?? 0) / Math.max(1, st.hp ?? 1),
+      cx: p.cx, bottom: p.bottom, halfW, facing: p.facing || 1, onGround: !!p.onGround, oneWay: oneWayUnder(world, p), hpFrac: (p.hp ?? 0) / Math.max(1, st.hp ?? 1),
       mp: p.mp ?? 0, sp: run.sp ?? 0, awReady: !!world.awakenState?.ready, dashReady: !(p.dashCool > 0) && !(p.dashT > 0) && !riding,
       moving: !!(p.move && !p.move.canMove), dead: !!p.dead, hurt: p.hurtT > 0, riding, noMove: mountFly || swim || !!p.wallSlide, inBoss: !!(world.bossActive && boss && !boss.dead),
     },
@@ -675,11 +833,14 @@ export function step(dt, inp) {
   if (!g) return null;
   const w = playWorld(g);
   const t = inp.time ?? 0;
-  if (!g.autoHud) g.autoHud = { level: 'off', on: false, why: '' };
-  // ── 자동 단추: 짧게 = 다음 단계, 길게(0.45초) = 끔 ──
+  if (!g.autoHud) g.autoHud = { level: 'off', on: false, why: '', hold: null, blocked: null };
+  // [autofix] 기록 모드(연습·일일·보스 러시·서바이벌·탑·시련)에서는 AUTO 를 쓰지 않는다 (순위표·고스트·기록 공정성)
+  const blocked = autoBlockedIn(w);
+  // ── 자동 단추: 짧게 = 끔 ↔ 마지막 단계, 길게(0.45초) = 단계 바꾸기 (자동 스킬 ↔ 자동 전투) ──
   const ae = btnEdge(BTN, 'auto', inp.human('auto'), t, K.AUTO_HOLD_OFF);
-  if (w && ae === 'tap') cycleLevel(g);
-  else if (w && ae === 'hold' && levelOf(g) !== 'off') setLevel(g, 'off');
+  if (w && (ae === 'tap' || ae === 'hold') && blocked) { try { g.toast?.(blocked === 'trial' ? '시련에서는 AUTO 를 쓸 수 없다' : '기록 모드에서는 AUTO 를 쓸 수 없다', '#c8b8a0', 1.6); } catch { /* */ } }
+  else if (w && ae === 'tap') toggleLevel(g);
+  else if (w && ae === 'hold') switchLevel(g);
   // ── 고정 단추: 누름 = 고정/다음, 0.3초 안 두 번 = 풀기, 길게 = 풀기 ──
   const le = btnEdge(BTN, 'lock', inp.human('lock'), t, K.LOCK_HOLD);
   if (w) {
@@ -697,9 +858,9 @@ export function step(dt, inp) {
       }
     } else if (le === 'hold' && w.lockTarget) { setLock(w, null); toastLock(g, null); }
   }
-  const lv = levelOf(g);
-  g.autoHud.level = lv;
-  if (!w || lv === 'off') { g.autoHud.on = false; g.autoHud.why = w ? 'off' : 'scene'; if (w) w.autoTarget = null; return null; }
+  const lv = blocked ? 'off' : levelOf(g);
+  g.autoHud.level = lv; g.autoHud.blocked = blocked;
+  if (!w || lv === 'off') { g.autoHud.on = false; g.autoHud.hold = null; g.autoHud.why = w ? (blocked ? 'blocked' : 'off') : 'scene'; if (w) w.autoTarget = null; return null; }
   loadLazy();
   let mem = MEM.get(w);
   if (!mem) { mem = newMem(); MEM.set(w, mem); }
@@ -708,7 +869,12 @@ export function step(dt, inp) {
   try { snap = snapshot(w, lv, cfg); } catch (e) { console.error('[autoplay] snapshot', e); return null; }
   const r = decide(snap, mem);
   w.autoTarget = r.target?.e ?? null;
-  g.autoHud.on = true; g.autoHud.why = r.why;
+  g.autoHud.on = true; g.autoHud.why = r.why; g.autoHud.hold = r.hold;
+  // [autofix] 닿지 않는 적에게 맞아 물러설 때 한 번 알림 (20초에 한 번)
+  if (r.hold === 'unreach' && snap.t < mem.unreachShowT && snap.t - (mem.unreachToastT ?? -99) > 20) {
+    mem.unreachToastT = snap.t;
+    try { g.toast?.('AUTO: 닿지 않는 적 — 직접 움직이세요', '#ffb070', 2.2); } catch { /* */ }
+  }
   if (r.potion && lazy.inv?.useItem) {
     try {
       const res = lazy.inv.useItem(w.state, w.hero, r.potion, w.player);
@@ -716,6 +882,9 @@ export function step(dt, inp) {
     } catch (e) { console.error('[autoplay] potion', e); }
   }
   Object.assign(OUT, r.act);
+  // [autofix 공정성] AUTO 가 한 번이라도 입력을 냈으면 이번 판(world.run)에 표시 — 결과·업적·기록 쪽이 읽는다 (auto.md 「공정성」)
+  if (w.run && !w.run.assisted) { for (const k in OUT) { if (OUT[k]) { w.run.assisted = true; w.run.assistLevel = lv; break; } } }
+  else if (w.run && lv === 'battle') w.run.assistLevel = 'battle';
   return OUT;
 }
 function toastLock(g, e) {
