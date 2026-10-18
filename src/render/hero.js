@@ -2118,6 +2118,12 @@ function capScale(rs, bw, h, world) {
   const px = 2 * bw * h * rs * rs, cap = offCap(world);
   return px > cap ? rs * Math.sqrt(cap / px) : rs;
 }
+// MOTION-FEEL 대시 잔상: game/feel_move.js spawnGhost 가 잔상 그리기 콜백을 paintedGhost 로 감싼다 → 그 콜백 안에서만 PAINT_GHOST.
+// player.ghostTrail 의 다른 쓰임(회피 잔상)과 다른 모든 tint 호출은 예전 단색 실루엣 그대로
+let PAINT_GHOST = false;
+export function paintedGhost(draw) {
+  return (ctx, a) => { PAINT_GHOST = true; try { draw(ctx, a); } finally { PAINT_GHOST = false; } };
+}
 function drawComposite(ctx, p, world, opts, K) {
   const m = ctx.getTransform();
   const sc = Math.hypot(m.a, m.b) || 1;
@@ -2127,17 +2133,25 @@ function drawComposite(ctx, p, world, opts, K) {
   const W = Math.ceil(2 * bw * rs), H = Math.ceil((bt + bb) * rs);
   const key = p.snapshot ? p : null;
   const e = poolGet(key, W, H);
-  if (!key || Math.abs(e.rs - rs) > 0.05 || e.tint !== opts.tint || e.pk !== K.pupKey) {
+  if (!key || Math.abs(e.rs - rs) > 0.05 || e.tint !== opts.tint || e.pk !== K.pupKey || e.pg !== PAINT_GHOST) {
     const oc = e.cv.getContext('2d');
     oc.setTransform(1, 0, 0, 1, 0, 0); oc.clearRect(0, 0, W + 2, H + 2);
     oc.setTransform(rs, 0, 0, rs, (bw - p.cx) * rs, (bt - p.bottom) * rs);
     drawHero(oc, p, world, { tint: opts.tint, scale: opts.scale, noFx: opts.noFx, _inner: true });
     if (opts.tint && K.pup) { // 채색 퍼펫은 부품이 그림이라 G.tint 로 물들지 않는다 → 합성 뒤 물들임
-      // MOTION-FEEL: 잔상이 납작한 단색 실루엣이 아니라 '채색 그림이 비치는' 색 잔상이 되게 — 색을 62% 만 덮고(source-atop) 윤곽은 남긴다
-      oc.setTransform(1, 0, 0, 1, 0, 0); oc.globalCompositeOperation = 'source-atop'; oc.globalAlpha = 0.62;
-      oc.fillStyle = opts.tint; oc.fillRect(0, 0, W + 2, H + 2); oc.globalCompositeOperation = 'source-over'; oc.globalAlpha = 1;
+      oc.setTransform(1, 0, 0, 1, 0, 0);
+      if (PAINT_GHOST) {
+        // MOTION-FEEL: 대시 잔상만 '채색 그림이 비치는' 색 잔상 — 색을 62% 만 덮고(source-atop) 윤곽은 남긴다
+        oc.globalCompositeOperation = 'source-atop'; oc.globalAlpha = 0.62;
+        oc.fillStyle = opts.tint; oc.fillRect(0, 0, W + 2, H + 2); oc.globalAlpha = 1;
+      } else {
+        // 그 밖의 tint(잠긴 영웅 실루엣·각성 컷인 흰 섬광·적 피격 섬광·필살기 잔상·고스트·탈것 잔상)는 예전처럼 통째로 단색
+        oc.globalCompositeOperation = 'source-in';
+        oc.fillStyle = opts.tint; oc.fillRect(0, 0, W + 2, H + 2);
+      }
+      oc.globalCompositeOperation = 'source-over';
     }
-    e.rs = rs; e.tint = opts.tint; e.pk = K.pupKey;
+    e.rs = rs; e.tint = opts.tint; e.pk = K.pupKey; e.pg = PAINT_GHOST;
   }
   ctx.save();
   if (opts.alpha !== undefined) ctx.globalAlpha = clamp(opts.alpha, 0, 1);
@@ -2274,8 +2288,8 @@ export function drawHero(ctx, p, world, opts = {}) {
   G.qual = world?.qualityNow?.() ?? world?.game?.quality ?? 'high';
   G.lowq = G.qual === 'low';   // 저품질: 무기 궤적·찌르기 섬광의 그라디언트를 단색으로 (§5.2 그라디언트 6/프레임)
   // 채색 퍼펫 (hero_puppet.js): 조종 중인 영웅만 메시 관절·잔상 (G.main), 보통·높음 화질은 윤곽선·역광을 구운 원화 (G.rim = 무대 빛 색)
-  G.main = !opts._inner && (opts.main === true || (!!world && p === world.player));
-  G.cut = !!world?.cutscene;   // MOTION-FEEL: 필살기·각성 연출 중엔 무기 사이 잔상(팔·무기 덧그림)을 생략 — 연출이 이미 화면을 덮고 프레임 예산이 빠듯함   // opts.main: 도구(검사대)가 조종 영웅 경로를 강제
+  G.main = !opts._inner && (opts.main === true || (!!world && p === world.player));   // opts.main: 도구(검사대)가 조종 영웅 경로를 강제
+  G.cut = !!world?.cutscene;   // MOTION-FEEL: 필살기·각성 연출 중엔 무기 사이 잔상(팔·무기 덧그림)을 생략 — 연출이 이미 화면을 덮고 프레임 예산이 빠듯함
   G.rim = G.lowq ? null : rimOf(world);
   // ── 자세 ──
   const P = rig ? (rig.P || (rig.P = newPose())) : P_TMP;

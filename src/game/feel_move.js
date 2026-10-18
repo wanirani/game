@@ -30,6 +30,7 @@ import * as FH from '../data/feel_hit.js';
 import * as HFX from '../render/hitfx.js';
 import * as IMP from './impact.js';
 import { trailRamp } from '../data/cosmetics.js';   // [hook:ach] 외형 꾸미기 — 대시 잔상 색 (벤치마크 5)
+import { paintedGhost } from '../render/hero.js';   // MOTION-FEEL: 대시 잔상만 채색 그림이 비치게 (그림만)
 
 const PI = Math.PI;
 const DIRS = [['left', -1], ['right', 1]];
@@ -580,7 +581,10 @@ function spawnGhost(p, world, tint) {
   for (let i = G.length - 1; i >= 0; i--) if (G[i] <= now) G.splice(i, 1);
   if (G.length >= ghostCap(world)) return false;
   G.push(now + DASH_FX.ghostLife);
+  const L = world.fx?.list, n0 = L ? L.length : 0;
   p.ghostTrail?.(world, tint, DASH_FX.ghostLife);
+  // MOTION-FEEL: 대시 잔상만 채색 그림이 비치게 (render/hero.js paintedGhost) — 탑승 중 잔상(기수+탈것)은 예전 그대로
+  if (L && !p.mount?.riding && L.length === n0 + 1 && L[n0]?.shape === 'ghost') L[n0].draw = paintedGhost(L[n0].draw);
   return true;
 }
 
