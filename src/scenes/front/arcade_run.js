@@ -44,7 +44,11 @@ import { DIFFICULTIES, getDiff } from '../../data/difficulty.js';
 import {
   ARCADE_MODES, LEVEL_PRESETS, COURSES, courseBosses, endArcade, arenaBosses, p2Known, exKnown, sanitizeCfg, practiceStages, buildArcadeState,
   presetOf,
+  ruleOf, localCourse, random6Bosses, random6Pool, dailyRushSeed, relayOrder, addRelayHero, NOREST_SCORE,   // 규칙 코스 (보스 러시 변주)
 } from './arcade.js';
+import { Player } from '../../game/player.js';   // 릴레이: 라운드마다 다음 헌터로 새 영웅을 세운다
+import { firePerks, attachLayer, perkQuiet } from '../../game/class_perks.js';   // 릴레이: 들어온 헌터의 직업 특성 방 입장(prewarm · onEnter · 표식 레이어)
+import * as PUPPET from '../../render/hero_puppet.js';   // 릴레이 헌터 퍼펫 미리 받기
 import { ascName } from '../../data/ascensions.js';   // 초월 이름 (정산 부제 · classes_t3 §10.3)
 import { frame, menuItem, fmtClock, portraitIn, qualifies, heading, kenBurns, shade, bossRushBests, towerBests, DIM, puppet } from './common.js';
 import * as ONLINE from '../../core/online.js';
@@ -52,6 +56,8 @@ import { GhostRecorder, GhostPlayer, decodeGhost } from '../../game/ghost.js';
 
 // 서바이벌에 소환하지 않는 적: 생성기·위장·보너스 적 + 물이 있어야 싸울 수 있는 적(투기장엔 물이 없음). def.noArena 도 제외
 const NO_SPAWN = new Set(['medusa_spawner', 'mimic', 'golden_bat', 'killer_fish']);
+/** 릴레이 교대 때 치우는 엔티티 종류 (앞 헌터의 탄·판정·스킬 연출·소환물, 동료·탈것) — 직업 특성 표식 레이어(perkLayer)는 둔다 */
+const RELAY_CLEAR = new Set(['effect', 'hitbox', 'projectile', 'companion', 'mount']);
 /** 가시 구덩이 방을 쓰는 난이도인가 (베테랑 이상). 모듈 최상위에서 import 값을 읽지 않도록 함수로 둔다 */
 const isHardDiff = (id) => { const h = DIFFICULTIES.findIndex((d) => d.id === 'hard'); return h >= 0 && DIFFICULTIES.findIndex((d) => d.id === id) >= h; };
 
@@ -133,7 +139,7 @@ export class ArcadeRunScene extends Scene {
   onlineStart() {
     this.ghost = null; this.rec = null;
     try {
-      this.board = ONLINE.boardOf(this.cfg);
+      this.board = this.localOnly ? null : ONLINE.boardOf(this.cfg);   // 규칙 코스(기기 기록만): 보드 없음 → 런 시작·제출 요청 없음
       this.orun = ONLINE.startRun(this.board);
       if (this.cfg.kind !== 'practice' || !this.board) return;
       this.rec = new GhostRecorder(10);
@@ -351,11 +357,25 @@ export class BossRushScene extends ArcadeRunScene {
   get modeId() { return 'bossrush'; }
   makeWorld() { return this.makeArenaWorld(this.P.lv); }
   setup() {
-    this.queue = courseBosses(this.cfg.course ?? 0);
+    // 규칙 코스 (arcade.js RULE_COURSES): 릴레이 · 무작위 6 · 휴식 없음 — 기록은 기기에만 (localOnly → onlineStart 가 보드를 비운다)
+    const ci = this.cfg.course ?? 0;
+    this.rule = ruleOf(ci);
+    this.localOnly = localCourse(ci);
+    this.scoreMul = this.rule === 'norest' ? NOREST_SCORE : 1;
+    if (this.rule === 'random6') {
+      // 시드: ?seed= 고정(시험) → 오늘의 시드(한국 날짜) → 판마다 무작위
+      this.seedDaily = this.cfg.rushSeed === 'daily' && !Number.isInteger(this.cfg.seed);
+      this.seed = Number.isInteger(this.cfg.seed) ? this.cfg.seed >>> 0 : this.seedDaily ? dailyRushSeed() : Math.floor(Math.random() * 4294967296) >>> 0;
+      this.queue = random6Bosses(this.seed, random6Pool(this.p2, this.ex), COURSES[ci]?.n ?? 6);
+    } else this.queue = courseBosses(ci);
+    if (this.scoreMul !== 1) { const w = this.world, orig = w.addScore.bind(w); w.addScore = (n) => orig(n * this.scoreMul); }   // 휴식 없음: 모든 점수 ×1.5
+    this.relay = null;
+    if (this.rule === 'relay') this.setupRelay();
     this.round = 0; this.roundT = 0; this.roundDmg = 0; this.log = [];
     this.warmed = new Set();
     audio.music('arena');
-    this.call = { main: 'BOSS RUSH', sub: `${COURSES[this.cfg.course ?? 0]?.name ?? ''} · ${this.queue.length}연전`, color: '#ff4a5a', t: 0 };
+    const extra = this.relay ? ` · 헌터 ${this.relay.order.length}명 교대` : this.rule === 'norest' ? ` · 점수 ×${NOREST_SCORE}` : this.seedDaily ? ' · 오늘의 시드' : '';
+    this.call = { main: 'BOSS RUSH', sub: `${COURSES[ci]?.name ?? ''} · ${this.queue.length}연전${extra}`, color: '#ff4a5a', t: 0 };
     this.warm(this.queue[0]);
     // 보스 클래스 모듈: 첫 보스를 먼저 받고(등장까지 2.3초), 나머지 코스는 그 뒤에 한꺼번에 (느린 망에서 첫 보스와 다투지 않게)
     try {
@@ -376,7 +396,8 @@ export class BossRushScene extends ArcadeRunScene {
     if (this.phase === 'fight') { this.clock += dt; this.roundT += dt; }
     if (this.phase === 'ready' && this.phaseT > 0.4) this.warm(this.queue[this.round]);
     if (this.phase === 'ready' && this.phaseT > 2.3) this.spawnBoss();
-    if (this.phase === 'clear' && this.phaseT > 3.4 && (!w.boss || w.boss.dead)) {
+    // 릴레이는 교대를 연출·쓰러짐이 끝난 뒤에 한다 (필살기·각성 연출 world.cutscene 가 도는 동안 영웅을 바꾸지 않는다)
+    if (this.phase === 'clear' && this.phaseT > 3.4 && (!w.boss || w.boss.dead) && !(this.relay && (w.cutscene || w.player?.dead))) {
       this.round++;
       if (this.round >= this.queue.length) { this.phase = 'complete'; this.phaseT = 0; audio.music('victory'); w.banner = { text: 'ALL CLEAR!', sub: '모든 군주를 쓰러뜨렸다!', t: 3, color: '#ffe070', big: true }; }
       else { this.nextRound(); }
@@ -384,19 +405,115 @@ export class BossRushScene extends ArcadeRunScene {
     if (this.phase === 'complete' && this.phaseT > 3.2) this.finish(true);
   }
   nextRound() {
-    const w = this.world, p = w.player;
+    const w = this.world;
     w.boss = null; w.bossActive = false;
-    // 라운드 사이 회복
-    p.heal(p.stats.hp * 0.35);
-    p.mp = Math.min(p.stats.mp, p.mp + p.stats.mp * 0.5);
-    w.run.hearts = Math.min(99, w.run.hearts + 10);
-    audio.sfx('heal');
-    w.fx.burst('holy', p.cx, p.cy, 24, { speed: 180, color: '#8aff9a' });
-    w.fx.ring(p.cx, p.cy, { color: '#8aff9a', r0: 10, r1: 90, life: 0.5, width: 5 });
+    // 릴레이: 이번 라운드 = 순서[라운드 % 인원] (처음 나오는 헌터는 체력·MP 가득, 다시 나오면 지난번에 남긴 만큼 + 라운드 사이 회복)
+    const swap = this.relay ? this.relayHandover(this.relayHeroAt(this.round)) : null;
+    const p = w.player;
+    if (this.rule === 'norest') {
+      // 휴식 없음: 체력·MP·하트를 그대로 이어 간다
+    } else if (!swap?.fresh) {
+      // 라운드 사이 회복
+      p.heal(p.stats.hp * 0.35);
+      p.mp = Math.min(p.stats.mp, p.mp + p.stats.mp * 0.5);
+      w.run.hearts = Math.min(99, w.run.hearts + 10);
+      audio.sfx('heal');
+      w.fx.burst('holy', p.cx, p.cy, 24, { speed: 180, color: '#8aff9a' });
+      w.fx.ring(p.cx, p.cy, { color: '#8aff9a', r0: 10, r1: 90, life: 0.5, width: 5 });
+    } else w.run.hearts = Math.min(99, w.run.hearts + 10);
     this.phase = 'ready'; this.phaseT = 0;
     const id = this.queue[this.round];
-    this.call = { main: `ROUND ${this.round + 1}`, sub: BOSSES[id]?.name ?? '???', color: '#ff4a5a', t: 0 };
+    const who = this.relay ? CHARACTERS[w.player?.hero?.charId]?.name : null;
+    this.call = { main: `ROUND ${this.round + 1}`, sub: `${BOSSES[id]?.name ?? '???'}${who ? ` · ${who} 차례` : ''}`, color: '#ff4a5a', t: 0 };
     audio.sfx('ready');
+  }
+  // ───── 릴레이 (규칙 코스 'relay') ─────
+  /** 합류한 헌터마다 헌터 선택으로 시작할 때와 같은 빌드를 임시 세이브에 더한다 (빌드에 실패한 헌터는 순서에서 뺀다) */
+  setupRelay() {
+    const g = this.game, st = g.state, first = st.charId;
+    const ascOf = g.meta?.arcadeAsc && typeof g.meta.arcadeAsc === 'object' ? g.meta.arcadeAsc : {};
+    const order = [];
+    for (const id of relayOrder(g, first)) {
+      if (order.includes(id)) continue;
+      if (id === first) { if (st.heroes?.[id]) order.push(id); continue; }
+      let h = null;
+      try { h = addRelayHero(st, this.cfg, id, ascOf[id]); } catch (e) { console.warn('[arcade] 릴레이 헌터 빌드', id, e); h = null; }
+      if (h) order.push(id);
+    }
+    if (!order.includes(first)) order.unshift(first);
+    this.relay = { order, pools: {}, swaps: 0 };
+    for (const id of order) { try { if (PUPPET.puppetEnabled?.() !== false) PUPPET.preloadPuppet?.(id, st.heroes?.[id]?.classId); } catch { /* 퍼펫 없음 → 벡터 그림 */ } }
+  }
+  /** 라운드 r(0부터)의 헌터 */
+  relayHeroAt(r) { const o = this.relay?.order ?? []; return o.length ? o[((r % o.length) + o.length) % o.length] : null; }
+  /**
+   * 교대: 앞 헌터를 내보내고 id 헌터를 그 자리에 세운다 → { fresh, id } | null (같은 헌터 · 영웅 없음 · 만들기 실패).
+   * 앞 헌터가 남긴 탄·판정·연출(스킬 소환물 포함)·동료·탈것은 치우고, 버프는 새 영웅이라 비어 있다 (각성 게이지·점수·목숨은 팀 공용)
+   */
+  relayHandover(id) {
+    const w = this.world, st = this.game.state, old = w.player, R = this.relay;
+    const hero = st.heroes?.[id];
+    if (!R || !hero || !CHARACTERS[id] || !old || old.hero === hero) return null;
+    R.pools[old.hero?.charId ?? st.charId] = { hp: old.hp, mp: old.mp };
+    const prev = { charId: st.charId, hero: w.hero, sub: w.run.sub, hp: w.run.hp, mp: w.run.mp };
+    st.charId = id; w.hero = hero; w.run.sub = hero.sub ?? 'dagger'; w.run.hp = null; w.run.mp = null;
+    let np = null;
+    try { np = new Player(w, st, hero); } catch (e) {
+      console.error('[arcade] 릴레이 교대', e);
+      st.charId = prev.charId; w.hero = prev.hero; w.run.sub = prev.sub; w.run.hp = prev.hp; w.run.mp = prev.mp;
+      return null;
+    }
+    this.relayClear(old);
+    np.x = old.cx - np.w / 2; np.y = old.y + old.h - np.h; np.vx = 0; np.vy = 0;
+    np.facing = old.cx < w.map.pxW / 2 ? 1 : -1; np.onGround = !!old.onGround;
+    old.dead = true; old.deathHandled = true; old.buffs = {}; old.mount = null;
+    w.entities = w.entities.filter((e) => e !== old);
+    w.player = np; w.add(np);
+    const pool = R.pools[id];
+    np.hp = pool ? clamp(pool.hp, 1, np.stats.hp) : np.stats.hp;
+    np.mp = pool ? clamp(pool.mp, 0, np.stats.mp) : np.stats.mp;
+    np.hpGhost = np.hp;
+    np.iframes = Math.max(np.iframes ?? 0, 1.2);
+    if (w.combo?.n > 0) w.endCombo?.();
+    this.relayPerks(np);
+    R.swaps++;
+    const col = CHARACTERS[id]?.ult?.color ?? '#ffe7a0';
+    w.fx.burst('holy', np.cx, np.cy, 26, { speed: 200, color: col });
+    w.fx.ring(np.cx, np.cy, { color: col, r0: 12, r1: 110, life: 0.55, width: 6 });
+    audio.sfx('charge_ready');
+    return { fresh: !pool, id };
+  }
+  /** 앞 헌터가 남긴 것 치우기: 탄·판정·연출 엔티티(직업 특성 표식 레이어는 둔다)·동료·탈것 + 그 헌터가 주인인 것 */
+  relayClear(old) {
+    for (const e of this.world.entities) {
+      if (e === old || e.dead || e.perkLayer) continue;
+      const mine = e.owner === old || e.summoner === old || e.src === old || e.rider === old || e.attack?.owner === old;
+      if (mine || RELAY_CLEAR.has(e.kind)) e.dead = true;
+    }
+  }
+  /** 들어온 헌터의 직업 특성 방 입장 (perkEnter 는 방마다 한 번이라 교대 때는 여기서: prewarm · onEnter · 표식 레이어) */
+  relayPerks(p) {
+    const w = this.world;
+    try {
+      const P = p.perks;
+      if (!P?.any || perkQuiet(w)) return;
+      if (P.prewarm && w._perkWarm !== P.key) { w._perkWarm = P.key; firePerks(P.prewarm, w, p); }
+      if (P.onEnter) firePerks(P.onEnter, p, w);
+      attachLayer(w);
+    } catch (e) { console.warn('[arcade] 릴레이 특성', e); }
+  }
+  /** 일시정지 옆 칸: 릴레이 순서 (지금 헌터 ▶) */
+  drawPauseSide(ctx, r) {
+    if (!this.relay || !(r.w >= 120)) return;
+    const o = this.relay.order, cur = this.world?.player?.hero?.charId;
+    const h = Math.min(r.h, 34 + o.length * 26);
+    frame(ctx, r.x, r.y, r.w, h, { accent: '#ff4a5a', corners: false, edge: 0.4, fill0: 'rgba(14,6,20,0.86)' });
+    text(ctx, '릴레이 순서', r.x + 12, r.y + 22, { size: 13, weight: 800, color: '#ffd0a0', ow: 2, maxWidth: r.w - 20 });
+    const rows = Math.max(1, Math.floor((h - 34) / 26));
+    o.slice(0, rows).forEach((id, i) => {
+      const on = id === cur;
+      text(ctx, `${on ? '▶ ' : ''}${CHARACTERS[id]?.name ?? id}`, r.x + 16, r.y + 50 + i * 26, { size: 13, weight: on ? 900 : 700, color: on ? '#ffe7a0' : DIM, ow: 2, maxWidth: r.w - 28 });
+    });
   }
   spawnBoss() {
     const w = this.world, m = w.map, g = this.game;
@@ -435,20 +552,27 @@ export class BossRushScene extends ArcadeRunScene {
     st.stats.bossKills = (st.stats.bossKills ?? 0) + 1;
     w.fx.burst('fire', boss.cx, boss.cy, 30, { speed: 260, jitter: 60 });
     w.fx.ring(boss.cx, boss.cy, { color: '#ffd070', r0: 20, r1: 220, life: 0.7, width: 8 });
-    w.banner = { text: perfect ? 'PERFECT!' : 'ROUND CLEAR', sub: `${boss.def?.name ?? ''} 격파 · ${fmtClock(rt)}  +${fmt((base + timeBonus + perfect) * (w.diff.scoreMult ?? 1))}`, t: 3, color: perfect ? '#ffe070' : '#ffd0a0', big: true };
+    w.banner = { text: perfect ? 'PERFECT!' : 'ROUND CLEAR', sub: `${boss.def?.name ?? ''} 격파 · ${fmtClock(rt)}  +${fmt((base + timeBonus + perfect) * (w.diff.scoreMult ?? 1) * (this.scoreMul ?? 1))}`, t: 3, color: perfect ? '#ffe070' : '#ffd0a0', big: true };
   }
   results(cleared) {
     const w = this.world;
+    const rows = [
+      ['격파한 보스', `${this.log.length} / ${this.queue.length}`],
+      ['총 전투 시간', fmtClock(this.clock)],
+      ['무피해 격파', `${this.log.filter((l) => l.perfect).length}회`],
+      ['최대 콤보', `${Math.max(w.combo.best, w.combo.max)} HITS`],
+    ];
+    // 규칙 코스: 규칙 줄 + 「기기 기록」 (온라인 순위 줄 대신)
+    if (this.relay) rows.push(['릴레이', this.relay.order.slice(0, Math.max(1, Math.min(this.relay.order.length, this.round + 1))).map((id) => CHARACTERS[id]?.name ?? id).join(' → ')]);
+    if (this.rule === 'random6') rows.push(['시드', this.seedDaily ? `오늘의 시드 · ${ONLINE.kstDay().slice(4, 6)}/${ONLINE.kstDay().slice(6, 8)}` : `${this.seed}`]);
+    if (this.rule === 'norest') rows.push(['점수 배율', `×${NOREST_SCORE} (휴식 없음)`]);
+    if (this.localOnly) rows.push(['기록', '기기 기록']);
     return {
       title: cleared ? 'BOSS RUSH COMPLETE' : 'GAME OVER',
       score: w.run.score, time: this.clock,
-      rows: [
-        ['격파한 보스', `${this.log.length} / ${this.queue.length}`],
-        ['총 전투 시간', fmtClock(this.clock)],
-        ['무피해 격파', `${this.log.filter((l) => l.perfect).length}회`],
-        ['최대 콤보', `${Math.max(w.combo.best, w.combo.max)} HITS`],
-      ],
-      log: this.log, stageId: 'arena', extra: { bosses: this.log.length, total: this.queue.length, perfect: this.log.filter((l) => l.perfect).length },   // [hook:ach] perfect: 무피해 라운드 수 (ch_rush_perfect)
+      rows,
+      log: this.log, stageId: 'arena', extra: { bosses: this.log.length, total: this.queue.length, perfect: this.log.filter((l) => l.perfect).length,   // [hook:ach] perfect: 무피해 라운드 수 (ch_rush_perfect)
+        ...(this.rule ? { rule: this.rule, local: true } : {}), ...(this.relay ? { relay: [...this.relay.order] } : {}), ...(this.rule === 'random6' ? { seed: this.seed, bossIds: [...this.queue] } : {}) },
     };
   }
   overlay(ctx, vw, vh) {
