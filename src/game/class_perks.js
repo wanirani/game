@@ -493,16 +493,19 @@ export function drawPerkLayer(ctx, e, w) {
     // 이번 프레임 아틀라스 (표식 스프라이트 — 없으면 표식이 벡터로 그린다). 있으면 표식은 REC 에 적고 끝에 한 번에 그린다
     const R = markAtlas() ? REC : null;
     if (R) { R.real = ctx; R.used = false; }
+    // 화면 밖(카메라 + 128 px 여유)의 일반 적 표식은 그리지 않는다 (보이지 않는 그리기 건너뛰기 — 만료 정리·중첩은 그대로). 보스는 늘 그린다
+    const cam = w?.camera, cull = !!cam && typeof cam.visible === 'function';
     let n = 0;
     for (const en of MARKED) {
       if (en.dead || !en._ck || (en.world && en.world !== w)) { MARKED.delete(en); continue; }
+      const off = en.hidden || (cull && en.kind !== 'boss' && !cam.visible(en.x, en.y, en.w, en.h, 128));
       let live = false;
       for (const key in en._ck) {
         const m = en._ck[key];
         if (!(m.n > 0) || !(m.until > tn)) continue;
         live = true;
         const fn = M[key];
-        if (!fn || n >= MARK_CAP || en.hidden) continue;
+        if (!fn || n >= MARK_CAP || off) continue;
         n++;
         if (R) { R.globalAlpha = 1; R.globalCompositeOperation = 'source-over'; }
         try { fn(R || ctx, en.kind === 'boss' ? markTarget(en, w, markPin(fn)) : en, m.n, (m.until - tn) / m.dur, tn); } catch (err) { markFail(key, err); }

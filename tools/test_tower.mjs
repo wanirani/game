@@ -28,7 +28,7 @@ const AUTH = { bn_auth: JSON.stringify({ id: 'hunter01', token: TOKEN }) };
 
 // ───────────────────────── API 흉내 ─────────────────────────
 function makeMock() {
-  const M = { log: [], runs: [], finishes: [] };
+  const M = { log: [], runs: [], finishes: [], finishRes: [], real: null };
   M.handle = (method, p, headers, body) => {
     const authed = headers.authorization === `Bearer ${TOKEN}`;
     const ok = (o, status = 200) => ({ status, body: { ok: true, ...o } });
@@ -50,6 +50,37 @@ function makeMock() {
   return M;
 }
 
+// ───────────────────────── 실제 서버 (욕심 판 · 시즌 1 기록 시험) ─────────────────────────
+// netlify/functions/api.mts 를 메모리 저장소(tools/accounts/mem_store.mjs)와 가짜 시계로 부른다 — 기록 검사(online.mts checkResult)와
+// 탑 규칙(gamedata.mts TOWER_RULES)이 진짜 서버 그대로 (tools/online/test_client_online.mjs realApi 와 같은 방식)
+let REAL = null;
+async function realApi() {
+  if (REAL) return REAL;
+  globalThis.Netlify ??= { context: null, env: { get: () => undefined, set() {}, has: () => false, delete() {}, toObject: () => ({}) } };
+  const api = (await import(path.join(ROOT, 'netlify/functions/api.mts'))).default;
+  const rt = await import(path.join(ROOT, 'netlify/lib/runtime.mts'));
+  const scrypto = await import(path.join(ROOT, 'netlify/lib/crypto.mts'));
+  const gd = await import(path.join(ROOT, 'netlify/lib/gamedata.mts'));
+  const { createMemoryBackend } = await import(path.join(ROOT, 'tools/accounts/mem_store.mjs'));
+  const backend = createMemoryBackend();
+  rt.setStoreFactory((name, dc) => backend.factory(name, dc));
+  scrypto.setHashCostForTests?.({ N: 1024, r: 8, p: 1 });
+  const clock = { t: Date.now() };
+  rt.setClock(() => clock.t);
+  let ip = 0;
+  const call = async (method, p, body, token) => {
+    const h = new Headers({ 'content-type': 'application/json' });
+    if (token) h.set('authorization', `Bearer ${token}`);
+    const init = { method, headers: h };
+    if (body !== undefined) { init.body = JSON.stringify(body); init.duplex = 'half'; }
+    const r = await api(new Request('https://game.test' + p, init), { ip: `198.18.7.${++ip % 250}`, deploy: { context: 'production' } });
+    return { status: r.status, body: await r.json() };
+  };
+  const signup = async (id) => { const r = await call('POST', '/api/auth/signup', { id, password: 'crimson-moon-77' }); assert.equal(r.status, 201, JSON.stringify(r.body)); return { id: r.body.id, token: r.body.token }; };
+  REAL = { api, gd, clock, call, signup };
+  return REAL;
+}
+
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
 
 async function newContext(M, vp = 'desk', extra = {}) {
@@ -62,6 +93,17 @@ async function newContext(M, vp = 'desk', extra = {}) {
       M.log.push({ method: req.method(), path: u.pathname });
       let body = null;
       try { body = req.postData() ? JSON.parse(req.postData()) : null; } catch { body = null; }
+      if (M.real) {   // 실제 서버 처리기 (netlify/functions/api.mts + 메모리 저장소 — realApi)
+        if (u.pathname === '/api/runs/finish') {
+          M.finishes.push(body);
+          M.real.clock.t += Math.ceil(Number(body?.result?.time) || 0) + 5000;   // 판을 실제로 그만큼 했다 (서버의 걸린 시간 검사)
+        }
+        const buf = req.postDataBuffer();
+        const res = await M.real.api(new Request(req.url(), { method: req.method(), headers: await req.allHeaders(), body: buf && buf.length ? buf : undefined }), { ip: '198.51.100.30', deploy: { context: 'production' } });
+        const out = Buffer.from(await res.arrayBuffer());
+        if (u.pathname === '/api/runs/finish') { try { M.finishRes.push({ status: res.status, body: JSON.parse(out.toString('utf8')) }); } catch { M.finishRes.push({ status: res.status }); } }
+        return route.fulfill({ status: res.status, headers: Object.fromEntries(res.headers), body: out });
+      }
       const r = M.handle(req.method(), u.pathname, await req.allHeaders(), body);
       return route.fulfill({ status: r.status, contentType: 'application/json', body: JSON.stringify(r.body) });
     }
@@ -911,7 +953,7 @@ test('시즌 2: 변이 10종 효과 · 알림 카드 · 분열 상한 · 폭발/
   assert.ok(pacts.edge.critDmg === 80 && near(pacts.edge.def, 0.5, 0.06), `칼날의 계약 ${JSON.stringify(pacts.edge)}`);
   assert.equal(pacts.greed.gold, 100);
   assert.ok(near(pacts.thirst.ls, 5, 1e-9) && near(pacts.thirst.mp, 0.5, 0.02), `갈증의 계약 ${JSON.stringify(pacts.thirst)}`);
-  assert.deepEqual(pacts.swift, { move: 20, atkSpd: 20, foes: 3 }, '질주의 계약');
+  assert.ok(near(pacts.swift.move, 20, 1e-9) && near(pacts.swift.atkSpd, 20, 1e-9) && pacts.swift.foes === 3, `질주의 계약 ${JSON.stringify(pacts.swift)}`);
   assert.ok(pacts.greed.heal < 0.03, `탐욕의 계약 = 안식처 회복(30 %) 없음 ${pacts.greed.heal}`);
   assert.match(pacts.greed.banner, /탐욕의 계약/);
   assert.deepEqual(pacts.offer, ['oath', null], '맺은 계약은 다시 나오지 않는다');
@@ -937,6 +979,227 @@ test('시즌 2: 변이 10종 효과 · 알림 카드 · 분열 상한 · 폭발/
   assert.deepEqual(fin, { row: '계약 6 · 피의 길 1번', v: 2, pacts: pacts.order, blood: 1 }, `결과 ${JSON.stringify(fin)}`);
   assert.deepEqual(errs, []);
   await ctx.close();
+});
+
+// ───────────────────────── 욕심 판 (BLOCKER) ─────────────────────────
+// 지옥 난이도 · 매 갈림길 피의 길 · 변이 10종을 돌아가며(황금 층 포함) · 이득 큰 계약부터 · 상인에서 축복 사기 · 콤보 999 · 적은 나오자마자 전멸 ·
+// 출구는 열리자마자. 층마다 오른 점수 ≤ maxScorePerFloor, 층마다 걸린 시간 ≥ minFloorSec (실제 gamedata.mts 값),
+// 결과는 실제 서버 처리기(api.mts — checkResult)가 받아야 한다
+test('욕심 판 (BLOCKER): 피의 길 매번 · 황금 층 · 좋은 계약 → 층 점수 ≤ maxScorePerFloor · 층 시간 ≥ minFloorSec · 실제 서버가 받는다', async () => {
+  const R = await realApi();
+  const RULES = R.gd.TOWER_RULES;
+  const T = await import(path.join(ROOT, 'src/data/tower.js'));
+  assert.deepEqual({ ...RULES }, { ...T.TOWER_RULES }, '클라이언트 규칙 = 서버 규칙');
+  const u = await R.signup('greedy01');
+  const M = makeMock();
+  M.real = R;
+  const ctx = await newContext(M);
+  const { page, errs } = await openGame(ctx, { init: { bn_auth: JSON.stringify(u) }, initScripts: [fakePadInit({ connected: true })] });
+  await page.evaluate(() => import('/src/scenes/front/arcade.js').then((A) => A.startArcade(window.__game, { kind: 'tower', diff: 'inferno', preset: 3, seed: 90210 }, 'kael')));
+  await waitTop(page, 'tower', 30000);
+  await freeze(page);
+  await page.waitForFunction(() => window.__game.top.orun?.state === 'ready', null, { timeout: 15000 });
+  const LAST = 32;
+  await page.evaluate(async (LAST) => {
+    const g = window.__game, TW = await import('/src/data/tower.js');
+    const t = g.scenes.find((s) => s.name === 'tower'), w = t.world, p = w.player;
+    const CYC = ['gold', 'split', 'elite', 'rush', 'bomb', 'bolt', 'mad', 'giant', 'vamp', 'fog'];
+    const PRI = ['swift', 'greed', 'oath', 'fury', 'edge', 'thirst'];
+    let k = 0;
+    // 1층은 장면 시작(시계 0 · 점수 0)에 열렸다 (이 도우미를 거는 동안 이미 지난 시간도 1층의 시간)
+    const G = window.__greed = { log: [{ f: 1, s: 0, c: 0, mut: null, blood: false, at: [t.floor, w.run.score, t.clock] }], muts: [], bloodFloors: 0, done: false, killed: false, shops: 0, pacts: [] };
+    const o = t.loadFloor.bind(t);
+    t.loadFloor = (n) => {
+      t.forceMut = TW.floorKind(n) === 'combat' && n >= TW.MUT_FROM ? CYC[k++ % CYC.length] : undefined;
+      const s = w.run.score, c = t.clock;
+      o(n);
+      t.forceMut = undefined;
+      G.log.push({ f: n, s, c, mut: t.mut?.id ?? null, blood: t.bloodFloor, gold: w.diff.gold });
+      if (t.mut) G.muts.push(t.mut.id);
+      if (t.bloodFloor) G.bloodFloors++;
+    };
+    p.buffs.invincible = 1e9;
+    const act = () => {
+      const top = g.top;
+      if (G.killed) { if (G.up) { G.up = false; window.__padSet(12, 0); } return; }   // 쓰러진 뒤에는 아무것도 하지 않는다 (결과 = 돌파한 층 LAST)
+      if (top?.name === 'towerBlessing') {
+        if (top.picked !== undefined) return;
+        if (top.mode === 'pact') { const i = PRI.map((id) => top.ids.indexOf(id)).find((i) => i >= 0); G.pacts.push(top.ids[i ?? top.ids.length - 1]); top.choose(i ?? top.ids.length - 1); }
+        else if (top.mode === 'shop') { if (!top._greed) { top._greed = 1; G.shops++; g.state.gold = Math.max(g.state.gold ?? 0, 1e6); top.choose(0); } else top.choose(top.items().length - 1); }
+        else top.choose(0);
+        return;
+      }
+      if (top !== t || t.done) return;
+      if (t.floor > LAST && !G.killed) {   // 끝: 쓰러진다 → 결과 → 실제 서버 제출
+        G.killed = true; p.buffs.invincible = 0; p.iframes = 0; t.reviveLeft = 0; p.hp = 1;
+        p.takeHit(999999, { team: 'enemy', dir: 1, kb: [100, -200] }, w, {});
+        return;
+      }
+      if ((t.phase === 'fight' || (t.phase === 'boss' && !w.cutscene)) && w.enemies().length) {
+        w.combo.n = Math.max(w.combo.n, 999); w.combo.t = w.combo.window = 2.6;   // 콤보 999 (점수 배율 ×51 · 끝나면 COMBO BONUS n²×5)
+        t.debugKillAll();
+      }
+      // 출구: (갈림길이면 붉은 문 위로 옮겨 가서) ▲ 를 매 스텝 눌렀다 뗐다 — 문은 장면 자신의 규칙(TowerGate.update)으로 연다
+      if (t.phase === 'gate') {
+        const gate = t.gates.find((x) => x.route === 'blood') ?? t.gate;
+        if (gate.route === 'blood') { p.x = gate.cx - p.w / 2; p.y = gate.bottom - p.h; p.vx = 0; p.vy = 0; }
+        G.up = !G.up; window.__padSet(12, G.up ? 1 : 0);
+      } else if (G.up) { G.up = false; window.__padSet(12, 0); }
+    };
+    window.__greedStep = (n) => {
+      for (let i = 0; i < n; i++) {
+        if (g.top?.name === 'arcadeResults') { G.done = true; break; }
+        act();
+        try { g.input?.pollFrame?.(); } catch { /* */ }
+        g.tick(1 / 60);
+      }
+      g.render?.();
+      return { floor: t.floor, phase: t.phase, top: g.top?.name, done: G.done };
+    };
+  }, LAST);
+  let st = null;
+  for (let i = 0; i < 600; i++) {
+    st = await page.evaluate(() => window.__greedStep(240));
+    if (st.done) break;
+    await page.evaluate(async () => { try { await window.__game.world?.bossReady?.(); } catch { /* 보스 없음 */ } });
+  }
+  assert.ok(st?.done, `욕심 판이 끝나지 않음 ${JSON.stringify(st)}`);
+  const G = await page.evaluate(() => {
+    const G = window.__greed, top = window.__game.top, r = top.res;
+    return { ...G, final: { score: r.score, time: r.time, floor: r.extra.floor, reached: r.extra.reached, v: r.extra.v, blood: r.extra.blood, pacts: r.extra.pacts } };
+  });
+  // 층마다: 점수 ≤ maxScorePerFloor · 시간 ≥ minFloorSec
+  const rows = G.log.map((x, i) => {
+    const nx = G.log[i + 1] ?? { s: G.final.score, c: G.final.time };
+    return { f: x.f, ds: nx.s - x.s, dt: nx.c - x.c, mut: x.mut, blood: x.blood, last: !G.log[i + 1] };
+  });
+  for (const r of rows) {
+    assert.ok(r.ds <= RULES.maxScorePerFloor, `${r.f}층 점수 ${r.ds} > ${RULES.maxScorePerFloor} (${r.mut})`);
+    if (!r.last) assert.ok(r.dt >= RULES.minFloorSec, `${r.f}층 시간 ${r.dt.toFixed(3)}초 < ${RULES.minFloorSec}초 (${r.mut}${r.blood ? ' · 피의 길' : ''})`);
+  }
+  const capHits = rows.filter((r) => r.ds >= RULES.maxScorePerFloor - 1).length;
+  assert.ok(capHits >= 10, `욕심 판이 층 상한에 닿아야 한다 (닿은 층 ${capHits})`);
+  assert.equal(G.final.floor, LAST, '돌파한 층');
+  assert.ok(G.final.score <= (G.final.floor + 1) * RULES.maxScorePerFloor, `점수 ${G.final.score}`);
+  assert.ok(G.final.time * 1000 >= G.final.floor * RULES.minFloorSec * 1000, `시간 ${G.final.time}`);
+  // 욕심 판의 모양: 갈림길마다 피의 길 · 변이 10종이 모두 (황금 층 포함) · 계약 셋 · 상인
+  const bosses = [5, 15, 25].length;
+  assert.equal(G.final.blood, bosses, '갈림길 3번 모두 피의 길');
+  assert.equal(G.bloodFloors, bosses * 4, '피의 길 층 12');
+  assert.deepEqual([...new Set(G.muts)].sort(), T.MUTATORS.map((m) => m.id).sort(), '변이 10종');
+  const goldBlood = G.log.find((x) => x.mut === 'gold' && x.blood);
+  assert.ok(goldBlood, '피의 길 위의 황금 층');
+  // 안식처 10·20·30층: 후보 둘 중 이득이 큰 쪽 (질주 > 탐욕 > 맹세 > 광기 > 칼날 > 갈증)
+  const PRI = ['swift', 'greed', 'oath', 'fury', 'edge', 'thirst'], taken = {}, want = [];
+  for (const f of [10, 20, 30]) { const offer = T.pactOffer(90210, f, taken); const id = PRI.find((x) => offer.includes(x)); want.push(id); taken[id] = true; }
+  assert.deepEqual(G.pacts, want, `계약 ${G.pacts}`);
+  assert.deepEqual(G.final.pacts, want);
+  assert.equal(G.shops, 1, '15층 상인');
+  assert.equal(G.final.v, 2);
+  // 실제 서버: 받았고, 순위표의 기록 = 제출한 층·점수·시간
+  await page.waitForFunction(() => ['ok', 'error', 'login', 'offline'].includes(window.__game.top.onl?.state), null, { timeout: 20000 });
+  const onl = await page.evaluate(() => window.__game.top.onl);
+  assert.equal(onl.state, 'ok', `서버가 받지 않음 ${JSON.stringify(onl)} ${JSON.stringify(M.finishRes)}`);
+  const sent = M.finishes.at(-1).result;
+  assert.equal(sent.floor, LAST);
+  assert.equal(sent.v, 2);
+  assert.ok(sent.score === Math.min(99999999, G.final.score), `제출 점수 ${sent.score} / ${G.final.score}`);
+  const b = await R.call('GET', '/api/boards/tower:inferno');
+  const mine = b.body.entries.find((e) => e.floor === LAST);
+  assert.ok(mine && mine.score === sent.score && mine.time === sent.time, `순위표 ${JSON.stringify(b.body).slice(0, 300)}`);
+  console.log(`    욕심 판: ${LAST}층 · 점수 ${G.final.score.toLocaleString()} (층 상한에 닿은 층 ${capHits}) · 시간 ${G.final.time.toFixed(1)}초 · 가장 짧은 층 ${Math.min(...rows.filter((r) => !r.last).map((r) => r.dt)).toFixed(3)}초 · 가장 큰 층 점수 ${Math.max(...rows.map((r) => r.ds)).toLocaleString()} · 계약 ${G.pacts.join('/')}`);
+  assert.deepEqual(errs, []);
+  await ctx.close();
+});
+
+// ───────────────────────── 시즌 1 기록 · 제출 모양 ─────────────────────────
+test('시즌 1 기록: v 없는 옛 기록이 읽히고 보인다 · 더 높이 오르면 v:2 기록 · 제출은 v 하나만 더 · 실제 서버는 v 를 버리고 같은 기록', async () => {
+  const M = makeMock();
+  const ctx = await newContext(M);
+  const OLD = { normal: { floor: 12, time: 345.6, score: 123456, charId: 'kael', blessings: ['might', 'crit'], date: '2026-09-01' }, hard: { floor: 7, time: 222, score: 4567, charId: 'sera', blessings: [], date: '2026-09-02', v: 1 } };
+  const { page, errs } = await openGame(ctx, { init: { ...AUTH, bloodnocturne_meta: JSON.stringify({ towerBest: OLD }) } });
+  const texts = await page.evaluate(async () => {
+    const g = window.__game, out = {};
+    for (const diff of ['normal', 'hard', 'easy']) {
+      g.meta.arcadeCfg = { kind: 'tower', diff, preset: 3 };
+      g.go('arcade', {}, { fade: false });
+      for (let i = 0; i < 30; i++) g.tick(1 / 60);
+      g.render?.();
+      out[diff] = g.top.bestText();
+    }
+    g.go('highscore', { mode: 'tower', src: 'device' }, { fade: false });
+    for (let i = 0; i < 30; i++) g.tick(1 / 60);
+    g.render?.();
+    out.hs = g.top.name;
+    out.best = JSON.parse(JSON.stringify(g.meta.towerBest));
+    return out;
+  });
+  assert.match(texts.normal, /12층 돌파 · .* · 시즌 1$/, texts.normal);
+  assert.match(texts.hard, /7층 돌파 · .* · 시즌 1$/, `v:1 = 시즌 1 ${texts.hard}`);
+  assert.match(texts.easy, /기록이 아직 없습니다/);
+  assert.equal(texts.hs, 'highscore');
+  assert.deepEqual(texts.best, OLD, '옛 기록은 읽기만 해도 그대로');
+  // 클라우드 합치기: 높은 층이 이긴다 (v 도 함께)
+  const merged = await page.evaluate(() => import('/src/core/cloud.js').then((C) => {
+    const a = C.mergeMeta({ towerBest: { normal: { floor: 12, time: 300 } } }, { towerBest: { normal: { floor: 15, time: 400, v: 2 } } }).towerBest.normal;
+    const b = C.mergeMeta({ towerBest: { normal: { floor: 16, time: 300 } } }, { towerBest: { normal: { floor: 15, time: 400, v: 2 } } }).towerBest.normal;
+    return [a, b];
+  }));
+  assert.deepEqual(merged, [{ floor: 15, time: 400, v: 2 }, { floor: 16, time: 300 }]);
+  // 시즌 2 판: 제출 모양 = 시즌 1 모양 + v (결과에서 v 를 뺀 것과 비교)
+  await page.evaluate(() => import('/src/scenes/front/arcade.js').then((A) => A.startArcade(window.__game, { kind: 'tower', diff: 'normal', preset: 3, seed: 5150 }, 'kael')));
+  await waitTop(page, 'tower', 30000);
+  await freeze(page);
+  const pay = await page.evaluate(async () => {
+    const t = window.__game.top, O = await import('/src/core/online.js');
+    const r2 = t.results(), r1 = t.results();
+    delete r1.extra.v;
+    const a = t.onlinePayload(false, r2).result, b = t.onlinePayload(false, r1).result;
+    return { a, b, ca: O.cleanResult(a), cb: O.cleanResult(b) };
+  });
+  assert.deepEqual(Object.keys(pay.a).filter((k) => !(k in pay.b)), ['v']);
+  assert.deepEqual(Object.keys(pay.b).filter((k) => !(k in pay.a)), []);
+  assert.deepEqual({ ...pay.a, v: undefined }, { ...pay.b, v: undefined }, '나머지 필드는 같다');
+  assert.equal(pay.a.v, 2);
+  assert.deepEqual({ ...pay.ca, v: undefined }, { ...pay.cb, v: undefined }, 'cleanResult 뒤에도 v 만 다르다');
+  assert.equal(pay.ca.v, 2);
+  assert.equal('v' in pay.cb, false);
+  // 12층보다 낮게 끝나면 옛 기록(시즌 1)이 남고, 넘으면 v:2 기록 → 시즌 2
+  const end = async (n) => {
+    await page.evaluate((n) => { const t = window.__game.top; t.debugFloor(n); }, n);
+    await page.evaluate(() => { const w = window.__game.world, p = w.player; p.iframes = 0; p.buffs.invincible = 0; p.hp = 1; window.__game.top.reviveLeft = 0; p.takeHit(999999, { team: 'enemy', dir: 1, kb: [100, -200] }, w, {}); });
+    await tickUntil(page, "g.top.name === 'arcadeResults' && g.fade.a < 0.05", 600, '결과');
+    return page.evaluate(() => JSON.parse(JSON.stringify(window.__game.meta.towerBest.normal)));
+  };
+  const lower = await end(4);
+  assert.deepEqual(lower, OLD.normal, '낮은 판은 옛 기록을 덮지 않는다');
+  await thaw(page);
+  await page.evaluate(() => import('/src/scenes/front/arcade.js').then((A) => A.startArcade(window.__game, { kind: 'tower', diff: 'normal', preset: 3, seed: 5151 }, 'kael')));
+  await waitTop(page, 'tower', 30000);
+  await freeze(page);
+  const higher = await end(14);
+  assert.equal(higher.floor, 13);
+  assert.equal(higher.v, 2);
+  const txt = await page.evaluate(() => { const g = window.__game; g.meta.arcadeCfg = { kind: 'tower', diff: 'normal', preset: 3 }; g.go('arcade', {}, { fade: false }); for (let i = 0; i < 30; i++) g.tick(1 / 60); return g.top.bestText(); });
+  assert.match(txt, /13층 돌파 · .* · 시즌 2$/, txt);
+  assert.deepEqual(errs, []);
+  await ctx.close();
+  // 실제 서버: v 가 있는 제출과 없는 제출이 같은 기록으로 남는다 (checkResult 는 v 를 읽지 않는다)
+  const R = await realApi();
+  const RES = { time: 120000, score: 777777, hero: 'kael', cls: 'kael_hunter', level: 60, deaths: 1, floor: 13 };
+  const ent = [];
+  for (const [id, res] of [['season1a', RES], ['season2a', { ...RES, v: 2 }]]) {
+    const acct = await R.signup(id);
+    const s = await R.call('POST', '/api/runs', { board: 'tower:normal' }, acct.token);
+    assert.equal(s.status, 200, JSON.stringify(s.body));
+    R.clock.t += RES.time + 5000;
+    const f = await R.call('POST', '/api/runs/finish', { run: s.body.run, result: res }, acct.token);
+    assert.equal(f.status, 200, JSON.stringify(f.body));
+    ent.push(f.body.entry);
+  }
+  const strip = (e) => { const o = { ...e }; for (const k of ['nick', 'rank', 'date', 'ts', 'd', 'me', 'ghost', 'g']) delete o[k]; return o; };
+  assert.deepEqual(strip(ent[1]), strip(ent[0]), `서버 기록 ${JSON.stringify(ent)}`);
+  assert.equal('v' in ent[1], false);
 });
 
 // ───────────────────────── 휴대폰 ─────────────────────────

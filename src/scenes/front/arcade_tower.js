@@ -97,11 +97,11 @@ class TowerGate extends Entity {
     this.t += dt;
     this.openK = Math.min(1, this.openK + dt / TOWER_PHASE.gateOpen);
     const p = world.player;
-    this.near = !!p && !p.dead && this.openK >= 1 && p.cx > this.x && p.cx < this.x + this.w && Math.abs(p.bottom - this.bottom) < 30;
+    this.near = !!p && !p.dead && this.openK >= 1 && this.run.canLeave() && p.cx > this.x && p.cx < this.x + this.w && Math.abs(p.bottom - this.bottom) < 30;
     const still = this.near && p.onGround && Math.abs(p.vx) < 30 && !input.down('left') && !input.down('right');
     this.holdT = still ? this.holdT + dt : 0;
     if ((this.fxT -= dt) <= 0) { this.fxT = 0.12; world.fx.emit?.('magic', this.cx + (Math.sin(this.t * 7) * 18), this.bottom - 10, 1, { color: this.look.light, speed: 60, angle: -Math.PI / 2, spread: 0.5 }); }
-    if (this.used || !this.near || world.transitioning || world.cutscene) return;
+    if (this.used || !this.near || world.transitioning || world.cutscene || !this.run.canLeave()) return;
     if (input.pressed('up') || this.holdT >= GATE_HOLD) { this.used = true; this.run.leaveFloor(this.route); }
   }
   lights(L) { L.add(this.cx, this.bottom - 52, 170 * (0.4 + 0.6 * this.openK), this.look.light, 0.85); }
@@ -310,7 +310,7 @@ export class TowerScene extends ArcadeRunScene {
     if (plan.kind !== 'combat') { const m = w.map; w.arena = { x0: 0, x1: m.pxW, cam: { x: 0, y: 0, w: m.pxW, h: m.pxH } }; }
     w.banner = null;
     this.gate = null; this.stuckT = 0; this.aliveMin = Infinity; this.reward = 0; this.rewardDone = false;
-    this.phase = 'enter'; this.phaseT = 0;
+    this.phase = 'enter'; this.phaseT = 0; this.floorT = 0;
     const sub = plan.kind === 'boss' ? `군주의 층 · ${BOSSES[plan.bossId]?.name ?? ''}` : plan.kind === 'rest' ? '안식처 · 숨을 고르고 축복을 받는다' : `${STAGES[plan.sid]?.name ?? ''} · 적 ${plan.enemies.length}마리`;
     this.call = { main: `제 ${n}층`, sub, color: plan.kind === 'boss' ? '#ff4a5a' : plan.kind === 'rest' ? '#9fe8c8' : COLOR, t: 0 };
     audio.sfx(plan.kind === 'boss' ? 'warning' : 'ready');
@@ -681,6 +681,11 @@ export class TowerScene extends ArcadeRunScene {
     for (let k = 5; k < m.w; k++) for (const d of [dir, -dir]) if (cols.includes(c0 + d * k)) return (c0 + d * k) * TILE + TILE / 2;
     return null;
   }
+  /**
+   * 이 층을 떠날 수 있나: 층에 들어온 지 minFloorSec + 0.1초 (서버 기록 검사 '걸린 시간 ≥ 돌파한 층 × minFloorSec' 를 연출 시간의
+   * 소수점 합에 맡기지 않는다 — 변이·속공·계약이 연출을 줄여도 한 층이 이보다 빨리 끝나지 않는다). 보통 판에서는 이미 지나 있다
+   */
+  canLeave() { return (this.floorT ?? 0) >= TOWER_RULES.minFloorSec + 0.1; }
   /** 층을 떠난다. route = 'blood' 이면 다음 전투 층 넷이 피의 길 (센 변이 · 보상 2배 · 그다음 안식처 축복 하나 더) */
   leaveFloor(route = null) {
     if (this.phase === 'leave' || this.done) return;
@@ -797,7 +802,7 @@ export class TowerScene extends ArcadeRunScene {
     const w = this.world, p = w.player;
     if (this.call) { this.call.t += dt / 2.2; if (this.call.t >= 1) this.call = null; }
     if (this.mutCard) { this.mutCard.t += dt / 3.4; if (this.mutCard.t >= 1) this.mutCard = null; }
-    if (!this.done) this.clock += dt;
+    if (!this.done) { this.clock += dt; this.floorT = (this.floorT ?? 0) + dt; }
     if (this.musicT > 0) { this.musicT -= dt; if (this.musicT <= 0 && !this.done && this.kind === 'boss') audio.music('arena'); }
     this.tickBlessings(dt);
     this.tickMutator(dt);

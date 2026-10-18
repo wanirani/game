@@ -17,6 +17,7 @@
 // URL ?atmos=0 = 이 층 + 새 창문 빛깔 + 바닥 안착을 모두 끔 (전후 비교 캡처). setAtmosEnabled(false) 는 QA 도구용 실행 중 끄기.
 import { ATMOS } from '../data/atmos.js';
 import { rgba, clamp } from '../core/math.js';
+import { prewarmLightColors } from '../core/lighting.js';
 
 const URL_OFF = (() => { try { return typeof location !== 'undefined' && /[?&]atmos=0(?:&|$)/.test(location.search || ''); } catch { return false; } })();
 let enabled = true;
@@ -127,7 +128,9 @@ function bakeFog(color) {
   const img = g.createImageData(FOG_W, FOG_H * 2);
   const d = img.data;
   const hex = String(color || '#ffffff').replace('#', '');
-  const cr = parseInt(hex.slice(0, 2), 16) || 255, cg = parseInt(hex.slice(2, 4), 16) || 255, cb = parseInt(hex.slice(4, 6), 16) || 255;
+  // 채널 00 은 0 (|| 255 로 쓰면 '#00c0ff' 같은 색의 빨강이 255 가 된다 — P2v), 읽을 수 없는 값만 255
+  const ch = (i) => { const v = parseInt(hex.slice(i, i + 2), 16); return Number.isFinite(v) ? v : 255; };
+  const cr = ch(0), cg = ch(2), cb = ch(4);
   // 값 잡음: 가로 주기 = 격자 칸 수 (이음매 없음)
   const vnoise = (x, y, cells, seed) => {
     const fx = x * cells, fy = y * cells * (FOG_H / FOG_W) * 4;
@@ -190,12 +193,17 @@ export function createAtmos(stage) {
     stats: { draws: 0, fed: 0 },   // 이번 프레임의 이 층 drawImage 수 · 넘긴 광원 수 (QA: tools/qa/atmos_perf.mjs)
   };
   const feedLights = e.lights.filter((l) => l.feed);
+  // 넘길 광원 색을 조명 아틀라스에 미리 칠해 둔다 (방을 불러올 때 — 싸움 도중 처음 보는 색의 그라데이션 0, R1-REQ-340E 와 같은 규칙)
+  try { if (feedLights.length) prewarmLightColors([...new Set(feedLights.map((l) => l.color))]); } catch { /* 조명 아틀라스 없음 (노드) */ }
+  const glowKeyOf = (aspect) => `${key}|${aspect.toFixed(3)}`;
+  /** 공용 캔버스가 아직 이 층이 구운 그림인가 (다른 원경 층이 같은 캔버스에 다시 구웠으면 false → 다시 굽는다, P2v) */
+  const mine = () => (!e.lights.length || C.glowKey === glowKeyOf(atm.aspect)) && C.fogKey === e.fog?.color && (!e.rays || C.rayKey === e.rays.color);
   /** 그림 비율을 알게 되면(그림이 오면) 굽는다 — 보통 방을 불러올 때. 낮음 단계에서는 굽지 않다가 중간 이상이 되면 그때 한 번 */
   const ensure = (aspect) => {
-    if (atm.baked && Math.abs(aspect - atm.aspect) < 1e-3) return true;
+    if (atm.baked && Math.abs(aspect - atm.aspect) < 1e-3 && mine()) return true;
     atm.aspect = aspect;
     try {
-      atm.glow = e.lights.length ? bakeGlow(`${key}|${aspect.toFixed(3)}`, e, aspect) : null;
+      atm.glow = e.lights.length ? bakeGlow(glowKeyOf(aspect), e, aspect) : null;
       bakeFog(e.fog?.color);
       if (e.rays) bakeRay(e.rays.color);
       atm.baked = true;
