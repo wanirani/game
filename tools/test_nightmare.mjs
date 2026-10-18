@@ -251,6 +251,7 @@ async function browserSuite() {
       const s = await env.page(vp, 'index.html');
       try {
         await s.waitGame();
+        await s.eval(() => import('/src/data/nightmare.js').then((D) => { D.NM_FLAGS.ui = true; }));   // [P3b] 입구 켜기 (기본값과 무관하게)
         await s.eval(() => {
           const g = window.__game;
           window.__tt = { toasts: [], bus: [], fetchN: 0, fetchUrls: [] };
@@ -265,7 +266,7 @@ async function browserSuite() {
         });
         await loadSave(s, FIX);
         for (const id of plan) await fightCase(s, vp, id);
-        if (withFull) { await fullCase(s, vp); await ch1Case(s, vp); }
+        if (withFull) { await fullCase(s, vp); await churchCase(s, vp); await ch1Case(s, vp); }
         const errs = s.errs.filter((e) => !/favicon|ERR_FILE_NOT_FOUND|net::ERR_ABORTED/.test(e));
         ok(errs.length === 0, `[${vp}] 페이지 오류 0`, errs.slice(0, 5));
         const fN = await s.eval(() => ({ n: window.__tt.fetchN, u: window.__tt.fetchUrls.slice(0, 5) }));
@@ -293,6 +294,21 @@ async function until(s, fn, a, ms = 20000, step = 100) {
   }
 }
 const topName = (s) => s.eval(() => window.__game?.top?.name ?? null);
+/** [P3b] 탭 영역(id 가 정규식 re 에 맞는 것) 가운데를 손가락으로 누른다 → 누른 id | null */
+async function tapZone(s, re, wait = 250) {
+  const p = await s.eval((re) => import('/src/core/ui.js').then(({ taps }) => {
+    const g = window.__game, z = (taps.zones?.() ?? []).find((q) => q.hit && new RegExp(re).test(String(q.id)));
+    if (!z) return null;
+    const c = g.canvas.getBoundingClientRect(), k = c.width / g.viewW;
+    return { x: c.left + (z.x + z.w / 2) * z.k * k, y: c.top + (z.y + z.h / 2) * z.k * k, id: String(z.id) };
+  }), re);
+  if (!p) return null;
+  await s.page.touchscreen.tap(p.x, p.y);
+  await s.wait(wait);
+  return p.id;
+}
+/** [P3b] 격파 결과 화면 (trial_end 보상 줄) → { rows: [[이름, 값]…], idx } | null */
+const resultScreen = (s, ms = 15000) => until(s, () => { const sc = window.__game.top; return sc?.name === 'trialEnd' && sc.result ? { rows: sc.resultRows().map((r) => [r[0], r[1]]), idx: sc.menu?.index } : null; }, null, ms);
 async function skipOverlays(s, ms = 15000) {
   const t0 = Date.now();
   while (Date.now() - t0 < ms) {
@@ -426,6 +442,17 @@ async function fightCase(s, vp, id) {
     return r;
   });
   ok(A.blocked === 'trial' && !A.hud.on && A.hud.level === 'off', `${tag}: AUTO 거절`, A);
+  // [P3b] 일시정지: 「악몽 포기」 (「시련 포기」 아님) · 귀환 주문서: 「악몽의 결계」 (p3a_requests 1·3)
+  const PZ = await s.eval(() => { const g = window.__game; g.push('pause', { world: g.world }); const p = g.top; const r = { name: p?.name, labels: (p?.items ?? []).map((i) => i?.label) }; if (p?.name === 'pause') g.pop(); return r; });
+  ok(PZ.name === 'pause' && PZ.labels.includes('악몽 포기') && !PZ.labels.includes('시련 포기'), `${tag}: 일시정지 「악몽 포기」`, PZ);
+  if (id === 'nm_s01') {
+    const WP = await s.eval(async () => {
+      const g = window.__game, st = g.state, h = st.heroes[st.charId], INV = await import('/src/game/inventory.js');
+      const it = INV.addByBase(st, 'c_warp', 1);
+      return it ? INV.useItem(st, h, it.uid, g.world.player) : { none: true };
+    });
+    ok(WP.ok === false && String(WP.msg).startsWith('악몽의 결계') && WP.trial === true, `${tag}: 귀환 주문서 → 「악몽의 결계」`, WP);
+  }
   // 경험치 0 (K4) · 전리품 없음
   const X = await s.eval(() => { const w = window.__game.world, p = w.player; return { exp: w.gainExp(5000), gold: w.spawnPickup('gold', p.cx, p.y, { amount: 50 }), item: w.spawnPickup('item', p.cx, p.y, { item: { baseId: 'c_potion' } }) }; });
   ok(X.exp === 0 && X.gold === null && X.item === null, `${tag}: 경험치 0 · 금화/아이템 줍기 없음`, X);
@@ -540,8 +567,25 @@ async function fullCase(s, vp) {
   const M1 = await s.eval(() => import('/src/core/save.js').then(({ saves }) => { const m = saves.loadMeta(), d = saves.read(3); return { nm: m.nm, slot: d?.nm?.nm_s01 ?? null, mem: window.__game.meta?.nm ?? null }; }));
   ok(M1.nm?.ids?.nm_s01 > 0 && M1.nm.clears >= 1 && M1.mem?.clears === M1.nm.clears, `${tag}: 메타 저장 nm (K1) clears ${M1.nm?.clears}`, M1.nm);
   ok(M1.slot?.done === true, `${tag}: 슬롯 저장에 state.nm`);
+  // [P3b] 격파 결과 화면: 첫 보상(장비 · 골드) · 기록 · 악몽 격파 수 (K1) · 새 잔상 → 기본 단추 「성당으로」
+  const RS1 = await resultScreen(s);
+  ok(!!RS1, `${tag}: 격파 → 결과 화면 (보상 줄)`);
+  if (RS1) {
+    const row = (k) => RS1.rows.find((r) => r[0] === k)?.[1] ?? null;
+    ok(String(row('첫 격파 보상')).startsWith(R1.items[0]) && /\((전설|신화)\)$/.test(String(row('첫 격파 보상'))), `${tag}: 보상 줄 — 첫 격파 보상 ${row('첫 격파 보상')}`, RS1.rows);
+    ok(row('골드') === `+${R1.gold.toLocaleString('ko-KR')} G`, `${tag}: 보상 줄 — 골드 ${row('골드')}`);
+    ok(String(row('기록')).startsWith(`${R1.time.toFixed(1)}초`) && /새 기록/.test(String(row('기록'))), `${tag}: 보상 줄 — 기록 (첫 격파 = 새 기록) ${row('기록')}`);
+    ok(String(row('악몽 격파')).startsWith(`${R1.clears} / 25`) && (R1.metaFresh ? /\(\+1\)/.test(String(row('악몽 격파'))) : true), `${tag}: 보상 줄 — 악몽 격파 ${row('악몽 격파')} (K1 meta)`);
+    ok(R1.metaFresh && R1.clears === 1 ? row('새 잔상') === '「악몽」' : true, `${tag}: 보상 줄 — 첫 악몽이면 새 잔상 「악몽」 (${row('새 잔상')})`, R1);
+    ok(RS1.idx === 1, `${tag}: 결과 화면 기본 단추 = 「성당으로」`, RS1.idx);
+    await s.wait(900);
+    await shot(s, `${vp}_reward`);
+    await s.key('enter');
+  }
   const H1 = await until(s, () => { const g = window.__game; return g.scenes[0]?.name === 'hub' && g.world?.mode === 'town' ? { from: g.scenes[0].from, top: g.top?.name } : null; }, null, 20000);
   ok(H1 && H1.from === 'church', `${tag}: 격파 → 마을 성당 앞`, H1);
+  const CH1 = await until(s, () => { const c = window.__game.top; return c?.name === 'church' ? { tab: c.tabs?.[c.tab]?.id, sel: c.sel } : null; }, null, 8000);
+  ok(CH1 && CH1.tab === 'nightmare' && CH1.sel === 0, `${tag}: 성당이 「악몽」 탭 · 나이트윙 칸으로 열린다`, CH1);
   await s.wait(800);
   await shot(s, `${vp}_back_church`);
   await s.eval(() => { const g = window.__game; while (g.scenes.length > 1 && g.top?.name !== 'hub') g.pop(); });
@@ -557,6 +601,9 @@ async function fullCase(s, vp) {
   ok(post2.gold === pre2.gold && post2.n === pre2.n && post2.rec?.clears === 2 && post2.rec.tries === 3, `${tag}: 골드·가방 그대로 · 격파 2 · 도전 3`, { pre2, post2 });
   const M2 = await s.eval(() => import('/src/core/save.js').then(({ saves }) => saves.loadMeta().nm));
   ok(M2?.clears === clears1, `${tag}: 메타 clears 그대로 (${M2?.clears})`);
+  const RS2 = await resultScreen(s);
+  ok(RS2 && RS2.rows.some((r) => r[0] === '첫 격파 보상' && r[1] === '이미 받았다') && !RS2.rows.some((r) => r[0] === '골드') && RS2.rows.some((r) => r[0] === '악몽 격파' && !/\+1/.test(r[1])), `${tag}: 두 번째 결과 화면 — 「이미 받았다」 · 골드 줄 없음 · 격파 수 그대로`, RS2);
+  if (RS2) { await s.wait(900); await s.key('enter'); }
   await until(s, () => window.__game.scenes[0]?.name === 'hub' && window.__game.world?.mode === 'town', null, 20000);
   await s.eval(() => { const g = window.__game; while (g.scenes.length > 1 && g.top?.name !== 'hub') g.pop(); });
   // ── 실패 → 「성당으로」
@@ -571,6 +618,56 @@ async function fullCase(s, vp) {
   await s.eval(() => { const g = window.__game; while (g.scenes.length > 1 && g.top?.name !== 'hub') g.pop(); });
 }
 
+/** [P3b] 성당 「악몽」 탭: 25칸 · 상태 · 키 이동 · 두 번 탭 → 확인 창 → 악몽 → 포기 → 같은 칸 */
+async function churchCase(s, vp) {
+  const tag = `[${vp}] 성당 「악몽」 탭`;
+  await loadSave(s, FIX);
+  await s.eval(() => { const st = window.__game.state; st.nm = { nm_s01: { done: true, best: 42.3, tries: 3, clears: 1, at: Date.now(), first: Date.now() } }; });
+  await s.eval(() => { const g = window.__game; g.push('church', { world: g.world, from: 'hub' }); });
+  const C0 = await until(s, () => { const c = window.__game.top; return c?.name === 'church' && c.t > 0.3 ? { tabs: c.tabs.map((t) => t.id) } : null; }, null, 8000);
+  ok(C0 && C0.tabs[C0.tabs.length - 1] === 'nightmare' && C0.tabs.slice(0, 4).join() === 'class,bless,reset,save', `${tag}: 「악몽」 탭은 맨 끝 (${C0?.tabs})`, C0);
+  if (!C0) return;
+  const nmTab = C0.tabs.length - 1;
+  ok(!!(await tapZone(s, `^tab:${nmTab}$`, 500)), `${tag}: 탭 단추를 눌러 연다`);
+  const C1 = await until(s, () => { const c = window.__game.top; return c?.name === 'church' && c.tabs[c.tab]?.id === 'nightmare' && c.cardRects?.length ? c : null; }, null, 4000) ? await s.eval(async () => {
+    const c = window.__game.top, st = window.__game.state, NMj = await import('/src/game/nightmare.js');
+    const cards = c.nmCards();
+    return { sel: c.sel, cols: c.nmCols, n: cards.length, rects: c.cardRects.length, talk: c.say?.text,
+      bad: cards.filter((x) => x.s.state !== NMj.nmStatus(st, x.id).state).map((x) => x.id),
+      hidden: cards.filter((x) => x.name === '???').map((x) => x.id), unlocked: st.progress.unlocked,
+      st: cards.map((x) => x.s.state), firstReady: cards.findIndex((x) => x.s.state === 'ready') };
+  }) : null;
+  ok(C1 && C1.n === 25 && C1.rects === 25 && C1.bad.length === 0, `${tag}: 25칸 · 상태 = nmStatus`, C1 && { n: C1.n, rects: C1.rects, bad: C1.bad });
+  if (!C1) return;
+  ok(C1.st[0] === 'done' && C1.sel === C1.firstReady && C1.firstReady === 1, `${tag}: 첫 보상이 남은 첫 칸을 고른다 (${C1.sel})`, C1.st.slice(0, 4));
+  ok(C1.hidden.every((id) => !C1.unlocked.includes(D.NM[id].stage)), `${tag}: 이야기에서 아직 열리지 않은 장만 「???」 (${C1.hidden.join(',') || '없음'})`);
+  ok(C1.cols >= 3 && C1.cols <= 5, `${tag}: ${C1.cols}열`);
+  await s.wait(600);
+  await shot(s, `${vp}_church_tab`);
+  // 키 이동: → ↓ ← ↑
+  const K = [];
+  for (const k of ['right', 'down', 'left', 'up']) { await s.key(k); await s.wait(120); K.push(await s.eval(() => window.__game.top.sel)); }
+  ok(K.join() === [C1.sel + 1, C1.sel + 1 + C1.cols, C1.sel + C1.cols, C1.sel].join(), `${tag}: 키 이동 → ↓ ← ↑ (${K})`);
+  // 나이트윙 칸: 첫 탭 = 고르기, 둘째 탭 = 확인 창
+  await tapZone(s, '^nm:0$', 300);
+  const sel0 = await s.eval(() => ({ sel: window.__game.top.sel, modal: !!window.__game.top.modal }));
+  ok(sel0.sel === 0 && !sel0.modal, `${tag}: 첫 탭 = 고르기`, sel0);
+  await tapZone(s, '^nm:0$', 400);
+  const MD = await s.eval(() => { const m = window.__game.top.modal; return m ? { title: m.title, lines: m.lines } : null; });
+  ok(MD && MD.title === '악몽에 도전하시겠습니까?' && MD.lines.some((l) => l.startsWith('규칙: 피의 비')) && MD.lines.some((l) => l === '첫 격파 보상은 이미 받았습니다.'), `${tag}: 둘째 탭 = 확인 창 (규칙 · 이미 받은 첫 보상)`, MD);
+  if (!MD) return;
+  await s.key('enter');
+  const W = await until(s, () => { const g = window.__game, w = g.world; return g.top?.name === 'stage' && w?.mode === 'trial' && g.fade.dir <= 0 ? { id: w.trial?.id } : null; }, null, 25000);
+  ok(W && W.id === 'nm_s01', `${tag}: 확인 → 악몽 나이트윙`, W);
+  await s.eval(() => { const w = window.__game.world, p = w.player; if (w.arenaX !== undefined) p.x = w.arenaX + 96; });
+  await until(s, () => window.__game.world.bossActive, null, 8000);
+  await s.eval(() => import('/src/game/trial.js').then((TR) => TR.leaveTrial(window.__game, 'nm_s01', 'quit')));
+  const CB = await until(s, () => { const g = window.__game, c = g.top; return g.scenes[0]?.name === 'hub' && c?.name === 'church' ? { tab: c.tabs?.[c.tab]?.id, sel: c.sel, from: g.scenes[0].from } : null; }, null, 20000);
+  ok(CB && CB.tab === 'nightmare' && CB.sel === 0 && CB.from === 'church', `${tag}: 포기 → 마을 성당 「악몽」 탭 · 같은 칸`, CB);
+  await s.eval(() => { const g = window.__game; while (g.scenes.length > 1 && g.top?.name !== 'hub') g.pop(); });
+  await s.wait(200);
+}
+
 /** 1장 세이브 → 월드맵 「악몽」 단추(있으면) → 나이트윙 → 떠나기 */
 async function ch1Case(s, vp) {
   const tag = `[${vp}] 1장 세이브`;
@@ -581,13 +678,21 @@ async function ch1Case(s, vp) {
   let via = 'api';
   await s.eval(() => { const g = window.__game; if (g.registry?.worldmap) g.push('worldmap', { world: g.world, from: 'hub' }); });
   await s.wait(900);
-  const btn = await s.eval(() => import('/src/core/ui.js').then(({ taps }) => (taps.zones?.() ?? []).find((z) => z.hit && /nightmare|^nm[_:]/i.test(String(z.id)))?.id ?? null));
+  // [P3b] 1장 노드를 고르면 붉은 「악몽」 단추 (그 장의 보스를 쓰러뜨렸다) → 확인 창 → 도전한다
+  const MP = await s.eval(() => { const m = window.__game.top; if (m?.name !== 'worldmap') return null; const i = m.nodes.findIndex((n) => n.id === 's01'); if (i >= 0) m.index = i; return { page: m.page, i, s02: m.nodes.find((n) => n.id === 's02') ? !!m.nmFor(m.nodes.find((n) => n.id === 's02')) : null }; });
+  ok(MP && MP.page === 0 && MP.i >= 0 && MP.s02 !== true, `${tag}: 월드맵 1장 노드 (2장에는 악몽 단추 없음)`, MP);
+  await s.wait(700);
+  await shot(s, `${vp}_worldmap_button`);
+  const nmOn = await s.eval(() => import('/src/data/nightmare.js').then((D) => D.NM_FLAGS.ui));
+  const btn = await tapZone(s, '^nm:open$', 500);
   if (btn) {
-    const p = await s.eval((id) => import('/src/core/ui.js').then(({ taps }) => { const g = window.__game, z = taps.zones().find((q) => q.id === id), c = g.canvas.getBoundingClientRect(), k = c.width / g.viewW; return { x: c.left + (z.x + z.w / 2) * z.k * k, y: c.top + (z.y + z.h / 2) * z.k * k }; }), btn);
-    await s.page.touchscreen.tap(p.x, p.y); await s.wait(300);
-    if (!(await until(s, () => window.__game.world?.mode === 'trial', null, 2500))) { await s.page.touchscreen.tap(p.x, p.y); await s.wait(300); }
-    if (await until(s, () => window.__game.world?.mode === 'trial', null, 4000)) via = 'button';
+    await shot(s, `${vp}_worldmap_ask`);
+    const ask = await s.eval(() => { const m = window.__game.top; return m?.nmAsk ? { ...m.nmAsk } : null; });
+    ok(ask && ask.id === 'nm_s01', `${tag}: 붉은 단추 → 확인 창`, ask);
+    await tapZone(s, '^nmask:go$', 300);
+    if (await until(s, () => window.__game.world?.mode === 'trial', null, 6000)) via = 'button';
   }
+  if (nmOn) ok(via === 'button', `${tag}: 월드맵 붉은 「악몽」 단추로 들어간다 (입구 켜짐)`, { btn, via });
   if (via !== 'button') {
     await s.eval(() => { const g = window.__game; while (g.scenes.length > 1 && g.top?.name !== 'hub') g.pop(); });
     await s.eval(() => import('/src/game/nightmare.js').then((N) => N.startNightmare(window.__game, 'nm_s01', { from: 'worldmap' })));

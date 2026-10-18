@@ -201,6 +201,10 @@ async function stage(spec) {
   if (spec.hp != null) S.boss.hp = S.boss.stats.maxHp * spec.hp;
   if (spec.act) S.boss.debugAct(spec.act);
   if (spec.kill) kill();
+  if (spec.reform) {                      // 해일: 가라앉았다가 다시 솟을 때까지 → 그 뒤 t 초
+    let n = 0; while (!S.boss.sunk && n++ < 200) tick(0.02);
+    n = 0; while (S.boss.sunk && n++ < 400) tick(0.02);
+  }
   if (spec.t) tick(spec.t);
   if (spec.hit) { hit(1, spec.hit); tick(0.02); }
   if (spec.gk != null) S.boss.goldK = spec.gk;
@@ -265,14 +269,16 @@ async function sheet(rows, width = 2400) {
 async function bench(spec = {}, frames = 300) {
   await stage(spec);
   const c = cv.getContext('2d'), T = [];
+  for (let i = 0; i < 60; i++) { stepWorld(S.W, DT); c.setTransform(1, 0, 0, 1, 0, 0); c.translate(VW / 2 - S.boss.zx, VH - 40 - S.boss.fy); drawArt(c); }   // 예열 (JIT · 굽기)
   for (let i = 0; i < frames; i++) {
     stepWorld(S.W, DT);
     c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, VW, VH);
     c.translate(VW / 2 - S.boss.zx, VH - 40 - S.boss.fy);
     const t0 = performance.now(); drawArt(c); T.push(performance.now() - t0);
   }
+  const mean = T.reduce((a, b) => a + b, 0) / frames;
   T.sort((a, b) => a - b);
-  return { label: spec.label ?? spec.act ?? 'idle', q: spec.q ?? 'high', med: +T[frames >> 1].toFixed(3), p95: +T[Math.floor(frames * 0.95)].toFixed(3), memMB: +(S.rig.memMB ?? 0).toFixed(2), td: +S.rig.td.toFixed(2) };
+  return { label: spec.label ?? spec.act ?? 'idle', q: spec.q ?? 'high', mean: +mean.toFixed(3), med: +T[frames >> 1].toFixed(3), p95: +T[Math.floor(frames * 0.95)].toFixed(3), memMB: +(S.rig.memMB ?? 0).toFixed(2), td: +S.rig.td.toFixed(2) };
 }
 /** 레지스트리 경로: 등록 → 미리 굽기 → 보스 draw(paintedDraw) 로 모든 공격을 돌린다 */
 async function regCheck(secPerAct = 2.0) {

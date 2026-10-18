@@ -161,7 +161,7 @@ function drawBoss(ctx, b, world, rig, st) {
     D.begin(ctx);
     D.rec = false; D.log.length = 0;
     body(D, ctx, R, b, st, t, q);
-    if (fOn) D.flash(clamp(b.flashT / 0.1, 0, 1) * 0.65);
+    if (fOn) D.flash(clamp(b.flashT / 0.1, 0, 1) * (0.5 - 0.12 * clamp(st.gk, 0, 1)));
     else { D.rec = false; D.log.length = 0; }
     D.end();
     goldEdges(ctx, st, t, q);
@@ -422,7 +422,10 @@ function nearArm(D, ctx, R, b, st, t, SH0, NK) {
   // 쉼 자리: 어깨 아래로 거의 곧게 (숨쉬기 · 걸음에 조금 흔들림)
   const sw = Math.sin((b.walkPh ?? 0) + PI) * 4 * (b.walkK ?? 0) + Math.sin(t * 2.1) * 1.2;
   const rx = SH[0] + 2 + sw, ry = SH[1] + (l1 + l2) * 0.97;
-  const tx = lerp(rx, S.hdN.x, k), ty = lerp(ry, S.hdN.y, k);
+  let tx = lerp(rx, S.hdN.x, k), ty = lerp(ry, S.hdN.y, k);
+  // 마지막 약: 약병 주둥이를 (그림의) 입으로 — 로직 손 자리 대신 지난 프레임의 눈 자리 아래
+  const drink = clamp((Pz.armN - 3.3) / 0.6, 0, 1);
+  if (drink > 0 && st.eyeL) { tx = lerp(tx, st.eyeL[0] - 4, 0.75 * drink); ty = lerp(ty, st.eyeL[1] + 26, 0.75 * drink); }
   const o = ik2(SH[0], SH[1], tx, ty, l1, l2 + 2, aN > 2.5 ? 1 : -1, st.ik ??= {});
   const wx = o.hx, wy = o.hy, fa = Math.atan2(wy - o.ey, wx - o.ex);
   const grip = aN > 0.45 || Pz.lens > 0.05;
@@ -537,7 +540,7 @@ function ambient(P, b, st, dt, q, hit, t, bodyA) {
   // 녹을 때 수은 방울
   if (st.melt > 0.1 && rr.next() < dt * 24 * amb) { const p = toW(rr.range(-30, 30), -rr.range(2, 40) * (1 - st.melt * 0.8), [0, 0]); P.emit('spark', p[0], p[1], rr.range(-60, 60), rr.range(-160, -40), { color: SILVER }); }
   // 무릎: 머리 위 은빛 침
-  if (b.stunned && rr.next() < dt * 6 * amb) { const p = toW(b.pts.head.x + 6, b.pts.head.y + 10, [0, 0]); P.emit('blood', p[0], p[1], rr.range(-10, 10), rr.range(-10, 30), { color: '#5e6874', hi: SILVER }); }
+  if (b.stunned && st.eyeL && rr.next() < dt * 2.5 * amb) { const p = toW(st.eyeL[0] - 2, st.eyeL[1] + 15, [0, 0]); P.emit('blood', p[0], p[1], rr.range(-14, 14), rr.range(-20, 10), { color: '#5e6874', hi: SILVER }); }
   if (hit) {
     const hp = st.fp, p = st.H2 ??= [0, 0];
     if (hp) { p[0] = hp.x + hp.w / 2 + rr.range(-6, 6); p[1] = hp.y + hp.h / 2 + rr.range(-6, 6); } else { const w = toW(rr.range(-10, 10), rr.range(-120, -40), [0, 0]); p[0] = w[0]; p[1] = w[1]; }

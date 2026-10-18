@@ -15,7 +15,7 @@ export const NM_COLOR = '#e0203a';
  * 입구 스위치 (P3b): ui = 성당 「악몽」 탭 · 월드맵 붉은 「악몽」 단추 · 격파 결과 화면(trial_end 보상 줄).
  * 꺼져 있으면 악몽은 startNightmare 로만 들어간다 (P3a 상태). 시험이 켜고 끌 수 있게 객체로 둔다.
  */
-export const NM_FLAGS = { ui: false };
+export const NM_FLAGS = { ui: true };   // P3b: test_nightmare --browser 통과 뒤 켰다 (2026-10-18)
 /** 실패 화면 엘리제의 한마디 (시련 failLine 자리) */
 export const NM_FAIL_LINE = '악몽도 결국 꿈이에요. 숨을 고르고, 다시 가요!';
 /** 레벨: 이야기 레벨 + 8, 영웅이 더 높으면 영웅 − 2 */

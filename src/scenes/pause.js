@@ -97,7 +97,7 @@ export class PauseScene extends Scene {
       { id: 'menu', label: '메뉴', sub: '상태 · 장비 · 스킬 · 도감', icon: 'crest', disabled: !reg.menu, run: () => this.game.push('menu', { world: this.world, tab: this.skillBadge != null ? 'skills' : 'status' }) },
       { label: '인벤토리', icon: 'bag', disabled: !reg.menu, run: () => this.game.push('menu', { world: this.world, tab: 'inventory' }) },
       { label: '설정', icon: 'gear', disabled: !reg.options, run: () => this.game.push('options', {}) },
-      this.world?.trial ? { label: '시련 포기', icon: 'home', run: () => this.confirmQuitTrial() }   // 시련: 성당으로 (TRIAL.leaveTrial)
+      this.world?.trial ? { label: this.world.trial.nightmare ? '악몽 포기' : '시련 포기', icon: 'home', run: () => this.confirmQuitTrial() }   // 시련: 성당으로 (TRIAL.leaveTrial) · [P3b] 악몽은 「악몽 포기」 (p3a_requests 1)
         : { label: '마을로 귀환', icon: 'home', run: () => this.confirmTown() },
       { label: '타이틀로', icon: 'door', run: () => this.confirmTitle() },
     ];
@@ -146,10 +146,10 @@ export class PauseScene extends Scene {
   }
   /** 시련 중: 메아리에서 빠져나와 성당으로 (기록은 남고, 언제든 다시 도전할 수 있다) */
   confirmQuitTrial() {
-    const w = this.world, tid = w?.trial?.id;
+    const w = this.world, tid = w?.trial?.id, nm = !!w?.trial?.nightmare;   // [P3b] 악몽 (같은 길 — TRIAL.leaveTrial 이 nightmare.js 로 넘긴다)
     this.modal = new PauseConfirm({
-      title: '시련 포기', yes: '포기한다', no: '취소', danger: true,
-      text: '메아리에서 빠져나와 성당으로 돌아갑니다.\n시련은 언제든 다시 도전할 수 있습니다.',
+      title: nm ? '악몽 포기' : '시련 포기', yes: '포기한다', no: '취소', danger: true,
+      text: nm ? '악몽에서 빠져나와 돌아갑니다.\n악몽은 언제든 다시 도전할 수 있습니다.' : '메아리에서 빠져나와 성당으로 돌아갑니다.\n시련은 언제든 다시 도전할 수 있습니다.',
       onYes: () => TRIAL.leaveTrial(this.game, tid, 'quit'),
     });
   }
@@ -328,7 +328,7 @@ export class PauseScene extends Scene {
     const st = w.stage || {};
     const ng = w.ng > 0 ? NG.ngLabel?.(w.ng) || `${w.ng + 1}회차` : '';   // [hook:ng]
     const tr = w.trial;   // 시련: 머리 줄은 시련 이름 (보라)
-    if (tr) text(ctx, tr.name ?? '', cx0 + 22, cy0 + 30, { size: 13, weight: 800, color: TRIAL.TRIAL_COLOR, maxWidth: cw - 44 });
+    if (tr) text(ctx, tr.name ?? '', cx0 + 22, cy0 + 30, { size: 13, weight: 800, color: tr.color ?? TRIAL.TRIAL_COLOR, maxWidth: cw - 44 });   // [P3b] 악몽은 진홍
     else text(ctx, `CHAPTER ${st.chapter ?? ''}${ng ? ` · ${ng}` : ''}`, cx0 + 22, cy0 + 30, { size: 12, weight: 800, family: FONT.num, color: PAL.goldMid });
     text(ctx, st.name ?? '', cx0 + 22, cy0 + 60, { size: 26, weight: 800, family: FONT.title, color: PAL.bone, ow: 4, maxWidth: cw - 44 });
     if (st.sub) text(ctx, st.sub, cx0 + 22, cy0 + 80, { size: 12, weight: 600, color: PAL.dim, maxWidth: cw - 44 });
@@ -344,8 +344,8 @@ export class PauseScene extends Scene {
     ];
     if (tr) {   // 시련: 점수·비전서 대신 규칙·도전 횟수 (점수·전리품이 남지 않는다)
       const rn = TRIAL.trialRuleNames(tr);
-      rows.splice(1, 1, ['시련의 규칙', rn.length ? rn.join(' · ') : '없음']);
-      rows.splice(4, 1, ['도전 횟수', `${w.hero?.trials?.[tr.id]?.tries ?? 0}`]);
+      rows.splice(1, 1, [tr.nightmare ? '악몽의 규칙' : '시련의 규칙', rn.length ? rn.join(' · ') : '없음']);
+      rows.splice(4, 1, ['도전 횟수', `${tr.nightmare ? this.game.state?.nm?.[tr.id]?.tries ?? 0 : w.hero?.trials?.[tr.id]?.tries ?? 0}`]);   // [P3b] 악몽 기록은 슬롯 state.nm
     }
     rows.forEach(([a, b], k) => {
       const y = cy0 + 120 + k * 24;
@@ -359,7 +359,7 @@ export class PauseScene extends Scene {
     const ly = cy0 + 120 + rows.length * 24;
     text(ctx, '남은 목숨', cx0 + 24, ly, { size: 13, weight: 600, color: PAL.text });
     const lives = tr ? 0 : run.lives ?? 0;
-    if (tr) text(ctx, '줄지 않음', cx0 + cw - 24, ly, { size: 13, align: 'right', weight: 800, color: TRIAL.TRIAL_COLOR, ow: 3 });
+    if (tr) text(ctx, '줄지 않음', cx0 + cw - 24, ly, { size: 13, align: 'right', weight: 800, color: tr.color ?? TRIAL.TRIAL_COLOR, ow: 3 });
     for (let k = 0; k < Math.min(lives, 9); k++) {
       const hx = cx0 + cw - 28 - k * 18, hy = ly - 5;
       glow(ctx, hx, hy, 9, '#ff3050', 0.4);
