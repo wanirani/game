@@ -6,11 +6,13 @@
 //  - PLAY P09 · P19: 랭크가 나오면 아래 가운데 큰 「계속 ▶」 단추 (터치 · 결정). 세로가 넉넉한 화면(폴드 · 데스크톱, UI 높이 ≥ 600)은
 //    표 아래에 「이번에 얻은 장비」 카드 줄 (아이콘 · 이름 · ▲▼ 점수 · ▲ 장비는 「지금 장착」 — pickup_compare.equipNow, 키보드 N · 패드 ↑ 길게).
 //    낮은 화면(휴대폰)은 예전처럼 랭크 아래 요약 칸 + 목록, 「계속」 단추는 아래 줄 오른쪽 (보상 글은 왼쪽)
+//  - [s5:p4b] 표의 6줄 뒤에 경험치 줄(지금 영웅: 레벨 · 막대 전 → 후 · +EXP)과 대기 헌터 줄(「대기 헌터 N명」 · 받은 헌터 이름 · +EXP)이
+//    같은 방식으로 한 줄씩 나온다 (점수 합계에는 들지 않는다). 줄 간격은 표 높이 안에서 8줄로 나눈다 — 어느 화면 크기에서도 아래 칸을 밀지 않는다
 import { Scene } from '../core/game.js';
 import { input } from '../core/input.js';
 import { audio } from '../core/audio.js';
 import { assets } from '../core/assets.js';
-import { text, panel, FONT, COLORS, drawCover, vignette, bloodText, prewarmText, textFloor } from '../core/ui.js';
+import { text, panel, FONT, COLORS, drawCover, vignette, bloodText, prewarmText, textFloor, bar, font } from '../core/ui.js';
 import { drawHints } from '../core/prompts.js';
 import { fmt, fmtTime, clamp, ease } from '../core/math.js';
 import { saves } from '../core/save.js';
@@ -25,6 +27,10 @@ import { taps } from '../core/ui.js';
 import { drawMark, scoreStr } from './menu/gear_compare.js';
 import { drawSlot } from '../render/icons.js';
 import { gbutton } from './front/common.js';
+// [s5:p4b] 「함께 걷는 사냥꾼」: 표 아래 두 줄 — 지금 영웅 경험치 막대(전 → 후) · 「대기 헌터 N명 +X EXP」 (progression.addExpShared 의 실행 중 합계)
+import { benchMark, benchSince, benchAllowed } from '../game/progression.js';
+import { expToNext, MAX_LEVEL } from '../game/stats.js';
+import { CHARACTERS } from '../data/characters.js';
 
 const RANKS = [
   { r: 'S', c: '#ffe070', min: 90, style: 'gold' }, { r: 'A', c: '#ffa640', min: 75, style: 'blood' }, { r: 'B', c: '#5aa8ff', min: 55, style: 'bone' },
@@ -33,6 +39,8 @@ const RANKS = [
 /** 클리어하면 엔딩 장면으로 가는 스테이지 (엔딩 장면이 data/story.js endingAfter() 로 최종 판정; world2 §2.3) */
 export const ENDING_STAGES = ['s12', 's13', 's20'];
 const RANK_W = 170, GAP = 20; // 오른쪽 랭크 도장 칸 폭, 표와의 간격 (UI px)
+/** [s5:p4b] 글자 폭 (글자 크기 하한 textFloor 를 그리는 text() 와 같게 적용) */
+function measureW(ctx, str, size, weight, family) { ctx.font = font(size, weight, family); return ctx.measureText(String(str)).width; }
 
 /** 이미 본 아웃트로라도, 지금 조건이 참인 분기 뒤에 아직 켜지지 않은 플래그가 있으면(예: s12 유물 5개 → 심연의 문) 다시 재생 */
 function hasNewBranch(script, st) {
@@ -103,7 +111,9 @@ export class ResultsScene extends Scene {
     st.lives = Math.max(run.lives, world.diff.lives);
     this.qolSettle(world, st);
     if (!this.assisted) this.game.recordScore?.(this.finalScore, stage.id);   // [autofix 5] AUTO 판은 점수판에 올리지 않는다
+    const xp0 = this.expStart(world, st);   // [s5:p4b] 스테이지 클리어 퀘스트 자동 보상(아래 stageCleared)도 경험치 줄에 들어가게 그 전에 시작점
     bus.emit('stageCleared', { stageId: stage.id, rank: this.rank.r, time: run.time, score: this.finalScore, noDamage: run.damageTaken === 0, diff: st.difficulty, charId: st.charId, assisted: this.assisted });   // [hook:ach] 무결 (ch_nodmg_stage) — 여기서는 game.world 가 이미 비었다
+    this.expRows = this.expSummary(world, st, xp0);   // [s5:p4b]
     saves.write(st.slot, st);
     this.shownRows = 0; this.rowT = 0; this.scoreShown = this.baseScore;
     this.rankShown = 0; this.left = false;
@@ -165,7 +175,7 @@ export class ResultsScene extends Scene {
   }
   update(dt) {
     this.rowT += dt;
-    if (this.shownRows < this.rows.length && this.rowT > 0.35) { this.rowT = 0; this.shownRows++; audio.sfx('coin'); }
+    if (this.shownRows < this.rowCount && this.rowT > 0.35) { this.rowT = 0; this.shownRows++; audio.sfx('coin'); if (this.shownRows > this.rows.length) this.expT0 ??= this.t; }
     if (this.shownRows >= this.rows.length) {
       this.scoreShown = Math.min(this.finalScore, this.scoreShown + Math.max(1, (this.finalScore - this.baseScore) * dt * 1.5));
       if (!this.rankShown && this.scoreShown >= this.finalScore) { this.rankShown = this.t; audio.sfx('levelup'); }
@@ -187,7 +197,7 @@ export class ResultsScene extends Scene {
     if (hit === 'continue' && this.rankShown) { if (this.t - this.rankShown > 0.3) this.leave(); return; }
     const skip = input.pressed('confirm') || input.pressed('attack') || input.pressed('menu') || input.pointer.tapped;
     if (skip) {
-      if (!this.rankShown) { this.shownRows = this.rows.length; this.scoreShown = this.finalScore; this.rankShown = this.t; }
+      if (!this.rankShown) { this.shownRows = this.rowCount; this.scoreShown = this.finalScore; this.rankShown = this.t; this.expT0 ??= this.t - 1; }
       else if (this.t - this.rankShown > 0.5) this.leave();
     }
   }
@@ -204,6 +214,76 @@ export class ResultsScene extends Scene {
     if (playOutro) this.game.go('story', { script: stage.outro, then: toEnding ? 'ending' : next, thenParams: { from: stage.id }, bg: stage.bg });
     else if (toEnding) this.game.go('ending', { from: stage.id });
     else this.game.go(next, { from: stage.id });
+  }
+
+  /** 표에 나오는 줄 수 (점수 6줄 + [s5:p4b] 경험치 줄 0–2) */
+  get rowCount() { return this.rows.length + (this.expRows?.length ?? 0); }
+  /** [s5:p4b] 경험치 줄의 시작점: 이 월드의 첫 경험치 획득 때 남긴 world.expLog (없으면 지금) — 레벨 · 경험치 · 합계 표시점 */
+  expStart(world, st) {
+    const hero = st?.heroes?.[st?.charId] ?? null;
+    const log = world?.expLog;
+    if (log && hero && log.charId === hero.charId) return { lv: log.lv, exp: log.exp, mark: log.mark };
+    return { lv: hero?.level ?? 1, exp: hero?.exp ?? 0, mark: benchMark() };
+  }
+  /**
+   * [s5:p4b] 결과 표 아래 경험치 줄 → [{ kind:'hero', … }, { kind:'bench', … }?] (이야기 스테이지에서만; 대기 헌터 줄은 받은 헌터가 있을 때만).
+   * 지금 영웅: 시작 레벨·경험치 → 지금, +EXP 는 이 스테이지 동안 지금 영웅이 받은 양 (처치 · 보스 · 퀘스트 보상).
+   * 대기 헌터: progression.addExpShared 가 나눠 준 합 · 받은 헌터 (레벨이 오른 헌터 ▲, 따라잡기 ×2 로 받은 헌터 ×2)
+   */
+  expSummary(world, st, xp0) {
+    try {
+      const hero = st?.heroes?.[st?.charId];
+      if (!hero || world?.mode !== 'story' || world?.trial || st?.arcade) return [];
+      const d = benchSince(xp0?.mark);
+      const out = [{ kind: 'hero', charId: hero.charId, lv0: xp0.lv, exp0: xp0.exp, lv: hero.level, exp: hero.exp, gained: Math.max(0, Math.round(d.active)), max: hero.level >= MAX_LEVEL }];
+      if (d.heroes.length && benchAllowed(st, { world })) {
+        const heroes = d.heroes.map((h) => ({ ...h, name: String(CHARACTERS[h.charId]?.name ?? h.charId).split(' ')[0], level: st.heroes?.[h.charId]?.level ?? null }));
+        heroes.sort((a, b) => (b.ups > 0) - (a.ups > 0));   // 레벨이 오른 헌터 먼저 (같으면 CHAR_ORDER 순)
+        out.push({ kind: 'bench', n: heroes.length, exp: Math.max(0, Math.round(d.bench)), heroes });
+      }
+      return out;
+    } catch (e) { console.warn('[results] exp', e); return []; }
+  }
+  /** [s5:p4b] 경험치 줄 하나 (표 안, 다른 줄과 같은 왼쪽 이름 · 오른쪽 값 열). 막대는 줄이 나온 뒤 0.9초 동안 시작 → 지금으로 찬다 */
+  drawExpRow(ctx, L, r, yy, size) {
+    const x = L.x, w = L.w;
+    const label = r.kind === 'hero' ? '경험치' : `대기 헌터 ${r.n}명`;
+    const right = r.kind === 'hero' ? (r.max ? 'MAX' : `+${fmt(r.gained)} EXP`) : `+${fmt(r.exp)} EXP`;
+    const rc = r.kind === 'hero' ? '#9ad8ff' : '#e8c872';
+    text(ctx, label, x + 30, yy, { size, color: r.kind === 'hero' ? '#e8dcc8' : '#f0d890' });
+    text(ctx, right, x + w - 30, yy, { size, align: 'right', weight: 800, family: FONT.num, color: rc });
+    const lw = measureW(ctx, label, size, 500, FONT.body), rw = measureW(ctx, right, size, 800, FONT.num);
+    const m0 = Math.round(x + 30 + lw + 16), m1 = Math.round(x + w - 30 - rw - 16);
+    if (m1 - m0 < 40) return;
+    const sz = Math.max(12, size - 2);
+    if (r.kind === 'hero') {
+      // 막대: 시작 위치(레벨 + 채움)에서 지금 위치로. 레벨이 오르면 「Lv.4→5」(금색)
+      const p = this.expT0 == null ? 0 : ease.outCubic(clamp((this.t - this.expT0) / 0.9, 0, 1));
+      const f0 = r.lv0 >= MAX_LEVEL ? 1 : clamp(r.exp0 / expToNext(r.lv0), 0, 1), f1 = r.max ? 1 : clamp(r.exp / expToNext(r.lv), 0, 1);
+      const pos = (r.lv0 + f0) + ((r.lv + f1) - (r.lv0 + f0)) * p;
+      const lvNow = p >= 1 ? r.lv : Math.min(r.lv, Math.floor(pos)), fill = p >= 1 ? f1 : (lvNow === r.lv ? Math.min(f1, pos - lvNow) : pos - lvNow);
+      const up = r.lv > r.lv0;
+      const lt = up && p >= 1 ? `Lv.${r.lv0}→${r.lv}` : `Lv.${lvNow}`;
+      text(ctx, lt, m0, yy, { size: sz, weight: 800, family: FONT.num, color: up && p >= 1 ? '#ffe070' : '#fff' });
+      const b0 = Math.round(m0 + measureW(ctx, lt, sz, 800, FONT.num) + 10), bw = m1 - b0, bh = Math.max(6, Math.round(size * 0.45));
+      if (bw < 30) return;
+      const by = Math.round(yy - size * 0.36 - bh / 2);
+      bar(ctx, b0, by, bw, bh, fill, { color: '#7ec8ff', back: 'rgba(0,0,0,0.65)', edge: 'rgba(150,190,220,0.55)' });
+      if (lvNow === r.lv0 && f0 > 0) { ctx.fillStyle = 'rgba(16,30,48,0.6)'; ctx.fillRect(b0, by, bw * Math.min(f0, fill), bh); }   // 시작 몫은 어둡게 — 이번에 얻은 몫만 밝다
+      return;
+    }
+    // 대기 헌터: 「세라피나 Lv.4 ▲ · 빅터 Lv.3 ×2 …」 (들어가지 않으면 「외 N명」)
+    let cx = m0;
+    const parts = r.heroes;
+    for (let i = 0; i < parts.length; i++) {
+      const h = parts[i], sep = i ? ' · ' : '';
+      const seg = `${sep}${h.name}${h.level ? ` Lv.${h.level}` : ''}${h.ups > 0 ? ' ▲' : ''}${h.catchUp ? ' ×2' : ''}`;
+      const sw = measureW(ctx, seg, sz, 700, FONT.body);
+      const rest = parts.length - i - 1, more = rest ? measureW(ctx, ` 외 ${rest}명`, sz, 700, FONT.body) : 0;
+      if (cx + sw + more > m1) { text(ctx, `${i ? ' ' : ''}외 ${parts.length - i}명`, cx, yy, { size: sz, weight: 700, color: COLORS.dim }); break; }
+      text(ctx, seg, cx, yy, { size: sz, weight: 700, color: h.ups > 0 ? '#ffe070' : '#c8b8a0' });
+      cx += sw;
+    }
   }
 
   /** 배치 (UI px). 최소 720×400 에서도 표·랭크·안내가 겹치지 않는다 */
@@ -223,7 +303,7 @@ export class ResultsScene extends Scene {
     const cont = tall ? { x: midX - bw / 2, y: H - bh - 34, w: bw, h: bh } : { x: x + w + GAP + RANK_W - bw, y: H - bh - 8, w: bw, h: bh };
     return {
       W, H, titleSize, titleY, subY, x, y, w, ph, tall, small, cont,
-      rowY0: y + 38, rowStep: (ph - 84) / 6, scoreY: y + ph - 20,
+      rowY0: y + 38, rowStep: (ph - 84) / Math.max(6, this.rowCount ?? 6), scoreY: y + ph - 20,
       rankX: x + w + GAP + RANK_W / 2, rankY: y + ph / 2 + 20, rankSize: small ? 100 : 116,
       rewardY: tall ? y + ph + 34 : cont.y + bh / 2 + 6, rewardX: tall ? midX : x + 24, hintY: H - 16, midX,
       loot: tall ? { x: x, y: y + ph + 74, w: w + GAP + RANK_W, h: Math.min(116, H - bh - 50 - (y + ph + 74)) } : null,
@@ -244,6 +324,10 @@ export class ResultsScene extends Scene {
       text(ctx, r[0], x + 30, yy, { size: rowSize, color: '#e8dcc8' });
       text(ctx, r[1], valX, yy, { size: rowSize, align: 'right', weight: 700, color: '#fff' });
       text(ctx, r[2] ? `+${fmt(r[2])}` : '0', x + w - 30, yy, { size: rowSize, align: 'right', weight: 800, family: FONT.num, color: r[2] ? '#ffe070' : '#777' });
+    });
+    (this.expRows ?? []).forEach((r, j) => {   // [s5:p4b] 경험치 · 대기 헌터 줄
+      if (this.rows.length + j >= this.shownRows) return;
+      this.drawExpRow(ctx, L, r, Math.round(L.rowY0 + (this.rows.length + j) * L.rowStep), rowSize);
     });
     text(ctx, 'SCORE', x + 30, L.scoreY, { size: 18, weight: 800, family: FONT.num, color: COLORS.dim });
     text(ctx, fmt(this.scoreShown), x + w - 30, L.scoreY + 2, { size: 28, align: 'right', weight: 900, family: FONT.num, color: '#fff' });

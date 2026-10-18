@@ -487,12 +487,29 @@ export function fitsText(ctx, str, w, { minSize = 11, weight = 500, family = FON
 const SQUEEZE = 0.82;
 // ───────────────────────── 스킬 알림 배지 (PLAY P06) ─────────────────────────
 /**
- * 이 영웅에게 스킬 알림을 띄울까 → { n, sp, learn, slot } (n = 0 이면 없음).
+ * 이 영웅에게 스킬 알림을 띄울까 → { n, sp, learn, slot, bench } (n = 0 이면 없음).
  *  - SP 가 있고 지금 배우거나 올릴 수 있는 스킬이 하나라도 있으면: n = SP (배지에 숫자)
  *  - 아니면 빈 슬롯이 있고 배운 액티브 중 장착하지 않은 것이 있으면: n = 1, slot = true (배지에 '!')
  * 메뉴 '스킬' 탭 · 일시정지 '메뉴' 줄이 쓴다 (마을 '메뉴' 단추 · HUD 는 PLAY-B 요청)
+ * [s5:p4b] state 를 주면 대기 헌터(이 세이브에 상태가 있는 다른 헌터 — 대기 중 경험치 나눔으로 레벨이 올라 SP 가 생긴다)도 센다:
+ *  bench = { n: 배울 스킬이 있는 대기 헌터 수, sp: 그들의 SP 합, ids: [charId…] }. n·sp·slot 은 지금 영웅 몫 그대로 (메뉴는 지금 영웅만 보여 준다) —
+ *  대기 헌터의 SP 는 헌터 교체 카드의 붉은 배지가 보여 준다 (town/party.js)
  */
-export function skillAlert(hero) {
+export function skillAlert(hero, state = null) {
+  const out = alertOf(hero);
+  out.bench = { n: 0, sp: 0, ids: [] };
+  const H = state?.heroes;
+  if (H && typeof H === 'object') {
+    for (const id of Object.keys(H)) {
+      const h = H[id];
+      if (!h || typeof h !== 'object' || h === hero || id === hero?.charId) continue;
+      const a = alertOf(h);
+      if (a.n > 0 && !a.slot) { out.bench.n++; out.bench.sp += a.sp; out.bench.ids.push(id); }
+    }
+  }
+  return out;
+}
+function alertOf(hero) {
   const out = { n: 0, sp: 0, learn: 0, slot: false };
   if (!hero || typeof hero !== 'object') return out;
   try {

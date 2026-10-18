@@ -24,6 +24,9 @@ import { glow } from './facades.js';
 import { planAll, applyLoadout, undoLoadout } from '../../game/gear_score.js';
 import { LoadoutModal, scoreStr } from '../menu/gear_compare.js';
 import { Nav, Gesture } from '../menu/common.js';
+// [s5:p4b] 「함께 걷는 사냥꾼」: 대기 헌터 카드에 금색 「따라잡기 ×2」 꼬리표 · 대기 중에 오른 레벨 「LEVEL UP」 띠 · 배울 스킬이 있으면 붉은 SP 배지
+import { catchUpOn, benchUnseen, topLevel, BENCH } from '../../game/progression.js';
+import { skillAlert, redBadge } from '../menu/common.js';
 
 const STAR_KEYS = ['공격', '방어', '속도', '마법', '사거리'];
 
@@ -43,8 +46,10 @@ export class PartyScene extends Scene {
     this.fx = new Particles(300);
     this.leaving = null;
     this.modal = null; this.undo = null; this.nav = null; this.ges = null;
+    this.unseen = benchUnseen();   // [s5:p4b] 대기 중에 오른 레벨 (이 화면을 닫으면 본 것으로)
     audio.sfx('menu_ok');
   }
+  exit() { benchUnseen(null, true); }   // [s5:p4b] 「LEVEL UP」 띠는 한 번 보면 사라진다
   /** [qol] 파티 전체 최적 장착 미리보기 */
   openOptimizeAll() {
     let all = null;
@@ -139,6 +144,7 @@ export class PartyScene extends Scene {
     const dh = clamp(Math.round(avail * 0.34), 84, 150);
     const cw = (vw - m * 2 - gap * (n - 1)) / n, ch = Math.min(254, avail - dh - 12), cy = 72;
     this.cardRects = [];
+    this._top = topLevel(st);   // [s5:p4b] 따라잡기 판정 (카드마다 다시 세지 않게)
     this.list.forEach((e, i) => {
       const r = tz('card:' + i, { x: m + i * (cw + gap), y: cy, w: cw, h: ch });
       this.cardRects.push(r);
@@ -174,6 +180,11 @@ export class PartyScene extends Scene {
       const w = findItem(st, hero.equip?.weapon);
       if (w) text(ctx, nameOf(w), wx, dy + 70, { size: 12, color: COLORS.rarity[w.rarity ?? 0], maxWidth: vw - m - wx - 16 });
       bar(ctx, wx, dy + 80, Math.min(160, vw - m - wx - 20), 5, hero.exp / expToNext(hero.level), { color: '#e8c872', shine: false });
+      // [s5:p4b] 대기 헌터: 지금 동행하는 헌터가 얻는 경험치를 나눠 받는다 (따라잡기면 두 배)
+      if (!low && e.id !== st.charId) {
+        const cu = catchUpOn(st, hero, topLevel(st));
+        text(ctx, cu ? `따라잡기 ×${BENCH.catchUp} — 대기 중 경험치 ${Math.round(BENCH.share * BENCH.catchUp * 100)}%` : `대기 중 경험치 ${Math.round(BENCH.share * 100)}%`, wx, dy + 104, { size: 12, weight: 700, color: cu ? '#ffd870' : '#a89a84', maxWidth: vw - m - wx - 16 });
+      }
     } else if (e.open) text(ctx, '새 헌터 — 선택하면 합류한다', sx + 150, dy + 40, { size: 13, weight: 700, color: '#8ae0a0' });
     // 버튼
     // 버튼·키 안내는 화면 아래 끝에 잘리지 않도록 (안내 기준선 vh-8, 허브와 같음)
@@ -240,6 +251,38 @@ export class PartyScene extends Scene {
       ctx.strokeStyle = '#1a0a04'; ctx.lineWidth = 1.5; ctx.strokeRect(lx - 11, ly - 6, 22, 18);
       ctx.fillStyle = '#1a0a04'; ctx.beginPath(); ctx.arc(lx, ly + 1, 2.5, 0, TAU); ctx.fill(); ctx.fillRect(lx - 1, ly + 2, 2, 5);
     }
+    if (e.open && hero) this.drawBenchTags(ctx, r, e, hero, cur);   // [s5:p4b]
     ctx.restore();
+  }
+  /**
+   * [s5:p4b] 카드 꼬리표: 왼쪽 위 금색 「따라잡기 ×2」(대기 헌터가 가장 높은 헌터보다 5레벨 이상 낮음 — 3레벨 이내가 될 때까지 대기 경험치 두 배),
+   * 오른쪽 위 붉은 SP 배지 (배울 스킬이 있는 SP — menu/common skillAlert), 발치에 「LEVEL UP」 띠 (대기 중에 오른 레벨, 이 화면을 닫으면 사라짐)
+   */
+  drawBenchTags(ctx, r, e, hero, cur) {
+    const st = this.state;
+    let tagR = r.x;   // 왼쪽 위 꼬리표의 오른쪽 끝 (SP 배지와 겹치면 배지를 한 줄 아래로)
+    if (!cur && catchUpOn(st, hero, this._top ?? topLevel(st))) {
+      const label = `따라잡기 ×${BENCH.catchUp}`;
+      ctx.font = font(11, 800);
+      const tw = Math.min(r.w - 12, ctx.measureText(label).width + 12);
+      ctx.fillStyle = '#d8a83a'; ctx.fillRect(r.x + 6, r.y + 6, tw, 20);
+      ctx.strokeStyle = '#5a3a08'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 6.5, r.y + 6.5, tw - 1, 19);
+      text(ctx, label, r.x + 6 + tw / 2, r.y + 20, { size: 11, weight: 800, align: 'center', color: '#2a1404', ow: 0, maxWidth: tw - 6 });
+      tagR = r.x + 6 + tw;
+    } else if (cur) { ctx.font = font(11, 800); tagR = r.x + 6 + Math.max(46, ctx.measureText('동행 중').width + 4); }
+    const key = `${hero.sp}|${hero.level}|${hero.classId}|${hero.asc}|${(hero.slots ?? []).join()}|${Object.keys(hero.skills ?? {}).length}`;
+    if (e.alertKey !== key) { e.alertKey = key; e.alert = skillAlert(hero); }
+    if (e.alert?.n > 0) {
+      const bx = r.x + r.w - 12, by = tagR > bx - 13 ? r.y + 39 : r.y + 15;
+      redBadge(ctx, bx, by, e.alert.slot ? '!' : e.alert.n, { size: 11, t: this.t });
+    }
+    const ups = this.unseen?.[e.id] ?? 0;
+    if (ups > 0 && !cur) {
+      const label = ups > 1 ? `LEVEL UP ×${ups}` : 'LEVEL UP';
+      const y = r.y + r.h - 62;
+      ctx.fillStyle = 'rgba(40,24,4,0.82)'; ctx.fillRect(r.x + 4, y - 13, r.w - 8, 19);
+      ctx.fillStyle = '#e8c872'; ctx.fillRect(r.x + 4, y - 13, r.w - 8, 1.5); ctx.fillRect(r.x + 4, y + 4.5, r.w - 8, 1.5);
+      text(ctx, label, r.x + r.w / 2, y + 1, { size: 12, weight: 900, family: FONT.num, align: 'center', color: '#ffe070', ow: 2, maxWidth: r.w - 12 });
+    }
   }
 }

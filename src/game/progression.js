@@ -121,8 +121,8 @@ export function addExpShared(state, n, activeHero, ctx = null) {
     const r = shareTo(h, base, top);
     if (!r) continue;
     out.bench.push(r); out.benchExp += r.exp;
-    const p = (BENCH_LEDGER.per[r.charId] ??= { exp: 0, ups: 0 });
-    p.exp += r.exp; p.ups += r.ups;
+    const p = (BENCH_LEDGER.per[r.charId] ??= { exp: 0, ups: 0, cu: 0 });
+    p.exp += r.exp; p.ups += r.ups; if (r.catchUp) p.cu += r.exp;
     if (r.ups) BENCH_LEDGER.unseen[r.charId] = (BENCH_LEDGER.unseen[r.charId] ?? 0) + r.ups;
   }
   BENCH_LEDGER.bench += out.benchExp;
@@ -131,17 +131,17 @@ export function addExpShared(state, n, activeHero, ctx = null) {
 /** 결과 화면용 표시점 (지금까지의 합계 사본) */
 export function benchMark() {
   const per = {};
-  for (const [k, v] of Object.entries(BENCH_LEDGER.per)) per[k] = { exp: v.exp, ups: v.ups };
+  for (const [k, v] of Object.entries(BENCH_LEDGER.per)) per[k] = { exp: v.exp, ups: v.ups, cu: v.cu };
   return { active: BENCH_LEDGER.active, bench: BENCH_LEDGER.bench, per };
 }
-/** 표시점 이후 → { active, bench, heroes: [{charId, exp, ups}] } (받은 헌터만, CHAR_ORDER 순) */
+/** 표시점 이후 → { active, bench, heroes: [{charId, exp, ups, catchUp}] } (받은 헌터만, CHAR_ORDER 순; catchUp = 그동안 ×2 로 받은 적이 있다) */
 export function benchSince(mark) {
   const m = mark && typeof mark === 'object' ? mark : { active: 0, bench: 0, per: {} };
   const heroes = [];
   for (const id of CHAR_ORDER) {
     const now = BENCH_LEDGER.per[id], was = m.per?.[id];
-    const exp = (now?.exp ?? 0) - (was?.exp ?? 0), ups = (now?.ups ?? 0) - (was?.ups ?? 0);
-    if (exp > 0 || ups > 0) heroes.push({ charId: id, exp, ups });
+    const exp = (now?.exp ?? 0) - (was?.exp ?? 0), ups = (now?.ups ?? 0) - (was?.ups ?? 0), cu = (now?.cu ?? 0) - (was?.cu ?? 0);
+    if (exp > 0 || ups > 0) heroes.push({ charId: id, exp, ups, catchUp: cu > 0 });
   }
   return { active: BENCH_LEDGER.active - (m.active ?? 0), bench: BENCH_LEDGER.bench - (m.bench ?? 0), heroes };
 }
