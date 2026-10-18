@@ -235,6 +235,11 @@ section('N10 입구 (P3b) 연결 · 배율 범위 · K1 잔상');
   ok(JSON.stringify(trails) === '[1,10,25]', `K1 잔상 need.nm = 1 · 10 · 25 (${trails})`);
   // 밸런스 표가 고친 배율 (balance.mjs --nm) 이 테스트 범위 안
   for (const id of ids) { const e = D.NM[id]; ok(e.hpMul >= 1.2 && e.hpMul <= 2 && e.atkMul >= 1 && e.atkMul <= 1.1, `${id}: 조정된 배율 범위 (체력 ${e.hpMul} · 공격 ${e.atkMul})`); }
+  // 악몽의 모습 색은 #hex 만: kit puff() 는 math.rgba(hex, a) 로 가장자리를 투명하게 굽는데 'rgba(…)' 는 그대로 돌려줘
+  // 연기 입자가 꽉 찬 사각형으로 보였다 (P3b 가 Fold 영상에서 찾아 고침)
+  const reg = src('src/render/painted/registry.js');
+  const nmCols = [...reg.matchAll(/\bNM_(HALO|EYE|SMOKE|EMBER) = '([^']*)'/g)].map((m) => [m[1], m[2]]);
+  ok(nmCols.length === 4 && nmCols.every(([, c]) => /^#[0-9a-f]{6}$/i.test(c)), `registry.js: 악몽 후광·눈·연기·불씨 색은 #hex (${nmCols.map((c) => c.join('=')).join(' ')})`);
 }
 console.log(`  노드: ${passes} 통과 · ${fails} 실패 (${((Date.now() - T0) / 1000).toFixed(1)}초)`);
 

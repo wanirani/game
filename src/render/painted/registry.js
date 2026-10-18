@@ -221,7 +221,8 @@ class PaintedBody extends Entity {
 // 새 굽기 0: 몸 뒤 진홍 후광(kit puff 스프라이트) · 몸 둘레 검붉은 연기(kit Particles + PRESET smoke) · 눈빛(렌더러 광원 자리).
 // 리그의 페이즈 틴트는 손상 2단계(dmg2)에만 구워져 있어 1페이즈부터 켜도 보이지 않는다 → 모든 리그에 이 셋을 쓴다.
 // 입자 생성·난수는 nmTick(update)에서만 — 그리기(nmUnder/nmOver)는 결정적이다 (hook_tags).
-const NM_HALO = '#8a0a1e', NM_EYE = '#ff2a3a', NM_SMOKE = 'rgba(40,4,12,0.9)', NM_EMBER = '#ff4a3a';
+// 색은 모두 #hex — kit puff() 는 math.rgba(hex, a) 로 가장자리를 투명하게 굽는데, 'rgba(…)' 문자열은 그대로 돌려줘 64×64 사각형이 꽉 찬다 (P3b 수정)
+const NM_HALO = '#8a0a1e', NM_EYE = '#ff2a3a', NM_SMOKE = '#28040c', NM_EMBER = '#ff4a3a';
 const NM_RNG = new RenderRNG(0x6e6d0001);
 function nmTick(pb, dt, world) {
   const b = pb.host;
