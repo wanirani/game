@@ -51,6 +51,8 @@ const CASES = [
   //  진짜 피해 경로(boss.takeHit)로 50% 변신 · 15% 마지막 한 모금(대사) · 격파 → 결과 → 아웃트로(s26_outro) → 마을, 그리고 저장 상태
   //  (cleared.s26 · ex_s26_done · 이야기 장 그대로 · boss_b_paracel). 무적(buffs.invincible)으로 영웅 레벨과 무관하게 끝까지 간다.
   { id: 's26_gate', url: 'index.html?scene=hub', steps: 'wait:2,wmgate:30,shot' },
+  // s26_rush = 1부 외전 코스 「외전 Ⅰ」(#18, 기기 기록): s26 을 연 1부 세이브만 고를 수 있고 (2부·2부 외전을 몰라도), 첫 보스가 나온다. 새 세이브는 코스 0 으로 돌아간다
+  { id: 's26_rush', url: 'index.html?scene=arcade', steps: 'wait:1.5,rush26:25,shot' },
   { id: 's26_flow', url: 'index.html?scene=stage&stage=s26', steps: 'wait:3,god:1,shot,rooms:r2|r3|r4|r5,shot,rooms:boss,rightboss:10,intro:25,painted:10,wait:1,shot,bosskill:150,wait:1.5,shot,tohub:150,shot,s26check:1' },
 ];
 if (args.list) { console.log(CASES.map((c) => c.id).join(' ')); process.exit(0); }
@@ -331,6 +333,31 @@ for (const c of CASES) {
         if (!s.cleared || !s.done || !s.boss || !s.seen) errs.push(`S26 저장 상태가 이상함 (${JSON.stringify(s)})`);
         if (s.chapter >= 26) errs.push(`S26 외전이 이야기 장을 올림 (chapter ${s.chapter})`);
         console.log(`    · ${c.id} 저장: ${JSON.stringify(s)}`);
+        continue;
+      }
+      if (k === 'rush26') {
+        const r = await page.evaluate(async () => {
+          const A = await import('/src/scenes/front/arcade.js');
+          return { menuFresh: A.menuCourses(false, false, false).includes(18), menu26: A.menuCourses(false, false, true).includes(18), online: A.visibleCourses(true, true).includes(18), local: A.localCourse(18),
+            ex: A.exKnown({ meta: {}, state: { progress: { unlocked: ['s26'] } } }, new Set()), san0: A.sanitizeCfg({ kind: 'bossrush', course: 18 }, false, null, false, false).course,
+            surv0: A.arenaBosses(false, false, false).includes('b_paracel'), surv26: A.arenaBosses(false, false, true).includes('b_paracel') };
+        });
+        if (r.menuFresh || !r.menu26 || r.online || !r.local || r.ex || r.san0 !== 0 || r.surv0 || !r.surv26) errs.push(`RUSH26 코스·보스 문 규칙이 이상함 (${JSON.stringify(r)})`);
+        await page.evaluate(async () => {
+          const g = window.__game, { newGameState } = await import('/src/game/state.js'), A = await import('/src/scenes/front/arcade.js');
+          const st = newGameState({ slot: 1, difficulty: 'normal', charId: 'kael' }); st.progress.unlocked = ['s01', 's02', 's03', 's04', 's05', 's06', 's07', 's08', 's26']; g.state = st;
+          A.startArcade(g, { kind: 'bossrush', course: 18, preset: 2, diff: 'normal' }, 'kael');
+        });
+        const t0 = Date.now();
+        let st = null;
+        while (Date.now() - t0 < Number(d) * 1000) {
+          st = await page.evaluate(() => { const g = window.__game, t = g.scenes.find((x) => x.name === 'bossrush'); return { top: g.scenes[g.scenes.length - 1]?.name, course: t?.cfg?.course ?? null, queue: t?.queue ?? null, local: !!t?.localOnly, boss: g.world?.boss?.def?.id ?? null }; });
+          if (st.boss) break;
+          await page.waitForTimeout(250);
+        }
+        const want = ['b_chimera', 'b_leviathan', 'b_colossus', 'b_frostqueen', 'b_paracel'];
+        if (st?.course !== 18 || JSON.stringify(st.queue) !== JSON.stringify(want) || !st.local || st.boss !== 'b_chimera') errs.push(`RUSH26 코스 18 이 제대로 열리지 않음 (${JSON.stringify(st)})`);
+        console.log(`    · ${c.id} 외전 Ⅰ: ${JSON.stringify(st)}`);
         continue;
       }
       if (k === 'wmgate') {
