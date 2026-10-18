@@ -72,7 +72,7 @@ const SIDE_INFO = {
   s23: { label: '보상', flag: 'ex_s23_done', got: '사냥달 무기 일곱 자루', wait: '빈칸의 현상금이 기다린다', col: '#ffcf6a', gotCol: '#fff0c8' },
   s24: { flag: 'recruit_gd_vesper', got: '박쥐 베스퍼 합류', wait: '장미 향 편지가 기다린다', col: '#ff8aa8', gotCol: '#ffd6e0' },
   s25: { flag: 'recruit_mt_morgen', got: '군마 모르겐 합류', wait: '불탄 목장에서 말이 운다', col: '#ffc070', gotCol: '#fff0d0' },
-  s26: { label: '보상', flag: 'ex_s26_done', got: '연금 플라스크 · 외알 안경', wait: '편지를 안은 작은 호문쿨루스', col: '#d8c070', gotCol: '#fff0c0', tag: '7장 그 뒤의 이야기 · 권장 Lv 28' },   // tag = 외전 칸 문구 (없으면 2부 엔딩 그 뒤)
+  s26: { label: '보상', flag: 'ex_s26_done', got: '연금 플라스크 · 외알 안경', wait: '호문쿨루스의 편지가 기다린다', col: '#d8c070', gotCol: '#fff0c0', tag: '7장 그 뒤의 이야기 · 권장 Lv 28' },   // tag = 외전 칸 문구 (없으면 2부 엔딩 그 뒤)
 };
 /** 외전이 열리는 조건 (없으면 2부 엔딩 뒤 — s21–s25). s26 은 7장 클리어 (docs/specs/ex_s26.md §1) */
 const SIDE_GATE = { s26: (P) => !!P.cleared?.s07 };

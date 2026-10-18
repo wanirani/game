@@ -226,7 +226,7 @@ const PATTERNS = {
 
 ### 5.1 세계 지도 (`town/worldmap.js`) · 성당
 
-- `SIDE_FROM.s26 = 's07'` · `SIDE_INFO.s26 = { label: '보상', flag: 'ex_s26_done', got: '연금 플라스크 · 외알 안경', wait: '편지를 안은 작은 호문쿨루스', col: '#d8c070', gotCol: '#fff0c0' }` · `REVEALS.s26 = { title: '외전 · 지하 공방', sub: '편지를 안은 작은 호문쿨루스가 성당 문 밑으로 기어들었다', color: '#d8c070', tcol: '#fff0c0', crack: '#fff0c0', fx: 'holy' }`.
+- `SIDE_FROM.s26 = 's07'` · `SIDE_INFO.s26 = { label: '보상', flag: 'ex_s26_done', got: '연금 플라스크 · 외알 안경', wait: '호문쿨루스의 편지가 기다린다', col: '#d8c070', gotCol: '#fff0c0', tag: '7장 그 뒤의 이야기 · 권장 Lv 28' }` ([ch26_verify] '보상' 칸이라 다른 외전처럼 「~가 기다린다」) · `REVEALS.s26 = { title: '외전 · 지하 공방', sub: '편지를 안은 작은 호문쿨루스가 성당 문 밑으로 기어들었다', color: '#d8c070', tcol: '#fff0c0', crack: '#fff0c0', fx: 'holy' }`.
 - **해금 고리**: 지금 외전 고리는 `p2Ended` 하나로 문을 연다. **외전마다의 문** `SIDE_GATE = { s26: (P) => !!P.cleared?.s07 }` (없으면 `p2Ended`) 로 바꾼다 — s21–s25 동작은 그대로.
 - 성당(`church.js`): 해금됐는데 안 깼을 때 안내 한 줄 (1부 알베르토 · 2부 엘리제), `albertoNews` 표 맨 앞에 `['ex26', 'ex_s26_done']`.
 
