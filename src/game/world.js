@@ -9,7 +9,7 @@ import { rand, randi, chance, clamp, overlap, TAU, pick, RNG } from '../core/mat
 import { audio, SFX } from '../core/audio.js';
 import { bus } from '../core/events.js';
 import { saves } from '../core/save.js';
-import { getDiff, diffAllows } from '../data/difficulty.js';
+import { getDiff, diffAllows, diffRank } from '../data/difficulty.js';
 import { STAGES } from '../data/stages.js';
 import { BOSSES } from '../data/bosses.js';
 import { NPCS } from '../data/npcs.js';
@@ -226,6 +226,10 @@ export class World {
     if (input.touchMode) this.clearStickAtSpawn(start, place);
     this.add(p);
     this.run.checkpoint = { roomId, x: p.x, y: p.y };
+    // [retryart] 보스방 입구 기록 (처음 들어설 때의 자리·HP·MP): 이야기 모드 게임오버 「이어하기」가 여기서 보스전을 다시 시작한다 (retryAtBossDoor).
+    //  재도전으로 방을 다시 불러올 때(_doorRetry)는 처음 들어온 기록을 그대로 둔다. 보스방이 아닌 방에 들어서면 지운다
+    if (!this._doorRetry) this.bossDoor = room.boss ? { roomId, x: p.x, y: p.y, hp: p.hp, mp: p.mp } : null;
+    if (!room.boss) this._retryIntro = false;
 
     const ms = this.map.markers;
     const counters = {};
@@ -1126,6 +1130,7 @@ export class World {
     p.hp = p.stats.hp; p.mp = p.stats.mp;
     p.mount?.healFrac?.(1);   // [hook:cmp]
     this.run.checkpoint = { roomId: this.roomId, x: sp.x, y: sp.bottom - p.h };
+    if (this.bossDoor?.roomId === this.roomId && !this.bossActive) { this.bossDoor.hp = p.hp; this.bossDoor.mp = p.mp; }   // [retryart] 보스방 안 세이브 지점: 입구 기록도 가득 찬 상태로
     if (this.arcade) {
       // 아케이드(연습 등)는 임시 상태라 세이브 슬롯에 기록하지 않음 — 회복·체크포인트만
       audio.sfx('heal');
@@ -1214,13 +1219,15 @@ export class World {
     if (p.y > this.map.pxH - p.h) { const cp = this.run.checkpoint; p.x = cp.x; p.y = cp.y; }
     p.setAnim?.('idle');
   }
-  respawn(full = false) {
+  /** full: 목숨을 난이도 시작값으로 (게임오버 이어하기). reload: 체크포인트 방을 처음 상태로 다시 불러 그 방의 시작 자리에서 (보스방 입구 재도전) */
+  respawn(full = false, { reload = false } = {}) {
     const p = this.player;
-    const cp = this.run.checkpoint;
+    let cp = this.run.checkpoint;
     // [playb] P12 다시 일어선 자리 둘레 3칸에는 적을 두지 않는다 (무적 2.5초 동안): 방을 다시 불러 생기는 적·그동안 생기는 적은 3칸 밖으로,
     //  같은 방에 남아 있던 적은 지금 밀어낸다 (spawnEnemy · guardSpawn)
     this.spawnGuard = { x: cp.x + (p?.w ?? 40) / 2, y: cp.y + (p?.h ?? 80) / 2, r: 3 * TILE, t: 2.5 };
-    if (cp.roomId !== this.roomId) this.loadRoom(cp.roomId);
+    if (reload) { this.loadRoom(cp.roomId); cp = this.run.checkpoint; }   // [retryart] 보스·경기장·적·기믹이 처음 상태로, 자리는 그 방의 시작 자리
+    else if (cp.roomId !== this.roomId) this.loadRoom(cp.roomId);
     else for (const e of this.entities) if (e.kind === 'enemy' && !e.dead) this.guardSpawn(e);
     p.dead = false; p.deathHandled = false; p.hp = p.stats.hp; p.mp = p.stats.mp;
     p.x = cp.x; p.y = cp.y; p.vx = 0; p.vy = 0; p.iframes = 2.5;
@@ -1233,6 +1240,36 @@ export class World {
     this.freezeEnemies = false; this.hudHidden = false; this.letterbox = 0;   // [hook:feel] 연출 도중 쓰러졌을 때 남지 않게
     this.gimmick?.onRespawn?.();   // [hook:gimmick]
     this.companions?.onRespawn();   // [hook:cmp]
+  }
+  /**
+   * [retryart] 보스방 입구 재도전 (PLAY P12): 이야기 모드에서 보스방(보스 등장 연출 포함)에서 쓰러져 게임오버가 됐는가.
+   * 아케이드 계열(보스 러시·서바이벌·연습·일일 도전·탑)·시련·순위 기록 모드는 예전 규칙 그대로 (false)
+   */
+  canRetryAtBossDoor() {
+    const d = this.bossDoor;
+    return !!d && this.mode === 'story' && !this.trial && !this.arcade && !this.state?.arcade && !this.cleared && d.roomId === this.roomId && !!this.room?.boss;
+  }
+  /**
+   * [retryart] 게임오버 「이어하기」(자동 카운트다운 포함) → 보스방 입구에서 보스전을 처음부터: 방을 다시 불러 보스는 사라지고(다시 들어서면 체력 가득)
+   * 경기장이 열린다. 영웅은 방의 시작 자리, HP·MP 는 견습·숙련 헌터 가득 / 베테랑 이상은 보스방에 들어설 때의 값 (그 뒤 최대치가 줄었으면 최대치).
+   * 쓴 물약·소모품은 돌려주지 않고 (가방은 건드리지 않는다), 문 앞까지의 진행·주운 것은 그대로. 다음 보스 등장 연출은 짧게 (startBoss) → 했으면 true
+   */
+  retryAtBossDoor() {
+    if (!this.canRetryAtBossDoor()) return false;
+    const d = this.bossDoor;
+    this.cutscene = false; this.inputLock = false;   // 보스 등장 연출 도중 쓰러졌을 때
+    this.run.checkpoint = { roomId: d.roomId, x: d.x, y: d.y };
+    this._doorRetry = true;
+    try { this.respawn(true, { reload: true }); } finally { this._doorRetry = false; }
+    const p = this.player;
+    if (p && diffRank(this.diff?.id ?? this.state?.difficulty) > diffRank('normal')) {
+      p.hp = clamp(Number.isFinite(d.hp) ? d.hp : p.stats.hp, 1, p.stats.hp);
+      p.mp = clamp(Number.isFinite(d.mp) ? d.mp : p.stats.mp, 0, p.stats.mp);
+    }
+    this.bossDoorRetries = (this.bossDoorRetries ?? 0) + 1;
+    this._retryIntro = true;
+    this.banner = { text: 'READY?', sub: `보스방 입구에서 재도전 · 남은 목숨 ${this.run.lives}`, t: 2.2, color: '#ffe7a0' };
+    return true;
   }
 
   // ─────────────────────────── 보스 ───────────────────────────
@@ -1260,13 +1297,15 @@ export class World {
     this.camera.floorY = this.arenaFloorY(x0, x1) ?? by;   // [hook:plat] 높은 경기장에서도 바닥이 화면 아래쪽에 보이게
     audio.stopMusic(0.5);
     this.cutscene = true;
+    const short = !!this._retryIntro && this.bossDoor?.roomId === this.roomId;   // [retryart] 보스방 입구 재도전: 경고 없이 이름 카드만 짧게
+    this._retryIntro = false;
     const intro = () => {
       this.cutscene = true;
-      audio.sfx('warning');
-      this.game.push('bossIntro', { bossId: id, world: this, onDone: () => { this.cutscene = false; if (this.player) this.player.iframes = Math.max(this.player.iframes ?? 0, 0.8); this.addAw('bossIntro'); audio.music(this.boss?.def?.music ?? 'boss'); } });   // [hook:awaken] 보스 등장 +25 · [playb] P25 연출이 닫힌 뒤 0.8초 무적 (깜박임)
+      if (!short) audio.sfx('warning');
+      this.game.push('bossIntro', { bossId: id, world: this, short, onDone: () => { this.cutscene = false; if (this.player) this.player.iframes = Math.max(this.player.iframes ?? 0, 0.8); this.addAw('bossIntro'); audio.music(this.boss?.def?.music ?? 'boss'); } });   // [hook:awaken] 보스 등장 +25 · [playb] P25 연출이 닫힌 뒤 0.8초 무적 (깜박임)
     };
     const preId = `${id}_pre`;
-    if (SCRIPTS[preId] && !this.state.progress.seenScripts.includes(preId) && this.mode === 'story') {
+    if (!short && SCRIPTS[preId] && !this.state.progress.seenScripts.includes(preId) && this.mode === 'story') {
       this.state.progress.seenScripts.push(preId);
       this.game.push('dialogue', { script: preId, world: this, onEnd: intro });
     } else intro();

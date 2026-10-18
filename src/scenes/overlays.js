@@ -14,6 +14,8 @@
 //  document  : 비전서/기록 열람. uiScale (platform §6.2), 안내 글리프, 기술 커맨드는 방향 화살표 + 지금 기기의 버튼 글리프.
 //  gameover  : GAME OVER(피 글씨) → CONTINUE?(금박 글씨) 카운트다운. uiScale, 버튼 ≥ 44 CSS px (ui.taps), 안내 글리프, 토스트는 미룬다.
 //              포기·크레딧 소진 → 마을 {from: 스테이지 id} (마을은 동쪽 성문 앞에서 시작; pause '마을로 귀환' 과 같은 규칙)
+//              [retryart] 이야기 모드 보스방에서 쓰러졌으면 이어하기(자동 카운트다운 포함) = world.retryAtBossDoor (보스방 입구에서 보스전을 처음부터,
+//              버튼 아랫줄 「보스방 입구에서 재도전」). 그 밖은 예전처럼 world.respawn(true). 다음 bossIntro 는 { short: true } (WARNING 없이 이름 카드 2.2초)
 // 모든 장면은 스택에 혼자 남아도(?scene=ultCutin&char=lia 같은 디버그 주소) 오류 없이 그리고, 닫히면 타이틀로 간다 (game.pop).
 import { Scene, game as GAME } from '../core/game.js';
 import { input } from '../core/input.js';
@@ -114,15 +116,18 @@ function nameAvail(vw, vh, hasImg) {
 /** 보스 등장: WARNING 경고 → 초상화 + 이름 (피 글씨) */
 export class BossIntroScene extends Scene {
   constructor(g) { super(g); this.opaque = false; }
-  enter({ bossId, onDone } = {}) {
+  enter({ bossId, onDone, short = false } = {}) {
     this.def = BOSSES[bossId] || { name: bossId ?? '???' };
     this.bossName = String(this.def.name ?? '???');
     this.onDone = onDone; this.dur = 3.6; this.done = false;
+    // [retryart] 보스방 입구 재도전 (world.retryAtBossDoor → startBoss): WARNING 을 건너뛰고 이름 카드부터 (3.6초 → 2.2초), 0.3초 뒤부터 건너뛸 수 있다
+    this.short = !!short; this.t0 = this.short ? 1.4 : 0;
+    if (this.short) this.t = this.t0;
     this._nk = null; this._ns = NAME_MAX;
     this.fe = !this.def.portrait;
     // 초상화는 WARNING 동안(1.4초) 받아 둔다: 보스 초상화는 스테이지가 미리 받지 않으므로 이름 카드가 나올 때 비어 있지 않게
     if (this.def.portrait) { try { assets.get(this.def.portrait); } catch (e) { console.error(e); } }
-    audio.sfx('warning');
+    if (!this.short) audio.sfx('warning');
     const g = this.game;
     prewarm(g, 1, [['WARNING', WARN_OPTS], [this.bossName, { ...NAME_OPTS, size: NAME_MAX }]]);
     // 긴 이름은 줄인 크기로 그리므로 그 크기도 미리 굽는다 (초상화가 있는 배치 기준: 이름 카드 첫 프레임이 끊기지 않게)
@@ -150,7 +155,7 @@ export class BossIntroScene extends Scene {
     }
     if (this.t > 1.3 && !this.roared) { this.roared = true; audio.sfx('boss_roar'); this.game.world?.camera?.shake(10, 0.6); }
     this.game.world?.camera?.tickShake?.(dt); // 월드가 멈춰 있어도 포효 흔들림을 소리와 함께 재생
-    if (this.t > this.dur || (this.t > 1.5 && (input.pressed('confirm') || input.pointer.tapped))) this.finish();
+    if (this.t > this.dur || (this.t > Math.max(1.5, this.t0 + 0.3) && (input.pressed('confirm') || input.pointer.tapped))) this.finish();
   }
   /** 이름 글자 크기: 대각 구분선 안에 들어가도록 줄인다 (폭이 바뀔 때만 다시 잰다) */
   nameSize(ctx, avail) {
@@ -226,10 +231,11 @@ export class BossIntroScene extends Scene {
     bloodText(ctx, this.bossName, x, ny, { ...NAME_OPTS, size: ns, t: t - 1.4, maxWidth: avail });
     ctx.restore();
     // 건너뛰기 안내 (1.5초부터)
-    if (t > 1.5 && out > 0) {
+    const ht = Math.max(1.5, this.t0 + 0.3);
+    if (t > ht && out > 0) {
       const S = safeOf(this);
       ctx.save();
-      ctx.globalAlpha = clamp((t - 1.5) / 0.3, 0, 1) * out * 0.9;
+      ctx.globalAlpha = clamp((t - ht) / 0.3, 0, 1) * out * 0.9;
       hintLine(ctx, [['confirm', '건너뛰기']], '화면을 터치하면 넘어갑니다', vw - 22 - S.r, vh - 16 - S.b, { align: 'right', size: 13, color: '#d8c8b8' });
       ctx.restore();
     }
@@ -777,6 +783,8 @@ export class GameOverScene extends Scene {
     // [matrix] 이야기 모드: 카운트가 0 이 되면 고른 버튼(기본 이어하기)을 실행한다 — 눈을 뗀 새 플레이어가 보스전을 잃고 마을로 가지 않게.
     // 아케이드식 시간 초과 = 포기(마을로)는 이야기 밖(연습·아케이드 world)에만
     this.storyTimeout = !!world && !world.arcade && !world.trial && (world.mode ?? 'story') === 'story';
+    // [retryart] 이야기 모드 보스방에서 쓰러졌으면 이어하기 = 보스방 입구에서 재도전 (world.retryAtBossDoor). 버튼 아래 작은 줄로 알린다
+    this.doorRetry = this.canContinue && typeof world?.canRetryAtBossDoor === 'function' && !!world.canRetryAtBossDoor();
     this.sec = null; this.secT = 1; this.done = false;
     this.vg = null; this.vgKey = '';
     audio.music('gameover');
@@ -830,7 +838,7 @@ export class GameOverScene extends Scene {
     w.run.score = 0; // 아케이드 규칙: 컨티뉴 시 점수 초기화
     w.nextExtraLife = 30000; // 1UP 기준점도 점수와 함께 처음부터
     this.game.pop();
-    w.respawn(true);
+    if (!(this.doorRetry && w.retryAtBossDoor?.())) w.respawn(true);
     audio.music(w.bossActive ? (w.boss?.def?.music ?? 'boss') : (w.room?.music ?? w.stage?.music));
   }
   giveUp() {
@@ -898,7 +906,7 @@ export class GameOverScene extends Scene {
     try {
       ['이어하기', '포기 (마을로)'].forEach((l, k) => {
         const r = { x: W / 2 - bw - 10 + k * (bw + 20), y: by, w: bw, h: bh };
-        button(ctx, r, l, { selected: this.menu.index === k });
+        button(ctx, r, l, { selected: this.menu.index === k, sub: k === 0 && this.doorRetry ? '보스방 입구에서 재도전' : undefined });
         taps.add(k === 0 ? 'go_cont' : 'go_quit', r, { owner: this, kind: 'primary', src: 'gameover' });
       });
     } finally { ptr.active = act; }
