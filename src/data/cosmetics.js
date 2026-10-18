@@ -14,9 +14,21 @@ export const TRAILS = Object.freeze({
   tr_moon: { name: '월광', desc: '백작의 성을 비추던 창백한 달빛', ramp: ['#8aa6e8', '#9fb6ed', '#b4c6f1', '#c8d6f6', '#dde6fa', '#f2f6ff'], need: { ach: 'st_dracula' } },
   tr_holy: { name: '성광', desc: '진 각성의 금빛 광휘', ramp: ['#f2b42a', '#f5c14a', '#f7ce69', '#fada89', '#fce7a8', '#fff4c8'], need: { ach: 'hr_true_awaken' } },
   tr_abyss: { name: '심연', desc: '균열 너머 이계의 보랏빛 어둠', ramp: ['#6a28c8', '#7f45d3', '#9462de', '#aa7ee9', '#bf9bf4', '#d4b8ff'], need: { ach: 'st_end2' } },
-  tr_frost: { name: '혹한', desc: '탑 꼭대기의 얼어붙은 바람', ramp: ['#2ab0e0', '#4ebfe6', '#73ceec', '#97ddf3', '#bcecf9', '#e0fbff'], need: { tower: 30 } },
+  tr_frost: { name: '혹한', desc: '탑 꼭대기의 얼어붙은 바람', ramp: ['#2ab0e0', '#4ebfe6', '#73ceec', '#97ddf3', '#bcecf9', '#e0fbff'], need: { tw: 30 } },
   tr_ember: { name: '잿불', desc: '윤회의 재 속에서 다시 타오르는 불씨', ramp: ['#e05a18', '#e67330', '#ec8c48', '#f3a660', '#f9bf78', '#ffd890'], need: { ng: 1 } },
+  // ── Stage 5 (K1 보상 장부, /tmp/claude-0/s5/plan.md §3) ── 무한의 탑 이정표 10·20·(30 = 혹한)·40·50층 { tw: n } · 「악몽」 격파 { nm: n }
+  tr_moss: { name: '이끼', desc: '탑 아래층 돌벽을 뒤덮은 푸른 이끼빛', ramp: ['#2f9a4a', '#4cad62', '#6cc07c', '#8ed399', '#b0e6b8', '#d4f8da'], need: { tw: 10 } },
+  tr_silver: { name: '은빛', desc: '은제 촛대처럼 차갑게 빛나는 잔상', ramp: ['#7e8a9e', '#97a2b3', '#b0b9c7', '#c8cfda', '#e0e5ec', '#f6f8fb'], need: { tw: 20 } },
+  tr_storm: { name: '뇌광', desc: '탑을 때리는 낙뢰의 섬광', ramp: ['#c8d018', '#d2d93c', '#dce262', '#e6eb88', '#f0f4ae', '#fbffd6'], need: { tw: 40 } },
+  tr_dawn: { name: '여명', desc: '탑 꼭대기에서 맞는 새벽빛', ramp: ['#e8587e', '#ee7488', '#f39094', '#f7aca2', '#fbc8b2', '#ffe4c8'], need: { tw: 50 } },
+  tr_nightmare: { name: '악몽', desc: '악몽에서 살아 돌아온 자의 검붉은 잔상', ramp: ['#5a0614', '#7a1424', '#9a2436', '#ba3a4c', '#d85a68', '#f0868e'], need: { nm: 1 } },
+  tr_rose: { name: '흑장미', desc: '악몽의 정원에 핀 검은 장미', ramp: ['#6a0848', '#86205e', '#a23c78', '#be5c94', '#d880b2', '#f0a8d2'], need: { nm: 10 } },
+  tr_sovereign: { name: '군주', desc: '스물다섯 군주를 모두 꺾은 자의 진홍빛', ramp: ['#3a0008', '#6a0a18', '#a01828', '#d0303a', '#f0705a', '#ffd08a'], need: { nm: 25 } },
 });
+/** 무한의 탑 이정표 (돌파한 층 → 잔상). 탑 장면이 이정표 층을 처음 넘을 때 알린다 (scenes/front/arcade_tower.js) */
+export const TOWER_MILESTONES = Object.freeze([
+  { floor: 10, trail: 'tr_moss' }, { floor: 20, trail: 'tr_silver' }, { floor: 30, trail: 'tr_frost' }, { floor: 40, trail: 'tr_storm' }, { floor: 50, trail: 'tr_dawn' },
+]);
 export const TRAIL_IDS = Object.freeze(Object.keys(TRAILS));
 /** '직업 기본' (id null) 칸의 이름·설명 */
 export const TRAIL_DEFAULT = Object.freeze({ name: '직업 기본', desc: '영웅마다의 원래 잔상 (필살기 색)' });
@@ -43,7 +55,8 @@ function ngOfState(s) {
 }
 /**
  * 해금 판정 문맥 (화면을 열 때 한 번): meta + 슬롯 세이브들(saves.read(1..3) · 지금 game.state — null 이어도 된다)
- * → { got: {업적 id: ts}, tower: 탑 최고 층(난이도 중 최대), ng: 지난 회차 최대 }
+ * → { got: {업적 id: ts}, tower: 탑 최고 층(난이도 중 최대), tw: 같은 값(Stage 5 이정표 키), nm: 「악몽」 격파 수, ng: 지난 회차 최대 }
+ *   nm = meta.nm.clears (game/nightmare.js 가 탑의 towerBest 와 같은 메타 저장으로 올린다 — 없거나 숫자가 아니면 0, 옛 세이브는 잠김)
  */
 export function cosContext(meta, states = []) {
   const got = isObj(meta?.ach?.got) ? meta.ach.got : {};
@@ -51,14 +64,19 @@ export function cosContext(meta, states = []) {
   const tb = isObj(meta?.towerBest) ? meta.towerBest : {};
   for (const k of Object.keys(tb)) { const f = tb[k]?.floor; if (typeof f === 'number' && Number.isFinite(f) && f > tower) tower = f; }
   for (const s of Array.isArray(states) ? states : []) ng = Math.max(ng, ngOfState(s));
-  return { got, tower, ng };
+  const c = isObj(meta?.nm) ? meta.nm.clears : 0;
+  const nm = typeof c === 'number' && Number.isFinite(c) && c > 0 ? Math.floor(c) : 0;
+  return { got, tower, tw: tower, nm, ng };
 }
-/** need 가 참인가 */
+const num0 = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+/** need 가 참인가 (모르는 키·숫자가 아닌 문턱 → 거짓) */
 export function needMet(need, ctx) {
   if (!isObj(need) || !ctx) return false;
   if (typeof need.ach === 'string') return own(ctx.got ?? {}, need.ach);
-  if (typeof need.tower === 'number') return (ctx.tower ?? 0) >= need.tower;
-  if (typeof need.ng === 'number') return (ctx.ng ?? 0) >= need.ng;
+  if (typeof need.tw === 'number') return num0(ctx.tw ?? ctx.tower) >= need.tw;
+  if (typeof need.tower === 'number') return num0(ctx.tower) >= need.tower;
+  if (typeof need.nm === 'number') return num0(ctx.nm) >= need.nm;
+  if (typeof need.ng === 'number') return num0(ctx.ng) >= need.ng;
   return false;
 }
 /** 잔상을 쓸 수 있나 (null = 직업 기본은 늘 참) */
@@ -74,7 +92,9 @@ export function needText(need, achName = () => null) {
     const n = achName(need.ach) ?? need.ach;
     return n === '???' ? { short: '숨겨진 업적', long: '숨겨진 업적을 달성하면 쓸 수 있습니다' } : { short: `업적 「${n}」`, long: `「${n}」 업적을 달성하면 쓸 수 있습니다` };
   }
-  if (isObj(need) && typeof need.tower === 'number') return { short: `무한의 탑 ${need.tower}층`, long: `무한의 탑 ${need.tower}층을 돌파하면 쓸 수 있습니다` };
+  const tw = isObj(need) ? (typeof need.tw === 'number' ? need.tw : need.tower) : undefined;
+  if (typeof tw === 'number') return { short: `무한의 탑 ${tw}층`, long: `무한의 탑 ${tw}층을 돌파하면 쓸 수 있습니다` };
+  if (isObj(need) && typeof need.nm === 'number') return { short: `악몽 ${need.nm}승`, long: `「악몽」 보스를 ${need.nm}번 쓰러뜨리면 쓸 수 있습니다` };
   if (isObj(need) && typeof need.ng === 'number') return { short: `${need.ng + 1}회차 시작`, long: `「피의 윤회」로 ${need.ng + 1}회차를 시작하면 쓸 수 있습니다` };
   return { short: '', long: '아직 얻지 못했습니다' };
 }
