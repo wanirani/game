@@ -298,10 +298,10 @@ export function vOverlap(box, fy, f) { return box ? Math.min(fy + box.y1, f.y1) 
  */
 export function attackBoxFor(W, f, fy, { oneWay = false, upOk = true } = {}) {
   if (!W) return null;
-  if (vOverlap(W, fy, f) >= 8) return { box: W, kind: 'main' };
+  if (vOverlap(W, fy, f) >= 6) return { box: W, kind: 'main' };
   let best = null, bo = 7;
   const cand = (box, kind) => { const o = vOverlap(box, fy, f); if (o > bo) { bo = o; best = { box, kind }; } };
-  if (W.low && !oneWay) cand(W.low, 'low');
+  if (W.low && !oneWay && vOverlap(W.low, fy, f) >= 10) return { box: W.low, kind: 'low' };
   for (const b of W.combo ?? []) cand(b, 'combo');
   if (W.up && upOk) cand(W.up, 'up');
   return best;
@@ -421,15 +421,17 @@ export function decide(s, mem) {
   // 지금 서 있는 자리에서 f 를 어떤 공격으로 치나 (dir 쪽을 볼 때): 첫 타 → 높이로 가장 많이 겹치는 앉아·콤보·위 공격
   const upHere = upOk && p.onGround && (!(W.up?.vy < 0) || (seg && p.cx - seg.x0 > 60 && seg.x1 - p.cx > 60));
   const modeAt = (f, dir) => {
-    if (inBox(p, f, W, dir)) return 'main';
+    const mainHit = inBox(p, f, W, dir);
+    if (mainHit && vOverlap(W, p.bottom, f) >= 6) return 'main';
     let best = null, bo = 0;
     // 콤보 막타(채찍 회전 등)는 뒤까지 닿지만, 뒤의 적은 돌아서서 친다 — 그래서 앉아·콤보·위 공격은 적의 중심이 보는 쪽(조금 뒤 허용)일 때만
     if ((f.cx - p.cx) * dir < -20) return null;
     const c = (box, kind) => { if (!box || !inBox(p, f, box, dir)) return; const o = vOverlap(box, p.bottom, f); if (o > bo) { bo = o; best = kind; } };
-    if (!oneWay) c(W.low, 'low');
+    // 앉아 공격이 10 px 넘게 겹치면 먼저 (콤보 막타가 더 넓어도 첫 타부터 헛친다)
+    if (!oneWay && W.low && inBox(p, f, W.low, dir) && vOverlap(W.low, p.bottom, f) >= 10) return 'low';
     for (const b of W.combo ?? []) c(b, 'combo');
     if (upHere) c(W.up, 'up');
-    return best;
+    return best ?? (mainHit ? 'main' : null);   // 첫 타가 몇 px 만 걸치면 더 많이 겹치는 공격을 먼저
   };
   // ── 공격 ──
   let hitF = null, hitMode = null, behind = null;
@@ -449,14 +451,15 @@ export function decide(s, mem) {
     out.why = hitMode === 'up' ? 'up-attack' : hitMode === 'low' ? 'low-attack' : 'attack';
   }
   // ── 스킬 (0.35초 간격, 한 번에 하나) ──
-  // 헛 시전 막기: 지난 시전 뒤 1.2초에 그때 노린 적들의 HP 합이 그대로면 4초 동안 쉰다
-  if (mem.cast && t - mem.cast.t >= K.CAST_CHECK) {
+  // 헛 시전 막기: 시전 뒤 그때 노린 적들의 HP 합이 줄면 확인 끝 (다음 시전 허용). 1.2초가 지나도 그대로면 4초 동안 쉰다.
+  // 확인이 끝나기 전에는 다음 시전을 하지 않는다 (예전: 닿지 않는 적에게 0.35초마다 MP 40→2)
+  if (mem.cast) {
     let hp = 0;
     for (const k of mem.cast.keys) { const f = (s.foes ?? []).find((x) => (x.e ?? x.id) === k); hp += f && Number.isFinite(f.hp) ? f.hp : 0; }
-    if (hp >= mem.cast.hp - 0.01) mem.skillMuteT = t + K.CAST_MUTE;
-    mem.cast = null;
+    if (hp < mem.cast.hp - 0.01) mem.cast = null;
+    else if (t - mem.cast.t >= K.CAST_CHECK) { mem.skillMuteT = t + K.CAST_MUTE; mem.cast = null; }
   }
-  if (!retreating && t - mem.skillT >= K.SKILL_GAP && t >= mem.skillMuteT && !act.up && !act.down) {
+  if (!retreating && !mem.cast && t - mem.skillT >= K.SKILL_GAP && t >= mem.skillMuteT && !act.up && !act.down) {
     for (const sk of s.skills ?? []) {
       if (!sk.ready || (sk.page !== s.page && !battle)) continue;
       const R = sk.range ?? skillRange(null);
@@ -509,6 +512,8 @@ export function decide(s, mem) {
     } else if (retreating && mem.retreatDir) {
       if ((mem.retreatDir > 0 ? roomR : roomL) >= K.BACK_ROOM * 0.5) move = mem.retreatDir;
       out.why ||= 'retreat';
+    } else if (target && reachable(target) && t < mem.pushUntil && mem.pushDir && !hitF) {
+      move = mem.pushDir; out.why = 'push';   // 막힘 감시로 밀고 들어가는 중 (다가가기 규칙이 다시 물러서게 하지 않는다)
     } else if (target && reachable(target)) {
       const dir = sgn(target.cx - p.cx) || p.facing;
       const fy = fyAt(target);
@@ -537,8 +542,7 @@ export function decide(s, mem) {
         }
       }
       // 막힘 감시: 닿는 대상이 STALL_T 초 동안 한 번도 공격을 못 받았으면 대상 쪽으로 밀고 들어간다
-      if (!move && !hitF && t - Math.max(mem.lastAtkT, mem.tgtT) > K.STALL_T && t >= mem.pushUntil) { mem.pushUntil = t + K.PUSH_T; mem.pushDir = dir; mem.lastAtkT = t; }
-      if (!move && !hitF && t < mem.pushUntil && mem.pushDir) { move = mem.pushDir; out.why = 'push'; }
+      if (!hitF && t - Math.max(mem.lastAtkT, mem.tgtT) > K.STALL_T && t >= mem.pushUntil && Math.abs(want - p.cx) <= 30) { mem.pushUntil = t + K.PUSH_T; mem.pushDir = dir; mem.lastAtkT = t; move = dir; out.why = 'push'; }
     } else if (cfg.pickup !== false && !near && t - mem.lastDanger >= K.SAFE_T) {
       let best = null, bd = K.PICK_R;
       for (const k of s.pickups ?? []) {
@@ -580,7 +584,9 @@ export function decide(s, mem) {
     for (const f of foes) { const d = Math.abs(f.cx - p.cx); if (d < 900 && d < nd) { nd = d; nf = f; } }
     const side = (x) => (seg ? (x > p.cx ? seg.why1 : seg.why0) : null);
     const blocked = (w) => w === 'story' || w === 'boss';
-    if (nf) out.hold = blocked(side(nf.cx)) ? 'forward' : 'unreach';
+    // 적이 구간 끝(트리거·보스 문턱·구덩이·가시·벽) 너머에 있으면 「앞으로 이동」(사람이 넘어가 줘야 한다), 구간 위·아래면 「도달 불가」
+    const beyond = nf && seg && (nf.cx > seg.x1 + 24 || nf.cx < seg.x0 - 24) && side(nf.cx) !== 'edge';
+    if (nf) out.hold = beyond ? 'forward' : 'unreach';
     else out.hold = seg && (blocked(seg.why0) || blocked(seg.why1)) ? 'forward' : 'idle';
   }
   return out;

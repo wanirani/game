@@ -167,7 +167,8 @@ export function drawCompare(ctx, r, info, { maxRows = 4, size = 12, head = true 
     text(ctx, val, x + cw - 10, yy, { size: size + 1, align: 'right', weight: 800, family: FONT.num, color: col, ow: 3 });
   }
   if (rows.length) y += Math.ceil(n / 2) * lh;
-  if (rows.length > n) { text(ctx, `외 ${rows.length - n}개`, r.x + r.w, y - lh + size, { size: size - 1, align: 'right', color: PAL.faint, ow: 2 }); }
+  // 남은 능력치 수: 다음 줄 오른쪽에 (예전엔 마지막 줄 오른쪽 값 위에 겹쳤다 — PLAY P13). 자리가 없으면 생략
+  if (rows.length > n && y + lh - 4 <= r.y + r.h + 2) { text(ctx, `외 ${rows.length - n}개`, r.x + r.w, y + size - 2, { size: size - 1, align: 'right', color: PAL.faint, ow: 2 }); y += lh - 4; }
   if (info.dps && y + lh <= r.y + r.h + 2) {
     const d = info.dps, pc = d.pct;
     const s = `초당 피해 어림 ${kNum(d.from)} → ${kNum(d.to)}`;

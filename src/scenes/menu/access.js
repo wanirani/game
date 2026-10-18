@@ -297,6 +297,32 @@ export function stageLabel(sid) {
   if (s.side) return `외전 ${s.name}`;   // 외전 (s21, docs/specs/ex_s21.md)
   return s.chapter ? `${s.chapter}장 ${s.name}` : s.name;
 }
+/**
+ * 퀘스트 목표를 찾을 곳 (PLAY P07): 처치(kill) → 그 적이 나오는 스테이지 「출현: 1장 불타는 마을 · 2장 …」,
+ * 수집(collect) → 그 재료를 떨구는 적이 나오는 스테이지 「획득처: …」, 보스·클리어 → 「장소: …」. 모르면 ''.
+ * 갈 수 있는(해금된) 스테이지를 먼저, 최대 2곳 (+ '외'). 아직 아무 곳도 열리지 않았으면 가장 이른 곳 + '(아직 못 감)'
+ */
+export function questWhere(state, q) {
+  const goal = q?.goal;
+  if (!goal || typeof goal !== 'object') return '';
+  return safe(() => {
+    const S = STAGES(), order = STAGE_ORDER().filter((sid) => S[sid]);
+    const has = (sid, ids) => (S[sid].enemies || []).some((e) => ids.includes(e));
+    let ids = [], tag = '장소';
+    if (goal.type === 'kill') { const en = [].concat(goal.enemy ?? []); ids = order.filter((sid) => has(sid, en)); tag = '출현'; }
+    else if (goal.type === 'collect') {
+      const E = ENEMIES(), drop = Object.keys(E).filter((id) => (E[id]?.drops || []).some((d) => d?.id === goal.item));
+      ids = drop.length ? order.filter((sid) => has(sid, drop)) : [];
+      tag = '획득처';
+    } else if (goal.type === 'boss') ids = order.filter((sid) => S[sid].boss === goal.boss || BOSSES()[goal.boss]?.stageId === sid);
+    else if (goal.type === 'clear' && S[goal.stage]) ids = [goal.stage];
+    if (!ids.length) return '';
+    const un = Array.isArray(state?.progress?.unlocked) ? state.progress.unlocked : [];
+    const open = ids.filter((sid) => un.includes(sid));
+    const pool = open.length ? open : ids, pick = pool.slice(0, 2);
+    return `${tag}: ${pick.map(stageLabel).join(' · ')}${pool.length > 2 ? ' 외' : ''}${open.length || goal.type === 'clear' ? '' : ' (아직 못 감)'}`;
+  }, '');
+}
 /** 스테이지 장 번호 (맵이 없어도 id 에서) */
 export function stageChapter(sid) { return STAGES()[sid]?.chapter ?? (stageNo(sid) || null); }
 /** 스테이지 적 레벨 (맵이 없으면 null) */

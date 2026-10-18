@@ -53,7 +53,7 @@ export class InventoryTab extends Tab {
     this.rev = -1; this.items = []; this.cols = 8; this.cell = 56; this.gap = 6;
     this.cellRects = []; this.filterRects = []; this.sortRect = null; this.btnRects = [];
     this.flash = 0; this.sortMode = 0;
-    this.minR = 0; this.usable = false; this.footRects = []; this.fi2 = 0;   // [qol] 거르기 · 아래 단추 줄
+    this.minR = 0; this.usable = false; this.upOnly = false; this.footRects = []; this.fi2 = 0;   // [qol] 거르기 · 아래 단추 줄 (upOnly: 착용 중보다 좋은 것만, PLAY P23)
   }
   onShow() {
     this.rebuild();
@@ -64,12 +64,15 @@ export class InventoryTab extends Tab {
     const f = FILTERS[this.fi];
     const out = [];
     const hero = this.hero;
+    // 업그레이드만 (P23): 지금 영웅이 입은 것보다 좋은(▲) 장비만 — 가방 표시(bagMarks)와 같은 판정, 거를 때는 넉넉한 예산으로 다 센다
+    const marks = this.upOnly ? bagMarks(this.state, hero?.charId, { budgetMs: 60, mode: gearSettings(this.game?.settings).weights }) : null;
     for (const inst of this.state.inventory) {
       const b = D.baseOf(inst);
       if (!b || !f.test(b)) continue;
       // [qol] 거르기: 희귀도 이상 (장비만) · 지금 영웅이 쓸 수 있는 장비만
       if (this.minR > 0 && (!EQUIP_KINDS.has(b.slot) || (inst.rarity ?? 0) < this.minR)) continue;
       if (this.usable && (!EQUIP_KINDS.has(b.slot) || !D.canEquipOf(this.state, hero, inst).ok)) continue;
+      if (marks && (!EQUIP_KINDS.has(b.slot) || marks.get(inst.uid)?.mark !== 'up')) continue;
       const by = D.equippedBy(this.state, inst.uid);
       const v = Object.create(inst);
       if (by) v.equipped = true;
@@ -145,7 +148,8 @@ export class InventoryTab extends Tab {
       run: () => { this.minR = m.r; this.i = 0; this.sc.reset(); this.rebuild(); },
     }));
     items.push({ label: '쓸 수 있는 장비만', sub: this.usable ? '켬' : '끔', run: () => { this.usable = !this.usable; this.i = 0; this.sc.reset(); this.rebuild(); } });
-    this.m.openModal(new Popup({ title: '거르기', items, x: r ? r.x : null, y: r ? r.y - 6 * 40 : null, w: 230 }));
+    items.push({ label: '업그레이드만 ▲', sub: this.upOnly ? '켬' : '끔', color: '#7ee07e', run: () => { this.upOnly = !this.upOnly; this.i = 0; this.sc.reset(); this.rebuild(); } });
+    this.m.openModal(new Popup({ title: '거르기', items, x: r ? r.x : null, y: r ? r.y - 7 * 40 : null, w: 230 }));
   }
   /** [qol] 일괄 처분 미리보기 → 확인 (기준은 설정 「장비」 페이지의 값에서 시작, 판매한 것은 상점 「되사기」에 남는다) */
   openDispose() {
@@ -326,7 +330,7 @@ export class InventoryTab extends Tab {
       if (e.inst.locked) { ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x + 2, y + cell - 17, 15, 15); glyph(ctx, 'lock', x + 9.5, y + cell - 9.5, 10, PAL.gold, 1.4); }
       if (sel && focused) brackets(ctx, x, y, cell, cell, t);
     });
-    if (!this.items.length) text(ctx, this.minR || this.usable ? '거르기에 맞는 아이템이 없습니다' : FILTERS[this.fi].id === 'all' ? '가방이 비어 있습니다' : '이 분류의 아이템이 없습니다', GR.x + GR.w / 2, GR.y + 60, { size: 14, align: 'center', color: PAL.faint });
+    if (!this.items.length) text(ctx, this.minR || this.usable || this.upOnly ? '거르기에 맞는 아이템이 없습니다' : FILTERS[this.fi].id === 'all' ? '가방이 비어 있습니다' : '이 분류의 아이템이 없습니다', GR.x + GR.w / 2, GR.y + 60, { size: 14, align: 'center', color: PAL.faint });
     clipEnd(ctx, GR, this.sc);
     scrollbar(ctx, GR.x + GR.w - 4, GR.y, GR.h, this.sc, GR.h);
     // 분류·정렬 단추는 격자 칸보다 위에 등록 (스크롤로 반쯤 가려진 칸이 단추를 가로채지 않게)
@@ -340,11 +344,11 @@ export class InventoryTab extends Tab {
       const cw0 = cntUp && !low ? 0 : measure(ctx, `가방 ${cnt}`, 13, 700, FONT.num) + 10;
       if (cw0) text(ctx, `가방 ${cnt}`, A.x + 16, fy2 + footH / 2 + 5, { size: 13, weight: 700, family: FONT.num, color: low ? PAL.bad : PAL.dim });
       if (low) text(ctx, free <= 0 ? '가득 찼습니다' : `남은 칸 ${free}`, A.x + 16 + cw0, fy2 + footH / 2 + 5, { size: 13, weight: 800, color: PAL.bad });
-      const fl = this.minR || this.usable ? `거르기 · ${[this.minR ? MIN_RARITY[this.minR].name : '', this.usable ? '쓸 수 있는 것' : ''].filter(Boolean).join(' · ')}` : '거르기';
+      const fl = this.minR || this.usable || this.upOnly ? `거르기 · ${[this.minR ? MIN_RARITY[this.minR].name : '', this.usable ? '쓸 수 있는 것' : '', this.upOnly ? '업그레이드' : ''].filter(Boolean).join(' · ')}` : '거르기';
       const bw2 = 120, bw1 = Math.min(220, Math.max(88, measure(ctx, fl, 13, 800) + 28));
       const r2 = { x: A.x + GW - 12 - bw2, y: fy2, w: bw2, h: footH }, r1 = { x: r2.x - 8 - bw1, y: fy2, w: bw1, h: footH };
       this.footRects = [this.m.ges.zone(r1, 'primary', { src: 'inv.filter2' }), this.m.ges.zone(r2, 'primary', { src: 'inv.dispose' })];
-      gbutton(ctx, r1, fl, { size: 13, hot: this.sub === 'foot' && this.fi2 === 0 && focused, t, color: this.minR || this.usable ? PAL.goldHi : null });
+      gbutton(ctx, r1, fl, { size: 13, hot: this.sub === 'foot' && this.fi2 === 0 && focused, t, color: this.minR || this.usable || this.upOnly ? PAL.goldHi : null });
       gbutton(ctx, r2, '일괄 처분', { size: 13, hot: (this.sub === 'foot' && this.fi2 === 1 && focused) || low, t });
       if (this.sub === 'foot' && focused) { const rr2 = this.footRects[this.fi2]; brackets(ctx, rr2.x, rr2.y, rr2.w, rr2.h, t); }
     }
@@ -394,12 +398,14 @@ export class InventoryTab extends Tab {
     // 본문
     const btnH = input.touchMode ? 44 : 36, footer = y + h - btnH - 40;
     // [qol] 착용 중 장비와 비교 (장비 탭과 같은 표 — 지금 영웅 기준)
-    if (equipKind && footer - cy > 130) {
+    // 낮은 상세 칸(휴대폰)에서도 「착용 중 대비」는 보인다 (PLAY P13): 머리 줄 + 능력치 한 줄(2개)로 줄여서
+    if (equipKind && footer - cy > 56) {
       const ci = compareInfo(this.state, hero, inst);
       if (ci && !ci.here) {   // 지금 영웅이 입고 있는 장비는 위 '장착 중' 줄로 충분
-        cy += 6;
-        const used = drawCompare(ctx, { x: x + 18, y: cy, w: w - 36, h: Math.min(124, footer - cy - 40) }, ci, { maxRows: 2, size: 13 });
-        cy += used + 4;
+        const roomy = footer - cy > 130;
+        cy += roomy ? 6 : 2;
+        const used = drawCompare(ctx, { x: x + 18, y: cy, w: w - 36, h: roomy ? Math.min(124, footer - cy - 40) : 40 }, ci, { maxRows: roomy ? 2 : 1, size: roomy ? 13 : 12 });
+        cy += used + (roomy ? 4 : 2);
         divider(ctx, x + 18, cy, w - 36, { center: false, a: 0.35 });
       }
     }

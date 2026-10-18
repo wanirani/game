@@ -253,6 +253,147 @@ async function nodeTests() {
     const s3 = base({ foes: [foe(600, { invuln: true })] });
     ok(!A.decide(s3, A.newMem()).act.attack, '무적(보스 등장 연출) 대상은 치지 않는다');
   }
+  // ── [autofix] 리뷰 지적 회귀 시험 ──
+  console.log('\n[node] autofix: 모든 땅 적 × 모든 무기');
+  {
+    const { ENEMIES } = await import(path.join(ROOT, 'src/data/enemies.js'));
+    const bad = [];
+    let n = 0;
+    for (const [wk, ms] of Object.entries(MOVESETS)) {
+      const Wk = A.weaponReach(ms, {});
+      for (const [id, d] of Object.entries(ENEMIES)) {
+        if (d.flying || !d.size) continue;
+        n++;
+        const w = d.size.w, h = d.size.h, bottom = 600;
+        // 영웅 앞, 첫 타·앉아 공격이 가로로 닿는 거리 (가까운 끝이 몸 앞 +8)
+        const x0 = 500 + Math.max(0, Wk.bx, Wk.low?.bx ?? 0) + 8;
+        const f = { id, cx: x0 + w / 2 - 2, bottom: bottom - 2, x0: x0 + 2, x1: x0 + w - 2, y0: bottom - h + 2, y1: bottom - 2, hp: 50 };
+        const s = base({ foes: [f] }); s.w = Wk;
+        const mem = A.newMem();
+        let atk = false, down = false, away = false;
+        for (let i = 0; i < 6; i++) { const r = A.decide(s, mem); if (r.act.attack) atk = true; if (r.act.down) down = true; if (r.act.left) away = true; s.t += 1 / 60; }
+        const low = !(Math.min(bottom + Wk.y1, f.y1) - Math.max(bottom + Wk.y0, f.y0) >= 6);
+        if (!atk || away || (low && !Wk.ranged && Wk.low && !down)) bad.push(`${wk}×${id}(${f.y0 - bottom}..${f.y1 - bottom})${atk ? '' : ' 공격 없음'}${away ? ' 물러섬' : ''}${low && !down && !Wk.ranged ? ' ↓ 없음' : ''}`);
+      }
+    }
+    ok(n > 300 && bad.length === 0, `땅 적 ${n / Object.keys(MOVESETS).length}종 × 무기 ${Object.keys(MOVESETS).length}개: 앞에 있으면 친다 (낮은 적은 ↓+공격)`, bad.slice(0, 12));
+  }
+  console.log('\n[node] autofix: 상자 위 막힘 (s01 r1 17–22열)');
+  {
+    // 2칸 상자 (줄 11–12) 위에 선 영웅, 오른쪽 아래 땅(줄 13)에 좀비
+    const m = mapOf(['                              ', '                              ', '                              ', '                              ', '                              ', '                              ', '                              ', '                              ', '                              ', '                              ', '                              ', '                 ######       ', '                 ######       ', '##############################']);
+    for (const cx of [22 * TILE + 24, 23 * TILE + 10]) {   // 상자 끝 칸 · 중심이 낭떠러지 칸에 걸침 (리뷰 재현: tx23 ty11)
+      const seg = A.segmentAt(m, cx, foot(11), { halfW: 16 });
+      const f = { id: 'zombie', cx: 25 * TILE, bottom: foot(13), x0: 25 * TILE - 18, x1: 25 * TILE + 18, y0: foot(13) - 78, y1: foot(13), hp: 30 };
+      const s = base({ foes: [f], seg }); s.p.cx = cx; s.p.bottom = foot(11);
+      const r = A.decide(s, A.newMem());
+      ok(seg && r.act.right && !r.act.attack, `상자 위 (cx ${cx}): 아래 좀비 쪽으로 걸어 내려선다 (도착은 같은 바닥에서만)`, { why: r.why, act: r.act, seg: seg && [seg.x0, seg.x1] });
+    }
+    // 같은 줄에서 걸어 오다가 상자 너머 적: 상자 위에서 멈추지 않는다
+    const seg = A.segmentAt(m, 15 * TILE, foot(13), { halfW: 16 });
+    const f = { id: 'zombie', cx: 24 * TILE, bottom: foot(13), x0: 24 * TILE - 18, x1: 24 * TILE + 18, y0: foot(13) - 78, y1: foot(13), hp: 30 };
+    const s = base({ foes: [f], seg }); s.p.cx = 21 * TILE; s.p.bottom = foot(11);
+    const r = A.decide(s, A.newMem());
+    ok(r.act.right, '상자 위 가운데: 상자 너머 같은 바닥으로 간다', { why: r.why, act: r.act });
+    // 막힘 감시: 닿는 대상인데 2.5초 동안 공격이 없으면 밀고 간다
+    const seg2 = { x0: 100, x1: 1500, why0: 'edge', why1: 'edge', ty: 12, c0: 0, rows: Array(40).fill(12), links: [] };
+    const tiny = { id: 'x', cx: 560, bottom: 600, x0: 556, x1: 564, y0: 596, y1: 600, hp: 10 };   // 어느 상자에도 높이가 안 닿는 아주 작은 적
+    const s2 = base({ foes: [tiny], seg: seg2 }); s2.w = { ...W, low: null };
+    const mem = A.newMem(); let push = null;
+    for (let i = 0; i < 60 * 6 && !push; i++) { const q = A.decide(s2, mem); if (q.why === 'push') push = q; s2.p.cx += q.act.right ? 3 : q.act.left ? -3 : 0; s2.t += 1 / 60; }
+    ok(push && push.act.right, '막힘 감시: 공격이 2.5초 없으면 대상 쪽으로 밀고 들어간다', push);
+  }
+  console.log('\n[node] autofix: 보스 · 키 큰 적 · 나는 보스 · 경기장 벽');
+  {
+    const seg = { x0: 100, x1: 1500, why0: 'arena', why1: 'arena', ty: 12, c0: 0, rows: Array(40).fill(12), links: [] };
+    // 말 탄 듀라한: 피격 상자 발 위 -236..-85 (리뷰 p12_dull)
+    const dull = { id: 'b_dullahan', boss: true, cx: 900, bottom: 600, x0: 840, x1: 960, y0: 600 - 236, y1: 600 - 85, hp: 4000 };
+    const s = base({ foes: [dull], seg }); s.p.inBoss = true;
+    const r = A.decide(s, A.newMem());
+    ok(r.target === dull && r.act.right, '말 탄 보스(발 위 85–236): 닿는 대상 — 다가간다 (예전: 발 높이로 보아 못 닿음 → idle)', { why: r.why, act: r.act });
+    s.p.cx = dull.x0 + 4;
+    const mem = A.newMem(); let up = false;
+    for (let i = 0; i < 4; i++) { const q = A.decide(s, mem); if (q.act.up && q.act.attack) up = true; s.t += 1 / 60; }
+    ok(up, '말 탄 보스 바로 앞: 위 공격(↑+공격)으로 친다', s.p.cx);
+    // 높이 뜬 나는 보스 (밴시): 밑으로 가서 기다린다
+    const ban = { id: 'b_banshee', boss: true, flying: true, cx: 1100, bottom: 330, x0: 1060, x1: 1140, y0: 230, y1: 330, hp: 3000 };
+    const s3 = base({ foes: [ban], seg }); s3.p.inBoss = true;
+    const r3 = A.decide(s3, A.newMem());
+    ok(r3.target === ban && r3.act.right && r3.why === 'approach', '높이 뜬 나는 보스: 밑으로 다가간다 (내려올 때 위 공격)', { why: r3.why, act: r3.act });
+    // 경기장 벽 여백 안으로 밀려남: 그 자리에 얼어붙지 않는다 (리뷰: seg=[591,591,'arena','arena'])
+    const m = mapOf(['                    ', '                    ', '                    ', '####################']);
+    const wallX = 5 * TILE;
+    const seg4 = A.segmentAt(m, wallX + 10, foot(3), { halfW: 16, blocks: [{ x0: -1e9, x1: wallX + 20, why: 'arena' }, { x0: 18 * TILE, x1: 1e9, why: 'arena' }] });
+    ok(seg4 && seg4.x1 - seg4.x0 > 200 && seg4.x0 > wallX + 10, '경기장 벽 여백 안: 구간이 열린 쪽(오른쪽)으로 남는다', seg4 && [seg4.x0, seg4.x1, seg4.why0, seg4.why1]);
+    const fb = foot(3);
+    const s4 = base({ foes: [{ ...dull, cx: 12 * TILE, x0: 12 * TILE - 60, x1: 12 * TILE + 60, bottom: fb, y0: fb - 236, y1: fb - 85 }], seg: seg4 }); s4.p.cx = wallX + 10; s4.p.bottom = fb; s4.p.inBoss = true;
+    ok(A.decide(s4, A.newMem()).act.right, '경기장 벽 여백 안: 보스 쪽으로 걸어 나온다');
+  }
+  console.log('\n[node] autofix: 스킬 헛시전 · 돌아서기 떨림 · 닿지 않는 적 · 기다림 표시');
+  {
+    const sk = { key: 'skill1', page: 0, id: 'x', cost: 10, ready: true, range: A.skillRange({}, 1) };
+    // 두 칸 아래 적 (상자 위 막힘의 MP 40→2)
+    const below = { id: 'zombie', cx: 640, bottom: 696, x0: 622, x1: 658, y0: 696 - 78, y1: 696, hp: 30 };
+    ok(!A.decide(base({ foes: [below], skills: [sk] }), A.newMem()).act.skill1, '두 칸(96 px) 아래 적에게는 스킬을 쓰지 않는다');
+    const deep = { id: 'mud_man', cx: 640, bottom: 744, x0: 620, x1: 660, y0: 744 - 74, y1: 744, hp: 30 };
+    ok(!A.decide(base({ foes: [deep], skills: [sk] }), A.newMem()).act.skill1, '늪 바닥 아래(세 칸) 진흙 인간에게도 쓰지 않는다');
+    // 시전 뒤 1.2초에 피해가 없으면 4초 쉰다
+    const f = { id: 'z', cx: 700, bottom: 600, x0: 686, x1: 714, y0: 520, y1: 600, hp: 30 };
+    const s = base({ foes: [f], skills: [sk] }); s.level = 'skill';
+    const mem = A.newMem(); let casts = 0;
+    for (let i = 0; i < 60 * 5; i++) { if (A.decide(s, mem).act.skill1) casts++; s.t += 1 / 60; }
+    ok(casts >= 1 && casts <= 2, `피해 없는 시전 뒤 쉰다 (5초에 ${casts}번 — 예전 0.35초마다)`);
+    const s2 = base({ foes: [{ ...f }], skills: [sk] }); s2.level = 'skill';
+    const mem2 = A.newMem(); let casts2 = 0;
+    for (let i = 0; i < 60 * 5; i++) { if (A.decide(s2, mem2).act.skill1) { casts2++; s2.foes[0].hp -= 5; } s2.t += 1 / 60; }
+    ok(casts2 >= 5, `피해가 들어가면 계속 쓴다 (${casts2}번)`);
+    // 돌아서기 떨림: 대상이 뒤, 선 자리는 구간 끝에 눌림 (p4_worm: cx 262, seg.x1 273)
+    const seg = { x0: 81, x1: 273, why0: 'edge', why1: 'story', ty: 12, c0: 0, rows: Array(40).fill(12), links: [] };
+    const worm = { id: 'corpse_worm', cx: 200, bottom: 600, x0: 176, x1: 224, y0: 580, y1: 598, hp: 30 };
+    const s3 = base({ foes: [worm], seg }); s3.p.cx = 262; s3.p.facing = 1;
+    const mem3 = A.newMem(); let flips = 0, last = s3.p.facing;
+    for (let i = 0; i < 60 * 2; i++) {
+      const q = A.decide(s3, mem3);
+      const mv = q.act.right ? 1 : q.act.left ? -1 : 0;
+      if (mv) { s3.p.facing = mv; s3.p.cx += mv; }
+      if (s3.p.facing !== last) { flips++; last = s3.p.facing; }
+      s3.t += 1 / 60;
+    }
+    ok(flips <= 1 && s3.p.facing === -1, `대상이 뒤 + 구간 끝: 한 번 돌아서고 그대로 (2초에 방향 바뀜 ${flips}번)`);
+    // 닿지 않는 적에게 두 번 맞음 → 물러서기 + 「도달 불가」
+    const imp = { id: 'forge_imp', flying: true, cx: 560, bottom: 300, x0: 540, x1: 580, y0: 260, y1: 300, hp: 30 };
+    const s4 = base({ foes: [imp] });
+    const mem4 = A.newMem();
+    const hit = () => { s4.p.hurt = true; A.decide(s4, mem4); s4.t += 0.3; s4.p.hurt = false; return A.decide(s4, mem4); };
+    hit(); s4.t += 1; const r4 = hit();
+    ok(r4.hold === 'unreach' && r4.act.left, '닿지 않는 적에게 8초 안 두 번 맞음: 물러서고 HUD 「도달 불가」', { hold: r4.hold, act: r4.act, why: r4.why });
+    // 기다림 표시: 이야기 트리거 앞 (적은 트리거 너머)
+    const segS = { x0: 100, x1: 400, why0: 'edge', why1: 'story', ty: 12, c0: 0, rows: Array(40).fill(12), links: [] };
+    const far = { id: 'zombie', cx: 900, bottom: 600, x0: 880, x1: 920, y0: 520, y1: 600, hp: 30 };
+    const s5 = base({ foes: [far], seg: segS }); s5.p.cx = 300;
+    ok(A.decide(s5, A.newMem()).hold === 'forward', '이야기 트리거 앞, 적은 그 너머: hold = forward (「대기 · 앞으로 이동」)');
+    ok(A.decide(base({ seg: segS }), A.newMem()).hold === 'forward', '적이 안 보여도 트리거 앞이면 forward');
+    ok(A.decide(base({}), A.newMem()).hold === 'idle', '적 없음 · 막힘 없음: idle');
+  }
+  console.log('\n[node] autofix: 단추 · 기록 모드');
+  {
+    const g = { settings: { auto: { level: 'off' } }, state: {}, toast() {} };
+    A.toggleLevel(g, { toast: false });
+    ok(A.levelOf(g) === 'battle', '탭: 끔 → 「자동 전투」 (처음 켤 때 기본)');
+    A.toggleLevel(g, { toast: false });
+    ok(A.levelOf(g) === 'off', '탭: 켜짐 → 끔 (한 번)');
+    A.switchLevel(g, { toast: false });
+    ok(A.levelOf(g) === 'skill', '길게: 단계 바꾸기 (끔이면 마지막 단계의 반대 = 스킬)');
+    A.toggleLevel(g, { toast: false });
+    A.toggleLevel(g, { toast: false });
+    ok(A.levelOf(g) === 'skill', '탭 두 번: 끔 → 마지막 단계(스킬) 그대로');
+    const ts = []; const g2 = { settings: {}, state: {}, toast: (t) => ts.push(t) };
+    A.setLevel(g2, 'battle'); A.setLevel(g2, 'skill'); A.setLevel(g2, 'off');
+    ok(ts.join('|') === 'AUTO: 전투|AUTO: 스킬|AUTO 끔', `토스트 글자 (${ts.join(' | ')})`);
+    for (const m of ['practice', 'bossrush', 'survival', 'tower', 'trial']) ok(!!A.autoBlockedIn({ mode: m }), `기록 모드 ${m}: AUTO 막힘`);
+    ok(!A.autoBlockedIn({ mode: 'story' }) && !!A.autoBlockedIn({ mode: 'story', arcade: {} }) && !!A.autoBlockedIn({ mode: 'story', trial: {} }), '이야기 모드만 허용 (arcade·trial 표시가 있으면 막힘)');
+  }
+
   console.log('\n[node] pickLock');
   {
     const p = { cx: 500, cy: 560, facing: 1 };

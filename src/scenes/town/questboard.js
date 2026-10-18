@@ -1,4 +1,6 @@
 // 의뢰 게시판: 받을 수 있는 의뢰 / 진행 중(달성 시 보상 받기) / 완료 — 양피지 의뢰서 연출, 보상 팝업
+//  - 받기는 한 번에 (PLAY P20): 확인 창 없이 바로 받고, 6초 동안 양피지 아래 「되돌리기」 띠(터치 · 보조 기능 키 A / 패드 Y·△)
+//  - 목표 아래 「출현: 1장 불타는 마을 …」 줄 (PLAY P07, menu/access.js questWhere — 처치·수집·보스·클리어 목표)
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { text, wrap, button, bar, FONT, COLORS, font } from '../../core/ui.js';
@@ -10,6 +12,9 @@ import { SCRIPTS } from '../../data/story.js';
 import { drawIcon } from '../../render/icons.js';
 import { ServiceScene, ScrollList, Modal, RewardPopup, makeInst, hitRect, npcInfo, uiButton } from './common.js';
 import { vGrad, rGrad, fillGradRect, fillPathGrad } from '../menu/common.js';
+import { questWhere } from '../menu/access.js';
+import { drawHints, promptMode } from '../../core/prompts.js';
+const UNDO_T = 6;   // 받은 의뢰를 되돌릴 수 있는 시간 (초)
 // 게시판 그라디언트 색 멈춤 (menu/common 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
 const BOARD = [0, '#5a3a22', 1, '#2a1a0e'], NOTE_ON = [0, '#efe2c0', 1, '#c8b48a'], NOTE_FADED = [0, '#8a7a60', 1, '#5a4a38'];
 const PAPER = [0, '#eadcb8', 1, '#c4ae84'], PAPER_DONE = [0, '#a89878', 1, '#7a6a50'];
@@ -58,6 +63,8 @@ export class QuestBoardScene extends ServiceScene {
   get cur() { return this.entries[this.list.index] ?? null; }
 
   updateBody(dt) {
+    if (this.undo) { this.undo.t -= dt; if (this.undo.t <= 0 || this.tab !== 0) this.undo = null; }
+    if (this.undo && (this.tapId === 'undo' || input.pressed('alt'))) { this.undoAccept(); return 'handled'; }
     const r = this.list.update(dt);
     if (this.list.moved) audio.sfx('menu_move', { vol: 0.5 });
     if (this.tapId === 'act' && this.cur) { this.act(); return 'handled'; }
@@ -68,20 +75,14 @@ export class QuestBoardScene extends ServiceScene {
     const q = this.cur, st = this.state;
     if (!q) return;
     if (this.tab === 0) {
-      audio.sfx('menu_ok');
-      this.modal = new Modal({
-        title: '의뢰를 받겠습니까?', lines: [`「${q.name}」`, Q.rewardText ? `보상: ${Q.rewardText(q.id)}` : ''].filter(Boolean), width: 500,
-        buttons: [{ label: '의뢰서를 뗀다', value: 'ok', primary: true }, { label: '그만둔다', value: 'cancel' }],
-        onResult: (res) => {
-          if (res.value !== 'ok') return;
-          if (Q.acceptQuest(st, q.id)) {
-            audio.sfx('item'); this.talk(`「${q.name}」 의뢰서를 품에 넣었다.`);
-            this.paperFx();
-            this.refresh();
-            this.playQuestScript(q.id, 'start');
-          } else { audio.sfx('menu_cancel'); this.game.toast('지금은 받을 수 없는 의뢰다.', '#ff8a7a'); }
-        },
-      });
+      // 받기는 되돌릴 수 있으므로 확인 창 없이 바로 (P20) — 잠깐 「되돌리기」 띠를 보인다
+      if (Q.acceptQuest(st, q.id, { silent: true })) {   // 수락 토스트 대신 「되돌리기」 띠가 알린다 (토스트가 띠를 덮었다)
+        audio.sfx('item'); this.talk(`「${q.name}」 의뢰서를 품에 넣었다.`);
+        this.paperFx();
+        this.refresh();
+        this.undo = { qid: q.id, name: q.name, t: UNDO_T };
+        this.playQuestScript(q.id, 'start');
+      } else { audio.sfx('menu_cancel'); this.game.toast('지금은 받을 수 없는 의뢰다.', '#ff8a7a'); }
     } else if (this.tab === 1) {
       if (!Q.canClaim(st, q.id)) { audio.sfx('menu_cancel'); this.talk('아직 의뢰를 끝내지 못했다. ' + (Q.questProgressText(st, q.id) || '')); return; }
       const out = Q.claimQuest(st, q.id);
@@ -96,6 +97,19 @@ export class QuestBoardScene extends ServiceScene {
       };
     }
   }
+  /** 방금 받은 의뢰를 게시판에 되돌린다 (진행 기록 없이 받기 전 그대로) */
+  undoAccept() {
+    const u = this.undo, qs = this.state?.quests;
+    this.undo = null;
+    if (!u || !qs?.active?.[u.qid]) return;
+    delete qs.active[u.qid];
+    audio.sfx('menu_cancel');
+    this.talk(`「${u.name}」 의뢰서를 다시 게시판에 붙였다.`);
+    this.refresh();
+    const i = this.entries.findIndex((e) => e.id === u.qid);
+    if (i >= 0) this.list.index = i;
+  }
+  extraHints() { return this.undo ? [['alt', '되돌리기']] : []; }
   /**
    * 의뢰 대사 (STORY-P2-B #85): 받을 때 q_<id>_start, 보상을 받은 뒤 q_<id>_done 이 SCRIPTS 에 있으면 대화창으로 보여 준다.
    * 대사가 없으면 아무것도 하지 않고 false. onEnd 는 대화가 끝난 뒤 (게시판으로 돌아왔을 때)
@@ -171,12 +185,29 @@ export class QuestBoardScene extends ServiceScene {
     const q = this.cur;
     this.drawParchment(ctx, dr, q);
     this.actRect = this.tz('act', { x: dr.x, y: dr.y + dr.h + 10, w: dr.w, h: 50 });
-    if (!q) { uiButton(ctx, this.actRect, '—', { disabled: true }); return; }
+    if (!q) { uiButton(ctx, this.actRect, '—', { disabled: true }); if (this.undo && this.tab === 0) this.drawUndo(ctx, dr); return; }
     if (this.tab === 0) uiButton(ctx, this.actRect, '의뢰 받기', { selected: true, size: 18 });
     else if (this.tab === 1) {
       const ok = Q.canClaim(st, q.id);
       uiButton(ctx, this.actRect, ok ? '★ 보상 받기' : q.auto ? '스테이지를 클리어하면 자동 완료' : '진행 중…', { selected: ok, size: ok ? 18 : 15, color: ok ? '#ffe070' : '#a89880' });
     } else uiButton(ctx, this.actRect, '완료한 의뢰', { disabled: true, size: 16 });
+    if (this.undo && this.tab === 0) this.drawUndo(ctx, dr);
+  }
+
+  /** 「되돌리기」 띠 (양피지 아래쪽 안): 받은 의뢰 이름 + 남은 초 + 되돌리기 단추 */
+  drawUndo(ctx, dr) {
+    const u = this.undo, h = 46, r = { x: dr.x + 10, y: dr.y + dr.h - h - 8, w: dr.w - 20, h };
+    const a = clamp(u.t / 0.4, 0, 1);
+    ctx.save();
+    ctx.globalAlpha *= a;
+    ctx.fillStyle = 'rgba(20,10,8,0.92)'; ctx.fillRect(r.x, r.y, r.w, r.h);
+    ctx.strokeStyle = 'rgba(232,200,114,0.7)'; ctx.lineWidth = 1.2; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+    ctx.fillStyle = 'rgba(232,200,114,0.85)'; ctx.fillRect(r.x, r.y + r.h - 3, r.w * clamp(u.t / UNDO_T, 0, 1), 3);
+    const bw = Math.min(132, r.w * 0.42), br = { x: r.x + r.w - bw - 6, y: r.y + 4, w: bw, h: r.h - 10 };
+    text(ctx, `「${u.name}」 받음`, r.x + 12, r.y + 28, { size: 14, weight: 700, color: '#f0e0c0', ow: 2, maxWidth: br.x - r.x - 20 });
+    uiButton(ctx, this.tz('undo', br), '되돌리기', { size: 15, color: '#ffd890' });
+    if (promptMode() !== 'touch') drawHints(ctx, [['alt', '']], br.x - 4, r.y + 28, { align: 'right', size: 12, color: '#c8b898' });
+    ctx.restore();
   }
 
   paperRow(ctx, r, sel, q) {
@@ -243,6 +274,9 @@ export class QuestBoardScene extends ServiceScene {
     const ptxt = Q.questProgressText?.(st, q.id) ?? '';
     text(ctx, '목표', x, y, { size: 12, weight: 800, color: '#8a1426', outline: null, ow: 0 }); y += 18;
     text(ctx, ptxt, x, y, { size: 13, weight: 700, color: INK, outline: null, ow: 0, maxWidth: w }); y += 10;
+    // 어디서 하는가 (P07): 「출현: 1장 불타는 마을 · 2장 안개의 묘지」 — 진행 중·새 의뢰만
+    const where = status === 2 ? '' : questWhere(st, q);
+    if (where) { y += 10; text(ctx, where, x, y, { size: 12, weight: 700, color: '#6a2a14', outline: null, ow: 0, maxWidth: w }); y += 12; }
     if (status === 1 && prog) { bar(ctx, x, y, w, 8, prog.cur / Math.max(1, prog.need), { color: prog.done ? '#4aa83a' : '#b8781a', back: 'rgba(60,40,20,0.35)', edge: '#5a4020', shine: false }); y += 16; }
     y += 10;
     // 보상

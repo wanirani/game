@@ -164,7 +164,8 @@ export class QuestsTab extends Tab {
     divider(ctx, x + 14, y + (tight ? 70 : 78), w - 28);
     let cy = y + (tight ? 94 : 104);
     const dsz = tight ? 13 : 14, dlh = tight ? 1.5 : 1.6;
-    const goalH = gH + (sect !== 'avail' ? 18 : 0) + gAfter, rewardH = 14 + 28;
+    const where = sect === 'done' ? '' : D.questWhere(this.state, q);   // 「출현: 1장 불타는 마을 …」 (PLAY P07)
+    const goalH = gH + (sect !== 'avail' ? 18 : 0) + (where ? 20 : 0) + gAfter, rewardH = 14 + 28;
     const maxDesc = clamp(Math.floor((floor - rewardH - goalH - cy - (tight ? 6 : 10)) / (dsz * dlh)), 1, 5);
     cy += para(ctx, q.desc ?? '', x + 20, cy, w - 40, { size: dsz, color: PAL.text, lh: dlh, max: maxDesc }) + (tight ? 6 : 10);
     // 목표
@@ -179,6 +180,7 @@ export class QuestsTab extends Tab {
       text(ctx, `${Math.round(ratio * 100)}%`, x + w - 24, cy, { size: 12, align: 'right', weight: 800, family: FONT.num, color: PAL.dim });
       cy += 18;
     }
+    if (where) { glyph(ctx, 'eye', x + 31, cy + 11, 12, '#e8a060', 1.3); text(ctx, where, x + 42, cy + 16, { size: 13, weight: 700, color: '#f0b880', ow: 2, maxWidth: w - 66 }); cy += 20; }
     cy += gAfter;
     // 보상 (칩이 넘치면 줄을 바꾸고, 더 내려갈 자리가 없으면 '외 n개')
     heading(ctx, '보상', x + 18, cy, w - 36, { size: 14 });
