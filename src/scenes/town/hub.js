@@ -431,11 +431,13 @@ export class HubScene extends Scene {
     items.push(['타이틀로', '진행은 자동 저장된다', () => this.askTitle()]);
     this.menuItems = items;
     this.menu = new ListMenu(items.length);
-    this.menuOpen = true; this.menuT = 0; this._mDown = -1;
+    this.menuOpen = true; this.menuT = 0; this._mDown = -1; this._mOut = false; this._menuRect = null;
     this.hidePad = true; // 메뉴가 떠 있는 동안 가상 패드(점프 = 결정, 스틱 자리)가 줄을 가리지 않게 (PLAT-TOUCH #124)
     this._mp = null;
   }
   closeMenu() { this.menuOpen = false; this.hidePad = false; input.flush(); }
+  /** [matrix] 포인터(논리 px)가 마을 메뉴 판(제목 + 줄들, drawMenu 가 잰 자리) 안인가 */
+  inMenuPanel(p) { const r = this._menuRect; return !r || (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h); }
   /** [playb] P24 「타이틀로」 확인 → 저장 후 타이틀 (확인 창이 없으면 예전처럼 바로) */
   askTitle() {
     const g = this.game;
@@ -462,8 +464,10 @@ export class HubScene extends Scene {
     }
     // [playb] 23·25 한 번 탭 = 실행 (TapMenu 와 같은 잘못 누름 막기): 메뉴가 열리고 LIST_TAP_ARM 초 안에 누르기 시작한 탭은 버리고
     //  (「마을 메뉴」 두 번 누름의 두 번째가 첫 줄을 실행하지 않게), 누른 줄과 뗀 줄이 같을 때만 실행 — 끌고 와서 떼면 고르기만
-    if (p.justDown) { const z = taps.at(p.x, p.y, this); this._mDown = this.menuT < LIST_TAP_ARM ? -2 : rowOf(z?.id); }
+    if (p.justDown) { const z = taps.at(p.x, p.y, this); this._mDown = this.menuT < LIST_TAP_ARM ? -2 : rowOf(z?.id); this._mOut = this.menuT >= LIST_TAP_ARM && !this.inMenuPanel(p); }
     const ti = p.tapped ? rowOf(taps.hit(this)) : -1;
+    // [matrix] 판 밖을 누르고 떼면 = 계속하기 (닫기). 열린 직후 탭·판 안에서 시작한 끌기는 아니다 (replay f11)
+    if (p.tapped && ti < 0 && this._mOut && !this.inMenuPanel(p)) { this._mOut = false; audio.sfx('menu_cancel'); this.closeMenu(); return; }
     if (ti >= 0 && this.menuItems[ti]) {
       const early = this._mDown === -2 || this.menuT < LIST_TAP_ARM, here = this._mDown === ti;
       this._mDown = -1;
@@ -757,6 +761,7 @@ export class HubScene extends Scene {
     if (y0 + tot > bottom) y0 = Math.max(56, bottom - tot);
     if (y0 + tot > bottom) { bh = Math.max(40, Math.floor((bottom - y0 - (n - 1) * gap) / n)); tot = n * bh + (n - 1) * gap; }
     const tight = y0 < 80; // 낮은 화면: 제목만 작게 (영문 부제 생략)
+    { const top = y0 - (tight ? 14 : low ? 40 : 44) - 30, pad = 12; this._menuRect = { x: (W / 2 - bw / 2 - pad) * k, y: top * k, w: (bw + pad * 2) * k, h: (y0 + tot + pad - top) * k }; }   // [matrix] 판 밖 탭 = 닫기
     text(ctx, '에슈빌', W / 2, y0 - (tight ? 14 : low ? 40 : 44), { size: tight ? 24 : low ? 30 : 34, weight: 800, family: FONT.title, color: '#f3d690', align: 'center', ow: 4 });
     if (!tight) text(ctx, 'VILLAGE MENU', W / 2, y0 - (low ? 18 : 20), { size: 12, weight: 800, family: FONT.num, color: '#9d8f80', align: 'center' });
     const alertN = skillAlert(currentHero(this.game.state)).n;   // [playb] P06 「캐릭터」 줄 배지

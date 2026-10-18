@@ -41,6 +41,9 @@ const BOSS_W_HERO = 0.6;               // 보스 경기장 구도: 영웅 가중
 const BOSS_EDGE = 0.15;                // 보스 경기장 구도: 영웅과 화면 가장자리 사이 최소 거리 (화면 폭 비율)
 const OVER_MAX = 0.38;                 // 가로 넘겨 보기 상한 (화면 폭 비율, P05)
 const OVER_PAD = 10;                   // 넘겨 보기 폭에 더하는 여유 (논리 px)
+const OVER_LOOK = 64;                  // [matrix] 바라보는 쪽이면 영웅 앞 이만큼(한 칸 남짓)도 버튼 묶음 밖에 (넘겨 보기 폭 계산)
+const TOUCH_AHEAD_K = 0.35;            // [matrix] 터치 · 오른쪽을 볼 때 버튼 묶음 폭의 이만큼을 앞쪽으로 더 본다 (가시·적이 묶음 밑에 숨지 않게)
+const TOUCH_AHEAD_MAX = 0.3;           // [matrix] 룩어헤드 상한 (화면 폭 비율) — 영웅이 화면 왼쪽 끝으로 밀리지 않게
 
 // 값 노이즈 (흰 잡음 대신 부드럽게 흔들린다): 정수 격자 해시를 smoothstep 으로 보간, -1..1
 function hash(n) {
@@ -239,8 +242,11 @@ export class Camera {
     const f = t.facing || 1;
     const vwB = this.w / this.baseZoom, vhB = this.h / this.baseZoom;
     // 룩어헤드: 이동 방향 앞쪽을 더 보여줌 (+질주·대시 추가, +터치 모드 오른쪽 바이어스)
-    const touchBias = input.touchMode && f > 0 ? vwB * TOUCH_BIAS : 0;   // [hook:plat]
-    const wantLook = clamp((t.vx || 0) * 0.28, -130, 130) + f * (40 + (this.lookBoost || 0)) + touchBias;   // [hook:feel] [hook:plat]
+    // [matrix] 터치(게임 화면 위 버튼 묶음): 오른쪽을 볼 때 묶음 폭의 35 % 를 더 앞으로 — 앞의 가시·적이 묶음 밑에 숨지 않게 (replay f23)
+    const tsR = input.touchMode && f > 0 && game.world?.mode !== 'town' ? touchSides(this.w, this.h) : null;
+    const touchBias = input.touchMode && f > 0 ? vwB * TOUCH_BIAS + (tsR ? tsR.r / (this.baseZoom || 1) * TOUCH_AHEAD_K : 0) : 0;   // [hook:plat]
+    let wantLook = clamp((t.vx || 0) * 0.28, -130, 130) + f * (40 + (this.lookBoost || 0)) + touchBias;   // [hook:feel] [hook:plat]
+    if (tsR) wantLook = Math.min(wantLook, vwB * TOUCH_AHEAD_MAX);
     this.lookX = snap ? wantLook : lerp(this.lookX, wantLook, 1 - Math.pow(0.04, dt));
     const wantLookY = t.onGround ? -40 : ((t.vy || 0) > 300 ? 40 : -20);
     this.lookY = snap ? wantLookY : lerp(this.lookY, wantLookY, 1 - Math.pow(0.1, dt));
@@ -279,8 +285,11 @@ export class Camera {
     // 오른쪽 묶음은 크다(화면 폭 ~37 %): 오른쪽 벽 가까이에서 왼쪽을 보고 싸울 때도(보스 경기장에서 흔하다 — PLAY P05 의 L18·L19)
     // 영웅이 묶음 아래로 들어가지 않을 만큼만 넘겨 본다 (바라보는 쪽이면 묶음 폭 전부). 방향을 바꿔도 화면이 1/3 씩 휙 넘어가지 않는다
     const bd = this.bounds;
-    const needR = sides && f < 0 && bd ? clamp(t.x + t.w + OVER_PAD - (bd.x + bd.w - sides.r * zk), 0, sides.r * zk) : 0;
-    const wantR = sides && f > 0 ? sides.r * zk : needR, wantL = sides && f < 0 ? sides.l * zk : 0;
+    // [matrix] 바라보는 쪽이어도 묶음 폭 전부가 아니라 영웅(+앞 OVER_LOOK)이 묶음 밖에 설 만큼만 — 좁은 방(s01 r2 수직 통로)에서
+    //   화면 37 % 가 방 밖 빈 판이 되던 문제 (replay f24). 왼쪽 스틱 자리도 같은 규칙
+    const needR = sides && bd ? clamp(t.x + t.w + OVER_PAD + (f > 0 ? OVER_LOOK : 0) - (bd.x + bd.w - sides.r * zk), 0, sides.r * zk) : 0;
+    const needL = sides && bd ? clamp(bd.x + sides.l * zk - (t.x - OVER_PAD - (f < 0 ? OVER_LOOK : 0)), 0, sides.l * zk) : 0;
+    const wantR = needR, wantL = needL;
     if (snap) { this.ovL = wantL; this.ovR = wantR; }
     else { const k = 1 - Math.pow(0.06, dt); this.ovL = lerp(this.ovL, wantL, k); this.ovR = lerp(this.ovR, wantR, k); }
     if (this.ovL < 0.5 && wantL === 0) this.ovL = 0;

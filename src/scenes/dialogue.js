@@ -45,6 +45,10 @@ const MAX_GROW = 2;          // 초상화 옆 좁은 칸에서 창이 늘어날 
 /** 설정 글자 크기 → 대사 기본 크기 (UI px). 줄일 때 하한은 기본 − 4 (보통 15) */
 const TEXT_BASE = { normal: 19, large: 21, xlarge: 23 };
 const AUTO_KEY = 'dialogueAuto';
+/** [matrix] 전투 중에 열린 대화(스테이지 팁·이야기 지점·보스 앞 대사): 열린 뒤 이 시간(초) 동안은 어떤 입력도 받지 않는다 */
+const PLAY_ARM = 0.35;
+/** 패드 시스템 줄 (Ⅱ·가방·⛶·지도·AUTO) — 화면 위쪽이라 대화창 탭을 막지 않는다 */
+const SYS_PAD = new Set(['pause', 'bag', 'fullscreen', 'maptog', 'auto']);
 const GOLD = '#e8c872';
 
 // ── 다시 보기 기록 (이번 실행 동안 대화 장면끼리 공유, 최근 LOG_MAX 줄) ──
@@ -98,6 +102,10 @@ export class DialogueScene extends Scene {
     this.cg = null; this.cgT = 0;
     this.sp = null; this.pKey = null; this.pT = 0; this.lay = null; this._pReady = null;
     this.auto = !!this.game.settings?.[AUTO_KEY]; this.autoT = 0;
+    // [matrix] 전투 화면에서 열린 대화 (마을 밖 world): 스틱을 다시 잡거나 공격·점프를 누르다가 팁을 읽기도 전에 넘기지 않게 —
+    // PLAY_ARM 초 동안 입력 무시 · 공격/점프 키는 다음이 아니다 (결정만) · 탭은 대화창 안 + 스틱·버튼 자리 밖 + 연 뒤에 누른 것만
+    this.inPlay = !!(this.world && this.world.mode !== 'town');
+    this.age = 0; this._downOk = false;
     this.log = null;     // 다시 보기 창 { scroll, drag, wasDrag, lay }
     this.labels = {};
     // { label } 만 있는 줄이 이동 목표. { if, cmd:'goto', label } (ifFlag/ifChar) 은 조건부 이동 명령이다
@@ -213,7 +221,13 @@ export class DialogueScene extends Scene {
     this.pT += dt;
     if (!this.cur) return;
     if (this.log) { this.updateLog(dt); return; }
-    const hit = taps.hit(this);
+    this.age += dt;
+    if (this.inPlay) {
+      // 손가락을 연 뒤에 새로 눌렀는가 (열리기 전부터 누르던 스틱·버튼을 뗀 것은 탭이 아니다)
+      if (input.pointer.justDown) this._downOk = this.age >= PLAY_ARM && !this.inPadZone();
+      if (this.age < PLAY_ARM) { if (input.pointer.tapped) this._downOk = false; return; }
+    }
+    const hit = this.tapHit();
     // 오른쪽 위 버튼: 다시 보기 (보조 기능 A / 패드 Y) · 자동 진행 (보조 기능 2 C / 패드 LT)
     if (hit === 'log' || input.pressed('alt')) { this.openLog(); return; }
     if (hit === 'auto' || input.pressed('alt2')) { this.toggleAuto(); return; }
@@ -223,7 +237,7 @@ export class DialogueScene extends Scene {
       const before = Math.floor(this.shown);
       this.shown = Math.min(this.full.length, this.shown + TYPE_SPEED * dt);
       if (Math.floor(this.shown) !== before && Math.floor(this.shown) % 3 === 0) audio.sfx('type', { vol: 0.15 });
-      if (input.pressed('confirm') || input.pressed('attack') || input.pressed('jump') || input.pointer.tapped) this.shown = this.full.length;
+      if (this.advancePressed(hit)) this.shown = this.full.length;
       return;
     }
     if (this.menu) {
@@ -239,12 +253,40 @@ export class DialogueScene extends Scene {
       }
       return;
     }
-    if (input.pressed('confirm') || input.pressed('attack') || input.pointer.tapped || input.pressed('jump')) { audio.sfx('menu_move', { vol: 0.4 }); this.next(); return; }
+    if (this.advancePressed(hit)) { audio.sfx('menu_move', { vol: 0.4 }); this.next(); return; }
     // 자동 진행: 글이 다 나오고 길이에 비례한 시간이 지나면 다음 줄
     if (this.auto) {
       this.autoT += dt;
       if (this.autoT >= autoDelay(this.full.length)) { this.autoT = 0; this.next(); }
     }
+  }
+  /** [matrix] 이번 틱의 탭 대상 (전투 중 대화는 연 뒤에 새로 누른 탭만) */
+  tapHit() {
+    if (!input.pointer.tapped) return null;
+    if (this.inPlay && !this._downOk) return null;
+    const hit = taps.hit(this);
+    if (this.inPlay && hit === 'box' && this.inPadZone()) return null;
+    return hit;
+  }
+  /** [matrix] 다음 줄 입력: 결정(Enter·Z·Space·패드 A) + 대화창 탭. 마을 대화는 예전처럼 공격·점프·화면 어디든 탭도 */
+  advancePressed(hit) {
+    if (input.pressed('confirm')) return true;
+    if (this.inPlay) return hit === 'box';
+    return input.pressed('attack') || input.pressed('jump') || input.pointer.tapped;
+  }
+  /** [matrix] 포인터(논리 px)가 가상 패드의 스틱 자리(둘레 넉넉히)나 버튼(전투 줄) 위인가 — 패드가 숨어 있어도 같은 자리 */
+  inPadZone() {
+    if (!input.touchMode) return false;
+    const pad = input.pad, x = input.pointer.rawX, y = input.pointer.rawY;
+    let z = null, rects = null;
+    try { z = pad?.stickZone?.() ?? null; rects = pad?.occupiedRects?.() ?? null; } catch { return false; }
+    if (z) { const m = Math.max(24, z.w * 0.25); if (x >= z.x - m && x <= z.x + z.w + m && y >= z.y - m && y <= z.y + z.h + m) return true; }
+    for (const r of rects ?? []) {
+      if (!r || SYS_PAD.has(r.id)) continue;
+      const m = 14;
+      if (x >= r.x - m && x <= r.x + r.w + m && y >= r.y - m && y <= r.y + r.h + m) return true;
+    }
+    return false;
   }
   /** 대사 건너뛰기: 남은 명령(합류·플래그·지급·CG)은 실행하고, 선택지에서는 멈춘다 */
   skipAll() {
@@ -362,7 +404,14 @@ export class DialogueScene extends Scene {
     }
     const done = this.shown >= this.full.length;
     // '▼' (다음): 휴대폰에서도 ≥ 12.5 CSS px (14 UI px 는 phone2 에서 11.7 CSS px — text_audit 최소값이었다)
-    if (done && !this.menu && Math.floor(this.t * 3) % 2 === 0) text(ctx, '▼', Lo.textR - 4, by + bh - 16, { size: Math.max(14, Math.ceil(12.5 / cssPer(this))), color: COLORS.gold, align: 'right' });
+    // [matrix] 전투 중 대화(터치): 오른쪽 아래 ▼ 자리는 (숨은) 공격·대시 버튼 자리라 탭을 받지 않는다 → 창 가운데 아래에 「눌러서 다음 ▼」
+    const playTouch = this.inPlay && input.touchMode;
+    if (done && !this.menu && playTouch && this.age >= PLAY_ARM) {
+      ctx.save(); ctx.globalAlpha *= Math.floor(this.t * 3) % 2 === 0 ? 1 : 0.55;
+      text(ctx, '눌러서 다음 ▼', W / 2, by + bh - 16, { size: Math.max(14, Math.ceil(12.5 / cssPer(this))), color: COLORS.gold, align: 'center' });
+      ctx.restore();
+    }
+    else if (done && !this.menu && !playTouch && Math.floor(this.t * 3) % 2 === 0) text(ctx, '▼', Lo.textR - 4, by + bh - 16, { size: Math.max(14, Math.ceil(12.5 / cssPer(this))), color: COLORS.gold, align: 'right' });
     // 키보드·패드 안내 (초상화가 없는 쪽 창 위)
     if (!input.touchMode) {
       const items = !this.menu ? [['confirm', '다음']] : done ? [['dpadV', '선택'], ['confirm', '결정']] : null;

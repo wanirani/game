@@ -79,16 +79,19 @@ export function styleRank(n) { let r = STYLE_RANKS[0]; for (const s of STYLE_RAN
 
 // [playb] P06 레벨이 오르면 한 번: 「SP +1 — 메뉴 › 스킬」 (같은 처리 안에서 여러 레벨이 오르면 한 줄로 합친다).
 //  아케이드·시련은 스킬 포인트를 쓰는 화면이 없으니 알리지 않는다. 스테이지·마을(의뢰 보상) 모두 bus 'levelUp' 으로 받는다
-const LV_SP = { sp: 0, queued: false };
+// [matrix] loud: 보스 처치처럼 LEVEL UP 배너가 STAGE CLEAR 에 가려지는 때 — 따로 띄우던 「LEVEL UP!」 토스트와 합쳐 한 줄로
+//   「LEVEL UP! Lv.4 · SP +2 — 메뉴 › 스킬」 (replay: 두 토스트가 전리품 토스트와 함께 쌓였다)
+const LV_SP = { sp: 0, queued: false, lv: 0, loud: false };
 bus.on('levelUp', ({ level } = {}) => {
   LV_SP.sp += Number.isInteger(level) && level % 5 === 0 ? 2 : 1;   // progression.addExp 와 같은 규칙
+  if (Number.isInteger(level)) LV_SP.lv = Math.max(LV_SP.lv, level);
   if (LV_SP.queued) return;
   LV_SP.queued = true;
   const run = () => {
-    const n = LV_SP.sp, g = input.game;
-    LV_SP.sp = 0; LV_SP.queued = false;
+    const n = LV_SP.sp, lv = LV_SP.lv, loud = LV_SP.loud, g = input.game;
+    LV_SP.sp = 0; LV_SP.queued = false; LV_SP.lv = 0; LV_SP.loud = false;
     if (!g || !(n > 0) || g.state?.arcade || g.world?.arcade || g.world?.trial) return;
-    g.toast(`SP +${n} — 메뉴 › 스킬`, '#ffe070', 3.2);
+    g.toast(loud && lv ? `LEVEL UP! Lv.${lv} · SP +${n} — 메뉴 › 스킬` : `SP +${n} — 메뉴 › 스킬`, '#ffe070', 3.2);
   };
   if (typeof queueMicrotask === 'function') queueMicrotask(run); else Promise.resolve().then(run);
 });
@@ -1350,7 +1353,8 @@ export class World {
     const lvUp = this.gainExp(Math.round((boss.stats.exp ?? 500) * (1 + (this.player.stats.expBonus ?? 0) / 100)));
     this.companions?.onBossDefeated(boss);   // [hook:cmp] 유대 +10, 보스 경험치 분배
     // STAGE CLEAR 배너가 LEVEL UP 배너를 덮으므로 레벨업은 토스트로 따로 알림
-    if (lvUp > 0) this.game.toast(`LEVEL UP! Lv.${this.hero.level} — 스킬 포인트 획득`, '#ffe070', 3.2);
+    // [matrix] 이야기 모드는 bus 'levelUp' 토스트가 「LEVEL UP! Lv.N · SP +n — 메뉴 › 스킬」 한 줄로 알린다 (LV_SP.loud). 아케이드·시련은 예전 그대로
+    if (lvUp > 0) { if (LV_SP.queued && !(this.game.state?.arcade || this.arcade || this.trial)) LV_SP.loud = true; else this.game.toast(`LEVEL UP! Lv.${this.hero.level} — 스킬 포인트 획득`, '#ffe070', 3.2); }
     this.addScore((boss.def.score ?? 20000));
     for (const d of rollBossLoot(this, boss)) this.spawnPickup(d.type, boss.cx + rand(-40, 40), boss.cy, { ...d.data, keep: true });   // keep: 첫 처치 확정 고유 장비 등 — 가방이 가득 차도 보관함으로 (stashRoomLoot · collectLeftovers)
     for (let i = 0; i < 20; i++) setTimeout(() => this.fx.burst('fire', boss.cx + rand(-80, 80), boss.cy + rand(-80, 80), 8, { speed: 200 }), i * 60);

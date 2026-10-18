@@ -774,6 +774,9 @@ export class GameOverScene extends Scene {
     this.count = 9.99;
     this.menu = new ListMenu(2, { cols: 2 }); // 버튼이 가로로 놓이므로 ←→ 로 이동
     this.canContinue = (world?.run?.continues ?? 0) > 0;
+    // [matrix] 이야기 모드: 카운트가 0 이 되면 고른 버튼(기본 이어하기)을 실행한다 — 눈을 뗀 새 플레이어가 보스전을 잃고 마을로 가지 않게.
+    // 아케이드식 시간 초과 = 포기(마을로)는 이야기 밖(연습·아케이드 world)에만
+    this.storyTimeout = !!world && !world.arcade && !world.trial && (world.mode ?? 'story') === 'story';
     this.sec = null; this.secT = 1; this.done = false;
     this.vg = null; this.vgKey = '';
     audio.music('gameover');
@@ -815,7 +818,7 @@ export class GameOverScene extends Scene {
       if (input.touchMode && this.menu.index !== i) { this.menu.index = i; audio.sfx('menu_move'); }
       else { this.menu.index = i; this.choose(); return; }
     } else if (r === 'confirm') { this.choose(); return; }
-    if (this.count <= 0) this.giveUp();
+    if (this.count <= 0) { if (this.storyTimeout) this.choose(); else this.giveUp(); }
   }
   choose() { if (this.menu.index === 0) this.cont(); else this.giveUp(); }
   cont() {
@@ -884,7 +887,7 @@ export class GameOverScene extends Scene {
     text(ctx, String(sec), 0, numSize * 0.35, { size: numSize, align: 'center', weight: 900, family: FONT.num, color: warn && Math.floor(t * 4) % 2 === 0 ? '#ff5a5a' : '#fff', ow: 6 });
     ctx.restore();
     const y4 = y3 + g3;
-    text(ctx, `남은 크레딧: ${this.world?.run?.continues ?? 0}   (컨티뉴 시 점수 초기화)`, W / 2, y4, { size: 14, align: 'center', color: COLORS.dim });
+    text(ctx, `남은 크레딧: ${this.world?.run?.continues ?? 0}   (컨티뉴 시 점수 초기화)${this.storyTimeout && this.menu.index === 0 ? ' · 0 이 되면 자동으로 이어하기' : ''}`, W / 2, y4, { size: 14, align: 'center', color: COLORS.dim, maxWidth: W - 40 });
     const bw = Math.min(220, (W - 80) / 2), by = y4 + g4;
     ctx.save();
     ctx.globalAlpha = clamp(t / GO_ARM, 0.3, 1); // 입력을 받기 전(GO_ARM)에는 버튼이 흐리게 떠오른다

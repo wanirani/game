@@ -1661,9 +1661,10 @@ function drawStick(c, L, op) {
   const s = S.stick;
   if (s.active) return stickAt(c, L, s.ax, s.ay, s.fx, s.fy, Math.max(0.85, op), s.sprint);
   const f = settings().touchStick === 'fixed' ? 1 : clamp((now() - s.relT) / (STICK_FADE * 1000), 0, 1);
-  const away = f < 1 ? stickAt(c, L, s.ex, s.ey, s.ex, s.ey, Math.max(0.85, op) * (1 - f), false) : null;
+  // [matrix] (replay f24) 두 고리가 함께 보이지 않게 차례로: 손가락 자리 스틱은 앞 55 % 동안 사라지고, 기본 자리 받침은 뒤 50 % 동안 나타난다
+  const away = f < 1 ? stickAt(c, L, s.ex, s.ey, s.ex, s.ey, Math.max(0.85, op) * clamp(1 - f / 0.55, 0, 1), false) : null;
   if (!S.visible) return away;
-  const home = stickAt(c, L, L.home.x, L.home.y, L.home.x, L.home.y, ((OCC.mask & OCC_STICK) ? Math.min(op, OCC_A) : op) * f, false);
+  const home = stickAt(c, L, L.home.x, L.home.y, L.home.x, L.home.y, ((OCC.mask & OCC_STICK) ? Math.min(op, OCC_A) : op) * clamp((f - 0.5) / 0.5, 0, 1), false);
   if (!away || !home) return away || home;
   const x = Math.min(away.x, home.x), y = Math.min(away.y, home.y);
   return { x, y, w: Math.max(away.x + away.w, home.x + home.w) - x, h: Math.max(away.y + away.h, home.y + home.h) - y };

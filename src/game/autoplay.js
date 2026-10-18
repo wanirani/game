@@ -62,6 +62,8 @@ export const K = Object.freeze({
   // [autofix] 이야기 트리거 여유 · 닿지 않는 적에게 맞음 · 막힘 감시 · 헛 시전
   STORY_PAD: 64, UNREACH_WIN: 8, FLEE_T: 1.6, UNREACH_SHOW: 4, STALL_T: 2.5, PUSH_T: 0.7, CAST_CHECK: 1.2, CAST_MUTE: 4,
   SEG_TTL: 0.5,
+  // [matrix] 보조 무기: 근접으로 못 치는 보스·날짐승·닿지 않는 적에게 던지는 간격 (초)
+  SUB_GAP: 0.55,
 });
 
 // ───────────────────────── 설정 ─────────────────────────
@@ -328,6 +330,26 @@ export function skillHits(p, f, R) {
   return f.y0 < p.bottom - 4 + (R.dn ?? 8) && f.y1 > p.bottom - (R.up ?? 160) - 20;
 }
 
+/**
+ * [matrix] 보조 무기가 f 에 닿을 만한가 (보는 쪽 기준, subweapons.js 의 탄 모양 어림). p: {cx, top, bottom, facing}
+ *  단검·권총·십자가 = 가슴 높이 직선 · 도끼 = 앞 위 포물선 · 성수·화염병 = 앞 땅 · 성서 = 몸 둘레. 시계 등은 쓰지 않는다
+ */
+export function subHits(p, f, id) {
+  const dx = (f.cx - p.cx) * p.facing, top = p.top ?? p.bottom - 90;
+  switch (id) {
+    case 'dagger': case 'pistol': case 'cross': { const y = top + 34; return dx > 24 && dx < 740 && f.y0 < y + 16 && f.y1 > y - 16; }
+    case 'axe': return dx > 30 && dx < 430 && f.y1 > p.bottom - 520 && f.y0 < p.bottom - 30;
+    case 'holywater': case 'bomb': return dx > 24 && dx < 320 && Math.abs(f.bottom - p.bottom) < 64;
+    case 'bible': return Math.abs(f.cx - p.cx) < 110 && f.y1 > p.bottom - 170 && f.y0 < p.bottom;
+    default: return false;
+  }
+}
+
+/** [matrix] 보조 무기 하트 값 (data/subweapons.js cost — 그 파일은 탄·소리를 불러 노드 시험에서 못 읽는다) · 빅터 권총은 공짜 */
+const SUB_COST = Object.freeze({ dagger: 1, axe: 1, holywater: 1, cross: 1, stopwatch: 5, pistol: 1, bible: 2, bomb: 2 });
+const subCost = (id) => SUB_COST[id] ?? 1;
+const subFree = (p, id) => id === 'pistol' && p.hero?.charId === 'victor';
+
 /** 사각형 겹침 (x0,x1,y0,y1) */
 const overlap = (a0, a1, b0, b1) => a0 < b1 && b0 < a1;
 /** 적 f 가 영웅 p 의 판정 상자(rx: 앞쪽 bx..bx+bw · 높이 y0..y1, facing dir)와 겹치나 */
@@ -344,6 +366,7 @@ export function newMem() {
     n: 0, atkPh: 0, skillT: -9, swapT: -9, ultT: -9, guardT: -9, potionT: -9, turnT: -9, retreatT: -9, retreatDir: 0, engageT: 0, safeT: 0, lastDanger: -9, why: '', jumpHold: 0, airDir: 0, airT: -9, airUntil: -9,
     // [autofix] 막힘 감시 · 헛 시전 · 닿지 않는 적에게 맞음
     lastAtkT: -9, tgt: null, tgtT: -9, pushUntil: -9, pushDir: 0, cast: null, skillMuteT: -9, wasHurt: false, unreach: [], unreachShowT: -9,
+    subT: -9, lastSeg: null,   // [matrix] 보조 무기 간격 · 마지막으로 디딘 구간 (넉백으로 떠 있을 때 「닿지 않는 적」 판정에 쓴다)
   };
 }
 const MODE_RANK = { main: 0, low: 1, combo: 2, up: 3 };
@@ -374,19 +397,23 @@ export function decide(s, mem) {
    * 닿는 적: 구간(+공격 사거리) 안에 있고 ① 그 자리 바닥에 서 있거나 ② 땅에서 어느 공격 상자(첫 타·앉아·콤보·위)든 높이로 닿거나
    * ③ 낮게 나는 적 ④ (자동 전투) 나는 보스 — 밑에서 기다렸다가 내려올 때 친다
    */
-  const reachable = (f) => {
+  const reachable = (f, sg = seg) => {
+    const seg = sg;
     if (!seg) return false;
     const rx = W.xMax ?? W.bx + W.bw;
     if (!(f.x1 > seg.x0 - rx && f.x0 < seg.x1 + rx)) return false;
-    const fy = fyAt(f);
+    const fy = floorAt(seg, clamp(f.cx, seg.x0, seg.x1));
     if (!f.flying && Math.abs(f.bottom - fy) <= K.FOOT_TOL) return true;
     if (attackBoxFor(W, f, fy, { oneWay, upOk })) return true;
     if (f.flying) return (f.y1 > fy - K.FLY_UP && f.y0 < fy + 10) || (f.boss && battle);
     return false;
   };
   // 닿지 않는 적에게 맞고 있으면 (8초 안 두 번) 물러서고 HUD 에 「도달 불가」 (사람이 받아 가게)
+  // [matrix] 넉백으로 떠 있는 동안(seg 없음)은 마지막으로 디딘 구간으로 판단한다 — 예전에는 공중에서 맞을 때마다 「닿지 않는 적」으로 세어
+  //   나이트윙(나는 보스)과 싸우다가 「AUTO 불가」로 물러서 서 있기만 했다 (replay f41)
+  if (seg) mem.lastSeg = seg;
   if (p.hurt && !mem.wasHurt) {
-    if (!foes.some((f) => Math.abs(f.cx - p.cx) < 520 && reachable(f))) {
+    if (!foes.some((f) => Math.abs(f.cx - p.cx) < 520 && reachable(f, seg ?? mem.lastSeg))) {
       mem.unreach.push(t);
       while (mem.unreach.length && t - mem.unreach[0] > K.UNREACH_WIN) mem.unreach.shift();
       if (mem.unreach.length >= 2) {
@@ -487,6 +514,15 @@ export function decide(s, mem) {
   }
   // ── 수호신 (자동 전투) ──
   if (battle && s.guardReady && t - mem.guardT >= K.GUARD_GAP && foes.some((f) => Math.abs(f.cx - p.cx) < K.GUARD_R && Math.abs(f.bottom - p.bottom) < 200)) { act.guard = true; mem.guardT = t; }
+  // ── [matrix] 보조 무기 (자동 전투): 지금 근접으로 못 치는 보스·날짐승·닿지 않는 적이 탄 길에 있으면 던진다 (하트가 있을 때만) ──
+  let subBehind = 0;
+  const sw = s.sub;
+  if (battle && sw?.id && sw.ready && !hitF && !act.awaken && t - mem.subT >= K.SUB_GAP && !p.riding) {
+    const want = (f) => f.boss || f.flying || !reachable(f);
+    const pf = { cx: p.cx, top: p.top, bottom: p.bottom, facing: p.facing };
+    if (foes.some((f) => want(f) && subHits(pf, f, sw.id))) { act.sub = true; mem.subT = t; out.why ||= 'sub'; }
+    else if (foes.some((f) => want(f) && subHits({ ...pf, facing: -pf.facing }, f, sw.id))) subBehind = -p.facing;
+  }
   // ── 이동 ──
   let move = 0, holdFace = 0;
   // 자동으로 뛴 턱 넘기: 공중에서는 뛴 쪽으로 계속 (땅에 닿으면 끝)
@@ -575,6 +611,7 @@ export function decide(s, mem) {
       want = tf ? sgn(tf.cx - p.cx) : 0;
       if (!(want && (behind || Math.abs(tf.cx - p.cx) > 24) && (battle || behind || tf.locked))) want = 0;
     }
+    if (!want && subBehind) want = subBehind;   // [matrix] 뒤의 닿지 않는 적에게 보조 무기를 던지려면 돌아선다
     if (want && want !== p.facing) { move = want; mem.turnT = t; out.why ||= 'turn'; }
   }
   if (move > 0) act.right = true; else if (move < 0) act.left = true;
@@ -591,6 +628,8 @@ export function decide(s, mem) {
     const beyond = nf && seg && (nf.cx > seg.x1 + 24 || nf.cx < seg.x0 - 24) && side(nf.cx) !== 'edge';
     if (nf) out.hold = beyond ? 'forward' : 'unreach';
     else out.hold = seg && (blocked(seg.why0) || blocked(seg.why1)) ? 'forward' : 'idle';
+    // [matrix] 기다리는 까닭 (알림 글): 이야기 지점 · 보스 방 문턱
+    if (out.hold === 'forward' && seg) out.holdWhy = seg.why0 === 'story' || seg.why1 === 'story' ? 'story' : seg.why0 === 'boss' || seg.why1 === 'boss' ? 'boss' : null;
   }
   return out;
 }
@@ -779,11 +818,13 @@ export function snapshot(world, level, cfg) {
   return {
     t: world.time ?? 0, level, cfg,
     p: {
-      cx: p.cx, bottom: p.bottom, halfW, facing: p.facing || 1, onGround: !!p.onGround, oneWay: oneWayUnder(world, p), hpFrac: (p.hp ?? 0) / Math.max(1, st.hp ?? 1),
+      cx: p.cx, top: p.y, bottom: p.bottom, halfW, facing: p.facing || 1, onGround: !!p.onGround, oneWay: oneWayUnder(world, p), hpFrac: (p.hp ?? 0) / Math.max(1, st.hp ?? 1),
       mp: p.mp ?? 0, sp: run.sp ?? 0, awReady: !!world.awakenState?.ready, dashReady: !(p.dashCool > 0) && !(p.dashT > 0) && !riding,
       moving: !!(p.move && !p.move.canMove), dead: !!p.dead, hurt: p.hurtT > 0, riding, noMove: mountFly || swim || !!p.wallSlide, inBoss: !!(world.bossActive && boss && !boss.dead),
     },
     w, skills, page: p.skillPage ?? 0, seg, foes, propsNear, pickups, potion, guardReady,
+    // [matrix] 보조 무기: id · 쓸 수 있나 (재사용 대기 끝 · 하트 ≥ 값 — 빅터 권총은 공짜) · 규칙 noSub 이면 없음
+    sub: run.sub && !world.rules?.noSub ? { id: run.sub, ready: !(p.subCool > 0) && (subFree(p, run.sub) || (run.hearts ?? 0) >= subCost(run.sub)) } : null,
   };
 }
 
@@ -894,17 +935,23 @@ export function step(dt, inp) {
   w.autoTarget = r.target?.e ?? null;
   g.autoHud.on = true; g.autoHud.why = r.why; g.autoHud.hold = r.hold;
   // [autofix] 닿지 않는 적에게 맞아 물러설 때 한 번 알림 (20초에 한 번)
-  if (r.hold === 'unreach' && snap.t < mem.unreachShowT && snap.t - (mem.unreachToastT ?? -99) > 20) {
-    mem.unreachToastT = snap.t;
+  // [matrix] 방(보스전)마다 한 번만 — 같은 알림이 되풀이되지 않게
+  const uroom = w.roomId ?? w.room?.id ?? '';
+  if (r.hold === 'unreach' && snap.t < mem.unreachShowT && mem.unreachToastRoom !== uroom) {
+    mem.unreachToastT = snap.t; mem.unreachToastRoom = uroom;
     try { g.toast?.('AUTO: 닿지 않는 적 — 직접 움직이세요', '#ffb070', 2.2); } catch { /* */ }
   }
   // [autofix] 이야기 문턱·보스 문 앞(forward) / 적 없음(idle) 으로 2초 넘게 기다리면 방마다 한 번 알림 (흐린 AUTO 「대기」와 같은 뜻)
   if (r.hold === 'forward' || r.hold === 'idle') {
     if (mem.holdSince == null || mem.holdKind !== r.hold) { mem.holdSince = snap.t; mem.holdKind = r.hold; }
     const room = w.roomId ?? w.room?.id ?? '';
-    if (snap.t - mem.holdSince >= 2 && mem.holdToastRoom !== room) {
+    // [matrix] 이야기 지점·보스 문턱 앞은 까닭이 분명하다 → 0.6초 만에, 까닭을 적어 알린다 (s02 시작: 켜자마자 「대기」만 보여 고장처럼 보였다)
+    const why = r.hold === 'forward' ? r.holdWhy : null;
+    if (snap.t - mem.holdSince >= (why ? 0.6 : 2) && mem.holdToastRoom !== room) {
       mem.holdToastRoom = room;
-      try { g.toast?.(r.hold === 'forward' ? 'AUTO 대기 — 앞으로는 직접 이동하세요' : 'AUTO 대기 — 주변에 적 없음 · 직접 이동하세요', '#c8b8a0', 2); } catch { /* */ }
+      const msg = why === 'story' ? 'AUTO 대기 — 앞에 이야기 지점 · 직접 들어가세요' : why === 'boss' ? 'AUTO 대기 — 보스 방 앞 · 직접 들어가세요'
+        : r.hold === 'forward' ? 'AUTO 대기 — 앞으로는 직접 이동하세요' : 'AUTO 대기 — 주변에 적 없음 · 직접 이동하세요';
+      try { g.toast?.(msg, '#c8b8a0', 2.4); } catch { /* */ }
     }
   } else { mem.holdSince = null; mem.holdKind = null; }
   if (r.potion && lazy.inv?.useItem) {
