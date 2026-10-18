@@ -291,6 +291,15 @@ section('N10 ledger — 결과 화면 합계 · 「LEVEL UP」 배지');
   ok((un.sera ?? 0) === d.heroes.find((h) => h.charId === 'sera').ups && (un.sera ?? 0) > 0, `보지 않은 레벨업: 세라 ${un.sera}`, un);
   P.benchUnseen('sera', true);
   ok(P.benchUnseen('sera') === 0 && P.benchUnseen(null, true) && Object.keys(P.benchUnseen()).length === 0, '본 것으로 지우기 (한 명 · 모두)');
+  // 다른 슬롯: 한 세이브에서 오른 레벨은 다른 세이브의 헌터 교체 화면에 배지로 보이지 않는다
+  const a = mkState({ kael: 30, sera: 20 }), b = mkState({ kael: 30, sera: 20 });
+  P.addExpShared(a, 5000, a.heroes.kael, { world: W(a) });
+  const ua = P.benchUnseen(null, false, a), ub = P.benchUnseen(null, false, b);
+  ok((ua.sera ?? 0) > 0 && Object.keys(ub).length === 0 && P.benchUnseen('sera', false, b) === 0, `배지는 그 세이브 것만: A ${JSON.stringify(ua)} · B ${JSON.stringify(ub)}`);
+  P.addExpShared(b, 5000, b.heroes.kael, { world: W(b) });
+  const ub2 = P.benchUnseen(null, false, b);
+  ok((ub2.sera ?? 0) > 0 && Object.keys(P.benchUnseen(null, false, a)).length === 0, `B 에서 오르면 A 의 지난 배지는 버린다: B ${JSON.stringify(ub2)}`);
+  P.benchUnseen(null, true);
 }
 
 section('N11 source — 연결 지점');

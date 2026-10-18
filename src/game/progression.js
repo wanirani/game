@@ -42,6 +42,7 @@ export const BENCH = { share: 0.5, catchUp: 2, onGap: 5, offGap: 3 };
 const benchMem = new WeakMap();   // hero → { on, carry } (실행 중에만)
 /** 실행 중 합계 (결과 화면 = 스테이지 동안의 차이, 헌터 교체 카드 = 아직 보지 않은 대기 레벨업). 세이브에 쓰지 않는다 */
 export const BENCH_LEDGER = { active: 0, bench: 0, per: {}, unseen: {} };
+let unseenOwner = null;   // unseen 이 어느 세이브(state) 것인가 — 다른 슬롯을 열면 그 슬롯의 배지로 보이지 않게
 const isObjP = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const heroOk = (h) => isObjP(h) && Number.isInteger(h.level) && h.level >= 1;
 
@@ -123,7 +124,10 @@ export function addExpShared(state, n, activeHero, ctx = null) {
     out.bench.push(r); out.benchExp += r.exp;
     const p = (BENCH_LEDGER.per[r.charId] ??= { exp: 0, ups: 0, cu: 0 });
     p.exp += r.exp; p.ups += r.ups; if (r.catchUp) p.cu += r.exp;
-    if (r.ups) BENCH_LEDGER.unseen[r.charId] = (BENCH_LEDGER.unseen[r.charId] ?? 0) + r.ups;
+    if (r.ups) {
+      if (unseenOwner !== state) { for (const k of Object.keys(BENCH_LEDGER.unseen)) delete BENCH_LEDGER.unseen[k]; unseenOwner = state; }
+      BENCH_LEDGER.unseen[r.charId] = (BENCH_LEDGER.unseen[r.charId] ?? 0) + r.ups;
+    }
   }
   BENCH_LEDGER.bench += out.benchExp;
   return out;
@@ -145,8 +149,10 @@ export function benchSince(mark) {
   }
   return { active: BENCH_LEDGER.active - (m.active ?? 0), bench: BENCH_LEDGER.bench - (m.bench ?? 0), heroes };
 }
-/** 헌터 교체 카드의 「레벨 업」 배지: 아직 보지 않은 대기 레벨업 수. clear = true 면 본 것으로 (모두 또는 그 헌터) */
-export function benchUnseen(charId = null, clear = false) {
+/** 헌터 교체 카드의 「레벨 업」 배지: 아직 보지 않은 대기 레벨업 수. clear = true 면 본 것으로 (모두 또는 그 헌터).
+ *  state 를 주면 그 세이브에서 오른 레벨만 (다른 슬롯이면 없음) */
+export function benchUnseen(charId = null, clear = false, state = null) {
+  if (state && unseenOwner !== state) return charId == null ? {} : 0;
   if (charId == null) { const all = { ...BENCH_LEDGER.unseen }; if (clear) for (const k of Object.keys(BENCH_LEDGER.unseen)) delete BENCH_LEDGER.unseen[k]; return all; }
   const n = BENCH_LEDGER.unseen[charId] ?? 0;
   if (clear) delete BENCH_LEDGER.unseen[charId];

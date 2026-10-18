@@ -46,10 +46,10 @@ export class PartyScene extends Scene {
     this.fx = new Particles(300);
     this.leaving = null;
     this.modal = null; this.undo = null; this.nav = null; this.ges = null;
-    this.unseen = benchUnseen();   // [s5:p4b] 대기 중에 오른 레벨 (이 화면을 닫으면 본 것으로)
+    this.unseen = benchUnseen(null, false, st);   // [s5:p4b] 이 세이브에서 대기 중에 오른 레벨 (이 화면을 닫으면 본 것으로)
     audio.sfx('menu_ok');
   }
-  exit() { benchUnseen(null, true); }   // [s5:p4b] 「LEVEL UP」 띠는 한 번 보면 사라진다
+  exit() { benchUnseen(null, true); this.unseen = {}; }   // [s5:p4b] 「LEVEL UP」 띠는 한 번 보면 사라진다
   /** [qol] 파티 전체 최적 장착 미리보기 */
   openOptimizeAll() {
     let all = null;
