@@ -180,10 +180,10 @@ function vitPillBox(ctx, r, hero, L) {
   if (L.big) {
     const v = L.rows.vit, fs = Math.max(13, F);
     ctx.font = font(fs, 700); const nw = Math.min(bw * 0.7, ctx.measureText(name).width);
-    return { x: bx + nw + 6, y: y + v.name - Math.round(fs * 0.86), h: Math.round(fs * 1.05), size: Math.max(11, F - 2), compact: bw - nw - 6 < 40 };
+    return { x: bx + nw + 6, y: y + v.name - Math.round(fs * 0.86), h: Math.round(fs * 1.05), size: Math.max(11, F), compact: bw - nw - 6 < 40 };   // 글자 ≥ L.textMin (11 CSS px)
   }
   ctx.font = font(Math.max(13, F), 700);
-  return { x: bx + ctx.measureText(name).width + 6, y: y + 1, h: 14, size: 11, compact: false };
+  return { x: bx + ctx.measureText(name).width + 6, y: y + 1, h: Math.max(14, F + 3), size: Math.max(11, F), compact: false };
 }
 /** [autofix] 휴대폰 두 줄 배치: AUTO 동그라미 대신 이름 옆 알약을 누른다 (touchpad 가 act 'auto' 를 누름·뗌으로 보낸다 — 짧게 켬/끔, 길게 단계) */
 function autoInHud() { try { return !!touchpad.autoInHud?.(); } catch { return false; } }
