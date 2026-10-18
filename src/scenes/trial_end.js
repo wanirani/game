@@ -9,14 +9,16 @@ import { Scene } from '../core/game.js';
 import { input } from '../core/input.js';
 import { audio } from '../core/audio.js';
 import { assets } from '../core/assets.js';
-import { text, wrap, FONT, COLORS, ListMenu, button, bloodText, prewarmText, taps } from '../core/ui.js';
+import { text, wrap, FONT, COLORS, ListMenu, button, bloodText, prewarmText, taps, textFloor } from '../core/ui.js';
 import { drawHints, promptMode } from '../core/prompts.js';
 import { clamp, ease, fmtTime, TAU } from '../core/math.js';
 import { faceRect } from '../render/portrait.js';
 import { hudSafe } from '../render/hud_layout.js';
 import { TRIALS } from '../data/trials.js';
+import { RARITIES } from '../data/items.js';
+import { NM_COLOR, NM_IDS } from '../data/nightmare.js';
 import * as TRIAL from '../game/trial.js';
-import { nmFrom, nmRecordOf } from '../game/nightmare.js';   // [nightmare] 악몽 실패도 이 화면 (docs/specs/nightmare.md §1)
+import { nmFrom, nmRecordOf, finishNightmare } from '../game/nightmare.js';   // [nightmare] 악몽 실패도 이 화면 (docs/specs/nightmare.md §1)
 
 const ARM = 0.6;
 const TITLE = '시련 실패';
@@ -25,6 +27,8 @@ const PURPLE = TRIAL.TRIAL_COLOR;
 const BTN = ['다시 도전', '성당으로'];
 const NM_TITLE = '악몽 실패';   // [nightmare] 악몽 실패 제목 · 지도에서 들어왔으면 「마을로」
 const NM_BTN = ['다시 도전', '마을로'];
+const NM_WIN = '악몽 격파';   // [P3b] 악몽 격파 결과 화면 (보상 줄) — completeNightmare 가 push('trialEnd', { result })
+const NM_WIN_LINE = '악몽을 이겨 냈어요! 이번엔 제가 종을 크게 칠게요.';
 const TAP_ID = ['te_retry', 'te_leave'];
 
 /** 이 장면 좌표 1 px 이 몇 CSS px 인가 (uiScale: uiK 포함) */
@@ -35,11 +39,14 @@ function safeOf(sc) { const S = hudSafe(sc.game), k = sc.game.uiK || 1; return {
 
 export class TrialEndScene extends Scene {
   constructor(g) { super(g); this.opaque = false; this.uiScale = true; this.hidePad = true; this.deferToasts = true; }
-  enter({ world = null, tid = null } = {}) {
+  enter({ world = null, tid = null, result = null } = {}) {
     this.world = world ?? this.game.world;
     this.tid = tid ?? this.world?.trial?.id ?? null;
     this.T = this.tid && Object.hasOwn(TRIALS, this.tid) ? TRIALS[this.tid] : (TRIAL.trialOf(this.tid) ?? null);   // [nightmare] 'nm_<stage>' → 악몽 행
+    // [P3b] 악몽 격파 결과 (completeNightmare 의 w.nmResult) — 있으면 보상 줄 화면, 없으면 예전 실패 화면
+    this.result = this.T?.nightmare && result && typeof result === 'object' ? result : null;
     this.menu = new ListMenu(2, { cols: 2 });
+    this.menu.index = this.result ? 1 : 0;   // 격파 뒤 기본 = 돌아가기 (다시 도전은 한 칸 옆)
     this.done = false; this.px = undefined; this.py = undefined;
     this.vg = null; this.vgKey = '';
     const w = this.world, b = w?.boss;
@@ -48,9 +55,34 @@ export class TrialEndScene extends Scene {
     this.tries = this.tid ? (w?.hero?.trials?.[this.tid]?.tries ?? 0) : 0;
     if (this.T?.nightmare) this.tries = nmRecordOf(this.game.state, this.tid)?.tries ?? 0;   // [nightmare] 슬롯 state.nm 기록
     try { assets.preload([ELISE]); } catch { /* 없음 */ }
-    audio.stopMusic?.(0.8);
-    audio.sfx('bell', { vol: 0.45 });
+    if (this.result) {
+      audio.sfx('bell', { vol: 0.55, pitch: 0.8 });
+      if (this.result.first) audio.sfx('item', { vol: 0.7 });
+    } else {
+      audio.stopMusic?.(0.8);
+      audio.sfx('bell', { vol: 0.45 });
+    }
     this.prewarm();
+  }
+  /** [P3b] 결과 화면의 보상 줄 → [[이름, 값, 색], …] */
+  resultRows() {
+    const R = this.result;
+    if (!R) return [];
+    const rows = [];
+    if (R.first) {
+      const names = Array.isArray(R.items) ? R.items : [];
+      names.forEach((n, k) => {
+        const rar = RARITIES[clamp(R.rarity?.[k] ?? 4, 0, RARITIES.length - 1)];
+        rows.push(['첫 격파 보상', `${n}${rar?.name ? ` (${rar.name})` : ''}`, rar?.color ?? '#ffd860']);
+      });
+      if (!names.length) rows.push(['첫 격파 보상', '보관함이 가득 찼다', COLORS.dim]);
+      rows.push(['골드', `+${(R.gold ?? 0).toLocaleString('ko-KR')} G`, '#ffd84a']);
+    } else rows.push(['첫 격파 보상', '이미 받았다', COLORS.dim]);
+    const t = Number.isFinite(R.time) ? `${R.time.toFixed(1)}초` : '—';
+    rows.push(['기록', R.newBest ? `${t}  · 새 기록!` : `${t}  · 최고 ${Number.isFinite(R.best) ? R.best.toFixed(1) + '초' : '—'}`, R.newBest ? '#ffe070' : COLORS.bone]);
+    rows.push(['악몽 격파', `${R.clears ?? 0} / ${NM_IDS.length}${R.metaFresh ? '  (+1)' : ''}`, R.metaFresh ? '#ff8a9a' : COLORS.bone]);
+    if (Array.isArray(R.trails) && R.trails.length) rows.push(['새 잔상', R.trails.map((s) => `「${s}」`).join(' · '), '#ff8a9a']);
+    return rows;
   }
   prewarm() {
     const g = this.game, ctx = g.ctx;
@@ -86,13 +118,15 @@ export class TrialEndScene extends Scene {
     audio.sfx('menu_ok');
     const g = this.game, tid = this.tid;
     if (this.menu.index === 0) TRIAL.retryTrial(g, tid);
+    else if (this.result) finishNightmare(g, tid);   // [P3b] 격파 뒤 돌아가기 (도전 횟수를 더 세지 않는다)
     else TRIAL.leaveTrial(g, tid, 'leave');
   }
   vignette(ctx, W, H) {
     const key = `${W}|${H}`;
     if (this.vgKey !== key) {
       const gr = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.95);
-      gr.addColorStop(0, 'rgba(30,6,48,0)'); gr.addColorStop(1, 'rgba(30,6,48,0.85)');
+      const c = this.T?.nightmare ? '52,4,12' : '30,6,48';   // [P3b] 악몽은 검붉은 가장자리
+      gr.addColorStop(0, `rgba(${c},0)`); gr.addColorStop(1, `rgba(${c},0.85)`);
       this.vg = gr; this.vgKey = key;
     }
     ctx.fillStyle = this.vg; ctx.fillRect(0, 0, W, H);
@@ -102,51 +136,77 @@ export class TrialEndScene extends Scene {
     if (g.scenes[0] === this) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); }
     ctx.fillStyle = `rgba(10,4,18,${Math.min(0.78, t * 1.4)})`; ctx.fillRect(0, 0, W, H);
     this.vignette(ctx, W, H);
-    const T = this.T;
+    const T = this.T, R = this.result;
     const f = clamp((H - 40) / 480, 0.74, 1);
     const ts = this.titleSize(H), bh = tapH(this);
     // 엘리제 카드: 줄 수에 따라 높이
     const cw = Math.min(600, W - 60), tx = 86, tw = cw - tx - 22;
-    const line = T?.failLine ?? '';
+    const line = R ? NM_WIN_LINE : T?.failLine ?? '';
     const lines = line ? wrap(ctx, `「${line}」`, tw, 17, 600, FONT.body) : [];
-    const lh = 24, cardH = Math.max(80, 44 + lines.length * lh);
+    const lh = 24;
     const gap1 = ts * 0.8 + 8, gap2 = 22 * f, gap3 = 26 * f, gap4 = 20 * f;   // gap1: 피 글씨 방울 아래로 (시련 이름이 방울에 가리지 않게)
-    const total = ts * 0.75 + gap1 + 18 + gap2 + cardH + gap3 + 16 + gap4 + bh;
+    // [P3b] 격파 결과: 엘리제 카드 대신(낮은 화면) 또는 그 아래에 보상 줄 판
+    const rows = R ? this.resultRows() : null;
+    const RL = Math.max(24, Math.ceil(Math.max(15, textFloor()) * 1.55)), rowsH = rows ? rows.length * RL + 18 : 16;
     const avail = H - S.b - 30 - S.t - 10;
+    let cardH = Math.max(80, 44 + lines.length * lh);
+    const totalOf = (ch) => ts * 0.75 + gap1 + 18 + gap2 + ch + (ch ? gap3 : 0) + rowsH + gap4 + bh;
+    if (R && totalOf(cardH) > avail) cardH = 0;   // 낮은 화면: 보상 줄이 먼저
+    const total = totalOf(cardH);
     let y = S.t + 10 + Math.max(0, (avail - total) * 0.45) + ts * 0.75;
     // 제목 (흔들리며 떠오른다)
     const kIn = ease.outCubic(clamp(t / 0.35, 0, 1));
     ctx.save(); ctx.globalAlpha = kIn;
-    bloodText(ctx, T?.nightmare ? NM_TITLE : TITLE, W / 2, y, { size: ts, t });
+    bloodText(ctx, R ? NM_WIN : T?.nightmare ? NM_TITLE : TITLE, W / 2, y, { size: ts, t });
     ctx.restore();
     y += gap1;
     if (T) text(ctx, T.name, W / 2, y, { size: 17, align: 'center', weight: 800, family: FONT.title, color: T.color ?? PURPLE, ow: 3, maxWidth: W - 60 });
     y += gap2;
     // 엘리제의 한마디
     const cx = (W - cw) / 2, cy = y;
-    ctx.save();
-    ctx.globalAlpha = clamp((t - 0.15) / 0.3, 0, 1);
-    ctx.fillStyle = 'rgba(16,8,26,0.88)'; ctx.fillRect(cx, cy, cw, cardH);
-    ctx.strokeStyle = 'rgba(200,160,255,0.55)'; ctx.lineWidth = 1.5; ctx.strokeRect(cx + 0.5, cy + 0.5, cw - 1, cardH - 1);
-    const pr = 30, pcx = cx + 16 + pr, pcy = cy + cardH / 2;
-    ctx.save();
-    ctx.beginPath(); ctx.arc(pcx, pcy, pr, 0, TAU); ctx.fillStyle = '#140a1c'; ctx.fill(); ctx.clip();
-    const img = assets.get(ELISE);
-    const fr = img ? faceRect(img, ELISE, 1.5) : null;
-    if (fr) ctx.drawImage(img, fr.sx, fr.sy, fr.sw, fr.sh, pcx - pr, pcy - pr, pr * 2, pr * 2);
-    ctx.restore();
-    ctx.strokeStyle = PURPLE; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(pcx, pcy, pr + 1, 0, TAU); ctx.stroke();
-    text(ctx, '엘리제', cx + tx, cy + 26, { size: 14, weight: 800, color: '#f0d8ff', ow: 2 });
-    lines.forEach((l, k) => text(ctx, l, cx + tx, cy + 50 + k * lh, { size: 17, weight: 600, color: COLORS.bone, ow: 3 }));
-    ctx.restore();
-    y = cy + cardH + gap3 + 4;
-    // 얼마나 다가갔나
-    const info = [];
-    if (this.bossPct != null) info.push(`보스 체력 ${this.bossPct}% 남음`);
-    if (this.fightT > 0) info.push(`전투 ${fmtTime(this.fightT)}`);
-    if (this.tries > 0) info.push(`도전 ${this.tries}회`);
-    if (info.length) text(ctx, info.join('  ·  '), W / 2, y, { size: 14, align: 'center', weight: 700, color: COLORS.dim, ow: 2 });
-    y += gap4;
+    const rim = T?.nightmare ? NM_COLOR : PURPLE;
+    if (cardH > 0) {
+      ctx.save();
+      ctx.globalAlpha = clamp((t - 0.15) / 0.3, 0, 1);
+      ctx.fillStyle = T?.nightmare ? 'rgba(26,6,12,0.9)' : 'rgba(16,8,26,0.88)'; ctx.fillRect(cx, cy, cw, cardH);
+      ctx.strokeStyle = T?.nightmare ? 'rgba(255,120,140,0.5)' : 'rgba(200,160,255,0.55)'; ctx.lineWidth = 1.5; ctx.strokeRect(cx + 0.5, cy + 0.5, cw - 1, cardH - 1);
+      const pr = 30, pcx = cx + 16 + pr, pcy = cy + cardH / 2;
+      ctx.save();
+      ctx.beginPath(); ctx.arc(pcx, pcy, pr, 0, TAU); ctx.fillStyle = '#140a1c'; ctx.fill(); ctx.clip();
+      const img = assets.get(ELISE);
+      const fr = img ? faceRect(img, ELISE, 1.5) : null;
+      if (fr) ctx.drawImage(img, fr.sx, fr.sy, fr.sw, fr.sh, pcx - pr, pcy - pr, pr * 2, pr * 2);
+      ctx.restore();
+      ctx.strokeStyle = rim; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(pcx, pcy, pr + 1, 0, TAU); ctx.stroke();
+      text(ctx, '엘리제', cx + tx, cy + 26, { size: 14, weight: 800, color: '#f0d8ff', ow: 2 });
+      lines.forEach((l, k) => text(ctx, l, cx + tx, cy + 50 + k * lh, { size: 17, weight: 600, color: COLORS.bone, ow: 3 }));
+      ctx.restore();
+      y = cy + cardH + gap3;
+    }
+    if (rows) {
+      // [P3b] 보상 줄: 첫 격파 보상(장비 · 골드) 또는 「이미 받았다」 · 기록 · 악몽 격파 수 (K1) · 새로 열린 잔상
+      const ry = cardH > 0 ? y - gap3 * 0.4 : y;
+      ctx.save();
+      ctx.globalAlpha = clamp((t - 0.3) / 0.3, 0, 1);
+      ctx.fillStyle = 'rgba(20,4,8,0.9)'; ctx.fillRect(cx, ry, cw, rowsH);
+      ctx.strokeStyle = 'rgba(224,32,58,0.6)'; ctx.lineWidth = 1.5; ctx.strokeRect(cx + 0.5, ry + 0.5, cw - 1, rowsH - 1);
+      rows.forEach(([k, v, c], i) => {
+        const by = ry + 9 + (i + 1) * RL - Math.round(RL * 0.3);
+        text(ctx, k, cx + 20, by, { size: 15, weight: 700, color: '#c8a8a8', ow: 2, maxWidth: cw * 0.32 });
+        text(ctx, v, cx + cw - 20, by, { size: 16, weight: 800, color: c, ow: 2, align: 'right', maxWidth: cw * 0.62 });
+      });
+      ctx.restore();
+      y = ry + rowsH + gap4 + 4;
+    } else {
+      y += 4;
+      // 얼마나 다가갔나
+      const info = [];
+      if (this.bossPct != null) info.push(`보스 체력 ${this.bossPct}% 남음`);
+      if (this.fightT > 0) info.push(`전투 ${fmtTime(this.fightT)}`);
+      if (this.tries > 0) info.push(`도전 ${this.tries}회`);
+      if (info.length) text(ctx, info.join('  ·  '), W / 2, y, { size: 14, align: 'center', weight: 700, color: COLORS.dim, ow: 2 });
+      y += gap4;
+    }
     // 단추
     const bw = Math.min(220, (W - 80) / 2);
     ctx.save();

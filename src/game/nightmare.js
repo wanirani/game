@@ -7,7 +7,8 @@
 //   retryNightmare / leaveNightmare    실패 화면 「다시 도전」 / 「마을로」 · 일시정지 포기
 //  경험치 0 (K4: attachTrial 의 w.gainExp = () => 0 을 그대로 쓴다) · 목숨·사망 수 그대로 · AUTO 는 world.trial 로 막힌다.
 //  이 파일은 trial.js 를 import 하지 않는다 (순환 없음 — trial.js → nightmare.js 한 방향).
-import { NM, NM_IDS, NM_COLOR, NM_FAIL_LINE, isNightmareId, nmEntry, nmTwist, nmLevel } from '../data/nightmare.js';
+import { NM, NM_IDS, NM_COLOR, NM_FAIL_LINE, NM_FLAGS, isNightmareId, nmEntry, nmTwist, nmLevel } from '../data/nightmare.js';
+import { TRAILS } from '../data/cosmetics.js';   // [P3b] K1 잔상 이름 (읽기만 — 첫 격파로 새로 열린 잔상을 결과 화면에 보인다)
 import { STAGES } from '../data/stages.js';
 import { BOSSES } from '../data/bosses.js';
 import { itemName } from '../data/items.js';
@@ -233,20 +234,39 @@ export function completeNightmare(game, w, T) {
   const reward = first ? grantFirstReward(game, w, e) : { items: [], gold: 0 };
   let metaFresh = false;
   const meta = game?.meta;
+  const clears0 = meta ? nmMeta(meta).clears : 0;
   if (meta) {
     metaFresh = noteMetaClear(meta, T.id);
     if (metaFresh) { try { saves.saveMeta(meta); } catch (err) { console.warn('[nightmare] meta', err); } }
   }
   try { w.syncToState(); } catch (err) { console.warn('[nightmare] sync', err); }
   save(game);
-  w.nmResult = { id: T.id, time: t, best: rec.best, newBest, first, items: reward.items.map((it) => itemName(it)), gold: reward.gold, clears: meta ? nmMeta(meta).clears : 0, metaFresh };
+  const clears = meta ? nmMeta(meta).clears : 0;
+  // [P3b] 이번 격파로 새로 열린 K1 잔상 (need.nm 이 clears0 < n ≤ clears)
+  const trails = Object.values(TRAILS).filter((tr) => Number.isFinite(tr?.need?.nm) && tr.need.nm > clears0 && tr.need.nm <= clears).map((tr) => tr.name);
+  w.nmResult = {
+    id: T.id, time: t, best: rec.best, newBest, first, items: reward.items.map((it) => itemName(it)), gold: reward.gold, clears, metaFresh,
+    rarity: reward.items.map((it) => it?.rarity ?? 0), trails, tries: rec.tries, level: w.stage?.level ?? null,
+  };
   NM_STATS.cleared++; NM_STATS.last = 'clear';
   try { bus.emit('nightmareCleared', { id: T.id, bossId: e.boss, time: t, first }); } catch (err) { console.warn('[nightmare] bus', err); }
+  // [P3b] 입구가 켜져 있으면 결과 화면(trial_end 의 보상 줄)이 첫 보상·기록·격파 수를 보여 주고, 그 단추가 다시 도전 / 돌아가기를 고른다
+  if (NM_FLAGS.ui && game?.registry?.trialEnd) {
+    game.push('trialEnd', { world: w, tid: T.id, result: w.nmResult });
+    return;
+  }
   if (first) {
     for (const n of w.nmResult.items) toast(game, `첫 격파 보상: ${n}`, 3.4);
     toast(game, `+${reward.gold.toLocaleString('ko-KR')} G`, 2.6);
   } else if (newBest) toast(game, `최고 기록 ${t.toFixed(1)}초`, 2.6);
   goBack(game, T.id, 'clear');
+}
+
+/** [P3b] 결과 화면 「성당으로」·「마을로」: 격파 뒤 돌아가기 (기록·보상은 completeNightmare 가 이미 남겼다 — 다시 저장만) */
+export function finishNightmare(game, id) {
+  if (!game) return;
+  save(game);
+  goBack(game, id, 'clear');
 }
 
 /** 실패 화면 「다시 도전」: 조건 다시 확인 → 새 월드로 보스방 */
@@ -288,7 +308,7 @@ function goBack(game, id, why) {
   dropRuleToasts(game);
   if (!game.registry?.hub) { game.go('title', {}); return; }
   if (FROM === 'worldmap') game.go('hub', { from: 'nightmare', nightmare: id, nmWhy: why });
-  else game.go('hub', { from: 'church', open: 'church', nightmare: id, nmWhy: why });
+  else game.go('hub', { from: 'church', open: 'church', nightmare: id, nmWhy: why, trial: id });   // trial: hub 가 성당에 넘긴다 → 성당이 「악몽」 탭을 연다 (P3b)
 }
 /** 떠날 곳 (QA) */
 export const nmFrom = () => FROM;

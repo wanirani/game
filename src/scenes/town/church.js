@@ -33,6 +33,10 @@ import { composeLook, lookForAsc, STAT_INFO } from '../../game/stats.js';
 import { addByBase } from '../../game/inventory.js';
 import { SHOP_LINES } from '../../data/town.js';
 import { SCRIPTS } from '../../data/story.js';   // 「안쪽 방 — 신부님」 새 대사 표식 (albertoNews — 읽기만)
+import { NM, NM_IDS, NM_COLOR, NM_FLAGS, isNightmareId, nmTwist, nmLevel, nmRecLevel } from '../../data/nightmare.js';   // [P3b] 「악몽」 탭
+import { RARITIES } from '../../data/items.js';
+import { TRAILS } from '../../data/cosmetics.js';   // [P3b] K1 다음 잔상 안내 (읽기만)
+import { nmStatus, startNightmare, NM_STATS } from '../../game/nightmare.js';
 import { ServiceScene, Modal, RewardPopup, makeInst, hitRect, rowBg, Snap, uiPanel, uiButton, uiHints, josa } from './common.js';
 import { vGrad, rGrad, fillGradRect, wrapC, Gesture, Scroller, clipBegin, clipEnd, scrollbar, moreBelow, pill, glyph } from '../menu/common.js';
 // 직업 카드 그라디언트 색 멈춤 (menu/common 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
@@ -78,6 +82,8 @@ export class ChurchScene extends ServiceScene {
     this.lines = this.p2 ? SHOP_LINES.elise : SHOP_LINES.alberto; this.music = 'church'; this.portraitGlow = '#fff2b0'; this.emberColor = '#fff2b0';
     if (this.p2) { try { assets.preload(['portraits/npc_elise']); } catch { /* 없음 */ } }
     this.tabs = [{ id: 'class', label: '전직' }, { id: 'bless', label: '축복' }, { id: 'reset', label: '스킬 초기화' }, { id: 'save', label: '여정 기록' }];
+    // [P3b] 「악몽」 탭 (docs/specs/nightmare.md §7): 입구가 켜져 있고 이야기에서 쓰러뜨린 보스가 하나라도 있으면 (맨 끝 — 다른 탭 번호는 그대로)
+    if (NM_FLAGS.ui && !this.state?.arcade && NM_IDS.some((id) => nmStatus(this.state, id).state !== 'locked')) this.tabs.push({ id: 'nightmare', label: '악몽' });
     this.sel = 0; this.cardSel = 0; this.rigs = {}; this.cere = null;
     // 전직 카드의 설명·특성·보정치 칸이 카드보다 길 때(휴대폰)만 세로 스크롤: 두 카드가 같은 자리로 (끌기·휠·↑↓·오른쪽 스틱 Y)
     this.ges = new Gesture(); this.csc = new Scroller(); this.cscRect = null; this.cscKey = null;
@@ -93,7 +99,13 @@ export class ChurchScene extends ServiceScene {
       const k = list.findIndex((id) => fresh.includes(id));
       if (k >= 0) { this.sel = this.cardSel = k === 0 ? 1 : 3; }
     }
-    if (params.trial || fresh.length) {
+    const nmTab = this.tabs.findIndex((t) => t.id === 'nightmare');
+    if (isNightmareId(params.trial) && nmTab >= 0) {
+      // [P3b] 악몽에서 돌아옴 (nightmare.js goBack → hub → 성당): 「악몽」 탭 · 그 악몽 칸
+      this.tab = nmTab; this.sel = Math.max(0, NM_IDS.indexOf(params.trial)); this.nmFollow = true;
+      this.talk(NM_STATS.last === 'clear' ? this.say2('악몽을 이겨 냈구먼. 그대가 자랑스럽네.', '악몽을 이겼어요! 역시 헌터님이에요!')
+        : this.say2('악몽은 쉽지 않지. 숨을 고르고 다시 가게.', '괜찮아요. 숨 고르고 다시 가요!'));
+    } else if (params.trial || fresh.length) {
       this.talk(this.lines.trialDone ? 'trialDone' : 'hello');
       if (fresh.length) { audio.sfx('levelup', { vol: 0.7 }); audio.sfx('bell', { vol: 0.5 }); }
     } else if (params.from === 'hub' && params.tab === 'class' && this.lines.trialBack && TRIAL_BACK.has(TRIAL.TRIAL_STATS?.last)) {
@@ -102,11 +114,18 @@ export class ChurchScene extends ServiceScene {
   }
   /** 성당지기 말투로 고른 한 줄 (1부 알베르토 · 2부 엘리제) */
   say2(alberto, elise) { return this.p2 ? elise : alberto; }
-  get useLeftRight() { return this.tab === 0 || this.tab === 1 || this.tabs[this.tab]?.id === 'save'; }   // [hook:gal] 기록 탭: ←→ = 두 단추
+  get useLeftRight() { return this.tab === 0 || this.tab === 1 || this.tabs[this.tab]?.id === 'save' || this.tabs[this.tab]?.id === 'nightmare'; }   // [hook:gal] 기록 탭: ←→ = 두 단추 · [P3b] 악몽 칸은 네 방향
   /** 안내 줄의 선택 방향: 전직 카드·기록 탭의 두 단추는 ←→ (초월의 길은 2×2 라 네 방향), 축복 목록은 ↑↓, 초기화 탭은 고를 것이 없다 */
-  selectHint() { const id = this.tabs[this.tab]?.id; return id === 'class' ? (this.ascMode ? 'dpad' : 'dpadH') : id === 'save' ? 'dpadH' : id === 'bless' ? 'dpadV' : null; }   // [hook:gal] 기록 탭 ←→
+  selectHint() { const id = this.tabs[this.tab]?.id; return id === 'class' ? (this.ascMode ? 'dpad' : 'dpadH') : id === 'save' ? 'dpadH' : id === 'bless' ? 'dpadV' : id === 'nightmare' ? 'dpad' : null; }   // [hook:gal] 기록 탭 ←→
   extraHints() { return this.tabs[this.tab]?.id === 'save' ? [['alt', '회랑']] : []; }   // [hook:gal] 회랑 바로가기
-  onTab() { this.sel = 0; this.cardSel = 0; this.csc.reset(); }
+  onTab() {
+    this.sel = 0; this.cardSel = 0; this.csc.reset();
+    if (this.tabs[this.tab]?.id === 'nightmare') {   // [P3b] 첫 보상이 남은 첫 악몽부터 · 성당지기 한마디
+      const k = NM_IDS.findIndex((id) => nmStatus(this.state, id).state === 'ready');
+      this.sel = k >= 0 ? k : 0; this.nmFollow = true;
+      this.talk(this.say2('악몽 속의 그들은 이야기 때보다 훨씬 강하다네. 단단히 준비하게.', '악몽 속 보스들은 훨씬 세대요. 단단히 준비하고 가세요!'));
+    }
+  }
   /** 2차(최상급) 영웅이면 전직 탭은 「초월의 길」 */
   get ascMode() { return CLASSES[this.hero?.classId]?.tier === 2; }
 
@@ -173,6 +192,9 @@ export class ChurchScene extends ServiceScene {
       const i = pick('opt:');
       if (i >= 0 && o[i]) { if (this.sel === i) this.doBless(o[i]); else { this.sel = i; audio.sfx('menu_move'); } return 'handled'; }
       if (input.pressed('confirm')) { this.doBless(o[this.sel]); return 'handled'; }
+    } else if (tab === 'nightmare') {
+      const r = this.updateNm(dt, id, pick);   // [P3b]
+      if (r) return r;
     } else if (tab === 'reset') {
       if (id === 'act' || input.pressed('confirm')) { this.tryReset(); return 'handled'; }
     } else if (tab === 'save') {
@@ -491,6 +513,7 @@ export class ChurchScene extends ServiceScene {
     this.cardRects = null; this.optRects = null; this.actRect = null; this.cscRect = null; this.baseRect = null;
     if (tab === 'class') { if (this.ascMode) this.drawAscPath(ctx, body); else this.drawClass(ctx, body); }
     else if (tab === 'bless') this.drawBless(ctx, body);
+    else if (tab === 'nightmare') this.drawNm(ctx, body);   // [P3b]
     else if (tab === 'reset') this.drawReset(ctx, body);
     else this.drawSave(ctx, body);
   }
@@ -736,6 +759,151 @@ export class ChurchScene extends ServiceScene {
     // 상태 줄 (잠김 이유 · 도전 가능 · 통과 ✓ 기록 · 초월 가능 · 현재)
     text(ctx, info.line, x0, r.y + r.h - pad - 1, { size: 12, weight: 700, color: info.color, maxWidth: w0 });
     return mx;
+  }
+
+  // ── 「악몽」 (Stage 5 P3b · docs/specs/nightmare.md §7) ──
+  //  25 칸 (5열 · 낮은 화면은 4·3열, 넘치면 세로 스크롤): 장 · 보스 · 상태 (잠김 · 비틀기 이름 · 최고 기록 ✓ 첫 격파 표식)
+  //  아래 판 = 고른 악몽: 비틀기 설명 · 악몽/권장 레벨 · 첫 격파 보상 또는 기록 + 「악몽에 도전」. 첫 탭 = 고르기, 둘째 탭 = 확인 창
+  /** 악몽 칸 25: { id, e, S, s: nmStatus, known, name, chap, twist } — 이야기에서 아직 열리지 않은 장의 보스는 이름을 숨긴다 */
+  nmCards() {
+    const st = this.state, P = st?.progress ?? {};
+    return NM_IDS.map((id) => {
+      const e = NM[id], S = STAGES[e.stage], s = nmStatus(st, id);
+      const known = s.state !== 'locked' || (Array.isArray(P.unlocked) && P.unlocked.includes(e.stage));
+      return { id, e, S, s, known, name: known ? BOSSES[e.boss]?.name ?? '???' : '???', chap: S?.side ? '외전' : `${S?.chapter ?? '?'}장`, twist: nmTwist(e) };
+    });
+  }
+  updateNm(dt, id, pick) {
+    const n = NM_IDS.length, cols = this.nmCols || 5;
+    if (this.cscRect) this.csc.update(dt, this.cscRect, this.ges);
+    const dragged = this.csc.max > 0 && this.ges.moved;   // 칸 목록을 끌어 스크롤한 손가락은 칸 탭이 아니다
+    const move = (i) => { if (i < 0 || i >= n || i === this.sel) return; this.sel = i; this.nmFollow = true; audio.sfx('menu_move'); };
+    if (input.pressed('left')) move(this.sel - 1);
+    if (input.pressed('right')) move(this.sel + 1);
+    if (input.pressed('up')) move(this.sel - cols);
+    if (input.pressed('down')) move(this.sel + cols);
+    const i = dragged ? -1 : pick('nm:');
+    if (i >= 0 && i < n) { if (this.sel === i) this.nmAct(NM_IDS[i]); else { this.sel = i; audio.sfx('menu_move'); } return 'handled'; }
+    if (id === 'act' && !dragged) { this.nmAct(NM_IDS[this.sel]); return 'handled'; }
+    if (input.pressed('confirm')) { this.nmAct(NM_IDS[this.sel]); return 'handled'; }
+    return null;
+  }
+  /** 칸 실행: 잠김 → 이유 · 열림 → 확인 창 → nightmare.startNightmare (성당에서 출발 — 떠나면 성당 「악몽」 탭으로 돌아온다) */
+  nmAct(id) {
+    const st = this.state, e = NM[id], s = nmStatus(st, id);
+    if (!e) return;
+    if (s.state === 'locked') { audio.sfx('menu_cancel'); this.game.toast(s.reason || '아직 열리지 않았다', '#ff8a7a'); return; }
+    audio.sfx('menu_ok');
+    const hero = this.hero, hl = hero?.level ?? 1, lv = nmLevel(e, hl), rec = nmRecLevel(e), tw = nmTwist(e);
+    const first = !s.rec?.done, rar = RARITIES[e.reward?.rarity ?? 4];
+    const lines = [`보스: ${BOSSES[e.boss]?.name ?? '???'} · 악몽 Lv ${lv} (권장 Lv ${rec})`, `규칙: ${tw?.name ?? ''} — ${tw?.desc ?? ''}`, '악몽에서는 전리품·경험치가 없고 목숨이 줄지 않습니다.',
+      first ? `첫 격파 보상: ${rar?.name ?? ''} 장비 + ${fmt(500 * lv)} G` : '첫 격파 보상은 이미 받았습니다.'];
+    if (hl < rec) lines.push(`⚠ 권장 레벨보다 ${rec - hl} 낮습니다`);
+    this.modal = new Modal({
+      title: '악몽에 도전하시겠습니까?', width: 580, lines,
+      buttons: [{ label: '도전한다', value: 'ok', primary: true }, { label: '다시 생각한다', value: 'cancel' }],
+      onResult: (r) => {
+        if (r.value !== 'ok') return;
+        this.talk(this.say2('신의 가호가 함께하길.', '조심히 다녀오세요!'));
+        try { startNightmare(this.game, id, { from: 'church' }); } catch (err) { console.error(err); this.game.toast('악몽에 들어가지 못했다.', '#ff8a7a'); }
+      },
+    });
+  }
+  drawNm(ctx, body) {
+    const cards = this.nmCards(), F = Math.max(11, textFloor()), LH = Math.max(18, Math.ceil(F * 1.4));
+    // 머리 줄: 이 슬롯의 격파 수 · 다음 잔상 (K1 — 기기 전체 격파 수 meta.nm.clears)
+    const headH = Math.max(32, Math.ceil(F * 1.6) + 10);
+    const done = cards.filter((c) => c.s.state === 'done').length;
+    const mc = Math.max(0, Math.floor(Number(this.game.meta?.nm?.clears) || 0));
+    const next = Object.values(TRAILS).filter((tr) => Number.isFinite(tr?.need?.nm) && tr.need.nm > mc).sort((a, b) => a.need.nm - b.need.nm)[0];
+    uiPanel(ctx, body.x, body.y, body.w, headH, { corner: false });
+    const hy = body.y + headH / 2 + Math.round(F * 0.4);
+    text(ctx, `악몽 격파 ${done} / ${cards.length}`, body.x + 14, hy, { size: 15, weight: 800, family: FONT.title, color: '#ff8a9a' });
+    text(ctx, next ? `다음 잔상 「${next.name}」  ${mc} / ${next.need.nm}` : '잔상 셋을 모두 얻었다', body.x + body.w - 14, hy, { size: 12, weight: 700, color: '#c8a8a8', align: 'right', maxWidth: body.w * 0.55 });
+    // 칸 목록
+    const detH = Math.max(104, LH * 3 + 34);
+    const gy = body.y + headH + 8, gh = body.h - headH - 8 - detH - 8;
+    const cols = body.w >= 560 ? 5 : body.w >= 400 ? 4 : 3, gap = 6;
+    this.nmCols = cols;
+    const rowsN = Math.ceil(cards.length / cols), ch0 = Math.max(68, Math.ceil(F * 1.25) + LH * 2 + 18);
+    // 칸 높이: 글자 하한에서 잡은 최소 높이 · 자리가 남으면 칸을 키워 채운다 (최대 1.3배)
+    const cw = (body.w - gap * (cols - 1)) / cols, ch = Math.max(ch0, Math.min(Math.round(ch0 * 1.3), Math.floor((gh - (rowsN - 1) * gap) / rowsN)));
+    const need = rowsN * ch + (rowsN - 1) * gap;
+    const G = { x: body.x, y: gy, w: body.w, h: gh };
+    const mx = Math.max(0, Math.ceil(need - gh));
+    this.csc.setMax(mx);
+    if (mx > 0) this.cscRect = G;
+    if (this.nmFollow) {   // 키·패드로 고른 칸이 보이게 (스크롤이 있을 때만)
+      this.nmFollow = false;
+      const top = Math.floor(this.sel / cols) * (ch + gap);
+      if (mx > 0) this.csc.target = clamp(top < this.csc.target ? top : top + ch > this.csc.target + gh ? top + ch - gh : this.csc.target, 0, mx);
+    }
+    const off = mx > 0 ? Math.min(this.csc.y, mx) : 0;
+    this.cardRects = [];
+    clipBegin(ctx, G);
+    cards.forEach((c, i) => {
+      const r = { x: body.x + (i % cols) * (cw + gap), y: gy + Math.floor(i / cols) * (ch + gap) - off, w: cw - (mx > 0 && i % cols === cols - 1 ? 8 : 0), h: ch };
+      this.cardRects.push(r);
+      if (r.y + r.h < gy || r.y > gy + gh) return;
+      const y0 = Math.max(r.y, gy), y1 = Math.min(r.y + r.h, gy + gh);
+      if (y1 - y0 >= Math.min(r.h, 30)) this.tz('nm:' + i, { x: r.x, y: y0, w: r.w, h: y1 - y0 }, 'list');
+      this.drawNmCard(ctx, c, r, i === this.sel, F, LH);
+    });
+    clipEnd(ctx, G, null);
+    if (mx > 0) { scrollbar(ctx, body.x + body.w - 4, gy + 2, gh - 4, { y: off, max: mx }, gh); moreBelow(ctx, body.x + body.w / 2, gy + gh, off, mx); }
+    this.drawNmDetail(ctx, cards[this.sel], { x: body.x, y: body.y + body.h - detH, w: body.w, h: detH }, F, LH);
+  }
+  /** 악몽 칸 하나 */
+  drawNmCard(ctx, c, r, sel, F, LH) {
+    const st = c.s.state, dim = st === 'locked';
+    fillGradRect(ctx, vGrad(ctx, r.h, sel ? CARD_SEL : CARD_OFF), r.x, r.y, r.w, r.h);
+    if (st === 'done') { ctx.fillStyle = 'rgba(120,8,24,0.28)'; ctx.fillRect(r.x, r.y, r.w, r.h); }
+    if (st === 'ready') { ctx.save(); ctx.globalCompositeOperation = 'lighter'; glow(ctx, r.x + r.w / 2, r.y + r.h / 2, r.w * 0.5, NM_COLOR, 0.07 + 0.04 * Math.sin(this.t * 3 + r.x * 0.01)); ctx.restore(); }
+    ctx.strokeStyle = sel ? COLORS.gold : st === 'locked' ? 'rgba(90,70,60,0.5)' : 'rgba(224,32,58,0.7)';
+    ctx.lineWidth = sel ? 2.5 : st === 'locked' ? 1 : 1.4; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
+    if (sel) { ctx.save(); ctx.shadowColor = 'rgba(232,200,114,0.5)'; ctx.shadowBlur = 14; ctx.strokeRect(r.x, r.y, r.w, r.h); ctx.restore(); }
+    const pad = 8, x0 = r.x + pad, w0 = r.w - pad * 2;
+    const extra = Math.max(0, Math.floor((r.h - (pad * 2 + Math.round(F * 0.95) + LH * 2 + 6)) / 3));   // 칸이 커진 만큼 줄 사이를 고르게
+    const y1 = r.y + pad + Math.round(F * 0.95) + extra, y2 = y1 + LH + 2 + extra, y3 = y2 + LH + extra;
+    text(ctx, c.chap, x0, y1, { size: 11, weight: 800, color: dim ? '#6a5e58' : '#c89a8a', maxWidth: w0 - 18 });
+    if (st === 'done') text(ctx, '✓', r.x + r.w - pad, y1 + 1, { size: 15, weight: 900, color: '#ff8a9a', align: 'right' });
+    else if (dim) glyph(ctx, 'lock', r.x + r.w - pad - 6, y1 - 4, 10, '#7a6a62', 1.3);
+    text(ctx, c.name, x0, y2, { size: 14, weight: 800, family: FONT.title, color: dim ? '#7a6e68' : sel ? '#fff4d8' : '#f3d690', maxWidth: w0 });
+    const best = c.s.rec?.best;
+    const line3 = st === 'done' ? (Number.isFinite(best) ? `최고 ${best.toFixed(1)}초` : '격파') : st === 'ready' ? c.twist?.name ?? '' : '잠김';
+    text(ctx, line3, x0, y3, { size: 12, weight: 700, color: st === 'done' ? '#ffd0a0' : st === 'ready' ? '#ff7088' : '#6a5e58', maxWidth: w0 });
+  }
+  /** 고른 악몽의 자세한 정보 + 도전 단추 */
+  drawNmDetail(ctx, c, R, F, LH) {
+    uiPanel(ctx, R.x, R.y, R.w, R.h, { corner: false });
+    if (!c) return;
+    const st = c.s.state, hero = this.hero, hl = hero?.level ?? 1;
+    const bw = Math.min(220, Math.round(R.w * 0.34)), bh = Math.max(48, Math.min(56, R.h - 24));
+    const br = this.tz('act', { x: R.x + R.w - bw - 12, y: R.y + (R.h - bh) / 2, w: bw, h: bh });
+    this.actRect = br;
+    const tx = R.x + 14, tw = br.x - 14 - tx;
+    let y = R.y + 10 + Math.round(LH * 0.95);
+    const title = `${c.chap} · ${c.name}`;
+    text(ctx, title, tx, y, { size: 17, weight: 800, family: FONT.title, color: st === 'locked' ? '#8a7a70' : '#f3d690', maxWidth: tw * 0.62 });
+    if (c.twist && st !== 'locked') {
+      ctx.font = font(17, 800, FONT.title);
+      const px = Math.min(tx + ctx.measureText(title).width + 10, tx + tw * 0.62 + 10), ph = Math.max(18, Math.ceil(F + 7));
+      pill(ctx, c.twist.name, px, Math.round(y - 6 - ph / 2), { color: '#ffd0d8', size: 11, h: ph, bg: 'rgba(110,8,24,0.95)' });
+    }
+    y += LH + 2;
+    if (st === 'locked') {
+      text(ctx, c.s.reason || '이야기에서 이 보스를 먼저 쓰러뜨려야 한다', tx, y, { size: 13, color: '#e89090', maxWidth: tw });
+    } else {
+      const lv = nmLevel(c.e, hl), rec = nmRecLevel(c.e), low = hl < rec;
+      text(ctx, c.twist?.desc ?? '', tx, y, { size: 12, color: '#c8b8a0', maxWidth: tw });
+      y += LH;
+      const rec0 = c.s.rec, rar = RARITIES[c.e.reward?.rarity ?? 4];
+      const info = [`악몽 Lv ${lv}`, `권장 Lv ${rec}`];
+      if (rec0?.done) info.push(Number.isFinite(rec0.best) ? `최고 ${rec0.best.toFixed(1)}초` : '격파', `도전 ${rec0.tries ?? 0}회`);
+      else info.push(`첫 격파 보상: ${rar?.name ?? ''} 장비 + ${fmt(500 * lv)} G`);
+      text(ctx, info.join(' · '), tx, y, { size: 12, weight: 700, color: low ? '#ffb090' : rec0?.done ? '#ffd0a0' : '#9fe8a0', maxWidth: tw });
+    }
+    uiButton(ctx, br, st === 'locked' ? '잠김' : '악몽에 도전', { selected: st !== 'locked', disabled: st === 'locked', size: 17 });
   }
 
   drawBless(ctx, body) {

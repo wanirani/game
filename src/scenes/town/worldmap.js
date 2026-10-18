@@ -43,6 +43,11 @@ import { freeSlots } from '../../game/inventory.js';   // [auto] 출발 전 가�
 import { requestDispose } from '../../game/pickup_compare.js';
 import { questStageIds } from '../menu/access.js';   // [playb] P07 의뢰를 진행할 수 있는 스테이지 (퀘스트 게시판·메뉴 › 퀘스트의 「출현:」 과 같은 규칙)
 import { activeQuests, questProgress } from '../../game/quests.js';   // [auto] 「일괄 처분」 바로가기 (메뉴 › 인벤토리가 창을 연다)
+import { NM_FLAGS, NM_COLOR, nmEntry, nmTwist, nmLevel, nmRecLevel } from '../../data/nightmare.js';   // [P3b] 붉은 「악몽」 단추 (docs/specs/nightmare.md §7)
+import { nmStatus, startNightmare } from '../../game/nightmare.js';
+import { BOSSES } from '../../data/bosses.js';
+import { RARITIES } from '../../data/items.js';
+import { gbutton } from '../menu/common.js';
 
 const RANK_COL = { SSS: '#ffe070', SS: '#ff5a4a', S: '#ffa640', A: '#c07cff', B: '#5aa8ff', C: '#7ee07e', D: '#a0a0a0' };
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI'];
@@ -144,6 +149,7 @@ export class WorldMapScene extends Scene {
     this.closing = false; this.redirect = false;
     this.tok = null;
     this.bagAsk = null; this.bagOk = false;   // [auto] 가방 경고 창 · 이번 방문에서 「그대로 출발」 을 골랐다
+    this.nmAsk = null;   // [P3b] 「악몽」 확인 창
     this._L = null; this._lab = [null, null]; this._tk = [null, null]; this._snap = null;
     this.infoX = false;   // [playb] P18 낮은 화면(UI 높이 < 480): 정보판을 한 줄로 접어 두고, 노드를 고르거나 줄을 누르면 펼친다
     this._qp = null;      // [playb] P07 의뢰 표식 캐시
@@ -196,7 +202,7 @@ export class WorldMapScene extends Scene {
   }
   get state() { return this.game.state; }
   /** 토스트는 정보 패널 바로 위에서 위로 쌓는다 (탭·지도 위쪽 노드를 가리지 않고 '출발/잠김' 버튼 곁에 뜬다) */
-  get toastY() { return this.bagAsk && this._bagY != null ? this._bagY - 10 : this._L ? (this._L.short && this.infoX ? this._L.infoY : this._L.panelY) - 16 : undefined; }   // [auto] 가방 경고 창 위로 비킨다
+  get toastY() { return (this.bagAsk || this.nmAsk) && this._bagY != null ? this._bagY - 10 : this._L ? (this._L.short && this.infoX ? this._L.infoY : this._L.panelY) - 16 : undefined; }   // [auto] 가방 경고 창 위로 비킨다
   get toastUp() { return !!this._L; }
   get nodes() { return this.pages?.[this.page]?.nodes ?? []; }
   cur() { return this.nodes[this.index] ?? null; }
@@ -474,6 +480,7 @@ export class WorldMapScene extends Scene {
     if (this.depart) { this.depart.t += dt; if (this.depart.t > 0.55 && !this.depart.gone) { this.depart.gone = true; this.launch(this.depart.id); } return; }
     if (this.closing) return;
     if (this.bagAsk) { this.updateBagAsk(); return; }   // [auto]
+    if (this.nmAsk) { this.updateNmAsk(); return; }   // [P3b]
     // 고른 스테이지의 배경 음악을 미리 받는다 (녹음 음원, 장면을 막지 않음 — core/audio_rec.js)
     const pf = this.cur();
     if (pf && pf !== this._pfNode) { this._pfNode = pf; if (this.isOpen(pf)) audio.prefetch?.(pf.arena ? 'arena' : pf.stage?.music); }
@@ -487,6 +494,7 @@ export class WorldMapScene extends Scene {
     if (hit != null) {
       if (hit === 'close') { this.close(); return; }
       if (hit === 'go') { this.start(); return; }
+      if (hit === 'nm:open') { this.nmOpen(this.cur()); return; }   // [P3b] 붉은 「악몽」 단추 → 확인 창
       if (hit === 'panel') { if (L.short) { this.infoX = !this.infoX; audio.sfx('menu_move'); } return; }   // [playb] P18 접기·펼치기
       if (hit === 'tab0' || hit === 'tab1') { this.setPage(hit === 'tab1' ? 1 : 0); return; }
       if (typeof hit === 'string' && hit.startsWith('node:')) {
@@ -497,6 +505,7 @@ export class WorldMapScene extends Scene {
       }
     }
     if (input.pressed('confirm')) { this.start(); return; }
+    if (input.pressed('alt') && this.nmFor(this.cur())) { this.nmOpen(this.cur()); return; }   // [P3b] 보조 기능 키(A · 패드 Y) = 악몽
     if (input.pressed('cancel') || (input.pressed('menu') && !input.pressed('confirm'))) { this.close(); return; }
     // 말 이동 (다른 노드·랭크 인장·이름표를 덜 가리는 자리에 선다)
     const cn = this.cur();
@@ -609,6 +618,77 @@ export class WorldMapScene extends Scene {
     });
     if (!L.touch) drawHints(ctx, [['dpadH', '고르기'], ['confirm', '결정'], ['cancel', '취소']], L.W / 2, y + h - 10, { align: 'center', size: 11 });
   }
+  // ───────── [P3b] 「악몽」 (docs/specs/nightmare.md §7): 그 장의 보스를 이야기에서 쓰러뜨린 노드에만 붉은 단추 ─────────
+  /** 이 노드의 악몽 (입구가 켜져 있고 보스를 쓰러뜨렸을 때만) → { e, s: nmStatus } | null */
+  nmFor(n) {
+    if (!NM_FLAGS.ui || !n || n.arena || n.missing || this.state?.arcade) return null;
+    const e = nmEntry('nm_' + n.id);
+    if (!e) return null;
+    const s = nmStatus(this.state, e.id);
+    return s.state === 'locked' ? null : { e, s };
+  }
+  /** 주 단추 최소 높이 (44 CSS px + 2) */
+  minTap() { const g = this.game; return Math.ceil(46 / Math.max(0.2, (g.cssScale || 1) * (g.uiK || 1))); }
+  nmOpen(n) {
+    const m = this.nmFor(n);
+    if (!m) return;
+    this.nmAsk = { id: m.e.id, sel: 0, t: 0 };
+    audio.sfx('menu_move');
+  }
+  /** 확인 창: ←→ 고르기 · 결정 · 취소 (터치·클릭: 단추) → 도전한다 = startNightmare(from 'worldmap' — 떠나면 동쪽 문으로) */
+  updateNmAsk() {
+    const A = this.nmAsk;
+    A.t += 1 / 60;
+    if (input.pressed('left') || input.pressed('right')) { A.sel = 1 - A.sel; audio.sfx('menu_move'); }
+    let pick = null;
+    const hit = taps.hit(this);
+    if (hit === 'nmask:go') pick = 'go';
+    else if (hit === 'nmask:cancel') pick = 'cancel';
+    else if (A.t > 0.1 && input.pressed('confirm')) pick = A.sel === 0 ? 'go' : 'cancel';
+    else if (input.pressed('cancel') || input.pressed('menu')) pick = 'cancel';
+    if (!pick) return;
+    this.nmAsk = null;
+    if (pick === 'cancel') { audio.sfx('menu_cancel'); return; }
+    audio.sfx('go');
+    this.saveNow();
+    try { startNightmare(this.game, A.id, { from: 'worldmap' }); } catch (e) { console.error(e); this.toastOnce('악몽에 들어가지 못했다.', '#ff8a7a'); }
+  }
+  drawNmAsk(ctx, L) {
+    const A = this.nmAsk, e = nmEntry(A.id);
+    if (!e) return;
+    const s = nmStatus(this.state, e.id), hl = currentHero(this.state)?.level ?? 1, lv = nmLevel(e, hl), rec = nmRecLevel(e), tw = nmTwist(e);
+    const first = !s.rec?.done, rar = RARITIES[e.reward?.rarity ?? 4];
+    ctx.fillStyle = 'rgba(8,0,2,0.66)'; ctx.fillRect(0, 0, L.W, L.H);
+    const w = Math.min(600, L.W - 40), bh = Math.max(L.touch ? 54 : 48, this.minTap()), low = hl < rec;
+    const h = 150 + (low ? 22 : 0) + bh + (L.touch ? 0 : 22);
+    const x = (L.W - w) / 2, y = Math.round((L.H - h) / 2);
+    this._bagY = y;   // 토스트가 창 위로 비킨다 (toastY)
+    uiPanel(ctx, x, y, w, h, { glow: 'rgba(224,32,58,0.45)' });
+    text(ctx, `악몽 · ${BOSSES[e.boss]?.name ?? ''}`, L.W / 2, y + 40, { size: 23, weight: 800, family: FONT.title, align: 'center', color: '#ff8a9a', maxWidth: w - 40 });
+    text(ctx, `규칙: ${tw?.name ?? ''} — ${tw?.desc ?? ''}`, L.W / 2, y + 70, { size: 14, align: 'center', color: '#e8dcc8', maxWidth: w - 40 });
+    text(ctx, `악몽 Lv ${lv} · 권장 Lv ${rec} · ${first ? `첫 격파 보상: ${rar?.name ?? ''} 장비 + ${fmt(500 * lv)} G` : Number.isFinite(s.rec?.best) ? `최고 ${s.rec.best.toFixed(1)}초` : '격파'}`, L.W / 2, y + 94, { size: 14, align: 'center', color: first ? '#9fe8a0' : '#ffd0a0', maxWidth: w - 40 });
+    text(ctx, '전리품·경험치는 없고 목숨은 줄지 않는다', L.W / 2, y + 116, { size: 12, align: 'center', color: '#c8b8a0', maxWidth: w - 40 });
+    if (low) text(ctx, `⚠ 권장 레벨보다 ${rec - hl} 낮다`, L.W / 2, y + 138, { size: 13, weight: 800, align: 'center', color: '#ffb060', maxWidth: w - 40 });
+    const gap = 14, bw = Math.floor((w - 40 - gap) / 2), by = y + 130 + (low ? 22 : 0);
+    [['go', '도전한다'], ['cancel', '취소']].forEach(([id, lab], i) => {
+      const r = { x: x + 20 + i * (bw + gap), y: by, w: bw, h: bh };
+      if (i === 0) gbutton(ctx, r, lab, { hot: A.sel === 0, accent: NM_COLOR, size: 18, t: this.t, color: A.sel === 0 ? '#ffe0e4' : null });
+      else uiButton(ctx, r, lab, { selected: A.sel === 1, size: 17 });
+      taps.add('nmask:' + id, r, { kind: i === 0 ? 'primary' : 'list', owner: this, src: 'worldmap.nm' });
+    });
+    if (!L.touch) drawHints(ctx, [['dpadH', '고르기'], ['confirm', '결정'], ['cancel', '취소']], L.W / 2, y + h - 10, { align: 'center', size: 11 });
+  }
+  /** 붉은 「악몽」 단추 (정보판·접힌 막대 공용) */
+  nmButton(ctx, nm, r, small = false) {
+    const first = !nm.s.rec?.done;
+    ctx.save();
+    ctx.shadowColor = `rgba(255,40,70,${0.35 + Math.sin(this.t * 4) * 0.15})`; ctx.shadowBlur = 14;
+    gbutton(ctx, r, '악몽', { hot: true, accent: NM_COLOR, color: '#ffe0e4', size: small ? 16 : 19, t: this.t, sub: !small && r.h >= 54 ? (first ? '첫 격파 보상' : '최고 기록 갱신') : null });
+    ctx.restore();
+    taps.add('nm:open', r, { kind: 'primary', owner: this, src: 'worldmap' });
+    this.nmRect = r;
+  }
+
   /**
    * 같은 알림이 아직 떠 있으면 새로 쌓지 않고 그 알림을 다시 온전히 보이게 늘린다
    * (잠긴 노드에서 결정·더블탭을 연타하면 같은 문장이 다섯 줄로 쌓여 지도를 가렸다)
@@ -650,6 +730,7 @@ export class WorldMapScene extends Scene {
     if (!L.touch) this.hints(ctx, L);
     if (this.reveal) this.drawReveal(ctx, L);
     if (this.bagAsk) this.drawBagAsk(ctx, L);   // [auto]
+    if (this.nmAsk) this.drawNmAsk(ctx, L);   // [P3b]
     if (this.depart) {
       ctx.fillStyle = this.page === 1 ? `rgba(50,0,90,${Math.min(0.5, this.depart.t)})` : `rgba(120,0,20,${Math.min(0.5, this.depart.t)})`;
       ctx.fillRect(0, 0, W, H);
@@ -864,6 +945,11 @@ export class WorldMapScene extends Scene {
     }
     // [playb] P07 진행 중인 의뢰를 진행할 수 있는 스테이지: 왼쪽 위 「!」 표식
     if (open && !n.arena && this.questPins().has(n.id)) this.pin(ctx, p.x - R * 0.82, p.y - R * 0.82, sel ? 8 : 7);
+    // [P3b] 첫 격파 보상이 남은 악몽: 인장 둘레의 붉은 고리 (맥동) — 이미 이긴 악몽은 지도를 어지럽히지 않게 표시하지 않는다
+    if (open && !n.arena && this.nmFor(n)?.s.state === 'ready') {
+      ctx.strokeStyle = rgba(NM_COLOR, 0.55 + 0.35 * Math.sin(t * 3)); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(p.x, p.y, R + 3, 0, TAU); ctx.stroke();
+    }
     // 이름 (고른 노드는 drawMap 이 모든 노드 뒤에 그린다)
     if (open && !sel && box && !box.hidden) this.nodeLabel(ctx, PG, n.stage.name ?? '', box, false);
     ctx.restore();
@@ -1021,17 +1107,19 @@ export class WorldMapScene extends Scene {
     uiPanel(ctx, x, y, w, h, { glow: page === 1 ? 'rgba(160,90,255,0.35)' : 'rgba(180,20,40,0.3)' });
     taps.add('panel', { x, y, w, h }, { kind: 'primary', owner: this, src: 'worldmap' });
     const bw = 116, bh = h - 8, bx = x + w - bw - 6, cy = y + h / 2;
+    const nm = this.nmFor(n), nbw = 92, nbx = bx - nbw - 6;   // [P3b] 붉은 「악몽」 단추는 출발 왼쪽
     const chap = n.arena ? '투기장' : n.side ? '외전' : `${s.chapter}장`;
     text(ctx, '▲', x + 18, cy + 5, { size: 13, weight: 900, color: page === 1 ? '#c8b0ff' : '#e8c872', align: 'center' });
     text(ctx, chap, x + 34, cy + 5, { size: 13, weight: 800, family: FONT.title, color: page === 1 ? '#c8b0ff' : '#c8a060' });
     ctx.font = font(13, 800, FONT.title);
     const cw = ctx.measureText(chap).width;
     const nx = x + 34 + cw + 8;
-    let right = bx - 10;
+    let right = nm ? nbx - 10 : bx - 10;
     if (rec?.rank) { text(ctx, rec.rank, right - 12, cy + 7, { size: 20, weight: 900, family: FONT.logo, align: 'center', color: RANK_COL[rec.rank] ?? '#fff', ow: 3 }); text(ctx, '최고', right - 30, cy + 5, { size: 12, weight: 700, color: '#9d8f80', align: 'right' }); right -= 64; }
     const pins = open ? this.questPins().get(n.id) : null;
     if (pins?.length) { this.pin(ctx, right - 9, cy, 9); right -= 24; }
     text(ctx, open ? s.name : '??? — 봉인된 땅', nx, cy + 6, { size: 17, weight: 800, family: FONT.title, color: open ? (page === 1 ? '#efe4ff' : '#f3d690') : '#8a7a70', maxWidth: Math.max(40, right - nx) });
+    if (nm) this.nmButton(ctx, nm, { x: nbx, y: y + 4, w: nbw, h: bh }, true);
     this.goButton(ctx, n, { x: bx, y: y + 4, w: bw, h: bh }, true);
   }
   /** 출발 단추 (정보판·접힌 막대 공용) + 가방 경고 + 탭 자리 */
@@ -1084,7 +1172,10 @@ export class WorldMapScene extends Scene {
     // 좁은 UI(UI 배율 1.3·1.5 의 16:9 화면 등, 패널 폭 < 860): 버튼·기록 칸을 줄이고 그만큼 수집 칸에 준다 (글자가 뭉개지지 않게)
     const narrow = w < 860;
     const bw = narrow ? 124 : Math.round(clamp(w * 0.19, 140, 190)), bh = cmp ? 60 : 64;
-    const bx = x + w - bw - 16;
+    // [P3b] 붉은 「악몽」 단추: 정보판 높이가 되면 출발 아래에 쌓고(둘 다 44 CSS px 이상), 아니면 출발 오른쪽 (그만큼 수집 칸이 좁아진다)
+    const nm = this.nmFor(n), mt = this.minTap(), nh2 = Math.max(mt, 44), nh1 = Math.max(mt, Math.min(bh, h - 16 - nh2 - 8));
+    const nmStack = !!nm && nh1 + nh2 + 8 <= h - 12, nmSide = !!nm && !nmStack, nbw = narrow ? 96 : 116;
+    const bx = x + w - bw - 16 - (nmSide ? nbw + 10 : 0);
     const lw = narrow ? w * 0.31 - 44 : w * 0.36 - 24;
     // 제목
     const chapTxt = n.arena ? 'ARENA' : n.side ? 'SIDE STORY · 외전' : `CHAPTER ${ROMAN[s.chapter] ?? s.chapter}`;
@@ -1120,8 +1211,15 @@ export class WorldMapScene extends Scene {
       } else text(ctx, open ? '아직 클리어하지 않았다' : '—', rx, y + h * 0.5, { size: 13, color: '#8a7a70', maxWidth: rw });
       this.collect(ctx, n, kx, kw, cmp ? [y + 32, y + 62, y + 92] : [y + 36, y + 70, y + 104], narrow);
     }
-    // 출발 버튼
-    this.goButton(ctx, n, { x: bx, y: y + h / 2 - bh / 2, w: bw, h: bh });
+    // 출발 버튼 (+ [P3b] 악몽 단추)
+    if (nmStack) {
+      const top = y + (h - (nh1 + nh2 + 8)) / 2;
+      this.goButton(ctx, n, { x: bx, y: top, w: bw, h: nh1 });
+      this.nmButton(ctx, nm, { x: bx, y: top + nh1 + 8, w: bw, h: nh2 });
+    } else {
+      this.goButton(ctx, n, { x: bx, y: y + h / 2 - bh / 2, w: bw, h: bh });
+      if (nmSide) this.nmButton(ctx, nm, { x: bx + bw + 10, y: y + h / 2 - bh / 2, w: nbw, h: bh });
+    }
   }
   /** 수집 칸: 비전서 + (1부) 유물 / (2부) 별의 조각 · 세계의 심장 — 공허(s20)는 여섯 세계의 합계 */
   collect(ctx, n, kx, kw, rows, narrow = false) {
@@ -1190,7 +1288,7 @@ export class WorldMapScene extends Scene {
   }
 
   hints(ctx, L) {
-    const items = [['dpadH', '스테이지'], ['confirm', '출발'], ['cancel', '마을로']];
+    const items = [['dpadH', '스테이지'], ['confirm', '출발'], ...(this.nmFor(this.cur()) ? [['alt', '악몽']] : []), ['cancel', '마을로']];   // [P3b]
     if (this.pages[1]) items.push([['prevTab', 'nextTab'], '지도 전환']);
     drawHints(ctx, items, L.W / 2, L.H - 8, { align: 'center', size: 11 });
   }

@@ -126,18 +126,6 @@ function fxLightRestore(w, r) {
   const L = w?.lighting;
   if (L && r != null && L.res === FX_LRES) L.res = r;
 }
-/** 격파 연출 동안의 입자 예산: fx.quality 를 k 배로 (보스 자신의 연쇄 폭발 — a_common 의 0.16초마다 'fire'·'ember' — 이 같은 창에 겹친다).
- *  되돌릴 때 그사이 품질이 바뀌었으면 그 값을 둔다. → { q: 원래 값, low: 낮춘 값 } | null */
-function fxQualityLow(w, k) {
-  const fx = w?.fx, q = Number(fx?.quality);
-  if (!fx || !(q > 0.3)) return null;
-  fx.quality = Math.max(0.3, Math.round(q * k * 1000) / 1000);
-  return { q, low: fx.quality };
-}
-function fxQualityRestore(w, s) {
-  const fx = w?.fx;
-  if (fx && s && fx.quality === s.low) fx.quality = s.q;
-}
 function warmPaintQ() {
   if (PAINT_Q.asked) return;
   PAINT_Q.asked = true;
@@ -309,7 +297,7 @@ class BossReveal {
 }
 
 /** 격파 연출 (world.onBossDefeated): 속성 폭발 · 임팩트 프레임(ULTFX.final) · 카메라 밀어 넣기 · 「격파」 먹 낙관 · 금빛 알갱이 · 빛기둥 → (STAGE CLEAR 배너) */
-const FIN = Object.freeze({ bursts: 20, per: 5, fxq: 0.6, gap: 0.06, seal: 0.35, sealLife: 2.5, motes: [0.5, 2.6], pillar: [0.25, 2.6], camOut: 1.3, end: 3.2 });
+const FIN = Object.freeze({ bursts: 20, per: 5, gap: 0.06, seal: 0.35, sealLife: 2.5, motes: [0.5, 2.6], pillar: [0.25, 2.6], camOut: 1.3, end: 3.2 });
 class BossFinale {
   constructor(w, boss) {
     this.w = w; this.id = boss?.def?.id ?? null;
@@ -325,8 +313,6 @@ class BossFinale {
     fx.ring(this.cx, this.cy, { color: el.color, r0: 20, r1: 340, life: 0.6, width: 10 });
     // 임팩트 프레임: 필살기 마무리와 같은 내보낸 함수 (번쩍임은 onBossDefeated 가 이미 했다 · 소리는 boss_die 하나로)
     try { ULTFX.final(w, this.cx, this.cy, { color: el.color, accent: el.glow, tier: 2, impact: true, flourish: false, silent: true, noFlash: true, shake: false }); } catch (e) { console.warn('[finale] ultfx', e); }
-    // 여기서부터 끝까지 입자 예산 ×0.6 (위 폭발·임팩트 프레임은 원래 수 그대로, 이 연출의 연달은 폭발·알갱이는 아래에서 보정해 같은 수)
-    this.fxq = fxQualityLow(w, FIN.fxq);
     // 카메라 밀어 넣기 (다른 연출이 구도를 잡고 있지 않을 때만)
     const cam = w.camera;
     if (cam && !cam.cineActive) { try { cam.cine(this.cx, this.cy, clamp((cam.zoom || 1) * 1.12, 0.6, 1.5), 0.35); this.camOn = true; } catch { /* 카메라 없음 */ } }
@@ -335,14 +321,13 @@ class BossFinale {
     const w = this.w, fx = w.fx, el = this.el;
     this.t += dt;
     const t = this.t;
-    const own = this.fxq ? this.fxq.q / this.fxq.low : 1;   // 이 연출의 입자는 낮춘 예산을 되돌려 원래 수로
     while (this.n < FIN.bursts && t >= this.n * FIN.gap) {
       this.n++;
-      fx.burst(el.burst, this.cx + rand(-80, 80), this.cy + rand(-80, 80), FIN.per * own, { speed: 200, ...(el.shardColor ? { color: el.shardColor } : {}) });
+      fx.burst(el.burst, this.cx + rand(-80, 80), this.cy + rand(-80, 80), FIN.per, { speed: 200, ...(el.shardColor ? { color: el.shardColor } : {}) });
     }
     if (!this.sealOn && t >= FIN.seal) { this.sealOn = true; w.addOverlay(makeSealOverlay(this)); w.addOverlay(makePillarOverlay(this)); }
     if (t >= FIN.motes[0] && t < FIN.motes[1]) {
-      this.moteAcc += dt * 8 * (this.fxq?.q ?? fx.quality ?? 1);
+      this.moteAcc += dt * 8 * (fx.quality ?? 1);
       while (this.moteAcc >= 1) {
         this.moteAcc -= 1;
         const gold = Math.random() < 0.55;
@@ -353,8 +338,8 @@ class BossFinale {
     if (this.camOn && !this.camDone && t >= FIN.camOut) { this.camDone = true; try { w.camera?.cineEnd?.(0.6); } catch { /* */ } }
     if (t >= FIN.end && w.finale === this) { this.stop(); w.finale = null; }
   }
-  /** 끝·방 이동: 낮춰 둔 조명 해상도·입자 예산을 되돌린다 (두 번 불러도 된다) */
-  stop() { fxLightRestore(this.w, this.lres); this.lres = null; fxQualityRestore(this.w, this.fxq); this.fxq = null; }
+  /** 끝·방 이동: 낮춰 둔 조명 해상도를 되돌린다 (두 번 불러도 된다) */
+  stop() { fxLightRestore(this.w, this.lres); this.lres = null; }
   lights(L) {
     if (!L) return;
     const t = this.t, k = clamp(1 - t / 1.2, 0, 1);

@@ -3,7 +3,7 @@
   "kind": "boss",
   "out": "assets/painted/bosses/b_paracel",
   "raw": "tools/painted/raw/b_paracel",
-  "td": 1.8,
+  "td": 2.0,
   "quality": 80,
   "matte": {
     "default": {

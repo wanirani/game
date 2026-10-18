@@ -4,6 +4,8 @@
 //        25 악몽 모두: 보스 · inferno · 배율 · 비틀기 하나 · 감독(예고 ≥ 0.6초 · 빈 길) · AUTO 거절 · 경험치 0 · 포기 → 마을
 //        나이트윙 전체 흐름: 실패(목숨 그대로) → 다시 도전 → 격파(첫 보상 한 번) → 두 번째 격파(보상 없음) → 실패 → 마을로
 //        1장 세이브 → (월드맵 「악몽」 단추가 있으면 그것, 없으면 startNightmare from 'worldmap') → 나이트윙 → 떠나기 · 페이지 오류 0 · fetch 0
+//        [P3b] 입구(NM_FLAGS.ui)를 켜고: 격파 결과 화면 보상 줄(첫 보상 · 골드 · 기록 · 격파 수 · 잔상) → 「성당으로」 → 성당 「악몽」 탭 ·
+//        성당 「악몽」 탭(25칸 · 잠김/열림/격파 · 키 이동 · 두 번 탭 → 확인 창 → 악몽 → 포기 → 같은 칸) · 1장 세이브의 월드맵 붉은 단추 → 확인 창 → 나이트윙
 //   --quick           브라우저: 비틀기마다 하나 (8 악몽)
 //   --only nm_s01,…   브라우저: 고른 악몽만 (전체 흐름·1장 케이스는 nm_s01 이 들어 있을 때만)
 //   --vp fold_open    화면 (쉼표)
@@ -216,6 +218,23 @@ ok(HZ.widestGap([[-50, 2000]], 0, 1000) === 0 && HZ.widestGap([[600, 400]], 0, 1
   const clockWarn = +(hz.match(/WARN = ([0-9.]+)/)?.[1] ?? 0);
   ok(warns.length >= 3 && warns.every((w) => w >= HZ.MIN_WARN) && clockWarn >= HZ.MIN_WARN, `코드의 예고 시간 모두 ≥ ${HZ.MIN_WARN} (${warns.join(',')} · 시계 ${clockWarn})`);
   ok(hz.split('\n').filter((l) => /warn:\s*0[,\s]/.test(l)).every((l) => /harmless:\s*true/.test(l)), '예고 0 인 것은 모두 해 없는 표식');
+}
+// ═════════ N10 입구 (P3b): 성당 탭 · 월드맵 단추 · 결과 화면 · 밸런스 표 ═════════
+section('N10 입구 (P3b) 연결 · 배율 범위 · K1 잔상');
+{
+  const ch = src('src/scenes/town/church.js'), wm = src('src/scenes/town/worldmap.js'), te = src('src/scenes/trial_end.js'), nmj = src('src/game/nightmare.js');
+  ok(typeof D.NM_FLAGS === 'object' && typeof D.NM_FLAGS.ui === 'boolean', `NM_FLAGS.ui 스위치 (${D.NM_FLAGS?.ui})`);
+  ok(/id: 'nightmare', label: '악몽'/.test(ch) && /NM_FLAGS\.ui/.test(ch) && /startNightmare\(this\.game, id, \{ from: 'church' \}\)/.test(ch), 'church.js: 「악몽」 탭 (스위치 · 성당에서 출발)');
+  ok(/tabs\.push\(\{ id: 'nightmare'/.test(ch), 'church.js: 악몽 탭은 맨 끝에 붙인다 (기존 탭 번호 그대로)');
+  ok(/'nm:open'/.test(wm) && /startNightmare\(this\.game, A\.id, \{ from: 'worldmap' \}\)/.test(wm) && /NM_FLAGS\.ui/.test(wm), 'worldmap.js: 붉은 「악몽」 단추 → 확인 창 → 지도에서 출발');
+  ok(/finishNightmare/.test(te) && /resultRows\(\)/.test(te) && /NM_WIN/.test(te), 'trial_end.js: 격파 결과 화면 (보상 줄 · 돌아가기)');
+  ok(/NM_FLAGS\.ui && game\?\.registry\?\.trialEnd/.test(nmj) && /export function finishNightmare/.test(nmj), 'nightmare.js: 입구가 켜지면 격파 → 결과 화면');
+  ok(/trial: id \}\);/.test(nmj), 'nightmare.js: 성당으로 돌아갈 때 악몽 id 를 넘긴다 (성당이 「악몽」 탭을 연다)');
+  // K1: 잔상 셋의 need.nm = 1 · 10 · 25 (cosmetics.js 장부 — P3 는 읽기만)
+  const trails = Object.values(COS.TRAILS).filter((t) => Number.isFinite(t?.need?.nm)).map((t) => t.need.nm).sort((a, b) => a - b);
+  ok(JSON.stringify(trails) === '[1,10,25]', `K1 잔상 need.nm = 1 · 10 · 25 (${trails})`);
+  // 밸런스 표가 고친 배율 (balance.mjs --nm) 이 테스트 범위 안
+  for (const id of ids) { const e = D.NM[id]; ok(e.hpMul >= 1.2 && e.hpMul <= 2 && e.atkMul >= 1 && e.atkMul <= 1.1, `${id}: 조정된 배율 범위 (체력 ${e.hpMul} · 공격 ${e.atkMul})`); }
 }
 console.log(`  노드: ${passes} 통과 · ${fails} 실패 (${((Date.now() - T0) / 1000).toFixed(1)}초)`);
 
