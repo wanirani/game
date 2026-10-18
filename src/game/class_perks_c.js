@@ -1203,16 +1203,6 @@ const VEC_C = {
   },
 };
 // 표식 (BALANCE-PERF): 빛·채운 모양은 아틀라스 칸(markCell)에 굽고 drawImage 한 번, 가는 선뿐인 표식(서리 고리·여명 고리)은 벡터가 더 싸서 VEC_C 그대로 — VEC_C 와 같은 그림
-/** 호 한 칸 (기준점 = 원 중심, 0 → span 라디안, 선 2 px · 투명도 0.8): 호를 감싸는 상자만 굽는다 (PERF s4 — dawn) */
-function arcCell(id, R, span, col) {
-  const sn = Math.sin(span), cs = Math.cos(span);
-  const x0 = span > Math.PI ? -1 : Math.min(1, cs), y0 = span > 1.5 * Math.PI ? -1 : Math.min(0, sn), y1 = span > Math.PI / 2 ? 1 : Math.max(0, sn);
-  const L = x0 * R - 2, T = y0 * R - 2;
-  return markCell(id, (1 - x0) * R + 4, (y1 - y0) * R + 4, -L, -T, (g) => {
-    g.globalAlpha = 0.8; g.strokeStyle = col; g.lineWidth = 2;
-    g.beginPath(); g.arc(0, 0, R, 0, span); g.stroke();
-  });
-}
 export const MARKS_C = {
   /** 냉기 1~5: 머리 위 얼음 마름모 */
   chill(ctx, e, n, k, t) {
@@ -1290,21 +1280,11 @@ export const MARKS_C = {
     ctx.globalAlpha = 1;
   },
   /**
-   * 여명 고리: 빛 + 가는 호 둘 (서로 반대로 돈다). 빛은 markGlow, 호는 각각 시작각 0 으로 호를 감싸는 칸에 굽고 돌려 그린다
-   * (PERF s4: 칸을 모아 그리게 되어 K.glow drawImage + 호 2개보다 싸다. 반지름 1 px 단계 — VEC_C.dawn 과 같은 그림)
+   * 여명 고리: 빛 + 가는 호 둘 — 벡터 그대로 (빛은 K.glow 캐시 스프라이트). 반지름이 몸 크기(보스는 머리 판정 높이)를 따라 매 프레임
+   * 바뀌므로 크기별 칸으로 구우면 아틀라스가 프레임마다 차서 비우기·다시 굽기가 되풀이되고(보스 PerkLayer 0.1 → 3–11 ms) 비우기 직전에
+   * 얻은 칸이 지워진 채 그려진다 (PERF verify s4: 칸 버전을 되돌림)
    */
-  dawn(ctx, e, n, k, t) {
-    const r = markStep(Math.max(e.w, e.h) * 0.55, 1);
-    const a1 = markReady() && arcCell('dawnA' + r, r, 2.2, '#ffd070');
-    const a2 = a1 && arcCell('dawnB' + r, r * 0.8, 1.6, '#ffd070');
-    if (!a2) return VEC_C.dawn(markCtx(ctx), e, n, k, t);
-    const x = e.x + e.w / 2, y = e.y + e.h * 0.45, a = Math.min(1, k * 4);
-    ctx.globalCompositeOperation = ADD;
-    markGlow(ctx, x, y, Math.min(56, r), '#ffb060', 0.4 * a);
-    ctx.globalAlpha = a;
-    drawCellRot(ctx, a1, x, y, t * 3);
-    drawCellRot(ctx, a2, x, y, -t * 4);
-  },
+  dawn(ctx, e, n, k, t) { return VEC_C.dawn(markCtx(ctx), e, n, k, t); },
 
 };
 
