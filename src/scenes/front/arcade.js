@@ -32,7 +32,7 @@ import { saves } from '../../core/save.js';
 import { text, wrap, font, FONT, taps, textFloor } from '../../core/ui.js';
 import { drawHints, promptMode } from '../../core/prompts.js';
 import { clamp, ease, rgba, fmt, TAU } from '../../core/math.js';
-import { CHARACTERS } from '../../data/characters.js';
+import { CHARACTERS, CHAR_ORDER } from '../../data/characters.js';
 import { CLASSES, classChain } from '../../data/classes.js';
 import { ASCENSIONS, T3_OF, HIDDEN_OF, KIND_LABEL, ascListOf } from '../../data/ascensions.js';   // 초월 · 비전 (classes_t3 §10.3)
 import { MOVESETS } from '../../data/movesets.js';
@@ -42,7 +42,7 @@ import * as PUPPET from '../../render/hero_puppet.js';
 import { DIFFICULTIES, getDiff } from '../../data/difficulty.js';
 import { STAGES, STAGE_ORDER, SIDE_STAGES } from '../../data/stages.js';
 import { BOSSES } from '../../data/bosses.js';
-import { TOWER_VERSION, TOWER_SEASON } from '../../data/tower.js';   // 무한의 탑 시즌 표시 (기기 기록의 v — 없으면 시즌 1)
+import { TOWER_VERSION, TOWER_SEASON, rngOf } from '../../data/tower.js';   // 무한의 탑 시즌 표시 (기기 기록의 v — 없으면 시즌 1) · 무작위 6 결정적 난수
 import { baseIdFor, ITEMS, makeItem } from '../../data/items.js';
 import { SKILLS } from '../../data/skills.js';
 import { SCRIPTS } from '../../data/story.js';
@@ -120,6 +120,31 @@ export const COURSES = [
   { name: '외전편', sub: '외전 보스 5연전', from: 20, to: 25, p2: true, ex: true, short: '외전 5연전' },
   { name: '전 보스 연속', sub: '25연전', from: 0, to: 25, p2: true, ex: true, short: '전 보스 25연전' },
 ];
+/** 서버 순위표가 아는 코스 수 (netlify/lib/gamedata.mts COURSE_COUNT = 위 COURSES 블록의 줄 수 — tools/online/test_online.mjs 가 대조한다) */
+export const ONLINE_COURSES = 15;
+/**
+ * 규칙 코스 (보스 러시 변주, Stage 5 P1b). 위 COURSES 블록(서버 표와 같은 15줄) 뒤에 이어 붙는다 → 번호 15~ (기록 키).
+ * rule: 'relay' 릴레이 — 라운드마다 합류한 다음 헌터로 교대 (각자 헌터 선택으로 시작할 때와 같은 빌드) ·
+ *       'random6' 무작위 6 — 이 기기가 아는 보스 중 여섯 (시드: 무작위 / 오늘의 시드) · 'norest' 휴식 없음 — 라운드 사이 회복 없음, 점수 ×1.5.
+ * 서버 COURSE_COUNT 밖의 번호라 온라인 순위에 올리지 않는다 (localCourse) — 기록은 기기에만 (「기기 기록」, meta.bossRushBests[번호])
+ */
+export const RULE_COURSES = [
+  { name: '릴레이', sub: '헌터 교대 6연전', from: 0, to: 6, rule: 'relay', short: '릴레이' },
+  { name: '무작위 6', sub: '아는 보스 중 여섯', from: 0, to: 6, rule: 'random6', n: 6, short: '무작위 6' },
+  { name: '휴식 없음', sub: '7~13장 보스 · 점수 ×1.5', from: 6, to: 13, rule: 'norest', short: '휴식 없음' },
+];
+COURSES.push(...RULE_COURSES);
+/** 아케이드 메뉴 코스 줄에 규칙 코스를 보이는가 (시험이 끝나기 전에는 끈다 — ?course= 바로 열기·시험은 꺼져 있어도 된다) */
+export const RULE_COURSES_ON = false;
+/** 휴식 없음: 점수 배율 */
+export const NOREST_SCORE = 1.5;
+/** 무작위 6 시드 선택 (cfg.rushSeed) */
+export const RUSH_SEEDS = [{ id: 'random', name: '무작위' }, { id: 'daily', name: '오늘의 시드' }];
+const RULE_COLOR = '#ffb070';   // 규칙 코스 (기기 기록)
+/** 코스의 규칙 ('relay' | 'random6' | 'norest' | null) */
+export const ruleOf = (ci) => COURSES[ci]?.rule ?? null;
+/** 기기에만 기록하는 코스인가 (규칙 코스 · 서버 표 밖의 번호): 온라인 런 시작·제출을 하지 않는다 */
+export const localCourse = (ci) => !!COURSES[ci]?.rule || !(Number(ci) >= 0 && Number(ci) < ONLINE_COURSES);
 const P2_COLOR = '#c8b8ff';
 const EX_COLOR = '#c8e4ff';   // 외전 코스 (s21 아르겐 · s22 네메인 · s23 하겐 · s24 엘제베트 · s25 카론)
 
@@ -190,7 +215,10 @@ export function courseAvailable(ci, p2, ex = false) {
   return BOSS_ORDER.slice(Math.max(c.from, P1_BOSSES), c.to).some((id) => bossUsable(id));
 }
 export const visiblePresets = (p2) => ALL_PRESETS.map((_, i) => i).filter((i) => presetAvailable(i, p2));
-export const visibleCourses = (p2, ex = false) => COURSES.map((_, i) => i).filter((i) => courseAvailable(i, p2, ex));
+/** 순위표가 있는 코스 (명예의 전당 온라인 탭도 쓴다 — 규칙 코스는 빠진다) */
+export const visibleCourses = (p2, ex = false) => COURSES.map((_, i) => i).filter((i) => !COURSES[i].rule && courseAvailable(i, p2, ex));
+/** 아케이드 메뉴의 코스 줄: 순위표 코스 + 규칙 코스 (RULE_COURSES_ON) */
+export const menuCourses = (p2, ex = false) => COURSES.map((_, i) => i).filter((i) => (RULE_COURSES_ON || !COURSES[i].rule) && courseAvailable(i, p2, ex));
 
 /** 코스의 보스 목록 (2부 보스는 준비된 것만; 비면 첫 코스) */
 export function courseBosses(ci) {
@@ -216,11 +244,61 @@ export function arenaBosses(p2, ex = false) {
 export function sideBosses() {
   return BOSS_ORDER.slice(STORY_BOSSES).filter((id) => bossUsable(id));
 }
+
+// ── 규칙 코스 (RULE_COURSES): 무작위 6 · 릴레이 ──
+/** 오늘의 시드: 한국 시간 날짜 'YYYYMMDD' → 정수 (같은 날이면 어느 기기든 같은 시드) */
+export function dailyRushSeed(day = ONLINE.kstDay()) {
+  const n = Number(String(day ?? '').replace(/\D/g, '').slice(0, 8));
+  return Number.isFinite(n) ? n >>> 0 : 0;
+}
+/** 무작위 6 후보: 이 기기가 아는 보스 (서바이벌 보스 웨이브와 같은 목록 — 1부 · 2부를 알면 준비된 2부 · 외전을 알면 외전) */
+export const random6Pool = (p2, ex = false) => arenaBosses(p2, ex);
+/**
+ * 무작위 6: 후보(BOSS_ORDER 순)를 시드로 섞어 앞의 n 명. 후보가 n 보다 적으면 모두, 비면 첫 코스 보스.
+ * 같은 시드 + 같은 후보 → 같은 순서 (rngOf(seed,'rush6') — data/tower.js 의 결정적 난수)
+ */
+export function random6Bosses(seed, pool, n = 6) {
+  const list = (Array.isArray(pool) ? pool : []).filter((id, i, a) => typeof id === 'string' && !!BOSSES[id] && a.indexOf(id) === i);
+  if (!list.length) return courseBosses(0);
+  const k = Math.max(1, Math.min(Number.isInteger(n) ? n : 6, list.length));
+  return rngOf((Number(seed) || 0) >>> 0, 'rush6').shuffle(list).slice(0, k);
+}
+/** 이 기기에서 합류한 헌터 (헌터 선택 화면과 같은 규칙: 해금 조건이 없거나 meta.unlockedChars 에 있음) — CHAR_ORDER 순 */
+export function joinedHeroes(game) {
+  const u = Array.isArray(game?.meta?.unlockedChars) ? game.meta.unlockedChars : [];
+  return CHAR_ORDER.filter((id) => CHARACTERS[id] && (!CHARACTERS[id].unlock || u.includes(id)));
+}
+/** 릴레이 순서: 합류한 헌터를 고른 헌터부터 돌린다 → 라운드 N(0부터) = order[N % order.length]. 고른 헌터가 목록에 없으면 맨 앞에 */
+export function relayOrder(game, firstId) {
+  const j = joinedHeroes(game), i = j.indexOf(firstId);
+  if (!CHARACTERS[firstId]) return j.length ? j : ['kael'];
+  return i < 0 ? [firstId, ...j] : [...j.slice(i), ...j.slice(0, i)];
+}
+/**
+ * 릴레이: 헌터 id 의 아케이드 빌드를 지금 임시 세이브(state)에 더한다 → 영웅 | null.
+ * 빌드는 그 헌터를 헌터 선택에서 골랐을 때와 같은 buildArcadeState(cfg, id) — 같은 등급·난이도 (초월 등급이면 그 헌터가 지난번에 고른
+ * 초월 길 ascPick, 없으면 그 계보의 초월). 옮기는 것: 영웅(레벨·직업·초월·기술·칸)과 그 영웅이 장착한 장비(소지품에 함께).
+ * 물약·골드·점수·목숨은 판 하나라 그대로 둔다 (미리보기 빌드라 아이템 알림도 없다)
+ */
+export function addRelayHero(state, cfg, id, ascPick = null) {
+  if (!state?.heroes || !Array.isArray(state.inventory) || !CHARACTERS[id]) return null;
+  const c = { ...(cfg && typeof cfg === 'object' ? cfg : {}) };
+  delete c.asc; delete c.cls; delete c.daily;
+  if (typeof ascPick === 'string' && Object.hasOwn(ASCENSIONS, ascPick) && ASCENSIONS[ascPick].charId === id) c.asc = ascPick;
+  const b = buildArcadeState(c, id, { preview: true });
+  const h = b?.heroes?.[id];
+  if (!h || typeof h !== 'object') return null;
+  const worn = new Set(Object.values(h.equip ?? {}).filter((u) => typeof u === 'string'));
+  for (const it of b.inventory ?? []) if (it && worn.has(it.uid) && !state.inventory.some((x) => x?.uid === it.uid)) state.inventory.push(it);
+  state.heroes[id] = h;
+  return h;
+}
 /** 아케이드 설정 정리: 모르는 모드·난이도, 숨긴(또는 없는) 헌터 등급·코스는 기본값/0번으로 (ex = exKnown: 외전 코스) */
 export function sanitizeCfg(cfg, p2, stages = null, ex = false) {
   const c = { kind: 'bossrush', diff: 'normal', preset: 1, course: 0, stageId: 's01', ...(cfg && typeof cfg === 'object' && !Array.isArray(cfg) ? cfg : {}) };
   if (!MODE_ORDER.includes(c.kind)) c.kind = 'bossrush';
   if (!GHOST_CHOICES.some((g) => g.id === c.ghost)) c.ghost = 'off';
+  if (!RUSH_SEEDS.some((s) => s.id === c.rushSeed)) c.rushSeed = 'random';   // 무작위 6 시드 (규칙 코스)
   if (!DIFFICULTIES.some((d) => d.id === c.diff)) c.diff = 'normal';
   c.preset = Number(c.preset); c.course = Number(c.course);
   if (!Number.isInteger(c.preset) || !presetAvailable(c.preset, p2)) c.preset = 0;
@@ -483,9 +561,14 @@ export class ArcadeScene extends Scene {
       { id: 'preset', label: '헌터 등급', value: `${P.name} (Lv.${P.lv})`, color: P.asc ? ASC_COLOR : P.p2 ? P2_COLOR : null, n: pres.length, i: pi, set: (i) => { c.preset = pres[i]; } },
     ];
     if (k === 'bossrush') {
-      const cs = visibleCourses(this.p2, this.ex);
+      const cs = menuCourses(this.p2, this.ex);   // 순위표 코스 + 규칙 코스 (릴레이 · 무작위 6 · 휴식 없음)
       const ci = Math.max(0, cs.indexOf(c.course));
-      rows.push({ id: 'course', label: '코스', value: courseLabel(cs[ci]), color: COURSES[cs[ci]]?.ex ? EX_COLOR : COURSES[cs[ci]]?.p2 ? P2_COLOR : null, n: cs.length, i: ci, set: (i) => { c.course = cs[i]; } });
+      const C = COURSES[cs[ci]];
+      rows.push({ id: 'course', label: '코스', value: courseLabel(cs[ci]), color: C?.rule ? RULE_COLOR : C?.ex ? EX_COLOR : C?.p2 ? P2_COLOR : null, n: cs.length, i: ci, set: (i) => { c.course = cs[i]; } });
+      if (C?.rule === 'random6') {
+        const si = Math.max(0, RUSH_SEEDS.findIndex((s) => s.id === c.rushSeed));
+        rows.push({ id: 'seed', label: '시드', value: RUSH_SEEDS[si].name, color: si ? RULE_COLOR : null, n: RUSH_SEEDS.length, i: si, set: (i) => { c.rushSeed = RUSH_SEEDS[i].id; } });
+      }
     }
     if (k === 'practice') {
       const si = Math.max(0, this.stages.indexOf(c.stageId));
@@ -685,10 +768,24 @@ export class ArcadeScene extends Scene {
       const bl = best ? wrap(ctx, best, L.RW, 12, 700).slice(0, 2) : [];
       bl.forEach((l, i) => text(ctx, l, L.rx + L.RW / 2, oy + 12 + i * blh, { size: 12, align: 'center', weight: 700, color: '#d8c0a0', ow: 2 }));
       // 초월 등급: 헌터를 고른 뒤 초월 길을 고른다는 안내 (시작 버튼 위에 자리가 있을 때만)
+      let hy = oy + 12 + (bl.length + 0.4) * blh;
       if (presetOf(this.cfg.preset).asc) {
         const hl = wrap(ctx, '헌터를 고른 뒤 그 헌터의 초월 직업을 고릅니다', L.RW, 12, 800).slice(0, 2);
-        const hy = oy + 12 + (bl.length + 0.4) * blh;
         if (hy + (hl.length - 1) * blh <= L.start.y - 8) hl.forEach((l, i) => text(ctx, l, L.rx + L.RW / 2, hy + i * blh, { size: 12, align: 'center', weight: 800, color: ASC_COLOR, ow: 2 }));
+        hy += (hl.length + 0.3) * blh;
+      }
+      // 규칙 코스: 「기기 기록」 꼬리표(온라인 순위 없음) + 규칙 한 줄 (자리가 있을 때만)
+      const rule = this.kind === 'bossrush' ? COURSES[this.cfg.course]?.rule : null;
+      if (rule) {
+        const ph = Math.round(Math.max(16, Math.max(11, L.fl) * 1.45));
+        if (hy - ph * 0.72 + ph <= L.start.y - 8) {
+          ctx.font = font(11, 800, FONT.body);
+          const tw = Math.ceil(ctx.measureText('기기 기록').width) + Math.round(ph * 0.9);
+          tagPill(ctx, '기기 기록', Math.round(L.rx + (L.RW - tw) / 2), Math.round(hy - ph * 0.72), ph, 11, RULE_COLOR, 'rgba(64,34,10,0.92)');
+          hy += Math.max(blh, ph + 4);
+        }
+        const rl = wrap(ctx, this.ruleHint(rule), L.RW, 12, 800).slice(0, 2);
+        if (hy + (rl.length - 1) * blh <= L.start.y - 8) rl.forEach((l, i) => text(ctx, l, L.rx + L.RW / 2, hy + i * blh, { size: 12, align: 'center', weight: 800, color: RULE_COLOR, ow: 2 }));
       }
     }
     const ready = this.kind !== 'daily' || this.daily.state === 'ready';
@@ -746,6 +843,7 @@ export class ArcadeScene extends Scene {
     if (this.kind === 'bossrush') {
       const ci = this.cfg.course ?? 0, b = bossRushBests(m)[ci];
       if (b) return `${COURSES[ci]?.short ?? COURSES[ci]?.name ?? ''} 최단 기록  ${fmtClock(b.time ?? 0)} · ${fmt(b.score ?? 0)}점 · ${CHARACTERS[b.charId]?.name ?? ''}`;
+      if (COURSES[ci]?.rule) return `${COURSES[ci].short} 기록이 아직 없습니다`;
     }
     if (this.kind === 'survival' && (m.survivalBest ?? 0) > 0) return `최고 기록  웨이브 ${m.survivalBest}${top ? ` · ${fmt(top.score)}점` : ''}`;
     if (this.kind === 'tower') {
@@ -755,6 +853,13 @@ export class ArcadeScene extends Scene {
     }
     if (top) return `최고 점수  ${fmt(top.score)}점 · ${top.name || CHARACTERS[top.charId]?.name || ''}`;
     return '아직 기록이 없습니다';
+  }
+  /** 규칙 코스 안내 한 줄 (메뉴 오른쪽 칸) */
+  ruleHint(rule) {
+    if (rule === 'relay') return `라운드마다 다음 헌터로 교대 · 합류 ${joinedHeroes(this.game).length}명`;
+    if (rule === 'random6') return this.cfg.rushSeed === 'daily' ? '오늘의 시드 · 오늘 하루는 같은 보스 여섯' : `아는 보스 ${random6Pool(this.p2, this.ex).length}명 중 여섯이 무작위로`;
+    if (rule === 'norest') return `라운드 사이 회복 없음 · 점수 ×${NOREST_SCORE}`;
+    return '';
   }
   /** 카드 그림: 오늘의 도전은 그날 스테이지 배경 */
   artOf(M) {
