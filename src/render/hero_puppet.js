@@ -987,6 +987,7 @@ function swingSmear(c, E, K, P, W, s, ST, hasMain, tt) {
     c.stroke();
   }
   // ② 사이 잔상
+  if (G.cut) { c.globalAlpha = a0; return; }
   for (const k of G.qual === 'high' ? SMEAR3 : SMEAR1) {
     const ex = lerp(st.e1x, s.e1x, k), ey = lerp(st.e1y, s.e1y, k), hx = lerp(st.h1x, s.h1x, k), hy = lerp(st.h1y, s.h1y, k);
     const w = st.w1 + dw * k;
@@ -997,7 +998,7 @@ function swingSmear(c, E, K, P, W, s, ST, hasMain, tt) {
   }
   c.globalAlpha = a0;
 }
-const SMEAR3 = [0.25, 0.5, 0.75], SMEAR1 = [0.5];
+const SMEAR3 = [0.33, 0.67], SMEAR1 = [0.5];   // 높음 2장 · 보통 1장 (덧그림마다 팔·무기 한 벌 — 휴대폰 예산)
 
 /** 채찍 똬리에서 늘어진 끈 끝 (스프링 체인) — T0 좌표에서 그린다 */
 const STRAP_CFG = { g: 900, d: 0.86, push: 200, rest: 0.9, curl: 0.04, flut: 18 };

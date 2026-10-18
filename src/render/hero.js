@@ -2271,7 +2271,8 @@ export function drawHero(ctx, p, world, opts = {}) {
   G.qual = world?.qualityNow?.() ?? world?.game?.quality ?? 'high';
   G.lowq = G.qual === 'low';   // 저품질: 무기 궤적·찌르기 섬광의 그라디언트를 단색으로 (§5.2 그라디언트 6/프레임)
   // 채색 퍼펫 (hero_puppet.js): 조종 중인 영웅만 메시 관절·잔상 (G.main), 보통·높음 화질은 윤곽선·역광을 구운 원화 (G.rim = 무대 빛 색)
-  G.main = !opts._inner && (opts.main === true || (!!world && p === world.player));   // opts.main: 도구(검사대)가 조종 영웅 경로를 강제
+  G.main = !opts._inner && (opts.main === true || (!!world && p === world.player));
+  G.cut = !!world?.cutscene;   // MOTION-FEEL: 필살기·각성 연출 중엔 무기 사이 잔상(팔·무기 덧그림)을 생략 — 연출이 이미 화면을 덮고 프레임 예산이 빠듯함   // opts.main: 도구(검사대)가 조종 영웅 경로를 강제
   G.rim = G.lowq ? null : rimOf(world);
   // ── 자세 ──
   const P = rig ? (rig.P || (rig.P = newPose())) : P_TMP;

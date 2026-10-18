@@ -17,6 +17,7 @@ import * as platform from '../../core/platform.js';
 import { text, wrap, FONT, taps, drawCover } from '../../core/ui.js';
 import { drawHints, drawGlyph, glyphWidth } from '../../core/prompts.js';
 import { touchpad } from '../../core/touchpad.js';
+import { levelOf, setLevel, autoSettings } from '../../game/autoplay.js';   // [auto] 자동 전투 설정
 import { clamp, ease, rgba, TAU } from '../../core/math.js';
 import { frame, heading, gbutton, applySettings, GOLD, BONE, DIM } from './common.js';
 import {
@@ -33,6 +34,7 @@ const PAGES = [
   { id: 'controls', name: '조작' },
   { id: 'touch', name: '터치' },
   { id: 'gear', name: '장비' },   // [qol] 장비 편의 (qol_equip §4·§1): 점수 기준 · 최적 장착 · 자동 처분
+  { id: 'auto', name: '자동' },   // [auto] 자동 전투 (game/autoplay.js — settings.auto, 슬롯 단계 state.auto.level)
   { id: 'etc', name: '기타' },
 ];
 const TIER_NAME = { low: '낮음', medium: '보통', high: '높음' };
@@ -209,6 +211,36 @@ function buildRows(sc) {
         keepRow('better', '지금 영웅에게 좋은 장비 남기기', '지금 영웅이 낀 것보다 좋은 장비(▲)는 처분하지 않습니다.'),
         keepRow('other', '다른 영웅에게 좋은 장비 남기기', '다른 헌터에게 더 좋은 장비는 처분하지 않습니다.'),
         keepRow('special', '고유 장비 남기기', '고유·신화·세트 장비는 처분하지 않습니다.'),
+      ];
+    })(),
+    // [auto] settings.auto 는 새 객체로 바꾼다 (기본값 객체는 얼려 있다 — save.js DEFAULT_SETTINGS.auto). 단계는 지금 세이브 슬롯(state.auto)과
+    //        새 세이브의 기본값(settings.auto.level)에 함께 쓴다
+    auto: (() => {
+      const A = () => autoSettings(sc.s);
+      const setA = (patch) => { sc.s.auto = { ...(sc.s.auto && typeof sc.s.auto === 'object' ? sc.s.auto : {}), ...A(), ...patch }; };
+      return [
+        {
+          id: 'autoLevel', label: '자동 전투', type: 'enum', opts: [['off', '끔'], ['skill', '자동 스킬'], ['battle', '자동 전투']],
+          get: () => levelOf(sc.game), set: (v) => { setA({ level: v }); setLevel(sc.game, v, { toast: false }); },
+          note: (s) => {
+            const v = levelOf(sc.game);
+            if (v === 'skill') return '이동은 직접 합니다. 무기가 닿는 적은 기본 공격, 대기가 끝난 스킬은 대상이 사거리 안에 있을 때 씁니다.';
+            if (v === 'battle') return '같은 바닥의 가까운 적에게 다가가 싸웁니다. 낭떠러지·가시·물·문·출구로는 가지 않고, 큰 공격은 물러서서 피합니다. 방향을 누르면 곧바로 직접 조작이 됩니다.';
+            return '전투 중 AUTO 버튼(키보드 B · 패드 빠른 메뉴 길게)으로 끔 → 자동 스킬 → 자동 전투를 고릅니다. 길게 누르면 끕니다.';
+          },
+        },
+        {
+          id: 'autoUlt', label: '필살기·각성기', type: 'enum', opts: [['boss', '보스전에만'], ['always', '많이 모이면'], ['never', '쓰지 않음']],
+          get: () => A().ult, set: (v) => setA({ ult: v }),
+          note: '자동 전투가 필살기·각성기를 언제 쓸지 정합니다. 「보스전에만」은 보스가 앞에 있을 때만 씁니다.',
+        },
+        {
+          id: 'autoPotion', label: 'HP 물약', type: 'enum', opts: [[0, '쓰지 않음'], [0.25, 'HP 25% 아래'], [0.35, 'HP 35% 아래'], [0.5, 'HP 50% 아래']],
+          get: () => A().potion, set: (v) => setA({ potion: v }),
+          note: '「자동 전투」일 때 HP 가 이만큼 내려가면 회복 물약을 씁니다 (보스전은 10% 일찍).',
+        },
+        { id: 'autoPickup', label: '전리품 줍기', type: 'bool', get: () => A().pickup, set: (v) => setA({ pickup: v }), note: '「자동 전투」일 때 근처에 적이 없으면 가까운 전리품을 줍습니다.' },
+        { id: 'autoDodge', label: '큰 공격 피하기', type: 'bool', get: () => A().dodge, set: (v) => setA({ dodge: v }), note: '보스·강한 적이 큰 공격을 준비하면 뒤로 물러서거나 대시로 피합니다.' },
       ];
     })(),
     etc: [

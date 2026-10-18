@@ -448,7 +448,18 @@ const ACT_DESC = {
   jump: '공중에서 한 번 더 누르면 2단 점프', attack: '길게 누르면 모아 공격', dash: '회피 · 탈것 돌진', sub: '하트를 써서 보조무기 사용',
   skill1: '스킬 슬롯 1', skill2: '스킬 슬롯 2', swap: '스킬 1·2 페이지 전환', ult: '게이지 MAX · 길게 누르면 각성기',
   awaken: '비워 두면 필살기를 길게 눌러 발동', map: '인벤토리를 바로 엽니다', mount: '탈것을 부르거나 내립니다', guard: '수호신이 스킬을 씁니다',
+  // [auto] AUTO-QOL
+  auto: '끔 → 자동 스킬 → 자동 전투 · 길게 누르면 끔', lock: '앞의 적을 고정 · 다시 누르면 다음 적 · 길게 또는 두 번 = 해제',
+  equipNow: '방금 주운 더 좋은 장비(▲)를 바로 장착',
 };
+/** [auto] 패드에 버튼을 지정하지 않았을 때 쓰는 몸짓 (controls.js PAD_GESTURE — input.js 가 읽는다) */
+function gestureText(a) {
+  if (a === 'awaken') return '필살기 길게';
+  if (a === 'lock') return '오른쪽 스틱 튕기기';
+  if (a === 'equipNow') return '↑ 길게';
+  if (a === 'auto') { const mb = (input.bindings?.pad?.map ?? []).find(Number.isInteger); return mb == null ? '' : `${padButtonName(glyphSet(), mb)} 길게`; }
+  return '';
+}
 const CAP_TIME = 3, WIZ_TIME = 5;
 /** 키 지정 캡처가 잡지 않고 브라우저·OS 에 그대로 넘기는 키 */
 const BROWSER_KEYS = new Set(['F5', 'F11', 'F12', 'MetaLeft', 'MetaRight', 'OSLeft', 'OSRight', 'ContextMenu']);
@@ -691,7 +702,8 @@ export class RemapPage {
         const k = 0.5 + 0.5 * Math.sin(this.game.time * 10);
         text(ctx, this.dev === 'pad' ? '버튼을 누르세요…' : '키를 누르세요…', gx, y + rowH / 2 + 5, { size: 15, align: 'right', weight: 800, color: rgba('#ffd27a', 0.6 + 0.4 * k), ow: 2 });
       } else if (!specs.length) {
-        text(ctx, a === 'awaken' ? '비어 있음 (필살기 길게)' : '비어 있음', gx, y + rowH / 2 + 5, { size: 13, align: 'right', weight: 700, color: DIM, ow: 2 });
+        const gt = this.dev === 'pad' ? gestureText(a) : '';   // [auto] 몸짓 기본값
+        text(ctx, gt ? `비어 있음 (${gt})` : '비어 있음', gx, y + rowH / 2 + 5, { size: 13, align: 'right', weight: 700, color: DIM, ow: 2 });
       } else {
         const w = bindsWidth(specs, gh, 6);
         drawBinds(ctx, specs, gx - w, y + (rowH - gh) / 2, gh, 6);
@@ -778,6 +790,9 @@ function keyboardRows() {
     [k('mount'), '탈것 탑승 · 하차'],
     [k('guard'), '수호신 스킬'],
     [k('map', 2), '빠른 메뉴 (인벤토리)'],
+    [k('auto'), '자동 전투 (길게: 끔)'],   // [auto]
+    [k('lock', 2), '대상 고정 (길게: 해제)'],
+    [k('equipNow'), '바로 장착 (▲ 장비)'],
     [k('menu', 2), '일시정지'],
     [[...k('right'), ...k('right').map((s) => ({ ...s, id: s.id + '#2' }))], '질주 (같은 방향 두 번)'],
     [[...k('viewL'), ...k('viewR')], '영웅 회전 (장비 화면)'],
@@ -790,7 +805,8 @@ function padLabels() {
   const add = (m, i, s) => { if (!m.has(i)) m.set(i, []); if (!m.get(i).includes(s)) m.get(i).push(s); };
   const awakenBound = (P.awaken ?? []).some(Number.isInteger);
   const GP = [['jump', '점프'], ['attack', '공격'], ['dash', '대시'], ['sub', '보조무기'], ['skill1', '스킬 1'], ['skill2', '스킬 2'], ['swap', '스킬 페이지'],
-    ['ult', awakenBound ? '필살기' : '필살기 (길게: 각성기)'], ['awaken', '각성기'], ['map', '빠른 메뉴'], ['menu', '일시정지'], ['mount', '탈것'], ['guard', '수호신']];
+    ['ult', awakenBound ? '필살기' : '필살기 (길게: 각성기)'], ['awaken', '각성기'], ['map', (P.auto ?? []).some(Number.isInteger) ? '빠른 메뉴' : '빠른 메뉴 (길게: 자동 전투)'], ['menu', '일시정지'], ['mount', '탈것'], ['guard', '수호신'],
+    ['auto', '자동 전투'], ['lock', '대상 고정'], ['equipNow', '바로 장착']];   // [auto] (버튼을 지정했을 때만 보인다 — 기본은 몸짓)
   for (const [a, nm] of GP) for (const b of P[a] ?? []) if (Number.isInteger(b)) add(game, b, nm);
   for (const [a, nm] of [['confirm', '결정'], ['cancel', '취소']]) for (const b of P[a] ?? []) if (Number.isInteger(b)) add(menu, b, nm);
   return { game, menu };
@@ -934,7 +950,7 @@ export class GuidePage {
     const extra = [];
     for (const [i, names] of gl) if (i > 16) extra.push(`#${i} ${names.join('·')}`);
     text(ctx, `배치: ${preset} · 버튼 모양: ${SET_NAMES[set] ?? set}${extra.length ? ' · 기타 버튼 ' + extra.join(', ') : ''}`, r.x + r.w / 2, by + 10, { size: 12, align: 'center', weight: 700, color: GOLD, ow: 2, maxWidth: r.w - 30 });
-    drawHints(ctx, [['stickR', '영웅 회전 · 목록 스크롤'], [['prevTab', 'nextTab'], '메뉴 탭'], ['confirm', '결정'], ['cancel', '취소']], r.x + r.w / 2, by + 32, { align: 'center', size: 12, mode: 'pad', color: DIM });
+    drawHints(ctx, [['stickR', '영웅 회전 · 목록 스크롤 · 게임 중 대상 고정'], [['prevTab', 'nextTab'], '메뉴 탭'], ['confirm', '결정'], ['cancel', '취소']], r.x + r.w / 2, by + 32, { align: 'center', size: 12, mode: 'pad', color: DIM });
   }
 
   touch(ctx, r) {

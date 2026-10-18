@@ -161,7 +161,7 @@ export function motionTick(p, world) {
   fm.mzPrev = mz;
   if (!m || m.used === m.seq) return;
   m.used = m.seq;
-  if (!on || m.ph !== 1) return;
+  if (!on || m.ph !== 1 || world.cutscene) return;   // 필살기·각성 연출 중엔 무기 불꽃·성광 생략 (연출 입자가 이미 가득)
   const hi = q === 'high';
   const vx = m.x - m.px, vy = m.y - m.py, fly = m.prevOk ? Math.atan2(vy, vx) : -PI / 2;
   if (m.wt === 'greatsword') {

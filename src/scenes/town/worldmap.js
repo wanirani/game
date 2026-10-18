@@ -192,7 +192,7 @@ export class WorldMapScene extends Scene {
   }
   get state() { return this.game.state; }
   /** 토스트는 정보 패널 바로 위에서 위로 쌓는다 (탭·지도 위쪽 노드를 가리지 않고 '출발/잠김' 버튼 곁에 뜬다) */
-  get toastY() { return this._L ? this._L.panelY - 16 : undefined; }
+  get toastY() { return this.bagAsk && this._bagY != null ? this._bagY - 10 : this._L ? this._L.panelY - 16 : undefined; }   // [auto] 가방 경고 창 위로 비킨다
   get toastUp() { return !!this._L; }
   get nodes() { return this.pages?.[this.page]?.nodes ?? []; }
   cur() { return this.nodes[this.index] ?? null; }
@@ -565,6 +565,7 @@ export class WorldMapScene extends Scene {
     ctx.fillStyle = 'rgba(4,1,6,0.62)'; ctx.fillRect(0, 0, L.W, L.H);
     const w = Math.min(560, L.W - 40), bh = L.touch ? 54 : 48, h = 132 + bh + (L.touch ? 0 : 22);
     const x = (L.W - w) / 2, y = Math.round((L.H - h) / 2);
+    this._bagY = y;
     uiPanel(ctx, x, y, w, h, { glow: 'rgba(255,140,60,0.35)' });
     const title = free <= 0 ? '가방이 가득 찼습니다' : `가방 남은 칸 ${free}`;
     text(ctx, '⚠ ' + title, L.W / 2, y + 40, { size: 22, weight: 800, family: FONT.title, align: 'center', color: '#ffb060', maxWidth: w - 40 });
