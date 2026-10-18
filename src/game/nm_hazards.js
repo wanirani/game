@@ -8,7 +8,7 @@
 //  그리기 경로(paint·draw)에는 난수·fx 생성이 없다 (hook_tags) — 입자는 update/tick/onStart 에서만.
 //  QA: w.nmDirector.stats = { spawned, minWarn, maxActive, skipped, rejects, tolls, summoned } · claims() → [[x0, x1], …] 지금 덮인 바닥
 import { Entity } from './entity.js';
-import { Zone, arenaOf, warnRect, warnCircle, glow } from './bosses/b_common.js';
+import { Zone, arenaOf, warnRect, warnCircle, warnFloor, glow, glowE } from './bosses/b_common.js';
 import { strikeColumn, strikeRect, strikeCircle, groundWave } from './bosses/c_common.js';
 import { NM_TWISTS, NM_COLOR } from '../data/nightmare.js';
 import { STAGES } from '../data/stages.js';
@@ -20,6 +20,12 @@ export const MIN_WARN = 0.6;    // 모든 위험의 최소 예고 (초)
 export const GRACE = 2.5;       // 보스전 시작 뒤 유예 (초)
 const FLOOR_BAND = 60;          // 바닥에 닿는 지대로 보는 높이 (안전한 길 계산)
 const CURSE_COL = '#a8123c', RAIN_COL = '#d0142c', CLOCK_COL = '#ffcf9a';
+/**
+ * [NM-TUNE] 붉은 배경(용광로 s15)에서는 붉은 예고가 묻힌다 (p3_verify MINOR-8: 16 위험 스테이지 가운데 대비가 가장 낮았다).
+ * 그 테마에서는 피의 비 예고를 옅은 장밋빛 빗금 + 어두운 테두리로 그린다 (판정·피해·시간은 같고 그림만 다르다)
+ */
+export const HOT_THEMES = new Set(['forge']);
+const RAIN_HOT = '#ffe6ea', EDGE_DARK = 'rgba(14,2,6,0.78)';
 
 /** 경기장 바닥의 빈 길 최소 폭 (영웅 폭의 3배, 160 이상) */
 export function safeWidth(w) { return Math.max(160, (w?.player?.w ?? 40) * 3); }
@@ -49,6 +55,7 @@ export class NmDirector extends Entity {
     this.A = null; this.floor = 0; this.own = null;
     this.fightT = 0; this.next = 0.6; this.clockT = 0; this.tolled = false;
     this.mine = []; this.minions = []; this.stopped = false; this.dark0 = null; this.darkK = 0;
+    this.hot = HOT_THEMES.has(STAGES[entry.stage]?.theme);   // [NM-TUNE] 붉은 배경 → 밝은 예고 (MINOR-8)
     this.stats = { spawned: 0, minWarn: Infinity, maxActive: 0, skipped: 0, rejects: 0, tolls: 0, summoned: 0 };
     this._lt = [];
   }
@@ -158,10 +165,11 @@ export class NmDirector extends Entity {
       chosen.push(x);
     }
     if (!chosen.length) { this.stats.skipped++; return; }
-    const fl = this.floor, top = this.A.top;
+    const fl = this.floor, top = this.A.top, hot = this.hot;
     chosen.forEach((x, i) => strikeColumn(this.own, x, {
       w: W, top, bottom: fl, warn: 0.9 + i * 0.12, life: 0.35, mv: 0.55, color: RAIN_COL, sfx: 'splash', vol: 0.5,
       onStart: (z, wd) => { try { wd.fx?.burst?.('blood', x, fl - 6, 12, { speed: 260 }); } catch { /* 없음 */ } },
+      ...(hot ? { paint: (ctx, z, wd) => paintRainHot(ctx, z, wd, x, W, top, fl) } : {}),
     }));
   }
 
@@ -310,6 +318,28 @@ export class NmDirector extends Entity {
     ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * (r - 6), Math.sin(a) * (r - 6)); ctx.stroke();
     ctx.restore();
   }
+}
+
+/**
+ * 피의 비 (붉은 배경 테마): 예고 = 어두운 테두리 + 옅은 장밋빛 빗금 · 바닥 표식, 판정 = c_common strikeColumn 과 같은 기둥 빛 (결정적 — 난수 없음)
+ *  기본 그림은 'lighter' 붉은색이라 용광로의 주황·빨강 위에서 더해도 거의 달라지지 않았다 — 어두운 테두리가 먼저 경계를 끊고, 옅은 빗금이 밝기를 더한다
+ */
+function paintRainHot(ctx, z, wd, x, w, top, bottom) {
+  if (!z.started) {
+    const x0 = z.x + z.w * 0.2, ww = z.w * 0.6, h = bottom - top;
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = EDGE_DARK; ctx.lineWidth = 4;
+    ctx.strokeRect(x0 - 2, top, ww + 4, h);
+    ctx.restore();
+    warnRect(ctx, x0, top, ww, h, Math.min(1, z.k * 0.8 + 0.25), RAIN_HOT, wd.time);
+    warnFloor(ctx, x, bottom, w * 1.4, z.k, RAIN_HOT, wd.time);
+    return;
+  }
+  const f = 1 - z.a;
+  glowE(ctx, x, (top + bottom) / 2, w * 0.9, (bottom - top) / 2, RAIN_COL, 0.8 * f);
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.fillStyle = rgba('#ffffff', 0.85 * f); ctx.fillRect(x - w * 0.12, top, w * 0.24, bottom - top);
 }
 
 /** 저주 띠: 예고 = 사선 경고, 판정 = 맥동하는 검붉은 늪 (결정적 — 난수 없음) */

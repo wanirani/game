@@ -1,22 +1,37 @@
 // 「악몽의 군주」 밸런스 (tools/balance.mjs --nm) — owner: Stage 5 P3b (docs/specs/nightmare.md §3 · §4 · /tmp/claude-0/s5/plan.md §5 P3 acceptance 2)
 //  ① 싸움 길이·피해: 25 악몽을 권장 레벨(이야기 레벨 + 10)의 영웅으로 —
 //     타수 비 = 악몽 보스 타수 ÷ 이야기 보스 타수(balance.mjs 기준 실행의 그 장 진입 레벨) · 목표 1.3–1.9
-//     보스 1타(모션 1.2, 기준 표의 bossTaken 과 같은 단위) ≤ 최대 체력 25% · 비틀기 위험 1타(가장 센 mv)도 함께 본다
-//     보스 체력 = boss.js 와 같은 식: enemyStats(악몽 레벨) × def.hpMul × early(이야기 레벨) × late(이야기 레벨) × 악몽 hpMul, 공격 × atkMul
+//     보스 1타(모션 1.2, 기준 표의 bossTaken 과 같은 단위) ≤ nmHitCap(난이도) — 쉬움 12.5 · 보통 25 · 어려움 28 (% 최대 체력) —
+//     그리고 vsStory = 보스 1타 ÷ 같은 보스의 이야기 1타(같은 난이도) ≤ 1.25 (NM-TUNE, p3_verify MAJOR-1 결정) · 비틀기 위험 1타(가장 센 mv)도 함께 본다
+//     보스 체력 = boss.js 와 같은 식: enemyStats(악몽 레벨) × def.hpMul × early(이야기 레벨) × late(이야기 레벨) × 악몽 hpMul
+//       × nmOverLevelHp(이야기 레벨, 악몽 레벨) (넘친 레벨 완화, 권장 레벨에서 1 — NM-TUNE, MAJOR-2 결정 k = 0.7), 공격 × atkMul
 //     영웅 = balance.mjs 의 heroAt(레벨, 장비 줄): 장비는 이야기 기준 실행에서 그 레벨에 처음 닿은 장의 장비 (없으면 마지막 장)
+//     넘친 레벨 열 r20 · r40 · r99 = 권장 + 20 · 권장 + 40 · Lv 99 영웅(모두 ≤ 99)의 타수 비, t99 = Lv 99 영웅이 받는 보스 1타 % (참고)
 //     참고 열 'min*' = 그 장을 막 깬 영웅 (이야기 실행에서 다음 장 진입 레벨) — 악몽은 레벨 조건이 없다 (1장 플레이어도 악몽 나이트윙)
 //  ② 비틀기 감독 시뮬레이션: 진짜 NmDirector (src/game/nm_hazards.js) 를 Node 가짜 월드에서 120초 돌린다 (그 보스방 맵의 경기장 폭).
 //     보스의 바닥 공격도 흉내 낸다 (3.2초 ÷ spMul 마다 폭 240 지대, 60% 는 영웅 자리) — 감독은 그것까지 빈 길에 셈한다.
 //     laneMax = 매 순간 「폭 safeWidth 의 가장 좋은 길」 아래 판정 중인 지대 수의 최댓값 (목표 ≤ 1) · warnMin = 해로운 위험의 가장 짧은 예고 (≥ 0.6초)
 //     bot/분 = 피하는 봇(예고를 보면 가장 가까운 빈 길로 330 px/s, 충격파는 뛴다)이 맞은 비틀기 위험 수 (참고)
-//  --check: 타수 비 밖 · 보스 1타 > 25% · laneMax > 1 · warnMin < 0.6 → 종료 코드 1
+//  --check: 타수 비 밖 · 보스 1타 > nmHitCap · 이야기 대비 > 1.25 · 권장+20 타수 비 < 0.9 · Lv99 타수 비 가운데값 > 2.5 · laneMax > 1 · warnMin < 0.6 → 종료 코드 1
 import { STAGES } from '../../../src/data/stages.js';
 import { BOSSES } from '../../../src/data/bosses.js';
 import { CHARACTERS } from '../../../src/data/characters.js';
 import { enemyStats } from '../../../src/game/enemy.js';
-import { NM, NM_IDS, NM_TWISTS, nmLevel, nmRecLevel } from '../../../src/data/nightmare.js';
+import { NM, NM_IDS, NM_TWISTS, nmLevel, nmRecLevel, nmOverLevelHp } from '../../../src/data/nightmare.js';
 
-export const NM_TARGET = { ratio: [1.3, 1.9], bossHit: 25, laneMax: 1, warnMin: 0.6 };
+/**
+ * 목표 (카엘 기준 — 다른 영웅은 runNm 의 「1부 기준 보정 ±30%」).
+ *  bossHit: 난이도별 보스 1타 상한 % (NM-TUNE: 「25% × 난이도 적 공격 배율」 읽기를 대신한다 — 보통은 글자 그대로 25,
+ *           어려움은 28 (이야기 어려움 보스도 이미 22–30% 를 친다), 쉬움은 예전 값 12.5 그대로). 표에 없는 난이도는 nmHitCap 참고
+ *  hitVsStory: 보스 1타 ÷ 같은 보스의 이야기 1타 (같은 난이도) 상한 · over: 넘친 레벨 (권장 + 20 의 모든 줄 ≥ rec20Min, Lv 99 가운데값 ≤ lv99Med)
+ */
+export const NM_TARGET = { ratio: [1.3, 1.9], bossHit: { easy: 12.5, normal: 25, hard: 28 }, hitVsStory: 1.25, over: { rec20Min: 0.9, lv99Med: 2.5 }, laneMax: 1, warnMin: 0.6 };
+/** 난이도의 보스 1타 상한 % — 표(쉬움·보통·어려움) 그대로, 그 밖의 난이도는 어려움 상한 × (적 공격 ÷ 어려움 1.4) (악몽·지옥: 표로 검토) */
+export function nmHitCap(diffId, D) {
+  if (Object.hasOwn(NM_TARGET.bossHit, diffId)) return NM_TARGET.bossHit[diffId];
+  const atk = Number.isFinite(D?.enemyAtk) && D.enemyAtk > 0 ? D.enemyAtk : 1;
+  return atk <= 1 ? Math.round(NM_TARGET.bossHit.normal * atk * 10) / 10 : Math.round(NM_TARGET.bossHit.hard * (atk / 1.4) * 10) / 10;
+}
 const TILE = 48;
 /** 비틀기 위험의 피해 배율 (nm_hazards.js 의 mv — 하수인은 그 적 자체라 없다) */
 const TWIST_MV = { blood_rain: 0.55, cursed_floor: 0.35, doom_clock: 0.6, brand: 0.75 };
@@ -24,11 +39,11 @@ const TWIST_MV = { blood_rain: 0.55, cursed_floor: 0.35, doom_clock: 0.6, brand:
 function mulberry32(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const r1 = (v) => Math.round(v * 10) / 10, r2 = (v) => Math.round(v * 100) / 100;
 
-/** 보스 체력·공격 (boss.js 와 같은 식) at 레벨 lv, 모양 레벨 shape, 배율 e(없으면 이야기) */
+/** 보스 체력·공격 (boss.js 와 같은 식) at 레벨 lv, 모양 레벨 shape, 배율 e(없으면 이야기) — 악몽은 넘친 레벨 완화 nmOverLevelHp 도 */
 export function bossAt(b, lv, shape, D, e = null) {
   const bs = enemyStats({ ...b, lv }, lv, { ...D, enemyHp: D.bossHp ?? D.enemyHp }, false);
   const early = 1 + Math.max(0, 10 - (shape - 1)) * 0.1, late = 1 / (1 + Math.max(0, shape - 24) * 0.035);
-  bs.maxHp = Math.round(bs.maxHp * (b.hpMul ?? 1) * early * late * (e?.hpMul ?? 1));
+  bs.maxHp = Math.round(bs.maxHp * (b.hpMul ?? 1) * early * late * (e?.hpMul ?? 1) * (e ? nmOverLevelHp(shape, lv) : 1));
   if (e) bs.atk = Math.round(bs.atk * (e.atkMul ?? 1));
   return bs;
 }

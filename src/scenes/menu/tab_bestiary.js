@@ -49,6 +49,10 @@ export class BestiaryTab extends Tab {
     for (const sid of D.STAGE_ORDER_P1()) group(D.stageLabel(sid), (S[sid]?.enemies || []).filter((id) => E[id] && !D.isP2Enemy(id)), false, { sid });
     const bosses1 = D.STAGE_ORDER_P1().map((sid) => S[sid]?.boss).filter((id) => id && B[id]);
     for (const id of Object.keys(B)) if (!bosses1.includes(id) && !D.isP2Boss(id)) bosses1.push(id);
+    // 1부 외전 보스(s26 파라켈)도 외전이 열렸거나 이미 쓰러뜨렸을 때만 (아래 2부 외전 보스와 같은 규칙 — 7장 전 스포일러 방지)
+    const P0 = this.state.progress || {}, Q0 = this.state.ng?.past || {};   // [hook:ng]
+    const knew1 = (sid, id) => [P0, Q0].some((x) => (x.unlocked || []).includes(sid) || (x.bosses || []).includes(id));
+    for (let i = bosses1.length - 1; i >= 0; i--) { const sid = B[bosses1[i]]?.stageId; if (S[sid]?.side && !knew1(sid, bosses1[i])) bosses1.splice(i, 1); }
     group('보스', bosses1, true);
     // ── 제2부 · 이계 (아는 경우에만) ──
     if (p2) {

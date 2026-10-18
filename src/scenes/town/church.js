@@ -56,7 +56,7 @@ const TRIAL_BACK = new Set(['leave', 'quit', 'fail', 'blocked']);
 /**
  * 알베르토 신부님에게 아직 듣지 않은 대사가 있나 (2부 축복 탭 「안쪽 방 — 신부님」 줄의 NEW 표식, requests_f UCC VERIFY).
  * data/story.js pickNpcScript 와 같은 규칙을 부작용 없이 따라간다 (그 함수는 고른 대사를 seenScripts 에 넣는다):
- * 편지 퀘스트 전달 · 외전 뒤 반응(_ex25 … _ex21, 안 들은 것) · 지금 장 이하의 가장 새 _ch<N> 을 아직 안 들었다.
+ * 편지 퀘스트 전달 · 외전 뒤 반응(_ex26 … _ex21, 안 들은 것) · 지금 장 이하의 가장 새 _ch<N> 을 아직 안 들었다.
  * seenScripts 가 없는 옛 세이브는 표식 없음 (가장 새 장 대사를 늘 다시 튼다 — 새것인지 알 수 없다)
  */
 export function albertoNews(state, npcId = 'npc_alberto') {
@@ -64,7 +64,7 @@ export function albertoNews(state, npcId = 'npc_alberto') {
   if (npcId === 'npc_alberto' && state?.quests?.active?.el_letter && !F.letter_delivered) return true;
   const seen = Array.isArray(P?.seenScripts) ? P.seenScripts : null;
   if (!seen) return false;
-  for (const [k, f] of [['ex25', 'ex_s25_done'], ['ex24', 'ex_s24_done'], ['ex23', 'ex_s23_done'], ['ex22', 'ex_s22_done'], ['ex21', 'ex_s21_done']]) {
+  for (const [k, f] of [['ex26', 'ex_s26_done'], ['ex25', 'ex_s25_done'], ['ex24', 'ex_s24_done'], ['ex23', 'ex_s23_done'], ['ex22', 'ex_s22_done'], ['ex21', 'ex_s21_done']]) {
     const id = `${npcId}_${k}`;
     if (F[f] && SCRIPTS[id] && !seen.includes(id)) return true;
   }
@@ -444,6 +444,8 @@ export class ChurchScene extends ServiceScene {
       if (miss) out.push(E ? `「${s.name}」에는 아직 못 찾은 비전서가 ${miss}권 남았대요. 수상한 벽은 무기로 두드려 보세요!` : `「${s.name}」에는 아직 찾지 못한 비전서가 ${miss}권 남아 있네. 수상한 벽은 무기로 두드려 보게.`);
     }
     if ((P.relics?.length ?? 0) >= 5 && !P.cleared?.s12) p1.push('유물 다섯이 모두 그대 손에 있군… 이제 왕좌의 방으로 가게. 그 너머에 진실이 기다린다네.');
+    // 외전 26장 (1부 외전, docs/specs/ex_s26.md §3.4): 7장 뒤 열린다 — 1부에는 신부님, 2부에는 엘리제 말투. 2부가 시작됐으면 2부 힌트 묶음에 (그쪽이 먼저 뽑힌다)
+    if (has(P.unlocked, 's26') && !P.cleared?.s26) (F.p2_started ? p2 : p1).push(E ? '신부님이 연구소 밑 공방 이야기를 하셨어요. 성문 밖 지도를 펼쳐 보세요.' : '그 작은 녀석이 자꾸 연구소 밑을 가리킨다네. 성문 밖 지도를 펼쳐 보게.');
     if (F.p2_started && !F.p2_done) {
       const n = P.hearts?.length ?? 0;
       p2.push(n >= 6 ? (E ? '세계의 심장이 여섯 개 다 모였대요! 등불 들고 공허로 가세요. 저는 여기서 종 칠게요.' : '여섯 세계의 심장이 모두 모였군… 등불을 들고 공허로 가게. 이 늙은이는 여기서 기도하겠네.')

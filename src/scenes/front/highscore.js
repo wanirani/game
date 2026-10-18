@@ -28,6 +28,8 @@ import {
   recordHighScore, scoreList, fmtClock, follow, bossRushBests, towerBests, linGrad, radGrad, GOLD, BONE, DIM,
 } from './common.js';
 import { COURSES, visibleCourses, p2Known, exKnown } from './arcade.js';
+/** 서버가 아직 모르는 스테이지 (배포가 막혀 있는 동안 — docs/specs/ex_s26.md §5.3) */
+const ONLINE_PENDING = new Set(['s26']);
 import * as ENDING from './ending.js';
 import * as NG from '../../game/ngplus.js';   // [hook:ng]
 import { bus } from '../../core/events.js';
@@ -200,7 +202,8 @@ export class HighscoreScene extends Scene {
     const st = this.stageList();
     if (!st.includes(S.stageId)) S.stageId = st[0];
   }
-  stageList() { return (this.p2 ? STAGE_ORDER : STAGE_ORDER_P1).filter((id) => STAGES[id] && (!STAGES[id].side || this.ex)); }
+  // 1부 외전 s26 은 온라인 순위표에서 뺀다: 배포된 서버가 practice:s26 을 아직 모른다 (netlify/lib/gamedata.mts 사본에는 들어 있다 — 다음 배포 뒤 이 거름을 지운다). 연습 기록은 기기에 남는다
+  stageList() { return (this.p2 ? STAGE_ORDER : STAGE_ORDER_P1).filter((id) => STAGES[id] && (!STAGES[id].side || this.ex) && !ONLINE_PENDING.has(id)); }
   board() {
     const S = this.sel;
     if (S.kind === 'daily') return `daily:${ONLINE.kstDay()}`;

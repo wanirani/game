@@ -45,7 +45,7 @@ import { POWERUPS } from '../../data/powerups.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { DIFFICULTIES, getDiff } from '../../data/difficulty.js';
 import {
-  ARCADE_MODES, LEVEL_PRESETS, COURSES, courseBosses, endArcade, arenaBosses, p2Known, exKnown, sanitizeCfg, practiceStages, buildArcadeState,
+  ARCADE_MODES, LEVEL_PRESETS, COURSES, courseBosses, endArcade, arenaBosses, p2Known, exKnown, s26Known, sanitizeCfg, practiceStages, buildArcadeState,
   presetOf,
   ruleOf, localCourse, random6Bosses, random6Pool, dailyRushSeed, relayOrder, addRelayHero, NOREST_SCORE,   // 규칙 코스 (보스 러시 변주)
 } from './arcade.js';
@@ -132,6 +132,7 @@ export class ArcadeRunScene extends Scene {
     this.diff = getDiff(cfg.diff);
     this.p2 = p2Known(g);
     this.ex = exKnown(g);   // 외전 보스(아르겐)를 서바이벌 보스 웨이브에 (docs/specs/ex_s21.md)
+    this.s26 = s26Known(g);   // 1부 외전 보스 파라켈 (docs/specs/ex_s26.md — 7장 뒤 s26 을 연 플레이어, 2부를 몰라도)
     this.phase = 'ready'; this.phaseT = 0;
     this.clock = 0; this.done = false;
     this.world = this.makeWorld();
@@ -178,7 +179,7 @@ export class ArcadeRunScene extends Scene {
     if (q?.get('diff')) want.diff = q.get('diff');
     if (q?.get('stage')) want.stageId = q.get('stage');
     if (q?.get('asc')) want.asc = q.get('asc');   // 초월 길 (초월 등급 ?preset=5 와 함께 — 없으면 그 계보의 초월, arcade.js buildArcadeState)
-    const c = sanitizeCfg(want, p2Known(g), this.modeId === 'practice' && !q?.get('stage') ? practiceStages(g) : null, exKnown(g));
+    const c = sanitizeCfg(want, p2Known(g), this.modeId === 'practice' && !q?.get('stage') ? practiceStages(g) : null, exKnown(g), s26Known(g));
     let charId = q?.get('char') || cfg?.charId || g.state?.charId || 'kael';
     if (!CHARACTERS[charId]) charId = 'kael';
     if (!g.state?.arcade) g._arcadePrev = g.state ?? null;
@@ -371,7 +372,7 @@ export class BossRushScene extends ArcadeRunScene {
       // 시드: ?seed= 고정(시험) → 오늘의 시드(한국 날짜) → 판마다 무작위
       this.seedDaily = this.cfg.rushSeed === 'daily' && !Number.isInteger(this.cfg.seed);
       this.seed = Number.isInteger(this.cfg.seed) ? this.cfg.seed >>> 0 : this.seedDaily ? dailyRushSeed() : Math.floor(Math.random() * 4294967296) >>> 0;
-      this.queue = random6Bosses(this.seed, random6Pool(this.p2, this.ex), COURSES[ci]?.n ?? 6);
+      this.queue = random6Bosses(this.seed, random6Pool(this.p2, this.ex, this.s26), COURSES[ci]?.n ?? 6);
     } else this.queue = courseBosses(ci);
     if (this.scoreMul !== 1) { const w = this.world, orig = w.addScore.bind(w); w.addScore = (n) => orig(n * this.scoreMul); }   // 휴식 없음: 모든 점수 ×1.5
     this.relay = null;
@@ -577,7 +578,7 @@ export class BossRushScene extends ArcadeRunScene {
       score: w.run.score, time: this.clock,
       rows,
       log: this.log, stageId: 'arena', extra: { bosses: this.log.length, total: this.queue.length, perfect: this.log.filter((l) => l.perfect).length,   // [hook:ach] perfect: 무피해 라운드 수 (ch_rush_perfect)
-        ...(this.rule ? { rule: this.rule, local: true } : {}), ...(this.relay ? { relay: [...this.relay.order] } : {}), ...(this.rule === 'random6' ? { seed: this.seed, bossIds: [...this.queue] } : {}) },
+        ...(this.rule ? { rule: this.rule, local: true } : this.localOnly ? { local: true } : {}), ...(this.relay ? { relay: [...this.relay.order] } : {}), ...(this.rule === 'random6' ? { seed: this.seed, bossIds: [...this.queue] } : {}) },
     };
   }
   overlay(ctx, vw, vh) {
@@ -616,7 +617,7 @@ export class SurvivalScene extends ArcadeRunScene {
     this.kills0 = 0;
     const c = this.safeCols;
     this.edgeL = c ? c.slice(0, 4) : null; this.edgeR = c ? c.slice(-4) : null;
-    this.bossIds = arenaBosses(this.p2, this.ex);
+    this.bossIds = arenaBosses(this.p2, this.ex, this.s26);
     // 첫 보스 웨이브(5)의 보스 클래스를 한가할 때 미리 받는다 (다음 보스는 보스 웨이브를 정할 때)
     if (this.bossIds.length) { try { loadBoss(this.bossIds[0])?.catch?.(() => null); } catch { /* createBoss 가 받는다 */ } }
     const orig = w.addScore.bind(w);

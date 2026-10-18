@@ -24,8 +24,10 @@
 //             보스 타수(bossHits) ≤ 1.15, 표의 숫자가 모두 유한. 하나라도 벗어나면 종료 코드 1.
 //   --nm [all|<영웅>,…] : 「악몽의 군주」 25 악몽 (Stage 5 P3b, tools/qa/lib/balance_nm.mjs — 기본 표는 계산하지 않는다). 위치 인자 난이도(normal | hard | …)로.
 //             영웅 = 위치 인자 영웅(기본 kael) · 'all' = 일곱 영웅 모두. 권장 레벨(이야기 + 10) 영웅의 보스 타수 ÷ 이야기 보스 타수, 보스 1타(모션 1.2) %,
-//             비틀기 위험 1타 %, 진짜 NmDirector 를 가짜 월드에서 120초 돌린 빈 길 통계 (laneMax · warnMin). --check: 타수 비 1.3–1.9 밖 ·
-//             1타 > 25% · laneMax > 1 · warnMin < 0.6 → 종료 코드 1 (모든 난이도에서 쓴다). --json · --secs S
+//             이야기 대비 1타(vsStory), 비틀기 위험 1타 %, 넘친 레벨 열 r20 · r40 · r99 (권장 + 20 · 권장 + 40 · Lv 99 영웅의 타수 비),
+//             진짜 NmDirector 를 가짜 월드에서 120초 돌린 빈 길 통계 (laneMax · warnMin). --check (모든 난이도에서 쓴다, 카엘 기준 — 다른 영웅 ±30%):
+//             타수 비 1.3–1.9 밖 · 1타 > 쉬움 12.5 / 보통 25 / 어려움 28% · 이야기 대비 > 1.25 · 권장+20 타수 비 < 0.9 · Lv99 타수 비 가운데값 > 2.5 ·
+//             laneMax > 1 · warnMin < 0.6 → 종료 코드 1 (NM-TUNE: p3_verify MAJOR-1·2 결정). --json · --secs S
 //   --asc all|t3|hidden|<id>[,<id>] : 초월 28 · 비전 7 을 그 2차 직업과 견준다 (classes_t3 §2.8 · §11.2; 기본 표는 계산하지 않는다).
 //             본체는 tools/qa/lib/balance_asc.mjs (+ Node 결투장 tools/qa/lib/asc_arena.mjs — 진짜 Player·hitTarget·특성 훅).
 //             ① §2.8 자료 예산 ② 능력치 층(닫힌 식: Δ공격 효율 ≤ +12 %, ΔeHP ≤ +15 %, Lv 70/75) ③ 특성 층(대본 싸움 mob/pack/boss/kill/calm/siege:

@@ -37,6 +37,8 @@ const D = await imp('src/data/nightmare.js');
 const { STAGES } = await imp('src/data/stages.js');
 const { BOSSES } = await imp('src/data/bosses.js');
 const { ENEMIES } = await imp('src/data/enemies.js');
+const { enemyStats } = await imp('src/game/enemy.js');
+const BNM = await imp('tools/qa/lib/balance_nm.mjs');   // [NM-TUNE] 밸런스 목표값 (결정된 상한이 몰래 풀리지 않게)
 const { migrateState, newGameState } = await imp('src/game/state.js');
 const NM = await imp('src/game/nightmare.js');
 const HZ = await imp('src/game/nm_hazards.js');
@@ -63,7 +65,14 @@ for (let i = 1; i <= 25; i++) {
   ok(S?.boss === e.boss && !!BOSSES[e.boss], `${id}: 보스 ${e.boss} = 스테이지 보스 (${S?.boss})`);
   ok(typeof e.twist === 'string' && !!D.NM_TWISTS[e.twist], `${id}: 비틀기 하나 '${e.twist}'`);
   usedTwists.add(e.twist);
-  ok(e.hpMul > 1 && e.atkMul >= 1 && e.spMul >= 1 && e.hpMul <= 2 && e.atkMul <= 1.3 && e.spMul <= 1.3, `${id}: 배율 (체력 ${e.hpMul} · 공격 ${e.atkMul} · 속도 ${e.spMul})`);
+  ok(e.hpMul > 1 && e.atkMul >= 0.85 && e.spMul >= 1 && e.hpMul <= 2 && e.atkMul <= 1.3 && e.spMul <= 1.3, `${id}: 배율 (체력 ${e.hpMul} · 공격 ${e.atkMul} · 속도 ${e.spMul})`);
+  // [NM-TUNE] atkMul < 1 이 허용된 뒤에도 (p3_verify MAJOR-1 결정: 어려움 1타 ≤ 28% · 이야기 대비 ≤ 1.25) 악몽 보스는 이야기 보스보다 세게 친다:
+  //  권장 레벨의 악몽 보스 공격력(레벨 + 8 의 성장 × atkMul) ≥ 이야기 보스 공격력 × 1.1 — 예전 `atkMul ≥ 1` 이 대신 보던 「이야기보다 약하지 않다」
+  {
+    const lvN = D.nmLevel(e, D.nmRecLevel(e)), lvS = S?.level ?? 1, b = BOSSES[e.boss];
+    const aS = enemyStats({ ...b, lv: lvS }, lvS, { enemyAtk: 1 }, false).atk, aN = Math.round(enemyStats({ ...b, lv: lvN }, lvN, { enemyAtk: 1 }, false).atk * e.atkMul);
+    ok(b && aN >= aS * 1.1, `${id}: 악몽 보스 공격력 ${aN} ≥ 이야기 ${aS} × 1.1 (atkMul ${e.atkMul})`);
+  }
   ok([4, 5].includes(e.reward?.rarity), `${id}: 첫 격파 보상 등급 ${e.reward?.rarity}`);
   if (e.twist === 'minions') ok(Array.isArray(e.minions) && e.minions.length > 0 && e.minions.every((m) => ENEMIES[m]), `${id}: 하수인 목록 = 적 id`, e.minions);
   ok(D.isNightmareId(id) && D.nmEntry(id) === e && D.nmOfBoss?.(e.boss)?.id === id, `${id}: isNightmareId · nmEntry · nmOfBoss`);
@@ -234,12 +243,68 @@ section('N10 입구 (P3b) 연결 · 배율 범위 · K1 잔상');
   const trails = Object.values(COS.TRAILS).filter((t) => Number.isFinite(t?.need?.nm)).map((t) => t.need.nm).sort((a, b) => a - b);
   ok(JSON.stringify(trails) === '[1,10,25]', `K1 잔상 need.nm = 1 · 10 · 25 (${trails})`);
   // 밸런스 표가 고친 배율 (balance.mjs --nm) 이 테스트 범위 안
-  for (const id of ids) { const e = D.NM[id]; ok(e.hpMul >= 1.2 && e.hpMul <= 2 && e.atkMul >= 1 && e.atkMul <= 1.1, `${id}: 조정된 배율 범위 (체력 ${e.hpMul} · 공격 ${e.atkMul})`); }
+  //  [NM-TUNE] 공격 하한 1 → 0.85 (MAJOR-1 결정으로 s04 · s22–s25 가 1 아래) — 「이야기보다 약하지 않다」는 N1 의 공격력 비교가 본다
+  for (const id of ids) { const e = D.NM[id]; ok(e.hpMul >= 1.2 && e.hpMul <= 2 && e.atkMul >= 0.85 && e.atkMul <= 1.1, `${id}: 조정된 배율 범위 (체력 ${e.hpMul} · 공격 ${e.atkMul})`); }
   // 악몽의 모습 색은 #hex 만: kit puff() 는 math.rgba(hex, a) 로 가장자리를 투명하게 굽는데 'rgba(…)' 는 그대로 돌려줘
   // 연기 입자가 꽉 찬 사각형으로 보였다 (P3b 가 Fold 영상에서 찾아 고침)
   const reg = src('src/render/painted/registry.js');
   const nmCols = [...reg.matchAll(/\bNM_(HALO|EYE|SMOKE|EMBER) = '([^']*)'/g)].map((m) => [m[1], m[2]]);
   ok(nmCols.length === 4 && nmCols.every(([, c]) => /^#[0-9a-f]{6}$/i.test(c)), `registry.js: 악몽 후광·눈·연기·불씨 색은 #hex (${nmCols.map((c) => c.join('=')).join(' ')})`);
+}
+// ═════════ N11 [NM-TUNE] 넘친 레벨 체력 · 밸런스 목표 (p3_verify MAJOR-1·2 결정) ═════════
+section('N11 넘친 레벨 체력 (k = 0.7) · 밸런스 목표값');
+{
+  ok(D.NM_OVERLEVEL_K === 0.7, `NM_OVERLEVEL_K = 0.7 (${D.NM_OVERLEVEL_K})`);
+  const late = (L) => 1 / (1 + Math.max(0, L - 24) * 0.035);
+  for (const id of ids) {
+    const e = D.NM[id], base = STAGES[e.stage].level, rec = D.nmRecLevel(e);
+    ok(D.nmOverLevelHp(base, D.nmLevel(e, rec)) === 1 && D.nmOverLevelHp(base, base + 8) === 1, `${id}: 권장 레벨에서 체력 배율 1 (권장 레벨 표 그대로)`);
+    let prev = 1, mono = true, inRange = true;
+    for (let hl = rec; hl <= 99; hl++) {
+      const v = D.nmOverLevelHp(base, D.nmLevel(e, hl));
+      if (v > prev + 1e-12) mono = false;
+      if (!(v > 0 && v <= 1)) inRange = false;
+      prev = v;
+    }
+    ok(mono && inRange, `${id}: 영웅 레벨이 오를수록 체력 배율은 줄기만 (0, 1] (Lv 99 → ${prev.toFixed(3)})`);
+    const want = Math.pow(late(Math.max(base, D.nmLevel(e, 99) - 8)) / late(base), 0.7);
+    ok(Math.abs(D.nmOverLevelHp(base, D.nmLevel(e, 99)) - Math.min(1, want)) < 1e-9, `${id}: Lv 99 = (late(max(이야기, 악몽 − 8)) ÷ late(이야기))^0.7`);
+  }
+  ok(Math.abs(D.nmOverLevelHp(1, 97) - Math.pow(1 / (1 + 65 * 0.035), 0.7)) < 1e-9 && D.nmOverLevelHp(NaN, NaN) === 1, 'nmOverLevelHp(1, 97) · 숫자 아님 → 1');
+  const boss = src('src/game/bosses/boss.js');
+  ok(/import \{ nmOverLevelHp \} from '\.\.\/\.\.\/data\/nightmare\.js'/.test(boss) && /nm \? nmOverLevelHp\(shapeLv, world\.stage\.level\) : 1/.test(boss)
+    && /nmMul\('hpMul'\) \* nmLv\)/.test(boss) && /hpLv: nmLv/.test(boss), 'boss.js: 악몽 체력 × nmOverLevelHp(이야기, 월드 레벨) · nmScale.hpLv');
+  // balance_nm 의 보스 모형이 같은 식을 쓴다
+  const b01 = BOSSES.b_nightwing, D0 = { enemyHp: 1, enemyAtk: 1, bossHp: 1 };
+  const m = BNM.bossAt(b01, 97, 1, D0, D.NM.nm_s01), raw = enemyStats({ ...b01, lv: 97 }, 97, D0, false);
+  ok(m.maxHp === Math.round(raw.maxHp * (b01.hpMul ?? 1) * 2 * 1 * D.NM.nm_s01.hpMul * D.nmOverLevelHp(1, 97)), `balance_nm.bossAt = boss.js 식 (나이트윙 Lv 97: ${m.maxHp})`);
+  // 결정된 목표값 (풀리지 않게): 1타 쉬움 12.5 · 보통 25 · 어려움 28 · 이야기 대비 1.25 · 권장+20 ≥ 0.9 · Lv99 가운데값 ≤ 2.5
+  const T = BNM.NM_TARGET;
+  ok(T.bossHit.easy === 12.5 && T.bossHit.normal === 25 && T.bossHit.hard === 28 && T.hitVsStory === 1.25 && T.over.rec20Min === 0.9 && T.over.lv99Med === 2.5
+    && T.ratio[0] === 1.3 && T.ratio[1] === 1.9 && T.laneMax === 1 && T.warnMin === 0.6, 'balance_nm NM_TARGET = 결정값', T);
+  ok(BNM.nmHitCap('hard', { enemyAtk: 1.4 }) === 28 && BNM.nmHitCap('normal', { enemyAtk: 1 }) === 25 && BNM.nmHitCap('easy', { enemyAtk: 0.5 }) === 12.5
+    && BNM.nmHitCap('nightmare', { enemyAtk: 2 }) <= 50 && BNM.nmHitCap('inferno', { enemyAtk: 3 }) <= 75, '난이도별 1타 상한 (예전 25% × 적 공격 배율보다 느슨하지 않다)');
+}
+// ═════════ N12 [NM-TUNE] 업적 토스트: 악몽 안에서는 미루고 (기록은 그대로) 악몽 밖에서 낸다 ═════════
+section('N12 업적 토스트 미루기 (holdAchToasts)');
+{
+  const calls = [];
+  const N = { q: ['a'], timer: 1, pump() { calls.push('pump'); this.q.length = 0; }, pending() { return this.q.length > 0; }, stop() { this.timer = null; } };
+  const wNm = { nightmare: { id: 'nm_s01' }, trial: { nightmare: true } }, wTown = { mode: 'town' };
+  const g = { achNotify: N, world: wNm };
+  ok(NM.holdAchToasts(g) === true && NM.holdAchToasts(g) === false && NM.achToastsHeld(g), 'holdAchToasts: 한 번만 감싼다 · 악몽 월드에서 미루는 중');
+  N.pump();
+  ok(calls.length === 0 && N.q.length === 1 && N.timer === 1, '악몽 안: 원래 pump 를 부르지 않고 대기열을 지킨다 (대기 중이면 시계도 그대로)');
+  N.q.length = 0; N.pump();
+  ok(N.timer === null && calls.length === 0, '악몽 안 · 대기열이 비면 0.5초 시계를 끈다');
+  N.q.push('b'); g.world = wTown; N.pump();
+  ok(calls.length === 1 && N.q.length === 0 && !N._nmHeld && !NM.achToastsHeld(g), '악몽 밖: 다음 pump 에서 스스로 풀려 원래 pump 가 미뤘던 대기열을 낸다');
+  N.pump();
+  ok(calls.length === 2, '풀린 뒤에는 원래 pump 그대로');
+  ok(NM.holdAchToasts({ world: wNm }) === false && NM.holdAchToasts(null) === false, '알림기가 없으면 아무것도 하지 않는다');
+  const nmj = src('src/game/nightmare.js');
+  ok(/holdAchToasts\(game\);\s*\/\/ \[NM-TUNE\]/.test(nmj) && (nmj.match(/holdAchToasts\(game\)/g) ?? []).length >= 2, 'attachNightmare · startBoss 에서 미루기를 건다');
+  ok(!/achievements\.js/.test(nmj.split('\n').filter((l) => /^import/.test(l)).join('\n')), 'nightmare.js 는 업적 기록(achievements.js)을 건드리지 않는다 — 시련처럼 그대로 기록');
 }
 console.log(`  노드: ${passes} 통과 · ${fails} 실패 (${((Date.now() - T0) / 1000).toFixed(1)}초)`);
 
@@ -271,7 +336,7 @@ async function browserSuite() {
         });
         await loadSave(s, FIX);
         for (const id of plan) await fightCase(s, vp, id);
-        if (withFull) { await fullCase(s, vp); await churchCase(s, vp); await ch1Case(s, vp); }
+        if (withFull) { await achCase(s, vp); await fullCase(s, vp); await churchCase(s, vp); await ch1Case(s, vp); }
         const errs = s.errs.filter((e) => !/favicon|ERR_FILE_NOT_FOUND|net::ERR_ABORTED/.test(e));
         ok(errs.length === 0, `[${vp}] 페이지 오류 0`, errs.slice(0, 5));
         const fN = await s.eval(() => ({ n: window.__tt.fetchN, u: window.__tt.fetchUrls.slice(0, 5) }));
@@ -360,12 +425,15 @@ async function enterFight(s, id, opts = {}) {
     if (!b) return null;
     const { enemyStats } = await import('/src/game/enemy.js');
     const { BOSSES } = await import('/src/data/bosses.js');
+    const DN = await import('/src/data/nightmare.js');
     const def = BOSSES[b.def?.id ?? b.id] ?? b.def, d = w.diff, lv = w.stage.level, nm = w.opts?.nightmare;
     const shape = Number.isFinite(nm?.baseLevel) ? nm.baseLevel : lv;
     const early = 1 + Math.max(0, 10 - (shape - 1)) * 0.1, late = 1 / (1 + Math.max(0, shape - 24) * 0.035);
+    // [NM-TUNE] 넘친 레벨 체력: (late(max(이야기, 악몽 − 8)) ÷ late(이야기))^0.7 — 독립 계산 (data 함수와 같은 값이어야 한다)
+    const lateF = (L) => 1 / (1 + Math.max(0, L - 24) * 0.035), over = nm ? Math.min(1, Math.pow(lateF(Math.max(shape, lv - 8)) / lateF(shape), 0.7)) : 1;
     const base = enemyStats({ ...def, lv }, lv, { ...d, enemyHp: (d.bossHp ?? d.enemyHp) }, false);
     return { id: b.def?.id ?? b.id, inferno: b.inferno, nm: b.nmScale ?? null, maxHp: b.stats.maxHp, atk: b.stats.atk, aggro: b.aggro, dAggro: d.aggro ?? 1,
-      wantHp: Math.round(base.maxHp * (def.hpMul ?? 1) * early * late * (nm?.hpMul ?? 1)), baseAtk: base.atk };
+      wantHp: Math.round(base.maxHp * (def.hpMul ?? 1) * early * late * (nm?.hpMul ?? 1) * over), baseAtk: base.atk, over, overData: nm ? DN.nmOverLevelHp(shape, lv) : 1 };
   });
   return { W, B };
 }
@@ -429,7 +497,8 @@ async function fightCase(s, vp, id) {
     ok(B.inferno === true, `${tag}: inferno === true`);
     ok(B.nm && B.nm.hpMul === e.hpMul && B.nm.atkMul === e.atkMul && B.nm.spMul === e.spMul, `${tag}: boss.nmScale 배율`, B.nm);
     ok(near(B.aggro, B.dAggro * e.spMul, 0.001), `${tag}: aggro = 난이도 × ${e.spMul} (${B.aggro})`);
-    ok(near(B.maxHp, B.wantHp), `${tag}: 체력 = 이야기 모양 × ${e.hpMul} (${B.maxHp} / ${B.wantHp})`);
+    ok(near(B.maxHp, B.wantHp), `${tag}: 체력 = 이야기 모양 × ${e.hpMul} × 넘친 레벨 ${B.over?.toFixed?.(3)} (${B.maxHp} / ${B.wantHp})`);
+    ok(Math.abs((B.nm?.hpLv ?? -1) - B.over) < 1e-9 && Math.abs(B.overData - B.over) < 1e-9, `${tag}: boss.nmScale.hpLv = 넘친 레벨 배율 (${B.nm?.hpLv})`);
     // [P3v] 예전 `|| B.atk >= B.baseAtk` 는 배율을 빠뜨려도(공격 = 기본) 통과했다 — 배율을 곱한 값과 맞아야 한다
     ok(near(B.atk, Math.round(B.baseAtk * e.atkMul)) && (e.atkMul <= 1 || B.atk > B.baseAtk), `${tag}: 공격 × ${e.atkMul} (${B.atk} / ${B.baseAtk})`);
   }
@@ -521,6 +590,40 @@ async function fightCase(s, vp, id) {
 }
 /** 비틀기마다 감독을 지켜볼 시간 (ms) */
 function d0(t) { return t === 'doom_clock' ? 2600 : t === 'dark' ? 2800 : 1800; }
+
+/**
+ * [NM-TUNE] 업적 토스트 (p3_verify MINOR-5): 악몽 안(보스전 · 격파 배너 · 결과 화면)에서는 「업적 달성」 토스트가 뜨지 않고,
+ * 악몽을 떠나 마을에 들어선 뒤 뜬다. 버스 'achievementUnlocked' 만 쏘므로 기록(메타)은 건드리지 않는다.
+ */
+async function achCase(s, vp) {
+  const id = 'nm_s01', tag = `[${vp}] ${id} 업적 토스트`;
+  await loadSave(s, FIX);
+  const A = await s.eval(() => import('/src/data/achievements.js').then((m) => m.ACHIEVEMENTS.filter((a) => a.id === 'hr_seven' || a.id === m.ACHIEVEMENTS[0].id).slice(0, 2).map((a) => ({ id: a.id, name: a.name }))));
+  ok(A.length === 2 && A.every((a) => a.id && a.name), `${tag}: 업적 표 읽기`, A);
+  const hasAch = () => window.__tt.toasts.some((t) => t.startsWith('업적 '));
+  const { W } = await enterFight(s, id);
+  ok(!!W, `${tag}: 들어감`);
+  await s.eval(() => { window.__tt.toasts.length = 0; });
+  await s.eval(async (a) => { const { bus } = await import('/src/core/events.js'); bus.emit('achievementUnlocked', { ids: [a[0].id], src: 'live' }); }, A);
+  ok(await killBoss(s), `${tag}: 보스 격파`);
+  await s.eval(async (a) => { const { bus } = await import('/src/core/events.js'); bus.emit('achievementUnlocked', { ids: [a[1].id], src: 'live' }); }, A);
+  await s.wait(1500);   // 격파 배너 동안 (예전에는 여기서 「업적 달성」 이 떴다)
+  const H = await s.eval(async () => { const NMj = await import('/src/game/nightmare.js'); const g = window.__game; return { held: NMj.achToastsHeld(g), pending: !!g.achNotify?.pending?.(), cleared: !!g.world?.cleared, top: g.top?.name }; });
+  ok(H.held && H.pending && H.cleared, `${tag}: 악몽 안에서는 미뤄 둔다 (대기 중)`, H);
+  ok(!(await s.eval(hasAch)), `${tag}: 보스전·격파 배너 동안 「업적 달성」 토스트 없음`, await s.eval(() => window.__tt.toasts.slice(0, 6)));
+  await until(s, () => window.__game.top?.name === 'trialEnd', null, 15000);
+  await s.wait(600);
+  ok(!(await s.eval(hasAch)), `${tag}: 결과 화면 동안에도 없음`);
+  await s.eval((id) => import('/src/game/nightmare.js').then((NMj) => NMj.finishNightmare(window.__game, id)), id);
+  const back = await until(s, () => { const g = window.__game; return g.scenes[0]?.name === 'hub' && g.world?.mode === 'town'; }, null, 15000);
+  ok(!!back, `${tag}: 마을로`);
+  const shown = await until(s, (a) => { const t = window.__tt.toasts; return a.every((x) => t.some((q) => q.includes(`「${x.name}」`))) ? t.filter((q) => q.startsWith('업적 ')) : null; }, A, 15000);
+  ok(!!shown, `${tag}: 마을에 들어선 뒤 미뤘던 업적 토스트 둘이 뜬다`, shown ?? await s.eval(() => window.__tt.toasts.slice(0, 8)));
+  const R = await s.eval(async () => { const NMj = await import('/src/game/nightmare.js'); const g = window.__game; return { held: NMj.achToastsHeld(g), wrapped: !!g.achNotify?._nmHeld }; });
+  ok(!R.held && !R.wrapped, `${tag}: 마을에서는 알림기가 원래대로`, R);
+  await s.eval(() => { const g = window.__game; while (g.scenes.length > 1 && g.top?.name !== 'hub') g.pop(); });
+  await s.wait(150);
+}
 
 /** 나이트윙 전체 흐름: 실패 → 다시 도전 → 격파(첫 보상) → 두 번째 격파(보상 없음) → 실패 → 마을로 */
 async function fullCase(s, vp) {

@@ -6,6 +6,7 @@
 //   completeNightmare(game, w, T)      기록(state.nm) · 첫 격파 보상 · 메타 nm (K1) · 저장 → 마을
 //   retryNightmare / leaveNightmare    실패 화면 「다시 도전」 / 「마을로」 · 일시정지 포기
 //  경험치 0 (K4: attachTrial 의 w.gainExp = () => 0 을 그대로 쓴다) · 목숨·사망 수 그대로 · AUTO 는 world.trial 로 막힌다.
+//  업적: 시련처럼 그대로 기록되고, 토스트만 악몽을 떠난 뒤 마을에서 뜬다 (holdAchToasts — NM-TUNE).
 //  이 파일은 trial.js 를 import 하지 않는다 (순환 없음 — trial.js → nightmare.js 한 방향).
 import { NM, NM_IDS, NM_COLOR, NM_FAIL_LINE, NM_FLAGS, isNightmareId, nmEntry, nmTwist, nmLevel } from '../data/nightmare.js';
 import { TRAILS } from '../data/cosmetics.js';   // [P3b] K1 잔상 이름 (읽기만 — 첫 격파로 새로 열린 잔상을 결과 화면에 보인다)
@@ -40,6 +41,29 @@ function save(game) {
   try { saves.write(st.slot ?? 1, st); } catch (e) { console.warn('[nightmare] save', e); }
 }
 const bossName = (e) => BOSSES[e?.boss]?.name ?? e?.boss ?? '';
+
+// ═════════════ 업적 알림 (NM-TUNE: p3_verify MINOR-5 · p3a 메모 「일곱 사냥꾼」) ═════════════
+//  결정: 시련과 같게 업적은 악몽 안에서도 그대로 기록한다 (achievements.js 는 시련도 악몽도 막지 않는다 — 막으면 시련과 어긋난다).
+//  다만 「업적 달성」 토스트는 악몽 안에서는 띄우지 않고 미뤘다가, 악몽을 떠나 마을(성당·동쪽 문)에 들어선 뒤 낸다 —
+//  ach_notify 의 보스전 미루기는 보스방 입장 전과 격파 뒤(배너·결과 화면 사이)를 덮지 못해 토스트가 악몽 배너 위로 끼어들었다.
+//  ach_notify.js 는 고치지 않는다: game.achNotify 인스턴스의 pump 를 악몽 월드가 살아 있는 동안만 감싼다 (대기열·소리·기록 그대로,
+//  월드가 악몽이 아니게 되면 다음 pump 에서 스스로 풀리고 원래 pump 가 그 자리에서 대기열을 낸다).
+const inNightmareWorld = (game) => { const w = game?.world; return !!(w && w.nightmare && w.trial?.nightmare); };
+/** 악몽 동안 업적 토스트를 미룬다 → 이번에 감쌌으면 true (이미 감싸져 있거나 알림기가 아직 없으면 false) */
+export function holdAchToasts(game) {
+  const N = game?.achNotify;
+  if (!N || typeof N.pump !== 'function' || N._nmHeld) return false;
+  const orig = N.pump;
+  N._nmHeld = orig;
+  N.pump = function nmHeldPump() {
+    if (inNightmareWorld(game)) { try { if (!N.pending?.()) N.stop?.(); } catch { /* 알림기 모양이 다르면 그냥 둔다 */ } return undefined; }
+    N.pump = orig; delete N._nmHeld;   // 악몽 밖 → 원래대로 (미뤄 둔 대기열을 지금 낸다 — 마을 배너 동안은 ach_notify 가 다시 미룬다)
+    return orig.call(N);
+  };
+  return true;
+}
+/** 업적 토스트가 지금 악몽 때문에 미뤄지는 중인가 (QA) */
+export const achToastsHeld = (game) => !!game?.achNotify?._nmHeld && inNightmareWorld(game);
 
 // ═════════════ T (시련 행 모양) ═════════════
 const T_CACHE = new Map();
@@ -155,6 +179,7 @@ export function attachNightmare(scene, w, T) {
   if (!w || !T?.nightmare) return;
   const e = T.entry, game = w.game, tw = nmTwist(e);
   dropRuleToasts(game);
+  holdAchToasts(game);   // [NM-TUNE] 업적은 기록하되 토스트는 마을로 돌아간 뒤 (MINOR-5)
   if (!isObj(w.opts)) w.opts = {};
   if (!w.opts.nightmare) w.opts.nightmare = nmOpt(e, w.stage?.level ?? nmLevel(e, w.hero?.level ?? 1));   // K2 (월드가 opts 를 들고 있지 않아도)
   w.nightmare = w.opts.nightmare;
@@ -165,6 +190,7 @@ export function attachNightmare(scene, w, T) {
   const startBoss = w.startBoss.bind(w);   // attachTrial 이 이미 감싼 것 (보스전 시작 시각)
   w.startBoss = () => {
     startBoss();
+    holdAchToasts(game);   // 알림기가 늦게 받아졌어도 (main.js loadRest) 보스전부터는 미룬다
     hz.then((m) => { if (m && game.world === w && !w.cleared && !w.trialEnded) m.startDirector(w, e); });
   };
   if (tw) setTimeout(() => { if (game.world === w && !w.cleared && !w.trialEnded) toast(game, `${RULE_LABEL}: ${tw.name} — ${tw.desc}`, 3.2); }, 900);

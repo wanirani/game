@@ -47,16 +47,16 @@ const row = (stage, boss, twist, base, o = {}) => ({ id: `nm_${stage}`, boss, st
 const ROWS = [
   row('s01', 'b_nightwing', 'blood_rain', P1, { hpMul: 1.25 }),
   row('s02', 'b_banshee', 'minions', P1, { hpMul: 1.7, minions: ['skeleton', 'zombie', 'ghost'] }),
-  row('s03', 'b_dullahan', 'no_potion', P1, { hpMul: 1.35 }),
-  row('s04', 'b_crimson', 'brand', P1, { hpMul: 1.3, atkMul: 1.05 }),   // 갑주군주는 이야기에서도 초반 보스 가운데 가장 아프게 친다 (1타 ≤ 25% 를 지키려고 공격 배율만 2부 값)
-  row('s05', 'b_bonedragon', 'cursed_floor', P1, { hpMul: 1.4 }),
-  row('s06', 'b_grimoire', 'no_sub', P1, { hpMul: 1.75 }),
+  row('s03', 'b_dullahan', 'no_potion', P1, { hpMul: 1.35, atkMul: 1.08 }),   // [NM-TUNE] 어려움 카엘 이야기 대비 1.26 → ≤ 1.25
+  row('s04', 'b_crimson', 'brand', P1, { hpMul: 1.3, atkMul: 0.87 }),   // 갑주군주는 이야기에서도 초반 보스 가운데 가장 아프게 친다 · [NM-TUNE] 1.05 → 0.87: 어려움 브란(1타 상한 11.3% — 이야기 1타가 이미 11.7%)·카엘 28%
+  row('s05', 'b_bonedragon', 'cursed_floor', P1, { hpMul: 1.4, atkMul: 1.0 }),   // [NM-TUNE] 어려움 브란 1타 12.3 → ≤ 11.3%
+  row('s06', 'b_grimoire', 'no_sub', P1, { hpMul: 1.85, atkMul: 1.02 }),   // [NM-TUNE] 공격: 어려움 브란 12.0 → ≤ 11.3% · 체력 1.75 → 1.85: 넘친 레벨 완화 뒤 빅터 권장+20 타수 비 0.62 → 띠(≥ 0.63) 안
   row('s07', 'b_chimera', 'cursed_floor', P1, { hpMul: 2.0 }),
   row('s08', 'b_leviathan', 'dark', P1, { hpMul: 1.95 }),
   row('s09', 'b_colossus', 'doom_clock', P1, { hpMul: 1.45 }),
-  row('s10', 'b_frostqueen', 'no_potion', P1, { hpMul: 1.52 }),   // 보통(이야기 Lv 28)과 어려움(Lv 30, 25 레벨 전직 뒤)의 이야기 싸움 길이가 크게 달라 띠 가운데로
+  row('s10', 'b_frostqueen', 'no_potion', P1, { hpMul: 1.52, atkMul: 1.08 }),   // 보통(이야기 Lv 28)과 어려움(Lv 30, 25 레벨 전직 뒤)의 이야기 싸움 길이가 크게 달라 띠 가운데로 · [NM-TUNE] 이야기 대비 1.26 → ≤ 1.25
   row('s11', 'b_death', 'brand', P1, { hpMul: 1.85 }),
-  row('s12', 'b_dracula', 'blood_rain', P1, { hpMul: 1.95 }),
+  row('s12', 'b_dracula', 'blood_rain', P1, { hpMul: 1.95, atkMul: 1.05 }),   // [NM-TUNE] 어려움 카엘 이야기 대비 1.29 → ≤ 1.25
   row('s13', 'b_chaos', 'dark', P1, { hpMul: 1.75, reward: { rarity: 5 } }),
   row('s14', 'b_narkissa', 'cursed_floor', P2, { hpMul: 1.5 }),
   row('s15', 'b_moloch', 'blood_rain', P2, { hpMul: 1.4 }),
@@ -66,10 +66,12 @@ const ROWS = [
   row('s19', 'b_behemoth', 'minions', P2, { hpMul: 1.3, minions: ['fungal_husk', 'frog_demon', 'slime'] }),
   row('s20', 'b_nihil', 'cursed_floor', P2, { hpMul: 1.35, reward: { rarity: 5 } }),
   row('s21', 'b_argen', 'blood_rain', P2, { hpMul: 1.25 }),
-  row('s22', 'b_nemain', 'brand', P2, { hpMul: 1.3 }),
-  row('s23', 'b_hagen', 'minions', P2, { hpMul: 1.3, minions: ['wolf', 'snow_wolf', 'frozen_knight'] }),
-  row('s24', 'b_bride', 'cursed_floor', P2, { hpMul: 1.35 }),
-  row('s25', 'b_charon', 'doom_clock', P2, { hpMul: 1.3 }),
+  // [NM-TUNE] 외전 s22–s25: 어려움 카엘 1타 30.3–31.4% (이야기 대비 1.26–1.36) → ≤ 28% · ≤ 1.25 — 레벨 +8 의 공격 성장(×1.19–1.21)이 이미 있어
+  //  배율 < 1 이어도 악몽 보스의 공격력은 이야기 보스보다 높다 (test_nightmare N1 이 그 하한을 본다)
+  row('s22', 'b_nemain', 'brand', P2, { hpMul: 1.3, atkMul: 0.93 }),
+  row('s23', 'b_hagen', 'minions', P2, { hpMul: 1.3, atkMul: 0.95, minions: ['wolf', 'snow_wolf', 'frozen_knight'] }),
+  row('s24', 'b_bride', 'cursed_floor', P2, { hpMul: 1.35, atkMul: 0.96 }),
+  row('s25', 'b_charon', 'doom_clock', P2, { hpMul: 1.3, atkMul: 0.96 }),
 ];
 export const NM = Object.freeze(Object.fromEntries(ROWS.map((r) => [r.id, Object.freeze(r)])));
 export const NM_IDS = Object.freeze(ROWS.map((r) => r.id));

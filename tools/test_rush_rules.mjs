@@ -456,7 +456,7 @@ test('무작위 6: 오늘의 시드 → 두 번 시작해도 같은 여섯 (도�
     const r = await page.evaluate(async () => {
       const A = await import('/src/scenes/front/arcade.js');
       const t = window.__game.scenes.find((s) => s.name === 'bossrush');
-      return { queue: [...t.queue], seed: t.seed, daily: t.seedDaily, expect: A.random6Bosses(A.dailyRushSeed(), A.random6Pool(t.p2, t.ex)), pool: A.random6Pool(t.p2, t.ex), call: t.call?.sub };
+      return { queue: [...t.queue], seed: t.seed, daily: t.seedDaily, expect: A.random6Bosses(A.dailyRushSeed(), A.random6Pool(t.p2, t.ex, t.s26)), pool: A.random6Pool(t.p2, t.ex, t.s26), call: t.call?.sub };
     });
     await page.evaluate(() => { const g = window.__game, t = g.scenes.find((s) => s.name === 'bossrush'); t.done = true; g.go('arcade', {}, { fade: false }); });
     await waitTop(page, 'arcade');

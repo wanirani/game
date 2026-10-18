@@ -44,7 +44,13 @@ export class DocsTab extends Tab {
   get loreIds() {
     const o = LoreM.LORE_ORDER?.length ? LoreM.LORE_ORDER : Object.keys(D.LORE());
     const p2 = this.p2;
-    return o.filter((id) => D.LORE()[id] && (p2 || !D.isP2Stage(D.LORE()[id].stage)));
+    return o.filter((id) => D.LORE()[id] && (p2 || !D.isP2Stage(D.LORE()[id].stage)) && this.sideKnown(D.LORE()[id].stage, id));
+  }
+  /** 외전 스테이지의 기록(s26 l35)은 그 외전이 열렸거나(지난 회차 포함) 이미 주웠을 때만 — 7장 전 스포일러 방지 (ex_s26.md) */
+  sideKnown(sid, id) {
+    if (!D.STAGES()[sid]?.side) return true;
+    const P = this.state.progress || {}, Q = this.state.ng?.past || {};   // [hook:ng]
+    return this.hasLore(id) || [P, Q].some((x) => (x.unlocked || []).includes(sid));
   }
   hasDoc(id) { return (this.state.progress?.docs || []).includes(id); }
   hasLore(id) { return (this.state.progress?.lore || []).includes(id); }

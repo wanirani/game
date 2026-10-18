@@ -187,9 +187,10 @@ export class SystemTab extends Tab {
     let y = A.y + 42 + nRows * rh + hg;
     heading(ctx, '스테이지 기록', A.x + 16, y, LW - 32, { size: 14, sub: p2 ? '제1부 · 제2부' : null });
     y += 12;
-    // 외전(s21, side)은 열렸을 때만 2부 칸 끝에 (docs/specs/ex_s21.md)
+    // 외전(s21, side)은 열렸을 때만 2부 칸 끝에 (docs/specs/ex_s21.md). 1부 외전(s26, part 1)은 1부 칸 끝에 — 2부를 몰라도 (ex_s26.md)
     const sideIds = D.STAGE_ORDER_P2().filter((sid) => D.STAGES()[sid]?.side && (P.unlocked || []).includes(sid));
-    const p1Ids = D.STAGE_ORDER_P1(), p2Ids = p2 ? [...D.P2_STAGE_IDS, ...sideIds] : [];
+    const sideP1 = sideIds.filter((sid) => (D.STAGES()[sid]?.part ?? 2) === 1);
+    const p1Ids = [...D.STAGE_ORDER_P1(), ...sideP1], p2Ids = p2 ? [...D.P2_STAGE_IDS, ...sideIds.filter((sid) => !sideP1.includes(sid))] : [];
     const all = [...p1Ids, ...p2Ids], pgap = p2Ids.length ? 12 : 0;
     const bgap = all.length > 14 ? 3 : 4;
     const mw = Math.min(48, (LW - 32 - (all.length - 1) * bgap - pgap) / Math.max(1, all.length));
