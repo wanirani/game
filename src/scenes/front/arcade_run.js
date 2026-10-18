@@ -281,7 +281,8 @@ export class ArcadeRunScene extends Scene {
     try {
       const st = this.game.state, w = this.world, kind = this.cfg.kind;
       const hero = st?.heroes?.[this.cfg.charId];
-      const submit = !!this.board && (kind === 'survival' ? (res.extra?.wave ?? 0) >= 1 : kind === 'tower' ? (res.extra?.floor ?? 0) >= 1 : !!cleared);
+      // [playb] AUTO 를 쓴 판 (world.run.assisted) 은 순위표·고스트에 올리지 않는다 (지금은 autoplay.autoBlockedIn 이 막지만 이중 안전장치)
+      const submit = !!this.board && !w?.run?.assisted && (kind === 'survival' ? (res.extra?.wave ?? 0) >= 1 : kind === 'tower' ? (res.extra?.floor ?? 0) >= 1 : !!cleared);
       const result = {
         time: Math.round((kind === 'practice' ? w.run.time : this.clock) * 1000), score: res.score ?? 0,
         hero: this.cfg.charId, cls: hero?.classId ?? '', level: hero?.level ?? this.P.lv, deaths: st?.stats?.deaths ?? 0,
@@ -292,7 +293,9 @@ export class ArcadeRunScene extends Scene {
       if (res.rank) result.rank = res.rank;
       const ti = this.game.ach?.title?.(); if (ti) result.ti = ti;   // [hook:ach] 온라인 이명 (고정 목록 id — 서버가 목록 밖은 버린다, achievements.md §8)
       const ghost = submit && this.rec ? this.rec.encode() : null;
-      return { h: this.orun ?? null, board: this.board, result, ghost, submit, daily: !!this.cfg.daily };
+      const assisted = !!w?.run?.assisted;
+      if (assisted) result.assisted = true;   // [playb] online.finishRun 도 이 판을 거른다
+      return { h: this.orun ?? null, board: this.board, result, ghost, submit, daily: !!this.cfg.daily, assisted };
     } catch (e) { console.warn('[arcade] online payload', e); return null; }
   }
   /** 모드 표시의 위쪽 끝 (논리 px): 데스크톱은 화면 위, 터치는 가운데 위 시스템 버튼(Ⅱ·가방) 아래의 기믹 게이지 줄 */
@@ -816,7 +819,7 @@ export class ArcadeResultsScene extends Scene {
    */
   onlineSubmit(o) {
     this.onl = null;
-    if (!o?.submit || !o.board || saves.debugBoot) return;   // 디버그 부팅(?scene=bossrush 등)의 판은 순위표·내 고스트에 남기지 않는다
+    if (!o?.submit || !o.board || saves.debugBoot || o.assisted) return;   // [playb] assisted: AUTO 판 (onlinePayload 가 submit 도 끈다)   // 디버그 부팅(?scene=bossrush 등)의 판은 순위표·내 고스트에 남기지 않는다
     try {
       if (o.ghost && o.result?.time > 0) ONLINE.saveLocalGhost(o.board, o.result.time, o.ghost, o.result.hero, o.result.cls);
       const st = o.h?.state;

@@ -169,7 +169,8 @@ class Input {
     this._queuedCmd = null;
     this._inited = false;
     this.touch = this._makeTouchApi();
-    for (const a of ACTIONS) { this.state[a] = false; this.prev[a] = false; this.pressTime[a] = -99; this.releaseTime[a] = -99; }
+    this._autoPress = {};   // [playb] 이 액션의 마지막 누름이 AUTO 만으로 생겼나 (pressedByAuto)
+    for (const a of ACTIONS) { this.state[a] = false; this.prev[a] = false; this.pressTime[a] = -99; this.releaseTime[a] = -99; this._autoPress[a] = false; }
   }
 
   /** 예전 코드용: input.touchMode (읽기 전용 별칭; 쓰면 기기 전환) */
@@ -882,7 +883,7 @@ class Input {
       this.prev[a] = was;
       const v = H[a] || !!A[a] || (a === 'ult' && aliasUlt);
       this.state[a] = v;
-      if (v && !was) { this.pressTime[a] = this.time; this.consumed[a] = false; } else if (!v && was) this.releaseTime[a] = this.time;
+      if (v && !was) { this.pressTime[a] = this.time; this.consumed[a] = false; this._autoPress[a] = !H[a] && !(a === 'ult' && aliasUlt); } else if (!v && was) this.releaseTime[a] = this.time;
     }
     // 스텝 전에 뗀 키는 이번 스텝에 한 번 눌린 것으로 보였으니 이제 뗀다
     if (this._keyFresh.size) this._keyFresh.clear();
@@ -945,6 +946,8 @@ class Input {
   releasedAt(a) { this._seen(a); return this.releaseTime[a] ?? -99; }
   /** 누르고 있는 시간(초), 떼어 있으면 0 */
   heldFor(a) { this._seen(a); return this.state[a] ? this.time - this.pressTime[a] : 0; }
+  /** [playb] 마지막 누름이 AUTO 가상 입력만으로 생겼으면 true (두 번 톡 질주 같은 사람 입력 판정에서 뺀다) */
+  pressedByAuto(a) { return !!this._autoPress?.[a]; }
   /** 모든 액션 입력을 무시 상태로 (장면 전환 직후 오입력 방지) */
   flush() {
     for (const a of ACTIONS) { this.consumed[a] = true; this.prev[a] = this.state[a]; }

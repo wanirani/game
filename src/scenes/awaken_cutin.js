@@ -34,7 +34,8 @@ const COS = Math.cos(ANG), SIN = Math.sin(ANG);
 const GOLD = '#e8c872', SEAL_RED = '#b0102a', INK = '#1a0006', INK_SHADOW = '#5a0010';
 const GLYPH_T = 0.09;                      // 한 글자가 1.8 → 1 배로 찍히는 시간
 /** 건너뛰기로 치는 입력: 버튼·키만 (방향·스틱 회전은 제외 — 떠 있는 터치 스틱에 엄지를 다시 얹거나 패드 스틱이 살짝 흔들려도 넘어가지 않게) */
-const SKIP_ACTIONS = (Array.isArray(ACTIONS) ? ACTIONS : []).filter((a) => !['left', 'right', 'up', 'down', 'viewL', 'viewR'].includes(a));
+// [playb] auto·lock·equipNow 은 몸짓·AUTO 가 만드는 가상 액션 (오른쪽 스틱 튕기기 등) — 컷인을 건너뛰지 않는다
+const SKIP_ACTIONS = (Array.isArray(ACTIONS) ? ACTIONS : []).filter((a) => !['left', 'right', 'up', 'down', 'viewL', 'viewR', 'auto', 'lock', 'equipNow'].includes(a));
 function skipPressed() {
   if (input.pointer?.tapped) return true;   // 화면 탭 (터치 버튼은 숨겨져 있다)
   if (!SKIP_ACTIONS.length) return !!input.anyPressed?.();

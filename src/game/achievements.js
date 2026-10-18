@@ -112,7 +112,9 @@ export function digestState(state, withPast = true) {
         if (!Object.hasOwn(STAGES, sid)) continue;
         const v = p.cleared[sid];
         if (!v) continue;
-        cleared[sid] = { rank: isObj(v) && typeof v.rank === 'string' ? v.rank : null, time: isObj(v) && Number.isFinite(v.time) ? v.time : null };
+        // [playb] AUTO 를 쓴 판의 기록 (results.js auto: true) 은 클리어로만 센다 — 랭크 S · 질주(speed) 업적에는 들어가지 않는다
+        const auto = isObj(v) && v.auto === true;
+        cleared[sid] = { rank: !auto && isObj(v) && typeof v.rank === 'string' ? v.rank : null, time: !auto && isObj(v) && Number.isFinite(v.time) ? v.time : null };
       }
     }
     const flags = {};
@@ -421,14 +423,18 @@ class AchEngine {
       if (id && Object.hasOwn(ENEMIES, id) && this.liveSlotState()) this.beast.add(id);
       now(ACH_EVENTS.enemyKilled);
     });
-    this.on('comboMilestone', (d) => { this.maxProg('combo', d.n); now(ACH_EVENTS.comboMilestone); });
-    this.on('styleRankUp', (d) => { this.maxProg('style', d.rank); now(ACH_EVENTS.styleRankUp); });
+    // [playb] 콤보·스타일 등급은 솜씨 업적 — AUTO 를 쓴 판 (world.run.assisted) 의 기록은 세지 않는다
+    const assisted = () => !!this.game.world?.run?.assisted;
+    this.on('comboMilestone', (d) => { if (assisted()) return; this.maxProg('combo', d.n); now(ACH_EVENTS.comboMilestone); });
+    this.on('styleRankUp', (d) => { if (assisted()) return; this.maxProg('style', d.rank); now(ACH_EVENTS.styleRankUp); });
     this.on('bossStarted', (d) => { this.boss = { id: d.bossId, dmg: fin(this.game.world?.run?.damageTaken), ok: true }; });
     this.on('playerHurt', () => { if (this.boss) this.boss.ok = false; });
     this.on('playerDied', () => { if (this.boss) this.boss.ok = false; this.addProg('deaths'); now(ACH_EVENTS.playerDied); });
     this.on('bossKilled', (d) => {
       const b = this.boss;
       this.boss = null;
+      // [playb] AUTO 를 쓴 판 (world.run.assisted) 은 무피해 (cb_nodmg · ch_nodmg5 · sc_count · nd_<보스>) 를 세지 않는다 — b.ok === false 와 같은 취급
+      if (b && (d.assisted === true || this.game.world?.run?.assisted)) b.ok = false;
       if (d.mode === 'story' || d.mode === 'practice') {
         if (b && b.ok && b.id === d.bossId && fin(this.game.world?.run?.damageTaken) === b.dmg) {
           this.addProg('nodmg');
@@ -443,7 +449,7 @@ class AchEngine {
       } else now(['nodmg']);
     });
     this.on('stageCleared', (d) => {
-      if (d.noDamage === true && this.liveSlotState()) this.addProg('nodmg_stage');
+      if (d.noDamage === true && d.assisted !== true && this.liveSlotState()) this.addProg('nodmg_stage');   // [playb] AUTO 판은 무결 (ch_nodmg_stage) 제외
       now(['nodmgStage']);
       this.soon({ metrics: ACH_EVENTS.stageCleared });
       this.flushProg();

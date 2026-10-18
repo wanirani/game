@@ -218,6 +218,7 @@ const okGhost = (g) => typeof g === 'string' && g.length > 0 && g.length <= GHOS
 export async function finishRun(h, result, ghost = null) {
   try {
     if (!h || h.state === 'none') return { state: 'none' };
+    if (result?.assisted) return { state: 'none' };   // [playb] AUTO 를 쓴 판은 보내지 않는다 (arcade_run.onlinePayload 가 이미 거른다 — 이중 안전장치)
     if (h.state === 'unavailable') return { state: 'unavailable' };
     if (h.state === 'guest') return { state: 'guest' };
     if (h.promise) await Promise.race([h.promise, new Promise((res) => setTimeout(res, 8000))]);

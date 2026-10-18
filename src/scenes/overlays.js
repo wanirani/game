@@ -836,7 +836,7 @@ export class GameOverScene extends Scene {
     if (!w || !st) { this.game.go('title', {}); return; }
     if (w.diff?.lives) st.lives = w.diff.lives;
     // 기록 등록
-    try { this.game.recordScore?.(w.run?.score ?? 0, w.stage?.id); } catch (e) { console.error(e); }
+    try { if (!w.run?.assisted) this.game.recordScore?.(w.run?.score ?? 0, w.stage?.id); } catch (e) { console.error(e); }   // [playb] AUTO 판은 점수판에 올리지 않는다 (results.js 와 같은 규칙)
     try { saves.write(st.slot, st); } catch (e) { console.error(e); }
     // from = 스테이지 id → 마을은 동쪽 성문 앞에서 시작 (hub.js: 도착 이유가 처음 방문·이어하기가 아니면 성문)
     this.game.go(this.game.registry.hub ? 'hub' : 'title', { from: w.stage?.id ?? 'stage' });

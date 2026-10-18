@@ -73,13 +73,25 @@ for (const [key, dflt, values] of rows) {
   }
 }
 for (const k of Object.keys(DEFAULT_SETTINGS)) ok(tableKeys.has(k), `DEFAULT_SETTINGS 의 ${k} 가 §1.5 표에 없음`);
-// 객체 설정 (schema type 'hud'|'gear'): 표의 값 칸은 모양만 적으므로 여기서 직접 본다 — 잘못된 형식 → 기본값, 맞는 값 유지, 기본값은 복사본
+// 객체 설정 (schema type 'hud'|'gear'|'auto'): 표의 값 칸은 모양만 적으므로 여기서 직접 본다 — 잘못된 형식 → 기본값, 맞는 값 유지, 기본값은 복사본
 for (const [k, s] of Object.entries(SETTINGS_SCHEMA)) {
-  if (s?.type !== 'hud' && s?.type !== 'gear') continue;
+  if (s?.type !== 'hud' && s?.type !== 'gear' && s?.type !== 'auto') continue;
   const keep = (v) => migrateSettings({ settingsVersion: 2, [k]: v }).settings[k];
   for (const bad of ['x', 7, null, [1]]) ok(isDeepStrictEqual(keep(bad), DEFAULT_SETTINGS[k]), `${k}: 형식 틀림 ${JSON.stringify(bad)} → 기본값`);
   ok(isDeepStrictEqual(keep(JSON.parse(JSON.stringify(DEFAULT_SETTINGS[k]))), DEFAULT_SETTINGS[k]), `${k}: 기본값 객체 유지`);
   ok(migrateSettings({ settingsVersion: 2 }).settings[k] !== DEFAULT_SETTINGS[k] || Object.isFrozen(DEFAULT_SETTINGS[k]), `${k}: 기본값 객체를 그대로 내주면 얼어 있어야 한다`);
+}
+// [playb] auto (AUTO-QOL): 항목별 검사 · 선택 키 lockBtn ('auto'|'on'|'off', 없으면 'auto' 로 취급) · 모르는 하위 키 보존
+{
+  const keepA = (v) => migrateSettings({ settingsVersion: 2, auto: v }).settings.auto;
+  const a = keepA({ level: 'battle', ult: 'never', potion: 0.5, pickup: false, dodge: false, lockBtn: 'on', future: 1 });
+  ok(a.level === 'battle' && a.ult === 'never' && a.potion === 0.5 && a.pickup === false && a.dodge === false, 'auto: 맞는 값 유지');
+  ok(a.lockBtn === 'on' && a.future === 1, 'auto: lockBtn 유지 · 모르는 하위 키 보존');
+  for (const v of ['auto', 'on', 'off']) ok(keepA({ ...DEFAULT_SETTINGS.auto, lockBtn: v }).lockBtn === v, `auto.lockBtn: 허용 값 ${v} 유지`);
+  ok(keepA({ ...DEFAULT_SETTINGS.auto, lockBtn: 'x' }).lockBtn === 'auto', 'auto.lockBtn: 목록 밖 → auto');
+  ok(!('lockBtn' in keepA({ ...DEFAULT_SETTINGS.auto })), 'auto.lockBtn: 없으면 그대로 없음 (기본값은 바뀌지 않음)');
+  const b = keepA({ level: 'zzz', ult: 5, potion: 9, pickup: 'y', dodge: null });
+  ok(b.level === 'off' && b.ult === 'boss' && b.potion === 0.9 && b.pickup === true && b.dodge === true, 'auto: 항목별 틀린 값 → 기본값 (potion 은 0..0.9 로 자름)');
 }
 for (const k of Object.keys(SETTINGS_SCHEMA)) ok(Object.hasOwn(DEFAULT_SETTINGS, k), `SETTINGS_SCHEMA 의 ${k} 에 기본값 없음`);
 ok(SETTINGS_VERSION === 2 && DEFAULT_SETTINGS.settingsVersion === 2, 'settingsVersion 2');

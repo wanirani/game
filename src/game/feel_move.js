@@ -224,6 +224,7 @@ export function updateGait(p, world, dt, inp) {
       const pt = input.pressTime[d] ?? -99;
       if (pt === fm.seenPress[d]) continue;
       fm.seenPress[d] = pt;
+      if (input.pressedByAuto?.(d)) { fm.lastPress[d] = -99; continue; }   // [playb] AUTO 의 방향 누름은 두 번 톡 질주의 첫·두 번째 톡이 되지 않는다
       // 앞선 누름: 이 스텝들에서 본 것, 또는 (히트스톱처럼 걸음 처리가 멈춘 동안이면) 방향 이력의 같은 쪽 마지막 입력
       const prev = Math.max(fm.lastPress[d], prevPressFromHistory(d === 'left' ? 'l' : 'r', pt));
       fm.lastPress[d] = pt;

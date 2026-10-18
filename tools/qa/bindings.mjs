@@ -97,7 +97,8 @@ for (const preset of ['arcade', 'classic']) for (const confirm of ['south', 'eas
   for (const a of [...MOVE, ...CT.REMAPPABLE, 'menu', ...MENU]) if (!(k[a] || []).length) miss.push(`key:${a}`);
   C.add('bound.key', miss.length ? 'fail' : 'pass', miss.length ? `unbound: ${miss.join(', ')}` : `all ${MOVE.length + CT.REMAPPABLE.length + 1 + MENU.length} keyboard actions bound`);
   if (miss.length) fail('bound.key', `keyboard actions without a key: ${miss.join(', ')}`, 'src/data/controls.js', '');
-  const EXPECT_UNBOUND = { arcade: ['awaken'], classic: ['awaken', 'map'] };
+  // [playb] AUTO-QOL 의 auto/lock/equipNow 은 패드 버튼 없이 몸짓으로 닿는다 (controls.js PAD_GESTURE: SELECT 길게 · 오른쪽 스틱 튕기기 · ↑ 길게)
+  const EXPECT_UNBOUND = { arcade: ['awaken', 'auto', 'lock', 'equipNow'], classic: ['awaken', 'map', 'auto', 'lock', 'equipNow'] };
   for (const preset of ['arcade', 'classic']) {
     const p = snap[`${preset}.south`].pad;
     const unbound = [...MOVE, ...CT.REMAPPABLE, 'menu', ...MENU.filter((m) => !['viewL', 'viewR'].includes(m))].filter((a) => !(p[a] || []).length);
@@ -219,7 +220,7 @@ if (!args['no-browser']) {
           return { list, info, W: innerWidth, H: innerHeight };
         }, { scale, left });
         const pad = {}, sys = {};
-        for (const b of L.list) (['pause', 'bag', 'fullscreen'].includes(b.id) ? sys : pad)[b.id] = b;
+        for (const b of L.list) (['pause', 'bag', 'fullscreen', 'maptog', 'auto'].includes(b.id) ? sys : pad)[b.id] = b;   // [playb] 시스템 줄 (touchpad.js SYS_IDS: 지도·AUTO 포함) 은 12 px 간격의 별도 줄
         const expect = ['attack', 'jump', 'dash', 'sub', 'skill1', 'skill2', 'ult', 'swap', 'mount', 'guard'];
         const missing = expect.filter((id) => !pad[id]);
         const small = [...Object.values(pad), ...Object.values(sys)].filter((b) => b.d < 43.5).map((b) => `${b.id} ${b.d.toFixed(1)}`);
