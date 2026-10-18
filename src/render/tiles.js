@@ -14,6 +14,7 @@ import { RNG, hashStr, rgba, shade, mix, TAU } from '../core/math.js';
 const CHUNK = 16; // 타일 단위 청크 크기
 const DEPTH_R = 3; // 깊이 음영: 빈칸까지의 거리를 찾는 반경(타일)
 const PAD_FADE = 120; // 세로 확장 시야 여백: 방 경계에서 테마색으로 다 녹기까지 (px)
+const SIDE_FADE = 300; // [P05] 가로 넘겨 보기 여백: 방 옆 경계에서 테마색으로 녹기까지 (px)
 const MAX_CHUNKS = 8; // 구워 둔 청크 캔버스 상한 (청크 하나 768×768 ≈ 2.4MB). 화면 밖의 오래된 청크부터 버리고 캔버스는 재사용
 const PHASE_CH = new Set(['a', 'b', 'z', 'Z']); // 위상 타일 문자 (tilemap.js PHASE 와 같음)
 const DARK_CACHE = new Map();   // 톤다운 소품 사본 (모든 TileRenderer 공용: 방을 오갈 때 다시 굽지 않는다)
@@ -707,6 +708,47 @@ export class TileRenderer {
     ctx.fillStyle = '#050206';
     if (!m.openLeft) ctx.fillRect(-400, -400, 400, m.pxH + 800);
     if (!m.openRight) ctx.fillRect(m.pxW, -400, 400, m.pxH + 800);
+    // [P05] 터치 가로 넘겨 보기(camera ovL/ovR): 방 밖으로 보이는 곳은 검게 두지 않고 스테이지 옆 채우기로 (키보드·패드는 0 이라 그대로)
+    if (cam.ovL > 0.5 && v.l < 0) this.drawSides(ctx, v, 0);
+    if (cam.ovR > 0.5 && v.r > m.pxW) this.drawSides(ctx, v, 1);
+  }
+  /**
+   * [P05] 방 왼쪽(side 0)·오른쪽(1) 밖 채우기: 스테이지 padSide = { mode, color } (없으면 'tiles' + padBottom 색).
+   *  'tiles' : 방 끝 열 타일(구운 청크에서 한 열 복사)을 바깥으로 이어 붙이고 테마색으로 점점 녹인다 (위·아래 여백과 같은 방식)
+   *  'fill'  : 테마색 칠하기. 저사양(game.tier 'low')은 언제나 'fill'. 방 위·아래 바깥은 padTop/padBottom 색
+   */
+  drawSides(ctx, v, side) {
+    const m = this.map, st = this.stage, low = game?.tier === 'low';
+    const P = st.padSide ?? { mode: 'tiles', color: st.padBottom?.color ?? '#140a0c' };
+    const col = P.color || '#140a0c';
+    const xa = side ? m.pxW : Math.floor(v.l) - 1, xb = side ? Math.ceil(v.r) + 1 : 0;
+    if (xb <= xa) return;
+    const ya = Math.floor(v.t) - 1, yb = Math.ceil(v.b) + 1;
+    // 방 위·아래 바깥 (모서리)
+    if (ya < 0) { ctx.fillStyle = st.padTop?.mode === 'sky' ? col : st.padTop?.color ?? col; ctx.fillRect(xa, ya, xb - xa, -ya); }
+    if (yb > m.pxH) { ctx.fillStyle = st.padBottom?.color ?? col; ctx.fillRect(xa, m.pxH, xb - xa, yb - m.pxH); }
+    const y0 = Math.max(0, ya), y1 = Math.min(m.pxH, yb);
+    if (y1 <= y0) return;
+    if (low || P.mode === 'fill' || !m.w) { ctx.fillStyle = col; ctx.fillRect(xa, y0, xb - xa, y1 - y0); return; }
+    const S = CHUNK * TILE, colI = side ? m.w - 1 : 0, cx = Math.floor(colI / CHUNK), sx = (colI - cx * CHUNK) * TILE;
+    const cy0 = Math.max(0, Math.floor(y0 / S)), cy1 = Math.min(Math.floor((m.h - 1) / CHUNK), Math.floor((y1 - 1) / S));
+    for (let cy = cy0; cy <= cy1; cy++) {
+      const oy = cy * S, sy = Math.max(0, Math.floor(y0 - oy)), sh = Math.min(S, Math.ceil(y1 - oy)) - sy;
+      if (sh <= 0) continue;
+      const c = this.chunk(cx, cy);
+      if (side) for (let x = m.pxW; x < xb; x += TILE) ctx.drawImage(c, sx, sy, TILE, sh, x, oy + sy, TILE, sh);
+      else for (let x = -TILE; x + TILE > xa; x -= TILE) ctx.drawImage(c, sx, sy, TILE, sh, x, oy + sy, TILE, sh);
+    }
+    // 테마색으로 녹이기 (방 경계 0.15 → 300 px 밖 0.7 — 벽·바닥 결이 이어져 보이게) — 방마다 한 번 만든 그라데이션 (방 경계가 월드 좌표에 고정)
+    const key = side ? 'padR' : 'padL';
+    let g = this[key];
+    if (!g || g.col !== col || g.w !== m.pxW) {
+      const e = side ? m.pxW : 0, gr = ctx.createLinearGradient(e, 0, side ? e + SIDE_FADE : e - SIDE_FADE, 0);
+      gr.addColorStop(0, rgba(col, 0.15)); gr.addColorStop(1, rgba(col, 0.7));
+      g = this[key] = { col, w: m.pxW, gr };
+    }
+    ctx.fillStyle = g.gr;
+    ctx.fillRect(xa, y0, xb - xa, y1 - y0);
   }
   /**
    * 방 위·아래 여백 채우기 (세로 확장 시야, hud_mobile §2). 스테이지의 padTop / padBottom = { mode, color }:

@@ -277,6 +277,7 @@ function checkSetting(spec, v) {
       out.potion = typeof v.potion === 'number' && Number.isFinite(v.potion) ? Math.round(Math.min(0.9, Math.max(0, v.potion)) * 100) / 100 : d.potion;
       out.pickup = typeof v.pickup === 'boolean' ? v.pickup : d.pickup;
       out.dodge = typeof v.dodge === 'boolean' ? v.dodge : d.dodge;
+      if ('lockBtn' in v) out.lockBtn = ['auto', 'on', 'off'].includes(v.lockBtn) ? v.lockBtn : 'auto';   // [autofix] 「고정」 터치 버튼 (기본 없음 = 'auto': 휴대폰만 숨김)
       return out;
     }
     case 'layout': {

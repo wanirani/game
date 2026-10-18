@@ -226,7 +226,7 @@ function buildRows(sc) {
             const v = levelOf(sc.game);
             if (v === 'skill') return '이동은 직접 합니다. 무기가 닿는 적은 기본 공격, 대기가 끝난 스킬은 대상이 사거리 안에 있을 때 씁니다.';
             if (v === 'battle') return '같은 바닥의 가까운 적에게 다가가 싸웁니다. 절벽·가시·물·문·출구로는 가지 않고, 큰 공격은 물러서서 피합니다. 방향을 누르면 곧바로 직접 조작이 됩니다.';
-            return '전투 중 AUTO 버튼(키보드 B · 패드 빠른 메뉴 길게)으로 끔 → 자동 스킬 → 자동 전투를 고릅니다. 길게 누르면 끕니다.';
+            return '전투 중 AUTO 버튼(키보드 B · 패드 빠른 메뉴 길게)을 누르면 켜고 끕니다 (마지막 단계로 켜짐). 버튼을 길게 누르면 자동 스킬 ↔ 자동 전투를 바꿉니다. 기록 모드(연습·보스 러시·서바이벌·탑·시련)에서는 쓸 수 없습니다.';
           },
         },
         {
@@ -241,6 +241,11 @@ function buildRows(sc) {
         },
         { id: 'autoPickup', label: '전리품 줍기', type: 'bool', get: () => A().pickup, set: (v) => setA({ pickup: v }), note: '「자동 전투」일 때 근처에 적이 없으면 가까운 전리품을 줍습니다.' },
         { id: 'autoDodge', label: '큰 공격 피하기', type: 'bool', get: () => A().dodge, set: (v) => setA({ dodge: v }), note: '보스·강한 적이 큰 공격을 준비하면 뒤로 물러서거나 대시로 피합니다.' },
+        {
+          id: 'autoLockBtn', label: '고정 버튼', type: 'enum', opts: [['auto', '자동'], ['on', '보임'], ['off', '숨김']],
+          get: () => A().lockBtn ?? 'auto', set: (v) => setA({ lockBtn: v }),
+          note: '터치 화면의 「고정」(대상 고정) 버튼. 「자동」은 폴드·태블릿에서 보이고 휴대폰에서는 숨깁니다 (키보드 T · 패드 오른쪽 스틱은 그대로).',
+        },
       ];
     })(),
     etc: [

@@ -344,7 +344,7 @@ function layout(force = false) {
   LSIG.i = 0; LSIG.ch = false;
   lput(W); lput(H); lput(ins.l); lput(ins.r); lput(ins.t); lput(ins.b); lput(cr.x); lput(cr.y); lput(cr.w); lput(cr.h); lput(vw); lput(vh); lput(safeT);
   lput(st.touchScale); lput(st.touchLeftHanded); lput(st.touchLayout); lput(st.safeArea); lput(st.touchStick); lput(fsShown()); lput(g?.dpr); lput(S.fontEpoch);
-  lput(st.hud?.preset); lput(st.hud?.scale); lput(st.hud?.pad); lput(town ? 1 : 0); lput(S.hiddenKey); lput(deviceDpr());
+  lput(st.hud?.preset); lput(st.hud?.scale); lput(st.hud?.pad); lput(town ? 1 : 0); lput(S.hiddenKey); lput(deviceDpr()); lput(st.auto?.lockBtn);   // [autofix] 고정 버튼 보이기
   if (!force && S.L && !LSIG.ch) return S.L;
   S.lver++;
 
@@ -358,6 +358,8 @@ function layout(force = false) {
   // 폴드: 왼쪽 위 묶음(미니맵·체력·필살)과 오른쪽 위 아이콘 줄·퀘스트 칸 아래(논리 y 160)부터 버튼을 둘 수 있다
   const yMin = band ? cr.y + cr.h : Math.max(ins.t, cr.y + ((fold ? 160 : left ? HUD_TOP_LEFT : HUD_TOP) + safeT) * cs);
   const kind = band ? 'band' : fold ? 'overlay' : 'wide';
+  // [autofix] 「고정」 버튼: 설정 auto.lockBtn 'auto'(기본) = 휴대폰 두 줄 배치(wide)에서는 숨김 (아랫줄 여섯 칸·가림 +1 pp — 키보드 T/L · 패드 오른쪽 스틱은 그대로), 'on' 늘 · 'off' 숨김
+  const lockOff = lockBtnOff(st, kind);
   const prefix = layoutPrefix(band, fold);
   const custom = customLayout(st, prefix);
   // 크기 배율 (hudredo §1): 폴드·태블릿·띠 = 화면 높이 750 dp 기준, 휴대폰 = 430 dp 기준 (× touchScale, 폴드는 × 인터페이스 크기).
@@ -384,7 +386,7 @@ function layout(force = false) {
     btnList.push({ id, cx: left ? ins.l + r : W - ins.r - r, cy: H - ins.b - b, d });
   }
   // 장면이 숨긴 버튼(마을의 공격·스킬 등)은 밀어내기에서 뺀다 — 숨은 공격 버튼 자리 때문에 마을의 점프·탈것이 밀려나지 않게
-  settle(S.editor ? btnList : btnList.filter((b) => !S.hidden.has(b.id)), bounds, null, 120, gap);
+  settle(S.editor ? btnList : btnList.filter((b) => !S.hidden.has(b.id) && !(lockOff && b.id === 'lock')), bounds, null, 120, gap);
   const btn = {};
   for (const b of btnList) btn[b.id] = b;
 
@@ -420,7 +422,7 @@ function layout(force = false) {
   };
   const dirty = [box(btnList), box(Object.values(sys))].filter(Boolean);
 
-  S.L = { W, H, ins, cr, cs, vw, vh, k: kBase, kEff, ts, cls: cls[0], band, bandH, left, custom: !!custom, yMin, bounds, btn, sys, sd, R, home, zone, fold, town, gap, prefix, dirty, preset: band ? 'band' : fold ? 'fold' : 'wide' };
+  S.L = { W, H, ins, cr, cs, vw, vh, k: kBase, kEff, ts, cls: cls[0], band, bandH, left, custom: !!custom, yMin, bounds, btn, sys, sd, R, home, zone, fold, town, gap, prefix, dirty, preset: band ? 'band' : fold ? 'fold' : 'wide', lockOff };
   S.spriteKey = ''; // 크기가 바뀌었을 수 있다 → 버튼 그림 다시 굽기
   S.pending = true;
   S.fullClear = true;
@@ -432,7 +434,7 @@ function layout(force = false) {
 function shownBtn(id) {
   if (S.editor) return true;
   if (S.hidden.has(id)) return false;
-  if (id === 'lock' && S.hidden.has('attack')) return false;   // [auto] 공격이 없는 장면(마을)에는 대상 고정도 없다
+  if (id === 'lock' && (S.hidden.has('attack') || S.L?.lockOff)) return false;   // [auto] 공격이 없는 장면(마을)에는 대상 고정도 없다 · [autofix] 휴대폰 기본 숨김
   // 탈것·수호: 늘 보이고, 쓸 수 없으면 어둡게 (hud_mobile §3 맨 아래 줄). 휴대폰 두 줄 배치(hudfix)도 빈 칸이 생기지 않게 같은 규칙
   return true;
 }
@@ -954,7 +956,8 @@ function stateChanged(L, w) {
   sput(drawAssetsReady ? 1 : 0);
   // [auto] 자동 전투 단계 · 도는 고리 단계(8 Hz) · 대상 고정
   const alv = game()?.autoHud?.level ?? 'off';
-  sput(alv === 'battle' ? 2 : alv === 'skill' ? 1 : 0); sput(L.sys?.auto && alv !== 'off' ? autoSpin() : 0); sput(w?.lockTarget ? 1 : 0);
+  const ahold = alv !== 'off' ? game()?.autoHud?.hold ?? null : null;   // [autofix] 기다림이면 고리를 멈추고 흐리게
+  sput(alv === 'battle' ? 2 : alv === 'skill' ? 1 : 0); sput(L.sys?.auto && alv !== 'off' && !ahold ? autoSpin() : 0); sput(w?.lockTarget ? 1 : 0); sput(ahold ? ahold.length : 0); sput(game()?.autoHud?.blocked ? 1 : 0);
   OCC.mask = occlusion(L, w); sput(OCC.mask);   // 영웅·보스 가림 (hudfix)
   sput(hudLayerSig());                          // HUD 선명 칸 (hudfix: hud_crisp.js)
   // 반짝임(필살 가득·각성 가능·질주)은 계속 움직인다
@@ -963,6 +966,13 @@ function stateChanged(L, w) {
   return SIG.ch;
 }
 function hashStr(s) { let h = 7; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return h; }
+/** [autofix] 「고정」 버튼을 숨기나: settings.auto.lockBtn 'off' → 숨김, 'on' → 보임, 'auto'(기본·없음) → 휴대폰 두 줄 배치(wide)만 숨김 */
+function lockBtnOff(st, kind) {
+  const m = st?.auto?.lockBtn;
+  if (m === 'off') return true;
+  if (m === 'on') return false;
+  return kind === 'wide';
+}
 /** [auto] AUTO 고리 단계 (초당 8단계 — 버튼 칸만 8 Hz 로 다시 그린다; 동작 줄이기면 멈춤) */
 function autoSpin() { return settings().reduceMotion === true ? 0 : Math.floor(now() / 125) % 8; }
 const GCD = { n: 0, cd: 0, max: 1, ready: false }; // 매 프레임 새 객체를 만들지 않는다 (읽고 바로 쓴다)
@@ -1292,13 +1302,22 @@ function autoBase(g, cx, cy, d, pressed, art) {
   if (ring) { const z = d * 1.12; g.drawImage(ring, cx - z / 2, cy - z / 2, z, z); } else { g.lineWidth = 1.6; g.strokeStyle = 'rgba(232,200,114,0.85)'; g.beginPath(); g.arc(cx, cy, h * 0.9, 0, TAU); g.stroke(); }
   g.restore();
 }
-/** [auto] AUTO 위 그림 (매 그리기): 단계에 따라 'AUTO' 색 · 도는 금빛 고리(8단계) · 아래 단계 글자 「스킬」/「전투」 */
-function drawAutoState(c, b, lv, step, pressed) {
+/**
+ * [auto] AUTO 위 그림 (매 그리기): 단계에 따라 'AUTO' 색 · 도는 금빛 고리(8단계) · 아래 단계 글자 「스킬」/「전투」.
+ * [autofix] hold(기다림: 'forward' 이야기 트리거·보스 문턱·구덩이 앞 / 'unreach' 닿지 않는 적 / 'idle' 적 없음) 이면 고리를 멈추고 흐린 테 +
+ *   아래 글자 「대기」/「불가」 — 켜져 있지만 지금은 아무것도 하지 않는다는 것을 보인다. blocked(기록 모드) 면 흐린 'AUTO' 만
+ */
+function drawAutoState(c, b, lv, step, pressed, hold = null, blocked = false) {
   const cx = b.cx, cy = b.cy, r = b.d / 2, on = lv && lv !== 'off';
   c.save();
   const fs = Math.max(11, Math.round(b.d * 0.25));
-  label(c, 'AUTO', cx, cy - (on ? r * 0.12 : 0), fs, pressed, on ? '#ffe7a0' : 'rgba(243,226,184,0.72)', FONT.num);
-  if (on) {
+  if (blocked) { c.globalAlpha = 0.45; label(c, 'AUTO', cx, cy, fs, pressed, 'rgba(243,226,184,0.72)', FONT.num); c.restore(); return; }
+  label(c, 'AUTO', cx, cy - (on ? r * 0.12 : 0), fs, pressed, on ? (hold ? 'rgba(255,231,160,0.62)' : '#ffe7a0') : 'rgba(243,226,184,0.72)', FONT.num);
+  if (on && hold) {
+    label(c, hold === 'unreach' ? '불가' : '대기', cx, cy + r * 0.42, Math.max(11, Math.round(b.d * 0.22)), pressed, '#c8b8a0');
+    c.lineWidth = Math.max(2, b.d * 0.045); c.strokeStyle = 'rgba(200,184,160,0.75)'; c.setLineDash([Math.max(3, b.d * 0.08), Math.max(3, b.d * 0.07)]);
+    c.beginPath(); c.arc(cx, cy, r * 0.98, 0, TAU); c.stroke(); c.setLineDash([]);
+  } else if (on) {
     label(c, lv === 'battle' ? '전투' : '스킬', cx, cy + r * 0.42, Math.max(11, Math.round(b.d * 0.22)), pressed, lv === 'battle' ? '#ff9a7a' : '#9fd8ff');
     const a0 = -Math.PI / 2 + (step % 8) * (TAU / 8);
     c.lineCap = 'round';
@@ -1388,7 +1407,7 @@ function draw(L, w) {
     const pressed = isPressed(id);
     c.globalAlpha = pressed ? Math.max(0.95, op) : Math.max(0.5, op);
     blit(c, id, b.cx, b.cy, b.d, pressed);
-    if (id === 'auto') drawAutoState(c, b, game()?.autoHud?.level ?? 'off', autoSpin(), pressed);   // [auto]
+    if (id === 'auto') { const ah = game()?.autoHud; drawAutoState(c, b, ah?.level ?? 'off', autoSpin(), pressed, ah?.hold ?? null, !!ah?.blocked); }   // [auto]
     if (id === 'bag') { // 가방 찬 비율 알약 (가방 한도 300 칸, 중요 물품 포함 어림) — 글자 ≥ 12 CSS px, 어두운 알약 위
       const n = w?.state?.inventory?.length ?? 0;
       if (n > 0) bagPill(c, b, Math.min(100, Math.round((n / 300) * 100)), n >= 270);

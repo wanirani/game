@@ -560,6 +560,139 @@ async function browserTests() {
     await s.close();
   }
 
+  // ── [autofix] s01 처음부터 (순간 이동 없음): AUTO 한 번 탭 → 트리거 앞 「대기」 → 사람이 트리거를 지나 걸어 줌 → AUTO 혼자 상자(17–22열)를 넘어 싸운다
+  if (want('s01walk')) {
+    console.log('\n[browser] s01walk: s01 r1 시작 자리에서 (폴드 터치) — 상자 위 막힘 · 트리거 앞 기다림 표시');
+    const s = await open('fold_open', 'index.html?scene=stage&stage=s01');
+    const skip = async () => { for (let i = 0; i < 60; i++) { const top = await s.eval(() => window.__game.top?.name); if (top === 'stage') return; await s.page.keyboard.press('Enter'); await step(s.page, 8, false); } };
+    await skip();
+    await s.eval(() => { const g = window.__game, w = g.world, p = w.player; g.state.auto = { level: 'off' };
+      window.__T = { fell: 0, spike: 0, doors: 0 }; const of = w.onPlayerFell.bind(w); w.onPlayerFell = (q) => { window.__T.fell++; return of(q); };
+      const th = p.takeHit.bind(p); p.takeHit = (d, a, ww, i) => { if (a && a.flat === 1 && !a.owner) window.__T.spike++; return th(d, a, ww, i); };
+      const ed = w.enterDoor?.bind(w); if (ed) w.enterDoor = (t) => { window.__T.doors++; return ed(t); }; });
+    const au = await s.eval(() => window.__game.input.pad.buttons().find((b) => b.id === 'auto') ?? null);
+    await s.cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: au.cx, y: au.cy, id: 3 }] });
+    await step(s.page, 3, false);
+    await s.cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await step(s.page, 60, false);
+    const h0 = await s.eval(() => ({ lv: window.__game.autoHud.level, hold: window.__game.autoHud.hold, tx: Math.floor(window.__game.world.player.cx / 48) }));
+    await step(s.page, 1); await s.page.screenshot({ path: path.join(SHOTS, 's01walk_hold.png') });
+    // 사람: 트리거(7열)를 지나 12열까지
+    await s.page.keyboard.down('ArrowRight');
+    for (let i = 0; i < 40; i++) { await step(s.page, 10, false); const q = await s.eval(() => ({ top: window.__game.top?.name, tx: Math.floor(window.__game.world.player.cx / 48) })); if (q.top !== 'stage') { await s.page.keyboard.up('ArrowRight'); await skip(); await s.page.keyboard.down('ArrowRight'); } if (q.tx >= 12) break; }
+    await s.page.keyboard.up('ArrowRight');
+    await skip();
+    const k0 = await s.eval(() => window.__game.world.run.kills ?? 0);
+    const whys = {}; let maxTx = 0, stuck = 0, last = null;
+    for (let i = 0; i < 40; i++) {
+      await step(s.page, 60, false);
+      const q = await s.eval(() => { const g = window.__game, p = g.world.player; return { why: g.autoHud.why, tx: Math.floor(p.cx / 48), ty: Math.floor(p.bottom / 48), top: g.top?.name, dead: p.dead }; });
+      whys[q.why] = (whys[q.why] ?? 0) + 1; maxTx = Math.max(maxTx, q.tx);
+      // 막힘 = 닿는 대상이 있는데(wait) 같은 자리. idle 은 대상이 없을 때(가시 구덩이 앞 등 — hold 로 사람에게 넘긴다)
+      const key = `${q.tx},${q.ty},${q.why}`; if (key === last && q.why === 'wait') stuck++; else stuck = 0; last = key;
+      if (q.top !== 'stage' || q.dead || stuck >= 12) break;
+    }
+    const r = await s.eval(() => ({ kills: window.__game.world.run.kills ?? 0, T: window.__T, room: window.__game.world.roomId, top: window.__game.top?.name, assisted: !!window.__game.world.run.assisted, why: window.__game.autoHud.why, hold: window.__game.autoHud.hold }));
+    await step(s.page, 1); await s.page.screenshot({ path: path.join(SHOTS, 's01walk_end.png') });
+    console.log('    ', JSON.stringify({ h0, whys, maxTx, kills: r.kills - k0, T: r.T }));
+    ok(h0.lv === 'battle' && h0.hold === 'forward', `s01walk: 처음 탭 = 「자동 전투」, 트리거 앞에서 hold 'forward' (버튼 「대기」) — ${JSON.stringify(h0)}`);
+    ok(maxTx >= 30 && r.kills - k0 >= 4, `s01walk: 상자(17–22열)를 넘어 싸운다 (가장 먼 열 ${maxTx}, 처치 ${r.kills - k0})`);
+    ok(stuck < 12, 's01walk: 같은 자리에서 12초 넘게 wait/idle 하지 않는다 (예전 47초)', { stuck, last });
+    ok(r.T.fell === 0 && r.T.spike === 0 && r.T.doors === 0 && r.room === 'r1', 's01walk: 낙사·가시·문 0 · 방 그대로', r);
+    ok(r.assisted, 's01walk: AUTO 가 입력을 낸 판은 world.run.assisted (공정성 표시)');
+    ok(r.why !== 'idle' || r.hold === 'forward' || r.hold === 'idle', `s01walk: 할 일이 없으면 HUD 에 이유가 보인다 (why ${r.why}, hold ${r.hold} — 가시 구덩이 너머 적이면 forward)`);
+    ok(!s.errs.length, 's01walk: 페이지 오류 0', s.errs.slice(0, 3));
+    await s.close();
+  }
+
+  // ── [autofix] 보스 s01·s02·s03 (리뷰: 밴시 45초 피해 0, 듀라한 idle 39/45, 벽에 밀린 뒤 얼어붙음) ──
+  for (const [key, stg, lv] of [['boss1', 's01', 6], ['boss2', 's02', 10], ['boss3', 's03', 14]]) {
+    if (!want(key) && !want('bosses')) continue;
+    console.log(`\n[browser] ${key}: ${stg} 보스 「자동 전투」 30초 (Lv ${lv}, 물약 3)`);
+    const s = await open('desk', `index.html?scene=stage&stage=${stg}&room=boss`);
+    const skip = async () => { for (let i = 0; i < 80; i++) { const st = await s.eval(() => { const g = window.__game; return { top: g.top?.name, intro: g.world.boss?.state === 'intro' }; }); if (st.top === 'stage' && !st.intro) return; if (st.top !== 'stage') await s.page.keyboard.press('Enter'); await step(s.page, 15, false); } };
+    await skip();
+    await s.eval((lv) => { const g = window.__game, w = g.world, p = w.player; p.hero.level = lv; p.refreshStats(); p.hp = p.stats.hp; p.mp = p.stats.mp; g.state.auto = { level: 'off' };
+      // s01 성당: 시작 자리 앞 3–4칸 벽(파쿠르)은 이 시험의 대상이 아니다 → 벽 너머 경기장 입구 두 칸 앞에 세운다
+      if (w.stage?.id === 's01' && Number.isFinite(w.arenaX)) { p.x = w.arenaX - 3 * 48; p.y = 12 * 48 - p.h - 2; p.vx = 0; p.vy = 0; } }, lv);
+    await s.page.keyboard.down('ArrowRight');
+    for (let n = 0; n < 60; n++) {
+      if (n % 3 === 0) { await s.page.keyboard.down('KeyZ'); await step(s.page, 12, false); await s.page.keyboard.up('KeyZ'); }
+      await step(s.page, 10, false);
+      const q = await s.eval(() => ({ a: !!window.__game.world.bossActive, top: window.__game.top?.name }));
+      if (q.a) break;
+      if (q.top !== 'stage') { await s.page.keyboard.up('ArrowRight'); await skip(); await s.page.keyboard.down('ArrowRight'); }
+    }
+    await s.page.keyboard.up('ArrowRight');
+    await skip();
+    const b0 = await s.eval(() => { const g = window.__game, w = g.world, b = w.boss; g.state.auto = { level: 'battle' }; return { id: b?.id, hp: b?.hp ?? 0, max: b?.maxHp ?? b?.hp ?? 0, active: !!w.bossActive }; });
+    const whys = {}; const xs = new Set(); let dead = false, hp = b0.hp;
+    for (let i = 0; i < 30; i++) {
+      await step(s.page, 60, false);
+      const q = await s.eval(() => { const g = window.__game, w = g.world, p = w.player; return { why: g.autoHud.why, x: Math.round(p.cx / 24), dead: p.dead, top: g.top?.name, hp: w.boss?.hp ?? 0, cleared: w.cleared }; });
+      whys[q.why] = (whys[q.why] ?? 0) + 1; xs.add(q.x); hp = q.hp;
+      if (q.dead) { dead = true; break; }
+      if (q.cleared) break;
+      if (q.top !== 'stage') await skip();
+    }
+    await step(s.page, 1); await s.page.screenshot({ path: path.join(SHOTS, `${key}.png`) });
+    const dmgPct = b0.max > 0 ? Math.round(1000 * (b0.hp - hp) / b0.max) / 10 : 0;
+    console.log('    ', JSON.stringify({ b0, hp, dmgPct, whys, spots: xs.size, dead }));
+    ok(b0.active && !!b0.id, `${key}: 보스전 시작 (${b0.id})`, b0);
+    ok(dmgPct >= 4, `${key}: 30초에 보스 HP ${dmgPct}% 깎음 (≥ 4%)`);
+    ok((whys.idle ?? 0) <= 6, `${key}: idle ${whys.idle ?? 0}/30 (예전 듀라한 39/45)`, whys);
+    ok(xs.size >= 4, `${key}: 얼어붙지 않는다 (서로 다른 자리 ${xs.size}곳)`);
+    ok(!s.errs.length, `${key}: 페이지 오류 0`, s.errs.slice(0, 3));
+    await s.close();
+  }
+
+  // ── [autofix] 기록 모드: 연습(일일 도전)·보스 러시에서는 AUTO 가 입력을 내지 않는다 (순위표·고스트 공정성) ──
+  if (want('ranked')) {
+    console.log('\n[browser] ranked: 연습 · 보스 러시에서 AUTO 막힘');
+    for (const sc of ['practice', 'bossrush']) {
+      const s = await env.page('desk', `index.html?scene=${sc}`, { initScripts: [SEED_JS] });
+      try {
+        await s.waitGame(`g.world?.player && g.top?.name === "${sc}"`, 60000);
+        await s.wait(1000); await freeze(s.page); await step(s.page, 30);
+        // 실제 세션은 이야기 스테이지(stage.js → autoplay.js)를 먼저 거친다 — 아케이드를 바로 연 페이지에서도 같은 상태로
+        await s.eval(async () => { await import('/src/game/autoplay.js'); });
+        const r = await s.eval(() => {
+          const g = window.__game; g.state.auto = { level: 'battle' };
+          let any = false; for (let i = 0; i < 240; i++) { window.__qaStep(1, false); if (g.input.autoActive) any = true; }
+          return { on: !!g.autoHud?.on, blocked: g.autoHud?.blocked ?? null, any, assisted: !!g.world.run?.assisted, mode: g.world.mode };
+        });
+        await s.page.keyboard.down('KeyB'); await step(s.page, 3, false); await s.page.keyboard.up('KeyB'); await step(s.page, 3, false);
+        const toasts = await s.eval(() => window.__game.toasts.map((t) => t.text));
+        ok(!r.on && !r.any && r.blocked === 'ranked' && !r.assisted, `ranked ${sc} (mode ${r.mode}): AUTO 입력 0 · blocked`, r);
+        ok(toasts.some((t) => /기록 모드에서는 AUTO/.test(t)), `ranked ${sc}: AUTO 를 누르면 「기록 모드에서는 AUTO 를 쓸 수 없다」`, toasts);
+        ok(!s.errs.length, `ranked ${sc}: 페이지 오류 0`, s.errs.slice(0, 3));
+      } finally { await s.close(); }
+    }
+  }
+
+  // ── [autofix] 대상 고정 이름판 · 버튼 밑 화살표 (폴드: 오른쪽 버튼 묶음이 앞쪽 땅을 덮는다) ──
+  if (want('lockplate')) {
+    console.log('\n[browser] lockplate: 폴드 — 고정 대상 이름판');
+    const s = await open('fold_open', 'index.html?scene=stage&stage=s01&room=r1');
+    await s.eval(() => { const g = window.__game, w = g.world, p = w.player; p.x = 26 * 48; p.y -= 4; p.facing = 1; g.state.auto = { level: 'off' }; });
+    await step(s.page, 10, false);
+    const lk = await s.eval(() => window.__game.input.pad.buttons().find((b) => b.id === 'lock') ?? null);
+    await s.cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: lk.cx, y: lk.cy, id: 4 }] });
+    await step(s.page, 3, false);
+    await s.cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await step(s.page, 20, false);
+    const r = await s.eval(async () => {
+      const { hudLayout } = await import('/src/render/hud_layout.js');
+      const g = window.__game, w = g.world, L = hudLayout(w, g.viewW, g.viewH), e = w.lockTarget;
+      const m = L.meter((w.gimmick?.meterRows) || 0);
+      return { lock: e?.id ?? null, meter: m && { x: m.x, y: m.y, w: m.w }, viewW: g.viewW };
+    });
+    await step(s.page, 1); await s.page.screenshot({ path: path.join(SHOTS, 'lockplate.png') });
+    ok(!!r.lock, `lockplate: 고정 대상 (${r.lock})`, r);
+    ok(!s.errs.length, 'lockplate: 페이지 오류 0', s.errs.slice(0, 3));
+    await s.close();
+  }
+
   if (want('override')) {
     console.log('\n[browser] override: 사람 입력이 이긴다');
     const s = await open('desk', 'index.html?scene=stage&stage=s01&room=r1');
@@ -648,16 +781,25 @@ async function browserTests() {
       await step(s.page, 3, false);
     };
     if (au) {
+      // [autofix] 탭 = 끔 ↔ 마지막 단계 (처음은 「자동 전투」), 길게 = 단계 바꾸기 — 켜진 상태에서 탭 한 번이면 언제나 끔
       await tap(au);
       const l1 = await s.eval(() => window.__game.autoHud?.level);
       await tap(au);
       const l2 = await s.eval(() => window.__game.autoHud?.level);
       await tap(au, 600);
       const l3 = await s.eval(() => window.__game.autoHud?.level);
-      ok(l1 === 'skill' && l2 === 'battle', `touch: AUTO 탭 = 다음 단계 (${l1} → ${l2})`);
-      ok(l3 === 'off', `touch: AUTO 길게 = 끔 (${l3})`);
+      await tap(au);
+      const l4 = await s.eval(() => window.__game.autoHud?.level);
+      await tap(au);
+      const l5 = await s.eval(() => window.__game.autoHud?.level);
+      const toasts = await s.eval(() => window.__game.toasts.map((t) => t.text));
+      ok(l1 === 'battle' && l2 === 'off', `touch: AUTO 탭 = 켬(자동 전투) → 탭 = 끔 (${l1} → ${l2})`);
+      ok(l3 === 'skill', `touch: AUTO 길게 = 단계 바꾸기 (끔 → 자동 스킬: ${l3})`);
+      ok(l4 === 'off' && l5 === 'skill', `touch: 스킬에서 탭 = 끔, 다시 탭 = 마지막 단계(스킬) (${l4} → ${l5})`);
+      ok(toasts.some((t) => /^AUTO: (전투|스킬)/.test(t)) && toasts.some((t) => t === 'AUTO 끔') && !toasts.some((t) => /자동 전투: 자동 전투/.test(t)), 'touch: 토스트 「AUTO: 전투」·「AUTO 끔」 (되풀이 문구 없음)', toasts);
       const g = await s.eval(() => ({ hud: window.__game.state.auto?.level }));
-      ok(g.hud === 'off', 'touch: 단계는 세이브 슬롯(state.auto)에 남는다', g);
+      ok(g.hud === 'skill', 'touch: 단계는 세이브 슬롯(state.auto)에 남는다', g);
+      await tap(au); await step(s.page, 2, false);
     }
     if (lk) {
       await s.eval(() => { const w = window.__game.world, p = w.player; p.x = 26 * 48; p.y -= 4; p.facing = 1; });

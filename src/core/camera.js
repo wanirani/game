@@ -17,6 +17,10 @@
 //  tick(dt)                     흔들림·스프링·줌 연출·연출 구도만 진행 (월드가 멈춘 오버레이 장면이 매 프레임 부른다; tickShake 는 옛 이름)
 //  reset()                      방 로딩 시 줌·연출·흔들림 초기화
 // 터치 모드에서 오른쪽을 볼 때는 추적점을 화면 폭의 6% 앞쪽으로 당긴다 (platform §5.4: 버튼 묶음에 적이 가리기 전에 보이게).
+// 가로 넘겨 보기 (PLAY P05): 터치 패드가 게임 화면 위에 있으면(touchpad.bottomReserve > 0) 방 오른쪽 끝에서 오른쪽을 볼 때 버튼 묶음 폭만큼,
+//  왼쪽 끝에서 왼쪽을 볼 때 스틱 자리 폭만큼 방 밖까지 화면이 갈 수 있다 → 영웅·다가오는 적이 버튼 아래에 숨지 않는다 (보스 경기장 포함).
+//  넘겨 보는 폭(ovL/ovR, 월드 px)은 부드럽게 바뀌고(방향을 바꿔도 화면이 튀지 않게), 방 밖은 tiles.js drawSides 가 스테이지
+//  옆 채우기(stages.js padSide)로 칠한다 — 검게 비지 않는다. 키보드·패드·아래 띠 배치는 0 (예전과 같다)
 import { clamp, lerp, ease } from './math.js';
 
 const BASE_VIEW_H = 540;   // core/game.js VIEW_H (16:9 이상 화면의 논리 높이)
@@ -35,6 +39,8 @@ const ARENA_FLOOR_TOUCH_MAX = 0.26;    // 터치(게임 화면 위 패드): 바�
 const ARENA_HEAD = 0.14;               // 경기장: 플레이어 머리 위로 최소한 남길 화면 높이 비율
 const BOSS_W_HERO = 0.6;               // 보스 경기장 구도: 영웅 가중치 (보스 0.4)
 const BOSS_EDGE = 0.15;                // 보스 경기장 구도: 영웅과 화면 가장자리 사이 최소 거리 (화면 폭 비율)
+const OVER_MAX = 0.38;                 // 가로 넘겨 보기 상한 (화면 폭 비율, P05)
+const OVER_PAD = 10;                   // 넘겨 보기 폭에 더하는 여유 (논리 px)
 
 // 값 노이즈 (흰 잡음 대신 부드럽게 흔들린다): 정수 격자 해시를 smoothstep 으로 보간, -1..1
 function hash(n) {
@@ -65,6 +71,35 @@ function arenaFloorK() {
   try { r = touchpad.bottomReserve?.() ?? 0; } catch { r = 0; }
   return r > 0 ? clamp(r + 0.02, ARENA_FLOOR, ARENA_FLOOR_TOUCH_MAX) : ARENA_FLOOR;
 }
+/**
+ * 가로 넘겨 보기에 쓸 터치 조작 자리 (논리 px, 화면 기준): { l: 왼쪽 아래 조작(스틱) 오른쪽 끝, r: 오른쪽 아래 버튼 묶음 왼쪽 끝부터 화면 끝까지 }.
+ * 패드가 게임 화면 위에 없으면(키보드·패드·아래 띠·편집기) null. 배치 판(layoutVersion)·화면 크기가 같으면 다시 재지 않는다
+ */
+const SIDE = { key: '', v: null };
+function touchSides(w, h) {
+  if (!input.touchMode) return null;
+  let br = 0;
+  try { br = touchpad.bottomReserve?.() ?? 0; } catch { br = 0; }
+  if (!(br > 0)) return null;
+  let ver = 0;
+  try { ver = touchpad.layoutVersion?.() ?? 0; } catch { ver = 0; }
+  const key = `${ver}|${w}|${h}`;
+  if (SIDE.key === key) return SIDE.v;
+  let l = 0, r = 0;
+  try {
+    const low = h * 0.55;   // 아래쪽 조작만 (위의 Ⅱ·가방·지도 단추는 영웅을 가리지 않는다)
+    for (const b of touchpad.occupiedRects?.() ?? []) {
+      if (!(b.y + b.h > low)) continue;
+      if (b.x + b.w / 2 > w / 2) r = Math.max(r, w - b.x); else l = Math.max(l, b.x + b.w);
+    }
+    const z = touchpad.stickZone?.();
+    if (z && z.y + z.h > low) { if (z.x + z.w / 2 > w / 2) r = Math.max(r, w - z.x); else l = Math.max(l, z.x + z.w); }
+  } catch { l = 0; r = 0; }
+  const cap = w * OVER_MAX;
+  SIDE.key = key;
+  SIDE.v = { l: l > 0 ? Math.min(cap, l + OVER_PAD) : 0, r: r > 0 ? Math.min(cap, r + OVER_PAD) : 0 };
+  return SIDE.v;
+}
 function rotOK() {
   const s = game.settings;
   if (s?.reduceMotion) return false;
@@ -94,6 +129,7 @@ export class Camera {
     this.roll = 0;                   // [hook:feel] 필살기 마무리 기울기 (rad)
     this.focus = null;               // 연출용 강제 초점 {x,y,t,w}
     this.locked = false;             // 보스전 등 고정
+    this.ovL = 0; this.ovR = 0;      // [P05] 가로 넘겨 보기 폭 (월드 px, 기본 줌 기준) — 터치 패드가 화면 위에 있을 때만
     this.time = 0;
   }
   setView(w, h) { this.w = w; this.h = h; }
@@ -114,6 +150,7 @@ export class Camera {
     this.kickX = 0; this.kickY = 0; this.kvx = 0; this.kvy = 0;
     this.shakeX = 0; this.shakeY = 0; this.rot = 0;
     this.roll = 0; this.lookBoost = 0; this.floorY = null; this.boss = null;
+    this.ovL = 0; this.ovR = 0;
   }
 
   // ─────────────────────────── 흔들림·반동 ───────────────────────────
@@ -237,6 +274,13 @@ export class Camera {
     }
     // 기본 줌 복귀 (보스 경기장 줌아웃·질주 줌)
     this.baseZoom = lerp(this.baseZoom, this.zoomTarget, 1 - Math.pow(0.02, dt));
+    // [P05] 가로 넘겨 보기: 바라보는 쪽 끝에서만 (방 시작에서 오른쪽을 보고 서 있으면 왼쪽으로는 넘기지 않는다)
+    const sides = game.world?.mode === 'town' ? null : touchSides(this.w, this.h), zk = 1 / (this.baseZoom || 1);   // 마을은 넘겨 보지 않는다
+    const wantR = sides && f > 0 ? sides.r * zk : 0, wantL = sides && f < 0 ? sides.l * zk : 0;
+    if (snap) { this.ovL = wantL; this.ovR = wantR; }
+    else { const k = 1 - Math.pow(0.06, dt); this.ovL = lerp(this.ovL, wantL, k); this.ovR = lerp(this.ovR, wantR, k); }
+    if (this.ovL < 0.5 && wantL === 0) this.ovL = 0;
+    if (this.ovR < 0.5 && wantR === 0) this.ovR = 0;
     if (snap) { this.cx = fx; this.cy = fy; }
     else {
       this.cx = lerp(this.cx, fx, 1 - Math.pow(0.0008, dt));
@@ -251,7 +295,7 @@ export class Camera {
     if (!b) return;
     const vw = this.w / this.baseZoom, vh = this.h / this.baseZoom;
     const cy0 = this.cy;
-    this.cx = b.w <= vw ? b.x + b.w / 2 : clamp(this.cx, b.x + vw / 2, b.x + b.w - vw / 2);
+    this.cx = b.w <= vw ? b.x + b.w / 2 : clamp(this.cx, b.x + vw / 2 - this.ovL, b.x + b.w - vw / 2 + this.ovR);
     this.cy = b.h <= vh ? b.y + b.h - vh / 2 + this.padLift(b.h, vh, this.baseZoom) : clamp(this.cy, b.y + vh / 2, b.y + b.h - vh / 2);
     const lim = this.arenaLowLimit(b, vh);   // [hudfix] 터치 보스 경기장: 바닥을 조작 줄 위로 올리는 목표(fy)는 방 경계 맞춤보다 조금 더 내려가도 된다
     if (lim != null) this.cy = Math.max(this.cy, Math.min(cy0, lim + vh / 2));
@@ -323,7 +367,7 @@ export class Camera {
     const vw = this.vw, vh = this.vh;
     const y0 = this.y;
     if (b.w <= vw) this.x = b.x + (b.w - vw) / 2;
-    else this.x = clamp(this.x, b.x, b.x + b.w - vw);
+    else this.x = clamp(this.x, b.x - this.ovL, b.x + b.w - vw + this.ovR);   // [P05] 터치: 방 밖으로 넘겨 보기 (기본 0)
     if (b.h <= vh) this.y = b.y + b.h - vh + this.padLift(b.h, vh, this._zoom); // 방이 화면보다 낮으면 바닥에 맞춤 (세로 확장 시야는 가운데)
     else this.y = clamp(this.y, b.y, b.y + b.h - vh);
     const lim = this.arenaLowLimit(b, vh);

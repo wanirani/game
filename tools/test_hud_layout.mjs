@@ -688,8 +688,11 @@ async function redoPage({ dev, mode, scene, coverageOnly }) {
     const au = by.auto, lk = by.lock, pa = by.pause;
     if (!au) fails.push('AUTO 버튼이 없다 (스테이지)');
     else if (pa && (Math.abs(au.cy - pa.cy) > 1 || Math.abs(au.d - pa.d) > 0.5)) fails.push(`AUTO 가 시스템 줄과 어긋난다 (y ${r1(au.cy)} vs ${r1(pa.cy)}, d ${r1(au.d)} vs ${r1(pa.d)})`);
-    if (!lk) fails.push('대상 고정 버튼이 없다 (스테이지)');
-    else {
+    // [autofix] 휴대폰 두 줄 배치(wide)는 「고정」 기본 숨김 (settings.auto.lockBtn 'auto' — 키보드 T · 패드 오른쪽 스틱은 그대로): 여섯 칸 아랫줄 · 가림 +1 pp 지적
+    const phoneRow = I.preset !== 'fold' && !I.band;
+    if (phoneRow && lk) fails.push('휴대폰 두 줄 배치에 「고정」 버튼이 보인다 (기본 숨김)');
+    else if (!phoneRow && !lk) fails.push('대상 고정 버튼이 없다 (스테이지)');
+    else if (lk) {
       if (I.preset === 'fold' && !I.band && by.ult && !(lk.cy < by.ult.cy && Math.abs(lk.cx - by.ult.cx) < 2)) fails.push(`폴드: 고정은 필살 바로 위 (고정 ${r1(lk.cx)},${r1(lk.cy)} 필살 ${r1(by.ult.cx)},${r1(by.ult.cy)})`);
       if ((I.preset !== 'fold' || I.band) && by.swap && (Math.abs(lk.cy - by.swap.cy) > 2 || (I.left ? lk.cx < by.swap.cx : lk.cx > by.swap.cx))) fails.push('두 줄 배치: 고정은 아랫줄 ⇄ 바깥쪽');
     }
@@ -841,8 +844,8 @@ if (!NO_REDO) {
       const before = lefty ? null : BEFORE[tag];
       if (!COVERAGE_ONLY && before && r.m.coverage && r.m.coverage.union > before.union + 0.5) r.fails.push(`게임 화면 가림 ${r.m.coverage.union}% > 예전 ${before.union}%`);
       const cur = lefty ? null : CURRENT[tag];   // [auto]
-      // 폴드·태블릿 +0.5 pp (과제 기준). 휴대폰(844×390·780×360)은 새 버튼 둘(고정 47 · AUTO 44 dp)만으로 ≈ 1.0 pp 라 +1.2 pp
-      const tol = tag.startsWith('phone') ? 1.2 : 0.5;
+      // 폴드·태블릿·휴대폰 모두 +0.5 pp (과제 기준). [autofix] 휴대폰은 「고정」을 기본으로 숨겨(AUTO 하나만 더함) 예전 +1.2 pp 예외를 없앴다
+      const tol = 0.5;
       if (!COVERAGE_ONLY && cur != null && r.m.coverage && r.m.coverage.union > cur + tol + 1e-9) r.fails.push(`[auto] 게임 화면 가림 ${r.m.coverage.union}% > AUTO-QOL 전 ${cur}% + ${tol}`);
       const fails = [...r.fails, ...new Set(errs)];
       failTotal += fails.length;

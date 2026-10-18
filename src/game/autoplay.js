@@ -36,7 +36,7 @@ const sgn = (v) => (v > 0 ? 1 : v < 0 ? -1 : 0);
 export const LEVELS = Object.freeze(['off', 'skill', 'battle']);
 export const LEVEL_NAMES = Object.freeze({ off: '끔', skill: '자동 스킬', battle: '자동 전투' });
 export const ULT_POLICIES = Object.freeze(['boss', 'always', 'never']);
-export const DEFAULTS = Object.freeze({ level: 'off', ult: 'boss', potion: 0.35, pickup: true, dodge: true });
+export const DEFAULTS = Object.freeze({ level: 'off', ult: 'boss', potion: 0.35, pickup: true, dodge: true, lockBtn: 'auto' });   // lockBtn: 「고정」 터치 버튼 auto(휴대폰 숨김)|on|off — settings.auto 에 없으면 auto
 /** 자동으로 움직이는 장면 (마을·메뉴·대화·컷인은 아님) */
 export const PLAY_SCENES = new Set(['stage', 'bossrush', 'survival', 'practice', 'tower']);
 
@@ -72,6 +72,7 @@ export function autoSettings(st) {
     if (typeof a.potion === 'number' && Number.isFinite(a.potion)) o.potion = clamp(a.potion, 0, 0.9);
     if (typeof a.pickup === 'boolean') o.pickup = a.pickup;
     if (typeof a.dodge === 'boolean') o.dodge = a.dodge;
+    if (['auto', 'on', 'off'].includes(a.lockBtn)) o.lockBtn = a.lockBtn;
   }
   return o;
 }
@@ -841,10 +842,11 @@ export function step(dt, inp) {
   const t = inp.time ?? 0;
   if (!g.autoHud) g.autoHud = { level: 'off', on: false, why: '', hold: null, blocked: null };
   // [autofix] 기록 모드(연습·일일·보스 러시·서바이벌·탑·시련)에서는 AUTO 를 쓰지 않는다 (순위표·고스트·기록 공정성)
-  const blocked = autoBlockedIn(w);
+  const pw = w ?? (g.world?.player && g.world.mode !== 'town' ? g.world : null);   // 연출(보스 등장 등) 중이라 지금 움직일 수 없어도 막힘 이유는 보인다
+  const blocked = autoBlockedIn(pw);
   // ── 자동 단추: 짧게 = 끔 ↔ 마지막 단계, 길게(0.45초) = 단계 바꾸기 (자동 스킬 ↔ 자동 전투) ──
   const ae = btnEdge(BTN, 'auto', inp.human('auto'), t, K.AUTO_HOLD_OFF);
-  if (w && (ae === 'tap' || ae === 'hold') && blocked) { try { g.toast?.(blocked === 'trial' ? '시련에서는 AUTO 를 쓸 수 없다' : '기록 모드에서는 AUTO 를 쓸 수 없다', '#c8b8a0', 1.6); } catch { /* */ } }
+  if (pw && (ae === 'tap' || ae === 'hold') && blocked) { try { g.toast?.(blocked === 'trial' ? '시련에서는 AUTO 를 쓸 수 없다' : '기록 모드에서는 AUTO 를 쓸 수 없다', '#c8b8a0', 1.6); } catch { /* */ } }
   else if (w && ae === 'tap') toggleLevel(g);
   else if (w && ae === 'hold') switchLevel(g);
   // ── 고정 단추: 누름 = 고정/다음, 0.3초 안 두 번 = 풀기, 길게 = 풀기 ──
@@ -866,7 +868,7 @@ export function step(dt, inp) {
   }
   const lv = blocked ? 'off' : levelOf(g);
   g.autoHud.level = lv; g.autoHud.blocked = blocked;
-  if (!w || lv === 'off') { g.autoHud.on = false; g.autoHud.hold = null; g.autoHud.why = w ? (blocked ? 'blocked' : 'off') : 'scene'; if (w) w.autoTarget = null; return null; }
+  if (!w || lv === 'off') { g.autoHud.on = false; g.autoHud.hold = null; g.autoHud.why = blocked ? 'blocked' : w ? 'off' : 'scene'; if (w) w.autoTarget = null; return null; }
   loadLazy();
   let mem = MEM.get(w);
   if (!mem) { mem = newMem(); MEM.set(w, mem); }

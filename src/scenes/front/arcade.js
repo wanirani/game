@@ -596,6 +596,12 @@ export class ArcadeScene extends Scene {
     const need = () => oy - 6 + nOpt * rowH + 12;
     if (need() > foot) rowH = Math.max(minRow, Math.floor((foot - (oy - 6) - 12) / nOpt));
     if (need() > foot) { const cut = Math.min(need() - foot, ch - 84); ch -= cut; artH = Math.max(34, artH - cut); calc(); }
+    // 세로가 넉넉한 화면(폴드 · 데스크톱, PLAY P19): 남는 높이로 카드 그림과 옵션 줄을 키운다 (아래 40 % 가 비어 보였다)
+    if (!small && H >= 600) {
+      rowH = Math.max(rowH, 52);
+      const extra = clamp(Math.floor((foot - need() - 40) * 0.6), 0, 90);
+      ch += extra; artH += extra; calc();
+    }
     const RW = small ? 250 : 270, PW = CW - RW - 16, rx = x0 + PW + 16;
     const panelH = nOpt * rowH + 12;
     return (this._L = {

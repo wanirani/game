@@ -30,7 +30,7 @@ import { crisp, crispActive, hashStart, hashNum, hashStr } from './hud_crisp.js'
 import { useItem } from '../game/inventory.js';   // [hudfix] 빠른 칸 탭 = 물약 사용
 import { ITEMS } from '../data/items.js';
 import { drawMinimap, drawMinimapRing, drawBigMap } from './minimap.js';
-import { drawLockMarks, autoPill, autoLevelOf } from './hud_auto.js';   // [auto] 대상 고정 표적 고리 · 이름 옆 AUTO
+import { drawLockMarks, drawLockPlate, autoPill, autoPillW, autoLevelOf, autoHoldOf } from './hud_auto.js';   // [auto] 대상 고정 표적 고리 · 이름 옆 AUTO
 
 // ── 그린 HUD 그림 (hud_mobile §4): 테(assets/ui/hud/*.webp) · 스킬/UI 아이콘(assets/icons/skills/<id>.webp 96 px, 48/<id>.webp 48 px) ──
 // 이미지는 한 번 받아 두고 drawImage 만 한다 (원형 알파는 그림에 구워져 있다 — 클립 없음). 없는 아이콘은 요청하지 않는다(ICON_IDS).
@@ -116,7 +116,7 @@ export function drawHUD(ctx, world, vw, vh) {
   // 휴대폰 배치(L.big)는 칸도 키우고 중복 문구(직업명 · 'SCORE')를 뺀다. 터치는 페이지 안내·슬롯 S1/S2 표시도 뺀다 (패드 버튼에 있다)
   const L = hudLayout(world, vw, vh);
   drawLockMarks(ctx, world);   // [auto] 월드 위 표적 고리 (HUD 칸보다 먼저 — HUD 가 위에 덮는다)
-  if (L.fold) { drawFoldHUD(ctx, world, vw, vh, L, T); return; }   // 폴드·태블릿 배치 (hud_mobile §3)
+  if (L.fold) { drawFoldHUD(ctx, world, vw, vh, L, T); drawLockPlate(ctx, world, L); return; }   // 폴드·태블릿 배치 (hud_mobile §3) · [autofix] 고정 대상 이름판·버튼 밑 화살표
   const g0 = world.game;
   ctx.save();
   // 초상화+체력·점수 칸: 터치일 때 기기 해상도 덧캔버스로 (hud_crisp — hudfix)
@@ -166,6 +166,7 @@ export function drawHUD(ctx, world, vw, vh) {
     if (ac) ctx.restore();
   }
   ctx.restore();
+  drawLockPlate(ctx, world, L);   // [autofix] 고정 대상 이름판 · 버튼 밑 화살표
 }
 
 // ───────────────────────── 폴드·태블릿 배치 (hud_mobile §1·§3) ─────────────────────────
@@ -186,7 +187,7 @@ function vitalsKey(hero, p, st, L, bw) {
   hashStart(); hashStr(hero.charId); hashNum(hero.level); hashStr(p.look?.primary); hashNum(img ? img.width : 0); hashNum(fontEpoch); hashNum(L.textMin);
   hashNum(Math.ceil(p.hp)); hashNum(st.hp); hashNum(Math.round((p.hp / st.hp) * bw * 2)); hashNum(Math.round(((p.hpGhost ?? 0) / st.hp) * bw * 2));
   hashNum(Math.floor(p.mp)); hashNum(st.mp); hashNum(Math.round((p.mp / st.mp) * bw * 2)); hashNum(Math.round((hero.exp / expToNext(hero.level)) * bw * 2));
-  hashStr(autoLevelOf(p.world));   // [auto] 이름 옆 AUTO
+  hashStr(autoLevelOf(p.world)); hashStr(autoHoldOf(p.world) ?? '');   // [auto] 이름 옆 AUTO (단계 · 기다림)
   return hashStr(classNameOf(hero));
 }
 function drawFoldHUD(ctx, world, vw, vh, L, T) {
@@ -351,8 +352,16 @@ function drawVitalsFold(ctx, r, hero, p, st, L) {
   const nm = `Lv ${hero.level} ${CHARACTERS[hero.charId]?.name ?? ''}`;
   ctx.font = font(F, 800); const nw = Math.min(w * 0.66, ctx.measureText(nm).width);
   text(ctx, nm, x + 2, y + V.name, { size: F, weight: 800, color: '#f3e2b8', maxWidth: w * 0.66 });
-  const aw = autoPill(ctx, x + 2 + nw + 6, y + V.name - Math.round(F * 0.86), Math.round(F * 1.1), autoLevelOf(p.world), Math.max(11, F - 3));   // [auto]
-  text(ctx, classNameOf(hero), x + w - 2, y + V.name, { size: Math.max(11, F - 2), align: 'right', color: COLORS.dim, maxWidth: Math.max(10, w - nw - 10 - (aw ? aw + 6 : 0)) });
+  // [auto] 이름 옆 알약 — [autofix] 자리가 모자라면 「A」 하나로 줄이고, 그래도 직업명이 56 px 안 되면 AUTO 동안 직업명을 뺀다 (긴 이름 + 긴 직업명이 뭉개지던 문제)
+  const alv = autoLevelOf(p.world), ahold = autoHoldOf(p.world), psz = Math.max(11, F - 3), cls = classNameOf(hero);
+  let pillC = false, showCls = true;
+  if (alv !== 'off') {
+    ctx.font = font(Math.max(11, F - 2)); const cw = ctx.measureText(cls).width, room = w - nw - 12;
+    if (autoPillW(ctx, alv, psz, { hold: !!ahold }) + 6 + Math.min(cw, 90) > room) pillC = true;
+    if (room - autoPillW(ctx, alv, psz, { hold: !!ahold, compact: pillC }) - 6 < Math.min(cw, 56)) showCls = false;
+  }
+  const aw = autoPill(ctx, x + 2 + nw + 6, y + V.name - Math.round(F * 0.86), Math.round(F * 1.1), alv, psz, { compact: pillC, hold: !!ahold });
+  if (showCls) text(ctx, cls, x + w - 2, y + V.name, { size: Math.max(11, F - 2), align: 'right', color: COLORS.dim, maxWidth: Math.max(10, w - nw - 10 - (aw ? aw + 6 : 0)) });
   const hy = y + V.hpTop, hh = V.hpH;
   bar(ctx, x, hy, w, hh, p.hp / st.hp, { color: '#d81c34', ghost: p.hpGhost / st.hp, edge: '#e8c872' });
   text(ctx, `${fmt(Math.ceil(p.hp))} / ${fmt(st.hp)}`, x + w / 2, hy + Math.round(hh / 2 + F * 0.36), { size: F, align: 'center', weight: 800, family: FONT.num, color: '#fff', ow: 3, maxWidth: w - 8 });
@@ -600,7 +609,7 @@ function drawVitals(ctx, r, hero, p, st, T, L) {
     // 휴대폰: 직업명은 뺀다 (메뉴에 있다). HP 숫자는 F+1 px 막대 안에 F px, MP 숫자는 MP 막대 오른쪽에 F px
     const v = L.rows.vit;
     text(ctx, CHARACTERS[hero.charId].name, bx, y + v.name, { size: Math.max(13, F), weight: 700, color: '#f3e2b8', maxWidth: bw });
-    { ctx.font = font(Math.max(13, F), 700); const nw = Math.min(bw * 0.7, ctx.measureText(CHARACTERS[hero.charId].name).width); autoPill(ctx, bx + nw + 6, y + v.name - Math.round(Math.max(13, F) * 0.86), Math.round(Math.max(13, F) * 1.05), autoLevelOf(p.world), Math.max(11, F - 2)); }   // [auto]
+    { ctx.font = font(Math.max(13, F), 700); const nw = Math.min(bw * 0.7, ctx.measureText(CHARACTERS[hero.charId].name).width); autoPill(ctx, bx + nw + 6, y + v.name - Math.round(Math.max(13, F) * 0.86), Math.round(Math.max(13, F) * 1.05), autoLevelOf(p.world), Math.max(11, F - 2), { hold: !!autoHoldOf(p.world), compact: bw - nw - 6 < 40 }); }   // [auto]
     bar(ctx, bx, y + v.hpTop, bw, v.hpH, p.hp / st.hp, { color: '#d81c34', ghost: p.hpGhost / st.hp });
     text(ctx, `${Math.ceil(p.hp)} / ${st.hp}`, bx + bw - 4, y + v.hpTop + Math.round((v.hpH + F * 0.7) / 2), { size: F, align: 'right', weight: 700, color: '#fff', ow: 3, maxWidth: bw - 8 });
     bar(ctx, bx, y + v.mpTop, bw * 0.8, v.mpH, p.mp / st.mp, { color: '#3a7aff' });
@@ -611,7 +620,7 @@ function drawVitals(ctx, r, hero, p, st, T, L) {
   const s = Math.max(T ? 12 : 10, F);
   text(ctx, CHARACTERS[hero.charId].name, bx, y + 12, { size: Math.max(13, F), weight: 700, color: '#f3e2b8' });
   ctx.font = font(Math.max(13, F), 700);
-  const aw = autoPill(ctx, bx + ctx.measureText(CHARACTERS[hero.charId].name).width + 6, y + 1, 14, autoLevelOf(p.world), 11);   // [auto]
+  const aw = autoPill(ctx, bx + ctx.measureText(CHARACTERS[hero.charId].name).width + 6, y + 1, 14, autoLevelOf(p.world), 11, { hold: !!autoHoldOf(p.world) });   // [auto]
   text(ctx, classNameOf(hero), bx + bw, y + 12, { size: Math.max(T ? 12 : 11, F), align: 'right', color: COLORS.dim, ...(aw ? { maxWidth: Math.max(10, bw * 0.45) } : {}) });
   bar(ctx, bx, y + 18, bw, 13, p.hp / st.hp, { color: '#d81c34', ghost: p.hpGhost / st.hp });
   text(ctx, `${Math.ceil(p.hp)} / ${st.hp}`, bx + bw - 4, y + 29, { size: s, align: 'right', weight: 700, color: '#fff', ow: 2 });
