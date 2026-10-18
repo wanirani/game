@@ -30,6 +30,7 @@ import { crisp, crispActive, hashStart, hashNum, hashStr } from './hud_crisp.js'
 import { useItem } from '../game/inventory.js';   // [hudfix] 빠른 칸 탭 = 물약 사용
 import { ITEMS } from '../data/items.js';
 import { drawMinimap, drawMinimapRing, drawBigMap } from './minimap.js';
+import { drawLockMarks, autoPill, autoLevelOf } from './hud_auto.js';   // [auto] 대상 고정 표적 고리 · 이름 옆 AUTO
 
 // ── 그린 HUD 그림 (hud_mobile §4): 테(assets/ui/hud/*.webp) · 스킬/UI 아이콘(assets/icons/skills/<id>.webp 96 px, 48/<id>.webp 48 px) ──
 // 이미지는 한 번 받아 두고 drawImage 만 한다 (원형 알파는 그림에 구워져 있다 — 클립 없음). 없는 아이콘은 요청하지 않는다(ICON_IDS).
@@ -114,6 +115,7 @@ export function drawHUD(ctx, world, vw, vh) {
   // 터치: 모든 글자는 L.textMin(= 11 CSS px 를 논리 px 로) 이상 — 휴대폰 캔버스는 0.67–0.72배로 줄어 보인다 (platform §6.2).
   // 휴대폰 배치(L.big)는 칸도 키우고 중복 문구(직업명 · 'SCORE')를 뺀다. 터치는 페이지 안내·슬롯 S1/S2 표시도 뺀다 (패드 버튼에 있다)
   const L = hudLayout(world, vw, vh);
+  drawLockMarks(ctx, world);   // [auto] 월드 위 표적 고리 (HUD 칸보다 먼저 — HUD 가 위에 덮는다)
   if (L.fold) { drawFoldHUD(ctx, world, vw, vh, L, T); return; }   // 폴드·태블릿 배치 (hud_mobile §3)
   const g0 = world.game;
   ctx.save();
@@ -184,6 +186,7 @@ function vitalsKey(hero, p, st, L, bw) {
   hashStart(); hashStr(hero.charId); hashNum(hero.level); hashStr(p.look?.primary); hashNum(img ? img.width : 0); hashNum(fontEpoch); hashNum(L.textMin);
   hashNum(Math.ceil(p.hp)); hashNum(st.hp); hashNum(Math.round((p.hp / st.hp) * bw * 2)); hashNum(Math.round(((p.hpGhost ?? 0) / st.hp) * bw * 2));
   hashNum(Math.floor(p.mp)); hashNum(st.mp); hashNum(Math.round((p.mp / st.mp) * bw * 2)); hashNum(Math.round((hero.exp / expToNext(hero.level)) * bw * 2));
+  hashStr(autoLevelOf(p.world));   // [auto] 이름 옆 AUTO
   return hashStr(classNameOf(hero));
 }
 function drawFoldHUD(ctx, world, vw, vh, L, T) {
@@ -348,7 +351,8 @@ function drawVitalsFold(ctx, r, hero, p, st, L) {
   const nm = `Lv ${hero.level} ${CHARACTERS[hero.charId]?.name ?? ''}`;
   ctx.font = font(F, 800); const nw = Math.min(w * 0.66, ctx.measureText(nm).width);
   text(ctx, nm, x + 2, y + V.name, { size: F, weight: 800, color: '#f3e2b8', maxWidth: w * 0.66 });
-  text(ctx, classNameOf(hero), x + w - 2, y + V.name, { size: Math.max(11, F - 2), align: 'right', color: COLORS.dim, maxWidth: Math.max(10, w - nw - 10) });
+  const aw = autoPill(ctx, x + 2 + nw + 6, y + V.name - Math.round(F * 0.86), Math.round(F * 1.1), autoLevelOf(p.world), Math.max(11, F - 3));   // [auto]
+  text(ctx, classNameOf(hero), x + w - 2, y + V.name, { size: Math.max(11, F - 2), align: 'right', color: COLORS.dim, maxWidth: Math.max(10, w - nw - 10 - (aw ? aw + 6 : 0)) });
   const hy = y + V.hpTop, hh = V.hpH;
   bar(ctx, x, hy, w, hh, p.hp / st.hp, { color: '#d81c34', ghost: p.hpGhost / st.hp, edge: '#e8c872' });
   text(ctx, `${fmt(Math.ceil(p.hp))} / ${fmt(st.hp)}`, x + w / 2, hy + Math.round(hh / 2 + F * 0.36), { size: F, align: 'center', weight: 800, family: FONT.num, color: '#fff', ow: 3, maxWidth: w - 8 });
@@ -596,6 +600,7 @@ function drawVitals(ctx, r, hero, p, st, T, L) {
     // 휴대폰: 직업명은 뺀다 (메뉴에 있다). HP 숫자는 F+1 px 막대 안에 F px, MP 숫자는 MP 막대 오른쪽에 F px
     const v = L.rows.vit;
     text(ctx, CHARACTERS[hero.charId].name, bx, y + v.name, { size: Math.max(13, F), weight: 700, color: '#f3e2b8', maxWidth: bw });
+    { ctx.font = font(Math.max(13, F), 700); const nw = Math.min(bw * 0.7, ctx.measureText(CHARACTERS[hero.charId].name).width); autoPill(ctx, bx + nw + 6, y + v.name - Math.round(Math.max(13, F) * 0.86), Math.round(Math.max(13, F) * 1.05), autoLevelOf(p.world), Math.max(11, F - 2)); }   // [auto]
     bar(ctx, bx, y + v.hpTop, bw, v.hpH, p.hp / st.hp, { color: '#d81c34', ghost: p.hpGhost / st.hp });
     text(ctx, `${Math.ceil(p.hp)} / ${st.hp}`, bx + bw - 4, y + v.hpTop + Math.round((v.hpH + F * 0.7) / 2), { size: F, align: 'right', weight: 700, color: '#fff', ow: 3, maxWidth: bw - 8 });
     bar(ctx, bx, y + v.mpTop, bw * 0.8, v.mpH, p.mp / st.mp, { color: '#3a7aff' });
@@ -605,7 +610,9 @@ function drawVitals(ctx, r, hero, p, st, T, L) {
   }
   const s = Math.max(T ? 12 : 10, F);
   text(ctx, CHARACTERS[hero.charId].name, bx, y + 12, { size: Math.max(13, F), weight: 700, color: '#f3e2b8' });
-  text(ctx, classNameOf(hero), bx + bw, y + 12, { size: Math.max(T ? 12 : 11, F), align: 'right', color: COLORS.dim });
+  ctx.font = font(Math.max(13, F), 700);
+  const aw = autoPill(ctx, bx + ctx.measureText(CHARACTERS[hero.charId].name).width + 6, y + 1, 14, autoLevelOf(p.world), 11);   // [auto]
+  text(ctx, classNameOf(hero), bx + bw, y + 12, { size: Math.max(T ? 12 : 11, F), align: 'right', color: COLORS.dim, ...(aw ? { maxWidth: Math.max(10, bw * 0.45) } : {}) });
   bar(ctx, bx, y + 18, bw, 13, p.hp / st.hp, { color: '#d81c34', ghost: p.hpGhost / st.hp });
   text(ctx, `${Math.ceil(p.hp)} / ${st.hp}`, bx + bw - 4, y + 29, { size: s, align: 'right', weight: 700, color: '#fff', ow: 2 });
   bar(ctx, bx, y + 34, bw * 0.8, 8, p.mp / st.mp, { color: '#3a7aff' });

@@ -144,7 +144,7 @@ function releaseCamera(world, fm) {
 //  대검: 휘두르는 칼끝 불꽃 (+ 바닥을 긁으면 불꽃 다발·자갈)  지팡이: 지팡이 머리 성광  창: 찌르기 시작 순간 창끝 고리·속도선
 //  장검·단검: 마무리 일격 칼끝 불꽃  총: 발사마다 탄피(놋쇠, 튕김) + 총구 연기 한 줌
 // 저품질·움직임 줄이기 설정에서는 없음. 탑승 중에는 부르지 않는다 (updateGait 가 먼저 돌아감)
-const MFX = { spark: '#ffcf7a', shell: '#d8b050', ring: 'rgba(225,240,255,0.85)' };
+const MFX = { spark: '#ffcf7a', shell: '#f2c860', ring: 'rgba(225,240,255,0.85)' };
 export function motionTick(p, world) {
   const m = p?.rig?.mfx, fx = world?.fx, fm = p?.fm;
   if (!fx || !fm) return;
@@ -154,8 +154,8 @@ export function motionTick(p, world) {
   if (mz > (fm.mzPrev ?? 0) + 1e-4 && on && m && m.wt === 'gun' && p.t - (fm.shellT ?? -9) > 0.04) {
     fm.shellT = p.t;
     const back = p.facing > 0 ? PI : 0, f = p.facing || 1;
-    fx.emit('shard', m.gx, m.gy, { angle: -PI / 2 - f * 0.55 + (back ? 0.15 : -0.15), spread: 0.35, speed: rand(150, 210), size: 2.2, color: MFX.shell, life: rand(0.55, 0.8), vr: rand(14, 22) * -f, grav: 1400, bounce: 0.45 });
-    if (p.move?.anim === 'shoot_double' || p.move?.anim === 'shoot_up' || p.move?.anim === 'shoot_down') fx.emit('shard', m.gx - f * 3, m.gy + 2, { angle: -PI / 2 - f * 0.8, spread: 0.4, speed: rand(130, 190), size: 2.2, color: MFX.shell, life: 0.6, grav: 1400, bounce: 0.45 });
+    fx.emit('shard', m.gx, m.gy, { angle: -PI / 2 - f * 0.55 + (back ? 0.15 : -0.15), spread: 0.35, speed: rand(170, 230), size: 3, color: MFX.shell, life: rand(0.55, 0.8), vr: rand(14, 22) * -f, grav: 1400, bounce: 0.45 });
+    if (p.move?.anim === 'shoot_double' || p.move?.anim === 'shoot_up' || p.move?.anim === 'shoot_down') fx.emit('shard', m.gx - f * 3, m.gy + 2, { angle: -PI / 2 - f * 0.8, spread: 0.4, speed: rand(150, 210), size: 3, color: MFX.shell, life: 0.6, grav: 1400, bounce: 0.45 });
     if (q === 'high') fx.emit('dust', m.x, m.y, { angle: -PI / 2, spread: 0.6, speed: 18, size: 5, life: 0.4, alpha: 0.35 });
   }
   fm.mzPrev = mz;

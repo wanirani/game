@@ -211,12 +211,19 @@ def turn_dir(frames_small, masks, s, p1):
     return (1 if v >= 0 else -1), v
 
 
-def cut(rgb):
-    """rembg 소프트 알파 + 배경색 주머니 제거 + 발밑 그림자 제거 → (hard mask, soft alpha 0..1)"""
+def cut(rgb, key_t=None):
+    """rembg 소프트 알파 + 배경색 주머니 제거 + 발밑 그림자 제거 → (hard mask, soft alpha 0..1)
+    key_t (TURN16-FIX --key): 바탕이 인물과 뚜렷이 다른 단색(어두운 회색 재생성 영상)일 때, 바탕색과 key_t 이상 다른 화소 중
+    rembg 인물과 이어진 덩어리를 인물에 더한다 — rembg 가 빼먹는 회색 안감·반투명 옷단 (sera_saint 뒷모습 치마 안쪽)"""
     soft = rembg_alpha(rgb).astype(np.float32) / 255
     a = soft > 0.5
     f = rgb.astype(np.float32)
     bg = bg_rows(f)
+    if key_t:
+        k = ndi.binary_opening(np.abs(f - bg[:, None, :]).max(2) > key_t, iterations=2)
+        lab, n = ndi.label(k | a)
+        keep = np.unique(lab[a])
+        a = a | (np.isin(lab, keep[keep > 0]) & k)
     near = np.abs(f - bg[:, None, :]).max(2) < 14
     # 테두리에서 이어진 배경색 영역은 무조건 배경
     lab, n = ndi.label(near)
@@ -421,6 +428,7 @@ def main():
     ap.add_argument('--pick', default='', help='칸 k 의 프레임 바꾸기 "k:f,..." (f = 프레임 번호 | end = 영상 끝 앞모습 중 첫 프레임과 실루엣이 가장 같은 것) — TURN16-FIX')
     ap.add_argument('--repair', default='', choices=['', 'opaque', 'veil'], help='배경색 얼룩 보정 (tools/puppet/turn16_repair.py) — TURN16-FIX')
     ap.add_argument('--repair-json', default='', help='turn16_repair 변수 JSON (tol, R, enc, Ldark, Dmax, min, veil_a, ...)')
+    ap.add_argument('--key', type=float, default=0, help='바탕색 키 문턱 (단색 어두운 바탕 영상에서 rembg 가 빼먹은 회색 안감 더하기, 예 28) — TURN16-FIX')
     ap.add_argument('--drop-floor', action='store_true', help='발밑 바닥 반사 덩어리·회색 바닥선 지우기 (어두운 발 외형만) — TURN16-FIX')
     a = ap.parse_args()
     cid = a.cls.split('_')[0]
@@ -491,13 +499,15 @@ def main():
         fixinfo['repair'] = a.repair
     if a.drop_floor:
         fixinfo['drop_floor'] = 1
+    if a.key:
+        fixinfo['key'] = a.key
     RP = json.loads(a.repair_json) if a.repair_json else {}
     if RP:
         fixinfo['repair_p'] = RP
 
     def cut2(rgb):
         """cut + (선택) 바닥 덩어리 지우기 + (선택) 얼룩 보정 → (hard, soft, rgb, veil)"""
-        hm_, sa_ = cut(rgb)
+        hm_, sa_ = cut(rgb, a.key or None)
         if a.drop_floor:
             hm_, sa_ = drop_floor(rgb, hm_, sa_)
         vl = np.zeros_like(hm_)

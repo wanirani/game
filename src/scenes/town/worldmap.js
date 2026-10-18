@@ -39,6 +39,8 @@ import { drawIcon } from '../../render/icons.js';
 import { ensureState, uiPanel, uiButton } from './common.js';
 import { faceRect } from '../../render/portrait.js';
 import { glow } from './facades.js';
+import { freeSlots } from '../../game/inventory.js';   // [auto] 출발 전 가방 경고 (남은 칸 ≤ 5)
+import { requestDispose } from '../../game/pickup_compare.js';   // [auto] 「일괄 처분」 바로가기 (메뉴 › 인벤토리가 창을 연다)
 
 const RANK_COL = { SSS: '#ffe070', SS: '#ff5a4a', S: '#ffa640', A: '#c07cff', B: '#5aa8ff', C: '#7ee07e', D: '#a0a0a0' };
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI'];
@@ -75,6 +77,8 @@ const P2_STUB = {
 };
 const stubStage = (id) => ({ id, chapter: Number(id.slice(1)), part: 2, page: 1, level: 0, docs: [], ...P2_STUB[id] });
 const MISSING_REQ = '이 세계로 가는 길은 아직 짙은 어둠에 가려 있다…';
+const BAG_WARN = 5;   // [auto] 남은 칸이 이 이하이면 출발 전에 묻는다 (pickup_compare 의 입장 경고와 같은 문턱)
+const BAG_BTNS = [['dispose', '일괄 처분'], ['go', '그대로 출발'], ['cancel', '취소']];
 
 const PAGES = [
   {
@@ -137,6 +141,7 @@ export class WorldMapScene extends Scene {
     this.reveal = null; this.reveals = []; this.depart = null; this.xfade = null;
     this.closing = false; this.redirect = false;
     this.tok = null;
+    this.bagAsk = null; this.bagOk = false;   // [auto] 가방 경고 창 · 이번 방문에서 「그대로 출발」 을 골랐다
     this._L = null; this._lab = [null, null]; this._tk = [null, null]; this._snap = null;
     const P = st.progress;
     if (!P.flags || typeof P.flags !== 'object') P.flags = {};
@@ -439,6 +444,7 @@ export class WorldMapScene extends Scene {
     if (this.reveal) { this.updateReveal(dt, L); return; }
     if (this.depart) { this.depart.t += dt; if (this.depart.t > 0.55 && !this.depart.gone) { this.depart.gone = true; this.launch(this.depart.id); } return; }
     if (this.closing) return;
+    if (this.bagAsk) { this.updateBagAsk(); return; }   // [auto]
     // 고른 스테이지의 배경 음악을 미리 받는다 (녹음 음원, 장면을 막지 않음 — core/audio_rec.js)
     const pf = this.cur();
     if (pf && pf !== this._pfNode) { this._pfNode = pf; if (this.isOpen(pf)) audio.prefetch?.(pf.arena ? 'arena' : pf.stage?.music); }
@@ -514,6 +520,8 @@ export class WorldMapScene extends Scene {
     if (!n) return;
     if (!this.isOpen(n)) { audio.sfx('menu_cancel'); this.toastOnce(this.reqText(n), '#ff8a7a'); return; }
     if (n.arena && !g.registry.arcade) { audio.sfx('menu_cancel'); this.toastOnce('투기장의 문은 아직 굳게 닫혀 있다…', '#c8b8a0'); return; }
+    // [auto] 가방 남은 칸이 적으면 출발 전에 한 번 묻는다 (일괄 처분 / 그대로 출발 / 취소). 투기장은 전리품이 가방으로 오지 않는다
+    if (!n.arena && !this.bagOk && this.bagFree() <= BAG_WARN) { this.bagAsk = { id: n.id, sel: 0, t: 0 }; audio.sfx('menu_move'); return; }
     audio.sfx('go'); audio.sfx('menu_ok');
     const p = this.pos(n.stage.mapPos);
     if (this.page === 1) {
@@ -528,6 +536,47 @@ export class WorldMapScene extends Scene {
     // 출발 연출·도입 이야기 동안 그 스테이지 보스 조각을 미리 받는다 (R1-REQ-229 / 요청 #381 (3); 스테이지 입장 때도 다시 부르지만 멱등)
     if (!n.arena) { try { preloadStageBosses(n.id)?.catch?.(() => null); } catch (e) { console.warn(e); } }
     this.saveNow();
+  }
+  /** [auto] 가방 남은 칸 (모르면 넉넉하게) */
+  bagFree() { try { const f = freeSlots(this.state); return Number.isFinite(f) ? f : 99; } catch { return 99; } }
+  /** [auto] 가방 경고 창: ←→ 고르기 · 결정 · 취소 (터치·클릭: 단추) */
+  updateBagAsk() {
+    const A = this.bagAsk, n = BAG_BTNS.length;
+    A.t += 1 / 60;
+    if (input.pressed('left')) { A.sel = (A.sel + n - 1) % n; audio.sfx('menu_move'); }
+    if (input.pressed('right')) { A.sel = (A.sel + 1) % n; audio.sfx('menu_move'); }
+    let pick = null;
+    const hit = taps.hit(this);
+    if (typeof hit === 'string' && hit.startsWith('bag:')) pick = hit.slice(4);
+    else if (input.pressed('confirm')) pick = BAG_BTNS[A.sel][0];
+    else if (input.pressed('cancel') || input.pressed('menu')) pick = 'cancel';
+    if (!pick) return;
+    this.bagAsk = null;
+    if (pick === 'cancel') { audio.sfx('menu_cancel'); return; }
+    if (pick === 'go') { this.bagOk = true; this.start(); return; }
+    // 일괄 처분: 메뉴 › 인벤토리를 열고 그 탭이 「일괄 처분」 창을 바로 띄운다. 돌아오면 다시 출발을 누른다 (남은 칸을 다시 센다)
+    audio.sfx('menu_ok');
+    requestDispose();
+    const g = this.game;
+    if (g.registry.menu) g.push('menu', { world: this.world ?? g.world ?? null, from: 'worldmap', tab: 'inventory' });
+  }
+  drawBagAsk(ctx, L) {
+    const A = this.bagAsk, free = this.bagFree();
+    ctx.fillStyle = 'rgba(4,1,6,0.62)'; ctx.fillRect(0, 0, L.W, L.H);
+    const w = Math.min(560, L.W - 40), bh = L.touch ? 54 : 48, h = 132 + bh + (L.touch ? 0 : 22);
+    const x = (L.W - w) / 2, y = Math.round((L.H - h) / 2);
+    uiPanel(ctx, x, y, w, h, { glow: 'rgba(255,140,60,0.35)' });
+    const title = free <= 0 ? '가방이 가득 찼습니다' : `가방 남은 칸 ${free}`;
+    text(ctx, '⚠ ' + title, L.W / 2, y + 40, { size: 22, weight: 800, family: FONT.title, align: 'center', color: '#ffb060', maxWidth: w - 40 });
+    text(ctx, '빈 칸이 적으면 스테이지에서 얻은 장비를 줍지 못합니다.', L.W / 2, y + 70, { size: 14, align: 'center', color: '#e8dcc8', maxWidth: w - 40 });
+    text(ctx, '출발 전에 일괄 처분으로 정리할 수 있습니다.', L.W / 2, y + 92, { size: 14, align: 'center', color: '#c8b8a0', maxWidth: w - 40 });
+    const gap = 12, bw = Math.floor((w - 40 - gap * (BAG_BTNS.length - 1)) / BAG_BTNS.length), by = y + 112;
+    BAG_BTNS.forEach(([id, lab], i) => {
+      const r = { x: x + 20 + i * (bw + gap), y: by, w: bw, h: bh };
+      uiButton(ctx, r, lab, { selected: A.sel === i, size: 17 });
+      taps.add('bag:' + id, r, { kind: i === 0 ? 'primary' : 'list', owner: this, src: 'worldmap.bag' });
+    });
+    if (!L.touch) drawHints(ctx, [['dpadH', '고르기'], ['confirm', '결정'], ['cancel', '취소']], L.W / 2, y + h - 10, { align: 'center', size: 11 });
   }
   /**
    * 같은 알림이 아직 떠 있으면 새로 쌓지 않고 그 알림을 다시 온전히 보이게 늘린다
@@ -569,6 +618,7 @@ export class WorldMapScene extends Scene {
     this.info(ctx, L);
     if (!L.touch) this.hints(ctx, L);
     if (this.reveal) this.drawReveal(ctx, L);
+    if (this.bagAsk) this.drawBagAsk(ctx, L);   // [auto]
     if (this.depart) {
       ctx.fillStyle = this.page === 1 ? `rgba(50,0,90,${Math.min(0.5, this.depart.t)})` : `rgba(120,0,20,${Math.min(0.5, this.depart.t)})`;
       ctx.fillRect(0, 0, W, H);
@@ -964,6 +1014,8 @@ export class WorldMapScene extends Scene {
     const again = can && !n.arena && !!rec;
     uiButton(ctx, this.goRect, can ? (n.arena ? '입장' : '출발!') : '잠김', { selected: can, disabled: !can, size: cmp && again ? 20 : 22, sub: again ? '다시 도전' : undefined });
     ctx.restore();
+    // [auto] 가방 남은 칸 경고 (출발 단추 위)
+    if (can && !n.arena) { const free = this.bagFree(); if (free <= BAG_WARN) text(ctx, free <= 0 ? '⚠ 가방 가득' : `⚠ 가방 ${free}칸`, bx + bw / 2, this.goRect.y - 6, { size: 12, weight: 800, align: 'center', color: '#ffb060', ow: 2, maxWidth: bw }); }
     taps.add('go', this.goRect, { kind: 'primary', owner: this, src: 'worldmap' });
   }
   /** 수집 칸: 비전서 + (1부) 유물 / (2부) 별의 조각 · 세계의 심장 — 공허(s20)는 여섯 세계의 합계 */

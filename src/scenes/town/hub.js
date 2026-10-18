@@ -36,6 +36,8 @@ import { FLOOR, drawFacades, facadeLights, prebakeFacades, setFacadeScale, anvil
 import { uiPanel, uiButton, uiHints } from './common.js';
 import { vGrad, fillGradRect } from '../menu/common.js';
 import { faceRect } from '../../render/portrait.js';
+import { crisp, hashStart, hashNum, hashStr as crispHashStr } from '../../render/hud_crisp.js';   // [auto] 오른쪽 위 판 선명 칸 (스테이지 HUD 와 같은 기기 해상도)
+import { fontEpoch } from '../../core/ui.js';
 const BANNER_BG = [0, 'rgba(0,0,0,0)', 0.5, 'rgba(6,2,10,0.65)', 1, 'rgba(0,0,0,0)'];
 
 const RELIC_IDS = ['k_relic_1', 'k_relic_2', 'k_relic_3', 'k_relic_4', 'k_relic_5'];
@@ -43,7 +45,7 @@ const HEART_IDS = ['k_heart_1', 'k_heart_2', 'k_heart_3', 'k_heart_4', 'k_heart_
 // 처음 도착(프롤로그 직후) · 이어하기 · 2부 서막 직후 — '돌아왔다' 가 아니라 환영 문구, 마을 한가운데에서 시작
 const ARRIVE_FROM = new Set(['prologue', 'load', 'title', 'new', 'p2']);
 // 마을은 전투 없음: 이 입력들은 World 에 넘기지 않는다 (하트·MP 소모 방지). 수호신 스킬(guard)·각성기(awaken)도 마을에서는 쓰지 않는다
-const NO_COMBAT = ['attack', 'sub', 'skill1', 'skill2', 'ult', 'swap', 'guard', 'awaken'];   // [hook:cmp] guard
+const NO_COMBAT = ['attack', 'sub', 'skill1', 'skill2', 'ult', 'swap', 'guard', 'awaken', 'lock', 'auto'];   // [hook:cmp] guard · [auto] 대상 고정·자동 전투 (마을은 전투 없음)
 // 가상 패드에서 숨길 버튼 (scene 플래그 padHideButtons — 스틱·점프·대시·탑승·일시정지·가방만 남긴다). 같은 배열을 계속 넘긴다
 const PAD_HIDE = Object.freeze(NO_COMBAT.filter((a) => a !== 'awaken'));
 
@@ -470,10 +472,6 @@ export class HubScene extends Scene {
     // HUD-REDO: 터치 패드의 시스템 아이콘 줄(메뉴·가방 — 오른쪽 위)이 있으면 그 왼쪽·아래로 비킨다 (예전에는 골드 숫자가 아이콘 밑에 깔렸다)
     const sysR = this.sysRowUi(k);
     const gw = 190, gx = (sysR ? sysR.x - 12 : W - 14) - gw, gy = sysR ? Math.round(sysR.y + sysR.h / 2 - 20) : 12;
-    uiPanel(ctx, gx, gy, gw, 40, { corner: false });
-    drawIcon(ctx, 'coin', gx + 22, gy + 20, 24);
-    text(ctx, fmt(st.gold ?? 0), gx + gw - 14, gy + 27, { size: 19, weight: 900, family: FONT.num, color: '#ffd84a', align: 'right', maxWidth: gw - 64 });
-    text(ctx, 'G', gx + 40, gy + 26, { size: 12, weight: 800, family: FONT.num, color: '#b89a50' });
     // 유물(1부 5개) · 세계의 심장(2부 6개): 모은 것은 그림, 아직인 것은 빈 홈 — '?' 대신 '유물 n/5' 로 무엇인지 알린다
     const p2 = !!st.progress?.flags?.p2_started;
     const ids = p2 ? HEART_IDS : RELIC_IDS, got = (p2 ? st.progress?.hearts : st.progress?.relics) ?? [];
@@ -482,22 +480,42 @@ export class HubScene extends Scene {
     const x1 = rowR - 12 - (ids.length - 1) * sp;
     const lab = `${p2 ? '심장' : '유물'} ${nGot}/${ids.length}`;
     ctx.font = font(12, 800, FONT.body); const lw = ctx.measureText(lab).width;
-    ctx.fillStyle = 'rgba(8,4,10,0.6)'; ctx.fillRect(x1 - lw - 30, ry - 14, rowR - (x1 - lw - 30), 28);
-    text(ctx, lab, x1 - 18, ry + 5, { size: 12, weight: 800, color: '#d8c4a0', align: 'right' });
-    for (let i = 0; i < ids.length; i++) {
-      const rx = x1 + i * sp;
-      const has = got.includes(ids[i]);
-      ctx.fillStyle = has ? 'rgba(120,10,24,0.85)' : 'rgba(14,6,12,0.75)';
-      ctx.beginPath(); ctx.arc(rx, ry, 11, 0, TAU); ctx.fill();
-      ctx.strokeStyle = has ? '#ff6a7a' : 'rgba(184,150,96,0.45)'; ctx.lineWidth = 1.5; ctx.stroke();
-      if (has) drawIcon(ctx, ITEMS[ids[i]]?.icon ?? (p2 ? 'wheart_' : 'relic_') + (i + 1), rx, ry, 20);
-      else { ctx.fillStyle = 'rgba(184,150,96,0.35)'; ctx.beginPath(); ctx.arc(rx, ry, 2.5, 0, TAU); ctx.fill(); }
-    }
     const touch = !!input.touchMode;
     const bwd = 96, bh = touch ? Math.max(40, this.tapUi(46)) : 40, by = ry + 20;
     const rParty = { x: W - 14 - bwd * 2 - 8, y: by, w: bwd, h: bh }, rMenu = { x: W - 14 - bwd, y: by, w: bwd, h: bh };
-    if (g.registry.party) { uiButton(ctx, rParty, '헌터 교체', { size: 15 }); rects.party = this.zone('party', rParty, k, off); }
-    uiButton(ctx, rMenu, '메뉴', { size: 15 }); rects.menu = this.zone('menu', rMenu, k, off);
+    const party = !!g.registry.party;
+    // [auto] 오른쪽 위 판(골드·유물·헌터 교체·메뉴)은 터치일 때 기기 해상도 덧캔버스 선명 칸으로 (hud_crisp — 스테이지 HUD 와 같은 선명도).
+    //        내용이 바뀔 때만 다시 굽는다 (골드·유물·글꼴 세대·크기·아이콘 준비). 탭 자리는 아래에서 따로 등록한 그대로
+    const paint = (c) => {
+      uiPanel(c, gx, gy, gw, 40, { corner: false });
+      drawIcon(c, 'coin', gx + 22, gy + 20, 24);
+      text(c, fmt(st.gold ?? 0), gx + gw - 14, gy + 27, { size: 19, weight: 900, family: FONT.num, color: '#ffd84a', align: 'right', maxWidth: gw - 64 });
+      text(c, 'G', gx + 40, gy + 26, { size: 12, weight: 800, family: FONT.num, color: '#b89a50' });
+      c.fillStyle = 'rgba(8,4,10,0.6)'; c.fillRect(x1 - lw - 30, ry - 14, rowR - (x1 - lw - 30), 28);
+      text(c, lab, x1 - 18, ry + 5, { size: 12, weight: 800, color: '#d8c4a0', align: 'right' });
+      for (let i = 0; i < ids.length; i++) {
+        const rx = x1 + i * sp;
+        const has = got.includes(ids[i]);
+        c.fillStyle = has ? 'rgba(120,10,24,0.85)' : 'rgba(14,6,12,0.75)';
+        c.beginPath(); c.arc(rx, ry, 11, 0, TAU); c.fill();
+        c.strokeStyle = has ? '#ff6a7a' : 'rgba(184,150,96,0.45)'; c.lineWidth = 1.5; c.stroke();
+        if (has) drawIcon(c, ITEMS[ids[i]]?.icon ?? (p2 ? 'wheart_' : 'relic_') + (i + 1), rx, ry, 20);
+        else { c.fillStyle = 'rgba(184,150,96,0.35)'; c.beginPath(); c.arc(rx, ry, 2.5, 0, TAU); c.fill(); }
+      }
+      if (party) uiButton(c, rParty, '헌터 교체', { size: 15 });
+      uiButton(c, rMenu, '메뉴', { size: 15 });
+    };
+    const bx0 = Math.min(gx, x1 - lw - 30, party ? rParty.x : rMenu.x) - 6, by0 = gy - 6, bx1 = W - 8, by1 = by + bh + 6;
+    hashStart(); hashNum(st.gold ?? 0); hashNum(nGot); hashNum(p2 ? 1 : 0); hashNum(touch ? 1 : 0); hashNum(k); hashNum(W); hashNum(gx); hashNum(gy); hashNum(bh); hashNum(fontEpoch);
+    hashNum(party ? 1 : 0); hashNum(assets.get('icons/coin') ? 1 : 0); for (const id of ids) hashNum(got.includes(id) && assets.get('icons/' + (ITEMS[id]?.icon ?? '')) ? 1 : 0);
+    const key = crispHashStr(lab);
+    if (k !== 1) ctx.restore();   // 선명 칸은 논리 px 로 받는다 (uiK 배율은 칸 안에서 다시 건다)
+    crisp(ctx, this.world, 'town_tr', { x: bx0 * k, y: by0 * k, w: (bx1 - bx0) * k, h: (by1 - by0) * k }, key, (c) => {
+      if (k !== 1) { c.save(); c.scale(k, k); paint(c); c.restore(); } else paint(c);
+    });
+    if (k !== 1) { ctx.save(); ctx.scale(k, k); }
+    if (party) rects.party = this.zone('party', rParty, k, off);
+    rects.menu = this.zone('menu', rMenu, k, off);
     // 시험용 (tools/test_hud_layout.mjs §6): 오른쪽 위 판들의 논리 px 사각형 — 시스템 아이콘 줄과 겹치지 않아야 한다
     const LR = (r) => ({ x: r.x * k, y: r.y * k, w: r.w * k, h: r.h * k });
     this.topBoxes = { gold: LR({ x: gx, y: gy, w: gw, h: 40 }), relics: LR({ x: x1 - lw - 30, y: ry - 14, w: rowR - (x1 - lw - 30), h: 28 }), menu: LR(rMenu), ...(g.registry.party ? { party: LR(rParty) } : {}) };

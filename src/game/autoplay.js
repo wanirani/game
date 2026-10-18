@@ -108,8 +108,16 @@ export function cycleLevel(g, opts) {
 export function segmentAt(map, cx, foot, o = {}) {
   if (!map || typeof map.typeAt !== 'function' || !Number.isFinite(cx) || !Number.isFinite(foot)) return null;
   const halfW = o.halfW ?? 16, body = Math.max(1, o.bodyTiles ?? 2), edge = o.edge ?? K.EDGE, steps = o.steps !== false;
-  const ty = Math.floor((foot + 2) / TILE), t0 = Math.floor(cx / TILE);
-  if (!standable(map.typeAt(t0, ty)) && !standable(map.typeAt(Math.floor((cx - halfW + 2) / TILE), ty)) && !standable(map.typeAt(Math.floor((cx + halfW - 2) / TILE), ty))) return null;
+  const ty = Math.floor((foot + 2) / TILE);
+  // 디딘 칸: 중심 칸, 아니면 몸 폭 안에서 중심에 가까운 서 있을 수 있는 칸 (턱 끝에 몇 px 걸쳐 선 경우)
+  let t0 = Math.floor(cx / TILE);
+  if (!standable(map.typeAt(t0, ty))) {
+    const a = Math.floor((cx - halfW) / TILE), b = Math.floor((cx + halfW - 1) / TILE);
+    let best = null;
+    for (let tx = a; tx <= b; tx++) if (standable(map.typeAt(tx, ty)) && (best == null || Math.abs(tx * TILE + TILE / 2 - cx) < Math.abs(best * TILE + TILE / 2 - cx))) best = tx;
+    if (best == null) return null;
+    t0 = best;
+  }
   const W = map.w ?? 1e4;
   /** (tx, r) 가 설 수 있는 바닥인가 → null(좋음) | 이유 */
   const floorBad = (tx, r) => {
@@ -356,6 +364,12 @@ export function decide(s, mem) {
       let want = nearEdge - dir * stand;
       if (s.w.ranged) want = target.cx - dir * Math.min(s.w.bw * 0.5, 360);
       want = clamp(want, seg.x0, seg.x1);
+      // 그 자리 바닥이 대상과 다른 높이면 (턱 위·아래) 대상 쪽으로 같은 높이 바닥이 시작하는 곳까지 간다
+      if (!target.flying && Math.abs(floorAt(seg, want) - target.bottom) > K.FOOT_TOL) {
+        let x = want, found = null;
+        for (let i = 0; i < 80 && (target.cx - x) * dir > 0; i++) { x += dir * 12; if (Math.abs(floorAt(seg, x) - target.bottom) <= K.FOOT_TOL) { found = x + dir * 6; break; } }
+        want = clamp(found ?? target.cx, seg.x0, seg.x1);
+      }
       if (!hitF || hitF !== target) {
         if (Math.abs(want - p.cx) > 10) { move = sgn(want - p.cx); out.why ||= 'approach'; }
       }

@@ -30,7 +30,9 @@
 //   touchpad.crispDpr() · hudLayer(id, c, x, y, ver, dpr) · hudLayerShown(id)   (hudfix) HUD 선명 칸 — hud_crisp.js 가 쓴다
 //   touchpad.layoutVersion()                  (hudfix) 배치를 다시 계산할 때마다 바뀌는 번호 (아래 띠 빠른 칸 캐시 키)
 //
-// 버튼 id: attack jump dash sub skill1 skill2 ult swap mount guard · 시스템 pause bag fullscreen (+ fold: maptog = 큰 지도 열고 닫기)
+// 버튼 id: attack jump dash sub skill1 skill2 ult swap mount guard lock · 시스템 pause bag fullscreen auto (+ fold: maptog = 큰 지도 열고 닫기)
+// [auto] lock = 대상 고정 (원호 맨 위 — 필살 위; 두 줄 배치는 아랫줄 왼쪽 끝) · auto = 자동 전투 단계 (시스템 줄; 켜져 있으면 금빛 고리가 돈다,
+//        길게 누르면 끔 — game/autoplay.js 가 'auto' 누름을 읽는다). 마을(공격 버튼을 숨긴 장면)에서는 둘 다 없다
 // 프리셋 (hud_mobile §3): settings.hud.preset 'auto'(논리 화면비 < 1.55 → fold) | 'wide' | 'fold'. fold = 큰 공격 버튼 둘레 스킬 원호
 //   (PAD_LAYOUT_FOLD, 오른쪽 아래) + 오른쪽 위 아이콘 줄(지도·가방·메뉴) + 탈것·수호 버튼 늘 표시(쓸 수 없으면 어둡게).
 //   배율 = foldScale(화면 높이, touchScale, settings.hud.scale). 편집기 저장은 프리셋마다 (fold 는 touchLayout 의 'fold:<id>' 키).
@@ -53,8 +55,8 @@ import * as HAP from './haptics.js';
 
 // ───────────────────────── 배치 ─────────────────────────
 /** 동작 버튼 (편집기에서 옮길 수 있는 것) */
-export const PAD_IDS = ['attack', 'jump', 'dash', 'sub', 'skill1', 'skill2', 'ult', 'swap', 'mount', 'guard'];
-export const SYS_IDS = ['pause', 'bag', 'fullscreen', 'maptog'];
+export const PAD_IDS = ['attack', 'jump', 'dash', 'sub', 'skill1', 'skill2', 'ult', 'swap', 'mount', 'guard', 'lock'];
+export const SYS_IDS = ['pause', 'bag', 'fullscreen', 'maptog', 'auto'];
 // ── HUD-REDO 배치 (사용자 피드백 2026-10-11, /tmp/claude-0/g10/hudredo_design.md) ──
 // 단위 dp = CSS px (폴드 8 펼침 DPR 2: 1 dp = 0.163 mm). 가장자리 여백 PAD_M 은 화면 끝(+안전 영역)에서 '그린 테' 바깥까지.
 // 아래 줄 (왼쪽→오른쪽): 점프 · 공격 · 대시 (대시가 모서리). 탈것은 대시 위 (예전 점프 자리), 수호는 탈것 위.
@@ -98,6 +100,7 @@ export function padPlan(kind = 'overlay', k = 1, m = PAD_M, town = false) {
     P.skill1 = [P.skill2[0] + B + G + 2 * k, uy, B];
     P.sub = [P.skill1[0] + B + G + 2 * k, uy, B];
     P.mount = [P.dash[0], uy, B];
+    P.lock = [P.swap[0] + S + G, yb, S];   // [auto] 대상 고정: 아랫줄 왼쪽 끝 (⇄ 왼쪽)
   } else {
     P.guard = [P.dash[0], P.mount[1] + B / 2 + G + S / 2, S];
     P.ult = [P.attack[0], yb + A / 2 + G + U / 2 + 4 * k, U];
@@ -114,6 +117,7 @@ export function padPlan(kind = 'overlay', k = 1, m = PAD_M, town = false) {
     const h = Math.sqrt(Math.max(0, (B + G + 2 * k) ** 2 - (vl / 2) ** 2));
     P.sub = [mx - (vy / vl) * h, my + (vx / vl) * h, B];
     if (P.sub[1] < my) P.sub = [mx + (vy / vl) * h, my - (vx / vl) * h, B];
+    P.lock = [P.ult[0], P.ult[1] + U / 2 + G + S / 2 + 2 * k, S];   // [auto] 대상 고정: 필살 위 (원호 맨 위 — 공격에서 엄지를 위로)
   }
   if (town) {
     // 마을 (hudfix — 두 검토 의견): 대시·점프는 스테이지와 같은 자리 그대로 (손이 기억한 자리에서 다른 버튼이 눌리지 않게).
@@ -152,7 +156,7 @@ export const SYS_M_WIDE = 8;
 export function foldSysPlan(W, ins, sd, fs, ids = null) {
   const y = ins.t + PAD_M + sd / 2, out = {};
   let x = W - ins.r - PAD_M - sd / 2;
-  for (const id of ids ?? (fs ? ['pause', 'bag', 'maptog', 'fullscreen'] : ['pause', 'bag', 'maptog'])) { out[id] = { id, cx: x, cy: y, d: sd }; x -= sd + 12; }
+  for (const id of ids ?? (fs ? ['pause', 'bag', 'maptog', 'auto', 'fullscreen'] : ['pause', 'bag', 'maptog', 'auto'])) { out[id] = { id, cx: x, cy: y, d: sd }; x -= sd + 12; }   // [auto] AUTO = 지도 왼쪽
   return out;
 }
 /** 프리셋 ('wide' | 'fold'): settings.hud.preset, 'auto' 면 논리 화면비 */
@@ -193,14 +197,16 @@ function lowMemory() { try { const m = Number(navigator?.deviceMemory); return N
 const ACTS = {
   attack: ['attack'], jump: ['jump', 'confirm'], dash: ['dash'], sub: ['sub'], skill1: ['skill1'], skill2: ['skill2'],
   ult: ['ult'], swap: ['swap'], mount: ['mount'], guard: ['guard'], pause: ['menu', 'cancel'], bag: ['map'], fullscreen: [], maptog: [],
+  lock: ['lock'], auto: ['auto'],   // [auto]
 };
 /** HUD 탭 자리가 보낼 수 있는 입력 액션 */
 const ACT_OK = new Set(['sub', 'map', 'menu', 'mount', 'guard', 'skill1', 'skill2', 'ult', 'swap']);
 const LABEL = {
   attack: '공격', jump: '점프', dash: '대시', sub: '보조', skill1: 'S1', skill2: 'S2', ult: '필살', swap: '넘김', mount: '탑승', guard: '수호',
+  lock: '고정',   // [auto]
 };
 /** padHideButtons 를 정하지 않은 마을: 전투 버튼 숨김 (hub.js NO_COMBAT + 수호; 탈것은 남긴다) */
-const HUB_HIDE = ['attack', 'sub', 'skill1', 'skill2', 'ult', 'swap', 'guard'];
+const HUB_HIDE = ['attack', 'sub', 'skill1', 'skill2', 'ult', 'swap', 'guard', 'lock'];
 
 const TAU = Math.PI * 2;
 const ZERO = Object.freeze({ l: 0, r: 0, t: 0, b: 0 });
@@ -386,13 +392,16 @@ function layout(force = false) {
   const sd = Math.max(MIN_D, SYS_D * (fold ? clamp(kBase, 0.95 * dk, 1.15) : clamp(kBase, 0.96, 1.1)));
   const mid = ins.l + (W - ins.l - ins.r) / 2, sy = ins.t + SYS_M_WIDE + sd / 2;
   let sys;
-  if (fold) sys = foldSysPlan(W, ins, sd, fsShown(), town ? (fsShown() ? ['pause', 'bag', 'fullscreen'] : ['pause', 'bag']) : null);
+  // [auto] AUTO 는 전투가 있는 장면만 (마을·모든 동작 버튼을 숨긴 장면에는 없다)
+  const autoOn = !S.editor && !town && !S.hidden.has('attack');
+  if (fold) sys = foldSysPlan(W, ins, sd, fsShown(), town ? (fsShown() ? ['pause', 'bag', 'fullscreen'] : ['pause', 'bag']) : autoOn ? null : (fsShown() ? ['pause', 'bag', 'maptog', 'fullscreen'] : ['pause', 'bag', 'maptog']));
   else {
     sys = {
       pause: { id: 'pause', cx: mid - 6 - sd / 2, cy: sy, d: sd },
       bag: { id: 'bag', cx: mid + 6 + sd / 2, cy: sy, d: sd },
     };
     if (fsShown()) sys.fullscreen = { id: 'fullscreen', cx: mid + 6 + sd + 12 + sd / 2, cy: sy, d: sd };
+    if (autoOn) sys.auto = { id: 'auto', cx: mid - 6 - sd - 12 - sd / 2, cy: sy, d: sd };   // [auto] Ⅱ 왼쪽
   }
 
   // 스틱: 받침 그림(2.3R, 테 ≈ 2.28R) 바깥이 왼쪽·아래 여백 PAD_M
@@ -422,6 +431,7 @@ function layout(force = false) {
 function shownBtn(id) {
   if (S.editor) return true;
   if (S.hidden.has(id)) return false;
+  if (id === 'lock' && S.hidden.has('attack')) return false;   // [auto] 공격이 없는 장면(마을)에는 대상 고정도 없다
   // 탈것·수호: 늘 보이고, 쓸 수 없으면 어둡게 (hud_mobile §3 맨 아래 줄). 휴대폰 두 줄 배치(hudfix)도 빈 칸이 생기지 않게 같은 규칙
   return true;
 }
@@ -941,6 +951,9 @@ function stateChanged(L, w) {
   sput(S.editor ? S.editor.ver : 0);
   sput(L.W); sput(L.H);
   sput(drawAssetsReady ? 1 : 0);
+  // [auto] 자동 전투 단계 · 도는 고리 단계(8 Hz) · 대상 고정
+  const alv = game()?.autoHud?.level ?? 'off';
+  sput(alv === 'battle' ? 2 : alv === 'skill' ? 1 : 0); sput(L.sys?.auto && alv !== 'off' ? autoSpin() : 0); sput(w?.lockTarget ? 1 : 0);
   OCC.mask = occlusion(L, w); sput(OCC.mask);   // 영웅·보스 가림 (hudfix)
   sput(hudLayerSig());                          // HUD 선명 칸 (hudfix: hud_crisp.js)
   // 반짝임(필살 가득·각성 가능·질주)은 계속 움직인다
@@ -949,6 +962,8 @@ function stateChanged(L, w) {
   return SIG.ch;
 }
 function hashStr(s) { let h = 7; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return h; }
+/** [auto] AUTO 고리 단계 (초당 8단계 — 버튼 칸만 8 Hz 로 다시 그린다; 동작 줄이기면 멈춤) */
+function autoSpin() { return settings().reduceMotion === true ? 0 : Math.floor(now() / 125) % 8; }
 const GCD = { n: 0, cd: 0, max: 1, ready: false }; // 매 프레임 새 객체를 만들지 않는다 (읽고 바로 쓴다)
 function guardCd(c) {
   const gs = c?.guards, o = GCD;
@@ -1215,6 +1230,7 @@ function roundRect(g, x, y, w, h, r) {
 const SYS_ART = { pause: 'ui_menu', bag: 'ui_bag', maptog: 'ui_map' };
 function drawSysBase(g, id, cx, cy, d, pressed, art = false) {
   const h = d / 2;
+  if (id === 'auto') { autoBase(g, cx, cy, d, pressed, art); return; }   // [auto]
   if (art && (SYS_ART[id] || id === 'fullscreen')) { // 그린 아이콘 (오른쪽 위 아이콘 줄): 리벳 테 + 원형 그림 (⛶ 는 어두운 원판 + 금빛 모서리)
     g.save();
     g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.arc(cx, cy + 1.5, h * 0.98, 0, TAU); g.fill();
@@ -1258,6 +1274,56 @@ function drawSysBase(g, id, cx, cy, d, pressed, art = false) {
     }
   }
   g.restore();
+}
+
+/**
+ * [auto] AUTO 버튼 바탕 (구워 둔다): 어두운 원판 + 그린 작은 테(없으면 금빛 선) + 'AUTO' 글자. 켜짐 표시(도는 고리·단계 글자)는 draw 가 위에 그린다
+ */
+function autoBase(g, cx, cy, d, pressed, art) {
+  const h = d / 2;
+  g.save();
+  g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.arc(cx, cy + 1.5, h * 0.98, 0, TAU); g.fill();
+  const gr = g.createRadialGradient(cx - h * 0.3, cy - h * 0.35, h * 0.1, cx, cy, h * 0.9);
+  if (pressed) { gr.addColorStop(0, '#fff0b8'); gr.addColorStop(0.5, '#e8c872'); gr.addColorStop(1, '#8a2a1a'); } else { gr.addColorStop(0, '#3a1420'); gr.addColorStop(0.65, '#1a0710'); gr.addColorStop(1, '#0a0306'); }
+  g.fillStyle = 'rgba(8,2,6,0.94)'; g.beginPath(); g.arc(cx, cy, h * 0.92, 0, TAU); g.fill();
+  g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, h * 0.86, 0, TAU); g.fill();
+  const ring = art ? HUDM?.hudArt?.('ring_small') : null;
+  if (ring) { const z = d * 1.12; g.drawImage(ring, cx - z / 2, cy - z / 2, z, z); } else { g.lineWidth = 1.6; g.strokeStyle = 'rgba(232,200,114,0.85)'; g.beginPath(); g.arc(cx, cy, h * 0.9, 0, TAU); g.stroke(); }
+  g.restore();
+}
+/** [auto] AUTO 위 그림 (매 그리기): 단계에 따라 'AUTO' 색 · 도는 금빛 고리(8단계) · 아래 단계 글자 「스킬」/「전투」 */
+function drawAutoState(c, b, lv, step, pressed) {
+  const cx = b.cx, cy = b.cy, r = b.d / 2, on = lv && lv !== 'off';
+  c.save();
+  const fs = Math.max(11, Math.round(b.d * 0.25));
+  label(c, 'AUTO', cx, cy - (on ? r * 0.12 : 0), fs, pressed, on ? '#ffe7a0' : 'rgba(243,226,184,0.72)', FONT.num);
+  if (on) {
+    label(c, lv === 'battle' ? '전투' : '스킬', cx, cy + r * 0.42, Math.max(11, Math.round(b.d * 0.22)), pressed, lv === 'battle' ? '#ff9a7a' : '#9fd8ff');
+    const a0 = -Math.PI / 2 + (step % 8) * (TAU / 8);
+    c.lineCap = 'round';
+    c.lineWidth = Math.max(2.5, b.d * 0.07); c.strokeStyle = 'rgba(0,0,0,0.6)';
+    c.beginPath(); c.arc(cx, cy, r * 0.98, a0, a0 + 1.9); c.stroke();
+    c.lineWidth = Math.max(2, b.d * 0.05); c.strokeStyle = lv === 'battle' ? '#ffb070' : '#e8c872';
+    c.beginPath(); c.arc(cx, cy, r * 0.98, a0, a0 + 1.9); c.stroke();
+    c.fillStyle = '#fff2c0'; c.beginPath(); c.arc(cx + Math.cos(a0 + 1.9) * r * 0.98, cy + Math.sin(a0 + 1.9) * r * 0.98, Math.max(1.6, b.d * 0.04), 0, TAU); c.fill();
+  }
+  c.restore();
+}
+/** [auto] 대상 고정 버튼: 조준 고리 그림 + '고정' (고정 중이면 금빛·붉은 점 + '해제' 대신 테 강조) */
+function drawLock(c, cx, cy, r, pressed, locked) {
+  c.save();
+  const ink = pressed ? '#1a0608' : locked ? '#ffd27a' : COL.bone, s = r * 0.42, y = cy - r * 0.12;
+  c.strokeStyle = ink; c.fillStyle = ink; c.lineCap = 'round';
+  c.lineWidth = Math.max(1.6, r * 0.09);
+  c.beginPath(); c.arc(cx, y, s, 0, TAU); c.stroke();
+  for (let i = 0; i < 4; i++) {
+    const a = i * Math.PI / 2;
+    c.beginPath(); c.moveTo(cx + Math.cos(a) * s * 0.55, y + Math.sin(a) * s * 0.55); c.lineTo(cx + Math.cos(a) * s * 1.35, y + Math.sin(a) * s * 1.35); c.stroke();
+  }
+  c.fillStyle = locked ? '#ff3a4a' : ink; c.beginPath(); c.arc(cx, y, Math.max(1.6, s * 0.2), 0, TAU); c.fill();
+  label(c, LABEL.lock, cx, cy + r * 0.56, Math.max(11, r * 0.36), pressed, locked ? '#ffd27a' : null);
+  if (locked && !pressed) { c.lineWidth = 2.5; c.strokeStyle = '#ffcf6a'; c.beginPath(); c.arc(cx, cy, r - 2.5, 0, TAU); c.stroke(); }
+  c.restore();
 }
 
 /** 원형 재사용 대기 부채꼴 (남은 비율 f, 위에서 시계 방향) + 남은 초 */
@@ -1321,6 +1387,7 @@ function draw(L, w) {
     const pressed = isPressed(id);
     c.globalAlpha = pressed ? Math.max(0.95, op) : Math.max(0.5, op);
     blit(c, id, b.cx, b.cy, b.d, pressed);
+    if (id === 'auto') drawAutoState(c, b, game()?.autoHud?.level ?? 'off', autoSpin(), pressed);   // [auto]
     if (id === 'bag') { // 가방 찬 비율 알약 (가방 한도 300 칸, 중요 물품 포함 어림) — 글자 ≥ 12 CSS px, 어두운 알약 위
       const n = w?.state?.inventory?.length ?? 0;
       if (n > 0) bagPill(c, b, Math.min(100, Math.round((n / 300) * 100)), n >= 270);
@@ -1369,6 +1436,7 @@ function drawButton(c, L, id, b, pressed, alpha, p, run, w, tsec) {
       if (m && num(m.maxHp, 0) > 0) ring(c, cx, cy, r - 2.5, num(m.hp, 0) / m.maxHp, num(m.hp, 0) / m.maxHp < 0.3 ? '#ff5050' : '#e8a040', 2.5);
       break;
     }
+    case 'lock': drawLock(c, cx, cy, r, pressed, !!w?.lockTarget); break;   // [auto]
     case 'guard': {
       const gc = guardCd(S.cmp);
       if (!gc.n) c.globalAlpha *= 0.4;   // 수호신이 없으면 어둡게

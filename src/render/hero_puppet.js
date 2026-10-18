@@ -978,7 +978,7 @@ function swingSmear(c, E, K, P, W, s, ST, hasMain, tt) {
     c.closePath();
     const big = W.type === 'greatsword' ? 1.25 : 1;
     c.globalAlpha = a0 * (G.qual === 'high' ? 0.3 : 0.24) * big;
-    c.fillStyle = W.blade || '#c8ccd8'; c.fill();
+    c.fillStyle = W.type === 'staff' ? (W.glowC || '#fff2b0') : (W.blade || '#c8ccd8'); c.fill();   // 지팡이: 나무색 대신 빛 (갈색 부채처럼 보이지 않게)
     // 앞날(지금 칼끝 쪽) 밝은 테두리: 칼끝 줄의 최근 절반
     c.globalAlpha = a0 * 0.5;
     c.strokeStyle = '#f4f2ea'; c.lineWidth = 0.9 * big;
@@ -990,7 +990,7 @@ function swingSmear(c, E, K, P, W, s, ST, hasMain, tt) {
   for (const k of G.qual === 'high' ? SMEAR3 : SMEAR1) {
     const ex = lerp(st.e1x, s.e1x, k), ey = lerp(st.e1y, s.e1y, k), hx = lerp(st.h1x, s.h1x, k), hy = lerp(st.h1y, s.h1y, k);
     const w = st.w1 + dw * k;
-    c.globalAlpha = a0 * (0.1 + 0.2 * k);
+    c.globalAlpha = a0 * (0.1 + 0.2 * k) * (W.type === 'staff' || W.type === 'spear' ? 0.6 : 1);   // 긴 자루는 사이 잔상이 넓게 퍼져 갈비뼈처럼 보인다 → 옅게
     c.save(); boneXf(c, J.elbow, J.hand, ex, ey, hx, hy); blit(c, 'farm'); c.restore();
     if (hasMain) { drawWeapon(W, hx, hy, w, {}); gripPup(c, K, ex, ey, hx, hy, w, W.type, false); }
     else { c.save(); boneXf(c, J.elbow, J.hand, ex, ey, hx, hy); blit(c, 'hand'); c.restore(); }

@@ -264,16 +264,19 @@ function poseAir(P, vy) {
 /** 공중 (MOTION-FEEL): 박차고 오름(점프 첫 0.12초: 다리를 펴 바닥을 밀고 팔을 위로) → 오름 → 정점 웅크림(|vy| 작을 때) → 낙하(다리를 펴 내리고 팔을 벌림) */
 function poseAirV(P, vy, anim, at) {
   poseAir(P, vy);
-  if (anim === 'jump' && at < 0.14) {
-    const k = 1 - ease.outQuad(clamp(at / 0.14, 0, 1));
-    P.f1x = lerp(P.f1x, 4, k); P.f1y = lerp(P.f1y, -4, k); P.f2x = lerp(P.f2x, -4.5, k); P.f2y = lerp(P.f2y, -2, k);
-    P.t1 = lerp(P.t1, 1.0, k); P.t2 = lerp(P.t2, 1.1, k);
-    P.a1 -= 0.55 * k; P.a2 -= 0.7 * k; P.lean -= 0.05 * k; P.hd -= 0.08 * k; P.py -= 1.2 * k;
+  // ① 박차기 (점프 첫 0.16초): 다리를 쭉 펴 발끝으로 바닥을 밀고, 두 팔을 앞위로 휘둘러 올린다
+  if (anim === 'jump' && at < 0.16) {
+    const k = 1 - ease.outQuad(clamp(at / 0.16, 0, 1));
+    P.f1x = lerp(P.f1x, 3.5, k); P.f1y = lerp(P.f1y, -2.5, k); P.f2x = lerp(P.f2x, -5, k); P.f2y = lerp(P.f2y, -1.5, k);
+    P.t1 = lerp(P.t1, 1.15, k); P.t2 = lerp(P.t2, 1.25, k);
+    P.a1 -= 0.85 * k; P.a2 -= 0.95 * k; P.lean -= 0.1 * k; P.hd -= 0.12 * k; P.py -= 1.6 * k;
   }
-  const ap = 1 - clamp(Math.abs(vy) / 200, 0, 1), e = ap * ap * (3 - 2 * ap);
-  if (e > 0.001) { P.f1y -= 4.5 * e; P.f2y -= 3 * e; P.f1x += 1.5 * e; P.lean += 0.07 * e; P.a1 += 0.25 * e; P.a2 -= 0.25 * e; P.r2 = Math.min(1, P.r2 + 0.05 * e); }
-  const fk = clamp((vy - 250) / 650, 0, 1);
-  if (fk > 0) { P.f1y += 3 * fk; P.f2y += 4 * fk; P.a2 += 0.3 * fk; P.hd -= 0.06 * fk; }
+  // ② 정점 (|vy| < 230): 무릎을 가슴으로 당겨 웅크리고 팔을 벌려 균형 — 잠깐 떠 있는 느낌
+  const ap = 1 - clamp(Math.abs(vy) / 230, 0, 1), e = ap * ap * (3 - 2 * ap);
+  if (e > 0.001) { P.f1y -= 7 * e; P.f2y -= 5 * e; P.f1x += 2.5 * e; P.f2x += 1 * e; P.lean += 0.1 * e; P.hd -= 0.06 * e; P.a1 += 0.35 * e; P.a2 -= 0.3 * e; P.r1 = Math.min(1, P.r1 + 0.06 * e); P.r2 = Math.min(1, P.r2 + 0.06 * e); }
+  // ③ 낙하 (vy > 220): 다리를 아래로 뻗어 바닥을 찾고, 팔은 위로 들려 휘청 (망토·머리카락은 사슬 관성으로 위로 날린다)
+  const fk = clamp((vy - 220) / 600, 0, 1);
+  if (fk > 0) { P.f1y += 6 * fk; P.f2y += 7 * fk; P.f1x -= 1.5 * fk; P.a1 -= 0.25 * fk; P.a2 += 0.4 * fk; P.r2 = Math.min(1, P.r2 + 0.05 * fk); P.hd -= 0.1 * fk; P.lean -= 0.04 * fk; }
 }
 function airLegs(P) { P.py = -41; P.f1x = 8; P.f1y = -14; P.f2x = -6; P.f2y = -8; P.t1 = 0.45; P.t2 = 0.7; }
 function poseCrouch(P) {
@@ -634,7 +637,10 @@ function gunPose(P, S, p, K, ph, def, kind) {
   if (g & 2) { const sg = P.w2 > 1 ? 1 : -1; P.a2 += sg * kick * 0.42; P.w2 += sg * kick * 0.85; }
   if (def === AK.shoot_double) { P.lean -= kick * 0.28; P.px -= kick * 3; }
   // 몸 반동 (MOTION-FEEL): 어깨가 뒤로 밀리고 고개가 젖혀졌다 돌아옴 + 엉덩이가 살짝 뒤로 (조준 팔은 aimPup 이 이미 맞춤 → 몸통만)
-  else if (kick > 0.01) { P.lean -= kick * 0.12; P.px -= kick * 1.4; P.hd -= kick * 0.16; if (kind === 'stance') { P.py += kick * 0.8; P.f2x -= kick * 1.2; } }
+  else if (t >= h0 + kd) {   // 팔보다 느리게 풀리는 몸 반동 (0.09초에 1/e) — 어깨가 뒤로 밀리고 고개가 젖혀짐, 디딤발이 버팀
+    const kb = Math.exp(-(t - h0 - kd) * 11);
+    if (kb > 0.01) { P.lean -= kb * 0.2; P.px -= kb * 3; P.hd -= kb * 0.26; if (kind === 'stance') { P.py += kb * 1.4; P.f2x -= kb * 2.2; P.t2 += kb * 0.18; } }
+  }
   const m = p.muzzleT > 0 ? clamp(p.muzzleT / 0.06, 0, 1) : 0;
   S.fire1 = g & 1 ? m : 0; S.fire2 = g & 2 ? m : 0;
   S.t = t;
@@ -2379,7 +2385,7 @@ export function drawHero(ctx, p, world, opts = {}) {
   ctx.save();
   ctx.translate(ride ? ride.cx : p.cx, ride ? ride.bottom : p.bottom);
   // 타격 경직(히트스톱) 동안 조종 영웅이 미세하게 떨린다 (MOTION-FEEL 임팩트 강조 — 경직 길이·판정은 그대로, 실제 시간 world.rt 로 진동)
-  const hsK = G.main && mv && world && world.hitstop > 0 && !G.lowq ? clamp(world.hitstop / 0.05, 0, 1) : 0;
+  const hsK = G.main && mv && !ride && world && world.hitstop > 0 && !G.lowq ? clamp(world.hitstop / 0.05, 0, 1) : 0;
   if (hsK > 0) ctx.translate(Math.sin((world.rt ?? tt) * 95) * 0.9 * hsK * hs, 0);
   ctx.scale(fac * hs, hs);
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
@@ -2767,7 +2773,7 @@ function motionFx(c, E, K, p, mv, world, tt, hsK) {
     m.px = m.x; m.py = m.y;
     m.x = ox + f * hs * lx; m.y = oy + hs * ly; m.hx = ox + f * hs * hx; m.hy = oy + hs * hy;
     m.ang = Math.atan2(ly - hy, (lx - hx) * f);
-    if (W.type === 'gun') { tx0(P, s.h1x + cw * 4 - sw * -1.5, s.h1y + sw * 4 + cw * -1.5); m.gx = ox + f * hs * TX; m.gy = oy + hs * TY; }
+    if (W.type === 'gun') { const gl = L * 0.38; tx0(P, s.h1x + cw * gl + sw * 2.5, s.h1y + sw * gl - cw * 2.5); m.gx = ox + f * hs * TX; m.gy = oy + hs * TY; }   // 약실(손잡이에서 총열 쪽으로 38%, 위로 2.5px) — 탄피가 여기서 튄다
     m.ph = mv && ST.atk ? ST.ph : -1; m.u = ST.u; m.mvN = rig.mvN || 0; m.wt = W.type; m.anim = mv?.anim ?? null; m.fin = !!mv?.finisher;
     m.col = mv ? trailColor(K, mv) : K.trailC; m.ground = ly > -8 && E.p.onGround !== false;
     m.t = tt; m.seq++;

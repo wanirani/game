@@ -16,9 +16,9 @@ import { touchpad } from '../core/touchpad.js';
 import { PAD_SCENES } from '../core/game.js';
 
 const LAY = new Map();   // id → { c, key, ver }
-// 칸 캔버스는 모듈을 불러올 때 미리 만든다 (스테이지 도중 새 캔버스 0 — MASTER_PLAN §5.2). 칸 id 는 hud.js 의 7가지
+// 칸 캔버스는 모듈을 불러올 때 미리 만든다 (스테이지 도중 새 캔버스 0 — MASTER_PLAN §5.2). 칸 id 는 hud.js 의 7가지 + 마을 town_tr (hub.js)
 const POOL = [];
-for (let i = 0; i < 8; i++) POOL.push(mkCanvas());
+for (let i = 0; i < 10; i++) POOL.push(mkCanvas());   // [auto] +2: 마을 오른쪽 위 판(town_tr) · 여유
 export const HUD_CRISP_STATS = { bakes: 0 };
 
 let H = 0;
