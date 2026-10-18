@@ -22,6 +22,10 @@
 //             --check 와 함께면 모든 난이도에서 (world2 §15 목표 대신): 회차 행(s01–s20, 외전 제외)의 최댓값 ÷ 같은 영웅·난이도
 //             1회차 기준 실행의 2부(s14–s20) 최댓값 — 받는 피해(bossTaken·takenMed) ≤ 1.15 / 1.45 / 1.65 (N = 1 / 2 / 3 이상),
 //             보스 타수(bossHits) ≤ 1.15, 표의 숫자가 모두 유한. 하나라도 벗어나면 종료 코드 1.
+//   --nm [all|<영웅>,…] : 「악몽의 군주」 25 악몽 (Stage 5 P3b, tools/qa/lib/balance_nm.mjs — 기본 표는 계산하지 않는다). 위치 인자 난이도(normal | hard | …)로.
+//             영웅 = 위치 인자 영웅(기본 kael) · 'all' = 일곱 영웅 모두. 권장 레벨(이야기 + 10) 영웅의 보스 타수 ÷ 이야기 보스 타수, 보스 1타(모션 1.2) %,
+//             비틀기 위험 1타 %, 진짜 NmDirector 를 가짜 월드에서 120초 돌린 빈 길 통계 (laneMax · warnMin). --check: 타수 비 1.3–1.9 밖 ·
+//             1타 > 25% · laneMax > 1 · warnMin < 0.6 → 종료 코드 1 (모든 난이도에서 쓴다). --json · --secs S
 //   --asc all|t3|hidden|<id>[,<id>] : 초월 28 · 비전 7 을 그 2차 직업과 견준다 (classes_t3 §2.8 · §11.2; 기본 표는 계산하지 않는다).
 //             본체는 tools/qa/lib/balance_asc.mjs (+ Node 결투장 tools/qa/lib/asc_arena.mjs — 진짜 Player·hitTarget·특성 훅).
 //             ① §2.8 자료 예산 ② 능력치 층(닫힌 식: Δ공격 효율 ≤ +12 %, ΔeHP ≤ +15 %, Lv 70/75) ③ 특성 층(대본 싸움 mob/pack/boss/kill/calm/siege:
@@ -63,7 +67,7 @@ import * as NG from '../src/game/ngplus.js';
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes('--' + n);
 const optv = (n, d) => { const i = argv.indexOf('--' + n); return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : d; };
-const pos = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && ['--seed', '--k', '--ng', '--asc', '--md', '--seeds', '--secs', '--modes'].includes(argv[i - 1])));
+const pos = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && ['--seed', '--k', '--ng', '--asc', '--md', '--seeds', '--secs', '--modes', '--nm'].includes(argv[i - 1])));
 const diffId = pos[0] || 'normal', charId = pos[1] || 'kael';
 const CHECK = flag('check'), STRICT = flag('strict'), JSON_OUT = flag('json'), ACC = flag('acc'), DOCS = flag('docs');
 const SEED = Number(optv('seed', 1)) || 1;
@@ -89,8 +93,10 @@ if (ASC_SEL) {
     });
   } catch (e) { console.error(String(e?.message ?? e)); process.exitCode = 2; }
 }
+// ── 「악몽의 군주」 (--nm): 기본 표 대신 tools/qa/lib/balance_nm.mjs (악몽 목표는 난이도마다 같은 띠 — --check 를 모든 난이도에서 쓴다) ──
+const NM_SEL = flag('nm') ? optv('nm', '') || charId : null;
 // world2 §15 목표는 보통 난이도 기준 실행에만 있다 (MASTER_PLAN §5.1: hard/inferno 는 --check 없이 표만 검토)
-if (!ASC_SEL && CHECK && !NG_N && diffId !== 'normal') { console.error(`--check 는 normal 난이도에서만 쓴다 (world2 §15 목표 = 보통 난이도 기준). ${diffId} 는 --check 없이 표로 검토하세요.`); process.exit(2); }
+if (!ASC_SEL && !NM_SEL && CHECK && !NG_N && diffId !== 'normal') { console.error(`--check 는 normal 난이도에서만 쓴다 (world2 §15 목표 = 보통 난이도 기준). ${diffId} 는 --check 없이 표로 검토하세요.`); process.exit(2); }
 const KNOBS = {};
 for (const part of String(optv('k', '')).split(',').map((s) => s.trim()).filter(Boolean)) {
   const [name, v] = part.split('=');
@@ -234,7 +240,7 @@ function simulate(cid, ng = 0) {
     for (const d of st.docs || []) if (!docsSoFar.includes(d)) docsSoFar.push(d);
     if (!st.side) mainLevel = level;   // 외전(s21 · s22, docs/specs/ex_s21.md · ex_s22.md)은 2부 엔딩 뒤 — 행만 보여 주고 끝 레벨 판정에는 넣지 않는다
   });
-  return { rows, endLevel: mainLevel, sideEndLevel: level, combo };
+  return { rows, endLevel: mainLevel, sideEndLevel: level, combo, heroAt };   // heroAt: --nm (balance_nm.mjs) 이 같은 영웅 모형을 쓴다
 }
 
 // ── world2 §15 목표 (카엘 기준). plv = 메인 퀘스트 경험치를 받은 실제 진입 레벨 ±2 (BAL-TUNE, bal_audit.md 권고 4 — 예전 띠 39–43 … 60–65 는 퀘스트 경험치를 뺀 값)
@@ -286,7 +292,15 @@ if (NG_N && !ASC_SEL) {
   if (CHECK && fails.length) process.exitCode = 1;
 }
 
-const run = NG_N || ASC_SEL ? null : simulate(charId);
+if (NM_SEL && !ASC_SEL && !NG_N) {
+  const heroes = NM_SEL === 'all' ? Object.keys(CHARACTERS) : String(NM_SEL).split(',').map((x) => x.trim()).filter(Boolean);
+  const bad = heroes.filter((h) => !CHARACTERS[h]);
+  if (bad.length) { console.error(`--nm: 알 수 없는 영웅 ${bad.join(',')} (${Object.keys(CHARACTERS).join(', ')} | all)`); process.exit(2); }
+  const { runNm } = await import('./qa/lib/balance_nm.mjs');
+  try { process.exitCode = await runNm({ simulate, dmg, D: diff, diffId, heroes, check: CHECK, json: JSON_OUT, secs: Math.max(20, Number(optv('secs', 120)) || 120) }); }
+  catch (e) { console.error(String(e?.stack ?? e)); process.exitCode = 2; }
+}
+const run = NG_N || ASC_SEL || NM_SEL ? null : simulate(charId);
 let ratio = null;   // 영웅 ÷ 카엘 (1부 s11–s13 평균)
 if (run && charId !== 'kael' && !STRICT) {
   const k = simulate('kael');

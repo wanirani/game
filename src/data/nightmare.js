@@ -34,33 +34,37 @@ const P1 = { hpMul: 1.6, atkMul: 1.1, spMul: 1.15 };
 const P2 = { hpMul: 1.5, atkMul: 1.05, spMul: 1.12 };
 const row = (stage, boss, twist, base, o = {}) => ({ id: `nm_${stage}`, boss, stage, twist, ...base, reward: { rarity: 4 }, ...o });
 
-/** 25 악몽 (스테이지 순서) */
+/**
+ * 25 악몽 (스테이지 순서). hpMul 은 P3b 의 tools/balance.mjs --nm 로 맞춘 값 (2026-10-18, 카엘 · 보통/어려움 · 일곱 영웅 가운데값):
+ *  권장 레벨(이야기 + 10) 영웅의 보스 타수 ÷ 이야기 보스 타수가 1.3–1.9 (가운데 ≈ 1.57) 안에 들게.
+ *  이야기 레벨이 영웅의 직업 단계(10·25 레벨)를 막 넘기는 장(s01–s03 · s07–s08 · s11–s12)은 권장 레벨 영웅이 훨씬 세서 배율이 크게 달라진다.
+ */
 const ROWS = [
-  row('s01', 'b_nightwing', 'blood_rain', P1),
-  row('s02', 'b_banshee', 'minions', P1, { minions: ['skeleton', 'zombie', 'ghost'] }),
-  row('s03', 'b_dullahan', 'no_potion', P1),
-  row('s04', 'b_crimson', 'brand', P1),
-  row('s05', 'b_bonedragon', 'cursed_floor', P1),
-  row('s06', 'b_grimoire', 'no_sub', P1),
-  row('s07', 'b_chimera', 'cursed_floor', P1),
-  row('s08', 'b_leviathan', 'dark', P1),
-  row('s09', 'b_colossus', 'doom_clock', P1),
-  row('s10', 'b_frostqueen', 'no_potion', P1),
-  row('s11', 'b_death', 'brand', P1),
-  row('s12', 'b_dracula', 'blood_rain', P1),
-  row('s13', 'b_chaos', 'dark', P1, { reward: { rarity: 5 } }),
-  row('s14', 'b_narkissa', 'cursed_floor', P2),
-  row('s15', 'b_moloch', 'blood_rain', P2),
-  row('s16', 'b_dagon', 'minions', P2, { minions: ['merman', 'sunken_priest', 'abyss_angler'] }),
-  row('s17', 'b_ziz', 'brand', P2),
-  row('s18', 'b_mara', 'doom_clock', P2),
-  row('s19', 'b_behemoth', 'minions', P2, { minions: ['fungal_husk', 'frog_demon', 'slime'] }),
-  row('s20', 'b_nihil', 'cursed_floor', P2, { reward: { rarity: 5 } }),
-  row('s21', 'b_argen', 'blood_rain', P2),
-  row('s22', 'b_nemain', 'brand', P2),
-  row('s23', 'b_hagen', 'minions', P2, { minions: ['wolf', 'snow_wolf', 'frozen_knight'] }),
-  row('s24', 'b_bride', 'cursed_floor', P2),
-  row('s25', 'b_charon', 'doom_clock', P2),
+  row('s01', 'b_nightwing', 'blood_rain', P1, { hpMul: 1.25 }),
+  row('s02', 'b_banshee', 'minions', P1, { hpMul: 1.7, minions: ['skeleton', 'zombie', 'ghost'] }),
+  row('s03', 'b_dullahan', 'no_potion', P1, { hpMul: 1.35 }),
+  row('s04', 'b_crimson', 'brand', P1, { hpMul: 1.3, atkMul: 1.05 }),   // 갑주군주는 이야기에서도 초반 보스 가운데 가장 아프게 친다 (1타 ≤ 25% 를 지키려고 공격 배율만 2부 값)
+  row('s05', 'b_bonedragon', 'cursed_floor', P1, { hpMul: 1.4 }),
+  row('s06', 'b_grimoire', 'no_sub', P1, { hpMul: 1.75 }),
+  row('s07', 'b_chimera', 'cursed_floor', P1, { hpMul: 2.0 }),
+  row('s08', 'b_leviathan', 'dark', P1, { hpMul: 1.95 }),
+  row('s09', 'b_colossus', 'doom_clock', P1, { hpMul: 1.45 }),
+  row('s10', 'b_frostqueen', 'no_potion', P1, { hpMul: 1.52 }),   // 보통(이야기 Lv 28)과 어려움(Lv 30, 25 레벨 전직 뒤)의 이야기 싸움 길이가 크게 달라 띠 가운데로
+  row('s11', 'b_death', 'brand', P1, { hpMul: 1.85 }),
+  row('s12', 'b_dracula', 'blood_rain', P1, { hpMul: 1.95 }),
+  row('s13', 'b_chaos', 'dark', P1, { hpMul: 1.75, reward: { rarity: 5 } }),
+  row('s14', 'b_narkissa', 'cursed_floor', P2, { hpMul: 1.5 }),
+  row('s15', 'b_moloch', 'blood_rain', P2, { hpMul: 1.4 }),
+  row('s16', 'b_dagon', 'minions', P2, { hpMul: 1.3, minions: ['merman', 'sunken_priest', 'abyss_angler'] }),
+  row('s17', 'b_ziz', 'brand', P2, { hpMul: 1.3 }),
+  row('s18', 'b_mara', 'doom_clock', P2, { hpMul: 1.3 }),
+  row('s19', 'b_behemoth', 'minions', P2, { hpMul: 1.3, minions: ['fungal_husk', 'frog_demon', 'slime'] }),
+  row('s20', 'b_nihil', 'cursed_floor', P2, { hpMul: 1.35, reward: { rarity: 5 } }),
+  row('s21', 'b_argen', 'blood_rain', P2, { hpMul: 1.25 }),
+  row('s22', 'b_nemain', 'brand', P2, { hpMul: 1.3 }),
+  row('s23', 'b_hagen', 'minions', P2, { hpMul: 1.3, minions: ['wolf', 'snow_wolf', 'frozen_knight'] }),
+  row('s24', 'b_bride', 'cursed_floor', P2, { hpMul: 1.35 }),
+  row('s25', 'b_charon', 'doom_clock', P2, { hpMul: 1.3 }),
 ];
 export const NM = Object.freeze(Object.fromEntries(ROWS.map((r) => [r.id, Object.freeze(r)])));
 export const NM_IDS = Object.freeze(ROWS.map((r) => r.id));
