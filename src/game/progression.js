@@ -1,7 +1,7 @@
 // 성장: 경험치/레벨업/스킬 포인트/전직 조건
 import { expToNext, MAX_LEVEL } from './stats.js';
 import { CLASSES } from '../data/classes.js';
-import { CHARACTERS } from '../data/characters.js';
+import { CHARACTERS, CHAR_ORDER } from '../data/characters.js';
 import { bus } from '../core/events.js';
 import { STARTER_SKILLS } from '../data/skills.js';
 import { ASCENSIONS, ASC_REQ, ascListFor, unlocksOf, p2Cleared, flagEver } from '../data/ascensions.js';   // 초월·비전 (classes_t3 §2.4)
@@ -14,12 +14,143 @@ export function addExp(hero, amount) {
   let ups = 0;
   while (hero.level < MAX_LEVEL && hero.exp >= expToNext(hero.level)) {
     hero.exp -= expToNext(hero.level);
-    hero.level++;
+    levelUpOnce(hero);
     ups++;
-    hero.sp = (hero.sp ?? 0) + (hero.level % 5 === 0 ? 2 : 1);
     bus.emit('levelUp', { charId: hero.charId, level: hero.level });
   }
   return ups;
+}
+/** 레벨 하나 오름 + 스킬 포인트 (레벨업마다 1, 5의 배수 레벨은 2 — spForLevel 과 같은 규칙). addExp 와 대기 헌터 나눔이 함께 쓴다 */
+function levelUpOnce(hero) {
+  hero.level++;
+  hero.sp = (hero.sp ?? 0) + (hero.level % 5 === 0 ? 2 : 1);
+}
+
+// ───────────────────────── [s5:p4b] 「함께 걷는 사냥꾼」 대기 헌터 경험치 나눔 (plan §5 P4b · K4) ─────────────────────────
+// addExpShared(state, n, activeHero, ctx): 지금 영웅은 addExp 그대로(레벨업 이벤트·SP 그대로), 이 세이브에 상태가 있는 다른 헌터
+// (state.heroes — 헌터 교체에서 한 번이라도 고른, 합류한 헌터)는 n 의 50 %. 처치·보스·메인/부가 퀘스트 보상이 모두 여기로 온다.
+//  · 상한: 가장 높은 헌터 레벨 − 1 (MAX_LEVEL 이하). 상한에 닿은 대기 헌터는 받지 않는다 (넘친 몫은 버린다)
+//  · 따라잡기 ×2: 가장 높은 헌터보다 5 레벨 이상 낮으면 켜지고, 3 레벨 이내가 되면 꺼진다 (4 레벨 차이는 그대로 유지). 큰 보상 한 번에
+//    여러 레벨이 오르면 레벨마다 다시 판정한다 (3 이내가 된 레벨부터 ×1). 켜짐 여부·나머지 소수점은 실행 중 메모리에만 (세이브 필드 없음 —
+//    앱을 다시 켜면 4 레벨 차이는 꺼짐으로 시작한다)
+//  · 대기 헌터의 레벨업은 같은 규칙으로 SP 를 준다. bus 'levelUp' 은 내지 않는다 (스테이지 「SP +n — 메뉴 › 스킬」 토스트·진동은 지금 영웅 몫).
+//    업적의 레벨 지표는 가장 높은 레벨이라 대기 헌터(상한 −1)로는 바뀌지 않는다
+//  · 제외: 아케이드 임시 세이브(state.arcade), 이야기 모드가 아닌 월드(보스 러시·서바이벌·연습·탑·마을), 시련·악몽(world.trial ·
+//    world.opts.nightmare — 시련은 gainExp 자체가 0), 다른 세이브의 월드, ctx.temp
+//  · 상태가 없는 합류 헌터(아직 한 번도 고르지 않음)는 받지 않는다 — 처음 고를 때 ensureHero 가 최고 레벨 − 3 으로 만든다
+export const BENCH = { share: 0.5, catchUp: 2, onGap: 5, offGap: 3 };
+const benchMem = new WeakMap();   // hero → { on, carry } (실행 중에만)
+/** 실행 중 합계 (결과 화면 = 스테이지 동안의 차이, 헌터 교체 카드 = 아직 보지 않은 대기 레벨업). 세이브에 쓰지 않는다 */
+export const BENCH_LEDGER = { active: 0, bench: 0, per: {}, unseen: {} };
+const isObjP = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+const heroOk = (h) => isObjP(h) && Number.isInteger(h.level) && h.level >= 1;
+
+/** 이 상황에서 대기 헌터가 경험치를 나눠 받는가 (state.arcade · 이야기 모드가 아닌 월드 · 시련 · 악몽 · 다른 세이브 · ctx.temp 는 아니다) */
+export function benchAllowed(state, ctx = null) {
+  if (!isObjP(state) || state.arcade || !isObjP(state.heroes)) return false;
+  if (ctx?.temp) return false;
+  const w = ctx?.world;
+  if (w && (w.mode !== 'story' || w.trial || w.arcade || w.opts?.nightmare || (w.state && w.state !== state))) return false;
+  return true;
+}
+/** 가장 높은 헌터 레벨 (상태가 있는 헌터 중) */
+export function topLevel(state) {
+  let t = 0;
+  for (const h of Object.values(isObjP(state?.heroes) ? state.heroes : {})) if (heroOk(h) && h.level > t) t = h.level;
+  return t;
+}
+/** 대기 헌터 목록 (CHAR_ORDER 순, 지금 영웅 제외) */
+export function benchHeroes(state, activeHero = null) {
+  const H = isObjP(state?.heroes) ? state.heroes : {};
+  const act = activeHero ?? H[state?.charId] ?? null;
+  return CHAR_ORDER.filter((id) => Object.hasOwn(H, id) && Object.hasOwn(CHARACTERS, id)).map((id) => H[id]).filter((h) => heroOk(h) && h !== act && h.charId !== act?.charId);
+}
+/** 따라잡기 ×2 가 켜져 있는가 (헌터 교체 카드 꼬리표와 나눔이 같은 규칙: ≥5 켜짐, ≤3 꺼짐, 4 는 지난 상태) */
+export function catchUpOn(state, hero, top = topLevel(state)) {
+  if (!heroOk(hero)) return false;
+  const gap = top - hero.level;
+  if (gap >= BENCH.onGap) return true;
+  if (gap <= BENCH.offGap) return false;
+  return !!benchMem.get(hero)?.on;
+}
+/** 대기 헌터 한 명에게 base(×1 기준 몫)를 준다 → { charId, exp, ups, from, to, catchUp } | null */
+function shareTo(hero, base, top) {
+  const cap = Math.min(MAX_LEVEL, top - 1);
+  let m = benchMem.get(hero);
+  if (!m) { m = { on: false, carry: 0 }; benchMem.set(hero, m); }
+  m.on = catchUpOn(null, hero, top);
+  if (hero.level >= cap) { m.carry = 0; return null; }
+  if (!Number.isFinite(hero.exp) || hero.exp < 0) hero.exp = 0;
+  const from = hero.level, on0 = m.on;
+  let left = base + (Number.isFinite(m.carry) ? m.carry : 0), got = 0, ups = 0;
+  m.carry = 0;
+  while (hero.level < cap) {
+    const need = expToNext(hero.level) - hero.exp;
+    if (need <= 0) { hero.exp -= expToNext(hero.level); levelUpOnce(hero); ups++; continue; }   // 손상된 기록: 이미 다음 레벨 몫
+    if (!(left > 0)) break;
+    const mult = m.on ? BENCH.catchUp : 1;
+    if (left * mult + 1e-9 >= need) {
+      left -= need / mult; got += need;
+      hero.exp = 0; levelUpOnce(hero); ups++;
+      if (top - hero.level <= BENCH.offGap) m.on = false;
+      continue;
+    }
+    const add = Math.floor(left * mult + 1e-9);
+    hero.exp += add; got += add;
+    m.carry = Math.max(0, left - add / mult);
+    left = 0;
+  }
+  if (hero.level >= cap) m.carry = 0;   // 상한: 넘친 몫은 버린다
+  if (!got && !ups) return null;
+  return { charId: hero.charId, exp: got, ups, from, to: hero.level, catchUp: on0 };
+}
+/**
+ * K4 경험치 획득: 지금 영웅(addExp 그대로) + 대기 헌터 나눔 → { ups, bench: [{charId, exp, ups, from, to, catchUp}], benchExp }.
+ * ctx = { world, source: 'kill'|'boss'|'quest', temp } — world 가 있으면 그 월드의 모드로 나눔 여부를 정한다 (benchAllowed)
+ */
+export function addExpShared(state, n, activeHero, ctx = null) {
+  const out = { ups: 0, bench: [], benchExp: 0 };
+  const amt = Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
+  if (!heroOk(activeHero) || !(amt > 0)) return out;
+  const lv0 = activeHero.level;
+  out.ups = addExp(activeHero, amt);
+  if (lv0 < MAX_LEVEL) BENCH_LEDGER.active += amt;
+  if (!benchAllowed(state, ctx)) return out;
+  const top = topLevel(state), base = amt * BENCH.share;
+  for (const h of benchHeroes(state, activeHero)) {
+    const r = shareTo(h, base, top);
+    if (!r) continue;
+    out.bench.push(r); out.benchExp += r.exp;
+    const p = (BENCH_LEDGER.per[r.charId] ??= { exp: 0, ups: 0 });
+    p.exp += r.exp; p.ups += r.ups;
+    if (r.ups) BENCH_LEDGER.unseen[r.charId] = (BENCH_LEDGER.unseen[r.charId] ?? 0) + r.ups;
+  }
+  BENCH_LEDGER.bench += out.benchExp;
+  return out;
+}
+/** 결과 화면용 표시점 (지금까지의 합계 사본) */
+export function benchMark() {
+  const per = {};
+  for (const [k, v] of Object.entries(BENCH_LEDGER.per)) per[k] = { exp: v.exp, ups: v.ups };
+  return { active: BENCH_LEDGER.active, bench: BENCH_LEDGER.bench, per };
+}
+/** 표시점 이후 → { active, bench, heroes: [{charId, exp, ups}] } (받은 헌터만, CHAR_ORDER 순) */
+export function benchSince(mark) {
+  const m = mark && typeof mark === 'object' ? mark : { active: 0, bench: 0, per: {} };
+  const heroes = [];
+  for (const id of CHAR_ORDER) {
+    const now = BENCH_LEDGER.per[id], was = m.per?.[id];
+    const exp = (now?.exp ?? 0) - (was?.exp ?? 0), ups = (now?.ups ?? 0) - (was?.ups ?? 0);
+    if (exp > 0 || ups > 0) heroes.push({ charId: id, exp, ups });
+  }
+  return { active: BENCH_LEDGER.active - (m.active ?? 0), bench: BENCH_LEDGER.bench - (m.bench ?? 0), heroes };
+}
+/** 헌터 교체 카드의 「레벨 업」 배지: 아직 보지 않은 대기 레벨업 수. clear = true 면 본 것으로 (모두 또는 그 헌터) */
+export function benchUnseen(charId = null, clear = false) {
+  if (charId == null) { const all = { ...BENCH_LEDGER.unseen }; if (clear) for (const k of Object.keys(BENCH_LEDGER.unseen)) delete BENCH_LEDGER.unseen[k]; return all; }
+  const n = BENCH_LEDGER.unseen[charId] ?? 0;
+  if (clear) delete BENCH_LEDGER.unseen[charId];
+  return n;
 }
 
 /** 전직 가능한 다음 클래스 목록 */

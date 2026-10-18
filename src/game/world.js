@@ -25,7 +25,7 @@ import { Projectile, Hitbox } from './projectiles.js';
 import { Pickup } from './pickups.js';
 import { Candle, Chest, SavePoint, Statue, Door, MovingPlatform, CrumblePlatform, Lamp, StoryTrigger, NPC } from './props.js';
 import { rollCandleLoot, rollEnemyLoot, rollChestLoot, rollBossLoot } from './loot.js';
-import { addExp } from './progression.js';
+import { addExpShared, benchMark } from './progression.js';   // [s5:p4b] K4 대기 헌터 경험치 나눔
 import { addItem, canAdd, queueLoot, deliverLoot } from './inventory.js';
 import { currentHero } from './state.js';
 import { createBackground } from '../render/background.js';
@@ -1188,7 +1188,10 @@ export class World {
   }
   gainExp(n) {
     if (n <= 0) return;
-    const ups = addExp(this.hero, n);
+    // [s5:p4b] K4: 지금 영웅 + 대기 헌터 50 % (progression.addExpShared — 이야기 모드 월드만 나눈다). 첫 획득 때 결과 화면용 시작점을 남긴다
+    //   (지금 영웅의 레벨·경험치 · 합계 표시점; 결과 화면이 막대 「전 → 후」와 「대기 헌터 N명 +X EXP」 줄을 그린다)
+    this.expLog ??= { charId: this.hero?.charId, lv: this.hero?.level ?? 1, exp: this.hero?.exp ?? 0, mark: benchMark() };
+    const ups = addExpShared(this.state, n, this.hero, { world: this }).ups;
     if (ups > 0) {
       const p = this.player;
       p.refreshStats();

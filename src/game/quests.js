@@ -5,7 +5,7 @@
 //  questProgressText(state, qid)    : '구울 처치 7/12' 같은 진행 문자열
 //  questProgress(state, qid)        : { cur, need, done }
 //  canClaim(state, qid)             : 목표 달성 & 보상 미수령 여부
-//  claimQuest(state, qid)           : 보상 지급(재료 전달 퀘스트는 재료 소모) → { gold, exp, items:[{id,qty,name}], levelUps } | null
+//  claimQuest(state, qid)           : 보상 지급(재료 전달 퀘스트는 재료 소모) → { gold, exp, items:[{id,qty,name}], levelUps, benchExp?, benchN? } | null (benchExp = 대기 헌터에게 나눈 합 — progression.addExpShared)
 //  activeQuests(state) / completedQuests(state) : 퀘스트 정의 배열 (메인 먼저)
 //  questStatus(state, qid)          : 'locked'|'available'|'active'|'ready'|'done'
 //  rewardText(qid)                  : '1,200 G · EXP 800 · 강화석 ×2'
@@ -23,7 +23,7 @@ import { BOSSES } from '../data/bosses.js';
 import { STAGES } from '../data/stages.js';
 import { NPCS } from '../data/npcs.js';
 import { countItem, consumeByBase, grantItem } from './inventory.js';
-import { addExp } from './progression.js';
+import { addExpShared } from './progression.js';   // [s5:p4b] K4 보상 경험치도 대기 헌터와 나눈다
 
 let G = null;
 let claiming = 0; // 보상 지급 중 발생하는 itemPicked/levelUp 등의 중첩 처리 방지
@@ -187,7 +187,7 @@ export function claimQuest(s, qid) {
   const hero = s.heroes?.[s.charId];
   claiming++;
   try {
-    if (hero && out.exp) out.levelUps = addExp(hero, out.exp);
+    if (hero && out.exp) { const r = addExpShared(s, out.exp, hero, { source: 'quest' }); out.levelUps = r.ups; out.benchExp = r.benchExp; out.benchN = r.bench.length; }   // [s5:p4b] K4
     for (const i of r.items || []) {
       if (!ITEMS[i.id]) continue;
       const qty = i.qty ?? 1;
