@@ -82,7 +82,7 @@ export default {
     return {
       D: new Drawer(), P: new Particles(q.particles), shards: new Shards(28), q, lt: null, pf: 0, fp: null, jolt: 0, lvl: 0, gk: 0, melt: 0,
       tb: boss.tankBroke ?? -9, fusedT: boss.fused ? -9 : null, wasFused: !!boss.fused, crumbled: false, sparkAcc: 0, dustAcc: 0,
-      ff: { head: false, body: false, legs: false, tank: false, chest: false }, flashL: 0, flashW: [0, 0], E: [0, 0], H: [0, 0], G: [0, 0], L: [0, 0],
+      ff: { head: false, body: false, legs: false, tank: false, chest: false }, flashL: 0, flashW: [0, 0], E: [0, 0], Eo: [0, 0], H: [0, 0], G: [0, 0], L: [0, 0],
       path: new Float32Array(16), cum: new Float32Array(8), edge: [],
     };
   },
@@ -200,6 +200,7 @@ function put(D, st, p, pv, x, y, rot, sx, sy, lvl, deep, on, fill = 'y', alpha =
   return p;
 }
 /** 금이 부품 아래쪽부터 차오른다: 잘라 그린 금 변형 + 부드러운 띠 + 경계 결정 자리 기록 */
+const EDGE_U = [0.28, 0.52, 0.76];
 function goldFill(D, st, img, pp, x, y, rot, sx, sy, alpha, k) {
   const ctx = D.ctx, w = img.width, h = img.height, cut = h * (1 - k);
   D.set(pp[0], pp[1], x, y, rot, sx, sy);
@@ -214,7 +215,7 @@ function goldFill(D, st, img, pp, x, y, rot, sx, sy, alpha, k) {
   ctx.restore();
   ctx.globalAlpha = ga;
   // 경계 위의 세 점 (지역 좌표) — goldEdges 가 결정 · 반짝임을 그린다
-  if (st.edge.length < 24) for (const u of [0.28, 0.52, 0.76]) { const o = D.pt(pp[0], pp[1], w * u, cut, x, y, rot, sx, sy, [0, 0]); st.edge.push(o[0], o[1], rot); }
+  if (st.edge.length < 24) for (let j = 0; j < 3; j++) { const o = D.pt(pp[0], pp[1], w * EDGE_U[j], cut, x, y, rot, sx, sy, st.Eo); st.edge.push(o[0], o[1], rot); }
 }
 /** 굳어 가는 경계의 금 결정 (지역 틀에서, D.end() 뒤 — 지역 변환은 save 안에 남아 있다) */
 function goldEdges(ctx, st, t, q) {
