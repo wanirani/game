@@ -536,7 +536,8 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
   await pad(page, BTN.RIGHT);
   await pad(page, BTN.A);
   await tickUntil(page, "g.top.name === 'tower' && t.phase === 'gate'", 200, '안식처 → 출구');
-  const shown = await blessToast();
+  let shown = null;   // 앞 알림(이정표 등)이 줄을 차지하면 그 뒤에 차례로 뜬다
+  for (let i = 0; i < 30; i++) { await ticks(page, 10); shown = await blessToast(); if (shown.t != null && shown.t < shown.max) break; }
   assert.ok(!shown.deferred && shown.t != null && shown.t < shown.max, `창을 닫은 뒤 축복 알림 ${JSON.stringify(shown)}`);
   assert.deepEqual(await page.evaluate(() => window.__game.top.pactOrder), [], '거절 → 계약 없음');
   const after10 = await page.evaluate(() => ({ taken: { ...window.__game.top.taken }, last: window.__game.top.takenOrder.at(-1) }));

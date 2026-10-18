@@ -1,6 +1,6 @@
 // Performance budgets — MASTER_PLAN §5.2 (mobile settings first), feel §8, platform §5.2/§6.4, request #59.
 //
-//   node tools/qa/perf_budget.mjs [--profiles desk,phone1low,phone1,phone2,tablet,fhd2x] [--quick] [--scenes s05,s17r1,…]
+//   node tools/qa/perf_budget.mjs [--profiles desk,phone1low,phone1,phone2,tablet,fold,fhd2x] [--quick] [--scenes s05,s17r1,…]
 //                                 [--frames 60] [--throttle 4]
 //
 // Deterministic counts: each page runs with the game loop frozen (lib/step.mjs); every measured frame is one game step
@@ -65,6 +65,7 @@ const PROFILES = {
   phone1: { vp: 'phone1', tier: 'medium', quality: 'medium', touch: true },
   phone2: { vp: 'phone2', tier: 'medium', quality: 'medium', touch: true },
   tablet: { vp: 'tablet', tier: 'medium', quality: 'medium', touch: true },
+  fold: { vp: 'fold_open', tier: 'medium', quality: 'medium', touch: true },   // Galaxy Z Fold 펼침 (1000×756 CSS, DPR 2.6) — 터치 태블릿 등급
   fhd2x: { vp: 'fhd2x', tier: 'high', quality: 'high', touch: false },
 };
 const BUDGET = {
@@ -80,8 +81,8 @@ const BUDGET = {
 };
 // live canvas budget with the menu open (platform §6.7, MASTER_PLAN §5.2). Lead decision in W4 round 1 (R1-REQ-342/455):
 // the render side alone holds ~25 MB on phone1 (tile chunks, ultfx boot pools, hit fx, touch pad), so 20 MB was not
-// reachable; touch phones 32 MB, phone1 at low quality 26 MB, touch tablet 40 MB, desktop profiles report only.
-const LIVE_MB = { phone1: 32, phone2: 32, phone1low: 26, tablet: 40 };
+// reachable; touch phones 32 MB, phone1 at low quality 26 MB, touch tablet and fold (open) 40 MB, desktop profiles report only.
+const LIVE_MB = { phone1: 32, phone2: 32, phone1low: 26, tablet: 40, fold: 40 };   // fold = 터치 태블릿(짧은 변 ≥ 700 CSS px) 예산
 const LIVE_MENU_ADD_MB = 8;   // opening the menu may add at most this much over the stage baseline
 const profiles = list(args.profiles, ['desk', 'phone1low']);
 // an unknown profile or scene id must not turn into a vacuous green run (0 checks → exit 0)
