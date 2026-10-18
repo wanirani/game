@@ -363,7 +363,9 @@ export class WorldMapScene extends Scene {
     // [playb] P18 출발 표식 이름표(에슈빌)도 자리를 고른다: 아래 → 왼쪽 → 오른쪽 → 위 중 노드 원·화면 끝과 가장 덜 겹치는 곳
     //  (예전에는 늘 표식 아래라 첫 노드 「불타는 마을」 바로 밑·옆에 깔렸다)
     let start = null, ss = Infinity;
-    for (const cd of [{ x: sp.x - sw / 2, y: sp.y + 10, pref: 0 }, { x: sp.x - 30 - sw, y: sp.y - 14, pref: 0.4 }, { x: sp.x + 30, y: sp.y - 14, pref: 0.5 }, { x: sp.x - sw / 2, y: sp.y - 44, pref: 0.7 }]) {
+    // [matrix] 낮은 화면(휴대폰 가로)은 노드 그림이 상대적으로 커서 이름표가 그림에 붙어 보였다 (replay p08) → 몇 px 더 띄운다
+    const gp = L.short ? 6 : 0;
+    for (const cd of [{ x: sp.x - sw / 2, y: sp.y + 10 + gp, pref: 0 }, { x: sp.x - 30 - gp - sw, y: sp.y - 14, pref: 0.4 }, { x: sp.x + 30 + gp, y: sp.y - 14, pref: 0.5 }, { x: sp.x - sw / 2, y: sp.y - 44 - gp, pref: 0.7 }]) {
       const b = { x: cd.x, y: cd.y, w: sw, h: 17 };
       let sc = cd.pref;
       for (const [cx, cy, r, , cn] of circles) { if (!cn) continue; const d = boxDist(b, cx, cy); if (d < r + 6) sc += 2 + 2 * (1 - d / (r + 6)); }
@@ -378,15 +380,15 @@ export class WorldMapScene extends Scene {
     for (const i of order) {
       const n = pg.nodes[i], q = xy[i], open = this.isOpen(n), R = 21, h = 17;
       const w = wOf(open ? n.stage.name ?? '' : '???');
-      const up = P.cleared?.[n.id]?.rank ? 16 : 9, yUp = q.y - R - up - h + 4, yDn = q.y + R + 2;
+      const up = P.cleared?.[n.id]?.rank ? 16 : 9, yUp = q.y - R - up - h + 4 - gp, yDn = q.y + R + 2 + gp;
       const cands = [
         { side: 'down', x: q.x - w / 2, y: yDn, pref: 0 },
         { side: 'up', x: q.x - w / 2, y: yUp, pref: 0.35 },
         { side: 'downR', x: q.x - 10, y: yDn, pref: 0.5 },
         { side: 'downL', x: q.x + 10 - w, y: yDn, pref: 0.55 },
-        { side: 'right', x: q.x + R + 8, y: q.y - 9, pref: 0.7 },
+        { side: 'right', x: q.x + R + 8 + gp, y: q.y - 9, pref: 0.7 },
         { side: 'upR', x: q.x - 10, y: yUp, pref: 0.75 },
-        { side: 'left', x: q.x - R - 8 - w, y: q.y - 9, pref: 0.8 },
+        { side: 'left', x: q.x - R - 8 - gp - w, y: q.y - 9, pref: 0.8 },
         { side: 'upL', x: q.x + 10 - w, y: yUp, pref: 0.85 },
       ];
       let best = cands[0], bs = Infinity;
