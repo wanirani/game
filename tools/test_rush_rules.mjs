@@ -87,7 +87,17 @@ async function openGame(ctx, { init = null } = {}) {
   await page.waitForFunction(() => window.__game && window.__game.scenes.length > 0 && window.__game.scenesReady !== false, null, { timeout: 60000 });
   return { page, errs };
 }
-const waitTop = (page, name, ms = 30000) => page.waitForFunction((n) => window.__game.top?.name === n && (window.__game.fade?.a ?? 0) < 0.05, name, { timeout: ms });
+async function waitTop(page, name, ms = 30000) {
+  // 멈춘 루프(freeze)라면 장면 전환(페이드)이 돌도록 잠깐 풀고, 도착하면 다시 멈춘다
+  const wasFrozen = await page.evaluate(() => { const g = window.__game, f = !!g._pageHidden; if (f) { g._pageHidden = false; g.last = performance.now(); } return f; });
+  try {
+    await page.waitForFunction((n) => window.__game.top?.name === n && (window.__game.fade?.a ?? 0) < 0.05, name, { timeout: ms });
+    if (wasFrozen) await freeze(page);
+  } catch (e) {
+    const st = await page.evaluate(() => ({ top: window.__game.top?.name, scenes: window.__game.scenes.map((s) => s.name), fade: window.__game.fade?.a, hidden: window.__game._pageHidden })).catch(() => null);
+    throw new Error(`장면 ${name} 을 기다리다 시간 초과 ${JSON.stringify(st)}`);
+  }
+}
 const freeze = (page) => page.evaluate(() => { window.__game._pageHidden = true; });
 const ticks = (page, n) => page.evaluate((n) => { const g = window.__game; for (let i = 0; i < n; i++) { try { g.input?.pollFrame?.(); } catch { /* */ } g.tick(1 / 60); } g.render?.(); }, n);
 /** 조건(식: g = game, t = 보스 러시 장면, w = world, p = 영웅)이 참이 될 때까지 스텝 → 걸린 스텝, 못 하면 예외 */
@@ -113,6 +123,7 @@ async function tickUntil(page, pred, max = 1500, what = pred) {
 }
 /** 보스 러시 시작 (헌터 선택 건너뜀: arcade.startArcade — 헌터 선택 화면이 부르는 것과 같은 입구) */
 async function startRush(page, cfg, charId = 'kael') {
+  await page.evaluate(() => { const g = window.__game; g._pageHidden = false; g.last = performance.now(); });   // 앞 판이 멈춘 루프를 다시 돌린다 (장면 전환 페이드)
   await page.evaluate(async ([cfg, charId]) => {
     const A = await import('/src/scenes/front/arcade.js');
     A.startArcade(window.__game, { kind: 'bossrush', diff: 'normal', preset: 1, ...cfg }, charId);
@@ -276,6 +287,7 @@ test('릴레이: 라운드 N = 순서[N % 4] · 그 헌터의 빌드 · 동료/�
   assert.equal(setup.queue.length, 6);
   assert.match(setup.call, /헌터 4명 교대/);
   const seen = [];
+  let seraPool = null;
   for (let r = 0; r < 6; r++) {
     await tickUntil(page, `t.phase === 'fight' && t.round === ${r}`, 1500, `라운드 ${r + 1} 전투`);
     const info = await page.evaluate(async (r) => {
@@ -288,11 +300,15 @@ test('릴레이: 라운드 N = 순서[N % 4] · 그 헌터의 빌드 · 동료/�
       const rh = ref.heroes[id], rs = S.computeStats(ref, rh), ps = S.computeStats(st, p.hero);
       const keys = ['hp', 'mp', 'atk', 'def', 'mag', 'res', 'crit', 'critDmg', 'moveSpd', 'atkSpd'];
       const wpn = (s, h) => s.inventory.find((i) => i.uid === h.equip.weapon)?.baseId ?? null;
+      // 장비는 부가 능력치가 무작위라 같은 빌드를 두 번 만들어도 수치가 다르다 → 칸마다 (베이스 · 등급 · 강화) 를 비교하고,
+      // 능력치는 '그 영웅의 빌드로 계산한 값' 과 지금 영웅의 값이 같은지 (넘어온 버프·탈것 보너스 없음) 본다
+      const gear = (s, h) => ['weapon', 'body', 'head', 'cloak'].map((k) => { const it = s.inventory.find((i) => i.uid === h.equip[k]); return it ? `${k}:${it.baseId}:${it.rarity}:${it.level}` : `${k}:-`; }).join(' ');
       return {
         id, expect: t.relayHeroAt(r), charId: st.charId, worldHero: w.hero === p.hero, players: w.entities.filter((e) => e.kind === 'player').length,
         cls: [p.hero.classId, rh.classId], lv: [p.hero.level, rh.level], slots: [JSON.stringify(p.hero.slots), JSON.stringify(rh.slots)],
-        wpn: [wpn(st, p.hero), wpn(ref, rh)], stats: keys.map((k) => [k, ps[k], rs[k]]).filter(([, a, b]) => a !== b),
-        live: keys.map((k) => [k, p.stats[k], rs[k]]).filter(([, a, b]) => a !== b),
+        wpn: [wpn(st, p.hero), wpn(ref, rh)], gear: [gear(st, p.hero), gear(ref, rh)], skills: [JSON.stringify(p.hero.skills), JSON.stringify(rh.skills)],
+        asc: [p.hero.asc ?? null, rh.asc ?? null], wtype: [S.computeStats(st, p.hero).weaponType ?? null, rs.weaponType ?? null],
+        live: keys.map((k) => [k, p.stats[k], ps[k]]).filter(([, a, b]) => a !== b),
         buffs: Object.keys(p.buffs).filter((k) => p.buffs[k] > 0), mount: p.mount, hp: p.hp, maxHp: p.stats.hp, call: t.call?.sub ?? null,
         companions: w.entities.filter((e) => e.kind === 'companion' || e.kind === 'mount').length, cmpActive: !!w.companions?.active,
       };
@@ -308,13 +324,14 @@ test('릴레이: 라운드 N = 순서[N % 4] · 그 헌터의 빌드 · 동료/�
     assert.equal(info.slots[0], info.slots[1], `${info.id} 기술 칸`);
     assert.equal(info.wpn[0], info.wpn[1], `${info.id} 무기`);
     assert.ok(info.wpn[0], `${info.id} 무기 장착`);
-    assert.deepEqual(info.stats, [], `${info.id} 능력치 = 헌터 선택 빌드 ${JSON.stringify(info.stats)}`);
-    assert.deepEqual(info.live, [], `${info.id} 영웅 능력치(버프 없음) ${JSON.stringify(info.live)}`);
+    assert.equal(info.gear[0], info.gear[1], `${info.id} 장비 (베이스·등급·강화) = 헌터 선택 빌드`);
+    assert.equal(info.skills[0], info.skills[1], `${info.id} 배운 기술·레벨`);
+    assert.deepEqual(info.asc[0], info.asc[1]); assert.deepEqual(info.wtype[0], info.wtype[1], `${info.id} 무기 종류`);
+    assert.deepEqual(info.live, [], `${info.id} 영웅 능력치 = 자기 빌드로 계산한 값 (넘어온 버프·보너스 없음) ${JSON.stringify(info.live)}`);
     assert.deepEqual(info.buffs, [], `${info.id} 넘어온 버프 없음`);
     assert.equal(info.mount, null, '탈것 없음');
     assert.equal(info.companions, 0, '동료·탈것 엔티티 없음'); assert.equal(info.cmpActive, false, '아케이드는 동료 시스템이 쉰다');
     if (r >= 1 && r <= 3) assert.equal(info.hp, info.maxHp, `처음 나온 ${info.id}: 체력 가득`);
-    if (r >= 1) assert.match(info.call ?? '', new RegExp(`차례`), `라운드 호출에 헌터 이름 ${info.call}`);
     if (r === 5) break;
     // 다음 교대 전에 앞 헌터에게 '넘어가면 안 되는 것'을 붙인다: 버프 · 무한 수명 스킬 연출 · 동료/탈것 · 주인이 영웅인 소환물 · 영웅 탄
     await page.evaluate(async (r) => {
@@ -324,22 +341,41 @@ test('릴레이: 라운드 N = 순서[N % 4] · 그 헌터의 빌드 · 동료/�
       const mk = (kind, o = {}) => { const e = new SkillFx({ x: p.cx, y: p.cy, w: 20, h: 20, life: 1e9, d: {} }); e.kind = kind; Object.assign(e, o); w.add(e); return e; };
       window.__leak = [mk('effect'), mk('companion', { owner: p }), mk('mount', { rider: p }), mk('summon', { owner: p }), mk('projectile', { team: 'player' })];
       window.__oldPlayer = p;
-      if (r === 0) p.hp = Math.round(p.stats.hp * 0.5);   // 세라는 체력 절반으로 내보낸다 → 5라운드에 다시 나올 때 절반 + 35% 회복
+      if (r === 0) p.hp = Math.round(p.stats.hp * 0.5);   // 세라는 체력 절반으로 내보낸다 → 5라운드에 다시 나올 때 그 체력 + 35% 회복
+      if (r === 3) {
+        // 교대 직후 라운드 사이 회복을 엿본다 (누가 · 얼마에서 · 얼마나)
+        window.__heals = [];
+        const proto = Object.getPrototypeOf(p), orig = proto.heal;
+        proto.heal = function (amount, show) { window.__heals.push({ id: this.hero?.charId, before: this.hp, amount }); return orig.call(this, amount, show); };
+        window.__unheal = () => { proto.heal = orig; };
+      }
     }, r);
     await killBoss(page);
     await tickUntil(page, `t.phase === 'ready' && t.round === ${r + 1}`, 600, `라운드 ${r + 1} → ${r + 2} 교대`);
     const after = await page.evaluate(() => {
       const w = window.__game.world, old = window.__oldPlayer;
-      return { leakAlive: window.__leak.filter((e) => !e.dead && w.entities.includes(e)).map((e) => e.kind), oldIn: w.entities.includes(old), oldDead: old.dead, same: w.player === old, buffs: Object.keys(w.player.buffs).filter((k) => w.player.buffs[k] > 0) };
+      const t = window.__game.scenes.find((s) => s.name === 'bossrush');
+      return { leakAlive: window.__leak.filter((e) => !e.dead && w.entities.includes(e)).map((e) => e.kind), oldIn: w.entities.includes(old), oldDead: old.dead, same: w.player === old, buffs: Object.keys(w.player.buffs).filter((k) => w.player.buffs[k] > 0), call: t.call?.sub ?? null, id: w.player.hero.charId };
     });
+    const nm = { sera: '세라피나', victor: '빅터', bran: '브란', kael: '카엘' }[after.id];
+    assert.match(after.call ?? '', new RegExp(`${nm} 차례$`), `라운드 호출에 다음 헌터 이름 ${after.call}`);
     assert.deepEqual(after.leakAlive, [], `넘어간 것 ${after.leakAlive}`);
     assert.equal(after.oldIn, false, '앞 헌터는 월드에서 빠진다'); assert.equal(after.oldDead, true); assert.equal(after.same, false);
     assert.deepEqual(after.buffs, [], '새 헌터 버프 없음');
+    if (r === 0) {
+      // 세라가 나갈 때 남긴 체력 = 주머니 (절반으로 내보냈다 · 정리 시간 동안의 자연 회복은 그대로 둔다)
+      seraPool = await page.evaluate(() => { const t = window.__game.scenes.find((s) => s.name === 'bossrush'); return { ...t.relay.pools.sera, max: window.__oldPlayer.stats.hp }; });
+      assert.ok(seraPool.hp >= seraPool.max * 0.5 - 1 && seraPool.hp < seraPool.max * 0.9, `세라 주머니 = 남긴 체력 ${seraPool.hp}/${seraPool.max}`);
+    }
     if (r === 3) {
-      // 5라운드: 세라가 다시 나온다 — 1라운드에 남긴 체력(절반) + 라운드 사이 회복 35%
-      const back = await page.evaluate(() => { const p = window.__game.world.player; return { id: p.hero.charId, hp: p.hp, max: p.stats.hp }; });
+      // 5라운드: 세라가 다시 나온다 — 주머니 체력에서 시작해 라운드 사이 회복(35%, 직업 회복 배율 그대로)을 받는다
+      const back = await page.evaluate(() => { window.__unheal?.(); const p = window.__game.world.player; return { id: p.hero.charId, hp: p.hp, max: p.stats.hp, heals: window.__heals }; });
       assert.equal(back.id, 'sera');
-      assert.ok(Math.abs(back.hp - Math.min(back.max, Math.round(back.max * 0.5) + back.max * 0.35)) <= 2, `세라 체력 주머니 ${back.hp}/${back.max}`);
+      const h = back.heals.find((e) => e.id === 'sera');
+      assert.ok(h, `세라 라운드 사이 회복 ${JSON.stringify(back.heals)}`);
+      assert.ok(Math.abs(h.before - seraPool.hp) <= 1, `세라는 주머니 체력에서 시작 ${h.before} vs ${seraPool.hp}`);
+      assert.ok(Math.abs(h.amount - back.max * 0.35) <= 1, `회복량 = 최대 체력 35% ${h.amount}`);
+      assert.ok(back.hp > seraPool.hp && back.hp <= back.max, `세라 체력 주머니 ${seraPool.hp} → ${back.hp}/${back.max}`);
     }
   }
   assert.deepEqual(seen, ['sera', 'victor', 'bran', 'kael', 'sera', 'victor']);
@@ -349,7 +385,7 @@ test('릴레이: 라운드 N = 순서[N % 4] · 그 헌터의 빌드 · 동료/�
   await ticks(page, 200);
   const res = await page.evaluate(() => { const t = window.__game.top; return { title: t.res.title, rows: t.res.rows.map(([a, b]) => [a, typeof b === 'function' ? 'fn' : b]), relay: t.res.extra?.relay, state: window.__game.state?.arcade ? 'arcade' : 'restored' }; });
   assert.equal(res.title, 'BOSS RUSH COMPLETE');
-  assert.ok(res.rows.some(([a, b]) => a === '릴레이' && b === '세라 → 빅터 → 브란 → 카엘'), JSON.stringify(res.rows));
+  assert.ok(res.rows.some(([a, b]) => a === '릴레이' && b === '세라피나 → 빅터 → 브란 → 카엘'), JSON.stringify(res.rows));
   assert.ok(res.rows.some(([a, b]) => a === '기록' && b === '기기 기록'));
   assert.deepEqual(res.relay, ['sera', 'victor', 'bran', 'kael']);
   assert.equal(res.state, 'restored', '정산 뒤 임시 세이브를 거둔다');

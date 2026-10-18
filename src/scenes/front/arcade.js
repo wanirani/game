@@ -24,6 +24,8 @@
 //    (ArcadeClassScene)에서 그 헌터의 초월 넷 (+ 이 기기에서 해금·발견한 비전)을 고른다. 고른 길은 cfg.asc → buildArcadeState 가
 //    hero.asc · ascUnlocked 와 레벨(A.arcade.lv)을 맞춘다. 'arcadeClass' 는 startArcade 가 처음 쓸 때 등록한다 (reg_front.js 는 다른 담당)
 //  - 글자 크기 '크게'·'아주 크게': 카드 부제·설명 줄 간격을 ui.textFloor() 에서 잡는다
+//  - 규칙 코스 (Stage 5 P1b, RULE_COURSES — 번호 15~): 릴레이 · 무작위 6 (시드 줄: 무작위 / 오늘의 시드) · 휴식 없음. 같은 코스 줄에
+//    보이고 (menuCourses), 명예의 전당 코스 줄(visibleCourses)과 서버 순위표에는 넣지 않는다 — 기록은 기기에만 (「기기 기록」 표시)
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
@@ -134,8 +136,8 @@ export const RULE_COURSES = [
   { name: '휴식 없음', sub: '7~13장 보스 · 점수 ×1.5', from: 6, to: 13, rule: 'norest', short: '휴식 없음' },
 ];
 COURSES.push(...RULE_COURSES);
-/** 아케이드 메뉴 코스 줄에 규칙 코스를 보이는가 (시험이 끝나기 전에는 끈다 — ?course= 바로 열기·시험은 꺼져 있어도 된다) */
-export const RULE_COURSES_ON = false;
+/** 아케이드 메뉴 코스 줄에 규칙 코스를 보이는가 (tools/test_rush_rules.mjs 통과 뒤 켬 — 끄면 메뉴에서만 숨고 ?course= 바로 열기는 그대로) */
+export const RULE_COURSES_ON = true;
 /** 휴식 없음: 점수 배율 */
 export const NOREST_SCORE = 1.5;
 /** 무작위 6 시드 선택 (cfg.rushSeed) */

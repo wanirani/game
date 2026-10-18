@@ -7,6 +7,9 @@
 //    절대 나오지 않는다. 정예는 def.elite === false 인 적에겐 붙이지 않는다. 베테랑 이상 난이도는 가시 구덩이(arena 'pit') 방.
 //    적은 가시 없는 바닥 기둥의 양 끝에서 나온다. 웨이브마다 채색 적 리그를 미리 굽고, 풀에서 빠진 종류는 놓는다 (휴대폰 메모리).
 //  - 보스 러시: 다음 라운드 보스의 채색 리그를 대기 시간에 미리 굽는다 (preloadPainted). 2부 보스는 클래스가 준비된 것만 (arcade.js).
+//  - 보스 러시 규칙 코스 (arcade.js RULE_COURSES): 릴레이 — 라운드마다 합류한 다음 헌터로 교대 (relayHandover: 각 헌터는 헌터 선택
+//    빌드, 앞 헌터의 탄·소환물·동료·탈것·버프는 치우고 체력은 헌터마다 따로) · 무작위 6 — 시드로 고른 여섯 · 휴식 없음 — 라운드 사이
+//    회복 없음, 점수 ×1.5. 셋 다 localOnly: 보드가 없어 온라인 런 시작·제출을 하지 않는다 (정산 '기록: 기기 기록')
 //  - 보스 클래스는 늦게 받기 입구(game/bosses/lazy.js)로 만든다 (R1-REQ-229): 코스 시작 때 첫 보스부터 차례로, 서바이벌은 보스 웨이브를
 //    정할 때 미리 받는다. 아직 오지 않았으면 createBoss 가 대역(PendingBoss)을 돌려주고, 등장 연출 동안 진짜 보스로 바뀐다.
 //  - 결과·랭크 글자는 피 글씨(bloodText). 일시정지·결과는 uiScale 장면 (탭 대상 ≥ 44 CSS px, 기기별 글리프 안내)
@@ -58,6 +61,8 @@ import { GhostRecorder, GhostPlayer, decodeGhost } from '../../game/ghost.js';
 const NO_SPAWN = new Set(['medusa_spawner', 'mimic', 'golden_bat', 'killer_fish']);
 /** 릴레이 교대 때 치우는 엔티티 종류 (앞 헌터의 탄·판정·스킬 연출·소환물, 동료·탈것) — 직업 특성 표식 레이어(perkLayer)는 둔다 */
 const RELAY_CLEAR = new Set(['effect', 'hitbox', 'projectile', 'companion', 'mount']);
+/** 릴레이 안내에 쓰는 짧은 이름 (이름의 첫 낱말: '빅터 그림' → '빅터') */
+const heroShort = (id) => String(CHARACTERS[id]?.name ?? id ?? '').split(' ')[0];
 /** 가시 구덩이 방을 쓰는 난이도인가 (베테랑 이상). 모듈 최상위에서 import 값을 읽지 않도록 함수로 둔다 */
 const isHardDiff = (id) => { const h = DIFFICULTIES.findIndex((d) => d.id === 'hard'); return h >= 0 && DIFFICULTIES.findIndex((d) => d.id === id) >= h; };
 
@@ -423,7 +428,7 @@ export class BossRushScene extends ArcadeRunScene {
     } else w.run.hearts = Math.min(99, w.run.hearts + 10);
     this.phase = 'ready'; this.phaseT = 0;
     const id = this.queue[this.round];
-    const who = this.relay ? CHARACTERS[w.player?.hero?.charId]?.name : null;
+    const who = this.relay ? heroShort(w.player?.hero?.charId) : null;
     this.call = { main: `ROUND ${this.round + 1}`, sub: `${BOSSES[id]?.name ?? '???'}${who ? ` · ${who} 차례` : ''}`, color: '#ff4a5a', t: 0 };
     audio.sfx('ready');
   }
@@ -563,7 +568,7 @@ export class BossRushScene extends ArcadeRunScene {
       ['최대 콤보', `${Math.max(w.combo.best, w.combo.max)} HITS`],
     ];
     // 규칙 코스: 규칙 줄 + 「기기 기록」 (온라인 순위 줄 대신)
-    if (this.relay) rows.push(['릴레이', this.relay.order.slice(0, Math.max(1, Math.min(this.relay.order.length, this.round + 1))).map((id) => CHARACTERS[id]?.name ?? id).join(' → ')]);
+    if (this.relay) rows.push(['릴레이', this.relay.order.slice(0, Math.max(1, Math.min(this.relay.order.length, this.round + 1))).map(heroShort).join(' → ')]);
     if (this.rule === 'random6') rows.push(['시드', this.seedDaily ? `오늘의 시드 · ${ONLINE.kstDay().slice(4, 6)}/${ONLINE.kstDay().slice(6, 8)}` : `${this.seed}`]);
     if (this.rule === 'norest') rows.push(['점수 배율', `×${NOREST_SCORE} (휴식 없음)`]);
     if (this.localOnly) rows.push(['기록', '기기 기록']);
