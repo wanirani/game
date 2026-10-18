@@ -1494,7 +1494,7 @@ function drawButton(c, L, id, b, pressed, alpha, p, run, w, tsec) {
     }
     default: break;
   }
-  if (locked) { c.globalAlpha = Math.min(1, alpha); padlock(c, cx + r * 0.6, cy + r * 0.6, Math.max(8, r * 0.3)); }   // [playb] P04
+  if (locked) { c.globalAlpha = Math.min(1, alpha); padlock(c, cx + r * 0.62, cy - r * 0.62, Math.max(8, r * 0.3)); }   // [playb] P04 (오른쪽 위: 아래쪽 이름표를 가리지 않게)
   c.restore();
 }
 function ring(c, cx, cy, r, f, color, lw) {

@@ -302,9 +302,13 @@ export function stageLabel(sid) {
  * 수집(collect) → 그 재료를 떨구는 적이 나오는 스테이지 「획득처: …」, 보스·클리어 → 「장소: …」. 모르면 ''.
  * 갈 수 있는(해금된) 스테이지를 먼저, 최대 2곳 (+ '외'). 아직 아무 곳도 열리지 않았으면 가장 이른 곳 + '(아직 못 감)'
  */
-export function questWhere(state, q) {
+/**
+ * [playb] P07 퀘스트 목표를 진행할 수 있는 스테이지 id 전부 (questWhere 와 같은 규칙: 처치 → 그 적이 나오는 곳, 수집 → 떨구는 적이 나오는 곳,
+ * 보스·클리어 → 그 스테이지) → { ids, tag } (모르면 ids []). 월드맵 노드 의뢰 표식이 쓴다
+ */
+export function questStageIds(state, q) {
   const goal = q?.goal;
-  if (!goal || typeof goal !== 'object') return '';
+  if (!goal || typeof goal !== 'object') return { ids: [], tag: '' };
   return safe(() => {
     const S = STAGES(), order = STAGE_ORDER().filter((sid) => S[sid]);
     const has = (sid, ids) => (S[sid].enemies || []).some((e) => ids.includes(e));
@@ -316,6 +320,14 @@ export function questWhere(state, q) {
       tag = '획득처';
     } else if (goal.type === 'boss') ids = order.filter((sid) => S[sid].boss === goal.boss || BOSSES()[goal.boss]?.stageId === sid);
     else if (goal.type === 'clear' && S[goal.stage]) ids = [goal.stage];
+    return { ids, tag };
+  }, { ids: [], tag: '' });
+}
+export function questWhere(state, q) {
+  const goal = q?.goal;
+  if (!goal || typeof goal !== 'object') return '';
+  return safe(() => {
+    const { ids, tag } = questStageIds(state, q);
     if (!ids.length) return '';
     const un = Array.isArray(state?.progress?.unlocked) ? state.progress.unlocked : [];
     const open = ids.filter((sid) => un.includes(sid));

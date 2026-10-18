@@ -40,7 +40,9 @@ import { ensureState, uiPanel, uiButton } from './common.js';
 import { faceRect } from '../../render/portrait.js';
 import { glow } from './facades.js';
 import { freeSlots } from '../../game/inventory.js';   // [auto] 출발 전 가방 경고 (남은 칸 ≤ 5)
-import { requestDispose } from '../../game/pickup_compare.js';   // [auto] 「일괄 처분」 바로가기 (메뉴 › 인벤토리가 창을 연다)
+import { requestDispose } from '../../game/pickup_compare.js';
+import { questStageIds } from '../menu/access.js';   // [playb] P07 의뢰를 진행할 수 있는 스테이지 (퀘스트 게시판·메뉴 › 퀘스트의 「출현:」 과 같은 규칙)
+import { activeQuests, questProgress } from '../../game/quests.js';   // [auto] 「일괄 처분」 바로가기 (메뉴 › 인벤토리가 창을 연다)
 
 const RANK_COL = { SSS: '#ffe070', SS: '#ff5a4a', S: '#ffa640', A: '#c07cff', B: '#5aa8ff', C: '#7ee07e', D: '#a0a0a0' };
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI'];
@@ -143,6 +145,8 @@ export class WorldMapScene extends Scene {
     this.tok = null;
     this.bagAsk = null; this.bagOk = false;   // [auto] 가방 경고 창 · 이번 방문에서 「그대로 출발」 을 골랐다
     this._L = null; this._lab = [null, null]; this._tk = [null, null]; this._snap = null;
+    this.infoX = false;   // [playb] P18 낮은 화면(UI 높이 < 480): 정보판을 한 줄로 접어 두고, 노드를 고르거나 줄을 누르면 펼친다
+    this._qp = null;      // [playb] P07 의뢰 표식 캐시
     const P = st.progress;
     if (!P.flags || typeof P.flags !== 'object') P.flags = {};
     if (!Array.isArray(P.unlocked)) P.unlocked = ['s01'];
@@ -192,7 +196,7 @@ export class WorldMapScene extends Scene {
   }
   get state() { return this.game.state; }
   /** 토스트는 정보 패널 바로 위에서 위로 쌓는다 (탭·지도 위쪽 노드를 가리지 않고 '출발/잠김' 버튼 곁에 뜬다) */
-  get toastY() { return this.bagAsk && this._bagY != null ? this._bagY - 10 : this._L ? this._L.panelY - 16 : undefined; }   // [auto] 가방 경고 창 위로 비킨다
+  get toastY() { return this.bagAsk && this._bagY != null ? this._bagY - 10 : this._L ? (this._L.short && this.infoX ? this._L.infoY : this._L.panelY) - 16 : undefined; }   // [auto] 가방 경고 창 위로 비킨다
   get toastUp() { return !!this._L; }
   get nodes() { return this.pages?.[this.page]?.nodes ?? []; }
   cur() { return this.nodes[this.index] ?? null; }
@@ -323,10 +327,12 @@ export class WorldMapScene extends Scene {
     const g = this.game, W = g.uiW || g.viewW, H = g.uiH || g.viewH, touch = !!input.touchMode;
     const L = this._L;
     if (L && L.W === W && L.H === H && L.touch === touch) return L;
-    const IH = H < 480 ? 116 : 132;
-    const panelY = H - IH - (touch ? 12 : 26);
+    const short = H < 480;   // [playb] P18 휴대폰 가로 등 낮은 화면: 정보판을 한 줄 막대로 접는다 (지도·이름표는 막대 위까지 쓴다)
+    const IH = short ? 116 : 132, pad = touch ? 12 : 26;
+    const barH = short ? Math.max(48, Math.ceil(46 / Math.max(0.2, (g.cssScale || 1) * (g.uiK || 1))) + 8) : IH;   // 막대 안 「출발」 단추가 44 CSS px 이상
+    const panelY = H - barH - pad, infoY = H - IH - pad;   // panelY = 지도가 피하는 선 (접힌 막대 위) · infoY = 펼친 정보판 위
     const TB = 58, my = TB + 26;
-    return (this._L = { W, H, touch, TB, IH, panelY, mx: 56, my, mw: W - 112, mh: Math.max(120, panelY - 16 - my) });
+    return (this._L = { W, H, touch, TB, IH, short, barH, panelY, infoY, mx: 56, my, mw: W - 112, mh: Math.max(120, panelY - 16 - my) });
   }
   pos(mp, L = this.layout()) { return { x: L.mx + mp.x * L.mw, y: L.my + mp.y * L.mh }; }
 
@@ -354,7 +360,17 @@ export class WorldMapScene extends Scene {
     const sp = this.pos(PAGES[page].start, L);
     circles.push([sp.x, sp.y - 6, 26, 18, null]);
     const sw = wOf(PAGES[page].startName);
-    const boxes = [{ x: sp.x - sw / 2, y: sp.y + 10, w: sw, h: 17 }];
+    // [playb] P18 출발 표식 이름표(에슈빌)도 자리를 고른다: 아래 → 왼쪽 → 오른쪽 → 위 중 노드 원·화면 끝과 가장 덜 겹치는 곳
+    //  (예전에는 늘 표식 아래라 첫 노드 「불타는 마을」 바로 밑·옆에 깔렸다)
+    let start = null, ss = Infinity;
+    for (const cd of [{ x: sp.x - sw / 2, y: sp.y + 10, pref: 0 }, { x: sp.x - 30 - sw, y: sp.y - 14, pref: 0.4 }, { x: sp.x + 30, y: sp.y - 14, pref: 0.5 }, { x: sp.x - sw / 2, y: sp.y - 44, pref: 0.7 }]) {
+      const b = { x: cd.x, y: cd.y, w: sw, h: 17 };
+      let sc = cd.pref;
+      for (const [cx, cy, r, , cn] of circles) { if (!cn) continue; const d = boxDist(b, cx, cy); if (d < r + 6) sc += 2 + 2 * (1 - d / (r + 6)); }
+      if (b.y < L.TB + 4 || b.y + 17 > L.panelY - 2 || b.x < 4 || b.x + sw > L.W - 4) sc += 5;
+      if (sc < ss) { ss = sc; start = b; }
+    }
+    const boxes = [start];
     const map = new Map();
     // 열린 노드 먼저, 그중에서도 이웃이 많은(자리가 빡빡한) 노드부터
     const crowd = xy.map((q) => xy.reduce((a, o) => a + (Math.hypot(o.x - q.x, o.y - q.y) < 90 ? 1 : 0), -1));
@@ -384,15 +400,26 @@ export class WorldMapScene extends Scene {
         if (b.x < 4 || b.x + w > L.W - 4) s += 5;
         if (s < bs) { bs = s; best = cd; }
       }
-      const box = { x: best.x, y: best.y, w, h, side: best.side, hidden: false };
-      let clean = !(box.y < L.TB + 2 || box.y + h > L.panelY - 2 || box.x < 2 || box.x + w > L.W - 2);
-      for (const [cx, cy, , hard, cn] of circles) if (clean && cn !== n && boxDist(box, cx, cy) < hard) clean = false;
-      for (const o of boxes) if (clean && boxOverlap(box, o) > 4) clean = false;
+      let box = { x: best.x, y: best.y, w, h, side: best.side, hidden: false };
+      const cleanOf = (bx) => {
+        if (bx.y < L.TB + 2 || bx.y + h > L.panelY - 2 || bx.x < 2 || bx.x + w > L.W - 2) return false;
+        for (const [cx, cy, , hard, cn] of circles) if (cn !== n && boxDist(bx, cx, cy) < hard) return false;
+        for (const o of boxes) if (boxOverlap(bx, o) > 4) return false;
+        return true;
+      };
+      let clean = cleanOf(box);
+      // [playb] P18 겹치면 세로로 14 px 씩 (최대 3칸) 밀어 본다 — 자리를 찾으면 노드에서 이름표까지 1 px 끌어선을 긋는다
+      if (!clean && open) {
+        for (const dy of [14, -14, 28, -28, 42, -42]) {
+          const b2 = { x: best.x, y: best.y + dy, w, h, side: best.side, hidden: false, lead: true, ax: q.x, ay: q.y };
+          if (cleanOf(b2)) { box = b2; clean = true; break; }
+        }
+      }
       box.hidden = !clean;
       map.set(n.id, box);
       if (open && clean) boxes.push(box);
     }
-    return (this._lab[page] = { key, map, boxes });
+    return (this._lab[page] = { key, map, boxes, start });
   }
 
   /**
@@ -451,18 +478,19 @@ export class WorldMapScene extends Scene {
     // 지도 전환 (두 장뿐이라 어느 쪽 키든 맞은편 지도로)
     if (this.pages[1] && PAGE_KEYS.some((a) => input.pressed(a))) { this.setPage(1 - this.page); return; }
     const nodes = this.nodes, n = nodes.length;
-    const mv = (d) => { if (!n) return; this.index = (this.index + d + n) % n; audio.sfx('menu_move'); };
+    const mv = (d) => { if (!n) return; this.index = (this.index + d + n) % n; audio.sfx('menu_move'); if (L.short) this.infoX = true; };   // [playb] P18 고르면 펼친다
     if (input.pressed('left') || input.pressed('up')) mv(-1);
     if (input.pressed('right') || input.pressed('down')) mv(1);
     const hit = taps.hit(this);
     if (hit != null) {
       if (hit === 'close') { this.close(); return; }
       if (hit === 'go') { this.start(); return; }
+      if (hit === 'panel') { if (L.short) { this.infoX = !this.infoX; audio.sfx('menu_move'); } return; }   // [playb] P18 접기·펼치기
       if (hit === 'tab0' || hit === 'tab1') { this.setPage(hit === 'tab1' ? 1 : 0); return; }
       if (typeof hit === 'string' && hit.startsWith('node:')) {
         const i = this.nearestNode(Number(hit.slice(5)), L);
-        if (i === this.index) this.start();
-        else if (nodes[i]) { this.index = i; audio.sfx('menu_move'); }
+        if (i === this.index) { if (L.short && !this.infoX) { this.infoX = true; audio.sfx('menu_move'); } else this.start(); }   // [playb] P18 접혀 있으면 먼저 펼친다
+        else if (nodes[i]) { this.index = i; audio.sfx('menu_move'); if (L.short) this.infoX = true; }
         return;
       }
     }
@@ -644,8 +672,8 @@ export class WorldMapScene extends Scene {
       const a = k.a ? this.pos(k.a.stage.mapPos, L) : sp, b = this.pos(k.b.stage.mapPos, L);
       this.path(ctx, L, page, a, b, k.always || this.isOpen(k.b), t, k.col ?? PG.path, k.seed, k.wide ?? 1, !!k.side);
     }
-    if (page === 0) this.village(ctx, sp.x, sp.y); else this.gate(ctx, sp.x, sp.y, t);
     const lab = this.labels(L, page);
+    if (page === 0) this.village(ctx, sp.x, sp.y, lab.start); else this.gate(ctx, sp.x, sp.y, t, lab.start);
     // 말이 설 자리 (좁은 화면에서 빈 곳이 없으면 그 밑에 깔린 다른 이름표는 반쯤 가려 읽을 수 없으므로 그리지 않는다)
     const tsn = live && !this.reveal ? pg.nodes[sel] : null, ts = tsn ? this.tokenSpot(tsn, L, page) : null;
     // 노드 탭 영역: 52 px, 휴대폰에서는 CSS 46 px 이상 (이웃 노드와 겹치면 여유가 붙지 않으므로 영역 자체가 §6.3 최소를 넘어야 한다;
@@ -712,7 +740,7 @@ export class WorldMapScene extends Scene {
     ctx.restore();
   }
 
-  village(ctx, x, y) {
+  village(ctx, x, y, sb = null) {
     ctx.save();
     ctx.fillStyle = 'rgba(240,225,190,0.7)'; ctx.beginPath(); ctx.ellipse(x, y + 4, 26, 10, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = INK;
@@ -721,11 +749,11 @@ export class WorldMapScene extends Scene {
       ctx.beginPath(); ctx.moveTo(x + dx - 8 * s, y - 8 * s); ctx.lineTo(x + dx, y - 16 * s); ctx.lineTo(x + dx + 8 * s, y - 8 * s); ctx.fill();
     }
     ctx.fillStyle = '#ffb45a'; ctx.fillRect(x - 2, y - 5, 3, 3);
-    text(ctx, PAGES[0].startName, x, y + 22, { size: 12, weight: 800, family: FONT.title, align: 'center', color: INK, outline: 'rgba(240,225,190,0.9)', ow: 3 });
+    text(ctx, PAGES[0].startName, sb ? sb.x + sb.w / 2 : x, sb ? sb.y + 12 : y + 22, { size: 12, weight: 800, family: FONT.title, align: 'center', color: INK, outline: 'rgba(240,225,190,0.9)', ow: 3 });   // [playb] P18 고른 자리
     ctx.restore();
   }
   /** 에슈빌 균열문: 돌 아치 안에서 보랏빛 틈이 일렁인다 */
-  gate(ctx, x, y, t) {
+  gate(ctx, x, y, t, sb = null) {
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     glow(ctx, x, y - 12, 50, '#b060ff', 0.35 + Math.sin(t * 2) * 0.08);
@@ -741,7 +769,7 @@ export class WorldMapScene extends Scene {
     ctx.save(); ctx.fillStyle = g; ctx.translate(x, y); ctx.beginPath(); ctx.moveTo(-10, 6); ctx.lineTo(-10, -12); ctx.arc(0, -12, 10, Math.PI, 0); ctx.lineTo(10, 6); ctx.closePath(); ctx.fill(); ctx.restore();
     ctx.strokeStyle = `rgba(255,245,255,${0.7 + Math.sin(t * 5) * 0.25})`; ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.moveTo(x + 1, y - 21); ctx.lineTo(x - 3, y - 12); ctx.lineTo(x + 3, y - 6); ctx.lineTo(x - 1, y + 4); ctx.stroke();
-    text(ctx, PAGES[1].startName, x, y + 24, { size: 12, weight: 800, family: FONT.title, align: 'center', color: PAGES[1].label, outline: PAGES[1].outline, ow: 3 });
+    text(ctx, PAGES[1].startName, sb ? sb.x + sb.w / 2 : x, sb ? sb.y + 14 : y + 24, { size: 12, weight: 800, family: FONT.title, align: 'center', color: PAGES[1].label, outline: PAGES[1].outline, ow: 3 });   // [playb] P18
     ctx.restore();
   }
 
@@ -832,6 +860,8 @@ export class WorldMapScene extends Scene {
         ctx.beginPath(); ctx.arc(p.x + R * 0.85, p.y + R * 0.6, 3.6, 0, TAU); ctx.fill(); ctx.stroke();
       }
     }
+    // [playb] P07 진행 중인 의뢰를 진행할 수 있는 스테이지: 왼쪽 위 「!」 표식
+    if (open && !n.arena && this.questPins().has(n.id)) this.pin(ctx, p.x - R * 0.82, p.y - R * 0.82, sel ? 8 : 7);
     // 이름 (고른 노드는 drawMap 이 모든 노드 뒤에 그린다)
     if (open && !sel && box && !box.hidden) this.nodeLabel(ctx, PG, n.stage.name ?? '', box, false);
     ctx.restore();
@@ -839,6 +869,13 @@ export class WorldMapScene extends Scene {
   nodeLabel(ctx, PG, label, box, sel) {
     const o = { size: sel ? 14 : 12, weight: 800, family: FONT.title, color: sel ? PG.labelSel : PG.label, outline: PG.outline, ow: 4 };
     const by = box.y + 13;
+    if (box.lead) {   // [playb] P18 밀어 놓은 이름표: 노드 가장자리에서 1 px 끌어선
+      const tx = clamp(box.ax, box.x, box.x + box.w), ty = clamp(box.ay, box.y, box.y + box.h), d = Math.hypot(tx - box.ax, ty - box.ay);
+      if (d > 24) {
+        ctx.save(); ctx.strokeStyle = PG.label; ctx.globalAlpha = 0.7; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(box.ax + ((tx - box.ax) / d) * 22, box.ay + ((ty - box.ay) / d) * 22); ctx.lineTo(tx, ty); ctx.stroke(); ctx.restore();
+      }
+    }
     if (box.side === 'right') text(ctx, label, box.x + 4, by, { ...o, align: 'left' });
     else if (box.side === 'left') text(ctx, label, box.x + box.w - 4, by, { ...o, align: 'right' });
     else text(ctx, label, box.x + box.w / 2, by, { ...o, align: 'center' });
@@ -959,14 +996,88 @@ export class WorldMapScene extends Scene {
   }
 
   // ───────────────────────── 정보 패널 ─────────────────────────
+  /**
+   * [playb] P07 진행 중인(아직 끝나지 않은) 곁 의뢰가 목표를 진행할 수 있는 스테이지 → Map(stageId → [의뢰 이름…]). 1초마다 다시 센다
+   */
+  questPins() {
+    const t = this.t ?? 0;
+    if (this._qp && t - this._qp.t < 1 && t >= this._qp.t) return this._qp.m;
+    const m = new Map(), st = this.state;
+    try {
+      for (const q of activeQuests(st)) {
+        if (q.kind === 'main' || questProgress(st, q.id)?.done) continue;
+        for (const sid of questStageIds(st, q).ids) { if (!m.has(sid)) m.set(sid, []); m.get(sid).push(q.name ?? q.id); }
+      }
+    } catch (e) { console.warn('[worldmap] quest pins', e); }
+    this._qp = { t, m };
+    return m;
+  }
+  /** [playb] P18 접힌 정보 막대 (낮은 화면): 장 · 이름 · 최고 등급 · 의뢰 표식 + 「출발」 단추. 막대(단추 밖)를 누르면 펼친다 */
+  infoBar(ctx, L, n) {
+    const { W } = L, P = this.state.progress, page = this.page, s = n.stage, open = this.isOpen(n), rec = P.cleared?.[n.id];
+    const x = 14, y = L.panelY, w = W - 28, h = L.barH;
+    uiPanel(ctx, x, y, w, h, { glow: page === 1 ? 'rgba(160,90,255,0.35)' : 'rgba(180,20,40,0.3)' });
+    taps.add('panel', { x, y, w, h }, { kind: 'primary', owner: this, src: 'worldmap' });
+    const bw = 116, bh = h - 8, bx = x + w - bw - 6, cy = y + h / 2;
+    const chap = n.arena ? '투기장' : n.side ? '외전' : `${s.chapter}장`;
+    text(ctx, '▲', x + 18, cy + 5, { size: 13, weight: 900, color: page === 1 ? '#c8b0ff' : '#e8c872', align: 'center' });
+    text(ctx, chap, x + 34, cy + 5, { size: 13, weight: 800, family: FONT.title, color: page === 1 ? '#c8b0ff' : '#c8a060' });
+    ctx.font = font(13, 800, FONT.title);
+    const cw = ctx.measureText(chap).width;
+    const nx = x + 34 + cw + 8;
+    let right = bx - 10;
+    if (rec?.rank) { text(ctx, rec.rank, right - 12, cy + 7, { size: 20, weight: 900, family: FONT.logo, align: 'center', color: RANK_COL[rec.rank] ?? '#fff', ow: 3 }); text(ctx, '최고', right - 30, cy + 5, { size: 12, weight: 700, color: '#9d8f80', align: 'right' }); right -= 64; }
+    const pins = open ? this.questPins().get(n.id) : null;
+    if (pins?.length) { this.pin(ctx, right - 9, cy, 9); right -= 24; }
+    text(ctx, open ? s.name : '??? — 봉인된 땅', nx, cy + 6, { size: 17, weight: 800, family: FONT.title, color: open ? (page === 1 ? '#efe4ff' : '#f3d690') : '#8a7a70', maxWidth: Math.max(40, right - nx) });
+    this.goButton(ctx, n, { x: bx, y: y + 4, w: bw, h: bh }, true);
+  }
+  /** 출발 단추 (정보판·접힌 막대 공용) + 가방 경고 + 탭 자리 */
+  goButton(ctx, n, r, small = false) {
+    const page = this.page, open = this.isOpen(n), rec = this.state.progress.cleared?.[n.id];
+    this.goRect = r;
+    const can = open && (!n.arena || this.game.registry.arcade);
+    ctx.save();
+    if (can) { ctx.shadowColor = page === 1 ? `rgba(180,110,255,${0.4 + Math.sin(this.t * 4) * 0.2})` : `rgba(255,80,90,${0.4 + Math.sin(this.t * 4) * 0.2})`; ctx.shadowBlur = 18; }
+    const again = can && !n.arena && !!rec && !small;
+    uiButton(ctx, r, can ? (n.arena ? '입장' : '출발!') : '잠김', { selected: can, disabled: !can, size: small ? 18 : r.h < 64 && again ? 20 : 22, sub: again ? '다시 도전' : undefined });
+    ctx.restore();
+    // [auto] 가방 남은 칸 경고 (출발 단추 위)
+    if (can && !n.arena) { const free = this.bagFree(); if (free <= BAG_WARN) text(ctx, free <= 0 ? '⚠ 가방 가득' : `⚠ 가방 ${free}칸`, r.x + r.w / 2, r.y - 6, { size: 12, weight: 800, align: 'center', color: '#ffb060', ow: 2, maxWidth: r.w }); }
+    taps.add('go', r, { kind: 'primary', owner: this, src: 'worldmap' });
+  }
+  /** [playb] P07 의뢰 표식: 양피지 빛 원 + 「!」 */
+  pin(ctx, x, y, r = 7) {
+    ctx.save();
+    ctx.fillStyle = '#f0b880'; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = '#3a2006'; ctx.stroke();
+    text(ctx, '!', x, y + r * 0.55, { size: Math.round(r * 1.5), weight: 900, family: FONT.num, align: 'center', color: '#3a1404', ow: 0 });
+    ctx.restore();
+  }
   info(ctx, L) {
     const { W } = L, st = this.state, P = st.progress, page = this.page;
     const n = this.cur();
     if (!n) return;
+    if (L.short && !this.infoX) { this.infoBar(ctx, L, n); return; }   // [playb] P18 낮은 화면: 접힌 한 줄
     const s = n.stage, open = this.isOpen(n), rec = P.cleared?.[n.id];
-    const x = 14, y = L.panelY, w = W - 28, h = L.IH, cmp = h < 132;
+    // [playb] P18 낮은 화면에서 펼친 정보판이 고른 노드를 덮으면 위쪽(상단 바 아래)에 연다
+    const selY = this.pos(s.mapPos, L).y;
+    const top = L.short && selY > L.infoY - 28;
+    const x = 14, y = top ? L.TB + 4 : L.short ? L.infoY : L.panelY, w = W - 28, h = L.IH, cmp = h < 132;
     const glowC = page === 1 ? rgba(mix(s.color ?? '#b060ff', '#7a30ff', 0.5), 0.45) : n.id === 's13' ? 'rgba(160,60,255,0.5)' : 'rgba(180,20,40,0.35)';
     uiPanel(ctx, x, y, w, h, { glow: glowC });
+    if (L.short) taps.add('panel', { x, y, w, h }, { kind: 'primary', owner: this, src: 'worldmap' });   // 정보판(단추 밖)을 누르면 다시 접는다
+    // [playb] P07 이 스테이지에서 진행할 수 있는 의뢰 (정보판 왼쪽 위에 걸친 꼬리표)
+    const pins = open && !n.arena ? this.questPins().get(n.id) : null;
+    if (pins?.length) {
+      const qs = `의뢰: 「${pins[0]}」${pins.length > 1 ? ` 외 ${pins.length - 1}` : ''} 진행 가능`;
+      ctx.font = font(12, 800, FONT.body);
+      const tw = Math.min(w * 0.6, ctx.measureText(qs).width) + 34, ty = top ? y + h + 2 : y - 24;
+      ctx.fillStyle = 'rgba(20,10,6,0.88)'; ctx.fillRect(x + 12, ty, tw, 22);
+      ctx.strokeStyle = 'rgba(240,184,128,0.8)'; ctx.lineWidth = 1; ctx.strokeRect(x + 12.5, ty + 0.5, tw - 1, 21);
+      this.pin(ctx, x + 24, ty + 11, 7);
+      text(ctx, qs, x + 36, ty + 16, { size: 12, weight: 800, color: '#f0d0a0', maxWidth: tw - 30 });
+    }
     const Y = cmp ? [22, 50, 72, 97] : [26, 58, 84, 112];
     // 좁은 UI(UI 배율 1.3·1.5 의 16:9 화면 등, 패널 폭 < 860): 버튼·기록 칸을 줄이고 그만큼 수집 칸에 준다 (글자가 뭉개지지 않게)
     const narrow = w < 860;
@@ -1008,16 +1119,7 @@ export class WorldMapScene extends Scene {
       this.collect(ctx, n, kx, kw, cmp ? [y + 32, y + 62, y + 92] : [y + 36, y + 70, y + 104], narrow);
     }
     // 출발 버튼
-    this.goRect = { x: bx, y: y + h / 2 - bh / 2, w: bw, h: bh };
-    const can = open && (!n.arena || this.game.registry.arcade);
-    ctx.save();
-    if (can) { ctx.shadowColor = page === 1 ? `rgba(180,110,255,${0.4 + Math.sin(this.t * 4) * 0.2})` : `rgba(255,80,90,${0.4 + Math.sin(this.t * 4) * 0.2})`; ctx.shadowBlur = 18; }
-    const again = can && !n.arena && !!rec;
-    uiButton(ctx, this.goRect, can ? (n.arena ? '입장' : '출발!') : '잠김', { selected: can, disabled: !can, size: cmp && again ? 20 : 22, sub: again ? '다시 도전' : undefined });
-    ctx.restore();
-    // [auto] 가방 남은 칸 경고 (출발 단추 위)
-    if (can && !n.arena) { const free = this.bagFree(); if (free <= BAG_WARN) text(ctx, free <= 0 ? '⚠ 가방 가득' : `⚠ 가방 ${free}칸`, bx + bw / 2, this.goRect.y - 6, { size: 12, weight: 800, align: 'center', color: '#ffb060', ow: 2, maxWidth: bw }); }
-    taps.add('go', this.goRect, { kind: 'primary', owner: this, src: 'worldmap' });
+    this.goButton(ctx, n, { x: bx, y: y + h / 2 - bh / 2, w: bw, h: bh });
   }
   /** 수집 칸: 비전서 + (1부) 유물 / (2부) 별의 조각 · 세계의 심장 — 공허(s20)는 여섯 세계의 합계 */
   collect(ctx, n, kx, kw, rows, narrow = false) {
