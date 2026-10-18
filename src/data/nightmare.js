@@ -11,6 +11,8 @@ import { STAGES } from './stages.js';
 
 /** 악몽 색 (배너·후광·결과 줄) */
 export const NM_COLOR = '#e0203a';
+/** 실패 화면 엘리제의 한마디 (시련 failLine 자리) */
+export const NM_FAIL_LINE = '악몽도 결국 꿈이에요. 숨을 고르고, 다시 가요!';
 /** 레벨: 이야기 레벨 + 8, 영웅이 더 높으면 영웅 − 2 */
 export const NM_LEVEL_UP = 8;
 export const NM_LEVEL_UNDER_HERO = 2;

@@ -514,7 +514,7 @@ async function installT({ god }) {
   const { input } = await import('/src/core/input.js');
   g._pageHidden = true;   // rAF 루프는 돌지만 아무것도 하지 않는다 → 결과가 기계 부하와 무관
   const T = window.__T = { g, input, god, auto: true, autoEnding: false, frames: 0, drawEvery: 4, holds: new Map(), rels: [], kcd: 0, pin: null, after: null,
-    cap: { scenes: [], stories: [], endings: [], credits: [] }, _sc: null };
+    cap: { scenes: [], stories: [], endings: [], credits: [], bossSkips: [] }, _sc: null };
   T.top = () => g.scenes[g.scenes.length - 1];
   T.w = () => g.world;
   T.p = () => g.world?.player;
@@ -547,6 +547,8 @@ async function installT({ god }) {
       if (n === 'dialogue') { if (sc.menu) { if (sc.full) sc.shown = sc.full.length; T.menuKey(); } else if (sc.cur) sc.skipAll(); }
       else if (n === 'story') { if (!sc.ending && !sc.empty && !sc.asking && sc.t > 0.05) { if (sc.menu) { sc.shown = sc.full.length; T.menuKey(); } else sc.skip(); } }
       else if (n === 'document') { if (sc.t > 0.1) g.pop(); }
+      // 보스 등장 (P4a): 플레이어와 같은 건너뛰기 길(trySkip — skipAt 0.8초 전에는 거절)로 넘긴다. 넘긴 시각은 cap.bossSkips 에
+      else if (n === 'bossIntro' && sc.trySkip) { if (sc.t > 0.3 && sc.trySkip()) T.cap.bossSkips.push({ t: +sc.t.toFixed(3), skipAt: sc.skipAt, mode: sc.mode ?? null }); }
       else if (n === 'bossIntro' || n === 'companionJoin' || n === 'initials') { if (sc.t > 0.3) sc.finish(); }
       else if (n === 'pause') g.pop();
       else if (n === 'ending' && T.autoEnding) { if (sc.t > 1.7) T.menuKey(); }
@@ -898,9 +900,11 @@ async function bossFlow(sid, { patterns = true, death = true, loot = false, clea
       const ok = T.until(() => w.bossActive && !w.cutscene && T.top()?.name === 'stage' && T.g.fade.dir === 0, 40);
       const b = w.boss;
       T.base = { tiles: Array.from(w.map.tiles), magma: w.gimmickOf('magma')?.level, windAuto: w.gimmickOf('wind')?.auto };
-      return { ok, top: T.top()?.name, id: b?.def?.id, phases: b?.def?.phases ?? [], hp: b?.hp, log: T.cap.scenes.slice(-6) };
+      return { ok, top: T.top()?.name, id: b?.def?.id, phases: b?.def?.phases ?? [], hp: b?.hp, log: T.cap.scenes.slice(-6), skip: T.cap.bossSkips[0] ?? null };
     });
-    check(G, `${tag}: 걸어서 경기장 → 보스 모듈 도착(대역 → 진짜 보스) → 대사·소개 넘김 → 전투 시작`, walk.walked && real.done && fight.ok && fight.id === bid && !errsSince(P, e0).length, { walk, real, fight, errs: errsSince(P, e0) });
+    // 보스 소개는 건너뛰기 길(trySkip)로 넘어가야 한다 — skipAt(0.8초) 이후에만 (P4a)
+    const skipOk = !!fight.skip && fight.skip.t >= fight.skip.skipAt;
+    check(G, `${tag}: 걸어서 경기장 → 보스 모듈 도착(대역 → 진짜 보스) → 대사·소개 넘김(건너뛰기 ≥0.8초) → 전투 시작`, walk.walked && real.done && fight.ok && skipOk && fight.id === bid && !errsSince(P, e0).length, { walk, real, fight, errs: errsSince(P, e0) });
     if (!fight.ok) return;
     await shot(P, `boss_${bid}${ending ? '_' + (shards?.length ?? 0) : ''}_p0`);
     const nPh = fight.phases.length;

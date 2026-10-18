@@ -16,12 +16,15 @@ import { faceRect } from '../render/portrait.js';
 import { hudSafe } from '../render/hud_layout.js';
 import { TRIALS } from '../data/trials.js';
 import * as TRIAL from '../game/trial.js';
+import { nmFrom, nmRecordOf } from '../game/nightmare.js';   // [nightmare] 악몽 실패도 이 화면 (docs/specs/nightmare.md §1)
 
 const ARM = 0.6;
 const TITLE = '시련 실패';
 const ELISE = 'portraits/npc_elise';
 const PURPLE = TRIAL.TRIAL_COLOR;
 const BTN = ['다시 도전', '성당으로'];
+const NM_TITLE = '악몽 실패';   // [nightmare] 악몽 실패 제목 · 지도에서 들어왔으면 「마을로」
+const NM_BTN = ['다시 도전', '마을로'];
 const TAP_ID = ['te_retry', 'te_leave'];
 
 /** 이 장면 좌표 1 px 이 몇 CSS px 인가 (uiScale: uiK 포함) */
@@ -35,7 +38,7 @@ export class TrialEndScene extends Scene {
   enter({ world = null, tid = null } = {}) {
     this.world = world ?? this.game.world;
     this.tid = tid ?? this.world?.trial?.id ?? null;
-    this.T = this.tid && Object.hasOwn(TRIALS, this.tid) ? TRIALS[this.tid] : null;
+    this.T = this.tid && Object.hasOwn(TRIALS, this.tid) ? TRIALS[this.tid] : (TRIAL.trialOf(this.tid) ?? null);   // [nightmare] 'nm_<stage>' → 악몽 행
     this.menu = new ListMenu(2, { cols: 2 });
     this.done = false; this.px = undefined; this.py = undefined;
     this.vg = null; this.vgKey = '';
@@ -43,6 +46,7 @@ export class TrialEndScene extends Scene {
     this.bossPct = b?.stats?.maxHp > 0 && !b.pendingBoss ? clamp(Math.ceil((b.hp / b.stats.maxHp) * 100), 0, 100) : null;
     this.fightT = Math.max(0, (w?.run?.time ?? 0) - (w?.trialFightT0 ?? w?.run?.time ?? 0));
     this.tries = this.tid ? (w?.hero?.trials?.[this.tid]?.tries ?? 0) : 0;
+    if (this.T?.nightmare) this.tries = nmRecordOf(this.game.state, this.tid)?.tries ?? 0;   // [nightmare] 슬롯 state.nm 기록
     try { assets.preload([ELISE]); } catch { /* 없음 */ }
     audio.stopMusic?.(0.8);
     audio.sfx('bell', { vol: 0.45 });
@@ -113,10 +117,10 @@ export class TrialEndScene extends Scene {
     // 제목 (흔들리며 떠오른다)
     const kIn = ease.outCubic(clamp(t / 0.35, 0, 1));
     ctx.save(); ctx.globalAlpha = kIn;
-    bloodText(ctx, TITLE, W / 2, y, { size: ts, t });
+    bloodText(ctx, T?.nightmare ? NM_TITLE : TITLE, W / 2, y, { size: ts, t });
     ctx.restore();
     y += gap1;
-    if (T) text(ctx, T.name, W / 2, y, { size: 17, align: 'center', weight: 800, family: FONT.title, color: PURPLE, ow: 3, maxWidth: W - 60 });
+    if (T) text(ctx, T.name, W / 2, y, { size: 17, align: 'center', weight: 800, family: FONT.title, color: T.color ?? PURPLE, ow: 3, maxWidth: W - 60 });
     y += gap2;
     // 엘리제의 한마디
     const cx = (W - cw) / 2, cy = y;
@@ -150,7 +154,7 @@ export class TrialEndScene extends Scene {
     const ptr = input.pointer, act = ptr.active;
     ptr.active = false;   // 강조는 실제 선택(menu.index)만 — 가만히 있는 커서 밑 단추까지 강조되지 않게 (GameOverScene 과 같다)
     try {
-      BTN.forEach((label, k) => {
+      (T?.nightmare && nmFrom() === 'worldmap' ? NM_BTN : BTN).forEach((label, k) => {
         const r = { x: W / 2 - bw - 10 + k * (bw + 20), y, w: bw, h: bh };
         button(ctx, r, label, { selected: this.menu.index === k });
         taps.add(TAP_ID[k], r, { owner: this, kind: 'primary', src: 'trialEnd' });

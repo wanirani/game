@@ -199,6 +199,12 @@ export class BossIntroScene extends Scene {
     this.onDone?.();
     if (this.pauseAfter) this.game.autoPause();
   }
+  /** 건너뛰기 (확인·터치와 같은 길): skipAt 전에는 무시하고 false. 테스트 도구도 이것으로 넘긴다 */
+  trySkip() {
+    if (this.done || this.t < this.skipAt) return false;
+    this.finish();
+    return true;
+  }
   /** 도구·다른 장면이 이 장면을 그냥 닫았을 때: 등장 연출(레터박스·카메라·붙잡기)만 정리한다 */
   exit() { if (!this.done) { this.done = true; this.rv?.finish(true); } }
   /** 카드·이름판 시각 (아직이면 -1) */
@@ -217,8 +223,8 @@ export class BossIntroScene extends Scene {
       if (this.t > 0.12 && !this.roared) { this.roared = true; audio.sfx('boss_roar'); this.game.world?.camera?.shake(10, 0.6); }
       this.game.world?.camera?.tickShake?.(dt);
     }
-    const skip = this.t >= this.skipAt && (input.pressed('confirm') || input.pointer.tapped);
-    if ((this.pt0 != null && this.pt >= this.dur) || skip) this.finish();
+    if (this.pt0 != null && this.pt >= this.dur) this.finish();
+    else if (input.pressed('confirm') || input.pointer.tapped) this.trySkip();
   }
   /** 이름 글자 크기 (카드): 대각 구분선 안에 들어가도록 줄인다 (폭이 바뀔 때만 다시 잰다) */
   nameSize(ctx, avail) {

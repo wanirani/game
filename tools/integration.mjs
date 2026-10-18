@@ -231,15 +231,24 @@ for (const c of CASES) {
       }
       if (k === 'intro') {
         const t0 = Date.now();
-        let st = null;
+        let st = null, seen = null;
         while (Date.now() - t0 < Number(d) * 1000) {
-          st = await page.evaluate(() => { const g = window.__game; const top = g?.scenes?.[g.scenes.length - 1]; return { top: top?.name, cut: !!g?.world?.cutscene, active: !!g?.world?.bossActive }; });
+          st = await page.evaluate(() => { const g = window.__game; const top = g?.scenes?.[g.scenes.length - 1]; return { top: top?.name, cut: !!g?.world?.cutscene, active: !!g?.world?.bossActive, mode: top?.name === 'bossIntro' ? top.mode ?? null : null, t: top?.name === 'bossIntro' ? top.t : null, skipAt: top?.name === 'bossIntro' ? top.skipAt ?? null : null }; });
+          if (st.top === 'bossIntro' && !seen) seen = { mode: st.mode, skipAt: st.skipAt };
           if (st.top === 'stage' && st.active && !st.cut) { st.ok = true; break; }
           const key = st.top === 'dialogue' ? KEY.enter : st.top === 'bossIntro' ? KEY.jump : st.top === 'pause' ? KEY.menu : null;
           if (key) { await page.keyboard.down(key); await page.waitForTimeout(60); await page.keyboard.up(key); }
           await page.waitForTimeout(260);
         }
         if (!st?.ok) errs.push(`NOFIGHT ${d}초 안에 보스전이 시작되지 않음 (top=${st?.top}, cutscene=${st?.cut}, bossActive=${st?.active})`);
+        else {
+          // 보스 등장 연출 (P4a): 소개는 초상화 카드 또는 이름판, 건너뛴 뒤 레터박스·HUD 숨김·연출 붙잡기가 남지 않는다
+          if (seen && seen.mode != null && !['card', 'plate'].includes(seen.mode)) errs.push(`INTRO 소개 모드가 이상함 (${seen.mode})`);
+          await page.waitForTimeout(700);
+          const left = await page.evaluate(() => { const w = window.__game?.world; return w ? { hud: !!w.hudHidden, lb: Math.round(w.letterbox ?? 0), rv: !!(w.reveal && !w.reveal.done), hold: !!w.reveal?.hold } : null; });
+          if (left && (left.hud || left.lb > 1 || left.rv || left.hold)) errs.push(`INTRO 등장 연출이 끝나지 않음 (${JSON.stringify(left)})`);
+          if (seen) console.log(`    · ${c.id} 보스 소개 ${seen.mode ?? '?'} → 싸움 ${((Date.now() - t0) / 1000 - 0.7).toFixed(1)}초`);
+        }
         continue;
       }
       const key = KEY[k] || k;

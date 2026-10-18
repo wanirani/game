@@ -13,6 +13,7 @@ import { ENEMIES } from '../data/enemies.js';
 import { STAGES } from '../data/stages.js';
 import { bus } from '../core/events.js';
 import { paintedEnabled, unwindMark, unwindDone, unwindTo } from './painted/registry.js';
+import { halo } from './painted/kit.js';   // [nightmare] 악몽 하수인의 진홍 후광 (퍼프 스프라이트 — 그라데이션·캔버스 생성 0)
 
 // 벡터 렌더러 (enemies_a/b + 2부 enemies_c/d) 는 늦게 받는다 (R1-REQ-229): 이 파일이 정적으로 싣지 않으므로 번들러가 따로
 // 떼어 내 첫 화면 바이트에서 빠질 수 있다 (AI 모듈 ai_*.js 가 PROJ/ZONE 도우미를 정적으로 가져오는 동안은 이미 실린 모듈이라
@@ -92,6 +93,11 @@ export function drawEnemy(ctx, e, world) {
   const pm = PAINTED_ENEMIES[e.def.render] && paintedEnemiesOn(world?.game) && !DRAW_FAILED.has(e.def.render) ? PAINTED_ENEMIES[e.def.render] : null;
   if (pm && world && world !== _preWorld) preloadWorld(world);
   const rig = pm ? requestRig(pm.spec) : null;
+  if (e.nmMinion && !(e.dying > 0)) {   // [nightmare] 악몽 하수인 (docs/specs/nightmare.md §6): 발밑·몸 뒤 진홍 후광
+    const r = Math.max(e.w, e.h) * 0.9 + 18, t = world?.time ?? e.t ?? 0;
+    halo(ctx, e.cx, e.bottom - e.h * 0.45, r, '#a00c24', 0.45 + 0.12 * Math.sin(t * 4 + e.w));
+    halo(ctx, e.cx, e.bottom - 3, r * 0.7, '#ff2a3a', 0.28);
+  }
   ctx.save();
   // 카메라 공간 (채색 렌더러의 월드 좌표 파티클용). Enemy.draw 가 맞음 반응 변환(흔들림·눕기·기울기) 직전에 잡아 둔 e.camXf 를 먼저 쓴다 (R1-REQ-71)
   const cam = rig?.ready ? (e.camXf ?? ctx.getTransform()) : null;

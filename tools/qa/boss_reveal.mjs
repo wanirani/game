@@ -86,13 +86,15 @@ const add = (id, ok, detail) => { results.push({ id, ok: !!ok, detail }); consol
 
 // ─────────────────────────── 2. 브라우저 ───────────────────────────
 const env = await openEnv();
+const SESS = [];   // [boss, Session] — 끝에 페이지 오류를 모은다
 const FPS = 60, DT = 1 / FPS;
 const TOTAL = 3.2;
 
 /** 보스방 열고 · 멈추고 · 경기장 앞까지 (아직 들어가지 않는다) */
 async function openRoom(boss, { url = null, route = null } = {}) {
   const st = STAGE_OF[boss];
-  const s = await env.page(DEVICE, url ?? `index.html?scene=stage&stage=${st}&room=boss`, { wait: false, ...(route ? {} : {}) });
+  const s = await env.page(DEVICE, null);
+  SESS.push([boss, s]);
   if (route) await route(s.page);
   await s.goto(url ?? `index.html?scene=stage&stage=${st}&room=boss`);
   await s.waitGame('g.world && g.world.player && g.top && g.top.name === "stage"', 60000);
@@ -102,20 +104,26 @@ async function openRoom(boss, { url = null, route = null } = {}) {
   await idleFlush(s, 300);
   return s;
 }
-/** 경기장 안으로 → (사전 대사는 Enter 로 넘긴다) → bossIntro 가 맨 위가 될 때까지. → 걸린 스텝 */
+/** 경기장 세 칸 앞에 세우고 (스테이지 배너가 사라지고 카메라가 따라오도록 3.3초) → 오른쪽으로 걸어 들어간다
+ *  → (사전 대사는 Enter 로 넘긴다) → bossIntro 가 맨 위가 될 때까지. → 걸린 스텝 (-1 = 열리지 않음) */
 async function enterArena(s, maxSteps = 900) {
   await s.eval(() => {
     const w = window.__game.world, p = w.player;
-    p.buffs.invincible = 0; p.iframes = 0;
-    if (w.arenaX !== undefined) { p.x = w.arenaX + 48 * 1.6; p.vx = 0; }
+    p.buffs.invincible = 9999; p.iframes = 0;
+    if (w.arenaX !== undefined) { p.x = w.arenaX - 48 * 3; p.vx = 0; }
   });
+  await step(s.page, 200, false);
+  await s.page.keyboard.down('ArrowRight');
+  let n = -1;
   for (let i = 0; i < maxSteps; i++) {
     const top = await s.eval(() => window.__game.top?.name);
-    if (top === 'bossIntro') return i;
-    if (top === 'dialogue') { await s.page.keyboard.down('Enter'); await step(s.page, 2, false); await s.page.keyboard.up('Enter'); await step(s.page, 2, false); continue; }
+    if (top === 'bossIntro') { n = i; break; }
+    if (top === 'dialogue') { await s.page.keyboard.up('ArrowRight'); await s.page.keyboard.down('Enter'); await step(s.page, 2, false); await s.page.keyboard.up('Enter'); await step(s.page, 2, false); continue; }
     await step(s.page, 1, false);
   }
-  return -1;
+  await s.page.keyboard.up('ArrowRight');
+  await s.eval(() => { const p = window.__game.world.player; p.buffs.invincible = 0; });
+  return n;
 }
 /** 페이지 안 계측 설치: 보스 think 횟수, 적 편 개체 새로 생김, 영웅 체력 */
 const installProbe = (s, { overlap = true } = {}) => s.eval(({ overlap }) => {
@@ -194,7 +202,7 @@ async function runReveal(s, boss, { shots = false, video = false, skipAt = null,
   const intro = rec.filter((r) => r.top === 'bossIntro');
   const res = await probeResult(s);
   return {
-    n0, rec, beats, perfMs, vdir, frames: vf,
+    n0, rec, beats, perfMs, vdir, frames: vf, pressFrame: pressed ? pressed.frame : null, pressT: pressed ? pressed.at : null,
     total: end >= 0 ? (end + 1) * DT : null,
     mode: intro.find((r) => r.mode)?.mode ?? null,
     lbMax: Math.max(0, ...rec.map((r) => r.lb)),
@@ -232,10 +240,10 @@ async function runFinale(s, boss, { video = false, perf = false } = {}) {
       const m = await s.eval(() => { const g = window.__game, now = g.__qaRealNow; const t0 = now(); window.__qaStep(1, false); const t1 = now(); try { g.input?.beginRender?.(); g.__qaRender.call(g); g.input?.endRender?.(); } catch (e) { console.error(e); } return { upd: t1 - t0, ren: now() - t1 }; });
       perfMs.push(m.upd + m.ren);
     }
-    st = await s.eval((render) => { const g = window.__game, w = g.world; if (render) { try { g.__qaRender.call(g); } catch { /* */ } } return { ov: w.overlays.length, fin: !!w.finale, top: g.top?.name, seal: w.overlays.some((o) => typeof o.word !== 'undefined'), sealWord: w.overlays.find((o) => typeof o.word !== 'undefined')?.word ?? null }; }, !perf && video && i % 2 === 0);
+    st = await s.eval((render) => { const g = window.__game, w = g.world; if (render) { try { g.__qaRender.call(g); } catch { /* */ } } const seal = w.overlays.find((o) => o.kind === 'bossSeal'); return { fin: !!w.finale, top: g.top?.name, seal: !!seal, sealWord: seal?.word ?? null, pillar: w.overlays.some((o) => o.kind === 'bossPillar') }; }, !perf && video && i % 2 === 0);
     if (!perf) await s.eval(() => window.__qaStep(1, false));
-    if (st.seal) sealSeen = st.sealWord || true;
-    if (st.ov >= 2 && st.seal) pillarSeen = true;
+    if (st.seal) sealSeen = st.sealWord || sealSeen || true;
+    if (st.pillar) pillarSeen = true;
     if (vdir && i % 2 === 0) await frame(s, vdir, vf++);
     if (st.top !== 'stage') break;
   }
@@ -268,10 +276,12 @@ for (const boss of BOSSES_RUN) {
     if (idx <= (QUICK ? 1 : 2)) {
       const s2 = await openRoom(boss);
       const r2 = await runReveal(s2, boss, { earlyPress: 0.5, skipAt: 0.8 });
-      const pressT = r2.rec.findIndex((x) => x.t != null && x.t >= 0.8);
+      const pressF = r2.pressFrame ?? -1;
       const fightAt = r2.rec.findIndex((x) => x.top === 'stage' && !x.cut && x.active);
-      const earlyKilled = r2.rec.some((x, i) => i < pressT && x.top === 'stage' && !x.cut);
-      add(`${boss}.skip`, !earlyKilled && fightAt >= 0 && fightAt - pressT <= 2 && r2.total >= 0.8 && r2.probe.think === 0, { pressAtFrame: pressT, fightAtFrame: fightAt, total: r2.total && +r2.total.toFixed(3), earlyPressIgnored: !earlyKilled });
+      const earlyKilled = r2.rec.some((x, i) => i < pressF && x.top === 'stage' && !x.cut);
+      const sceneT = pressF > 0 ? r2.rec[pressF - 1]?.t : null;   // 누른 프레임 직전의 장면 시각
+      add(`${boss}.skip`, pressF > 0 && !earlyKilled && fightAt >= 0 && fightAt - pressF <= 2 && sceneT >= 0.8 - DT - 1e-6 && r2.total >= 0.8 && r2.probe.think === 0,
+        { pressAtFrame: pressF, sceneTimeAtPress: sceneT != null ? +(sceneT + DT).toFixed(3) : null, fightAtFrame: fightAt, total: r2.total && +r2.total.toFixed(3), earlyPressAt05Ignored: !earlyKilled });
       await s2.close();
     }
     if (first) {
@@ -301,7 +311,7 @@ for (const boss of BOSSES_RUN) {
       for (let i = 0; i < 240; i++) {
         const st = await tick(s4);
         rec4.push(st);
-        if (SHOTS && !shotDone && st.pt >= 0.45) { shotDone = true; await step(s4.page, 0, true); await s4.eval(() => { const g = window.__game; g.__qaRender.call(g); }); await shot(s4, 'retry_plate.png'); }
+        if (SHOTS && !shotDone && st.pt >= 0.45) { shotDone = true; await s4.wait(450); await s4.eval(() => { const g = window.__game; g.__qaRender.call(g); }); await shot(s4, 'retry_plate.png'); }
         if (st.top === 'stage' && !st.cut && st.active) break;
       }
       const end4 = rec4.findIndex((r) => r.top === 'stage' && !r.cut && r.active);
@@ -318,7 +328,7 @@ for (const boss of BOSSES_RUN) {
       for (let i = 0; i < 240; i++) {
         const st = await tick(s5);
         rec5.push(st);
-        if (SHOTS && !nmShot && st.pt >= 0.5) { nmShot = true; await s5.eval(() => { const g = window.__game; g.__qaRender.call(g); }); await shot(s5, 'nightmare_plate.png'); }
+        if (SHOTS && !nmShot && st.pt >= 0.5) { nmShot = true; await s5.wait(450); await s5.eval(() => { const g = window.__game; g.__qaRender.call(g); }); await shot(s5, 'nightmare_plate.png'); }
         if (st.top === 'stage' && !st.cut && st.active) break;
       }
       const i5 = rec5.filter((r) => r.top === 'bossIntro');
@@ -382,6 +392,8 @@ if (PERF) {
   }
 }
 
+for (const [boss, s] of SESS) if (s.errs?.length) add(`${boss}.pageErrors`, false, s.errs.slice(0, 4));
+add('pageErrors', SESS.every(([, s]) => !s.errs?.length), { sessions: SESS.length, withErrors: SESS.filter(([, s]) => s.errs?.length).length });
 await env.close();
 const bad = results.filter((r) => !r.ok);
 fs.writeFileSync(path.join(OUT, 'report.json'), JSON.stringify({ device: DEVICE, bosses: BOSSES_RUN, results, perf: perfRows }, null, 1));

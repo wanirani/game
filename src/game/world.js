@@ -319,7 +319,7 @@ function pillarK(t) {
 /** 화면 층: 보스 자리에 세로 빛기둥 (3겹 사각형, 'lighter' — 그라디언트 없음) */
 function makePillarOverlay(F) {
   return {
-    life: FIN.pillar[1] - FIN.seal + 0.05,
+    kind: 'bossPillar', life: FIN.pillar[1] - FIN.seal + 0.05,
     draw(ctx, vw, vh, w) {
       const k = pillarK(F.t);
       if (!(k > 0.01)) return;
@@ -351,7 +351,7 @@ function sealJitter(id) {
 function makeSealOverlay(F) {
   const J = sealJitter(F.id);
   const o = {
-    t: 0, life: FIN.sealLife, word: null,
+    kind: 'bossSeal', t: 0, life: FIN.sealLife, word: null,
     update() {
       if (o.word) return;
       const sub = String(F.w.banner?.sub ?? '');
@@ -363,8 +363,20 @@ function makeSealOverlay(F) {
       const kIn = clamp(t / 0.16, 0, 1), out = clamp((life - t) / 0.45, 0, 1);
       if (!(out > 0)) return;
       const cam = w.camera, z = cam?.zoom || 1;
-      const x = clamp((F.cx - (cam?.x ?? 0)) * z + 70, vw * 0.22, vw * 0.78);
-      const y = clamp((F.cy - (cam?.y ?? 0)) * z - 30, vh * 0.36, vh * 0.68);
+      let x = clamp((F.cx - (cam?.x ?? 0)) * z + 70, vw * 0.22, vw * 0.78);
+      let y = clamp((F.cy - (cam?.y ?? 0)) * z - 30, vh * 0.36, vh * 0.68);
+      // 알림 칸(STAGE CLEAR · 전리품 배너)과 겹치지 않게: 칸 위로, 자리가 없으면 칸 옆으로 비킨다
+      let B = null;
+      try { B = w.hudHidden ? null : HL.hudLayout?.(w, vw, vh)?.transient ?? null; } catch { B = null; }
+      if (B && B.w > 0) {
+        const hs = 64;   // 도장 반 크기 + 여백 (찍힌 뒤 기준)
+        if (y + hs > B.y && y - hs < B.y + B.h && x + hs > B.x && x - hs < B.x + B.w) {
+          const up = B.y - hs - 6;
+          if (up >= vh * 0.16) y = up;
+          else if (B.x + B.w + hs + 8 <= vw - 8) x = B.x + B.w + hs + 4;
+          else x = Math.max(hs + 8, B.x - hs - 4);
+        }
+      }
       const s = 1.7 - 0.7 * ease.outCubic(kIn), S = 108;
       ctx.translate(x, y); ctx.rotate(-0.13); ctx.scale(s, s);
       ctx.globalAlpha = (kIn < 1 ? 0.35 + 0.65 * kIn : 1) * out;

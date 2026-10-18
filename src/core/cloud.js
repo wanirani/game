@@ -345,6 +345,19 @@ function mergeCounts(a, b) {
  * 도감은 항목별 큰 값, 명예의 전당은 두 목록을 합쳐 모드별 상위 20개, 보스 러시는 코스별 최단 기록, 무한의 탑은 난이도별 최고 층.
  * 그 밖의 필드(마지막 캐릭터·이니셜·아케이드 설정 등)는 이 기기 값이 우선.
  */
+/** [nightmare] meta.nm = { clears, ids: { nm_<stage>: 처음 격파 시각 } } 두 기기 합치기 — 다른 기기에서 깬 악몽을 잃지 않는다 */
+function mergeNm(a, b) {
+  const A = isObj(a) ? a : {}, B = isObj(b) ? b : {}, ids = {};
+  for (const src of [A.ids, B.ids]) {
+    if (!isObj(src)) continue;
+    for (const [k, v] of Object.entries(src)) {
+      if (!/^nm_[a-z0-9_]{1,24}$/.test(k)) continue;
+      const t = Number.isFinite(v) && v > 0 ? v : 1;
+      ids[k] = ids[k] ? Math.min(ids[k], t) : t;
+    }
+  }
+  return { clears: Math.max(num(A.clears), num(B.clears), Object.keys(ids).length), ids };
+}
 export function mergeMeta(a, b) {
   a = isObj(a) ? sanitizeTree(a) : {};
   if (!isObj(b)) return JSON.parse(JSON.stringify(a));
@@ -371,6 +384,7 @@ export function mergeMeta(a, b) {
   // [hook:ach] 업적: got 합집합(가장 이른 시각)·prog 큰 값·claimed 합집합 (한쪽만 있으면 그것을 고친 사본 — 서버 것을 지우지 않는다)
   if (isObj(a.ach) || isObj(b.ach)) out.ach = mergeAch(a.ach, b.ach);
   if (isObj(a.gal) || isObj(b.gal)) out.gal = mergeGal(a.gal, b.gal);   // [hook:gal] 회랑: cg·mus 합집합(가장 이른 시각)·seenAt 큰 값 (한쪽만 있으면 그것을 고친 사본)
+  if (isObj(a.nm) || isObj(b.nm)) out.nm = mergeNm(a.nm, b.nm);   // [nightmare] 악몽 격파: ids 합집합(가장 이른 시각)·clears 큰 값 (docs/specs/nightmare.md §5 · K1)
   return JSON.parse(JSON.stringify(out));
 }
 

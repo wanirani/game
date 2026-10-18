@@ -19,7 +19,7 @@
 // 끄기: URL ?painted=0 · window.__paintedOff = true · settings.painted === false  → 모든 개체가 벡터로 그려진다 (비교/문제 해결용)
 import { Entity } from '../../game/entity.js';
 import { bus } from '../../core/events.js';
-import { quality, textureDensity, memoryBudgetMB } from './kit.js';
+import { quality, textureDensity, memoryBudgetMB, Particles, halo, puff, RenderRNG } from './kit.js';
 import { STAGES } from '../../data/stages.js';
 import { REG_PACKAGES } from './reg/index.js';
 import { releaseRigs } from './enemy_kit.js';
@@ -176,6 +176,7 @@ class PaintedBody extends Entity {
     if (!this.alive(world)) { this.dead = true; if (this.host._painted?.proxy === this) this.host._painted.proxy = null; return; }
     this.z = this.host.z;
     this.syncBounds();
+    if (world?.opts?.nightmare) nmTick(this, dt, world);   // [nightmare] 악몽의 모습 (연기 입자는 update 에서만 만든다)
   }
   draw(ctx, world) {
     const b = this.host;
@@ -187,8 +188,11 @@ class PaintedBody extends Entity {
     ctx.save();
     if (b.dying > 0 && !mod.ownsDeathFade) ctx.globalAlpha = Math.min(1, Math.max(0, b.dying / 2.4));
     if (k < 1) ctx.globalAlpha *= k;
+    const nm = this.nm && world?.opts?.nightmare ? this.nm : null;   // [nightmare]
     try {
+      if (nm) nmUnder(ctx, this, nm, world);
       mod.draw(ctx, b, world, this.entry.rig, this.st);
+      if (nm) nmOver(ctx, this, nm, world);
     } catch (err) {
       // 그리기 오류 → 이 보스는 벡터로 되돌린다 (게임은 계속). 렌더러가 연 save/clip 을 되돌려 ctx 상태 스택을 맞춘다
       this.st?.D?.unwind?.(ctx);
@@ -204,7 +208,66 @@ class PaintedBody extends Entity {
       ctx.restore();
     }
   }
-  lights(L) { if (!this.dead && this.entry.state === 'ready') this.entry.mod.lights?.(L, this.host, this.entry.rig, this.st); }
+  lights(L) {
+    if (this.dead || this.entry.state !== 'ready') return;
+    const nm = this.nm && this.host.world?.opts?.nightmare ? this.nm : null;
+    const n0 = L.lights?.length ?? 0;
+    this.entry.mod.lights?.(L, this.host, this.entry.rig, this.st);
+    if (nm) nmLights(L, this, nm, n0);   // [nightmare] 렌더러가 단 작은 광원(눈·핵) 자리 → 진홍 눈빛 · 몸 가운데 진홍 광원
+  }
+}
+
+// ───────────────────────── [nightmare] 악몽의 모습 (docs/specs/nightmare.md §6) ─────────────────────────
+// 새 굽기 0: 몸 뒤 진홍 후광(kit puff 스프라이트) · 몸 둘레 검붉은 연기(kit Particles + PRESET smoke) · 눈빛(렌더러 광원 자리).
+// 리그의 페이즈 틴트는 손상 2단계(dmg2)에만 구워져 있어 1페이즈부터 켜도 보이지 않는다 → 모든 리그에 이 셋을 쓴다.
+// 입자 생성·난수는 nmTick(update)에서만 — 그리기(nmUnder/nmOver)는 결정적이다 (hook_tags).
+const NM_HALO = '#8a0a1e', NM_EYE = '#ff2a3a', NM_SMOKE = 'rgba(40,4,12,0.9)', NM_EMBER = '#ff4a3a';
+const NM_RNG = new RenderRNG(0x6e6d0001);
+function nmTick(pb, dt, world) {
+  const b = pb.host;
+  if (!pb.nm) {
+    pb.nm = { P: new Particles(56), acc: 0, eyes: [], ne: 0 };
+    puff(NM_HALO); puff(NM_EYE, true); puff(NM_SMOKE); puff(NM_EMBER);   // 색별 퍼프를 지금(등장 연출 동안) 굽는다 — 싸움 도중 캔버스 생성 0
+  }
+  const nm = pb.nm, q = quality(world?.game);
+  const floor = b.A?.floor ?? world?.camera?.floorY ?? b.bottom;
+  nm.P.update(dt, floor);
+  if (b.dying > 0 || b.hidden) return;
+  nm.acc += dt * (q.halos ? 16 : 7);
+  while (nm.acc >= 1) {
+    nm.acc -= 1;
+    const x = b.x + NM_RNG.next() * b.w, y = b.y + b.h * (0.25 + NM_RNG.next() * 0.75);
+    const ember = NM_RNG.next() < 0.22;
+    nm.P.emit(ember ? 'ember' : 'smoke', x, y, (NM_RNG.next() - 0.5) * 30, -30 - NM_RNG.next() * 40,
+      { color: ember ? NM_EMBER : NM_SMOKE, layer: NM_RNG.next() < 0.6 ? 0 : 1, size: ember ? 1.6 + NM_RNG.next() * 1.4 : 12 + NM_RNG.next() * 16 });
+  }
+}
+function nmUnder(ctx, pb, nm, world) {
+  const b = pb.host, t = world?.time ?? b.t ?? 0;
+  if (!b.dying) {
+    const R = Math.max(b.w, b.h) * 0.85 + 70;
+    halo(ctx, b.cx, b.cy, R * 1.25, NM_HALO, 0.42 + 0.1 * Math.sin(t * 2.1));
+    halo(ctx, b.cx, b.bottom - 6, R * 0.8, NM_HALO, 0.3);
+  }
+  nm.P.draw(ctx, 0);
+}
+function nmOver(ctx, pb, nm, world) {
+  nm.P.draw(ctx, 1);
+  const b = pb.host, t = world?.time ?? b.t ?? 0;
+  if (b.dying > 0) return;
+  const f = 0.75 + 0.25 * Math.sin(t * 5.3);
+  for (let i = 0; i < nm.ne; i++) { const e = nm.eyes[i]; halo(ctx, e.x, e.y, e.r, NM_EYE, 0.8 * f, true); }
+}
+function nmLights(L, pb, nm, n0) {
+  const b = pb.host, list = L.lights ?? [];
+  nm.ne = 0;
+  for (let i = n0; i < list.length && nm.ne < 4; i++) {
+    const l = list[i];
+    if (!(l.r <= 110)) continue;
+    const e = (nm.eyes[nm.ne++] ??= { x: 0, y: 0, r: 0 });
+    e.x = l.x; e.y = l.y; e.r = Math.max(10, Math.min(26, l.r * 0.22));
+  }
+  if (!(b.dying > 0)) L.add(b.cx, b.cy, Math.max(160, Math.max(b.w, b.h) * 1.2), NM_EYE, 0.45);
 }
 
 function attach(boss, world, e) {

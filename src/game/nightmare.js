@@ -7,7 +7,7 @@
 //   retryNightmare / leaveNightmare    실패 화면 「다시 도전」 / 「마을로」 · 일시정지 포기
 //  경험치 0 (K4: attachTrial 의 w.gainExp = () => 0 을 그대로 쓴다) · 목숨·사망 수 그대로 · AUTO 는 world.trial 로 막힌다.
 //  이 파일은 trial.js 를 import 하지 않는다 (순환 없음 — trial.js → nightmare.js 한 방향).
-import { NM, NM_IDS, NM_COLOR, isNightmareId, nmEntry, nmTwist, nmLevel } from '../data/nightmare.js';
+import { NM, NM_IDS, NM_COLOR, NM_FAIL_LINE, isNightmareId, nmEntry, nmTwist, nmLevel } from '../data/nightmare.js';
 import { STAGES } from '../data/stages.js';
 import { BOSSES } from '../data/bosses.js';
 import { itemName } from '../data/items.js';
@@ -50,7 +50,7 @@ export function nightmareTrial(id) {
     T = Object.freeze({
       id, nightmare: true, entry: e, stage: e.stage, boss: e.boss, room: 'boss',
       name: `악몽 · ${bossName(e)}`, twist: e.twist, twistName: tw?.name ?? '', color: NM_COLOR,
-      mods: [], diffOver: null, bossPatterns: true, failLine: null,
+      mods: [], diffOver: null, bossPatterns: true, failLine: NM_FAIL_LINE,
     });
     T_CACHE.set(id, T);
   }
