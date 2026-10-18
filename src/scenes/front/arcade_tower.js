@@ -610,6 +610,9 @@ export class TowerScene extends ArcadeRunScene {
     } else if (kind === 'heal') {
       if (p.hp >= p.stats.hp && p.mp >= p.stats.mp) return { ok: false, msg: '치료할 상처가 없습니다' };
     } else if (kind !== 'reroll') return { ok: false, msg: '' };
+    // 다시 뽑기: 새로 펼칠 축복이 하나도 없으면(모두 최대로 받음) 골드를 받지 않는다
+    const next = kind === 'reroll' ? blessingOffer(this.seed, this.floor, this.taken, 51 + S.salt) : null;
+    if (next && !next.length) return { ok: false, msg: '더 펼칠 축복이 없습니다' };
     if ((st.gold ?? 0) < price) return { ok: false, msg: `골드가 모자랍니다 (${fmt(price)}G 필요)` };
     st.gold -= price;
     if (kind === 'bless') { S.bought = id; this.applyBlessing(id); return { ok: true, msg: `축복 「${BLESSING[id].name}」` }; }
@@ -618,7 +621,7 @@ export class TowerScene extends ArcadeRunScene {
       audio.sfx('heal'); this.world.fx.burst('holy', p.cx, p.cy, 20, { speed: 160, color: '#9fe8c8' });
       return { ok: true, msg: '상처가 아물었다' };
     }
-    S.salt++; S.bought = null; S.ids = blessingOffer(this.seed, this.floor, this.taken, 50 + S.salt);
+    S.salt++; S.bought = null; S.ids = next;
     audio.sfx('card');
     return { ok: true, msg: '새 카드를 펼쳤다', ids: S.ids };
   }
@@ -1051,7 +1054,8 @@ export class TowerBlessingScene extends Scene {
     else if (this.mode === 'shop' && input.pressed('down') && this.index < nc) { this.index = nc + Math.min(2, this.index); audio.sfx('menu_move'); }
     else if (this.mode === 'shop' && input.pressed('up') && this.index >= nc && nc) { this.index = Math.min(nc - 1, this.index - nc); audio.sfx('menu_move'); }
     else if (this.mode === 'shop' && input.pressed('cancel')) this.choose(n - 1);
-    else if (input.pressed('confirm') || input.pressed('attack')) this.choose(this.index);
+    // 피의 계약은 되돌릴 수 없다: 창이 뜬 직후(0.35초)의 확인·공격 연타(앞 축복 창에서 이어진 것)로는 맺지 않는다 — 탭·방향 이동은 그대로
+    else if ((input.pressed('confirm') || input.pressed('attack')) && !(this.mode === 'pact' && this.t < 0.35)) this.choose(this.index);
   }
   /** 배치 (UI px, 최소 720×400). 상인: 카드 줄을 낮추고 아래에 단추 줄 (btnY), 왼쪽 위에 상인 초상 */
   layout() {
