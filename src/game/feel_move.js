@@ -138,11 +138,61 @@ function releaseCamera(world, fm) {
   if (fm.zoomOwn) { if (cam && !world.arena && cam.zoomTarget === SPRINT.zoom) cam.zoomTarget = 1; fm.zoomOwn = false; }
 }
 
+// ───────────────────────── 무기 계열별 연출 (MOTION-FEEL, 매 스텝) ─────────────────────────
+// render/hero.js 가 그린 프레임마다 rig.mfx 에 무기 끝·탄피 구멍 위치와 공격 단계를 적어 두면, 시뮬레이션 스텝이 그 기록을 한 번씩
+// 읽어 파티클을 낸다 (그리기 중에는 효과를 만들지 않는다 — perf_budget drawfx/rng). 그림만: 판정·경직·물리는 그대로.
+//  대검: 휘두르는 칼끝 불꽃 (+ 바닥을 긁으면 불꽃 다발·자갈)  지팡이: 지팡이 머리 성광  창: 찌르기 시작 순간 창끝 고리·속도선
+//  장검·단검: 마무리 일격 칼끝 불꽃  총: 발사마다 탄피(놋쇠, 튕김) + 총구 연기 한 줌
+// 저품질·움직임 줄이기 설정에서는 없음. 탑승 중에는 부르지 않는다 (updateGait 가 먼저 돌아감)
+const MFX = { spark: '#ffcf7a', shell: '#d8b050', ring: 'rgba(225,240,255,0.85)' };
+export function motionTick(p, world) {
+  const m = p?.rig?.mfx, fx = world?.fx, fm = p?.fm;
+  if (!fx || !fm) return;
+  const q = qKey(world), on = q !== 'low' && !reduced(world);
+  // 총: 발사 순간(muzzleT 가 올라감) 탄피·연기 — 스텝마다 확인 (30fps 기기에서 두 스텝에 한 번 그려도 놓치지 않게)
+  const mz = p.muzzleT ?? 0;
+  if (mz > (fm.mzPrev ?? 0) + 1e-4 && on && m && m.wt === 'gun' && p.t - (fm.shellT ?? -9) > 0.04) {
+    fm.shellT = p.t;
+    const back = p.facing > 0 ? PI : 0, f = p.facing || 1;
+    fx.emit('shard', m.gx, m.gy, { angle: -PI / 2 - f * 0.55 + (back ? 0.15 : -0.15), spread: 0.35, speed: rand(150, 210), size: 2.2, color: MFX.shell, life: rand(0.55, 0.8), vr: rand(14, 22) * -f, grav: 1400, bounce: 0.45 });
+    if (p.move?.anim === 'shoot_double' || p.move?.anim === 'shoot_up' || p.move?.anim === 'shoot_down') fx.emit('shard', m.gx - f * 3, m.gy + 2, { angle: -PI / 2 - f * 0.8, spread: 0.4, speed: rand(130, 190), size: 2.2, color: MFX.shell, life: 0.6, grav: 1400, bounce: 0.45 });
+    if (q === 'high') fx.emit('dust', m.x, m.y, { angle: -PI / 2, spread: 0.6, speed: 18, size: 5, life: 0.4, alpha: 0.35 });
+  }
+  fm.mzPrev = mz;
+  if (!m || m.used === m.seq) return;
+  m.used = m.seq;
+  if (!on || m.ph !== 1) return;
+  const hi = q === 'high';
+  const vx = m.x - m.px, vy = m.y - m.py, fly = m.prevOk ? Math.atan2(vy, vx) : -PI / 2;
+  if (m.wt === 'greatsword') {
+    if (m.prevOk && vx * vx + vy * vy > 9) for (let i = 0; i < (hi ? 2 : 1); i++) fx.emit('spark', m.x, m.y, { angle: fly, spread: 0.7, speed: rand(110, 240), color: MFX.spark, life: rand(0.18, 0.32) });
+    if (m.ground && fm.gsHit !== m.mvN && (m.anim === 'heavy_down' || m.anim === 'heavy_low')) {
+      fm.gsHit = m.mvN;
+      fx.burst('spark', m.x, m.y - 2, hi ? 9 : 6, { angle: -PI / 2, spread: 1.2, speed: 260, color: MFX.spark });
+      fx.burst('gravel', m.x, m.y - 2, 3, { angle: -PI / 2, spread: 0.9, speed: 200 });
+      fx.burst('dust', m.x, m.y - 2, 2, { angle: -PI / 2, spread: 1.2, speed: 60 });
+    }
+  } else if (m.wt === 'staff') {
+    fx.emit('holy', m.x, m.y, { angle: fly + PI, spread: 1.2, speed: rand(20, 60), color: m.col, size: rand(1.6, 3) });
+    if (hi && m.prevOk) fx.emit('holy', (m.x + m.px) / 2, (m.y + m.py) / 2, { speed: 25, color: m.col, size: 2 });
+  } else if (m.wt === 'spear') {
+    if (fm.spN !== m.mvN && (m.anim === 'thrust' || m.anim === 'crouch_stab')) {
+      fm.spN = m.mvN;
+      fx.ering?.(m.x, m.y, { r0: 3, r1: 26, ry: 0.32, angle: m.ang + PI / 2, color: MFX.ring, width: 2, life: 0.16 });
+      if (fx.speedLine) for (let i = -1; i <= 1; i += 2) fx.speedLine(m.x - Math.cos(m.ang) * 20 + i * Math.sin(m.ang) * 6, m.y - Math.sin(m.ang) * 20 - i * Math.cos(m.ang) * 6, m.ang, { len: 46, width: 2, color: '#e8f4ff', life: 0.12, speed: 320 });
+    }
+  } else if ((m.wt === 'sword' || m.wt === 'dagger') && m.fin && fm.finN !== m.mvN) {
+    fm.finN = m.mvN;
+    fx.burst('spark', m.x, m.y, hi ? 5 : 3, { angle: fly, spread: 0.9, speed: 200, color: m.col });
+  }
+}
+
 // ───────────────────────── 걸음 · 질주 (매 스텝, 이동 처리 직전) ─────────────────────────
 export function updateGait(p, world, dt, inp) {
   if (!p) return null;
   if (!p.fm) initFeel(p);
   const fm = p.fm, f = p.feel;
+  if (!p.mount?.riding) motionTick(p, world);   // MOTION-FEEL 무기 연출 (그림만)
   if (p.mount?.riding) {   // 탑승: 탈것이 걸음·발소리를 맡는다
     resetMoveFeel(p, world); if (p.moveFx) endFx(p);
     p.gait = 'idle'; fm.prevAx = 0; fm.dash = null;
@@ -448,7 +498,15 @@ export function onLand(p, world, vyBefore, fallPx) {
   const B = baseSpeed(p, world);
   if (!p.sprinting && fm.airMom && Math.abs(p.vx) > B * 1.02) fm.momT = LAND.momentum;   // 질주 점프의 남은 속도만 천천히 줄인다
   const heavy = !p.landSlam && ((vyBefore ?? 0) >= LAND.heavyVy || (fallPx ?? 0) > LAND.heavyFall);
-  if (!heavy) { setSq(f, SQUASH.land); return; }
+  if (!heavy) {
+    setSq(f, SQUASH.land);
+    // MOTION-FEEL: 보통 착지도 발밑 먼지 한 줌 (낙하 속도만큼, 저품질·움직임 줄이기는 없음)
+    if (fx && qKey(world) !== 'low' && !reduced(world) && (vyBefore ?? 0) > 380) {
+      const n = (vyBefore ?? 0) > 640 ? 3 : 2;
+      for (const d of [-1, 1]) fx.burst('dust', p.cx + d * 6, p.bottom - 2, n, { angle: d < 0 ? PI + 0.25 : -0.25, spread: 0.35, speed: 70, size: 6 });
+    }
+    return;
+  }
   setSq(f, SQUASH.heavy);
   // 달리며 방향을 누른 채 떨어지면 다리는 계속 달리고 충격만 (제자리 착지 자세로 미끄러지지 않게)
   const held = !world?.cutscene && !world?.inputLock && input.axisX !== 0;

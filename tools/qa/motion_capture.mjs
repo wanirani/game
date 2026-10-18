@@ -90,7 +90,49 @@ let fi = 0, saved = 0;
 const tags = {};
 let pendingTag = null;
 const cam = { x: null, y: null };
+const SOLO = !!opt('solo', false);   // --solo: 게임 화면 대신 단색 배경에 영웅·적·파티클만 크게 (자세 비교용) — 게임 렌더는 건너뛴다
+const SOLO_K = Number(opt('zoom', 3));
+const SOLO_OX = Number(opt('ox', 0)), SOLO_GY = Number(opt('gy', 0.86));   // 카메라 중심 x 오프셋(월드 px), 바닥선 높이(비율)
 async function frame() {
+  if (SOLO) {
+    const r = await page.evaluate(([doShot, crop, q, cx0, cy0, label, SPF, K, OX, GY]) => {
+      const g = window.__game;
+      window.__qaStep(SPF, false);
+      for (let k = 0; k < 4 && /^(dialogue|bossIntro|story|document|companionJoin)$/.test(g.top?.name ?? ''); k++) g.pop();
+      if (g.world) { g.world.cutscene = false; g.world.inputLock = false; }
+      if (!doShot) return null;
+      const w = g.world, p = w.player, [W, H] = crop;
+      let cx = p.cx + OX, cy = p.bottom;
+      if (cx0 != null) { cx = cx0 + (p.cx + OX - cx0) * 0.25; cy = cy0 + (p.bottom - cy0) * 0.2; }
+      const o = (window.__recCv ||= document.createElement('canvas'));
+      o.width = W; o.height = H;
+      const oc = o.getContext('2d');
+      oc.fillStyle = '#2b2733'; oc.fillRect(0, 0, W, H);
+      oc.setTransform(K, 0, 0, K, W / 2 - cx * K, H * GY - cy * K);
+      oc.fillStyle = '#1a1720'; oc.fillRect(cx - W, cy, 2 * W, H);
+      oc.strokeStyle = 'rgba(255,255,255,0.08)'; oc.lineWidth = 1 / K;
+      for (let x = Math.floor((cx - W / K) / 32) * 32; x < cx + W / K; x += 32) { oc.beginPath(); oc.moveTo(x, cy); oc.lineTo(x, cy + 6); oc.stroke(); }
+      try {
+        w.fx.draw(oc, 'back');
+        for (const e of w.entities) if (e !== p && !e.dead && e.kind === 'enemy') e.draw?.(oc, w);
+        window.__hero.drawHero(oc, p, w, {});
+        w.fx.draw(oc, 'front');
+      } catch (e) { console.error(e); }
+      oc.setTransform(1, 0, 0, 1, 0, 0); oc.globalAlpha = 1; oc.globalCompositeOperation = 'source-over';
+      if (label) {
+        oc.font = 'bold 20px sans-serif'; oc.fillStyle = 'rgba(0,0,0,0.55)'; oc.fillRect(0, 0, oc.measureText(label).width + 20, 30);
+        oc.fillStyle = label.startsWith('BEFORE') ? '#ffb0a0' : '#b0ffb8'; oc.fillText(label, 10, 22);
+      }
+      return { url: o.toDataURL('image/jpeg', q), cx, cy };
+    }, [fi % every === 0, crop, q, cam.x, cam.y, label, SPF, SOLO_K, SOLO_OX, SOLO_GY]);
+    if (r) {
+      cam.x = r.cx; cam.y = r.cy;
+      if (pendingTag) { tags[pendingTag] = saved; pendingTag = null; }
+      fs.writeFileSync(path.join(out, `f${String(saved++).padStart(5, '0')}.jpg`), Buffer.from(r.url.split(',')[1], 'base64'));
+    }
+    fi++;
+    return;
+  }
   const r = await page.evaluate(([doShot, crop, q, cx0, cy0, label, SPF]) => {
     const g = window.__game;
     if (SPF > 1) window.__qaStep(SPF - 1, false);
@@ -124,6 +166,7 @@ async function frame() {
 }
 const ev = (fn, arg) => page.evaluate(fn, arg).catch((e) => errs.push('EVAL ' + e.message));
 for (const tok of script.split(',').map((s) => s.trim()).filter(Boolean)) {
+  if (tok.startsWith('evalf=')) { await ev(fs.readFileSync(tok.slice(6), 'utf8')); continue; }   // 파일의 JS 를 페이지에서 실행
   if (tok.startsWith('eval=')) { await ev(tok.slice(5).replaceAll(';;', ',')); continue; }
   if (tok.startsWith('tag=')) { pendingTag = tok.slice(4); continue; }
   if (tok === 'clear') {
@@ -138,7 +181,7 @@ for (const tok of script.split(',').map((s) => s.trim()).filter(Boolean)) {
   if (tok === 'dummy') {
     await ev(() => {
       const w = window.__game.world, p = w.player;
-      const e = w.spawnEnemy('skeleton', p.cx + p.facing * 70, p.bottom - 4, { facing: -p.facing });
+      const e = w.spawnEnemy('skeleton', p.cx + p.facing * Number(window.__dummyDx ?? 70), p.bottom - 4, { facing: -p.facing });
       if (e) { e.hp = e.maxHp = 1e7; e.ai = { update() {}, init() {} }; window.__dummy = e; }
     });
     continue;
@@ -161,5 +204,6 @@ for (const tok of script.split(',').map((s) => s.trim()).filter(Boolean)) {
 const pup = await page.evaluate((char) => Object.fromEntries(Object.entries(window.__hero.puppetStatus()).filter(([k]) => k.startsWith(char + '/')).map(([k, v]) => [k, v.state])), char);
 const tier = await page.evaluate(() => window.__game.tier ?? null);
 fs.writeFileSync(path.join(out, 'tags.json'), JSON.stringify(tags));
-console.log(JSON.stringify({ errs: errs.slice(0, 20), frames: saved, steps: fi, tags, tier, pup }));
+const dbg = await page.evaluate(() => window.__dbg ?? null).catch(() => null);   // eval= 토큰으로 모은 디버그 값
+console.log(JSON.stringify({ errs: errs.slice(0, 20), frames: saved, steps: fi, tags, tier, pup, dbg }));
 await browser.close(); srv.close();

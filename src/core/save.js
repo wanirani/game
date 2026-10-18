@@ -161,6 +161,9 @@ export const DEFAULT_SETTINGS = {
   gear: Object.freeze({ autoDispose: 'off', maxRarity: 0, weights: 'bal', fixSpecial: true, keep: Object.freeze({ enhanced: true, better: true, other: true, special: true }) }),
   hud: Object.freeze({ preset: 'auto', scale: 1, pad: 'overlay', rev: 2 }), // 화면 배치 (hud_mobile §3): preset 'auto'(화면비) | 'wide'(휴대폰) | 'fold'(폴드·태블릿), scale 0.85–1.2 — 바꿀 때는 새 객체로
   // [hudredo] pad 버튼 배치 'overlay'(게임 화면 위) | 'band'(아래 띠) · rev 2 = 버튼 배치 개편(점프·공격·대시) 뒤의 설정 (migrateSettings)
+  // [auto] 자동 전투 (game/autoplay.js): 새 세이브의 기본 단계 off|skill|battle (슬롯마다 state.auto.level 이 우선) · 필살기/각성기 boss|always|never ·
+  //        HP 물약 문턱 0–0.9 (0 = 쓰지 않음) · 전리품 줍기 · 큰 예고에서 물러서기
+  auto: Object.freeze({ level: 'off', ult: 'boss', potion: 0.35, pickup: true, dodge: true }),
   vibration: true, autoSave: true, keepAwake: true, turntableAuto: true, fullscreenAuto: true,
   telemetry: !privacySignal(), // 익명 통계·오류 보내기 (core/telemetry.js) — GPC 를 켠 브라우저는 기본 끔
   language: 'ko',
@@ -207,6 +210,7 @@ export const SETTINGS_SCHEMA = Object.freeze({
   touchLayout: Object.freeze({ type: 'layout' }),
   hud: Object.freeze({ type: 'hud' }),
   gear: Object.freeze({ type: 'gear' }),
+  auto: Object.freeze({ type: 'auto' }),   // [auto]
   vibration: BOOL, autoSave: BOOL, keepAwake: BOOL, turntableAuto: BOOL, fullscreenAuto: BOOL, telemetry: BOOL,
   language: oneOf('ko'),
 });
@@ -216,6 +220,7 @@ const INVALID = Symbol('invalid');
 function cloneDefault(k, v) {
   if (k === 'hud') return { ...v };
   if (k === 'gear') return { ...v, keep: { ...v.keep } };
+  if (k === 'auto') return { ...v };   // [auto]
   return v;
 }
 /** 설정 값 하나 검증 → 정규화된 값 또는 INVALID */
@@ -261,6 +266,17 @@ function checkSetting(spec, v) {
       out.keep = {};
       for (const [kk, vv] of Object.entries(k)) if (!UNSAFE_KEYS.has(kk)) out.keep[kk] = vv;
       for (const kk of Object.keys(d.keep)) out.keep[kk] = typeof k[kk] === 'boolean' ? k[kk] : d.keep[kk];
+      return out;
+    }
+    case 'auto': { // [auto] 항목별로 모르는 값은 기본값, 모르는 키는 보존 (gear 와 같은 규칙)
+      if (!isObj(v)) return INVALID;
+      const d = DEFAULT_SETTINGS.auto, out = {};
+      for (const [kk, vv] of Object.entries(v)) if (!UNSAFE_KEYS.has(kk)) out[kk] = vv;
+      out.level = ['off', 'skill', 'battle'].includes(v.level) ? v.level : d.level;
+      out.ult = ['boss', 'always', 'never'].includes(v.ult) ? v.ult : d.ult;
+      out.potion = typeof v.potion === 'number' && Number.isFinite(v.potion) ? Math.round(Math.min(0.9, Math.max(0, v.potion)) * 100) / 100 : d.potion;
+      out.pickup = typeof v.pickup === 'boolean' ? v.pickup : d.pickup;
+      out.dodge = typeof v.dodge === 'boolean' ? v.dodge : d.dodge;
       return out;
     }
     case 'layout': {
@@ -309,7 +325,7 @@ export function migrateSettings(saved) {
     const v = checkSetting(spec, saved[k]);
     if (v === INVALID) { out[k] = cloneDefault(k, dflt); changed = true; continue; }
     if (v !== saved[k] && (spec.type === 'num' || spec.type === 'enum')) changed = true;
-    else if ((spec.type === 'map' || spec.type === 'layout' || spec.type === 'hud' || spec.type === 'gear') && v !== null && JSON.stringify(v) !== JSON.stringify(saved[k])) changed = true;
+    else if ((spec.type === 'map' || spec.type === 'layout' || spec.type === 'hud' || spec.type === 'gear' || spec.type === 'auto') && v !== null && JSON.stringify(v) !== JSON.stringify(saved[k])) changed = true;
     out[k] = v;
   }
   // [hudredo] 버튼 배치 개편 전(hud.rev < 2)의 설정: 예전 기본 투명도 0.55 → 새 기본 0.95.

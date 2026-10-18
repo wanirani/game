@@ -65,13 +65,56 @@ def front_of(cid, cls):
     return crop[..., :3], crop[..., 3].astype(np.float32) / 255, 'turn.webp:y90'
 
 
+def fill_alpha(rgb, al, tol=18):
+    """rembg 알파 구멍 메우기 (TURN16-FIX): 흰 타이츠·빛나는 옷단처럼 시트 바탕(밝은 회색 그라데이션)과 비슷한 곳을
+    rembg 가 투명하게 잘라, 클링 입력(회색 바탕 합성)에 회색 얼룩이 생기고 영상 내내 남았다 (sera_saint 무릎·옷단).
+    시트 바탕색을 줄마다(잘라 낸 그림의 양 끝 중 알파 0 인 화소의 중앙값) 구해, 바탕색과 tol 이상 다른 화소 중
+    rembg 인물과 이어진 덩어리를 인물로 넣고, 그 안의 작은 구멍도 메운다. 발밑 그림자(바탕보다 어둡고 무채색)는 넣지 않는다."""
+    f = rgb.astype(np.float32)
+    H, W = al.shape
+    side = np.concatenate([f[:, :8], f[:, -8:]], 1)
+    sa = np.concatenate([al[:, :8], al[:, -8:]], 1) < 0.05
+    bg = np.zeros((H, 3), np.float32)
+    for y in range(H):
+        px = side[y][sa[y]]
+        bg[y] = np.median(px, 0) if len(px) else np.nan
+    ok = ~np.isnan(bg[:, 0])
+    for c in range(3):
+        bg[:, c] = np.interp(np.arange(H), np.where(ok)[0], bg[ok, c])
+    d = np.abs(f - bg[:, None, :]).max(2)
+    lum = f.mean(2)
+    sat = (f.max(2) - f.min(2)) / np.maximum(f.max(2), 1)
+    shadow = (lum < bg.mean(1)[:, None] - 4) & (sat < 0.1)
+    base = al > 0.5
+    ys = np.where(base.any(1))[0]
+    foot = ys[-1] if len(ys) else H
+    shadow[:max(0, int(foot - 0.06 * (foot - ys[0])))] = False      # 그림자 판정은 발목 아래 띠에서만
+    key = (d > tol) & ~shadow
+    lab, n = ndi.label(key | base)
+    keep = np.unique(lab[base])
+    keep = keep[keep > 0]
+    cand = np.isin(lab, keep) & ~shadow
+    cand = ndi.binary_fill_holes(cand)
+    cand = ndi.binary_opening(cand, iterations=1)
+    add = cand & ~base
+    out = al.copy()
+    out[add] = 1.0
+    return out, int(add.sum())
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('cls')
     ap.add_argument('--out', default='/tmp/claude-0/g4/turnmount_src')
+    ap.add_argument('--fill', action='store_true', help='rembg 알파 구멍을 시트 바탕색 키로 메운다 (TURN16-FIX)')
+    ap.add_argument('--bg', default='', help='바탕색 R,G,B (기본 128 회색; TURN16-FIX 재생성은 더 어둡게)')
     a = ap.parse_args()
     cid = a.cls.split('_')[0]
     rgb, al, src = front_of(cid, a.cls)
+    if a.fill:
+        al, nadd = fill_alpha(rgb, al)
+        print(f'{a.cls}: alpha fill +{nadd} px')
+    bgc = tuple(int(x) for x in a.bg.split(',')) if a.bg else BG
     ys = np.where(al.max(1) > 0.5)[0]
     xs = np.where(al.max(0) > 0.5)[0]
     if not len(ys):
@@ -83,12 +126,12 @@ def main():
         s = (W - 40) / rgb.shape[1]; nw, nh = W - 40, max(1, round(rgb.shape[0] * s))
     fig = Image.fromarray(rgb).resize((nw, nh), Image.LANCZOS)
     am = Image.fromarray((al * 255).astype(np.uint8), 'L').resize((nw, nh), Image.LANCZOS)
-    can = Image.new('RGB', (W, H), BG)
+    can = Image.new('RGB', (W, H), bgc)
     can.paste(fig, ((W - nw) // 2, FOOT_Y - nh), am)
     os.makedirs(a.out, exist_ok=True)
     p = os.path.join(a.out, a.cls + '_front.jpg')
     can.save(p, quality=93)
-    print(f'{a.cls}: {src} → {p} ({nw}x{nh})')
+    print(f'{a.cls}: {src} → {p} ({nw}x{nh}) bg {bgc}')
 
 
 if __name__ == '__main__':

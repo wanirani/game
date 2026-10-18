@@ -245,6 +245,42 @@ def cut(rgb):
     return a, np.clip(s2, 0, 1)
 
 
+def drop_floor(rgb, a, soft, band=0.05, line=0.025):
+    """--drop-floor (TURN16-FIX, azel_dhampir): 발밑 바닥의 밝은 회색 반사 덩어리 · 밑창에 붙은 회색 바닥선.
+    (1) 가장 큰 덩어리가 아니고 위 끝이 발 띠(인물 키의 아래 band) 안에 있는 무채색 덩어리를 지운다
+    (2) 맨 아래 line 띠에서 밝은 무채색 화소(lum > 100, 채도 < 0.12)를 지운다 — 검은 장화 같은 어두운 발에만 쓸 것"""
+    lab, n = ndi.label(a)
+    if not n:
+        return a, soft
+    sz = ndi.sum(a, lab, range(1, n + 1))
+    big = int(np.argmax(sz)) + 1
+    ys = np.where(a.any(1))[0]
+    top, bot = ys[0], ys[-1]
+    H = bot - top
+    f = rgb.astype(np.float32)
+    sat = (f.max(2) - f.min(2)) / np.maximum(f.max(2), 1)
+    lum = f.mean(2)
+    out = a.copy()
+    for c in range(1, n + 1):
+        if c == big:
+            continue
+        m = lab == c
+        cy = np.where(m.any(1))[0]
+        if cy[0] >= bot - band * H and float(sat[m].mean()) < 0.15:
+            out &= ~m
+    y0 = int(bot - line * H)
+    grey = (lum > 100) & (sat < 0.12)
+    grey[:y0] = False
+    out &= ~grey
+    out = ndi.binary_opening(out, iterations=1) | (out & ~ndi.binary_dilation(grey, iterations=2))
+    lab, n = ndi.label(out)
+    if n > 1:
+        sz = ndi.sum(out, lab, range(1, n + 1))
+        keep = np.zeros(n + 1, bool); keep[1:] = sz > max(400, 0.004 * sz.max())
+        out = keep[lab]
+    return out, np.where(out, soft, 0.0)
+
+
 def hsv_hist(rgb, m):
     h, s, v = hsv_arrays(rgb)
     sel = m & (s > 0.08)
@@ -262,6 +298,13 @@ def bhatta(a, b):
 def old_front_height(cid, cls):
     """예전 8방향 시트 앞모습(y90)이 게임에서 그려지는 키(논리 px) — 새 시트도 같은 키로 (sc)"""
     d = os.path.join(OUT, cid, cls)
+    if not os.path.exists(os.path.join(d, 'turn.webp')):
+        # 예전 8방향 시트는 TURNMOUNT 에서 지웠다 → 이미 실린 16방향 항목의 키(sc × th)를 그대로 이어 쓴다 (다시 만들어도 게임 속 키가 같게)
+        if os.path.exists(MAN):
+            e = load_json(MAN).get('looks', {}).get(f'{cid}/{cls}')
+            if e and e.get('sc') and e.get('th'):
+                return float(e['sc']) * float(e['th'])
+        return None
     rj = load_json(os.path.join(d, 'rig.json'))
     T = rj.get('turn') or {}
     v = (T.get('views') or {}).get('y90')
@@ -294,12 +337,15 @@ def old_hists(cid, cls):
     return out
 
 
-def prep(im):
-    """인코딩 전: 알파를 깔끔하게(단단한 마스크 + 0.6 px 가장자리) · 투명 화소의 색을 부드럽게 채움 (bleed 무늬는 바이트를 먹는다)"""
+def prep(im, keep=None):
+    """인코딩 전: 알파를 깔끔하게(단단한 마스크 + 0.6 px 가장자리) · 투명 화소의 색을 부드럽게 채움 (bleed 무늬는 바이트를 먹는다)
+    keep(bool, 시트 크기): 그 화소는 알파를 그대로 둔다 — turn16_repair 의 반투명 베일(비치는 망토)"""
     A = np.asarray(im).copy()
     al = A[..., 3].astype(np.float32) / 255
     hard = (al > 0.5).astype(np.float32)
     clean = np.maximum(cv2.GaussianBlur(hard, (0, 0), 0.6), np.minimum(al, hard))
+    if keep is not None:
+        clean = np.where(keep, al, clean)
     A[..., 3] = np.clip(clean * 255, 0, 255).astype(np.uint8)
     rgb = A[..., :3].astype(np.float32); w = (al > 0.03).astype(np.float32)
     num = cv2.GaussianBlur(rgb * w[..., None], (0, 0), 5); den = cv2.GaussianBlur(w, (0, 0), 5)[..., None]
@@ -372,6 +418,10 @@ def main():
     ap.add_argument('--dry', action='store_true', help='에셋·목록을 쓰지 않고 디버그 그림만')
     ap.add_argument('--dir', type=int, default=0, help='도는 방향 강제 (+1 먼저 오른쪽, −1 먼저 왼쪽)')
     ap.add_argument('--keys', default='', help='기준 프레임 직접 지정 "s,p1,b,p2,e" (반 바퀴는 p2·e 를 -) — 추정기를 건너뛴다')
+    ap.add_argument('--pick', default='', help='칸 k 의 프레임 바꾸기 "k:f,..." (f = 프레임 번호 | end = 영상 끝 앞모습 중 첫 프레임과 실루엣이 가장 같은 것) — TURN16-FIX')
+    ap.add_argument('--repair', default='', choices=['', 'opaque', 'veil'], help='배경색 얼룩 보정 (tools/puppet/turn16_repair.py) — TURN16-FIX')
+    ap.add_argument('--repair-json', default='', help='turn16_repair 변수 JSON (tol, R, enc, Ldark, Dmax, min, veil_a, ...)')
+    ap.add_argument('--drop-floor', action='store_true', help='발밑 바닥 반사 덩어리·회색 바닥선 지우기 (어두운 발 외형만) — TURN16-FIX')
     a = ap.parse_args()
     cid = a.cls.split('_')[0]
     tmp = tempfile.mkdtemp(prefix='t16_', dir=os.environ.get('TMPDIR') or None)
@@ -418,6 +468,43 @@ def main():
     # 빠진 각(영상이 덜 돌았다): 추정 오차 > 9° → 거울 칸 (yaw ↔ 180 − yaw)
     for p in picks:
         p['mirror'] = p['err'] > 9.0
+    fixinfo = {}
+    if a.pick:
+        for tok in a.pick.split(','):
+            kk, ff = tok.split(':')
+            kk = int(kk)
+            if ff == 'end':
+                # 영상 끝(마지막 25 %)에서 첫 프레임(앞모습) 실루엣과 IoU 가 가장 큰 프레임 — 앞모습으로 돌아온 뒤의 깨끗한 칸
+                m0 = masks[0]
+                best, bi = -1.0, None
+                for j in range(int(len(masks) * 0.75), len(masks)):
+                    iou = float((masks[j] & m0).sum()) / max(1, float((masks[j] | m0).sum()))
+                    if iou > best:
+                        best, bi = iou, j
+                ff = bi
+                fixinfo[f'pick{kk}_iou'] = round(best, 3)
+            ff = int(ff)
+            p = picks[kk]
+            p.update(i=ff, est=round(float(th[ff]), 1), err=0.0, mirror=False, picked=1)
+        fixinfo['pick'] = {str(p['k']): p['i'] for p in picks if p.get('picked')}
+    if a.repair:
+        fixinfo['repair'] = a.repair
+    if a.drop_floor:
+        fixinfo['drop_floor'] = 1
+    RP = json.loads(a.repair_json) if a.repair_json else {}
+    if RP:
+        fixinfo['repair_p'] = RP
+
+    def cut2(rgb):
+        """cut + (선택) 바닥 덩어리 지우기 + (선택) 얼룩 보정 → (hard, soft, rgb, veil)"""
+        hm_, sa_ = cut(rgb)
+        if a.drop_floor:
+            hm_, sa_ = drop_floor(rgb, hm_, sa_)
+        vl = np.zeros_like(hm_)
+        if a.repair:
+            from turn16_repair import apply as repair_apply
+            rgb, hm_, sa_, vl = repair_apply(rgb, hm_, sa_, RP, a.repair)
+        return hm_, sa_, rgb, vl
     print(f'[{a.cls}] frames {len(frames)} start {s} dir {d:+d} (flow {flow:+.2f}) anchors {info}')
     # 컷 + 정체성
     f0 = frames[0]
@@ -435,10 +522,10 @@ def main():
             continue
         i = p['i']
         if i not in cache:
-            cache[i] = cut(frames[i]) if i else (a0, s0)
-        hm, sa = cache[i]
+            cache[i] = cut2(frames[i])
+        hm, sa, frgb, veil = cache[i]
         ys, xs = np.where(hm)
-        hh = hsv_hist(frames[i], ndi.binary_erosion(hm, iterations=3))
+        hh = hsv_hist(frgb, ndi.binary_erosion(hm, iterations=3))
         hd = bhatta(h0, hh)
         od = OH.get(float(p['deg']))
         p['old'] = round(bhatta(od, hh), 3) if od is not None else None
@@ -447,17 +534,18 @@ def main():
         pad = 4
         x0, x1 = max(0, xs.min() - pad), min(f0.shape[1], xs.max() + 1 + pad)
         y0, y1 = max(0, ys.min() - pad), min(f0.shape[0], max(G, ys.max()) + 1 + pad)
-        col = bleed(frames[i], hm)
+        col = bleed(frgb, hm)
         rgba = np.dstack([col, (sa * 255).astype(np.uint8)])[y0:y1, x0:x1]
         im = Image.fromarray(rgba, 'RGBA')
         W2, H2 = max(1, round(im.width * S)), max(1, round(im.height * S))
         im = im.resize((W2, H2), Image.LANCZOS)
+        vim = Image.fromarray((veil[y0:y1, x0:x1] * 255).astype(np.uint8), 'L').resize((W2, H2), Image.BILINEAR) if veil.any() else None
         # 축: 아래 15 % (발·정강이) 실루엣 가운데 — 카메라가 고정되고 인물이 제자리에서 돈다
         foot = hm[int(ys.max() - 0.15 * (ys.max() - ys.min())):ys.max() + 1]
         fx = np.where(foot.any(0))[0]
         ax = ((fx.min() + fx.max()) / 2 - x0) * S if len(fx) else W2 / 2
         bw, _, _, _ = band(hm)
-        cells.append(dict(p=p, im=im, ax=round(float(ax), 1), fy=round((G - y0) * S, 1), bw=round(bw * S, 1)))
+        cells.append(dict(p=p, im=im, vim=vim, ax=round(float(ax), 1), fy=round((G - y0) * S, 1), bw=round(bw * S, 1)))
     # 이웃 칸과 비교한 정체성 경고
     warn = [c['p'] for c in cells if (c['p'].get('old') or 0) > 0.5 or not (0.86 < c['p']['hratio'] < 1.14)]
     # 시트 (8 × 2, 칸 폭은 제각각 — 줄마다 왼쪽부터)
@@ -468,20 +556,31 @@ def main():
     Wsh = max(sum(c['im'].width + gap for c in row) for row in rows)
     Hsh = sum(h + gap for h in rowH)
     sheet = Image.new('RGBA', (Wsh, Hsh), (0, 0, 0, 0))
+    vsheet = Image.new('L', (Wsh, Hsh), 0)            # 반투명 베일 화소 (--repair veil)
     y = 0
     for row, rh in zip(rows, rowH):
         x = 0
         for c in row:
             sheet.paste(c['im'], (x, y))
+            if c.get('vim') is not None:
+                vsheet.paste(c['vim'], (x, y))
             c['x'], c['y'] = x, y
             x += c['im'].width + gap
         y += rh + gap
     base = sheet                                     # 기준 시트 (인물 키 = a.th0)
+    has_veil = any(c.get('vim') is not None for c in cells)
+
+    def vkeep(w, h):
+        """베일 화소 (prep 이 알파를 그대로 두는 곳) — 시트 크기 w×h"""
+        if not has_veil:
+            return None
+        return np.asarray(vsheet.resize((w, h), Image.BILINEAR)) > 100
     # 크기 상한: 인물 키를 a.th 에서 6 % 씩 줄여 가며 q ≥ 50 으로 max-kb 안에 드는 첫 배율 (그래도 넘으면 마지막 것)
     th_ui = a.th
     while True:
         f = th_ui / a.th0
-        ui = prep(base.resize((max(1, round(base.width * f)), max(1, round(base.height * f))), Image.LANCZOS))
+        uw, uh = max(1, round(base.width * f)), max(1, round(base.height * f))
+        ui = prep(base.resize((uw, uh), Image.LANCZOS), vkeep(uw, uh))
         data_ui, q_ui = None, None
         for q in (78, 72, 66, 60, 55, 50):
             b = enc(ui, q, 60)
@@ -493,9 +592,10 @@ def main():
         th_ui = max(a.th_min, int(th_ui * 0.94))
     fx, fy = ui.width / base.width, ui.height / base.height
     k = a.lo
-    lo = prep(base.resize((max(1, round(ui.width * k)), max(1, round(ui.height * k))), Image.LANCZOS))
+    lw, lh = max(1, round(ui.width * k)), max(1, round(ui.height * k))
+    lo = prep(base.resize((lw, lh), Image.LANCZOS), vkeep(lw, lh))
     data_lo, q_lo = None, None
-    for q in (76, 68, 60, 52, 46):
+    for q in (76, 68, 60, 52, 46, 40, 34):
         b = enc(lo, q, 55)
         data_lo, q_lo = b, q
         if len(b) <= a.max_lo_kb * 1024:
@@ -531,6 +631,10 @@ def main():
                  mask=(dict(w=mask.width, h=mask.height, v=hashlib.sha1(data_mk).hexdigest()[:10], kb=round(len(data_mk) / 1024, 1)) if data_mk else None),
                  views=views, dir=d, frames=[p['i'] for p in picks], anchors=info,
                  src=f'kling turntable {os.path.basename(a.video)} (tools/puppet/turn16_build.py)')
+    if fixinfo:
+        entry['fix'] = fixinfo
+    if has_veil:
+        entry['veil'] = 1
     # 디버그: 칸 + 정보
     ensure(a.dbg)
     on_green(sheet, 0.6).save(os.path.join(a.dbg, f'{a.cls}_turn16.jpg'), quality=82)

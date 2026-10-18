@@ -9,6 +9,7 @@ import { audio } from '../core/audio.js';
 import * as PUPPET from '../render/hero_puppet.js';
 import * as HERO from '../render/hero.js';   // [hook:plat] heroScaleFor (MOTION, 있을 때만)
 import * as TRIAL from '../game/trial.js';   // 시련 「메아리」 (classes_t3 §9.3–§9.4)
+import '../game/autoplay.js';   // [auto] 자동 전투 · 대상 고정 (불러오면 input 가상 입력원을 설치한다 — AUTO-QOL)
 
 export class StageScene extends Scene {
   enter({ stageId = 's01', roomId = null, mode = 'story', trial = null } = {}) {

@@ -14,7 +14,7 @@ import { NPCS } from '../data/npcs.js';
 import { TOWN_NPCS } from '../data/town.js';
 import { PUPPETS } from './puppet_manifest.js';
 import { ASCENSIONS } from '../data/ascensions.js';   // 초월·비전: 원화는 2차 것을 쓴다 (classes_t3 §2.7)
-import { G, sh, ra, fillGrad, ribbonPath, WS, drawWeapon, drawWing, glow, drawHalo } from './hero_parts.js';
+import { G, sh, ra, fillGrad, ribbonPath, WS, drawWeapon, drawWing, glow, drawHalo, weaponReach } from './hero_parts.js';
 import { drawSkinned, spring, stateOf, meshOverride } from './puppet_mesh.js';
 
 const PI = Math.PI, HP = PI / 2, TAU = PI * 2;
@@ -921,10 +921,9 @@ function motionBegin(c, E, P, s, ST, tt) {
     if (ST.ph === 1) {
       if (st.t !== tt && st.pa !== undefined) { const d = wrapPI(ang - st.pa); if (Math.abs(d) > 0.02) SWSIGN.set(def, d > 0 ? 1 : -1); }
     }
-    const sg = SWSIGN.get(def) || 0;
-    let da = 0;
-    if (sg && ST.ph === 0) { const u = clamp(ST.u, 0, 1); da = -sg * 0.3 * Math.sin(PI * Math.pow(u, 0.7)); }        // 반대로 젖힘 (빨리 젖혔다 놓음)
-    else if (sg && ST.ph === 2) { const u = clamp(ST.u, 0, 1); da = sg * 0.26 * Math.sin(PI * u) * (1 - u * 0.5); }   // 지나쳐 돌아옴
+    // 앤티시페이션·팔로스루는 hero.js attackPose(MOTION-FEEL)가 자세 자체로 그린다 — 무기 궤적과 같은 자세라 칼끝이 어긋나지 않는다.
+    // 여기서 어깨를 중심으로 팔을 더 돌리던 예전 연출은 끈다 (두 번 젖히면 과하고 궤적과 어긋남). 회전 방향(SWSIGN)은 잔상이 쓴다
+    const da = 0;
     if (Math.abs(da) > 0.003) {
       ABK.on = true;
       ABK.e1x = s.e1x; ABK.e1y = s.e1y; ABK.h1x = s.h1x; ABK.h1y = s.h1y; ABK.e2x = s.e2x; ABK.e2y = s.e2y; ABK.h2x = s.h2x; ABK.h2y = s.h2y; ABK.w1 = P.w1;
@@ -951,25 +950,55 @@ function motionEnd(c, E, P, s, tt) {
   AE = null;
 }
 let AE_MV = null;
-/** 잔상: 활성 구간에 가까운 아래팔·주먹(+무기)을 지난 프레임 → 이번 프레임 사이에 옅게 (높음 2장, 보통 1장). 지난 프레임이 같은 기술일 때만 */
+/**
+ * 스미어 (MOTION-FEEL): 판정 구간에 무기·팔이 지난 프레임 → 이번 프레임 사이를 휩쓴 자리를 그린다 (조종 중인 영웅, 보통·높음 화질).
+ *  ① 휩쓴 쐐기: 손잡이·칼끝이 지나간 띠를 칼날 색으로 옅게 채움 (불투명 합성 — 가산 궤적과 달리 그림 같은 '늘어진 실루엣')
+ *  ② 사이 잔상: 아래팔·주먹·무기를 중간 각도에 옅게 (높음 3장, 보통 1장). 지난 프레임이 같은 기술일 때만.
+ * 좌표는 몸 변환(T1) 안이라 왼쪽을 볼 때도 그대로 맞는다. 30fps 면 한 프레임에 더 많이 돌아 쐐기가 넓어진다 (움직임 흐림과 같은 이치)
+ */
+const SW_N = 5, SWX = new Float32Array(SW_N * 2 + 2), SWY = new Float32Array(SW_N * 2 + 2);
 function swingSmear(c, E, K, P, W, s, ST, hasMain, tt) {
   if (!G.fx || G.tint || !G.main || ST.ph !== 1 || !ST.mv) return;
   const st = stateOf(E.p);
   if (!st?.ok || st.mv !== ST.mv || !(tt - st.t < 0.1)) return;
   const dx = s.h1x - st.h1x, dy = s.h1y - st.h1y;
-  if (dx * dx + dy * dy < 6) return;
+  const dw = wrapPI(P.w1 - st.w1);
+  if (dx * dx + dy * dy < 6 && Math.abs(dw) < 0.12) return;
   const J = R.J, a0 = c.globalAlpha;
-  for (const k of G.qual === 'high' ? SMEAR2 : SMEAR1) {
+  // ① 휩쓴 쐐기 (칼·대검·단검·지팡이·창 — 총·채찍 끈은 제외)
+  if (hasMain && W.type !== 'gun' && W.type !== 'whip' && Math.abs(dw) > 0.1) {
+    const Lw = weaponReach(W) * 0.98, L0 = W.type === 'spear' ? Lw * 0.45 : Lw * 0.12;
+    for (let i = 0; i <= SW_N; i++) {
+      const k = i / SW_N, hx = lerp(st.h1x, s.h1x, k), hy = lerp(st.h1y, s.h1y, k), w = st.w1 + dw * k, cw = Math.cos(w), sw = Math.sin(w);
+      SWX[i] = hx + cw * Lw; SWY[i] = hy + sw * Lw;                                      // 칼끝 줄
+      SWX[SW_N * 2 + 1 - i] = hx + cw * L0; SWY[SW_N * 2 + 1 - i] = hy + sw * L0;      // 손잡이 줄 (거꾸로)
+    }
+    c.beginPath(); c.moveTo(SWX[0], SWY[0]);
+    for (let i = 1; i < SW_N * 2 + 2; i++) c.lineTo(SWX[i], SWY[i]);
+    c.closePath();
+    const big = W.type === 'greatsword' ? 1.25 : 1;
+    c.globalAlpha = a0 * (G.qual === 'high' ? 0.3 : 0.24) * big;
+    c.fillStyle = W.blade || '#c8ccd8'; c.fill();
+    // 앞날(지금 칼끝 쪽) 밝은 테두리: 칼끝 줄의 최근 절반
+    c.globalAlpha = a0 * 0.5;
+    c.strokeStyle = '#f4f2ea'; c.lineWidth = 0.9 * big;
+    c.beginPath(); c.moveTo(SWX[SW_N >> 1], SWY[SW_N >> 1]);
+    for (let i = (SW_N >> 1) + 1; i <= SW_N; i++) c.lineTo(SWX[i], SWY[i]);
+    c.stroke();
+  }
+  // ② 사이 잔상
+  for (const k of G.qual === 'high' ? SMEAR3 : SMEAR1) {
     const ex = lerp(st.e1x, s.e1x, k), ey = lerp(st.e1y, s.e1y, k), hx = lerp(st.h1x, s.h1x, k), hy = lerp(st.h1y, s.h1y, k);
-    const w = st.w1 + wrapPI(P.w1 - st.w1) * k;
-    c.globalAlpha = a0 * (0.14 + 0.18 * k);
+    const w = st.w1 + dw * k;
+    c.globalAlpha = a0 * (0.1 + 0.2 * k);
     c.save(); boneXf(c, J.elbow, J.hand, ex, ey, hx, hy); blit(c, 'farm'); c.restore();
     if (hasMain) { drawWeapon(W, hx, hy, w, {}); gripPup(c, K, ex, ey, hx, hy, w, W.type, false); }
     else { c.save(); boneXf(c, J.elbow, J.hand, ex, ey, hx, hy); blit(c, 'hand'); c.restore(); }
   }
   c.globalAlpha = a0;
 }
-const SMEAR2 = [0.3, 0.65], SMEAR1 = [0.5];
+const SMEAR3 = [0.25, 0.5, 0.75], SMEAR1 = [0.5];
+
 /** 채찍 똬리에서 늘어진 끈 끝 (스프링 체인) — T0 좌표에서 그린다 */
 const STRAP_CFG = { g: 900, d: 0.86, push: 200, rest: 0.9, curl: 0.04, flut: 18 };
 function coilStrap(c, E, K, s, T0M) {

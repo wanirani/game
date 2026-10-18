@@ -80,7 +80,7 @@ const SECT_DIRS = [['right'], ['right', 'down'], ['down'], ['down', 'left'], ['l
 const L3 = 10, L3_STILL = 0.6, L3_HOLD_MS = 250;   // 탈것(L3): 스틱이 0.6 안쪽일 때만, 또는 0.25초 누르고 있으면
 const CMD_TOUCH_WINDOW = 0.8;
 const AUTO_MOVE_GAP = 0.25;   // [auto] 사람이 방향을 뗀 뒤 auto 이동을 쉬는 시간 (서로 잡아당기지 않게)
-const DIRS = ['left', 'right', 'up', 'down'];
+const AUTO_MOVE_ACTS = ['left', 'right', 'up', 'down', 'jump', 'dash'];
 const HIST_MAX = 24;
 
 /** 각도 → 8방향 구역 (0 = 오른쪽, 시계 방향; y 는 아래가 +). 직전 구역에서 ±30° 안이면 유지 */
@@ -873,7 +873,7 @@ class Input {
       try { r = this._autoFn(dt, this); } catch (e) { r = null; if (!this._autoErr) { this._autoErr = true; console.error('[input] auto source', e); } }
       for (const k in A) A[k] = false;
       if (r) for (const k in r) if (r[k] && ACTION_SET.has(k)) { A[k] = true; autoOn = true; }
-      if (humanMove || this.time - this.humanMoveT < AUTO_MOVE_GAP) for (const d of DIRS) A[d] = false;   // 사람 이동이 이긴다
+      if (humanMove || this.time - this.humanMoveT < AUTO_MOVE_GAP) for (const d of AUTO_MOVE_ACTS) A[d] = false;   // 사람 이동이 이긴다 (자동 턱 넘기·회피 대시도)
     } else if (this.autoActive) for (const k in A) A[k] = false;
     this.autoActive = autoOn;
     const aliasUlt = this.awakenAsUlt && !!(s.key.awaken || s.pad.awaken || s.touch.awaken);

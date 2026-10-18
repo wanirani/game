@@ -90,13 +90,19 @@ def main():
         if not n_ui and not n_lo:
             continue
         upd = {}
+        def keep_of(im):
+            # turn16_build --repair veil 의 반투명 베일 화소는 알파 그대로 (prep 이 이진화하지 않게)
+            if not e.get('veil'):
+                return None
+            al = np.asarray(im)[..., 3]
+            return (al > 64) & (al < 240)
         if n_ui:
-            data, q = encode(prep(ui2), (78, 72, 66, 60, 55, 50), 60, a.max_kb * 1024)
+            data, q = encode(prep(ui2, keep_of(ui2)), (78, 72, 66, 60, 55, 50), 60, a.max_kb * 1024)
             with open(os.path.join(d, 'turn16_ui.webp'), 'wb') as fh:
                 fh.write(data)
             upd['ui'] = dict(v=hashlib.sha1(data).hexdigest()[:10], kb=round(len(data) / 1024, 1), q=q)
         if n_lo:
-            data, q = encode(prep(lo2), (76, 68, 60, 52, 46), 55, a.max_lo_kb * 1024)
+            data, q = encode(prep(lo2, keep_of(lo2)), (76, 68, 60, 52, 46, 40, 34), 55, a.max_lo_kb * 1024)
             with open(os.path.join(d, 'turn16_lo.webp'), 'wb') as fh:
                 fh.write(data)
             upd['lo'] = dict(v=hashlib.sha1(data).hexdigest()[:10], kb=round(len(data) / 1024, 1), q=q)

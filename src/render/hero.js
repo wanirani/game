@@ -474,7 +474,7 @@ const recoverEase = (u) => (u < 0.22 ? 0 : ease.inOutQuad((u - 0.22) / 0.78));
 // 회복(ph 2): 팔·무기·몸 기울기가 E 를 지나쳤다가(팔로스루) 기본 자세로 가라앉음
 // 모두 (mv, t) 의 결정적 함수 → 무기 궤적(drawTrail 이 과거 시점 자세를 다시 푼다)과 칼끝이 어긋나지 않는다
 const ATK_W = { greatsword: 1.35, spear: 1.1, sword: 1, whip: 0.85, staff: 0.85, dagger: 0.7, gun: 0.6, none: 0.8 };   // 몸무게 이동 세기
-const ATK_FT = { greatsword: 0.24, sword: 0.17, staff: 0.15, dagger: 0.1, whip: 0.06, spear: 0.07, gun: 0, none: 0.1 };   // 팔로스루 (스윙 각의 비율)
+const ATK_FT = { greatsword: 0.3, sword: 0.22, staff: 0.2, dagger: 0.14, whip: 0.08, spear: 0.08, gun: 0, none: 0.12 };   // 팔로스루 (스윙 각의 비율)
 const FT_KEYS = ['a1', 'w1', 'a2', 'w2', 'lean', 'hd'];
 // 연타 변주: 같은 자세 이름(stab·shoot …)이 이어져도 높이·각도가 달라 보이게 (기술 id 별 R·E 덧셈)
 const ATK_VAR = {
@@ -491,11 +491,11 @@ const sstep = (a, b, x) => { const u = clamp((x - a) / (b - a), 0, 1); return u 
 function addVar(P, v) { if (v) for (const k in v) P[k] += v[k]; }
 /** 몸무게 이동 (지상 공격만): w = −1(뒷발) … +1(앞발), d = 웅크림(0~1) */
 function weightShift(P, wk, w, d) {
-  P.px += 2.0 * wk * w;
-  P.py += (0.9 + 0.6 * Math.max(0, w)) * wk * d;
-  if (w > 0) { P.f1x += 2.2 * wk * w; P.t2 += 0.32 * w; }
-  else { P.f2x += 1.2 * wk * w; P.t1 -= 0.12 * w; }
-  P.lean += 0.06 * wk * w;
+  P.px += 3.2 * wk * w;
+  P.py += (1.3 + 1.0 * Math.max(0, w)) * wk * d;
+  if (w > 0) { P.f1x += 3.6 * wk * w; P.t2 += 0.4 * w; }
+  else { P.f2x += 1.8 * wk * w; P.t1 -= 0.16 * w; }
+  P.lean += 0.09 * wk * w;
 }
 function setBase(P, p, K, kind) {
   resetPose(P);
@@ -525,7 +525,7 @@ function attackPose(P, S, p, K, mv, t) {
   const wt = K.W.type, wk = ATK_W[wt] ?? 1, ground = kind === 'stance';
   if (ph.ph === 0) {
     // 예비: R 에 82% 지점에서 닿고, 그 사이 R 너머로 16% 더 젖혔다가(코일) 돌아온다
-    const u = ph.u, k = ease.outCubic(clamp(u / 0.82, 0, 1)) + 0.16 * Math.sin(PI * clamp((u - 0.25) / 0.75, 0, 1));
+    const u = ph.u, k = ease.outCubic(clamp(u / 0.82, 0, 1)) + 0.22 * Math.sin(PI * clamp((u - 0.25) / 0.75, 0, 1));
     lerpPose(P, PB, PR, k);
     if (ground) weightShift(P, wk, -sstep(0, 0.7, u), sstep(0.1, 0.9, u));
   } else if (ph.ph === 1) {
@@ -2123,9 +2123,10 @@ function drawComposite(ctx, p, world, opts, K) {
     oc.setTransform(1, 0, 0, 1, 0, 0); oc.clearRect(0, 0, W + 2, H + 2);
     oc.setTransform(rs, 0, 0, rs, (bw - p.cx) * rs, (bt - p.bottom) * rs);
     drawHero(oc, p, world, { tint: opts.tint, scale: opts.scale, noFx: opts.noFx, _inner: true });
-    if (opts.tint && K.pup) { // 채색 퍼펫은 부품이 그림이라 단색 잔상은 실루엣을 통째로 물들인다
-      oc.setTransform(1, 0, 0, 1, 0, 0); oc.globalCompositeOperation = 'source-in';
-      oc.fillStyle = opts.tint; oc.fillRect(0, 0, W + 2, H + 2); oc.globalCompositeOperation = 'source-over';
+    if (opts.tint && K.pup) { // 채색 퍼펫은 부품이 그림이라 G.tint 로 물들지 않는다 → 합성 뒤 물들임
+      // MOTION-FEEL: 잔상이 납작한 단색 실루엣이 아니라 '채색 그림이 비치는' 색 잔상이 되게 — 색을 62% 만 덮고(source-atop) 윤곽은 남긴다
+      oc.setTransform(1, 0, 0, 1, 0, 0); oc.globalCompositeOperation = 'source-atop'; oc.globalAlpha = 0.62;
+      oc.fillStyle = opts.tint; oc.fillRect(0, 0, W + 2, H + 2); oc.globalCompositeOperation = 'source-over'; oc.globalAlpha = 1;
     }
     e.rs = rs; e.tint = opts.tint; e.pk = K.pupKey;
   }
@@ -2736,6 +2737,49 @@ function leanFollow(P, rig, dt, anim) {
   if (!Number.isFinite(s.x) || Math.abs(s.x - P.lean) > 0.5) { s.x = P.lean; s.v = 0; }
   const d = s.x - P.lean;
   P.lean = s.x; P.hd -= d * 0.6;
+}
+// ── 무기 계열별 연출 기록 (MOTION-FEEL) ──
+// 그리기 쪽은 '이번 프레임의 무기 끝(지팡이 머리·창끝·총구)·탄피 구멍 위치와 공격 단계'만 rig.mfx 에 적는다 — 파티클은 만들지 않는다
+// (perf_budget drawfx·rng: 그리기 중 효과 생성·Math.random 0). 불꽃(대검)·성광(지팡이)·찌르기 고리(창)·탄피(총)는 시뮬레이션 스텝의
+// game/feel_move.js motionTick 이 이 기록으로 낸다 (60Hz 고정 — 30fps 기기에서도 같은 양). 경직 중 무기 끝 반짝임만 여기서 그린다.
+let GLINT = null;
+if (typeof document !== 'undefined') {
+  const cv = document.createElement('canvas'); cv.width = 48; cv.height = 48;
+  const g = cv.getContext('2d'), r = g.createRadialGradient(24, 24, 0, 24, 24, 24);
+  r.addColorStop(0, 'rgba(255,255,255,0.95)'); r.addColorStop(0.18, 'rgba(255,248,225,0.6)'); r.addColorStop(1, 'rgba(255,240,200,0)');
+  g.fillStyle = r; g.fillRect(0, 0, 48, 48);
+  g.fillStyle = 'rgba(255,255,255,0.95)';
+  for (const [a, l] of [[0, 23], [PI / 2, 23], [PI / 4, 11], [-PI / 4, 11]]) {
+    g.save(); g.translate(24, 24); g.rotate(a); g.beginPath(); g.moveTo(-l, 0); g.lineTo(0, -1.4); g.lineTo(l, 0); g.lineTo(0, 1.4); g.closePath(); g.fill(); g.restore();
+  }
+  GLINT = cv;
+}
+function motionFx(c, E, K, p, mv, world, tt, hsK) {
+  const rig = E.rig, P = E.P, W = K.W, s = SK;
+  const m = rig.mfx || (rig.mfx = { seq: 0, used: -1, t: -1, x: 0, y: 0, px: 0, py: 0, hx: 0, hy: 0, gx: 0, gy: 0, ang: 0, ph: -1, u: 0, mvN: 0, wt: '', anim: null, fin: false, col: '#fff', ground: false, prevOk: false });
+  const L = weaponReach(W) * (W.type === 'gun' ? 1 : 0.96);
+  const w = P.w1, cw = Math.cos(w), sw = Math.sin(w);
+  tx0(P, s.h1x + cw * L, s.h1y + sw * L); const lx = TX, ly = TY;
+  if (m.t !== tt) {
+    tx0(P, s.h1x, s.h1y); const hx = TX, hy = TY;
+    const ox = E.p.cx, oy = E.p.bottom, f = E.fac, hs = E.hs;
+    m.prevOk = m.t >= 0 && tt - m.t < 0.1 && m.mvN === (rig.mvN || 0);
+    m.px = m.x; m.py = m.y;
+    m.x = ox + f * hs * lx; m.y = oy + hs * ly; m.hx = ox + f * hs * hx; m.hy = oy + hs * hy;
+    m.ang = Math.atan2(ly - hy, (lx - hx) * f);
+    if (W.type === 'gun') { tx0(P, s.h1x + cw * 4 - sw * -1.5, s.h1y + sw * 4 + cw * -1.5); m.gx = ox + f * hs * TX; m.gy = oy + hs * TY; }
+    m.ph = mv && ST.atk ? ST.ph : -1; m.u = ST.u; m.mvN = rig.mvN || 0; m.wt = W.type; m.anim = mv?.anim ?? null; m.fin = !!mv?.finisher;
+    m.col = mv ? trailColor(K, mv) : K.trailC; m.ground = ly > -8 && E.p.onGround !== false;
+    m.t = tt; m.seq++;
+  }
+  // 경직(히트스톱) 동안 무기 끝 반짝임 — 판정 구간·회복 초반에 맞았을 때 (경직이 걸린 그 자세 그대로)
+  if (hsK > 0 && mv && ST.atk && ST.ph >= 1 && GLINT && W.type !== 'gun' && W.type !== 'none' && W.type !== 'whip') {
+    const a0 = c.globalAlpha, sz = (W.type === 'greatsword' ? 30 : 22) * (0.75 + 0.25 * hsK);
+    c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = a0 * 0.85 * hsK;
+    c.translate(lx, ly); c.rotate(((world.rt ?? tt) * 3) % PI);
+    c.drawImage(GLINT, -sz / 2, -sz / 2, sz, sz);
+    c.restore();
+  }
 }
 function drawMist(k, t) {
   const c = G.c;

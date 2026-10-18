@@ -210,6 +210,7 @@ export class Player extends Entity {
         this.vx = approach(this.vx, 0, (onGround ? 2600 : 500) * dt);
       }
     }
+    this.faceLock(world, ax);   // [auto] 대상 고정: 좌우를 누르지 않고 서 있으면 대상 쪽으로
     this.noteFacing?.();   // [hook:plat] 방향 전환 기록 → facingAt(t)
 
     // ── 점프 ──
@@ -235,6 +236,19 @@ export class Player extends Entity {
   }
 
   moveLocked() { return this.move && this.moveT < (this.move.cancel ?? this.move.dur) / this.atkSpeedMul; }
+
+  /** [auto] 대상 고정 (world.lockTarget, game/autoplay.js): 살아 있는 고정 대상이면 그 엔티티 | null */
+  lockOn(world = this.world) {
+    const e = world?.lockTarget;
+    return e && !e.dead && !(e.dying > 0) && !e.hidden ? e : null;
+  }
+  /** [auto] 좌우 입력 없이 서 있거나(공격·대시·경직 아님) 탈것 위에서 쉬는 중이면 고정 대상 쪽으로 돌아선다 */
+  faceLock(world, ax) {
+    const e = ax === 0 && !this.move && !(this.dashT > 0) && !(this.faceHoldT > 0) ? this.lockOn(world) : null;
+    if (!e) return;
+    const dx = e.cx - this.cx;
+    if (Math.abs(dx) > 16) this.facing = dx > 0 ? 1 : -1;
+  }
 
   tickTimers(dt, world) {
     const s = this.stats;
@@ -515,6 +529,7 @@ export class Player extends Entity {
     if (!mv) return;
     if (this.mount?.riding) mv = this.mount.adaptMove(mv);   // [hook:cmp] 탑승 중: 돌진·체공·반동 제거, canMove
     else { pivotCommit?.(this); if (this.onGround) this.sprinting = false; }   // [hook:feel] 방향 전환 중이면 새 방향으로 치고, 지상 공격은 질주를 끝낸다
+    { const lk = input.axisX === 0 ? this.lockOn(world) : null; if (lk && Math.abs(lk.cx - this.cx) > 12) this.facing = lk.cx > this.cx ? 1 : -1; }   // [auto] 고정 대상 쪽으로 휘두른다 (좌우를 누르고 있으면 그 방향)
     this.moveStall = takeChaseStall?.(this) ?? 0;   // [hook:feel]
     this.move = mv; this.moveT = 0; this.moveHitDone = false; this.moveHits = 0;
     this.chainKind = kind === 'ground' || kind === 'air' ? kind : null;
@@ -590,9 +605,14 @@ export class Player extends Entity {
     const P = mv.proj;
     this.shotsFired++;
     const n = P.count ?? 1;
-    const base = P.angle !== undefined ? (this.facing > 0 ? P.angle : Math.PI - P.angle) : (this.facing > 0 ? 0 : Math.PI);
+    let base = P.angle !== undefined ? (this.facing > 0 ? P.angle : Math.PI - P.angle) : (this.facing > 0 ? 0 : Math.PI);
     const L = this.mount?.riding ? this.mount.riderLift() : ZERO;   // [hook:cmp]
     const ox = this.cx + this.facing * ((P.offX ?? 30) + L.dx), oy = this.bottom + (P.offY ?? -60) + L.dy;   // [hook:cmp]
+    const lk = P.angle === undefined ? this.lockOn(world) : null;   // [auto] 곧게 나가는 탄은 고정 대상 쪽으로 ±35° 까지 기운다
+    if (lk && (lk.cx - ox) * this.facing > 20) {
+      const a = Math.atan2(lk.cy - oy, Math.abs(lk.cx - ox)), k = Math.max(-0.61, Math.min(0.61, a));
+      base = this.facing > 0 ? k : Math.PI - k;
+    }
     for (let i = 0; i < n; i++) {
       const a = base + (i - (n - 1) / 2) * (P.spread ?? 0) + (n > 1 ? rand(-0.03, 0.03) : 0);
       world.spawnProjectile({
