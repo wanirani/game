@@ -105,8 +105,25 @@ export class Nightwing extends ABoss {
     if (low > 0.6 && Math.random() < 0.5) this.fx.emit('dust', x + rand(-40, 40), A.floor - 4, { speed: 120, angle: -PI / 2 });
     if (u >= 1) {
       if (this.chainLeft > 0) { this.chainLeft--; this.cont = true; this.setState('swoop'); }
+      else if (this.gentle) this.setState('lowHover');   // [playb] P12 견습·숙련 1페이즈: 급강하 뒤 닿는 높이에서 잠깐 머문다
       else this.rest(1.05);
     }
+  }
+  /** [playb] P12 견습 헌터·숙련 헌터의 1페이즈 (첫 보스를 근접으로도 칠 수 있게). 악몽·지옥·회차 강화(inferno)·2페이즈부터는 그대로 */
+  get gentle() {
+    const d = this.world?.state?.difficulty;
+    return this.phase === 0 && !this.inferno && (d === 'easy' || d === 'normal' || d == null);
+  }
+  // ── [playb] P12 낮게 머물기: 급강하가 끝난 자리에서 바닥 위 ~125 px 로 내려와 1.3초 머문다 (점프 공격·위 공격이 닿는 높이) ──
+  s_lowHover(dt, world, p) {
+    const A = this.A, ty = A.floor - 125, tx = clamp(this.cx, A.x0 + 120, A.x1 - 120);
+    this.flyTo(tx, ty + Math.sin(this.t * 3) * 6, 3, 320, dt);
+    this.facePlayer();
+    this.relax(dt);
+    this.flapRate = lerp(this.flapRate, 4.5, Math.min(1, dt * 3));
+    if (this.hoverT == null || this.at(0)) this.hoverT = 0;
+    if (Math.abs(this.cy - ty) < 26) this.hoverT += dt;   // 닿는 높이에 있는 시간만 센다
+    if (this.hoverT >= 1.3 || this.stateT > 2.6) { this.hoverT = null; this.rest(0.7); }
   }
   bz(u, k) {
     const a = (1 - u) * (1 - u), b = 2 * (1 - u) * u, c = u * u;

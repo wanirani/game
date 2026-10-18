@@ -9,7 +9,7 @@ import { rand, randi, chance, clamp, overlap, TAU, pick, RNG } from '../core/mat
 import { audio, SFX } from '../core/audio.js';
 import { bus } from '../core/events.js';
 import { saves } from '../core/save.js';
-import { getDiff } from '../data/difficulty.js';
+import { getDiff, diffAllows } from '../data/difficulty.js';
 import { STAGES } from '../data/stages.js';
 import { BOSSES } from '../data/bosses.js';
 import { NPCS } from '../data/npcs.js';
@@ -270,9 +270,11 @@ export class World {
         default:
           if (m.ch >= '1' && m.ch <= '9') {
             const spec = room.enemies?.[m.ch];
-            if (spec) {
+            const did = this.diff?.id ?? this.state?.difficulty;
+            if (spec && diffAllows(spec, did)) {   // [playb] 범례 minDiff/maxDiff (예: s01 r1 의 하드 이상 전용 구울·빙의 주민)
               const id = typeof spec === 'string' ? spec : spec.id;
-              const params = typeof spec === 'object' ? spec.params : undefined;
+              // paramsMaxDiff: 순한 params 는 그 난이도까지만 (더 어려우면 같은 자리에 보통 적, 예: s01 r1 의 첫 구울 '7')
+              const params = typeof spec === 'object' && (!spec.paramsMaxDiff || diffAllows({ maxDiff: spec.paramsMaxDiff }, did)) ? spec.params : undefined;
               this.spawnEnemy(id, fx, fy, { params, facing: p.cx < fx ? -1 : 1 });
             }
           }
@@ -401,7 +403,27 @@ export class World {
     const elite = opts.elite ?? (roll < (this.diff.elite ?? 0) && id !== 'medusa_head' && ENEMIES[id]?.elite !== false);
     const e = new Enemy(id, fx, fy, { level: opts.level ?? this.stage.level, elite, diff: this.diff, facing: opts.facing ?? -1, params: opts.params });
     this.roomFoes++;   // [hook:feel]
+    this.guardSpawn(e);   // [playb] P12
     return this.add(e);
+  }
+  /**
+   * [playb] P12 부활 보호 (respawn 의 spawnGuard, 2.5초): 적이 부활 자리 3칸 안이면 같은 쪽 3칸 밖(막혔으면 반대쪽)으로 옮긴다.
+   * 벽에 막혀 옮길 곳이 없으면 그대로 둔다 (무적 시간이 있다)
+   */
+  guardSpawn(e) {
+    const g = this.spawnGuard;
+    if (!g || !(g.t > 0) || !e || e.kind !== 'enemy') return;
+    const cx = e.x + e.w / 2, cy = e.y + e.h / 2;
+    if (Math.abs(cx - g.x) >= g.r || Math.abs(cy - g.y) >= 2.5 * TILE) return;
+    const side = Math.sign(cx - g.x) || 1;
+    for (const s of [side, -side]) {
+      const nx = g.x + s * (g.r + e.w / 2 + 4);
+      if (nx - e.w / 2 < 0 || nx + e.w / 2 > (this.map?.pxW ?? Infinity)) continue;
+      if (this.map?.isSolidPx?.(nx, cy) || this.map?.isSolidPx?.(nx, e.y + e.h - 4)) continue;
+      e.x = nx - e.w / 2;
+      if (e.homeX !== undefined) e.homeX = e.x;
+      return;
+    }
   }
   spawnPickup(type, x, y, data = {}) {
     if (this.trial && !TRIAL_PICKUPS.has(type)) return null;   // 시련: 하트·고기·보조무기·파워업만 (호출부는 null 을 견딘다 — spawnPlaced 확인)
@@ -449,6 +471,7 @@ export class World {
     if (!this.cutscene && !this.cleared) this.run.time += dt;
     if ((this._stashT = (this._stashT ?? 0) - dt) <= 0) { this._stashT = 1; if (this.state?.progress?.lootQueue?.length) this.deliverStash(); }   // 보관함 → 가방 (자리가 났으면)
     if (this.timeStop > 0) this.timeStop -= dt;
+    if (this.spawnGuard && (this.spawnGuard.t -= dt) <= 0) this.spawnGuard = null;   // [playb] P12 부활 보호 끝
     this.bg.update?.(sdt, this);
 
     const holdFoeShots = this.timeStop > 0 || this.freezeEnemies;   // [hook:feel] 각성 중엔 적 탄도 멈춘다 (timeStop 과 같은 규칙, 회색 화면 없음)
@@ -1191,7 +1214,11 @@ export class World {
   respawn(full = false) {
     const p = this.player;
     const cp = this.run.checkpoint;
+    // [playb] P12 다시 일어선 자리 둘레 3칸에는 적을 두지 않는다 (무적 2.5초 동안): 방을 다시 불러 생기는 적·그동안 생기는 적은 3칸 밖으로,
+    //  같은 방에 남아 있던 적은 지금 밀어낸다 (spawnEnemy · guardSpawn)
+    this.spawnGuard = { x: cp.x + (p?.w ?? 40) / 2, y: cp.y + (p?.h ?? 80) / 2, r: 3 * TILE, t: 2.5 };
     if (cp.roomId !== this.roomId) this.loadRoom(cp.roomId);
+    else for (const e of this.entities) if (e.kind === 'enemy' && !e.dead) this.guardSpawn(e);
     p.dead = false; p.deathHandled = false; p.hp = p.stats.hp; p.mp = p.stats.mp;
     p.x = cp.x; p.y = cp.y; p.vx = 0; p.vy = 0; p.iframes = 2.5;
     p.buffs = {}; p.refreshStats();
@@ -1233,7 +1260,7 @@ export class World {
     const intro = () => {
       this.cutscene = true;
       audio.sfx('warning');
-      this.game.push('bossIntro', { bossId: id, world: this, onDone: () => { this.cutscene = false; this.addAw('bossIntro'); audio.music(this.boss?.def?.music ?? 'boss'); } });   // [hook:awaken] 보스 등장 +25
+      this.game.push('bossIntro', { bossId: id, world: this, onDone: () => { this.cutscene = false; if (this.player) this.player.iframes = Math.max(this.player.iframes ?? 0, 0.8); this.addAw('bossIntro'); audio.music(this.boss?.def?.music ?? 'boss'); } });   // [hook:awaken] 보스 등장 +25 · [playb] P25 연출이 닫힌 뒤 0.8초 무적 (깜박임)
     };
     const preId = `${id}_pre`;
     if (SCRIPTS[preId] && !this.state.progress.seenScripts.includes(preId) && this.mode === 'story') {

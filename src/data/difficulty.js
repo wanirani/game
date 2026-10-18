@@ -41,3 +41,16 @@ export const DIFFICULTIES = [
 ];
 export const DIFF = Object.fromEntries(DIFFICULTIES.map((d) => [d.id, d]));
 export function getDiff(id) { return DIFF[id] || DIFF.normal; }
+/** [playb] 난이도 순서 (쉬움 0 → 지옥 4). 모르는 id 는 -1 */
+export function diffRank(id) { return DIFFICULTIES.findIndex((d) => d.id === id); }
+/**
+ * [playb] 방 범례 적 칸의 난이도 범위: { id, minDiff?: 'hard', maxDiff?: 'normal' } — 지금 난이도가 범위 밖이면 그 적은 나오지 않는다.
+ * 문자열 칸이나 범위가 없는 칸은 늘 나온다
+ */
+export function diffAllows(spec, id) {
+  if (!spec || typeof spec !== 'object') return true;
+  const r = Math.max(0, diffRank(id) < 0 ? diffRank('normal') : diffRank(id));
+  if (spec.minDiff && diffRank(spec.minDiff) >= 0 && r < diffRank(spec.minDiff)) return false;
+  if (spec.maxDiff && diffRank(spec.maxDiff) >= 0 && r > diffRank(spec.maxDiff)) return false;
+  return true;
+}

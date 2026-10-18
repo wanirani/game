@@ -18,6 +18,8 @@ import { ITEMS } from '../src/data/items.js';
 import { LORE, DOCS } from '../src/data/lore.js';
 import { SCRIPTS } from '../src/data/story.js';
 import { SUBWEAPONS } from '../src/data/subweapons.js';
+import { DIFFICULTIES } from '../src/data/difficulty.js';   // [playb] 범례 minDiff/maxDiff 검사
+const DIFF_IDS = DIFFICULTIES.map((d) => d.id);
 
 // 렌더 키 확인용 (선택): 렌더 모듈을 Node 에서 못 읽으면 이 검사만 건너뛴다
 const RENDER = await Promise.all([import('../src/render/background.js'), import('../src/render/tiles.js')])
@@ -161,6 +163,8 @@ function check(stage, roomId, room) {
     if (!spec) { err(`${roomId}: 적 숫자 '${d}' 매핑 없음`); continue; }
     const id = typeof spec === 'string' ? spec : spec.id;
     if (!ENEMIES[id]) err(`${roomId}: 적 ID '${id}' 가 ENEMIES 에 없음`);
+    // [playb] 난이도 범위 키 (world.js diffAllows): minDiff / maxDiff 는 DIFFICULTIES 의 id 여야 한다
+    if (typeof spec === 'object') for (const k of ['minDiff', 'maxDiff', 'paramsMaxDiff']) if (spec[k] !== undefined && !DIFF_IDS.includes(spec[k])) err(`${roomId}: 적 '${d}' 의 ${k} '${spec[k]}' 는 난이도 id 가 아님 (${DIFF_IDS.join('/')})`);
   }
   if (npcs > (room.npcs?.length ?? 0)) err(`${roomId}: 'N' ${npcs}개인데 npcs 배열 ${room.npcs?.length ?? 0}개`);
   if (trig > (room.triggers?.length ?? 0)) warn(`${roomId}: '!' ${trig}개인데 triggers ${room.triggers?.length ?? 0}개`);
