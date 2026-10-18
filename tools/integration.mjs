@@ -16,10 +16,10 @@ if (args.device && !DEV) { console.error(`✗ --device: 모르는 기기 '${args
 const mobile = !!args.mobile || !!DEV?.touch;
 const ctxOpts = () => (DEV ? structuredClone(DEV.context) : mobile ? { viewport: { width: 844, height: 390 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true } : { viewport: { width: 1280, height: 720 } });
 const KEY = { right: 'ArrowRight', left: 'ArrowLeft', up: 'ArrowUp', down: 'ArrowDown', jump: 'KeyZ', attack: 'KeyX', dash: 'KeyC', sub: 'KeyA', skill1: 'KeyS', skill2: 'KeyD', ult: 'KeyF', menu: 'Escape', enter: 'Enter', swap: 'KeyQ' };
-// 1부 s01–s13 + 2부 s14–s20 (P2-QA) + 외전 s21 (EX-INTEG, docs/specs/ex_s21.md) · s22 (EX2-INTEG, docs/specs/ex_s22.md) · s23 (EX3-INTEG, docs/specs/ex_s23.md) · s24 (EX4-INTEG, docs/specs/ex_s24.md) · s25 (EX5-INTEG, docs/specs/ex_s25.md). 보스방 케이스 <id>_boss 는 끝에 world.boss 가 있어야 통과한다.
-const STAGES = ['s01','s02','s03','s04','s05','s06','s07','s08','s09','s10','s11','s12','s13','s14','s15','s16','s17','s18','s19','s20','s21','s22','s23','s24','s25'];
+// 1부 s01–s13 + 2부 s14–s20 (P2-QA) + 외전 s21 (EX-INTEG, docs/specs/ex_s21.md) · s22 (EX2-INTEG, docs/specs/ex_s22.md) · s23 (EX3-INTEG, docs/specs/ex_s23.md) · s24 (EX4-INTEG, docs/specs/ex_s24.md) · s25 (EX5-INTEG, docs/specs/ex_s25.md) · s26 (CH26-WIRE, docs/specs/ex_s26.md — 1부 외전). 보스방 케이스 <id>_boss 는 끝에 world.boss 가 있어야 통과한다.
+const STAGES = ['s01','s02','s03','s04','s05','s06','s07','s08','s09','s10','s11','s12','s13','s14','s15','s16','s17','s18','s19','s20','s21','s22','s23','s24','s25','s26'];
 // 외전 보스방은 그 외전의 보스여야 한다 (world.boss.def.id — 다른 보스로 대신 나오면 실패)
-const SIDE_BOSS = { s21: 'b_argen', s22: 'b_nemain', s23: 'b_hagen', s24: 'b_bride', s25: 'b_charon' };
+const SIDE_BOSS = { s21: 'b_argen', s22: 'b_nemain', s23: 'b_hagen', s24: 'b_bride', s25: 'b_charon', s26: 'b_paracel' };
 const CASES = [
   { id: 'title', url: 'index.html', steps: 'wait:1.5,shot,enter:0.1,wait:1,shot,down:0.1,down:0.1,wait:0.3,shot' },
   { id: 'hub', url: 'index.html?scene=hub', steps: 'wait:2,shot,right:2,shot,menu:0.1,wait:0.5,shot' },
@@ -45,6 +45,13 @@ const CASES = [
   { id: 's14_boss_retry', url: 'index.html?scene=stage&stage=s14&room=boss', boss: true, steps: 'wait:2.5,rightboss:8,intro:25,wait:1,bossretry:tap,shot,rightboss:10,retryintro:8,wait:0.5,shot' },
   // 무한의 탑: 1층 전투 → (시험 훅 debugKillAll) 층 돌파 → 출구 (데스크톱 ▲, 휴대폰 가만히 서 있기) → 2층. towerfloor:N = 최대 N초
   { id: 'tower', url: 'index.html?scene=tower&seed=4242&preset=3&diff=normal', steps: 'wait:1.5,towerfloor:40,shot' },
+  // 외전 26장 (1부 외전, docs/specs/ex_s26.md — CH26-WIRE): s26_gate = 새 세이브의 세계 지도에는 s26 노드가 없고, 7장을 깬 1부 세이브는
+  //  해금 연출(외전 · 지하 공방) 뒤 7장 아래에 노드가 열린다 (2부 엔딩 없이) · 정보판 · 출발 → s26 입장.
+  //  s26_flow = 입장 → 방 r2–r5 를 차례로 (gotoRoom, 대사 넘김) → 보스방 → 보스 소개 → 채색 렌더러(registry, 벡터 대역 아님) 확인 →
+  //  진짜 피해 경로(boss.takeHit)로 50% 변신 · 15% 마지막 한 모금(대사) · 격파 → 결과 → 아웃트로(s26_outro) → 마을, 그리고 저장 상태
+  //  (cleared.s26 · ex_s26_done · 이야기 장 그대로 · boss_b_paracel). 무적(buffs.invincible)으로 영웅 레벨과 무관하게 끝까지 간다.
+  { id: 's26_gate', url: 'index.html?scene=hub', steps: 'wait:2,wmgate:30,shot' },
+  { id: 's26_flow', url: 'index.html?scene=stage&stage=s26', steps: 'wait:3,god:1,shot,rooms:r2|r3|r4|r5,shot,rooms:boss,rightboss:10,intro:25,painted:10,wait:1,shot,bosskill:150,wait:1.5,shot,tohub:150,shot,s26check:1' },
 ];
 if (args.list) { console.log(CASES.map((c) => c.id).join(' ')); process.exit(0); }
 const only = args.only ? String(args.only).split(',').map((s) => s.trim()).filter(Boolean) : null;
@@ -227,6 +234,147 @@ for (const c of CASES) {
           if (st.phase) errs.push(`RETRYINTRO 보스가 ${st.phase}페이즈에서 시작`);
           console.log(`    · ${c.id} 재도전 등장 → 싸움 ${sec.toFixed(1)}초`);
         }
+        continue;
+      }
+      // ── 외전 26장 흐름 단계 (s26_gate · s26_flow) ──
+      const god = () => page.evaluate(() => { const p = window.__game?.world?.player; if (p) { p.buffs.invincible = 9999; if (!p.dead && p.hp < p.stats.hp) p.hp = p.stats.hp; } }).catch(() => null);
+      const topName = () => page.evaluate(() => { const g = window.__game; return g?.scenes?.[g.scenes.length - 1]?.name ?? null; }).catch(() => null);
+      const tapKey = async (key) => { await page.keyboard.down(key); await page.waitForTimeout(60); await page.keyboard.up(key); };
+      if (k === 'god') { await god(); continue; }
+      if (k === 'rooms') {
+        // 방을 차례로: world.gotoRoom(방) → 그 방에 들어와 전환이 끝날 때까지 (대사는 넘긴다) → 1초 머문다
+        for (const rid of String(d).split('|')) {
+          await page.evaluate((r) => window.__game.world.gotoRoom(r), rid);
+          const t0 = Date.now();
+          let st = null;
+          while (Date.now() - t0 < 15000) {
+            st = await page.evaluate(() => { const g = window.__game, w = g?.world; return { room: w?.roomId, tr: !!w?.transitioning, top: g?.scenes?.[g.scenes.length - 1]?.name, fade: g?.fade?.a ?? 0 }; });
+            if (st.top === 'dialogue') { await tapKey(KEY.enter); await page.waitForTimeout(150); continue; }
+            if (st.room === rid && !st.tr && st.fade < 0.05) break;
+            await page.waitForTimeout(120);
+          }
+          if (st?.room !== rid) { errs.push(`ROOMS ${rid} 에 들어가지 못함 (${JSON.stringify(st)})`); break; }
+          await god();
+          // 방 안에서 잠깐 움직이고 (트리거·기믹이 한 번 돈다) 대사가 뜨면 넘긴다
+          await page.keyboard.down(KEY.right); await page.waitForTimeout(500); await page.keyboard.up(KEY.right);
+          const t1 = Date.now();
+          while (Date.now() - t1 < 6000) { const tp = await topName(); if (tp !== 'dialogue') break; await tapKey(KEY.enter); await page.waitForTimeout(150); }
+          console.log(`    · ${c.id} 방 ${rid} 들어옴`);
+        }
+        continue;
+      }
+      if (k === 'painted') {
+        // 보스가 채색 렌더러(render/painted registry — 벡터 대역 아님)로 그려지는가: 등록 · 준비(ready) · 대리 개체 부착 · 교차 페이드 끝
+        const t0 = Date.now();
+        let st = null;
+        while (Date.now() - t0 < Number(d) * 1000) {
+          st = await page.evaluate(async () => {
+            const R = await import('/src/render/painted/registry.js').catch(() => null);
+            const b = window.__game?.world?.boss, id = b?.def?.id, px = b?._painted?.proxy;
+            return { id, has: !!R?.hasPainted?.(id), state: R?.paintedState?.(id) ?? null, proxy: !!(px && !px.dead), k: px?.fadeK?.() ?? 0 };
+          });
+          if (st.has && st.state === 'ready' && st.proxy && st.k >= 1) break;
+          await page.waitForTimeout(250);
+        }
+        if (!(st?.has && st.state === 'ready' && st.proxy && st.k >= 1)) errs.push(`PAINTED 채색 렌더러로 그려지지 않음 (${JSON.stringify(st)})`);
+        else console.log(`    · ${c.id} 채색 보스 ${st.id} (registry ready, 대리 개체 부착)`);
+        continue;
+      }
+      if (k === 'bosskill') {
+        // 진짜 피해 경로: boss.takeHit(최대 체력 6%) 를 되풀이 — 50% 변신(무적 동안은 기다림) · 15% 마지막 한 모금(대사는 넘김) · 격파
+        const t0 = Date.now();
+        let st = null, phase2 = false, last = false, lastLine = false;
+        while (Date.now() - t0 < Number(d) * 1000) {
+          await god();
+          st = await page.evaluate(() => {
+            const g = window.__game, w = g?.world, b = w?.boss, top = g?.scenes?.[g.scenes.length - 1]?.name;
+            if (!b) return { none: true, top, cleared: !!w?.cleared };
+            const r = { top, hp: b.hp, max: b.stats?.maxHp, phase: b.phase ?? 0, dying: b.dying > 0, inv: !!b.invuln, state: b.state, f15: !!b._forced15, cleared: !!w.cleared };
+            // 15% 아래에 처음 들어가면 그 보스의 '마지막 한 수'(파라켈 lastDose · 대사)가 시작될 때까지 3초 기다린다 (b._w15 = 기다리기 시작한 시각)
+            const low = b.hp / b.stats.maxHp <= 0.15 && b.phase >= 1;
+            if (low && !b._itDone) { b._w15 ??= w.time; if (b.state === 'lastDose' || w.time - b._w15 > 3) b._itDone = true; else return r; }
+            if (top === 'stage' && !b.invuln && !(b.dying > 0) && w.bossActive && !w.cutscene) b.takeHit(Math.ceil(b.stats.maxHp * 0.06), { team: 'player', tags: ['skill'], dir: 1, stats: w.player?.stats }, w, {});
+            return r;
+          });
+          if (st.phase >= 1) phase2 = true;
+          if (st.hp != null && st.max && st.hp / st.max <= 0.15) last = true;
+          if (st.top === 'dialogue') { lastLine ||= last && st.state === 'lastDose'; await tapKey(KEY.enter); await page.waitForTimeout(150); continue; }
+          if (st.dying || st.cleared || st.none) break;
+          await page.waitForTimeout(st.inv ? 300 : 380);
+        }
+        if (!(st?.dying || st?.cleared || st?.none)) errs.push(`BOSSKILL ${d}초 안에 보스를 쓰러뜨리지 못함 (${JSON.stringify(st)})`);
+        if (!phase2) errs.push('BOSSKILL 2페이즈(50% 변신)를 거치지 않음');
+        if (c.id.startsWith('s26') && !lastLine) errs.push('BOSSKILL 15% 마지막 한 모금(lastDose 대사 b_paracel_last)이 나오지 않음');
+        console.log(`    · ${c.id} 보스 격파 (2페이즈 ${phase2 ? '거침' : '없음'} · 15% ${last ? '지남' : '-'} · 마지막 한 모금 대사 ${lastLine ? '봄' : '-'}) ${((Date.now() - t0) / 1000).toFixed(1)}초`);
+        continue;
+      }
+      if (k === 'tohub') {
+        // 격파 뒤: 보스 대사 · 결과 화면 · 아웃트로(이야기 장면) 를 넘겨 마을(hub)까지
+        const t0 = Date.now(), seen = [];
+        let top = null;
+        while (Date.now() - t0 < Number(d) * 1000) {
+          top = await topName();
+          if (top && seen[seen.length - 1] !== top) seen.push(top);
+          if (top === 'hub') break;
+          if (top === 'pause') { await tapKey(KEY.menu); await page.waitForTimeout(200); continue; }
+          if (top && top !== 'stage') await tapKey(KEY.enter);
+          await page.waitForTimeout(top === 'stage' ? 400 : 180);
+        }
+        if (top !== 'hub') errs.push(`TOHUB ${d}초 안에 마을로 돌아오지 못함 (장면 ${seen.join('>')})`);
+        if (!seen.includes('results')) errs.push(`TOHUB 결과 화면이 없었음 (${seen.join('>')})`);
+        if (!seen.includes('story')) errs.push(`TOHUB 아웃트로(이야기 장면)가 없었음 (${seen.join('>')})`);
+        console.log(`    · ${c.id} 장면 ${seen.join(' > ')}`);
+        continue;
+      }
+      if (k === 's26check') {
+        const s = await page.evaluate(() => { const P = window.__game?.state?.progress ?? {}; return { cleared: !!P.cleared?.s26, done: !!P.flags?.ex_s26_done, boss: (P.bosses ?? []).includes('b_paracel'), chapter: P.chapter ?? 0, seen: (P.seenScripts ?? []).includes('s26_outro') }; });
+        if (!s.cleared || !s.done || !s.boss || !s.seen) errs.push(`S26 저장 상태가 이상함 (${JSON.stringify(s)})`);
+        if (s.chapter >= 26) errs.push(`S26 외전이 이야기 장을 올림 (chapter ${s.chapter})`);
+        console.log(`    · ${c.id} 저장: ${JSON.stringify(s)}`);
+        continue;
+      }
+      if (k === 'wmgate') {
+        // ① 새 세이브: 지도에 s26 이 없다 ② 7장을 깬 1부 세이브: 해금 연출 → 노드 · 정보판 · 출발 → s26
+        const mk = async (cleared) => page.evaluate(async (n) => {
+          const g = window.__game, { newGameState } = await import('/src/game/state.js'), { saves } = await import('/src/core/save.js');
+          const st = saves.markDebug ? saves.markDebug(newGameState({ slot: 1, difficulty: 'normal', charId: 'kael' })) : newGameState({ slot: 1, difficulty: 'normal', charId: 'kael' });
+          const ids = Array.from({ length: n }, (_, i) => 's' + String(i + 1).padStart(2, '0'));
+          for (const id of ids) st.progress.cleared[id] = { rank: 'A', time: 300 };
+          st.progress.unlocked = Array.from({ length: n + 1 }, (_, i) => 's' + String(i + 1).padStart(2, '0'));
+          st.progress.chapter = n;
+          const h = st.heroes?.[st.charId]; if (h) h.level = 28;
+          g.state = st;
+          g.go('worldmap', {}, { fade: false });
+        }, cleared);
+        const wm = () => page.evaluate(() => { const g = window.__game, m = g?.scenes?.find((s) => s.name === 'worldmap'); return m ? { top: g.scenes[g.scenes.length - 1]?.name, page: m.page, reveal: m.reveal?.id ?? null, nodes: (m.pages?.[0]?.nodes ?? []).map((n) => n.id), unl: g.state.progress.unlocked.includes('s26'), rev: !!g.state.progress.flags.s26_revealed } : null; });
+        await mk(3); await page.waitForTimeout(1500);
+        let a = await wm();
+        if (!a || a.nodes.includes('s26') || a.unl || a.reveal) errs.push(`WMGATE 새 세이브(3장)에 s26 이 보임 (${JSON.stringify(a)})`);
+        await mk(7);
+        const t0 = Date.now();
+        let b = null, sawReveal = false;
+        while (Date.now() - t0 < Number(d) * 1000) {
+          b = await wm();
+          if (b?.reveal === 's26') sawReveal = true;
+          if (sawReveal && !b?.reveal) break;
+          await page.waitForTimeout(sawReveal ? 400 : 200);
+          if (sawReveal && Date.now() - t0 > 2500) await tapKey(KEY.jump);
+        }
+        if (!sawReveal) errs.push(`WMGATE 7장 세이브에 해금 연출(s26)이 없음 (${JSON.stringify(b)})`);
+        if (!b?.nodes.includes('s26') || !b.unl || !b.rev) errs.push(`WMGATE 7장 세이브에 s26 노드가 없음 (${JSON.stringify(b)})`);
+        // 노드를 골라 정보판을 보고 (스크린샷) 출발 → s26 입장
+        await page.evaluate(() => { const m = window.__game.scenes.find((s) => s.name === 'worldmap'); const i = m.nodes.findIndex((n) => n.id === 's26'); if (i >= 0) m.index = i; });
+        await page.waitForTimeout(700);
+        await page.screenshot({ path: `${out}/${c.id}_${n++}.png` });
+        const t1 = Date.now();
+        let into = null;
+        while (Date.now() - t1 < 25000) {
+          into = await page.evaluate(() => { const g = window.__game; return { top: g?.scenes?.[g.scenes.length - 1]?.name, stage: g?.world?.stage?.id ?? null, room: g?.world?.roomId ?? null }; });
+          if (into.top === 'stage' && into.stage === 's26') break;
+          await tapKey(KEY.enter); await page.waitForTimeout(350);
+        }
+        if (!(into?.top === 'stage' && into.stage === 's26')) errs.push(`WMGATE 출발해도 s26 에 들어가지 않음 (${JSON.stringify(into)})`);
+        console.log(`    · ${c.id} 새 세이브 노드 ${a?.nodes.length} (s26 없음) · 7장 세이브 해금 연출 ${sawReveal ? '봄' : '없음'} → ${JSON.stringify(into)}`);
         continue;
       }
       if (k === 'intro') {
