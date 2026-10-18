@@ -15,6 +15,7 @@ import { vGrad, rGrad, fillGradRect, fillPathGrad } from '../menu/common.js';
 import { questWhere } from '../menu/access.js';
 import { drawHints, promptMode } from '../../core/prompts.js';
 const UNDO_T = 6;   // 받은 의뢰를 되돌릴 수 있는 시간 (초)
+const ACCEPT_LOCK = 0.5;   // 받은 뒤 다음 '받기'를 무시하는 시간 (초, 두 번 누름 막기)
 // 게시판 그라디언트 색 멈춤 (menu/common 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
 const BOARD = [0, '#5a3a22', 1, '#2a1a0e'], NOTE_ON = [0, '#efe2c0', 1, '#c8b48a'], NOTE_FADED = [0, '#8a7a60', 1, '#5a4a38'];
 const PAPER = [0, '#eadcb8', 1, '#c4ae84'], PAPER_DONE = [0, '#a89878', 1, '#7a6a50'];
@@ -67,8 +68,11 @@ export class QuestBoardScene extends ServiceScene {
     if (this.undo && (this.tapId === 'undo' || input.pressed('alt'))) { this.undoAccept(); return 'handled'; }
     const r = this.list.update(dt);
     if (this.list.moved) audio.sfx('menu_move', { vol: 0.5 });
-    if (this.tapId === 'act' && this.cur) { this.act(); return 'handled'; }
-    if (r === 'confirm' && this.cur) this.act();
+    // 받은 직후 잠깐(ACCEPT_LOCK)은 '의뢰 받기'를 다시 받지 않는다 — 두 번 누름이 다음 의뢰까지 받아 버리고 되돌리기는 마지막 하나만 되던 문제 (PLAY-FIX 검증)
+    if (this.acceptCd > 0) this.acceptCd -= dt;
+    const lock = this.tab === 0 && this.acceptCd > 0;
+    if (this.tapId === 'act' && this.cur) { if (!lock) this.act(); return 'handled'; }
+    if (r === 'confirm' && this.cur && !lock) this.act();
     return r;
   }
   act() {
@@ -81,6 +85,7 @@ export class QuestBoardScene extends ServiceScene {
         this.paperFx();
         this.refresh();
         this.undo = { qid: q.id, name: q.name, t: UNDO_T };
+        this.acceptCd = ACCEPT_LOCK;
         this.playQuestScript(q.id, 'start');
       } else { audio.sfx('menu_cancel'); this.game.toast('지금은 받을 수 없는 의뢰다.', '#ff8a7a'); }
     } else if (this.tab === 1) {

@@ -276,7 +276,11 @@ export class Camera {
     this.baseZoom = lerp(this.baseZoom, this.zoomTarget, 1 - Math.pow(0.02, dt));
     // [P05] 가로 넘겨 보기: 바라보는 쪽 끝에서만 (방 시작에서 오른쪽을 보고 서 있으면 왼쪽으로는 넘기지 않는다)
     const sides = game.world?.mode === 'town' ? null : touchSides(this.w, this.h), zk = 1 / (this.baseZoom || 1);   // 마을은 넘겨 보지 않는다
-    const wantR = sides && f > 0 ? sides.r * zk : 0, wantL = sides && f < 0 ? sides.l * zk : 0;
+    // 오른쪽 묶음은 크다(화면 폭 ~37 %): 오른쪽 벽 가까이에서 왼쪽을 보고 싸울 때도(보스 경기장에서 흔하다 — PLAY P05 의 L18·L19)
+    // 영웅이 묶음 아래로 들어가지 않을 만큼만 넘겨 본다 (바라보는 쪽이면 묶음 폭 전부). 방향을 바꿔도 화면이 1/3 씩 휙 넘어가지 않는다
+    const bd = this.bounds;
+    const needR = sides && f < 0 && bd ? clamp(t.x + t.w + OVER_PAD - (bd.x + bd.w - sides.r * zk), 0, sides.r * zk) : 0;
+    const wantR = sides && f > 0 ? sides.r * zk : needR, wantL = sides && f < 0 ? sides.l * zk : 0;
     if (snap) { this.ovL = wantL; this.ovR = wantR; }
     else { const k = 1 - Math.pow(0.06, dt); this.ovL = lerp(this.ovL, wantL, k); this.ovR = lerp(this.ovR, wantR, k); }
     if (this.ovL < 0.5 && wantL === 0) this.ovL = 0;
