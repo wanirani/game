@@ -199,6 +199,7 @@ export function modelPadRects(v) {
   const mid = ins.l + (v.cssW - ins.l - ins.r) / 2, S = Math.max(44, SYS_D * clamp(kd, 0.96, 1.1)), top = ins.t + SYS_M_WIDE;
   add('pause', mid - 6 - S / 2, top + S / 2, S);
   add('bag', mid + 6 + S / 2, top + S / 2, S);
+  if (!v.town) add('auto', mid + 6 + S + 12 + S / 2, top + S / 2, S);   // [auto] 전투 장면: 가방 오른쪽 AUTO (touchpad.layout 과 같은 자리)
   return out;
 }
 

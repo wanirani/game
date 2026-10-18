@@ -185,6 +185,16 @@ async function nodeTests() {
     ok(!A.decide(s3, A.newMem()).potion, '「자동 스킬」은 물약을 쓰지 않는다');
   }
   {
+    const s = base({ foes: [foe(600, { boss: true })] }); s.p.hpFrac = 0.2; s.p.inBoss = true;
+    const mem = A.newMem(); let hr = null, atk = 0;
+    for (let i = 0; i < 70 && !hr; i++) { const r = A.decide(s, mem); if (r.act.attack) atk++; if (r.why === 'hit-run') hr = r; s.t += 1 / 60; }
+    ok(hr && hr.act.left && !hr.act.attack && atk > 0, '보스전 · 체력 20%: 0.7초 붙어 친 뒤 물러선다 (치고 빠지기)', hr && { why: hr.why, act: hr.act, atk });
+    const s2 = base({ foes: [foe(600, { boss: true })] }); s2.p.inBoss = true; s2.p.hpFrac = 0.8;
+    const m2 = A.newMem(); let any = false;
+    for (let i = 0; i < 70; i++) { if (A.decide(s2, m2).why === 'hit-run') any = true; s2.t += 1 / 60; }
+    ok(!any, '보스전 · 체력 80%: 치고 빠지지 않는다');
+  }
+  {
     const sk = (ready, page = 0) => ({ key: 'skill1', page, id: 'x', cost: 10, ready, range: { fx: 300, back: 40, up: 160, dn: 60 } });
     ok(A.decide(base({ foes: [foe(700)], skills: [sk(true)] }), A.newMem()).act.skill1, '대기 끝난 스킬: 사거리 안 대상 → 시전');
     ok(!A.decide(base({ foes: [foe(700)], skills: [sk(false)] }), A.newMem()).act.skill1, '대기 중·MP 부족(ready=false) → 시전 안 함');

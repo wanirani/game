@@ -535,6 +535,8 @@ const BEFORE = {   // node tools/test_hud_layout.mjs --coverage-only 를 f395dcd
   'phone2/overlay/stage': { pad: 16.2, hud: 3.9, union: 20.1, padInk: 13.7 },
   'phone1/overlay/stage': { pad: 13.1, hud: 3.6, union: 16.8, padInk: 11.2 },
 };
+// [auto] AUTO-QOL 직전(HUD-REDO hudfix 뒤, 2026-10-11 보고서 hudredo.md)의 가림 % — 새 버튼(AUTO·고정)으로 +0.5 pp 까지만 늘 수 있다
+const CURRENT = { 'fold2/overlay/stage': 14.6, 'fold26/overlay/stage': 15.5, 'tablet/overlay/stage': 14.5, 'phone1/overlay/stage': 15.8, 'phone2/overlay/stage': 17.0 };
 const REDO_DEVS = [
   { id: 'fold2', w: 1000, h: 755, dpr: 2, fold: true, bandable: true, quality: 'medium', mmPerDp: 0.1626, hub: true, lefty: true },   // 사용자 기기 (WebView DPR 2.0)
   { id: 'fold26', w: 762, h: 575, dpr: 2.625, fold: true, bandable: true, quality: 'medium', mmPerDp: 0.2130 },   // 같은 폴드, 화면 확대 (hudfix: mm 가 그대로여야)
@@ -573,7 +575,7 @@ async function redoPage({ dev, mode, scene, coverageOnly }) {
     w.banner = keepB; if (w.style?.ann) w.style.ann.cur = keepA;
     const hd = hx.getImageData(0, 0, hc.width, hc.height).data;
     // 패드 자리(겉넓이): 보이는 버튼·시스템 아이콘의 그린 테 원 + 스틱 받침 원 (불투명도와 상관없이 차지하는 넓이)
-    const SYSI = new Set(['pause', 'bag', 'maptog', 'fullscreen']);
+    const SYSI = new Set(['pause', 'bag', 'maptog', 'fullscreen', 'auto']);   // [auto] AUTO 는 시스템 줄
     const rimF = (id) => (SYSI.has(id) ? 1.02 : id === 'attack' ? 1.14 : id === 'ult' ? 1.12 : 1.02);
     const discs = (TP.touchpad.buttons?.() ?? []).map((b) => [b.cx, b.cy, (b.d / 2) * rimF(b.id)]);
     const LI = TP.touchpad.layoutInfo?.() ?? {};
@@ -600,7 +602,7 @@ async function redoPage({ dev, mode, scene, coverageOnly }) {
   const I = tp.layoutInfo?.();
   if (!I || I.preset === undefined) { fails.push('touchpad.layoutInfo() 에 preset 이 없다 (HUD-REDO 이전 코드?)'); return { fails, info, m }; }
   const btns = tp.buttons?.() ?? [];
-  const SYS = new Set(['pause', 'bag', 'maptog', 'fullscreen']);
+  const SYS = new Set(['pause', 'bag', 'maptog', 'fullscreen', 'auto']);   // [auto] AUTO 는 시스템 줄
   const act = btns.filter((b) => !SYS.has(b.id)), sys = btns.filter((b) => SYS.has(b.id));
   const by = Object.fromEntries(btns.map((b) => [b.id, b]));
   const rimR = (b) => (b.d / 2) * (SYS.has(b.id) ? 1.02 : TP.rimOf(b.id));
@@ -680,6 +682,19 @@ async function redoPage({ dev, mode, scene, coverageOnly }) {
     if (gs < 0) fails.push(`${a.id} 가 스틱 받침에 겹친다 (${r1(gs)} dp)`);
   }
   m.minGap = r1(minGap);
+  // [auto] AUTO-QOL (/tmp/claude-0/s3/auto/auto_design.md F): 스테이지에는 AUTO(시스템 줄) · 고정(버튼 묶음), 마을에는 둘 다 없다.
+  //   AUTO 는 다른 시스템 아이콘과 같은 줄·같은 지름, 고정은 아랫줄 점프–공격–대시를 건드리지 않는다 (위 순서 검사) · ≥ 44 dp · 사이 ≥ 12 dp (위 검사)
+  if (scene === 'stage') {
+    const au = by.auto, lk = by.lock, pa = by.pause;
+    if (!au) fails.push('AUTO 버튼이 없다 (스테이지)');
+    else if (pa && (Math.abs(au.cy - pa.cy) > 1 || Math.abs(au.d - pa.d) > 0.5)) fails.push(`AUTO 가 시스템 줄과 어긋난다 (y ${r1(au.cy)} vs ${r1(pa.cy)}, d ${r1(au.d)} vs ${r1(pa.d)})`);
+    if (!lk) fails.push('대상 고정 버튼이 없다 (스테이지)');
+    else {
+      if (I.preset === 'fold' && !I.band && by.ult && !(lk.cy < by.ult.cy && Math.abs(lk.cx - by.ult.cx) < 2)) fails.push(`폴드: 고정은 필살 바로 위 (고정 ${r1(lk.cx)},${r1(lk.cy)} 필살 ${r1(by.ult.cx)},${r1(by.ult.cy)})`);
+      if ((I.preset !== 'fold' || I.band) && by.swap && (Math.abs(lk.cy - by.swap.cy) > 2 || (I.left ? lk.cx < by.swap.cx : lk.cx > by.swap.cx))) fails.push('두 줄 배치: 고정은 아랫줄 ⇄ 바깥쪽');
+    }
+    m.auto = { auto: au ? [r1(au.cx), r1(au.cy), r1(au.d)] : null, lock: lk ? [r1(lk.cx), r1(lk.cy), r1(lk.d)] : null };
+  } else if (by.auto || by.lock) fails.push(`마을에 AUTO·고정 버튼이 보인다 (${Object.keys(by).join(',')})`);
   const L = HL.hudLayout(w, g.viewW, g.viewH);
   if (scene === 'stage' && L?.quick?.length && I.preset === 'fold') {
     for (const q of L.quick) if (q.w * cs < 44 - 0.5) fails.push(`빠른 칸 ${r1(q.w * cs)} dp < 44`);
@@ -714,7 +729,7 @@ async function redoPage({ dev, mode, scene, coverageOnly }) {
   if (dev.mmPerDp && mode === 'overlay' && scene === 'stage') {
     const k = dev.mmPerDp, mmOf = (b) => r1(2 * rimR(b) * k);
     // [hudfix] 공격 76 · 점프 60 · 나머지 56 · 넘김/수호 52 dp (폴드 DPR 2) — 의견 2 '버튼마다 조금씩 작게'. 화면 확대(fold26)도 같은 mm
-    const RANGE = { attack: [13.5, 15.5], jump: [9.5, 10.8], ult: [9.6, 11], swap: [8.2, 9.7], guard: [8.2, 9.7] };
+    const RANGE = { attack: [13.5, 15.5], jump: [9.5, 10.8], ult: [9.6, 11], swap: [8.2, 9.7], guard: [8.2, 9.7], lock: [8.2, 9.7] };  // [auto] 대상 고정 = 넘김 크기
     const mmTab = {};
     for (const b of act) {
       const [lo, hi] = RANGE[b.id] ?? [8.9, 10.2];
@@ -825,6 +840,8 @@ if (!NO_REDO) {
       }
       const before = lefty ? null : BEFORE[tag];
       if (!COVERAGE_ONLY && before && r.m.coverage && r.m.coverage.union > before.union + 0.5) r.fails.push(`게임 화면 가림 ${r.m.coverage.union}% > 예전 ${before.union}%`);
+      const cur = lefty ? null : CURRENT[tag];   // [auto]
+      if (!COVERAGE_ONLY && cur != null && r.m.coverage && r.m.coverage.union > cur + 0.5 + 1e-9) r.fails.push(`[auto] 게임 화면 가림 ${r.m.coverage.union}% > AUTO-QOL 전 ${cur}% + 0.5`);
       const fails = [...r.fails, ...new Set(errs)];
       failTotal += fails.length;
       redo.push({ tag, ...r, before: before ?? null, errs: [...new Set(errs)] });

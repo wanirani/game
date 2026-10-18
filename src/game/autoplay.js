@@ -54,6 +54,7 @@ export const K = Object.freeze({
   GUARD_R: 300,
   TURN_GAP: 0.25,
   STAND_K: 0.55, STAND_BOSS_K: 0.72,
+  LOW_HP: 0.35, ENGAGE_T: 0.7, LOW_BACK_T: 0.9,   // 보스전 · 체력 낮음: 붙어 치는 시간 ≤ 0.7초 → 0.9초 물러선다 (치고 빠지기)
   LOCK_FRONT: 850, LOCK_ANY: 600, LOCK_CYCLE: 900, LOCK_DROP: 1300, LOCK_HOLD: 0.45, LOCK_DOUBLE: 0.3,
   AUTO_HOLD_OFF: 0.45,
 });
@@ -252,7 +253,7 @@ export function inBox(p, f, box, dir) {
 // ───────────────────────── 순수: 판단 ─────────────────────────
 /** 기억 (월드마다 하나) */
 export function newMem() {
-  return { n: 0, atkPh: 0, skillT: -9, swapT: -9, ultT: -9, guardT: -9, potionT: -9, turnT: -9, retreatT: -9, retreatDir: 0, safeT: 0, lastDanger: -9, why: '', jumpHold: 0, airDir: 0, airT: -9, airUntil: -9 };
+  return { n: 0, atkPh: 0, skillT: -9, swapT: -9, ultT: -9, guardT: -9, potionT: -9, turnT: -9, retreatT: -9, retreatDir: 0, engageT: 0, safeT: 0, lastDanger: -9, why: '', jumpHold: 0, airDir: 0, airT: -9, airUntil: -9 };
 }
 /**
  * snap (snapshot 결과 · 시험은 손으로 만든다):
@@ -302,12 +303,17 @@ export function decide(s, mem) {
     for (const f of foes) { if (battle && !reachable(f)) continue; const d = dist(f); if (d < bd) { bd = d; target = f; } }
   }
   out.target = target;
-  const retreating = t < mem.retreatT;
+  let retreating = t < mem.retreatT;
   const front = (f) => inBox(p, f, s.w, p.facing);
   const back = (f) => inBox(p, f, s.w, -p.facing);
   // ── 공격 ──
   let hitF = null, behind = null;
   for (const f of foes) { if (front(f)) { if (!hitF || f.locked) hitF = f; } else if (!behind && back(f)) behind = f; }
+  // 보스전에서 체력이 낮으면 치고 빠진다 (물약이 없거나 아직 못 쓸 때 오래 붙어 있지 않는다)
+  if (battle && p.inBoss && p.hpFrac < K.LOW_HP && hitF?.boss && !retreating) {
+    if (!mem.engageT) mem.engageT = t;
+    else if (t - mem.engageT > K.ENGAGE_T) { mem.retreatT = t + K.LOW_BACK_T; mem.retreatDir = sgn(p.cx - hitF.cx) || -p.facing; mem.engageT = 0; retreating = true; out.why = 'hit-run'; }
+  } else if (!hitF) mem.engageT = 0;
   if (!retreating) {
     if (hitF) {
       if ((mem.atkPh = (mem.atkPh + 1) % K.ATK_EVERY) === 0) act.attack = true;

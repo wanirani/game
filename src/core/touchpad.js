@@ -400,8 +400,9 @@ function layout(force = false) {
       pause: { id: 'pause', cx: mid - 6 - sd / 2, cy: sy, d: sd },
       bag: { id: 'bag', cx: mid + 6 + sd / 2, cy: sy, d: sd },
     };
-    if (fsShown()) sys.fullscreen = { id: 'fullscreen', cx: mid + 6 + sd + 12 + sd / 2, cy: sy, d: sd };
-    if (autoOn) sys.auto = { id: 'auto', cx: mid - 6 - sd - 12 - sd / 2, cy: sy, d: sd };   // [auto] Ⅱ 왼쪽
+    // [auto] AUTO = 가방 오른쪽 (Ⅱ 왼쪽은 휴대폰에서 체력 줄·하트 줄 끝과 겹친다), ⛶ 는 그 오른쪽으로 한 칸
+    if (autoOn) sys.auto = { id: 'auto', cx: mid + 6 + sd + 12 + sd / 2, cy: sy, d: sd };
+    if (fsShown()) sys.fullscreen = { id: 'fullscreen', cx: mid + 6 + (autoOn ? 2 : 1) * (sd + 12) + sd / 2, cy: sy, d: sd };
   }
 
   // 스틱: 받침 그림(2.3R, 테 ≈ 2.28R) 바깥이 왼쪽·아래 여백 PAD_M
