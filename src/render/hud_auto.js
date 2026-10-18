@@ -173,11 +173,30 @@ export function drawLockPlate(ctx, world, L) {
 const PILL_TXT = { battle: '전투', skill: '스킬' };
 /** 알약 폭 (그리지 않음) */
 export function autoPillW(ctx, level, size = 11, o = {}) {
-  if (!level || level === 'off') return 0;
+  const off = !level || level === 'off';
+  if (off && !o.showOff) return 0;
   const fs = Math.max(11, Math.round(size));
-  if (o.compact) return Math.round(fs * 1.5);
-  ctx.save(); ctx.font = `800 ${fs}px ${FONT.body}`;
-  const w = Math.ceil(ctx.measureText(o.hold ? '대기' : PILL_TXT[level] ?? 'AUTO').width) + 12;
+  if (o.compact && !off) return Math.round(fs * 1.5);
+  ctx.save(); ctx.font = off ? `800 ${fs}px ${FONT.num}` : `800 ${fs}px ${FONT.body}`;
+  const w = Math.ceil(ctx.measureText(off ? 'AUTO' : o.hold ? '대기' : PILL_TXT[level] ?? 'AUTO').width) + 12;
+  ctx.restore();
+  return w;
+}
+/**
+ * [autofix] 휴대폰 두 줄 배치: AUTO 버튼 대신 이 알약이 누르는 자리 (touchpad.autoInHud) — 꺼져 있어도 흐린 테 「AUTO」를 보인다.
+ * blocked(기록 모드) 면 더 흐리게 (누르면 이유 토스트)
+ */
+function offPill(ctx, x, y, h, size, blocked) {
+  const fs = Math.max(11, Math.round(size));
+  ctx.save();
+  ctx.font = `800 ${fs}px ${FONT.num}`;
+  const w = Math.ceil(ctx.measureText('AUTO').width) + 12, r = h / 2;
+  ctx.globalAlpha = blocked ? 0.5 : 1;
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arc(x + w - r, y + r, r, -Math.PI / 2, Math.PI / 2); ctx.lineTo(x + r, y + h); ctx.arc(x + r, y + r, r, Math.PI / 2, Math.PI * 1.5); ctx.closePath();
+  ctx.fillStyle = 'rgba(14,8,12,0.82)'; ctx.fill();
+  ctx.lineWidth = 1.4; ctx.strokeStyle = 'rgba(232,200,114,0.7)'; ctx.stroke();
+  ctx.fillStyle = 'rgba(243,226,184,0.8)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('AUTO', x + w / 2, y + h / 2 + 0.5);
   ctx.restore();
   return w;
 }
@@ -186,7 +205,7 @@ export function autoPillW(ctx, level, size = 11, o = {}) {
  * [autofix] 「AUTO」 한 가지 글자 + 색만 다르던 것을 단계 글자 「전투」(채운 알약) · 「스킬」(테두리만) · 「대기」(흐림)로 — 색만으로 가르지 않는다
  */
 export function autoPill(ctx, x, y, h, level, size = 11, o = {}) {
-  if (!level || level === 'off') return 0;
+  if (!level || level === 'off') return o.showOff ? offPill(ctx, x, y, h, size, !!o.blocked) : 0;
   const fs = Math.max(11, Math.round(size)), hold = !!o.hold, battle = level === 'battle';
   const str = o.compact ? 'A' : hold ? '대기' : PILL_TXT[level] ?? 'AUTO';
   ctx.save();

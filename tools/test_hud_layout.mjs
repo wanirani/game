@@ -686,10 +686,18 @@ async function redoPage({ dev, mode, scene, coverageOnly }) {
   //   AUTO 는 다른 시스템 아이콘과 같은 줄·같은 지름, 고정은 아랫줄 점프–공격–대시를 건드리지 않는다 (위 순서 검사) · ≥ 44 dp · 사이 ≥ 12 dp (위 검사)
   if (scene === 'stage') {
     const au = by.auto, lk = by.lock, pa = by.pause;
-    if (!au) fails.push('AUTO 버튼이 없다 (스테이지)');
-    else if (pa && (Math.abs(au.cy - pa.cy) > 1 || Math.abs(au.d - pa.d) > 0.5)) fails.push(`AUTO 가 시스템 줄과 어긋난다 (y ${r1(au.cy)} vs ${r1(pa.cy)}, d ${r1(au.d)} vs ${r1(pa.d)})`);
     // [autofix] 휴대폰 두 줄 배치(wide)는 「고정」 기본 숨김 (settings.auto.lockBtn 'auto' — 키보드 T · 패드 오른쪽 스틱은 그대로): 여섯 칸 아랫줄 · 가림 +1 pp 지적
+    //   AUTO 도 동그라미 대신 이름 옆 알약이 단추 (HUD 탭 자리 act 'auto', ≥ 44 CSS px) — 740×360 에서 44 dp 원 하나가 0.6 % 라 +0.5 pp 안에 못 든다
     const phoneRow = I.preset !== 'fold' && !I.band;
+    if (phoneRow) {
+      if (au) fails.push('휴대폰 두 줄 배치에 AUTO 동그라미가 보인다 (이름 옆 알약이 단추)');
+      const az = (g.hudTaps || []).find((t) => t && t.act === 'auto');
+      const csz = g.canvasRect?.h > 0 ? g.canvasRect.h / g.viewH : 1;
+      if (!az) fails.push('휴대폰: 이름 옆 AUTO 알약 탭 자리(act auto)가 없다');
+      else if (Math.min(az.w, az.h) * csz < 44 - 0.5) fails.push(`휴대폰: AUTO 알약 탭 자리 < 44 CSS px (${r1(az.w * csz)}×${r1(az.h * csz)})`);
+      else m.autoZone = [r1(az.x), r1(az.y), r1(az.w), r1(az.h), r1(csz)];
+    } else if (!au) fails.push('AUTO 버튼이 없다 (스테이지)');
+    else if (pa && (Math.abs(au.cy - pa.cy) > 1 || Math.abs(au.d - pa.d) > 0.5)) fails.push(`AUTO 가 시스템 줄과 어긋난다 (y ${r1(au.cy)} vs ${r1(pa.cy)}, d ${r1(au.d)} vs ${r1(pa.d)})`);
     if (phoneRow && lk) fails.push('휴대폰 두 줄 배치에 「고정」 버튼이 보인다 (기본 숨김)');
     else if (!phoneRow && !lk) fails.push('대상 고정 버튼이 없다 (스테이지)');
     else if (lk) {

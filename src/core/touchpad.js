@@ -200,7 +200,7 @@ const ACTS = {
   lock: ['lock'], auto: ['auto'],   // [auto]
 };
 /** HUD 탭 자리가 보낼 수 있는 입력 액션 */
-const ACT_OK = new Set(['sub', 'map', 'menu', 'mount', 'guard', 'skill1', 'skill2', 'ult', 'swap']);
+const ACT_OK = new Set(['sub', 'map', 'menu', 'mount', 'guard', 'skill1', 'skill2', 'ult', 'swap', 'auto']);   // [autofix] auto = 휴대폰 이름 옆 AUTO 알약 (HUD 탭 자리)
 const LABEL = {
   attack: '공격', jump: '점프', dash: '대시', sub: '보조', skill1: 'S1', skill2: 'S2', ult: '필살', swap: '넘김', mount: '탑승', guard: '수호',
   lock: '고정',   // [auto]
@@ -403,8 +403,10 @@ function layout(force = false) {
       bag: { id: 'bag', cx: mid + 6 + sd / 2, cy: sy, d: sd },
     };
     // [auto] AUTO = 가방 오른쪽 (Ⅱ 왼쪽은 휴대폰에서 체력 줄·하트 줄 끝과 겹친다), ⛶ 는 그 오른쪽으로 한 칸
-    if (autoOn) sys.auto = { id: 'auto', cx: mid + 6 + sd + 12 + sd / 2, cy: sy, d: sd };
-    if (fsShown()) sys.fullscreen = { id: 'fullscreen', cx: mid + 6 + (autoOn ? 2 : 1) * (sd + 12) + sd / 2, cy: sy, d: sd };
+    // [autofix] 휴대폰 두 줄(wide)은 동그라미 AUTO 를 두지 않고 이름 옆 AUTO 알약을 누르는 자리로 쓴다 (hud.js 가 44 dp 탭 자리를 낸다):
+    //   740×360 화면에서 44 dp 원 하나가 0.6 % — 「가림 +0.5 pp」 안에 들 수 없다. 띠(band) 배치는 그대로 시스템 줄
+    if (autoOn && band) sys.auto = { id: 'auto', cx: mid + 6 + sd + 12 + sd / 2, cy: sy, d: sd };
+    if (fsShown()) sys.fullscreen = { id: 'fullscreen', cx: mid + 6 + (sys.auto ? 2 : 1) * (sd + 12) + sd / 2, cy: sy, d: sd };
   }
 
   // 스틱: 받침 그림(2.3R, 테 ≈ 2.28R) 바깥이 왼쪽·아래 여백 PAD_M
@@ -422,7 +424,7 @@ function layout(force = false) {
   };
   const dirty = [box(btnList), box(Object.values(sys))].filter(Boolean);
 
-  S.L = { W, H, ins, cr, cs, vw, vh, k: kBase, kEff, ts, cls: cls[0], band, bandH, left, custom: !!custom, yMin, bounds, btn, sys, sd, R, home, zone, fold, town, gap, prefix, dirty, preset: band ? 'band' : fold ? 'fold' : 'wide', lockOff };
+  S.L = { W, H, ins, cr, cs, vw, vh, k: kBase, kEff, ts, cls: cls[0], band, bandH, left, custom: !!custom, yMin, bounds, btn, sys, sd, R, home, zone, fold, town, gap, prefix, dirty, preset: band ? 'band' : fold ? 'fold' : 'wide', lockOff, autoInHud: autoOn && !fold && !band };
   S.spriteKey = ''; // 크기가 바뀌었을 수 있다 → 버튼 그림 다시 굽기
   S.pending = true;
   S.fullClear = true;
@@ -2051,6 +2053,8 @@ export const touchpad = {
     const L = layout();
     return L ? overlayDpr(L) : 0;
   },
+  /** [autofix] 휴대폰 두 줄 배치: AUTO 를 버튼 대신 이름 옆 알약(HUD 탭 자리 act 'auto')으로 받나 */
+  autoInHud() { return !!(hasDom() && S.inited && !S.editor && touchMode() && S.L?.autoInHud); },
   /** HUD 선명 칸 하나를 이번 프레임에 알린다 (hud_crisp.js): c = 구운 캔버스, (x, y) = 덧캔버스 기기 px 왼쪽 위, ver = 내용 판 */
   hudLayer(id, c, x, y, ver, dpr) {
     let l = HUDL.get(id);

@@ -1,5 +1,5 @@
 // AUTO-QOL 시험 (자동 전투 · 대상 고정 · 바로 장착 바인딩 · 지도 가방 경고 · 마을 선명 칸) — 설계 /tmp/claude-0/s3/auto/auto_design.md
-// 사용: node tools/test_autoplay.mjs [--node | --browser] [--only s01,s08,boss,override,lock,pause,touch,equip,worldmap,town] [--shots dir]
+// 사용: node tools/test_autoplay.mjs [--node | --browser] [--only s01,s08,boss,override,lock,pause,touch,phonepill,equip,worldmap,town] [--shots dir]
 //   노드: segmentAt · weaponReach · skillRange · decide · pickLock · autoSettings/setLevel · input 가상 입력원(사람 우선) · 패드 몸짓 · settings.auto 이관
 //   브라우저 (데스크톱 1280×720, 터치는 fold_open; Math.random 고정; 게임 시간은 lib/step.mjs 로 한 스텝씩):
 //     s01      s01 r1 — 「자동 전투」만으로 시작 구간의 닿는 적을 모두 처치 (게임 시간 90초 안), 방을 떠나지 않음 · 낙사 0 · 가시 피해 0 · 대화 0
@@ -690,6 +690,37 @@ async function browserTests() {
     await step(s.page, 1); await s.page.screenshot({ path: path.join(SHOTS, 'lockplate.png') });
     ok(!!r.lock, `lockplate: 고정 대상 (${r.lock})`, r);
     ok(!s.errs.length, 'lockplate: 페이지 오류 0', s.errs.slice(0, 3));
+    await s.close();
+  }
+
+  if (want('phonepill')) {
+    // [autofix] 휴대폰 두 줄 배치: AUTO 동그라미 대신 이름 옆 알약이 단추 (HUD 탭 자리 act 'auto' ≥ 44 CSS px, 짧게 켬/끔 · 길게 단계)
+    console.log('\n[browser] phonepill: 휴대폰 이름 옆 AUTO 알약');
+    const s = await open('phone2', 'index.html?scene=stage&stage=s01&room=r1');
+    await s.eval(() => { window.__game.state.auto = { level: 'off' }; window.__game.input.setMode?.('touch'); });
+    await step(s.page, 4);
+    const zone = async () => s.eval(() => { const g = window.__game, z = (g.hudTaps || []).find((t) => t && t.act === 'auto'), cr = g.canvasRect, k = cr.h / g.viewH; return z ? { cx: cr.x + (z.x + z.w / 2) * k, cy: cr.y + (z.y + z.h / 2) * k, w: z.w * k, h: z.h * k } : null; });
+    const z = await zone();
+    const ids = await s.eval(() => window.__game.input.pad.buttons().map((b) => b.id));
+    ok(!!z && z.w >= 43.5 && z.h >= 43.5, `phonepill: 알약 탭 자리 ≥ 44 CSS px (${z && Math.round(z.w)}×${z && Math.round(z.h)})`, z);
+    ok(!ids.includes('auto') && !ids.includes('lock'), 'phonepill: AUTO·고정 동그라미 없음 (두 줄)', ids);
+    const tap = async (ms = 0) => {
+      const q = await zone(); if (!q) return;
+      await s.cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: q.cx, y: q.cy, id: 9 }] });
+      await step(s.page, Math.max(2, Math.round(ms / (1000 / 60))), false);
+      await s.cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await step(s.page, 3);
+    };
+    if (z) {
+      await tap(); const l1 = await s.eval(() => window.__game.autoHud?.level);
+      await tap(); const l2 = await s.eval(() => window.__game.autoHud?.level);
+      await tap(600); const l3 = await s.eval(() => window.__game.autoHud?.level);
+      const st = await s.eval(() => ({ jumpHeld: !!window.__game.input.state?.jump, attack: !!window.__game.input.state?.attack, toasts: window.__game.toasts.map((t) => t.text) }));
+      ok(l1 === 'battle' && l2 === 'off' && l3 === 'skill', `phonepill: 탭 = 켬/끔, 길게 = 단계 (${l1} → ${l2} → ${l3})`, st.toasts);
+      await step(s.page, 1);
+      await s.page.screenshot({ path: path.join(SHOTS, 'phonepill.png') });
+    }
+    ok(!s.errs.length, 'phonepill: 페이지 오류 0', s.errs.slice(0, 3));
     await s.close();
   }
 
