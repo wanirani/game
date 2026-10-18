@@ -402,7 +402,7 @@ export class MenuScene extends Scene {
       glyph(ctx, d.glyph, x + tw / 2, 22, 17, col, sel ? 1.8 : 1.5);
       text(ctx, ellipsize(ctx, d.name, tw - 6, nameSize, sel ? 800 : 700), x + tw / 2, 50, { size: nameSize, align: 'center', weight: sel ? 800 : 700, color: col, ow: 3 });
       const bd = this.tabBadge(d.id);
-      if (bd != null) redBadge(ctx, x + tw / 2 + 15, 12, bd, { size: 10, t });   // 스킬 알림 (P06)
+      if (bd != null) redBadge(ctx, x + tw / 2 + 15, 12, bd, { size: 12, t });   // 스킬 알림 (P06) — 12: 휴대폰 배율(×0.92)에서도 글자 하한(10) 위
       if (i > 0 && !sel && i - 1 !== this.ti) { ctx.fillStyle = 'rgba(200,160,90,0.18)'; ctx.fillRect(x, 16, 1, TOP_H - 30); }
     }
     if (this.focus === 'tabs') brackets(ctx, sx + 4, py + 2, tw - 8, ph - 4, t, PAL.goldHi);

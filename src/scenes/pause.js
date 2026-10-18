@@ -313,7 +313,7 @@ export class PauseScene extends Scene {
       glyph(ctx, it.icon, r.x + 28, cy, 18, sel ? PAL.goldHi : it.disabled ? '#6a4048' : PAL.gold, 1.6);
       const ln = rowLines(rowH, !!it.sub);
       text(ctx, it.label, r.x + 50, cy + ln.y1, { size: ln.ls, weight: 800, color: col, ow: 3 });
-      if (it.id === 'menu' && this.skillBadge != null && !it.disabled) { ctx.font = font(ln.ls, 800, FONT.body); redBadge(ctx, r.x + 50 + ctx.measureText(it.label).width + 14, cy + ln.y1 - ln.ls * 0.36, this.skillBadge, { size: 11, t: this.t }); }
+      if (it.id === 'menu' && this.skillBadge != null && !it.disabled) { ctx.font = font(ln.ls, 800, FONT.body); redBadge(ctx, r.x + 50 + ctx.measureText(it.label).width + 14, cy + ln.y1 - ln.ls * 0.36, this.skillBadge, { size: 12, t: this.t }); }
       if (ln.sub) text(ctx, it.sub, r.x + 50, cy + ln.y2, { size: ln.ss, weight: 600, color: sel ? '#f0d0b0' : '#c0909a', ow: 2 });
     });
     ctx.restore();
