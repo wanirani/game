@@ -431,7 +431,12 @@ async function widgetChecks({ tag, relaxFixed }) {
   c.clearRect(0, 0, vw, vh);
   H.drawHUD(c, w, vw, vh);
   const nRects = cs.hudRects?.length ?? 0;
-  if (nRects !== 3) fails.push(`${tag}/hudRects: 위젯 3개를 그렸는데 탭 사각형 ${nRects}개`);
+  // [playb] P21 터치 패드에 탑승 버튼이 보이면 위젯은 「탑승/하차」 칩·탭 자리를 빼고 상태 고리만 그린다 → 수호신 2개만
+  let padMount = false;
+  try { const IN = (await import('/src/core/input.js')).input; padMount = !!T && (IN.pad?.occupiedRects?.() ?? []).some((r) => r?.id === 'mount'); } catch { padMount = false; }
+  const wantRects = padMount ? 2 : 3;
+  if (nRects !== wantRects) fails.push(`${tag}/hudRects: 위젯 3개를 그렸는데 탭 사각형 ${nRects}개 (기대 ${wantRects}${padMount ? ' — 패드에 탑승 버튼' : ''})`);
+  if (padMount && cs.hudRects?.some((r) => r?.act === 'mount')) fails.push(`${tag}/hudRects: 패드에 탑승 버튼이 있는데 위젯에도 탑승 탭 자리`);
   w.hudHidden = true;
   H.drawHUD(c, w, vw, vh);
   if ((cs.hudRects?.length ?? 0) !== 0) fails.push(`${tag}/hudRects: 각성 연출(hudHidden) 중에도 탭 사각형 ${cs.hudRects.length}개가 남았다`);
