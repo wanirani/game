@@ -260,8 +260,28 @@ export class TowerPlanner {
   }
   plan(f) {
     f = Math.max(1, Math.floor(f));
-    while (this.plans.length < f) this.plans.push(this.make(this.plans.length + 1));
+    while (this.plans.length < f) { const p = this.make(this.plans.length + 1); this.season2(p); this.plans.push(p); }
     return this.plans[f - 1];
+  }
+  /**
+   * 시즌 2 층 계획 (아래 '시즌 2' 절): 전투 층 = 변이(평탄한 길 mut · 피의 길 mutBlood) + 질주의 계약용 추가 적 셋(extra),
+   * 안식처 = 피의 계약 후보 둘(pacts — 아무 계약도 맺지 않았을 때), 보스 층 = 갈림길(route) · 상인(merchant).
+   * 새 난수는 따로 뽑는다 (rngOf(seed,'mut',f) 등) → 시즌 1 의 방·적·정예·보스 계획은 그대로
+   */
+  season2(p) {
+    const f = p.f;
+    if (p.kind === 'combat') {
+      const prev = this.plans.slice().reverse().find((q) => q.kind === 'combat');
+      p.mut = mutatorOf(this.seed, f, false, prev?.mut ?? null);
+      p.mutBlood = mutatorOf(this.seed, f, true, prev?.mutBlood ?? null);
+      const room = towerRoom(this.stages, p.sid, p.rid), r = rngOf(this.seed, 'extra', f), pool = p.pool?.length ? p.pool : p.enemies.map((e) => e.id);
+      const ground = room.slots.map((s, i) => i).filter((i) => room.slots[i].ground), eliteP = TOWER_CURVE.elite(this.eliteBase, f);
+      p.extra = Array.from({ length: PACT.swift.extraFoes }, () => {
+        const id = r.pick(pool), def = this.enemies?.[id];
+        return { id, slot: def?.flying ? r.int(0, room.slots.length - 1) : r.pick(ground), elite: r.next() < eliteP && def?.elite !== false };
+      });
+    } else if (p.kind === 'rest') p.pacts = pactOffer(this.seed, f, {});
+    else { p.route = true; p.merchant = merchantAt(f); }
   }
   make(f) {
     const kind = floorKind(f), tier = this.tierOf(f), level = TOWER_CURVE.level(this.P, f);
@@ -314,3 +334,93 @@ export class TowerPlanner {
     return { f, kind, tier, sid: pick.sid, rid: pick.rid, key: pick.key, level, enemies: foes, pool };
   }
 }
+
+// ───────────────────────── 시즌 2 (무한의 탑 2.0, Stage 5 P1a) ─────────────────────────
+// 층 종류·곡선·축복·방 풀·TOWER_RULES 는 시즌 1 그대로 (서버 사본도 그대로). 더해지는 것:
+//  - 변이(MUTATORS): MUT_FROM 층부터 전투 층마다 하나 (rngOf(seed,'mut',f)). 층 시작에 알림 카드. 피의 길이면 '센' 변이(tier 2)만
+//  - 갈림길(BLOOD_PATH): 보스 층을 깨면 출구 둘 — 「안전한 길」(영웅 발밑, 시즌 1 과 같은 출구) · 「피의 길」(붉은 문, 몇 칸 옆).
+//    피의 길: 다음 전투 층 넷이 센 변이 + 층 돌파 보너스·골드 ×2 + 정예 확률 +0.15, 그다음 안식처에서 축복 하나 더
+//  - 피의 계약(PACTS): 안식처에서 축복을 고른 뒤 계약 둘 중 하나를 맺거나 거절 (계약마다 큰 이득 + 진짜 손해, 한 판에 한 번씩)
+//  - 상인(MERCHANT): 15·35·55…층 보스를 깨면 떠돌이 상인 로크 (런 골드로 치료 · 축복 · 다시 뽑기)
+//  - 이정표: data/cosmetics.js TOWER_MILESTONES (10·20·30·40·50층 → 잔상, K1 장부)
+//  - 기록: 결과·온라인 제출에 v: 2 (서버는 모르는 필드를 버린다), 기기 기록에 「시즌 2」 표시 (v 가 없는 옛 기록 = 시즌 1)
+//  - 층 점수 상한: 한 층에서 오르는 점수는 TOWER_RULES.maxScorePerFloor 를 넘지 않는다 (장면이 world.addScore 를 감싼다) →
+//    어떤 판이든 서버 검사 '점수 ≤ (돌파한 층 + 1) × maxScorePerFloor' 를 넘지 않는다. 층마다 건너뛸 수 없는 연출(TOWER_PHASE)은 그대로라
+//    변이·계약·갈림길·상인이 한 층을 minFloorSec 보다 빨리 끝내게 하지 않는다 (tools/test_tower.mjs '욕심 판' 이 둘 다 잰다)
+
+export const TOWER_VERSION = 2;
+export const TOWER_SEASON = '시즌 2';
+/** 층마다 건너뛸 수 없는 연출 (초): 등장(전투·보스·안식처) · 돌파 뒤 출구까지 · 출구 열림 — 장면(arcade_tower.js)이 이 값을 쓴다 */
+export const TOWER_PHASE = Object.freeze({ enter: 1.2, bossEnter: 1.6, restEnter: 1.0, clear: 1.0, gateOpen: 0.8 });
+/** 변이가 시작되는 층 (피의 길은 그 앞이라도 — 보스 층 5 다음이 6 이라 같은 값) */
+export const MUT_FROM = 6;
+
+/**
+ * 변이 (id 는 기록·시험에 쓰인다). tier 1 = 순한 것(+ 황금·속공 같은 상), tier 2 = 센 것 (피의 길은 이것만). w = 뽑기 가중치.
+ * 장면 쪽 효과: rules(월드 규칙 — dark), count(적 수 배율), scale·hp·foeAtk(적 하나하나의 크기·체력·공격), atk(층 전체 적 공격 — 난이도 배율),
+ * allElite, gold(골드 배율), split(분열 수),
+ * bomb(시체 폭발), rushSec(속공 초), killHeal·bleed·bleedFloor(흡혈의 밤), every·warn(낙뢰 간격·예고), heroAtk(영웅 공격 배율).
+ * 피해를 주는 변이(시체 폭발·낙뢰)는 늘 0.6초 이상 바닥 표식을 먼저 보인다 (warn)
+ */
+export const MUTATORS = [
+  { id: 'fog', name: '피의 안개', desc: '짙은 안개 · 영웅 곁만 보인다', icon: 'rift_lantern', color: '#d04a6a', tier: 1, w: 10, rules: { dark: true } },
+  { id: 'giant', name: '거인의 층', desc: '적이 절반만 나오지만 크고 단단하다', icon: 'greatsword_7', color: '#d08a4a', tier: 1, w: 9, count: 0.5, scale: 1.4, hp: 2.4, foeAtk: 1.25 },
+  { id: 'split', name: '분열', desc: '쓰러진 적이 작은 둘로 갈라진다', icon: 'gem_crystal', color: '#8ad04a', tier: 2, w: 8, split: 2, splitScale: 0.7, splitHp: 0.35 },
+  { id: 'bomb', name: '폭발하는 시체', desc: '쓰러진 적이 잠시 뒤 터진다 · 붉은 원을 피하라', icon: 'sub_bomb', color: '#ff7a3a', tier: 2, w: 8, warn: 0.9, radius: 84, frac: 0.08 },
+  { id: 'gold', name: '황금 층', desc: '골드를 세 배로 얻는다', icon: 'coin', color: '#ffd84a', tier: 1, w: 6, gold: 3 },
+  { id: 'elite', name: '정예 무리', desc: '모든 적이 정예 · 대신 수가 줄어든다', icon: 'head_7', color: '#ffd070', tier: 2, w: 8, count: 0.6, allElite: true },
+  { id: 'rush', name: '속공', desc: '30초 안에 돌파하면 축복 하나', icon: 'sub_stopwatch', color: '#7ae0ff', tier: 1, w: 8, rushSec: 30 },
+  { id: 'vamp', name: '흡혈의 밤', desc: '처치하면 체력을 빨아들이지만 체력이 서서히 마른다', icon: 'wheart_3', color: '#e0405a', tier: 1, w: 7, killHeal: 0.04, bleed: 0.012, bleedFloor: 0.25 },
+  { id: 'bolt', name: '낙뢰', desc: '벼락이 떨어진다 · 바닥의 표식을 피하라', icon: 'star_shard', color: '#e8f070', tier: 2, w: 8, every: 2.4, warn: 0.9, half: 34, frac: 0.1 },
+  { id: 'mad', name: '광기의 층', desc: '적도 영웅도 주는 피해가 1.5배', icon: 'dagger_7', color: '#ff4a8a', tier: 2, w: 7, atk: 1.5, heroAtk: 1.5 },
+];
+export const MUTATOR = Object.freeze(Object.fromEntries(MUTATORS.map((m) => [m.id, m])));
+/** 층 f 의 변이 (결정적). blood = 피의 길(센 변이만), prev = 앞 전투 층의 같은 길 변이 (연달아 같은 변이는 피한다). 변이 없음 = null */
+export function mutatorOf(seed, f, blood = false, prev = null) {
+  if (floorKind(f) !== 'combat' || f < MUT_FROM) return null;
+  const pool = MUTATORS.filter((m) => (!blood || m.tier === 2) && m.id !== prev);
+  const r = blood ? rngOf(seed, 'mut', f, 'blood') : rngOf(seed, 'mut', f);
+  const tot = pool.reduce((a, m) => a + m.w, 0);
+  let x = r.next() * tot;
+  for (const m of pool) { x -= m.w; if (x < 0) return m.id; }
+  return pool[pool.length - 1]?.id ?? null;
+}
+
+/** 피의 길: 보스 층 다음 floors 개의 전투 층에 센 변이 + 보너스·골드 배율 + 정예 확률, 그다음 안식처에서 축복 extraBless 개 더 */
+export const BLOOD_PATH = Object.freeze({ floors: 4, bonusMul: 2, goldMul: 2, eliteAdd: 0.15, extraBless: 1 });
+
+/**
+ * 피의 계약 (안식처, 한 판에 계약마다 한 번). up = 이득 글, down = 손해 글. 장면 쪽 효과: stats(s) 능력치 (축복처럼 refreshStats 뒤),
+ * rules(월드 규칙 — noPotion), noRestHeal(안식처 회복 없음), bless(지금 축복 하나 더), bossHp(다음 보스 체력 배율, 한 번), extraFoes(층마다 적 더)
+ */
+export const PACTS = [
+  { id: 'fury', name: '광기의 계약', up: '공격력·마력 +40%', down: '물약을 쓸 수 없다', icon: 'sword_7', color: '#ff5a4a', rules: { noPotion: true },
+    stats: (s) => { s.atk = Math.round(s.atk * 1.4); s.mag = Math.round(s.mag * 1.4); } },
+  { id: 'edge', name: '칼날의 계약', up: '치명타 피해 +80%', down: '방어력·마법 저항이 절반', icon: 'dagger_5', color: '#ffd070',
+    stats: (s) => { s.critDmg = (s.critDmg ?? 0) + 80; s.def = Math.round((s.def ?? 0) * 0.5); s.res = Math.round((s.res ?? 0) * 0.5); } },
+  { id: 'greed', name: '탐욕의 계약', up: '골드 획득 2배', down: '안식처에서 회복하지 못한다', icon: 'moneybag', color: '#ffd84a', noRestHeal: true,
+    stats: (s) => { s.goldBonus = (s.goldBonus ?? 0) + 100; } },
+  { id: 'oath', name: '맹세의 계약', up: '지금 축복 하나를 더 받는다', down: '다음 군주의 체력 +50%', icon: 'scroll_bless', color: '#c8b8ff', bless: 1, bossHp: 1.5 },
+  { id: 'thirst', name: '갈증의 계약', up: '흡혈 +5%', down: '최대 MP 가 절반', icon: 'wheart_5', color: '#e0405a',
+    stats: (s) => { s.lifesteal = (s.lifesteal ?? 0) + 5; s.mp = Math.max(1, Math.round(s.mp * 0.5)); } },
+  { id: 'swift', name: '질주의 계약', up: '이동·공격 속도 +20%', down: '층마다 적이 셋 더', icon: 'cloak_5', color: '#6affb0', extraFoes: 3,
+    stats: (s) => { s.moveSpd = (s.moveSpd ?? 0) + 20; s.atkSpd = (s.atkSpd ?? 0) + 20; } },
+];
+export const PACT = Object.freeze(Object.fromEntries(PACTS.map((p) => [p.id, p])));
+/** 안식처 f 의 계약 후보 (맺은 것 제외, 둘 — 결정적) */
+export function pactOffer(seed, f, taken = {}, n = 2) {
+  return rngOf(seed, 'pact', f).shuffle(PACTS.map((p) => p.id)).filter((id) => !taken[id]).slice(0, n);
+}
+/** 계약 능력치를 덧씌운다 (taken = {id: true}) */
+export function applyPactStats(s, taken) {
+  for (const p of PACTS) if (taken?.[p.id]) p.stats?.(s);
+  return s;
+}
+
+/**
+ * 떠돌이 상인 (로크 — data/npcs.js npc_rook): first 층부터 every 층마다의 보스 층을 깨고 축복을 고른 뒤. 값 = 기본값 × (1 + (층 레벨 − 1) × 0.3)
+ * (적이 떨어뜨리는 골드와 같은 레벨 배율 — game/loot.js). heal = 체력 healFrac + MP 가득, bless = 카드 셋 중 하나 (한 번에 한 장), reroll = 카드 다시 뽑기
+ */
+export const MERCHANT = Object.freeze({ npc: 'npc_rook', first: 15, every: 20, heal: 30, bless: 70, reroll: 20, healFrac: 0.6 });
+export const merchantAt = (f) => floorKind(f) === 'boss' && f >= MERCHANT.first && (f - MERCHANT.first) % MERCHANT.every === 0;
+export function merchantPrice(base, level) { return Math.max(10, Math.round((base * (1 + (Math.max(1, level | 0) - 1) * 0.3)) / 10) * 10); }

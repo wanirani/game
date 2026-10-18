@@ -1,9 +1,11 @@
 // 배경: Kling로 생성한 원경(assets/bg/*.webp)을 방 크기에 맞춘 동적 패럴랙스로 그리고,
 // 그 위에 스테이지 테마별 절차적 중경 실루엣(기둥/아치/나무/톱니바퀴 등), 안개, 날씨(비/눈/불씨/재/포자, 공허의 별빛)를 얹는다.
 // 날씨 입자 수는 world.fx.quality 로 줄이고, 번개 번쩍임은 settings.flashFx 를 따른다.
-// createBackground(stage, map) → { update(dt, world), drawFar(ctx, cam, vw, vh, t), drawMid(ctx, cam, t), drawFront(ctx, cam, vw, vh, t) }
+// createBackground(stage, map) → { update(dt, world), drawFar(ctx, cam, vw, vh, t), drawMid(ctx, cam, t), drawFront(ctx, cam, vw, vh, t), atmos }
+// 원경을 살아 있게 하는 층(빛 일렁임·안개·빛줄기·플레이 층 광원)은 render/atmos.js — drawFar/drawFront/update 안의 세 곳에서만 부른다
 import { assets } from '../core/assets.js';
 import { rand, RNG, hashStr, rgba, hexToRgb, TAU, lerp, clamp } from '../core/math.js';
+import { createAtmos } from './atmos.js';
 
 const TALL_PARALLAX = 0.35; // 세로로 긴 방: 카메라가 올라간 거리 대비 원경이 따라 내려가는 비율
 const topColors = new WeakMap();
@@ -115,6 +117,10 @@ export function createBackground(stage, map) {
     far: { ox: 0, oy: 0, iw: 0, ih: 0 }, // 마지막 drawFar 의 원경 배치 (화면 px) — 주인공 뒤 원경 밝기 찾기
   };
   if (theme.halo > 0) haloSprite();   // 스테이지 진입 때 굽는다 (진행 중에 캔버스를 만들지 않음)
+  // 「숨쉬는 원경」 (Stage 5 P2, render/atmos.js): 그림 속 빛의 일렁임·안개 두 겹·빛줄기·플레이 층 광원. 항목이 없거나 ?atmos=0 이면 null (예전 그대로)
+  let atm = null;
+  try { atm = createAtmos(stage); } catch (e) { console.warn('[bg] atmos', e); atm = null; }
+  bg.atmos = atm;
   // 중경 실루엣 요소 생성 (방 폭에 맞춰)
   const W = (map?.pxW ?? 2000) + 800;
   const H = map?.pxH ?? 540;
@@ -130,6 +136,7 @@ export function createBackground(stage, map) {
   bg.wv = bg.weather;
 
   bg.update = (dt, world) => {
+    atm?.update(dt, world, assets.get(stage.bg));
     const q = world.fx?.quality ?? 1;
     if (q !== bg.q) { bg.q = q; bg.wv = q < 1 ? bg.weather.slice(0, Math.ceil(bg.weather.length * q)) : bg.weather; }
     bg.flashK = clamp(Number(world.game?.settings?.flashFx ?? 1) || 0, 0, 1);
@@ -250,6 +257,7 @@ export function createBackground(stage, map) {
       // 어둡게 눌러서 게임 레이어와 분리 (대기 원근 테마는 위쪽 띠만 대기색으로 — 긴 방은 원경이 바닥 근처에만 있어 예전처럼)
       ctx.fillStyle = theme.haze && !tall ? hazeGrad(ctx, vh) : rgba(theme.sky[2], 0.12);
       ctx.fillRect(0, 0, vw, vh);
+      atm?.drawFar(ctx, cam, vw, vh, bg.far);   // 원경 위 빛·빛줄기·먼 안개 + 플레이 층 광원 (render/atmos.js)
     } else if (theme.moon) {
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
       const mx = vw * 0.72 - cam.x * 0.02, my = vh * 0.24;
@@ -318,6 +326,7 @@ export function createBackground(stage, map) {
       ctx.fillRect(off - vw, y - 60, vw * 2, 120);
     }
     ctx.restore();
+    atm?.drawFront(ctx, cam, vw, vh);   // 인물 앞 안개 (높음 단계, 알파 ≤ 0.18)
     // 날씨
     drawWeather(ctx, bg, cam, vw, vh, t);
     // 비네팅

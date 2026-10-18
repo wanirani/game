@@ -621,9 +621,9 @@ function markFail(key, err) {
 // 한 칸으로 구워 반지름만큼 늘여 그린다 (매 프레임 경로 래스터·getTransform 없음). 아틀라스는 K.spr 풀 캔버스(부팅 때 만든 풀 —
 // 스테이지 도중 캔버스 생성 없음, §12). LRU 에서 밀려 다시 구워지면 칸 표를 비우고 처음 쓸 때 다시 굽는다.
 // 아틀라스를 못 얻으면(도구 모음 전·Node) markReady() = false → 표식 함수는 예전 벡터 그림(VEC_*)으로 그린다.
-const MA = { c: null, g: null, cells: new Map(), x: 0, y: 0, row: 0, W: 1024, H: 512, ready: false, bakes: 0, resets: 0 };
+const MA = { c: null, g: null, cells: new Map(), x: 0, y: 0, row: 0, W: 1024, H: 512, ready: false, bakes: 0, resets: 0, ver: 0 };   // ver: 그림이 바뀔 때마다 +1 (패턴 다시 만들기)
 export const MARK_ATLAS = MA;   // QA: 굽기·비우기 수
-function maReset() { MA.cells.clear(); MA.x = 0; MA.y = 0; MA.row = 0; MA.resets++; }
+function maReset() { MA.cells.clear(); MA.x = 0; MA.y = 0; MA.row = 0; MA.resets++; MA.ver++; }
 /** 이번 프레임의 아틀라스 (drawPerkLayer 가 표식을 그리기 전에 한 번) → 캔버스 | null */
 export function markAtlas() {
   let c = null;
@@ -657,13 +657,32 @@ export function markCell(id, w, h, ox, oy, bake, sc = 2) {
   try { bake(g); } catch (err) { markFail('bake:' + id, err); }
   g.restore();
   MA.x += cw; MA.row = Math.max(MA.row, ch);
-  MA.cells.set(id, cell); MA.bakes++;
+  MA.cells.set(id, cell); MA.bakes++; MA.ver++;
   return cell;
+}
+// 칸 그리기는 drawImage 대신 아틀라스 패턴(CanvasPattern) 채우기 (PERF s4): 이 Chrome 에서 drawImage 한 번이 6–10 µs
+// (원본 캔버스 스냅샷 + 기록), 같은 칸을 패턴으로 fillRect 하면 ~1 µs — 24 표식 PerkLayer 가 대부분 이 호출이었다.
+// 패턴은 아틀라스를 만들 때의 그림을 담으므로 칸을 새로 굽거나 아틀라스를 비우면(MA.ver) 다시 만든다. 칸 둘레 1 px(×sc) 빈 여백이
+// 있어 이웃 칸이 보간으로 번지지 않고, 보간·합성·투명도는 drawImage 와 같다 (가장자리 안티에일리어싱만 1/255 단위로 다를 수 있다)
+const MP = { pat: null, c: null, ver: -1, ctx: null };
+function maPattern(ctx) {
+  if (MP.pat && MP.c === MA.c && MP.ver === MA.ver && MP.ctx === ctx) return MP.pat;
+  let p = null;
+  try { p = MA.c && typeof ctx.createPattern === 'function' ? ctx.createPattern(MA.c, 'no-repeat') : null; } catch { p = null; }
+  MP.pat = p; MP.c = MA.c; MP.ver = MA.ver; MP.ctx = ctx;
+  return p;
 }
 /** 구운 칸을 기준점이 (x, y) 에 오게 s 배로 그린다 (globalAlpha·globalCompositeOperation 은 호출부) */
 export function drawCell(ctx, cell, x, y, s = 1) {
   const k = s / cell.sc;
-  ctx.drawImage(MA.c, cell.x, cell.y, cell.w, cell.h, x - cell.ox * k, y - cell.oy * k, cell.w * k, cell.h * k);
+  const pat = maPattern(ctx);
+  if (!pat || !(k > 0)) { ctx.drawImage(MA.c, cell.x, cell.y, cell.w, cell.h, x - cell.ox * k, y - cell.oy * k, cell.w * k, cell.h * k); return; }
+  // 아틀라스 좌표 (cell.x, cell.y) 가 화면의 (x - ox·k, y - oy·k) 에 오도록 옮겨 칸 사각형만 패턴으로 칠하고 그대로 되돌린다
+  const tx = x - (cell.ox + cell.x) * k, ty = y - (cell.oy + cell.y) * k;
+  ctx.translate(tx, ty); ctx.scale(k, k);
+  ctx.fillStyle = pat;
+  ctx.fillRect(cell.x, cell.y, cell.w, cell.h);
+  ctx.scale(1 / k, 1 / k); ctx.translate(-tx, -ty);
 }
 /** 회전해 그린다 (기준점 중심, 라디안). save/restore 없이 되돌린다 */
 export function drawCellRot(ctx, cell, x, y, ang, s = 1) {

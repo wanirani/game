@@ -10,6 +10,7 @@ import { TILE, game } from '../core/game.js';
 import { T } from '../core/physics.js';
 import { assets } from '../core/assets.js';
 import { RNG, hashStr, rgba, shade, mix, TAU } from '../core/math.js';
+import { atmosLegacy, atmosWindowTint, paintingTint } from './atmos.js';
 
 const CHUNK = 16; // 타일 단위 청크 크기
 const DEPTH_R = 3; // 깊이 음영: 빈칸까지의 거리를 찾는 반경(타일)
@@ -79,12 +80,32 @@ export const DECOR_SETS = {
 // 장식이 게임 요소를 가리지 않도록 마커 주변은 비움 (2부: 거울 스위치 Q · 포자 주머니 y · 기포 기둥 u · 상승 기류 U)
 export const DECOR_BLOCK = new Set(['D', 'S', 'G', '$', 'N', 'X', 'P', '@', 'H', 'K', 'Q', 'y', 'u', 'U']);
 // 테마별 'W' 창문 빛 [유리 위, 유리 아래, 빛줄기] — 없으면 기본 달빛
-const WINDOW_TINT = {
+const WINDOW_TINT_P2 = {
   mirror: ['rgba(210,235,255,0.55)', 'rgba(80,110,160,0.25)', 'rgba(200,230,255,0.14)'],
   forge: ['rgba(255,150,70,0.5)', 'rgba(140,40,10,0.25)', 'rgba(255,140,60,0.12)'],
   sunken: ['rgba(90,230,220,0.45)', 'rgba(10,60,90,0.25)', 'rgba(90,220,230,0.1)'],
   nightmare: ['rgba(200,120,255,0.5)', 'rgba(70,10,90,0.25)', 'rgba(190,110,255,0.12)'],
 };
+// 「숨쉬는 원경」 (Stage 5 P2): 1부 실내 테마도 그림의 빛깔로 — 붉은 예배당 그림 위에 파란 달빛 창이 뜨던 것 (s11) 등.
+// 여기 없는 테마는 원경 그림의 밝은 빛깔(data/atmos.js windowTint, 없으면 그림에서 바로 잰 값)을 쓰고, 그것도 없으면 달빛.
+// ?atmos=0 이면 예전 표(WINDOW_TINT_P2 + 달빛)만 쓴다 (전후 비교)
+const WINDOW_TINT = {
+  ...WINDOW_TINT_P2,
+  chapel: ['rgba(255,72,84,0.5)', 'rgba(110,10,22,0.28)', 'rgba(255,64,76,0.12)'],
+  library: ['rgba(255,196,118,0.5)', 'rgba(110,62,22,0.25)', 'rgba(255,184,104,0.12)'],
+  hall: ['rgba(236,228,255,0.5)', 'rgba(92,72,112,0.25)', 'rgba(232,222,255,0.12)'],
+  clock: ['rgba(255,226,150,0.5)', 'rgba(120,90,30,0.25)', 'rgba(255,220,140,0.12)'],
+  catacombs: ['rgba(124,240,164,0.45)', 'rgba(20,80,40,0.25)', 'rgba(110,230,150,0.1)'],
+  waterway: ['rgba(92,222,255,0.45)', 'rgba(10,60,90,0.25)', 'rgba(80,210,250,0.1)'],
+};
+// 바닥 안착 (Stage 5 P2, 청크에 구움 — 프레임 비용 0): 바닥 윗면 바로 위 빈칸 아래쪽에 그림과 바닥을 잇는 어둠 띠(AO) + 테마별 가장자리 잔해.
+// 테마 → 잔해 종류 (없는 테마 = 잔해 없음: 눈 덮인 첨탑은 이미 눈 장식, 공허는 별빛 장식)
+const LIP = {
+  village: 'rubble', town: 'grass', graveyard: 'grass', gate: 'rubble', hall: 'dust', catacombs: 'bones', library: 'paper',
+  alchemy: 'shards', waterway: 'pebbles', clock: 'rubble', chapel: 'rubble', throne: 'dust', abyss: 'rubble', arena: 'rubble',
+  mirror: 'shards', forge: 'rubble', sunken: 'shells', sky: 'grass', nightmare: 'bones', blight: 'grass',
+};
+const AO_H = 22;   // 어둠 띠 높이 (px)
 const WINDOW_MOON = ['rgba(160,180,255,0.5)', 'rgba(60,40,120,0.25)', 'rgba(140,160,255,0.12)'];
 // 액체 팔레트 [몸통, 수면·물줄기 빛] (world2 §3.3: deep 추가)
 const LIQUID = {
@@ -136,6 +157,7 @@ export class TileRenderer {
     this.poolCap = Math.min(Math.ceil(m.w / CHUNK) * Math.ceil(m.h / CHUNK), MAX_CHUNKS + 2);
     while (this.pool.length < this.poolCap) { const c = document.createElement('canvas'); c.width = 0; c.height = 0; this.pool.push(c); }
     this.topStrip();
+    if (!atmosLegacy()) this.aoStrip();   // 바닥 안착 어둠 띠 (Stage 5 P2)
     if (!this.depthCtx) { const c = document.createElement('canvas'); c.width = CHUNK + 2; c.height = CHUNK + 2; this.depthCtx = c.getContext('2d'); }
     const decor = m.decor || [];
     if (!OPEN_SKY_THEMES.has(this.stage.theme) && decor.some((d) => d.ch === 'W')) this.windowSprites();
@@ -483,6 +505,110 @@ export class TileRenderer {
       }
     }
     this.bakeDepth(ctx, tx0, ty0);
+    if (!atmosLegacy()) this.bakeSeating(ctx, tx0, ty0);
+  }
+  /**
+   * 바닥 안착 (Stage 5 P2): 빈칸 바로 아래가 벽(바닥 윗면)이면 그 빈칸 아래쪽에 어둠 띠 + 가장자리 잔해를 굽는다.
+   * 띠는 prewarm 에서 구운 스프라이트(가장자리 끝은 옆으로 옅어지는 판)라 굽는 중에도 그라데이션을 만들지 않는다.
+   * 빈칸이 속한 청크가 굽는다 (바닥이 다음 청크에 있어도 한 번만). 액체·가시·발판·위상 칸 위는 건너뛴다.
+   */
+  bakeSeating(ctx, tx0, ty0) {
+    const m = this.map, S = TILE, ao = this.aoStrip();
+    if (!ao) return;
+    const lip = LIP[this.stage.theme] ?? null;
+    const seat = (tx, ty) => {
+      if (tx < 0 || tx >= m.w || ty < 0 || ty >= m.h - 1) return false;
+      const i = ty * m.w + tx;
+      if (this.isSolid(tx, ty) || this.phaseIdx.has(i)) return false;
+      const t = m.tiles[i];
+      if (t !== T.EMPTY && !(t === T.FAKE && m.revealed.has(i))) return false;   // 액체·가시·발판 위는 띠 없음
+      return this.isSolid(tx, ty + 1);
+    };
+    const hs = hashStr(this.stage.id);
+    for (let ty = Math.max(0, ty0); ty < Math.min(m.h, ty0 + CHUNK); ty++) {
+      for (let tx = Math.max(0, tx0); tx < Math.min(m.w, tx0 + CHUNK); tx++) {
+        if (!seat(tx, ty)) continue;
+        const x = (tx - tx0) * S, y = (ty - ty0) * S, fy = y + S;   // fy = 바닥 윗면
+        const v = (seat(tx - 1, ty) ? 0 : 1) | (seat(tx + 1, ty) ? 0 : 2);   // 1 = 왼쪽 끝, 2 = 오른쪽 끝 → 옆으로 옅어지는 판
+        ctx.drawImage(ao, 0, v * AO_H, S, AO_H, x, fy - AO_H, S, AO_H);
+        if (lip) this.lipDeco(ctx, x, fy, lip, new RNG((hs ^ Math.imul(tx + 1, 73856093) ^ Math.imul(ty + 1, 19349663)) >>> 0));
+      }
+    }
+  }
+  /** 어둠 띠 스프라이트 48 × (22 × 4): 판 0 = 이어진 바닥, 1 = 왼쪽 끝, 2 = 오른쪽 끝, 3 = 외딴 한 칸 (prewarm 에서 한 번) */
+  aoStrip() {
+    if (this.aoCanvas) return this.aoCanvas;
+    if (typeof document === 'undefined') return null;
+    const c = document.createElement('canvas');
+    c.width = TILE; c.height = AO_H * 4;
+    const g = c.getContext('2d');
+    const col = mix(this.style.edge, '#000000', 0.5);
+    const gr = g.createLinearGradient(0, 0, 0, AO_H);
+    gr.addColorStop(0, rgba(col, 0)); gr.addColorStop(0.55, rgba(col, 0.16)); gr.addColorStop(1, rgba(col, 0.46));
+    for (let v = 0; v < 4; v++) {
+      g.save(); g.translate(0, v * AO_H);
+      g.fillStyle = gr; g.fillRect(0, 0, TILE, AO_H);
+      // 끝 칸: 바깥쪽 18px 를 옆으로 지워 띠가 칼로 자른 듯 끝나지 않게
+      g.globalCompositeOperation = 'destination-out';
+      for (const [bit, x0, dir] of [[1, 0, 1], [2, TILE, -1]]) {
+        if (!(v & bit)) continue;
+        const hg = g.createLinearGradient(x0, 0, x0 + dir * 18, 0);
+        hg.addColorStop(0, 'rgba(0,0,0,1)'); hg.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = hg; g.fillRect(dir > 0 ? x0 : x0 - 18, 0, 18, AO_H);
+      }
+      g.restore();
+    }
+    this.aoCanvas = c;
+    return c;
+  }
+  /** 바닥 가장자리 잔해 (굽기 때만): 빈칸 아래쪽 (x … x+48, 바닥 윗면 fy) 에 작은 조각 1–3개, 칸의 45 % 정도 */
+  lipDeco(ctx, x, fy, kind, rng) {
+    if (rng.next() > 0.45) return;
+    const st = this.style, n = 1 + Math.floor(rng.next() * 3);
+    const dark = mix(st.edge, st.base, 0.4), mid = mix(st.base, st.top, 0.45);
+    for (let k = 0; k < n; k++) {
+      const px = x + 4 + rng.next() * 40;
+      switch (kind) {
+        case 'grass': {
+          ctx.strokeStyle = rng.next() < 0.5 ? 'rgba(52,78,38,0.9)' : 'rgba(74,104,50,0.85)'; ctx.lineWidth = 1.3;
+          ctx.beginPath();
+          for (let b = 0; b < 4; b++) { const bx = px + b * 1.6 - 2.4, h = 4 + rng.next() * 6; ctx.moveTo(bx, fy + 1); ctx.quadraticCurveTo(bx + (rng.next() - 0.5) * 3, fy - h * 0.6, bx + (rng.next() - 0.5) * 5, fy - h); }
+          ctx.stroke();
+          break;
+        }
+        case 'rubble': case 'pebbles': case 'dust': {
+          const r = kind === 'dust' ? 1 + rng.next() * 1.2 : 1.6 + rng.next() * 2.4;
+          ctx.fillStyle = rgba(dark, 0.95); ctx.beginPath(); ctx.ellipse(px, fy - r * 0.55, r * 1.3, r, 0, 0, TAU); ctx.fill();
+          ctx.fillStyle = rgba(kind === 'pebbles' ? '#9ec8d8' : mid, kind === 'pebbles' ? 0.45 : 0.6);
+          ctx.beginPath(); ctx.ellipse(px - r * 0.3, fy - r * 0.9, r * 0.6, r * 0.35, 0, 0, TAU); ctx.fill();
+          break;
+        }
+        case 'bones': {
+          ctx.strokeStyle = 'rgba(214,202,172,0.85)'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+          const a = (rng.next() - 0.5) * 0.9, L = 3 + rng.next() * 5;
+          ctx.beginPath(); ctx.moveTo(px - Math.cos(a) * L, fy - 1 - Math.sin(a) * L * 0.3); ctx.lineTo(px + Math.cos(a) * L, fy - 1 + Math.sin(a) * L * 0.3); ctx.stroke();
+          ctx.lineCap = 'butt';
+          break;
+        }
+        case 'paper': {
+          ctx.save(); ctx.translate(px, fy - 1.5); ctx.rotate((rng.next() - 0.5) * 0.8);
+          ctx.fillStyle = 'rgba(220,206,170,0.7)'; ctx.fillRect(-3.5, -1.5, 7, 3); ctx.restore();
+          break;
+        }
+        case 'shards': {
+          ctx.fillStyle = 'rgba(220,240,255,0.55)';
+          const h = 2 + rng.next() * 4;
+          ctx.beginPath(); ctx.moveTo(px - 2, fy); ctx.lineTo(px + (rng.next() - 0.5) * 2, fy - h); ctx.lineTo(px + 2, fy); ctx.fill();
+          break;
+        }
+        case 'shells': {
+          ctx.fillStyle = rng.next() < 0.5 ? 'rgba(220,236,226,0.6)' : 'rgba(232,150,160,0.6)';
+          const r = 1.5 + rng.next() * 1.8;
+          ctx.beginPath(); ctx.arc(px, fy, r, Math.PI, 0); ctx.fill();
+          break;
+        }
+      }
+    }
   }
   /** 깊이 음영용 벽 판정: 방 위아래 바깥도 벽이 이어진 것으로 본다 */
   depthSolid(tx, ty) {
@@ -1130,10 +1256,19 @@ export class TileRenderer {
     this.sheen = c; this.sheenCol = glow;
     return c;
   }
+  /** 창문 빛깔 [유리 위, 유리 아래, 빛줄기]: 테마 표 → 원경 그림의 빛깔 (data/atmos.js, 없으면 그림에서 바로) → 달빛. ?atmos=0 = 예전 표 */
+  windowTint() {
+    const th = this.stage.theme;
+    if (atmosLegacy()) return WINDOW_TINT_P2[th] || WINDOW_MOON;
+    if (WINDOW_TINT[th]) return WINDOW_TINT[th];
+    let t = null;
+    try { t = atmosWindowTint(this.stage.bg) || paintingTint(assets.get(this.stage.bg)); } catch { t = null; }
+    return t || WINDOW_MOON;
+  }
   /** 'W' 창문 스프라이트 (캐시): win = 창틀·유리·창살 (원점 = 창문 칸 좌상단 −8, −12), shaft = 비스듬한 빛줄기 (원점 = 칸 좌상단) */
   windowSprites() {
     if (this.winSpr) return this.winSpr;
-    const tint = WINDOW_TINT[this.stage.theme] || WINDOW_MOON;
+    const tint = this.windowTint();
     const win = document.createElement('canvas');
     win.width = 66; win.height = 110;
     let g = win.getContext('2d');

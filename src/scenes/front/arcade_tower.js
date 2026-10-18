@@ -9,6 +9,10 @@
 //  - 목숨 하나 (부활 축복 제외). 쓰러지면 결과 → 돌파한 층이 1 이상이면 온라인 보드 tower:<diff> 에 제출 (서바이벌처럼 늘)
 //  - 시드: state.arcade.seed (arcade.js buildArcadeState). 같은 시드 → 같은 층 계획 (window.__game.top.planner.plan(n) 으로 확인)
 //  - 시험: debugKillAll() (남은 적을 모두 쓰러뜨림), debugFloor(n) (그 층으로 바로) — tools/test_tower.mjs
+//  - 시즌 2 (data/tower.js '시즌 2' 절, Stage 5 P1a): 층 시작의 변이 카드 + 변이 효과(분열·시체 폭발은 bus 'enemyKilled' 를 듣는다 — enemy.js 는
+//    고치지 않는다, 분열은 층마다 count(f) 마리까지) · 보스 층 뒤 갈림길(안전한 길 = 발밑 출구, 피의 길 = 붉은 문) · 안식처의 피의 계약 ·
+//    15·35·55…층 상인(로크, NPC 퍼펫) · 이정표 잔상 알림 · 층 점수 상한(capScore) · 결과의 v: 2.
+//    고르기 화면 셋(축복·계약·상인)은 모두 TowerBlessingScene('towerBlessing', mode: 'bless'|'pact'|'shop') 하나가 그린다
 import { Scene, TILE } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
@@ -30,54 +34,79 @@ import { releaseRigs } from '../../render/painted/enemy_kit.js';
 import { STAGES, STAGE_ORDER, STAGE_ORDER_P1 } from '../../data/stages.js';
 import { ENEMIES } from '../../data/enemies.js';
 import { BOSSES } from '../../data/bosses.js';
-import { BLESSINGS, BLESSING, TowerPlanner, towerRoom, towerDiff, applyBlessingStats, blessingOffer, floorKind } from '../../data/tower.js';
+import {
+  BLESSINGS, BLESSING, TowerPlanner, towerRoom, towerDiff, applyBlessingStats, blessingOffer, floorKind,
+  TOWER_RULES, TOWER_PHASE, TOWER_VERSION, TOWER_SEASON, TOWER_CURVE, MUTATOR, PACT, BLOOD_PATH, MERCHANT,
+  pactOffer, applyPactStats, merchantPrice, rngOf,
+} from '../../data/tower.js';
+import { TOWER_MILESTONES, TRAILS } from '../../data/cosmetics.js';
+import { NPCS } from '../../data/npcs.js';
+import { drawHero } from '../../render/hero.js';
 import { ArcadeRunScene, groundY } from './arcade_run.js';
 import { arenaBosses, exKnown, sideBosses } from './arcade.js';
-import { frame, fmtClock, heading, DIM, GOLD, BONE } from './common.js';
+import { frame, fmtClock, heading, gbutton, portraitIn, DIM, GOLD, BONE } from './common.js';
 
 const COLOR = '#b79cff';
 const GATE_HOLD = 1.4;     // 출구 위에 가만히 서 있으면 올라가는 시간 (초)
 const STUCK_T = 25;        // 이 시간 동안 남은 적 수가 줄지 않으면 남은 적을 불러낸다 (부하를 부르는 적의 졸개만 잡아서는 미뤄지지 않게)
 
-// ── 출구 그림 (한 번만 굽는다 — 프레임마다 그라데이션을 만들지 않는다) ──
-let gateSpr = null;
-function gateSprite() {
-  if (gateSpr || typeof document === 'undefined') return gateSpr;
+// ── 출구 그림 (한 번만 굽는다 — 프레임마다 그라데이션을 만들지 않는다). 'safe' = 보라(시즌 1 출구·안전한 길), 'blood' = 피의 길 ──
+const GATE_LOOK = {
+  safe: { c0: 'rgba(240,230,255,0.95)', c1: 'rgba(183,156,255,0.7)', c2: 'rgba(90,60,200,0)', rim: 'rgba(183,156,255,0.9)', light: COLOR, label: '#d8c8ff' },
+  blood: { c0: 'rgba(255,228,220,0.95)', c1: 'rgba(230,52,64,0.72)', c2: 'rgba(110,0,16,0)', rim: 'rgba(255,96,96,0.9)', light: '#ff4a5a', label: '#ff9a9a' },
+};
+const gateSpr = {};
+function gateSprite(kind = 'safe') {
+  if (gateSpr[kind] || typeof document === 'undefined') return gateSpr[kind] ?? null;
+  const L = GATE_LOOK[kind] ?? GATE_LOOK.safe;
   const c = document.createElement('canvas');
   c.width = 128; c.height = 176;
   const x = c.getContext('2d');
   const g = x.createRadialGradient(64, 104, 6, 64, 104, 72);
-  g.addColorStop(0, 'rgba(240,230,255,0.95)'); g.addColorStop(0.35, 'rgba(183,156,255,0.7)'); g.addColorStop(1, 'rgba(90,60,200,0)');
+  g.addColorStop(0, L.c0); g.addColorStop(0.35, L.c1); g.addColorStop(1, L.c2);
   x.fillStyle = g; x.fillRect(0, 0, 128, 176);
   // 아치 문틀
   x.strokeStyle = 'rgba(255,244,220,0.9)'; x.lineWidth = 4;
   x.beginPath(); x.moveTo(30, 170); x.lineTo(30, 70); x.arc(64, 70, 34, Math.PI, 0); x.lineTo(98, 170); x.stroke();
-  x.strokeStyle = 'rgba(183,156,255,0.9)'; x.lineWidth = 2;
+  x.strokeStyle = L.rim; x.lineWidth = 2;
   x.beginPath(); x.moveTo(38, 170); x.lineTo(38, 72); x.arc(64, 72, 26, Math.PI, 0); x.lineTo(90, 170); x.stroke();
-  return (gateSpr = c);
+  return (gateSpr[kind] = c);
+}
+/** 갈림길 이름 (보스 층 뒤 출구 둘) */
+const ROUTE_NAME = { safe: '안전한 길', blood: '피의 길' };
+/** 기기 기록(meta.towerBest)의 가장 높은 층 — 난이도 중 최대 (이정표 알림 기준, data/cosmetics.js cosContext 와 같은 규칙) */
+function towerBestFloor(meta) {
+  const tb = meta?.towerBest && typeof meta.towerBest === 'object' && !Array.isArray(meta.towerBest) ? meta.towerBest : {};
+  let f = 0;
+  for (const k of Object.keys(tb)) { const v = tb[k]?.floor; if (typeof v === 'number' && Number.isFinite(v) && v > f) f = v; }
+  return f;
 }
 
-/** 층 출구: 영웅이 그 위에서 ▲ 를 누르거나 GATE_HOLD 초 동안 가만히 서 있으면 다음 층 */
+/**
+ * 층 출구: 영웅이 그 위에서 ▲ 를 누르거나 GATE_HOLD 초 동안 가만히 서 있으면 다음 층.
+ * route: null(보통 출구) | 'safe' | 'blood' (보스 층 뒤 갈림길 — 문 위에 이름)
+ */
 class TowerGate extends Entity {
-  constructor(cx, bottom, run) {
+  constructor(cx, bottom, run, route = null) {
     super(cx - 28, bottom - 104, 56, 104);
-    this.kind = 'prop'; this.z = 1; this.run = run;
+    this.kind = 'prop'; this.z = 1; this.run = run; this.route = route;
+    this.look = GATE_LOOK[route === 'blood' ? 'blood' : 'safe'];
     this.openK = 0; this.holdT = 0; this.near = false; this.fxT = 0; this.used = false;
   }
   update(dt, world) {
     this.t += dt;
-    this.openK = Math.min(1, this.openK + dt / 0.8);
+    this.openK = Math.min(1, this.openK + dt / TOWER_PHASE.gateOpen);
     const p = world.player;
     this.near = !!p && !p.dead && this.openK >= 1 && p.cx > this.x && p.cx < this.x + this.w && Math.abs(p.bottom - this.bottom) < 30;
     const still = this.near && p.onGround && Math.abs(p.vx) < 30 && !input.down('left') && !input.down('right');
     this.holdT = still ? this.holdT + dt : 0;
-    if ((this.fxT -= dt) <= 0) { this.fxT = 0.12; world.fx.emit?.('magic', this.cx + (Math.sin(this.t * 7) * 18), this.bottom - 10, 1, { color: COLOR, speed: 60, angle: -Math.PI / 2, spread: 0.5 }); }
+    if ((this.fxT -= dt) <= 0) { this.fxT = 0.12; world.fx.emit?.('magic', this.cx + (Math.sin(this.t * 7) * 18), this.bottom - 10, 1, { color: this.look.light, speed: 60, angle: -Math.PI / 2, spread: 0.5 }); }
     if (this.used || !this.near || world.transitioning || world.cutscene) return;
-    if (input.pressed('up') || this.holdT >= GATE_HOLD) { this.used = true; this.run.leaveFloor(); }
+    if (input.pressed('up') || this.holdT >= GATE_HOLD) { this.used = true; this.run.leaveFloor(this.route); }
   }
-  lights(L) { L.add(this.cx, this.bottom - 52, 170 * (0.4 + 0.6 * this.openK), COLOR, 0.85); }
+  lights(L) { L.add(this.cx, this.bottom - 52, 170 * (0.4 + 0.6 * this.openK), this.look.light, 0.85); }
   draw(ctx) {
-    const s = gateSprite();
+    const s = gateSprite(this.route === 'blood' ? 'blood' : 'safe');
     if (!s) return;
     const k = ease.outBack(this.openK), a = 0.75 + 0.25 * Math.sin(this.t * 4);
     ctx.save();
@@ -85,11 +114,112 @@ class TowerGate extends Entity {
     ctx.globalCompositeOperation = 'lighter';
     const w = 128 * (0.6 + 0.4 * k), h = 176 * k;
     ctx.drawImage(s, this.cx - w / 2, this.bottom - h + 4, w, h);
+    ctx.globalCompositeOperation = 'source-over';
+    if (this.route && this.openK > 0.5) {   // 갈림길 이름
+      ctx.globalAlpha = Math.min(1, (this.openK - 0.5) * 2);
+      text(ctx, ROUTE_NAME[this.route], this.cx, this.bottom - 186, { size: 18, align: 'center', weight: 900, family: FONT.title, color: this.look.label, ow: 4 });
+      if (this.route === 'blood') text(ctx, '센 변이 · 보상 2배', this.cx, this.bottom - 166, { size: 13, align: 'center', weight: 800, color: '#ffd0c8', ow: 3 });
+    }
     if (this.holdT > 0) {   // 서 있으면 차오르는 고리
-      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+      ctx.globalAlpha = 1;
       ctx.strokeStyle = '#fff4dc'; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(this.cx, this.bottom - 130, 12, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * this.holdT) / GATE_HOLD); ctx.stroke();
     }
+    ctx.restore();
+  }
+}
+
+/**
+ * 변이의 바닥 위험 (낙뢰 · 시체 폭발): warn 초 동안 표식(늘 0.6초 이상) → 한 번 친다 → 잠깐 빛이 남는다.
+ * 영웅이 맞으면 최대 체력의 frac (방어 무시, 무적 시간이면 없음 — c_common hazard 와 같은 규칙). 낙뢰는 기둥 안의 적도 친다
+ */
+class TowerHazard extends Entity {
+  constructor(run, kind, x, bottom, o) {
+    const r = kind === 'bolt' ? o.half : o.radius;
+    super(x - r, kind === 'bolt' ? 0 : bottom - 2 * r, 2 * r, kind === 'bolt' ? bottom : 2 * r);
+    this.kind = 'prop'; this.z = 2; this.run = run; this.hz = kind; this.o = o; this.fx0 = x; this.foot = bottom;
+    this.warn = Math.max(0.6, o.warn ?? 0.9); this.hit = false; this.after = 0;
+  }
+  update(dt, world) {
+    this.t += dt;
+    if (this.hit) { if ((this.after += dt) > 0.35) this.dead = true; return; }
+    if (this.t < this.warn) return;
+    this.hit = true;
+    const p = world.player, o = this.o;
+    const inside = !!p && !p.dead && (this.hz === 'bolt'
+      ? Math.abs(p.cx - this.fx0) < o.half + p.w / 2
+      : Math.hypot(p.cx - this.fx0, p.cy - (this.foot - o.radius * 0.6)) < o.radius + 12);
+    if (inside && !p.invuln && !world.cleared) p.takeHit(Math.ceil((p.stats?.hp ?? 100) * o.frac), { team: 'enemy', dir: Math.sign(p.cx - this.fx0) || 1, kb: [240, -400], flat: 1 }, world, {});
+    if (this.hz === 'bolt') {
+      if (p && !p.dead) playerStrike(world, { x: this.fx0 - o.half, y: this.foot - 640, w: 2 * o.half, h: 640 }, {
+        owner: p, stats: p.stats, team: 'player', mv: 1.2, dir: 1, kb: [0, -220], hitstop: 0, shake: 0, hitId: `bolt${this.run.floor}_${this.t.toFixed(3)}_${this.fx0 | 0}`, breakWalls: false, tags: ['skill'], fx: 'pierce',
+      });
+      world.camera.shake(7, 0.22);
+      audio.sfx('thunderclap', { vol: 0.7 });
+      world.fx.burst('magic', this.fx0, this.foot - 8, 16, { speed: 220, color: '#f4f8a0' });
+    } else {
+      world.camera.shake(9, 0.25);
+      audio.sfx('explode', { vol: 0.7 });
+      world.fx.burst('fire', this.fx0, this.foot - o.radius * 0.6, 22, { speed: 260 });
+      world.fx.ring(this.fx0, this.foot - o.radius * 0.6, { color: '#ff7a3a', r0: 10, r1: o.radius + 20, life: 0.35, width: 6 });
+    }
+  }
+  lights(L) {
+    if (this.hit) L.add(this.fx0, this.foot - 60, 220 * (1 - this.after / 0.35), this.hz === 'bolt' ? '#f4f8a0' : '#ff8a3a', 0.9);
+    else if (this.hz === 'bolt') L.add(this.fx0, this.foot - 20, 60, '#e8f070', 0.35);
+  }
+  draw(ctx) {
+    const o = this.o, k = Math.min(1, this.t / this.warn), blink = 0.55 + 0.45 * Math.sin(this.t * (10 + 14 * k));
+    ctx.save();
+    if (this.hz === 'bolt') {
+      if (!this.hit) {   // 예고: 바닥 표식 + 가는 기둥
+        ctx.globalAlpha = 0.25 + 0.35 * k;
+        ctx.fillStyle = '#e8f070'; ctx.fillRect(this.fx0 - o.half, this.foot - 520, 2 * o.half, 520);
+        ctx.globalAlpha = blink;
+        ctx.strokeStyle = '#fbffd0'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.ellipse(this.fx0, this.foot - 2, o.half + 6, 7, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = '#fbffd0'; ctx.fillRect(this.fx0 - o.half * k, this.foot - 4, 2 * o.half * k, 4);
+      } else {   // 벼락
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 1 - this.after / 0.35;
+        ctx.fillStyle = '#fbffe0'; ctx.fillRect(this.fx0 - o.half * 0.45, this.foot - 640, o.half * 0.9, 640);
+        ctx.fillStyle = '#e8f070'; ctx.fillRect(this.fx0 - o.half, this.foot - 640, 2 * o.half, 640);
+      }
+    } else {
+      const cy = this.foot - o.radius * 0.6;
+      if (!this.hit) {   // 예고: 붉은 원 + 줄어드는 안쪽 원
+        ctx.globalAlpha = blink;
+        ctx.strokeStyle = '#ff5a3a'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(this.fx0, cy, o.radius, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = 0.25 + 0.3 * k;
+        ctx.fillStyle = '#ff3a2a'; ctx.beginPath(); ctx.arc(this.fx0, cy, o.radius * (1 - 0.85 * k) + 4, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+}
+
+/** 떠돌이 상인 로크 (data/npcs.js npc_rook 의 퍼펫 — 마을 NPC 와 같은 drawHero 경로) */
+class TowerMerchantNpc extends Entity {
+  constructor(cx, bottom, facing) {
+    super(cx - 18, bottom - 92, 36, 92);
+    this.kind = 'prop'; this.z = 1; this.facing = facing;
+    this.pseudo = { rig: {}, ch: { move: { speed: 275 } }, stats: {}, npc: true, npcId: MERCHANT.npc, onGround: true, vx: 0, vy: 0, anim: 'idle', look: NPCS[MERCHANT.npc]?.look ?? null };
+    this.alpha = 0; this.leaving = false;
+  }
+  update(dt) {
+    this.t += dt;
+    this.alpha = this.leaving ? Math.max(0, this.alpha - dt * 3) : Math.min(1, this.alpha + dt * 3);
+    if (this.leaving && this.alpha <= 0) this.dead = true;
+  }
+  draw(ctx, world) {
+    if (!this.pseudo.look || this.alpha <= 0) return;
+    const P = this.pseudo;
+    P.x = this.x; P.y = this.y; P.w = this.w; P.h = this.h; P.cx = this.cx; P.bottom = this.bottom; P.facing = this.facing; P.animT = this.t; P.t = this.t;
+    ctx.save();
+    ctx.globalAlpha = this.alpha;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(this.cx, this.bottom - 1, 18, 4, 0, 0, Math.PI * 2); ctx.fill();
+    try { drawHero(ctx, P, world, {}); } catch { /* 퍼펫 교체 중 */ }
     ctx.restore();
   }
 }
@@ -110,11 +240,17 @@ export class TowerScene extends ArcadeRunScene {
     this.taken = {}; this.takenOrder = []; this.picks = 0; this.reviveLeft = 0;
     this.hasteT = 0; this._thornN = 0; this._dashSeen = undefined;
     this.warmed = new Set();
+    // 시즌 2: 계약 · 갈림길 · 변이 · 상인 · 이정표 (data/tower.js '시즌 2')
+    this.pacts = {}; this.pactOrder = []; this.blood = 0; this.bloodBless = 0; this.bossHpMul = 1; this.bloodRuns = 0;
+    this.bloodFloor = false; this.mut = null; this.mutCard = null; this.blessLeft = 0; this.gates = []; this.npc = null;
+    this.baseRules = w.rules ?? null; this.splitN = 0; this.fightT = 0; this.rushOk = false; this.scoreCapped = 0;
+    this.milestones = []; this.bestBefore = towerBestFloor(g.meta);
     w.noExtraLives = true;
     w.onBossDefeated = (b) => this.onBossDown(b);
     this.patchPlayer();
-    this.offs = [bus.on('enemyKilled', () => this.onKill())];
-    gateSprite();
+    this.capScore();
+    this.offs = [bus.on('enemyKilled', (d) => this.onKill(d))];
+    gateSprite(); gateSprite('blood');
     try { assets.preload?.(BLESSINGS.map((b) => `icons/${b.icon}`)); } catch { /* 아이콘은 그릴 때 받는다 */ }
     this.loadFloor(1);
   }
@@ -130,10 +266,27 @@ export class TowerScene extends ArcadeRunScene {
       const hp = this.hp, mp = this.mp;
       orig.call(this);
       applyBlessingStats(this.stats, self.taken, self.hasteT > 0);
+      applyPactStats(this.stats, self.pacts);   // 시즌 2: 피의 계약 (축복 뒤)
+      const ha = self.mut?.heroAtk;   // 시즌 2: 광기의 층 (영웅도 주는 피해 ×)
+      if (ha) { this.stats.atk = Math.round(this.stats.atk * ha); this.stats.mag = Math.round(this.stats.mag * ha); }
       if (Number.isFinite(hp)) this.hp = Math.min(hp, this.stats.hp);
       if (Number.isFinite(mp)) this.mp = Math.min(mp, this.stats.mp);
     };
     p.refreshStats();
+  }
+  /**
+   * 층 점수 상한 (시즌 2): 한 층에서 오르는 점수는 TOWER_RULES.maxScorePerFloor 를 넘지 않는다 — 어떤 판이든 서버 검사
+   * '점수 ≤ (돌파한 층 + 1) × maxScorePerFloor' (netlify/lib/online.mts) 안에 든다. 층이 바뀔 때 floorScore0 을 다시 잡는다 (loadFloor)
+   */
+  capScore() {
+    const w = this.world, self = this, orig = w.addScore;
+    this.floorScore0 = w.run.score;
+    w.addScore = function towerScore(n) {
+      const before = this.run.score;
+      orig.call(this, n);
+      const room = Math.max(0, self.floorScore0 + TOWER_RULES.maxScorePerFloor - before);
+      if (this.run.score - before > room) { this.run.score = before + room; self.scoreCapped++; }
+    };
   }
 
   // ───────────────────────── 층 ─────────────────────────
@@ -141,6 +294,7 @@ export class TowerScene extends ArcadeRunScene {
     const w = this.world, plan = this.planner.plan(n);
     this.floor = n; this.plan = plan; this.kind = plan.kind;
     w.diff = towerDiff(this.baseDiff, n);
+    this.season2Floor(plan);
     const key = `f${n}`, base = { id: 'tower', name: `제 ${n}층`, start: key, boss: null, intro: null, outro: null, gimmick: null, docs: [], shard: null, heart: null, relic: null, level: plan.level };
     if (plan.kind === 'combat') {
       this.troom = towerRoom(STAGES, plan.sid, plan.rid);
@@ -162,6 +316,37 @@ export class TowerScene extends ArcadeRunScene {
     audio.sfx(plan.kind === 'boss' ? 'warning' : 'ready');
     if (plan.kind === 'combat') this.warmPool(plan.pool ?? []);
     this.warmBoss(n);
+    this.mutCard = this.mut ? { m: this.mut, blood: this.bloodFloor, t: 0 } : null;
+  }
+  /**
+   * 시즌 2 층 준비 (loadFloor 가 world.diff 를 만든 직후): 변이(피의 길이면 센 변이) · 피의 길 배율 · 맹세의 계약(다음 군주 체력) ·
+   * 월드 규칙(안개 dark · 광기의 계약 noPotion) · 층 점수 상한 기준 · 위험물·분열 수 초기화
+   */
+  season2Floor(plan) {
+    const w = this.world, d = w.diff;
+    const blood = plan.kind === 'combat' && this.blood > 0;
+    if (blood) this.blood--;
+    this.bloodFloor = blood;
+    this.mut = plan.kind === 'combat' ? (MUTATOR[blood ? plan.mutBlood : plan.mut] ?? null) : null;
+    const M = this.mut;
+    if (M?.atk) d.enemyAtk = (d.enemyAtk ?? 1) * M.atk;
+    if (M?.gold) d.gold = (d.gold ?? 1) * M.gold;
+    if (blood) { d.gold = (d.gold ?? 1) * BLOOD_PATH.goldMul; d.elite = Math.min(0.9, (d.elite ?? 0) + BLOOD_PATH.eliteAdd); }
+    this.oathHp = null;
+    if (plan.kind === 'boss' && this.bossHpMul !== 1) { d.bossHp = (d.bossHp ?? 1) * this.bossHpMul; this.oathHp = this.bossHpMul; this.bossHpMul = 1; }
+    w.rules = this.floorRules();
+    this.floorScore0 = w.run.score;
+    this.splitN = 0; this.fightT = 0; this.rushOk = false; this.boltT = M?.every ?? 0;
+    this.blessLeft = 0; this.pactDone = false; this.shopDone = false; this.gates = []; this.npc = null;
+    this.boltR = M?.every ? rngOf(this.seed, 'bolt', plan.f) : null;
+    w.player?.refreshStats();   // 광기의 층 영웅 배율을 넣고 뺀다
+  }
+  /** 이 층의 월드 규칙 = 처음 규칙 + 변이 규칙(피의 안개 dark) + 맺은 계약 규칙(광기의 계약 noPotion — 막을 때 글에 계약 이름) */
+  floorRules() {
+    const r = { ...(this.baseRules ?? {}) };
+    if (this.mut?.rules) Object.assign(r, this.mut.rules);
+    for (const id of this.pactOrder) { const P = PACT[id]; if (P?.rules) { Object.assign(r, P.rules); r.label = P.name; } }
+    return Object.keys(r).length ? r : null;
   }
   /** 이번 층 적의 채색 리그를 굽고 풀에서 빠진 리그는 놓는다 (서바이벌 warmPool 과 같은 규칙) */
   warmPool(pool) {
@@ -194,7 +379,13 @@ export class TowerScene extends ArcadeRunScene {
     this.phase = 'fight'; this.phaseT = 0; this.stuckT = 0;
     const used = new Map();
     const free = (tx, ty) => { const t = m.typeAt(tx, ty); return !isSolidType(t) && t !== T.SPIKE && t !== T.LIQUID && t !== T.FAKE; };
-    plan.enemies.forEach((spec) => {
+    // 시즌 2: 거인·정예 무리 = 계획의 앞쪽 일부만 (최소 3), 질주의 계약 = 계획의 추가 적 셋, 피의 길 = 정예 확률 더 (층마다 따로 뽑는 결정적 난수)
+    const M = this.mut;
+    let list = plan.enemies;
+    if (M?.count) list = list.slice(0, Math.max(3, Math.ceil(list.length * M.count)));
+    if (this.pacts.swift && plan.extra) list = [...list, ...plan.extra];
+    const br = this.bloodFloor ? rngOf(this.seed, 'bloodElite', plan.f) : null;
+    list.forEach((spec) => {
       const def = ENEMIES[spec.id];
       if (!def || !R) return;
       let si = spec.slot, s = R.slots[si];
@@ -215,11 +406,40 @@ export class TowerScene extends ArcadeRunScene {
         if (ok) tx += dx;
       }
       const fx = tx * TILE + TILE / 2, fy = (ty + 1) * TILE;
-      w.spawnEnemy(spec.id, fx, fy, { level: plan.level, elite: spec.elite, facing: p.cx < fx ? -1 : 1 });
+      let elite = spec.elite;
+      if (M?.allElite && def.elite !== false) elite = true;
+      else if (br && !elite && def.elite !== false && br.next() < BLOOD_PATH.eliteAdd) elite = true;
+      const e = w.spawnEnemy(spec.id, fx, fy, { level: plan.level, elite, facing: p.cx < fx ? -1 : 1 });
+      if (M?.scale) this.resize(e, M.scale, M.hp, M.foeAtk);
       w.fx.burst('dark', fx, fy - 30, 10, { speed: 110 });
-      w.fx.ring(fx, fy - 30, { color: spec.elite ? '#ffd070' : COLOR, r0: 6, r1: 56, life: 0.4, width: 4 });
+      w.fx.ring(fx, fy - 30, { color: elite ? '#ffd070' : COLOR, r0: 6, r1: 56, life: 0.4, width: 4 });
     });
     audio.sfx('mist', { vol: 0.5 });
+  }
+  /**
+   * 적 크기·체력·공격 바꾸기 (거인의 층 k > 1, 분열 조각 k < 1): 발밑 가운데를 둔 채. 키울 때 머리 위·옆이 막혀 있으면 들어가는 만큼만 키운다
+   * (체력·공격 배율은 그대로). enemy.js 는 고치지 않는다 — 렌더러는 e.scale 을 읽는다 (render/enemies.js)
+   */
+  resize(e, k, hpMul = 1, atkMul = 1) {
+    if (!e || e.kind !== 'enemy') return;
+    const m = this.world.map, cx = e.cx, b = e.bottom;
+    if (k > 1) {
+      const tx0 = Math.floor((cx - (e.w * k) / 2) / TILE), tx1 = Math.floor((cx + (e.w * k) / 2 - 1) / TILE);
+      const yTop = e.def?.flying ? e.cy - (e.h * k) / 2 : b - e.h * k;
+      for (let ty = Math.floor((b - 1) / TILE); ty >= Math.floor(yTop / TILE); ty--) {
+        let solid = false;
+        for (let tx = tx0; tx <= tx1 && !solid; tx++) solid = isSolidType(m.typeAt(tx, ty));
+        if (solid) { k = Math.max(1, Math.min(k, (b - (ty + 1) * TILE) / e.h)); break; }
+      }
+    }
+    if (k !== 1) {
+      e.w *= k; e.h *= k; e.scale = (e.scale || 1) * k;
+      e.x = cx - e.w / 2; e.y = b - e.h;
+      e.spawnX = e.x; e.spawnY = e.y;
+      if (e.homeX !== undefined) e.homeX = e.x;
+    }
+    if (hpMul !== 1) { const hp = Math.max(1, Math.round(e.stats.maxHp * hpMul)); e.stats.maxHp = hp; e.stats.hp = hp; e.hp = hp; }
+    if (atkMul && atkMul !== 1) e.stats.atk = Math.max(1, Math.round(e.stats.atk * atkMul));
   }
   /** 갇힌 적 (남은 적 수가 오래 줄지 않을 때): 영웅 양옆 바닥으로 불러낸다 — 영웅 높이에서 벽·가시를 만나기 전 칸까지만 (벽 속·벽 너머에 놓지 않게) */
   summonStragglers() {

@@ -726,6 +726,8 @@ async function U10(C) {
 }
 
 // ───────────────────────── U11 외형 쪽 (BM-FOLLOWUP) ─────────────────────────
+/** 외형 목록 칸 수 = '직업 기본' + 잔상 장부 (data/cosmetics.js — Stage 5 K1 장부가 이정표·악몽 잔상을 더한다) */
+const TRAIL_ROWS = 1 + (await import(new URL('../../src/data/cosmetics.js', import.meta.url))).TRAIL_IDS.length;
 /** 이명 창 상태 (외형 쪽 = page 1 · 목록 2) */
 function pickState(s) {
   return s.eval(() => {
@@ -749,7 +751,7 @@ async function U11(C) {
     await tapUi(t, s, await s.eval(() => window.__game.top.modal.tabR[1]));
     await waitFrames(s.page, { ms: 200, frames: 4, ticks: 2 });
     p = await pickState(s);
-    C.check('U11', "touch '외형' 탭 → 잔상 쪽 (목록 2 · 7칸 · 칸 4곳 이상 보임)", opened && p?.page === 1 && p.L === 2 && p.n === 7 && p.zones >= 4, JSON.stringify(p));
+    C.check('U11', `touch '외형' 탭 → 잔상 쪽 (목록 2 · ${TRAIL_ROWS}칸 · 칸 4곳 이상 보임)`, opened && p?.page === 1 && p.L === 2 && p.n === TRAIL_ROWS && p.zones >= 4, JSON.stringify(p));
     const zoneOf = (id) => s.eval((id) => { const m = window.__game.top.modal, k = m.lists[2].findIndex((it) => it.id === id); return m.zones[2].find((z) => z.k === k && !z.r.thid)?.r ?? null; }, id);
     const moon = await zoneOf('tr_moon');
     if (moon) await tapUi(t, s, moon);
