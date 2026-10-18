@@ -255,6 +255,9 @@ async function runFinale(s, boss, { video = false, perf = false } = {}) {
 }
 
 const BI = await import(path.join(ROOT, 'src/data/boss_intro.js'));
+/** 보스 id → 늦게 받는 클래스 모듈 파일 이름 (bosses/lazy.js: `b_x: () => import('./mod.js')`) */
+const LAZY_MOD = Object.fromEntries([...fs.readFileSync(path.join(ROOT, 'src/game/bosses/lazy.js'), 'utf8')
+  .matchAll(/(b_\w+):\s*\(\)\s*=>\s*import\('\.\/(\w+)\.js'\)/g)].map((m) => [m[1], m[2]]));
 const perfRows = [];
 let idx = 0;
 for (const boss of BOSSES_RUN) {
@@ -340,7 +343,8 @@ for (const boss of BOSSES_RUN) {
         { mode: i5[0]?.mode, nightmare: i5[0]?.nm, plate: i5[0]?.plate, want: BI.PLATE_NIGHTMARE, fightAfter: end5 >= 0 ? +((end5 + 1) * DT).toFixed(3) : null });
       await s5.close();
       // 늦게 받기: 보스 모듈 응답을 붙잡아 두었다가 2초 뒤 놓는다 → 대역 → 1.5초에 이름판
-      const mod = { b_nightwing: 'a_nightwing', b_frostqueen: 'b_frostqueen', b_dagon: 'c_dagon', b_dullahan: 'a_dullahan', b_dracula: 'b_dracula', b_charon: 'e_charon' }[boss] ?? 'a_nightwing';
+      // [s5:p4v] 모듈 이름은 bosses/lazy.js 의 import() 표에서 (--bosses 로 다른 보스를 골라도 그 보스의 모듈을 붙잡는다)
+      const mod = LAZY_MOD[boss] ?? 'a_nightwing';
       let release = null;
       const gate = new Promise((r) => { release = r; });
       const s6 = await openRoom(boss, { route: (page) => page.route(new RegExp(`/src/game/bosses/${mod}\\.js`), async (route) => { await gate; await route.continue(); }) });
