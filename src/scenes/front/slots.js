@@ -10,11 +10,18 @@
 //    2부 엔딩을 본 슬롯(NG.canStartNg)이고 구름 상태가 '서버가 최신'·'충돌'이 아니면 동작 목록 '불러오기' 뒤에 '피의 윤회'
 //    (+ 이 기기·클라우드 모두 빈 슬롯이 있으면 '피의 윤회 · 빈 슬롯 k' — 원래 슬롯은 읽기만). 확인(danger) → NG.startNgPlus →
 //    saves.write → 서막(새 게임과 같은 길). cloud.markOverwrite 는 부르지 않는다 (같은 슬롯의 이어지는 기록)
+//  - 이어하기 한 번에 (PLAY P01 · P08): 이어하기 화면에서 기록이 있는 슬롯을 누르면(터치 한 번 · 결정 키) 바로 불러온다.
+//    나머지 동작(피의 윤회 · 구름 · 코드 · 새로 시작 · 삭제)은 카드 오른쪽 '⋯ 관리' 띠(터치) · 보조 기능/→ 키(키보드 A · 패드 Y/△)로 연다.
+//    동작 목록에서 되돌릴 수 없는 '새로 시작'·'삭제'는 맨 아래 따로 (진홍 구분선 뒤, 각각 확인 창). 구름 상태가 '서버가 최신'·'충돌'이면
+//    한 번에 불러오지 않고 동작 목록을 연다 (먼저 받을지 고르게). 목록은 TapMenu: 터치 한 번에 고르고 실행
+//  - 폴드처럼 세로가 넉넉한 화면 (PLAY P19): 카드 높이 최대 156 · 폭 최대 780, 글자·초상화는 카드 높이에 비례 (sk ≤ 1.3)
 import { Scene } from '../../core/game.js';
 import { audio } from '../../core/audio.js';
 import { assets } from '../../core/assets.js';
 import { saves } from '../../core/save.js';
-import { text, FONT, ListMenu, taps } from '../../core/ui.js';
+import { text, FONT, taps } from '../../core/ui.js';
+import { input } from '../../core/input.js';
+import { promptMode } from '../../core/prompts.js';
 import { clamp, ease, fmt, rgba } from '../../core/math.js';
 import { hudSafe } from '../../render/hud_layout.js';
 import { CHARACTERS } from '../../data/characters.js';
@@ -28,7 +35,7 @@ import { bus } from '../../core/events.js';
 import { cloud } from '../../core/cloud.js';
 import { drawCloudBadge, accountBadge, summaryLine } from './cloud_ui.js';
 import {
-  Ambience, kenBurns, shade, frame, heading, portraitIn, menuItem, backButton, footer,
+  Ambience, kenBurns, shade, frame, heading, portraitIn, menuItem, backButton, footer, TapMenu,
   fmtDate, fmtPlay, goSafe, follow, GOLD, BONE, DIM, CRIMSON,
 } from './common.js';
 
@@ -65,7 +72,7 @@ export class SlotsScene extends Scene {
         idx = Math.max(0, best);
       }
     }
-    this.menu = new ListMenu(3, { index: clamp(Number(idx) || 0, 0, 2) });
+    this.menu = new TapMenu(3, { index: clamp(Number(idx) || 0, 0, 2) });
     this.act = null; // 동작 선택 팝업
     this.selK = [0, 0, 0];
     // 클라우드 (로그인 중일 때만)
@@ -145,12 +152,18 @@ export class SlotsScene extends Scene {
       ? [...down, ['new', '새로 시작', 'NEW GAME'], ['import', '코드 가져오기', 'IMPORT'], ['back', '취소', 'CANCEL']]
       : s.broken
         ? [...down, ['new', '새로 시작', 'NEW GAME'], ['import', '코드 가져오기', 'IMPORT'], ['delete', '삭제', 'DELETE'], ['back', '취소', 'CANCEL']]
-        : [['load', '불러오기', 'LOAD'], ...ng, ...down, ...up, ['new', '새로 시작', 'NEW GAME'], ['export', '코드 내보내기', 'EXPORT'], ['import', '코드 가져오기', 'IMPORT'], ['delete', '삭제', 'DELETE'], ['back', '취소', 'CANCEL']];   // [hook:ng]
+        : [['load', '불러오기', 'LOAD'], ...ng, ...down, ...up, ['export', '코드 내보내기', 'EXPORT'], ['import', '코드 가져오기', 'IMPORT'], ['back', '취소', 'CANCEL'], ['new', '새로 시작', 'NEW GAME'], ['delete', '삭제', 'DELETE']];   // [hook:ng]
+    // 되돌릴 수 없는 동작(기록이 있는 슬롯의 '새로 시작' · '삭제')은 맨 아래 따로 묶는다 (P08: 진홍 구분선 뒤, 각각 확인 창)
+    const safeN = s.empty ? items.length : items.findIndex((i) => i[0] === 'new' || i[0] === 'delete');
     const start = this.mode === 'new' ? Math.max(0, items.findIndex((i) => i[0] === 'new')) : 0;
     const cols = this.actionCols(items.length);
-    this.act = { items, cols, menu: new ListMenu(items.length, { cols, index: start }), t: 0 };
+    this.act = { items, cols, safeN: safeN < 0 ? items.length : safeN, menu: new TapMenu(items.length, { cols, index: start }), t: 0 };
     audio.sfx('menu_ok');
   }
+  /** 이어하기에서 이 슬롯을 한 번에 불러오는가 (기록이 있고 읽을 수 있으며, 클라우드가 더 새것·충돌이 아님) */
+  quickLoad(s) { return this.mode !== 'new' && !!s && !s.empty && !s.broken && s.cloud?.status !== 'cloud' && s.cloud?.status !== 'conflict'; }
+  /** 카드 오른쪽 '⋯ 관리' 띠가 있는가 (이어하기 · 기록이 있는 슬롯) */
+  hasMore(s) { return this.mode !== 'new' && !!s && !s.empty && !s.broken; }
   /** 피의 윤회 복사 대상: 이 기기에서 비어 있고 클라우드 기록도 없는 가장 작은 슬롯 번호 (없으면 null — 클라우드 목록을 받는 중이면 아직 모른다) */
   ngTarget() { return cloud.loggedIn && this.cloudBusy ? null : this.slots.find((x) => x.empty && !this.cloudOf(x))?.slot ?? null; }   // [hook:ng]
   /** 피의 윤회 확인 → 시작 (copy: 빈 슬롯에 새 회차, 원래 슬롯은 읽기만) */
@@ -176,7 +189,7 @@ export class SlotsScene extends Scene {
     g.go('story', { script: 'prologue', then: 'hub', thenParams: { from: 'prologue' }, bg: 'cg/cg_prologue_moon', music: 'prologue' }, { fadeTime: 0.8 });
   }
   /** 동작 목록이 화면 높이에 한 줄로 들어가지 않으면 두 줄 (§6.3: 줄 높이는 줄이지 않는다) */
-  actionCols(n) { const L = this.layout(); return n * L.ih + 30 > L.H - L.st - L.sb - 60 ? 2 : 1; }
+  actionCols(n) { const L = this.layout(); return n * L.ih + 46 > L.H - L.st - L.sb - 60 ? 2 : 1; }
   doAction(id) {
     const g = this.game, s = this.slots[this.menu.index], slot = s.slot;
     switch (id) {
@@ -241,7 +254,10 @@ export class SlotsScene extends Scene {
     const g = this.game;
     this.amb.update(dt, g.uiW || g.viewW, g.uiH || g.viewH);
     for (let i = 0; i < 3; i++) this.selK[i] = follow(this.selK[i], i === this.menu.index ? 1 : 0, dt, 12);
-    if (taps.hit(this) === 'back') { if (this.act) { this.act = null; audio.sfx('menu_cancel'); } else this.leave(); return; }
+    const tap = taps.hit(this);
+    if (tap === 'back') { if (this.act) { this.act = null; audio.sfx('menu_cancel'); } else this.leave(); return; }
+    // 카드의 '⋯ 관리' 띠 (터치·마우스): 그 슬롯의 동작 목록
+    if (!this.act && typeof tap === 'string' && tap.startsWith('more')) { const i = Number(tap.slice(4)); if (i >= 0 && i < 3) { this.menu.index = i; this.openActions(); } return; }
     if (this.act) {
       this.act.t += dt;
       const r = this.act.menu.update(dt);
@@ -250,11 +266,14 @@ export class SlotsScene extends Scene {
       else if (r === 'cancel') { this.act = null; audio.sfx('menu_cancel'); }
       return;
     }
+    // 키보드·패드: 보조 기능(A · Y/△) 또는 → 로 동작 목록 (이어하기의 결정 키는 바로 불러오기)
+    if (this.hasMore(this.slots[this.menu.index]) && (input.pressed('alt') || input.pressed('right'))) { this.openActions(); return; }
     const r = this.menu.update(dt);
     if (this.menu.moved) audio.sfx('menu_move');
     if (r === 'confirm') {
       const s = this.slots[this.menu.index];
       if (s.empty && this.mode === 'new' && !this.cloudOf(s)) { audio.sfx('menu_ok'); g.go('difficulty', { slot: s.slot }); }
+      else if (this.quickLoad(s)) this.doAction('load');
       else this.openActions();
     } else if (r === 'cancel') this.leave();
   }
@@ -271,11 +290,16 @@ export class SlotsScene extends Scene {
     const top = headY + headSize * 0.72 + (compact ? 32 : 50);
     const bottom = H - 38 - sb;
     const gap = compact ? 8 : 12;
-    const h = clamp(Math.floor((bottom - top - 2 * gap) / 3), 84, 112);
-    const w = Math.min(680, W - sl - sr - 200);
+    // 세로가 넉넉하면(폴드) 카드를 키운다 (P19): 높이 최대 156, 폭 최대 780, 남는 높이의 일부만큼 카드 묶음을 내린다
+    const h = clamp(Math.floor((bottom - top - 2 * gap) / 3), 84, 156);
+    const tall = h > 120;
+    const w = Math.min(tall ? 780 : 680, W - sl - sr - (tall ? 120 : 200));
     const x0 = sl + (W - sl - sr) / 2 - w / 2;
+    const top2 = top + Math.max(0, Math.min(28, (bottom - top - (3 * h + 2 * gap)) / 3));
     const ih = clamp(Math.ceil(38 / per), 44, 48);
-    return { W, H, sl, sr, st, sb, compact, headY, headSize, top, h, gap, w, x0, ih };
+    const sk = clamp(h / 112, 1, 1.3);   // 카드 안 글자·초상화 배율
+    const more = Math.max(44, Math.ceil(46 / per));   // '⋯ 관리' 띠 폭 (44 CSS px 이상)
+    return { W, H, sl, sr, st, sb, compact, headY, headSize, top: top2, h, gap, w, x0, ih, sk, more, per };
   }
 
   render(ctx) {
@@ -295,7 +319,7 @@ export class SlotsScene extends Scene {
       const sel = this.selK[i];
       const r = { x: L.x0 - (1 - k) * 80 + sel * 10, y: L.top + i * (L.h + L.gap), w: L.w, h: L.h };
       if (!this.act) this.menu.hit(i, r);
-      this.drawSlot(ctx, r, s, sel, k, i === this.menu.index);
+      this.drawSlot(ctx, r, s, sel, k, i === this.menu.index, L, i);
     });
     if (this.act) this.drawActions(ctx, L);
     if (cloud.loggedIn) {
@@ -306,11 +330,16 @@ export class SlotsScene extends Scene {
       if (this.cloudBusy) text(ctx, '클라우드 확인 중…', xr - bw - 8, L.st + 32, { size: 11, align: 'right', weight: 700, color: DIM, ow: 2 });
     }
     backButton(ctx, 14 + L.sl, 12 + L.st, '뒤로', this);
-    footer(ctx, W, H, this.act ? '↑↓ 선택   Z 결정   X 닫기' : '↑↓ 슬롯 선택   Z 결정   X 타이틀로', this.act ? '동작을 선택하세요' : '슬롯을 터치하세요');
+    const cur = this.slots[this.menu.index];
+    const keys = this.act ? '↑↓ 선택   Z 결정   X 닫기'
+      : this.hasMore(cur) ? [['dpadV', '슬롯 선택'], ['confirm', this.quickLoad(cur) ? '불러오기' : '결정'], ['alt', '관리'], ['cancel', '타이틀로']]
+        : '↑↓ 슬롯 선택   Z 결정   X 타이틀로';
+    const touch = this.act ? '동작을 선택하세요' : this.mode === 'new' ? '슬롯을 터치하세요' : '슬롯을 누르면 바로 이어합니다 · 오른쪽 「관리」: 코드·삭제 등';
+    footer(ctx, W, H, keys, touch);
   }
 
-  drawSlot(ctx, r, s, sel, k, current) {
-    const t = this.game.time, h = r.h;
+  drawSlot(ctx, r, s, sel, k, current, L = this.layout(), i = 0) {
+    const t = this.game.time, h = r.h, sk = L.sk ?? 1;
     const ch = !s.empty && own(CHARACTERS, s.charId) ? CHARACTERS[s.charId] : null;
     const diff = s.empty ? null : (DIFFICULTIES.find((d) => d.id === s.difficulty) ?? getDiff('normal'));
     const acc = s.empty || !ch ? '#6a5a50' : diff.color;
@@ -335,8 +364,11 @@ export class SlotsScene extends Scene {
       ctx.restore();
       return;
     }
+    // 오른쪽 '⋯ 관리' 띠 (이어하기 · 기록이 있는 슬롯): 왼쪽 슬롯 번호 띠와 짝. 누르면 동작 목록 (불러오기는 카드 아무 곳)
+    const mw = this.hasMore(s) ? L.more : 0;
+    if (mw) this.drawMore(ctx, { x: r.x + r.w - mw, y: r.y, w: mw, h: r.h }, current, k, i);
     // 초상화
-    const pw = Math.round(clamp(h * 0.86, 72, 96));
+    const pw = Math.round(clamp(h * 0.86, 72, 128));
     const pr = { x: r.x + 46, y: r.y + 8, w: pw, h: h - 16 };
     portraitIn(ctx, ch.portrait ? assets.get(ch.portrait) : null, pr, { zoom: 1.5, fy: 0.12, fallback: ch.look?.primary ?? '#3a2418' });
     ctx.strokeStyle = rgba(acc, 0.9); ctx.lineWidth = 1.5; ctx.strokeRect(pr.x + 0.5, pr.y + 0.5, pr.w - 1, pr.h - 1);
@@ -345,18 +377,19 @@ export class SlotsScene extends Scene {
       ctx.fillStyle = GOLD; ctx.fillRect(pr.x, pr.y, pr.w, pr.h); ctx.restore();
     }
     // 가운데 열: 이름 · 레벨/직업 · 챕터 · 수집품 (카드 높이에 비례해 줄 위치를 정한다)
-    const tx = pr.x + pr.w + 16, rx = r.x + r.w - 18;
+    const tx = pr.x + pr.w + 16, rx = r.x + r.w - 18 - mw;
     const y1 = r.y + Math.round(h * 0.29), y2 = r.y + Math.round(h * 0.52), y3 = r.y + Math.round(h * 0.75), y4 = r.y + Math.round(h * 0.92);
-    const colW = Math.max(120, rx - 150 - tx);
-    text(ctx, ch.name ?? s.charId, tx, y1, { size: 20, weight: 800, family: FONT.title, color: '#fff2dc', ow: 3, maxWidth: colW });
-    text(ctx, `Lv.${s.level}`, tx, y2, { size: 18, weight: 900, family: FONT.num, color: GOLD, ow: 3 });
-    text(ctx, s.cls || ch.title || '', tx + 66, y2 - 1, { size: 13, weight: 700, color: '#d8c8b8', ow: 2, maxWidth: colW - 66 });
+    const colW = Math.max(120, rx - 150 * sk - tx);
+    const lvW = Math.round(66 * sk);
+    text(ctx, ch.name ?? s.charId, tx, y1, { size: Math.round(20 * sk), weight: 800, family: FONT.title, color: '#fff2dc', ow: 3, maxWidth: colW });
+    text(ctx, `Lv.${s.level}`, tx, y2, { size: Math.round(18 * sk), weight: 900, family: FONT.num, color: GOLD, ow: 3 });
+    text(ctx, s.cls || ch.title || '', tx + lvW, y2 - 1, { size: Math.round(13 * sk), weight: 700, color: '#d8c8b8', ow: 2, maxWidth: colW - lvW });
     // 챕터 (20장까지) 앞 배지: 회차면 '{N}회차', 2부면 '제2부'
     const st = s.stage;
     let cx = tx;
     if (s.ng > 0) cx += badge(ctx, cx, y3, NG.ngLabel?.(s.ng) || `${s.ng + 1}회차`, NG_COLOR) + 8;   // [hook:ng]
     if (st?.part === 2) cx += badge(ctx, cx, y3, '제2부', P2_COLOR) + 8;
-    text(ctx, st ? `CHAPTER ${st.chapter}  ·  ${st.name}` : '프롤로그', cx, y3, { size: 14, weight: 700, color: '#e8d8c0', ow: 2, maxWidth: colW - (cx - tx) });
+    text(ctx, st ? `CHAPTER ${st.chapter}  ·  ${st.name}` : '프롤로그', cx, y3, { size: Math.round(14 * sk), weight: 700, color: '#e8d8c0', ow: 2, maxWidth: colW - (cx - tx) });
     // 보조 정보
     const icons = [];
     if (s.relics) icons.push(`유물 ${s.relics}/5`);
@@ -364,7 +397,7 @@ export class SlotsScene extends Scene {
     if (s.hearts) icons.push(`세계의 심장 ${s.hearts}/6`);
     if (s.shards) icons.push(`별의 조각 ${s.shards}/6`);
     if (s.heroes.length > 1) icons.push(`동료 ${s.heroes.length}명`);
-    if (icons.length && y4 - y3 >= 13) text(ctx, icons.join('  ·  '), tx, y4, { size: 11, color: DIM, ow: 2, maxWidth: colW });
+    if (icons.length && y4 - y3 >= 13) text(ctx, icons.join('  ·  '), tx, y4, { size: Math.round(11 * sk), color: DIM, ow: 2, maxWidth: colW });
     // 오른쪽 열: 난이도 칩 · 구름 · 플레이 시간 · 골드 · 저장 일시
     ctx.font = `800 12px ${FONT.body}`;
     const dw = ctx.measureText(diff.name).width + 22;
@@ -373,10 +406,24 @@ export class SlotsScene extends Scene {
     ctx.strokeStyle = rgba(diff.color, 0.8); ctx.lineWidth = 1; ctx.strokeRect(rx - dw + 0.5, cy + 0.5, dw - 1, 21);
     text(ctx, diff.name, rx - dw / 2, cy + 16, { size: 12, align: 'center', weight: 800, color: diff.color, ow: 2 });
     this.drawCloud(ctx, rx - dw - 12, cy + 11, s);
-    text(ctx, `플레이 ${fmtPlay(s.playTime)}`, rx, r.y + Math.round(h * 0.54), { size: 13, align: 'right', weight: 700, color: BONE, ow: 2 });
-    text(ctx, `${fmt(s.gold)} G`, rx, r.y + Math.round(h * 0.72), { size: 13, align: 'right', weight: 800, color: '#ffd84a', ow: 2 });
-    text(ctx, fmtDate(s.savedAt), rx, r.y + Math.round(h * 0.9), { size: 11, align: 'right', weight: 600, family: FONT.num, color: DIM, ow: 2 });
+    text(ctx, `플레이 ${fmtPlay(s.playTime)}`, rx, r.y + Math.round(h * 0.54), { size: Math.round(13 * sk), align: 'right', weight: 700, color: BONE, ow: 2 });
+    text(ctx, `${fmt(s.gold)} G`, rx, r.y + Math.round(h * 0.72), { size: Math.round(13 * sk), align: 'right', weight: 800, color: '#ffd84a', ow: 2 });
+    text(ctx, fmtDate(s.savedAt), rx, r.y + Math.round(h * 0.9), { size: Math.round(11 * sk), align: 'right', weight: 600, family: FONT.num, color: DIM, ow: 2 });
     ctx.restore();
+  }
+  /** 카드 오른쪽 '⋯ 관리' 띠 (점 세 개 + '관리'). 탭 id 'more{i}' (등장 연출이 거의 끝난 뒤에만 누를 수 있다) */
+  drawMore(ctx, m, current, k, i) {
+    ctx.save();
+    ctx.fillStyle = current ? 'rgba(70,18,34,0.92)' : 'rgba(40,12,24,0.85)';
+    ctx.fillRect(m.x, m.y, m.w, m.h);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(m.x, m.y, 2, m.h);
+    ctx.fillStyle = rgba(GOLD, current ? 0.55 : 0.3); ctx.fillRect(m.x + 2, m.y + 6, 1, m.h - 12);
+    const cx = m.x + m.w / 2 + 1, cy = m.y + m.h / 2 - 8;
+    ctx.fillStyle = current ? '#ffe7a0' : '#c8a8a0';
+    for (let d = -1; d <= 1; d++) { ctx.beginPath(); ctx.arc(cx + d * 8, cy, 2.6, 0, Math.PI * 2); ctx.fill(); }
+    text(ctx, '관리', cx, cy + 22, { size: 12, align: 'center', weight: 800, color: current ? '#ffe7a0' : '#c8a8a0', ow: 2 });
+    ctx.restore();
+    if (k > 0.9 && !this.act) taps.add(`more${i}`, m, { owner: this, kind: 'icon', src: 'slots.more' });
   }
 
   /** 슬롯 카드의 구름 상태 (로그인 중일 때만) */
@@ -389,8 +436,11 @@ export class SlotsScene extends Scene {
   drawActions(ctx, L) {
     const a = this.act, k = ease.outBack(clamp(a.t / 0.25, 0, 1));
     const W = L.W, H = L.H;
-    const n = a.items.length, cols = a.cols, rows = Math.ceil(n / cols);
-    const iw = 230, ih = L.ih, w = cols * iw + (cols - 1) * 8 + 28, h = rows * ih + 30;
+    const n = a.items.length, cols = a.cols, safeN = a.safeN ?? n, dangerN = n - safeN;
+    // 되돌릴 수 없는 동작(새로 시작 · 삭제)은 새 줄에서 시작하고 그 위에 진홍 구분선 (SEP 만큼 띄운다)
+    const rowsSafe = Math.ceil(safeN / cols), rowsDanger = Math.ceil(dangerN / cols), SEP = dangerN ? 16 : 0;
+    const rows = rowsSafe + rowsDanger;
+    const iw = 230, ih = L.ih, w = cols * iw + (cols - 1) * 8 + 28, h = rows * ih + 30 + SEP;
     const sr = L.top + this.menu.index * (L.h + L.gap);
     const x = Math.min(W - w - 16 - L.sr, L.x0 + L.w - w + 30), y = clamp(sr + L.h / 2 - h / 2, L.st + 64, Math.max(L.st + 64, H - h - 40 - L.sb));
     ctx.fillStyle = `rgba(0,0,0,${0.45 * clamp(a.t / 0.2, 0, 1)})`; ctx.fillRect(0, 0, W, H);
@@ -400,11 +450,17 @@ export class SlotsScene extends Scene {
     frame(ctx, x, y, w, h, { glow: 1, fill0: 'rgba(30,10,22,0.97)' });
     text(ctx, `SLOT ${this.slots[this.menu.index].slot}`, x + w / 2, y - 8, { size: 12, align: 'center', weight: 900, family: FONT.num, color: GOLD, ow: 3 });
     // 확대 연출이 끝난 뒤의 자리로 판정한다 (연출 중에 누른 탭도 보이는 자리와 거의 같다)
+    if (dangerN) {
+      const sy = y + 15 + rowsSafe * ih + SEP / 2;
+      ctx.fillStyle = 'rgba(192,16,42,0.55)'; ctx.fillRect(x + 18, sy - 0.5, w - 36, 1);
+      ctx.fillStyle = 'rgba(255,120,120,0.18)'; ctx.fillRect(x + 18, sy + 0.5, w - 36, 1);
+    }
     a.items.forEach(([id, label, sub], i) => {
-      const c = i % cols, rI = Math.floor(i / cols);
-      const r = { x: x + 14 + c * (iw + 8), y: y + 15 + rI * ih, w: iw, h: ih };
+      const danger = i >= safeN, j = danger ? i - safeN : i;
+      const c = j % cols, rI = Math.floor(j / cols) + (danger ? rowsSafe : 0);
+      const r = { x: x + 14 + c * (iw + 8), y: y + 15 + rI * ih + (danger ? SEP : 0), w: iw, h: ih };
       a.menu.hit(i, r);
-      menuItem(ctx, r, label, { selected: a.menu.index === i, sub, size: 17, accent: id === 'delete' ? '#c0102a' : CRIMSON });
+      menuItem(ctx, r, label, { selected: a.menu.index === i, sub, size: 17, accent: danger ? '#c0102a' : CRIMSON });
     });
     ctx.restore();
   }

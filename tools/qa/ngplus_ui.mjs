@@ -321,12 +321,13 @@ async function U3(C) {
   await countMarkOverwrite(s);
   const before = await s.eval(SNAP);
   await openSlots(s, 0);
-  await s.key('KeyZ');
+  // 이어하기의 결정 키(Z)는 바로 불러오기 (PLAY P08) — 동작 목록은 보조 기능(A) 또는 → 로 연다
+  await s.key('KeyA');
   await s.waitGame('g.top?.act && g.top.act.t > 0.3', 5000);
   const i0 = await s.eval(() => { const a = window.__game.top.act; return a.items[a.menu.index][0]; });
   await s.key('ArrowDown');
   const i1 = await s.eval(() => { const a = window.__game.top.act; return a.items[a.menu.index][0]; });
-  C.check('U3', "kb: 슬롯 1 Z → 동작 '불러오기' · ↓ '피의 윤회'", i0 === 'load' && i1 === 'ngplus', `${i0} → ${i1}`);
+  C.check('U3', "kb: 슬롯 1 A(관리) → 동작 '불러오기' · ↓ '피의 윤회'", i0 === 'load' && i1 === 'ngplus', `${i0} → ${i1}`);
   await s.key('KeyZ');
   await s.waitGame("g.top?.name === 'frontConfirm' && g.top.t > 0.3", 5000);
   await C.shot(s, 'desk_confirm_same');
@@ -360,7 +361,8 @@ async function U4(C) {
   await ensureTouchMode(t, s.page, [8, 8]);
   await s.eval(() => { const g = window.__game; g.top.act = null; g.top.menu.index = 0; });
   await settle(s, 150);
-  const card = await s.eval(() => window.__game.top.menu.rects[0]);
+  // 카드를 누르면 바로 불러오므로(PLAY P08) 카드 오른쪽 '관리' 띠로 동작 목록을 연다
+  const card = await s.eval(() => { const t = window.__game.top, r = t.menu.rects[0], L = t.layout(); return { x: r.x + r.w - L.more, y: r.y, w: L.more, h: r.h }; });
   await tapUi(t, s, card);
   await s.waitGame('g.top?.act && g.top.act.t > 0.45', 5000);
   await settle(s, 200);

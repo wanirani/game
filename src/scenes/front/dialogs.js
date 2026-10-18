@@ -7,10 +7,10 @@ import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { saves } from '../../core/save.js';
-import { text, wrap, FONT, ListMenu } from '../../core/ui.js';
+import { text, wrap, FONT } from '../../core/ui.js';
 import { drawHints, promptMode } from '../../core/prompts.js';
 import { clamp, ease } from '../../core/math.js';
-import { frame, gbutton, ornament, GOLD, BONE, DIM } from './common.js';
+import { frame, gbutton, ornament, TapMenu, GOLD, BONE, DIM } from './common.js';
 
 const PAD_IMPORT = '컨트롤러로는 코드를 입력할 수 없습니다. 키보드나 터치를 사용하세요';
 const PAD_EXPORT = '컨트롤러로는 코드를 복사할 수 없습니다. 키보드나 터치를 사용하세요';
@@ -21,13 +21,13 @@ function btnH(g) { const per = Math.max(0.2, (g.cssScale || 1) * (g.uiK || 1)); 
 
 /**
  * push('frontConfirm', { title, message, yes, no, danger, onYes, onNo })
- * 키보드·패드 ←→ 선택, 결정/취소 / 터치 버튼
+ * 키보드·패드 ←→ 선택, 결정/취소 / 터치: 버튼을 한 번 누르면 바로 실행 (TapMenu, PLAY P01)
  */
 export class ConfirmScene extends Scene {
   constructor(g) { super(g); this.opaque = false; this.uiScale = true; this.hidePad = true; }
   enter({ title = '확인', message = '', yes = '예', no = '아니요', danger = false, onYes, onNo, defaultYes = false } = {}) {
     Object.assign(this, { title, message, yes, no, danger, onYes, onNo });
-    this.menu = new ListMenu(2, { cols: 2, index: defaultYes ? 0 : 1 });
+    this.menu = new TapMenu(2, { cols: 2, index: defaultYes ? 0 : 1 });
     audio.sfx(danger ? 'warning' : 'menu_move', { vol: danger ? 0.5 : 1 });
   }
   update(dt) {
@@ -79,7 +79,7 @@ export class SaveCodeScene extends Scene {
     this.code = mode === 'export' ? (saves.exportCode(slot) ?? '') : '';
     this.msg = mode === 'export' ? '아래 코드를 복사해 안전한 곳에 보관하세요. 다른 기기에서 「코드 가져오기」로 불러올 수 있습니다.' : '보관해 둔 세이브 코드를 아래 칸에 붙여 넣으세요. 이 슬롯의 기존 기록은 덮어쓰기됩니다.';
     this.buttons = mode === 'export' ? [['복사하기', () => this.copy()], ['닫기', () => this.close(true)]] : [['붙여넣기', () => this.paste()], ['가져오기', () => this.doImport()], ['취소', () => this.close(false)]];
-    this.menu = new ListMenu(this.buttons.length, { cols: this.buttons.length, index: 0 });
+    this.menu = new TapMenu(this.buttons.length, { cols: this.buttons.length, index: 0 });
     this.makeBox();
   }
   makeBox() {

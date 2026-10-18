@@ -189,9 +189,17 @@ export function segmentAt(map, cx, foot, o = {}) {
   if (why1 === 'edge') x1 -= K.EXIT;
   for (const b of o.blocks ?? []) {
     if (!b) continue;
-    if (b.x1 <= cx && b.x1 + halfW > x0) { x0 = b.x1 + halfW; why0 = b.why ?? 'block'; }
-    else if (b.x0 >= cx && b.x0 - halfW < x1) { x1 = b.x0 - halfW; why1 = b.why ?? 'block'; }
-    else if (b.x0 < cx && b.x1 > cx) { x0 = x1 = cx; why0 = why1 = b.why ?? 'block'; }   // 이미 안에 있다: 움직이지 않는다
+    // pad: 기둥 둘레 여유 (이야기 트리거 — 넉백에 밀려 들어가지 않게)
+    const pad = b.pad ?? 0, bx0 = b.x0 - pad, bx1 = b.x1 + pad, w = b.why ?? 'block';
+    if (bx1 <= cx && bx1 + halfW > x0) { x0 = bx1 + halfW; why0 = w; }
+    else if (bx0 >= cx && bx0 - halfW < x1) { x1 = bx0 - halfW; why1 = w; }
+    else if (bx0 < cx && bx1 > cx) {
+      // [autofix] 이미 안에 있다 (넉백으로 경기장 벽 여백·트리거 여유 안): 그 자리에 얼어붙지 않고 열린 쪽으로만 다닌다
+      if (b.x0 <= -1e8) { x0 = Math.max(x0, bx1 + halfW); why0 = w; }
+      else if (b.x1 >= 1e8) { x1 = Math.min(x1, bx0 - halfW); why1 = w; }
+      else if (cx - bx0 <= bx1 - cx) { x1 = Math.min(x1, bx0 - halfW); why1 = w; }
+      else { x0 = Math.max(x0, bx1 + halfW); why0 = w; }
+    }
   }
   if (x1 < x0) { const m = clamp(cx, Math.min(x0, x1), Math.max(x0, x1)); x0 = x1 = m; }
   return { x0, x1, why0, why1, ty, c0, rows, links };
@@ -216,29 +224,67 @@ export function stepAhead(seg, cx, halfW, dir, ahead = 30) {
 }
 
 // ───────────────────────── 순수: 사거리 ─────────────────────────
-/** 기본 공격 판정 (발 중앙 기준; bx..bx+bw 가 앞쪽, y0..y1 은 발 위로 음수). 탄 무기는 탄 사거리 */
+/**
+ * 기본 공격 판정 (발 중앙 기준; bx..bx+bw 가 앞쪽, y0..y1 은 발 위로 음수). 탄 무기는 탄 사거리.
+ * [autofix] 첫 타(ground[0])만이 아니라 땅 콤보 전부(combo) · 앉아 공격(low: ↓+공격) · 위 공격(up) 상자를 함께 낸다 —
+ *   늑대·슬라임·시체벌레처럼 낮은 적은 채찍 첫 타(-66..-40)에 닿지 않고, 말 탄 보스처럼 높은 적은 위 공격·2타에만 닿는다.
+ *   yMin..yMax = 땅에서 닿는 높이 전체 (닿을 수 있는 적인지 가릴 때)
+ */
 export function weaponReach(ms, stats = {}, riding = false) {
   const m0 = ms?.ground?.[0];
   const reach = 1 + (stats.reach ?? 0) / 100;
+  const boxOf = (b) => ({ bx: b.x, bw: b.w * (b.x >= 0 ? reach : 1) * (riding ? 1.15 : 1), y0: b.y, y1: b.y + b.h });
+  const projOf = (P, w0 = 120) => { const oy = P.offY ?? -60; return { bx: P.offX ?? 30, bw: Math.max(w0, (P.speed ?? 900) * (P.life ?? 0.6) * 0.8), y0: oy - 60, y1: oy + 50 }; };
   let out;
-  if (m0?.box) {
-    const b = m0.box, w = b.w * (b.x >= 0 ? reach : 1) * (riding ? 1.15 : 1);
-    out = { bx: b.x, bw: w, y0: b.y, y1: b.y + b.h, ranged: false };
-  } else if (m0?.proj) {
-    const P = m0.proj, oy = P.offY ?? -60;
-    out = { bx: P.offX ?? 30, bw: Math.max(120, (P.speed ?? 900) * (P.life ?? 0.6) * 0.8), y0: oy - 60, y1: oy + 50, ranged: true };
-  } else out = { bx: 0, bw: 90, y0: -100, y1: -10, ranged: false };
+  if (m0?.box) out = { ...boxOf(m0.box), ranged: false };
+  else if (m0?.proj) out = { ...projOf(m0.proj), ranged: true };
+  else out = { bx: 0, bw: 90, y0: -100, y1: -10, ranged: false };
+  // 땅 콤보 2타 이후 (누르고 있으면 콤보가 이어져 그 상자까지 닿는다)
+  out.combo = [];
+  for (const m of ms?.ground ?? []) { if (m && m !== m0 && m.box) out.combo.push(boxOf(m.box)); }
+  // 앉아 공격 (탈것 위에서는 없음)
+  const c = ms?.crouch;
+  out.low = riding || !c ? null : c.box ? boxOf(c.box) : c.proj ? (() => { const P = c.proj, oy = P.offY ?? -34; return { bx: P.offX ?? 30, bw: Math.max(120, (P.speed ?? 900) * (P.life ?? 0.6) * 0.8), y0: oy - 30, y1: Math.min(-2, oy + 30) }; })() : null;
   const u = ms?.up;
   out.up = u?.box ? { bx: u.box.x, bw: u.box.w, y0: u.box.y, y1: u.box.y + u.box.h, vy: u.vy ?? 0 } : null;
+  let yMin = out.y0, yMax = out.y1, xMax = out.bx + out.bw;
+  for (const b of [...out.combo, out.low, out.up]) { if (!b) continue; yMin = Math.min(yMin, b.y0); yMax = Math.max(yMax, b.y1); xMax = Math.max(xMax, b.bx + b.bw); }
+  out.yMin = yMin; out.yMax = yMax; out.xMax = xMax;
   return out;
 }
-/** 스킬 사거리 어림: v.r(레벨 반영)이 있으면 반경, 없으면 앞 300 · 위아래 160 */
+/** 상자 box 의 높이 범위가 바닥 fy 에 선 영웅 기준으로 f 의 피격 높이와 겹치는 길이 (px, 겹치지 않으면 ≤ 0) */
+export function vOverlap(box, fy, f) { return box ? Math.min(fy + box.y1, f.y1) - Math.max(fy + box.y0, f.y0) : -1; }
+/**
+ * f 를 바닥 fy 에서 칠 상자: 첫 타가 높이로 닿으면 첫 타, 아니면 앉아 공격 · 콤보 · 위 공격 중 가장 많이 겹치는 것 → {box, kind} | null
+ * oneWay: 한쪽 발판 위 (앉아 공격은 쓰지 않는다 — ↓ 를 누른 채 점프가 섞이면 내려가 버린다)
+ */
+export function attackBoxFor(W, f, fy, { oneWay = false, upOk = true } = {}) {
+  if (!W) return null;
+  if (vOverlap(W, fy, f) >= 8) return { box: W, kind: 'main' };
+  let best = null, bo = 7;
+  const cand = (box, kind) => { const o = vOverlap(box, fy, f); if (o > bo) { bo = o; best = { box, kind }; } };
+  if (W.low && !oneWay) cand(W.low, 'low');
+  for (const b of W.combo ?? []) cand(b, 'combo');
+  if (W.up && upOk) cand(W.up, 'up');
+  return best;
+}
+/**
+ * 스킬 사거리 어림: v.r(레벨 반영)이 있으면 반경, 없으면 앞 300 · 위 160.
+ * [autofix] dn = 발 아래로 허용하는 깊이. 예전 60(+40) 은 두 칸 아래(96 px) 적에게도 쏘아 MP 를 다 썼다 — 스킬 판정은 몸 높이에서 나오므로
+ *   적의 몸이 발보다 위로 조금이라도(dn 8 px 여유) 올라와 있어야 한다 (skillHits)
+ */
 export function skillRange(sk, lv = 1) {
   const v = sk?.v ?? {};
   const val = (k) => (Array.isArray(v[k]) ? v[k][0] + (v[k][1] ?? 0) * Math.max(0, lv - 1) : null);
   const r = val('r') ?? val('range') ?? val('len');
-  if (r && r > 0) return { fx: Math.min(700, r), back: Math.min(260, r * 0.6), up: Math.min(260, Math.max(120, r * 0.7)), dn: 80 };
-  return { fx: 300, back: 40, up: 160, dn: 60 };
+  if (r && r > 0) return { fx: Math.min(700, r), back: Math.min(260, r * 0.6), up: Math.min(260, Math.max(120, r * 0.7)), dn: 8 };
+  return { fx: 300, back: 40, up: 160, dn: 8 };
+}
+/** 스킬이 f 에 닿을 만한가: 앞뒤 범위 + 몸이 발 높이 띠(발 아래 dn ~ 발 위 up) 안에 걸친다 */
+export function skillHits(p, f, R) {
+  const dx = (f.cx - p.cx) * p.facing;
+  if (!(dx > -R.back && dx < R.fx)) return false;
+  return f.y0 < p.bottom - 4 + (R.dn ?? 8) && f.y1 > p.bottom - (R.up ?? 160) - 20;
 }
 
 /** 사각형 겹침 (x0,x1,y0,y1) */

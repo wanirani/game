@@ -12,7 +12,7 @@ import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { saves } from '../../core/save.js';
 import { game } from '../../core/game.js';
-import { text, FONT, COLORS, hovered, taps } from '../../core/ui.js';
+import { text, FONT, COLORS, hovered, taps, ListMenu } from '../../core/ui.js';
 import { drawHints, legacyKey, promptMode } from '../../core/prompts.js';
 import { ACTIONS } from '../../data/controls.js';
 import { hudSafe } from '../../render/hud_layout.js';
@@ -467,6 +467,25 @@ export function menuItem(ctx, r, label, { selected = false, disabled = false, su
   if (sub) text(ctx, sub, tx, r.y + r.h / 2 + 15, { size: 10, align, weight: 700, family: FONT.num, color: disabled ? '#4a4244' : hot ? GOLD : DIM, ow: 2 });
   ctx.restore();
 }
+// ───────────────────────── 한 번 탭 목록 (PLAY P01) ─────────────────────────
+/**
+ * ListMenu 와 같지만 터치에서 항목을 한 번 누르면 바로 고르고 결정한다 (ListMenu 는 터치에서 첫 탭이 고르기만 했다).
+ * 키보드·패드·마우스는 ListMenu 그대로 (방향키로 고르고 결정 키로 실행, 마우스 클릭은 원래 한 번에 실행).
+ * 프런트 장면(타이틀 · 슬롯 · 확인 창 · 코드 창)이 쓴다 — 게임 안 일시정지·시련 확인 창과 같은 규칙.
+ */
+export class TapMenu extends ListMenu {
+  update(dt = 1 / 60) {
+    const p = input.pointer;
+    if (p.tapped && this.count > 0) {
+      for (let i = 0; i < this.rects.length && i < this.count; i++) {
+        const r = this.rects[i];
+        if (r && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) { this.moved = false; this.index = i; return 'confirm'; }
+      }
+    }
+    return super.update(dt);
+  }
+}
+
 // ───────────────────────── 탭 영역 ─────────────────────────
 /**
  * 렌더에서 그린 버튼 영역을 기억해 두었다가 update 에서 탭을 판정한다 (ListMenu.hit 과 같은 방식).

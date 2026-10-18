@@ -17,7 +17,7 @@
 //    + 진홍 선. 자리는 로고 아래 ~ 그림 속 사냥꾼 머리 위 (켄번스 기하로 계산, hunterTop) — 사냥꾼을 가리지 않는다.
 //    안내 줄은 휴대폰에서 15 CSS px 이상 (ceil(15/per), 15–18 UI). 휴대폰 메뉴 상태의 작은 로고는 부제만 18 UI 로 키운다 (logo.subK)
 //    어트랙트(방치 10초)는 PRESS 묶음 아래 · 저작권 줄과 알림 카드 위 (attractBox). 들어가지 않으면 PRESS 자리에서 PRESS 묶음과 엇갈려 나타난다
-//  - 접근성 (benchmark #6): 왼쪽 가장자리 '보기' 탭(누르기 화면, ≥ 44 CSS px) → push('options', {page:'screen'}).
+//  - 접근성 (benchmark #6): 왼쪽 가장자리 '화면 설정' 탭(누르기 화면, 높이 ≥ 44 CSS px; 예전 이름 '보기', PLAY P22) → push('options', {page:'screen'}).
 //    번개는 Ambience 가 설정을 매번 읽는다 (front/common.js lightningAllowed — 설정에서 돌아와도 바로 반영).
 //    '동작 줄이기'면 켄번스 줌·팬과 로고 흔들림도 멈춘다. 저장된 설정이 없는 첫 실행은 첫 입력 전까지 번개를 치지 않고 두 번째 섬광도 없다
 import { Scene } from '../core/game.js';
@@ -29,7 +29,7 @@ import { bus } from '../core/events.js';
 import { cloud, SLOTS } from '../core/cloud.js';
 import * as platform from '../core/platform.js';
 import { NOTICE_TEXT as TELEMETRY_TEXT } from '../core/telemetry.js';
-import { text, wrap, FONT, ListMenu, taps, bloodText, textFloor } from '../core/ui.js';
+import { text, wrap, FONT, taps, bloodText, textFloor } from '../core/ui.js';
 import { drawHints, drawGlyph, glyphWidth, promptMode } from '../core/prompts.js';
 import { clamp, ease, lerp, fmt, rand, TAU } from '../core/math.js';
 import { hudSafe } from '../render/hud_layout.js';
@@ -39,6 +39,7 @@ import * as ACHM from '../core/ach_meta.js';
 import {
   Ambience, kenBurns, shade, menuItem, ornament, applySettings, installRecordScore, gbutton, frame, linGrad, radGrad, glowSprite,
   GOLD, BONE, DIM, follow, modeName, scoreList, endArcade, lightningAllowed,
+  TapMenu,
 } from './front/common.js';
 import { drawCloudBadge, accountBadge } from './front/cloud_ui.js';
 
@@ -187,7 +188,7 @@ export class TitleScene extends Scene {
       { id: 'options', label: '설정', sub: 'OPTIONS' },
       { id: 'gallery', label: '회랑', sub: 'GALLERY' },   // [hook:gal] 회랑 (docs/specs/gallery.md §5.7 — 크레딧은 회랑의 극장 안으로)
     ];
-    this.menu = new ListMenu(this.items.length, { index: index ?? (hasSave ? 1 : 0) });
+    this.menu = new TapMenu(this.items.length, { index: index ?? (hasSave ? 1 : 0) });
   }
   openAccount() {
     const i = this.items.findIndex((it) => it.id === 'account');
@@ -207,7 +208,7 @@ export class TitleScene extends Scene {
     this.boltHold = false;
     this.amb.nextBolt = 2.5;
   }
-  /** '보기' 탭: 설정의 화면 페이지 (글자·UI 크기, 화면 번쩍임, 동작 줄이기) */
+  /** '화면 설정' 탭: 설정의 화면 페이지 (글자·UI 크기, 화면 번쩍임, 동작 줄이기) */
   openView() {
     audio.sfx('menu_ok');
     this.game.push('options', { page: 'screen', row: 'flashFx' });
@@ -371,7 +372,8 @@ export class TitleScene extends Scene {
     const sl = (S.l || 0) / k, sr = (S.r || 0) / k, st = (S.t || 0) / k, sb = (S.b || 0) / k;
     const n = this.items.length;
     const rowH = clamp(Math.ceil(MAX_ROW_CSS / per), 44, 52);
-    const bottom = H - 30 - sb;
+    // 세로가 넉넉하면(폴드 · 데스크톱) 마지막 줄 '회랑'과 아래 안내 줄 사이를 띄운다 (PLAY P22)
+    const bottom = H - sb - (H - st - sb >= 600 ? 46 : 30);
     let gap = 3, menuH = n * rowH + (n - 1) * gap;
     if (bottom - menuH < 150) { gap = 1; menuH = n * rowH + (n - 1) * gap; }
     const x = 36 + sl, w = Math.min(330, W * 0.36);
@@ -404,8 +406,9 @@ export class TitleScene extends Scene {
     const head = this.hunterTop(W, H);
     const mid = head != null ? (logoBot + head) / 2 - (PRESS_DN - PRESS_UP) / 2 : logoBot + 40 + PRESS_UP;
     const pressY = Math.max(logoBot + PRESS_UP + 4, Math.min(mid, stackTop - PRESS_DN - 4));
-    // '보기' 탭 (누르기 화면 왼쪽 가장자리): 44 CSS px 이상, 로고 아래 · 화면 높이 42 % 쯤
-    const vw = Math.max(50, Math.ceil(48 / per)), vh = Math.max(58, Math.ceil(56 / per));
+    // '화면 설정' 탭 (누르기 화면 왼쪽 가장자리, PLAY P22: 접근성 기호 + 글자 '화면 설정'): 높이 44 CSS px 이상, 로고 아래 · 화면 높이 42 % 쯤
+    const vfs = Math.max(14, Math.ceil(13 / per)), vh = Math.max(46, Math.ceil(46 / per));
+    const vw = Math.ceil(vh * 0.62 + 12 + vfs * 4.6 + 14);
     const view = { x: sl, y: clamp(Math.max(H * 0.42 - vh / 2, logoBot + 12), st + 8, H - sb - 34 - vh), w: vw, h: vh };
     return { W, H, per, sl, sr, st, sb, n, rowH, gap, x, w, y0, bottom, logo, big, cards, stackTop, pressY, logoBot, head, view };
   }
@@ -495,7 +498,7 @@ export class TitleScene extends Scene {
       text(ctx, '© 2026 BLOOD NOCTURNE PROJECT', W - 14 - L.sr, H - 12 - L.sb, { size: 10, align: 'right', weight: 700, family: FONT.num, color: 'rgba(200,180,160,0.55)', ow: 2 });
       if (this.game.meta?.konami) text(ctx, '✦ 비밀 코드 적용됨', W - 14 - L.sr, H - 28 - L.sb, { size: 10, align: 'right', weight: 700, color: 'rgba(255,224,112,0.7)', ow: 2 });
       this.drawNotes(ctx, L, t);
-      if (mk < 0.99) this.drawView(ctx, L, 1 - mk);   // '보기' 탭 (메뉴가 열리면 사라진다 — 메뉴에 '설정')
+      if (mk < 0.99) this.drawView(ctx, L, 1 - mk);   // '화면 설정' 탭 (메뉴가 열리면 사라진다 — 메뉴에 '설정')
       ctx.restore();
     }
     if (this.konamiT > 0) {
@@ -684,7 +687,7 @@ export class TitleScene extends Scene {
     ctx.restore();
   }
 
-  /** 왼쪽 가장자리 '보기' 탭 (누르기 화면): 범용 접근성 인물 기호 + '보기'. 누르면 설정의 화면 페이지 (그라데이션·캔버스 없이 경로만) */
+  /** 왼쪽 가장자리 '화면 설정' 탭 (누르기 화면): 범용 접근성 인물 기호 + '화면 설정' 가로 알약. 누르면 설정의 화면 페이지 (그라데이션·캔버스 없이 경로만) */
   drawView(ctx, L, k) {
     const r = L.view, rad = 10;
     ctx.save();
@@ -696,8 +699,8 @@ export class TitleScene extends Scene {
     ctx.closePath();
     ctx.fillStyle = 'rgba(14,5,14,0.78)'; ctx.fill();
     ctx.strokeStyle = 'rgba(232,200,114,0.55)'; ctx.lineWidth = 1.2; ctx.stroke();
-    // 접근성 기호: 원 + 팔 벌린 사람
-    const cx = r.x + r.w / 2, cy = r.y + r.h * 0.38, ir = Math.min(r.w, r.h) * 0.24;
+    // 접근성 기호: 원 + 팔 벌린 사람 (알약 왼쪽)
+    const ir = r.h * 0.31, cx = r.x + 10 + ir, cy = r.y + r.h / 2;
     ctx.strokeStyle = BONE; ctx.fillStyle = BONE; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     ctx.lineWidth = Math.max(1.4, ir * 0.12);
     ctx.beginPath(); ctx.arc(cx, cy, ir, 0, TAU); ctx.stroke();
@@ -708,7 +711,8 @@ export class TitleScene extends Scene {
     ctx.moveTo(cx, cy - ir * 0.22); ctx.lineTo(cx, cy + ir * 0.18);
     ctx.moveTo(cx - ir * 0.36, cy + ir * 0.68); ctx.lineTo(cx, cy + ir * 0.18); ctx.lineTo(cx + ir * 0.36, cy + ir * 0.68);
     ctx.stroke();
-    text(ctx, '보기', cx, r.y + r.h - 10, { size: Math.max(13, Math.ceil(13 / L.per)), align: 'center', weight: 800, color: BONE, ow: 2 });
+    const fs = Math.max(14, Math.ceil(13 / L.per));
+    text(ctx, '화면 설정', cx + ir + 9, cy + fs * 0.36, { size: fs, weight: 800, color: BONE, ow: 2, maxWidth: r.x + r.w - (cx + ir + 9) - 8 });
     ctx.restore();
     if (this.mode === 'press' && k > 0.5) taps.add('view', r, { owner: this, kind: 'primary', src: 'title.view' });
   }
