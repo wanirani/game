@@ -262,7 +262,7 @@ export class CompanionSystem {
       input.consume('mount');
       if (!p.dead && !w.cutscene && !w.inputLock) {
         audio.sfx('menu_cancel', { vol: 0.3 });
-        if (ownedIds(w.state, 'mount').length) this.note(CMP_TEXT.noMount);
+        this.note(ownedIds(w.state, 'mount').length ? CMP_TEXT.noMount : CMP_TEXT.noMountOwned);   // [playb] P04 없을 때도 이유 한 줄
       }
     }
     // 자동 스킬
@@ -338,7 +338,7 @@ export class CompanionSystem {
     if (!this.guards.length) {
       if (!auto) {
         audio.sfx('menu_cancel', { vol: 0.3 });
-        if (ownedIds(w.state, 'guardian').length) this.note(CMP_TEXT.noGuard);
+        this.note(ownedIds(w.state, 'guardian').length ? CMP_TEXT.noGuard : CMP_TEXT.noGuardOwned);   // [playb] P04 없을 때도 이유 한 줄
       }
       return false;
     }

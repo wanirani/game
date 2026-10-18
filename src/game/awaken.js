@@ -181,6 +181,14 @@ function displayReady(world) {
 }
 
 /** 필살기·각성기 입력. true = 입력 소비 (나머지 공격 입력을 건너뛴다) */
+/** [playb] P04 필살기 게이지가 모자랄 때 누르면 한 줄 (1.5초에 한 번): 「필살기 게이지 37% — 적을 쳐서 모으세요」 */
+function ultWhy(p, world, run) {
+  const t = world?.time ?? 0;
+  if (p._ultWhyT != null && t - p._ultWhyT < 1.5 && t >= p._ultWhyT) return;
+  p._ultWhyT = t;
+  const pct = Math.max(0, Math.min(99, Math.floor(run?.sp ?? 0)));
+  world?.game?.toast?.(`필살기 게이지가 부족합니다 (${pct}%) — 적을 쳐서 모으세요`, '#ffb070', 1.6);
+}
 export function handleUltInput(p, world) {
   prepareAwakening(p, world);
   const st = awState(world);
@@ -202,6 +210,7 @@ export function handleUltInput(p, world) {
       if (H.on) endHold(p, world, 'silent');
       if (ready) return castAwakening(p, world) || true;
       if ((run.sp ?? 0) >= 100) { castUltimate(p, world); return true; }
+      ultWhy(p, world, run);   // [playb] P04
       return false;
     }
   }
@@ -213,6 +222,7 @@ export function handleUltInput(p, world) {
     if (!ready) {
       // 각성 불가: 누르는 즉시 필살기 (지연 없음). SP 가 모자라면 아무 일도 없다 (늦게 발동하지 않게 누름은 소비)
       if ((run.sp ?? 0) >= 100) { castUltimate(p, world); return true; }
+      ultWhy(p, world, run);   // [playb] P04 게이지가 모자라면 이유 한 줄 (예전에는 조용했다)
       return false;
     }
     startHold(p, world, H);

@@ -415,7 +415,12 @@ export class Player extends Entity {
     for (const [k, i] of [['skill1', 0], ['skill2', 1]]) {
       if (input.pressed(k)) this.trySkill(world, this.hero.slots?.[this.skillPage * 2 + i]);
     }
-    if (input.pressed('swap')) { this.skillPage = 1 - this.skillPage; audio.sfx('menu_move'); }
+    if (input.pressed('swap')) {
+      // [playb] P04 첫 쪽인데 2쪽(3·4번 칸)이 비어 있으면 넘기지 않고 이유 한 줄 (터치 넘김 버튼은 자물쇠로 그린다)
+      const sl = this.hero.slots ?? [];
+      if (this.skillPage === 0 && !sl[2] && !sl[3]) { this.game?.toast?.('2쪽에 장착한 스킬이 없습니다 — 메뉴 › 스킬', '#9d8f80', 1.6); audio.sfx('menu_cancel', { vol: 0.3 }); }
+      else { this.skillPage = 1 - this.skillPage; audio.sfx('menu_move'); }
+    }
     // 보조무기
     if (input.pressed('sub')) this.useSub(world);
     // 모아베기
@@ -700,9 +705,12 @@ export class Player extends Entity {
     if (world.rules?.noSub) { if (!this._noSubT || world.time - this._noSubT > 1.5) { this._noSubT = world.time; this.game?.toast?.(`${world.rules?.label ?? '오늘의 도전 규칙'}: 보조 무기를 쓸 수 없다`, '#ffb070', 1.4); } audio.sfx('menu_cancel', { vol: 0.4 }); return; }   // [hook:plat] docs/specs/online.md §2.5
     const id = this.run.sub;
     const sw = SUBWEAPONS[id];
-    if (!sw || this.subCool > 0) return;
+    // [playb] P04 조용한 누름 없음: 보조 무기가 없거나 하트가 모자라면 이유 한 줄 (1.5초에 한 번)
+    const why = (msg) => { if (!this._subWhyT || world.time - this._subWhyT > 1.5) { this._subWhyT = world.time; this.game?.toast?.(msg, '#c8b8a0', 1.4); } };
+    if (!sw) { why('보조 무기가 없다 — 촛대를 부수면 얻을 수 있다'); audio.sfx('menu_cancel', { vol: 0.3 }); return; }
+    if (this.subCool > 0) return;
     const free = id === 'pistol' && this.hero.charId === 'victor';
-    if (!free && this.run.hearts < sw.cost) { audio.sfx('menu_cancel', { vol: 0.4 }); return; }
+    if (!free && this.run.hearts < sw.cost) { why(`하트가 모자라다 (${this.run.hearts ?? 0}/${sw.cost})`); audio.sfx('menu_cancel', { vol: 0.4 }); return; }
     if (!free) this.run.hearts -= sw.cost;
     this.subCool = sw.cd / this.atkSpeedMul;
     const n = this.buffs.triple ? 3 : this.buffs.double ? 2 : 1;

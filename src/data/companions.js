@@ -723,6 +723,8 @@ export const CMP_TEXT = {
   noSpot: '여기서는 탈것을 부를 수 없다',
   forced: '공간이 좁아 탈것을 돌려보냈다',
   noMount: '장착한 탈것이 없다 — 메뉴 › 동료',
+  noMountOwned: '탈것이 없습니다 — 마구간에서 얻을 수 있어요',   // [playb] P04 (아직 하나도 없을 때 — 예전에는 조용했다)
+  noGuardOwned: '수호신이 없습니다 — 마구간에서 얻을 수 있어요',
   noGuard: '장착한 수호신이 없다 — 메뉴 › 동료',
   recalling: '{name}이(가) 아직 돌아오지 않았다 ({n}초)',
   knocked: '{name}이(가) 쓰러졌다! (재소환 {n}초)',

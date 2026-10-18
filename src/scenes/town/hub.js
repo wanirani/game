@@ -38,7 +38,7 @@ import { vGrad, fillGradRect, skillAlert, redBadge } from '../menu/common.js';  
 import { faceRect } from '../../render/portrait.js';
 import { crisp, hashStart, hashNum, hashStr as crispHashStr } from '../../render/hud_crisp.js';   // [auto] 오른쪽 위 판 선명 칸 (스테이지 HUD 와 같은 기기 해상도)
 import { fontEpoch } from '../../core/ui.js';
-import { drawArtIcon } from '../../render/hud.js';   // [playb] P02 마을 주 퀘스트 칩 그림 (퀘스트 칸과 같은 ui_quest)
+import { drawArtIcon, artIconReady } from '../../render/hud.js';   // [playb] P02 마을 주 퀘스트 칩 그림 (퀘스트 칸과 같은 ui_quest)
 const BANNER_BG = [0, 'rgba(0,0,0,0)', 0.5, 'rgba(6,2,10,0.65)', 1, 'rgba(0,0,0,0)'];
 
 const RELIC_IDS = ['k_relic_1', 'k_relic_2', 'k_relic_3', 'k_relic_4', 'k_relic_5'];
@@ -571,7 +571,7 @@ export class HubScene extends Scene {
       }
       if (party) uiButton(c, rParty, '헌터 교체', { size: 15 });
       uiButton(c, rMenu, '마을 메뉴', { size: 15 });   // [playb] P10 (안쪽 줄 「캐릭터」와 이름이 겹치지 않게)
-      if (alertN > 0) redBadge(c, rMenu.x + rMenu.w - 6, rMenu.y + 6, alertN, { size: 11 });   // [playb] P06 쓸 SP·빈 스킬 칸
+      if (alertN > 0) redBadge(c, rMenu.x + rMenu.w - 6, rMenu.y + 6, alertN, { size: 12 });   // [playb] P06 쓸 SP·빈 스킬 칸
     };
     const bx0 = Math.min(gx, x1 - lw - 30, party ? rParty.x : rMenu.x) - 6, by0 = gy - 6, bx1 = W - 8, by1 = by + bh + 6;
     hashStart(); hashNum(st.gold ?? 0); hashNum(nGot); hashNum(p2 ? 1 : 0); hashNum(touch ? 1 : 0); hashNum(k); hashNum(W); hashNum(gx); hashNum(gy); hashNum(bh); hashNum(fontEpoch);
@@ -659,7 +659,7 @@ export class HubScene extends Scene {
       text(c, tail, x + w - 10, by, { size: 13, weight: 800, color: '#ffe7a0', align: 'right' });
       c.restore();
     };
-    hashStart(); hashNum(w); hashNum(k); hashNum(fontEpoch); hashNum(assets.get('icons/ui_quest') ? 1 : 0); hashStr(label);
+    hashStart(); hashNum(w); hashNum(k); hashNum(fontEpoch); hashNum(artIconReady('ui_quest') ? 1 : 0); hashStr(label);
     const key = crispHashStr(tail);
     if (k !== 1) ctx.restore();
     crisp(ctx, this.world, 'town_q', { x: (x - 3) * k, y: (y - 3) * k, w: (w + 6) * k, h: (h + 6) * k }, key, (c) => {
@@ -750,10 +750,12 @@ export class HubScene extends Scene {
     const tight = y0 < 80; // 낮은 화면: 제목만 작게 (영문 부제 생략)
     text(ctx, '에슈빌', W / 2, y0 - (tight ? 14 : low ? 40 : 44), { size: tight ? 24 : low ? 30 : 34, weight: 800, family: FONT.title, color: '#f3d690', align: 'center', ow: 4 });
     if (!tight) text(ctx, 'VILLAGE MENU', W / 2, y0 - (low ? 18 : 20), { size: 12, weight: 800, family: FONT.num, color: '#9d8f80', align: 'center' });
+    const alertN = skillAlert(currentHero(this.game.state)).n;   // [playb] P06 「캐릭터」 줄 배지
     this.menuItems.forEach(([label, sub], i) => {
       const r = { x: W / 2 - bw / 2, y: y0 + i * (bh + gap), w: bw, h: bh };
       this.zone('m:' + i, r, k, this.game.top !== this, 'hub.menu');
       uiButton(ctx, r, label, { selected: this.menu.index === i, sub: sub || undefined, size: 17 });
+      if (label === '캐릭터' && alertN > 0) redBadge(ctx, r.x + r.w - 6, r.y + 6, alertN, { size: 12, t: this.menuT });
     });
     uiHints(ctx, [['dpadV', '선택'], ['confirm', '결정'], [['cancel', 'menu'], '닫기']], W / 2, Math.min(H - 8, y0 + tot + 26));
     ctx.restore();

@@ -77,6 +77,22 @@ function capProcAttack(e, cf) {
 }
 export function styleRank(n) { let r = STYLE_RANKS[0]; for (const s of STYLE_RANKS) if (n >= s.n) r = s; return r; }
 
+// [playb] P06 레벨이 오르면 한 번: 「SP +1 — 메뉴 › 스킬」 (같은 처리 안에서 여러 레벨이 오르면 한 줄로 합친다).
+//  아케이드·시련은 스킬 포인트를 쓰는 화면이 없으니 알리지 않는다. 스테이지·마을(의뢰 보상) 모두 bus 'levelUp' 으로 받는다
+const LV_SP = { sp: 0, queued: false };
+bus.on('levelUp', ({ level } = {}) => {
+  LV_SP.sp += Number.isInteger(level) && level % 5 === 0 ? 2 : 1;   // progression.addExp 와 같은 규칙
+  if (LV_SP.queued) return;
+  LV_SP.queued = true;
+  const run = () => {
+    const n = LV_SP.sp, g = input.game;
+    LV_SP.sp = 0; LV_SP.queued = false;
+    if (!g || !(n > 0) || g.state?.arcade || g.world?.arcade || g.world?.trial) return;
+    g.toast(`SP +${n} — 메뉴 › 스킬`, '#ffe070', 3.2);
+  };
+  if (typeof queueMicrotask === 'function') queueMicrotask(run); else Promise.resolve().then(run);
+});
+
 export class World {
   constructor(game, stageId, { roomId = null, mode = 'story', onExit = null, rules = null, diffOver = null, levelOverride = null, trial = null } = {}) {
     this.game = game;

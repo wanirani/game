@@ -940,6 +940,7 @@ function stateChanged(L, w) {
     sput(sk && num(p?.mp, 0) < num(sk.cost, 10) ? 1 : 0);
   }
   sput(num(p?.skillPage, 0));
+  sput(p?.hero?.slots?.[2] || p?.hero?.slots?.[3] ? 1 : 0);   // [playb] P04 넘김 잠금 (2쪽 스킬 유무)
   sput(run?.sub ? hashStr(run.sub) : 0);
   const sw = run?.sub ? SUB_DB?.[run.sub] : null;
   sput(sw && num(run?.hearts, 0) < num(sw.cost, 1) ? 1 : 0);
@@ -1432,10 +1433,34 @@ function bagPill(c, b, pct, full) {
   c.restore();
 }
 
+/**
+ * [playb] P04 아직 열리지 않은 시스템 버튼 (자리는 HUD-REDO 배치 그대로 두고 40 % + 작은 자물쇠로 그린다. 누르면 게임 쪽이 이유를 한 줄 토스트):
+ *  탑승 = 장착한 탈것 없음 · 수호 = 수호신 없음 · 넘김 = 첫 쪽인데 2쪽(3·4번 칸)에 스킬 없음 · 보조 = 보조 무기 없음
+ */
+function lockedBtn(id, p, run) {
+  if (id === 'mount') return !S.cmp?.mount;
+  if (id === 'guard') return !guardCd(S.cmp).n;
+  if (id === 'swap') { const s = p?.hero?.slots ?? []; return num(p?.skillPage, 0) === 0 && !s[2] && !s[3]; }
+  if (id === 'sub') return !run?.sub;
+  return false;
+}
+/** [playb] 작은 자물쇠 배지 (어두운 원 + 금빛 자물쇠) — 가운데 (x, y), 반지름 s */
+function padlock(c, x, y, s) {
+  c.save();
+  c.fillStyle = 'rgba(8,3,8,0.92)'; c.beginPath(); c.arc(x, y, s, 0, TAU); c.fill();
+  c.lineWidth = Math.max(1, s * 0.12); c.strokeStyle = 'rgba(232,200,114,0.9)'; c.stroke();
+  const bw = s * 0.9, bh = s * 0.66, bx = x - bw / 2, by = y - s * 0.1;
+  c.fillStyle = '#e8c872'; roundRect(c, bx, by, bw, bh, s * 0.12); c.fill();
+  c.lineWidth = Math.max(1.2, s * 0.16); c.strokeStyle = '#e8c872';
+  c.beginPath(); c.arc(x, by, s * 0.3, Math.PI, 0); c.stroke();
+  c.fillStyle = '#2a1408'; c.fillRect(x - s * 0.06, by + bh * 0.3, s * 0.12, bh * 0.36);
+  c.restore();
+}
 function drawButton(c, L, id, b, pressed, alpha, p, run, w, tsec) {
   const cx = b.cx, cy = b.cy, r = b.d / 2;
+  const locked = lockedBtn(id, p, run);   // [playb] P04
   c.save();
-  c.globalAlpha = alpha;
+  c.globalAlpha = locked ? alpha * 0.4 : alpha;
   if (pressed) { c.translate(cx, cy); c.scale(0.94, 0.94); c.translate(-cx, -cy); }
   if (!blit(c, id, cx, cy, b.d, pressed)) drawDisc(c, id, cx, cy, r, pressed);
   const art = artOn();
@@ -1447,10 +1472,10 @@ function drawButton(c, L, id, b, pressed, alpha, p, run, w, tsec) {
     case 'skill1': case 'skill2': drawSkill(c, id, cx, cy, r, pressed, p); break;
     case 'sub': drawSub(c, cx, cy, r, pressed, run); break;
     case 'ult': drawUlt(c, cx, cy, r, pressed, run, w, tsec); break;
-    case 'swap': drawSwap(c, cx, cy, r, pressed, p, art); break;
+    case 'swap': drawSwap(c, cx, cy, r, pressed, p, art, locked); break;
     case 'mount': {
       const m = S.cmp?.mount;
-      if (!m || (m.blocked && !m.riding)) c.globalAlpha *= 0.4; // 탈것이 없거나 보스전 등 탈것 금지 → 어둡게 (쓸 수 있을 때만 밝다)
+      if (m && m.blocked && !m.riding) c.globalAlpha *= 0.4; // 보스전 등 탈것 금지 → 어둡게 (탈것이 없으면 위 locked 가 버튼 전체를 40 % + 자물쇠로)
       if (art && HUDM.drawArtIcon(c, 'ui_mount', cx, cy, r * 1.66)) { if (m?.riding) label(c, '하차', cx, cy + r * 0.55, Math.max(11, r * 0.36), pressed); }
       else label(c, m?.riding ? '하차' : LABEL.mount, cx, cy + 1, Math.max(12, r * 0.52), pressed);
       const cd = num(m?.cd, 0);
@@ -1461,7 +1486,7 @@ function drawButton(c, L, id, b, pressed, alpha, p, run, w, tsec) {
     case 'lock': drawLock(c, cx, cy, r, pressed, !!w?.lockTarget); break;   // [auto]
     case 'guard': {
       const gc = guardCd(S.cmp);
-      if (!gc.n) c.globalAlpha *= 0.4;   // 수호신이 없으면 어둡게
+      // 수호신이 없으면 위 locked 가 버튼 전체를 40 % + 자물쇠로 (playb P04)
       if (!(art && HUDM.drawArtIcon(c, 'ui_guard', cx, cy, r * 1.66))) label(c, LABEL.guard, cx, cy + 1, Math.max(12, r * 0.52), pressed, gc.ready ? '#fff2c0' : null);
       if (gc.cd > 0 && !pressed) cooldown(c, cx, cy, r, gc.cd / gc.max, gc.cd);
       else if (gc.ready) ring(c, cx, cy, r - 2.5, 1, '#9fd8ff', 2.5);
@@ -1469,6 +1494,7 @@ function drawButton(c, L, id, b, pressed, alpha, p, run, w, tsec) {
     }
     default: break;
   }
+  if (locked) { c.globalAlpha = Math.min(1, alpha); padlock(c, cx + r * 0.6, cy + r * 0.6, Math.max(8, r * 0.3)); }   // [playb] P04
   c.restore();
 }
 function ring(c, cx, cy, r, f, color, lw) {
@@ -1482,12 +1508,12 @@ function ring(c, cx, cy, r, f, color, lw) {
  * ⇄ = 스킬 넘김 (player.skillPage 0↔1): 넘김 화살표 그림 + 오른쪽 위 작은 배지 = 다음 쪽의 첫 스킬 그림 · '넘김' + 쪽 점 (●○).
  * (hudfix: 예전엔 다음 쪽 스킬 두 개를 0.78r 로 ±0.24r 만 띄워 겹쳐 그려 'ØD' 같은 덩어리로 보였다.) 다음 쪽이 비었으면 어둡게, 배지 없음
  */
-function drawSwap(c, cx, cy, r, pressed, p, art) {
+function drawSwap(c, cx, cy, r, pressed, p, art, locked = false) {
   const page = num(p?.skillPage, 0), next = page ? 0 : 1;
   const slots = p?.hero?.slots ?? [];
   const sid = [slots[next * 2], slots[next * 2 + 1]].find((x) => x && SKILL_DB?.[x]) ?? null;
   const a0 = c.globalAlpha;
-  if (!sid) c.globalAlpha = a0 * 0.45;
+  if (!sid && !locked) c.globalAlpha = a0 * 0.45;   // [playb] 잠긴 넘김은 drawButton 이 이미 40 %
   const oy = cy - r * 0.14;
   if (!(art && HUDM.drawArtIcon(c, 'ui_swap', cx, oy, r * 1.22))) label(c, '⇄', cx, oy, Math.max(12, r * 0.6), pressed, COL.gold);
   label(c, LABEL.swap, cx, cy + r * 0.5, Math.max(11, r * 0.36), pressed);

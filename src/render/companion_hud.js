@@ -34,6 +34,11 @@ import * as MDRAW from './mounts.js';
 import * as GDRAW from './guardians.js';
 import { faceRect } from './portrait.js';
 import { portraitMeta } from '../data/portrait_meta.js';
+import { input } from '../core/input.js';   // [playb] P21 터치 패드에 탑승 버튼이 있나 (input.pad.occupiedRects)
+/** [playb] P21 터치 패드 버튼 묶음이 탑승 버튼을 보이고 있나 → 그러면 위젯의 「탑승/하차」 칩·탭 자리는 빼고 상태(고리)만 */
+function padShowsMount() {
+  try { const rs = input.pad?.occupiedRects?.(); return Array.isArray(rs) && rs.some((r) => r?.id === 'mount'); } catch { return false; }
+}
 
 const HALF_PI = Math.PI / 2;
 const MOUNT_R = 20, GUARD_R = 19;           // 지름 40 / 38 (companions §7.1)
@@ -311,8 +316,10 @@ export function drawCompanionHUD(ctx, world, o = {}) {
     const labelY = 44;
     if (m) {
       drawMountWidget(ctx, m, MOUNT_R, MOUNT_R, t, T);
-      label(ctx, 'mount', m.riding ? '하차' : '탑승', MOUNT_R, labelY, T);
-      setRect(0, x, y, 40 * k, (labelY + 16) * k, 'mount');
+      if (!(T && padShowsMount())) {   // [playb] P21 패드에 탑승 버튼이 있으면 같은 일을 하는 칩을 두 번 두지 않는다 (탑승 고리는 상태로 남는다)
+        label(ctx, 'mount', m.riding ? '하차' : '탑승', MOUNT_R, labelY, T);
+        setRect(0, x, y, 40 * k, (labelY + 16) * k, 'mount');
+      }
     }
     const n = Math.min(2, gs.length);
     for (let i = 0; i < n; i++) {
