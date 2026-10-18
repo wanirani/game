@@ -906,6 +906,7 @@ export class GameOverScene extends Scene {
     try {
       ['이어하기', '포기 (마을로)'].forEach((l, k) => {
         const r = { x: W / 2 - bw - 10 + k * (bw + 20), y: by, w: bw, h: bh };
+        if (k === 0) this.contRect = r;   // [retryart verify] 「이어하기」 자리 (장면 좌표): 시험 도구가 모듈을 불러오지 않고 읽는다 (integration --dist 번들에는 /src 모듈이 없다)
         button(ctx, r, l, { selected: this.menu.index === k, sub: k === 0 && this.doorRetry ? '보스방 입구에서 재도전' : undefined });
         taps.add(k === 0 ? 'go_cont' : 'go_quit', r, { owner: this, kind: 'primary', src: 'gameover' });
       });

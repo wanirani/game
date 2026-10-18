@@ -158,11 +158,12 @@ for (const c of CASES) {
         await page.waitForTimeout(700);   // GO_ARM 뒤 · 버튼이 그려진 뒤
         await page.screenshot({ path: `${out}/${c.id}_${n++}.png` });
         if (d === 'tap') {
-          // ui.taps 는 모듈 안 객체: 같은 모듈을 불러 게임오버가 이번 프레임에 등록한 「이어하기」 사각형을 읽는다 (장면 좌표 → CSS px)
+          // 게임오버가 이번 프레임에 그린 「이어하기」 사각형 (scene.contRect, 장면 좌표 → CSS px). --dist 번들에는 /src 모듈이 없으므로
+          // 모듈(ui.taps)은 contRect 가 없을 때만 불러 본다 — [retryart verify]
           const r = await page.evaluate(async () => {
-            const { taps } = await import('/src/core/ui.js');
             const g = window.__game, sc = g.scenes[g.scenes.length - 1];
-            const z = taps._list.slice(0, taps.n).find((q) => q.id === 'go_cont');
+            let z = sc?.contRect ?? null;
+            if (!z) { try { const { taps } = await import('/src/core/ui.js'); z = taps._list.slice(0, taps.n).find((q) => q.id === 'go_cont') ?? null; } catch { /* 빌드: 모듈 경로 없음 */ } }
             if (!z) return null;
             const cr = g.canvas.getBoundingClientRect(), k = (cr.width / g.viewW) * (sc.uiScale ? g.uiK || 1 : 1);
             return { x: cr.left + (z.x + z.w / 2) * k, y: cr.top + (z.y + z.h / 2) * k };

@@ -1,4 +1,6 @@
-// 무한의 탑 시험 (헤드리스 Chromium, 고정 스텝): node tools/test_tower.mjs [--filter=문자열] [--shots=폴더]
+// 무한의 탑 시험 (헤드리스 Chromium, 고정 스텝): node tools/test_tower.mjs [--filter=문자열] [--shots=폴더] [--fold=폴더 [--fold-only=card,pact,merchant,route]]
+//  - 시즌 2: 계획 재현(난이도 5개 × 1~100층 × 같은 시드 세 판, 시즌 1 필드 그대로) · 변이 10종 · 계약 6종 · 상인 · 피의 길 ·
+//    욕심 판(실제 서버 처리기 api.mts — 층 점수 상한 · 층 최소 시간) · 시즌 1 기록/제출 모양. --fold=폴더 → Fold 펼침 화면 4장만 찍고 끝
 //  - API 는 이 파일 안의 흉내(docs/specs/online.md §2)로 답하고, 게임은 디스크에서 https://game.test 로 내보낸다 (로그인 = bn_auth 미리 넣기)
 //  - 게임 루프를 멈추고(game._pageHidden) game.tick(1/60) 을 직접 돌린다 → 부하와 상관없이 같은 결과
 // 확인: 층 계획 재현(같은 시드 → 같은 방·적, 다른 시드 → 다름)·방 풀 검증(tools/tower_rooms.mjs) ·
@@ -525,11 +527,17 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
   const pact10 = await page.evaluate(() => ({ ids: window.__game.top.ids, plan: window.__game.scenes[0].plan.pacts }));
   assert.deepEqual(pact10.ids, [...pact10.plan, null], `계약 둘 + 거절 ${JSON.stringify(pact10)}`);
   await ticks(page, 20);
+  // 방금 고른 축복 알림은 계약 창이 떠 있는 동안 숨고 시간도 멈춘다 (창 제목을 가리지 않게) → 창을 닫은 뒤 뜬다
+  const blessToast = () => page.evaluate(() => { const g = window.__game, x = g.toasts.find((o) => o.text.startsWith('축복: ')); return { deferred: g.toastsDeferred(g.top), t: x?.t ?? null, max: x?.max ?? null }; });
+  const held = await blessToast();
+  assert.ok(held.deferred && held.t != null && held.t === held.max, `계약 창 위 축복 알림 보류 ${JSON.stringify(held)}`);
   await shot(page, 'pact_rest');
   await pad(page, BTN.RIGHT);
   await pad(page, BTN.RIGHT);
   await pad(page, BTN.A);
   await tickUntil(page, "g.top.name === 'tower' && t.phase === 'gate'", 200, '안식처 → 출구');
+  const shown = await blessToast();
+  assert.ok(!shown.deferred && shown.t != null && shown.t < shown.max, `창을 닫은 뒤 축복 알림 ${JSON.stringify(shown)}`);
   assert.deepEqual(await page.evaluate(() => window.__game.top.pactOrder), [], '거절 → 계약 없음');
   const after10 = await page.evaluate(() => ({ taken: { ...window.__game.top.taken }, last: window.__game.top.takenOrder.at(-1) }));
   assert.equal(after10.last, rest.ids[0], '패드 ← = 첫 카드');
@@ -570,6 +578,13 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
   assert.equal(best?.normal?.floor, 10, JSON.stringify(best));
   assert.ok(best.normal.blessings.length >= 12 && best.normal.charId);
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('bloodnocturne_meta') ?? '{}')?.towerBest?.normal?.floor ?? null), 10, '메타에 저장');
+  // 시즌 2: v:2 기록 · 10층 이정표(K1 장부 tw:10 → 잔상 「이끼」) — 판 안의 알림 · 결과 줄 · 잔상 쪽 해금
+  const s2best = await page.evaluate(async () => {
+    const C = await import('/src/data/cosmetics.js'), g = window.__game, r = g.top.res;
+    const ctx = C.cosContext(g.meta);
+    return { v: g.meta.towerBest.normal.v, ms: r.extra.milestones, row: r.rows.find((x) => x[0] === '시즌 2')?.[1], moss: C.needMet(C.TRAILS.tr_moss.need, ctx), silver: C.needMet(C.TRAILS.tr_silver.need, ctx) };
+  });
+  assert.deepEqual(s2best, { v: 2, ms: ['tr_moss'], row: '계약 0 · 피의 길 0번 · 잔상 「이끼」', moss: true, silver: false }, JSON.stringify(s2best));
   // 온라인 제출: board tower:normal, floor = 돌파한 층
   await page.waitForFunction(() => window.__game.top.onl?.state === 'ok', null, { timeout: 10000 });
   const f = M.finishes[0];
@@ -976,7 +991,9 @@ test('시즌 2: 변이 10종 효과 · 알림 카드 · 분열 상한 · 폭발/
     const r = g.top.res;
     return { row: r.rows.find((x) => x[0] === '시즌 2')?.[1], v: r.extra.v, pacts: r.extra.pacts, blood: r.extra.blood };
   });
-  assert.deepEqual(fin, { row: '계약 6 · 피의 길 1번', v: 2, pacts: pacts.order, blood: 1 }, `결과 ${JSON.stringify(fin)}`);
+  // 이정표: 이 기기에서 처음 넘은 20·30층 안식처 → 잔상 「은빛」「혹한」 (결과 줄 + extra.milestones)
+  assert.deepEqual(fin, { row: '계약 6 · 피의 길 1번 · 잔상 「은빛」「혹한」', v: 2, pacts: pacts.order, blood: 1 }, `결과 ${JSON.stringify(fin)}`);
+  assert.deepEqual(await page.evaluate(() => window.__game.top.res.extra.milestones), ['tr_silver', 'tr_frost']);
   assert.deepEqual(errs, []);
   await ctx.close();
 });
@@ -1260,6 +1277,58 @@ for (const vp of ['phone2', 'phone1']) {
     assert.deepEqual(errs, []);
     await ctx.close();
   });
+}
+
+// ───────────────────────── Fold 화면 (--fold=폴더) ─────────────────────────
+// 시험이 아니라 산출물: Galaxy Z Fold 펼침(fold_open)에서 변이 알림 카드 · 피의 계약 · 상인 · 갈림길 4장만 찍고 끝난다 (다른 시험은 돌지 않는다)
+const FOLD = typeof args.fold === 'string' ? args.fold : null;
+if (FOLD) {
+  fs.mkdirSync(FOLD, { recursive: true });
+  const ctx = await newContext(makeMock(), 'fold_open');
+  const { page, errs } = await openGame(ctx, { init: AUTH });
+  await page.evaluate(() => import('/src/scenes/front/arcade.js').then((A) => A.startArcade(window.__game, { kind: 'tower', diff: 'hard', preset: 3, seed: 4242 }, 'kael')));
+  await waitTop(page, 'tower', 30000);
+  await freeze(page);
+  await installS2(page);
+  // --fold-only=pact,merchant → 그 화면만 찍는다 (나머지는 같은 길을 지나기만 — 스크린숏 수를 아낄 때)
+  const ONLY = typeof args['fold-only'] === 'string' ? new Set(args['fold-only'].split(',')) : null, taken = [];
+  const snap = async (name) => { if (ONLY && !ONLY.has(name.replace(/^tower_|\.png$/g, ''))) return; await page.screenshot({ path: path.join(FOLD, name) }); taken.push(name); };
+  // 1) 변이 알림 카드 (피의 길 위의 낙뢰 — 층 시작 0.9초)
+  await page.evaluate(() => { const t = window.__S2.T(); t.world.player.buffs.invincible = 9999; t.debugFloor(16, { mut: 'bolt', blood: true }); });
+  await ticks(page, 54);
+  await snap('tower_card.png');
+  // 2) 피의 계약 (20층 안식처: 축복 → 계약 둘 + 거절)
+  await page.evaluate(() => window.__S2.T().debugFloor(20));
+  await page.evaluate(() => {   // 축복(피의 길 뒤라 둘)을 고르고 계약 창까지
+    const { g, until } = window.__S2;
+    until(() => { if (g.top.name === 'towerBlessing' && g.top.mode === 'bless' && g.top.picked === undefined) g.top.choose(0); return g.top.name === 'towerBlessing' && g.top.mode === 'pact'; }, 900, '20층 계약');
+  });
+  await ticks(page, 30);
+  await snap('tower_pact.png');
+  await page.evaluate(() => window.__game.top.choose(window.__game.top.ids.length - 1));
+  await tickUntil(page, "g.top.name === 'tower' && t.phase === 'gate'", 200, '거절 → 출구');
+  // 3) 떠돌이 상인 로크 (35층 군주 뒤 — 카드 한 장을 산 모습)
+  await page.evaluate(() => window.__S2.T().debugFloor(35));
+  await tickUntil(page, "t.phase === 'boss' && w.boss", 300, '35층 보스');
+  await page.evaluate(() => window.__game.world.bossReady());
+  await tickUntil(page, "g.top.name === 'tower' && !w.cutscene", 600, '보스 등장 연출 끝');
+  await page.evaluate(() => window.__S2.T().debugKillAll());
+  await tickUntil(page, "g.top.name === 'towerBlessing'", 400, '격파 → 축복');
+  await page.evaluate(() => window.__game.top.choose(0));
+  await tickUntil(page, "g.top.name === 'towerBlessing' && g.top.mode === 'shop'", 200, '상인');
+  await page.evaluate(() => { const g = window.__game; g.state.gold = 2400; g.top.choose(1); });
+  await ticks(page, 30);
+  await snap('tower_merchant.png');
+  // 4) 갈림길 (떠나기 → 발밑 안전한 길 · 몇 칸 옆 피의 길)
+  await page.evaluate(() => { const top = window.__game.top; top.choose(top.items().length - 1); });
+  await tickUntil(page, "g.top.name === 'tower' && t.phase === 'gate' && t.gates.length === 2", 200, '갈림길');
+  await ticks(page, 70);
+  await snap('tower_route.png');
+  assert.deepEqual(errs, []);
+  await ctx.close();
+  await browser.close();
+  console.log(`Fold 화면 ${taken.length}장 (${taken.join(', ')}): ${FOLD}`);
+  process.exit(0);
 }
 
 let pass = 0, fail = 0;

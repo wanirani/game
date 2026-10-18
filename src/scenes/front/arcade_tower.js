@@ -533,6 +533,7 @@ export class TowerScene extends ArcadeRunScene {
     const sub = greed ? '탐욕의 계약 — 상처가 아물지 않는다 · 축복을 하나 고르세요' : this.blessLeft ? '피의 길을 지나왔다 · 축복을 둘 고르세요' : '상처가 조금 아물었다 · 축복을 하나 고르세요';
     w.banner = { text: '안식처', sub, t: 2.2, color: '#9fe8c8', big: true };
     this.phase = 'clear'; this.phaseT = 0; this.reward = 1.4;
+    this.checkMilestone(this.floor);   // 이정표 층(10·20·30·40·50)은 모두 안식처 — 여기서 돌파한다
   }
   /** 축복 고르기 장면을 띄운다 (고르면 onBlessingPicked). 후보가 없으면 다음 단계로 */
   offerBlessing() {
@@ -993,7 +994,8 @@ export class TowerScene extends ArcadeRunScene {
  *    run.shopBuy(kind, id) · 떠나기(취소 키도) → run.onShopDone(). 골드가 모자라면 아무것도 바뀌지 않고 한 줄 안내
  */
 export class TowerBlessingScene extends Scene {
-  constructor(g) { super(g); this.opaque = false; this.uiScale = true; this.hidePad = true; }
+  // deferToasts: 고른 축복·계약 알림이 다음 카드 창(피의 길 뒤 두 번째 축복 · 계약 · 상인)의 제목을 가리지 않게 — 창을 닫은 뒤 표시
+  constructor(g) { super(g); this.opaque = false; this.uiScale = true; this.hidePad = true; this.deferToasts = true; }
   enter({ run = null, ids = [], floor = 0, mode = 'bless' } = {}) {
     if (!run?.world || (!ids.length && mode !== 'shop')) { this.run = null; this.game.go('arcade', {}, { fade: false }); return; }
     this.run = run; this.floor = floor; this.mode = mode;
