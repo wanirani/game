@@ -430,6 +430,9 @@ def main():
     ap.add_argument('--repair-json', default='', help='turn16_repair 변수 JSON (tol, R, enc, Ldark, Dmax, min, veil_a, ...)')
     ap.add_argument('--key', type=float, default=0, help='바탕색 키 문턱 (단색 어두운 바탕 영상에서 rembg 가 빼먹은 회색 안감 더하기, 예 28) — TURN16-FIX')
     ap.add_argument('--drop-floor', action='store_true', help='발밑 바닥 반사 덩어리·회색 바닥선 지우기 (어두운 발 외형만) — TURN16-FIX')
+    ap.add_argument('--graft', default='', help='[retryart] 다른 영상(같은 원화·같은 구도)의 같은 각 프레임에서 윗부분을 옮겨 심기 — JSON 문자열 또는 파일 '
+                    '{"video": 경로, "cells": {"k": [donor 프레임, 자르는 y(영상 px)]}, "feather": 28, "key": 0}. '
+                    '자르는 y 위는 donor, 아래 feather px 동안 섞어 본 영상으로 (sera_saint 뒷모습: 첫 영상의 베일 + 새 영상의 치마)')
     a = ap.parse_args()
     cid = a.cls.split('_')[0]
     tmp = tempfile.mkdtemp(prefix='t16_', dir=os.environ.get('TMPDIR') or None)
@@ -504,6 +507,33 @@ def main():
     RP = json.loads(a.repair_json) if a.repair_json else {}
     if RP:
         fixinfo['repair_p'] = RP
+    GR, donor = None, None
+    if a.graft:
+        GR = json.loads(open(a.graft, encoding='utf-8').read() if os.path.exists(a.graft) else a.graft)
+        tmp2 = tempfile.mkdtemp(prefix='t16g_', dir=os.environ.get('TMPDIR') or None)
+        try:
+            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', GR['video'], os.path.join(tmp2, 'f%03d.png')], check=True)
+            donor = [np.asarray(Image.open(q).convert('RGB')) for q in sorted(glob.glob(os.path.join(tmp2, 'f*.png')))]
+        finally:
+            shutil.rmtree(tmp2, ignore_errors=True)
+        fixinfo['graft'] = dict(video=os.path.basename(GR['video']), cells=GR['cells'], feather=GR.get('feather', 28))
+
+    def graft(k, base):
+        """[retryart] --graft: 칸 k 의 윗부분(자르는 y 위)을 donor 프레임으로 — 알파 가중 합성, 아래로 feather px 동안 본 영상으로 넘어간다"""
+        hm_, sa_, rgb_, vl_ = base
+        df, yc = GR['cells'][str(k)]
+        F = float(GR.get('feather', 28))
+        drgb = donor[int(df)]
+        _dh, ds = cut(drgb, GR.get("key") or None)
+        yy = np.arange(rgb_.shape[0], dtype=np.float32)[:, None]
+        w = np.clip((float(yc) + F - yy) / F, 0, 1)
+        wd, wm = w * ds, (1 - w) * sa_
+        A = np.clip(wd + wm, 0, 1)
+        den = np.maximum(wd + wm, 1e-4)[..., None]
+        col = (wd[..., None] * drgb.astype(np.float32) + wm[..., None] * rgb_.astype(np.float32)) / den
+        col = np.where((wd + wm)[..., None] > 1e-4, col, rgb_.astype(np.float32))
+        hm2 = A > 0.5
+        return hm2, A, np.clip(col, 0, 255).astype(np.uint8), np.zeros_like(hm2)
 
     def cut2(rgb):
         """cut + (선택) 바닥 덩어리 지우기 + (선택) 얼룩 보정 → (hard, soft, rgb, veil)"""
@@ -533,7 +563,7 @@ def main():
         i = p['i']
         if i not in cache:
             cache[i] = cut2(frames[i])
-        hm, sa, frgb, veil = cache[i]
+        hm, sa, frgb, veil = graft(p['k'], cache[i]) if GR and str(p['k']) in GR['cells'] else cache[i]
         ys, xs = np.where(hm)
         hh = hsv_hist(frgb, ndi.binary_erosion(hm, iterations=3))
         hd = bhatta(h0, hh)

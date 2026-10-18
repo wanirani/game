@@ -36,6 +36,13 @@ const CASES = [
   { id: 's01_ng', url: 'index.html?scene=stage&stage=s01&ng=1', steps: 'wait:3,shot,right:1.2,attack:0.15,wait:0.2,attack:0.15,jump:0.3,right:1,shot,menu:0.1,wait:0.6,shot,menu:0.1,wait:0.4,sub:0.1,skill1:0.1,wait:0.5' },
   { id: 's20_boss_ng', url: 'index.html?scene=stage&stage=s20&room=boss&ng=3', boss: true, steps: 'wait:2.5,rightboss:8,intro:25,wait:1,shot,attack:0.2,attack:0.2,attack:0.2,wait:1,shot' },
   { id: 'menu', url: 'index.html?scene=stage&stage=s02', steps: 'wait:2.5,menu:0.1,wait:0.5,down:0.1,enter:0.1,wait:1,shot,KeyE:0.1,wait:0.4,shot,KeyE:0.1,wait:0.4,shot,KeyE:0.1,wait:0.4,shot,KeyE:0.1,wait:0.4,shot' },
+  // [retryart] 보스방 입구 재도전 (PLAY P12): 보스전 중 물약 하나를 쓰고 (입구 기록 HP·MP 를 절반으로 낮춰 둔 채) 목숨 1 로 쓰러져 게임오버 → 이어하기.
+  //  bossretry:auto = 카운트다운이 0 이 되어 저절로 이어하기 · bossretry:tap = 「이어하기」 버튼을 누른다 (터치 기기는 손가락, 데스크톱은 마우스).
+  //  확인: 게임오버의 doorRetry · 보스방 시작 자리(경기장 X 앞) · 보스·경기장 없음 · HP/MP (견습·숙련 가득, 베테랑 이상 입구 값) · 가방 그대로(물약 안 돌려줌)
+  //  · 골드·비밀 그대로 · 크레딧 −1 · 목숨 = 난이도 시작값. retryintro:N = 다시 걸어 들어간 뒤 짧은 등장 연출(short)·체력 가득 1페이즈 새 보스·N 초 안에 싸움 시작
+  { id: 's01_boss_retry', url: 'index.html?scene=stage&stage=s01&room=boss', boss: true, steps: 'wait:2.5,rightboss:8,intro:25,wait:1,bossretry:auto,shot,rightboss:8,retryintro:8,wait:0.5,shot' },
+  { id: 's01_boss_retry_hard', url: 'index.html?scene=stage&stage=s01&room=boss&diff=hard', boss: true, steps: 'wait:2.5,rightboss:8,intro:25,wait:1,bossretry:tap,shot,rightboss:8,retryintro:8,wait:0.5,shot' },
+  { id: 's14_boss_retry', url: 'index.html?scene=stage&stage=s14&room=boss', boss: true, steps: 'wait:2.5,rightboss:8,intro:25,wait:1,bossretry:tap,shot,rightboss:10,retryintro:8,wait:0.5,shot' },
   // 무한의 탑: 1층 전투 → (시험 훅 debugKillAll) 층 돌파 → 출구 (데스크톱 ▲, 휴대폰 가만히 서 있기) → 2층. towerfloor:N = 최대 N초
   { id: 'tower', url: 'index.html?scene=tower&seed=4242&preset=3&diff=normal', steps: 'wait:1.5,towerfloor:40,shot' },
 ];
@@ -115,6 +122,110 @@ for (const c of CASES) {
           await page.waitForTimeout(150);
         }
         if (!st?.ok) errs.push(`NOFLOOR2 ${d}초 안에 2층으로 가지 못함 (${JSON.stringify(st)})`);
+        continue;
+      }
+      if (k === 'bossretry') {
+        // [retryart] 보스전 중 물약 하나 → 입구 기록 HP·MP 절반 → 목숨 1 로 쓰러뜨리기 → 게임오버 → 이어하기 (auto | tap) → 입구 확인
+        const pre = await page.evaluate(async () => {
+          const g = window.__game, w = g.world, p = w?.player;
+          if (!w || !p || !w.bossActive) return { err: `보스전이 아님 (bossActive=${!!w?.bossActive})` };
+          const potions = () => g.state.inventory.filter((it) => it.baseId === 'c_potion').reduce((a, it) => a + (it.qty ?? 1), 0);
+          const p0 = potions();
+          let used = null;
+          try {
+            const inv = await import('/src/game/inventory.js');
+            const pot = g.state.inventory.find((it) => it.baseId === 'c_potion');
+            p.hp = Math.max(1, Math.floor(p.stats.hp * 0.4));
+            used = pot ? inv.useItem(g.state, w.hero, pot.uid, p)?.ok === true : false;
+          } catch { used = null; }   // 빌드(--dist)에서는 모듈 경로가 없다: 물약 확인만 건너뛴다
+          if (!w.bossDoor) return { err: '보스방 입구 기록(world.bossDoor) 없음' };
+          w.bossDoor.hp = Math.max(1, Math.round(p.stats.hp * 0.5)); w.bossDoor.mp = Math.round(p.stats.mp * 0.5);
+          const snap = { roomId: w.roomId, door: { ...w.bossDoor }, arenaX: w.arenaX, p0, used, potions: potions(), continues: w.run.continues, gold: g.state.gold, secrets: g.state.progress.secrets.length,
+            inv: g.state.inventory.map((it) => `${it.uid}:${it.qty ?? 1}`).sort().join(','), diff: w.diff?.id, lives0: w.diff?.lives };
+          w.run.lives = 1; p.hp = 0; p.die(w, 'test');
+          return snap;
+        });
+        if (pre.err) { errs.push('BOSSRETRY ' + pre.err); continue; }
+        if (pre.used === false || (pre.used && pre.potions !== pre.p0 - 1)) errs.push(`BOSSRETRY 물약을 쓰지 못함 (${pre.p0} → ${pre.potions})`);
+        let t0 = Date.now(), go = null;
+        while (Date.now() - t0 < 9000) {
+          go = await page.evaluate(() => { const g = window.__game, top = g?.scenes?.[g.scenes.length - 1]; return { top: top?.name, door: !!top?.doorRetry, t: top?.t ?? 0, can: !!top?.canContinue }; });
+          if (go.top === 'gameover') break;
+          await page.waitForTimeout(150);
+        }
+        if (go?.top !== 'gameover') { errs.push(`BOSSRETRY 9초 안에 게임오버가 뜨지 않음 (top=${go?.top})`); continue; }
+        if (!go.door) errs.push('BOSSRETRY 게임오버에 보스방 입구 재도전 표시(doorRetry)가 없음');
+        await page.waitForTimeout(700);   // GO_ARM 뒤 · 버튼이 그려진 뒤
+        await page.screenshot({ path: `${out}/${c.id}_${n++}.png` });
+        if (d === 'tap') {
+          // ui.taps 는 모듈 안 객체: 같은 모듈을 불러 게임오버가 이번 프레임에 등록한 「이어하기」 사각형을 읽는다 (장면 좌표 → CSS px)
+          const r = await page.evaluate(async () => {
+            const { taps } = await import('/src/core/ui.js');
+            const g = window.__game, sc = g.scenes[g.scenes.length - 1];
+            const z = taps._list.slice(0, taps.n).find((q) => q.id === 'go_cont');
+            if (!z) return null;
+            const cr = g.canvas.getBoundingClientRect(), k = (cr.width / g.viewW) * (sc.uiScale ? g.uiK || 1 : 1);
+            return { x: cr.left + (z.x + z.w / 2) * k, y: cr.top + (z.y + z.h / 2) * k };
+          }).catch(() => null);
+          if (!r) errs.push('BOSSRETRY 이어하기 버튼 영역(go_cont)을 찾지 못함');
+          else if (mobile) await page.touchscreen.tap(r.x, r.y);
+          else await page.mouse.click(r.x, r.y);
+        }
+        t0 = Date.now();
+        while (Date.now() - t0 < (d === 'auto' ? 16000 : 5000)) {
+          go = await page.evaluate(() => { const g = window.__game; return { top: g?.scenes?.[g.scenes.length - 1]?.name }; });
+          if (go.top !== 'gameover') break;
+          await page.waitForTimeout(150);
+        }
+        if (go.top === 'gameover') { errs.push(`BOSSRETRY 이어하기(${d})가 실행되지 않음`); continue; }
+        await page.waitForTimeout(300);
+        const post = await page.evaluate(() => {
+          const g = window.__game, w = g.world, p = w?.player;
+          const potions = g.state.inventory.filter((it) => it.baseId === 'c_potion').reduce((a, it) => a + (it.qty ?? 1), 0);
+          return { top: g.scenes[g.scenes.length - 1]?.name, roomId: w?.roomId, boss: !!w?.boss, active: !!w?.bossActive, arena: !!w?.arena, cut: !!w?.cutscene, dead: !!p?.dead,
+            cx: p ? p.x + p.w / 2 : null, hp: p?.hp, hpMax: p?.stats?.hp, mp: p?.mp, mpMax: p?.stats?.mp, potions, continues: w?.run?.continues, lives: w?.run?.lives,
+            gold: g.state.gold, secrets: g.state.progress.secrets.length, inv: g.state.inventory.map((it) => `${it.uid}:${it.qty ?? 1}`).sort().join(','), retries: w?.bossDoorRetries ?? 0 };
+        });
+        const bad = [];
+        if (post.top !== 'stage') bad.push(`top=${post.top}`);
+        if (post.roomId !== pre.roomId) bad.push(`방 ${post.roomId} ≠ ${pre.roomId}`);
+        if (post.boss || post.active || post.arena || post.cut) bad.push(`보스·경기장이 남음 (boss=${post.boss} active=${post.active} arena=${post.arena} cutscene=${post.cut})`);
+        if (post.dead) bad.push('영웅이 쓰러진 채');
+        if (!(post.cx < pre.arenaX + 48)) bad.push(`입구가 아님 (x=${Math.round(post.cx)}, 경기장 X=${pre.arenaX})`);
+        const hard = !['easy', 'normal'].includes(pre.diff);
+        const wantHp = hard ? Math.min(pre.door.hp, post.hpMax) : post.hpMax, wantMp = hard ? Math.min(pre.door.mp, post.mpMax) : post.mpMax;
+        // 이어하기 뒤 0.3초 동안의 자연 회복(MP 재생·회복 특성)은 최대치의 10% 까지 봐준다 (그 아래로 내려가면 안 된다)
+        const near = (v, want, max) => v >= want - 0.5 && v <= want + Math.max(1, max * 0.1);
+        if (!near(post.hp, wantHp, post.hpMax)) bad.push(`HP ${Math.round(post.hp)} ≠ ${Math.round(wantHp)} (${pre.diff})`);
+        if (!near(post.mp, wantMp, post.mpMax)) bad.push(`MP ${Math.round(post.mp)} ≠ ${Math.round(wantMp)} (${pre.diff})`);
+        if (post.potions !== pre.potions || post.inv !== pre.inv) bad.push(`가방이 바뀜 (물약 ${pre.potions} → ${post.potions})`);
+        if (post.gold !== pre.gold || post.secrets !== pre.secrets) bad.push(`진행이 바뀜 (골드 ${pre.gold}→${post.gold}, 비밀 ${pre.secrets}→${post.secrets})`);
+        if (post.continues !== pre.continues - 1) bad.push(`크레딧 ${pre.continues} → ${post.continues}`);
+        if (post.lives !== pre.lives0) bad.push(`목숨 ${post.lives} ≠ ${pre.lives0}`);
+        if (post.retries !== 1) bad.push(`bossDoorRetries=${post.retries}`);
+        if (bad.length) errs.push('BOSSRETRY ' + bad.join(' · '));
+        continue;
+      }
+      if (k === 'retryintro') {
+        // [retryart] 재도전의 보스 등장: 짧은 이름 카드(bossIntro.short) → N 초 안에 싸움, 새 보스는 체력 가득 · 1페이즈
+        const t0 = Date.now();
+        let st = null, short = null;
+        while (Date.now() - t0 < Number(d) * 1000) {
+          st = await page.evaluate(() => { const g = window.__game, w = g?.world, top = g?.scenes?.[g.scenes.length - 1]; return { top: top?.name, short: top?.name === 'bossIntro' ? !!top.short : null, cut: !!w?.cutscene, active: !!w?.bossActive, hp: w?.boss?.hp, max: w?.boss?.stats?.maxHp, phase: w?.boss?.phase ?? 0, pend: !!w?.boss?.pendingBoss }; });
+          if (st.short != null && short == null) short = st.short;
+          if (st.top === 'stage' && st.active && !st.cut) { st.ok = true; break; }
+          const key = st.top === 'dialogue' ? KEY.enter : st.top === 'pause' ? KEY.menu : null;
+          if (key) { await page.keyboard.down(key); await page.waitForTimeout(60); await page.keyboard.up(key); }
+          await page.waitForTimeout(120);
+        }
+        const sec = (Date.now() - t0) / 1000;
+        if (!st?.ok) errs.push(`RETRYINTRO ${d}초 안에 다시 싸움이 시작되지 않음 (${JSON.stringify(st)})`);
+        else {
+          if (short !== true) errs.push(`RETRYINTRO 짧은 등장 연출이 아님 (short=${short})`);
+          if (!st.pend && !(st.hp >= st.max - 0.5)) errs.push(`RETRYINTRO 새 보스 체력이 가득이 아님 (${st.hp}/${st.max})`);
+          if (st.phase) errs.push(`RETRYINTRO 보스가 ${st.phase}페이즈에서 시작`);
+          console.log(`    · ${c.id} 재도전 등장 → 싸움 ${sec.toFixed(1)}초`);
+        }
         continue;
       }
       if (k === 'intro') {
