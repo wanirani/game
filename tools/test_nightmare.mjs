@@ -430,7 +430,8 @@ async function fightCase(s, vp, id) {
     ok(B.nm && B.nm.hpMul === e.hpMul && B.nm.atkMul === e.atkMul && B.nm.spMul === e.spMul, `${tag}: boss.nmScale 배율`, B.nm);
     ok(near(B.aggro, B.dAggro * e.spMul, 0.001), `${tag}: aggro = 난이도 × ${e.spMul} (${B.aggro})`);
     ok(near(B.maxHp, B.wantHp), `${tag}: 체력 = 이야기 모양 × ${e.hpMul} (${B.maxHp} / ${B.wantHp})`);
-    ok(near(B.atk, Math.round(B.baseAtk * e.atkMul)) || B.atk >= B.baseAtk, `${tag}: 공격 × ${e.atkMul} (${B.atk} / ${B.baseAtk})`);
+    // [P3v] 예전 `|| B.atk >= B.baseAtk` 는 배율을 빠뜨려도(공격 = 기본) 통과했다 — 배율을 곱한 값과 맞아야 한다
+    ok(near(B.atk, Math.round(B.baseAtk * e.atkMul)) && (e.atkMul <= 1 || B.atk > B.baseAtk), `${tag}: 공격 × ${e.atkMul} (${B.atk} / ${B.baseAtk})`);
   }
   // 규칙 안내 토스트 (비틀기 이름)
   ok(await until(s, (n) => window.__tt.toasts.some((t) => t.startsWith(`악몽의 규칙: ${n}`)), tw.name, 4000), `${tag}: 규칙 토스트 '악몽의 규칙: ${tw.name} — …'`);
