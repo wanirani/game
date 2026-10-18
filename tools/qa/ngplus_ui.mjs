@@ -414,7 +414,7 @@ async function U5(C) {
       return NG.ngStageLevel(STAGES.s03, 1);
     });
     await s.waitGame("g.top?.name === 'worldmap' && !!g.top.pages && !g.top.reveal", 15000);
-    await s.eval(() => { const t = window.__game.top; t.index = t.nodes.findIndex((n) => n.id === 's03'); });
+    await s.eval(() => { const t = window.__game.top; t.index = t.nodes.findIndex((n) => n.id === 's03'); t.infoX = true; });   // [matrix] 낮은 화면(P18)은 노드를 고르면 정보판이 펼쳐진다 — 고르는 것과 같게 펼친다
     await settle(s, 500);
     tx = await texts(s);
     const el = tx.find((t) => /^적 레벨 \d+$/.test(t.s));
