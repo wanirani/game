@@ -577,6 +577,8 @@ async function browserTests() {
     await step(s.page, 60, false);
     const h0 = await s.eval(() => ({ lv: window.__game.autoHud.level, hold: window.__game.autoHud.hold, tx: Math.floor(window.__game.world.player.cx / 48) }));
     await step(s.page, 1); await s.page.screenshot({ path: path.join(SHOTS, 's01walk_hold.png') });
+    await step(s.page, 90, false);   // [autofix] 2초 넘게 기다리면 방마다 한 번 「AUTO 대기 — 앞으로는 직접 이동하세요」 (PLAY-B 요청 16 의 알림 부분)
+    const holdToast = await s.eval(() => (window.__game.toasts || []).map((t) => t.text).filter((t) => /^AUTO 대기/.test(t)));
     // 사람: 트리거(7열)를 지나 12열까지
     await s.page.keyboard.down('ArrowRight');
     for (let i = 0; i < 40; i++) { await step(s.page, 10, false); const q = await s.eval(() => ({ top: window.__game.top?.name, tx: Math.floor(window.__game.world.player.cx / 48) })); if (q.top !== 'stage') { await s.page.keyboard.up('ArrowRight'); await skip(); await s.page.keyboard.down('ArrowRight'); } if (q.tx >= 12) break; }
@@ -600,6 +602,7 @@ async function browserTests() {
     ok(stuck < 12, 's01walk: 같은 자리에서 12초 넘게 wait/idle 하지 않는다 (예전 47초)', { stuck, last });
     ok(r.T.fell === 0 && r.T.spike === 0 && r.T.doors === 0 && r.room === 'r1', 's01walk: 낙사·가시·문 0 · 방 그대로', r);
     ok(r.assisted, 's01walk: AUTO 가 입력을 낸 판은 world.run.assisted (공정성 표시)');
+    ok(holdToast.length === 1, `s01walk: 트리거 앞 2초 기다림 → 「AUTO 대기」 알림 한 번 (${holdToast.join(' / ')})`, holdToast);
     ok(r.why !== 'idle' || r.hold === 'forward' || r.hold === 'idle', `s01walk: 할 일이 없으면 HUD 에 이유가 보인다 (why ${r.why}, hold ${r.hold} — 가시 구덩이 너머 적이면 forward)`);
     ok(!s.errs.length, 's01walk: 페이지 오류 0', s.errs.slice(0, 3));
     await s.close();

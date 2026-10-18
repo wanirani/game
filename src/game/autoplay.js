@@ -883,6 +883,15 @@ export function step(dt, inp) {
     mem.unreachToastT = snap.t;
     try { g.toast?.('AUTO: 닿지 않는 적 — 직접 움직이세요', '#ffb070', 2.2); } catch { /* */ }
   }
+  // [autofix] 이야기 문턱·보스 문 앞(forward) / 적 없음(idle) 으로 2초 넘게 기다리면 방마다 한 번 알림 (흐린 AUTO 「대기」와 같은 뜻)
+  if (r.hold === 'forward' || r.hold === 'idle') {
+    if (mem.holdSince == null || mem.holdKind !== r.hold) { mem.holdSince = snap.t; mem.holdKind = r.hold; }
+    const room = w.roomId ?? w.room?.id ?? '';
+    if (snap.t - mem.holdSince >= 2 && mem.holdToastRoom !== room) {
+      mem.holdToastRoom = room;
+      try { g.toast?.(r.hold === 'forward' ? 'AUTO 대기 — 앞으로는 직접 이동하세요' : 'AUTO 대기 — 주변에 적 없음 · 직접 이동하세요', '#c8b8a0', 2); } catch { /* */ }
+    }
+  } else { mem.holdSince = null; mem.holdKind = null; }
   if (r.potion && lazy.inv?.useItem) {
     try {
       const res = lazy.inv.useItem(w.state, w.hero, r.potion, w.player);
