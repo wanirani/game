@@ -251,7 +251,26 @@ class BossReveal {
   }
   /** 이 개체를 변형해 그리나: 보스 자신과 그 대리 개체 */
   owns(e) { const b = this.w.boss; return !!b && (e === b || e.host === b); }
-  drawEntity(ctx, e) {
+  /** [s5:p4b] 이번 프레임에 변형을 입힐 개체(owns)의 draw 를 감싼다 — world.render 의 그리기 순서 코드는 그대로 둔 채. 그린 뒤 unwrapDraws */
+  wrapDraws(list) {
+    const W = (this._wrapped ??= []);
+    if (W.length) this.unwrapDraws();
+    const rv = this;
+    for (const e of list) {
+      if (!this.owns(e)) continue;
+      const had = Object.prototype.hasOwnProperty.call(e, 'draw'), orig = e.draw;
+      if (typeof orig !== 'function') continue;
+      e.draw = function (ctx) { rv.drawEntity(ctx, this, orig); };
+      W.push(e, had, orig);
+    }
+  }
+  unwrapDraws() {
+    const W = this._wrapped;
+    if (!W?.length) return;
+    for (let i = 0; i < W.length; i += 3) { const e = W[i]; if (W[i + 1]) e.draw = W[i + 2]; else delete e.draw; }
+    W.length = 0;
+  }
+  drawEntity(ctx, e, orig = null) {
     const X = this.xf;
     if (!(X.a > 0.01)) return;
     const moved = !!(X.dy || X.sx !== 1 || X.sy !== 1);
@@ -264,7 +283,7 @@ class BossReveal {
       if (X.clipY != null) { ctx.beginPath(); ctx.rect(X.px - 4000, X.clipY - 8000, 8000, 8000); ctx.clip(); }
       if (moved) { ctx.translate(X.px, X.py + X.dy); ctx.scale(X.sx, X.sy); ctx.translate(-X.px, -X.py); }
       if (X.a < 1) ctx.globalAlpha *= X.a;
-      e.draw(ctx, this.w);
+      if (orig) orig.call(e, ctx, this.w); else e.draw(ctx, this.w);
     } finally {
       ctx.restore();
       if (off) { for (const q of off) q.ledges = true; off.length = 0; }
@@ -447,9 +466,10 @@ function makeSealOverlay(F) {
 }
 
 export class World {
-  constructor(game, stageId, opts = {}) {
-    const { roomId = null, mode = 'story', onExit = null, rules = null, diffOver = null, levelOverride = null, trial = null } = opts ?? {};
-    this.opts = opts ?? {};   // [s5:p4a] 만든 쪽이 준 옵션 그대로 (K2: opts.nightmare 가 있으면 보스 이름판이 진홍 「악몽」판)
+  constructor(game, stageId, { roomId = null, mode = 'story', onExit = null, rules = null, diffOver = null, levelOverride = null, trial = null } = {}) {
+    // [s5:p4a] 만든 쪽이 준 옵션 그대로 (K2: opts.nightmare 가 있으면 보스 이름판이 진홍 「악몽」판).
+    // [s5:p4b] 서명은 예전 모양 그대로 둔다 (tools/test_perks.mjs 'ctor options' — 훅 계약) · 옵션 객체는 arguments 로 받는다
+    this.opts = arguments[2] ?? {};
     this.game = game;
     this.state = game.state;
     this.stage = typeof stageId === 'object' ? stageId : STAGES[stageId];
@@ -950,11 +970,17 @@ export class World {
     const list = this.entities.filter((e) => (!e.dead || e === this.player) && !e.hidden && !this.inUnrevealedFake(e) && (e.kind === 'player' || cam.visible(e.x, e.y, e.w, e.h, 200)));
     list.sort((a, b) => a.z - b.z);
     this.fx.draw(ctx, 'back');
-    const RV = this.reveal?.xf.on ? this.reveal : null;   // [s5:p4a] 등장 연출 중인 보스(와 채색·컬링 대리 개체)는 변형(y·크기·알파·바닥 자르기)을 입혀 그린다
-    for (const e of list) if (e.z < 0) { if (RV?.owns(e)) RV.drawEntity(ctx, e); else e.draw(ctx, this); }
+    // [s5:p4a] 등장 연출 중인 보스(와 채색·컬링 대리 개체)는 변형(y·크기·알파·바닥 자르기)을 입혀 그린다.
+    // [s5:p4b] 그리기 순서 코드는 예전 그대로 (tools/test_perks.mjs 'drawBacking before z>=0 loop' — 훅 계약): 변형은 이 프레임 동안만
+    //   그 개체들의 draw 를 감싸서(RV.wrapDraws) 입히고 그린 뒤 되돌린다 (RV.unwrapDraws)
+    const RV = this.reveal?.xf.on ? this.reveal : null;
+    if (RV) RV.wrapDraws(list);
+    try {
+    for (const e of list) if (e.z < 0) e.draw(ctx, this);
     for (const d of this.debrisList) this.drawDebris(ctx, d);
     const P = this.player; if (P && list.includes(P)) P.drawBacking?.(ctx, this);   // 영웅 받침 (hero-vis): 타일·장식 위, 적·탄·이펙트 아래
-    for (const e of list) if (e.z >= 0) { if (RV?.owns(e)) RV.drawEntity(ctx, e); else e.draw(ctx, this); }
+    for (const e of list) if (e.z >= 0) e.draw(ctx, this);
+    } finally { if (RV) RV.unwrapDraws(); }
     ctx.imageSmoothingQuality = 'low';
     this.tiles.drawLiquid(ctx, cam, this.time, this.liquid);   // [hook:gimmick] 방별 액체
     gm?.drawWorld?.(ctx, cam, 'front');   // [hook:gimmick] 용암 수면·공허의 벽·기포 기둥

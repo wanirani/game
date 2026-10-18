@@ -398,6 +398,7 @@ async function browserSuite() {
           for (const id of ['sera', 'victor', 'bran']) S.ensureHero(st, id);
           const set = (id, lv) => { const h = st.heroes[id]; h.level = lv; h.exp = 0; h.sp = P.spForLevel(lv) - 1; };   // 배울 SP 를 대부분 쓴 상태
           set(st.charId, 22); set('sera', 12); set('victor', 19); set('bran', 21);
+          { const { migrateState } = await import('/src/game/state.js'); const m = migrateState(JSON.parse(JSON.stringify(st))); window.__keys0 = { top: Object.keys(m).sort().join(), heroes: Object.fromEntries(Object.entries(m.heroes).map(([k, h]) => [k, Object.keys(h).sort().join()])) }; }   // 나눔 전 저장 모양
           P.benchUnseen(null, true);
           const w = g.world;
           const town0 = st.heroes.sera.exp;
@@ -428,11 +429,11 @@ async function browserSuite() {
           const { migrateState } = await import('/src/game/state.js');
           const json = JSON.stringify(st);   // saves.write 와 같은 직렬화 (이 디버그 부팅은 진짜 슬롯에 쓰지 않는다)
           const back = isValidSave(JSON.parse(json)) ? migrateState(JSON.parse(json)) : null;
-          const heroKeys = Object.fromEntries(Object.entries(st.heroes).map(([k, h]) => [k, Object.keys(h).sort().join()]));
           const backKeys = back?.heroes ? Object.fromEntries(Object.entries(back.heroes).map(([k, h]) => [k, Object.keys(h).sort().join()])) : null;
-          return { same: JSON.stringify(heroKeys) === JSON.stringify(backKeys), bench: /bench|catchUp/i.test(JSON.stringify(back)), lv: back?.heroes?.sera?.level, ok: !!back };
+          const k0 = window.__keys0;
+          return { same: JSON.stringify(k0.heroes) === JSON.stringify(backKeys) && k0.top === Object.keys(back ?? {}).sort().join(), bench: /bench|catchUp/i.test(JSON.stringify(back)), lv: back?.heroes?.sera?.level, ok: !!back };
         });
-        ok(B7.ok && B7.same && !B7.bench, `[${vp}] 세이브 쓰기·읽기: 영웅 키 그대로 · 나눔 필드 없음 (세라 Lv.${B7.lv})`, B7);
+        ok(B7.ok && B7.same && !B7.bench, `[${vp}] 세이브 직렬화 → 읽기: 나눔 전과 같은 키 (세이브·영웅) · 나눔 필드 없음 (세라 Lv.${B7.lv})`, B7);
         const errs = s2.errs.filter((e) => !/favicon|ERR_FILE_NOT_FOUND|net::ERR_ABORTED/.test(e));
         ok(errs.length === 0, `[${vp}] 페이지 오류 0 (마을·헌터 교체)`, errs.slice(0, 5));
       } catch (e) { ok(false, `[${vp}] 브라우저 예외 (마을): ${e.message}`); } finally { await s2.close(); }

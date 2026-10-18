@@ -255,7 +255,7 @@ export class ResultsScene extends Scene {
     const lw = measureW(ctx, label, size, 500, FONT.body), rw = measureW(ctx, right, size, 800, FONT.num);
     const m0 = Math.round(x + 30 + lw + 16), m1 = Math.round(x + w - 30 - rw - 16);
     if (m1 - m0 < 40) return;
-    const sz = Math.max(12, size - 2);
+    const sz = Math.max(12, size - (r.kind === 'hero' ? 2 : 4));   // 대기 헌터 이름은 한 단계 작게 (폴드에서 두세 명이 들어가게)
     if (r.kind === 'hero') {
       // 막대: 시작 위치(레벨 + 채움)에서 지금 위치로. 레벨이 오르면 「Lv.4→5」(금색)
       const p = this.expT0 == null ? 0 : ease.outCubic(clamp((this.t - this.expT0) / 0.9, 0, 1));
