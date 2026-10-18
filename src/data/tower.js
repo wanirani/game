@@ -345,8 +345,9 @@ export class TowerPlanner {
 //  - 이정표: data/cosmetics.js TOWER_MILESTONES (10·20·30·40·50층 → 잔상, K1 장부)
 //  - 기록: 결과·온라인 제출에 v: 2 (서버는 모르는 필드를 버린다), 기기 기록에 「시즌 2」 표시 (v 가 없는 옛 기록 = 시즌 1)
 //  - 층 점수 상한: 한 층에서 오르는 점수는 TOWER_RULES.maxScorePerFloor 를 넘지 않는다 (장면이 world.addScore 를 감싼다) →
-//    어떤 판이든 서버 검사 '점수 ≤ (돌파한 층 + 1) × maxScorePerFloor' 를 넘지 않는다. 층마다 건너뛸 수 없는 연출(TOWER_PHASE)은 그대로라
-//    변이·계약·갈림길·상인이 한 층을 minFloorSec 보다 빨리 끝내게 하지 않는다 (tools/test_tower.mjs '욕심 판' 이 둘 다 잰다)
+//    어떤 판이든 서버 검사 '점수 ≤ (돌파한 층 + 1) × maxScorePerFloor' 를 넘지 않는다. 층마다 건너뛸 수 없는 연출(TOWER_PHASE)은 그대로이고
+//    출구는 층에 들어온 지 minFloorSec + 0.1초가 지나야 열린다 (장면 canLeave — 연출 시간의 소수점 합에 맡기지 않는다) → 변이·계약·갈림길·
+//    상인이 한 층을 minFloorSec 보다 빨리 끝내게 하지 않는다 (tools/test_tower.mjs '욕심 판' 이 실제 서버 처리기로 둘 다 잰다)
 
 export const TOWER_VERSION = 2;
 export const TOWER_SEASON = '시즌 2';
