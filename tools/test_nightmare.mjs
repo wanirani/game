@@ -121,6 +121,7 @@ ok(TRIAL.trialOf('nm_zz') == null, '모르는 id → 없음');
   ok(!/emit\(\s*['"](bossKilled|stageCleared)['"]/.test(nmj), 'nightmare.js: bossKilled · stageCleared 를 내지 않는다');
   ok(/TRIAL\.trialOf\(this\.tid\)/.test(te) && /NM_TITLE/.test(te), 'trial_end.js: 악몽 행 · 제목');
   ok(/world\.opts\?\.nightmare/.test(boss) && /this\.inferno \|\|= !!nm/.test(boss) && /shapeLv/.test(boss), 'boss.js: opts.nightmare → inferno · 배율 · 이야기 모양 레벨');
+  ok(!/this\.nm = \{/.test(boss), 'boss.js: 보스 필드 이름 nmScale (네메인의 this.nm 패턴 상태와 겹치지 않게)');
   ok(/import\('\.\/nm_hazards\.js'\)/.test(nmj) && !/^import[^\n]*nm_hazards/m.test(nmj), 'nm_hazards.js 는 늦게 받는다 (첫 화면 번들 밖)');
   ok(!/\bassets\/painted\b|bake\(|requestRig\(/.test(src('src/game/nm_hazards.js')), '감독: 새 그림/굽기 없음');
 }
@@ -323,7 +324,7 @@ async function enterFight(s, id, opts = {}) {
     const shape = Number.isFinite(nm?.baseLevel) ? nm.baseLevel : lv;
     const early = 1 + Math.max(0, 10 - (shape - 1)) * 0.1, late = 1 / (1 + Math.max(0, shape - 24) * 0.035);
     const base = enemyStats({ ...def, lv }, lv, { ...d, enemyHp: (d.bossHp ?? d.enemyHp) }, false);
-    return { id: b.def?.id ?? b.id, inferno: b.inferno, nm: b.nm ?? null, maxHp: b.stats.maxHp, atk: b.stats.atk, aggro: b.aggro, dAggro: d.aggro ?? 1,
+    return { id: b.def?.id ?? b.id, inferno: b.inferno, nm: b.nmScale ?? null, maxHp: b.stats.maxHp, atk: b.stats.atk, aggro: b.aggro, dAggro: d.aggro ?? 1,
       wantHp: Math.round(base.maxHp * (def.hpMul ?? 1) * early * late * (nm?.hpMul ?? 1)), baseAtk: base.atk };
   });
   return { W, B };
@@ -386,7 +387,7 @@ async function fightCase(s, vp, id) {
   ok(B && B.id === e.boss, `${tag}: 보스 ${e.boss}`, B?.id);
   if (B) {
     ok(B.inferno === true, `${tag}: inferno === true`);
-    ok(B.nm && B.nm.hpMul === e.hpMul && B.nm.atkMul === e.atkMul && B.nm.spMul === e.spMul, `${tag}: boss.nm 배율`, B.nm);
+    ok(B.nm && B.nm.hpMul === e.hpMul && B.nm.atkMul === e.atkMul && B.nm.spMul === e.spMul, `${tag}: boss.nmScale 배율`, B.nm);
     ok(near(B.aggro, B.dAggro * e.spMul, 0.001), `${tag}: aggro = 난이도 × ${e.spMul} (${B.aggro})`);
     ok(near(B.maxHp, B.wantHp), `${tag}: 체력 = 이야기 모양 × ${e.hpMul} (${B.maxHp} / ${B.wantHp})`);
     ok(near(B.atk, Math.round(B.baseAtk * e.atkMul)) || B.atk >= B.baseAtk, `${tag}: 공격 × ${e.atkMul} (${B.atk} / ${B.baseAtk})`);

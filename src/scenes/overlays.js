@@ -36,8 +36,8 @@ import { clamp, ease, rgba, hexToRgb } from '../core/math.js';
 import { isBust, faceOf, softBust } from '../render/portrait.js';
 import { saves } from '../core/save.js';
 import { STAT_INFO } from '../game/stats.js';
-import { hudSafe } from '../render/hud_layout.js';
-import { touchpad } from '../core/touchpad.js';   // [s5:p4a] 이름판 띠가 보이는 패드 버튼 앞에서 끝나게
+import { hudSafe, hudLayout } from '../render/hud_layout.js';
+import { touchpad, PAD_LAYOUT_FOLD, planExtent } from '../core/touchpad.js';   // [s5:p4a] 이름판 띠가 보이는 패드 버튼·HUD 스킬 원호 앞에서 끝나게
 
 const DEG = Math.PI / 180;
 const GOLD = '#e8c872', INK = '#1a0006', INK_SHADOW = '#5a0010', INK_RED = '#b0102a';
@@ -309,6 +309,22 @@ export class BossIntroScene extends Scene {
         if (r.y < by + bh / 2 + 6 && r.y + r.h > by - bh / 2 - 26 && r.x > vw * 0.45) xe = Math.min(xe, r.x - 14);
       }
     } catch { /* 패드 정보가 없으면 기본 폭 */ }
+    // 키보드·게임패드 폴드: HUD 가 캔버스에 그리는 스킬 원호 (hud.js drawArcHUD 와 같은 자리 계산) 앞에서도 끝낸다
+    try {
+      const A = this.world && !this.world.hudHidden ? hudLayout(this.world, vw, vh)?.arc : null;
+      if (A && A.w > 0) {
+        if (this._arcA !== A || this._arcBy !== by || this._arcVw !== vw) {
+          this._arcA = A; this._arcBy = by; this._arcVw = vw; this._arcXe = Infinity;
+          const s = A.w / (planExtent(PAD_LAYOUT_FOLD).extent + 12);
+          for (const id in PAD_LAYOUT_FOLD) {
+            const [rt, bt, d0] = PAD_LAYOUT_FOLD[id];
+            const rad = d0 * s * 0.46, cx = A.x + A.w - rt * s, cy = A.y + A.h - bt * s;
+            if (cy - rad < by + bh / 2 + 6 && cy + rad > by - bh / 2 - 26 && cx - rad > vw * 0.45) this._arcXe = Math.min(this._arcXe, cx - rad - 14);
+          }
+        }
+        xe = Math.min(xe, this._arcXe);
+      }
+    } catch { /* HUD 배치가 없으면 기본 폭 */ }
     const x1 = Math.max(vw * 0.55, xe), bw = x1 - x0;
     ctx.save();
     ctx.globalAlpha = out;

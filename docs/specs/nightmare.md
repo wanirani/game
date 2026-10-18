@@ -22,7 +22,7 @@
 | 붙이기 | `attachNightmare(scene, w, T)` ← `trial.attachTrial` 이 끝에서 부른다 | 시련의 덮어쓰기(경험치 0 · 점수/목숨 저장 안 함 · 결계 · 실패 → `trialEnd`)를 그대로 쓰고, 보스 격파 · 종료 · 배너 · 비틀기 감독만 바꾼다 |
 | 격파 | `w.onBossDefeated` → 연출(붉은 고리) · 배너 「악몽 격파」 · 비틀기 정리 | 진행·플래그·`bossKilled`·전리품 없음. `bus 'nightmareCleared'` 한 번 |
 | 마침 | `completeNightmare(game, w, T)` | 기록 · 첫 격파 보상 · 메타 `nm` · 슬롯/메타 저장 → 마을 (§5) |
-| 실패 | 시련과 같음: `failTrial` → `trialEnd` | **목숨·사망 수 그대로.** 도전 횟수는 악몽 기록에 센다 (`hero.trials` 를 쓰지 않는다) |
+| 실패 | 시련과 같음: `failTrial` → `trialEnd` | **목숨·사망 수 그대로.** 도전 횟수는 악몽 기록에 센다 (`hero.trials` 를 쓰지 않는다). 실패 화면(`trial_end.js`, 최소 표기): 제목 「악몽 실패」 · 이름 진홍 · 엘리제 대사 `NM_FAIL_LINE` · 도전 횟수는 `state.nm` · 지도에서 왔으면 둘째 단추 「마을로」 (보상 줄은 P3b) |
 | 다시 | `trial.retryTrial` → 조건 다시 확인 → 새 월드로 보스방 | |
 | 떠남 | `trial.leaveTrial` → `leaveNightmare(game, id, why)` | 보스전 도중 포기는 한 번의 도전으로 센다 · 저장 → 마을 (`from` 이 church 면 성당 앞 + 성당, worldmap 이면 동쪽 문) |
 
@@ -87,7 +87,7 @@ inferno ||= !!nm                                    // 강화 패턴
 shapeLv = nm?.baseLevel ?? world.stage.level        // 초반·후반 보정은 이야기 레벨 기준 (싸움 길이의 모양 유지)
 maxHp = enemyStats(def, level).maxHp × def.hpMul × early(shapeLv) × late(shapeLv) × nm.hpMul
 atk  ×= nm.atkMul      aggro ×= nm.spMul (공격 사이 쉼만 짧아진다 — 예고 시간은 그대로)
-boss.nm = { hpMul, atkMul, spMul }                  // 시험·도구용
+boss.nmScale = { hpMul, atkMul, spMul }             // 시험·도구용 ('nm' 은 네메인 패턴 상태 이름이라 피한다)
 ```
 
 - 레벨은 `levelOverride`(= 악몽 레벨)로 이미 오른다. `early`/`late` 를 이야기 레벨로 계산하는 까닭: 1장 나이트윙(레벨 1, early ×2.0)이 악몽 레벨 9 에서 ×1.2 로 떨어져 오히려 짧아지는 것을 막는다 — 그래서 `hpMul` 이 곧 "이야기 싸움 대비 길이"가 된다. `balance.mjs --nm` 은 이 식을 그대로 따른다.
@@ -108,7 +108,8 @@ boss.nm = { hpMul, atkMul, spMul }                  // 시험·도구용
 - **첫 격파 보상 (슬롯마다 한 번):** `rollEquipDrop(world, 레벨 + 2, { minRarity: reward.rarity, boost: 1 })` 장비 하나 + 골드 `500 × 레벨`. 가방이 차면 보관함(`queueLoot`). 두 번째 격파부터는 보상 없음 (기록·횟수만).
 - **K1 메타 `meta.nm`** (기기·계정 단위, `saves.saveMeta` — 탑의 `towerBest` 와 같은 저장): `{ clears, ids: { [id]: 처음 시각 } }`. 이 기기에서 처음 이긴 악몽이면 `ids` 에 넣고 `clears = ids 수` (= "+1"). 같은 보스를 여러 번, 여러 슬롯에서 이겨도 늘지 않는다 → 「군주」(nm 25) = 25명을 모두 꺾음.
 - **클라우드:** `cloud.js mergeMeta` 가 `nm` 을 합친다 — `ids` 합집합(이른 시각), `clears = max(a, b, ids 수)`. 그대로 두면 "이 기기 값 우선" 규칙 때문에 다른 기기의 기록이 사라진다. 슬롯 `state.nm` 은 슬롯 통째 올리기에 실린다. 서버는 모르는 필드를 허용한다 (바꿀 것 없음).
-- `completeNightmare` 결과 `w.nmResult = { id, time, best, newBest, first, items: [이름…], gold, clears }` — P3b 의 결과 줄이 읽는다.
+- `completeNightmare` 결과 `w.nmResult = { id, time, best, newBest, first, items: [이름…], gold, clears, metaFresh }` — P3b 의 결과 줄이 읽는다.
+- 알림: 첫 격파는 「첫 격파 보상: <장비>」 + 「+N G」 (장비는 `addItem(..., { silent: true })` 로 넣어 「획득」 알림이 겹치지 않는다), 다시 이기면 새 기록일 때만 「최고 기록 N초」. 시작할 때 「악몽의 규칙: <비틀기> — <설명>」 한 번 — 앞 판의 규칙 안내가 컷인 등으로 미뤄져 남아 있으면 붙일 때·떠날 때 지운다.
 
 ## 6. 악몽의 모습 (새 굽기 0)
 

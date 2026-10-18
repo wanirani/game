@@ -95,8 +95,8 @@ export function drawEnemy(ctx, e, world) {
   const rig = pm ? requestRig(pm.spec) : null;
   if (e.nmMinion && !(e.dying > 0)) {   // [nightmare] 악몽 하수인 (docs/specs/nightmare.md §6): 발밑·몸 뒤 진홍 후광
     const r = Math.max(e.w, e.h) * 0.9 + 18, t = world?.time ?? e.t ?? 0;
-    halo(ctx, e.cx, e.bottom - e.h * 0.45, r, '#a00c24', 0.45 + 0.12 * Math.sin(t * 4 + e.w));
-    halo(ctx, e.cx, e.bottom - 3, r * 0.7, '#ff2a3a', 0.28);
+    halo(ctx, e.cx, e.bottom - e.h * 0.45, r, '#b00c26', 0.62 + 0.14 * Math.sin(t * 4 + e.w));
+    halo(ctx, e.cx, e.bottom - 3, r * 0.75, '#ff2a3a', 0.5);
   }
   ctx.save();
   // 카메라 공간 (채색 렌더러의 월드 좌표 파티클용). Enemy.draw 가 맞음 반응 변환(흔들림·눕기·기울기) 직전에 잡아 둔 e.camXf 를 먼저 쓴다 (R1-REQ-71)
