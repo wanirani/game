@@ -1822,10 +1822,13 @@ function drawTrail(E, K, p, mv, which) {
   if (G.tint || !G.fx) return;
   const ph = phaseAt(mv, ST.t);
   const t = ph.t, h0 = ph.h0, h1 = ph.h1;
-  const fade = t > h1 ? 1 - (t - h1) / 0.09 : 1;
+  // 궤적 끝은 팔로스루가 가장 멀리 나간 시점(회복 21%)까지 칼끝을 따라간다 — 판정 끝(h1)에서 멈추면 칼이 더 나간 뒤
+  // 궤적만 옛 자리에 남아 떨어져 보인다 (대검 내려찍기·마무리타)
+  const ftEnd = !ST.spin && (ATK_FT[K.W.type] ?? 0.1) > 0 ? Math.max(0.015, 0.21 * Math.max(0.02, ph.dur - h1)) : 0.015;
+  const fade = t > h1 ? 1 - (t - h1) / Math.max(0.09, ftEnd + 0.05) : 1;
   if (t < h0 - 0.004 || fade <= 0) return;
   const win = mv.finisher ? 0.12 : 0.085;
-  const tEnd = Math.min(t, h1 + 0.015), tStart = Math.max(h0 - 0.015, t - win);
+  const tEnd = Math.min(t, h1 + ftEnd), tStart = Math.max(h0 - 0.015, t - win);
   if (tEnd <= tStart + 0.003) return;
   const L = weaponReach(K.W);
   let ext = 0;
