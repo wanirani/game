@@ -112,6 +112,20 @@ bus.on('levelUp', ({ level } = {}) => {
  *  동적 import 는 캐시에서 바로 온다 (정적 import 로 월드의 의존을 늘리지 않는다) */
 const PAINT_Q = { q: null, asked: false };
 const LEDGE_OFF = [];
+/** 연출 동안 조명 어둠 층 해상도를 0.25 배로 (필살기 감독 skills.js ultLightLow·ultLightRestore 와 같은 값·같은 규칙 — Stage 4 perf:
+ *  어둠 층 래스터가 큰 빛·카메라 당김 프레임의 가장 큰 비용). 이미 그 이하면 그대로, 되돌릴 때 그사이 품질이 바뀌었으면 그 값을 둔다 */
+const FX_LRES = 0.25;
+function fxLightLow(w) {
+  const L = w?.lighting;
+  if (!L || !(Number(L.res) > FX_LRES + 0.005)) return null;
+  const r = L.res;
+  L.res = FX_LRES;
+  return r;
+}
+function fxLightRestore(w, r) {
+  const L = w?.lighting;
+  if (L && r != null && L.res === FX_LRES) L.res = r;
+}
 function warmPaintQ() {
   if (PAINT_Q.asked) return;
   PAINT_Q.asked = true;
@@ -135,6 +149,7 @@ class BossReveal {
     const w = this.w, R = BI.REVEAL;
     this.started = true; this.t = 0;
     w.hudHidden = true;
+    this.lres = fxLightLow(w);   // finish 에서 되돌린다
     const b = w.boss, cam = w.camera;
     if (b && cam) {
       const ab = typeof b.artBounds === 'function' ? b.artBounds({ x: 0, y: 0, w: 0, h: 0 }) : null;
@@ -269,6 +284,7 @@ class BossReveal {
     if (this.done) return;
     this.done = true; this.hold = false; this.xf.on = false;
     const w = this.w;
+    fxLightRestore(w, this.lres); this.lres = null;
     if (this.started) {
       try { w.camera?.cineEnd?.(0.45); } catch { /* 카메라 없음 */ }
       w.hudHidden = false;
@@ -288,10 +304,11 @@ class BossFinale {
     this.el = BI.elementOf(this.id, boss?.def);
     this.cx = boss.cx; this.cy = boss.cy; this.fy = boss.y + boss.h; this.bw = Math.max(80, boss.w);
     this.t = 0; this.n = 0; this.moteAcc = 0; this.sealOn = false; this.camOn = false; this.camDone = false;
+    this.lres = fxLightLow(w);   // 끝(FIN.end)·방 이동(stop)에서 되돌린다
     const fx = w.fx, el = this.el;
-    // 0초: 속성 폭발 두 겹 + 속성 고리 (예전 'fire' ×20 자리)
-    fx.burst(el.burst, this.cx, this.cy, 28, { speed: 380, jitter: this.bw * 0.25, ...(el.shardColor ? { color: el.shardColor } : {}) });
-    fx.burst(el.burst2, this.cx, this.cy, 16, { speed: 240, jitter: this.bw * 0.3 });
+    // 0초: 속성 폭발 두 겹 + 속성 고리 (예전 'fire' ×20 자리 — 입자 수는 예전 160 + 여기 28 + 알갱이 ≈ 30 으로 묶는다)
+    fx.burst(el.burst, this.cx, this.cy, 18, { speed: 380, jitter: this.bw * 0.25, ...(el.shardColor ? { color: el.shardColor } : {}) });
+    fx.burst(el.burst2, this.cx, this.cy, 10, { speed: 240, jitter: this.bw * 0.3 });
     fx.ring(this.cx, this.cy, { color: el.color, r0: 20, r1: 340, life: 0.6, width: 10 });
     // 임팩트 프레임: 필살기 마무리와 같은 내보낸 함수 (번쩍임은 onBossDefeated 가 이미 했다 · 소리는 boss_die 하나로)
     try { ULTFX.final(w, this.cx, this.cy, { color: el.color, accent: el.glow, tier: 2, impact: true, flourish: false, silent: true, noFlash: true, shake: false }); } catch (e) { console.warn('[finale] ultfx', e); }
@@ -309,7 +326,7 @@ class BossFinale {
     }
     if (!this.sealOn && t >= FIN.seal) { this.sealOn = true; w.addOverlay(makeSealOverlay(this)); w.addOverlay(makePillarOverlay(this)); }
     if (t >= FIN.motes[0] && t < FIN.motes[1]) {
-      this.moteAcc += dt * 26 * (fx.quality ?? 1);
+      this.moteAcc += dt * 14 * (fx.quality ?? 1);
       while (this.moteAcc >= 1) {
         this.moteAcc -= 1;
         const gold = Math.random() < 0.55;
@@ -318,8 +335,10 @@ class BossFinale {
       }
     }
     if (this.camOn && !this.camDone && t >= FIN.camOut) { this.camDone = true; try { w.camera?.cineEnd?.(0.6); } catch { /* */ } }
-    if (t >= FIN.end && w.finale === this) w.finale = null;
+    if (t >= FIN.end && w.finale === this) { this.stop(); w.finale = null; }
   }
+  /** 끝·방 이동: 낮춰 둔 조명 해상도를 되돌린다 (두 번 불러도 된다) */
+  stop() { fxLightRestore(this.w, this.lres); this.lres = null; }
   lights(L) {
     if (!L) return;
     const t = this.t, k = clamp(1 - t / 1.2, 0, 1);
@@ -530,7 +549,7 @@ export class World {
     if (!room) { console.error('room not found', roomId); return; }
     this.gimmick?.dispose?.(); this.gimmick = null;   // [hook:gimmick]
     this.fx.clearDecals?.(); this.overlays.length = 0; this.roomFoes = 0; this.killPend.length = 0;   // [hook:feel]
-    if (this.reveal || this.finale) { this.reveal?.finish?.(true); this.reveal = null; this.finale = null; }   // [s5:p4a] 방이 바뀌면 보스 등장·격파 연출도 끝 (보스방 입구 재도전의 방 다시 불러오기 포함)
+    if (this.reveal || this.finale) { this.reveal?.finish?.(true); this.finale?.stop?.(); this.reveal = null; this.finale = null; }   // [s5:p4a] 방이 바뀌면 보스 등장·격파 연출도 끝 (보스방 입구 재도전의 방 다시 불러오기 포함)
     this.stashRoomLoot();   // 가방이 가득 차 못 주운 상자·보스 전리품은 방을 떠나도 보관함으로
     this.room = room; this.roomId = roomId;
     this.map = new TileMap(room);

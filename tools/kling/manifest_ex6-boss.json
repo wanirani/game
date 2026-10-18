@@ -1,0 +1,36 @@
+{
+  "package": "EX6-BOSS (CH26 — 외전 26장 파라켈 b_paracel)",
+  "status": "planned — no generations yet (CH26-A wrote the plan only; the ART batch fills generations, creditsAtStart/End and total)",
+  "spec": "docs/specs/ex_s26.md §2.2",
+  "model": "kling-image-v3_0_omni (portraits: text_to_image · parts: image_to_image, img_resolution 2k)",
+  "prompts": "this file (planned.shots[].prompt) — move into tools/painted/prompts/ex6-boss.mjs (SHOTS) when the ART batch starts",
+  "refs": ["portrait", "portraitUrl"],
+  "creditsCap": 30,
+  "imagesCap": 15,
+  "creditsAtStart": null,
+  "planned": {
+    "style": "Same painterly dark-fantasy oil-painting style as the Part 1 boss portraits (b_chimera, b_frostqueen): soft visible brush strokes, no black outlines, not cartoon, not cel-shaded, not anime, not 3D render. Puppet direction: strict side view facing RIGHT (e_paracel.js local +x = facing).",
+    "partSuffix": "Flat uniform plain mid-grey studio background (#808080), no gradient, no floor, no cast shadow on the background. Strong key light from the upper left, darker lower right, crisp readable silhouette. Isolated object, nothing else in the image, no text, no labels. No smoke, no mist, no sparks, no particles, no glow haze. No glowing outline, no light halo around the silhouette.",
+    "who": "Paracel, the chief alchemist of Dracula's castle: a very tall, gaunt old man, long bald elongated skull with a small brass screw plug set in the crown, a shrivelled ear, a few long thin white hairs at the back of the head, sunken cheeks, silver mercury veins spreading over half of his face like cracked quicksilver, a thin line of silver drool, stitched mouth corners, one milky blind eye, a stack of three brass magnifying lenses strapped over the other eye, fingertips turned to solid gold; a long black frayed greatcoat, a stained leather alchemist apron with blood and mercury stains, a belt holding three glass flasks (red-orange fire, pale blue ice, poison green) and one golden elixir vial; on his back a man-torso-sized brass-framed glass culture tank of murky green fluid in which a curled foetal homunculus floats, joined to his spine by tubes; his far arm is a grafted homunculus arm with too many knobbly joints, stitched seams, a single blinking eye in one joint and a fan of five small infant hands at the end.",
+    "shots": [
+      { "shot": "pc_portrait", "tool": "text_to_image", "aspect": "3:4", "count": 2, "credits": 4, "use": "portraits/b_paracel (761x968 q82, crop 56px bottom like the other boss portraits; form2 uses the same portrait)",
+        "prompt": "Paracel, the mercury alchemist (see 'who'), standing in his underground alchemical workshop lit by an orange furnace glow, golden statues of plague children in the dim background, bubbling green culture tanks, brass pipes; grotesque, sad and menacing; dark gothic horror boss concept art, highly detailed painterly digital illustration, dramatic lighting, video game boss portrait, a single character, no text, no watermark." },
+      { "shot": "pc_body", "tool": "image_to_image", "aspect": "9:16", "count": 2, "credits": 4, "refs": ["portrait"], "use": "torso + apron + coat tails (Strand) + legs + boots",
+        "prompt": "Strict side view (profile) facing RIGHT of the whole body of the alchemist from 图片1 WITHOUT ARMS and WITHOUT the glass tank on his back: frayed black greatcoat, stained leather apron, belt with three flasks, thin legs in dark trousers with a dirty bandage around the near knee, worn leather boots; standing straight, feet slightly apart." },
+      { "shot": "pc_graft", "tool": "image_to_image", "aspect": "16:9", "count": 1, "credits": 2, "refs": ["portrait"], "use": "graft-arm segments (Chain ×6) + infant hands",
+        "prompt": "The grafted homunculus arm of the alchemist from 图片1 laid out straight and horizontal pointing right, no body: six fleshy pink segments joined by knobbly swollen joints, dark stitched seams across every segment, one joint holding a single human eye, ending in a fan of five small infant hands. Separately, below it, one of the infant hands alone." },
+      { "shot": "pc_tank", "tool": "image_to_image", "aspect": "1:1", "count": 1, "credits": 2, "refs": ["portrait"], "use": "culture tank (phase 1) + broken tank (phase 2)",
+        "prompt": "Two separate objects side by side with wide empty space: left, the brass-framed glass culture tank from 图片1 seen from the side, murky green fluid, a curled pale foetal homunculus with a large head floating inside, an umbilical tube, rising bubbles, brass lid and base with rivets, two tubes leaving its side; right, the same tank shattered: only the brass base remains with jagged glass shards standing up and a little green fluid." },
+      { "shot": "pc_heads", "tool": "image_to_image", "aspect": "4:3", "count": 1, "credits": 2, "refs": ["portrait"], "use": "head (idle) + head (scream / gilded)",
+        "prompt": "Two separate heads of the alchemist from 图片1 in strict side view facing RIGHT, same scale, no body, wide empty space between them: left, calm and cold with the brass triple magnifier over the near eye and silver mercury veins; right, the same head with the mouth torn open in a scream, the magnifier knocked askew." },
+      { "shot": "pc_chest", "tool": "image_to_image", "aspect": "1:1", "count": 1, "credits": 2, "refs": ["portrait"], "use": "phase-2 chest face",
+        "prompt": "Close-up of the alchemist's bony chest from 图片1 split open, with the face of the foetal homunculus half sunk into the flesh: torn red-black flesh rim, shards of tank glass stuck in the rim, dark veins radiating outwards, one eyelid sewn shut with crude stitches, the other eye bulging and bloodshot with a gold iris and a needle-thin pupil, a torn slit mouth full of tiny teeth. Grotesque, painterly, no gore splatter." },
+      { "shot": "pc_props", "tool": "image_to_image", "aspect": "1:1", "count": 1, "credits": 2, "refs": ["portrait"], "use": "flasks ×3 · golden vial · lens · crucible · gold shards",
+        "prompt": "About eight separate objects belonging to the alchemist from 图片1 in a loose grid with wide empty space, no piece touches another: a glass flask of glowing red-orange liquid, a glass flask of pale blue liquid with frost, a glass flask of bubbling poison-green liquid, a small golden elixir vial with a wax seal, a large brass-rimmed magnifying lens on a handle, an iron crucible, two jagged shards of raw gold." }
+    ],
+    "plannedTotal": { "images": 9, "credits": 18, "retryReserve": { "images": 6, "credits": 12 }, "note": "cap 15 images · 30 credits incl. retries; heads/arms sheets failed before (ex4/ex5) — retry with the source mirrored" }
+  },
+  "generations": [],
+  "creditsAtEnd": null,
+  "total": { "images": 0, "credits": 0, "retries": 0, "note": "nothing generated in CH26-A (new-files-only design batch)" }
+}
