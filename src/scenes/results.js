@@ -90,14 +90,20 @@ export class ResultsScene extends Scene {
     const prev = st.progress.cleared[stage.id] && typeof st.progress.cleared[stage.id] === 'object' ? st.progress.cleared[stage.id] : null;
     const prevRank = typeof prev?.rank === 'string' && 'SABCD'.includes(prev.rank) && prev.rank.length === 1 ? prev.rank : null;
     const better = !prevRank || 'SABCD'.indexOf(this.rank.r) < 'SABCD'.indexOf(prevRank);
-    st.progress.cleared[stage.id] = { rank: better ? this.rank.r : prevRank, time: Math.min(Number.isFinite(prev?.time) ? prev.time : 1e9, run.time), score: Math.max(Number.isFinite(prev?.score) ? prev.score : 0, this.finalScore) };
+    // [autofix 5] 자동 전투(AUTO)를 쓴 판(run.assisted)은 사람 기록(랭크·시간·점수)을 덮지 않는다. 사람 기록이 없을 때만 auto: true 로 남기고,
+    // 다음에 직접 깬 기록은 auto 기록을 그대로 대신한다
+    this.assisted = !!run.assisted;
+    const human = prev && !prev.auto ? prev : null;
+    const best = (p, r) => ({ rank: !p?.rank || 'SABCD'.indexOf(r) < 'SABCD'.indexOf(p.rank) ? r : p.rank, time: Math.min(Number.isFinite(p?.time) ? p.time : 1e9, run.time), score: Math.max(Number.isFinite(p?.score) ? p.score : 0, this.finalScore) });
+    if (this.assisted) st.progress.cleared[stage.id] = human && prevRank ? prev : { ...best(prevRank ? prev : null, this.rank.r), auto: true };
+    else st.progress.cleared[stage.id] = human || !prev ? { rank: better ? this.rank.r : prevRank, time: Math.min(Number.isFinite(prev?.time) ? prev.time : 1e9, run.time), score: Math.max(Number.isFinite(prev?.score) ? prev.score : 0, this.finalScore) } : best(null, this.rank.r);
     if (stage.next && !st.progress.unlocked.includes(stage.next)) st.progress.unlocked.push(stage.next);
     for (const u of stage.unlocks || []) if (!st.progress.unlocked.includes(u)) st.progress.unlocked.push(u);
     if (!stage.side) st.progress.chapter = Math.max(st.progress.chapter ?? 0, stage.chapter ?? 0);   // 외전(s21, side)은 이야기 장 진행에 들지 않는다
     st.lives = Math.max(run.lives, world.diff.lives);
     this.qolSettle(world, st);
-    this.game.recordScore?.(this.finalScore, stage.id);
-    bus.emit('stageCleared', { stageId: stage.id, rank: this.rank.r, time: run.time, score: this.finalScore, noDamage: run.damageTaken === 0, diff: st.difficulty, charId: st.charId });   // [hook:ach] 무결 (ch_nodmg_stage) — 여기서는 game.world 가 이미 비었다
+    if (!this.assisted) this.game.recordScore?.(this.finalScore, stage.id);   // [autofix 5] AUTO 판은 점수판에 올리지 않는다
+    bus.emit('stageCleared', { stageId: stage.id, rank: this.rank.r, time: run.time, score: this.finalScore, noDamage: run.damageTaken === 0, diff: st.difficulty, charId: st.charId, assisted: this.assisted });   // [hook:ach] 무결 (ch_nodmg_stage) — 여기서는 game.world 가 이미 비었다
     saves.write(st.slot, st);
     this.shownRows = 0; this.rowT = 0; this.scoreShown = this.baseScore;
     this.rankShown = 0; this.left = false;
@@ -259,6 +265,12 @@ export class ResultsScene extends Scene {
       ctx.scale(Math.max(0.01, k), Math.max(0.01, k)); ctx.rotate(-0.15);
       bloodText(ctx, this.rank.r, 0, L.rankSize * 0.26, { size: L.rankSize, style: this.rank.style, drips: 0.6, t: rt });
       ctx.restore();
+      if (this.assisted) { // [autofix 5] 자동 전투를 쓴 판: 랭크 아래 작은 꼬리표 (기록·점수판에는 남지 않는다)
+        const tw = 84, th = 22, tx = Math.round(L.rankX - tw / 2), ty = Math.round(L.rankY + L.rankSize * 0.42);
+        ctx.fillStyle = 'rgba(20,12,16,0.82)'; ctx.fillRect(tx, ty, tw, th);
+        ctx.strokeStyle = '#8fb8e0'; ctx.lineWidth = 1; ctx.strokeRect(tx + 0.5, ty + 0.5, tw - 1, th - 1);
+        text(ctx, 'AUTO 사용', L.rankX, ty + 16, { size: 13, align: 'center', weight: 800, color: '#bcd8f0' });
+      }
       text(ctx, `보상 ${fmt(this.goldReward)} G`, L.rewardX, L.rewardY, { size: 18, align: L.tall ? 'center' : 'left', weight: 800, color: '#ffd84a' });
       const cards = L.tall && L.loot?.h >= 96 && this.qol?.gear?.length;
       if (cards) this.drawLoot(ctx, L);

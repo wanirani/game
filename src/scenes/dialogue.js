@@ -439,6 +439,13 @@ export class DialogueScene extends Scene {
     const S = safeOf(this);
     let x = Lo.W - 10 - S.r - items.length * cw - (items.length - 1) * gap;
     const y = 6 + S.t;
+    // 마을(허브) 위 대화 (PLAY P16): 마을 HUD(골드 판 · 유물 줄 · 헌터 교체/메뉴 단추)가 버튼 줄과 겹쳐 보였다 → 화면 위쪽 전체를
+    // 영화 띠처럼 어둡게 덮는다 (대화 중에는 아래 장면 단추가 눌리지 않는다 — 탭은 맨 위 장면만). 전투 스테이지는 예전처럼 버튼 줄 뒤만
+    if (this.world?.mode === 'town') {
+      const bandH = Math.round(y + ch + 72);
+      ctx.fillStyle = cachedGrad(ctx, `dlgTown|${bandH}`, (c) => { const g = c.createLinearGradient(0, 0, 0, bandH); g.addColorStop(0, 'rgba(6,2,8,0.94)'); g.addColorStop(0.62, 'rgba(6,2,8,0.86)'); g.addColorStop(1, 'rgba(6,2,8,0)'); return g; });
+      ctx.fillRect(0, 0, Lo.W, bandH);
+    }
     // 버튼 줄 뒤 옅은 어둠 (아래 장면의 HUD 글자와 겹쳐도 읽히게)
     const gw = items.length * cw + (items.length - 1) * gap + 12;
     ctx.fillStyle = cachedGrad(ctx, `dlgCtl|${x}|${gw}`, (c) => { const g = c.createLinearGradient(x - 6, 0, x - 6 + gw, 0); g.addColorStop(0, 'rgba(6,2,8,0)'); g.addColorStop(0.12, 'rgba(6,2,8,0.7)'); g.addColorStop(1, 'rgba(6,2,8,0.78)'); return g; });

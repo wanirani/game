@@ -697,16 +697,18 @@ async function browserTests() {
     console.log('\n[browser] override: 사람 입력이 이긴다');
     const s = await open('desk', 'index.html?scene=stage&stage=s01&room=r1');
     await s.eval(() => { const g = window.__game, w = g.world, p = w.player; p.x = 26 * 48; p.y -= 4; g.state.auto = { level: 'battle' }; });
-    await step(s.page, 30, false);
-    const a = await s.eval(() => ({ vx: window.__game.world.player.vx, why: window.__game.autoHud.why }));
+    // 자동은 뒤에서 솟은 좀비를 먼저 처리할 수 있다 (처치 경직 + 채찍 마무리 ≈ 0.7 초) → → 로 달릴 때까지 최대 2 초
+    let a = null;
+    for (let i = 0; i < 40; i++) { await step(s.page, 3, false); a = await s.eval(() => ({ vx: window.__game.world.player.vx, why: window.__game.autoHud.why })); if (a.vx > 0) break; }
     await s.page.keyboard.down('ArrowLeft');
     await step(s.page, 2, false);
     const b = await s.eval(() => ({ left: window.__game.input.state.left, right: window.__game.input.state.right, vx: window.__game.world.player.vx }));
     await step(s.page, 20, false);
     const c = await s.eval(() => ({ vx: window.__game.world.player.vx, x: window.__game.world.player.x }));
     await s.page.keyboard.up('ArrowLeft');
-    await step(s.page, 45, false);
-    const d = await s.eval(() => ({ vx: window.__game.world.player.vx, why: window.__game.autoHud.why, auto: window.__game.input.autoActive }));
+    // autoActive 는 '이번 스텝에 자동 입력이 있었나' — 공격 연타 사이 빈 스텝이 있으니 45 스텝 안에 한 번이라도
+    let d = null;
+    for (let i = 0; i < 45; i++) { await step(s.page, 1, false); d = await s.eval(() => ({ vx: window.__game.world.player.vx, why: window.__game.autoHud.why, auto: window.__game.input.autoActive })); if (d.auto && i >= 10) break; }
     ok(a.vx > 0, 'override: 자동이 → 로 간다', a);
     ok(b.left && !b.right, 'override: ← 를 누르는 즉시 자동 → 는 사라진다 (같은 스텝)', b);
     ok(c.vx < 0, 'override: 사람이 누르는 쪽으로 움직인다', c);
