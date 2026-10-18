@@ -3150,12 +3150,13 @@ function trackUlt(e, w) {
 // ── 필살기 동안 조명 어둠 층 해상도 (성능 전용, PERF s4) ──
 // 조명(core/lighting.js)은 어둠 층을 화면의 res 배(보통 0.5) 오프스크린에 그리고 광원마다 방사형 구멍을 늘여 찍는다. 필살기에는
 // 화면만 한 빛(어둠만 걷는 700 px 빛)과 기둥·폭발 빛이 더해지고 카메라도 당겨져 구멍 넓이가 2–3배가 된다: 소프트웨어 캔버스에서
-// 그 늘여 찍기가 필살기 프레임 시간의 거의 절반이었다 (feel U2). 어둠 층은 부드러운 저주파 그림이라 낮음 품질과 같은 0.33 배로
-// 그려도 화면에서 차이가 보이지 않는다 — 필살기 감독이 사는 동안만 낮추고 끝나면(방이 바뀌어 대신 end 가 불려도) 되돌린다
-const ULT_LRES = 0.33;
+// 그 늘여 찍기가 필살기 프레임 시간의 거의 절반이었다 (feel U2). 어둠 층은 부드러운 저주파 그림(64 px 원을 늘인 구멍)이고 필살기
+// 동안은 암전 층·연출이 덮으므로 0.25 배로 그려도 화면에서 차이가 보이지 않는다 (같은 시드 전후 정지 화면 비교: 흔들림 차이 외 같음)
+// — 필살기 감독이 사는 동안만 낮추고 끝나면(방이 바뀌어 대신 end 가 불려도) 되돌린다
+const ULT_LRES = 0.25;
 function ultLightLow(w) {
   const L = w?.lighting;
-  if (!L || !(Number(L.res) > ULT_LRES + 0.005)) return null;   // 이미 낮음 품질(0.33) 이하면 그대로
+  if (!L || !(Number(L.res) > ULT_LRES + 0.005)) return null;   // 이미 그 이하면 그대로
   const r = L.res;
   L.res = ULT_LRES;
   return r;
@@ -3188,7 +3189,7 @@ function ultDirector(w, p, o) {
     life: o.dur, z: 12, d: { i: 0, ...(o.d || {}), scr: S }, follow: bound,
     start(e, ww) {
       ww.cutscene = true; p.vx = 0;
-      e.d.lres = ultLightLow(ww);   // 조명 어둠 층 0.33 배 (end 에서 되돌린다)
+      e.d.lres = ultLightLow(ww);   // 조명 어둠 층 0.25 배 (end 에서 되돌린다)
       e.d.kit = kitLive();
       if (e.d.kit) kitCall('begin', ww, p, { color: v.color, accent: v.accent, tier: v.tier, classId: v.classId, charId: v.charId, dimCol: o.dimCol ?? '#05020a', kind: 'ult', dur: o.dur, maxDur: o.dur + 4, ...(v.colors ? { colors: v.colors } : {}), ...(o.kit || {}) });
       else beginLocal(ww, p, v);
