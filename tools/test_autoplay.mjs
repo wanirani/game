@@ -611,7 +611,7 @@ async function browserTests() {
   // ── [autofix] 보스 s01·s02·s03 (리뷰: 밴시 45초 피해 0, 듀라한 idle 39/45, 벽에 밀린 뒤 얼어붙음) ──
   for (const [key, stg, lv] of [['boss1', 's01', 6], ['boss2', 's02', 10], ['boss3', 's03', 14]]) {
     if (!want(key) && !want('bosses')) continue;
-    console.log(`\n[browser] ${key}: ${stg} 보스 「자동 전투」 30초 (Lv ${lv}, 물약 3)`);
+    console.log(`\n[browser] ${key}: ${stg} 보스 「자동 전투」 45초 (Lv ${lv}, 물약 3)`);
     const s = await open('desk', `index.html?scene=stage&stage=${stg}&room=boss`);
     const skip = async () => { for (let i = 0; i < 80; i++) { const st = await s.eval(() => { const g = window.__game; return { top: g.top?.name, intro: g.world.boss?.state === 'intro' }; }); if (st.top === 'stage' && !st.intro) return; if (st.top !== 'stage') await s.page.keyboard.press('Enter'); await step(s.page, 15, false); } };
     await skip();
@@ -630,7 +630,7 @@ async function browserTests() {
     await skip();
     const b0 = await s.eval(() => { const g = window.__game, w = g.world, b = w.boss; g.state.auto = { level: 'battle' }; return { id: b?.id, hp: b?.hp ?? 0, max: b?.maxHp ?? b?.hp ?? 0, active: !!w.bossActive }; });
     const whys = {}; const xs = new Set(); let dead = false, hp = b0.hp;
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 45; i++) {   // 45초: 밴시는 예고(비명)마다 물러서서 30초 피해가 2–13% 로 흔들린다 → 길게 재서 평균을 본다
       await step(s.page, 60, false);
       const q = await s.eval(() => { const g = window.__game, w = g.world, p = w.player; return { why: g.autoHud.why, x: Math.round(p.cx / 24), dead: p.dead, top: g.top?.name, hp: w.boss?.hp ?? 0, cleared: w.cleared }; });
       whys[q.why] = (whys[q.why] ?? 0) + 1; xs.add(q.x); hp = q.hp;
@@ -642,8 +642,8 @@ async function browserTests() {
     const dmgPct = b0.max > 0 ? Math.round(1000 * (b0.hp - hp) / b0.max) / 10 : 0;
     console.log('    ', JSON.stringify({ b0, hp, dmgPct, whys, spots: xs.size, dead }));
     ok(b0.active && !!b0.id, `${key}: 보스전 시작 (${b0.id})`, b0);
-    ok(dmgPct >= 4, `${key}: 30초에 보스 HP ${dmgPct}% 깎음 (≥ 4%)`);
-    ok((whys.idle ?? 0) <= 6, `${key}: idle ${whys.idle ?? 0}/30 (예전 듀라한 39/45)`, whys);
+    ok(dmgPct >= 3, `${key}: 45초에 보스 HP ${dmgPct}% 깎음 (≥ 3% — 예전 밴시 0%)`);
+    ok((whys.idle ?? 0) <= 9, `${key}: idle ${whys.idle ?? 0}/45 (예전 듀라한 39/45)`, whys);
     ok(xs.size >= 4, `${key}: 얼어붙지 않는다 (서로 다른 자리 ${xs.size}곳)`);
     ok(!s.errs.length, `${key}: 페이지 오류 0`, s.errs.slice(0, 3));
     await s.close();

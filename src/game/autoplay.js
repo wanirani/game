@@ -676,6 +676,7 @@ function segCached(world, p, halfW, blocks) {
   return seg;
 }
 /** 월드 → snap (decide 입력) */
+const WR = { ms: null, reach: NaN, riding: null, w: null };
 export function snapshot(world, level, cfg) {
   const p = world.player, g = world.game;
   const st = p.stats ?? {}, run = world.run ?? {};
@@ -761,7 +762,9 @@ export function snapshot(world, level, cfg) {
   // 수호신
   let guardReady = false;
   try { const hi = world.companions?.hudInfo?.(); guardReady = !!hi?.guards?.some?.((gd) => !((gd?.cd ?? 0) > 0)); } catch { guardReady = false; }
-  const w = weaponReach(p.moveSet, st, riding);
+  // [autofix] 무기 닿는 범위는 무기·사거리 능력치·탈것이 바뀔 때만 다시 계산 (매 프레임 상자 객체 ~10개를 만들지 않는다)
+  if (WR.ms !== p.moveSet || WR.reach !== (st.reach ?? 0) || WR.riding !== riding || !WR.w) { WR.w = weaponReach(p.moveSet, st, riding); WR.ms = p.moveSet; WR.reach = st.reach ?? 0; WR.riding = riding; }
+  const w = WR.w;
   return {
     t: world.time ?? 0, level, cfg,
     p: {

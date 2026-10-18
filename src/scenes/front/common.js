@@ -472,14 +472,33 @@ export function menuItem(ctx, r, label, { selected = false, disabled = false, su
  * ListMenu 와 같지만 터치에서 항목을 한 번 누르면 바로 고르고 결정한다 (ListMenu 는 터치에서 첫 탭이 고르기만 했다).
  * 키보드·패드·마우스는 ListMenu 그대로 (방향키로 고르고 결정 키로 실행, 마우스 클릭은 원래 한 번에 실행).
  * 프런트 장면(타이틀 · 슬롯 · 확인 창 · 코드 창)이 쓴다 — 게임 안 일시정지·시련 확인 창과 같은 규칙.
+ * 잘못 누름 막기 (PLAY-FIX 검증): ① 목록이 생기고 TAP_ARM 초 안에 누르기 시작한 탭은 버린다 — 앞 화면에서 두 번 누른 탭의
+ * 두 번째가 새 목록(슬롯 카드 · 동작 목록 · '삭제' 확인 창의 '삭제')을 바로 실행하지 않게 (떼는 때가 아니라 누른 때로 잰다:
+ * 천천히 뗀 두 번째 탭도 막는다). ② 누른 줄과 뗀 줄이 같을 때만 실행 — 다른 줄에서 눌러 끌고 와 떼면 고르기만 한다 (예전 ListMenu 처럼).
  */
+const TAP_ARM = 0.25;
 export class TapMenu extends ListMenu {
+  constructor(count, opts) { super(count, opts); this.age = 0; this.downI = -1; }   // downI: 누른 줄 (-1 없음 · -2 열리자마자 누름)
+  rowAt(x, y) {
+    for (let i = 0; i < this.rects.length && i < this.count; i++) {
+      const r = this.rects[i];
+      if (r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return i;
+    }
+    return -1;
+  }
   update(dt = 1 / 60) {
+    this.age += dt;
     const p = input.pointer;
+    if (p.justDown) this.downI = this.age < TAP_ARM ? -2 : this.rowAt(p.x, p.y);
     if (p.tapped && this.count > 0) {
-      for (let i = 0; i < this.rects.length && i < this.count; i++) {
-        const r = this.rects[i];
-        if (r && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) { this.moved = false; this.index = i; return 'confirm'; }
+      const i = this.rowAt(p.x, p.y), early = this.downI === -2 || this.age < TAP_ARM, pressedHere = i >= 0 && this.downI === i;
+      this.downI = -1;
+      if (i >= 0) {
+        this.moved = false;
+        if (early) return null;   // ① 열리자마자 누른 탭 (두 번 누름의 두 번째)
+        if (pressedHere) { this.index = i; return 'confirm'; }
+        if (this.index !== i) { this.index = i; this.moved = true; }   // ② 끌고 와서 뗌: 고르기만
+        return null;
       }
     }
     return super.update(dt);
