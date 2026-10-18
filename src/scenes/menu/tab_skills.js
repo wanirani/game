@@ -343,7 +343,8 @@ export class SkillsTab extends Tab {
     text(ctx, '스킬 포인트', x + 10, y + 22, { size: 12, weight: 700, color: PAL.dim });
     text(ctx, String(sp), x + 132, y + 26, { size: 24, align: 'right', weight: 900, family: FONT.num, color: sp ? PAL.goldHi : PAL.faint, ow: 4 });
     const ult = D.CHARACTERS()[hero.charId]?.ult;
-    if (ult) text(ctx, ellipsize(ctx, `필살기 · ${ult.name}`, 132, 11, 700), x + 10, y + 50, { size: 11, weight: 700, color: ult.color ?? PAL.goldHi });
+    // 필살기 이름: 말줄임 전에 살짝 좁혀 넣는다 (글자 크기 '아주 크게'의 폴드에서 '그랜드 크…' 로 잘렸다 — PLAY-FIX 검증, P14)
+    if (ult) fitText(ctx, `필살기 · ${ult.name}`, x + 10, y + 50, 140, { size: 11, minSize: 10, weight: 700, color: ult.color ?? PAL.goldHi });
     // 페이지 전환 안내: 필살기 줄 아래 자리가 있을 때만 (글자 크기를 키우면 줄 간격이 모자라 겹친다 — benchmark #7)
     const tipY = y + 50 + Math.max(14, Math.ceil(Math.max(10, textFloor()) * 1.2));
     if (h >= 66 && tipY <= y + h - 2) text(ctx, ellipsize(ctx, swapTip(), 140, 11, 600), x + 10, tipY, { size: 10, weight: 600, color: PAL.faint, ow: 2 });
