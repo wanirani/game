@@ -490,7 +490,9 @@ export function drawPerkLayer(ctx, e, w) {
   const tn = w?.time ?? 0;
   if (MARKED.size) {
     const M = marksTable();
-    markAtlas();   // 이번 프레임 아틀라스 (표식 스프라이트 — 없으면 표식이 벡터로 그린다)
+    // 이번 프레임 아틀라스 (표식 스프라이트 — 없으면 표식이 벡터로 그린다). 있으면 표식은 REC 에 적고 끝에 한 번에 그린다
+    const R = markAtlas() ? REC : null;
+    if (R) { R.real = ctx; R.used = false; }
     let n = 0;
     for (const en of MARKED) {
       if (en.dead || !en._ck || (en.world && en.world !== w)) { MARKED.delete(en); continue; }
@@ -502,11 +504,13 @@ export function drawPerkLayer(ctx, e, w) {
         const fn = M[key];
         if (!fn || n >= MARK_CAP || en.hidden) continue;
         n++;
-        try { fn(ctx, en.kind === 'boss' ? markTarget(en, w, markPin(fn)) : en, m.n, (m.until - tn) / m.dur, tn); } catch (err) { markFail(key, err); }
-        ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+        if (R) { R.globalAlpha = 1; R.globalCompositeOperation = 'source-over'; }
+        try { fn(R || ctx, en.kind === 'boss' ? markTarget(en, w, markPin(fn)) : en, m.n, (m.until - tn) / m.dur, tn); } catch (err) { markFail(key, err); }
+        if (!R || R.used) { ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; if (R) R.used = false; }
       }
       if (!live) MARKED.delete(en);
     }
+    if (R) { flushMarks(ctx); R.real = null; }
   }
   const p = w?.player, D = p?.perks?.drawMeter;
   if (D && !p.dead && !meterHidden(p, w)) { firePerks(D, ctx, p, w); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }
@@ -646,7 +650,10 @@ export function markCell(id, w, h, ox, oy, bake, sc = 2) {
   const cw = Math.ceil((w + 2) * sc), ch = Math.ceil((h + 2) * sc);
   if (cw > MA.W || ch > MA.H) return null;
   if (MA.x + cw > MA.W) { MA.x = 0; MA.y += MA.row; MA.row = 0; }
-  if (MA.y + ch > MA.H) { MA.g.setTransform(1, 0, 0, 1, 0, 0); MA.g.clearRect(0, 0, MA.W, MA.H); maReset(); }
+  if (MA.y + ch > MA.H) {
+    if (CB.n) flushMarks(REC.real);   // 이번 프레임에 적어 둔 칸은 비우기 전 그림으로 먼저 그린다
+    MA.g.setTransform(1, 0, 0, 1, 0, 0); MA.g.clearRect(0, 0, MA.W, MA.H); maReset();
+  }
   cell = { x: MA.x, y: MA.y, w: cw, h: ch, ox: (ox + 1) * sc, oy: (oy + 1) * sc, sc };
   const g = MA.g;
   g.save();
@@ -660,10 +667,10 @@ export function markCell(id, w, h, ox, oy, bake, sc = 2) {
   MA.cells.set(id, cell); MA.bakes++; MA.ver++;
   return cell;
 }
-// 칸 그리기는 drawImage 대신 아틀라스 패턴(CanvasPattern) 채우기 (PERF s4): 이 Chrome 에서 drawImage 한 번이 6–10 µs
-// (원본 캔버스 스냅샷 + 기록), 같은 칸을 패턴으로 fillRect 하면 ~1 µs — 24 표식 PerkLayer 가 대부분 이 호출이었다.
-// 패턴은 아틀라스를 만들 때의 그림을 담으므로 칸을 새로 굽거나 아틀라스를 비우면(MA.ver) 다시 만든다. 칸 둘레 1 px(×sc) 빈 여백이
-// 있어 이웃 칸이 보간으로 번지지 않고, 보간·합성·투명도는 drawImage 와 같다 (가장자리 안티에일리어싱만 1/255 단위로 다를 수 있다)
+// 칸 그리기는 drawImage 대신 아틀라스 패턴(CanvasPattern) 채우기 (PERF s4): 이 Chrome 에서 drawImage 한 번이 6–24 µs
+// (원본 캔버스 스냅샷 + 기록), 같은 칸을 패턴으로 fillRect 하면 ~1 µs. 패턴은 만들 때의 아틀라스 그림을 담으므로 칸을 새로 굽거나
+// 아틀라스를 비우면(MA.ver) 다시 만든다. 칸 둘레 1 px(×sc) 빈 여백이 있어 이웃 칸이 보간으로 번지지 않고, 보간·합성·투명도는
+// drawImage 와 같다 (가장자리 안티에일리어싱만 1/255 단위로 다를 수 있다)
 const MP = { pat: null, c: null, ver: -1, ctx: null };
 function maPattern(ctx) {
   if (MP.pat && MP.c === MA.c && MP.ver === MA.ver && MP.ctx === ctx) return MP.pat;
@@ -672,30 +679,99 @@ function maPattern(ctx) {
   MP.pat = p; MP.c = MA.c; MP.ver = MA.ver; MP.ctx = ctx;
   return p;
 }
+// ── 표식 칸 모아 그리기 (PERF s4) ──
+// PerkLayer 는 아틀라스가 있으면 표식 함수에 진짜 ctx 대신 REC(기록용 가짜 ctx)를 넘긴다. 표식 함수가 고르는 globalAlpha·
+// globalCompositeOperation 은 REC 의 보통 속성이고, drawCell·drawCellRot·markGlow 는 칸 하나를 명령 표(CB)에 적기만 한다
+// (칸 → 월드 변환 6 개 + 투명도 + 합성). 표식을 다 돈 뒤 flushMarks 가 원래 순서 그대로 한 번에 그린다: 칸마다 setTransform +
+// fillRect 두 번, 투명도·합성은 바뀔 때만 — 표식 하나에 캔버스 호출 ~10 번 → ~2–3 번, 그림은 같다 (같은 변환·같은 패턴 채우기).
+// 벡터로 그려야 하는 표식(칸이 너무 큼 등)은 markCtx(ctx) 로 진짜 ctx 를 받는다 (그 전까지 적힌 칸을 먼저 그려 순서를 지킨다)
+const REC = { globalAlpha: 1, globalCompositeOperation: 'source-over', real: null, used: false };
+const CB = { n: 0, cap: 64, f: new Float64Array(64 * 7), c: new Array(64).fill(null), op: new Array(64).fill('source-over') };
+function cbPush(cell, a, b, c, d, e, f) {
+  const i = CB.n;
+  if (i >= CB.cap) { const cap = CB.cap * 2, F = new Float64Array(cap * 7); F.set(CB.f); CB.f = F; CB.c.length = cap; CB.op.length = cap; CB.cap = cap; }
+  const o = i * 7, F = CB.f;
+  F[o] = a; F[o + 1] = b; F[o + 2] = c; F[o + 3] = d; F[o + 4] = e; F[o + 5] = f; F[o + 6] = REC.globalAlpha;
+  CB.c[i] = cell; CB.op[i] = REC.globalCompositeOperation; CB.n = i + 1;
+}
+/** 적어 둔 칸들을 ctx 에 그린다 (변환·fillStyle 은 그대로 되돌리고, 투명도 1·source-over 로 끝낸다) */
+function flushMarks(ctx) {
+  const n = CB.n;
+  if (!n) return;
+  CB.n = 0;
+  if (!ctx || !MA.c) { CB.c.fill(null, 0, n); return; }
+  const F = CB.f, pat = maPattern(ctx);
+  let B = null;
+  try { B = pat && typeof ctx.getTransform === 'function' ? ctx.getTransform() : null; } catch { B = null; }
+  const fs = B ? ctx.fillStyle : null;
+  if (B) ctx.fillStyle = pat;
+  // DOMMatrix 의 a..f 는 읽을 때마다 바인딩 호출 — 한 번만 읽어 둔다
+  const ba = B ? B.a : 1, bb = B ? B.b : 0, bc = B ? B.c : 0, bd = B ? B.d : 1, be = B ? B.e : 0, bf = B ? B.f : 0;
+  let op = '', al = -1;
+  for (let i = 0; i < n; i++) {
+    const o = i * 7, cell = CB.c[i];
+    CB.c[i] = null;
+    if (CB.op[i] !== op) { op = CB.op[i]; ctx.globalCompositeOperation = op; }
+    if (F[o + 6] !== al) { al = F[o + 6]; ctx.globalAlpha = al; }
+    const a = F[o], b = F[o + 1], c = F[o + 2], d = F[o + 3], e = F[o + 4], f = F[o + 5];
+    if (B) {
+      // 칸 공간 → 월드(a..f) → 지금 변환(B): 아틀라스 좌표 (cell.x, cell.y) 가 칸 자리에 오고 칸 사각형만 패턴으로 칠한다
+      ctx.setTransform(ba * a + bc * b, bb * a + bd * b, ba * c + bc * d, bb * c + bd * d, ba * e + bc * f + be, bb * e + bd * f + bf);
+      ctx.fillRect(cell.x, cell.y, cell.w, cell.h);
+    } else {
+      ctx.save(); ctx.transform(a, b, c, d, e, f);
+      ctx.drawImage(MA.c, cell.x, cell.y, cell.w, cell.h, cell.x, cell.y, cell.w, cell.h);
+      ctx.restore();
+    }
+  }
+  if (B) { ctx.setTransform(B); ctx.fillStyle = fs; }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+}
+/** 표식 함수가 벡터로 그릴 때: REC 이면 적어 둔 칸을 먼저 그리고 진짜 ctx (지금 투명도·합성을 옮겨서), 아니면 그대로 */
+export function markCtx(ctx) {
+  if (ctx !== REC) return ctx;
+  const c = REC.real;
+  flushMarks(c);
+  c.globalAlpha = REC.globalAlpha; c.globalCompositeOperation = REC.globalCompositeOperation;
+  REC.used = true;
+  return c;
+}
 /** 구운 칸을 기준점이 (x, y) 에 오게 s 배로 그린다 (globalAlpha·globalCompositeOperation 은 호출부) */
 export function drawCell(ctx, cell, x, y, s = 1) {
   const k = s / cell.sc;
-  const pat = maPattern(ctx);
-  if (!pat || !(k > 0)) { ctx.drawImage(MA.c, cell.x, cell.y, cell.w, cell.h, x - cell.ox * k, y - cell.oy * k, cell.w * k, cell.h * k); return; }
-  // 아틀라스 좌표 (cell.x, cell.y) 가 화면의 (x - ox·k, y - oy·k) 에 오도록 옮겨 칸 사각형만 패턴으로 칠하고 그대로 되돌린다
+  if (!(k > 0)) return;
+  // 아틀라스 좌표 (cell.x, cell.y) 가 (x - ox·k, y - oy·k) 에 오는 변환 [k 0 0 k tx ty]
   const tx = x - (cell.ox + cell.x) * k, ty = y - (cell.oy + cell.y) * k;
+  if (ctx === REC) { cbPush(cell, k, 0, 0, k, tx, ty); return; }
+  const pat = maPattern(ctx);
+  if (!pat) { ctx.drawImage(MA.c, cell.x, cell.y, cell.w, cell.h, x - cell.ox * k, y - cell.oy * k, cell.w * k, cell.h * k); return; }
+  const fs = ctx.fillStyle;
   ctx.translate(tx, ty); ctx.scale(k, k);
   ctx.fillStyle = pat;
   ctx.fillRect(cell.x, cell.y, cell.w, cell.h);
   ctx.scale(1 / k, 1 / k); ctx.translate(-tx, -ty);
+  ctx.fillStyle = fs;
 }
 /** 회전해 그린다 (기준점 중심, 라디안). save/restore 없이 되돌린다 */
 export function drawCellRot(ctx, cell, x, y, ang, s = 1) {
+  if (ctx === REC) {
+    const k = s / cell.sc;
+    if (!(k > 0)) return;
+    // [1 0 0 1 x y]·회전(ang)·[k 0 0 k tx ty] (tx, ty = 기준점이 원점에 오는 이동)
+    const cs = Math.cos(ang), sn = Math.sin(ang), tx = -(cell.ox + cell.x) * k, ty = -(cell.oy + cell.y) * k;
+    cbPush(cell, cs * k, sn * k, -sn * k, cs * k, cs * tx - sn * ty + x, sn * tx + cs * ty + y);
+    return;
+  }
   ctx.translate(x, y); ctx.rotate(ang);
   drawCell(ctx, cell, 0, 0, s);
   ctx.rotate(-ang); ctx.translate(-x, -y);
 }
-const GLOW_R = 32;
+const GLOW_R = 32, GLOW_ID = Object.create(null);   // 색 → 칸 id (매 프레임 문자열 잇기 없음)
 /** K.glow 와 같은 빛 (색 col, 반지름 r, 투명도 a) — 색마다 한 번 구운 칸을 늘여 그린다. 아틀라스가 없으면 K.glow */
 export function markGlow(ctx, x, y, r, col, a = 1) {
   if (!(r > 1) || !(a > 0.01)) return;
-  const cell = MA.ready ? markCell('glow' + col, GLOW_R * 2, GLOW_R * 2, GLOW_R, GLOW_R, (g) => K.glow(g, 0, 0, GLOW_R, col, 1), 1) : null;
-  if (!cell) { K.glow?.(ctx, x, y, r, col, a); return; }
+  const cell = MA.ready ? markCell(GLOW_ID[col] ??= 'glow' + col, GLOW_R * 2, GLOW_R * 2, GLOW_R, GLOW_R, (g) => K.glow(g, 0, 0, GLOW_R, col, 1), 1) : null;
+  if (!cell) { K.glow?.(markCtx(ctx), x, y, r, col, a); return; }
   const ga = ctx.globalAlpha;
   ctx.globalAlpha = ga * Math.min(1, a);
   drawCell(ctx, cell, x, y, r / GLOW_R);

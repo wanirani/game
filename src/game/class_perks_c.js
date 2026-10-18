@@ -17,7 +17,7 @@
 //  초월 8: 그림자 화신(분신) · 신기루(잔상 폭발·등 뒤 순간이동) · 칼춤의 여왕(도는 칼날) · 영혼 수확자(영혼·망자의 낫)
 //          밤의 군주(피안개) · 혈제(피의 창) · 태양의 검(정오 광선) · 네필림(빛·어둠 깃털, 일식)
 //  비전 2: lia_frostcrow(냉기·동결·산산조각) + asc_lia_frostwing · azel_dawnblood(빌린 시간) + asc_azel_lullaby
-import { K, procStrike, mark, markOf, unmark, icd, slowEnemy, shieldAdd, shieldAbsorb, shieldOf, perkState, markReady, markCell, drawCell, markGlow, markStep } from './class_perks.js';
+import { K, procStrike, mark, markOf, unmark, icd, slowEnemy, shieldAdd, shieldAbsorb, shieldOf, perkState, markReady, markCell, drawCell, drawCellRot, markGlow, markCtx, markStep } from './class_perks.js';
 import { skillVal } from '../data/skills.js';
 
 const TAU = Math.PI * 2;
@@ -1203,6 +1203,16 @@ const VEC_C = {
   },
 };
 // 표식 (BALANCE-PERF): 빛·채운 모양은 아틀라스 칸(markCell)에 굽고 drawImage 한 번, 가는 선뿐인 표식(서리 고리·여명 고리)은 벡터가 더 싸서 VEC_C 그대로 — VEC_C 와 같은 그림
+/** 호 한 칸 (기준점 = 원 중심, 0 → span 라디안, 선 2 px · 투명도 0.8): 호를 감싸는 상자만 굽는다 (PERF s4 — dawn) */
+function arcCell(id, R, span, col) {
+  const sn = Math.sin(span), cs = Math.cos(span);
+  const x0 = span > Math.PI ? -1 : Math.min(1, cs), y0 = span > 1.5 * Math.PI ? -1 : Math.min(0, sn), y1 = span > Math.PI / 2 ? 1 : Math.max(0, sn);
+  const L = x0 * R - 2, T = y0 * R - 2;
+  return markCell(id, (1 - x0) * R + 4, (y1 - y0) * R + 4, -L, -T, (g) => {
+    g.globalAlpha = 0.8; g.strokeStyle = col; g.lineWidth = 2;
+    g.beginPath(); g.arc(0, 0, R, 0, span); g.stroke();
+  });
+}
 export const MARKS_C = {
   /** 냉기 1~5: 머리 위 얼음 마름모 */
   chill(ctx, e, n, k, t) {
@@ -1214,7 +1224,7 @@ export const MARKS_C = {
       for (let i = 0; i < m; i++) { const x = x0 + i * 9; g.moveTo(x, -s); g.lineTo(x + s * 0.7, 0); g.lineTo(x, s); g.lineTo(x - s * 0.7, 0); g.closePath(); }
       g.stroke(); g.fill();
     });
-    if (!c) return VEC_C.chill(ctx, e, n, k, t);
+    if (!c) return VEC_C.chill(markCtx(ctx), e, n, k, t);
     ctx.globalAlpha = 0.95; drawCell(ctx, c, e.x + e.w / 2, e.y - 12);
     ctx.globalAlpha = 1;
   },
@@ -1232,14 +1242,32 @@ export const MARKS_C = {
       g.globalAlpha = 0.6; g.lineWidth = 1;
       g.beginPath(); g.moveTo(w * 0.3, h * 0.2); g.lineTo(w * 0.45, h * 0.5); g.lineTo(w * 0.35, h * 0.8); g.moveTo(w * 0.45, h * 0.5); g.lineTo(w * 0.7, h * 0.62); g.stroke();
     });
-    if (!c) return VEC_C.frozen(ctx, e, n, k, t);
+    if (!c) return VEC_C.frozen(markCtx(ctx), e, n, k, t);
     ctx.globalAlpha = Math.min(1, k * 4);
     drawCell(ctx, c, e.x - 3 + w / 2, e.y - 3 + h / 2);
     ctx.globalAlpha = 1;
   },
 
-  /** 보스 냉기 감속: 발밑 서리 고리 + 머리 위 눈꽃 — 가는 선뿐이라 벡터가 스프라이트보다 싸다 (perf_budget 키별 24개: 벡터 0.09 ms, 칸 2장 0.13–0.18 ms) */
-  frost(ctx, e, n, k, t) { return VEC_C.frost(ctx, e, n, k, t); },
+  /**
+   * 보스 냉기 감속: 발밑 서리 고리 + 머리 위 눈꽃. 고리(너비 1 px 단계)와 눈꽃(세 선 — 6겹 대칭)을 칸 둘에 굽고 눈꽃은 돌려 그린다
+   * (PERF s4: 칸을 모아 그리게 되어 벡터 선 4개보다 싸다. 선마다 0.8 투명도로 굽고 칸 전체에 k 투명도 — VEC_C.frost 와 같은 그림)
+   */
+  frost(ctx, e, n, k, t) {
+    const rw = markStep(e.w * 0.65, 1);
+    const ring = markReady() && markCell('frostR' + rw, rw * 2 + 6, 24, rw + 3, 12, (g) => {
+      g.globalAlpha = 0.8; g.strokeStyle = '#bff4ff'; g.lineWidth = 3;
+      g.beginPath(); g.ellipse(0, 0, rw, 9, 0, 0, TAU); g.stroke();
+    });
+    const flake = ring && markCell('frostF', 24, 24, 12, 12, (g) => {
+      g.globalAlpha = 0.8; g.strokeStyle = '#e8fbff'; g.lineWidth = 2;
+      for (let i = 0; i < 3; i++) { const q = i * Math.PI / 3, c = Math.cos(q) * 9, s = Math.sin(q) * 9; g.beginPath(); g.moveTo(-c, -s); g.lineTo(c, s); g.stroke(); }
+    });
+    if (!flake) return VEC_C.frost(markCtx(ctx), e, n, k, t);
+    const x = e.x + e.w / 2;
+    ctx.globalAlpha = Math.min(1, k * 3);
+    drawCell(ctx, ring, x, e.y + e.h - 2);
+    drawCellRot(ctx, flake, x, e.y - 16, t * 0.8);
+  },
 
   /** 일식 반쪽: 신성 (흰 왼쪽 반달) */
   ecH(ctx, e, n, k, t) {
@@ -1247,7 +1275,7 @@ export const MARKS_C = {
       g.fillStyle = '#ffffff'; g.strokeStyle = '#1a1a2a'; g.lineWidth = 1.4;
       g.beginPath(); g.arc(0, 0, 7, Math.PI / 2, Math.PI * 1.5); g.closePath(); g.fill(); g.stroke();
     });
-    if (!c) return VEC_C.ecH(ctx, e, n, k, t);
+    if (!c) return VEC_C.ecH(markCtx(ctx), e, n, k, t);
     ctx.globalAlpha = 0.95 * Math.min(1, k * 3); drawCell(ctx, c, e.x + e.w / 2, e.y - 14);
     ctx.globalAlpha = 1;
   },
@@ -1257,12 +1285,26 @@ export const MARKS_C = {
       g.fillStyle = '#7a3aff'; g.strokeStyle = '#e8d8ff'; g.lineWidth = 1.4;
       g.beginPath(); g.arc(0, 0, 7, -Math.PI / 2, Math.PI / 2); g.closePath(); g.fill(); g.stroke();
     });
-    if (!c) return VEC_C.ecD(ctx, e, n, k, t);
+    if (!c) return VEC_C.ecD(markCtx(ctx), e, n, k, t);
     ctx.globalAlpha = 0.95 * Math.min(1, k * 3); drawCell(ctx, c, e.x + e.w / 2, e.y - 14);
     ctx.globalAlpha = 1;
   },
-  /** 여명 고리: 빛 + 가는 호 둘 — 벡터(빛은 K.glow 캐시 스프라이트)가 돌린 칸 2장보다 싸다 (키별 24개: 벡터 0.13–0.19 ms, 칸 0.21–0.38 ms) */
-  dawn(ctx, e, n, k, t) { return VEC_C.dawn(ctx, e, n, k, t); },
+  /**
+   * 여명 고리: 빛 + 가는 호 둘 (서로 반대로 돈다). 빛은 markGlow, 호는 각각 시작각 0 으로 호를 감싸는 칸에 굽고 돌려 그린다
+   * (PERF s4: 칸을 모아 그리게 되어 K.glow drawImage + 호 2개보다 싸다. 반지름 1 px 단계 — VEC_C.dawn 과 같은 그림)
+   */
+  dawn(ctx, e, n, k, t) {
+    const r = markStep(Math.max(e.w, e.h) * 0.55, 1);
+    const a1 = markReady() && arcCell('dawnA' + r, r, 2.2, '#ffd070');
+    const a2 = a1 && arcCell('dawnB' + r, r * 0.8, 1.6, '#ffd070');
+    if (!a2) return VEC_C.dawn(markCtx(ctx), e, n, k, t);
+    const x = e.x + e.w / 2, y = e.y + e.h * 0.45, a = Math.min(1, k * 4);
+    ctx.globalCompositeOperation = ADD;
+    markGlow(ctx, x, y, Math.min(56, r), '#ffb060', 0.4 * a);
+    ctx.globalAlpha = a;
+    drawCellRot(ctx, a1, x, y, t * 3);
+    drawCellRot(ctx, a2, x, y, -t * 4);
+  },
 
 };
 

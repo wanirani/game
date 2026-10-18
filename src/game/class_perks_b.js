@@ -11,7 +11,7 @@
 //  비전 2: victor_silverwolf (달 게이지 · 만월) + asc_victor_silverbullet · bran_oathlord (서약 기사 영혼) + asc_bran_oathbanner
 // 보이는 신호: 짧은 빛 고리·캐시 빛(K.glow)·데미지 숫자 색(dmgColor)·짧은 문구·작은 효과음. 그라디언트·새 캔버스·그리기 중 난수 없음.
 // 발동 횟수는 perkState(p).cnt[키] 에 센다 (QA 탐침이 읽는다).
-import { K, procAtk, procStrike, mark, markOf, unmark, icd, shieldAdd, shieldAbsorb, shieldOf, perkState, markReady, markCell, drawCell, markGlow } from './class_perks.js';
+import { K, procAtk, procStrike, mark, markOf, unmark, icd, shieldAdd, shieldAbsorb, shieldOf, perkState, markReady, markCell, drawCell, markGlow, markCtx } from './class_perks.js';
 import { SKILLS, skillVal } from '../data/skills.js';
 
 const TAU = Math.PI * 2;
@@ -921,7 +921,7 @@ export const MARKS_B = {
       g.strokeStyle = ready ? '#ffffff' : '#ffb0b8'; g.lineWidth = 3;
       g.beginPath(); g.moveTo(-r, -r); g.lineTo(r, r); g.moveTo(r, -r); g.lineTo(-r, r); g.stroke();
     });
-    if (!c) return VEC_B.sent(ctx, e, n, k, t);
+    if (!c) return VEC_B.sent(markCtx(ctx), e, n, k, t);
     const x = e.cx, y = e.y - 14, pulse = 0.75 + 0.25 * Math.sin(t * (ready ? 14 : 6)), a = Math.min(1, k * 4 + 0.3);
     ctx.globalCompositeOperation = ADD;
     markGlow(ctx, x, y, (ready ? 26 : 18) * pulse, '#ff2030', 0.7 * a);

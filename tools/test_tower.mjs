@@ -581,6 +581,364 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
   await ctx.close();
 });
 
+// ───────────────────────── 시즌 2 (데스크톱): 변이 · 상인 · 피의 길 · 계약 ─────────────────────────
+/** 페이지 안 도우미 (고정 스텝): window.__S2 */
+function installS2(page) {
+  return page.evaluate(async () => {
+    const g = window.__game, TW = await import('/src/data/tower.js'), { isSolidType } = await import('/src/core/physics.js');
+    const T = () => g.scenes.find((s) => s.name === 'tower');
+    const step = (n = 1) => { for (let i = 0; i < n; i++) { try { g.input?.pollFrame?.(); } catch { /* */ } g.tick(1 / 60); } g.render?.(); };
+    const until = (pred, max = 600, what = '') => { for (let i = 0; i <= max; i++) { if (pred()) return i; step(1); } throw new Error(`${what || pred} — ${max} 스텝 안에 안 됨 (phase ${T()?.phase}, top ${g.top?.name})`); };
+    const foes = () => T().world.enemies().filter((e) => e.kind === 'enemy');
+    const fight = (f, mut) => { const t = T(); t.debugFloor(f, { mut }); until(() => t.phase === 'fight', 240, `${f}층 전투`); step(2); return t; };
+    const kill = (e) => { const w = T().world; e.dead = true; w.onEnemyKilled(e, null); };
+    const inWall = (e) => {
+      const m = T().world.map;
+      if (e.def?.flying) return false;
+      for (let x = e.x + 4; x <= e.x + e.w - 4; x += 8) for (let y = e.y + 4; y <= e.y + e.h - 4; y += 8) if (isSolidType(m.typeAt(Math.floor(x / 48), Math.floor(y / 48)))) return true;
+      return false;
+    };
+    // 다른 적은 방 저쪽 끝으로 (위험물 시험 동안 영웅을 건드리지 않게)
+    const away = (keep = []) => { const t = T(), p = t.world.player, W = t.world.map.pxW; for (const e of foes()) if (!keep.includes(e)) { e.x = p.cx < W / 2 ? W - 60 - e.w : 60; e.vx = 0; } };
+    const p = T().world.player;
+    window.__hz = [];
+    if (!p._s2wrap) {
+      const o = p.takeHit.bind(p);
+      p._s2wrap = true;
+      p.takeHit = function s2Hit(dmg, atk, ...r) { if (atk?.flat === 1 && atk?.kb?.[1] === -400) window.__hz.push({ dmg, invuln: !!this.invuln }); return o(dmg, atk, ...r); };
+    }
+    window.__S2 = { g, TW, T, step, until, foes, fight, kill, inWall, away };
+    return true;
+  });
+}
+
+test('시즌 2: 변이 10종 효과 · 알림 카드 · 분열 상한 · 폭발/낙뢰 예고와 피해 · 상인(골드 모자람/사기/다시 뽑기/떠나기) · 피의 길 · 계약 6종 · 결과 줄', async () => {
+  const M = makeMock();
+  const ctx = await newContext(M);
+  const { page, errs } = await openGame(ctx, { init: AUTH });
+  await page.evaluate(() => import('/src/scenes/front/arcade.js').then((A) => A.startArcade(window.__game, { kind: 'tower', diff: 'normal', preset: 3, seed: 4242 }, 'kael')));
+  await waitTop(page, 'tower', 30000);
+  await freeze(page);
+  await installS2(page);
+
+  // ── 변이: 기준 층(7층, 변이 없음)과 같은 층에 변이를 덮어 비교 ──
+  const mut = await page.evaluate(() => {
+    const { T, TW, step, fight, foes, inWall } = window.__S2, t = T(), w = t.world, p = w.player;
+    p.buffs.invincible = 9999;
+    const snap = () => foes().map((e) => ({ id: e.def.id, hp: e.stats.maxHp, atk: e.stats.atk, elite: !!e.elite, eliteOk: e.def.elite !== false, scale: e.scale || 1, wall: inWall(e) }));
+    fight(7, null);
+    const base = { foes: snap(), gold: w.diff.gold, eAtk: w.diff.enemyAtk, heroAtk: p.stats.atk, dark: !!w.rules?.dark, card: t.mutCard };
+    const out = { base, plan: t.plan.enemies.length };
+    for (const id of ['giant', 'elite', 'gold', 'fog', 'mad']) {
+      t.debugFloor(7, { mut: id });
+      const card = t.mutCard ? { id: t.mutCard.m.id, blood: t.mutCard.blood } : null;
+      fight(7, id);
+      out[id] = { card, foes: snap(), gold: w.diff.gold, eAtk: w.diff.enemyAtk, heroAtk: p.stats.atk, dark: !!w.rules?.dark, line: t.mut?.name };
+    }
+    // 변이 없는 층으로 돌아오면 안개·광기가 풀린다
+    fight(7, null);
+    out.after = { dark: !!w.rules?.dark, heroAtk: p.stats.atk, eAtk: w.diff.enemyAtk };
+    // 카드는 3.4초 뒤 사라진다
+    t.debugFloor(6, { mut: 'gold' });
+    out.cardT0 = !!t.mutCard; step(Math.ceil(3.5 * 60)); out.cardT1 = !!t.mutCard;
+    out.cap8 = TW.TOWER_CURVE.count(8);
+    return out;
+  });
+  const { base } = mut;
+  assert.ok(base.foes.length >= 5 && base.card === null, `기준 층 ${JSON.stringify(base).slice(0, 200)}`);
+  assert.deepEqual(mut.giant.card, { id: 'giant', blood: false }, '층 시작 알림 카드');
+  const near = (a, b, e) => Math.abs(a - b) <= e;
+  // 거인: 절반(최소 3) · 체력 ×2.4 · 공격 ×1.25 · 키 ×1.4 (머리 위가 막히면 들어가는 만큼만) · 벽에 박히지 않는다
+  assert.equal(mut.giant.foes.length, Math.max(3, Math.ceil(base.foes.length * 0.5)), '거인의 층 적 수');
+  mut.giant.foes.forEach((e, i) => {
+    assert.equal(e.id, base.foes[i].id);
+    assert.ok(near(e.hp, base.foes[i].hp * 2.4, 1), `거인 체력 ${base.foes[i].hp} → ${e.hp}`);
+    assert.ok(near(e.atk, base.foes[i].atk * 1.25, 1), `거인 공격 ${base.foes[i].atk} → ${e.atk}`);
+    assert.ok(e.scale >= 1 && e.scale <= 1.4 + 1e-9, `거인 크기 ${e.scale}`);
+    assert.equal(e.wall, false, `거인 ${e.id} 이 벽에 박힘`);
+  });
+  assert.ok(mut.giant.foes.some((e) => e.scale > 1.2), '거인: 하나 이상은 크게');
+  // 정예 무리: 60 %(최소 3) · 모두 정예
+  assert.equal(mut.elite.foes.length, Math.max(3, Math.ceil(base.foes.length * 0.6)));
+  assert.ok(mut.elite.foes.every((e) => e.elite || !e.eliteOk), '정예 무리 = 모두 정예');
+  // 황금 층: 골드 ×3 · 안개: 어둠 규칙 · 광기: 적 공격 ×1.5 · 영웅 공격 ×1.5
+  assert.ok(near(mut.gold.gold, base.gold * 3, 1e-9), `황금 층 골드 ${base.gold} → ${mut.gold.gold}`);
+  assert.equal(mut.fog.dark, true, '피의 안개 = 어둠');
+  assert.equal(base.dark, false);
+  assert.ok(near(mut.mad.eAtk, base.eAtk * 1.5, 1e-9), '광기의 층 적 공격 배율');
+  assert.ok(near(mut.mad.heroAtk, base.heroAtk * 1.5, 1), `광기의 층 영웅 공격 ${base.heroAtk} → ${mut.mad.heroAtk}`);
+  mut.mad.foes.forEach((e, i) => assert.ok(near(e.atk, base.foes[i].atk * 1.5, 1.5), `광기 적 공격 ${base.foes[i].atk} → ${e.atk}`));
+  assert.deepEqual(mut.after, { dark: false, heroAtk: base.heroAtk, eAtk: base.eAtk }, '변이 없는 층 = 원래대로');
+  assert.deepEqual([mut.cardT0, mut.cardT1], [true, false], '알림 카드는 잠깐');
+
+  // 분열: 쓰러진 적이 작은 둘로 (다시 갈라지지 않음) · 층마다 count(f) 까지 · 벽에 박히지 않는다
+  const split = await page.evaluate(() => {
+    const { T, step, fight, foes, kill, inWall } = window.__S2, t = fight(8, 'split');
+    const orig = foes();
+    const parent = Object.fromEntries(orig.map((e) => [e.def.id, { hp: e.stats.maxHp, w: e.w, elite: !!e.elite }]));
+    for (const e of orig) { kill(e); step(1); }
+    const kids = foes().filter((e) => e._towerSplit);
+    const r = { n0: orig.length, kids: kids.length, splitN: t.splitN, small: kids.every((c) => Math.abs((c.scale || 1) - 0.7) < 1e-6 && c.w < parent[c.def.id].w), weak: kids.every((c) => parent[c.def.id].elite || c.stats.maxHp <= Math.ceil(parent[c.def.id].hp * 0.35) + 1), wall: kids.filter(inWall).length, elite: kids.filter((c) => c.elite).length };
+    for (const c of kids) { kill(c); step(1); }
+    r.after = foes().filter((e) => e._towerSplit).length; r.splitN2 = t.splitN;
+    step(3);
+    r.phase = t.phase;
+    return r;
+  });
+  assert.equal(split.kids, Math.min(2 * split.n0, mut.cap8), `분열 수 ${JSON.stringify(split)}`);
+  assert.ok(split.splitN <= mut.cap8 && split.splitN === split.kids, `분열 상한 count(8)=${mut.cap8}`);
+  assert.ok(split.small && split.weak && split.elite === 0 && split.wall === 0, `분열 조각 ${JSON.stringify(split)}`);
+  assert.deepEqual([split.after, split.splitN2, split.phase], [0, split.splitN, 'clear'], '조각은 다시 갈라지지 않고, 다 잡으면 층 돌파');
+
+  // 폭발하는 시체: 0.6초 넘게 붉은 원 → 안이면 최대 체력 8 % · 밖이면 없음
+  const bomb = await page.evaluate(() => {
+    const { T, step, fight, foes, kill, away } = window.__S2, t = fight(9, 'bomb'), w = t.world, p = w.player;
+    p.buffs.invincible = 0;
+    const [a, b] = foes();
+    away([a, b]);
+    window.__hz = [];
+    a.x = p.cx - a.w / 2; a.y = p.bottom - a.h;
+    kill(a);
+    const hz = w.entities.find((x) => x.hz === 'bomb' && !x.dead);
+    const r = { warn: hz?.warn, early: null, hits: [] };
+    step(Math.floor(0.55 * 60)); r.early = hz.hit;
+    for (let i = 0; i < 40 && !hz.hit; i++) { p.iframes = 0; p.buffs.invincible = 0; step(1); }
+    r.hits = window.__hz.map((h) => h.dmg); r.want = Math.ceil(p.stats.hp * 0.08);
+    // 멀리서 터지면 맞지 않는다
+    window.__hz = [];
+    b.x = p.cx + 600 < w.map.pxW - 60 ? p.cx + 600 : p.cx - 600 - b.w;
+    kill(b);
+    const hz2 = w.entities.find((x) => x.hz === 'bomb' && !x.dead && x !== hz);
+    for (let i = 0; i < 80 && hz2 && !hz2.hit; i++) { p.iframes = 0; step(1); }
+    r.far = window.__hz.length; r.hz2 = !!hz2;
+    p.buffs.invincible = 9999;
+    return r;
+  });
+  assert.ok(bomb.warn >= 0.6 && bomb.early === false, `폭발 예고 ${JSON.stringify(bomb)}`);
+  assert.deepEqual(bomb.hits, [bomb.want], `폭발 피해 ${JSON.stringify(bomb)}`);
+  assert.ok(bomb.hz2 && bomb.far === 0, `멀리서 터진 시체 ${JSON.stringify(bomb)}`);
+
+  // 낙뢰: 2.4초마다 영웅 곁(±90px)에 표식 0.6초 넘게 → 기둥 안 영웅·적이 맞는다
+  const bolt = await page.evaluate(() => {
+    const { T, step, until, fight, foes, away } = window.__S2, t = fight(11, 'bolt'), w = t.world, p = w.player;
+    p.buffs.invincible = 0;
+    const e = foes()[0];
+    away([e]);
+    window.__hz = [];
+    const n = until(() => w.entities.some((x) => x.hz === 'bolt' && !x.dead), 200, '낙뢰');
+    const hz = w.entities.find((x) => x.hz === 'bolt' && !x.dead);
+    const r = { n, dx: Math.abs(hz.fx0 - p.cx), warn: hz.warn };
+    // 첫 벼락: 영웅이 기둥 안 (적은 멀리)
+    const px = hz.fx0 - p.w / 2;
+    p.x = px; p.vx = 0;
+    step(Math.floor(0.5 * 60)); r.early = hz.hit;
+    for (let i = 0; i < 40 && !hz.hit; i++) { p.iframes = 0; p.buffs.invincible = 0; p.x = px; p.vx = 0; step(1); }
+    r.hits = window.__hz.map((h) => h.dmg); r.want = Math.ceil(p.stats.hp * 0.1);
+    // 다음 벼락: 기둥 안의 적이 맞는다 (영웅은 무적)
+    p.buffs.invincible = 9999;
+    until(() => w.entities.some((x) => x.hz === 'bolt' && !x.dead && x !== hz && !x.hit), 200, '다음 낙뢰');
+    const hz2 = w.entities.find((x) => x.hz === 'bolt' && !x.dead && x !== hz);
+    r.gap = hz2.t;
+    e.invuln = false;
+    const hp0 = e.hp;
+    for (let i = 0; i < 70 && !hz2.hit; i++) { e.x = hz2.fx0 - e.w / 2; e.y = hz2.foot - e.h; e.vx = 0; e.vy = 0; step(1); }
+    r.foeHit = e.hp < hp0 || e.dead || e.dying > 0;
+    return r;
+  });
+  assert.ok(bolt.n <= Math.ceil(2.4 * 60) + 2 && bolt.dx <= 90 + 1 && bolt.warn >= 0.6 && bolt.early === false, `낙뢰 ${JSON.stringify(bolt)}`);
+  assert.deepEqual(bolt.hits, [bolt.want], `낙뢰 피해 ${JSON.stringify(bolt)}`);
+  assert.ok(bolt.foeHit, '낙뢰가 기둥 안의 적도 친다');
+
+  // 흡혈의 밤: 처치하면 4 % 회복 · 체력이 서서히 마르되 25 % 아래로는 아니다
+  const vamp = await page.evaluate(() => {
+    const { T, step, fight, foes, kill } = window.__S2, t = fight(12, 'vamp'), w = t.world, p = w.player, max = p.stats.hp;
+    p.buffs.invincible = 9999;
+    p.hp = Math.round(max * 0.5);
+    const h0 = p.hp; kill(foes()[0]); const h1 = p.hp;
+    p.hp = max * 0.3; step(120); const h2 = p.hp; step(360); const h3 = p.hp;
+    return { max, heal: (h1 - h0) / max, drop: (max * 0.3 - h2) / max, floor: h3 / max };
+  });
+  assert.ok(vamp.heal >= 0.035, `흡혈 회복 ${JSON.stringify(vamp)}`);
+  assert.ok(vamp.drop > 0.015 && vamp.drop < 0.035, `흡혈의 밤 마름 ${JSON.stringify(vamp)}`);
+  assert.ok(vamp.floor >= 0.25 - 1e-6 && vamp.floor < 0.27, `마름 바닥 25 % ${JSON.stringify(vamp)}`);
+
+  // 속공: 30초 안에 돌파 → 축복 하나 · 30초를 넘기면 없음
+  const rush = await page.evaluate(() => {
+    const { g, T, step, until, fight } = window.__S2;
+    let t = fight(13, 'rush');
+    t.debugKillAll();
+    until(() => g.top.name === 'towerBlessing' || t.phase === 'gate', 300, '속공 축복');
+    const fast = { top: g.top.name, mode: g.top.mode, ok: t.rushOk };
+    if (g.top.name === 'towerBlessing') { g.top.choose(0); until(() => g.top.name === 'tower' && t.phase === 'gate', 120, '속공 → 출구'); }
+    t = fight(14, 'rush');
+    t.fightT = 31;
+    t.debugKillAll();
+    let blessed = false;
+    until(() => { blessed ||= g.top.name === 'towerBlessing'; return t.phase === 'gate' || blessed; }, 300, '느린 속공');
+    return { fast, slow: { ok: t.rushOk, blessed } };
+  });
+  assert.deepEqual(rush.fast, { top: 'towerBlessing', mode: 'bless', ok: true }, '속공 성공 → 축복');
+  assert.deepEqual(rush.slow, { ok: false, blessed: false }, '30초를 넘긴 속공 → 축복 없음');
+
+  // ── 상인 (15층 보스 뒤): 축복 → 로크 → 골드가 모자라면 그대로 · 사기 · 한 장만 · 다시 뽑기 · 떠나기 → 갈림길 ──
+  await page.evaluate(() => window.__S2.T().debugFloor(15));
+  await tickUntil(page, "t.phase === 'boss' && w.boss", 300, '15층 보스');
+  await page.evaluate(() => window.__game.world.bossReady());
+  await tickUntil(page, "g.top.name === 'tower' && !w.cutscene", 600, '보스 등장 연출 끝');
+  await page.evaluate(() => window.__S2.T().debugKillAll());
+  await tickUntil(page, "g.top.name === 'towerBlessing'", 400, '보스 격파 → 축복');
+  await page.evaluate(() => window.__game.top.choose(0));
+  await tickUntil(page, "g.top.name === 'towerBlessing' && g.top.mode === 'shop'", 200, '축복 → 상인');
+  const shop = await page.evaluate(() => {
+    const { g, T, step } = window.__S2, t = T(), p = t.world.player, st = g.state, top = g.top, nc = top.ids.length;
+    const npc = t.world.entities.find((e) => e.pseudo?.npcId === 'npc_rook');
+    const r = { nc, npc: !!npc, npcId: npc?.pseudo?.npcId, look: !!npc?.pseudo?.look, prices: { heal: t.shopPrice('heal'), bless: t.shopPrice('bless'), reroll: t.shopPrice('reroll') }, level: t.plan.level };
+    st.gold = 0; p.hp = Math.round(p.stats.hp * 0.5);
+    const hp0 = p.hp;
+    top.choose(nc);   // 상처 치료 — 골드 0
+    r.poor = { msg: top.msg?.text, gold: st.gold, hp: p.hp === hp0 };
+    st.gold = 100000;
+    top.choose(nc); r.heal = { gold: 100000 - st.gold, hp: p.hp > hp0 };
+    const id0 = top.ids[0], n0 = t.taken[id0] | 0, g1 = st.gold;
+    top.choose(0); r.buy = { gold: g1 - st.gold, took: (t.taken[id0] | 0) - n0, bought: t.shop.bought === id0 };
+    const g2 = st.gold;
+    top.choose(1); r.second = { msg: top.msg?.text, gold: g2 - st.gold };
+    const ids0 = [...top.ids];
+    top.choose(nc + 1); r.reroll = { gold: g2 - st.gold, bought: t.shop.bought, changed: JSON.stringify(ids0) !== JSON.stringify(top.ids), n: top.ids.length };
+    step(10);
+    top.choose(nc + 2);   // 떠나기
+    step(2);
+    r.after = { top: g.top.name, phase: t.phase, gates: t.gates.map((x) => x.route), leaving: !!npc?.leaving };
+    step(30);
+    r.npcGone = !t.world.entities.includes(npc);
+    return r;
+  });
+  assert.ok(shop.npc && shop.npcId === 'npc_rook' && shop.look, '상인 = 로크 퍼펫');
+  assert.equal(shop.nc, 3);
+  const TWn = await import(path.join(ROOT, 'src/data/tower.js'));
+  assert.deepEqual(shop.prices, { heal: TWn.merchantPrice(30, shop.level), bless: TWn.merchantPrice(70, shop.level), reroll: TWn.merchantPrice(20, shop.level) });
+  assert.deepEqual(shop.poor, { msg: `골드가 모자랍니다 (${shop.prices.heal.toLocaleString('en-US')}G 필요)`, gold: 0, hp: true }, `골드 모자람 ${JSON.stringify(shop.poor)}`);
+  assert.deepEqual(shop.heal, { gold: shop.prices.heal, hp: true });
+  assert.deepEqual(shop.buy, { gold: shop.prices.bless, took: 1, bought: true });
+  assert.deepEqual(shop.second, { msg: '이 카드 중에서는 한 장만 살 수 있습니다', gold: 0 });
+  assert.deepEqual(shop.reroll, { gold: shop.prices.reroll, bought: null, changed: true, n: 3 });
+  assert.deepEqual(shop.after, { top: 'tower', phase: 'gate', gates: ['safe', 'blood'], leaving: true });
+  assert.equal(shop.npcGone, true);
+
+  // ── 피의 길: 붉은 문 위에 서면 다음 전투 층 넷이 센 변이 · 보너스 ×2 · 골드 ×2 · 정예 +0.15, 다음 안식처에서 축복 둘 ──
+  const plan16 = await planOf(page, 16);
+  const baseDiff16 = await page.evaluate(async () => { const TW = window.__S2.TW, t = window.__S2.T(); return TW.towerDiff(t.baseDiff, 16); });
+  await page.evaluate(() => { const t = window.__S2.T(), p = t.world.player, bg = t.gates[1]; p.x = bg.cx - p.w / 2; p.y = bg.bottom - p.h; p.vx = 0; p.vy = 0; });
+  await tickUntil(page, "t.floor === 16 && t.phase === 'enter'", 400, '피의 길 → 16층');
+  const blood = await page.evaluate(() => {
+    const { T, step, until } = window.__S2, t = T(), w = t.world;
+    const r = { route: t.route, bloodFloor: t.bloodFloor, left: t.blood, runs: t.bloodRuns, mut: t.mut?.id, card: t.mutCard?.blood, gold: w.diff.gold, elite: w.diff.elite };
+    until(() => t.phase === 'fight', 240, '16층 전투');
+    let s0 = 0;   // 분열 조각까지 다 쓰러뜨린 뒤 한 스텝 = 층 돌파 (그 스텝에 오른 점수 = 돌파 보너스)
+    for (let i = 0; i < 20 && t.phase === 'fight'; i++) { t.debugKillAll(); s0 = w.run.score; step(1); }
+    r.phase = t.phase; r.bonus = w.run.score - s0; r.banner = w.banner?.sub;
+    for (const f of [17, 18, 19]) { t.debugFloor(f); r[`b${f}`] = t.bloodFloor; }
+    t.debugFloor(21); r.b21 = t.bloodFloor;
+    return r;
+  });
+  assert.deepEqual({ route: blood.route, bloodFloor: blood.bloodFloor, left: blood.left, runs: blood.runs, card: blood.card }, { route: 'blood', bloodFloor: true, left: 3, runs: 1, card: true }, JSON.stringify(blood));
+  assert.equal(blood.mut, plan16.mutBlood, '피의 길 변이 = 계획의 센 변이');
+  assert.equal(TWn.MUTATOR[blood.mut].tier, 2);
+  assert.ok(near(blood.gold, baseDiff16.gold * 2 * (TWn.MUTATOR[blood.mut].gold ?? 1), 1e-9), `피의 길 골드 ${baseDiff16.gold} → ${blood.gold}`);
+  assert.ok(near(blood.elite, Math.min(0.9, (baseDiff16.elite ?? 0) + 0.15), 1e-9), `피의 길 정예 ${blood.elite}`);
+  assert.equal(blood.bonus, 300 * 16 * 2, `피의 길 돌파 보너스 ×2 ${blood.bonus}`);
+  assert.match(blood.banner, /피의 길 ×2/);
+  assert.deepEqual([blood.b17, blood.b18, blood.b19, blood.b21], [true, true, true, false], '피의 길 = 전투 층 넷');
+  // 20층 안식처: 축복 둘 (피의 길) → 피의 계약 → 거절
+  await page.evaluate(() => { window.__S2.T().bloodBless = 1; window.__S2.T().debugFloor(20); });
+  const rest20 = await page.evaluate(() => {
+    const { g, T, until } = window.__S2, t = T();
+    let blessings = 0;
+    for (let k = 0; k < 4; k++) {
+      until(() => g.top.name === 'towerBlessing', 400, '안식처 고르기');
+      if (g.top.mode === 'pact') break;
+      const cur = g.top;
+      blessings++; cur.choose(0);
+      until(() => g.top !== cur, 120, '축복 닫힘');
+    }
+    const pact = { mode: g.top.mode, ids: g.top.ids };
+    g.top.choose(g.top.ids.length - 1);   // 거절
+    until(() => g.top.name === 'tower' && t.phase === 'gate', 200, '거절 → 출구');
+    return { blessings, pact, taken: t.pactOrder.length };
+  });
+  assert.equal(rest20.blessings, 2, `피의 길 뒤 안식처 = 축복 둘 ${JSON.stringify(rest20)}`);
+  assert.equal(rest20.pact.mode, 'pact');
+  assert.equal(rest20.pact.ids.at(-1), null);
+  assert.equal(rest20.taken, 0);
+
+  // ── 피의 계약 6종: 이득과 손해 ──
+  const pacts = await page.evaluate(async () => {
+    const { g, T, step, until, fight, foes } = window.__S2, inv = await import('/src/game/inventory.js');
+    let t = fight(21, null);
+    const w = t.world, p = w.player, st = g.state, s0 = { ...p.stats }, out = {};
+    const took = (id) => { t.takePact(id); return { ...p.stats }; };
+    let s = took('fury');
+    const potion = inv.addByBase(st, 'c_potion', 1);
+    const uid = potion?.uid ?? (st.inventory ?? []).find((i) => i.baseId === 'c_potion')?.uid;
+    out.fury = { atk: s.atk / s0.atk, rules: w.rules?.noPotion === true, label: w.rules?.label, use: uid ? inv.useItem(st, st.heroes?.kael, uid, p) : null };
+    const s1 = s; s = took('edge'); out.edge = { critDmg: s.critDmg - s1.critDmg, def: s.def / Math.max(1, s1.def) };
+    const s2 = s; s = took('greed'); out.greed = { gold: s.goldBonus - s2.goldBonus };
+    const s3 = s; s = took('thirst'); out.thirst = { ls: s.lifesteal - s3.lifesteal, mp: s.mp / s3.mp };
+    const s4 = s; s = took('swift'); out.swift = { move: s.moveSpd - s4.moveSpd, atkSpd: s.atkSpd - s4.atkSpd };
+    t = fight(22, null);
+    out.swift.foes = foes().length - t.plan.enemies.length;
+    // 탐욕의 계약: 안식처에서 회복하지 않는다 → 남은 계약은 맹세 하나 + 거절
+    t.debugFloor(30); p.hp = Math.round(p.stats.hp * 0.4); const h0 = p.hp;
+    until(() => g.top.name === 'towerBlessing', 400, '30층 축복');
+    out.greed.heal = (p.hp - h0) / p.stats.hp; out.greed.banner = w.banner?.sub;   // 자연 회복(초당 몇)만 — 안식처 30 % 는 없다
+    const picks0 = t.picks;
+    g.top.choose(0);
+    until(() => g.top.name === 'towerBlessing' && g.top.mode === 'pact', 200, '30층 계약');
+    out.offer = [...g.top.ids];
+    g.top.choose(0);   // 맹세의 계약 → 지금 축복 하나 더
+    until(() => g.top.name === 'towerBlessing' && g.top.mode === 'bless', 200, '맹세 → 축복 하나 더');
+    g.top.choose(0);
+    until(() => g.top.name === 'tower' && t.phase === 'gate', 200, '30층 → 출구');
+    out.oath = { picks: t.picks - picks0, mul: t.bossHpMul };
+    const bh = w.diff.bossHp;
+    t.debugFloor(35);
+    out.oath.boss = { hp: w.diff.bossHp, oathHp: t.oathHp, mul: t.bossHpMul };
+    out.order = [...t.pactOrder];
+    return out;
+  });
+  assert.ok(near(pacts.fury.atk, 1.4, 0.02) && pacts.fury.rules && pacts.fury.label === '광기의 계약', `광기의 계약 ${JSON.stringify(pacts.fury)}`);
+  assert.ok(pacts.fury.use && pacts.fury.use.ok === false && pacts.fury.use.msg.startsWith('광기의 계약'), `광기의 계약 = 물약 금지 ${JSON.stringify(pacts.fury.use)}`);
+  assert.ok(pacts.edge.critDmg === 80 && near(pacts.edge.def, 0.5, 0.06), `칼날의 계약 ${JSON.stringify(pacts.edge)}`);
+  assert.equal(pacts.greed.gold, 100);
+  assert.ok(near(pacts.thirst.ls, 5, 1e-9) && near(pacts.thirst.mp, 0.5, 0.02), `갈증의 계약 ${JSON.stringify(pacts.thirst)}`);
+  assert.deepEqual(pacts.swift, { move: 20, atkSpd: 20, foes: 3 }, '질주의 계약');
+  assert.ok(pacts.greed.heal < 0.03, `탐욕의 계약 = 안식처 회복(30 %) 없음 ${pacts.greed.heal}`);
+  assert.match(pacts.greed.banner, /탐욕의 계약/);
+  assert.deepEqual(pacts.offer, ['oath', null], '맺은 계약은 다시 나오지 않는다');
+  assert.equal(pacts.oath.picks, 2, '맹세의 계약 = 축복 하나 더');
+  assert.equal(pacts.oath.mul, 1.5);
+  assert.ok(pacts.oath.boss.oathHp === 1.5 && pacts.oath.boss.mul === 1, `맹세 → 다음 군주 체력 ×1.5 (한 번) ${JSON.stringify(pacts.oath)}`);
+  assert.deepEqual(pacts.order, ['fury', 'edge', 'greed', 'thirst', 'swift', 'oath']);
+  const bossHp35 = await page.evaluate(async () => { const TW = window.__S2.TW, t = window.__S2.T(); return { now: t.world.diff.bossHp, base: TW.towerDiff(t.baseDiff, 35).bossHp }; });
+  assert.ok(near(bossHp35.now, bossHp35.base * 1.5, 1e-9), `35층 군주 체력 ${JSON.stringify(bossHp35)}`);
+
+  // ── 결과: '시즌 2' 줄 · extra.v / pacts / blood ──
+  await tickUntil(page, "t.phase === 'boss' && w.boss", 300, '35층 보스');
+  await page.evaluate(() => window.__game.world.bossReady());
+  await tickUntil(page, "g.top.name === 'tower' && !w.cutscene", 600, '35층 보스 연출 끝');
+  const fin = await page.evaluate(() => {
+    const { g, T, until } = window.__S2, t = T(), w = t.world, p = w.player;
+    p.buffs.invincible = 0; p.iframes = 0; p.hp = 1; t.reviveLeft = 0;
+    p.takeHit(999999, { team: 'enemy', dir: 1, kb: [100, -200] }, w, {});
+    until(() => g.top.name === 'arcadeResults', 900, '결과');
+    const r = g.top.res;
+    return { row: r.rows.find((x) => x[0] === '시즌 2')?.[1], v: r.extra.v, pacts: r.extra.pacts, blood: r.extra.blood };
+  });
+  assert.deepEqual(fin, { row: '계약 6 · 피의 길 1번', v: 2, pacts: pacts.order, blood: 1 }, `결과 ${JSON.stringify(fin)}`);
+  assert.deepEqual(errs, []);
+  await ctx.close();
+});
+
 // ───────────────────────── 휴대폰 ─────────────────────────
 for (const vp of ['phone2', 'phone1']) {
   test(`휴대폰 ${vp}: 아케이드 메뉴 카드 5장이 화면에 들어감·탭 크기 · 터치로 축복 고르기`, async () => {

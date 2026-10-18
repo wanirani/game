@@ -11,7 +11,7 @@
 // 모든 조절 수치는 항목의 N 표 (ascensions.js 의 perk 문구 숫자와 같아야 한다). 백분율은 문구 그대로 % 값으로 적는다.
 // 특성이 만드는 공격은 proc (procAtk · K.uHit{proc:true}) — 비전 액티브의 타격만 보통 스킬 타격 (§5).
 // 그리기(표식·게이지·연출 draw)에는 난수·파티클·그라디언트·문자열 조립이 없다 (캐시 스프라이트 K.glow·K.beamH + 선 몇 개).
-import { procAtk, mark, markOf, unmark, icd, perkState, procStrike, K, markReady, markCell, drawCell, markGlow } from './class_perks.js';
+import { procAtk, mark, markOf, unmark, icd, perkState, procStrike, K, markReady, markCell, drawCell, markGlow, markCtx } from './class_perks.js';
 import { skillVal } from '../data/skills.js';
 
 const TAU = Math.PI * 2;
@@ -583,7 +583,7 @@ export const MARKS_D = {
       g.fillStyle = full ? '#ffffff' : '#ff2040';
       g.beginPath(); g.arc(0, 0, full ? 3.2 : 1.6 + m * 0.06, 0, TAU); g.fill();
     });
-    if (!c) return VEC_D.pin(ctx, e, n, k, t);
+    if (!c) return VEC_D.pin(markCtx(ctx), e, n, k, t);
     const x = e.x + e.w / 2, y = e.y - 16, a = 0.55 + 0.45 * Math.min(1, k * 3);
     if (full) { ctx.globalCompositeOperation = ADD; markGlow(ctx, x, y, 24 + 4 * Math.sin(t * 14), '#ff2040', 0.75 * a); }
     ctx.globalCompositeOperation = 'source-over';

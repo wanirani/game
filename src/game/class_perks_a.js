@@ -9,7 +9,7 @@
 // 모든 조절 수치는 항목의 N 표 (classes.js · ascensions.js 의 perk 문구 숫자와 같아야 한다). 백분율은 문구 그대로 % 값으로 적는다.
 // 특성이 만드는 공격은 proc (procStrike · K.uHit{proc:true} · K.atk{proc:true}) — 비전 액티브의 타격만 보통 스킬 타격 (§5).
 // 그리기(표식·게이지·연출 draw)에는 난수·파티클·그라디언트·문자열 조립이 없다 (캐시 스프라이트 K.glow + 선 몇 개).
-import { procStrike, mark, markOf, unmark, icd, slowEnemy, perkState, K, markReady, markCell, drawCell, markGlow, markStep } from './class_perks.js';
+import { procStrike, mark, markOf, unmark, icd, slowEnemy, perkState, K, markReady, markCell, drawCell, markGlow, markCtx, markStep } from './class_perks.js';
 import { skillVal } from '../data/skills.js';
 
 const TAU = Math.PI * 2;
@@ -941,7 +941,7 @@ export const MARKS_A = {
       g.beginPath(); g.moveTo(-7, -6); g.lineTo(0, 0); g.lineTo(7, -6); g.stroke();
       g.beginPath(); g.moveTo(-7, -1); g.lineTo(0, 5); g.lineTo(7, -1); g.stroke();
     });
-    if (!c) return VEC_A.quarry(ctx, e, n, k, t);
+    if (!c) return VEC_A.quarry(markCtx(ctx), e, n, k, t);
     ctx.globalCompositeOperation = ADD; ctx.globalAlpha = 0.55 + 0.45 * Math.min(1, k * 4);
     drawCell(ctx, c, e.cx, e.y - 14 + Math.sin(t * 5) * 2);
   },
@@ -952,7 +952,7 @@ export const MARKS_A = {
       g.globalCompositeOperation = ADD;
       K.glow(g, 0, 0, 11, '#ff5a1a', 0.9); K.glow(g, 0, 1, 5, '#fff2b0', 0.8);
     }, 1);
-    if (!c) return VEC_A.brand(ctx, e, n, k, t);
+    if (!c) return VEC_A.brand(markCtx(ctx), e, n, k, t);
     const y = e.y - 12;
     ctx.globalCompositeOperation = ADD;
     for (let i = 0; i < n; i++) drawCell(ctx, c, e.cx + (i - (n - 1) / 2) * 13, y, 1 + 0.15 * Math.sin(t * 13 + i * 2));
@@ -969,7 +969,7 @@ export const MARKS_A = {
     const pips = bolt && markCell('static.p' + m, m * 8 + 6, 10, (m * 8 + 6) / 2, 5, (g) => {
       for (let i = 0; i < m; i++) pip(g, -(m - 1) * 4 + i * 8, 0, 2.6, '#bfe0ff', 0.95);
     });
-    if (!pips) return VEC_A.static(ctx, e, n, k, t);
+    if (!pips) return VEC_A.static(markCtx(ctx), e, n, k, t);
     const x = e.cx, y = e.y - 14;
     ctx.globalCompositeOperation = ADD; ctx.globalAlpha = 0.8 + 0.2 * Math.sin(t * 23);
     drawCell(ctx, bolt, x, y);
@@ -988,7 +988,7 @@ export const MARKS_A = {
         g.beginPath(); g.moveTo(Math.cos(a) * 9, 14 + Math.sin(a) * 9); g.lineTo(Math.cos(a) * 16, 14 + Math.sin(a) * 16); g.stroke();
       }
     });
-    if (!c) return VEC_A.seal(ctx, e, n, k, t);
+    if (!c) return VEC_A.seal(markCtx(ctx), e, n, k, t);
     const x = e.cx, y = e.y - 12;
     ctx.globalCompositeOperation = 'source-over';
     drawCell(ctx, c, x, y);
@@ -1004,7 +1004,7 @@ export const MARKS_A = {
       g.beginPath(); g.moveTo(-hw, -hh); g.lineTo(hw, hh); g.moveTo(hw, -hh); g.lineTo(-hw, hh); g.stroke();
       g.setLineDash?.(DASH_NONE);
     });
-    if (!c) return VEC_A.sealed(ctx, e, n, k, t);
+    if (!c) return VEC_A.sealed(markCtx(ctx), e, n, k, t);
     ctx.globalCompositeOperation = ADD; ctx.globalAlpha = Math.min(1, k * 3);
     drawCell(ctx, c, e.cx, e.y + e.h * 0.5);
   },
@@ -1020,7 +1020,7 @@ export const MARKS_A = {
       for (let i = 1; i <= 6; i++) g.lineTo(i % 2 ? 9 : -9, -h / 2 + h * i / 6);
       g.stroke();
     });
-    if (!c) return VEC_A.crack(ctx, e, n, k, t);
+    if (!c) return VEC_A.crack(markCtx(ctx), e, n, k, t);
     ctx.globalCompositeOperation = ADD; ctx.globalAlpha = Math.min(1, k * 3) * (0.8 + 0.2 * Math.sin(t * 14));
     drawCell(ctx, c, e.cx, e.y + e.h * 0.15 + h / 2);
   },
