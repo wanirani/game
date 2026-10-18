@@ -1,7 +1,7 @@
 // 「보스는 사건이다」 보스 등장·격파 연출 검사 — owner: S5 P4a (plan §5 P4 acceptance 1·2·3·6)
 //
 //   node tools/qa/boss_reveal.mjs [--device fold_open] [--bosses b_nightwing,b_frostqueen,…] [--out DIR]
-//        [--shots] [--video] [--perf] [--quick] [--quality high|medium|low]
+//        [--shots] [--video] [--perf [--rounds N]] [--quick] [--quality high|medium|low]
 //
 // 검사 (보스마다 새 페이지 · lib/step.mjs freeze 로 1/60초씩 진행 — 부하가 큰 기계에서도 같은 결과):
 //   data.rows        이야기 보스(스테이지 s01–s25 의 보스 + bosses/lazy.js BOSS_IDS) 모두 data/boss_intro.js 행이 있다 · 모르는 id 는
@@ -16,6 +16,7 @@
 //   nightmare.plate  world.opts.nightmare (K2): 등장 연출 없이 이름판만 · 진홍판(PLATE_NIGHTMARE)
 //   <boss>.finale    격파: 연출 속성 = boss_intro 속성 · 낙관·빛기둥 화면 층 · ULTFX 임팩트 프레임 +1 · STAGE CLEAR 배너 그대로
 //   perf.*           (--perf) 같은 페이지·기기에서 프레임 시간(갱신+그리기, 실제 시계) p95: 등장 연출·격파 연출 ≤ 필살기 컷인(카엘 궁극기)
+//                    번갈아 N 라운드(기본 3, --quick 1) 재고 라운드별 p95 의 중앙값끼리 비교
 // 산출물 (--shots): DIR/<boss>_b1|b2|b3.png (레터박스·변형·이름판) · DIR/retry_plate.png · DIR/nightmare_plate.png · DIR/again_plate.png
 //         (--video): DIR/frames_<boss>/f*.png (30 fps) → DIR/<boss>_entrance.mp4 · DIR/<boss>_finale.mp4 (ffmpeg 이 있으면)
 // 종료 코드: 0 = 모두 통과, 1 = 실패가 있음
@@ -370,36 +371,54 @@ for (const boss of BOSSES_RUN) {
 
 // ─────────────────────────── 3. 프레임 시간 (--perf) ───────────────────────────
 if (PERF) {
+  // 공유 기계의 잡음(다른 작업·GC 튀는 프레임)에 흔들리지 않게: 등장·격파 세션과 필살기 세션을 번갈아 ROUNDS 번 재고,
+  // 양쪽 모두 같은 방식(라운드별 p95 의 중앙값)으로 비교한다 (Stage 4 perf.md 의 'interleaved ×3 (median)' 과 같은 방법)
+  const ROUNDS = Math.max(1, Math.min(7, Number(opt('rounds', QUICK ? 1 : 3)) || 3));
+  const med = (xs) => { const a = xs.slice().sort((p, q) => p - q); return a.length ? a[Math.floor((a.length - 1) / 2)] : 0; };
   for (const boss of BOSSES_RUN.slice(0, QUICK ? 1 : 3)) {
     const PQ = QUALITY || 'medium';
-    const s = await openRoom(boss, { quality: PQ });
-    const tier = await s.eval(() => { const g = window.__game; return g.tier ?? g.qualityTier ?? g.quality ?? g.settings?.quality ?? null; });
-    const r = await runReveal(s, boss, { perf: true });
-    const f = await runFinale(s, boss, { perf: true });
-    await s.close();
-    // 필살기 컷인 (같은 방·같은 기기·같은 화질): 카엘 궁극기
-    const s2 = await openRoom(boss, { quality: PQ });
-    await runReveal(s2, boss, {});
-    // 보스의 'intro' 상태(등장 장면이 닫힌 뒤 잠깐 무적·화면 밖)가 끝나야 필살기가 나간다 (skills.castUltimate 가 거절) — 끝날 때까지 기다린다
-    for (let i = 0; i < 360; i++) {
-      const busy = await s2.eval(() => { const w = window.__game.world, b = w.boss; return !!(b && !b.dead && (b.pendingBoss || b.state === 'intro')) || !!w.cutscene; });
-      if (!busy) break;
-      await step(s2.page, 1, false);
+    const rounds = [];
+    let tier = null;
+    for (let k = 0; k < ROUNDS; k++) {
+      const s = await openRoom(boss, { quality: PQ });
+      tier = await s.eval(() => { const g = window.__game; return g.tier ?? g.qualityTier ?? g.quality ?? g.settings?.quality ?? null; });
+      const r = await runReveal(s, boss, { perf: true });
+      const f = await runFinale(s, boss, { perf: true });
+      await s.close();
+      // 필살기 컷인 (같은 방·같은 기기·같은 화질): 카엘 궁극기
+      const s2 = await openRoom(boss, { quality: PQ });
+      await runReveal(s2, boss, {});
+      await s2.eval(async () => { const { bus } = await import('/src/core/events.js'); if (!window.__p4aUltHook) { window.__p4aUltHook = true; bus.on('ultimateCast', () => { window.__p4aUlt = (window.__p4aUlt || 0) + 1; }); } window.__p4aUlt = 0; });
+      // 보스의 'intro' 상태(등장 장면이 닫힌 뒤 잠깐 무적·화면 밖)가 끝나야 필살기가 나간다 (skills.castUltimate 가 거절) — 끝날 때까지 기다린다.
+      // 보스 패턴과 겹쳐 거절되면(입력 잠금·경직 등) 조금 뒤 다시 누른다. 시전 순간부터 150 프레임을 잰다
+      let cast = false;
+      for (let tries = 0; tries < 6 && !cast; tries++) {
+        for (let i = 0; i < 360; i++) {
+          const busy = await s2.eval(() => { const w = window.__game.world, b = w.boss; return !!(b && !b.dead && (b.pendingBoss || b.state === 'intro')) || !!w.cutscene || !!w.inputLock; });
+          if (!busy) break;
+          await step(s2.page, 1, false);
+        }
+        await s2.eval(() => { const w = window.__game.world, p = w.player; p.buffs.invincible = 9999; w.run.sp = 100; p.iframes = 9; p.hurtT = 0; });
+        await s2.page.keyboard.down('KeyF'); await step(s2.page, 2, false); await s2.page.keyboard.up('KeyF'); await step(s2.page, 1, false);
+        cast = await s2.eval(() => (window.__p4aUlt || 0) > 0 || window.__game.top?.name === 'ultCutin');
+        if (!cast) await step(s2.page, 20, false);
+      }
+      const ult = [];
+      let seen = cast;
+      for (let i = 0; i < 150; i++) {
+        const m = await s2.eval(() => { const g = window.__game, now = g.__qaRealNow; const t0 = now(); window.__qaStep(1, false); try { g.input?.beginRender?.(); g.__qaRender.call(g); g.input?.endRender?.(); } catch (e) { console.error(e); } return { ms: now() - t0, top: g.top?.name, cast: window.__p4aUlt || 0 }; });
+        if (m.top === 'ultCutin' || m.cast > 0) seen = true;
+        ult.push(m.ms);
+      }
+      await s2.close();
+      rounds.push({ R: stats(r.perfMs.map((x) => +x.toFixed(2))), F: stats(f.perfMs.map((x) => +x.toFixed(2))), U: stats(ult.map((x) => +x.toFixed(2))), seen, frames: [r.perfMs.length, f.perfMs.length, ult.length] });
     }
-    await s2.eval(() => { const w = window.__game.world, p = w.player; p.buffs.invincible = 9999; w.run.sp = 100; p.iframes = 9; p.hurtT = 0; window.__p4aUlt = 0; });
-    await s2.eval(async () => { const { bus } = await import('/src/core/events.js'); if (!window.__p4aUltHook) { window.__p4aUltHook = true; bus.on('ultimateCast', () => { window.__p4aUlt = (window.__p4aUlt || 0) + 1; }); } });
-    await s2.page.keyboard.down('KeyF'); await step(s2.page, 3, false); await s2.page.keyboard.up('KeyF');
-    const ult = [];
-    let seen = false;
-    for (let i = 0; i < 150; i++) {
-      const m = await s2.eval(() => { const g = window.__game, now = g.__qaRealNow; const t0 = now(); window.__qaStep(1, false); const t1 = now(); try { g.input?.beginRender?.(); g.__qaRender.call(g); g.input?.endRender?.(); } catch (e) { console.error(e); } return { ms: now() - t0, top: g.top?.name, cut: !!g.world?.cutscene, cast: window.__p4aUlt || 0 }; });
-      if (m.top === 'ultCutin' || m.cast > 0) seen = true;
-      ult.push(m.ms);
-    }
-    await s2.close();
-    const R = stats(r.perfMs.map((x) => +x.toFixed(2))), F = stats(f.perfMs.map((x) => +x.toFixed(2))), U = stats(ult.map((x) => +x.toFixed(2)));
-    perfRows.push({ boss, quality: PQ, tier, reveal: R, finale: F, ult: U, ultSeen: seen });
-    add(`perf.${boss}`, seen && R.p95 <= U.p95 && F.p95 <= U.p95, { quality: PQ, tier, revealP95: R.p95, finaleP95: F.p95, ultP95: U.p95, revealAvg: R.avg, finaleAvg: F.avg, ultAvg: U.avg, frames: [r.perfMs.length, f.perfMs.length, ult.length] });
+    const pick = (k, q) => +med(rounds.map((x) => x[k][q])).toFixed(2);
+    const R = { p95: pick('R', 'p95'), avg: pick('R', 'avg') }, F = { p95: pick('F', 'p95'), avg: pick('F', 'avg') }, U = { p95: pick('U', 'p95'), avg: pick('U', 'avg') };
+    const seen = rounds.every((x) => x.seen);
+    perfRows.push({ boss, quality: PQ, tier, rounds, median: { reveal: R, finale: F, ult: U }, ultSeen: seen });
+    add(`perf.${boss}`, seen && R.p95 <= U.p95 && F.p95 <= U.p95, { quality: PQ, tier, rounds: ROUNDS, revealP95: R.p95, finaleP95: F.p95, ultP95: U.p95, revealAvg: R.avg, finaleAvg: F.avg, ultAvg: U.avg,
+      perRound: rounds.map((x) => [x.R.p95, x.F.p95, x.U.p95, x.seen ? 1 : 0]), frames: rounds[0]?.frames });
   }
 }
 
