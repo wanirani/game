@@ -31,6 +31,8 @@ const OK = Object.freeze({ ok: true, code: null, reason: '' });
 let FROM = 'church';
 
 function toast(game, text, sec = 2) { try { game?.toast?.(text, NM_COLOR, sec); } catch (e) { console.warn('[nightmare]', e); } }
+/** 앞 판의 「악몽의 규칙」 안내가 (컷인 등으로 미뤄져) 남아 있으면 지운다 — 다른 악몽·마을에 엉뚱한 규칙이 뜨지 않게 */
+function dropRuleToasts(game) { try { if (Array.isArray(game?.toasts)) game.toasts = game.toasts.filter((t) => !String(t?.text ?? '').startsWith(RULE_LABEL + ':')); } catch { /* 토스트 없음 */ } }
 function save(game) {
   const st = game?.state;
   if (!st || st.arcade) return;
@@ -151,6 +153,7 @@ export function loadHazards() { return (_hz ??= import('./nm_hazards.js').catch(
 export function attachNightmare(scene, w, T) {
   if (!w || !T?.nightmare) return;
   const e = T.entry, game = w.game, tw = nmTwist(e);
+  dropRuleToasts(game);
   if (!isObj(w.opts)) w.opts = {};
   if (!w.opts.nightmare) w.opts.nightmare = nmOpt(e, w.stage?.level ?? nmLevel(e, w.hero?.level ?? 1));   // K2 (월드가 opts 를 들고 있지 않아도)
   w.nightmare = w.opts.nightmare;
@@ -195,7 +198,7 @@ export function grantFirstReward(game, w, e) {
     const d = rollEquipDrop(w, lv + 2, { minRarity: e?.reward?.rarity ?? 4, boost: 1 });
     const it = d?.data?.item;
     if (it) {
-      if (!(canAdd(st, it) && addItem(st, it))) queueLoot(st, it);
+      if (!(canAdd(st, it) && addItem(st, it, { silent: true }))) queueLoot(st, it);   // 알림은 「첫 격파 보상」 하나로
       out.items.push(it);
     }
   } catch (err) { console.warn('[nightmare] 보상', err); }
@@ -282,6 +285,7 @@ export function leaveNightmare(game, id, why = 'leave') {
 
 /** 마을로: 성당에서 왔으면 성당 앞 + 성당, 월드맵에서 왔으면 동쪽 문 (P3b 가 성당 「악몽」 탭을 연다 — params.nightmare) */
 function goBack(game, id, why) {
+  dropRuleToasts(game);
   if (!game.registry?.hub) { game.go('title', {}); return; }
   if (FROM === 'worldmap') game.go('hub', { from: 'nightmare', nightmare: id, nmWhy: why });
   else game.go('hub', { from: 'church', open: 'church', nightmare: id, nmWhy: why });

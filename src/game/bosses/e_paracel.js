@@ -34,7 +34,7 @@ import { PI, R, LG, ink, glow, glowE, glowSprite, warnRect, warnFloor, warnCircl
 import { Entity } from '../entity.js';
 import { TILE } from '../../core/game.js';
 import { audio } from '../../core/audio.js';
-import { TAU, clamp, lerp, rand, approach, rgba } from '../../core/math.js';
+import { TAU, clamp, lerp, rand, approach, rgba, mix } from '../../core/math.js';
 import { registerPainted, hasPainted, paintedDraw } from '../../render/painted/registry.js';   // 채색 퍼핏 (그리기 전용)
 import { bosses as EXB } from '../../render/painted/reg/ex-boss.js';
 
@@ -833,6 +833,18 @@ function ik(x0, y0, x1, y1, a, b, bend, out) {
   return out;
 }
 const fl = (c) => (R.fl ? '#ffffff' : c);
+// ── 금 번짐 팔레트: paintBody 가 GK(= goldK)를 정하면, 각 부위는 제 문턱(on)을 넘는 만큼 금빛으로 바뀐다 (발끝 → 정수리) ──
+let GK = 0;
+const AU = [GOLD_D, '#b88a30', GOLD, GOLD_H];
+/** 부위 색 → 금빛. on = 그 부위가 굳기 시작하는 goldK · tone 0..3 (그늘 → 빛) */
+function au(col, on, tone = 2) {
+  if (R.fl) return '#ffffff';
+  const k = clamp((GK - on) / 0.12, 0, 1);
+  return k <= 0 ? col : k >= 1 ? AU[tone] : mix(col, AU[tone], k);
+}
+const gilt = (on) => GK >= on + 0.12;
+// 부위별 문턱 (아래에서 위로)
+const ON = { bootF: 0.02, bootN: 0.04, shinF: 0.1, shinN: 0.14, thighF: 0.24, thighN: 0.28, coat: 0.38, belt: 0.44, apron: 0.46, torso: 0.52, graft: 0.6, armN: 0.66, hand: 0.7, collar: 0.74, head: 0.84, face: 0.9 };
 /** 끝이 둥근 가는 살 (두 원 사이를 잇는 사다리꼴) */
 function limb(ctx, x0, y0, x1, y1, r0, r1, col, hi, lw = 2.4) {
   const ang = Math.atan2(y1 - y0, x1 - x0), nx = -Math.sin(ang), ny = Math.cos(ang);

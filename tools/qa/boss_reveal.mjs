@@ -1,7 +1,7 @@
 // 「보스는 사건이다」 보스 등장·격파 연출 검사 — owner: S5 P4a (plan §5 P4 acceptance 1·2·3·6)
 //
 //   node tools/qa/boss_reveal.mjs [--device fold_open] [--bosses b_nightwing,b_frostqueen,…] [--out DIR]
-//        [--shots] [--video] [--perf] [--quick]
+//        [--shots] [--video] [--perf] [--quick] [--quality high|medium|low]
 //
 // 검사 (보스마다 새 페이지 · lib/step.mjs freeze 로 1/60초씩 진행 — 부하가 큰 기계에서도 같은 결과):
 //   data.rows        이야기 보스(스테이지 s01–s25 의 보스 + bosses/lazy.js BOSS_IDS) 모두 data/boss_intro.js 행이 있다 · 모르는 id 는
@@ -35,6 +35,8 @@ const DEVICE = String(opt('device', 'fold_open'));
 if (!VIEWPORTS[DEVICE]) { console.error(`--device: 모르는 기기 '${DEVICE}'`); process.exit(2); }
 const OUT = String(opt('out', '/tmp/claude-0/qa/boss_reveal'));
 const SHOTS = !!opt('shots', false), VIDEO = !!opt('video', false), PERF = !!opt('perf', false), QUICK = !!opt('quick', false);
+// 화질: --perf 의 프레임 시간은 폴드 기본 등급(medium, perf_budget 의 fold 프로필과 같음)으로 잰다. 다른 검사는 기기 기본값
+const QUALITY = opt('quality', null);
 const STAGE_OF = { b_nightwing: 's01', b_banshee: 's02', b_dullahan: 's03', b_crimson: 's04', b_bonedragon: 's05', b_grimoire: 's06', b_chimera: 's07', b_leviathan: 's08', b_colossus: 's09', b_frostqueen: 's10', b_death: 's11', b_dracula: 's12', b_chaos: 's13', b_narkissa: 's14', b_moloch: 's15', b_dagon: 's16', b_ziz: 's17', b_mara: 's18', b_behemoth: 's19', b_nihil: 's20', b_argen: 's21', b_nemain: 's22', b_hagen: 's23', b_bride: 's24', b_charon: 's25' };
 const DEFAULT_BOSSES = ['b_nightwing', 'b_frostqueen', 'b_dagon', 'b_dullahan', 'b_dracula', 'b_charon'];   // plan §5 P4 acceptance 1
 const BOSSES_RUN = String(opt('bosses', DEFAULT_BOSSES.join(','))).split(',').map((s) => s.trim()).filter(Boolean);
@@ -91,9 +93,9 @@ const FPS = 60, DT = 1 / FPS;
 const TOTAL = 3.2;
 
 /** 보스방 열고 · 멈추고 · 경기장 앞까지 (아직 들어가지 않는다) */
-async function openRoom(boss, { url = null, route = null } = {}) {
+async function openRoom(boss, { url = null, route = null, quality = QUALITY } = {}) {
   const st = STAGE_OF[boss];
-  const s = await env.page(DEVICE, null);
+  const s = await env.page(DEVICE, null, quality ? { settings: { quality: String(quality) } } : {});
   SESS.push([boss, s]);
   if (route) await route(s.page);
   await s.goto(url ?? `index.html?scene=stage&stage=${st}&room=boss`);
@@ -369,12 +371,14 @@ for (const boss of BOSSES_RUN) {
 // ─────────────────────────── 3. 프레임 시간 (--perf) ───────────────────────────
 if (PERF) {
   for (const boss of BOSSES_RUN.slice(0, QUICK ? 1 : 3)) {
-    const s = await openRoom(boss);
+    const PQ = QUALITY || 'medium';
+    const s = await openRoom(boss, { quality: PQ });
+    const tier = await s.eval(() => { const g = window.__game; return g.tier ?? g.qualityTier ?? g.quality ?? g.settings?.quality ?? null; });
     const r = await runReveal(s, boss, { perf: true });
     const f = await runFinale(s, boss, { perf: true });
     await s.close();
-    // 필살기 컷인 (같은 방·같은 기기): 카엘 궁극기
-    const s2 = await openRoom(boss);
+    // 필살기 컷인 (같은 방·같은 기기·같은 화질): 카엘 궁극기
+    const s2 = await openRoom(boss, { quality: PQ });
     await runReveal(s2, boss, {});
     await s2.eval(() => { const w = window.__game.world, p = w.player; p.buffs.invincible = 9999; w.run.sp = 100; p.iframes = 9; });
     await s2.page.keyboard.down('KeyF'); await step(s2.page, 3, false); await s2.page.keyboard.up('KeyF');
@@ -387,8 +391,8 @@ if (PERF) {
     }
     await s2.close();
     const R = stats(r.perfMs.map((x) => +x.toFixed(2))), F = stats(f.perfMs.map((x) => +x.toFixed(2))), U = stats(ult.map((x) => +x.toFixed(2)));
-    perfRows.push({ boss, reveal: R, finale: F, ult: U, ultSeen: seen });
-    add(`perf.${boss}`, seen && R.p95 <= U.p95 && F.p95 <= U.p95, { revealP95: R.p95, finaleP95: F.p95, ultP95: U.p95, revealAvg: R.avg, finaleAvg: F.avg, ultAvg: U.avg, frames: [r.perfMs.length, f.perfMs.length, ult.length] });
+    perfRows.push({ boss, quality: PQ, tier, reveal: R, finale: F, ult: U, ultSeen: seen });
+    add(`perf.${boss}`, seen && R.p95 <= U.p95 && F.p95 <= U.p95, { quality: PQ, tier, revealP95: R.p95, finaleP95: F.p95, ultP95: U.p95, revealAvg: R.avg, finaleAvg: F.avg, ultAvg: U.avg, frames: [r.perfMs.length, f.perfMs.length, ult.length] });
   }
 }
 

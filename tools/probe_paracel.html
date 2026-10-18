@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>파라켈 탐침 (CH26-A)</title>
+<style>
+  body { margin: 0; background: #0b0710; color: #e8dcd0; font: 13px/1.5 "Noto Sans KR", sans-serif; }
+  #bar { padding: 6px 10px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  button { background: #2a1a24; color: #f0e0d0; border: 1px solid #5a3040; border-radius: 4px; padding: 3px 8px; cursor: pointer; font: inherit; }
+  button.on { background: #6a2a3a; }
+  canvas { display: block; margin: 0 auto; max-width: 100%; height: auto; background: #140a18; }
+  #log { white-space: pre-wrap; font: 12px ui-monospace, monospace; color: #ffb0a0; padding: 4px 10px; }
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<canvas id="c" width="960" height="540"></canvas>
+<div id="log" hidden></div>
+<script type="module">
+// 파라켈(b_paracel) 탐침 — CH26-A (docs/specs/ex_s26.md §8). 아직 등록하지 않은 보스를 **레지스트리를 거치지 않고** 클래스 파일에서 바로 불러
+// 가짜 월드(tools/gallery_bosses_e.html 와 같은 틀)에서 돌린다. 데이터는 아래 DEF (= ch26_wiring.md 의 BOSSES_E.b_paracel 그대로).
+// 쓰기: tools/probe_paracel.html?paused=1&story=1&inferno=1&debug=1&phase=1&act=goldFloor   자동화: window.__probe (tools/test_paracel.mjs)
+// 파일 이름은 gallery_* 가 아니다 (tools/qa/run_all.mjs · visual_review.mjs 의 갤러리 목록에 들지 않게 — 등록 전 탐침).
+import { Particles } from '../src/core/particles.js';
+import { Camera } from '../src/core/camera.js';
+import { Lighting } from '../src/core/lighting.js';
+import { Entity } from '../src/game/entity.js';
+import { Projectile } from '../src/game/projectiles.js';
+import { Enemy } from '../src/game/enemy.js';
+import { patternsOf } from '../src/game/bosses/c_common.js';
+import { SCRIPTS } from '../src/data/story.js';
+import { SCRIPTS_EX26 } from '../src/data/story_ex26.js';
+import { getDiff } from '../src/data/difficulty.js';
+import { Paracel } from '../src/game/bosses/e_paracel.js';
+
+Object.assign(SCRIPTS, SCRIPTS_EX26);   // 이 페이지 안에서만 (페이즈 대사 b_paracel_fuse · b_paracel_last)
+export const DEF = {
+  id: 'b_paracel', name: '파라켈 박사', title: '수은의 연금술사', hp: 1750, hpMul: 1.0, atk: 27, def: 11, res: 12, exp: 1500, score: 60000,
+  size: { w: 84, h: 176 }, flying: false, contact: 0.5, material: 'flesh', weak: ['thunder', 'holy'], resist: ['fire'], phases: [0.5],
+  music: 'boss2', portrait: 'portraits/b_paracel', stageId: 's26', drops: ['u_paracel'], light: { r: 200, color: '#c8d4e0', i: 0.55 },
+  form2: { name: '파라켈 박사', title: '금이 되어 가는 몸', portrait: 'portraits/b_paracel' },
+  intro: '(도가니를 들여다보던 손이 멈춘다. 등에 매단 유리 배양조 속에서 무언가가 눈을 뜬다.)',
+  desc: '악마성의 수석 연금술사. 역병을 이기려고 제 몸에 수은과 호문쿨루스의 살을 이어 붙였다. 성이 사라진 백 년 동안에도 바위 속 공방에서 불을 지켰다고 한다.',
+};
+const q = new URLSearchParams(location.search);
+const TILE = 48, VW = 960, VH = 540, DT = 1 / 60;
+const $ = (id) => document.getElementById(id);
+const cv = $('c'), ctx = cv.getContext('2d');
+const notes = [];
+function note(msg) { notes.push(msg); $('log').hidden = false; $('log').textContent = notes.slice(-12).join('\n'); }
+window.addEventListener('error', (e) => note('[오류] ' + (e.message || e)));
+window.addEventListener('unhandledrejection', (e) => note('[오류] ' + (e.reason?.message || e.reason)));
+const cErr = console.error.bind(console);
+console.error = (...a) => { note('[오류] ' + a.map((x) => x?.stack || String(x)).join(' ').slice(0, 400)); cErr(...a); };
+const O = { paused: q.get('paused') === '1', debug: q.has('debug'), story: q.get('story') === '1', inferno: q.get('inferno') === '1', diff: q.get('diff') || 'normal', player: Number(q.get('player') ?? 0.3), dlg: 1.2, room: q.get('room') || 'boss' };
+
+// ───────────── 가짜 맵: 설계 방(PATTERNS.room) 또는 투기장 r1 (arena.js) ─────────────
+function makeMap(room) {
+  const w = room.w, h = room.h, tiles = new Uint8Array(w * h);
+  for (const [x0, y0, x1, y1] of room.solids ?? []) for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (tx >= 0 && ty >= 0 && tx < w && ty < h) tiles[ty * w + tx] = 1;
+  return {
+    w, h, pxW: w * TILE, pxH: h * TILE, tiles, markers: [], decor: [],
+    typeAt(tx, ty) { if (tx < 0 || tx >= w || ty >= h) return 1; if (ty < 0) return 0; return tiles[ty * w + tx]; },
+    typeAtPx(x, y) { return this.typeAt(Math.floor(x / TILE), Math.floor(y / TILE)); },
+    isSolidPx(x, y) { return this.typeAtPx(x, y) === 1; },
+    markersOf() { return []; },
+    set(tx, ty, t) { if (tx >= 0 && ty >= 0 && tx < w && ty < h) tiles[ty * w + tx] = t; },
+    groundBelow(tx, ty) { for (let y = Math.max(0, ty); y < h; y++) if (this.typeAt(tx, y) === 1 && this.typeAt(tx, y - 1) !== 1) return y * TILE; return null; },
+  };
+}
+const ARENA_ROOM = { w: 40, h: 14, x0: 0, solids: [[0, 12, 39, 13], [0, 0, 0, 13], [39, 0, 39, 13], [6, 9, 10, 9], [29, 9, 33, 9], [16, 6, 23, 6], [3, 3, 6, 3], [33, 3, 36, 3]] };   // maps/arena.js r1 뼈대 (바닥 12행 · 발판 9·6·3행)
+
+// ───────────── 가짜 플레이어 ─────────────
+class FakePlayer extends Entity {
+  constructor(x, y) {
+    super(x - 14, y - 64, 28, 64);
+    this.kind = 'player'; this.z = 5;
+    this.stats = { hp: 9999, maxHp: 9999, mp: 999, def: 10, res: 10 }; this.hp = 9999; this.mp = 999;
+    this.hits = 0; this.hitT = 0; this.iframes = 0; this.buffs = {}; this.dead = false; this.onG = false; this.noIframes = false;
+  }
+  hurtbox() { return { x: this.x + 3, y: this.y + 6, w: this.w - 6, h: this.h - 6 }; }
+  get invuln() { return (!this.noIframes && this.iframes > 0) || this.dead; }
+  takeHit(d, attack) { this.hitT = 0.25; this.hits++; this.iframes = 0.9; this.vx += (attack?.dir ?? 1) * 160; return true; }
+  refreshStats() {} heal() {}
+  update(dt, w) {
+    this.t += dt; if (this.hitT > 0) this.hitT -= dt; if (this.iframes > 0) this.iframes -= dt;
+    if (this.dead) return;
+    const b = w.boss; if (b) this.facing = Math.sign(b.cx - this.cx) || 1;
+    this.vx *= Math.pow(0.002, dt);
+    const m = w.map;
+    const nx = this.x + this.vx * dt, ex = this.vx > 0 ? nx + this.w : nx;
+    if (!m.isSolidPx(ex, this.y + this.h * 0.5) && !m.isSolidPx(ex, this.y + this.h * 0.9)) this.x = nx;
+    const pb = this.bottom;
+    this.vy = Math.min(1400, this.vy + 2200 * dt); this.y += this.vy * dt;
+    this.onG = false;
+    if (this.vy >= 0) {
+      const ty = Math.floor(this.bottom / TILE);
+      if ((m.typeAt(Math.floor((this.x + 4) / TILE), ty) === 1 || m.typeAt(Math.floor((this.x + this.w - 4) / TILE), ty) === 1) && pb <= ty * TILE + 2) { this.y = ty * TILE - this.h; this.vy = 0; this.onG = true; }
+    }
+    const a = w.arena; this.x = Math.max(a.x0, Math.min(a.x1 - this.w, this.x));
+  }
+  draw(ctx) {
+    if (this.dead) return;
+    const x = this.cx, y = this.bottom, f = this.facing;
+    ctx.save(); ctx.translate(x, y); ctx.scale(f, 1);
+    if (this.iframes > 0 && Math.floor(this.t * 20) % 2) ctx.globalAlpha = 0.5;
+    ctx.fillStyle = this.hitT > 0 ? '#ff5060' : '#1a1420'; ctx.strokeStyle = '#9fb8ff'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-8, -30); ctx.lineTo(-13, -50); ctx.lineTo(-4, -58); ctx.lineTo(8, -56); ctx.lineTo(12, -30); ctx.lineTo(9, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#e8c8a8'; ctx.beginPath(); ctx.arc(2, -60, 7, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ───────────── 가짜 월드 ─────────────
+function makeWorld() {
+  const P = patternsOf('b_paracel', Paracel);
+  const room = O.room === 'arena' ? ARENA_ROOM : P.room;
+  const map = makeMap(room);
+  const diff = getDiff(O.diff);
+  const W = {
+    game: {
+      flash(c, a) { W._flash = { c, a: Math.min(0.85, a ?? 0.8) }; }, toast(t) { W.toasts.push({ t: String(t), life: 2.5 }); },
+      debug: O.debug, settings: { flashFx: 1, reduceMotion: false }, viewW: VW, viewH: VH, fps: 60,
+      push(name, p = {}) { return fakePush(W, name, p); }, pop() { closeDialog(W); },
+    },
+    state: { difficulty: O.inferno ? 'inferno' : O.diff, progress: { bosses: [], flags: {}, seenScripts: [] }, stats: {} },
+    mode: O.story ? 'story' : 'arcade', arcade: O.story ? false : true,
+    diff, stage: { id: 's26', level: 30, liquid: 'poison' },
+    fx: new Particles(1400), camera: new Camera(VW, VH), lighting: new Lighting(),
+    entities: [], platforms: [], debugRects: [], overlays: [], toasts: [],
+    time: 0, hitstop: 0, slowmo: 0, timeStop: 0, cutscene: false, freezeEnemies: false, hudHidden: false, banner: null,
+    cleared: false, transitioning: false, inputLock: false, bossActive: false, dialog: null,
+    map, run: { score: 0, sp: 0, aw: 0, lives: 3 }, gimmick: null,
+    add(e) { e.world = W; W.entities.push(e); return e; },
+    addOverlay(o) { if (o) { o.t ??= 0; W.overlays.push(o); } return o; },
+    gimmickOf() { return null; },
+    spawnProjectile(o) { return W.add(new Projectile(o)); },
+    spawnEnemy(eid, x, y, o = {}) { return W.add(new Enemy(eid, x, y, { level: W.stage.level, diff: W.diff, facing: o.facing ?? -1, params: o.params, elite: false })); },
+    spawnPickup() {}, enemies() { return W.entities.filter((e) => (e.kind === 'enemy' || e.kind === 'boss') && !e.dead); },
+    hittables() { return W.enemies(); }, nearestEnemy() { return null; },
+    onBossDefeated(b) { W.cleared = true; W.banner = { text: 'STAGE CLEAR', sub: b.def.name + ' 격파!', t: 4, color: '#ffe070' }; W.slowmo = 1.6; },
+    breakTilesIn() {}, onPlayerHit() {}, onPlayerHurt() {}, onEnemyKilled() {}, addScore() {}, gainExp() {}, addAw() {},
+  };
+  W.room = room;
+  W.lighting.darkness = 0.3; W.lighting.res = 0.5;
+  const x0 = room.x0 * TILE + (room === ARENA_ROOM ? TILE : 0), x1 = map.pxW - (room === ARENA_ROOM ? TILE : 0), camX0 = Math.max(0, x0 - TILE);
+  W.arena = { x0, x1, cam: { x: camX0, y: 0, w: x1 - camX0, h: map.pxH } };
+  W.arenaX = x0;
+  W.camera.setBounds(camX0, 0, x1 - camX0, map.pxH);
+  W.camera.zoomTarget = Math.max(0.74, Math.min(1, VH / (map.pxH - TILE)));
+  W.camera.zoom = W.camera.zoomTarget;
+  W.floorRow = room === ARENA_ROOM ? 12 : P.floorRow;
+  return W;
+}
+function fakePush(W, name, p) {
+  if (name !== 'dialogue') return null;
+  W.dialog = { id: p.script ?? '(대사)', lines: SCRIPTS[p.script] ?? [], t: 0, onEnd: p.onEnd };
+  W.cutscene = true;
+  return { name };
+}
+function closeDialog(W) { const d = W.dialog; if (!d) return; W.dialog = null; W.cutscene = false; try { d.onEnd?.(); } catch (e) { console.error('[탐침] 대사 onEnd', e); } }
+
+const S = { W: null, boss: null, view: null };
+function build({ phase = 0, act = null, story = false, inferno = false, room = 'boss', diff = 'normal' } = {}) {   // 옵션은 매번 명시 (앞 호출의 값이 남지 않는다)
+  O.story = story; O.inferno = inferno; O.room = room; O.diff = diff;
+  const W = makeWorld(), a = W.arena, m = W.map;
+  const px = a.x0 + (a.x1 - a.x0) * O.player, fr = W.floorRow;
+  W.player = W.add(new FakePlayer(px, fr * TILE));
+  const boss = new Paracel(W, DEF, a.x0 + (a.x1 - a.x0) * 0.72, fr * TILE);
+  W.boss = boss; W.add(boss); W.bossActive = true;
+  S.W = W; S.boss = boss;
+  W.camera.follow(camTarget(W), DT, true);
+  if (phase) boss.debugPhase(phase);
+  if (act) boss.debugAct(act);
+  return W;
+}
+function camTarget(W) { const p = W.player, b = W.boss; const mx = b && !b.dead ? (p.cx * 0.55 + b.cx * 0.45) : p.cx; return { x: mx - 1, y: p.y, w: 2, h: p.h, vx: 0, vy: 0, facing: 1, onGround: true }; }
+function stepWorld(W, dt) {
+  if (W.dialog) { W.dialog.t += dt; if (O.dlg > 0 && W.dialog.t >= O.dlg) closeDialog(W); return; }
+  if (W.hitstop > 0) { W.hitstop -= dt; return; }
+  let sdt = dt; if (W.slowmo > 0) { W.slowmo -= dt; sdt = dt * 0.35; }
+  W.time += sdt; if (W.timeStop > 0) W.timeStop -= dt;
+  const L = W.entities;
+  for (let i = 0; i < L.length; i++) { const e = L[i]; if (e.dead) continue; try { e.update(sdt, W); } catch (err) { console.error(`[탐침] ${e.kind}:${e.def?.id ?? e.constructor?.name} update`, err); } }
+  W.entities = W.entities.filter((e) => !e.dead);
+  W.fx.update(sdt, W.map);
+  W.camera.follow(camTarget(W), dt);
+  W.lighting.begin();
+  for (const e of W.entities) { try { e.lights?.(W.lighting); } catch (err) { console.error('[탐침] lights', err); } }
+  if (W._flash) { W._flash.a -= dt * 3; if (W._flash.a <= 0) W._flash = null; }
+  if (W.banner) { W.banner.t -= dt; if (W.banner.t <= 0) W.banner = null; }
+}
+function step(sec) { const n = Math.round(sec / DT); for (let i = 0; i < n; i++) stepWorld(S.W, DT); }
+function hit(dmg, { part = null, tags = [], own = true } = {}) {
+  const b = S.boss, W = S.W;
+  if (part) b.hitPart = b[part];
+  else b.hurtbox();
+  const atk = { dir: 1, owner: W.player, tags: own ? tags : [...tags, 'guardian'] };
+  try { return b.takeHit(dmg, atk, W, { hx: b.cx, hy: b.cy }); } catch (e) { console.error('[탐침] 피격', e); return false; }
+}
+function kill() { const b = S.boss; b.invuln = false; b.harmless = false; b.hp = 1; return hit(99); }
+function deathReset() {
+  const W = S.W, p = W.player, b = S.boss;
+  p.dead = true; stepWorld(W, DT);
+  p.dead = false; p.iframes = 2.5; p.x = W.arena.x0 + TILE * 2; p.vx = p.vy = 0;
+  if (b && !b.dead && !(b.dying > 0)) b.hp = b.stats.maxHp;
+}
+
+// ───────────── 그리기 ─────────────
+const bg = new Image(); bg.src = '../assets/bg/s07_alchemy.webp';
+function draw() {
+  const W = S.W, cam = W.camera;
+  ctx.save();
+  if (bg.complete && bg.naturalWidth) { const s = Math.max(VW / bg.width, VH / bg.height) * 1.08; ctx.drawImage(bg, (VW - bg.width * s) / 2, (VH - bg.height * s) / 2, bg.width * s, bg.height * s); }
+  else { ctx.fillStyle = '#140a18'; ctx.fillRect(0, 0, VW, VH); }
+  ctx.fillStyle = 'rgba(8,4,12,0.35)'; ctx.fillRect(0, 0, VW, VH);
+  ctx.save();
+  if (S.view) { ctx.translate(VW / 2, VH * 0.62); ctx.scale(S.view.s, S.view.s); ctx.translate(-S.view.cx, -S.view.cy); }   // 확대 보기 (그림 검토용)
+  else cam.apply(ctx);
+  const m = W.map;
+  for (let ty = 0; ty < m.h; ty++) for (let tx = 0; tx < m.w; tx++) if (m.typeAt(tx, ty) === 1) { ctx.fillStyle = '#2a2018'; ctx.fillRect(tx * TILE, ty * TILE, TILE, TILE); if (m.typeAt(tx, ty - 1) !== 1) { ctx.fillStyle = '#7a5a30'; ctx.fillRect(tx * TILE, ty * TILE, TILE, 3); } }
+  W.fx.draw(ctx, 'back');
+  for (const e of W.entities.slice().sort((a, b) => a.z - b.z)) { ctx.save(); try { e.draw(ctx, W); } catch (err) { console.error(`[탐침] ${e.kind} draw`, err); } ctx.restore(); }
+  W.fx.draw(ctx, 'front');
+  if (O.debug) {
+    ctx.lineWidth = 1.5;
+    const b = W.boss;
+    ctx.strokeStyle = '#ff0'; for (const hb of b.hitParts()) ctx.strokeRect(hb.x, hb.y, hb.w, hb.h);
+    for (const e of W.entities) if (e.kind === 'hazard') { ctx.strokeStyle = e.harmless ? 'rgba(255,255,255,0.25)' : e.on ? '#f0f' : 'rgba(255,0,255,0.35)'; ctx.strokeRect(e.x, e.y, e.w, e.h); }
+    ctx.strokeStyle = '#0f0'; const hb = W.player.hurtbox(); ctx.strokeRect(hb.x, hb.y, hb.w, hb.h);
+  }
+  ctx.restore();
+  if (!S.view) { W.lighting.render(ctx, cam, VW, VH); ctx.save(); cam.apply(ctx); W.fx.draw(ctx, 'top'); ctx.restore(); }
+  if (W._flash) { ctx.globalAlpha = Math.min(1, W._flash.a); ctx.fillStyle = W._flash.c; ctx.fillRect(0, 0, VW, VH); ctx.globalAlpha = 1; }
+  const b = W.boss;
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, VW, 46);
+  ctx.font = 'bold 17px "Noto Sans KR", sans-serif'; ctx.fillStyle = '#ffd6d0'; ctx.fillText(`${b.def.name} · ${b.def.title}`, 12, 21);
+  ctx.fillStyle = '#2a0a12'; ctx.fillRect(12, 28, 380, 9); ctx.fillStyle = b.invuln ? '#8a8a9a' : '#e01a3a'; ctx.fillRect(12, 28, 380 * Math.max(0, b.hp / b.stats.maxHp), 9);
+  ctx.font = '12px ui-monospace, monospace'; ctx.fillStyle = b.telegraph ? '#ffc860' : '#c8b8b0';
+  ctx.fillText(`state=${b.state} ph=${b.phase} t=${b.st.toFixed(2)} ${b.telegraph ? '[예고]' : ''}${b.invuln ? '[무적]' : ''}${b.inferno ? '[지옥]' : ''} hits=${W.player.hits} ents=${W.entities.length}`, 410, 20);
+  if (W.dialog) { ctx.fillStyle = 'rgba(8,4,12,0.9)'; ctx.fillRect(40, VH - 110, VW - 80, 80); ctx.fillStyle = '#ffb0a0'; ctx.font = '15px "Noto Sans KR", sans-serif'; ctx.fillText(`대사 ${W.dialog.id}`, 56, VH - 84); }
+  if (W.banner) { ctx.textAlign = 'center'; ctx.font = 'bold 40px serif'; ctx.fillStyle = W.banner.color; ctx.fillText(W.banner.text, VW / 2, VH * 0.36); ctx.font = '17px "Noto Sans KR", sans-serif'; ctx.fillText(W.banner.sub ?? '', VW / 2, VH * 0.36 + 30); ctx.textAlign = 'left'; }
+  ctx.restore();
+}
+function frame() { if (!O.paused) step(DT); draw(); requestAnimationFrame(frame); }
+
+// ───────────── 막대 ─────────────
+function bar() {
+  const el = $('bar'); el.innerHTML = '';
+  const B = (label, fn) => { const b = document.createElement('button'); b.textContent = label; b.onclick = fn; el.appendChild(b); return b; };
+  B(O.paused ? '▶' : '❚❚', () => { O.paused = !O.paused; bar(); });
+  B('+0.1s', () => { step(0.1); draw(); });
+  B('페이즈1', () => S.boss.debugPhase(1));
+  B('처치', () => kill());
+  B('부활', () => deathReset());
+  B(O.story ? '스토리' : '아케이드', () => { build({ story: !O.story, inferno: O.inferno }); bar(); });
+  B(O.inferno ? '지옥' : '보통', () => { build({ story: O.story, inferno: !O.inferno }); bar(); });
+  for (const a of [...S.boss.attackNames(), ...S.boss.helperNames(), 'fuse']) B(a, () => S.boss.debugAct(a));
+}
+build({ phase: Number(q.get('phase') ?? 0), act: q.get('act'), story: O.story, inferno: O.inferno, room: O.room, diff: O.diff });
+bar();
+frame();
+window.__probe = { O, S, view(v) { S.view = v; }, build, step, draw, hit, kill, deathReset, notes, DEF, get boss() { return S.boss; }, get world() { return S.W; }, done: true };
+</script>
+</body>
+</html>

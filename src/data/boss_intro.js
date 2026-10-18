@@ -95,6 +95,8 @@ export const BOSS_INTRO = Object.freeze({
   b_hagen:      { style: 'emerge',   element: 'beast',   plateColor: '#1a1206', dur: 1.0 },    // 모닥불 곁에서 늙은 사냥꾼이 일어선다
   b_bride:      { style: 'emerge',   element: 'blood',   plateColor: '#20060e', dur: 1.0 },    // 장미 제단에서 붉은 드레스가 걸어 나온다
   b_charon:     { style: 'emerge',   element: 'soul',    plateColor: '#0a1410', dur: 1.05 },   // 검은 마차가 소리 없이 멈춘다
+  // ── 외전 26장 (준비 중: 보스가 등록되기 전에는 쓰이지 않는다 — 행이 없어도 가족 기본값으로 간다) ──
+  b_paracel:    { style: 'assemble', element: 'glass',   plateColor: '#141008', dur: 1.15 },   // 플라스크 파편이 모여 연금술사가 된다
 });
 
 export const INTRO_STYLES = Object.freeze(['drop', 'rise', 'descend', 'emerge', 'assemble', 'fade']);

@@ -37,6 +37,7 @@ import { isBust, faceOf, softBust } from '../render/portrait.js';
 import { saves } from '../core/save.js';
 import { STAT_INFO } from '../game/stats.js';
 import { hudSafe } from '../render/hud_layout.js';
+import { touchpad } from '../core/touchpad.js';   // [s5:p4a] 이름판 띠가 보이는 패드 버튼 앞에서 끝나게
 
 const DEG = Math.PI / 180;
 const GOLD = '#e8c872', INK = '#1a0006', INK_SHADOW = '#5a0010', INK_RED = '#b0102a';
@@ -299,7 +300,16 @@ export class BossIntroScene extends Scene {
     const out = clamp((this.dur - t) / PLATE_OUT, 0, 1);
     if (!(out > 0)) return;
     const J = this.J, lb = this.world?.letterbox || 0;
-    const bh = 84, by = Math.min(vh * 0.66, vh - lb - bh / 2 - 34), x0 = vw * 0.07, x1 = vw * 0.93, bw = x1 - x0;
+    const bh = 84, by = Math.min(vh * 0.66, vh - lb - bh / 2 - 34), x0 = vw * 0.07;
+    // 지금 보이는 터치 패드 버튼과 겹치면 띠를 버튼 앞에서 끝낸다 (occupiedRects 는 배치가 같으면 같은 배열을 돌려준다)
+    let xe = vw * 0.93;
+    try {
+      for (const r of touchpad.occupiedRects?.() ?? []) {
+        if (!r || !(r.w > 0)) continue;
+        if (r.y < by + bh / 2 + 6 && r.y + r.h > by - bh / 2 - 26 && r.x > vw * 0.45) xe = Math.min(xe, r.x - 14);
+      }
+    } catch { /* 패드 정보가 없으면 기본 폭 */ }
+    const x1 = Math.max(vw * 0.55, xe), bw = x1 - x0;
     ctx.save();
     ctx.globalAlpha = out;
     // 먹 띠: 왼쪽에서 오른쪽으로 칠해진다 (끝은 붓이 갈라진 모양)
@@ -324,7 +334,7 @@ export class BossIntroScene extends Scene {
     // 이름 (붓글씨, 받기 전이면 제목 글꼴)
     const brush = !!UI.faceReady?.('BN Brush');
     const fam = brush ? FONT.brush : FONT.title, wgt = brush ? 400 : 900;
-    const pk = `${vw}|${brush ? 1 : 0}`;
+    const pk = `${vw}|${brush ? 1 : 0}|${Math.round(bw)}`;
     const sealW = this.nightmare ? 58 : 0;
     if (this._pk !== pk) {
       this._pk = pk;

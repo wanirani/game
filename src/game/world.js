@@ -108,6 +108,15 @@ bus.on('levelUp', ({ level } = {}) => {
 //   보스의 상태 시계(stateT)를 0 으로 돌려 예전처럼 월드가 멈춰 있던 것과 같은 첫 박자로 싸움이 시작된다.
 //   보스 모듈을 받는 중(PendingBoss)이면 진짜 보스를 최대 REVEAL.readyWait 초 기다리고, 그래도 없으면 변형 없이 곧장 이름판으로 간다.
 //   그리기 변형은 보스와 그 대리 개체(채색 PaintedBody·컬링 ArtCull: e.host === 보스)에만, world.render 가 drawEntity 로 입힌다.
+/** 채색 키트 품질표 (kit.QUALITY) — 등장 연출 동안 발판 덧그리기를 잠시 끄는 데만 쓴다. 키트는 채색 보스가 이미 불러 두었으므로
+ *  동적 import 는 캐시에서 바로 온다 (정적 import 로 월드의 의존을 늘리지 않는다) */
+const PAINT_Q = { q: null, asked: false };
+const LEDGE_OFF = [];
+function warmPaintQ() {
+  if (PAINT_Q.asked) return;
+  PAINT_Q.asked = true;
+  import('../render/painted/kit.js').then((m) => { PAINT_Q.q = m?.QUALITY ?? null; }).catch(() => { /* 채색 키트가 없으면 덧그리기도 없다 */ });
+}
 class BossReveal {
   constructor(w, id) {
     this.w = w; this.id = id;
@@ -117,6 +126,7 @@ class BossReveal {
     this.tReady = null; this.tStart = null; this.tLand = null; this.plateAt = null; this.timedOut = false;
     this.dur = this.row.dur; this.flash = 0; this.lb = 0; this.lbOut = 0; this.sfxRoar = false;
     this.xf = { on: true, dy: 0, sx: 1, sy: 1, a: 0, clipY: null, px: 0, py: 0 };
+    warmPaintQ();
     this.calc();
   }
   /** bossIntro 장면이 열릴 때: 시계 시작 · 레터박스 · 카메라 · HUD 숨김 · 진짜 보스 재촉 */
@@ -229,13 +239,21 @@ class BossReveal {
   drawEntity(ctx, e) {
     const X = this.xf;
     if (!(X.a > 0.01)) return;
+    const moved = !!(X.dy || X.sx !== 1 || X.sy !== 1);
+    // 채색 보스의 '발판 덧그리기'(kit.ledgesOver)는 타일을 몸 위에 다시 찍는다 — 몸을 옮겨 그리는 동안에는 타일이 엉뚱한 자리에
+    // 찍히므로(유령 발판) 그 동안만 끈다. 진짜 타일은 이미 타일 층에 있다
+    const Q = moved ? PAINT_Q.q : null, off = Q ? LEDGE_OFF : null;
+    if (off) { off.length = 0; for (const k in Q) { const q = Q[k]; if (q && q.ledges !== false) { off.push(q); q.ledges = false; } } }
     ctx.save();
     try {
       if (X.clipY != null) { ctx.beginPath(); ctx.rect(X.px - 4000, X.clipY - 8000, 8000, 8000); ctx.clip(); }
-      if (X.dy || X.sx !== 1 || X.sy !== 1) { ctx.translate(X.px, X.py + X.dy); ctx.scale(X.sx, X.sy); ctx.translate(-X.px, -X.py); }
+      if (moved) { ctx.translate(X.px, X.py + X.dy); ctx.scale(X.sx, X.sy); ctx.translate(-X.px, -X.py); }
       if (X.a < 1) ctx.globalAlpha *= X.a;
       e.draw(ctx, this.w);
-    } finally { ctx.restore(); }
+    } finally {
+      ctx.restore();
+      if (off) { for (const q of off) q.ledges = true; off.length = 0; }
+    }
   }
   lights(L) {
     if (!this.started || this.done || !L) return;
