@@ -255,7 +255,7 @@ export class ResultsScene extends Scene {
     const lw = measureW(ctx, label, size, 500, FONT.body), rw = measureW(ctx, right, size, 800, FONT.num);
     const m0 = Math.round(x + 30 + lw + 16), m1 = Math.round(x + w - 30 - rw - 16);
     if (m1 - m0 < 40) return;
-    const sz = Math.max(12, size - (r.kind === 'hero' ? 2 : 4));   // 대기 헌터 이름은 한 단계 작게 (폴드에서 두세 명이 들어가게)
+    const sz = size;   // 표의 다른 줄과 같은 크기 (작은 글자를 새로 만들지 않는다 — 들어가지 않는 이름은 「외 N명」)
     if (r.kind === 'hero') {
       // 막대: 시작 위치(레벨 + 채움)에서 지금 위치로. 레벨이 오르면 「Lv.4→5」(금색)
       const p = this.expT0 == null ? 0 : ease.outCubic(clamp((this.t - this.expT0) / 0.9, 0, 1));
@@ -303,7 +303,7 @@ export class ResultsScene extends Scene {
     const cont = tall ? { x: midX - bw / 2, y: H - bh - 34, w: bw, h: bh } : { x: x + w + GAP + RANK_W - bw, y: H - bh - 8, w: bw, h: bh };
     return {
       W, H, titleSize, titleY, subY, x, y, w, ph, tall, small, cont,
-      rowY0: y + 38, rowStep: (ph - 84) / Math.max(6, this.rowCount ?? 6), scoreY: y + ph - 20,
+      rowY0: y + 38, rowStep: (ph - 84) / Math.max(6, this.rowCount ?? 6), baseStep: (ph - 84) / Math.max(6, this.rows?.length ?? 6), scoreY: y + ph - 20,
       rankX: x + w + GAP + RANK_W / 2, rankY: y + ph / 2 + 20, rankSize: small ? 100 : 116,
       rewardY: tall ? y + ph + 34 : cont.y + bh / 2 + 6, rewardX: tall ? midX : x + 24, hintY: H - 16, midX,
       loot: tall ? { x: x, y: y + ph + 74, w: w + GAP + RANK_W, h: Math.min(116, H - bh - 50 - (y + ph + 74)) } : null,
@@ -318,7 +318,7 @@ export class ResultsScene extends Scene {
     bloodText(ctx, 'STAGE CLEAR', W / 2, L.titleY, { size: L.titleSize, style: 'gold', t: this.t, maxWidth: W - 40 });
     text(ctx, `${stage.name ?? ''}${stage.sub ? ' — ' + stage.sub : ''}`, W / 2, L.subY, { size: 17, align: 'center', family: FONT.title, weight: 700, color: '#e8d8c0', maxWidth: W - 40 });
     panel(ctx, x, y, w, ph);
-    const valX = x + Math.round(w * 0.5), rowSize = L.rowStep < 32 ? 16 : 17;
+    const valX = x + Math.round(w * 0.5), rowSize = L.baseStep < 32 ? 16 : 17;   // [s5:p4b] 글자 크기는 원래 6줄 간격 기준 (경험치 줄이 붙어도 작아지지 않는다)
     this.rows.slice(0, this.shownRows).forEach((r, i) => {
       const yy = Math.round(L.rowY0 + i * L.rowStep);
       text(ctx, r[0], x + 30, yy, { size: rowSize, color: '#e8dcc8' });
