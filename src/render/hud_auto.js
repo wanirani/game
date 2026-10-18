@@ -55,8 +55,10 @@ function screenBox(world, e, o = SB) {
   const cam = world.camera, z = cam?.zoom ?? 1;
   let x0 = e.x, x1 = e.x + e.w, y0 = e.y, y1 = e.y + e.h;
   try {
-    const hb = e.hurtboxes?.();
-    if (hb?.length) { x0 = Infinity; x1 = -Infinity; y0 = Infinity; y1 = -Infinity; for (const r of hb) { if (!r || !(r.w > 0)) continue; x0 = Math.min(x0, r.x); x1 = Math.max(x1, r.x + r.w); y0 = Math.min(y0, r.y); y1 = Math.max(y1, r.y + r.h); } }
+    // [playb] 공격 판정과 같은 상자 (hitParts → hurtboxes, 꺼진 부위 제외) — 거상처럼 hurtboxes() 가 빈 여러 부위 보스는 hitParts 를 감싼다
+    const hb = e.hitParts ? e.hitParts() : e.hurtboxes?.();
+    const live = (hb ?? []).filter((r) => r && !r.off && r.w > 0 && r.h > 0);
+    if (live.length) { x0 = Infinity; x1 = -Infinity; y0 = Infinity; y1 = -Infinity; for (const r of live) { x0 = Math.min(x0, r.x); x1 = Math.max(x1, r.x + r.w); y0 = Math.min(y0, r.y); y1 = Math.max(y1, r.y + r.h); } }
   } catch { /* 모양이 다르면 몸 상자 */ }
   if (!(x1 > x0)) { x0 = e.x; x1 = e.x + e.w; y0 = e.y; y1 = e.y + e.h; }
   const ox = (cam?.x ?? 0) + (cam?.shakeX ?? 0), oy = (cam?.y ?? 0) + (cam?.shakeY ?? 0);

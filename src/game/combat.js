@@ -25,6 +25,29 @@ import { perkAttack } from './class_perks.js';   // 직업 특성 onAttack (clas
 export { ELEMENT_COLORS, ELEMENT_NAMES };
 
 /** 순수 데미지 계산 */
+/**
+ * [playb] 대상의 살아 있는 피격 상자들 — playerStrike 와 같은 순서 (hitParts → hurtboxes → hurtbox → 몸), 꺼진 부위(off) 는 뺀다.
+ * 여러 부위 보스(거상 등)는 hurtboxes() 가 비어 있고 hitParts() 만 있다: 고정 표적 · AUTO 대상 · 유도탄 조준이 모두 이 상자를 본다
+ */
+export function liveBoxes(T) {
+  if (!T) return [];
+  let L = null;
+  try { L = T.hitParts ? T.hitParts() : T.hurtboxes ? T.hurtboxes() : null; } catch { L = null; }
+  if ((!L || !L.length) && T.hurtbox && !T.hitParts) { try { const h = T.hurtbox(); L = h ? [h] : null; } catch { L = null; } }
+  const out = [];
+  for (const b of L ?? []) if (b && !b.off && b.w > 0 && b.h > 0 && Number.isFinite(b.x) && Number.isFinite(b.y)) out.push(b);
+  return out;
+}
+/** [playb] (x, y) 에서 가장 가까운 살아 있는 피격 상자의 가운데 (상자가 없으면 몸 가운데) — 유도탄·조준 발사 */
+export function aimPointOf(T, x, y) {
+  let best = null, bd = Infinity;
+  for (const b of liveBoxes(T)) {
+    const dx = Math.max(0, b.x - x, x - (b.x + b.w)), dy = Math.max(0, b.y - y, y - (b.y + b.h)), d = dx * dx + dy * dy;
+    if (d < bd) { bd = d; best = b; }
+  }
+  return best ? { x: best.x + best.w / 2, y: best.y + best.h / 2 } : { x: T.cx, y: T.cy };
+}
+
 export function computeDamage(src, tgt, attack) {
   const s = src || {};
   const ts = tgt.stats || tgt;

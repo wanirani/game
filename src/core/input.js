@@ -81,6 +81,7 @@ const L3 = 10, L3_STILL = 0.6, L3_HOLD_MS = 250;   // 탈것(L3): 스틱이 0.6 
 const CMD_TOUCH_WINDOW = 0.8;
 const AUTO_MOVE_GAP = 0.25;   // [auto] 사람이 방향을 뗀 뒤 auto 이동을 쉬는 시간 (서로 잡아당기지 않게)
 const AUTO_MOVE_ACTS = ['left', 'right', 'up', 'down', 'jump', 'dash'];
+const AUTO_EDGE_ACTS = new Set(['jump', 'dash']);   // [playb] 누르는 순간이 뜻을 갖는 auto 이동 (다시 누르면 2단 점프·두 번째 대시)
 const HIST_MAX = 24;
 
 /** 각도 → 8방향 구역 (0 = 오른쪽, 시계 방향; y 는 아래가 +). 직전 구역에서 ±30° 안이면 유지 */
@@ -874,8 +875,10 @@ class Input {
       try { r = this._autoFn(dt, this); } catch (e) { r = null; if (!this._autoErr) { this._autoErr = true; console.error('[input] auto source', e); } }
       for (const k in A) A[k] = false;
       if (r) for (const k in r) if (r[k] && ACTION_SET.has(k)) { A[k] = true; autoOn = true; }
-      if (humanMove || this.time - this.humanMoveT < AUTO_MOVE_GAP) for (const d of AUTO_MOVE_ACTS) A[d] = false;   // 사람 이동이 이긴다 (자동 턱 넘기·회피 대시도)
-    } else if (this.autoActive) for (const k in A) A[k] = false;
+      const sup = (this._autoSup ??= {});
+      if (humanMove || this.time - this.humanMoveT < AUTO_MOVE_GAP) { for (const d of AUTO_MOVE_ACTS) { if (A[d] && AUTO_EDGE_ACTS.has(d)) sup[d] = true; A[d] = false; } }   // 사람 이동이 이긴다 (자동 턱 넘기·회피 대시도)
+      else for (const d of AUTO_EDGE_ACTS) if (sup[d]) { if (A[d]) A[d] = false; else sup[d] = false; }   // [playb] 사람이 끊은 auto 점프·대시는 auto 가 스스로 뗄 때까지 다시 누르지 않는다 (끊긴 턱 넘기가 공중 2단 점프가 되지 않게)
+    } else if (this.autoActive) { for (const k in A) A[k] = false; this._autoSup = {}; }
     this.autoActive = autoOn;
     const aliasUlt = this.awakenAsUlt && !!(s.key.awaken || s.pad.awaken || s.touch.awaken);
     for (const a of ACTIONS) {

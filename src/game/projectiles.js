@@ -3,7 +3,7 @@
 // behavior: 'straight' | 'arc'(중력) | 'boomerang' | 'homing' | 'orbit' | 'pool'(바닥 장판) | 'bounce' | 'wave' | 'fall' | 'beam' | 'static'
 // render : PROJ_RENDER 키 또는 함수(ctx, p)
 import { Entity } from './entity.js';
-import { playerStrike, enemyStrike } from './combat.js';
+import { playerStrike, enemyStrike, aimPointOf } from './combat.js';
 import { moveBody, isSolidType } from '../core/physics.js';
 import { TILE } from '../core/game.js';
 import { TAU, rand, clamp, angleTo, shade } from '../core/math.js';
@@ -59,7 +59,8 @@ export class Projectile extends Entity {
     } else if (b === 'homing') {
       const tgt = this.team === 'player' ? world.nearestEnemy(this.cx, this.cy, 600) : world.player;
       if (tgt && this.t > (this.homingDelay ?? 0.1)) {
-        const want = angleTo(this.cx, this.cy, tgt.cx, tgt.cy);
+        const P = this.team === 'player' ? aimPointOf(tgt, this.cx, this.cy) : { x: tgt.cx, y: tgt.cy };   // [playb] 몸 가운데가 아니라 가장 가까운 피격 부위 (거상처럼 몸 가운데에 판정이 없는 보스)
+        const want = angleTo(this.cx, this.cy, P.x, P.y);
         let cur = Math.atan2(this.vy, this.vx);
         let d = Math.atan2(Math.sin(want - cur), Math.cos(want - cur));
         cur += clamp(d, -this.homingTurn * dt, this.homingTurn * dt);

@@ -172,7 +172,7 @@ export class StoryScene extends Scene {
     this.cur = l; this.lineT = 0;
     this.full = this.resolveText(l.text ?? '');
     this.shown = 0;
-    this.menu = l.choice ? new ListMenu(l.choice.length) : null;
+    this.menu = l.choice ? new ListMenu(l.choice.length, { tapActivate: true }) : null;   // [playb] 23 선택지: 한 번 탭 = 고르고 결정
     const sp = speaker(l.who, this.state);
     // 줄 단위 덮어쓰기: 이름을 밝히기 전의 명패(name), 변신 등 다른 초상화(portrait)
     if (l.name) sp.name = this.fill(l.name);

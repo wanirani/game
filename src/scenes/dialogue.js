@@ -157,7 +157,7 @@ export class DialogueScene extends Scene {
     this.full = this.resolveText(l.text ?? '');
     this.shown = 0; this.autoT = 0;
     this.lay = null;
-    this.menu = l.choice ? new ListMenu(l.choice.length) : null;
+    this.menu = l.choice ? new ListMenu(l.choice.length, { tapActivate: true }) : null;   // [playb] 23 선택지: 한 번 탭 = 고르고 결정 (열린 직후 탭·끌고 와서 뗀 탭은 고르기만)
     const sp = { ...speakerInfo(l.who, this.state) };
     if (l.name) sp.name = this.fill(l.name);
     if (l.portrait) sp.portrait = l.portrait;

@@ -12,7 +12,7 @@ import { audio } from '../../core/audio.js';
 import { assets } from '../../core/assets.js';
 import { saves } from '../../core/save.js';
 import { Entity } from '../../game/entity.js';
-import { text, font, bar, ListMenu, FONT, COLORS, vignette, taps } from '../../core/ui.js';
+import { text, font, bar, ListMenu, FONT, COLORS, vignette, taps, LIST_TAP_ARM } from '../../core/ui.js';
 import { drawGlyph, glyphWidth } from '../../core/prompts.js';
 import { TAU, clamp, rand, fmt, ease, RNG, hashStr } from '../../core/math.js';
 import { World } from '../../game/world.js';
@@ -431,7 +431,7 @@ export class HubScene extends Scene {
     items.push(['타이틀로', '진행은 자동 저장된다', () => this.askTitle()]);
     this.menuItems = items;
     this.menu = new ListMenu(items.length);
-    this.menuOpen = true; this.menuT = 0;
+    this.menuOpen = true; this.menuT = 0; this._mDown = -1;
     this.hidePad = true; // 메뉴가 떠 있는 동안 가상 패드(점프 = 결정, 스틱 자리)가 줄을 가리지 않게 (PLAT-TOUCH #124)
     this._mp = null;
   }
@@ -460,8 +460,17 @@ export class HubScene extends Scene {
       if (this._mp) { const i = rowOf(taps.over(this)); if (i >= 0 && i !== this.menu.index) { this.menu.index = i; audio.sfx('menu_move'); } }
       this._mp = { x: p.x, y: p.y };
     }
+    // [playb] 23·25 한 번 탭 = 실행 (TapMenu 와 같은 잘못 누름 막기): 메뉴가 열리고 LIST_TAP_ARM 초 안에 누르기 시작한 탭은 버리고
+    //  (「마을 메뉴」 두 번 누름의 두 번째가 첫 줄을 실행하지 않게), 누른 줄과 뗀 줄이 같을 때만 실행 — 끌고 와서 떼면 고르기만
+    if (p.justDown) { const z = taps.at(p.x, p.y, this); this._mDown = this.menuT < LIST_TAP_ARM ? -2 : rowOf(z?.id); }
     const ti = p.tapped ? rowOf(taps.hit(this)) : -1;
-    if (ti >= 0 && this.menuItems[ti]) { this.menu.index = ti; audio.sfx('menu_ok'); this.menuItems[ti][2](); return; }
+    if (ti >= 0 && this.menuItems[ti]) {
+      const early = this._mDown === -2 || this.menuT < LIST_TAP_ARM, here = this._mDown === ti;
+      this._mDown = -1;
+      if (early) return;
+      if (!here) { if (this.menu.index !== ti) { this.menu.index = ti; audio.sfx('menu_move'); } return; }
+      this.menu.index = ti; audio.sfx('menu_ok'); this.menuItems[ti][2](); return;
+    }
     const r = this.menu.update(dt);
     if (this.menu.moved) audio.sfx('menu_move');
     if (r === 'confirm') { audio.sfx('menu_ok'); this.menuItems[this.menu.index][2](); }

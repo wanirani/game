@@ -17,7 +17,7 @@ import { T, isSolidType } from '../core/physics.js';
 import { TILE, game } from '../core/game.js';
 import { bus } from '../core/events.js';
 import { Entity } from './entity.js';
-import { playerStrike, hitTarget } from './combat.js';
+import { playerStrike, hitTarget, aimPointOf } from './combat.js';
 import { SKILLS, skillVal } from '../data/skills.js';
 import { CHARACTERS } from '../data/characters.js';
 import { CLASSES } from '../data/classes.js';   // [hook:feel] ultimateCast 의 tier
@@ -2199,7 +2199,7 @@ SKILL_IMPL.azel_phantom_blades = (p, w, lv) => {
     tick(e, ww) {
       while (e.d.fired < n && e.lt >= form + e.d.fired * 0.07) {
         const i = e.d.fired++, t = slots[i], sx = p.cx + Math.cos(t) * 80, sy = p.cy - 20 + Math.sin(t) * 60;
-        const tg = ww.nearestEnemy(sx, sy, 700), ang = tg ? Math.atan2(tg.cy - sy, tg.cx - sx) : (f > 0 ? 0 : Math.PI);
+        const tg = ww.nearestEnemy(sx, sy, 700), tp = tg ? aimPointOf(tg, sx, sy) : null, ang = tp ? Math.atan2(tp.y - sy, tp.x - sx) : (f > 0 ? 0 : Math.PI);   // [playb] 가장 가까운 피격 부위로
         shoot(ww, p, {
           x: sx, y: sy, vx: Math.cos(ang) * 1150, vy: Math.sin(ang) * 1150, w: 22, h: 22, scale: 1.1, render: swordProjRender, behavior: 'homing', speed: 1150, homingTurn: 12,
           life: 0.8, pierce: 2, collideWalls: false, light: { r: 80, color: '#b090ff', i: 0.7 },
@@ -2213,7 +2213,7 @@ SKILL_IMPL.azel_phantom_blades = (p, w, lv) => {
       for (let i = e.d.fired; i < n; i++) {
         const t = slots[i], sx = p.cx + Math.cos(t) * 80, sy = p.cy - 20 + Math.sin(t) * 60 + Math.sin(e.lt * 6 + i) * 3;
         const a = clamp((e.lt - i * 0.04) / 0.15, 0, 1);
-        const tg = ww.nearestEnemy(sx, sy, 700), ang = tg ? Math.atan2(tg.cy - sy, tg.cx - sx) : (f > 0 ? 0 : Math.PI);
+        const tg = ww.nearestEnemy(sx, sy, 700), tp = tg ? aimPointOf(tg, sx, sy) : null, ang = tp ? Math.atan2(tp.y - sy, tp.x - sx) : (f > 0 ? 0 : Math.PI);   // [playb] 가장 가까운 피격 부위로
         ctx.save(); ctx.translate(sx, sy); ctx.rotate(ang - Math.PI / 2); ctx.translate(0, -30); ctx.scale(1.1, 1.1); spectralSword(ctx, 60, a); ctx.restore();
       }
     },

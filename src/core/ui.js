@@ -179,14 +179,44 @@ export function button(ctx, r, label, { selected = false, disabled = false, size
  *  - 마우스 클릭: 바로 선택+확정
  *  - 터치: 선택되지 않은 항목을 처음 탭하면 선택만(moved=true, 미리보기), 선택된 항목을 다시 탭하면 확정
  */
+/** [playb] tapActivate 목록: 열리고 이만큼(초) 안에 누르기 시작한 탭은 버린다 (front/common.js TapMenu 의 TAP_ARM 과 같은 값) */
+export const LIST_TAP_ARM = 0.25;
 export class ListMenu {
-  constructor(count, { cols = 1, wrap = true, index = 0 } = {}) {
+  /**
+   * tapActivate (PLAY-B 23): 터치에서도 한 번 탭 = 고르고 결정 (기본 ListMenu 는 터치 첫 탭이 고르기만 한다).
+   * TapMenu 와 같은 잘못 누름 막기 — ① 목록이 생기고 LIST_TAP_ARM 초 안에 누르기 시작한 탭은 버린다 (앞 화면 두 번 누름의 두 번째)
+   * ② 누른 줄과 뗀 줄이 같을 때만 결정 (끌고 와서 떼면 고르기만). 키보드·패드는 그대로
+   */
+  constructor(count, { cols = 1, wrap = true, index = 0, tapActivate = false } = {}) {
     this.count = count; this.cols = cols; this.wrap = wrap; this.index = index;
     this.rects = []; this.repeat = 0; this.moved = false;
+    this.tapActivate = !!tapActivate; this.age = 0; this.downI = -1;
+  }
+  rowAt(x, y) {
+    for (let i = 0; i < this.rects.length && i < this.count; i++) {
+      const r = this.rects[i];
+      if (r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return i;
+    }
+    return -1;
   }
   setCount(n) { this.count = n; this.index = clamp(this.index, 0, Math.max(0, n - 1)); }
   update(dt = 1 / 60) {
     this.moved = false;
+    if (this.tapActivate) {
+      this.age += dt;
+      const p = input.pointer;
+      if (p.justDown) this.downI = this.age < LIST_TAP_ARM ? -2 : this.rowAt(p.x, p.y);
+      if (p.tapped && this.count > 0) {
+        const i = this.rowAt(p.x, p.y), early = this.downI === -2 || this.age < LIST_TAP_ARM, here = i >= 0 && this.downI === i;
+        this.downI = -1;
+        if (i >= 0) {
+          if (early) return null;
+          if (here) { this.index = i; return 'confirm'; }
+          if (this.index !== i) { this.index = i; this.moved = true; }
+          return null;
+        }
+      }
+    }
     if (this.count <= 0) {
       if (input.pressed('cancel') || input.pressed('menu')) return 'cancel';
       return null;

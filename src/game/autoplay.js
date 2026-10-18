@@ -39,6 +39,8 @@ export const ULT_POLICIES = Object.freeze(['boss', 'always', 'never']);
 export const DEFAULTS = Object.freeze({ level: 'off', ult: 'boss', potion: 0.35, pickup: true, dodge: true, lockBtn: 'auto' });   // lockBtn: 「고정」 터치 버튼 auto(휴대폰 숨김)|on|off — settings.auto 에 없으면 auto
 /** 자동으로 움직이는 장면 (마을·메뉴·대화·컷인은 아님) */
 export const PLAY_SCENES = new Set(['stage', 'bossrush', 'survival', 'practice', 'tower']);
+// [playb] 연출 장면 (막힘 안내만 보인다 — 메뉴 장면은 빠진다)
+const CUT_TOPS = new Set(['bossIntro', 'dialogue', 'story', 'awakenCutin', 'ultCutin', 'companionJoin']);
 
 // 판단 수치 (설계 문서 표)
 export const K = Object.freeze({
@@ -635,11 +637,20 @@ function loadLazy() {
 function aimable(world, e) {
   return !!e && !e.dead && !(e.dying > 0) && !e.hidden && !e.pendingBoss && e.harmless !== true && (e.kind === 'enemy' || e.kind === 'boss') && world.entities.includes(e);
 }
+/** [playb] 살아 있는 피격 상자 (combat.js liveBoxes 와 같은 규칙 — 이 파일은 combat.js 를 import 하지 않는다) */
+function liveBoxes(T) {
+  let L = null;
+  try { L = T.hitParts ? T.hitParts() : T.hurtboxes ? T.hurtboxes() : null; } catch { L = null; }
+  if ((!L || !L.length) && T.hurtbox && !T.hitParts) { try { const h = T.hurtbox(); L = h ? [h] : null; } catch { L = null; } }
+  const out = [];
+  for (const b of L ?? []) if (b && !b.off && b.w > 0 && b.h > 0 && Number.isFinite(b.x) && Number.isFinite(b.y)) out.push(b);
+  return out;
+}
 /** 엔티티 피격 상자 묶음 → {x0,x1,y0,y1} */
 function rectOf(e) {
-  let hb = null;
-  try { hb = e.hurtboxes?.() ?? null; } catch { hb = null; }
-  if (!hb || !hb.length) { let h = null; try { h = e.hurtbox?.() ?? null; } catch { h = null; } hb = h ? [h] : [{ x: e.x, y: e.y, w: e.w, h: e.h }]; }
+  // [playb] 공격 판정과 같은 상자 (combat.liveBoxes: hitParts → hurtboxes → hurtbox, 꺼진 부위 제외) — 거상처럼 hurtboxes() 가 빈 여러 부위 보스도
+  let hb = liveBoxes(e);
+  if (!hb.length) hb = [{ x: e.x, y: e.y, w: e.w, h: e.h }];
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
   for (const r of hb) { if (!r || !(r.w > 0)) continue; x0 = Math.min(x0, r.x); x1 = Math.max(x1, r.x + r.w); y0 = Math.min(y0, r.y); y1 = Math.max(y1, r.y + r.h); }
   if (!(x1 > x0)) { x0 = e.x; x1 = e.x + e.w; y0 = e.y; y1 = e.y + e.h; }
@@ -845,7 +856,8 @@ export function step(dt, inp) {
   const t = inp.time ?? 0;
   if (!g.autoHud) g.autoHud = { level: 'off', on: false, why: '', hold: null, blocked: null };
   // [autofix] 기록 모드(연습·일일·보스 러시·서바이벌·탑·시련)에서는 AUTO 를 쓰지 않는다 (순위표·고스트·기록 공정성)
-  const pw = w ?? (g.world?.player && g.world.mode !== 'town' ? g.world : null);   // 연출(보스 등장 등) 중이라 지금 움직일 수 없어도 막힘 이유는 보인다
+  // [playb] 메뉴(일시정지·인벤토리·설정 등)가 위에 있으면 막힘 안내도 하지 않는다 — 패드 SELECT 길게(몸짓 auto)가 메뉴 안에서 아무 일도 하지 않게
+  const pw = w ?? (g.world?.player && g.world.mode !== 'town' && (PLAY_SCENES.has(g.top?.name) || CUT_TOPS.has(g.top?.name)) ? g.world : null);   // 연출(보스 등장 등) 중이라 지금 움직일 수 없어도 막힘 이유는 보인다
   const blocked = autoBlockedIn(pw);
   // ── 자동 단추: 짧게 = 끔 ↔ 마지막 단계, 길게(0.45초) = 단계 바꾸기 (자동 스킬 ↔ 자동 전투) ──
   const ae = btnEdge(BTN, 'auto', inp.human('auto'), t, K.AUTO_HOLD_OFF);
