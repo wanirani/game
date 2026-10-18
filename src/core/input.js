@@ -41,11 +41,19 @@
 //   input.touch.clear()
 //   가상 패드 표시는 game.syncPad 가 정한다 (mode === 'touch' 일 때만). 예전 game.js 는 setPadOff(off) 를 불렀고 그것도 계속 동작한다.
 //
+// [auto] 가상 입력원 (AUTO-QOL — 자동 전투 game/autoplay.js):
+//   input.setAutoSource(fn | null)   fn(dt, input) → {action: bool} | null 을 매 스텝 update() 첫머리에서 부른다 (예외는 삼키고 그 스텝은 0)
+//                                    사람의 이동(left/right/up/down — 키·패드·터치 스틱)이 있으면 그 스텝(과 뗀 뒤 AUTO_MOVE_GAP 초)은 auto 이동을 버린다
+//                                    auto 는 기기 모드를 바꾸지 않고, 커맨드 이력(history)에도 들어가지 않는다 (우연한 커맨드 기술 없음)
+//   input.human(a)                   사람 입력원(키·패드·터치·패드 몸짓)만 본 지금 상태 · input.humanMoveT = 사람이 마지막으로 방향을 넣은 input.time
+//   input.autoActive                 이번 스텝 auto 가 낸 액션이 하나라도 있었나
+// [auto] 패드 몸짓 (controls.js PAD_GESTURE, 그 액션에 패드 버튼이 없을 때만): 빠른 메뉴 길게 = 'auto' (짧게 = 손을 뗄 때 'map'),
+//   ↑ 길게 = 'equipNow', 오른쪽 스틱 튕기기 = 'lock' (기울인 동안 눌림, input.lockFlick = 튕긴 쪽 -1|0|1)
 // 각성기 키(V) 는 'awaken' 이다. awaken.js 가 아직 'awaken' 을 읽지 않는 동안에는 V 가 필살기(ult) 로도 눌린다
 // (input.awakenAsUlt; 누군가 down/pressed/buffered/releasedAt('awaken') 을 처음 부르면 자동으로 꺼진다).
 import {
   ACTIONS, KEY_DEFAULTS, PAD_PRESETS, PAD_MENU, PAD_CONFIRM, TOUCH_BINDINGS, REMAPPABLE, PAD_FIXED, KEY_FIXED,
-  PAD_IGNORE, padSetOf, padNameOf, HAT,
+  PAD_IGNORE, padSetOf, padNameOf, HAT, PAD_GESTURE,
 } from '../data/controls.js';
 import { haptics } from './haptics.js';
 import { bus } from './events.js';
@@ -71,6 +79,8 @@ const SECTOR = Math.PI / 4, SECTOR_KEEP = (22.5 + 7.5) * Math.PI / 180;   // 45�
 const SECT_DIRS = [['right'], ['right', 'down'], ['down'], ['down', 'left'], ['left'], ['left', 'up'], ['up'], ['up', 'right']];
 const L3 = 10, L3_STILL = 0.6, L3_HOLD_MS = 250;   // 탈것(L3): 스틱이 0.6 안쪽일 때만, 또는 0.25초 누르고 있으면
 const CMD_TOUCH_WINDOW = 0.8;
+const AUTO_MOVE_GAP = 0.25;   // [auto] 사람이 방향을 뗀 뒤 auto 이동을 쉬는 시간 (서로 잡아당기지 않게)
+const DIRS = ['left', 'right', 'up', 'down'];
 const HIST_MAX = 24;
 
 /** 각도 → 8방향 구역 (0 = 오른쪽, 시계 방향; y 는 아래가 +). 직전 구역에서 ±30° 안이면 유지 */
@@ -119,7 +129,9 @@ class Input {
     this.pressTime = {};   // action -> 마지막으로 눌린 스텝 시각 (input.time)
     this.releaseTime = {}; // action -> 마지막으로 뗀 스텝 시각
     this.consumed = {};
-    this.sources = { key: {}, pad: {}, touch: {} };
+    this.sources = { key: {}, pad: {}, touch: {}, gest: {}, auto: {} };   // [auto] gest = 패드 몸짓, auto = 자동 전투 가상 입력
+    this._autoFn = null; this.autoActive = false; this.humanMoveT = -99; this._human = {};   // [auto]
+    this._gest = { hold: {}, lockOn: false }; this._gestTaps = new Map(); this.lockFlick = 0;   // [auto] 패드 몸짓 상태
     this.axisX = 0; this.axisY = 0;
     this.analogX = 0; this.analogY = 0; this.analogMag = 0;
     this.sprintHint = false;
@@ -641,6 +653,7 @@ class Input {
     if (info.ignored) return;
     const p = this.sources.pad;
     for (const k in p) p[k] = false;
+    this._gest.hold = {}; this._gest.lockOn = false;   // [auto] 누르던 몸짓은 버린다 (끊김이 '짧게 뗌' → 빠른 메뉴가 되지 않게)
     const rest = [...this.pads.values()].filter((x) => !x.ignored);
     if (rest.length) { this._setActivePad(rest[rest.length - 1]); return; }
     this.padInfo = null;
@@ -704,7 +717,7 @@ class Input {
     const t = nowMs();
     const dz = Math.max(0.1, Math.min(0.4, Number(this.game?.settings?.ctrlDeadzone) || 0.2));
     const engOn = Math.max(STICK_ENGAGE, dz + 0.1), engOff = Math.min(engOn - 0.05, Math.max(STICK_RELEASE, dz + 0.05));
-    let bestL = 0, bestR = 0, active = null;
+    let bestL = 0, bestR = 0, active = null, rsx = 0, rsy = 0, rsStd = false;   // [auto] rs*: 오른쪽 스틱 원래 값 (대상 고정 몸짓)
     const E = this._stickEng;
     E.x = 0; E.y = 0;
     const seen = new Set();
@@ -751,7 +764,7 @@ class Input {
         const rx = A[2] || 0, ry = A[3] || 0, rawR = Math.hypot(rx, ry);
         const secR = stickDigital(info.stR, rx, ry, rawR, engOn, engOff);
         if (secR === 0) src.viewR = true; else if (secR === 4) src.viewL = true;
-        if (rawR >= bestR) { bestR = rawR; radial(this.stickR, rx, ry, dz); }
+        if (rawR >= bestR) { bestR = rawR; radial(this.stickR, rx, ry, dz); rsx = rx; rsy = ry; rsStd = true; }
         hot ||= rawR > STICK_HOT;
       }
       // 비표준 배치: 햇 스위치(축 9) 또는 축 6/7 D-pad
@@ -774,6 +787,7 @@ class Input {
     if (!list || !list.length) { this.stickL.x = this.stickL.y = this.stickL.mag = 0; this.stickR.x = this.stickR.y = this.stickR.mag = 0; }
     if (bestL === 0) { this.stickL.x = this.stickL.y = this.stickL.mag = 0; }
     if (bestR === 0) { this.stickR.x = this.stickR.y = this.stickR.mag = 0; }
+    this._padGestures(src, t, rsStd ? rsx : 0, rsStd ? rsy : 0);   // [auto]
     // 이벤트 없이 사라진 패드 (1초 이상 안 보이면 끊긴 것으로). 창이 포커스를 잃었거나 숨은 동안에는 세지 않는다
     // (일부 브라우저는 포커스 없는 창에 패드를 보여 주지 않는다 → 거짓 '연결 끊김'·일시정지 방지)
     let away = false;
@@ -790,6 +804,43 @@ class Input {
     }
   }
 
+  /**
+   * [auto] 패드 몸짓 (controls.js PAD_GESTURE). 그 액션에 패드 버튼이 하나도 없을 때만:
+   *  hold(of): of 액션의 패드 입력을 hold 초 누르고 있으면 그 액션을 한 스텝 누른다. of 가 'map' 이면 누르는 동안 map 을 감췄다가
+   *            짧게 뗐을 때 한 스텝 map 을 보낸다 (길게 = 자동 전투, 짧게 = 빠른 메뉴). of 가 'up' 이면 ↑ 는 그대로 지나간다
+   *  stickR  : 오른쪽 스틱 크기 ≥ on → 눌림, < off → 뗌 (그 사이는 그대로). lockFlick = 튕긴 쪽 x 부호
+   */
+  _padGestures(src, t, rx, ry) {
+    const G = this._gest, B = this.bindings.pad ?? {};
+    const free = (a) => !(B[a] ?? []).some(Number.isInteger);
+    for (const [act, g] of Object.entries(PAD_GESTURE)) {
+      if (!free(act)) { if (g.kind === 'stickR') G.lockOn = false; else delete G.hold[act]; continue; }
+      if (g.kind === 'hold') {
+        const on = !!src[g.of], h = G.hold[act];
+        const withhold = g.of === 'map';
+        if (on) {
+          if (!h) G.hold[act] = { t0: t, fired: false };
+          else if (!h.fired && t - h.t0 >= g.hold * 1000) { h.fired = true; this._gestTaps.set(act, 2); }
+          if (withhold) src[g.of] = false;
+        } else if (h) {
+          if (withhold && !h.fired) this._gestTaps.set(g.of, 2);   // 짧게 뗐다 → 원래 동작 한 번
+          delete G.hold[act];
+        }
+      } else if (g.kind === 'stickR') {
+        const m = Math.hypot(rx, ry);
+        if (!G.lockOn && m >= g.on) { G.lockOn = true; this.lockFlick = Math.abs(rx) >= 0.35 * m ? Math.sign(rx) : 0; } else if (G.lockOn && m < g.off) G.lockOn = false;
+        if (G.lockOn) src[act] = true;
+      }
+    }
+  }
+  /** [auto] 자동 전투 가상 입력원 (fn(dt, input) → {action: bool} | null). null 이면 끈다 */
+  setAutoSource(fn) {
+    this._autoFn = typeof fn === 'function' ? fn : null;
+    if (!this._autoFn) { const a = this.sources.auto; for (const k in a) a[k] = false; this.autoActive = false; }
+  }
+  /** [auto] 사람 입력원만 본 지금 상태 (자동 입력 제외) */
+  human(a) { return !!this._human[a]; }
+
   // ── 스텝 ─────────────────────────────────────────────────────────────
   /** 매 고정 스텝 시작 시 호출 */
   update(dt) {
@@ -803,11 +854,33 @@ class Input {
         if (n > 1) { s.touch[a] = true; this._touchTaps.set(a, n - 1); } else { s.touch[a] = false; this._touchTaps.delete(a); }
       }
     }
+    // [auto] 패드 몸짓 '한 번 누름': 한 스텝 눌렸다가 다음 스텝에 뗀다 (터치 tap 과 같은 규칙)
+    if (this._gestTaps.size) {
+      for (const [a, n] of this._gestTaps) {
+        if (n > 1) { s.gest[a] = true; this._gestTaps.set(a, n - 1); } else { s.gest[a] = false; this._gestTaps.delete(a); }
+      }
+    }
+    // [auto] 사람 입력 (키·패드·터치·몸짓). 방향을 넣고 있으면 자동 이동은 그 스텝과 뗀 뒤 AUTO_MOVE_GAP 초 동안 쉰다
+    const H = this._human;
+    for (const a of ACTIONS) H[a] = !!(s.key[a] || s.pad[a] || s.touch[a] || s.gest[a]);
+    const T0 = this._touchVec;
+    const humanMove = H.left || H.right || H.up || H.down || (this.mode === 'touch' && T0.mag > 0);
+    if (humanMove) this.humanMoveT = this.time;
+    const A = s.auto;
+    let autoOn = false;
+    if (this._autoFn) {
+      let r = null;
+      try { r = this._autoFn(dt, this); } catch (e) { r = null; if (!this._autoErr) { this._autoErr = true; console.error('[input] auto source', e); } }
+      for (const k in A) A[k] = false;
+      if (r) for (const k in r) if (r[k] && ACTION_SET.has(k)) { A[k] = true; autoOn = true; }
+      if (humanMove || this.time - this.humanMoveT < AUTO_MOVE_GAP) for (const d of DIRS) A[d] = false;   // 사람 이동이 이긴다
+    } else if (this.autoActive) for (const k in A) A[k] = false;
+    this.autoActive = autoOn;
     const aliasUlt = this.awakenAsUlt && !!(s.key.awaken || s.pad.awaken || s.touch.awaken);
     for (const a of ACTIONS) {
       const was = this.state[a];
       this.prev[a] = was;
-      const v = !!(s.key[a] || s.pad[a] || s.touch[a]) || (a === 'ult' && aliasUlt);
+      const v = H[a] || !!A[a] || (a === 'ult' && aliasUlt);
       this.state[a] = v;
       if (v && !was) { this.pressTime[a] = this.time; this.consumed[a] = false; } else if (!v && was) this.releaseTime[a] = this.time;
     }
@@ -828,14 +901,15 @@ class Input {
     if (!this.axisX && !this.axisY) this.analogMag = 0;
     this.sprintHint = this.mode === 'touch' && this._touchSprint && T.raw > 0;
     // 방향 이력 (커맨드 입력). 절대 방향으로 기록 → 판정 시 facing 반영. 스틱은 8방향 구역 코드 그대로
-    const d = this.dirCode();
+    // [auto] 커맨드 이력은 사람 입력만 (자동 이동·공격이 우연히 커맨드 기술이 되지 않게)
+    const d = autoOn ? this._dirOf((H.right ? 1 : 0) - (H.left ? 1 : 0), (H.down ? 1 : 0) - (H.up ? 1 : 0)) : this.dirCode();
     if (d !== this.lastDir) {
       this.lastDir = d;
       if (d !== 'n') this.history.push({ dir: d, t: this.time });
       if (this.history.length > HIST_MAX) this.history.shift();
     }
     for (const a of ['attack', 'jump', 'skill1', 'skill2', 'sub', 'dash']) {
-      if (this.state[a] && !this.prev[a]) { this.history.push({ dir: 'btn:' + a, t: this.time }); if (this.history.length > HIST_MAX) this.history.shift(); }
+      if (this.state[a] && !this.prev[a] && H[a]) { this.history.push({ dir: 'btn:' + a, t: this.time }); if (this.history.length > HIST_MAX) this.history.shift(); }
     }
     // 포인터 탭 엣지: update 에서는 탭 직후 첫 스텝에만 true.
     // 한 프레임에 스텝이 여러 번 돌아도 render() 에서 판정하는 버튼이 탭을 놓치지 않도록 latch 해 둔다 (beginRender/endRender)
@@ -848,8 +922,8 @@ class Input {
   /** 프레임 렌더 직후: 탭 소진 (다음 프레임의 update/render 에서 중복 처리 방지) */
   endRender() { this.pointer.tapped = false; this._tapLatch = false; }
 
-  dirCode() {
-    const x = this.axisX, y = this.axisY;
+  dirCode() { return this._dirOf(this.axisX, this.axisY); }
+  _dirOf(x, y) {
     if (x === 0 && y === 0) return 'n';
     if (x === 0) return y < 0 ? 'u' : 'd';
     if (y === 0) return x < 0 ? 'l' : 'r';

@@ -21,6 +21,7 @@ export const ACTIONS = [
   'menu', 'confirm', 'cancel', 'map',
   'awaken', 'mount', 'guard', 'viewL', 'viewR', 'viewReset',
   'prevTab', 'nextTab', 'alt', 'alt2',
+  'auto', 'lock', 'equipNow',   // [auto] 자동 전투 단계 · 대상 고정 · 바로 장착 (AUTO-QOL, /tmp/claude-0/s3/auto/auto_design.md)
 ];
 
 export const ACTION_NAMES = {
@@ -30,10 +31,11 @@ export const ACTION_NAMES = {
   awaken: '각성기', mount: '탈것 소환/하차', guard: '수호신 스킬',
   viewL: '영웅 왼쪽 회전', viewR: '영웅 오른쪽 회전', viewReset: '회전 초기화·자동 회전',
   prevTab: '이전 탭', nextTab: '다음 탭', alt: '보조 기능', alt2: '보조 기능 2',
+  auto: '자동 전투', lock: '대상 고정', equipNow: '바로 장착',
 };
 
 /** 옵션 › 조작 에서 바꿀 수 있는 액션 (MASTER_PLAN §1.4 Rules) */
-export const REMAPPABLE = ['jump', 'attack', 'dash', 'sub', 'skill1', 'skill2', 'swap', 'ult', 'awaken', 'map', 'mount', 'guard'];
+export const REMAPPABLE = ['jump', 'attack', 'dash', 'sub', 'skill1', 'skill2', 'swap', 'ult', 'awaken', 'map', 'mount', 'guard', 'auto', 'lock', 'equipNow'];
 
 /** 키보드 기본 배치. 첫 코드가 안내 글리프에 쓰인다 */
 export const KEY_DEFAULTS = {
@@ -45,6 +47,8 @@ export const KEY_DEFAULTS = {
   // 메뉴: Q 와 E 는 게임에선 둘 다 스킬 페이지지만 메뉴에선 이전/다음 탭으로 구분된다
   prevTab: ['KeyQ', 'KeyS'], nextTab: ['KeyE', 'KeyD'], alt: ['KeyA'], alt2: ['KeyC'],
   viewL: ['Comma'], viewR: ['Period'], viewReset: ['Slash'],
+  // [auto] 비어 있던 키: B 자동 전투 단계 · T 대상 고정(오른손 배치 J·K 옆 L) · N 바로 장착 (E 는 스킬 페이지 그대로)
+  auto: ['KeyB'], lock: ['KeyT', 'KeyL'], equipNow: ['KeyN'],
 };
 
 /**
@@ -57,11 +61,13 @@ export const PAD_PRESETS = {
     ...MOVE,
     jump: [0], attack: [2], dash: [1], sub: [3], skill1: [4], skill2: [5], swap: [6], ult: [7],
     map: [8], menu: [9], mount: [10], guard: [11], awaken: [],
+    auto: [], lock: [], equipNow: [],   // [auto] 버튼이 남지 않아 몸짓: SELECT 길게 · 오른쪽 스틱 튕기기 · ↑ 길게 (input.js PAD_GESTURE)
   },
   classic: {
     ...MOVE,
     jump: [0], attack: [1, 2], dash: [6], sub: [3], skill1: [4], skill2: [5], swap: [8], ult: [7],
     map: [], menu: [9], mount: [10], guard: [11], awaken: [],
+    auto: [], lock: [], equipNow: [],   // [auto]
   },
 };
 
@@ -78,6 +84,7 @@ export const TOUCH_BINDINGS = {
   jump: ['jump'], attack: ['attack'], dash: ['dash'], sub: ['sub'], skill1: ['skill1'], skill2: ['skill2'],
   ult: ['ult'], swap: ['swap'], map: ['bag'], menu: ['pause'], mount: ['mount'], guard: ['guard'],
   awaken: ['ult'],
+  auto: ['auto'], lock: ['lock'],   // [auto] 바로 장착은 토스트 탭
 };
 
 /** 키 지정에서 거부: START(9)·D-pad(12–15)·홈(16) / Escape·Enter·방향키·W(위) */
@@ -85,7 +92,19 @@ export const PAD_FIXED = new Set([9, 12, 13, 14, 15, 16]);
 export const KEY_FIXED = new Set(['Escape', 'Enter', 'NumpadEnter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyW']);
 
 /** 바인딩이 없을 때 대신 보여 줄 액션: 패드 기본값에서 각성기는 '필살기 길게' */
-export const ACTION_FALLBACK = { awaken: 'ult' };
+export const ACTION_FALLBACK = { awaken: 'ult', auto: 'map', equipNow: 'up', lock: 'stickR' };   // [auto] 몸짓 액션은 그 버튼 글리프 (+ '길게')
+/**
+ * [auto] 패드 몸짓 (그 액션에 패드 버튼을 지정하지 않았을 때만 — 지정하면 버튼이 이긴다). input.js 가 몸짓을 액션으로 바꾸고,
+ * 안내(prompts)·키 지정 화면이 이 표로 글자를 만든다.
+ *  auto     : 빠른 메뉴(map) 버튼을 0.45초 누르고 있기 (짧게 누르면 손을 뗄 때 빠른 메뉴) — map 에 버튼이 없으면(classic) 몸짓 없음
+ *  equipNow : ↑ 를 0.4초 누르고 있기 (↑ 의 원래 동작 — 문·상자·대화 — 은 그대로 누를 때)
+ *  lock     : 오른쪽 스틱을 0.7 넘게 튕기기 (놓을 때까지 눌린 것; 0.45초 기울이고 있기 = 풀기). 게임 중 오른쪽 스틱은 비어 있다
+ */
+export const PAD_GESTURE = Object.freeze({
+  auto: Object.freeze({ kind: 'hold', of: 'map', hold: 0.45, label: '길게' }),
+  equipNow: Object.freeze({ kind: 'hold', of: 'up', hold: 0.4, label: '길게' }),
+  lock: Object.freeze({ kind: 'stickR', on: 0.7, off: 0.4, label: '튕기기' }),
+});
 
 // ── 컨트롤러 인식 (platform §4.1) ──
 export const PAD_IGNORE = /uinput|fpc|gpio|keyboard|touchpad|mouse/;
@@ -171,6 +190,7 @@ export function keyLabel(code) {
 export const TOUCH_LABELS = {
   jump: '점프', attack: '공격', dash: '대시', sub: '보조', skill1: 'S1', skill2: 'S2', ult: '필살', swap: '넘김',
   bag: '가방', pause: 'Ⅱ', mount: '탑승', guard: '수호', stick: '스틱',
+  auto: 'AUTO', lock: '고정',   // [auto]
 };
 
 /** 비표준 패드 햇(축 9): (v + 1) / (2/7) 를 반올림한 칸 → [x, y]. |v| > 1.05 이면 중립 */

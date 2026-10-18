@@ -215,19 +215,44 @@ function npcLife(P, p, world, tt, rig, dt) {
   }
   if (gat >= 0 && gat < NPC_GEST && tk < 0.5 && poseGesture(P, gat, 1 - tk) > 0.35) ST.throwK = 1;
 }
+// ── 대기 생기 (MOTION-FEEL): 조종 중인 영웅(G.main)만, 게임 속에서만 — 메뉴 턴테이블·파티·NPC·잔상은 예전 그대로 ──
+// 몸무게를 천천히 양발로 옮기고(엉덩이 좌우·뒤꿈치 들림), 대기 4.5초 뒤부터 7.5초마다 1.6초씩 영웅별 버릇 하나
+const FIDGET = { start: 4.5, every: 7.5, dur: 1.6 };
+const FIDGETS = {
+  kael(P, e, u) { P.hd += 0.3 * e * Math.sin(u * TAU); P.lean -= 0.03 * e; P.a2 = lerp(P.a2, HP + 0.55, e); P.r2 = lerp(P.r2, 0.62, e); },          // 어깨 너머로 둘러봄
+  sera(P, e) { P.hd += 0.24 * e; P.lean += 0.03 * e; P.a2 = lerp(P.a2, -0.15, e); P.r2 = lerp(P.r2, 0.42, e); },                                   // 고개 숙여 기도
+  victor(P, e, u) { P.a1 = lerp(P.a1, 0.55, e); P.r1 = lerp(P.r1, 0.72, e); P.w1 += TAU * sstep(0.18, 0.72, u); P.hd += 0.06 * e; },             // 총 돌리기
+  bran(P, e, u) { P.lean -= 0.07 * e; P.py -= 1.0 * e; P.hd -= 0.14 * e * Math.sin(u * PI); P.a2 = lerp(P.a2, HP + 0.6, e * Math.sin(u * PI)); },  // 어깨 펴기
+  lia(P, e, u) { P.a1 = lerp(P.a1, 0.35, e); P.r1 = lerp(P.r1, 0.66, e); P.w1 += TAU * sstep(0.2, 0.62, u); P.hd += 0.1 * e; },                   // 단검 뒤집기
+  azel(P, e, u) { const k = e * Math.sin(u * PI); P.hd -= 0.2 * k; P.a2 = lerp(P.a2, -0.9, k); P.r2 = lerp(P.r2, 0.8, k); },                     // 머리 넘기기
+  isolde(P, e, u) { const k = e * Math.sin(u * PI); P.py += 1.4 * k; P.lean += 0.05 * k; P.hd += 0.08 * k; },                                     // 창 고쳐 세우기
+};
+function idleLife(P, p, at, tt) {
+  const ws = Math.sin(tt * 1.21), ws2 = Math.sin(tt * 0.53 + 1.3);
+  P.px += 0.9 * ws; P.lean += 0.012 * ws + 0.008 * ws2; P.hd += 0.025 * ws2;
+  if (ws > 0) { P.t2 += 0.16 * ws; P.f2x += 0.5 * ws; } else P.f1x -= 0.4 * ws;
+  const ft = at - FIDGET.start;
+  if (!(ft > 0)) return;
+  const u = (ft % FIDGET.every) / FIDGET.dur;
+  const f = FIDGETS[p.ch?.id];
+  if (u < 1 && f) f(P, sstep(0, 0.22, u) * (1 - sstep(0.72, 1, u)), u);
+}
 function poseStance(P, K) {
   P.py = -39.5; P.lean = 0.12; P.hd = -0.06; P.f1x = 8; P.f1y = -2.8; P.f2x = -9.5; P.f2y = -2.8;
   P.a1 = HP - 0.42; P.r1 = 0.8; P.a2 = HP + 0.08; P.r2 = 0.84;
 }
 function poseRun(P, K, ph, sp) {
   const s1 = Math.sin(ph), c1 = Math.cos(ph), sp2 = clamp(sp, 0.35, 1.2);
-  P.py = -40 + 1.9 * Math.cos(2 * ph) * sp2 + 0.6;
-  P.lean = 0.16 + 0.1 * sp2 + 0.03 * Math.sin(2 * ph); P.hd = -0.12;
+  // MOTION-FEEL: 속도에 비례해 더 숙이고(0.16+0.1 → 0.13+0.17), 엉덩이 상하 2.3, 머리는 반대로 버팀, 팔 반대 흔들기 1.15
+  P.py = -40 + 2.3 * Math.cos(2 * ph) * sp2 + 0.6;
+  P.lean = 0.13 + 0.17 * sp2 + 0.035 * Math.sin(2 * ph); P.hd = -0.12 - 0.05 * sp2 + 0.045 * Math.cos(2 * ph);
+  P.px = 0.6 * Math.sin(2 * ph - 0.6) * sp2;
   const A = 14 * sp2, lift = 12 * sp2;
   P.f1x = 2 + A * s1; P.f1y = -2.8 - Math.max(0, Math.cos(ph + 0.45)) * lift;
   P.f2x = 2 - A * s1; P.f2y = -2.8 - Math.max(0, Math.cos(ph + PI + 0.45)) * lift;
   P.t1 = Math.max(0, c1) * 0.7 + Math.max(0, -s1) * 0.35; P.t2 = Math.max(0, -c1) * 0.7 + Math.max(0, s1) * 0.35;
-  P.a1 = HP - 0.2 + 1.0 * s1 * sp2; P.r1 = 0.7; P.a2 = HP - 0.2 - 1.0 * s1 * sp2; P.r2 = 0.7;
+  const arm = 1.15 * sp2;
+  P.a1 = HP - 0.22 + arm * s1; P.r1 = 0.68; P.a2 = HP - 0.22 - arm * s1; P.r2 = 0.68;
 }
 function poseAir(P, vy) {
   const k = clamp((vy + 250) / 700, 0, 1);
@@ -235,6 +260,20 @@ function poseAir(P, vy) {
   P.f1x = lerp(9, 7, k); P.f1y = lerp(-19, -9, k); P.f2x = lerp(-4, -8, k); P.f2y = lerp(-4, -13, k);
   P.t1 = lerp(0.55, 0.35, k); P.t2 = lerp(0.95, 0.55, k);
   P.a1 = lerp(0.25, -0.55, k); P.r1 = lerp(0.72, 0.9, k); P.a2 = lerp(2.35, 3.4, k); P.r2 = lerp(0.85, 0.92, k);
+}
+/** 공중 (MOTION-FEEL): 박차고 오름(점프 첫 0.12초: 다리를 펴 바닥을 밀고 팔을 위로) → 오름 → 정점 웅크림(|vy| 작을 때) → 낙하(다리를 펴 내리고 팔을 벌림) */
+function poseAirV(P, vy, anim, at) {
+  poseAir(P, vy);
+  if (anim === 'jump' && at < 0.14) {
+    const k = 1 - ease.outQuad(clamp(at / 0.14, 0, 1));
+    P.f1x = lerp(P.f1x, 4, k); P.f1y = lerp(P.f1y, -4, k); P.f2x = lerp(P.f2x, -4.5, k); P.f2y = lerp(P.f2y, -2, k);
+    P.t1 = lerp(P.t1, 1.0, k); P.t2 = lerp(P.t2, 1.1, k);
+    P.a1 -= 0.55 * k; P.a2 -= 0.7 * k; P.lean -= 0.05 * k; P.hd -= 0.08 * k; P.py -= 1.2 * k;
+  }
+  const ap = 1 - clamp(Math.abs(vy) / 200, 0, 1), e = ap * ap * (3 - 2 * ap);
+  if (e > 0.001) { P.f1y -= 4.5 * e; P.f2y -= 3 * e; P.f1x += 1.5 * e; P.lean += 0.07 * e; P.a1 += 0.25 * e; P.a2 -= 0.25 * e; P.r2 = Math.min(1, P.r2 + 0.05 * e); }
+  const fk = clamp((vy - 250) / 650, 0, 1);
+  if (fk > 0) { P.f1y += 3 * fk; P.f2y += 4 * fk; P.a2 += 0.3 * fk; P.hd -= 0.06 * fk; }
 }
 function airLegs(P) { P.py = -41; P.f1x = 8; P.f1y = -14; P.f2x = -6; P.f2y = -8; P.t1 = 0.45; P.t2 = 0.7; }
 function poseCrouch(P) {
@@ -253,15 +292,29 @@ function poseDash(P, type, at) {
   P.py = blink ? -40 : -34; P.lean = blink ? 0.3 : 0.58; P.hd = -P.lean * 0.7;
   P.f1x = blink ? 8 : 16; P.f1y = blink ? -8 : -5; P.f2x = blink ? -12 : -22; P.f2y = blink ? -6 : -13; P.t1 = 0.2; P.t2 = 0.9;
   P.a1 = 2.45; P.r1 = 0.94; P.a2 = 2.7; P.r2 = 0.94;
+  // MOTION-FEEL: 박차는 순간 가로로 늘었다가(스트레치) 돌아옴 — 첫 프레임 가장 길고 0.1초면 거의 원래대로. 팔은 뒤로 끌림
+  if (!blink) { const e = Math.exp(-at * 14); P.sx = 1 + 0.12 * e; P.sq = 1 - 0.05 * e; P.lean += 0.06 * e; P.a1 += 0.15 * e; P.a2 += 0.15 * e; }
 }
 function poseWall(P) {
   P.py = -40; P.lean = -0.12; P.hd = 0.3; P.f1x = 11; P.f1y = -14; P.f2x = 8; P.f2y = -3.5; P.t1 = -0.9; P.t2 = -0.4;
   P.a1 = -0.62; P.r1 = 0.96; P.a2 = HP + 0.4; P.r2 = 0.85;
 }
-function poseHurt(P, at) {
+function poseHurt(P, at, fwd = false, big = false) {
   const k = 1 - clamp(at / 0.3, 0, 1) * 0.6;
-  P.py = -40; P.lean = -0.36 * k; P.hd = -0.45 * k; P.f1x = 10; P.f1y = -9; P.f2x = -4; P.f2y = -3; P.t1 = 0.5;
-  P.a1 = lerp(HP, -0.8, k); P.r1 = 0.85; P.a2 = lerp(HP, -2.1, k); P.r2 = 0.85; P.sq = 1 - 0.05 * k;
+  // MOTION-FEEL: 첫 0.05초 홱 젖혀지는 반동(앞에서 맞으면 뒤로, 뒤에서 맞으면 앞으로 꺾임), 큰 타격은 뒤로 반 바퀴 굴러 넘어갈 듯 (P.rot)
+  const snap = 1 + 0.35 * Math.exp(-at * 22) * (1 - Math.exp(-at * 90));
+  if (fwd) {
+    P.py = -39; P.lean = 0.42 * k * snap; P.hd = 0.38 * k * snap; P.f1x = 12; P.f1y = -5; P.f2x = -9; P.f2y = -8; P.t1 = 0.2; P.t2 = 0.8;
+    P.a1 = lerp(HP, 2.5, k); P.r1 = 0.9; P.a2 = lerp(HP, 2.8, k); P.r2 = 0.9; P.sq = 1 - 0.05 * k;
+  } else {
+    P.py = -40; P.lean = -0.36 * k * snap; P.hd = -0.45 * k * snap; P.f1x = 10; P.f1y = -9; P.f2x = -4; P.f2y = -3; P.t1 = 0.5;
+    P.a1 = lerp(HP, -0.8, k); P.r1 = 0.85; P.a2 = lerp(HP, -2.1, k); P.r2 = 0.85; P.sq = 1 - 0.05 * k;
+  }
+  if (big) {
+    const u = clamp(at / 0.3, 0, 1), r = Math.sin(PI * u) * (1 - 0.3 * u);
+    P.rot = (fwd ? 0.75 : -0.95) * r; P.pvy = -40;
+    P.f1y = lerp(P.f1y, -16, r); P.f2y = lerp(P.f2y, -10, r); P.t1 = lerp(P.t1, 0.8, r); P.t2 = lerp(P.t2, 0.9, r);
+  }
 }
 function poseDeath(P, at) {
   // 0~0.2 피격 반동(젖혀짐) → 0.16~0.62 뒤로 쓰러짐(가속) → 착지 반동 → 누운 자세(한쪽 무릎 세움)
@@ -415,6 +468,35 @@ function phaseAt(mv, t) {
   return PH;
 }
 const recoverEase = (u) => (u < 0.22 ? 0 : ease.inOutQuad((u - 0.22) / 0.78));
+// ── 공격 동작 연출 (MOTION-FEEL, 그림만 — 판정 시간표 phaseAt·히트박스·프레임 데이터는 그대로) ──
+// 예비(ph 0): R 자세를 지나 더 젖혔다가(코일) R 로 · 몸무게를 뒷발로 · 살짝 웅크림
+// 판정(ph 1): 더 빠른 출발(1−(1−u)⁴) · 몸무게를 앞발로 (엉덩이 전진·앞발 미끄러짐·뒷발 끝 밀기·낮춤)
+// 회복(ph 2): 팔·무기·몸 기울기가 E 를 지나쳤다가(팔로스루) 기본 자세로 가라앉음
+// 모두 (mv, t) 의 결정적 함수 → 무기 궤적(drawTrail 이 과거 시점 자세를 다시 푼다)과 칼끝이 어긋나지 않는다
+const ATK_W = { greatsword: 1.35, spear: 1.1, sword: 1, whip: 0.85, staff: 0.85, dagger: 0.7, gun: 0.6, none: 0.8 };   // 몸무게 이동 세기
+const ATK_FT = { greatsword: 0.24, sword: 0.17, staff: 0.15, dagger: 0.1, whip: 0.06, spear: 0.07, gun: 0, none: 0.1 };   // 팔로스루 (스윙 각의 비율)
+const FT_KEYS = ['a1', 'w1', 'a2', 'w2', 'lean', 'hd'];
+// 연타 변주: 같은 자세 이름(stab·shoot …)이 이어져도 높이·각도가 달라 보이게 (기술 id 별 R·E 덧셈)
+const ATK_VAR = {
+  dg1: { a1: 0.16, w1: 0.12, py: 1.4, lean: 0.05 },                 // 단검 1타: 낮게 찌르기
+  dg3: { a1: -0.3, w1: -0.32, py: -1, lean: -0.05, hd: -0.08 },     // 3타: 높게 찌르기
+  dg4: { a2: 0.12, w2: 0.14, lean: 0.06, py: 1 },
+  gn3: { lean: 0.07, py: 1.6, f1x: 2, hd: 0.04 },                     // 총 3타: 몸을 숙여 쏨
+  sp1: { py: 1.2, lean: 0.04 }, sp4: { lean: 0.06, py: 1.5, f1x: 2 },
+  st2: { py: -1, lean: -0.03 },
+  sw2: { py: -0.8 }, sw3: { py: 1.6, lean: 0.06, f1x: 2 },
+  gs2: { py: -1.2 },
+};
+const sstep = (a, b, x) => { const u = clamp((x - a) / (b - a), 0, 1); return u * u * (3 - 2 * u); };
+function addVar(P, v) { if (v) for (const k in v) P[k] += v[k]; }
+/** 몸무게 이동 (지상 공격만): w = −1(뒷발) … +1(앞발), d = 웅크림(0~1) */
+function weightShift(P, wk, w, d) {
+  P.px += 2.0 * wk * w;
+  P.py += (0.9 + 0.6 * Math.max(0, w)) * wk * d;
+  if (w > 0) { P.f1x += 2.2 * wk * w; P.t2 += 0.32 * w; }
+  else { P.f2x += 1.2 * wk * w; P.t1 -= 0.12 * w; }
+  P.lean += 0.06 * wk * w;
+}
 function setBase(P, p, K, kind) {
   resetPose(P);
   if (kind === 'crouch') { poseCrouch(P); holdFor(P, K, 'crouch'); }
@@ -438,9 +520,27 @@ function attackPose(P, S, p, K, mv, t) {
   copyPose(PR, PB); Object.assign(PR, def.R); if (kind !== 'stance') keepLegs(PR, PB);
   copyPose(PE, PB); Object.assign(PE, def.E); if (kind !== 'stance') keepLegs(PE, PB);
   if (spear && mv.rise) { PE.a1 -= 0.5; PE.w1 -= 0.55; PE.lean -= 0.18; PE.hd = -0.2; }   // 약간 위로 찌르기
-  if (ph.ph === 0) lerpPose(P, PB, PR, ease.outCubic(ph.u));
-  else if (ph.ph === 1) lerpPose(P, PR, PE, ease.outCubic(ph.u));
-  else lerpPose(P, PE, PB, recoverEase(ph.u));
+  const vv = ATK_VAR[mv.id];
+  if (vv) { addVar(PR, vv); addVar(PE, vv); if (kind !== 'stance') { keepLegs(PR, PB); keepLegs(PE, PB); } }
+  const wt = K.W.type, wk = ATK_W[wt] ?? 1, ground = kind === 'stance';
+  if (ph.ph === 0) {
+    // 예비: R 에 82% 지점에서 닿고, 그 사이 R 너머로 16% 더 젖혔다가(코일) 돌아온다
+    const u = ph.u, k = ease.outCubic(clamp(u / 0.82, 0, 1)) + 0.16 * Math.sin(PI * clamp((u - 0.25) / 0.75, 0, 1));
+    lerpPose(P, PB, PR, k);
+    if (ground) weightShift(P, wk, -sstep(0, 0.7, u), sstep(0.1, 0.9, u));
+  } else if (ph.ph === 1) {
+    const u = ph.u;
+    lerpPose(P, PR, PE, 1 - (1 - u) * (1 - u) * (1 - u) * (1 - u));
+    if (ground) { const w = sstep(0, 0.45, u); weightShift(P, wk, -1 + 2 * w, 1); }
+  } else {
+    // 회복: 앞 40% 는 E 를 지나 팔로스루(스윙 방향으로 ft 만큼 더), 그 뒤 기본 자세로 가라앉음
+    const u = ph.u, ft = (ATK_FT[wt] ?? 0.1) * (mv.finisher ? 1.3 : 1);
+    lerpPose(P, PE, PB, recoverEase(u));
+    const o = ft * Math.sin(PI * clamp(u / 0.42, 0, 1)) * (1 - recoverEase(u));
+    if (o > 0) for (const key of FT_KEYS) P[key] += (PE[key] - PR[key]) * o;
+    if (P.r1 > 1) P.r1 = 1;
+    if (ground) { const k = 1 - sstep(0.15, 0.95, u); weightShift(P, wk, k, k); }
+  }
   if (spear && mv.rehit && def.streak && ph.ph === 1) {
     // 연속 찌르기: 판정이 다시 걸릴 때마다(rehit) 창이 끝까지 뻗고, 사이에는 반쯤 당긴다
     // 판정 구간 앞 25%는 와인드업(당긴 자세)에서 섞어 들어간다: 팔이 아직 등 뒤를 향할 때 곧장 끝까지 뻗으면 무기 손이 어깨에서 멀어져
@@ -533,6 +633,8 @@ function gunPose(P, S, p, K, ph, def, kind) {
   if (g & 1) { const sg = P.w1 > 1 ? 1 : -1; P.a1 += sg * kick * 0.42; P.w1 += sg * kick * 0.85; }
   if (g & 2) { const sg = P.w2 > 1 ? 1 : -1; P.a2 += sg * kick * 0.42; P.w2 += sg * kick * 0.85; }
   if (def === AK.shoot_double) { P.lean -= kick * 0.28; P.px -= kick * 3; }
+  // 몸 반동 (MOTION-FEEL): 어깨가 뒤로 밀리고 고개가 젖혀졌다 돌아옴 + 엉덩이가 살짝 뒤로 (조준 팔은 aimPup 이 이미 맞춤 → 몸통만)
+  else if (kick > 0.01) { P.lean -= kick * 0.12; P.px -= kick * 1.4; P.hd -= kick * 0.16; if (kind === 'stance') { P.py += kick * 0.8; P.f2x -= kick * 1.2; } }
   const m = p.muzzleT > 0 ? clamp(p.muzzleT / 0.06, 0, 1) : 0;
   S.fire1 = g & 1 ? m : 0; S.fire2 = g & 2 ? m : 0;
   S.t = t;
@@ -2189,7 +2291,7 @@ export function drawHero(ctx, p, world, opts = {}) {
         poseRun(P, K, ph, spd / sp0 || 0.8); holdFor(P, K, 'run');
         break;
       }
-      case 'jump': case 'fall': poseAir(P, p.vy ?? 0); holdFor(P, K, 'air'); break;
+      case 'jump': case 'fall': poseAirV(P, p.vy ?? 0, anim, at); holdFor(P, K, 'air'); break;
       case 'flip': {
         poseAir(P, -200); holdFor(P, K, 'air');
         const u = clamp(at / 0.36, 0, 1), k = Math.sin(u * PI);
@@ -2207,7 +2309,13 @@ export function drawHero(ctx, p, world, opts = {}) {
         break;
       }
       case 'wall': poseWall(P); holdFor(P, K, 'air'); if (W.type === 'dagger') { P.w1 = HP + 0.6; P.w2 = HP + 0.8; } break;
-      case 'hurt': poseHurt(P, at); P.w1 = P.a1 + 0.8; P.w2 = P.a2 + 0.8; ST.hurt = clamp(1 - at / 0.12, 0, 1); break;
+      case 'hurt': {
+        // 맞은 방향: 경직 첫 프레임의 넉백 속도(player.takeHit 이 vx 를 밀려나는 쪽으로 준다)를 기억 — 바라보는 쪽으로 밀리면 뒤에서 맞음
+        let fwd = (p.vx || 0) * fac > 40, big = Math.abs(p.vx || 0) > 420 || (p.vy || 0) < -560;
+        if (rig) { if (rig.akey !== 'hurt' || rig.hurtFwd === undefined) { rig.hurtFwd = fwd; rig.hurtBig = big; } fwd = rig.hurtFwd; big = rig.hurtBig; }
+        poseHurt(P, at, fwd, big); P.w1 = P.a1 + 0.8; P.w2 = P.a2 + 0.8; ST.hurt = clamp(1 - at / 0.12, 0, 1);
+        break;
+      }
       case 'death': poseDeath(P, at); if (K.pup) P.pvy -= 3.5; break; // 퍼펫은 몸통이 길어 누웠을 때 머리가 바닥에 묻히지 않게
       case 'throw': poseIdle(P, K, tt, false); holdFor(P, K, 'idle'); poseThrow(P, K, at); ST.throwK = W.type === 'whip' ? 1 : 2; break;
       case 'cast': poseIdle(P, K, tt, false); holdFor(P, K, 'idle'); poseCast(P, K, at, tt); ST.circle = clamp(at / 0.08, 0, 1) * (at < 0.3 ? 1 : clamp(1 - (at - 0.3) / 0.2, 0, 1)); ST.cast = 3; break;
@@ -2221,8 +2329,20 @@ export function drawHero(ctx, p, world, opts = {}) {
         if (gm) { (heroHooks.gait || GAIT.gaitPose)(P, K, anim, p, at); holdFor(P, K, typeof gm === 'string' ? gm : gm.hold || 'run'); break; }
         poseIdle(P, K, tt, !!p.npc); holdFor(P, K, 'idle');
         if (p.npc) npcLife(P, p, world, tt, rig, dt);   // 마을·스토리 NPC 대기: 자기 대사 중이면 말하기, 플레이어가 다가오면·가끔 손짓
+        else if (rig && G.main && anim === 'idle') idleLife(P, p, at, tt);   // MOTION-FEEL: 몸무게 옮기기 + 영웅별 버릇
         break;
       }
+    }
+  }
+  // 대시 끝 제동 (MOTION-FEEL): 대시가 공격 없이 끝나면 0.18초 동안 무릎을 굽혀 버티며 몸을 뒤로 세운다 (땅 위, 굴러 미끄러지는 빅터는 skid 가 맡음)
+  if (rig) {
+    if (anim === 'dash') rig.dashOut = -1;
+    else if (rig.prevAnim === 'dash' && !mv) rig.dashOut = tt;
+    rig.prevAnim = anim;
+    if (rig.dashOut >= 0 && !mv && p.onGround !== false && anim !== 'skid') {
+      const u = (tt - rig.dashOut) / 0.18;
+      if (u >= 0 && u < 1) { const k = (1 - u) * (1 - u); P.py += 3.5 * k; P.lean -= 0.14 * k; P.hd += 0.08 * k; P.f1x += 4 * k; P.f2x -= 2.5 * k; P.t1 -= 0.25 * k; P.a2 -= 0.35 * k; P.sq *= 1 - 0.03 * k; }
+      else rig.dashOut = -1;
     }
   }
   // 애니메이션 전환 블렌드
@@ -2257,6 +2377,9 @@ export function drawHero(ctx, p, world, opts = {}) {
   // ── 그리기 ──
   ctx.save();
   ctx.translate(ride ? ride.cx : p.cx, ride ? ride.bottom : p.bottom);
+  // 타격 경직(히트스톱) 동안 조종 영웅이 미세하게 떨린다 (MOTION-FEEL 임팩트 강조 — 경직 길이·판정은 그대로, 실제 시간 world.rt 로 진동)
+  const hsK = G.main && mv && world && world.hitstop > 0 && !G.lowq ? clamp(world.hitstop / 0.05, 0, 1) : 0;
+  if (hsK > 0) ctx.translate(Math.sin((world.rt ?? tt) * 95) * 0.9 * hsK * hs, 0);
   ctx.scale(fac * hs, hs);
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   G.olw = 0.85;
@@ -2337,6 +2460,7 @@ export function drawHero(ctx, p, world, opts = {}) {
     glow(TX, TY, 14, K.magicC, 0.6 * ST.circle);
   }
   if (ST.charge > 0 && G.fx) drawChargeFx(K, P, ST.charge, tt);
+  if (rig && G.main && G.fx && !G.tint && world?.fx) motionFx(c, E, K, p, mv, world, tt, hsK);   // MOTION-FEEL 무기 계열별 연출 (불꽃·성광·탄피·찌르기 고리)
   // 6) 오라 입자
   if (K.aura && G.fx) drawAuraMotes(K.aura.type || 'holy', K.auraC, K.auraK * (mist ? 0.4 : 1), K.auraK < 1 ? 5 : 8, 84);
   if (mist && G.fx) drawMist(ST.dashK, tt);

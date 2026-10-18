@@ -21,7 +21,7 @@ const root = path.resolve(String(opt('root', REPO)));
 const out = String(opt('out', '/dev/shm/motion_rec'));
 const char = String(opt('char', 'kael')), cls = String(opt('cls', '')), stage = String(opt('stage', 's01'));
 const every = Number(opt('every', 1)), q = Number(opt('q', 0.88));
-const crop = String(opt('crop', '520x440')).split('x').map(Number);
+const crop = String(opt('crop', '640x560')).split('x').map(Number);
 const quality = String(opt('quality', 'high'));
 const fps = Number(opt('fps', 60));
 const label = String(opt('label', ''));
@@ -55,7 +55,7 @@ const srv = http.createServer((req, res) => {
 const port = 9500 + Math.floor(Math.random() * 400);
 await new Promise((r) => srv.listen(port, r));
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--autoplay-policy=no-user-gesture-required', '--mute-audio'] });
-const ctx = await browser.newContext({ viewport: { width: Number(opt('w', 1280)), height: Number(opt('h', 720)) }, deviceScaleFactor: Number(opt('dpr', 1)) });
+const ctx = await browser.newContext({ viewport: { width: Number(opt('w', 1000)), height: Number(opt('h', 755)) }, deviceScaleFactor: Number(opt('dpr', 2)) });
 const page = await ctx.newPage();
 const errs = [];
 page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message));
@@ -80,6 +80,8 @@ for (let k = 0; k < 160; k++) {
   await page.waitForTimeout(150);
 }
 await page.evaluate((qq) => { const g = window.__game; g._tier = qq; g.world?.applyQuality?.(); }, quality);
+// 비교 화면을 가리지 않게: 데미지 숫자·판정 문구는 끈다 (예전/지금 모두 같게)
+if (!opt('numbers', false)) await page.evaluate(() => { const fx = window.__game.world.fx; fx.dmg = () => null; fx.callout = () => null; fx.text = () => null; });
 await freeze(page);
 // 시뮬레이션은 늘 1/60 고정 스텝(game.js STEP) — 30fps 기기 = 두 스텝마다 한 번 그림. 한 '프레임' = 60/fps 스텝 + 그리기 1회
 const SPF = Math.max(1, Math.round(60 / fps));
@@ -137,7 +139,7 @@ for (const tok of script.split(',').map((s) => s.trim()).filter(Boolean)) {
     await ev(() => {
       const w = window.__game.world, p = w.player;
       const e = w.spawnEnemy('skeleton', p.cx + p.facing * 70, p.bottom - 4, { facing: -p.facing });
-      if (e) { e.hp = e.maxHp = 1e7; e.ai = { update() {}, init() {} }; e.noKnock = true; window.__dummy = e; }
+      if (e) { e.hp = e.maxHp = 1e7; e.ai = { update() {}, init() {} }; window.__dummy = e; }
     });
     continue;
   }
