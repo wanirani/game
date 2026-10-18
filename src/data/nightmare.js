@@ -34,13 +34,13 @@ export const NM_TWISTS = {
   dark: { id: 'dark', name: '어둠', desc: '빛이 사라진다 · 예고와 탄만 빛난다', tier: 'weak', dark: 0.86 },
 };
 
-// 1부 (s01–s13) · 2부 (s14–s20) · 외전 (s21–s25) 기본 배율
+// 1부 (s01–s13) · 2부 (s14–s20) · 외전 (s21–s25 P2 · s26 P1) 기본 배율
 const P1 = { hpMul: 1.6, atkMul: 1.1, spMul: 1.15 };
 const P2 = { hpMul: 1.5, atkMul: 1.05, spMul: 1.12 };
 const row = (stage, boss, twist, base, o = {}) => ({ id: `nm_${stage}`, boss, stage, twist, ...base, reward: { rarity: 4 }, ...o });
 
 /**
- * 25 악몽 (스테이지 순서). hpMul 은 P3b 의 tools/balance.mjs --nm 로 맞춘 값 (2026-10-18, 카엘 · 보통/어려움 · 일곱 영웅 가운데값):
+ * 26 악몽 (스테이지 순서 — s26 은 1부 외전이라 끝에 두고 1부 배율). hpMul 은 P3b 의 tools/balance.mjs --nm 로 맞춘 값 (2026-10-18, 카엘 · 보통/어려움 · 일곱 영웅 가운데값):
  *  권장 레벨(이야기 + 10) 영웅의 보스 타수 ÷ 이야기 보스 타수가 1.3–1.9 (가운데 ≈ 1.57) 안에 들게.
  *  이야기 레벨이 영웅의 직업 단계(10·25 레벨)를 막 넘기는 장(s01–s03 · s07–s08 · s11–s12)은 권장 레벨 영웅이 훨씬 세서 배율이 크게 달라진다.
  */
@@ -72,6 +72,9 @@ const ROWS = [
   row('s23', 'b_hagen', 'minions', P2, { hpMul: 1.3, atkMul: 0.95, minions: ['wolf', 'snow_wolf', 'frozen_knight'] }),
   row('s24', 'b_bride', 'cursed_floor', P2, { hpMul: 1.35, atkMul: 0.96 }),
   row('s25', 'b_charon', 'doom_clock', P2, { hpMul: 1.3, atkMul: 0.96 }),
+  // 외전 26장 (1부 외전, 7장 뒤 — docs/specs/ex_s26.md §5.4): 1부 기본 배율 · 비틀기 어둠 (용광로가 꺼진 공방 — 금 바닥·수은과 겹치는 바닥 비틀기는 피한다)
+  //  [ch26_verify] hpMul 2.0: 이야기 기준 = 9장 뒤 Lv 28 영웅(balance.mjs P1_SIDE_AFTER) — 1.6 이면 보통 카엘 타수 비 1.09 (권장 Lv 40 이 7단계 장비를 일찍 받아 이야기보다 훨씬 세다)
+  row('s26', 'b_paracel', 'dark', P1, { hpMul: 2.0 }),
 ];
 export const NM = Object.freeze(Object.fromEntries(ROWS.map((r) => [r.id, Object.freeze(r)])));
 export const NM_IDS = Object.freeze(ROWS.map((r) => r.id));

@@ -20,7 +20,7 @@ test('장부: Stage 5 항목 (탑 이정표 5 · 악몽 3) 과 이정표 표', (
   assert.deepEqual(tw, [10, 20, 30, 40, 50], '탑 이정표 tw');
   const nm = C.TRAIL_IDS.filter((id) => typeof C.TRAILS[id].need?.nm === 'number');
   assert.equal(nm.length, 3, '악몽 잔상 3');
-  assert.deepEqual(nm.map((id) => C.TRAILS[id].need.nm).sort((a, b) => a - b), [1, 10, 25]);
+  assert.deepEqual(nm.map((id) => C.TRAILS[id].need.nm).sort((a, b) => a - b), [1, 10, 26]);   // 군주 = 악몽 26 모두 (외전 26장 s26 — ch26_verify)
   assert.deepEqual(C.TOWER_MILESTONES.map((m) => m.floor), [10, 20, 30, 40, 50]);
   for (const m of C.TOWER_MILESTONES) assert.equal(C.TRAILS[m.trail]?.need?.tw, m.floor, `이정표 ${m.floor} → ${m.trail}`);
   // 모든 잔상: 이름·설명·6단 색(#rrggbb)·알려진 need 키 하나

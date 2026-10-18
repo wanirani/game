@@ -332,14 +332,14 @@ export function skillHits(p, f, R) {
 
 /**
  * [matrix] 보조 무기가 f 에 닿을 만한가 (보는 쪽 기준, subweapons.js 의 탄 모양 어림). p: {cx, top, bottom, facing}
- *  단검·권총·십자가 = 가슴 높이 직선 · 도끼 = 앞 위 포물선 · 성수·화염병 = 앞 땅 · 성서 = 몸 둘레. 시계 등은 쓰지 않는다
+ *  단검·권총·십자가 = 가슴 높이 직선 · 도끼 = 앞 위 포물선 · 성수·화염병·연금 플라스크 = 앞 땅 · 성서 = 몸 둘레. 시계 등은 쓰지 않는다
  */
 export function subHits(p, f, id) {
   const dx = (f.cx - p.cx) * p.facing, top = p.top ?? p.bottom - 90;
   switch (id) {
     case 'dagger': case 'pistol': case 'cross': { const y = top + 34; return dx > 24 && dx < 740 && f.y0 < y + 16 && f.y1 > y - 16; }
     case 'axe': return dx > 30 && dx < 430 && f.y1 > p.bottom - 520 && f.y0 < p.bottom - 30;
-    case 'holywater': case 'bomb': return dx > 24 && dx < 320 && Math.abs(f.bottom - p.bottom) < 64;
+    case 'holywater': case 'bomb': case 'flask': return dx > 24 && dx < 320 && Math.abs(f.bottom - p.bottom) < 64;   // flask(외전 26장): 앞 땅에 떨어져 터진다 (vx 380 · vy −460 → 약 220 px)
     case 'bible': return Math.abs(f.cx - p.cx) < 110 && f.y1 > p.bottom - 170 && f.y0 < p.bottom;
     default: return false;
   }

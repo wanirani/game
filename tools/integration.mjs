@@ -43,6 +43,8 @@ const CASES = [
   { id: 's01_boss_retry', url: 'index.html?scene=stage&stage=s01&room=boss', boss: true, steps: 'wait:2.5,rightboss:8,intro:25,wait:1,bossretry:auto,shot,rightboss:8,retryintro:8,wait:0.5,shot' },
   { id: 's01_boss_retry_hard', url: 'index.html?scene=stage&stage=s01&room=boss&diff=hard', boss: true, steps: 'wait:2.5,rightboss:8,intro:25,wait:1,bossretry:tap,shot,rightboss:8,retryintro:8,wait:0.5,shot' },
   { id: 's14_boss_retry', url: 'index.html?scene=stage&stage=s14&room=boss', boss: true, steps: 'wait:2.5,rightboss:8,intro:25,wait:1,bossretry:tap,shot,rightboss:10,retryintro:8,wait:0.5,shot' },
+  // [ch26_verify] 1부 외전 s26 보스 문 앞 이어하기 (채색 파라켈 · 50% 변신 보스도 체력 가득 1페이즈로 다시)
+  { id: 's26_boss_retry', url: 'index.html?scene=stage&stage=s26&room=boss', boss: true, steps: 'wait:2.5,rightboss:8,intro:25,wait:1,bossretry:tap,shot,rightboss:10,retryintro:8,wait:0.5,shot' },
   // 무한의 탑: 1층 전투 → (시험 훅 debugKillAll) 층 돌파 → 출구 (데스크톱 ▲, 휴대폰 가만히 서 있기) → 2층. towerfloor:N = 최대 N초
   { id: 'tower', url: 'index.html?scene=tower&seed=4242&preset=3&diff=normal', steps: 'wait:1.5,towerfloor:40,shot' },
   // 외전 26장 (1부 외전, docs/specs/ex_s26.md — CH26-WIRE): s26_gate = 새 세이브의 세계 지도에는 s26 노드가 없고, 7장을 깬 1부 세이브는

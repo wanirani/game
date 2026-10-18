@@ -23,7 +23,7 @@ export const TRAILS = Object.freeze({
   tr_dawn: { name: '여명', desc: '탑 꼭대기에서 맞는 새벽빛', ramp: ['#e8587e', '#ee7488', '#f39094', '#f7aca2', '#fbc8b2', '#ffe4c8'], need: { tw: 50 } },
   tr_nightmare: { name: '악몽', desc: '악몽에서 살아 돌아온 자의 검붉은 잔상', ramp: ['#5a0614', '#7a1424', '#9a2436', '#ba3a4c', '#d85a68', '#f0868e'], need: { nm: 1 } },
   tr_rose: { name: '흑장미', desc: '악몽의 정원에 핀 검은 장미', ramp: ['#6a0848', '#86205e', '#a23c78', '#be5c94', '#d880b2', '#f0a8d2'], need: { nm: 10 } },
-  tr_sovereign: { name: '군주', desc: '스물다섯 군주를 모두 꺾은 자의 진홍빛', ramp: ['#3a0008', '#6a0a18', '#a01828', '#d0303a', '#f0705a', '#ffd08a'], need: { nm: 25 } },
+  tr_sovereign: { name: '군주', desc: '스물여섯 군주를 모두 꺾은 자의 진홍빛', ramp: ['#3a0008', '#6a0a18', '#a01828', '#d0303a', '#f0705a', '#ffd08a'], need: { nm: 26 } },   // 악몽 26 (외전 26장 s26 포함 — ch26_verify; 이미 고른 잔상은 거두지 않는다)
 });
 /** 무한의 탑 이정표 (돌파한 층 → 잔상). 탑 장면이 이정표 층을 처음 넘을 때 알린다 (scenes/front/arcade_tower.js) */
 export const TOWER_MILESTONES = Object.freeze([

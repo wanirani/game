@@ -114,6 +114,8 @@ const knob = (name, id, sid) => KNOBS[`${name}.${id}`] ?? (P2_IDS.has(sid) ? KNO
 const med = (a) => { const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)] ?? 0; };
 const MAIN_EXP = {};   // 스테이지 → 메인 퀘스트 보상 경험치
 for (const q of Object.values(QUESTS)) if (q.kind === 'main' && q.goal?.type === 'clear') MAIN_EXP[q.goal.stage] = (MAIN_EXP[q.goal.stage] ?? 0) + (q.reward?.exp ?? 0);
+/** [ch26_verify] 1부 외전 → 권장 진입 지점 (그 장을 막 깬 영웅으로 행을 센다): s26 = 「9장 뒤 (권장 하한) Lv 28」 (docs/specs/ex_s26.md §2.3) */
+const P1_SIDE_AFTER = Object.freeze({ s26: 's09' });
 
 // ── 결정적 난수 (옵션 추첨용) — makeItem → rollAffixes 가 Math.random 을 쓴다
 function mulberry32(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -205,12 +207,18 @@ function simulate(cid, ng = 0) {
   let level = NG_HERO ? NG_HERO.start : 1, exp = 0, mainLevel = level;   // mainLevel = 이야기(외전 제외) 마지막 장(s20)을 마친 레벨 — END_LV 는 이것과 비교
   const docsSoFar = [];
   const rows = [];
+  // [ch26_verify] 1부 외전(side · part 1 — s26)은 STAGE_ORDER 끝(s25 뒤)에 있지만 본편 사슬 밖의 샛길이다: 그 행은 권장 진입 지점
+  //  (P1_SIDE_AFTER 의 장을 막 깬 영웅 — 레벨 · 장비 줄 · 비전서)으로 계산하고, 경험치는 본편 사슬에 더하지 않는다 (본편 행 · 끝 레벨은 s26 등록 전과 같다).
+  //  p1side[sid] = { at, idx, plv, nextLv } — balance_nm.mjs 가 악몽 s26 의 「이야기 싸움」 기준 · 장비 줄 · 「막 깬 영웅」 레벨로 쓴다
+  const snap = {}, p1side = {};
   STAGE_ORDER.forEach((sid, i) => {
     // 회차: 게임과 같은 계산 (적 레벨 · 배율 · 1부 초반 보정 · 상한) — 스테이지·난이도의 복사본
     const W = ng ? NG.ngWorld(STAGES[sid], diff, ng) : null;
     if (ng && !W) { console.error(`NG.ngWorld(${sid}, ${diffId}, ${ng}) 가 null — src/game/ngplus.js 가 아직 뼈대인가?`); process.exit(2); }
     const st = W ? W.stage : STAGES[sid], D = W ? W.diff : diff;
-    const { s: P, h: H, tier, enh } = heroAt(level, i, docsSoFar);
+    const side1 = !!(STAGES[sid]?.side && (STAGES[sid].part ?? 2) === 1 && snap[P1_SIDE_AFTER[sid]]);
+    const at = side1 ? snap[P1_SIDE_AFTER[sid]] : { level, idx: i, docs: docsSoFar };
+    const { s: P, h: H, tier, enh } = heroAt(at.level, at.idx, at.docs);
     const ids = countEnemies(st);
     const es = ids.map((id) => {
       const s = enemyStats(ENEMIES[id], st.level, D, false);
@@ -232,17 +240,24 @@ function simulate(cid, ng = 0) {
       bt = dmg(bs, { def: P.def, dmgReduce: P.dmgReduce }, 1.2) / P.hp * 100;
       ({ el: bel, mul: belMul } = comboElem(combo, P, bs));   // 장착한 기준 무기의 속성 (보고용 — --check 는 무속성)
     }
-    rows.push({ stage: sid, elv: st.level, plv: level, cls: H.classId.replace(/^[a-z]+_/, ''), tier, ...(ng ? { enh } : {}), atk: Math.round(mag ? P.mag : P.atk), hp: Math.round(P.hp), def: Math.round(P.def), n: ids.length, eHP: med(es.map((e) => e.s.maxHp)), hitsMed: med(hits), hitsMax: Math.max(...hits, 0), takenMed: +med(taken).toFixed(1), bossHP: bhp, bossHits: bh, bossSec: Math.round(bsec), bossTaken: +bt.toFixed(1), el: bel, elMul: +belMul.toFixed(2), bossSecEl: belMul > 0 ? Math.round(bsec / belMul) : Infinity });
+    rows.push({ stage: sid, elv: st.level, plv: at.level, cls: H.classId.replace(/^[a-z]+_/, ''), tier, ...(ng ? { enh } : {}), atk: Math.round(mag ? P.mag : P.atk), hp: Math.round(P.hp), def: Math.round(P.def), n: ids.length, eHP: med(es.map((e) => e.s.maxHp)), hitsMed: med(hits), hitsMax: Math.max(...hits, 0), takenMed: +med(taken).toFixed(1), bossHP: bhp, bossHits: bh, bossSec: Math.round(bsec), bossTaken: +bt.toFixed(1), el: bel, elMul: +belMul.toFixed(2), bossSecEl: belMul > 0 ? Math.round(bsec / belMul) : Infinity });
     // 경험치 획득 (85% 처치 + 보스 [+ 메인 퀘스트])
     let gain = es.reduce((a, e) => a + e.s.exp, 0) * 0.85;
     if (b) gain += Math.round((b.exp ?? 400) * knob('bexp', b.id ?? st.boss, sid) * (1 + st.level * 0.35) * (D.exp ?? 1));
     if (QUESTS_ON) gain += MAIN_EXP[sid] ?? 0;
+    if (side1) {   // 1부 외전: 그 진입 영웅이 이 장을 깨고 오를 레벨만 따로 센다 (본편 level · exp 는 그대로)
+      let lv = at.level, x = at.exp + gain;
+      while (lv < 99 && x >= expToNext(lv)) { x -= expToNext(lv); lv++; }
+      p1side[sid] = { at: P1_SIDE_AFTER[sid], idx: at.idx, plv: at.level, nextLv: lv };
+      return;
+    }
     exp += gain;
     while (level < 99 && exp >= expToNext(level)) { exp -= expToNext(level); level++; }
     for (const d of st.docs || []) if (!docsSoFar.includes(d)) docsSoFar.push(d);
+    snap[sid] = { level, exp, idx: i + 1, docs: [...docsSoFar] };   // 이 장을 막 깬 영웅 (다음 장 진입 = 장비 줄 i + 1)
     if (!st.side) mainLevel = level;   // 외전(s21 · s22, docs/specs/ex_s21.md · ex_s22.md)은 2부 엔딩 뒤 — 행만 보여 주고 끝 레벨 판정에는 넣지 않는다
   });
-  return { rows, endLevel: mainLevel, sideEndLevel: level, combo, heroAt };   // heroAt: --nm (balance_nm.mjs) 이 같은 영웅 모형을 쓴다
+  return { rows, endLevel: mainLevel, sideEndLevel: level, combo, heroAt, p1side };   // heroAt: --nm (balance_nm.mjs) 이 같은 영웅 모형을 쓴다
 }
 
 // ── world2 §15 목표 (카엘 기준). plv = 메인 퀘스트 경험치를 받은 실제 진입 레벨 ±2 (BAL-TUNE, bal_audit.md 권고 4 — 예전 띠 39–43 … 60–65 는 퀘스트 경험치를 뺀 값)
@@ -295,11 +310,18 @@ if (NG_N && !ASC_SEL) {
 }
 
 if (NM_SEL && !ASC_SEL && !NG_N) {
-  const heroes = NM_SEL === 'all' ? Object.keys(CHARACTERS) : String(NM_SEL).split(',').map((x) => x.trim()).filter(Boolean);
+  // [ch26_verify] 스테이지 id(s26 …)를 섞으면 그 악몽 줄만 보인다 (줄 판정 · 감독 시뮬레이션도 그 줄만 — 일곱 영웅 가운데값 같은 전체 판정은 그대로 모든 줄)
+  //  영웅을 따로 적지 않고 스테이지만 적으면 일곱 영웅 모두 (예: --nm s26 · --nm s26,kael)
+  const toks = String(NM_SEL).split(',').map((x) => x.trim()).filter(Boolean);
+  const stageToks = toks.filter((x) => /^s\d\d$/.test(x)), heroToks = toks.filter((x) => !/^s\d\d$/.test(x));
+  const heroes = heroToks.includes('all') || (!heroToks.length && stageToks.length) ? Object.keys(CHARACTERS) : heroToks;
   const bad = heroes.filter((h) => !CHARACTERS[h]);
   if (bad.length) { console.error(`--nm: 알 수 없는 영웅 ${bad.join(',')} (${Object.keys(CHARACTERS).join(', ')} | all)`); process.exit(2); }
   const { runNm } = await import('./qa/lib/balance_nm.mjs');
-  try { process.exitCode = await runNm({ simulate, dmg, D: diff, diffId, heroes, check: CHECK, json: JSON_OUT, secs: Math.max(20, Number(optv('secs', 120)) || 120) }); }
+  const { NM: NM_TABLE } = await import('../src/data/nightmare.js');
+  const badStage = stageToks.filter((s) => !NM_TABLE['nm_' + s]);
+  if (badStage.length) { console.error(`--nm: 악몽 줄이 없는 스테이지 ${badStage.join(',')}`); process.exit(2); }
+  try { process.exitCode = await runNm({ simulate, dmg, D: diff, diffId, heroes, check: CHECK, json: JSON_OUT, secs: Math.max(20, Number(optv('secs', 120)) || 120), only: stageToks.length ? new Set(stageToks.map((s) => 'nm_' + s)) : null }); }
   catch (e) { console.error(String(e?.stack ?? e)); process.exitCode = 2; }
 }
 const run = NG_N || ASC_SEL || NM_SEL ? null : simulate(charId);
