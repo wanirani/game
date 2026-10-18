@@ -297,7 +297,7 @@ class BossReveal {
 }
 
 /** 격파 연출 (world.onBossDefeated): 속성 폭발 · 임팩트 프레임(ULTFX.final) · 카메라 밀어 넣기 · 「격파」 먹 낙관 · 금빛 알갱이 · 빛기둥 → (STAGE CLEAR 배너) */
-const FIN = Object.freeze({ bursts: 20, gap: 0.06, seal: 0.35, sealLife: 2.5, motes: [0.5, 2.6], pillar: [0.25, 2.6], camOut: 1.3, end: 3.2 });
+const FIN = Object.freeze({ bursts: 20, per: 6, gap: 0.06, seal: 0.35, sealLife: 2.5, motes: [0.5, 2.6], pillar: [0.25, 2.6], camOut: 1.3, end: 3.2 });
 class BossFinale {
   constructor(w, boss) {
     this.w = w; this.id = boss?.def?.id ?? null;
@@ -306,9 +306,9 @@ class BossFinale {
     this.t = 0; this.n = 0; this.moteAcc = 0; this.sealOn = false; this.camOn = false; this.camDone = false;
     this.lres = fxLightLow(w);   // 끝(FIN.end)·방 이동(stop)에서 되돌린다
     const fx = w.fx, el = this.el;
-    // 0초: 속성 폭발 두 겹 + 속성 고리 (예전 'fire' ×20 자리 — 입자 수는 예전 160 + 여기 28 + 알갱이 ≈ 30 으로 묶는다)
-    fx.burst(el.burst, this.cx, this.cy, 18, { speed: 380, jitter: this.bw * 0.25, ...(el.shardColor ? { color: el.shardColor } : {}) });
-    fx.burst(el.burst2, this.cx, this.cy, 10, { speed: 240, jitter: this.bw * 0.3 });
+    // 0초: 속성 폭발 두 겹 + 속성 고리 (예전 'fire' 8개 ×20 = 160 자리 — 여기 22 + 연달아 6개 ×20 + 알갱이 ≈ 20 으로 예전 수만큼)
+    fx.burst(el.burst, this.cx, this.cy, 14, { speed: 380, jitter: this.bw * 0.25, ...(el.shardColor ? { color: el.shardColor } : {}) });
+    fx.burst(el.burst2, this.cx, this.cy, 8, { speed: 240, jitter: this.bw * 0.3 });
     fx.ring(this.cx, this.cy, { color: el.color, r0: 20, r1: 340, life: 0.6, width: 10 });
     // 임팩트 프레임: 필살기 마무리와 같은 내보낸 함수 (번쩍임은 onBossDefeated 가 이미 했다 · 소리는 boss_die 하나로)
     try { ULTFX.final(w, this.cx, this.cy, { color: el.color, accent: el.glow, tier: 2, impact: true, flourish: false, silent: true, noFlash: true, shake: false }); } catch (e) { console.warn('[finale] ultfx', e); }
@@ -322,11 +322,11 @@ class BossFinale {
     const t = this.t;
     while (this.n < FIN.bursts && t >= this.n * FIN.gap) {
       const i = this.n++;
-      fx.burst(i % 3 === 2 ? el.burst2 : el.burst, this.cx + rand(-80, 80), this.cy + rand(-80, 80), 8, { speed: 200, ...(el.shardColor && i % 3 !== 2 ? { color: el.shardColor } : {}) });
+      fx.burst(i % 3 === 2 ? el.burst2 : el.burst, this.cx + rand(-80, 80), this.cy + rand(-80, 80), FIN.per, { speed: 200, ...(el.shardColor && i % 3 !== 2 ? { color: el.shardColor } : {}) });
     }
     if (!this.sealOn && t >= FIN.seal) { this.sealOn = true; w.addOverlay(makeSealOverlay(this)); w.addOverlay(makePillarOverlay(this)); }
     if (t >= FIN.motes[0] && t < FIN.motes[1]) {
-      this.moteAcc += dt * 14 * (fx.quality ?? 1);
+      this.moteAcc += dt * 10 * (fx.quality ?? 1);
       while (this.moteAcc >= 1) {
         this.moteAcc -= 1;
         const gold = Math.random() < 0.55;
