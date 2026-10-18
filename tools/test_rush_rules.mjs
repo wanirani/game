@@ -398,6 +398,18 @@ test('릴레이: 라운드 N = 순서[N % 4] · 그 헌터의 빌드 · 동료/�
     return { a, b, c, same: w.player === p, id: w.player.hero.charId };
   });
   assert.deepEqual(bad, { a: null, b: null, c: null, same: true, id: 'kael' }, '교대할 수 없으면 아무것도 바꾸지 않는다');
+  // 합류한 헌터가 늘면 (리아·이졸데 해금) 순서도 늘고, 1라운드 뒤 교대는 순서[1] — 헌터 선택과 같은 해금 규칙
+  await page.evaluate(() => { const g = window.__game, t = g.scenes.find((s) => s.name === 'bossrush'); t.done = true; g.meta.unlockedChars = ['lia', 'isolde']; g.go('arcade', {}, { fade: false }); });
+  await waitTop(page, 'arcade');
+  await startRush(page, { course: RELAY, preset: 1 }, 'lia');
+  const six = await page.evaluate(() => { const g = window.__game, t = g.scenes.find((s) => s.name === 'bossrush'); return { order: t.relay.order, built: t.relay.order.filter((id) => !!g.state.heroes[id]), id: t.world.player.hero.charId, call: t.call?.sub }; });
+  assert.deepEqual(six.order, ['lia', 'isolde', 'kael', 'sera', 'victor', 'bran'], `해금 헌터 포함 순서 ${six.order}`);
+  assert.deepEqual(six.built, six.order, '순서의 헌터 모두 빌드가 있다');
+  assert.equal(six.id, 'lia'); assert.match(six.call, /헌터 6명 교대/);
+  await tickUntil(page, "t.phase === 'fight' && t.round === 0", 1500, '해금 릴레이 1라운드');
+  await killBoss(page);
+  await tickUntil(page, "t.phase === 'ready' && t.round === 1", 600, '해금 릴레이 교대');
+  assert.equal(await page.evaluate(() => window.__game.world.player.hero.charId), 'isolde', '2라운드 = 순서[1] (이졸데)');
   assert.deepEqual(errs, []);
   await ctx.close();
 });
