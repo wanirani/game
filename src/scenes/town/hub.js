@@ -34,10 +34,11 @@ import { classNameOf } from '../../data/ascensions.js';   // 초월·비전 이�
 import { TOWN_STAGE, BUILDINGS, TOWN_NPCS, TOWN_PROPS, TOWN_TALK, eliseInTown } from '../../data/town.js';
 import { FLOOR, drawFacades, facadeLights, prebakeFacades, setFacadeScale, anvilPos, glow } from './facades.js';
 import { uiPanel, uiButton, uiHints } from './common.js';
-import { vGrad, fillGradRect } from '../menu/common.js';
+import { vGrad, fillGradRect, skillAlert, redBadge } from '../menu/common.js';   // [playb] P06 마을 메뉴 SP 배지
 import { faceRect } from '../../render/portrait.js';
 import { crisp, hashStart, hashNum, hashStr as crispHashStr } from '../../render/hud_crisp.js';   // [auto] 오른쪽 위 판 선명 칸 (스테이지 HUD 와 같은 기기 해상도)
 import { fontEpoch } from '../../core/ui.js';
+import { drawArtIcon } from '../../render/hud.js';   // [playb] P02 마을 주 퀘스트 칩 그림 (퀘스트 칸과 같은 ui_quest)
 const BANNER_BG = [0, 'rgba(0,0,0,0)', 0.5, 'rgba(6,2,10,0.65)', 1, 'rgba(0,0,0,0)'];
 
 const RELIC_IDS = ['k_relic_1', 'k_relic_2', 'k_relic_3', 'k_relic_4', 'k_relic_5'];
@@ -81,6 +82,8 @@ export class HubScene extends Scene {
     audio.music('hub');
     assets.preload(['bg/worldmap', 'bg/shop', 'bg/smith', 'portraits/npc_rook', 'portraits/npc_hadwin', 'portraits/npc_alberto']);
     this.refreshBoard();
+    // [playb] P11 이어하기 직후: 해금·보관함 알림을 한 줄 요약으로 모은다 (토스트 5개가 한꺼번에 쏟아지지 않게)
+    this.loadSum = this.from === 'load' ? { heroes: [], stash: 0, t: 0 } : null;
     this.syncHeroUnlocks();
     if (g.settings?.autoSave) { try { saves.write(g.state.slot ?? 1, g.state); } catch (e) { /* 저장 실패 무시 */ } }
     CMP.companionHubEnter?.(g, this);   // [hook:cmp] 마구간 개장 · 2번 칸 안내 · 합류 연출 (다른 장면이 위에 있으면 다음 onResume 에)
@@ -111,7 +114,19 @@ export class HubScene extends Scene {
     if (!add.length) return;
     m.unlockedChars.push(...add);
     try { saves.saveMeta(m); } catch (e) { /* 저장 실패 무시 */ }
+    if (this.loadSum) { for (const id of add) this.loadSum.heroes.push(CHARACTERS[id]?.name ?? id); return; }   // [playb] P11 요약으로
     for (const id of add) g.toast(`${CHARACTERS[id]?.name ?? id} 합류! (캐릭터 해금)`, '#ffe070');
+  }
+  /** [playb] P11 이어하기 요약 한 줄: 「돌아온 것을 환영합니다 — 헌터 3명 합류 · 보관함 전리품 2개」 (모을 것이 없으면 알리지 않는다) */
+  flushLoadSummary() {
+    const s = this.loadSum;
+    if (!s) return;
+    this.loadSum = null;
+    if (this.world) this.world.onStashDelivered = null;
+    const parts = [];
+    if (s.heroes.length) parts.push(`헌터 ${s.heroes.length}명 합류 (${s.heroes.map((n) => String(n).split(' ')[0]).join(' · ')})`);
+    if (s.stash > 0) parts.push(`보관함 전리품 ${s.stash}개`);
+    if (parts.length) this.game.toast(`돌아온 것을 환영합니다 — ${parts.join(' · ')}`, '#ffe070', 4.5);
   }
 
   /** World 생성 + 마을 전용 패치. spawn: 'gate' 면 동쪽 성문 앞, 'inn' 이면 여관 문 앞, 숫자면 해당 x */
@@ -143,6 +158,7 @@ export class HubScene extends Scene {
     }
     w.entities = w.entities.filter((e) => !e.dead);
     w.enterDoor = (target) => this.enterTarget(target);
+    w.onStashDelivered = (n) => { if (!this.loadSum) return false; this.loadSum.stash += n; return true; };   // [playb] P11 보관함 알림 → 이어하기 요약
     w.drawNPC = (ctx, npc) => this.drawNpc(ctx, npc, w);
     // 시작 위치
     const p = w.player;
@@ -293,8 +309,10 @@ export class HubScene extends Scene {
     const g = this.game, w = this.world;
     this.banner.t += dt;
     g.state.stats.playTime = (g.state.stats.playTime ?? 0) + dt;
+    if (this.loadSum && (this.loadSum.t += dt) > 0.3) this.flushLoadSummary();   // [playb] P11 (첫 world.update 의 보관함 배달 뒤)
     if (this.menuOpen) { this.updateMenu(dt); return; }
-    if (input.pressed('menu') && !w.cutscene) { this.openMenu(); return; }
+    // [playb] P10 터치의 톱니(시스템 줄 'pause' → 'menu')는 설정을 바로 연다. 마을 메뉴는 오른쪽 위 「마을 메뉴」 버튼·키보드·패드
+    if (input.pressed('menu') && !w.cutscene) { if (input.touchMode && this.game.registry.options) this.openOptions(); else this.openMenu(); return; }
     // 빠른 메뉴 (Tab·M·I / 패드 SELECT / 터치 가방) → 메뉴의 인벤토리 탭 (platform §3)
     if (input.pressed('map') && !w.cutscene && !w.transitioning) { this.openQuickMenu(); return; }   // [hook:plat]
     if (this.tapHud()) return;
@@ -348,7 +366,40 @@ export class HubScene extends Scene {
     if (id === 'menu') { this.openMenu(); return true; }
     if (id === 'party') { this.openParty(); return true; }
     if (id === 'act' && this.hint) { this.act(this.hint); return true; }
+    if (id === 'quest') { this.openQuests(); return true; }   // [playb] P02 주 퀘스트 칩 → 메뉴 › 퀘스트
     return false;
+  }
+  /** [playb] P10 설정 (톱니 · 마을 메뉴 「설정」 줄) */
+  openOptions() {
+    const g = this.game;
+    if (!g.registry.options) return;
+    audio.sfx('menu_ok');
+    g.push('options', {});
+  }
+  /** [playb] P02 주 퀘스트 칩 → 메뉴 › 퀘스트 */
+  openQuests() {
+    const g = this.game;
+    if (!g.registry.menu) return;
+    audio.sfx('menu_ok');
+    g.push('menu', { world: this.world, from: 'hub', tab: 'quests' });
+  }
+  /** [playb] P02 성문(세계 지도) 문 엔티티 */
+  gateDoor() { return this.world?.entities.find((e) => e.building?.kind === 'gate' && !e.dead) ?? null; }
+  /** [playb] P02 「출발 (세계 지도)」: 성문에 들어가는 것과 같은 길 (enterTarget) */
+  departGate() {
+    const d = this.gateDoor();
+    if (!d || typeof d.target !== 'string') { audio.sfx('menu_cancel'); this.game.toast('지금은 출발할 수 없다.', '#c8b8a0'); return; }
+    audio.sfx('door');
+    this.enterTarget(d.target);
+  }
+  /** [playb] P02 진행 중인 주 퀘스트 (없으면 null) — 0.5초마다 다시 읽는다 */
+  mainQuest() {
+    const t = this.world?.time ?? 0;
+    if (this._mq && t - this._mq.t < 0.5 && t >= this._mq.t) return this._mq.q;
+    let q = null;
+    try { q = QuestRt.activeQuests(this.game.state).find((x) => x.kind === 'main') ?? null; } catch { q = null; }
+    this._mq = { t, q };
+    return q;
   }
 
   openParty() {
@@ -366,15 +417,18 @@ export class HubScene extends Scene {
   openMenu() {
     audio.sfx('menu_ok');
     const g = this.game;
+    // [playb] P02 「출발 (세계 지도)」 = 성문 · P10 안쪽 줄 이름 '메뉴' → 「캐릭터」 (바깥 버튼 「마을 메뉴」와 헷갈리지 않게)
     const items = [
       ['계속하기', '', () => this.closeMenu()],
-      ['메뉴', '장비 · 스킬 · 가방 · 동료', () => { this.closeMenu(); if (g.registry.menu) g.push('menu', { world: this.world, from: 'hub' }); else g.toast('메뉴를 준비 중입니다.', '#c8b8a0'); }],
+      ['출발 (세계 지도)', '성문으로 바로 간다', () => { this.closeMenu(); this.departGate(); }],
+      ['캐릭터', '상태 · 장비 · 스킬 · 가방 · 동료', () => { this.closeMenu(); if (g.registry.menu) g.push('menu', { world: this.world, from: 'hub', tab: skillAlert(currentHero(g.state)).n > 0 ? 'skills' : undefined }); else g.toast('메뉴를 준비 중입니다.', '#c8b8a0'); }],
     ];
     // '동료' 는 이제 탈것·수호신(메뉴 › 동료)을 뜻하므로, 함께 싸울 헌터를 바꾸는 항목은 '헌터 교체' 라고 부른다
     if (g.registry.party) items.push(['헌터 교체', '함께 싸울 헌터를 고른다', () => { this.closeMenu(); this.openParty(); }]);
     items.push(['저장', `슬롯 ${g.state.slot ?? 1}에 기록`, () => this.doSave()]);
     if (g.registry.options) items.push(['설정', '소리 · 화면 · 조작', () => { this.closeMenu(); g.push('options', {}); }]);
-    items.push(['타이틀로', '저장하지 않은 진행은 사라진다', () => { this.closeMenu(); g.go('title', {}); }]);
+    // [playb] P24 타이틀로: 한 번 확인 (진행은 자동 저장되지만 잘못 누르면 흐름이 끊긴다)
+    items.push(['타이틀로', '진행은 자동 저장된다', () => this.askTitle()]);
     this.menuItems = items;
     this.menu = new ListMenu(items.length);
     this.menuOpen = true; this.menuT = 0;
@@ -382,6 +436,14 @@ export class HubScene extends Scene {
     this._mp = null;
   }
   closeMenu() { this.menuOpen = false; this.hidePad = false; input.flush(); }
+  /** [playb] P24 「타이틀로」 확인 → 저장 후 타이틀 (확인 창이 없으면 예전처럼 바로) */
+  askTitle() {
+    const g = this.game;
+    const go = () => { try { saves.write(g.state.slot ?? 1, g.state); } catch (e) { /* 저장 실패 경고는 saves.onFail 이 띄운다 */ } g.go('title', {}); };
+    this.closeMenu();
+    if (!g.registry.frontConfirm) { go(); return; }
+    g.push('frontConfirm', { title: '타이틀로', message: '타이틀로 돌아갈까요? 진행은 저장되었습니다', yes: '타이틀로', no: '취소', onYes: go });
+  }
   doSave() {
     const g = this.game;
     const ok = saves.write(g.state.slot ?? 1, g.state);
@@ -468,6 +530,11 @@ export class HubScene extends Scene {
     text(ctx, maxed ? 'EXP MAX' : `EXP ${fmt(hero.exp)} / ${fmt(need)}`, bx, py + 49, { size: 11, color: maxed ? '#ffd84a' : '#bca88a', weight: 700 });
     if ((hero.sp ?? 0) > 0) text(ctx, `SP ${hero.sp}`, bx + bw, py + 49, { size: 11, align: 'right', color: '#8ae0ff', weight: 800, family: FONT.num });
 
+    const touch = !!input.touchMode;
+    // [playb] P16/P17 대화·설정 등 다른 장면이 위에 있으면 오른쪽 위 판(골드·유물·헌터 교체·마을 메뉴)·퀘스트 칩·성문 화살표·
+    //  문 안내 띠를 그리지도 등록하지도 않는다 (예전에는 대화 선택지·설정 화면 밑으로 비치고 눌렸다)
+    const over = g.top !== this;
+    if (!over) {
     // ── 우상단: 골드 · 유물(2부: 세계의 심장) · 버튼 ──
     // HUD-REDO: 터치 패드의 시스템 아이콘 줄(메뉴·가방 — 오른쪽 위)이 있으면 그 왼쪽·아래로 비킨다 (예전에는 골드 숫자가 아이콘 밑에 깔렸다)
     const sysR = this.sysRowUi(k);
@@ -480,10 +547,10 @@ export class HubScene extends Scene {
     const x1 = rowR - 12 - (ids.length - 1) * sp;
     const lab = `${p2 ? '심장' : '유물'} ${nGot}/${ids.length}`;
     ctx.font = font(12, 800, FONT.body); const lw = ctx.measureText(lab).width;
-    const touch = !!input.touchMode;
     const bwd = 96, bh = touch ? Math.max(40, this.tapUi(46)) : 40, by = ry + 20;
     const rParty = { x: W - 14 - bwd * 2 - 8, y: by, w: bwd, h: bh }, rMenu = { x: W - 14 - bwd, y: by, w: bwd, h: bh };
     const party = !!g.registry.party;
+    const alertN = skillAlert(hero).n;   // [playb] P06 (menu/common.js — 메뉴 스킬 탭·일시정지 「메뉴」 줄과 같은 규칙)
     // [auto] 오른쪽 위 판(골드·유물·헌터 교체·메뉴)은 터치일 때 기기 해상도 덧캔버스 선명 칸으로 (hud_crisp — 스테이지 HUD 와 같은 선명도).
     //        내용이 바뀔 때만 다시 굽는다 (골드·유물·글꼴 세대·크기·아이콘 준비). 탭 자리는 아래에서 따로 등록한 그대로
     const paint = (c) => {
@@ -503,11 +570,12 @@ export class HubScene extends Scene {
         else { c.fillStyle = 'rgba(184,150,96,0.35)'; c.beginPath(); c.arc(rx, ry, 2.5, 0, TAU); c.fill(); }
       }
       if (party) uiButton(c, rParty, '헌터 교체', { size: 15 });
-      uiButton(c, rMenu, '메뉴', { size: 15 });
+      uiButton(c, rMenu, '마을 메뉴', { size: 15 });   // [playb] P10 (안쪽 줄 「캐릭터」와 이름이 겹치지 않게)
+      if (alertN > 0) redBadge(c, rMenu.x + rMenu.w - 6, rMenu.y + 6, alertN, { size: 11 });   // [playb] P06 쓸 SP·빈 스킬 칸
     };
     const bx0 = Math.min(gx, x1 - lw - 30, party ? rParty.x : rMenu.x) - 6, by0 = gy - 6, bx1 = W - 8, by1 = by + bh + 6;
     hashStart(); hashNum(st.gold ?? 0); hashNum(nGot); hashNum(p2 ? 1 : 0); hashNum(touch ? 1 : 0); hashNum(k); hashNum(W); hashNum(gx); hashNum(gy); hashNum(bh); hashNum(fontEpoch);
-    hashNum(party ? 1 : 0); hashNum(assets.get('icons/coin') ? 1 : 0); for (const id of ids) hashNum(got.includes(id) && assets.get('icons/' + (ITEMS[id]?.icon ?? '')) ? 1 : 0);
+    hashNum(party ? 1 : 0); hashNum(alertN); hashNum(assets.get('icons/coin') ? 1 : 0); for (const id of ids) hashNum(got.includes(id) && assets.get('icons/' + (ITEMS[id]?.icon ?? '')) ? 1 : 0);
     const key = crispHashStr(lab);
     if (k !== 1) ctx.restore();   // 선명 칸은 논리 px 로 받는다 (uiK 배율은 칸 안에서 다시 건다)
     crisp(ctx, this.world, 'town_tr', { x: bx0 * k, y: by0 * k, w: (bx1 - bx0) * k, h: (by1 - by0) * k }, key, (c) => {
@@ -519,11 +587,18 @@ export class HubScene extends Scene {
     // 시험용 (tools/test_hud_layout.mjs §6): 오른쪽 위 판들의 논리 px 사각형 — 시스템 아이콘 줄과 겹치지 않아야 한다
     const LR = (r) => ({ x: r.x * k, y: r.y * k, w: r.w * k, h: r.h * k });
     this.topBoxes = { gold: LR({ x: gx, y: gy, w: gw, h: 40 }), relics: LR({ x: x1 - lw - 30, y: ry - 14, w: rowR - (x1 - lw - 30), h: 28 }), menu: LR(rMenu), ...(g.registry.party ? { party: LR(rParty) } : {}) };
+    // [playb] P02 주 퀘스트 칩 (초상화 판 아래) + 성문이 화면 밖이면 가장자리 화살표
+    if (!this.menuOpen && !this.world.cutscene) {
+      const qr = this.drawQuestChip(ctx, k, W, touch, off);
+      if (qr) { rects.quest = qr.zone; this.topBoxes.quest = qr.box; }
+      this.drawGateArrow(ctx, k, W, H, touch);
+    }
     setHudAvoid(this.world, Object.values(this.topBoxes));   // [qamatrix] 토스트 줄이 이 판들(특히 헌터 교체·메뉴)을 덮지 않게
+    }   // !over
 
     // ── 하단: 상호작용 안내 ──
     const h = this.hint;
-    if (h && !this.world.cutscene && !this.menuOpen) {
+    if (h && !this.world.cutscene && !this.menuOpen && !over) {   // [playb] P17 위에 설정 등이 떠 있으면 안내 띠·탭 자리 없음
       // 발밑 흙길 띠(바닥 아래 48px)에 한 줄로: 캐릭터 다리를 가리지 않고, 제목·설명이 서로 닿지 않게.
       // 키보드·패드는 ▲ 대신 지금 기기의 '위' 글리프, 터치는 이 띠를 누른다
       const label = (touch ? '▲  ' : '') + (h.kind === 'npc' ? `대화 · ${NpcData.NPCS?.[h.npcId]?.name ?? TOWN_NPCS[h.npcId]?.name ?? ''}` : `들어가기 · ${h.building?.name ?? ''}`);
@@ -556,6 +631,87 @@ export class HubScene extends Scene {
     ctx.restore();
     // 터치 패드는 맨 위 장면의 hudRects(논리 px) 위에서는 스틱을 만들지 않고 탭을 캔버스로 넘긴다
     this.hudRects = off ? {} : rects;
+  }
+
+  /**
+   * [playb] P02 마을 주 퀘스트 칩: 「메인: 「불타는 에슈빌」 · 성문으로 →」 — 초상화 판 아래 왼쪽 위, 누르면 메뉴 › 퀘스트.
+   * 터치일 때는 기기 해상도 선명 칸('town_q', hud_crisp)으로 굽는다 (오른쪽 위 판과 같은 선명도). → { zone, box } (논리 px) | null
+   */
+  drawQuestChip(ctx, k, W, touch, off) {
+    const q = this.mainQuest();
+    if (!q) return null;
+    const label = `메인: 「${q.name ?? q.id}」`, tail = '성문으로 →';
+    const fs = 14, h = 30, x = 14, y = 84, ic = 22;
+    ctx.font = font(fs, 800, FONT.body);
+    const lw = ctx.measureText(label).width;
+    ctx.font = font(13, 800, FONT.body);
+    const tw = ctx.measureText(tail).width;
+    const w = Math.min(W - x - 14, Math.ceil(10 + ic + 8 + lw + 14 + tw + 12));
+    const paint = (c) => {
+      c.save();
+      c.fillStyle = 'rgba(10,4,10,0.8)';
+      c.beginPath(); c.roundRect ? c.roundRect(x + 0.5, y + 0.5, w - 1, h - 1, 6) : c.rect(x + 0.5, y + 0.5, w - 1, h - 1); c.fill();
+      c.lineWidth = 1.2; c.strokeStyle = 'rgba(232,200,114,0.75)'; c.stroke();
+      if (!drawArtIcon(c, 'ui_quest', x + 10 + ic / 2, y + h / 2, ic)) { c.fillStyle = '#e8c872'; c.fillRect(x + 10 + ic / 2 - 4, y + h / 2 - 6, 8, 12); }
+      const tx = x + 10 + ic + 8, by = y + h / 2 + 5;
+      text(c, label, tx, by, { size: fs, weight: 800, color: '#f3d38a', maxWidth: Math.max(40, w - (tx - x) - tw - 24) });
+      c.fillStyle = 'rgba(232,200,114,0.45)'; c.fillRect(x + w - tw - 19, y + 8, 1.2, h - 16);
+      text(c, tail, x + w - 10, by, { size: 13, weight: 800, color: '#ffe7a0', align: 'right' });
+      c.restore();
+    };
+    hashStart(); hashNum(w); hashNum(k); hashNum(fontEpoch); hashNum(assets.get('icons/ui_quest') ? 1 : 0); hashStr(label);
+    const key = crispHashStr(tail);
+    if (k !== 1) ctx.restore();
+    crisp(ctx, this.world, 'town_q', { x: (x - 3) * k, y: (y - 3) * k, w: (w + 6) * k, h: (h + 6) * k }, key, (c) => {
+      if (k !== 1) { c.save(); c.scale(k, k); paint(c); c.restore(); } else paint(c);
+    });
+    if (k !== 1) { ctx.save(); ctx.scale(k, k); }
+    // 누르는 자리: 보이는 칩 + 위아래 여유 (터치 44 CSS px 이상)
+    const th = touch ? Math.max(h, this.tapUi(44)) : h, ty = y + h / 2 - th / 2;
+    const zone = this.zone('quest', { x, y: ty, w, h: th }, k, off);
+    return { zone, box: { x: x * k, y: y * k, w: w * k, h: h * k } };
+  }
+  /**
+   * [playb] P02 성문(세계 지도)이 화면 밖이면 영웅 높이의 화면 가장자리에 화살표 + 「성문 (세계 지도)」.
+   * 가까울수록 빨리 맥동한다. 성문이 화면 안이면 숨김 (마을 메뉴·대화·연출 중에는 drawHUD 가 부르지 않는다)
+   */
+  drawGateArrow(ctx, k, W, H, touch) {
+    const w = this.world, d = this.gateDoor(), p = w?.player;
+    if (!d || !p) return;
+    const cam = w.camera, x0 = cam.x, x1 = cam.x + cam.vw;
+    if (d.cx >= x0 && d.cx <= x1) return;
+    const right = d.cx > x1, dist = Math.abs(d.cx - p.cx);
+    const sp = cam.toScreen(p.cx, p.cy);
+    let cy = clamp(sp.y / k, 120, H - 90);
+    const label = '성문 (세계 지도)';
+    ctx.font = font(13, 800, FONT.body);
+    const lw = ctx.measureText(label).width;
+    const bw = lw + 50, bh = 32;
+    // 터치 패드(오른쪽 아래 버튼 묶음·왼쪽 스틱)와 겹치면 그 위로 올린다
+    if (touch) {
+      let rs = null;
+      try { rs = touchpad.occupiedRects?.(); } catch { rs = null; }
+      for (let i = 0; i < 2; i++) for (const r of rs ?? []) {
+        const rx = r.x / k, ry = r.y / k, rw = r.w / k, rh = r.h / k;
+        const bx = right ? W - 12 - bw : 12;
+        if (bx < rx + rw && bx + bw > rx && cy - bh / 2 < ry + rh && cy + bh / 2 > ry) cy = Math.max(110, ry - bh / 2 - 8);
+      }
+    }
+    const rate = clamp(5.2 - dist / 900, 2.2, 5.2);   // 가까울수록 빠른 맥동
+    const pulse = 0.5 + 0.5 * Math.sin((w.time ?? 0) * rate);
+    const nudge = (right ? 1 : -1) * pulse * 6;
+    const bx = (right ? W - 12 - bw : 12) + nudge;
+    ctx.save();
+    ctx.globalAlpha = 0.86 + 0.14 * pulse;
+    ctx.fillStyle = 'rgba(10,4,10,0.78)';
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, cy - bh / 2, bw, bh, 8) : ctx.rect(bx, cy - bh / 2, bw, bh); ctx.fill();
+    ctx.lineWidth = 1.2; ctx.strokeStyle = `rgba(232,200,114,${0.55 + 0.4 * pulse})`; ctx.stroke();
+    // 화살촉
+    const ax = right ? bx + bw - 16 : bx + 16, s = right ? 1 : -1;
+    ctx.fillStyle = '#ffd56a';
+    ctx.beginPath(); ctx.moveTo(ax + s * 8, cy); ctx.lineTo(ax - s * 4, cy - 9); ctx.lineTo(ax - s * 4, cy + 9); ctx.closePath(); ctx.fill();
+    text(ctx, label, right ? bx + 12 : bx + 30, cy + 5, { size: 13, weight: 800, color: '#ffe7a0', ow: 2 });
+    ctx.restore();
   }
 
   drawBanner(ctx, vw, vh) {

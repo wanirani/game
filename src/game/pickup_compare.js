@@ -187,6 +187,7 @@ function decorate(g, item) {
     }
   }
   if (!mark && !other) return;
+  if (g._stashUids?.has?.(item.uid) && mark !== 'up') return;   // [playb] P11 보관함에서 꺼낸 장비: ▲ 일 때만 알린다 (▼ · = · 다른 영웅용은 조용히)
   const sc = score == null ? '' : Math.abs(score) < 0.05 ? '±0' : `${score > 0 ? '+' : '−'}${(Math.round(Math.abs(score) * 10) / 10).toFixed(1)}`;
   let suf = '';
   if (mark) suf += ` ${mark === 'up' ? '▲' : mark === 'down' ? '▼' : '='} ${sc}`;

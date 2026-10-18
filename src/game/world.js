@@ -926,8 +926,12 @@ export class World {
   /** 보관함(가방이 가득 차 맡겨 둔 전리품) → 가방. world.update 가 1초마다 부른다 */
   deliverStash() {
     if (this.arcade || this.trial) return 0;
+    // [playb] P11 보관함에서 꺼낸 장비는 「▼」 비교 토스트를 띄우지 않는다 (pickup_compare 가 game._stashUids 를 본다 — ▲ 만)
+    const q = this.state?.progress?.lootQueue, g = this.game;
+    const uids = Array.isArray(q) && q.length ? new Set(q.map((it) => it?.uid).filter(Boolean)) : null;
+    if (uids) { g._stashUids = uids; setTimeout(() => { if (g._stashUids === uids) g._stashUids = null; }, 0); }
     const n = deliverLoot(this.state);
-    if (n > 0) { audio.sfx('item'); this.game.toast(`보관함에 맡겨 둔 전리품 ${n}개를 챙겼다`, '#ffe070'); }
+    if (n > 0) { audio.sfx('item'); if (!this.onStashDelivered?.(n)) this.game.toast(`보관함에 맡겨 둔 전리품 ${n}개를 챙겼다`, '#ffe070'); }   // 마을 이어하기 직후면 요약 한 줄로 (hub.js)
     return n;
   }
   /** 2부 핵심 아이템 기록 + 배너 + 버스 이벤트 (예전 세이브는 배열이 없을 수 있다) */
