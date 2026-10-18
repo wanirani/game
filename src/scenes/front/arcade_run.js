@@ -290,6 +290,7 @@ export class ArcadeRunScene extends Scene {
       if (hero?.asc) result.asc = hero.asc;   // 초월 (선택 필드 — 서버는 모르는 필드를 버린다, classes_t3 §10.2 · online.js cleanResult)
       if (kind === 'survival') result.wave = res.extra?.wave ?? 0;
       if (kind === 'tower') result.floor = res.extra?.floor ?? 0;   // 돌파한 층 (§1 tower:<diff>)
+      if (kind === 'tower' && Number.isInteger(res.extra?.v)) result.v = res.extra.v;   // 무한의 탑 시즌 (2 = 변이·계약, data/tower.js TOWER_VERSION — 서버는 모르는 필드를 버린다)
       if (res.rank) result.rank = res.rank;
       const ti = this.game.ach?.title?.(); if (ti) result.ti = ti;   // [hook:ach] 온라인 이명 (고정 목록 id — 서버가 목록 밖은 버린다, achievements.md §8)
       const ghost = submit && this.rec ? this.rec.encode() : null;
@@ -803,7 +804,11 @@ export class ArcadeResultsScene extends Scene {
     if (p.kind === 'tower' && (p.extra?.floor ?? 0) > 0) {
       // 무한의 탑: 난이도별 최고 (돌파한 층 ↑ → 시간 ↓)
       const tb = towerBests(m), d = p.cfg?.diff ?? 'normal', b = tb[d], fl = p.extra.floor;
-      if (!b || fl > (b.floor ?? 0) || (fl === b.floor && p.time < (b.time ?? 1e9))) { tb[d] = { floor: fl, time: p.time, score: this.final, charId: p.charId, blessings: p.extra.blessings ?? [], date: this.date }; best = true; }
+      if (!b || fl > (b.floor ?? 0) || (fl === b.floor && p.time < (b.time ?? 1e9))) {
+        tb[d] = { floor: fl, time: p.time, score: this.final, charId: p.charId, blessings: p.extra.blessings ?? [], date: this.date };
+        if (Number.isInteger(p.extra.v)) tb[d].v = p.extra.v;   // 시즌 (v 가 없는 옛 기록 = 시즌 1 — 그대로 읽고 보인다)
+        best = true;
+      }
     }
     this.newBest = best;
     saves.saveMeta(m);

@@ -202,6 +202,7 @@ export function cleanResult(r) {
   const o = { time: Math.max(0, Math.round(Number(r?.time) || 0)), score: Math.max(0, Math.min(99999999, Math.round(Number(r?.score) || 0))), hero: String(r?.hero ?? ''), cls: String(r?.cls ?? ''), level: Math.max(1, Math.min(99, Math.round(Number(r?.level) || 1))) };
   if (Number.isFinite(r?.wave)) o.wave = Math.max(0, Math.round(r.wave));
   if (Number.isFinite(r?.floor)) o.floor = Math.max(0, Math.round(r.floor));
+  if (Number.isInteger(r?.v) && r.v >= 1 && r.v <= 9) o.v = r.v;   // 무한의 탑 시즌 (선택 — 서버는 모르는 필드라 버린다, data/tower.js TOWER_VERSION)
   if (typeof r?.rank === 'string' && /^[SABCD]$/.test(r.rank)) o.rank = r.rank;
   if (Number.isFinite(r?.deaths)) o.deaths = Math.max(0, Math.round(r.deaths));
   if (typeof r?.ti === 'string' && TITLE_RE.test(r.ti)) o.ti = r.ti;   // [hook:ach] 이명 id (고정 목록 밖이면 서버가 오류 없이 버린다, achievements.md §8)

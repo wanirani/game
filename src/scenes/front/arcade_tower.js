@@ -328,6 +328,7 @@ export class TowerScene extends ArcadeRunScene {
     if (blood) this.blood--;
     this.bloodFloor = blood;
     this.mut = plan.kind === 'combat' ? (MUTATOR[blood ? plan.mutBlood : plan.mut] ?? null) : null;
+    if (this.forceMut !== undefined && plan.kind === 'combat') this.mut = MUTATOR[this.forceMut] ?? null;   // 시험 (debugFloor)
     const M = this.mut;
     if (M?.atk) d.enemyAtk = (d.enemyAtk ?? 1) * M.atk;
     if (M?.gold) d.gold = (d.gold ?? 1) * M.gold;
@@ -493,40 +494,137 @@ export class TowerScene extends ArcadeRunScene {
     this.cleared = Math.max(this.cleared, n);
     this.phase = 'clear'; this.phaseT = 0;
     const s0 = w.run.score;
-    w.addScore(300 * n);
+    w.addScore(300 * n * (this.bloodFloor ? BLOOD_PATH.bonusMul : 1));   // 피의 길: 층 돌파 보너스 ×2
     const gained = w.run.score - s0;
     audio.sfx('win');
+    // 속공 변이: 싸움 시작부터 rushSec 초 안에 돌파하면 축복 하나
+    this.rushOk = !boss && !!this.mut?.rushSec && this.fightT <= this.mut.rushSec;
+    const tail = this.rushOk ? ' · 속공 성공! 축복을 하나 고르세요' : this.bloodFloor ? ' · 피의 길 ×2' : '';
     w.banner = boss
       ? { text: 'BOSS DOWN!', sub: `${name ?? ''} 격파 · 축복을 하나 고르세요`, t: 2.6, color: '#ffe070', big: true }
-      : { text: '층 돌파!', sub: `제 ${n}층 · 보너스 +${fmt(gained)}`, t: 2.2, color: '#d8c8ff', big: true };
-    this.reward = boss ? 2.4 : 0;
+      : { text: '층 돌파!', sub: `제 ${n}층 · 보너스 +${fmt(gained)}${tail}`, t: 2.2, color: this.rushOk ? '#7ae0ff' : '#d8c8ff', big: true };
+    this.reward = boss ? 2.4 : this.rushOk ? 1.4 : 0;
     if (boss) this.musicT = 2.6;
+    this.checkMilestone(n);
   }
-  /** 안식처: 체력 30 %·MP 50 %·하트 10 회복 → 축복 고르기 */
+  /** 이정표 (data/cosmetics.js TOWER_MILESTONES): 이 기기에서 처음 넘는 10·20·30·40·50층 → 잔상 알림 (기록은 결과 화면이 meta.towerBest 에 남긴다) */
+  checkMilestone(n) {
+    for (const ms of TOWER_MILESTONES) {
+      if (ms.floor !== n || n <= this.bestBefore || this.milestones.includes(ms.trail)) continue;
+      this.milestones.push(ms.trail);
+      this.game.toast(`이정표 ${n}층 · 잔상 「${TRAILS[ms.trail]?.name ?? ''}」 해금`, '#ffe7a0', 3.2);
+      audio.sfx('levelup');
+    }
+  }
+  /** 안식처: 체력 30 %·MP 50 %·하트 10 회복 → 축복 고르기 (피의 길 뒤면 하나 더) → 피의 계약. 탐욕의 계약을 맺었으면 회복 없음 */
   restHere() {
     const w = this.world, p = w.player;
     this.cleared = Math.max(this.cleared, this.floor);
-    p.heal(p.stats.hp * 0.3);
-    p.mp = Math.min(p.stats.mp, p.mp + p.stats.mp * 0.5);
+    const greed = Object.keys(this.pacts).some((id) => PACT[id]?.noRestHeal);
+    if (!greed) {
+      p.heal(p.stats.hp * 0.3);
+      p.mp = Math.min(p.stats.mp, p.mp + p.stats.mp * 0.5);
+    }
     w.run.hearts = Math.min(99, w.run.hearts + 10);
-    audio.sfx('heal');
-    w.fx.burst('holy', p.cx, p.cy, 24, { speed: 180, color: '#9fe8c8' });
+    audio.sfx(greed ? 'mist' : 'heal');
+    w.fx.burst('holy', p.cx, p.cy, 24, { speed: 180, color: greed ? '#ffd84a' : '#9fe8c8' });
     w.fx.ring(p.cx, p.cy, { color: '#9fe8c8', r0: 10, r1: 110, life: 0.6, width: 5 });
-    w.banner = { text: '안식처', sub: '상처가 조금 아물었다 · 축복을 하나 고르세요', t: 2.2, color: '#9fe8c8', big: true };
+    this.blessLeft = this.bloodBless; this.bloodBless = 0;
+    const sub = greed ? '탐욕의 계약 — 상처가 아물지 않는다 · 축복을 하나 고르세요' : this.blessLeft ? '피의 길을 지나왔다 · 축복을 둘 고르세요' : '상처가 조금 아물었다 · 축복을 하나 고르세요';
+    w.banner = { text: '안식처', sub, t: 2.2, color: '#9fe8c8', big: true };
     this.phase = 'clear'; this.phaseT = 0; this.reward = 1.4;
   }
-  /** 축복 고르기 장면을 띄운다 (고르면 onBlessingPicked) */
+  /** 축복 고르기 장면을 띄운다 (고르면 onBlessingPicked). 후보가 없으면 다음 단계로 */
   offerBlessing() {
     this.rewardDone = true;
     const ids = blessingOffer(this.seed, this.floor, this.taken, this.picks);
-    if (!ids.length) { this.openGate(); return; }
+    if (!ids.length) { this.afterBlessing(); return; }
     this.phase = 'bless'; this.phaseT = 0;
     this.offered = ids;
     this.game.push('towerBlessing', { run: this, ids, floor: this.floor });
   }
   onBlessingPicked(id) {
     this.applyBlessing(id);
-    if (this.phase === 'bless') this.openGate();
+    if (this.phase === 'bless') this.afterBlessing();
+  }
+  /** 축복 다음 (시즌 2): 남은 축복(피의 길·맹세의 계약) → 안식처의 피의 계약 → 상인 층의 로크 → 출구 (보스 층 = 갈림길) */
+  afterBlessing() {
+    if (this.done) return;
+    if (this.blessLeft > 0) { this.blessLeft--; this.offerBlessing(); return; }
+    if (this.kind === 'rest' && !this.pactDone) { this.pactDone = true; if (this.offerPact()) return; }
+    if (this.kind === 'boss' && this.plan?.merchant && !this.shopDone) { this.shopDone = true; this.openShop(); return; }
+    this.openGate();
+  }
+
+  // ───────────────────────── 피의 계약 · 상인 (시즌 2) ─────────────────────────
+  /** 안식처: 맺지 않은 계약 둘 + 거절 (없으면 false) */
+  offerPact() {
+    const ids = pactOffer(this.seed, this.floor, this.pacts);
+    if (!ids.length) return false;
+    this.phase = 'pact'; this.phaseT = 0;
+    this.game.push('towerBlessing', { run: this, ids, floor: this.floor, mode: 'pact' });
+    return true;
+  }
+  /** 계약 고르기 결과 (id = null 이면 거절) */
+  onPactPicked(id) {
+    if (id && PACT[id] && !this.pacts[id]) this.takePact(id);
+    if (this.phase === 'pact') this.afterBlessing();
+  }
+  takePact(id) {
+    const P = PACT[id], w = this.world, p = w.player;
+    this.pacts[id] = true; this.pactOrder.push(id);
+    if (P.bossHp) this.bossHpMul *= P.bossHp;
+    if (P.bless) this.blessLeft += P.bless;
+    w.rules = this.floorRules();
+    const hp0 = p.stats.hp;
+    p.refreshStats();
+    if (p.stats.hp > hp0) p.hp = Math.min(p.stats.hp, p.hp + (p.stats.hp - hp0));
+    audio.sfx('boss_roar', { vol: 0.5 });
+    this.game.flash('#8a0010', 0.35, 1);
+    w.fx.burst('fire', p.cx, p.cy, 26, { speed: 200, color: P.color });
+    w.fx.ring(p.cx, p.cy, { color: '#ff3a4a', r0: 10, r1: 120, life: 0.6, width: 5 });
+    this.game.toast(`피의 계약: ${P.name} — ${P.up} · ${P.down}`, '#ff8a8a', 3);
+  }
+  /** 상인 층: 로크가 영웅 곁에 나타나 런 골드로 거래 (치료 · 축복 카드 · 다시 뽑기) — 떠나면 onShopDone */
+  openShop() {
+    const w = this.world, p = w.player, m = w.map;
+    this.phase = 'shop'; this.phaseT = 0;
+    const side = p.cx < m.pxW / 2 ? 1 : -1, x = this.safeX(p.cx + side * 130);
+    this.npc = w.add(new TowerMerchantNpc(x, groundY(m, Math.floor(x / TILE)), -side));
+    w.fx.burst('dark', x, this.npc.cy, 18, { speed: 140 });
+    audio.sfx('mist');
+    this.shop = { salt: 0, bought: null, ids: blessingOffer(this.seed, this.floor, this.taken, 50) };
+    this.game.push('towerBlessing', { run: this, ids: this.shop.ids, floor: this.floor, mode: 'shop' });
+  }
+  shopPrice(kind) { return merchantPrice(MERCHANT[kind] ?? 0, this.plan?.level ?? 1); }
+  get gold() { return this.game.state?.gold ?? 0; }
+  /** 상인 거래 → { ok, msg, ids? } (골드가 모자라거나 살 수 없으면 ok: false — 골드는 그대로) */
+  shopBuy(kind, id = null) {
+    const st = this.game.state, p = this.world.player, S = this.shop;
+    if (!st || !p || !S || this.phase !== 'shop') return { ok: false, msg: '지금은 거래할 수 없습니다' };
+    const price = this.shopPrice(kind);
+    if (kind === 'bless') {
+      if (S.bought) return { ok: false, msg: '이 카드 중에서는 한 장만 살 수 있습니다' };
+      if (!S.ids.includes(id) || (this.taken[id] | 0) >= (BLESSING[id]?.max ?? 0)) return { ok: false, msg: '살 수 없는 축복입니다' };
+    } else if (kind === 'heal') {
+      if (p.hp >= p.stats.hp && p.mp >= p.stats.mp) return { ok: false, msg: '치료할 상처가 없습니다' };
+    } else if (kind !== 'reroll') return { ok: false, msg: '' };
+    if ((st.gold ?? 0) < price) return { ok: false, msg: `골드가 모자랍니다 (${fmt(price)}G 필요)` };
+    st.gold -= price;
+    if (kind === 'bless') { S.bought = id; this.applyBlessing(id); return { ok: true, msg: `축복 「${BLESSING[id].name}」` }; }
+    if (kind === 'heal') {
+      p.heal(p.stats.hp * MERCHANT.healFrac); p.mp = p.stats.mp;
+      audio.sfx('heal'); this.world.fx.burst('holy', p.cx, p.cy, 20, { speed: 160, color: '#9fe8c8' });
+      return { ok: true, msg: '상처가 아물었다' };
+    }
+    S.salt++; S.bought = null; S.ids = blessingOffer(this.seed, this.floor, this.taken, 50 + S.salt);
+    audio.sfx('card');
+    return { ok: true, msg: '새 카드를 펼쳤다', ids: S.ids };
+  }
+  onShopDone() {
+    if (this.phase !== 'shop') return;
+    if (this.npc) { this.npc.leaving = true; this.world.fx.burst('dark', this.npc.cx, this.npc.cy, 14, { speed: 120 }); }
+    this.afterBlessing();
   }
   applyBlessing(id) {
     const b = BLESSING[id], w = this.world, p = w?.player;
@@ -557,28 +655,97 @@ export class TowerScene extends ArcadeRunScene {
       const cp = p.safeSpot?.roomId === w.roomId ? p.safeSpot : w.run.checkpoint;
       cx = cp.x + p.w / 2; bottom = cp.y + p.h;
     }
-    this.gate = w.add(new TowerGate(cx, bottom, this));
+    // 보스 층 뒤 갈림길 (시즌 2): 발밑 = 안전한 길 (시즌 1 출구와 같은 자리 — 가만히 서 있으면 그대로 다음 층), 몇 칸 옆 = 피의 길
+    const route = this.kind === 'boss' && this.plan?.route;
+    this.gate = w.add(new TowerGate(cx, bottom, this, route ? 'safe' : null));
+    this.gates = [this.gate];
+    if (route) {
+      const bx = this.bloodGateX(cx);
+      if (bx !== null) this.gates.push(w.add(new TowerGate(bx, groundY(m, Math.floor(bx / TILE)), this, 'blood')));
+    }
     w.cleared = true; w.exitCalled = true;   // 남은 전리품을 영웅에게 끌어온다 (pickups.js); 스테이지 클리어 흐름(afterClear)은 타지 않는다
     this.phase = 'gate'; this.phaseT = 0;
     audio.sfx('door');
     w.fx.ring(cx, bottom - 50, { color: COLOR, r0: 10, r1: 120, life: 0.6, width: 5 });
+    if (this.gates.length > 1) this.game.toast('갈림길 — 안전한 길과 피의 길 중 하나를 고르세요', '#ff9a9a', 2.6);
   }
-  leaveFloor() {
+  /** 피의 길 문 자리: 안전한 문에서 5~9칸 떨어진 안전한 바닥 기둥 (경기장 가운데 쪽 먼저) — 없으면 null */
+  bloodGateX(cx) {
+    const cols = this.safeCols, m = this.world.map;
+    if (!cols?.length) return null;
+    const c0 = Math.floor(cx / TILE), dir = cx < m.pxW / 2 ? 1 : -1;
+    for (const d of [dir, -dir]) for (let k = 6; k <= 9; k++) {
+      const c = c0 + d * k;
+      if (cols.includes(c)) return c * TILE + TILE / 2;
+    }
+    for (let k = 5; k < m.w; k++) for (const d of [dir, -dir]) if (cols.includes(c0 + d * k)) return (c0 + d * k) * TILE + TILE / 2;
+    return null;
+  }
+  /** 층을 떠난다. route = 'blood' 이면 다음 전투 층 넷이 피의 길 (센 변이 · 보상 2배 · 그다음 안식처 축복 하나 더) */
+  leaveFloor(route = null) {
     if (this.phase === 'leave' || this.done) return;
     const w = this.world;
     this.phase = 'leave'; this.phaseT = 0;
+    if (route === 'blood') {
+      this.blood = BLOOD_PATH.floors; this.bloodBless = BLOOD_PATH.extraBless; this.bloodRuns++;
+      this.game.toast('피의 길 — 변이가 거세지고 보상이 두 배가 된다', '#ff6a6a', 2.4);
+    } else if (route === 'safe') { this.blood = 0; this.bloodBless = 0; }
+    this.route = route;
     w.cutscene = true; w.transitioning = true;
     audio.sfx('go');
-    w.fx.burst('magic', w.player.cx, w.player.cy, 24, { speed: 200, color: COLOR });
+    w.fx.burst('magic', w.player.cx, w.player.cy, 24, { speed: 200, color: route === 'blood' ? '#ff4a5a' : COLOR });
     this.game.fadeOut(() => { if (!this.done && this.game.world === w) this.loadFloor(this.floor + 1); }, 0.45);
   }
 
-  // ───────────────────────── 축복 효과 (장면 쪽) ─────────────────────────
-  onKill() {
-    if (this.game.world !== this.world || !(this.taken.frenzy > 0)) return;
-    const was = this.hasteT > 0;
-    this.hasteT = 3;
-    if (!was) this.world.player?.refreshStats();
+  // ───────────────────────── 축복·변이 효과 (장면 쪽) ─────────────────────────
+  /** bus 'enemyKilled' {enemy, x, y}: 처치 가속 축복 · 분열 · 시체 폭발 · 흡혈의 밤 (enemy.js 를 고치지 않는다) */
+  onKill(d) {
+    if (this.game.world !== this.world) return;
+    const w = this.world, p = w.player, e = d?.enemy, M = this.mut;
+    if (this.taken.frenzy > 0) {
+      const was = this.hasteT > 0;
+      this.hasteT = 3;
+      if (!was) p?.refreshStats();
+    }
+    if (!M || !e || e.kind !== 'enemy' || this.phase !== 'fight') return;
+    if (M.split && !e._towerSplit) this.splitFoe(e, M);
+    if (M.id === 'bomb') w.add(new TowerHazard(this, 'bomb', e.cx, e.bottom, M));
+    if (M.killHeal && p && !p.dead) p.heal(p.stats.hp * M.killHeal, false);
+  }
+  /** 분열: 쓰러진 적이 작은 둘로 (같은 레벨·정예 아님·다시 갈라지지 않음). 층마다 count(f) 마리까지 */
+  splitFoe(e, M) {
+    const w = this.world, m = w.map, cap = TOWER_CURVE.count(this.floor), n = Math.min(M.split, cap - this.splitN);
+    if (n <= 0 || !ENEMIES[e.def?.id]) return;
+    const open = (x) => { const tx = Math.floor(x / TILE), ty = Math.floor((e.bottom - 4) / TILE); const t = m.typeAt(tx, ty); return !isSolidType(t) && t !== T.SPIKE; };
+    for (let i = 0; i < n; i++) {
+      const s = i % 2 ? 1 : -1;
+      const x = open(e.cx + s * 16) ? e.cx + s * 16 : e.cx;
+      const c = w.spawnEnemy(e.def.id, x, e.bottom, { level: this.plan.level, elite: false, facing: s });
+      if (!c) continue;
+      c._towerSplit = true;
+      this.resize(c, M.splitScale ?? 0.7, M.splitHp ?? 0.35);
+      c.vx = s * 140; if (!c.def?.flying) c.vy = -260;
+      w.fx.burst('dark', c.cx, c.cy, 6, { speed: 90 });
+    }
+    this.splitN += n;
+  }
+  /** 낙뢰: every 초마다 영웅 곁(±90px)에 벼락 하나 (경기장 안 — 결정적 난수, 싸움 중에만) · 흡혈의 밤: 체력이 서서히 마른다 (bleedFloor 아래로는 아니다) */
+  tickMutator(dt) {
+    const M = this.mut, w = this.world, p = w.player;
+    if (!M || this.phase !== 'fight' || !p || p.dead || w.cutscene) return;
+    this.fightT += dt;
+    if (M.every && (this.boltT -= dt) <= 0) {
+      this.boltT = M.every;
+      const r = this.boltR ?? rngOf(this.seed, 'bolt', this.floor);
+      const x = clamp(p.cx + (r.next() * 2 - 1) * 90, TILE * 2, w.map.pxW - TILE * 2);
+      const gy = w.map.groundBelow?.(Math.floor(x / TILE), Math.floor((p.bottom - 1) / TILE)) ?? p.bottom;
+      w.add(new TowerHazard(this, 'bolt', x, gy, M));
+      audio.sfx('thunder', { vol: 0.35 });
+    }
+    if (M.bleed) {
+      const floor = p.stats.hp * M.bleedFloor;
+      if (p.hp > floor) p.hp = Math.max(floor, p.hp - p.stats.hp * M.bleed * dt);
+    }
   }
   onHurt(dmg) {
     const n = this.taken.thorns | 0, w = this.world, p = w?.player;
@@ -628,14 +795,16 @@ export class TowerScene extends ArcadeRunScene {
   tick(dt) {
     const w = this.world, p = w.player;
     if (this.call) { this.call.t += dt / 2.2; if (this.call.t >= 1) this.call = null; }
+    if (this.mutCard) { this.mutCard.t += dt / 3.4; if (this.mutCard.t >= 1) this.mutCard = null; }
     if (!this.done) this.clock += dt;
     if (this.musicT > 0) { this.musicT -= dt; if (this.musicT <= 0 && !this.done && this.kind === 'boss') audio.music('arena'); }
     this.tickBlessings(dt);
+    this.tickMutator(dt);
     switch (this.phase) {
       case 'enter':
-        if (this.kind === 'combat' && this.phaseT > 1.2) this.spawnFoes();
-        else if (this.kind === 'boss' && this.phaseT > 1.6) this.spawnBoss();
-        else if (this.kind === 'rest' && this.phaseT > 1.0) this.restHere();
+        if (this.kind === 'combat' && this.phaseT > TOWER_PHASE.enter) this.spawnFoes();
+        else if (this.kind === 'boss' && this.phaseT > TOWER_PHASE.bossEnter) this.spawnBoss();
+        else if (this.kind === 'rest' && this.phaseT > TOWER_PHASE.restEnter) this.restHere();
         break;
       case 'fight': {
         // 진행 = 남은 적 수가 새로 줄었을 때. 처치 수로 세면 손이 닿지 않는 곳에서 졸개를 계속 부르는 적(인형술사 등)이 있을 때
@@ -648,7 +817,7 @@ export class TowerScene extends ArcadeRunScene {
       }
       case 'clear':
         if (this.reward > 0 && !this.rewardDone) { if (this.phaseT > this.reward && !p.dead && this.game.top === this) this.offerBlessing(); }
-        else if (this.phaseT > 1.0 && !this.gate && !p.dead && (p.onGround || this.phaseT > 3)) this.openGate();
+        else if (this.phaseT > TOWER_PHASE.clear && !this.gate && !p.dead && (p.onGround || this.phaseT > 3)) this.openGate();
         break;
       default: break;
     }
@@ -665,8 +834,15 @@ export class TowerScene extends ArcadeRunScene {
       e.dead = true; w.onEnemyKilled(e, null);
     }
   }
-  /** 그 층으로 바로 (시험) */
-  debugFloor(n) { this.cleared = Math.max(this.cleared, n - 1); this.loadFloor(Math.max(1, n | 0)); }
+  /**
+   * 그 층으로 바로 (시험). o.mut = 변이 id 로 덮기 (null = 변이 없음, undefined = 계획대로), o.blood = 피의 길로 들어가기
+   */
+  debugFloor(n, o = {}) {
+    this.cleared = Math.max(this.cleared, n - 1);
+    if (o.blood) { this.blood = Math.max(this.blood, 1); this.bloodBless = BLOOD_PATH.extraBless; }
+    this.forceMut = o.mut;
+    try { this.loadFloor(Math.max(1, n | 0)); } finally { this.forceMut = undefined; }
+  }
 
   // ───────────────────────── 결과 ─────────────────────────
   blessingSummary(max = 3) {
@@ -685,9 +861,20 @@ export class TowerScene extends ArcadeRunScene {
         ['처치 수', `${w.run.kills}`],
         ['쓰러뜨린 군주', `${this.bossKills}`],
         ['받은 축복', this.blessingSummary()],
+        [TOWER_SEASON, this.seasonSummary()],
       ],
-      stageId: 'arena', extra: { floor: this.cleared, reached: this.floor, bosses: this.bossKills, blessings: [...this.takenOrder], seed: this.seed },
+      stageId: 'arena',
+      extra: {
+        floor: this.cleared, reached: this.floor, bosses: this.bossKills, blessings: [...this.takenOrder], seed: this.seed,
+        v: TOWER_VERSION, pacts: [...this.pactOrder], blood: this.bloodRuns, milestones: [...this.milestones],
+      },
     };
+  }
+  /** 결과의 '시즌 2' 줄: 맺은 계약 · 피의 길 · 새 이정표 잔상 */
+  seasonSummary() {
+    const out = [`계약 ${this.pactOrder.length}`, `피의 길 ${this.bloodRuns}번`];
+    if (this.milestones.length) out.push(`잔상 ${this.milestones.map((id) => `「${TRAILS[id]?.name ?? id}」`).join('')}`);
+    return out.join(' · ');
   }
 
   // ───────────────────────── 그리기 ─────────────────────────
@@ -699,9 +886,32 @@ export class TowerScene extends ArcadeRunScene {
       text(ctx, `남은 적 ${list.length}`, vw / 2, top + 76, { size: 14, align: 'center', weight: 800, color: '#e8d8c0', ow: 3 });
       this.drawFoeArrow(ctx, w, list, vw, vh);
     }
+    // 시즌 2: 이 층의 변이 · 피의 길 표시 (층 이름 아래 한 줄) · 속공 남은 시간
+    const M = this.mut;
+    if (M && (this.phase === 'fight' || this.phase === 'enter')) {
+      const rush = M.rushSec && this.phase === 'fight' ? ` ${Math.max(0, M.rushSec - this.fightT).toFixed(1)}초` : '';
+      text(ctx, `${this.bloodFloor ? '피의 길 · ' : ''}${M.name}${rush}`, vw / 2, top + 96, { size: 13, align: 'center', weight: 800, color: M.rushSec && this.fightT > M.rushSec ? DIM : M.color, ow: 3 });
+    }
     this.drawBlessingHud(ctx, w, vw, vh);
-    if (this.gate?.near && !this.paused && this.phase === 'gate') this.drawGateHint(ctx, w, vw);
+    const gate = this.gates.find((g) => g.near) ?? (this.gate?.near ? this.gate : null);
+    if (gate && !this.paused && this.phase === 'gate') this.drawGateHint(ctx, w, vw, gate);
     if (this.call && !this.paused) this.bigCall(ctx, vw, vh, this.call.main, this.call.sub, this.call.color, this.call.t);
+    if (this.mutCard && !this.paused) this.drawMutCard(ctx, vw, vh, this.mutCard);
+  }
+  /** 층 시작의 변이 알림 카드 (층 이름 아래로 미끄러져 들어왔다 사라진다) */
+  drawMutCard(ctx, vw, vh, C) {
+    const M = C.m, k = C.t;
+    const a = clamp(Math.min(k * 8, (1 - k) * 6), 0, 1);
+    if (a <= 0) return;
+    const w = Math.round(Math.min(440, vw - 40)), h = 74, x = Math.round((vw - w) / 2 + (1 - ease.outCubic(clamp(k * 7, 0, 1))) * 80), y = Math.round(vh * 0.4 + 54);
+    ctx.save();
+    ctx.globalAlpha = a;
+    frame(ctx, x, y, w, h, { accent: C.blood ? '#ff4a5a' : M.color, glow: 0.8, corners: false, edge: 0.7, fill0: 'rgba(18,6,14,0.92)' });
+    ctx.fillStyle = rgba(M.color, 0.2); ctx.beginPath(); ctx.arc(x + 40, y + h / 2, 26, 0, Math.PI * 2); ctx.fill();
+    drawIcon(ctx, M.icon, x + 40, y + h / 2, 40, null, { glow: false });
+    text(ctx, `${C.blood ? '피의 길 · ' : ''}변이 — ${M.name}`, x + 76, y + 30, { size: 19, weight: 900, family: FONT.title, color: '#fff2e0', ow: 3, maxWidth: w - 90 });
+    text(ctx, M.desc, x + 76, y + 54, { size: 14, weight: 700, color: M.color, ow: 2, maxWidth: w - 90 });
+    ctx.restore();
   }
   /** 가장 가까운 적이 화면 밖이면 화면 가장자리에 방향 표시 */
   drawFoeArrow(ctx, w, list, vw, vh) {
@@ -740,10 +950,13 @@ export class TowerScene extends ArcadeRunScene {
       ctx.restore();
     });
   }
-  drawGateHint(ctx, w, vw) {
-    const g = this.gate, s = w.camera.toScreen(g.cx, g.y - 24);
+  drawGateHint(ctx, w, vw, g = this.gate) {
+    const s = w.camera.toScreen(g.cx, g.y - 24);
     const y = clamp(s.y, 120, this.game.viewH - 140);
-    drawHints(ctx, [['up', '다음 층으로', '위로 밀거나 잠시 서 있으면 다음 층']], clamp(s.x, 160, vw - 160), y, { align: 'center', size: 14, color: '#fff4dc' });
+    const item = g.route === 'blood' ? ['up', '피의 길로', '위로 밀거나 잠시 서 있으면 피의 길 — 센 변이 · 보상 2배']
+      : g.route === 'safe' ? ['up', '안전한 길로', '위로 밀거나 잠시 서 있으면 안전한 길']
+        : ['up', '다음 층으로', '위로 밀거나 잠시 서 있으면 다음 층'];
+    drawHints(ctx, [item], clamp(s.x, 160, vw - 160), y, { align: 'center', size: 14, color: g.route === 'blood' ? '#ffc8c0' : '#fff4dc' });
   }
   /** 일시정지 화면 오른쪽 칸: 받은 축복 목록 (arcade_run.js ArcadePauseScene 이 부른다) */
   drawPauseSide(ctx, r) {
@@ -766,47 +979,99 @@ export class TowerScene extends ArcadeRunScene {
 }
 
 // ───────────────────────────── 축복 고르기 ─────────────────────────────
-/** push('towerBlessing', { run, ids, floor }) — 셋 중 하나 (취소 없음). 고르면 run.onBlessingPicked(id) */
+/**
+ * push('towerBlessing', { run, ids, floor, mode }) — 카드 고르기 화면 하나로 셋을 그린다:
+ *  - mode 'bless' (기본): 축복 셋 중 하나 (취소 없음) → run.onBlessingPicked(id)
+ *  - mode 'pact': 피의 계약 둘 + 「거절한다」 (ids 뒤에 null 카드) → run.onPactPicked(id | null)
+ *  - mode 'shop': 떠돌이 상인 — 값이 붙은 축복 카드 셋 + 아래 단추 셋(치료 · 다시 뽑기 · 떠나기). 사고 나서도 떠나기 전까지 열려 있다 →
+ *    run.shopBuy(kind, id) · 떠나기(취소 키도) → run.onShopDone(). 골드가 모자라면 아무것도 바뀌지 않고 한 줄 안내
+ */
 export class TowerBlessingScene extends Scene {
   constructor(g) { super(g); this.opaque = false; this.uiScale = true; this.hidePad = true; }
-  enter({ run = null, ids = [], floor = 0 } = {}) {
-    if (!run?.world || !ids.length) { this.run = null; this.game.go('arcade', {}, { fade: false }); return; }
-    this.run = run; this.ids = ids.filter((id) => BLESSING[id]); this.floor = floor;
-    this.index = Math.min(1, this.ids.length - 1); this.picked = null; this.pickT = 0;
-    this.selK = this.ids.map((_, i) => (i === this.index ? 1 : 0));
+  enter({ run = null, ids = [], floor = 0, mode = 'bless' } = {}) {
+    if (!run?.world || (!ids.length && mode !== 'shop')) { this.run = null; this.game.go('arcade', {}, { fade: false }); return; }
+    this.run = run; this.floor = floor; this.mode = mode;
+    this.ids = mode === 'pact' ? [...ids.filter((id) => PACT[id]), null] : ids.filter((id) => BLESSING[id]);
+    this.index = mode === 'pact' ? 0 : Math.min(1, Math.max(0, this.ids.length - 1)); this.picked = undefined; this.pickT = 0;
+    this.msg = null;
+    this.selK = this.items().map((_, i) => (i === this.index ? 1 : 0));
     run.paused = true;
-    audio.sfx('bell');
+    audio.sfx(mode === 'pact' ? 'boss_roar' : mode === 'shop' ? 'coin' : 'bell', mode === 'pact' ? { vol: 0.4 } : undefined);
   }
   exit() { if (this.run) this.run.paused = false; }
+  /** 고를 수 있는 칸: 카드들 (+ 상인: 치료 · 다시 뽑기 · 떠나기) */
+  items() { return this.mode === 'shop' ? [...this.ids.map((id) => ({ kind: 'bless', id })), { kind: 'heal' }, { kind: 'reroll' }, { kind: 'leave' }] : this.ids.map((id) => ({ kind: 'card', id })); }
   choose(i) {
-    if (this.picked || !this.ids[i]) return;
-    this.index = i; this.picked = this.ids[i]; this.pickT = 0;
-    audio.sfx('enhance_success');
+    const it = this.items()[i];
+    if (this.picked !== undefined || !it) return;
+    this.index = i;
+    if (this.mode === 'shop') { this.shop(it); return; }
+    this.picked = it.id; this.pickT = 0;
+    audio.sfx(this.mode === 'pact' && it.id ? 'boss_die' : this.mode === 'pact' ? 'menu_cancel' : 'enhance_success', this.mode === 'pact' && it.id ? { vol: 0.5 } : undefined);
   }
+  /** 상인 칸 하나 */
+  shop(it) {
+    const run = this.run;
+    if (it.kind === 'leave') { this.close(() => run.onShopDone()); audio.sfx('menu_ok'); return; }
+    const r = run.shopBuy(it.kind, it.id);
+    this.msg = { text: r.msg, color: r.ok ? '#9fe8c8' : '#ff9a8a', t: 0 };
+    if (!r.ok) { audio.sfx('menu_cancel'); return; }
+    if (it.kind === 'bless') audio.sfx('enhance_success');
+    if (r.ids) { this.ids = r.ids.filter((id) => BLESSING[id]); this.selK = this.items().map((_, i) => (i === this.index ? 1 : 0)); }
+  }
+  /** 닫기: run 을 먼저 비우므로 exit() 대신 여기서 일시정지 표시를 푼다 (남으면 층 이름·출구 안내·적 방향 표시가 런 끝까지 숨는다) */
+  close(after) { const run = this.run; this.run = null; run.paused = false; this.game.pop(); after?.(); }
   update(dt) {
     if (!this.run) return;
+    const items = this.items(), n = items.length;
+    if (this.selK.length !== n) this.selK = items.map((_, i) => (i === this.index ? 1 : 0));
     this.selK = this.selK.map((v, i) => v + ((i === this.index ? 1 : 0) - v) * Math.min(1, dt * 14));
-    if (this.picked) {
+    if (this.msg) { this.msg.t += dt; if (this.msg.t > 2.4) this.msg = null; }
+    if (this.picked !== undefined) {
       this.pickT += dt;
-      // run 을 먼저 비우므로 exit() 대신 여기서 일시정지 표시를 푼다 (남으면 층 이름·출구 안내·적 방향 표시가 런 끝까지 숨는다)
-      if (this.pickT > 0.45) { const id = this.picked, run = this.run; this.run = null; run.paused = false; this.game.pop(); run.onBlessingPicked(id); }
+      if (this.pickT > 0.45) {
+        const id = this.picked, run = this.run;
+        this.close(() => (this.mode === 'pact' ? run.onPactPicked(id) : run.onBlessingPicked(id)));
+      }
       return;
     }
     const tap = taps.hit(this);
     if (typeof tap === 'string' && tap.startsWith('bless:')) { this.choose(+tap.slice(6)); return; }
-    const n = this.ids.length;
-    if (input.pressed('left')) { this.index = (this.index + n - 1) % n; audio.sfx('menu_move'); }
-    else if (input.pressed('right')) { this.index = (this.index + 1) % n; audio.sfx('menu_move'); }
+    const nc = this.ids.length;
+    if (input.pressed('left')) { this.index = this.mode === 'shop' && this.index >= nc ? nc + ((this.index - nc + 2) % 3) : (this.index + Math.max(1, nc) - 1) % Math.max(1, nc); audio.sfx('menu_move'); }
+    else if (input.pressed('right')) { this.index = this.mode === 'shop' && this.index >= nc ? nc + ((this.index - nc + 1) % 3) : (this.index + 1) % Math.max(1, nc); audio.sfx('menu_move'); }
+    else if (this.mode === 'shop' && input.pressed('down') && this.index < nc) { this.index = nc + Math.min(2, this.index); audio.sfx('menu_move'); }
+    else if (this.mode === 'shop' && input.pressed('up') && this.index >= nc && nc) { this.index = Math.min(nc - 1, this.index - nc); audio.sfx('menu_move'); }
+    else if (this.mode === 'shop' && input.pressed('cancel')) this.choose(n - 1);
     else if (input.pressed('confirm') || input.pressed('attack')) this.choose(this.index);
   }
-  /** 배치 (UI px, 최소 720×400) */
+  /** 배치 (UI px, 최소 720×400). 상인: 카드 줄을 낮추고 아래에 단추 줄 (btnY), 왼쪽 위에 상인 초상 */
   layout() {
-    const g = this.game, W = g.uiW || g.viewW, H = g.uiH || g.viewH, n = this.ids.length;
+    const g = this.game, W = g.uiW || g.viewW, H = g.uiH || g.viewH, n = Math.max(1, this.ids.length), shop = this.mode === 'shop';
     const small = H < 480, gap = small ? 14 : 20;
     const cw = Math.floor(Math.min(240, (W - 80 - gap * (n - 1)) / n));
-    const top = small ? 96 : 136, ch = Math.round(clamp(H - top - 64, 190, 260));
+    const top = small ? 96 : 136, btnH = shop ? 48 : 0, btnGap = shop ? 12 : 0;
+    const ch = Math.round(clamp(H - top - 64 - btnH - btnGap, shop ? 170 : 190, 260));
     const x0 = Math.round((W - (cw * n + gap * (n - 1))) / 2);
-    return { W, H, small, gap, cw, ch, top, x0, headY: small ? 46 : 70 };
+    const btnY = top + ch + btnGap, bw = Math.floor(Math.min(200, (W - 80 - 2 * gap) / 3)), bx0 = Math.round((W - (bw * 3 + gap * 2)) / 2);
+    return { W, H, small, gap, cw, ch, top, x0, headY: small ? 46 : 70, btnY, btnH, bw, bx0 };
+  }
+  /** 카드 한 장의 내용 (모드마다): { icon, name, color, lines: [{ text, color }], foot: { text, color } } */
+  cardOf(id) {
+    const run = this.run;
+    if (this.mode === 'pact') {
+      if (!id) return { icon: 'scroll_protect', name: '거절한다', color: '#a8a0b8', lines: [{ text: '계약을 맺지 않고 지나간다', color: '#d8ccbc' }], foot: { text: '이득도 손해도 없다', color: DIM } };
+      const P = PACT[id];
+      return { icon: P.icon, name: P.name, color: P.color, lines: [{ text: `▲ ${P.up}`, color: '#9ae070' }, { text: `▼ ${P.down}`, color: '#ff8a7a' }], foot: { text: '한 판에 한 번 · 되돌릴 수 없다', color: '#ffb0a0' } };
+    }
+    const b = BLESSING[id], have = run?.taken?.[id] | 0;
+    const card = { icon: b.icon, name: b.name, color: b.color, lines: [{ text: b.desc, color: '#d8ccbc' }] };
+    if (this.mode === 'shop') {
+      const price = run.shopPrice('bless'), sold = run.shop?.bought === id, other = !!run.shop?.bought && !sold;
+      card.foot = sold ? { text: '샀다', color: '#9fe8c8' } : other ? { text: '한 장만 살 수 있다', color: DIM } : { text: `${fmt(price)}G${have ? ` · 보유 ${have}/${b.max}` : ''}`, color: run.gold >= price ? GOLD : '#ff8a7a' };
+      card.dim = sold || other;
+    } else card.foot = { text: have ? `보유 ${have} / ${b.max}` : b.max > 1 ? `최대 ${b.max}번까지 겹친다` : '한 번만 받을 수 있다', color: have ? '#ffe7a0' : DIM };
+    return card;
   }
   render(ctx) {
     if (!this.run) return;
@@ -814,26 +1079,55 @@ export class TowerBlessingScene extends Scene {
     const k = ease.outCubic(clamp(this.t / 0.3, 0, 1));
     ctx.fillStyle = `rgba(4,0,10,${0.78 * k})`; ctx.fillRect(0, 0, W, H);
     ctx.save(); ctx.globalAlpha = k;
-    heading(ctx, W / 2, L.headY, 'BLESSING', `제 ${this.floor}층 · 축복을 하나 고르세요`, { size: L.small ? 28 : 34, color: GOLD });
+    const run = this.run, shop = this.mode === 'shop', pact = this.mode === 'pact', idle = this.picked === undefined;
+    if (pact) heading(ctx, W / 2, L.headY, 'BLOOD PACT', `제 ${this.floor}층 · 피의 계약 — 맺거나 거절하세요`, { size: L.small ? 28 : 34, color: '#ff5a5a' });
+    else if (shop) {
+      heading(ctx, W / 2, L.headY, 'MERCHANT', `떠돌이 상인 로크 · 런 골드로 거래하세요`, { size: L.small ? 28 : 34, color: GOLD });
+      const pr = { x: 20, y: 12, w: L.small ? 64 : 88, h: L.small ? 76 : 104 };
+      frame(ctx, pr.x - 2, pr.y - 2, pr.w + 4, pr.h + 4, { accent: '#b89a60', corners: false, edge: 0.5 });
+      portraitIn(ctx, assets.get(NPCS[MERCHANT.npc]?.portrait ?? 'portraits/npc_rook'), pr, { fy: 0.2, fadeBottom: 0.3 });
+      text(ctx, `보유 ${fmt(run.gold)}G`, W - 24, L.small ? 32 : 40, { size: 18, align: 'right', weight: 900, family: FONT.num, color: GOLD, ow: 3 });
+    } else heading(ctx, W / 2, L.headY, 'BLESSING', `제 ${this.floor}층 · 축복을 하나 고르세요`, { size: L.small ? 28 : 34, color: GOLD });
     this.ids.forEach((id, i) => {
-      const b = BLESSING[id], s = this.selK[i] ?? 0, cur = i === this.index;
+      const c = this.cardOf(id), s = this.selK[i] ?? 0, cur = i === this.index;
       const r = { x: L.x0 + i * (L.cw + L.gap), y: L.top, w: L.cw, h: L.ch };
-      const fade = this.picked && this.picked !== id ? Math.max(0, 1 - this.pickT * 4) : 1;
-      const lift = (this.picked === id ? Math.min(1, this.pickT * 4) * 10 : 0) + s * 6;
+      const fade = !idle && this.picked !== id ? Math.max(0, 1 - this.pickT * 4) : 1;
+      const lift = (!idle && this.picked === id ? Math.min(1, this.pickT * 4) * 10 : 0) + s * 6;
+      const iy = r.y + Math.min(58, r.h * 0.24);
       ctx.save();
-      ctx.globalAlpha *= fade * (0.75 + 0.25 * s);
+      ctx.globalAlpha *= fade * (0.75 + 0.25 * s) * (c.dim ? 0.55 : 1);
       ctx.translate(0, -lift);
-      frame(ctx, r.x, r.y, r.w, r.h, { accent: b.color, glow: s * 1.1, edge: 0.4 + 0.6 * s, fill0: 'rgba(20,10,30,0.94)' });
-      ctx.fillStyle = rgba(b.color, 0.16 + 0.12 * s); ctx.beginPath(); ctx.arc(r.x + r.w / 2, r.y + 58, 38, 0, Math.PI * 2); ctx.fill();
-      drawIcon(ctx, b.icon, r.x + r.w / 2, r.y + 58, 56, null, { glow: false });
-      text(ctx, b.name, r.x + r.w / 2, r.y + 124, { size: 17, align: 'center', weight: 900, family: FONT.title, color: cur ? '#fff6e0' : BONE, ow: 3, maxWidth: r.w - 16 });
-      wrap(ctx, b.desc, r.w - 28, 13, 600).slice(0, 3).forEach((l, j) => text(ctx, l, r.x + r.w / 2, r.y + 150 + j * 17, { size: 13, align: 'center', weight: 600, color: '#d8ccbc', ow: 2 }));
-      const have = this.run?.taken?.[id] | 0;
-      text(ctx, have ? `보유 ${have} / ${b.max}` : b.max > 1 ? `최대 ${b.max}번까지 겹친다` : '한 번만 받을 수 있다', r.x + r.w / 2, r.y + r.h - 14, { size: 12, align: 'center', weight: 800, color: have ? '#ffe7a0' : DIM, ow: 2, maxWidth: r.w - 16 });
+      frame(ctx, r.x, r.y, r.w, r.h, { accent: c.color, glow: s * 1.1, edge: 0.4 + 0.6 * s, fill0: pact && id ? 'rgba(34,6,12,0.95)' : 'rgba(20,10,30,0.94)' });
+      ctx.fillStyle = rgba(c.color, 0.16 + 0.12 * s); ctx.beginPath(); ctx.arc(r.x + r.w / 2, iy, 38, 0, Math.PI * 2); ctx.fill();
+      drawIcon(ctx, c.icon, r.x + r.w / 2, iy, 56, null, { glow: false });
+      const ny = iy + 66;
+      text(ctx, c.name, r.x + r.w / 2, ny, { size: 17, align: 'center', weight: 900, family: FONT.title, color: cur ? '#fff6e0' : BONE, ow: 3, maxWidth: r.w - 16 });
+      let ly = ny + 26;
+      for (const ln of c.lines) {
+        for (const l of wrap(ctx, ln.text, r.w - 28, 13, 600).slice(0, 2)) { if (ly < r.y + r.h - 30) text(ctx, l, r.x + r.w / 2, ly, { size: 13, align: 'center', weight: 700, color: ln.color, ow: 2 }); ly += 17; }
+        ly += 3;
+      }
+      text(ctx, c.foot.text, r.x + r.w / 2, r.y + r.h - 14, { size: 12, align: 'center', weight: 800, color: c.foot.color, ow: 2, maxWidth: r.w - 16 });
       ctx.restore();
-      if (!this.picked) taps.add(`bless:${i}`, r, { owner: this, kind: 'primary', src: 'tower.blessing' });
+      if (idle) taps.add(`bless:${i}`, r, { owner: this, kind: 'primary', src: pact ? 'tower.pact' : shop ? 'tower.shop' : 'tower.blessing' });
     });
-    const items = promptMode() === 'touch' ? [[null, '', '카드를 눌러 축복을 받으세요']] : [['dpadH', '선택'], ['confirm', '받기']];
+    if (shop) {
+      const nc = this.ids.length;
+      if (!nc) text(ctx, '살 수 있는 축복이 없다', W / 2, L.top + L.ch / 2, { size: 15, align: 'center', weight: 800, color: DIM, ow: 2 });
+      const btn = [
+        ['heal', '상처 치료', `${fmt(run.shopPrice('heal'))}G · 체력 ${Math.round(MERCHANT.healFrac * 100)}% · MP 가득`],
+        ['reroll', '다시 뽑기', `${fmt(run.shopPrice('reroll'))}G · 새 카드 셋`],
+        ['leave', '떠나기', '다음 길로'],
+      ];
+      btn.forEach(([kind, label, sub], j) => {
+        const r = { x: L.bx0 + j * (L.bw + L.gap), y: L.btnY, w: L.bw, h: L.btnH };
+        gbutton(ctx, r, label, { selected: this.index === nc + j, sub, size: 15, accent: kind === 'leave' ? '#b8aa98' : GOLD, id: `bless:${nc + j}`, owner: this, src: 'tower.shop' });
+      });
+    }
+    if (this.msg) text(ctx, this.msg.text, W / 2, H - 36, { size: 14, align: 'center', weight: 800, color: this.msg.color, ow: 3, maxWidth: W - 40 });
+    const items = promptMode() === 'touch'
+      ? [[null, '', pact ? '카드를 눌러 계약을 맺거나 거절하세요' : shop ? '카드를 눌러 사고, 떠나기를 눌러 다음 길로' : '카드를 눌러 축복을 받으세요']]
+      : shop ? [['dpad', '선택'], ['confirm', '사기'], ['cancel', '떠나기']] : [['dpadH', '선택'], ['confirm', pact ? '정하기' : '받기']];
     drawHints(ctx, items, W / 2, H - 14, { align: 'center', size: 13, color: '#b8aa98' });
     ctx.restore();
   }

@@ -124,7 +124,8 @@ const planOf = (page, n, seed = null) => page.evaluate(async ([n, seed]) => {
   const t = window.__game.scenes.find((s) => s.name === 'tower');
   const P = new T.TowerPlanner(seed ?? t.seed, { stages: t.planner.stages, order: t.planner.order, enemies: t.planner.enemies, bosses: t.planner.bosses, lateBosses: t.planner.lateBosses, P: t.planner.P, eliteBase: t.planner.eliteBase });
   const p = P.plan(n);
-  return { kind: p.kind, key: p.key ?? null, bossId: p.bossId ?? null, foes: p.enemies.map((e) => e.id + (e.elite ? '*' : '')).sort() };
+  return { kind: p.kind, key: p.key ?? null, bossId: p.bossId ?? null, foes: p.enemies.map((e) => e.id + (e.elite ? '*' : '')).sort(),
+    mut: p.mut ?? null, mutBlood: p.mutBlood ?? null, pacts: p.pacts ?? null, merchant: !!p.merchant, route: !!p.route };   // 시즌 2
 }, [n, seed]);
 
 const tests = [];
@@ -255,10 +256,19 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
   assert.equal(await page.evaluate(() => window.__game.top.paused), false, '축복을 고른 뒤 일시정지 표시가 풀린다 (층 이름·출구 안내·적 방향 표시)');
   const took5 = await page.evaluate(() => window.__game.top.takenOrder);
   assert.deepEqual(took5, [offer5[2]], '→ 다음 카드 = 세 번째');
+  // 시즌 2: 보스 층 뒤 갈림길 — 발밑 = 안전한 길, 몇 칸 옆 = 피의 길 (가만히 서 있으면 안전한 길)
+  const routes5 = await page.evaluate(() => window.__game.top.gates.map((g) => ({ route: g.route, cx: Math.round(g.cx) })));
+  assert.equal(routes5.length, 2, `갈림길 문 둘 ${JSON.stringify(routes5)}`);
+  assert.deepEqual(routes5.map((r) => r.route), ['safe', 'blood']);
+  assert.ok(Math.abs(routes5[0].cx - routes5[1].cx) >= 5 * 48, `문 사이 ${JSON.stringify(routes5)}`);
   await tickUntil(page, 't.floor === 6', 400, '가만히 서 있으면 6층');
   assert.equal(await page.evaluate(() => window.__game.top.cleared), 5);
+  assert.equal(await page.evaluate(() => window.__game.top.route), 'safe', '가만히 서 있기 = 안전한 길');
+  assert.equal(await page.evaluate(() => window.__game.top.bloodFloor), false);
+  assert.equal(await page.evaluate(() => window.__game.top.mut?.id ?? null), (await planOf(page, 6)).mut, '6층 변이 = 계획 (안전한 길)');
 
-  // 축복 12종 효과 (6층 전투 중)
+  // 축복 12종 효과 (6층 전투 중) — 변이 없는 6층으로 다시 (변이는 따로 시험한다: '변이 10종')
+  await page.evaluate(() => window.__game.top.debugFloor(6, { mut: null }));
   await tickUntil(page, "t.phase === 'fight'", 200, '6층 전투');
   const fx = await page.evaluate(() => {
     const t = window.__game.top, w = t.world, p = w.player, out = {};
@@ -363,7 +373,17 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
   await page.evaluate(() => window.__padConnect?.());
   await pad(page, BTN.LEFT);
   await pad(page, BTN.A);
+  // 시즌 2: 안식처 축복 뒤 피의 계약 (둘 + 거절) → 패드로 거절 (→ → A)
+  await tickUntil(page, "g.top.name === 'towerBlessing' && g.top.mode === 'pact'", 200, '안식처 → 피의 계약');
+  const pact10 = await page.evaluate(() => ({ ids: window.__game.top.ids, plan: window.__game.scenes[0].plan.pacts }));
+  assert.deepEqual(pact10.ids, [...pact10.plan, null], `계약 둘 + 거절 ${JSON.stringify(pact10)}`);
+  await ticks(page, 20);
+  await shot(page, 'pact_rest');
+  await pad(page, BTN.RIGHT);
+  await pad(page, BTN.RIGHT);
+  await pad(page, BTN.A);
   await tickUntil(page, "g.top.name === 'tower' && t.phase === 'gate'", 200, '안식처 → 출구');
+  assert.deepEqual(await page.evaluate(() => window.__game.top.pactOrder), [], '거절 → 계약 없음');
   const after10 = await page.evaluate(() => ({ taken: { ...window.__game.top.taken }, last: window.__game.top.takenOrder.at(-1) }));
   assert.equal(after10.last, rest.ids[0], '패드 ← = 첫 카드');
   assert.equal(after10.taken[rest.ids[0]], (before10[rest.ids[0]] | 0) + 1);
@@ -495,8 +515,19 @@ for (const vp of ['phone2', 'phone1']) {
     await thaw(page);   // 터치 탭은 실제 프레임으로 (온라인 클라이언트 시험과 같게)
     await page.waitForTimeout(200);
     await page.touchscreen.tap(pt.x, pt.y);
+    // 시즌 2: 안식처 축복 뒤 피의 계약 → 터치로 「거절한다」(셋째 카드)
+    await page.waitForFunction(() => window.__game.top?.name === 'towerBlessing' && window.__game.top.mode === 'pact' && window.__game.scenes.find((s) => s.name === 'tower').takenOrder.length > 0, null, { timeout: 8000 });
+    assert.equal(await page.evaluate(() => window.__game.scenes.find((s) => s.name === 'tower').takenOrder.at(-1)), pt.id);
+    await page.waitForTimeout(400);
+    const dp = await page.evaluate(() => {
+      const g = window.__game, t = g.top, L = t.layout(), cv = g.canvas.getBoundingClientRect(), k = (cv.width / g.viewW) * (g.uiK || 1);
+      const i = t.ids.length - 1, r = { x: L.x0 + i * (L.cw + L.gap), y: L.top, w: L.cw, h: L.ch };
+      return { x: cv.left + (r.x + r.w / 2) * k, y: cv.top + (r.y + r.h / 2) * k, id: t.ids[i], w: r.w * k, h: r.h * k };
+    });
+    assert.ok(dp.id === null && dp.w >= 44 && dp.h >= 44, `거절 카드 ${JSON.stringify(dp)}`);
+    await page.touchscreen.tap(dp.x, dp.y);
     await page.waitForFunction(() => window.__game.top?.name === 'tower' && window.__game.top.takenOrder.length > 0, null, { timeout: 8000 });
-    assert.equal(await page.evaluate(() => window.__game.top.takenOrder.at(-1)), pt.id);
+    assert.deepEqual(await page.evaluate(() => window.__game.top.pactOrder), []);
     await freeze(page);
     await ticks(page, 10);
     await shot(page, `tower_${vp}`);

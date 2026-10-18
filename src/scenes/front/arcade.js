@@ -42,6 +42,7 @@ import * as PUPPET from '../../render/hero_puppet.js';
 import { DIFFICULTIES, getDiff } from '../../data/difficulty.js';
 import { STAGES, STAGE_ORDER, SIDE_STAGES } from '../../data/stages.js';
 import { BOSSES } from '../../data/bosses.js';
+import { TOWER_VERSION, TOWER_SEASON } from '../../data/tower.js';   // 무한의 탑 시즌 표시 (기기 기록의 v — 없으면 시즌 1)
 import { baseIdFor, ITEMS, makeItem } from '../../data/items.js';
 import { SKILLS } from '../../data/skills.js';
 import { SCRIPTS } from '../../data/story.js';
@@ -749,7 +750,8 @@ export class ArcadeScene extends Scene {
     if (this.kind === 'survival' && (m.survivalBest ?? 0) > 0) return `최고 기록  웨이브 ${m.survivalBest}${top ? ` · ${fmt(top.score)}점` : ''}`;
     if (this.kind === 'tower') {
       const b = towerBests(m)[this.cfg.diff];
-      return b?.floor ? `${getDiff(this.cfg.diff).name} 최고 기록  ${b.floor}층 돌파 · ${fmtClock(b.time ?? 0)} · ${CHARACTERS[b.charId]?.name ?? ''}` : `${getDiff(this.cfg.diff).name} 기록이 아직 없습니다`;
+      const season = b?.v === TOWER_VERSION ? TOWER_SEASON : '시즌 1';   // v 가 없는 옛 기록 = 시즌 1 (그대로 보인다)
+      return b?.floor ? `${getDiff(this.cfg.diff).name} 최고 기록  ${b.floor}층 돌파 · ${fmtClock(b.time ?? 0)} · ${CHARACTERS[b.charId]?.name ?? ''} · ${season}` : `${getDiff(this.cfg.diff).name} 기록이 아직 없습니다`;
     }
     if (top) return `최고 점수  ${fmt(top.score)}점 · ${top.name || CHARACTERS[top.charId]?.name || ''}`;
     return '아직 기록이 없습니다';
