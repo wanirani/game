@@ -3,7 +3,7 @@
 //   - cond: 지표 m(arg) ≥ n 이면 달성 (지표는 src/game/achievements.js metric — §3.3 표)
 //   - reward: { gold } · { items: [{ id, qty }] } · { title: 't_…' } · { deco: 'd_…' } (이명·장식은 core/ach_meta.js 표). 없으면 기본 골드 pts × 25
 //   - hidden: 달성 전에는 '숨겨진 업적' (모두 secret 분류)
-//  데이터 순서 = 표시 순서. 시험: tools/test_achievements.mjs C1 (67개 · 점수 합 1,630 · 보상 참조 · 이명 17 · 장식 5)
+//  데이터 순서 = 표시 순서. 시험: tools/test_achievements.mjs C1 (68개 · 점수 합 1,650 · 보상 참조 · 이명 17 · 장식 5)
 
 export const ACH_CATS = [
   { id: 'story', name: '이야기', glyph: 'book' }, { id: 'combat', name: '전투', glyph: 'sword' }, { id: 'hero', name: '영웅', glyph: 'crown' },
@@ -15,7 +15,7 @@ export const ACH_CATS = [
 const P12 = ['s01', 's02', 's03', 's04', 's05', 's06', 's07', 's08', 's09', 's10', 's11', 's12', 's13', 's14', 's15', 's16', 's17', 's18', 's19', 's20'];
 
 export const ACHIEVEMENTS = [
-  // ── 이야기 (11) ──
+  // ── 이야기 (12) ──
   { id: 'st_s01', cat: 'story', name: '첫 사냥', desc: '1장 「불타는 마을」을 클리어한다', pts: 10, cond: { m: 'cleared', arg: ['s01'], n: 1 }, reward: { items: [{ id: 'c_potion', qty: 3 }] } },
   { id: 'st_s02', cat: 'story', name: '까마귀와 함께', desc: '2장 「안개의 묘지」를 클리어해 리아를 동료로 맞는다', pts: 10, cond: { m: 'cleared', arg: ['s02'], n: 1 }, reward: { gold: 300 } },
   { id: 'st_dracula', cat: 'story', name: '백작의 몰락', desc: '드라큘라 백작을 쓰러뜨린다', pts: 20, cond: { m: 'boss', arg: 'b_dracula', n: 1 } },
@@ -26,6 +26,7 @@ export const ACHIEVEMENTS = [
   { id: 'st_true2', cat: 'story', name: '새벽의 별', desc: '2부의 진엔딩을 본다', pts: 50, cond: { m: 'ending', arg: ['p2true'], n: 1 }, reward: { deco: 'd_violet' } },
   { id: 'st_s21', cat: 'story', name: '은빛 귀환', desc: '외전 「하늘 정원의 둥지」를 클리어한다', pts: 20, cond: { m: 'cleared', arg: ['s21'], n: 1 }, reward: { deco: 'd_silver' } },
   { id: 'st_s22', cat: 'story', name: '이름을 부르는 밤', desc: '외전 「이름 없는 언덕」을 클리어한다', pts: 20, cond: { m: 'cleared', arg: ['s22'], n: 1 }, reward: { deco: 'd_crow' } },
+  { id: 'st_s26', cat: 'story', name: '썩지 않는 것', desc: '외전 「지하 공방」을 클리어한다', pts: 20, cond: { m: 'cleared', arg: ['s26'], n: 1 }, reward: { gold: 2000 } },   // 1부 외전 (7장 뒤, ex_s26.md §3)
   { id: 'st_endings', cat: 'story', name: '다섯 개의 결말', desc: '엔딩 다섯 개를 모두 본다', pts: 50, cond: { m: 'ending', arg: ['bad', 'normal', 'true', 'p2', 'p2true'], n: 5 }, reward: { title: 't_chronicler' } },
 
   // ── 전투 (7) ──
@@ -87,7 +88,7 @@ export const ACHIEVEMENTS = [
   { id: 'ch_nightmare_p2', cat: 'challenge', name: '악몽을 걷는 자', desc: '악몽 이상 난이도로 2부 엔딩을 본다', pts: 50, cond: { m: 'diffEnding', arg: { diffs: ['nightmare', 'inferno'], part: 2 }, n: 1 }, reward: { title: 't_nightmare' } },
   { id: 'ch_nodmg5', cat: 'challenge', name: '다섯 번의 무결', desc: '보스를 피해 없이 다섯 번 쓰러뜨린다', pts: 30, cond: { m: 'nodmg', n: 5 } },
   { id: 'ch_rush_perfect', cat: 'challenge', name: '무결점 러시', desc: '보스 러시 코스 하나를 모든 보스 무피해로 완주한다', pts: 50, cond: { m: 'rushPerfect', n: 1 } },
-  { id: 'ch_all', cat: 'challenge', name: '블러드 녹턴', desc: '다른 업적을 모두 달성한다', pts: 100, cond: { m: 'all', n: 66 }, reward: { title: 't_legend', deco: 'd_moon' } },
+  { id: 'ch_all', cat: 'challenge', name: '블러드 녹턴', desc: '다른 업적을 모두 달성한다', pts: 100, cond: { m: 'all', n: 67 }, reward: { title: 't_legend', deco: 'd_moon' } },
 
   // ── 숨겨진 (7, 모두 hidden) ──
   { id: 'sc_konami', cat: 'secret', hidden: true, name: '옛 주문', desc: '타이틀 화면에서 비밀 코드를 입력한다', pts: 10, cond: { m: 'konami', n: 1 } },

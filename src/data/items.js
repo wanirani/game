@@ -376,6 +376,9 @@ const UNIQUE_LIST = [
   { id: 'u_frostqueen', name: '서리 여왕의 왕관', slot: 'head', tier: 5, icon: 'head_4', lvReq: 30, rarity: 4, boss: 'b_frostqueen',
     stats: { def: 16, res: 22, mag: 18, ice: 25, resIce: 30 }, visual: { headgear: 'tiara', color: '#bfeaff' },
     effect: '영원한 겨울 — 냉기 피해 +25%, 냉기 저항 +30%', desc: '서리 여왕 이자벨라의 얼음 왕관. 녹지 않는 눈물이 보석처럼 박혀 있다.' },
+  { id: 'u_paracel', name: '파라켈의 외알 안경', slot: 'acc', tier: 4, icon: 'amulet_5', lvReq: 28, rarity: 4, boss: 'b_paracel',   // 외전 26장 (1부) 보스 드롭
+    stats: { mag: 12, res: 10, crit: 5, subDmg: 20, fire: 8, ice: 8 }, visual: { aura: { color: '#e8c060', type: 'holy' } },
+    effect: '현자의 눈 — 보조무기 피해 +20%, 화염 · 냉기 피해 +8%', desc: '파라켈 박사가 렌즈 셋을 겹쳐 끼던 황동 외알 안경. 들여다보면 모든 것이 녹는 점과 굳는 점으로 보인다.' },
   { id: 'u_death', name: '사신의 낫검', slot: 'weapon', wtype: 'sword', tier: 5, icon: 'sword_6', lvReq: 34, rarity: 5, boss: 'b_death',
     stats: { atk: 72, mag: 20, dark: 30, lifesteal: 3, critDmg: 25 }, element: 'dark', visual: { style: 6, glow: '#b060ff' },
     effect: '영혼 수확 — 암흑 피해 +30%, 흡혈 +3%', desc: '사신 데스의 낫을 벼려 만든 검. 베인 자의 영혼이 칼날에 붙들려 운다.' },

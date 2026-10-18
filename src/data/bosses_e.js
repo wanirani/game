@@ -3,6 +3,7 @@
 //                   b_hagen (s23, 외전 「빈칸의 현상금」) — docs/specs/ex_s23.md §2. 소유: EX3-BOSS (아래 b_hagen 머리말)
 //                   b_bride (s24, 외전 「시드는 장미」) — docs/specs/ex_s24.md §2. 소유: EX4-BOSS (아래 b_bride 머리말)
 //                   b_charon (s25, 외전 「불탄 목장의 밤」) — docs/specs/ex_s25.md §2. 소유: EX5-BOSS (아래 b_charon 머리말)
+//                   b_paracel (s26, 1부 외전 「파라켈의 지하 공방」) — docs/specs/ex_s26.md §2. 소유: CH26-A (아래 b_paracel 머리말)
 // 스키마: game/bosses/boss.js 상단 주석 (bosses_c.js 머리말 참고). 클래스는 game/bosses/e_argen.js (BossC 상속).
 // 체급: 지즈(b_ziz, s17)보다 한 단계 위 · 니힐(b_nihil, s20 최종)보다 아래. s21 레벨 70 (s20 은 68).
 // 밸런스 (EX-BOSS, tools/balance.mjs 와 같은 식 — 보통 난이도 kael, s20 클리어 레벨 67 · s20 장비 기준):
@@ -125,5 +126,16 @@ export const BOSSES_E = {
     form2: { name: '카론', title: '말을 잃은 마부', portrait: 'portraits/b_charon' },
     intro: '(관을 실은 검은 마차가 소리 없이 멈춘다. 마부석의 사내가 모자를 들어 정중히 인사한다.)',
     desc: '사신의 영구 마차를 사백 년 동안 몰아 온 마부. 명부에 적힌 이름을 하나도 빠짐없이 실어 나르는 것이 그의 자랑이다. 마차를 끄는 말들은 모두 불길이나 칼끝에 쓰러진 말들이라고 한다.',
+  },
+  // ── b_paracel (s26) — 파라켈 박사 / 수은의 연금술사. 클래스 game/bosses/e_paracel.js (BossC 상속) ──
+  // 체급: 7–8장 보스의 손맛을 권장 Lv 28–34 에서 (docs/specs/ex_s26.md §2.3). s26 레벨 30. 2페이즈 (50% 'fuse' — 배양조를 깨고 호문쿨루스를 가슴에, form2 칭호 '금이 되어 가는 몸').
+  // 모형 (balance.mjs 사본, s26 을 s09 뒤에 끼움, 보통): 카엘 Lv 28 106타 · 16초 · 한 대 15.2% / Lv 32 81타 · 9.4% (s07 직후 Lv 21 은 146타 · 36.9% — 권장 Lv 28).
+  b_paracel: {
+    id: 'b_paracel', name: '파라켈 박사', title: '수은의 연금술사', hp: 1600, hpMul: 1.0, atk: 29, def: 11, res: 12, exp: 1600, score: 42000,
+    size: { w: 84, h: 176 }, flying: false, contact: 0.5, material: 'flesh', weak: ['thunder', 'holy'], resist: ['fire'], phases: [0.5],
+    music: 'boss2', portrait: 'portraits/b_paracel', stageId: 's26', drops: ['u_paracel'], light: { r: 200, color: '#c8d4e0', i: 0.55 },
+    form2: { name: '파라켈 박사', title: '금이 되어 가는 몸', portrait: 'portraits/b_paracel' },
+    intro: '(도가니를 들여다보던 손이 멈춘다. 등에 매단 유리 배양조 속에서 무언가가 눈을 뜬다.)',
+    desc: '악마성의 수석 연금술사. 역병을 이기려고 제 몸에 수은과 호문쿨루스의 살을 이어 붙였다. 성이 사라진 백 년 동안에도 바위 속 공방에서 불을 지켰다고 한다.',
   },
 };

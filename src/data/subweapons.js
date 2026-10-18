@@ -6,6 +6,71 @@ import { Hitbox, explode } from '../game/projectiles.js';
 
 const base = (p) => ({ stats: p.stats, type: 'phys', tags: ['sub'], hitstop: 0.04, shake: 2 });
 
+// ── 연금 플라스크 (외전 26장 보상, docs/specs/ex_s26.md §3.1) — 던질 때마다 불 → 얼음 → 독 차례. 그림은 납작한 채움만 (그라디언트·Math.random 없음, hook_tags).
+const FLASK_EL = [{ id: 'fire', col: '#ff7a2a' }, { id: 'ice', col: '#9fe8ff' }, { id: 'poison', col: '#7cff5a' }];
+/** 남은 수명 비율 0–1 (끝 0.25 초 동안 사라진다) */
+const fade = (hb) => Math.max(0, Math.min(1, hb.life / 0.25, hb.t / 0.08));
+function flaskFlames(ctx, hb, world) {
+  const f = fade(hb), t = world.time, fy = hb.bottom, n = 6;
+  if (f <= 0.01) return;
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < n; i++) {
+    const fx = hb.x + (i + 0.5) * (hb.w / n), h = (18 + 11 * Math.sin(t * 17 + i * 2.1 + hb.x * 0.05)) * f;
+    ctx.fillStyle = `rgba(255,122,42,${0.7 * f})`; ctx.beginPath(); ctx.ellipse(fx, fy - h / 2, 7, h / 2 + 2, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = `rgba(255,224,150,${0.6 * f})`; ctx.beginPath(); ctx.ellipse(fx, fy - h / 3, 3, h / 3 + 1, 0, 0, TAU); ctx.fill();
+  }
+  ctx.restore();
+}
+function flaskSpikes(ctx, hb, world) {
+  const f = fade(hb), rise = Math.min(1, hb.t / 0.08), fy = hb.bottom, cx = hb.cx;
+  if (f <= 0.01) return;
+  ctx.save(); ctx.globalAlpha *= f; ctx.lineJoin = 'round';
+  for (let i = -2; i <= 2; i++) {
+    const hx = cx + i * 14, hh = hb.h * rise * (1 - Math.abs(i) * 0.22) + Math.sin(world.time * 3 + i + hb.x * 0.03) * 1.5;
+    ctx.beginPath(); ctx.moveTo(hx - 9, fy); ctx.lineTo(hx + (i % 2) * 2, fy - hh); ctx.lineTo(hx + 9, fy); ctx.closePath();
+    ctx.fillStyle = 'rgba(159,232,255,0.85)'; ctx.fill();
+    ctx.lineWidth = 1.6; ctx.strokeStyle = '#2a6a88'; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.moveTo(hx - 3, fy - 4); ctx.lineTo(hx + (i % 2) * 2, fy - hh + 6); ctx.lineTo(hx, fy - 4); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+function flaskPuddle(ctx, hb, world) {
+  const f = fade(hb), t = world.time, fy = hb.bottom, x = hb.cx, rx = hb.w / 2, seed = hb.x * 0.07, n = 9;
+  if (f <= 0.01) return;
+  ctx.save(); ctx.globalAlpha *= f;
+  ctx.beginPath(); ctx.moveTo(x - rx, fy);
+  for (let i = 0; i <= n; i++) {
+    const u = i / n, wob = Math.sin(t * 3 + seed + i * 1.7) * 1.2;
+    ctx.lineTo(x - rx + u * rx * 2, fy - 3 - Math.sin(u * Math.PI) * 8 + wob);
+  }
+  ctx.lineTo(x + rx, fy); ctx.closePath();
+  ctx.fillStyle = 'rgba(92,200,64,0.82)'; ctx.fill();
+  ctx.lineWidth = 1.4; ctx.strokeStyle = '#1f5a14'; ctx.stroke();
+  ctx.fillStyle = 'rgba(200,255,170,0.6)'; ctx.beginPath(); ctx.ellipse(x - rx * 0.3, fy - 7, rx * 0.25, 2, 0, 0, TAU); ctx.fill();
+  for (let i = 0; i < 3; i++) {   // 거품 (시간 + 자리로만 움직인다)
+    const u = (t * 0.8 + i * 0.33 + (seed % 1)) % 1, bx = x + (((i * 0.37 + seed) % 1) - 0.5) * rx * 1.4;
+    ctx.strokeStyle = `rgba(200,255,170,${0.8 * (1 - u)})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(bx, fy - 5 - u * 8, 1.5 + u * 2, 0, TAU); ctx.stroke();
+  }
+  ctx.restore();
+}
+const FLASK_HIT = {
+  fire(p, w, x, y) {
+    explode(w, x, y - 12, { r: 76, attack: { stats: p.stats, mv: 1.9, element: 'fire', tags: ['sub'] } });
+    w.add(new Hitbox({ x: x - 48, y: y - 40, w: 96, h: 40, life: 0.9, attack: { ...base(p), mv: 0.22, element: 'fire', rehit: 0.2, kb: [30, -60], hitstop: 0.02 },
+      light: { r: 90, color: '#ff7a2a', i: 0.8 }, render: flaskFlames }));
+  },
+  ice(p, w, x, y) {
+    audio.sfx('ice', { pitch: 1.1 });
+    w.fx.burst('ice', x, y - 20, 14, { speed: 220 });
+    w.add(new Hitbox({ x: x - 42, y: y - 100, w: 84, h: 100, life: 0.3, attack: { ...base(p), mv: 1.5, element: 'ice', stun: 0.45, kb: [80, -200] }, render: flaskSpikes }));
+  },
+  poison(p, w, x, y) {
+    audio.sfx('splash', { pitch: 1.2, vol: 0.6 });
+    w.fx.burst('goo', x, y - 6, 10, { color: '#7cff5a', speed: 160 });
+    w.add(new Hitbox({ x: x - 55, y: y - 28, w: 110, h: 28, life: 2.4, attack: { ...base(p), mv: 0.28, rehit: 0.3, kb: [20, -40], hitstop: 0.01 }, render: flaskPuddle }));
+  },
+};
+
 export const SUBWEAPONS = {
   dagger: {
     id: 'dagger', name: '투척 단검', desc: '빠르게 직선으로 날아가는 단검. 연사가 쉽다.', cost: 1, cd: 0.16, icon: 'sub_dagger',
@@ -107,5 +172,18 @@ export const SUBWEAPONS = {
       audio.sfx('dagger', { pitch: 0.6 });
     },
   },
+  flask: {
+    id: 'flask', name: '연금 플라스크', desc: '던질 때마다 불, 얼음, 독 차례로 바뀌는 플라스크. 불은 터지고, 얼음은 얼리고, 독은 고인다.', cost: 2, cd: 0.55, icon: 'sub_holywater',
+    // 외전 26장 보상 (docs/specs/ex_s26.md §3.1). p.flaskI = 다음 원소 (0 불 · 1 얼음 · 2 독, 저장 안 함)
+    fire(p, w, n) {
+      for (let i = 0; i < n; i++) {
+        const k = (p.flaskI = ((p.flaskI ?? -1) + 1) % 3), el = FLASK_EL[k];
+        w.spawnProjectile({ x: p.cx + p.facing * 14, y: p.y + 22, vx: p.facing * (380 + i * 80), vy: -460, w: 14, h: 14, behavior: 'fall', render: 'flask', color: el.col, spin: 12, life: 1.6, pierce: 99, owner: p,
+          attack: { ...base(p), mv: 0 },
+          onLand(pr, world) { pr.dead = true; FLASK_HIT[el.id](p, world, pr.cx, pr.bottom); } });
+      }
+      audio.sfx('dagger', { pitch: 0.75 });
+    },
+  },
 };
-export const SUB_ORDER = ['dagger', 'axe', 'holywater', 'cross', 'stopwatch', 'pistol', 'bible', 'bomb'];
+export const SUB_ORDER = ['dagger', 'axe', 'holywater', 'cross', 'stopwatch', 'pistol', 'bible', 'bomb', 'flask'];   // flask = 외전 26장 보상 (상점·드롭 무작위에도 든다)

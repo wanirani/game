@@ -59,6 +59,7 @@ export const SURFACE = {
   s23: 'snow',    // 외전: 늑대 고개 (s10 과 같은 눈·얼음)
   s24: 'stone',   // 외전: 장미 수녀원 (s11 과 같은 예배당 대리석)
   s25: 'dirt',    // 외전: 불탄 목장 (s01 과 같은 마을 흙)
+  s26: 'metal',    // 외전: 지하 공방 (s07 연구소와 같은 금속 바닥)
   hub: 'dirt', town: 'dirt',   // 마을 허브 (HubScene 의 TOWN_STAGE.id 는 'town')
   _default: 'stone',
 };

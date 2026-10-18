@@ -116,13 +116,13 @@ const P2_EXPECT = ['st_s01', 'st_s02', 'st_dracula', 'st_end1', 'st_s14', 'st_en
 if (run('C1')) {
   section('C1 데이터');
   const L = D.ACHIEVEMENTS;
-  ok(L.length === 67, `업적 67개 (${L.length})`);
+  ok(L.length === 68, `업적 68개 (${L.length})`);
   const cats = D.ACH_CATS.map((c) => c.id);
   eq(cats, ['story', 'combat', 'hero', 'companion', 'collect', 'arcade', 'challenge', 'secret'], '분류 8개 순서');
   for (const c of cats) ok(L.filter((d) => d.cat === c).length >= 7, `분류 ${c} ≥ 7`);
-  eq(Object.fromEntries(cats.map((c) => [c, L.filter((d) => d.cat === c).length])), { story: 11, combat: 7, hero: 7, companion: 7, collect: 9, arcade: 10, challenge: 9, secret: 7 }, '분류별 수');
-  eq(Object.fromEntries(cats.map((c) => [c, L.filter((d) => d.cat === c).reduce((a, d) => a + d.pts, 0)])), { story: 270, combat: 170, hero: 170, companion: 140, collect: 190, arcade: 210, challenge: 370, secret: 110 }, '분류별 점수');
-  ok(L.reduce((a, d) => a + d.pts, 0) === 1630, '점수 합 1,630');
+  eq(Object.fromEntries(cats.map((c) => [c, L.filter((d) => d.cat === c).length])), { story: 12, combat: 7, hero: 7, companion: 7, collect: 9, arcade: 10, challenge: 9, secret: 7 }, '분류별 수');
+  eq(Object.fromEntries(cats.map((c) => [c, L.filter((d) => d.cat === c).reduce((a, d) => a + d.pts, 0)])), { story: 290, combat: 170, hero: 170, companion: 140, collect: 190, arcade: 210, challenge: 370, secret: 110 }, '분류별 점수');
+  ok(L.reduce((a, d) => a + d.pts, 0) === 1650, '점수 합 1,650');
   ok(L.every((d) => [10, 20, 30, 50, 100].includes(d.pts)), '점수는 10·20·30·50·100');
   ok(L.filter((d) => d.pts === 100).length === 1, '100점은 하나 (ch_all)');
   ok(new Set(L.map((d) => d.id)).size === L.length, 'id 중복 없음');
@@ -142,14 +142,14 @@ if (run('C1')) {
   ok(L.every((d) => (d.reward?.items ?? []).every((x) => ITEMS[x.id] && Number.isInteger(x.qty) && x.qty >= 1)), '보상 아이템이 ITEMS 에 있음');
   ok(L.every((d) => !d.reward || Object.keys(d.reward).every((k) => ['gold', 'items', 'title', 'deco'].includes(k))), '보상 필드 이름');
   const fixed = L.filter((d) => d.reward && (d.reward.gold || d.reward.items));
-  ok(fixed.length === 12, `정한 골드·소모품 12 (${fixed.length})`);
+  ok(fixed.length === 13, `정한 골드·소모품 13 (${fixed.length})`);
   ok(L.filter((d) => !d.reward).length === 34, `기본 골드 34 (${L.filter((d) => !d.reward).length})`);
   ok(L.filter((d) => !d.reward).every((d) => A.rewardOf(d).gold === d.pts * 25), '기본 골드 = pts × 25');
   ok(L.filter((d) => d.reward?.title || d.reward?.deco).every((d) => A.rewardOf(d).gold === 0 && !A.rewardOf(d).items.length), '이명·장식 업적은 골드 없음');
   const goldSum = L.reduce((a, d) => a + A.rewardOf(d).gold, 0);
   ok(goldSum > 15000 && goldSum < 25000, `받을 수 있는 골드 합 ≈ 20,300 (${goldSum})`);
   // 특정 값
-  ok(DEF.get('ch_all').cond.n === 66 && DEF.get('ch_all').cond.n === L.length - 1, 'ch_all.n === 66');
+  ok(DEF.get('ch_all').cond.n === 67 && DEF.get('ch_all').cond.n === L.length - 1, 'ch_all.n === 67');
   ok(DEF.get('cl_docs_all').cond.n === Object.keys(DOCS).length, `cl_docs_all.n === DOCS 수 (${Object.keys(DOCS).length})`);
   let foes = null;
   try { foes = (await imp('src/scenes/games/duel.js')).FOES.length; } catch {
@@ -457,14 +457,14 @@ if (run('C4')) {
     ok(g.ach.title() === 't_dawn' && g.ach.titles().find((t) => t.id === 't_dawn').got && g.ach.titles().find((t) => t.id === 't_dawn').from === 'st_end1', '얻으면 유효 · titles() from');
     // 요약·NEW·markSeen
     const s = g.ach.summary();
-    ok(s.got === 1 && s.total === 67 && s.pts === 20 && s.ptsMax === 1630 && s.unseen === 1 && s.byCat.story.got === 1 && s.byCat.story.total === 11, 'summary()');
+    ok(s.got === 1 && s.total === 68 && s.pts === 20 && s.ptsMax === 1650 && s.unseen === 1 && s.byCat.story.got === 1 && s.byCat.story.total === 12, 'summary()');
     ok(g.ach.status('st_end1').isNew && !g.ach.status('st_end1').claimable, 'NEW · 이명 업적은 받을 것 없음');
     g.ach.markSeen();
     ok(g.ach.summary().unseen === 0 && !g.ach.status('st_end1').isNew, 'markSeen → NEW 지움');
     const kb = g.ach.status('cb_kill_1k');
     ok(kb.bar && kb.need === 1000 && kb.cur === 0 && kb.got === null, "status: 진행 막대 'kills'");
     ok(g.ach.status('sc_cat').hiddenLocked && !g.ach.status('st_s01').hiddenLocked, 'hiddenLocked');
-    ok(g.ach.list('secret').length === 7 && g.ach.list().length === 67, 'list(cat)');
+    ok(g.ach.list('secret').length === 7 && g.ach.list().length === 68, 'list(cat)');
     g.done();
   }
 }
@@ -603,7 +603,7 @@ if (run('C6')) {
   const blen = JSON.stringify({ data: cb, baseRev: 9 }).length;
   ok(blen <= META_LIMIT && serverOk(cb), `최대 ach + 명예의 전당 200줄 → cleanMeta ${blen} B ≤ 64 KB, 서버 검사 통과`);
   ok(sval.isValidAch(cb.ach) && Object.keys(cb.ach.got).length + Object.keys(cb.ach.prog).length + cb.ach.claimed.length > 300, `최대 ach 는 24 KB 에 맞게 줄여도 대부분 남는다 (got ${Object.keys(cb.ach.got).length}·prog ${Object.keys(cb.ach.prog).length}·claimed ${cb.ach.claimed.length})`);
-  // 지금 설계의 최대 (67 업적 모두 + prog 25 + claimed 46)
+  // 지금 설계의 최대 (68 업적 모두 + prog 25 + claimed 46)
   const real = { v: 1, got: Object.fromEntries(D.ACHIEVEMENTS.map((d) => [d.id, 1759700000000])), prog: Object.fromEntries(A.PROG_KEYS.map((k) => [k, 123456])), claimed: D.ACHIEVEMENTS.map((d) => d.id), seenAt: 1759700000000, title: 't_legend', deco: 'd_moon' };
   const rlen = JSON.stringify(real).length;
   ok(rlen < 5000 && isDeepStrictEqual(M.cleanAch(real).got, real.got), `지금 설계 최대 ach ${rlen} B (≈ 4 KB), 정리해도 그대로`);
@@ -685,7 +685,7 @@ if (run('C8')) {
 
 // ═════════ C9 회차 ═════════
 // docs/specs/ngplus.md §6: 엔진 요약이 지난 회차 기록(ng.past)을 가상 슬롯으로 함께 읽는다 → 넘겨도 새 달성 0 · 진행이 줄지 않음 ·
-// diffEnding 은 그 회차(가상 슬롯)의 난이도로만. 업적 고정 수(67 · 1,630 · 17 · 25)는 C1 이 그대로 본다
+// diffEnding 은 그 회차(가상 슬롯)의 난이도로만. 업적 고정 수(68 · 1,650 · 17 · 25)는 C1 이 그대로 본다
 if (run('C9')) {
   section('C9 회차 (ngplus.md §6)');
   const NG = await imp('src/game/ngplus.js');
@@ -720,7 +720,7 @@ if (run('C9')) {
     ok(ctx.slots.length === 2, `ctx.slots = 지금 회차 + 지난 회차 가상 슬롯 (${ctx.slots.length})`);
     const m1 = metrics(ctx);
     const down = D.ACHIEVEMENTS.filter((d) => m1[d.id] < m0[d.id]).map((d) => `${d.id} ${m0[d.id]}→${m1[d.id]}`);
-    ok(down.length === 0, `67개 조건의 지표가 하나도 줄지 않음 (${down.join(', ')})`);
+    ok(down.length === 0, `68개 조건의 지표가 하나도 줄지 않음 (${down.join(', ')})`);
     for (const id of ['ch_rank_s', 'ch_rank_s_all', 'cl_secret20', 'cl_quest30', 'st_end2', 'cl_relics', 'cl_otherworld']) ok(m1[id] === m0[id], `${id} 진행 그대로 (${m0[id]} → ${m1[id]})`);
     // 가상 슬롯이 진행을 붙잡는다: 지난 회차 칸을 빼면 줄어든다 (훅이 없을 때의 모습)
     const noPast = { ...ctx, slots: ctx.slots.filter((d) => d !== ctx.slots[1]) };

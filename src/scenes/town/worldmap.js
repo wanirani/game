@@ -11,7 +11,7 @@
 //     아직 맵이 없는 2부 스테이지(STAGES 에 없음)는 잠긴 노드로만 보인다.
 //   enter({ page }) : 페이지 지정이 우선. 없으면 가장 최근에 열린 미클리어 스테이지나 lastStage 가 2부면 1, 아니면 0
 //   해금 연출 (차례로): s13 (유물 5 + s12 클리어) · s14 (2부 시작 → flags.s14_revealed) · s20 (처음 열렸을 때 → flags.s20_revealed)
-//                       · 외전 s21 · s22 · s23 · s24 · s25 (2부 엔딩 p2_done 뒤 처음 지도를 열 때 해금 → flags.<id>_revealed; 연출은 그 외전의 쪽(STAGES[id].page)에서,
+//                       · 외전 s21 · s22 · s23 · s24 · s25 (2부 엔딩 p2_done 뒤 처음 지도를 열 때 해금 → flags.<id>_revealed — s26 은 SIDE_GATE: 7장 클리어 뒤; 연출은 그 외전의 쪽(STAGES[id].page)에서,
 //                         한꺼번에 열리면 s21(이계 Ⅱ) → s22 → s23 → s24 → s25(악마성 Ⅰ 넷 연속) 차례로 — startReveal 이 쪽을 넘긴다. 회차는 flags 를 비우므로 다시 열린다)
 //   옛 세이브 (2부가 생기기 전에 s13 을 깼다): 들어오자마자 2부 프롤로그 → 마을 (world2 §2.2 — 지도는 마을 위에 쌓이는 장면이라 바로 가지 않는다)
 //   입력: 방향 = 노드 · 결정 = 출발 · 취소/메뉴 = 닫기 · 지도 전환 = Q/E·S/D·Tab (패드 LB/RB·LT·SELECT) · 터치 = 노드/탭/버튼
@@ -62,7 +62,8 @@ const P2_IDS = ['s14', 's15', 's16', 's17', 's18', 's19', 's20'];
 //   어느 지도에 놓일지는 STAGES[id].page (없으면 1 = 이계 지도): s21 → 이계 Ⅱ 17장 위, s22 → 악마성 Ⅰ 2장 안개의 묘지 위쪽 숲 언덕,
 //   s23 → 악마성 Ⅰ 10장 얼어붙은 첨탑 오른쪽 눈 덮인 산맥, s24 → 악마성 Ⅰ 11장 피의 예배당 오른쪽 아래 남쪽 기슭,
 //   s25 → 악마성 Ⅰ 1장 불타는 마을 왼쪽 위 에슈빌 외곽 들판 (그레타의 불탄 목장)
-const SIDE_FROM = { s21: 's17', s22: 's02', s23: 's10', s24: 's11', s25: 's01' };
+//   s26 → 악마성 Ⅰ 7장 연금술 연구소 아래 (지하 공방 — 1부 외전, 7장 클리어로 열린다)
+const SIDE_FROM = { s21: 's17', s22: 's02', s23: 's10', s24: 's11', s25: 's01', s26: 's07' };
 const sidePage = (id) => STAGES[id]?.page ?? 1;
 // 외전 정보판의 동료 칸 (합류 플래그 · 합류 전/뒤 문구). label = 칸 이름 (없으면 '동료' — s23 은 동료 대신 무기 한 벌이라 '보상')
 const SIDE_INFO = {
@@ -71,7 +72,10 @@ const SIDE_INFO = {
   s23: { label: '보상', flag: 'ex_s23_done', got: '사냥달 무기 일곱 자루', wait: '빈칸의 현상금이 기다린다', col: '#ffcf6a', gotCol: '#fff0c8' },
   s24: { flag: 'recruit_gd_vesper', got: '박쥐 베스퍼 합류', wait: '장미 향 편지가 기다린다', col: '#ff8aa8', gotCol: '#ffd6e0' },
   s25: { flag: 'recruit_mt_morgen', got: '군마 모르겐 합류', wait: '불탄 목장에서 말이 운다', col: '#ffc070', gotCol: '#fff0d0' },
+  s26: { label: '보상', flag: 'ex_s26_done', got: '연금 플라스크 · 외알 안경', wait: '편지를 안은 작은 호문쿨루스', col: '#d8c070', gotCol: '#fff0c0', tag: '7장 그 뒤의 이야기 · 권장 Lv 28' },   // tag = 외전 칸 문구 (없으면 2부 엔딩 그 뒤)
 };
+/** 외전이 열리는 조건 (없으면 2부 엔딩 뒤 — s21–s25). s26 은 7장 클리어 (docs/specs/ex_s26.md §1) */
+const SIDE_GATE = { s26: (P) => !!P.cleared?.s07 };
 // STAGES 에 아직 없는 2부 스테이지의 자리 (잠긴 노드로만 보인다; 값은 world2 §4.2)
 const P2_STUB = {
   s14: { name: '거울의 성', color: '#cfe8ff', mapPos: { x: 0.16, y: 0.74 } },
@@ -109,6 +113,7 @@ const REVEALS = {
   s23: { title: '외전 · 늑대 고개', sub: '액수 칸이 빈 현상금 공고가 북쪽 고개에서 날아들었다', color: '#ffcf6a', tcol: '#fff0c8', crack: '#fff0c8', fx: 'holy' },
   s24: { title: '외전 · 장미 수녀원', sub: '장미 향 나는 붉은 봉랍의 편지가 남쪽 기슭에서 날아들었다', color: '#ff6a8a', tcol: '#ffd6e0', crack: '#ffd6e0', fx: 'dark' },
   s25: { title: '외전 · 불탄 목장', sub: '그을린 고삐를 문 흑마가 에슈빌 여관 문을 두드렸다', color: '#ffb060', tcol: '#fff0d0', crack: '#fff0d0', fx: 'holy' },
+  s26: { title: '외전 · 지하 공방', sub: '편지를 안은 작은 호문쿨루스가 성당 문 밑으로 기어들었다', color: '#d8c070', tcol: '#fff0c0', crack: '#fff0c0', fx: 'holy' },
 };
 
 /** 글자 폭을 재는 캔버스 (update 에서도 이름표 배치를 계산할 수 있게) */
@@ -177,9 +182,11 @@ export class WorldMapScene extends Scene {
     // 외전 (docs/specs/ex_s21.md · ex_s22.md · ex_s23.md · ex_s24.md · ex_s25.md): 2부 엔딩(두 엔딩 모두 p2_done) 뒤 처음 지도를 열 때 열고 한 번 알린다. 이야기 진행(엔딩)과는 무관
     //   p2_done 은 엔딩 대본 끝에서야 켜지므로, 엔딩 장면이 먼저 저장한 ending_p2·ending_p2true 도 본다 (엔딩 도중 앱을 닫은 세이브 — hub.js 와 같은 규칙)
     //   연출은 그 외전이 놓인 지도에서 (s21 이계 Ⅱ · s22 · s23 · s24 · s25 악마성 Ⅰ — 처음 여는 2부 완주 세이브는 다섯이 차례로, startReveal 이 쪽을 넘긴다)
+    //   s26 (1부 외전, ex_s26.md §1) 은 SIDE_GATE 로 — 7장을 깬 뒤 처음 지도를 열 때 (1부 중에도). 2부를 끝낸 옛 세이브는 다른 외전과 함께 차례로 열린다
     const p2Ended = !!(F.p2_done || F.ending_p2 || F.ending_p2true);
     for (const id of SIDE_STAGES) {
-      if (!p2Ended || F[`${id}_revealed`] || !REVEALS[id]) continue;
+      const open = SIDE_GATE[id] ? SIDE_GATE[id](P, F) : p2Ended;
+      if (!open || F[`${id}_revealed`] || !REVEALS[id]) continue;
       if (!P.unlocked.includes(id)) P.unlocked.push(id);
       F[`${id}_revealed`] = true;
       queue.push(this.mkReveal(id, sidePage(id)));
@@ -229,7 +236,7 @@ export class WorldMapScene extends Scene {
         if (id === 's13' && !P.unlocked.includes('s13')) continue;
         nodes.push({ id, stage: STAGES[id] });
       }
-      this.sideNodes(0, nodes, links);   // 외전 (s22 · s23 · s24 · s25) — 투기장 노드 앞
+      this.sideNodes(0, nodes, links);   // 외전 (s22 · s23 · s24 · s25 · s26) — 투기장 노드 앞
       if (STAGES.arena) nodes.push({ id: 'arena', stage: STAGES.arena, arena: true });
       // 1부 장 사슬: 투기장·역성(s13)·외전은 빼고 (외전을 넣으면 s12 → s22 → s23 → s24 → s25 길이 생긴다)
       const chain = nodes.filter((n) => !n.arena && !n.side && n.id !== 's13');
@@ -249,7 +256,7 @@ export class WorldMapScene extends Scene {
     return { page, nodes, links };
   }
   /**
-   * 외전 노드: 열렸을 때만 (2부 엔딩 뒤), 이 쪽(STAGES[id].page)에 놓이는 것만. 장 사슬 끝이 아니라 SIDE_FROM 노드에서 갈라지는 길로 잇는다
+   * 외전 노드: 열렸을 때만 (2부 엔딩 뒤 · s26 은 7장 클리어 뒤), 이 쪽(STAGES[id].page)에 놓이는 것만. 장 사슬 끝이 아니라 SIDE_FROM 노드에서 갈라지는 길로 잇는다
    * (이계 Ⅱ 는 그 외전의 색, 악마성 Ⅰ 양피지는 1부 길과 같은 붉은 잉크)
    */
   sideNodes(page, nodes, links) {
@@ -1235,10 +1242,10 @@ export class WorldMapScene extends Scene {
     if (!docs.length) value('없음', rows[0], '#6a5a50', vx);
     else value(`${found}/${docs.length}`, rows[0], found === docs.length ? '#8ae0a0' : '#c8b8a0', vx + 2 + docs.length * 24);
     if (n.side) {
-      // 외전: 유물·세계의 심장·별의 조각 대신 이야기 안내와 동료 (합류했으면 이름) — s21 아르겐 · s22 무닌 · s24 베스퍼 · s25 모르겐 · s23 은 '보상' 칸 (사냥달 무기 일곱 자루)
+      // 외전: 유물·세계의 심장·별의 조각 대신 이야기 안내와 동료 (합류했으면 이름) — s21 아르겐 · s22 무닌 · s24 베스퍼 · s25 모르겐 · s23 · s26 은 '보상' 칸 (사냥달 무기 일곱 자루 · 플라스크와 외알 안경)
       const si = SIDE_INFO[n.id] ?? {}, got = !!(si.flag && P.flags?.[si.flag]);
       label('외전', rows[1]);
-      value('2부 엔딩 그 뒤의 이야기', rows[1], si.col ?? '#c8e4ff', vx);
+      value(si.tag ?? '2부 엔딩 그 뒤의 이야기', rows[1], si.col ?? '#c8e4ff', vx);
       label(si.label ?? '동료', rows[2]);
       value(got ? si.got ?? '' : si.wait ?? '', rows[2], got ? si.gotCol ?? '#ffffff' : page === 1 ? '#8a7aa0' : '#a08a7a', vx);
       return;

@@ -44,6 +44,8 @@ import { ROOMS as S23 } from './maps/s23.js';
 import { ROOMS as S24 } from './maps/s24.js';
 // ── EX map import s25 (EX5-MAP) — 외전 ──
 import { ROOMS as S25 } from './maps/s25.js';
+// ── EX map import s26 (CH26-A) — 외전 (1부) ──
+import { ROOMS as S26 } from './maps/s26.js';   // 외전 26장 (CH26, docs/specs/ex_s26.md)
 
 /**
  * 세로 확장 시야 여백 (hud_mobile §2): 16:9 보다 네모난 화면에서 방이 화면보다 낮으면 위·아래로 보이는 곳을 채우는 규칙.
@@ -183,16 +185,28 @@ export const STAGES = {
     enemies: ['wisp', 'ghost', 'crow', 'wolf', 'skeleton', 'death_knight', 'chain_warden', 'hellhound', 'mimic'], docs: [], shard: null, heart: null,
     gimmick: { kind: 'magma', mode: 'tide', low: 18, high: 15.5, period: 10, hold: 1.8, warn: 1.6 }, color: '#ffb060', next: null, mapPos: { x: 0.05, y: 0.68 },   // mapPos 는 INTEG 가 겹침을 보고 고칠 수 있다 (ex_s25.md §5.1)
     req: '2부의 끝을 본 뒤, 그을린 고삐를 문 흑마가 여관 문을 두드리면 갈 수 있다' }),
+  // ── EX stage s26 (CH26-A 맵·대본·보스 · CH26-WIRE 통합) — 외전 「파라켈의 지하 공방」 (docs/specs/ex_s26.md). **7장 클리어 뒤 열리는 첫 1부 외전**.
+  //    side: true · part: 1 · page: 0 = 1부 지도에서 7장 연금술 연구소로부터 아래로 갈라지는 외전 노드 (town/worldmap.js SIDE_FROM.s26 = 's07', SIDE_GATE.s26)
+  //    클리어해도 progress.chapter 를 올리지 않는다 (results.js). 보상: 보조무기 flask(r5 '@') · 장신구 u_paracel(보스 드롭) · 로어 l35(r3 '@')
+  //    대본 s26_intro · s26_t1 · s26_t2 · s26_outro · b_paracel_* = data/story_ex26.js
+  s26: S({ id: 's26', chapter: 26, part: 1, page: 0, side: true, name: '지하 공방', sub: '연구소 밑, 백 년 동안 불이 꺼지지 않은 곳', theme: 'alchemy', bg: 'bg/s07_alchemy', tex: 'tex/tex_lab', tex2: 'tex/tex_brass', tileStyle: 'lab',
+    music: 's07', level: 30, darkness: 0.5, darkColor: '#08060a', liquid: 'poison', boss: 'b_paracel', rooms: S26, parTime: 420,
+    enemies: ['slime', 'homunculus', 'flesh_golem', 'plague_doctor', 'acid_turret', 'flea_man', 'mimic'], docs: [], shard: null, heart: null,
+    gimmick: null, color: '#d8c070', next: null, mapPos: { x: 0.71, y: 0.63 },   // mapPos 는 겹침을 보고 고칠 수 있다 (ex_s26.md §1)
+    req: '7장 연구소를 지난 뒤, 편지를 안은 작은 호문쿨루스가 성당 문 밑으로 기어들면 갈 수 있다 (권장 Lv 28)' }),
   arena: S({ id: 'arena', chapter: 0, name: '피의 투기장', sub: '서바이벌 & 보스 러시', theme: 'arena', bg: 'bg/s_arena', tex: 'tex/tex_castle_stone', tex2: 'tex/tex_dirt', tileStyle: 'stone',
     music: 'arena', level: 10, darkness: 0.3, boss: null, rooms: ARENA, parTime: 600, intro: null, outro: null,
     enemies: [], next: null, mapPos: { x: 0.3, y: 0.3 } }),
 };
 /** 1부 스테이지 (월드맵 첫 쪽, 서바이벌 적 풀 등 1부만 쓰는 곳) */
 export const STAGE_ORDER_P1 = ['s01', 's02', 's03', 's04', 's05', 's06', 's07', 's08', 's09', 's10', 's11', 's12', 's13'];
-/** 2부 스테이지 중 STAGES 에 실제로 있는 것만 (맵이 한 묶음씩 들어와도 모든 소비처가 그대로 동작). 끝의 s21 · s22 · s23 · s24 · s25 는 외전 (side: true) */
-export const STAGE_ORDER_P2 = ['s14', 's15', 's16', 's17', 's18', 's19', 's20', 's21', 's22', 's23', 's24', 's25'].filter((id) => STAGES[id]);   // [hook:p2]
-/** 외전 스테이지 (STAGES[id].side — 2부 엔딩 뒤 세계 지도가 연다. 이야기 장 수·엔딩 판정에는 들지 않는다) */
+/** 2부 스테이지 중 STAGES 에 실제로 있는 것만 (맵이 한 묶음씩 들어와도 모든 소비처가 그대로 동작). 끝의 s21 … s26 은 외전 (side: true; s26 만 part 1 — 7장 클리어로 열린다).
+ *  s26 은 1부 외전이지만 STAGE_ORDER_P1 (지도·서바이벌·탑·슬롯이 쓰는 1부 장 사슬) 에는 넣지 않는다 */
+export const STAGE_ORDER_P2 = ['s14', 's15', 's16', 's17', 's18', 's19', 's20', 's21', 's22', 's23', 's24', 's25', 's26'].filter((id) => STAGES[id]);   // [hook:p2]
+/** 외전 스테이지 (STAGES[id].side — 이야기 장 수·엔딩 판정에는 들지 않는다). s21–s25 는 2부 엔딩 뒤, s26 은 7장 클리어 뒤 세계 지도가 연다 */
 export const SIDE_STAGES = STAGE_ORDER_P2.filter((id) => STAGES[id].side);
+/** 2부 엔딩 뒤 열리는 외전 (s21–s25). s26 은 1부 외전 — 7장 클리어로 열린다 (docs/specs/ex_s26.md §1) */
+export const SIDE_STAGES_P2 = SIDE_STAGES.filter((id) => (STAGES[id].part ?? 2) === 2);
 /** 이 스테이지가 외전인가 */
 export const isSideStage = (id) => !!STAGES[id]?.side;
 /** 전체 스테이지 순서 (1부 + 있는 2부). 1부만 필요한 곳은 STAGE_ORDER_P1 을 쓴다 (MASTER_PLAN §1.14) */

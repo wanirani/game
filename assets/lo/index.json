@@ -108,6 +108,7 @@
   "portraits/b_nightwing",
   "portraits/b_nihil",
   "portraits/b_nihil2",
+  "portraits/b_paracel",
   "portraits/b_ziz",
   "portraits/bran",
   "portraits/bran__angry",
@@ -902,6 +903,13 @@
    "h": 581,
    "bytes": 39348,
    "srcBytes": 88444
+  },
+  "portraits/b_paracel.webp": {
+   "src": "f6f50cc2284b",
+   "w": 461,
+   "h": 614,
+   "bytes": 46258,
+   "srcBytes": 96888
   },
   "portraits/b_ziz.webp": {
    "src": "2ff8839d7db6",

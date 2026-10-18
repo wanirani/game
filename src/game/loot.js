@@ -11,6 +11,9 @@
 import { chance, randi, weightedPick, pick } from '../core/math.js';
 import { POWERUPS } from '../data/powerups.js';
 import { SUB_ORDER } from '../data/subweapons.js';
+/** 촛불에서 나오는 보조무기 풀. 연금 플라스크(외전 26장 보상)는 그 장 안이거나 그 장을 끝낸 뒤에만 섞인다 (처음 얻는 보상이 촛불에서 먼저 나오지 않게) */
+const SUB_BASE = SUB_ORDER.filter((id) => id !== 'flask');
+const subPool = (world) => (world?.stage?.id === 's26' || world?.game?.state?.progress?.flags?.ex_s26_done ? SUB_ORDER : SUB_BASE);
 import { ITEMS, makeItem, rollItem, rollRarity, BOSS_UNIQUES, MYTHIC_WEAPONS, MYTHIC_WEAPONS_P2, isEquipment } from '../data/items.js';
 
 /** 's14' → 14 (스테이지 id 가 아니면 0) */
@@ -53,7 +56,7 @@ export function rollCandleLoot(world, big) {
   const r = world.rng ? world.rng.next() : Math.random();   // [hook:plat] 일일 도전 시드 (game/world.js rng)
   const lv = stageLv(world);
   if (big) {
-    if (r < 0.1) return [{ type: 'sub', data: { id: pick(SUB_ORDER) } }];
+    if (r < 0.1) return [{ type: 'sub', data: { id: pick(subPool(world)) } }];
     if (r < 0.2) return [{ type: 'powerup', data: { id: rollPowerupId() } }];
     if (r < 0.45) return [{ type: 'heart', data: { value: 5 } }];
     if (r < 0.7) return [{ type: 'gold', data: { amount: randi(10, 30) * lv } }];
@@ -65,7 +68,7 @@ export function rollCandleLoot(world, big) {
   if (r < 0.62) return [{ type: 'heart', data: { value: 5 } }];
   if (r < 0.8) return [{ type: 'gold', data: { amount: randi(3, 12) * lv } }];
   if (r < 0.86) return [{ type: 'mp', data: { amount: 15 } }];
-  if (r < 0.9) return [{ type: 'sub', data: { id: pick(SUB_ORDER) } }];
+  if (r < 0.9) return [{ type: 'sub', data: { id: pick(subPool(world)) } }];
   if (r < 0.93) return [{ type: 'powerup', data: { id: rollPowerupId() } }];
   return [{ type: 'heart', data: { value: 1 } }];
 }

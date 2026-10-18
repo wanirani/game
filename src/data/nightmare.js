@@ -88,3 +88,18 @@ export function nmLevel(e, heroLv = 1) {
 }
 /** 권장 레벨 (이 레벨부터 악몽 레벨이 영웅을 따라 오른다) */
 export const nmRecLevel = (e) => (STAGES[e?.stage]?.level ?? 1) + NM_LEVEL_UP + NM_LEVEL_UNDER_HERO;
+
+// ── [NM-TUNE] 넘친 레벨의 보스 체력 (p3_verify MAJOR-2 · 오케스트레이터 결정 k = 0.7, 2026-10-18) ──
+//  악몽 레벨은 영웅을 따라 오르지만(영웅 − 2) boss.js 의 초반·후반 보정은 이야기 레벨에 묶여 있어, 체력은 레벨 곡선을 그대로 타고
+//  영웅 화력은 이야기 기준으로만 늘어 Lv 99 영웅의 싸움이 이야기의 2–4배로 길어졌다. 후반 보정을 (악몽 레벨 − 8) 쪽으로 k 만큼 옮긴다:
+//   체력 × (late(max(이야기, 악몽 − 8)) ÷ late(이야기))^k — 권장 레벨(악몽 = 이야기 + 8)에서는 정확히 1 (권장 레벨 표는 그대로)
+/** 넘친 레벨 체력 완화 지수 */
+export const NM_OVERLEVEL_K = 0.7;
+/** 후반(Lv 25~) 보스 체력 완화 — game/bosses/boss.js 의 late 와 같은 식 */
+export const nmLateEase = (L) => 1 / (1 + Math.max(0, (Number.isFinite(L) ? L : 1) - 24) * 0.035);
+/** 넘친 레벨 체력 배율 (≤ 1): baseLevel = 이야기 레벨, level = 악몽 레벨 (월드 레벨) */
+export function nmOverLevelHp(baseLevel, level) {
+  const b = Number.isFinite(baseLevel) ? baseLevel : 1, l = Number.isFinite(level) ? level : b;
+  const f = nmLateEase(Math.max(b, l - NM_LEVEL_UP)) / nmLateEase(b);
+  return f >= 1 ? 1 : Math.pow(f, NM_OVERLEVEL_K);
+}

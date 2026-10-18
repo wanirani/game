@@ -18,6 +18,7 @@ import { enemyStrike } from '../combat.js';
 import { enemyStats } from '../enemy.js';
 import { rand, clamp, angleTo } from '../../core/math.js';
 import { audio } from '../../core/audio.js';
+import { nmOverLevelHp } from '../../data/nightmare.js';   // [nightmare] 넘친 레벨 체력 (NM-TUNE)
 
 /** 경고 하나가 켜는 예고(카운터) 창의 최대 길이 (초) — 긴 연속 패턴 내내 카운터가 되지 않게 */
 const TG_MAX = 1.5;
@@ -47,7 +48,9 @@ export class Boss extends Entity {
     // 후반(Lv25~) 보스는 체력 곡선이 가팔라 전투가 늘어지므로 완만하게 깎는다 (목표: 기본기 100~160타)
     const late = 1 / (1 + Math.max(0, shapeLv - 24) * 0.035);
     const nmMul = (k) => (Number.isFinite(nm?.[k]) && nm[k] > 0 ? nm[k] : 1);
-    s.maxHp = Math.round(s.maxHp * (def.hpMul ?? 1) * early * late * nmMul('hpMul'));
+    // [nightmare] 넘친 레벨: 후반 보정을 (악몽 레벨 − 8) 쪽으로 0.7 만큼 (권장 레벨에서는 1 — data/nightmare.js nmOverLevelHp)
+    const nmLv = nm ? nmOverLevelHp(shapeLv, world.stage.level) : 1;
+    s.maxHp = Math.round(s.maxHp * (def.hpMul ?? 1) * early * late * nmMul('hpMul') * nmLv);
     if (nm) s.atk = Math.round(s.atk * nmMul('atkMul'));
     s.hp = s.maxHp;
     s.exp = Math.round((def.exp ?? 400) * (1 + world.stage.level * 0.35) * (diff.exp ?? 1));
@@ -63,7 +66,7 @@ export class Boss extends Entity {
     this.aggro = (diff.aggro ?? 1) * nmMul('spMul');   // [nightmare] 쉼만 짧아진다 (예고 시간은 그대로)
     this.inferno = world.state.difficulty === 'inferno' || world.state.difficulty === 'nightmare' || !!world.ngBoss;   // [hook:ng] 회차(2회차부터)도 강화 패턴
     this.inferno ||= !!nm;   // [nightmare] 악몽 재대결은 강화 패턴
-    if (nm) this.nmScale = { hpMul: nmMul('hpMul'), atkMul: nmMul('atkMul'), spMul: nmMul('spMul') };   // 시험·도구용 (이름 'nm' 은 네메인이 패턴 상태로 쓴다 — 겹치지 않게)
+    if (nm) this.nmScale = { hpMul: nmMul('hpMul'), atkMul: nmMul('atkMul'), spMul: nmMul('spMul'), hpLv: nmLv };   // 시험·도구용 (이름 'nm' 은 네메인이 패턴 상태로 쓴다 — 겹치지 않게)
     this.anim = 'idle'; this.animT = 0;
     this.dying = 0;
     this._tgT = 0; this._tgOn = false;   // [hook:feel] 예고(윈드업) 창 — get telegraph

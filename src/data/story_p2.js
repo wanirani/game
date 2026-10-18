@@ -1,5 +1,5 @@
 // 2부 스토리 A — owner: STORY-P2-A (world2 §1.1–1.4 프롤로그·14~17장, §1.6 엔딩, §1.7 크레딧; MASTER_PLAN §1.2 동료 id·이름·초상화)
-// SCRIPTS_P2 = { ...이 파일의 스크립트, ...SCRIPTS_P2B (18~20장·NPC 장별 대사·의뢰 대사, STORY-P2-B), ...SCRIPTS_EX (외전 21장, story_ex.js) }
+// SCRIPTS_P2 = { ...이 파일의 스크립트, ...SCRIPTS_P2B (18~20장·NPC 장별 대사·의뢰 대사, STORY-P2-B), ...SCRIPTS_EX (외전 21장, story_ex.js), ...SCRIPTS_EX26 (외전 26장, story_ex26.js) }
 //   → data/story.js 끝에서 SCRIPTS 에 합쳐진다.
 // CREDITS_P2 → data/story.js 의 creditsFor 가 '— 제작 —' 바로 앞에 끼운다 (2부 엔딩 크레딧이거나 2부 엔딩을 본 적이 있을 때).
 // story.js 를 import 하지 않는다 (순환 금지). 도우미(N·H·S·cg·bgm…)는 story.js 와 같은 모양으로 여기서 다시 선언한다.
@@ -21,6 +21,7 @@
 //       (results.js hasNewBranch) → 아웃트로의 합류(recruit + flag)는 조건부 분기보다 앞에 둔다.
 import { SCRIPTS_P2B } from './story_p2b.js';
 import { SCRIPTS_EX } from './story_ex.js';   // 외전 21장 「하늘 정원의 둥지」 (EX-INTEG, docs/specs/ex_s21.md)
+import { SCRIPTS_EX26 } from './story_ex26.js';   // 외전 26장 「파라켈의 지하 공방」 (CH26, docs/specs/ex_s26.md)
 
 const N = (text, x) => ({ who: 'narrator', text, ...x });
 const H = (text, x) => ({ who: 'hero', text, ...x });
@@ -646,7 +647,7 @@ const SCRIPTS_P2A = {
 };
 
 // 18~20장·NPC·의뢰(STORY-P2-B) · 외전 21장(story_ex.js)과 합친다. 같은 id 가 겹치면 뒤쪽이 이긴다 (지금은 겹치지 않는다)
-export const SCRIPTS_P2 = { ...SCRIPTS_P2A, ...SCRIPTS_P2B, ...SCRIPTS_EX };
+export const SCRIPTS_P2 = { ...SCRIPTS_P2A, ...SCRIPTS_P2B, ...SCRIPTS_EX, ...SCRIPTS_EX26 };
 
 /** 2부 크레딧 (world2 §1.7 — story.js CREDITS 와 같은 형식: '— 제목 —' 은 소제목, '역할 — 이름' 은 두 칸 행, '' 은 간격) */
 export const CREDITS_P2 = [

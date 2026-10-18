@@ -49,12 +49,14 @@ const RECRUITS = { s14: 'gd_mirra', s15: 'mt_ignis', s16: 'gd_lumen', s17: 'mt_g
 //   s23 「빈칸의 현상금」 (docs/specs/ex_s23.md): 1부 지도(page 0), 동료 대신 아웃트로에서 신화 무기 「사냥꾼의 달」 일곱 자루 (reward: give once·silent = HUNT_SET)
 //   s24 「시드는 장미」 (docs/specs/ex_s24.md): 1부 지도(page 0), 아웃트로에서 수호신 베스퍼 합류
 //   s25 「불탄 목장의 밤」 (docs/specs/ex_s25.md): 1부 지도(page 0), 아웃트로에서 탈것 모르겐 합류
+//   s26 「파라켈의 지하 공방」 (docs/specs/ex_s26.md): 1부 지도(page 0), part 1 — 7장 클리어로 열린다 (2부 엔딩이 아니라). 보상 = 보조무기 flask(r5 '@') · 장신구 u_paracel(보스 드롭) · 로어 l35(r3 '@')
 const EX_LIST = [
   { sid: 's21', chapter: 21, page: 1, boss: 'b_argen', recruit: 'mt_argen', rig: 'wyvern', done: 'ex_s21_done', scripts: ['s21_intro', 's21_t1', 's21_t2', 'b_argen_pre', 'b_argen_corrupt', 'b_argen_awaken', 'b_argen_post', 's21_outro'] },
   { sid: 's22', chapter: 22, page: 0, boss: 'b_nemain', recruit: 'gd_munin', done: 'ex_s22_done', scripts: ['s22_intro', 's22_t1', 's22_t2', 'b_nemain_pre', 'b_nemain_unmask', 'b_nemain_last', 'b_nemain_post', 's22_outro'] },
   { sid: 's23', chapter: 23, page: 0, boss: 'b_hagen', reward: 'hunt', done: 'ex_s23_done', scripts: ['s23_intro', 's23_t1', 's23_t2', 'b_hagen_pre', 'b_hagen_moon', 'b_hagen_last', 'b_hagen_post', 's23_outro'] },
   { sid: 's24', chapter: 24, page: 0, boss: 'b_bride', recruit: 'gd_vesper', done: 'ex_s24_done', scripts: ['s24_intro', 's24_t1', 's24_t2', 'b_bride_pre', 'b_bride_wither', 'b_bride_last', 'b_bride_post', 's24_outro'] },
   { sid: 's25', chapter: 25, page: 0, boss: 'b_charon', recruit: 'mt_morgen', rig: 'horse', done: 'ex_s25_done', scripts: ['s25_intro', 's25_t1', 's25_t2', 'b_charon_pre', 'b_charon_unbridle', 'b_charon_last', 'b_charon_post', 's25_outro'] },
+  { sid: 's26', chapter: 26, page: 0, part: 1, boss: 'b_paracel', pickup: 'sub:flask', done: 'ex_s26_done', scripts: ['s26_intro', 's26_t1', 's26_t2', 'b_paracel_pre', 'b_paracel_fuse', 'b_paracel_last', 'b_paracel_post', 's26_outro'] },
 ];
 const P2_SIDE = ['bd_rift', 'bd_mirror', 'bd_deep', 'bd_storm', 'bd_combo200', 'hd_ember', 'hd_plus15', 'rk_stars', 'rk_stars6', 'el_pearl', 'ab_dawnflower', 'mt_feast', 'cm_dreams'];
 // world2 §1.4 — 2부 대본 id 전부
@@ -106,11 +108,11 @@ async function staticChecks() {
   // ── 스테이지 · 방 ──
   check(G, 'STAGE_ORDER 에 s14–s20 이 모두 있다 (1부 뒤, 순서대로 · 외전은 그 뒤)', P2.every((s) => STAGE_ORDER.includes(s)) && STAGE_ORDER_P2.filter((s) => !STAGES[s]?.side).join() === P2.join() && STAGE_ORDER.indexOf('s14') === STAGE_ORDER.indexOf('s13') + 1
     && STAGE_ORDER_P2.slice(P2.length).every((s) => STAGES[s]?.side), STAGE_ORDER_P2);
-  check(G, '외전 = STAGE_ORDER_P2 의 side 스테이지 (s21 · s22 · s23 · s24 · s25 차례로)', STAGE_ORDER_P2.filter((s) => STAGES[s]?.side).join() === EX_LIST.map((e) => e.sid).join(), STAGE_ORDER_P2);
+  check(G, '외전 = STAGE_ORDER_P2 의 side 스테이지 (s21 · s22 · s23 · s24 · s25 · s26 차례로)', STAGE_ORDER_P2.filter((s) => STAGES[s]?.side).join() === EX_LIST.map((e) => e.sid).join(), STAGE_ORDER_P2);
   for (const EX of EX_LIST) {
     // 외전: 이야기 사슬(next) 밖 · 2부 · 보스·대본·전환 대사·트리거·합류 (해금은 세계 지도가 p2_done 으로 — town/worldmap.js)
     const st = STAGES[EX.sid], miss = [];
-    if (!st?.side || st.part !== 2 || st.chapter !== EX.chapter || (st.page ?? 1) !== EX.page) miss.push('side/part/chapter/page');
+    if (!st?.side || st.part !== (EX.part ?? 2) || st.chapter !== EX.chapter || (st.page ?? 1) !== EX.page) miss.push('side/part/chapter/page');
     if (st?.next != null || Object.values(STAGES).some((o) => o.next === EX.sid || (o.unlocks ?? []).includes(EX.sid))) miss.push('next 사슬에 들어 있음');
     if (st?.boss !== EX.boss || !BOSSES[EX.boss] || BOSSES[EX.boss].stageId !== EX.sid) miss.push('boss');
     if (st?.intro !== `${EX.sid}_intro` || st?.outro !== `${EX.sid}_outro`) miss.push(`intro/outro ${st?.intro}/${st?.outro}`);
@@ -132,8 +134,10 @@ async function staticChecks() {
       if (!set.length || gv.map(([l]) => l.item).sort().join() !== [...set].sort().join()) miss.push(`${EX.sid}_outro give ${gv.map(([l]) => l.item)} ≠ ${EX.reward} ${set}`);
       for (const [l, i] of gv) if (!l.once || !l.silent || (l.qty ?? 1) !== 1 || !(fi < 0 || i < fi) || !ITEMS[l.item]) miss.push(`${EX.sid}_outro give ${l.item} (once · silent · 1개 · 조건 줄보다 앞 · ITEMS)`);
     }
+    // 방에 놓인 보상 (s26: 보조무기 flask = r5 '@') — 방 items 에 있어야 한다
+    if (EX.pickup && !Object.values(st?.rooms ?? {}).some((r) => (r.items ?? []).includes(EX.pickup))) miss.push(`pickup ${EX.pickup}`);
     if (!out.some((l, i) => l?.cmd === 'flag' && l.key === EX.done && (fi < 0 || i < fi))) miss.push(`${EX.sid}_outro ${EX.done} (조건 줄보다 앞)`);
-    check(G, `외전 ${EX.sid}: side · page ${EX.page} · next 사슬 밖 · 보스 ${EX.boss} · 대본 ${EX.scripts.length}개 · 트리거 r3·r5 · 아웃트로 ${EX.recruit ? `합류(${EX.recruit})` : `보상(${EX.reward})`}·${EX.done}`, !miss.length, miss);
+    check(G, `외전 ${EX.sid}: side · page ${EX.page} · next 사슬 밖 · 보스 ${EX.boss} · 대본 ${EX.scripts.length}개 · 트리거 r3·r5 · 아웃트로 ${EX.recruit ? `합류(${EX.recruit})` : `보상(${EX.reward ?? EX.pickup})`}·${EX.done}`, !miss.length, miss);
   }
   P2.forEach((sid, i) => {
     const st = STAGES[sid];
@@ -442,7 +446,7 @@ async function storyExtChecks(G, imp, { SCRIPTS, NPCS, BOSSES, TRACKS, CMP }) {
     const xs = fs.readFileSync(path.join(ROOT, 'src/data/story_extra.js'), 'utf8');
     const mine = new Set(lits(xs.slice(xs.indexOf('export const SCRIPTS_EXTRA')).replace(/\/\/.*$/gm, '')));
     check(G, `SCRIPTS_EXTRA 의 대사가 story_ext §5.3 · §5.4 · §5.6 그대로 (${specStr.size}줄)`, specStr.size > 0 && [...specStr].every((x) => mine.has(x)) && [...mine].every((x) => specStr.has(x)), { notInCode: [...specStr].filter((x) => !mine.has(x)).slice(0, 5), notInSpec: [...mine].filter((x) => !specStr.has(x)).slice(0, 5) });
-    check(G, 'CREDITS_EX = 외전 s21–s25 의 크레딧 줄 (story_ext §5.7)', ['s21', 's22', 's23', 's24', 's25'].every((k) => Array.isArray(EXM.CREDITS_EX?.[k]) && EXM.CREDITS_EX[k].length && EXM.CREDITS_EX[k].every((r) => / — /.test(r))), EXM.CREDITS_EX);
+    check(G, 'CREDITS_EX = 외전 s21–s26 의 크레딧 줄 (story_ext §5.7)', ['s21', 's22', 's23', 's24', 's25', 's26'].every((k) => Array.isArray(EXM.CREDITS_EX?.[k]) && EXM.CREDITS_EX[k].length && EXM.CREDITS_EX[k].every((r) => / — /.test(r))), EXM.CREDITS_EX);
   }
 
   // ── 3. H({…}): 2부·외전·시련·여관 대본의 텍스트 객체 = 7 영웅 + default (빈 문자열 없음) ──

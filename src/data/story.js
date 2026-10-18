@@ -1588,7 +1588,7 @@ function pickNpcScript(npcId, state, stageId) {
   for (let k = ch; k >= 0; k--) if (SCRIPTS[`${npcId}_ch${k}`]) { latest = `${npcId}_ch${k}`; break; }
   // 외전은 장을 올리지 않는다 — 외전을 끝낸 뒤의 마을 반응 <npcId>_ex21…ex25 가 가장 새 대사 (story_ext §5.4: 새 외전부터, 아직 안 들은 것 하나).
   // 한 번 들으면 평소 순환으로 돌아간다. npc_carmilla_ex24 (ex_s24.md §10) · npc_greta_ex25 (ex_s25.md §4.2) · story_extra.js 의 ex21~23 반응
-  const EX_TALK = [['ex25', 'ex_s25_done'], ['ex24', 'ex_s24_done'], ['ex23', 'ex_s23_done'], ['ex22', 'ex_s22_done'], ['ex21', 'ex_s21_done']];
+  const EX_TALK = [['ex26', 'ex_s26_done'], ['ex25', 'ex_s25_done'], ['ex24', 'ex_s24_done'], ['ex23', 'ex_s23_done'], ['ex22', 'ex_s22_done'], ['ex21', 'ex_s21_done']];
   for (const [k, f] of EX_TALK) { const id = `${npcId}_${k}`; if (p?.flags?.[f] && SCRIPTS[id] && !(p.seenScripts ?? []).includes(id)) { latest = id; break; } }
   const seen = p?.seenScripts;
   if (latest && seen && !seen.includes(latest)) { seen.push(latest); p.npcTalks ??= {}; p.npcTalks[npcId] = 0; return latest; } // 다음 대화부터 팁 순환

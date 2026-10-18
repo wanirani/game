@@ -346,7 +346,7 @@ export function subHits(p, f, id) {
 }
 
 /** [matrix] 보조 무기 하트 값 (data/subweapons.js cost — 그 파일은 탄·소리를 불러 노드 시험에서 못 읽는다) · 빅터 권총은 공짜 */
-const SUB_COST = Object.freeze({ dagger: 1, axe: 1, holywater: 1, cross: 1, stopwatch: 5, pistol: 1, bible: 2, bomb: 2 });
+const SUB_COST = Object.freeze({ dagger: 1, axe: 1, holywater: 1, cross: 1, stopwatch: 5, pistol: 1, bible: 2, bomb: 2, flask: 2 });
 const subCost = (id) => SUB_COST[id] ?? 1;
 const subFree = (p, id) => id === 'pistol' && p.hero?.charId === 'victor';
 

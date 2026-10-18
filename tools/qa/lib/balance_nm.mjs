@@ -160,9 +160,14 @@ export async function simDirector(id, { secs = 120, dt = 1 / 30, seed = 7, bossA
 }
 
 // ═════════ ① 싸움 길이 · 피해 ═════════
+/** 영웅 레벨 상한 (balance.mjs 기준 실행과 같은 99) */
+const LV_MAX = 99;
+/** 넘친 레벨 열: 권장 + 20 · 권장 + 40 · Lv 99 (모두 99 이하) */
+export const NM_OVER_COLS = [['r20', 20], ['r40', 40], ['r99', null]];
 /**
  * base = balance.mjs simulate(cid) 결과 ({ rows, combo, heroAt }) · dmg = balance.mjs dmg(src, tgt, mv, mag)
- * → 악몽 25 줄 { id, boss, twist, sLv, sHits, sTaken, rec, nmLv, hits, ratio, taken, hazHit, sec, minLv, minRatio, minTaken }
+ * → 악몽 25 줄 { id, boss, twist, sLv, sHits, sTaken, rec, nmLv, hits, ratio, taken, vsStory, hazHit, sec, r20, r40, r99, t99, minLv, minRatio, minTaken }
+ *   vsStory = 보스 1타 ÷ 같은 보스의 이야기 1타 (같은 난이도) · r20/r40/r99 = 권장 + 20 · + 40 · Lv 99 영웅의 타수 비 (넘친 레벨, 장비 = 그 레벨에 처음 닿은 장)
  */
 export function nmFights({ base, dmg, D, cid }) {
   const mag = CHARACTERS[cid].weaponType === 'staff';
@@ -186,6 +191,17 @@ export function nmFights({ base, dmg, D, cid }) {
     const f = fight(P, bs);
     const hazMv = TWIST_MV[e.twist] ?? 0;
     const hazHit = hazMv ? dmg(bs, { def: P.def, dmgReduce: P.dmgReduce }, hazMv) / P.hp * 100 : 0;
+    const sHits = Math.max(1, story.bossHits);
+    // 넘친 레벨 (MAJOR-2): 영웅이 권장보다 높으면 악몽 레벨도 따라 오른다 (영웅 − 2)
+    const over = {};
+    let t99 = 0;
+    for (const [k, add] of NM_OVER_COLS) {
+      const hl = add == null ? LV_MAX : Math.min(LV_MAX, rec + add), nl = nmLevel(e, hl);
+      const Po = base.heroAt(hl, gearIdx(hl), []).s;
+      const fo = fight(Po, bossAt(b, nl, S.level, D, e));
+      over[k] = r2(fo.hits / sHits);
+      if (add == null) t99 = r1(fo.taken);
+    }
     // 막 깬 영웅 (다음 장 진입 레벨 = 이 장의 이야기 실행 끝)
     const minHeroLv = rows[i + 1]?.plv ?? base.sideEndLevel ?? story.plv;
     const minNmLv = nmLevel(e, minHeroLv);
@@ -193,9 +209,10 @@ export function nmFights({ base, dmg, D, cid }) {
     const fm = fight(Pm, bossAt(b, minNmLv, S.level, D, e));
     out.push({
       id, boss: b.id ?? S.boss, twist: e.twist, sLv: story.plv, sHits: story.bossHits, sTaken: story.bossTaken,
-      rec, nmLv, hits: f.hits, ratio: r2(f.hits / Math.max(1, story.bossHits)), taken: r1(f.taken), hazHit: r1(hazHit),
+      rec, nmLv, hits: f.hits, ratio: r2(f.hits / sHits), taken: r1(f.taken), vsStory: story.bossTaken > 0 ? r2(f.taken / story.bossTaken) : null, hazHit: r1(hazHit),
       sec: Math.round(bs.maxHp / (f.d1 * (base.combo?.perSec ?? 3))),
-      minLv: minHeroLv, minNmLv, minRatio: r2(fm.hits / Math.max(1, story.bossHits)), minTaken: r1(fm.taken),
+      ...over, t99,
+      minLv: minHeroLv, minNmLv, minRatio: r2(fm.hits / sHits), minTaken: r1(fm.taken),
     });
   }
   return out;
@@ -208,8 +225,11 @@ const med = (a) => { const s = [...a].sort((x, y) => x - y); return s[Math.floor
  * --nm 본체 → 종료 코드 (0 통과 · 1 목표 밖)
  *  판정 (balance.mjs --check 의 관례 그대로 — 목표는 기준 영웅 카엘, 다른 영웅은 「1부 기준 보정 ±30%」):
  *   타수 비: 카엘 1.3–1.9 · 여러 영웅이면 일곱 가운데값도 1.3–1.9, 영웅 하나하나는 ±30% (0.91–2.47)
- *   보스 1타: 카엘 ≤ 25% × 난이도 적 공격 배율(보통 1 · 어려움 1.4 = 「보통 기준 25%」 — 이야기 보스도 어려움에서 1.4배로 아프다) ·
- *            다른 영웅은 그 상한 × (영웅 ÷ 카엘, 이야기 s11–s13 보스 1타 평균 비율) × 1.3. 비틀기 위험 1타도 같은 상한
+ *   보스 1타 (NM-TUNE, MAJOR-1 결정): 카엘 ≤ nmHitCap(난이도) — 쉬움 12.5% · 보통 25% (글자 그대로) · 어려움 28% —
+ *            그리고 ≤ 1.25 × 같은 보스의 이야기 1타 (같은 난이도, 모든 난이도). 다른 영웅은 상한 × (영웅 ÷ 카엘, 이야기 s11–s13
+ *            보스 1타 평균 비율) × 1.3 · 이야기 대비 1.25 × 1.3. 비틀기 위험 1타도 같은 절대 상한
+ *   넘친 레벨 (NM-TUNE, MAJOR-2 결정): 권장 + 20 영웅의 타수 비 ≥ 0.9 (모든 줄) · Lv 99 영웅의 타수 비 가운데값(25 줄) ≤ 2.5 —
+ *            다른 영웅은 ±30% (≥ 0.63 · ≤ 3.25)
  */
 export async function runNm({ simulate, dmg, D, diffId, heroes, check, json, secs = 120 }) {
   const sims = [];
@@ -217,24 +237,34 @@ export async function runNm({ simulate, dmg, D, diffId, heroes, check, json, sec
   const simOf = Object.fromEntries(sims.map((s) => [s.id, s]));
   const fails = [];
   const byHero = {};
-  const atkK = Number.isFinite(D?.enemyAtk) && D.enemyAtk > 0 ? D.enemyAtk : 1;
-  const cap0 = NM_TARGET.bossHit * atkK;
+  const cap0 = nmHitCap(diffId, D);
   const kaelRows = nmFights({ base: simulate('kael'), dmg, D, cid: 'kael' });
   const [lo, hi] = NM_TARGET.ratio;
+  const T = NM_TARGET.over, VS = NM_TARGET.hitVsStory;
+  const summary = {};
   for (const cid of heroes) {
     const rows = cid === 'kael' ? kaelRows : nmFights({ base: simulate(cid), dmg, D, cid });
     byHero[cid] = rows;
+    const kael = cid === 'kael';
     // 영웅 ÷ 카엘 (이야기 보스 1타, s11–s13 평균) — 다른 영웅의 상한 보정
     const rs = ANCHOR.map((s) => { const a = rows.find((r) => r.id === 'nm_' + s)?.sTaken, b = kaelRows.find((r) => r.id === 'nm_' + s)?.sTaken; return a > 0 && b > 0 ? a / b : null; }).filter((x) => x != null);
-    const k = cid === 'kael' ? 1 : (rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : 1) * 1.3;
-    const cap = r1(cap0 * k), rlo = cid === 'kael' ? lo : r2(lo * 0.7), rhi = cid === 'kael' ? hi : r2(hi * 1.3);
+    const k = kael ? 1 : (rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : 1) * 1.3;
+    const cap = r1(cap0 * k), rlo = kael ? lo : r2(lo * 0.7), rhi = kael ? hi : r2(hi * 1.3);
+    const vsCap = kael ? VS : r2(VS * 1.3), r20lo = kael ? T.rec20Min : r2(T.rec20Min * 0.7), r99hi = kael ? T.lv99Med : r2(T.lv99Med * 1.3);
     for (const r of rows) {
       if (r.err) { fails.push({ hero: cid, id: r.id, key: 'data', value: r.err }); continue; }
       r.cap = cap;
       if (!(r.ratio >= rlo && r.ratio <= rhi)) fails.push({ hero: cid, id: r.id, key: 'ratio', value: r.ratio, want: `${rlo}–${rhi}` });
       if (!(r.taken <= cap)) fails.push({ hero: cid, id: r.id, key: 'bossHit%', value: r.taken, want: `≤ ${cap}` });
+      if (!(r.vsStory != null && r.vsStory <= vsCap)) fails.push({ hero: cid, id: r.id, key: 'hitVsStory', value: r.vsStory, want: `≤ ${vsCap}` });
       if (!(r.hazHit <= cap)) fails.push({ hero: cid, id: r.id, key: 'hazardHit%', value: r.hazHit, want: `≤ ${cap}` });
+      if (!(r.r20 >= r20lo)) fails.push({ hero: cid, id: r.id, key: 'ratio@rec+20', value: r.r20, want: `≥ ${r20lo}` });
     }
+    const ok = rows.filter((r) => !r.err);
+    const m99 = r2(med(ok.map((r) => r.r99)));
+    if (!(m99 <= r99hi)) fails.push({ hero: cid, id: 'median', key: 'ratio@Lv99', value: m99, want: `≤ ${r99hi}` });
+    const span = (key) => { const v = ok.map((r) => r[key]).filter(Number.isFinite); return v.length ? [Math.min(...v), Math.max(...v)] : [null, null]; };
+    summary[cid] = { cap, vsCap, ratio: span('ratio'), taken: span('taken'), vsStory: span('vsStory'), r20: span('r20'), r40: span('r40'), r99: span('r99'), med99: m99, med40: r2(med(ok.map((r) => r.r40))), med20: r2(med(ok.map((r) => r.r20))) };
   }
   if (heroes.length > 1) {
     for (const id of NM_IDS) {
@@ -248,11 +278,13 @@ export async function runNm({ simulate, dmg, D, diffId, heroes, check, json, sec
     if (s.hazard && !(s.spawned > 0 || s.tolls > 0 || s.summoned > 0)) fails.push({ hero: '-', id: s.id, key: 'noHazard', value: 0, want: '> 0' });
   }
   if (json) {
-    console.log(JSON.stringify({ diff: diffId, heroes, target: NM_TARGET, secs, fights: byHero, sims, fails }, null, 1));
+    console.log(JSON.stringify({ diff: diffId, heroes, target: NM_TARGET, hitCap: cap0, secs, summary, fights: byHero, sims, fails }, null, 1));
   } else {
     for (const cid of heroes) {
-      console.log(`${diffId} · ${cid} — 악몽 25 (권장 레벨 = 이야기 레벨 + 10 · 이야기 = balance 기준 실행의 진입 레벨)  목표: 타수 비 ${NM_TARGET.ratio.join('–')} · 보스 1타 ≤ ${NM_TARGET.bossHit}%`);
+      console.log(`${diffId} · ${cid} — 악몽 25 (권장 레벨 = 이야기 레벨 + 10 · 이야기 = balance 기준 실행의 진입 레벨)  목표: 타수 비 ${NM_TARGET.ratio.join('–')} · 보스 1타 ≤ ${byHero[cid][0]?.cap ?? cap0}% · 이야기 대비 ≤ ${summary[cid].vsCap}× · 권장+20 타수 비 ≥ ${cid === 'kael' ? T.rec20Min : r2(T.rec20Min * 0.7)} · Lv99 가운데값 ≤ ${cid === 'kael' ? T.lv99Med : r2(T.lv99Med * 1.3)}`);
       console.table(byHero[cid].map((r) => ({ ...r, ...(simOf[r.id] ? {} : {}) })));
+      const S = summary[cid];
+      console.log(`  ${cid}: 타수 비 ${S.ratio.join('–')} · 1타 ${S.taken.join('–')}% · 이야기 대비 ${S.vsStory.join('–')}× · 권장+20 ${S.r20.join('–')} (가운데 ${S.med20}) · 권장+40 ${S.r40.join('–')} (가운데 ${S.med40}) · Lv99 ${S.r99.join('–')} (가운데 ${S.med99})`);
     }
     console.log(`비틀기 감독 시뮬레이션 (진짜 NmDirector · ${secs}초 · 보스 바닥 공격 흉내 포함)  목표: laneMax ≤ ${NM_TARGET.laneMax} · warnMin ≥ ${NM_TARGET.warnMin}초`);
     console.table(sims.map((s) => ({ id: s.id, twist: s.twist, arena: s.arena, sw: s.sw, spawned: s.spawned, tolls: s.tolls, summoned: s.summoned, skipped: s.skipped, rejects: s.rejects, warnMin: s.warnMin, maxActive: s.maxActive, laneMax: s.laneMax, claimLane: s.claimLaneMax, lane0Pct: s.laneZeroPct, 'bot/분': s.botHitsPerMin })));
