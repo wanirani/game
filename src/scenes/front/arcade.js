@@ -42,7 +42,7 @@ import { composeLook, STAT_INFO } from '../../game/stats.js';
 import { drawHero } from '../../render/hero.js';
 import * as PUPPET from '../../render/hero_puppet.js';
 import { DIFFICULTIES, getDiff } from '../../data/difficulty.js';
-import { STAGES, STAGE_ORDER, SIDE_STAGES_P2 } from '../../data/stages.js';
+import { STAGES, STAGE_ORDER, SIDE_STAGES_P2, chapterLabel } from '../../data/stages.js';
 import { BOSSES } from '../../data/bosses.js';
 import { TOWER_VERSION, TOWER_SEASON, rngOf } from '../../data/tower.js';   // 무한의 탑 시즌 표시 (기기 기록의 v — 없으면 시즌 1) · 무작위 6 결정적 난수
 import { baseIdFor, ITEMS, makeItem } from '../../data/items.js';
@@ -141,7 +141,7 @@ COURSES.push(...RULE_COURSES);
  * 1부 외전 코스 「외전 Ⅰ」 (docs/specs/ex_s26.md §5.2) — 번호 18 (규칙 코스 뒤, 기기 기록: 서버 COURSE_COUNT 밖 → localCourse).
  * ids = 보스 목록 (from/to 대신 — BOSS_ORDER 의 7~10장 보스 넷 + 25번 파라켈). s26Known 일 때만 고를 수 있다 (2부를 몰라도)
  */
-export const S26_COURSE = { name: '외전 Ⅰ', sub: '7~10장 보스 · 지하 공방', from: 25, to: 26, ids: ['b_chimera', 'b_leviathan', 'b_colossus', 'b_frostqueen', 'b_paracel'], s26: true, short: '외전 Ⅰ' };
+export const S26_COURSE = { name: '외전 Ⅰ', sub: '7~10장 보스 · 파라켈의 공방', from: 25, to: 26, ids: ['b_chimera', 'b_leviathan', 'b_colossus', 'b_frostqueen', 'b_paracel'], s26: true, short: '외전 Ⅰ' };
 COURSES.push(S26_COURSE);
 /** 아케이드 메뉴 코스 줄에 규칙 코스를 보이는가 (tools/test_rush_rules.mjs 통과 뒤 켬 — 끄면 메뉴에서만 숨고 ?course= 바로 열기는 그대로) */
 export const RULE_COURSES_ON = true;
@@ -567,7 +567,7 @@ export class ArcadeScene extends Scene {
       const clsName = dc.cls ? CLASSES[dc.cls]?.name : null;
       const mods = dc.daily.mods.map((m) => ONLINE.modName(m));
       return [
-        { id: 'dstage', label: '스테이지', value: `${st.side ? '외전' : `제${st.chapter}장`} ${st.name} · ${getDiff(dc.diff).name}`, color: st.part === 2 ? P2_COLOR : null, n: 1, i: 0, info: true, set() {} },
+        { id: 'dstage', label: '스테이지', value: `${chapterLabel(st, 'je')} ${st.name} · ${getDiff(dc.diff).name}`, color: st.part === 2 ? P2_COLOR : null, n: 1, i: 0, info: true, set() {} },
         { id: 'dhero', label: '헌터', value: `${ch?.name ?? dc.charId}${clsName ? ` · ${clsName}` : ''} (Lv.${P.lv})`, n: 1, i: 0, info: true, set() {} },
         { id: 'drules', label: '규칙', value: mods.length ? mods.join(' · ') : '특별 규칙 없음', color: mods.length ? '#ffb070' : null, n: 1, i: 0, info: true, set() {} },
         ghostRow,
@@ -593,7 +593,7 @@ export class ArcadeScene extends Scene {
     if (k === 'practice') {
       const si = Math.max(0, this.stages.indexOf(c.stageId));
       const st = STAGES[this.stages[si]];
-      rows.push({ id: 'stage', label: '스테이지', value: st.side ? `외전 ${st.name}` : `제${st.chapter}장 ${st.name}`, color: st.side ? EX_COLOR : st.part === 2 ? P2_COLOR : null, n: this.stages.length, i: si, set: (i) => { c.stageId = this.stages[i]; } });
+      rows.push({ id: 'stage', label: '스테이지', value: `${chapterLabel(st, 'je')} ${st.name}`, color: st.side ? EX_COLOR : st.part === 2 ? P2_COLOR : null, n: this.stages.length, i: si, set: (i) => { c.stageId = this.stages[i]; } });
       rows.push(ghostRow);
     }
     return rows;

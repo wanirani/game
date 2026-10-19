@@ -8,7 +8,7 @@
 //  경험치 0 (K4: attachTrial 의 w.gainExp = () => 0 을 그대로 쓴다) · 목숨·사망 수 그대로 · AUTO 는 world.trial 로 막힌다.
 //  업적: 시련처럼 그대로 기록되고, 토스트만 악몽을 떠난 뒤 마을에서 뜬다 (holdAchToasts — NM-TUNE).
 //  이 파일은 trial.js 를 import 하지 않는다 (순환 없음 — trial.js → nightmare.js 한 방향).
-import { NM, NM_IDS, NM_COLOR, NM_FAIL_LINE, NM_FLAGS, isNightmareId, nmEntry, nmTwist, nmLevel } from '../data/nightmare.js';
+import { NM, NM_IDS, NM_COLOR, NM_FAIL_LINE, NM_FLAGS, NM_MODE, isNightmareId, nmEntry, nmTwist, nmLevel } from '../data/nightmare.js';
 import { TRAILS } from '../data/cosmetics.js';   // [P3b] K1 잔상 이름 (읽기만 — 첫 격파로 새로 열린 잔상을 결과 화면에 보인다)
 import { STAGES } from '../data/stages.js';
 import { BOSSES } from '../data/bosses.js';
@@ -24,7 +24,7 @@ export { NM, NM_IDS, NM_COLOR, isNightmareId, nmEntry };
 /** QA: { started, cleared, failed, left, retried, last } */
 export const NM_STATS = { started: 0, cleared: 0, failed: 0, left: 0, retried: 0, last: null };
 const SLOWMO_BOSS = 0.35;
-const RULE_LABEL = '악몽의 규칙';
+const RULE_LABEL = `${NM_MODE} 규칙`;   // [ux-fix #4] 「악몽 토벌 규칙: …」
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const round1 = (t) => Math.round((Number.isFinite(t) ? t : 0) * 10) / 10;
 const R = (code, reason) => ({ ok: false, code, reason });
@@ -76,7 +76,7 @@ export function nightmareTrial(id) {
     const tw = nmTwist(e);
     T = Object.freeze({
       id, nightmare: true, entry: e, stage: e.stage, boss: e.boss, room: 'boss',
-      name: `악몽 · ${bossName(e)}`, twist: e.twist, twistName: tw?.name ?? '', color: NM_COLOR,
+      name: `${NM_MODE} · ${bossName(e)}`, twist: e.twist, twistName: tw?.name ?? '', color: NM_COLOR,
       mods: [], diffOver: null, bossPatterns: true, failLine: NM_FAIL_LINE,
     });
     T_CACHE.set(id, T);
@@ -124,8 +124,8 @@ export function nmBeaten(state, e) {
 /** 도전할 수 있는가 → { ok, code: 'unknown'|'mode'|'story'|null, reason } */
 export function canStartNightmare(state, id) {
   const e = nmEntry(id);
-  if (!e || !STAGES[e.stage]?.rooms?.boss) return R('unknown', '알 수 없는 악몽이다');
-  if (!isObj(state) || state.arcade) return R('mode', '지금은 악몽에 들어갈 수 없다');
+  if (!e || !STAGES[e.stage]?.rooms?.boss) return R('unknown', '알 수 없는 토벌이다');
+  if (!isObj(state) || state.arcade) return R('mode', `지금은 ${NM_MODE}에 나설 수 없다`);
   if (!nmBeaten(state, e)) return R('story', `이야기에서 ${bossName(e)}${josaEul(bossName(e))} 먼저 쓰러뜨려야 한다`);
   return OK;
 }
@@ -141,7 +141,7 @@ export function nmStatus(state, id) {
 /** 성당 「악몽」 탭 · 월드맵 붉은 단추: 조건 → 저장 → 보스방. from: 'church'(기본) | 'worldmap' → 반환 canStartNightmare */
 export function startNightmare(game, id, { from = 'church' } = {}) {
   const chk = canStartNightmare(game?.state, id);
-  if (!chk.ok) { toast(game, chk.reason || '악몽에 들어갈 수 없다'); return chk; }
+  if (!chk.ok) { toast(game, chk.reason || `${NM_MODE}에 나설 수 없다`); return chk; }
   FROM = from === 'worldmap' ? 'worldmap' : 'church';
   const T = nightmareTrial(id);
   save(game);   // 출발하는 지금을 남긴다 (악몽 안에는 세이브 지점이 없다)
@@ -185,7 +185,7 @@ export function attachNightmare(scene, w, T) {
   w.nightmare = w.opts.nightmare;
   w.onBossDefeated = (b) => nmBossDown(w, b, T);
   w.finishStage = () => completeNightmare(game, w, T);
-  w.banner = { text: '악몽', sub: `${bossName(e)} · ${tw?.name ?? ''}`, t: 2.6, color: NM_COLOR, big: true };
+  w.banner = { text: NM_MODE, sub: `${bossName(e)} · ${tw?.name ?? ''}`, t: 2.6, color: NM_COLOR, big: true };
   const hz = loadHazards();
   const startBoss = w.startBoss.bind(w);   // attachTrial 이 이미 감싼 것 (보스전 시작 시각)
   w.startBoss = () => {
@@ -213,7 +213,7 @@ function nmBossDown(w, boss, T) {
   fx?.ring?.(boss.cx, boss.cy, { color: '#ffd0c8', r0: 10, r1: 170, life: 0.6, width: 4 });
   fx?.burst?.('blood', boss.cx, boss.cy, Math.round(30 * q), { speed: 320 });
   w.nmDirector?.stop?.(w);
-  w.banner = { text: '악몽 격파', sub: bossName(T.entry), t: 4, color: NM_COLOR, big: true };
+  w.banner = { text: `${NM_MODE} 성공`, sub: bossName(T.entry), t: 4, color: NM_COLOR, big: true };
 }
 
 /** 첫 격파 보상: 등급 ≥ reward.rarity 장비 하나 (가방이 차면 보관함) + 골드 500 × 레벨 → { items, gold } */
@@ -298,7 +298,7 @@ export function finishNightmare(game, id) {
 /** 실패 화면 「다시 도전」: 조건 다시 확인 → 새 월드로 보스방 */
 export function retryNightmare(game, id) {
   const chk = canStartNightmare(game?.state, id);
-  if (!chk.ok) { toast(game, chk.reason || '악몽에 들어갈 수 없다'); leaveNightmare(game, id, 'blocked'); return chk; }
+  if (!chk.ok) { toast(game, chk.reason || `${NM_MODE}에 나설 수 없다`); leaveNightmare(game, id, 'blocked'); return chk; }
   NM_STATS.retried++; NM_STATS.last = 'retry';
   const T = nightmareTrial(id);
   try { preloadStageBosses(T.stage)?.catch?.(() => null); } catch { /* 스테이지 입장 때 다시 받는다 */ }

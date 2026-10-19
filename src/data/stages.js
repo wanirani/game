@@ -189,7 +189,9 @@ export const STAGES = {
   //    side: true · part: 1 · page: 0 = 1부 지도에서 7장 연금술 연구소로부터 아래로 갈라지는 외전 노드 (town/worldmap.js SIDE_FROM.s26 = 's07', SIDE_GATE.s26)
   //    클리어해도 progress.chapter 를 올리지 않는다 (results.js). 보상: 보조무기 flask(r5 '@') · 장신구 u_paracel(보스 드롭) · 로어 l35(r3 '@')
   //    대본 s26_intro · s26_t1 · s26_t2 · s26_outro · b_paracel_* = data/story_ex26.js
-  s26: S({ id: 's26', chapter: 26, part: 1, page: 0, side: true, name: '지하 공방', sub: '연구소 밑, 백 년 동안 불이 꺼지지 않은 곳', theme: 'alchemy', bg: 'bg/s07_alchemy', tex: 'tex/tex_lab', tex2: 'tex/tex_brass', tileStyle: 'lab',
+  //    [ux-fix #1 · #12] sideLabel = 플레이어에게 보이는 장 표시 (「26장」 대신 「외전 Ⅰ」 — chapterLabel) · name = 지도·HUD 의 짧은 이름 (옆의 「지하 묘지」·「지하 수로」와 헷갈리지 않게)
+  //    · fullName = 제목 카드(스테이지 첫 배너)의 온전한 이름
+  s26: S({ id: 's26', chapter: 26, part: 1, page: 0, side: true, sideLabel: '외전 Ⅰ', name: '파라켈의 공방', fullName: '파라켈의 지하 공방', sub: '연구소 밑, 백 년 동안 불이 꺼지지 않은 곳', theme: 'alchemy', bg: 'bg/s07_alchemy', tex: 'tex/tex_lab', tex2: 'tex/tex_brass', tileStyle: 'lab',
     music: 's07', level: 30, darkness: 0.5, darkColor: '#08060a', liquid: 'poison', boss: 'b_paracel', rooms: S26, parTime: 420,
     enemies: ['slime', 'homunculus', 'flesh_golem', 'plague_doctor', 'acid_turret', 'flea_man', 'mimic'], docs: [], shard: null, heart: null,
     gimmick: null, color: '#d8c070', next: null, mapPos: { x: 0.71, y: 0.63 },   // mapPos 는 겹침을 보고 고칠 수 있다 (ex_s26.md §1)
@@ -209,6 +211,29 @@ export const SIDE_STAGES = STAGE_ORDER_P2.filter((id) => STAGES[id].side);
 export const SIDE_STAGES_P2 = SIDE_STAGES.filter((id) => (STAGES[id].part ?? 2) === 2);
 /** 이 스테이지가 외전인가 */
 export const isSideStage = (id) => !!STAGES[id]?.side;
+const ROMAN_CH = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI'];
+/**
+ * 플레이어에게 보이는 장 표시 — 장 번호를 보여 주는 모든 화면이 이 함수 하나로 만든다 (replay #1: 1부 외전 s26 이 7장 플레이어에게 「26장」으로 보였다).
+ * stage.sideLabel(지금은 s26 의 「외전 Ⅰ」)이 있으면 어느 모양이든 그 이름을 쓰고, 없으면 화면마다 예전 표기 그대로다 (s01–s25 는 바뀌지 않는다).
+ *  'ko'    : 「7장」 · 외전 「외전」              — 세계 지도 접힌 막대 · 성당 악몽 토벌 칸 · 명예의 전당
+ *  'num'   : 「7장」 · 외전도 「21장」           — 스테이지 HUD 왼쪽 위 줄
+ *  'je'    : 「제7장」 · 외전 「외전」            — 아케이드 스테이지 연습 줄
+ *  'en'    : 「CHAPTER 7」                     — 스테이지 첫 배너 · 일시정지 정보 카드
+ *  'roman' : 「CHAPTER VII」 · 외전 「SIDE STORY · 외전」 (sideLabel 이 있으면 「SIDE STORY · 외전 Ⅰ」) — 세계 지도 정보판
+ * 투기장(chapter 0) 등 장 번호가 없으면 ''.
+ */
+export function chapterLabel(stage, form = 'ko') {
+  if (!stage) return '';
+  const sl = stage.sideLabel;
+  if (form === 'roman') return stage.side ? `SIDE STORY · ${sl ?? '외전'}` : stage.chapter ? `CHAPTER ${ROMAN_CH[stage.chapter] ?? stage.chapter}` : '';
+  if (sl) return sl;
+  if (form === 'en') return stage.chapter ? `CHAPTER ${stage.chapter}` : '';
+  if ((form === 'ko' || form === 'je') && stage.side) return '외전';
+  if (form === 'je') return stage.chapter ? `제${stage.chapter}장` : '';
+  return stage.chapter ? `${stage.chapter}장` : '';
+}
+/** 제목 카드에 쓰는 온전한 이름 (fullName 이 없으면 name) */
+export const stageTitle = (stage) => stage?.fullName ?? stage?.name ?? '';
 /** 전체 스테이지 순서 (1부 + 있는 2부). 1부만 필요한 곳은 STAGE_ORDER_P1 을 쓴다 (MASTER_PLAN §1.14) */
 export const STAGE_ORDER = [...STAGE_ORDER_P1, ...STAGE_ORDER_P2];
 export const RELICS = ['k_relic_1', 'k_relic_2', 'k_relic_3', 'k_relic_4', 'k_relic_5'];

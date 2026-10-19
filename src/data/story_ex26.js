@@ -52,9 +52,9 @@ export const SCRIPTS_EX26 = {
   // ═══════════════════════════ 외전 26장 파라켈의 지하 공방 (docs/specs/ex_s26.md) ═══════════════════════════
   // 제목 카드는 연구소(bg/s07_alchemy) → 성당(1부: cg_alberto_church · 2부: 마을 hub) → 다시 연구소 밑 배수구
   s26_intro: [
-    bgm('story'), bg('s07_alchemy'), title('외전', '지하 공방'),
+    bgm('story'), bg('s07_alchemy'), title('외전 Ⅰ', '파라켈의 지하 공방'),   // [ux-fix #1] 장 표시 「외전 Ⅰ」 · 온전한 이름
     ifFlag('p2_started', 'p2'),
-    cg('cg_alberto_church'),
+    bg('hub'),   // [ux-fix #11] 예전 cg_alberto_church 는 두건 쓴 큰 사람이 서 있어 「손바닥만 한 호문쿨루스」와 어긋났다 → 2부 갈래와 같은 밤의 에슈빌 그림
     N('에슈빌 성당. 새벽 기도를 마친 알베르토 신부가 제단 앞에 서서 무언가를 내려다보고 있었다.'),
     N('손바닥만 한 호문쿨루스였다. 몸은 반쯤 말라 있었고, 가는 팔로 둘둘 만 양피지 한 장을 꼭 끌어안고 있었다.'),
     S(A, '성당 문 밑으로 기어 들어왔다네. 밤새 얼마나 기어 왔는지… 손끝이 다 닳았어.'),
@@ -186,7 +186,7 @@ export const SCRIPTS_EX26 = {
   s26_outro: [
     bgm('sad'), flag('ex_s26_done'),
     ifFlag('p2_started', 'p2'),
-    cg('cg_alberto_church'),
+    bg('hub'),   // [ux-fix #11] 인트로와 같은 까닭 (두건 쓴 인물 CG → 밤의 에슈빌)
     N('에슈빌 성당. 알베르토 신부는 일지에서 떼어 온 낡은 두 장을 오래도록 들여다보았다.'),
     go('p2_end'),
     L('p2'),

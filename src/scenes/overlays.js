@@ -376,8 +376,9 @@ export class BossIntroScene extends Scene {
       ctx.fillStyle = '#000000'; ctx.fillRect(-s / 2 + 3, -s / 2 + 4, s, s);
       ctx.fillStyle = INK_RED; ctx.fillRect(-s / 2, -s / 2, s, s);
       ctx.strokeStyle = 'rgba(255,230,220,0.85)'; ctx.lineWidth = 2; ctx.strokeRect(-s / 2 + 5, -s / 2 + 5, s - 10, s - 10);
-      ctx.font = `${wgt} ${brush ? 21 : 17}px ${fam}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#fff1e8'; ctx.fillText('악몽', 0, 1);
+      // [ux-fix #4] 모드 이름 「악몽 토벌」을 두 줄 낙관으로 (난이도 「악몽」과 헷갈리지 않게) — 네 글자 2×2 도장
+      ctx.font = `${wgt} ${brush ? 17 : 14}px ${fam}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff1e8'; ctx.fillText('악몽', 0, -8); ctx.fillText('토벌', 0, 10);
       ctx.restore();
     }
     ctx.restore();

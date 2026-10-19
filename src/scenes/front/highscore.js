@@ -21,7 +21,7 @@ import { drawHints, promptMode } from '../../core/prompts.js';
 import { clamp, ease, fmt, TAU } from '../../core/math.js';
 import { hudSafe } from '../../render/hud_layout.js';
 import { CHARACTERS } from '../../data/characters.js';
-import { STAGES } from '../../data/stages.js';
+import { STAGES, chapterLabel } from '../../data/stages.js';
 import { getDiff } from '../../data/difficulty.js';
 import {
   Ambience, kenBurns, shade, frame, heading, ornament, gbutton, backButton, footer, MODES, modeName,
@@ -75,9 +75,9 @@ function detail(h) {
     case 'bossrush': return `${h.bosses ?? '?'}체 격파${h.time ? ' · ' + fmtClock(h.time) : ''}`;
     case 'survival': return `WAVE ${h.wave ?? '?'}`;
     case 'tower': return `${h.floor ?? 0}층 돌파${d ? ' · ' + d.name : ''}`;
-    case 'practice': return stg ? `${stg.side ? '외전' : `${stg.chapter}장`} ${stg.name}` : '연습';
+    case 'practice': return stg ? `${chapterLabel(stg, 'ko')} ${stg.name}` : '연습';
     default: {
-      const s = h.stageId === 'ending' ? '엔딩 도달' : stg ? (stg.side ? '외전 클리어' : `${stg.chapter}장 클리어`) : (d?.name ?? '');
+      const s = h.stageId === 'ending' ? '엔딩 도달' : stg ? `${chapterLabel(stg, 'ko')} 클리어` : (d?.name ?? '');
       // 회차 줄 (항목의 ng 는 클라우드에서 합쳐 온 값일 수도 있다 — 1..9 정수만)
       const ng = (h.mode || 'story') === 'story' && Number.isInteger(h.ng) && h.ng >= 1 ? NG.ngLabel?.(Math.min(9, h.ng)) || `${Math.min(9, h.ng) + 1}회차` : '';   // [hook:ng]
       return ng ? `${ng} · ${s}` : s;
@@ -220,12 +220,12 @@ export class HighscoreScene extends Scene {
     }
     if (S.kind === 'practice') {
       const st = this.stageList(), si = Math.max(0, st.indexOf(S.stageId)), sd = STAGES[st[si]];
-      rows.push({ id: 'stage', label: '스테이지', value: `${sd.side ? '외전' : `${sd.chapter}장`} ${sd.name}`, n: st.length, i: si, set: (i) => { S.stageId = st[i]; } });
+      rows.push({ id: 'stage', label: '스테이지', value: `${chapterLabel(sd, 'ko')} ${sd.name}`, n: st.length, i: si, set: (i) => { S.stageId = st[i]; } });
     }
     if (S.kind === 'daily') {
       const d = ONLINE.dailyNow(), sd = d ? STAGES[d.stageId] : null, day = ONLINE.kstDay();
       rows.push({ id: 'date', label: '날짜', value: `오늘 · ${+day.slice(4, 6)}월 ${+day.slice(6, 8)}일`, n: 1, i: 0, info: true, set() {} });
-      if (sd) rows.push({ id: 'dstage', label: '스테이지', value: `${sd.side ? '외전' : `${sd.chapter}장`} ${sd.name}`, n: 1, i: 0, info: true, set() {} });
+      if (sd) rows.push({ id: 'dstage', label: '스테이지', value: `${chapterLabel(sd, 'ko')} ${sd.name}`, n: 1, i: 0, info: true, set() {} });
     } else {
       const di = Math.max(0, DIFFICULTIES.findIndex((d) => d.id === S.diff));
       rows.push({ id: 'diff', label: '난이도', value: DIFFICULTIES[di].name, color: DIFFICULTIES[di].color, n: DIFFICULTIES.length, i: di, set: (i) => { S.diff = DIFFICULTIES[i].id; } });

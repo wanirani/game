@@ -20,7 +20,7 @@ import { drawIcon } from '../../render/icons.js';
 import { CHARACTERS } from '../../data/characters.js';
 import { CLASSES, classChain } from '../../data/classes.js';
 import * as SkillData from '../../data/skills.js';
-import { STAGES, STAGE_ORDER } from '../../data/stages.js';
+import { STAGES, STAGE_ORDER, chapterLabel } from '../../data/stages.js';
 import { DOCS } from '../../data/lore.js';
 import { ITEMS } from '../../data/items.js';
 import { BOSSES } from '../../data/bosses.js';
@@ -33,7 +33,7 @@ import { composeLook, lookForAsc, STAT_INFO } from '../../game/stats.js';
 import { addByBase } from '../../game/inventory.js';
 import { SHOP_LINES } from '../../data/town.js';
 import { SCRIPTS } from '../../data/story.js';   // 「안쪽 방 — 신부님」 새 대사 표식 (albertoNews — 읽기만)
-import { NM, NM_IDS, NM_COLOR, NM_FLAGS, isNightmareId, nmTwist, nmLevel, nmRecLevel } from '../../data/nightmare.js';   // [P3b] 「악몽」 탭
+import { NM, NM_IDS, NM_COLOR, NM_FLAGS, NM_MODE, isNightmareId, nmTwist, nmLevel, nmRecLevel } from '../../data/nightmare.js';   // [P3b] 「악몽」 탭
 import { RARITIES } from '../../data/items.js';
 import { TRAILS } from '../../data/cosmetics.js';   // [P3b] K1 다음 잔상 안내 (읽기만)
 import { nmStatus, startNightmare, NM_STATS } from '../../game/nightmare.js';
@@ -83,7 +83,7 @@ export class ChurchScene extends ServiceScene {
     if (this.p2) { try { assets.preload(['portraits/npc_elise']); } catch { /* 없음 */ } }
     this.tabs = [{ id: 'class', label: '전직' }, { id: 'bless', label: '축복' }, { id: 'reset', label: '스킬 초기화' }, { id: 'save', label: '여정 기록' }];
     // [P3b] 「악몽」 탭 (docs/specs/nightmare.md §7): 입구가 켜져 있고 이야기에서 쓰러뜨린 보스가 하나라도 있으면 (맨 끝 — 다른 탭 번호는 그대로)
-    if (NM_FLAGS.ui && !this.state?.arcade && NM_IDS.some((id) => nmStatus(this.state, id).state !== 'locked')) this.tabs.push({ id: 'nightmare', label: '악몽' });
+    if (NM_FLAGS.ui && !this.state?.arcade && NM_IDS.some((id) => nmStatus(this.state, id).state !== 'locked')) this.tabs.push({ id: 'nightmare', label: NM_MODE });   // [ux-fix #4] 난이도 「악몽」과 다른 이름
     this.sel = 0; this.cardSel = 0; this.rigs = {}; this.cere = null;
     // 전직 카드의 설명·특성·보정치 칸이 카드보다 길 때(휴대폰)만 세로 스크롤: 두 카드가 같은 자리로 (끌기·휠·↑↓·오른쪽 스틱 Y)
     this.ges = new Gesture(); this.csc = new Scroller(); this.cscRect = null; this.cscKey = null;
@@ -772,7 +772,7 @@ export class ChurchScene extends ServiceScene {
     return NM_IDS.map((id) => {
       const e = NM[id], S = STAGES[e.stage], s = nmStatus(st, id);
       const known = s.state !== 'locked' || (Array.isArray(P.unlocked) && P.unlocked.includes(e.stage));
-      return { id, e, S, s, known, name: known ? BOSSES[e.boss]?.name ?? '???' : '???', chap: S?.side ? '외전' : `${S?.chapter ?? '?'}장`, twist: nmTwist(e) };
+      return { id, e, S, s, known, name: known ? BOSSES[e.boss]?.name ?? '???' : '???', chap: chapterLabel(S, 'ko') || '?장', twist: nmTwist(e) };
     });
   }
   updateNm(dt, id, pick) {
@@ -798,16 +798,16 @@ export class ChurchScene extends ServiceScene {
     audio.sfx('menu_ok');
     const hero = this.hero, hl = hero?.level ?? 1, lv = nmLevel(e, hl), rec = nmRecLevel(e), tw = nmTwist(e);
     const first = !s.rec?.done, rar = RARITIES[e.reward?.rarity ?? 4];
-    const lines = [`보스: ${BOSSES[e.boss]?.name ?? '???'} · 악몽 Lv ${lv} (권장 Lv ${rec})`, `규칙: ${tw?.name ?? ''} — ${tw?.desc ?? ''}`, '악몽에서는 전리품·경험치가 없고 목숨이 줄지 않습니다.',
+    const lines = [`보스: ${BOSSES[e.boss]?.name ?? '???'} · 내 Lv ${hl} · 권장 Lv ${rec} · 보스 Lv ${lv}`, `규칙: ${tw?.name ?? ''} — ${tw?.desc ?? ''}`, `${NM_MODE}에서는 전리품·경험치가 없고 목숨이 줄지 않습니다.`,
       first ? `첫 격파 보상: ${rar?.name ?? ''} 장비 + ${fmt(500 * lv)} G` : '첫 격파 보상은 이미 받았습니다.'];
     if (hl < rec) lines.push(`⚠ 권장 레벨보다 ${rec - hl} 낮습니다`);
     this.modal = new Modal({
-      title: '악몽에 도전하시겠습니까?', width: 580, lines,
+      title: `${NM_MODE}에 나서시겠습니까?`, width: 580, lines,
       buttons: [{ label: '도전한다', value: 'ok', primary: true }, { label: '다시 생각한다', value: 'cancel' }],
       onResult: (r) => {
         if (r.value !== 'ok') return;
         this.talk(this.say2('신의 가호가 함께하길.', '조심히 다녀오세요!'));
-        try { startNightmare(this.game, id, { from: 'church' }); } catch (err) { console.error(err); this.game.toast('악몽에 들어가지 못했다.', '#ff8a7a'); }
+        try { startNightmare(this.game, id, { from: 'church' }); } catch (err) { console.error(err); this.game.toast(`${NM_MODE}에 나서지 못했다.`, '#ff8a7a'); }
       },
     });
   }
@@ -820,7 +820,7 @@ export class ChurchScene extends ServiceScene {
     const next = Object.values(TRAILS).filter((tr) => Number.isFinite(tr?.need?.nm) && tr.need.nm > mc).sort((a, b) => a.need.nm - b.need.nm)[0];
     uiPanel(ctx, body.x, body.y, body.w, headH, { corner: false });
     const hy = body.y + headH / 2 + Math.round(F * 0.4);
-    text(ctx, `악몽 격파 ${done} / ${cards.length}`, body.x + 14, hy, { size: 15, weight: 800, family: FONT.title, color: '#ff8a9a' });
+    text(ctx, `${NM_MODE} ${done} / ${cards.length}`, body.x + 14, hy, { size: 15, weight: 800, family: FONT.title, color: '#ff8a9a' });
     text(ctx, next ? `다음 잔상 「${next.name}」  ${mc} / ${next.need.nm}` : '잔상 셋을 모두 얻었다', body.x + body.w - 14, hy, { size: 12, weight: 700, color: '#c8a8a8', align: 'right', maxWidth: body.w * 0.55 });
     // 칸 목록
     const detH = Math.max(104, LH * 3 + 34);
@@ -900,12 +900,12 @@ export class ChurchScene extends ServiceScene {
       text(ctx, c.twist?.desc ?? '', tx, y, { size: 12, color: '#c8b8a0', maxWidth: tw });
       y += LH;
       const rec0 = c.s.rec, rar = RARITIES[c.e.reward?.rarity ?? 4];
-      const info = [`악몽 Lv ${lv}`, `권장 Lv ${rec}`];
+      const info = [`내 Lv ${hl}`, `권장 Lv ${rec}`, `보스 Lv ${lv}`];   // [ux-fix #7] 누구의 레벨인지 밝힌다
       if (rec0?.done) info.push(Number.isFinite(rec0.best) ? `최고 ${rec0.best.toFixed(1)}초` : '격파', `도전 ${rec0.tries ?? 0}회`);
       else info.push(`첫 격파 보상: ${rar?.name ?? ''} 장비 + ${fmt(500 * lv)} G`);
       text(ctx, info.join(' · '), tx, y, { size: 12, weight: 700, color: low ? '#ffb090' : rec0?.done ? '#ffd0a0' : '#9fe8a0', maxWidth: tw });
     }
-    uiButton(ctx, br, st === 'locked' ? '잠김' : '악몽에 도전', { selected: st !== 'locked', disabled: st === 'locked', size: 17 });
+    uiButton(ctx, br, st === 'locked' ? '잠김' : '토벌에 나선다', { selected: st !== 'locked', disabled: st === 'locked', size: 17 });
   }
 
   drawBless(ctx, body) {

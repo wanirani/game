@@ -2,9 +2,10 @@
 //  game/trial.js failTrial 이 쓰러진 시련 월드 위에 민다: push('trialEnd', { world, tid })
 //  - 게임오버 화면(overlays.js GameOverScene)을 본뜬 오버레이: opaque=false · uiScale · hidePad · deferToasts
 //  - 단추 두 개: 「다시 도전」(TRIAL.retryTrial — 새 월드로 보스방) / 「성당으로」(TRIAL.leaveTrial — 마을 성당 전직 탭)
-//    ←→ + 결정, 터치는 첫 탭에 고르고 다시 탭하면 결정, 마우스는 움직였을 때만 가리킨 단추를 고른다
+//    ←→ + 결정, 터치·클릭은 한 번에 결정 ([ux-fix #9] 예전에는 터치 첫 탭이 고르기뿐이라 두 번 눌러야 했다), 마우스는 움직였을 때만 가리킨 단추를 고른다
 //  - 엘리제의 한마디(T.failLine) + 보스 남은 체력·전투 시간 (얼마나 다가갔는지 한눈에)
 //  - 막 뜬 화면(ARM 초)은 입력을 받지 않는다 (쓰러지며 연타하던 공격·점프가 곧바로 결정으로 번지지 않게)
+//    탭은 화면이 뜨고 ARM 초가 지난 뒤에 눌린 손가락만 받는다 — 쓰러질 때 이미 화면을 누르고 있던 손가락을 떼어도 결정되지 않는다
 import { Scene } from '../core/game.js';
 import { input } from '../core/input.js';
 import { audio } from '../core/audio.js';
@@ -16,7 +17,7 @@ import { faceRect } from '../render/portrait.js';
 import { hudSafe } from '../render/hud_layout.js';
 import { TRIALS } from '../data/trials.js';
 import { RARITIES } from '../data/items.js';
-import { NM_COLOR, NM_IDS } from '../data/nightmare.js';
+import { NM_COLOR, NM_IDS, NM_MODE } from '../data/nightmare.js';
 import * as TRIAL from '../game/trial.js';
 import { nmFrom, nmRecordOf, finishNightmare } from '../game/nightmare.js';   // [nightmare] 악몽 실패도 이 화면 (docs/specs/nightmare.md §1)
 
@@ -25,9 +26,9 @@ const TITLE = '시련 실패';
 const ELISE = 'portraits/npc_elise';
 const PURPLE = TRIAL.TRIAL_COLOR;
 const BTN = ['다시 도전', '성당으로'];
-const NM_TITLE = '악몽 실패';   // [nightmare] 악몽 실패 제목 · 지도에서 들어왔으면 「마을로」
+const NM_TITLE = `${NM_MODE} 실패`;   // [nightmare] 악몽 실패 제목 · 지도에서 들어왔으면 「마을로」
 const NM_BTN = ['다시 도전', '마을로'];
-const NM_WIN = '악몽 격파';   // [P3b] 악몽 격파 결과 화면 (보상 줄) — completeNightmare 가 push('trialEnd', { result })
+const NM_WIN = `${NM_MODE} 성공`;   // [P3b] 악몽 격파 결과 화면 (보상 줄) — completeNightmare 가 push('trialEnd', { result })
 const NM_WIN_LINE = '악몽을 이겨 냈어요! 이번엔 제가 종을 크게 칠게요.';
 const TAP_ID = ['te_retry', 'te_leave'];
 
@@ -48,6 +49,7 @@ export class TrialEndScene extends Scene {
     this.menu = new ListMenu(2, { cols: 2 });
     this.menu.index = this.result ? 1 : 0;   // 격파 뒤 기본 = 돌아가기 (다시 도전은 한 칸 옆)
     this.done = false; this.px = undefined; this.py = undefined;
+    this.freshPress = false;   // [ux-fix #9] 이 화면이 뜨고 ARM 초 뒤에 눌린 손가락인가 (그 손가락의 탭만 결정한다)
     this.vg = null; this.vgKey = '';
     const w = this.world, b = w?.boss;
     this.bossPct = b?.stats?.maxHp > 0 && !b.pendingBoss ? clamp(Math.ceil((b.hp / b.stats.maxHp) * 100), 0, 100) : null;
@@ -80,7 +82,7 @@ export class TrialEndScene extends Scene {
     } else rows.push(['첫 격파 보상', '이미 받았다', COLORS.dim]);
     const t = Number.isFinite(R.time) ? `${R.time.toFixed(1)}초` : '—';
     rows.push(['기록', R.newBest ? `${t}  · 새 기록!` : `${t}  · 최고 ${Number.isFinite(R.best) ? R.best.toFixed(1) + '초' : '—'}`, R.newBest ? '#ffe070' : COLORS.bone]);
-    rows.push(['악몽 격파', `${R.clears ?? 0} / ${NM_IDS.length}${R.metaFresh ? '  (+1)' : ''}`, R.metaFresh ? '#ff8a9a' : COLORS.bone]);
+    rows.push([NM_MODE, `${R.clears ?? 0} / ${NM_IDS.length}${R.metaFresh ? '  (+1)' : ''}`, R.metaFresh ? '#ff8a9a' : COLORS.bone]);
     if (Array.isArray(R.trails) && R.trails.length) rows.push(['새 잔상', R.trails.map((s) => `「${s}」`).join(' · '), '#ff8a9a']);
     return rows;
   }
@@ -95,6 +97,7 @@ export class TrialEndScene extends Scene {
     if (this.done) return;
     const armed = this.t >= ARM;
     const p = input.pointer;
+    if (p.justDown) this.freshPress = armed;   // [ux-fix #9] 화면이 뜨기 전·직후에 누른 손가락은 떼어도 결정하지 않는다
     if (!armed || this.px === undefined) { this.px = p.x; this.py = p.y; }
     if (!armed) return;
     if (p.active && (p.x !== this.px || p.y !== this.py)) {
@@ -106,8 +109,11 @@ export class TrialEndScene extends Scene {
     if (this.menu.moved) audio.sfx('menu_move');
     const hit = TAP_ID.indexOf(taps.hit(this));
     if (hit >= 0) {
-      if (input.touchMode && this.menu.index !== hit) { this.menu.index = hit; audio.sfx('menu_move'); }
-      else { this.menu.index = hit; this.choose(); }
+      // [ux-fix #9] 한 번 탭 = 결정 (터치도). 단, 이 화면이 뜬 뒤 새로 누른 손가락이어야 한다
+      const ok = this.freshPress;
+      this.freshPress = false;
+      if (!ok) return;
+      this.menu.index = hit; this.choose();
       return;
     }
     if (r === 'confirm') this.choose();

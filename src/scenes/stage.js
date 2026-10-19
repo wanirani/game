@@ -9,7 +9,20 @@ import { audio } from '../core/audio.js';
 import * as PUPPET from '../render/hero_puppet.js';
 import * as HERO from '../render/hero.js';   // [hook:plat] heroScaleFor (MOTION, 있을 때만)
 import * as TRIAL from '../game/trial.js';   // 시련 「메아리」 (classes_t3 §9.3–§9.4)
+import { chapterLabel, stageTitle } from '../data/stages.js';   // [ux-fix #1] 첫 배너의 장 표시 · 제목 (1부 외전 s26 = 「외전 Ⅰ」 · 「파라켈의 지하 공방」)
 import '../game/autoplay.js';   // [auto] 자동 전투 · 대상 고정 (불러오면 input 가상 입력원을 설치한다 — AUTO-QOL)
+
+/**
+ * [ux-fix #1] 스테이지 첫 배너 (world.js 가 'CHAPTER {chapter} · {sub}' 로 만든다): 장 표시를 data/stages.js chapterLabel 로,
+ * 큰 글자를 stageTitle(온전한 이름)로 바꾼다 — sideLabel·fullName 이 있는 스테이지(지금은 s26)만 달라지고 나머지는 그대로다.
+ * world.js 가 처음부터 chapterLabel/stageTitle 로 만들면 (text 가 이미 제목이라) 아무것도 하지 않는다.
+ */
+function fixStageBanner(w) {
+  const b = w?.banner, st = w?.stage;
+  if (!b || !st || (!st.sideLabel && !st.fullName) || b.text !== st.name) return;
+  b.text = stageTitle(st);
+  if (typeof b.sub === 'string') b.sub = b.sub.replace(`CHAPTER ${st.chapter ?? ''}`, chapterLabel(st, 'en'));
+}
 
 export class StageScene extends Scene {
   enter({ stageId = 's01', roomId = null, mode = 'story', trial = null } = {}) {
@@ -20,6 +33,7 @@ export class StageScene extends Scene {
       this.world = new World(this.game, stageId, { roomId, mode: 'practice' });
       setTimeout(() => { if (this.game.top === this) TRIAL.leaveTrial(this.game, trial, 'blocked'); }, 0);
     } else this.world = prep ? new World(this.game, prep.stage, prep.opts) : new World(this.game, stageId, { roomId, mode });
+    if (!prep) fixStageBanner(this.world);   // [ux-fix #1]
     if (prep) TRIAL.attachTrial(this, this.world, prep.T);
     this.game.world = this.world;
     this.stageId = stageId;

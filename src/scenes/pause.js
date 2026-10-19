@@ -18,8 +18,10 @@ import { faceRect } from '../render/portrait.js';
 import { CHARACTERS } from '../data/characters.js';
 import { classNameOf } from '../data/ascensions.js';   // 초월·비전 이름 (classes_t3 §8.3)
 import * as TRIAL from '../game/trial.js';   // 시련: '마을로 귀환' 대신 '시련 포기' (classes_t3 §9.4)
+import { NM_MODE } from '../data/nightmare.js';   // [ux-fix #4] 모드 이름 「악몽 토벌」 (난이도 「악몽」과 다르다)
 import * as NG from '../game/ngplus.js';   // [hook:ng]
 import {
+import { chapterLabel, stageTitle } from '../data/stages.js';   // [ux-fix #1] 장 표시 · 제목 (1부 외전 s26 = 「외전 Ⅰ」 · 「파라켈의 지하 공방」)
   PAL, frame, divider, glow, glowOval, glyph, gauge, diamond, gbutton, Nav, Gesture, Embers, skillAlert, redBadge,
 } from './menu/common.js';
 
@@ -97,7 +99,7 @@ export class PauseScene extends Scene {
       { id: 'menu', label: '메뉴', sub: '상태 · 장비 · 스킬 · 도감', icon: 'crest', disabled: !reg.menu, run: () => this.game.push('menu', { world: this.world, tab: this.skillBadge != null ? 'skills' : 'status' }) },
       { label: '인벤토리', icon: 'bag', disabled: !reg.menu, run: () => this.game.push('menu', { world: this.world, tab: 'inventory' }) },
       { label: '설정', icon: 'gear', disabled: !reg.options, run: () => this.game.push('options', {}) },
-      this.world?.trial ? { label: this.world.trial.nightmare ? '악몽 포기' : '시련 포기', icon: 'home', run: () => this.confirmQuitTrial() }   // 시련: 성당으로 (TRIAL.leaveTrial) · [P3b] 악몽은 「악몽 포기」 (p3a_requests 1)
+      this.world?.trial ? { label: this.world.trial.nightmare ? '토벌 포기' : '시련 포기', icon: 'home', run: () => this.confirmQuitTrial() }   // 시련: 성당으로 (TRIAL.leaveTrial) · [P3b] 악몽은 「악몽 포기」 (p3a_requests 1)
         : { label: '마을로 귀환', icon: 'home', run: () => this.confirmTown() },
       { label: '타이틀로', icon: 'door', run: () => this.confirmTitle() },
     ];
@@ -148,8 +150,8 @@ export class PauseScene extends Scene {
   confirmQuitTrial() {
     const w = this.world, tid = w?.trial?.id, nm = !!w?.trial?.nightmare;   // [P3b] 악몽 (같은 길 — TRIAL.leaveTrial 이 nightmare.js 로 넘긴다)
     this.modal = new PauseConfirm({
-      title: nm ? '악몽 포기' : '시련 포기', yes: '포기한다', no: '취소', danger: true,
-      text: nm ? '악몽에서 빠져나와 돌아갑니다.\n악몽은 언제든 다시 도전할 수 있습니다.' : '메아리에서 빠져나와 성당으로 돌아갑니다.\n시련은 언제든 다시 도전할 수 있습니다.',
+      title: nm ? '토벌 포기' : '시련 포기', yes: '포기한다', no: '취소', danger: true,
+      text: nm ? `${NM_MODE}을 그만두고 돌아갑니다.\n${NM_MODE}은 언제든 다시 도전할 수 있습니다.` : '메아리에서 빠져나와 성당으로 돌아갑니다.\n시련은 언제든 다시 도전할 수 있습니다.',
       onYes: () => TRIAL.leaveTrial(this.game, tid, 'quit'),
     });
   }
@@ -329,8 +331,8 @@ export class PauseScene extends Scene {
     const ng = w.ng > 0 ? NG.ngLabel?.(w.ng) || `${w.ng + 1}회차` : '';   // [hook:ng]
     const tr = w.trial;   // 시련: 머리 줄은 시련 이름 (보라)
     if (tr) text(ctx, tr.name ?? '', cx0 + 22, cy0 + 30, { size: 13, weight: 800, color: tr.color ?? TRIAL.TRIAL_COLOR, maxWidth: cw - 44 });   // [P3b] 악몽은 진홍
-    else text(ctx, `CHAPTER ${st.chapter ?? ''}${ng ? ` · ${ng}` : ''}`, cx0 + 22, cy0 + 30, { size: 12, weight: 800, family: FONT.num, color: PAL.goldMid });
-    text(ctx, st.name ?? '', cx0 + 22, cy0 + 60, { size: 26, weight: 800, family: FONT.title, color: PAL.bone, ow: 4, maxWidth: cw - 44 });
+    else text(ctx, `${chapterLabel(st, 'en')}${ng ? ` · ${ng}` : ''}`, cx0 + 22, cy0 + 30, { size: 12, weight: 800, family: FONT.num, color: PAL.goldMid });
+    text(ctx, stageTitle(st), cx0 + 22, cy0 + 60, { size: 26, weight: 800, family: FONT.title, color: PAL.bone, ow: 4, maxWidth: cw - 44 });
     if (st.sub) text(ctx, st.sub, cx0 + 22, cy0 + 80, { size: 12, weight: 600, color: PAL.dim, maxWidth: cw - 44 });
     divider(ctx, cx0 + 16, cy0 + 94, cw - 32);
     const run = w.run || {};
@@ -344,7 +346,7 @@ export class PauseScene extends Scene {
     ];
     if (tr) {   // 시련: 점수·비전서 대신 규칙·도전 횟수 (점수·전리품이 남지 않는다)
       const rn = TRIAL.trialRuleNames(tr);
-      rows.splice(1, 1, [tr.nightmare ? '악몽의 규칙' : '시련의 규칙', rn.length ? rn.join(' · ') : '없음']);
+      rows.splice(1, 1, [tr.nightmare ? '토벌 규칙' : '시련의 규칙', rn.length ? rn.join(' · ') : '없음']);
       rows.splice(4, 1, ['도전 횟수', `${tr.nightmare ? this.game.state?.nm?.[tr.id]?.tries ?? 0 : w.hero?.trials?.[tr.id]?.tries ?? 0}`]);   // [P3b] 악몽 기록은 슬롯 state.nm
     }
     rows.forEach(([a, b], k) => {

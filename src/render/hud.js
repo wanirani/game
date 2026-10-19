@@ -30,6 +30,7 @@ import { crisp, crispActive, hashStart, hashNum, hashStr } from './hud_crisp.js'
 import { useItem } from '../game/inventory.js';   // [hudfix] 빠른 칸 탭 = 물약 사용
 import { ITEMS } from '../data/items.js';
 import { drawMinimap, drawMinimapRing, drawBigMap } from './minimap.js';
+import { chapterLabel } from '../data/stages.js';   // [ux-fix #1] 장 표시 (1부 외전 s26 = 「외전 Ⅰ」)
 import { drawLockMarks, drawLockPlate, autoPill, autoPillW, autoLevelOf, autoHoldOf } from './hud_auto.js';   // [auto] 대상 고정 표적 고리 · 이름 옆 AUTO
 
 // ── 그린 HUD 그림 (hud_mobile §4): 테(assets/ui/hud/*.webp) · 스킬/UI 아이콘(assets/icons/skills/<id>.webp 96 px, 48/<id>.webp 48 px) ──
@@ -343,7 +344,7 @@ function drawStagePlate(ctx, r, world, L) {
   ctx.fillStyle = '#8a1424'; ctx.fillRect(r.x, r.y + r.h - 2, r.w, 2);
   ctx.strokeStyle = 'rgba(214,170,110,0.55)'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
   const F = Math.max(13, L.textMin);
-  const ch = st.chapter ? `${st.chapter}장 · ` : '';
+  const cl = chapterLabel(st, 'num'), ch = cl ? `${cl} · ` : '';   // [ux-fix #1] 「7장 · 」 — s26 은 「외전 Ⅰ · 」
   text(ctx, ch + (st.name ?? ''), r.x + 8, r.y + Math.round(r.h / 2 + F * 0.36), { size: F, weight: 800, family: FONT.title, color: '#f3d38a', maxWidth: r.w - 14 });
 }
 

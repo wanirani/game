@@ -28,7 +28,7 @@ import { text, wrap, drawCover, FONT, font, taps, fontEpoch } from '../../core/u
 import { drawHints } from '../../core/prompts.js';
 import { TAU, clamp, lerp, ease, fmt, fmtTime, rgba, rand, shade, mix } from '../../core/math.js';
 import { Particles } from '../../core/particles.js';
-import { STAGES, STAGE_ORDER_P1, RELICS, HEARTS, SHARDS, SIDE_STAGES } from '../../data/stages.js';
+import { STAGES, STAGE_ORDER_P1, RELICS, HEARTS, SHARDS, SIDE_STAGES, chapterLabel, stageTitle } from '../../data/stages.js';
 import { SCRIPTS } from '../../data/story.js';
 import { ITEMS } from '../../data/items.js';
 import { CHARACTERS } from '../../data/characters.js';
@@ -43,7 +43,7 @@ import { freeSlots } from '../../game/inventory.js';   // [auto] 출발 전 가�
 import { requestDispose } from '../../game/pickup_compare.js';
 import { questStageIds } from '../menu/access.js';   // [playb] P07 의뢰를 진행할 수 있는 스테이지 (퀘스트 게시판·메뉴 › 퀘스트의 「출현:」 과 같은 규칙)
 import { activeQuests, questProgress } from '../../game/quests.js';   // [auto] 「일괄 처분」 바로가기 (메뉴 › 인벤토리가 창을 연다)
-import { NM_FLAGS, NM_COLOR, nmEntry, nmTwist, nmLevel, nmRecLevel } from '../../data/nightmare.js';   // [P3b] 붉은 「악몽」 단추 (docs/specs/nightmare.md §7)
+import { NM_FLAGS, NM_COLOR, NM_MODE, nmEntry, nmTwist, nmLevel, nmRecLevel } from '../../data/nightmare.js';   // [P3b] 붉은 「악몽」 단추 (docs/specs/nightmare.md §7)
 import { nmStatus, startNightmare } from '../../game/nightmare.js';
 import { BOSSES } from '../../data/bosses.js';
 import { RARITIES } from '../../data/items.js';
@@ -113,7 +113,7 @@ const REVEALS = {
   s23: { title: '외전 · 늑대 고개', sub: '액수 칸이 빈 현상금 공고가 북쪽 고개에서 날아들었다', color: '#ffcf6a', tcol: '#fff0c8', crack: '#fff0c8', fx: 'holy' },
   s24: { title: '외전 · 장미 수녀원', sub: '장미 향 나는 붉은 봉랍의 편지가 남쪽 기슭에서 날아들었다', color: '#ff6a8a', tcol: '#ffd6e0', crack: '#ffd6e0', fx: 'dark' },
   s25: { title: '외전 · 불탄 목장', sub: '그을린 고삐를 문 흑마가 에슈빌 여관 문을 두드렸다', color: '#ffb060', tcol: '#fff0d0', crack: '#fff0d0', fx: 'holy' },
-  s26: { title: '외전 · 지하 공방', sub: '편지를 안은 작은 호문쿨루스가 성당 문 밑으로 기어들었다', color: '#d8c070', tcol: '#fff0c0', crack: '#fff0c0', fx: 'holy' },
+  s26: { title: '외전 Ⅰ · 파라켈의 공방', sub: '편지를 안은 작은 호문쿨루스가 성당 문 밑으로 기어들었다', color: '#d8c070', tcol: '#fff0c0', crack: '#fff0c0', fx: 'holy' },
 };
 
 /** 글자 폭을 재는 캔버스 (update 에서도 이름표 배치를 계산할 수 있게) */
@@ -658,7 +658,7 @@ export class WorldMapScene extends Scene {
     if (pick === 'cancel') { audio.sfx('menu_cancel'); return; }
     audio.sfx('go');
     this.saveNow();
-    try { startNightmare(this.game, A.id, { from: 'worldmap' }); } catch (e) { console.error(e); this.toastOnce('악몽에 들어가지 못했다.', '#ff8a7a'); }
+    try { startNightmare(this.game, A.id, { from: 'worldmap' }); } catch (e) { console.error(e); this.toastOnce(`${NM_MODE}에 나서지 못했다.`, '#ff8a7a'); }
   }
   drawNmAsk(ctx, L) {
     const A = this.nmAsk, e = nmEntry(A.id);
@@ -667,16 +667,18 @@ export class WorldMapScene extends Scene {
     const first = !s.rec?.done, rar = RARITIES[e.reward?.rarity ?? 4];
     ctx.fillStyle = 'rgba(8,0,2,0.66)'; ctx.fillRect(0, 0, L.W, L.H);
     const w = Math.min(600, L.W - 40), bh = Math.max(L.touch ? 54 : 48, this.minTap()), low = hl < rec;
-    const h = 150 + (low ? 22 : 0) + bh + (L.touch ? 0 : 22);
+    const h = 172 + (low ? 22 : 0) + bh + (L.touch ? 0 : 22);
     const x = (L.W - w) / 2, y = Math.round((L.H - h) / 2);
     this._bagY = y;   // 토스트가 창 위로 비킨다 (toastY)
     uiPanel(ctx, x, y, w, h, { glow: 'rgba(224,32,58,0.45)' });
-    text(ctx, `악몽 · ${BOSSES[e.boss]?.name ?? ''}`, L.W / 2, y + 40, { size: 23, weight: 800, family: FONT.title, align: 'center', color: '#ff8a9a', maxWidth: w - 40 });
+    text(ctx, `${NM_MODE} · ${BOSSES[e.boss]?.name ?? ''}`, L.W / 2, y + 40, { size: 23, weight: 800, family: FONT.title, align: 'center', color: '#ff8a9a', maxWidth: w - 40 });
     text(ctx, `규칙: ${tw?.name ?? ''} — ${tw?.desc ?? ''}`, L.W / 2, y + 70, { size: 14, align: 'center', color: '#e8dcc8', maxWidth: w - 40 });
-    text(ctx, `악몽 Lv ${lv} · 권장 Lv ${rec} · ${first ? `첫 격파 보상: ${rar?.name ?? ''} 장비 + ${fmt(500 * lv)} G` : Number.isFinite(s.rec?.best) ? `최고 ${s.rec.best.toFixed(1)}초` : '격파'}`, L.W / 2, y + 94, { size: 14, align: 'center', color: first ? '#9fe8a0' : '#ffd0a0', maxWidth: w - 40 });
-    text(ctx, '전리품·경험치는 없고 목숨은 줄지 않는다', L.W / 2, y + 116, { size: 12, align: 'center', color: '#c8b8a0', maxWidth: w - 40 });
-    if (low) text(ctx, `⚠ 권장 레벨보다 ${rec - hl} 낮다`, L.W / 2, y + 138, { size: 13, weight: 800, align: 'center', color: '#ffb060', maxWidth: w - 40 });
-    const gap = 14, bw = Math.floor((w - 40 - gap) / 2), by = y + 130 + (low ? 22 : 0);
+    // [ux-fix #7] 레벨 줄: 누구의 레벨인지 밝힌다 (예전 「악몽 Lv 9 · 권장 11」은 9 가 내 레벨인지 스테이지 레벨인지 알 수 없었다)
+    text(ctx, `내 Lv ${hl} · 권장 Lv ${rec} · 보스 Lv ${lv}`, L.W / 2, y + 94, { size: 15, weight: 800, align: 'center', color: low ? '#ffb090' : '#e8dcc8', maxWidth: w - 40 });
+    text(ctx, first ? `첫 격파 보상: ${rar?.name ?? ''} 장비 + ${fmt(500 * lv)} G` : Number.isFinite(s.rec?.best) ? `최고 기록 ${s.rec.best.toFixed(1)}초` : '격파한 적 있음', L.W / 2, y + 116, { size: 14, align: 'center', color: first ? '#9fe8a0' : '#ffd0a0', maxWidth: w - 40 });
+    text(ctx, '전리품·경험치는 없고 목숨은 줄지 않는다', L.W / 2, y + 138, { size: 12, align: 'center', color: '#c8b8a0', maxWidth: w - 40 });
+    if (low) text(ctx, `⚠ 권장 레벨보다 ${rec - hl} 낮다`, L.W / 2, y + 160, { size: 13, weight: 800, align: 'center', color: '#ffb060', maxWidth: w - 40 });
+    const gap = 14, bw = Math.floor((w - 40 - gap) / 2), by = y + 152 + (low ? 22 : 0);
     [['go', '도전한다'], ['cancel', '취소']].forEach(([id, lab], i) => {
       const r = { x: x + 20 + i * (bw + gap), y: by, w: bw, h: bh };
       if (i === 0) gbutton(ctx, r, lab, { hot: A.sel === 0, accent: NM_COLOR, size: 18, t: this.t, color: A.sel === 0 ? '#ffe0e4' : null });
@@ -690,7 +692,7 @@ export class WorldMapScene extends Scene {
     const first = !nm.s.rec?.done;
     ctx.save();
     ctx.shadowColor = `rgba(255,40,70,${0.35 + Math.sin(this.t * 4) * 0.15})`; ctx.shadowBlur = 14;
-    gbutton(ctx, r, '악몽', { hot: true, accent: NM_COLOR, color: '#ffe0e4', size: small ? 16 : 19, t: this.t, sub: !small && r.h >= 54 ? (first ? '첫 격파 보상' : '최고 기록 갱신') : null });
+    gbutton(ctx, r, NM_MODE, { hot: true, accent: NM_COLOR, color: '#ffe0e4', size: small ? 15 : 19, t: this.t, sub: !small && r.h >= 54 ? (first ? '첫 격파 보상' : '최고 기록 갱신') : null });
     ctx.restore();
     taps.add('nm:open', r, { kind: 'primary', owner: this, src: 'worldmap' });
     this.nmRect = r;
@@ -1114,8 +1116,8 @@ export class WorldMapScene extends Scene {
     uiPanel(ctx, x, y, w, h, { glow: page === 1 ? 'rgba(160,90,255,0.35)' : 'rgba(180,20,40,0.3)' });
     taps.add('panel', { x, y, w, h }, { kind: 'primary', owner: this, src: 'worldmap' });
     const bw = 116, bh = h - 8, bx = x + w - bw - 6, cy = y + h / 2;
-    const nm = this.nmFor(n), nbw = 92, nbx = bx - nbw - 6;   // [P3b] 붉은 「악몽」 단추는 출발 왼쪽
-    const chap = n.arena ? '투기장' : n.side ? '외전' : `${s.chapter}장`;
+    const nm = this.nmFor(n), nbw = 104, nbx = bx - nbw - 6;   // [P3b] 붉은 「악몽 토벌」 단추는 출발 왼쪽 (ux-fix: 92 → 104 — 네 글자 이름)
+    const chap = n.arena ? '투기장' : chapterLabel(s, 'ko');   // [ux-fix #1] 외전 「외전」 · s26 「외전 Ⅰ」
     text(ctx, '▲', x + 18, cy + 5, { size: 13, weight: 900, color: page === 1 ? '#c8b0ff' : '#e8c872', align: 'center' });
     text(ctx, chap, x + 34, cy + 5, { size: 13, weight: 800, family: FONT.title, color: page === 1 ? '#c8b0ff' : '#c8a060' });
     ctx.font = font(13, 800, FONT.title);
@@ -1185,9 +1187,9 @@ export class WorldMapScene extends Scene {
     const bx = x + w - bw - 16 - (nmSide ? nbw + 10 : 0);
     const lw = narrow ? w * 0.31 - 44 : w * 0.36 - 24;
     // 제목
-    const chapTxt = n.arena ? 'ARENA' : n.side ? 'SIDE STORY · 외전' : `CHAPTER ${ROMAN[s.chapter] ?? s.chapter}`;
+    const chapTxt = n.arena ? 'ARENA' : chapterLabel(s, 'roman');   // [ux-fix #1] 외전 「SIDE STORY · 외전」 · s26 「SIDE STORY · 외전 Ⅰ」
     text(ctx, chapTxt, x + 24, y + Y[0], { size: 12, weight: 800, family: FONT.num, color: page === 1 ? '#c8b0ff' : n.id === 's13' ? '#d8a0ff' : '#c8a060' });
-    text(ctx, open ? s.name : '??? — 봉인된 땅', x + 24, y + Y[1], { size: cmp ? 23 : 26, weight: 800, family: FONT.title, color: open ? (page === 1 ? '#efe4ff' : '#f3d690') : '#8a7a70', maxWidth: lw });
+    text(ctx, open ? stageTitle(s) : '??? — 봉인된 땅', x + 24, y + Y[1], { size: cmp ? 23 : 26, weight: 800, family: FONT.title, color: open ? (page === 1 ? '#efe4ff' : '#f3d690') : '#8a7a70', maxWidth: lw });
     const subSize = narrow ? 12 : 13;
     if (!open && !n.arena) {
       // 잠긴 노드: 적 레벨 줄이 비므로 해금 조건을 두 줄까지
@@ -1295,7 +1297,7 @@ export class WorldMapScene extends Scene {
   }
 
   hints(ctx, L) {
-    const items = [['dpadH', '스테이지'], ['confirm', '출발'], ...(this.nmFor(this.cur()) ? [['alt', '악몽']] : []), ['cancel', '마을로']];   // [P3b]
+    const items = [['dpadH', '스테이지'], ['confirm', '출발'], ...(this.nmFor(this.cur()) ? [['alt', NM_MODE]] : []), ['cancel', '마을로']];   // [P3b]
     if (this.pages[1]) items.push([['prevTab', 'nextTab'], '지도 전환']);
     drawHints(ctx, items, L.W / 2, L.H - 8, { align: 'center', size: 11 });
   }

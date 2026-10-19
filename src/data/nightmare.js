@@ -9,6 +9,11 @@
 //  배율은 첫 값이다: P3b 가 tools/balance.mjs --nm 로 맞춘다 (이야기 대비 타수 1.3–1.9배 · 한 번에 최대 체력 25% 이하)
 import { STAGES } from './stages.js';
 
+/**
+ * [ux-fix #4 · #7] 이 모드가 플레이어에게 보이는 이름 — 이야기 난이도 「악몽」(data/difficulty.js)과 헷갈리지 않게 「악몽 토벌」.
+ * 모드를 부르는 모든 화면(성당 탭 · 지도 단추 · 확인 창 · 배너 · 실패/격파 화면 · 일시정지 · HUD 꼬리표)이 이 이름을 쓴다. 내부 id(nm_* · 'nightmare')는 그대로.
+ */
+export const NM_MODE = '악몽 토벌';
 /** 악몽 색 (배너·후광·결과 줄) */
 export const NM_COLOR = '#e0203a';
 /**
