@@ -1077,16 +1077,17 @@ export class TowerScene extends ArcadeRunScene {
     drawHints(ctx, [item], clamp(s.x, 160, vw - 160), y, { align: 'center', size: 14, color: g.route === 'blood' ? '#ffc8c0' : '#fff4dc' });
   }
   /**
-   * [play-fix #3] 갈림길에서 어느 문 위에도 서 있지 않을 때: 영웅 머리 위에 「◀ 안전한 길 · 피의 길 ▶」 (문이 있는 쪽 방향) +
+   * [play-fix #3] 갈림길에서 어느 문 위에도 서 있지 않을 때: 영웅 머리 위에 「◀ 안전한 길   피의 길 ▶」 (문이 있는 쪽 방향) +
    * 자동 전투가 켜져 있으면 「자동 전투는 길을 고르지 않습니다」
    */
   drawForkHint(ctx, w, vw) {
     const p = w.player;
     if (!p || p.dead) return;
-    const s = w.camera.toScreen(p.cx, p.y - 30), y = clamp(s.y, 130, this.game.viewH - 150);
-    const items = this.gates.map((g) => ({ g, dir: g.cx < p.cx ? 'left' : 'right' })).sort((a, b) => a.g.cx - b.g.cx).map(({ g, dir }) => [dir, ROUTE_NAME[g.route] ?? '']);
-    drawHints(ctx, items, clamp(s.x, 160, vw - 160), y, { align: 'center', size: 14, color: '#fff4dc' });
-    if (levelOf(this.game) !== 'off') text(ctx, '자동 전투는 길을 고르지 않습니다', clamp(s.x, 160, vw - 160), y + 24, { size: 13, align: 'center', weight: 800, color: '#ffd890', ow: 3 });
+    const s = w.camera.toScreen(p.cx, p.y - 40), y = clamp(s.y, 150, this.game.viewH - 150);
+    // 방향은 글자 화살표로 (터치 모드의 이동 단추 그림은 왼쪽 · 오른쪽이 같은 모양이라 어느 문인지 알 수 없다)
+    const label = this.gates.slice().sort((a, b) => a.cx - b.cx).map((g) => (g.cx < p.cx ? `◀ ${ROUTE_NAME[g.route] ?? ''}` : `${ROUTE_NAME[g.route] ?? ''} ▶`)).join('   ');
+    text(ctx, label, clamp(s.x, 160, vw - 160), y, { size: 15, align: 'center', weight: 900, color: '#fff4dc', ow: 3 });
+    if (levelOf(this.game) !== 'off') text(ctx, '자동 전투는 길을 고르지 않습니다', clamp(s.x, 160, vw - 160), y - 24, { size: 13, align: 'center', weight: 800, color: '#ffd890', ow: 3 });   // 머리 위 줄의 위 (영웅을 가리지 않게)
   }
   /** 일시정지 화면 오른쪽 칸: 받은 축복 목록 (arcade_run.js ArcadePauseScene 이 부른다) */
   drawPauseSide(ctx, r) {

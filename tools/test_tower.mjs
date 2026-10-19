@@ -980,8 +980,11 @@ test('시즌 2: 변이 10종 효과 · 알림 카드 · 분열 상한 · 폭발/
     out.swift.foes = foes().length - t.plan.enemies.length;
     // 탐욕의 계약: 안식처에서 회복하지 않는다 → 남은 계약은 맹세 하나 + 거절
     t.debugFloor(30); p.hp = Math.round(p.stats.hp * 0.4); const h0 = p.hp;
+    until(() => t.phase === 'clear' && !!w.banner, 400, '30층 안식처 알림');
+    out.greed.banner = w.banner?.sub;
     until(() => g.top.name === 'towerBlessing', 400, '30층 축복');
-    out.greed.heal = (p.hp - h0) / p.stats.hp; out.greed.banner = w.banner?.sub;   // 자연 회복(초당 몇)만 — 안식처 30 % 는 없다
+    out.greed.heal = (p.hp - h0) / p.stats.hp;   // 자연 회복(초당 몇)만 — 안식처 30 % 는 없다
+    out.greed.bannerUnderCards = w.banner ?? null;   // [play-fix #17] 카드가 뜨면 큰 알림은 치운다 (카드 뒤로 비치지 않게)
     const picks0 = t.picks;
     g.top.choose(0);
     until(() => g.top.name === 'towerBlessing' && g.top.mode === 'pact', 200, '30층 계약');
@@ -1005,6 +1008,7 @@ test('시즌 2: 변이 10종 효과 · 알림 카드 · 분열 상한 · 폭발/
   assert.ok(near(pacts.swift.move, 20, 1e-9) && near(pacts.swift.atkSpd, 20, 1e-9) && pacts.swift.foes === 3, `질주의 계약 ${JSON.stringify(pacts.swift)}`);
   assert.ok(pacts.greed.heal < 0.03, `탐욕의 계약 = 안식처 회복(30 %) 없음 ${pacts.greed.heal}`);
   assert.match(pacts.greed.banner, /탐욕의 계약/);
+  assert.equal(pacts.greed.bannerUnderCards, null, '축복 카드 뒤에 안식처 알림이 남지 않는다');
   assert.deepEqual(pacts.offer, ['oath', null], '맺은 계약은 다시 나오지 않는다');
   assert.equal(pacts.oath.picks, 2, '맹세의 계약 = 축복 하나 더');
   assert.equal(pacts.oath.mul, 1.5);
@@ -1028,6 +1032,133 @@ test('시즌 2: 변이 10종 효과 · 알림 카드 · 분열 상한 · 폭발/
   // 이정표: 이 기기에서 처음 넘은 20·30층 안식처 → 잔상 「은빛」「혹한」 (결과 줄 + extra.milestones)
   assert.deepEqual(fin, { row: '피의 길 1번 · 맺은 계약 6개 · 새 잔상 「은빛」「혹한」', v: 2, pacts: pacts.order, blood: 1 }, `결과 ${JSON.stringify(fin)}`);   // [play-fix #22]
   assert.deepEqual(await page.evaluate(() => window.__game.top.res.extra.milestones), ['tr_silver', 'tr_frost']);
+  assert.deepEqual(errs, []);
+  await ctx.close();
+});
+
+// ───────────────────────── [play-fix] Fold 리플레이 #16 · #17 · #18 · #19 ─────────────────────────
+// #16 HUD 이름판 = 「무한의 탑 · 제 n층」 (전투 · 군주 · 안식처 층 모두 — 예전엔 방을 빌려 온 스테이지의 「n장」, 보스 층은 「제 n층」만)
+// #17 축복 카드가 떠 있으면 위 가운데 층 이름 · 시계(modeTag)를 그리지 않고 'BOSS DOWN!' 큰 알림도 치운다 → 카드를 고르면 다시 그린다
+// #18 탑 전용 가시: 한 번 닿으면 최대 체력 12 % 한 번 · 마지막으로 딛고 선 땅(p.safeSpot)으로 · 짧은 무적 (그 사이 다시 맞지 않는다) — 이야기 스테이지 Player 는 그대로
+// #19 출구 자리: 영웅이 물속 · 공중이면 걸어서 닿는 가장 가까운 마른 땅 (벽 · 기둥 너머 · 방 시작 자리로 가지 않는다) — 합성 지도 + 실제 층
+test('play-fix: HUD 「무한의 탑 · 제 n층」 · 축복 카드 뒤 시계/알림 숨김 · 가시 = 피해 한 번 + 안전한 땅 · 출구는 닿는 마른 땅', async () => {
+  const M = makeMock();
+  const ctx = await newContext(M);
+  const { page, errs } = await openGame(ctx, { init: AUTH });
+  await page.evaluate(() => import('/src/scenes/front/arcade.js').then((A) => A.startArcade(window.__game, { kind: 'tower', diff: 'normal', preset: 3, seed: 4242 }, 'kael')));
+  await waitTop(page, 'tower', 30000);
+  await freeze(page);
+  await installS2(page);
+  // #16
+  const labels = await page.evaluate(async () => {
+    const { T, until } = window.__S2, { chapterLabel } = await import('/src/data/stages.js'), t = T(), out = [];
+    for (const f of [2, 5, 10, 13]) {
+      t.debugFloor(f, { mut: null });
+      const st = t.world.stage, cl = chapterLabel(st, 'num');
+      out.push({ f, kind: t.kind, plate: `${cl ? cl + ' · ' : ''}${st.name}` });
+    }
+    return out;
+  });
+  for (const L of labels) assert.equal(L.plate, `무한의 탑 · 제 ${L.f}층`, JSON.stringify(labels));
+  assert.deepEqual(labels.map((L) => L.kind), ['combat', 'boss', 'rest', 'combat'], JSON.stringify(labels));
+  // #17
+  await page.evaluate(() => {
+    const { T, until } = window.__S2, t = T(), w = t.world;
+    w.player.buffs.invincible = 9999;
+    t.debugFloor(5, { mut: null });
+    until(() => t.phase === 'boss' && w.boss, 300, '5층 보스');
+  });
+  await page.evaluate(() => window.__game.world.bossReady());
+  const cards = await page.evaluate(() => {
+    const { g, T, until } = window.__S2, t = T(), w = t.world;
+    until(() => g.top.name === 'tower' && !w.cutscene, 600, '보스 등장 연출 끝');
+    t.debugKillAll();
+    let seen = false;
+    until(() => { seen ||= w.banner?.text === 'BOSS DOWN!'; return g.top.name === 'towerBlessing'; }, 1200, '축복 카드');
+    if (!seen) throw new Error('BOSS DOWN 알림이 카드 전에 나오지 않음');
+    let tags = 0; const mt = t.modeTag; t.modeTag = function (...a) { tags++; return mt.apply(this, a); };
+    g.render();
+    const under = { banner: w.banner ?? null, tags };
+    g.top.choose(0);
+    until(() => g.top.name === 'tower' && t.phase === 'gate', 200, '축복 → 갈림길');
+    tags = 0; g.render();
+    const after = { tags, top: g.top.name };
+    t.modeTag = mt;
+    return { under, after };
+  });
+  assert.deepEqual(cards.under, { banner: null, tags: 0 }, `카드 뒤 ${JSON.stringify(cards)}`);
+  assert.equal(cards.after.tags, 1, `카드를 닫으면 층 이름 · 시계를 다시 그린다 ${JSON.stringify(cards)}`);
+  // #18 가시 — 가시(^)가 있는 전투 층을 계획에서 찾아 그 방으로
+  const spike = await page.evaluate(async () => {
+    const { T, until, step } = window.__S2, t = T(), TW = window.__S2.TW, { STAGES } = await import('/src/data/stages.js'), { T: TT } = await import('/src/core/physics.js');
+    let f0 = 0;
+    for (let f = 6; f <= 80 && !f0; f++) { const pl = t.planner.plan(f); if (pl.kind === 'combat' && TW.towerRoom(STAGES, pl.sid, pl.rid).room.map.some((r) => r.includes('^'))) f0 = f; }
+    if (!f0) return { f0 };
+    t.debugFloor(f0, { mut: null });
+    until(() => t.phase === 'fight', 240, '가시 층 전투');
+    const w = t.world, p = w.player, m = w.map;
+    for (const e of w.enemies()) { e.dead = true; }   // 적 없이 가시만
+    p.buffs.invincible = 0; p.iframes = 0;
+    until(() => p.onGround && p.safeSpot?.roomId === w.roomId, 240, '디딘 땅');
+    const safe = { x: Math.round(p.safeSpot.x), y: Math.round(p.safeSpot.y) };
+    // 가시 칸 찾기 (위가 빈 칸)
+    let sx = -1, sy = -1;
+    for (let ty = 1; ty < m.h && sx < 0; ty++) for (let tx = 1; tx < m.w - 1; tx++) if (m.typeAt(tx, ty) === TT.SPIKE && m.typeAt(tx, ty - 1) !== TT.SOLID) { sx = tx; sy = ty; break; }
+    const hp0 = p.hp, max = p.stats.hp, hits = [];
+    const o = p.takeHit; p.takeHit = function (d, a, ...r) { const h = this.hp; const res = o.call(this, d, a, ...r); if (this.hp < h) hits.push(h - this.hp); return res; };
+    p.x = sx * 48 + 24 - p.w / 2; p.y = sy * 48 - p.h + 8; p.vx = 0; p.vy = 0;
+    step(1);
+    const after1 = { x: Math.round(p.x), y: Math.round(p.y), iframes: +(p.iframes ?? 0).toFixed(2), resets: t.spikeResets ?? 0 };
+    step(50);   // 무적 동안 다시 맞지 않는다 (가시 위로 다시 옮겨도)
+    p.x = sx * 48 + 24 - p.w / 2; p.y = sy * 48 - p.h + 8; step(2);
+    p.takeHit = o;
+    return { f0, spikeAt: [sx, sy], safe, after1, hits, pct: hits.map((d) => +(d / max * 100).toFixed(1)), dead: p.dead, hp: p.hp, hp0, own: Object.hasOwn(p, 'takeHit') };
+  });
+  assert.ok(spike.f0 > 0, `가시 층을 찾지 못함 ${JSON.stringify(spike)}`);
+  assert.equal(spike.hits.length, 1, `가시 = 피해 한 번 (무적 동안 다시 맞지 않는다) ${JSON.stringify(spike)}`);
+  assert.ok(Math.abs(spike.pct[0] - 12) <= 0.6, `가시 피해 = 최대 체력 12 % ${JSON.stringify(spike)}`);
+  assert.deepEqual([spike.after1.x, spike.after1.y], [spike.safe.x, spike.safe.y], `가시 → 마지막으로 딛고 선 땅 ${JSON.stringify(spike)}`);
+  assert.ok(spike.after1.iframes >= 1 && spike.after1.resets === 1 && !spike.dead && spike.own, JSON.stringify(spike));
+  const story = await page.evaluate(async () => { const { Player } = await import('/src/game/player.js'); return Player.prototype.takeHit.name; });
+  assert.notEqual(story, 'towerHit', '이야기 스테이지의 Player.takeHit 는 그대로 (탑 장면이 영웅 하나만 감싼다)');
+  // #19 출구 자리 — ① 합성 지도: 물웅덩이 속 영웅, 왼쪽은 천장까지 닿는 기둥(그 너머가 방 시작), 오른쪽에 마른 땅
+  const synth = await page.evaluate(async () => {
+    const { TowerScene } = await import('/src/scenes/front/arcade_tower.js'), { T: TT } = await import('/src/core/physics.js');
+    const W = 32, H = 12, grid = Array.from({ length: H }, () => Array(W).fill(TT.EMPTY));
+    for (let x = 0; x < W; x++) grid[11][x] = TT.SOLID;
+    for (let y = 0; y < H; y++) { grid[y][0] = TT.SOLID; grid[y][W - 1] = TT.SOLID; grid[y][12] = TT.SOLID; }   // 기둥 (천장까지)
+    for (let x = 13; x <= 22; x++) for (const y of [9, 10]) grid[y][x] = TT.LIQUID;   // 물웅덩이 (기둥에 붙어 있다)
+    const map = { w: W, h: H, typeAt: (x, y) => (x < 0 || y < 0 || x >= W || y >= H ? TT.SOLID : grid[y][x]) };
+    const fake = { world: { map } };
+    const swim = TowerScene.prototype.reachableSpot.call(fake, { cx: 18.5 * 48, bottom: 10.6 * 48, h: 88 });
+    const air = TowerScene.prototype.reachableSpot.call(fake, { cx: 5.5 * 48, bottom: 7 * 48, h: 88 });   // 기둥 왼쪽 공중
+    return { swim: swim && { tx: Math.floor(swim.cx / 48), b: swim.bottom / 48 }, air: air && { tx: Math.floor(air.cx / 48), b: air.bottom / 48 } };
+  });
+  assert.deepEqual(synth.swim, { tx: 23, b: 11 }, `물속 → 웅덩이 오른쪽 마른 땅 (기둥 너머 · 방 시작이 아니다) ${JSON.stringify(synth)}`);
+  assert.deepEqual(synth.air, { tx: 5, b: 11 }, `공중 → 바로 아래 땅 ${JSON.stringify(synth)}`);
+  // ② 실제 층: 마지막 처치 때 영웅이 공중 (방 시작에서 먼 곳) → 문은 영웅 곁 단단한 땅 (방 시작 자리가 아니다)
+  const real = await page.evaluate(() => {
+    const { T, until, step } = window.__S2, t = T();
+    t.debugFloor(7, { mut: null });
+    until(() => t.phase === 'fight', 240, '7층 전투');
+    const w = t.world, p = w.player, m = w.map;
+    for (const e of w.enemies()) e.dead = true;
+    step(2);
+    if (t.gate) { t.gate.dead = true; t.gate = null; }
+    const cp = w.run.checkpoint;
+    // 방 시작에서 10칸 넘게 떨어진, 발밑이 단단한 칸 위 3칸 공중
+    let tx = -1, gy = -1;
+    for (let x = 2; x < m.w - 2 && tx < 0; x++) {
+      if (Math.abs(x * 48 - cp.x) < 10 * 48) continue;
+      for (let y = 3; y < m.h - 1; y++) if (m.typeAt(x, y) === 1 && m.typeAt(x, y - 1) === 0 && m.typeAt(x, y - 2) === 0 && m.typeAt(x, y - 3) === 0 && m.typeAt(x, y - 4) === 0) { tx = x; gy = y; break; }
+    }
+    p.x = tx * 48 + 24 - p.w / 2; p.y = (gy - 3) * 48 - p.h; p.vx = 0; p.vy = 0; p.onGround = false;
+    t.phase = 'clear'; t.openGate();
+    const g0 = t.gate;
+    return { tx, gy, cpx: Math.round(cp.x), gate: g0 && { tx: Math.floor(g0.cx / 48), bottom: g0.bottom / 48, below: m.typeAt(Math.floor(g0.cx / 48), Math.round(g0.bottom / 48)) } };
+  });
+  assert.ok(real.tx > 0 && real.gate, JSON.stringify(real));
+  assert.ok(Math.abs(real.gate.tx - real.tx) <= 4 && real.gate.below === 1 && Math.abs(real.gate.tx * 48 - real.cpx) > 6 * 48, `공중 처치 → 곁의 단단한 땅 (방 시작 아님) ${JSON.stringify(real)}`);
   assert.deepEqual(errs, []);
   await ctx.close();
 });
@@ -1353,11 +1484,81 @@ if (FOLD) {
   await page.evaluate(() => { const g = window.__game; g.state.gold = 2400; g.top.choose(1); });
   await ticks(page, 30);
   await snap('tower_merchant.png');
-  // 4) 갈림길 (떠나기 → 발밑 안전한 길 · 몇 칸 옆 피의 길)
+  // 4) 갈림길 ([play-fix #3] 떠나기 → 영웅 왼쪽 안전한 길 · 오른쪽 피의 길, 둘 다 한 화면 · 영웅 머리 위 「◀ 안전한 길 · 피의 길 ▶」)
   await page.evaluate(() => { const top = window.__game.top; top.choose(top.items().length - 1); });
   await tickUntil(page, "g.top.name === 'tower' && t.phase === 'gate' && t.gates.length === 2", 200, '갈림길');
   await ticks(page, 70);
   await snap('tower_route.png');
+  // [play-fix] 이어서: 자동 전투를 켠 갈림길(안내 한 줄) → 사람이 붉은 문으로 걸어감(문 안내) → ▲ 피의 길 → 가시 층 → 출구 자리 → 결과 줄
+  await page.evaluate(async () => { const A = await import('/src/game/autoplay.js'); A.setLevel(window.__game, 'battle', { toast: false }); });
+  await ticks(page, 90);
+  await snap('tower_route_auto.png');
+  await page.evaluate(async () => { const A = await import('/src/game/autoplay.js'); A.setLevel(window.__game, 'off', { toast: false }); });
+  await page.keyboard.down('ArrowRight');
+  await tickUntil(page, 't.gates[1].near', 300, '붉은 문까지 걷기');
+  await page.keyboard.up('ArrowRight');
+  await ticks(page, 20);
+  await snap('tower_route_blood.png');
+  await key(page, 'ArrowUp');
+  await tickUntil(page, "t.floor === 36 && t.phase === 'enter'", 400, '피의 길 → 36층');
+  // 축복 카드 (45층 군주 뒤 — 시계 · BOSS DOWN 이 카드 뒤에 비치지 않는다)
+  await page.evaluate(() => { const { T, until } = window.__S2, t = T(); t.debugFloor(45); until(() => t.phase === 'boss' && t.world.boss, 300, '45층'); });
+  await page.evaluate(() => window.__game.world.bossReady());
+  await tickUntil(page, "g.top.name === 'tower' && !w.cutscene", 600, '보스 등장 연출 끝');
+  await page.evaluate(() => window.__S2.T().debugKillAll());
+  await tickUntil(page, "g.top.name === 'towerBlessing'", 900, '격파 → 축복');
+  await ticks(page, 40);
+  await snap('tower_blessing.png');
+  await page.evaluate(() => window.__game.top.choose(0));
+  await tickUntil(page, "g.top.name === 'tower' && t.phase === 'gate'", 300, '축복 → 갈림길');
+  // 가시: 가시 층에서 가시 위로 → 한 번 맞고 안전한 땅으로
+  const sp = await page.evaluate(async () => {
+    const { T, until, step } = window.__S2, t = T(), TW = window.__S2.TW, { STAGES } = await import('/src/data/stages.js'), { T: TT } = await import('/src/core/physics.js');
+    let f0 = 0;
+    for (let f = 41; f <= 120 && !f0; f++) { const pl = t.planner.plan(f); if (pl.kind === 'combat' && TW.towerRoom(STAGES, pl.sid, pl.rid).room.map.some((r) => r.includes('^'))) f0 = f; }
+    t.debugFloor(f0, { mut: null });
+    until(() => t.phase === 'fight', 240, '가시 층');
+    const w = t.world, p = w.player, m = w.map;
+    // 층이 끝나지 않게 적 하나만 남겨 방 저쪽에 세워 둔다 (화면 · 층 이름 알림이 사라진 뒤 찍는다)
+    w.enemies().forEach((e, i) => { if (i) e.dead = true; else { e.update = () => {}; e.x = 2 * 48; e.y = 2 * 48; } });
+    p.buffs.invincible = 0; p.iframes = 0;
+    until(() => p.onGround && p.safeSpot?.roomId === w.roomId && !t.call && !t.mutCard, 400, '디딘 땅');
+    let sx = -1, sy = -1;
+    for (let ty = 1; ty < m.h && sx < 0; ty++) for (let tx = 1; tx < m.w - 1; tx++) if (m.typeAt(tx, ty) === TT.SPIKE && m.typeAt(tx, ty - 1) !== TT.SOLID) { sx = tx; sy = ty; break; }
+    const hp0 = p.hp;
+    p.x = sx * 48 + 24 - p.w / 2; p.y = sy * 48 - p.h + 8; p.vx = 0; p.vy = 0;
+    step(1);
+    return { f0, hp0, hp: p.hp, resets: t.spikeResets };
+  });
+  await ticks(page, 30);
+  await snap('tower_spike.png');
+  console.log('가시', JSON.stringify(sp));
+  // 출구 자리: 마지막 처치 때 영웅이 공중 (방 시작에서 먼 곳) → 문은 곁의 단단한 땅
+  await page.evaluate(() => {
+    const { T, step } = window.__S2, t = T(), w = t.world, p = w.player, m = w.map;
+    step(2);
+    if (t.gate) { t.gate.dead = true; t.gate = null; }
+    const cp = w.run.checkpoint;
+    let tx = -1, gy = -1;
+    for (let x = 2; x < m.w - 2 && tx < 0; x++) {
+      if (Math.abs(x * 48 - cp.x) < 10 * 48) continue;
+      for (let y = 3; y < m.h - 1; y++) if (m.typeAt(x, y) === 1 && [1, 2, 3, 4].every((k) => m.typeAt(x, y - k) === 0)) { tx = x; gy = y; break; }
+    }
+    p.buffs.invincible = 9999;
+    p.x = tx * 48 + 24 - p.w / 2; p.y = (gy - 3) * 48 - p.h; p.vx = 0; p.vy = 0; p.onGround = false;
+    t.phase = 'clear'; t.openGate();
+  });
+  await ticks(page, 50);
+  await snap('tower_exit.png');
+  // 결과 줄 (피의 길 1번 · 계약 · 새 잔상)
+  await page.evaluate(() => {
+    const { g, T, until } = window.__S2, t = T(), w = t.world, p = w.player;
+    p.buffs.invincible = 0; p.iframes = 0; p.hp = 1; t.reviveLeft = 0;
+    p.takeHit(999999, { team: 'enemy', dir: 1, kb: [100, -200] }, w, {});
+    until(() => g.top.name === 'arcadeResults', 900, '결과');
+  });
+  await ticks(page, 150);
+  await snap('tower_results.png');
   assert.deepEqual(errs, []);
   await ctx.close();
   await browser.close();
