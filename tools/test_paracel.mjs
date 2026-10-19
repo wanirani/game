@@ -41,6 +41,7 @@ check('공격 8개 (삼원소 플라스크 · 수은 웅덩이 · 배양조 · �
 check('보조 stagger · lastDose · 전환 fuse', names.h.join() === 'stagger,lastDose' && names.t.join() === 'fuse', names);
 
 // ── 2) 공격 × 페이즈 × 보통/지옥 ──
+const MV_SEEN = [];
 for (const inferno of [false, true]) {
   for (const ph of [0, 1]) {
     for (const act of names.a) {
@@ -55,7 +56,7 @@ for (const inferno of [false, true]) {
         const mins0 = (b._cMinions ?? []).filter((e) => !e.dead).length;
         const ok = b.debugAct(act);
         const A = b.A;
-        let t = 0, back = -1, tele = false, maxHaz = 0, firstOn = null, minWarn = 99, outside = [], mins = 0, hits0 = W.player.hits;
+        let t = 0, back = -1, tele = false, maxHaz = 0, firstOn = null, minWarn = 99, outside = [], mins = 0, hits0 = W.player.hits, mvs = [];
         for (; t < 16; t += 0.05) {
           P.step(0.05);
           const ents = W.entities.filter((e) => !pre.has(e));
@@ -63,6 +64,7 @@ for (const inferno of [false, true]) {
             if (z.kind !== 'hazard' || z.harmless || seen.has(z)) continue;
             seen.add(z);
             if (!z.data?.cont) minWarn = Math.min(minWarn, z.warn);
+            mvs.push(z.attack?.mv);
             if (z.x + z.w < A.x0 - 12 || z.x > A.x1 + 12) outside.push([Math.round(z.x), Math.round(z.w)]);
           }
           const live = ents.filter((e) => e.kind === 'hazard' && !e.harmless);
@@ -72,13 +74,26 @@ for (const inferno of [false, true]) {
           if (b.telegraph) tele = true;
           if (b.state !== act) { back = t; break; }
         }
-        return { ok, back: +back.toFixed(2), next: b.state, maxHaz, firstOn, minWarn: +minWarn.toFixed(2), outside: outside.slice(0, 3), tele, mins, hits: W.player.hits - hits0, inv: b.invuln, sunk: b.sunk, notes: P.notes.slice(n0) };
+        return { ok, back: +back.toFixed(2), next: b.state, maxHaz, firstOn, minWarn: +minWarn.toFixed(2), outside: outside.slice(0, 3), tele, mins, hits: W.player.hits - hits0, inv: b.invuln, sunk: b.sunk, notes: P.notes.slice(n0), mvs: [...new Set(mvs)] };
       }, { act, ph, inferno });
       const tag = `${act} · 페이즈 ${ph}${inferno ? ' · 지옥' : ''}`;
       check(`${tag}: 돌아옴 (${r.back}초 → ${r.next}) · 판정 ${r.maxHaz}${r.mins ? ` · 소환 ${r.mins}` : ''} · 예고 ${r.tele ? '켬' : '없음'} · 첫 판정 ${r.firstOn}초 · 최소 warn ${r.minWarn}`,
         r.ok && r.back > 0 && ['idle', 'stagger'].includes(r.next) && (r.maxHaz > 0 || r.mins > 0) && r.tele && (r.firstOn === null || r.firstOn >= 0.6) && r.minWarn >= 0.6 && !r.outside.length && !r.notes.length && !r.inv && !r.sunk, r);
+      MV_SEEN.push({ tag, mvs: r.mvs });
     }
   }
+}
+// play-fix #2: 판정 지대의 배율(mv)은 데이터 표 PARACEL_MV (src/data/bosses_e.js) 에서만 온다 — 엔진 안 숫자로 다시 약해지지 않게.
+//   주력 한 방(접합 팔 · 렌즈 광선 · 해일 · 마지막 한 방)은 모델 기준 1.2 (보스 한 대) 이상, 아무 패턴도 판정 배율 0.2 아래로 내려가지 않는다.
+{
+  const { PARACEL_MV } = await import('../src/data/bosses_e.js');
+  const table = new Set(Object.values(PARACEL_MV));
+  const stray = MV_SEEN.flatMap((x) => x.mvs.filter((m) => !table.has(m)).map((m) => `${x.tag}: ${m}`));
+  const heavy = (act) => Math.max(0, ...MV_SEEN.filter((x) => x.tag.startsWith(act + ' ')).flatMap((x) => x.mvs));
+  const hv = { graftLash: heavy('graftLash'), burningGlass: heavy('burningGlass'), mercuryWave: heavy('mercuryWave') };
+  const all = MV_SEEN.flatMap((x) => x.mvs);
+  check(`판정 배율 = PARACEL_MV 표 (밖 ${stray.length}) · 접합 팔 ${hv.graftLash} · 렌즈 ${hv.burningGlass} · 해일 ${hv.mercuryWave} · 가장 낮은 ${Math.min(...all)}`,
+    !stray.length && hv.graftLash >= 1.2 && hv.burningGlass >= 1.2 && hv.mercuryWave >= 1.05 && PARACEL_MV.last >= 1.2 && Math.min(...all) >= 0.2, { stray: stray.slice(0, 6), hv });
 }
 if (SHOTS) {
   for (const [act, ph, sec, inf] of [['flaskVolley', 0, 0.9, 0], ['flaskVolley', 0, 1.45, 0], ['mercuryPool', 0, 1.2, 0], ['tankBrood', 0, 0.6, 0], ['tankBrood', 0, 1.1, 0], ['graftLash', 1, 0.5, 0], ['graftLash', 1, 0.66, 0], ['burningGlass', 1, 0.9, 0], ['burningGlass', 1, 1.3, 0],
