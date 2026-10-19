@@ -37,6 +37,7 @@ import { audio } from '../../core/audio.js';
 import { TAU, clamp, lerp, rand, approach, rgba, mix } from '../../core/math.js';
 import { registerPainted, hasPainted, paintedDraw } from '../../render/painted/registry.js';   // 채색 퍼핏 (그리기 전용)
 import { bosses as EXB } from '../../render/painted/reg/ex-boss.js';
+import { PARACEL_MV } from '../../data/bosses_e.js';   // [play-fix #2] 패턴 피해 배율 (balance.mjs s26 검사와 같은 표)
 
 // ── 색 (docs/specs/ex_s26.md §2: 수은 은빛 · 금 · 배양액 녹청 · 가죽 · 병자의 살빛) ──
 const SILVER = '#c8d4e0', SILVER_H = '#f4f8ff', SILVER_D = '#5e6874', GOLD = '#e8c060', GOLD_H = '#fff0b0', GOLD_D = '#7a5a1c';
@@ -69,6 +70,8 @@ const SEG_TILES = 4;                  // 황금 변성 바닥 구간 폭 (칸)
 const WAVE_SPEED = 980;               // 수은 해일 (px/s)
 const POSE0 = { lean: 0, crouch: 0, kneel: 0, armN: 0, lash: 0, lashLow: 0, lens: 0, melt: 0, tankK: 0 };
 const POSE_RATE = { lean: 6, crouch: 7, kneel: 5, armN: 9, lash: 10, lashLow: 10, lens: 8, melt: 3.2, tankK: 4 };
+/** [play-fix #2] 패턴 피해 배율 — data/bosses_e.js PARACEL_MV (한 곳에서만 정한다: 모형 「보스 1타 = 모션 1.2」에 맞춘 값, 예전 0.5–1.0) */
+const MV = PARACEL_MV;
 const pt = () => ({ x: 0, y: 0 });
 
 export class Paracel extends BossC {
@@ -346,8 +349,8 @@ export class Paracel extends BossC {
   }
 
   // ── flaskVolley 삼원소 플라스크: 띠에서 병을 뽑아 0.5초(예고) → 0.16초 간격으로 플레이어 자리(±2.4칸 간격)에 포물선 투척 (비행 0.72초+).
-  //    떨어질 자리는 손을 들 때부터 바닥 표시 (예고 ≥ 1.2초). 병마다 원소가 차례로: 불(폭발 r72 mv 0.8 + 불바닥 1.1초) → 얼음(얼음 기둥 mv 0.85)
-  //    → 독(웅덩이 3초 rehit 0.5 mv 0.18). 1페이즈 3병 · 2페이즈 5병 · 지옥 +2 ──
+  //    떨어질 자리는 손을 들 때부터 바닥 표시 (예고 ≥ 1.2초). 병마다 원소가 차례로: 불(폭발 r72 MV.fire + 불바닥 1.1초) → 얼음(얼음 기둥 MV.ice)
+  //    → 독(웅덩이 3초 rehit 0.5 MV.poison). 1페이즈 3병 · 2페이즈 5병 · 지옥 +2 ──
   s_flaskVolley(dt, world, t) {
     if (this.at(0.001)) {
       this.faceP(0); this.spd = 0;
@@ -380,10 +383,10 @@ export class Paracel extends BossC {
       } });
     const fy = y1;
     if (el.id === 'fire') {
-      strikeCircle(this, x1, fy - 34, 72, { warn, life: 0.3, mv: 0.8, element: 'fire', color: el.col, sfx: 'explode', vol: 0.5, burstFx: 'fire',
-        onStart: () => this.patch(x1, fy, 100, 1.1, 0.2, 'fire', el) });
+      strikeCircle(this, x1, fy - 34, 72, { warn, life: 0.3, mv: MV.fire, element: 'fire', color: el.col, sfx: 'explode', vol: 0.5, burstFx: 'fire',
+        onStart: () => this.patch(x1, fy, 100, 1.1, MV.fireFloor, 'fire', el) });
     } else if (el.id === 'ice') {
-      this.zone({ x: x1 - 34, y: fy - 124, w: 68, h: 124, warn, life: 0.45, mv: 0.85, element: 'ice', kb: [240, -520],
+      this.zone({ x: x1 - 34, y: fy - 124, w: 68, h: 124, warn, life: 0.45, mv: MV.ice, element: 'ice', kb: [240, -520],
         onStart: (z, w) => { audio.sfx('ice', { vol: 0.7, pitch: 0.8 }); w.fx?.burst?.('ice', x1, fy - 40, 12, { speed: 260 }); },
         paint: (ctx, z, w) => {
           if (!z.started) { warnFloor(ctx, x1, fy, 90, z.k, el.col, w.time); return; }
@@ -391,7 +394,7 @@ export class Paracel extends BossC {
           drawIceSpikes(ctx, x1, fy, 124 * g, f, el);
         } });
     } else {
-      this.zone({ x: x1 - 64, y: fy - 22, w: 128, h: 22, warn, life: 3.0, rehit: 0.5, mv: 0.18, kb: [120, -260], data: { pool: 'poison' },
+      this.zone({ x: x1 - 64, y: fy - 22, w: 128, h: 22, warn, life: 3.0, rehit: 0.5, mv: MV.poison, kb: [120, -260], data: { pool: 'poison' },
         onStart: (z, w) => { audio.sfx('splash', { vol: 0.6, pitch: 0.9 }); w.fx?.burst?.('goo', x1, fy - 10, 10, { color: el.col, speed: 200 }); },
         paint: (ctx, z, w) => {
           if (!z.started) { warnFloor(ctx, x1, fy, 128, z.k, el.col, w.time); return; }
@@ -406,8 +409,8 @@ export class Paracel extends BossC {
       paint: (ctx, z, wd) => drawFlames(ctx, x, fy, w, 1 - z.a, el, wd.time) });
   }
 
-  // ── mercuryPool 수은 웅덩이: 접합 팔 끝에서 수은을 쏟음 — 플레이어 자리와 ±3.5칸 (지옥 +7칸)에 바닥 표시 0.75초 → 튐(r44 mv 0.5) +
-  //    웅덩이 (폭 140, 1페이즈 5초 · 2페이즈 4초, rehit 0.5 mv 0.22). 살아 있는 웅덩이는 여섯까지 (오래된 것부터 마른다) ──
+  // ── mercuryPool 수은 웅덩이: 접합 팔 끝에서 수은을 쏟음 — 플레이어 자리와 ±3.5칸 (지옥 +7칸)에 바닥 표시 0.75초 → 튐(r44 MV.splash) +
+  //    웅덩이 (폭 140, 1페이즈 5초 · 2페이즈 4초, rehit 0.5 MV.mercury). 살아 있는 웅덩이는 여섯까지 (오래된 것부터 마른다) ──
   s_mercuryPool(dt, world, t) {
     if (this.at(0.001)) {
       this.faceP(0); this.spd = 0;
@@ -423,7 +426,7 @@ export class Paracel extends BossC {
         const x = clamp(x0, A.x0 + 70, A.x1 - 70);
         this.zone({ x: Math.min(H.x, x) - 10, y: Math.min(H.y, A.floor) - 40, w: Math.abs(x - H.x) + 20, h: Math.abs(A.floor - H.y) + 40, warn: 0, life: 0.75, harmless: true, z: 8,
           paint: (ctx, z) => drawMercuryStream(ctx, H.x, H.y, x, A.floor, z.t / 0.75) });
-        strikeCircle(this, x, A.floor - 20, 44, { warn: 0.75, life: 0.22, mv: 0.5, color: SILVER, sfx: 'splash', vol: 0.4, burstFx: 'water' });
+        strikeCircle(this, x, A.floor - 20, 44, { warn: 0.75, life: 0.22, mv: MV.splash, color: SILVER, sfx: 'splash', vol: 0.4, burstFx: 'water' });
         this.mercuryPuddle(x, 140, this.phase ? 4.0 : 5.0, 0.75);
       }
     }
@@ -432,7 +435,7 @@ export class Paracel extends BossC {
   }
   mercuryPuddle(x, w, life, warn) {
     const fy = this.A.floor;
-    return this.zone({ x: x - w / 2, y: fy - 20, w, h: 20, warn, life, rehit: 0.5, mv: 0.22, kb: [120, -280], data: { pool: 'mercury' },
+    return this.zone({ x: x - w / 2, y: fy - 20, w, h: 20, warn, life, rehit: 0.5, mv: MV.mercury, kb: [120, -280], data: { pool: 'mercury' },
       paint: (ctx, z, wd) => {
         if (!z.started) { warnFloor(ctx, x, fy, w, z.k, SILVER, wd.time); return; }
         const f = Math.min(1, z.a * 10) * (1 - Math.max(0, (z.a - 0.88) / 0.12));
@@ -441,7 +444,7 @@ export class Paracel extends BossC {
   }
 
   // ── tankBrood 배양조: 몸을 웅크리고 등의 배양조가 0.9초 부풂 (예고 · 배양조 판정 prio) — 그동안 플레이어·탈것이 배양조를 한 대 치면 깨져 무릎 (1페이즈).
-  //    못 깨면 배양액이 터짐 (배양조 둘레 r96 mv 0.7) + 호문쿨루스 2 (지옥 3, 살아 있는 수 ≤ 3 · 지옥 ≤ 4). 2페이즈는 가슴의 태아가 토해 낸다 (깨기 없음) ──
+  //    못 깨면 배양액이 터짐 (배양조 둘레 r96 MV.vent) + 호문쿨루스 2 (지옥 3, 살아 있는 수 ≤ 3 · 지옥 ≤ 4). 2페이즈는 가슴의 태아가 토해 낸다 (깨기 없음) ──
   s_tankBrood(dt, world, t) {
     if (this.at(0.001)) {
       this.faceP(0); this.spd = 0;
@@ -449,7 +452,7 @@ export class Paracel extends BossC {
       this.tankUp = true;
       telegraph(this, 0.9, { sfx: 'mist', vol: 0.6 }); audio.sfx('dark', { vol: 0.5, pitch: 0.6 });
       const B = this.tankW(pt());
-      this.ventZ = strikeCircle(this, B.x, B.y, 96, { warn: 0.9, life: 0.3, mv: 0.7, color: GLASS, sfx: 'splash', vol: 0.7, burstFx: 'goo' });
+      this.ventZ = strikeCircle(this, B.x, B.y, 96, { warn: 0.9, life: 0.3, mv: MV.vent, color: GLASS, sfx: 'splash', vol: 0.7, burstFx: 'goo' });
     }
     if (this.at(0.9)) {
       this.tankUp = false; this.ventZ = null;
@@ -461,8 +464,8 @@ export class Paracel extends BossC {
     if (t >= 1.6) this.done(1.1);
   }
 
-  // ── graftLash 접합 팔 휘두르기: 팔을 등 뒤로 감음 0.6초 → 앞 4.8칸 몸통 높이 띠(바닥 위 20–128px) mv 1.0.
-  //    2페이즈·지옥: 0.35초 뒤 바닥 띠(바닥 위 0–46px, 5.4칸) mv 0.8 — 예고 0.95초 (뛰어넘는다) ──
+  // ── graftLash 접합 팔 휘두르기: 팔을 등 뒤로 감음 0.6초 → 앞 4.8칸 몸통 높이 띠(바닥 위 20–128px) MV.lash.
+  //    2페이즈·지옥: 0.35초 뒤 바닥 띠(바닥 위 0–46px, 5.4칸) MV.lashLow — 예고 0.95초 (뛰어넘는다) ──
   s_graftLash(dt, world, t) {
     if (this.at(0.001)) {
       this.faceP(0); this.spd = 0;
@@ -474,15 +477,15 @@ export class Paracel extends BossC {
         strikeRect(this, { x: xa, y: fy - y0 - h, w: Math.max(10, xb - xa), h }, { warn, life: 0.22, mv, kb: low ? [360, -520] : [440, -320], color: FLESH, sfx: 'whip', vol: 0.8,
           onStart: () => { this.pt.lash = 1; this.pt.lashLow = low ? 1 : 0; this.ps.lash = Math.max(this.ps.lash, 0.6); if (low) this.ps.lashLow = Math.max(this.ps.lashLow, 0.6); audio.sfx('slash_heavy', { vol: 0.5, pitch: 0.7 }); } });
       };
-      band(4.8 * T, 20, 108, 0.6, 1.0, false);
-      if (this.phase || this.inferno) band(5.4 * T, 0, 46, 0.95, 0.8, true);
+      band(4.8 * T, 20, 108, 0.6, MV.lash, false);
+      if (this.phase || this.inferno) band(5.4 * T, 0, 46, 0.95, MV.lashLow, true);
     }
     if (this.at(0.85)) this.setPose({ lash: -0.6 });
     if (this.at(1.3)) this.relax();
     if (t >= 1.5) this.done(1.0);
   }
 
-  // ── burningGlass 불타는 렌즈: 황동 테 확대경을 치켜듦 → 빛점이 1.0초 플레이어를 따라감 (마지막 0.35초는 고정) → 광선 strikeLine th 24 mv 0.9 불 +
+  // ── burningGlass 불타는 렌즈: 황동 테 확대경을 치켜듦 → 빛점이 1.0초 플레이어를 따라감 (마지막 0.35초는 고정) → 광선 strikeLine th 24 MV.glass 불 +
   //    바닥 잔불 1.0초. 1페이즈 1줄 · 2페이즈 2줄(0.9초 간격) · 지옥 +1 ──
   s_burningGlass(dt, world, t) {
     if (this.at(0.001)) {
@@ -504,9 +507,9 @@ export class Paracel extends BossC {
       return out;
     };
     const l0 = aimAt({});
-    strikeLine(this, l0.x0, l0.y0, l0.x1, l0.y1, { warn: 1.0, life: 0.4, th: 24, mv: 0.9, element: 'fire', color: '#ffd060', sfx: 'fire', vol: 0.7, kb: [300, -360],
+    strikeLine(this, l0.x0, l0.y0, l0.x1, l0.y1, { warn: 1.0, life: 0.4, th: 24, mv: MV.glass, element: 'fire', color: '#ffd060', sfx: 'fire', vol: 0.7, kb: [300, -360],
       track: (z) => { const L = z.line; if (z.t > z.warn - 0.35) { const l = this.lensW(this._q); L.x0 = l.x; L.y0 = l.y; return; } const n = aimAt({}); L.x0 = n.x0; L.y0 = n.y0; L.x1 = lerp(L.x1, n.x1, 0.25); L.y1 = n.y1; },
-      onStart: (z) => { this.patch(z.line.x1, fy, 80, 1.0, 0.15, 'fire', EL3[0]); impact(this.world, { shake: 3, time: 0.2 }); },
+      onStart: (z) => { this.patch(z.line.x1, fy, 80, 1.0, MV.glassFire, 'fire', EL3[0]); impact(this.world, { shake: 3, time: 0.2 }); },
       paint: (ctx, z, w) => {
         const L = z.line;
         if (!z.started) { warnLine(ctx, L.x0, L.y0, L.x1, L.y1, z.k, '#ffd060', 1.5 + z.k * 2); glow(ctx, L.x1, L.y1, 14 + 22 * z.k, '#ffd060', 0.5 + 0.5 * z.k, true); return; }
@@ -519,7 +522,7 @@ export class Paracel extends BossC {
   }
 
   // ── goldFloor 황금 변성 (2페이즈): 두 손을 치켜듦 → 경기장 바닥을 4칸씩 나눈 구간 중 넷(지옥 다섯)이 1.2초(지옥 1.0초) 동안 금으로 번짐 → 깨지며 솟는 금 조각
-  //    (구간 폭 · 높이 104px mv 0.85). 첫 물결은 플레이어가 선 구간을 늘 포함 · 둘째 물결(1.0초 뒤)은 첫 물결이 아닌 구간에서 — 늘 두 구간 이상 비운다.
+  //    (구간 폭 · 높이 104px MV.wave). 첫 물결은 플레이어가 선 구간을 늘 포함 · 둘째 물결(1.0초 뒤)은 첫 물결이 아닌 구간에서 — 늘 두 구간 이상 비운다.
   //    지옥은 셋째 물결 (첫 물결 구간 다시). 발판(11·13·7행)은 높이 밖이라 안전 ──
   s_goldFloor(dt, world, t) {
     if (this.at(0.001)) {
@@ -544,7 +547,7 @@ export class Paracel extends BossC {
   }
   goldSeg(s, warn, vis) {
     const fy = this.A.floor, x0 = s.x0 + 4, w = s.x1 - s.x0 - 8, seed = s.i * 7.31;
-    return this.zone({ x: x0, y: fy - 104, w, h: 104, warn, life: 0.35, mv: 0.85, kb: [260, -620],
+    return this.zone({ x: x0, y: fy - 104, w, h: 104, warn, life: 0.35, mv: MV.wave, kb: [260, -620],
       onStart: (z, wd) => { audio.sfx('break_wall', { vol: 0.55, pitch: 1.2 }); wd.fx?.burst?.('gold', x0 + w / 2, fy - 20, 12, { color: GOLD, speed: 300 }); wd.camera?.shake?.(3, 0.15); },
       onEnd: () => this.zone({ x: x0, y: fy - 30, w, h: 30, warn: 0, life: 0.8, harmless: true, z: 5, paint: (ctx, z) => drawGoldRubble(ctx, x0, fy, w, 1 - z.a, seed) }),
       paint: (ctx, z, wd) => {
@@ -559,7 +562,7 @@ export class Paracel extends BossC {
   }
 
   // ── mercuryWave 수은 해일 (2페이즈): 몸이 수은으로 녹음 0.7초 (경기장 바닥 띠 예고 warnRect 72px) → 해일이 플레이어 쪽으로 반대편 벽 앞까지 980px/s
-  //    (groundWave 높이 72 · mv 0.85, 그동안 판정·접촉 없음) → 반대편에서 솟음 0.5초 → **솟은 몸 0.9초 = 카운터 창** (플레이어·탈것 한 대 → 무릎).
+  //    (groundWave 높이 72 · MV.tide, 그동안 판정·접촉 없음) → 반대편에서 솟음 0.5초 → **솟은 몸 0.9초 = 카운터 창** (플레이어·탈것 한 대 → 무릎).
   //    지옥: 솟은 뒤 0.6초 예고로 해일이 한 번 더 되돌아온다 (그때는 녹지 않고 발밑에서 내보낸다) ──
   s_mercuryWave(dt, world, t) {
     if (this.at(0.001)) {
@@ -601,12 +604,12 @@ export class Paracel extends BossC {
   waveFrom(x, dir, to, warn) {
     const fy = this.A.floor;
     audio.sfx('splash', { vol: 0.8, pitch: 0.5 });
-    return groundWave(this, x, dir, { h: 72, w: 84, speed: WAVE_SPEED, warn, mv: 0.85, color: SILVER, to, sfx: null, kb: [360, -560], data: { cont: true },   // 띠 예고(0.7 · 0.6초)는 앞의 무해 지대
+    return groundWave(this, x, dir, { h: 72, w: 84, speed: WAVE_SPEED, warn, mv: MV.tide, color: SILVER, to, sfx: null, kb: [360, -560], data: { cont: true },   // 띠 예고(0.7 · 0.6초)는 앞의 무해 지대
       paint: (ctx, z) => { const fx = x + dir * WAVE_SPEED * Math.max(0, z.t - z.warn); drawMercuryWave(ctx, fx, fy, dir, 72, x); } });
   }
 
   // ── elixirRain 금빛 약비 (2페이즈): 금빛 약병을 하늘로 던짐 0.5초 → 0.28초 간격 여섯 방울(지옥 여덟): 그때의 플레이어 자리 ±3칸 (첫 방울은 바로 그 자리)에
-  //    warnMark 0.7초 → 금빛 기둥 strikeColumn 폭 56 mv 0.7 ──
+  //    warnMark 0.7초 → 금빛 기둥 strikeColumn 폭 56 MV.gold ──
   s_elixirRain(dt, world, t) {
     if (this.at(0.001)) {
       this.faceP(0); this.spd = 0;
@@ -623,7 +626,7 @@ export class Paracel extends BossC {
     const A = this.A, p = this.P, T = T48();
     const x = clamp((p ? p.cx : A.cx) + (i === 0 ? 0 : rand(-3, 3) * T), A.x0 + 30, A.x1 - 30);
     warnMark(this, x, A.floor - 40, 0.7, GOLD);
-    strikeColumn(this, x, { w: 56, warn: 0.7, life: 0.3, mv: 0.7, color: GOLD, sfx: 'holy', vol: 0.35, kb: [200, -300],
+    strikeColumn(this, x, { w: 56, warn: 0.7, life: 0.3, mv: MV.gold, color: GOLD, sfx: 'holy', vol: 0.35, kb: [200, -300],
       paint: (ctx, z, w) => {
         const top = A.top ?? 0, fy = A.floor;
         if (!z.started) { warnRect(ctx, x - 12, top, 24, fy - top, z.k * 0.7, GOLD, w.time); warnFloor(ctx, x, fy, 80, z.k, GOLD, w.time); return; }
@@ -647,7 +650,7 @@ export class Paracel extends BossC {
   }
 
   // ── lastDose (보조, 15%): 하던 패턴을 끊고 허리띠의 금빛 약병을 뽑아 입으로 0.6초. 스토리 모드·처음이면 곧바로 대사 b_paracel_last (그동안 월드가 멈춘다)
-  //    → 대사가 끝나면 작은 호문쿨루스가 손목에 매달려 병이 깨짐 → 긴 무릎 2.5초 (몸통 0.6). 아케이드·다시 볼 때는 금빛 파열 (둘레 r170 · 예고 0.8 · mv 0.9) ──
+  //    → 대사가 끝나면 작은 호문쿨루스가 손목에 매달려 병이 깨짐 → 긴 무릎 2.5초 (몸통 0.6). 아케이드·다시 볼 때는 금빛 파열 (둘레 r170 · 예고 0.8 · MV.last) ──
   s_lastDose(dt, world, t) {
     if (this.at(0.001)) {
       this.faceP(0); this.spd = 0;
@@ -655,7 +658,7 @@ export class Paracel extends BossC {
       this.setPose({ armN: 4, lean: -0.1, lash: 0 });
       audio.sfx('clang', { vol: 0.4, pitch: 1.3 });
       if (this._lastMode && !phaseScript(this, 'b_paracel_last', { onEnd: () => { this._lastEnd = true; } })) { this._lastMode = false; this._lastEnd = false; }
-      if (!this._lastMode) strikeCircle(this, this.zx, this.fy - 84, 170, { warn: 0.8, life: 0.35, mv: 0.9, color: GOLD, sfx: 'holy', vol: 0.8, burstFx: 'gold', kb: [460, -420] });
+      if (!this._lastMode) strikeCircle(this, this.zx, this.fy - 84, 170, { warn: 0.8, life: 0.35, mv: MV.last, color: GOLD, sfx: 'holy', vol: 0.8, burstFx: 'gold', kb: [460, -420] });
     }
     if (this._lastMode) {
       if (this._lastEnd || t > 8) { this._lastMode = false; this.spillFx(world); this.toStagger(true); }

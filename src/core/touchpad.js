@@ -212,6 +212,13 @@ const TAU = Math.PI * 2;
 const ZERO = Object.freeze({ l: 0, r: 0, t: 0, b: 0 });
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+/**
+ * [ux-fix #15] 스틱을 뗀 뒤 사라지는 시간(STICK_FADE)은 벽시계로 잰다. 예전에는 performance.now() 로 재서, 그 시계가 멈추거나
+ * 게임 시계로 바뀐 동안(QA 프레임 스텝의 가상 시계 · 멈춘 탭이 다시 돌아온 직후 등) 뗀 자리의 받침이 화면 가운데에 그대로 남았다 (replay #15)
+ */
+const wall = () => Date.now();
+/** [ux-fix #15] 뗀 스틱이 사라지는 정도 0 → 1 (벽시계) */
+const fadeK = (s) => clamp((wall() - s.relT) / (STICK_FADE * 1000), 0, 1);
 const hasDom = () => typeof document !== 'undefined' && typeof window !== 'undefined';
 const num = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
 /** 터치 화면이 있는 기기 (지금 입력 모드와 무관) — 초기화 때 버튼 그림을 미리 구울지 */
@@ -648,7 +655,7 @@ function releaseAll(keepStick = false) {
   }
   S.ptrs.clear();
   if (held?.kind === 'stick') { held.suspended = true; S.ptrs.set(s.id, held); }
-  if (s.active) { s.active = false; s.relT = now(); s.ex = s.ax; s.ey = s.ay; }
+  if (s.active) { s.active = false; s.relT = wall(); s.ex = s.ax; s.ey = s.ay; }
   s.sprint = false;
   for (const a in S.counts) S.counts[a] = 0;
   S.late.clear();
@@ -656,6 +663,7 @@ function releaseAll(keepStick = false) {
   clearDirs();
   try { inputRef()?.touch?.clear?.(); } catch (e) { console.error('[touchpad]', e); }
   S.pending = true;
+  startLoop();   // [ux-fix #15]
 }
 
 // ───────────────────────── 판정 ─────────────────────────
@@ -803,7 +811,7 @@ function onMove(e) {
       const dx = x - s.ax, dy = y - s.ay, dist = Math.hypot(dx, dy), lim = REANCHOR_K * L.R;
       if (dist > lim) { const k = (dist - lim) / dist; s.ax += dx * k; s.ay += dy * k; }
     }
-    stickSend(); S.pending = true;
+    stickSend(); S.pending = true; startLoop();   // [ux-fix #15]
     return;
   }
   if (p.kind !== 'btn' || settings().touchSlide === false) return;
@@ -826,7 +834,7 @@ function onUp(e) {
   const cancel = e.type === 'pointercancel';
   if (p.kind === 'stick') {
     const s = S.stick;
-    s.active = false; s.relT = now(); s.ex = s.ax; s.ey = s.ay; s.sprint = false;
+    s.active = false; s.relT = wall(); s.ex = s.ax; s.ey = s.ay; s.sprint = false;
     stickSend();
   } else if (p.kind === 'sys') {
     releaseBtn(p, p.id, false);
@@ -839,6 +847,7 @@ function onUp(e) {
     for (const id of p.ids) releaseBtn(p, id, !cancel);
   }
   S.pending = true;
+  startLoop();   // [ux-fix #15] 뗀 뒤 한 번은 꼭 다시 그린다 (그리기 고리가 멈춰 있었어도 뗀 자리의 받침이 남지 않게)
 }
 function toggleFs() {
   try {
@@ -870,7 +879,19 @@ function readState() {
   }
   return w;
 }
+/**
+ * [ux-fix #15] 한 프레임 처리에서 예외가 나도 고리를 이어 간다 (예전: 예외 한 번에 rAF 고리가 멈춰 손을 뗀 뒤에도 마지막 스틱 그림이 남았다).
+ * 같은 오류는 2초에 한 번만 알린다
+ */
+let tickErrT = -1e9;
 function tick(t) {
+  try { tickBody(t); } catch (e) {
+    if (wall() - tickErrT > 2000) { tickErrT = wall(); console.error('[touchpad] tick', e); }
+    S.pending = true; S.fullClear = true;
+    if (S.visible || S.editor) startLoop();
+  }
+}
+function tickBody(t) {
   S.raf = 0;
   const L = layout();
   if (!L) return;
@@ -894,7 +915,7 @@ function tick(t) {
       }
     }
   }
-  const fading = !S.stick.active && now() - S.stick.relT < STICK_FADE * 1000 + 40;
+  const fading = !S.stick.active && wall() - S.stick.relT < STICK_FADE * 1000 + 40;
   const live = S.visible || S.editor || fading || S.swapHold || S.swapGap || S.late.size;
   // 숨은 캔버스(display:none)에는 그리지 않는다: 그리면 놓아 둔 백킹을 다시 잡는다 (루프는 ⇄·미룬 뗌 처리 때문에 돈다)
   const shown = S.visible || !!S.editor;
@@ -929,7 +950,7 @@ function stateChanged(L, w) {
   sput(mask);
   const s = S.stick;
   sput(s.active ? 1 : 0); sput(Math.round(s.ax)); sput(Math.round(s.ay)); sput(Math.round(s.fx)); sput(Math.round(s.fy)); sput(s.sprint ? 1 : 0);
-  sput(s.active ? 0 : Math.round(clamp((now() - s.relT) / (STICK_FADE * 1000), 0, 1) * 10));
+  sput(s.active ? 0 : Math.round(fadeK(s) * 10));
   // 스킬 2칸: id(해시), 재사용 대기(0.1초), MP 부족
   for (let k = 0; k < 2; k++) {
     const sid = p?.hero?.slots?.[(p.skillPage ?? 0) * 2 + k] ?? null;
@@ -1660,7 +1681,7 @@ function ultVector(c, cx, cy, r, pressed, sp, full, aw, reduce, pulse, tsec) {
 function drawStick(c, L, op) {
   const s = S.stick;
   if (s.active) return stickAt(c, L, s.ax, s.ay, s.fx, s.fy, Math.max(0.85, op), s.sprint);
-  const f = settings().touchStick === 'fixed' ? 1 : clamp((now() - s.relT) / (STICK_FADE * 1000), 0, 1);
+  const f = settings().touchStick === 'fixed' ? 1 : fadeK(s);
   // [matrix] (replay f24) 두 고리가 함께 보이지 않게 차례로: 손가락 자리 스틱은 앞 55 % 동안 사라지고, 기본 자리 받침은 뒤 50 % 동안 나타난다
   const away = f < 1 ? stickAt(c, L, s.ex, s.ey, s.ex, s.ey, Math.max(0.85, op) * clamp(1 - f / 0.55, 0, 1), false) : null;
   if (!S.visible) return away;

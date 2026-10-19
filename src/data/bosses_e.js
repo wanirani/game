@@ -86,6 +86,23 @@
 //   까닭: 7단계·희귀도 4·+12 장비는 s17 에서 멈추는데 외전 보스 공격은 계속 올라 모형 장비의 리아·빅터·세라가 s23 부터 두 대에 쓰러졌다 (s25 한 대 = 최대 HP 57.4 · 53.1 · 46.5%).
 //   카엘 받는 피해 (모형, 보통): 하겐 20.7 → 19.8 · 엘제베트 21.5 → 19.4 · 카론 22.6 → 19.4% — s21 ≤ s22 ≤ s25 순서는 남고 s23–s25 는 19.4–19.8% 의 평지 (명세 §2.3 '앞 보스보다 세게'에서 벗어남, 리드 결정).
 //   위 머리말의 atk 46 · 50 · 49 결과 줄은 처음 맞출 때의 기록이다.
+/**
+ * [play-fix #2] 파라켈(b_paracel) 패턴 피해 배율 (모션 배율 mv — 보스 공격력 × mv, 방어는 combat.js 그대로). 게임(e_paracel.js)과 밸런스 검사
+ * (tools/balance.mjs normal --check 의 s26 줄)가 이 표 하나를 읽는다. 무거운 한 방은 다른 1부 보스(레비아탄 1.1–1.4 · 거신 1.1–1.5 ·
+ * 서리 여왕 1.05–1.2)처럼 모형의 「보스 1타 = 모션 1.2」 근처 — 예전 값(0.5–1.0, 웅덩이 0.18–0.22)은 모형이 15% 라 보던 한 대를 실제로는
+ * 2–6% 로 만들었다 (Fold 리플레이 #2). 이어지는 불바닥·웅덩이는 rehit 마다 한 번 (0.35 · 0.5초).
+ */
+export const PARACEL_MV = Object.freeze({
+  lash: 1.3, lashLow: 1.0,          // 접합 팔: 몸통 높이 띠 · 2페이즈/지옥 바닥 띠
+  glass: 1.2, glassFire: 0.2,       // 불타는 렌즈: 광선 · 끝의 불바닥 (rehit 0.35)
+  wave: 1.1, tide: 1.05,            // 수은 해일: 두 물결 · 잠수 돌진(카운터 창 앞)
+  vent: 1.0,                        // 배양조가 터짐 (깨지 못했을 때)
+  fire: 1.0, fireFloor: 0.25,       // 플라스크 불: 폭발 · 불바닥 (rehit 0.35)
+  ice: 1.05, poison: 0.24,          // 플라스크 얼음 기둥 · 독 웅덩이 (rehit 0.5)
+  splash: 0.7, mercury: 0.28,       // 수은 웅덩이: 튐 · 웅덩이 (rehit 0.5)
+  gold: 0.9,                        // 금빛 약비 기둥
+  last: 1.2,                        // 15% 금빛 파열 (아케이드 · 다시 볼 때)
+});
 export const BOSSES_E = {
   b_argen: {
     id: 'b_argen', name: '아르겐', title: '공허에 물든 은룡', hp: 2900, hpMul: 1.2, atk: 45, def: 22, res: 22, exp: 3360, score: 420000,
@@ -130,10 +147,12 @@ export const BOSSES_E = {
   // ── b_paracel (s26) — 파라켈 박사 / 수은의 연금술사. 클래스 game/bosses/e_paracel.js (BossC 상속) ──
   // 체급: 7–8장 보스의 손맛을 권장 Lv 28–34 에서 (docs/specs/ex_s26.md §2.3). s26 레벨 30. 2페이즈 (50% 'fuse' — 배양조를 깨고 호문쿨루스를 가슴에, form2 칭호 '금이 되어 가는 몸').
   // 모형 (balance.mjs 사본, s26 을 s09 뒤에 끼움, 보통): 카엘 Lv 28 106타 · 16초 · 한 대 15.2% / Lv 32 81타 · 9.4% (s07 직후 Lv 21 은 146타 · 36.9% — 권장 Lv 28).
+  // [play-fix #2] 실제 패턴 피해는 PARACEL_MV (위) — 체력 · 공격력은 모형 값 그대로 (악몽 s26 줄도 그대로). balance.mjs normal --check 가 s26 줄을 본다.
   b_paracel: {
     id: 'b_paracel', name: '파라켈 박사', title: '수은의 연금술사', hp: 1600, hpMul: 1.0, atk: 29, def: 11, res: 12, exp: 1600, score: 42000,
-    size: { w: 84, h: 176 }, flying: false, contact: 0.5, material: 'flesh', weak: ['thunder', 'holy'], resist: ['fire'], phases: [0.5],
+    size: { w: 84, h: 176 }, flying: false, contact: 0.6, material: 'flesh', weak: ['thunder', 'holy'], resist: ['fire'], phases: [0.5],
     music: 'boss2', portrait: 'portraits/b_paracel', stageId: 's26', drops: ['u_paracel'], light: { r: 200, color: '#c8d4e0', i: 0.55 },
+    mv: PARACEL_MV,   // [play-fix #2] 패턴 피해 배율 (위 표) · 몸에 닿으면 0.6 (예전 0.5 — 2부 외전 보스 0.6–0.8)
     form2: { name: '파라켈 박사', title: '금이 되어 가는 몸', portrait: 'portraits/b_paracel' },
     intro: '(도가니를 들여다보던 손이 멈춘다. 등에 매단 유리 배양조 속에서 무언가가 눈을 뜬다.)',
     desc: '악마성의 수석 연금술사. 역병을 이기려고 제 몸에 수은과 호문쿨루스의 살을 이어 붙였다. 성이 사라진 백 년 동안에도 바위 속 공방에서 불을 지켰다고 한다.',

@@ -32,6 +32,7 @@ import * as CMP from '../../game/companions.js';   // [hook:cmp] companionHubEnt
 import * as STORYDIR from '../../game/story_director.js';   // 합류 한마디 · 여관의 밤 (story_ext §5.3·§5.6) — companionHubEnter 바로 뒤마다
 import { classNameOf } from '../../data/ascensions.js';   // 초월·비전 이름 (classes_t3 §8.3)
 import { TOWN_STAGE, BUILDINGS, TOWN_NPCS, TOWN_PROPS, TOWN_TALK, eliseInTown } from '../../data/town.js';
+import { STAGES } from '../../data/stages.js';   // [ux-fix #13] 아웃트로에서 곧장 왔는가
 import { FLOOR, drawFacades, facadeLights, prebakeFacades, setFacadeScale, anvilPos, glow } from './facades.js';
 import { uiPanel, uiButton, uiHints } from './common.js';
 import { vGrad, fillGradRect, skillAlert, redBadge } from '../menu/common.js';   // [playb] P06 마을 메뉴 SP 배지
@@ -45,6 +46,8 @@ const RELIC_IDS = ['k_relic_1', 'k_relic_2', 'k_relic_3', 'k_relic_4', 'k_relic_
 const HEART_IDS = ['k_heart_1', 'k_heart_2', 'k_heart_3', 'k_heart_4', 'k_heart_5', 'k_heart_6'];
 // 처음 도착(프롤로그 직후) · 이어하기 · 2부 서막 직후 — '돌아왔다' 가 아니라 환영 문구, 마을 한가운데에서 시작
 const ARRIVE_FROM = new Set(['prologue', 'load', 'title', 'new', 'p2']);
+/** [ux-fix #13] 이번 실행에서 마을 연출을 이미 한 번 미룬 아웃트로 (같은 아웃트로로 두 번 미루지 않는다) */
+const HELD_OUTROS = new Set();
 // 마을은 전투 없음: 이 입력들은 World 에 넘기지 않는다 (하트·MP 소모 방지). 수호신 스킬(guard)·각성기(awaken)도 마을에서는 쓰지 않는다
 const NO_COMBAT = ['attack', 'sub', 'skill1', 'skill2', 'ult', 'swap', 'guard', 'awaken', 'lock', 'auto'];   // [hook:cmp] guard · [auto] 대상 고정·자동 전투 (마을은 전투 없음)
 // 가상 패드에서 숨길 버튼 (scene 플래그 padHideButtons — 스틱·점프·대시·탑승·일시정지·가방만 남긴다). 같은 배열을 계속 넘긴다
@@ -86,13 +89,38 @@ export class HubScene extends Scene {
     this.loadSum = this.from === 'load' ? { heroes: [], stash: 0, t: 0 } : null;
     this.syncHeroUnlocks();
     if (g.settings?.autoSave) { try { saves.write(g.state.slot ?? 1, g.state); } catch (e) { /* 저장 실패 무시 */ } }
-    CMP.companionHubEnter?.(g, this);   // [hook:cmp] 마구간 개장 · 2번 칸 안내 · 합류 연출 (다른 장면이 위에 있으면 다음 onResume 에)
-    STORYDIR.hubStoryEnter?.(g, this);   // 합류 한마디 · 여관의 밤 (성당 귀환의 첫 호출은 건너뛴다 — 성당을 먼저 연다)
+    this.eventHold = this.outroHold();   // [ux-fix #13] 이야기 아웃트로(끝 카드)에서 곧장 왔으면 이야기 밖 마을 연출은 다음 입장으로
+    if (this.hubEventsOk('cmp')) CMP.companionHubEnter?.(g, this);   // [hook:cmp] 마구간 개장 · 2번 칸 안내 · 합류 연출 (다른 장면이 위에 있으면 다음 onResume 에)
+    if (this.hubEventsOk('story')) STORYDIR.hubStoryEnter?.(g, this);   // 합류 한마디 · 여관의 밤 (성당 귀환의 첫 호출은 건너뛴다 — 성당을 먼저 연다)
     // 시련 통과·포기 뒤: 성당 전직 탭을 연다 (trial · unlocked → 성당지기 한마디 · 새 칸 축하)
     //  (위에 다른 장면 — 합류 연출 등 — 이 먼저 떴으면 그 장면이 닫힐 때 onResume 에서 연다)
     this.pendingChurch = params.open === 'church' && g.registry.church
       ? { from: 'hub', tab: 'class', trial: params.trial ?? null, unlocked: Array.isArray(params.unlocked) ? params.unlocked : [] } : null;
     if (this.pendingChurch) setTimeout(() => this.openPendingChurch(), 0);
+  }
+  /**
+   * [ux-fix #13] 이야기 아웃트로(끝 카드)에서 곧장 마을에 왔는가 → { outro, story: [이 아웃트로가 데려온 동료 id] } | null.
+   * 표시: 결과 화면 → 아웃트로 컷신(scenes/front/story.js 가 처음 볼 때 seenScripts 끝에 넣는다) → 마을(from = 스테이지 id).
+   * 같은 아웃트로로는 한 번만 미룬다 (다시 깨서 아웃트로 없이 돌아온 다음 입장에는 미루지 않는다).
+   */
+  outroHold() {
+    const st = this.game.state, stage = STAGES[this.from], outro = stage?.outro;
+    const seen = st?.progress?.seenScripts;
+    if (!outro || !Array.isArray(seen) || seen[seen.length - 1] !== outro || HELD_OUTROS.has(outro)) return null;
+    HELD_OUTROS.add(outro);
+    const lines = Array.isArray(SCRIPTS[outro]) ? SCRIPTS[outro] : [];
+    return { outro, story: lines.filter((l) => l?.cmd === 'recruit' && typeof l.id === 'string').map((l) => l.id) };
+  }
+  /**
+   * [ux-fix #13] 마을 연출을 지금 틀어도 되는가. kind 'cmp' = companionHubEnter (마구간 개장 · 합류 연출) · 'story' = hubStoryEnter (합류 한마디 · 여관의 밤).
+   * 아웃트로에서 곧장 온 이번 입장: 그 아웃트로가 데려온 동료의 합류 연출만 지금 (이야기의 끝), 나머지는 다음 마을 입장에서.
+   */
+  hubEventsOk(kind) {
+    const H = this.eventHold;
+    if (!H) return true;
+    if (kind !== 'cmp' || !H.story.length) return false;
+    const pend = this.game.state?.companions?.pending;
+    return Array.isArray(pend) && pend.some((id) => H.story.includes(id));
   }
   /** 시련 귀환의 성당 열기 (허브가 맨 위일 때 한 번) → 열었으면 true */
   openPendingChurch() {
@@ -278,15 +306,15 @@ export class HubScene extends Scene {
       audio.sfx('powerup');
       this.world.fx.burst('magic', this.world.player.cx, this.world.player.cy, 30, { color: '#e8c872', speed: 200 });
       this.world.fx.ring(this.world.player.cx, this.world.player.cy, { color: '#e8c872', r0: 10, r1: 90, life: 0.5, width: 5 });
-      CMP.companionHubEnter?.(g, this);   // [hook:cmp]
-      STORYDIR.hubStoryEnter?.(g, this);
+      if (this.hubEventsOk('cmp')) CMP.companionHubEnter?.(g, this);   // [hook:cmp]
+      if (this.hubEventsOk('story')) STORYDIR.hubStoryEnter?.(g, this);
       return;
     }
     w.player?.refreshStats();
     if (w.player) { w.player.hp = w.player.stats.hp; w.player.mp = w.player.stats.mp; }
     if (this.pendingChurch && this.openPendingChurch()) return;   // 시련 귀환: 성당 먼저 (합류 연출·이야기는 성당을 닫은 뒤)
-    CMP.companionHubEnter?.(g, this);   // [hook:cmp] 위 장면(대화·합류 연출·메뉴…)이 닫힐 때마다 남은 연출을 이어 간다
-    STORYDIR.hubStoryEnter?.(g, this);
+    if (this.hubEventsOk('cmp')) CMP.companionHubEnter?.(g, this);   // [hook:cmp] 위 장면(대화·합류 연출·메뉴…)이 닫힐 때마다 남은 연출을 이어 간다
+    if (this.hubEventsOk('story')) STORYDIR.hubStoryEnter?.(g, this);   // [ux-fix #13] 아웃트로에서 곧장 온 입장이면 다음 입장으로 미룬다
   }
 
   refreshBoard() {
@@ -367,6 +395,8 @@ export class HubScene extends Scene {
     if (id === 'party') { this.openParty(); return true; }
     if (id === 'act' && this.hint) { this.act(this.hint); return true; }
     if (id === 'quest') { this.openQuests(); return true; }   // [playb] P02 주 퀘스트 칩 → 메뉴 › 퀘스트
+    // [ux-fix #5] 화면 가장자리 「성문 (세계 지도) ▶」 칩 = 성문에 들어가는 것과 같은 길 (departGate → enterTarget → 세계 지도의 가방 경고 등 그대로)
+    if (id === 'gate') { const w = this.world; if (!w?.cutscene && !w?.transitioning && !this.entering && this.game.top === this) this.departGate(); return true; }
     return false;
   }
   /** [playb] P10 설정 (톱니 · 마을 메뉴 「설정」 줄) */
@@ -604,7 +634,8 @@ export class HubScene extends Scene {
     if (!this.menuOpen && !this.world.cutscene) {
       const qr = this.drawQuestChip(ctx, k, W, touch, off);
       if (qr) { rects.quest = qr.zone; this.topBoxes.quest = qr.box; }
-      this.drawGateArrow(ctx, k, W, H, touch);
+      const gz = this.drawGateArrow(ctx, k, W, H, touch, off);   // [ux-fix #5] 누를 수 있는 칩 (논리 px 탭 자리)
+      if (gz) rects.gate = gz;
     }
     setHudAvoid(this.world, Object.values(this.topBoxes));   // [qamatrix] 토스트 줄이 이 판들(특히 헌터 교체·메뉴)을 덮지 않게
     }   // !over
@@ -653,7 +684,10 @@ export class HubScene extends Scene {
   drawQuestChip(ctx, k, W, touch, off) {
     const q = this.mainQuest();
     if (!q) return null;
-    const label = `메인: 「${q.name ?? q.id}」`, tail = '성문으로 →';
+    // [ux-fix #6] 꼬리 화살표는 지금 영웅 자리에서 성문 쪽을 가리킨다 (성문을 지나 동쪽에 있으면 ←) — 매 프레임 다시 고른다 (선명 칸 키가 꼬리 글자를 포함)
+    const gd = this.gateDoor(), hp = this.world?.player;
+    const gateLeft = !!(gd && hp && gd.cx < hp.cx);
+    const label = `메인: 「${q.name ?? q.id}」`, tail = gateLeft ? '← 성문으로' : '성문으로 →';
     const fs = 14, h = 30, x = 14, y = 84, ic = 22;
     ctx.font = font(fs, 800, FONT.body);
     const lw = ctx.measureText(label).width;
@@ -688,11 +722,11 @@ export class HubScene extends Scene {
    * [playb] P02 성문(세계 지도)이 화면 밖이면 영웅 높이의 화면 가장자리에 화살표 + 「성문 (세계 지도)」.
    * 가까울수록 빨리 맥동한다. 성문이 화면 안이면 숨김 (마을 메뉴·대화·연출 중에는 drawHUD 가 부르지 않는다)
    */
-  drawGateArrow(ctx, k, W, H, touch) {
+  drawGateArrow(ctx, k, W, H, touch, off = false) {
     const w = this.world, d = this.gateDoor(), p = w?.player;
-    if (!d || !p) return;
+    if (!d || !p) return null;
     const cam = w.camera, x0 = cam.x, x1 = cam.x + cam.vw;
-    if (d.cx >= x0 && d.cx <= x1) return;
+    if (d.cx >= x0 && d.cx <= x1) return null;
     const right = d.cx > x1, dist = Math.abs(d.cx - p.cx);
     const sp = cam.toScreen(p.cx, p.cy);
     let cy = clamp(sp.y / k, 120, H - 90);
@@ -725,6 +759,9 @@ export class HubScene extends Scene {
     ctx.beginPath(); ctx.moveTo(ax + s * 8, cy); ctx.lineTo(ax - s * 4, cy - 9); ctx.lineTo(ax - s * 4, cy + 9); ctx.closePath(); ctx.fill();
     text(ctx, label, right ? bx + 12 : bx + 30, cy + 5, { size: 13, weight: 800, color: '#ffe7a0', ow: 2 });
     ctx.restore();
+    // [ux-fix #5] 탭 자리: 보이는 칩 + 위아래 여유 (터치 44 CSS px 이상, 맥동으로 흔들려도 칩 전체를 덮게 가로 여유 6)
+    const zh = touch ? Math.max(bh, this.tapUi(46)) : bh, zx = (right ? W - 12 - bw : 12) - 6;
+    return this.zone('gate', { x: zx, y: cy - zh / 2, w: bw + 12, h: zh }, k, off);
   }
 
   drawBanner(ctx, vw, vh) {

@@ -31,6 +31,7 @@ import { useItem } from '../game/inventory.js';   // [hudfix] 빠른 칸 탭 = �
 import { ITEMS } from '../data/items.js';
 import { drawMinimap, drawMinimapRing, drawBigMap } from './minimap.js';
 import { chapterLabel } from '../data/stages.js';   // [ux-fix #1] 장 표시 (1부 외전 s26 = 「외전 Ⅰ」)
+import { NM_MODE } from '../data/nightmare.js';   // [ux-fix #8] 악몽 토벌 꼬리표
 import { drawLockMarks, drawLockPlate, autoPill, autoPillW, autoLevelOf, autoHoldOf } from './hud_auto.js';   // [auto] 대상 고정 표적 고리 · 이름 옆 AUTO
 
 // ── 그린 HUD 그림 (hud_mobile §4): 테(assets/ui/hud/*.webp) · 스킬/UI 아이콘(assets/icons/skills/<id>.webp 96 px, 48/<id>.webp 48 px) ──
@@ -135,7 +136,7 @@ export function drawHUD(ctx, world, vw, vh) {
   const cr = drawCompanionHUD(ctx, world, cmpOpts(L, T)); // [hook:cmp]
   if (world.companions) { if (!cr) NO_RECTS.length = 0; try { world.companions.hudRects = cr || NO_RECTS; } catch { /* 읽기 전용이면 동료 쪽이 직접 관리 */ } } // [hook:cmp]
   const sc = L.score, pimg = assets.get(CHARACTERS[hero.charId]?.portrait), hi = world.game.meta?.highScores?.[0]?.score ?? 0;
-  hashStart(); hashNum(world.state.gold); hashNum(run.score); hashNum(hi); hashNum(run.lives); hashNum(Math.floor(run.time ?? 0)); hashStr(hero.charId); hashStr(p.look?.primary); hashNum(pimg ? pimg.width : 0); hashNum(L.textMin);
+  hashStart(); hashNum(world.state.gold); hashNum(run.score); hashNum(hi); hashNum(run.lives); hashNum(Math.floor(run.time ?? 0)); hashStr(world.trial?.name ?? ''); hashStr(hero.charId); hashStr(p.look?.primary); hashNum(pimg ? pimg.width : 0); hashNum(L.textMin);
   crisp(ctx, world, 'score', crr(CRR.score, sc.x - 4, sc.y - 12, sc.w + 8, sc.h + 16), hashNum(fontEpoch), (c) => drawScore(c, sc, world, hero, p, run, T, L));
   // 아래 띠의 빠른 칸 (hudfix: 버튼 배치 '아래 띠' — 띠의 스틱과 버튼 묶음 사이 빈 곳; 게임 캔버스 밖이라 덧캔버스로만 그린다)
   const qs = L.quick?.length ? consumables(world.state, world.time ?? 0) : null;
@@ -231,7 +232,7 @@ function drawFoldHUD(ctx, world, vw, vh, L, T) {
     crisp(ctx, world, 'mmring', crr(CRR.mm, mm.x - e, mm.y - e, mm.w + 2 * e, mm.h + 2 * e), hashNum(ring ? 1 : 0), (c) => drawMinimapRing(c, mm, ring));
   }
   const sg = L.stage, stg = world.stage;
-  hashStart(); hashStr(stg?.chapter); hashStr(stg?.name); hashNum(L.textMin); hashNum(fontEpoch);
+  hashStart(); hashStr(stg?.chapter); hashStr(stg?.name); hashStr(world.trial?.name ?? ''); hashNum(L.textMin); hashNum(fontEpoch);
   crisp(ctx, world, 'stage', crr(CRR.stage, sg.x - 2, sg.y - 2, sg.w + 4, sg.h + 4), hashNum(sg.w), (c) => drawStagePlate(c, sg, world, L));
   const po = L.portrait, vi = L.vitals;
   const vx = Math.min(po.x, vi.x - 4) - 3, vy = Math.min(po.y, vi.y - 2) - 3;
@@ -247,7 +248,8 @@ function drawFoldHUD(ctx, world, vw, vh, L, T) {
   crisp(ctx, world, 'currency', crr(CRR.cur, sc.x - 2, sc.y - 2, sc.w + 4, sc.h + 4), hashNum(fontEpoch), (c) => drawCurrency(c, sc, world, hero, p, run, L));
   // 퀘스트 칸 (HUD-REDO): 보스 바·연출 중에는 숨김
   let qr = null;
-  const qst = L.quest && L.questShown && !world.cutscene ? questTrackerState(L.quest, world, L.textMin) : null;
+  // [ux-fix #8] 악몽 토벌·시련 (world.trial) 에서는 이야기 퀘스트 칸을 숨긴다 (보스방 하나뿐 — 이야기 의뢰를 진행할 수 없다)
+  const qst = L.quest && L.questShown && !world.cutscene && !world.trial ? questTrackerState(L.quest, world, L.textMin) : null;
   if (qst) {
     const q = L.quest;
     hashStart(); hashStr(qst.key); hashNum(artIconReady('ui_quest') ? 1 : 0);
@@ -344,8 +346,25 @@ function drawStagePlate(ctx, r, world, L) {
   ctx.fillStyle = '#8a1424'; ctx.fillRect(r.x, r.y + r.h - 2, r.w, 2);
   ctx.strokeStyle = 'rgba(214,170,110,0.55)'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.w - 1, r.h - 1);
   const F = Math.max(13, L.textMin);
+  if (world.trial?.name) { drawModeTag(ctx, r, world.trial, F); return; }   // [ux-fix #8] 악몽 토벌 · 시련: 모드 꼬리표 + 보스/시련 이름 (배너가 사라진 뒤에도)
   const cl = chapterLabel(st, 'num'), ch = cl ? `${cl} · ` : '';   // [ux-fix #1] 「7장 · 」 — s26 은 「외전 Ⅰ · 」
   text(ctx, ch + (st.name ?? ''), r.x + 8, r.y + Math.round(r.h / 2 + F * 0.36), { size: F, weight: 800, family: FONT.title, color: '#f3d38a', maxWidth: r.w - 14 });
+}
+
+/**
+ * [ux-fix #8] 모드 꼬리표 (악몽 토벌 · 시련): 이름판 왼쪽에 모드 색 알약 + 그 뒤에 보스(시련) 이름.
+ * T.name 이 '악몽 토벌 · 나이트윙' · '시련 Ⅰ · 묘비의 빈 줄' 꼴이라 ' · ' 앞을 꼬리표로, 뒤를 이름으로 쓴다
+ */
+function drawModeTag(ctx, r, T, F) {
+  const s = String(T.name), i = s.indexOf(' · ');
+  const tag = i > 0 ? s.slice(0, i) : T.nightmare ? NM_MODE : '시련', rest = i > 0 ? s.slice(i + 3) : '';
+  const fs = Math.max(11, F - 1), col = T.color ?? '#c8a0ff';
+  ctx.font = font(fs, 800, FONT.title);
+  const pw = Math.min(Math.round(r.w * 0.6), Math.ceil(ctx.measureText(tag).width) + 14), ph = Math.max(12, r.h - 6);
+  ctx.fillStyle = col; ctx.globalAlpha = 0.9; ctx.fillRect(r.x + 4, r.y + 3, pw, ph); ctx.globalAlpha = 1;
+  ctx.strokeStyle = 'rgba(255,230,220,0.55)'; ctx.lineWidth = 1; ctx.strokeRect(r.x + 4.5, r.y + 3.5, pw - 1, ph - 1);
+  text(ctx, tag, r.x + 4 + pw / 2, r.y + Math.round(r.h / 2 + fs * 0.36), { size: fs, weight: 800, family: FONT.title, color: '#fff4f0', align: 'center', maxWidth: pw - 6 });
+  if (rest) text(ctx, rest, r.x + 4 + pw + 8, r.y + Math.round(r.h / 2 + F * 0.36), { size: F, weight: 800, family: FONT.title, color: '#f3d38a', maxWidth: Math.max(20, r.w - pw - 22) });
 }
 
 /** 재화 줄 (가운데 위): 골드 · 점수(라벨) · 목숨 — HUD-REDO: 점수에 '점수' 라벨 (예전엔 숫자만이라 무엇인지 몰랐다) */
@@ -804,7 +823,10 @@ function drawScore(ctx, r, world, hero, p, run, T, L) {
   const lives = `×${run.lives}`;
   text(ctx, lives, lx + 19, y0 + 46 + ly, { size: s2, weight: 800, family: FONT.num, color: '#ff8a9a' });
   const livesW = ctx.measureText(lives).width;
-  text(ctx, `HI ${fmt(hi)}`, rx, y0 + 46 + ly, { size: s1, align: 'right', weight: 700, family: FONT.num, color: '#e8c872', maxWidth: r.w - 19 - livesW - 8 });
+  // [ux-fix #8] 악몽 토벌 · 시련: 최고 점수 자리에 모드 이름 (점수는 기록되지 않는다 — 넓은 배치에는 이름판이 없다)
+  const tr = world.trial, mode = tr ? (tr.nightmare ? NM_MODE : String(tr.name ?? '시련').split(' · ')[0]) : null;
+  if (mode) text(ctx, mode, rx, y0 + 46 + ly, { size: s1, align: 'right', weight: 800, family: FONT.title, color: tr.color ?? '#c8a0ff', maxWidth: r.w - 19 - livesW - 8 });
+  else text(ctx, `HI ${fmt(hi)}`, rx, y0 + 46 + ly, { size: s1, align: 'right', weight: 700, family: FONT.num, color: '#e8c872', maxWidth: r.w - 19 - livesW - 8 });
   const time = fmtTime(run.time);
   text(ctx, time, lx, y0 + 64 + ly * 2, { size: s2, weight: 700, family: FONT.num, color: '#c8c0b0' });
   const tw = ctx.measureText(time).width;

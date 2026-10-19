@@ -20,8 +20,8 @@ import { classNameOf } from '../data/ascensions.js';   // 초월·비전 이름 
 import * as TRIAL from '../game/trial.js';   // 시련: '마을로 귀환' 대신 '시련 포기' (classes_t3 §9.4)
 import { NM_MODE } from '../data/nightmare.js';   // [ux-fix #4] 모드 이름 「악몽 토벌」 (난이도 「악몽」과 다르다)
 import * as NG from '../game/ngplus.js';   // [hook:ng]
-import {
 import { chapterLabel, stageTitle } from '../data/stages.js';   // [ux-fix #1] 장 표시 · 제목 (1부 외전 s26 = 「외전 Ⅰ」 · 「파라켈의 지하 공방」)
+import {
   PAL, frame, divider, glow, glowOval, glyph, gauge, diamond, gbutton, Nav, Gesture, Embers, skillAlert, redBadge,
 } from './menu/common.js';
 

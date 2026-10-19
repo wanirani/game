@@ -110,7 +110,7 @@ for (const id of ids) {
   ok(n && n.id === id && n.twist === e.twist && n.boss === e.boss && n.stage === e.stage && n.baseLevel === STAGES[e.stage].level && n.level === o.levelOverride
     && n.hpMul === e.hpMul && n.atkMul === e.atkMul && n.spMul === e.spMul, `${id}: opts.nightmare (K2)`, n);
   const rk = Object.keys(o.rules).filter((k) => k !== 'label');
-  ok(o.rules.label === '악몽의 규칙' && rk.length === (tw.rules ? 1 : 0) && (!tw.rules || o.rules[rk[0]] === tw.rules[rk[0]]), `${id}: 규칙 = 비틀기 하나 (${rk.join(',') || '없음'})`, o.rules);
+  ok(o.rules.label === `${D.NM_MODE} 규칙` && rk.length === (tw.rules ? 1 : 0) && (!tw.rules || o.rules[rk[0]] === tw.rules[rk[0]]), `${id}: 규칙 = 비틀기 하나 (${rk.join(',') || '없음'})`, o.rules);
   ok(P.stage.intro == null && P.stage.outro == null && !P.stage.next && (P.stage.unlocks ?? []).length === 0, `${id}: 이야기 연출·해금 없음`);
   ok(o.diffOver == null, `${id}: 난이도 덮어쓰기 없음 (배율은 opts.nightmare 로만)`);
 }
@@ -120,7 +120,8 @@ ok(NM.prepareNightmare(G(stP2), 'nm_zz') === null, '모르는 id → null');
 section('N4 trial.js 연결 (악몽 id → nightmare.js)');
 const T01 = TRIAL.trialOf('nm_s01');
 ok(T01?.nightmare === true && T01.boss === 'b_nightwing' && T01.room === 'boss' && T01.bossPatterns === true && T01.color === D.NM_COLOR, 'trialOf(nm_s01) → 악몽 행');
-ok(T01?.name === `악몽 · ${BOSSES.b_nightwing.name}` && T01.failLine === D.NM_FAIL_LINE, '이름 · 실패 대사');
+ok(D.NM_MODE === '악몽 토벌', `[ux-fix #4] 모드 이름 「${D.NM_MODE}」 (난이도 「악몽」과 다르다)`);
+ok(T01?.name === `악몽 토벌 · ${BOSSES.b_nightwing.name}` && T01.failLine === D.NM_FAIL_LINE, '이름 「악몽 토벌 · 나이트윙」 · 실패 대사');
 ok(JSON.stringify(TRIAL.trialRuleNames(T01)) === JSON.stringify([D.NM_TWISTS[e01.twist].name]), '규칙 이름 = 비틀기 이름 하나', TRIAL.trialRuleNames(T01));
 ok(TRIAL.trialOf('tr_kael_1') === TRIALS.tr_kael_1, '시련 id 는 그대로 TRIALS');
 ok(TRIAL.trialOf('nm_zz') == null, '모르는 id → 없음');
@@ -235,12 +236,20 @@ section('N10 입구 (P3b) 연결 · 배율 범위 · K1 잔상');
 {
   const ch = src('src/scenes/town/church.js'), wm = src('src/scenes/town/worldmap.js'), te = src('src/scenes/trial_end.js'), nmj = src('src/game/nightmare.js');
   ok(typeof D.NM_FLAGS === 'object' && typeof D.NM_FLAGS.ui === 'boolean', `NM_FLAGS.ui 스위치 (${D.NM_FLAGS?.ui})`);
-  ok(/id: 'nightmare', label: '악몽'/.test(ch) && /NM_FLAGS\.ui/.test(ch) && /startNightmare\(this\.game, id, \{ from: 'church' \}\)/.test(ch), 'church.js: 「악몽」 탭 (스위치 · 성당에서 출발)');
+  ok(/id: 'nightmare', label: NM_MODE \}/.test(ch) && /NM_FLAGS\.ui/.test(ch) && /startNightmare\(this\.game, id, \{ from: 'church' \}\)/.test(ch), 'church.js: 「악몽」 탭 (스위치 · 성당에서 출발)');
   ok(/tabs\.push\(\{ id: 'nightmare'/.test(ch), 'church.js: 악몽 탭은 맨 끝에 붙인다 (기존 탭 번호 그대로)');
   ok(/'nm:open'/.test(wm) && /startNightmare\(this\.game, A\.id, \{ from: 'worldmap' \}\)/.test(wm) && /NM_FLAGS\.ui/.test(wm), 'worldmap.js: 붉은 「악몽」 단추 → 확인 창 → 지도에서 출발');
   ok(/finishNightmare/.test(te) && /resultRows\(\)/.test(te) && /NM_WIN/.test(te), 'trial_end.js: 격파 결과 화면 (보상 줄 · 돌아가기)');
   ok(/NM_FLAGS\.ui && game\?\.registry\?\.trialEnd/.test(nmj) && /export function finishNightmare/.test(nmj), 'nightmare.js: 입구가 켜지면 격파 → 결과 화면');
   ok(/trial: id \}\);/.test(nmj), 'nightmare.js: 성당으로 돌아갈 때 악몽 id 를 넘긴다 (성당이 「악몽」 탭을 연다)');
+  // [ux-fix #4 #7 #8 #9] 이름 · 확인 창 레벨 줄 · HUD 꼬리표 · 실패 화면 한 번 탭
+  const hud = src('src/render/hud.js'), pz = src('src/scenes/pause.js');
+  ok(/gbutton\(ctx, r, NM_MODE,/.test(wm) && /\['alt', NM_MODE\]/.test(wm) && !/'악몽'/.test(wm.replace(/\/\/.*$/gm, '')), 'worldmap.js: 붉은 단추 · 안내 = 「악몽 토벌」 (따옴표 \'악몽\' 홀로 쓰지 않음)');
+  ok(/내 Lv \$\{hl\} · 권장 Lv \$\{rec\} · 보스 Lv \$\{lv\}/.test(wm) && /⚠ 권장 레벨보다/.test(wm), 'worldmap.js: 확인 창 레벨 줄 「내 Lv · 권장 Lv · 보스 Lv」 + 낮은 레벨 경고');
+  ok(/내 Lv \$\{hl\} · 권장 Lv \$\{rec\} · 보스 Lv \$\{lv\}/.test(ch) && /`내 Lv \$\{hl\}`, `권장 Lv \$\{rec\}`, `보스 Lv \$\{lv\}`/.test(ch), 'church.js: 확인 창 · 자세히 판 레벨 줄 「내 Lv · 권장 Lv · 보스 Lv」');
+  ok(/!world\.cutscene && !world\.trial \? questTrackerState/.test(hud) && /function drawModeTag/.test(hud) && /if \(world\.trial\?\.name\) \{ drawModeTag/.test(hud), 'hud.js: 악몽 토벌·시련에서 퀘스트 칸 숨김 · 이름판에 모드 꼬리표');
+  ok(/'토벌 포기'/.test(pz) && !/'악몽 포기'/.test(pz), 'pause.js: 「토벌 포기」');
+  ok(/if \(p\.justDown\) this\.freshPress = armed;/.test(te) && !/input\.touchMode && this\.menu\.index !== hit/.test(te), 'trial_end.js: 한 번 탭 = 결정 (화면이 뜬 뒤 눌린 손가락만)');
   // K1: 잔상 셋의 need.nm = 1 · 10 · 26 (cosmetics.js 장부 — P3 는 읽기만; 「군주」 = 악몽 표 전부, 외전 26장 뒤 26 — ch26_verify)
   const trails = Object.values(COS.TRAILS).filter((t) => Number.isFinite(t?.need?.nm)).map((t) => t.need.nm).sort((a, b) => a - b);
   ok(JSON.stringify(trails) === '[1,10,26]', `K1 잔상 need.nm = 1 · 10 · 26 (${trails})`);
@@ -492,9 +501,9 @@ async function fightCase(s, vp, id) {
   const heroLv = await s.eval(() => window.__game.state.heroes[window.__game.state.charId].level);
   ok(W.lv === D.nmLevel(e, heroLv), `${tag}: 레벨 ${W.lv}`);
   ok(W.nm && W.nm.id === id && W.nm.hpMul === e.hpMul && W.nm.twist === e.twist, `${tag}: world.opts.nightmare (K2)`, W.nm);
-  ok(W.banner === '악몽' && W.sub === `${BOSSES[e.boss].name} · ${tw.name}`, `${tag}: 배너 '악몽' · ${W.sub}`);
+  ok(W.banner === '악몽 토벌' && W.sub === `${BOSSES[e.boss].name} · ${tw.name}`, `${tag}: 배너 '악몽 토벌' · ${W.sub}`);
   const rk = Object.keys(W.rules ?? {}).filter((k) => k !== 'label');
-  ok(W.rules?.label === '악몽의 규칙' && rk.length === (tw.rules ? 1 : 0), `${tag}: 규칙 하나뿐 (${rk.join(',') || '없음'})`, W.rules);
+  ok(W.rules?.label === '악몽 토벌 규칙' && rk.length === (tw.rules ? 1 : 0), `${tag}: 규칙 하나뿐 (${rk.join(',') || '없음'})`, W.rules);
   ok(B && B.id === e.boss, `${tag}: 보스 ${e.boss}`, B?.id);
   if (B) {
     ok(B.inferno === true, `${tag}: inferno === true`);
@@ -506,8 +515,8 @@ async function fightCase(s, vp, id) {
     ok(near(B.atk, Math.round(B.baseAtk * e.atkMul)) && (e.atkMul <= 1 || B.atk > B.baseAtk), `${tag}: 공격 × ${e.atkMul} (${B.atk} / ${B.baseAtk})`);
   }
   // 규칙 안내 토스트 (비틀기 이름)
-  ok(await until(s, (n) => window.__tt.toasts.some((t) => t.startsWith(`악몽의 규칙: ${n}`)), tw.name, 4000), `${tag}: 규칙 토스트 '악몽의 규칙: ${tw.name} — …'`);
-  const stale = await s.eval((n) => (window.__game.toasts ?? []).map((t) => String(t.text)).filter((t) => t.startsWith('악몽의 규칙:') && !t.startsWith(`악몽의 규칙: ${n}`) && !t.endsWith('쓸 수 없다')), tw.name);
+  ok(await until(s, (n) => window.__tt.toasts.some((t) => t.startsWith(`악몽 토벌 규칙: ${n}`)), tw.name, 4000), `${tag}: 규칙 토스트 '악몽 토벌 규칙: ${tw.name} — …'`);
+  const stale = await s.eval((n) => (window.__game.toasts ?? []).map((t) => String(t.text)).filter((t) => t.startsWith('악몽 토벌 규칙:') && !t.startsWith(`악몽 토벌 규칙: ${n}`) && !t.endsWith('쓸 수 없다')), tw.name);
   ok(stale.length === 0, `${tag}: 앞 판의 규칙 안내가 남지 않음`, stale);
   // AUTO 거절
   const A = await s.eval(async () => {
@@ -522,7 +531,7 @@ async function fightCase(s, vp, id) {
   ok(A.blocked === 'trial' && !A.hud.on && A.hud.level === 'off', `${tag}: AUTO 거절`, A);
   // [P3b] 일시정지: 「악몽 포기」 (「시련 포기」 아님) · 귀환 주문서: 「악몽의 결계」 (p3a_requests 1·3)
   const PZ = await s.eval(() => { const g = window.__game; g.push('pause', { world: g.world }); const p = g.top; const r = { name: p?.name, labels: (p?.items ?? []).map((i) => i?.label) }; if (p?.name === 'pause') g.pop(); return r; });
-  ok(PZ.name === 'pause' && PZ.labels.includes('악몽 포기') && !PZ.labels.includes('시련 포기'), `${tag}: 일시정지 「악몽 포기」`, PZ);
+  ok(PZ.name === 'pause' && PZ.labels.includes('토벌 포기') && !PZ.labels.includes('시련 포기') && !PZ.labels.includes('악몽 포기'), `${tag}: 일시정지 「토벌 포기」`, PZ);
   if (id === 'nm_s01') {
     const WP = await s.eval(async () => {
       const g = window.__game, st = g.state, h = st.heroes[st.charId], INV = await import('/src/game/inventory.js');
@@ -660,7 +669,7 @@ async function fullCase(s, vp) {
   await s.eval(() => { window.__tt.bus.length = 0; window.__tt.toasts.length = 0; window.__tt.w1 = window.__game.world; });
   ok(await killBoss(s), `${tag}: 보스 격파 → cleared`);
   const C1 = await s.eval(() => { const w = window.__game.world; return { banner: w.banner?.text, dir: w.nmDirector ? { stopped: !!w.nmDirector.stopped } : null }; });
-  ok(C1.banner === '악몽 격파', `${tag}: 배너 '악몽 격파'`, C1);
+  ok(C1.banner === '악몽 토벌 성공', `${tag}: 배너 '악몽 토벌 성공'`, C1);
   await s.wait(400);
   await shot(s, `${vp}_clear`);
   const R1 = await until(s, () => { const w = window.__tt.w1; return w?.nmResult ? { ...w.nmResult, lv: w.stage.level } : null; }, null, 20000);
@@ -687,7 +696,7 @@ async function fullCase(s, vp) {
     ok(String(row('첫 격파 보상')).startsWith(R1.items[0]) && /\((전설|신화)\)$/.test(String(row('첫 격파 보상'))), `${tag}: 보상 줄 — 첫 격파 보상 ${row('첫 격파 보상')}`, RS1.rows);
     ok(row('골드') === `+${R1.gold.toLocaleString('ko-KR')} G`, `${tag}: 보상 줄 — 골드 ${row('골드')}`);
     ok(String(row('기록')).startsWith(`${R1.time.toFixed(1)}초`) && /새 기록/.test(String(row('기록'))), `${tag}: 보상 줄 — 기록 (첫 격파 = 새 기록) ${row('기록')}`);
-    ok(String(row('악몽 격파')).startsWith(`${R1.clears} / 26`) && (R1.metaFresh ? /\(\+1\)/.test(String(row('악몽 격파'))) : true), `${tag}: 보상 줄 — 악몽 격파 ${row('악몽 격파')} (K1 meta)`);
+    ok(String(row('악몽 토벌')).startsWith(`${R1.clears} / 26`) && (R1.metaFresh ? /\(\+1\)/.test(String(row('악몽 토벌'))) : true), `${tag}: 보상 줄 — 악몽 토벌 ${row('악몽 토벌')} (K1 meta)`);
     ok(R1.metaFresh && R1.clears === 1 ? row('새 잔상') === '「악몽」' : true, `${tag}: 보상 줄 — 첫 악몽이면 새 잔상 「악몽」 (${row('새 잔상')})`, R1);
     ok(RS1.idx === 1, `${tag}: 결과 화면 기본 단추 = 「성당으로」`, RS1.idx);
     await s.wait(900);
@@ -714,7 +723,7 @@ async function fullCase(s, vp) {
   const M2 = await s.eval(() => import('/src/core/save.js').then(({ saves }) => saves.loadMeta().nm));
   ok(M2?.clears === clears1, `${tag}: 메타 clears 그대로 (${M2?.clears})`);
   const RS2 = await resultScreen(s);
-  ok(RS2 && RS2.rows.some((r) => r[0] === '첫 격파 보상' && r[1] === '이미 받았다') && !RS2.rows.some((r) => r[0] === '골드') && RS2.rows.some((r) => r[0] === '악몽 격파' && !/\+1/.test(r[1])), `${tag}: 두 번째 결과 화면 — 「이미 받았다」 · 골드 줄 없음 · 격파 수 그대로`, RS2);
+  ok(RS2 && RS2.rows.some((r) => r[0] === '첫 격파 보상' && r[1] === '이미 받았다') && !RS2.rows.some((r) => r[0] === '골드') && RS2.rows.some((r) => r[0] === '악몽 토벌' && !/\+1/.test(r[1])), `${tag}: 두 번째 결과 화면 — 「이미 받았다」 · 골드 줄 없음 · 격파 수 그대로`, RS2);
   if (RS2) { await s.wait(900); await s.key('enter'); }
   await until(s, () => window.__game.scenes[0]?.name === 'hub' && window.__game.world?.mode === 'town', null, 20000);
   await s.eval(() => { const g = window.__game; while (g.scenes.length > 1 && g.top?.name !== 'hub') g.pop(); });
@@ -766,7 +775,7 @@ async function churchCase(s, vp) {
   ok(sel0.sel === 0 && !sel0.modal, `${tag}: 첫 탭 = 고르기`, sel0);
   await tapZone(s, '^nm:0$', 400);
   const MD = await s.eval(() => { const m = window.__game.top.modal; return m ? { title: m.title, lines: m.lines } : null; });
-  ok(MD && MD.title === '악몽에 도전하시겠습니까?' && MD.lines.some((l) => l.startsWith('규칙: 피의 비')) && MD.lines.some((l) => l === '첫 격파 보상은 이미 받았습니다.'), `${tag}: 둘째 탭 = 확인 창 (규칙 · 이미 받은 첫 보상)`, MD);
+  ok(MD && MD.title === '악몽 토벌에 나서시겠습니까?' && MD.lines.some((l) => /내 Lv \d+ · 권장 Lv \d+ · 보스 Lv \d+/.test(l)) && MD.lines.some((l) => l.startsWith('규칙: 피의 비')) && MD.lines.some((l) => l === '첫 격파 보상은 이미 받았습니다.'), `${tag}: 둘째 탭 = 확인 창 (규칙 · 이미 받은 첫 보상)`, MD);
   if (!MD) return;
   await s.key('enter');
   const W = await until(s, () => { const g = window.__game, w = g.world; return g.top?.name === 'stage' && w?.mode === 'trial' && g.fade.dir <= 0 ? { id: w.trial?.id } : null; }, null, 25000);
@@ -821,6 +830,19 @@ async function ch1Case(s, vp) {
   const H = await until(s, () => { const g = window.__game; return g.scenes[0]?.name === 'hub' && g.world?.mode === 'town' ? { from: g.scenes[0].from } : null; }, null, 15000);
   ok(H && H.from === 'nightmare', `${tag}: 떠나기 → 마을 (동쪽 문, from 'nightmare')`, H);
   ok(await s.eval(() => (window.__game.state.nm?.nm_s01?.tries ?? 0) === 1 && !window.__game.state.nm.nm_s01.done), `${tag}: 도전 1 · 격파 없음`);
+  // [ux-fix #9] 실패 화면 「마을로」: 쓰러질 때 누르던 손가락(뜨기 전·직후)은 결정하지 않고, 그 뒤 한 번 탭하면 바로 마을로 (두 번 탭 아님)
+  await s.eval(() => import('/src/game/nightmare.js').then((N) => N.startNightmare(window.__game, 'nm_s01', { from: 'worldmap' })));
+  ok(!!await until(s, () => { const g = window.__game; return g.top?.name === 'stage' && g.world?.mode === 'trial' && g.fade.dir <= 0; }, null, 25000), `${tag}: 다시 들어감 (실패 화면 시험)`);
+  await s.wait(400);
+  await killPlayer(s);
+  ok(await until(s, () => window.__game.top?.name === 'trialEnd', null, 12000), `${tag}: 쓰러짐 → 실패 화면 (마을로)`);
+  const early = await tapZone(s, '^te_leave$', 120);   // 화면이 뜨자마자 (ARM 0.6초 안) — 무시돼야 한다
+  const E1 = await s.eval(() => ({ top: window.__game.top?.name, done: !!window.__game.top?.done }));
+  ok(early && E1.top === 'trialEnd' && !E1.done, `${tag}: 화면이 뜨자마자 누른 탭은 결정하지 않음`, { early, E1 });
+  await s.wait(800);
+  await tapZone(s, '^te_leave$', 200);
+  const H2 = await until(s, () => { const g = window.__game; return g.scenes[0]?.name === 'hub' && g.world?.mode === 'town' ? { from: g.scenes[0].from } : null; }, null, 15000);
+  ok(H2 && H2.from === 'nightmare', `${tag}: 「마을로」 한 번 탭 → 마을 (동쪽 문)`, H2);
 }
 
 if (BROWSER) await browserSuite();
