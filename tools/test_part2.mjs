@@ -1084,10 +1084,15 @@ async function flowGroup() {
       T.tick(2);
       const wm = T.top();
       const r = { top: wm?.name, reveal: !!wm?.reveal, page: wm?.page, s14: st.progress.unlocked.includes('s14') };
-      T.until(() => !wm.reveal, 6);
+      // 쌓인 해금 연출을 모두 본다: s14(2부 지도) 다음 s26(7장을 깬 세이브의 1부 외전 — 악마성 Ⅰ 쪽, ex_s26.md §1). 연출 중에는 Q·탭이 막힌다
+      const seen = [wm.reveal?.id];
+      T.until(() => { if (wm.reveal && seen[seen.length - 1] !== wm.reveal.id) seen.push(wm.reveal.id); return !wm.reveal && !wm.reveals.length; }, 14);
+      r.seen = seen.join(','); r.p0 = wm.page;
       T.tick(5);
       T.tap('KeyQ'); T.tick(4); r.q1 = wm.page;
       T.tap('KeyQ'); T.tick(4); r.q2 = wm.page;
+      if (wm.page !== 1) { T.tap('KeyQ'); T.tick(4); }   // 탭(tab0) 검사는 2부 지도에서 시작한다
+      r.preTap = wm.page;
       return r;
     });
     await shot(P, 'flow_worldmap_p1');
@@ -1102,7 +1107,7 @@ async function flowGroup() {
       T.until(() => T.top()?.name === 'hub' && T.g.fade.dir === 0, 3);
       return { tapPage, top: T.top()?.name };
     });
-    check(G, '마을에서 지도: s14 해금 연출 · 2부 지도(page 1) · Q 로 지도 전환 · 탭(tab0) 전환 · 닫으면 마을', b.top === 'worldmap' && b.reveal && b.s14 && b.page === 1 && b.q1 === 0 && b.q2 === 1 && !!pt && c.tapPage === 0 && c.top === 'hub' && !errsSince(P, e1).length,
+    check(G, '마을에서 지도: s14 해금 연출 → s26 해금 연출 · 2부 지도(page 1) · Q 로 지도 전환 · 탭(tab0) 전환 · 닫으면 마을', b.top === 'worldmap' && b.reveal && b.s14 && b.page === 1 && b.seen === 's14,s26' && (b.p0 === 0 || b.p0 === 1) && b.q1 === 1 - b.p0 && b.q2 === b.p0 && b.preTap === 1 && !!pt && c.tapPage === 0 && c.top === 'hub' && !errsSince(P, e1).length,
       { ...b, tab0: pt?.z ? [pt.z.x, pt.z.y, pt.z.w, pt.z.h, pt.z.k] : null, ...c, errs: errsSince(P, e1) });
   } catch (e) { check(G, '흐름 실행', false, e.stack); }
   await P?.close();
@@ -1519,6 +1524,9 @@ async function mobileGroup() {
       T.until(() => T.top()?.name === 'hub' && g.fade.dir === 0, 10);
       T.tick(10);
       g.push('worldmap', { page: 0 });
+      T.tick(10);
+      // 7장을 깬 세이브는 지도를 처음 열 때 s26(1부 외전) 해금 연출이 먼저 돈다 (ex_s26.md §1) — 연출 중에는 탭이 막히므로 끝난 뒤에 누른다
+      T.until(() => !T.top()?.reveal && !T.top()?.reveals?.length, 14);
       T.tick(10);
     });
     const pt = await tapPoint(P, 'tab1');
