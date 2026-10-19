@@ -538,7 +538,7 @@ async function fightCase(s, vp, id) {
       const it = INV.addByBase(st, 'c_warp', 1);
       return it ? INV.useItem(st, h, it.uid, g.world.player) : { none: true };
     });
-    ok(WP.ok === false && String(WP.msg).startsWith('악몽의 결계') && WP.trial === true, `${tag}: 귀환 주문서 → 「악몽의 결계」`, WP);
+    ok(WP.ok === false && String(WP.msg).startsWith('악몽 토벌의 결계') && WP.msg.includes('「토벌 포기」') && WP.trial === true, `${tag}: 귀환 주문서 → 「악몽 토벌의 결계」 · 「토벌 포기」`, WP);
   }
   // 경험치 0 (K4) · 전리품 없음
   const X = await s.eval(() => { const w = window.__game.world, p = w.player; return { exp: w.gainExp(5000), gold: w.spawnPickup('gold', p.cx, p.y, { amount: 50 }), item: w.spawnPickup('item', p.cx, p.y, { item: { baseId: 'c_potion' } }) }; });

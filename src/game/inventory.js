@@ -281,7 +281,7 @@ export function useItem(state, hero, uid, player = null) {
   const parts = [];
   if (u.warp) {
     // 시련 월드: 귀환하면 leaveTrial(성당 복귀·기록·저장)을 건너뛴다 → 주문서를 쓰지 않고 안내만 (requests_f TRIALS-ENGINE-VERIFY)
-    if (w.trial || w.mode === 'trial') return { ok: false, msg: w.trial?.nightmare ? '악몽의 결계가 귀환을 가로막는다 — 일시정지의 「악몽 포기」로 돌아갈 수 있다' : '시련의 결계가 귀환을 가로막는다 — 일시정지의 「시련 포기」로 돌아갈 수 있다', trial: true };   // [P3b] 악몽 문구 (p3a_requests 3)
+    if (w.trial || w.mode === 'trial') return { ok: false, msg: w.trial?.nightmare ? '악몽 토벌의 결계가 귀환을 가로막는다 — 일시정지의 「토벌 포기」로 돌아갈 수 있다' : '시련의 결계가 귀환을 가로막는다 — 일시정지의 「시련 포기」로 돌아갈 수 있다', trial: true };   // [P3b] 악몽 문구 (p3a_requests 3)
     if (w.bossActive && !w.cleared) return { ok: false, msg: '보스의 결계가 귀환을 가로막는다!' };
   } else if (!u.buff) {
     const needHp = u.heal && player.hp < s.hp - 0.5;

@@ -28,7 +28,7 @@ import { CHARACTERS } from '../../data/characters.js';
 import { CLASSES } from '../../data/classes.js';
 import { ascOf, ascName } from '../../data/ascensions.js';   // 초월·비전 이름 (classes_t3 §1.3)
 import { getDiff, DIFFICULTIES } from '../../data/difficulty.js';
-import { STAGES, STAGE_ORDER } from '../../data/stages.js';
+import { STAGES, STAGE_ORDER, chapterLabel } from '../../data/stages.js';
 import { migrateState } from '../../game/state.js';
 import * as NG from '../../game/ngplus.js';   // [hook:ng]
 import { bus } from '../../core/events.js';
@@ -389,7 +389,8 @@ export class SlotsScene extends Scene {
     let cx = tx;
     if (s.ng > 0) cx += badge(ctx, cx, y3, NG.ngLabel?.(s.ng) || `${s.ng + 1}회차`, NG_COLOR) + 8;   // [hook:ng]
     if (st?.part === 2) cx += badge(ctx, cx, y3, '제2부', P2_COLOR) + 8;
-    text(ctx, st ? `CHAPTER ${st.chapter}  ·  ${st.name}` : '프롤로그', cx, y3, { size: Math.round(14 * sk), weight: 700, color: '#e8d8c0', ow: 2, maxWidth: colW - (cx - tx) });
+    text(ctx, st ? `${st.sideLabel ? chapterLabel(st, 'en') : `CHAPTER ${st.chapter}`}  ·  ${st.name}` : '프롤로그',   // [fix-verify] replay #1: s26 = 「외전 Ⅰ」
+      cx, y3, { size: Math.round(14 * sk), weight: 700, color: '#e8d8c0', ow: 2, maxWidth: colW - (cx - tx) });
     // 보조 정보
     const icons = [];
     if (s.relics) icons.push(`유물 ${s.relics}/5`);

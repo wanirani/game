@@ -89,7 +89,7 @@ test('옛 키는 그대로: ach · tower · ng', () => {
 test('조건 글 · 고르기 · 런타임 색', () => {
   assert.deepEqual(C.needText({ tw: 40 }), { short: '무한의 탑 40층', long: '무한의 탑 40층을 돌파하면 쓸 수 있습니다' });
   assert.deepEqual(C.needText({ tower: 30 }), C.needText({ tw: 30 }), 'tower·tw 같은 글');
-  assert.deepEqual(C.needText({ nm: 10 }), { short: '악몽 10승', long: '「악몽」 보스를 10번 쓰러뜨리면 쓸 수 있습니다' });
+  assert.deepEqual(C.needText({ nm: 10 }), { short: '악몽 토벌 10승', long: '「악몽 토벌」에서 보스를 10번 쓰러뜨리면 쓸 수 있습니다' });
   for (const id of C.TRAIL_IDS) {
     const t = C.needText(C.TRAILS[id].need, () => '업적');
     assert.ok(t.short && t.long, `${id} 조건 글`);

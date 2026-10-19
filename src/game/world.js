@@ -10,7 +10,7 @@ import { audio, SFX } from '../core/audio.js';
 import { bus } from '../core/events.js';
 import { saves } from '../core/save.js';
 import { getDiff, diffAllows, diffRank } from '../data/difficulty.js';
-import { STAGES } from '../data/stages.js';
+import { STAGES, chapterLabel, stageTitle } from '../data/stages.js';
 import { BOSSES } from '../data/bosses.js';
 import { NPCS } from '../data/npcs.js';
 import { POWERUPS } from '../data/powerups.js';
@@ -522,7 +522,9 @@ export class World {
     this.loadRoom(roomId || this.stage.start || Object.keys(this.stage.rooms)[0]);
     this.prewarmHitFx();   // [hook:feel]
     bus.emit('stageEntered', { stageId });
-    this.banner = { text: this.stage.name, sub: `CHAPTER ${this.stage.chapter ?? ''} · ${this.stage.sub ?? ''}`, t: 3.2, color: '#e8c872', big: true };
+    // [fix-verify] replay #1: sideLabel/fullName 이 있는 스테이지(s26)는 「외전 Ⅰ · …」 · 온전한 이름 (아케이드 연습도) — 나머지는 예전 그대로
+    const st0 = this.stage, chEn = st0.sideLabel ? chapterLabel(st0, 'en') : `CHAPTER ${st0.chapter ?? ''}`;
+    this.banner = { text: stageTitle(st0), sub: `${chEn} · ${st0.sub ?? ''}`, t: 3.2, color: '#e8c872', big: true };
     if (this.ng) this.banner.sub = `${NG.ngLabel?.(this.ng) ?? ''} · ${this.banner.sub}`;   // [hook:ng] '{N}회차 · CHAPTER {c} · {sub}'
   }
 

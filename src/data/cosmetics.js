@@ -94,7 +94,7 @@ export function needText(need, achName = () => null) {
   }
   const tw = isObj(need) ? (typeof need.tw === 'number' ? need.tw : need.tower) : undefined;
   if (typeof tw === 'number') return { short: `무한의 탑 ${tw}층`, long: `무한의 탑 ${tw}층을 돌파하면 쓸 수 있습니다` };
-  if (isObj(need) && typeof need.nm === 'number') return { short: `악몽 ${need.nm}승`, long: `「악몽」 보스를 ${need.nm}번 쓰러뜨리면 쓸 수 있습니다` };
+  if (isObj(need) && typeof need.nm === 'number') return { short: `악몽 토벌 ${need.nm}승`, long: `「악몽 토벌」에서 보스를 ${need.nm}번 쓰러뜨리면 쓸 수 있습니다` };   // [fix-verify] 모드 이름 「악몽 토벌」 (ux-fix #4 — 잔상 이름 「악몽」은 그대로)
   if (isObj(need) && typeof need.ng === 'number') return { short: `${need.ng + 1}회차 시작`, long: `「피의 윤회」로 ${need.ng + 1}회차를 시작하면 쓸 수 있습니다` };
   return { short: '', long: '아직 얻지 못했습니다' };
 }

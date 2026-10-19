@@ -294,7 +294,7 @@ export function stageLabel(sid) {
     if (n >= 14) return `${n}장 · 이계`;
     return n ? `${n}장` : '';
   }
-  if (s.side) return `외전 ${s.name}`;   // 외전 (s21, docs/specs/ex_s21.md)
+  if (s.side) return `${StageM.chapterLabel?.(s, 'ko') || '외전'} ${s.name}`;   // 외전 (s21, docs/specs/ex_s21.md) · [fix-verify] s26 = 「외전 Ⅰ」 (replay #1)
   return s.chapter ? `${s.chapter}장 ${s.name}` : s.name;
 }
 /**

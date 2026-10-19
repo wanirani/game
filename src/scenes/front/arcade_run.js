@@ -38,7 +38,7 @@ import { preloadPainted } from '../../render/painted/registry.js';
 import { preloadPaintedEnemies, paintedEnemiesOn } from '../../render/enemies.js';
 import { PAINTED_ENEMIES } from '../../render/painted/enemies/index.js';
 import { releaseRigs } from '../../render/painted/enemy_kit.js';
-import { STAGES, STAGE_ORDER, STAGE_ORDER_P1 } from '../../data/stages.js';
+import { STAGES, STAGE_ORDER, STAGE_ORDER_P1, chapterLabel } from '../../data/stages.js';
 import { BOSSES } from '../../data/bosses.js';
 import { ENEMIES } from '../../data/enemies.js';
 import { POWERUPS } from '../../data/powerups.js';
@@ -805,8 +805,8 @@ export class PracticeScene extends ArcadeRunScene {
     const dl = this.cfg.daily;
     if (dl) {
       const mods = (dl.mods ?? []).map((m) => ONLINE.modName(m));
-      this.call = { main: 'DAILY CHALLENGE', sub: mods.length ? `규칙: ${mods.join(' · ')}` : `${w.stage.side ? '외전' : `제${w.stage.chapter}장`} ${w.stage.name}`, color: '#7ee0c0', t: 0 };
-    } else this.call = { main: 'STAGE PRACTICE', sub: `${w.stage.side ? '외전' : `제${w.stage.chapter}장`} ${w.stage.name}`, color: '#5aa8ff', t: 0 };
+      this.call = { main: 'DAILY CHALLENGE', sub: mods.length ? `규칙: ${mods.join(' · ')}` : `${chapterLabel(w.stage, 'je')} ${w.stage.name}`, color: '#7ee0c0', t: 0 };
+    } else this.call = { main: 'STAGE PRACTICE', sub: `${chapterLabel(w.stage, 'je')} ${w.stage.name}`, color: '#5aa8ff', t: 0 };
     this.phase = 'play';
   }
   tick(dt) { if (this.call) { this.call.t += dt / 2.4; if (this.call.t >= 1) this.call = null; } }
@@ -834,7 +834,7 @@ export class PracticeScene extends ArcadeRunScene {
     return {
       title: cleared ? 'STAGE CLEAR' : 'GAME OVER', score: run.score + bonus, time: run.time, rank: cleared ? rank : null,
       rows: [
-        ['스테이지', `${stage.side ? '외전' : `제${stage.chapter}장`} ${stage.name}`],
+        ['스테이지', `${chapterLabel(stage, 'je')} ${stage.name}`],
         ['클리어 시간', cleared ? fmtClock(run.time) : '-'],
         ['처치 수', `${run.kills}`],
         ['최대 콤보', `${Math.max(w.combo.best, w.combo.max)} HITS`],

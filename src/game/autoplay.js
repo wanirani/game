@@ -902,7 +902,7 @@ export function step(dt, inp) {
   const blocked = autoBlockedIn(pw);
   // ── 자동 단추: 짧게 = 끔 ↔ 마지막 단계, 길게(0.45초) = 단계 바꾸기 (자동 스킬 ↔ 자동 전투) ──
   const ae = btnEdge(BTN, 'auto', inp.human('auto'), t, K.AUTO_HOLD_OFF);
-  if (pw && (ae === 'tap' || ae === 'hold') && blocked) { try { g.toast?.(blocked === 'trial' ? (pw?.trial?.nightmare ? '악몽에서는 AUTO 를 쓸 수 없다' : '시련에서는 AUTO 를 쓸 수 없다') : '기록 모드에서는 AUTO 를 쓸 수 없다', '#c8b8a0', 1.6); } catch { /* */ } }   // [P3b] 악몽 문구 (p3a_requests 2)
+  if (pw && (ae === 'tap' || ae === 'hold') && blocked) { try { g.toast?.(blocked === 'trial' ? (pw?.trial?.nightmare ? '악몽 토벌에서는 AUTO 를 쓸 수 없다' : '시련에서는 AUTO 를 쓸 수 없다') : '기록 모드에서는 AUTO 를 쓸 수 없다', '#c8b8a0', 1.6); } catch { /* */ } }   // [P3b] 악몽 문구 (p3a_requests 2)
   else if (w && ae === 'tap') toggleLevel(g);
   else if (w && ae === 'hold') switchLevel(g);
   // ── 고정 단추: 누름 = 고정/다음, 0.3초 안 두 번 = 풀기, 길게 = 풀기 ──
