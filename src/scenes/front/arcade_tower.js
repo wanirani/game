@@ -25,6 +25,7 @@ import { Entity } from '../../game/entity.js';
 import { playerStrike } from '../../game/combat.js';
 import { createBoss, loadBoss } from '../../game/bosses/lazy.js';
 import { levelOf } from '../../game/autoplay.js';   // [play-fix #3] 갈림길: 자동 전투가 켜져 있으면 안내 한 줄
+import { touchpad } from '../../core/touchpad.js';   // [play-fix #3] 갈림길 두 문을 터치 조작 묶음 사이(화면에서 비어 있는 가운데)로
 import { assets } from '../../core/assets.js';
 import { hudLayout } from '../../render/hud_layout.js';
 import { drawIcon } from '../../render/icons.js';
@@ -720,11 +721,17 @@ export class TowerScene extends ArcadeRunScene {
   openFork() {
     const w = this.world, p = w.player, m = w.map, cols = this.safeCols;
     const c0 = Math.floor(p.cx / TILE);
+    const ok = (cc) => cols.includes(cc - FORK_COLS) && cols.includes(cc + FORK_COLS) && Math.abs(c0 - (cc - FORK_COLS)) >= 2 && Math.abs(c0 - (cc + FORK_COLS)) >= 2;
     let c = null;
     if (cols?.length) {
+      // 먼저: 영웅이 두 문 사이에 남는 만큼(±(FORK_COLS-2)칸)만 옮겨 두 문의 가운데가 화면의 빈 가운데(터치 스틱 · 버튼 묶음 사이)에 가깝게 —
+      //   터치 화면은 오른쪽을 보면 영웅이 왼쪽 1/4 에 서서, 영웅 기준이면 왼쪽 문 아랫부분이 스틱에 가렸다
+      const span = FORK_COLS - 2, want = clamp(Math.floor(this.forkMidX() / TILE), c0 - span, c0 + span);
+      for (let d = 0; d <= 2 * span && c === null; d++) for (const k of d ? [d, -d] : [0]) { const cc = want + k; if (Math.abs(cc - c0) <= span && ok(cc)) { c = cc; break; } }
+      // 벽 가까이라 안 되면: 예전처럼 영웅 곁에서 넓게 찾는다
       for (let d = 0; d <= 12 && c === null; d++) for (const k of d ? [d, -d] : [0]) {
         const cc = c0 + k;
-        if (cols.includes(cc - FORK_COLS) && cols.includes(cc + FORK_COLS) && Math.abs(c0 - (cc - FORK_COLS)) >= 2 && Math.abs(c0 - (cc + FORK_COLS)) >= 2) { c = cc; break; }
+        if (ok(cc)) { c = cc; break; }
       }
     }
     let sx, bx;
@@ -741,6 +748,24 @@ export class TowerScene extends ArcadeRunScene {
     this.gateOpened(p.cx, p.bottom);
     this.game.toast('갈림길 — 안전한 길과 피의 길 중 하나를 고르세요', '#ff9a9a', 2.6);
     return true;
+  }
+  /**
+   * [play-fix #3] 지금 화면에서 비어 있는 가운데의 월드 x: 터치 조작이 게임 화면 위에 있으면 아래쪽 스틱(왼쪽) · 버튼 묶음(오른쪽) 사이의 가운데,
+   * 아니면(키보드 · 패드 · 아래 띠) 화면 가운데. 카메라 넘겨 보기(camera.touchSides)와 같은 규칙으로 잰다
+   */
+  forkMidX() {
+    const cam = this.world.camera, W0 = cam?.w || 960, zk = (cam?.vw || W0) / W0;
+    let L = 0, R = 0;
+    if (input.touchMode) {
+      try {
+        const low = (cam?.h || 540) * 0.55;
+        const take = (b) => { if (!b || !(b.y + b.h > low)) return; if (b.x + b.w / 2 > W0 / 2) R = Math.max(R, W0 - b.x); else L = Math.max(L, b.x + b.w); };
+        for (const b of touchpad.occupiedRects?.() ?? []) take(b);
+        take(touchpad.stickZone?.());
+      } catch { L = 0; R = 0; }
+      if (L + R > W0 * 0.8) { L = 0; R = 0; }   // 잴 수 없는 배치(편집기 등) — 화면 가운데
+    }
+    return (cam?.x ?? this.world.player.cx - W0 / 2) + (L + (W0 - R)) / 2 * zk;
   }
   /** 갈림길 문을 서 있기로 고를 수 있나: 문이 열린 뒤 사람이 방향을 넣었다 (키 · 패드 · 터치 — 자동 전투 입력은 아니다) */
   forkArmed() { return (input.humanMoveT ?? -99) > (this.forkT0 ?? Infinity); }

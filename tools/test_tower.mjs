@@ -1497,7 +1497,7 @@ if (FOLD) {
   await page.keyboard.down('ArrowRight');
   await tickUntil(page, 't.gates[1].near', 300, '붉은 문까지 걷기');
   await page.keyboard.up('ArrowRight');
-  await ticks(page, 20);
+  await ticks(page, 45);   // 터치 → 키보드로 바뀐 조작 표시가 다 바뀐 뒤 (문 앞에 서서 1.4초 전)
   await snap('tower_route_blood.png');
   await key(page, 'ArrowUp');
   await tickUntil(page, "t.floor === 36 && t.phase === 'enter'", 400, '피의 길 → 36층');
