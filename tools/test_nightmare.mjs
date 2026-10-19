@@ -529,7 +529,7 @@ async function fightCase(s, vp, id) {
     return r;
   });
   ok(A.blocked === 'trial' && !A.hud.on && A.hud.level === 'off', `${tag}: AUTO 거절`, A);
-  // [P3b] 일시정지: 「악몽 포기」 (「시련 포기」 아님) · 귀환 주문서: 「악몽의 결계」 (p3a_requests 1·3)
+  // [P3b] 일시정지: 「토벌 포기」 (ux-fix #4 — 예전 「악몽 포기」 · 「시련 포기」 아님) · 귀환 주문서: 「악몽의 결계」 (p3a_requests 1·3)
   const PZ = await s.eval(() => { const g = window.__game; g.push('pause', { world: g.world }); const p = g.top; const r = { name: p?.name, labels: (p?.items ?? []).map((i) => i?.label) }; if (p?.name === 'pause') g.pop(); return r; });
   ok(PZ.name === 'pause' && PZ.labels.includes('토벌 포기') && !PZ.labels.includes('시련 포기') && !PZ.labels.includes('악몽 포기'), `${tag}: 일시정지 「토벌 포기」`, PZ);
   if (id === 'nm_s01') {

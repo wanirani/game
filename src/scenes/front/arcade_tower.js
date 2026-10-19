@@ -50,10 +50,11 @@ import { frame, fmtClock, heading, gbutton, portraitIn, DIM, GOLD, BONE } from '
 
 const COLOR = '#b79cff';
 const GATE_HOLD = 1.4;     // 출구 위에 가만히 서 있으면 올라가는 시간 (초)
-// [play-fix #3] 보스 층 뒤 갈림길: 두 문을 영웅 양쪽 FORK_COLS 칸에 (폴드 펼침 · 휴대폰 모두 한 화면 — 보기 폭 960 논리 px) 놓고,
+// [play-fix #3] 보스 층 뒤 갈림길: 두 문을 영웅 양쪽 FORK_COLS 칸에 (폴드 펼침 · 휴대폰 모두 한 화면 — 보기 폭 960 논리 px) 놓고
+//  (터치 스틱 · 버튼 묶음 사이가 좁은 휴대폰은 FORK_COLS_MIN 칸 — 문 아랫부분이 버튼 밑에 숨지 않게),
 //  문이 열린 뒤 사람이 직접 움직였을 때만(input.humanMoveT — 자동 전투 입력 제외) 서 있기로 고른다. ▲ 도 사람 입력만.
 //  자동 전투는 길을 고르지 않는다 (가운데에서 기다린다 — 안내 한 줄). 예전: 영웅 발밑 = 안전한 길이라 가만히 1.4초면 저절로 안전한 길
-const FORK_COLS = 4;
+const FORK_COLS = 4, FORK_COLS_MIN = 3;
 // [play-fix #18] 탑 전용 가시 규칙: 가시에 닿으면 피해(최대 체력 12 %, player.js 그대로)를 한 번 받고 마지막으로 딛고 선 안전한 땅으로
 //  돌아간다 (낙사와 같은 자리 — p.safeSpot) · 짧은 무적. 이야기 스테이지는 그대로 (이 장면이 영웅의 takeHit 을 감쌀 때만)
 const SPIKE_IFRAMES = 1.2;
@@ -720,13 +721,15 @@ export class TowerScene extends ArcadeRunScene {
    */
   openFork() {
     const w = this.world, p = w.player, m = w.map, cols = this.safeCols;
-    const c0 = Math.floor(p.cx / TILE);
-    const ok = (cc) => cols.includes(cc - FORK_COLS) && cols.includes(cc + FORK_COLS) && Math.abs(c0 - (cc - FORK_COLS)) >= 2 && Math.abs(c0 - (cc + FORK_COLS)) >= 2;
+    const c0 = Math.floor(p.cx / TILE), view = this.forkView();
+    // 두 문 사이 칸 수: 화면의 빈 폭(터치 조작 사이)에 문 둘이 다 들어가면 FORK_COLS, 좁으면(휴대폰) FORK_COLS_MIN
+    const fc = view.free >= 2 * FORK_COLS * TILE + 56 ? FORK_COLS : FORK_COLS_MIN;
+    const ok = (cc) => cols.includes(cc - fc) && cols.includes(cc + fc) && Math.abs(c0 - (cc - fc)) >= 2 && Math.abs(c0 - (cc + fc)) >= 2;
     let c = null;
     if (cols?.length) {
-      // 먼저: 영웅이 두 문 사이에 남는 만큼(±(FORK_COLS-2)칸)만 옮겨 두 문의 가운데가 화면의 빈 가운데(터치 스틱 · 버튼 묶음 사이)에 가깝게 —
+      // 먼저: 영웅이 두 문 사이에 남는 만큼(±(fc-2)칸)만 옮겨 두 문의 가운데가 화면의 빈 가운데(터치 스틱 · 버튼 묶음 사이)에 가깝게 —
       //   터치 화면은 오른쪽을 보면 영웅이 왼쪽 1/4 에 서서, 영웅 기준이면 왼쪽 문 아랫부분이 스틱에 가렸다
-      const span = FORK_COLS - 2, want = clamp(Math.floor(this.forkMidX() / TILE), c0 - span, c0 + span);
+      const span = fc - 2, want = clamp(Math.floor(view.mid / TILE), c0 - span, c0 + span);
       for (let d = 0; d <= 2 * span && c === null; d++) for (const k of d ? [d, -d] : [0]) { const cc = want + k; if (Math.abs(cc - c0) <= span && ok(cc)) { c = cc; break; } }
       // 벽 가까이라 안 되면: 예전처럼 영웅 곁에서 넓게 찾는다
       for (let d = 0; d <= 12 && c === null; d++) for (const k of d ? [d, -d] : [0]) {
@@ -735,13 +738,13 @@ export class TowerScene extends ArcadeRunScene {
       }
     }
     let sx, bx;
-    if (c !== null) { sx = (c - FORK_COLS + 0.5) * TILE; bx = (c + FORK_COLS + 0.5) * TILE; }
+    if (c !== null) { sx = (c - fc + 0.5) * TILE; bx = (c + fc + 0.5) * TILE; }
     else {
       sx = p.cx; const b = this.bloodGateX(sx);
       if (b === null) return false;
       bx = b;
     }
-    const sy = c !== null ? groundY(m, c - FORK_COLS) : p.bottom;
+    const sy = c !== null ? groundY(m, c - fc) : p.bottom;
     this.gate = w.add(new TowerGate(sx, sy, this, 'safe'));
     this.gates = [this.gate, w.add(new TowerGate(bx, groundY(m, Math.floor(bx / TILE)), this, 'blood'))];
     this.forkT0 = input.time;   // 이때 뒤의 사람 방향 입력만 문 고르기를 켠다
@@ -750,10 +753,10 @@ export class TowerScene extends ArcadeRunScene {
     return true;
   }
   /**
-   * [play-fix #3] 지금 화면에서 비어 있는 가운데의 월드 x: 터치 조작이 게임 화면 위에 있으면 아래쪽 스틱(왼쪽) · 버튼 묶음(오른쪽) 사이의 가운데,
-   * 아니면(키보드 · 패드 · 아래 띠) 화면 가운데. 카메라 넘겨 보기(camera.touchSides)와 같은 규칙으로 잰다
+   * [play-fix #3] 지금 화면에서 비어 있는 곳 { mid: 가운데 월드 x, free: 폭(월드 px) }: 터치 조작이 게임 화면 위에 있으면 아래쪽 스틱(왼쪽) ·
+   * 버튼 묶음(오른쪽) 사이, 아니면(키보드 · 패드 · 아래 띠) 화면 전체. 카메라 넘겨 보기(camera.touchSides)와 같은 규칙으로 잰다
    */
-  forkMidX() {
+  forkView() {
     const cam = this.world.camera, W0 = cam?.w || 960, zk = (cam?.vw || W0) / W0;
     let L = 0, R = 0;
     if (input.touchMode) {
@@ -765,7 +768,7 @@ export class TowerScene extends ArcadeRunScene {
       } catch { L = 0; R = 0; }
       if (L + R > W0 * 0.8) { L = 0; R = 0; }   // 잴 수 없는 배치(편집기 등) — 화면 가운데
     }
-    return (cam?.x ?? this.world.player.cx - W0 / 2) + (L + (W0 - R)) / 2 * zk;
+    return { mid: (cam?.x ?? this.world.player.cx - W0 / 2) + (L + (W0 - R)) / 2 * zk, free: (W0 - L - R) * zk };
   }
   /** 갈림길 문을 서 있기로 고를 수 있나: 문이 열린 뒤 사람이 방향을 넣었다 (키 · 패드 · 터치 — 자동 전투 입력은 아니다) */
   forkArmed() { return (input.humanMoveT ?? -99) > (this.forkT0 ?? Infinity); }

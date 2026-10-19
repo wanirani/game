@@ -1449,7 +1449,8 @@ for (const vp of ['phone2', 'phone1']) {
 const FOLD = typeof args.fold === 'string' ? args.fold : null;
 if (FOLD) {
   fs.mkdirSync(FOLD, { recursive: true });
-  const ctx = await newContext(makeMock(), 'fold_open');
+  // --fold-device=phone2 → 같은 장면을 다른 기기(viewports.mjs)로 (기본 fold_open)
+  const ctx = await newContext(makeMock(), typeof args['fold-device'] === 'string' ? args['fold-device'] : 'fold_open');
   const { page, errs } = await openGame(ctx, { init: AUTH });
   await page.evaluate(() => import('/src/scenes/front/arcade.js').then((A) => A.startArcade(window.__game, { kind: 'tower', diff: 'hard', preset: 3, seed: 4242 }, 'kael')));
   await waitTop(page, 'tower', 30000);

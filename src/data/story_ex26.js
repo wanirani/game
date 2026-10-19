@@ -50,7 +50,7 @@ const MERC = '#c8d4e0', GOLDC = '#f0c860';
 
 export const SCRIPTS_EX26 = {
   // ═══════════════════════════ 외전 26장 파라켈의 지하 공방 (docs/specs/ex_s26.md) ═══════════════════════════
-  // 제목 카드는 연구소(bg/s07_alchemy) → 성당(1부: cg_alberto_church · 2부: 마을 hub) → 다시 연구소 밑 배수구
+  // 제목 카드는 연구소(bg/s07_alchemy) → 성당 앞 마을(1부·2부 모두 bg/hub — ux-fix #11) → 다시 연구소 밑 배수구
   s26_intro: [
     bgm('story'), bg('s07_alchemy'), title('외전 Ⅰ', '파라켈의 지하 공방'),   // [ux-fix #1] 장 표시 「외전 Ⅰ」 · 온전한 이름
     ifFlag('p2_started', 'p2'),
