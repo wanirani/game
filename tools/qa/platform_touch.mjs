@@ -135,6 +135,45 @@ try {
     await suite.check({ id: 'stick.float', group: 'stick', issue: 'P-31', gate: PKG, title: 'floating stick spawns at the finger; +40 px → right', session: s }, async () => ({ pass: !Object.values(a).some(Boolean) && b.right && !b.left && !b.up && !b.down, detail: `at touch ${fmt(a)} → after +40 px ${fmt(b)}` }));
     await suite.errors({ id: 'stick.errors', group: 'stick' }, s);
     await s.close();
+    // replay #15 (Stage 5): with the page clock frozen (step.mjs, like the replay bot) the ring must still fade on lift,
+    // cancel and two-finger release in both orders — 900 ms wall time later no ring pixels are left on #tpadcv
+    {
+      const { s: f, t: ft, W: fw, H: fh } = await touchStage('fold_open');
+      const { freeze, unfreeze, step } = await import('./lib/step.mjs');
+      const FL = await padLayout(f.page), atk = FL.buttons.attack;
+      const X = Math.round(fw * 0.42), Y = Math.round(fh * 0.48);
+      const ringPx = () => f.eval(([cx, cy, r]) => {
+        const cv = document.getElementById('tpadcv'); if (!cv || !cv.width) return 0;
+        const b = cv.getBoundingClientRect(), kx = cv.width / b.width, ky = cv.height / b.height;
+        const x0 = Math.max(0, Math.round((cx - r - b.left) * kx)), y0 = Math.max(0, Math.round((cy - r - b.top) * ky));
+        const w = Math.min(cv.width - x0, Math.round(2 * r * kx)), h = Math.min(cv.height - y0, Math.round(2 * r * ky));
+        const d = cv.getContext('2d').getImageData(x0, y0, w, h).data; let n = 0;
+        for (let i = 3; i < d.length; i += 4) if (d[i] > 10) n++;
+        return n;
+      }, [X, Y, 110]);
+      const cases = {};
+      await freeze(f.page);
+      const run = async (name, release) => {
+        await ft.down(31, X, Y);
+        for (let i = 1; i <= 6; i++) { await ft.move(31, X + i * 10, Y); await step(f.page, 1); }
+        await f.wait(120);
+        const held = await ringPx();
+        await release();
+        await step(f.page, 2); await f.wait(900); await step(f.page, 1); await f.wait(200);
+        cases[name] = { held, after: await ringPx() };
+      };
+      await run('lift', () => ft.up(31));
+      await run('cancel', async () => { ft.active.delete(31); await ft.cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] }); });
+      // second finger on 공격 (not the ult/awaken button, which would open a cut-in)
+      await run('twoA', async () => { await ft.down(32, atk.cx, atk.cy); await step(f.page, 2); await ft.up(31); await step(f.page, 2); await ft.up(32); });
+      await run('twoB', async () => { await ft.down(32, atk.cx, atk.cy); await step(f.page, 2); await ft.up(32); await step(f.page, 2); await ft.up(31); });
+      await unfreeze(f.page);
+      const top = await f.eval(() => window.__game.top?.name);
+      const vals = Object.values(cases);
+      await suite.check({ id: 'stick.release_frozen', group: 'stick', issue: 'S5-replay-15', gate: PKG, title: 'frozen clock: stick ring gone 900 ms after lift / cancel / two-finger release (A→B, B→A) on fold_open', session: f }, async () => ({ pass: !!atk && vals.length === 4 && vals.every((c) => c.held > 0 && c.after === 0) && top === 'stage', detail: `${Object.entries(cases).map(([k, c]) => `${k} ${c.held}→${c.after}`).join(', ')} px; top ${top}` }));
+      await suite.errors({ id: 'stick.release_frozen.errors', group: 'stick' }, f);
+      await f.close();
+    }
   }, env);
 
   // ── 4. skill on cooldown shows the sweep (pixel probe on #tpadcv) ─────────────────────────────────
