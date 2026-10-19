@@ -406,14 +406,31 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
   assert.equal(await page.evaluate(() => window.__game.top.paused), false, '축복을 고른 뒤 일시정지 표시가 풀린다 (층 이름·출구 안내·적 방향 표시)');
   const took5 = await page.evaluate(() => window.__game.top.takenOrder);
   assert.deepEqual(took5, [offer5[2]], '→ 다음 카드 = 세 번째');
-  // 시즌 2: 보스 층 뒤 갈림길 — 발밑 = 안전한 길, 몇 칸 옆 = 피의 길 (가만히 서 있으면 안전한 길)
-  const routes5 = await page.evaluate(() => window.__game.top.gates.map((g) => ({ route: g.route, cx: Math.round(g.cx) })));
-  assert.equal(routes5.length, 2, `갈림길 문 둘 ${JSON.stringify(routes5)}`);
-  assert.deepEqual(routes5.map((r) => r.route), ['safe', 'blood']);
-  assert.ok(Math.abs(routes5[0].cx - routes5[1].cx) >= 5 * 48, `문 사이 ${JSON.stringify(routes5)}`);
-  await tickUntil(page, 't.floor === 6', 400, '가만히 서 있으면 6층');
+  // 시즌 2: 보스 층 뒤 갈림길 — [play-fix #3] 영웅 왼쪽 = 안전한 길, 오른쪽 = 피의 길 (둘 다 한 화면, 영웅은 어느 문 위에도 서 있지 않다).
+  //  예전 규칙(발밑 = 안전한 길, 가만히 1.4초면 저절로)은 고르기를 보이지 않게 했다 → 가만히 서 있기 · 자동 전투로는 고르지 않고, 사람이 문으로 걸어가야 고른다
+  const routes5 = await page.evaluate(() => {
+    const t = window.__game.top, w = t.world, p = w.player, cam = w.camera;
+    return { gates: t.gates.map((g) => ({ route: g.route, cx: Math.round(g.cx), near: g.near, seen: cam.visible(g.x, g.y - 90, g.w, g.h + 90, 0) })), px: Math.round(p.cx) };
+  });
+  assert.equal(routes5.gates.length, 2, `갈림길 문 둘 ${JSON.stringify(routes5)}`);
+  assert.deepEqual(routes5.gates.map((r) => r.route), ['safe', 'blood']);
+  assert.ok(routes5.gates[0].cx < routes5.px && routes5.px < routes5.gates[1].cx, `영웅이 두 문 사이 ${JSON.stringify(routes5)}`);
+  assert.ok(routes5.gates.every((g) => g.seen && !g.near), `두 문 모두 화면 안 · 영웅은 문 위가 아니다 ${JSON.stringify(routes5)}`);
+  assert.ok(Math.abs(routes5.gates[0].cx - routes5.gates[1].cx) >= 5 * 48, `문 사이 ${JSON.stringify(routes5)}`);
+  await ticks(page, 240);   // 가만히 4초 (예전 규칙이면 1.4초에 떠났다)
+  assert.deepEqual(await page.evaluate(() => { const t = window.__game.top; return [t.floor, t.phase]; }), [5, 'gate'], '가만히 서 있기로는 고르지 않는다');
+  // 자동 전투: 길을 고르지 않는다 (가운데에서 기다린다 — 안내 한 줄)
+  await page.evaluate(async () => { const A = await import('/src/game/autoplay.js'); A.setLevel(window.__game, 'battle', { toast: false }); });
+  await ticks(page, 300);
+  assert.deepEqual(await page.evaluate(() => { const t = window.__game.top; return [t.floor, t.phase]; }), [5, 'gate'], '자동 전투는 길을 고르지 않는다');
+  await page.evaluate(async () => { const A = await import('/src/game/autoplay.js'); A.setLevel(window.__game, 'off', { toast: false }); });
+  // 사람이 왼쪽으로 걸어가 안전한 문 위에 서면 (1.4초) 안전한 길
+  await page.keyboard.down('ArrowLeft');
+  await tickUntil(page, 't.gates[0].near', 300, '안전한 문까지 걷기');
+  await page.keyboard.up('ArrowLeft');
+  await tickUntil(page, 't.floor === 6', 400, '안전한 문 위에 서 있으면 6층');
   assert.equal(await page.evaluate(() => window.__game.top.cleared), 5);
-  assert.equal(await page.evaluate(() => window.__game.top.route), 'safe', '가만히 서 있기 = 안전한 길');
+  assert.equal(await page.evaluate(() => window.__game.top.route), 'safe', '걸어가 서 있기 = 안전한 길');
   assert.equal(await page.evaluate(() => window.__game.top.bloodFloor), false);
   assert.equal(await page.evaluate(() => window.__game.top.mut?.id ?? null), (await planOf(page, 6)).mut, '6층 변이 = 계획 (안전한 길)');
 
@@ -586,7 +603,18 @@ test('한 판: 메뉴 → 헌터 선택 → 1층 처치·출구 → 5층 보스�
     const ctx = C.cosContext(g.meta);
     return { v: g.meta.towerBest.normal.v, ms: r.extra.milestones, row: r.rows.find((x) => x[0] === '시즌 2')?.[1], moss: C.needMet(C.TRAILS.tr_moss.need, ctx), silver: C.needMet(C.TRAILS.tr_silver.need, ctx) };
   });
-  assert.deepEqual(s2best, { v: 2, ms: ['tr_moss'], row: '계약 0 · 피의 길 0번 · 잔상 「이끼」', moss: true, silver: false }, JSON.stringify(s2best));
+  // [play-fix #22] 0 인 것은 뺀다 (예전 「계약 0 · 피의 길 0번 · 잔상 「이끼」」 — 계약 · 피의 길을 본 적 없는 플레이어에게 뜻 모를 말)
+  assert.deepEqual(s2best, { v: 2, ms: ['tr_moss'], row: '새 잔상 「이끼」', moss: true, silver: false }, JSON.stringify(s2best));
+  // 아무것도 없으면 줄 자체가 없다 · 있는 것만 차례로 (장면의 결과 계산을 그대로 — 가짜 판 셋)
+  const rowsOf = await page.evaluate(async () => {
+    const { TowerScene } = await import('/src/scenes/front/arcade_tower.js');
+    const P = TowerScene.prototype;
+    const fake = (o) => ({ world: { run: { score: 0, kills: 3 } }, floor: 4, cleared: 3, clock: 61, bossKills: 0, takenOrder: [], seed: 7, bloodRuns: 0, pactOrder: [], milestones: [],
+      blessingSummary: () => '없음', seasonSummary: P.seasonSummary, ...o });
+    const row = (o) => P.results.call(fake(o)).rows.find((x) => x[0] === '시즌 2')?.[1] ?? null;
+    return { none: row({}), blood: row({ bloodRuns: 2 }), pact: row({ pactOrder: ['fury'] }), all: row({ bloodRuns: 1, pactOrder: ['fury', 'oath'], milestones: ['tr_moss'] }) };
+  });
+  assert.deepEqual(rowsOf, { none: null, blood: '피의 길 2번', pact: '맺은 계약 1개', all: '피의 길 1번 · 맺은 계약 2개 · 새 잔상 「이끼」' }, JSON.stringify(rowsOf));
   // 온라인 제출: board tower:normal, floor = 돌파한 층
   await page.waitForFunction(() => window.__game.top.onl?.state === 'ok', null, { timeout: 10000 });
   const f = M.finishes[0];
@@ -888,6 +916,10 @@ test('시즌 2: 변이 10종 효과 · 알림 카드 · 분열 상한 · 폭발/
   const plan16 = await planOf(page, 16);
   const baseDiff16 = await page.evaluate(async () => { const TW = window.__S2.TW, t = window.__S2.T(); return TW.towerDiff(t.baseDiff, 16); });
   await page.evaluate(() => { const t = window.__S2.T(), p = t.world.player, bg = t.gates[1]; p.x = bg.cx - p.w / 2; p.y = bg.bottom - p.h; p.vx = 0; p.vy = 0; });
+  // [play-fix #3] 옮겨 놓기만으로는 고르지 않는다 (사람 입력이 없다) → 붉은 문 위에서 ▲ (사람 키)
+  await ticks(page, 120);
+  assert.equal(await page.evaluate(() => window.__S2.T().floor), 15, '문 위로 옮겨 놓기만으로는 떠나지 않는다');
+  await key(page, 'ArrowUp');
   await tickUntil(page, "t.floor === 16 && t.phase === 'enter'", 400, '피의 길 → 16층');
   const blood = await page.evaluate(() => {
     const { T, step, until } = window.__S2, t = T(), w = t.world;
@@ -994,7 +1026,7 @@ test('시즌 2: 변이 10종 효과 · 알림 카드 · 분열 상한 · 폭발/
     return { row: r.rows.find((x) => x[0] === '시즌 2')?.[1], v: r.extra.v, pacts: r.extra.pacts, blood: r.extra.blood };
   });
   // 이정표: 이 기기에서 처음 넘은 20·30층 안식처 → 잔상 「은빛」「혹한」 (결과 줄 + extra.milestones)
-  assert.deepEqual(fin, { row: '계약 6 · 피의 길 1번 · 잔상 「은빛」「혹한」', v: 2, pacts: pacts.order, blood: 1 }, `결과 ${JSON.stringify(fin)}`);
+  assert.deepEqual(fin, { row: '피의 길 1번 · 맺은 계약 6개 · 새 잔상 「은빛」「혹한」', v: 2, pacts: pacts.order, blood: 1 }, `결과 ${JSON.stringify(fin)}`);   // [play-fix #22]
   assert.deepEqual(await page.evaluate(() => window.__game.top.res.extra.milestones), ['tr_silver', 'tr_frost']);
   assert.deepEqual(errs, []);
   await ctx.close();

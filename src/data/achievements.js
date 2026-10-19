@@ -26,7 +26,7 @@ export const ACHIEVEMENTS = [
   { id: 'st_true2', cat: 'story', name: '새벽의 별', desc: '2부의 진엔딩을 본다', pts: 50, cond: { m: 'ending', arg: ['p2true'], n: 1 }, reward: { deco: 'd_violet' } },
   { id: 'st_s21', cat: 'story', name: '은빛 귀환', desc: '외전 「하늘 정원의 둥지」를 클리어한다', pts: 20, cond: { m: 'cleared', arg: ['s21'], n: 1 }, reward: { deco: 'd_silver' } },
   { id: 'st_s22', cat: 'story', name: '이름을 부르는 밤', desc: '외전 「이름 없는 언덕」을 클리어한다', pts: 20, cond: { m: 'cleared', arg: ['s22'], n: 1 }, reward: { deco: 'd_crow' } },
-  { id: 'st_s26', cat: 'story', name: '썩지 않는 것', desc: '외전 「지하 공방」을 클리어한다', pts: 20, cond: { m: 'cleared', arg: ['s26'], n: 1 }, reward: { gold: 2000 } },   // 1부 외전 (7장 뒤, ex_s26.md §3)
+  { id: 'st_s26', cat: 'story', name: '썩지 않는 것', desc: '외전 Ⅰ 「파라켈의 지하 공방」을 클리어한다', pts: 20, cond: { m: 'cleared', arg: ['s26'], n: 1 }, reward: { gold: 2000 } },   // 1부 외전 (7장 뒤, ex_s26.md §3)
   { id: 'st_endings', cat: 'story', name: '다섯 개의 결말', desc: '엔딩 다섯 개를 모두 본다', pts: 50, cond: { m: 'ending', arg: ['bad', 'normal', 'true', 'p2', 'p2true'], n: 5 }, reward: { title: 't_chronicler' } },
 
   // ── 전투 (7) ──

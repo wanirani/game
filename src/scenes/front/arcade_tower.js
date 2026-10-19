@@ -20,10 +20,11 @@ import { bus } from '../../core/events.js';
 import { text, wrap, FONT, taps } from '../../core/ui.js';
 import { drawHints, promptMode } from '../../core/prompts.js';
 import { clamp, ease, rgba, fmt } from '../../core/math.js';
-import { isSolidType, T } from '../../core/physics.js';
+import { isSolidType, T, touchesType } from '../../core/physics.js';
 import { Entity } from '../../game/entity.js';
 import { playerStrike } from '../../game/combat.js';
 import { createBoss, loadBoss } from '../../game/bosses/lazy.js';
+import { levelOf } from '../../game/autoplay.js';   // [play-fix #3] 갈림길: 자동 전투가 켜져 있으면 안내 한 줄
 import { assets } from '../../core/assets.js';
 import { hudLayout } from '../../render/hud_layout.js';
 import { drawIcon } from '../../render/icons.js';
@@ -48,6 +49,13 @@ import { frame, fmtClock, heading, gbutton, portraitIn, DIM, GOLD, BONE } from '
 
 const COLOR = '#b79cff';
 const GATE_HOLD = 1.4;     // 출구 위에 가만히 서 있으면 올라가는 시간 (초)
+// [play-fix #3] 보스 층 뒤 갈림길: 두 문을 영웅 양쪽 FORK_COLS 칸에 (폴드 펼침 · 휴대폰 모두 한 화면 — 보기 폭 960 논리 px) 놓고,
+//  문이 열린 뒤 사람이 직접 움직였을 때만(input.humanMoveT — 자동 전투 입력 제외) 서 있기로 고른다. ▲ 도 사람 입력만.
+//  자동 전투는 길을 고르지 않는다 (가운데에서 기다린다 — 안내 한 줄). 예전: 영웅 발밑 = 안전한 길이라 가만히 1.4초면 저절로 안전한 길
+const FORK_COLS = 4;
+// [play-fix #18] 탑 전용 가시 규칙: 가시에 닿으면 피해(최대 체력 12 %, player.js 그대로)를 한 번 받고 마지막으로 딛고 선 안전한 땅으로
+//  돌아간다 (낙사와 같은 자리 — p.safeSpot) · 짧은 무적. 이야기 스테이지는 그대로 (이 장면이 영웅의 takeHit 을 감쌀 때만)
+const SPIKE_IFRAMES = 1.2;
 const STUCK_T = 25;        // 이 시간 동안 남은 적 수가 줄지 않으면 남은 적을 불러낸다 (부하를 부르는 적의 졸개만 잡아서는 미뤄지지 않게)
 
 // ── 출구 그림 (한 번만 굽는다 — 프레임마다 그라데이션을 만들지 않는다). 'safe' = 보라(시즌 1 출구·안전한 길), 'blood' = 피의 길 ──
@@ -99,10 +107,13 @@ class TowerGate extends Entity {
     const p = world.player;
     this.near = !!p && !p.dead && this.openK >= 1 && this.run.canLeave() && p.cx > this.x && p.cx < this.x + this.w && Math.abs(p.bottom - this.bottom) < 30;
     const still = this.near && p.onGround && Math.abs(p.vx) < 30 && !input.down('left') && !input.down('right');
-    this.holdT = still ? this.holdT + dt : 0;
+    // [play-fix #3] 갈림길 문은 사람이 문이 열린 뒤 움직였을 때만 서 있기를 센다 (그냥 서 있기 · 자동 전투로는 고르지 않는다)
+    const armed = !this.route || this.run.forkArmed();
+    this.holdT = still && armed ? this.holdT + dt : 0;
     if ((this.fxT -= dt) <= 0) { this.fxT = 0.12; world.fx.emit?.('magic', this.cx + (Math.sin(this.t * 7) * 18), this.bottom - 10, 1, { color: this.look.light, speed: 60, angle: -Math.PI / 2, spread: 0.5 }); }
     if (this.used || !this.near || world.transitioning || world.cutscene || !this.run.canLeave()) return;
-    if (input.pressed('up') || this.holdT >= GATE_HOLD) { this.used = true; this.run.leaveFloor(this.route); }
+    const up = input.pressed('up') && (!this.route || input.human('up'));   // 갈림길: 자동 전투의 ▲ 는 세지 않는다
+    if (up || this.holdT >= GATE_HOLD) { this.used = true; this.run.leaveFloor(this.route); }
   }
   lights(L) { L.add(this.cx, this.bottom - 52, 170 * (0.4 + 0.6 * this.openK), this.look.light, 0.85); }
   draw(ctx) {
@@ -118,7 +129,7 @@ class TowerGate extends Entity {
     if (this.route && this.openK > 0.5) {   // 갈림길 이름
       ctx.globalAlpha = Math.min(1, (this.openK - 0.5) * 2);
       text(ctx, ROUTE_NAME[this.route], this.cx, this.bottom - 186, { size: 18, align: 'center', weight: 900, family: FONT.title, color: this.look.label, ow: 4 });
-      if (this.route === 'blood') text(ctx, '센 변이 · 보상 2배', this.cx, this.bottom - 166, { size: 13, align: 'center', weight: 800, color: '#ffd0c8', ow: 3 });
+      text(ctx, this.route === 'blood' ? '센 변이 · 보상 2배' : '변이 · 보상 그대로', this.cx, this.bottom - 166, { size: 13, align: 'center', weight: 800, color: this.route === 'blood' ? '#ffd0c8' : '#e8e0ff', ow: 3 });   // [play-fix #3] 두 문 모두 한 줄 설명
     }
     if (this.holdT > 0) {   // 서 있으면 차오르는 고리
       ctx.globalAlpha = 1;
@@ -273,6 +284,26 @@ export class TowerScene extends ArcadeRunScene {
       if (Number.isFinite(mp)) this.mp = Math.min(mp, this.stats.mp);
     };
     p.refreshStats();
+    // [play-fix #18] 탑 전용 가시 규칙: player.js 의 가시 피해(방어 무시 flat · 최대 체력 12 %, 주인 없음)를 받은 뒤 안전한 땅으로 돌려보낸다
+    const hit = p.takeHit;
+    p.takeHit = function towerHit(dmg, attack, world, info) {
+      const spike = !!(attack?.flat && !attack.owner && !attack.element && world?.map && dmg === Math.ceil((this.stats?.hp ?? 0) * 0.12) && touchesType(this, world.map, T.SPIKE, 6));
+      const hp0 = this.hp;
+      const r = hit.call(this, dmg, attack, world, info);
+      if (spike && !this.dead && this.hp < hp0) self.spikeReset(this, world);
+      return r;
+    };
+  }
+  /** [play-fix #18] 가시 → 마지막으로 딛고 선 안전한 땅 (낙사 복귀와 같은 자리: world.onPlayerFell) + 짧은 무적 */
+  spikeReset(p, w) {
+    if (w !== this.world || this.done) return;
+    const cp = p.safeSpot?.roomId === w.roomId ? p.safeSpot : w.run.checkpoint;
+    if (!cp) return;
+    w.fx.burst('dark', p.cx, p.cy, 10, { speed: 140 });
+    p.x = cp.x; p.y = cp.y; p.vx = 0; p.vy = 0;
+    p.iframes = Math.max(p.iframes ?? 0, SPIKE_IFRAMES);
+    this.game.flash('#000', 0.4, 3);
+    this.spikeResets = (this.spikeResets ?? 0) + 1;
   }
   /**
    * 층 점수 상한 (시즌 2): 한 층에서 오르는 점수는 TOWER_RULES.maxScorePerFloor 를 넘지 않는다 — 어떤 판이든 서버 검사
@@ -295,7 +326,9 @@ export class TowerScene extends ArcadeRunScene {
     this.floor = n; this.plan = plan; this.kind = plan.kind;
     w.diff = towerDiff(this.baseDiff, n);
     this.season2Floor(plan);
-    const key = `f${n}`, base = { id: 'tower', name: `제 ${n}층`, start: key, boss: null, intro: null, outro: null, gimmick: null, docs: [], shard: null, heart: null, relic: null, level: plan.level };
+    // [play-fix #16] sideLabel: HUD 이름판 · 일시정지가 쓰는 장 표시(chapterLabel)를 층마다 바뀌는 「n장」(방을 빌려 온 스테이지의 장) 대신 「무한의 탑」으로 →
+    //  어느 층이든 「무한의 탑 · 제 n층」 (보스 · 안식처 층도 같다)
+    const key = `f${n}`, base = { id: 'tower', name: `제 ${n}층`, sideLabel: '무한의 탑', start: key, boss: null, intro: null, outro: null, gimmick: null, docs: [], shard: null, heart: null, relic: null, level: plan.level };
     if (plan.kind === 'combat') {
       this.troom = towerRoom(STAGES, plan.sid, plan.rid);
       w.stage = { ...STAGES[plan.sid], ...base, rooms: { [key]: this.troom.room }, music: 'arena', enemies: plan.pool ?? [] };
@@ -542,6 +575,7 @@ export class TowerScene extends ArcadeRunScene {
     if (!ids.length) { this.afterBlessing(); return; }
     this.phase = 'bless'; this.phaseT = 0;
     this.offered = ids;
+    this.world.banner = null;   // [play-fix #17] 'BOSS DOWN!' · '안식처' 큰 글자가 카드 뒤로 비치지 않게
     this.game.push('towerBlessing', { run: this, ids, floor: this.floor });
   }
   onBlessingPicked(id) {
@@ -563,6 +597,7 @@ export class TowerScene extends ArcadeRunScene {
     const ids = pactOffer(this.seed, this.floor, this.pacts);
     if (!ids.length) return false;
     this.phase = 'pact'; this.phaseT = 0;
+    this.world.banner = null;   // [play-fix #17]
     this.game.push('towerBlessing', { run: this, ids, floor: this.floor, mode: 'pact' });
     return true;
   }
@@ -595,6 +630,7 @@ export class TowerScene extends ArcadeRunScene {
     w.fx.burst('dark', x, this.npc.cy, 18, { speed: 140 });
     audio.sfx('mist');
     this.shop = { salt: 0, bought: null, ids: blessingOffer(this.seed, this.floor, this.taken, 50) };
+    w.banner = null;   // [play-fix #17]
     this.game.push('towerBlessing', { run: this, ids: this.shop.ids, floor: this.floor, mode: 'shop' });
   }
   shopPrice(kind) { return merchantPrice(MERCHANT[kind] ?? 0, this.plan?.level ?? 1); }
@@ -647,31 +683,95 @@ export class TowerScene extends ArcadeRunScene {
     return true;
   }
   /**
-   * 출구를 연다: 영웅 발밑. 공중이거나 발밑이 움직이는·무너지는 발판·부서지는 벽이면(문이 허공에 남는다) 영웅이 마지막으로
-   * 딛고 선 단단한 땅(p.safeSpot — 영웅 곁이라 닿을 수 있다), 그것도 없으면 이 방의 시작 위치
+   * 출구를 연다: 영웅 발밑. 공중 · 물속이거나 발밑이 움직이는·무너지는 발판·부서지는 벽이면(문이 허공에 남는다) [play-fix #19] 영웅 곁에서
+   * 걸어서 · 뛰어서 닿는 가장 가까운 단단한 마른 땅 (reachableSpot — 벽 너머 · 높은 기둥 뒤는 고르지 않는다), 그것도 없으면 예전처럼
+   * 마지막으로 딛고 선 땅(p.safeSpot) · 이 방의 시작 위치. 보스 층 뒤 갈림길은 openFork
    */
   openGate() {
     const w = this.world, p = w.player, m = w.map;
     if (this.gate) return;
+    if (this.kind === 'boss' && this.plan?.route && this.openFork()) return;
     let cx = p.cx, bottom = p.bottom;
     const fy = Math.floor((p.bottom + 2) / TILE), firm = (x) => { const t = m.typeAt(Math.floor(x / TILE), fy); return t === T.SOLID || t === T.ONEWAY; };
-    if (!p.onGround || p.dead || !(firm(p.x + 2) || firm(p.x + p.w - 2))) {
-      const cp = p.safeSpot?.roomId === w.roomId ? p.safeSpot : w.run.checkpoint;
-      cx = cp.x + p.w / 2; bottom = cp.y + p.h;
+    if (!p.onGround || p.dead || p.inLiquid || p.platform || !(firm(p.x + 2) || firm(p.x + p.w - 2))) {
+      const r = this.reachableSpot(p);
+      if (r) { cx = r.cx; bottom = r.bottom; } else {
+        const cp = p.safeSpot?.roomId === w.roomId ? p.safeSpot : w.run.checkpoint;
+        cx = cp.x + p.w / 2; bottom = cp.y + p.h;
+      }
     }
-    // 보스 층 뒤 갈림길 (시즌 2): 발밑 = 안전한 길 (시즌 1 출구와 같은 자리 — 가만히 서 있으면 그대로 다음 층), 몇 칸 옆 = 피의 길
-    const route = this.kind === 'boss' && this.plan?.route;
-    this.gate = w.add(new TowerGate(cx, bottom, this, route ? 'safe' : null));
+    this.gate = w.add(new TowerGate(cx, bottom, this, null));
     this.gates = [this.gate];
-    if (route) {
-      const bx = this.bloodGateX(cx);
-      if (bx !== null) this.gates.push(w.add(new TowerGate(bx, groundY(m, Math.floor(bx / TILE)), this, 'blood')));
-    }
-    w.cleared = true; w.exitCalled = true;   // 남은 전리품을 영웅에게 끌어온다 (pickups.js); 스테이지 클리어 흐름(afterClear)은 타지 않는다
+    this.gateOpened(cx, bottom);
+  }
+  /** 문이 열린 뒤 공통: 남은 전리품을 영웅에게 끌어온다 (pickups.js); 스테이지 클리어 흐름(afterClear)은 타지 않는다 */
+  gateOpened(cx, bottom) {
+    const w = this.world;
+    w.cleared = true; w.exitCalled = true;
     this.phase = 'gate'; this.phaseT = 0;
     audio.sfx('door');
     w.fx.ring(cx, bottom - 50, { color: COLOR, r0: 10, r1: 120, life: 0.6, width: 5 });
-    if (this.gates.length > 1) this.game.toast('갈림길 — 안전한 길과 피의 길 중 하나를 고르세요', '#ff9a9a', 2.6);
+  }
+  /**
+   * [play-fix #3] 보스 층 뒤 갈림길: 영웅 왼쪽 FORK_COLS 칸 = 안전한 길, 오른쪽 FORK_COLS 칸 = 피의 길 (가시 없는 바닥 기둥 safeCols 안 —
+   * 벽에 붙어 있으면 가운데를 영웅 곁에서 옮겨 둘 다 들어가게, 영웅은 어느 문 위에도 서 있지 않게). 고르기는 TowerGate (사람이 움직인 뒤).
+   * 자리가 없으면 false (예전 배치: 발밑 = 안전한 길, 몇 칸 옆 = 피의 길 — 그래도 서 있기만으로는 고르지 않는다)
+   */
+  openFork() {
+    const w = this.world, p = w.player, m = w.map, cols = this.safeCols;
+    const c0 = Math.floor(p.cx / TILE);
+    let c = null;
+    if (cols?.length) {
+      for (let d = 0; d <= 12 && c === null; d++) for (const k of d ? [d, -d] : [0]) {
+        const cc = c0 + k;
+        if (cols.includes(cc - FORK_COLS) && cols.includes(cc + FORK_COLS) && Math.abs(c0 - (cc - FORK_COLS)) >= 2 && Math.abs(c0 - (cc + FORK_COLS)) >= 2) { c = cc; break; }
+      }
+    }
+    let sx, bx;
+    if (c !== null) { sx = (c - FORK_COLS + 0.5) * TILE; bx = (c + FORK_COLS + 0.5) * TILE; }
+    else {
+      sx = p.cx; const b = this.bloodGateX(sx);
+      if (b === null) return false;
+      bx = b;
+    }
+    const sy = c !== null ? groundY(m, c - FORK_COLS) : p.bottom;
+    this.gate = w.add(new TowerGate(sx, sy, this, 'safe'));
+    this.gates = [this.gate, w.add(new TowerGate(bx, groundY(m, Math.floor(bx / TILE)), this, 'blood'))];
+    this.forkT0 = input.time;   // 이때 뒤의 사람 방향 입력만 문 고르기를 켠다
+    this.gateOpened(p.cx, p.bottom);
+    this.game.toast('갈림길 — 안전한 길과 피의 길 중 하나를 고르세요', '#ff9a9a', 2.6);
+    return true;
+  }
+  /** 갈림길 문을 서 있기로 고를 수 있나: 문이 열린 뒤 사람이 방향을 넣었다 (키 · 패드 · 터치 — 자동 전투 입력은 아니다) */
+  forkArmed() { return (input.humanMoveT ?? -99) > (this.forkT0 ?? Infinity); }
+  /**
+   * [play-fix #19] 영웅 곁에서 닿을 수 있는 가장 가까운 마른 땅 { cx, bottom } (없으면 null). 타일 격자 너비 우선 탐색:
+   * 몸(영웅 키만큼의 칸)이 들어가는 칸만, 디딘 땅(또는 물속)에서 위로 JUMP 칸까지 · 공중에서 옆으로 · 아래로 떨어지기.
+   * 목표 = 아래가 단단한 땅(단방향 발판 포함, 부서지는 벽 위는 아니다)이고 몸이 액체에 잠기지 않으며 양옆 한 칸에 가시가 없는 칸 — 처음 닿는(가장 가까운) 것
+   */
+  reachableSpot(p) {
+    const m = this.world.map, W = m.w, H = m.h, JUMP = 3, bh = Math.max(1, Math.ceil((p.h - 4) / TILE));
+    const tt = (x, y) => (x < 0 || x >= W || y < 0 || y >= H ? T.SOLID : m.typeAt(x, y));
+    const free = (x, y) => { for (let k = 0; k < bh; k++) { const t = tt(x, y - k); if (isSolidType(t) || t === T.SPIKE || t === T.FAKE) return false; } return true; };
+    const wet = (x, y) => { for (let k = 0; k < bh; k++) if (tt(x, y - k) === T.LIQUID) return true; return false; };
+    const support = (x, y) => { const t = tt(x, y + 1); return isSolidType(t) || t === T.ONEWAY; };   // 디딜 수 있다 (뛰어오르기)
+    const firmAt = (x, y) => { const t = tt(x, y + 1); return t === T.SOLID || t === T.ONEWAY; };   // 문을 세울 땅 (부서지는 벽 위는 아니다)
+    const spiky = (x, y) => { for (let dx = -1; dx <= 1; dx++) for (let k = -1; k < bh; k++) if (tt(x + dx, y - k) === T.SPIKE) return true; return false; };
+    let x0 = Math.floor(p.cx / TILE), y0 = Math.floor((p.bottom - 1) / TILE);
+    if (!free(x0, y0)) { if (free(x0, y0 - 1)) y0--; else return null; }
+    const seen = new Uint8Array(W * H * (JUMP + 1));
+    const q = [[x0, y0, support(x0, y0) || wet(x0, y0) ? JUMP : 0]];
+    seen[(y0 * W + x0) * (JUMP + 1) + q[0][2]] = 1;
+    for (let i = 0; i < q.length && i < 20000; i++) {
+      const [x, y, j] = q[i];
+      if (firmAt(x, y) && !wet(x, y) && !spiky(x, y)) return { cx: (x + 0.5) * TILE, bottom: (y + 1) * TILE };
+      const grounded = support(x, y) || wet(x, y), jj = grounded ? JUMP : j;
+      const push = (nx, ny, nj) => { if (!free(nx, ny)) return; const k = (ny * W + nx) * (JUMP + 1) + nj; if (seen[k]) return; seen[k] = 1; q.push([nx, ny, nj]); };
+      push(x - 1, y, jj); push(x + 1, y, jj);
+      if (jj > 0) push(x, y - 1, jj - 1);
+      if (!support(x, y)) push(x, y + 1, wet(x, y) ? JUMP : 0);
+    }
+    return null;
   }
   /** 피의 길 문 자리: 안전한 문에서 5~9칸 떨어진 안전한 바닥 기둥 (경기장 가운데 쪽 먼저) — 없으면 null */
   bloodGateX(cx) {
@@ -871,7 +971,7 @@ export class TowerScene extends ArcadeRunScene {
         ['처치 수', `${w.run.kills}`],
         ['쓰러뜨린 군주', `${this.bossKills}`],
         ['받은 축복', this.blessingSummary()],
-        [TOWER_SEASON, this.seasonSummary()],
+        ...(this.seasonSummary() ? [[TOWER_SEASON, this.seasonSummary()]] : []),   // [play-fix #22] 피의 길 · 계약 · 새 잔상이 하나도 없으면 줄을 뺀다
       ],
       stageId: 'arena',
       extra: {
@@ -880,16 +980,23 @@ export class TowerScene extends ArcadeRunScene {
       },
     };
   }
-  /** 결과의 '시즌 2' 줄: 맺은 계약 · 피의 길 · 새 이정표 잔상 */
+  /**
+   * 결과의 '시즌 2' 줄 — [play-fix #22] 있었던 것만, 본 말 그대로: 「피의 길 n번 · 맺은 계약 n개 · 새 잔상 「…」」 (0 인 것은 빼고, 모두 없으면 null → 줄을 뺀다).
+   * 예전: 「계약 0 · 피의 길 0번」 — 계약도 피의 길도 본 적 없는 플레이어에게 뜻 모를 말이었다
+   */
   seasonSummary() {
-    const out = [`계약 ${this.pactOrder.length}`, `피의 길 ${this.bloodRuns}번`];
-    if (this.milestones.length) out.push(`잔상 ${this.milestones.map((id) => `「${TRAILS[id]?.name ?? id}」`).join('')}`);
-    return out.join(' · ');
+    const out = [];
+    if (this.bloodRuns > 0) out.push(`피의 길 ${this.bloodRuns}번`);
+    if (this.pactOrder.length) out.push(`맺은 계약 ${this.pactOrder.length}개`);
+    if (this.milestones.length) out.push(`새 잔상 ${this.milestones.map((id) => `「${TRAILS[id]?.name ?? id}」`).join('')}`);
+    return out.length ? out.join(' · ') : null;
   }
 
   // ───────────────────────── 그리기 ─────────────────────────
   overlay(ctx, vw, vh) {
     const w = this.world, top = this.tagTop(vw, vh);
+    // [play-fix #17] 축복 · 계약 · 상인 카드가 떠 있으면 위 가운데 층 이름 · 시계(카드 제목과 겹친다)와 층 안내 글자를 그리지 않는다
+    if (this.game.top?.name === 'towerBlessing') { this.drawBlessingHud(ctx, w, vw, vh); return; }
     this.modeTag(ctx, vw, top, `제 ${this.floor}층`, fmtClock(this.clock), COLOR);
     if (this.phase === 'fight') {
       const list = w.enemies();
@@ -905,6 +1012,7 @@ export class TowerScene extends ArcadeRunScene {
     this.drawBlessingHud(ctx, w, vw, vh);
     const gate = this.gates.find((g) => g.near) ?? (this.gate?.near ? this.gate : null);
     if (gate && !this.paused && this.phase === 'gate') this.drawGateHint(ctx, w, vw, gate);
+    else if (!this.paused && this.phase === 'gate' && this.gates.length > 1) this.drawForkHint(ctx, w, vw);
     if (this.call && !this.paused) this.bigCall(ctx, vw, vh, this.call.main, this.call.sub, this.call.color, this.call.t);
     if (this.mutCard && !this.paused) this.drawMutCard(ctx, vw, vh, this.mutCard);
   }
@@ -967,6 +1075,18 @@ export class TowerScene extends ArcadeRunScene {
       : g.route === 'safe' ? ['up', '안전한 길로', '위로 밀거나 잠시 서 있으면 안전한 길']
         : ['up', '다음 층으로', '위로 밀거나 잠시 서 있으면 다음 층'];
     drawHints(ctx, [item], clamp(s.x, 160, vw - 160), y, { align: 'center', size: 14, color: g.route === 'blood' ? '#ffc8c0' : '#fff4dc' });
+  }
+  /**
+   * [play-fix #3] 갈림길에서 어느 문 위에도 서 있지 않을 때: 영웅 머리 위에 「◀ 안전한 길 · 피의 길 ▶」 (문이 있는 쪽 방향) +
+   * 자동 전투가 켜져 있으면 「자동 전투는 길을 고르지 않습니다」
+   */
+  drawForkHint(ctx, w, vw) {
+    const p = w.player;
+    if (!p || p.dead) return;
+    const s = w.camera.toScreen(p.cx, p.y - 30), y = clamp(s.y, 130, this.game.viewH - 150);
+    const items = this.gates.map((g) => ({ g, dir: g.cx < p.cx ? 'left' : 'right' })).sort((a, b) => a.g.cx - b.g.cx).map(({ g, dir }) => [dir, ROUTE_NAME[g.route] ?? '']);
+    drawHints(ctx, items, clamp(s.x, 160, vw - 160), y, { align: 'center', size: 14, color: '#fff4dc' });
+    if (levelOf(this.game) !== 'off') text(ctx, '자동 전투는 길을 고르지 않습니다', clamp(s.x, 160, vw - 160), y + 24, { size: 13, align: 'center', weight: 800, color: '#ffd890', ow: 3 });
   }
   /** 일시정지 화면 오른쪽 칸: 받은 축복 목록 (arcade_run.js ArcadePauseScene 이 부른다) */
   drawPauseSide(ctx, r) {

@@ -151,7 +151,9 @@ export class HighscoreScene extends Scene {
     this.ofocus = 0; this.ob = { state: 'idle' }; this.oseq = 0;
     this.ges = new Gesture(); this.scroll = new Scroller();
     this.alive = true;
-    this.src = src === 'online' || src === 'device' ? src : board ? 'online' : lastSrc;
+    // [ux-fix #21] 방금 이름을 새긴 기록(highlight)은 기기 탭에서 강조해 보여 준다 — 온라인 보드는 탭만 바꾸면 그 보드가 열리게 sel 에 남긴다
+    //  (예전: board 가 있으면 온라인 탭부터 열려, 오프라인이면 「찾을 수 없어요 / 다시 시도」만 보였다)
+    this.src = src === 'online' || src === 'device' ? src : highlight ? 'device' : board ? 'online' : lastSrc;
     this.offs = [bus.on('cloud:login', () => this.alive && this.src === 'online' && this.load(true)), bus.on('cloud:logout', () => this.alive && this.src === 'online' && this.load(true))];
     if (this.src === 'online') this.load();
     try { ONLINE.flushQueue(); } catch { /* 온라인 모듈 교체 중 */ }

@@ -577,8 +577,10 @@ export class ArcadeScene extends Scene {
     const pi = Math.max(0, pres.indexOf(c.preset));
     const P = presetOf(pres[pi]);
     const rows = [
-      { id: 'diff', label: '난이도', value: getDiff(c.diff).name, color: getDiff(c.diff).color, n: DIFFICULTIES.length, i: Math.max(0, DIFFICULTIES.findIndex((d) => d.id === c.diff)), set: (i) => { c.diff = DIFFICULTIES[i].id; } },
-      { id: 'preset', label: '헌터 등급', value: `${P.name} (Lv.${P.lv})`, color: P.asc ? ASC_COLOR : P.p2 ? P2_COLOR : null, n: pres.length, i: pi, set: (i) => { c.preset = pres[i]; } },
+      // [ux-fix #20] 두 사다리 줄은 끝에서 멈춘다 (◀ 로 가장 쉬운 난이도에서 「지옥」으로 넘어가지 않게) · 이름표로 무엇을 고르는지 밝힌다:
+      //  「적 난이도」(적의 세기 — 견습 헌터 … 지옥) 와 「헌터 레벨」(내 헌터의 레벨·장비 — 견습 사냥꾼 …). 저장 id 는 그대로
+      { id: 'diff', label: '적 난이도', value: getDiff(c.diff).name, color: getDiff(c.diff).color, n: DIFFICULTIES.length, i: Math.max(0, DIFFICULTIES.findIndex((d) => d.id === c.diff)), clamp: true, set: (i) => { c.diff = DIFFICULTIES[i].id; } },
+      { id: 'preset', label: '헌터 레벨', value: `Lv.${P.lv} · ${P.name}`, clamp: true, color: P.asc ? ASC_COLOR : P.p2 ? P2_COLOR : null, n: pres.length, i: pi, set: (i) => { c.preset = pres[i]; } },
     ];
     if (k === 'bossrush') {
       const cs = menuCourses(this.p2, this.ex, this.s26);   // 순위표 코스 + 규칙 코스 (릴레이 · 무작위 6 · 휴식 없음) + 외전 Ⅰ
@@ -602,8 +604,8 @@ export class ArcadeScene extends Scene {
     const r = this.options()[row];
     if (r?.retry) { audio.sfx('menu_ok'); this.loadDaily(true); return; }
     if (!r || r.n <= 1) return;
-    const i = (r.i + d + r.n) % r.n;
-    if (i === r.i) return;
+    const i = r.clamp ? clamp(r.i + d, 0, r.n - 1) : (r.i + d + r.n) % r.n;   // [ux-fix #20] 사다리 줄은 끝에서 멈춘다
+    if (i === r.i) { if (r.clamp) audio.sfx('menu_cancel'); return; }
     r.set(i); audio.sfx('menu_move');
   }
   setMode(i, sfx = 'menu_move') {
@@ -769,8 +771,10 @@ export class ArcadeScene extends Scene {
       text(ctx, o.value, vx, by - (vs < 15 ? 1 : 0), { size: vs, align: 'center', weight: 800, color: o.color ?? (sel ? GOLD : BONE), ow: 2, maxWidth: ow - lw - (o.n > 1 ? 70 : 24) });
       const on = o.n > 1, ac = sel ? GOLD : 'rgba(232,200,114,0.5)';
       if (on) {
-        text(ctx, '◀', ox + lw + 14, by, { size: 16, align: 'center', color: ac, ow: 2 });
-        text(ctx, '▶', ox + ow - 18, by, { size: 16, align: 'center', color: ac, ow: 2 });
+        // [ux-fix #20] 끝에서 멈추는 줄: 더 갈 수 없는 쪽 화살표는 흐리게
+        const endL = o.clamp && o.i <= 0, endR = o.clamp && o.i >= o.n - 1, dim = 'rgba(232,200,114,0.16)';
+        text(ctx, '◀', ox + lw + 14, by, { size: 16, align: 'center', color: endL ? dim : ac, ow: 2 });
+        text(ctx, '▶', ox + ow - 18, by, { size: 16, align: 'center', color: endR ? dim : ac, ow: 2 });
       }
       if (i > 0) { ctx.fillStyle = 'rgba(232,200,114,0.08)'; ctx.fillRect(ox + 10, y, ow - 20, 1); }
       // 탭: 이름 칸 = 다음 값, 값의 왼쪽 반 = 이전, 오른쪽 반 = 다음 (목록 줄 높이 ≥ 36 CSS px). 안내 줄은 탭 없음

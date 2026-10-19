@@ -581,12 +581,12 @@ async function fightCase(s, vp, id) {
         const it = st.inventory.find((q) => ITEMS[q.baseId]?.use && !ITEMS[q.baseId].use.warp);
         return it ? useItem(st, h, it.uid, g.world.player) : { none: true };
       });
-      ok(U.none || (U.ok === false && String(U.msg).startsWith('악몽의 규칙')), `${tag}: 물약 금지`, U);
+      ok(U.none || (U.ok === false && String(U.msg).startsWith('악몽 토벌 규칙')), `${tag}: 물약 금지`, U);
     }
     if (tw.rules?.noSub) {
       await s.eval(() => { window.__game.world.run.hearts = 20; window.__tt.toasts.length = 0; });
       await s.key('sub', 90);
-      ok(await until(s, () => window.__tt.toasts.some((t) => t === '악몽의 규칙: 보조 무기를 쓸 수 없다'), null, 2000), `${tag}: 보조 무기 금지 토스트`);
+      ok(await until(s, () => window.__tt.toasts.some((t) => t === '악몽 토벌 규칙: 보조 무기를 쓸 수 없다'), null, 2000), `${tag}: 보조 무기 금지 토스트`);
     }
     if (SHOTS && (id === 'nm_s01' || id === 'nm_s16' || QUICK)) await shot(s, `${vp}_${id}_fight`);
   }

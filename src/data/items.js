@@ -377,7 +377,10 @@ const UNIQUE_LIST = [
     stats: { def: 16, res: 22, mag: 18, ice: 25, resIce: 30 }, visual: { headgear: 'tiara', color: '#bfeaff' },
     effect: '영원한 겨울 — 냉기 피해 +25%, 냉기 저항 +30%', desc: '서리 여왕 이자벨라의 얼음 왕관. 녹지 않는 눈물이 보석처럼 박혀 있다.' },
   { id: 'u_paracel', name: '파라켈의 외알 안경', slot: 'acc', tier: 4, icon: 'amulet_5', lvReq: 28, rarity: 4, boss: 'b_paracel',   // 외전 26장 (1부) 보스 드롭
-    stats: { mag: 12, res: 10, crit: 5, subDmg: 20, fire: 8, ice: 8 }, visual: { aura: { color: '#e8c060', type: 'holy' } },
+    // [play-fix #14] 예전 { mag 12 · res 10 · crit 5 · subDmg 20 · fire/ice 8 } 은 Lv 28 기준 장비(4단계 희귀도 3 장신구)보다 낮아 보상 카드가 ▼ 였다 (일곱 영웅 중 여섯).
+    //  힘 · 마력을 함께 (저항 대신 체력) — Lv 28–34 기준 장비에는 대개 ▲ (일곱 영웅 · 시드 다섯 중 넷 이상), 2부(Lv 45–50)에서는 대개 ▼ · 진조의 인장(6단계)보다 아래
+    //  (빅터는 화염 총이라 화염 +8% 몫으로 2부에서도 방어 목걸이 칸에는 ▲ — 예전 값도 같았다). 효과 문구 · 화염/냉기 8% 는 명세 그대로
+    stats: { atk: 14, mag: 14, crit: 5, hp: 40, subDmg: 20, fire: 8, ice: 8 }, visual: { aura: { color: '#e8c060', type: 'holy' } },
     effect: '현자의 눈 — 보조무기 피해 +20%, 화염 · 냉기 피해 +8%', desc: '파라켈 박사가 렌즈 셋을 겹쳐 끼던 황동 외알 안경. 들여다보면 모든 것이 녹는 점과 굳는 점으로 보인다.' },
   { id: 'u_death', name: '사신의 낫검', slot: 'weapon', wtype: 'sword', tier: 5, icon: 'sword_6', lvReq: 34, rarity: 5, boss: 'b_death',
     stats: { atk: 72, mag: 20, dark: 30, lifesteal: 3, critDmg: 25 }, element: 'dark', visual: { style: 6, glow: '#b060ff' },

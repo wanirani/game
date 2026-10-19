@@ -244,6 +244,24 @@ function limb(D, st, p, pa, pb, ax, ay, bx, by, lvl, deep, on, lo = 0.8, hi = 1.
   const s = clamp(Math.hypot(lx, ly) / (Math.hypot(ix, iy) * p.k || 1), lo, hi);
   put(D, st, p, pa, ax, ay, rot, p.k, p.k * s, lvl, deep, on);
 }
+/**
+ * [play-fix] 무릎 꿇기 · 금 조각상의 정강이: 정강이를 눕히면 장화 앞코(정강이 축보다 앞으로 22px)가 아래로 돌아 바닥(지역 y 0) 밑으로
+ * 15px 가량 내려갔다. 무릎은 바닥에 둔 채 발목만 들어 올려 앞코 끝이 바닥에 닿게 한다 (발끝을 세우고 꿇은 자세).
+ * limb() 와 같은 회전 · 배율로 놓았을 때 발 쪽 두 모서리(8% 안쪽 — 둥근 장화 끝 어림)의 가장 낮은 y 가 1 이하가 되는 가장 작은 들어 올림 (≤ 30)
+ */
+const FOOT_C = [[0.08, 0.92], [0.92, 0.92]], _footLo = [0, 0];
+function footLift(D, p, ax, ay, bx, by, lo = 0.75, hi = 1.3) {
+  if (!p?.w || !p.kn || !p.ft) return 0;
+  const A = p.kn, B = p.ft, ix = B[0] - A[0], iy = B[1] - A[1], il = Math.hypot(ix, iy) * p.k || 1;
+  for (let L = 0; L <= 30; L += 1) {
+    const lx = bx - ax, ly = by - L - ay;
+    const rot = Math.atan2(ly, lx) - Math.atan2(iy, ix), s = clamp(Math.hypot(lx, ly) / il, lo, hi);
+    let m = -Infinity;
+    for (const c of FOOT_C) { D.pt(A[0], A[1], p.w * c[0], p.h * c[1], ax, ay, rot, p.k, p.k * s, _footLo); if (_footLo[1] > m) m = _footLo[1]; }
+    if (m <= 1) return L;
+  }
+  return 30;
+}
 /** 피벗 a 를 (x,y) 에 두고 그림의 a→b 방향이 각 ang 이 되게 */
 function aimAt(D, st, p, pa, pb, x, y, ang, lvl, deep, on, sx = 1, sy = 1, fill = 'y', alpha = 1) {
   if (!p) return 0;
@@ -269,10 +287,13 @@ function body(D, ctx, R, b, st, t, q) {
   D.rec = ff.tank;
   if (!b.fused) tank(D, ctx, R, b, st, t, TANK);
   else put(D, st, R.tankBase, 'c', S.tank.x, S.tank.y, -0.12 + (S.tA - 0.2) * 0.8, R.tankBase.k, R.tankBase.k, 0, false, ON.tank, 'y');
+  // [play-fix] 무릎 꿇기 · 금 조각상: 무릎은 바닥에 두고 발목만 들어 올려 장화 앞코가 바닥 밑으로 내려가지 않게 (선 자세 · 걸음은 kneel 0 → 그대로)
+  const liftF = kneel > 0.02 ? footLift(D, R.shin, S.knF.x, S.knF.y, S.ftF.x, S.ftF.y) * kneel : 0;
+  const liftN = kneel > 0.02 ? footLift(D, R.shin, S.knN.x, S.knN.y, S.ftN.x, S.ftN.y) * kneel : 0;
   // ── 3) 먼 다리 (deep) ──
   D.rec = ff.legs;
   limb(D, st, R.thigh, 'hip', 'kn', hx - 4, hy + 2, S.knF.x, S.knF.y, 0, true, ON.thighF, 0.75, 1.25);
-  limb(D, st, R.shin, 'kn', 'ft', S.knF.x, S.knF.y, S.ftF.x, S.ftF.y, 0, true, ON.shinF, 0.75, 1.3);
+  limb(D, st, R.shin, 'kn', 'ft', S.knF.x, S.knF.y, S.ftF.x, S.ftF.y - liftF, 0, true, ON.shinF, 0.75, 1.3);
   // ── 4) 외투 뒷자락 (허리 뒤에서, 걸음·움직임에 늦게 따라 흔들림) ──
   D.rec = ff.legs || ff.body;
   const sway = Math.sin(ph) * 0.07 * walk + Math.sin(t * 1.7) * 0.025 + (b.spd > 0 ? 0.05 * walk : 0);
@@ -281,7 +302,7 @@ function body(D, ctx, R, b, st, t, q) {
   // ── 5) 가까운 다리 ──
   D.rec = ff.legs;
   limb(D, st, R.thigh, 'hip', 'kn', hx + 4, hy + 3, S.knN.x, S.knN.y, 0, false, ON.thighN, 0.75, 1.25);
-  limb(D, st, R.shin, 'kn', 'ft', S.knN.x, S.knN.y, S.ftN.x, S.ftN.y, 0, false, ON.shinN, 0.75, 1.3);
+  limb(D, st, R.shin, 'kn', 'ft', S.knN.x, S.knN.y, S.ftN.x, S.ftN.y - liftN, 0, false, ON.shinN, 0.75, 1.3);
   // ── 6) 앞치마 · 외투 앞자락 (허리띠에 매달림 — 플라스크 셋과 금빛 약병 포함) ──
   D.rec = ff.body || ff.legs;
   const sk = R.skirt;
