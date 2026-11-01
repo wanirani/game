@@ -6,6 +6,7 @@
 //     한 프레임 drawImage ≤ 8.
 //  4) 가리지 않기: 조각과 겹친 주인공·적·탄 → 그 조각 알파가 낮아진다 (HIDE_K 근처). 보스전에서는 조각이 화면 가장자리로 밀린다.
 //  5) 같은 방은 늘 같은 배치 (Math.random 을 쓰지 않음).
+//  6) 보스 구도 (core/camera.js): 터치면 오른쪽 벽 보스 몸통이 버튼 묶음 밖, 영웅은 화면 15 % 안, 키보드·패드는 예전과 같은 값.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -172,6 +173,43 @@ section('5) 같은 방 = 같은 배치');
   const c = F.createForeground({ id: 's16', theme: 'sunken' }, { w: 40, h: 20 }, THEMES.sunken);
   ok(JSON.stringify(a.pieces) !== JSON.stringify(c.pieces), 'different room → different layout');
   ok(a.period > VW + 300, `cycle period ${a.period.toFixed(0)} wider than the view (a piece shows once)`);
+}
+
+section('6) 보스 구도 (core/camera.js): 터치면 오른쪽 벽의 보스 몸통이 버튼 묶음 밖 · 키보드는 예전 그대로');
+{
+  const { Camera, CAM_FLAGS } = await import(path.join(ROOT, 'src/core/camera.js'));
+  const { input } = await import(path.join(ROOT, 'src/core/input.js'));
+  const { touchpad } = await import(path.join(ROOT, 'src/core/touchpad.js'));
+  // 폴드 펼침(960×726) 실제 배치에서 잰 아래쪽 조작 상자 (atmos 캡처 때 touchpad.occupiedRects 로 읽음)
+  const RECTS = [[794, 623, 73, 73], [722, 630, 58, 58], [881, 632, 54, 54], [683, 514, 54, 54], [668, 582, 54, 54], [613, 620, 50, 50], [883, 501, 50, 50]].map(([x, y, w, h]) => ({ x, y, w, h }));
+  const save = { br: touchpad.bottomReserve, lv: touchpad.layoutVersion, oc: touchpad.occupiedRects, sz: touchpad.stickZone, tm: input.touchMode };
+  const run = (touch, safe, heroX = 1476) => {
+    input.touchMode = touch; CAM_FLAGS.bossSafe = safe;
+    touchpad.bottomReserve = () => (touch ? 0.206 : 0); touchpad.layoutVersion = () => 7; touchpad.occupiedRects = () => RECTS;
+    touchpad.stickZone = () => ({ x: 20, y: 520, w: 140, h: 190 });
+    const c = new Camera(960, 726);
+    c.setBounds(528, 0, 1392, 672); c.floorY = 576;
+    const hero = { x: heroX, y: 512, w: 32, h: 64, vx: 0, vy: 0, facing: 1, onGround: true };
+    c.boss = { x: 1776, y: 400, w: 96, h: 176, dead: false, hidden: false };
+    c.follow(hero, 1 / 60, true);
+    for (let i = 0; i < 240; i++) c.follow(hero, 1 / 60);
+    return { right: (c.boss.x + c.boss.w - c.x) * c.zoom, heroL: (hero.x - c.x) * c.zoom, heroC: (hero.x + hero.w / 2 - c.x) * c.zoom, x: c.x, y: c.y };
+  };
+  try {
+    const before = run(true, false), after = run(true, true);
+    const clusterL = Math.min(...RECTS.map((r) => r.x));
+    ok(before.right > clusterL, `touch, old framing: boss body under the cluster (right edge ${before.right.toFixed(0)} > ${clusterL})`);
+    ok(after.right <= clusterL, `touch, new framing: boss body left of the cluster (right edge ${after.right.toFixed(0)} ≤ ${clusterL})`);
+    ok(after.heroL >= 960 * 0.15 - 1, `touch: hero stays ≥ 15 % from the left edge (${after.heroL.toFixed(0)})`);
+    const far = run(true, true, 700), far0 = run(true, false, 700);
+    ok(far.heroC >= 960 * 0.15 - 1, `touch, hero far from the boss: hero centre stays ≥ 15 % in (${far.heroC.toFixed(0)})`);
+    ok(far.x <= far0.x + 0.5, `touch, hero far from the boss: no extra pull past the old framing (${far.x.toFixed(0)} ≤ ${far0.x.toFixed(0)})`);
+    const d0 = run(false, false), d1 = run(false, true);
+    ok(d0.x === d1.x && d0.y === d1.y, `keyboard/pad framing unchanged (${d0.x.toFixed(1)},${d0.y.toFixed(1)} = ${d1.x.toFixed(1)},${d1.y.toFixed(1)})`);
+  } finally {
+    touchpad.bottomReserve = save.br; touchpad.layoutVersion = save.lv; touchpad.occupiedRects = save.oc; touchpad.stickZone = save.sz;
+    input.touchMode = save.tm; CAM_FLAGS.bossSafe = true;
+  }
 }
 
 console.log(fails ? `✗ test_foreground: ${fails} failed, ${passes} passed` : `✓ test_foreground: ${passes} passed`);

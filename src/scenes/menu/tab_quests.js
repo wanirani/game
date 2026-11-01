@@ -142,7 +142,7 @@ export class QuestsTab extends Tab {
       const hy = LR.y + LR.h + 8;
       divider(ctx, LR.x + 6, hy, LR.w - 12, { center: false, a: 0.35 });
       glyph(ctx, 'scroll', LR.x + 16, hy + 14, 13, '#9fd86a', 1.4);
-      const tail = hs.total ? `오늘 계약 ${hs.total - hs.open}/${hs.total}${hs.ready ? ` · 받을 보상 ${hs.ready}` : ''}` : '스테이지를 깨면 열림';
+      const tail = hs.total ? `계약 달성 ${hs.total - hs.open}/${hs.total}${hs.ready ? ` · 게시판에서 받을 보상 ${hs.ready}` : ''}` : '스테이지를 깨면 열림';
       text(ctx, ellipsize(ctx, `사냥 일지 · ${hs.rankName} ${hs.pts}점 · ${tail}`, LR.w - 40, 12, 700), LR.x + 30, hy + 19, { size: 12, weight: 700, color: hs.ready ? '#b8f090' : PAL.dim, ow: 2 });
     }
     for (const r of this.sectRects) this.m.ges.zone(r, 'primary', { src: 'quests.sect' }); // 목록 줄보다 위 (가려진 줄이 가로채지 않게)

@@ -156,7 +156,7 @@ export class Camera {
     this.kickX = 0; this.kickY = 0; this.kvx = 0; this.kvy = 0;
     this.shakeX = 0; this.shakeY = 0; this.rot = 0;
     this.roll = 0; this.lookBoost = 0; this.floorY = null; this.boss = null;
-    this.ovL = 0; this.ovR = 0;
+    this.ovL = 0; this.ovR = 0; this.bossOv = false;
   }
 
   // ─────────────────────────── 흔들림·반동 ───────────────────────────
@@ -308,6 +308,8 @@ export class Camera {
       bossL = clamp(bd.x - (fx - hv), 0, sl);
     }
     const wantR = Math.max(needR, bossR), wantL = Math.max(needL, bossL);
+    // 좁은 경기장에서 넘겨 보기를 쓰는 동안 (보스가 쓰러진 뒤 넘겨 보기가 0 으로 줄어드는 동안도) 켜 둔다 — 화면이 가운데로 튀지 않게
+    this.bossOv = bossR > 0 || bossL > 0 || (!!this.bossOv && (this.ovR > 0 || this.ovL > 0));
     if (snap) { this.ovL = wantL; this.ovR = wantR; }
     else { const k = 1 - Math.pow(0.06, dt); this.ovL = lerp(this.ovL, wantL, k); this.ovR = lerp(this.ovR, wantR, k); }
     if (this.ovL < 0.5 && wantL === 0) this.ovL = 0;
@@ -329,7 +331,7 @@ export class Camera {
     if (b.w <= vw) {
       // 좁은 방: 가운데 고정. [s6 fore] 터치 보스 경기장에서 넘겨 보기 폭이 가운데 맞춤의 여백보다 크면 그만큼만 옮길 수 있다
       const c0 = b.x + b.w / 2;
-      this.cx = this.boss && (this.ovR > 0 || this.ovL > 0) ? clamp(this.cx, Math.min(c0, b.x + vw / 2 - this.ovL), Math.max(c0, b.x + b.w - vw / 2 + this.ovR)) : c0;
+      this.cx = this.bossOv && (this.ovR > 0 || this.ovL > 0) ? clamp(this.cx, Math.min(c0, b.x + vw / 2 - this.ovL), Math.max(c0, b.x + b.w - vw / 2 + this.ovR)) : c0;
     } else this.cx = clamp(this.cx, b.x + vw / 2 - this.ovL, b.x + b.w - vw / 2 + this.ovR);
     this.cy = b.h <= vh ? b.y + b.h - vh / 2 + this.padLift(b.h, vh, this.baseZoom) : clamp(this.cy, b.y + vh / 2, b.y + b.h - vh / 2);
     const lim = this.arenaLowLimit(b, vh);   // [hudfix] 터치 보스 경기장: 바닥을 조작 줄 위로 올리는 목표(fy)는 방 경계 맞춤보다 조금 더 내려가도 된다

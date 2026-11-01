@@ -90,7 +90,7 @@ function buildRows(sc) {
       },
       {
         id: 'fpsCap', label: '프레임 제한', type: 'enum', opts: [[60, '60'], [0, '제한 없음']],
-        note: (s) => (s.batterySaver ? '절전 모드가 켜져 있어 절전 모드의 프레임을 따릅니다.'
+        note: (s) => (s.batterySaver ? '지금은 「절전 모드」 설정을 따릅니다.'
           : s.fpsCap === 0 ? '화면 주사율만큼 그립니다. 120Hz 화면에서 더 부드럽지만 배터리를 더 씁니다.' : '초당 60번 그립니다. 배터리를 아낍니다.'),
       },
       { // [phone] 절전 모드: 그리기 상한 fps + 품질 한 단계 내림 (game.js saverFps · saverTier). 게임 속도는 그대로
