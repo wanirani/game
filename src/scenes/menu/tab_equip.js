@@ -20,7 +20,7 @@ import { promptMode } from '../../core/prompts.js';
 import { compareInfo, drawCompare, drawMark, scoreStr, LoadoutModal, MARK_COL } from './gear_compare.js';   // [qol] 비교 · 최적 장착 (qol_equip §2–§3)
 import { bestLoadout, applyLoadout, undoLoadout } from '../../game/gear_score.js';
 import { heroSetCounts } from '../../game/stats.js';   // 「피의 유물」 세트 (Stage 6)
-import { RELIC_SETS, setBonusLines } from '../../data/relic_sets.js';
+import { RELIC_SETS, setBonusLines, setOfBase } from '../../data/relic_sets.js';
 import { fmtStat } from '../../data/items.js';
 
 const SUMMARY = ['hp', 'mp', 'atk', 'mag', 'def', 'res', 'crit'];
@@ -326,6 +326,12 @@ export class EquipTab extends Tab {
       this.txt.draw(ctx, 'slot' + i, `${this.m.rev}|${hero.charId}|${slot}|${inst?.uid ?? '-'}|${inst?.level ?? 0}|${sel ? 1 : 0}|${live ? 1 : 0}|${iconReady(inst)}`, x0, y, x + w - x0, r.h, (c) => {
         if (!live) drawSlot(c, x + 12, y + 4, s, inst, { selected: sel, empty: SLOT_ICON_EMPTY[slot] });
         text(c, D.SLOT_NAMES()[slot], tx, y + (tall ? 16 : Math.round(r.h * 0.36)), { size: 11, weight: 700, color: sel ? PAL.gold : PAL.dim, ow: 2 });
+        // 「피의 유물」 세트 부위면 칸 이름 옆에 세트 이름 (세트 색). 자리가 모자라면 뺀다
+        const setS = inst ? setOfBase(D.baseOf(inst)) : null;
+        if (setS) {
+          const lx = tx + measure(c, D.SLOT_NAMES()[slot], 11, 700) + 8, room = x + w - 8 - lx;
+          if (room > 40) text(c, ellipsize(c, `「${setS.name}」`, room, 11, 700), lx, y + (tall ? 16 : Math.round(r.h * 0.36)), { size: 11, weight: 700, color: setS.color, ow: 2 });
+        }
         if (inst) {
           const ns = tall ? 15 : 14;
           text(c, ellipsize(c, fitName(c, inst, w - (tx - x) - 8, ns), w - (tx - x) - 8, ns, 800), tx, y + (tall ? 35 : Math.round(r.h * 0.8)), { size: ns, weight: 800, color: RARITY_COL[inst.rarity ?? 0], ow: 3 });
@@ -368,17 +374,21 @@ export class EquipTab extends Tab {
       let y = A.y + sh + 32;
       // 세트 줄은 능력치 표 자리(최소 3줄)를 남기고 들어가는 만큼만. 긴 단계 줄은 말줄임 대신 두 줄로 접는다
       // (폴드 펼침 가운데 칸에서 「4세트: 공격력 +12, 마력 +12, 치명 피…」 처럼 잘렸다). 넘치면 꺼진 단계 줄부터 한 줄로 줄이거나 뺀다
-      const setRowH = Math.max(15, Math.ceil(textFloor() * 1.2));
-      const setRoom = Math.floor((sBot - 8 - (y - 8) - 3 * Math.max(15, Math.ceil(textFloor() * 1.15)) - 30) / setRowH);
-      const shown = setL.length ? fitSetLines(wrapSetLines(c, setL, MW - 28), setRoom) : [];
+      // 접은 줄 펴기는 아래 능력치 표가 줄을 잃지 않을 만큼만 (한 열 7줄이 들어가던 칸은 한 열 그대로, 2열이던 칸은 7개가 다 남게)
+      const setRowH = Math.max(15, Math.ceil(textFloor() * 1.2)), contH = setRowH - 1, setGap = 15;
+      const statMin = Math.max(15, Math.ceil(textFloor() * 1.15));
+      const setRoom = Math.floor((sBot - 8 - (y - 8) - 3 * statMin - 30) / setRowH);
+      const statRoom = (hpx) => sBot - 8 - (y - 10 + hpx + setGap + 8);
+      const statNeed = (hpx) => (statRoom(hpx) >= SUMMARY.length * statMin ? SUMMARY.length : Math.ceil(SUMMARY.length / 2)) * statMin;
+      const shown = setL.length ? fitSetLines(wrapSetLines(c, setL, MW - 28), setRoom, setRowH, contH, statRoom, statNeed) : [];
       if (shown.length) {
         let yy = y - 10;
         for (const l of shown) {
           const sz = l.head ? 12 : 11, wt = l.head ? 800 : 600, x0 = MX + 14 + (l.head ? 0 : 8);
-          l.rows.forEach((s, i) => text(c, s, x0 + (i ? l.indent : 0), yy + i * setRowH, { size: sz, weight: wt, color: l.color, ow: 2 }));
-          yy += l.rows.length * setRowH;
+          l.rows.forEach((s, i) => text(c, s, x0 + (i ? l.indent : 0), yy + i * contH, { size: sz, weight: wt, color: l.color, ow: 2 }));
+          yy += setRowH + (l.rows.length - 1) * contH;
         }
-        y = yy + 18;
+        y = yy + setGap;
       }
       // 세트 줄이 들어갈 자리가 없으면(휴대폰 가로) 제목 옆에 「세트명」 n/총 만 줄여서
       let hsub = null, hcol = PAL.dim;
@@ -604,18 +614,20 @@ function wrapSetLines(c, L, w) {
   });
 }
 /**
- * room 줄 안에 맞추기: 먼저 머리줄 > 켜진 단계 > 꺼진 단계 순으로 한 줄씩 자리를 주고 (원래 순서 유지),
- * 남는 자리로 같은 순서대로 접은 줄을 편다 (다 못 펴는 줄은 한 줄 말줄임으로 남는다)
+ * room 줄(rowH) 안에 맞추기: 먼저 머리줄 > 켜진 단계 > 꺼진 단계 순으로 한 줄씩 자리를 주고 (원래 순서 유지),
+ * 남는 자리로 같은 순서대로 접은 줄을 편다 (둘째 줄부터 contH). statRoom/statNeed 를 주면 능력치 표 자리가
+ * 한 줄 상태 때의 표(한 열 7줄 / 2열 7개)보다 줄어들지 않을 때만 편다. 다 못 펴는 줄은 한 줄 말줄임으로 남는다
  */
-function fitSetLines(L, room) {
+function fitSetLines(L, room, rowH = 15, contH = rowH, statRoom = null, statNeed = null) {
   if (room <= 0) return [];
   const pri = (l) => (l.head ? 0 : l.on ? 1 : 2);
   const order = L.map((l, i) => i).sort((a, b) => pri(L[a]) - pri(L[b]) || a - b).slice(0, room);
   const full = new Set();
-  let used = order.length;
+  let hpx = order.length * rowH;
+  const need = statNeed ? statNeed(hpx) : 0;
   for (const i of order) {
-    const extra = L[i].rows.length - 1;
-    if (extra > 0 && used + extra <= room) { full.add(i); used += extra; }
+    const add = (L[i].rows.length - 1) * contH;
+    if (add > 0 && hpx + add <= room * rowH && (!statRoom || statRoom(hpx + add) >= need)) { full.add(i); hpx += add; }
   }
   const keep = new Set(order);
   return L.map((l, i) => (!keep.has(i) ? null : full.has(i) || l.rows.length === 1 ? l : { ...l, rows: [l.one], indent: 0 })).filter(Boolean);

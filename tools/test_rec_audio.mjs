@@ -1,7 +1,8 @@
 // 녹음 음원 검사 — src/core/audio_rec.js (RecBank) + audio.js (RecPlayer·AudioSystem 전환) 를 헤드리스 Chromium 에서 시험한다.
 // 사용: node tools/test_rec_audio.mjs [--keep-fixtures]
 //  고정 자료(ffmpeg 로 만든 사인파 곡)를 assets/audio/music/ 주소에 page.route 로 대신 준다 (실제 음악 파일·목록이 있든 없든 같은 결과).
-//  헤드리스 Chromium 은 AAC 를 풀지 못하므로 고정 곡은 WAV·Ogg 내용이다 (decodeAudioData 는 내용으로 형식을 안다) — window.__BN_AUDIO_CODECS 로 m4a 지원을 강제.
+//  고정 곡은 WAV·Ogg 내용이다 (decodeAudioData 는 내용으로 형식을 안다) — window.__BN_AUDIO_CODECS 로 m4a 지원을 강제.
+//  (지금 QA Chromium 153 은 AAC 를 푼다. 'AAC 못 푸는 브라우저'는 canPlayType 이 mp4/AAC 에 '' 를 돌려주게 바꿔 흉내 낸다 — 게임의 진짜 감지 경로)
 // 검사 항목
 //  1. 녹음 곡이 시작된다 (RecPlayer, 루프 지점 = 목록 값 + 프라이밍 보정), 프라이밍 감지 (WAV 앞 2112 샘플 무음 → off = 2112/48000)
 //  2. 루프가 빈틈 없이 돈다: 풀린 버퍼를 OfflineAudioContext 에서 같은 loopStart/loopEnd 로 렌더 → 루프 지점 앞뒤 10 ms RMS 와 표본 간 차이
@@ -10,7 +11,8 @@
 //  5. 교차 페이드 (fade 1) 동안 두 곡, 끝나면 이전 곡 PCM 을 놓는다 (풀린 곡 ≤ 지금 + 다음)
 //  6. 휴대폰 (터치 에뮬레이션): 풀기 rate ≤ 24 kHz, 상한 16 MB — 긴 곡 두 개를 차례로 틀어도 붙잡은 PCM 최대치 ≤ 상한
 //  7. loop:false 곡은 한 번 울리고 끝난다 (audio.current → null)
-//  8. 효과음 샘플: 목록·core 묶음이 풀린다 (m4a 실패 → ogg), 샘플 효과음 재생, 미리 받기(prefetch)
+//  8. 효과음 샘플 (실제 assets/audio/sfx·sfx_v2 목록·파일): 옛 샘플(RecBank) core 묶음과 v2(V2Bank) 전부가 m4a 로 풀린다,
+//     v2 이름은 v2 버퍼만(합성 없음)·옛 샘플 이름은 샘플 + 합성 몫·샘플 없는 이름은 합성음, AAC 못 풂 → 샘플 파일을 받지 않고 합성음만, 미리 받기(prefetch)
 //  9. 페이지 오류·콘솔 오류 0 (일부러 만든 404 의 'Failed to load resource' 는 제외)
 // 10. 실제 녹음 곡 (assets/audio/music/index.json 이 있으면): 곡 몇 개를 ffmpeg 로 WAV 로 풀어(프라이밍은 ffmpeg 가 자름) 실제 목록과 함께 주고,
 //     실제 루프 지점에서 이음매 앞뒤 RMS 가 이어지는지·이음매 표본 차가 곡 안의 보통 차이 수준인지 본다 (--real a,b 로 곡 고르기)
@@ -60,18 +62,24 @@ function fixtures() {
 }
 
 const index = fixtures();
+// 효과음 목록은 고정 자료가 아니라 실제 파일 (페이지는 serve.mjs 로 진짜 assets/audio/sfx·sfx_v2 를 받는다)
+const SFX1 = JSON.parse(fs.readFileSync(path.join(root, 'assets/audio/sfx/index.json'), 'utf8'));
+const SFX2 = JSON.parse(fs.readFileSync(path.join(root, 'assets/audio/sfx_v2/index.json'), 'utf8'));
+const SFX1_N = Object.keys(SFX1.sfx).length, SFX2_N = Object.keys(SFX2.sfx).length;
 const srv = await start(0);
 const port = srv.address().port;
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
 
 /** 새 페이지: 시험용 빈 문서에서 audio.js 를 불러 둔다. route: 음악 목록·파일을 고정 자료로 (missing → 404) */
-async function open({ mobile = false, codecs = ['m4a', 'ogg'], noIndex = false, real = null } = {}) {
+async function open({ mobile = false, codecs = ['m4a', 'ogg'], noIndex = false, real = null, noAac = false } = {}) {
   const ctx = await browser.newContext(mobile ? { viewport: { width: 844, height: 390 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true } : {});
   const page = await ctx.newPage();
   const errs = [];
   page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push('CONSOLE ' + m.text().slice(0, 200)); });
   if (codecs) await page.addInitScript((c) => { window.__BN_AUDIO_CODECS = c; }, codecs);
+  // AAC 를 못 푸는 브라우저: canPlayType 이 mp4/AAC 에 '' (게임은 __BN_AUDIO_CODECS 가 없으면 canPlayType 으로 판단한다)
+  if (noAac) await page.addInitScript(() => { const f = HTMLMediaElement.prototype.canPlayType; HTMLMediaElement.prototype.canPlayType = function (t) { return /mp4|aac|m4a/i.test(String(t)) ? '' : f.call(this, t); }; });
   await page.route('**/assets/audio/music/**', (r) => {
     const f = new URL(r.request().url()).pathname.split('/').pop();
     if (f === 'index.json' && noIndex) return r.fulfill({ status: 404, body: '' });
@@ -147,18 +155,37 @@ try {
     const vic = await until(page, () => { const s = audio.recStats(); return s.player?.id === 'victory' && s.player.rec ? s : null; });
     const ended = vic && await until(page, () => (audio.current === null && !audio.player ? true : null), null, 6000);
     ok(!!vic && !!ended, `7. loop:false 곡은 한 번 울리고 끝난다 (녹음 ${!!vic}, 끝 ${!!ended})`);
-    // 8. 효과음 샘플
-    const sx = await until(page, () => { const s = audio.recStats().sfx; return s.loaded >= 20 ? s : null; }, null, 10000);
-    ok(!!sx, `8. 효과음 샘플 core 묶음 (${sx?.loaded}/${sx?.names}종, 형식 ${sx?.fmt}, ${((sx?.bytes ?? 0) / 1024).toFixed(0)} KB)`);
+    // 8. 효과음 샘플 — 옛 샘플(RecBank, assets/audio/sfx) core 묶음 + v2(V2Bank, assets/audio/sfx_v2, 기본으로 켜짐) 전부
+    const sx = await until(page, (core) => { const s = audio.recStats().sfx; return core.every((n) => audio.rec.smp.get(n)) ? s : null; }, SFX1.core, 10000);
+    ok(!!sx && sx.fmt === 'm4a' && sx.names === SFX1_N && sx.loaded >= SFX1.core.length,
+      `8. 옛 효과음 샘플 core 묶음 (core ${sx?.loaded}/${SFX1.core.length} 풀림, 목록 ${sx?.names}종, 형식 ${sx?.fmt}, ${((sx?.bytes ?? 0) / 1024).toFixed(0)} KB)`);
+    const v2s = await until(page, (n) => { const s = audio.v2?.stats(); return s && s.state === 'ready' && s.loaded >= n ? s : null; }, SFX2_N, 20000);
+    ok(!!v2s && v2s.fmt === 'm4a' && v2s.names === SFX2_N && v2s.loaded === SFX2_N,
+      `8. 효과음 v2 전부 풀림 (${v2s?.loaded}/${SFX2_N}종, 형식 ${v2s?.fmt}, ${((v2s?.bytes ?? 0) / 1048576).toFixed(1)} MB)`);
+    // 재생: 버퍼 소스가 뱅크의 버퍼를 트는지 (버퍼 동일성), 합성음 노드(오실레이터·노이즈 버퍼) 수
     const sp = await page.evaluate(() => {
-      const e = audio.eng, c = e.ctx, f = c.createBufferSource.bind(c); let n = 0;
-      c.createBufferSource = (...a) => { n++; return f(...a); };
-      const sm = audio.rec.sample('hit_heavy'); audio.sfx('hit_heavy'); const withSample = n; n = 0;
-      audio.sfx('ghost'); const synthOnly = n;
-      c.createBufferSource = f;
-      return { has: !!sm, s: sm?.s, withSample, synthOnly };
+      const a = audio, e = a.eng, c = e.ctx, fb = c.createBufferSource.bind(c), fo = c.createOscillator.bind(c), made = []; let osc = 0;
+      c.createBufferSource = (...x) => { const n = fb(...x); made.push(n); return n; };
+      c.createOscillator = (...x) => { osc++; return fo(...x); };
+      const run = (name, bank) => {
+        made.length = 0; osc = 0; const v0 = e.v2Starts; a.sfx(name);
+        const bufs = new Set((bank?.bufs || []).map((b) => b.buf));
+        return { srcs: made.length, osc, fromBank: made.filter((n) => bufs.has(n.buffer)).length, v2: e.v2Starts - v0 };
+      };
+      const r = {};
+      r.heavy = run('hit_heavy', a.v2.sample('hit_heavy'));        // v2 이름: v2 녹음 층만 (합성음 없음)
+      const keep = e.v2; e.v2 = null;                               // v2 없는 길 (?sfx=v1, 또는 v2 가 아직 못 받은 이름): 옛 샘플 + 합성 몫 s
+      const sm = a.rec.sample('hit_bone'); r.bone = { ...run('hit_bone', sm), s: sm?.s ?? null };
+      r.synth = run('ghost', null);                                 // 어느 뱅크에도 샘플이 없으면 합성음만
+      e.v2 = keep; c.createBufferSource = fb; c.createOscillator = fo;
+      return r;
     });
-    ok(sp.has && sp.withSample >= 2 && sp.synthOnly >= 0, `8. 샘플 효과음 재생 (hit_heavy: 버퍼 소스 ${sp.withSample}개, 합성 몫 ${sp.s})`);
+    ok(sp.heavy.v2 === 1 && sp.heavy.fromBank === 1 && sp.heavy.srcs === 1 && sp.heavy.osc === 0,
+      `8. v2 효과음 재생 (hit_heavy: v2 버퍼 ${sp.heavy.fromBank}개 / 버퍼 소스 ${sp.heavy.srcs}개, 오실레이터 ${sp.heavy.osc}개)`);
+    ok(sp.bone.v2 === 0 && sp.bone.fromBank === 1 && sp.bone.s > 0 && sp.bone.srcs - 1 + sp.bone.osc >= 1,
+      `8. 옛 샘플 효과음 재생 (hit_bone: 샘플 버퍼 ${sp.bone.fromBank}개 + 합성 몫 ${sp.bone.s} → 합성 노드 ${sp.bone.srcs - 1 + sp.bone.osc}개)`);
+    ok(sp.synth.v2 === 0 && sp.synth.fromBank === 0 && sp.synth.srcs + sp.synth.osc >= 1,
+      `8. 샘플 없는 이름은 합성음 (v2 끈 ghost: 합성 노드 ${sp.synth.srcs + sp.synth.osc}개)`);
     await page.evaluate(() => audio.prefetch('hub'));
     const pf = await until(page, () => { const s = audio.recStats(); return s.next === 'hub' ? s : null; });
     ok(!!pf, `8. prefetch('hub') → 다음 곡 (${pf?.next}, 풀림 ${!!pf?.tracks?.hub})`);
@@ -177,14 +204,25 @@ try {
     await ctx.close();
   }
   {
-    const { ctx, page, errs } = await open({ codecs: null });
+    const { ctx, page, errs } = await open({ codecs: null, noAac: true });
     const reqs = [];
     page.on('request', (r) => { if (/assets\/audio\/music\//.test(r.url())) reqs.push(r.url()); });
     await page.evaluate(() => audio.music('title'));
     const s = await until(page, () => { const s = audio.recStats(); return s.player ? s : null; }, null, 6000);
-    const sx = await until(page, () => { const x = audio.recStats().sfx; return x.loaded >= 20 ? x : null; }, null, 10000);
     ok(s && !s.player.rec && s.why === 'codec' && reqs.length === 0, `3. AAC 를 못 푸는 브라우저 → 목록도 받지 않고 합성 (why ${s?.why}, 음악 요청 ${reqs.length}건)`);
-    ok(sx?.fmt === 'ogg', `8. 효과음은 ogg 로 (${sx?.fmt}, ${sx?.loaded}종)`);
+    // 효과음은 m4a 만 싣는다 (audio_rec.js 머리말) → 두 뱅크 모두 꺼지고, 샘플 파일은 하나도 받지 않고, 소리는 합성음으로 난다
+    const sx = await page.evaluate(async () => {
+      await audio.rec.sIdxP; await audio.v2?.ixP;
+      await new Promise((r) => setTimeout(r, 500));
+      const files = performance.getEntriesByType('resource').map((x) => x.name).filter((u) => /assets\/audio\/sfx(_v2)?\/[^?]+\.(m4a|ogg)/.test(u));
+      const e = audio.eng, c = e.ctx, fb = c.createBufferSource.bind(c), fo = c.createOscillator.bind(c); let n = 0;
+      c.createBufferSource = (...x) => { n++; return fb(...x); }; c.createOscillator = (...x) => { n++; return fo(...x); };
+      const v0 = e.v2Starts; audio.sfx('hit_heavy');
+      c.createBufferSource = fb; c.createOscillator = fo;
+      return { v1: audio.recStats().sfx, v2: audio.v2?.stats() ?? null, files: files.length, synth: n, v2Starts: e.v2Starts - v0 };
+    });
+    ok(sx.v1.fmt === null && sx.v1.loaded === 0 && sx.v2?.state === 'off' && sx.v2.err === 'codec' && sx.files === 0 && sx.v2Starts === 0 && sx.synth >= 1,
+      `8. AAC 못 풂 → 효과음은 합성음만 (v2 ${sx.v2?.state}/${sx.v2?.err}, 옛 샘플 형식 ${sx.v1.fmt}·${sx.v1.loaded}종, 샘플 파일 요청 ${sx.files}건, hit_heavy 합성 노드 ${sx.synth}개)`);
     ok(errs.length === 0, `9. 코덱 없음 페이지 오류 0 ${errs.join(' | ')}`);
     await ctx.close();
   }
@@ -203,6 +241,9 @@ try {
     await page.waitForTimeout(1500);
     const c = await page.evaluate(() => audio.recStats());
     ok(c.peak <= c.cap && c.bytes <= c.cap, `6. 미리 받기는 상한을 넘기지 않는다 (풀린 곡 ${Object.keys(c.tracks).join(',')}, ${mb(c.bytes)} MB, 압축 ${c.raw.join(',')})`);
+    const v2m = await until(page, () => { const s = audio.v2?.stats(); return s && s.state === 'ready' && s.loaded > 0 ? { ...s, lazy: audio.v2.lazyRate } : null; }, null, 15000);
+    ok(v2m && v2m.rate === 32000 && v2m.lazy === 24000 && v2m.fmt === 'm4a',
+      `6. 휴대폰 효과음 v2 는 낮춰 푼다 (핵심 ${v2m?.rate} Hz · 드문 소리 ${v2m?.lazy} Hz, ${v2m?.loaded}/${v2m?.names}종 풀림)`);
     ok(errs.length === 0, `9. 휴대폰 페이지 오류 0 ${errs.join(' | ')}`);
     await ctx.close();
   }
