@@ -274,6 +274,17 @@ try {
       ok(!!seam && seam.jw <= Math.max(seam.p99 * 3, 0.02) && rr < 2.5,
         `10. 실제 곡 ${id}: 루프 ${seam?.ls?.toFixed(3)}–${seam?.le?.toFixed(3)} s (${seam?.rate} Hz, off ${seam?.off}), 이음매 앞뒤 20 ms RMS ${seam?.before?.toFixed(3)}/${seam?.after?.toFixed(3)}, 이음매 표본 차 ${seam?.jw?.toFixed(4)} (곡 안 99% ${seam?.p99?.toFixed(4)})`);
     }
+    // 11. 실제 곡 전부 × 상한이 있는 프로필: 고른 rate 의 어림이 상한 안 (s9 verify9 — rateFor 가 estimate 보다 짧게 세어 휴대폰에서
+    //     87 초 넘는 곡 s16 · worldmap2 가 늘 합성음이던 것)
+    const fitBad = await page.evaluate(async (ix) => {
+      const R = await import('/src/core/audio_rec.js'), bad = [];
+      for (const pn of ['phone', 'low', 'tablet', 'medium']) {
+        const b = new R.RecBank(); b.profile = R.REC_PROFILE[pn]; b.ctx = { sampleRate: 48000 }; b.idx = ix;
+        for (const [id, tr] of Object.entries(ix.tracks || {})) { const r = b.rateFor(tr); if (r && b.estimate(tr, r) > b.cap) bad.push(`${pn}:${id}`); }
+      }
+      return bad;
+    }, ix);
+    ok(fitBad.length === 0, `11. 실제 곡 ${Object.keys(ix.tracks || {}).length}개 × 휴대폰·저사양·태블릿·중간 상한: 고른 rate 로 상한 안 (넘는 곡 ${fitBad.join(',') || '없음'})`);
     ok(errs.length === 0, `9. 실제 곡 페이지 오류 0 ${errs.slice(0, 3).join(' | ')}`);
     await ctx.close();
   } else console.log('· assets/audio/music/index.json 없음 — 실제 곡 검사(10)는 건너뜀');

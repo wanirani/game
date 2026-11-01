@@ -166,7 +166,9 @@ export class RecBank {
   rateFor(t) {
     const ctxRate = this.ctx?.sampleRate || 48000;
     let r = Math.min(this.profile.rate || ctxRate, ctxRate);
-    const sec = (Number(t.duration) || 0) + (Number(t.priming) || 0) / (Number(this.idx?.rate) || 48000) + 0.1;
+    // estimate() 가 세는 길이(duration + 0.2 초) 이상으로 맞춘다 — 예전 + 0.1 초면 상한에 맞춘 rate 의 어림이 상한을 몇 KB 넘어
+    // 휴대폰(16 MB)에서 87 초 넘는 곡(s16 · worldmap2)이 늘 합성음이었다 (s9 verify9)
+    const sec = (Number(t.duration) || 0) + (Number(t.priming) || 0) / (Number(this.idx?.rate) || 48000) + 0.2;
     const fit = Math.floor(this.cap / Math.max(1, sec * 2 * 4));
     if (r > fit) r = fit;
     return r >= MIN_RATE ? r : 0;
