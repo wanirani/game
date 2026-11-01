@@ -26,7 +26,8 @@ const errs = [];
 page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message + ' @ ' + (e.stack || '').split('\n').slice(1, 3).join(' | ')));
 page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|fonts\.g/.test(m.text())) errs.push('CONSOLE ' + m.text().slice(0, 300)); });
 page.on('response', (r) => { if (r.status() >= 400 && /puppets/.test(r.url())) errs.push('HTTP ' + r.status() + ' ' + r.url()); });
-await page.goto(`http://localhost:${port}/index.html?scene=stage&stage=${stage}&char=${char}${room ? '&room=' + room : ''}`);
+// --qs '&cmp=all&cmplv=10&mount=mt_warhorse&ride=1' : 주소 뒤에 덧붙임 (s9 asc2 — 탈것에 탄 초월 원화 확인)
+await page.goto(`http://localhost:${port}/index.html?scene=stage&stage=${stage}&char=${char}${room ? '&room=' + room : ''}${opt('qs', '')}`);
 await page.waitForFunction(() => window.__game?.world?.player, null, { timeout: 30000 });
 await page.evaluate(async ({ vector, cls, asc, equip, skipDlg, drawScale }) => {
   const hero = await import('/src/render/hero.js');
@@ -55,7 +56,13 @@ const KEY = { right: 'ArrowRight', left: 'ArrowLeft', up: 'ArrowUp', down: 'Arro
 let n = 0;
 for (const s of steps.split(',')) {
   const [k, d] = s.split(':');
-  if (k === 'shot') { await page.screenshot({ path: `${outp}_${n++}.png` }); continue; }
+  if (k === 'shot') {
+    // 플레이어 화면 위치(CSS px)도 함께 적는다 → QA 띠에서 인물 둘레만 잘라 쓴다 (s9 asc2)
+    const pos = await page.evaluate(() => { try { const g = window.__game, w = g.world, p = w.player, c = w.camera, z = c?.zoom || 1, r = g.canvas.getBoundingClientRect(), k = r.width / g.viewW;
+      return { x: r.left + ((p.x + (p.w || 0) / 2) - c.x) * z * k, y: r.top + ((p.y + (p.h || 0)) - c.y) * z * k, k: z * k, anim: p.anim }; } catch { return null; } });
+    if (pos) fs.writeFileSync(`${outp}_${n}.json`, JSON.stringify(pos));
+    await page.screenshot({ path: `${outp}_${n++}.png` }); continue;
+  }
   if (k === 'wait') { await page.waitForTimeout(Number(d) * 1000); continue; }
   if (s.startsWith('eval=')) { try { await page.evaluate(s.slice(5).replaceAll(';;', ',')); } catch (e) { errs.push('EVAL ' + e.message); } continue; }
   if (s.startsWith('snap=')) {

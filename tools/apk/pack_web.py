@@ -530,6 +530,7 @@ def main():
         cfg['loOmitted'] = len(lo_omitted)
     if modified:
         cfg['modified'] = sorted(set(modified))
+    if mode == 'lo+td':
         cfg['td'] = {'scale': TD_SCALE, 'floorManifest': TD_FLOOR_MANIFEST, 'floorRig': TD_FLOOR_RIG}
     (out / 'app').mkdir(parents=True, exist_ok=True)
     (out / 'app/apk.json').write_text(json.dumps(cfg, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')

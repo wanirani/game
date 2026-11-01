@@ -4,6 +4,8 @@
 //   node tools/apk/verify_apk.mjs [dist/BloodNocturne.apk] [--out 스크린샷폴더] [--web dist/web] [--keep] [--skip-java]
 //
 // 1. 내용물: APK assets/www = dist/web − sw.js − downloads/ − _redirects (해시 비교). 휴대폰 밀도(lo)면 빠진 원본마다 lo/ 사본이 있어야 한다.
+//    원본만(hi)이면 assets/lo/ 사본이 모두 빠지고 build-info.js 의 lo 목록이 null 이어야 한다 (게임이 lo/ 를 요청하지 않게).
+//    apk.json omitted (PWA 전용 파일)는 APK 의 manifest.webmanifest icons·screenshots 에 있는 파일만 빠져도 된다.
 //    소리: 예산 때문에 뺀 녹음 음악(apk.json audio.musicFiles)만 빠져도 되고, APK 의 assets/audio/*/index.json 이 가리키는 파일은 모두 있어야 한다.
 //    assets/app/apk.json (계정 서버 주소·에셋 단계), 모든 파일 확장자가 AssetServer.java 의 MIME 표에 있는지.
 // 2. 네이티브 소스 정적 검사: WebView 관문(98), 브리지(insets/ime/rumble/apiStash), 권한, head_inject 조각.
@@ -86,12 +88,19 @@ if (!fs.existsSync(path.join(webDir, 'index.html'))) {
   const inApk = new Set(files);
   const modified = new Set(CFG.modified || []);
   const musicOut = new Set(CFG.audio?.musicFiles || []);
+  const HI = CFG.assets === 'hi';
+  // PWA 전용으로 뺀 파일: 웹 앱 매니페스트(icons·screenshots)가 가리키는 파일만 인정 (게임 파일을 몰래 빼지 못하게)
+  let pwaRefs = new Set();
+  try { const wm = JSON.parse(fs.readFileSync(path.join(WWW, 'manifest.webmanifest'), 'utf8')); pwaRefs = new Set([...(wm.icons || []), ...(wm.screenshots || [])].map((it) => String(it?.src || '').split('?')[0].replace(/^\.?\//, ''))); } catch { /* 없음 */ }
+  const omitted = new Set((CFG.omitted || []).filter((r) => pwaRefs.has(r)));
   const problems = [];
-  let dropped = 0, same = 0, musicDropped = 0;
+  let dropped = 0, same = 0, musicDropped = 0, loOmitted = 0, pwaOmitted = 0;
   for (const r of web) {
     const lo = LO_RE.exec(r);
     if (!inApk.has(r)) {
       if (LITE && lo && inApk.has(`assets/lo/${lo[1]}`)) { dropped++; continue; }
+      if (HI && r.startsWith('assets/lo/')) { loOmitted++; continue; }
+      if (omitted.has(r)) { pwaOmitted++; continue; }
       if (musicOut.has(r) && r.startsWith('assets/audio/music/')) { musicDropped++; continue; }
       problems.push(`빠짐: ${r}`);
       continue;
@@ -103,8 +112,16 @@ if (!fs.existsSync(path.join(webDir, 'index.html'))) {
   for (const r of files) if (!webSet.has(r)) problems.push(`dist/web 에 없는 파일: ${r}`);
   if (LITE && CFG.dropped != null && dropped !== CFG.dropped) problems.push(`빠진 원본 수 ${dropped} ≠ apk.json ${CFG.dropped}`);
   if (!LITE && dropped) problems.push('full 단계인데 원본이 빠짐');
+  for (const r of CFG.omitted || []) if (!omitted.has(r)) problems.push(`apk.json omitted 의 ${r} 는 manifest.webmanifest 의 PWA 그림이 아님`);
+  if (HI) {
+    if (CFG.loOmitted != null && loOmitted !== CFG.loOmitted) problems.push(`hi: 뺀 lo/ 사본 수 ${loOmitted} ≠ apk.json ${CFG.loOmitted}`);
+    if (files.some((f) => f.startsWith('assets/lo/'))) problems.push('hi 단계인데 assets/lo/ 사본이 남음');
+    let bi = null;
+    try { bi = JSON.parse(/window\.__BN_BUILD\s*=\s*(\{.*\})\s*;/s.exec(fs.readFileSync(path.join(WWW, 'build-info.js'), 'utf8'))[1]); } catch { bi = null; }
+    if (!bi || bi.lo != null) problems.push('hi 단계인데 build-info.js 의 lo 목록이 null 이 아님 (게임이 없는 lo/ 를 요청한다)');
+  }
   check('APK assets/www = dist/web − sw.js − downloads/ − _redirects (해시)', problems.length === 0,
-    problems.length ? problems.slice(0, 6).join(', ') + (problems.length > 6 ? ` … 외 ${problems.length - 6}건` : '') : `같은 파일 ${same}개${dropped ? `, lo/ 사본으로 대신한 원본 ${dropped}개` : ''}${modified.size ? `, 고친 파일 ${modified.size}개` : ''}${musicDropped ? `, 예산 때문에 뺀 녹음 음악 ${musicDropped}개` : ''}`);
+    problems.length ? problems.slice(0, 6).join(', ') + (problems.length > 6 ? ` … 외 ${problems.length - 6}건` : '') : `같은 파일 ${same}개${dropped ? `, lo/ 사본으로 대신한 원본 ${dropped}개` : ''}${loOmitted ? `, 원본만 싣느라 뺀 lo/ 사본 ${loOmitted}개` : ''}${pwaOmitted ? `, PWA 전용 파일 ${pwaOmitted}개` : ''}${modified.size ? `, 고친 파일 ${modified.size}개` : ''}${musicDropped ? `, 예산 때문에 뺀 녹음 음악 ${musicDropped}개` : ''}`);
 }
 // 소리 목록이 가리키는 파일이 APK 에 모두 있는가 (빠진 곡이 목록에 남으면 앱이 404 를 받는다)
 {

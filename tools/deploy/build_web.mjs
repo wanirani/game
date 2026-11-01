@@ -34,14 +34,18 @@
 //  6. sw.js 에 BUILD (캐시 이름 bn-<buildHash>, 미리 받을 목록) 주입. APK 는 실은 웹 빌드가 buildHash 와 같을 때만 downloads/ 에
 //     (latest.json 의 built = APK 를 만든 시각, web = APK 에 실은 웹 빌드). _redirects (/apk, /download → APK).
 //  7. 글꼴 검사, 맵 검사, 크기 보고 (brotli·gzip): 첫 화면 경로, dist/web(소리 제외) ≤ 90 MB, 소리 assets/audio (녹음 음악 ≤ 64 MB, 효과음 ≤ 3 MB),
-//     APK 입력(dist/web − sw.js − downloads/): 그림 단계는 소리를 뺀 크기로 70 MB 기준(넘으면 lo 단계), 소리 포함 APK 는 95 MB — 넘치는 음악은
-//     tools/apk/pack_web.py 가 우선순위 낮은 곡부터 뺀다 (그 곡은 앱에서 합성 음원).
+//     APK 입력(dist/web − sw.js − downloads/): 그림 단계 기준(70 MB)은 tools/apk/pack_web.py 와 같은 방식으로 어림한 'APK 안 크기'(소리 제외) —
+//     그림·글꼴·소리는 무압축, JS·JSON 등은 deflate, 항목마다 zip 머리말, APK 고정분 600 KB, PWA 전용 그림 제외. (2026-11 전까지는 압축 전
+//     바이트를 셌다: JS 8 MB 가 APK 안에서는 2.4 MB 라 실제로 단계를 고르는 pack_web 보다 ≈ 5 MB 크게 보고했다.)
+//     단계 예상: full(원본+lo 사본) → hi(원본만) → lo(lo 사본만) 중 그림 ≤ 70 MB 이고 소리까지 APK 95 MB 안인 첫 단계 (pack_web --assets auto 와 같다).
+//     소리 포함 APK 가 95 MB 를 넘치면 pack_web.py 가 우선순위 낮은 음악부터 뺀다 (그 곡은 앱에서 합성 음원).
 //  8. dist/deploy/ = Netlify 업로드 묶음: web/ (dist/web 하드 링크) + netlify/functions·lib + package.json(개발 의존성 제외, 시험한 버전 고정) +
 //     package-lock.json (루트 잠금 파일에서 개발 전용 항목을 뺀 것) +
 //     netlify.toml (publish = "web", 빌드 명령 없음). 비밀 파일 검사. 배포 호출은 하지 않는다 (DELIVER-WEB 이 한다) — tools/deploy/README.md
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { ROOT, posix, walk, sha256, rmrf, mkdirp, assertInsideDist, denyReason, transferSizes, fmtMB, fmtKB, parseArgs, apkInfo, MB, parseNetlifyToml, headersFor } from './lib/util.mjs';
 import { bundleModules, verifyChunks } from './lib/bundle.mjs';
@@ -51,7 +55,8 @@ export const BUDGET = {
   siteBytes: 90 * MB,        // dist/web (downloads/·assets/audio/ 제외) — MASTER_PLAN §1.20 (채색 그림 포함)
   musicBytes: 64 * MB,       // assets/audio/music/ (녹음 배경 음악 — 서비스 워커가 미리 받지 않는다)
   sfxBytes: 3 * MB,          // assets/audio/sfx/ + sfx_v2/ (효과음 샘플 m4a + ogg)
-  apkImageBytes: 70 * MB,    // APK 그림 단계 기준: APK 입력에서 소리를 뺀 크기 (넘으면 lo 단계, MASTER_PLAN §1.20 — 2026-10-05 45→48 MB, 2026-10-08 48→70 MB: 휴대폰에서도 원본 그림)
+  apkImageBytes: 70 * MB,    // APK 그림 단계 기준: APK 안 크기 어림(pack_web.py 와 같은 계산)에서 소리를 뺀 값 (넘으면 hi → lo 단계, MASTER_PLAN §1.20 — 2026-10-05 45→48 MB, 2026-10-08 48→70 MB: 휴대폰에서도 원본 그림)
+  apkFileBytes: 95 * MB,     // APK 파일 예산 (tools/apk/build_apk.sh APK_BUDGET_MB, pack_web.py --budget-mb) — 단계 예상용
   apkInputBytes: 110 * MB,   // APK 에 들어갈 웹 파일 전체 (압축 전; APK 파일 예산 95 MB 는 build_apk.sh 가 지킨다) (dist/web − sw.js − downloads/ − build.json − _redirects, 소리 포함)
   criticalBr: 1.6 * MB,      // 첫 화면 경로 brotli (platform §9.1) — 기본 경고, --strict 면 실패
   fileBytes: 25 * MB,        // 파일 하나 (APK 제외)
@@ -436,6 +441,28 @@ function moduleOrder(SRC, entry) {
   return out;
 }
 
+// ── APK 안 크기 어림 (tools/apk/pack_web.py 의 apk_bytes · pwa_only 와 같은 계산 — 둘을 바꿀 때 함께) ──
+const APK_NO_COMPRESS = new Set(['png', 'webp', 'jpg', 'jpeg', 'gif', 'avif', 'mp3', 'ogg', 'oga', 'opus', 'm4a', 'aac', 'mp4', 'webm', 'woff', 'woff2']);
+const APK_OVERHEAD = 600 * 1024;   // classes.dex · resources.arsc · 아이콘 · 매니페스트 · 서명 블록 (pack_web.py 와 같은 어림)
+function apkBytesOf(abs, rel, n) {
+  const ext = rel.includes('.') ? rel.split('.').pop().toLowerCase() : '';
+  if (!APK_NO_COMPRESS.has(ext) && n > 0) n = Math.min(n, zlib.deflateSync(fs.readFileSync(abs), { level: 6 }).length);
+  return n + 2 * Buffer.byteLength('assets/www/' + rel) + 110;
+}
+/** manifest.webmanifest 의 icons·screenshots 중 index.html <link>·JS·CSS 가 부르지 않는 파일 (APK 는 싣지 않는다 — WebView 는 매니페스트를 읽지 않는다) */
+function pwaOnlyFiles(OUT, html, all) {
+  let man;
+  try { man = JSON.parse(fs.readFileSync(path.join(OUT, 'manifest.webmanifest'), 'utf8')); } catch { return []; }
+  const have = new Set(all);
+  const cand = [...new Set([...(man.icons || []), ...(man.screenshots || [])].map((it) => String(it?.src || '').split(/[?#]/)[0].replace(/^\.?\//, '')).filter((r) => have.has(r)))];
+  if (!cand.length) return [];
+  const linked = new Set([...html.matchAll(/<(?:script|link)\b[^>]*?\b(?:src|href)="([^"]+)"/g)].map((m) => m[1].split(/[?#]/)[0].replace(/^\.?\//, '')));
+  const texts = [html.replace(/<meta\b[^>]*>/g, '')];
+  for (const r of all) if (/\.(m?js|css)$/.test(r) && r !== 'sw.js' && !isDeployOnly(r)) texts.push(fs.readFileSync(path.join(OUT, r), 'utf8'));   // sw.js 는 APK 에 없다
+  const blob = texts.join('\n');
+  return cand.filter((r) => !linked.has(r) && !blob.includes(r.split('/').pop())).sort();
+}
+
 function loKeysOf(OUT) {
   const keys = [];
   for (const rel of walk(path.join(OUT, 'assets/lo'))) {
@@ -449,6 +476,7 @@ function sizeReport(OUT, report, { html, chunkFiles, cssFonts, opts, warn }) {
   const t = Date.now();
   const all = walk(OUT);
   let site = 0, downloads = 0, apkInput = 0, count = 0, music = 0, sfx = 0, audio = 0;
+  const apkEst = new Map();   // rel → APK 안 크기 어림 (tools/apk/pack_web.py apk_bytes 와 같은 계산)
   const byDir = {};
   let jsRaw = 0, jsBr = 0, jsGz = 0;
   for (const rel of all) {
@@ -460,6 +488,7 @@ function sizeReport(OUT, report, { html, chunkFiles, cssFonts, opts, warn }) {
     if (rel.startsWith('assets/audio/')) { audio += b; if (rel.startsWith('assets/audio/music/')) music += b; else if (/^assets\/audio\/sfx(_v2)?\//.test(rel)) sfx += b; }   // v2 효과음 묶음(기본 소리)도 효과음 예산에
     else site += b;
     if (!/^(sw\.js|build\.json|_redirects)$/.test(rel)) apkInput += b;
+    if (!/^(sw\.js|_redirects)$/.test(rel)) apkEst.set(rel, apkBytesOf(path.join(OUT, rel), rel, b));
     if (/^src\/.*\.js$/.test(rel)) {
       const s = transferSizes(fs.readFileSync(path.join(OUT, rel)), rel);
       jsRaw += s.raw; jsBr += s.br; jsGz += s.gz;
@@ -479,9 +508,25 @@ function sizeReport(OUT, report, { html, chunkFiles, cssFonts, opts, warn }) {
     critRaw += s.raw; critBr += s.br;
     critList.push([rel, s.br]);
   }
-  const apkImage = apkInput - audio;   // 그림 단계 기준 (소리 제외)
+  // 그림 단계 기준 = APK 안 크기 어림 (소리 제외) — pack_web.py 가 실제로 단계를 고르는 값과 같은 계산
+  const pwa = new Set(pwaOnlyFiles(OUT, html, all));
+  let apkFull = APK_OVERHEAD, apkAudioEst = 0, apkLo = 0, apkTwins = 0;
+  for (const [rel, n] of apkEst) {
+    if (pwa.has(rel)) continue;
+    if (rel.startsWith('assets/audio/')) { apkAudioEst += n; continue; }
+    apkFull += n;
+    if (rel.startsWith('assets/lo/')) apkLo += n;
+    const tw = /^assets\/((?:bg|cg|portraits)\/.+\.webp)$/.exec(rel);
+    if (tw && apkEst.has(`assets/lo/${tw[1]}`)) apkTwins += n;
+  }
+  const apkImage = apkFull;
+  const tiers = { full: apkFull, hi: apkFull - apkLo, lo: apkFull - apkTwins };
+  const fitImg = Object.keys(tiers).filter((k) => tiers[k] <= BUDGET.apkImageBytes);
+  const fitAll = fitImg.filter((k) => tiers[k] + apkAudioEst <= BUDGET.apkFileBytes);
+  const apkStage = fitAll[0] || fitImg[0] || 'lo+td';
   report.sizes = {
     siteBytes: site, siteFiles: count, downloadsBytes: downloads, apkInputBytes: apkInput, apkImageBytes: apkImage, audio: { music, sfx, total: audio },
+    apk: { stage: apkStage, image: tiers, audio: apkAudioEst, total: (apkStage === 'lo+td' ? tiers.lo : tiers[apkStage]) + apkAudioEst, pwaOmitted: [...pwa] },
     js: { raw: jsRaw, br: jsBr, gzip: jsGz }, critical: { raw: critRaw, br: critBr, files: critList.sort((a, b) => b[1] - a[1]) },
     byDir: Object.fromEntries(Object.entries(byDir).sort((a, b) => b[1] - a[1])),
   };
@@ -489,29 +534,26 @@ function sizeReport(OUT, report, { html, chunkFiles, cssFonts, opts, warn }) {
     site: { bytes: site, budget: BUDGET.siteBytes, ok: site <= BUDGET.siteBytes },
     music: { bytes: music, budget: BUDGET.musicBytes, ok: music <= BUDGET.musicBytes },
     sfx: { bytes: sfx, budget: BUDGET.sfxBytes, ok: sfx <= BUDGET.sfxBytes },
-    apkImage: { bytes: apkImage, budget: BUDGET.apkImageBytes, ok: apkImage <= BUDGET.apkImageBytes },
+    apkImage: { bytes: apkImage, budget: BUDGET.apkImageBytes, ok: apkImage <= BUDGET.apkImageBytes, note: 'APK 안 크기 어림, 소리 제외 (pack_web.py 와 같은 계산) — full 단계' },
+    apkOriginals: { bytes: tiers.hi, budget: BUDGET.apkImageBytes, ok: tiers.hi <= BUDGET.apkImageBytes, note: '원본 그림을 지키는 기준: hi 단계(원본만, lo/ 사본 없음)' },
     apkInput: { bytes: apkInput, budget: BUDGET.apkInputBytes, ok: apkInput <= BUDGET.apkInputBytes },
     criticalBr: { bytes: critBr, budget: BUDGET.criticalBr, ok: critBr <= BUDGET.criticalBr, fatal: !!opts.strict },
   };
-  log(opts, `· 크기: 사이트 ${fmtMB(site)} (소리 제외, ${count}개, 예산 ${fmtMB(BUDGET.siteBytes)}), 소리 ${fmtMB(audio)} (음악 ${fmtMB(music)} / 예산 ${fmtMB(BUDGET.musicBytes)}, 효과음 ${fmtMB(sfx)} / ${fmtMB(BUDGET.sfxBytes)}), APK 입력 ${fmtMB(apkInput)} (그림 단계 기준 ${fmtMB(apkImage)} / ${fmtMB(BUDGET.apkImageBytes)}, 전체 예산 ${fmtMB(BUDGET.apkInputBytes)}), 내려받기 ${fmtMB(downloads)}`);
+  log(opts, `· 크기: 사이트 ${fmtMB(site)} (소리 제외, ${count}개, 예산 ${fmtMB(BUDGET.siteBytes)}), 소리 ${fmtMB(audio)} (음악 ${fmtMB(music)} / 예산 ${fmtMB(BUDGET.musicBytes)}, 효과음 ${fmtMB(sfx)} / ${fmtMB(BUDGET.sfxBytes)}), APK 입력 ${fmtMB(apkInput)} (압축 전, 전체 예산 ${fmtMB(BUDGET.apkInputBytes)}), 내려받기 ${fmtMB(downloads)}`);
+  log(opts, `        APK 어림 (pack_web 과 같은 계산): 그림 단계 기준 full ${fmtMB(tiers.full)} · hi(원본만) ${fmtMB(tiers.hi)} · lo ${fmtMB(tiers.lo)} / ${fmtMB(BUDGET.apkImageBytes)}, 소리 ${fmtMB(apkAudioEst)} → 단계 ${apkStage}, APK ≈ ${fmtMB(report.sizes.apk.total)} / ${fmtMB(BUDGET.apkFileBytes)}`);
   log(opts, `        JS ${fmtMB(jsRaw)} → brotli ${fmtMB(jsBr)} / gzip ${fmtMB(jsGz)}; 첫 화면 경로 brotli ${fmtMB(critBr)} (예산 ${fmtMB(BUDGET.criticalBr)})`);
   if (!report.budgets.site.ok) throw new BuildError(`dist/web 이 예산을 넘습니다: ${fmtMB(site)} > ${fmtMB(BUDGET.siteBytes)}`);
   if (!report.budgets.music.ok) throw new BuildError(`녹음 음악(assets/audio/music)이 예산을 넘습니다: ${fmtMB(music)} > ${fmtMB(BUDGET.musicBytes)}`);
   if (!report.budgets.sfx.ok) throw new BuildError(`효과음 샘플(assets/audio/sfx + sfx_v2)이 예산을 넘습니다: ${fmtMB(sfx)} > ${fmtMB(BUDGET.sfxBytes)}`);
-  // MASTER_PLAN §1.20: 소리를 뺀 APK 입력이 그림 단계 기준(70 MB)을 넘으면 APK 는 bg/cg/portraits 의 원본 대신 assets/lo 만 싣는다 (APK 담당). 그 경우의 크기도 보고한다.
-  let lite = apkImage;
-  if (!report.budgets.apkImage.ok) {
-    let full = 0;
-    for (const rel of all) {
-      const m = /^assets\/((?:bg|cg|portraits)\/.+)\.webp$/.exec(rel);
-      if (m && fs.existsSync(path.join(OUT, 'assets/lo', m[1] + '.webp'))) full += fs.statSync(path.join(OUT, rel)).size;
-    }
-    lite = apkImage - full;
-    report.budgets.apkLite = { bytes: lite, budget: BUDGET.apkImageBytes, ok: lite <= BUDGET.apkImageBytes, note: 'APK 가 bg/cg/portraits 원본 대신 assets/lo 만 실을 때 (소리 제외)' };
-    const m = `APK 입력(소리 제외)이 ${fmtMB(apkImage)} 로 그림 단계 기준 ${fmtMB(BUDGET.apkImageBytes)} 을 넘습니다 → APK 는 bg/cg/portraits 원본을 빼고 assets/lo 만 실어야 합니다 (그때 ${fmtMB(lite)}, MASTER_PLAN §1.20)`;
-    if (!report.budgets.apkLite.ok) throw new BuildError(m + ' — 그래도 예산 초과');
-    // 정해진 경로라 경고가 아니다: tools/apk/pack_web.py --assets auto 가 알아서 lo 단계를 고른다 (최종 크기는 build_apk.sh 가 서명한 APK 로 확인)
-    log(opts, `        APK 입력(소리 제외) ${fmtMB(apkImage)} > ${fmtMB(BUDGET.apkImageBytes)} → APK 는 lo 단계 (bg/cg/portraits 는 assets/lo 사본만, ${fmtMB(lite)}) — tools/apk/pack_web.py 가 고른다 (MASTER_PLAN §1.20)`);
+  // MASTER_PLAN §1.20: 그림 단계는 tools/apk/pack_web.py --assets auto 가 고른다 (full → hi → lo → lo+td). 여기서는 같은 계산으로 미리 보고한다.
+  //   full = 원본 + lo 사본, hi = 원본만 (lo 사본을 빼고 게임이 lo 를 요청하지 않게), lo = bg/cg/portraits 는 lo 사본만
+  let lite = apkStage === 'lo' || apkStage === 'lo+td' ? tiers.lo : tiers[apkStage];
+  if (apkStage !== 'full') {
+    report.budgets.apkLite = { bytes: lite, budget: BUDGET.apkImageBytes, ok: lite <= BUDGET.apkImageBytes, stage: apkStage, note: 'pack_web.py 가 고를 단계의 그림 크기 (APK 안 어림, 소리 제외)' };
+    const m = `APK 그림(소리 제외, APK 안 어림)이 full ${fmtMB(tiers.full)} · hi ${fmtMB(tiers.hi)} · lo ${fmtMB(tiers.lo)} 로, 단계 기준 ${fmtMB(BUDGET.apkImageBytes)} 안에 드는 단계가 ${fitImg.length ? fitImg.join('·') : '없음'} (MASTER_PLAN §1.20)`;
+    if (!fitImg.length) throw new BuildError(m + ' — lo 단계로도 예산 초과');
+    // 정해진 경로라 경고가 아니다: pack_web.py 가 알아서 고른다 (최종 크기는 build_apk.sh 가 서명한 APK 로 확인)
+    log(opts, `        ${m} → APK 는 ${apkStage} 단계${apkStage === 'hi' ? ' (원본만: 어느 기기든 원본 그림, lo 사본 없음)' : apkStage.startsWith('lo') ? ' (bg/cg/portraits 는 assets/lo 사본만)' : ''} — tools/apk/pack_web.py 가 고른다`);
   }
   // 소리 포함 APK: 효과음은 늘 싣고, 음악은 95 MB 안에서 우선순위대로 (넘치는 곡은 앱에서 합성 음원 — pack_web.py)
   const withAudio = lite + audio;
