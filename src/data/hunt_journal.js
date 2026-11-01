@@ -1,9 +1,9 @@
 // 「사냥 일지」 (Stage 6 HUNT) — 깬 스테이지를 다시 도는 이유: 날마다 3장 · 주마다 1장 바뀌는 사냥 계약. 순수 데이터 + 작은 계산 — import 없음 (node 에서 import 가능)
 //  - 계약 종류 (kind): kill(스테이지에서 적 N 처치) · swift(스테이지를 T초 안에 클리어) · boss(보스를 쓰러지지 않고 처치) ·
-//    hero(정한 영웅으로 보스 처치) · candle(스테이지에서 촛대 N개 부수기) · nm(주간: 악몽 토벌 한 줄 격파) · sweep(주간 예비: 이야기 스테이지 N곳 클리어)
+//    hero(정한 영웅으로 보스 처치) · candle(스테이지에서 촛대 N개 부수기) · nm(주간: 악몽 토벌 한 줄 격파) · sweep(주간 예비: 이야기 스테이지 N번 클리어 — 같은 스테이지도 센다)
 //  - 진행은 이야기 스테이지(world.mode 'story', 시련·아케이드·일일 도전 제외)와 악몽 토벌(nm)만 센다 — game/hunt_journal.js
 //  - 보상 크기: data/quests.js 의 같은 장 부가 의뢰와 비슷하게 (골드 · 강화석 · 경험치), 주간은 약 2.5배
-//  - 일지 점수(pts) → 사냥꾼 등급. 등급 4 「명사냥꾼」은 K1 장부(data/cosmetics.js need { hj: 4 })의 잔상 「사냥꾼」을 연다
+//  - 일지 점수(pts) → 사냥꾼 등급. 등급 4 「명사냥꾼」은 K1 장부(data/cosmetics.js need { hj: 500 } — 등급 문턱 점수)의 잔상 「사냥꾼」을 연다
 
 /** 하루 일지 계약 수 · 주간 1 */
 export const HUNT_DAILY = 3;
@@ -89,7 +89,7 @@ export function huntGoal(c, names = {}) {
     case 'hero': { const h = names.hero?.(c.hero) ?? c.hero; return `${h}${josaRo(h)} 「${st(c.stage)}」 보스 처치`; }
     case 'candle': return `「${st(c.stage)}」에서 촛대 ${c.n}개 부수기`;
     case 'nm': return `악몽 토벌 「${st(c.stage)}」 격파`;
-    case 'sweep': return `이야기 스테이지 ${c.n}곳 클리어`;
+    case 'sweep': return `이야기 스테이지 ${c.n}번 클리어`;   // [verifyA] 같은 스테이지를 다시 깨도 센다 → 「곳」이 아니라 「번」
   }
   return '';
 }

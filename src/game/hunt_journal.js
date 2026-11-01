@@ -96,7 +96,30 @@ function weighted(rng, list) {
   for (const [k, w] of list) { r -= w; if (r < 0) return k; }
   return list[list.length - 1][0];
 }
-const killable = (sid) => (Array.isArray(STAGES[sid]?.enemies) ? STAGES[sid].enemies : []).filter((id) => id !== 'mimic' && Object.hasOwn(ENEMIES, id) && !ENEMIES[id].boss);
+/** [verifyA] 한 판에 방 지도에 놓이는 수 (보통 난이도 기준 — minDiff 전용 자리는 빼고). 스테이지마다 한 번 세어 둔다 */
+const PLACED = new Map();
+export function huntPlaced(sid, eid) {
+  let m = PLACED.get(sid);
+  if (!m) {
+    m = {};
+    for (const r of Object.values(STAGES[sid]?.rooms ?? {})) {
+      const tiles = Array.isArray(r?.map) ? r.map.join('') : String(r?.map ?? '');
+      for (const ch of tiles) {
+        if (ch < '1' || ch > '9') continue;
+        const sp = r.enemies?.[ch], id = typeof sp === 'string' ? sp : sp?.minDiff ? null : sp?.id;
+        if (id) m[id] = (m[id] ?? 0) + 1;
+      }
+    }
+    PLACED.set(sid, m);
+  }
+  return m[eid] ?? 0;
+}
+/** 토벌 계약 후보: 그 스테이지 적 중 한 판에 2마리 이상 놓이는 적 (한 마리뿐인 적은 하루 안에 열 번 넘게 돌아야 한다) — 없으면 예전 목록 */
+const killable = (sid) => {
+  const all = (Array.isArray(STAGES[sid]?.enemies) ? STAGES[sid].enemies : []).filter((id) => id !== 'mimic' && Object.hasOwn(ENEMIES, id) && !ENEMIES[id].boss);
+  const many = all.filter((id) => huntPlaced(sid, id) >= 2);
+  return many.length ? many : all;
+};
 const hasBoss = (sid) => !!STAGES[sid]?.rooms?.boss && !!STAGES[sid]?.boss;
 
 /** 그날의 일일 계약 3장 (같은 날 · 같은 깬 스테이지 · 같은 영웅 → 같은 계약). 깬 스테이지가 없으면 [] */
@@ -116,7 +139,12 @@ export function rollDaily(s, day) {
     used.add(key);
     const st = STAGES[sid];
     const c = { id: `d${day}_${out.length}`, slot: 'd', kind, stage: sid, lv: st.level ?? 1 };
-    if (kind === 'kill') { const ks = killable(sid); c.enemy = ks[Math.floor(rng.next() * ks.length)]; c.n = 8 + Math.floor(rng.next() * 7); }
+    if (kind === 'kill') {
+      const ks = killable(sid); c.enemy = ks[Math.floor(rng.next() * ks.length)];
+      // [verifyA] 목표 수는 한 판에 놓이는 수의 두 배를 넘지 않게 (두 판이면 끝난다) — 8~14 마리, 적게 놓이는 적은 4 마리까지 낮춘다
+      const base = 8 + Math.floor(rng.next() * 7), per = huntPlaced(sid, c.enemy);
+      c.n = per > 0 ? Math.max(4, Math.min(base, per * 2)) : base;
+    }
     else if (kind === 'swift') c.t = Math.max(120, Math.round((st.parTime ?? 300) / 10) * 10);
     else if (kind === 'hero') c.hero = el.heroes[Math.floor(rng.next() * el.heroes.length)];
     else if (kind === 'candle') c.n = 6 + Math.floor(rng.next() * 5);
@@ -268,11 +296,12 @@ export function bumpHunt(s, pred) {
 /** 이벤트 → 진행 (node 테스트가 G 없이 부를 수 있게 따로) — ev: 이벤트 이름, d: 내용, story: 이야기 판 여부, auto: AUTO 판 */
 export function huntEvent(s, ev, d = {}, { story = false, auto = false } = {}) {
   if (!isObj(s) || s.arcade) return [];
+  // [verifyA] 쓰러짐 수는 계약이 없어도 센다 (판 도중 메뉴의 일지 요약이 오늘 계약을 뽑으면 지난 판의 쓰러짐이 남아 있지 않게)
+  if (ev === 'stageEntered') { runDeaths = 0; return []; }
+  if (ev === 'playerDied') { runDeaths++; return []; }
   const h = ensureHunt(s);
   if (!h || !h.picks.length) return [];
   switch (ev) {
-    case 'stageEntered': runDeaths = 0; return [];
-    case 'playerDied': runDeaths++; return [];
     case 'enemyKilled': {
       if (!story || d.byPlayer === false) return [];
       const id = d.def?.id ?? d.enemy?.def?.id, sid = d.stageId;
@@ -306,6 +335,8 @@ export function initHunt(game) {
     if (!isObj(s?.progress)) return;
     try {
       const x = { ...(d || {}) };
+      // [verifyA] 스테이지(마을 포함)에 들어설 때 날·주를 맞춘다 — 게시판을 열지 않고 다음 날 바로 싸워도 오늘 계약이 센다
+      if (ev === 'stageEntered' && !s.arcade) syncHunt(s);
       if (ev === 'enemyKilled' || ev === 'candleBroken') x.stageId ??= game.world?.stage?.id;
       huntEvent(s, ev, x, { story: story ? storyWorld(s) : !s.arcade, auto: assisted() });
     } catch (err) { console.warn('[hunt]', err); }

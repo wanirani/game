@@ -235,6 +235,32 @@ test('K1 장부: { hj } · 잔상 「사냥꾼」 = 명사냥꾼 점수', () => 
   assert.ok(nt.short.includes('500') && nt.long.includes('사냥 일지'));
 });
 
+// [verifyA] 토벌 계약은 하루 안에 끝낼 수 있는 크기 (한 판에 놓이는 수 × 2 이하, 4 이상) · 계약이 없을 때도 쓰러짐 수를 센다
+test('토벌 목표 수: 두 판 안 · 놓이지 않는 적은 고르지 않음 · 쓰러짐은 계약 없이도 센다', () => {
+  const all = fresh(Object.keys(STAGES).filter((id) => (STAGES[id].chapter ?? 0) > 0 && STAGES[id].rooms));
+  let kills = 0;
+  for (let d = 0; d < 200; d++) for (const c of H.rollDaily(all, 20000 + d)) {
+    if (c.kind !== 'kill') continue;
+    kills++;
+    const per = H.huntPlaced(c.stage, c.enemy);
+    assert.ok(per >= 2, `${c.stage} ${c.enemy}: 한 판에 2마리 이상 놓이는 적 (${per})`);
+    assert.ok(c.n >= 4 && c.n <= 14 && c.n <= per * 2, `${c.stage} ${c.enemy} ${c.n}마리 ≤ 두 판 (${per}×2)`);
+  }
+  assert.ok(kills > 50, `토벌 계약 ${kills}`);
+  assert.equal(H.huntPlaced('s01', 'zombie') > 0, true, 's01 좀비는 놓인다');
+  assert.equal(H.huntPlaced('s01', 'no_such_enemy'), 0);
+  // 계약이 하나도 없는 판에서 쓰러진 뒤 (그 판 도중 계약이 생겨도) 다음 스테이지에 들어서면 0 부터
+  const s = withPicks([{ kind: 'boss', stage: 's01' }]);
+  const picks = s.hunt.picks; s.hunt.picks = [];
+  H.huntEvent(s, 'stageEntered', { stageId: 's02' }); H.huntEvent(s, 'playerDied', {});
+  s.hunt.picks = picks;
+  H.huntEvent(s, 'bossKilled', { bossId: STAGES.s01.boss, stageId: 's01', mode: 'story', charId: 'kael' }, { story: true });
+  assert.equal(prog(s, 0).done, false, '계약 없을 때 쓰러진 것도 센다');
+  s.hunt.picks = []; H.huntEvent(s, 'stageEntered', { stageId: 's01' }); s.hunt.picks = picks;
+  H.huntEvent(s, 'bossKilled', { bossId: STAGES.s01.boss, stageId: 's01', mode: 'story', charId: 'kael' }, { story: true });
+  assert.equal(prog(s, 0).done, true, '새 판은 0 부터');
+});
+
 let pass = 0, fail = 0;
 for (const t of tests) {
   try { await t.fn(); pass++; console.log(`✓ ${t.name}`); }

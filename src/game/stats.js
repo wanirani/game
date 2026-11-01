@@ -76,6 +76,7 @@ export function computeStats(state, hero) {
   }
   // 장비
   let weapon = null;
+  const setBases = [];   // [verifyA] 세트 부위는 이 고리에서 같이 모은다 (heroSetCounts 처럼 가방을 다시 훑지 않게 — 최적 장착은 computeStats 를 수백 번 부른다)
   for (const slot of EQUIP_SLOTS) {
     const uid = hero.equip?.[slot];
     if (!uid) continue;
@@ -83,9 +84,11 @@ export function computeStats(state, hero) {
     if (!inst) continue;
     if (slot === 'weapon') weapon = inst;
     addStats(s, itemStats(inst));
+    const b = ITEMS[inst.baseId];
+    if (b?.set) setBases.push(b);
   }
-  // 「피의 유물」 세트 보너스 (같은 세트 서로 다른 부위 2/4/5개 — data/relic_sets.js)
-  addStats(s, setBonusStats(heroSetCounts(state, hero)));
+  // 「피의 유물」 세트 보너스 (같은 세트 서로 다른 부위 2/4/5개 — data/relic_sets.js) — heroSetCounts 와 같은 셈
+  if (setBases.length) addStats(s, setBonusStats(countSets(setBases)));
   // 패시브 스킬
   for (const sid in hero.skills || {}) {
     const sk = SKILLS[sid];

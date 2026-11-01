@@ -363,7 +363,7 @@ export class QuestBoardScene extends ServiceScene {
     ctx.fillStyle = wk ? '#3a5a1a' : '#6a4a2a'; ctx.beginPath(); ctx.arc(r.x + 22, r.y + r.h / 2, wk ? 11 : 6, 0, TAU); ctx.fill();
     if (wk) { ctx.strokeStyle = '#c8e090'; ctx.lineWidth = 1.5; ctx.stroke(); text(ctx, '주', r.x + 22, r.y + r.h / 2 + 5, { size: 11, weight: 900, align: 'center', color: '#efffd0', ow: 0 }); }
     text(ctx, HJ.huntTitle(c), r.x + 42, r.y + 26, { size: 16, weight: 800, family: FONT.title, color: INK, outline: null, ow: 0, maxWidth: r.w - 120 });
-    text(ctx, `${HJ.huntGoalText(c)}`, r.x + 42, r.y + 47, { size: 12, color: INK2, outline: null, ow: 0, maxWidth: r.w - 60 });
+    text(ctx, `${HJ.huntGoalText(c)}`, r.x + 42, r.y + 47, { size: 12, color: INK2, outline: null, ow: 0, maxWidth: r.w - (ready ? 112 : e.claimed ? 92 : 60) });   // [verifyA] 「달성」 도장 · 「완료」 글과 겹치지 않게
     ctx.fillStyle = 'rgba(60,40,20,0.3)'; ctx.fillRect(r.x + r.w - 88, r.y + 18, 72, 6);
     ctx.fillStyle = e.done ? '#3a8a2a' : '#8a5a1a'; ctx.fillRect(r.x + r.w - 88, r.y + 18, 72 * clamp(e.cur / Math.max(1, e.need), 0, 1), 6);
     if (ready) {
