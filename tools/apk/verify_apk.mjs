@@ -709,7 +709,7 @@ try {
     check('빠진 원본 경로 요청 → lo/ 사본 (AssetServer 대체)', ok, JSON.stringify(got));
   }
   const paintedDirs = [...new Set(files.filter((f) => /^assets\/painted\/.+\/(manifest|rig)\.json$/.test(f)).map((f) => f))];
-  const modifiedSet = new Set(CFG.modified || []);
+  const modifiedSet = new Set((CFG.modified || []).filter((f) => f.startsWith('assets/painted/')));   // 줄인 채색 아틀라스만 (build-info.js·음악 index.json 고침은 여기서 비교하지 않는다)
   const paint = await tp.evaluate(async ({ list, modified }) => {
     const load = (u) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('load ' + u)); i.src = u; });
     const cv = document.createElement('canvas'); const g = cv.getContext('2d', { willReadFrequently: true });

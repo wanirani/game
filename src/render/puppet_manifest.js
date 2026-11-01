@@ -129,6 +129,51 @@ export const PUPPETS = {
     "lo",
     "ui"
    ]
+  },
+  "bran_bastion": {
+   "h": "991bfd3d800c",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "bran_bloodtyrant": {
+   "h": "7a4c92c9fa5d",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "bran_conqueror": {
+   "h": "90e5e90d3b31",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "bran_oathlord": {
+   "h": "6f720d556165",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "bran_vanguard": {
+   "h": "c4592eda3132",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
   }
  },
  "isolde": {
