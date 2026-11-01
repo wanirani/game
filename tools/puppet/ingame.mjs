@@ -16,10 +16,12 @@ fs.mkdirSync(outp.replace(/\/[^/]*$/, ''), { recursive: true });
 const port = 8100 + Math.floor(Math.random() * 800);
 const srv = await start(port);
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
-const ctx = await browser.newContext(mobile
+const ctx = await browser.newContext(Object.assign(mobile
   ? { viewport: { width: Number(opt('w', 844)), height: Number(opt('h', 390)) }, deviceScaleFactor: Number(opt('dpr', 2)), hasTouch: true, isMobile: true }
-  : { viewport: { width: Number(opt('w', 1280)), height: Number(opt('h', 720)) }, deviceScaleFactor: Number(opt('dpr', 1.5)) });
+  : { viewport: { width: Number(opt('w', 1280)), height: Number(opt('h', 720)) }, deviceScaleFactor: Number(opt('dpr', 1.5)) }, opt('block', '') ? { serviceWorkers: 'block' } : {}));   // --block: 서비스 워커가 요청을 가로채면 route 가 안 걸린다
 const page = await ctx.newPage();
+// --block <부분 문자열>: 그 주소를 404 로 (예: 초월 전용 원화를 APK 에서 뺀 경우의 2차 원화 대체 확인 — s8 asc)
+if (opt('block', '')) await page.route((u) => String(u).includes(opt('block')), (r) => r.fulfill({ status: 404, body: '' }));
 const errs = [];
 page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message + ' @ ' + (e.stack || '').split('\n').slice(1, 3).join(' | ')));
 page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|fonts\.g/.test(m.text())) errs.push('CONSOLE ' + m.text().slice(0, 300)); });

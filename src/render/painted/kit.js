@@ -749,13 +749,31 @@ export function puff(color, core = false) {
   let cv = _puff.get(k);
   if (!cv) {
     cv = spareCanvas(64, 64);
-    const c = ctx2d(cv), g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
-    if (core) { g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.16, rgba(color, 0.9)); }
-    else g.addColorStop(0, rgba(color, 0.9));
-    g.addColorStop(0.45, rgba(color, 0.4)); g.addColorStop(1, rgba(color, 0));
-    c.fillStyle = g; c.fillRect(0, 0, 64, 64); _puff.set(k, cv);
+    const c = ctx2d(cv);
+    if (!core && typeof color === 'string' && color[0] === '#') {
+      // [s8:healthp] 심 없는 퍼프: 색과 무관한 흰 모양 그라디언트 하나(알파 0.9 → 0.4 → 0)를 칠하고 'source-in' 으로 색을 입힌다
+      // (결과는 예전 색별 그라디언트와 같다). 보스 등장 프레임에 색마다 새 그라디언트가 생겨 저사양 'grad max' 를 넘겼다 (kit.js puff)
+      c.fillStyle = puffMask(c); c.fillRect(0, 0, 64, 64);
+      c.globalCompositeOperation = 'source-in'; c.fillStyle = rgba(color, 1); c.fillRect(0, 0, 64, 64);
+      c.globalCompositeOperation = 'source-over';
+    } else {
+      const g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+      if (core) { g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.16, rgba(color, 0.9)); }
+      else g.addColorStop(0, rgba(color, 0.9));
+      g.addColorStop(0.45, rgba(color, 0.4)); g.addColorStop(1, rgba(color, 0));
+      c.fillStyle = g; c.fillRect(0, 0, 64, 64);
+    }
+    _puff.set(k, cv);
   }
   return cv;
+}
+let _puffMask = null;
+/** 퍼프 모양 (흰색, 알파 0.9 → 0.45 지점 0.4 → 0) — 64 px 퍼프 캔버스 공용 (그라디언트는 캔버스와 무관) */
+function puffMask(c) {
+  if (_puffMask) return _puffMask;
+  const g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,0.9)'); g.addColorStop(0.45, 'rgba(255,255,255,0.4)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  return (_puffMask = g);
 }
 /** 가산 발광 (x,y 중심, 반지름 r) */
 export function halo(ctx, x, y, r, color, a = 1, core = false) {

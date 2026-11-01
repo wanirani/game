@@ -1,7 +1,7 @@
 // 장비 탭: 6칸(무기/머리/몸/망토/장신구×2) → 칸 선택 시 장착 가능한 아이템 목록 + 능력치 비교(증감) + 영웅 외형 실시간 미리보기
 // 가운데 미리보기는 턴테이블 (hero_view.js): 끌어서·휠·, . 키·오른쪽 스틱으로 돌려 앞·옆·뒷모습의 장비 색·망토·무기를 본다.
 // 갑옷·머리·망토·장신구를 끼우면 한 바퀴 돌며 보여 준다 (움직임 줄이기면 시전 동작). 무기를 끼우면 공격 시연.
-import { text, FONT, textFloor } from '../../core/ui.js';
+import { text, FONT, textFloor, fontEpoch } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { clamp } from '../../core/math.js';
 import { input } from '../../core/input.js';
@@ -398,7 +398,10 @@ export class EquipTab extends Tab {
     // (PC · 폴드), 휴대폰은 제목 옆 「세트 3/…」만 남았다
     const sy0 = A.y + sh + 10;
     const SR = { x: MX + 4, y: sy0, w: MW - 8, h: Math.max(1, sBot - 4 - sy0) };
-    const lay = sumLayout(ctx, setL, MW, A.y + sh + 32, SR);
+    // 배치는 (세트 줄 글, 칸, 글자 하한)이 바뀔 때만 다시 잰다 — 접기(wrapSetLines)의 글자 재기를 매 프레임 하지 않게
+    const layK = `${setL.map((l) => l.text + l.color).join(';')}|${MW}|${sh}|${SR.y}|${SR.h}|${textFloor()}|${fontEpoch ?? 0}`;
+    if (this._layM?.k !== layK) this._layM = { k: layK, v: sumLayout(ctx, setL, MW, A.y + sh + 32, SR) };
+    const lay = this._layM.v;
     const VR = lay.VR;   // 스크롤 칸 ('pin': 세트 줄만 · 'all': 칸 전체 · 'fit': 없음)
     this.ssc.setMax(VR ? lay.scrollH - VR.h : 0);
     this.sumRect = VR && this.ssc.max > 0 ? VR : null;   // 끌기·휠을 받는 칸 (넘칠 때만)
@@ -580,8 +583,8 @@ const iconReady = (inst) => iconState(inst?.icon);
 const canDoN = (hr) => hr && (hr.unequip || (hr.ok && !hr.here));
 
 // ───────────────────────── 「피의 유물」 세트 줄 (Stage 6) ─────────────────────────
-/** 이 영웅이 끼운 세트 줄 [{text, color, head?, on?}] — pv {slot, uid} 를 주면 그 후보를 끼웠을 때 기준 */
-function setLinesOf(state, hero, pv) {
+/** 이 영웅이 끼운 세트 줄 [{text, color, head?, on?}] — pv {slot, uid} 를 주면 그 후보를 끼웠을 때 기준 (tools/qa/menu_setlines.mjs 가 기대값으로 쓴다) */
+export function setLinesOf(state, hero, pv) {
   let counts = {};
   const eq = hero.equip;
   try {

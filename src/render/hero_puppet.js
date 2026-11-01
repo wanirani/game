@@ -414,6 +414,12 @@ export function puppetFor(p, look) {
     INST.set(look, I);
   }
   if (!I) return null;
+  // 초월·비전 전용 원화(s8 asc)를 끝내 못 받으면(state < 0: 파일 없음 — APK 에서 웹 전용으로 뺀 경우·네트워크 실패) 벡터로 떨어지지 않고
+  // 그 영웅의 2차 원화 + lookTop 덧칠(예전 경로)로 잇는다. look.classId = 2차 id (stats.js composeLook)
+  if (I.E.state < 0 && Object.hasOwn(ASCENSIONS, I.E.cls) && look.classId) {
+    const E2 = entry(I.E.cid, look.classId);
+    if (E2 !== NONE && E2 !== I.E) { I = { E: E2, look, vk: variantKey(E2, look), V: null, key: E2.key, lv: null, gen: E2.gen }; INST.set(look, I); }
+  }
   const E = I.E;
   if (I.gen !== E.gen) { I.gen = E.gen; I.V = null; I.lv = null; }   // 예산 때문에 텍스처를 놓았다 다시 받음 → 구운 변형·레벨 이력 버림
   const now = performance.now();

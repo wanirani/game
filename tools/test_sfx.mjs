@@ -390,7 +390,6 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
     if (fake.eng.v2Space !== 'cave' || fake.eng.v2Quality !== 'medium') RT(`_v2Opts: theme catacombs → cave, 품질 medium 이어야 함 (${fake.eng.v2Space}, ${fake.eng.v2Quality})`);
   } catch (e) { out.v2.err = String(e && e.message || e); }
   await settle();
-  out.probesLeft = probes.length;
   return out;
 }, { only, FEEL, V2: !args['no-v2'] }).catch(async (e) => {
   console.log('  ✗ 페이지 평가 실패: ' + String(e && e.message || e).split('\n').slice(0, 3).join(' | '));

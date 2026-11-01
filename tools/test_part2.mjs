@@ -790,6 +790,10 @@ async function gimmicksGroup() {
     const T = window.__T, w = T.w(), p = T.p();
     const { T: TT } = await import('/src/core/physics.js');
     T.hero60(); T.tick(2);
+    // 방의 적은 치운다 (healtht, Stage 8): 박동 칸은 설계대로 플레이어 '와 적' 이 겹치면 보류한다 (gimmicks_b.js bodies). 고정해 둔 플레이어를
+    // 쫓아 온 저주 인형(뛰어오름 · 난수 AI)이 보류 칸에 서 있으면 플레이어가 비켜도 칸이 굳지 않아, 이 사례가 몇 번에 한 번 실패했다
+    // (실패 판: pending true · 칸 [17,8] 에 puppet_maiden@859,418). 이 사례가 보는 것은 '플레이어가 비키면 굳는다' — 적을 빼면 판정은 그대로 엄격하고 결정적이다
+    for (const e of w.entities) if ((e.kind === 'enemy' || e.kind === 'boss') && !e.dead) { e.dead = true; e.hidden = true; }
     const hb = w.gimmickOf('heartbeat');
     const snap = () => hb.cells.map((c) => w.map.tiles[c.idx]);
     const s0 = snap(), b0 = hb.beatIndex;

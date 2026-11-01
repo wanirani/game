@@ -288,11 +288,14 @@ export class Telegraph extends Entity {
       }
       case 'band': {
         ctx.globalCompositeOperation = 'lighter';
-        const bh = Math.round(this.y1 - this.y0), bq = q8(blink);
-        ctx.translate(0, this.y0);
-        ctx.fillStyle = cLin(ctx, 'tb' + col + bh + '|' + bq, 0, 0, 0, bh, [0, rgba(col, 0), 0.5, rgba(col, 0.18 + 0.2 * bq), 1, rgba(col, 0)]);
-        ctx.fillRect(this.x0, 0, this.x1 - this.x0, this.y1 - this.y0);
-        ctx.translate(0, -this.y0);
+        // [s8:healthp] 단위 높이 그라디언트 하나(색마다)를 띠 높이로 늘리고 깜박임 세기는 globalAlpha 로 — 예전 키 (색, 높이, 깜박임 8단계)는
+        // 예고가 깜박이는 동안 새 그라디언트를 계속 만들었다 (perf_budget 보스 방 'grad max', a_common.js cLin)
+        const bh = Math.max(1, this.y1 - this.y0), bq = q8(blink);
+        ctx.save();
+        ctx.translate(0, this.y0); ctx.scale(1, bh); ctx.globalAlpha *= 0.18 + 0.2 * bq;
+        ctx.fillStyle = cLin(ctx, 'tbU' + col, 0, 0, 0, 1, [0, rgba(col, 0), 0.5, rgba(col, 1), 1, rgba(col, 0)]);
+        ctx.fillRect(this.x0, 0, this.x1 - this.x0, 1);
+        ctx.restore();
         ctx.fillStyle = rgba(col, 0.8 * blink);
         ctx.fillRect(this.x0, this.y0, this.x1 - this.x0, 2); ctx.fillRect(this.x0, this.y1 - 2, this.x1 - this.x0, 2);
         if (this.arrows) {
@@ -308,11 +311,12 @@ export class Telegraph extends Entity {
       case 'column': {
         const x = this.cx0, w = this.cw;
         ctx.globalCompositeOperation = 'lighter';
-        const chh = Math.round(this.y1 - this.y0), bq = q8(blink);
-        ctx.translate(0, this.y0);
-        ctx.fillStyle = cLin(ctx, 'tc' + col + chh + '|' + bq, 0, 0, 0, chh, [0, rgba(col, 0), 1, rgba(col, 0.2 + 0.25 * bq)]);
-        ctx.fillRect(x - w / 2, 0, w, this.y1 - this.y0);
-        ctx.translate(0, -this.y0);
+        const chh = Math.max(1, this.y1 - this.y0), bq = q8(blink);
+        ctx.save();   // [s8:healthp] 단위 높이 그라디언트 (색마다 하나) + 깜박임 세기는 globalAlpha
+        ctx.translate(0, this.y0); ctx.scale(1, chh); ctx.globalAlpha *= 0.2 + 0.25 * bq;
+        ctx.fillStyle = cLin(ctx, 'tcU' + col, 0, 0, 0, 1, [0, rgba(col, 0), 1, rgba(col, 1)]);
+        ctx.fillRect(x - w / 2, 0, w, 1);
+        ctx.restore();
         ctx.fillStyle = rgba(col, 0.5 * blink);
         ctx.fillRect(x - w / 2, this.y0, 2, this.y1 - this.y0); ctx.fillRect(x + w / 2 - 2, this.y0, 2, this.y1 - this.y0);
         ctx.strokeStyle = rgba(col, 0.9); ctx.lineWidth = 3;
@@ -434,10 +438,10 @@ function drawBeamStyle(ctx, b, k) {
   ctx.translate(b.x0, b.y0); ctx.rotate(Math.atan2(dy, dx));
   ctx.globalCompositeOperation = 'lighter';
   const w = b.width * (0.6 + 0.4 * k) * (1 + 0.08 * Math.sin(b.t * 50));
-  // 단위 폭(-1..1) 그라디언트를 캐시해 두고 폭만큼 늘린다 (k 는 8단계)
+  // 단위 폭(-1..1) 그라디언트를 색마다 하나 캐시해 두고 폭만큼 늘린다. 세기 k(8단계)는 globalAlpha 로 [s8:healthp] (예전: k 단계마다 새 그라디언트)
   const kq = q8(k);
-  ctx.fillStyle = cLin(ctx, 'bm' + b.color + '|' + kq, 0, -1, 0, 1, [0, rgba(b.color, 0), 0.3, rgba(b.color, 0.5 * kq), 0.5, rgba('#ffffff', 0.95 * kq), 0.7, rgba(b.color, 0.5 * kq), 1, rgba(b.color, 0)]);
-  if (w > 0.01) { ctx.save(); ctx.scale(1, w); ctx.fillRect(0, -1, L, 2); ctx.restore(); }
+  ctx.fillStyle = cLin(ctx, 'bmU' + b.color, 0, -1, 0, 1, [0, rgba(b.color, 0), 0.3, rgba(b.color, 0.5), 0.5, rgba('#ffffff', 0.95), 0.7, rgba(b.color, 0.5), 1, rgba(b.color, 0)]);
+  if (w > 0.01 && kq > 0) { ctx.save(); ctx.globalAlpha *= kq; ctx.scale(1, w); ctx.fillRect(0, -1, L, 2); ctx.restore(); }
   glow(ctx, 0, 0, w * 2.2, b.color, k);
   glow(ctx, L, 0, w * 1.6, b.color, k * 0.8);
 }

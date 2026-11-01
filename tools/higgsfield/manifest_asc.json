@@ -1,9 +1,9 @@
 {
- "batch": "asc (Stage 8 — tier-3/hidden ascension puppets, pilot kael)",
+ "batch": "asc (Stage 8 — tier-3/hidden ascension puppets: kael 5 + sera 5)",
  "server": "Higgsfield MCP 059c3459",
- "uploads": "only game art: 5 parent side arts + 5 new side arts",
- "images": 15,
- "credits": 7.5,
+ "uploads": "only game art: 10 parent side arts + 10 new side arts",
+ "images": 30,
+ "credits": 15.0,
  "hands": "not generated — reused parent hand sheets (same glove design)",
  "items": [
   {
@@ -260,6 +260,261 @@
    "credits": 0.5,
    "kept": true,
    "note": "views came out facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  },
+  {
+   "file": "tools/puppet/src/sera/sera_archsaint_side.webp",
+   "cls": "sera_archsaint",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/sera/sera_saint_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young woman (same face, silver-white hair, cyan eyes) ... exact same walking side pose facing right ... same camera, framing, scale, position ... same painterly dark-fantasy rendering as the reference (not flat cel shading) ... Change ONLY her costume and colors into: ARCH SAINT - white robe and veil with rich gold (#ffd84a) filigree and sun motifs, gold lattice corset with white gems, white-and-gold lace collar, taller radiant gold sun crown with cross, gold lining. ... No cape, no cloak, no wings, no halo, no glowing aura, no light effects, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "f672a7d4-c5e2-49f7-bc2a-15acb48d7a3e",
+   "credits": 0.5,
+   "kept": true,
+   "note": "picked: alpha IoU vs parent .89-.94 after bbox fit"
+  },
+  {
+   "file": null,
+   "cls": "sera_archsaint",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/sera/sera_saint_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young woman (same face, silver-white hair, cyan eyes) ... exact same walking side pose facing right ... same camera, framing, scale, position ... same painterly dark-fantasy rendering as the reference (not flat cel shading) ... Change ONLY her costume and colors into: ARCH SAINT - white robe and veil with rich gold (#ffd84a) filigree and sun motifs, gold lattice corset with white gems, white-and-gold lace collar, taller radiant gold sun crown with cross, gold lining. ... No cape, no cloak, no wings, no halo, no glowing aura, no light effects, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "b8de8692-5b76-4d01-b6b5-218ede3e46f0",
+   "credits": 0.5,
+   "kept": false,
+   "note": "other candidate (also on-pose; not picked)"
+  },
+  {
+   "file": "tools/puppet/src/sera/sera_archsaint_turn5.webp",
+   "cls": "sera_archsaint",
+   "kind": "turnaround 5 views",
+   "ref": "tools/puppet/src/sera/sera_archsaint_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the woman in the reference image, wearing exactly her outfit: ARCH SAINT - white robe and veil with rich gold (#ffd84a) filigree and sun motifs, gold lattice corset with white gems, white-and-gold lace collar, taller radiant gold sun crown with cross, gold lining ... Five full-body views in one row (front, 3/4 front, side, back, 3/4 back), empty hands ... painterly, not cel shading ... plain flat solid #00FF00 green background, no text.",
+   "job_id": "b2331baa-fb7b-48a9-9dad-6c5ddcb4c5c5",
+   "credits": 0.5,
+   "kept": true,
+   "note": "views face RIGHT (labels y90,y45,y0,ym90,ym45)"
+  },
+  {
+   "file": "tools/puppet/src/sera/sera_prophetess_side.webp",
+   "cls": "sera_prophetess",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/sera/sera_oracle_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young woman (same face, silver-white hair, cyan eyes) ... exact same walking side pose facing right ... same camera, framing, scale, position ... same painterly dark-fantasy rendering as the reference (not flat cel shading) ... Change ONLY her costume and colors into: PROPHETESS - deep navy (#2a2a5a) robe and veil with gold (#e8c872) star constellations and ice-blue (#a8e0ff) frost-rune border, silver-and-gold breastplate with crystal eye, gold crescent diadem, ice-blue lining. ... No cape, no cloak, no wings, no halo, no glowing aura, no light effects, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "a275c9f4-8b77-4fc4-832b-ca26dc2db37d",
+   "credits": 0.5,
+   "kept": true,
+   "note": "picked: alpha IoU vs parent .89-.94 after bbox fit"
+  },
+  {
+   "file": null,
+   "cls": "sera_prophetess",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/sera/sera_oracle_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young woman (same face, silver-white hair, cyan eyes) ... exact same walking side pose facing right ... same camera, framing, scale, position ... same painterly dark-fantasy rendering as the reference (not flat cel shading) ... Change ONLY her costume and colors into: PROPHETESS - deep navy (#2a2a5a) robe and veil with gold (#e8c872) star constellations and ice-blue (#a8e0ff) frost-rune border, silver-and-gold breastplate with crystal eye, gold crescent diadem, ice-blue lining. ... No cape, no cloak, no wings, no halo, no glowing aura, no light effects, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "b23063da-b0f7-458b-8682-819cf97d935b",
+   "credits": 0.5,
+   "kept": false,
+   "note": "other candidate (also on-pose; not picked)"
+  },
+  {
+   "file": "tools/puppet/src/sera/sera_prophetess_turn5.webp",
+   "cls": "sera_prophetess",
+   "kind": "turnaround 5 views",
+   "ref": "tools/puppet/src/sera/sera_prophetess_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the woman in the reference image, wearing exactly her outfit: PROPHETESS - deep navy (#2a2a5a) robe and veil with gold (#e8c872) star constellations and ice-blue (#a8e0ff) frost-rune border, silver-and-gold breastplate with crystal eye, gold crescent diadem, ice-blue lining ... Five full-body views in one row (front, 3/4 front, side, back, 3/4 back), empty hands ... painterly, not cel shading ... plain flat solid #00FF00 green background, no text.",
+   "job_id": "c5e35a6e-14cd-4593-8756-f0334dd29ded",
+   "credits": 0.5,
+   "kept": true,
+   "note": "views face RIGHT (labels y90,y45,y0,ym90,ym45)"
+  },
+  {
+   "file": null,
+   "cls": "sera_archsage",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/sera/sera_archmage_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young woman (same face, silver-white hair, cyan eyes) ... exact same walking side pose facing right ... same camera, framing, scale, position ... same painterly dark-fantasy rendering as the reference (not flat cel shading) ... Change ONLY her costume and colors into: ARCHSAGE - same witch hat in black-violet with gold band and three-gem brooch, black-violet (#1a0a2a) robe with gold arcane circles, three rune bands (orange/ice blue/yellow), orange lining, chained grimoire, gold rune bracers. ... No cape, no cloak, no wings, no halo, no glowing aura, no light effects, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "a2a1972a-225a-4080-8fe8-891b42c9f479",
+   "credits": 0.5,
+   "kept": false,
+   "note": "other candidate (also on-pose; not picked)"
+  },
+  {
+   "file": "tools/puppet/src/sera/sera_archsage_side.webp",
+   "cls": "sera_archsage",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/sera/sera_archmage_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young woman (same face, silver-white hair, cyan eyes) ... exact same walking side pose facing right ... same camera, framing, scale, position ... same painterly dark-fantasy rendering as the reference (not flat cel shading) ... Change ONLY her costume and colors into: ARCHSAGE - same witch hat in black-violet with gold band and three-gem brooch, black-violet (#1a0a2a) robe with gold arcane circles, three rune bands (orange/ice blue/yellow), orange lining, chained grimoire, gold rune bracers. ... No cape, no cloak, no wings, no halo, no glowing aura, no light effects, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "fca7916c-901e-4bba-9422-852ef974da39",
+   "credits": 0.5,
+   "kept": true,
+   "note": "picked: alpha IoU vs parent .89-.94 after bbox fit"
+  },
+  {
+   "file": "tools/puppet/src/sera/sera_archsage_turn5.webp",
+   "cls": "sera_archsage",
+   "kind": "turnaround 5 views",
+   "ref": "tools/puppet/src/sera/sera_archsage_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the woman in the reference image, wearing exactly her outfit: ARCHSAGE - same witch hat in black-violet with gold band and three-gem brooch, black-violet (#1a0a2a) robe with gold arcane circles, three rune bands (orange/ice blue/yellow), orange lining, chained grimoire, gold rune bracers ... Five full-body views in one row (front, 3/4 front, side, back, 3/4 back), empty hands ... painterly, not cel shading ... plain flat solid #00FF00 green background, no text.",
+   "job_id": "e2c36cce-a1f8-4edd-a52f-797d1a94c1ee",
+   "credits": 0.5,
+   "kept": true,
+   "note": "views face RIGHT (labels y90,y45,y0,ym90,ym45)"
+  },
+  {
+   "file": null,
+   "cls": "sera_tempest",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/sera/sera_stormcaller_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young woman (same face, silver-white hair, cyan eyes) ... exact same walking side pose facing right ... same camera, framing, scale, position ... same painterly dark-fantasy rendering as the reference (not flat cel shading) ... Change ONLY her costume and colors into: TEMPEST - storm navy (#1a2a4a) coat-robe with ice-blue (#bfe0ff) trim and silver lightning embroidery, silver breastplate with lightning sigil, storm-cloud shoulder plate, tiara with blue crystal and lightning spikes, empty open hand. ... No cape, no cloak, no wings, no halo, no glowing aura, no light effects, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "ee5520a6-9f33-4206-b862-df3a3637862f",
+   "credits": 0.5,
+   "kept": false,
+   "note": "other candidate (also on-pose; not picked)"
+  },
+  {
+   "file": "tools/puppet/src/sera/sera_tempest_side.webp",
+   "cls": "sera_tempest",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/sera/sera_stormcaller_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young woman (same face, silver-white hair, cyan eyes) ... exact same walking side pose facing right ... same camera, framing, scale, position ... same painterly dark-fantasy rendering as the reference (not flat cel shading) ... Change ONLY her costume and colors into: TEMPEST - storm navy (#1a2a4a) coat-robe with ice-blue (#bfe0ff) trim and silver lightning embroidery, silver breastplate with lightning sigil, storm-cloud shoulder plate, tiara with blue crystal and lightning spikes, empty open hand. ... No cape, no cloak, no wings, no halo, no glowing aura, no light effects, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "8c3ff98f-0fcd-4603-b568-18f8027b2a40",
+   "credits": 0.5,
+   "kept": true,
+   "note": "picked: alpha IoU vs parent .89-.94 after bbox fit"
+  },
+  {
+   "file": "tools/puppet/src/sera/sera_tempest_turn5.webp",
+   "cls": "sera_tempest",
+   "kind": "turnaround 5 views",
+   "ref": "tools/puppet/src/sera/sera_tempest_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the woman in the reference image, wearing exactly her outfit: TEMPEST - storm navy (#1a2a4a) coat-robe with ice-blue (#bfe0ff) trim and silver lightning embroidery, silver breastplate with lightning sigil, storm-cloud shoulder plate, tiara with blue crystal and lightning spikes, empty open hand ... Five full-body views in one row (front, 3/4 front, side, back, 3/4 back), empty hands ... painterly, not cel shading ... plain flat solid #00FF00 green background, no text.",
+   "job_id": "9d794eb4-35f9-40ca-b7d6-ab4343dadd8d",
+   "credits": 0.5,
+   "kept": true,
+   "note": "views face RIGHT (labels y90,y45,y0,ym90,ym45)"
+  },
+  {
+   "file": null,
+   "cls": "sera_bellsaint",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/sera/sera_exorcist_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young woman (same face, silver-white hair, cyan eyes) ... exact same walking side pose facing right ... same camera, framing, scale, position ... same painterly dark-fantasy rendering as the reference (not flat cel shading) ... Change ONLY her costume and colors into: BELL SAINT - white habit and veil with pale silver (#c8d0e0) trim, bell-and-anchor emblems, silver corset, silver bell pendant, tiny bells on the hem, silver headband with bell charm, white boots. ... No cape, no cloak, no wings, no halo, no glowing aura, no light effects, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "fa7572a7-7a8a-486d-909d-69f1c55d85aa",
+   "credits": 0.5,
+   "kept": false,
+   "note": "other candidate (also on-pose; not picked)"
+  },
+  {
+   "file": "tools/puppet/src/sera/sera_bellsaint_side.webp",
+   "cls": "sera_bellsaint",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/sera/sera_exorcist_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young woman (same face, silver-white hair, cyan eyes) ... exact same walking side pose facing right ... same camera, framing, scale, position ... same painterly dark-fantasy rendering as the reference (not flat cel shading) ... Change ONLY her costume and colors into: BELL SAINT - white habit and veil with pale silver (#c8d0e0) trim, bell-and-anchor emblems, silver corset, silver bell pendant, tiny bells on the hem, silver headband with bell charm, white boots. ... No cape, no cloak, no wings, no halo, no glowing aura, no light effects, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "89d0e227-9dd7-4098-ac27-bce6446da7c3",
+   "credits": 0.5,
+   "kept": true,
+   "note": "picked: alpha IoU vs parent .89-.94 after bbox fit"
+  },
+  {
+   "file": "tools/puppet/src/sera/sera_bellsaint_turn5.webp",
+   "cls": "sera_bellsaint",
+   "kind": "turnaround 5 views",
+   "ref": "tools/puppet/src/sera/sera_bellsaint_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the woman in the reference image, wearing exactly her outfit: BELL SAINT - white habit and veil with pale silver (#c8d0e0) trim, bell-and-anchor emblems, silver corset, silver bell pendant, tiny bells on the hem, silver headband with bell charm, white boots ... Five full-body views in one row (front, 3/4 front, side, back, 3/4 back), empty hands ... painterly, not cel shading ... plain flat solid #00FF00 green background, no text.",
+   "job_id": "46e8db4b-c1e8-4ec8-aa2d-c8a9b2a8ba9f",
+   "credits": 0.5,
+   "kept": true,
+   "note": "views face RIGHT (labels y90,y45,y0,ym90,ym45)"
   }
  ]
 }
