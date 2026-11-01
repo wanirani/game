@@ -1,6 +1,7 @@
 // Virtual touch pad suite — platform.md §11 WP-2 (acceptance 1–6), §5.2–5.5; MASTER_PLAN §1.4 touch layout (P-20, P-31).
 //
-//   node tools/qa/platform_touch.mjs [--only layout,slide,multi,stick,cooldown,band,editor,fold] [--vp phone1,phone2,tablet,fold_open] [--strict]
+//   node tools/qa/platform_touch.mjs [--only layout,slide,multi,stick,cooldown,band,editor,fold,lefty] [--vp phone1,phone2,tablet,fold_open] [--strict]
+//   lefty (Stage 6 「왼손 모드」 settings.touchLeftHanded): phone2 · fold_open → 거울 배치(버튼 왼쪽, 스틱 오른쪽) 같은 판정 + 오른쪽 스틱 + 편집기 저장
 //   fold (hud_mobile §3): fold_open → 폴드 배치(스킬 원호·아이콘 줄), HUD 탭 자리(빠른 칸 0 → 보조무기, 미니맵 → 큰 지도), 편집기 저장은 'fold:<id>'
 //   node tools/qa/platform_touch.mjs --layout      # only the layout matrix: 10 buttons incl. mount/guard at size classes S/M/L
 //                                                  # and touchScale 0.8 / 1 / 1.3: gaps ≥ 12 px, ≥ 44 CSS px, inside the safe rect
@@ -16,7 +17,7 @@ import { prepPlayer } from './lib/play.mjs';
 
 const args = parseArgs();
 if (args.layout) { args.only = args.only || ['layout', 'matrix']; args.tag = 'layout'; }
-else if (!args.only) args.only = ['layout', 'slide', 'multi', 'stick', 'cooldown', 'band', 'editor', 'fold']; // the matrix runs with --layout
+else if (!args.only) args.only = ['layout', 'slide', 'multi', 'stick', 'cooldown', 'band', 'editor', 'fold', 'lefty']; // the matrix runs with --layout
 const suite = new Suite('platform_touch', args);
 const env = await openEnv();
 const PKG = 'PLAT-TOUCH';
@@ -261,6 +262,52 @@ try {
     await suite.check({ id: 'fold.hudtaps', group: 'fold', gate: PKG, title: 'fold: quick slot 0 presses sub; minimap tap opens the big map, a tap anywhere closes it', session: s }, async () => ({ pass: sub === true && map1 === true && map2 === false, detail: `sub ${sub}; big map after tap ${map1}, after 2nd tap ${map2}` }));
     await suite.errors({ id: 'fold.errors', group: 'fold' }, s);
     await s.close();
+  }, env);
+  // ── 8. 왼손 모드 (Stage 6 PHONE): 거울 배치 — 같은 배치 판정, 공격 버튼 왼쪽 아래, 스틱은 오른쪽, 편집기 저장 ─────────────
+  await suite.group('lefty', async () => {
+    for (const vp of suite.vps(['phone2', 'fold_open'])) {
+      const { s, t, W, H } = await touchStage(vp, { insets: NOTCH_INSETS, settings: { touchLeftHanded: true } });
+      const L = await padLayout(s.page, { all: true });
+      await suite.check({ id: `lefty.layout.${vp}`, group: 'lefty', gate: PKG, title: 'left-handed: 10 buttons + Ⅱ/가방 ≥ 44 CSS px, gaps ≥ 12 px, inside the safe rect', session: s }, async () => judgeLayout(L, W, H, NOTCH_INSETS, [...PAD_BUTTON_IDS, 'pause', 'bag']));
+      const A = L.buttons.attack, J = L.buttons.jump;
+      const acts = PAD_BUTTON_IDS.filter((id) => L.buttons[id]);
+      const leftSide = acts.filter((id) => L.buttons[id].cx < W * 0.5);
+      await suite.check({ id: `lefty.mirror.${vp}`, group: 'lefty', gate: PKG, title: 'left-handed: action buttons on the left half (attack bottom-left)', session: s }, async () => ({
+        pass: !!A && !!J && A.cx < W * 0.4 && A.cy > H * 0.55 && leftSide.length === acts.length,
+        detail: `attack ${A ? `${A.cx.toFixed(0)},${A.cy.toFixed(0)}` : '?'} jump ${J ? `${J.cx.toFixed(0)},${J.cy.toFixed(0)}` : '?'}; on left ${leftSide.length}/${acts.length} [${L.source}]`,
+      }));
+      // 스틱: 화면 오른쪽 (버튼 없는 곳)에서 떠오르고 +40 px → 오른쪽
+      const sx = W * 0.78, sy = H * 0.62;
+      await t.down(52, sx, sy); await s.wait(150);
+      const a = await inputState(s, ['left', 'right', 'up', 'down']);
+      for (let i = 1; i <= 4; i++) { await t.move(52, sx + i * 10, sy); await s.wait(20); }
+      await s.wait(120);
+      const b = await inputState(s, ['left', 'right', 'up', 'down']);
+      await t.up(52); await s.wait(80);
+      await suite.check({ id: `lefty.stick.${vp}`, group: 'lefty', gate: PKG, title: 'left-handed: the floating stick lives on the right half', session: s }, async () => ({ pass: !Object.values(a).some(Boolean) && b.right && !b.left && !b.up && !b.down, detail: `touch at ${sx.toFixed(0)},${sy.toFixed(0)}: ${fmt(a)} → +40 px ${fmt(b)}` }));
+      // 편집기: 왼손 배치에서도 끌어 옮기고 저장
+      let saved = null, opened = null;
+      if (A) {
+        opened = await s.eval(async () => { const tp = (await import('/src/core/touchpad.js')).touchpad; try { tp.openEditor(); } catch (e) { return 'ERR ' + e.message; } return !!document.getElementById('tpad'); });
+        await s.wait(400);
+        const A0 = (await padLayout(s.page, { all: true })).buttons.attack;
+        if (opened === true && A0) {
+          await t.drag(A0.cx, A0.cy, A0.cx + 50, A0.cy - 20, { steps: 8, stepMs: 20, hold: 100 });
+          await s.wait(200);
+          await s.eval(async () => { const tp = (await import('/src/core/touchpad.js')).touchpad; tp.closeEditor({ save: true }); });
+          await s.wait(300);
+          saved = await s.eval(() => { const L = window.__game.settings?.touchLayout; return L ? Object.keys(L).filter((k) => /attack/.test(k)) : null; });
+        }
+      }
+      const A2 = (await padLayout(s.page, { all: true })).buttons.attack;
+      await suite.check({ id: `lefty.editor.${vp}`, group: 'lefty', gate: PKG, title: 'left-handed: layout editor drag is saved and stays on the left', session: s }, async () => ({
+        pass: opened === true && !!saved?.length && !!A2 && !!A && A2.cx > A.cx + 30 && A2.cx < W * 0.5,
+        detail: `editor ${opened}; saved keys ${fmt(saved)}; attack ${A ? A.cx.toFixed(0) : '?'} → ${A2 ? A2.cx.toFixed(0) : '?'}`,
+      }));
+      await s.screenshot(`/tmp/claude-0/s6/fold/phone/lefty_${vp}.png`);
+      await suite.errors({ id: `lefty.${vp}.errors`, group: 'lefty' }, s);
+      await s.close();
+    }
   }, env);
 } catch (e) {
   await suite.check({ id: 'harness', group: 'harness', title: 'suite ran to completion' }, async () => { throw e; });

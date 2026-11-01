@@ -386,8 +386,9 @@ export class QuestBoardScene extends ServiceScene {
       text(ctx, `${sm.rankName}  ·  ${fmt(sm.pts)}점`, r.x + r.w / 2, y, { size: 15, weight: 800, align: 'center', color: INK, outline: null, ow: 0, maxWidth: w });
       y += 10;
       bar(ctx, x, y, w, 6, sm.next.cur / Math.max(1, sm.next.need), { color: '#6a9a2a', back: 'rgba(60,40,20,0.3)', edge: '#5a4020', shine: false });
-      y += 18;
-      text(ctx, sm.next.next ? `다음 등급 「${sm.next.next}」까지 ${fmt(sm.next.need - sm.next.cur)}점` : '가장 높은 등급이다', r.x + r.w / 2, y, { size: 12, align: 'center', color: INK2, outline: null, ow: 0, maxWidth: w });
+      // 낮은 양피지(휴대폰)는 다음 등급 줄을 빼서 보상 칸이 잘리지 않게
+      if (r.h >= 440) { y += 24; text(ctx, sm.next.next ? `다음 등급 「${sm.next.next}」까지 ${fmt(sm.next.need - sm.next.cur)}점` : '가장 높은 등급이다', r.x + r.w / 2, y, { size: 12, align: 'center', color: INK2, outline: null, ow: 0, maxWidth: w }); }
+      else y += 4;
     }
     ctx.fillStyle = 'rgba(90,60,30,0.4)'; ctx.fillRect(x, y + 10, w, 1.5); y += 34;
     if (!e) {

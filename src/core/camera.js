@@ -299,9 +299,10 @@ export class Camera {
     if (sides && bd && B && !B.dead && !B.hidden && CAM_FLAGS.bossSafe) {
       const bx0 = clamp(B.x, bd.x, bd.x + bd.w), bx1 = clamp(B.x + (B.w ?? 0), bd.x, bd.x + bd.w);
       const sr = sides.r * zk, sl = sides.l * zk, hv = vwB / 2;
-      const bossMin = bx1 + OVER_PAD + sr - hv, heroMax = t.x - OVER_PAD - sl + hv;   // 보스 오른끝이 묶음 왼쪽에 · 영웅 왼끝이 스틱 오른쪽에
+      const em = vwB * BOSS_EDGE;   // 영웅은 화면 가장자리에서 15 % 안쪽 (위 보스 구도와 같은 규칙) — 영웅 우선
+      const bossMin = bx1 + OVER_PAD + sr - hv, heroMax = t.x - Math.min(sl, em) + hv;   // 보스 오른끝이 묶음 왼쪽에 · 영웅은 왼쪽 가장자리 안쪽에
       if (sr > 0 && bossMin > fx) fx = Math.max(fx, Math.min(bossMin, heroMax));
-      const bossMax = bx0 - OVER_PAD - sl + hv, heroMin = t.x + t.w + OVER_PAD + sr - hv;
+      const bossMax = bx0 - OVER_PAD - sl + hv, heroMin = t.x + t.w + Math.min(sr, em) - hv;
       if (sl > 0 && bossMax < fx) fx = Math.min(fx, Math.max(bossMax, heroMin));
       bossR = clamp(fx + hv - (bd.x + bd.w), 0, sr);
       bossL = clamp(bd.x - (fx - hv), 0, sl);

@@ -56,6 +56,10 @@ const CASES = [
   // s26_rush = 1부 외전 코스 「외전 Ⅰ」(#18, 기기 기록): s26 을 연 1부 세이브만 고를 수 있고 (2부·2부 외전을 몰라도), 첫 보스가 나온다. 새 세이브는 코스 0 으로 돌아간다
   { id: 's26_rush', url: 'index.html?scene=arcade', steps: 'wait:1.5,rush26:25,shot' },
   { id: 's26_flow', url: 'index.html?scene=stage&stage=s26', steps: 'wait:3,god:1,shot,rooms:r2|r3|r4|r5,shot,rooms:boss,rightboss:10,intro:25,painted:10,wait:1,shot,bosskill:150,wait:1.5,shot,tohub:150,shot,s26check:1' },
+  // [s6:hunt] 사냥 일지 (game/hunt_journal.js): 1장을 깬 세이브로 일지를 열고 오늘 계약 하나를 「촛불 사냥 1개」로 바꾼 뒤 진짜 촛대 경로(world.dropFromCandle →
+  //  'candleBroken')로 달성 → 플레이 중 토스트 → 마을 → 의뢰 게시판 「사냥 일지」 탭 (오늘 3 + 주간 1, 달성 칸 선택) → 결정(Enter)으로 보상 받기 → 팝업 ·
+  //  골드·일지 점수 · 두 번째 받기는 거절. huntboard 는 게시판의 탭 · 단추 크기(터치 44px)도 본다
+  { id: 'hunt', url: 'index.html?scene=stage&stage=s01', steps: 'wait:3,hunt:1,wait:0.6,shot,huntboard:1,wait:0.6,shot,huntclaim:1,wait:0.8,shot' },
 ];
 if (args.list) { console.log(CASES.map((c) => c.id).join(' ')); process.exit(0); }
 const only = args.only ? String(args.only).split(',').map((s) => s.trim()).filter(Boolean) : null;
@@ -328,6 +332,54 @@ for (const c of CASES) {
         if (!seen.includes('results')) errs.push(`TOHUB 결과 화면이 없었음 (${seen.join('>')})`);
         if (!seen.includes('story')) errs.push(`TOHUB 아웃트로(이야기 장면)가 없었음 (${seen.join('>')})`);
         console.log(`    · ${c.id} 장면 ${seen.join(' > ')}`);
+        continue;
+      }
+      if (k === 'hunt') {   // [s6:hunt] 계약 달성 (진짜 촛대 경로) → 토스트
+        const r = await page.evaluate(() => {
+          const g = window.__game, s = g.state, w = g.world;
+          if (!g.hunt || !w?.player) return { err: 'game.hunt · world 없음' };
+          s.progress.cleared.s01 ??= { rank: 'B', time: 300, score: 1 };
+          const h = g.hunt.sync();
+          const id = `d${h.day}_0`;
+          h.picks = h.picks.filter((c) => c.id !== id).concat([{ id, slot: 'd', kind: 'candle', stage: 's01', lv: 1, n: 1 }]);
+          delete h.prog[id];
+          w.dropFromCandle(w.player.cx, w.player.y, false);
+          return { id, prog: h.prog[id] ?? 0, n: h.picks.length, toast: (g.toasts ?? []).some((t) => /사냥 일지 달성/.test(String(t.text))) };
+        });
+        if (r.err || r.prog !== 1 || !r.toast || r.n !== 4) errs.push(`HUNT 촛대로 계약이 달성되지 않음 (${JSON.stringify(r)})`);
+        console.log(`    · ${c.id} 달성: ${JSON.stringify(r)}`);
+        continue;
+      }
+      if (k === 'huntboard') {   // [s6:hunt] 마을 → 의뢰 게시판 → 「사냥 일지」 탭, 달성 칸 고르기
+        await page.evaluate(() => window.__game.go('hub', {}, { fade: false }));
+        await page.waitForTimeout(1500);
+        await page.evaluate(() => window.__game.push('questboard', {}));
+        await page.waitForTimeout(1200);
+        const r = await page.evaluate(() => {
+          const g = window.__game, b = g.top;
+          if (b?.name !== 'questboard') return { err: `맨 위 장면 ${b?.name}` };
+          b.setTab(3);
+          const i = b.entries.findIndex((e) => e.done && !e.claimed);
+          if (i >= 0) b.list.index = i;
+          return { tabs: b.tabs.map((t) => t.label), n: b.entries.length, ready: i, badge: b.tabs[3].badge };
+        });
+        await page.waitForTimeout(400);
+        const z = await page.evaluate(() => { const b = window.__game.top; return { act: b.actRect ? { w: b.actRect.w, h: b.actRect.h } : null, k: window.__game.uiK ?? 1 }; });
+        if (r.err || r.n !== 4 || r.ready < 0 || r.tabs[3] !== '사냥 일지' || r.badge !== '★') errs.push(`HUNTBOARD 사냥 일지 탭이 이상함 (${JSON.stringify(r)})`);
+        if (!z.act || z.act.h < 44) errs.push(`HUNTBOARD 받기 단추가 작음 (${JSON.stringify(z)})`);
+        console.log(`    · ${c.id} 게시판: ${JSON.stringify({ ...r, ...z })}`);
+        continue;
+      }
+      if (k === 'huntclaim') {   // [s6:hunt] 결정(Enter) → 보상 팝업 · 골드 · 점수, 두 번째는 거절
+        const g0 = await page.evaluate(() => ({ gold: window.__game.state.gold, pts: window.__game.state.hunt.pts }));
+        await page.keyboard.press(KEY.enter);
+        await page.waitForTimeout(700);
+        const r = await page.evaluate(() => {
+          const g = window.__game, b = g.top, h = g.state.hunt, e = b.cur;
+          return { popup: !!b.popup, gold: g.state.gold, pts: h.pts, claimed: h.claimed.slice(), again: e ? g.hunt.claim(e.c.id) : 'none' };
+        });
+        if (!r.popup || r.pts !== g0.pts + 10 || !(r.gold > g0.gold) || r.again !== null || r.claimed.length !== 1) errs.push(`HUNTCLAIM 보상 받기가 이상함 (${JSON.stringify({ g0, ...r })})`);
+        console.log(`    · ${c.id} 받기: ${JSON.stringify({ g0, ...r })}`);
         continue;
       }
       if (k === 's26check') {

@@ -378,7 +378,15 @@ export class EquipTab extends Tab {
         }
         if (shown.length) y = yy + 18;
       }
-      heading(c, '주요 능력치', MX + 14, y, MW - 28, { size: 14 });
+      // 세트 줄이 들어갈 자리가 없으면(휴대폰 가로) 제목 옆에 「세트명」 n/총 만 줄여서
+      let hsub = null, hcol = PAL.dim;
+      if (setL.length && !fitSetLines(setL, Math.floor((sBot - 8 - (A.y + sh + 24) - 3 * Math.max(15, Math.ceil(textFloor() * 1.15)) - 30) / Math.max(15, Math.ceil(textFloor() * 1.2)))).length) {
+        const heads = setL.filter((l) => l.head);
+        const avail = MW - 28 - 22 - measure(c, '주요 능력치', 14, 800, FONT.title);
+        const full = heads.map((l) => l.text).join(' · '), short = '세트 ' + heads.map((l) => l.short).join(' · ');
+        if (heads.length && avail > 40) { hsub = measure(c, full, 12, 600) <= avail ? full : ellipsize(c, short, avail, 12, 600); hcol = heads[0].color; }
+      }
+      heading(c, '주요 능력치', MX + 14, y, MW - 28, { size: 14, sub: hsub, subColor: hcol });
       y += 8;
       // 줄 높이는 글자 크기 하한(설정 '글자 크기')에서 잡는다: 한 열에 다 들어가지 않으면 2열 (증감은 색으로만),
       // 2열로도 넘치면 뒤쪽 줄을 뺀다 (크게·아주 크게에서 줄이 겹치지 않게)
@@ -548,10 +556,17 @@ function setLinesOf(state, hero, pv) {
   for (const k in counts) {
     const S = RELIC_SETS[k];
     if (!S) continue;
-    out.push({ text: `「${S.name}」 ${counts[k]}/${S.pieces.length}`, color: S.color, head: true });
-    for (const l of setBonusLines(k, counts[k], fmtStat)) out.push({ text: l.text, color: l.on ? PAL.good : PAL.faint, on: l.on });
+    out.push({ text: `「${S.name}」 ${counts[k]}/${S.pieces.length}`, short: `${counts[k]}/${S.pieces.length}`, color: S.color, head: true });
+    for (const l of setBonusLines(k, counts[k], shortStat)) out.push({ text: l.text, color: l.on ? PAL.good : PAL.faint, on: l.on });
   }
   return out;
+}
+/** 가운데 칸이 좁아 세트 줄의 능력치 이름을 줄인다 (카드에는 원래 이름) */
+const SET_SHORT = { '최대 HP': 'HP', '최대 MP': 'MP', '마법 저항': '저항', '치명타 확률': '치명', '치명타 피해': '치명 피해', '필살 게이지 충전': '필살 충전', '받는 피해 감소': '피해 감소', '보조무기 피해': '보조 피해', '재사용 대기 감소': '대기 감소' };
+function shortStat(k, v) {
+  const t = fmtStat(k, v);
+  for (const [a, b] of Object.entries(SET_SHORT)) if (t.startsWith(a + ' ')) return b + t.slice(a.length);
+  return t;
 }
 /** room 줄 안에 맞추기: 머리줄 > 켜진 단계 > 꺼진 단계 순으로 남긴다 (원래 순서 유지) */
 function fitSetLines(L, room) {

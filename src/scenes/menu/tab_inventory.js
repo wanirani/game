@@ -458,6 +458,10 @@ function setRich(state, hero, inst, b) {
   try {
     const n = heroSetCounts(state, hero)[b.set];
     const r = itemDescRich(inst, { setCount: n ?? 0 });
-    return Array.isArray(r) ? r : null;
+    if (!Array.isArray(r)) return null;
+    // 세트 머리줄(「세트명」 n/총)은 단계 줄 바로 다음으로 올린다 — 낮은 상세 칸(휴대폰)에서 뒤쪽 줄이 잘려도 보이게
+    const hi = r.findIndex((l) => l.set && l.on === undefined);
+    if (hi > 2) { const [h] = r.splice(hi, 1); r.splice(2, 0, h); }
+    return r;
   } catch (e) { console.warn('[relic]', e); return null; }
 }

@@ -18,13 +18,13 @@ export const RELIC_SETS = {
     drop: { stages: ['s02', 's03', 's04', 's05'], bosses: ['b_banshee', 'b_dullahan', 'b_crimson', 'b_bonedragon'] },
     bonus: [
       { n: 2, stats: { atk: 2, crit: 3 } },
-      { n: 4, stats: { atk: 3, lifesteal: 1.5, moveSpd: 4 } },
+      { n: 4, stats: { atk: 2, lifesteal: 1.5, moveSpd: 4 } },
     ],
     pieces: [
       ['rs_blood_head', 'head', '혈월 사냥꾼의 두건', 'head_1', { headgear: 'hood', color: '#4a1018' }, { agi: 2 }, '붉은 달이 뜨는 밤에만 쓰던 사냥꾼의 두건. 피 냄새가 배어 있다.'],
-      ['rs_blood_body', 'body', '혈월 사냥꾼의 가죽옷', 'body_2', { armor: 'leather', color: '#4a1420', trim: '#c8a040' }, { atk: 2 }, '흡혈귀의 피를 먹여 무두질한 가죽옷. 달빛 아래서 검붉게 빛난다.'],
+      ['rs_blood_body', 'body', '혈월 사냥꾼의 가죽옷', 'body_2', { armor: 'leather', color: '#4a1420', trim: '#c8a040' }, { agi: 2, hp: 10 }, '흡혈귀의 피를 먹여 무두질한 가죽옷. 달빛 아래서 검붉게 빛난다.'],
       ['rs_blood_cloak', 'cloak', '혈월 사냥꾼의 망토', 'cloak_3', { cape: 'tattered', color: '#7a0a1e', color2: '#2a0610', len: 1.05 }, { moveSpd: 3 }, '핏빛 달을 수놓은 망토. 사냥꾼들은 이 망토를 보고 서로를 알아봤다.'],
-      ['rs_blood_ring', 'acc', '혈월 사냥꾼의 반지', 'ring_6', null, { atk: 3, crit: 2 }, '붉은 달을 닮은 보석 반지. 끼면 맥박이 조금 빨라진다.'],
+      ['rs_blood_ring', 'acc', '혈월 사냥꾼의 반지', 'ring_6', null, { atk: 2, crit: 2 }, '붉은 달을 닮은 보석 반지. 끼면 맥박이 조금 빨라진다.'],
     ],
   },
   cathedral: {
@@ -50,11 +50,11 @@ export const RELIC_SETS = {
       { n: 4, stats: { skillDmg: 10, subDmg: 12, cdr: 5 } },
     ],
     pieces: [
-      ['rs_alch_head', 'head', '연금술사의 고글 모자', 'head_2', { headgear: 'wide_hat', color: '#3a3020' }, { mag: 5 }, '파라켈 공방의 견습생이 쓰던 모자. 챙에 깨진 렌즈가 매달려 있다.'],
+      ['rs_alch_head', 'head', '연금술사의 고글 모자', 'head_2', { headgear: 'wide_hat', color: '#3a3020' }, { mag: 3 }, '파라켈 공방의 견습생이 쓰던 모자. 챙에 깨진 렌즈가 매달려 있다.'],
       ['rs_alch_body', 'body', '연금술사의 작업복', 'body_1', { armor: 'leather', color: '#4a3a24', trim: '#7ee0c0' }, { mp: 25, resFire: 8 }, '약품에 그을린 두꺼운 작업복. 주머니마다 빈 플라스크가 들어 있다.'],
       ['rs_alch_cloak', 'cloak', '연금술사의 망토', 'cloak_2', { cape: 'plain', color: '#2a4a3a', color2: '#10201a', len: 1 }, { mp: 15, cdr: 3 }, '수은 얼룩이 별자리처럼 번진 망토. 불에 잘 타지 않는다.'],
-      ['rs_alch_flask', 'acc', '연금술사의 플라스크', 'potion_mp', { color: '#7ee0c0', type: 'ice' }, { mag: 12, subDmg: 8 }, '끝없이 끓는 초록 물약이 든 작은 병. 마개를 열면 안 된다.'],
-      ['rs_alch_ring', 'acc', '연금술사의 반지', 'ring_3', null, { mag: 10, mp: 20, mpRegen: 0.4 }, '현자의 돌 부스러기를 박았다는 반지. 진짜인지는 아무도 모른다.'],
+      ['rs_alch_flask', 'acc', '연금술사의 플라스크', 'potion_mp', { color: '#7ee0c0', type: 'ice' }, { mag: 8, subDmg: 8 }, '끝없이 끓는 초록 물약이 든 작은 병. 마개를 열면 안 된다.'],
+      ['rs_alch_ring', 'acc', '연금술사의 반지', 'ring_3', null, { mag: 6, mp: 20, mpRegen: 0.4 }, '현자의 돌 부스러기를 박았다는 반지. 진짜인지는 아무도 모른다.'],
     ],
   },
   void: {

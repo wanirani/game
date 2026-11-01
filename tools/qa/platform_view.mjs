@@ -3,7 +3,7 @@
 // that the W2 scene packages run (WP-4/6/7 acceptance "tap audit passes at 740×360").
 //
 //   node tools/qa/platform_view.mjs [--only <groups>] [--vp phone2,…] [--strict] [--assume PKG,…] [--shots]
-// groups: budget insets scale pacing governor stack boot pad settings pwa
+// groups: budget insets scale pacing governor stack boot pad settings pwa saver
 //         front options account arcade town games pause dialogue results
 // Report: /tmp/claude-0/qa/platform/platform_view.json
 import { Suite, fmt, near } from './lib/suite.mjs';
@@ -116,6 +116,24 @@ try {
     await suite.check({ id: 'pacing.120hz', group: 'pacing', issue: 'P-12', pkg: 'PLAT-CORE', title: '120 Hz rAF, fpsCap 60 → ≤ 61 renders/s', session: s }, async () => ({ pass: perSec <= 61, detail: `${perSec.toFixed(1)} renders/s, ${ticks.toFixed(1)} ticks/s over ${r.frames} frames`, metrics: r }));
     await suite.check({ id: 'pacing.sim', group: 'pacing', issue: 'P-12', pkg: 'PLAT-CORE', title: 'simulation stays at 60 ticks/s' }, async () => ({ pass: ticks > 57 && ticks < 63, detail: `${ticks.toFixed(1)} ticks/s` }));
     await suite.errors({ id: 'pacing.errors', group: 'pacing' }, s);
+    await s.close();
+  }, env);
+
+  // ── 4b. [phone] 절전 모드 (Stage 6, settings.batterySaver): fold_open 60 Hz rAF, 30 → ≈ 30 그림/s · 틱 60/s, 품질 한 단계 아래 ──
+  await suite.group('saver', async () => {
+    const s = await env.page('fold_open', 'index.html?scene=stage&stage=s01&debug', { settings: { quality: 'medium', batterySaver: 30 } });
+    await s.waitGame('!!g.world?.player');
+    await s.wait(1500);
+    await s.skipDialogue();
+    await runFrames(s.page, 1000 / 60, 30);
+    const r = await runFrames(s.page, 1000 / 60, 240);
+    const perSec = r.renders / (r.virtualMs / 1000), ticks = r.ticks / (r.virtualMs / 1000);
+    const st = await s.eval(() => ({ tier: window.__game.tier, q: window.__game.settings.quality, dpr: window.__game.dpr }));
+    await suite.check({ id: 'saver.fps30', group: 'saver', pkg: 'PHONE', title: 'battery saver 30 on fold_open at 60 Hz → 28–32 renders/s, 60 ticks/s', session: s }, async () => ({ pass: perSec > 28 && perSec < 32 && ticks > 57 && ticks < 63, detail: `${perSec.toFixed(1)} renders/s, ${ticks.toFixed(1)} ticks/s` }));
+    await suite.check({ id: 'saver.tier', group: 'saver', pkg: 'PHONE', title: "battery saver drops one quality tier (setting 'medium' → 'low'), setting unchanged" }, async () => ({ pass: st.tier === 'low' && st.q === 'medium', detail: fmt(st) }));
+    await s.wait(1200);
+    await s.screenshot('/tmp/claude-0/s6/fold/phone/saver30_fold_open.png');
+    await suite.errors({ id: 'saver.errors', group: 'saver' }, s);
     await s.close();
   }, env);
 

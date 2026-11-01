@@ -241,5 +241,11 @@ for (const k of RS.RELIC_SET_IDS) {
   }
 }
 
+{
+  const { checkSets } = await imp('tools/qa/lib/balance_sets.mjs');
+  const cs = checkSets();
+  ok(cs.rows.length === RS.RELIC_SET_IDS.length && cs.fails.length === 0, `balance_sets 띠 검사 통과 (${cs.fails.join(' / ') || '0건'})`);
+}
+
 console.log(`\n${fails ? '✗' : '✓'} test_relic_sets: ${passes} 통과, ${fails} 실패`);
 process.exit(fails ? 1 : 0);

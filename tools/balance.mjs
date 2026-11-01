@@ -453,4 +453,16 @@ if (!run) { /* --ng: 위에서 출력했다 */ } else if (JSON_OUT) {
     }
   }
 }
-if (run && CHECK && (fails.length || sideFails.length)) process.exitCode = 1;
+// 「피의 유물」 세트 (Stage 6 — tools/qa/lib/balance_sets.mjs): 세트 한 벌 + 최대 보너스가 같은 단계 일반 장비의 사이드그레이드~업그레이드이고
+//  한 단계 위 일반 장비가 따라잡는지 (영웅·난이도와 무관한 장비 데이터 검사라 기본 표 --check 에서만 한 번)
+let setFails = [];
+if (run && CHECK) {
+  const { checkSets } = await import('./qa/lib/balance_sets.mjs');
+  const cs = checkSets();
+  setFails = cs.fails;
+  if (!JSON_OUT) {
+    if (!setFails.length) console.log(`✓ 「피의 유물」 세트 ${cs.rows.length}개 띠 안 (` + cs.rows.map((r) => `${r.set} D ${r.D}/${r.Dband}${r.Dup != null ? '/' + r.Dup : ''} · O ${r.O}/${r.Oband}${r.Oup != null ? '/' + r.Oup : ''}`).join(' · ') + ')');
+    else { console.log(`✗ 「피의 유물」 세트 띠 밖 ${setFails.length}건:`); for (const f of setFails) console.log('   ' + f); }
+  }
+}
+if (run && CHECK && (fails.length || sideFails.length || setFails.length)) process.exitCode = 1;

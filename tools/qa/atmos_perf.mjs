@@ -11,6 +11,9 @@
 //   diff     같은 장면을 층을 끄고(setAtmosEnabled(false)) 다시 잰 프레임당 전체 그리기 수와의 중앙값 차이 (참고)
 //   grad/canv 워밍업 뒤 원경 층 안의 새 그라데이션·새 캔버스 = 0                                              — 수락 2
 //   bytes    구운 스프라이트 바이트 ≤ 1.5 MB (BOSS_PIPELINE §1.4 폰 예산 안)
+// --fg (Stage 6 FORE): 원경 층 대신 전경 층(render/foreground.js, bg.fg.draw)을 잰다 — 장면마다 ms p95 ≤ 0.3 (중간, 경고) ·
+//   drawImage ≤ 8 (중간·높음) · 낮음 = 0 · 워밍업 뒤 새 그라데이션·캔버스 0 · 아틀라스 ≤ 1.5 MB. 보고서 이름 atmos_perf_fg.
+//   node tools/qa/atmos_perf.mjs --fg --scenes s01,s07,s16 --tiers medium,low --vp fold_open
 // 보고서: /tmp/claude-0/qa/tools/atmos_perf.json (+ .md). 빨간 항목이 있으면 종료 코드 1.
 // 이 QA 상자는 소프트웨어 래스터이고 부하가 커서 ms 는 참고로 보고, Stage 4 가 끝난 뒤 검증자(P2v)가 기준선과 함께 다시 잰다.
 import { openEnv } from './lib/server.mjs';
@@ -25,8 +28,43 @@ const TIERS = list(args.tiers, ['medium', 'low']);
 const FR = Number(args.frames) || 120;
 const VP = String(args.vp || 'fold_open');
 const BUDGET = { ms: 0.25, draws: { high: 6, medium: 4, low: 0 }, bytes: 1.5 * 1048576 };
+const FG = !!args.fg;
+const FG_BUDGET = { ms: 0.3, draws: { high: 8, medium: 8, low: 0 } };
 const C = new Checks(false);
 const rows = [];
+
+/** --fg: 전경 층 한 장면 재기 (원경 층 재기와 같은 방법: 계측 켠 패스에서 그리기 수·그라데이션, 끈 패스에서 시간) */
+async function measureFg(s, id, sc, tier) {
+  const has = await s.eval(async () => {
+    const w = window.__game.world, f = w?.bg?.fg, P = window.__perf;
+    const M = (window.__fgm = { ms: [], own: [], grad: 0, canv: 0, warm: true, F: await import('/src/render/foreground.js') });
+    if (!f) return false;
+    const d0f = f.draw;
+    f.draw = function (...x) {
+      const d0 = P.f.draw, g0 = P.f.grad, c0 = P.f.canv, t0 = P.realNow();
+      try { return d0f.apply(this, x); } finally {
+        const ms = P.realNow() - t0;
+        if (!M.warm) { M.grad += P.f.grad - g0; M.canv += P.f.canv - c0; }
+        if (P.on) M.own.push(P.f.draw - d0); else if (M.timing) M.ms.push(ms);
+      }
+    };
+    return true;
+  });
+  if (!has) { C.add(`${id}.fg`, 'fail', 'no foreground layer on this world (bg.fg null)'); return; }
+  await step(s.page, 40, true);
+  await s.eval(() => { const M = window.__fgm; M.warm = false; M.ms.length = 0; M.own.length = 0; });
+  await measureFrames(s.page, FR);
+  await s.eval((n) => { const M = window.__fgm; M.timing = true; for (let i = 0; i < n; i++) window.__qaStep(1, true); M.timing = false; }, FR);
+  const M = await s.eval(() => { const M = window.__fgm, f = window.__game.world.bg.fg; return { ms: M.ms, own: M.own, grad: M.grad, canv: M.canv, bytes: M.F.foregroundBytes(), vis: f.stats.visible, tier: f.tier }; });
+  const ms = stats(M.ms.map((v) => +v.toFixed(4))), own = stats(M.own);
+  rows.push({ id, scene: sc, tier, layer: 'fg', frames: M.ms.length, ms, draws: own, grad: M.grad, canv: M.canv, bytes: M.bytes });
+  const bd = FG_BUDGET.draws[tier] ?? 8;
+  C.add(`${id}.draws`, own.max <= bd ? 'pass' : 'fail', `foreground drawImage per frame max ${own.max} (budget ${bd}); p50 ${own.p50}`);
+  C.add(`${id}.grad`, M.grad === 0 && M.canv === 0 ? 'pass' : 'fail', `new gradients ${M.grad}, new canvases ${M.canv} inside the layer after warm-up (want 0)`);
+  if (tier !== 'low') C.add(`${id}.ms`, ms.p95 <= FG_BUDGET.ms ? 'pass' : 'warn', `foreground p95 ${ms.p95.toFixed(3)} ms (budget ${FG_BUDGET.ms}; real clock on this shared box)`);
+  C.add(`${id}.bytes`, M.bytes <= BUDGET.bytes ? 'pass' : 'fail', `atlas ${(M.bytes / 1024).toFixed(0)} KB (≤ 1.5 MB)`);
+  console.log(`${id.padEnd(14)} fg ms p50 ${ms.p50.toFixed(3)} p95 ${ms.p95.toFixed(3)} · draws max ${own.max} p50 ${own.p50} · grad ${M.grad} canv ${M.canv} · ${(M.bytes / 1024).toFixed(0)} KB`);
+}
 
 /** 교차 출처 격리 (perf_budget 과 같은 방법): performance.now 가 0.1 ms 대신 5 µs 단위가 되어 0.25 ms 예산을 잴 수 있다 */
 async function isolate(s) {
@@ -57,6 +95,7 @@ try {
       } else await gotoRoom(s, sc, 'r1');
       await prepWorld(s);
       await s.eval((q) => { const g = window.__game; g.autoQualityOn = () => false; g._tier = q; g.world?.applyQuality?.(); }, tier);
+      if (FG) { await measureFg(s, id, sc, tier); continue; }
       // 원경 층 계측: drawFar/drawFront 를 감싸 실제 시간·안쪽 그리기·그라데이션·캔버스를 센다
       const has = await s.eval(async () => {
         const w = window.__game.world, a = w?.bg?.atmos, P = window.__perf;
@@ -105,7 +144,7 @@ try {
     await s.close();
   }
 } finally { await env.close(); }
-writeReport('atmos_perf', { when: new Date().toISOString(), vp: VP, frames: FR, budget: BUDGET, counts: C.counts(), rows, checks: C.list }, { title: 'atmos_perf (Stage 5 P2 숨쉬는 원경)' });
+writeReport(FG ? 'atmos_perf_fg' : 'atmos_perf', { when: new Date().toISOString(), vp: VP, frames: FR, budget: BUDGET, counts: C.counts(), rows, checks: C.list }, { title: FG ? 'atmos_perf --fg (Stage 6 전경)' : 'atmos_perf (Stage 5 P2 숨쉬는 원경)' });
 const red = C.red.length;
 console.log(red ? `✗ ${red} red` : '✓ atmos_perf green');
 process.exit(red ? 1 : 0);
