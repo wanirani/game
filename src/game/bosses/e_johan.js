@@ -15,7 +15,8 @@
 //   **모든 공격의 예고는 0.6초 이상, 첫 피해도 0.6초 이후** (계속 지대 — 역류 물띠 — 는 data.cont).
 // 지옥 갈래 (this.inferno): 물보라 6칸 · 허리 높이 둘째 닻 · 충격파 두 번 · 방울 +2 · 물줄기 예고 0.75 + 셋째 물결 · 장어 6 + 둘째 줄 ·
 //   물살 +15% + 원 두 번 · 호스 되돌려 한 번 더.
-// 창 상한 (POLISH-4 교훈): 1페이즈 무릎 한 번 STAG_CAP 10% (takeHit 에서 줄여 '저항', capNote). 필살·각성 · 2페이즈 · 15% 긴 무릎은 상한 밖.
+// 창 상한 (POLISH-4 교훈): 1페이즈 무릎 한 번 STAG_CAP 10% · 공격 패턴 한 번 PAT_CAP 5.5% · 쉼 한 번 IDLE_CAP 3% (VERIFY-EX §2.3 확인 2)
+//   (takeHit 에서 줄여 '저항', capNote). 필살·각성 · 2페이즈 · 15% 긴 무릎은 상한 밖.
 //   열쇠 자루 · 장화 카운터의 '한 대'는 플레이어·탈것 공격만 센다 (ownHit — 수호신 자동 공격 제외).
 // 모든 패턴은 this.A(경기장 경계)와 A.floor 만 기준 — 보스 방(s27 boss 60×18) · 투기장(maps/arena.js r1) · 무한의 탑 보스 층이 같다.
 // 결말 (체력 0): 보스 처치 처리(world.onBossDefeated)는 같고 부제는 기본 '격파!' (renameBanner 안전망).
@@ -58,6 +59,11 @@ const PATTERNS = {
 const T48 = () => TILE || 48;
 const SIZE = { w: 104, h: 168 };
 const STAG_CAP = [0.10];              // 1페이즈 무릎 한 번 (최대 체력 비율) — 2페이즈는 상한 없음
+// VERIFY-EX (ex_s27.md §2.3 확인 2 — 손잡이 ① 창 상한): 무릎 밖의 1페이즈 패턴 한 번 PAT_CAP · 패턴 사이 쉼(idle) 한 번 IDLE_CAP (e_charon.js 와 같은 틀).
+//  상한 없이 실제 엔진 카엘 Lv 35 (붙어서 기본 공격만) 18판 중앙 20.0초 · 1페이즈 패턴 중앙 2 (목표 25–45초 · ≥ 4) — 1페이즈 절반을 패턴 둘에 잃었다.
+//  약한 영웅·약한 장비는 상한에 닿지 않으므로 그대로 (HP · 공격력 · balance.mjs 모형 그대로)
+const PAT_CAP = [0.055], IDLE_CAP = [0.03];
+const P1_PAT = new Set(PATTERNS.attacks);
 const KEY_LEN = 132;                  // 수문 열쇠 길이 (손 → 소켓 머리)
 const POSE0 = { lean: 0, crouch: 0, kneel: 0, keyUp: 0, keyTurn: 0, chain: 0, hoseK: 0, lash: 0, clutch: 0, jump: 0 };
 const POSE_RATE = { lean: 6, crouch: 7, kneel: 5, keyUp: 7, keyTurn: 6, chain: 8, hoseK: 4, lash: 9, clutch: 6, jump: 30 };
@@ -259,9 +265,11 @@ export class Johan extends BossC {
     }
     return super.takeHit(dmg, attack, world, info);
   }
+  /** 상태가 바뀔 때마다 1페이즈 창 상한을 새로 연다: 무릎 STAG_CAP (15% 긴 무릎 제외) · 공격 패턴 PAT_CAP · 쉼 IDLE_CAP (2페이즈는 없음) */
   setState(s) {
     super.setState(s);
-    const c = s === 'stagger' && !this.stagLong ? STAG_CAP[this.phase] : null, mx = this.stats?.maxHp;
+    const C = s === 'stagger' ? (this.stagLong ? null : STAG_CAP) : s === 'idle' ? IDLE_CAP : P1_PAT.has(s) ? PAT_CAP : null;
+    const c = C?.[this.phase], mx = this.stats?.maxHp;
     this.capBud = c && mx ? mx * c : null; this.capSaid = false;
   }
   onHurt(dmg, attack, world, info, part) {

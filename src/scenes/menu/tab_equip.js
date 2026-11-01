@@ -5,8 +5,7 @@ import { text, FONT, textFloor } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
 import { clamp } from '../../core/math.js';
 import { input } from '../../core/input.js';
-import { drawSlot } from '../../render/icons.js';
-import { assets } from '../../core/assets.js';
+import { drawSlot, iconState } from '../../render/icons.js';
 import { Tab } from './base.js';
 import { HeroView, HeroStage, PixLayer, PixCache, pedestal, accentOf, turntableHints, pxScale } from './hero_view.js';
 import {
@@ -546,8 +545,9 @@ function drawSlotLive(ctx, x, y, s, inst, o) {
   ctx.imageSmoothingQuality = 'low';
   try { drawSlot(ctx, x, y, s, inst, o); } finally { ctx.imageSmoothingQuality = q; }
 }
-/** 아이콘 그림이 준비됐는가 (준비 전에는 대체 아이콘으로 구워지므로 준비되면 다시 굽는다) */
-const iconReady = (inst) => (!inst?.icon || assets.has('icons/' + inst.icon) ? 1 : 0);
+/** 아이콘 그림이 준비됐는가 (준비 전에는 대체 아이콘으로 구워지므로 준비되면 다시 굽는다).
+ *  [s7:verifyart] 전용 아이콘을 못 받으면 2 (예전 일반 그림) — 예전에는 0 에 머물러 절차적 그림이 그대로 남았다 */
+const iconReady = (inst) => iconState(inst?.icon);
 const canDoN = (hr) => hr && (hr.unequip || (hr.ok && !hr.here));
 
 // ───────────────────────── 「피의 유물」 세트 줄 (Stage 6) ─────────────────────────

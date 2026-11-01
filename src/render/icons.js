@@ -12,6 +12,17 @@ import { ICON_FALLBACK } from '../data/item_icons.js';
 
 const RARITY_GLOW = ['rgba(0,0,0,0)', '#6fe07a', '#5aa8ff', '#c07cff', '#ffa640', '#ff4a5a'];
 
+/**
+ * 아이콘 그림 상태 — 구운 층(캐시 캔버스) 해시용 [s7:verifyart]. 1 = 그림 준비(또는 아이콘 없음), 0 = 아직(절차적 그림),
+ * 2 = 전용 아이콘(data/item_icons.js)을 못 받아 예전 일반 그림으로 그릴 수 있음.
+ * 구운 층은 전용 파일이 실패하기 전에 구워져 drawIcon 이 다시 불리지 않으므로, 실패를 알면 여기서 예전 일반 그림을 받으러 간다.
+ */
+export function iconState(id) {
+  if (!id || assets.has('icons/' + id)) return 1;
+  const alt = Object.hasOwn(ICON_FALLBACK, id) && assets.failed?.('icons/' + id) ? ICON_FALLBACK[id] : null;
+  return alt && assets.get('icons/' + alt) ? 2 : 0;
+}
+
 export function drawIcon(ctx, id, cx, cy, size = 40, item = null, { glow = true } = {}) {
   let img = id ? assets.get('icons/' + id) : null;   // 아이콘 id 가 없으면 'icons/undefined' 를 요청하지 않는다 (404 콘솔 오류)
   const alt = !img && id && Object.hasOwn(ICON_FALLBACK, id) ? ICON_FALLBACK[id] : null;

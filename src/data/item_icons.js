@@ -77,6 +77,7 @@ export const ICON_FALLBACK = Object.freeze({
   u_dracula2: 'ring_6',
   u_chaos: 'amulet_6',
   u_goldbat: 'ring_2',
+  u_johan: 'amulet_6',   // 외전 Ⅱ s27 보스 드롭 「수문지기의 등불」 (s7 verifyart — EX-STAGE 요청)
   // 재료 · 중요 물품 (다른 물건의 아이콘을 빌려 쓰던 것: 송곳니=유물, 깃털=단검 등)
   m_fang: 'relic_1',
   m_dark: 'relic_4',

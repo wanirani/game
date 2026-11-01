@@ -1,0 +1,18 @@
+{
+  "batch": "verifyart (Stage 7 art-lane verifier fixes)",
+  "date": "2026-11-01",
+  "model": "gpt_image_2_5",
+  "references": {
+    "ref_bottles.png": "3-icon strip m_ectoplasm · m_blood · m_dream (assets/icons, Stage 7 painted) on #26222b — media f45dd3f6-d207-4a57-99f6-886b4c776c94",
+    "ref_acc.png": "3-icon strip u_paracel · u_chaos · u_goldbat (assets/icons, Stage 7 painted) on #26222b — media f4e7a721-e581-4b8b-b632-347561420743"
+  },
+  "keying": "u_johan: tools/higgsfield/key_green.py --size 128; m_spore: magenta (#FF00FF) twin of key_green (alpha from min(r,b)-g, same ramp/despill), pad 0.13 (squat jar would otherwise fill the cell). Both quantized like the icons batch: PIL FASTOCTREE 256 + optimize → 128×128 P-mode PNG",
+  "items": [
+    { "file": "assets/icons/m_spore.png", "why": "icons batch m_spore was a dark round flask nearly identical to m_void (공허 정수) at 40–56 px; redrawn as a wide sealed jar with sickly yellow-green spores", "prompt": "single game inventory icon in the same painted dark-fantasy style as the references: small squat sealed glass specimen jar (wide, not a round potion flask), wax-sealed cork tied with twine, clumps of pale mushroom spores and sickly yellow-green glowing spore dust, tiny fungal caps inside the glass … no text, no border, no frame, plain flat solid #FF00FF magenta background", "job_id": "33ec21db-c13f-42fb-9ca7-176eaec1f206", "credits": 0.25, "kept": true },
+    { "file": null, "why": "m_spore alternative (screw-lid jar with spore mist)", "prompt": "plague spore jar — short wide cylindrical glass jar, rusted iron screw lid, cracked wax seal, lumpy pale fungus, glowing yellow-green spores, wisp of spore mist … #FF00FF magenta background", "job_id": "e98f01a8-efa4-4633-8496-36a33ec48e98", "credits": 0.25, "kept": false },
+    { "file": "assets/icons/u_johan.png", "why": "EX-STAGE request (requests.md 04:05): s27 boss drop 「수문지기의 등불」 was the only unique on a generic icon (amulet_6)", "prompt": "single game inventory icon in the same painted dark-fantasy style as the references: dented old brass diver's oil lantern (chest lamp of an antique deep-sea diving suit), thick round glass lens, brass cage bars, warm amber flame, wet dark-teal glints and verdigris, short loop handle with a small iron ring tied to it … no text, no border, no frame, plain flat solid #00FF00 green background", "job_id": "8c7c504a-fa90-47cb-bb2c-7869269b378d", "credits": 0.25, "kept": true },
+    { "file": null, "why": "u_johan alternative (porthole gatekeeper lantern)", "prompt": "battered brass gatekeeper's lantern from a sunken lock, porthole glass front, riveted brass frame and cage bars, golden-amber flame, water droplets and verdigris, ring handle with an iron ring tied on … #00FF00 green background", "job_id": "78e17138-4b21-4e84-a057-ea1660136011", "credits": 0.25, "kept": false }
+  ],
+  "images": 4,
+  "credits": 1.0
+}

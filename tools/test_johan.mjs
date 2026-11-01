@@ -175,6 +175,22 @@ for (const [act, at, part] of [['keySlam', 1.2, 'pKey'], ['ballastDrop', 1.8, nu
   });
   check(`1페이즈 무릎 창 상한: 100% 한 방 → ${(r.lost * 100).toFixed(1)}% ('저항')`, Math.abs(r.lost - 0.10) < 0.005, r);
 }
+// VERIFY-EX (§2.3 확인 2): 1페이즈 쉼 한 번 IDLE_CAP 3% · 공격 패턴 한 번 PAT_CAP 5.5% (여러 대로 나눠 쳐도) · 2페이즈 · 필살은 상한 없음
+{
+  const r = await page.evaluate(() => {
+    const P = window.__probe;
+    const lose = (k, n, setup, tags) => {
+      P.build(setup); P.step(setup?.phase ? 7 : 2.5); const b = P.boss; while (b.state !== 'idle') P.step(0.1);
+      if (k !== 'idle') { b.debugAct(k); P.step(0.05); }
+      const hp0 = b.hp, st = b.state;
+      for (let i = 0; i < n; i++) { P.hit(Math.ceil(b.stats.maxHp * 0.2), { tags }); }
+      return { lost: +((hp0 - b.hp) / b.stats.maxHp).toFixed(3), st };
+    };
+    return { idle: lose('idle', 3), pat: lose('airVolley', 3), p2idle: lose('idle', 1, { phase: 1 }), ult: lose('idle', 1, undefined, ['ult']) };
+  });
+  check(`1페이즈 쉼 상한 ${(r.idle.lost * 100).toFixed(1)}% · 패턴 상한 ${(r.pat.lost * 100).toFixed(1)}% · 2페이즈 쉼 ${(r.p2idle.lost * 100).toFixed(1)}% · 필살 ${(r.ult.lost * 100).toFixed(1)}%`,
+    r.idle.st === 'idle' && Math.abs(r.idle.lost - 0.03) < 0.003 && r.pat.st === 'airVolley' && Math.abs(r.pat.lost - 0.055) < 0.003 && r.p2idle.lost > 0.15 && r.ult.lost > 0.15, r);
+}
 // ── 5) 역류 바람: 불고 · 끌림 ≤ 브란 걷기(245)의 70 % · 끝나면 꺼짐 ──
 for (const inferno of [false, true]) {
   const r = await page.evaluate((inferno) => {

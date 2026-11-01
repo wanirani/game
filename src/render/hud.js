@@ -10,7 +10,7 @@ import { text, bar, bloodText, prewarmText, font, FONT, COLORS, fontEpoch } from
 import { assets } from '../core/assets.js';
 import { fmt, fmtTime, TAU, clamp, rgba } from '../core/math.js';
 import { faceRect } from './portrait.js';
-import { drawIcon } from './icons.js';
+import { drawIcon, iconState } from './icons.js';
 import { drawHeart } from '../game/pickups.js';
 import { SUBWEAPONS } from '../data/subweapons.js';
 import { SKILLS } from '../data/skills.js';
@@ -311,7 +311,7 @@ function quickKey(world, run, qs, L) {
   const sw = SUBWEAPONS[run.sub];
   hashStart(); hashNum(hudArt('frame_slot') ? 1 : 0); hashStr(run.sub); hashNum(run.hearts); hashNum(sw && run.hearts < (sw.cost ?? 1) ? 1 : 0);
   hashNum(sw ? (assets.get('icons/' + sw.icon) ? 1 : 0) : 2); hashNum(L.textMin); hashNum(fontEpoch); hashNum(L.quick?.length ?? 0);
-  for (let i = 0; i < 3; i++) { const it = qs[i]; hashStr(it?.icon); hashNum(it ? it.qty ?? 1 : -1); hashNum(it && assets.get('icons/' + it.icon) ? 1 : 0); }
+  for (let i = 0; i < 3; i++) { const it = qs[i]; hashStr(it?.icon); hashNum(it ? it.qty ?? 1 : -1); hashNum(it ? (assets.get('icons/' + it.icon) ? 1 : iconState(it.icon)) : 0); }   // [s7:verifyart] 전용 아이콘 실패 → 예전 일반 그림(2)으로 다시 굽기
   return H_();
 }
 const H_ = () => hashNum(0);

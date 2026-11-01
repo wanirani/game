@@ -523,7 +523,7 @@ const UNIQUE_LIST = [
   //  명세 시작값 { atk 19 · mag 19 · def 14 · hp 90 } 은 진조의 인장(6단계 Lv 38)보다 일곱 중 넷이 위였다 → { 16 · 16 · 10 · 60 }:
   //  Lv 35 기준 장비(4단계 희귀도 3 장신구 둘 · 5단계 희귀도 2 무기·갑옷, 무작위 옵션 200판) 일곱 영웅 모두 ▲ 97–100 % ·
   //  진조의 인장보다 아래 다섯 (브란 · 아젤은 받는 피해 −4% 몫으로 위 — 방어 장신구의 몫). 효과 문구 · 번개 10% · 피해 −4% 는 명세 그대로
-  { id: 'u_johan', name: '수문지기의 등불', slot: 'acc', tier: 5, icon: 'amulet_6', lvReq: 35, rarity: 4, boss: 'b_johan',
+  { id: 'u_johan', name: '수문지기의 등불', slot: 'acc', tier: 5, icon: 'u_johan', lvReq: 35, rarity: 4, boss: 'b_johan',
     stats: { atk: 16, mag: 16, def: 10, hp: 60, thunder: 10, dmgReduce: 4 }, visual: { aura: { color: '#ffc860', type: 'holy' } },
     effect: '꺼지지 않는 불 — 받는 피해 −4%, 번개 피해 +10%', desc: '요한이 잠수 갑옷 가슴에 매달고 내려간 기름 등불. 검은 물 속에서도 끝내 꺼지지 않았다.' },
 ];

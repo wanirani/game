@@ -111,7 +111,7 @@ section('drawIcon 대체 경로 (가짜 assets)');
   const { drawIcon } = await imp('src/render/icons.js');
   const fakeImg = (k) => ({ k, width: 128, height: 128 });
   const state = { have: new Set(), failed: new Set() };
-  const orig = { get: assets.get, failed: assets.failed };
+  const orig = { get: assets.get, failed: assets.failed, has: assets.has };
   const asked = [];
   assets.get = (key) => { asked.push(key); return state.have.has(key) ? fakeImg(key) : null; };
   assets.failed = (key) => state.failed.has(key);
@@ -130,7 +130,19 @@ section('drawIcon 대체 경로 (가짜 assets)');
     drawn.length = 0; state.have.clear();
     let threw = false; try { drawIcon(ctx, 'u_nyx', 0, 0, 40); drawIcon(ctx, 'no_such_icon', 0, 0, 40); drawIcon(ctx, undefined, 0, 0, 40); } catch (e) { threw = e; }
     ok(!threw, `둘 다 없으면 절차적 그림 (예외 없음${threw ? ': ' + threw.message : ''})`);
-  } finally { assets.get = orig.get; assets.failed = orig.failed; }
+    // [s7:verifyart] 구운 층 해시 iconState: 받는 중 0 → 전용 그림 1 / 전용 실패 + 예전 그림 받음 2 (예전 그림을 스스로 요청 — 구운 층은 drawIcon 을 다시 부르지 않는다)
+    const { iconState } = await imp('src/render/icons.js');
+    assets.has = (key) => state.have.has(key);
+    state.have.clear(); state.failed.clear(); asked.length = 0;
+    ok(iconState('u_nyx') === 0 && !asked.includes('icons/dagger_5'), 'iconState: 받는 중 0 (예전 그림 요청 안 함)');
+    state.have.add('icons/u_nyx');
+    ok(iconState('u_nyx') === 1 && iconState(undefined) === 1, 'iconState: 전용 그림 준비 1 · 아이콘 없음 1');
+    state.have.clear(); state.failed.add('icons/u_nyx'); asked.length = 0;
+    ok(iconState('u_nyx') === 0 && asked.includes('icons/dagger_5'), 'iconState: 전용 실패 → 예전 일반 그림을 받으러 간다');
+    state.have.add('icons/dagger_5');
+    ok(iconState('u_nyx') === 2, 'iconState: 예전 일반 그림 준비 2 (다시 굽기)');
+    ok(iconState('sword_3') === 0, 'iconState: 대체 표에 없는 키는 0/1 만');
+  } finally { assets.get = orig.get; assets.failed = orig.failed; assets.has = orig.has; }
 }
 
 console.log(`\n${fails ? '✗' : '✓'} test_item_icons: ${passes} 통과, ${fails} 실패`);
