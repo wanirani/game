@@ -635,5 +635,22 @@ if (PUP?.variantKeyFor) {
   console.log(`  전용 원화 ${own.length}개 (${own.map((a) => a.id).join(', ') || '없음'}) · 빌린 원화 덧칠 ${Math.min(12, borrowed.length)}개 확인`);
 } else console.log('  (variantKeyFor 없음 — 생략)');
 
+// ── 9c. 입장 미리 받기 · 턴테이블 효과 (s8 verifyart2): 스테이지·메뉴·아케이드 입장이 2차 원화가 아니라 그릴 전용 원화를 받아 두고,
+//        8방향 턴테이블(전용 원화)의 옆모습에서 후광·오라가 퍼펫 것과 두 겹으로 그려지지 않는다 ──
+section('초월 전용 원화 — 미리 받기 · 턴테이블 후광 (s8 verifyart2)');
+{
+  const src = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
+  for (const [p, re] of [
+    ['src/scenes/stage.js', /preloadPuppet\?\.\(h\.charId, h\.classId, h\.asc\)/],
+    ['src/scenes/menu/menu.js', /preloadPuppet\?\.\(h\.charId, h\.classId, h\.asc\)/],
+    ['src/scenes/front/arcade.js', /preloadPuppet\?\.\(this\.charId, o\.cls, o\.id\)/],
+    ['src/scenes/front/arcade_run.js', /preloadPuppet\?\.\(id, st\.heroes\?\.\[id\]\?\.classId, st\.heroes\?\.\[id\]\?\.asc\)/],
+  ]) ok(re.test(src(p)), `${p}: 입장 미리 받기가 초월 id 를 넘긴다 (전용 원화를 받아 둠)`);
+  ok(/export function preloadPuppet\(charId, classId, asc = null\)/.test(src('src/render/hero_puppet.js')), 'preloadPuppet(charId, classId, asc): 계보가 맞는 초월의 전용 원화를 받는다');
+  const H = src('src/render/hero.js'), i = H.indexOf('function drawHeroYaw'), body = H.slice(i, H.indexOf('\n}\n', i));
+  ok(i >= 0 && /if \(wPaint > 0\.002\) \{[^}]*drawTurnHalo[^}]*drawAuraMotes/.test(body) && !/ctx\.globalAlpha = aBase;\s*\n\s*if \(K\.halo/.test(body),
+    'drawHeroYaw: 후광·오라 입자는 채색 뷰 비중만큼 (옆모습 퍼펫이 제 것을 그린다 — 두 겹 금지)');
+}
+
 console.log(`${fails ? '✗' : '✓'} test_ascension: ${passes} 통과, ${fails} 실패`);
 process.exit(fails ? 1 : 0);
