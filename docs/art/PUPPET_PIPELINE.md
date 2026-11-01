@@ -189,6 +189,14 @@ and slightly curved as if casting a spell, the wrist and cuff at the bottom. No 
    이 10직업을 넣은 뒤 그림 단계 기준 69.03 / 70 MB, APK 어림 92.78 / 95 MB — 나머지 25직업(≈7 MB)은 이 방식 그대로는 들어가지 않는다 (8단계 asc 보고서의 계획 참고).
 9. 대체: 전용 원화 파일을 못 받으면(404·APK 에서 뺌) `puppetFor` 가 2차 원화 + lookTop 덧칠로 잇는다 (벡터로 떨어지지 않음). 확인
    `node tools/puppet/ingame.mjs --cls kael_templar --asc kael_grandtemplar --block puppets/kael/kael_grandtemplar/`.
+10. **9단계 asc2 (빅터 5 · 브란 5 · 리아 5, 같은 방식)**: 직업당 측면 1장 + 턴 1장(턴은 측면 작업의 job id 를 참고 그림으로 넘겨 다시 올리지 않음) = 30장 15 크레딧, 15장 모두 자세 그대로
+   (IoU .861–.959 — 리아는 부모 rembg 알파에 바닥 그림자가 들어 있어 낮게 나옴). 초록 옷·룬이 있는 직업(영혼 수확자)은 `#FF00FF` 바탕으로 만들고 `hf_ingest.py --bg magenta`.
+   리뷰로 찾은 고침: 연옥의 총잡이 `legs.pantsWarmMax: null`(갈색 바지가 넓적다리를 지움) · 은랑 사냥꾼 검은 장갑 → `hands` 를 데드아이 시트로, 무채색 회색 코트 →
+   `materials` 채도·밝기 창 · 성채 기사의 탑 견갑(흉벽) → `regions.pad`·`torso` 위로 넓히고 `head` 아래 왼쪽을 깎음(pad 는 torso 안만 쓴다) ·
+   영혼 수확자의 짧아진 허리 띠 → `regions.skirt`·`joints.skirtHem` 을 띠 끝(≈1850 px)까지만(부모 영역이 먼 다리 정강이를 잘라 띠와 함께 흔들었다) ·
+   서리 까마귀 하늘색 장식 → `materials.trim` 색조 175–215. 용량: 직업당 201–372 KB, 15직업 4.30 MB (빅터 1.31 · 브란 1.65 · 리아 1.13 MB).
+   QA 도구: `ingame.mjs --qs '&cmp=all&cmplv=10&mount=mt_warhorse&ride=1'`(탈것), `shot` 마다 `<out>_N.json`(플레이어 화면 위치) · `review.mjs allasc` 목록에 15직업 추가.
+   주의: 8방향 시트 직업의 옆모습(0°·180°)은 게임 퍼펫 idle 을 그대로 그려 대검(브란)이 메뉴 무대 왼쪽으로 크게 뻗는다 (16방향 부모는 해당 없음).
 
 ## 3. 등록 (ingest)
 

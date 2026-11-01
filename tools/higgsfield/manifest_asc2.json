@@ -1,0 +1,538 @@
+{
+ "batch": "asc2 (Stage 9 — tier-3/hidden ascension puppets: victor 5 + bran 5 + lia 5)",
+ "server": "Higgsfield MCP 059c3459",
+ "model_only": "gpt_image_2_5 (2k, low) — no nano_banana / seedream / soul / flux, no Kling",
+ "uploads": "only game art: 15 parent side arts (JPEG q93 of tools/puppet/src/<char>/<parent>_side.webp); turn sheets used the side job ids as references",
+ "images": 30,
+ "kept": 30,
+ "credits": 15.0,
+ "billing_check": "transactions: 30 × 'GPT Image 2.5 Flare' 0.5 cr at 07:07, 07:09, 07:35, 07:37, 07:59, 08:00 UTC (other spends on the shared account are other lanes)",
+ "hands": "not generated — parent hand sheets reused (victor_silverwolf uses victor_deadeye's black-glove sheet)",
+ "items": [
+  {
+   "file": "tools/puppet/src/victor/victor_specter_side.webp",
+   "cls": "victor_specter",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/victor/victor_phantom_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young man: the same face, the same hair, the same body proportions and the exact same walking side pose facing right (same arm, hand and leg positions), the same camera angle, the same framing, the same scale and the same position on the canvas. Keep the same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D render) with the same soft lighting and brush detail. Change ONLY his costume, armor and colors into: SPECTER, a ghost sniper - the same black hooded long leather coat and the same hood, now darker indigo-black leather with pale spectral blue (#9ab0ff) glowing piping, faint ghostly blue runes along the coat hem and cuffs, silver-blue buckles and studs, a slate-grey (#4a4a6a) scarf wrapped over the lower face like a mask, a silver skull clasp on the chest and a deep midnight-blue coat lining. This is a higher-rank, more splendid version of the same outfit, with the same silhouette and the same coat length. No cape, no cloak, no wings, no halo, no glowing aura around the body, nothing held in the hands, both gloved hands empty, no guns in the hands. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "1a697c42-3ed1-402d-b2c4-0550946699ce",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green"
+  },
+  {
+   "file": "tools/puppet/src/victor/victor_headsman_side.webp",
+   "cls": "victor_headsman",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/victor/victor_executioner_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young man: the same face, the same hair, the same body proportions and the exact same walking side pose facing right (same arm, hand and leg positions), the same camera angle, the same framing, the same scale and the same position on the canvas. Keep the same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D render) with the same soft lighting and brush detail. Change ONLY his costume, armor and colors into: HEADSMAN, the executioner who pronounces and carries out the sentence - the same black leather long coat, the same long black hair with no hat and the same black face mask, now with dark blood-red (#8a0a0a) piping and trim, a heavier black iron spiked pauldron with blood-red engravings, a deep crimson (#c00010) sash, a black iron chain with an executioner's seal medallion across the chest, iron-studded bracers and a dark blood-red coat lining. This is a higher-rank, more splendid version of the same outfit, with the same silhouette and the same coat length. No cape, no cloak, no wings, no halo, no glowing aura around the body, nothing held in the hands, both gloved hands empty, no guns in the hands. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "e7356c74-2052-4a07-b3b4-2672710f3dad",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green"
+  },
+  {
+   "file": "tools/puppet/src/victor/victor_purgatory_side.webp",
+   "cls": "victor_purgatory",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/victor/victor_hellfire_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young man: the same face, the same hair, the same body proportions and the exact same walking side pose facing right (same arm, hand and leg positions), the same camera angle, the same framing, the same scale and the same position on the canvas. Keep the same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D render) with the same soft lighting and brush detail. Change ONLY his costume, armor and colors into: PURGATORY, the gunslinger whose guns burn hotter the closer he gets to hell - the same wide-brimmed black hat with the same small flame on the brim, now a charred black leather long coat with glowing molten orange (#ff5a1a) ember cracks along the seams, burning flame embroidery along the coat hem (#ff7a2a, #ffd070), a bright orange (#ff5a1a) neckerchief, a bandolier of red-hot glowing bullets, blackened iron buckles and glowing ember eyes. This is a higher-rank, more splendid version of the same outfit, with the same silhouette and the same coat length. No cape, no cloak, no wings, no halo, no glowing aura around the body, nothing held in the hands, both gloved hands empty, no guns in the hands. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "195f8028-41a0-4256-b144-44f7b03a83f8",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green"
+  },
+  {
+   "file": "tools/puppet/src/victor/victor_gunking_side.webp",
+   "cls": "victor_gunking",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/victor/victor_gunlord_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young man: the same face, the same hair, the same body proportions and the exact same walking side pose facing right (same arm, hand and leg positions), the same camera angle, the same framing, the same scale and the same position on the canvas. Keep the same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D render) with the same soft lighting and brush detail. Change ONLY his costume, armor and colors into: GUN KING, the king of gunslingers - the same plumed gold hat now with a small gold crown band and a red jewel, the same dark burgundy-black long coat now covered in richer heavy gold (#ffd84a) baroque embroidery, larger gold epaulettes with gold fringe, a gold bandolier with gold bullets, a gold royal chain with a medallion across the chest, pale gold (#fff0b0) shirt ruffle, antique gold (#c8a040) buttons and gold spurs. This is a higher-rank, more splendid version of the same outfit, with the same silhouette and the same coat length. No cape, no cloak, no wings, no halo, no glowing aura around the body, nothing held in the hands, both gloved hands empty, no guns in the hands. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "73cb34e6-d851-4e5a-8148-f695e9769afb",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green"
+  },
+  {
+   "file": "tools/puppet/src/victor/victor_silverwolf_side.webp",
+   "cls": "victor_silverwolf",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/victor/victor_gunslinger_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young man: the same face, the same hair, the same body proportions and the exact same walking side pose facing right (same arm, hand and leg positions), the same camera angle, the same framing, the same scale and the same position on the canvas. Keep the same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D render) with the same soft lighting and brush detail. Change ONLY his costume, armor and colors into: SILVER WOLF, a silver-bullet wolf hunter who carries the moon's curse - the same wide-brimmed hat now charcoal-grey with a silver crescent-moon badge, a long charcoal-grey and dark slate (#1a1a2a) leather duster with silver (#c8ccd4) trim and silver buckles, a short grey wolf-fur collar on the shoulders, a bandolier of shining silver bullets, a pale silver-grey (#c8ccd4) neckerchief, a silver wolf-head belt buckle, cold desaturated moonlit colors. This is a higher-rank, more splendid version of the same outfit, with the same silhouette and the same coat length. No cape, no cloak, no wings, no halo, no glowing aura around the body, nothing held in the hands, both gloved hands empty, no guns in the hands. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "ba5c03e8-7d23-4bcf-86cd-46d9b8ad0c45",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green"
+  },
+  {
+   "file": "tools/puppet/src/victor/victor_specter_turn5.webp",
+   "cls": "victor_specter",
+   "kind": "turnaround 5 views",
+   "ref": "side job of victor_specter (job id passed as image reference, no re-upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the man in the reference image, wearing exactly his outfit with the same colors and details: SPECTER, a ghost sniper - the same black hooded long leather coat and the same hood, now darker indigo-black leather with pale spectral blue (#9ab0ff) glowing piping, faint ghostly blue runes along the coat hem and cuffs, silver-blue buckles and studs, a slate-grey (#4a4a6a) scarf wrapped over the lower face like a mask, a silver skull clasp on the chest and a deep midnight-blue coat lining. Five full-body standing views of the same character in one row, evenly spaced, same size, feet on the same baseline: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Relaxed standing pose, arms slightly away from the body, both hands empty. Same realistic painterly dark-fantasy game-art style as the reference (NOT anime, NOT cel-shaded, NOT 3D render). No cape, no cloak, no wings, no halo, no weapons. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "0914938b-6144-4f77-ab5e-42d15857d896",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green",
+   "note": "views facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  },
+  {
+   "file": "tools/puppet/src/victor/victor_headsman_turn5.webp",
+   "cls": "victor_headsman",
+   "kind": "turnaround 5 views",
+   "ref": "side job of victor_headsman (job id passed as image reference, no re-upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the man in the reference image, wearing exactly his outfit with the same colors and details: HEADSMAN, the executioner who pronounces and carries out the sentence - the same black leather long coat, the same long black hair with no hat and the same black face mask, now with dark blood-red (#8a0a0a) piping and trim, a heavier black iron spiked pauldron with blood-red engravings, a deep crimson (#c00010) sash, a black iron chain with an executioner's seal medallion across the chest, iron-studded bracers and a dark blood-red coat lining. Five full-body standing views of the same character in one row, evenly spaced, same size, feet on the same baseline: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Relaxed standing pose, arms slightly away from the body, both hands empty. Same realistic painterly dark-fantasy game-art style as the reference (NOT anime, NOT cel-shaded, NOT 3D render). No cape, no cloak, no wings, no halo, no weapons. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "a3e8257e-7c0e-451d-9231-bc7add6c5b48",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green",
+   "note": "views facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  },
+  {
+   "file": "tools/puppet/src/victor/victor_purgatory_turn5.webp",
+   "cls": "victor_purgatory",
+   "kind": "turnaround 5 views",
+   "ref": "side job of victor_purgatory (job id passed as image reference, no re-upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the man in the reference image, wearing exactly his outfit with the same colors and details: PURGATORY, the gunslinger whose guns burn hotter the closer he gets to hell - the same wide-brimmed black hat with the same small flame on the brim, now a charred black leather long coat with glowing molten orange (#ff5a1a) ember cracks along the seams, burning flame embroidery along the coat hem (#ff7a2a, #ffd070), a bright orange (#ff5a1a) neckerchief, a bandolier of red-hot glowing bullets, blackened iron buckles and glowing ember eyes. Five full-body standing views of the same character in one row, evenly spaced, same size, feet on the same baseline: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Relaxed standing pose, arms slightly away from the body, both hands empty. Same realistic painterly dark-fantasy game-art style as the reference (NOT anime, NOT cel-shaded, NOT 3D render). No cape, no cloak, no wings, no halo, no weapons. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "1061fcd7-926e-48f9-8f1e-60329c65e441",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green",
+   "note": "views facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  },
+  {
+   "file": "tools/puppet/src/victor/victor_gunking_turn5.webp",
+   "cls": "victor_gunking",
+   "kind": "turnaround 5 views",
+   "ref": "side job of victor_gunking (job id passed as image reference, no re-upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the man in the reference image, wearing exactly his outfit with the same colors and details: GUN KING, the king of gunslingers - the same plumed gold hat now with a small gold crown band and a red jewel, the same dark burgundy-black long coat now covered in richer heavy gold (#ffd84a) baroque embroidery, larger gold epaulettes with gold fringe, a gold bandolier with gold bullets, a gold royal chain with a medallion across the chest, pale gold (#fff0b0) shirt ruffle, antique gold (#c8a040) buttons and gold spurs. Five full-body standing views of the same character in one row, evenly spaced, same size, feet on the same baseline: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Relaxed standing pose, arms slightly away from the body, both hands empty. Same realistic painterly dark-fantasy game-art style as the reference (NOT anime, NOT cel-shaded, NOT 3D render). No cape, no cloak, no wings, no halo, no weapons. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "9d9ca2bb-db8b-4653-96e0-81d877cff9f1",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green",
+   "note": "views facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  },
+  {
+   "file": "tools/puppet/src/victor/victor_silverwolf_turn5.webp",
+   "cls": "victor_silverwolf",
+   "kind": "turnaround 5 views",
+   "ref": "side job of victor_silverwolf (job id passed as image reference, no re-upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the man in the reference image, wearing exactly his outfit with the same colors and details: SILVER WOLF, a silver-bullet wolf hunter who carries the moon's curse - the same wide-brimmed hat now charcoal-grey with a silver crescent-moon badge, a long charcoal-grey and dark slate (#1a1a2a) leather duster with silver (#c8ccd4) trim and silver buckles, a short grey wolf-fur collar on the shoulders, a bandolier of shining silver bullets, a pale silver-grey (#c8ccd4) neckerchief, a silver wolf-head belt buckle, cold desaturated moonlit colors. Five full-body standing views of the same character in one row, evenly spaced, same size, feet on the same baseline: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Relaxed standing pose, arms slightly away from the body, both hands empty. Same realistic painterly dark-fantasy game-art style as the reference (NOT anime, NOT cel-shaded, NOT 3D render). No cape, no cloak, no wings, no halo, no weapons. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "217877a1-2de1-4a31-829f-86ba8c26fffb",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green",
+   "note": "views facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  },
+  {
+   "file": "tools/puppet/src/bran/bran_bastion_side.webp",
+   "cls": "bran_bastion",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/bran/bran_guardian_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same burly red-bearded knight: the same face, the same hair, the same body proportions and the exact same walking side pose facing right (same arm, hand and leg positions), the same camera angle, the same framing, the same scale and the same position on the canvas. Keep the same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D render) with the same soft lighting and brush detail. Change ONLY his costume, armor and colors into: BASTION, a guardian knight who turns the ground he stands on into a fortress - the same white-silver plate armor and gold laurel wreath, now heavier and grander: pale blue-white (#cfe0ff) polished steel with rich gold (#ffd84a) filigree, a massive gold sun pauldron shaped like a castle tower with battlement crenellations, a reinforced breastplate with a gold tower emblem, a deep royal-blue (#1a3a7a) tabard with gold border and a gold tower crest, gold gauntlets. This is a higher-rank, more splendid version of the same outfit, with the same silhouette and the same coat length. No cape, no cloak, no wings, no halo, no glowing aura around the body, nothing held in the hands, both gloved hands empty, no guns in the hands. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "70d6e526-d0f9-4c2f-a273-258884a42946",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green"
+  },
+  {
+   "file": "tools/puppet/src/bran/bran_vanguard_side.webp",
+   "cls": "bran_vanguard",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/bran/bran_crusader_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same burly red-bearded knight: the same face, the same hair, the same body proportions and the exact same walking side pose facing right (same arm, hand and leg positions), the same camera angle, the same framing, the same scale and the same position on the canvas. Keep the same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D render) with the same soft lighting and brush detail. Change ONLY his costume, armor and colors into: HOLY VANGUARD, the spearhead of the holy war - the same ivory enamel plate armor and gold crown, now grander: ivory and pale gold (#fff2b0) enamel plate with crimson (#c01020) enamel bands and gold (#ffd84a) edging, a large gold cross on the breastplate, a crimson (#c01020) tabard with a big gold cross and gold border, gold winged ornaments on the pauldron, a richer gold crown with a red jewel. This is a higher-rank, more splendid version of the same outfit, with the same silhouette and the same coat length. No cape, no cloak, no wings, no halo, no glowing aura around the body, nothing held in the hands, both gloved hands empty, no guns in the hands. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "3a693e90-a20f-4a70-819b-71044a48dd1b",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green"
+  },
+  {
+   "file": "tools/puppet/src/bran/bran_conqueror_side.webp",
+   "cls": "bran_conqueror",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/bran/bran_warlord_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same burly red-bearded knight: the same face, the same hair, the same body proportions and the exact same walking side pose facing right (same arm, hand and leg positions), the same camera angle, the same framing, the same scale and the same position on the canvas. Keep the same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D render) with the same soft lighting and brush detail. Change ONLY his costume, armor and colors into: CONQUEROR, a monarch who devoured the battlefield - the same blackened spiked steel plate and horned crown, now grander: black steel plate with heavy antique gold (#c8a040) engraved trim, glowing ember-orange (#ff3010) cracks in the armor seams, a larger horned gold-and-black conqueror's crown, a dark fur collar, a deep maroon (#5a0a0a) tabard with a gold border and fiery orange edge, a gold skull belt buckle. This is a higher-rank, more splendid version of the same outfit, with the same silhouette and the same coat length. No cape, no cloak, no wings, no halo, no glowing aura around the body, nothing held in the hands, both gloved hands empty, no guns in the hands. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "61b4849d-7e47-42ac-beb9-7aa6fd83830d",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green"
+  },
+  {
+   "file": "tools/puppet/src/bran/bran_bloodtyrant_side.webp",
+   "cls": "bran_bloodtyrant",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/bran/bran_bloodrage_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same burly red-bearded warrior: the same face, the same hair, the same body proportions and the exact same walking side pose facing right (same arm, hand and leg positions), the same camera angle, the same framing, the same scale and the same position on the canvas. Keep the same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D render) with the same soft lighting and brush detail. Change ONLY his costume, armor and colors into: BLOOD TYRANT, a blood-demon tyrant who burns his own blood as kindling - the same bare tattooed arm, the same dark spiked armor and demon horns, now grander: crimson-black (#5a0010) spiked plate with bright blood-red (#ff1a2a) glowing runes, larger curved black demon horns, a bone-and-iron spiked pauldron, blood-red glowing tattoos on the bare arm, a tattered crimson tabard, blood-red glowing eyes. This is a higher-rank, more splendid version of the same outfit, with the same silhouette and the same coat length. No cape, no cloak, no wings, no halo, no glowing aura around the body, nothing held in the hands, both gloved hands empty, no guns in the hands. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "a599f422-47a8-4b7b-9a33-6ddfdd6bb516",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green"
+  },
+  {
+   "file": "tools/puppet/src/bran/bran_oathlord_side.webp",
+   "cls": "bran_oathlord",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/bran/bran_knight_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same burly red-bearded knight: the same face, the same hair, the same body proportions and the exact same walking side pose facing right (same arm, hand and leg positions), the same camera angle, the same framing, the same scale and the same position on the canvas. Keep the same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D render) with the same soft lighting and brush detail. Change ONLY his costume, armor and colors into: OATH LORD, the commander who rebuilt the fallen Dawn Oath knights - the same steel plate armor, now grander: polished steel plate with dawn-gold (#ffcf6a) trim and sunrise engravings, a gold rising-sun emblem on the breastplate, a larger pauldron with a gold sunburst, a dawn-blue (#2a4a8a) tabard with a gold sunrise border over cream (#f0e8d0) cloth, a gold oath chain with a medallion, a gold circlet with a small sun. This is a higher-rank, more splendid version of the same outfit, with the same silhouette and the same coat length. No cape, no cloak, no wings, no halo, no glowing aura around the body, nothing held in the hands, both gloved hands empty, no guns in the hands. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "e7215cfc-ae2e-4afa-8453-272e21ba63e5",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green"
+  },
+  {
+   "file": "tools/puppet/src/bran/bran_bastion_turn5.webp",
+   "cls": "bran_bastion",
+   "kind": "turnaround 5 views",
+   "ref": "side job of bran_bastion (job id passed as image reference, no re-upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the man in the reference image, wearing exactly his outfit with the same colors and details: BASTION, a guardian knight who turns the ground he stands on into a fortress - the same white-silver plate armor and gold laurel wreath, now heavier and grander: pale blue-white (#cfe0ff) polished steel with rich gold (#ffd84a) filigree, a massive gold sun pauldron shaped like a castle tower with battlement crenellations, a reinforced breastplate with a gold tower emblem, a deep royal-blue (#1a3a7a) tabard with gold border and a gold tower crest, gold gauntlets. Five full-body standing views of the same character in one row, evenly spaced, same size, feet on the same baseline: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Relaxed standing pose, arms slightly away from the body, both hands empty. Same realistic painterly dark-fantasy game-art style as the reference (NOT anime, NOT cel-shaded, NOT 3D render). No cape, no cloak, no wings, no halo, no weapons. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "aeba4f35-c30e-47ce-8f7f-b6ff3bccf51f",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green",
+   "note": "views facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  },
+  {
+   "file": "tools/puppet/src/bran/bran_vanguard_turn5.webp",
+   "cls": "bran_vanguard",
+   "kind": "turnaround 5 views",
+   "ref": "side job of bran_vanguard (job id passed as image reference, no re-upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the man in the reference image, wearing exactly his outfit with the same colors and details: HOLY VANGUARD, the spearhead of the holy war - the same ivory enamel plate armor and gold crown, now grander: ivory and pale gold (#fff2b0) enamel plate with crimson (#c01020) enamel bands and gold (#ffd84a) edging, a large gold cross on the breastplate, a crimson (#c01020) tabard with a big gold cross and gold border, gold winged ornaments on the pauldron, a richer gold crown with a red jewel. Five full-body standing views of the same character in one row, evenly spaced, same size, feet on the same baseline: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Relaxed standing pose, arms slightly away from the body, both hands empty. Same realistic painterly dark-fantasy game-art style as the reference (NOT anime, NOT cel-shaded, NOT 3D render). No cape, no cloak, no wings, no halo, no weapons. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "03477c39-2729-4be8-8ded-1738afd461d0",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green",
+   "note": "views facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  },
+  {
+   "file": "tools/puppet/src/bran/bran_conqueror_turn5.webp",
+   "cls": "bran_conqueror",
+   "kind": "turnaround 5 views",
+   "ref": "side job of bran_conqueror (job id passed as image reference, no re-upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the man in the reference image, wearing exactly his outfit with the same colors and details: CONQUEROR, a monarch who devoured the battlefield - the same blackened spiked steel plate and horned crown, now grander: black steel plate with heavy antique gold (#c8a040) engraved trim, glowing ember-orange (#ff3010) cracks in the armor seams, a larger horned gold-and-black conqueror's crown, a dark fur collar, a deep maroon (#5a0a0a) tabard with a gold border and fiery orange edge, a gold skull belt buckle. Five full-body standing views of the same character in one row, evenly spaced, same size, feet on the same baseline: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Relaxed standing pose, arms slightly away from the body, both hands empty. Same realistic painterly dark-fantasy game-art style as the reference (NOT anime, NOT cel-shaded, NOT 3D render). No cape, no cloak, no wings, no halo, no weapons. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "2d296509-be72-466c-95e6-af4f01844f81",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green",
+   "note": "views facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  },
+  {
+   "file": "tools/puppet/src/bran/bran_bloodtyrant_turn5.webp",
+   "cls": "bran_bloodtyrant",
+   "kind": "turnaround 5 views",
+   "ref": "side job of bran_bloodtyrant (job id passed as image reference, no re-upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the man in the reference image, wearing exactly his outfit with the same colors and details: BLOOD TYRANT, a blood-demon tyrant who burns his own blood as kindling - the same bare tattooed arm, the same dark spiked armor and demon horns, now grander: crimson-black (#5a0010) spiked plate with bright blood-red (#ff1a2a) glowing runes, larger curved black demon horns, a bone-and-iron spiked pauldron, blood-red glowing tattoos on the bare arm, a tattered crimson tabard, blood-red glowing eyes. Five full-body standing views of the same character in one row, evenly spaced, same size, feet on the same baseline: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Relaxed standing pose, arms slightly away from the body, both hands empty. Same realistic painterly dark-fantasy game-art style as the reference (NOT anime, NOT cel-shaded, NOT 3D render). No cape, no cloak, no wings, no halo, no weapons. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "7ba10731-9760-4dc1-b88d-3be97d6cd0f1",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green",
+   "note": "views facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  },
+  {
+   "file": "tools/puppet/src/bran/bran_oathlord_turn5.webp",
+   "cls": "bran_oathlord",
+   "kind": "turnaround 5 views",
+   "ref": "side job of bran_oathlord (job id passed as image reference, no re-upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the man in the reference image, wearing exactly his outfit with the same colors and details: OATH LORD, the commander who rebuilt the fallen Dawn Oath knights - the same steel plate armor, now grander: polished steel plate with dawn-gold (#ffcf6a) trim and sunrise engravings, a gold rising-sun emblem on the breastplate, a larger pauldron with a gold sunburst, a dawn-blue (#2a4a8a) tabard with a gold sunrise border over cream (#f0e8d0) cloth, a gold oath chain with a medallion, a gold circlet with a small sun. Five full-body standing views of the same character in one row, evenly spaced, same size, feet on the same baseline: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Relaxed standing pose, arms slightly away from the body, both hands empty. Same realistic painterly dark-fantasy game-art style as the reference (NOT anime, NOT cel-shaded, NOT 3D render). No cape, no cloak, no wings, no halo, no weapons. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "1ded80e1-a57a-4d66-9dd9-836c2ff2e8b5",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green",
+   "note": "views facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  },
+  {
+   "file": "tools/puppet/src/lia/lia_umbra_side.webp",
+   "cls": "lia_umbra",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/lia/lia_shadowmaster_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young woman: the same face, the same hair, the same body proportions and the exact same walking side pose facing right (same arm, hand and leg positions), the same camera angle, the same framing, the same scale and the same position on the canvas. Keep the same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D render) with the same soft lighting and brush detail. Change ONLY her costume, armor and colors into: UMBRA, a shadow incarnate, the final art of the ninja - the same black lacquered layered armor, the same black bob hair and black face mask, now grander: void-black lacquer with glowing violet (#b060ff) sigils and edges, deep indigo-purple (#4a2a8a) layered shoulder plates (larger), a dark violet (#2a0a4a) short scarf around the neck, violet glowing eyes, purple-lit armored boots and sash, faint black smoke curling from the armor edges. This is a higher-rank, more splendid version of the same outfit, with the same slim silhouette. No cape, no cloak, no wings, no halo, no long scarf tails, no glowing aura around the body, nothing held in the hands, both hands empty, no weapons. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "9821c65c-935c-4b61-845c-877910402913",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green"
+  },
+  {
+   "file": "tools/puppet/src/lia/lia_mirage_side.webp",
+   "cls": "lia_mirage",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/lia/lia_kunoichi_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young woman: the same face, the same hair, the same body proportions and the exact same walking side pose facing right (same arm, hand and leg positions), the same camera angle, the same framing, the same scale and the same position on the canvas. Keep the same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D render) with the same soft lighting and brush detail. Change ONLY her costume, armor and colors into: MIRAGE, the illusion who is already behind you - the same short kimono jacket, the same black bob hair, face mask and gold circlet, now grander: deep crimson (#8a0a20) kimono jacket with rose-pink (#ff4a6a) trim and embroidered pink cherry blossom petals and heat-shimmer flame patterns, a rose (#ffb0c0) sash with gold clasp, a short rose scarf around the neck, a gold circlet with a pink jewel, pink-white boots with crimson trim. This is a higher-rank, more splendid version of the same outfit, with the same slim silhouette. No cape, no cloak, no wings, no halo, no long scarf tails, no glowing aura around the body, nothing held in the hands, both hands empty, no weapons. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "2f66615e-fb9d-46da-b767-b25dfd5834c6",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green"
+  },
+  {
+   "file": "tools/puppet/src/lia/lia_bladequeen_side.webp",
+   "cls": "lia_bladequeen",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/lia/lia_bladedancer_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young woman: the same face, the same hair, the same body proportions and the exact same walking side pose facing right (same arm, hand and leg positions), the same camera angle, the same framing, the same scale and the same position on the canvas. Keep the same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D render) with the same soft lighting and brush detail. Change ONLY her costume, armor and colors into: BLADE QUEEN, the queen of the blade dance - the same silk dancer outfit, the same black bob hair and face mask, now grander: deep wine (#5a0a2a) silk with heavy gold (#ffd84a) filigree, small gold blade-shaped ornaments along the sash and belt, a gold queen's tiara with blade points, gold arm bracers, a short gold (#ffe070) scarf around the neck, ivory (#fff8e0) accents, gold-trimmed boots. This is a higher-rank, more splendid version of the same outfit, with the same slim silhouette. No cape, no cloak, no wings, no halo, no long scarf tails, no glowing aura around the body, nothing held in the hands, both hands empty, no weapons. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "4d2ca693-346e-4238-b34f-ec39b959320a",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green"
+  },
+  {
+   "file": "tools/puppet/src/lia/lia_soulreaper_side.webp",
+   "cls": "lia_soulreaper",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/lia/lia_reaper_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young woman: the same face, the same hair, the same body proportions and the exact same walking side pose facing right (same arm, hand and leg positions), the same camera angle, the same framing, the same scale and the same position on the canvas. Keep the same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D render) with the same soft lighting and brush detail. Change ONLY her costume, armor and colors into: SOUL REAPER, the reaper who stores harvested souls - the same black hood, face mask, bone rib-cage armor and skull pauldron, now grander: more bone plates with a spine, ghostly green (#6affb0) glowing runes and small glowing soul vials on the belt, a dark green (#3a8a5a) sash, pale ghost-white (#e8fff4) highlights, glowing green eyes, bone knee guards. This is a higher-rank, more splendid version of the same outfit, with the same slim silhouette. No cape, no cloak, no wings, no halo, no long scarf tails, no glowing aura around the body, nothing held in the hands, both hands empty, no weapons. Plain flat solid #FF00FF magenta background, no floor shadow, no text, no border, no frame.",
+   "job_id": "7509191d-7980-4600-82cf-a0b5354bf315",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "magenta"
+  },
+  {
+   "file": "tools/puppet/src/lia/lia_frostcrow_side.webp",
+   "cls": "lia_frostcrow",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/lia/lia_assassin_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young woman: the same face, the same hair, the same body proportions and the exact same walking side pose facing right (same arm, hand and leg positions), the same camera angle, the same framing, the same scale and the same position on the canvas. Keep the same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D render) with the same soft lighting and brush detail. Change ONLY her costume, armor and colors into: FROST CROW, heir of her father's crow wings who came home through the ice - the same ninja outfit, the same black bob hair and face mask, now grander: dark slate-indigo (#2a2a4a) leather with icy pale blue (#bff4ff) trim, a black crow-feather shoulder guard with frosted ice-blue tips, small frost crystals on the bracers and boots, a short pale ice-blue (#bfe8ff) scarf around the neck, silver-white accents, a pale blue sash. This is a higher-rank, more splendid version of the same outfit, with the same slim silhouette. No cape, no cloak, no wings, no halo, no long scarf tails, no glowing aura around the body, nothing held in the hands, both hands empty, no weapons. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "55108a4b-a40c-429e-809b-f83a99f69bfd",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green"
+  },
+  {
+   "file": "tools/puppet/src/lia/lia_umbra_turn5.webp",
+   "cls": "lia_umbra",
+   "kind": "turnaround 5 views",
+   "ref": "side job of lia_umbra (job id passed as image reference, no re-upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the woman in the reference image, wearing exactly her outfit with the same colors and details: UMBRA, a shadow incarnate, the final art of the ninja - the same black lacquered layered armor, the same black bob hair and black face mask, now grander: void-black lacquer with glowing violet (#b060ff) sigils and edges, deep indigo-purple (#4a2a8a) layered shoulder plates (larger), a dark violet (#2a0a4a) short scarf around the neck, violet glowing eyes, purple-lit armored boots and sash, faint black smoke curling from the armor edges. Five full-body standing views of the same character in one row, evenly spaced, same size, feet on the same baseline: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Relaxed standing pose, arms slightly away from the body, both hands empty. Same realistic painterly dark-fantasy game-art style as the reference (NOT anime, NOT cel-shaded, NOT 3D render). No cape, no cloak, no wings, no halo, no long scarf tails, no weapons. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "3bb6fbbd-2cb6-47a3-b7e4-0b0e889779ac",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green",
+   "note": "views facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  },
+  {
+   "file": "tools/puppet/src/lia/lia_mirage_turn5.webp",
+   "cls": "lia_mirage",
+   "kind": "turnaround 5 views",
+   "ref": "side job of lia_mirage (job id passed as image reference, no re-upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the woman in the reference image, wearing exactly her outfit with the same colors and details: MIRAGE, the illusion who is already behind you - the same short kimono jacket, the same black bob hair, face mask and gold circlet, now grander: deep crimson (#8a0a20) kimono jacket with rose-pink (#ff4a6a) trim and embroidered pink cherry blossom petals and heat-shimmer flame patterns, a rose (#ffb0c0) sash with gold clasp, a short rose scarf around the neck, a gold circlet with a pink jewel, pink-white boots with crimson trim. Five full-body standing views of the same character in one row, evenly spaced, same size, feet on the same baseline: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Relaxed standing pose, arms slightly away from the body, both hands empty. Same realistic painterly dark-fantasy game-art style as the reference (NOT anime, NOT cel-shaded, NOT 3D render). No cape, no cloak, no wings, no halo, no long scarf tails, no weapons. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "1dd43744-ab28-4e28-852e-218905e3262a",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green",
+   "note": "views facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  },
+  {
+   "file": "tools/puppet/src/lia/lia_bladequeen_turn5.webp",
+   "cls": "lia_bladequeen",
+   "kind": "turnaround 5 views",
+   "ref": "side job of lia_bladequeen (job id passed as image reference, no re-upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the woman in the reference image, wearing exactly her outfit with the same colors and details: BLADE QUEEN, the queen of the blade dance - the same silk dancer outfit, the same black bob hair and face mask, now grander: deep wine (#5a0a2a) silk with heavy gold (#ffd84a) filigree, small gold blade-shaped ornaments along the sash and belt, a gold queen's tiara with blade points, gold arm bracers, a short gold (#ffe070) scarf around the neck, ivory (#fff8e0) accents, gold-trimmed boots. Five full-body standing views of the same character in one row, evenly spaced, same size, feet on the same baseline: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Relaxed standing pose, arms slightly away from the body, both hands empty. Same realistic painterly dark-fantasy game-art style as the reference (NOT anime, NOT cel-shaded, NOT 3D render). No cape, no cloak, no wings, no halo, no long scarf tails, no weapons. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "c3aaf8e5-d3ea-4d7b-9293-914b6452053e",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green",
+   "note": "views facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  },
+  {
+   "file": "tools/puppet/src/lia/lia_soulreaper_turn5.webp",
+   "cls": "lia_soulreaper",
+   "kind": "turnaround 5 views",
+   "ref": "side job of lia_soulreaper (job id passed as image reference, no re-upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the woman in the reference image, wearing exactly her outfit with the same colors and details: SOUL REAPER, the reaper who stores harvested souls - the same black hood, face mask, bone rib-cage armor and skull pauldron, now grander: more bone plates with a spine, ghostly green (#6affb0) glowing runes and small glowing soul vials on the belt, a dark green (#3a8a5a) sash, pale ghost-white (#e8fff4) highlights, glowing green eyes, bone knee guards. Five full-body standing views of the same character in one row, evenly spaced, same size, feet on the same baseline: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Relaxed standing pose, arms slightly away from the body, both hands empty. Same realistic painterly dark-fantasy game-art style as the reference (NOT anime, NOT cel-shaded, NOT 3D render). No cape, no cloak, no wings, no halo, no long scarf tails, no weapons. Plain flat solid #FF00FF magenta background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "fff9827d-8e21-4dde-ae8d-db94b2e07b2e",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "magenta",
+   "note": "views facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  },
+  {
+   "file": "tools/puppet/src/lia/lia_frostcrow_turn5.webp",
+   "cls": "lia_frostcrow",
+   "kind": "turnaround 5 views",
+   "ref": "side job of lia_frostcrow (job id passed as image reference, no re-upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the woman in the reference image, wearing exactly her outfit with the same colors and details: FROST CROW, heir of her father's crow wings who came home through the ice - the same ninja outfit, the same black bob hair and face mask, now grander: dark slate-indigo (#2a2a4a) leather with icy pale blue (#bff4ff) trim, a black crow-feather shoulder guard with frosted ice-blue tips, small frost crystals on the bracers and boots, a short pale ice-blue (#bfe8ff) scarf around the neck, silver-white accents, a pale blue sash. Five full-body standing views of the same character in one row, evenly spaced, same size, feet on the same baseline: 1 front view, 2 three-quarter front view, 3 side profile view, 4 back view, 5 three-quarter back view. Relaxed standing pose, arms slightly away from the body, both hands empty. Same realistic painterly dark-fantasy game-art style as the reference (NOT anime, NOT cel-shaded, NOT 3D render). No cape, no cloak, no wings, no halo, no long scarf tails, no weapons. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "5a45fa9b-2f97-4643-a8b6-24429b47a4e8",
+   "credits": 0.5,
+   "kept": true,
+   "bg": "green",
+   "note": "views facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  }
+ ]
+}
