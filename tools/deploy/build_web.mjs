@@ -444,6 +444,8 @@ function moduleOrder(SRC, entry) {
 
 // ── APK 안 크기 어림 (tools/apk/pack_web.py 의 apk_bytes · pwa_only 와 같은 계산 — 둘을 바꿀 때 함께) ──
 const APK_NO_COMPRESS = new Set(['png', 'webp', 'jpg', 'jpeg', 'gif', 'avif', 'mp3', 'ogg', 'oga', 'opus', 'm4a', 'aac', 'mp4', 'webm', 'woff', 'woff2']);
+// build_apk.sh 가 APK 에 반드시 있어야 한다고 확인하는 파일 — PWA 전용 그림이어도 싣는다 (pack_web.py APK_MUST_KEEP 와 같게, s9 verify9)
+const APK_MUST_KEEP = new Set(['assets/ui/icon-512.png']);
 const APK_OVERHEAD = 600 * 1024;   // classes.dex · resources.arsc · 아이콘 · 매니페스트 · 서명 블록 (pack_web.py 와 같은 어림)
 function apkBytesOf(abs, rel, n) {
   const ext = rel.includes('.') ? rel.split('.').pop().toLowerCase() : '';
@@ -461,7 +463,7 @@ function pwaOnlyFiles(OUT, html, all) {
   const texts = [html.replace(/<meta\b[^>]*>/g, '')];
   for (const r of all) if (/\.(m?js|css)$/.test(r) && r !== 'sw.js' && !isDeployOnly(r)) texts.push(fs.readFileSync(path.join(OUT, r), 'utf8'));   // sw.js 는 APK 에 없다
   const blob = texts.join('\n');
-  return cand.filter((r) => !linked.has(r) && !blob.includes(r.split('/').pop())).sort();
+  return cand.filter((r) => !linked.has(r) && !APK_MUST_KEEP.has(r) && !blob.includes(r.split('/').pop())).sort();
 }
 
 function loKeysOf(OUT) {

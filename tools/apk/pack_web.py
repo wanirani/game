@@ -55,6 +55,8 @@ TD_FLOOR_MANIFEST = 1.25           # src/render/painted/kit.js: 보스·동료 (
 TD_FLOOR_RIG = 1.75                # src/render/painted/enemy_kit.js: 적·동료 (srcTD)
 MB = 1024 * 1024
 AUDIO = 'assets/audio/'
+# build_apk.sh 가 서명한 APK 에 반드시 있어야 한다고 확인하는 파일 ("APK 에 … 가 없습니다" 로 빌드 실패) — PWA 전용 그림이어도 빼지 않는다 (s9 verify9)
+APK_MUST_KEEP = {'assets/ui/icon-512.png'}
 MUSIC = 'assets/audio/music/'
 # APK 에 싣는 녹음 음악 순서 (예산이 모자라면 뒤에서부터 빠진다; 목록에 없는 곡은 맨 뒤). 빠진 곡은 앱에서 합성 음원
 MUSIC_PRIORITY = ['title', 'hub', 'worldmap', 's01', 'boss', 'victory', 'gameover', 'prologue', 's02', 's03', 'boss2', 's04', 's05', 's06', 's07',
@@ -175,7 +177,7 @@ def pwa_only(www, rels, html):
             src = (it or {}).get('src') if isinstance(it, dict) else None
             if isinstance(src, str):
                 rel = src.split('?')[0].split('#')[0].lstrip('./')
-                if rel in rels and rel not in cand:
+                if rel in rels and rel not in cand and rel not in APK_MUST_KEEP:
                     cand.append(rel)
     if not cand:
         return []

@@ -194,7 +194,7 @@ and slightly curved as if casting a spell, the wrist and cuff at the bottom. No 
    리뷰로 찾은 고침: 연옥의 총잡이 `legs.pantsWarmMax: null`(갈색 바지가 넓적다리를 지움) · 은랑 사냥꾼 검은 장갑 → `hands` 를 데드아이 시트로, 무채색 회색 코트 →
    `materials` 채도·밝기 창 · 성채 기사의 탑 견갑(흉벽) → `regions.pad`·`torso` 위로 넓히고 `head` 아래 왼쪽을 깎음(pad 는 torso 안만 쓴다) ·
    영혼 수확자의 짧아진 허리 띠 → `regions.skirt`·`joints.skirtHem` 을 띠 끝(≈1850 px)까지만(부모 영역이 먼 다리 정강이를 잘라 띠와 함께 흔들었다) ·
-   서리 까마귀 하늘색 장식 → `materials.trim` 색조 175–215. 용량: 직업당 201–372 KB, 15직업 4.30 MB (빅터 1.31 · 브란 1.65 · 리아 1.13 MB).
+   서리 까마귀 하늘색 장식 → `materials.trim` 색조 175–215. 용량: 직업당 201–372 KB, 15직업 4,298,040 B = 4.10 MiB (빅터 1.31 · 브란 1.65 · 리아 1.14 MiB). APK 는 SIZE 레인의 hi 단계(원본만, lo 사본 없음)로 88.53 / 95 MB.
    QA 도구: `ingame.mjs --qs '&cmp=all&cmplv=10&mount=mt_warhorse&ride=1'`(탈것), `shot` 마다 `<out>_N.json`(플레이어 화면 위치) · `review.mjs allasc` 목록에 15직업 추가.
    주의: 8방향 시트 직업의 옆모습(0°·180°)은 게임 퍼펫 idle 을 그대로 그려 대검(브란)이 메뉴 무대 왼쪽으로 크게 뻗는다 (16방향 부모는 해당 없음).
 
