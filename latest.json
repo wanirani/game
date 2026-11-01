@@ -1,0 +1,13 @@
+{
+ "versionName": "1.0.0",
+ "versionCode": 438330,
+ "sha256": "1b0b8f2d768b5c2cddea3417fa33ca37c57702be469b2d6c9f390465f0282693",
+ "bytes": 92757481,
+ "url": "downloads/BloodNocturne-1.0.0-438330.apk",
+ "built": "2026-11-01T09:31:00Z",
+ "signingCertSha256": "efaee88b9ff54bf116c2aae40e358ec073d4a7729261b1b6ac2da5e7a24ed60f",
+ "web": {
+  "buildHash": "30689a17ddcc",
+  "version": "1.0.0+20261101T0930.c9347d3d"
+ }
+}
