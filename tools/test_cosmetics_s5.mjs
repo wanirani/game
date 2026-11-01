@@ -24,7 +24,7 @@ test('장부: Stage 5 항목 (탑 이정표 5 · 악몽 3) 과 이정표 표', (
   assert.deepEqual(C.TOWER_MILESTONES.map((m) => m.floor), [10, 20, 30, 40, 50]);
   for (const m of C.TOWER_MILESTONES) assert.equal(C.TRAILS[m.trail]?.need?.tw, m.floor, `이정표 ${m.floor} → ${m.trail}`);
   // 모든 잔상: 이름·설명·6단 색(#rrggbb)·알려진 need 키 하나
-  const KEYS = ['ach', 'tower', 'tw', 'nm', 'ng'];
+  const KEYS = ['ach', 'tower', 'tw', 'nm', 'ng', 'hj'];
   for (const id of C.TRAIL_IDS) {
     const t = C.TRAILS[id];
     assert.ok(t.name && t.desc, `${id} 이름·설명`);
@@ -32,6 +32,10 @@ test('장부: Stage 5 항목 (탑 이정표 5 · 악몽 3) 과 이정표 표', (
     for (const c of t.ramp) assert.match(c, /^#[0-9a-f]{6}$/i, `${id} 색 ${c}`);
     assert.equal(Object.keys(t.need).filter((k) => KEYS.includes(k)).length, 1, `${id} need 키 하나`);
   }
+  // Stage 6 사냥 일지 (HUNT): 잔상 「사냥꾼」 하나만 hj 키 · 명사냥꾼(500점) 문턱 · 아케이드 임시 세이브는 세지 않음
+  assert.deepEqual(C.TRAIL_IDS.filter((id) => typeof C.TRAILS[id].need?.hj === 'number'), ['tr_hunter'], 'Stage 6 사냥 일지 잔상 1');
+  assert.equal(C.needMet({ hj: 500 }, C.cosContext({}, [{ hunt: { pts: 500 } }])), true);
+  assert.equal(C.needMet({ hj: 500 }, C.cosContext({}, [{ arcade: true, hunt: { pts: 900 } }])), false);
   assert.equal(new Set(C.TRAIL_IDS.map((id) => C.TRAILS[id].name)).size, C.TRAIL_IDS.length, '이름 겹침 없음');
 });
 

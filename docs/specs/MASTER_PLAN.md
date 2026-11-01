@@ -310,6 +310,8 @@ Every module in this table exists after W0, with the listed exports as no-ops. T
 | vibration | true | bool | existing (phone vibrate) | 터치 | 진동 |
 | autoSave | true | bool | existing | 기타 | 자동 저장 |
 | keepAwake | true | bool | platform §6.6 | 기타 | 화면 꺼짐 방지 |
+| batterySaver | 0 | 0 \| 60 \| 45 \| 30 | Stage 6 phone (game.js saverFps/saverTier) | 화면 | 절전 모드 |
+| vibeLevel | 'mid' | 'off' \| 'low' \| 'mid' \| 'high' | Stage 6 phone (haptics.js scaleVibe); `vibration` false ⇒ 'off' on migrate, the 진동 세기 row also writes `vibration` | 터치 | 진동 세기 |
 | turntableAuto | true | bool | platform §7.2 | 기타 | 영웅 자동 회전 |
 | fullscreenAuto | true | bool | platform §6.6 (touch/Android web only) | 기타 | 첫 터치에 전체 화면 |
 | telemetry | true | bool | docs/TELEMETRY.md (default false when navigator.globalPrivacyControl) | 기타 | 익명 통계·오류 보내기 |

@@ -246,10 +246,12 @@ export class Camera {
     const vwB = this.w / this.baseZoom, vhB = this.h / this.baseZoom;
     // 룩어헤드: 이동 방향 앞쪽을 더 보여줌 (+질주·대시 추가, +터치 모드 오른쪽 바이어스)
     // [matrix] 터치(게임 화면 위 버튼 묶음): 오른쪽을 볼 때 묶음 폭의 35 % 를 더 앞으로 — 앞의 가시·적이 묶음 밑에 숨지 않게 (replay f23)
-    const tsR = input.touchMode && f > 0 && game.world?.mode !== 'town' ? touchSides(this.w, this.h) : null;
-    const touchBias = input.touchMode && f > 0 ? vwB * TOUCH_BIAS + (tsR ? tsR.r / (this.baseZoom || 1) * TOUCH_AHEAD_K : 0) : 0;   // [hook:plat]
+    // [s6 phone→verifyB] 왼손 모드(touchLeftHanded): 버튼 묶음이 왼쪽 → 왼쪽을 볼 때 같은 규칙으로 더 앞을 본다 (오른손은 sg = 1 이라 예전과 같은 식)
+    const sg = game.settings?.touchLeftHanded ? -1 : 1, ahead = sg > 0 ? f > 0 : f < 0;
+    const tsR = input.touchMode && ahead && game.world?.mode !== 'town' ? touchSides(this.w, this.h) : null;
+    const touchBias = input.touchMode && ahead ? sg * (vwB * TOUCH_BIAS + (tsR ? (sg > 0 ? tsR.r : tsR.l) / (this.baseZoom || 1) * TOUCH_AHEAD_K : 0)) : 0;   // [hook:plat]
     let wantLook = clamp((t.vx || 0) * 0.28, -130, 130) + f * (40 + (this.lookBoost || 0)) + touchBias;   // [hook:feel] [hook:plat]
-    if (tsR) wantLook = Math.min(wantLook, vwB * TOUCH_AHEAD_MAX);
+    if (tsR) wantLook = sg > 0 ? Math.min(wantLook, vwB * TOUCH_AHEAD_MAX) : Math.max(wantLook, -vwB * TOUCH_AHEAD_MAX);
     this.lookX = snap ? wantLook : lerp(this.lookX, wantLook, 1 - Math.pow(0.04, dt));
     const wantLookY = t.onGround ? -40 : ((t.vy || 0) > 300 ? 40 : -20);
     this.lookY = snap ? wantLookY : lerp(this.lookY, wantLookY, 1 - Math.pow(0.1, dt));

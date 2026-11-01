@@ -6,7 +6,7 @@
 //   fg.draw(ctx, cam, vw, vh, world)                  bg.drawFront 안, 날씨 뒤·비네팅 앞 (화면 좌표, HUD 아래)
 //
 // 규칙 (Stage 6 과제):
-//  · 주인공·적·보스·탄·줍는 것·HUD 를 가리지 않는다: 조각마다 화면 상자가 그것들(+여유)과 겹치면 알파를 HIDE_K 로 낮춘다
+//  · 주인공·적·보스·탄·줍는 것·보스 예고·위험 지대·HUD 를 가리지 않는다: 조각마다 화면 상자가 그것들(+여유)과 겹치면 알파를 HIDE_K 로 낮춘다
 //    (부드럽게, 초당 ~8). 보스전에서는 위 조각은 위로, 아래 조각은 아래로 밀어 가장자리에만 남기고 알파도 낮춘다.
 //  · 패럴랙스 배율 > 1 (data: par). 위 조각은 화면 위끝에 매달리고 아래 조각은 화면 아래끝에서 솟는다.
 //  · 스프라이트는 방을 불러올 때 페이지에 한 벌인 아틀라스 캔버스에 굽는다 (스테이지 도중 새 캔버스·그라데이션 0, 프레임마다 그라데이션 0).
@@ -38,7 +38,14 @@ const HUD_K = 0.55;                 // HUD 상자와만 겹친 조각의 알파 
 const HERO_PAD = 56, BOSS_PAD = 28, ENT_PAD = 14;   // 겹침 여유 (화면 px)
 const BOSS_LIFT = 0.5;              // 보스전: 조각 높이의 이만큼을 화면 밖으로 민다
 const BOSS_ALPHA = 0.6;             // 보스전 알파 배율
-const PROTECT = new Set(['player', 'enemy', 'boss', 'projectile', 'pickup']);
+const PROTECT = new Set(['player', 'enemy', 'boss', 'projectile', 'pickup', 'hazard']);   // hazard = 보스 위험 지대 (b_common Zone, 예고 포함)
+/** [verifyB] 가리면 안 되는 것: 위 종류 + 적·보스 판정 영역(광선·충격파·장판, kind 'hitbox' 중 플레이어 것 제외) + 보스 예고(a_common Telegraph = kind 'effect' + type·arrows) */
+const guarded = (e) => {
+  const k = e.kind;
+  if (PROTECT.has(k)) return true;
+  if (k === 'hitbox') return (e.team ?? e.attack?.team) !== 'player';
+  return k === 'effect' && typeof e.type === 'string' && 'arrows' in e;
+};
 export const FG_STATS = { bakes: 0 };
 
 // 페이지에 한 벌인 아틀라스 (방·스테이지가 바뀌면 같은 캔버스에 다시 칠한다)
@@ -302,7 +309,7 @@ export function createForeground(stage, map, theme) {
     const L = world?.entities;
     if (L) for (let i = 0; i < L.length; i++) {
       const e = L[i];
-      if (e === P || e === B || e.dead || e.hidden || !PROTECT.has(e.kind)) continue;
+      if (e === P || e === B || e.dead || e.hidden || !guarded(e)) continue;
       add(e, ENT_PAD);
     }
     fg.nEnt = n;   // 여기까지 = 가릴 수 없는 것 (HIDE_K), 뒤 = HUD 상자 (HUD_K: HUD 는 늘 위에 그려지니 글자 뒤만 조금 옅게)

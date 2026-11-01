@@ -144,6 +144,19 @@ section('4) 가리지 않기 (주인공·적·탄) · 보스전 가장자리');
     for (let i = 0; i < 60; i++) { fgM.update(1 / 60, ws); CNT.calls.length = 0; fgM.draw(ctx, cam, VW, VH); }
     const c3 = CNT.calls.find((c) => Math.abs(c.args[5] - dx) < 1);
     ok(!c3 || c3.a < full * 0.3, `piece over a projectile fades (${c3 ? c3.a.toFixed(2) : 'skipped'})`);
+    // [verifyB] 보스 예고·위험 지대·적 판정 영역도 가리지 않는다. 일반 효과(파티클 등)·플레이어 판정 영역은 그대로 짙게
+    const fadeWith = (ent) => {
+      const we = mkWorld('medium', { entities: [ent] });
+      for (let i = 0; i < 60; i++) { fgM.update(1 / 60, we); CNT.calls.length = 0; fgM.draw(ctx, cam, VW, VH); }
+      const c = CNT.calls.find((q) => Math.abs(q.args[5] - dx) < 1);
+      return c ? c.a : 0;
+    };
+    const box = { x: foe.x, y: foe.y, w: 32, h: 32 };
+    ok(fadeWith({ ...box, kind: 'effect', type: 'band', arrows: false, life: 0.8, maxLife: 0.8 }) < full * 0.3, 'piece over a boss telegraph (a_common Telegraph) fades');
+    ok(fadeWith({ ...box, kind: 'hazard', warn: 0.8 }) < full * 0.3, 'piece over a boss hazard zone (b_common Zone) fades');
+    ok(fadeWith({ ...box, kind: 'hitbox', attack: { team: 'enemy' } }) < full * 0.3, 'piece over an enemy beam/shockwave (hitbox) fades');
+    ok(fadeWith({ ...box, kind: 'effect', life: 0.3 }) > full * 0.9, 'plain effect (particle) does not fade the piece');
+    ok(fadeWith({ ...box, kind: 'hitbox', team: 'player' }) > full * 0.9, "player's own skill hitbox does not fade the piece");
     const wh = mkWorld('medium', { player: { x: foe.x, y: foe.y, w: 32, h: 64 } });
     for (let i = 0; i < 60; i++) { fgM.update(1 / 60, wh); CNT.calls.length = 0; fgM.draw(ctx, cam, VW, VH); }
     const c4 = CNT.calls.find((c) => Math.abs(c.args[5] - dx) < 1);
@@ -206,6 +219,26 @@ section('6) 보스 구도 (core/camera.js): 터치면 오른쪽 벽의 보스 �
     ok(far.x <= far0.x + 0.5, `touch, hero far from the boss: no extra pull past the old framing (${far.x.toFixed(0)} ≤ ${far0.x.toFixed(0)})`);
     const d0 = run(false, false), d1 = run(false, true);
     ok(d0.x === d1.x && d0.y === d1.y, `keyboard/pad framing unchanged (${d0.x.toFixed(1)},${d0.y.toFixed(1)} = ${d1.x.toFixed(1)},${d1.y.toFixed(1)})`);
+    // [verifyB] 왼손 모드: 버튼 묶음이 왼쪽 → 터치 룩어헤드가 거울처럼 (왼쪽을 볼 때 더 앞을 본다). 오른손은 예전 값 그대로
+    const { game } = await import(path.join(ROOT, 'src/core/game.js'));
+    const gs0 = game.settings;
+    const MIR = RECTS.map((r) => ({ x: 960 - r.x - r.w, y: r.y, w: r.w, h: r.h }));
+    const look = (lefty, facing) => {
+      input.touchMode = true; game.settings = { ...(gs0 || {}), touchLeftHanded: lefty };
+      touchpad.bottomReserve = () => 0.206; touchpad.layoutVersion = () => (lefty ? 8 : 7);
+      touchpad.occupiedRects = () => (lefty ? MIR : RECTS);
+      touchpad.stickZone = () => (lefty ? { x: 800, y: 520, w: 140, h: 190 } : { x: 20, y: 520, w: 140, h: 190 });
+      const c = new Camera(960, 726);
+      c.setBounds(0, 0, 6000, 672);
+      c.follow({ x: 3000, y: 512, w: 32, h: 64, vx: 0, vy: 0, facing, onGround: true }, 1 / 60, true);
+      return c.lookX;
+    };
+    try {
+      const rR = look(false, 1), rL = look(false, -1), lL = look(true, -1), lR = look(true, 1);
+      ok(rR > 40 + 1 && Math.abs(rL + 40) < 1e-6, `right-handed: bias only when facing right (${rR.toFixed(1)}, ${rL.toFixed(1)})`);
+      ok(Math.abs(lL + rR) < 1e-6, `left-handed facing left mirrors right-handed facing right (${lL.toFixed(1)} = −${rR.toFixed(1)})`);
+      ok(Math.abs(lR - 40) < 1e-6, `left-handed facing right: no cluster bias (${lR.toFixed(1)})`);
+    } finally { game.settings = gs0; }
   } finally {
     touchpad.bottomReserve = save.br; touchpad.layoutVersion = save.lv; touchpad.occupiedRects = save.oc; touchpad.stickZone = save.sz;
     input.touchMode = save.tm; CAM_FLAGS.bossSafe = true;

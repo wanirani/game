@@ -265,7 +265,7 @@ function buildRows(sc) {
     })(),
     etc: [
       { id: 'autoSave', label: '자동 저장', type: 'bool', note: '스테이지를 마치거나 마을에 들어갈 때 자동으로 저장합니다.' },
-      { id: 'keepAwake', label: '화면 꺼짐 방지', type: 'bool', note: '게임하는 동안 화면이 꺼지지 않게 합니다.' },
+      { id: 'keepAwake', label: '화면 꺼짐 방지', type: 'bool', note: '게임하는 동안 화면이 꺼지지 않게 합니다. 일시정지하면 풀립니다.' },   // [phone] pause·arcadePause 는 풀어 준다 (platform.js WAKE_SCENES)
       { id: 'turntableAuto', label: '영웅 자동 회전', type: 'bool', note: '장비·상태 화면에서 영웅이 천천히 돌아갑니다.' },
       // settings.dialogueAuto: 대화 장면(dialogue.js)이 읽고 쓰는 키. 스키마 밖 키지만 save.js 가 모르는 키를 보존하므로 그대로 저장된다 (없으면 끔)
       { id: 'dialogueAuto', label: '대화 자동 진행', type: 'bool', note: '대화 글이 다 나오면 잠시 뒤 다음 줄로 넘어갑니다. 대화 중 오른쪽 위 「자동 진행」 버튼과 같은 설정입니다.' },
