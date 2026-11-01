@@ -993,6 +993,15 @@ public class MainActivity extends Activity {
             return s == null ? "{\"bottom\":0}" : s;
         }
 
+        /** 화면 꺼짐 방지 켜기/끄기 (설정 「화면 꺼짐 방지」 · 장면별). 처음에는 onCreate 가 켜 두고, 게임이 원하는 값을 보내면 따른다 */
+        @JavascriptInterface
+        public void keepAwake(boolean on) {
+            a.ui.post(() -> {
+                if (on) a.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                else a.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            });
+        }
+
         /** 컨트롤러 진동: strong/weak 0~1, ms (0 이면 멈춤). 진동 모터가 있는 패드가 없으면 아무것도 하지 않는다 */
         @JavascriptInterface
         public void rumble(double strong, double weak, double ms) {

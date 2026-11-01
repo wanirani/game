@@ -54,6 +54,21 @@ const STEPS = [
   // ── unit
   S('save_v2', 'unit', node('tools/test_save_v2.mjs'), 10 * MIN),
   S('settings_v2', 'unit', node('tools/test_settings_v2.mjs'), 10 * MIN),
+  // 3–6단계에서 새로 생긴 검사 (브라우저 없이, 단 argen·autoplay·phone 은 헤드리스 브라우저 1개)
+  S('phone', 'unit', node('tools/test_phone.mjs'), 10 * MIN),   // 6단계 휴대폰 편의: 절전 모드·진동 세기·화면 꺼짐 방지·왼손 배치
+  S('foreground', 'unit', node('tools/test_foreground.mjs'), 5 * MIN),   // 6단계 전경 레이어 + 보스전 카메라 구도
+  S('hunt_journal', 'unit', node('tools/test_hunt_journal.mjs'), 5 * MIN),   // 6단계 사냥 일지 (일일 3 · 주간 1 계약, 등급, 장부 hj)
+  S('relic_sets', 'unit', node('tools/test_relic_sets.mjs'), 5 * MIN),   // 6단계 피의 유물 세트 (2/4/6 보너스, 최적 장착)
+  S('nightmare', 'unit', node('tools/test_nightmare.mjs'), 5 * MIN),   // 5단계 악몽 토벌
+  S('cosmetics_s5', 'unit', node('tools/test_cosmetics_s5.mjs'), 5 * MIN),   // 5단계 꾸미기 장부 (tw·nm·ng·hj)
+  S('tower', 'unit', node('tools/test_tower.mjs'), 10 * MIN),   // 무한의 탑 2.0
+  S('rush_rules', 'unit', node('tools/test_rush_rules.mjs'), 5 * MIN),   // 보스 러시 규칙 코스
+  S('bench_exp', 'unit', node('tools/test_bench_exp.mjs'), 5 * MIN),   // 대기 헌터 경험치
+  S('gear_qol', 'unit', node('tools/test_gear_qol.mjs'), 5 * MIN),   // 장비 편의 (최적 장착·비교·자동 처분)
+  S('atmos', 'unit', node('tools/test_atmos.mjs'), 5 * MIN),   // 살아 있는 배경
+  S('autoplay', 'unit', node('tools/test_autoplay.mjs'), 15 * MIN),   // AUTO 자동 스킬·자동 전투
+  S('argen', 'unit', node('tools/test_argen.mjs'), 10 * MIN),
+  S('rec_audio', 'unit', node('tools/test_rec_audio.mjs'), 10 * MIN),   // 녹음 효과음
   S('companion_state', 'unit', node('tools/test_companion_state.mjs'), 10 * MIN),
   S('accounts_api', 'unit', node('tools/accounts/test_api.mjs'), 10 * MIN),
   S('achievements', 'unit', node('tools/test_achievements.mjs'), 5 * MIN),   // 업적 데이터·엔진·병합·서버 검사 (docs/specs/achievements.md §12.1)
