@@ -3,7 +3,7 @@
  "extends": "victor_gunslinger",
  "classId": "victor_silverwolf",
  "src": "victor/victor_silverwolf_side",
- "_hands": "손 시트는 부모(victor_gunslinger) 것을 그대로 쓴다 — 장갑 디자인이 같다 (s8 asc 방식)",
+ "_hands": "장갑이 검은 가죽(건슬링어는 갈색) → 손 시트는 데드아이(victor_deadeye) 것을 그대로 쓴다 (같은 검은 장갑, 새 이미지 없음)",
  "runtime": {
   "armorBase": "#34343e"
  },
@@ -25,5 +25,95 @@
    "min": 30
   },
   "_why": "초월 원화(s9 asc2): Higgsfield gpt_image_2_5 5뷰 한 장 — 앞 · 3/4 앞(오른쪽을 봄) · 오른쪽 옆 · 뒤 · 3/4 뒤(오른쪽으로 돌아섬). 왼쪽 방향은 거울상. th 360 · q72 (s8 asc 와 같은 방식)"
+ },
+ "hands": {
+  "sheet": "victor/victor_deadeye_hands",
+  "grip": {
+   "box": [
+    380,
+    320,
+    1210,
+    1000
+   ],
+   "center": [
+    783,
+    640
+   ],
+   "axis": [
+    0,
+    1
+   ],
+   "rodHalf": 110,
+   "wrist": [
+    560,
+    980
+   ],
+   "scale": 0.21
+  },
+  "open": {
+   "box": [
+    1330,
+    40,
+    2280,
+    1030
+   ],
+   "wrist": [
+    2133,
+    1007
+   ],
+   "tip": [
+    1600,
+    90
+   ],
+   "scale": 0.23
+  },
+  "rodKey": {
+   "hue": [
+    60,
+    190
+   ],
+   "sat": 0.1,
+   "val": 0.15
+  }
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "skirt",
+    "skirtFar",
+    "uarm",
+    "farm",
+    "pad"
+   ],
+   "sat": [
+    0,
+    0.25
+   ],
+   "val": [
+    0,
+    0.58
+   ],
+   "softTop": 0.1
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "uarm",
+    "farm",
+    "pad",
+    "skirt"
+   ],
+   "sat": [
+    0,
+    0.14
+   ],
+   "val": [
+    0.6,
+    1.01
+   ]
+  },
+  "_why": "은랑 원화의 코트는 무채색 목탄 회색(건슬링어의 갈색 색조 창으로는 갑옷 마스크가 비었다) → 채도·밝기로 가름, 은 장식 = trim"
  }
 }

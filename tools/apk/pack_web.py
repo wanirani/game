@@ -1,25 +1,33 @@
 #!/usr/bin/env python3
 """블러드 녹턴 APK — 웹 배포 빌드(dist/web)를 APK 에 넣을 모양으로 꾸린다. tools/apk/build_apk.sh 가 부른다.
 
-  python3 tools/apk/pack_web.py --web dist/web --out dist/apk-build/assets [--budget-mb 95] [--image-budget-mb 70] [--assets auto|full|lo|lo+td]
+  python3 tools/apk/pack_web.py --web dist/web --out dist/apk-build/assets [--budget-mb 95] [--image-budget-mb 70] [--assets auto|full|hi|lo|lo+td]
                                 [--music auto|all|none] [--origin-file tools/apk/api_origin.txt] [--origin https://…] [--cloud-js src/core/cloud.js]
                                 [--report dist/apk-build/pack_report.json]
   크기만 보려면 (APK 를 만들지 않는 시험): --out 을 임시 폴더로 — 단계·음악 선택·어림 크기를 출력하고 --report 에 쓴다.
 
 하는 일 (platform §9.4-4/5, MASTER_PLAN §1.20):
- 1. dist/web 을 <out>/www 로 복사한다. 빼는 것: sw.js (앱은 서비스 워커를 쓰지 않는다), downloads/ (APK 자신), _redirects (Netlify 전용).
+ 1. dist/web 을 <out>/www 로 복사한다. 빼는 것: sw.js (앱은 서비스 워커를 쓰지 않는다), downloads/ (APK 자신), _redirects (Netlify 전용),
+    웹 앱 매니페스트만 가리키는 PWA 설치 그림 (manifest.webmanifest 의 icons·screenshots 중 index.html <link>·JS·CSS 가 부르지 않는 것 —
+    WebView 는 매니페스트를 읽지 않는다; apk.json omitted).
     공개 금지 파일(키스토어·비밀번호 파일·개발 폴더)이 섞여 있으면 실패. index.html 이 가리키는 파일이 모두 있는지 확인.
  2. 그림 단계: 소리(assets/audio/)를 뺀 크기를 그림 예산(기본 70 MB, 채색 그림 포함)에 맞춰 고른다 (--assets auto):
-      full   dist/web 그대로
+      full   dist/web 그대로 (원본 + assets/lo/ 사본: 휴대폰은 실행 중 등급에 따라 lo/ 를, 폴더블·태블릿은 원본을 쓴다)
+      hi     원본만: assets/lo/ 사본을 빼고 www/build-info.js 의 lo 목록을 null 로 → 게임이 lo/ 를 요청하지 않고 어느 기기든 원본을 쓴다
+             (보이는 화질은 같거나 낫다; 휴대폰은 bg/cg/초상화를 원본 크기로 풀므로 디코딩 메모리가 늘지만 assets.js LRU 예산 안에서 돈다)
       lo     bg/·cg/·portraits/ 의 원본을 빼고 assets/lo/ 사본만 싣는다 (AssetServer 가 원본 경로 요청에 lo/ 사본을 준다)
       lo+td  + 채색 아틀라스(assets/painted/**)를 휴대폰 밀도로 줄인다: 원본 밀도의 0.75배
              (manifest.json td ≥ 1.25, rig.json srcTD ≥ 1.75 텍셀/논리px 아래로는 줄이지 않는다)
+    auto 는 full → hi → lo → lo+td 순으로, 그림이 그림 예산 안에 들고 소리까지 전부 APK 예산(95 MB) 안에 드는 첫 단계를 고른다
+      (원본 그림 > 녹음 음악 전곡 > lo/ 사본 순으로 지킨다: lo/ 사본은 보이는 화질과 무관한 휴대폰 메모리 절약이라 음악보다 먼저 뺀다).
+      그런 단계가 없으면 그림 예산 안에 드는 첫 단계 (음악은 아래처럼 우선순위대로 뺀다).
     소리: 효과음 샘플(assets/audio/sfx/)은 늘 싣는다. 녹음 음악(assets/audio/music/)은 APK 전체 예산(기본 95 MB) 안에서 MUSIC_PRIORITY 순으로
       싣고 (--music auto), 넘치는 곡은 빼고 www 의 music/index.json 을 실은 곡만으로 다시 쓴다 → 앱에서 그 곡은 합성 음원 (404 없음).
     크기는 APK 안의 모양으로 어림한다: 그림·글꼴·소리는 무압축 저장, 나머지는 deflate. 최종 확인은 build_apk.sh 가 서명한 APK 로 한다.
  3. <out>/app/apk.json 을 쓴다: {api:{origin, aliases}, assets, budgetMB, imageBudgetMB, web:{version, hash, files}, dropped, modified?,
       audio:{music, musicDropped:[id], musicFiles:[뺀 파일], sfx}}
-    AssetServer 가 head_inject 의 {{CONFIG}} 로 넣고, MainActivity 가 계정 서버 주소(ApiProxy)·lo 모드를 읽는다.
+      omitted:[PWA 전용 파일], loOmitted:<hi 단계에서 뺀 assets/lo 파일 수>
+    AssetServer 가 head_inject 의 {{CONFIG}} 로 넣고, MainActivity 가 계정 서버 주소(ApiProxy)·lo 모드를 읽는다 (hi 는 lo 모드가 아니다).
 실패하면 종료 코드 1 (예산을 넘으면 3).
 """
 import argparse
@@ -152,6 +160,51 @@ def index_refs(html):
             continue
         refs.append(u.split('?')[0].split('#')[0].lstrip('./'))
     return refs
+
+
+def pwa_only(www, rels, html):
+    """manifest.webmanifest 의 icons·screenshots 중 APK 에서 아무도 부르지 않는 파일 (WebView 는 웹 앱 매니페스트를 읽지 않는다).
+    index.html <link> 가 가리키거나 JS·CSS·index.html 본문에 이름이 나오는 파일은 남긴다 (og:image 같은 <meta> 는 받지 않는다)."""
+    try:
+        man = json.loads((www / 'manifest.webmanifest').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return []
+    cand = []
+    for k in ('icons', 'screenshots'):
+        for it in man.get(k) or []:
+            src = (it or {}).get('src') if isinstance(it, dict) else None
+            if isinstance(src, str):
+                rel = src.split('?')[0].split('#')[0].lstrip('./')
+                if rel in rels and rel not in cand:
+                    cand.append(rel)
+    if not cand:
+        return []
+    keep = set(index_refs(html))
+    body = re.sub(r'<meta\b[^>]*>', '', html)
+    texts = [body]
+    for r in rels:
+        if r.endswith(('.js', '.css', '.mjs')):
+            try:
+                texts.append((www / r).read_text(encoding='utf-8', errors='replace'))
+            except OSError:
+                pass
+    blob = '\n'.join(texts)
+    return sorted(r for r in cand if r not in keep and r.rsplit('/', 1)[-1] not in blob)
+
+
+def build_info_no_lo(www):
+    """hi 단계: www/build-info.js 의 window.__BN_BUILD.lo 를 null 로 (assets.js 가 lo/ 를 고르지 않게). → 고쳤으면 True"""
+    p = www / 'build-info.js'
+    t = p.read_text(encoding='utf-8')
+    m = re.search(r'(window\.__BN_BUILD\s*=\s*)(\{.*\})(\s*;)', t, re.S)
+    if not m:
+        die('www/build-info.js 에서 window.__BN_BUILD 를 찾지 못했습니다 (hi 단계)')
+    b = json.loads(m.group(2))
+    if b.get('lo') is None:
+        return False
+    b['lo'] = None
+    p.write_text(t[:m.start(2)] + json.dumps(b, ensure_ascii=False, separators=(',', ':')) + t[m.end(2):], encoding='utf-8')
+    return True
 
 
 # ───────────────────────── 휴대폰 밀도 채색 아틀라스 (lo+td) ─────────────────────────
@@ -348,7 +401,7 @@ def main():
     ap.add_argument('--out', required=True, help='APK assets/ 폴더 (www/ 와 app/apk.json 을 쓴다)')
     ap.add_argument('--budget-mb', type=float, default=95.0, help='APK 전체 예산 (소리 포함)')
     ap.add_argument('--image-budget-mb', type=float, default=70.0, help='그림 단계를 고르는 기준 (소리를 뺀 크기)')
-    ap.add_argument('--assets', default='auto', choices=['auto', 'full', 'lo', 'lo+td'])
+    ap.add_argument('--assets', default='auto', choices=['auto', 'full', 'hi', 'lo', 'lo+td'])
     ap.add_argument('--music', default='auto', choices=['auto', 'all', 'none'], help='녹음 음악: 예산 안에서 우선순위대로 | 전부 | 싣지 않음')
     ap.add_argument('--origin-file', default=str(ROOT / 'tools/apk/api_origin.txt'))
     ap.add_argument('--origin', default=os.environ.get('API_ORIGIN') or None)
@@ -394,6 +447,12 @@ def main():
     if missing:
         die('index.html 이 가리키는 파일이 없습니다: ' + ', '.join(missing))
     say(f'  dist/web → www: 파일 {len(rels)}개 (뺀 것 {len(skipped)}개: sw.js, _redirects, downloads/)')
+    omitted = pwa_only(www, set(rels), html)
+    for r in omitted:
+        (www / r).unlink()
+    if omitted:
+        rels = [r for r in rels if r not in set(omitted)]
+        say(f'  PWA 전용 파일 {len(omitted)}개는 싣지 않는다 (WebView 는 manifest.webmanifest 를 읽지 않는다): {", ".join(omitted)}')
 
     # 2. 단계 고르기 (그림: 소리를 뺀 크기로)
     sizes = {r: apk_bytes(www / r, r) for r in rels}
@@ -403,11 +462,26 @@ def main():
     audio_est = sum(sizes[r] for r in audio_rels)
     est_full = sum(sizes.values()) + APK_OVERHEAD - audio_est
     est_lo = est_full - sum(sizes[r] for r in twins)
-    say(f'  크기 어림 (APK 안, 소리 제외): 전부 {est_full / MB:.2f} MB · lo {est_lo / MB:.2f} MB · 그림 예산 {img_budget / MB:.2f} MB (압축 전 {raw / MB:.2f} MB) · 소리 {audio_est / MB:.2f} MB')
+    lo_files = [r for r in rels if r.startswith('assets/lo/')]
+    est_hi = est_full - sum(sizes[r] for r in lo_files)
+    say(f'  크기 어림 (APK 안, 소리 제외): 전부 {est_full / MB:.2f} MB · hi {est_hi / MB:.2f} MB · lo {est_lo / MB:.2f} MB · 그림 예산 {img_budget / MB:.2f} MB (압축 전 {raw / MB:.2f} MB) · 소리 {audio_est / MB:.2f} MB')
     mode = args.assets
     if mode == 'auto':
-        mode = 'full' if est_full <= img_budget else 'lo' if est_lo <= img_budget else 'lo+td'
-    dropped, modified = [], []
+        # 원본 그림 > 녹음 음악 전곡 > lo/ 사본 (위 2 참고). lo+td 는 lo 로도 그림 예산을 넘을 때만
+        stages = [('full', est_full), ('hi', est_hi), ('lo', est_lo)]
+        fit = [m for m, e in stages if e <= img_budget]
+        whole = [m for m, e in stages if e <= img_budget and e + audio_est <= budget]
+        mode = whole[0] if whole else fit[0] if fit else 'lo+td'
+    dropped, modified, lo_omitted = [], [], []
+    if mode == 'hi':
+        for r in lo_files:
+            (www / r).unlink()
+            lo_omitted.append(r)
+            del sizes[r]
+        if build_info_no_lo(www):
+            modified.append('build-info.js')
+            sizes['build-info.js'] = apk_bytes(www / 'build-info.js', 'build-info.js')
+        say(f'  원본만(hi): assets/lo/ 사본 {len(lo_omitted)}개를 빼고 build-info.js 의 lo 목록을 비웠다 (모든 기기가 bg/·cg/·portraits/ 원본을 쓴다)')
     if mode in ('lo', 'lo+td'):
         for r in twins:
             (www / r).unlink()
@@ -450,13 +524,18 @@ def main():
         'dropped': len(dropped),
         'audio': {k: v for k, v in audio.items() if k != 'rewrote'},
     }
+    if omitted:
+        cfg['omitted'] = omitted
+    if lo_omitted:
+        cfg['loOmitted'] = len(lo_omitted)
     if modified:
         cfg['modified'] = sorted(set(modified))
         cfg['td'] = {'scale': TD_SCALE, 'floorManifest': TD_FLOOR_MANIFEST, 'floorRig': TD_FLOOR_RIG}
     (out / 'app').mkdir(parents=True, exist_ok=True)
     (out / 'app/apk.json').write_text(json.dumps(cfg, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
     say(f'  계정 서버 {origin} ({origin_from}){" · 별칭 " + ", ".join(aliases) if aliases else ""}')
-    report = {'mode': mode, 'estimate': est, 'estimateFull': est_full, 'estimateLo': est_lo, 'budget': budget, 'imageBudget': img_budget, 'files': len(files),
+    report = {'mode': mode, 'estimate': est, 'estimateFull': est_full, 'estimateHi': est_hi, 'estimateLo': est_lo, 'audioIn': audio_est, 'budget': budget, 'imageBudget': img_budget, 'files': len(files),
+              'omitted': omitted, 'loOmitted': lo_omitted,
               'audio': {k: v for k, v in audio.items() if k != 'rewrote'}, 'audioEstimate': sum(v for r, v in sizes.items() if r.startswith(AUDIO)),
               'dropped': dropped, 'modified': sorted(set(modified)), 'skipped': skipped, 'origin': origin, 'aliases': aliases}
     if args.report:

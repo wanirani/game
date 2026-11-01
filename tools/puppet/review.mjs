@@ -12,7 +12,11 @@ const opt = (k, d) => { const i = argv.indexOf('--' + k); return i >= 0 ? (argv[
 fs.mkdirSync(outDir, { recursive: true });
 const KCLS = ['kael_hunter', 'kael_crusader', 'kael_stalker', 'kael_templar', 'kael_inquisitor', 'kael_bloodhunter', 'kael_nightraven'];
 // 초월·비전 전용 원화 (s8 asc) — allasc[:id+id] 프리셋: 6무기 × 모든 기술 × 5프레임 관절 검사 (spec.cls 에 초월 id → review.html 이 부모 계보 + lookTop)
-const KASC = ['kael_grandtemplar', 'kael_highinquisitor', 'kael_bloodreaver', 'kael_blackwing', 'kael_sealbearer', 'sera_archsaint', 'sera_prophetess', 'sera_archsage', 'sera_tempest', 'sera_bellsaint'];
+const KASC = ['kael_grandtemplar', 'kael_highinquisitor', 'kael_bloodreaver', 'kael_blackwing', 'kael_sealbearer', 'sera_archsaint', 'sera_prophetess', 'sera_archsage', 'sera_tempest', 'sera_bellsaint',
+  // s9 asc2: 빅터·브란·리아 초월 4 + 비전 1
+  'victor_specter', 'victor_headsman', 'victor_purgatory', 'victor_gunking', 'victor_silverwolf',
+  'bran_bastion', 'bran_vanguard', 'bran_conqueror', 'bran_bloodtyrant', 'bran_oathlord',
+  'lia_umbra', 'lia_mirage', 'lia_bladequeen', 'lia_soulreaper', 'lia_frostcrow'];
 const WT = ['whip', 'sword', 'greatsword', 'dagger', 'gun', 'staff'];
 const MK = { whip: ['g0', 'g1', 'g2', 'g3', 'a0', 'a1', 'up', 'down', 'crouch', 'dash', 'charge'], sword: ['g0', 'g1', 'g2', 'g3', 'a0', 'a1', 'a2', 'up', 'down', 'crouch', 'dash', 'charge'],
   greatsword: ['g0', 'g1', 'g2', 'a0', 'up', 'down', 'crouch', 'dash', 'charge'], dagger: ['g0', 'g1', 'g3', 'g4', 'a0', 'a1', 'a2', 'up', 'down', 'crouch', 'dash'],

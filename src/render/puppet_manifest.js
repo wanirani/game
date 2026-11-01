@@ -618,6 +618,51 @@ export const PUPPETS = {
     "lo",
     "ui"
    ]
+  },
+  "victor_gunking": {
+   "h": "90c6c0d7c24a",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "victor_headsman": {
+   "h": "90176248117d",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "victor_purgatory": {
+   "h": "db996e21ce95",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "victor_silverwolf": {
+   "h": "db8182e8e067",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "victor_specter": {
+   "h": "2c3ea3c30d34",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
   }
  }
 };
