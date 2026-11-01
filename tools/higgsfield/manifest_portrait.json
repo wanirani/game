@@ -253,5 +253,35 @@
    "kept": false,
    "note": "alt; not used"
   }
- ]
+ ],
+ "keying": {
+  "green": "tools/higgsfield/key_green.py (defaults)",
+  "magenta": "b_behemoth only: alpha = 1 - (min(r,b) - g - 0.05)/0.30, spill = max(0, min(r,b) - g) removed from r and b (full despill: the design has green glows, so #00FF00 could not be used; no purple in the design)"
+ },
+ "sizes_bytes": {
+  "b_nightwing": [
+   87756,
+   94616
+  ],
+  "b_dracula": [
+   63866,
+   67716
+  ],
+  "b_frostqueen": [
+   106260,
+   109222
+  ],
+  "b_behemoth": [
+   117714,
+   137888
+  ],
+  "b_nemain2": [
+   93620,
+   83076
+  ],
+  "b_bride2": [
+   101484,
+   87108
+  ]
+ }
 }

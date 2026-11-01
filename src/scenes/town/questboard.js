@@ -23,6 +23,8 @@ const PAPER = [0, '#eadcb8', 1, '#c4ae84'], PAPER_DONE = [0, '#a89878', 1, '#7a6
 const DETAIL = [0, '#efe4c6', 0.7, '#d6c49a', 1, '#a88a5a'];
 import { glow } from './facades.js';
 import * as HJ from '../../game/hunt_journal.js';   // [s6:hunt]
+import { assets } from '../../core/assets.js';   // [s7:icons] 사냥 일지 등급 문장
+import { huntRankIcon } from '../../data/item_icons.js';
 
 const INK = '#2a1a10', INK2 = '#5a4630';
 
@@ -383,7 +385,13 @@ export class QuestBoardScene extends ServiceScene {
     text(ctx, '— 사 냥 일 지 —', r.x + r.w / 2, y, { size: 11, weight: 800, align: 'center', color: '#3a5a1a', outline: null, ow: 0, family: FONT.title });
     y += 22;
     if (sm) {
-      text(ctx, `${sm.rankName}  ·  ${fmt(sm.pts)}점`, r.x + r.w / 2, y, { size: 15, weight: 800, align: 'center', color: INK, outline: null, ow: 0, maxWidth: w });
+      // 등급 문장 (assets/icons/hj_rank_<n>.png — 받기 전·못 받으면 글자만 가운데)
+      const rl = `${sm.rankName}  ·  ${fmt(sm.pts)}점`, em = assets.get('icons/' + huntRankIcon(sm.rank));
+      if (em) {
+        const es = 24; ctx.font = font(15, 800); const tw = Math.min(w - es - 6, ctx.measureText(rl).width), x0 = r.x + r.w / 2 - (es + 6 + tw) / 2;
+        ctx.drawImage(em, x0, y - 5 - es / 2, es, es);
+        text(ctx, rl, x0 + es + 6, y, { size: 15, weight: 800, color: INK, outline: null, ow: 0, maxWidth: w - es - 6 });
+      } else text(ctx, rl, r.x + r.w / 2, y, { size: 15, weight: 800, align: 'center', color: INK, outline: null, ow: 0, maxWidth: w });
       y += 10;
       bar(ctx, x, y, w, 6, sm.next.cur / Math.max(1, sm.next.need), { color: '#6a9a2a', back: 'rgba(60,40,20,0.3)', edge: '#5a4020', shine: false });
       // 낮은 양피지(휴대폰)는 다음 등급 줄을 빼서 보상 칸이 잘리지 않게

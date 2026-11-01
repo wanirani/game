@@ -15,6 +15,8 @@ import {
 const PILL_ON = [0, '#a0182e', 1, '#4a0614'], PILL_OFF = [0, 'rgba(40,24,36,0.9)', 1, 'rgba(14,8,14,0.9)'];
 import * as D from './access.js';
 import { huntSummary } from '../../game/hunt_journal.js';   // [s6:hunt]
+import { assets } from '../../core/assets.js';   // [s7:icons]
+import { huntRankIcon } from '../../data/item_icons.js';
 
 const SECTS = [
   { id: 'active', name: '진행 중' },
@@ -141,7 +143,8 @@ export class QuestsTab extends Tab {
     if (hs) {   // [s6:hunt]
       const hy = LR.y + LR.h + 8;
       divider(ctx, LR.x + 6, hy, LR.w - 12, { center: false, a: 0.35 });
-      glyph(ctx, 'scroll', LR.x + 16, hy + 14, 13, '#9fd86a', 1.4);
+      const em = assets.get('icons/' + huntRankIcon(hs.rank));   // [s7:icons] 등급 문장 (받기 전·못 받으면 두루마리 글리프)
+      if (em) ctx.drawImage(em, LR.x + 16 - 10, hy + 14 - 10, 20, 20); else glyph(ctx, 'scroll', LR.x + 16, hy + 14, 13, '#9fd86a', 1.4);
       const tail = hs.total ? `계약 달성 ${hs.total - hs.open}/${hs.total}${hs.ready ? ` · 게시판에서 받을 보상 ${hs.ready}` : ''}` : '스테이지를 깨면 열림';
       text(ctx, ellipsize(ctx, `사냥 일지 · ${hs.rankName} ${hs.pts}점 · ${tail}`, LR.w - 40, 12, 700), LR.x + 30, hy + 19, { size: 12, weight: 700, color: hs.ready ? '#b8f090' : PAL.dim, ow: 2 });
     }
