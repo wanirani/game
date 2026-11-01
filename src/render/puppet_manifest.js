@@ -131,7 +131,7 @@ export const PUPPETS = {
    ]
   },
   "bran_bastion": {
-   "h": "991bfd3d800c",
+   "h": "3cae9d78bb6d",
    "turn": true,
    "lv": [
     "hi",

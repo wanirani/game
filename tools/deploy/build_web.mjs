@@ -37,7 +37,8 @@
 //     APK 입력(dist/web − sw.js − downloads/): 그림 단계 기준(70 MB)은 tools/apk/pack_web.py 와 같은 방식으로 어림한 'APK 안 크기'(소리 제외) —
 //     그림·글꼴·소리는 무압축, JS·JSON 등은 deflate, 항목마다 zip 머리말, APK 고정분 600 KB, PWA 전용 그림 제외. (2026-11 전까지는 압축 전
 //     바이트를 셌다: JS 8 MB 가 APK 안에서는 2.4 MB 라 실제로 단계를 고르는 pack_web 보다 ≈ 5 MB 크게 보고했다.)
-//     단계 예상: full(원본+lo 사본) → hi(원본만) → lo(lo 사본만) 중 그림 ≤ 70 MB 이고 소리까지 APK 95 MB 안인 첫 단계 (pack_web --assets auto 와 같다).
+//     단계 예상 (pack_web --assets auto 와 같다): full(원본+lo 사본) · hi(원본만) 중 그림 ≤ 70 MB 이고 소리까지 APK 95 MB 안인 첫 단계, 없으면 hi,
+//     원본이 70 MB 를 넘을 때만 lo(lo 사본만) → lo+td.
 //     소리 포함 APK 가 95 MB 를 넘치면 pack_web.py 가 우선순위 낮은 음악부터 뺀다 (그 곡은 앱에서 합성 음원).
 //  8. dist/deploy/ = Netlify 업로드 묶음: web/ (dist/web 하드 링크) + netlify/functions·lib + package.json(개발 의존성 제외, 시험한 버전 고정) +
 //     package-lock.json (루트 잠금 파일에서 개발 전용 항목을 뺀 것) +
@@ -522,8 +523,8 @@ function sizeReport(OUT, report, { html, chunkFiles, cssFonts, opts, warn }) {
   const apkImage = apkFull;
   const tiers = { full: apkFull, hi: apkFull - apkLo, lo: apkFull - apkTwins };
   const fitImg = Object.keys(tiers).filter((k) => tiers[k] <= BUDGET.apkImageBytes);
-  const fitAll = fitImg.filter((k) => tiers[k] + apkAudioEst <= BUDGET.apkFileBytes);
-  const apkStage = fitAll[0] || fitImg[0] || 'lo+td';
+  const orig = fitImg.filter((k) => k !== 'lo');   // 원본을 싣는 단계 (pack_web: 원본 그림 > 녹음 음악 전곡 > lo 사본)
+  const apkStage = orig.find((k) => tiers[k] + apkAudioEst <= BUDGET.apkFileBytes) || orig[orig.length - 1] || (fitImg.includes('lo') ? 'lo' : 'lo+td');
   report.sizes = {
     siteBytes: site, siteFiles: count, downloadsBytes: downloads, apkInputBytes: apkInput, apkImageBytes: apkImage, audio: { music, sfx, total: audio },
     apk: { stage: apkStage, image: tiers, audio: apkAudioEst, total: (apkStage === 'lo+td' ? tiers.lo : tiers[apkStage]) + apkAudioEst, pwaOmitted: [...pwa] },

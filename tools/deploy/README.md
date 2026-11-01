@@ -39,8 +39,11 @@ node tools/deploy/build_web.mjs --selftest-deny # 공개 금지 검사가 빌드
   (tools/apk/verify_apk.mjs, platform WP-9 수락 3) 가 맞는다 (R1-REQ-324). 내용이 같아도 새로 찍으려면 `--restamp`.
 - 검사: `python3 tools/fonts/build_fonts.py --check` (실패하면 빌드 실패 — 임시 빌드만 `--allow-font-gaps`), `node tools/validate_maps.mjs`,
   netlify.toml 헤더 규칙 겹침·CSP, 크기 예산.
-- **크기 예산**: 사이트(dist/web − downloads) ≤ 90 MB (실패), APK 입력(소리 제외) ≤ 48 MB (넘으면 "APK 는 bg/cg/portraits 원본 대신 assets/lo 만" 크기를 알리고
-  그것도 넘으면 실패 — 정해진 경로라 경고가 아니다: `tools/apk/pack_web.py --assets auto` 가 lo 단계를 고른다, APK 어림 ≈ 38 MB),
+- **크기 예산**: 사이트(dist/web − downloads, 소리 제외) ≤ 90 MB (실패), 녹음 음악 ≤ 64 MB · 효과음 ≤ 3 MB (실패),
+  APK 그림 단계 기준 ≤ 70 MB — `tools/apk/pack_web.py` 와 **같은 계산의 APK 안 크기 어림**(소리 제외: 그림·글꼴은 무압축, JS·JSON 은 deflate,
+  zip 머리말, 고정분 600 KB, PWA 전용 그림 제외; 2026-11 전에는 압축 전 바이트라 JS 만큼 ≈ 5 MB 크게 보였다). 보고에 단계별 어림
+  (`sizes.apk.image` = full 원본+lo 사본 / hi 원본만 / lo 사본만)과 pack_web `--assets auto` 가 고를 단계(`sizes.apk.stage`: 그림 ≤ 70 MB 이고
+  소리까지 APK 95 MB 안인 첫 단계 — 원본 그림 > 녹음 음악 전곡 > lo 사본 순으로 지킨다)를 적는다. lo 단계로도 70 MB 를 넘으면 실패.
   첫 화면 경로 brotli ≤ 1.6 MB (경고, `--strict` 면 실패).
 - APK: `dist/BloodNocturne.apk` 가 있으면 (또는 `--apk <파일>`) `downloads/BloodNocturne-<versionName>-<versionCode>.apk` + `downloads/latest.json`.
   **APK 에 실은 웹 빌드(`assets/app/apk.json` 의 `web.buildHash`)가 이번 buildHash 와 같을 때만** 넣는다 (PS-07). 다르면 옛 게임을 실은 APK 라

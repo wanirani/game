@@ -18,9 +18,9 @@
       lo     bg/·cg/·portraits/ 의 원본을 빼고 assets/lo/ 사본만 싣는다 (AssetServer 가 원본 경로 요청에 lo/ 사본을 준다)
       lo+td  + 채색 아틀라스(assets/painted/**)를 휴대폰 밀도로 줄인다: 원본 밀도의 0.75배
              (manifest.json td ≥ 1.25, rig.json srcTD ≥ 1.75 텍셀/논리px 아래로는 줄이지 않는다)
-    auto 는 full → hi → lo → lo+td 순으로, 그림이 그림 예산 안에 들고 소리까지 전부 APK 예산(95 MB) 안에 드는 첫 단계를 고른다
-      (원본 그림 > 녹음 음악 전곡 > lo/ 사본 순으로 지킨다: lo/ 사본은 보이는 화질과 무관한 휴대폰 메모리 절약이라 음악보다 먼저 뺀다).
-      그런 단계가 없으면 그림 예산 안에 드는 첫 단계 (음악은 아래처럼 우선순위대로 뺀다).
+    auto 는 원본 그림 > 녹음 음악 전곡 > lo/ 사본 순으로 지킨다 (lo/ 사본은 보이는 화질과 무관한 휴대폰 메모리 절약이라 음악보다 먼저 뺀다):
+      full·hi 중 그림이 그림 예산 안이고 소리까지 전부 APK 예산(95 MB) 안에 드는 첫 단계 → 없으면 hi (음악은 아래처럼 우선순위대로 뺀다)
+      → 원본(hi)이 그림 예산을 넘을 때만 lo → lo 로도 넘으면 lo+td.
     소리: 효과음 샘플(assets/audio/sfx/)은 늘 싣는다. 녹음 음악(assets/audio/music/)은 APK 전체 예산(기본 95 MB) 안에서 MUSIC_PRIORITY 순으로
       싣고 (--music auto), 넘치는 곡은 빼고 www 의 music/index.json 을 실은 곡만으로 다시 쓴다 → 앱에서 그 곡은 합성 음원 (404 없음).
     크기는 APK 안의 모양으로 어림한다: 그림·글꼴·소리는 무압축 저장, 나머지는 deflate. 최종 확인은 build_apk.sh 가 서명한 APK 로 한다.
@@ -467,11 +467,11 @@ def main():
     say(f'  크기 어림 (APK 안, 소리 제외): 전부 {est_full / MB:.2f} MB · hi {est_hi / MB:.2f} MB · lo {est_lo / MB:.2f} MB · 그림 예산 {img_budget / MB:.2f} MB (압축 전 {raw / MB:.2f} MB) · 소리 {audio_est / MB:.2f} MB')
     mode = args.assets
     if mode == 'auto':
-        # 원본 그림 > 녹음 음악 전곡 > lo/ 사본 (위 2 참고). lo+td 는 lo 로도 그림 예산을 넘을 때만
-        stages = [('full', est_full), ('hi', est_hi), ('lo', est_lo)]
-        fit = [m for m, e in stages if e <= img_budget]
-        whole = [m for m, e in stages if e <= img_budget and e + audio_est <= budget]
-        mode = whole[0] if whole else fit[0] if fit else 'lo+td'
+        # 원본 그림 > 녹음 음악 전곡 > lo/ 사본 (위 2 참고): 원본을 싣는 단계(full·hi) 중 소리까지 다 드는 첫 단계,
+        # 없으면 hi (원본 + 음악을 가장 많이), 원본이 그림 예산을 넘을 때만 lo, lo 로도 넘으면 lo+td
+        orig = [m for m, e in (('full', est_full), ('hi', est_hi)) if e <= img_budget]
+        whole = [m for m in orig if (est_full if m == 'full' else est_hi) + audio_est <= budget]
+        mode = whole[0] if whole else orig[-1] if orig else 'lo' if est_lo <= img_budget else 'lo+td'
     dropped, modified, lo_omitted = [], [], []
     if mode == 'hi':
         for r in lo_files:
