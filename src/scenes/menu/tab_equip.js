@@ -55,6 +55,8 @@ export class EquipTab extends Tab {
     this.heroRect = null;
     this.si = 0; this.sub = 'slots'; this.li = 0;
     this.sc = new Scroller();
+    // [s8:healthp] 가운데 판 아래 「세트 줄 + 주요 능력치」 칸이 넘치면 그 칸만 스크롤 (끌기 · 휠 · 패드 오른쪽 스틱은 목록이 쓰지 않을 때)
+    this.ssc = new Scroller(); this.sumRect = null; this._shM = null;
     this.rev = -1; this.list = []; this.pv = null;
     this.slotRects = []; this.rowRects = []; this.btnRect = null;
     this.flashT = 0; this.flashSlot = null;
@@ -172,7 +174,12 @@ export class EquipTab extends Tab {
     this.view.control(dt, ges);     // 턴테이블 (포커스와 무관)
     this.view.update(dt);
     if (this.flashT > 0) this.flashT = Math.max(0, this.flashT - dt * 2.5);
+    // 오른쪽 스틱 Y: 목록을 고르는 중이면 목록, 장비 칸을 고르는 중이고 세트/능력치 칸이 넘치면 그 칸 [s8:healthp]
+    const sumScroll = !!this.sumRect && this.ssc.max > 0;
+    this.sc.noStick = sumScroll && this.sub !== 'list';
+    this.ssc.noStick = !this.sc.noStick;
     this.sc.update(dt, this.listRect, ges);
+    this.ssc.update(dt, this.sumRect, ges);
     // 길게 누르기 → 장비 행동 메뉴 (§5.6)
     if (ges.longPress && ges.held) {
       for (let i = 0; i < this.rowRects.length; i++) {
@@ -267,6 +274,24 @@ export class EquipTab extends Tab {
     this.m.notify('최적 장착을 되돌렸습니다', PAL.dim);
   }
 
+  /**
+   * 가운데 영웅 무대 높이 [s8:healthp]: 기본 A.h × 0.52 (128~260). 지금 끼운 장비의 「피의 유물」 세트 줄을 말줄임 없이 접고
+   * 그 아래 능력치 표(2열)까지 무대 아래 칸에 들어가지 않으면 모자란 만큼 무대를 줄인다 — A.h × 0.38 (130~230) 아래로는 안 줄인다
+   * (나머지는 그 칸의 스크롤). 후보 미리보기가 아니라 끼운 장비만 보므로 목록을 훑는 동안 무대 크기는 그대로다 (장착할 때만 바뀐다)
+   */
+  stageH(ctx, A, MW, sBot) {
+    const base = Math.round(clamp(A.h * 0.52, 128, 260));
+    const L = setLinesOf(this.state, this.hero, null);
+    if (!L.length) return base;
+    const k = `${this.hero.charId}|${textFloor()}|${MW}|${A.y}|${A.h}|${sBot}|${L.map((l) => l.text).join(';')}`;
+    if (this._shM?.k === k) return this._shM.v;
+    const room = sBot - 4 - (A.y + base + 10);
+    const need = sumLayout(ctx, L, MW, A.y + base + 32, { y: A.y + base + 10, h: room }, true).contentH;
+    const v = need > room ? Math.max(Math.round(clamp(A.h * 0.38, 130, 230)), base - (need - room)) : base;
+    this._shM = { k, v: Math.min(base, v) };
+    return this._shM.v;
+  }
+
   render(ctx, A) {
     const cur = this.base();
     const t = this.t, hero = this.hero, st = this.state;
@@ -285,8 +310,9 @@ export class EquipTab extends Tab {
     // ── 세 판의 틀 + 제목 (정적: 영웅·장비 칸·후보 수가 바뀔 때만 다시 굽는다) ──
     const slotName = D.SLOT_NAMES()[this.slot];
     const nCand = this.list.filter((r) => !r.unequip).length;
-    // 가운데 영웅 무대 자리
-    const sh = Math.round(clamp(A.h * 0.52, 128, 260));
+    // 가운데 영웅 무대 자리 — 끼운 「피의 유물」 세트 줄이 아래 칸에 다 들어가지 않으면 무대를 줄인다 (stageH) [s8:healthp]
+    const optH = touch ? 44 : 32, sBot = A.y + A.h - (touch ? optH + 12 : 0);   // [qol] 터치: 가운데 판 아래에 「최적 장착」 단추
+    const sh = this.stageH(ctx, A, MW, sBot);
     const stageR = { x: MX + 8, y: A.y + 8, w: MW - 16, h: sh };
     const lean = leanMem(this.m.game);
     const headL = (c) => heading(c, '장착 장비', A.x + 16, A.y + (touch ? 24 : 26), LW - 32, { sub: D.CHARACTERS()[hero.charId]?.name?.split(' ')[0] });
@@ -304,7 +330,7 @@ export class EquipTab extends Tab {
     // ── 왼쪽: 장비 칸 ──
     this.slotRects.length = 0;
     // [qol] 「최적 장착」 단추 자리: 마우스·키보드는 장비 칸 아래, 터치는 가운데 판 아래 (칸 줄을 36 CSS px 이상으로 두려고)
-    const optH = touch ? 44 : 32, optL = touch ? 0 : optH;
+    const optL = touch ? 0 : optH;
     const rowH = Math.min(62, (A.h - top - 14 - optL) / 6);
     this.slots.forEach((slot, i) => {
       const y = A.y + top + i * rowH, x = A.x + 10, w = LW - 20;
@@ -366,48 +392,33 @@ export class EquipTab extends Tab {
     const ns = pv?.stats || cur.stats;
     // 「피의 유물」 세트: 끼운 세트별 n/총 + 단계 줄 (켜짐 = 초록, 꺼짐 = 흐림). 후보를 고르는 중이면 그 후보를 끼웠을 때 기준
     const setL = setLinesOf(st, hero, hr ? { slot: this.slot, uid: hr.unequip ? null : hr.inst.uid } : null);
-    // 주요 능력치 (글자 캐시: 값이 바뀔 때만 다시 굽는다)
-    const sumKey = SUMMARY.map((k) => `${cur.stats[k] ?? 0}:${ns[k] ?? 0}`).join(',') + (touch ? '|t' : '') + '|' + setL.map((l) => l.text + l.color).join(';');
-    const sy0 = A.y + sh + 10, sBot = A.y + A.h - (touch ? optH + 12 : 0);   // [qol] 터치: 아래에 「최적 장착」 단추
-    this.txt.draw(ctx, 'sum', sumKey, MX + 4, sy0, MW - 8, sBot - 4 - sy0, (c) => {
-      let y = A.y + sh + 32;
-      // 세트 줄은 능력치 표 자리(최소 3줄)를 남기고 들어가는 만큼만. 긴 단계 줄은 말줄임 대신 두 줄로 접는다
-      // (폴드 펼침 가운데 칸에서 「4세트: 공격력 +12, 마력 +12, 치명 피…」 처럼 잘렸다). 넘치면 꺼진 단계 줄부터 한 줄로 줄이거나 뺀다
-      // 접은 줄 펴기는 아래 능력치 표가 줄을 잃지 않을 만큼만 (한 열 7줄이 들어가던 칸은 한 열 그대로, 2열이던 칸은 7개가 다 남게)
-      const setRowH = Math.max(15, Math.ceil(textFloor() * 1.2)), contH = setRowH - 1, setGap = 15;
-      const statMin = Math.max(15, Math.ceil(textFloor() * 1.15));
-      const setRoom = Math.floor((sBot - 8 - (y - 8) - 3 * statMin - 30) / setRowH);
-      const statRoom = (hpx) => sBot - 8 - (y - 10 + hpx + setGap + 8);
-      const statNeed = (hpx) => (statRoom(hpx) >= SUMMARY.length * statMin ? SUMMARY.length : Math.ceil(SUMMARY.length / 2)) * statMin;
-      const shown = setL.length ? fitSetLines(wrapSetLines(c, setL, MW - 28), setRoom, setRowH, contH, statRoom, statNeed) : [];
-      if (shown.length) {
-        let yy = y - 10;
-        for (const l of shown) {
-          const sz = l.head ? 12 : 11, wt = l.head ? 800 : 600, x0 = MX + 14 + (l.head ? 0 : 8);
-          l.rows.forEach((s, i) => text(c, s, x0 + (i ? l.indent : 0), yy + i * contH, { size: sz, weight: wt, color: l.color, ow: 2 }));
-          yy += setRowH + (l.rows.length - 1) * contH;
-        }
-        y = yy + setGap;
+    // 주요 능력치 (글자 캐시: 값·스크롤 위치가 바뀔 때만 다시 굽는다)
+    // 세트 줄은 말줄임 없이 다 접어 쓰고(wrapSetLines), 능력치 표는 남는 자리에 맞춘다 (한 열 → 2열). 그래도 넘치면 이 칸만 스크롤
+    // (끌기 · 휠 · 패드 오른쪽 스틱) + 위아래 흐림 + 스크롤 막대 [s8:healthp] — 예전: 아주 크게에서 4·5세트 줄이 「…」로 잘리거나 빠졌고
+    // (PC · 폴드), 휴대폰은 제목 옆 「세트 3/…」만 남았다
+    const sy0 = A.y + sh + 10;
+    const SR = { x: MX + 4, y: sy0, w: MW - 8, h: Math.max(1, sBot - 4 - sy0) };
+    const lay = sumLayout(ctx, setL, MW, A.y + sh + 32, SR);
+    const VR = lay.VR;   // 스크롤 칸 ('pin': 세트 줄만 · 'all': 칸 전체 · 'fit': 없음)
+    this.ssc.setMax(VR ? lay.scrollH - VR.h : 0);
+    this.sumRect = VR && this.ssc.max > 0 ? VR : null;   // 끌기·휠을 받는 칸 (넘칠 때만)
+    if (!this.sumRect && this.ssc.y) this.ssc.reset();
+    const oy = VR ? Math.round(this.ssc.y) : 0;
+    const drawSets = (c) => {
+      let yy = lay.setY;
+      for (const l of lay.sets) {
+        const sz = l.head ? 12 : 11, wt = l.head ? 800 : 600, x0 = MX + 14 + (l.head ? 0 : 8);
+        l.rows.forEach((s, i) => text(c, s, x0 + (i ? l.indent : 0), yy + i * lay.contH, { size: sz, weight: wt, color: l.color, ow: 2 }));
+        yy += lay.setRowH + (l.rows.length - 1) * lay.contH;
       }
-      // 세트 줄이 들어갈 자리가 없으면(휴대폰 가로) 제목 옆에 「세트명」 n/총 만 줄여서
-      let hsub = null, hcol = PAL.dim;
-      if (setL.length && !shown.length) {
-        const heads = setL.filter((l) => l.head);
-        const avail = MW - 28 - 22 - measure(c, '주요 능력치', 14, 800, FONT.title);
-        const full = heads.map((l) => l.text).join(' · '), short = '세트 ' + heads.map((l) => l.short).join(' · ');
-        if (heads.length && avail > 40) { hsub = measure(c, full, 12, 600) <= avail ? full : ellipsize(c, short, avail, 12, 600); hcol = heads[0].color; }
-      }
-      heading(c, '주요 능력치', MX + 14, y, MW - 28, { size: 14, sub: hsub, subColor: hcol });
+    };
+    // 줄 높이는 글자 크기 하한(설정 '글자 크기')에서 잡는다: 한 열에 다 들어가지 않으면 2열 (증감은 색으로만)
+    const drawStats = (c, y) => {
+      heading(c, '주요 능력치', MX + 14, y, MW - 28, { size: 14 });
       y += 8;
-      // 줄 높이는 글자 크기 하한(설정 '글자 크기')에서 잡는다: 한 열에 다 들어가지 않으면 2열 (증감은 색으로만),
-      // 2열로도 넘치면 뒤쪽 줄을 뺀다 (크게·아주 크게에서 줄이 겹치지 않게)
-      const room = sBot - 8 - y, rowMin = Math.max(15, Math.ceil(textFloor() * 1.15));
-      const maxRows = Math.max(1, Math.floor(room / rowMin)), two = maxRows < SUMMARY.length;
-      const list = two ? SUMMARY.slice(0, maxRows * 2) : SUMMARY;
-      const perCol = two ? Math.ceil(list.length / 2) : list.length;
-      const rowS = Math.min(Math.max(20, rowMin), room / perCol);
+      const { two, perCol, rowS } = lay;
       const colW = two ? (MW - 28) / 2 : MW - 28;
-      list.forEach((k, i) => {
+      SUMMARY.forEach((k, i) => {
         const a = cur.stats[k] ?? 0, b = ns[k] ?? 0, d = b - a;
         const cx0 = MX + 14 + (two ? Math.floor(i / perCol) * colW : 0), ry = y + (two ? i % perCol : i) * rowS;
         const by = ry + Math.min(15, rowS * 0.5 + 5);
@@ -420,7 +431,25 @@ export class EquipTab extends Tab {
         text(c, val, cx0 + colW - 4, by, { size: 13, align: 'right', weight: 800, family: FONT.num, color: col, ow: 3 });
         if (!two && Math.abs(d) >= 0.05) text(c, `${d > 0 ? '▲' : '▼'} ${d > 0 ? '+' : '-'}${fmtStatVal(k, Math.abs(d))}`, cx0 + colW - 4 - Math.max(48, vw + 6), by - 1, { size: 10, align: 'right', weight: 700, color: col, ow: 2 });
       });
-    });
+    };
+    const statKey = SUMMARY.map((k) => `${cur.stats[k] ?? 0}:${ns[k] ?? 0}`).join(',') + (touch ? '|t' : '');
+    const setKey = setL.map((l) => l.text + l.color).join(';');
+    if (lay.mode === 'pin') {
+      // 세트 줄만 스크롤, 능력치 표(2열)는 그 아래에 고정 — 미리보기 중에도 능력치 증감이 늘 보이게
+      this.txt.draw(ctx, 'sum', `${setKey}|${sh}|${VR.h}|${oy}`, VR.x, VR.y, VR.w, VR.h, (c) => { c.translate(0, -oy); drawSets(c); });
+      const TR = { x: SR.x, y: VR.y + VR.h, w: SR.w, h: SR.y + SR.h - VR.y - VR.h };
+      this.txt.draw(ctx, 'sumT', `${statKey}|${sh}|${TR.y}|${TR.h}`, TR.x, TR.y, TR.w, TR.h, (c) => drawStats(c, lay.statY));
+    } else {
+      this.txt.draw(ctx, 'sum', `${statKey}|${setKey}|${sh}|${SR.h}|${oy}`, SR.x, SR.y, SR.w, SR.h, (c) => {
+        c.translate(0, -oy);
+        if (lay.sets.length) drawSets(c);
+        drawStats(c, lay.statY);
+      });
+    }
+    if (this.sumRect) {
+      clipBegin(ctx, VR); clipEnd(ctx, VR, this.ssc, 'rgba(14,6,14,0.92)');
+      scrollbar(ctx, VR.x + VR.w - 5, VR.y + 2, VR.h - 4, this.ssc, VR.h);
+    }
 
     // ── 오른쪽: 후보 목록 + 비교 ──
     const cmpH = 150;
@@ -581,17 +610,18 @@ function shortStat(k, v) {
   return t;
 }
 /**
- * 세트 줄을 너비 w 에 맞춰 접는다 → [{...l, rows: [줄…], one: 한 줄로 줄인 글, indent}]
- * 단계 줄은 '4세트: ' 뒤에서 능력치 단위(', ' · ' — ')로 끊고, 둘째 줄부터는 '4세트: ' 너비만큼 들여 쓴다 (최대 3줄)
+ * 세트 줄을 너비 w 에 맞춰 접는다 → [{...l, rows: [줄…], indent}]
+ * 단계 줄은 '4세트: ' 뒤에서 능력치 단위(', ' · ' — ')로 끊고, 둘째 줄부터는 '4세트: ' 너비만큼 들여 쓴다.
+ * 줄 수 제한·말줄임 없음 [s8:healthp] (예전 최대 3줄 + 「…」 — 넘치는 칸은 이제 스크롤한다). 머리줄(「세트명」 n/총)은 짧아 한 줄
  */
 function wrapSetLines(c, L, w) {
   return L.map((l) => {
     const sz = l.head ? 12 : 11, wt = l.head ? 800 : 600, lw = w - (l.head ? 0 : 8);
-    const one = ellipsize(c, l.text, lw, sz, wt);
-    if (l.head || measure(c, l.text, sz, wt) <= lw) return { ...l, rows: [one], one, indent: 0 };
+    if (l.head || measure(c, l.text, sz, wt) <= lw) return { ...l, rows: [l.head ? ellipsize(c, l.text, lw, sz, wt) : l.text], indent: 0 };
     const m = /^(\d+세트: )(.*)$/.exec(l.text);
     const pre = m ? m[1] : '', body = m ? m[2] : l.text;
-    const indent = pre && measure(c, pre, sz, wt) < lw * 0.4 ? measure(c, pre, sz, wt) : 0;
+    // 둘째 줄부터의 들여쓰기: '4세트: ' 너비, 단 좁은 칸(아주 크게)에서는 칸의 12 % (≥ 12 px)까지만 — 이어지는 줄이 한 덩이씩만 들어가 줄 수가 불지 않게 [s8:healthp]
+    const indent = pre && measure(c, pre, sz, wt) < lw * 0.4 ? Math.min(measure(c, pre, sz, wt), Math.max(12, Math.round(lw * 0.12))) : 0;
     const segs = body.split(/(?<=, |— )/);
     const rows = [];
     let line = pre;
@@ -609,26 +639,55 @@ function wrapSetLines(c, L, w) {
       }
     }
     if (line.trim()) rows.push(line.trimEnd());
-    if (rows.length > 3) { rows.length = 3; rows[2] = ellipsize(c, rows[2] + '…', lw - indent, sz, wt); }
-    return { ...l, rows, one, indent };
+    return { ...l, rows, indent };
   });
 }
 /**
- * room 줄(rowH) 안에 맞추기: 먼저 머리줄 > 켜진 단계 > 꺼진 단계 순으로 한 줄씩 자리를 주고 (원래 순서 유지),
- * 남는 자리로 같은 순서대로 접은 줄을 편다 (둘째 줄부터 contH). statRoom/statNeed 를 주면 능력치 표 자리가
- * 한 줄 상태 때의 표(한 열 7줄 / 2열 7개)보다 줄어들지 않을 때만 편다. 다 못 펴는 줄은 한 줄 말줄임으로 남는다
+ * 가운데 판 아래 칸(세트 줄 + 「주요 능력치」)의 배치 [s8:healthp] — 그리기(render)와 무대 높이(stageH)가 같은 계산을 쓴다.
+ *  L: setLinesOf 줄, MW: 가운데 판 폭, y0: 세트 줄이 없을 때 「주요 능력치」 제목 기준선 (무대 아래 + 22, 예전 그대로), SR: 칸 {x, y, w, h}
+ *  세트 줄은 말줄임 없이 다 접는다 (wrapSetLines). 능력치 표는 세트 줄 아래에 한 열(7줄)이 들어가면 한 열, 아니면 2열(4줄).
+ *  mode 'fit' : 다 들어간다 (스크롤 없음)
+ *       'pin' : 넘친다 — 능력치 표(2열)를 칸 아래에 고정하고 세트 줄만 그 위 칸(VR, 세 줄 이상)에서 스크롤
+ *       'all' : 그 칸이 세 줄도 안 되면(휴대폰 아주 크게) 세트 줄 + 능력치 표를 한 덩이로 칸 전체(VR = SR)에서 스크롤
+ *  → { mode, sets, setRowH, contH, setGap, setY (첫 세트 줄 기준선), statY (제목 기준선), two, perCol, rowS, VR, scrollH (스크롤 내용 높이),
+ *      contentH (스크롤 없이 다 그릴 때 칸 위쪽부터 내용 끝까지 — stageH 가 쓴다) }
+ *  줄 높이는 글자 크기 하한(설정 '글자 크기')에서 잡는다 (크게·아주 크게에서 줄이 겹치지 않게)
  */
-function fitSetLines(L, room, rowH = 15, contH = rowH, statRoom = null, statNeed = null) {
-  if (room <= 0) return [];
-  const pri = (l) => (l.head ? 0 : l.on ? 1 : 2);
-  const order = L.map((l, i) => i).sort((a, b) => pri(L[a]) - pri(L[b]) || a - b).slice(0, room);
-  const full = new Set();
-  let hpx = order.length * rowH;
-  const need = statNeed ? statNeed(hpx) : 0;
-  for (const i of order) {
-    const add = (L[i].rows.length - 1) * contH;
-    if (add > 0 && hpx + add <= room * rowH && (!statRoom || statRoom(hpx + add) >= need)) { full.add(i); hpx += add; }
+function sumLayout(c, L, MW, y0, SR, twoOnly = false) {
+  const fl = textFloor(), n = SUMMARY.length;
+  const setRowH = Math.max(15, Math.ceil(fl * 1.2)), contH = setRowH - 1, setGap = 15;
+  const rowMin = Math.max(15, Math.ceil(fl * 1.15));
+  const sets = L.length ? wrapSetLines(c, L, MW - 28) : [];
+  // 첫 세트 줄 기준선: 칸 위 + 12 (예전), 글자 하한이 크면 글자 윗부분이 칸(무대 아래 경계)에 잘리지 않을 만큼 내린다
+  const setY = SR.y + Math.max(12, Math.ceil(fl * 0.9) + 2);
+  const setsH = sets.reduce((a, l) => a + setRowH + (l.rows.length - 1) * contH, 0);   // 첫 줄 기준선부터 마지막 줄 다음 기준선까지
+  const lastH = (rowS) => Math.min(15, rowS * 0.5 + 5) + 5;   // 마지막 능력치 줄 기준선 아래 글자 끝까지
+  const statsH = (perCol, rowS) => 8 + (perCol - 1) * rowS + lastH(rowS) + 4;   // 제목 기준선 → 표 끝 (+ 여백)
+  const bottom = SR.y + SR.h;
+  let statY = sets.length ? setY + setsH + setGap : y0;
+  // 1) 다 들어가나 (한 열 → 2열)
+  const room = bottom - 4 - (statY + 8);
+  const two = twoOnly || room < n * rowMin, perCol = two ? Math.ceil(n / 2) : n;
+  let rowS = Math.min(Math.max(20, rowMin), Math.max(rowMin, room / perCol));
+  const contentH = statY + statsH(perCol, rowS) - SR.y;
+  const out = { sets, setRowH, contH, setGap, setY, statY, two, perCol, rowS, contentH, mode: 'fit', VR: null, scrollH: 0 };
+  if (contentH <= SR.h + 0.5 || twoOnly) return out;
+  // 2) 넘친다: 능력치 표는 2열 · 줄 간격 최소
+  rowS = rowMin;
+  const headTop = Math.ceil(Math.max(14, fl) * 0.95) + 6;      // 고정 표 위쪽 → 제목 기준선
+  const tH = headTop + statsH(Math.ceil(n / 2), rowS);
+  Object.assign(out, { two: true, perCol: Math.ceil(n / 2), rowS });
+  const vh = SR.h - tH;
+  if (sets.length && vh >= setRowH * 3 + 8) {
+    out.mode = 'pin';
+    out.VR = { x: SR.x, y: SR.y, w: SR.w, h: vh };
+    out.statY = SR.y + vh + headTop;
+    out.scrollH = setY + setsH - setRowH + 8 - SR.y;           // 마지막 세트 줄 아래 글자 끝까지
+    if (out.scrollH <= vh) out.scrollH = vh;
+    return out;
   }
-  const keep = new Set(order);
-  return L.map((l, i) => (!keep.has(i) ? null : full.has(i) || l.rows.length === 1 ? l : { ...l, rows: [l.one], indent: 0 })).filter(Boolean);
+  out.mode = 'all';
+  out.VR = SR;
+  out.scrollH = statY + statsH(out.perCol, rowS) - SR.y;
+  return out;
 }

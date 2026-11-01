@@ -2,7 +2,7 @@
  "id": "gd_vesper",
  "tier": "T1",
  "srcTD": 4,
- "note": "Stage 8 portrait2: Vesper (small rose-scented letter bat) from a Higgsfield gpt_image_2_5 redraw of the gd_owl sheet layout (job 32692389-b367-4599-91f4-67ddd6ab7d68, 1168x880 -> 2x). Same puppet plan as gd_owl/gd_munin: flight = top-right bat flying toward the viewer (head turned to the viewer's left -> flipX) cut into body (ears, red ribbon, face, furry torso, dangling feet) + wingL / wingR (raised crimson bat wings, root pivots at the shoulders, behind the body, flapped down at runtime); perch = left bat standing with the sealed letter (faces left -> flipX). k: flight body ~22 px, perched ~19 px tall.",
+ "note": "Stage 8 portrait2: Vesper (small rose-scented letter bat) from a Higgsfield gpt_image_2_5 redraw of the gd_owl sheet layout (job 32692389-b367-4599-91f4-67ddd6ab7d68, 1168x880 -> 2x). Same puppet plan as gd_owl/gd_munin: flight = top-right bat flying toward the viewer (head turned to the viewer's left -> flipX) cut into body (ears, red ribbon, face, furry torso, dangling feet) + wingL / wingR (raised crimson bat wings, root pivots at the shoulders, behind the body, flapped down at runtime); perch = left bat standing with the sealed letter (faces left -> flipX). k: flight body ~22 px, perched ~22 px tall.",
  "sources": {
   "s": {
    "raw": "gd_vesper_sheet0.webp",
@@ -333,7 +333,7 @@
     970,
     1470
    ],
-   "k": 0.015,
+   "k": 0.017,
    "flipX": true,
    "keep": "largest",
    "piv": {

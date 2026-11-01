@@ -2,7 +2,7 @@
  "id": "gd_munin",
  "tier": "T1",
  "srcTD": 4,
- "note": "Stage 8 portrait2: Munin (old raven) from a Higgsfield gpt_image_2_5 redraw of the gd_owl sheet layout (job e8bda93f-9902-43e0-97a8-1e7576c419b6, 1168x880 -> 2x). Same puppet plan as gd_owl: flight = top-right raven flying toward the viewer (beak to the viewer's left -> flipX) cut into body (crest, head, red scarf, torso, dangling talons) + wingL / wingR (raised wings, root pivots at the shoulders, drawn behind the body, flapped down at runtime); perch = left raven standing 3/4 (already faces right). k: flight body ~23 px, perched ~20 px tall.",
+ "note": "Stage 8 portrait2: Munin (old raven) from a Higgsfield gpt_image_2_5 redraw of the gd_owl sheet layout (job e8bda93f-9902-43e0-97a8-1e7576c419b6, 1168x880 -> 2x). Same puppet plan as gd_owl: flight = top-right raven flying toward the viewer (beak to the viewer's left -> flipX) cut into body (crest, head, red scarf, torso, dangling talons) + wingL / wingR (raised wings, root pivots at the shoulders, drawn behind the body, flapped down at runtime); perch = left raven standing 3/4 (already faces right). k: flight body ~23 px, perched ~23 px tall.",
  "sources": {
   "s": {
    "raw": "gd_munin_sheet0.webp",
@@ -309,7 +309,7 @@
     1010,
     1380
    ],
-   "k": 0.0155,
+   "k": 0.018,
    "keep": "largest",
    "piv": {
     "a": [

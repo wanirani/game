@@ -167,13 +167,45 @@ export class SystemTab extends Tab {
       ['발견한 비밀', String(P.secrets?.length ?? 0)],
       ...(p2 ? [['세계의 심장', `${P.hearts?.length ?? 0} / 6`], ['별의 조각', `${P.shards?.length ?? 0} / 6`]] : []),
     ];
+    // 스테이지 기록 칸: 1부 13칸(+ 1부 외전) · (2부를 알면) 이어서 2부 7칸(+ 2부 외전)
+    // 외전(s21, side)은 열렸을 때만 2부 칸 끝에 (docs/specs/ex_s21.md). 1부 외전(s26, part 1)은 1부 칸 끝에 — 2부를 몰라도 (ex_s26.md)
+    const sideIds = D.STAGE_ORDER_P2().filter((sid) => D.STAGES()[sid]?.side && (P.unlocked || []).includes(sid));
+    const sideP1 = sideIds.filter((sid) => (D.STAGES()[sid]?.part ?? 2) === 1);
+    const p1Ids = [...D.STAGE_ORDER_P1(), ...sideP1], p2Ids = p2 ? [...D.P2_STAGE_IDS, ...sideIds.filter((sid) => !sideP1.includes(sid))] : [];
+    const all = [...p1Ids, ...p2Ids], pgap = p2Ids.length ? 12 : 0;
+    const bgap = all.length > 14 ? 3 : 4;
+    const sideLab = (sid) => D.STAGES()[sid]?.sideLabel ?? '외전';
+    const W0 = LW - 32;
+    const mw1 = Math.min(48, (W0 - (all.length - 1) * bgap - pgap) / Math.max(1, all.length));
+    // [s8:healthp] 외전 칸 머리(「외전 Ⅰ」·「외전」)가 칸에 들어가지 않으면(2부를 알면 칸이 20개를 넘어 휴대폰에서 칸 폭 ≈ 19 px —
+    // 「외전 Ⅰ」이 가로로 반쯤 눌려 읽히지 않았다) 1부 줄 · 2부 줄 두 줄로 나눈다. 그래도 모자라면(글자 크게) 외전 칸만 머리 글자 폭까지
+    // 넓히고 장 번호 칸을 그만큼 좁힌다 (장 번호 칸 ≥ 22 px — 두 자리 번호·SS 랭크). 두 줄일 때 칸 폭은 두 줄이 같게 (위아래로 맞는다)
+    const sideW = sideIds.length ? Math.max(...sideIds.map((sid) => measure(ctx, sideLab(sid), 9, 800))) + 4 : 0;
+    const twoRow = p2Ids.length > 0 && sideW > mw1;
+    const lines = twoRow ? [p1Ids, p2Ids] : [all];
+    const isSide = (sid) => !!D.STAGES()[sid]?.side;
+    let mw = Math.min(48, ...lines.map((L) => (W0 - (L.length - 1) * bgap - (twoRow ? 0 : pgap)) / Math.max(1, L.length)));
+    let sw = mw;
+    if (sideW > mw) {
+      // 줄마다 (장 칸 수 nC, 외전 칸 수 nS): nC·cw + nS·sw + 틈 = W0 → 가장 빡빡한 줄 기준
+      sw = Math.min(64, sideW);
+      const cwOf = (s0) => Math.min(...lines.map((L) => { const nS = L.filter(isSide).length, nC = L.length - nS; return nC ? (W0 - (L.length - 1) * bgap - (twoRow ? 0 : pgap) - nS * s0) / nC : 48; }));
+      let cw = cwOf(sw);
+      if (cw < 22) {   // 장 칸을 22 px 아래로는 줄이지 않는다: 외전 칸이 남는 자리까지만 (머리는 그 폭에 맞춰 눌린다)
+        cw = 22;
+        sw = Math.max(mw, Math.min(...lines.map((L) => { const nS = L.filter(isSide).length, nC = L.length - nS; return nS ? (W0 - (L.length - 1) * bgap - (twoRow ? 0 : pgap) - nC * cw) / nS : 64; })));
+      }
+      mw = Math.min(48, cw);
+    }
+    const cellW = (sid) => (isSide(sid) ? sw : mw);
     // 배치: 폭이 되면 3열. 높이가 모자라면 줄 높이·제목 간격을 줄인다 (휴대폰 UI 배율 · 최소 720×400)
     let cols = LW >= 520 ? 3 : 2, fs = 13;
     let nRows = Math.ceil(rows.length / cols);
     let rh = 21, hg = 30, boxH = 44;
-    const need = () => nRows * rh + hg + 12 + boxH + hg + 12 + 40;
+    const need = () => nRows * rh + hg + 12 + boxH + (twoRow ? boxH + 4 : 0) + hg + 12 + 40;
     if (need() > A.h - 56) { rh = 20; hg = 26; boxH = 38; }
     if (need() > A.h - 56) { rh = 18; hg = 24; boxH = 34; }
+    if (twoRow && need() > A.h - 56) { hg = 22; boxH = 30; }   // 두 줄 칸: 칸을 낮춰 아래 유물 칸 자리를 남긴다
     if (need() > A.h - 56 && cols === 2) { cols = 3; fs = 12; nRows = Math.ceil(rows.length / cols); } // 좁고 낮은 화면: 3열 · 작은 글자
     const cw = (LW - 32 - (cols - 1) * 12) / cols;
     rows.forEach(([k, v], i) => {
@@ -187,24 +219,23 @@ export class SystemTab extends Tab {
     let y = A.y + 42 + nRows * rh + hg;
     heading(ctx, '스테이지 기록', A.x + 16, y, LW - 32, { size: 14, sub: p2 ? '제1부 · 제2부' : null });
     y += 12;
-    // 외전(s21, side)은 열렸을 때만 2부 칸 끝에 (docs/specs/ex_s21.md). 1부 외전(s26, part 1)은 1부 칸 끝에 — 2부를 몰라도 (ex_s26.md)
-    const sideIds = D.STAGE_ORDER_P2().filter((sid) => D.STAGES()[sid]?.side && (P.unlocked || []).includes(sid));
-    const sideP1 = sideIds.filter((sid) => (D.STAGES()[sid]?.part ?? 2) === 1);
-    const p1Ids = [...D.STAGE_ORDER_P1(), ...sideP1], p2Ids = p2 ? [...D.P2_STAGE_IDS, ...sideIds.filter((sid) => !sideP1.includes(sid))] : [];
-    const all = [...p1Ids, ...p2Ids], pgap = p2Ids.length ? 12 : 0;
-    const bgap = all.length > 14 ? 3 : 4;
-    const mw = Math.min(48, (LW - 32 - (all.length - 1) * bgap - pgap) / Math.max(1, all.length));
+    const y0 = y;
     ctx.save();
+    let px = A.x + 16, divX = null;
     all.forEach((sid, k) => {
       const part2 = k >= p1Ids.length;
-      const cx = A.x + 16 + k * (mw + bgap) + (part2 ? pgap : 0), c = P.cleared?.[sid];
+      // 두 줄: 2부 칸은 아랫줄 맨 앞부터 (y 는 이 칸의 위쪽). 한 줄: 1부 · 2부 사이에 pgap
+      if (k === p1Ids.length && p2Ids.length) { if (twoRow) px = A.x + 16; else { divX = px + pgap / 2 - bgap / 2; px += pgap; } }
+      const mw = cellW(sid), cx = px, c = P.cleared?.[sid];
+      px += mw + bgap;
+      const y = twoRow && part2 ? y0 + boxH + 4 : y0;
       const open = (P.unlocked || []).includes(sid);
       rr(ctx, cx, y, mw, boxH, 4);
       ctx.fillStyle = c ? (part2 ? 'rgba(48,18,70,0.9)' : 'rgba(60,14,28,0.9)') : 'rgba(14,8,14,0.9)'; ctx.fill();
       ctx.strokeStyle = c ? (part2 ? '#a878e8' : PAL.goldMid) : open ? PAL.goldDim : '#2e2428'; ctx.lineWidth = 1; ctx.stroke();
       const side = !!D.STAGES()[sid]?.side;
       // 1부 외전이 둘(s26 · s27)이라 칸 머리를 sideLabel 로 가른다 (「외전 Ⅰ」 · 「외전 Ⅱ」 — VERIFY-EX, ex_s27.md W30). 2부 외전은 sideLabel 이 없어 「외전」 그대로
-      text(ctx, side ? (D.STAGES()[sid]?.sideLabel ?? '외전') : String(D.stageChapter(sid) ?? k + 1), cx + mw / 2, y + 13, { size: side ? 9 : 10, align: 'center', weight: 800, family: side ? FONT.body : FONT.num, color: c ? PAL.dim : PAL.faint, ow: 2, maxWidth: mw - 2 });
+      text(ctx, side ? sideLab(sid) : String(D.stageChapter(sid) ?? k + 1), cx + mw / 2, y + 13, { size: side ? 9 : 10, align: 'center', weight: 800, family: side ? FONT.body : FONT.num, color: c ? PAL.dim : PAL.faint, ow: 2, maxWidth: mw - 2 });
       const my = y + boxH * 0.66;
       if (c?.rank) {
         const col = RANK_COL[c.rank] ?? PAL.bone;
@@ -214,10 +245,10 @@ export class SystemTab extends Tab {
       } else if (c) glyph(ctx, 'check', cx + mw / 2, my, 12, PAL.good, 2);
       else if (!open) glyph(ctx, 'lock', cx + mw / 2, my, 10, '#4a3e40', 1.3);
     });
-    if (p2Ids.length) { const lx = A.x + 16 + p1Ids.length * (mw + bgap) + pgap / 2 - bgap / 2; ctx.fillStyle = 'rgba(190,140,255,0.45)'; ctx.fillRect(lx - 0.5, y - 2, 1, boxH + 4); }
+    if (divX != null) { ctx.fillStyle = 'rgba(190,140,255,0.45)'; ctx.fillRect(divX - 0.5, y - 2, 1, boxH + 4); }
     ctx.restore();
     // 유물
-    y += boxH + hg;
+    y += boxH + hg + (twoRow ? boxH + 4 : 0);
     const relics = ['k_relic_1', 'k_relic_2', 'k_relic_3', 'k_relic_4', 'k_relic_5'];
     const got = relics.filter((id) => (P.relics || []).includes(id)).length;
     heading(ctx, '드라큘라의 유물', A.x + 16, y, LW - 32, { size: 14, sub: `${got} / 5` });

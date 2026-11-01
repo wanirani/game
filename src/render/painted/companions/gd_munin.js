@@ -1,7 +1,7 @@
 // 채색 수호신: 무닌 (gd_munin, 이름을 기억하는 늙은 까마귀) — 8단계 portrait2. T1 채색 퍼핏 (에셋 assets/painted/companions/gd_munin/).
 // 미네르바(gd_owl)와 같은 짜임: body (날아오는 까마귀의 볏·머리·붉은 목도리·몸·늘어뜨린 발톱) · wingL / wingR (들어 올린 두 날개,
 //   어깨 피벗 — 몸 뒤에서 아래로 내려친다) · perch (어깨에 선 3/4 모습). 원본: Higgsfield 다시 그림 (tools/painted/companions/gd_munin/parts.json).
-// 그림 속 날개가 '올려 친' 모습이라 fl 0 = 그림 그대로(위), 1 = 끝까지 내려친 모습. 올빼미와 달리 후광이 없다 (각성: 붉은 기운).
+// 그림 속 날개가 '올려 친' 모습이라 fl 0 = 그림 그대로(위), 1 = 끝까지 내려친 모습. 올빼미와 달리 후광이 없다 (각성: 몸의 기운이 커지고 머리 위에 붉은 기운이 피어오른다).
 // 상태: idle 제자리 날갯짓 · move 빠르면 짧은 날갯짓 · attack/assist 급강하(날개 반쯤 접고 앞으로 기울기) · skill 까마귀 떼(날개 활짝, 눈 빛) ·
 //   emote 고개 갸웃 · hurt 움찔 · appear 커지며 나타남 · perch 어깨에 앉음(가끔 눈 깜빡). 같은 그리기를 베스퍼(gd_vesper.js)가 빌려 쓴다.
 import * as K from '../enemy_kit.js';
@@ -47,7 +47,7 @@ export function makeFlyer(sp, o) {
     if (emote) tilt = Math.sin(clamp(at, 0, 1) * Math.PI * 2) * 0.28;
     tilt *= 1 - pk;
     const sc = 0.55 + 0.45 * ap;
-    gGlow(ctx, 0, -12 + bob, cast ? 24 : 12, o.aura, cast ? 0.5 : aw ? 0.3 : 0.14);
+    gGlow(ctx, 0, -12 + bob, cast ? 24 : aw ? 17 : 12, o.aura, cast ? 0.5 : aw ? 0.42 : 0.14);
     if (hurt > 0) ctx.translate(Math.sin(t * 70) * 1.2 * hurt, 0);
     ctx.translate(0, -12 + bob);
     if (sc !== 1) ctx.scale(sc, sc);
@@ -88,6 +88,12 @@ export function makeFlyer(sp, o) {
       ctx.globalAlpha = ga;
     }
     K.end();
+    // 각성(유대 4): 머리 위로 피어오르는 기운 (올빼미의 두 번째 후광 자리) — 날 때는 볏, 앉을 때는 머리 위
+    if (aw) {
+      const hx = (e1x + e2x) / 2, hy = Math.min(e1y, e2y) - 3 + Math.sin(t * 3.1) * 0.6;
+      gGlow(ctx, hx, hy, 7.5, o.aura, 0.55, 0.3);
+      gGlow(ctx, hx, hy - 3, 4, o.cast, 0.45, 0.3);
+    }
     // 눈빛 (앉아 있을 때 가끔 깜빡)
     const blink = pk > 0.5 && ((t % 3.9) < 0.12);
     if (!blink) {

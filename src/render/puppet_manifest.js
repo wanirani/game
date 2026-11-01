@@ -234,7 +234,7 @@ export const PUPPETS = {
    ]
   },
   "kael_grandtemplar": {
-   "h": "5dd96e103fb3",
+   "h": "392e0b68e2f8",
    "turn": true,
    "lv": [
     "hi",

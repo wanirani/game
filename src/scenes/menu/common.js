@@ -961,7 +961,8 @@ export class Scroller {
     }
     if (ges?.wheel && rect && inRect(p.x, p.y, rect)) { this.target = clamp(this.target + ges.wheel, 0, this.max); this.vel = 0; this.userScrolled = true; }
     // 오른쪽 스틱 Y (패드): 기울기² × 초당 900 px
-    const sy = input.mode === 'pad' ? input.stickR?.y ?? 0 : 0;
+    // noStick: 한 화면에 스크롤 칸이 둘일 때(장비 탭 목록 · 세트/능력치 칸) 지금 스틱을 받지 않는 쪽 [s8:healthp]
+    const sy = input.mode === 'pad' && !this.noStick ? input.stickR?.y ?? 0 : 0;
     if (Math.abs(sy) > 0.08 && this.max > 0) { this.target = clamp(this.target + Math.sign(sy) * sy * sy * 900 * edt, 0, this.max); this.vel = 0; this.userScrolled = true; }
     if (Math.abs(this.vel) > 8) { this.target += this.vel * edt; this.vel *= Math.pow(0.03, edt); if (this.target < 0 || this.target > this.max) this.vel *= 0.5; }
     else this.vel = 0;
