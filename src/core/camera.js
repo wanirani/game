@@ -302,12 +302,13 @@ export class Camera {
       const bx0 = clamp(B.x, bd.x, bd.x + bd.w), bx1 = clamp(B.x + (B.w ?? 0), bd.x, bd.x + bd.w);
       const sr = sides.r * zk, sl = sides.l * zk, hv = vwB / 2;
       const em = vwB * BOSS_EDGE;   // 영웅은 화면 가장자리에서 15 % 안쪽 (위 보스 구도와 같은 규칙) — 영웅 우선
-      const bossMin = bx1 + OVER_PAD + sr - hv, heroMax = t.x - Math.min(sl, em) + hv;   // 보스 오른끝이 묶음 왼쪽에 · 영웅은 왼쪽 가장자리 안쪽에
+      const bossMin = bx1 + OVER_PAD + sr - hv, heroMax = t.x - Math.max(sl, em) + hv;   // 보스 오른끝이 묶음 왼쪽에 · 영웅은 왼쪽 조작 자리·가장자리 15 % 밖에
       if (sr > 0 && bossMin > fx) fx = Math.max(fx, Math.min(bossMin, heroMax));
-      const bossMax = bx0 - OVER_PAD - sl + hv, heroMin = t.x + t.w + Math.min(sr, em) - hv;
+      const bossMax = bx0 - OVER_PAD - sl + hv, heroMin = t.x + t.w + Math.max(sr, em) - hv;   // [verifyB] max: 영웅을 반대쪽 버튼 묶음 밑으로 밀지 않는다 (왼손 모드·왼쪽 벽 보스)
       if (sl > 0 && bossMax < fx) fx = Math.min(fx, Math.max(bossMax, heroMin));
-      bossR = clamp(fx + hv - (bd.x + bd.w), 0, sr);
-      bossL = clamp(bd.x - (fx - hv), 0, sl);
+      // [verifyB] 방 밖 넘겨 보기는 영웅이 반대쪽 조작 밑으로 가지 않는 데까지만 (보스 가중 구도 fx 가 방 경계에 막혀 있던 것을 풀지 않게)
+      bossR = clamp(Math.min(fx, Math.max(heroMax, bd.x + bd.w - hv)) + hv - (bd.x + bd.w), 0, sr);
+      bossL = clamp(bd.x - (Math.max(fx, Math.min(heroMin, bd.x + hv)) - hv), 0, sl);
     }
     const wantR = Math.max(needR, bossR), wantL = Math.max(needL, bossL);
     // 좁은 경기장에서 넘겨 보기를 쓰는 동안 (보스가 쓰러진 뒤 넘겨 보기가 0 으로 줄어드는 동안도) 켜 둔다 — 화면이 가운데로 튀지 않게

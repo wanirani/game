@@ -233,6 +233,27 @@ section('6) 보스 구도 (core/camera.js): 터치면 오른쪽 벽의 보스 �
       c.follow({ x: 3000, y: 512, w: 32, h: 64, vx: 0, vy: 0, facing, onGround: true }, 1 / 60, true);
       return c.lookX;
     };
+    // [verifyB] 보스 구도가 영웅을 반대쪽 버튼 묶음 밑으로 (예전 구도보다 더) 밀지 않는다: 왼손 모드 오른쪽 벽 보스, 오른손 왼쪽 벽 보스
+    const frame = (lefty, safe, heroX, bossX, facing) => {
+      input.touchMode = true; CAM_FLAGS.bossSafe = safe; game.settings = { ...(gs0 || {}), touchLeftHanded: lefty };
+      touchpad.bottomReserve = () => 0.206; touchpad.layoutVersion = () => (lefty ? 18 : 17) + (safe ? 0.5 : 0);
+      touchpad.occupiedRects = () => (lefty ? MIR : RECTS);
+      touchpad.stickZone = () => (lefty ? { x: 800, y: 520, w: 140, h: 190 } : { x: 20, y: 520, w: 140, h: 190 });
+      const c = new Camera(960, 726);
+      c.setBounds(528, 0, 1392, 672); c.floorY = 576;
+      const hero = { x: heroX, y: 512, w: 32, h: 64, vx: 0, vy: 0, facing, onGround: true };
+      c.boss = { x: bossX, y: 400, w: 96, h: 176, dead: false, hidden: false };
+      c.follow(hero, 1 / 60, true);
+      for (let i = 0; i < 240; i++) c.follow(hero, 1 / 60);
+      return { l: (hero.x - c.x) * c.zoom, r: (hero.x + hero.w - c.x) * c.zoom };
+    };
+    try {
+      const clusterR = Math.max(...MIR.map((r) => r.x + r.w)), clusterL = Math.min(...RECTS.map((r) => r.x));
+      const a1 = frame(true, true, 1300, 1776, 1), a0 = frame(true, false, 1300, 1776, 1);
+      ok(a1.l >= Math.min(a0.l, clusterR) - 0.5, `left-handed, boss at the right wall: hero not pushed under the left cluster (hero left ${a1.l.toFixed(0)}, old ${a0.l.toFixed(0)}, cluster ends ${clusterR})`);
+      const b1 = frame(false, true, 1250, 540, -1), b0 = frame(false, false, 1250, 540, -1);
+      ok(b1.r <= Math.max(b0.r, clusterL) + 0.5, `right-handed, boss at the left wall: hero not pushed further under the right cluster (hero right ${b1.r.toFixed(0)}, old ${b0.r.toFixed(0)}, cluster from ${clusterL})`);
+    } finally { game.settings = gs0; CAM_FLAGS.bossSafe = true; }
     try {
       const rR = look(false, 1), rL = look(false, -1), lL = look(true, -1), lR = look(true, 1);
       ok(rR > 40 + 1 && Math.abs(rL + 40) < 1e-6, `right-handed: bias only when facing right (${rR.toFixed(1)}, ${rL.toFixed(1)})`);
