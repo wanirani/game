@@ -1,0 +1,529 @@
+{
+ "_doc": "Stage 8 lane \"portrait2\". GOAL A: boss portrait style pass, round 2 (painted dark-fantasy, never anime): 15 boss portraits + the purified companion portrait cmp_mt_argen (same character as b_argen). Method = Stage 7: design grid from tools/painted/raw/<boss> (Kling watermark painted out) + style grid of Stage 7 painted portraits; 880x1168 on #00FF00 (or #FF00FF for green subjects: banshee, chimera, moloch, narkissa2, bonedragon, leviathan) -> key with edge-band despill -> centre crop 3:4 -> 768x1024 RGBA WebP q80 m6 alpha_quality 70 -> lo copies by tools/assets/make_variants.py. GOAL B: painted puppets for the 4 companions that had none (mt_argen, mt_morgen, gd_munin, gd_vesper), made by re-colouring the source sheet of the closest painted companion (mt_wyvern, mt_warhorse, gd_owl) so the cut/rig contract is the same; matte without rembg by tools/higgsfield/matte_flat.py.",
+ "date": "2026-11-01",
+ "model": "gpt_image_2_5",
+ "images": 31,
+ "credits": 7.75,
+ "references": {
+  "d_banshee.png": "965bb2f2-dc91-481c-913d-5c17236a0e58",
+  "d_hagen.png": "bf3248ee-4c34-425b-a9b4-43189793f204",
+  "d_hagen2.png": "778c3e56-48e9-44d2-9853-d25f7b0efc1d",
+  "d_ziz.png": "ab08cb69-08a7-45bb-a3da-917e32fe5634",
+  "d_argen.png": "ab617902-987e-4029-8414-7595ae3e645f",
+  "d_chimera.png": "d6aa00c4-d092-4b9b-a5a4-3f35075ab85d",
+  "d_moloch.png": "5cb37baf-9852-4454-9f3e-60b0b66ed94d",
+  "d_narkissa.png": "518eeaf4-4ad3-4767-93e5-eef2688b9745",
+  "d_narkissa2.png": "9cb59d19-bf82-4aaa-b2ee-22a1a8771435",
+  "d_mara.png": "0377599d-677c-4078-b30e-83022aeb47c0",
+  "d_nemain.png": "c81f2f6c-5148-432c-a2ec-7b3dd2a5b05b",
+  "d_dracula2.png": "c9058e31-74e9-4997-9bd5-46c4c215c867",
+  "d_bonedragon.png": "702e695a-71f5-4c76-a7cd-6a347496cac6",
+  "d_leviathan.png": "b0870946-fd2e-4611-8763-2b646fd0424d",
+  "d_grimoire.png": "662dab13-29f2-4936-a080-145bae943f71",
+  "s_human.png": "bc3992c6-bffa-43ac-a544-704b3633d012",
+  "s_creature.png": "d5c8010c-d490-4250-8288-8e0377f6d897",
+  "s_death.png": "7af683bd-54fe-44eb-87d0-d7c3e58d6fd7",
+  "r_mt_wyvern.png": "8df7f902-692b-4168-a9de-e7d6972bbdf0",
+  "r_mt_warhorse.png": "2cfda40f-b3dd-4d05-a5b8-3f06632e996b",
+  "r_gd_owl.png": "22a5c18a-92fd-4982-bf9f-4c822d3976c8",
+  "p_cmp_mt_argen.png": "f844e1f9-23c9-412b-821b-8f04b6a3838c",
+  "p_cmp_mt_morgen.png": "2d895c4f-c0b4-4431-88cb-0ad645fcc0dd",
+  "p_cmp_gd_munin.png": "819a46fd-20a8-450c-a8a4-3c2048abc470",
+  "p_cmp_gd_vesper.png": "331357a1-604f-4131-96f6-343deefa648a"
+ },
+ "reference_notes": {
+  "d_<boss>": "2x2 (or 2x1) grid of tools/painted/raw/<boss> parts (form 2: b_hagen beast_a, b_narkissa head2_a/halo2_a/limbs_a, b_dracula d*_a)",
+  "s_human": "b_bride2 b_dracula b_frostqueen b_nemain2",
+  "s_creature": "b_nightwing b_dagon b_moloch b_behemoth",
+  "s_death": "b_death b_bride b_charon b_chaos"
+ },
+ "generations": [
+  {
+   "index": 0,
+   "target": "b_banshee",
+   "job_id": "4b770eb4-5bb4-44c4-bab6-8da6ee4962e7",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#FF00FF magenta",
+   "refs": [
+    "d_banshee",
+    "s_death"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (strip of painted boss portraits): hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, soft front-left key light, deep shadows, painterly edges; no line art, no ink outlines, no anime, no cel shading, no comic style. The character is the Banshee exactly as in the first reference image (design sheet): her head is a bare screaming skull — pale grey-white cracked bone, hollow black eye sockets with small glowing teal-cyan pupils, a gaping jaw with long thin fangs — framed by a deep white cloth hood; no hair, no skin, no flesh face. A tattered white burial shroud hangs from the hood over the shoulders, its ragged edges fading into translucent pale cyan strips. A heavy rusted iron chain with faintly glowing teal links is wrapped across her chest. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #FF00FF magenta background",
+   "file": null,
+   "kept": false,
+   "note": "alternate (banshee_1 has the teal glowing chain links of the design)"
+  },
+  {
+   "index": 1,
+   "target": "b_banshee",
+   "job_id": "d2d39f3d-4309-4e78-a415-d2a4041799ae",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#FF00FF magenta",
+   "refs": [
+    "d_banshee",
+    "s_death"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (strip of painted boss portraits): hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, soft front-left key light, deep shadows, painterly edges; no line art, no ink outlines, no anime, no cel shading, no comic style. The character is the Banshee exactly as in the first reference image (design sheet): a wailing skull-faced ghost. The face is a bare skull of pale grey-white bone with cracks, black hollow sockets holding glowing teal-cyan eyes, an open screaming jaw with long fangs. She wears a deep white hood and a ragged white shroud that drapes over the shoulders and tatters into ghostly pale-cyan wisps. Rusted iron chains with teal glowing links cross her chest and shoulders. No hair, no human face. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #FF00FF magenta background",
+   "file": "assets/portraits/b_banshee.webp",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "index": 2,
+   "target": "b_hagen",
+   "job_id": "2b2131d9-8234-4ccb-a090-191385a1162e",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#00FF00 green",
+   "refs": [
+    "d_hagen",
+    "s_human"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (strip of painted boss portraits): hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, soft front-left key light, deep shadows, painterly edges; no line art, no ink outlines, no anime, no cel shading, no comic style. The character is Hagen the old hunter exactly as in the first reference image: a gaunt weathered old man with deep wrinkles and scars, long straggly grey hair and a long grey beard, faintly glowing amber eyes, a battered brown leather wide-brimmed hat with a strap, a tattered brown leather long coat with a high collar, a bandolier of brass rifle cartridges across the chest, the barrel of a long old hunting rifle slung over his shoulder. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "file": "assets/portraits/b_hagen.webp",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "index": 3,
+   "target": "b_hagen2",
+   "job_id": "a123d16c-2a07-48ee-b750-fa4eb92caaec",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#00FF00 green",
+   "refs": [
+    "d_hagen2",
+    "s_creature"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (strip of painted boss portraits): hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, soft front-left key light, deep shadows, painterly edges; no line art, no ink outlines, no anime, no cel shading, no comic style. The character is Hagen's werewolf form exactly as in the reference image (the grey wolf heads and the four-legged wolf): a huge grey-white wolf with a shaggy silver-grey coat, glowing amber eyes, black nose, snarling open jaws with long fangs, still wearing the tattered brown leather hunter's coat collar and a leather scarf around the neck, and a bandolier of brass cartridges across the furred chest. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "file": "assets/portraits/b_hagen2.webp",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "index": 4,
+   "target": "b_ziz",
+   "job_id": "e25d30c0-4e7e-47ae-b4b9-b834a012e2ad",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#00FF00 green",
+   "refs": [
+    "d_ziz",
+    "s_creature"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (strip of painted boss portraits): hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, soft front-left key light, deep shadows, painterly edges; no line art, no ink outlines, no anime, no cel shading, no comic style. The character is Ziz, the carrion sky-bird, exactly as in the first reference image: its head is a bare bleached bird skull with a long hooked beak and jagged teeth, a single glowing yellow eye deep in the socket; shaggy ragged blue-black raven feathers ruff around the skull and neck; a black feathered body whose chest splits open into a red fleshy maw; huge black feathered wings with exposed bone arms rising behind the shoulders. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "file": "assets/portraits/b_ziz.webp",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "index": 5,
+   "target": "b_argen",
+   "job_id": "d39ca81c-2e6c-4be5-b184-ef8691fd0da5",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#00FF00 green",
+   "refs": [
+    "d_argen",
+    "s_creature"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (strip of painted boss portraits): hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, soft front-left key light, deep shadows, painterly edges; no line art, no ink outlines, no anime, no cel shading, no comic style. The character is Argen, the void-corrupted silver dragon, exactly as in the first reference image: a long silver-white scaled dragon head with many long ivory horns swept back, ivory crest spikes, an open fanged jaw with a red mouth, pale ivory belly plates down the long neck; jagged black and violet void crystals bursting out of the scales along the neck and shoulder with a faint violet glow, one eye glowing violet. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "file": "assets/portraits/b_argen.webp",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "index": 6,
+   "target": "b_chimera",
+   "job_id": "1c1a0e0b-69a8-4efb-bcd0-02b01020d1d3",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#FF00FF magenta",
+   "refs": [
+    "d_chimera",
+    "s_creature"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (strip of painted boss portraits): hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, soft front-left key light, deep shadows, painterly edges; no line art, no ink outlines, no anime, no cel shading, no comic style. The character is the Chimera exactly as in the first reference image: a golden-tan lion head with a shaggy dark-brown mane, a stitched surgical scar across the face, one glowing acid-green eye, open fanged jaws dripping glowing green venom; a tan goat head with curled ram horns grows from its shoulder; the tan lion body is sewn together with stitches, with exposed red muscle and green snake coils showing through the seams, and brass alchemical caps on its back. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #FF00FF magenta background",
+   "file": null,
+   "kept": false,
+   "note": "alternate without the snake (design has a snake head)"
+  },
+  {
+   "index": 7,
+   "target": "b_chimera",
+   "job_id": "f6158966-ce70-4370-bd3a-eea6a680088b",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#FF00FF magenta",
+   "refs": [
+    "d_chimera",
+    "s_creature"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (strip of painted boss portraits): hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, soft front-left key light, deep shadows, painterly edges; no line art, no ink outlines, no anime, no cel shading, no comic style. The character is the Chimera, a stitched alchemical monster, exactly as in the first reference image: golden lion face with dark brown mane, scar stitches, glowing green eye, snarling jaws drooling luminous green poison; a goat head with curled horns and a green eye beside it at the shoulder; a green snake curling over the shoulder; stitched tan hide with exposed red muscle and brass pipe fittings. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #FF00FF magenta background",
+   "file": "assets/portraits/b_chimera.webp",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "index": 8,
+   "target": "b_moloch",
+   "job_id": "1f8e77b2-70a1-4d23-9fed-004e2995f191",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#FF00FF magenta",
+   "refs": [
+    "d_moloch",
+    "s_death"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (strip of painted boss portraits): hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, soft front-left key light, deep shadows, painterly edges; no line art, no ink outlines, no anime, no cel shading, no comic style. The character is Moloch the furnace bull-ogre exactly as in the first reference image: a dark green-skinned bull-ogre head with a flat broad bull muzzle and nose ring folds, small glowing orange eyes, an open mouth glowing with furnace fire, two long curved ivory horns ending in spiked verdigris-bronze iron rings, a riveted dark iron gorget around the neck; massive greenish-grey muscular shoulders with spiked bronze pauldrons; a round riveted iron furnace grate with glowing orange bars set into the chest. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #FF00FF magenta background",
+   "file": "assets/portraits/b_moloch.webp",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "index": 9,
+   "target": "b_narkissa",
+   "job_id": "32f1a57d-f63a-4c17-b5cf-e1825caa6154",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#00FF00 green",
+   "refs": [
+    "d_narkissa",
+    "s_human"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (strip of painted boss portraits): hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, soft front-left key light, deep shadows, painterly edges; no line art, no ink outlines, no anime, no cel shading, no comic style. The character is Narkissa, the mirror queen, exactly as in the first reference image: a smooth featureless porcelain mask-face split down the middle — the left half glossy black with many small inset pale eyes, the right half cracked white porcelain with one pale blue human eye; a long glossy black neck; a crown of black obsidian and iridescent silver mirror shards fanning out around the head; a glossy black gown whose bodice is made of mirror shards, each reflecting a small screaming face. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "file": "assets/portraits/b_narkissa.webp",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "index": 10,
+   "target": "b_narkissa2",
+   "job_id": "8a1b96a9-6c66-4d11-b3af-c2d57a25b945",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#FF00FF magenta",
+   "refs": [
+    "d_narkissa2",
+    "s_human"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (strip of painted boss portraits): hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, soft front-left key light, deep shadows, painterly edges; no line art, no ink outlines, no anime, no cel shading, no comic style. The character is Narkissa's shattered second form exactly as in the first reference image: the porcelain mask is cracked open into a huge mouth full of rows of sharp white teeth; the left half is glossy black with inset jewel eyes, the right half white porcelain with a thin teal eye slit and black cracks; behind the head a broken halo of silver mirror shards like a jagged sunburst; long glossy black jointed arms with a black clawed hand. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #FF00FF magenta background",
+   "file": "assets/portraits/b_narkissa2.webp",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "index": 11,
+   "target": "b_mara",
+   "job_id": "169afa28-e674-4a68-a127-061103dccbfd",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#00FF00 green",
+   "refs": [
+    "d_mara",
+    "s_death"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (strip of painted boss portraits): hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, soft front-left key light, deep shadows, painterly edges; no line art, no ink outlines, no anime, no cel shading, no comic style. The character is Mara, the nightmare doll-mother, exactly as in the first reference image: her face is a pale cracked porcelain doll face with faint painted rosy cheeks and a thin stitched smile, one side broken open showing a glowing violet eye and a trickle of blood; the head sits on a long segmented bone-spine neck; thin pale withered torso; several small cracked porcelain doll heads with blank eyes hang around her shoulders. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "file": "assets/portraits/b_mara.webp",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "index": 100,
+   "target": "b_nemain",
+   "job_id": "c85a377c-8321-47e1-9a0e-dad9c007f80d",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#00FF00 green",
+   "refs": [
+    "design/job",
+    "style"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (strip of painted boss portraits): hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, soft front-left key light, deep shadows, painterly edges; no line art, no ink outlines, no anime, no cel shading, no comic style. The character is Nemain, the raven witch, exactly as in the first reference image: a pale ash-grey-skinned woman with long straight ash-silver hair, wearing a black leather raven-skull mask helmet that covers her skull and upper face and ends in a long curved black beak over her nose, one glowing red eye visible through the mask, dark lips; a black leather collar with a buckle; a black leather corset; a heavy cloak of black raven feathers over her shoulders with a dark crimson lining; a black raven perched on her shoulder. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "file": null,
+   "kept": false,
+   "note": "alternate (kept the blood-tear one: matches b_nemain2)"
+  },
+  {
+   "index": 101,
+   "target": "b_nemain",
+   "job_id": "3b2691b6-a8d3-4b48-acfb-39976806b55f",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#00FF00 green",
+   "refs": [
+    "design/job",
+    "style"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (strip of painted boss portraits): hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, soft front-left key light, deep shadows, painterly edges; no line art, no ink outlines, no anime, no cel shading, no comic style. The character is Nemain exactly as in the first reference image (masked form): an ashen pale woman with long silver-grey hair under a glossy black leather crow-beak mask with a long hooked beak, a red glowing eye in the mask, red blood tears on the cheek, black buckled leather collar and corset, a black feathered raven cloak with blood-red lining draped over the shoulders, one raven sitting on her shoulder. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "file": "assets/portraits/b_nemain.webp",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "index": 102,
+   "target": "b_dracula2",
+   "job_id": "d1ae94fb-6287-4176-bfc7-133eba0f2be9",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#00FF00 green",
+   "refs": [
+    "design/job",
+    "style"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (strip of painted boss portraits): hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, soft front-left key light, deep shadows, painterly edges; no line art, no ink outlines, no anime, no cel shading, no comic style. The character is Dracula's true demon form exactly as in the first reference image: a crimson-red scaled dragon-demon head with long curved black horns, black spines along the jaw, glowing yellow-orange eyes, a snarling fanged mouth, pointed ears; a muscular red scaled torso with a faintly glowing orange sigil on the chest and ember glow in the scale cracks; red membrane bat-dragon wings with black claws rising behind the shoulders. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "file": null,
+   "kept": false,
+   "note": "rejected: chest sigil read as a peace sign"
+  },
+  {
+   "index": 103,
+   "target": "b_bonedragon",
+   "job_id": "06932c28-a603-4e9f-af14-bd581250d617",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#FF00FF magenta",
+   "refs": [
+    "design/job",
+    "style"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (strip of painted boss portraits): hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, soft front-left key light, deep shadows, painterly edges; no line art, no ink outlines, no anime, no cel shading, no comic style. The character is the Bone Dragon exactly as in the first reference image: a huge cracked ivory dragon skull with many long swept-back horns and jagged teeth, sickly green fire burning in the eye socket, a long red tongue hanging from the jaws dripping black ichor; a skeletal neck of bone vertebrae and a ribcage with green ghost-fire glowing inside; a tattered olive-brown bone wing with holes rising behind the shoulder. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #FF00FF magenta background",
+   "file": null,
+   "kept": false,
+   "note": "rejected: skull faces right (portraits face left)"
+  },
+  {
+   "index": 104,
+   "target": "b_leviathan",
+   "job_id": "473e8a04-302c-4c20-8800-4f52bcccaf12",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#FF00FF magenta",
+   "refs": [
+    "design/job",
+    "style"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (strip of painted boss portraits): hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, soft front-left key light, deep shadows, painterly edges; no line art, no ink outlines, no anime, no cel shading, no comic style. The character is Leviathan, the sea serpent, exactly as in the first reference image: a deep teal-green scaled sea-dragon head with a crest of ivory bone spikes and horns, glowing pale-cyan fin spines along the back of the neck, open jaws with long fangs and a pink mouth, pale cream belly plates down the long serpentine neck, barnacles and old wounds on the scales. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #FF00FF magenta background",
+   "file": "assets/portraits/b_leviathan.webp",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "index": 105,
+   "target": "b_grimoire",
+   "job_id": "e4912bb6-6785-4610-b373-677c6e6aaf18",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#00FF00 green",
+   "refs": [
+    "design/job",
+    "style"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (strip of painted boss portraits): hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, soft front-left key light, deep shadows, painterly edges; no line art, no ink outlines, no anime, no cel shading, no comic style. The subject is the Grimoire, a living cursed spellbook, exactly as in the first reference image: a thick black leather tome with dented silver corner clasps and tooled occult sigils, a large violet slit-pupil eye with a fleshy purple eyelid set into the centre of the cover, curved ivory fangs sprouting from the page edges, old yellowed pages; shown as a three-quarter view of the book standing upright, slightly open. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "file": "assets/portraits/b_grimoire.webp",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "index": 106,
+   "target": "cmp_mt_argen",
+   "job_id": "a1ab675b-499d-4bb4-84e8-f9b5d276ae4f",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#00FF00 green",
+   "refs": [
+    "design/job",
+    "style"
+   ],
+   "prompt": "Character bust portrait for a dark-fantasy action game, hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, deep shadows; no line art, no anime, no cel shading. Paint the same silver dragon as in the first reference image with the same pose, framing, lighting and painting style, but purified and calm: no void crystals at all, clean silver-white scales, ivory horns and crest spikes, pale ivory belly plates, glowing pale-cyan eyes, faint thin cyan lightning crackling between the neck scales, jaw slightly open with a soft cyan glow in the throat. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "file": "assets/portraits/cmp_mt_argen.webp",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "index": 107,
+   "target": "cmp_mt_argen",
+   "job_id": "ec82831b-5252-4dbb-902f-d70a746fa527",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#00FF00 green",
+   "refs": [
+    "design/job",
+    "style"
+   ],
+   "prompt": "Character bust portrait for a dark-fantasy action game, hand-painted digital oil painting, textured visible brushwork, muted desaturated colours, deep shadows; no line art, no anime, no cel shading. Repaint the dragon from the first reference image, same pose, same framing and the same painterly oil technique, as its purified noble form: all black and violet crystals removed, smooth gleaming silver-white scales, long ivory horns, cream belly plates, bright cyan eyes, a few small cyan lightning sparks along the neck, mouth slightly open. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side of the image. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "file": null,
+   "kept": false,
+   "note": "alternate (kept #106)"
+  },
+  {
+   "index": 110,
+   "target": "b_dracula2",
+   "job_id": "2ac6a0ba-afa2-4447-a3fc-1bec9d28dd61",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#00FF00",
+   "refs": [
+    "d_dracula2",
+    "s_creature"
+   ],
+   "prompt": "retry of #102 with \"smouldering ember glow in the scale cracks over the heart (no symbol, no letters, no sign)\"",
+   "file": null,
+   "kept": false,
+   "note": "rejected: faces right"
+  },
+  {
+   "index": 111,
+   "target": "b_dracula2",
+   "job_id": "7cd0e22c-787b-4a26-8f41-4ba04dd967af",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#00FF00",
+   "refs": [
+    "d_dracula2",
+    "s_creature"
+   ],
+   "prompt": "retry of #102: \"No emblem or symbol on the chest\", lava-like light in the scale cracks",
+   "file": "assets/portraits/b_dracula2.webp",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "index": 112,
+   "target": "b_bonedragon",
+   "job_id": "d477af62-ba48-4e0a-8c6a-6d423e457ec6",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "credits": 0.25,
+   "bg": "#FF00FF",
+   "refs": [
+    "d_bonedragon",
+    "s_creature"
+   ],
+   "prompt": "retry of #103 with \"The skull is in profile facing LEFT: the snout and teeth point toward the left edge\"",
+   "file": "assets/portraits/b_bonedragon.webp",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "index": 200,
+   "target": "mt_argen",
+   "job_id": "e1cf87ab-288d-4789-ae52-0707913fa2db",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "4:3",
+   "credits": 0.25,
+   "refs": "r_mt_wyvern (tools/painted/companions/mt_wyvern/src/mt_wyvern_ref.webp, Kling watermark painted over, 1168x880) + p_cmp_mt_argen (new painted portrait)",
+   "prompt": "recolour/redraw of the first reference keeping pose, layout, sizes and the flat grey background; new design from the second reference (full prompts in the session; see tools/painted/companions/<id>/config.json|parts.json notes)",
+   "kept": false,
+   "note": "alternate (lower silhouette IoU after alignment: 0.72)"
+  },
+  {
+   "index": 201,
+   "target": "mt_argen",
+   "job_id": "d27259c7-bdcd-41a5-ac86-5fa589ed4aa3",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "4:3",
+   "credits": 0.25,
+   "refs": "r_mt_wyvern (tools/painted/companions/mt_wyvern/src/mt_wyvern_ref.webp, Kling watermark painted over, 1168x880) + p_cmp_mt_argen (new painted portrait)",
+   "prompt": "recolour/redraw of the first reference keeping pose, layout, sizes and the flat grey background; new design from the second reference (full prompts in the session; see tools/painted/companions/<id>/config.json|parts.json notes)",
+   "kept": true,
+   "note": "kept: aligned onto the mt_wyvern frame (IoU 0.75, scale 1.005) -> tools/painted/companions/mt_argen/src/mt_argen_ref.webp"
+  },
+  {
+   "index": 202,
+   "target": "mt_morgen",
+   "job_id": "bccc594c-48f2-4629-87e6-a27ebee97e20",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "4:3",
+   "credits": 0.25,
+   "refs": "r_mt_warhorse (mt_warhorse_ref.webp, watermark painted over) + p_cmp_mt_morgen",
+   "prompt": "recolour/redraw of the first reference keeping pose, layout, sizes and the flat grey background; new design from the second reference (full prompts in the session; see tools/painted/companions/<id>/config.json|parts.json notes)",
+   "kept": false,
+   "note": "alternate (IoU 0.78)"
+  },
+  {
+   "index": 203,
+   "target": "mt_morgen",
+   "job_id": "ba218b6a-cdd0-49ac-96a7-76076e63b3ec",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "4:3",
+   "credits": 0.25,
+   "refs": "r_mt_warhorse (mt_warhorse_ref.webp, watermark painted over) + p_cmp_mt_morgen",
+   "prompt": "recolour/redraw of the first reference keeping pose, layout, sizes and the flat grey background; new design from the second reference (full prompts in the session; see tools/painted/companions/<id>/config.json|parts.json notes)",
+   "kept": true,
+   "note": "kept: aligned onto the mt_warhorse frame (IoU 0.83) -> tools/painted/companions/mt_morgen/src/mt_morgen_ref.webp"
+  },
+  {
+   "index": 204,
+   "target": "gd_munin",
+   "job_id": "e8bda93f-9902-43e0-97a8-1e7576c419b6",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "4:3",
+   "credits": 0.25,
+   "refs": "r_gd_owl (gd_owl_sheet0.webp, watermark painted over) + p_cmp_gd_munin",
+   "prompt": "recolour/redraw of the first reference keeping pose, layout, sizes and the flat grey background; new design from the second reference (full prompts in the session; see tools/painted/companions/<id>/config.json|parts.json notes)",
+   "kept": true,
+   "note": "kept -> tools/painted/companions/gd_munin/src/gd_munin_sheet0.webp (2x Lanczos)"
+  },
+  {
+   "index": 205,
+   "target": "gd_munin",
+   "job_id": "1b1fe7c6-6e90-4f8b-b675-119f18c7e455",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "4:3",
+   "credits": 0.25,
+   "refs": "r_gd_owl (gd_owl_sheet0.webp, watermark painted over) + p_cmp_gd_munin",
+   "prompt": "recolour/redraw of the first reference keeping pose, layout, sizes and the flat grey background; new design from the second reference (full prompts in the session; see tools/painted/companions/<id>/config.json|parts.json notes)",
+   "kept": false,
+   "note": "alternate"
+  },
+  {
+   "index": 206,
+   "target": "gd_vesper",
+   "job_id": "32692389-b367-4599-91f4-67ddd6ab7d68",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "4:3",
+   "credits": 0.25,
+   "refs": "r_gd_owl + p_cmp_gd_vesper",
+   "prompt": "recolour/redraw of the first reference keeping pose, layout, sizes and the flat grey background; new design from the second reference (full prompts in the session; see tools/painted/companions/<id>/config.json|parts.json notes)",
+   "kept": true,
+   "note": "kept -> tools/painted/companions/gd_vesper/src/gd_vesper_sheet0.webp (2x Lanczos)"
+  },
+  {
+   "index": 207,
+   "target": "gd_vesper",
+   "job_id": "ad6468a0-950b-43f7-b1bf-48666b259be7",
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "4:3",
+   "credits": 0.25,
+   "refs": "r_gd_owl + p_cmp_gd_vesper",
+   "prompt": "recolour/redraw of the first reference keeping pose, layout, sizes and the flat grey background; new design from the second reference (full prompts in the session; see tools/painted/companions/<id>/config.json|parts.json notes)",
+   "kept": false,
+   "note": "alternate"
+  }
+ ]
+}

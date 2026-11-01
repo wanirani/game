@@ -40,6 +40,7 @@ import { faceRect } from '../../render/portrait.js';
 import { crisp, hashStart, hashNum, hashStr as crispHashStr } from '../../render/hud_crisp.js';   // [auto] 오른쪽 위 판 선명 칸 (스테이지 HUD 와 같은 기기 해상도)
 import { fontEpoch } from '../../core/ui.js';
 import { drawArtIcon, artIconReady } from '../../render/hud.js';   // [playb] P02 마을 주 퀘스트 칩 그림 (퀘스트 칸과 같은 ui_quest)
+let HUB_SCRATCH = null;   // prewarmNpcs 공용 8×8 캔버스 [s8:healthp]
 const BANNER_BG = [0, 'rgba(0,0,0,0)', 0.5, 'rgba(6,2,10,0.65)', 1, 'rgba(0,0,0,0)'];
 
 const RELIC_IDS = ['k_relic_1', 'k_relic_2', 'k_relic_3', 'k_relic_4', 'k_relic_5'];
@@ -188,6 +189,7 @@ export class HubScene extends Scene {
     w.enterDoor = (target) => this.enterTarget(target);
     w.onStashDelivered = (n) => { if (!this.loadSum) return false; this.loadSum.stash += n; return true; };   // [playb] P11 보관함 알림 → 이어하기 요약
     w.drawNPC = (ctx, npc) => this.drawNpc(ctx, npc, w);
+    this.prewarmNpcs(w);
     // 시작 위치
     const p = w.player;
     if (spawn === 'gate') { const gb = BUILDINGS.find((b) => b.kind === 'gate'); p.x = gb.door * TILE - 120; p.facing = -1; }
@@ -253,6 +255,26 @@ export class HubScene extends Scene {
       }
     };
     n.lights = (L) => L.add(n.cx, n.cy, 110, '#ffd9a0', 0.55);
+  }
+
+  /**
+   * [s8:healthp] NPC 벡터 인형의 음영 그라디언트(hero_parts.js 캐시: 색 × 음영 세기마다 하나)를 마을에 들어올 때 미리 만든다.
+   * 예전에는 걸어가다 NPC 가 처음 화면에 들어오는 프레임에 한꺼번에 생겨 perf_budget desk.hub 'grad max' 가 19 (예산 16)였다.
+   * 8×8 공용 캔버스에 NPC 마다 서 있기 · 걷기 자세로 한 번씩 그린다 (그린 그림은 버린다; 옷자락 체인 상태는 지워 첫 그리기가 새로 시작한다)
+   */
+  prewarmNpcs(w) {
+    let c = null;
+    try { HUB_SCRATCH ??= document.createElement('canvas'); HUB_SCRATCH.width = HUB_SCRATCH.height = 8; c = HUB_SCRATCH.getContext('2d'); } catch { return; }
+    if (!c) return;
+    for (const e of w.entities) {
+      if (e.kind !== 'npc' || e.dead) continue;
+      const mv = e.moving, vx = e.vx;
+      for (const run of [false, true]) {
+        e.moving = run; e.vx = run ? 120 : 0;
+        try { c.setTransform(1, 0, 0, 1, 0, 0); this.drawNpc(c, e, w); } catch { /* 미리 굽기 실패는 무시 (그리기 때 그대로 만든다) */ }
+      }
+      e.moving = mv; e.vx = vx; e._pseudo = null;
+    }
   }
 
   drawNpc(ctx, npc, world) {

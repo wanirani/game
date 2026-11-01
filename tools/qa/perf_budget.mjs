@@ -638,12 +638,19 @@ try {
           const css = cv.getBoundingClientRect();
           const dpr = css.width ? cv.width / css.width : 0;
           const ctx = cv.getContext('2d');
-          let n = 0; const o = ctx.clearRect.bind(ctx); ctx.clearRect = (...a) => { n++; return o(...a); };
+          // redraws = animation frames in which the overlay cleared anything. [s8:healthp] The overlay clears only its dirty rects
+          // since HUD-REDO (buttons box, system row, stick, each HUD crisp layer — about 7 clearRect calls per redraw), so counting
+          // clearRect calls read one redraw as 7 and warned at a single legitimate redraw (e.g. the score layer's version bump).
+          // The clearRect count is still reported (clears2s, info).
+          let n = 0, fid = 0, live = true; const fr = new Set();
+          const tick = () => { fid++; if (live) requestAnimationFrame(tick); };
+          requestAnimationFrame(tick);
+          const o = ctx.clearRect.bind(ctx); ctx.clearRect = (...a) => { n++; fr.add(fid); return o(...a); };
           const run = g.world?.run; if (run) { run.sp = 0; run.aw = 0; }
           await new Promise((res) => setTimeout(res, 2000));
-          ctx.clearRect = o;
+          ctx.clearRect = o; live = false;
           const mem = Number(navigator.deviceMemory);
-          return { dpr: +dpr.toFixed(3), gameDpr: g.dpr ?? null, devDpr: window.devicePixelRatio || 1, lowMem: Number.isFinite(mem) && mem > 0 && mem <= 2, w: cv.width, h: cv.height, cssW: css.width, cssH: css.height, redraws2s: n, visible: getComputedStyle(cv).display !== 'none' };
+          return { dpr: +dpr.toFixed(3), gameDpr: g.dpr ?? null, devDpr: window.devicePixelRatio || 1, lowMem: Number.isFinite(mem) && mem > 0 && mem <= 2, w: cv.width, h: cv.height, cssW: css.width, cssH: css.height, redraws2s: fr.size, clears2s: n, frames2s: fid, visible: getComputedStyle(cv).display !== 'none' };
         });
         await freeze(s.page);
         if (!r) C.add(`${prof}.tpadcv`, 'fail', 'no #tpadcv canvas');
@@ -653,7 +660,7 @@ try {
           const cap = r.lowMem ? Math.min(1.5, r.devDpr) : Math.min(r.devDpr, 3), mpCap = r.lowMem ? 1.5 : 6.5, mp = r.w * r.h / 1e6;
           const okD = r.dpr <= cap + 0.02 && mp <= mpCap + 0.01, okR = r.redraws2s / 2 <= 30;
           C.add(`${prof}.tpadcv.dpr`, okD ? 'pass' : 'fail', `#tpadcv ${r.w}×${r.h} for ${r.cssW.toFixed(0)}×${r.cssH.toFixed(0)} CSS px: DPR ${r.dpr} (cap ${cap}${r.lowMem ? ', deviceMemory ≤ 2 GB' : ''}: device ${r.devDpr}, game ${r.gameDpr}) · ${mp.toFixed(2)} MP (cap ${mpCap})`);
-          C.add(`${prof}.tpadcv.redraw`, okR ? (r.redraws2s > 4 ? 'warn' : 'pass') : 'fail', `${r.redraws2s} redraws in 2 s idle (≤ 30 Hz; ideally only on state change)`);
+          C.add(`${prof}.tpadcv.redraw`, okR ? (r.redraws2s > 4 ? 'warn' : 'pass') : 'fail', `${r.redraws2s} redraws in 2 s idle (≤ 30 Hz; ideally only on state change) · ${r.clears2s} clearRect calls over ${r.frames2s} frames`);
           if (!okD) findings.push({ id: `perf.tpadcv.dpr.${prof}`, sev: 'S3', kind: 'perf', title: `#tpadcv backing DPR ${r.dpr} above the cap ${cap} (${prof})`, file: 'src/core/touchpad.js', ...ownerOf('src/core/touchpad.js') });
           if (!okR) findings.push({ id: `perf.tpadcv.redraw.${prof}`, sev: 'S3', kind: 'perf', title: `#tpadcv redraws ${r.redraws2s / 2} Hz while idle (${prof})`, file: 'src/core/touchpad.js', ...ownerOf('src/core/touchpad.js') });
           rows.push({ prof, scene: 'tpadcv', kind: 'tpadcv', ...r });

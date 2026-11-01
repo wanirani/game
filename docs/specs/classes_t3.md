@@ -211,6 +211,7 @@ export function switchAsc(hero, id | null, state) // null → plain tier 2 (free
 | `variantKey` | add tint: key `${ac||'-'}|${tc||'-'}|${look.armor||'-'}|${tn||'-'}`; `''` only when none |
 | `makeVariant` / `recolorCanvas` | parse 4th field → `V.tint = {h, s}`; before `g.drawImage(src,0,0)`: `if (V.tint && 'filter' in g) g.filter = \`hue-rotate(${h}deg) saturate(${s})\``; reset to `'none'` after the draw (mask recolour runs on tinted pixels); same in the turntable recolour path |
 | `hero_parts.js:721` (anchor `WING_COL[type]`) | `const C = K.L?.wingCol ?? WING_COL[type];` (used by 2 hidden entries) |
+| `variantKey` (s8 asc, own art) | when the art class is the ascension id itself (`PUPPETS[cid][ascId]`), the asc look.armorColor, its parents' chain armorColor, lookTop.armorTrim and lookTop.tint count as native → no recolour/tint (the art is painted with them); equipment armour colours still recolour. Overlays (aura, halo, wings, capeColor2, scarf, trailColor) stay procedural. Pipeline: `docs/art/PUPPET_PIPELINE.md` §2.6 |
 No new canvases after stage start (variants bake at first draw from the spare pool of 12, as today).
 
 ### 2.8 Power budget (tested)

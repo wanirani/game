@@ -455,6 +455,33 @@ export const PUPPETS = {
     "ui"
    ]
   },
+  "sera_archsage": {
+   "h": "baa18af2bcd7",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "sera_archsaint": {
+   "h": "447b42d5f32e",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "sera_bellsaint": {
+   "h": "fba083a1bf1b",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
   "sera_elementalist": {
    "h": "204a683d1fd1",
    "turn": true,
@@ -491,6 +518,15 @@ export const PUPPETS = {
     "ui"
    ]
   },
+  "sera_prophetess": {
+   "h": "51f157563ce6",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
   "sera_saint": {
    "h": "c56a5ddd7893",
    "turn": true,
@@ -502,6 +538,15 @@ export const PUPPETS = {
   },
   "sera_stormcaller": {
    "h": "390ff5a4244f",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "sera_tempest": {
+   "h": "5826e3da0331",
    "turn": true,
    "lv": [
     "hi",

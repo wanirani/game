@@ -31,6 +31,7 @@ build_all.py  ── 전부 + 망토 결 텍스처 + src/render/puppet_manifest.
 |---|---|
 | `tools/puppet/lib/pup.py` | 공용: 경로, 워터마크 제거, rembg 알파, 다각형 마스크, 번짐(bleed) |
 | `tools/puppet/ingest.py` | 클링 PNG → 원화 소스(webp q95, 워터마크 제거) + rembg 알파(PNG, 커밋) + 업로드용 JPG |
+| `tools/puppet/hf_ingest.py` | Higgsfield 결과(#00FF00/#FF00FF 단색 배경) → 원화 소스 + 키잉 알파 (rembg 없이). `--like <부모 원화> --fit` 으로 부모와 같은 캔버스·발바닥·가운데에 맞추고 `--overlay` 로 윤곽 겹침 확인 (§2.6) |
 | `tools/puppet/grid.py` | 좌표 격자 + 리그의 관절/영역 겹쳐 보기 (리그 작성 도구) |
 | `tools/puppet/build_rig.py` | 리그 테이블 → 부품 아틀라스 3레벨 + 재질 마스크 + rig.json |
 | `tools/puppet/build_turn.py` | 턴어라운드 시트 → 8방향 스프라이트 시트 turn.webp |
@@ -157,6 +158,33 @@ and slightly curved as if casting a spell, the wrist and cuff at the bottom. No 
 `tools/puppet/src/_shared/cape_velvet.webp` (벨벳 망토를 두른 원화) → `build_cape.py --box x0,y0,x1,y1` (천만 있는 사각형). 새로 만들 필요 없음.
 
 ---
+
+### 2.6 초월·비전 전용 원화 (Higgsfield, 8단계 asc — 카엘 5 · 세라 5)
+
+`ascensions.js` 의 초월(t3)·비전(hidden) id 로 리그를 만들면(`rigs/<char>/<ascId>.json`) 매니페스트에 `PUPPETS[char][ascId]` 가 생기고
+런타임 `artClass`/`classOf` 가 그 원화를 고른다 (없으면 예전처럼 2차 부모 원화 + lookTop 덧칠). Kling 대신 Higgsfield `gpt_image_2_5`.
+
+1. **측면 keep-pose 편집** (`9:16`, `resolution 2k`, `quality low` = 0.5 크레딧, 후보 2장): 참고 그림 = 부모 측면 원화 JPG(초월은 그 2차, 비전은 기본 직업).
+   `Edit this image. Keep exactly the same young man/woman: … the exact same walking side pose facing right (same arm, hand and leg positions),
+   the same camera angle, the same framing, the same scale and the same position on the canvas … Change ONLY his costume, armor and colors into: <ascensions.js
+   의 name·desc·look.armorColor·lookTop 색·ult 색을 문장으로>. This is a higher-rank, more splendid version of the same outfit, with the same silhouette.
+   No cape, no cloak, no wings, no halo, no glowing aura, nothing held in the hands … plain flat solid #00FF00 green background, no floor shadow, no text`.
+   → 10장 모두 자세·크기·위치가 부모와 같았다 (알파 IoU .89–.96; 성전 기사 .78 은 부모 rembg 알파 안쪽 구멍 탓).
+2. `python3 tools/puppet/hf_ingest.py dl.png <char> <ascId>_side --like <char>/<부모>_side --fit --overlay /tmp/ov.jpg` — 겹침 그림(빨강 부모, 파랑 새 알파)에서
+   어깨·팔꿈치·무릎·발이 같은 자리인지 본다.
+3. 리그: `{"extends": "<부모 직업>", "classId": "<ascId>", "src": …, "runtime": {"armorBase": <초월 look.armorColor 또는 부모 armorBase>}, "turn": {…}}` — 관절·영역은
+   부모 그대로. 고친 것(리뷰로 찾음): 새 원화 바지가 붉은·갈색 기운이면 `legs.pantsWarmMax: null`(넓적다리가 반투명으로 지워짐), 완갑이 부모보다 앞·좁으면
+   `joints.elbow/wrist/hand` 를 완갑 가운데 선으로(성전 기사단장 −30 px). 머리띠가 사라지면 `runtime.band: null`.
+4. **손**: 장갑 디자인이 부모와 같아 부모 손 시트를 그대로 상속(새 이미지 없음). 장갑이 바뀌는 직업만 §2.4 처럼 1장.
+5. **턴**: 새 측면 원화를 참고로 5뷰 한 장(`21:9`, 2k low, 0.5 크레딧) — gpt 는 3/4·옆모습을 늘 **오른쪽**으로 그려 라벨 `["y90","y45","y0","ym90","ym45"]`,
+   왼쪽은 거울상. `turn` 은 `_replace: true` 로 부모 턴(16방향 영상 시트)을 끊고 옛 8방향 경로(`turn.webp`)로 간다. 용량: opt-in `turn.th`(정규화 키, 기본 580)
+   를 420–440, `quality` 74–76 → 시트 80–110 KB. `pockets` 로 팔-몸 사이 회색 주머니 비움. (16방향 턴은 Kling 영상이 필요해 만들지 않았다.)
+6. **런타임 덧칠 규칙** (`hero_puppet.js` `variantKey`/`ascNative`): 전용 원화는 그 초월의 갑옷색·lookTop 장식색(armorTrim)·색조(tint)를 이미 칠해 그렸으므로
+   같은 값은 다시 칠하지 않는다(부모 원화일 때만 재칠). 비전은 2차 넷 어디서든 오므로 그 계보 갑옷색(성전 기사 #d8dce8 등)도 '원래 색'. 장비 갑옷(시작 갑옷 밖)
+   색만 재칠. 오라·후광·날개·망토 안감·스카프·궤적색은 절차적이라 그대로 그린다. 시험 `tools/test_ascension.mjs` §9b, `variantKeyFor(cid, cls, look, armorBase)`.
+7. QA: `node tools/puppet/review.mjs allasc /tmp/r` (전용 원화 × 6무기 × 모든 기술, 관절), `atk:<ascId>:whip`(PNG), `node tools/puppet/ingame.mjs --cls <2차> --asc <ascId>`,
+   갤러리 `tools/gallery_hero.html?sec=pup,turn`(전용 원화가 있는 초월도 나온다, `?cls=<ascId>`).
+8. 용량(실측): 직업당 260–390 KB (아틀라스·마스크 3레벨 ≈170–250 KB + 턴 ≈95–125 KB). 카엘 5 = 1.62 MB.
 
 ## 3. 등록 (ingest)
 

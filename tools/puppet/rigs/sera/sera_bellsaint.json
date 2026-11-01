@@ -1,0 +1,29 @@
+{
+ "_doc": "세라/종의 성녀(비전, 2차 넷 어디서든). 퇴마사 원화의 keep-pose 편집 IoU .90 (베일이 조금 짧음) → 퇴마사 리그 상속",
+ "extends": "sera_exorcist",
+ "classId": "sera_bellsaint",
+ "src": "sera/sera_bellsaint_side",
+ "_hands": "손 시트는 부모(sera_exorcist) 것을 그대로 쓴다 — 장갑 디자인이 같다 (s8 asc 대체안)",
+ "runtime": {
+  "armorBase": "#f0ece0"
+ },
+ "turn": {
+  "_replace": true,
+  "sheet5": "sera/sera_bellsaint_turn5",
+  "views5": [
+   "y90",
+   "y45",
+   "y0",
+   "ym90",
+   "ym45"
+  ],
+  "th": 420,
+  "quality": 74,
+  "pockets": {
+   "T": 18,
+   "frac": 0.55,
+   "min": 30
+  },
+  "_why": "초월 원화(s8 asc): Higgsfield gpt_image_2_5 5뷰 한 장. 왼쪽 방향은 거울상. th 420 · q74 (16방향 영상 턴은 Kling 영상이라 만들지 않음)"
+ }
+}

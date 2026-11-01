@@ -72,6 +72,13 @@ const only = args.only ? String(args.only).split(',') : null;
 const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
   const out = { api: [], budget: [], renders: {}, names: [], cmpErr: null };
   const ok = (cond, msg) => { if (!cond) out.api.push(msg); };
+  // 재기만 하는 문맥 (healtht, Stage 8): 렌더를 시작하지 않은 OfflineAudioContext 는 크롬이 페이지가 닫힐 때까지 놓지 않는다 (강제 GC 로도 안 풀림).
+  // 게임 Engine 하나가 잔향 ConvolverNode(3.3초 IR 의 FFT 커널)·노이즈 버퍼로 ≈ 24 MB 라, 길이만 재는 dry 엔진·API·예산·실행 규칙 엔진 수백 개가
+  // 렌더러를 7.6 GB 까지 키워 전체 실행이 '렌더러가 죽음' 으로 끝났다 (100개: +2.4 GB, 같은 100개를 렌더해 끝내면 +31 MB).
+  // → 재기만 하는 문맥은 probeCtx() 로 만들고 settle() 로 0.1초 렌더해 끝낸다 (끝난 문맥은 수집된다). 검사 내용은 그대로.
+  const probes = [];
+  const probeCtx = (sr = 44100) => { const c = new OfflineAudioContext(2, 4410, sr); probes.push(c); return c; };
+  const settle = () => Promise.all(probes.splice(0).map((c) => c.startRendering().catch(() => null)));
   const A = await import('/src/core/audio.js');
   const F = await import('/src/core/sfx_feel.js');
   try { await import('/src/core/audio_companions.js'); } catch (e) { out.cmpErr = String(e && e.message || e); }
@@ -100,7 +107,7 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
     ok(defineSfx('__probe', { max: 1, fn(S, H) { probe = H; H.T(S, 'sine', 440, 0, 0, 0.1, 0.2); } }, 1.7) === true, 'defineSfx 등록 실패');
     ok(SFX.__probe && SFX.__probe.vol === 1.7, 'defineSfx 의 vol 이 반영되지 않음');
     ok(defineSfx('__probe', { fn(S, H) { probe = H; H.N(S, 0, 0.05, 0.2); } }) === true, 'defineSfx 가 같은 외부 이름 재등록을 거부');
-    const oc = new OfflineAudioContext(2, 4410, 44100), eng = new Engine(oc);
+    const oc = probeCtx(), eng = new Engine(oc);
     eng.sfx('__probe');
     const need = ['T', 'N', 'FM', 'ARP', 'BOOM', 'CRACKLE', 'mtof', 'R'];
     ok(probe && need.every((k) => typeof probe[k] === 'function'), `fn(S, H) 의 H 에 ${need.join('/')} 가 모두 있어야 함 (받은 값: ${probe ? Object.keys(probe).join(',') : '없음'})`);
@@ -112,7 +119,7 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
     ok(defineSfx('__probe_neg', { vol: 1, fn() {} }, -2) === true && SFX.__probe_neg.vol === 1, 'defineSfx 가 음수 vol 을 반영함');
     delete SFX.__probe_neg;
     defineSfx('__probe_throw', { fn(S, H) { H.T(S, 'sine', 440, 0, 0, 0.1, 0.2); throw new Error('probe'); } });
-    const e3 = new Engine(new OfflineAudioContext(2, 4410, 44100));
+    const e3 = new Engine(probeCtx());
     let threw = false; try { e3.sfx('__probe_throw'); } catch { threw = true; }
     ok(threw && e3.live.some((x) => x.name === '__probe_throw'), 'fn 이 throw 하면 이미 만든 소리가 live 로 추적되지 않음 (노드 누수)');
     delete SFX.__probe_throw;
@@ -134,12 +141,13 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
   window.__game = { world: null, quality: 'low', settings: { quality: 'auto' } }; ok(audio.quality === 'low', `월드 없을 때 game.quality 를 따라야 함 (${audio.quality})`);
   window.__game = { settings: { quality: 'medium' } }; ok(audio.quality === 'medium', `settings.quality 를 따라야 함 (${audio.quality})`);
   window.__game = g0;
+  await settle();
   // ── 체감 예산 ──
   const B = (m) => out.budget.push(m);
   {
     const pool = FEEL.filter((n) => !SFX[n].prio && SFX[n].layer !== 'hit');
     for (const cap of [10, 8, 6]) {
-      const eng = new Engine(new OfflineAudioContext(2, 4410, 44100)); eng.feelCap = cap;
+      const eng = new Engine(probeCtx()); eng.feelCap = cap;
       for (const n of pool.slice(0, 14)) eng.sfx(n);
       if (eng.live.length !== cap || eng.stats.dropped !== 14 - cap) B(`상한 ${cap}: 시작 ${eng.live.length}, 누락 ${eng.stats.dropped} (기대 ${cap}/${14 - cap})`);
       eng.sfx('ult_impact');
@@ -147,7 +155,7 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
       eng.sfx('hit'); eng.sfx('footstep');
       if (eng.live.length !== cap + 3) B(`상한 ${cap}: 체감 외 효과음(hit/footstep)이 예산에 막힘`);
     }
-    const eng = new Engine(new OfflineAudioContext(2, 4410, 44100));
+    const eng = new Engine(probeCtx());
     [0.5, 0.6, 0.7, 0.8].forEach((v) => eng.sfx('hit', { vol: v }));
     [0.5, 0.6].forEach((v) => eng.sfx('hit_heavy', { vol: v }));
     eng.sfx('hit_flesh');
@@ -156,13 +164,14 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
     if (eng.stats.skipped !== 1 || eng.live.some((x) => x.name === 'hit_bone')) B(`hit* 8개일 때 재질 레이어가 생략되지 않음 (skipped ${eng.stats.skipped})`);
     eng.sfx('impact_crack');
     if (!eng.live.some((x) => x.name === 'impact_crack')) B('impact_crack(레이어 아님)이 생략됨');
-    const e2 = new Engine(new OfflineAudioContext(2, 4410, 44100));
+    const e2 = new Engine(probeCtx());
     e2.sfx('awaken_hold'); const x = e2.live.find((y) => y.name === 'awaken_hold'); e2.stopName('awaken_hold');
     if (!x || x.end > 0.07) B('stopName 이 소리를 멈추지 않음');
     if (e2.liveCount('awaken') !== 1 || e2.liveCount('zzz') !== 0) B('liveCount 결과 이상');
     e2.sfx('awaken_hold'); // 홀드 취소 직후 다시 홀드 — gap(0.2초)에 막히면 안 된다
     if (e2.live.filter((y) => y.name === 'awaken_hold').length !== 2) B('stopName 직후 같은 소리를 다시 재생하면 gap 에 막힘');
   }
+  await settle();
   // ── 렌더 ──
   // DELAY 0.6: 마스터 컴프레서가 렌더 시작 후 ~0.5초 동안 짧은 소리를 30~45% 작게 내므로 정상 상태(게임에서 듣는 음량)에서 잰다
   const SR = 44100, DELAY = 0.6;
@@ -205,9 +214,10 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
   const one = async (name) => {
     try {
       // 1) 길이 측정 (렌더 없이)
-      const dry = new Engine(new OfflineAudioContext(2, 4410, SR)); dry.sfx(name, { delay: DELAY });
+      const dry = new Engine(probeCtx(SR)); dry.sfx(name, { delay: DELAY });
       const ent = dry.live[dry.live.length - 1];
       const len = ent ? ent.end - ent.st - DELAY - 0.05 : 0;
+      await settle();
       // 2) 노드 수를 세며 렌더 (잔향 꼬리 3.3초 포함)
       const oc = new OfflineAudioContext(2, Math.ceil(SR * Math.min(9, DELAY + len + 3.8)), SR);
       const eng = new Engine(oc); eng.setVolumes(0.6, 0.8);
@@ -248,8 +258,9 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
     const oneS = async (name, d, v) => {
       const bank = { sample: (n) => (n === name ? { bufs: [bufs[d.f[v]]], g: d.g, s: d.s, r: d.r || 1 } : null) };
       try {
-        const dry = new Engine(new OfflineAudioContext(2, 4410, SR)); dry.bank = bank; dry.sfx(name, { delay: DELAY });
+        const dry = new Engine(probeCtx(SR)); dry.bank = bank; dry.sfx(name, { delay: DELAY });
         const ent = dry.live[dry.live.length - 1], len = ent ? ent.end - ent.st - DELAY - 0.05 : 0;
+        await settle();
         const oc = new OfflineAudioContext(2, Math.ceil(SR * Math.min(9, DELAY + len + 3.8)), SR);
         const eng = new Engine(oc); eng.setVolumes(0.6, 0.8); eng.bank = bank;
         const n = counted(oc);
@@ -295,8 +306,9 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
       const def = SFX[base], fn0 = def.fn; let syn = 0;
       def.fn = function (...a) { syn++; return fn0.apply(this, a); };
       try {
-        const dry = new Engine(new OfflineAudioContext(2, 4410, SR)); dry.v2 = mk(); dry.sfx(base, { delay: DELAY, v2alt: alt });
+        const dry = new Engine(probeCtx(SR)); dry.v2 = mk(); dry.sfx(base, { delay: DELAY, v2alt: alt });
         const ent = dry.live[dry.live.length - 1], len = ent ? ent.end - ent.st - DELAY - 0.05 : 0;
+        await settle();
         const oc = new OfflineAudioContext(2, Math.ceil(SR * Math.min(9, DELAY + len + 3.8)), SR);
         const eng = new Engine(oc); eng.setVolumes(0.6, 0.8); eng.v2 = mk();
         const n = counted(oc);
@@ -316,7 +328,7 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
     const nm = pick.find((n) => !ix.sfx[n].of && ix.sfx[n].f.length >= 3 && ix.sfx[n].f.every((id) => vb[id]));
     if (nm) {
       const d = ix.sfx[nm], sm = { bufs: d.f.map((id) => vb[id]), g: d.g, last: -1 }, bank = { sample: (n) => (n === nm ? sm : null) };
-      const eng = new Engine(new OfflineAudioContext(2, 4410, SR)); eng.v2 = bank;
+      const eng = new Engine(probeCtx(SR)); eng.v2 = bank;
       const seen = new Set(); let prev = -1, rep = 0;
       for (let i = 0; i < 80; i++) { delete eng.lastT[nm]; eng.feelT.length = 0; eng.sfx(nm); if (sm.last === prev) rep++; prev = sm.last; seen.add(sm.last); }
       if (rep) RT(`${nm}: 같은 변형이 연달아 ${rep}번 (80번 중)`);
@@ -325,7 +337,7 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
       // vr (녹음 1벌 + 재생 속도 변형): 변형 순환·연속 금지·속도 적용
       const nr = pick.find((n) => Array.isArray(ix.sfx[n].vr) && ix.sfx[n].f.every((id) => vb[id]));
       if (nr) {
-        const dr = ix.sfx[nr], sr = { bufs: dr.f.map((id) => vb[id]), g: dr.g, vr: dr.vr, last: -1 }, er = new Engine(new OfflineAudioContext(2, 4410, SR));
+        const dr = ix.sfx[nr], sr = { bufs: dr.f.map((id) => vb[id]), g: dr.g, vr: dr.vr, last: -1 }, er = new Engine(probeCtx(SR));
         er.v2 = { sample: (n) => (n === nr ? sr : null) };
         const rates = new Set(); let pv = -1, rr = 0;
         const orig = er.ctx.createBufferSource.bind(er.ctx); er.ctx.createBufferSource = () => { const b = orig(); const set = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(b.playbackRate), 'value'); const pr = b.playbackRate; Object.defineProperty(pr, 'value', { get: () => set.get.call(pr), set: (x) => { rates.add(+(x / 1).toFixed(2)); set.set.call(pr, x); } }); return b; };
@@ -333,13 +345,13 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
         if (rr) RT(`${nr} (vr): 같은 변형이 연달아 ${rr}번`);
         if (new Set([...rates].map((x) => Math.round(x * 10))).size < 2) RT(`${nr} (vr): 재생 속도 변형이 적용되지 않음 (${[...rates].join(',')})`);
       }
-      const e2 = new Engine(new OfflineAudioContext(2, 4410, SR)); e2.v2 = bank; e2.v2Quality = 'low';
+      const e2 = new Engine(probeCtx(SR)); e2.v2 = bank; e2.v2Quality = 'low';
       e2.sfx(nm); if (e2.live[e2.live.length - 1].room || e2.room) RT("품질 'low' 인데 방 잔향을 씀");
       e2.v2Quality = 'high'; delete e2.lastT[nm]; e2.feelT.length = 0; e2.sfx(nm);
       if (!e2.live[e2.live.length - 1].room || e2.roomSpace !== 'hall') RT(`품질 'high' 인데 방 잔향 없음 (공간 ${e2.roomSpace})`);
       const ir1 = e2.room && e2.room.buffer; e2.v2Space = 'cave'; delete e2.lastT[nm]; e2.feelT.length = 0; e2.sfx(nm);
       if (!e2.room || e2.room.buffer === ir1 || e2.roomSpace !== 'cave') RT('공간이 바뀌어도 방 임펄스를 다시 만들지 않음');
-      const oc3 = new OfflineAudioContext(2, 4410, SR), e3 = new Engine(oc3); e3.v2 = bank; let pans = 0;
+      const oc3 = probeCtx(SR), e3 = new Engine(oc3); e3.v2 = bank; let pans = 0;
       const f3 = oc3.createStereoPanner.bind(oc3); oc3.createStereoPanner = () => { pans++; return f3(); };
       e3.sfx(nm, { pan: -0.5 }); if (pans !== 1) RT('v2 소리에서 pan 옵션이 무시됨');
       let syn = 0; const def = SFX.whip, fn0 = def.fn; def.fn = function (...a) { syn++; return fn0.apply(this, a); };
@@ -350,12 +362,12 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
     if (A.SFX_V1) RT('v2 가 기본으로 켜져 있지 않음 (SFX_V1 = true)');
     const r0 = pick.find((n) => ix.sfx[n].room === 0 && ix.sfx[n].f.every((id) => vb[id]));
     if (r0) {
-      const d = ix.sfx[r0], e0 = new Engine(new OfflineAudioContext(2, 4410, SR)); e0.v2 = { sample: (n) => (n === r0 ? { bufs: d.f.map((id) => vb[id]), g: d.g, room: 0, last: -1 } : null) };
+      const d = ix.sfx[r0], e0 = new Engine(probeCtx(SR)); e0.v2 = { sample: (n) => (n === r0 ? { bufs: d.f.map((id) => vb[id]), g: d.g, room: 0, last: -1 } : null) };
       e0.v2Quality = 'high'; e0.sfx(r0); if (e0.live[e0.live.length - 1].room || e0.room) RT(`${r0}: room 0 인데 방 잔향을 씀`);
     }
     // enemy_die 몸 종류: 같은 프레임에 뒤따르는 재질 층(hit_bone)으로 변형을 고른다 (마이크로태스크), 재질 층이 없으면 기본 enemy_die
     {
-      const seen = [], eng = new Engine(new OfflineAudioContext(2, 4410, SR)), any = vb[Object.keys(vb)[0]];
+      const seen = [], eng = new Engine(probeCtx(SR)), any = vb[Object.keys(vb)[0]];
       eng.v2 = { sample: (n) => { seen.push(n); return n.startsWith('enemy_die') ? { bufs: [any], g: 1, last: -1 } : null; } };
       const sys = Object.create(Object.getPrototypeOf(audio));
       Object.assign(sys, { eng, ctx: { state: 'running' }, _seq: 0, _mat: null, _quality: 'high', v2: { has: (n) => n === 'enemy_die' || n.startsWith('hit_') } });
@@ -377,6 +389,8 @@ const res = await page.evaluate(async ({ only, FEEL, V2 }) => {
     if (o4 !== undefined) RT('_v2Opts: opts 없으면 그대로 두어야 함');
     if (fake.eng.v2Space !== 'cave' || fake.eng.v2Quality !== 'medium') RT(`_v2Opts: theme catacombs → cave, 품질 medium 이어야 함 (${fake.eng.v2Space}, ${fake.eng.v2Quality})`);
   } catch (e) { out.v2.err = String(e && e.message || e); }
+  await settle();
+  out.probesLeft = probes.length;
   return out;
 }, { only, FEEL, V2: !args['no-v2'] }).catch(async (e) => {
   console.log('  ✗ 페이지 평가 실패: ' + String(e && e.message || e).split('\n').slice(0, 3).join(' | '));
