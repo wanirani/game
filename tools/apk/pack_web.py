@@ -9,7 +9,7 @@
 하는 일 (platform §9.4-4/5, MASTER_PLAN §1.20):
  1. dist/web 을 <out>/www 로 복사한다. 빼는 것: sw.js (앱은 서비스 워커를 쓰지 않는다), downloads/ (APK 자신), _redirects (Netlify 전용),
     웹 앱 매니페스트만 가리키는 PWA 설치 그림 (manifest.webmanifest 의 icons·screenshots 중 index.html <link>·JS·CSS 가 부르지 않는 것 —
-    WebView 는 매니페스트를 읽지 않는다; apk.json omitted).
+    WebView 는 매니페스트를 읽지 않는다; apk.json omitted). 단 assets/ui/icon-512.png 은 build_apk.sh 가 APK 에 있는지 확인하므로 남긴다 (APK_MUST_KEEP).
     공개 금지 파일(키스토어·비밀번호 파일·개발 폴더)이 섞여 있으면 실패. index.html 이 가리키는 파일이 모두 있는지 확인.
  2. 그림 단계: 소리(assets/audio/)를 뺀 크기를 그림 예산(기본 70 MB, 채색 그림 포함)에 맞춰 고른다 (--assets auto):
       full   dist/web 그대로 (원본 + assets/lo/ 사본: 휴대폰은 실행 중 등급에 따라 lo/ 를, 폴더블·태블릿은 원본을 쓴다)

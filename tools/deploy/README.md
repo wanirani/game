@@ -41,7 +41,7 @@ node tools/deploy/build_web.mjs --selftest-deny # 공개 금지 검사가 빌드
   netlify.toml 헤더 규칙 겹침·CSP, 크기 예산.
 - **크기 예산**: 사이트(dist/web − downloads, 소리 제외) ≤ 90 MB (실패), 녹음 음악 ≤ 64 MB · 효과음 ≤ 3 MB (실패),
   APK 그림 단계 기준 ≤ 70 MB — `tools/apk/pack_web.py` 와 **같은 계산의 APK 안 크기 어림**(소리 제외: 그림·글꼴은 무압축, JS·JSON 은 deflate,
-  zip 머리말, 고정분 600 KB, PWA 전용 그림 제외; 2026-11 전에는 압축 전 바이트라 JS 만큼 ≈ 5 MB 크게 보였다). 보고에 단계별 어림
+  zip 머리말, 고정분 600 KB, PWA 전용 그림 제외 — build_apk.sh 가 확인하는 assets/ui/icon-512.png 은 싣는다; 2026-11 전에는 압축 전 바이트라 JS 만큼 ≈ 5 MB 크게 보였다). 보고에 단계별 어림
   (`sizes.apk.image` = full 원본+lo 사본 / hi 원본만 / lo 사본만)과 pack_web `--assets auto` 가 고를 단계(`sizes.apk.stage`: 그림 ≤ 70 MB 이고
   소리까지 APK 95 MB 안인 첫 단계 — 원본 그림 > 녹음 음악 전곡 > lo 사본 순으로 지킨다)를 적는다. lo 단계로도 70 MB 를 넘으면 실패.
   첫 화면 경로 brotli ≤ 1.6 MB (경고, `--strict` 면 실패).
