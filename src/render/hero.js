@@ -1909,16 +1909,16 @@ function drawStreak(E, K, p, mv, which) {
     x0 = 0; y0 = 0; x1 = len;
   }
   // [s8:healthp] 가로 그라디언트는 (색)마다 단위 길이 하나 — 채울 때 (x0 → x1) 로 늘이고 사라지는 세기 k 는 globalAlpha 로 (찌르는 프레임마다 새로 만들지 않게)
-  const streakFill = (col, s0, s1, s2, m1) => {
-    if (G.lowq) { c.fillStyle = ra(col, (col === tc ? 0.3 : 0.6) * k); c.fill(); return; }
+  const streakFill = (col, s0, s1, s2, m1, lowA) => {
+    if (G.lowq) { c.fillStyle = ra(col, lowA * k); c.fill(); return; }
     c.fillStyle = gradCache(`streak${col},${s0},${s1},${s2},${m1}`, () => { const g = c.createLinearGradient(0, 0, 1, 0); g.addColorStop(0, ra(col, s0)); g.addColorStop(m1, ra(col, s1)); g.addColorStop(1, ra(col, s2)); return g; });
     const a0 = c.globalAlpha;
     c.save(); c.globalAlpha = a0 * k; c.transform(x1 - x0, 0, 0, 1, x0, 0); c.fill(); c.restore();
   };
   c.beginPath(); c.moveTo(x0, y0 - hw * 0.4); c.quadraticCurveTo(lerp(x0, x1, 0.55), y0 - hw, x1, y0); c.quadraticCurveTo(lerp(x0, x1, 0.55), y0 + hw, x0, y0 + hw * 0.4); c.closePath();
-  streakFill(tc, 0, 0.55, 0.1, 0.25);
+  streakFill(tc, 0, 0.55, 0.1, 0.25, 0.3);
   c.beginPath(); c.moveTo(x0, y0 - 0.6); c.lineTo(x1, y0); c.lineTo(x0, y0 + 0.6); c.closePath();
-  streakFill('#ffffff', 0.2, 0.95, 0, 0.5);
+  streakFill('#ffffff', 0.2, 0.95, 0, 0.5, 0.6);
   // 속도선
   c.strokeStyle = ra(tc, 0.45 * k); c.lineWidth = 0.6;
   c.beginPath();
@@ -2211,10 +2211,12 @@ function drawHeroYaw(ctx, p, world, opts, K, look) {
   // 옆모습(0°/180°)은 게임 퍼펫이 자기 망토·날개·무기를 그린다 → 턴테이블용 망토·날개·무기는 채색 뷰의 비중만큼만
   const wPaint = views.reduce((a, [d, w]) => a + (d === 0 || d === 180 ? 0 : w), 0);
   // 1) 뒤 효과: 오라 · (앞모습) 망토 · (앞모습) 날개 · 몸에 가려지는 쪽 무기
+  // 오라 빛·후광·오라 입자도 같은 규칙: 옆모습 퍼펫(drawProfile → drawHero)이 제 것을 그리므로 여기서는 채색 뷰의 비중만큼만 —
+  // 옆모습에서 후광이 두 겹·오라가 두 배로 보이던 것 (s8 verifyart2: 8방향 시트를 쓰는 초월 전용 원화 턴테이블)
   ctx.save(); ctx.translate(p.cx, p.bottom); ctx.scale(hs, hs);
-  if (G.fx && K.aura) glow(0, -44, 46, K.auraC, (0.2 + 0.06 * Math.sin(tt * 3)) * K.auraK);
   ctx.globalAlpha = aBase * wPaint;
   if (wPaint > 0.002) {
+    if (G.fx && K.aura) glow(0, -44, 46, K.auraC, (0.2 + 0.06 * Math.sin(tt * 3)) * K.auraK);
     PUP.drawTurnWings(ctx, I, K.wings, yaw, false, tt);
     PUP.drawTurnCape(ctx, I, K.cape, yaw, true, tt);
     PUP.drawTurnWeapon(ctx, I, K.W, yaw, false, tt);
@@ -2237,10 +2239,10 @@ function drawHeroYaw(ctx, p, world, opts, K, look) {
     PUP.drawTurnCape(ctx, I, K.cape, yaw, false, tt);
     PUP.drawTurnWings(ctx, I, K.wings, yaw, true, tt);
     PUP.drawTurnWeapon(ctx, I, K.W, yaw, true, tt);
+    if (K.halo && G.fx) PUP.drawTurnHalo(ctx, K.aura?.color, tt, I);
+    if (K.aura && G.fx) drawAuraMotes(K.aura.type || 'holy', K.auraC, K.auraK, K.auraK < 1 ? 5 : 8, 84);
   }
   ctx.globalAlpha = aBase;
-  if (K.halo && G.fx) PUP.drawTurnHalo(ctx, K.aura?.color, tt, I);
-  if (K.aura && G.fx) drawAuraMotes(K.aura.type || 'holy', K.auraC, K.auraK, K.auraK < 1 ? 5 : 8, 84);
   ctx.restore();
 }
 /** opts.tint + opts.yaw (drawHero 계약: tint·alpha 는 모든 경로에서 동작): 합성 풀 캔버스에 효과 없이 그린 뒤 source-in 으로 단색 실루엣 */
