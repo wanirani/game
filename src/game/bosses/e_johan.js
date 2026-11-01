@@ -174,13 +174,13 @@ export class Johan extends BossC {
         H[j].x = top.x - 40 * u - 30 * u * u + sw + bulge; H[j].y = top.y - 360 * u;
       }
     } else {
-      const L = P.lash;
+      // 쉼 = 뒤로 축 늘어짐 (2.3 rad) · lift(채찍질 중) 1 이면 lash 각: −1 뒤로 젖힘(3.9) → +1 머리 위를 넘어 앞 아래로(6.93)
+      const L = P.lash, lift = this._whip ? 1 : 0;
+      const aw = lerp(3.9, 6.93, (L + 1) / 2), base = lerp(2.3, aw, lift);
       for (let j = 0; j < 7; j++) {
-        const u = j / 6, tw = Math.sin(t * 4.2 + j * 1.2) * (5 + 9 * u) * (1 - Math.abs(L));
-        let ang, len = 26 * j;
-        if (L >= 0) ang = lerp(-2.0, 0.65, L) + u * lerp(0.6, 0.3, L);   // 앞으로 쓸어내림 (머리 높이 → 바닥)
-        else ang = lerp(-2.0, -2.7, -L) - u * 0.4;                       // 뒤로 젖힘
-        H[j].x = top.x + Math.cos(ang) * len + tw * 0.4; H[j].y = top.y + Math.sin(ang) * len + tw;
+        const u = j / 6, tw = Math.sin(t * 4.2 + j * 1.2) * (4 + 8 * u) * (1 - lift * 0.7);
+        const ang = base + (lift ? u * 0.35 : u * 0.5), len = 26 * j;
+        H[j].x = top.x + Math.cos(ang) * len + tw * 0.4; H[j].y = top.y + Math.sin(ang) * len + tw + (lift ? 0 : 10 * u * u);
       }
     }
     // 장어 (2페이즈): 앞 창에서 eelK 만큼 기어 나온 목 5점
@@ -1083,9 +1083,9 @@ function drawWheel(ctx, x, y, r, a, closeK, t) {
   ctx.save();
   ctx.translate(x, y);
   // 수문 틀 (어두운 쇠판)
-  ctx.fillStyle = '#0c1416'; ctx.fillRect(-r - 14, -r - 14, (r + 14) * 2, (r + 14) * 2 + 30);
-  ctx.strokeStyle = '#1e2a2c'; ctx.lineWidth = 4; ctx.strokeRect(-r - 14, -r - 14, (r + 14) * 2, (r + 14) * 2 + 30);
-  ctx.fillStyle = rgba(BLACKW, 0.85 * (1 - closeK)); ctx.fillRect(-r - 10, r + 6, (r + 10) * 2, 24);   // 틈으로 새는 검은 물 (닫히면 멈춘다)
+  ctx.fillStyle = 'rgba(8,16,18,0.55)'; ctx.beginPath(); ctx.arc(0, 0, r + 16, 0, TAU); ctx.fill();
+  ctx.fillStyle = 'rgba(30,40,42,0.7)'; ctx.fillRect(-10, r + 4, 20, 34);   // 축 받침
+  ctx.fillStyle = rgba(BLACKW, 0.7 * (1 - closeK)); ctx.fillRect(-r * 0.6, r + 18, r * 1.2, 20);   // 틈으로 새는 검은 물 (닫히면 멈춘다)
   ctx.rotate(a);
   ctx.strokeStyle = '#2a2420'; ctx.lineWidth = 12; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke();
   ctx.strokeStyle = '#4a3e34'; ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.stroke();

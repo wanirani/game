@@ -98,6 +98,7 @@
   "portraits/b_grimoire",
   "portraits/b_hagen",
   "portraits/b_hagen2",
+  "portraits/b_johan",
   "portraits/b_leviathan",
   "portraits/b_mara",
   "portraits/b_moloch",
@@ -833,6 +834,13 @@
    "h": 614,
    "bytes": 65496,
    "srcBytes": 129692
+  },
+  "portraits/b_johan.webp": {
+   "src": "042485691439",
+   "w": 461,
+   "h": 614,
+   "bytes": 50500,
+   "srcBytes": 95578
   },
   "portraits/b_leviathan.webp": {
    "src": "14ff9aca6194",

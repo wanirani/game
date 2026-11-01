@@ -222,5 +222,5 @@ export const SCRIPTS_EX27 = {
 
 /** 외전 27장 크레딧 줄 (story_ex.js CREDITS_EX 와 같은 형식 — CREDITS_EX.s27) */
 export const CREDITS_EX27 = {
-  s27: ['돌아오지 못한 수문지기 — 지하 수로 관리인 요한', '흑묘 여관의 마르타'],   // 행 = '제목 — 이름' (CREDITS_P2 와 같은 두 칸)
+  s27: ['돌아오지 못한 수문지기 — 지하 수로 관리인 요한', '흑묘 여관의 주인 — 마르타'],   // 행 = '제목 — 이름' (CREDITS_P2 와 같은 두 칸)
 };

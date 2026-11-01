@@ -58,6 +58,7 @@ export const PORTRAIT_META = {
   'portraits/b_chaos': { bust: true, face: { x: 0.18, y: 0.33, s: 0.25 } },
   'portraits/b_charon': { bust: true, face: { x: 0.454, y: 0.334, s: 0.292 } },
   'portraits/b_paracel': { bust: true, face: { x: 0.586, y: 0.332, s: 0.33 } },   // 외전 s26 (CH26-B) — 고글/눈 460,290 · 턱 430,445 (768×1024)
+  'portraits/b_johan': { bust: true, face: { x: 0.462, y: 0.219, s: 0.3 } },   // 외전 Ⅱ s27 (EX-BOSS, Higgsfield) — 투구 앞 창 355,224 (768×1024)
   'portraits/b_chimera': { bust: true, face: { x: 0.29, y: 0.36, s: 0.28 } },
   'portraits/b_colossus': { bust: true, face: { x: 0.39, y: 0.22, s: 0.18 } },
   'portraits/b_crimson': { bust: true, face: { x: 0.34, y: 0.26, s: 0.2 } },

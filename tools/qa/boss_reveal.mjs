@@ -38,7 +38,7 @@ const OUT = String(opt('out', '/tmp/claude-0/qa/boss_reveal'));
 const SHOTS = !!opt('shots', false), VIDEO = !!opt('video', false), PERF = !!opt('perf', false), QUICK = !!opt('quick', false);
 // 화질: --perf 의 프레임 시간은 폴드 기본 등급(medium, perf_budget 의 fold 프로필과 같음)으로 잰다. 다른 검사는 기기 기본값
 const QUALITY = opt('quality', null);
-const STAGE_OF = { b_nightwing: 's01', b_banshee: 's02', b_dullahan: 's03', b_crimson: 's04', b_bonedragon: 's05', b_grimoire: 's06', b_chimera: 's07', b_leviathan: 's08', b_colossus: 's09', b_frostqueen: 's10', b_death: 's11', b_dracula: 's12', b_chaos: 's13', b_narkissa: 's14', b_moloch: 's15', b_dagon: 's16', b_ziz: 's17', b_mara: 's18', b_behemoth: 's19', b_nihil: 's20', b_argen: 's21', b_nemain: 's22', b_hagen: 's23', b_bride: 's24', b_charon: 's25' };
+const STAGE_OF = { b_nightwing: 's01', b_banshee: 's02', b_dullahan: 's03', b_crimson: 's04', b_bonedragon: 's05', b_grimoire: 's06', b_chimera: 's07', b_leviathan: 's08', b_colossus: 's09', b_frostqueen: 's10', b_death: 's11', b_dracula: 's12', b_chaos: 's13', b_narkissa: 's14', b_moloch: 's15', b_dagon: 's16', b_ziz: 's17', b_mara: 's18', b_behemoth: 's19', b_nihil: 's20', b_argen: 's21', b_nemain: 's22', b_hagen: 's23', b_bride: 's24', b_charon: 's25', b_paracel: 's26', b_johan: 's27' };
 const DEFAULT_BOSSES = ['b_nightwing', 'b_frostqueen', 'b_dagon', 'b_dullahan', 'b_dracula', 'b_charon'];   // plan §5 P4 acceptance 1
 const BOSSES_RUN = String(opt('bosses', DEFAULT_BOSSES.join(','))).split(',').map((s) => s.trim()).filter(Boolean);
 for (const b of BOSSES_RUN) if (!STAGE_OF[b]) { console.error(`--bosses: 모르는 보스 '${b}'`); process.exit(2); }
@@ -55,7 +55,7 @@ const add = (id, ok, detail) => { results.push({ id, ok: !!ok, detail }); consol
   const story = new Set();
   for (const s of Object.values(STAGES)) {
     const n = Number(/^s(\d+)$/.exec(s?.id ?? '')?.[1]);
-    if (!(n >= 1 && n <= 25)) continue;
+    if (!(n >= 1 && n <= 27)) continue;   // s26 · s27 (1부 외전 Ⅰ · Ⅱ) 보스 등장 행도 검사
     if (s.boss) story.add(s.boss);
     for (const r of Object.values(s.rooms ?? {})) if (r?.bossId) story.add(r.bossId);
   }

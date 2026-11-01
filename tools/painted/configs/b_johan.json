@@ -1,0 +1,486 @@
+{
+ "id": "b_johan",
+ "kind": "boss",
+ "out": "assets/painted/bosses/b_johan",
+ "raw": "tools/painted/raw/b_johan",
+ "td": 2.0,
+ "quality": 72,
+ "matte": {
+  "default": {
+   "key": 30,
+   "soft": 40,
+   "hard": 14,
+   "rembg": null,
+   "watermark": false
+  }
+ },
+ "_note": "Higgsfield gpt_image_2_5 on #00FF00 — the matte cache (.work/b_johan/matte/*.png) is tools/higgsfield/key_green.py output (despill); matte.py with rembg null is only the fallback. Coordinates = source px of tools/painted/raw/b_johan/<src>.webp. Log: tools/higgsfield/manifest_exboss.json",
+ "cuts": {
+  "jh_key": {
+   "masks": {
+    "key": [
+     {
+      "op": "poly",
+      "feather": 1.0,
+      "pts": [
+       [
+        40,
+        8
+       ],
+       [
+        1292,
+        8
+       ],
+       [
+        1292,
+        362
+       ],
+       [
+        1112,
+        362
+       ],
+       [
+        1112,
+        298
+       ],
+       [
+        40,
+        298
+       ]
+      ]
+     }
+    ],
+    "anchor": [
+     {
+      "op": "poly",
+      "feather": 1.0,
+      "pts": [
+       [
+        236,
+        298
+       ],
+       [
+        1110,
+        298
+       ],
+       [
+        1110,
+        366
+       ],
+       [
+        1290,
+        366
+       ],
+       [
+        1290,
+        716
+       ],
+       [
+        236,
+        716
+       ]
+      ]
+     }
+    ]
+   }
+  }
+ },
+ "parts": [
+  {
+   "name": "torso",
+   "src": "jh_body_parts",
+   "lps": 0.13,
+   "box": [
+    170,
+    26,
+    546,
+    664
+   ],
+   "pivots": {
+    "nk": [
+     395,
+     58
+    ],
+    "hip": [
+     330,
+     560
+    ],
+    "shN": [
+     335,
+     170
+    ],
+    "shF": [
+     290,
+     165
+    ],
+    "lamp": [
+     488,
+     262
+    ],
+    "belt": [
+     330,
+     385
+    ]
+   }
+  },
+  {
+   "name": "thigh",
+   "src": "jh_body_parts",
+   "lps": 0.125,
+   "box": [
+    60,
+    692,
+    322,
+    1248
+   ],
+   "pivots": {
+    "hip": [
+     195,
+     728
+    ],
+    "kn": [
+     160,
+     1000
+    ]
+   }
+  },
+  {
+   "name": "shin",
+   "src": "jh_body_parts",
+   "lps": 0.1,
+   "box": [
+    418,
+    762,
+    718,
+    1292
+   ],
+   "pivots": {
+    "kn": [
+     530,
+     788
+    ],
+    "ft": [
+     560,
+     1268
+    ]
+   }
+  },
+  {
+   "name": "helm",
+   "src": "jh_helm_pair",
+   "lps": 0.11,
+   "box": [
+    26,
+    22,
+    476,
+    880
+   ],
+   "pivots": {
+    "c": [
+     250,
+     400
+    ],
+    "nk": [
+     235,
+     640
+    ],
+    "win": [
+     400,
+     380
+    ],
+    "top": [
+     232,
+     120
+    ]
+   }
+  },
+  {
+   "name": "helmB",
+   "src": "jh_helm_pair",
+   "lps": 0.11,
+   "box": [
+    540,
+    22,
+    1004,
+    988
+   ],
+   "pivots": {
+    "c": [
+     765,
+     400
+    ],
+    "nk": [
+     750,
+     640
+    ],
+    "win": [
+     915,
+     380
+    ],
+    "top": [
+     747,
+     120
+    ]
+   }
+  },
+  {
+   "name": "armU",
+   "src": "jh_arms",
+   "lps": 0.08,
+   "box": [
+    145,
+    8,
+    394,
+    546
+   ],
+   "pivots": {
+    "sh": [
+     270,
+     50
+    ],
+    "el": [
+     245,
+     505
+    ]
+   }
+  },
+  {
+   "name": "armF",
+   "src": "jh_arms",
+   "lps": 0.08,
+   "box": [
+    670,
+    8,
+    862,
+    546
+   ],
+   "pivots": {
+    "el": [
+     765,
+     40
+    ],
+    "wr": [
+     765,
+     500
+    ]
+   }
+  },
+  {
+   "name": "handO",
+   "src": "jh_arms",
+   "lps": 0.068,
+   "box": [
+    90,
+    594,
+    492,
+    986
+   ],
+   "pivots": {
+    "wr": [
+     135,
+     895
+    ],
+    "tip": [
+     400,
+     650
+    ]
+   }
+  },
+  {
+   "name": "handF",
+   "src": "jh_arms",
+   "lps": 0.068,
+   "box": [
+    574,
+    624,
+    888,
+    968
+   ],
+   "pivots": {
+    "wr": [
+     625,
+     890
+    ],
+    "tip": [
+     820,
+     700
+    ]
+   }
+  },
+  {
+   "name": "key",
+   "src": "jh_key",
+   "mask": "key",
+   "lps": 0.128,
+   "box": [
+    46,
+    10,
+    1288,
+    360
+   ],
+   "pivots": {
+    "grip": [
+     180,
+     172
+    ],
+    "end": [
+     1210,
+     165
+    ]
+   }
+  },
+  {
+   "name": "anchor",
+   "src": "jh_key",
+   "mask": "anchor",
+   "lps": 0.05,
+   "box": [
+    240,
+    296,
+    1278,
+    714
+   ],
+   "pivots": {
+    "ring": [
+     300,
+     470
+    ],
+    "c": [
+     900,
+     480
+    ]
+   }
+  },
+  {
+   "name": "hoseSeg",
+   "src": "jh_hose",
+   "lps": 0.056,
+   "box": [
+    64,
+    70,
+    1272,
+    294
+   ],
+   "pivots": {
+    "a": [
+     95,
+     182
+    ],
+    "b": [
+     1245,
+     182
+    ]
+   }
+  },
+  {
+   "name": "hoseEnd",
+   "src": "jh_hose",
+   "lps": 0.056,
+   "box": [
+    390,
+    374,
+    912,
+    636
+   ],
+   "pivots": {
+    "a": [
+     412,
+     505
+    ],
+    "b": [
+     892,
+     505
+    ]
+   }
+  },
+  {
+   "name": "eelHead",
+   "src": "jh_eel",
+   "lps": 0.052,
+   "box": [
+    52,
+    84,
+    972,
+    546
+   ],
+   "pivots": {
+    "nk": [
+     80,
+     330
+    ],
+    "eye": [
+     790,
+     235
+    ],
+    "tip": [
+     960,
+     300
+    ]
+   }
+  },
+  {
+   "name": "eelSeg",
+   "src": "jh_eel",
+   "lps": 0.053,
+   "box": [
+    34,
+    636,
+    496,
+    910
+   ],
+   "pivots": {
+    "a": [
+     48,
+     775
+    ],
+    "b": [
+     482,
+     775
+    ]
+   }
+  },
+  {
+   "name": "lamp",
+   "src": "jh_props",
+   "lps": 0.034,
+   "box": [
+    20,
+    96,
+    306,
+    864
+   ],
+   "pivots": {
+    "top": [
+     165,
+     112
+    ],
+    "c": [
+     160,
+     560
+    ]
+   }
+  },
+  {
+   "name": "wheel",
+   "src": "jh_props",
+   "lps": 0.2,
+   "box": [
+    418,
+    198,
+    1008,
+    792
+   ],
+   "pivots": {
+    "c": [
+     712,
+     495
+    ]
+   }
+  }
+ ],
+ "higgsfield": {
+  "model": "gpt_image_2_5",
+  "manifest": "tools/higgsfield/manifest_exboss.json",
+  "ref": "9d247d31-a599-42ca-be70-99a6fafc69be (b_crimson + b_colossus portraits + b_paracel apron atlas strip)"
+ }
+}

@@ -97,6 +97,8 @@ export const BOSS_INTRO = Object.freeze({
   b_charon:     { style: 'emerge',   element: 'soul',    plateColor: '#0a1410', dur: 1.05 },   // 검은 마차가 소리 없이 멈춘다
   // ── 외전 26장 (1부 외전, 7장 뒤 — CH26-WIRE 로 등록됨) ──
   b_paracel:    { style: 'assemble', element: 'glass',   plateColor: '#141008', dur: 1.15 },   // 플라스크 파편이 모여 연금술사가 된다
+  // ── 외전 27장 (1부 외전 Ⅱ, 10장 뒤 — EX-BOSS) ──
+  b_johan:      { style: 'rise',     element: 'water',   plateColor: '#06100e', dur: 1.1 },    // 검은 물 속에서 황동 투구가 떠오른다
 });
 
 export const INTRO_STYLES = Object.freeze(['drop', 'rise', 'descend', 'emerge', 'assemble', 'fade']);

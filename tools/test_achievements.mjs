@@ -116,13 +116,13 @@ const P2_EXPECT = ['st_s01', 'st_s02', 'st_dracula', 'st_end1', 'st_s14', 'st_en
 if (run('C1')) {
   section('C1 데이터');
   const L = D.ACHIEVEMENTS;
-  ok(L.length === 68, `업적 68개 (${L.length})`);
+  ok(L.length === 69, `업적 69개 (${L.length})`);   // 외전 Ⅱ st_s27 (ex_s27.md §3.3)
   const cats = D.ACH_CATS.map((c) => c.id);
   eq(cats, ['story', 'combat', 'hero', 'companion', 'collect', 'arcade', 'challenge', 'secret'], '분류 8개 순서');
   for (const c of cats) ok(L.filter((d) => d.cat === c).length >= 7, `분류 ${c} ≥ 7`);
-  eq(Object.fromEntries(cats.map((c) => [c, L.filter((d) => d.cat === c).length])), { story: 12, combat: 7, hero: 7, companion: 7, collect: 9, arcade: 10, challenge: 9, secret: 7 }, '분류별 수');
-  eq(Object.fromEntries(cats.map((c) => [c, L.filter((d) => d.cat === c).reduce((a, d) => a + d.pts, 0)])), { story: 290, combat: 170, hero: 170, companion: 140, collect: 190, arcade: 210, challenge: 370, secret: 110 }, '분류별 점수');
-  ok(L.reduce((a, d) => a + d.pts, 0) === 1650, '점수 합 1,650');
+  eq(Object.fromEntries(cats.map((c) => [c, L.filter((d) => d.cat === c).length])), { story: 13, combat: 7, hero: 7, companion: 7, collect: 9, arcade: 10, challenge: 9, secret: 7 }, '분류별 수');
+  eq(Object.fromEntries(cats.map((c) => [c, L.filter((d) => d.cat === c).reduce((a, d) => a + d.pts, 0)])), { story: 310, combat: 170, hero: 170, companion: 140, collect: 190, arcade: 210, challenge: 370, secret: 110 }, '분류별 점수');
+  ok(L.reduce((a, d) => a + d.pts, 0) === 1670, '점수 합 1,670');
   ok(L.every((d) => [10, 20, 30, 50, 100].includes(d.pts)), '점수는 10·20·30·50·100');
   ok(L.filter((d) => d.pts === 100).length === 1, '100점은 하나 (ch_all)');
   ok(new Set(L.map((d) => d.id)).size === L.length, 'id 중복 없음');
@@ -142,14 +142,14 @@ if (run('C1')) {
   ok(L.every((d) => (d.reward?.items ?? []).every((x) => ITEMS[x.id] && Number.isInteger(x.qty) && x.qty >= 1)), '보상 아이템이 ITEMS 에 있음');
   ok(L.every((d) => !d.reward || Object.keys(d.reward).every((k) => ['gold', 'items', 'title', 'deco'].includes(k))), '보상 필드 이름');
   const fixed = L.filter((d) => d.reward && (d.reward.gold || d.reward.items));
-  ok(fixed.length === 13, `정한 골드·소모품 13 (${fixed.length})`);
+  ok(fixed.length === 14, `정한 골드·소모품 14 (${fixed.length})`);   // + st_s27 (ex_s27.md §3.3)
   ok(L.filter((d) => !d.reward).length === 34, `기본 골드 34 (${L.filter((d) => !d.reward).length})`);
   ok(L.filter((d) => !d.reward).every((d) => A.rewardOf(d).gold === d.pts * 25), '기본 골드 = pts × 25');
   ok(L.filter((d) => d.reward?.title || d.reward?.deco).every((d) => A.rewardOf(d).gold === 0 && !A.rewardOf(d).items.length), '이명·장식 업적은 골드 없음');
   const goldSum = L.reduce((a, d) => a + A.rewardOf(d).gold, 0);
-  ok(goldSum > 15000 && goldSum < 25000, `받을 수 있는 골드 합 ≈ 20,300 (${goldSum})`);
+  ok(goldSum > 15000 && goldSum < 27000, `받을 수 있는 골드 합 ≈ 25,050 (${goldSum})`);   // ex_s27: 외전 Ⅱ st_s27 +2,500 (상한 25,000 → 27,000)
   // 특정 값
-  ok(DEF.get('ch_all').cond.n === 67 && DEF.get('ch_all').cond.n === L.length - 1, 'ch_all.n === 67');
+  ok(DEF.get('ch_all').cond.n === 68 && DEF.get('ch_all').cond.n === L.length - 1, 'ch_all.n === 68');
   ok(DEF.get('cl_docs_all').cond.n === Object.keys(DOCS).length, `cl_docs_all.n === DOCS 수 (${Object.keys(DOCS).length})`);
   let foes = null;
   try { foes = (await imp('src/scenes/games/duel.js')).FOES.length; } catch {
@@ -457,14 +457,14 @@ if (run('C4')) {
     ok(g.ach.title() === 't_dawn' && g.ach.titles().find((t) => t.id === 't_dawn').got && g.ach.titles().find((t) => t.id === 't_dawn').from === 'st_end1', '얻으면 유효 · titles() from');
     // 요약·NEW·markSeen
     const s = g.ach.summary();
-    ok(s.got === 1 && s.total === 68 && s.pts === 20 && s.ptsMax === 1650 && s.unseen === 1 && s.byCat.story.got === 1 && s.byCat.story.total === 12, 'summary()');
+    ok(s.got === 1 && s.total === 69 && s.pts === 20 && s.ptsMax === 1670 && s.unseen === 1 && s.byCat.story.got === 1 && s.byCat.story.total === 13, 'summary()');
     ok(g.ach.status('st_end1').isNew && !g.ach.status('st_end1').claimable, 'NEW · 이명 업적은 받을 것 없음');
     g.ach.markSeen();
     ok(g.ach.summary().unseen === 0 && !g.ach.status('st_end1').isNew, 'markSeen → NEW 지움');
     const kb = g.ach.status('cb_kill_1k');
     ok(kb.bar && kb.need === 1000 && kb.cur === 0 && kb.got === null, "status: 진행 막대 'kills'");
     ok(g.ach.status('sc_cat').hiddenLocked && !g.ach.status('st_s01').hiddenLocked, 'hiddenLocked');
-    ok(g.ach.list('secret').length === 7 && g.ach.list().length === 68, 'list(cat)');
+    ok(g.ach.list('secret').length === 7 && g.ach.list().length === 69, 'list(cat)');
     g.done();
   }
 }

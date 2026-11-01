@@ -1,11 +1,11 @@
 // 「악몽의 군주」 악몽 재대결 엔진 시험 (docs/specs/nightmare.md §8) — owner: Stage 5 P3
 //   node tools/test_nightmare.mjs               노드 시험만 (< 5초): 표 · 레벨 · 준비(K2) · 열림 · 기록/메타(K1) · 옛 세이브 · 클라우드 합치기 · 연결 줄
 //   node tools/test_nightmare.mjs --browser     + 브라우저 (기본 fold_open):
-//        26 악몽 모두: 보스 · inferno · 배율 · 비틀기 하나 · 감독(예고 ≥ 0.6초 · 빈 길) · AUTO 거절 · 경험치 0 · 포기 → 마을
+//        27 악몽 모두: 보스 · inferno · 배율 · 비틀기 하나 · 감독(예고 ≥ 0.6초 · 빈 길) · AUTO 거절 · 경험치 0 · 포기 → 마을
 //        나이트윙 전체 흐름: 실패(목숨 그대로) → 다시 도전 → 격파(첫 보상 한 번) → 두 번째 격파(보상 없음) → 실패 → 마을로
 //        1장 세이브 → (월드맵 「악몽」 단추가 있으면 그것, 없으면 startNightmare from 'worldmap') → 나이트윙 → 떠나기 · 페이지 오류 0 · fetch 0
 //        [P3b] 입구(NM_FLAGS.ui)를 켜고: 격파 결과 화면 보상 줄(첫 보상 · 골드 · 기록 · 격파 수 · 잔상) → 「성당으로」 → 성당 「악몽」 탭 ·
-//        성당 「악몽」 탭(26칸 · 잠김/열림/격파 · 키 이동 · 두 번 탭 → 확인 창 → 악몽 → 포기 → 같은 칸) · 1장 세이브의 월드맵 붉은 단추 → 확인 창 → 나이트윙
+//        성당 「악몽」 탭(27칸 · 잠김/열림/격파 · 키 이동 · 두 번 탭 → 확인 창 → 악몽 → 포기 → 같은 칸) · 1장 세이브의 월드맵 붉은 단추 → 확인 창 → 나이트윙
 //   --quick           브라우저: 비틀기마다 하나 (8 악몽)
 //   --only nm_s01,…   브라우저: 고른 악몽만 (전체 흐름·1장 케이스는 nm_s01 이 들어 있을 때만)
 //   --vp fold_open    화면 (쉼표)
@@ -51,13 +51,14 @@ const FIX_V1 = JSON.parse(fs.readFileSync(path.join(ROOT, 'tools/fixtures/save_v
 const FIX_CH6 = JSON.parse(fs.readFileSync(path.join(ROOT, 'tools/fixtures/save_ch6_nocmp.json'), 'utf8'));
 const src = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
-// ═════════ N1 표: 26 악몽 ↔ 스테이지 보스 · 비틀기 하나 (s01–s25 + 1부 외전 s26 — ch26_verify) ═════════
-section('N1 악몽 표 (26) ↔ STAGES 보스 · 비틀기');
+// ═════════ N1 표: 27 악몽 ↔ 스테이지 보스 · 비틀기 하나 (s01–s25 + 1부 외전 s26 — ch26_verify · s27 — ex_s27 W26) ═════════
+section('N1 악몽 표 (27) ↔ STAGES 보스 · 비틀기');
 const ids = Object.keys(D.NM);
-ok(ids.length === 26 && D.NM_IDS.length === 26, `악몽 26개 (${ids.length})`);
+ok(ids.length === 27 && D.NM_IDS.length === 27, `악몽 27개 (${ids.length})`);
 ok(D.NM.nm_s26?.boss === 'b_paracel' && STAGES.s26?.part === 1 && D.NM.nm_s26.atkMul === 1.1 && D.NM.nm_s26.spMul === 1.15, 'nm_s26: 파라켈 · 1부 외전이라 1부 배율 (공격 1.1 · 쉼 1.15)', D.NM.nm_s26);
+ok(D.NM.nm_s27?.boss === 'b_johan' && D.NM.nm_s27.twist === 'doom_clock' && STAGES.s27?.part === 1 && D.NM.nm_s27.atkMul === 1.1 && D.NM.nm_s27.spMul === 1.15, 'nm_s27: 요한 · 종말의 시계 · 1부 외전이라 1부 배율 (공격 1.1 · 쉼 1.15)', D.NM.nm_s27);
 const usedTwists = new Set();
-for (let i = 1; i <= 26; i++) {
+for (let i = 1; i <= 27; i++) {
   const sid = 's' + String(i).padStart(2, '0'), id = 'nm_' + sid, e = D.NM[id];
   ok(!!e, `${id} 있음`);
   if (!e) continue;
@@ -94,6 +95,7 @@ ok(D.nmLevel(e01, 40) === 38, `s01 · 영웅 40 → 38 (${D.nmLevel(e01, 40)})`)
 ok(D.nmLevel(e25, 99) === 97, `s25 · 영웅 99 → 97 (${D.nmLevel(e25, 99)})`);
 ok(D.nmLevel(e25, 999) === 120 && D.nmLevel(e01, NaN) === STAGES.s01.level + 8, '상한 120 · 숫자 아님 → 이야기 + 8');
 ok(D.nmLevel(D.NM.nm_s26, 1) === 38 && D.nmRecLevel(D.NM.nm_s26) === 40, `s26 (이야기 Lv 30) · 영웅 1 → 38 · 권장 40 (${D.nmLevel(D.NM.nm_s26, 1)})`);
+ok(D.nmLevel(D.NM.nm_s27, 1) === 45 && D.nmRecLevel(D.NM.nm_s27) === 47, `s27 (이야기 Lv 37) · 영웅 1 → 45 · 권장 47 (${D.nmLevel(D.NM.nm_s27, 1)})`);
 for (const id of ids) { const e = D.NM[id]; ok(D.nmRecLevel(e) >= STAGES[e.stage].level + 8, `${id}: 권장 레벨 ≥ 이야기 + 8`); }
 
 // ═════════ N3 준비 (K2 · K4 · 규칙) ═════════
@@ -181,8 +183,8 @@ section('N6 기록 (state.nm) · 메타 nm (K1 → 꾸미기)');
   ok(meta.nm.clears === 1 && meta.nm.ids.nm_s01 > 0, 'meta.nm = { clears 1, ids }', meta.nm);
   ok(COS.needMet({ nm: 1 }, COS.cosContext(meta)) && !COS.needMet({ nm: 10 }, COS.cosContext(meta)), 'K1: 악몽 잔상 열림 · 흑장미(10) 잠김');
   for (const id of ids) NM.noteMetaClear(meta, id);
-  ok(meta.nm.clears === 26 && COS.needMet({ nm: 26 }, COS.cosContext(meta)), 'K1: 26 모두 → 군주 잔상');
-  ok(NM.noteMetaClear(meta, 'nm_zz') === false && meta.nm.clears === 26, '모르는 id 는 세지 않음');
+  ok(meta.nm.clears === 27 && COS.needMet({ nm: 27 }, COS.cosContext(meta)), 'K1: 27 모두 → 군주 잔상');
+  ok(NM.noteMetaClear(meta, 'nm_zz') === false && meta.nm.clears === 27, '모르는 id 는 세지 않음');
   const m2 = { nm: { clears: 'x', ids: [] } }; NM.nmMeta(m2);
   ok(m2.nm.clears === 0 && typeof m2.nm.ids === 'object' && !Array.isArray(m2.nm.ids), '깨진 메타 nm 고치기', m2.nm);
 }
@@ -250,9 +252,9 @@ section('N10 입구 (P3b) 연결 · 배율 범위 · K1 잔상');
   ok(/!world\.cutscene && !world\.trial \? questTrackerState/.test(hud) && /function drawModeTag/.test(hud) && /if \(world\.trial\?\.name\) \{ drawModeTag/.test(hud), 'hud.js: 악몽 토벌·시련에서 퀘스트 칸 숨김 · 이름판에 모드 꼬리표');
   ok(/'토벌 포기'/.test(pz) && !/'악몽 포기'/.test(pz), 'pause.js: 「토벌 포기」');
   ok(/if \(p\.justDown\) this\.freshPress = armed;/.test(te) && !/input\.touchMode && this\.menu\.index !== hit/.test(te), 'trial_end.js: 한 번 탭 = 결정 (화면이 뜬 뒤 눌린 손가락만)');
-  // K1: 잔상 셋의 need.nm = 1 · 10 · 26 (cosmetics.js 장부 — P3 는 읽기만; 「군주」 = 악몽 표 전부, 외전 26장 뒤 26 — ch26_verify)
+  // K1: 잔상 셋의 need.nm = 1 · 10 · 27 (cosmetics.js 장부 — P3 는 읽기만; 「군주」 = 악몽 표 전부, 외전 27장 뒤 27 — ex_s27 W26)
   const trails = Object.values(COS.TRAILS).filter((t) => Number.isFinite(t?.need?.nm)).map((t) => t.need.nm).sort((a, b) => a - b);
-  ok(JSON.stringify(trails) === '[1,10,26]', `K1 잔상 need.nm = 1 · 10 · 26 (${trails})`);
+  ok(JSON.stringify(trails) === '[1,10,27]', `K1 잔상 need.nm = 1 · 10 · 27 (${trails})`);
   ok(trails[trails.length - 1] === D.NM_IDS.length, `K1 「군주」 문턱 = 악몽 수 ${D.NM_IDS.length}`);
   // 밸런스 표가 고친 배율 (balance.mjs --nm) 이 테스트 범위 안
   //  [NM-TUNE] 공격 하한 1 → 0.85 (MAJOR-1 결정으로 s04 · s22–s25 가 1 아래) — 「이야기보다 약하지 않다」는 N1 의 공격력 비교가 본다
@@ -696,7 +698,7 @@ async function fullCase(s, vp) {
     ok(String(row('첫 격파 보상')).startsWith(R1.items[0]) && /\((전설|신화)\)$/.test(String(row('첫 격파 보상'))), `${tag}: 보상 줄 — 첫 격파 보상 ${row('첫 격파 보상')}`, RS1.rows);
     ok(row('골드') === `+${R1.gold.toLocaleString('ko-KR')} G`, `${tag}: 보상 줄 — 골드 ${row('골드')}`);
     ok(String(row('기록')).startsWith(`${R1.time.toFixed(1)}초`) && /새 기록/.test(String(row('기록'))), `${tag}: 보상 줄 — 기록 (첫 격파 = 새 기록) ${row('기록')}`);
-    ok(String(row('악몽 토벌')).startsWith(`${R1.clears} / 26`) && (R1.metaFresh ? /\(\+1\)/.test(String(row('악몽 토벌'))) : true), `${tag}: 보상 줄 — 악몽 토벌 ${row('악몽 토벌')} (K1 meta)`);
+    ok(String(row('악몽 토벌')).startsWith(`${R1.clears} / 27`) && (R1.metaFresh ? /\(\+1\)/.test(String(row('악몽 토벌'))) : true), `${tag}: 보상 줄 — 악몽 토벌 ${row('악몽 토벌')} (K1 meta)`);
     ok(R1.metaFresh && R1.clears === 1 ? row('새 잔상') === '「악몽」' : true, `${tag}: 보상 줄 — 첫 악몽이면 새 잔상 「악몽」 (${row('새 잔상')})`, R1);
     ok(RS1.idx === 1, `${tag}: 결과 화면 기본 단추 = 「성당으로」`, RS1.idx);
     await s.wait(900);
@@ -758,7 +760,7 @@ async function churchCase(s, vp) {
       hidden: cards.filter((x) => x.name === '???').map((x) => x.id), unlocked: st.progress.unlocked,
       st: cards.map((x) => x.s.state), firstReady: cards.findIndex((x) => x.s.state === 'ready') };
   }) : null;
-  ok(C1 && C1.n === 26 && C1.rects === 26 && C1.bad.length === 0, `${tag}: 26칸 · 상태 = nmStatus`, C1 && { n: C1.n, rects: C1.rects, bad: C1.bad });
+  ok(C1 && C1.n === 27 && C1.rects === 27 && C1.bad.length === 0, `${tag}: 27칸 · 상태 = nmStatus`, C1 && { n: C1.n, rects: C1.rects, bad: C1.bad });
   if (!C1) return;
   ok(C1.st[0] === 'done' && C1.sel === C1.firstReady && C1.firstReady === 1, `${tag}: 첫 보상이 남은 첫 칸을 고른다 (${C1.sel})`, C1.st.slice(0, 4));
   ok(C1.hidden.every((id) => !C1.unlocked.includes(D.NM[id].stage)), `${tag}: 이야기에서 아직 열리지 않은 장만 「???」 (${C1.hidden.join(',') || '없음'})`);

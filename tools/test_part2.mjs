@@ -50,6 +50,7 @@ const RECRUITS = { s14: 'gd_mirra', s15: 'mt_ignis', s16: 'gd_lumen', s17: 'mt_g
 //   s24 「시드는 장미」 (docs/specs/ex_s24.md): 1부 지도(page 0), 아웃트로에서 수호신 베스퍼 합류
 //   s25 「불탄 목장의 밤」 (docs/specs/ex_s25.md): 1부 지도(page 0), 아웃트로에서 탈것 모르겐 합류
 //   s26 「파라켈의 지하 공방」 (docs/specs/ex_s26.md): 1부 지도(page 0), part 1 — 7장 클리어로 열린다 (2부 엔딩이 아니라). 보상 = 보조무기 flask(r5 '@') · 장신구 u_paracel(보스 드롭) · 로어 l35(r3 '@')
+//   s27 「돌아오지 못한 수문지기」 (docs/specs/ex_s27.md): 1부 지도(page 0), part 1 — 10장 클리어로 열린다. 보상 = 장신구 u_johan(보스 드롭) · 로어 l36(r3 '@' = pickup)
 const EX_LIST = [
   { sid: 's21', chapter: 21, page: 1, boss: 'b_argen', recruit: 'mt_argen', rig: 'wyvern', done: 'ex_s21_done', scripts: ['s21_intro', 's21_t1', 's21_t2', 'b_argen_pre', 'b_argen_corrupt', 'b_argen_awaken', 'b_argen_post', 's21_outro'] },
   { sid: 's22', chapter: 22, page: 0, boss: 'b_nemain', recruit: 'gd_munin', done: 'ex_s22_done', scripts: ['s22_intro', 's22_t1', 's22_t2', 'b_nemain_pre', 'b_nemain_unmask', 'b_nemain_last', 'b_nemain_post', 's22_outro'] },
@@ -57,6 +58,7 @@ const EX_LIST = [
   { sid: 's24', chapter: 24, page: 0, boss: 'b_bride', recruit: 'gd_vesper', done: 'ex_s24_done', scripts: ['s24_intro', 's24_t1', 's24_t2', 'b_bride_pre', 'b_bride_wither', 'b_bride_last', 'b_bride_post', 's24_outro'] },
   { sid: 's25', chapter: 25, page: 0, boss: 'b_charon', recruit: 'mt_morgen', rig: 'horse', done: 'ex_s25_done', scripts: ['s25_intro', 's25_t1', 's25_t2', 'b_charon_pre', 'b_charon_unbridle', 'b_charon_last', 'b_charon_post', 's25_outro'] },
   { sid: 's26', chapter: 26, page: 0, part: 1, boss: 'b_paracel', pickup: 'sub:flask', done: 'ex_s26_done', scripts: ['s26_intro', 's26_t1', 's26_t2', 'b_paracel_pre', 'b_paracel_fuse', 'b_paracel_last', 'b_paracel_post', 's26_outro'] },
+  { sid: 's27', chapter: 27, page: 0, part: 1, boss: 'b_johan', pickup: 'lore:l36', done: 'ex_s27_done', scripts: ['s27_intro', 's27_t1', 's27_t2', 'b_johan_pre', 'b_johan_breach', 'b_johan_last', 'b_johan_post', 's27_outro'] },
 ];
 const P2_SIDE = ['bd_rift', 'bd_mirror', 'bd_deep', 'bd_storm', 'bd_combo200', 'hd_ember', 'hd_plus15', 'rk_stars', 'rk_stars6', 'el_pearl', 'ab_dawnflower', 'mt_feast', 'cm_dreams'];
 // world2 §1.4 — 2부 대본 id 전부
@@ -108,7 +110,7 @@ async function staticChecks() {
   // ── 스테이지 · 방 ──
   check(G, 'STAGE_ORDER 에 s14–s20 이 모두 있다 (1부 뒤, 순서대로 · 외전은 그 뒤)', P2.every((s) => STAGE_ORDER.includes(s)) && STAGE_ORDER_P2.filter((s) => !STAGES[s]?.side).join() === P2.join() && STAGE_ORDER.indexOf('s14') === STAGE_ORDER.indexOf('s13') + 1
     && STAGE_ORDER_P2.slice(P2.length).every((s) => STAGES[s]?.side), STAGE_ORDER_P2);
-  check(G, '외전 = STAGE_ORDER_P2 의 side 스테이지 (s21 · s22 · s23 · s24 · s25 · s26 차례로)', STAGE_ORDER_P2.filter((s) => STAGES[s]?.side).join() === EX_LIST.map((e) => e.sid).join(), STAGE_ORDER_P2);
+  check(G, '외전 = STAGE_ORDER_P2 의 side 스테이지 (s21 · s22 · s23 · s24 · s25 · s26 · s27 차례로)', STAGE_ORDER_P2.filter((s) => STAGES[s]?.side).join() === EX_LIST.map((e) => e.sid).join(), STAGE_ORDER_P2);
   for (const EX of EX_LIST) {
     // 외전: 이야기 사슬(next) 밖 · 2부 · 보스·대본·전환 대사·트리거·합류 (해금은 세계 지도가 p2_done 으로 — town/worldmap.js)
     const st = STAGES[EX.sid], miss = [];
@@ -446,7 +448,7 @@ async function storyExtChecks(G, imp, { SCRIPTS, NPCS, BOSSES, TRACKS, CMP }) {
     const xs = fs.readFileSync(path.join(ROOT, 'src/data/story_extra.js'), 'utf8');
     const mine = new Set(lits(xs.slice(xs.indexOf('export const SCRIPTS_EXTRA')).replace(/\/\/.*$/gm, '')));
     check(G, `SCRIPTS_EXTRA 의 대사가 story_ext §5.3 · §5.4 · §5.6 그대로 (${specStr.size}줄)`, specStr.size > 0 && [...specStr].every((x) => mine.has(x)) && [...mine].every((x) => specStr.has(x)), { notInCode: [...specStr].filter((x) => !mine.has(x)).slice(0, 5), notInSpec: [...mine].filter((x) => !specStr.has(x)).slice(0, 5) });
-    check(G, 'CREDITS_EX = 외전 s21–s26 의 크레딧 줄 (story_ext §5.7)', ['s21', 's22', 's23', 's24', 's25', 's26'].every((k) => Array.isArray(EXM.CREDITS_EX?.[k]) && EXM.CREDITS_EX[k].length && EXM.CREDITS_EX[k].every((r) => / — /.test(r))), EXM.CREDITS_EX);
+    check(G, 'CREDITS_EX = 외전 s21–s27 의 크레딧 줄 (story_ext §5.7)', ['s21', 's22', 's23', 's24', 's25', 's26', 's27'].every((k) => Array.isArray(EXM.CREDITS_EX?.[k]) && EXM.CREDITS_EX[k].length && EXM.CREDITS_EX[k].every((r) => / — /.test(r))), EXM.CREDITS_EX);
   }
 
   // ── 3. H({…}): 2부·외전·시련·여관 대본의 텍스트 객체 = 7 영웅 + default (빈 문자열 없음) ──
@@ -1084,7 +1086,7 @@ async function flowGroup() {
       T.tick(2);
       const wm = T.top();
       const r = { top: wm?.name, reveal: !!wm?.reveal, page: wm?.page, s14: st.progress.unlocked.includes('s14') };
-      // 쌓인 해금 연출을 모두 본다: s14(2부 지도) 다음 s26(7장을 깬 세이브의 1부 외전 — 악마성 Ⅰ 쪽, ex_s26.md §1). 연출 중에는 Q·탭이 막힌다
+      // 쌓인 해금 연출을 모두 본다: s14(2부 지도) 다음 s26 · s27(7장 · 10장을 깬 세이브의 1부 외전 — 악마성 Ⅰ 쪽, ex_s26.md §1 · ex_s27.md §1). 연출 중에는 Q·탭이 막힌다
       const seen = [wm.reveal?.id];
       T.until(() => { if (wm.reveal && seen[seen.length - 1] !== wm.reveal.id) seen.push(wm.reveal.id); return !wm.reveal && !wm.reveals.length; }, 14);
       r.seen = seen.join(','); r.p0 = wm.page;
@@ -1107,7 +1109,7 @@ async function flowGroup() {
       T.until(() => T.top()?.name === 'hub' && T.g.fade.dir === 0, 3);
       return { tapPage, top: T.top()?.name };
     });
-    check(G, '마을에서 지도: s14 해금 연출 → s26 해금 연출 · 2부 지도(page 1) · Q 로 지도 전환 · 탭(tab0) 전환 · 닫으면 마을', b.top === 'worldmap' && b.reveal && b.s14 && b.page === 1 && b.seen === 's14,s26' && (b.p0 === 0 || b.p0 === 1) && b.q1 === 1 - b.p0 && b.q2 === b.p0 && b.preTap === 1 && !!pt && c.tapPage === 0 && c.top === 'hub' && !errsSince(P, e1).length,
+    check(G, '마을에서 지도: s14 해금 연출 → s26 → s27 해금 연출 · 2부 지도(page 1) · Q 로 지도 전환 · 탭(tab0) 전환 · 닫으면 마을', b.top === 'worldmap' && b.reveal && b.s14 && b.page === 1 && b.seen === 's14,s26,s27' && (b.p0 === 0 || b.p0 === 1) && b.q1 === 1 - b.p0 && b.q2 === b.p0 && b.preTap === 1 && !!pt && c.tapPage === 0 && c.top === 'hub' && !errsSince(P, e1).length,
       { ...b, tab0: pt?.z ? [pt.z.x, pt.z.y, pt.z.w, pt.z.h, pt.z.k] : null, ...c, errs: errsSince(P, e1) });
   } catch (e) { check(G, '흐름 실행', false, e.stack); }
   await P?.close();
@@ -1525,7 +1527,7 @@ async function mobileGroup() {
       T.tick(10);
       g.push('worldmap', { page: 0 });
       T.tick(10);
-      // 7장을 깬 세이브는 지도를 처음 열 때 s26(1부 외전) 해금 연출이 먼저 돈다 (ex_s26.md §1) — 연출 중에는 탭이 막히므로 끝난 뒤에 누른다
+      // 7장 · 10장을 깬 세이브는 지도를 처음 열 때 s26 → s27(1부 외전) 해금 연출이 먼저 돈다 (ex_s26.md §1 · ex_s27.md §1) — 연출 중에는 탭이 막히므로 끝난 뒤에 누른다
       T.until(() => !T.top()?.reveal && !T.top()?.reveals?.length, 14);
       T.tick(10);
     });

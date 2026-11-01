@@ -1,5 +1,5 @@
 // 전경 (Stage 6 FORE) 테스트 — node 만 (가짜 캔버스): node tools/test_foreground.mjs
-//  1) 데이터: 이야기 스테이지 s01–s26(+투기장) 모두 항목이 있고, 테마가 STAGES 의 테마와 같고, 모양 이름이 모두 그릴 수 있는 것이다.
+//  1) 데이터: 이야기 스테이지 s01–s27(+투기장) 모두 항목이 있고, 테마가 STAGES 의 테마와 같고, 모양 이름이 모두 그릴 수 있는 것이다.
 //     모든 테마(THEMES)에 기본값이 있다 (마을 town 은 일부러 없음 = 그리지 않음). 패럴랙스 > 1, 알파 ≤ 0.9.
 //  2) 낮음 단계 = 그리기 0 (굽기도 0) · 동작 줄이기 = 그리기 0 · setForegroundEnabled(false) = 그리기 0.
 //  3) 중간 단계: 굽기 뒤 그리기 안에서 새 그라데이션·새 캔버스·filter 0 (프레임마다 그라데이션 없음), 보이는 조각은 그린다,
@@ -51,8 +51,8 @@ section('1) 데이터: 스테이지·테마·모양');
 const shapes = new Set(F.FG_SHAPE_NAMES);
 for (const s of D.FG_SHAPES) ok(shapes.has(s), `FG_SHAPES '${s}' has a drawer`);
 const story = STAGE_ORDER.filter((id) => /^s\d\d$/.test(id));
-ok(story.length >= 26, `story stages listed (${story.length})`);
-for (let n = 1; n <= 26; n++) {
+ok(story.length >= 27, `story stages listed (${story.length})`);
+for (let n = 1; n <= 27; n++) {
   const id = `s${String(n).padStart(2, '0')}`;
   const e = D.FG_STAGES[id];
   ok(!!e, `${id} has a foreground entry`);

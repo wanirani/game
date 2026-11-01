@@ -178,6 +178,10 @@ test('도우미·메뉴: 무작위 6 재현 · 후보가 적을 때 · 코스 �
       san: [15, 16, 17].map((c) => A.sanitizeCfg({ kind: 'bossrush', course: c }, false, null, false).course),
       seed0: A.sanitizeCfg({ rushSeed: 'bogus' }, false).rushSeed, seed1: A.sanitizeCfg({ rushSeed: 'daily' }, false).rushSeed,
       labels: [15, 16, 17].map((c) => A.courseLabel(c)), order: A.relayOrder(window.__game, 'sera'), joined: A.joinedHeroes(window.__game),
+      // 1부 외전 둘 (ex_s27 W27): 무작위 6 후보 = 아는 1부 외전의 보스 (Set · 예전 true = s26 만)
+      side2: A.random6Pool(false, false, new Set(['s26', 's27'])).filter((id) => id === 'b_paracel' || id === 'b_johan'),
+      side1: A.random6Pool(false, false, true).filter((id) => id === 'b_paracel' || id === 'b_johan'),
+      side27: A.random6Pool(false, false, ['s27']).filter((id) => id === 'b_paracel' || id === 'b_johan'),
     };
   });
   assert.ok(r.pool.length >= 13, `무작위 6 후보 = 1부 보스 13명 이상 (${r.pool.length})`);
@@ -196,6 +200,7 @@ test('도우미·메뉴: 무작위 6 재현 · 후보가 적을 때 · 코스 �
   assert.deepEqual(r.san, [15, 16, 17], '저장된 설정의 규칙 코스는 그대로 (1부만 아는 플레이어도)');
   assert.equal(r.seed0, 'random'); assert.equal(r.seed1, 'daily');
   assert.deepEqual(r.labels, ['릴레이 · 헌터 교대 6연전', '무작위 6 · 아는 보스 중 여섯', '휴식 없음 · 7~13장 보스 · 점수 ×1.5']);
+  assert.deepEqual([r.side2, r.side1, r.side27], [['b_paracel', 'b_johan'], ['b_paracel'], ['b_johan']], '무작위 6 후보: 아는 1부 외전의 보스만 (둘 · 예전 true = s26 만 · s27 만)');
   assert.deepEqual(r.joined, ['kael', 'sera', 'victor', 'bran'], '처음부터 쓸 수 있는 헌터 넷 (헌터 선택과 같은 규칙)');
   assert.deepEqual(r.order, ['sera', 'victor', 'bran', 'kael'], '릴레이 순서 = 고른 헌터부터');
   // 메뉴: 무작위 6 + 오늘의 시드 → 코스 줄 색 · 시드 줄 · 오른쪽 칸 안내 · 「기기 기록」 꼬리표

@@ -89,7 +89,7 @@ export const ACHIEVEMENTS = [
   { id: 'ch_nightmare_p2', cat: 'challenge', name: '악몽을 걷는 자', desc: '악몽 이상 난이도로 2부 엔딩을 본다', pts: 50, cond: { m: 'diffEnding', arg: { diffs: ['nightmare', 'inferno'], part: 2 }, n: 1 }, reward: { title: 't_nightmare' } },
   { id: 'ch_nodmg5', cat: 'challenge', name: '다섯 번의 무결', desc: '보스를 피해 없이 다섯 번 쓰러뜨린다', pts: 30, cond: { m: 'nodmg', n: 5 } },
   { id: 'ch_rush_perfect', cat: 'challenge', name: '무결점 러시', desc: '보스 러시 코스 하나를 모든 보스 무피해로 완주한다', pts: 50, cond: { m: 'rushPerfect', n: 1 } },
-  { id: 'ch_all', cat: 'challenge', name: '블러드 녹턴', desc: '다른 업적을 모두 달성한다', pts: 100, cond: { m: 'all', n: 67 }, reward: { title: 't_legend', deco: 'd_moon' } },
+  { id: 'ch_all', cat: 'challenge', name: '블러드 녹턴', desc: '다른 업적을 모두 달성한다', pts: 100, cond: { m: 'all', n: 68 }, reward: { title: 't_legend', deco: 'd_moon' } },   // n = 업적 수 − 1 (ex_s27: 69개)
 
   // ── 숨겨진 (7, 모두 hidden) ──
   { id: 'sc_konami', cat: 'secret', hidden: true, name: '옛 주문', desc: '타이틀 화면에서 비밀 코드를 입력한다', pts: 10, cond: { m: 'konami', n: 1 } },
