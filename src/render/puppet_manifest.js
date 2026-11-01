@@ -425,7 +425,7 @@ export const PUPPETS = {
    ]
   },
   "lia_frostcrow": {
-   "h": "49158474e53d",
+   "h": "e65fe6417687",
    "turn": true,
    "lv": [
     "hi",
