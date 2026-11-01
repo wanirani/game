@@ -203,15 +203,53 @@ try {
   await suite.group('hide', async () => {
     const vis = async (s) => Object.keys((await padLayout(s.page)).buttons);
     const tapOnce = async (s) => { const t = new Touch(s.cdp, s.page); const [W, H] = await s.eval(() => [innerWidth, innerHeight]); await t.tap(W * 0.5, H * 0.3, 30); await step(s.page, 6); await s.wait(120); };
+    // alpha-weighted mean brightness of a pad button on the #tpadcv overlay (the inner 70 % of its disc; the overlay is
+    // transparent around the buttons, so the game picture behind does not count) — same probe as tools/test_companions.mjs
+    const lumOf = (s, id) => s.eval(async (id) => {
+      const tp = (await import('/src/core/touchpad.js')).touchpad;
+      const b = tp.buttons().find((x) => x.id === id), cv = document.getElementById('tpadcv');
+      if (!b || !cv) return null;
+      const r = cv.getBoundingClientRect(), kx = cv.width / r.width, ky = cv.height / r.height;
+      const x = Math.round((b.cx - b.d * 0.35 - r.x) * kx), y = Math.round((b.cy - b.d * 0.35 - r.y) * ky), w = Math.round(b.d * 0.7 * kx), h = Math.round(b.d * 0.7 * ky);
+      const d = cv.getContext('2d').getImageData(x, y, w, h).data;
+      let lum = 0; for (let i = 0; i < d.length; i += 4) lum += (d[i] + d[i + 1] + d[i + 2]) * d[i + 3] / 255;
+      return Math.round(lum / (d.length / 4));
+    }, id);
     const a = await stagePage('phone1', { query: '' });
     await tapOnce(a.s);
     const none = await vis(a.s);
-    await suite.check({ id: 'hide.noCompanions', group: 'hide', issue: '§1.4', pkg: 'PLAT-TOUCH', title: 'no mount/guardian equipped → no 탑승/수호 buttons', session: a.s }, async () => ({ pass: !none.includes('mount') && !none.includes('guard') && none.includes('attack'), detail: none.join(' ') }));
+    const lumNone = { mount: await lumOf(a.s, 'mount'), guard: await lumOf(a.s, 'guard') };
+    // press each locked button once: nothing is summoned, the game says why in one line (CMP_TEXT.noMountOwned · noGuardOwned)
+    await a.s.eval(() => { const g = window.__game; const o = g.toast; window.__qaToasts = []; g.toast = function (t, ...r) { window.__qaToasts.push(String(t)); return o.call(this, t, ...r); }; });
+    await a.bus.clear();
+    const pressNone = {};
+    for (const id of ['mount', 'guard']) {
+      const bt = (await padLayout(a.s.page)).buttons[id];
+      if (!bt) { pressNone[id] = 'not on screen'; continue; }
+      const t = new Touch(a.s.cdp, a.s.page);
+      await t.down(61, bt.cx, bt.cy); await step(a.s.page, 3); await t.up(61); await step(a.s.page, 20);
+    }
+    const lockTxt = await a.s.eval(async () => { const { CMP_TEXT } = await import('/src/data/companions.js'); return { m: CMP_TEXT.noMountOwned, g: CMP_TEXT.noGuardOwned }; });
+    const fired = (await a.bus.read()).filter((e) => e.ev === 'mounted' || e.ev === 'guardianSkill').map((e) => e.ev);
+    const toasts = await a.s.eval(() => window.__qaToasts.slice());
+    const riding = await a.s.eval(() => !!window.__game.world.player?.mount);
+    // [s8:verifyhealth] was 'hide.noCompanions' — "no mount/guardian equipped → no 탑승/수호 buttons". That is the contract before
+    // [playb] P04 (src/core/touchpad.js shownBtn/lockedBtn, hud_mobile §3 '탑승 가능할 때만 밝게'): the two buttons now always keep
+    // their place (the layout does not jump) and are drawn at 40 % with a padlock when nothing is equipped; pressing one shows the
+    // reason (game/companions.js note → CMP_TEXT.noMountOwned · noGuardOwned). tools/test_companions.mjs mobile was updated for the
+    // same change in Stage 8 (healtht). The same situation is checked against today's contract: the buttons stay, are clearly
+    // darker than with a mount + guardian equipped (session b below), fire nothing and show the reason.
     await suite.errors({ id: 'hide.stage.errors', group: 'hide' }, a.s);
     await a.s.close();
     const b = await stagePage('phone1');
     await tapOnce(b.s);
     const both = await vis(b.s);
+    await readyGuards(b.s); await step(b.s.page, 4); await b.s.wait(300);
+    const lumWith = { mount: await lumOf(b.s, 'mount'), guard: await lumOf(b.s, 'guard') };
+    const dim = (k) => lumNone[k] != null && lumWith[k] != null && lumNone[k] < lumWith[k] * 0.75;
+    await suite.check({ id: 'hide.noCompanions.locked', group: 'hide', issue: '§1.4', pkg: 'PLAT-TOUCH', title: 'no mount/guardian equipped → 탑승/수호 stay in place, locked (dim), fire nothing and say why (P04)', session: b.s },
+      async () => ({ pass: none.includes('attack') && none.includes('mount') && none.includes('guard') && dim('mount') && dim('guard') && !fired.length && !riding && toasts.includes(lockTxt.m) && toasts.includes(lockTxt.g) && !Object.keys(pressNone).length,
+        detail: `buttons ${none.join(' ')} · lum mount ${lumNone.mount} vs ${lumWith.mount} equipped, guard ${lumNone.guard} vs ${lumWith.guard} · fired [${fired.join(',')}] riding ${riding} · toasts ${JSON.stringify(toasts)}${Object.keys(pressNone).length ? ' · ' + JSON.stringify(pressNone) : ''}` }));
     await suite.check({ id: 'hide.withCompanions', group: 'hide', issue: '§1.4', pkg: 'PLAT-TOUCH', title: 'mount + guardian equipped → 탑승 and 수호 shown', session: b.s }, async () => ({ pass: both.includes('mount') && both.includes('guard'), detail: both.join(' ') }));
     await b.s.close();
     const h = await env.page('phone1', `index.html?scene=hub&${CMP_Q}`, { settings: { quality: 'low' } });
