@@ -10,6 +10,7 @@ import { TAU } from '../core/math.js';
 import { FONT, font, textFloor } from '../core/ui.js';
 import { ICON_FALLBACK } from '../data/item_icons.js';
 
+let POWERUP_G = null;   // 'powerup' 대체 아이콘의 그라디언트 (한 번 만든다) [s8:healthp]
 const RARITY_GLOW = ['rgba(0,0,0,0)', '#6fe07a', '#5aa8ff', '#c07cff', '#ffa640', '#ff4a5a'];
 
 /**
@@ -239,9 +240,9 @@ function fallbackIcon(ctx, id, cx, cy, s) {
       break;
     case 'powerup': {
       ctx.globalCompositeOperation = 'lighter';
-      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 16);
-      g.addColorStop(0, '#fff'); g.addColorStop(0.4, '#ffb040'); g.addColorStop(1, 'rgba(255,40,0,0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 16, 0, TAU); ctx.fill();
+      // 늘 같은 그라디언트 (아이콘 지역 좌표) → 한 번만 [s8:healthp] (예전: 필드에 떨어진 강화 구슬이 보이는 동안 매 프레임 새로 — perf_budget s27r4 grad p50 1)
+      if (!POWERUP_G) { POWERUP_G = ctx.createRadialGradient(0, 0, 0, 0, 0, 16); POWERUP_G.addColorStop(0, '#fff'); POWERUP_G.addColorStop(0.4, '#ffb040'); POWERUP_G.addColorStop(1, 'rgba(255,40,0,0)'); }
+      ctx.fillStyle = POWERUP_G; ctx.beginPath(); ctx.arc(0, 0, 16, 0, TAU); ctx.fill();
       break;
     }
     case 'oneup':

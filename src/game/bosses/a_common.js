@@ -329,9 +329,14 @@ export class Telegraph extends Entity {
         const r = this.r ?? 40, flat = this.type === 'circle' ? 0.28 : 1;
         ctx.translate(this.px, this.py); ctx.scale(1, flat);
         ctx.globalCompositeOperation = 'lighter';
-        const rr = Math.max(1, Math.round(r)), bq = q8(blink);
-        ctx.fillStyle = cRad(ctx, 'tr' + col + rr + '|' + bq, rr, [0, rgba(col, 0.05), 0.8, rgba(col, 0.2 + 0.2 * bq), 1, rgba(col, 0.5)]);
-        ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+        // [s8:healthp] 단위 반지름 그라디언트 둘(색마다): 바탕 [0.05, 0.2, 0.5] + 깜박임 몫 [0, 0.2, 0] × bq (globalAlpha). 'lighter' 라 두 번
+        // 칠한 합이 예전 한 장 [0.05, 0.2 + 0.2·bq, 0.5] 과 같다. 예전 키 (색, 반지름, 깜박임 8단계)는 원이 깜박이는 동안 새로 만들었다
+        const rr = Math.max(1, r), bq = q8(blink);
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU);
+        ctx.save(); ctx.scale(rr, rr);
+        ctx.fillStyle = cRad(ctx, 'trU' + col, 1, [0, rgba(col, 0.05), 0.8, rgba(col, 0.2), 1, rgba(col, 0.5)]); ctx.fill();
+        if (bq > 0) { ctx.globalAlpha *= bq; ctx.fillStyle = cRad(ctx, 'trB' + col, 1, [0, rgba(col, 0), 0.8, rgba(col, 0.2), 1, rgba(col, 0)]); ctx.fill(); }
+        ctx.restore();
         ctx.strokeStyle = rgba(col, 0.95); ctx.lineWidth = 3 / Math.sqrt(flat); ctx.stroke();
         ctx.strokeStyle = rgba('#ffffff', 0.8); ctx.lineWidth = 2 / Math.sqrt(flat);
         ctx.beginPath(); ctx.arc(0, 0, r * (2 - k), 0, TAU); ctx.stroke();

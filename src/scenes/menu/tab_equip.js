@@ -689,8 +689,10 @@ function sumLayout(c, L, MW, y0, SR, twoOnly = false) {
     if (out.scrollH <= vh) out.scrollH = vh;
     return out;
   }
+  // 칸 전체를 스크롤하는 좁은 칸(휴대폰): 능력치 표도 한 열 — 2열이면 아주 크게에서 이름이 「치…」처럼 잘린다 (스크롤하므로 줄 수는 상관없다)
   out.mode = 'all';
   out.VR = SR;
-  out.scrollH = statY + statsH(out.perCol, rowS) - SR.y;
+  Object.assign(out, { two: false, perCol: n, rowS });
+  out.scrollH = statY + statsH(n, rowS) - SR.y;
   return out;
 }

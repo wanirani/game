@@ -502,15 +502,16 @@ function drawChainPts(ctx, pts, k, t) {
   glow(ctx, e.x, e.y, 22, TEAL, 0.3 + 0.4 * k);
   ctx.restore();
 }
+let CHAIN_G = null;   // drawChainBeam 띠 그라디언트 (한 번) [s8:healthp]
 function drawChainBeam(ctx, b, k) {
   const dx = b.x1 - b.x0, dy = b.y1 - b.y0, L = Math.hypot(dx, dy);
   const ext = clamp((b.t - b.warn) / 0.1, 0, 1), len = L * ext;
   ctx.translate(b.x0, b.y0); ctx.rotate(Math.atan2(dy, dx));
   ctx.globalAlpha *= k;
   ctx.globalCompositeOperation = 'lighter';
-  const g = ctx.createLinearGradient(0, -14, 0, 14);
-  g.addColorStop(0, 'rgba(90,255,208,0)'); g.addColorStop(0.5, 'rgba(90,255,208,0.35)'); g.addColorStop(1, 'rgba(90,255,208,0)');
-  ctx.fillStyle = g; ctx.fillRect(0, -14, len, 28);
+  // 늘 같은 그라디언트 (빔 지역 좌표) → 한 번만 [s8:healthp] (예전: 사슬 빔이 보이는 동안 매 프레임 새로 — perf_budget s02boss a_banshee.js ×92/60 프레임)
+  ctx.fillStyle = CHAIN_G ??= (() => { const g = ctx.createLinearGradient(0, -14, 0, 14); g.addColorStop(0, 'rgba(90,255,208,0)'); g.addColorStop(0.5, 'rgba(90,255,208,0.35)'); g.addColorStop(1, 'rgba(90,255,208,0)'); return g; })();
+  ctx.fillRect(0, -14, len, 28);
   ctx.globalCompositeOperation = 'source-over';
   for (let x = 0; x < len; x += 13) {
     const odd = Math.round(x / 13) % 2;

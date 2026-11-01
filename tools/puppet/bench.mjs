@@ -1,5 +1,7 @@
 // 영웅 그리기 시간 벤치마크: 채색 퍼펫 vs 벡터 인형 (같은 자세·같은 변환·역광 패스 포함)
-// node tools/puppet/bench.mjs [--n 400] [--scale 2] [--cls kael_hunter] [--q high|medium|low (world.qualityNow)] [--modes puppet,vector]
+// node tools/puppet/bench.mjs [--n 400] [--scale 2] [--cls kael_hunter] [--asc kael_grandtemplar] [--q high|medium|low (world.qualityNow)] [--modes puppet,vector]
+//   --asc <초월·비전 id> (s8): 2차 --cls 위에 그 초월 look + lookTop (전용 원화가 있으면 그것, 없으면 2차 원화 + 덧칠). 캐릭터 = --cls 접두어
+//   --parent-art: --asc 와 함께 — 전용 원화 대신 2차 원화 + lookTop 덧칠(전용 원화가 없거나 못 받았을 때의 경로)로 재서 비교
 //   world.player = 그리는 영웅 (조종 중인 영웅 경로: 메시 관절·잔상 — heroes.md)
 // 게임 화면과 같은 조건: 1920×1080 캔버스, 논리→장치 배율 2 (1280×720 @ DPR 1.5), HERO_DRAW_SCALE, world 전달(역광 테두리 켬)
 import { chromium } from 'playwright-core';
@@ -14,25 +16,34 @@ const errs = [];
 page.on('pageerror', (e) => errs.push(e.message));
 await page.goto(`http://localhost:${port}/tools/gallery_hero.html?sec=none`);
 await page.waitForFunction('window.__ready', null, { timeout: 60000 });
-const res = await page.evaluate(async ({ N, SC, cls, Q, MODES }) => {
+const res = await page.evaluate(async ({ N, SC, cls, asc, parentArt, Q, MODES }) => {
   const H = await import('/src/render/hero.js');
   const { CHARACTERS } = await import('/src/data/characters.js');
   const { classChain } = await import('/src/data/classes.js');
   const { MOVESETS } = await import('/src/data/movesets.js');
   const cv = document.createElement('canvas'); cv.width = 1920; cv.height = 1080;
   const ctx = cv.getContext('2d');
-  const look = structuredClone(CHARACTERS.kael.look);
+  const cid = cls.split('_')[0], CH = CHARACTERS[cid];
+  const look = structuredClone(CH.look);
   for (const c of classChain(cls)) Object.assign(look, structuredClone(c.look || {}));
-  look.weapon = { type: 'whip', style: 3, level: 7, rarity: 2 };
+  look.classId = cls; look.asc = null;
+  if (asc) {   // stats.js composeLook 과 같은 순서: 계보 look ← 초월 look → lookTop (장비 없음)
+    const { ASCENSIONS, TOP_KEYS } = await import('/src/data/ascensions.js');
+    const A = ASCENSIONS[asc];
+    Object.assign(look, structuredClone(A.look || {})); look.asc = parentArt ? null : asc;   // --parent-art: 예전 경로(2차 원화 + lookTop 덧칠)와 비교
+    for (const k of TOP_KEYS) if (A.lookTop && Object.hasOwn(A.lookTop, k)) { const v = A.lookTop[k]; if (k === 'capeColor2') { if (look.cape) look.cape = { ...look.cape, color2: v }; } else look[k] = v && typeof v === 'object' ? structuredClone(v) : v; }
+  }
+  look.weapon = { type: CH.weaponType || 'whip', style: 3, level: 7, rarity: 2 };
   const world = { time: 0, qualityNow: () => Q, player: null };
-  const mk = () => ({ look, ch: CHARACTERS.kael, facing: 1, anim: 'idle', animT: 0, move: null, moveT: 0, vx: 0, vy: 0, onGround: true, rig: {}, t: 0, stats: { reach: 0 }, charging: 0, muzzleT: 0, cx: 480, bottom: 400 });
+  const mk = () => ({ look, ch: CH, facing: 1, anim: 'idle', animT: 0, move: null, moveT: 0, vx: 0, vy: 0, onGround: true, rig: {}, t: 0, stats: { reach: 0 }, charging: 0, muzzleT: 0, cx: 480, bottom: 400 });
   // 퍼펫 로드 대기
-  H.preloadPuppet('kael', cls);
-  for (let i = 0; i < 200; i++) { const s = H.puppetStatus()['kael/' + cls]; if (s && s.state === 1 && s.levels.every((x) => x.endsWith('✓'))) break; ctx.setTransform(SC, 0, 0, SC, 0, 0); H.drawHero(ctx, mk(), world, {}); await new Promise((r) => setTimeout(r, 30)); }
+  H.preloadPuppet(cid, cls, asc);
+  const pk = cid + '/' + (asc && !parentArt && (await import('/src/render/puppet_manifest.js')).PUPPETS[cid]?.[asc] ? asc : cls);
+  for (let i = 0; i < 200; i++) { const s = H.puppetStatus()[pk]; if (s && s.state === 1 && s.levels.every((x) => x.endsWith('✓'))) break; ctx.setTransform(SC, 0, 0, SC, 0, 0); H.drawHero(ctx, mk(), world, {}); await new Promise((r) => setTimeout(r, 30)); }
   const cases = {
     idle: (p, t) => { p.anim = 'idle'; p.animT = t; },
     run: (p, t) => { p.anim = 'run'; p.animT = t; p.vx = 275; },
-    attack: (p, t) => { const m = MOVESETS.whip.ground[0]; p.move = m; p.moveT = (t * 0.7) % m.dur; p.anim = m.anim; },
+    attack: (p, t) => { const m = MOVESETS[look.weapon.type].ground[0]; p.move = m; p.moveT = (t * 0.7) % m.dur; p.anim = m.anim; },
     jump: (p, t) => { p.anim = 'jump'; p.onGround = false; p.vy = -400; },
   };
   const out = {};
@@ -53,7 +64,7 @@ const res = await page.evaluate(async ({ N, SC, cls, Q, MODES }) => {
   }
   H.setPuppetEnabled(true);
   return out;
-}, { N: Number(opt('n', 300)), SC: Number(opt('scale', 2)), cls: opt('cls', 'kael_hunter'), Q: opt('q', 'high'), MODES: String(opt('modes', 'puppet,vector')).split(',') });
+}, { N: Number(opt('n', 300)), SC: Number(opt('scale', 2)), cls: opt('cls', 'kael_hunter'), asc: opt('asc', null), parentArt: argv.includes('--parent-art'), Q: opt('q', 'high'), MODES: String(opt('modes', 'puppet,vector')).split(',') });
 console.table(res);
 if (errs.length) console.log('ERRORS', errs);
 await browser.close(); srv.close();
