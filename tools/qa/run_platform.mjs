@@ -7,7 +7,7 @@
 //
 // Suites: pad (platform_pad), bind (platform_bind: awaken/mount/guard on keyboard, pad and touch + every canvas button,
 //         stepped), touch (platform_touch + the --layout matrix), view (platform_view without its pwa group),
-//         menu (platform_menu), pwa (platform_pwa), load (platform_load; --dist when dist/web exists),
+//         menu (platform_menu + menu_setlines: equip set lines · record side cells at 3 text sizes), pwa (platform_pwa), load (platform_load; --dist when dist/web exists),
 //         turntable (tools/qa/turntable.mjs when PLAT-TURNTABLE has added it).
 // Reports: /tmp/claude-0/qa/platform/<suite>.json and summary.json (red checks by issue and by owning package: a
 // W1/W2 package that runs the whole suite reads its own rows). Exit 1 when any check is red (fail/error).
@@ -35,6 +35,7 @@ const SUITES = [
   { key: 'touch', file: 'platform_touch.mjs', extra: ['--layout', '--only', 'matrix'], report: 'platform_touch_layout.json' },
   { key: 'view', file: 'platform_view.mjs', extra: ['--skip', 'pwa'], report: 'platform_view.json' },
   { key: 'menu', file: 'platform_menu.mjs', report: 'platform_menu.json' },
+  { key: 'menu', file: 'menu_setlines.mjs', report: 'menu_setlines.json' },   // [s8:healthp] 장비 탭 세트 줄 · 기록 탭 외전 칸 (글자 크기 3단계)
   { key: 'pwa', file: 'platform_pwa.mjs', report: 'platform_pwa.json' },
   { key: 'load', file: 'platform_load.mjs', extra: dist ? ['--dist'] : [], report: dist ? 'platform_load_dist.json' : 'platform_load.json' },
   { key: 'turntable', file: 'turntable.mjs', report: null, optional: true },

@@ -399,7 +399,7 @@ export class EquipTab extends Tab {
     const sy0 = A.y + sh + 10;
     const SR = { x: MX + 4, y: sy0, w: MW - 8, h: Math.max(1, sBot - 4 - sy0) };
     // 배치는 (세트 줄 글, 칸, 글자 하한)이 바뀔 때만 다시 잰다 — 접기(wrapSetLines)의 글자 재기를 매 프레임 하지 않게
-    const layK = `${setL.map((l) => l.text + l.color).join(';')}|${MW}|${sh}|${SR.y}|${SR.h}|${textFloor()}|${fontEpoch ?? 0}`;
+    const layK = `${setL.map((l) => l.text + l.color).join(';')}|${MW}|${sh}|${SR.x}|${SR.y}|${SR.h}|${textFloor()}|${fontEpoch ?? 0}`;
     if (this._layM?.k !== layK) this._layM = { k: layK, v: sumLayout(ctx, setL, MW, A.y + sh + 32, SR) };
     const lay = this._layM.v;
     const VR = lay.VR;   // 스크롤 칸 ('pin': 세트 줄만 · 'all': 칸 전체 · 'fit': 없음)
