@@ -53,9 +53,9 @@ export const PORTRAIT_META = {
   'portraits/b_banshee': { bust: true, face: { x: 0.43, y: 0.4, s: 0.36 } },
   'portraits/b_behemoth': { bust: true, face: { x: 0.37, y: 0.33, s: 0.24 } },   // s7 portrait: 채색 다시 그림 (여왕 얼굴)
   'portraits/b_bonedragon': { bust: true, face: { x: 0.27, y: 0.31, s: 0.32 } },
-  'portraits/b_bride': { bust: true, face: { x: 0.458, y: 0.334, s: 0.293 } },
+  'portraits/b_bride': { bust: true, face: { x: 0.37, y: 0.3, s: 0.24 } },   // s7 verifyart: 채색 다시 그림 (시든 신부 2 와 같은 그림체)
   'portraits/b_bride2': { bust: true, face: { x: 0.42, y: 0.33, s: 0.3 } },   // s7 portrait: 채색 다시 그림 (해골 노파)
-  'portraits/b_chaos': { bust: true, face: { x: 0.18, y: 0.33, s: 0.25 } },
+  'portraits/b_chaos': { bust: true, face: { x: 0.29, y: 0.35, s: 0.3 } },   // s7 verifyart: 채색 다시 그림
   'portraits/b_charon': { bust: true, face: { x: 0.454, y: 0.334, s: 0.292 } },
   'portraits/b_paracel': { bust: true, face: { x: 0.586, y: 0.332, s: 0.33 } },   // 외전 s26 (CH26-B) — 고글/눈 460,290 · 턱 430,445 (768×1024)
   'portraits/b_johan': { bust: true, face: { x: 0.462, y: 0.219, s: 0.3 } },   // 외전 Ⅱ s27 (EX-BOSS, Higgsfield) — 투구 앞 창 355,224 (768×1024)
@@ -63,7 +63,7 @@ export const PORTRAIT_META = {
   'portraits/b_colossus': { bust: true, face: { x: 0.39, y: 0.22, s: 0.18 } },
   'portraits/b_crimson': { bust: true, face: { x: 0.34, y: 0.26, s: 0.2 } },
   'portraits/b_dagon': { bust: true, face: { x: 0.38, y: 0.35, s: 0.35 } },
-  'portraits/b_death': { bust: true, face: { x: 0.39, y: 0.378, s: 0.339 } },
+  'portraits/b_death': { bust: true, face: { x: 0.6, y: 0.36, s: 0.24 } },   // s7 verifyart: 채색 다시 그림 (두건 해골)
   'portraits/b_dracula': { bust: true, face: { x: 0.34, y: 0.29, s: 0.3 } },   // s7 portrait: 채색 다시 그림
   'portraits/b_dracula2': { bust: true, face: { x: 0.3, y: 0.374, s: 0.295 } },
   'portraits/b_dullahan': { bust: true, face: { x: 0.45, y: 0.22, s: 0.2 } },

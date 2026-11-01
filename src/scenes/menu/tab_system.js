@@ -203,7 +203,8 @@ export class SystemTab extends Tab {
       ctx.fillStyle = c ? (part2 ? 'rgba(48,18,70,0.9)' : 'rgba(60,14,28,0.9)') : 'rgba(14,8,14,0.9)'; ctx.fill();
       ctx.strokeStyle = c ? (part2 ? '#a878e8' : PAL.goldMid) : open ? PAL.goldDim : '#2e2428'; ctx.lineWidth = 1; ctx.stroke();
       const side = !!D.STAGES()[sid]?.side;
-      text(ctx, side ? '외전' : String(D.stageChapter(sid) ?? k + 1), cx + mw / 2, y + 13, { size: side ? 9 : 10, align: 'center', weight: 800, family: side ? FONT.body : FONT.num, color: c ? PAL.dim : PAL.faint, ow: 2, maxWidth: mw - 2 });
+      // 1부 외전이 둘(s26 · s27)이라 칸 머리를 sideLabel 로 가른다 (「외전 Ⅰ」 · 「외전 Ⅱ」 — VERIFY-EX, ex_s27.md W30). 2부 외전은 sideLabel 이 없어 「외전」 그대로
+      text(ctx, side ? (D.STAGES()[sid]?.sideLabel ?? '외전') : String(D.stageChapter(sid) ?? k + 1), cx + mw / 2, y + 13, { size: side ? 9 : 10, align: 'center', weight: 800, family: side ? FONT.body : FONT.num, color: c ? PAL.dim : PAL.faint, ow: 2, maxWidth: mw - 2 });
       const my = y + boxH * 0.66;
       if (c?.rank) {
         const col = RANK_COL[c.rank] ?? PAL.bone;

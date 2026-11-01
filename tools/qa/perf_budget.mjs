@@ -2,6 +2,7 @@
 //
 //   node tools/qa/perf_budget.mjs [--profiles desk,phone1low,phone1,phone2,tablet,fold,fhd2x] [--quick] [--scenes s05,s17r1,…]
 //                                 [--frames 60] [--throttle 4]
+//   --scenes also takes any stage room as sNNrX / sNNboss (e.g. s27r4,s27boss — side stages are outside the full run)
 //
 // Deterministic counts: each page runs with the game loop frozen (lib/step.mjs); every measured frame is one game step
 // followed by one counted render (lib/perfprobe.mjs). Counts do not depend on the machine load; real render times are
@@ -52,6 +53,7 @@ import { gotoRoom, waitBakes, enterFight, prepWorld, idleFlush } from './lib/roo
 import { perfProbeInit, measureFrames, stats } from './lib/perfprobe.mjs';
 import { Checks, writeReport, parseFlags, list } from './lib/report.mjs';
 import { ownerOf } from './lib/owners.mjs';
+import { STAGES as STAGE_DEFS } from '../../src/data/stages.js';   // --scenes sNNrX / sNNboss for stages outside the s01–s20 full run (외전 s21–s27)
 
 const args = parseFlags();
 const C = new Checks(false);
@@ -121,6 +123,12 @@ function sceneList() {
   }
   const only = list(args.scenes, null);
   if (!only) return out;
+  // any stage room by id (s27r1, s26r4, s27boss …): the full run keeps s01–s20, but a side stage can be measured on demand
+  // (VERIFY-EX Stage 7 — EX-BOSS had to copy this tool to /dev/shm to measure s27)
+  for (const x of only) {
+    const m = /^(s\d\d)(r\d+|boss)$/.exec(x);
+    if (m && !out.some((s) => s.id === x) && STAGE_DEFS[m[1]]?.rooms?.[m[2]]) out.push({ id: x, kind: m[2] === 'boss' ? 'boss' : 'room', stage: m[1], room: m[2] });
+  }
   const bad = only.filter((x) => !out.some((s) => s.id === x));
   if (bad.length) { console.error(`unknown --scenes ${bad.join(', ')}${QUICK ? ' (not in the --quick list)' : ''} (known: ${out.map((s) => s.id).join(', ')})`); process.exit(2); }
   return out.filter((s) => only.includes(s.id));

@@ -1,18 +1,118 @@
 {
-  "batch": "verifyart (Stage 7 art-lane verifier fixes)",
-  "date": "2026-11-01",
-  "model": "gpt_image_2_5",
-  "references": {
-    "ref_bottles.png": "3-icon strip m_ectoplasm · m_blood · m_dream (assets/icons, Stage 7 painted) on #26222b — media f45dd3f6-d207-4a57-99f6-886b4c776c94",
-    "ref_acc.png": "3-icon strip u_paracel · u_chaos · u_goldbat (assets/icons, Stage 7 painted) on #26222b — media f4e7a721-e581-4b8b-b632-347561420743"
+ "batch": "verifyart (Stage 7 art-lane verifier fixes)",
+ "date": "2026-11-01",
+ "model": "gpt_image_2_5",
+ "references": {
+  "ref_bottles.png": "3-icon strip m_ectoplasm · m_blood · m_dream (assets/icons, Stage 7 painted) on #26222b — media f45dd3f6-d207-4a57-99f6-886b4c776c94",
+  "ref_acc.png": "3-icon strip u_paracel · u_chaos · u_goldbat (assets/icons, Stage 7 painted) on #26222b — media f4e7a721-e581-4b8b-b632-347561420743"
+ },
+ "keying": "u_johan: tools/higgsfield/key_green.py --size 128; m_spore: magenta (#FF00FF) twin of key_green (alpha from min(r,b)-g, same ramp/despill), pad 0.13 (squat jar would otherwise fill the cell). Both quantized like the icons batch: PIL FASTOCTREE 256 + optimize → 128×128 P-mode PNG",
+ "items": [
+  {
+   "file": "assets/icons/m_spore.png",
+   "why": "icons batch m_spore was a dark round flask nearly identical to m_void (공허 정수) at 40–56 px; redrawn as a wide sealed jar with sickly yellow-green spores",
+   "prompt": "single game inventory icon in the same painted dark-fantasy style as the references: small squat sealed glass specimen jar (wide, not a round potion flask), wax-sealed cork tied with twine, clumps of pale mushroom spores and sickly yellow-green glowing spore dust, tiny fungal caps inside the glass … no text, no border, no frame, plain flat solid #FF00FF magenta background",
+   "job_id": "33ec21db-c13f-42fb-9ca7-176eaec1f206",
+   "credits": 0.25,
+   "kept": true
   },
-  "keying": "u_johan: tools/higgsfield/key_green.py --size 128; m_spore: magenta (#FF00FF) twin of key_green (alpha from min(r,b)-g, same ramp/despill), pad 0.13 (squat jar would otherwise fill the cell). Both quantized like the icons batch: PIL FASTOCTREE 256 + optimize → 128×128 P-mode PNG",
-  "items": [
-    { "file": "assets/icons/m_spore.png", "why": "icons batch m_spore was a dark round flask nearly identical to m_void (공허 정수) at 40–56 px; redrawn as a wide sealed jar with sickly yellow-green spores", "prompt": "single game inventory icon in the same painted dark-fantasy style as the references: small squat sealed glass specimen jar (wide, not a round potion flask), wax-sealed cork tied with twine, clumps of pale mushroom spores and sickly yellow-green glowing spore dust, tiny fungal caps inside the glass … no text, no border, no frame, plain flat solid #FF00FF magenta background", "job_id": "33ec21db-c13f-42fb-9ca7-176eaec1f206", "credits": 0.25, "kept": true },
-    { "file": null, "why": "m_spore alternative (screw-lid jar with spore mist)", "prompt": "plague spore jar — short wide cylindrical glass jar, rusted iron screw lid, cracked wax seal, lumpy pale fungus, glowing yellow-green spores, wisp of spore mist … #FF00FF magenta background", "job_id": "e98f01a8-efa4-4633-8496-36a33ec48e98", "credits": 0.25, "kept": false },
-    { "file": "assets/icons/u_johan.png", "why": "EX-STAGE request (requests.md 04:05): s27 boss drop 「수문지기의 등불」 was the only unique on a generic icon (amulet_6)", "prompt": "single game inventory icon in the same painted dark-fantasy style as the references: dented old brass diver's oil lantern (chest lamp of an antique deep-sea diving suit), thick round glass lens, brass cage bars, warm amber flame, wet dark-teal glints and verdigris, short loop handle with a small iron ring tied to it … no text, no border, no frame, plain flat solid #00FF00 green background", "job_id": "8c7c504a-fa90-47cb-bb2c-7869269b378d", "credits": 0.25, "kept": true },
-    { "file": null, "why": "u_johan alternative (porthole gatekeeper lantern)", "prompt": "battered brass gatekeeper's lantern from a sunken lock, porthole glass front, riveted brass frame and cage bars, golden-amber flame, water droplets and verdigris, ring handle with an iron ring tied on … #00FF00 green background", "job_id": "78e17138-4b21-4e84-a057-ea1660136011", "credits": 0.25, "kept": false }
-  ],
-  "images": 4,
-  "credits": 1.0
+  {
+   "file": null,
+   "why": "m_spore alternative (screw-lid jar with spore mist)",
+   "prompt": "plague spore jar — short wide cylindrical glass jar, rusted iron screw lid, cracked wax seal, lumpy pale fungus, glowing yellow-green spores, wisp of spore mist … #FF00FF magenta background",
+   "job_id": "e98f01a8-efa4-4633-8496-36a33ec48e98",
+   "credits": 0.25,
+   "kept": false
+  },
+  {
+   "file": "assets/icons/u_johan.png",
+   "why": "EX-STAGE request (requests.md 04:05): s27 boss drop 「수문지기의 등불」 was the only unique on a generic icon (amulet_6)",
+   "prompt": "single game inventory icon in the same painted dark-fantasy style as the references: dented old brass diver's oil lantern (chest lamp of an antique deep-sea diving suit), thick round glass lens, brass cage bars, warm amber flame, wet dark-teal glints and verdigris, short loop handle with a small iron ring tied to it … no text, no border, no frame, plain flat solid #00FF00 green background",
+   "job_id": "8c7c504a-fa90-47cb-bb2c-7869269b378d",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "file": null,
+   "why": "u_johan alternative (porthole gatekeeper lantern)",
+   "prompt": "battered brass gatekeeper's lantern from a sunken lock, porthole glass front, riveted brass frame and cage bars, golden-amber flame, water droplets and verdigris, ring handle with an iron ring tied on … #00FF00 green background",
+   "job_id": "78e17138-4b21-4e84-a057-ea1660136011",
+   "credits": 0.25,
+   "kept": false
+  }
+ ],
+ "images": 10,
+ "credits": 2.5,
+ "portrait_references": {
+  "d_bride.png": "tools/painted/raw/b_bride full_a + props_a (bottom 9% cropped: Kling watermark) — media 39c69643-9ea3-4a5f-b918-c736b337b59f",
+  "d_death.png": "tools/painted/raw/b_death hood_a + torso_a + scythe_a (watermark cropped) — media aaaf4252-a136-4dc8-8bff-77174e224382",
+  "d_chaos.png": "tools/painted/raw/b_chaos head_a + body_a (watermark cropped) — media 5536cd11-985b-4b98-9930-5205c02409c2",
+  "s_human.png": "style strip b_bride2 · b_dracula · b_frostqueen (Stage 7 painted portraits) — media c2288512-ab37-4527-992e-88fb2a3bcb04",
+  "s_death.png": "style strip b_bride2 · b_charon · b_nightwing — media 3e48cff8-c22c-4b15-a5fb-2bc1b7dcbd40",
+  "s_creature.png": "style strip b_nightwing · b_dagon · b_moloch — media d089db00-87ec-4d14-8b18-45fac2e498c3"
+ },
+ "portrait_keying": "880x1168 (3:4) → key (bride/chaos: key_green.key; death: magenta twin, design has green eye-fire) → centre crop 3:4 → 768x1024 RGBA → WebP q80 m6 alpha_quality 70 (same as portrait lane) → lo copy by tools/assets/make_variants.py. b_bride: the sheer veil was painted dark olive over the green screen → dark pixels with g ≥ r and g > b had green pulled to (r+b)/2 (fades out above max channel 150).",
+ "portrait_prompt_template": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (style strip of painted boss portraits): hand-painted digital oil painting, textured brushwork, muted desaturated colours, soft key light, deep shadows; no line art, no anime, no cel shading. The character is <X> exactly as in the first reference image: <design>. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background (#FF00FF for Death)",
+ "portraits": [
+  {
+   "file": "assets/portraits/b_bride.webp",
+   "why": "b_bride (phase 1, anime) is shown in the same chapter-24 story/fight as the Stage 7 painted b_bride2 — mixed styles",
+   "design": "pale gothic bride, long black hair, red rose crown, sheer black lace veil, black lace choker, crimson satin off-shoulder gown, golden chalice",
+   "job_id": "9c457add-cabf-474d-965e-7df51e646c16",
+   "credits": 0.25,
+   "kept": true,
+   "face": {
+    "x": 0.37,
+    "y": 0.3,
+    "s": 0.24
+   }
+  },
+  {
+   "file": null,
+   "why": "b_bride alternative (chalice raised)",
+   "job_id": "ef388f2b-ed44-4ce4-baa8-f879cb14e2ff",
+   "credits": 0.25,
+   "kept": false
+  },
+  {
+   "file": null,
+   "why": "b_death alternative (smaller skull)",
+   "job_id": "26472b95-3e56-4d44-bdba-0e1b3468a455",
+   "credits": 0.25,
+   "kept": false
+  },
+  {
+   "file": "assets/portraits/b_death.webp",
+   "why": "arcade Boss Rush card shows Stage 7 painted Nightwing next to cel-shaded Death and Chaos",
+   "design": "cracked ivory skull in a ragged spiked black hood, green ghost-fire eyes, ribcage glowing green, scythe with golden spined bone shaft",
+   "job_id": "1053d676-e7a8-4661-bc08-06e23b54d1d6",
+   "credits": 0.25,
+   "kept": true,
+   "face": {
+    "x": 0.6,
+    "y": 0.36,
+    "s": 0.24
+   }
+  },
+  {
+   "file": null,
+   "why": "b_chaos alternative (smaller head)",
+   "job_id": "5eb0e11d-e76c-424f-85ec-f9f4b49cab11",
+   "credits": 0.25,
+   "kept": false
+  },
+  {
+   "file": "assets/portraits/b_chaos.webp",
+   "why": "same Boss Rush card",
+   "design": "spiked crown head of black obsidian shards, cluster of violet eyes, pink-glowing fanged maw, spiked black shoulder plates with violet lights, tentacles",
+   "job_id": "82b4a6cc-f0a1-4415-a556-a62384240377",
+   "credits": 0.25,
+   "kept": true,
+   "face": {
+    "x": 0.29,
+    "y": 0.35,
+    "s": 0.3
+   }
+  }
+ ]
 }

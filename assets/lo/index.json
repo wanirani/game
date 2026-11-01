@@ -724,11 +724,11 @@
    "srcBytes": 116270
   },
   "portraits/b_bride.webp": {
-   "src": "c39d1d180bfa",
+   "src": "c36f166b9b54",
    "w": 461,
    "h": 614,
-   "bytes": 48356,
-   "srcBytes": 100196
+   "bytes": 31774,
+   "srcBytes": 80408
   },
   "portraits/b_bride2.webp": {
    "src": "bfeafe390748",
@@ -738,11 +738,11 @@
    "srcBytes": 87108
   },
   "portraits/b_chaos.webp": {
-   "src": "cbbebbcc9bae",
+   "src": "99f19328713e",
    "w": 461,
    "h": 614,
-   "bytes": 42192,
-   "srcBytes": 76492
+   "bytes": 50998,
+   "srcBytes": 113710
   },
   "portraits/b_charon.webp": {
    "src": "723f4b274378",
@@ -780,11 +780,11 @@
    "srcBytes": 138496
   },
   "portraits/b_death.webp": {
-   "src": "7c91a7844e03",
+   "src": "3e686220094d",
    "w": 461,
    "h": 614,
-   "bytes": 47388,
-   "srcBytes": 82226
+   "bytes": 51828,
+   "srcBytes": 118984
   },
   "portraits/b_dracula.webp": {
    "src": "aa8eb9c11851",
