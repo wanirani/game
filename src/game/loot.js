@@ -1,7 +1,7 @@
 // 드롭 테이블. 반환 형식: [{type, data}] → world.spawnPickup(type, x, y, data)
 //  type: 'heart'{value} | 'gold'{amount} | 'food'{heal, icon} | 'item'{item} | 'sub'{id} | 'powerup'{id} | 'oneup' | 'mp'{amount}
 //  rollCandleLoot(world, big) / rollEnemyLoot(world, enemy) / rollChestLoot(world, contents) / rollBossLoot(world, boss)
-//  rollPowerupId() / stoneForLevel(lv) / rollEquipDrop(world, level, opts)
+//  rollPowerupId() / stoneForLevel(lv) / rollEquipDrop(world, level, opts) / setPieceDrop(setIds) · SET_DROP (「피의 유물」 세트 부위 확률)
 // 장비 드롭: 일반 적 2.5%, 정예 12% (행운·난이도·드롭 보너스 보정), 희귀도는 스테이지 레벨·행운에 비례.
 // 2부 규칙 (world2 §6.9):
 //  · 보스 drops 의 고유 장비는 1부와 같다 (첫 처치 확정, 재도전 40%). 세계의 심장(worldHeart)은 이미 얻었거나
@@ -15,6 +15,18 @@ import { SUB_ORDER } from '../data/subweapons.js';
 const SUB_BASE = SUB_ORDER.filter((id) => id !== 'flask');
 const subPool = (world) => (world?.stage?.id === 's26' || world?.game?.state?.progress?.flags?.ex_s26_done ? SUB_ORDER : SUB_BASE);
 import { ITEMS, makeItem, rollItem, rollRarity, BOSS_UNIQUES, MYTHIC_WEAPONS, MYTHIC_WEAPONS_P2, isEquipment } from '../data/items.js';
+import { SET_PIECES, setDropFor } from '../data/relic_sets.js';   // 「피의 유물」 세트 부위 (Stage 6)
+
+// 「피의 유물」 세트 부위: 그 세트의 스테이지 적(정예 1.5% · 일반 0.15%)과 보스(12%)에서 낮은 확률로 — 기존 드롭(고유·신화·심장)은 그대로 두고 덧붙이기만 한다.
+//  희귀도는 희귀(2), 30% 영웅(3). 아케이드·일일 도전처럼 스테이지 id 가 없으면 나오지 않는다
+export const SET_DROP = { elite: 0.015, normal: 0.0015, boss: 0.12 };
+/** 세트 부위 하나 (sets 중 하나에서 무작위 부위) — 없으면 null */
+export function setPieceDrop(sets) {
+  const k = sets?.length ? pick(sets) : null;
+  const ids = k && SET_PIECES[k];
+  if (!ids?.length) return null;
+  return { type: 'item', data: { item: makeItem(pick(ids), { rarity: chance(0.3) ? 3 : 2 }) } };
+}
 
 /** 's14' → 14 (스테이지 id 가 아니면 0) */
 const chapterOfStage = (id) => { const m = /^s(\d+)$/.exec(String(id ?? '')); return m ? +m[1] : 0; };
@@ -107,6 +119,9 @@ export function rollEnemyLoot(world, enemy) {
   if (enemy.elite && world.stage?.id === 's13' && chance(0.004 * dropMul)) out.push(mythicDrop(world));
   if (enemy.elite && world.stage?.id === 's20' && chance(0.006 * dropMul)) out.push(mythicDrop(world, true));
   if (enemy.elite && chance(0.6)) out.push({ type: 'powerup', data: { id: rollPowerupId() } });
+  // 「피의 유물」 세트 부위 (그 세트의 스테이지에서만)
+  const sets = setDropFor(world.stage?.id, null);
+  if (sets.length && chance((enemy.elite ? SET_DROP.elite : SET_DROP.normal) * dropMul)) { const p = setPieceDrop(sets); if (p) out.push(p); }
   return out;
 }
 
@@ -178,5 +193,8 @@ export function rollBossLoot(world, boss) {
   const p2 = isPart2(world, boss);
   const finalBoss = id === 'b_chaos' || id === 'b_nihil';
   if (finalBoss ? first || chance(0.5) : chance((p2 ? 0.015 : 0.01) * dropMulOf(world))) out.push(mythicDrop(world, id === 'b_nihil' || p2));
+  // 「피의 유물」 세트 부위 (그 세트의 보스 12% — 고유 장비와 따로)
+  const bsets = setDropFor(null, id);
+  if (bsets.length && chance(SET_DROP.boss * dropMulOf(world))) { const p = setPieceDrop(bsets); if (p) out.push(p); }
   return out;
 }

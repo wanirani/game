@@ -46,7 +46,7 @@ const STORAGE_TIP_TEXT = '브라우저 저장공간은 지워질 수 있어요. 
 // 게임플레이·게임 진행 중 장면: 화면 꺼짐 방지 (타이틀·결과 화면에서는 풀어 준다, §6.6)
 const PAD_SCENES = ['stage', 'hub', 'bossrush', 'survival', 'practice', 'tower', 'ultCutin'];
 const WAKE_SCENES = new Set([
-  ...PAD_SCENES, 'awakenCutin', 'bossIntro', 'dialogue', 'document', 'gameover', 'pause', 'menu', 'arcadePause', 'companionJoin',
+  ...PAD_SCENES, 'awakenCutin', 'bossIntro', 'dialogue', 'document', 'gameover', 'menu', 'companionJoin',   // [phone] 일시정지(pause·arcadePause)는 풀어 준다
   'story', 'worldmap', 'inn', 'shop', 'smith', 'church', 'questboard', 'party', 'stable',
   'minigame_dice', 'minigame_blackjack', 'minigame_slot', 'minigame_duel', 'minigame_memory',
 ]);
@@ -227,10 +227,20 @@ function wakeWanted() {
   if (typeof top.keepAwake === 'boolean') return top.keepAwake;
   return WAKE_SCENES.has(top.name);
 }
+let wakeBridge = null;   // [phone] APK 브리지에 마지막으로 알린 값 (바뀔 때만 부른다)
+/** [phone] 화면 꺼짐 방지 상태 (QA·tools/test_phone.mjs): want = 지금 원함, held = Wake Lock 을 쥐고 있음, api = 브라우저 지원, bridge = APK 에 알린 값 */
+export function wakeState() { return { want: wakeWanted(), held: !!wake, api: !!NAV?.wakeLock?.request, bridge: wakeBridge }; }
+/** [phone] 휴대폰 진동을 쓸 수 있나 (navigator.vibrate 또는 APK 브리지) */
+export function canVibrate() {
+  try { return typeof NAV?.vibrate === 'function' || typeof W?.BNAndroid?.vibrate === 'function'; } catch { return false; }
+}
 function syncWake() {
+  const want = wakeWanted();
+  // [phone] APK: WebView 에는 Wake Lock 이 없을 수 있다 → 브리지 keepAwake(bool) 가 있으면 창 플래그로 (없으면 앱이 늘 켜 둔다)
+  const br = W?.BNAndroid;
+  if (typeof br?.keepAwake === 'function' && wakeBridge !== want) { wakeBridge = want; try { br.keepAwake(want); } catch { /* 무시 */ } }
   const api = NAV?.wakeLock;
   if (!api?.request) return;
-  const want = wakeWanted();
   if (want && !wake && !wakeBusy && !wakeDenied) {
     wakeBusy = true;
     let p;

@@ -146,6 +146,34 @@ section('migrateSettings');
   }
   ok(fuzzOk, '퍼징 400회: 멱등, 결과는 항상 스키마 안');
 }
+// [phone] Stage 6 휴대폰 편의 키: 절전 모드(batterySaver) · 진동 세기(vibeLevel) — 옛 설정 이관과 값 검증
+section('migrateSettings: 절전 모드 · 진동 세기 (Stage 6)');
+{
+  ok(DEFAULT_SETTINGS.batterySaver === 0 && DEFAULT_SETTINGS.vibeLevel === 'mid', '기본값: 절전 끔(0), 진동 세기 중(mid)');
+  // Stage 5 APK 가 쓴 설정 (새 키 없음): 진동 켬 → 'mid', 진동 끔 → 'off' (이관이라 changed)
+  const s5on = { settingsVersion: 2, vibration: true, fpsCap: 60, keepAwake: true, touchLeftHanded: true };
+  const a = migrateSettings(s5on);
+  ok(a.settings.vibeLevel === 'mid' && a.settings.batterySaver === 0 && !a.changed, `Stage 5 설정(진동 켬) → vibeLevel mid · 절전 끔 · changed=false (${a.settings.vibeLevel}, ${a.changed})`);
+  ok(a.settings.touchLeftHanded === true && a.settings.keepAwake === true, 'Stage 5 설정의 왼손 모드·화면 꺼짐 방지 유지');
+  const b = migrateSettings({ settingsVersion: 2, vibration: false });
+  ok(b.settings.vibeLevel === 'off' && b.settings.vibration === false && b.changed, `Stage 5 설정(진동 끔) → vibeLevel off, changed (${b.settings.vibeLevel}, ${b.changed})`);
+  const v1 = migrateSettings({ vibration: false, quality: 'low' });
+  ok(v1.settings.vibeLevel === 'off' && v1.settings.batterySaver === 0, 'v1 설정(진동 끔) → vibeLevel off · 절전 끔');
+  // 옛 앱이 진동을 끈 뒤 (vibeLevel 은 새 앱이 남긴 'high'): 끔이 이긴다, 멱등
+  const c = migrateSettings({ settingsVersion: 2, vibration: false, vibeLevel: 'high' });
+  ok(c.settings.vibeLevel === 'off' && c.changed, '옛 앱에서 진동 끔 + vibeLevel high → off');
+  const c2 = migrateSettings(c.settings);
+  ok(!c2.changed && isDeepStrictEqual(c2.settings, c.settings), '진동 세기 이관 멱등');
+  // 허용 값 유지 · 밖의 값 → 기본값
+  for (const v of [0, 60, 45, 30]) ok(migrateSettings({ settingsVersion: 2, batterySaver: v }).settings.batterySaver === v, `batterySaver ${v} 유지`);
+  for (const v of [15, 120, '30', true, null, -1]) ok(migrateSettings({ settingsVersion: 2, batterySaver: v }).settings.batterySaver === 0, `batterySaver ${JSON.stringify(v)} → 0`);
+  for (const v of ['off', 'low', 'mid', 'high']) {
+    const r = migrateSettings({ settingsVersion: 2, vibration: true, vibeLevel: v });
+    ok(r.settings.vibeLevel === v && !r.changed, `vibeLevel ${v} (진동 켬) 유지, changed=false`);
+  }
+  for (const v of ['max', 1, null, true]) ok(migrateSettings({ settingsVersion: 2, vibeLevel: v }).settings.vibeLevel === 'mid', `vibeLevel ${JSON.stringify(v)} → mid`);
+  ok(SETTINGS_SCHEMA.batterySaver?.type === 'enum' && SETTINGS_SCHEMA.vibeLevel?.type === 'enum', '두 키 모두 SETTINGS_SCHEMA 에 목록으로');
+}
 
 // ── 3. loadSettings / saveSettings ──
 section('saves.loadSettings / saveSettings');

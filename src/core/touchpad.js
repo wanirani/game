@@ -590,13 +590,13 @@ function tickSwap() {
 }
 function buzz() {
   const st = settings();
-  if (st.vibration === false) return;
+  if (st.vibration === false || st.vibeLevel === 'off') return;   // [phone] 진동 세기 끔
   try {
     if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
     const a = HAP.haptics?.active; // 게임 진동(피격·각성 등)이 울리는 중이면 짧은 누름 진동으로 끊지 않는다 (MASTER_PLAN §1.11)
     if (a && now() < a.until) return;
     if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
-    navigator.vibrate(8);
+    navigator.vibrate(HAP.scaleVibe?.(8, st.vibeLevel) || 8);   // [phone] 세기 배율 (약 6 · 중 8 · 강 13 ms)
   } catch { /* 무시 */ }
 }
 function unlockAudio() { try { game()?.audio?.unlock?.(); } catch { /* 무시 */ } }

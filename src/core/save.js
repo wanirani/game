@@ -165,6 +165,9 @@ export const DEFAULT_SETTINGS = {
   //        HP 물약 문턱 0–0.9 (0 = 쓰지 않음) · 전리품 줍기 · 큰 예고에서 물러서기
   auto: Object.freeze({ level: 'off', ult: 'boss', potion: 0.35, pickup: true, dodge: true }),
   vibration: true, autoSave: true, keepAwake: true, turntableAuto: true, fullscreenAuto: true,
+  // [phone] 휴대폰 편의 (Stage 6): 절전 모드 = 그리기 상한 fps (0 끔 | 60 | 45 | 30) + 품질 한 단계 내림 (game.js saverFps · resize) ·
+  //         진동 세기 'off'|'low'|'mid'|'high' (core/haptics.js 휴대폰 진동 길이 배율). vibration(옛 켬/끔)과 늘 같은 뜻으로 맞춘다 (migrateSettings)
+  batterySaver: 0, vibeLevel: 'mid',
   telemetry: !privacySignal(), // 익명 통계·오류 보내기 (core/telemetry.js) — GPC 를 켠 브라우저는 기본 끔
   language: 'ko',
 };
@@ -212,6 +215,7 @@ export const SETTINGS_SCHEMA = Object.freeze({
   gear: Object.freeze({ type: 'gear' }),
   auto: Object.freeze({ type: 'auto' }),   // [auto]
   vibration: BOOL, autoSave: BOOL, keepAwake: BOOL, turntableAuto: BOOL, fullscreenAuto: BOOL, telemetry: BOOL,
+  batterySaver: oneOf(0, 60, 45, 30), vibeLevel: oneOf('off', 'low', 'mid', 'high'),   // [phone]
   language: oneOf('ko'),
 });
 
@@ -332,6 +336,9 @@ export function migrateSettings(saved) {
   // [hudredo] 버튼 배치 개편 전(hud.rev < 2)의 설정: 예전 기본 투명도 0.55 → 새 기본 0.95.
   // (예전 순서·크기로 저장한 사용자 배치는 터치 기기에서 touchpad 가 처음 배치할 때 지우고 알린 뒤 hud.rev 를 2 로 올린다)
   if (!(Number(saved.hud?.rev) >= 2) && out.touchOpacity === 0.55) { out.touchOpacity = DEFAULT_SETTINGS.touchOpacity; changed = true; }
+  // [phone] 진동 세기 ↔ 옛 켬/끔: vibration 끔이면 vibeLevel 'off' (진동 세기가 없던 설정의 이관 포함 — 옛 앱은 vibration 만 쓴다).
+  //  반대 방향(vibeLevel 'off' + vibration 켬)은 그대로 둔다: 키 하나만 저장해도 값이 남아야 하고, 진동은 둘 중 하나라도 끄면 꺼진다 (haptics)
+  if (out.vibration === false && out.vibeLevel !== 'off') { out.vibeLevel = 'off'; changed = true; }
   return { settings: out, changed };
 }
 

@@ -29,6 +29,9 @@ import { input } from './input.js';
 import { touchpad } from './touchpad.js';
 import { bus } from './events.js';
 
+/** [s6 fore] QA 전후 비교용 스위치: bossSafe = 터치 보스 경기장에서 보스 몸통을 버튼 묶음 밖에 두는 구도 (기본 켬) */
+export const CAM_FLAGS = { bossSafe: true };
+
 const KICK_K = 260, KICK_C = 22, KICK_MAX = 28;
 const TRAUMA_DECAY = 1.6, SHAKE_PX = 14, SHAKE_ROT = 0.012, NOISE_HZ = 32;
 const ROLL_MAX = 0.03;
@@ -289,7 +292,21 @@ export class Camera {
     //   화면 37 % 가 방 밖 빈 판이 되던 문제 (replay f24). 왼쪽 스틱 자리도 같은 규칙
     const needR = sides && bd ? clamp(t.x + t.w + OVER_PAD + (f > 0 ? OVER_LOOK : 0) - (bd.x + bd.w - sides.r * zk), 0, sides.r * zk) : 0;
     const needL = sides && bd ? clamp(bd.x + sides.l * zk - (t.x - OVER_PAD - (f < 0 ? OVER_LOOK : 0)), 0, sides.l * zk) : 0;
-    const wantR = needR, wantL = needL;
+    // [s6 fore] 터치 보스 경기장 구도 (폴드 알려진 문제): 오른쪽 벽에 붙은 보스 몸통이 오른쪽 아래 버튼 묶음 밑에 들어가지 않게
+    //   추적점을 오른쪽으로 당기고 그만큼 방 밖으로 넘겨 본다 (왼쪽 벽·스틱 자리도 같은 규칙). 영웅이 반대쪽 조작 밑으로 가면 영웅 우선.
+    //   넘겨 보는 폭은 조작 자리 폭까지 (방 밖은 tiles.js drawSides 가 칠한다). 키보드·패드·아래 띠(sides = null)는 예전 그대로
+    let bossR = 0, bossL = 0;
+    if (sides && bd && B && !B.dead && !B.hidden && CAM_FLAGS.bossSafe) {
+      const bx0 = clamp(B.x, bd.x, bd.x + bd.w), bx1 = clamp(B.x + (B.w ?? 0), bd.x, bd.x + bd.w);
+      const sr = sides.r * zk, sl = sides.l * zk, hv = vwB / 2;
+      const bossMin = bx1 + OVER_PAD + sr - hv, heroMax = t.x - OVER_PAD - sl + hv;   // 보스 오른끝이 묶음 왼쪽에 · 영웅 왼끝이 스틱 오른쪽에
+      if (sr > 0 && bossMin > fx) fx = Math.max(fx, Math.min(bossMin, heroMax));
+      const bossMax = bx0 - OVER_PAD - sl + hv, heroMin = t.x + t.w + OVER_PAD + sr - hv;
+      if (sl > 0 && bossMax < fx) fx = Math.min(fx, Math.max(bossMax, heroMin));
+      bossR = clamp(fx + hv - (bd.x + bd.w), 0, sr);
+      bossL = clamp(bd.x - (fx - hv), 0, sl);
+    }
+    const wantR = Math.max(needR, bossR), wantL = Math.max(needL, bossL);
     if (snap) { this.ovL = wantL; this.ovR = wantR; }
     else { const k = 1 - Math.pow(0.06, dt); this.ovL = lerp(this.ovL, wantL, k); this.ovR = lerp(this.ovR, wantR, k); }
     if (this.ovL < 0.5 && wantL === 0) this.ovL = 0;
@@ -308,7 +325,11 @@ export class Camera {
     if (!b) return;
     const vw = this.w / this.baseZoom, vh = this.h / this.baseZoom;
     const cy0 = this.cy;
-    this.cx = b.w <= vw ? b.x + b.w / 2 : clamp(this.cx, b.x + vw / 2 - this.ovL, b.x + b.w - vw / 2 + this.ovR);
+    if (b.w <= vw) {
+      // 좁은 방: 가운데 고정. [s6 fore] 터치 보스 경기장에서 넘겨 보기 폭이 가운데 맞춤의 여백보다 크면 그만큼만 옮길 수 있다
+      const c0 = b.x + b.w / 2;
+      this.cx = this.boss && (this.ovR > 0 || this.ovL > 0) ? clamp(this.cx, Math.min(c0, b.x + vw / 2 - this.ovL), Math.max(c0, b.x + b.w - vw / 2 + this.ovR)) : c0;
+    } else this.cx = clamp(this.cx, b.x + vw / 2 - this.ovL, b.x + b.w - vw / 2 + this.ovR);
     this.cy = b.h <= vh ? b.y + b.h - vh / 2 + this.padLift(b.h, vh, this.baseZoom) : clamp(this.cy, b.y + vh / 2, b.y + b.h - vh / 2);
     const lim = this.arenaLowLimit(b, vh);   // [hudfix] 터치 보스 경기장: 바닥을 조작 줄 위로 올리는 목표(fy)는 방 경계 맞춤보다 조금 더 내려가도 된다
     if (lim != null) this.cy = Math.max(this.cy, Math.min(cy0, lim + vh / 2));

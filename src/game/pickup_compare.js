@@ -173,10 +173,13 @@ function decorate(g, item) {
   if (!hero) return;
   if (isEquipped(st, item.uid)) { delete item.isNew; return; }   // 받자마자 끼운 장비(새 게임 · 아케이드 준비물)는 NEW 아님
   const mode = gearSettings(g.settings).weights;
-  let mark = null, score = null, slot = null, other = null;
+  let mark = null, score = null, slot = null, other = null, setTag = '';
   if (canEquip(st, hero, item).ok) {
     const d = gearDelta(st, hero, item, { mode });
     if (d.comparable) { mark = d.mark; score = d.score; slot = d.slot; }
+    // 「피의 유물」 세트 부위: 끼우면 몇 부위가 되는지 (▲▼ 점수에는 세트 보너스가 이미 들어 있다)
+    const sc = d.sets?.find((x) => x.id === ITEMS[item.baseId]?.set);
+    if (sc) setTag = ` · 세트 ${sc.to}/${sc.total}`;
   }
   if (mark !== 'up') {
     let best = 0.5;
@@ -191,6 +194,7 @@ function decorate(g, item) {
   const sc = score == null ? '' : Math.abs(score) < 0.05 ? '±0' : `${score > 0 ? '+' : '−'}${(Math.round(Math.abs(score) * 10) / 10).toFixed(1)}`;
   let suf = '';
   if (mark) suf += ` ${mark === 'up' ? '▲' : mark === 'down' ? '▼' : '='} ${sc}`;
+  suf += setTag;
   // [auto] 패드·키보드는 'equipNow' (↑ 길게 · N) 로도 장착한다 — 안내는 지금 기기에 맞춘다 (hintFor; 기기가 바뀌면 hintSync 가 바꾼다)
   // 누를 수 있는 곳(스테이지·마을 HUD 위 토스트)에서만 「장착」 안내 — 상점·메뉴 같은 화면의 토스트는 표시만
   const tappable = mark === 'up' && canTap(g);

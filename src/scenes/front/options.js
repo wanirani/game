@@ -17,6 +17,7 @@ import * as platform from '../../core/platform.js';
 import { text, wrap, FONT, taps, drawCover } from '../../core/ui.js';
 import { drawHints, drawGlyph, glyphWidth } from '../../core/prompts.js';
 import { touchpad } from '../../core/touchpad.js';
+import { scaleVibe } from '../../core/haptics.js';   // [phone] 진동 세기 미리 보기
 import { levelOf, setLevel, autoSettings } from '../../game/autoplay.js';   // [auto] 자동 전투 설정
 import { clamp, ease, rgba, TAU } from '../../core/math.js';
 import { frame, heading, gbutton, applySettings, GOLD, BONE, DIM } from './common.js';
@@ -89,7 +90,14 @@ function buildRows(sc) {
       },
       {
         id: 'fpsCap', label: '프레임 제한', type: 'enum', opts: [[60, '60'], [0, '제한 없음']],
-        note: (s) => (s.fpsCap === 0 ? '화면 주사율만큼 그립니다. 120Hz 화면에서 더 부드럽지만 배터리를 더 씁니다.' : '초당 60번 그립니다. 배터리를 아낍니다.'),
+        note: (s) => (s.batterySaver ? '절전 모드가 켜져 있어 절전 모드의 프레임을 따릅니다.'
+          : s.fpsCap === 0 ? '화면 주사율만큼 그립니다. 120Hz 화면에서 더 부드럽지만 배터리를 더 씁니다.' : '초당 60번 그립니다. 배터리를 아낍니다.'),
+      },
+      { // [phone] 절전 모드: 그리기 상한 fps + 품질 한 단계 내림 (game.js saverFps · saverTier). 게임 속도는 그대로
+        id: 'batterySaver', label: '절전 모드', type: 'enum', opts: [[0, '끔'], [60, '60'], [45, '45'], [30, '30']],
+        note: (s) => (s.batterySaver
+          ? `초당 ${s.batterySaver}번만 그리고 그래픽 품질을 한 단계 낮춥니다 (지금: ${TIER_NAME[g.tier] ?? '보통'}). 게임 속도는 그대로입니다.`
+          : '켜면 초당 그리는 횟수와 그래픽 품질을 낮춰 배터리와 발열을 줄입니다.'),
       },
       {
         id: 'uiScale', label: 'UI 크기', type: 'enum', opts: [['auto', '자동'], [1, '100%'], [1.15, '115%'], [1.3, '130%'], [1.5, '150%']],
@@ -179,7 +187,14 @@ function buildRows(sc) {
           : '버튼을 게임 화면 위에 얹고 화면을 끝까지 씁니다.'),
       },
       { id: 'touchLayout', label: '버튼 배치 편집', type: 'link', value: () => (sc.s.touchLayout ? '사용자 지정' : '기본'), run: () => sc.openEditor(), note: '버튼을 끌어서 옮기고, 모서리를 끌어 크기를 바꿉니다.' },
-      { id: 'vibration', label: '진동', type: 'bool', note: '휴대폰 진동을 켜고 끕니다.' },
+      { // [phone] 진동 세기 (예전 '진동' 켬/끔 줄). vibration 은 옛 앱과 같은 뜻으로 함께 맞춘다 (save.js migrateSettings)
+        id: 'vibeLevel', label: '진동 세기', type: 'enum', opts: [['off', '끔'], ['low', '약'], ['mid', '중'], ['high', '강']],
+        get: () => (sc.s.vibration === false ? 'off' : sc.s.vibeLevel ?? 'mid'),
+        set: (v) => { sc.s.vibeLevel = v; sc.s.vibration = v !== 'off'; },
+        note: (s) => (s.vibration === false || s.vibeLevel === 'off' ? '휴대폰 진동을 끕니다.'
+          : platform.canVibrate?.() === false ? '이 기기는 진동을 지원하지 않습니다.'
+          : '피격·필살기·보스 처치 때 휴대폰이 떨리는 세기입니다.'),
+      },
     ],
     // [qol] settings.gear 는 새 객체로 바꾼다 (기본값 객체는 얼려 있다 — save.js DEFAULT_SETTINGS.gear)
     gear: (() => {
@@ -415,6 +430,8 @@ export class OptionsScene extends Scene {
     if (r.id === 'flashFx' && v > 0) g.flash?.('#fff4e0', 0.45, 5);
     if (r.id === 'ctrlRumble') rumbleDemo(v);
     if (r.id === 'vibration' && v) phoneBuzz(40);
+    if (r.id === 'vibeLevel' && v !== 'off') phoneBuzz(scaleVibe(40, v) || 40);   // [phone] 고른 세기로 한 번
+    if (r.id === 'batterySaver') g.dirty = true;   // [phone] 품질 등급은 game 이 다음 프레임에 다시 잡는다
     if (r.id === 'quality' || r.id === 'uiScale' || r.id === 'safeArea' || r.id === 'textSize') g.dirty = true; // 배치·글자 하한은 game 이 다음 프레임에 다시 잡는다
     audio.sfx('menu_move');
   }

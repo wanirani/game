@@ -1,4 +1,4 @@
-// 최종 능력치 계산: 캐릭터 기본치 + 레벨 성장 + 직업(클래스) 보정 + 장비(강화 포함) + 패시브 스킬 + 비전서
+// 최종 능력치 계산: 캐릭터 기본치 + 레벨 성장 + 직업(클래스) 보정 + 장비(강화 포함) + 세트 보너스 + 패시브 스킬 + 비전서
 import { CHARACTERS } from '../data/characters.js';
 import { CLASSES, classChain } from '../data/classes.js';
 import { itemStats, ITEMS } from '../data/items.js';
@@ -7,6 +7,7 @@ import { DOCS } from '../data/lore.js';
 import { findItem } from './inventory.js';
 import { companionAuraStats } from './companion_state.js';   // [hook:cmp]
 import { ascOf, heroChain, TOP_KEYS } from '../data/ascensions.js';   // 초월·비전 (classes_t3 §2.6)
+import { countSets, setBonusStats } from '../data/relic_sets.js';   // 「피의 유물」 세트 보너스 (Stage 6)
 
 export const EQUIP_SLOTS = ['weapon', 'head', 'body', 'cloak', 'acc1', 'acc2'];
 export const SLOT_NAMES = { weapon: '무기', head: '머리', body: '몸', cloak: '망토', acc1: '장신구1', acc2: '장신구2' };
@@ -43,6 +44,17 @@ export function addStats(dst, src, mul = 1) {
   return dst;
 }
 
+/** 이 영웅이 끼운 「피의 유물」 세트별 부위 수 { 세트 id: n } (없으면 {}) */
+export function heroSetCounts(state, hero) {
+  const bases = [];
+  for (const slot of EQUIP_SLOTS) {
+    const inst = hero?.equip?.[slot] ? findItem(state, hero.equip[slot]) : null;
+    const b = inst && ITEMS[inst.baseId];
+    if (b?.set) bases.push(b);
+  }
+  return bases.length ? countSets(bases) : {};
+}
+
 /** 경험치 요구량 */
 export function expToNext(level) {
   return Math.floor(30 * Math.pow(level, 1.65) + 20 * level);
@@ -72,6 +84,8 @@ export function computeStats(state, hero) {
     if (slot === 'weapon') weapon = inst;
     addStats(s, itemStats(inst));
   }
+  // 「피의 유물」 세트 보너스 (같은 세트 서로 다른 부위 2/4/5개 — data/relic_sets.js)
+  addStats(s, setBonusStats(heroSetCounts(state, hero)));
   // 패시브 스킬
   for (const sid in hero.skills || {}) {
     const sk = SKILLS[sid];

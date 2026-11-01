@@ -11,6 +11,7 @@
 //  - 패드: gamepad.vibrationActuator.playEffect('dual-rumble', {strongMagnitude, weakMagnitude, duration}), 세기 × settings.ctrlRumble
 //    (0 이면 호출 없음). vibrationActuator 가 없으면 APK 브리지 window.BNAndroid.rumble(strong, weak, ms).
 //  - 휴대폰: navigator.vibrate, settings.vibration 이 켜져 있고 한 번이라도 터치한 뒤에만 (크롬이 첫 사용자 동작 전 호출을 막는다).
+//    [phone] 길이 × 진동 세기 settings.vibeLevel (끔 0 · 약 0.5 · 중 1 · 강 1.6, scaleVibe). 'off' 면 울리지 않는다
 //    임의 진동은 강도 H 이상만 15ms, S/A 는 60ms, 각성(0.6/0.9/400) 은 [40,30,80] (feel §4.12).
 //  - 같은 효과는 60ms 에 한 번. 더 센 효과가 재생 중이면 약한 효과는 건너뛰고, 센 효과는 약한 효과를 끊는다.
 //  - 타격 진동은 impact.js 의 input.rumble 만 낸다 (hitCrit/hitHeavy 는 구독하지 않는다). 각성 진동은 awaken.js 가 직접 부른다.
@@ -31,6 +32,21 @@ export const EFFECTS = {
   landHeavy: { pad: [[0.4, 0.2, 100, 0]], phone: false },
 };
 const THROTTLE_MS = 60;
+/** [phone] 진동 세기 (settings.vibeLevel) → 휴대폰 진동 길이 배율. navigator.vibrate 는 세기를 못 정하므로 길이로 나눈다 (쉼은 그대로) */
+export const VIBE_LEVELS = Object.freeze({ off: 0, low: 0.5, mid: 1, high: 1.6 });
+const VIBE_MIN_MS = 6, VIBE_MAX_MS = 400;
+/**
+ * 휴대폰 진동 값(ms | [진동, 쉼, 진동, …]) × 세기 배율 → 새 값 | false (끔·0).
+ * 패턴은 짝수 칸(진동)만 늘리고 줄인다. 진동 칸은 6–400 ms (아주 짧으면 모터가 돌지 않는다). 순수 함수 (tools/test_phone.mjs)
+ */
+export function scaleVibe(v, level) {
+  const k = VIBE_LEVELS[level] ?? 1;
+  if (k <= 0 || v === false || v == null) return false;
+  const one = (ms) => (ms > 0 ? Math.round(Math.min(VIBE_MAX_MS, Math.max(VIBE_MIN_MS, ms * k))) : 0);
+  if (Array.isArray(v)) return v.map((ms, i) => (i % 2 === 0 ? one(Number(ms) || 0) : Math.max(0, Number(ms) || 0)));
+  const n = Number(v);
+  return n > 0 ? one(n) : false;
+}
 /** 이 장면이 맨 위에 오면 진동을 멈춘다 */
 const QUIET_SCENES = new Set(['pause', 'menu', 'options', 'arcadePause']);
 
@@ -124,7 +140,7 @@ class Haptics {
   /** 패드 진동이 켜져 있나 (ctrlRumble > 0) */
   padOn() { return clamp01(this.settings.ctrlRumble ?? 0.8) > 0; }
   /** 휴대폰 진동 값 v 가 실제로 울리나 (값이 있고 settings.vibration 이 켜짐) */
-  phoneOn(v) { return v !== false && v != null && v !== 0 && this.settings.vibration !== false; }
+  phoneOn(v) { return v !== false && v != null && v !== 0 && this.settings.vibration !== false && this.settings.vibeLevel !== 'off'; }
 
   /** 60ms 제한 + 더 센 효과 우선. 통과하면 재생 중 효과를 갱신 */
   gate(name, strength, dur) {
@@ -162,6 +178,8 @@ class Haptics {
   phone(v) {
     if (v === false || v == null) return false;
     if (this.settings.vibration === false) return false;
+    v = scaleVibe(v, this.settings.vibeLevel);   // [phone] 진동 세기 (끔이면 false)
+    if (v === false) return false;
     try {
       if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return false;
       // 크롬은 첫 사용자 동작 전 vibrate 를 막고 콘솔에 경고를 남긴다

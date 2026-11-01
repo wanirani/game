@@ -4,23 +4,24 @@
 //  ITEMS[id] = { id, name, slot:'weapon'|'head'|'body'|'cloak'|'acc'|'consumable'|'material'|'key',
 //    wtype?, tier(1~7; 7 = 2부), icon, lvReq, stats:{}, visual:{}, element?, price, stack?, use?, desc,
 //    relic?, unique?, rarity?(고유 아이템 고정 희귀도), effect?(고유 효과 문구), boss?(드롭 보스 id), quest?,
-//    mythic?(신화 무기), set?(신화 한 벌 — 'hunt' = 외전 s23 지급, 드롭 표 밖), worldHeart?(세계의 심장 번호 1~6), starShard?(별의 조각 번호 1~6), color?(심장 색) }
+//    mythic?(신화 무기), set?(한 벌 — 'hunt' = 외전 s23 신화 지급, 드롭 표 밖·보너스 없음 / 그 밖 = 「피의 유물」 세트 id, data/relic_sets.js), worldHeart?(세계의 심장 번호 1~6), starShard?(별의 조각 번호 1~6), color?(심장 색) }
 //  visual — 무기 {style(1~6), color, glow, rift?(7단계: 무지갯빛 균열 광택, 없으면 style 6 그대로)} / 머리 {headgear, color} / 몸 {armor, color, trim}
 //           망토 {cape:'plain'|'royal'|'tattered', color, color2, len} / 장신구 {aura:{color,type}}  (game/stats.js composeLook 가 해석)
 //  use — { heal(최대 HP 비율), mp(최대 MP 비율), cure, buff:{id(POWERUPS 키), time}, warp }
 // ── 인스턴스 ──
 //  { uid, baseId, slot, icon, rarity(0~5), level(강화 0~15), affixes:[{id, stat, value}], qty, locked?, t?(획득 순서) }
 // ── 공개 API ──
-//  RARITIES, ITEMS, AFFIXES, AFFIX_MAP, UNIQUES, BOSS_UNIQUES, MYTHIC_WEAPONS(6단계 신화), MYTHIC_WEAPONS_P2(7단계 신화), HUNT_SET(외전 s23 신화 한 벌), WTYPES, WTYPE_NAMES, SLOT_LABELS, STAT_LABELS
+//  RARITIES, ITEMS, AFFIXES, AFFIX_MAP, UNIQUES, BOSS_UNIQUES, MYTHIC_WEAPONS(6단계 신화), MYTHIC_WEAPONS_P2(7단계 신화), HUNT_SET(외전 s23 신화 한 벌), RELIC_SETS(「피의 유물」 세트 — data/relic_sets.js 다시 내보냄), WTYPES, WTYPE_NAMES, SLOT_LABELS, STAT_LABELS
 //  TIER_LV (세계의 심장·별의 조각 id 목록은 data/stages.js 의 HEARTS · SHARDS)
 //  makeItem(baseId, {rarity, level, affixes, qty}) → inst     (희귀도>0 인데 affixes 미지정이면 자동 추첨)
 //  rollItem(level, {luck, diff, slot, wtype, minRarity, maxRarity, tier}) → 무작위 장비 인스턴스
 //  rollRarity(level, opts), rollAffixes(base, rarity), tierForLevel(lv)
-//  itemStats(inst, {noAffix}) / itemName(inst, {full}) / itemDesc(inst) → string[] / itemDescRich(inst) → [{text,color}]
+//  itemStats(inst, {noAffix}) / itemName(inst, {full}) / itemDesc(inst) → string[] / itemDescRich(inst, {setCount}) → [{text,color}] / setDescLines(base, n)
 //  itemColor(inst), buyPrice(baseId, rarity), sellPrice(inst), isEquipment(inst|base), isStackable(inst|base), fmtStat(stat, v)
 //  baseIdFor(slot, tier, {wtype, variant}) → 해당 단계 베이스 id (무기·방어구 id 번호는 1~14, 단계 = ceil(번호/2))
 //  josa(word, '이/가'|'을/를'|'은/는'|'과/와'|'으로/로'|'이다/다'…) → 받침에 맞는 조사를 붙인 문자열
 import { uid } from '../core/math.js';
+import { RELIC_SETS, setOfBase, setBonusLines } from './relic_sets.js';   // 「피의 유물」 세트 (Stage 6)
 
 // ───────────────────────────── 희귀도 ─────────────────────────────
 // mult: 기본 능력치 배율, affixes: 추가 옵션 수, price: 가격 배율, fx: 옵션 수치 보정
@@ -337,6 +338,24 @@ for (const [id, name, icon, t, stats, aura, desc] of ACC_TABLE) {
   def({ id, name, slot: 'acc', tier: t, icon, lvReq: TIER_LV[t - 1] + ((n - 1) % 2 ? 3 : 0), stats, visual: aura ? { aura } : {}, price: T_CPRICE[t - 1], desc });
 }
 
+// ── 「피의 유물」 세트 부위 (data/relic_sets.js — set: 세트 id). 방어구는 그 단계 상위 변형(b)의 균형형 기본치 + 추가분,
+//    장신구는 표의 능력치 그대로. 일반 장비처럼 희귀도·추가 옵션·강화가 붙고, 무작위 장비 풀(POOL)에는 넣지 않는다 (game/loot.js 가 따로 떨어뜨린다)
+for (const S of Object.values(RELIC_SETS)) {
+  const t = S.tier;
+  for (const [id, slot, name, icon, visual, extra, desc] of S.pieces) {
+    let st;
+    if (slot === 'acc') st = { ...extra };
+    else {
+      const B = A_BASE[slot];
+      st = { def: r0(B.def[t - 1] * 1.1), res: r0(B.res[t - 1] * 1.1) };
+      if (B.hp && B.hp[t - 1]) st.hp = Math.round(B.hp[t - 1] * 1.1);
+      mergeStats(st, extra);
+    }
+    const vis = slot === 'acc' ? (visual ? { aura: visual } : {}) : visual;
+    def({ id, name, slot, tier: t, icon, lvReq: S.lv + (slot === 'acc' ? 2 : 0), stats: st, visual: vis, set: S.id, rarity: 2, price: Math.round((slot === 'acc' ? T_CPRICE : T_APRICE)[t - 1] * 1.5), desc });
+  }
+}
+
 // ───────────────────────────── 고유 아이템 (보스 · 신화 무기) ─────────────────────────────
 // 고유 아이템은 능력치가 고정(희귀도 배율 미적용, 무작위 옵션 없음)이며 effect 문구로 특수 효과를 설명한다.
 // 외전 신화 무기 「사냥꾼의 달」 (s23 아웃트로 지급, docs/specs/ex_s23.md §3). set: 'hunt' — MYTHIC_WEAPONS_P2 에는 넣지 않는다 (드롭 표 아님).
@@ -513,6 +532,8 @@ export const MYTHIC_WEAPONS = Object.fromEntries(UNIQUE_LIST.filter((u) => u.myt
 export const MYTHIC_WEAPONS_P2 = Object.fromEntries(UNIQUE_LIST.filter((u) => u.mythic && u.tier === 7 && !u.set).map((u) => [u.wtype, u.id]));
 /** 외전 s23 「사냥꾼의 달」 일곱 자루 (아웃트로 give 와 같은 목록 — 시험용) */
 export const HUNT_SET = UNIQUE_LIST.filter((u) => u.set === 'hunt').map((u) => u.id);
+/** 「피의 유물」 세트 정의 (data/relic_sets.js 다시 내보냄 — 부위 베이스는 위에서 set: 세트 id 로 만들었다) */
+export { RELIC_SETS };
 
 // ───────────────────────────── 소모품 ─────────────────────────────
 const CONSUMABLES = [
@@ -684,7 +705,7 @@ function clampR(r) { r = r | 0; return r < 0 ? 0 : r > 5 ? 5 : r; }
 // 슬롯별 일반 베이스 풀 (고유 제외)
 const POOL = {};
 for (const b of Object.values(ITEMS)) {
-  if (!EQUIP_BASE_SLOTS.includes(b.slot) || b.unique) continue;
+  if (!EQUIP_BASE_SLOTS.includes(b.slot) || b.unique || b.set) continue;   // 세트 부위는 loot.js 가 따로
   (POOL[b.slot] ??= []).push(b);
 }
 
@@ -887,7 +908,7 @@ function useText(u) {
 }
 
 /** 설명 줄 [{text, color}] — 상점/인벤토리 툴팁용 */
-export function itemDescRich(inst) {
+export function itemDescRich(inst, opts = {}) {
   const b = inst && ITEMS[inst.baseId];
   if (!b) return [{ text: '알 수 없는 아이템', color: '#9d8f80' }];
   const R = RARITIES[clampR(inst.rarity)];
@@ -907,6 +928,7 @@ export function itemDescRich(inst) {
       L.push({ text: `◆ ${A ? A.name + ' — ' : ''}${fmtStat(a.stat, a.value)}`, color: BLUE });
     }
     if (b.effect) L.push({ text: `고유 효과: ${b.effect}`, color: '#ffb040' });
+    L.push(...setDescLines(b, opts.setCount));
   } else {
     L.push({ text: SLOT_LABELS[b.slot] ?? '', color: b.relic ? '#ff4a5a' : GOLD });
     if (b.use) L.push({ text: `사용 효과: ${useText(b.use)}`, color: '#7ee07e' });
@@ -918,6 +940,17 @@ export function itemDescRich(inst) {
     else if (b.slot === 'key') L.push({ text: '버리거나 팔 수 없다', color: GRAY });
   }
   if (b.desc) L.push({ text: b.desc, color: FLAV, flavor: true });
+  return L;
+}
+/**
+ * 세트 부위 설명 줄: 「혈월 사냥꾼」 2/4 + 단계별 보너스 (켜진 단계는 밝게). n = 지금 영웅이 끼운 그 세트 부위 수 (모르면 undefined → 부위 수만)
+ */
+export function setDescLines(b, n) {
+  const S = setOfBase(b);
+  if (!S) return [];
+  const total = S.pieces.length, has = typeof n === 'number';
+  const L = [{ text: has ? `세트: 「${S.name}」 ${n}/${total}` : `세트: 「${S.name}」 (${total}부위)`, color: S.color, set: S.id }];
+  for (const l of setBonusLines(S.id, has ? n : 0, fmtStat)) L.push({ text: l.text, color: l.on ? '#7ee07e' : '#8a7f72', set: S.id, on: l.on });
   return L;
 }
 /** 설명 줄 (문자열 배열) */

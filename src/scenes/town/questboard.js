@@ -1,6 +1,7 @@
 // 의뢰 게시판: 받을 수 있는 의뢰 / 진행 중(달성 시 보상 받기) / 완료 — 양피지 의뢰서 연출, 보상 팝업
 //  - 받기는 한 번에 (PLAY P20): 확인 창 없이 바로 받고, 6초 동안 양피지 아래 「되돌리기」 띠(터치 · 보조 기능 키 A / 패드 Y·△)
 //  - 목표 아래 「출현: 1장 불타는 마을 …」 줄 (PLAY P07, menu/access.js questWhere — 처치·수집·보스·클리어 목표)
+//  - [s6:hunt] 넷째 탭 「사냥 일지」: 오늘의 계약 3장 + 이번 주 계약 1장 (game/hunt_journal.js) — 진행 막대 · 남은 시간 · 보상 받기, 계약이 없으면 등급 요약
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
 import { text, wrap, button, bar, FONT, COLORS, font } from '../../core/ui.js';
@@ -21,6 +22,7 @@ const BOARD = [0, '#5a3a22', 1, '#2a1a0e'], NOTE_ON = [0, '#efe2c0', 1, '#c8b48a
 const PAPER = [0, '#eadcb8', 1, '#c4ae84'], PAPER_DONE = [0, '#a89878', 1, '#7a6a50'];
 const DETAIL = [0, '#efe4c6', 0.7, '#d6c49a', 1, '#a88a5a'];
 import { glow } from './facades.js';
+import * as HJ from '../../game/hunt_journal.js';   // [s6:hunt]
 
 const INK = '#2a1a10', INK2 = '#5a4630';
 
@@ -39,7 +41,7 @@ export class QuestBoardScene extends ServiceScene {
   setup() {
     this.bgKey = 'bg/hub'; this.title = '의뢰 게시판'; this.eng = 'NOTICE BOARD'; this.npcId = null;
     this.music = null; this.emberColor = '#c8ff90';
-    this.tabs = [{ id: 'avail', label: '새 의뢰' }, { id: 'active', label: '진행 중' }, { id: 'done', label: '완료' }];
+    this.tabs = [{ id: 'avail', label: '새 의뢰' }, { id: 'active', label: '진행 중' }, { id: 'done', label: '완료' }, { id: 'hunt', label: '사냥 일지' }];
     this.list = this.addList(64);
     this.refresh();
     this.talk(this.readyCount() ? `보상을 받을 수 있는 의뢰가 ${this.readyCount()}건 있다!` : this.avail.length ? `새로 붙은 의뢰서가 ${this.avail.length}장 있다.` : '오늘은 새 의뢰가 없는 모양이다.');
@@ -54,12 +56,15 @@ export class QuestBoardScene extends ServiceScene {
     try { active = (Q.activeQuests ? Q.activeQuests(st) : Object.keys(st.quests?.active || {}).map(questOf)).filter(Boolean); } catch (e) { console.error(e); }
     try { done = (Q.completedQuests ? Q.completedQuests(st) : (st.quests?.done || []).map(questOf)).filter(Boolean).reverse(); } catch (e) { console.error(e); }
     active.sort((a, b) => (Q.canClaim(st, b.id) - Q.canClaim(st, a.id)) || ((a.kind === 'main' ? 0 : 1) - (b.kind === 'main' ? 0 : 1)));
-    this.avail = avail; this.active = active; this.done = done;
-    this.entries = [avail, active, done][this.tab];
+    let hunt = [];
+    try { hunt = HJ.huntList(st); } catch (e) { console.error(e); }   // [s6:hunt] 날이 바뀌었으면 여기서 새 계약
+    this.avail = avail; this.active = active; this.done = done; this.hunt = hunt;
+    this.entries = [avail, active, done, hunt][this.tab] ?? [];
     this.list.setCount(this.entries.length);
     const rc = active.filter((q) => Q.canClaim(st, q.id)).length;
     this.tabs[0].badge = avail.length ? String(avail.length) : '';
     this.tabs[1].badge = rc ? '★' : '';
+    this.tabs[3].badge = hunt.some((e) => e.done && !e.claimed) ? '★' : '';
   }
   get cur() { return this.entries[this.list.index] ?? null; }
 
@@ -78,6 +83,7 @@ export class QuestBoardScene extends ServiceScene {
   act() {
     const q = this.cur, st = this.state;
     if (!q) return;
+    if (this.tab === 3) { this.claimHunt(q); return; }
     if (this.tab === 0) {
       // 받기는 되돌릴 수 있으므로 확인 창 없이 바로 (P20) — 잠깐 「되돌리기」 띠를 보인다
       if (Q.acceptQuest(st, q.id, { silent: true })) {   // 수락 토스트 대신 「되돌리기」 띠가 알린다 (토스트가 띠를 덮었다)
@@ -101,6 +107,25 @@ export class QuestBoardScene extends ServiceScene {
         if (!this.playQuestScript(q.id, 'done', after)) after();
       };
     }
+  }
+  /** [s6:hunt] 사냥 일지 계약 보상 받기 (달성 · 아직 받지 않음) */
+  claimHunt(e) {
+    const st = this.state, c = e?.c;
+    if (!c) return;
+    if (e.claimed) { audio.sfx('menu_cancel'); this.talk('이미 보상을 받은 계약이다.'); return; }
+    if (!e.done) { audio.sfx('menu_cancel'); this.talk(`아직 계약을 끝내지 못했다. ${HJ.huntGoalText(c)} ${e.cur}/${e.need}`); return; }
+    const out = HJ.claimHunt(st, c.id);
+    if (!out) { audio.sfx('menu_cancel'); this.game.toast('보상을 받을 수 없다.', '#ff8a7a'); return; }
+    audio.sfx('win'); audio.sfx('coin');
+    const items = (out.items || []).map((i) => { const m = makeInst(i.id); if (m) m.qty = i.qty ?? 1; return m; }).filter(Boolean);
+    const rk = HJ.HUNT_RANKS[out.rank]?.name ?? '';
+    this.popup = new RewardPopup({ title: '계약 완료!', sub: `「${HJ.huntTitle(c)}」  ·  일지 +${out.pts}${out.levelUps ? `  ·  레벨 업 +${out.levelUps}` : ''}`, gold: out.gold, exp: out.exp, items, color: HJ.HUNT_COLOR });
+    if (out.queued) this.game.toast(`가방이 가득 차 보상 ${out.queued}개를 보관함에 맡겼다`, '#ffb060', 3.2);
+    this.popup.onClose = () => {
+      this.refresh();
+      this.talk(out.rankUp ? `사냥꾼 등급이 올랐다! 이제 「${rk}」이다.` : '사냥 일지에 완료 도장을 찍었다.');
+      if (out.rankUp) audio.sfx('secret');
+    };
   }
   /** 방금 받은 의뢰를 게시판에 되돌린다 (진행 기록 없이 받기 전 그대로) */
   undoAccept() {
@@ -183,7 +208,7 @@ export class QuestBoardScene extends ServiceScene {
     const lw = Math.round(body.w * 0.47);
     const lr = { x: body.x + 10, y: body.y, w: lw - 10, h: body.h };
     ctx.fillStyle = 'rgba(30,18,10,0.55)'; ctx.fillRect(body.x, body.y - 4, lw + 2, body.h + 8);
-    const emptyTxt = ['지금 받을 수 있는 의뢰가 없다.', '진행 중인 의뢰가 없다.', '아직 완료한 의뢰가 없다.'][this.tab];
+    const emptyTxt = ['지금 받을 수 있는 의뢰가 없다.', '진행 중인 의뢰가 없다.', '아직 완료한 의뢰가 없다.', '스테이지를 하나 클리어하면 사냥 일지가 열린다.'][this.tab];
     this.list.draw(ctx, lr, (c, i, r, sel) => this.paperRow(c, r, sel, this.entries[i]), emptyTxt);
     const dr = { x: body.x + lw + 12, y: body.y, w: body.w - lw - 12, h: body.h - 60 };
     this.detailRect = dr;
@@ -191,6 +216,12 @@ export class QuestBoardScene extends ServiceScene {
     this.drawParchment(ctx, dr, q);
     this.actRect = this.tz('act', { x: dr.x, y: dr.y + dr.h + 10, w: dr.w, h: 50 });
     if (!q) { uiButton(ctx, this.actRect, '—', { disabled: true }); if (this.undo && this.tab === 0) this.drawUndo(ctx, dr); return; }
+    if (this.tab === 3) {   // [s6:hunt]
+      if (q.claimed) uiButton(ctx, this.actRect, '받은 계약', { disabled: true, size: 16 });
+      else if (q.done) uiButton(ctx, this.actRect, '★ 보상 받기', { selected: true, size: 18, color: '#ffe070' });
+      else uiButton(ctx, this.actRect, '진행 중…', { size: 15, color: '#a89880' });
+      return;
+    }
     if (this.tab === 0) uiButton(ctx, this.actRect, '의뢰 받기', { selected: true, size: 18 });
     else if (this.tab === 1) {
       const ok = Q.canClaim(st, q.id);
@@ -216,6 +247,7 @@ export class QuestBoardScene extends ServiceScene {
   }
 
   paperRow(ctx, r, sel, q) {
+    if (this.tab === 3) { this.huntRow(ctx, r, sel, q); return; }
     const st = this.state;
     const ready = this.tab === 1 && Q.canClaim(st, q.id);
     const main = q.kind === 'main';
@@ -246,7 +278,7 @@ export class QuestBoardScene extends ServiceScene {
   }
 
   drawParchment(ctx, r, q) {
-    const rng = new RNG(hashStr(q?.id ?? 'x'));
+    const rng = new RNG(hashStr(q?.id ?? q?.c?.id ?? 'x'));
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(r.x, r.y + 4);
@@ -258,6 +290,7 @@ export class QuestBoardScene extends ServiceScene {
     ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 16; // 원점 기준 캐시 그라디언트 (그림자는 변환과 무관)
     fillPathGrad(ctx, rGrad(ctx, 0, 0, 20, Math.max(r.w, r.h) * 0.75, DETAIL), r.x + r.w / 2, r.y + r.h / 2); ctx.shadowBlur = 0;
     ctx.strokeStyle = 'rgba(80,50,20,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
+    if (this.tab === 3) { this.huntDetail(ctx, r, q); ctx.restore(); return; }   // [s6:hunt]
     if (!q) { text(ctx, '의뢰서를 고르세요', r.x + r.w / 2, r.y + r.h / 2, { size: 16, align: 'center', color: INK2, outline: null, ow: 0 }); ctx.restore(); return; }
     const st = this.state;
     const x = r.x + 22, w = r.w - 44;
@@ -309,5 +342,91 @@ export class QuestBoardScene extends ServiceScene {
       ctx.restore();
     }
     ctx.restore();
+  }
+
+  // ── [s6:hunt] 사냥 일지 ──
+  /** 남은 시간 글 (일일: 오늘 자정까지 · 주간: 일요일 자정까지) */
+  huntLeftText(e) {
+    if (e.old) return '지난 계약 — 보상을 받을 수 있다';
+    const t = HJ.huntTimeLeft(), sec = e.c.slot === 'w' ? t.week : t.day;
+    const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60);
+    return `남은 시간 ${d ? `${d}일 ${h}시간` : h ? `${h}시간 ${m}분` : `${Math.max(1, m)}분`}`;
+  }
+  huntRow(ctx, r, sel, e) {
+    const c = e.c, ready = e.done && !e.claimed;
+    ctx.save();
+    ctx.beginPath(); ctx.moveTo(r.x + 3, r.y); ctx.lineTo(r.x + r.w - 2, r.y + 2); ctx.lineTo(r.x + r.w, r.y + r.h - 1); ctx.lineTo(r.x, r.y + r.h); ctx.closePath();
+    fillPathGrad(ctx, vGrad(ctx, r.h, e.claimed ? PAPER_DONE : PAPER), 0, r.y);
+    ctx.fillStyle = 'rgba(90,60,30,0.18)'; ctx.fillRect(r.x, r.y + r.h - 8, r.w, 8);
+    if (sel) { ctx.strokeStyle = COLORS.gold; ctx.lineWidth = 3; ctx.shadowColor = 'rgba(255,210,120,0.7)'; ctx.shadowBlur = 12; ctx.strokeRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2); ctx.shadowBlur = 0; }
+    const wk = c.slot === 'w';
+    ctx.fillStyle = wk ? '#3a5a1a' : '#6a4a2a'; ctx.beginPath(); ctx.arc(r.x + 22, r.y + r.h / 2, wk ? 11 : 6, 0, TAU); ctx.fill();
+    if (wk) { ctx.strokeStyle = '#c8e090'; ctx.lineWidth = 1.5; ctx.stroke(); text(ctx, '주', r.x + 22, r.y + r.h / 2 + 5, { size: 11, weight: 900, align: 'center', color: '#efffd0', ow: 0 }); }
+    text(ctx, HJ.huntTitle(c), r.x + 42, r.y + 26, { size: 16, weight: 800, family: FONT.title, color: INK, outline: null, ow: 0, maxWidth: r.w - 120 });
+    text(ctx, `${HJ.huntGoalText(c)}`, r.x + 42, r.y + 47, { size: 12, color: INK2, outline: null, ow: 0, maxWidth: r.w - 60 });
+    ctx.fillStyle = 'rgba(60,40,20,0.3)'; ctx.fillRect(r.x + r.w - 88, r.y + 18, 72, 6);
+    ctx.fillStyle = e.done ? '#3a8a2a' : '#8a5a1a'; ctx.fillRect(r.x + r.w - 88, r.y + 18, 72 * clamp(e.cur / Math.max(1, e.need), 0, 1), 6);
+    if (ready) {
+      const pulse = 0.6 + Math.sin(this.t * 6) * 0.4;
+      ctx.save(); ctx.translate(r.x + r.w - 34, r.y + r.h / 2 + 6); ctx.rotate(-0.2);
+      ctx.strokeStyle = `rgba(170,20,30,${0.7 + pulse * 0.3})`; ctx.lineWidth = 2.5; ctx.strokeRect(-26, -12, 52, 22);
+      text(ctx, '달성', 0, 5, { size: 13, weight: 900, align: 'center', color: '#a01020', outline: null, ow: 0 });
+      ctx.restore();
+    } else if (e.claimed) text(ctx, '완료', r.x + r.w - 16, r.y + r.h / 2 + 10, { size: 13, weight: 900, align: 'right', color: '#5a2a10', outline: null, ow: 0 });
+    ctx.restore();
+  }
+  /** 양피지: 등급 줄 (늘) + 고른 계약 (목표 · 막대 · 남은 시간 · 보상) */
+  huntDetail(ctx, r, e) {
+    const st = this.state, x = r.x + 22, w = r.w - 44;
+    let sm = null; try { sm = HJ.huntSummary(st); } catch { sm = null; }
+    let y = r.y + 28;
+    text(ctx, '— 사 냥 일 지 —', r.x + r.w / 2, y, { size: 11, weight: 800, align: 'center', color: '#3a5a1a', outline: null, ow: 0, family: FONT.title });
+    y += 22;
+    if (sm) {
+      text(ctx, `${sm.rankName}  ·  ${fmt(sm.pts)}점`, r.x + r.w / 2, y, { size: 15, weight: 800, align: 'center', color: INK, outline: null, ow: 0, maxWidth: w });
+      y += 10;
+      bar(ctx, x, y, w, 6, sm.next.cur / Math.max(1, sm.next.need), { color: '#6a9a2a', back: 'rgba(60,40,20,0.3)', edge: '#5a4020', shine: false });
+      y += 18;
+      text(ctx, sm.next.next ? `다음 등급 「${sm.next.next}」까지 ${fmt(sm.next.need - sm.next.cur)}점` : '가장 높은 등급이다', r.x + r.w / 2, y, { size: 12, align: 'center', color: INK2, outline: null, ow: 0, maxWidth: w });
+    }
+    ctx.fillStyle = 'rgba(90,60,30,0.4)'; ctx.fillRect(x, y + 10, w, 1.5); y += 34;
+    if (!e) {
+      ctx.font = font(14, 500);
+      for (const l of wrap(ctx, '깬 스테이지를 다시 돌며 사냥 계약을 채우자. 계약은 매일 자정에 3장, 매주 월요일에 1장 바뀐다. 이야기 스테이지와 악몽 토벌만 센다.', w, 14).slice(0, 5)) { text(ctx, l, x, y, { size: 14, color: INK, outline: null, ow: 0 }); y += 21; }
+      return;
+    }
+    const c = e.c;
+    text(ctx, HJ.huntTitle(c) + (c.slot === 'w' ? ' (주간)' : ''), r.x + r.w / 2, y, { size: 20, weight: 800, family: FONT.title, align: 'center', color: INK, outline: null, ow: 0, maxWidth: w });
+    y += 26;
+    text(ctx, '목표', x, y, { size: 12, weight: 800, color: '#8a1426', outline: null, ow: 0 }); y += 18;
+    ctx.font = font(13, 700);
+    for (const l of wrap(ctx, HJ.huntGoalText(c), w, 13).slice(0, 2)) { text(ctx, l, x, y, { size: 13, weight: 700, color: INK, outline: null, ow: 0, maxWidth: w }); y += 18; }
+    bar(ctx, x, y - 4, w - 60, 8, e.cur / Math.max(1, e.need), { color: e.done ? '#4aa83a' : '#b8781a', back: 'rgba(60,40,20,0.35)', edge: '#5a4020', shine: false });
+    text(ctx, `${e.cur}/${e.need}`, x + w, y + 4, { size: 12, weight: 800, align: 'right', color: INK, outline: null, ow: 0 });
+    y += 20;
+    text(ctx, this.huntLeftText(e), x, y, { size: 12, weight: 700, color: '#6a2a14', outline: null, ow: 0, maxWidth: w });
+    y += 22;
+    const rw = HJ.huntReward(c);
+    text(ctx, '보상', x, y, { size: 12, weight: 800, color: '#8a1426', outline: null, ow: 0 }); y += 8;
+    const chips = [['coin', `${fmt(rw.gold)} G`], ['gem_crystal', `EXP ${fmt(rw.exp)}`]];
+    for (const it of rw.items) chips.push([ITEMS[it.id]?.icon ?? 'moneybag', `${ITEMS[it.id]?.name ?? it.id} ×${it.qty}`]);
+    chips.push(['scroll', `일지 +${rw.pts}`]);
+    let cx = x, cy = y + 4;
+    ctx.font = font(12, 700);
+    for (const [ic, label] of chips) {
+      const cw = ctx.measureText(label).width + 40;
+      if (cx + cw > x + w) { cx = x; cy += 30; }
+      if (cy + 26 > r.y + r.h - 8) break;
+      ctx.fillStyle = 'rgba(60,40,20,0.14)'; ctx.fillRect(cx, cy, cw, 26);
+      drawIcon(ctx, ic, cx + 14, cy + 13, 20);
+      text(ctx, label, cx + 28, cy + 18, { size: 12, weight: 700, color: INK, outline: null, ow: 0 });
+      cx += cw + 6;
+    }
+    if (e.claimed) {
+      ctx.save(); ctx.translate(r.x + r.w - 70, r.y + 120); ctx.rotate(-0.25);
+      ctx.strokeStyle = 'rgba(160,16,32,0.75)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 36, 0, TAU); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, 30, 0, TAU); ctx.stroke();
+      text(ctx, '완료', 0, 7, { size: 20, weight: 900, align: 'center', color: 'rgba(160,16,32,0.85)', outline: null, ow: 0, family: FONT.title });
+      ctx.restore();
+    }
   }
 }

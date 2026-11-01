@@ -24,6 +24,7 @@ import { STAGES } from '../data/stages.js';
 import { NPCS } from '../data/npcs.js';
 import { countItem, consumeByBase, grantItem } from './inventory.js';
 import { addExpShared } from './progression.js';   // [s5:p4b] K4 보상 경험치도 대기 헌터와 나눈다
+import { initHunt } from './hunt_journal.js';   // [s6:hunt] 사냥 일지 — 같은 버스 이벤트를 일지 계약으로 넘긴다 (부트 때 한 번)
 
 let G = null;
 let claiming = 0; // 보상 지급 중 발생하는 itemPicked/levelUp 등의 중첩 처리 방지
@@ -286,4 +287,5 @@ export function initQuests(game) {
   on('goldPicked', (s, d) => bump(s, (g) => g.type === 'gold', d.amount ?? 0));
   on('npcTalk', (s, d) => bump(s, (g) => g.type === 'talk' && g.npc === d.npcId));
   for (const evt of ['stageCleared', 'stageEntered', 'itemPicked', 'docFound', 'relicFound', 'shardFound', 'heartFound']) on(evt, null);
+  try { initHunt(game); } catch (err) { console.warn('[hunt] init', err); }   // [s6:hunt]
 }

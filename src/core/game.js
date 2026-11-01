@@ -393,7 +393,7 @@ class Game {
     const k = this.cssScale;
     this.safe = { l: ins.l / k, r: ins.r / k, t: ins.t / k, b: ins.b / k };
     // 품질 등급 → DPR = min(기기 DPR, 등급 상한, √(픽셀 예산 / CSS 면적))  (fhd2x high: 3.7 MP, 8.3 MP 가 아니다)
-    const tier = this.resolveTier();
+    const tier = this.saverTier(this.resolveTier());   // [phone] 절전 모드: 한 단계 낮은 등급 (낮음은 그대로)
     this._tier = tier;
     const T = QUALITY_TIERS[tier];
     const dpr = Math.max(0.25, Math.min(window.devicePixelRatio || 1, T.cap, Math.sqrt(T.budget / (cssW * cssH))));
@@ -427,7 +427,7 @@ class Game {
     bc.toggle('portrait', this.portrait);
     bc.toggle('portrait-play', this.portraitAny && !this.portrait); // 태블릿 세로 플레이: 회전 안내 없음 (style.css)
     const s0 = this.settings, w = this._watch;
-    w.q = s0?.quality; w.u = s0?.uiScale; w.a = s0?.safeArea; w.t = s0?.textSize; w.h = s0?.hud?.preset; w.p = s0?.hud?.pad;
+    w.q = s0?.quality; w.u = s0?.uiScale; w.a = s0?.safeArea; w.t = s0?.textSize; w.h = s0?.hud?.preset; w.p = s0?.hud?.pad; w.bs = s0?.batterySaver;
     this.applySurround();
     this.dirty = true;
   }
@@ -456,7 +456,19 @@ class Game {
   /** 화면 배치에 영향을 주는 설정이 바뀌었나 (옵션에서 바꾸면 다음 rAF 에 다시 배치) */
   layoutSettingsChanged() {
     const s = this.settings, w = this._watch;
-    return !!s && (s.quality !== w.q || s.uiScale !== w.u || s.safeArea !== w.a || s.textSize !== w.t || s.hud?.preset !== w.h || s.hud?.pad !== w.p);
+    return !!s && (s.quality !== w.q || s.uiScale !== w.u || s.safeArea !== w.a || s.textSize !== w.t || s.hud?.preset !== w.h || s.hud?.pad !== w.p
+      || s.batterySaver !== w.bs);
+  }
+  /** [phone] 절전 모드의 그리기 상한 fps (0 = 끔). 게임 논리는 고정 스텝(STEP)이라 속도는 그대로, 그리기만 건너뛴다 */
+  saverFps() {
+    const v = this.settings?.batterySaver;
+    return v === 60 || v === 45 || v === 30 ? v : 0;
+  }
+  /** [phone] 절전 모드면 품질 등급 한 단계 아래 (효과·해상도). 품질 조절기·설정값은 그대로 두고 실제로 쓰는 등급만 내린다 */
+  saverTier(tier) {
+    if (!this.saverFps()) return tier;
+    const i = TIER_ORDER.indexOf(tier);
+    return i > 0 ? TIER_ORDER[i - 1] : tier;
   }
 
   /** 맨 위 장면에 자동 일시정지 요청 (세로 회전·백그라운드 전환) */
@@ -642,7 +654,11 @@ class Game {
       if (this._pageHidden) return; // pagehide 뒤 (bfcache 등): 아무것도 하지 않는다
       this.realTime += dt;
       this._fpsAcc += dt; this._fpsN++;
-      if (this._fpsAcc > 0.5) { this.fps = this._fpsN / this._fpsAcc; this._fpsAcc = 0; this._fpsN = 0; }
+      if (this._fpsAcc > 0.5) {
+        this.fps = this._fpsN / this._fpsAcc;
+        this.drawFps = ((this.drawn || 0) - (this._fpsD0 || 0)) / this._fpsAcc;   // [phone] 실제로 그린 프레임/초 (절전 모드 표시·QA)
+        this._fpsD0 = this.drawn || 0; this._fpsAcc = 0; this._fpsN = 0;
+      }
       input.pollFrame?.();  // 게임패드는 rAF 마다 한 번 읽는다
       if (this.layoutSettingsChanged()) this.resize();
       // 터치 기기를 세로로 돌리면 ('가로 모드로 돌려주세요' 안내가 덮는 동안) 게임 진행을 멈춘다
@@ -660,7 +676,17 @@ class Game {
       this.govern(dt);
       this.syncPointer();
       // fpsCap 60: 이번 rAF 에 틱이 돌았거나 dirty 일 때만 그린다 (120 Hz 화면에서 같은 그림을 두 번 그리지 않는다). 0 = 매 rAF
-      if (steps > 0 || this.dirty || this.settings?.fpsCap === 0) {
+      // [phone] 절전 모드(60/45/30): 위 조건에 더해 그리기 간격이 1/상한 초를 채웠을 때만 (dirty 도 다음 차례까지 기다린다; 탭은 input 이 latch)
+      const sv = this.saverFps();
+      let draw = steps > 0 || this.dirty || (!sv && this.settings?.fpsCap === 0);
+      if (sv) {
+        const per = 1 / sv;
+        this._saverAcc = Math.min((this._saverAcc || 0) + dt, 2 * per);
+        if (draw && this._saverAcc < per - 0.004) draw = false;   // 4 ms 여유: 60 Hz 화면에서 30 = 두 rAF 마다, 45 = 네 번 중 세 번
+        if (draw) this._saverAcc = Math.min(Math.max(0, this._saverAcc - per), per);
+      }
+      if (draw) {
+        this.drawn = (this.drawn || 0) + 1;   // 그린 프레임 수 (QA: tools/test_phone.mjs · 절전 모드 측정)
         this.dirty = false;
         input.beginRender();
         this.render();
@@ -805,7 +831,7 @@ class Game {
     }
     if (this.debug) {
       ctx.fillStyle = '#0f0'; ctx.font = font(12, 400, FONT.body); ctx.textAlign = 'left';
-      ctx.fillText(`FPS ${this.fps.toFixed(0)}  ${this.tier}${this.autoQualityOn() ? '(auto)' : ''} ×${this.dpr.toFixed(2)} ui ${this.uiK}  scenes:${this.scenes.map((s) => s.name).join('>')}`, 6, this.viewH - 6);
+      ctx.fillText(`FPS ${this.fps.toFixed(0)}${this.saverFps() ? ` draw ${(this.drawFps ?? 0).toFixed(0)} saver${this.saverFps()}` : ''}  ${this.tier}${this.autoQualityOn() ? '(auto)' : ''} ×${this.dpr.toFixed(2)} ui ${this.uiK}  scenes:${this.scenes.map((s) => s.name).join('>')}`, 6, this.viewH - 6);
     }
     if (taps.debug) taps.drawDebug(ctx); // ?debug=taps
     if (this.feelStats) this.publishFeelStats();

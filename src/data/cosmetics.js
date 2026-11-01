@@ -3,7 +3,8 @@
 //  - 저장: 계정 단위 meta.ach.cos = { trail: 'tr_…' | null } (core/ach_meta.js — 없거나 null = '직업 기본', 영웅마다의 원래 잔상)
 //    서버는 모르는 필드를 그대로 받는다 (netlify/lib/validate.mts isValidAch). 병합은 mergeAch 의 모르는 필드 규칙 {...서버, ...기기} = 기기 우선
 //  - 해금 need: { ach: 업적 id } meta.ach.got · { tower: n } 무한의 탑 어느 난이도든 n 층 (meta.towerBest[diff].floor) ·
-//    { ng: n } 슬롯 1–3 중 하나가 지난 회차 n 이상 (state.ng.n — game/ngplus.js ngOf 와 같은 규칙: 아케이드 임시 세이브 제외)
+//    { ng: n } 슬롯 1–3 중 하나가 지난 회차 n 이상 (state.ng.n — game/ngplus.js ngOf 와 같은 규칙: 아케이드 임시 세이브 제외) ·
+//    { hj: n } 슬롯 1–3 중 하나의 사냥 일지 점수 n 이상 (state.hunt.pts — Stage 6)
 //  - 고를 때만 확인한다 (업적처럼 거두지 않는다: 회차 슬롯을 지워도 이미 고른 잔상은 남는다). 런타임은 trailRamp 로 색만 읽는다
 //  - ramp: 잔상 6단 (0 = 첫 잔상, 진한 색 → 5 = 마지막, 밝은 색). 직업 기본은 필살기 색 → 흰색 (feel_move.js 의 mix 와 같은 모양)
 //  - 화면: front/achievements.js '이명 · 장식' 창의 '외형' 쪽 (잠긴 칸은 조건 글)
@@ -24,6 +25,8 @@ export const TRAILS = Object.freeze({
   tr_nightmare: { name: '악몽', desc: '악몽에서 살아 돌아온 자의 검붉은 잔상', ramp: ['#5a0614', '#7a1424', '#9a2436', '#ba3a4c', '#d85a68', '#f0868e'], need: { nm: 1 } },
   tr_rose: { name: '흑장미', desc: '악몽의 정원에 핀 검은 장미', ramp: ['#6a0848', '#86205e', '#a23c78', '#be5c94', '#d880b2', '#f0a8d2'], need: { nm: 10 } },
   tr_sovereign: { name: '군주', desc: '스물여섯 군주를 모두 꺾은 자의 진홍빛', ramp: ['#3a0008', '#6a0a18', '#a01828', '#d0303a', '#f0705a', '#ffd08a'], need: { nm: 26 } },   // 악몽 26 (외전 26장 s26 포함 — ch26_verify; 이미 고른 잔상은 거두지 않는다)
+  // ── Stage 6 (사냥 일지, data/hunt_journal.js) ── 일지 점수 { hj: n } = 슬롯 1–3 중 가장 높은 state.hunt.pts (아케이드 임시 세이브 제외). 500점 = 등급 「명사냥꾼」
+  tr_hunter: { name: '사냥꾼', desc: '사냥 일지를 채운 명사냥꾼의 올리브빛 잔상', ramp: ['#4a6a1e', '#617f32', '#7a9448', '#94aa62', '#b0c282', '#cedca6'], need: { hj: 500 } },
 });
 /** 무한의 탑 이정표 (돌파한 층 → 잔상). 탑 장면이 이정표 층을 처음 넘을 때 알린다 (scenes/front/arcade_tower.js) */
 export const TOWER_MILESTONES = Object.freeze([
@@ -66,7 +69,9 @@ export function cosContext(meta, states = []) {
   for (const s of Array.isArray(states) ? states : []) ng = Math.max(ng, ngOfState(s));
   const c = isObj(meta?.nm) ? meta.nm.clears : 0;
   const nm = typeof c === 'number' && Number.isFinite(c) && c > 0 ? Math.floor(c) : 0;
-  return { got, tower, tw: tower, nm, ng };
+  let hj = 0;   // [s6:hunt] 사냥 일지 점수 (슬롯 중 최대 — 아케이드 임시 세이브·깨진 값은 0)
+  for (const s of Array.isArray(states) ? states : []) { const p = isObj(s) && !s.arcade && isObj(s.hunt) ? s.hunt.pts : 0; if (typeof p === 'number' && Number.isFinite(p) && p > hj) hj = Math.floor(p); }
+  return { got, tower, tw: tower, nm, ng, hj };
 }
 const num0 = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 /** need 가 참인가 (모르는 키·숫자가 아닌 문턱 → 거짓) */
@@ -77,6 +82,7 @@ export function needMet(need, ctx) {
   if (typeof need.tower === 'number') return num0(ctx.tower) >= need.tower;
   if (typeof need.nm === 'number') return num0(ctx.nm) >= need.nm;
   if (typeof need.ng === 'number') return num0(ctx.ng) >= need.ng;
+  if (typeof need.hj === 'number') return num0(ctx.hj) >= need.hj;   // [s6:hunt]
   return false;
 }
 /** 잔상을 쓸 수 있나 (null = 직업 기본은 늘 참) */
@@ -95,6 +101,7 @@ export function needText(need, achName = () => null) {
   const tw = isObj(need) ? (typeof need.tw === 'number' ? need.tw : need.tower) : undefined;
   if (typeof tw === 'number') return { short: `무한의 탑 ${tw}층`, long: `무한의 탑 ${tw}층을 돌파하면 쓸 수 있습니다` };
   if (isObj(need) && typeof need.nm === 'number') return { short: `악몽 토벌 ${need.nm}승`, long: `「악몽 토벌」에서 보스를 ${need.nm}번 쓰러뜨리면 쓸 수 있습니다` };   // [fix-verify] 모드 이름 「악몽 토벌」 (ux-fix #4 — 잔상 이름 「악몽」은 그대로)
+  if (isObj(need) && typeof need.hj === 'number') return { short: `사냥 일지 ${need.hj}점`, long: `「사냥 일지」 점수를 ${need.hj}점 모으면 쓸 수 있습니다` };   // [s6:hunt]
   if (isObj(need) && typeof need.ng === 'number') return { short: `${need.ng + 1}회차 시작`, long: `「피의 윤회」로 ${need.ng + 1}회차를 시작하면 쓸 수 있습니다` };
   return { short: '', long: '아직 얻지 못했습니다' };
 }

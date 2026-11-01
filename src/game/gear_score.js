@@ -6,15 +6,18 @@
 //  공개 API:
 //    gearSettings(settings?) → 정규화한 settings.gear (없으면 기본값)
 //    comparable(state, hero, inst) → {ok, reason}  (직업이 못 쓰는 무기 계열·전용 장비 = 비교 대상 아님)
-//    gearDelta(state, hero, inst, opts) → { comparable, reason, slot, vs, here, by, lvOk, score, mark, rows:[{k,from,to,d}], dps:{from,to,pct}, ehp, effect, loseEffect }
+//    gearDelta(state, hero, inst, opts) → { comparable, reason, slot, vs, here, by, lvOk, score, mark, rows:[{k,from,to,d}], sets:[세트 부위 수 변화 — setChanges], dps:{from,to,pct}, ehp, effect, loseEffect }
 //    gearScore(state, hero, inst, opts) → 숫자 (비교 대상 아니면 null)
 //    bestLoadout(state, heroId, opts) → plan { heroId, before, after, changes:[{slot,from,to,score}], fixed:[{slot,why}], total, rows, dps, setKept }
 //    applyLoadout(state, plan|plans) → undo token · undoLoadout(state, token) → 되돌린 칸 수
 //    planAll(state, opts) → { plans, total } (지금 영웅 먼저, 공유 가방 경합은 앞 영웅 우선)
 //    bagMarks(state, heroId, {budgetMs}) → Map(uid → {mark:'up'|'down'|'eq'|null, other:charId|null, score}) — 시간 나눠 계산 (가방 칸 ▲ / 다른 영웅 얼굴)
-//    isSpecial(inst) — 고유·신화·세트 (숫자로 다 잡히지 않는 효과 → '+효과', 최적 장착 기본 고정)
-import { computeStats, EQUIP_SLOTS, STAT_INFO } from './stats.js';
+//    isSpecial(inst) — 고유·신화·신화 한 벌(hunt) (숫자로 다 잡히지 않는 효과 → '+효과', 최적 장착 기본 고정)
+//    「피의 유물」 세트(data/relic_sets.js): 보너스가 computeStats 에 들어가 점수·▲▼에 그대로 잡힌다. 최적 장착은 가방에 같은 세트가
+//    2부위 이상이면 '세트 먼저 끼운 시작점'에서도 탐욕 선택을 돌려 더 높은 쪽을 고른다 (특별 취급·고정 안 함)
+import { computeStats, EQUIP_SLOTS, STAT_INFO, heroSetCounts } from './stats.js';
 import { ITEMS, isEquipment } from '../data/items.js';
+import { RELIC_SETS, SET_PIECES } from '../data/relic_sets.js';   // 「피의 유물」 세트 (Stage 6)
 import { findItem, canEquip, isEquipped } from './inventory.js';
 import { CHARACTERS } from '../data/characters.js';
 import { roleOf, roleWeights, UTIL_COEF } from '../data/gear_weights.js';
@@ -43,9 +46,11 @@ export function gearSettings(settings = saves?.settings) {
 
 const baseOf = (inst) => (inst ? ITEMS[inst.baseId] ?? null : null);
 /** 고유·신화·세트 장비 (고유 효과 문구가 있거나 신화·한 벌) */
-export function isSpecial(inst) { const b = baseOf(inst); return !!(b && (b.unique || b.mythic || b.set || b.effect)); }
+// 「피의 유물」 세트(RELIC_SETS)의 보너스는 능력치라서 computeStats 가 다 잡는다 → 특별 취급(고정·'+효과') 안 함. 'hunt' 같은 신화 한 벌 표식은 그대로
+const fxSet = (b) => !!b.set && !RELIC_SETS[b.set];
+export function isSpecial(inst) { const b = baseOf(inst); return !!(b && (b.unique || b.mythic || fxSet(b) || b.effect)); }
 /** 숫자 밖 효과가 있는가 ('+효과' 표시) */
-export function hasEffect(inst) { const b = baseOf(inst); return !!(b && (b.effect || b.mythic || b.set)); }
+export function hasEffect(inst) { const b = baseOf(inst); return !!(b && (b.effect || b.mythic || fxSet(b))); }
 const slotKind = (slot) => (slot === 'acc1' || slot === 'acc2' ? 'acc' : slot);
 
 // ───────────────────────── 힘 (공격 · 생존 · 편의) ─────────────────────────
@@ -151,7 +156,7 @@ export function gearDelta(state, hero, inst, opts = {}) {
   return gearDelta0(state, hero, inst, opts);
 }
 function gearDelta0(state, hero, inst, opts = {}) {
-  const out = { comparable: false, reason: '', slot: null, vs: null, here: false, by: null, lvOk: true, score: null, mark: null, rows: [], dps: null, ehp: null, effect: hasEffect(inst), loseEffect: false };
+  const out = { comparable: false, reason: '', slot: null, vs: null, here: false, by: null, lvOk: true, score: null, mark: null, rows: [], sets: [], dps: null, ehp: null, effect: hasEffect(inst), loseEffect: false };
   if (!state || !hero || !inst) return out;
   const c = comparable(state, hero, inst);
   if (!c.ok) { out.reason = c.reason; return out; }
@@ -183,9 +188,27 @@ function gearDelta0(state, hero, inst, opts = {}) {
   out.score = scoreBetween(p0, p1, hero, w);
   out.mark = markOf(out.score);
   out.rows = statRows(s0, s1);
+  out.sets = setChanges(state, hero, eq, next);
   out.dps = { from: p0.off, to: p1.off, pct: (p1.off / p0.off - 1) * 100 };
   out.ehp = { from: p0.def, to: p1.def, pct: (p1.def / p0.def - 1) * 100 };
   return out;
+}
+/** 「피의 유물」 세트 부위 수 변화 [{id, name, color, from, to, total, gain:[문턱], lose:[문턱]}] (바뀐 세트만) */
+export function setChanges(state, hero, eqA, eqB) {
+  const a = statsCounts(state, hero, eqA), b = statsCounts(state, hero, eqB);
+  const out = [];
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    const S = RELIC_SETS[k], from = a[k] ?? 0, to = b[k] ?? 0;
+    if (!S || from === to) continue;
+    const ths = S.bonus.map((t) => t.n);
+    out.push({ id: k, name: S.name, color: S.color, from, to, total: S.pieces.length, gain: ths.filter((n) => from < n && to >= n), lose: ths.filter((n) => from >= n && to < n) });
+  }
+  return out;
+}
+function statsCounts(state, hero, equip) {
+  const eq = hero.equip;
+  hero.equip = equip;
+  try { return heroSetCounts(state, hero); } finally { hero.equip = eq; }
 }
 /** 점수 하나 (비교 대상이 아니면 null) */
 export function gearScore(state, hero, inst, opts = {}) {
@@ -232,9 +255,9 @@ export function bestLoadout(state, heroId, opts = {}) {
     if (!canEquip(state, hero, it).ok) continue;
     pool[b.slot]?.push(it);
   }
-  const run = (lock) => {
-    const cur = { ...before };
-    let curP = p0, curScore = 0;
+  const run = (lock, start = before) => {
+    const cur = { ...start };
+    let curP = start === before ? p0 : powerOf(statsWith(state, hero, cur), hero), curScore = start === before ? 0 : scoreBetween(p0, curP, hero, w);
     for (let pass = 0; pass < 3; pass++) {
       let moved = false;
       for (const slot of ORDER) {
@@ -259,6 +282,14 @@ export function bestLoadout(state, heroId, opts = {}) {
   };
   let res = run(new Set());
   let setKept = null;
+  // 「피의 유물」 세트 모으기: 가방에 같은 세트 부위가 2개 이상이면 '그 세트를 먼저 다 끼운 상태'에서 탐욕 선택을 다시 돌려
+  //  (부위 하나씩 바꾸는 탐욕 선택은 2/4세트 보너스를 혼자서는 못 만든다) 점수가 더 높으면 그 안을 쓴다
+  for (const k in SET_PIECES) {
+    const start = assembleSet(state, before, pool, fixedSet, k);
+    if (!start) continue;
+    const alt = run(new Set(), start);
+    if (alt.score > res.score + EPS) res = alt;
+  }
   // 한 벌(set) 확인: 지금 2개 이상 끼운 한 벌이 탐욕 선택으로 깨지면 '유지' 안을 계산해 견준다
   const sets = {};
   for (const slot of EQUIP_SLOTS) { const b = baseOf(findItem(state, before[slot])); if (b?.set) (sets[b.set] ??= []).push(slot); }
@@ -285,6 +316,30 @@ export function bestLoadout(state, heroId, opts = {}) {
     dps: { from: p0.off, to: p1.off, pct: (p1.off / p0.off - 1) * 100 },
     ehp: { from: p0.def, to: p1.def, pct: (p1.def / p0.def - 1) * 100 },
   };
+}
+/** 세트 k 의 부위를 고정되지 않은 칸에 끼운 시작 장비 (부위마다 강화·희귀도가 높은 것; 2부위 미만이면 null) */
+function assembleSet(state, before, pool, fixedSet, k) {
+  const ids = new Set(SET_PIECES[k]);
+  const best = {};
+  const have = new Set();
+  for (const slot of EQUIP_SLOTS) { const it = findItem(state, before[slot]); if (it && ids.has(it.baseId)) have.add(it.baseId); }
+  for (const kind in pool) for (const it of pool[kind]) {
+    if (!ids.has(it.baseId) || have.has(it.baseId)) continue;
+    const o = best[it.baseId];
+    if (!o || (it.level ?? 0) * 10 + (it.rarity ?? 0) > (o.level ?? 0) * 10 + (o.rarity ?? 0)) best[it.baseId] = it;
+  }
+  if (have.size + Object.keys(best).length < 2 || !Object.keys(best).length) return null;
+  const cur = { ...before };
+  const isSetAt = (slot) => { const it = findItem(state, cur[slot]); return !!it && ids.has(it.baseId); };
+  for (const it of Object.values(best)) {
+    const b = baseOf(it);
+    const slots = b.slot === 'acc' ? ['acc1', 'acc2'] : [b.slot];
+    const slot = slots.find((s) => !fixedSet.has(s) && !isSetAt(s));
+    if (slot) cur[slot] = it.uid;
+  }
+  let n = 0;
+  for (const slot of EQUIP_SLOTS) if (isSetAt(slot)) n++;
+  return n >= 2 ? cur : null;
 }
 /** 파티 전체 (지금 영웅 먼저, 그다음 영웅 순서). 계획만 낸다 — 계산 동안 영웅 장비를 잠깐 바꿨다가 모두 되돌린다 */
 export function planAll(state, opts = {}) {

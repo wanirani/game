@@ -184,6 +184,7 @@ export function migrateState(s) {
     for (const h of Object.values(s.heroes)) delete h.companions;
     try { ensureCompanionState(s); } catch (e2) { console.warn('[state] 동료 상태 생성 실패', e2); }
   }
+  if (Object.hasOwn(s, 'hunt') && !isObj(s.hunt)) delete s.hunt;   // [s6:hunt] 사냥 일지: 없거나 깨지면 빈 일지 (game/hunt_journal.js ensureHunt 가 안쪽 필드를 정리한다)
   normalizeNg(s);   // [hook:ng] 회차(state.ng) 정리 — ng 가 없으면 아무것도 하지 않는다 (옛 세이브에 ng 를 만들지 않는다)
   // 버전은 마지막에 (MASTER_PLAN §1.6). 더 새 클라이언트의 세이브도 이 클라이언트 스키마로 보정했으니 이 번호로 적는다:
   // 모르는 필드는 남아 있고, 새 클라이언트가 다시 불러오면 자기 마이그레이션을 한 번 더 돌린다 (멱등)

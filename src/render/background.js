@@ -6,6 +6,7 @@
 import { assets } from '../core/assets.js';
 import { rand, RNG, hashStr, rgba, hexToRgb, TAU, lerp, clamp } from '../core/math.js';
 import { createAtmos } from './atmos.js';
+import { createForeground } from './foreground.js';
 
 const TALL_PARALLAX = 0.35; // 세로로 긴 방: 카메라가 올라간 거리 대비 원경이 따라 내려가는 비율
 const topColors = new WeakMap();
@@ -121,6 +122,10 @@ export function createBackground(stage, map) {
   let atm = null;
   try { atm = createAtmos(stage); } catch (e) { console.warn('[bg] atmos', e); atm = null; }
   bg.atmos = atm;
+  // 전경 (Stage 6 FORE, render/foreground.js): 플레이 층 앞 가까운 실루엣. 마을·?fg=0 이면 null. 낮음·동작 줄이기에선 그리지 않음
+  let fgl = null;
+  try { fgl = createForeground(stage, map, theme); } catch (e) { console.warn('[bg] foreground', e); fgl = null; }
+  bg.fg = fgl;
   // 중경 실루엣 요소 생성 (방 폭에 맞춰)
   const W = (map?.pxW ?? 2000) + 800;
   const H = map?.pxH ?? 540;
@@ -137,6 +142,7 @@ export function createBackground(stage, map) {
 
   bg.update = (dt, world) => {
     atm?.update(dt, world, assets.get(stage.bg));
+    fgl?.update(dt, world);
     const q = world.fx?.quality ?? 1;
     if (q !== bg.q) { bg.q = q; bg.wv = q < 1 ? bg.weather.slice(0, Math.ceil(bg.weather.length * q)) : bg.weather; }
     bg.flashK = clamp(Number(world.game?.settings?.flashFx ?? 1) || 0, 0, 1);
@@ -329,6 +335,8 @@ export function createBackground(stage, map) {
     atm?.drawFront(ctx, cam, vw, vh);   // 인물 앞 안개 (높음 단계, 알파 ≤ 0.18)
     // 날씨
     drawWeather(ctx, bg, cam, vw, vh, t);
+    // 전경 실루엣 (날씨 앞, 비네팅 아래 — 가장자리가 함께 어두워진다)
+    if (fgl) { try { fgl.draw(ctx, cam, vw, vh); } catch (e) { console.warn('[bg] fg draw', e); bg.fg = fgl = null; } }
     // 비네팅
     const q = ctx.imageSmoothingQuality; ctx.imageSmoothingQuality = 'low';
     ctx.drawImage(vignetteSprite(vw, vh), 0, 0, vw, vh);

@@ -19,6 +19,9 @@ import { CHARACTERS } from '../../data/characters.js';
 import { promptMode } from '../../core/prompts.js';
 import { compareInfo, drawCompare, drawMark, scoreStr, LoadoutModal, MARK_COL } from './gear_compare.js';   // [qol] 비교 · 최적 장착 (qol_equip §2–§3)
 import { bestLoadout, applyLoadout, undoLoadout } from '../../game/gear_score.js';
+import { heroSetCounts } from '../../game/stats.js';   // 「피의 유물」 세트 (Stage 6)
+import { RELIC_SETS, setBonusLines } from '../../data/relic_sets.js';
+import { fmtStat } from '../../data/items.js';
 
 const SUMMARY = ['hp', 'mp', 'atk', 'mag', 'def', 'res', 'crit'];
 /** 2열 요약에서 이름이 칸에 다 들어가지 않을 때 쓰는 짧은 이름 ('최대…' 처럼 말줄임으로 HP·MP 가 같아 보이지 않게) */
@@ -356,11 +359,25 @@ export class EquipTab extends Tab {
     ctx.strokeStyle = 'rgba(200,160,90,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(MX + 8.5, A.y + 8.5, MW - 17, sh - 1);
     if (pv) pill(ctx, '미리보기', MX + MW / 2, A.y + 14, { align: 'center', color: PAL.goldHi, bg: 'rgba(110,14,34,0.92)', size: 11, h: 18 });
     const ns = pv?.stats || cur.stats;
+    // 「피의 유물」 세트: 끼운 세트별 n/총 + 단계 줄 (켜짐 = 초록, 꺼짐 = 흐림). 후보를 고르는 중이면 그 후보를 끼웠을 때 기준
+    const setL = setLinesOf(st, hero, hr ? { slot: this.slot, uid: hr.unequip ? null : hr.inst.uid } : null);
     // 주요 능력치 (글자 캐시: 값이 바뀔 때만 다시 굽는다)
-    const sumKey = SUMMARY.map((k) => `${cur.stats[k] ?? 0}:${ns[k] ?? 0}`).join(',') + (touch ? '|t' : '');
+    const sumKey = SUMMARY.map((k) => `${cur.stats[k] ?? 0}:${ns[k] ?? 0}`).join(',') + (touch ? '|t' : '') + '|' + setL.map((l) => l.text + l.color).join(';');
     const sy0 = A.y + sh + 10, sBot = A.y + A.h - (touch ? optH + 12 : 0);   // [qol] 터치: 아래에 「최적 장착」 단추
     this.txt.draw(ctx, 'sum', sumKey, MX + 4, sy0, MW - 8, sBot - 4 - sy0, (c) => {
       let y = A.y + sh + 32;
+      if (setL.length) {
+        // 세트 줄은 능력치 표 자리(최소 3줄)를 남기고 들어가는 만큼만 (넘치면 단계 줄부터 뺀다)
+        const rowH = Math.max(15, Math.ceil(textFloor() * 1.2));
+        const room = Math.floor((sBot - 8 - (y - 8) - 3 * Math.max(15, Math.ceil(textFloor() * 1.15)) - 30) / rowH);
+        const shown = fitSetLines(setL, room);
+        let yy = y - 10;
+        for (const l of shown) {
+          text(c, ellipsize(c, l.text, MW - 28 - (l.head ? 0 : 8), l.head ? 12 : 11, l.head ? 800 : 600), MX + 14 + (l.head ? 0 : 8), yy, { size: l.head ? 12 : 11, weight: l.head ? 800 : 600, color: l.color, ow: 2 });
+          yy += rowH;
+        }
+        if (shown.length) y = yy + 18;
+      }
       heading(c, '주요 능력치', MX + 14, y, MW - 28, { size: 14 });
       y += 8;
       // 줄 높이는 글자 크기 하한(설정 '글자 크기')에서 잡는다: 한 열에 다 들어가지 않으면 2열 (증감은 색으로만),
@@ -512,3 +529,35 @@ function drawSlotLive(ctx, x, y, s, inst, o) {
 /** 아이콘 그림이 준비됐는가 (준비 전에는 대체 아이콘으로 구워지므로 준비되면 다시 굽는다) */
 const iconReady = (inst) => (!inst?.icon || assets.has('icons/' + inst.icon) ? 1 : 0);
 const canDoN = (hr) => hr && (hr.unequip || (hr.ok && !hr.here));
+
+// ───────────────────────── 「피의 유물」 세트 줄 (Stage 6) ─────────────────────────
+/** 이 영웅이 끼운 세트 줄 [{text, color, head?, on?}] — pv {slot, uid} 를 주면 그 후보를 끼웠을 때 기준 */
+function setLinesOf(state, hero, pv) {
+  let counts = {};
+  const eq = hero.equip;
+  try {
+    if (pv) {
+      const tmp = { ...eq };
+      if (pv.uid) for (const s in tmp) if (tmp[s] === pv.uid) tmp[s] = null;
+      tmp[pv.slot] = pv.uid;
+      hero.equip = tmp;
+    }
+    counts = heroSetCounts(state, hero);
+  } catch (e) { console.warn('[relic]', e); } finally { hero.equip = eq; }
+  const out = [];
+  for (const k in counts) {
+    const S = RELIC_SETS[k];
+    if (!S) continue;
+    out.push({ text: `「${S.name}」 ${counts[k]}/${S.pieces.length}`, color: S.color, head: true });
+    for (const l of setBonusLines(k, counts[k], fmtStat)) out.push({ text: l.text, color: l.on ? PAL.good : PAL.faint, on: l.on });
+  }
+  return out;
+}
+/** room 줄 안에 맞추기: 머리줄 > 켜진 단계 > 꺼진 단계 순으로 남긴다 (원래 순서 유지) */
+function fitSetLines(L, room) {
+  if (room <= 0) return [];
+  if (L.length <= room) return L;
+  const pri = (l) => (l.head ? 0 : l.on ? 1 : 2);
+  const keep = new Set(L.map((l, i) => i).sort((a, b) => pri(L[a]) - pri(L[b]) || a - b).slice(0, room));
+  return L.filter((l, i) => keep.has(i));
+}

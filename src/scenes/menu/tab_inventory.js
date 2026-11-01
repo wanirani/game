@@ -14,6 +14,8 @@ import {
 // 필터 단추 그라디언트 색 멈춤 (common.js 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
 const PILL_ON = [0, '#a0182e', 1, '#4a0614'], PILL_OFF = [0, 'rgba(40,24,36,0.9)', 1, 'rgba(14,8,14,0.9)'];
 import { fmtStatVal } from './tab_status.js';
+import { itemDescRich } from '../../data/items.js';   // 「피의 유물」 세트 줄에 지금 영웅의 부위 수를 넘긴다 (Stage 6)
+import { heroSetCounts } from '../../game/stats.js';
 import * as D from './access.js';
 import { josa } from '../town/common.js';
 // [qol] 가방 표시 ▲/다른 영웅 얼굴 · 비교 표 · 거르기 · NEW · 일괄 처분 (qol_equip §3–§5)
@@ -365,7 +367,7 @@ export class InventoryTab extends Tab {
     const { inst, b } = e;
     const rc = RARITY_COL[inst.rarity ?? 0];
     const equipKind = EQUIP_KINDS.has(b.slot);
-    const rich = D.richDesc(inst);
+    const rich = setRich(this.state, e.by ? this.state.heroes?.[e.by] ?? hero0(this) : hero0(this), inst, b) ?? D.richDesc(inst);
     // 머리: 큰 아이콘 + 이름 + 분류
     const s = 76;
     glow(ctx, x + 18 + s / 2, y + 18 + s / 2, s * 0.95, rc, 0.28 + 0.08 * Math.sin(t * 3) + this.flash * 0.5);
@@ -443,4 +445,19 @@ export class InventoryTab extends Tab {
     for (const l of D.descLines(inst)) out.push({ ...l, flavor: true });
     return out;
   }
+}
+
+/** 지금 탭의 영웅 (drawDetail 위쪽에서 hero 를 아직 안 꺼냈을 때) */
+function hero0(tab) { return tab.hero; }
+/**
+ * 「피의 유물」 세트 부위면 세트 줄에 '끼운 사람 기준 n/총' 을 넣은 설명 줄 (세트가 아니면 null → 기존 richDesc).
+ * 끼운 영웅이 따로 있으면 그 영웅, 아니면 지금 영웅 기준
+ */
+function setRich(state, hero, inst, b) {
+  if (!b?.set || !hero) return null;
+  try {
+    const n = heroSetCounts(state, hero)[b.set];
+    const r = itemDescRich(inst, { setCount: n ?? 0 });
+    return Array.isArray(r) ? r : null;
+  } catch (e) { console.warn('[relic]', e); return null; }
 }

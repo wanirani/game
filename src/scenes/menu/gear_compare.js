@@ -136,6 +136,11 @@ export function drawFace(ctx, cx, cy, d, charId) {
  * 머리: "착용 중인 ○○과 비교" (빈 칸이면 "빈 칸에 장착") + 오른쪽 종합 점수 · 줄: 능력치 증감 2열 · 끝: 초당 피해 어림 · +효과/잃는 효과
  * opts: { maxRows (능력치 줄 수, 2열이면 줄당 2개), size, head: false(머리 생략), hint: 비교할 수 없을 때 보탤 말 }
  */
+/** 세트 변화 한 줄 */
+export function setChangeText(sc) {
+  const tail = sc.gain.length ? ` · ${sc.gain.join('·')}세트 효과 켜짐` : sc.lose.length ? ` · ${sc.lose.join('·')}세트 효과 꺼짐` : '';
+  return `「${sc.name}」 ${sc.from} → ${sc.to}/${sc.total}${tail}`;
+}
 export function drawCompare(ctx, r, info, { maxRows = 4, size = 12, head = true } = {}) {
   let y = r.y;
   const lh = Math.max(size + 6, 18);
@@ -167,6 +172,12 @@ export function drawCompare(ctx, r, info, { maxRows = 4, size = 12, head = true 
     text(ctx, val, x + cw - 10, yy, { size: size + 1, align: 'right', weight: 800, family: FONT.num, color: col, ow: 3 });
   }
   if (rows.length) y += Math.ceil(n / 2) * lh;
+  // 「피의 유물」 세트 부위 수 변화: 「공허 순례자」 1 → 2/5 · 2세트 ON (능력치 변화는 위 줄에 이미 들어 있다)
+  for (const sc of info.sets || []) {
+    if (y + lh > r.y + r.h + 2) break;
+    text(ctx, ellipsize(ctx, setChangeText(sc), r.w, size, 700), r.x, y + size, { size, weight: 700, color: sc.gain.length ? PAL.good : sc.lose.length ? PAL.bad : sc.color, ow: 2 });
+    y += lh;
+  }
   // 남은 능력치 수: 다음 줄 오른쪽에 (예전엔 마지막 줄 오른쪽 값 위에 겹쳤다 — PLAY P13). 자리가 없으면 생략
   if (rows.length > n && y + lh - 4 <= r.y + r.h + 2) { text(ctx, `외 ${rows.length - n}개`, r.x + r.w, y + size - 2, { size: size - 1, align: 'right', color: PAL.faint, ow: 2 }); y += lh - 4; }
   if (info.dps && y + lh <= r.y + r.h + 2) {

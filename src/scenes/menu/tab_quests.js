@@ -1,4 +1,5 @@
 // 퀘스트 탭: 진행 중 / 수락 가능 / 완료 목록 · 진행도 · 의뢰인 · 보상 · 안내
+// [s6:hunt] 목록 아래 한 줄: 사냥 일지 요약 (등급 · 점수 · 오늘 계약 · 받을 보상 — 받기는 마을 의뢰 게시판 「사냥 일지」 탭)
 // 목록: 끌기·휠·오른쪽 스틱 스크롤, 방향키·패드로 고를 때만 선택을 따라간다 (P-01). 탭 영역은 ui.taps 등록부 (§6.3)
 import { text, FONT } from '../../core/ui.js';
 import { audio } from '../../core/audio.js';
@@ -13,6 +14,7 @@ import {
 // 구역 단추 그라디언트 색 멈춤 (common.js 캐시 — 매 프레임 새 그라디언트 0, R1-REQ-341B)
 const PILL_ON = [0, '#a0182e', 1, '#4a0614'], PILL_OFF = [0, 'rgba(40,24,36,0.9)', 1, 'rgba(14,8,14,0.9)'];
 import * as D from './access.js';
+import { huntSummary } from '../../game/hunt_journal.js';   // [s6:hunt]
 
 const SECTS = [
   { id: 'active', name: '진행 중' },
@@ -33,6 +35,7 @@ export class QuestsTab extends Tab {
     const st = this.state;
     this.lists = { active: D.activeQuestIds(st), avail: D.availQuestIds(st), done: D.doneQuestIds(st).slice().reverse() };
     if (this.si === 0 && !this.lists.active.length && this.lists.avail.length) this.si = 1;
+    try { this.hsum = st && !st.arcade ? huntSummary(st) : null; } catch { this.hsum = null; }   // [s6:hunt] 열 때 한 번
   }
   get ids() { if (!this.lists) this.build(); return this.lists[SECTS[this.si].id]; }
   setSect(k) { k = (k + SECTS.length) % SECTS.length; if (k === this.si) return; this.si = k; this.i = 0; this.sc.reset(); audio.sfx('menu_move'); }
@@ -89,7 +92,8 @@ export class QuestsTab extends Tab {
       if (on && this.sub === 'sect' && focused) brackets(ctx, r.x, r.y, r.w, r.h, t);
     });
     // 목록
-    const LR = { x: A.x + 8, y: A.y + 12 + sh + sgap, w: LW - 16, h: A.h - sh - 22 - sgap };
+    const hs = this.hsum, HS = hs ? 30 : 0;   // [s6:hunt] 사냥 일지 요약 줄
+    const LR = { x: A.x + 8, y: A.y + 12 + sh + sgap, w: LW - 16, h: A.h - sh - 22 - sgap - HS };
     this.listRect = LR;
     const ids = this.ids, RH = 62;
     this.i = clamp(this.i, 0, Math.max(0, ids.length - 1));
@@ -134,6 +138,13 @@ export class QuestsTab extends Tab {
     }
     clipEnd(ctx, LR, this.sc);
     scrollbar(ctx, LR.x + LR.w - 4, LR.y, LR.h, this.sc, LR.h);
+    if (hs) {   // [s6:hunt]
+      const hy = LR.y + LR.h + 8;
+      divider(ctx, LR.x + 6, hy, LR.w - 12, { center: false, a: 0.35 });
+      glyph(ctx, 'scroll', LR.x + 16, hy + 14, 13, '#9fd86a', 1.4);
+      const tail = hs.total ? `오늘 계약 ${hs.total - hs.open}/${hs.total}${hs.ready ? ` · 받을 보상 ${hs.ready}` : ''}` : '스테이지를 깨면 열림';
+      text(ctx, ellipsize(ctx, `사냥 일지 · ${hs.rankName} ${hs.pts}점 · ${tail}`, LR.w - 40, 12, 700), LR.x + 30, hy + 19, { size: 12, weight: 700, color: hs.ready ? '#b8f090' : PAL.dim, ow: 2 });
+    }
     for (const r of this.sectRects) this.m.ges.zone(r, 'primary', { src: 'quests.sect' }); // 목록 줄보다 위 (가려진 줄이 가로채지 않게)
     // 상세
     this.drawDetail(ctx, A.x + LW + 12, A.y, A.w - LW - 12, A.h, ids[this.i]);

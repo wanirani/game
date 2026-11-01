@@ -1248,6 +1248,7 @@ export class World {
   // ─────────────────────────── 드롭/수집 ───────────────────────────
   dropFromCandle(x, y, big) {
     for (const d of rollCandleLoot(this, big)) this.spawnPickup(d.type, x, y, d.data);
+    bus.emit('candleBroken', { stageId: this.stage?.id, big: !!big });   // [s6:hunt] 사냥 일지 「촛불 사냥」 (game/hunt_journal.js — 이야기 판만 센다)
   }
   openChest(chest) {
     if (chest.key) this.state.progress.secrets.push(chest.key);
