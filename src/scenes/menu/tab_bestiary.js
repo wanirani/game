@@ -17,6 +17,7 @@ import {
 const BOSS_FADE = [0, 'rgba(6,3,10,0)', 1, 'rgba(6,3,10,0.9)'];
 const PORT_BG = [0, '#1a1024', 1, '#06030a'], PORT_VIG = [0, 'rgba(0,0,0,0)', 1, 'rgba(0,0,0,0.75)'], PORT_FLOOR = [0, 'rgba(30,18,24,0.85)', 1, 'rgba(4,2,4,1)'];
 import * as D from './access.js';
+import { faceOf } from '../../data/portrait_meta.js';   // [s7:verifyart] 보스 초상 칸: 얼굴 높이에 맞춰 자르기
 
 const ANIMS = [['idle', 2.6], ['walk', 2.2], ['idle', 1.4], ['attack', 1.1]];
 const MAT_NAME = { flesh: '살점', bone: '뼈', metal: '금속', ghost: '영체', stone: '석재', slime: '점액', paper: '종이', ice: '얼음', fire: '화염', water: '물', wood: '나무' };
@@ -226,11 +227,15 @@ export class BestiaryTab extends Tab {
   }
 
   drawBossArt(ctx, r, x, y, w, h, seen, t) {
-    const img = assets.get(r.def.portrait ?? `portraits/${r.id}`);
+    const key = r.def.portrait ?? `portraits/${r.id}`, img = assets.get(key);
     const draw = (c) => {
       if (img) {
-        const s = Math.max(w / img.width, (h + 30) / img.height) * (1 + 0.02 * Math.sin(t * 0.8));
-        c.drawImage(img, x + (w - img.width * s) / 2, y - 6 - (s - Math.max(w / img.width, (h + 30) / img.height)) * img.height * 0.3, img.width * s, img.height * s);
+        // [s7:verifyart] 얼굴(data/portrait_meta.js face.y)을 칸 높이 42% 에 맞춘다 — 위에서부터 자르면 키 큰 왕관·귀(서리 여왕 등)에 얼굴이
+        // 칸 아래 어둠 그라디언트 속으로 밀려난다. 그림이 칸을 늘 덮도록 가둔다 (위 −6 px · 아래 +6 px). 숨쉬기 확대는 얼굴을 중심으로
+        const s0 = Math.max(w / img.width, (h + 30) / img.height), s = s0 * (1 + 0.02 * Math.sin(t * 0.8));
+        const H = img.height * s0, fy = faceOf(key, img)?.y ?? 0.3;
+        const top = clamp(h * 0.42 - fy * H, h + 6 - H, -6);
+        c.drawImage(img, x + (w - img.width * s) / 2, y + top + fy * (H - img.height * s), img.width * s, img.height * s);
       } else { c.fillStyle = '#301020'; c.beginPath(); c.arc(x + w / 2, y + h / 2, h * 0.3, 0, Math.PI * 2); c.fill(); }
     };
     if (seen) {

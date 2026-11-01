@@ -26,6 +26,9 @@
 //  - 글자 크기 '크게'·'아주 크게': 카드 부제·설명 줄 간격을 ui.textFloor() 에서 잡는다
 //  - 규칙 코스 (Stage 5 P1b, RULE_COURSES — 번호 15~): 릴레이 · 무작위 6 (시드 줄: 무작위 / 오늘의 시드) · 휴식 없음. 같은 코스 줄에
 //    보이고 (menuCourses), 명예의 전당 코스 줄(visibleCourses)과 서버 순위표에는 넣지 않는다 — 기록은 기기에만 (「기기 기록」 표시)
+//  - 1부 외전 (docs/specs/ex_s26.md · ex_s27.md W17): BOSS_ORDER 25 파라켈 · 26 요한, 코스 18 「외전 Ⅰ」 · 19 「외전 Ⅱ」 (기기 기록, side: 's26' · 's27').
+//    p1SideKnown(game) = 아는 1부 외전 id 의 Set (2부를 몰라도). courseAvailable · arenaBosses · menuCourses · sanitizeCfg · random6Pool 의 s26 인자는
+//    p1Set 규칙 (Set · 배열 = 그 외전들, 예전 불린 true = s26 만) — s26Known 은 p1SideKnown(...).has('s26') 로 남겼다
 import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { audio } from '../../core/audio.js';
