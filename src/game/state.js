@@ -2,7 +2,7 @@
 import { CHARACTERS } from '../data/characters.js';
 import { CLASSES } from '../data/classes.js';
 import { getDiff, DIFF } from '../data/difficulty.js';
-import { makeItem } from '../data/items.js';
+import { makeItem, ITEMS } from '../data/items.js';
 import { newHero } from './progression.js';
 import { addItem, ensureWeapon } from './inventory.js';
 import { MAX_LEVEL } from './stats.js';
@@ -155,6 +155,8 @@ export function migrateState(s) {
   for (const k of ['gold', 'score']) if (!Number.isFinite(s[k])) s[k] = 0;
   if (!Number.isFinite(s.lives)) s.lives = getDiff(s.difficulty).lives;
   s.inventory = (Array.isArray(s.inventory) ? s.inventory : []).filter((it) => isObj(it) && typeof it.baseId === 'string' && it.uid);
+  // 아이콘은 베이스를 따른다: 전용 그림 아이콘(data/item_icons.js)이 생긴 아이템도 예전 세이브에서 새 아이콘으로 (인스턴스는 만들 때 icon 을 복사해 둔다)
+  for (const it of s.inventory) { const ic = ITEMS[it.baseId]?.icon; if (typeof ic === 'string' && it.icon !== ic) it.icon = ic; }
   // 영웅: 존재하지 않는 캐릭터는 버리고, 현재 캐릭터가 없으면 새로 만든다
   if (!isObj(s.heroes)) s.heroes = {};
   for (const id of Object.keys(s.heroes)) if (!Object.hasOwn(CHARACTERS, id) || !isObj(s.heroes[id])) delete s.heroes[id];

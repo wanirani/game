@@ -1,0 +1,257 @@
+{
+ "_doc": "Stage 7 lane \"portrait\": boss portrait style fixes (painted look matching the in-game painted puppets). Two image references per job: design strip from tools/painted/raw/<boss> (the Kling sources of the in-game atlas, watermark cropped) + a style/framing strip of on-style painted portraits. Output 880x1168 on #00FF00 (behemoth #FF00FF) -> keyed (tools/higgsfield/key_green.py; magenta variant for behemoth) -> centre-cropped to 3:4 -> 768x1024 RGBA -> WebP q80 m6 alpha_quality 70 (same as the fanime install) -> lo copy by tools/assets/make_variants.py. Prompts below are condensed to the essential wording of each request (variants differed only in phrasing).",
+ "date": "2026-11-01",
+ "model": "gpt_image_2_5",
+ "images": 13,
+ "credits": 3.25,
+ "installed": {
+  "b_nightwing": "f6415dbd-4956-4c0f-876b-f3105381bb3b",
+  "b_dracula": "b2aac95e-b154-4f34-b16e-f7815e29bed7",
+  "b_frostqueen": "9f5f121e-da20-4a52-9aae-d5f79635a20d",
+  "b_behemoth": "51d51a4b-26d8-4c55-86d0-e8705ce2acd4",
+  "b_nemain2": "08a654e9-2536-4873-bf16-99055ddd9862",
+  "b_bride2": "4163ce23-a41e-49e4-bd9d-143d17e82845"
+ },
+ "portrait_meta": {
+  "b_nightwing": {
+   "x": 0.25,
+   "y": 0.36,
+   "s": 0.3
+  },
+  "b_dracula": {
+   "x": 0.34,
+   "y": 0.29,
+   "s": 0.3
+  },
+  "b_frostqueen": {
+   "x": 0.31,
+   "y": 0.38,
+   "s": 0.28
+  },
+  "b_behemoth": {
+   "x": 0.37,
+   "y": 0.33,
+   "s": 0.24
+  },
+  "b_nemain2": {
+   "x": 0.34,
+   "y": 0.31,
+   "s": 0.3
+  },
+  "b_bride2": {
+   "x": 0.42,
+   "y": 0.33,
+   "s": 0.3
+  }
+ },
+ "generations": [
+  {
+   "file": "assets/portraits/b_nightwing.webp",
+   "target": "b_nightwing",
+   "index": 0,
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "job_id": "f6415dbd-4956-4c0f-876b-f3105381bb3b",
+   "credits": 0.25,
+   "refs": [
+    "tools/painted/raw/b_nightwing head_a+torso_a+wing_a (watermark cropped)",
+    "style strip (see prompt)"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (style strip: b_dagon, b_moloch, b_colossus portraits): hand-painted digital oil painting, textured brushwork, muted desaturated colours, soft front-left key light, deep shadows; no line art, no anime, no cel shading. The character is Nightwing exactly as in the first reference image: wrinkled charcoal-grey bat face, flat pug bat nose, glowing red eyes, huge pointed ears with crimson veined membranes, gaping fanged jaws, shaggy black fur ruff, sinewy ash-grey taupe muscular torso, huge tattered dark red-brown membrane wings with black finger bones raised behind the shoulders. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "file": null,
+   "target": "b_nightwing",
+   "index": 1,
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "job_id": "9c5ebca1-ea1f-40d0-b019-bfae7da8599b",
+   "credits": 0.25,
+   "refs": [
+    "tools/painted/raw/b_nightwing head_a+torso_a+wing_a (watermark cropped)",
+    "style strip (see prompt)"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (style strip: b_dagon, b_moloch, b_colossus portraits): hand-painted digital oil painting, textured brushwork, muted desaturated colours, soft front-left key light, deep shadows; no line art, no anime, no cel shading. The character is Nightwing exactly as in the first reference image: wrinkled charcoal-grey bat face, flat pug bat nose, glowing red eyes, huge pointed ears with crimson veined membranes, gaping fanged jaws, shaggy black fur ruff, sinewy ash-grey taupe muscular torso, huge tattered dark red-brown membrane wings with black finger bones raised behind the shoulders. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "kept": false,
+   "note": "rejected: faces right"
+  },
+  {
+   "file": null,
+   "target": "b_nightwing",
+   "index": 2,
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "job_id": "162cd626-5318-40d3-a464-e9ea72880cfa",
+   "credits": 0.25,
+   "refs": [
+    "tools/painted/raw/b_nightwing head_a+torso_a+wing_a (watermark cropped)",
+    "style strip (see prompt)"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (style strip: b_dagon, b_moloch, b_colossus portraits): hand-painted digital oil painting, textured brushwork, muted desaturated colours, soft front-left key light, deep shadows; no line art, no anime, no cel shading. The character is Nightwing exactly as in the first reference image: wrinkled charcoal-grey bat face, flat pug bat nose, glowing red eyes, huge pointed ears with crimson veined membranes, gaping fanged jaws, shaggy black fur ruff, sinewy ash-grey taupe muscular torso, huge tattered dark red-brown membrane wings with black finger bones raised behind the shoulders. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "kept": false,
+   "note": "rejected: faces right"
+  },
+  {
+   "file": "assets/portraits/b_dracula.webp",
+   "target": "b_dracula",
+   "index": 10,
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "job_id": "b2aac95e-b154-4f34-b16e-f7815e29bed7",
+   "credits": 0.25,
+   "refs": [
+    "tools/painted/raw/b_dracula head_a+head_b+torso_a+cape_a",
+    "style strip (see prompt)"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (style strip: b_paracel, b_charon, b_nemain portraits): hand-painted digital oil painting, textured brushwork, muted desaturated colours, soft front-left key light, deep shadows; no line art, no ink outlines, no anime, no manga, no cel shading, no big anime eyes. The character is Count Dracula exactly as in the first reference image: gaunt pale lavender-grey face, hooked nose, long pointed ears, burning red eyes, black slicked-back shoulder-length hair, cruel smile with two long fangs; black coat with a very high crimson-lined collar, red brocade waistcoat with gold buttons, ruby brooch, black cape with crimson lining. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "file": null,
+   "target": "b_dracula",
+   "index": 11,
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "job_id": "8b2d2147-f55c-4211-b6e5-67f963e21c47",
+   "credits": 0.25,
+   "refs": [
+    "tools/painted/raw/b_dracula head_a+head_b+torso_a+cape_a",
+    "style strip (see prompt)"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (style strip: b_paracel, b_charon, b_nemain portraits): hand-painted digital oil painting, textured brushwork, muted desaturated colours, soft front-left key light, deep shadows; no line art, no ink outlines, no anime, no manga, no cel shading, no big anime eyes. The character is Count Dracula exactly as in the first reference image: gaunt pale lavender-grey face, hooked nose, long pointed ears, burning red eyes, black slicked-back shoulder-length hair, cruel smile with two long fangs; black coat with a very high crimson-lined collar, red brocade waistcoat with gold buttons, ruby brooch, black cape with crimson lining. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "kept": false,
+   "note": "alt (roaring); not used"
+  },
+  {
+   "file": "assets/portraits/b_frostqueen.webp",
+   "target": "b_frostqueen",
+   "index": 12,
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "job_id": "9f5f121e-da20-4a52-9aae-d5f79635a20d",
+   "credits": 0.25,
+   "refs": [
+    "tools/painted/raw/b_frostqueen head_a+head_b+torso_a+arm_a",
+    "style strip (see prompt)"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (style strip: b_paracel, b_charon, b_nemain portraits): hand-painted digital oil painting, textured brushwork, muted desaturated colours, soft front-left key light, deep shadows; no line art, no ink outlines, no anime, no manga, no cel shading, no big anime eyes. The character is the Frost Queen exactly as in the first reference image: pale ice-blue skin cracked like porcelain, dark blue frost cracks around the eyes and down the cheek, glowing pale cyan eyes, dark lips, long white hair, tall crown of jagged ice crystals, cracked porcelain-ice corset with white lace and a blue ice heart gem. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "file": null,
+   "target": "b_frostqueen",
+   "index": 13,
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "job_id": "43b012ec-7a13-4a3d-ae2e-341dd63b5bf4",
+   "credits": 0.25,
+   "refs": [
+    "tools/painted/raw/b_frostqueen head_a+head_b+torso_a+arm_a",
+    "style strip (see prompt)"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (style strip: b_paracel, b_charon, b_nemain portraits): hand-painted digital oil painting, textured brushwork, muted desaturated colours, soft front-left key light, deep shadows; no line art, no ink outlines, no anime, no manga, no cel shading, no big anime eyes. The character is the Frost Queen exactly as in the first reference image: pale ice-blue skin cracked like porcelain, dark blue frost cracks around the eyes and down the cheek, glowing pale cyan eyes, dark lips, long white hair, tall crown of jagged ice crystals, cracked porcelain-ice corset with white lace and a blue ice heart gem. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "kept": false,
+   "note": "rejected: faces right"
+  },
+  {
+   "file": null,
+   "target": "b_behemoth",
+   "index": 14,
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "job_id": "40ac62be-52d6-45d2-af35-f9cbdd1f7c4b",
+   "credits": 0.25,
+   "refs": [
+    "tools/painted/raw/b_behemoth queen_a+queen_b+head_a",
+    "style strip (see prompt)"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (style strip: b_dagon, b_moloch, b_colossus portraits): hand-painted digital oil painting, textured brushwork, muted desaturated colours, soft front-left key light, deep shadows; no line art, no anime, no cel shading. The character is the Behemoth queen exactly as in the first reference image: withered dryad with grey-green bark skin, glowing green eyes, long white hair, mushroom crown, grey-brown bark dress with raw red flesh at the sides; behind her shoulder the rotting boar head: cracked ivory boar skull with curved tusks, shaggy brown fur, glowing green mushrooms and moss. (background: plain flat solid #FF00FF magenta, keyed with a magenta variant of key_green.py because the design has green glows) Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "kept": false,
+   "note": "alt (calm); not used"
+  },
+  {
+   "file": "assets/portraits/b_behemoth.webp",
+   "target": "b_behemoth",
+   "index": 15,
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "job_id": "51d51a4b-26d8-4c55-86d0-e8705ce2acd4",
+   "credits": 0.25,
+   "refs": [
+    "tools/painted/raw/b_behemoth queen_a+queen_b+head_a",
+    "style strip (see prompt)"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (style strip: b_dagon, b_moloch, b_colossus portraits): hand-painted digital oil painting, textured brushwork, muted desaturated colours, soft front-left key light, deep shadows; no line art, no anime, no cel shading. The character is the Behemoth queen exactly as in the first reference image: withered dryad with grey-green bark skin, glowing green eyes, long white hair, mushroom crown, grey-brown bark dress with raw red flesh at the sides; behind her shoulder the rotting boar head: cracked ivory boar skull with curved tusks, shaggy brown fur, glowing green mushrooms and moss. (background: plain flat solid #FF00FF magenta, keyed with a magenta variant of key_green.py because the design has green glows) Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "file": "assets/portraits/b_nemain2.webp",
+   "target": "b_nemain2",
+   "index": 16,
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "job_id": "08a654e9-2536-4873-bf16-99055ddd9862",
+   "credits": 0.25,
+   "refs": [
+    "tools/painted/raw/b_nemain heads_a (unmasked half)+full_a",
+    "style strip (see prompt)"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (style strip: b_paracel, b_charon, b_nemain portraits): hand-painted digital oil painting, textured brushwork, muted desaturated colours, soft front-left key light, deep shadows; no line art, no ink outlines, no anime, no manga, no cel shading, no big anime eyes. The character is Nemain with her raven mask removed, exactly as in the first reference image: gaunt pale lavender-white face, black leather skull cap, long straight ash-grey hair, glowing red eyes, blood tears running down from one eye, black leather buckled collar, black leather corset. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "file": null,
+   "target": "b_nemain2",
+   "index": 17,
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "job_id": "f6647264-49e3-4775-9c54-36c3a211bcdc",
+   "credits": 0.25,
+   "refs": [
+    "tools/painted/raw/b_nemain heads_a (unmasked half)+full_a",
+    "style strip (see prompt)"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (style strip: b_paracel, b_charon, b_nemain portraits): hand-painted digital oil painting, textured brushwork, muted desaturated colours, soft front-left key light, deep shadows; no line art, no ink outlines, no anime, no manga, no cel shading, no big anime eyes. The character is Nemain with her raven mask removed, exactly as in the first reference image: gaunt pale lavender-white face, black leather skull cap, long straight ash-grey hair, glowing red eyes, blood tears running down from one eye, black leather buckled collar, black leather corset. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "kept": false,
+   "note": "rejected: faces right"
+  },
+  {
+   "file": "assets/portraits/b_bride2.webp",
+   "target": "b_bride2",
+   "index": 18,
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "job_id": "4163ce23-a41e-49e4-bd9d-143d17e82845",
+   "credits": 0.25,
+   "refs": [
+    "tools/painted/raw/b_bride crone_a+arms_a (skeleton)",
+    "style strip (see prompt)"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (style strip: b_paracel, b_charon, b_nemain portraits): hand-painted digital oil painting, textured brushwork, muted desaturated colours, soft front-left key light, deep shadows; no line art, no ink outlines, no anime, no manga, no cel shading, no big anime eyes. The character is the Withered Bride exactly as in the first reference image: crone with a cracked ivory skull face, faint red embers in the eye sockets, long torn black lace veil, faded dark crimson satin gown with black lace, a golden goblet of blood in a skeletal hand with golden claws. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "kept": true,
+   "note": "kept"
+  },
+  {
+   "file": null,
+   "target": "b_bride2",
+   "index": 19,
+   "model": "gpt_image_2_5",
+   "aspect_ratio": "3:4",
+   "job_id": "472f4c5b-1db5-4679-8e92-1a4a3372602b",
+   "credits": 0.25,
+   "refs": [
+    "tools/painted/raw/b_bride crone_a+arms_a (skeleton)",
+    "style strip (see prompt)"
+   ],
+   "prompt": "Boss bust portrait for a dark-fantasy action game. Paint it in the style of the second reference image (style strip: b_paracel, b_charon, b_nemain portraits): hand-painted digital oil painting, textured brushwork, muted desaturated colours, soft front-left key light, deep shadows; no line art, no ink outlines, no anime, no manga, no cel shading, no big anime eyes. The character is the Withered Bride exactly as in the first reference image: crone with a cracked ivory skull face, faint red embers in the eye sockets, long torn black lace veil, faded dark crimson satin gown with black lace, a golden goblet of blood in a skeletal hand with golden claws. Framing: head, shoulders and upper chest, cut off at mid-chest by the bottom edge; head in the upper third; three-quarter view turned toward the left side. One figure only. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "kept": false,
+   "note": "alt; not used"
+  }
+ ]
+}

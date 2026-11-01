@@ -709,11 +709,11 @@
    "srcBytes": 75960
   },
   "portraits/b_behemoth.webp": {
-   "src": "f3560b8da766",
+   "src": "3039ddc166ce",
    "w": 461,
    "h": 614,
-   "bytes": 67904,
-   "srcBytes": 117714
+   "bytes": 62656,
+   "srcBytes": 139222
   },
   "portraits/b_bonedragon.webp": {
    "src": "014879cba88c",
@@ -730,11 +730,11 @@
    "srcBytes": 100196
   },
   "portraits/b_bride2.webp": {
-   "src": "b6e8cd0fabf4",
+   "src": "bfeafe390748",
    "w": 461,
    "h": 614,
-   "bytes": 52668,
-   "srcBytes": 101484
+   "bytes": 36788,
+   "srcBytes": 87108
   },
   "portraits/b_chaos.webp": {
    "src": "cbbebbcc9bae",
@@ -786,11 +786,11 @@
    "srcBytes": 82226
   },
   "portraits/b_dracula.webp": {
-   "src": "ab8a309f20fb",
+   "src": "aa8eb9c11851",
    "w": 461,
    "h": 614,
-   "bytes": 31742,
-   "srcBytes": 63866
+   "bytes": 25390,
+   "srcBytes": 67716
   },
   "portraits/b_dracula2.webp": {
    "src": "c6c2e37a6d08",
@@ -807,11 +807,11 @@
    "srcBytes": 96178
   },
   "portraits/b_frostqueen.webp": {
-   "src": "d8aac07009e7",
+   "src": "1c22a6799021",
    "w": 461,
    "h": 614,
-   "bytes": 50152,
-   "srcBytes": 106260
+   "bytes": 49492,
+   "srcBytes": 109222
   },
   "portraits/b_grimoire.webp": {
    "src": "38888f09032b",
@@ -877,18 +877,18 @@
    "srcBytes": 85376
   },
   "portraits/b_nemain2.webp": {
-   "src": "4060a3a514ba",
+   "src": "08f051b41c8e",
    "w": 461,
    "h": 614,
-   "bytes": 52002,
-   "srcBytes": 93620
+   "bytes": 32552,
+   "srcBytes": 83076
   },
   "portraits/b_nightwing.webp": {
-   "src": "56cf2455f738",
+   "src": "0b0ae74ff757",
    "w": 461,
    "h": 614,
-   "bytes": 48346,
-   "srcBytes": 87756
+   "bytes": 37916,
+   "srcBytes": 94616
   },
   "portraits/b_nihil.webp": {
    "src": "fabb73422ac2",

@@ -51,10 +51,10 @@ export const PORTRAIT_META = {
   // 보스 (흉상; b_nihil·b_nihil2 는 예전 그림 유지 = bust:false)
   'portraits/b_argen': { bust: true, face: { x: 0.28, y: 0.3, s: 0.3 } },
   'portraits/b_banshee': { bust: true, face: { x: 0.43, y: 0.4, s: 0.36 } },
-  'portraits/b_behemoth': { bust: true, face: { x: 0.294, y: 0.363, s: 0.234 } },
+  'portraits/b_behemoth': { bust: true, face: { x: 0.37, y: 0.33, s: 0.24 } },   // s7 portrait: 채색 다시 그림 (여왕 얼굴)
   'portraits/b_bonedragon': { bust: true, face: { x: 0.27, y: 0.31, s: 0.32 } },
   'portraits/b_bride': { bust: true, face: { x: 0.458, y: 0.334, s: 0.293 } },
-  'portraits/b_bride2': { bust: true, face: { x: 0.45, y: 0.333, s: 0.292 } },
+  'portraits/b_bride2': { bust: true, face: { x: 0.42, y: 0.33, s: 0.3 } },   // s7 portrait: 채색 다시 그림 (해골 노파)
   'portraits/b_chaos': { bust: true, face: { x: 0.18, y: 0.33, s: 0.25 } },
   'portraits/b_charon': { bust: true, face: { x: 0.454, y: 0.334, s: 0.292 } },
   'portraits/b_paracel': { bust: true, face: { x: 0.586, y: 0.332, s: 0.33 } },   // 외전 s26 (CH26-B) — 고글/눈 460,290 · 턱 430,445 (768×1024)
@@ -63,10 +63,10 @@ export const PORTRAIT_META = {
   'portraits/b_crimson': { bust: true, face: { x: 0.34, y: 0.26, s: 0.2 } },
   'portraits/b_dagon': { bust: true, face: { x: 0.38, y: 0.35, s: 0.35 } },
   'portraits/b_death': { bust: true, face: { x: 0.39, y: 0.378, s: 0.339 } },
-  'portraits/b_dracula': { bust: true, face: { x: 0.373, y: 0.349, s: 0.395 } },
+  'portraits/b_dracula': { bust: true, face: { x: 0.34, y: 0.29, s: 0.3 } },   // s7 portrait: 채색 다시 그림
   'portraits/b_dracula2': { bust: true, face: { x: 0.3, y: 0.374, s: 0.295 } },
   'portraits/b_dullahan': { bust: true, face: { x: 0.45, y: 0.22, s: 0.2 } },
-  'portraits/b_frostqueen': { bust: true, face: { x: 0.45, y: 0.344, s: 0.362 } },
+  'portraits/b_frostqueen': { bust: true, face: { x: 0.31, y: 0.38, s: 0.28 } },   // s7 portrait: 채색 다시 그림
   'portraits/b_grimoire': { bust: true, face: { x: 0.4, y: 0.45, s: 0.3 } },
   'portraits/b_hagen': { bust: true, face: { x: 0.331, y: 0.345, s: 0.368 } },
   'portraits/b_hagen2': { bust: true, face: { x: 0.29, y: 0.31, s: 0.3 } },
@@ -76,8 +76,8 @@ export const PORTRAIT_META = {
   'portraits/b_narkissa': { bust: true, face: { x: 0.432, y: 0.353, s: 0.355 } },
   'portraits/b_narkissa2': { bust: true, face: { x: 0.366, y: 0.372, s: 0.548 } },
   'portraits/b_nemain': { bust: true, face: { x: 0.406, y: 0.341, s: 0.344 } },
-  'portraits/b_nemain2': { bust: true, face: { x: 0.445, y: 0.344, s: 0.361 } },
-  'portraits/b_nightwing': { bust: true, face: { x: 0.2, y: 0.33, s: 0.27 } },
+  'portraits/b_nemain2': { bust: true, face: { x: 0.34, y: 0.31, s: 0.3 } },   // s7 portrait: 채색 다시 그림
+  'portraits/b_nightwing': { bust: true, face: { x: 0.25, y: 0.36, s: 0.3 } },   // s7 portrait: 채색 다시 그림 (게임 속 박쥐왕과 같은 그림체)
   'portraits/b_nihil': { bust: false, face: { x: 0.5, y: 0.27, s: 0.2 } },
   'portraits/b_nihil2': { bust: false, face: { x: 0.5, y: 0.27, s: 0.2 } },
   'portraits/b_ziz': { bust: true, face: { x: 0.37, y: 0.27, s: 0.3 } },

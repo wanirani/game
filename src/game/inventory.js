@@ -476,6 +476,7 @@ export function buybackList(state) {
   if (!state) return [];
   if (!Array.isArray(state.buyback)) state.buyback = [];
   state.buyback = state.buyback.filter((e) => e && typeof e === 'object' && e.item && ITEMS[e.item.baseId] && Number.isFinite(e.price));
+  for (const e of state.buyback) { const ic = ITEMS[e.item.baseId].icon; if (typeof ic === 'string' && e.item.icon !== ic) e.item.icon = ic; }   // 전용 아이콘이 생긴 아이템 (state.js 와 같은 보정)
   return state.buyback;
 }
 export function pushBuyback(state, inst, price) {
