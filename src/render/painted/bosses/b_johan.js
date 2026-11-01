@@ -13,6 +13,7 @@ const DIR = 'painted/bosses/b_johan';
 const PI = Math.PI;
 const TEAL = '#3aa8a0', TEAL_H = '#a8f0e0', LAMP = '#ffc860', LAMP_H = '#fff4c8', BRASS_H = '#ecc888', BLACKW = '#0a1a1c', IRON_H = '#7a6c5c';
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const BULK = 1.15, HELM = 1.08, LIMB = 1.25;   // 판정 상자(104×168)에 맞춰 그림 부품을 조금 키운다 (몸통 · 투구 · 팔다리 굵기)
 const lerp = (a, b, t) => a + (b - a) * t;
 const qOf = (g) => QUALITY[g?.quality ?? g?.tier ?? g?.settings?.quality] ?? quality(g);
 const DEF = {
@@ -155,7 +156,7 @@ function span(D, p, pa, pb, x0, y0, x1, y1, th = 1, over = 1.12, deep = false, a
 function body(D, ctx, R, b, st, t) {
   const S = b.pts, Pz = b.ps, lvl = st.lvl, ff = st.ff;
   const jr = st.jolt ? Math.sin(t * 61) * 0.02 * st.jolt : 0;
-  const T = R.torso, tRot = (S.tA - 0.06) + jr, tk = T.k * (b.breached ? 1.05 : 1);
+  const T = R.torso, tRot = (S.tA - 0.06) + jr, tk = T.k * BULK * (b.breached ? 1.05 : 1);
   const hx = S.hip.x, hy = S.hip.y;
   const NK = D.pt(T.hip[0], T.hip[1], T.nk[0], T.nk[1], hx, hy, tRot, tk, tk, st.NK);
   const whip = b.breached || b._whip, hkOff = b.helmOff ?? 0;
@@ -163,34 +164,31 @@ function body(D, ctx, R, b, st, t) {
   if (!whip && hkOff <= 0) hose(D, R, b, false);
   // ── 2) 먼 팔 (deep) ──
   D.rec = ff.body;
-  limb(D, R.armU, 'sh', 'el', S.shF.x, S.shF.y, S.elF.x, S.elF.y, 0, true, 0.7, 1.3, 1.1);
-  limb(D, R.armF, 'el', 'wr', S.elF.x, S.elF.y, S.hdF.x, S.hdF.y, 0, true, 0.7, 1.3, 1.1);
-  aimAt(D, R.handO, 'wr', 'tip', S.hdF.x, S.hdF.y, Math.atan2(S.hdF.y - S.elF.y, S.hdF.x - S.elF.x) + 0.2, 1, 1, 0, true);
+  limb(D, R.armU, 'sh', 'el', S.shF.x, S.shF.y, S.elF.x, S.elF.y, 0, true, 0.7, 1.3, LIMB);
+  limb(D, R.armF, 'el', 'wr', S.elF.x, S.elF.y, S.hdF.x, S.hdF.y, 0, true, 0.7, 1.3, LIMB);
+  aimAt(D, R.handO, 'wr', 'tip', S.hdF.x, S.hdF.y, Math.atan2(S.hdF.y - S.elF.y, S.hdF.x - S.elF.x) + 0.2, 1.15, 1.15, 0, true);
   // ── 3) 먼 다리 · 가까운 다리 ──
   D.rec = ff.legs;
-  limb(D, R.thigh, 'hip', 'kn', hx - 8, hy + 2, S.knF.x, S.knF.y, 0, true, 0.75, 1.3);
-  limb(D, R.shin, 'kn', 'ft', S.knF.x, S.knF.y, S.ftF.x, S.ftF.y, 0, true, 0.75, 1.3);
-  limb(D, R.thigh, 'hip', 'kn', hx + 8, hy + 3, S.knN.x, S.knN.y, 0, false, 0.75, 1.3);
-  limb(D, R.shin, 'kn', 'ft', S.knN.x, S.knN.y, S.ftN.x, S.ftN.y, 0, false, 0.75, 1.3);
+  limb(D, R.thigh, 'hip', 'kn', hx - 8, hy + 2, S.knF.x, S.knF.y, 0, true, 0.75, 1.3, LIMB);
+  limb(D, R.shin, 'kn', 'ft', S.knF.x, S.knF.y, S.ftF.x, S.ftF.y, 0, true, 0.75, 1.3, LIMB);
+  limb(D, R.thigh, 'hip', 'kn', hx + 8, hy + 3, S.knN.x, S.knN.y, 0, false, 0.75, 1.3, LIMB);
+  limb(D, R.shin, 'kn', 'ft', S.knN.x, S.knN.y, S.ftN.x, S.ftN.y, 0, false, 0.75, 1.3, LIMB);
   // ── 4) 몸통 (범포 · 가슴 쇠판 · 허리 사슬) ──
   D.rec = ff.body;
   put(D, T, 'hip', hx, hy, tRot, tk, tk, lvl, false);
   // ── 5) 투구 (온전 / 터짐). 스토리 죽음에는 앞으로 굴러 떨어진다 ──
   D.rec = ff.helm;
-  const H = b.breached ? R.helmB : R.helm, hRot = tRot * 0.5 + Math.sin(t * 0.8) * 0.02;
+  const H = b.breached ? R.helmB : R.helm, hRot = tRot * 0.5 + Math.sin(t * 0.8) * 0.02, hs = H.k * HELM;
   if (hkOff > 0) {
-    const c = D.pt(H.nk[0], H.nk[1], H.c[0], H.c[1], NK[0], NK[1], hRot, H.k, H.k, st.C);
+    const c = D.pt(H.nk[0], H.nk[1], H.c[0], H.c[1], NK[0], NK[1], hRot, hs, hs, st.C);
     const gx = lerp(c[0], c[0] + 44, hkOff), gy = lerp(c[1], -26, hkOff * hkOff);
-    put(D, H, 'c', gx, gy, hRot + hkOff * 1.4, H.k, H.k, lvl, false);
-  } else put(D, H, 'nk', NK[0], NK[1], hRot, H.k, H.k, lvl, false);
-  const WP = D.pt(H.nk[0], H.nk[1], H.win[0], H.win[1], NK[0], NK[1], hRot, H.k, H.k, st.WP);
+    put(D, H, 'c', gx, gy, hRot + hkOff * 1.4, hs, hs, lvl, false);
+  } else put(D, H, 'nk', NK[0], NK[1], hRot, hs, hs, lvl, false);
+  const WP = D.pt(H.nk[0], H.nk[1], H.win[0], H.win[1], NK[0], NK[1], hRot, hs, hs, st.WP);
   // ── 6) 2페이즈: 장어 (투구 창에서) · 끊어진 호스 채찍 ──
   if (b.breached && (b.eelK ?? 0) > 0.02 && hkOff <= 0) { D.rec = ff.eel; eel(D, R, b, WP, t); }
   D.rec = false;
-  if (whip && hkOff <= 0) hose(D, R, b, true, D.pt(H.nk[0], H.nk[1], H.top[0], H.top[1], NK[0], NK[1], hRot, H.k, H.k, st.O));
-  // ── 7) 기름 등불 (가슴께 — 따로 흔들림, 스토리 죽음엔 바닥에) ──
-  const L = R.lamp, onFloor = (b.drainK ?? 0) > 0.5;
-  put(D, L, onFloor ? 'c' : 'top', S.lamp.x, S.lamp.y - (onFloor ? 10 : 6), onFloor ? 0 : Math.sin(t * 2.3) * 0.25, L.k, L.k, 0, false);
+  if (whip && hkOff <= 0) hose(D, R, b, true, D.pt(H.nk[0], H.nk[1], H.top[0], H.top[1], NK[0], NK[1], hRot, hs, hs, st.O));
   // ── 8) 수문 열쇠 (손 → 끝) · 가까운 팔 (위로 지나간다) ──
   D.rec = ff.key || ff.body;
   const kx = S.keyE.x - S.hdN.x, ky = S.keyE.y - S.hdN.y, K = R.key;
@@ -199,11 +197,15 @@ function body(D, ctx, R, b, st, t) {
     aimAt(D, K, 'grip', 'end', S.hdN.x, S.hdN.y, Math.atan2(ky, kx), clamp(Math.hypot(kx, ky) / il, 0.6, 1.05), 1, 0, false);
   }
   D.rec = ff.body;
-  limb(D, R.armU, 'sh', 'el', S.shN.x, S.shN.y, S.elN.x, S.elN.y, 0, false, 0.7, 1.3, 1.15);
-  limb(D, R.armF, 'el', 'wr', S.elN.x, S.elN.y, S.hdN.x, S.hdN.y, 0, false, 0.7, 1.3, 1.15);
+  limb(D, R.armU, 'sh', 'el', S.shN.x, S.shN.y, S.elN.x, S.elN.y, 0, false, 0.7, 1.3, LIMB);
+  limb(D, R.armF, 'el', 'wr', S.elN.x, S.elN.y, S.hdN.x, S.hdN.y, 0, false, 0.7, 1.3, LIMB);
   const fa = Math.atan2(S.hdN.y - S.elN.y, S.hdN.x - S.elN.x);
-  if ((Pz.clutch ?? 0) > 0.5) aimAt(D, R.handO, 'wr', 'tip', S.hdN.x, S.hdN.y, fa - 0.3, 1.05, 1.05, 0, false);
-  else aimAt(D, R.handF, 'wr', 'tip', S.hdN.x, S.hdN.y, fa, 1.05, 1.05, 0, false);
+  if ((Pz.clutch ?? 0) > 0.5) aimAt(D, R.handO, 'wr', 'tip', S.hdN.x, S.hdN.y, fa - 0.3, 1.2, 1.2, 0, false);
+  else aimAt(D, R.handF, 'wr', 'tip', S.hdN.x, S.hdN.y, fa, 1.2, 1.2, 0, false);
+  // ── 9) 기름 등불 (가슴께 — 따로 흔들림, 스토리 죽음엔 바닥에). 이야기의 물건이라 팔보다 앞에 둔다 ──
+  D.rec = false;
+  const L = R.lamp, onFloor = (b.drainK ?? 0) > 0.5;
+  put(D, L, onFloor ? 'c' : 'top', S.lamp.x, S.lamp.y - (onFloor ? 10 : 6), onFloor ? 0 : Math.sin(t * 2.3) * 0.25, L.k * 1.15, L.k * 1.15, 0, false);
 }
 /** 공기 호스: 로직 hose 7점을 마디 타일로 (2페이즈 = 끝은 끊어진 호스 끝). root = 그림 투구의 호스 이음매 (있으면 첫 점을 그리로 옮긴다) */
 function hose(D, R, b, cut, root = null) {
@@ -227,10 +229,10 @@ function eel(D, R, b, WP, t) {
 }
 /** 등불 빛 (지역 틀 — 그림 위 가산) */
 function lampGlow(ctx, b, st, t) {
-  if (!st.q.halos) return;
   const S = b.pts, k = b.lampK ?? 0.7, fl = 0.8 + 0.2 * Math.sin(t * 17) * Math.sin(t * 7);
   const onFloor = (b.drainK ?? 0) > 0.5;
-  halo(ctx, S.lamp.x, S.lamp.y + (onFloor ? -10 : 6), 18 + 26 * k, LAMP, (0.45 + 0.4 * k) * fl, true);
+  halo(ctx, S.lamp.x, S.lamp.y + (onFloor ? -10 : 8), 18 + 26 * k, LAMP, (0.45 + 0.4 * k) * fl, true);   // 등불은 화질과 관계없이 (이야기의 빛 — 스프라이트 하나)
+  if (!st.q.halos) return;
   if (!b.breached && !(b.dying > 0) && (b.helmOff ?? 0) <= 0) halo(ctx, st.WP[0], st.WP[1], 16, TEAL, 0.3 + 0.1 * Math.sin(t * 2.4));
   if (b.breached && (b.eelK ?? 0) > 0.5) { const E = b.eel[4], dx = st.WP[0] - S.win.x, dy = st.WP[1] - S.win.y; halo(ctx, E.x + dx + 6, E.y + dy - 3, 8, TEAL_H, 0.7); }
 }

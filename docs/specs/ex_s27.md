@@ -332,3 +332,14 @@ const PATTERNS = {
 
 ## 10. 통합 기록
 (이 문서는 **EX-STAGE 만** 고친다 — EX-BOSS 는 결과를 자기 보고서 `/tmp/claude-0/s7/<이름>.md` 에 쓰고, EX-STAGE 가 마지막에 여기 한 줄로 옮긴다. VERIFY 는 07:30 전에 아래에 덧붙인다.)
+
+- **EX-STAGE (2026-11-01 04:40 UTC)** — W1–W30 모두 넣음. 새 파일 `src/data/maps/s27.js` (방 6 · 보스 방 = s26 고체 그대로) · `src/data/story_ex27.js` (대본 12 + 크레딧) · `tools/test_s27.mjs` (45/45). 명세에서 바꾼 것 (이유):
+  ① `u_johan` 값 `{ atk 16 · mag 16 · def 10 · hp 60 · thunder 10 · dmgReduce 4 }` — 시작값(19 · 19 · 14 · 90)은 진조의 인장보다 일곱 중 넷이 위. 지금 Lv 35 기준 장비 200판 일곱 영웅 ▲ 97–100 % · 진조의 인장 아래 다섯 (브란 · 아젤만 위 — 피해 −4% 몫). 효과 문구 그대로.
+  ② 악몽 `nm_s27` = `{ hpMul 1.9 · atkMul 1.08 }` — `--nm s27` 보통 · 어려움 일곱 영웅 초록 (atkMul 1.1 이면 어려움 카엘 이야기 대비 1타 1.27 > 1.25).
+  ③ `ch_all.cond.n` 67 → 68 (업적 수 − 1) · `test_achievements` 골드 합 상한 25,000 → 27,000 (st_s27 +2,500 그대로).
+  ④ 크레딧 둘째 줄 `'흑묘 여관의 주인 — 마르타'` (CREDITS_EX 행 형식 '제목 — 이름').
+  ⑤ r4 가라앉은 수문 틀 2–16행 → 2–15행 (잠수 길 6칸 — 봇 탐침이 브란으로 틀 밑에서 맴돌았다; 손 탐침으로는 3초에 지난다).
+  ⑥ `balance.mjs` SIDE_P1.s27 의 넘친 레벨 1타 문턱 0.9 × 진입 (Lv 36 → 41 은 6단계 장비 전이라 s26 의 0.7 은 빡빡하다) · 카엘 명세 칸 · 첫 장비 칸 없음.
+  ⑦ 대본 새 글자 0 — 핵심 글꼴 밖 다섯(붐 · 샜 · 펌 · 샌 · 숟)을 바꿔 썼다 (손 펌프 → 손잡이 바퀴 등).
+  시험: validate_maps s27 `--tight` 0/0 · 전체 0 오류 · test_part2 static 43/43 + flow 2/2 + mobile 6/6 · test_achievements 261/0 · test_nightmare 632/0 (+ `--browser` fold_open 1401/0) · test_cosmetics_s5 6/0 · test_rush_rules 6/0 · test_online 30+25/0 · test_ngplus 165/0 · test_tower 9/0 · test_foreground 315 · test_hunt_journal 9/0 · hook_tags 0 fail · text_audit (arcade · town · dialogue · menu) 46/0 · balance `--check` 일곱 영웅 s26 · s27 초록 · integration (데스크톱 · fold_open) s26/s27 gate · rush · flow · boss_retry 초록 · playthrough `--god` 일곱 영웅 (브란 r4 는 봇 한계 'route-planned', 손 탐침 통과) · 보통 카엘 0 사망.
+- **EX-BOSS (04:37 UTC, `/tmp/claude-0/s7/exboss.md`)** — `e_johan.js` 8패턴 · breach · lastLight · 벡터 + 채색 퍼핏(아틀라스 58.6 KiB) · 초상화 hi/lo · test_johan 52/52 · Higgsfield 2.5크레딧 (gpt_image_2_5, Kling 0). JOHAN_MV 가운데값 0.85 로 올려 balance s27 줄 7/7.
