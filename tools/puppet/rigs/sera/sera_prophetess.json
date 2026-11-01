@@ -17,13 +17,13 @@
    "ym90",
    "ym45"
   ],
-  "th": 420,
-  "quality": 74,
+  "th": 360,
+  "quality": 72,
   "pockets": {
    "T": 18,
    "frac": 0.55,
    "min": 30
   },
-  "_why": "초월 원화(s8 asc): Higgsfield gpt_image_2_5 5뷰 한 장. 왼쪽 방향은 거울상. th 420 · q74 (16방향 영상 턴은 Kling 영상이라 만들지 않음)"
+  "_why": "초월 원화(s8 asc): Higgsfield gpt_image_2_5 5뷰 한 장. 왼쪽 방향은 거울상. th 360 · q72 (메뉴 카드의 인물 ≈450 장치 px — 기존 16방향 시트 th≈190–250 보다 선명) 로 용량을 줄임"
  }
 }

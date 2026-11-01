@@ -834,6 +834,8 @@ export class World {
   // ─────────────────────────── 업데이트 ───────────────────────────
   update(dt) {
     this.debugRects.length = 0;
+    // [s8:healthp] 그리기에서 미뤄 둔 FX (채색 적의 죽음 분해 — render/painted/enemy_kit.js spawnDissolve) 를 업데이트 경로에서 등록 (R12)
+    if (this._fxq?.length) { for (const en of this._fxq) { if (!en.done) this.fx?.ghost?.(en.draw, en.life, en.layer); en.done = true; } this._fxq.length = 0; }
     if (this.qualityNow() !== this.qualityApplied) this.applyQuality();
     this.rt += dt;   // [hook:feel]
     if (this.reveal) this.reveal.update(dt);   // [s5:p4a] 보스 등장 연출 (실제 시간: 히트스톱·슬로모션과 무관)

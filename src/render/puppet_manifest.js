@@ -198,7 +198,7 @@ export const PUPPETS = {
  },
  "kael": {
   "kael_blackwing": {
-   "h": "65492bebf90d",
+   "h": "c2771458c9c6",
    "turn": true,
    "lv": [
     "hi",
@@ -216,7 +216,7 @@ export const PUPPETS = {
    ]
   },
   "kael_bloodreaver": {
-   "h": "83c1ee640357",
+   "h": "0838dcc1ff7d",
    "turn": true,
    "lv": [
     "hi",
@@ -234,7 +234,7 @@ export const PUPPETS = {
    ]
   },
   "kael_grandtemplar": {
-   "h": "8a84b7bcb71b",
+   "h": "9ba6a3a04b5d",
    "turn": true,
    "lv": [
     "hi",
@@ -243,7 +243,7 @@ export const PUPPETS = {
    ]
   },
   "kael_highinquisitor": {
-   "h": "b5c227639c8e",
+   "h": "ba99b704dcd8",
    "turn": true,
    "lv": [
     "hi",
@@ -279,7 +279,7 @@ export const PUPPETS = {
    ]
   },
   "kael_sealbearer": {
-   "h": "84fd76e71bdc",
+   "h": "8b17be35f7c3",
    "turn": true,
    "lv": [
     "hi",
@@ -456,7 +456,7 @@ export const PUPPETS = {
    ]
   },
   "sera_archsage": {
-   "h": "baa18af2bcd7",
+   "h": "1eed810683e1",
    "turn": true,
    "lv": [
     "hi",
@@ -465,7 +465,7 @@ export const PUPPETS = {
    ]
   },
   "sera_archsaint": {
-   "h": "447b42d5f32e",
+   "h": "2237427932d6",
    "turn": true,
    "lv": [
     "hi",
@@ -474,7 +474,7 @@ export const PUPPETS = {
    ]
   },
   "sera_bellsaint": {
-   "h": "fba083a1bf1b",
+   "h": "2119b7e75e87",
    "turn": true,
    "lv": [
     "hi",
@@ -519,7 +519,7 @@ export const PUPPETS = {
    ]
   },
   "sera_prophetess": {
-   "h": "51f157563ce6",
+   "h": "8e4503a6c069",
    "turn": true,
    "lv": [
     "hi",
@@ -546,7 +546,7 @@ export const PUPPETS = {
    ]
   },
   "sera_tempest": {
-   "h": "5826e3da0331",
+   "h": "54abd07ce967",
    "turn": true,
    "lv": [
     "hi",

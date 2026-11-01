@@ -102,7 +102,7 @@ export class MenuScene extends Scene {
     audio.sfx('menu_ok');
     if (!this.state) return;
     // 지금 영웅의 채색 인형을 미리 읽어 둔다 (상태·장비·직업 탭의 미리보기)
-    try { const h = this.hero; if (h?.charId && PUPPET.puppetEnabled?.() !== false) PUPPET.preloadPuppet?.(h.charId, h.classId); } catch (e) { console.warn(e); }   // [hook:plat]
+    try { const h = this.hero; if (h?.charId && PUPPET.puppetEnabled?.() !== false) PUPPET.preloadPuppet?.(h.charId, h.classId, h.asc); } catch (e) { console.warn(e); }   // [hook:plat]
     this.cur.onShow();
   }
   exit() {

@@ -40,7 +40,7 @@ export class StageScene extends Scene {
     this.viewHooks();
     // 영웅 채색 퍼펫을 입장 페이드 동안 받아 둔다 (첫 프레임에 벡터 → 퍼펫으로 바뀌어 보이지 않게)
     const h = this.world.player?.hero;
-    try { if (h?.charId && PUPPET.puppetEnabled?.() !== false) PUPPET.preloadPuppet?.(h.charId, h.classId); } catch (e) { console.error(e); }   // [hook:plat]
+    try { if (h?.charId && PUPPET.puppetEnabled?.() !== false) PUPPET.preloadPuppet?.(h.charId, h.classId, h.asc); } catch (e) { console.error(e); }   // [hook:plat]
   }
   exit() { this._pauseWanted = false; if (this.game.world === this.world) this.game.world = null; this.game.setSurround?.(null); }
   resize() { this.world?.camera.setView(this.game.viewW, this.game.viewH); this.viewHooks(); }

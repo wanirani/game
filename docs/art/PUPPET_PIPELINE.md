@@ -174,17 +174,21 @@ and slightly curved as if casting a spell, the wrist and cuff at the bottom. No 
    어깨·팔꿈치·무릎·발이 같은 자리인지 본다.
 3. 리그: `{"extends": "<부모 직업>", "classId": "<ascId>", "src": …, "runtime": {"armorBase": <초월 look.armorColor 또는 부모 armorBase>}, "turn": {…}}` — 관절·영역은
    부모 그대로. 고친 것(리뷰로 찾음): 새 원화 바지가 붉은·갈색 기운이면 `legs.pantsWarmMax: null`(넓적다리가 반투명으로 지워짐), 완갑이 부모보다 앞·좁으면
-   `joints.elbow/wrist/hand` 를 완갑 가운데 선으로(성전 기사단장 −30 px). 머리띠가 사라지면 `runtime.band: null`.
+   `joints.elbow/wrist/hand` 를 완갑 가운데 선으로(성전 기사단장 −30 px, 관절 틈 68 → 17칸 / 부모 11칸). 머리띠가 사라지면 `runtime.band: null`.
 4. **손**: 장갑 디자인이 부모와 같아 부모 손 시트를 그대로 상속(새 이미지 없음). 장갑이 바뀌는 직업만 §2.4 처럼 1장.
 5. **턴**: 새 측면 원화를 참고로 5뷰 한 장(`21:9`, 2k low, 0.5 크레딧) — gpt 는 3/4·옆모습을 늘 **오른쪽**으로 그려 라벨 `["y90","y45","y0","ym90","ym45"]`,
    왼쪽은 거울상. `turn` 은 `_replace: true` 로 부모 턴(16방향 영상 시트)을 끊고 옛 8방향 경로(`turn.webp`)로 간다. 용량: opt-in `turn.th`(정규화 키, 기본 580)
-   를 420–440, `quality` 74–76 → 시트 80–110 KB. `pockets` 로 팔-몸 사이 회색 주머니 비움. (16방향 턴은 Kling 영상이 필요해 만들지 않았다.)
+   를 360, `quality` 72 → 시트 52–76 KB (메뉴 카드 인물 ≈450 장치 px, 기존 16방향 시트 th≈190–250 보다 선명). `pockets` 로 팔-몸 사이 회색 주머니 비움.
+   (16방향 턴은 Kling 영상이 필요해 만들지 않았다.)
 6. **런타임 덧칠 규칙** (`hero_puppet.js` `variantKey`/`ascNative`): 전용 원화는 그 초월의 갑옷색·lookTop 장식색(armorTrim)·색조(tint)를 이미 칠해 그렸으므로
    같은 값은 다시 칠하지 않는다(부모 원화일 때만 재칠). 비전은 2차 넷 어디서든 오므로 그 계보 갑옷색(성전 기사 #d8dce8 등)도 '원래 색'. 장비 갑옷(시작 갑옷 밖)
    색만 재칠. 오라·후광·날개·망토 안감·스카프·궤적색은 절차적이라 그대로 그린다. 시험 `tools/test_ascension.mjs` §9b, `variantKeyFor(cid, cls, look, armorBase)`.
 7. QA: `node tools/puppet/review.mjs allasc /tmp/r` (전용 원화 × 6무기 × 모든 기술, 관절), `atk:<ascId>:whip`(PNG), `node tools/puppet/ingame.mjs --cls <2차> --asc <ascId>`,
    갤러리 `tools/gallery_hero.html?sec=pup,turn`(전용 원화가 있는 초월도 나온다, `?cls=<ascId>`).
-8. 용량(실측): 직업당 260–390 KB (아틀라스·마스크 3레벨 ≈170–250 KB + 턴 ≈95–125 KB). 카엘 5 = 1.62 MB.
+8. 용량(실측): 직업당 223–340 KB (게임용 lo/hi+마스크+rig 68–96 KB · 메뉴용 ui 아틀라스+마스크 98–159 KB · 턴 57–86 KB). 카엘 5 = 1.42 MB, 세라 5 = 1.37 MB.
+   이 10직업을 넣은 뒤 그림 단계 기준 69.03 / 70 MB, APK 어림 92.78 / 95 MB — 나머지 25직업(≈7 MB)은 이 방식 그대로는 들어가지 않는다 (8단계 asc 보고서의 계획 참고).
+9. 대체: 전용 원화 파일을 못 받으면(404·APK 에서 뺌) `puppetFor` 가 2차 원화 + lookTop 덧칠로 잇는다 (벡터로 떨어지지 않음). 확인
+   `node tools/puppet/ingame.mjs --cls kael_templar --asc kael_grandtemplar --block puppets/kael/kael_grandtemplar/`.
 
 ## 3. 등록 (ingest)
 

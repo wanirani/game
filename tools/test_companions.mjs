@@ -628,8 +628,11 @@ for (const sid of ['s03', 's12']) {
     m.hp = 1; m.invulnT = 0;
     const toast0 = T.toasts.length;
     t = 0;
+    // 보스 말고 다른 적(드라큘라가 부르는 박쥐 · 방의 잡몹)과 그 탄은 이 구간 동안 치운다 (healtht, Stage 8): 체력 1 인 탈것은 누구에게 맞아도
+    // 설계대로 낙마한다 → 8번 중 1번꼴로 박쥐가 먼저 쳐서 lastAtk {id:'bat', boss:false} 로 실패했다. 이 점검이 보는 것은 '보스 공격' 낙마다
+    const onlyBoss = () => { for (const e of w.entities) { if (e.dead || e === b) continue; if (e.kind === 'enemy' || ((e.kind === 'projectile' || e.kind === 'hitbox') && e.team === 'enemy' && e.owner && e.owner !== b && e.owner.kind === 'enemy')) { e.dead = true; e.hidden = true; } } };
     while (t < 30 && m.state !== 'recall') {
-      keep(); p.iframes = 0; m.invulnT = 0; m.hp = Math.min(m.hp, 1);
+      keep(); onlyBoss(); p.iframes = 0; m.invulnT = 0; m.hp = Math.min(m.hp, 1);
       const dir = Math.sign(b.cx - p.cx) || 1;
       T.key(dir > 0 ? 'ArrowRight' : 'ArrowLeft', Math.abs(b.cx - p.cx) > 90);
       T.key(dir > 0 ? 'ArrowLeft' : 'ArrowRight', false);

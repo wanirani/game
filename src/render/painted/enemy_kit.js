@@ -696,7 +696,7 @@ export function spawnDissolve(world, e, rig, placements, o = {}) {
     const a = fr() * TAU, sp = frand(40, o.spread ?? 150);
     pool.add(o.kind ?? 3, ox + fx * sc * frand(-10, 10), oy + sc * (cy + frand(-12, 12)), Math.cos(a) * sp, Math.sin(a) * sp - 60, frand(0.35, 0.8), frand(2, 5) * sc, o.col ?? '#ff9a40');
   }
-  world.fx.ghost((ctx) => {
+  const draw = (ctx) => {
     const now = world.time ?? t0, age = now - t0, k = clamp(age / life, 0, 1);
     if (k >= 1) return;
     ctx.save();
@@ -721,6 +721,14 @@ export function spawnDissolve(world, e, rig, placements, o = {}) {
     ctx.save(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
     pool.step(now); pool.draw(ctx);
     ctx.restore();
-  }, life + 0.4, o.layer ?? 'front');
+  };
+  // [s8:healthp] R12 (FX 는 그리기 도중에 만들지 않는다 — perf_budget drawfx): 죽는 첫 프레임의 그리기에서 불려도 fx.ghost 는 다음
+  // world.update 가 등록한다 (world._fxq — game/world.js update 첫머리). 그때까지의 프레임(보통 이 한 프레임)은 render/enemies.js drawEnemy 가 같은 그림을
+  // 카메라 공간에 직접 그린다 (e._dsv) — 시작 시각 t0 이 같으므로 이어서 보인다. 예전: 그리기에서 world.fx.ghost 를 바로 불러 desk·fhd2x
+  // s02boss 에서 'FX spawned while rendering' (원혼 적이 측정 프레임 안에 죽을 때)
+  const entry = { draw, life: life + 0.4, layer: o.layer ?? 'front', done: false };
+  (world._fxq ??= []).push(entry);
+  e._dsv = entry;
 }
+
 const _dz = [0, 0];

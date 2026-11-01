@@ -116,6 +116,8 @@ export function drawEnemy(ctx, e, world) {
       if (rig.scale !== 1) ctx.scale(rig.scale, rig.scale);     // spec.scale: painted figure sized to the logic rect
       pm.draw(ctx, e, world, { flash, cam }, rig);
       unwindDone(ctx, m);
+      // [s8:healthp] 죽음 분해가 아직 fx 로 넘어가지 않았다(다음 world.update 에서 등록) → 그 그림을 카메라 공간에 직접 (enemy_kit spawnDissolve)
+      if (e._dsv && !e._dsv.done && cam) { ctx.save(); ctx.setTransform(cam); try { e._dsv.draw(ctx); } finally { ctx.restore(); } }
     } catch (err) {
       // 그리기 오류 → 이 적 종류는 벡터로 (월드 그리기는 계속). 이번 프레임도 벡터로 그린다
       unwindTo(ctx, m);

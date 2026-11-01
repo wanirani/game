@@ -449,7 +449,7 @@ export class BossRushScene extends ArcadeRunScene {
     }
     if (!order.includes(first)) order.unshift(first);
     this.relay = { order, pools: {}, swaps: 0 };
-    for (const id of order) { try { if (PUPPET.puppetEnabled?.() !== false) PUPPET.preloadPuppet?.(id, st.heroes?.[id]?.classId); } catch { /* 퍼펫 없음 → 벡터 그림 */ } }
+    for (const id of order) { try { if (PUPPET.puppetEnabled?.() !== false) PUPPET.preloadPuppet?.(id, st.heroes?.[id]?.classId, st.heroes?.[id]?.asc); } catch { /* 퍼펫 없음 → 벡터 그림 */ } }
   }
   /** 라운드 r(0부터)의 헌터 */
   relayHeroAt(r) { const o = this.relay?.order ?? []; return o.length ? o[((r % o.length) + o.length) % o.length] : null; }

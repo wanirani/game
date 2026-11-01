@@ -1013,7 +1013,7 @@ export class ArcadeClassScene extends Scene {
     this._L = null;
     this.buildSeq(true);
     assets.get(HERO_BG[this.charId] ?? 'bg/s03_gate');
-    for (const o of this.opts) { try { if (PUPPET.puppetEnabled?.() !== false) PUPPET.preloadPuppet?.(this.charId, o.cls); } catch (e) { console.warn(e); } }
+    for (const o of this.opts) { try { if (PUPPET.puppetEnabled?.() !== false) PUPPET.preloadPuppet?.(this.charId, o.cls, o.id); } catch (e) { console.warn(e); } }
     taps.clear();
   }
   get cur() { return this.opts[this.sel] ?? null; }

@@ -146,7 +146,13 @@ function ready(E) {
   return false;
 }
 /** 미리 불러 두기 (장면 진입 시 등, 선택) */
-export function preloadPuppet(charId, classId) { const E = entry(charId, classId); return E; }   // entry 가 artClass 로 원화 직업을 고른다
+// asc (선택): 영웅의 초월·비전 id — 그 전용 원화가 있으면 2차 원화 대신 그것을 받는다 (s8 verifyart2: 스테이지·메뉴·아케이드 입장 때
+// 2차 원화만 받아 두고 정작 그릴 초월 원화는 첫 프레임에야 요청 → 받는 동안 벡터 인형이 비치던 것). 계보가 맞지 않는 asc 는 무시
+export function preloadPuppet(charId, classId, asc = null) {
+  const A = typeof asc === 'string' && Object.hasOwn(ASCENSIONS, asc) ? ASCENSIONS[asc] : null;
+  const own = A && A.charId === charId && A.parents.includes(classId) && PUPPETS[charId]?.[asc];
+  return entry(charId, own ? asc : classId);   // entry 가 artClass 로 원화 직업을 고른다
+}
 // 한 직업이 준비되면 같은 영웅의 다른 직업(rig + lo/hi ≈60KB씩)을 한가할 때 받아 둔다 —
 // 교회 전직 카드·파티·직업 탭이 처음 그릴 때 벡터로 찍혀 스냅샷에 남는 일을 막는다
 const SIB = new Set();

@@ -142,7 +142,17 @@ const installProbe = (s, { overlap = true } = {}) => s.eval(({ overlap }) => {
     }
     for (const e of w.entities) if (!P.seen.has(e)) { P.seen.add(e); if (e.team === 'enemy' && (e.kind === 'projectile' || e.kind === 'hitbox')) P.spawned++; }
   };
-  if (overlap && w.boss) { p.x = (w.boss.x + w.boss.w / 2) - p.w / 2; p.vx = 0; }
+  if (overlap && w.boss) {
+    // 보스 가운데로 옮기되 발밑에 땅이 있는 자리로 (healtht, Stage 8): s17 지즈의 둥지는 가운데 28–31열이 구덩이라, 가운데에 세우면 영웅이
+    // 떨어져 낙사 피해(최대 체력 25% = 33)를 입고 'hold' 가 보스 피해로 잘못 실패했다. 보스 몸 폭 안에서 가운데에 가장 가까운 땅 위 x 를
+    // 고른다 (그런 자리가 없으면 가운데 그대로 — 그때 실패는 진짜다)
+    const m = w.map, TS = 48, b = w.boss, cx = b.x + b.w / 2, ty = Math.floor((p.y + p.h - 1) / TS);
+    const ground = (x) => m?.groundBelow?.(Math.floor((x - p.w / 2 + 1) / TS), ty) != null && m?.groundBelow?.(Math.floor((x + p.w / 2 - 1) / TS), ty) != null;
+    let x = cx;
+    for (let d = 0; d <= b.w / 2; d += 4) { if (ground(cx - d)) { x = cx - d; break; } if (ground(cx + d)) { x = cx + d; break; } }
+    p.x = x - p.w / 2; p.vx = 0;
+    P.placedX = Math.round(x); P.bossCx = Math.round(cx);
+  }
   P.wrap();
 }, { overlap });
 /** 한 프레임 (계측 갱신 포함) → 상태 */
@@ -159,7 +169,7 @@ const tick = (s, render = false) => s.eval((render) => {
     pend: !!w.boss?.pendingBoss, bossId: w.boss?.def?.id ?? null, plate: top?.name === 'bossIntro' ? top.plateColor : null, nm: top?.name === 'bossIntro' ? !!top.nightmare : null,
   };
 }, render);
-const probeResult = (s) => s.eval(() => { const w = window.__game.world, P = window.__p4a, p = w.player; return { think: P.think, spawned: P.spawned, hpLoss: P.hp0 - p.hp, dmg: (w.run.damageTaken ?? 0) - P.dmg0, frames: P.frames }; });
+const probeResult = (s) => s.eval(() => { const w = window.__game.world, P = window.__p4a, p = w.player; return { think: P.think, spawned: P.spawned, hpLoss: P.hp0 - p.hp, dmg: (w.run.damageTaken ?? 0) - P.dmg0, frames: P.frames, placedX: P.placedX, bossCx: P.bossCx }; });
 async function shot(s, file) { await s.screenshot(path.join(OUT, file)); }
 async function frame(s, dir, n) { await s.screenshot(path.join(dir, `f${String(n).padStart(4, '0')}.png`)); }
 function mp4(dir, file, fps = 30) {
@@ -268,7 +278,7 @@ for (const boss of BOSSES_RUN) {
     const doVideo = VIDEO && (boss === 'b_nightwing');
     const r = await runReveal(s, boss, { shots: SHOTS, video: doVideo, perf: false });
     if (r.err) { add(`${boss}.hold`, false, r.err); await s.close(); continue; }
-    add(`${boss}.hold`, r.probe.think === 0 && r.probe.spawned === 0 && r.probe.hpLoss <= 0 && r.probe.dmg <= 0, { think: r.probe.think, spawnedEnemyHitboxes: r.probe.spawned, hpLoss: r.probe.hpLoss, damageTaken: r.probe.dmg });
+    add(`${boss}.hold`, r.probe.think === 0 && r.probe.spawned === 0 && r.probe.hpLoss <= 0 && r.probe.dmg <= 0, { think: r.probe.think, spawnedEnemyHitboxes: r.probe.spawned, hpLoss: r.probe.hpLoss, damageTaken: r.probe.dmg, heroX: r.probe.placedX, bossCx: r.probe.bossCx });
     add(`${boss}.time`, r.total != null && r.total <= TOTAL + DT + 1e-6 && r.mode === 'card' && r.lbMax > 4 && r.transformed && r.landed && r.plateSeen, { total: r.total && +r.total.toFixed(3), mode: r.mode, letterbox: +r.lbMax.toFixed(1), transformed: r.transformed, landed: r.landed, plate: r.plateSeen, style: BI.introOf(boss).style });
     if (doVideo && r.frames) add(`${boss}.video`, true, mp4(r.vdir, `${boss.replace('b_', '')}_entrance.mp4`));
     // 격파 (Dagon = 물 속성 영상 · 나머지는 검사만)
