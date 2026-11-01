@@ -1,5 +1,5 @@
 // 퍼펫 인게임 QA: 스테이지를 열고 조작 → 스크린샷 + 플레이어 그리기 시간(ms) 측정
-// node tools/puppet/ingame.mjs --stage s01 [--room boss] [--char kael] [--cls kael_templar] [--out /tmp/x] [--w 1280 --h 720 --dpr 1.5]
+// node tools/puppet/ingame.mjs --stage s01 [--room boss] [--char kael] [--cls kael_templar] [--asc kael_grandtemplar] [--out /tmp/x] [--w 1280 --h 720 --dpr 1.5]
 //        [--mobile] [--vector] [--scale 1.14(플레이어 그리기 배율)] [--dlg(대사 창 자동 닫기 끔)] [--steps "wait:1,shot,right:1,attack:0.2,snap=..." ] [--equip body=#hex,plate]
 // 단계 토큰: key[:초] (right left up down jump attack dash sub skill1 skill2 ult) · a+b:초 · wait:초 · shot · eval=JS(;; 는 ,)
 //           snap=조건JS (조건이 참인 프레임의 게임 캔버스를 저장, 예: snap=window.__game.world.player.move&&window.__game.world.player.moveT>0.1)
@@ -9,7 +9,7 @@ import { start } from '../serve.mjs';
 import fs from 'node:fs';
 const argv = process.argv.slice(2);
 const opt = (k, d) => { const i = argv.indexOf('--' + k); return i >= 0 ? (argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : true) : d; };
-const stage = opt('stage', 's01'), room = opt('room', ''), char = opt('char', 'kael'), cls = opt('cls', '');
+const stage = opt('stage', 's01'), room = opt('room', ''), char = opt('char', 'kael'), cls = opt('cls', ''), asc = opt('asc', '');   // --asc <초월·비전 id> (s8): hero.asc 로 덧입힘
 const outp = opt('out', '/tmp/claude-0/puppet_dbg/ig'), mobile = !!opt('mobile', false), vector = !!opt('vector', false);
 const steps = opt('steps', 'wait:1.5,shot');
 fs.mkdirSync(outp.replace(/\/[^/]*$/, ''), { recursive: true });
@@ -26,13 +26,14 @@ page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resourc
 page.on('response', (r) => { if (r.status() >= 400 && /puppets/.test(r.url())) errs.push('HTTP ' + r.status() + ' ' + r.url()); });
 await page.goto(`http://localhost:${port}/index.html?scene=stage&stage=${stage}&char=${char}${room ? '&room=' + room : ''}`);
 await page.waitForFunction(() => window.__game?.world?.player, null, { timeout: 30000 });
-await page.evaluate(async ({ vector, cls, equip, skipDlg, drawScale }) => {
+await page.evaluate(async ({ vector, cls, asc, equip, skipDlg, drawScale }) => {
   const hero = await import('/src/render/hero.js');
   if (vector) hero.setPuppetEnabled(false);
   if (drawScale) hero.setHeroDrawScale(drawScale);
   const w = window.__game.world, pl = w.player;
-  if (cls && pl.hero) {
-    pl.hero.classId = cls;
+  if ((cls || asc) && pl.hero) {
+    if (cls) pl.hero.classId = cls;
+    if (asc) { pl.hero.asc = asc; pl.hero.ascUnlocked = [...new Set([...(pl.hero.ascUnlocked || []), asc])]; }
     const st = await import('/src/game/stats.js');
     pl.look = st.composeLook(pl.state, pl.hero);
   }
@@ -44,7 +45,7 @@ await page.evaluate(async ({ vector, cls, equip, skipDlg, drawScale }) => {
   window.__hero = hero;
   // QA 편의: 대사·보스 소개 창을 닫고 연출 입력 잠금을 푼다 (--dlg 로 끔)
   if (skipDlg) setInterval(() => { const g = window.__game, top = g.scenes[g.scenes.length - 1]; if (top && /Dialogue|BossIntro|Story/.test(top.constructor?.name || '')) g.pop(); else if (g.world && top?.constructor?.name === 'StageScene') { g.world.cutscene = false; g.world.inputLock = false; } }, 60);
-}, { vector, cls, equip: opt('equip', '') ? JSON.parse(opt('equip')) : null, skipDlg: !opt('dlg', false), drawScale: Number(opt('scale', 0)) });
+}, { vector, cls, asc, equip: opt('equip', '') ? JSON.parse(opt('equip')) : null, skipDlg: !opt('dlg', false), drawScale: Number(opt('scale', 0)) });
 // 퍼펫 로드 대기 (최대 5초)
 if (!vector && (await page.evaluate(async (c) => { const m = await import('/src/render/puppet_manifest.js'); return !!m.PUPPETS[c]; }, char))) await page.waitForFunction(() => { const s = window.__hero?.puppetStatus?.(); return s && Object.values(s).some((v) => v.state === 1); }, null, { timeout: 8000 }).catch(() => errs.push('PUPPET NOT READY'));
 await page.waitForTimeout(400);

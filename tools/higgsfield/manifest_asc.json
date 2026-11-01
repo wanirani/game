@@ -1,0 +1,265 @@
+{
+ "batch": "asc (Stage 8 — tier-3/hidden ascension puppets, pilot kael)",
+ "server": "Higgsfield MCP 059c3459",
+ "uploads": "only game art: 5 parent side arts + 5 new side arts",
+ "images": 15,
+ "credits": 7.5,
+ "hands": "not generated — reused parent hand sheets (same glove design)",
+ "items": [
+  {
+   "file": "tools/puppet/src/kael/kael_grandtemplar_side.webp",
+   "cls": "kael_grandtemplar",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/kael/kael_templar_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young man ... exact same walking side pose facing right ... same camera angle, framing, scale and position ... same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D) ... coiled whip at the hip ... Change ONLY his costume, armor and colors into: GRAND MASTER of the templar order - white-silver plate (#eef0f8), gold filigree (#ffd84a), gold sunburst cross, larger pauldron, long white tabard with crimson (#c8102a) border, crimson sash, gold laurel crown. ... No cape, no cloak, no wings, no halo, no glowing aura, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "0ff960e4-beff-4b9b-a5d2-7d7fbfdb9f64",
+   "credits": 0.5,
+   "kept": true,
+   "note": "picked: alpha IoU vs parent .78-.96 after bbox fit (hf_ingest --fit)"
+  },
+  {
+   "file": null,
+   "cls": "kael_grandtemplar",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/kael/kael_templar_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young man ... exact same walking side pose facing right ... same camera angle, framing, scale and position ... same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D) ... coiled whip at the hip ... Change ONLY his costume, armor and colors into: GRAND MASTER of the templar order - white-silver plate (#eef0f8), gold filigree (#ffd84a), gold sunburst cross, larger pauldron, long white tabard with crimson (#c8102a) border, crimson sash, gold laurel crown. ... No cape, no cloak, no wings, no halo, no glowing aura, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "3b9b8c14-b4d4-4999-a052-d7059d0e9d0a",
+   "credits": 0.5,
+   "kept": false,
+   "note": "other candidate (also on-pose; not picked)"
+  },
+  {
+   "file": "tools/puppet/src/kael/kael_grandtemplar_turn5.webp",
+   "cls": "kael_grandtemplar",
+   "kind": "turnaround 5 views",
+   "ref": "tools/puppet/src/kael/kael_grandtemplar_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the man in the reference image, wearing exactly his outfit: GRAND MASTER of the templar order - white-silver plate (#eef0f8), gold filigree (#ffd84a), gold sunburst cross, larger pauldron, long white tabard with crimson (#c8102a) border, crimson sash, gold laurel crown ... Five full-body views in one row: 1 front, 2 three-quarter front, 3 side profile, 4 back, 5 three-quarter back ... painterly dark-fantasy (not anime) ... plain flat solid #00FF00 green background, no text.",
+   "job_id": "63a3bffb-0111-4718-968f-ad55bd2ebc76",
+   "credits": 0.5,
+   "kept": true,
+   "note": "views came out facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  },
+  {
+   "file": null,
+   "cls": "kael_highinquisitor",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/kael/kael_inquisitor_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young man ... exact same walking side pose facing right ... same camera angle, framing, scale and position ... same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D) ... coiled whip at the hip ... Change ONLY his costume, armor and colors into: HIGH INQUISITOR - oxblood-black leather coat (#2a1a1c), amber-gold trim (#e8a040), crimson lining, embroidered flames on the coat skirt, flame vambraces, gold chain of office with flaming sun medallion, same wide black hat with gold band and sun badge. ... No cape, no cloak, no wings, no halo, no glowing aura, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "e6e24329-e53d-4bd8-8e68-2e1a8e12ef21",
+   "credits": 0.5,
+   "kept": false,
+   "note": "other candidate (also on-pose; not picked)"
+  },
+  {
+   "file": "tools/puppet/src/kael/kael_highinquisitor_side.webp",
+   "cls": "kael_highinquisitor",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/kael/kael_inquisitor_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young man ... exact same walking side pose facing right ... same camera angle, framing, scale and position ... same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D) ... coiled whip at the hip ... Change ONLY his costume, armor and colors into: HIGH INQUISITOR - oxblood-black leather coat (#2a1a1c), amber-gold trim (#e8a040), crimson lining, embroidered flames on the coat skirt, flame vambraces, gold chain of office with flaming sun medallion, same wide black hat with gold band and sun badge. ... No cape, no cloak, no wings, no halo, no glowing aura, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "ec5a1492-0890-4ead-bb52-f072b12fc85a",
+   "credits": 0.5,
+   "kept": true,
+   "note": "picked: alpha IoU vs parent .78-.96 after bbox fit (hf_ingest --fit)"
+  },
+  {
+   "file": "tools/puppet/src/kael/kael_highinquisitor_turn5.webp",
+   "cls": "kael_highinquisitor",
+   "kind": "turnaround 5 views",
+   "ref": "tools/puppet/src/kael/kael_highinquisitor_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the man in the reference image, wearing exactly his outfit: HIGH INQUISITOR - oxblood-black leather coat (#2a1a1c), amber-gold trim (#e8a040), crimson lining, embroidered flames on the coat skirt, flame vambraces, gold chain of office with flaming sun medallion, same wide black hat with gold band and sun badge ... Five full-body views in one row: 1 front, 2 three-quarter front, 3 side profile, 4 back, 5 three-quarter back ... painterly dark-fantasy (not anime) ... plain flat solid #00FF00 green background, no text.",
+   "job_id": "fbd524ac-efcf-4746-8f1c-03d7ffe82016",
+   "credits": 0.5,
+   "kept": true,
+   "note": "views came out facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  },
+  {
+   "file": "tools/puppet/src/kael/kael_bloodreaver_side.webp",
+   "cls": "kael_bloodreaver",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/kael/kael_bloodhunter_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young man ... exact same walking side pose facing right ... same camera angle, framing, scale and position ... same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D) ... coiled whip at the hip ... Change ONLY his costume, armor and colors into: BLOOD REAVER - crimson-black leather coat (#2a0a10), blood-red trim (#8a0a1a), glowing red vein runes, spiked crimson pauldron, ragged blood-red sash, steel claw tips, same red hood. ... No cape, no cloak, no wings, no halo, no glowing aura, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "e5445d69-0cef-4472-9243-4fd78062c0dc",
+   "credits": 0.5,
+   "kept": true,
+   "note": "picked: alpha IoU vs parent .78-.96 after bbox fit (hf_ingest --fit)"
+  },
+  {
+   "file": null,
+   "cls": "kael_bloodreaver",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/kael/kael_bloodhunter_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young man ... exact same walking side pose facing right ... same camera angle, framing, scale and position ... same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D) ... coiled whip at the hip ... Change ONLY his costume, armor and colors into: BLOOD REAVER - crimson-black leather coat (#2a0a10), blood-red trim (#8a0a1a), glowing red vein runes, spiked crimson pauldron, ragged blood-red sash, steel claw tips, same red hood. ... No cape, no cloak, no wings, no halo, no glowing aura, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "99ca65c9-bf29-4078-b246-644306d41737",
+   "credits": 0.5,
+   "kept": false,
+   "note": "other candidate (also on-pose; not picked)"
+  },
+  {
+   "file": "tools/puppet/src/kael/kael_bloodreaver_turn5.webp",
+   "cls": "kael_bloodreaver",
+   "kind": "turnaround 5 views",
+   "ref": "tools/puppet/src/kael/kael_bloodreaver_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the man in the reference image, wearing exactly his outfit: BLOOD REAVER - crimson-black leather coat (#2a0a10), blood-red trim (#8a0a1a), glowing red vein runes, spiked crimson pauldron, ragged blood-red sash, steel claw tips, same red hood ... Five full-body views in one row: 1 front, 2 three-quarter front, 3 side profile, 4 back, 5 three-quarter back ... painterly dark-fantasy (not anime) ... plain flat solid #00FF00 green background, no text.",
+   "job_id": "76e6429e-c2c1-484a-abe5-c19539fee6e6",
+   "credits": 0.5,
+   "kept": true,
+   "note": "views came out facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  },
+  {
+   "file": null,
+   "cls": "kael_blackwing",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/kael/kael_nightraven_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young man ... exact same walking side pose facing right ... same camera angle, framing, scale and position ... same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D) ... coiled whip at the hip ... Change ONLY his costume, armor and colors into: BLACKWING - black-violet leather coat (#0e0c14), violet-blue trim and lining (#6a6aff), violet feather runes, larger glossy raven-feather pauldron ending above the elbow, dark purple scarf (#2a1a4a), same black hood. ... No cape, no cloak, no wings, no halo, no glowing aura, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "fde9d518-1b93-427b-bf20-607a60098090",
+   "credits": 0.5,
+   "kept": false,
+   "note": "other candidate (also on-pose; not picked)"
+  },
+  {
+   "file": "tools/puppet/src/kael/kael_blackwing_side.webp",
+   "cls": "kael_blackwing",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/kael/kael_nightraven_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young man ... exact same walking side pose facing right ... same camera angle, framing, scale and position ... same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D) ... coiled whip at the hip ... Change ONLY his costume, armor and colors into: BLACKWING - black-violet leather coat (#0e0c14), violet-blue trim and lining (#6a6aff), violet feather runes, larger glossy raven-feather pauldron ending above the elbow, dark purple scarf (#2a1a4a), same black hood. ... No cape, no cloak, no wings, no halo, no glowing aura, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "a05b2df8-2046-4470-85f9-5b93f19c7d32",
+   "credits": 0.5,
+   "kept": true,
+   "note": "picked: alpha IoU vs parent .78-.96 after bbox fit (hf_ingest --fit)"
+  },
+  {
+   "file": "tools/puppet/src/kael/kael_blackwing_turn5.webp",
+   "cls": "kael_blackwing",
+   "kind": "turnaround 5 views",
+   "ref": "tools/puppet/src/kael/kael_blackwing_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the man in the reference image, wearing exactly his outfit: BLACKWING - black-violet leather coat (#0e0c14), violet-blue trim and lining (#6a6aff), violet feather runes, larger glossy raven-feather pauldron ending above the elbow, dark purple scarf (#2a1a4a), same black hood ... Five full-body views in one row: 1 front, 2 three-quarter front, 3 side profile, 4 back, 5 three-quarter back ... painterly dark-fantasy (not anime) ... plain flat solid #00FF00 green background, no text.",
+   "job_id": "ec054ca6-47b1-4154-9f90-cbc50660edb5",
+   "credits": 0.5,
+   "kept": true,
+   "note": "views came out facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  },
+  {
+   "file": null,
+   "cls": "kael_sealbearer",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/kael/kael_hunter_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young man ... exact same walking side pose facing right ... same camera angle, framing, scale and position ... same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D) ... coiled whip at the hip ... Change ONLY his costume, armor and colors into: SEALBEARER - umber-brown leather coat (#5a3a10) with antique-gold (#ffd84a) seal-sigil embroidery, ivory-cream (#fff8e0) high collar, gold seal vambraces and shoulder plate, gold chains, parchment seal tags with red wax and a small bronze bell; red headband replaced by a thin gold circlet. ... No cape, no cloak, no wings, no halo, no glowing aura, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "88820963-ded3-4468-aa78-3f36c6beb790",
+   "credits": 0.5,
+   "kept": false,
+   "note": "other candidate (also on-pose; not picked)"
+  },
+  {
+   "file": "tools/puppet/src/kael/kael_sealbearer_side.webp",
+   "cls": "kael_sealbearer",
+   "kind": "side keep-pose edit",
+   "ref": "tools/puppet/src/kael/kael_hunter_side.webp (JPEG q93 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young man ... exact same walking side pose facing right ... same camera angle, framing, scale and position ... same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D) ... coiled whip at the hip ... Change ONLY his costume, armor and colors into: SEALBEARER - umber-brown leather coat (#5a3a10) with antique-gold (#ffd84a) seal-sigil embroidery, ivory-cream (#fff8e0) high collar, gold seal vambraces and shoulder plate, gold chains, parchment seal tags with red wax and a small bronze bell; red headband replaced by a thin gold circlet. ... No cape, no cloak, no wings, no halo, no glowing aura, nothing held in the hands ... plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "1d6d6b9c-aebb-4be2-8814-7aff5e7e2614",
+   "credits": 0.5,
+   "kept": true,
+   "note": "picked: alpha IoU vs parent .78-.96 after bbox fit (hf_ingest --fit)"
+  },
+  {
+   "file": "tools/puppet/src/kael/kael_sealbearer_turn5.webp",
+   "cls": "kael_sealbearer",
+   "kind": "turnaround 5 views",
+   "ref": "tools/puppet/src/kael/kael_sealbearer_side.webp (JPEG q92 upload)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "21:9",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Character turnaround sheet of the man in the reference image, wearing exactly his outfit: SEALBEARER - umber-brown leather coat (#5a3a10) with antique-gold (#ffd84a) seal-sigil embroidery, ivory-cream (#fff8e0) high collar, gold seal vambraces and shoulder plate, gold chains, parchment seal tags with red wax and a small bronze bell; red headband replaced by a thin gold circlet ... Five full-body views in one row: 1 front, 2 three-quarter front, 3 side profile, 4 back, 5 three-quarter back ... painterly dark-fantasy (not anime) ... plain flat solid #00FF00 green background, no text.",
+   "job_id": "2adc78b4-006a-466d-812b-405a0b1decdc",
+   "credits": 0.5,
+   "kept": true,
+   "note": "views came out facing RIGHT (labels y90,y45,y0,ym90,ym45; left side by mirror)"
+  }
+ ]
+}

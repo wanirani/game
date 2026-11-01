@@ -10,13 +10,13 @@
 글꼴 구성 (src/core/ui.js 의 FONT 묶음과 짝):
 - CSS 글꼴 (css/style.css 의 '@fonts:begin' ~ '@fonts:end' @font-face 블록, index.html 이 미리 받음):
   Noto Sans KR(본문) · Hahmlet(제목) · Grenze Gotisch(블랙레터) · Cinzel(라틴 장식·큰 숫자) · Cinzel Decorative(로고)
+  · BN Num(작은 숫자용 라이닝 숫자, Spectral ExtraBold, 숫자·숫자 기호만 — preload 와 같은 요청이 되도록 CSS 로 둔다)
   한글 글꼴은 두 파일: 기본(게임에 쓰인 글자, 첫 화면 전에 받음) + 확장("… Ext", KS X 1001 나머지, 필요할 때만 받음).
   확장은 별도 글꼴 이름이며 FONT 묶음에서 기본 글꼴 바로 뒤에 온다 (unicode-range 가 겹치면 크롬이 두 파일을 모두 받으므로 이름을 나눴다).
   첫 화면 글꼴이 예산(FIRST_FRAME_TARGET)을 넘으면 덜 쓰이는 글자를 세 번째 파일 "plus"(-plus.woff2)로 옮긴다:
   같은 글꼴 이름 + 정확한 unicode-range 로 ui.js 가 fonts.json 을 읽어 등록하고 첫 화면 뒤 곧바로 받는다 (CSS 는 그대로).
   타이틀·프런트 화면(FORCED_GLOBS)의 글자는 늘 기본 파일에 남는다.
 - JS 글꼴 (src/core/ui.js 가 FontFace API 로 등록, CSS 에는 없다):
-  BN Num   : 작은 숫자용 라이닝 숫자 (Spectral ExtraBold, 숫자·숫자 기호만) — 첫 화면에 필요해서 곧바로 받는다
   BN Dmg   : 데미지 숫자 (Anton) — 첫 화면 뒤에 곧바로 받는다
   BN Brush : 붓글씨 (East Sea Dokdo, 게임에 쓰인 한글) — 필요할 때(또는 한가할 때) 받는다
   BN Seal  : 낙관·한자 (Yuji Syuku, 게임에 쓰인 한자 + 각성 낙관 한자, 약 9 KB) — 첫 화면 뒤에 곧바로 받는다
@@ -57,7 +57,7 @@ BRUSH_EXTRA = '—–…·‘’“”「」『』《》〈〉～!?'
 NUM_CHARS = '0123456789,.%+-/:'
 
 # family: 글꼴 이름, src: google/fonts 경로, out: 결과 파일, kind: ko|latin|digits|brush|hanja
-# load: css(스타일시트, 첫 화면) | first(ui.js, 첫 화면) | early(ui.js, 첫 화면 뒤 곧바로) | lazy(ui.js, 필요할 때)
+# load: css(스타일시트, 첫 화면 — index.html preload 와 짝) | first(ui.js, 첫 화면; preload 하지 않는다) | early(ui.js, 첫 화면 뒤 곧바로) | lazy(ui.js, 필요할 때)
 # wght: 가변 글꼴 굵기 범위 제한, weight: @font-face font-weight, urange: JS 글꼴의 unicode-range
 # alias: 예전 코드가 이름으로 부르는 글꼴을 같은 파일로 연결
 FONTS = [
@@ -71,10 +71,13 @@ FONTS = [
     dict(family='Cinzel', src='ofl/cinzel/Cinzel[wght].ttf', out='cinzel.woff2', kind='latin', load='css', wght=(600, 900)),
     # 타이틀 로고 (기존 코드 호환)
     dict(family='Cinzel Decorative', src='ofl/cinzeldecorative/CinzelDecorative-Black.ttf', out='cinzel-decorative-900.woff2', kind='latin', load='css'),
-    # ── JS 글꼴 (ui.js JS_FACES) ──
-    # 작은 숫자: Cinzel 의 1·0 은 I·O 처럼 읽혀 작은 글씨에서 11 → II 가 된다 → 숫자만 라이닝 세리프로
-    dict(family='BN Num', src='ofl/spectral/Spectral-ExtraBold.ttf', out='bn-num.woff2', kind='digits', load='first',
+    # 작은 숫자: Cinzel 의 1·0 은 I·O 처럼 읽혀 작은 글씨에서 11 → II 가 된다 → 숫자만 라이닝 세리프로.
+    # CSS 글꼴이다 (예전 load='first' = ui.js FontFace): index.html 의 preload 는 문서(파서)가 받는데, 서비스 워커가 받은 응답은
+    # 스크립트(FontFace)가 낸 요청과 '세계'가 달라 크롬이 다시 쓰지 않는다 (cross-world service worker resource mismatch) →
+    # 두 번째 방문부터 매번 두 번 받고 경고. 스타일시트 @font-face 요청은 preload 와 같은 세계라 그대로 쓴다 (healtht, Stage 8)
+    dict(family='BN Num', src='ofl/spectral/Spectral-ExtraBold.ttf', out='bn-num.woff2', kind='digits', load='css',
          weight='100 900', urange='U+0025, U+002B-003A'),
+    # ── JS 글꼴 (ui.js JS_FACES) ──
     # 데미지 숫자: 굵은 압축 산세리프 (0~9 , ! CRITICAL 등)
     dict(family='BN Dmg', src='ofl/anton/Anton-Regular.ttf', out='bn-dmg.woff2', kind='latin', load='early', fixed=DMG_EXTRA,
          weight='100 900', urange='U+0020-007E, U+00A0-00FF, U+2010-2027, U+2212'),

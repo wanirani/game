@@ -1,0 +1,367 @@
+{
+ "id": "gd_vesper",
+ "tier": "T1",
+ "srcTD": 4,
+ "note": "Stage 8 portrait2: Vesper (small rose-scented letter bat) from a Higgsfield gpt_image_2_5 redraw of the gd_owl sheet layout (job 32692389-b367-4599-91f4-67ddd6ab7d68, 1168x880 -> 2x). Same puppet plan as gd_owl/gd_munin: flight = top-right bat flying toward the viewer (head turned to the viewer's left -> flipX) cut into body (ears, red ribbon, face, furry torso, dangling feet) + wingL / wingR (raised crimson bat wings, root pivots at the shoulders, behind the body, flapped down at runtime); perch = left bat standing with the sealed letter (faces left -> flipX). k: flight body ~22 px, perched ~19 px tall.",
+ "sources": {
+  "s": {
+   "raw": "gd_vesper_sheet0.webp",
+   "file": "gd_vesper_sheet0.png",
+   "mode": "",
+   "k": 0.026
+  }
+ },
+ "parts": {
+  "body": {
+   "src": "s",
+   "box": [
+    1440,
+    140,
+    1890,
+    1000
+   ],
+   "flipX": true,
+   "keep": "largest",
+   "poly": [
+    [
+     1476,
+     360
+    ],
+    [
+     1496,
+     150
+    ],
+    [
+     1580,
+     260
+    ],
+    [
+     1630,
+     300
+    ],
+    [
+     1700,
+     260
+    ],
+    [
+     1810,
+     170
+    ],
+    [
+     1850,
+     190
+    ],
+    [
+     1830,
+     380
+    ],
+    [
+     1876,
+     430
+    ],
+    [
+     1870,
+     500
+    ],
+    [
+     1830,
+     520
+    ],
+    [
+     1810,
+     600
+    ],
+    [
+     1800,
+     700
+    ],
+    [
+     1830,
+     840
+    ],
+    [
+     1820,
+     990
+    ],
+    [
+     1690,
+     990
+    ],
+    [
+     1540,
+     900
+    ],
+    [
+     1580,
+     780
+    ],
+    [
+     1570,
+     640
+    ],
+    [
+     1520,
+     580
+    ],
+    [
+     1470,
+     520
+    ],
+    [
+     1456,
+     440
+    ]
+   ],
+   "piv": {
+    "a": [
+     1700,
+     980
+    ],
+    "c": [
+     1700,
+     660
+    ],
+    "wl": [
+     1490,
+     520
+    ],
+    "wr": [
+     1870,
+     500
+    ],
+    "eye": [
+     1656,
+     464
+    ],
+    "eye2": [
+     1524,
+     444
+    ],
+    "top": [
+     1660,
+     240
+    ],
+    "beak": [
+     1550,
+     536
+    ]
+   }
+  },
+  "wingL": {
+   "src": "s",
+   "box": [
+    1020,
+    90,
+    1500,
+    820
+   ],
+   "flipX": true,
+   "keep": "largest",
+   "poly": [
+    [
+     1490,
+     540
+    ],
+    [
+     1476,
+     400
+    ],
+    [
+     1450,
+     180
+    ],
+    [
+     1424,
+     104
+    ],
+    [
+     1380,
+     120
+    ],
+    [
+     1280,
+     260
+    ],
+    [
+     1140,
+     440
+    ],
+    [
+     1060,
+     580
+    ],
+    [
+     1030,
+     700
+    ],
+    [
+     1110,
+     640
+    ],
+    [
+     1180,
+     660
+    ],
+    [
+     1224,
+     800
+    ],
+    [
+     1280,
+     700
+    ],
+    [
+     1360,
+     660
+    ],
+    [
+     1410,
+     680
+    ],
+    [
+     1490,
+     600
+    ]
+   ],
+   "piv": {
+    "a": [
+     1490,
+     520
+    ],
+    "tip": [
+     1040,
+     690
+    ]
+   }
+  },
+  "wingR": {
+   "src": "s",
+   "box": [
+    1840,
+    110,
+    2320,
+    950
+   ],
+   "flipX": true,
+   "keep": "largest",
+   "poly": [
+    [
+     1860,
+     490
+    ],
+    [
+     1880,
+     400
+    ],
+    [
+     1910,
+     180
+    ],
+    [
+     1930,
+     124
+    ],
+    [
+     1970,
+     140
+    ],
+    [
+     2020,
+     240
+    ],
+    [
+     2120,
+     400
+    ],
+    [
+     2220,
+     560
+    ],
+    [
+     2290,
+     700
+    ],
+    [
+     2310,
+     860
+    ],
+    [
+     2240,
+     840
+    ],
+    [
+     2180,
+     930
+    ],
+    [
+     2120,
+     800
+    ],
+    [
+     2040,
+     780
+    ],
+    [
+     1980,
+     740
+    ],
+    [
+     1900,
+     620
+    ],
+    [
+     1850,
+     580
+    ]
+   ],
+   "piv": {
+    "a": [
+     1870,
+     500
+    ],
+    "tip": [
+     2300,
+     860
+    ]
+   }
+  },
+  "perch": {
+   "src": "s",
+   "box": [
+    120,
+    170,
+    970,
+    1470
+   ],
+   "k": 0.015,
+   "flipX": true,
+   "keep": "largest",
+   "piv": {
+    "a": [
+     470,
+     1390
+    ],
+    "c": [
+     520,
+     900
+    ],
+    "eye": [
+     486,
+     564
+    ],
+    "eye2": [
+     356,
+     536
+    ],
+    "top": [
+     500,
+     340
+    ],
+    "beak": [
+     390,
+     620
+    ]
+   }
+  }
+ }
+}

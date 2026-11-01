@@ -23,6 +23,7 @@ import { assets } from './src/core/assets.js';
 import { PUPPETS } from './src/render/puppet_manifest.js';
 import { CHARACTERS, CHAR_ORDER } from './src/data/characters.js';
 import { CLASSES, classChain } from './src/data/classes.js';
+import { ASCENSIONS } from './src/data/ascensions.js';   // 초월·비전 전용 원화 (s8 asc): ?cls=<초월 id>, 퍼펫 섹션에 전용 원화가 있는 초월도 나온다
 import { MOVESETS } from './src/data/movesets.js';
 import { NPCS } from './src/data/npcs.js';
 
@@ -38,7 +39,14 @@ const W = 1280;
 function lookOf(charId, classId, w = {}) {
   const ch = CHARACTERS[charId];
   const look = structuredClone(ch.look);
-  if (classId) for (const c of classChain(classId)) Object.assign(look, structuredClone(c.look || {}));
+  const A = classId && Object.hasOwn(ASCENSIONS, classId) ? ASCENSIONS[classId] : null;   // 초월 id → 첫 부모 계보 + 초월 look·lookTop (stats.js composeLook 순서)
+  const base = A ? A.parents[0] : classId;
+  if (base) for (const c of classChain(base)) Object.assign(look, structuredClone(c.look || {}));
+  if (A) {
+    Object.assign(look, structuredClone(A.look || {}));
+    for (const [k, v] of Object.entries(A.lookTop || {})) { if (k === 'capeColor2') { if (look.cape) look.cape = { ...look.cape, color2: v }; } else look[k] = structuredClone(v); }
+    look.classId = base; look.asc = A.id;
+  }
   look.weapon = { type: w.type ?? ch.weaponType, style: w.style ?? 1, level: w.level ?? 0, rarity: w.rarity ?? 0, element: w.element ?? null, color: w.color };
   return look;
 }
@@ -185,9 +193,10 @@ if (SEC.includes('weapons') && !ZOOM) {
 // ───────── 채색 퍼펫 섹션 ─────────
 // ?char=bran (기본 kael) 또는 ?cls=<직업> 으로 퍼펫 섹션의 영웅을 고른다
 const ONE = Q.get('cls');
-const PCH = Q.get('char') || (ONE && CLASSES[ONE]?.charId) || 'kael', PCHD = CHARACTERS[PCH];
+const PCH = Q.get('char') || (ONE && (CLASSES[ONE]?.charId ?? ASCENSIONS[ONE]?.charId)) || 'kael', PCHD = CHARACTERS[PCH];
+const CNAME = (c) => CLASSES[c]?.name ?? ASCENSIONS[c]?.name ?? c;
 const KCLS = Object.values(CLASSES).filter((c) => c.charId === PCH).sort((a, b) => a.tier - b.tier || a.id.localeCompare(b.id)).map((c) => c.id);
-const PCLS = ONE ? [ONE] : KCLS;
+const PCLS = ONE ? [ONE] : [...KCLS, ...Object.values(ASCENSIONS).filter((a) => a.charId === PCH && PUPPETS[PCH]?.[a.id]).map((a) => a.id)];
 const ALL_ANIM = [
   ['idle', {}], ['run 1', { anim: 'run', vx: 280 }], ['run 2', { anim: 'run', vx: 280, _ph: 0.33 }], ['jump', { anim: 'jump', vy: -600, onGround: false }],
   ['fall', { anim: 'fall', vy: 500, onGround: false }], ['flip', { anim: 'flip', animT: 0.14, onGround: false, vy: -300 }], ['land', { anim: 'land', animT: 0.02 }],
@@ -205,21 +214,21 @@ function movesOf(type) {
 const hitT = (m) => (m.box ? (m.hit[0] + m.hit[1]) / 2 : m.hit[0] + 0.015);
 if (SEC.includes('pup') && !ZOOM) {
   for (const cls of PCLS) {
-    header(`채색 퍼펫 · ${CLASSES[cls].name} (${cls}) — 모든 동작 (게임 배율 ×${HERO_DRAW_SCALE} 기준 ×1.6)`);
+    header(`채색 퍼펫 · ${CNAME(cls)} (${cls}) — 모든 동작 (게임 배율 ×${HERO_DRAW_SCALE} 기준 ×1.6)`);
     const psc = Number(Q.get('psc') || 1.6);
     row(ALL_ANIM.map(([name, o]) => ({ label: name, p: () => ent({ look: lookOf(PCH, cls), ch: PCHD, ...o }) })), Math.round(156 * psc / 1.6), Math.round(190 * psc / 1.6), psc);
   }
 }
 if (SEC.includes('pupatk') && !ZOOM) {
   for (const cls of PCLS) {
-    header(`채색 퍼펫 · ${CLASSES[cls].name} — ${PCHD.weaponType} 기술 전부 (판정 중간 프레임)`);
+    header(`채색 퍼펫 · ${CNAME(cls)} — ${PCHD.weaponType} 기술 전부 (판정 중간 프레임)`);
     row(movesOf(PCHD.weaponType).map(([label, m, gnd]) => ({ label, wide: true, p: () => ent({ look: lookOf(PCH, cls, { style: 3, level: 7 }), ch: PCHD, anim: m.anim, move: m, moveT: hitT(m), onGround: gnd, muzzleT: 0.05 }) })), 208, 200, 1.25);
   }
 }
 if (SEC.includes('pupw') && !ZOOM) {
   const WCLS = ONE ? [ONE] : PCH === 'kael' ? ['kael_hunter', 'kael_templar'] : [KCLS[0], KCLS[KCLS.length - 1]];
   for (const cls of WCLS) for (const type of ['whip', 'sword', 'greatsword', 'dagger', 'gun', 'staff', 'spear'].filter((t) => t !== 'whip' || PCH !== 'kael')) {
-    header(`무기 손잡이 · ${CLASSES[cls].name} × ${type} (주먹·양손·조준·시전·투척)`);
+    header(`무기 손잡이 · ${CNAME(cls)} × ${type} (주먹·양손·조준·시전·투척)`);
     const list = movesOf(type).map(([label, m, gnd]) => ({ label, wide: true, p: () => ent({ look: lookOf(PCH, cls, { type, style: 3, level: 7 }), ch: PCHD, anim: m.anim, move: m, moveT: hitT(m), onGround: gnd, muzzleT: 0.05 }) }));
     list.push({ label: 'idle', p: () => ent({ look: lookOf(PCH, cls, { type, style: 3 }), ch: PCHD }) });
     list.push({ label: 'run', p: () => ent({ look: lookOf(PCH, cls, { type, style: 3 }), ch: PCHD, anim: 'run', vx: 280 }) });
@@ -295,7 +304,7 @@ if (SEC.includes('hooks') && !ZOOM) {
 const YAWS = [0, 45, 90, 135, 180, -135, -90, -45];
 if (SEC.includes('turn') && !ZOOM) {
   for (const cls of PCLS) {
-    header(`턴테이블 · ${CLASSES[cls].name} — 8방향 (yaw: 0 오른쪽 옆 · 90 정면 · 180 왼쪽 옆 · −90 뒤) + 사이 각`);
+    header(`턴테이블 · ${CNAME(cls)} — 8방향 (yaw: 0 오른쪽 옆 · 90 정면 · 180 왼쪽 옆 · −90 뒤) + 사이 각`);
     row([...YAWS, 20, 67, 112, -30, -160].map((d) => ({ label: `${d}°`, turn: d, p: () => ent({ look: lookOf(PCH, cls), ch: PCHD }) })), 104, 200, 1.7);
   }
 }

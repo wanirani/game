@@ -21,7 +21,8 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/ui/favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/ui/icon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="assets/ui/icon-180.png">
-<!-- 글꼴은 모두 assets/fonts 에 들어 있다 (오프라인·APK). 모듈보다 먼저 받기 시작한다 (bn-num: 타이틀의 숫자, core/ui.js 가 FontFace 로 등록) -->
+<!-- 글꼴은 모두 assets/fonts 에 들어 있다 (오프라인·APK). 모듈보다 먼저 받기 시작한다. preload 는 css/style.css 의 @font-face 글꼴만 (bn-num: 타이틀의 숫자도 CSS) —
+     JS FontFace 글꼴을 preload 하면 서비스 워커가 받은 응답을 Chrome 이 다시 쓰지 않아(cross-world) 두 번 받는다 -->
 <link rel="preload" href="assets/fonts/noto-sans-kr.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/hahmlet.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/grenze-gotisch.woff2" as="font" type="font/woff2" crossorigin>

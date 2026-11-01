@@ -17,6 +17,7 @@
 import { drawHero, setPuppetEnabled, puppetStatus, preloadPuppet, HERO_DRAW_SCALE } from './src/render/hero.js';
 import { CHARACTERS } from './src/data/characters.js';
 import { CLASSES, classChain } from './src/data/classes.js';
+import { ASCENSIONS } from './src/data/ascensions.js';   // spec.cls 가 초월·비전 id 면 첫 부모 계보 + 초월 look·lookTop (s8 asc)
 import { MOVESETS } from './src/data/movesets.js';
 import { NPCS } from './src/data/npcs.js';
 import { TOWN_NPCS } from './src/data/town.js';
@@ -36,7 +37,14 @@ function npcLook(id, equip) {
 function lookOf(charId, classId, w = {}, equip = {}) {
   const ch = CHARACTERS[charId];
   const look = structuredClone(ch.look);
-  if (classId) for (const c of classChain(classId)) Object.assign(look, structuredClone(c.look || {}));
+  const A = classId && Object.hasOwn(ASCENSIONS, classId) ? ASCENSIONS[classId] : null;
+  const base = A ? A.parents[0] : classId;
+  if (base) for (const c of classChain(base)) Object.assign(look, structuredClone(c.look || {}));
+  if (A) {   // stats.js composeLook 과 같은 순서: 초월 look(장비 전) → lookTop(장비 뒤; 여기선 장비가 없어 바로)
+    Object.assign(look, structuredClone(A.look || {}));
+    for (const [k, v] of Object.entries(A.lookTop || {})) { if (k === 'capeColor2') { if (look.cape) look.cape = { ...look.cape, color2: v }; } else look[k] = structuredClone(v); }
+    look.classId = base; look.asc = A.id;
+  }
   look.weapon = { type: w.type ?? ch.weaponType, style: w.style ?? 3, level: w.level ?? 0, rarity: w.rarity ?? 0, element: w.element ?? null };
   return Object.assign(look, structuredClone(equip));
 }
@@ -118,7 +126,7 @@ async function render(s) {
   const air = s.mk ? (s.mk[0] === 'a' || s.mk === 'down') : false;
   const e = { facing: s.facing ?? 1, anim: s.anim || (m ? m.anim : 'idle'), animT: s.animT ?? 0.5, move: m, moveT: m ? (s.t ?? moveT(m, s.frac ?? 1.5)) : 0,
     vx: s.vx ?? 0, vy: s.vy ?? 0, onGround: s.onGround ?? !air, rig: {}, t: 3, stats: { reach: 0 }, charging: s.charging ?? 0.7, muzzleT: s.muzzleT ?? 0.05,
-    look, ch: npcId ? { move: { speed: 275 } } : CHARACTERS[charId], hero: s.cls && !npcId ? { classId: s.cls } : undefined, npc: !!npcId, cx: 0, bottom: 0 };
+    look, ch: npcId ? { move: { speed: 275 } } : CHARACTERS[charId], hero: s.cls && !npcId ? (Object.hasOwn(ASCENSIONS, s.cls) ? { classId: ASCENSIONS[s.cls].parents[0], asc: s.cls } : { classId: s.cls }) : undefined, npc: !!npcId, cx: 0, bottom: 0 };
   if (s.ride) e.ride = s.ride;
   if (s.feel) e.feel = s.feel;
   if (s.gaitPh !== undefined) e.gaitPh = s.gaitPh;

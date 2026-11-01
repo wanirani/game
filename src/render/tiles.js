@@ -435,8 +435,9 @@ export class TileRenderer {
   bake(ctx, tx0, ty0) {
     const m = this.map, S = TILE, st = this.style;
     const tex = assets.get(this.stage.tex), tex2 = assets.get(this.stage.tex2 || this.stage.tex);
-    const pat = tex ? ctx.createPattern(tex, 'repeat') : null;
-    const pat2 = tex2 ? ctx.createPattern(tex2, 'repeat') : null;
+    // [s8:healthp] 텍스처 패턴은 이미지마다 한 번만 만든다 (청크마다 2 개씩 새로 만들던 것). 타일마다 setTransform 으로 위치를 다시 잡으므로 공유해도 같다
+    const pat = this.bakePattern(ctx, 'bp1', tex);
+    const pat2 = tex2 === tex ? pat : this.bakePattern(ctx, 'bp2', tex2);
     const rng = new RNG(hashStr(this.stage.id) + tx0 * 31 + ty0 * 17);
     const sec = this.sec.mask; // 비밀 방 속 액체·가시·발판 → 드러나기 전까지 벽으로
     for (let ty = ty0; ty < ty0 + CHUNK; ty++) {
@@ -485,10 +486,10 @@ export class TileRenderer {
             ctx.beginPath(); ctx.moveTo(x + 12, y + 8); ctx.lineTo(x + 20, y + 22); ctx.lineTo(x + 16, y + 34); ctx.moveTo(x + 20, y + 22); ctx.lineTo(x + 32, y + 26); ctx.stroke();
           }
         } else if (t === T.ONEWAY) {
-          // 발판: 나무/돌 선반
-          const pg = ctx.createLinearGradient(0, y, 0, y + 14);
-          pg.addColorStop(0, shade(st.top, 0.1)); pg.addColorStop(1, shade(st.base, -0.3));
-          ctx.fillStyle = pg; ctx.fillRect(x, y, S, 12);
+          // 발판: 나무/돌 선반 — 그라디언트는 (0 → 14) 하나를 방마다 한 번 만들고 칸 자리로 옮겨 칠한다 [s8:healthp]
+          // (예전: 발판 칸마다 새로 만들어 청크를 처음 굽는 프레임에 9~18 개가 한꺼번에 생겼다 — perf_budget s27boss 'grad max')
+          ctx.fillStyle = this.ledgeGrad(ctx, st);
+          ctx.save(); ctx.translate(x, y); ctx.fillRect(0, 0, S, 12); ctx.restore();
           ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(x, y, S, 2);
           ctx.fillStyle = rgba(st.edge, 0.9); ctx.fillRect(x, y + 11, S, 2);
           // 받침대
@@ -994,6 +995,24 @@ export class TileRenderer {
       if (!solidAt(p.tx + 1, p.ty)) ctx.rect(x + S - 3, y, 3, S);
     }
     ctx.fillStyle = rgba(st.edge, 0.9); ctx.fill();
+  }
+  /** 청크 굽기용 텍스처 패턴: 이미지마다 한 번 (이미지가 바뀌면 다시) — 위치·배율은 쓰는 쪽이 setTransform 으로 [s8:healthp] */
+  bakePattern(ctx, key, img) {
+    if (!img) return null;
+    const e = this[key];
+    if (e && e.img === img) return e.pat;
+    const pat = ctx.createPattern(img, 'repeat');
+    this[key] = { img, pat };
+    return pat;
+  }
+  /** 발판 윗면 그라디언트 (지역 y 0 → 14, 테마 색) — 방의 스타일 색이 같으면 다시 쓴다 [s8:healthp] */
+  ledgeGrad(ctx, st) {
+    const k = st.top + '|' + st.base;
+    if (this._ledge?.k === k) return this._ledge.g;
+    const g = ctx.createLinearGradient(0, 0, 0, 14);
+    g.addColorStop(0, shade(st.top, 0.1)); g.addColorStop(1, shade(st.base, -0.3));
+    this._ledge = { k, g };
+    return g;
   }
   /** 위상 타일용 주 텍스처 패턴 (월드 원점 정렬, 청크와 같은 0.75 배율 → 384px 주기로 이웃 벽과 무늬가 이어진다) */
   phasePattern(ctx) {

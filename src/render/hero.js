@@ -1785,31 +1785,40 @@ function curveBack(c, X, Y, n) {
   c.lineTo(X[0], Y[0]);
 }
 /** 초승달 궤적 3겹(색 번짐 → 밝은 심 → 흰 칼날선). 바깥=TRX1, 안쪽=TRX0/TRXM/TRXE.
- *  오래된 끝은 투명하게: 기본은 현(시작→끝) 방향 선형 그라디언트, cone 이 있으면 원뿔(각도) 그라디언트 */
+ *  오래된 끝은 투명하게: 기본은 현(시작→끝) 방향 선형 그라디언트, cone 이 있으면 원뿔(각도) 그라디언트.
+ *  [s8:healthp] 그라디언트는 (색, 세기 멈춤, 원뿔 폭)마다 한 번만 만든다: 선형은 단위 길이 (0,0)→(1,0) 을 채울 때 변환으로 현에 맞추고,
+ *  원뿔은 시작 각 0 으로 만들어 채울 때 a0 만큼 돌린다 (원뿔 폭은 1/64 바퀴 단위로 올림 — 칼끝이 잘리지 않게). 사라지는 세기(a ≤ 1)는
+ *  globalAlpha 로 곱한다 (1 을 넘는 마무리타 몫만 색 멈춤에 굽는다 — ra 가 1 에서 자르던 것과 같게). 예전에는 휘두르는 프레임마다
+ *  3 개씩 새로 만들어 s27 의 'grad max' 경고 1 순위였다 (hero.js crescent) */
 const CONE = { on: false, a0: 0, span: 0 };
 function crescent(c, n, tc, a) {
   const core = mx(tc, '#ffffff', 0.3);
-  const gx0 = TRX1[0], gy0 = TRY1[0], gx1 = TRX1[n - 1], gy1 = TRY1[n - 1];
+  const gx0 = TRX1[0], gy0 = TRY1[0], dx = TRX1[n - 1] - gx0, dy = TRY1[n - 1] - gy0;
   const cone = !G.lowq && CONE.on && typeof c.createConicGradient === 'function';
-  const lin = !G.lowq && !cone && Math.abs(gx1 - gx0) + Math.abs(gy1 - gy0) >= 4;
+  const lin = !G.lowq && !cone && Math.abs(dx) + Math.abs(dy) >= 4;
+  const ga = Math.min(1, a), ka = a > 1 ? Math.round(a * 20) / 20 : 1;
+  const fq = cone ? Math.ceil(clamp(CONE.span / TAU, 0.05, 0.999) * 64) / 64 : 0;
+  const alpha0 = c.globalAlpha;
   const fill = (col, a0, am, a1) => {
-    let g;
     if (cone) {
-      const f = clamp(CONE.span / TAU, 0.05, 0.999);
-      g = c.createConicGradient(CONE.a0, 0, 0);
-      g.addColorStop(0, ra(col, a0)); g.addColorStop(f * 0.55, ra(col, am)); g.addColorStop(f, ra(col, a1)); g.addColorStop(Math.min(1, f + 0.001), ra(col, 0));
+      c.fillStyle = gradCache(`cone${col},${ka},${a0},${am},${a1},${fq}`, () => {
+        const g = c.createConicGradient(0, 0, 0);
+        g.addColorStop(0, ra(col, a0 * ka)); g.addColorStop(fq * 0.55, ra(col, am * ka)); g.addColorStop(fq, ra(col, a1 * ka)); g.addColorStop(Math.min(1, fq + 0.001), ra(col, 0));
+        return g;
+      });
+      c.save(); c.globalAlpha = alpha0 * ga; c.rotate(CONE.a0); c.fill(); c.restore();
     } else if (lin) {
-      g = c.createLinearGradient(gx0, gy0, gx1, gy1);
-      g.addColorStop(0, ra(col, a0)); g.addColorStop(0.55, ra(col, am)); g.addColorStop(1, ra(col, a1));
-    } else return ra(col, a1 * 0.8);
-    return g;
+      c.fillStyle = gradCache(`trail${col},${ka},${a0},${am},${a1}`, () => {
+        const g = c.createLinearGradient(0, 0, 1, 0);
+        g.addColorStop(0, ra(col, a0 * ka)); g.addColorStop(0.55, ra(col, am * ka)); g.addColorStop(1, ra(col, a1 * ka));
+        return g;
+      });
+      c.save(); c.globalAlpha = alpha0 * ga; c.transform(dx, dy, -dy, dx, gx0, gy0); c.fill(); c.restore();
+    } else { c.fillStyle = ra(col, a1 * a * 0.8); c.fill(); }
   };
-  c.fillStyle = fill(tc, 0, 0.3 * a, 0.62 * a);
-  c.beginPath(); curveFwd(c, TRX1, TRY1, n, true); curveBack(c, TRX0, TRY0, n); c.closePath(); c.fill();
-  c.fillStyle = fill(core, 0.05 * a, 0.45 * a, 0.85 * a);
-  c.beginPath(); curveFwd(c, TRX1, TRY1, n, true); curveBack(c, TRXM, TRYM, n); c.closePath(); c.fill();
-  c.fillStyle = fill('#ffffff', 0.15 * a, 0.8 * a, 1 * a);
-  c.beginPath(); curveFwd(c, TRX1, TRY1, n, true); curveBack(c, TRXE, TRYE, n); c.closePath(); c.fill();
+  c.beginPath(); curveFwd(c, TRX1, TRY1, n, true); curveBack(c, TRX0, TRY0, n); c.closePath(); fill(tc, 0, 0.3, 0.62);
+  c.beginPath(); curveFwd(c, TRX1, TRY1, n, true); curveBack(c, TRXM, TRYM, n); c.closePath(); fill(core, 0.05, 0.45, 0.85);
+  c.beginPath(); curveFwd(c, TRX1, TRY1, n, true); curveBack(c, TRXE, TRYE, n); c.closePath(); fill('#ffffff', 0.15, 0.8, 1);
 }
 function trailColor(K, mv) {
   const el = mv.element || K.W.element;
@@ -1899,12 +1908,17 @@ function drawStreak(E, K, p, mv, which) {
     c.translate(x0, y0); c.rotate(Math.atan2(y1 - y0, x1 - x0));
     x0 = 0; y0 = 0; x1 = len;
   }
-  let g = G.lowq ? ra(tc, 0.3 * k) : c.createLinearGradient(x0, 0, x1, 0);
-  if (!G.lowq) { g.addColorStop(0, ra(tc, 0)); g.addColorStop(0.25, ra(tc, 0.55 * k)); g.addColorStop(1, ra(tc, 0.1 * k)); }
-  c.fillStyle = g; c.beginPath(); c.moveTo(x0, y0 - hw * 0.4); c.quadraticCurveTo(lerp(x0, x1, 0.55), y0 - hw, x1, y0); c.quadraticCurveTo(lerp(x0, x1, 0.55), y0 + hw, x0, y0 + hw * 0.4); c.closePath(); c.fill();
-  g = G.lowq ? ra('#ffffff', 0.6 * k) : c.createLinearGradient(x0, 0, x1, 0);
-  if (!G.lowq) { g.addColorStop(0, ra('#ffffff', 0.2 * k)); g.addColorStop(0.5, ra('#ffffff', 0.95 * k)); g.addColorStop(1, ra('#ffffff', 0)); }
-  c.fillStyle = g; c.beginPath(); c.moveTo(x0, y0 - 0.6); c.lineTo(x1, y0); c.lineTo(x0, y0 + 0.6); c.closePath(); c.fill();
+  // [s8:healthp] 가로 그라디언트는 (색)마다 단위 길이 하나 — 채울 때 (x0 → x1) 로 늘이고 사라지는 세기 k 는 globalAlpha 로 (찌르는 프레임마다 새로 만들지 않게)
+  const streakFill = (col, s0, s1, s2, m1) => {
+    if (G.lowq) { c.fillStyle = ra(col, (col === tc ? 0.3 : 0.6) * k); c.fill(); return; }
+    c.fillStyle = gradCache(`streak${col},${s0},${s1},${s2},${m1}`, () => { const g = c.createLinearGradient(0, 0, 1, 0); g.addColorStop(0, ra(col, s0)); g.addColorStop(m1, ra(col, s1)); g.addColorStop(1, ra(col, s2)); return g; });
+    const a0 = c.globalAlpha;
+    c.save(); c.globalAlpha = a0 * k; c.transform(x1 - x0, 0, 0, 1, x0, 0); c.fill(); c.restore();
+  };
+  c.beginPath(); c.moveTo(x0, y0 - hw * 0.4); c.quadraticCurveTo(lerp(x0, x1, 0.55), y0 - hw, x1, y0); c.quadraticCurveTo(lerp(x0, x1, 0.55), y0 + hw, x0, y0 + hw * 0.4); c.closePath();
+  streakFill(tc, 0, 0.55, 0.1, 0.25);
+  c.beginPath(); c.moveTo(x0, y0 - 0.6); c.lineTo(x1, y0); c.lineTo(x0, y0 + 0.6); c.closePath();
+  streakFill('#ffffff', 0.2, 0.95, 0, 0.5);
   // 속도선
   c.strokeStyle = ra(tc, 0.45 * k); c.lineWidth = 0.6;
   c.beginPath();
@@ -2805,12 +2819,14 @@ function motionFx(c, E, K, p, mv, world, tt, hsK) {
 }
 function drawMist(k, t) {
   const c = G.c;
+  // [s8:healthp] 피 안개 7 덩이: 단위 원 그라디언트 하나를 채울 때 (x, y, r) 로 옮기고 세기 k 는 globalAlpha 로 (예전: 프레임마다 7 개 새로)
+  const g = gradCache('mist', () => { const g = c.createRadialGradient(0, 0, 0, 0, 0, 1); g.addColorStop(0, ra('#8a0a1e', 0.55)); g.addColorStop(1, ra('#1a0008', 0)); return g; });
+  const a0 = c.globalAlpha;
   c.save();
+  c.fillStyle = g; c.globalAlpha = a0 * clamp(k, 0, 1);
   for (let i = 0; i < 7; i++) {
     const x = -6 - i * 7 + Math.sin(t * 9 + i) * 3, y = -70 + (i % 4) * 16 + Math.cos(t * 7 + i) * 3, r = 10 + (i % 3) * 3;
-    const g = c.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, ra('#8a0a1e', 0.55 * k)); g.addColorStop(1, ra('#1a0008', 0));
-    c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2);
+    c.save(); c.transform(r, 0, 0, r, x, y); c.fillRect(-1, -1, 2, 2); c.restore();
   }
   c.restore();
 }
@@ -2818,11 +2834,12 @@ function drawPlungeFx(K, k) {
   const c = G.c;
   c.save(); c.globalCompositeOperation = 'lighter';
   const col = K.W.glowC || (K.W.type === 'staff' ? '#fff2b0' : '#dfeaff');
+  // [s8:healthp] 줄 5 개의 그라디언트는 (색, 줄)마다 한 번 — 세기 k 는 globalAlpha 로 (예전: 내려찍는 프레임마다 5 개 새로)
+  c.globalAlpha *= clamp(k, 0, 1);
   for (let i = 0; i < 5; i++) {
     const x = -10 + i * 5, L = 26 + (i % 2) * 14;
-    const g = c.createLinearGradient(x, -60, x, -60 - L);
-    g.addColorStop(0, ra(col, 0.5 * k)); g.addColorStop(1, ra(col, 0));
-    c.strokeStyle = g; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x, -64); c.lineTo(x, -64 - L); c.stroke();
+    c.strokeStyle = gradCache(`plunge${col},${i}`, () => { const g = c.createLinearGradient(x, -60, x, -60 - L); g.addColorStop(0, ra(col, 0.5)); g.addColorStop(1, ra(col, 0)); return g; });
+    c.lineWidth = 1.2; c.beginPath(); c.moveTo(x, -64); c.lineTo(x, -64 - L); c.stroke();
   }
   c.restore();
 }

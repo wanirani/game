@@ -240,10 +240,27 @@ function centerText(c, s, x, y, size, color, weight = 800) {
   c.textBaseline = 'alphabetic'; c.textAlign = 'left';
 }
 
+/**
+ * 세로 두 색 그라디언트 (y → y + h) 메모 [s8:healthp]: 글리프 비트맵은 늘 y = 0 에 굽기 때문에 (색, 높이)가 같으면 같은 그라디언트다.
+ * 예전에는 비트맵을 구울 때마다 칸마다 새로 만들어 HUD 안내가 처음 뜨는 프레임에 11 개가 한꺼번에 생겼다 (perf_budget s27r1 'grad max').
+ * 그라디언트는 채우는 순간의 사용자 좌표계로 해석되므로 어느 비트맵 캔버스에서나 다시 쓸 수 있다
+ */
+const VGRAD = new Map();
+function vgrad(c, y, h, c0, c1) {
+  const k = `${c0}|${c1}|${y}|${h}`;
+  let g = VGRAD.get(k);
+  if (!g) {
+    if (VGRAD.size > 128) VGRAD.clear();
+    g = c.createLinearGradient(0, y, 0, y + h);
+    g.addColorStop(0, c0); g.addColorStop(1, c1);
+    VGRAD.set(k, g);
+  }
+  return g;
+}
+
 /** 키캡 (menu/common.keycap 과 같은 모양) */
 function drawKey(c, p, x, y, w, h) {
-  const g = c.createLinearGradient(0, y, 0, y + h);
-  g.addColorStop(0, '#2e2230'); g.addColorStop(1, '#140c16');
+  const g = vgrad(c, y, h, '#2e2230', '#140c16');
   rrect(c, x + 0.5, y + 0.5, w - 1, h - 1, Math.max(2, h * 0.22));
   c.fillStyle = g; c.fill();
   c.strokeStyle = '#8a6a3a'; c.lineWidth = 1; c.stroke();
@@ -273,8 +290,7 @@ function drawFace(c, set, i, x, y, h) {
   const f = G.face[i];
   const cx = x + h / 2, cy = y + h / 2, r = h / 2 - 0.75;
   c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2);
-  const g = c.createLinearGradient(0, y, 0, y + h);
-  g.addColorStop(0, '#34303a'); g.addColorStop(1, '#131118');
+  const g = vgrad(c, y, h, '#34303a', '#131118');
   c.fillStyle = g; c.fill();
   c.lineWidth = 1.2;
   c.strokeStyle = set === 'xbox' ? f.color : 'rgba(210,200,190,0.55)'; c.stroke();
@@ -309,8 +325,7 @@ function drawShoulder(c, set, i, x, y, w, h) {
     c.quadraticCurveTo(x + inset, y + 0.75, x + inset + r, y + 0.75);
     c.closePath();
   } else rrect(c, x + 0.75, y + 0.75, w - 1.5, h - 1.5, h * 0.42);
-  const g = c.createLinearGradient(0, y, 0, y + h);
-  g.addColorStop(0, '#3a3440'); g.addColorStop(1, '#16131b');
+  const g = vgrad(c, y, h, '#3a3440', '#16131b');
   c.fillStyle = g; c.fill();
   c.strokeStyle = set === 'generic' ? 'rgba(184,180,174,0.7)' : 'rgba(225,215,200,0.6)'; c.lineWidth = 1; c.stroke();
   centerText(c, G.labels[i] ?? '', x + w / 2, y + h / 2 + (trig ? h * 0.05 : 0), labelSize(h) - 1, '#ece4da');

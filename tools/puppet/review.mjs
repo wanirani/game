@@ -1,6 +1,6 @@
 // 퍼펫 QA 검사대 구동: tools/puppet/review.html 에 셀 목록(spec)을 보내 PNG 와 구멍/이음선 분석을 받는다.
 // node tools/puppet/review.mjs <plan.json|preset> <outDir> [--sheet cols] [--only-flagged]
-//  preset: atk:<cls>:<wt>  (그 무기의 모든 기술 × 5프레임) · anims:<cls> (모든 비공격 동작 연속 프레임) · all (7직업 × 6무기 × 모든 기술, 구멍 통계만)
+//  preset: atk:<cls|초월 id>:<wt>  (그 무기의 모든 기술 × 5프레임) · allasc[:id+id] (초월 전용 원화 × 6무기, 관절만) · anims:<cls> (모든 비공격 동작 연속 프레임) · all (7직업 × 6무기 × 모든 기술, 구멍 통계만)
 //  결과: <outDir>/NNN_<label>.png, <outDir>/report.json (셀별 holes/seam/ms), 페이지 오류 출력
 import { chromium } from 'playwright-core';
 import { start } from '../serve.mjs';
@@ -11,6 +11,8 @@ const planArg = argv[0], outDir = argv[1] || '/tmp/claude-0/puppet_review';
 const opt = (k, d) => { const i = argv.indexOf('--' + k); return i >= 0 ? (argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : true) : d; };
 fs.mkdirSync(outDir, { recursive: true });
 const KCLS = ['kael_hunter', 'kael_crusader', 'kael_stalker', 'kael_templar', 'kael_inquisitor', 'kael_bloodhunter', 'kael_nightraven'];
+// 초월·비전 전용 원화 (s8 asc) — allasc[:id+id] 프리셋: 6무기 × 모든 기술 × 5프레임 관절 검사 (spec.cls 에 초월 id → review.html 이 부모 계보 + lookTop)
+const KASC = ['kael_grandtemplar', 'kael_highinquisitor', 'kael_bloodreaver', 'kael_blackwing', 'kael_sealbearer'];
 const WT = ['whip', 'sword', 'greatsword', 'dagger', 'gun', 'staff'];
 const MK = { whip: ['g0', 'g1', 'g2', 'g3', 'a0', 'a1', 'up', 'down', 'crouch', 'dash', 'charge'], sword: ['g0', 'g1', 'g2', 'g3', 'a0', 'a1', 'a2', 'up', 'down', 'crouch', 'dash', 'charge'],
   greatsword: ['g0', 'g1', 'g2', 'a0', 'up', 'down', 'crouch', 'dash', 'charge'], dagger: ['g0', 'g1', 'g3', 'g4', 'a0', 'a1', 'a2', 'up', 'down', 'crouch', 'dash'],
@@ -32,6 +34,7 @@ function preset(p) {
   if (kind === 'atk') for (const mk of MK[b]) for (const f of FR) list.push({ char: ch, cls: a, wt: b, mk, frac: f, label: `${a.split('_').slice(1).join('_')} ${b} ${mk} f${f}` });
   if (kind === 'anims') for (const [n, o] of ANIMS) list.push({ char: ch, cls: a, ...o, label: `${a.split('_').slice(1).join('_')} ${n}` });
   if (kind === 'all') for (const cls of KCLS) for (const wt of WT) for (const mk of MK[wt]) for (const f of FR) list.push({ cls, wt, mk, frac: f, noPng: true, noHoles: true, warm: 20, label: `${cls.slice(5)} ${wt} ${mk} f${f}` });
+  if (kind === 'allasc') for (const cls of (a ? a.split('+') : KASC)) for (const wt of WT) for (const mk of MK[wt]) for (const f of FR) list.push({ char: cls.split('_')[0], cls, wt, mk, frac: f, noPng: true, noHoles: true, warm: 20, label: `${cls.slice(cls.indexOf('_') + 1)} ${wt} ${mk} f${f}` });
   if (kind === 'allanims') for (const cls of KCLS) for (const [n, o] of ANIMS) for (const wt of (b ? [b] : ['whip'])) list.push({ cls, wt, ...o, noPng: !a || a === '-' ? false : true, label: `${cls.slice(5)} ${wt} ${n}` });
   return list;
 }

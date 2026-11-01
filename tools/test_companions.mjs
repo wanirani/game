@@ -917,28 +917,74 @@ await run('mobile', STAGE('s01', '&cmp=all&ch=20&mount=mt_warhorse&guards=gd_kni
     wOk = (await evSince(n1, 'guardianSkill')).length >= 1;
   }
   checks.push(['캔버스 수호신 위젯 탭 → 스킬', !!gw && wOk, { widgets: info.widgets }]);
-  const mw = rects.find((r) => r.act === 'mount');
-  let mOk = false;
-  if (mw) {
-    const was = await page.evaluate(() => !!window.__T.m?.riding);
-    await t.tap(mw.cx, mw.cy, 60);
-    await page.waitForTimeout(700);
-    const now = await page.evaluate(() => !!window.__T.m?.riding);
-    mOk = was !== now;
-    info.mountWidget = { was, now };
+  // 탈것 위젯 탭 ([playb] P21 — test_hud_layout 과 같은 계약): 터치 패드에 탑승 버튼이 보이면 위젯은 같은 일을 하는 「탑승/하차」 칩·탭 자리를
+  // 두지 않고 상태 고리만 그린다 (같은 동작의 탭 자리를 두 번 두지 않는다) → 그때 전환은 패드 탑승 버튼이 맡는다.
+  // 장면이 패드에서 탑승 버튼을 빼면(padHideButtons) 위젯 탭 자리가 다시 생기고, 그 탭이 탑승/하차를 바꾼다 (CompanionSystem.handleTaps 대체 경로).
+  // (예전 점검 '캔버스 탈것 위젯 탭 → 탑승/하차 전환' 은 P21 전 계약 — 패드 버튼이 있어도 위젯 탭 자리가 있다고 보았다 → 두 경우로 나눠 지금 계약을 본다)
+  const riding = () => page.evaluate(() => !!window.__T.m?.riding);
+  // 하차('toggle') 뒤에는 재소환 대기 R.resummonCd(2초)가 있다 (data/companions.js) → 다음 전환 전에 대기·하차 동작이 끝나기를 기다린다
+  const settled = () => page.waitForFunction(() => { const m = window.__T.m; return !m || (!(m.cd > 0) && !['dismounting', 'summoning', 'recall'].includes(m.state)); }, null, { timeout: 5000 }).catch(() => {});
+  const toggledBy = async (fn, ms = 700) => { await settled(); const was = await riding(); await fn(); await page.waitForTimeout(ms); const now = await riding(); return { was, now, ok: was !== now }; };
+  checks.push(['패드에 탑승 버튼이 있으면 캔버스 탈것 위젯에 탭 자리가 없다 (P21: 같은 동작을 두 번 두지 않음)', !!L.buttons.mount && !rects.some((r) => r.act === 'mount') && rects.some((r) => r.act.startsWith('guard')), { widgets: info.widgets }]);
+  const padTog1 = await toggledBy(() => pressButton(t, page, 'mount', 100));
+  const padTog2 = await toggledBy(() => pressButton(t, page, 'mount', 100));
+  info.padToggle = [padTog1, padTog2];
+  checks.push(['패드 탑승 버튼이 탑승/하차를 양쪽으로 바꾼다', padTog1.ok && padTog2.ok, info.padToggle]);
+  const hide0 = await page.evaluate(() => { const top = window.__T.g.top; const h = top.padHideButtons; top.__hbSaved = h; top.padHideButtons = ['mount']; return h ?? null; });
+  let mw = null;
+  for (let k = 0; k < 12 && !mw; k++) {
+    await page.waitForTimeout(250);
+    const Lh = await padLayout(page);
+    if (Lh.buttons.mount) continue;
+    mw = await page.evaluate(() => {
+      const T = window.__T, R = T.cs.hudRects || [];
+      const list = Array.isArray(R) ? R : Object.entries(R).map(([k, r]) => ({ act: k, ...r }));
+      const r = list.find((x) => String(x.act ?? x.kind ?? x.id ?? '') === 'mount');
+      return r ? T.toClient(r.x + r.w / 2, r.y + r.h / 2) : null;
+    });
   }
-  checks.push(['캔버스 탈것 위젯 탭 → 탑승/하차 전환', !!mw && mOk, info.mountWidget]);
+  let mTog = null;
+  if (mw) mTog = await toggledBy(() => t.tap(mw.x, mw.y, 60));
+  info.mountWidget = { hide0, widget: mw && { x: Math.round(mw.x), y: Math.round(mw.y) }, tog: mTog };
+  checks.push(['패드에서 탑승 버튼을 빼면(padHideButtons) 위젯 탭 자리가 생기고, 그 탭이 탑승/하차를 바꾼다', !!mw && !!mTog?.ok, info.mountWidget]);
+  await page.evaluate(() => { const top = window.__T.g.top; top.padHideButtons = top.__hbSaved; delete top.__hbSaved; });
+  for (let k = 0; k < 12; k++) { await page.waitForTimeout(250); if ((await padLayout(page)).buttons.mount) break; }
   // 위젯이 패드 버튼 밑에 깔리지 않는다
   const Lb = await padLayout(page);
   const under = [];
   for (const r of rects) for (const [k, b] of Object.entries(Lb.buttons)) if (Math.hypot(r.cx - b.cx, r.cy - b.cy) < b.d / 2) under.push(`${r.act}@${k}`);
   checks.push(['동료 위젯 중심이 패드 버튼 밑에 있지 않다', !under.length, under]);
-  // 장착하지 않은 동작의 버튼은 없다 (companions §6 has-mount / has-guard → 캔버스 패드): 모두 해제 → 둘 다 없음, 탈것만 → 탑승만
-  const padWhen = async (fn, ok) => { await page.evaluate(fn); let L = null; for (let k = 0; k < 8; k++) { await page.waitForTimeout(300); L = await padLayout(page); if (ok(L.buttons)) break; } return Object.keys(L?.buttons ?? {}); };
-  const none = await padWhen(() => { const T = window.__T, st = T.g.state; T.CS.equipMount(st, null, null); T.CS.equipGuardian(st, null, 0, null); T.CS.equipGuardian(st, null, 1, null); T.cs.sync(true); }, (B) => !B.mount && !B.guard);
-  const mountOnly = await padWhen(() => { const T = window.__T; T.CS.equipMount(T.g.state, null, 'mt_warhorse'); T.cs.sync(true); }, (B) => !!B.mount && !B.guard);
-  info.visibility = { none, mountOnly };
-  checks.push(['장착을 모두 풀면 탑승 · 수호 버튼이 없고, 탈것만 장착하면 탑승 버튼만', !none.includes('mount') && !none.includes('guard') && mountOnly.includes('mount') && !mountOnly.includes('guard'), info.visibility]);
+  // 장착하지 않은 동작의 버튼 ([playb] P04 · hud_mobile §3 맨 아래 줄): 버튼 자리는 그대로 두고 (배치가 흔들리지 않게) 40 % + 자물쇠로 그리며,
+  // 누르면 아무것도 부르지 않고 이유 한 줄 (CMP_TEXT.noMount · noGuard). 탈것만 장착하면 탑승 버튼만 다시 밝아지고 탄다.
+  // (예전 점검 '장착을 모두 풀면 탑승 · 수호 버튼이 없다' 는 P04 전 계약 — 지금은 버튼이 남고 잠긴다: 같은 상황을 지금 계약으로 본다)
+  const unlockedLum = async () => { await settled(); await page.evaluate(() => { const T = window.__T; for (const x of T.cs.guards) x.skillCd = 0; }); await page.waitForTimeout(400); return { mount: await sample('mount'), guard: await sample('guard') }; };
+  if (await riding()) await toggledBy(() => pressButton(t, page, 'mount', 100));   // 내린 상태에서 견준다 (하차 글자 · 탑승 고리 없이)
+  const lumOn = await unlockedLum();
+  const equipNone = () => page.evaluate(() => { const T = window.__T, st = T.g.state; T.CS.equipMount(st, null, null); T.CS.equipGuardian(st, null, 0, null); T.CS.equipGuardian(st, null, 1, null); T.cs.sync(true); });
+  await equipNone();
+  await page.waitForTimeout(500);
+  const Ln = await padLayout(page);
+  const lumOff = { mount: await sample('mount'), guard: await sample('guard') };
+  const tryPress = async (id, evName) => {
+    const n = await ev(), t0 = await page.evaluate(() => window.__T.toasts.length);
+    await pressButton(t, page, id, 100);
+    await page.waitForTimeout(400);
+    return { fired: (await evSince(n, evName)).length, toasts: await page.evaluate((t0) => window.__T.toasts.slice(t0), t0) };
+  };
+  const txt = await page.evaluate(() => ({ noMount: window.__T.D.CMP_TEXT.noMount, noGuard: window.__T.D.CMP_TEXT.noGuard }));
+  const pm = await tryPress('mount', 'mounted'), pg = await tryPress('guard', 'guardianSkill');
+  const stillNone = await page.evaluate(() => ({ mount: !!window.__T.p.mount, riding: !!window.__T.m?.riding, guards: window.__T.cs.guards.length }));
+  info.locked = { ids: Object.keys(Ln.buttons), lumOn, lumOff, pressMount: pm, pressGuard: pg, stillNone };
+  const dim = (a, b) => !!a && !!b && b.lum < a.lum * 0.75;
+  checks.push(['장착을 모두 풀면 탑승 · 수호 버튼은 자리에 남고 잠겨 어두워진다 (P04)', !!Ln.buttons.mount && !!Ln.buttons.guard && dim(lumOn.mount, lumOff.mount) && dim(lumOn.guard, lumOff.guard), info.locked]);
+  checks.push(['잠긴 탑승 · 수호 버튼: 누르면 아무것도 부르지 않고 이유 한 줄 (noMount · noGuard)', !pm.fired && !pg.fired && !stillNone.mount && !stillNone.riding && !stillNone.guards && pm.toasts.includes(txt.noMount) && pg.toasts.includes(txt.noGuard), { pm, pg, stillNone, txt }]);
+  await page.evaluate(() => { const T = window.__T; T.CS.equipMount(T.g.state, null, 'mt_warhorse'); T.cs.sync(true); });
+  await page.waitForTimeout(500);
+  const lumMount = { mount: await sample('mount'), guard: await sample('guard') };
+  const pm2 = await tryPress('mount', 'mounted'), pg2 = await tryPress('guard', 'guardianSkill');
+  info.mountOnly = { lum: lumMount, pressMount: pm2, pressGuard: pg2, riding: await riding() };
+  checks.push(['탈것만 장착: 탑승 버튼만 다시 밝아지고 탄다, 수호 버튼은 잠긴 채 이유 한 줄', dim(lumMount.mount, lumOff.mount) && !dim(lumOn.mount, lumMount.mount) && dim(lumOn.guard, lumMount.guard)
+    && pm2.fired >= 1 && info.mountOnly.riding && !pg2.fired && pg2.toasts.includes(txt.noGuard), info.mountOnly]);
   return { checks, info };
 }, { mobile: true });
 

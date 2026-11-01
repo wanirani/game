@@ -64,7 +64,7 @@ const SKIP_FILE = /(^|\/)\.[^/]+$|(^|\/)(Thumbs\.db|desktop\.ini)$|\.(psd|psb|kr
 const SKIP_EXACT = new Set(['assets/lo/index.json']);
 // assets/audio/ 에서는 게임이 받는 형식만 (녹음 원본 wav·작업 파일은 옮기지 않는다)
 const AUDIO_OK = /^assets\/audio\/(?:.+\.(m4a|ogg|json)|.*LICENSE[^/]*\.txt)$/;
-// 첫 화면에 필요한 글꼴 (css/style.css 의 기본 글꼴 + ui.js 의 first) — 크기 보고용
+// 첫 화면에 필요한 글꼴 (css/style.css 의 기본 글꼴 — bn-num 도 CSS — + ui.js 의 first) — 크기 보고용
 const FIRST_FONTS = ['noto-sans-kr.woff2', 'hahmlet.woff2', 'grenze-gotisch.woff2', 'cinzel.woff2', 'cinzel-decorative-900.woff2', 'bn-num.woff2'];
 
 const h8 = (s) => s.slice(0, 8);
@@ -255,8 +255,8 @@ export async function buildWeb(o = {}) {
       ...[...cssFonts.values()],
       'manifest.webmanifest',
     ];
-    // JS(FontFace) 글꼴: first·early (bn-brush 같은 lazy 는 처음 쓸 때 캐시), fonts.json 의 plus 조각
-    for (const f of ['bn-num.woff2', 'bn-dmg.woff2', 'bn-seal.woff2']) if (files.has(`assets/fonts/${f}`)) precache.push(`assets/fonts/${f}`);
+    // JS(FontFace) 글꼴: early (bn-brush 같은 lazy 는 처음 쓸 때 캐시), fonts.json 의 plus 조각. bn-num 은 CSS 글꼴이라 위 cssFonts(?v=) 로 들어간다
+    for (const f of ['bn-dmg.woff2', 'bn-seal.woff2']) if (files.has(`assets/fonts/${f}`)) precache.push(`assets/fonts/${f}`);
     if (files.has('assets/fonts/fonts.json')) {
       precache.push('assets/fonts/fonts.json');
       try { for (const e of JSON.parse(fs.readFileSync(path.join(OUT, 'assets/fonts/fonts.json'), 'utf8'))) if (e?.part === 'plus' && e.file && files.has(`assets/fonts/${e.file}`)) precache.push(`assets/fonts/${e.file}`); } catch { warn('assets/fonts/fonts.json 을 읽지 못했습니다'); }

@@ -603,5 +603,37 @@ if (PUP?.artClass) {
   ok(PUP.artClass('kael', 'nope') === null && PUP.artClass(null, 'kael_templar') === null, 'artClass: 모르는 id → null');
 } else console.log('  (hero_puppet.js 를 node 에서 불러오지 못해 생략 — 브라우저 점검으로)');
 
+// ── 9b. 초월 전용 원화의 lookTop 덧칠 (s8 asc): 원화에 이미 칠한 갑옷색·장식색·색조는 다시 칠하지 않고, 장비 갑옷색만 다시 칠한다 ──
+section('초월 전용 원화 — lookTop 덧칠 규칙 (s8 asc)');
+if (PUP?.variantKeyFor) {
+  const own = A_LIST.filter((a) => PUPPETS[a.charId]?.[a.id]);
+  const rigBase = (a) => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, `assets/puppets/${a.charId}/${a.id}/rig.json`), 'utf8')).opts?.armorBase ?? null; } catch { return null; } };
+  const ch = (id) => CHARACTERS[id];
+  for (const a of own) {
+    const base = rigBase(a);
+    for (const p of a.parents) {
+      const s = mkState(a.charId, p, 85); const h = s.heroes[a.charId]; h.asc = a.id; h.ascUnlocked = [a.id];
+      const L = STATS.composeLook(s, h);
+      ok(PUP.classOf({ ch: { id: a.charId } }, L) === a.id, `${a.id} (${p}): classOf → 전용 원화`);
+      ok(PUP.variantKeyFor(a.charId, a.id, L, base) === '', `${a.id} (${p}, 시작 갑옷): 변형 없음 — lookTop 장식색·갑옷색을 다시 칠하지 않음`, PUP.variantKeyFor(a.charId, a.id, L, base));
+    }
+    // 장비 갑옷(시작 갑옷 밖)은 그 색으로 다시 칠한다 — 장식색은 lookTop 이 덮어 그대로
+    const s = mkState(a.charId, a.parents[0], 85); const h = s.heroes[a.charId]; h.asc = a.id; h.ascUnlocked = [a.id];
+    const body = Object.values(ITEMS).find((it) => it.slot === 'body' && !ch(a.charId).startArmor?.includes(it.id) && it.visual?.armor && it.visual?.color && it.visual.color !== base && it.visual.color !== a.look?.armorColor);
+    const it = makeItem(body.id); addItem(s, it); h.equip.body = it.uid;
+    const L = STATS.composeLook(s, h), vk = PUP.variantKeyFor(a.charId, a.id, L, base);
+    ok(vk.startsWith(body.visual.color + '|') && (a.lookTop.armorTrim ? vk.split('|')[1] === '-' : true), `${a.id}: 장비 갑옷색만 다시 칠함 (${vk})`);
+    if (a.lookTop.tint) ok(!vk.includes('~'), `${a.id}: 전용 원화엔 색조를 다시 걸지 않음`);
+  }
+  // 전용 원화가 없는 초월은 예전대로 부모 원화 + lookTop 덧칠 (장식색·색조 변형)
+  const borrowed = A_LIST.filter((a) => !PUPPETS[a.charId]?.[a.id] && (a.lookTop.armorTrim || a.lookTop.tint));
+  for (const a of borrowed.slice(0, 12)) {
+    const s = mkState(a.charId, a.parents[0], 85); const h = s.heroes[a.charId]; h.asc = a.id; h.ascUnlocked = [a.id];
+    const L = STATS.composeLook(s, h), vk = PUP.variantKeyFor(a.charId, a.id, L, null);
+    ok(vk !== '' && (!a.lookTop.armorTrim || vk.split('|')[1] === a.lookTop.armorTrim) && (!a.lookTop.tint || vk.includes('~')), `${a.id}: 부모 원화(${PUP.artClass(a.charId, a.id)}) + lookTop 덧칠 변형 (${vk})`);
+  }
+  console.log(`  전용 원화 ${own.length}개 (${own.map((a) => a.id).join(', ') || '없음'}) · 빌린 원화 덧칠 ${Math.min(12, borrowed.length)}개 확인`);
+} else console.log('  (variantKeyFor 없음 — 생략)');
+
 console.log(`${fails ? '✗' : '✓'} test_ascension: ${passes} 통과, ${fails} 실패`);
 process.exit(fails ? 1 : 0);

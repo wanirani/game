@@ -172,16 +172,40 @@ function hexRgb(h) {
   const n = parseInt(s, 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
+// 초월·비전 전용 원화(PUPPETS[cid][ascId], s8 asc)는 그 초월의 갑옷색·lookTop 장식색·색조까지 이미 칠해 그렸다 → 같은 값은 다시 칠하지 않는다
+// (부모 원화 + lookTop 덧칠일 때만 armorTrim·tint 재칠이 필요하다). 비전은 2차 넷 어디서든 오므로 그 계보 look 의 갑옷색(성전 기사 #d8dce8 등)도
+// '원래 색' — 장비 갑옷(시작 갑옷 밖)이 준 색만 다시 칠한다. 오라·후광·날개·망토 안감·스카프는 절차적이라 그대로 그린다
+const ASC_NAT = new Map();
+function ascNative(id) {
+  let n = ASC_NAT.get(id);
+  if (!n) {
+    const A = ASCENSIONS[id], ac = new Set(), tc = new Set();
+    for (const p of A.parents || []) { const e = effLook(p); if (e.armorColor) ac.add(e.armorColor); }
+    if (A.look?.armorColor) ac.add(A.look.armorColor);
+    if (A.lookTop?.armorTrim) tc.add(A.lookTop.armorTrim);
+    n = { ac, tc, tint: A.lookTop?.tint ?? null };
+    ASC_NAT.set(id, n);
+  }
+  return n;
+}
+const sameTint = (a, b) => !!a && !!b && (a.h ?? 0) === (b.h ?? 0) && (a.s ?? 1) === (b.s ?? 1);
 /** look 의 갑옷 색·장식색이 직업 원화와 다르면 변형 키 */
 function variantKey(E, look) {
-  const eff = effLook(E.cls);
-  const base = eff.armorColor ?? E.opts?.armorBase ?? null;
-  const ac = look.armorColor && look.armorColor !== base ? look.armorColor : null;
-  const tc = look.armorTrim && look.armorTrim !== eff.armorTrim ? look.armorTrim : null;
-  // 초월 색조 (lookTop.tint {h: 색상 회전°, s: 채도 배율}) — 원화 전체에 hue-rotate/saturate 를 건 뒤 재질 마스크로 다시 칠한다
-  const T = look.tint, tn = T && (Number.isFinite(T.h) || Number.isFinite(T.s)) ? `${Number.isFinite(T.h) ? T.h : 0}~${Number.isFinite(T.s) ? T.s : 1}` : null;
+  const N = Object.hasOwn(ASCENSIONS, E.cls) ? ascNative(E.cls) : null;   // 초월·비전 전용 원화
+  const eff = N ? null : effLook(E.cls);
+  const base = N ? E.opts?.armorBase ?? null : eff.armorColor ?? E.opts?.armorBase ?? null;
+  const ac = look.armorColor && look.armorColor !== base && !N?.ac.has(look.armorColor) ? look.armorColor : null;
+  const tc = look.armorTrim && (N ? !N.tc.has(look.armorTrim) : look.armorTrim !== eff.armorTrim) ? look.armorTrim : null;
+  // 초월 색조 (lookTop.tint {h: 색상 회전°, s: 채도 배율}) — 원화 전체에 hue-rotate/saturate 를 건 뒤 재질 마스크로 다시 칠한다 (전용 원화엔 이미 들어 있음)
+  const T = N && sameTint(look.tint, N.tint) ? null : look.tint;
+  const tn = T && (Number.isFinite(T.h) || Number.isFinite(T.s)) ? `${Number.isFinite(T.h) ? T.h : 0}~${Number.isFinite(T.s) ? T.s : 1}` : null;
   if (!ac && !tc && !tn) return '';
   return `${ac || '-'}|${tc || '-'}|${look.armor || '-'}|${tn || '-'}`;
+}
+/** QA·시험용: 이 캐릭터·직업(초월 id 포함)의 look 이 어떤 변형 키를 받는지 (rig 를 받지 않아도 매니페스트의 원화 직업 + armorBase 로 계산) */
+export function variantKeyFor(cid, cls, look, armorBase = null) {
+  const ac = artClass(cid, cls) ?? cls;
+  return variantKey({ cls: ac, opts: { armorBase } }, look);
 }
 // 재질별 [명암 대비, 금속 반사]
 const FINISH = { leather: [1, 0], chain: [1.12, 0.1], plate: [1.25, 0.25], holy: [1.2, 0.3], dark: [1.3, 0.12] };

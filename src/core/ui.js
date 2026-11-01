@@ -4,8 +4,8 @@ import { clamp, rgba } from './math.js';
 
 /**
  * 글꼴 묶음. 모든 글꼴은 assets/fonts/ 에 woff2 로 들어 있다 (오프라인·APK 대응).
- * CSS 글꼴(css/style.css 의 @font-face): Noto Sans KR · Hahmlet · Grenze Gotisch · Cinzel · Cinzel Decorative.
- * JS 글꼴(아래 JS_FACES, FontFace API 로 등록): BN Num(작은 숫자) · BN Dmg(데미지 숫자) · BN Brush(붓글씨, 필요할 때 받음) · BN Seal(한자·낙관).
+ * CSS 글꼴(css/style.css 의 @font-face, index.html 이 preload): Noto Sans KR · Hahmlet · Grenze Gotisch · Cinzel · Cinzel Decorative · BN Num(작은 숫자).
+ * JS 글꼴(아래 JS_FACES, FontFace API 로 등록): BN Dmg(데미지 숫자) · BN Brush(붓글씨, 필요할 때 받음) · BN Seal(한자·낙관).
  * 한글 글꼴은 게임에 쓰인 글자(기본 파일) + KS X 1001 한글 2350자의 나머지("… Ext", 필요할 때만 받음)로 서브셋.
  * 새 대사를 넣었으면 python3 tools/fonts/build_fonts.py 로 다시 만든다 (--check 가 빠진 글자를 알려 준다). 새 묶음을 만들 때도 Ext 이름을 기본 글꼴 바로 뒤에 둔다.
  * 피 글씨·블랙레터(blood/logo)는 제목 전용: 로고, 스테이지 제목, 보스 이름, STAGE CLEAR/GAME OVER, 필살기 대사, 메뉴 큰 제목.
@@ -293,9 +293,11 @@ export function hint(ctx, w, h, keysText, touchText) {
  * FontFace API 로 등록하는 글꼴 (CSS 에 없는 글꼴). tools/fonts/build_fonts.py 의 JS 글꼴·assets/fonts/fonts.json 과 짝이며
  * build_fonts.py --check 가 이 표의 줄 모양 ['이름', '파일', '굵기', 'unicode-range', '받는 때'] 을 그대로 읽어 확인한다.
  * 받는 때: first = 첫 화면 전(FONT_FACES 로 기다림) · early = 첫 화면 뒤 곧바로 · lazy = 처음 쓸 때(또는 한가할 때 미리)
+ * 첫 화면 글꼴은 CSS 로 둔다 (BN Num 도 Stage 8 부터 css/style.css): index.html 의 preload 는 문서가 받는데, 서비스 워커가 받은
+ * 응답은 FontFace(스크립트) 요청과 '세계'가 달라 크롬이 다시 쓰지 않는다 (cross-world service worker resource mismatch → 매번 두 번 받고 경고).
+ * 그래서 여기에 first 를 넣으면 preload 하지 않는다.
  */
 const JS_FACES = [
-  ['BN Num', 'bn-num.woff2', '100 900', 'U+0025, U+002B-003A', 'first'],
   ['BN Dmg', 'bn-dmg.woff2', '100 900', 'U+0020-007E, U+00A0-00FF, U+2010-2027, U+2212', 'early'],
   ['BN Brush', 'bn-brush.woff2', '100 900', 'U+0020-007E, U+00A0-00FF, U+2010-2027, U+3000-303F, U+AC00-D7A3, U+FF01-FF5E', 'lazy'],
   ['BN Seal', 'bn-seal.woff2', '100 900', 'U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF', 'early'],
@@ -327,7 +329,7 @@ export function loadBrush() { return loadFace('BN Brush'); }
 export function faceReady(family) { return FACES.get(family)?.status === 'loaded'; }
 
 /**
- * 첫 화면 전에 받아 둘 글꼴 (css/style.css 의 @font-face 와 JS_FACES 의 first). 가변 굵기 파일이라 글꼴마다 하나씩이면 된다.
+ * 첫 화면 전에 받아 둘 글꼴 (css/style.css 의 @font-face — BN Num 포함 — 와 JS_FACES 의 first). 가변 굵기 파일이라 글꼴마다 하나씩이면 된다.
  * "Nanum Myeongjo" 는 예전 코드(타이틀 로고 부제)가 부르는 이름으로, Hahmlet 파일을 가리킨다. "… Ext" 확장 한글은 필요할 때만 받는다.
  */
 export const FONT_FACES = [

@@ -10,14 +10,19 @@ import { createForeground } from './foreground.js';
 
 const TALL_PARALLAX = 0.35; // 세로로 긴 방: 카메라가 올라간 거리 대비 원경이 따라 내려가는 비율
 const topColors = new WeakMap();
+// 원경 그림을 읽는 작은 공용 캔버스 (topColor 32×4 · lumaGrid 48×18) — 스테이지 진입 때(createBackground) 만든다 [s8:healthp].
+// 예전에는 원경 그림이 늦게 받아지면 그리는 도중에 처음 만들어 perf_budget 'canvas created after stage start' 가 가끔 빨갛게 떴다
+// (background.js lumaGrid ← haloTarget, 부하가 큰 실행에서만). 크기를 다시 정하면 비워지므로 둘이 같이 써도 된다
+let _lgc = null;
+const readCanvas = () => (_lgc ??= document.createElement('canvas'));
 /** 원경 이미지 맨 위 띠의 평균색 [r,g,b] (캐시) — 긴 방에서 원경 위쪽 빈 하늘을 이어 칠할 색 */
 function topColor(img, fallback) {
   let c = topColors.get(img);
   if (c) return c;
   try {
-    const cv = document.createElement('canvas');
+    const cv = readCanvas();
     cv.width = 32; cv.height = 4;
-    const g = cv.getContext('2d');
+    const g = cv.getContext('2d', { willReadFrequently: true });
     g.drawImage(img, 0, 0, img.width, Math.max(1, img.height * 0.03), 0, 0, 32, 4);
     const d = g.getImageData(0, 0, 32, 4).data;
     let r = 0, gg = 0, b = 0;
@@ -45,13 +50,12 @@ function haloSprite() {
 // 원경 그림의 저해상도 밝기 격자 (그림마다 한 번, 공용 작은 캔버스 하나로 읽음) — 주인공 바로 뒤가 얼마나 밝은지 어림한다
 const LG_W = 48, LG_H = 18;
 const lumaGrids = new WeakMap();
-let _lgc = null;
 function lumaGrid(img) {
   let L = lumaGrids.get(img);
   if (L !== undefined) return L;
   L = null;
   try {
-    _lgc ??= document.createElement('canvas');
+    readCanvas();
     _lgc.width = LG_W; _lgc.height = LG_H;
     const g = _lgc.getContext('2d', { willReadFrequently: true });
     g.imageSmoothingQuality = 'high';   // 큰 그림을 한 번에 줄일 때 점 몇 개만 집지 않게
@@ -118,6 +122,7 @@ export function createBackground(stage, map) {
     far: { ox: 0, oy: 0, iw: 0, ih: 0 }, // 마지막 drawFar 의 원경 배치 (화면 px) — 주인공 뒤 원경 밝기 찾기
   };
   if (theme.halo > 0) haloSprite();   // 스테이지 진입 때 굽는다 (진행 중에 캔버스를 만들지 않음)
+  try { readCanvas(); } catch { /* DOM 없음 (node 시험) */ }   // 원경 읽기 캔버스도 진입 때 [s8:healthp]
   // 「숨쉬는 원경」 (Stage 5 P2, render/atmos.js): 그림 속 빛의 일렁임·안개 두 겹·빛줄기·플레이 층 광원. 항목이 없거나 ?atmos=0 이면 null (예전 그대로)
   let atm = null;
   try { atm = createAtmos(stage); } catch (e) { console.warn('[bg] atmos', e); atm = null; }
