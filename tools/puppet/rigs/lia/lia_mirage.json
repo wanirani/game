@@ -1,0 +1,29 @@
+{
+ "_doc": "리아/신기루(초월 ← 카게로우). keep-pose 편집 IoU .904 → 카게로우 리그 상속",
+ "extends": "lia_kunoichi",
+ "classId": "lia_mirage",
+ "src": "lia/lia_mirage_side",
+ "_hands": "손 시트는 부모(lia_kunoichi) 것을 그대로 쓴다 — 장갑 디자인이 같다 (s8 asc 방식)",
+ "runtime": {
+  "armorBase": "#2a0a1a"
+ },
+ "turn": {
+  "_replace": true,
+  "sheet5": "lia/lia_mirage_turn5",
+  "views5": [
+   "y90",
+   "y45",
+   "y0",
+   "ym90",
+   "ym45"
+  ],
+  "th": 360,
+  "quality": 72,
+  "pockets": {
+   "T": 18,
+   "frac": 0.55,
+   "min": 30
+  },
+  "_why": "초월 원화(s9 asc2): Higgsfield gpt_image_2_5 5뷰 한 장 — 앞 · 3/4 앞(오른쪽을 봄) · 오른쪽 옆 · 뒤 · 3/4 뒤(오른쪽으로 돌아섬). 왼쪽 방향은 거울상. th 360 · q72 (s8 asc 와 같은 방식)"
+ }
+}
