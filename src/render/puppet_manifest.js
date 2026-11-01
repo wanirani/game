@@ -414,6 +414,51 @@ export const PUPPETS = {
     "lo",
     "ui"
    ]
+  },
+  "lia_bladequeen": {
+   "h": "f8bf0f0aeda5",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "lia_frostcrow": {
+   "h": "49158474e53d",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "lia_mirage": {
+   "h": "46abf74e8f72",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "lia_soulreaper": {
+   "h": "742bff2b9ee4",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
+  },
+  "lia_umbra": {
+   "h": "ebc8d1881a6c",
+   "turn": true,
+   "lv": [
+    "hi",
+    "lo",
+    "ui"
+   ]
   }
  },
  "npc": {
