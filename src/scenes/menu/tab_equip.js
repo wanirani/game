@@ -366,21 +366,23 @@ export class EquipTab extends Tab {
     const sy0 = A.y + sh + 10, sBot = A.y + A.h - (touch ? optH + 12 : 0);   // [qol] 터치: 아래에 「최적 장착」 단추
     this.txt.draw(ctx, 'sum', sumKey, MX + 4, sy0, MW - 8, sBot - 4 - sy0, (c) => {
       let y = A.y + sh + 32;
-      if (setL.length) {
-        // 세트 줄은 능력치 표 자리(최소 3줄)를 남기고 들어가는 만큼만 (넘치면 단계 줄부터 뺀다)
-        const rowH = Math.max(15, Math.ceil(textFloor() * 1.2));
-        const room = Math.floor((sBot - 8 - (y - 8) - 3 * Math.max(15, Math.ceil(textFloor() * 1.15)) - 30) / rowH);
-        const shown = fitSetLines(setL, room);
+      // 세트 줄은 능력치 표 자리(최소 3줄)를 남기고 들어가는 만큼만. 긴 단계 줄은 말줄임 대신 두 줄로 접는다
+      // (폴드 펼침 가운데 칸에서 「4세트: 공격력 +12, 마력 +12, 치명 피…」 처럼 잘렸다). 넘치면 꺼진 단계 줄부터 한 줄로 줄이거나 뺀다
+      const setRowH = Math.max(15, Math.ceil(textFloor() * 1.2));
+      const setRoom = Math.floor((sBot - 8 - (y - 8) - 3 * Math.max(15, Math.ceil(textFloor() * 1.15)) - 30) / setRowH);
+      const shown = setL.length ? fitSetLines(wrapSetLines(c, setL, MW - 28), setRoom) : [];
+      if (shown.length) {
         let yy = y - 10;
         for (const l of shown) {
-          text(c, ellipsize(c, l.text, MW - 28 - (l.head ? 0 : 8), l.head ? 12 : 11, l.head ? 800 : 600), MX + 14 + (l.head ? 0 : 8), yy, { size: l.head ? 12 : 11, weight: l.head ? 800 : 600, color: l.color, ow: 2 });
-          yy += rowH;
+          const sz = l.head ? 12 : 11, wt = l.head ? 800 : 600, x0 = MX + 14 + (l.head ? 0 : 8);
+          l.rows.forEach((s, i) => text(c, s, x0 + (i ? l.indent : 0), yy + i * setRowH, { size: sz, weight: wt, color: l.color, ow: 2 }));
+          yy += l.rows.length * setRowH;
         }
-        if (shown.length) y = yy + 18;
+        y = yy + 18;
       }
       // 세트 줄이 들어갈 자리가 없으면(휴대폰 가로) 제목 옆에 「세트명」 n/총 만 줄여서
       let hsub = null, hcol = PAL.dim;
-      if (setL.length && !fitSetLines(setL, Math.floor((sBot - 8 - (A.y + sh + 24) - 3 * Math.max(15, Math.ceil(textFloor() * 1.15)) - 30) / Math.max(15, Math.ceil(textFloor() * 1.2)))).length) {
+      if (setL.length && !shown.length) {
         const heads = setL.filter((l) => l.head);
         const avail = MW - 28 - 22 - measure(c, '주요 능력치', 14, 800, FONT.title);
         const full = heads.map((l) => l.text).join(' · '), short = '세트 ' + heads.map((l) => l.short).join(' · ');
@@ -568,11 +570,53 @@ function shortStat(k, v) {
   for (const [a, b] of Object.entries(SET_SHORT)) if (t.startsWith(a + ' ')) return b + t.slice(a.length);
   return t;
 }
-/** room 줄 안에 맞추기: 머리줄 > 켜진 단계 > 꺼진 단계 순으로 남긴다 (원래 순서 유지) */
+/**
+ * 세트 줄을 너비 w 에 맞춰 접는다 → [{...l, rows: [줄…], one: 한 줄로 줄인 글, indent}]
+ * 단계 줄은 '4세트: ' 뒤에서 능력치 단위(', ' · ' — ')로 끊고, 둘째 줄부터는 '4세트: ' 너비만큼 들여 쓴다 (최대 3줄)
+ */
+function wrapSetLines(c, L, w) {
+  return L.map((l) => {
+    const sz = l.head ? 12 : 11, wt = l.head ? 800 : 600, lw = w - (l.head ? 0 : 8);
+    const one = ellipsize(c, l.text, lw, sz, wt);
+    if (l.head || measure(c, l.text, sz, wt) <= lw) return { ...l, rows: [one], one, indent: 0 };
+    const m = /^(\d+세트: )(.*)$/.exec(l.text);
+    const pre = m ? m[1] : '', body = m ? m[2] : l.text;
+    const indent = pre && measure(c, pre, sz, wt) < lw * 0.4 ? measure(c, pre, sz, wt) : 0;
+    const segs = body.split(/(?<=, |— )/);
+    const rows = [];
+    let line = pre;
+    for (const sg of segs) {
+      const room = lw - (rows.length ? indent : 0);
+      if (!line || measure(c, line + sg.trimEnd(), sz, wt) <= room) { line += sg; continue; }
+      if (line.trim()) rows.push(line.trimEnd());
+      line = sg;
+      // 한 덩이가 한 줄보다 길면 글자 단위로 (wrapC)
+      const cw = lw - indent;
+      if (measure(c, line.trimEnd(), sz, wt) > cw) {
+        const parts = wrapC(c, line.trimEnd(), cw, sz, wt);
+        rows.push(...parts.slice(0, -1));
+        line = (parts[parts.length - 1] ?? '') + (/\s$/.test(sg) ? ' ' : '');
+      }
+    }
+    if (line.trim()) rows.push(line.trimEnd());
+    if (rows.length > 3) { rows.length = 3; rows[2] = ellipsize(c, rows[2] + '…', lw - indent, sz, wt); }
+    return { ...l, rows, one, indent };
+  });
+}
+/**
+ * room 줄 안에 맞추기: 먼저 머리줄 > 켜진 단계 > 꺼진 단계 순으로 한 줄씩 자리를 주고 (원래 순서 유지),
+ * 남는 자리로 같은 순서대로 접은 줄을 편다 (다 못 펴는 줄은 한 줄 말줄임으로 남는다)
+ */
 function fitSetLines(L, room) {
   if (room <= 0) return [];
-  if (L.length <= room) return L;
   const pri = (l) => (l.head ? 0 : l.on ? 1 : 2);
-  const keep = new Set(L.map((l, i) => i).sort((a, b) => pri(L[a]) - pri(L[b]) || a - b).slice(0, room));
-  return L.filter((l, i) => keep.has(i));
+  const order = L.map((l, i) => i).sort((a, b) => pri(L[a]) - pri(L[b]) || a - b).slice(0, room);
+  const full = new Set();
+  let used = order.length;
+  for (const i of order) {
+    const extra = L[i].rows.length - 1;
+    if (extra > 0 && used + extra <= room) { full.add(i); used += extra; }
+  }
+  const keep = new Set(order);
+  return L.map((l, i) => (!keep.has(i) ? null : full.has(i) || l.rows.length === 1 ? l : { ...l, rows: [l.one], indent: 0 })).filter(Boolean);
 }
