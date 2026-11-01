@@ -125,21 +125,27 @@ export function ellipse(x, y, rx, ry, rot = 0) {
   const c = G.c;
   c.beginPath(); c.ellipse(x, y, Math.max(0.01, rx), Math.max(0.01, ry), rot, 0, TAU);
 }
-/** 가산 광원 */
+/** 가산 광원.
+ *  [s8:healthp] 반지름 1 짜리 단위 원 그라디언트를 (색, 세기)마다 하나만 만들고, 채우는 순간 변환으로 (x, y, r) 에 맞춘다.
+ *  예전에는 (색, 세기, x, y, r) 마다 새로 만들어 칼끝 섬광처럼 매 프레임 움직이는 광원이 프레임마다 새 그라디언트를 만들었다
+ *  (perf_budget s27 'grad max' — hero_parts.js glow). 그라디언트는 채울 때의 사용자 좌표계로 해석되므로 모양은 그대로 */
 export function glow(x, y, r, col, a = 1) {
   if (G.tint || !G.fx || a <= 0.01) return;
   const c = G.c;
-  x = q2(x); y = q2(y); r = Math.max(0.5, q2(r)); a = Math.round(a * 20) / 20;
-  const g = gradMemo('w' + col + a + ',' + x + ',' + y + ',' + r, () => {
-    const g = c.createRadialGradient(x, y, 0, x, y, r);
+  r = Math.max(0.5, r); a = Math.round(a * 20) / 20;
+  const g = gradMemo('W' + col + a, () => {
+    const g = c.createRadialGradient(0, 0, 0, 0, 0, 1);
     g.addColorStop(0, ra(col, a)); g.addColorStop(0.4, ra(col, a * 0.35)); g.addColorStop(1, ra(col, 0));
     return g;
   });
-  const op = c.globalCompositeOperation;
+  c.save();
   c.globalCompositeOperation = 'lighter';
-  c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2);
-  c.globalCompositeOperation = op;
+  c.transform(r, 0, 0, r, x, y);
+  c.fillStyle = g; c.fillRect(-1, -1, 2, 2);
+  c.restore();
 }
+/** hero.js 등에서 쓰는 그라디언트 캐시 (키 → CanvasGradient; 키에는 그라디언트를 바꾸는 모든 값을 넣는다) */
+export const gradCache = (k, f) => gradMemo(k, f);
 
 // 리본(체인) 스크래치 버퍼
 const LX = new Float32Array(96), LY = new Float32Array(96), RX = new Float32Array(96), RY = new Float32Array(96);

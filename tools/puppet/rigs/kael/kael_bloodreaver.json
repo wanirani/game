@@ -1,0 +1,24 @@
+{
+ "_doc": "카엘/피의 처단자(초월 ← 블러드 헌터). keep-pose 편집 IoU .94 → 블러드 헌터 리그 상속",
+ "extends": "kael_bloodhunter",
+ "classId": "kael_bloodreaver",
+ "src": "kael/kael_bloodreaver_side",
+ "_hands": "손 시트는 부모(kael_bloodhunter) 것을 그대로 쓴다 — 장갑 디자인이 같다 (s8 asc 대체안)",
+ "runtime": {
+  "armorBase": "#2a0a10"
+ },
+ "turn": {
+  "_replace": true,
+  "sheet5": "kael/kael_bloodreaver_turn5",
+  "views5": [
+   "y90",
+   "y45",
+   "y0",
+   "ym90",
+   "ym45"
+  ],
+  "th": 440,
+  "quality": 76,
+  "_why": "초월 원화(s8 asc): Higgsfield gpt_image_2_5 5뷰 한 장 — 앞 · 3/4 앞(오른쪽을 봄) · 오른쪽 옆 · 뒤 · 3/4 뒤(오른쪽으로 돌아섬). 왼쪽 방향은 거울상. th 440 · q76 으로 용량을 줄임 (16방향 영상 턴은 Kling 영상이라 이번엔 만들지 않음)"
+ }
+}

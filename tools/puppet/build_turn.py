@@ -84,7 +84,7 @@ def floor_shadow(rgb, a, P):
     return out
 
 
-def cut_views(sheet_key, labels, dbg_name, pockets=None, deshadow=None):
+def cut_views(sheet_key, labels, dbg_name, pockets=None, deshadow=None, th=TH):
     p = os.path.join(SRC, sheet_key + '.webp')
     if not os.path.exists(p):
         die(f'턴어라운드 시트 없음: {p}')
@@ -128,7 +128,7 @@ def cut_views(sheet_key, labels, dbg_name, pockets=None, deshadow=None):
         pad = 6
         crop = np.dstack([col, (al * 255).astype(np.uint8)])[max(0, y0 - pad):y1 + pad, max(0, x0 - pad):x1 + pad]
         img = Image.fromarray(crop, 'RGBA')
-        s = TH / (y1 - y0)
+        s = th / (y1 - y0)
         img = img.resize((max(1, round(img.width * s)), max(1, round(img.height * s))), Image.LANCZOS)
         out[v] = img
     return out
@@ -253,12 +253,13 @@ def build_turn(rig_path, quiet=False):
     cid, clsid = rig['charId'], rig['classId']
     views = {}
     pk = T.get('pockets')           # opt-in: 갇힌 배경 주머니 비우기 (bg_pockets). 없으면 예전과 똑같다
+    th = int(T.get('th', TH))       # opt-in turn.th (초월 원화 s8): 정규화 인물 높이를 낮춰 시트 용량을 줄인다 (런타임은 v.footY−v.topY 로 배율을 잡는다)
     if T.get('sheet5'):
-        views.update(cut_views(T['sheet5'], T['views5'], 'turn5', pk))
+        views.update(cut_views(T['sheet5'], T['views5'], 'turn5', pk, th=th))
     if T.get('qback'):
-        views.update(cut_views(T['qback'], T['viewsQ'], 'qback', pk))
+        views.update(cut_views(T['qback'], T['viewsQ'], 'qback', pk, th=th))
     for ex in T.get('extra', []):   # 추가 시트 (재생성한 한 장짜리 뒷모습 등): {sheet, views:[...], pockets?}
-        views.update(cut_views(ex['sheet'], ex['views'], 'extra', ex.get('pockets', pk), ex.get('deshadow')))
+        views.update(cut_views(ex['sheet'], ex['views'], 'extra', ex.get('pockets', pk), ex.get('deshadow'), th=th))
     for fx in T.get('fixups', []):
         if fx['view'] in views:
             views[fx['view']] = apply_fixups(views[fx['view']], [fx])
@@ -309,7 +310,7 @@ def build_turn(rig_path, quiet=False):
             turn_mask(sheet, meta, rig, cid, clsid); has_mask = True
         except Exception as e:  # 아틀라스가 아직 없는 등 — 마스크 없이 진행 (런타임은 원래 색)
             print(f'  ! {clsid}: turn_mask 실패 {e}')
-    turn = dict(th=TH, size=[sheet.width, sheet.height], views=meta, steps=steps, mask=has_mask)
+    turn = dict(th=th, size=[sheet.width, sheet.height], views=meta, steps=steps, mask=has_mask)
     rp = os.path.join(out_dir, 'rig.json')
     rj = load_json(rp) if os.path.exists(rp) else {}
     rj['turn'] = turn

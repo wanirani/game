@@ -14,7 +14,7 @@
 import { VerletChain } from '../core/physics.js';
 import { TAU, clamp, lerp, ease } from '../core/math.js';
 import {
-  G, sh, mx, ra, F, capsule, grad, fillGrad, outline, ellipse, glow, ribbonPath, smoothClosed, WS, h01, group, fl,
+  G, sh, mx, ra, F, capsule, grad, fillGrad, outline, ellipse, glow, ribbonPath, smoothClosed, WS, h01, group, fl, gradCache,
   EL_COL, weaponReach, drawWeapon, drawLash, drawWhipCoil, drawWing, drawAuraMotes, drawMagicCircle, drawHalo, olc,
 } from './hero_parts.js';
 import * as PUP from './hero_puppet.js';
@@ -1370,9 +1370,8 @@ function drawHeadgear(K, E) {
       c.fillStyle = grad(-10, -6, 8, 2, hc, 1); c.fill(); outline(hc, 0.75);
       if (!G.tint) {
         // 얼굴 위 그늘
-        const g = c.createLinearGradient(0, -5, 0, 2.5);
-        g.addColorStop(0, 'rgba(8,4,14,0.75)'); g.addColorStop(1, 'rgba(8,4,14,0)');
-        c.fillStyle = g; c.beginPath(); c.moveTo(0.8, 1); c.quadraticCurveTo(2.4, -3.2, 7.2, -2.6); c.lineTo(7.6, 2.4); c.lineTo(0.6, 2.4); c.closePath(); c.fill();
+        // 늘 같은 그라디언트 (머리 지역 좌표) → 한 번만 만든다 [s8:healthp]
+        c.fillStyle = gradCache('hoodShade', () => { const g = c.createLinearGradient(0, -5, 0, 2.5); g.addColorStop(0, 'rgba(8,4,14,0.75)'); g.addColorStop(1, 'rgba(8,4,14,0)'); return g; }); c.beginPath(); c.moveTo(0.8, 1); c.quadraticCurveTo(2.4, -3.2, 7.2, -2.6); c.lineTo(7.6, 2.4); c.lineTo(0.6, 2.4); c.closePath(); c.fill();
         c.strokeStyle = ra(sh(hc, 0.4), 0.6); c.lineWidth = 0.6; c.beginPath(); c.moveTo(7.2, -2.6); c.quadraticCurveTo(2.2, -3.4, 0.6, 1); c.quadraticCurveTo(-1.4, 5, 1.6, 9.2); c.stroke();
       }
       break;
@@ -1394,8 +1393,7 @@ function drawHeadgear(K, E) {
       c.fillStyle = grad(0, -10, 0, -3, sh(hc, 0.05)); c.fill(); outline(hc, 0.7);
       if (!G.tint) {
         c.strokeStyle = ra(sh(hc, 0.45), 0.6); c.lineWidth = 0.5; c.beginPath(); c.ellipse(0.8, -6.6, 13.2, 2.8, -0.08, PI * 1.1, PI * 1.9); c.stroke();
-        const g = c.createLinearGradient(0, -4, 0, 1.5); g.addColorStop(0, 'rgba(6,2,10,0.62)'); g.addColorStop(1, 'rgba(6,2,10,0)');
-        c.fillStyle = g; c.beginPath(); c.moveTo(-6, -4.2); c.lineTo(8.5, -4.8); c.lineTo(8.2, 1.4); c.lineTo(-6, 1.4); c.closePath(); c.fill();
+        c.fillStyle = gradCache('hatShade', () => { const g = c.createLinearGradient(0, -4, 0, 1.5); g.addColorStop(0, 'rgba(6,2,10,0.62)'); g.addColorStop(1, 'rgba(6,2,10,0)'); return g; }); c.beginPath(); c.moveTo(-6, -4.2); c.lineTo(8.5, -4.8); c.lineTo(8.2, 1.4); c.lineTo(-6, 1.4); c.closePath(); c.fill();
       }
       break;
     }
@@ -1520,9 +1518,9 @@ function eyeGlow(K, E) {
   // 이동 시 빛 꼬리
   const v = Math.abs(E.p.vx || 0);
   if (v > 150) {
-    const L = Math.min(16, v * 0.035);
-    const g = c.createLinearGradient(4, 0, 4 - L, 0); g.addColorStop(0, ra(K.eyes, 0.8)); g.addColorStop(1, ra(K.eyes, 0));
-    c.strokeStyle = g; c.lineWidth = 0.9; c.beginPath(); c.moveTo(4.1, -0.5); c.quadraticCurveTo(4.1 - L * 0.5, -0.8, 4.1 - L, 0.2 + Math.sin(G.t * 10)); c.stroke();
+    // 꼬리 길이는 0.5 단위 (달리는 동안 같은 길이 → 같은 그라디언트; 획 굵기 때문에 변환 대신 길이별 캐시) [s8:healthp]
+    const L = Math.round(Math.min(16, v * 0.035) * 2) / 2;
+    c.strokeStyle = gradCache('eyeTrail' + K.eyes + ',' + L, () => { const g = c.createLinearGradient(4, 0, 4 - L, 0); g.addColorStop(0, ra(K.eyes, 0.8)); g.addColorStop(1, ra(K.eyes, 0)); return g; }); c.lineWidth = 0.9; c.beginPath(); c.moveTo(4.1, -0.5); c.quadraticCurveTo(4.1 - L * 0.5, -0.8, 4.1 - L, 0.2 + Math.sin(G.t * 10)); c.stroke();
   }
   if (hood) { c.fillStyle = ra(K.eyes, 0.9); ellipse(6.2, -0.6, 0.5, 0.5); c.fill(); }
   c.restore();
@@ -1580,7 +1578,7 @@ function drawHachi(K) {
   c.fillStyle = grad(-8, -6, 7, -2, bc, 0.8); c.fill(); outline(bc, 0.5);
   // 쇠 판
   c.beginPath(); c.moveTo(1.2, -6.2); c.quadraticCurveTo(4.4, -6.6, 7.3, -4.9); c.lineTo(7.2, -2.0); c.quadraticCurveTo(4.3, -3.4, 1.4, -3.2); c.closePath();
-  c.fillStyle = G.tint || (() => { const g = c.createLinearGradient(0, -6.5, 0, -2); g.addColorStop(0, '#d8dce8'); g.addColorStop(0.45, '#8a8e9e'); g.addColorStop(1, '#3a3a48'); return g; })();
+  c.fillStyle = G.tint || gradCache('hachiPlate', () => { const g = c.createLinearGradient(0, -6.5, 0, -2); g.addColorStop(0, '#d8dce8'); g.addColorStop(0.45, '#8a8e9e'); g.addColorStop(1, '#3a3a48'); return g; });
   c.fill(); outline('#6a6e7e', 0.45);
   if (!G.tint) { c.strokeStyle = ra('#1a1a24', 0.8); c.lineWidth = 0.35; c.beginPath(); c.moveTo(3.2, -5.4); c.lineTo(4.6, -3.6); c.moveTo(4.6, -5.6); c.lineTo(3.2, -3.4); c.stroke(); }
 }

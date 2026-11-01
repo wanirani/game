@@ -696,18 +696,18 @@
    "srcBytes": 98612
   },
   "portraits/b_argen.webp": {
-   "src": "07e44f4f0f80",
+   "src": "c2be7c359416",
    "w": 461,
    "h": 614,
-   "bytes": 93112,
-   "srcBytes": 162480
+   "bytes": 65342,
+   "srcBytes": 140400
   },
   "portraits/b_banshee.webp": {
-   "src": "f158c83ba622",
+   "src": "9dffd714e88d",
    "w": 461,
    "h": 614,
-   "bytes": 65292,
-   "srcBytes": 75960
+   "bytes": 59426,
+   "srcBytes": 124412
   },
   "portraits/b_behemoth.webp": {
    "src": "11759349519c",
@@ -717,11 +717,11 @@
    "srcBytes": 137888
   },
   "portraits/b_bonedragon.webp": {
-   "src": "014879cba88c",
+   "src": "321d33880bc9",
    "w": 461,
    "h": 614,
-   "bytes": 58922,
-   "srcBytes": 116270
+   "bytes": 60470,
+   "srcBytes": 119674
   },
   "portraits/b_bride.webp": {
    "src": "c36f166b9b54",
@@ -752,11 +752,11 @@
    "srcBytes": 75704
   },
   "portraits/b_chimera.webp": {
-   "src": "f8e965fa1629",
+   "src": "d8559411dbf2",
    "w": 461,
    "h": 614,
-   "bytes": 62256,
-   "srcBytes": 117746
+   "bytes": 50664,
+   "srcBytes": 122058
   },
   "portraits/b_colossus.webp": {
    "src": "8f072a73fc07",
@@ -794,11 +794,11 @@
    "srcBytes": 67716
   },
   "portraits/b_dracula2.webp": {
-   "src": "c6c2e37a6d08",
+   "src": "d213a15585b3",
    "w": 461,
    "h": 614,
-   "bytes": 51480,
-   "srcBytes": 105852
+   "bytes": 48732,
+   "srcBytes": 113618
   },
   "portraits/b_dullahan.webp": {
    "src": "44ffa1de17da",
@@ -815,25 +815,25 @@
    "srcBytes": 109222
   },
   "portraits/b_grimoire.webp": {
-   "src": "38888f09032b",
+   "src": "474ca666f472",
    "w": 461,
    "h": 614,
-   "bytes": 46482,
-   "srcBytes": 98222
+   "bytes": 44208,
+   "srcBytes": 101516
   },
   "portraits/b_hagen.webp": {
-   "src": "49c6f0c8a25c",
+   "src": "88d44056685b",
    "w": 461,
    "h": 614,
-   "bytes": 32582,
-   "srcBytes": 69360
+   "bytes": 39350,
+   "srcBytes": 93778
   },
   "portraits/b_hagen2.webp": {
-   "src": "a2718629348b",
+   "src": "e275d901a19d",
    "w": 461,
    "h": 614,
-   "bytes": 65496,
-   "srcBytes": 129692
+   "bytes": 55256,
+   "srcBytes": 128994
   },
   "portraits/b_johan.webp": {
    "src": "042485691439",
@@ -843,46 +843,46 @@
    "srcBytes": 95578
   },
   "portraits/b_leviathan.webp": {
-   "src": "14ff9aca6194",
+   "src": "ee7e3e1bedfb",
    "w": 461,
    "h": 614,
-   "bytes": 49900,
-   "srcBytes": 89596
+   "bytes": 56986,
+   "srcBytes": 127520
   },
   "portraits/b_mara.webp": {
-   "src": "271c67116e45",
+   "src": "e1f3a7b04f1e",
    "w": 461,
    "h": 614,
-   "bytes": 41260,
-   "srcBytes": 80634
+   "bytes": 42556,
+   "srcBytes": 92404
   },
   "portraits/b_moloch.webp": {
-   "src": "00fc2aa3ea46",
+   "src": "512d042e4139",
    "w": 461,
    "h": 614,
-   "bytes": 49124,
-   "srcBytes": 105546
+   "bytes": 41046,
+   "srcBytes": 100900
   },
   "portraits/b_narkissa.webp": {
-   "src": "c605cc860693",
+   "src": "6b85e880ef8c",
    "w": 461,
    "h": 614,
-   "bytes": 65508,
-   "srcBytes": 118248
+   "bytes": 46140,
+   "srcBytes": 102046
   },
   "portraits/b_narkissa2.webp": {
-   "src": "dd57c01e0bf0",
+   "src": "7b3a543a2aaa",
    "w": 461,
    "h": 614,
-   "bytes": 81502,
-   "srcBytes": 144088
+   "bytes": 50038,
+   "srcBytes": 103312
   },
   "portraits/b_nemain.webp": {
-   "src": "4d34ca68518c",
+   "src": "78862f0b3144",
    "w": 461,
    "h": 614,
-   "bytes": 40988,
-   "srcBytes": 85376
+   "bytes": 34256,
+   "srcBytes": 86504
   },
   "portraits/b_nemain2.webp": {
    "src": "08f051b41c8e",
@@ -920,11 +920,11 @@
    "srcBytes": 96888
   },
   "portraits/b_ziz.webp": {
-   "src": "2ff8839d7db6",
+   "src": "5521c84d6a7a",
    "w": 461,
    "h": 614,
-   "bytes": 36778,
-   "srcBytes": 69830
+   "bytes": 46740,
+   "srcBytes": 105086
   },
   "portraits/bran.webp": {
    "src": "28de4309c3e6",
@@ -1081,11 +1081,11 @@
    "srcBytes": 92020
   },
   "portraits/cmp_mt_argen.webp": {
-   "src": "2cba1f1da824",
+   "src": "9b1fcda0d74a",
    "w": 461,
    "h": 614,
-   "bytes": 65994,
-   "srcBytes": 123672
+   "bytes": 64472,
+   "srcBytes": 137908
   },
   "portraits/cmp_mt_gale.webp": {
    "src": "0f9cd28a722c",

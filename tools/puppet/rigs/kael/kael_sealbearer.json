@@ -1,0 +1,73 @@
+{
+ "_doc": "카엘/발크레인 봉인자(비전, 2차 넷 어디서든). 헌터 원화의 keep-pose 편집 IoU .93 → 헌터 리그 상속, 머리띠 대신 금 서클릿 → band 없음",
+ "extends": "kael_hunter",
+ "classId": "kael_sealbearer",
+ "src": "kael/kael_sealbearer_side",
+ "_hands": "손 시트는 부모(kael_hunter) 것을 그대로 쓴다 — 장갑 디자인이 같다 (s8 asc 대체안)",
+ "runtime": {
+  "armorBase": "#5a3a10",
+  "band": null
+ },
+ "turn": {
+  "_replace": true,
+  "sheet5": "kael/kael_sealbearer_turn5",
+  "views5": [
+   "y90",
+   "y45",
+   "y0",
+   "ym90",
+   "ym45"
+  ],
+  "th": 440,
+  "quality": 76,
+  "_why": "초월 원화(s8 asc): Higgsfield gpt_image_2_5 5뷰 한 장 — 앞 · 3/4 앞(오른쪽을 봄) · 오른쪽 옆 · 뒤 · 3/4 뒤(오른쪽으로 돌아섬). 왼쪽 방향은 거울상. th 440 · q76 으로 용량을 줄임 (16방향 영상 턴은 Kling 영상이라 이번엔 만들지 않음)"
+ },
+ "materials": {
+  "_replace": true,
+  "armor": {
+   "parts": [
+    "torso",
+    "skirt",
+    "skirtFar",
+    "uarm",
+    "farm",
+    "pad"
+   ],
+   "hue": [
+    4,
+    40
+   ],
+   "sat": [
+    0.2,
+    1.01
+   ],
+   "val": [
+    0,
+    0.55
+   ],
+   "softTop": 0.1
+  },
+  "trim": {
+   "parts": [
+    "torso",
+    "uarm",
+    "farm",
+    "pad",
+    "skirt",
+    "skirtFar"
+   ],
+   "hue": [
+    30,
+    62
+   ],
+   "sat": [
+    0.35,
+    1.01
+   ],
+   "val": [
+    0.5,
+    1.01
+   ]
+  }
+ }
+}

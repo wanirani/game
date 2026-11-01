@@ -49,39 +49,39 @@ export const PORTRAIT_META = {
   'portraits/npc_rook': { bust: true, face: { x: 0.45, y: 0.34, s: 0.333 }, expressions: ['angry', 'shock'] },
   'portraits/npc_rook2': { bust: true, face: { x: 0.454, y: 0.34, s: 0.334 } },
   // 보스 (흉상; b_nihil·b_nihil2 는 예전 그림 유지 = bust:false)
-  'portraits/b_argen': { bust: true, face: { x: 0.28, y: 0.3, s: 0.3 } },
-  'portraits/b_banshee': { bust: true, face: { x: 0.43, y: 0.4, s: 0.36 } },
+  'portraits/b_argen': { bust: true, face: { x: 0.24, y: 0.27, s: 0.36 } },
+  'portraits/b_banshee': { bust: true, face: { x: 0.25, y: 0.27, s: 0.3 } },
   'portraits/b_behemoth': { bust: true, face: { x: 0.37, y: 0.33, s: 0.24 } },   // s7 portrait: 채색 다시 그림 (여왕 얼굴)
-  'portraits/b_bonedragon': { bust: true, face: { x: 0.27, y: 0.31, s: 0.32 } },
+  'portraits/b_bonedragon': { bust: true, face: { x: 0.22, y: 0.3, s: 0.4 } },
   'portraits/b_bride': { bust: true, face: { x: 0.37, y: 0.3, s: 0.24 } },   // s7 verifyart: 채색 다시 그림 (시든 신부 2 와 같은 그림체)
   'portraits/b_bride2': { bust: true, face: { x: 0.42, y: 0.33, s: 0.3 } },   // s7 portrait: 채색 다시 그림 (해골 노파)
   'portraits/b_chaos': { bust: true, face: { x: 0.29, y: 0.35, s: 0.3 } },   // s7 verifyart: 채색 다시 그림
   'portraits/b_charon': { bust: true, face: { x: 0.454, y: 0.334, s: 0.292 } },
   'portraits/b_paracel': { bust: true, face: { x: 0.586, y: 0.332, s: 0.33 } },   // 외전 s26 (CH26-B) — 고글/눈 460,290 · 턱 430,445 (768×1024)
   'portraits/b_johan': { bust: true, face: { x: 0.462, y: 0.219, s: 0.3 } },   // 외전 Ⅱ s27 (EX-BOSS, Higgsfield) — 투구 앞 창 355,224 (768×1024)
-  'portraits/b_chimera': { bust: true, face: { x: 0.29, y: 0.36, s: 0.28 } },
+  'portraits/b_chimera': { bust: true, face: { x: 0.16, y: 0.37, s: 0.29 } },
   'portraits/b_colossus': { bust: true, face: { x: 0.39, y: 0.22, s: 0.18 } },
   'portraits/b_crimson': { bust: true, face: { x: 0.34, y: 0.26, s: 0.2 } },
   'portraits/b_dagon': { bust: true, face: { x: 0.38, y: 0.35, s: 0.35 } },
   'portraits/b_death': { bust: true, face: { x: 0.6, y: 0.36, s: 0.24 } },   // s7 verifyart: 채색 다시 그림 (두건 해골)
   'portraits/b_dracula': { bust: true, face: { x: 0.34, y: 0.29, s: 0.3 } },   // s7 portrait: 채색 다시 그림
-  'portraits/b_dracula2': { bust: true, face: { x: 0.3, y: 0.374, s: 0.295 } },
+  'portraits/b_dracula2': { bust: true, face: { x: 0.32, y: 0.32, s: 0.36 } },
   'portraits/b_dullahan': { bust: true, face: { x: 0.45, y: 0.22, s: 0.2 } },
   'portraits/b_frostqueen': { bust: true, face: { x: 0.31, y: 0.38, s: 0.28 } },   // s7 portrait: 채색 다시 그림
-  'portraits/b_grimoire': { bust: true, face: { x: 0.4, y: 0.45, s: 0.3 } },
-  'portraits/b_hagen': { bust: true, face: { x: 0.331, y: 0.345, s: 0.368 } },
-  'portraits/b_hagen2': { bust: true, face: { x: 0.29, y: 0.31, s: 0.3 } },
-  'portraits/b_leviathan': { bust: true, face: { x: 0.28, y: 0.35, s: 0.3 } },
-  'portraits/b_mara': { bust: true, face: { x: 0.428, y: 0.354, s: 0.464 } },
-  'portraits/b_moloch': { bust: true, face: { x: 0.33, y: 0.29, s: 0.25 } },
-  'portraits/b_narkissa': { bust: true, face: { x: 0.432, y: 0.353, s: 0.355 } },
-  'portraits/b_narkissa2': { bust: true, face: { x: 0.366, y: 0.372, s: 0.548 } },
-  'portraits/b_nemain': { bust: true, face: { x: 0.406, y: 0.341, s: 0.344 } },
+  'portraits/b_grimoire': { bust: true, face: { x: 0.36, y: 0.47, s: 0.32 } },
+  'portraits/b_hagen': { bust: true, face: { x: 0.4, y: 0.29, s: 0.3 } },
+  'portraits/b_hagen2': { bust: true, face: { x: 0.29, y: 0.27, s: 0.32 } },
+  'portraits/b_leviathan': { bust: true, face: { x: 0.22, y: 0.29, s: 0.36 } },
+  'portraits/b_mara': { bust: true, face: { x: 0.4, y: 0.24, s: 0.33 } },
+  'portraits/b_moloch': { bust: true, face: { x: 0.36, y: 0.3, s: 0.34 } },
+  'portraits/b_narkissa': { bust: true, face: { x: 0.47, y: 0.34, s: 0.26 } },
+  'portraits/b_narkissa2': { bust: true, face: { x: 0.37, y: 0.36, s: 0.32 } },
+  'portraits/b_nemain': { bust: true, face: { x: 0.31, y: 0.26, s: 0.34 } },
   'portraits/b_nemain2': { bust: true, face: { x: 0.34, y: 0.31, s: 0.3 } },   // s7 portrait: 채색 다시 그림
   'portraits/b_nightwing': { bust: true, face: { x: 0.25, y: 0.36, s: 0.3 } },   // s7 portrait: 채색 다시 그림 (게임 속 박쥐왕과 같은 그림체)
   'portraits/b_nihil': { bust: false, face: { x: 0.5, y: 0.27, s: 0.2 } },
   'portraits/b_nihil2': { bust: false, face: { x: 0.5, y: 0.27, s: 0.2 } },
-  'portraits/b_ziz': { bust: true, face: { x: 0.37, y: 0.27, s: 0.3 } },
+  'portraits/b_ziz': { bust: true, face: { x: 0.25, y: 0.25, s: 0.32 } },
   // 동료 (흉상; cmp_g_imp·cmp_g_knight 는 예전 그림 유지 = bust:false)
   'portraits/cmp_g_clock': { bust: true, face: { x: 0.325, y: 0.366, s: 0.245 } },
   'portraits/cmp_g_fairy': { bust: true, face: { x: 0.419, y: 0.324, s: 0.226 } },
@@ -102,7 +102,7 @@ export const PORTRAIT_META = {
   'portraits/cmp_m_skelsteed': { bust: true, face: { x: 0.28, y: 0.3, s: 0.3 } },
   'portraits/cmp_m_warhorse': { bust: true, face: { x: 0.27, y: 0.33, s: 0.3 } },
   'portraits/cmp_m_wyvern': { bust: true, face: { x: 0.38, y: 0.31, s: 0.3 } },
-  'portraits/cmp_mt_argen': { bust: true, face: { x: 0.28, y: 0.3, s: 0.32 } },
+  'portraits/cmp_mt_argen': { bust: true, face: { x: 0.27, y: 0.29, s: 0.36 } },
   'portraits/cmp_mt_gale': { bust: true, face: { x: 0.35, y: 0.28, s: 0.38 } },
   'portraits/cmp_mt_ignis': { bust: true, face: { x: 0.28, y: 0.35, s: 0.32 } },
   'portraits/cmp_mt_morgen': { bust: true, face: { x: 0.27, y: 0.33, s: 0.3 } },
