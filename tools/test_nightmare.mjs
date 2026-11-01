@@ -56,7 +56,7 @@ section('N1 악몽 표 (27) ↔ STAGES 보스 · 비틀기');
 const ids = Object.keys(D.NM);
 ok(ids.length === 27 && D.NM_IDS.length === 27, `악몽 27개 (${ids.length})`);
 ok(D.NM.nm_s26?.boss === 'b_paracel' && STAGES.s26?.part === 1 && D.NM.nm_s26.atkMul === 1.1 && D.NM.nm_s26.spMul === 1.15, 'nm_s26: 파라켈 · 1부 외전이라 1부 배율 (공격 1.1 · 쉼 1.15)', D.NM.nm_s26);
-ok(D.NM.nm_s27?.boss === 'b_johan' && D.NM.nm_s27.twist === 'doom_clock' && STAGES.s27?.part === 1 && D.NM.nm_s27.atkMul === 1.1 && D.NM.nm_s27.spMul === 1.15, 'nm_s27: 요한 · 종말의 시계 · 1부 외전이라 1부 배율 (공격 1.1 · 쉼 1.15)', D.NM.nm_s27);
+ok(D.NM.nm_s27?.boss === 'b_johan' && D.NM.nm_s27.twist === 'doom_clock' && STAGES.s27?.part === 1 && D.NM.nm_s27.atkMul === 1.08 && D.NM.nm_s27.spMul === 1.15, 'nm_s27: 요한 · 종말의 시계 · 1부 배율 (공격 1.08 — 어려움 1타 ≤ 1.25 · 쉼 1.15)', D.NM.nm_s27);
 const usedTwists = new Set();
 for (let i = 1; i <= 27; i++) {
   const sid = 's' + String(i).padStart(2, '0'), id = 'nm_' + sid, e = D.NM[id];

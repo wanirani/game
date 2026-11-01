@@ -104,6 +104,8 @@ const STEPS = [
   S('bride', 'runtime', node('tools/test_bride.mjs'), 20 * MIN),     // 외전 보스 엘제베트 패턴 (docs/specs/ex_s24.md §8)
   S('charon', 'runtime', node('tools/test_charon.mjs'), 20 * MIN),   // 외전 보스 카론 패턴 (docs/specs/ex_s25.md §8)
   S('paracel', 'runtime', node('tools/test_paracel.mjs'), 20 * MIN),   // 1부 외전 보스 파라켈 패턴 (docs/specs/ex_s26.md §8)
+  S('johan', 'runtime', node('tools/test_johan.mjs'), 20 * MIN),     // 1부 외전 Ⅱ 보스 요한 패턴 (docs/specs/ex_s27.md §8.2 — EX-BOSS)
+  S('s27', 'runtime', node('tools/test_s27.mjs'), 10 * MIN),         // 외전 Ⅱ s27 등록 시험 (docs/specs/ex_s27.md §8.1 — EX-STAGE)
   S('companions', 'runtime', node('tools/test_companions.mjs'), 40 * MIN, { optional: true }),
   S('trials', 'runtime', node('tools/test_trials.mjs', ...(QUICK ? ['--quick'] : [])), 40 * MIN),   // 시련 14 (classes_t3 §11.1/§11.3): 정적 + 브라우저 desk·phone2 (--quick: desk 4 케이스)
   S('commands', 'runtime', node('tools/qa/commands.mjs', ...(QUICK ? ['--quick'] : [])), 60 * MIN, { report: path.join(TOOLS_DIR, 'commands.json') }),

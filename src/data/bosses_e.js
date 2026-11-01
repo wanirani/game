@@ -114,10 +114,10 @@ export const JOHAN_MV = Object.freeze({
   anchor: 0.9, reel: 0.7,           // anchorChain: 닻 던짐 · 되감기 (지옥 허리 높이 둘째 닻도 anchor)
   drop: 1.2, quake: 0.7,            // ballastDrop: 장화 착지 · 양쪽 충격파
   bubble: 0.6,                      // airVolley: 공기 방울 터짐
-  jet: 0.8,                         // sluiceJet: 벽에서 벽까지 물줄기
-  eel: 0.8,                         // eelBurst: 검은 장어 기둥
+  jet: 0.85,                        // sluiceJet: 벽에서 벽까지 물줄기
+  eel: 0.85,                        // eelBurst: 검은 장어 기둥
   undertow: 0.1, sweep: 1.0,        // undertow: 물띠(계속 · rehit 0.5) · 열쇠 원 휘두르기
-  lash: 0.9, lashSlam: 0.8,         // hoseLash: 호스 쓸어내림 · 끝의 바닥 내리침
+  lash: 0.9, lashSlam: 0.85,        // hoseLash: 호스 쓸어내림 · 끝의 바닥 내리침
   last: 0.9,                        // 15% 검은 물 파열 (아케이드 · 다시 볼 때)
 });
 export const BOSSES_E = {

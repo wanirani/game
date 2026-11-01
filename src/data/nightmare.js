@@ -82,7 +82,8 @@ const ROWS = [
   row('s26', 'b_paracel', 'dark', P1, { hpMul: 2.0 }),
   // 외전 27장 (1부 외전 Ⅱ, 10장 뒤 — docs/specs/ex_s27.md §5 W13): 1부 기본 배율 · 비틀기 종말의 시계 (수문이 다 열리기 전에 — 바닥 충격파는 뛰어 피한다)
   //  hpMul 은 balance.mjs --nm s27 로 맞춘다 (이야기 기준 = 11장 뒤 Lv 35 영웅, P1_SIDE_AFTER.s27 = 's11')
-  row('s27', 'b_johan', 'doom_clock', P1, { hpMul: 1.9 }),
+  //  [ex_s27] hpMul 1.9 · atkMul 1.08: 보통 일곱 영웅 목표 안 · 어려움 카엘 이야기 대비 1타 1.27 → ≤ 1.25 (s03 · s10 과 같은 손질)
+  row('s27', 'b_johan', 'doom_clock', P1, { hpMul: 1.9, atkMul: 1.08 }),
 ];
 export const NM = Object.freeze(Object.fromEntries(ROWS.map((r) => [r.id, Object.freeze(r)])));
 export const NM_IDS = Object.freeze(ROWS.map((r) => r.id));

@@ -520,8 +520,11 @@ const UNIQUE_LIST = [
   HUNT({ id: 'u_hunt_spear', name: '사냥달 창 오리온', wtype: 'spear', icon: 'u_hunt_spear', stats: { atk: 210, ice: 30, reach: 12, crit: 10 },
     effect: '사냥꾼 별자리 — 냉기 피해 +30%, 공격 범위 +12%', desc: '창끝까지 은으로 감싼 사냥 창. 쪽지: "용을 되찾을 창잡이에게."' }),
   // ── 외전 Ⅱ (s27, 1부 — docs/specs/ex_s27.md §3.1) 보스 드롭 · EX-STAGE 가 끝에 덧붙임 (값은 play-fix #14 규칙: Lv 35 기준 장비와 견줘 맞춘다) ──
+  //  명세 시작값 { atk 19 · mag 19 · def 14 · hp 90 } 은 진조의 인장(6단계 Lv 38)보다 일곱 중 넷이 위였다 → { 16 · 16 · 10 · 60 }:
+  //  Lv 35 기준 장비(4단계 희귀도 3 장신구 둘 · 5단계 희귀도 2 무기·갑옷, 무작위 옵션 200판) 일곱 영웅 모두 ▲ 97–100 % ·
+  //  진조의 인장보다 아래 다섯 (브란 · 아젤은 받는 피해 −4% 몫으로 위 — 방어 장신구의 몫). 효과 문구 · 번개 10% · 피해 −4% 는 명세 그대로
   { id: 'u_johan', name: '수문지기의 등불', slot: 'acc', tier: 5, icon: 'amulet_6', lvReq: 35, rarity: 4, boss: 'b_johan',
-    stats: { atk: 19, mag: 19, def: 14, hp: 90, thunder: 10, dmgReduce: 4 }, visual: { aura: { color: '#ffc860', type: 'holy' } },
+    stats: { atk: 16, mag: 16, def: 10, hp: 60, thunder: 10, dmgReduce: 4 }, visual: { aura: { color: '#ffc860', type: 'holy' } },
     effect: '꺼지지 않는 불 — 받는 피해 −4%, 번개 피해 +10%', desc: '요한이 잠수 갑옷 가슴에 매달고 내려간 기름 등불. 검은 물 속에서도 끝내 꺼지지 않았다.' },
 ];
 const U_PRICE = [2000, 5000, 12000, 25000, 50000, 90000, 150000];

@@ -86,7 +86,7 @@ function drawBoss(ctx, b, world, rig, st) {
     const W = b.wheelPos(), p = R.wheel, img = pickVariant(p, 0, false, null);
     const s = (2 * W.r) / Math.max(1, img.width - 8);
     ctx.save(); ctx.fillStyle = 'rgba(6,12,14,0.5)'; ctx.beginPath(); ctx.arc(W.x, W.y, W.r + 18, 0, PI * 2); ctx.fill(); ctx.restore();
-    D.begin(ctx); D.part(p, img, 'c', W.x, W.y, b.wheelA ?? 0, s, s, 0.92); D.end();
+    D.begin(ctx); D.part(p, img, 'c', W.x, W.y, b.wheelA ?? 0, s, s, 0.72); D.end();   // 뒤 소품 — 보스가 먼저 읽히게 흐리게
     if ((b.closeK ?? 0) < 1) { ctx.save(); ctx.globalAlpha = ga * 0.7 * (1 - (b.closeK ?? 0)); ctx.fillStyle = BLACKW; ctx.fillRect(W.x - W.r * 0.5, W.y + W.r + 14, W.r, 18); ctx.restore(); }
     else if (st.q.halos) halo(ctx, W.x, W.y, W.r * 0.8, LAMP, 0.08 + 0.04 * Math.sin(t * 2));
   }
