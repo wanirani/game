@@ -519,6 +519,10 @@ const UNIQUE_LIST = [
     effect: '사냥의 여신 — 스킬 피해 +25%, MP 재생 +2/초', desc: '끝에 은빛 초승달을 단 지팡이. 쪽지: "성 루미나의 수녀님에게."' }),
   HUNT({ id: 'u_hunt_spear', name: '사냥달 창 오리온', wtype: 'spear', icon: 'u_hunt_spear', stats: { atk: 210, ice: 30, reach: 12, crit: 10 },
     effect: '사냥꾼 별자리 — 냉기 피해 +30%, 공격 범위 +12%', desc: '창끝까지 은으로 감싼 사냥 창. 쪽지: "용을 되찾을 창잡이에게."' }),
+  // ── 외전 Ⅱ (s27, 1부 — docs/specs/ex_s27.md §3.1) 보스 드롭 · EX-STAGE 가 끝에 덧붙임 (값은 play-fix #14 규칙: Lv 35 기준 장비와 견줘 맞춘다) ──
+  { id: 'u_johan', name: '수문지기의 등불', slot: 'acc', tier: 5, icon: 'amulet_6', lvReq: 35, rarity: 4, boss: 'b_johan',
+    stats: { atk: 19, mag: 19, def: 14, hp: 90, thunder: 10, dmgReduce: 4 }, visual: { aura: { color: '#ffc860', type: 'holy' } },
+    effect: '꺼지지 않는 불 — 받는 피해 −4%, 번개 피해 +10%', desc: '요한이 잠수 갑옷 가슴에 매달고 내려간 기름 등불. 검은 물 속에서도 끝내 꺼지지 않았다.' },
 ];
 const U_PRICE = [2000, 5000, 12000, 25000, 50000, 90000, 150000];
 for (const u of UNIQUE_LIST) def({ ...u, unique: true, price: U_PRICE[u.tier - 1] * (u.rarity >= 5 ? 1.5 : 1) });
@@ -540,7 +544,7 @@ const CONSUMABLES = [
   ['c_potion', '회복 물약', 'potion_hp', 60, { heal: 0.35 }, '붉은 약초를 달인 물약. 쓴맛이 강하지만 상처가 금세 아문다.'],
   ['c_hipotion', '고급 회복 물약', 'potion_full', 180, { heal: 0.7 }, '연금술사 길드의 인장이 찍힌 진한 회복약. 뼈에 금이 가도 버틸 수 있다.'],
   ['c_ether', '마나 에테르', 'potion_mp', 90, { mp: 0.5 }, '푸른 마력이 녹아 있는 에테르. 마시면 머릿속이 맑아진다.'],
-  ['c_hiether', '고급 에테르', 'potion_mp', 240, { mp: 1 }, '정제를 거듭한 순수 에테르. 한 병이면 마력이 가득 찬다.'],
+  ['c_hiether', '고급 에테르', 'c_hiether', 240, { mp: 1 }, '정제를 거듭한 순수 에테르. 한 병이면 마력이 가득 찬다.'],
   ['c_elixir', '엘릭서', 'elixir', 1200, { heal: 1, mp: 1, cure: true }, '연금술의 정점. 한 방울로 HP와 MP를 모두 되살리는 기적의 영약.'],
   ['c_antidote', '해독제', 'antidote', 40, { cure: true, heal: 0.1 }, '온갖 독과 저주를 씻어 내는 약. 약간의 체력도 되찾아 준다.'],
   ['c_meat', '통구이 고기', 'meat', 45, { heal: 0.25 }, '흑묘 여관 마르타의 특제 고기 구이. 성벽 속 고기와는 차원이 다르다.'],

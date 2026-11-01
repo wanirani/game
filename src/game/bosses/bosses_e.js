@@ -6,6 +6,7 @@ import { Hagen } from './e_hagen.js';
 import { Bride } from './e_bride.js';
 import { Charon } from './e_charon.js';
 import { Paracel } from './e_paracel.js';   // 1부 외전 s26 「파라켈의 지하 공방」
+import { Johan } from './e_johan.js';   // 1부 외전 Ⅱ s27 「돌아오지 못한 수문지기」
 
 const onlyReady = (o) => Object.fromEntries(Object.entries(o).filter(([, C]) => typeof C === 'function'));
 
@@ -16,4 +17,5 @@ export const BOSS_E = onlyReady({
   b_bride: Bride,
   b_charon: Charon,
   b_paracel: Paracel,
+  b_johan: Johan,
 });

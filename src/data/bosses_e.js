@@ -4,6 +4,7 @@
 //                   b_bride (s24, 외전 「시드는 장미」) — docs/specs/ex_s24.md §2. 소유: EX4-BOSS (아래 b_bride 머리말)
 //                   b_charon (s25, 외전 「불탄 목장의 밤」) — docs/specs/ex_s25.md §2. 소유: EX5-BOSS (아래 b_charon 머리말)
 //                   b_paracel (s26, 1부 외전 「파라켈의 지하 공방」) — docs/specs/ex_s26.md §2. 소유: CH26-A (아래 b_paracel 머리말)
+//                   b_johan (s27, 1부 외전 Ⅱ 「돌아오지 못한 수문지기」) — docs/specs/ex_s27.md §2. 소유: EX-BOSS (Stage 7, 아래 b_johan 머리말)
 // 스키마: game/bosses/boss.js 상단 주석 (bosses_c.js 머리말 참고). 클래스는 game/bosses/e_argen.js (BossC 상속).
 // 체급: 지즈(b_ziz, s17)보다 한 단계 위 · 니힐(b_nihil, s20 최종)보다 아래. s21 레벨 70 (s20 은 68).
 // 밸런스 (EX-BOSS, tools/balance.mjs 와 같은 식 — 보통 난이도 kael, s20 클리어 레벨 67 · s20 장비 기준):
@@ -103,6 +104,22 @@ export const PARACEL_MV = Object.freeze({
   gold: 0.9,                        // 금빛 약비 기둥
   last: 1.2,                        // 15% 금빛 파열 (아케이드 · 다시 볼 때)
 });
+/**
+ * 요한(b_johan, s27) 패턴 피해 배율 (모션 배율 mv — 보스 공격력 × mv). 게임(e_johan.js)과 밸런스 검사(tools/balance.mjs normal --check 의 s27 줄)가
+ * 이 표 하나를 읽는다. 가장 무거운 한 방(열쇠 내려치기 · 장화 착지)은 모형의 「보스 1타 = 모션 1.2」 근처 (ex_s27.md §2.3 — 0.9–1.3 배).
+ * 이어지는 역류 물띠는 rehit 마다 한 번 (0.5초).
+ */
+export const JOHAN_MV = Object.freeze({
+  slam: 1.15, splash: 0.6,          // keySlam: 열쇠 내려치기 · 양옆 물보라
+  anchor: 0.9, reel: 0.7,           // anchorChain: 닻 던짐 · 되감기 (지옥 허리 높이 둘째 닻도 anchor)
+  drop: 1.2, quake: 0.7,            // ballastDrop: 장화 착지 · 양쪽 충격파
+  bubble: 0.6,                      // airVolley: 공기 방울 터짐
+  jet: 0.8,                         // sluiceJet: 벽에서 벽까지 물줄기
+  eel: 0.8,                         // eelBurst: 검은 장어 기둥
+  undertow: 0.1, sweep: 1.0,        // undertow: 물띠(계속 · rehit 0.5) · 열쇠 원 휘두르기
+  lash: 0.9, lashSlam: 0.8,         // hoseLash: 호스 쓸어내림 · 끝의 바닥 내리침
+  last: 0.9,                        // 15% 검은 물 파열 (아케이드 · 다시 볼 때)
+});
 export const BOSSES_E = {
   b_argen: {
     id: 'b_argen', name: '아르겐', title: '공허에 물든 은룡', hp: 2900, hpMul: 1.2, atk: 45, def: 22, res: 22, exp: 3360, score: 420000,
@@ -156,5 +173,17 @@ export const BOSSES_E = {
     form2: { name: '파라켈 박사', title: '금이 되어 가는 몸', portrait: 'portraits/b_paracel' },
     intro: '(도가니를 들여다보던 손이 멈춘다. 등에 매단 유리 배양조 속에서 무언가가 눈을 뜬다.)',
     desc: '악마성의 수석 연금술사. 역병을 이기려고 제 몸에 수은과 호문쿨루스의 살을 이어 붙였다. 성이 사라진 백 년 동안에도 바위 속 공방에서 불을 지켰다고 한다.',
+  },
+  // ── b_johan (s27) — 요한 / 돌아오지 못한 수문지기. 클래스 game/bosses/e_johan.js (BossC 상속) ──
+  // 체급: 11–12장 보스(사신 · 드라큘라)의 손맛을 권장 하한 Lv 35 (11장 뒤)에서 (docs/specs/ex_s27.md §2.3). s27 레벨 37. 2페이즈 (50% 'breach' —
+  // 앞 창이 터지고 검은 장어 · form2 이름 「검은 물」 칭호 「요한이었던 것」). 갑옷답게 단단하고(def 13) 한 방이 무겁다. 패턴 피해는 JOHAN_MV (위).
+  b_johan: {
+    id: 'b_johan', name: '요한', title: '돌아오지 못한 수문지기', hp: 2100, hpMul: 1.0, atk: 31, def: 13, res: 13, exp: 2300, score: 50000,
+    size: { w: 104, h: 168 }, flying: false, contact: 0.7, material: 'metal', weak: ['thunder'], resist: ['fire'], phases: [0.5],
+    music: 'boss2', portrait: 'portraits/b_johan', stageId: 's27', drops: ['u_johan'], light: { r: 160, color: '#ffc860', i: 0.6 },
+    mv: JOHAN_MV,
+    form2: { name: '검은 물', title: '요한이었던 것', portrait: 'portraits/b_johan' },
+    intro: '(검은 물 속에서 황동 투구가 떠오른다. 가슴께의 등불 하나가, 아직 꺼지지 않았다.)',
+    desc: '에슈빌 지하 수로의 관리인. 붉은 달이 뜬 밤, 낡은 잠수 갑옷을 입고 마지막 수문을 닫으러 내려갔다. 그 뒤로 아무도 그를 보지 못했다.',
   },
 };

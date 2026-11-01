@@ -97,7 +97,7 @@ export const GAL_MUSIC = Object.freeze([
   ...Array.from({ length: 7 }, (_, i) => ch(i + 14, 'p2', { p2: true })),
   // ── 보스 (모든 보스가 BOSSES[id].music 의 줄에 있다 — G1)
   mu('boss', 'boss', bosses('b_nightwing', 'b_banshee', 'b_crimson', 'b_grimoire', 'b_charon')),
-  mu('boss2', 'boss', bosses('b_dullahan', 'b_bonedragon', 'b_chimera', 'b_leviathan', 'b_colossus', 'b_frostqueen', 'b_death', 'b_hagen', 'b_paracel')),
+  mu('boss2', 'boss', bosses('b_dullahan', 'b_bonedragon', 'b_chimera', 'b_leviathan', 'b_colossus', 'b_frostqueen', 'b_death', 'b_hagen', 'b_paracel', 'b_johan')),
   mu('dracula', 'boss', bosses('b_dracula', 'b_bride')),
   mu('chaos', 'boss', bosses('b_chaos')),
   mu('boss3', 'boss', bosses('b_narkissa', 'b_dagon', 'b_mara', 'b_nemain'), { p2: true }),

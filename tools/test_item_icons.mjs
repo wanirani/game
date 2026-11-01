@@ -38,20 +38,24 @@ section('세트 부위 · 고유 아이템이 전용 키를 가리킨다');
 const pieces = Object.values(RELIC_SETS).flatMap((S) => S.pieces.map((p) => p[0]));
 ok(pieces.length === 19, `세트 부위 19개 (${pieces.length})`);
 for (const id of pieces) ok(ITEMS[id]?.icon === id, `${id} 아이콘 = 자기 id (${ITEMS[id]?.icon})`);
-for (const id of UNIQUES) ok(ITEMS[id]?.icon === id, `${id} 아이콘 = 자기 id (${ITEMS[id]?.icon})`);
+// 고유: 7단계 icons 때 51개 전부 전용. 그 뒤에 새로 생긴 고유(다른 작업 줄의 새 보스 드롭 등)는 전용 그림이 생길 때까지 일반 아이콘이어도 된다 (알림만)
+const OWN_U = UNIQUES.filter((id) => ITEMS[id]?.icon === id), NO_U = UNIQUES.filter((id) => ITEMS[id]?.icon !== id);
+ok(OWN_U.length >= 51, `전용 아이콘 고유 ${OWN_U.length}개 (≥ 51)`);
+if (NO_U.length) console.log(`  · 전용 아이콘이 아직 없는 고유 ${NO_U.length}개: ${NO_U.join(' ')} (일반 아이콘 그대로 — tools/higgsfield/README.md 순서로 만들 수 있다)`);
+for (const id of NO_U) ok(fs.existsSync(iconFile(ITEMS[id]?.icon ?? '')), `${id} 일반 아이콘 ${ITEMS[id]?.icon}.png 있음`);
 let bytes = 0;
-for (const id of [...pieces, ...UNIQUES]) {
+for (const id of [...pieces, ...OWN_U]) {
   const s = pngSize(iconFile(id));
   ok(s && s.w === 128 && s.h === 128, `${id}.png 128×128 PNG`);
   ok(s && s.bytes <= 12 * 1024, `${id}.png ≤ 12 KB (${s?.bytes})`);
   bytes += s?.bytes ?? 0;
 }
-console.log(`  전용 아이콘 ${pieces.length + UNIQUES.length}개 · ${(bytes / 1024).toFixed(1)} KB`);
+console.log(`  전용 아이콘 (세트 + 고유) ${pieces.length + OWN_U.length}개 · ${(bytes / 1024).toFixed(1)} KB`);
 
 section('대체 아이콘 표 (data/item_icons.js)');
 const keys = Object.keys(ICON_FALLBACK);
-const extra = keys.filter((k) => !pieces.includes(k) && !UNIQUES.includes(k));
-ok(keys.length >= pieces.length + UNIQUES.length && extra.every((k) => /^[mk]_/.test(k)), `대체 표 ${keys.length} = 세트 ${pieces.length} + 고유 ${UNIQUES.length} + 재료·중요 물품 ${extra.length}`);
+const extra = keys.filter((k) => !pieces.includes(k) && !OWN_U.includes(k));
+ok(keys.length >= pieces.length + OWN_U.length && extra.every((k) => /^[mkc]_/.test(k)), `대체 표 ${keys.length} = 세트 ${pieces.length} + 고유 ${OWN_U.length} + 재료·중요 물품·소모품 ${extra.length}`);
 for (const k of extra) {
   ok(ITEMS[k]?.icon === k, `${k} 아이콘 = 자기 id (${ITEMS[k]?.icon})`);
   const s = pngSize(iconFile(k));
@@ -59,7 +63,7 @@ for (const k of extra) {
 }
 // 다른 아이템의 전용 아이콘을 빌려 쓰는 베이스가 없다 (전용 키는 그 아이템만)
 for (const b of Object.values(ITEMS)) if (Object.hasOwn(ICON_FALLBACK, b.icon)) ok(b.icon === b.id, `${b.id} 가 남의 전용 아이콘 ${b.icon} 을 쓰지 않는다`);
-for (const id of [...pieces, ...UNIQUES]) ok(Object.hasOwn(ICON_FALLBACK, id), `${id} 대체 아이콘 있음`);
+for (const id of [...pieces, ...OWN_U]) ok(Object.hasOwn(ICON_FALLBACK, id), `${id} 대체 아이콘 있음`);
 for (const [k, v] of Object.entries(ICON_FALLBACK)) {
   ok(typeof v === 'string' && !Object.hasOwn(ICON_FALLBACK, v), `${k} → ${v} (일반 키)`);
   ok(fs.existsSync(iconFile(v)), `${k} 의 대체 ${v}.png 있음`);

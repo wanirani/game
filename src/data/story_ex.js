@@ -21,6 +21,7 @@
 //           b_bride_wither(체력 50%, form2 '시든 신부') 는 game/bosses/e_bride.js PATTERNS.transitions[1], b_bride_last(15% 이하 한 번, 회춘의 잔 강제와 함께)도 같은 파일이 민다.
 //           b_charon_unbridle(체력 50%, form2 '말을 잃은 마부') 는 game/bosses/e_charon.js PATTERNS.transitions[1], b_charon_last(15% 이하 한 번, lastLoad 와 함께)도 같은 파일이 민다.
 //   26장(외전)  대본은 story_ex26.js (SCRIPTS_EX26 → story_p2.js 에서 합친다), 크레딧 줄만 아래 CREDITS_EX.s26 으로 가져온다
+//   27장(외전 Ⅱ) 대본은 story_ex27.js (SCRIPTS_EX27 → story_p2.js), 크레딧 줄만 CREDITS_EX.s27
 // 이졸데(hero7): 플레이 중인 영웅이 아니면 R('isolde') 로 동행하는 NPC 로 말하고, 이졸데로 플레이 중이면 ifChar 분기에서 본인(H)이 말한다.
 // 리아(22장): 같은 방식 — 리아가 아니면 R('lia') 동행 NPC, 리아로 플레이 중이면 ifChar('lia', …) 분기에서 본인(H). 다른 영웅 반응 H({…}) 에는 isolde 도 있다.
 // 빅터(23장): 같은 방식 — 빅터가 아니면 R('victor') 동행 NPC, 빅터로 플레이 중이면 ifChar('victor', …) 분기에서 본인(H). 레이븐은 나오지 않는다 (RVX 없음).
@@ -42,6 +43,7 @@
 //         s25_outro 의 합류(recruit + flag)와 ex_s25_done 도 같은 자리 — 첫 조건 줄(ifChar)보다 앞 (MG 는 recruit 뒤에만 쓴다).
 
 import { CREDITS_EX26 } from './story_ex26.js';   // story_ex26.js 는 아무것도 import 하지 않는다 (순환 없음)
+import { CREDITS_EX27 } from './story_ex27.js';   // story_ex27.js 도 아무것도 import 하지 않는다 (외전 Ⅱ, docs/specs/ex_s27.md)
 
 const N = (text, x) => ({ who: 'narrator', text, ...x });
 const H = (text, x) => ({ who: 'hero', text, ...x });
@@ -1005,4 +1007,5 @@ export const CREDITS_EX = {
   s24: ['시드는 장미 — 첫 신부 엘제베트', '견습 수녀 — 클라라', '장미 향 나는 박쥐 — 베스퍼'],
   s25: ['불탄 목장의 밤 — 마부 카론', '흑철 군마 — 모르겐'],
   s26: CREDITS_EX26.s26,   // 1부 외전 — 1부 엔딩 크레딧에도 ex_s26_done 이면 나온다
+  s27: CREDITS_EX27.s27,   // 1부 외전 Ⅱ — 1부 엔딩 크레딧에도 ex_s27_done 이면 나온다
 };

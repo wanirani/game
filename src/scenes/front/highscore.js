@@ -28,8 +28,8 @@ import {
   recordHighScore, scoreList, fmtClock, follow, bossRushBests, towerBests, linGrad, radGrad, GOLD, BONE, DIM,
 } from './common.js';
 import { COURSES, visibleCourses, p2Known, exKnown } from './arcade.js';
-/** 서버가 아직 모르는 스테이지 (배포가 막혀 있는 동안 — docs/specs/ex_s26.md §5.3) */
-const ONLINE_PENDING = new Set(['s26']);
+/** 서버가 아직 모르는 스테이지 (배포가 막혀 있는 동안 — docs/specs/ex_s26.md §5.3 · ex_s27.md W19) */
+const ONLINE_PENDING = new Set(['s26', 's27']);
 import * as ENDING from './ending.js';
 import * as NG from '../../game/ngplus.js';   // [hook:ng]
 import { bus } from '../../core/events.js';

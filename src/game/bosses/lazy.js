@@ -46,6 +46,7 @@ const MODS = {
   b_bride: () => import('./e_bride.js').then((m) => m.Bride),   // 외전 s24
   b_charon: () => import('./e_charon.js').then((m) => m.Charon),   // 외전 s25
   b_paracel: () => import('./e_paracel.js').then((m) => m.Paracel),   // 외전 s26 (1부)
+  b_johan: () => import('./e_johan.js').then((m) => m.Johan),   // 외전 Ⅱ s27 (1부)
 };
 export const BOSS_IDS = Object.freeze(Object.keys(MODS));
 

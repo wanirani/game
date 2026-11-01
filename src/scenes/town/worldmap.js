@@ -11,7 +11,7 @@
 //     아직 맵이 없는 2부 스테이지(STAGES 에 없음)는 잠긴 노드로만 보인다.
 //   enter({ page }) : 페이지 지정이 우선. 없으면 가장 최근에 열린 미클리어 스테이지나 lastStage 가 2부면 1, 아니면 0
 //   해금 연출 (차례로): s13 (유물 5 + s12 클리어) · s14 (2부 시작 → flags.s14_revealed) · s20 (처음 열렸을 때 → flags.s20_revealed)
-//                       · 외전 s21 · s22 · s23 · s24 · s25 (2부 엔딩 p2_done 뒤 처음 지도를 열 때 해금 → flags.<id>_revealed — s26 은 SIDE_GATE: 7장 클리어 뒤; 연출은 그 외전의 쪽(STAGES[id].page)에서,
+//                       · 외전 s21 · s22 · s23 · s24 · s25 (2부 엔딩 p2_done 뒤 처음 지도를 열 때 해금 → flags.<id>_revealed — s26 은 SIDE_GATE: 7장 클리어 뒤 · s27 은 10장 클리어 뒤; 연출은 그 외전의 쪽(STAGES[id].page)에서,
 //                         한꺼번에 열리면 s21(이계 Ⅱ) → s22 → s23 → s24 → s25(악마성 Ⅰ 넷 연속) 차례로 — startReveal 이 쪽을 넘긴다. 회차는 flags 를 비우므로 다시 열린다)
 //   옛 세이브 (2부가 생기기 전에 s13 을 깼다): 들어오자마자 2부 프롤로그 → 마을 (world2 §2.2 — 지도는 마을 위에 쌓이는 장면이라 바로 가지 않는다)
 //   입력: 방향 = 노드 · 결정 = 출발 · 취소/메뉴 = 닫기 · 지도 전환 = Q/E·S/D·Tab (패드 LB/RB·LT·SELECT) · 터치 = 노드/탭/버튼
@@ -63,7 +63,8 @@ const P2_IDS = ['s14', 's15', 's16', 's17', 's18', 's19', 's20'];
 //   s23 → 악마성 Ⅰ 10장 얼어붙은 첨탑 오른쪽 눈 덮인 산맥, s24 → 악마성 Ⅰ 11장 피의 예배당 오른쪽 아래 남쪽 기슭,
 //   s25 → 악마성 Ⅰ 1장 불타는 마을 왼쪽 위 에슈빌 외곽 들판 (그레타의 불탄 목장)
 //   s26 → 악마성 Ⅰ 7장 연금술 연구소 아래 (지하 공방 — 1부 외전, 7장 클리어로 열린다)
-const SIDE_FROM = { s21: 's17', s22: 's02', s23: 's10', s24: 's11', s25: 's01', s26: 's07' };
+//   s27 → 악마성 Ⅰ 8장 지하 수로 아래 (잠긴 수문 — 1부 외전 Ⅱ, 10장 클리어로 열린다 · docs/specs/ex_s27.md)
+const SIDE_FROM = { s21: 's17', s22: 's02', s23: 's10', s24: 's11', s25: 's01', s26: 's07', s27: 's08' };
 const sidePage = (id) => STAGES[id]?.page ?? 1;
 // 외전 정보판의 동료 칸 (합류 플래그 · 합류 전/뒤 문구). label = 칸 이름 (없으면 '동료' — s23 은 동료 대신 무기 한 벌이라 '보상')
 const SIDE_INFO = {
@@ -73,9 +74,10 @@ const SIDE_INFO = {
   s24: { flag: 'recruit_gd_vesper', got: '박쥐 베스퍼 합류', wait: '장미 향 편지가 기다린다', col: '#ff8aa8', gotCol: '#ffd6e0' },
   s25: { flag: 'recruit_mt_morgen', got: '군마 모르겐 합류', wait: '불탄 목장에서 말이 운다', col: '#ffc070', gotCol: '#fff0d0' },
   s26: { label: '보상', flag: 'ex_s26_done', got: '연금 플라스크 · 외알 안경', wait: '호문쿨루스의 편지가 기다린다', col: '#d8c070', gotCol: '#fff0c0', tag: '7장 그 뒤의 이야기 · 권장 Lv 28' },   // tag = 외전 칸 문구 (없으면 2부 엔딩 그 뒤)
+  s27: { label: '보상', flag: 'ex_s27_done', got: '수문지기의 등불', wait: '마르타의 부탁이 기다린다', col: '#9ad0e0', gotCol: '#e0f6ff', tag: '10장 그 뒤의 이야기 · 권장 Lv 35' },
 };
-/** 외전이 열리는 조건 (없으면 2부 엔딩 뒤 — s21–s25). s26 은 7장 클리어 (docs/specs/ex_s26.md §1) */
-const SIDE_GATE = { s26: (P) => !!P.cleared?.s07 };
+/** 외전이 열리는 조건 (없으면 2부 엔딩 뒤 — s21–s25). s26 은 7장 클리어 (docs/specs/ex_s26.md §1) · s27 은 10장 클리어 (docs/specs/ex_s27.md §1) */
+const SIDE_GATE = { s26: (P) => !!P.cleared?.s07, s27: (P) => !!P.cleared?.s10 };
 // STAGES 에 아직 없는 2부 스테이지의 자리 (잠긴 노드로만 보인다; 값은 world2 §4.2)
 const P2_STUB = {
   s14: { name: '거울의 성', color: '#cfe8ff', mapPos: { x: 0.16, y: 0.74 } },
@@ -114,6 +116,7 @@ const REVEALS = {
   s24: { title: '외전 · 장미 수녀원', sub: '장미 향 나는 붉은 봉랍의 편지가 남쪽 기슭에서 날아들었다', color: '#ff6a8a', tcol: '#ffd6e0', crack: '#ffd6e0', fx: 'dark' },
   s25: { title: '외전 · 불탄 목장', sub: '그을린 고삐를 문 흑마가 에슈빌 여관 문을 두드렸다', color: '#ffb060', tcol: '#fff0d0', crack: '#fff0d0', fx: 'holy' },
   s26: { title: '외전 Ⅰ · 파라켈의 공방', sub: '편지를 안은 작은 호문쿨루스가 성당 문 밑으로 기어들었다', color: '#d8c070', tcol: '#fff0c0', crack: '#fff0c0', fx: 'holy' },
+  s27: { title: '외전 Ⅱ · 잠긴 수문', sub: '첨탑의 얼음이 녹아 흘러내렸다. 에슈빌의 우물이 검게 차오른다', color: '#9ad0e0', tcol: '#e0f6ff', crack: '#e0f6ff', fx: 'magic' },
 };
 
 /** 글자 폭을 재는 캔버스 (update 에서도 이름표 배치를 계산할 수 있게) */
@@ -183,6 +186,7 @@ export class WorldMapScene extends Scene {
     //   p2_done 은 엔딩 대본 끝에서야 켜지므로, 엔딩 장면이 먼저 저장한 ending_p2·ending_p2true 도 본다 (엔딩 도중 앱을 닫은 세이브 — hub.js 와 같은 규칙)
     //   연출은 그 외전이 놓인 지도에서 (s21 이계 Ⅱ · s22 · s23 · s24 · s25 악마성 Ⅰ — 처음 여는 2부 완주 세이브는 다섯이 차례로, startReveal 이 쪽을 넘긴다)
     //   s26 (1부 외전, ex_s26.md §1) 은 SIDE_GATE 로 — 7장을 깬 뒤 처음 지도를 열 때 (1부 중에도). 2부를 끝낸 옛 세이브는 다른 외전과 함께 차례로 열린다
+    //   s27 (1부 외전 Ⅱ, ex_s27.md §1) 도 SIDE_GATE — 10장을 깬 뒤. 10장 이상 세이브가 처음 지도를 열면 s26 → s27 차례로 (SIDE_STAGES 순서)
     const p2Ended = !!(F.p2_done || F.ending_p2 || F.ending_p2true);
     for (const id of SIDE_STAGES) {
       const open = SIDE_GATE[id] ? SIDE_GATE[id](P, F) : p2Ended;

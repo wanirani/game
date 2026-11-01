@@ -1,6 +1,6 @@
 // 특별 아이템 전용 그림 아이콘 (Stage 7 icons) — 새 아이콘 키 → 예전 일반 아이콘 키.
 //  그림: Higgsfield gpt_image_2_5 (지금 아이콘 띠를 참고 그림으로) → tools/higgsfield/key_green.py → 128×128 팔레트 PNG (기록: tools/higgsfield/manifest_icons.json)
-//  데이터(data/relic_sets.js 피의 유물 세트 rs_* · data/items.js 고유/신화 u_* · 재료 m_* · 중요 물품 k_*)는 새 키(= 아이템 id)를 가리킨다. 파일은 assets/icons/<새 키>.png (아이콘은 그릴 때 받는다 — 미리 받기 목록·lo 변형 없음).
+//  데이터(data/relic_sets.js 피의 유물 세트 rs_* · data/items.js 고유/신화 u_* · 재료 m_* · 중요 물품 k_* · 고급 에테르 c_hiether)는 새 키(= 아이템 id)를 가리킨다. 파일은 assets/icons/<새 키>.png (아이콘은 그릴 때 받는다 — 미리 받기 목록·lo 변형 없음).
 //  render/icons.js drawIcon: 받는 동안은 예전 키의 절차적 그림, 새 파일을 못 받으면(없음·오류) 예전 일반 아이콘 그림으로 그린다.
 //  예전 세이브의 인스턴스 아이콘은 game/state.js migrateState 가 베이스 아이콘으로 맞춘다.
 //  사냥 일지 등급 문장(hj_rank_1…6, data/hunt_journal.js HUNT_RANKS 순서)은 대체 그림이 없다 (못 받으면 문장 없이 글자만).
@@ -97,6 +97,7 @@ export const ICON_FALLBACK = Object.freeze({
   m_soul: 'amulet_6',
   k_letter: 'doc',
   k_locket: 'amulet_4',
+  c_hiether: 'potion_mp',   // 고급 에테르 (에테르와 같은 그림이었다)
 });
 /** 사냥 일지 등급 → 문장 아이콘 키 (assets/icons/hj_rank_<n>.png, n = 등급 + 1) */
 export const huntRankIcon = (rank) => `hj_rank_${Math.max(0, Math.min(5, rank | 0)) + 1}`;

@@ -24,7 +24,7 @@ export const TRAILS = Object.freeze({
   tr_dawn: { name: '여명', desc: '탑 꼭대기에서 맞는 새벽빛', ramp: ['#e8587e', '#ee7488', '#f39094', '#f7aca2', '#fbc8b2', '#ffe4c8'], need: { tw: 50 } },
   tr_nightmare: { name: '악몽', desc: '악몽에서 살아 돌아온 자의 검붉은 잔상', ramp: ['#5a0614', '#7a1424', '#9a2436', '#ba3a4c', '#d85a68', '#f0868e'], need: { nm: 1 } },
   tr_rose: { name: '흑장미', desc: '악몽의 정원에 핀 검은 장미', ramp: ['#6a0848', '#86205e', '#a23c78', '#be5c94', '#d880b2', '#f0a8d2'], need: { nm: 10 } },
-  tr_sovereign: { name: '군주', desc: '스물여섯 군주를 모두 꺾은 자의 진홍빛', ramp: ['#3a0008', '#6a0a18', '#a01828', '#d0303a', '#f0705a', '#ffd08a'], need: { nm: 26 } },   // 악몽 26 (외전 26장 s26 포함 — ch26_verify; 이미 고른 잔상은 거두지 않는다)
+  tr_sovereign: { name: '군주', desc: '스물일곱 군주를 모두 꺾은 자의 진홍빛', ramp: ['#3a0008', '#6a0a18', '#a01828', '#d0303a', '#f0705a', '#ffd08a'], need: { nm: 27 } },   // 악몽 27 (외전 26장 s26 · 외전 27장 s27 포함 — ch26_verify · ex_s27.md W14; 이미 고른 잔상은 거두지 않는다)
   // ── Stage 6 (사냥 일지, data/hunt_journal.js) ── 일지 점수 { hj: n } = 슬롯 1–3 중 가장 높은 state.hunt.pts (아케이드 임시 세이브 제외). 500점 = 등급 「명사냥꾼」
   tr_hunter: { name: '사냥꾼', desc: '사냥 일지를 채운 명사냥꾼의 올리브빛 잔상', ramp: ['#4a6a1e', '#617f32', '#7a9448', '#94aa62', '#b0c282', '#cedca6'], need: { hj: 500 } },
 });

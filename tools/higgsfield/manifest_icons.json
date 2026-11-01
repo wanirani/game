@@ -1,9 +1,13 @@
 {
  "batch": "icons (Stage 7 — special item icons)",
  "model": "gpt_image_2_5",
- "images": 96,
- "credits": 24.0,
- "kept": 95,
+ "images": 98,
+ "credits": 24.5,
+ "kept": 96,
+ "rejected": [
+  "rs_void_ring take 1",
+  "u_grimoire take 1"
+ ],
  "references": "3-icon strips of existing assets/icons (same slot, neighbouring tiers) on #26222b, uploaded as image_references",
  "items": [
   {
@@ -627,7 +631,7 @@
    "job_id": "37670a9d-8817-49bc-9c18-152fe899cc6a",
    "credits": 0.25,
    "kept": true,
-   "post": "magenta key (same method as key_green.py, #FF00FF) --size 128",
+   "post": "magenta key (key_green.py method on #FF00FF) --size 128",
    "quantize": "PIL FASTOCTREE 256 colours + optimize"
   },
   {
@@ -727,14 +731,14 @@
    "quantize": "PIL FASTOCTREE 256 colours + optimize"
   },
   {
-   "file": "assets/icons/u_grimoire.png",
+   "file": null,
    "id": "u_grimoire",
    "take": 1,
    "model": "gpt_image_2_5",
    "prompt": "Game inventory icon: a living purple-black grimoire spellbook with an eye on the cover and violet glow. Same 3D-rendered dark-fantasy game inventory icon style, materials, soft lighting and 3/4 view as the reference icons. One single object only, centered, filling about 80% of the square, no other objects. no text, no border, no frame, plain flat solid #00FF00 green background",
    "job_id": "9123a7c5-2b58-4bff-953c-e6e004c3b58b",
    "credits": 0.25,
-   "kept": true,
+   "kept": false,
    "post": "tools/higgsfield/key_green.py --size 128",
    "quantize": "PIL FASTOCTREE 256 colours + optimize"
   },
@@ -747,7 +751,7 @@
    "job_id": "b7c435bd-3f39-4f75-b7ba-cdc35be5c7ab",
    "credits": 0.25,
    "kept": true,
-   "post": "magenta key (same method as key_green.py, #FF00FF) --size 128",
+   "post": "magenta key (key_green.py method on #FF00FF) --size 128",
    "quantize": "PIL FASTOCTREE 256 colours + optimize"
   },
   {
@@ -1071,7 +1075,7 @@
    "job_id": "d1b3ae12-4994-4c39-8bea-5f9fa89ba8b8",
    "credits": 0.25,
    "kept": true,
-   "post": "magenta key (same method as key_green.py, #FF00FF) --size 128",
+   "post": "magenta key (key_green.py method on #FF00FF) --size 128",
    "quantize": "PIL FASTOCTREE 256 colours + optimize"
   },
   {
@@ -1083,7 +1087,7 @@
    "job_id": "94aeacd2-f0b3-4cb9-8726-f3e4f947e8bd",
    "credits": 0.25,
    "kept": true,
-   "post": "magenta key (same method as key_green.py, #FF00FF) --size 128",
+   "post": "magenta key (key_green.py method on #FF00FF) --size 128",
    "quantize": "PIL FASTOCTREE 256 colours + optimize"
   },
   {
@@ -1153,6 +1157,30 @@
    "model": "gpt_image_2_5",
    "prompt": "Game inventory icon: a small silver heart-shaped locket on a fine silver chain, slightly open. Same 3D-rendered dark-fantasy game inventory icon style, materials, soft lighting and 3/4 view as the reference icons. One single object only, centered, filling about 75% of the square, no other objects. no text, no border, no frame, plain flat solid #00FF00 green background",
    "job_id": "230112f2-09d8-4149-96aa-f84487f724bd",
+   "credits": 0.25,
+   "kept": true,
+   "post": "tools/higgsfield/key_green.py --size 128",
+   "quantize": "PIL FASTOCTREE 256 colours + optimize"
+  },
+  {
+   "file": "assets/icons/u_grimoire.png",
+   "id": "u_grimoire",
+   "take": 2,
+   "model": "gpt_image_2_5",
+   "prompt": "Game inventory icon: an ancient living grimoire spellbook bound in cracked crimson-brown leather with bone clasps and corner guards, a single golden eye open on the cover, a few loose pages fluttering out, faint violet runes floating above it. Same 3D-rendered dark-fantasy game inventory icon style, materials, soft lighting and 3/4 view as the reference icons. One single object only, centered, filling about 80% of the square, no other objects. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "job_id": "4f035937-ead4-4f16-9027-58e3a8ab7cf0",
+   "credits": 0.25,
+   "kept": true,
+   "post": "tools/higgsfield/key_green.py --size 128",
+   "quantize": "PIL FASTOCTREE 256 colours + optimize"
+  },
+  {
+   "file": "assets/icons/c_hiether.png",
+   "id": "c_hiether",
+   "take": 1,
+   "model": "gpt_image_2_5",
+   "prompt": "Game inventory icon: a tall elegant crystal flask of brilliant glowing deep-blue refined ether with a silver filigree cage and silver stopper, small sparkles. Same 3D-rendered dark-fantasy game inventory icon style, materials, soft lighting and 3/4 view as the reference icons. One single object only, centered, filling about 75% of the square, no other objects. no text, no border, no frame, plain flat solid #00FF00 green background",
+   "job_id": "c0382e1a-818a-4c88-9ad0-8cc3a0b96c24",
    "credits": 0.25,
    "kept": true,
    "post": "tools/higgsfield/key_green.py --size 128",

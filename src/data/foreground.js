@@ -48,6 +48,7 @@ export const FG_STAGES = {
   s17: { theme: 'sky' },       s18: { theme: 'nightmare' }, s19: { theme: 'blight' },   s20: { theme: 'void' },
   s21: { theme: 'sky', ...RIFT },      s22: { theme: 'graveyard', ...RIFT }, s23: { theme: 'spire', ...RIFT },
   s24: { theme: 'chapel', ...RIFT },   s25: { theme: 'village', ...RIFT },   s26: { theme: 'alchemy' },
+  s27: { theme: 'waterway' },   // 외전 Ⅱ (1부 — 균열 잔해 없음, s08 수로와 같다)
   arena: { theme: 'arena' },
 };
 

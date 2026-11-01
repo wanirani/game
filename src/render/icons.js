@@ -3,7 +3,7 @@
 // itemInstance 가 있으면 희귀도 테두리 광채/강화 수치 오라를 덧그림.
 // 절차적 대체 아이콘은 7단계(2부: <type>_7 · head/body/cloak_7 · ring/amulet_7)와 2부 중요 물품
 // (wheart_1…6 세계의 심장, star_shard 별의 조각, rift_lantern 균열의 등불, dawnflower 새벽꽃)도 그린다.
-// 특별 아이템 전용 아이콘(data/item_icons.js — 피의 유물 세트 rs_* · 고유/신화 u_*): 받는 동안은 예전 일반 아이콘 키의 절차적 그림,
+// 특별 아이템 전용 아이콘(data/item_icons.js — 피의 유물 세트 rs_* · 고유/신화 u_* · 일부 재료 m_* · 중요 물품 k_*): 받는 동안은 예전 일반 아이콘 키의 절차적 그림,
 // 파일을 못 받으면(없음·오류) 예전 일반 아이콘 그림으로 그린다.
 import { assets } from '../core/assets.js';
 import { TAU } from '../core/math.js';

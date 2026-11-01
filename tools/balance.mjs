@@ -115,7 +115,7 @@ const med = (a) => { const s = [...a].sort((x, y) => x - y); return s[Math.floor
 const MAIN_EXP = {};   // 스테이지 → 메인 퀘스트 보상 경험치
 for (const q of Object.values(QUESTS)) if (q.kind === 'main' && q.goal?.type === 'clear') MAIN_EXP[q.goal.stage] = (MAIN_EXP[q.goal.stage] ?? 0) + (q.reward?.exp ?? 0);
 /** [ch26_verify] 1부 외전 → 권장 진입 지점 (그 장을 막 깬 영웅으로 행을 센다): s26 = 「9장 뒤 (권장 하한) Lv 28」 (docs/specs/ex_s26.md §2.3) */
-const P1_SIDE_AFTER = Object.freeze({ s26: 's09' });
+const P1_SIDE_AFTER = Object.freeze({ s26: 's09', s27: 's11' });   // s27 = 「11장 뒤 (권장 하한) Lv 35」 (docs/specs/ex_s27.md §2.3)
 
 // ── 결정적 난수 (옵션 추첨용) — makeItem → rollAffixes 가 Math.random 을 쓴다
 function mulberry32(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -353,7 +353,7 @@ for (const r of run?.rows ?? []) {
 if (run && !(run.endLevel >= END_LV[0] && run.endLevel <= END_LV[1])) fails.push({ stage: 'end', key: 'plv', value: run.endLevel, lo: END_LV[0], hi: END_LV[1], dir: run.endLevel < END_LV[0] ? 'low' : 'high' });
 const mode = charId === 'kael' ? 'kael' : STRICT ? 'strict ±30%' : '1부 기준 보정';
 
-// ── [play-fix #2] 1부 외전 s26 (파라켈) 줄 검사 — Fold 리플레이 #2: 모형은 한 대 15% 라 보았는데 실제 패턴 배율(0.5–1.0)이 낮아 2–6% 였다.
+// ── [play-fix #2] 1부 외전 줄 검사 (s26 파라켈 — ex_s27 W20 부터 s27 요한도, 아래 SIDE_P1) — Fold 리플레이 #2: 모형은 한 대 15% 라 보았는데 실제 패턴 배율(0.5–1.0)이 낮아 2–6% 였다.
 //  P1_SIDE_AFTER 진입 영웅(9장을 막 깬 영웅 · 그 장비 줄)으로 센 s26 줄을 같은 영웅의 s07–s10 줄과 견준다 (영웅마다 자기 띠 — 1부 직업 설계 그대로):
 //   ① 타수 · 모형 시간 · 보스 1타(모션 1.2) = 그 영웅 s07–s10 의 [가장 작은 값 × 0.85, 가장 큰 값 × 1.2] 안. 카엘은 명세 목표도 (ex_s26.md §2.3: 106타 · 16초 · 15.2% →
 //      타수 90–120 · 보스 1타 13–18%)
@@ -362,18 +362,26 @@ const mode = charId === 'kael' ? 'kael' : STRICT ? 'strict ±30%' : '1부 기준
 //   ③ 넘친 레벨: Lv 34 영웅(그 레벨에 처음 닿은 장의 장비) — 타수 ≤ 진입 × 0.85 · 보스 1타 ≤ 진입 × 0.7 (권장 상한에서 쉬워진다)
 //   ④ 첫 장비 (카엘만 — 시작 무기·몸통 1단계, 희귀도 0 · 강화 0, tools/fixtures/save_ch6_nocmp 의 차림) Lv 28: 무거운 한 방 ≤ 40%
 //      (세 대는 버틴다) · 타수 ≤ 진입 × 3.0 (s07–s10 의 같은 비교 1.8–2.6) — 어렵되 가망 없지는 않게
-const SIDE_S26 = { peers: ['s07', 's08', 's09', 's10'], lo: 0.85, hi: 1.2, kael: { bossHits: [90, 120], bossTaken: [13, 18] }, heavy: [0.9, 1.3], typ: 0.7, overLv: 34, over: { bossHits: 0.85, bossTaken: 0.7 }, starterLv: 28, starter: { heavy: 40, hits: 3.0 } };
-/** s26 보스 한 판 (simulate 의 보스 줄과 같은 식 — 아래 ①에서 진입 영웅 줄과 같은 값이 나오는지 함께 본다) */
-function s26Fight(P, mag) {
-  const st = STAGES.s26, b = BOSSES[st?.boss];
+// [ex_s27 W20] 1부 외전이 둘(s26 · s27)이 되어 표를 외전마다 둔다 — s26 줄은 예전 SIDE_S26 그대로 (같은 칸 · 같은 판정).
+//  s27 (요한, ex_s27.md §2.3): 진입 = 11장을 막 깬 영웅 · 띠 = 그 영웅의 s11–s12 줄 [가장 작은 값 × 0.85, 가장 큰 값 × 1.2] · 패턴 표 JOHAN_MV ·
+//   넘친 레벨 = 권장 상한 Lv 41 (타수 ≤ 진입 × 0.85 · 보스 1타 ≤ 진입 × 0.9 — 진입 Lv 36 과 5레벨 차, 6단계 장비 전이라 s26 의 0.7 은 너무 빡빡하다). 카엘 명세 칸 · 첫 장비 칸은 없다 (s27 명세가 정한 숫자 목표가 아니다 — 띠 · 패턴 표로만 본다)
+const SIDE_P1 = {
+  s26: { peers: ['s07', 's08', 's09', 's10'], lo: 0.85, hi: 1.2, kael: { bossHits: [90, 120], bossTaken: [13, 18] }, kaelNote: 'ex_s26.md §2.3', heavy: [0.9, 1.3], typ: 0.7, overLv: 34, over: { bossHits: 0.85, bossTaken: 0.7 }, starterLv: 28, starter: { heavy: 40, hits: 3.0 }, mvName: 'PARACEL_MV' },
+  s27: { peers: ['s11', 's12'], lo: 0.85, hi: 1.2, kael: null, heavy: [0.9, 1.3], typ: 0.7, overLv: 41, over: { bossHits: 0.85, bossTaken: 0.9 }, starterLv: 0, starter: null, mvName: 'JOHAN_MV' },
+};
+const SIDE_S26 = SIDE_P1.s26;   // 옛 이름 (다른 도구가 읽을 수 있게)
+/** 1부 외전 보스 한 판 (simulate 의 보스 줄과 같은 식 — 아래 ①에서 진입 영웅 줄과 같은 값이 나오는지 함께 본다) */
+function sideFight(sid, P, mag) {
+  const st = STAGES[sid], b = BOSSES[st?.boss];
   if (!st || !b) return null;
   const bid = b.id ?? st.boss, bs = enemyStats({ ...b, lv: st.level }, st.level, { ...diff, enemyHp: diff.bossHp ?? diff.enemyHp }, false);
-  bs.atk = Math.round(bs.atk * knob('batk', bid, 's26'));   // --k 가정도 simulate 와 같이
-  const bhp = Math.round(bs.maxHp * (b.hpMul ?? 1) * knob('bhp', bid, 's26') * (1 + Math.max(0, 10 - (st.level - 1)) * 0.1) / (1 + Math.max(0, st.level - 24) * 0.035));
+  bs.atk = Math.round(bs.atk * knob('batk', bid, sid));   // --k 가정도 simulate 와 같이
+  const bhp = Math.round(bs.maxHp * (b.hpMul ?? 1) * knob('bhp', bid, sid) * (1 + Math.max(0, 10 - (st.level - 1)) * 0.1) / (1 + Math.max(0, st.level - 24) * 0.035));
   const d1 = dmg(P, bs, 1.0, mag);
   const hit = (mv) => dmg(bs, { def: P.def, dmgReduce: P.dmgReduce }, mv) / P.hp * 100;
   return { bossHits: Math.ceil(bhp / d1), bossTaken: +hit(1.2).toFixed(1), hit };
 }
+const s26Fight = (P, mag) => sideFight('s26', P, mag);   // 옛 이름
 /** 첫 장비 영웅 (시작 무기 · 몸통 1단계, 희귀도 0, 강화 0 — 머리 · 망토 · 장신구 없음), 직업은 기준 실행처럼 첫 갈래 */
 function starterHero(cid, level) {
   const h = newHero(cid, level);
@@ -386,41 +394,44 @@ function starterHero(cid, level) {
   }
   return computeStats({ inventory: inv, heroes: { [cid]: h }, progress: { docs: [] }, arcade: true }, h);
 }
-const side = [];   // { key, value, lo, hi, note }
-const sideRow = run?.rows.find((r) => r.stage === 's26');
-if (run && sideRow && run.p1side?.s26) {
+const side = [];   // { sid, key, value, lo, hi, note, ok } — 모든 1부 외전 줄 (JSON 의 side; s26 칸은 예전과 같다)
+const sideRows = {};   // sid → 표의 줄
+for (const [sid, T] of Object.entries(SIDE_P1)) {
+  const sideRow = run?.rows.find((r) => r.stage === sid);
+  if (!(run && sideRow && run.p1side?.[sid])) continue;
+  sideRows[sid] = sideRow;
   const R = Object.fromEntries(run.rows.map((r) => [r.stage, r]));
   const mag = CHARACTERS[charId].weaponType === 'staff';
-  const add = (key, value, lo, hi, note = '') => side.push({ key, value: +(+value).toFixed(2), lo: +lo.toFixed(2), hi: +hi.toFixed(2), note, ok: value >= lo && value <= hi });
+  const add = (key, value, lo, hi, note = '') => side.push({ sid, key, value: +(+value).toFixed(2), lo: +lo.toFixed(2), hi: +hi.toFixed(2), note, ok: value >= lo && value <= hi });
   for (const k of ['bossHits', 'bossSec', 'bossTaken']) {
-    const v = SIDE_S26.peers.map((sid) => R[sid]?.[k]).filter(Number.isFinite);
-    if (v.length) add(k, sideRow[k], Math.min(...v) * SIDE_S26.lo, Math.max(...v) * SIDE_S26.hi, `${SIDE_S26.peers.join('–')} ${v.join('/')}`);
+    const v = T.peers.map((p) => R[p]?.[k]).filter(Number.isFinite);
+    if (v.length) add(k, sideRow[k], Math.min(...v) * T.lo, Math.max(...v) * T.hi, `${T.peers.join('–')} ${v.join('/')}`);
   }
-  if (charId === 'kael') for (const [k, [lo, hi]] of Object.entries(SIDE_S26.kael)) add(`${k}(명세)`, sideRow[k], lo, hi, 'ex_s26.md §2.3');
+  if (charId === 'kael' && T.kael) for (const [k, [lo, hi]] of Object.entries(T.kael)) add(`${k}(명세)`, sideRow[k], lo, hi, T.kaelNote ?? '');
   // 같은 식인지 (진입 영웅을 다시 세어 표의 줄과 같아야 한다)
-  const P1 = run.heroAt(sideRow.plv, run.p1side.s26.idx, []).s, f1 = s26Fight(P1, mag);
-  if (f1) add('식 일치(타수)', f1.bossHits, sideRow.bossHits, sideRow.bossHits, 's26Fight = simulate');
+  const P1 = run.heroAt(sideRow.plv, run.p1side[sid].idx, []).s, f1 = sideFight(sid, P1, mag);
+  if (f1) add('식 일치(타수)', f1.bossHits, sideRow.bossHits, sideRow.bossHits, 'sideFight = simulate');
   // ② 패턴 표
-  const MVT = BOSSES[STAGES.s26.boss]?.mv ?? {};
+  const MVT = BOSSES[STAGES[sid].boss]?.mv ?? {};
   const mvs = Object.values(MVT).filter((x) => typeof x === 'number');
   const strikes = mvs.filter((x) => x >= 0.5).sort((a, b) => a - b);
   const heavy = mvs.length ? Math.max(...mvs) : 0, typ = strikes.length ? strikes[Math.floor(strikes.length / 2)] : 0;
   const heavyPct = sideRow.bossTaken * heavy / 1.2;
-  add('패턴 최대 1타%', heavyPct, sideRow.bossTaken * SIDE_S26.heavy[0], sideRow.bossTaken * SIDE_S26.heavy[1], `모션 ${heavy} (PARACEL_MV)`);
-  add('패턴 가운데 1타%', sideRow.bossTaken * typ / 1.2, sideRow.bossTaken * SIDE_S26.typ, Infinity, `모션 ${typ} · 한 방 ${strikes.length}개`);
+  add('패턴 최대 1타%', heavyPct, sideRow.bossTaken * T.heavy[0], sideRow.bossTaken * T.heavy[1], `모션 ${heavy} (${T.mvName})`);
+  add('패턴 가운데 1타%', sideRow.bossTaken * typ / 1.2, sideRow.bossTaken * T.typ, Infinity, `모션 ${typ} · 한 방 ${strikes.length}개`);
   // ③ 넘친 레벨
-  const gi = run.rows.findIndex((r) => !Object.hasOwn(run.p1side, r.stage) && r.plv >= SIDE_S26.overLv);
-  const Po = run.heroAt(SIDE_S26.overLv, gi >= 0 ? gi : run.rows.length - 1, []).s, fo = s26Fight(Po, mag);
+  const gi = run.rows.findIndex((r) => !Object.hasOwn(run.p1side, r.stage) && r.plv >= T.overLv);
+  const Po = run.heroAt(T.overLv, gi >= 0 ? gi : run.rows.length - 1, []).s, fo = sideFight(sid, Po, mag);
   if (fo) {
-    add(`Lv${SIDE_S26.overLv} 타수`, fo.bossHits, 0, sideRow.bossHits * SIDE_S26.over.bossHits, `진입 ${sideRow.bossHits}`);
-    add(`Lv${SIDE_S26.overLv} 보스 1타%`, fo.bossTaken, 0, sideRow.bossTaken * SIDE_S26.over.bossTaken, `진입 ${sideRow.bossTaken}`);
+    add(`Lv${T.overLv} 타수`, fo.bossHits, 0, sideRow.bossHits * T.over.bossHits, `진입 ${sideRow.bossHits}`);
+    add(`Lv${T.overLv} 보스 1타%`, fo.bossTaken, 0, sideRow.bossTaken * T.over.bossTaken, `진입 ${sideRow.bossTaken}`);
   }
-  // ④ 첫 장비 (카엘)
-  if (charId === 'kael') {
-    const Ps = starterHero(charId, SIDE_S26.starterLv), fs = s26Fight(Ps, mag);
+  // ④ 첫 장비 (카엘 · 표에 starter 가 있는 외전만)
+  if (charId === 'kael' && T.starter) {
+    const Ps = starterHero(charId, T.starterLv), fs = sideFight(sid, Ps, mag);
     if (fs) {
-      add(`첫 장비 Lv${SIDE_S26.starterLv} 최대 1타%`, fs.hit(heavy), 0, SIDE_S26.starter.heavy, `HP ${Math.round(Ps.hp)} · 방어 ${Math.round(Ps.def)}`);
-      add(`첫 장비 Lv${SIDE_S26.starterLv} 타수 비`, fs.bossHits / sideRow.bossHits, 1, SIDE_S26.starter.hits, `${fs.bossHits}타`);
+      add(`첫 장비 Lv${T.starterLv} 최대 1타%`, fs.hit(heavy), 0, T.starter.heavy, `HP ${Math.round(Ps.hp)} · 방어 ${Math.round(Ps.def)}`);
+      add(`첫 장비 Lv${T.starterLv} 타수 비`, fs.bossHits / sideRow.bossHits, 1, T.starter.hits, `${fs.bossHits}타`);
     }
   }
 }
@@ -442,13 +453,15 @@ if (!run) { /* --ng: 위에서 출력했다 */ } else if (JSON_OUT) {
       for (const f of fails) console.log(`   ${f.stage} ${f.key} = ${f.value}  (목표 ${f.lo}–${f.hi}, ${f.dir === 'low' ? '낮음' : '높음'})`);
     }
   }
-  if (side.length) {
-    console.log(`1부 외전 s26 (파라켈, 진입 Lv ${sideRow.plv}): ` + side.map((c) => `${c.ok ? '' : '✗'}${c.key} ${c.value}`).join(' · '));
+  for (const [sid, sideRow] of Object.entries(sideRows)) {
+    const T = SIDE_P1[sid], cs = side.filter((c) => c.sid === sid), bad = cs.filter((c) => !c.ok);
+    const bname = BOSSES[STAGES[sid]?.boss]?.name ?? STAGES[sid]?.boss ?? '';
+    console.log(`1부 외전 ${sid} (${bname}, 진입 Lv ${sideRow.plv}): ` + cs.map((c) => `${c.ok ? '' : '✗'}${c.key} ${c.value}`).join(' · '));
     if (CHECK) {
-      if (!sideFails.length) console.log(`✓ 1부 외전 s26 목표 안 (${side.length}칸 — s07–s10 띠 · 패턴 표 · Lv ${SIDE_S26.overLv} · ${charId === 'kael' ? '첫 장비' : '첫 장비는 카엘만'})`);
+      if (!bad.length) console.log(`✓ 1부 외전 ${sid} 목표 안 (${cs.length}칸 — ${T.peers[0]}–${T.peers[T.peers.length - 1]} 띠 · 패턴 표 · Lv ${T.overLv}${T.starter ? ` · ${charId === 'kael' ? '첫 장비' : '첫 장비는 카엘만'}` : ''})`);
       else {
-        console.log(`✗ 1부 외전 s26 목표 밖 ${sideFails.length}칸:`);
-        for (const c of sideFails) console.log(`   s26 ${c.key} = ${c.value}  (목표 ${c.lo}–${c.hi === Infinity ? '∞' : c.hi}${c.note ? ', ' + c.note : ''})`);
+        console.log(`✗ 1부 외전 ${sid} 목표 밖 ${bad.length}칸:`);
+        for (const c of bad) console.log(`   ${sid} ${c.key} = ${c.value}  (목표 ${c.lo}–${c.hi === Infinity ? '∞' : c.hi}${c.note ? ', ' + c.note : ''})`);
       }
     }
   }

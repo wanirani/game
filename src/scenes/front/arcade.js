@@ -100,6 +100,7 @@ export const BOSS_ORDER = [
   'b_bride',   // 외전 (s24)
   'b_charon',  // 외전 (s25)
   'b_paracel', // 외전 (s26) — 1부 외전: 7장 클리어로 아는 플레이어에게만 (s26Known). 25번 — 기존 코스 from/to 기록 키는 그대로
+  'b_johan',   // 외전 Ⅱ (s27) — 1부 외전: 10장 클리어로 아는 플레이어에게만 (p1SideKnown). 26번 — 기존 코스 from/to 기록 키는 그대로 (docs/specs/ex_s27.md W17)
 ];
 /** BOSS_ORDER 에서 1부 보스 수 (이 뒤는 2부) */
 export const P1_BOSSES = 13;
@@ -143,6 +144,13 @@ COURSES.push(...RULE_COURSES);
  */
 export const S26_COURSE = { name: '외전 Ⅰ', sub: '7~10장 보스 · 파라켈의 공방', from: 25, to: 26, ids: ['b_chimera', 'b_leviathan', 'b_colossus', 'b_frostqueen', 'b_paracel'], s26: true, short: '외전 Ⅰ' };
 COURSES.push(S26_COURSE);
+S26_COURSE.side = 's26';   // 1부 외전 코스 표식 (courseAvailable — 그 외전을 아는 플레이어만). s26: true 는 메뉴 색 · 옛 시험 때문에 그대로 둔다
+/**
+ * 1부 외전 Ⅱ 코스 「외전 Ⅱ」 (docs/specs/ex_s27.md §5 W17) — 번호 19 (기기 기록: 서버 COURSE_COUNT 밖 → localCourse).
+ * ids = 8 · 10 · 11 · 12장 보스 넷 + 26번 요한. s27 을 아는 플레이어(p1SideKnown 에 's27')만 — 2부를 몰라도, s26 을 몰라도
+ */
+export const S27_COURSE = { name: '외전 Ⅱ', sub: '8·10~12장 보스 · 잠긴 수문', from: 26, to: 27, ids: ['b_leviathan', 'b_frostqueen', 'b_death', 'b_dracula', 'b_johan'], side: 's27', short: '외전 Ⅱ' };
+COURSES.push(S27_COURSE);
 /** 아케이드 메뉴 코스 줄에 규칙 코스를 보이는가 (tools/test_rush_rules.mjs 통과 뒤 켬 — 끄면 메뉴에서만 숨고 ?course= 바로 열기는 그대로) */
 export const RULE_COURSES_ON = true;
 /** 휴식 없음: 점수 배율 */
@@ -157,6 +165,7 @@ export const localCourse = (ci) => !!COURSES[ci]?.rule || !(Number(ci) >= 0 && N
 const P2_COLOR = '#c8b8ff';
 const EX_COLOR = '#c8e4ff';   // 외전 코스 (s21 아르겐 · s22 네메인 · s23 하겐 · s24 엘제베트 · s25 카론)
 const S26_COLOR = '#e8d090';   // 1부 외전 코스 「외전 Ⅰ」 (s26 파라켈)
+const S27_COLOR = '#9ad0e0';   // 1부 외전 코스 「외전 Ⅱ」 (s27 요한)
 
 /**
  * 이 보스를 아케이드에 낼 수 있는가: 늦게 받기 입구(lazy.js)가 클래스 모듈을 아는 보스 (20명 모두 진짜 클래스가 있다;
@@ -212,23 +221,43 @@ export function exKnown(game, unlocks = null) {
   const st = game?.state?.arcade ? game?._arcadePrev : game?.state;
   return !!(Array.isArray(st?.progress?.unlocked) && SIDE_STAGES_P2.some((id) => st.progress.unlocked.includes(id)));
 }
-/** 1부 외전 s26 (docs/specs/ex_s26.md) 을 아는 플레이어인가: 어느 슬롯이든 s26 해금 · 코나미. unlocks 를 주면 슬롯을 다시 읽지 않는다 */
-export function s26Known(game, unlocks = null) {
-  if (game?.meta?.konami) return true;
-  if ((unlocks ?? slotUnlocks()).has('s26')) return true;
+/** 1부 외전 스테이지 → 그 외전 보스 (docs/specs/ex_s26.md · ex_s27.md). 2부를 몰라도 그 외전을 열었으면 아케이드에 나온다 */
+export const P1_SIDE = { s26: 'b_paracel', s27: 'b_johan' };
+const P1_SIDE_BOSSES = new Set(Object.values(P1_SIDE));
+/**
+ * 아는 1부 외전 id 의 Set: 어느 슬롯이든 해금(지난 회차 포함) · 지금 회차 · 코나미 = 전부. unlocks 를 주면 슬롯을 다시 읽지 않는다.
+ * courseAvailable · arenaBosses · menuCourses · sanitizeCfg · random6Pool 의 셋째(넷째) 인자로 그대로 넘긴다 (p1Set)
+ */
+export function p1SideKnown(game, unlocks = null) {
+  const all = Object.keys(P1_SIDE);
+  if (game?.meta?.konami) return new Set(all);
+  const u = unlocks ?? slotUnlocks();
   const st = game?.state?.arcade ? game?._arcadePrev : game?.state;
-  return !!(Array.isArray(st?.progress?.unlocked) && st.progress.unlocked.includes('s26'));
+  const cur = Array.isArray(st?.progress?.unlocked) ? st.progress.unlocked : [];
+  return new Set(all.filter((sid) => u.has(sid) || cur.includes(sid)));
+}
+/** 1부 외전 s26 (docs/specs/ex_s26.md) 을 아는 플레이어인가 — p1SideKnown 에 's26' 이 있나 (옛 이름 그대로 남긴다) */
+export function s26Known(game, unlocks = null) { return p1SideKnown(game, unlocks).has('s26'); }
+/**
+ * 1부 외전 인자 정리: Set · 배열은 그대로 (아는 외전 id), **예전 불린 true 는 s26 만** (옛 호출 · 시험 — rush26 · test_rush_rules 그대로),
+ * false · 없음은 빈 Set
+ */
+export function p1Set(x) {
+  return x === true ? new Set(['s26']) : x instanceof Set ? x : Array.isArray(x) ? new Set(x) : new Set();
 }
 /** 이 헌터 등급을 고를 수 있는가 */
 export function presetAvailable(i, p2) {
   const P = ALL_PRESETS[i];
   return !!P && (!P.p2 || !!p2);
 }
-/** 이 코스를 고를 수 있는가: 2부 코스는 p2Known + 준비된 2부 보스가 하나 이상, 외전 코스(ex)는 exKnown 도, 1부 외전 코스(s26)는 s26Known + 보스가 모두 준비됨 */
+/**
+ * 이 코스를 고를 수 있는가: 2부 코스는 p2Known + 준비된 2부 보스가 하나 이상, 외전 코스(ex)는 exKnown 도,
+ * 1부 외전 코스(side: 's26' · 's27')는 그 외전을 앎(s26 = p1Set 규칙: Set · 배열 · 예전 true = s26 만) + 보스가 모두 준비됨
+ */
 export function courseAvailable(ci, p2, ex = false, s26 = false) {
   const c = COURSES[ci];
   if (!c) return false;
-  if (c.s26) return !!s26 && (c.ids ?? []).every((id) => bossUsable(id) || BOSS_ORDER.indexOf(id) < P1_BOSSES);
+  if (c.side) return p1Set(s26).has(c.side) && (c.ids ?? []).every((id) => bossUsable(id) || BOSS_ORDER.indexOf(id) < P1_BOSSES);
   if (!c.p2) return true;
   if (!p2 || (c.ex && !ex)) return false;
   return BOSS_ORDER.slice(Math.max(c.from, P1_BOSSES), c.to).some((id) => bossUsable(id));
@@ -236,7 +265,7 @@ export function courseAvailable(ci, p2, ex = false, s26 = false) {
 export const visiblePresets = (p2) => ALL_PRESETS.map((_, i) => i).filter((i) => presetAvailable(i, p2));
 /** 순위표가 있는 코스 (명예의 전당 온라인 탭도 쓴다 — 규칙 코스는 빠진다) */
 export const visibleCourses = (p2, ex = false) => COURSES.map((_, i) => i).filter((i) => !COURSES[i].rule && !localCourse(i) && courseAvailable(i, p2, ex));
-/** 아케이드 메뉴의 코스 줄: 순위표 코스 + 규칙 코스 (RULE_COURSES_ON) + 1부 외전 코스 (s26Known) */
+/** 아케이드 메뉴의 코스 줄: 순위표 코스 + 규칙 코스 (RULE_COURSES_ON) + 1부 외전 코스 (s26 = p1SideKnown Set — 아는 외전의 코스만) */
 export const menuCourses = (p2, ex = false, s26 = false) => COURSES.map((_, i) => i).filter((i) => (RULE_COURSES_ON || !COURSES[i].rule) && courseAvailable(i, p2, ex, s26));
 
 /** 코스의 보스 목록 (2부 보스는 준비된 것만; 비면 첫 코스) */
@@ -255,9 +284,13 @@ export function courseLabel(ci) {
   const n = courseBosses(ci).length;
   return n === (c.ids?.length ?? c.to - c.from) ? `${c.name} · ${c.sub}` : `${c.name} · ${n}연전`;
 }
-/** 서바이벌 보스 웨이브에 나오는 보스 (1부, 2부를 알면 준비된 2부 보스까지, 외전을 알면(ex) 외전 보스까지, 1부 외전 s26 을 알면(s26) 파라켈 — 2부를 몰라도) */
+/**
+ * 서바이벌 보스 웨이브에 나오는 보스 (1부, 2부를 알면 준비된 2부 보스까지, 외전을 알면(ex) 외전 보스까지,
+ * 1부 외전 보스(P1_SIDE — 파라켈 · 요한)는 그 외전을 알면 (s26 = p1Set 규칙: 예전 true 는 s26 만) — 2부를 몰라도)
+ */
 export function arenaBosses(p2, ex = false, s26 = false) {
-  return BOSS_ORDER.filter((id, i) => BOSSES[id] && (i < P1_BOSSES || (id === 'b_paracel' ? s26 && bossReady(id) : p2 && bossReady(id) && (i < STORY_BOSSES || ex))));
+  const side = p1Set(s26);
+  return BOSS_ORDER.filter((id, i) => BOSSES[id] && (i < P1_BOSSES || (P1_SIDE_BOSSES.has(id) ? side.has(BOSSES[id].stageId) && bossReady(id) : p2 && bossReady(id) && (i < STORY_BOSSES || ex))));
 }
 /** 외전 보스 중 준비된 것 (무한의 탑: 스테이지 순서를 다 지난 무작위 구간에만 섞는다 — data/tower.js lateBosses) */
 export function sideBosses() {
@@ -312,7 +345,7 @@ export function addRelayHero(state, cfg, id, ascPick = null) {
   state.heroes[id] = h;
   return h;
 }
-/** 아케이드 설정 정리: 모르는 모드·난이도, 숨긴(또는 없는) 헌터 등급·코스는 기본값/0번으로 (ex = exKnown: 외전 코스 · s26 = s26Known: 외전 Ⅰ 코스) */
+/** 아케이드 설정 정리: 모르는 모드·난이도, 숨긴(또는 없는) 헌터 등급·코스는 기본값/0번으로 (ex = exKnown: 외전 코스 · s26 = p1SideKnown Set: 외전 Ⅰ · Ⅱ 코스, 예전 true = s26 만) */
 export function sanitizeCfg(cfg, p2, stages = null, ex = false, s26 = false) {
   const c = { kind: 'bossrush', diff: 'normal', preset: 1, course: 0, stageId: 's01', ...(cfg && typeof cfg === 'object' && !Array.isArray(cfg) ? cfg : {}) };
   if (!MODE_ORDER.includes(c.kind)) c.kind = 'bossrush';
@@ -451,7 +484,7 @@ export function ascChoices(game, charId, seen = null) {
 /** 캐릭터 선택 후 호출: 임시 세이브를 만들고 모드 장면으로 (초월 등급이고 길을 아직 안 골랐으면 초월 고르기 장면으로) */
 export function startArcade(game, cfg, charId) {
   const unlocks = slotUnlocks();
-  cfg = sanitizeCfg(cfg, p2Known(game, unlocks), practiceStages(game, unlocks), exKnown(game, unlocks), s26Known(game, unlocks));
+  cfg = sanitizeCfg(cfg, p2Known(game, unlocks), practiceStages(game, unlocks), exKnown(game, unlocks), p1SideKnown(game, unlocks));
   if (!CHARACTERS[charId]) charId = 'kael';
   if (presetOf(cfg.preset).asc && !cfg.daily && ASCENSIONS[cfg.asc]?.charId !== charId && ascListOf(charId).length) {
     if (!game.registry?.arcadeClass) game.register?.('arcadeClass', ArcadeClassScene);
@@ -498,10 +531,11 @@ export class ArcadeScene extends Scene {
     const unlocks = slotUnlocks();
     this.p2 = p2Known(this.game, unlocks);
     this.ex = exKnown(this.game, unlocks);   // 외전 코스 (docs/specs/ex_s21.md)
-    this.s26 = s26Known(this.game, unlocks);   // 1부 외전 코스 「외전 Ⅰ」 (docs/specs/ex_s26.md §5.2)
+    this.p1s = p1SideKnown(this.game, unlocks);   // 아는 1부 외전 (Set) — 코스 「외전 Ⅰ」(s26) · 「외전 Ⅱ」(s27) (ex_s26.md §5.2 · ex_s27.md W17)
+    this.s26 = this.p1s.has('s26');   // 불린 별칭 (옛 시험이 읽는다)
     this.stages = practiceStages(this.game, unlocks);
     const saved = m.arcadeCfg && typeof m.arcadeCfg === 'object' && !Array.isArray(m.arcadeCfg) ? m.arcadeCfg : {}; // 망가진 옛 설정은 버린다
-    this.cfg = sanitizeCfg({ ...saved, ...(cfg ?? {}) }, this.p2, this.stages, this.ex, this.s26);
+    this.cfg = sanitizeCfg({ ...saved, ...(cfg ?? {}) }, this.p2, this.stages, this.ex, this.p1s);
     delete this.cfg.seed;   // 무한의 탑 시드는 판마다 새로 (메뉴·arcadeCfg 에 남기지 않는다)
     delete this.cfg.asc;    // 초월 길은 헌터를 고른 뒤 매번 고른다 (지난 선택은 meta.arcadeAsc 가 기억해 처음 칸으로)
     this.modeIndex = Math.max(0, MODE_ORDER.indexOf(this.cfg.kind));
@@ -583,10 +617,10 @@ export class ArcadeScene extends Scene {
       { id: 'preset', label: '헌터 레벨', value: `Lv.${P.lv} · ${P.name}`, clamp: true, color: P.asc ? ASC_COLOR : P.p2 ? P2_COLOR : null, n: pres.length, i: pi, set: (i) => { c.preset = pres[i]; } },
     ];
     if (k === 'bossrush') {
-      const cs = menuCourses(this.p2, this.ex, this.s26);   // 순위표 코스 + 규칙 코스 (릴레이 · 무작위 6 · 휴식 없음) + 외전 Ⅰ
+      const cs = menuCourses(this.p2, this.ex, this.p1s);   // 순위표 코스 + 규칙 코스 (릴레이 · 무작위 6 · 휴식 없음) + 외전 Ⅰ · Ⅱ
       const ci = Math.max(0, cs.indexOf(c.course));
       const C = COURSES[cs[ci]];
-      rows.push({ id: 'course', label: '코스', value: courseLabel(cs[ci]), color: C?.rule ? RULE_COLOR : C?.s26 ? S26_COLOR : C?.ex ? EX_COLOR : C?.p2 ? P2_COLOR : null, n: cs.length, i: ci, set: (i) => { c.course = cs[i]; } });
+      rows.push({ id: 'course', label: '코스', value: courseLabel(cs[ci]), color: C?.rule ? RULE_COLOR : C?.side === 's27' ? S27_COLOR : C?.s26 ? S26_COLOR : C?.ex ? EX_COLOR : C?.p2 ? P2_COLOR : null, n: cs.length, i: ci, set: (i) => { c.course = cs[i]; } });
       if (C?.rule === 'random6') {
         const si = Math.max(0, RUSH_SEEDS.findIndex((s) => s.id === c.rushSeed));
         rows.push({ id: 'seed', label: '시드', value: RUSH_SEEDS[si].name, color: si ? RULE_COLOR : null, n: RUSH_SEEDS.length, i: si, set: (i) => { c.rushSeed = RUSH_SEEDS[i].id; } });
@@ -881,7 +915,7 @@ export class ArcadeScene extends Scene {
   /** 규칙 코스 안내 한 줄 (메뉴 오른쪽 칸) */
   ruleHint(rule) {
     if (rule === 'relay') return `라운드마다 다음 헌터로 교대 · 합류 ${joinedHeroes(this.game).length}명`;
-    if (rule === 'random6') return this.cfg.rushSeed === 'daily' ? '오늘의 시드 · 오늘 하루는 같은 보스 여섯' : `아는 보스 ${random6Pool(this.p2, this.ex, this.s26).length}명 중 여섯이 무작위로`;
+    if (rule === 'random6') return this.cfg.rushSeed === 'daily' ? '오늘의 시드 · 오늘 하루는 같은 보스 여섯' : `아는 보스 ${random6Pool(this.p2, this.ex, this.p1s).length}명 중 여섯이 무작위로`;
     if (rule === 'norest') return `라운드 사이 회복 없음 · 점수 ×${NOREST_SCORE}`;
     return '';
   }

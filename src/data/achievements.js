@@ -3,7 +3,7 @@
 //   - cond: 지표 m(arg) ≥ n 이면 달성 (지표는 src/game/achievements.js metric — §3.3 표)
 //   - reward: { gold } · { items: [{ id, qty }] } · { title: 't_…' } · { deco: 'd_…' } (이명·장식은 core/ach_meta.js 표). 없으면 기본 골드 pts × 25
 //   - hidden: 달성 전에는 '숨겨진 업적' (모두 secret 분류)
-//  데이터 순서 = 표시 순서. 시험: tools/test_achievements.mjs C1 (68개 · 점수 합 1,650 · 보상 참조 · 이명 17 · 장식 5)
+//  데이터 순서 = 표시 순서. 시험: tools/test_achievements.mjs C1 (69개 · 점수 합 1,670 · 보상 참조 · 이명 17 · 장식 5)
 
 export const ACH_CATS = [
   { id: 'story', name: '이야기', glyph: 'book' }, { id: 'combat', name: '전투', glyph: 'sword' }, { id: 'hero', name: '영웅', glyph: 'crown' },
@@ -27,6 +27,7 @@ export const ACHIEVEMENTS = [
   { id: 'st_s21', cat: 'story', name: '은빛 귀환', desc: '외전 「하늘 정원의 둥지」를 클리어한다', pts: 20, cond: { m: 'cleared', arg: ['s21'], n: 1 }, reward: { deco: 'd_silver' } },
   { id: 'st_s22', cat: 'story', name: '이름을 부르는 밤', desc: '외전 「이름 없는 언덕」을 클리어한다', pts: 20, cond: { m: 'cleared', arg: ['s22'], n: 1 }, reward: { deco: 'd_crow' } },
   { id: 'st_s26', cat: 'story', name: '썩지 않는 것', desc: '외전 Ⅰ 「파라켈의 지하 공방」을 클리어한다', pts: 20, cond: { m: 'cleared', arg: ['s26'], n: 1 }, reward: { gold: 2000 } },   // 1부 외전 (7장 뒤, ex_s26.md §3)
+  { id: 'st_s27', cat: 'story', name: '이번엔 정말이오', desc: '외전 Ⅱ 「돌아오지 못한 수문지기」를 클리어한다', pts: 20, cond: { m: 'cleared', arg: ['s27'], n: 1 }, reward: { gold: 2500 } },   // 1부 외전 Ⅱ (10장 뒤, ex_s27.md §3.3)
   { id: 'st_endings', cat: 'story', name: '다섯 개의 결말', desc: '엔딩 다섯 개를 모두 본다', pts: 50, cond: { m: 'ending', arg: ['bad', 'normal', 'true', 'p2', 'p2true'], n: 5 }, reward: { title: 't_chronicler' } },
 
   // ── 전투 (7) ──
