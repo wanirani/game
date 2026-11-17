@@ -272,14 +272,15 @@
 
 ## 13. 지역 (`src/v2/world/`, 형식 `docs/v2/AREA_FORMAT.md`)
 
-`eshville_now` · `eshville_past`(같은 배치 함수, 두 밤) · `graveyard_now` · `slice0`. 집은 `gen.js house()` 가 한 줄로 찍는다(창·문·간판·지붕·굴뚝을 씨앗으로 배치, `burnt` 면 지붕 없는 그을린 폐가).
-검사 `node tools/v2/world_check.mjs`(§결과는 AREA_FORMAT §11): 세 지역 모두 검증 오류 0, 폴드·휴대폰에서 페이지 오류 0, 봇이 기본 들머리에서 **모든 나가는 곳**(8개)까지 걸어 들어감. 걸어 보기 `index.html?scene=v2c&area=eshville_now`.
+`eshville_now` · `eshville_past`(같은 배치 함수, 두 밤) · `graveyard_now` · `graveyard_past`(같은 배치 함수) · `slice0`. 집은 `gen.js house()` 가 한 줄로 찍는다(창·문·간판·지붕·굴뚝을 씨앗으로 배치, `burnt` 면 지붕 없는 그을린 폐가).
+검사 `node tools/v2/world_check.mjs`(§결과는 AREA_FORMAT §11): 네 지역 모두 검증 오류 0, 폴드·휴대폰에서 페이지 오류 0, 봇이 기본 들머리에서 **모든 나가는 곳**(10개)까지 걸어 들어감. 걸어 보기 `index.html?scene=v2c&area=eshville_now`.
 
 | 지역 | 정적 삼각형 | 가장 무거운 화면(정적 삼각형 · 프레임 그리기) | 텍스처(시범 구간 대비) |
 |---|---|---|---|
 | 에슈빌 오늘 밤 | 33,840 | 33,840 · 37 | +5.4 MB |
 | 에슈빌 그 밤 | 34,455 | 34,455 · 39 | +6.7 MB |
-| 안개의 묘지 | 21,336 | 21,336 · 23 | +2.7 MB |
+| 안개의 묘지 오늘 밤 | 21,545 | 21,545 · 23 | +2.7 MB |
+| 안개의 묘지 그 밤 | 21,646 | 21,646 · 24 | +4.0 MB |
 | 시범 구간(그림판 4개를 입체로 바꾼 뒤) | 29,045 (전 26,383) | 29,045 · 32 | 30.4 MB (전 27.7: 아틀라스 +2.8) |
 
 ## 14. 실행 중 받는 `assets/v2/` 파일 (배포 목록 `tools/deploy/v2_ship.txt` 에 넣을 것)
@@ -289,7 +290,7 @@ assets/v2/props/props.bin            assets/v2/props/props_atlas.webp          (
 assets/v2/env/k_ashlar.webp  k_flag.webp  k_slate.webp  k_trim.webp            (모든 지역)
 assets/v2/env/k_cobble.webp  k_plaster.webp                                    (에슈빌 두 밤 · 시범 구간)
 assets/v2/env/k_cobble2.webp  k_cobworn.webp  k_rubble.webp  k_soil.webp       (에슈빌 두 밤 · 묘지[k_cobble2 제외])
-assets/v2/env/k_thatch.webp                                                    (에슈빌 그 밤)
-assets/v2/env/k_bone.webp                                                      (안개의 묘지)
+assets/v2/env/k_thatch.webp                                                    (에슈빌 그 밤 · 묘지 그 밤)
+assets/v2/env/k_bone.webp                                                      (안개의 묘지 두 밤)
 ```
 아직 어느 지역도 쓰지 않는 것(납골당용): `k_cellar.webp` · `k_planks.webp`. 폴더 합계 819 KB. v1 파일(하늘 `assets/bg/s01_village` · `s02_graveyard`, 타일 `assets/tex/tex_{mossy_stone,castle_stone,wet_stone,wood,dirt}`)은 이미 실려 있다.

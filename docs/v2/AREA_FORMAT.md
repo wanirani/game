@@ -6,6 +6,7 @@
 
 ## 바뀐 것
 - 22:10 first version (shape and names fixed; areas arrive the same day — see §8 for what exists).
+- 22:55 `graveyard_past` added (twin of `graveyard_now`).
 - 22:45 areas exist and validate (`eshville_now`, `eshville_past`, `graveyard_now`, `slice0`). Corrections to the first version: static meshes are opaque (no alpha cut-outs — removed `KIT_TEX.alpha`); a texture name may be a relative path (`'../props/props_atlas'`); **a locked exit should be solid** (§3); `stage.decals[].k` has 8 kinds (§2); `anchors` kinds listed in §6; `AREAS.slice0` added so the test route also gets its baked statues (§9).
 
 ## 1. One area = one object
@@ -94,11 +95,12 @@ Exactly the format of `src/v2/env/stage_slice0_env.js` (docs/v2/ENV_KIT.md §4):
 |---|---|---|---|---|
 | `eshville_now` | 에슈빌 | now | `eshville_past` | burning outskirts (2 groups of skeleton soldiers) → main street (inn, house with the trapped villager = `interact trapped_door` kind `pull`, smithy; soldiers + mages) → square with the well (arena group `sq`, Sera + the wounded man appear `when: 'square_clear'`, Rook's corner) → church front on a terrace (Alberto, Elise, the big bell = `interact big_bell`, rest candles, bell tower door = exit `to_belltower`) + the graveyard road and gate (exit `to_graveyard`, locked `key_graveyard`) |
 | `eshville_past` | 에슈빌 | past | `eshville_now` | the same layout, cool moonlight, thatch, harvest stalls, plague posts and black flags, candles; plague corpses in three groups; Lotte at the tower door, Edmund at the tavern door, Hadwin I at the smithy, two villagers at the stalls, Rook in the same corner |
-| `graveyard_now` | 안개의 묘지 | now | `graveyard_past` (not built) | road between grave gardens (soldiers, bats) → inner gate (elite `gravekeeper_armor`, rest candles) → grave field with solid stones in rows, the four Valkrein stones (`interact valkrein_stones`), two nameless graves to carve (`kind: 'grave'`), ghosts, mausoleum = exit `to_ossuary` (locked) |
+| `graveyard_now` | 안개의 묘지 | now | `graveyard_past` | road between grave gardens (soldiers, bats) → inner gate (elite `gravekeeper_armor`, rest candles) → grave field with solid stones in rows, the four Valkrein stones (`interact valkrein_stones`), two nameless graves to carve (`kind: 'grave'`), ghosts, mausoleum = exit `to_ossuary` (locked) |
+| `graveyard_past` | 안개의 묘지 | past | `graveyard_now` | the same layout, tended: upright stones, three Valkrein stones (the fourth is not there yet), warm lanterns, the keeper (`actors keeper`, model `villager_m`) at his lit thatched hut — the hut is a roofless ruin tonight; plague corpses on the road; the nameless graves are `kind: 'grave'` here (carve) and `kind: 'sign'` tonight |
 | `slice0` | 시범 구간 | now | — | the old test route as an area object (v2c default, v2bench uses the prototype stage directly) |
 
 Section ids: eshville `outskirts street square church graveroad`; graveyard `road field`. Spawn names: eshville `default from_west from_graveyard from_belltower bell inn square`; graveyard `default from_eshville from_ossuary gate`.
-Exit targets named but not built: `belltower_*`, `stable_*`, `graveyard_past`, `ossuary_*`. Place names use only glyphs the fonts have (font check passes; no name had to be changed).
+Exit targets named but not built: `belltower_*`, `stable_*`, `ossuary_*`. Place names use only glyphs the fonts have (font check passes; no name had to be changed).
 
 ## 9. What ENGINE has to do to load an area (short)
 
@@ -123,7 +125,8 @@ Exit targets named but not built: `belltower_*`, `stable_*`, `graveyard_past`, `
 |---|---|---|---|---|---|
 | `eshville_now` | 33,840 | out 5,545 / 10 · street 6,956 / 10 · east 21,339 / 13 | 33,840 · 37 (street by the inn: all three chunks in the frustum) | 55 | 35.8 MB (+5.4) |
 | `eshville_past` | 34,455 | out 6,028 / 11 · street 6,779 / 11 · east 21,648 / 13 | 34,455 · 39 | 59 | 37.1 MB (+6.7) |
-| `graveyard_now` | 21,336 | road 7,447 / 7 · field 13,889 / 12 | 21,336 · 23 | 9 | 33.1 MB (+2.7) |
+| `graveyard_now` | 21,545 | road 7,447 / 7 · field 14,098 / 12 | 21,545 · 23 | 9 | 33.1 MB (+2.7) |
+| `graveyard_past` | 21,646 | road 7,462 / 7 · field 14,184 / 13 | 21,646 · 24 | 10 | 34.4 MB (+4.0) |
 | `slice0` (test route) | 29,045 | street 10,961 / 9 · north 18,084 / 10 | 29,045 · 32 | 43 | 30.4 MB |
 
 Frame numbers include the hero model (19,638 triangles, 4 draws). Headless Chromium is a software renderer: frame times there say nothing about the device.

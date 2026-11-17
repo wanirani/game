@@ -282,11 +282,13 @@ for (const dev of DEVICES) {
       const measure = (n, fight) => { gc(); const m0 = mem(); for (let i = 0; i < n; i++) { B.act = fight ? script(i) : NONE; g.tick(1 / 60); g.alpha = 0.5; g.render(); } const m1 = mem(); return Math.round((m1 - m0) / n); };
       const stub = (on) => { if (on) { sc.update = function () {}; sc.render = function () {}; } else { delete sc.update; delete sc.render; } };   // instance fields shadow the class methods: the v1 shell alone
       const toYard = () => { sc.sim.reset(); sc.cam.snap = true; v.teleport('yard'); sc.sim.hero.z = 1700; };
+      const resK = sc.perf.resK; sc.perf.resK = 0.08;   // tiny picture while measuring: the JS work is the same, the software GPU does not fall minutes behind
       toYard(); for (let i = 0; i < 360; i++) { B.act = script(i); g.tick(1 / 60); g.render(); }   // warm the JIT on the same path
       sc.sim.reset(); sc.cam.snap = true; for (let i = 0; i < 120; i++) { B.act = NONE; g.tick(1 / 60); g.render(); }
       stub(true); const shell = [measure(240, false), measure(240, false), measure(240, false)]; stub(false);
       const idle = [measure(240, false), measure(240, false), measure(240, false), measure(240, false)];
       toYard(); const play = [measure(300, true), measure(300, true), measure(300, true), measure(300, true)]; B.act = NONE;
+      sc.perf.resK = resK;
       return { shell, idle, play, gc: !!window.gc, hits: sc.feelN };
     });
     R.alloc = al;
