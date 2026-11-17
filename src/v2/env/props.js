@@ -42,13 +42,13 @@ export const PROPS = {
   barrel(G, x, y, z, o = {}) {
     const h = o.h ?? 78, r = h * 0.33, rr = (f) => r * (0.8 + 0.2 * Math.sin(Math.PI * f));
     baseAO(G, y, 20);
-    G.lathe('wood', x, z, [0, 0.2, 0.4, 0.6, 0.8, 1].map((f) => [rr(f), y + h * f]), 10, { tint: [1.0, 0.8, 0.62], vary: 0.25, cap: 'darkwood', capK: 1.1 });
+    G.lathe('wood', x, z, [0, 0.2, 0.4, 0.6, 0.8, 1].map((f) => [rr(f), y + h * f]), 10, { tint: [1.5, 1.16, 0.86], vary: 0.25, cap: 'wood', capK: 0.8 });
     for (const f of [0.12, 0.5, 0.88]) G.lathe('metal', x, z, [[rr(f) + 0.9, y + h * f - 3], [rr(f) + 0.9, y + h * f + 3]], 10, { vary: 0, k: 0.85 });
     G.shade = null; shadow(G, x, y, z, r * 1.5);
   },
   /** 나무 상자: 널 + 테두리 + 가새 (w·d·h 를 주면 그 크기 — B 의 상자 장애물과 같은 자리) */
   crate(G, x, y, z, o = {}) {
-    const h = o.h ?? 62, w = o.w ?? h * 1.05, d = o.d ?? h * 0.9, x0 = x - w / 2, z0 = z - d / 2, t = o.tint ?? [1.1, 0.9, 0.72];
+    const h = o.h ?? 62, w = o.w ?? h * 1.05, d = o.d ?? h * 0.9, x0 = x - w / 2, z0 = z - d / 2, t = o.tint ?? [1.5, 1.22, 0.96];
     baseAO(G, y, 22);
     G.box('wood', x0, y, z0, x0 + w, y + h, z0 + d, { faces: 'FLRT', tint: t, vary: 0.25, cell: 60 });
     crateFace(G, new Frame(x0, z0, 0, -1), w, y, y + h, 0, t); crateFace(G, new Frame(x0, z0 + d, -1, 0), d, y, y + h, 0, t); crateFace(G, new Frame(x0 + w, z0, 1, 0), d, y, y + h, 0, t);

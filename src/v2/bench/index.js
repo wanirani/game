@@ -30,7 +30,7 @@ export default class V2Bench extends Scene {
     this.phase = 'load'; this.error = null; this.report = null; this.box = null; this.saved = false; this.copied = 0;
     this.tests = []; this.ti = -1; this.cur = null; this.calib = null; this.simT = 0; this.steps = 0; this._js = 0; this._pts = 0;
     this.ctxLost = 0; this.longNow = 0; this._heap = 0;
-    this.rig = new Rig(this.game);
+    this.rig = new Rig(this.game); this.warmed = false;
     this.rig.load().then(() => { if (this.rig?.ready) this._begin(); }).catch((e) => { this.error = String(e?.message ?? e); console.warn('[v2bench]', this.error); this._finish(); });
     this._probe = (ts) => { this._raf = requestAnimationFrame(this._probe); this._onFrame(ts); };
     this._raf = requestAnimationFrame(this._probe);
@@ -54,7 +54,7 @@ export default class V2Bench extends Scene {
   // ───────────────────────── 진행 ─────────────────────────
   _begin() {
     const rig = this.rig;
-    try { rig.warmUp(); } catch (e) { console.warn('[v2bench] 데우기 실패', e); }
+    if (!this.warmed) { this.warmed = true; try { rig.warmUp(); } catch (e) { console.warn('[v2bench] 데우기 실패', e); } }   // 「다시 재기」 때는 첫 사용 값을 그대로 둔다
     const au = this.game.audio;
     this.audioOn = !!au?.ctx && au.ctx.state === 'running';
     this.audioInfo = !au?.ctx ? 'none' : `${au.ctx.state} music ${au.current ?? '-'} (${au.musicSource ?? '?'})`;
@@ -240,7 +240,7 @@ export default class V2Bench extends Scene {
   }
   async _copy() {
     const v = compactText(this.report); let ok = false;
-    try { await navigator.clipboard.writeText(v); ok = true; } catch { ok = false; }
+    try { ok = await Promise.race([navigator.clipboard.writeText(v).then(() => true), new Promise((r) => setTimeout(() => r(false), 800))]); } catch { ok = false; }   // 답이 없는 WebView 는 0.8초만 기다린다
     if (!ok) {   // 클립보드를 못 쓰면 글 상자를 띄우고 한 번 더 시도 — 그래도 안 되면 상자의 글을 길게 눌러 복사
       this._openBox(v);
       try { this.box.focus(); this.box.select(); ok = document.execCommand('copy'); } catch { ok = false; }

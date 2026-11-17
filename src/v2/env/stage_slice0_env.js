@@ -89,9 +89,9 @@ export default {
       buttress: [{ side: 'R', u: 8, h: 250, d: 16, w: 30 }, { side: 'R', u: 270, h: 250, d: 16, w: 30 }, { side: 'R', u: 540, h: 300, d: 16, w: 30 }],
       hang: [{ type: 'sign', side: 'R', u: 120, y: 136, perp: true }, { type: 'banner', side: 'R', u: 400, y: 190, len: 110, w: 38, c: [0.2, 0.26, 0.5] }],
     } },
-    { t: 'floor', x: 1980, z: 260, w: 420, d: 440, mat: 'cobble', kit: { strips: [{ x0: 0, x1: 54, mat: 'flags' }, { x0: 366, x1: 420, mat: 'flags' }, { x0: 202, x1: 218, mat: 'moss' }] } },
+    { t: 'floor', x: 1980, z: 260, w: 420, d: 440, mat: 'cobble', kit: { mat: 'slabs', strips: [{ x0: 0, x1: 54, mat: 'flags' }, { x0: 366, x1: 420, mat: 'flags' }] } },   // 골목 바닥은 v1 의 손그림 판석
     { t: 'stairs', x: 1980, z: 700, w: 420, d: 200, h: 96, dir: 'z+', steps: 8, mat: 'stone', kit: { cheeks: 'LR' } },
-    { t: 'floor', x: 1980, z: 900, w: 420, d: 660, y: 96, thick: 330, mat: 'cobble', kit: { strips: [{ x0: 0, x1: 54, mat: 'flags' }, { x0: 366, x1: 420, mat: 'flags' }, { x0: 202, x1: 218, mat: 'moss' }] } },
+    { t: 'floor', x: 1980, z: 900, w: 420, d: 660, y: 96, thick: 330, mat: 'cobble', kit: { mat: 'slabs', strips: [{ x0: 0, x1: 54, mat: 'flags' }, { x0: 366, x1: 420, mat: 'flags' }] } },
     { t: 'arch', x: 1980, z: 560, w: 420, d: 30, y: 338, rise: 34, h: 84 },                          // 골목 위 아치 다리 (카메라 길보다 높게)
     { t: 'prop', mesh: 'barrel', x: 2016, z: 420, h: 78, solid: 24 }, { t: 'prop', mesh: 'crate', x: 2364, z: 540, h: 66, solid: 28, solidZ: 20 },
     { t: 'prop', mesh: 'barrel', x: 2366, z: 600, h: 74, solid: 22 },

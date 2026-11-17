@@ -11,15 +11,15 @@ const rnd = Math.random, PI = Math.PI;
 // ───────────── 입자 명세 ─────────────
 const S = {
   // 타격
-  cutL: E({ sprite: SPR.STREAK, useAngle: 1, rotJit: 0.3, size: 150, grow: 1.3, life: 0.11, c0: [3, 3, 3, 1], c1: [1.2, 1.8, 3, 0], pri: 1, min: 1 }),
-  cutH: E({ sprite: SPR.STREAK, useAngle: 1, rotJit: 0.2, size: 230, grow: 1.35, life: 0.14, c0: [3.4, 3.2, 3, 1], c1: [2.2, 1.2, 0.5, 0], pri: 1, min: 1 }),
-  cutF: E({ sprite: SPR.STREAK, useAngle: 1, rotJit: 0.15, size: 360, grow: 1.4, life: 0.2, c0: [4, 3.8, 3.4, 1], c1: [3, 0.8, 0.3, 0], pri: 1, min: 1 }),
-  flashL: E({ sprite: SPR.GLOW, size: 80, grow: 1.7, life: 0.09, c0: [2.2, 2.1, 2, 0.9], c1: [1.2, 0.8, 0.4, 0], pri: 1, min: 1 }),
-  flashH: E({ sprite: SPR.GLOW, size: 140, grow: 1.7, life: 0.12, c0: [2.6, 2.3, 2, 1], c1: [1.6, 0.7, 0.25, 0], pri: 1, min: 1 }),
-  flashF: E({ sprite: SPR.GLOW, size: 260, grow: 1.6, life: 0.2, c0: [3, 2.6, 2.2, 1], c1: [2, 0.5, 0.2, 0], pri: 1, min: 1 }),
+  cutL: E({ sprite: SPR.STREAK, spread: 0, speed: 2, stretch: 2500, size: 14, grow: 1.25, life: 0.11, c0: [3, 3, 3, 1], c1: [1.2, 1.8, 3, 0], pri: 1, min: 1 }),   // 베인 선: 길이 = 두께 × 11 (늘이기로 만든다)
+  cutH: E({ sprite: SPR.STREAK, spread: 0, speed: 2, stretch: 2700, size: 20, grow: 1.3, life: 0.14, c0: [3.4, 3.2, 3, 1], c1: [2.2, 1.2, 0.5, 0], pri: 1, min: 1 }),
+  cutF: E({ sprite: SPR.STREAK, spread: 0, speed: 2, stretch: 2900, size: 27, grow: 1.3, life: 0.2, c0: [4, 3.8, 3.4, 1], c1: [3, 0.8, 0.3, 0], pri: 1, min: 1 }),
+  flashL: E({ sprite: SPR.GLOW, size: 46, grow: 1.6, life: 0.08, c0: [1.5, 1.4, 1.3, 0.6], c1: [1.2, 0.8, 0.4, 0], pri: 1, min: 1 }),
+  flashH: E({ sprite: SPR.GLOW, size: 66, grow: 1.6, life: 0.11, c0: [1.6, 1.4, 1.2, 0.7], c1: [1.6, 0.7, 0.25, 0], pri: 1, min: 1 }),
+  flashF: E({ sprite: SPR.GLOW, size: 112, grow: 1.6, life: 0.18, c0: [1.8, 1.5, 1.2, 0.8], c1: [2, 0.5, 0.2, 0], pri: 1, min: 1 }),
   spark: E({ sprite: SPR.STREAK, stretch: 2.4, n: 9, spread: 0.7, speed: [260, 680], grav: 1100, drag: 1.4, life: [0.16, 0.36], size: [9, 15], grow: 0.5, c0: [3, 2.2, 1.1, 1], c1: [2, 0.5, 0.1, 0], cv: 0.3, floor: 2 }),
-  star: E({ sprite: SPR.STAR, size: 100, grow: 1.5, life: 0.15, spin: [-3, 3], c0: [3, 3, 3, 1], c1: [1.8, 1.4, 0.7, 0], pri: 1, min: 1 }),
-  starBig: E({ sprite: SPR.STAR, size: 190, grow: 1.5, life: 0.2, spin: [-2, 2], c0: [3.4, 3.2, 2.6, 1], c1: [2.4, 1.6, 0.5, 0], pri: 1, min: 1 }),
+  star: E({ sprite: SPR.STAR, size: 72, grow: 1.5, life: 0.15, spin: [-3, 3], c0: [2.2, 2.2, 2.2, 0.9], c1: [1.8, 1.4, 0.7, 0], pri: 1, min: 1 }),
+  starBig: E({ sprite: SPR.STAR, size: 124, grow: 1.5, life: 0.2, spin: [-2, 2], c0: [2.4, 2.3, 2, 0.9], c1: [2.4, 1.6, 0.5, 0], pri: 1, min: 1 }),
   chip: E({ sprite: SPR.SHARD, add: 0, n: 8, spread: 1.0, speed: [140, 400], vy: [140, 340], grav: 1500, drag: 0.4, life: [0.55, 0.95], size: [7, 13], spin: [-14, 14], c0: [0.6, 0.6, 0.66, 1], c1: [0.42, 0.42, 0.48, 1], cv: 0.3, floor: 2 }),
   puff: E({ sprite: SPR.DUST, add: 0, n: 4, shape: 2, rad: 6, speed: [40, 120], vy: [10, 55], drag: 3, life: [0.35, 0.6], size: [28, 46], grow: 2, c0: [0.62, 0.6, 0.67, 0.4], c1: [0.5, 0.5, 0.57, 0], fadeIn: 0.1 }),
   pierce: E({ sprite: SPR.STREAK, stretch: 7, spread: 0, speed: 1200, drag: 7, life: 0.15, size: 28, c0: [3, 3, 3, 1], c1: [1.2, 2, 3, 0], pri: 1, min: 1 }),
@@ -46,11 +46,11 @@ const S = {
   sparkleH: E({ sprite: SPR.STAR, n: 10, shape: 3, rad: 18, h: [0, 30], speed: [90, 220], drag: 2, life: [0.4, 0.75], size: [10, 19], spin: [-4, 4], c0: [1, 3.2, 1.2, 1], c1: [0.2, 2, 0.5, 0] }),
   sparkleM: E({ sprite: SPR.STAR, n: 10, shape: 3, rad: 18, h: [0, 30], speed: [90, 220], drag: 2, life: [0.4, 0.75], size: [10, 19], spin: [-4, 4], c0: [1, 2, 3.6, 1], c1: [0.2, 0.7, 2.6, 0] }),
   // 불
-  flame: E({ sprite: SPR.FLAME, shape: 1, speed: [10, 55], vy: [30, 95], drag: 1.5, grav: -120, life: [0.22, 0.42], size: [28, 42], grow: 0.35, spin: [-2, 2], c0: [3.2, 1.6, 0.4, 0.9], c1: [1.6, 0.2, 0.02, 0], jit: 5, rot: 0 }),
-  flameBurst: E({ sprite: SPR.FLAME, n: 14, shape: 1, speed: [120, 400], vy: [40, 170], drag: 3.2, grav: -150, life: [0.35, 0.62], size: [46, 74], grow: 1.5, spin: [-2, 2], c0: [3.4, 1.8, 0.45, 0.95], c1: [1.4, 0.15, 0.02, 0] }),
+  flame: E({ sprite: SPR.FLAME, shape: 1, speed: [10, 55], vy: [30, 95], drag: 1.5, grav: -120, life: [0.22, 0.42], size: [28, 42], grow: 0.35, spin: [-2, 2], c0: [1.7, 0.75, 0.18, 0.6], c1: [0.9, 0.12, 0.02, 0], jit: 5, rot: 0 }),
+  flameBurst: E({ sprite: SPR.FLAME, n: 14, shape: 1, speed: [120, 400], vy: [40, 170], drag: 3.2, grav: -150, life: [0.35, 0.62], size: [46, 74], grow: 1.5, spin: [-2, 2], c0: [1.8, 0.8, 0.2, 0.62], c1: [0.9, 0.1, 0.02, 0] }),
   ember: E({ sprite: SPR.EMBER, n: 12, shape: 1, speed: [150, 440], vy: [100, 320], grav: 600, drag: 1.2, life: [0.5, 1.05], size: [5, 9], c0: [3.4, 1.7, 0.4, 1], c1: [1.8, 0.3, 0.05, 0], floor: 2 }),
   fireSmoke: E({ sprite: SPR.SMOKE, add: 0, n: 5, shape: 1, speed: [30, 95], vy: [60, 150], drag: 1.5, life: [0.7, 1.15], size: [52, 84], grow: 2, c0: [0.1, 0.08, 0.08, 0.5], c1: [0.2, 0.18, 0.18, 0], fadeIn: 0.15 }),
-  flameCol: E({ sprite: SPR.FLAME, n: 20, shape: 3, rad: 40, h: [0, 70], speed: [380, 720], drag: 1.2, life: [0.35, 0.62], size: [52, 84], grow: 0.4, c0: [3.4, 1.7, 0.4, 0.9], c1: [1.5, 0.2, 0.02, 0], rot: 0 }),
+  flameCol: E({ sprite: SPR.FLAME, n: 20, shape: 3, rad: 40, h: [0, 70], speed: [380, 720], drag: 1.2, life: [0.35, 0.62], size: [52, 84], grow: 0.4, c0: [1.7, 0.75, 0.18, 0.5], c1: [0.9, 0.12, 0.02, 0], rot: 0 }),
   gatherFire: E({ sprite: SPR.EMBER, n: 10, shape: 4, rad: 74, life: [0.2, 0.3], size: [6, 10], c0: [3, 1.4, 0.3, 0], c1: [3.4, 2.2, 0.8, 1] }),
   rock: E({ sprite: SPR.SHARD, add: 0, n: 16, shape: 1, speed: [200, 520], vy: [220, 520], grav: 1500, drag: 0.3, life: [0.7, 1.2], size: [9, 18], spin: [-12, 12], c0: [0.4, 0.3, 0.26, 1], c1: [0.28, 0.24, 0.24, 1], floor: 2 }),
   // 얼음
@@ -66,13 +66,13 @@ const S = {
   gatherZap: E({ sprite: SPR.CORE, n: 10, shape: 4, rad: 74, life: [0.16, 0.24], size: [6, 10], c0: [1.6, 2, 3.6, 0], c1: [3, 3.2, 4, 1] }),
   // 성
   mote: E({ sprite: SPR.CORE, shape: 3, rad: 58, h: [0, 40], speed: [130, 340], drag: 0.8, life: [0.6, 1.15], size: [6, 11], c0: [3.4, 2.7, 1.1, 1], c1: [2.2, 1.3, 0.3, 0] }),
-  holyStar: E({ sprite: SPR.STAR, shape: 3, rad: 52, h: [20, 170], speed: [20, 85], life: [0.4, 0.85], size: [14, 28], spin: [-2, 2], c0: [3.4, 3, 1.6, 1], c1: [2.2, 1.5, 0.4, 0] }),
+  holyStar: E({ sprite: SPR.STAR, shape: 3, rad: 52, h: [20, 170], speed: [20, 85], life: [0.4, 0.85], size: [14, 28], spin: [-2, 2], c0: [2.2, 1.9, 1, 0.9], c1: [2.2, 1.5, 0.4, 0] }),
   waveMote: E({ sprite: SPR.CORE, n: 20, spread: 0.62, speed: [300, 560], vy: [20, 95], drag: 2.2, life: [0.4, 0.72], size: [6, 12], c0: [3.4, 2.7, 1.1, 1], c1: [2.2, 1.2, 0.3, 0] }),
   gatherHoly: E({ sprite: SPR.CORE, n: 10, shape: 4, rad: 74, life: [0.2, 0.3], size: [6, 10], c0: [3, 2.2, 0.8, 0], c1: [3.6, 3.2, 1.8, 1] }),
   // 피 · 그림자
   bloodTrail: E({ sprite: SPR.DROP, stretch: 1.2, add: 0, shape: 1, speed: [20, 85], grav: 700, life: [0.3, 0.52], size: [8, 13], c0: [0.8, 0.04, 0.09, 1], c1: [0.36, 0, 0.03, 0.7], floor: 1 }),
   bloodBurst: E({ sprite: SPR.DROP, stretch: 1.6, add: 0, n: 16, shape: 1, speed: [180, 480], vy: [80, 280], grav: 1300, drag: 0.6, life: [0.5, 0.9], size: [9, 17], c0: [0.9, 0.05, 0.1, 1], c1: [0.4, 0, 0.04, 0.8], floor: 1 }),
-  bloodGlow: E({ sprite: SPR.GLOW, size: 160, grow: 1.4, life: 0.2, c0: [2.6, 0.18, 0.24, 0.9], c1: [1, 0, 0.05, 0], pri: 1, min: 1 }),
+  bloodGlow: E({ sprite: SPR.GLOW, size: 110, grow: 1.4, life: 0.2, c0: [1.6, 0.12, 0.16, 0.7], c1: [1, 0, 0.05, 0], pri: 1, min: 1 }),
   darkMist: E({ sprite: SPR.SMOKE, add: 0, n: 6, shape: 1, speed: [40, 140], vy: [10, 75], drag: 2.4, life: [0.6, 1.05], size: [52, 84], grow: 1.8, c0: [0.13, 0.02, 0.11, 0.55], c1: [0.2, 0.03, 0.22, 0], fadeIn: 0.1 }),
   shadowSpark: E({ sprite: SPR.STREAK, stretch: 2.4, n: 10, spread: 0.85, speed: [250, 640], drag: 3, life: [0.15, 0.32], size: [8, 13], c0: [2.2, 0.8, 3.4, 1], c1: [0.8, 0.1, 2.2, 0] }),
   gatherBlood: E({ sprite: SPR.DROP, stretch: 1.5, n: 10, shape: 4, rad: 74, life: [0.22, 0.32], size: [7, 11], c0: [2, 0.1, 0.15, 0], c1: [3, 0.3, 0.3, 1] }),
@@ -108,6 +108,7 @@ const C = {
   blood: [1.7, 0.1, 0.14, 1], bloodA: [3, 0.4, 0.4, 1], bloodB: [0.9, 0, 0.05, 1], bloodL: [1, 0.12, 0.14],
   shadow2: [1.1, 0.3, 1.9, 1], shadowA: [2.4, 0.7, 3.2, 1], shadowB: [0.18, 0.02, 0.3, 1], shadowL: [0.6, 0.2, 1],
   rockA: [3, 1.2, 0.3, 1], rockB: [0.34, 0.2, 0.16, 1], bellA: [3.2, 2.6, 1.2, 0.9], bellB: [1.6, 0.9, 0.2, 0.9],
+  fireG: [1.5, 0.6, 0.15, 0.85], bloodG: [1.4, 0.1, 0.14, 0.85],
   pickG: [2.2, 1.7, 0.5, 0.9], pickH: [0.6, 2.2, 0.8, 0.9], pickM: [0.6, 1.3, 2.4, 0.9],
 };
 const FAM = {
@@ -168,16 +169,18 @@ export class Seqs {
 const K = { FIREBOLT: 0, FIREPILLAR: 1, METEOR: 2, ICELANCE: 3, ICENOVA: 4, CHAIN: 5, STRIKE: 6, HOLYPILLAR: 7, HOLYWAVE: 8, BELL: 9, BLOODORB: 10, CLAWS: 11, ULT: 12, ASH: 13, COMBO: 14 };
 
 // ═════════════ 타격 ═════════════
+// 베인 선: 카메라 평면에서 ang 방향으로 누운 가는 빛줄기
+function cut(fx, spec, x, y, z, ang) { const Cm = fx.cam, c = Math.cos(ang), s = Math.sin(ang); fx.particles.emit(spec, x, y, z, Cm.right[0] * c + Cm.up[0] * s, Cm.right[1] * c + Cm.up[1] * s, Cm.right[2] * c + Cm.up[2] * s, 1, 0); }
 function sparkDir(fx, spec, x, y, z, dx, dz, up, k) { const l = 1 / Math.hypot(dx, up, dz); fx.particles.emit(spec, x, y, z, dx * l, up * l, dz * l, k, fx.groundY); }
 function hitSlashLight(fx, x, y, z, dx, dz, pow) {
-  const P = fx.particles; P.angle = (dx >= 0 ? 0.55 : PI - 0.55) + (rnd() - 0.5) * 0.5;
-  P.emit(S.cutL, x, y, z, 0, 1, 0, 1, 0); P.emit(S.flashL, x, y, z, 0, 1, 0, 1, 0); sparkDir(fx, S.spark, x, y, z, dx, dz, 0.3, pow);
+  const P = fx.particles, ang = (dx >= 0 ? 0.55 : PI - 0.55) + (rnd() - 0.5) * 0.7;
+  cut(fx, S.cutL, x, y, z, ang); P.emit(S.flashL, x, y, z, 0, 1, 0, 1, 0); sparkDir(fx, S.spark, x, y, z, dx, dz, 0.3, pow);
   fx.light(x, y, z, 180, C.warm, 0.8, 0.12, 0, 0);
   feel(fx, 0.05, 3, 0.10, dx, dz); fx.sfx('hit.slash.light', x, y, z, 1);
 }
 function hitSlashHeavy(fx, x, y, z, dx, dz, pow) {
-  const P = fx.particles; P.angle = (dx >= 0 ? 0.6 : PI - 0.6) + (rnd() - 0.5) * 0.3;
-  P.emit(S.cutH, x, y, z, 0, 1, 0, 1, 0); P.angle += 1.25; P.emit(S.cutL, x, y, z, 0, 1, 0, 1, 0); P.emit(S.flashH, x, y, z, 0, 1, 0, 1, 0);
+  const P = fx.particles, ang = (dx >= 0 ? 0.6 : PI - 0.6) + (rnd() - 0.5) * 0.4;
+  cut(fx, S.cutH, x, y, z, ang); cut(fx, S.cutL, x, y, z, ang + 1.25); P.emit(S.flashH, x, y, z, 0, 1, 0, 1, 0);
   sparkDir(fx, S.spark, x, y, z, dx, dz, 0.35, 1.6 * pow); sparkDir(fx, S.chip, x, y, z, dx, dz, 0.2, 0.5 * pow);
   bRing(fx, x, y, z, 78, 0.22, C.ringW);
   fx.light(x, y, z, 270, C.warm, 1.1, 0.16, 0, 0);
@@ -201,8 +204,8 @@ function hitPierce(fx, x, y, z, dx, dz, pow) {
   feel(fx, 0.06, 5, 0.12, dx, dz); fx.sfx('hit.pierce', x, y, z, 1);
 }
 function hitCrit(fx, x, y, z, dx, dz, pow) {
-  const P = fx.particles; P.angle = (dx >= 0 ? 0.6 : PI - 0.6);
-  P.emit(S.cutH, x, y, z, 0, 1, 0, 1, 0); P.emit(S.starBig, x, y, z, 0, 1, 0, 1, 0); P.emit(S.flashH, x, y, z, 0, 1, 0, 1, 0);
+  const P = fx.particles;
+  cut(fx, S.cutH, x, y, z, dx >= 0 ? 0.6 : PI - 0.6); P.emit(S.starBig, x, y, z, 0, 1, 0, 1, 0); P.emit(S.flashH, x, y, z, 0, 1, 0, 1, 0);
   P.emit(S.gold, x, y, z, 0, 1, 0, pow, fx.groundY);
   bRing(fx, x, y, z, 120, 0.28, C.ringGold);
   fx.light(x, y, z, 320, C.holyL, 1.3, 0.2, 0, 0);
@@ -218,8 +221,8 @@ function hitGuard(fx, x, y, z, dx, dz, pow) {
   if (pow > 1.2) { bRing(fx, x, y, z, 130, 0.3, C.ringCyan); if (fx.feelOn) { fx.feel.slowMo(0.4, 0.14); fx.feel.zoomPunch(0.03); } fx.sfx('hit.parry', x, y, z, 1); } else fx.sfx('hit.guard', x, y, z, 1);
 }
 function hitFinisher(fx, x, y, z, dx, dz, pow) {
-  const P = fx.particles, gy = fx.groundY; P.angle = (dx >= 0 ? 0.5 : PI - 0.5);
-  P.emit(S.cutF, x, y, z, 0, 1, 0, 1, 0); P.angle += 1.3; P.emit(S.cutH, x, y, z, 0, 1, 0, 1, 0);
+  const P = fx.particles, gy = fx.groundY, ang = dx >= 0 ? 0.5 : PI - 0.5;
+  cut(fx, S.cutF, x, y, z, ang); cut(fx, S.cutH, x, y, z, ang + 1.3);
   P.emit(S.starBig, x, y, z, 0, 1, 0, 1, 0); P.emit(S.flashF, x, y, z, 0, 1, 0, 1, 0);
   sparkDir(fx, S.spark, x, y, z, dx, dz, 0.4, 2.8 * pow); sparkDir(fx, S.chip, x, y, z, dx, dz, 0.4, 1.2 * pow); P.emit(S.puff, x, gy + 6, z, 0, 1, 0, 1.5, gy);
   bRing(fx, x, y, z, 170, 0.34, C.ringW); gRing(fx, x, gy, z, 230, 0.5, C.ringW); gRing(fx, x, gy, z, 140, 0.4, C.ringGold);
@@ -278,7 +281,7 @@ function fireBolt(fx, x, y, z, dx, dz, pow, tx, ty, tz) {
   castFx(fx, FAM.fire, x, y, z, 46, 0.5); teleLine(fx, x, y, z, tx, tz, 9, 0.22, 0.35, C.fire); fx.sfx('magic.fire.cast', x, y, z, 1);
 }
 STEP[K.FIREBOLT] = (fx, s, dt) => {
-  if (s.ph === 0) { if (s.t < 0.22) return false; s.ph = 1; s.h0 = fx.ribbons.start(TRAIL.fire); s.h1 = fx.quads.billboard(Q.GLOW, s.x, s.y, s.z, 46, 4, C.fireA, 1, 1, 0.03); s.h2 = fx.light(s.x, s.y, s.z, 260, C.fireL, 1.1, 4, 0.25, 1); fx.sfx('magic.fire.fly', s.x, s.y, s.z, 1); }
+  if (s.ph === 0) { if (s.t < 0.22) return false; s.ph = 1; s.h0 = fx.ribbons.start(TRAIL.fire); s.h1 = fx.quads.billboard(Q.GLOW, s.x, s.y, s.z, 46, 4, C.fireG, 1, 1, 0.03); s.h2 = fx.light(s.x, s.y, s.z, 260, C.fireL, 1.1, 4, 0.25, 1); fx.sfx('magic.fire.fly', s.x, s.y, s.z, 1); }
   const hit = fly(fx, s, dt, 980);
   fx.particles.emit(S.flame, s.x, s.y, s.z, 0, 1, 0, 70 * dt, s.gy);
   if (!hit) return false;
@@ -312,7 +315,7 @@ STEP[K.METEOR] = (fx, s, dt) => {
   if (s.ph === 0) {
     if (s.t < 0.55) return false; s.ph = 1; s.a = Math.hypot(s.tx - s.x, s.ty - s.y, s.tz - s.z) / 0.55;
     s.h3 = fx.meshes.spawn(MESH.SPHERE, MODE.SOLID, s.x, s.y, s.z, 1, 0, 0, 0, 1, 0, 34, 30, 32, 3, C.rockA, C.rockB, 0, 0);
-    s.h0 = fx.ribbons.start(TRAIL.meteor); s.h1 = fx.quads.billboard(Q.GLOW, s.x, s.y, s.z, 120, 3, C.fireA, 1, 1, 0.05); s.h2 = fx.light(s.x, s.y, s.z, 420, C.fireL, 1.3, 3, 0.3, 1);
+    s.h0 = fx.ribbons.start(TRAIL.meteor); s.h1 = fx.quads.billboard(Q.GLOW, s.x, s.y, s.z, 120, 3, C.fireG, 1, 1, 0.05); s.h2 = fx.light(s.x, s.y, s.z, 420, C.fireL, 1.3, 3, 0.3, 1);
     fx.sfx('magic.meteor.fall', s.x, s.y, s.z, 1);
   }
   const hit = fly(fx, s, dt, s.a);
@@ -462,7 +465,7 @@ function bloodOrb(fx, x, y, z, dx, dz, pow, tx, ty, tz) {
 }
 STEP[K.BLOODORB] = (fx, s, dt) => {
   const P = fx.particles;
-  if (s.ph === 0) { if (s.t < 0.3) return false; s.ph = 1; s.h0 = fx.ribbons.start(TRAIL.blood); s.h1 = fx.quads.billboard(Q.GLOW, s.x, s.y, s.z, 58, 5, C.bloodA, 1, 1, 0.05); s.h2 = fx.light(s.x, s.y, s.z, 240, C.bloodL, 1, 5, 0.2, 1); fx.sfx('magic.blood.fly', s.x, s.y, s.z, 1); }
+  if (s.ph === 0) { if (s.t < 0.3) return false; s.ph = 1; s.h0 = fx.ribbons.start(TRAIL.blood); s.h1 = fx.quads.billboard(Q.GLOW, s.x, s.y, s.z, 58, 5, C.bloodG, 1, 1, 0.05); s.h2 = fx.light(s.x, s.y, s.z, 240, C.bloodL, 1, 5, 0.2, 1); fx.sfx('magic.blood.fly', s.x, s.y, s.z, 1); }
   const hit = fly(fx, s, dt, 560);
   P.emit(S.bloodTrail, s.x, s.y, s.z, 0, 1, 0, 46 * dt, s.gy);
   if (!hit) return false;

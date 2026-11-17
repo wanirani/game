@@ -45,7 +45,7 @@ void main() {
   b += texture(uBloom, vUV + uTP.xy * vec2(1.0, -1.0)).rgb + texture(uBloom, vUV + uTP.xy * vec2(-1.0, 1.0)).rgb; b *= 0.5;
 #endif
   c *= 1.0 - uK.w;                     // 필살기: 장면만 어둡게, 번짐은 그대로
-  c += b * (0.5 * uK.x);
+  c += b * (0.26 * uK.x);
   vec3 x = max(c - 0.6, 0.0); c = c - x + x / (1.0 + x * 0.85);   // 밝은 쪽만 부드럽게 눌러 흰색으로 날아가지 않게
   float l = dot(c, vec3(0.3, 0.59, 0.11)); c = mix(c, vec3(l) * vec3(0.92, 0.97, 1.08), uK.z);
   vec2 q = vUV - 0.5; float e = smoothstep(0.38, 0.98, length(q) * 1.28);
@@ -71,7 +71,7 @@ export class Post {
   /** levels: 번짐 단계 수 (0 = 후처리 끔, 2 = mid, 3 = high) */
   constructor(gl, levels) {
     this.gl = gl; this.levels = levels; this.enabled = levels > 0; this.w = 0; this.h = 0; this.target = null;
-    this.bloom = 1; this.threshold = 0.62; this.knee = 0.3; this.baseVig = 0.2; this.gain = 1;
+    this.bloom = 1; this.threshold = 0.68; this.knee = 0.32; this.baseVig = 0.2; this.gain = 1;
     this.scene = null; this.depth = null; this.sceneTex = null; this.lv = []; this.bytes = 0; this.passes = 0; this.active = false;
     this.pBright = program(gl, VS, FS_BRIGHT, 'post.bright'); this.pDown = program(gl, VS, FS_DOWN, 'post.down'); this.pUp = program(gl, VS, FS_UP, 'post.up');
     this.pComp = program(gl, VS, FS_COMP, 'post.comp'); this.pCompT = program(gl, VS, FS_COMP.replace('precision mediump float;', 'precision mediump float;\n#define TENT'), 'post.compT');

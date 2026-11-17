@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>먹과 달빛 — 스프라이트 내보내기</title><link rel="icon" href="data:,"><link rel="stylesheet" href="style.css"></head>
+<body style="background:#111;overflow:auto;height:auto"><div id="o" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px"></div>
+<script type="module">
+// 게임에 넣을 스프라이트를 굽는다 (export.mjs 가 PNG 로 받아 아틀라스로 묶는다). 아이콘 160 px, 원판은 2배 크기.
+import { ICONS, iconCanvas, ensoSprite, strokeSprite, splatSprite, INK, CRIM, GOLD } from './ink.js';
+import { paintButton, paintKnob, paintStick, fontsReady } from './ui.js';
+await fontsReady();
+const out = [], o = document.getElementById('o');
+const add = (group, name, cv) => { out.push({ group, name, w: cv.width, h: cv.height, url: cv.toDataURL('image/png') }); o.appendChild(cv); cv.style.cssText = 'height:64px;width:auto;background:#222'; };
+for (const n of Object.keys(ICONS)) add('icons', n, iconCanvas(n, 160));
+const disc = (name, opt) => { const c = document.createElement('canvas'); paintButton(c, opt); add('mat', name, c); };
+disc('disc_main', { s: 94, kind: 'main' }); disc('disc_main_pr', { s: 94, kind: 'main', pr: 1 }); disc('disc_skill', { s: 62, kind: 'skill' }); disc('disc_skill_rdy', { s: 62, kind: 'skill', rdy: 1 }); disc('disc_skill_pr', { s: 62, kind: 'skill', pr: 1 });
+disc('disc_ult', { s: 68, kind: 'ult', chg: 0 }); disc('disc_ult_full', { s: 68, kind: 'ult', chg: 100 }); disc('disc_aux', { s: 54, kind: 'aux' }); disc('disc_aux_on', { s: 54, kind: 'aux', on: 1 }); disc('disc_sys', { s: 38, kind: 'sys' }); disc('disc_map', { s: 112, kind: 'map' });
+{ const c = document.createElement('canvas'); paintStick(c, 150); add('mat', 'stick_base', c); const k = document.createElement('canvas'); paintKnob(k, 58); add('mat', 'stick_knob', k); }
+add('mat', 'enso_ink', ensoSprite(256, { w: 5.2, seed: 3 })); add('mat', 'enso_crim', ensoSprite(256, { w: 6, c: CRIM, seed: 8 })); add('mat', 'enso_gold', ensoSprite(256, { w: 4.6, c: GOLD, seed: 5 }));
+add('mat', 'stroke_bar', strokeSprite(640, 44, { c: INK, seed: 21 })); add('mat', 'stroke_track', strokeSprite(640, 44, { c: '#050508', seed: 21, dry: 0.25, w: 17 })); add('mat', 'stroke_gold', strokeSprite(520, 36, { c: GOLD, seed: 33, w: 13 }));
+add('mat', 'plate_crim', strokeSprite(480, 110, { c: CRIM, seed: 52, dry: 0.6, w: 18, ds: 0.6, sp: 5 })); add('mat', 'wash_dark', strokeSprite(560, 120, { c: '#050508', seed: 41, dry: 0.5, w: 19, ds: 0.6 })); add('mat', 'underline_crim', strokeSprite(360, 22, { c: CRIM, seed: 61, dry: 0.8, w: 11, ds: 0.3 }));
+add('mat', 'splat_dark', splatSprite(240, '#060609', 9));
+window.__export = out; window.__done = 1;
+</script></body></html>

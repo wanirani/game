@@ -21,14 +21,14 @@ export function paintButton(cv, o) {
   x.save(); x.beginPath(); x.arc(c, c, R, 0, TAU); x.clip();
   x.globalCompositeOperation = 'destination-out'; x.fillStyle = '#000'; x.fillRect(0, 0, full, full); x.globalCompositeOperation = 'source-over';
   const k = kind === 'sys' ? 0.8 : kind === 'map' ? 1.05 : 1, tint = big ? '34,10,16' : (o.on || ultReady) ? '58,8,18' : '14,14,20';
-  g = x.createRadialGradient(c, c - R * 0.18, R * 0.1, c, c, R); g.addColorStop(0, `rgba(${tint},${0.40 * k})`); g.addColorStop(0.72, `rgba(8,8,12,${0.54 * k})`); g.addColorStop(1, `rgba(2,2,5,${0.74 * k})`);
+  g = x.createRadialGradient(c, c - R * 0.18, R * 0.1, c, c, R); g.addColorStop(0, `rgba(${tint},${0.48 * k})`); g.addColorStop(0.72, `rgba(8,8,12,${0.60 * k})`); g.addColorStop(1, `rgba(2,2,5,${0.78 * k})`);
   x.fillStyle = g; x.fillRect(0, 0, full, full);
   x.globalAlpha = 0.13; x.globalCompositeOperation = 'lighter'; x.drawImage(smoke, c - R, c - R, R * 2, R * 2); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
   g = x.createLinearGradient(0, c - R, 0, c); g.addColorStop(0, 'rgba(236,240,255,.20)'); g.addColorStop(1, 'rgba(236,240,255,0)');   // 위쪽 달빛 반사
   x.fillStyle = g; x.beginPath(); x.ellipse(c, c - R * 0.62, R * 0.9, R * 0.5, 0, 0, TAU); x.fill();
   g = x.createRadialGradient(c, c + R * 1.05, 0, c, c + R * 1.05, R * 1.1); g.addColorStop(0, o.rdy ? 'rgba(232,197,108,.30)' : 'rgba(232,40,63,.24)'); g.addColorStop(1, 'rgba(232,40,63,0)');   // 아래쪽 붉은 달 반사
   x.fillStyle = g; x.fillRect(0, 0, full, full);
-  if (o.pr) { g = x.createRadialGradient(c, c, 0, c, c, R); g.addColorStop(0, 'rgba(255,255,255,.42)'); g.addColorStop(1, 'rgba(255,255,255,.10)'); x.fillStyle = g; x.fillRect(0, 0, full, full); }
+  if (o.pr) { g = x.createRadialGradient(c, c, 0, c, c, R); g.addColorStop(0, 'rgba(255,255,255,.50)'); g.addColorStop(0.7, 'rgba(236,240,255,.22)'); g.addColorStop(1, 'rgba(232,40,63,.45)'); x.fillStyle = g; x.fillRect(0, 0, full, full); }
   x.restore();
   // 3) 테: 달빛(왼쪽 위) → 은 → 핏빛(오른쪽 아래) 한 줄 + 안쪽 금빛 실선과 시계 눈금
   g = x.createLinearGradient(c - R, c - R, c + R, c + R); g.addColorStop(0, 'rgba(255,255,255,.98)'); g.addColorStop(0.5, 'rgba(206,212,230,.62)'); g.addColorStop(1, o.rdy ? 'rgba(232,197,108,.95)' : 'rgba(232,40,63,.72)');
@@ -40,12 +40,12 @@ export function paintButton(cv, o) {
   // 4) 붓 고리 (공격은 굵게, 기술은 가늘게, 궁극기는 핏빛)
   const en = big ? ENSO.ink : kind === 'ult' ? (ultReady ? ENSO.crim : null) : kind === 'skill' ? ENSO.thin : kind === 'map' ? ENSO.ink : null;
   if (en) { const d = (R + (big ? 5.5 : kind === 'map' ? 3.5 : 4)) * 2 / 0.88; x.globalAlpha = o.off ? 0.3 : big || kind === 'map' ? 0.95 : ultReady ? 1 : 0.6; x.drawImage(en, c - d / 2, c - d / 2, d, d); x.globalAlpha = 1; }
-  if (o.pr) { const d = (R + pad * 0.8) * 2 / 0.88; x.globalAlpha = 0.5; x.drawImage(ENSO.ink, c - d / 2, c - d / 2, d, d); x.globalAlpha = 1; }
+  if (o.pr) { const d = (R + pad * 0.72) * 2 / 0.88; x.save(); x.translate(c, c); x.rotate(2.2); x.globalAlpha = 0.8; x.drawImage(ENSO.thin, -d / 2, -d / 2, d, d); x.restore(); }
   // 5) 그림
   if (o.icon) {
     const d = s * (big ? 0.7 : kind === 'sys' ? 0.62 : kind === 'ult' ? 0.74 : 0.68), dim = o.off ? 0.3 : o.cool > 0 ? 0.34 : 1;
     x.save(); x.globalAlpha = dim; x.shadowColor = 'rgba(0,0,0,.85)'; x.shadowBlur = 3 * DPR; x.shadowOffsetY = 1 * DPR;
-    x.drawImage(iconCanvas(o.icon, 256), c - d / 2, c - d / 2, d, d); x.restore();
+    x.drawImage(iconCanvas(o.icon, 256), c - d / 2, c - d / 2, d, d); x.shadowBlur = 1.5 * DPR; x.shadowOffsetY = 0; x.drawImage(iconCanvas(o.icon, 256), c - d / 2, c - d / 2, d, d); x.restore();
   }
   // 6) 재사용 대기: 남은 만큼 어둡게 덮고, 테가 시계 방향으로 차오른다
   if (o.cool > 0) {

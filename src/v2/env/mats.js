@@ -21,7 +21,8 @@ export const KMATS = {
   // 바닥
   cobble: { tex: 'k_cobble', tile: 150, tint: [0.8, 0.8, 0.9] },          // 조약돌 길
   flags: { tex: 'k_flag', tile: 300, tint: [0.86, 0.86, 0.96] },             // 판석
-  moss: { tex: 'flag', tile: 240, tint: [0.72, 0.8, 0.8] },                  // 이끼 낀 돌 (B 의 cobble)
+  moss: { tex: 'flag', tile: 240, tint: [0.72, 0.8, 0.8] },                  // 이끼 낀 돌 (B 의 cobble 텍스처에 초록빛)
+  slabs: { tex: 'flag', tile: 240, tint: [0.76, 0.78, 0.92] },                // 갈라진 큰 판석 (v1 손그림 타일 그대로 — 골목)
   dirt: { tex: 'dirt', tile: 340, tint: [1.05, 0.98, 0.95] },
   // 나무
   wood: { tex: 'wood', tile: 128, tint: [1.2, 1.02, 0.88] },

@@ -137,7 +137,8 @@ export class Particles {
     let nf = s.n * k * (s.pri ? Math.max(this.scale, 0.6) : this.scale * this.gov);
     if (nf < s.min) nf = s.min;
     let n = nf | 0; if (rnd() < nf - n) n++;
-    if (n <= 0) { this.dropped += s.n; return 0; }
+    if (this.gov < 1 && !s.pri) this.dropped += s.n * k * this.scale * (1 - this.gov);
+    if (n <= 0) return 0;
     const D = this.data, U = this.u8, cap = this.cap, t = this.time;
     // 방향 기준틀 (원뿔용)
     let ux = 0, uy = 0, uz = 0, wx = 0, wy = 0, wz = 0;
@@ -538,8 +539,8 @@ void main() {
   } else if (uMode == 1) {
     float sc = texture(uNoise, vec2(vUV.x * 2.0 + uPar.z, vUV.y * 1.3 - tm * 1.7)).r, sc2 = texture(uNoise, vec2(vUV.x * 4.0, vUV.y * 2.6 - tm * 2.9)).g;
     float core = pow(nv, 1.6);
-    a = core * (0.45 + 2.2 * sc * sc2) * (1.0 - smoothstep(0.35, 1.0, vUV.y) * uPar.w) * env;
-    rgb = mix(uCB.rgb, uCA.rgb, clamp(core * sc * 1.8, 0.0, 1.0)) + vec3(1.0) * pow(nv, 6.0) * 0.5;
+    a = core * (0.3 + 1.7 * sc * sc2) * (1.0 - smoothstep(0.35, 1.0, vUV.y) * uPar.w) * env;
+    rgb = mix(uCB.rgb, uCA.rgb, clamp(core * sc * 1.8, 0.0, 1.0)) + vec3(1.0) * pow(nv, 6.0) * 0.2;
   } else if (uMode == 2) {
     float sc = texture(uNoise, vec2(vUV.x * 3.0 + uPar.z, vUV.y * 1.1 - tm * 2.3)).r;
     a = pow(nv, 1.2) * (0.25 + 1.5 * sc) * smoothstep(0.0, 0.18, vUV.y) * (1.0 - smoothstep(0.55, 1.0, vUV.y)) * env; rgb = mix(uCB.rgb, uCA.rgb, sc);
@@ -558,7 +559,7 @@ void main() {
     rgb = uCB.rgb * (0.4 + 0.6 * d) + uCA.rgb * (fr * 0.8 + sp * 1.3 + edge * 2.5); a = 1.0;
   }
   a = clamp(a, 0.0, 1.6) * uCA.a;
-  o = vec4(rgb * a * mix(1.0, uTAG.z, uTAG.y), min(a, 1.0) * (1.0 - uTAG.y));
+  o = vec4(rgb * a * mix(1.0, uTAG.z * 0.6, uTAG.y), min(a, 1.0) * (1.0 - uTAG.y));
 }`;
 
 function buildMeshes() {

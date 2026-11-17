@@ -21,7 +21,7 @@ export const STRENGTH = Object.freeze({
   L: Object.freeze({ id: 'L', stop: 0.045, shake: 0.10, kick: 3, zoom: 1, zoomT: 0, duck: null, gain: 1.0, tailAt: 0.02, haptic: 'hitL' }),
   M: Object.freeze({ id: 'M', stop: 0.067, shake: 0.16, kick: 5, zoom: 1, zoomT: 0, duck: null, gain: 1.0, tailAt: 0.03, haptic: 'hitM' }),
   H: Object.freeze({ id: 'H', stop: 0.100, shake: 0.26, kick: 9, zoom: 1.02, zoomT: 0.14, duck: Object.freeze([0.3, 0.35]), gain: 1.04, tailAt: 0.05, haptic: 'hitH' }),
-  F: Object.freeze({ id: 'F', stop: 0.133, shake: 0.36, kick: 13, zoom: 1.035, zoomT: 0.18, duck: Object.freeze([0.45, 0.5]), gain: 1.02, tailAt: 0.07, haptic: 'hitF' }),
+  F: Object.freeze({ id: 'F', stop: 0.133, shake: 0.36, kick: 13, zoom: 1.035, zoomT: 0.18, duck: Object.freeze([0.45, 0.5]), gain: 0.98, tailAt: 0.07, haptic: 'hitF' }),
 });
 export const STRENGTHS = Object.freeze(Object.keys(STRENGTH));
 
@@ -52,8 +52,8 @@ export const MATERIAL = Object.freeze({
   flesh: { label: '살', stopK: 1, spark: 'blood', body: [o('hit_flesh', 0.004, 0.8), s('thud', 0, 0.5, 1, 1)], tail: [n('cloth', 0, 0.2, 1.1, 2)], cutx: [o('slash', 0, 0.3, 1.25, 1)], die: [o('enemy_die', 0.03, 0.7)] },
   bone: { label: '뼈', stopK: 1.05, spark: 'bone', body: [o('hit_bone', 0.003, 1.0), s('knock', 0, 0.35, 1.2, 1)], tail: [o('bone_rattle', 0, 0.55, 1.05), o('bone_rattle', 0.07, 0.3, 1.3, 2)], cutx: [], die: [o('enemy_die_bone', 0.03, 0.85), o('bone_rattle', 0.16, 0.5, 0.9, 1), n('debris', 0.1, 0.3, 1.3, 2)] },
   armor: { label: '갑옷', stopK: 1.2, spark: 'spark', body: [o('clang', 0, 0.9), s('knock', 0, 0.3, 0.8, 1)], tail: [n('ring', 0, 0.42), o('clang', 0.05, 0.25, 1.4, 2)], cutx: [], die: [o('enemy_die', 0.03, 0.6), o('clang', 0.12, 0.5, 0.8), n('ring', 0.12, 0.35, 0.85, 1)] },
-  stone: { label: '돌', stopK: 1.25, spark: 'dust', body: [o('hit_stone', 0, 0.95), s('thud', 0, 0.45, 0.8, 1)], tail: [n('debris', 0, 0.5), n('debris', 0.09, 0.25, 0.8, 2)], cutx: [], die: [o('enemy_die_stone', 0.03, 0.85), n('debris', 0.08, 0.6, 0.75)] },
-  wood: { label: '나무', stopK: 0.95, spark: 'splinter', body: [o('step_wood', 0, 2.6, 0.7), s('knock', 0, 0.5, 0.9)], tail: [n('debris', 0, 0.22, 1.5, 1)], cutx: [], die: [o('break_wall', 0.02, 0.6, 1.2), n('debris', 0.06, 0.4, 1.2)] },
+  stone: { label: '돌', stopK: 1.25, spark: 'dust', body: [o('hit_stone', 0, 0.85), s('thud', 0, 0.45, 0.8, 1)], tail: [n('debris', 0, 0.5), n('debris', 0.09, 0.25, 0.8, 2)], cutx: [], die: [o('enemy_die_stone', 0.03, 0.85), n('debris', 0.08, 0.6, 0.75)] },
+  wood: { label: '나무', stopK: 0.95, spark: 'splinter', body: [o('step_wood', 0, 2.0, 0.7), s('knock', 0, 0.5, 0.9)], tail: [n('debris', 0, 0.22, 1.5, 1)], cutx: [], die: [o('break_wall', 0.02, 0.6, 1.2), n('debris', 0.06, 0.4, 1.2)] },
   ghost: { label: '영체', stopK: 0.7, spark: 'wisp', body: [o('hit_ghost', 0, 0.9)], tail: [s('wisp', 0, 0.3, 1, 1)], cutx: [], die: [o('enemy_die_ghost', 0.03, 0.85)] },
   cloth: { label: '천', stopK: 0.9, spark: 'thread', body: [n('cloth', 0, 0.75, 0.9), o('hit_flesh', 0.004, 0.55, 1.1), s('thud', 0, 0.3, 1.1, 1)], tail: [n('cloth', 0.02, 0.35, 1.2, 1)], cutx: [o('slash', 0, 0.28, 1.35, 1)], die: [o('enemy_die', 0.03, 0.7), n('cloth', 0.08, 0.5, 0.75)] },
 });
@@ -62,7 +62,7 @@ export const MATERIALS = Object.freeze(Object.keys(MATERIAL));
 // ───────────────────────────── 덧붙임 (치명타·막힘·받아치기·마무리) ─────────────────────────────
 // add 더할 층 · stop/shake/zoom 은 세기 값에 더하거나(＋) 바꾼다(=) · slow [실시간 초, 배속] · only = 몸통·꼬리 대신 이 층만
 export const MOD = Object.freeze({
-  crit: { add: [o('crit', 0, 0.6), s('snap', 0, 0.3, 1.5, 1)], stopAdd: 0.033, shakeAdd: 0.08, zoom: 1.03, zoomT: 0.16, gain: 1.0, haptic: 'crit' },
+  crit: { add: [o('crit', 0, 0.55), s('snap', 0, 0.3, 1.5, 1)], stopAdd: 0.033, shakeAdd: 0.08, zoom: 1.03, zoomT: 0.16, gain: 1.0, haptic: 'crit' },
   kill: { stopAdd: 0.05, shakeAdd: 0.06, gain: 1.04 },
   // 막힘: 적의 방패·가드에 막혔다 — 몸통 없이 쇳소리, 경직은 짧고 딱딱하게
   guard: { only: [o('clang', 0, 0.95, 0.92), o('knight_guard', 0.004, 0.5, 1, 1), s('knock', 0, 0.4, 0.7), n('ring', 0.03, 0.3, 1.1, 1)], stop: 0.05, shake: 0.12, kick: -4, zoom: 1, gain: 0.95, haptic: 'guard' },
@@ -145,15 +145,15 @@ export function swingFeel(weapon, strength) {
 // 원소마다 charge(모으기) · release(쏘기) · loop(날아가는 고리, sound.js 가 만든 고리 버퍼) · impact(맞음: 경직·흔들림·줌 포함)
 const mag = (label, color, charge, release, loop, impact, fx) => Object.freeze({ label, color, charge, release, loop, impact, ...fx });
 export const MAGIC = Object.freeze({
-  fire: mag('불', '#ff8a3c', [s('riser', 0, 0.5, 0.8, 0, { el: 'fire' }), o('fire_breath', 0.1, 0.3, 0.8, 1)], [o('fire', 0, 0.9), s('air', 0, 0.35, 0.7), s('sub', 0, 0.3, 1.2, 1)], 'fire',
+  fire: mag('불', '#ff8a3c', [s('riser', 0, 0.5, 0.9, 0, { el: 'fire' }), o('fire_breath', 0.1, 0.3, 0.8, 1)], [o('fire', 0, 0.9), s('air', 0, 0.35, 0.7), s('sub', 0, 0.3, 1.2, 1)], 'fire',
     [o('explode', 0, 0.7), o('fire', 0.02, 0.6, 0.8), s('sub', 0, 0.5), n('debris', 0.06, 0.35, 1, 1)], { loopG: 0.55, stop: 0.09, shake: 0.34, zoom: 1.03, zoomT: 0.2, duck: [0.4, 0.5], haptic: 'magicHit' }),
-  ice: mag('얼음', '#8fd8ff', [s('riser', 0, 0.45, 1.5, 0, { el: 'ice' }), o('ice', 0.25, 0.25, 1.5, 1)], [o('ice', 0, 0.85, 1.1), s('air', 0, 0.3, 1.5), s('snap', 0, 0.3, 1.5, 1)], 'ice',
-    [o('ice', 0, 0.95, 0.85), o('hit_stone', 0, 0.5, 1.3), n('debris', 0.03, 0.5, 1.7), n('ring', 0.02, 0.3, 1.5, 1)], { loopG: 0.32, stop: 0.1, shake: 0.26, zoom: 1.025, zoomT: 0.18, duck: [0.35, 0.45], haptic: 'magicHit' }),
-  lightning: mag('번개', '#fff27a', [s('riser', 0, 0.75, 1.2, 0, { el: 'lightning' }), s('zap', 0.2, 0.2, 1.4, 1)], [o('thunder', 0, 0.9, 1.1), s('zap', 0, 0.45), s('snap', 0, 0.4, 1.2)], 'lightning',
+  ice: mag('얼음', '#8fd8ff', [s('riser', 0, 0.45, 1.15, 0, { el: 'ice' }), o('ice', 0.25, 0.25, 1.5, 1)], [o('ice', 0, 0.85, 1.1), s('air', 0, 0.3, 1.5), s('snap', 0, 0.3, 1.5, 1)], 'ice',
+    [o('ice', 0, 1.1, 0.85), o('hit_stone', 0, 0.6, 1.3), n('debris', 0.03, 0.5, 1.7), n('ring', 0.02, 0.3, 1.5, 1)], { loopG: 0.32, stop: 0.1, shake: 0.26, zoom: 1.025, zoomT: 0.18, duck: [0.35, 0.45], haptic: 'magicHit' }),
+  lightning: mag('번개', '#fff27a', [s('riser', 0, 0.75, 1.1, 0, { el: 'lightning' }), s('zap', 0.2, 0.2, 1.4, 1)], [o('thunder', 0, 0.9, 1.1), s('zap', 0, 0.45), s('snap', 0, 0.4, 1.2)], 'lightning',
     [o('thunderclap', 0, 0.8), o('thunder', 0.03, 0.5, 0.8), s('zap', 0, 0.5, 0.8), s('sub', 0, 0.5, 1.1)], { loopG: 0.85, stop: 0.07, shake: 0.4, zoom: 1.04, zoomT: 0.14, duck: [0.45, 0.5], haptic: 'zap' }),
   holy: mag('신성', '#fff4c8', [s('riser', 0, 0.85, 1, 0, { el: 'holy' }), s('shimmer', 0.2, 0.3, 1, 1)], [o('holy', 0, 0.8), n('bell_high', 0, 0.3, 1.5), s('air', 0, 0.25, 1.3, 1)], 'holy',
     [o('holy', 0, 0.9, 0.9), o('cross', 0, 0.5, 1), n('bell_mid', 0.01, 0.45, 2), s('sub', 0, 0.45, 1.2), s('shimmer', 0.05, 0.35, 1, 1)], { loopG: 0.3, stop: 0.09, shake: 0.24, zoom: 1.03, zoomT: 0.25, duck: [0.4, 0.6], haptic: 'magicHit' }),
-  blood: mag('피·그림자', '#c0183c', [s('riser', 0, 0.5, 0.6, 0, { el: 'blood' }), o('heartbeat', 0.05, 0.6, 1, 1)], [o('dark', 0, 0.85), o('hit_flesh', 0, 0.5, 0.8), s('air', 0, 0.3, 0.6)], 'blood',
+  blood: mag('피·그림자', '#c0183c', [s('riser', 0, 0.5, 0.85, 0, { el: 'blood' }), o('heartbeat', 0.05, 0.6, 1, 1)], [o('dark', 0, 0.85), o('hit_flesh', 0, 0.5, 0.8), s('air', 0, 0.3, 0.6)], 'blood',
     [o('dark', 0, 0.9, 0.85), o('soul_reap', 0.02, 0.55, 0.9), o('hit_flesh', 0, 0.7, 0.7), s('drop', 0, 0.55, 1.2), s('wisp', 0.06, 0.3, 0.7, 1)], { loopG: 0.55, stop: 0.11, shake: 0.3, zoom: 1.035, zoomT: 0.22, duck: [0.45, 0.6], haptic: 'magicHit' }),
 });
 export const ELEMENTS = Object.freeze(Object.keys(MAGIC));
@@ -175,12 +175,12 @@ export const BELLS = Object.freeze(Object.keys(BELL));
 const ev = (bus, layers, x) => Object.freeze({ bus, layers: Object.freeze(layers), gain: 1, ...x });
 export const EVENT = Object.freeze({
   // 이동 — 발소리는 애니메이션의 발 닿는 순간(contact)이 부른다. 속도(월드 단위/초)는 feel.step(speed) 가 walk/run/sprint 로 나눈다
-  'step.walk': ev('f3_step', [o('step_stone', 0, 1.0, 0.96)], { gain: 1.05 }),
+  'step.walk': ev('f3_step', [o('step_stone', 0, 1.0, 0.96)], { gain: 0.9 }),
   'step.run': ev('f3_step', [o('step_stone', 0, 1.0, 1.02), s('scuff', 0, 0.12, 1, 2)], { gain: 1.5 }),
   'step.sprint': ev('f3_step', [o('step_stone', 0, 1.0, 1.07), s('scuff', 0, 0.2, 1.1, 1), n('gear', 0.01, 0.1, 1.1, 2)], { gain: 1.6 }),
   'move.dash': ev('f3_foley', [o('dash_burst', 0, 0.8), o('dash', 0, 0.6, 1.05), n('cloth', 0.01, 0.4, 1.1, 1), s('air', 0, 0.3, 1.1, 1)], { haptic: 'dash' }),
   'move.jump': ev('f3_foley', [o('jump', 0, 0.9), n('cloth', 0.01, 0.3, 1.25, 1), n('gear', 0, 0.16, 1.1, 2)]),
-  'move.land': ev('f3_foley', [o('land', 0, 1.0), o('step_stone', 0.004, 0.9, 0.9), n('gear', 0.015, 0.2, 0.95, 1)], { haptic: 'land' }),
+  'move.land': ev('f3_foley', [o('land', 0, 1.0), o('step_stone', 0.004, 0.9, 0.9), n('gear', 0.015, 0.2, 0.95, 1)], { gain: 1.3, haptic: 'land' }),
   'move.land_heavy': ev('f3_foley', [o('land_heavy', 0, 0.95), s('sub', 0, 0.4, 1.1), n('debris', 0.03, 0.22, 1.2, 1), n('gear', 0.02, 0.3, 0.9, 1)], { haptic: 'landHeavy', shake: 0.14, stop: 0 }),
   'foley.cloth': ev('f3_foley', [n('cloth', 0, 0.5)], { gain: 0.6 }),
   'foley.gear': ev('f3_foley', [n('gear', 0, 0.5)], { gain: 0.5 }),
@@ -205,7 +205,7 @@ export const EVENT = Object.freeze({
   'ui.ok': ev('f3_ui', [n('ui_ok', 0, 0.5)], { flat: true, gain: 0.6 }),
   'ui.deny': ev('f3_ui', [n('ui_deny', 0, 0.55)], { flat: true, gain: 0.6 }),
   // 종 (가락은 BELL — sound.js 가 층으로 푼다)
-  'bell.toll': ev('f3_bell', [n('bell_toll', 0, 0.85), s('drop', 0, 0.5, 0.9), o('bell', 0.004, 0.35, 0.5, 1)], { duck: [0.5, 2.4], haptic: 'toll', shake: 0.3, stop: 0, zoom: 1.04, zoomT: 1.2 }),
+  'bell.toll': ev('f3_bell', [n('bell_toll', 0, 0.68), s('drop', 0, 0.5, 0.9), o('bell', 0.004, 0.35, 0.5, 1)], { duck: [0.5, 2.4], haptic: 'toll', shake: 0.3, stop: 0, zoom: 1.04, zoomT: 1.2 }),
 });
 // 마법·종 가락·고리도 사건 이름으로 부를 수 있게 펼친다: magic.<원소>.<charge|release|impact>, loop.magic.<원소>, bell.<가락>
 const X = {};

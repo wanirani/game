@@ -3,11 +3,14 @@
 //   node tools/v2/bench_check.mjs [--devices fold_open,phone2] [--sec 2] [--full] [--shots /tmp/claude-0/v2/bench] [--no-shots] [--json out.json]
 //     --pace [120:q100,…]  틀 검증: 가짜 화면 시계(주사율:모형)로 돌려 '초당 60' 과 '매 화면' 의 박자를 본다 (아래 설명)
 //     --no-devices  기기 프리셋 실행을 건너뛴다 (박자 계산·틀 검증만) · --no-sim  박자 계산을 건너뛴다
+//     --dist dist/<폴더>   build_web.mjs 결과물(번들)을 배포용 CSP 머리말과 함께 연다
 //     --sec N   시험 하나의 길이(초). 기본 2 (앞 0.5초 버림) — 빨리 끝내려고 줄인 값이다. --full = 기기와 같은 4초(앞 1초 버림), 약 1분.
 // ★ 주의: 헤드리스의 WebGL 은 소프트웨어 렌더러(SwiftShader)다. 여기 나오는 프레임 시간·끊김·추천 설정은 실제 기기의 값이 아니다.
 //   이 도구가 확인하는 것은 "장면이 뜨고, 모든 시험을 돌고, 표와 단추가 동작하고, 페이지 오류가 없다" 뿐이다.
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
+import http from 'node:http';
+import path from 'node:path';
 import { start } from '../serve.mjs';
 import { contextOptions } from '../qa/lib/viewports.mjs';
 import { buildMatrix, pickBest, STORE_KEY } from '../../src/v2/bench/stats.js';
@@ -60,7 +63,20 @@ if (!args['no-sim']) {
 }
 
 const port = 8300 + Math.floor(Math.random() * 600);
-const srv = await start(port);
+let srv;
+if (args.dist) {   // 배포 빌드(번들)를 배포용 CSP 머리말과 함께 연다 — build_web.mjs 결과 폴더
+  const root = path.resolve(String(args.dist));
+  const toml = fs.readFileSync(new URL('../../netlify.toml', import.meta.url), 'utf8');
+  const csp = (toml.match(/Content-Security-Policy\s*=\s*"([^"]+)"/) || [])[1] || "default-src 'self'";
+  const MIME = { html: 'text/html; charset=utf-8', js: 'text/javascript', css: 'text/css', json: 'application/json', webp: 'image/webp', png: 'image/png', woff2: 'font/woff2', webmanifest: 'application/manifest+json', m4a: 'audio/mp4', ogg: 'audio/ogg', glb: 'model/gltf-binary' };
+  srv = http.createServer((req, res) => {
+    let u = decodeURIComponent(req.url.split('?')[0]); if (u === '/') u = '/index.html';
+    const f = path.join(root, u); if (!f.startsWith(root)) { res.writeHead(403); res.end(); return; }
+    fs.readFile(f, (err, data) => { if (err) { res.writeHead(404); res.end(); return; } res.writeHead(200, { 'Content-Type': MIME[f.split('.').pop()] || 'application/octet-stream', 'Content-Security-Policy': csp }); res.end(data); });
+  });
+  await new Promise((r) => srv.listen(port, r));
+  console.log(`[배포 빌드 ${args.dist}] CSP: ${csp.slice(0, 60)}…`);
+} else srv = await start(port);
 const browser = await chromium.launch({ executablePath: EXE, args: GL_ARGS });
 console.log('★ 헤드리스 = 소프트웨어 렌더러. 아래 숫자는 실제 기기의 값이 아니다 (장면이 끝까지 도는지만 본다).');
 

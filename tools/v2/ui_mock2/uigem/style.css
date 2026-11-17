@@ -60,7 +60,7 @@ ul { list-style: none; } i { font-style: normal; display: block; } img { display
 
 /* ── 행동 버튼 ───────────────────────────────────────────── */
 .abtn { position: absolute; right: calc(var(--x) * 1px - var(--s) * .5px + var(--sr)); bottom: calc(var(--y) * 1px - var(--s) * .5px + var(--sb)); width: calc(var(--s) * 1px); height: calc(var(--s) * 1px); display: grid; place-items: center; border-radius: 50%; transition: transform .08s; }
-.abtn .ico { position: relative; width: 72%; height: 72%; object-fit: contain; filter: drop-shadow(0 1px 1.500px rgba(0, 0, 0, .75)); }
+.abtn .ico { position: relative; width: 72%; height: 72%; object-fit: contain; filter: drop-shadow(0 1px 1.500px rgba(0, 0, 0, .8)) drop-shadow(0 0 2.500px rgba(4, 5, 12, .8)) drop-shadow(0 0 7px rgba(4, 5, 12, .55)); }
 .abtn .prog, .abtn .cd { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; display: none; }
 .abtn .ct { position: absolute; pointer-events: none; font: 700 22px var(--numf); color: #fff; text-shadow: var(--sh); }
 .abtn .lb { display: none; }
@@ -68,7 +68,7 @@ ul { list-style: none; } i { font-style: normal; display: block; } img { display
 .abtn .lk { position: absolute; display: none; right: 3%; bottom: 3%; width: 30%; height: 30%; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .9)); }
 /* 눌림: 안에서 빛이 차오르고 바깥으로 고리가 번진다 */
 .abtn.pr, .abtn.held { transform: scale(.93); }
-.abtn.pr .gl, .abtn.held .gl { background: radial-gradient(circle, rgba(255, 255, 255, .42) 0%, rgba(210, 224, 255, .22) 55%, rgba(9, 11, 24, .5) 100%), var(--guil) center / 100% 100% no-repeat; box-shadow: 0 0 0 5px rgba(255, 255, 255, .17), 0 0 18px rgba(196, 214, 255, .7); }
+.abtn.pr .gl, .abtn.held .gl { background: radial-gradient(circle, rgba(255, 255, 255, .30) 0%, rgba(210, 224, 255, .20) 55%, rgba(9, 11, 24, .5) 100%), var(--guil) center / 100% 100% no-repeat; box-shadow: 0 0 0 5px rgba(255, 255, 255, .17), 0 0 18px rgba(196, 214, 255, .7); }
 /* 재사용 대기: 유리가 어두워지고, 테가 시계 방향으로 다시 차오른다 */
 .abtn.cool .rim { background-image: var(--rim-dim); }
 .abtn.cool .ico { opacity: .36; filter: grayscale(.4); }
@@ -118,7 +118,7 @@ ul { list-style: none; } i { font-style: normal; display: block; } img { display
 #sys { right: calc(12px + var(--sr)); top: calc(10px + var(--st)); display: flex; gap: 6px; }
 .sbtn { position: relative; width: 46px; height: 46px; display: grid; place-items: center; border-radius: 50%; }
 .sbtn .rim { background-image: var(--rim-s); } .sbtn .lb { display: none; }
-.sbtn .ico { position: relative; width: 66%; height: 66%; object-fit: contain; filter: drop-shadow(0 1px 1.500px rgba(0, 0, 0, .75)); }
+.sbtn .ico { position: relative; width: 66%; height: 66%; object-fit: contain; filter: drop-shadow(0 1px 1.500px rgba(0, 0, 0, .8)) drop-shadow(0 0 2px rgba(4, 5, 12, .8)) drop-shadow(0 0 6px rgba(4, 5, 12, .55)); }
 .sbtn .bd { position: absolute; right: -2px; top: -3px; min-width: 16px; height: 16px; border-radius: 8px; font: 700 10.500px/16px var(--numf); text-align: center; color: #fff; background: var(--rubyg); box-shadow: 0 0 0 1.200px #f1f3f8, 0 0 0 2.200px rgba(5, 6, 12, .55); }
 .sbtn.on .gl { background: radial-gradient(circle, rgba(226, 51, 74, .42), rgba(120, 10, 30, .55)), var(--guil) center / 100% 100%; } .sbtn.pr { transform: scale(.92); }
 

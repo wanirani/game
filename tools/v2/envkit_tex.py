@@ -176,10 +176,10 @@ def tex_cobble():
     h = stone * (0.5 + 0.5 * np.sqrt(dome)) + n2 * 0.12
     lit = emboss(h, 3.2)
     k = len(pts)
-    shade = (0.5 + 0.75 * lit) * per(idx, k, 0.72, 1.15, 44) * (0.85 + 0.3 * n1) * (0.3 + 0.7 * stone)
+    shade = (0.5 + 0.75 * lit) * per(idx, k, 0.84, 1.1, 44) * (0.85 + 0.3 * n1) * (0.3 + 0.7 * stone)
     shade *= 1 + 0.22 * sm(0.55, 0.95, dome) * stone                             # 닳아 반들거리는 윗면
-    hue = np.stack([per(idx, k, 0.93, 1.07, 45), per(idx, k, 0.96, 1.04, 46), per(idx, k, 0.94, 1.1, 47)], 2)
-    c = rgb((128, 130, 144), shade, hue).astype(np.float32)
+    hue = np.stack([per(idx, k, 0.96, 1.05, 45), per(idx, k, 0.97, 1.03, 46), per(idx, k, 0.96, 1.05, 47)], 2)
+    c = rgb((132, 130, 136), shade, hue).astype(np.float32)
     dirt = (1 - stone) * sm(0.35, 0.7, fbm(beta=2.4, seed=48))
     c = c * (1 - 0.5 * dirt[:, :, None]) + np.array([70, 66, 48])[None, None, :] * 0.5 * dirt[:, :, None]
     return np.clip(c, 0, 255).astype(np.uint8)

@@ -4,7 +4,7 @@
 //  · 옛 샘플(assets/audio/sfx_v2)은 엔진이 이미 풀어 둔 버퍼를 그대로 층으로 쓴다 (추가 메모리 0)
 //  · 방 울림은 엔진의 방 컨볼버(eng.room) 하나를 같이 쓰고 임펄스만 바꾼다 (컨볼버 추가 0)
 //  인스턴스 하나의 그래프: [층: 버퍼소스→게인]… → (저역 통과 1개: 거리·느린 화면) → S.out(엔진) → 팬 → 효과음 버스. 방 울림은 S.out → 송신 게인 → eng.room
-//  프레임마다 하는 일은 없다 (update 는 고리 감시만, 0.5초에 한 번). 재생 때 만드는 JS 객체는 WebAudio 노드뿐이다.
+//  프레임마다 하는 일은 없다 (update 는 고리 감시만, 0.5초에 한 번). 재생 때 이 모듈이 만드는 것은 WebAudio 노드뿐이다 (레시피·옵션은 캐시·상수).
 import { audio, defineSfx, V2Bank, SFX } from '../../core/audio.js';
 import { EVENTS, hitFeel, swingFeel, usedSources, QUALITY, stepEvent } from './table.js';
 
@@ -92,24 +92,36 @@ function loopBuf(c, kind) {
 }
 
 // ───────────────────────────── 합성 층 (엔진 도우미 H.T 톤 · H.N 잡음 — 노드 2–6개) ─────────────────────────────
-const RISE = {   // 모으기(0.85초): [잡음 필터, 톤 파형, 톤 f0→f1]
-  fire: (S, H, l) => { H.N(S, l.at, 0.85, 0.5 * l.g, { a: 0.62, f: ['lowpass', 320, 2600, 0.9, 0.62] }); H.T(S, 'sawtooth', 70, 150, l.at, 0.85, 0.16 * l.g, { a: 0.6, sw: 0.62, f: ['lowpass', 700] }); },
-  ice: (S, H, l) => { H.T(S, 'sine', 1300, 2900, l.at, 0.85, 0.16 * l.g, { a: 0.62, sw: 0.62, vib: [9, 22] }); H.N(S, l.at, 0.85, 0.2 * l.g, { a: 0.64, f: ['highpass', 5200] }); H.T(S, 'triangle', 650, 1450, l.at, 0.8, 0.08 * l.g, { a: 0.6, sw: 0.6 }); },
-  lightning: (S, H, l) => { H.T(S, 'sawtooth', 90, 560, l.at, 0.85, 0.2 * l.g, { a: 0.64, sw: 0.64, f: ['highpass', 400], fm: [2.5, 3, 0.8] }); H.CRACKLE(S, l.at + 0.15, 0.6, 10, 0.3 * l.g, 4800); },
-  holy: (S, H, l) => { H.ARP(S, 'sine', [74, 78, 81, 86, 90], 0.14, 0.5, 0.11 * l.g, { a: 0.05 }, l.at); H.N(S, l.at, 0.85, 0.18 * l.g, { a: 0.62, f: ['bandpass', 1800, 4200, 2, 0.62] }); },
-  blood: (S, H, l) => { H.T(S, 'triangle', 110, 235, l.at, 0.85, 0.3 * l.g, { a: 0.64, sw: 0.64, vib: [5, 40] }); H.N(S, l.at, 0.85, 0.42 * l.g, { a: 0.64, f: ['lowpass', 260, 1100, 2.5, 0.64] }); },
+// 옵션은 전부 모듈 상수다 (재생 때 객체를 만들지 않는다). 층의 피치(l.p)는 run 이 S.p 에 곱해서 넘긴다 — H.T·H.N 이 모든 주파수에 S.p 를 곱한다.
+const K = Object.freeze({
+  sub1: { sw: 0.13 }, sub2: { sw: 0.07 }, thud: { f: ['lowpass', 900, 220, 0.8] }, knock: { f: ['bandpass', 1400, 0, 2.5] },
+  snap1: { f: ['highpass', 4200] }, snap2: { f: ['bandpass', 2400, 0, 1.5] }, air: { a: 0.07, f: ['bandpass', 500, 2400, 1.2, 0.12] }, scuff: { a: 0.008, f: ['bandpass', 3200, 1800, 1.2] },
+  wisp1: { a: 0.08, vib: [6, 30] }, wisp2: { a: 0.1, f: ['bandpass', 2600, 5200, 3] }, drop1: { sw: 0.5 }, drop2: { sw: 0.4 }, drop3: { f: ['lowpass', 520, 90, 0.7] },
+  zap: { f: ['highpass', 900], fm: [3.7, 2.2, 0.1] }, shim: { a: 0.01 }, shimN: [86, 93, 98, 105],
+  fire1: { a: 0.62, f: ['lowpass', 320, 2600, 0.9, 0.62] }, fire2: { a: 0.6, sw: 0.62, f: ['lowpass', 700] },
+  ice1: { a: 0.62, sw: 0.62, vib: [9, 22] }, ice2: { a: 0.64, f: ['highpass', 5200] }, ice3: { a: 0.6, sw: 0.6 },
+  lit1: { a: 0.64, sw: 0.64, f: ['highpass', 400], fm: [2.5, 3, 0.8] },
+  holy1: { a: 0.05 }, holyN: [74, 78, 81, 86, 90], holy2: { a: 0.62, f: ['bandpass', 1800, 4200, 2, 0.62] },
+  blood1: { a: 0.64, sw: 0.64, vib: [5, 40] }, blood2: { a: 0.64, f: ['lowpass', 260, 1100, 2.5, 0.64] },
+});
+const RISE = {   // 모으기(0.85초): 천천히 부풀었다가 0.2초에 꺼진다
+  fire: (S, H, l) => { H.N(S, l.at, 0.85, 0.5 * l.g, K.fire1); H.T(S, 'sawtooth', 70, 150, l.at, 0.85, 0.16 * l.g, K.fire2); },
+  ice: (S, H, l) => { H.T(S, 'sine', 1300, 2900, l.at, 0.85, 0.16 * l.g, K.ice1); H.N(S, l.at, 0.85, 0.2 * l.g, K.ice2); H.T(S, 'triangle', 650, 1450, l.at, 0.8, 0.08 * l.g, K.ice3); },
+  lightning: (S, H, l) => { H.T(S, 'sawtooth', 90, 560, l.at, 0.85, 0.2 * l.g, K.lit1); H.CRACKLE(S, l.at + 0.15, 0.6, 10, 0.3 * l.g, 4800); },
+  holy: (S, H, l) => { H.ARP(S, 'sine', K.holyN, 0.14, 0.5, 0.11 * l.g, K.holy1, l.at); H.N(S, l.at, 0.85, 0.18 * l.g, K.holy2); },
+  blood: (S, H, l) => { H.T(S, 'triangle', 110, 235, l.at, 0.85, 0.3 * l.g, K.blood1); H.N(S, l.at, 0.85, 0.42 * l.g, K.blood2); },
 };
 export const SYN = {
-  sub(S, H, l) { H.T(S, 'sine', 96 * l.p, 36, l.at, 0.2, 0.9 * l.g, { sw: 0.13 }); H.T(S, 'triangle', 190 * l.p, 72, l.at, 0.09, 0.32 * l.g, { sw: 0.07 }); },   // 낮은 쿵 (+ 휴대폰 스피커에 들리는 윗소리)
-  thud(S, H, l) { H.N(S, l.at, 0.07, 0.5 * l.g, { f: ['lowpass', 900 * l.p, 220, 0.8] }); H.T(S, 'sine', 150 * l.p, 64, l.at, 0.085, 0.5 * l.g); },
-  knock(S, H, l) { H.T(S, 'triangle', 420 * l.p, 240, l.at, 0.045, 0.4 * l.g); H.N(S, l.at, 0.02, 0.3 * l.g, { f: ['bandpass', 1400 * l.p, 0, 2.5] }); },
-  snap(S, H, l) { H.N(S, l.at, 0.014, 0.6 * l.g, { f: ['highpass', 4200 * l.p] }); H.N(S, l.at, 0.03, 0.3 * l.g, { f: ['bandpass', 2400 * l.p, 0, 1.5] }); },   // 날카로운 순간음
-  air(S, H, l) { H.N(S, l.at, 0.24, 0.5 * l.g, { a: 0.07, f: ['bandpass', 500 * l.p, 2400 * l.p, 1.2, 0.12] }); },   // 바람 가르는 소리 (올라갔다 꺼짐)
-  scuff(S, H, l) { H.N(S, l.at, 0.05, 0.5 * l.g, { a: 0.008, f: ['bandpass', 3200 * l.p, 1800, 1.2] }); },
-  wisp(S, H, l) { H.T(S, 'sine', 880 * l.p, 1320 * l.p, l.at, 0.42, 0.12 * l.g, { a: 0.08, vib: [6, 30] }); H.N(S, l.at, 0.36, 0.18 * l.g, { a: 0.1, f: ['bandpass', 2600 * l.p, 5200, 3] }); },
-  drop(S, H, l) { H.T(S, 'sine', 150 * l.p, 30, l.at, 0.7, 0.9 * l.g, { sw: 0.5 }); H.T(S, 'triangle', 300 * l.p, 62, l.at, 0.45, 0.22 * l.g, { sw: 0.4 }); H.N(S, l.at, 0.5, 0.25 * l.g, { f: ['lowpass', 520, 90, 0.7] }); },
-  zap(S, H, l) { H.T(S, 'sawtooth', 1800 * l.p, 240, l.at, 0.12, 0.22 * l.g, { f: ['highpass', 900], fm: [3.7, 2.2, 0.1] }); H.CRACKLE(S, l.at, 0.14, 6, 0.3 * l.g, 4200); },
-  shimmer(S, H, l) { H.ARP(S, 'sine', [86, 93, 98, 105], 0.045, 0.36, 0.09 * l.g, { a: 0.01 }, l.at); },
+  sub(S, H, l) { H.T(S, 'sine', 96, 36, l.at, 0.2, 0.9 * l.g, K.sub1); H.T(S, 'triangle', 190, 72, l.at, 0.09, 0.32 * l.g, K.sub2); },   // 낮은 쿵 (+ 휴대폰 스피커에 들리는 윗소리)
+  thud(S, H, l) { H.N(S, l.at, 0.07, 0.5 * l.g, K.thud); H.T(S, 'sine', 150, 64, l.at, 0.085, 0.5 * l.g); },
+  knock(S, H, l) { H.T(S, 'triangle', 420, 240, l.at, 0.045, 0.4 * l.g); H.N(S, l.at, 0.02, 0.3 * l.g, K.knock); },
+  snap(S, H, l) { H.N(S, l.at, 0.014, 0.6 * l.g, K.snap1); H.N(S, l.at, 0.03, 0.3 * l.g, K.snap2); },   // 날카로운 순간음
+  air(S, H, l) { H.N(S, l.at, 0.24, 0.5 * l.g, K.air); },   // 바람 가르는 소리 (올라갔다 꺼짐)
+  scuff(S, H, l) { H.N(S, l.at, 0.05, 0.5 * l.g, K.scuff); },
+  wisp(S, H, l) { H.T(S, 'sine', 880, 1320, l.at, 0.42, 0.12 * l.g, K.wisp1); H.N(S, l.at, 0.36, 0.18 * l.g, K.wisp2); },
+  drop(S, H, l) { H.T(S, 'sine', 150, 30, l.at, 0.7, 0.9 * l.g, K.drop1); H.T(S, 'triangle', 300, 62, l.at, 0.45, 0.22 * l.g, K.drop2); H.N(S, l.at, 0.5, 0.25 * l.g, K.drop3); },   // 깊이 떨어지는 음
+  zap(S, H, l) { H.T(S, 'sawtooth', 1800, 240, l.at, 0.12, 0.22 * l.g, K.zap); H.CRACKLE(S, l.at, 0.14, 6, 0.3 * l.g, 4200); },
+  shimmer(S, H, l) { H.ARP(S, 'sine', K.shimN, 0.045, 0.36, 0.09 * l.g, K.shim, l.at); },
   riser(S, H, l) { (RISE[l.el] || RISE.fire)(S, H, l); },
 };
 
@@ -162,7 +174,7 @@ function run(S, H) {
     const l = ls[i];
     if (l.q > q) continue;
     fs.layersPlayed++;
-    if (l.k === 's') { const f = SYN[l.n]; if (f) f(SS, H, l); } else sample(SS, l, fs);
+    if (l.k === 's') { const f = SYN[l.n]; if (f) { SS.p = S.p * l.p; f(SS, H, l); SS.p = S.p; } } else sample(SS, l, fs);
   }
   S.end = SS.end;
   if (filt) fs._track(filt, P.lp > 0 ? P.lp : 20000, S.t + SS.end);

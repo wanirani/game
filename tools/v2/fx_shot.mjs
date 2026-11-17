@@ -16,7 +16,9 @@ let i = 0;
 for (const n of names) {
   const [nm, t] = n.split('@');
   await page.evaluate(([nm, t]) => { const a = window.__fx; a.manual = true; a.reset(); a.steps(2, 1 / 60); a.fire(nm); a.steps(Math.round(Number(t || 0.1) * 120), 1 / 120); }, [nm, t]);
-  await page.screenshot({ path: `/tmp/claude-0/v2/fxcore/boot_${i++}_${nm}.png` });
+  const url = await page.evaluate(() => { window.__fx.steps(1, 0); return document.getElementById('c').toDataURL('image/png'); });
+  fs.writeFileSync(`/tmp/claude-0/v2/fxcore/boot_${i++}_${nm}.png`, Buffer.from(url.split(',')[1], 'base64'));
+  if (process.argv[3] !== '0' && i === 1) await page.screenshot({ path: '/tmp/claude-0/v2/fxcore/boot_ui.png', timeout: 20000 }).catch((e) => errs.push('screenshot: ' + e.message.split('\n')[0]));
 }
 console.log(JSON.stringify(await page.evaluate(() => window.__fx ? window.__fx.fx.stats : null)));
 console.log('errors', errs.length, errs.slice(0, 12).join('\n'));
