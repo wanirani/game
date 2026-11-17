@@ -1,4 +1,4 @@
-// v2 fx — 검수용 심술 검사 (fxverify): node tools/v2/fx_verify.mjs [state|tiers|ctx|alloc|all]  → /dev/shm/fxverify/adv_<part>.json
+// v2 fx — 검수용 심술 검사 (fxverify): node tools/v2/fx_verify.mjs [state|tiers|ctx|alloc|bridge|all]  → /dev/shm/fxverify/adv_<part>.json
 //   state = 궁극기 도중 단계 바꾸기·풀 넘침·상한 / tiers = 단계별 그리기·후처리 끔 / ctx = GL 컨텍스트 잃기·되찾기 / alloc = 할당 반복 측정 + 긴 난전 누수
 // 헤드리스 Chromium(SwiftShader) — 프레임 시간은 기기 값이 아니다. 개수·바이트만 옮겨 읽는다.
 import { chromium } from 'playwright-core';
@@ -89,5 +89,28 @@ if (part === 'all' || part === 'alloc') {
   // 긴 난전: 누수(끝난 뒤 gc 하고 남는 힙)
   out.leak = await page.evaluate(() => { const a = window.__fx; a.small = true; a.reset('mid'); gc(); const h0 = performance.memory.usedJSHeapSize; a.startDemo('heavy'); a.steps(60 * 90, 1 / 60, false); a.reset('mid'); gc(); const h1 = performance.memory.usedJSHeapSize; a.startDemo('heavy'); a.steps(60 * 90, 1 / 60, false); a.reset('mid'); gc(); const h2 = performance.memory.usedJSHeapSize; return { h0, h1, h2, grow1: h1 - h0, grow2: h2 - h1, spawned: a.fx.particles.spawned }; });
   out.alloc.errs = errs; await browser.close();
+}
+if (part === 'all' || part === 'bridge') {
+  // 진짜 소리 창구(feel) + 진짜 효과 엔진을 다리(fxbridge)로 이어 모든 프리셋·난전을 돌린다 (오류 0, 사건마다 소리 호출)
+  const { browser, page, errs } = await open('fold_open', '&tier=mid');
+  out.bridge = await page.evaluate(async () => {
+    const a = window.__fx, fx = a.fx, r = {};
+    const { feel, FLAG } = await import('/src/v2/feel/index.js'); const { bindFxSound } = await import('/src/v2/feel/fxbridge.js');
+    const B = bindFxSound(feel); const n = { hit: 0, play: 0, swing: 0, step: 0, v1: 0, nullPlay: 0 };
+    for (const k of ['hit', 'swing', 'step']) { const f = feel[k].bind(feel); feel[k] = (...x) => { n[k]++; return f(...x); }; }
+    { const f = feel.play.bind(feel); feel.play = (...x) => { n.play++; const q = f(...x); if (!q) n.nullPlay++; return q; }; }
+    { const h = feel.sound.host, f = h.sfx.bind(h); h.sfx = (...x) => { n.v1++; return f(...x); }; }
+    const prev = fx.onEvent; fx.onEvent = (nm, x, y, z, v) => { if (prev) prev(nm, x, y, z, v); B.onEvent(nm, x, y, z, v); };
+    try { await feel.preload(); r.preload = 'ok'; } catch (e) { r.preload = 'threw: ' + e.message; }
+    r.engine = !!feel.sound.eng;
+    const ev0 = fx.stats.sfx;
+    for (const p of a.presets) { a.reset('mid'); a.fire(p.name); for (let i = 0; i < 120; i++) { a.steps(1, 1 / 30, false); B.sync(fx); } }
+    r.fxEvents = fx.stats.sfx - ev0; r.calls = { ...n }; r.unknown = B.unknown;
+    const rec = B.strike(fx, 'great', 'stone', 'H', FLAG.crit, 0, 60, 60, 1, 0); r.strike = rec ? { stop: rec.stop, shake: rec.shake, spark: rec.spark, haptic: rec.haptic } : null;
+    a.reset('mid'); a.startDemo('heavy'); for (let i = 0; i < 600; i++) { a.steps(1, 1 / 60, false); B.sync(fx); } r.heavyCalls = { ...n }; r.timeScale = B.timeScale;
+    feel.setListener(0, 300, -700, 0, -0.34, 0.94, 790, 0.55); feel.update(); feel.release(); fx.onEvent = prev;
+    return r;
+  });
+  out.bridge.errs = errs; await browser.close();
 }
 fs.mkdirSync('/dev/shm/fxverify', { recursive: true }); fs.writeFileSync(`/dev/shm/fxverify/adv_${part}.json`, JSON.stringify(out, null, 1)); console.log(JSON.stringify(out, null, 1)); srv.close(); process.exit(0);

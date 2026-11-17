@@ -166,7 +166,12 @@ class Game {
 
   init(canvas) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext('2d', { alpha: false });
+    // [v2] canvasAlpha: decided once at boot. Only when the page was opened as ?scene=v2... or a v2 scene left the flag
+    // localStorage['bn.v2.under'] = '1' (docs/v2/ENGINE_API.md 8). Without the flag this is the v1 opaque context, unchanged.
+    let v2a = false;
+    try { v2a = /[?&]scene=v2/.test(globalThis.location?.search ?? '') || globalThis.localStorage?.getItem('bn.v2.under') === '1'; } catch { v2a = false; }
+    this.canvasAlpha = v2a;
+    this.ctx = canvas.getContext('2d', { alpha: v2a });
     input.init(this);
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -678,7 +683,8 @@ class Game {
       // fpsCap 60: 이번 rAF 에 틱이 돌았거나 dirty 일 때만 그린다 (120 Hz 화면에서 같은 그림을 두 번 그리지 않는다). 0 = 매 rAF
       // [phone] 절전 모드(60/45/30): 위 조건에 더해 그리기 간격이 1/상한 초를 채웠을 때만 (dirty 도 다음 차례까지 기다린다; 탭은 input 이 latch)
       const sv = this.saverFps();
-      let draw = steps > 0 || this.dirty || (!sv && this.settings?.fpsCap === 0);
+      const tp = this.scenes[this.scenes.length - 1];
+      let draw = steps > 0 || this.dirty || (!sv && this.settings?.fpsCap === 0) || (!sv && !locked && !!tp?.everyFrame);   // [v2] Scene.everyFrame: draw on every rAF (the scene interpolates with game.alpha)
       if (sv) {
         const per = 1 / sv;
         this._saverAcc = Math.min((this._saverAcc || 0) + dt, 2 * per);
@@ -688,6 +694,7 @@ class Game {
       if (draw) {
         this.drawn = (this.drawn || 0) + 1;   // 그린 프레임 수 (QA: tools/test_phone.mjs · 절전 모드 측정)
         this.dirty = false;
+        this.alpha = this.acc / STEP;   // [v2] 0..1 between two ticks (interpolation for everyFrame scenes)
         input.beginRender();
         this.render();
         input.endRender();
@@ -793,12 +800,12 @@ class Game {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
     // 가장 아래 opaque 장면부터 그림 (uiScale 장면은 ctx.scale(uiK) + 글자 크기 하한 + 탭 영역 좌표 배율)
     let start = this.scenes.length - 1;
     while (start > 0 && !this.scenes[start].opaque) start--;
+    if (this.canvasAlpha && this.scenes[Math.max(0, start)]?.glUnder) ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);   // [v2] a WebGL canvas sits under this one
+    else { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); }
+    ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
     for (let i = Math.max(0, start); i < this.scenes.length; i++) {
       const sc = this.scenes[i];
       const ui = !!sc.uiScale;
