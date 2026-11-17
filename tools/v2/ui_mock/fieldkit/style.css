@@ -217,6 +217,5 @@
 .lite #quest { padding: 7px 10px 7px 13px; width: 184px; top: calc(186px + var(--st)); } .lite #quest .qn { font-size: 13.500px; margin-bottom: 2px; }
 .lite #mini { width: 122px; height: 92px; top: calc(74px + var(--st)); } .lite #mini .mm { left: 21px; top: 5px; width: 80px; height: 82px; }
 .lite #toast { height: 38px; } .lite #toast .tt { font-size: 13px; }
-.lite.phone #mini, .phone.lite #mini { width: 104px; height: 62px; top: calc(57px + var(--st)); }
 .lite .phone #mini { width: 104px; height: 62px; top: calc(57px + var(--st)); } .lite .phone #mini .mm { left: 26px; top: 3px; width: 52px; height: 56px; }
 .lite .phone #quest { top: calc(68px + var(--st)); width: 172px; padding: 5px 9px 5px 12px; }

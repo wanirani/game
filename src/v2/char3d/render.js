@@ -192,16 +192,28 @@ export class CharRenderer {
   }
 }
 
-/** 단색 상자들로 만든 작은 소품 모델 (무기 등). parts: [{min[3], max[3], color[3]}] → buildModel 과 같은 모양 (텍스처 없음: 정점색 대신 부품별 프림) */
+/**
+ * 단색 상자들로 만든 작은 소품 모델 (무기 등). parts: [{min[3], max[3], color[3]}] → buildModel 과 같은 모양.
+ * 브라우저에서는 색을 작은 팔레트 그림에 담아 **프림 하나(그리기 한 번)** 로 만든다. DOM 이 없으면 상자마다 프림 하나.
+ */
 export function boxModel(parts) {
-  const prims = [];
-  for (const b of parts) {
-    const [x0, y0, z0] = b.min, [x1, y1, z1] = b.max, pos = [], nrm = [], idx = [];
-    const face = (n, a, c, d, e) => { const o = pos.length / 3; pos.push(...a, ...c, ...d, ...e); for (let k = 0; k < 4; k++) nrm.push(...n); idx.push(o, o + 1, o + 2, o, o + 2, o + 3); };
+  const one = typeof document !== 'undefined', prims = [];
+  let pos = [], nrm = [], uv = [], idx = [];
+  const flush = (color, image) => { prims.push({ pos: new Float32Array(pos), nrm: new Float32Array(nrm), uv: new Float32Array(uv), joints: null, weights: null, idx: new Uint16Array(idx), image, color }); pos = []; nrm = []; uv = []; idx = []; };
+  parts.forEach((b, bi) => {
+    const [x0, y0, z0] = b.min, [x1, y1, z1] = b.max, u = (bi * 4 + 2) / (parts.length * 4);
+    const face = (n, a, c, d, e) => { const o = pos.length / 3; pos.push(...a, ...c, ...d, ...e); for (let k = 0; k < 4; k++) { nrm.push(...n); uv.push(u, 0.5); } idx.push(o, o + 1, o + 2, o, o + 2, o + 3); };
     face([0, 0, 1], [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]); face([0, 0, -1], [x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0]);
     face([1, 0, 0], [x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1]); face([-1, 0, 0], [x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]);
     face([0, 1, 0], [x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0]); face([0, -1, 0], [x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]);
-    prims.push({ pos: new Float32Array(pos), nrm: new Float32Array(nrm), uv: null, joints: null, weights: null, idx: new Uint16Array(idx), image: -1, color: [...b.color, 1] });
+    if (!one) flush([...b.color, 1], -1);
+  });
+  let bitmaps = [];
+  if (one) {
+    const c = document.createElement('canvas'); c.width = parts.length * 4; c.height = 4;
+    const x = c.getContext('2d');
+    parts.forEach((b, i) => { x.fillStyle = `rgb(${b.color.map((v) => Math.round(Math.min(1, v) * 255)).join(',')})`; x.fillRect(i * 4, 0, 4, 4); });
+    bitmaps = [c]; flush([1, 1, 1, 1], 0);
   }
-  return { nodes: [], order: [], skin: null, prims, images: [], bitmaps: [], anims: [], stats: {} };
+  return { nodes: [], order: [], skin: null, prims, images: [], bitmaps, anims: [], stats: {} };
 }
