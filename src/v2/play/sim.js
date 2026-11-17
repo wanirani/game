@@ -37,7 +37,7 @@ export class Sim {
       hp: T.heroHp, hpMax: T.heroHp, ifr: 0, hurtT: 0, dead: false, deadT: 0, flash: 0,
       dashT: 0, rollCd: 0, dashCd: 0, dvx: 0, dvz: 0, roll: null, sweepWin: 0, sweepQ: false,
       guard: false, guardT: 0, guardTap: 0, parryT: 0, parryCd: 0, parryOk: 0, blockT: 0,
-      move: null, moveT: 0, combo: 0, hitIds: null, assist: null, queued: 0, swung: false, stepDist: 0, airAtk: false, plungeLand: null,
+      move: null, moveT: 0, combo: 0, hitIds: null, assist: null, queued: 0, swung: false, stepDist: 0, airAtk: false, plungeLand: null, plungeEta: 1,
       lock: null, lockT: 0, lockHold: 0,
       gait: 0, gaitMode: 'run', wasMoving: false,
       anim: 'idle', animT: 0, t: 0, cut: false, landT: 0, landV: 0,
@@ -185,9 +185,10 @@ export class Sim {
     if (wasAir && h.onGround) {
       const heavy = vy0 < -900 || (h.move && h.move.kind === 'plunge');
       h.landT = T.landT; h.landV = -vy0; h.airAtk = false;
-      if (h.move && h.move.kind === 'plunge') { h.plungeLand = h.moveT; this._plungeImpact(h, h.move); }
+      if (h.move && h.move.kind === 'plunge') { h.plungeLand = h.moveT; h.plungeEta = 0; this._plungeImpact(h, h.move); }
       this.hooks.spark?.(h.x, h.y + 3, h.z, 'dust'); this.emit('land', -vy0, heavy, h); this.hooks.sfx?.('land');
     }
+    if (h.move && h.move.kind === 'plunge' && !h.onGround) { const g = w.ground(h.x, h.z, h.y + STEP_UP); h.plungeEta = Number.isFinite(g) ? Math.max(0, (h.y - g) / Math.max(200, -h.vy)) : 1; }   // 땅에 닿기까지 남은 초 (칼이 닿는 순간에 맞춰 내려오게)
     // 구덩이
     if (h.y < T.pitY) {
       h.hp -= T.pitDmg; h.x = h.safe.x; h.z = h.safe.z; h.y = h.safe.y; h.vx = h.vz = h.vy = 0; h.onGround = true; h.move = null; h.dashT = 0; h.ifr = 1.2; h.flash = 1;
@@ -199,15 +200,17 @@ export class Sim {
       if (ok) { h.safe.x = h.x; h.safe.z = h.z; h.safe.y = h.y; }
     }
     // 걸음 주기: 발소리와 달리기 클립이 같이 쓴다
-    const sp = Math.hypot(h.vx, h.vz), walking = h.onGround && sp > 24 && !h.move && h.dashT <= 0 && h.hurtT <= 0;
-    h.gaitMode = sp < T.walkBelow - (h.gaitMode === 'walk' ? -12 : 12) ? 'walk' : 'run';
+    // 걷기 / 달리기는 스틱을 민 정도로 정한다(속도가 0 을 지나는 반전 · 출발에서 걸음이 걷기 · 서기로 깜박이지 않게). 스틱을 놓으면 멈출 때까지 그 걸음 그대로
+    const sp = Math.hypot(h.vx, h.vz), free = !h.move && h.dashT <= 0 && h.hurtT <= 0 && !h.guard && h.blockT <= 0, push = moving && free;
+    if (push) h.gaitMode = m * T.runX < T.walkBelow + 20 ? 'walk' : 'run';
+    const gsp = push ? Math.max(sp, (h.gaitMode === 'walk' ? 40 : 96)) : sp, walking = h.onGround && free && (push || sp > 24);   // 스틱을 민 동안은 걸음이 멎지 않는다 (벽에 대고 달려도 다리는 돈다)
     if (walking) {
-      const g0 = h.gait, g1 = g0 + (sp * dt) / (h.gaitMode === 'walk' ? T.strideWalk : T.strideRun);
+      const g0 = h.gait, g1 = g0 + (gsp * dt) / (h.gaitMode === 'walk' ? T.strideWalk : T.strideRun);
       if (g1 >= 1) this.emit('step', 'R', sp, h); else if (g0 < 0.5 && g1 >= 0.5) this.emit('step', 'L', sp, h);
       h.gait = g1 % 1;
     }
     this._anim(h, h.hurtT > 0 ? 'hurt' : h.parryOk > 0 && !h.move && h.dashT <= 0 ? 'parry' : h.blockT > 0 && !h.move && h.dashT <= 0 ? 'block' : h.move ? 'attack' : h.dashT > 0 ? 'roll'
-      : !h.onGround ? (h.vy > 0 ? 'jump' : 'fall') : h.guard ? 'guard' : h.landT > 0 ? 'land' : sp > 36 ? h.gaitMode : 'idle', dt);
+      : !h.onGround ? (h.vy > 0 ? 'jump' : 'fall') : h.guard ? 'guard' : h.landT > 0 && !push ? 'land' : push || sp > 36 ? h.gaitMode : 'idle', dt);
   }
   _anim(o, a, dt) { if (o.anim !== a) { o.anim = a; o.animT = 0; } else o.animT += dt; }
   setAnim(o, a, dt) { this._anim(o, a, dt); }
@@ -570,7 +573,7 @@ export class Sim {
       }
       // 영웅과 겹치지 않게 (구르는 동안은 지나갈 수 있다 — 갑주의 등 뒤로 돌아가는 길)
       if (!h.dead && h.dashT <= 0 && h.onGround && !a.def.fly && a.solid && Math.abs(a.y - h.y) < 40) {
-        const dx = h.x - a.x, dz = h.z - a.z, d2 = dx * dx + dz * dz, R = a.r + h.r;
+        const dx = h.x - a.x, dz = h.z - a.z, d2 = dx * dx + dz * dz, R = a.r + h.r + 10;   // 몸이 겹쳐 보이지 않을 만큼
         if (d2 < R * R && d2 > 1e-4) { const d = Math.sqrt(d2), p = Math.min(R - d, 240 * dt); this.w.move(h, (dx / d) * p * 0.7, (dz / d) * p * 0.7); this._emove(a, (-dx / d) * p * 0.3 * (1 - a.def.weight), (-dz / d) * p * 0.3 * (1 - a.def.weight)); }
       }
     }

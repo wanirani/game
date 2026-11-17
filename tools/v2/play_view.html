@@ -33,7 +33,7 @@ import { Sim, TUNE, KINDS, flatArena, driveHero, driveActor, placeActor, loadPla
 const q = new URLSearchParams(location.search);
 const cv = document.getElementById('cv'), ov = document.getElementById('ov'), info = document.getElementById('info'), ui = document.getElementById('ui');
 const DIR = '../../assets/v2/char3d/';
-const CAMS = { game: { yaw: 0, pitch: 0.35, dist: 800, lookY: 60 }, high: { yaw: 0, pitch: 0.62, dist: 760, lookY: 50 }, close: { yaw: 0, pitch: 0.3, dist: 300, lookY: 58 }, side: { yaw: 1.5708, pitch: 0.12, dist: 330, lookY: 55 }, front: { yaw: 3.1416, pitch: 0.2, dist: 320, lookY: 58 }, top: { yaw: 0, pitch: 1.35, dist: 700, lookY: 0 } };
+const CAMS = { game: { yaw: 0, pitch: 0.35, dist: 800, lookY: 60 }, high: { yaw: 0, pitch: 0.62, dist: 760, lookY: 50 }, close: { yaw: 0, pitch: 0.3, dist: 300, lookY: 58 }, side: { yaw: 1.5708, pitch: 0.12, dist: 330, lookY: 55 }, front: { yaw: 3.1416, pitch: 0.2, dist: 320, lookY: 58 }, top: { yaw: 0, pitch: 1.35, dist: 700, lookY: 0 }, enemy: { yaw: 0, pitch: 0.3, dist: 400, lookY: 58, focus: true }, enemyside: { yaw: 1.5708, pitch: 0.15, dist: 400, lookY: 58, focus: true } };
 const GRIPS = { w_rusty_sword: { pos: [0, 7, 3], rotX: -80, rotY: 0, rotZ: 0 }, w_crystal_staff: { pos: [0, 7, 3], rotX: 100, rotY: 0, rotZ: 0 }, w_grave_spade: { pos: [0, 9, 4], rotX: -80, rotY: 0, rotZ: 0 } };
 const S = { demo: q.get('demo') ?? 'run8', cam: q.get('cam') ?? 'game', slow: q.get('slow') === '1', box: q.get('box') === '1', pause: false, follow: true };
 const api = (window.__play = { ready: false, error: null, S, hold: q.get('hold') === '1' });
@@ -144,6 +144,7 @@ function shape(o, mv, col, fill) {   // 보는 방향 기준 판정 (상자 · �
 function draw(label) {
   const C = CAMS[S.cam] ?? CAMS.game, h = sim.hero;
   if (S.follow) { cam.x = h.x; cam.z = h.z; cam.y = Math.max(0, h.y) * 0.75; }
+  if (C.focus) { const e = sim.enemies.find((q) => !q.dead); if (e) { cam.x = e.x * 0.75 + h.x * 0.25; cam.z = e.z * 0.75 + h.z * 0.25; cam.y = (e.hover ?? 0) * 0.5; } }   // 적을 가운데에
   camMatrix(C);
   gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(0.13, 0.15, 0.2, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   R.begin({ vp, eye, fog: { near: 3000, far: 9000, max: 0, color: [0.13, 0.15, 0.2] }, sunDir: [-0.35, 0.8, -0.5], sun: [0.7, 0.68, 0.66], amb: [0.6, 0.62, 0.68] });
@@ -254,7 +255,7 @@ async function main() {
   const sync = () => { for (const b of ui.children) b.classList?.toggle('on', !!b._on?.()); };
   sep('카엘'); for (const k of ['free', 'run8', 'turn', 'walk', 'combo', 'combo1', 'comboUp', 'roll', 'jump', 'guard', 'block', 'hurt']) btn(DEMOS[k].name, () => setDemo(k), () => S.demo === k);
   sep('적'); for (const k of ['soldier', 'mage', 'corpse', 'ghost', 'armor', 'bat', 'fight', 'elite']) btn(DEMOS[k].name, () => setDemo(k), () => S.demo === k);
-  sep('보기'); for (const [k, n] of [['game', '게임 카메라'], ['high', '높이'], ['close', '가까이'], ['side', '옆'], ['front', '앞'], ['top', '위']]) btn(n, () => { S.cam = k; }, () => S.cam === k);
+  sep('보기'); for (const [k, n] of [['game', '게임 카메라'], ['high', '높이'], ['close', '가까이'], ['side', '옆'], ['front', '앞'], ['top', '위'], ['enemy', '적 가까이']]) btn(n, () => { S.cam = k; }, () => S.cam === k);
   btn('판정 보기', () => { S.box = !S.box; }, () => S.box); btn('느리게', () => { S.slow = !S.slow; }, () => S.slow); btn('멈춤', () => { S.pause = !S.pause; }, () => S.pause);
   sync();
   api.ready = true;

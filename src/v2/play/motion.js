@@ -4,7 +4,7 @@
 //   · 달리기 · 걷기 클립의 시각은 규칙의 걸음 주기(gait)에서 온다 → 발 디딤과 땅 위 속도가 맞는다(발이 미끄러지지 않는다)
 //   · 공격 클립은 "칼이 빠르게 지나가는 구간(strike)"이 규칙의 판정 구간(hit)과 겹치게 시간을 접는다
 //   · 클립은 공용 라이브러리(assets/v2/char3d/clips/)를 처음 불릴 때 스스로 받아 붙인다. 받기 전에는 시범판의 클립으로 돈다
-import { Rig, clipFromAnim } from '../char3d/skel.js';
+import { Rig, clipFromAnim, qmul, qconj, qnorm } from '../char3d/skel.js';
 import { driveHero as driveHeroProto } from '../char3d/hero3d.js';
 import { loadAnimLib } from './animlib.js';
 import { TUNE } from './tune.js';
@@ -87,6 +87,15 @@ function pinLegs(rig) {   // 떠다니는 적: 다리 뼈를 쉬는 자세로 �
   for (const b of LEGS) { const j = rig.key.get(b); if (j != null) for (let c = 0; c < 4; c++) rig.R[j * 4 + c] = rig.restR[j * 4 + c]; }
   rig.pose();
 }
+const _q = [0, 0, 0, 1], _a = [0, 0, 0, 1], _b = [0, 0, 0, 1], _c = [0, 0, 0, 1];
+/** 뼈 하나를 모델 공간의 옆 축(X)으로 deg 만큼 더 돌린다 (+ = 앞으로 숙임, − = 젖힘). 자세를 입힌 뒤에 부르고, 끝에 rig.pose() 를 한 번 부른다 */
+function pitchBone(rig, key, deg) {
+  const j = rig.key.get(key); if (j == null) return;
+  const h = (deg * Math.PI) / 360, P = rig.parWR.subarray(j * 4, j * 4 + 4), R = rig.R.subarray(j * 4, j * 4 + 4);
+  _q[0] = Math.sin(h); _q[1] = 0; _q[2] = 0; _q[3] = Math.cos(h);
+  qmul(qconj(P, _a), _q, _b); qmul(_b, P, _c); qmul(_c, R, _a); qnorm(_a);   // R' = P⁻¹ · q · P · R
+  R[0] = _a[0]; R[1] = _a[1]; R[2] = _a[2]; R[3] = _a[3];
+}
 const pick = (C, ...names) => { for (const n of names) if (n && C[n]) return n; return null; };
 
 /**
@@ -107,7 +116,7 @@ export function driveHero(ch, h, dt, T = TUNE) {
   if (S.wasDead && !h.dead) A.play('idle', { fade: 0, restart: true });   // 다시 시작: 누운 자세에서 섞이지 않고 바로 선다
   S.wasDead = !!h.dead;
   if (st === 'land' && S.prev !== 'land') S.landC = 0;
-  if (S.landC != null) { S.landC += dt; if ((st !== 'land' && st !== 'idle') || S.landC > 0.44) S.landC = null; }
+  if (S.landC != null) { S.landC += dt; if ((st !== 'land' && st !== 'idle') || S.landC > 0.3) S.landC = null; }
   S.prev = st;
   if (h.dead) A.play(pick(C, 'knockdown', 'death'), { fade: 0.08, time: Math.min((h.deadT ?? h.animT) * 1.3, 2.45) });
   else if (st === 'hurt') A.play(h.heavyHurt && C.hit_heavy ? 'hit_heavy' : 'hit_light', { fade: 0.04, time: 0.02 + h.animT * 1.3 });
@@ -116,16 +125,20 @@ export function driveHero(ch, h, dt, T = TUNE) {
   else if (st === 'guard') A.play('block', { fade: 0.08 });
   else if (st === 'attack' && h.move) {
     const mv = h.move, clip = C[mv.clip] ?? C.atk1;
-    if (mv.kind === 'plunge') A.play(clip.name, { fade: 0.05, time: h.plungeLand == null ? Math.min(0.25, 0.05 + h.moveT * 0.9) : 0.27 + (h.moveT - h.plungeLand) * 1.3 });
+    // 내려베기: 떨어지는 동안은 칼을 머리 위로 든 자세(0.13초)로 버티다가, 땅에 닿기 0.12초 전부터 내리쳐 닿는 순간 칼이 몸 앞을 지난다(0.25초) → 웅크려 받는다
+    if (mv.kind === 'plunge') A.play(clip.name, { fade: 0.05, time: h.plungeLand == null ? Math.min(0.13, 0.03 + h.moveT * 1.2) + 0.12 * (1 - clamp((h.plungeEta ?? 1) / 0.12, 0, 1)) : Math.min(clip.duration - 0.02, 0.25 + (h.moveT - h.plungeLand) * 1.5) });
     else A.play(clip.name, { fade: 0.05, time: warpMove(clip, h.moveT, mv) });
   }
   else if (st === 'roll') { const u = h.roll ? clamp(h.roll.t / h.roll.dur, 0, 1) : 0; A.play('roll', { fade: 0.05, time: 0.13 + u * 0.89 }); }
   else if (st === 'jump') A.play('jump', { fade: 0.05, time: 0.1 + h.animT });
   else if (st === 'fall') A.play('air', { fade: 0.14 });
-  else if (S.landC != null) A.play('land', { fade: 0.04, time: 0.04 + S.landC * 1.3 });
+  else if (S.landC != null) A.play('land', { fade: 0.04, time: 0.04 + S.landC * 1.5 });
   else if (st === 'run' || st === 'walk') { const c = C[st]; A.play(st, { fade: 0.14, time: ((h.gait + footOff(c)) % 1) * c.duration }); }
   else A.play(h.lock != null && C.idle_combat ? 'idle_combat' : 'idle', { fade: 0.2 });
   A.update(dt);
+  // 달릴 때 윗몸을 조금 세운다: 달리기 클립은 26° 숙어 있어 위에서 비스듬히 보는 카메라에 얼굴이 묻힌다 → 14° 쯤으로
+  S.lean = (S.lean ?? 0) + ((st === 'run' && !h.dead ? 1 : 0) - (S.lean ?? 0)) * Math.min(1, dt * 9);
+  if (S.lean > 0.02) { pitchBone(ch.rig, 'spine', -(T.runLeanFix ?? 12) * 0.55 * S.lean); pitchBone(ch.rig, 'spine2', -(T.runLeanFix ?? 12) * 0.45 * S.lean); ch.rig.pose(); }
 }
 
 /**

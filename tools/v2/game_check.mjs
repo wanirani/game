@@ -208,16 +208,16 @@ for (const dev of DEVICES) {
     await shot(page, `${dev}_06_hit`);
 
     // ── 6) turning ──
-    const turn = await staged(page, `sim.reset(); sc.cam.snap = true; const B = window.__bot, ang = () => Math.atan2(sc.heroA.dz, sc.heroA.dx), out = {}; for (const e of sim.enemies) e.dead = true; sim.hero.x = 700; sim.hero.z = 150;
-      const run = (first, seq, n) => { B.act = first; for (let i = 0; i < 40; i++) g.tick(1 / 60); const a = [ang()]; for (let i = 0; i < n; i++) { B.act = seq(i); g.tick(1 / 60); a.push(ang()); } let mx = 0, flips = 0, sgn = 0, done = -1, tot = 0; for (let i = 1; i < a.length; i++) { let d = a[i] - a[i - 1]; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; tot += d; mx = Math.max(mx, Math.abs(d)); if (Math.abs(d) > 0.004) { const s = Math.sign(d); if (sgn && s !== sgn) flips++; sgn = s; } if (done < 0 && Math.abs(Math.abs(tot) - Math.PI) < 0.2) done = i; } return { maxStep: +mx.toFixed(3), flips, doneTick: done, total: +tot.toFixed(2) }; };
+    const turn = await staged(page, `sim.reset(); sc.cam.snap = true; const B = window.__bot, ang = () => Math.atan2(sc.heroA.dz, sc.heroA.dx), out = {}; for (const e of sim.enemies) e.dead = true;
+      const run = (first, seq, n) => { sim.hero.x = 900; sim.hero.z = 190; B.act = first; for (let i = 0; i < 40; i++) g.tick(1 / 60); const a = [ang()]; for (let i = 0; i < n; i++) { B.act = seq(i); g.tick(1 / 60); a.push(ang()); } let mx = 0, flips = 0, sgn = 0, done = -1, tot = 0; for (let i = 1; i < a.length; i++) { let d = a[i] - a[i - 1]; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; tot += d; mx = Math.max(mx, Math.abs(d)); if (Math.abs(d) > 0.004 && Math.abs(tot) < 2.3) { const s = Math.sign(d); if (sgn && s !== sgn) flips++; sgn = s; } if (done < 0 && Math.abs(Math.abs(tot) - Math.PI) < 0.2) done = i; } return { maxStep: +mx.toFixed(3), flips, doneTick: done, total: +tot.toFixed(2) }; };
       out.reverse = run({ right: true }, () => ({ left: true }), 30);
       out.back = run({ left: true }, () => ({ right: true }), 30);
       out.jitter = run({ right: true }, (i) => (i % 2 ? { left: true, up: true } : { left: true, down: true }), 30);
       out.attack = run({ right: true }, (i) => (i === 0 ? { left: true, attack: true } : { left: true }), 14);
       B.act = {}; return out;`, 0);
     R.turn = turn;
-    const tOK = turn && turn.reverse.flips === 0 && turn.back.flips === 0 && turn.reverse.maxStep <= 15 / 60 + 0.01 && turn.reverse.doneTick > 6 && turn.reverse.doneTick <= 24 && turn.back.doneTick > 6 && turn.back.doneTick <= 24 && turn.jitter.flips <= 1 && Math.abs(turn.jitter.total) > 2.2 && turn.attack.doneTick > 0 && turn.attack.doneTick <= 9;
-    if (tOK) ok(`turning: a stick reversal turns the body in one direction, at most ${turn.reverse.maxStep} rad per tick, done in ${turn.reverse.doneTick} / ${turn.back.doneTick} ticks (no snap, no wobble); a jittering stick turns ${turn.jitter.total} rad with ${turn.jitter.flips} direction changes; with an attack the body faces the hit box in ${turn.attack.doneTick} ticks`);
+    const tOK = turn && turn.reverse.flips === 0 && turn.back.flips === 0 && turn.reverse.maxStep <= 15 / 60 + 0.01 && turn.reverse.doneTick > 6 && turn.reverse.doneTick <= 24 && turn.back.doneTick > 6 && turn.back.doneTick <= 24 && turn.jitter.flips === 0 && Math.abs(turn.jitter.total) > 2.2 && turn.attack.doneTick > 0 && turn.attack.doneTick <= 9;
+    if (tOK) ok(`turning: a stick reversal turns the body in one direction, at most ${turn.reverse.maxStep} rad per tick, done in ${turn.reverse.doneTick} / ${turn.back.doneTick} ticks (no snap, no wobble); a stick that jumps between two back-diagonals every tick still turns one way (${turn.jitter.flips} direction changes on the way round); with an attack the body faces the hit box in ${turn.attack.doneTick} ticks`);
     else fail(`${dev}: turning ${JSON.stringify(turn)}`);
 
     // ── 7) interpolation, allocation, far characters ──
@@ -229,16 +229,19 @@ for (const dev of DEVICES) {
     const al = await page.evaluate(async () => {
       const g = window.__game, v = window.__v2, sc = v.scene, B = window.__bot; g._pageHidden = true; sc.sim.reset(); sc.cam.snap = true; sc.fx?.clear(); B.wp = 0; B.t = 0; B.skipMap = {};
       const gc = () => { if (window.gc) { window.gc(); window.gc(); } }, mem = () => performance.memory.usedJSHeapSize;
-      const measure = (n, think) => { gc(); const m0 = mem(); for (let i = 0; i < n; i++) { if (think) B.think(); else B.act = {}; g.tick(1 / 60); g.alpha = 0.5; g.render(); } const m1 = mem(); return (m1 - m0) / n; };
-      for (let i = 0; i < 240; i++) { B.think(); g.tick(1 / 60); g.render(); }   // warm the JIT on the same path
-      sc.sim.reset(); sc.cam.snap = true; B.wp = 0;
+      const NONE = {}, RIGHT = { right: true }, LEFT = { left: true }, ATK = { attack: true }, DASH = { dash: true, right: true };   // fixed input objects: the measurement must not count the bot's own garbage
+      const script = (i) => (i % 24 < 2 ? ATK : i % 180 === 100 ? DASH : i % 96 < 30 ? RIGHT : i % 96 < 48 ? NONE : i % 96 < 78 ? LEFT : NONE);
+      const measure = (n, fight) => { gc(); const m0 = mem(); for (let i = 0; i < n; i++) { B.act = fight ? script(i) : NONE; g.tick(1 / 60); g.alpha = 0.5; g.render(); } const m1 = mem(); return (m1 - m0) / n; };
+      const toYard = () => { sc.sim.reset(); sc.cam.snap = true; v.teleport('yard'); sc.sim.hero.z = 1700; };
+      toYard(); for (let i = 0; i < 400; i++) { B.act = script(i); g.tick(1 / 60); g.render(); }   // warm the JIT on the same path
+      sc.sim.reset(); sc.cam.snap = true;
       const idle = [measure(300, false), measure(300, false), measure(300, false)];
-      const play = [measure(600, true), measure(600, true)];
+      toYard(); const play = [measure(480, true), measure(480, true), measure(480, true)]; B.act = NONE;
       return { idle: idle.map(Math.round), play: play.map(Math.round), gc: !!window.gc };
     });
     R.alloc = al;
     const idleB = Math.min(...al.idle), playB = Math.min(...al.play);
-    if (al.gc && idleB <= 64 && playB <= 2048) ok(`allocation per frame (tick + draw, JS heap, after warm-up): standing ${al.idle.join(' / ')} bytes, walking and fighting ${al.play.join(' / ')} bytes`);
+    if (al.gc && idleB <= 64 && playB <= 2048) ok(`allocation per frame (tick + draw, JS heap, after warm-up): standing ${al.idle.join(' / ')} bytes, a scripted fight in the yard ${al.play.join(' / ')} bytes`);
     else fail(`${dev}: allocation per frame too high or not measurable ${JSON.stringify(al)}`);
     const far = await staged(page, `sim.reset(); sc.cam.snap = true; for (let i = 0; i < 5; i++) g.tick(1 / 60); g.render(); const far = sc.actors.filter((a) => !a.vis), t0 = far.map((a) => a.anim.t ?? a.anim.time ?? 0); for (let i = 0; i < 30; i++) { g.tick(1 / 60); g.render(); } const moved = far.filter((a, i) => (a.anim.t ?? a.anim.time ?? 0) !== t0[i] && !a.vis).length; return { actors: sc.actors.length, far: far.length, animatedWhileFar: moved, drawn: sc.c3.drawn, culled: sc.c3.culled };`, 0);
     R.far = far;
@@ -299,7 +302,8 @@ for (const dev of DEVICES) {
       const g = window.__game, wait = (ms) => new Promise((r) => setTimeout(r, ms));
       g.go('title', {}, { fade: false }); await wait(400);
       const dom = document.querySelectorAll('canvas').length, v2 = typeof window.__v2;
-      g.go('stage', { stage: 's01' }, { fade: false }); await wait(2500);
+      const { newGameState } = await import('/src/game/state.js'); g.state = g.saves.markDebug(newGameState({ slot: 1, difficulty: 'normal', charId: 'kael' }));
+      g.go('stage', { stageId: 's01' }, { fade: false }); await wait(2500);
       const x0 = g.world?.player?.x ?? null; g.input.setAutoSource(() => ({ right: true })); await wait(1200); g.input.setAutoSource(null);
       return { dom, v2, scenes: g.scenes.map((s) => s.name), hp: g.world?.player?.hp ?? null, moved: g.world?.player ? Math.round(g.world.player.x - x0) : null, room: g.world?.roomId ?? null };
     });

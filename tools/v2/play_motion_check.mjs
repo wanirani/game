@@ -121,7 +121,7 @@ for (const [name, from, to] of [['right → left', [1, 0], [-1, 0]], ['up → do
   }
   ok('40 s of play: hero + six kinds driven with no NaN', bad === 0, `bad frames ${bad}`);
   for (const k of ['hero', ...kinds]) console.log(`  clips used by ${k}: ${[...(used[k] ?? [])].join(' ')}`);
-  const heroNeed = ['idle_combat', 'run', 'walk', 'roll', 'atk1', 'atk2', 'atk3', 'launcher', 'plunge', 'jump', 'air', 'block'];
+  const heroNeed = ['idle_combat', 'run', 'roll', 'atk1', 'atk2', 'atk3', 'launcher', 'plunge', 'jump', 'air', 'block'];
   ok('hero used library clips: ' + heroNeed.join(' '), heroNeed.every((n) => used.hero.has(n)), 'missing ' + heroNeed.filter((n) => !used.hero.has(n)).join(','));
   for (const k of kinds) {
     const D = KINDS[k], ch = mkChar(D.model), e = { def: D, kind: k, id: 0, state: 'chase', anim: 'idle', animT: 0, dirX: 1, dirZ: 0, gait: 0, stateT: 0 }; driveActor(ch, e, DT);
