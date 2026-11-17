@@ -109,7 +109,7 @@
   "glyphs": 18,
   "hangul": 0,
   "weight": "100 900",
-  "urange": "U+0025, U+002B-003A",
+  "urange": "U+0000-024F, U+2000-206F, U+20A0-20CF, U+2100-214F, U+2190-21FF, U+2200-22FF, U+25A0-25FF",
   "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/spectral/Spectral-ExtraBold.ttf",
   "absent": ""
  },
