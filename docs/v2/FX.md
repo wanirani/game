@@ -189,7 +189,108 @@ B 의 세계는 빛을 꼭짓점에 구워 두므로 조각 셰이더에 세계 
 ## 8. 숫자
 
 <!-- numbers:begin -->
-(검사 스크립트 `node tools/v2/fx_check.mjs --doc` 가 채운다)
+측정: 2026-11-17 14:46 UTC · 헤드리스 Chromium 1194 + SwiftShader(소프트웨어 렌더러) — **프레임 시간은 기기 값이 아니다.** 아래는 옮겨 읽을 수 있는 값(개수·바이트·JS 시간)만 적었다.
+
+**프리셋 목록 (연결 계약)**
+
+| 이름 | 뜻 | 자리 | 소리 사건 | 손맛 호출 |
+|---|---|---|---|---|
+| `hit.slash.light` | 약한 베기 | 맞은 점 + 방향 | `hit.slash.light` | hitStop 0.05 · kick 3 · trauma 0.10 |
+| `hit.slash.heavy` | 강한 베기 | 맞은 점 + 방향 | `hit.slash.heavy` | hitStop 0.10 · kick 8 · trauma 0.24 |
+| `hit.blunt` | 둔기 | 맞은 점 + 방향 | `hit.blunt` | hitStop 0.10 · kick 8 · trauma 0.28 |
+| `hit.pierce` | 찌르기 | 맞은 점 + 방향 | `hit.pierce` | hitStop 0.06 · kick 5 · trauma 0.12 |
+| `hit.crit` | 치명타 | 맞은 점 + 방향 | `hit.crit` | hitStop 0.133 · kick 8 · trauma 0.30 · zoomPunch 0.04 · flash 0.16 |
+| `hit.guard` | 막기 · 쳐내기 | 맞은 점 + 방향 | `hit.guard` `hit.parry` | hitStop 0.07 · kick 4(반대) · trauma 0.14 · (pow>1.2: slowMo 0.4×0.14s · zoomPunch 0.03) |
+| `hit.finisher` | 마무리 일격 | 맞은 점 + 방향 | `hit.finisher` `feel.slowmo` | hitStop 0.133(강제) · slowMo 0.25×0.30s · zoomPunch 0.08 · flash 0.45 · vignette 0.3 · kick 12 · trauma 0.5 |
+| `swing.light` | 휘두르기(약) | 발밑 (+방향) | `swing.light` | — |
+| `swing.heavy` | 휘두르기(강) | 발밑 (+방향) | `swing.heavy` | — |
+| `move.dash` | 대시 | 발밑 (+방향) | `move.dash` | — |
+| `move.land` | 착지 | 발밑 (+방향) | `move.land` | (pow>1.2: trauma 0.06·pow) |
+| `move.step` | 발걸음 | 발밑 (+방향) | `move.step` | — |
+| `move.jump` | 점프 | 발밑 (+방향) | `move.jump` | — |
+| `enemy.hurt` | 피격 불티 | 맞은 점 + 방향 | `enemy.hurt` | — (번쩍임은 hurtFlash(age)) |
+| `enemy.death.bone` | 뼈 흩어짐 | 발밑 (+방향) | `enemy.death.bone` | hitStop 0.05 · trauma 0.14 |
+| `enemy.death.ash` | 재로 흩어짐 | 발밑 (+방향) | `enemy.death.ash` | hitStop 0.05 · trauma 0.10 (분해는 dissolveK(age)) |
+| `enemy.breath` | 적 화염 숨결 | 발밑 (+방향) | `enemy.breath.cast` `enemy.breath.fire` | trauma 0.16 |
+| `buff.shield` | 보호막 | 발밑 (+방향) | `buff.shield` | — |
+| `pickup` | 줍기 | 발밑 (+방향) | `pickup.coin` `pickup.heal` `pickup.mana` | — (pow 1 금화 · 2 회복 · 3 마력) |
+| `fire.bolt` | 화염탄 | 쏘는 쪽 발밑 → 표적 발밑 | `magic.fire.cast` `magic.fire.fly` `magic.fire.hit` | hitStop 0.067 · kick 5 · trauma 0.2 |
+| `fire.pillar` | 불기둥 | 쏘는 쪽 발밑 → 표적 발밑 | `magic.fire.cast` `magic.fire.pillar` | hitStop 0.05 · trauma 0.3 |
+| `fire.meteor` | 운석 | 쏘는 쪽 발밑 → 표적 발밑 | `magic.meteor.cast` `magic.meteor.fall` `magic.meteor.impact` | hitStop 0.12 · kick 14(아래) · trauma 0.6 · flash 0.3 · zoomPunch 0.05 |
+| `ice.lance` | 얼음창 | 쏘는 쪽 발밑 → 표적 발밑 | `magic.ice.cast` `magic.ice.fly` `magic.ice.hit` | hitStop 0.067 · kick 5 · trauma 0.18 |
+| `ice.nova` | 서리 폭발 | 발밑 (+방향) | `magic.ice.nova.cast` `magic.ice.nova.burst` | hitStop 0.08 · trauma 0.3 · flash 0.12 |
+| `lightning.chain` | 연쇄 번개 | 쏘는 쪽 발밑 → 표적 발밑 | `magic.lightning.cast` `magic.lightning.zap` | 고리마다 hitStop 0.04 · trauma 0.12 · flash 0.07 |
+| `lightning.strike` | 낙뢰 | 쏘는 쪽 발밑 → 표적 발밑 | `magic.thunder.charge` `magic.thunder.strike` | hitStop 0.10 · kick 10(아래) · trauma 0.5 · flash 0.35 |
+| `holy.pillar` | 빛기둥 | 쏘는 쪽 발밑 → 표적 발밑 | `magic.holy.cast` `magic.holy.pillar` | trauma 0.2 · flash 0.12 |
+| `holy.wave` | 빛의 파동 | 발밑 (+방향) | `magic.holy.cast` `magic.holy.wave` | hitStop 0.04 · kick 4 · trauma 0.16 |
+| `holy.bell` | 종소리 충격파 | 발밑 (+방향) | `magic.bell.cast` `magic.bell.toll` | 울릴 때마다 trauma 0.12 · zoomPunch 0.02 · flash 0.06 · (셋째: slowMo 0.6×0.12s) |
+| `blood.orb` | 피의 구슬 | 쏘는 쪽 발밑 → 표적 발밑 | `magic.blood.cast` `magic.blood.fly` `magic.blood.hit` | hitStop 0.067 · kick 5 · trauma 0.2 · vignette 0.22 |
+| `shadow.claws` | 그림자 발톱 | 쏘는 쪽 발밑 → 표적 발밑 | `magic.shadow.cast` `magic.shadow.claw` | 발톱마다 hitStop 0.05 · kick 6 · trauma 0.14 |
+| `ult.bloodmoon` | 궁극기 · 붉은 달의 종 | 발밑 (+방향) | `ult.cast` `magic.bell.toll` `ult.lance` `ult.final` | slowMo 0.35×0.45s · darken 0.4 · 종 ×3 trauma 0.22 · 빛창 ×8 hitStop 0.033 · 마무리 hitStop 0.25(강제) · flash 0.6 · zoomPunch 0.10 · slowMo 0.25×0.4s · trauma 0.8 |
+
+**프리셋별 비용** (혼자 냈을 때의 최댓값. 덧칠 = 효과가 덮는 넓이 ÷ 폴드 화면 960×726; 겹쳐 그린 넓이의 합이라 1 을 넘을 수 있다)
+
+| 프리셋 | 뿜는 입자 low / mid / high | 동시에 산 입자 (mid) | 그리기 호출 (mid) | 덧칠 low / mid / high | 문양 · 메시 · 띠 · 빛 (mid) |
+|---|---|---|---|---|---|
+| `hit.slash.light` | 6 / 8 / 11 | 8 | 1 | 0.01 / 0.01 / 0.01 | 0 · 0 · 0 · 1 |
+| `hit.slash.heavy` | 11 / 16 / 22 | 16 | 2 | 0.04 / 0.04 / 0.04 | 1 · 0 · 0 · 1 |
+| `hit.blunt` | 8 / 11 / 16 | 11 | 2 | 0.10 / 0.09 / 0.10 | 2 · 0 · 0 · 1 |
+| `hit.pierce` | 6 / 10 / 12 | 10 | 2 | 0.02 / 0.02 / 0.02 | 1 · 0 · 0 · 1 |
+| `hit.crit` | 10 / 14 / 19 | 14 | 2 | 0.12 / 0.12 / 0.12 | 1 · 0 · 0 · 1 |
+| `hit.guard` | 9 / 9 / 19 | 9 | 2 | 0.10 / 0.04 / 0.10 | 1 · 0 · 0 · 1 |
+| `hit.finisher` | 21 / 32 / 45 | 32 | 2 | 0.29 / 0.32 / 0.32 | 5 · 0 · 0 · 1 |
+| `swing.light` | 0 / 0 / 0 | 0 | 1 | 0.01 / 0.01 / 0.01 | 0 · 1 · 0 · 0 |
+| `swing.heavy` | 0 / 0 / 0 | 0 | 1 | 0.02 / 0.02 / 0.02 | 0 · 1 · 0 · 0 |
+| `move.dash` | 6 / 10 / 12 | 10 | 2 | 0.03 / 0.04 / 0.04 | 1 · 0 · 0 · 0 |
+| `move.land` | 9 / 14 / 20 | 14 | 2 | 0.08 / 0.10 / 0.15 | 1 · 0 · 0 · 0 |
+| `move.step` | 1 / 2 / 3 | 2 | 1 | 0.00 / 0.01 / 0.01 | 0 · 0 · 0 · 0 |
+| `move.jump` | 3 / 5 / 6 | 5 | 2 | 0.01 / 0.02 / 0.03 | 1 · 0 · 0 · 0 |
+| `enemy.hurt` | 2 / 3 / 4 | 3 | 1 | 0.00 / 0.00 / 0.00 | 0 · 0 · 0 · 0 |
+| `enemy.death.bone` | 11 / 15 / 21 | 15 | 2 | 0.03 / 0.07 / 0.09 | 1 · 0 · 0 · 0 |
+| `enemy.death.ash` | 29 / 46 / 68 | 46 | 2 | 0.05 / 0.07 / 0.08 | 1 · 0 · 0 · 1 |
+| `enemy.breath` | 12 / 24 / 35 | 20 | 3 | 0.31 / 0.38 / 0.40 | 2 · 1 · 0 · 1 |
+| `buff.shield` | 0 / 0 / 0 | 0 | 2 | 0.05 / 0.05 / 0.05 | 1 · 1 · 0 · 1 |
+| `pickup` | 4 / 7 / 10 | 7 | 2 | 0.02 / 0.02 / 0.03 | 2 · 0 · 0 · 1 |
+| `fire.bolt` | 31 / 50 / 66 | 41 | 3 | 0.17 / 0.22 / 0.30 | 3 · 0 · 1 · 2 |
+| `fire.pillar` | 29 / 48 / 70 | 39 | 4 | 0.20 / 0.24 / 0.27 | 3 · 2 · 0 · 2 |
+| `fire.meteor` | 68 / 104 / 148 | 83 | 4 | 0.73 / 0.94 / 1.00 | 8 · 1 · 1 · 2 |
+| `ice.lance` | 23 / 36 / 52 | 29 | 4 | 0.08 / 0.11 / 0.13 | 3 · 1 · 1 · 2 |
+| `ice.nova` | 23 / 38 / 56 | 31 | 7 | 0.26 / 0.36 / 0.40 | 5 · 5 · 0 · 2 |
+| `lightning.chain` | 16 / 26 / 37 | 13 | 3 | 0.04 / 0.04 / 0.04 | 4 · 0 · 5 · 4 |
+| `lightning.strike` | 24 / 35 / 51 | 21 | 4 | 0.20 / 0.20 / 0.20 | 5 · 1 · 2 · 2 |
+| `holy.pillar` | 19 / 39 / 52 | 31 | 4 | 0.26 / 0.26 / 0.27 | 5 · 2 · 0 · 2 |
+| `holy.wave` | 13 / 21 / 30 | 14 | 4 | 0.43 / 0.42 / 0.43 | 3 · 2 · 0 · 2 |
+| `holy.bell` | 18 / 33 / 48 | 30 | 3 | 0.80 / 0.81 / 0.81 | 6 · 1 · 0 · 2 |
+| `blood.orb` | 30 / 46 / 65 | 32 | 3 | 0.13 / 0.15 / 0.17 | 3 · 0 · 1 · 2 |
+| `shadow.claws` | 13 / 24 / 35 | 17 | 5 | 0.09 / 0.11 / 0.14 | 4 · 3 · 0 · 3 |
+| `ult.bloodmoon` | 159 / 258 / 345 | 108 | 11 | 3.55 / 3.50 / 3.50 | 18 · 7 · 3 · 5 |
+
+**난전 한 프레임의 예산** (15초 = 900프레임, 사건은 실제 시간 기준: 적 12, 초당 타격 6회 + 휘두르기, 발걸음 초당 24, 마법 초당 2.5개(늘 3개쯤 떠 있음), 큰 마법 2.4초마다, 죽음 1.5초마다)
+
+| 단계 | 효과 그리기 호출 최대 (평균) | + 후처리 패스 | 입자: 제출 최대 / 실제 산 것 최대 (평균) / 상한 | 문양 최대 | 메시 최대 (삼각형) | 띠 최대 (정점) | 빛 최대 | 덧칠 최대 (평균) | 밝기 조절 최저 | 효과 JS 시간 평균 · p95 · 최대 (ms) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| low | 10 (6.1) | 0 | 283 / 133 (82) / 1024 | 39 | 6 (424) | 5 (142) | 3 | 1.27 (0.56) | 0.75 | 0.11 · 0.20 · 18.40 |
+| mid | 12 (6.3) | 4 | 423 / 203 (131) / 2048 | 39 | 8 (592) | 7 (172) | 5 | 1.46 (0.70) | 0.77 | 0.19 · 0.10 · 134.60 |
+| high | 12 (6.4) | 6 | 626 / 295 (190) / 4096 | 39 | 9 (676) | 7 (172) | 8 | 1.60 (0.84) | 0.79 | 0.08 · 0.10 · 8.20 |
+
+- 프레임당 GL 호출 수(난전 6초 평균 · 최대; 유니폼·버퍼·그리기를 모두 센 것): 효과 그리기 low 77 · 95 / mid 77 · 95 / high 77 · 95, 후처리 low 13 / mid 45 / high 55.
+
+- 장면(시험 화면의 바닥·벽·인형)은 따로 13회. 효과 JS 시간 = `fx.update` + `fx.draw` 안에서 잰 `performance.now()` 차이(헤드리스·다른 작업과 CPU 를 나눠 쓰는 기계에서 잰 값; GPU 시간은 들어 있지 않다).
+
+**프레임당 할당** (`performance.memory.usedJSHeapSize`, `--enable-precise-memory-info` · 시작 전에 `gc()`; 먼저 900–2,400프레임을 돌려 JIT 를 데운 뒤 잰다)
+
+| 경우 | 잰 프레임 | 그동안 는 힙 | 프레임당 | 루프 시간 ÷ 프레임 (헤드리스) |
+|---|---|---|---|---|
+| **정상 상태, 효과 엔진만** (`fx.tick` + `fx.draw`; 살아 있는 문양만 있고 새로 내지 않음) | 1200 | 18644 바이트 | 15.5 바이트 | 0.560 ms |
+| 난전, 효과 엔진만 (`fx.tick` + 프리셋 호출 + `fx.draw`) | 1200 | 69820 바이트 | 58.2 바이트 | 3.959 ms |
+| 난전, 시험 화면 프레임 전체 (시험 화면의 장면 그리기 · 카메라 · 후처리 포함) | 600 | 958748 바이트 | 1597.9 바이트 | 0.191 ms |
+| 대조: 정상 상태 루프에서 프레임마다 `new Float64Array(16)` 하나를 일부러 잡음 | 1200 | 317384 바이트 | 264.5 바이트 | 0.325 ms |
+
+**메모리**
+
+- fold_open (캔버스 1000×756): 효과 GPU 메모리 9.15 MB = 텍스처 2.70 (입자 512² + 문양 512² + 잡음 64², 밉맵 포함) + 후처리 버퍼 5.99 (장면 색 + 깊이 + 번짐 단계) + 정점 버퍼 0.46
+- phone2 (캔버스 740×360): 효과 GPU 메모리 5.27 MB = 텍스처 2.70 (입자 512² + 문양 512² + 잡음 64², 밉맵 포함) + 후처리 버퍼 2.11 (장면 색 + 깊이 + 번짐 단계) + 정점 버퍼 0.46
+- 후처리 버퍼는 캔버스 크기에 비례한다: 폴드 실기 medium(1455×1100)이면 약 13 MB, high(2000×1512)면 약 25 MB. low 단계는 후처리를 꺼서 0.
 <!-- numbers:end -->
 
 할당을 본 방법과 읽는 법:

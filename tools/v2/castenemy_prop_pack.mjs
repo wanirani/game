@@ -22,6 +22,13 @@ const bbox = () => { const lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9]; for (l
 let B = bbox();
 if (B.e[1] < Math.max(B.e[0], B.e[2])) console.warn('경고: 가장 긴 축이 Y 가 아닙니다 — 원본 그림을 세워서 다시 만드세요', B.e);
 const rotY90 = () => { for (let i = 0; i < nv; i++) { const x = p[i * 3], z = p[i * 3 + 2]; p[i * 3] = z; p[i * 3 + 2] = -x; const a = n[i * 3], c = n[i * 3 + 2]; n[i * 3] = c; n[i * 3 + 2] = -a; } };
+{   // 수평면(x·z)의 주축을 찾아 넓은 쪽을 X 로 돌린다 (서비스가 준 모델이 Y 축으로 비스듬히 돌아 있을 때가 있다)
+  let mx = 0, mz = 0; for (let i = 0; i < nv; i++) { mx += p[i * 3]; mz += p[i * 3 + 2]; } mx /= nv; mz /= nv;
+  let cxx = 0, czz = 0, cxz = 0; for (let i = 0; i < nv; i++) { const x = p[i * 3] - mx, z = p[i * 3 + 2] - mz; cxx += x * x; czz += z * z; cxz += x * z; }
+  const th = 0.5 * Math.atan2(2 * cxz, cxx - czz), c = Math.cos(th), s = Math.sin(th);   // 주축 방향 (cos, sin)
+  for (let i = 0; i < nv; i++) { const x = p[i * 3], z = p[i * 3 + 2]; p[i * 3] = c * x + s * z; p[i * 3 + 2] = -s * x + c * z; const a = n[i * 3], b = n[i * 3 + 2]; n[i * 3] = c * a + s * b; n[i * 3 + 2] = -s * a + c * b; }
+  B = bbox(); console.log('주축 돌림', (th * 180 / Math.PI).toFixed(1) + '°');
+}
 if (B.e[2] > B.e[0]) { rotY90(); B = bbox(); }   // 넓은 쪽이 X, 납작한 면이 Z 를 보게
 if (opt.flip) { for (let i = 0; i < nv; i++) { p[i * 3 + 1] = -p[i * 3 + 1]; p[i * 3 + 2] = -p[i * 3 + 2]; n[i * 3 + 1] = -n[i * 3 + 1]; n[i * 3 + 2] = -n[i * 3 + 2]; } B = bbox(); }   // X 축으로 180°
 const sc = LEN / B.e[1], yg = B.lo[1] + GRIP * B.e[1];

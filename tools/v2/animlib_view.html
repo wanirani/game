@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>블러드 녹턴 — 공용 클립 라이브러리 보기</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #10141c; color: #e8e0d0; font: 13px/1.4 system-ui, sans-serif; overflow: hidden; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #ui { position: absolute; left: 0; right: 0; bottom: 0; max-height: 46%; overflow-y: auto; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(8,10,16,.9) 18%); }
+  #ui .row { display: flex; flex-wrap: wrap; gap: 4px; margin: 3px 0; align-items: center; }
+  #ui .row b { color: #c9a66a; min-width: 74px; font-weight: 600; }
+  #ui button { background: #262c3a; color: #e8e0d0; border: 1px solid #4a5268; border-radius: 6px; padding: 5px 8px; font: inherit; }
+  #ui button.on { background: #7a2430; border-color: #c0485a; }
+  #info { position: absolute; left: 10px; top: 8px; right: 10px; color: #b8b0a0; font-size: 12px; white-space: pre-wrap; pointer-events: none; text-shadow: 0 1px 2px #000; }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="info">불러오는 중…</div>
+<div id="ui"></div>
+<script type="module">
+// 공용 클립 라이브러리 보기: 아무 사람형 모델에 라이브러리의 클립을 전부 틀어 본다. 런타임(src/v2/char3d)은 고치지 않고 그대로 쓴다.
+//   ?glb=모델 (기본 ../../assets/v2/char3d/kael.glb) &lib=목록 (기본 ../../assets/v2/char3d/clips/index.json)
+//   &clip=run &t=0.2(고정 시각) &yaw=30 &pitch=24 &zoom=body|wide|game &weapon=0|1 &light=studio|night &floor=0|1
+//   손으로 쓴 옛 클립은 hand_<이름> 으로 함께 실린다 (비교용).
+import { CharRenderer, boxModel } from '../../src/v2/char3d/render.js';
+import { loadCharAsset, Char3D } from '../../src/v2/char3d/hero3d.js';
+import { loadAnimLib, eventsBetween } from './animlib_load.js';
+
+const q = new URLSearchParams(location.search);
+const cv = document.getElementById('cv'), info = document.getElementById('info'), ui = document.getElementById('ui');
+const S = { yaw: Number(q.get('yaw') ?? 30), pitch: Number(q.get('pitch') ?? 24), zoom: q.get('zoom') ?? 'wide', auto: false, clip: q.get('clip') ?? 'idle', fixed: q.has('t') ? Number(q.get('t')) : null, weapon: q.get('weapon') !== '0', light: q.get('light') ?? 'studio', speed: 1, useSpeed: true, floor: q.get('floor') !== '0', x: 0, z: 0, flash: 0 };
+const api = (window.__al = { ready: false, error: null, S, events: [] });
+let gl, R, ch, asset, lib, floorGpu, prevT = 0;
+
+function persp(fovDeg, aspect, n, f, o) { const t = 1 / Math.tan((fovDeg * Math.PI) / 360); o.fill(0); o[0] = t / aspect; o[5] = t; o[10] = (f + n) / (n - f); o[11] = -1; o[14] = (2 * f * n) / (n - f); return o; }
+function lookAt(e, c, o) {
+  let fx = c[0] - e[0], fy = c[1] - e[1], fz = c[2] - e[2]; const fl = Math.hypot(fx, fy, fz); fx /= fl; fy /= fl; fz /= fl;
+  let sx = fy * 0 - fz * 1, sy = 0, sz = fx * 1 - fy * 0; const sl = Math.hypot(sx, sy, sz); sx /= sl; sz /= sl;
+  const ux = sy * fz - sz * fy, uy = sz * fx - sx * fz, uz = sx * fy - sy * fx;
+  o[0] = sx; o[4] = sy; o[8] = sz; o[12] = -(sx * e[0] + sy * e[1] + sz * e[2]);
+  o[1] = ux; o[5] = uy; o[9] = uz; o[13] = -(ux * e[0] + uy * e[1] + uz * e[2]);
+  o[2] = -fx; o[6] = -fy; o[10] = -fz; o[14] = fx * e[0] + fy * e[1] + fz * e[2];
+  o[3] = 0; o[7] = 0; o[11] = 0; o[15] = 1; return o;
+}
+function mul(a, b, o) { for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) o[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3]; return o; }
+const Pm = new Float32Array(16), Vm = new Float32Array(16), VP = new Float32Array(16), M = new Float32Array(16), I = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+
+function render() {
+  const dpr = Math.min(3, window.devicePixelRatio || 1), w = Math.round(cv.clientWidth * dpr), h = Math.round(cv.clientHeight * dpr);
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  gl.viewport(0, 0, w, h);
+  const night = S.light === 'night';
+  gl.clearColor(night ? 0.05 : 0.2, night ? 0.065 : 0.215, night ? 0.1 : 0.24, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  if (!ch) return;
+  ch.weapon = S.weapon ? ch._weapon : null;
+  const Z = { body: { d: 4.6, y: 0.92 }, upper: { d: 2.3, y: 1.35 }, wide: { d: 6.4, y: 0.8 }, game: { d: 9.5, y: 0.6 } }[S.zoom] ?? { d: 6.4, y: 0.8 };
+  const p = (S.pitch * Math.PI) / 180, ya = (S.yaw * Math.PI) / 180, cx = S.zoom === 'game' ? 0 : S.x, cz = S.zoom === 'game' ? 0 : S.z;
+  const eye = [cx + Math.sin(ya) * Math.cos(p) * Z.d, Z.y + Math.sin(p) * Z.d, cz + Math.cos(ya) * Math.cos(p) * Z.d];
+  persp(30, w / h, 0.1, 60, Pm); lookAt(eye, [cx, Z.y, cz], Vm); mul(Pm, Vm, VP);
+  M.set(I); M[12] = S.x; M[14] = S.z;
+  R.begin({ vp: VP, eye, fog: { near: 100, far: 200, max: 0, color: [0, 0, 0] }, sunDir: night ? [-0.447, 0.745, 0.496] : [0.35, 0.8, 0.6], sun: night ? [0.62, 0.64, 0.82] : [0.62, 0.6, 0.56], amb: night ? [0.42, 0.45, 0.6] : [0.62, 0.63, 0.66] });
+  if (S.floor && floorGpu) R.draw(floorGpu, null, I, { rim: [0, 0, 0, 0], cull: 'none' });
+  ch.draw(M, { rim: night ? [0.55, 0.65, 0.9, 0.35] : [1, 1, 1, 0.08], flash: S.flash });
+  R.end();
+}
+function advance(dt) {
+  if (!ch) return;
+  const A = ch.anim, c = asset.clips[S.clip]; if (!c) return;
+  const sp = S.speed * (S.useSpeed ? c.speed ?? 1 : 1);
+  A.play(S.clip, { fade: S.fade ?? 0.12, ...(S.fixed != null ? { time: S.fixed } : { speed: sp }) });
+  A.update(S.fixed != null ? 0.5 : dt);
+  if (S.fixed == null && c.events) { for (const e of eventsBetween(c, prevT, A.t)) { api.events.push([e, +A.t.toFixed(3)]); if (e === 'hit' || e === 'release' || e === 'land' || e === 'body') S.flash = 0.6; } }
+  prevT = A.t; S.flash = Math.max(0, S.flash - dt * 6);
+  if (!api.hold && c.meta) info.textContent = `${api.title}\n${S.clip} · ${c.meta.src}(${c.meta.id}) · ${c.duration.toFixed(2)}초 × ${sp.toFixed(2)}배속 · ${c.loop ? '순환' : '한 번'} · t ${((c.loop ? A.t % c.duration : Math.min(A.t, c.duration))).toFixed(2)}\n이벤트 ${c.events.map((e) => e[1] + '@' + e[0]).join(' ') || '없음'}${c.meta.travel ? ' · 뺀 이동 ' + c.meta.travel.join(', ') + ' m' : ''}\n${c.meta.use}`;
+}
+// ── 캡처 도구용 ──
+api.draw = (o = {}) => { Object.assign(S, o); if (o.clip) ch.anim.play(o.clip, { fade: 0, restart: true, time: S.fixed ?? 0 }); advance(0); render(); render(); return true; };
+api.play = (name, o = {}) => { S.clip = name; S.fixed = null; S.fade = o.fade ?? 0.12; if (o.speed != null) { S.speed = o.speed; S.useSpeed = false; } else { S.speed = 1; S.useSpeed = true; } if (o.restart !== false) { ch.anim.play(name, { fade: S.fade, restart: true, speed: 1 }); prevT = 0; } return !!asset.clips[name]; };
+api.tick = (dt) => { advance(dt); render(); return ch.anim.t; };
+
+async function main() {
+  gl = cv.getContext('webgl2', { antialias: true, alpha: false, preserveDrawingBuffer: true }) || cv.getContext('webgl', { antialias: true, alpha: false, preserveDrawingBuffer: true });
+  if (!gl) throw new Error('WebGL 을 쓸 수 없습니다');
+  const url = q.get('glb') ?? '../../assets/v2/char3d/kael.glb', libUrl = q.get('lib') ?? '../../assets/v2/char3d/clips/index.json';
+  asset = await loadCharAsset(url);
+  lib = await loadAnimLib(libUrl);
+  const hand = asset.clips; asset.clips = { ...lib.clips };
+  for (const [k, c] of Object.entries(hand)) if (c.source === 'procedural') asset.clips['hand_' + k] = c;
+  R = new CharRenderer(gl, { maxJoints: Math.max(32, asset.model.stats.joints) });
+  ch = new Char3D(asset, R, { maxTex: Number(q.get('tex') ?? 2048) });
+  ch._weapon = ch.weapon;
+  const tiles = []; for (let i = -6; i < 6; i++) for (let j = -6; j < 6; j++) { const d = (i + j) & 1; tiles.push({ min: [i, -0.02, j], max: [i + 1, 0, j + 1], color: d ? [0.3, 0.32, 0.36] : [0.36, 0.38, 0.42] }); }
+  floorGpu = R.add(boxModel(tiles), { mip: false });
+  const st = asset.model.stats;
+  api.title = `${url.split('/').pop()} · 뼈 ${st.joints} · 라이브러리 클립 ${Object.keys(lib.clips).length}개 (${lib.index.groups.map((g) => g.g + ' ' + g.clips).join(' · ')})`;
+  api.info = { ...st, clips: Object.fromEntries(Object.entries(asset.clips).map(([k, c]) => [k, { d: +c.duration.toFixed(3), loop: !!c.loop, g: c.meta?.g ?? 'hand', speed: c.speed ?? 1, ev: c.events ?? [], strike: c.meta?.strike ?? null }])), bones: [...ch.rig.key.keys()] };
+  api.rig = () => ({ jm: Array.from(ch.rig.jm), hipY: ch.rig.restHipY });
+  const row = (label) => { const r = document.createElement('div'); r.className = 'row'; const b = document.createElement('b'); b.textContent = label; r.appendChild(b); ui.appendChild(r); return r; };
+  const btn = (r, label, fn, on) => { const b = document.createElement('button'); b.textContent = label; b.onclick = () => { fn(); sync(); }; b._on = on; r.appendChild(b); return b; };
+  const sync = () => { for (const b of ui.querySelectorAll('button')) b.classList.toggle('on', !!b._on?.()); };
+  const KO = { locomotion: '이동', combat: '전투', reactions: '피격', magic: '마법', story: '이야기', enemy: '적', hand: '손으로 쓴 것' };
+  for (const g of [...lib.index.groups.map((x) => x.g), 'hand']) { const r = row(KO[g] ?? g); for (const [k, c] of Object.entries(asset.clips)) if ((c.meta?.g ?? 'hand') === g) btn(r, k, () => { api.play(k); }, () => S.clip === k); }
+  const r = row('보기');
+  btn(r, '돌리기', () => { S.auto = !S.auto; }, () => S.auto);
+  btn(r, '느리게', () => { S.speed = S.speed === 1 ? 0.25 : 1; }, () => S.speed !== 1);
+  btn(r, '권장 배속', () => { S.useSpeed = !S.useSpeed; }, () => S.useSpeed);
+  btn(r, '가까이/멀리/게임 시점', () => { S.zoom = { body: 'wide', wide: 'game', game: 'body' }[S.zoom] ?? 'wide'; if (S.zoom === 'game') S.pitch = 38; });
+  btn(r, '무기', () => { S.weapon = !S.weapon; }, () => S.weapon);
+  btn(r, '밤 조명', () => { S.light = S.light === 'night' ? 'studio' : 'night'; }, () => S.light === 'night');
+  sync();
+  let drag = null;
+  cv.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, yaw: S.yaw, pitch: S.pitch }; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', (e) => { if (!drag) return; S.yaw = drag.yaw - (e.clientX - drag.x) * 0.5; S.pitch = Math.max(-10, Math.min(80, drag.pitch + (e.clientY - drag.y) * 0.3)); });
+  cv.addEventListener('pointerup', () => { drag = null; });
+  if (!asset.clips[S.clip]) S.clip = Object.keys(asset.clips)[0];
+  api.play(S.clip);
+  api.ready = true;
+  let last = performance.now();
+  const loop = (now) => { const dt = Math.min(0.05, (now - last) / 1000); last = now; if (!api.hold) { if (S.auto) S.yaw += dt * 40; advance(dt); render(); } requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+}
+main().catch((e) => { api.error = String(e?.message ?? e); info.textContent = '열지 못했습니다: ' + api.error; console.error(e); });
+</script>
+</body>
+</html>

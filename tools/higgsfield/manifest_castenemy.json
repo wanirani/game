@@ -419,7 +419,8 @@
    },
    "prompt": "rusty arming sword, vertical, front",
    "job_id": "cba366c6-bde0-45fe-bd8e-c08d9361b1ee",
-   "credits": 0.5
+   "credits": 0.5,
+   "kept": true
   },
   {
    "id": "w_staff",
@@ -432,7 +433,8 @@
    },
    "prompt": "necromancer staff with violet crystal, vertical, front",
    "job_id": "4172fa42-2f37-4f7d-ad08-dfb3f9c0514c",
-   "credits": 0.5
+   "credits": 0.5,
+   "kept": true
   },
   {
    "id": "w_spade",
@@ -445,7 +447,8 @@
    },
    "prompt": "giant grave-keeper war spade, vertical, front",
    "job_id": "091dd2e6-2e1b-4179-bbf8-45a2c0fe5bc2",
-   "credits": 0.5
+   "credits": 0.5,
+   "kept": true
   },
   {
    "id": "w_sword",
@@ -462,7 +465,8 @@
    "ref": "job cba366c6",
    "job_id": "6af45c52-c346-4600-a9db-a02414c910f5",
    "credits": 9,
-   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144527_6af45c52-c346-4600-a9db-a02414c910f5.glb"
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144527_6af45c52-c346-4600-a9db-a02414c910f5.glb",
+   "kept": true
   },
   {
    "id": "w_staff",
@@ -479,7 +483,8 @@
    "ref": "job 4172fa42",
    "job_id": "96b36d28-028b-47e5-8f9d-1cc94b16e434",
    "credits": 9,
-   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144530_96b36d28-028b-47e5-8f9d-1cc94b16e434.glb"
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144530_96b36d28-028b-47e5-8f9d-1cc94b16e434.glb",
+   "kept": true
   },
   {
    "id": "w_spade",
@@ -496,7 +501,8 @@
    "ref": "job 091dd2e6",
    "job_id": "5c57cb9d-51ef-491e-80b6-d20d16fdba09",
    "credits": 9,
-   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144532_5c57cb9d-51ef-491e-80b6-d20d16fdba09.glb"
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144532_5c57cb9d-51ef-491e-80b6-d20d16fdba09.glb",
+   "kept": true
   }
  ],
  "total_credits": 189.5
