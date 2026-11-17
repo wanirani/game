@@ -21,8 +21,8 @@ h2{font:800 27px "Hahmlet","Hahmlet Ext",serif;margin:26px 0 12px;color:#ecd49a}
 .cap span{font-weight:500;color:#b9b6c4;margin-left:8px}
 img.s{display:block;width:100%;border-radius:8px;box-shadow:0 0 0 1px rgba(255,255,255,.16)}
 .r{display:grid;column-gap:24px}.r2{grid-template-columns:1fr 1fr}
-.icons{display:flex;align-items:flex-end;gap:14px;padding:14px 18px;border-radius:8px;box-shadow:0 0 0 1px rgba(255,255,255,.16);background:#171a28;margin-bottom:8px;flex-wrap:nowrap}
-.icons .tag{font:700 17px "Noto Sans KR","Noto Sans KR Ext",sans-serif;color:#b9b6c4;width:150px;flex:none;align-self:center;line-height:1.4}
+.icons{display:flex;align-items:flex-end;gap:8px;padding:14px 16px;border-radius:8px;box-shadow:0 0 0 1px rgba(255,255,255,.16);background:#171a28;margin-bottom:8px;flex-wrap:nowrap}
+.icons .tag{font:700 17px "Noto Sans KR","Noto Sans KR Ext",sans-serif;color:#b9b6c4;width:104px;flex:none;align-self:center;line-height:1.4}
 .icons img{display:block;flex:none}
 .weak{font-size:21px;line-height:1.6;color:#ffd9de;background:#2a1620;border-radius:8px;padding:14px 18px;margin-top:8px}
 .nums{font-size:18px;line-height:1.7;color:#c9c6d6;margin-top:14px}

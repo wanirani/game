@@ -98,6 +98,7 @@ for (const dev of DEVICES) {
 
     // ── every button: tap, hold, slide off ──
     const B = Object.fromEntries(m.pad.buttons.map((b) => [b.id, b]));
+    if (!SKIP.has('input')) {   // --skip input,stress,reenter = only the wiring and the fight capture
     await logOf(page);
     for (const id of Object.keys(ACT)) {
       const b = B[id], acts = ACT[id];
@@ -277,6 +278,7 @@ for (const dev of DEVICES) {
     ok(R.steady.fl === 0, `${dev}: no canvas filter is ever set (${R.steady.fl})`);
     ok(R.steady.sb === 0 && R.steady.cv === 0 && R.steady.gid === 0, `${dev}: steady play sets no shadow blur, creates no canvas, reads no pixels (${JSON.stringify({ sb: R.steady.sb, cv: R.steady.cv, gid: R.steady.gid })})`);
 
+    }
     // ── fight: walk into the nearest enemy, lock on, attack (real buttons) ──
     await page.evaluate(() => { const sim = window.__v2.scene.sim, h = sim.hero; let best = null, bd = 1e9; for (const e of sim.enemies) { if (e.dead) continue; const dd = Math.hypot(e.x - h.x, e.z - h.z); if (dd < bd) { bd = dd; best = e; } } if (best) { h.x = best.x - 70; h.z = best.z; window.__v2.scene.cam.snap = true; } });
     await sleep(600);
@@ -289,8 +291,16 @@ for (const dev of DEVICES) {
     await page.evaluate(() => { const sc = window.__v2.scene, h = sc.sim.hero; sc.hud.callout(h.x + 40, 90, h.z, '튕겨냄', 'parry'); });
     await page.evaluate(() => { const N = window.__v2.scene.numbers; window.__keep = setInterval(() => { for (const n of N) if (n.on && n.t > 0.22) n.t = 0.22; }, 16); });   // the numbers of the last real hits stay up for the capture
     for (let i = 0; i < 3; i++) { await T.down(1, B.attack.cx, B.attack.cy); await sleep(90); await T.up(1); await sleep(300); }
+    // make sure the capture shows a lock ring on a living enemy: press "next target" until the locked enemy is alive and on screen
+    for (let i = 0; i < 4; i++) {
+      const good = await page.evaluate(() => { const sc = window.__v2.scene, id = sc.sim.hero.lock; if (id == null) return false; const e = sc.sim.enemies.find((q) => q.id === id); if (!e || e.dead || e.state === 'dead') return false; const p = sc.project(e.x, e.y + 40, e.z, {}); return p.w > 1 && p.x > 60 && p.x < window.__game.viewW - 60 && p.y > 60 && p.y < window.__game.viewH - 60; });
+      if (good) break;
+      await T.down(1, B.lock.cx, B.lock.cy); await sleep(60); await T.up(1); await sleep(250);
+    }
+    await T.down(1, B.attack.cx, B.attack.cy); await sleep(90); await T.up(1); await sleep(200);
     await page.evaluate(() => { const sc = window.__v2.scene, h = sc.sim.hero; sc.hud.callout(h.x + 40, 90, h.z, '튕겨냄', 'parry'); });
     await sleep(150); await shot('live_fight');
+    R.fightShot = await page.evaluate(() => ({ lock: window.__v2.scene.sim.hero.lock ?? null, numbersOn: window.__v2.scene.numbers.filter((n) => n.on).map((n) => n.str) }));
     await page.evaluate(() => clearInterval(window.__keep));
 
     if (!SKIP.has('stress')) {

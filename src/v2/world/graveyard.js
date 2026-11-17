@@ -34,7 +34,7 @@ export function graveyard(era = 'now') {
     LP(516, 300), LP(684, 620, { flip: true }));
   if (now) for (const [x, z] of [[600, 250], [600, 560], [600, 820]]) anchors.push({ id: 'mist_road_' + z, kind: 'mist', x, y: 0, z, size: 2 });
   // the keeper's hut behind the inner gate wall (same footprint both nights: lit and thatched in 1697, a roofless ruin tonight)
-  add('field', house({ x: 770, z: 1000, w: 260, h: now ? 120 : 170, d: 70, style: 'rubble', seed: 91, burnt: now, lit: 1, door: 200, roofMat: 'thatch', roofH: 50, kit: { lower: 'fieldstone', plinth: 20 } }));
+  add('field', house({ x: 770, z: 1000, w: 260, h: now ? 120 : 132, d: 70, style: 'rubble', seed: 91, burnt: now, lit: 1, door: 200, roofMat: 'thatch', roofH: 30, roofKit: { chimneys: [] }, kit: { lower: 'fieldstone', plinth: 20 } }));   // kept low (ridge 162, no chimney): at 170 + 50 the hut hid the hero in a 375-deep patch of the field behind it
   // the grave field: rows of solid stones with clear lanes (the middle path x 500..700 and the cross path z 1460..1580 stay empty)
   const stones = [];
   for (let row = 0; row < 7; row++) for (let col = 0; col < 8; col++) {

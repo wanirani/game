@@ -28,7 +28,7 @@ export async function ensureWorldAssets() {
 export function finishArea(a) {
   const st = a.stage, d = a.spawns.default;
   st.start = { x: d.x, z: d.z };
-  st.spawns = a.enemies.map((e) => ({ kind: e.kind, x: e.x, z: e.z, yard: !!e.yard, active: !!e.active, group: e.group ?? null }));
+  st.spawns = a.enemies.map((e) => ({ kind: e.kind, x: e.x, z: e.z, yard: !!e.yard, active: !!e.active, group: e.group ?? null, face: e.face ?? null }));
   st.decals = st.decals ?? [];
   a.camera = Object.fromEntries(st.sections.map((s) => [s.id, s.cam]));
   a.anchors = a.anchors ?? [];
