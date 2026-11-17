@@ -66,6 +66,7 @@ class Fx {
     const T = TIERS[name] ?? TIERS.mid; this.tier = TIERS[name] ? name : 'mid'; this.T = T;
     this.particles.reset(T.particles); this.particles.scale = T.pScale; this.quads.reset(T.quads); this.ribbons.reset(T.ribbons); this.meshes.reset(T.meshes); this.lights.reset(T.lights); this.seqs.reset(T.seqs);
     this.post.setLevels(this.postOn ? T.bloom : 0);
+    this.feel.darken(0);   // 검수: 시퀀스(궁극기)가 걸어 둔 '장면 어둡게'는 시퀀스와 함께 지운다 — 안 그러면 도중에 단계를 바꿨을 때 화면이 영영 어둡다
   }
   /** 후처리 켜기/끄기 (끄면 번쩍임·가장자리 색만 덧그린다) */
   setPost(on) { this.postOn = !!on; this.post.setLevels(this.postOn ? this.T.bloom : 0); }

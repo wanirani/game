@@ -1042,9 +1042,93 @@
   {
    "animation_action_id": 391,
    "animation": "Head_Hold_in_Pain",
-   "note": "종소리 · 밴시의 노래에 귀를 막는 반응(stun)으로 사려 했으나 호출이 권한 분류기에 막혀 내지 않았다. 다음에 살 것 1순위"
+   "note": "귀 막기 반응(stun)으로 사려 했으나 호출이 권한 분류기에 막혀 내지 않았다. 그 뒤 밴시 여왕의 GLB 에 같은 클립이 들어 있어 거기서 꺼내 썼다(harvested_from_cast)"
   }
  ],
  "credits_total": 408,
- "note": "리깅 + 클립 1개 = 8 크레딧 (get_cost 로 미리 확인). 성공 51건 × 8 = 408. 실패 2건(464 Leap_and_Punch)은 거래 내역에 '3D Rigging refund +8' 로 환불이 찍혔다. 미리보기 GIF 221개는 무료(cdn.meshy.ai). 라이브러리 번호 285 는 목록 이름이 open_door 인데 받은 클립 이름은 open_door_1 이다 (동작은 손잡이를 잡아 당기는 것으로 같다)."
+ "note": "리깅 + 클립 1개 = 8 크레딧 (get_cost 로 미리 확인). 성공 51건 × 8 = 408. 실패 2건(464 Leap_and_Punch)은 거래 내역에 '3D Rigging refund +8' 로 환불이 찍혔다. 미리보기 GIF 221개는 무료(cdn.meshy.ai). 라이브러리 번호 285 는 목록 이름이 open_door 인데 받은 클립 이름은 open_door_1 이다 (동작은 손잡이를 잡아 당기는 것으로 같다).",
+ "harvested_from_cast": [
+  {
+   "animation_action_id": 391,
+   "animation": "Head_Hold_in_Pain",
+   "from": "assets/v2/char3d/banshee_queen.glb",
+   "clips": [
+    "stun"
+   ],
+   "credits": 0
+  },
+  {
+   "animation_action_id": 130,
+   "animation": "mage_soell_cast_1",
+   "from": "assets/v2/char3d/banshee_queen.glb",
+   "clips": [
+    "cast_sweep"
+   ],
+   "credits": 0
+  },
+  {
+   "animation_action_id": 33,
+   "animation": "Chair_Sit_Idle_M",
+   "from": "assets/v2/char3d/edmund.glb",
+   "clips": [
+    "sit_idle"
+   ],
+   "credits": 0
+  },
+  {
+   "animation_action_id": 119,
+   "animation": "Slow_Orc_Walk_inplace",
+   "from": "assets/v2/char3d/gravekeeper_armor.glb",
+   "clips": [
+    "brute_walk"
+   ],
+   "credits": 0
+  },
+  {
+   "animation_action_id": 127,
+   "animation": "Charged_Ground_Slam",
+   "from": "assets/v2/char3d/gravekeeper_armor.glb",
+   "clips": [
+    "ground_slam"
+   ],
+   "credits": 0
+  },
+  {
+   "animation_action_id": 290,
+   "animation": "Wave_One_Hand",
+   "from": "assets/v2/char3d/lotte.glb",
+   "clips": [
+    "wave"
+   ],
+   "credits": 0
+  },
+  {
+   "animation_action_id": 42,
+   "animation": "Gentlemans_Bow",
+   "from": "assets/v2/char3d/rook.glb",
+   "clips": [
+    "bow"
+   ],
+   "credits": 0
+  },
+  {
+   "animation_action_id": 337,
+   "animation": "Torch_Look_Around",
+   "from": "assets/v2/char3d/sera.glb",
+   "clips": [
+    "lantern_look"
+   ],
+   "credits": 0
+  },
+  {
+   "animation_action_id": 309,
+   "animation": "Talk_with_Left_Hand_on_Hip",
+   "from": "assets/v2/char3d/marta.glb",
+   "clips": [
+    "talk3"
+   ],
+   "credits": 0
+  }
+ ],
+ "harvested_note": "다른 묶음(castenemy · castpeople)이 캐릭터를 리깅하며 끼워 산 클립을 tools/v2/animlib_extract.mjs 로 꺼내 /tmp/claude-0/v2/animlib/raw/<번호>_<이름>.glb 에 두고 썼다. 그 캐릭터 파일은 읽기만 했다. 값은 그쪽 기록에 있다(여기서는 0)."
 }

@@ -3,17 +3,17 @@
 2026-11-17 · 담당 animlib · 클립 `assets/v2/char3d/clips/` · 도구 `tools/v2/animlib_*.mjs` · 보기 `tools/v2/animlib_view.html` · 기록 `tools/higgsfield/manifest_animlib.json`
 
 소유자 요청: *"3d지만 타격감(효과, 음향 등) 최고로 살려줘, 마법 등도 3d로 화려하게. 최적화로 느리지 않고 경쾌한 움직임이 느껴지게"* (헌장 §2).
-시범(`CHAR3D_PILOT.md`)의 결론은 "산 클립 3개는 살아 있고 손으로 쓴 10개는 뻣뻣하다"였다. 이 문서는 그 빈자리를 메운 **공용 클립 62개**의 기록이다.
+시범(`CHAR3D_PILOT.md`)의 결론은 "산 클립 3개는 살아 있고 손으로 쓴 10개는 뻣뻣하다"였다. 이 문서는 그 빈자리를 메운 **공용 클립 71개**의 기록이다.
 
 ## 0. 한눈에
 
-- **62개 클립, 768 KB.** 묶음 여섯(이동 13 · 전투 17 · 피격 9 · 마법 6 · 이야기 13 · 적 전용 4) + 목록 `index.json`. 상한 1.2 MB 의 64%.
-- **408 크레딧** (리깅 + 클립 1개 = 8 × 51건). 상한 420. 시범 때 산 3개(달리기 · 베기 · 쓰러짐)도 다시 가공해 함께 실었다.
+- **71개 클립, 926 KB.** 묶음 여섯(이동 13 · 전투 17 · 피격 10 · 마법 7 · 이야기 18 · 적 전용 6) + 목록 `index.json`. 상한 1.2 MB 안.
+- **408 크레딧** (리깅 + 클립 1개 = 8 × 51건). 상한 420. 시범 때 산 3개(달리기 · 베기 · 쓰러짐)도 다시 가공해 함께 실었고, **다른 캐릭터들을 리깅하며 끼워 산 클립 9개를 그 모델에서 꺼내 와 값 없이 더했다**(귀 막기 · 앉아 있기 · 덩치 걸음 · 땅 찍기 · 등불 살피기 · 절 · 손 흔들기 …).
 - 라이브러리 678개 가운데 **미리보기 221개를 받아 프레임을 보고** 골랐다. 고른 까닭과 버린 후보는 §2.
 - 클립마다 **죽은 프레임을 자르고, 게임이 움직여 줄 수평 이동을 빼고, 순환은 처음과 끝을 맞추고, 타격 · 발 디딤 · 터뜨림 시각(이벤트)과 권장 배속**을 적었다 (§3).
-- **사람형이면 누구나 쓴다.** 카엘과 해골 병사 두 몸에 62개를 전부 틀어 숫자와 그림으로 확인했다 — 깨지는 클립 없음, 살펴볼 것 2건(§6).
+- **사람형이면 누구나 쓴다.** 카엘과 해골 병사 두 몸에 71개를 전부 틀어 숫자와 그림으로 확인했고, 그사이 완성된 등장인물 17명(신부 · 엘리제 · 세라 · 갑주 · 밴시 여왕 · 유령 …)에도 숫자 검사를 돌렸다 — 깨지는 클립 없음(§6).
 - **손으로 쓴 클립 열 개는 모두 물러나도 된다** (§5). 다만 게임 코드가 아직 이 라이브러리를 읽지 않는다 — 읽는 코드(`tools/v2/animlib_load.js`)는 써 두었고, 게임 소스로 옮기는 일은 요청으로 남겼다(§4).
-- 못 구한 것: 옆걸음, 기도, 던지기, 사다리 · 턱 오르기, 귀 막기, 채찍 전용 동작 (§7).
+- 못 구한 것: 옆걸음, 기도, 던지기, 사다리 · 턱 오르기, 방패 밀치기, 채찍 전용 동작 (§7).
 
 ![전투 묶음 — 클립마다 준비 · 타격 · 마무리](img/al_combat.webp)
 
@@ -21,7 +21,7 @@
 
 ## 1. 클립 표
 
-시각은 모두 초, 1배속 기준. "뺀 이동"은 원본에서 캐릭터가 실제로 나아간 거리(키 1.8 m 기준)로, 클립에서는 빼고 숫자만 남겼다 — 게임이 그만큼 움직여 주면 발이 미끄러지지 않는다. ★ = 시범 때 이미 산 것.
+시각은 모두 초, 1배속 기준. "뺀 이동"은 원본에서 캐릭터가 실제로 나아간 거리(키 1.8 m 기준)로, 클립에서는 빼고 숫자만 남겼다 — 게임이 그만큼 움직여 주면 발이 미끄러지지 않는다. ★ = 시범 때 이미 산 것. ☆ = 다른 캐릭터를 리깅할 때 끼워 산 것을 꺼내 온 것(값 0).
 
 - `roll` 의 5.75 m 처럼 원본이 멀리 가는 것은 그 거리를 따를 필요가 없다. 굴러가는 동안에는 디딘 발이 없어서 게임이 정한 회피 거리(2–3 m)로 움직여도 미끄러져 보이지 않는다. 발을 딛고 나아가는 것(걷기 1.43 m/주기, 3연타의 내딛기, 급정지)은 맞출수록 좋다.
 - 순환 클립의 발 이벤트는 한 주기 안의 시각이다. `run` · `sprint` 는 원본이 제자리 클립이라 뺀 이동이 없다 — 배속은 이동 속도에 비례해 정한다(§4).
@@ -68,7 +68,7 @@
 | `block_hit` | 막은 채 맞음 (가드 위로 받아냄) | Block4 (141) | 한 번 | 1.07초 | ×1.3 | 막음 0.03 | — |
 | `parry` | 튕겨내기 — 오른손으로 쳐내기 | Sword_Parry (147) | 한 번 | 1.20초 | ×1.4 | 휘두름 0.07 · 타격 0.4 | — |
 
-**피격 · 쓰러짐** — `reactions.glb` · 9개 · 125 KB
+**피격 · 쓰러짐** — `reactions.glb` · 10개 · 145 KB
 
 | 이름 | 쓰임 | 원본 (번호) | 순환 | 길이 | 권장 배속 | 이벤트 (초) | 뺀 이동 (m) |
 |---|---|---|---|---|---|---|---|
@@ -76,13 +76,14 @@
 | `hit_heavy` | 강한 피격 — 배를 맞고 꺾임 | Hit_Reaction_to_Waist (171) | 한 번 | 1.43초 | ×1.25 | 맞음 0.08 | — |
 | `stagger` | 비틀거림 — 가드가 깨졌을 때 · 튕겨내기에 당한 적 | Hit_Reaction (178) | 한 번 | 1.63초 | ×1.2 | 맞음 0.02 · 왼발 0.4 · 오른발 0.63 · 왼발 1 | 앞 0 · 옆 1.07 |
 | `stagger_r` | 비틀거림 (반대쪽) — stagger 의 좌우 거울상 | Hit_Reaction (178) 거울상 | 한 번 | 1.63초 | ×1.2 | 맞음 0.02 · 오른발 0.4 · 왼발 0.63 · 오른발 1 | 앞 0 · 옆 -1.07 |
+| `stun` | 귀 막기 · 어지럼 — 종소리에 움찔하는 적, 밴시의 노래에 당한 영웅 | Head_Hold_in_Pain (391) ☆ | 한 번 | 3.70초 | ×1 | 맞음 0.1 · 왼발 1.87 · 오른발 3.7 | — |
 | `launched` | 띄워짐 — 올려치기에 맞고 떠올랐다 등으로 떨어짐 | BeHit_FlyUp (7) | 한 번 | 1.17초 | ×1 | 맞음 0.02 · 몸이 닿음 0.63 · 오른발 0.73 · 왼발 0.8 | — |
 | `knockdown` | 쓰러짐 — 영웅이 쓰러질 때 | Knock_Down (187) ★ | 한 번 | 2.50초 | ×1.3 | 맞음 0.02 · 몸이 닿음 1 · 오른발 1.73 · 왼발 1.83 | 앞 -0.81 · 옆 0.04 |
 | `getup` | 일어나기 (등으로 누운 데서 → 준비 자세) | Arise (3) | 한 번 | 1.83초 | ×1.2 | 왼발 0.23 · 오른발 1.1 | — |
 | `death_front` | 죽음 1 — 앞으로 고꾸라짐 | Shot_and_Fall_Forward (184) | 한 번 | 2.17초 | ×1.2 | 맞음 0.02 · 몸이 닿음 1.63 · 왼발 1.97 · 오른발 2.13 | 앞 1.04 · 옆 -0.07 |
 | `death_back` | 죽음 2 — 뒤로 넘어감 | dying_backwards (189) | 한 번 | 1.80초 | ×1.2 | 맞음 0.02 · 몸이 닿음 0.97 · 오른발 1.4 · 왼발 1.43 | 앞 -0.89 · 옆 -0.07 |
 
-**마법** — `magic.glb` · 6개 · 79 KB
+**마법** — `magic.glb` · 7개 · 96 KB
 
 | 이름 | 쓰임 | 원본 (번호) | 순환 | 길이 | 권장 배속 | 이벤트 (초) | 뺀 이동 (m) |
 |---|---|---|---|---|---|---|---|
@@ -92,8 +93,9 @@
 | `cast_big` | 큰 주문 — 웅크려 모았다가 두 손을 하늘로 (조종 · 세라의 큰 등불) | Charged_Spell_Cast (125) | 한 번 | 2.43초 | ×1.15 | 모음 0.57 · 터뜨림 1.7 | — |
 | `cast_raise` | 들어 올리기 — 한 손을 높이 듦 (부름 · 소환 · 종 조각을 들어 메아리) | mage_soell_cast (129) | 한 번 | 1.80초 | ×1.15 | 터뜨림 0.5 | — |
 | `point` | 가리키기 — 팔을 뻗어 지목 (명령 · 표적 지정 · 등불 비추기) | mage_soell_cast_7 (136) | 한 번 | 2.27초 | ×1.1 | 터뜨림 0.67 | — |
+| `cast_sweep` | 쓸어 뿌리기 — 몸을 틀며 팔을 크게 휘저음 (넓은 범위 주문 · 보스) | mage_soell_cast_1 (130) ☆ | 한 번 | 2.50초 | ×1.15 | 모음 0.43 · 터뜨림 1.2 | — |
 
-**이야기 · 세계** — `story.glb` · 13개 · 178 KB
+**이야기 · 세계** — `story.glb` · 18개 · 264 KB
 
 | 이름 | 쓰임 | 원본 (번호) | 순환 | 길이 | 권장 배속 | 이벤트 (초) | 뺀 이동 (m) |
 |---|---|---|---|---|---|---|---|
@@ -110,8 +112,13 @@
 | `cheer` | 환호 — 두 팔을 들고 (맺음 장면의 마을 사람) | Cheer_with_Both_Hands (303) | 순환 | 2.93초 | ×1 | — | — |
 | `look_around` | 둘러보기 — 숨 고르며 좌우를 살핌 (서 있기의 변주) | Short_Breathe_and_Look_Around (338) | 순환 | 7.83초 | ×1 | — | — |
 | `carry` | 들고 걷기 — 두 팔로 무거운 것을 안고 (엘리제 · 관 · 상자) | Carry_Heavy_Object_Walk (551) | 순환 | 2.07초 | ×1 | 왼발 0.47 · 오른발 1.73 | 앞 0.68 · 옆 0.04 |
+| `talk3` | 말하기 3 — 한 손을 허리에 얹고 (마르타 · 주막) | Talk_with_Left_Hand_on_Hip (309) ☆ | 순환 | 5.17초 | ×1 | — | — |
+| `wave` | 손 흔들기 — 인사 · 부르기 (로테) | Wave_One_Hand (290) ☆ | 한 번 | 3.53초 | ×1 | — | — |
+| `bow` | 절 — 허리 숙여 인사 (로크 · 배웅) | Gentlemans_Bow (42) ☆ | 한 번 | 5.40초 | ×1.2 | — | — |
+| `sit_idle` | 앉아 있기 (순환) — 식탁 · 주막 (sit_down 다음에) | Chair_Sit_Idle_M (33) ☆ | 순환 | 4.60초 | ×1 | — | — |
+| `lantern_look` | 등불 들고 살피기 — 한 손에 빛을 들고 둘러봄 (세라의 등불대 · 어두운 방) | Torch_Look_Around (337) ☆ | 순환 | 9.33초 | ×1 | — | — |
 
-**적 전용** — `enemy.glb` · 4개 · 57 KB
+**적 전용** — `enemy.glb` · 6개 · 89 KB
 
 | 이름 | 쓰임 | 원본 (번호) | 순환 | 길이 | 권장 배속 | 이벤트 (초) | 뺀 이동 (m) |
 |---|---|---|---|---|---|---|---|
@@ -119,6 +126,8 @@
 | `limp` | 절뚝이며 달리기 — 다친 적 · 빠른 주검 (1.3–1.6배속으로) | Limping_Walk_3 (557) | 순환 | 1.47초 | ×1 | 왼발 0.3 · 오른발 0.97 | 앞 1.51 · 옆 0.04 |
 | `scream` | 포효 · 비명 — 몸을 웅크리며 내지름 (주검 · 밴시 · 등장 연출) | Zombie_Scream (386) | 한 번 | 2.50초 | ×1.15 | 비명 0.75 · 터뜨림 0.87 | — |
 | `rise` | 땅에서 일어남 — 엎드린 데서 기어 일어섬 (무덤에서 나오는 주검 · 해골) | Stand_Up4 (347) | 한 번 | 1.67초 | ×1 | 왼발 1 · 오른발 1.27 | 앞 0.91 · 옆 -0.05 |
+| `brute_walk` | 덩치 걸음 — 어깨를 벌리고 무겁게 (무덤지기 갑주 · 큰 적) | Slow_Orc_Walk_inplace (119) ☆ | 순환 | 2.70초 | ×1 | 왼발 0.83 · 오른발 2.23 | 앞 0 · 옆 0.1 |
+| `ground_slam` | 땅 찍기 — 모았다가 두 손으로 바닥을 침 (충격파 · 갑주와 보스의 큰 기술) | Charged_Ground_Slam (127) ☆ | 한 번 | 2.60초 | ×1.1 | 모음 0.2 · 휘두름 1.44 · 타격 1.57 | — |
 
 <!-- /AL:clips -->
 
@@ -177,6 +186,7 @@
 | `hit_heavy` | Hit_Reaction_to_Waist (171) · 0.07–1.5초 | 몸이 접혔다 펴지는 큰 반응이 1.6초 안에 끝난다 | Electrocution_Reaction(172) 감전, Shot_and_Blown_Back(182) 날아가 쓰러짐 |
 | `stagger` | Hit_Reaction (178) · 0–1.63초 | 옆으로 1 m 쯤 비틀거리며 팔이 풀린다 | Hit_in_Back_While_Running(416) 달리다 맞음, Stumble_Walk(562) 걷기 |
 | `stagger_r` | Hit_Reaction (178) 거울상 · 0–1.63초 | 거울상은 값이 들지 않는다. 맞은 쪽에 따라 골라 쓴다 | — |
+| `stun` | Head_Hold_in_Pain (391) ☆ · 0–3.7초 | 머리를 감싸 쥐고 비틀거린다. 밴시 여왕을 리깅할 때 끼워 산 것을 꺼내 왔다(값 0) | Electrocution_Reaction(172) 감전 |
 | `launched` | BeHit_FlyUp (7) · 0–1.17초 | 1.5초, 높이 떴다 떨어진다. 끝 자세가 getup 의 첫 자세(누움)와 맞는다 | Shot_and_Blown_Back(182) 뒤로 날아감 |
 | `knockdown` | Knock_Down (187) ★ · 0–2.5초 | 시범 때 산 것 | Knock_Down_1(190) 3.2초 |
 | `getup` | Arise (3) · 0–1.83초 | 1.8초, 누운 자세에서 바로 싸울 자세로 선다 | Stand_Up1–10(344–353): 3–11초이거나 엎드린 데서 시작 (347 은 적 전용 rise 로 삼) |
@@ -193,6 +203,7 @@
 | `cast_big` | Charged_Spell_Cast (125) · 0.07–2.5초 | 모으기(0.6초)와 터뜨리기(1.7초)가 뚜렷이 나뉘어 효과 · 소리를 두 번 얹기 좋다 | Charged_Ground_Slam(127) 땅 찍기, Skill_01–03(17–19) 무술 동작 |
 | `cast_raise` | mage_soell_cast (129) · 0.1–1.9초 | 오른손을 머리 위로 올려 멈춘다. 부르는 신호로 읽힌다 | Arise(3) 는 누운 데서 일어나는 것, Call_Gesture(29) 7.6초 |
 | `point` | mage_soell_cast_7 (136) · 0.2–2.47초 | 팔을 앞으로 뻗어 1초쯤 유지한다 | baseball_pitching(393) 3.9초, Crouch_Charge_and_Throw(398) 7.4초, Over_Shoulder_Throw(421) 업어치기 — 던지기는 사지 않았다 |
+| `cast_sweep` | mage_soell_cast_1 (130) ☆ · 0.2–2.7초 | 밴시 여왕을 리깅할 때 끼워 산 것을 꺼내 왔다(값 0). 다른 주문보다 옆으로 넓게 움직인다 | — |
 
 **이야기 · 세계**
 
@@ -211,6 +222,11 @@
 | `cheer` | Cheer_with_Both_Hands (303) · 0–2.93초 | 2.9초 순환 | Victory_Cheer(59) 9.4초, Motivational_Cheer(49) 9초, Victory_Fist_Pump(403) 1.5초 한 번뿐 |
 | `look_around` | Short_Breathe_and_Look_Around (338) · 0–7.83초 | 과장 없이 고개와 어깨만 움직인다. 7.8초 순환을 12fps 로 줄여 싣는다 | Long_Breathe_and_Look_Around(336) 10.9초, Look_Around_Dumbfounded(333) 우스꽝스러움, Torch_Look_Around(337) 9초 횃불(세라 등불용으로 다음에) |
 | `carry` | Carry_Heavy_Object_Walk (551) · 2.73–4.8초 | 6.5초 가운데 걸음 한 주기만 순환으로 잘랐다 | Carry_Water_Bucket_Walk(552) 9초 · 한 손 양동이, Carry_Heavy_Cannon_Forward(550) 어깨에 멤 |
+| `talk3` | Talk_with_Left_Hand_on_Hip (309) ☆ · 0–5.17초 | 마르타를 리깅할 때 끼워 산 것을 꺼내 왔다(값 0) | — |
+| `wave` | Wave_One_Hand (290) ☆ · 0.17–3.7초 | 로테를 리깅할 때 끼워 산 것을 꺼내 왔다(값 0) | Big_Wave_Hello(28) · Wave_for_Help(291–296) |
+| `bow` | Gentlemans_Bow (42) ☆ · 0.3–5.7초 | 로크를 리깅할 때 끼워 산 것을 꺼내 왔다(값 0) | Formal_Bow(41) 7.7초 |
+| `sit_idle` | Chair_Sit_Idle_M (33) ☆ · 2.8–7.4초 | 에드문트를 리깅할 때 끼워 산 것을 꺼내 왔다(값 0). 10.7초 가운데 조용한 한 대목만 순환으로 | — |
+| `lantern_look` | Torch_Look_Around (337) ☆ · 0–9.33초 | 세라를 리깅할 때 끼워 산 것을 꺼내 왔다(값 0). 9.3초 순환을 10fps 로 줄여 싣는다 | — |
 
 **적 전용**
 
@@ -220,6 +236,8 @@
 | `limp` | Limping_Walk_3 (557) · 0.93–2.4초 | 절뚝 걸음 넷 가운데 가장 빠르고 팔을 크게 휘젓는다 | Limping_Walk(558) · _1(555) · _2(556) 느림, Injured_Walk(111) 8.7초 |
 | `scream` | Zombie_Scream (386) · 0.1–2.6초 | 2.8초, 웅크리는 순간이 뚜렷해 소리 · 화면 흔들림을 얹기 좋다 | Shouting_Angrily(51) 7.2초, Sword_Shout(101) 6.2초 칼을 듦, Chest_Pound_Taunt(88) 4.9초 |
 | `rise` | Stand_Up4 (347) · 0–1.67초 | 1.7초, 엎드린 자세에서 손으로 짚고 일어난다 | Stand_Up1(344) 8초, Stand_Up5(348) 11초, Crawl_and_Look_Back(340) 기어가기, Prone_Reach_Help(372) 17.8초 |
+| `brute_walk` | Slow_Orc_Walk_inplace (119) ☆ · 0.3–3초 | 무덤지기 갑주를 리깅할 때 끼워 산 것을 꺼내 왔다(값 0) | — |
+| `ground_slam` | Charged_Ground_Slam (127) ☆ · 0.1–2.7초 | 무덤지기 갑주를 리깅할 때 끼워 산 것을 꺼내 왔다(값 0) | — |
 
 <!-- /AL:why -->
 
@@ -233,7 +251,7 @@
 | 자르기 | `cut:[시작, 끝]` 을 눈과 숫자(뼈 각속도 · 손끝 속도 · 골반 높이 그래프)로 정함. 지정이 없으면 앞뒤의 움직임 없는 프레임만 자동으로 뺌 | 라이브러리 클립은 앞뒤로 0.3–2초씩 서 있다. 한 클립에 두세 동작이 든 것은 나눠 썼다(3연타 → 3개, 점프 → 도약 · 착지) |
 | 수평 이동 빼기 | 순환: 직선 성분과 평균을 뺌. 한 번짜리: 0.18초보다 느린 이동만 빼고 빠른 흔들림(무게 이동)은 남김. 뺀 양은 `travel`, 이동이 일어나는 구간은 `moveT` | 캐릭터 위치는 게임이 정한다. 흔들림까지 빼면 다시 뻣뻣해진다 |
 | 높이 | 보통은 그대로(웅크림 · 구르기 · 쓰러짐). 점프 · 착지 · 내려치기는 "서 있는 높이 위로 뜬 만큼"을 뺌(`y:'clamp'`), 공중 순환은 0 으로 | 뛰는 높이는 게임이 준다 |
-| 순환 닫기 | 긴 클립은 가장 잘 이어지는 한 주기를 찾아 자르고, 끝 6프레임에 걸쳐 끝 자세를 첫 자세와 똑같이 맞춤 | 검사: 순환 17개 모두 이음 어긋남 0 |
+| 순환 닫기 | 긴 클립은 가장 잘 이어지는 한 주기를 찾아 자르고, 끝 6프레임에 걸쳐 끝 자세를 첫 자세와 똑같이 맞춤 | 검사: 순환 21개 모두 이음 어긋남 0 |
 | 거꾸로 · 거울상 | `rev` (일어서기 → 무릎 꿇기), `mir` (비틀거림의 반대쪽) | 값 없이 클립이 는다 |
 | 이벤트 | 공격: 무기 끝(손에서 팔 방향으로 55 cm) 속도의 봉우리 = `hit`, 그 직전 = `swing`, 빠른 구간 = `strike:[t0,t1]`. 주문: 손 속도 봉우리 = `release`(앞선 봉우리는 `charge`). 발: 발목 · 발끝이 바닥 가까이로 내려오는 순간 = `footL/R`. 쓰러짐: 골반이 가장 낮은 높이에 닿는 순간 = `body`. 몇 개는 손으로 적음(`takeoff` · `land` · `grab` · `scream` · `hurt` · `guard`) | 소리 · 효과 · 히트스톱 · 화면 흔들림을 "이 프레임"에 얹기 위해 |
 | 권장 배속 | 공격: 시작 → 타격이 0.3초 안팎이 되게, 다만 1.6배를 넘지 않음(넘으면 빨리 감기로 보인다). 큰 공격(강타 · 모아 베기 · 휘감기)은 준비가 곧 신호라 1.25–1.3배. 피격 1.2–1.3 · 주문 1.15–1.2 · 이야기 1.0 · 순환 1.0(이동 속도에 맞춤) | 경쾌하되 빨리 감은 티가 나지 않게 |
@@ -292,7 +310,7 @@ for (const e of eventsBetween(clip, prevT, ch.anim.t)) onAnimEvent(e);     // 'h
 | 구른 직후 훑기 | `atk3` 또는 `launcher` | 0.05 | 권장 배속 |
 | 강공격 (성장 뒤) | `heavy` | 0.1 | ×1.3 |
 | 막기 | `block` (누르는 동안) · 맞으면 `block_hit` · 딱 맞추면 `parry` | 0.08 · 0.03 · 0.03 | `parry` 는 `hit`(0.4초)가 튕겨내는 순간 |
-| 맞음 | 약 `hit_light` · 강 `hit_heavy` · 가드 깨짐 `stagger`/`stagger_r` | 0.04 | ×1.2–1.3 |
+| 맞음 | 약 `hit_light` · 강 `hit_heavy` · 가드 깨짐 `stagger`/`stagger_r` · 밴시의 노래 `stun` | 0.04 | ×1.2–1.3 (`stun` 은 ×1, 노래가 이어지는 동안 1.4–3.2초 구간을 오간다) |
 | 띄워짐 · 쓰러짐 | `launched` 또는 `knockdown` → `getup` | 0.05 → 0.1 | `body` 이벤트에 쿵 소리 + 먼지 |
 | 죽음 | `death_front`(뒤에서 맞음) · `death_back`(앞에서 맞음) | 0.08 | ×1.2, 끝 자세에서 멈춤 |
 | 종 — 메아리 · 건넘/조종 | `cast_raise` · `cast_big` | 0.1 | `release` 에 종소리 + 파동. `cast_big` 은 `charge`(0.57초)에 모으는 빛 |
@@ -309,12 +327,12 @@ for (const e of eventsBetween(clip, prevT, ch.anim.t)) onAnimEvent(e);     // 'h
 |---|---|---|
 | 해골 병사 | 이동 · 전투 · 피격 · 적 | `idle_combat` · `walk`/`guard_walk` · `atk2_fore` · `combo_a1–a3` · `stab` · `block` · `hit_light` · `death_*` · `rise`(땅에서 솟음) |
 | 해골 술사 | 이동 · 마법 · 피격 | `idle` · `walk` · `cast_quick`(탄) · `cast_channel`(이어 쏘기) · `backstep` · `hit_light` · `death_back` |
-| 역병 주검 | 적 · 전투 · 피격 | `shamble` · `limp`(×1.4 로 달려듦) · `heavy`(×1.0 — 느리고 질기게) · `scream` · `hit_heavy` · `death_front` · `rise` |
+| 역병 주검 | 적 · 전투 · 피격 | `shamble` · `limp`(×1.4 로 달려듦) · `heavy`(×1.0 — 느리고 질기게) · `scream` · `hit_heavy` · `stun`(은종 소리) · `death_front` · `rise` |
 | 무덤 유령 · 유령 수녀 | 마법 · 적 | `air`(떠 있는 자세) · `cast_raise` · `scream` · `point` |
-| 무덤지기 갑주 · 성의 병사 | 이동 · 전투 · 피격 | `guard_walk` · `heavy` · `thrust` · `block` · `block_hit` · `stagger` · `knockdown` → `getup` |
-| 밴시 여왕 | 마법 · 적 · 피격 · 이야기 | `scream`(노래) · `cast_big` · `cast_channel` · `point` · `stagger` · `kneel_down`(조종 앞에 무릎 꿇음) |
-| 말하는 인물 · 마을 사람 | 이동 · 이야기 | `idle` · `look_around` · `talk1`/`talk2` 번갈아 · `nod` · `walk` · `sit_down`(식탁) · `kneel_down`/`kneel_up`(비석 앞) · `cheer` · `carry` · `pickup` · `open_door` · `push` |
-| 세라 (등불대) | 이동 · 마법 · 이야기 | `idle` · `walk` · `talk1` · `cast_raise`(등불 들기) · `cast_big`(큰 등불) |
+| 무덤지기 갑주 · 성의 병사 | 이동 · 전투 · 피격 · 적 | `brute_walk` · `guard_walk` · `heavy` · `ground_slam`(충격파) · `thrust` · `block` · `block_hit` · `stagger` · `knockdown` → `getup` |
+| 밴시 여왕 | 마법 · 적 · 피격 · 이야기 | `scream`(노래) · `cast_big` · `cast_sweep` · `cast_channel` · `point` · `stun`(조종에 맞음) · `stagger` · `kneel_down`(조종 앞에 무릎 꿇음) |
+| 말하는 인물 · 마을 사람 | 이동 · 이야기 | `idle` · `look_around` · `talk1`/`talk2`/`talk3` 번갈아 · `nod` · `wave` · `bow` · `walk` · `sit_down` → `sit_idle`(식탁) · `kneel_down`/`kneel_up`(비석 앞) · `cheer` · `carry` · `pickup` · `open_door` · `push` |
+| 세라 (등불대) | 이동 · 마법 · 이야기 | `idle` · `walk` · `talk1` · `lantern_look`(등불 들고 살피기) · `cast_raise`(등불 들기) · `cast_big`(큰 등불) |
 
 같은 클립도 배속만 바꾸면 성격이 달라진다: `heavy` ×1.3 은 영웅의 강타, ×1.0 은 주검의 굼뜬 내려찍기다.
 
@@ -343,12 +361,13 @@ for (const e of eventsBetween(clip, prevT, ch.anim.t)) onAnimEvent(e);     // 'h
 | 무엇 | 결과 |
 |---|---|
 | 런타임 그대로 읽히나 | 묶음 6개 모두 `loadGLB` → `clipFromAnim` 으로 읽힘. index 와 개수 · 길이 일치. 옛 뷰어 `?clips=` 로도 6개 모두 오류 없이 열림 |
-| 크기 | 786,533 B = 768 KB ≤ 1.2 MB (1,258,291 B) |
-| 순환 | 17개 모두 처음과 끝 자세가 같다 |
-| 이벤트 | 모든 이벤트 시각이 클립 안에 있다. 공격 15개 모두 `hit` 과 `strike` 가 있다. 62개 가운데 49개에 이벤트가 있다(없는 것은 서 있기 · 말하기처럼 소리 낼 순간이 없는 것) |
+| 크기 | 948,595 B = 926 KB ≤ 1.2 MB (1,258,291 B) |
+| 순환 | 21개 모두 처음과 끝 자세가 같다 |
+| 이벤트 | 모든 이벤트 시각이 클립 안에 있다. 공격 16개 모두 `hit` 과 `strike` 가 있다. 71개 가운데 53개에 이벤트가 있다(없는 것은 서 있기 · 말하기처럼 소리 낼 순간이 없는 것) |
 | 카엘에서 | 묶음마다 세 순간씩 찍은 판 6장 (`/tmp/claude-0/v2/animlib/sheets/*_kael.png`), 3연타 · 회피를 이어 찍은 영상 2개 (`/tmp/claude-0/v2/animlib/video/combo_kael.mp4` 3.2초, `dodge_kael.mp4` 4.7초 — 실제 `Animator` 의 섞기 그대로) |
-| 다른 몸에서 (해골 병사 `tools/v2/char3d_samples/skeleton.glb`) | 62개 전부 재생. NaN 0. 골반 높이로 나눈 관절 위치가 카엘과 평균 4.7%, 가장 큰 곳 15%(`rise`) 다름 — 팔다리 비율이 달라 생기는 차이이고, 팔이 뒤집히거나 발이 꼬인 클립은 없다. 판 6장 (`*_skeleton.png`) |
-| 살펴볼 것 | `launched` · `knockdown`: 해골 병사가 누울 때 발목이 바닥 아래로 11–12 cm 내려간다(카엘은 문턱 안). 다리가 가는 몸이라 눈에는 거의 띄지 않지만, 누운 자세가 중요한 캐릭터는 그림자 · 먼지로 가리거나 누운 높이를 2–3 cm 올린다 |
+| 다른 몸에서 (해골 병사 `tools/v2/char3d_samples/skeleton.glb`) | 71개 전부 재생. NaN 0. 발 · 손 · 머리 뼈가 바닥 아래로 내려가는 클립 0. 골반 높이로 나눈 관절 위치가 카엘과 평균 4.7%, 가장 큰 곳 15%(`rise`) 다름 — 팔다리 비율이 달라 생기는 차이이고, 팔이 뒤집히거나 발이 꼬인 클립은 없다. 판 6장 (`*_skeleton.png`) |
+| 완성된 등장인물 17명에서 (`assets/v2/char3d/*.glb` — 숫자 검사만) | 키 1.48 m 의 엘리제부터 2.7 m 의 밴시 여왕까지 71개 전부 재생, NaN 0, 문제 0 |
+| 살펴볼 것 | ① 엘리제(아이 체형): `jump` · `getup` · `cast_big` · `scream` 처럼 깊이 웅크리는 클립에서 발 뼈가 바닥 아래로 3–4 cm 내려간다 — 다리가 짧은 몸에 어른의 웅크림을 입혀서다. 눈에 띄면 그 캐릭터만 골반을 그만큼 올린다. ② 유령 · 밴시 여왕은 쉬는 자세에서 발이 땅 위 0.3–0.5 m 에 떠 있다(치맛자락이 바닥). 눕거나 구르는 클립(`knockdown` · `death_*` · `roll` · `rise`)은 깨지지는 않지만 어울리지 않는다 — 이 둘은 쓰러지는 대신 흩어지거나 무릎 꿇는 연출을 쓴다 |
 
 ![해골 병사 — 전투 · 피격 · 이동](img/al_retarget_skeleton.webp)
 
@@ -374,8 +393,8 @@ for (const e of eventsBetween(clip, prevT, ch.anim.t)) onAnimEvent(e);     // 'h
 | 레버 당기기 | 클립 없음 | `open_door`(잡아 당김) 또는 `pull_rope` |
 | 던지기 | 살 만한 것이 길었다(3.9–7.4초) | `cast_quick` 이나 `point` 의 `release` 에 던지는 물건을 내보낸다. 꼭 필요하면 `baseball_pitching`(393)의 뒷부분 |
 | 사다리 · 턱 잡고 오르기 | 사지 않음 (크레딧 상한) | 다음에 살 것: `Ladder_Climb_Loop`(438) · `Jump_and_Grab_Wall`(448) · `climbing_up_wall`(444). 종탑 "오르기"에 필요 |
-| 귀 막기 (종소리 · 밴시의 노래에 움찔) | `Head_Hold_in_Pain`(391) 을 사려 했으나 호출이 막혀 내지 않음 | **다음에 살 것 1순위.** 그때까지 `hit_heavy` 를 느리게(×0.7) |
-| 방패 밀치기 · 덩치 걸음 · 앉아 있는 순환 · 횃불 들고 둘러보기 | 사지 않음 | `Shield_Push_Left`(220) · `Slow_Orc_Walk`(119) · `Chair_Sit_Idle_M`(33) · `Torch_Look_Around`(337) |
+| 방패 밀치기 · 옆돌기 회피 | 사지 않음 | `Shield_Push_Left`(220) · `Quick_Step_and_Spin_Dodge`(384) |
+| 술 마시기 · 먹기 (주막) | 사지 않음 | `Stand_and_Drink`(342) · `Sit_and_Drink`(343) |
 | 공중 내려찍기 (주먹/무기로 땅을 침) | `Leap_and_Punch`(464) 가 서비스에서 두 번 실패(환불됨) | `plunge`(Sword_Judgment)로 대신했다. 464 는 다시 넣지 말 것 |
 | 채찍 · 도리깨 전용 동작 | 라이브러리에 없음 | `whip_lash`(큰 원을 그리는 베기) + 코드로 그리는 채찍 띠(GDD §7). 채찍 끝의 지연 · 휘어짐은 띠 쪽에서 만든다 |
 | 손가락 · 얼굴 · 머리카락 · 옷자락 | 뼈가 없다 (CHAR3D_PILOT §6) | 클립으로는 못 푼다 |
@@ -387,6 +406,7 @@ for (const e of eventsBetween(clip, prevT, ch.anim.t)) onAnimEvent(e);     // 'h
 | | 크레딧 |
 |---|---|
 | 리깅 + 클립 1개 × 51건 (성공) | 408 |
+| 다른 캐릭터를 리깅할 때 끼워 산 클립 9개를 꺼내 옴 (☆) | 0 (값은 그쪽 묶음 `manifest_castenemy.json` · `manifest_castpeople.json` 에서 이미 냈다) |
 | 실패 2건 (`Leap_and_Punch`) | 0 (환불됨 — 거래 내역에 "3D Rigging refund +8") |
 | 미리보기 GIF 221개, 목록 검색 | 0 |
 | **합계** | **408 / 상한 420** |
@@ -394,7 +414,7 @@ for (const e of eventsBetween(clip, prevT, ch.anim.t)) onAnimEvent(e);     // 'h
 - 클립 하나 = 8. 새 사람형 캐릭터를 리깅할 때 끼우면 +3 (CHAR3D_PILOT §3). 한 번 산 클립은 모든 사람형이 쓴다.
 - 리깅 한 건은 약 1분. 51건을 다섯 개 안팎씩 나란히 넣어 다 받는 데까지 20분쯤 걸렸다.
 - 원본에서 게임 클립까지: 미리보기 고르기 → 사기 → 숫자 · 그림으로 자를 곳 정하기 → 만들기 → 검사. 이 작업 전체가 약 한 시간이었다(도구를 처음 쓰는 시간 포함). 다음부터 클립 하나는 5–10분.
-- 싣는 크기: 62개 768 KB. 클립 하나 평균 12 KB(2초짜리 30fps 기준 약 10 KB).
+- 싣는 크기: 71개 926 KB. 클립 하나 평균 13 KB(2초짜리 30fps 기준 약 10 KB).
 
 ## 9. 클립 하나 더하는 순서
 
@@ -419,16 +439,24 @@ for (const e of eventsBetween(clip, prevT, ch.anim.t)) onAnimEvent(e);     // 'h
 
 값이 들지 않는 변주: 같은 원본에서 다른 구간을 한 줄 더(`cut`), 거꾸로(`rev:true`), 좌우 거울상(`mir:true`), 배속만 다르게(게임 쪽).
 
+**새 캐릭터에 끼워 산 클립을 가져오기 (값 0):** 사람형을 새로 리깅할 때마다 클립 하나를 +3 에 끼울 수 있고(CHAR3D_PILOT §3), 그 클립은 그 캐릭터의 GLB 안에 들어 있다. 꺼내서 원본 폴더에 두면 산 것과 똑같이 쓴다:
+
+```
+node tools/v2/animlib_extract.mjs assets/v2/char3d/<캐릭터>.glb <애니메이션 이름> /tmp/claude-0/v2/animlib/raw/<번호>_<이름>.glb
+```
+
+그러니 **새 사람형을 만들 때는 §7 의 "다음에 살 것"에서 하나를 골라 끼우는 것**이 가장 싸게 라이브러리를 넓히는 길이다.
+
 ## 10. 파일
 
 | 경로 | 내용 |
 |---|---|
-| `assets/v2/char3d/clips/{locomotion,combat,reactions,magic,story,enemy}.glb` · `index.json` | 라이브러리 (768 KB) |
+| `assets/v2/char3d/clips/{locomotion,combat,reactions,magic,story,enemy}.glb` · `index.json` | 라이브러리 (926 KB) |
 | `tools/v2/animlib_spec.mjs` | 목록 + 가공 지시 + 고른 까닭 |
-| `tools/v2/animlib_core.mjs` · `animlib_build.mjs` | 가공 · 만들기 |
+| `tools/v2/animlib_core.mjs` · `animlib_build.mjs` · `animlib_extract.mjs` | 가공 · 만들기 · 캐릭터 GLB 에서 클립 꺼내기 |
 | `tools/v2/animlib_load.js` | 읽기(브라우저 · node 공용). `src/v2/char3d/animlib.js` 로 옮길 것 |
-| `tools/v2/animlib_view.html` | 보기: 모델 하나에 62개 + 손으로 쓴 10개(`hand_*`)를 단추로. `?glb=` 로 다른 사람형 |
+| `tools/v2/animlib_view.html` | 보기: 모델 하나에 71개 + 손으로 쓴 10개(`hand_*`)를 단추로. `?glb=` 로 다른 사람형 |
 | `tools/v2/animlib_shot.mjs` · `animlib_check.mjs` · `animlib_table.mjs` | 캡처(판 · 띠 · 영상) · 숫자 검사 · 문서 표 |
 | `tools/higgsfield/manifest_animlib.json` | 산 것 53건의 번호 · 작업 id · 결과 주소 · 크레딧 |
 | `docs/v2/img/al_*.webp` | 이 문서의 그림 8장 |
-| `/tmp/claude-0/v2/animlib/` (저장소 밖) | `raw/` 원본 GLB 51개 + 올린 카엘 모델 · `raw/prev/` 미리보기 GIF 221개, `sheets/` 판, `video/` 영상, `work/` 분석 |
+| `/tmp/claude-0/v2/animlib/` (저장소 밖) | `raw/` 원본 GLB 51개 + 꺼내 온 클립 9개 + 올린 카엘 모델 · `raw/prev/` 미리보기 GIF 221개, `sheets/` 판, `video/` 영상, `work/` 분석 |
