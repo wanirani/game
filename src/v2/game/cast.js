@@ -58,7 +58,7 @@ export class Actor3D {
     this.dx = 1; this.dz = 0; this.kbT = 0; this.kbSp = 0;
     this.M = new Float32Array(16); this.WM = new Float32Array(16); this._g = trs(this.grip, new Float32Array(16)); this._t = new Float32Array(16);
     this.opt = drawOpts(); this.wopt = drawOpts(); this.wopt.rim[0] = 0.7; this.wopt.rim[1] = 0.8; this.wopt.rim[2] = 1; this.wopt.rim[3] = 0.5;
-    this.hitAge = 9; this.dieAge = -1; this.seed = Math.random() * 7; this.vis = false; this.far = 0; this.stride = 0;
+    this.hitAge = 9; this.dieAge = -1; this.dieHold = 0; this.accDt = 0; this.seed = Math.random() * 7; this.vis = false; this.far = 0; this.stride = 0; this.kind = ''; this.e = null; this.wasDead = false;
     this.anim.play(asset.clips.idle ? 'idle' : Object.keys(asset.clips)[0], { fade: 0 }); this.anim.update(0);
   }
   /** world matrix for the play world (x right, y up, z into the screen); the model's +Z looks along (dx,dz) */

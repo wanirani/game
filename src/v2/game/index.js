@@ -28,6 +28,7 @@ import { UI_LOADER, UI_DEFAULT } from './seams.js';
 import { elementOf, shotAttach, shotMove, shotDetach, shotImpact } from './magic.js';
 
 const FOCAL = 880, NEAR = 60, FAR = 24000, DIE_T = 0.9, HERO_MODEL = 'kael';
+const ANIM_MID2 = 900 * 900, ANIM_FAR2 = 1700 * 1700;   // squared distances (from the camera target) where enemy poses drop to 30 Hz / 15 Hz
 const TURN_RUN = 15, TURN_ACT = 34;   // rad/s: a full reversal takes about 0.21 s running, 0.09 s when an attack needs the body to face its hit box
 const TEX_SRC = {
   flag: { src: 'tex/tex_mossy_stone', desat: 0.35 }, block: { src: 'tex/tex_castle_stone' }, brick: { src: 'tex/tex_wet_stone', desat: 0.8 },
@@ -88,7 +89,7 @@ export default class V2Game extends Scene {
     this.inp = { mx: 0, mz: 0, jump: false, jumpHeld: false, attack: false, attackHeld: false, dash: false, guard: false, lockNext: false, jumpUsed: false };
     this.numbers = []; for (let i = 0; i < 16; i++) this.numbers.push({ on: false, x: 0, y: 0, z: 0, str: '', color: '#fff', t: 0, big: false });
     this.P12 = new Float32Array(12); this.tmpA = new Float32Array(3); this.tmpB = new Float32Array(3); this.tint = new Float32Array(3); this.pos = { x: 0, y: 0, z: 0 }; this.pr = { x: 0, y: 0, w: 0 };
-    this.visY = 0; this.visYP = 0; this.stride = 0; this._mv = null; this._rb = -1; this._swung = false; this._turnDir = 0; this._turnHold = 0; this._dashRb = -1; this._secId = ''; this._deaths = 0; this._ts = 1; this.doneT = 0; this._restored = 0;
+    this.visY = 0; this.visYP = 0; this.stride = 0; this._mv = null; this._rb = -1; this._swung = false; this._turnDir = 0; this._turnHold = 0; this.tickN = 0; this._dashRb = -1; this._secId = ''; this._deaths = 0; this._ts = 1; this.doneT = 0; this._restored = 0;
     this.c3 = { draws: 0, tris: 0, drawn: 0, culled: 0 }; this.envStat = { chunks: 0, tris: 0, draws: 0 };
     this.layer = { hud: null, hctx: null, timer: 0, shown: true, cw: 0, ch: 0, iw: 0, ih: 0, force: true };
     this.fired = new Set();
@@ -326,7 +327,7 @@ export default class V2Game extends Scene {
   _take(e) {
     const K = KINDS[e.kind]; if (!K) return null;
     const p = this._poolOf(K.model); let a = p.length ? p.pop() : this._newActor(e.kind); if (!a) return null;
-    a.kind = e.kind; a.e = e; a.hitAge = 9; a.dieAge = -1; a.dieHold = 0; a.vis = true; a.kbT = 0; a.wasDead = false; a.seed = Math.random() * 7;
+    a.kind = e.kind; a.e = e; a.hitAge = 9; a.dieAge = -1; a.dieHold = 0; a.accDt = 0; a.vis = true; a.kbT = 0; a.wasDead = false; a.seed = Math.random() * 7;
     const fx = e.dirX ?? e.facing ?? -1, fz = e.dirZ ?? 0, l = Math.hypot(fx, fz) || 1; a.dx = fx / l; a.dz = fz / l;
     a.anim.play(a.asset.clips.idle ? 'idle' : Object.keys(a.asset.clips)[0], { fade: 0, restart: true }); a.anim.update(0);
     e._a3 = a; this.actors.push(a);
@@ -535,7 +536,7 @@ export default class V2Game extends Scene {
     const E = sim.enemies, L = this.actors;
     if (E !== this._ERef) { for (let i = L.length - 1; i >= 0; i--) { this._free(L[i]); } L.length = 0; this._ERef = E; }
     for (let i = 0; i < E.length; i++) { const e = E[i]; if (!e._a3 && !e.dead && e.state !== 'dead') this._take(e); }
-    const fdt = fx ? dt * fx.feel.fxScale : dt;
+    const fdt = fx ? dt * fx.feel.fxScale : dt, cam = this.cam, tickN = pdt > 0 ? ++this.tickN : this.tickN;
     for (let i = L.length - 1; i >= 0; i--) {
       const a = L[i], e = a.e;
       a.hitAge += fdt;
@@ -545,15 +546,23 @@ export default class V2Game extends Scene {
         if (before <= a.dieHold && a.dieAge > a.dieHold && a.vis) this._fxp('enemy.death.ash', e.x, e.y, e.z, a.dx, a.dz, 1, true);   // the body starts to fall to ash
         if (a.dieAge >= a.dieHold + DIE_T) { this._free(a); L[i] = L[L.length - 1]; L.length--; continue; }
       }
-      if (pdt <= 0 || (!a.vis && a.dieAge < 0)) continue;   // off-screen: no animation work
-      if (e.dead) a.anim.update(pdt);
+      if (pdt <= 0 || (!a.vis && a.dieAge < 0)) { a.accDt = 0; continue; }   // off-screen: no animation work
+      // animation rate by distance from where the camera looks: near = every tick, far = every 2nd, very far = every 4th tick
+      // (a small distant figure does not need a 60 Hz pose; anything that was just hit, attacks or dies stays at full rate)
+      a.accDt += pdt;
+      if (a.dieAge < 0 && a.hitAge > 0.4 && e.state !== 'attack' && e.state !== 'cast') {
+        const ddx = e.x - cam.tx, ddz = e.z - cam.tz, d2 = ddx * ddx + ddz * ddz, every = d2 > ANIM_FAR2 ? 4 : d2 > ANIM_MID2 ? 2 : 1;
+        if (every > 1 && ((tickN + i) % every) !== 0) continue;
+      }
+      const adt = a.accDt; a.accDt = 0;
+      if (e.dead) a.anim.update(adt);
       else {
         const ox = a.dx, oz = a.dz;
-        driveActor(a, e, pdt);
+        driveActor(a, e, adt);
         if (e.dirX === undefined) {   // rules without a 360 degree facing: look at the hero while awake (characters face where they act)
           let tx = e.facing ?? ox, tz = 0;
           if (e.active && e.state !== 'dead' && !h.dead) { const d = Math.hypot(h.x - e.x, h.z - e.z); if (d > 8) { tx = (h.x - e.x) / d; tz = (h.z - e.z) / d; } }
-          const cur = Math.atan2(oz, ox), ang = cur + wrapPi(Math.atan2(tz, tx) - cur) * (1 - Math.exp(-pdt * 10)); a.dx = Math.cos(ang); a.dz = Math.sin(ang);
+          const cur = Math.atan2(oz, ox), ang = cur + wrapPi(Math.atan2(tz, tx) - cur) * (1 - Math.exp(-adt * 10)); a.dx = Math.cos(ang); a.dz = Math.sin(ang);
         }
       }
       this._tintAt(W, e.x, e.y + 50, e.z, 0, 1.6, a.opt.tint);
