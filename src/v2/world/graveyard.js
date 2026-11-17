@@ -49,7 +49,7 @@ export function graveyard(era = 'now') {
     { t: 'prop', mesh: 'angel', x: 190, z: 1520, h: 210 }, { t: 'prop', mesh: 'angel', x: 1010, z: 1520, h: 210, flip: true },
     { t: 'prop', mesh: 'deadtree', x: 180, z: 1040, h: 310 }, { t: 'prop', mesh: 'deadtree', x: 1010, z: 1900, h: 300, flip: true }, { t: 'prop', mesh: 'deadtree', x: 960, z: 1060, h: 260 }, { t: 'prop', mesh: 'deadtree', x: 200, z: 1960, h: 270, flip: true },
     { t: 'prop', mesh: 'cross', x: 400, z: 1700, h: 180, solid: 26, solidZ: 18 }, { t: 'prop', mesh: 'cross', x: 800, z: 1250, h: 170, solid: 26, solidZ: 18 },
-    { t: 'prop', mesh: 'coffin', x: 770, z: 1730, solid: 54, solidZ: 20, h: 40 }, { t: 'deco', mesh: 'coffin', x: 300, z: 1300, len: 100 },
+    { t: 'prop', mesh: 'coffin', x: 770, z: 1730, solid: 54, solidZ: 20, h: 40 }, { t: 'prop', mesh: 'coffin', x: 300, z: 1300, len: 100, solid: 54, solidZ: 20, h: 40 },
     LP(470, 1010), LP(730, 1010, { flip: true }), LP(470, 1520), LP(730, 1880, { flip: true }), LP(250, 1530), LP(950, 1530, { flip: true }),
     // the four Valkrein stones beside the middle path
     ...[[452, 1640, 'point', 120], [452, 1730, 'round', 110], [452, 1820, 'round', 110], ...(now ? [[748, 1640, 'broken', 100]] : [])].map(([x, z, kind, h]) => ({ t: 'prop', mesh: 'grave', kind, x, z, h, solid: 26, solidZ: 10, solidH: 70 })),
