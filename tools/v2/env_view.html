@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>블러드 녹턴 3D 판 — 환경 키트 보기</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0b0e14; color: #e8e0d0; font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
+  #gl { position: absolute; inset: 0; }
+  #gl canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+  #ui { position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); display: flex; flex-wrap: wrap; gap: 6px; background: linear-gradient(transparent, rgba(8,10,16,.88) 40%); }
+  #ui button { background: #262c3a; color: #e8e0d0; border: 1px solid #4a5268; border-radius: 6px; padding: 7px 10px; font: inherit; }
+  #ui button.on { background: #7a2430; border-color: #c0485a; }
+  #info { position: absolute; left: 10px; top: 8px; right: 10px; color: #c8c0b0; font-size: 12px; white-space: pre-wrap; pointer-events: none; text-shadow: 0 1px 2px #000; }
+</style>
+</head>
+<body>
+<div id="gl"></div>
+<div id="info">불러오는 중…</div>
+<div id="ui"></div>
+<script type="module">
+// 환경 키트 보기 (게임 없이 배경만 판단할 때 쓴다). docs/v2/ENV_KIT.md §6
+//   ?mode=gallery (키트 조각·소품 늘어놓기, 기본) | slice (다시 지은 시범 구간)
+//   &rig=street|corner|alley|yard (게임의 카메라 틀)  &x=&z= (보는 점)  &yaw=&pitch=&dist= (도)  &w=&h= (논리 화면 크기, 기본 960×726 = 폴드)
+//   드래그 = 돌려 보기 · 휠/두 손가락 = 거리 · 화살표/WASD = 보는 점 옮기기
+// 렌더러는 시범판 B 의 glr.js 그대로다 (같은 셰이더·정점 형식). 얼룩·빛 번짐 스티커는 여기서는 그리지 않는다.
+import { GLR } from '../../src/v2/b/glr.js';
+import { compileEnv } from '../../src/v2/env/build.js';
+import { KIT_TEX } from '../../src/v2/env/mats.js';
+import { PROPS } from '../../src/v2/env/props.js';
+import { Geo } from '../../src/v2/env/geo.js';
+import SLICE from '../../src/v2/env/stage_slice0_env.js';
+
+const q = new URLSearchParams(location.search), D = Math.PI / 180;
+const FOCAL = 880, NEAR = 60, FAR = 24000;
+const info = document.getElementById('info'), ui = document.getElementById('ui');
+const B_TEX = { flag: ['tex/tex_mossy_stone', 0.35], block: ['tex/tex_castle_stone', 0], brick: ['tex/tex_wet_stone', 0.8], wood: ['tex/tex_wood', 0], dirt: ['tex/tex_dirt', 0] };   // B 의 index.js TEX_SRC 와 같다
+
+// 늘어놓기용 작은 스테이지: 키트 조각을 한 줄로, 소품을 그 앞에
+const PROP_ROW = ['barrel', 'crate', 'cart', 'well', 'lamp', 'stall', 'brazier', 'hay', 'tomb', 'fountain', 'statue', 'tree'];
+const GALLERY = {
+  id: 'gallery', name: '키트 늘어놓기', start: { x: 100, z: 100 }, goal: null, spawns: [],
+  sky: SLICE.sky, fog: { ...SLICE.fog, near: 1600, far: 6000 }, light: SLICE.light,
+  sections: [{ id: 'street', label: '', x0: -500, x1: 4000, z0: -500, z1: 1500, cam: { yaw: 10 * D, pitch: 20 * D, dist: 820, lookY: 70 } }],
+  chunks: [{ id: 'main', z1: Infinity }],
+  parts: [
+    { t: 'floor', x: -200, z: -40, w: 3000, d: 520, mat: 'cobble', kit: { strips: [{ z0: 300, z1: 520, mat: 'flags' }, { x0: 2000, x1: 3000, z0: 0, z1: 300, mat: 'dirt' }] } },
+    { t: 'pave', x: -200, z: 372, w: 1900, d: 28, h: 7, kerb: 'F' },
+    { t: 'wall', x: -120, z: 400, w: 420, d: 90, h: 290, mat: 'facade', kit: { style: 'stone', base: 7, quoins: true, courses: [150], windows: [{ u: 90, y: 66, w: 42, h: 62, lit: 0.9, shutters: true }, { u: 320, y: 66, w: 42, h: 62 }, { u: 90, y: 178, w: 42, h: 70, arch: 'round' }, { u: 210, y: 178, w: 42, h: 70, arch: 'round', lit: 0.6 }, { u: 330, y: 178, w: 42, h: 70, arch: 'round' }], doors: [{ u: 205, w: 60, h: 104, arch: 'round', rise: 7 }], hang: [{ type: 'sconce', u: 150, y: 120 }, { type: 'banner', u: 270, y: 60, len: 84, w: 34 }] } },
+    { t: 'roof', x: -120, z: 400, w: 420, d: 90, y: 290, h: 62, kit: { gable: 'ashlar', chimneys: [{ u: 90, t: 0.72 }], dormers: [{ u: 250, lit: 0.6 }] } },
+    { t: 'wall', x: 340, z: 400, w: 440, d: 90, h: 350, mat: 'plaster', kit: { style: 'timber', base: 7, storey: 150, jetty: 14, mid: 250, windows: [{ u: 250, y: 60, w: 84, h: 64, lit: 0.9, cols: 3, rows: 2 }, { u: 110, y: 176, w: 42, h: 56, lit: 0.5, frame: 'timber' }, { u: 235, y: 176, w: 42, h: 56, frame: 'timber' }, { u: 350, y: 176, w: 42, h: 56, lit: 0.7, frame: 'timber' }, { u: 170, y: 272, w: 38, h: 50, frame: 'timber' }, { u: 300, y: 272, w: 38, h: 50, lit: 0.45, frame: 'timber' }], doors: [{ u: 75, w: 58, h: 104, rise: 7 }], hang: [{ type: 'sign', u: 250, y: 128, w: 78, h: 20 }, { type: 'sign', side: 'L', u: 40, y: 130, perp: true }] } },
+    { t: 'roof', x: 340, z: 400, w: 440, d: 90, y: 350, h: 70, kit: { chimneys: [{ u: 360, t: 0.75, h: 40 }], dormers: [{ u: 150, lit: 0.5 }] } },
+    { t: 'wall', x: 820, z: 400, w: 420, d: 90, h: 270, mat: 'facade', kit: { style: 'rubble', base: 7, plinth: 26, courses: [236], windows: [{ u: 140, y: 100, w: 46, h: 116, arch: 'point', lit: 0.8, rows: 3 }, { u: 250, y: 100, w: 46, h: 116, arch: 'point', rows: 3 }], doors: [{ u: 350, w: 66, h: 122, arch: 'point', rise: 7 }], buttress: [{ u: 80, h: 220, d: 18 }, { u: 195, h: 220, d: 18 }, { u: 300, h: 220, d: 18 }, { u: 400, h: 220, d: 18 }] } },
+    { t: 'roof', x: 820, z: 400, w: 420, d: 90, y: 270, h: 58, kit: { gable: 'rubble' } },
+    { t: 'wall', x: 1280, z: 400, w: 400, d: 90, h: 260, mat: 'facade', kit: { style: 'stone', base: 4, plinth: 34, cornice: false, battlement: true, gates: [{ u: 200, w: 150, h: 220 }], hang: [{ type: 'banner', u: 60, y: 90, len: 130, w: 44 }, { type: 'banner', u: 340, y: 90, len: 130, w: 44 }] } },
+    { t: 'wall', x: 1720, z: 430, w: 300, d: 44, h: 52, mat: 'stone', kit: { style: 'low', faces: 'FLR', coping: true, rail: 'F', piers: 150 } },
+    { t: 'block', x: 2080, z: 330, w: 240, d: 120, h: 72, mat: 'stone', kit: { balustrade: true } },
+    { t: 'stairs', x: 1984, z: 350, w: 96, d: 84, h: 72, dir: 'x+', steps: 6, kit: { cheeks: 'K' } },
+    { t: 'pillar', x: 2400, z: 380, r: 24, h: 236 },
+    { t: 'fence', kind: 'iron', x0: 2460, z0: 400, x1: 2760, z1: 400, h: 46 }, { t: 'fence', kind: 'wood', x0: 2460, z0: 330, x1: 2760, z1: 330, h: 50 },
+    ...PROP_ROW.map((m, i) => ({ t: 'deco', mesh: m, x: 60 + i * 215, z: m === 'tree' ? 200 : 150, h: { tree: 300, statue: 210 }[m], light: m === 'lamp' ? { r: 330, i: 1.7, y: 170 } : m === 'brazier' ? { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } : undefined })),
+  ],
+};
+
+const mode = q.get('mode') === 'slice' ? 'slice' : 'gallery';
+const STAGE = mode === 'slice' ? SLICE : GALLERY;
+const Wd = compileEnv(STAGE, { cull: mode === 'slice' });   // 늘어놓기는 돌려 보므로 뒷면도 만든다
+const glr = new GLR();
+document.getElementById('gl').appendChild(glr.canvas);
+
+const loadImg = (url) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = url; });
+const tex = {};
+async function loadTex() {
+  const A = '../../assets/';
+  const jobs = [...Object.entries(B_TEX).map(([n, [src, desat]]) => [n, A + src + '.webp', desat, true]), ...Object.keys(KIT_TEX).map((n) => [n, A + 'v2/env/' + n + '.webp', 0, KIT_TEX[n].repeat])];
+  await Promise.all(jobs.map(async ([n, url, desat, repeat]) => {
+    const im = await loadImg(url), c = document.createElement('canvas'); c.width = im?.width ?? 64; c.height = im?.height ?? 64;
+    const x = c.getContext('2d'); if (im) x.drawImage(im, 0, 0); else { x.fillStyle = '#806070'; x.fillRect(0, 0, 64, 64); }
+    if (desat) { x.globalCompositeOperation = 'saturation'; x.globalAlpha = desat; x.fillStyle = '#808080'; x.fillRect(0, 0, c.width, c.height); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; }
+    tex[n] = glr.texture(() => c, { repeat, mip: true });
+  }));
+}
+await loadTex();
+const meshes = Wd.env.meshes.map((m) => ({ chunk: m.chunk, mesh: glr.mesh(m.data, m.count), tex: tex[m.tex], tris: m.count / 3 }));
+
+// 카메라: 게임(B 의 index.js _camera/_matrix)과 같은 식
+const LW = Number(q.get('w')) || 960, LH = Number(q.get('h')) || 726;
+const secOf = (id) => STAGE.sections.find((s) => s.id === id) ?? STAGE.sections[0];
+const SPOT = { street: [430, 130, 0], corner: [2150, 150, 0], alley: [2190, 480, 0], yard: [2190, 1860, 96] };
+const cam = { yaw: 0, pitch: 0.35, dist: 800, lookY: 64, tx: 0, ty: 0, tz: 0, rig: '' };
+function setRig(id) {
+  const R = secOf(id).cam, p = mode === 'slice' ? (SPOT[id] ?? SPOT.street) : [1000, 150, 0];
+  cam.rig = id; cam.yaw = R.yaw + (R.yawLead ?? 0.03); cam.pitch = R.pitch; cam.dist = R.dist; cam.lookY = R.lookY + Math.max(0, LH - 540) * (R.tallK ?? 0.4);
+  cam.tx = p[0] + (R.leadX ?? 0); cam.tz = 130 + (p[1] - 130) * (R.zFollow ?? 1) + (R.leadZ ?? 0); cam.ty = p[2];
+  if (R.center) { cam.tx += (R.center.x - cam.tx) * R.center.k; cam.tz += (R.center.z - cam.tz) * R.center.k; }
+  for (const b of ui.querySelectorAll('button[data-rig]')) b.classList.toggle('on', b.dataset.rig === id);
+}
+const vp = new Float32Array(16);
+function matrix() {
+  const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch), lx = cam.tx, ly = cam.ty + cam.lookY, lz = cam.tz;
+  const px = lx - Math.sin(cam.yaw) * cp * cam.dist, py = ly + sp * cam.dist, pz = lz - Math.cos(cam.yaw) * cp * cam.dist;
+  let fx = lx - px, fy = ly - py, fz = lz - pz; const fl = Math.hypot(fx, fy, fz) || 1; fx /= fl; fy /= fl; fz /= fl;
+  const rl = Math.hypot(fz, fx) || 1, rx = fz / rl, rz = -fx / rl, ux = fy * rz, uy = fz * rx - fx * rz, uz = -fy * rx;
+  const F = FOCAL * (1 + Math.max(0, LH - 540) / 540 * 0.3), sx = F / (LW / 2), sy = F / (LH / 2), A = (FAR + NEAR) / (FAR - NEAR), Bz = -2 * FAR * NEAR / (FAR - NEAR);
+  const rd = -(rx * px + rz * pz), ud = -(ux * px + uy * py + uz * pz), fd = -(fx * px + fy * py + fz * pz), m = vp;
+  m[0] = sx * rx; m[4] = 0; m[8] = sx * rz; m[12] = sx * rd; m[1] = sy * ux; m[5] = sy * uy; m[9] = sy * uz; m[13] = sy * ud;
+  m[2] = A * fx; m[6] = A * fy; m[10] = A * fz; m[14] = A * fd + Bz; m[3] = fx; m[7] = fy; m[11] = fz; m[15] = fd;
+  return A;
+}
+// 단추
+const btn = (label, fn, data) => { const b = document.createElement('button'); b.textContent = label; if (data) b.dataset.rig = data; b.onclick = fn; ui.appendChild(b); return b; };
+btn(mode === 'slice' ? '키트 늘어놓기 보기' : '다시 지은 구간 보기', () => { const u = new URL(location.href); u.searchParams.set('mode', mode === 'slice' ? 'gallery' : 'slice'); location.href = u.href; });
+if (mode === 'slice') for (const s of SLICE.sections) btn(s.label + ' 카메라', () => setRig(s.id), s.id);
+else for (let i = 0; i < 4; i++) btn(['집·예배당', '성문·담', '단상·기둥·울타리', '소품'][i], () => { setRig('street'); cam.tx = [520, 1500, 2350, 1200][i]; cam.tz = [330, 330, 300, 120][i]; if (i === 3) { cam.dist = 1500; cam.tx = 1250; } });
+setRig(q.get('rig') || 'street');
+if (q.get('x')) cam.tx = Number(q.get('x')); if (q.get('z')) cam.tz = Number(q.get('z')); if (q.get('y')) cam.ty = Number(q.get('y'));
+if (q.get('yaw')) cam.yaw = Number(q.get('yaw')) * D; if (q.get('pitch')) cam.pitch = Number(q.get('pitch')) * D; if (q.get('dist')) cam.dist = Number(q.get('dist'));
+// 조작
+const cv = glr.canvas; let drag = null;
+cv.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId); });
+cv.addEventListener('pointermove', (e) => { if (!drag) return; cam.yaw -= (e.clientX - drag.x) * 0.005; cam.pitch = Math.max(2 * D, Math.min(80 * D, cam.pitch + (e.clientY - drag.y) * 0.004)); drag = { x: e.clientX, y: e.clientY }; });
+cv.addEventListener('pointerup', () => { drag = null; });
+cv.addEventListener('wheel', (e) => { cam.dist = Math.max(150, Math.min(4000, cam.dist * (1 + e.deltaY * 0.001))); e.preventDefault(); }, { passive: false });
+const keys = new Set(); addEventListener('keydown', (e) => keys.add(e.key.toLowerCase())); addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+// 소품별 삼각형 수 (늘어놓기 안내용)
+const propTris = Object.fromEntries(Object.keys(PROPS).map((n) => { const G = new Geo(Wd); PROPS[n](G, 0, 0, 0, {}); return [n, G.tris]; }));
+function frame() {
+  const sp = 6 * (keys.has('shift') ? 3 : 1), cs = Math.cos(cam.yaw), sn = Math.sin(cam.yaw);
+  let mx = 0, mz = 0; if (keys.has('arrowleft') || keys.has('a')) mx -= 1; if (keys.has('arrowright') || keys.has('d')) mx += 1; if (keys.has('arrowup') || keys.has('w')) mz += 1; if (keys.has('arrowdown') || keys.has('s')) mz -= 1;
+  cam.tx += (mx * cs + mz * sn) * sp; cam.tz += (-mx * sn + mz * cs) * sp;
+  const dpr = Math.min(2, devicePixelRatio || 1), r = cv.getBoundingClientRect(), k = Math.min(r.width / LW, r.height / LH);
+  glr.resize(Math.max(2, Math.round(r.width * dpr)), Math.max(2, Math.round(r.height * dpr)));
+  void k;
+  const A = matrix();
+  glr.begin(vp, STAGE.fog, STAGE.sky.top, A);
+  for (const m of meshes) if (m.tex) glr.drawMesh(m.mesh, m.tex);
+  info.textContent = `${mode === 'slice' ? '다시 지은 시범 구간 (게임 카메라 틀: ' + cam.rig + ')' : '키트 늘어놓기'} · 정적 삼각형 ${Wd.env.stats.tris} · 그리기 ${glr.stats.draws} · 정점 ${(Wd.env.stats.bytes / 1024) | 0} KB · 텍스처 ${(glr.stats.texBytes / 1048576).toFixed(1)} MB\n` +
+    `보는 점 x ${cam.tx | 0} z ${cam.tz | 0} · 요 ${(cam.yaw / D).toFixed(0)}° · 내려보기 ${(cam.pitch / D).toFixed(0)}° · 거리 ${cam.dist | 0}   (드래그 = 돌리기 · 휠 = 거리 · WASD = 옮기기)` +
+    (mode === 'gallery' ? '\n소품 삼각형: ' + PROP_ROW.map((n) => `${n} ${propTris[n]}`).join(' · ') : '');
+  requestAnimationFrame(frame);
+}
+window.__envView = { cam, setRig, stats: () => ({ tris: Wd.env.stats.tris, draws: glr.stats.draws, propTris }), ready: true };
+frame();
+</script>
+</body>
+</html>

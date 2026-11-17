@@ -42,6 +42,7 @@
   <section>
     <h2>레벨 미터 (마스터 버스)</h2>
     <canvas id="meter" width="900" height="172"></canvas>
+    <p class="sub" id="lv" style="margin:6px 0 0">피크 -∞ dB</p>
     <div class="row" style="margin-top:8px"><label>방 울림</label><select id="room"></select><label>품질</label><select id="quality"><option value="high">높음</option><option value="medium">보통</option><option value="low">낮음</option></select></div>
     <div class="row"><label>거리</label><input id="dist" type="range" min="0.5" max="3" step="0.05" value="1"><span class="val" id="distV">1.00×</span></div>
     <div class="row"><label>좌우</label><input id="pan" type="range" min="-1" max="1" step="0.05" value="0.2"><span class="val" id="panV">+0.20</span></div>
@@ -122,7 +123,7 @@ pick($('strengths'), STRENGTHS, (k) => ({ L: '약 L', M: '중 M', H: '강 H', F:
 const FLAG_KO = { crit: '치명타', kill: '처치', guard: '막힘', parry: '받아치기', finisher: '마무리 일격' };
 for (const k in FLAG) { const b = el('button', FLAG_KO[k]); b.addEventListener('click', () => { state.flags ^= FLAG[k]; b.classList.toggle('on', !!(state.flags & FLAG[k])); showRecipe(); }); $('flags').append(b); }
 function showRecipe(r = hitFeel(state.weapon, state.material, state.strength, state.flags)) {
-  const sw = swingFeel(state.weapon, state.strength), h = HAPTIC[r.haptic] || {}, kind = { o: '옛', n: '새', s: '합성' };
+  const sw = swingFeel(r.weapon, r.strength), h = HAPTIC[r.haptic] || {}, kind = { o: '옛', n: '새', s: '합성' };
   $('recipe').innerHTML = `<i>${r.key}</i>\n경직 <u>${(r.stop * 1000).toFixed(0)} ms</u> · 흔들림 <u>${r.shake}</u> · 밀림 <u>${r.kick}</u> · 줌 <u>${r.zoom}×/${r.zoomT}s</u> · 느린 화면 <u>${r.slow ? r.slow[0] + 's @' + r.slow[1] + '×' : '없음'}</u> · 음악 낮춤 <u>${r.duck ? r.duck.join('/') : '없음'}</u>\n진동 <u>${r.haptic}</u> 패드 ${h.pad ? h.pad.join('/') : '-'} · 휴대폰 ${h.phone ? JSON.stringify(h.phone) + ' ms' : '없음'} · 불티 ${r.spark}\n휘두름(닿기 ${(sw.lead * 1000).toFixed(0)} ms 전): ${sw.layers.map((l) => l.n).join(' + ')}\n` +
     r.layers.map((l) => `  ${String(Math.round(l.at * 1000)).padStart(3)} ms  ${kind[l.k]} ${l.n.padEnd(14)} ×${l.g.toFixed(2)} 피치 ${l.p.toFixed(2)}${l.q ? '  (품질 ' + ['', '보통', '높음'][l.q] + '부터)' : ''}`).join('\n');
 }
@@ -190,12 +191,12 @@ function tick() {
   g2.fillStyle = '#5a8fd0'; g2.fillRect(0, 46, X(rd) * W, 18);
   g2.fillStyle = '#fff'; g2.fillRect(X(hold) * W - 2, 6, 3, 38);
   g2.strokeStyle = '#e8b04a'; g2.lineWidth = 2; g2.beginPath();
-  for (let i = 0; i < hist.length; i++) { const v = hist[(hi + i) % hist.length], x = i / (hist.length - 1) * W, y = Hh - 8 - X(v) * (Hh - 84); if (i) g2.lineTo(x, y); else g2.moveTo(x, y); }
+  for (let i = 0; i < hist.length; i++) { const v = hist[(hi + i) % hist.length], x = i / (hist.length - 1) * W, y = Hh - 6 - X(v) * (Hh - 80); if (i) g2.lineTo(x, y); else g2.moveTo(x, y); }
   g2.stroke();
-  g2.fillStyle = '#e9e4f2'; g2.font = '22px system-ui'; g2.fillText(`피크 ${pd < -90 ? '-∞' : pd.toFixed(1)} dB   평균 ${rd < -90 ? '-∞' : rd.toFixed(1)} dB   최고 ${hold < -90 ? '-∞' : hold.toFixed(1)} dB`, 12, 94);
   if (frame++ % 15 === 0) {
     const s = feel.sound.stats(), e = audio.eng, v2 = audio.v2Stats ? audio.v2Stats() : {};
     $('status').innerHTML = e ? `엔진 <b>${audio.ctx.state}</b> ${audio.ctx.sampleRate} Hz · 옛 샘플 <b>${v2.loaded ?? 0}</b>/${v2.names ?? 0} · 새 샘플 <b class="${s.bank && s.bank.loaded === s.bank.names ? '' : 'bad'}">${s.bank ? s.bank.loaded : 0}</b>/${s.bank ? s.bank.names : 0} (${s.bank ? (s.bank.bytes / 1048576).toFixed(1) : 0} MB 풀림) · 시작 ${s.starts} · 울리는 중 ${e.liveCount('')} · 층 ${s.layers} · 빈 층 <b class="${s.miss ? 'bad' : ''}">${s.miss}</b> · 걸러짐 ${e.stats.dropped}` : '소리가 꺼져 있다 — 「소리 켜기」를 누른다';
+    $('lv').textContent = `피크 ${pd < -90 ? '-∞' : pd.toFixed(1)} dB · 평균 ${rd < -90 ? '-∞' : rd.toFixed(1)} dB · 최고(1.5초) ${hold < -90 ? '-∞' : hold.toFixed(1)} dB — 위 막대: 피크 · 아래 막대: 평균 · 선: 지난 5초`;
     $('hap').textContent = feel.haptics.last ? `마지막 진동: ${feel.haptics.last} (${feel.haptics.count}번, 장치 ${feel.haptics.sent}번)` : '';
   }
 }

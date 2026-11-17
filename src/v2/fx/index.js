@@ -43,6 +43,7 @@ class Fx {
     this.seqs = new Seqs(H.seqs);
     this.time = 0; this.groundY = opts.groundY ?? 0; this.onEvent = opts.onEvent ?? null; this.lightPools = !!opts.lightPools;
     this.postOn = opts.post !== false;
+    this.feelOn = opts.feel !== false;                            // false 면 프리셋이 손맛(멈춤·흔들림·번쩍임)을 내지 않는다
     this.protect = new Float32Array(16); this.protMin = 0.4;      // 가리면 안 되는 자리 4곳 (x,y,z,반지름)
     this.chain = new Float32Array(12); this.chainN = 0;            // 연쇄 번개 표적 (최대 4)
     this.gain = 1;                                                 // 밝기 조절기 (덧칠이 많으면 더하기 색을 낮춘다)

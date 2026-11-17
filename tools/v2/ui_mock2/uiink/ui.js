@@ -80,7 +80,7 @@ export function paintStick(cv, s, o = {}) {
   x.strokeStyle = g; x.lineWidth = 1.1; x.beginPath(); x.arc(c, c, R - 0.5, 0, TAU); x.stroke();
   x.strokeStyle = 'rgba(232,197,108,.4)'; x.lineWidth = 0.75; x.beginPath(); x.arc(c, c, R - 5, 0, TAU); x.stroke();
   const d = (R + 3) * 2 / 0.88; x.globalAlpha = 0.8; x.drawImage(ENSO.thin, c - d / 2, c - d / 2, d, d); x.globalAlpha = 1;
-  for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 - Math.PI / 2, tx = c + Math.cos(a) * (R - 15), ty = c + Math.sin(a) * (R - 15); x.save(); x.translate(tx, ty); x.rotate(a + Math.PI / 2); x.globalAlpha = 0.85; x.drawImage(iconCanvas('next', 96), -8, -8, 16, 16); x.restore(); }
+  for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 - Math.PI / 2, tx = c + Math.cos(a) * (R - 15), ty = c + Math.sin(a) * (R - 15); x.save(); x.translate(tx, ty); x.rotate(a - Math.PI / 2); x.globalAlpha = 0.85; x.drawImage(iconCanvas('next', 96), -8, -8, 16, 16); x.restore(); }
 }
 export function paintKnob(cv, s) {
   const pad = 8, full = s + pad * 2; cv.width = cv.height = Math.round(full * DPR); cv.style.width = cv.style.height = full + 'px';

@@ -4,6 +4,7 @@
 const Q = new URLSearchParams(location.search);
 const root = document.documentElement;
 const SHOT = Q.get('shot') === '1';
+if (Q.get('noblur') === '1') root.classList.add('noblur');   // 메뉴 배경을 흐리지 않고 어둡게만 (흐림 없는 판)
 const dev = () => (innerHeight < 480 ? 'phone' : 'fold');
 const IC = (k) => `../../../../assets/v2/ui/uigem/ic_${k}.webp`;
 const IT = (k) => `../../../../assets/icons/${k}.png`;
@@ -77,14 +78,14 @@ function build() {
 <div id="hud">
   <div id="hero"><div class="pt"><img src="kael3_face.webp" alt=""><i class="rim"></i><b class="lv ink">${h.lv}</b></div>
     <div class="hi"><div class="hn ink"><b class="nm">${h.name}</b><span class="cls">${h.cls}</span><span class="num">${num(h.hp)}<em> / ${num(h.hpMax)}</em></span></div>
-      <div class="hp bar"><i class="ch"></i><i class="lag" style="width:${(h.hp / h.hpMax * 100 + 7).toFixed(1)}%"></i><i class="fill" style="width:${(h.hp / h.hpMax * 100).toFixed(1)}%"></i><i class="seg"></i></div>
-      <div class="st bar"><i class="ch"></i><i class="fill" style="width:${h.st}%"></i></div></div></div>
+      <div class="hp bar"><i class="ch"><i class="lag" style="width:${(h.hp / h.hpMax * 100 + 7).toFixed(1)}%"></i><i class="fill" style="width:${(h.hp / h.hpMax * 100).toFixed(1)}%"></i><i class="seg"></i></i></div>
+      <div class="st bar"><i class="ch"><i class="fill" style="width:${h.st}%"></i></i></div></div></div>
   <div id="sys">${sys}</div>
   <div id="mini"><i class="gl"></i><svg viewBox="0 0 100 100" class="mm"><path class="mf" d="M18 14h64v48H60v34H40V62H18z"/><path class="mw" d="M18 14h26M56 14h26v48H60v34M40 96V62H18V14"/><path class="mg" d="M44 14h12"/>
     <circle class="me" cx="36" cy="40" r="3"/><circle class="me" cx="64" cy="40" r="3"/><circle class="me" cx="50" cy="29" r="3"/><circle class="me" cx="28" cy="24" r="3"/><circle class="me" cx="72" cy="24" r="3"/>
     <path class="mo" d="M50 8l4.500 6-4.500 6-4.500-6z"/><path class="mh" d="M50 43l6 11-6-2.800-6 2.800z"/></svg><i class="rim"></i><i class="gem"></i><span class="mn ink">${T.stage}</span></div>
   <div id="quest"><img class="qi ink" src="${IC('quest')}" alt=""><div class="qb ink"><div class="qt">${q.tag}</div><div class="qn">${q.name}</div>${q.lines.map(([t, c]) => `<div class="ql"><span>${t}</span><b>${c}</b></div>`).join('')}</div></div>
-  <div id="boss"><div class="bn ink"><i class="dia"></i><b>${b.name}</b><i class="dia"></i></div><div class="bbar bar"><i class="ch"></i><i class="lag" style="width:${b.hp + 6}%"></i><i class="fill" style="width:${b.hp}%"></i><i class="seg"></i></div><i class="bgem"></i><div class="bs ink"><span>${b.sub} · Lv.${b.lv}</span><b>${b.hp}%</b></div></div>
+  <div id="boss"><div class="bn ink"><i class="dia"></i><b>${b.name}</b><i class="dia"></i></div><div class="bbar bar"><i class="ch"><i class="lag" style="width:${b.hp + 6}%"></i><i class="fill" style="width:${b.hp}%"></i><i class="seg"></i></i></div><i class="bgem"></i><div class="bs ink"><span>${b.sub} · Lv.${b.lv}</span><b>${b.hp}%</b></div></div>
   <div id="toast"><span class="ti"><img src="${IT(T.toast.ic)}" alt=""></span><span class="tt ink"><b>${T.toast.name}</b> ×${T.toast.n} <em>${T.toast.verb}</em></span></div>
   <span class="dmg d1 ink">128</span><span class="dmg d2 crit ink"><em>치명</em>342</span><span class="dmg d3 ink">96</span><span class="dmg d4 hurt ink">-45</span>
   <div id="stick"><i class="gl"></i><i class="rim"></i><i class="knob"></i></div>

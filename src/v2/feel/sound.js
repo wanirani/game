@@ -35,6 +35,7 @@ export const ROOMS = Object.freeze({
   courtyard: { label: '마당', sec: 0.95, refl: 7, slap: 0.07, damp: 0.42, send: 0.1 },
   hall: { label: '던전 큰 방', sec: 1.7, refl: 16, slap: 0.03, damp: 0.26, send: 0.2 },
 });
+const irCache = new Map();   // '방@rate' → 임펄스 버퍼 (4종 합계 약 1.4 MB @48 kHz)
 function lcg(seed) { let s = seed >>> 0; return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296); }
 function makeIR(c, room, seed) {
   const sr = c.sampleRate, n = Math.max(1, Math.floor(sr * room.sec)), b = c.createBuffer(2, n, sr), rnd = lcg(seed);
@@ -220,7 +221,11 @@ export class FeelSound {
     if (!e.ctx.createConvolver) return null;
     if (!e.room) { e.room = e.ctx.createConvolver(); e.room.connect(e.sfxG); }
     const key = this.room + '@' + e.ctx.sampleRate;
-    if (this._irKey !== key) { this._ir = makeIR(e.ctx, ROOMS[this.room], 9001 + this.room.length * 131); this._irKey = key; }
+    if (this._irKey !== key) {   // 임펄스는 방마다 한 번만 만든다 (구역을 오갈 때 다시 만들지 않는다)
+      let b = irCache.get(key);
+      if (!b) { b = makeIR(e.ctx, ROOMS[this.room], 9001 + this.room.length * 131); irCache.set(key, b); }
+      this._ir = b; this._irKey = key;
+    }
     if (e.room.buffer !== this._ir) { e.room.buffer = this._ir; e.roomSpace = e.v2Space === 'open' || e.v2Space === 'cave' ? e.v2Space : 'hall'; }   // 엔진이 자기 임펄스로 되돌리지 않게 표시
     return e.room;
   }

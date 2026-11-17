@@ -66,13 +66,13 @@ void main() {
   vec2 c = aCorner - 0.5; vec2 q;
   if (aM.z > 0.0) {
     vec2 sv = vec2(dot(vel, uRight), dot(vel, uUp)); float sp = length(sv); vec2 ax = sp > 1.0 ? sv / sp : vec2(1.0, 0.0);
-    q = ax * (c.x * size * (1.0 + aM.z * sp * 0.01)) + vec2(-ax.y, ax.x) * (c.y * size);
+    q = ax * (c.x * size * (1.0 + aM.z * sp * 0.002)) + vec2(-ax.y, ax.x) * (c.y * size);
   } else {
     float r = aS.z + aS.w * age; float cs = cos(r), sn = sin(r);
     q = vec2(c.x * cs - c.y * sn, c.x * sn + c.y * cs) * size;
   }
   vec4 col = mix(aC0, aC1, k); col.rgb *= 4.0;
-  float a = col.a * min(1.0, k / max(aF.z, 0.0001));
+  float a = col.a * min(1.0, k / max(aF.z, 0.0001)) * (1.0 - smoothstep(0.85, 1.0, k));
   float dim = 1.0;   // 읽기 규칙: 영웅·예고 중인 적 앞을 지나는 큰 입자는 옅게
   for (int i = 0; i < 4; i++) {
     vec4 z = uProt[i];

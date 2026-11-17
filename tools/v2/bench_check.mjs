@@ -2,6 +2,7 @@
 // 헤드리스 Chromium 에서 index.html?scene=v2bench 를 fold_open · phone2 로 열어 끝까지 돌리고, 표를 찍고, 결과 화면의 단추를 눌러 본다.
 //   node tools/v2/bench_check.mjs [--devices fold_open,phone2] [--sec 2] [--full] [--shots /tmp/claude-0/v2/bench] [--no-shots] [--json out.json]
 //     --pace [120:q100,…]  틀 검증: 가짜 화면 시계(주사율:모형)로 돌려 '초당 60' 과 '매 화면' 의 박자를 본다 (아래 설명)
+//     --no-devices  기기 프리셋 실행을 건너뛴다 (박자 계산·틀 검증만) · --no-sim  박자 계산을 건너뛴다
 //     --sec N   시험 하나의 길이(초). 기본 2 (앞 0.5초 버림) — 빨리 끝내려고 줄인 값이다. --full = 기기와 같은 4초(앞 1초 버림), 약 1분.
 // ★ 주의: 헤드리스의 WebGL 은 소프트웨어 렌더러(SwiftShader)다. 여기 나오는 프레임 시간·끊김·추천 설정은 실제 기기의 값이 아니다.
 //   이 도구가 확인하는 것은 "장면이 뜨고, 모든 시험을 돌고, 표와 단추가 동작하고, 페이지 오류가 없다" 뿐이다.
@@ -12,7 +13,7 @@ import { contextOptions } from '../qa/lib/viewports.mjs';
 import { buildMatrix, pickBest, STORE_KEY } from '../../src/v2/bench/stats.js';
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => { if (v.startsWith('--')) a.push([v.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true]); return a; }, []));
-const DEVICES = String(args.devices || 'fold_open,phone2').split(',').filter(Boolean);
+const DEVICES = args['no-devices'] ? [] : String(args.devices || 'fold_open,phone2').split(',');
 const SEC = args.full ? 4 : Number(args.sec || 2), SKIP = args.full ? 1 : Math.min(0.5, SEC / 3);
 const SHOTS = args['no-shots'] ? null : String(args.shots || '/tmp/claude-0/v2/bench');
 const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
@@ -31,6 +32,31 @@ if (SHOTS) fs.mkdirSync(SHOTS, { recursive: true });
   const p2 = pickBest([row('layer', 1, 'every', 0.3, 80), row('layer', 1, 'cap60', 0.01, 60), row('layer', 0.75, 'every', 0.01, 120)]);
   if (p1?.resK !== 1 || p1.pace !== 'every') fail('고르기 규칙 1: 같은 등급이면 높은 해상도를 골라야 한다'); if (p2?.resK !== 0.75) fail('고르기 규칙 2: 부드러운 것 가운데 초당 그림이 많은 것');
   if (!fails.length) ok(`시험 목록 ${a.length}줄(입체 있음) / ${b.length}줄(없음) · 고르기 규칙 확인`);
+}
+
+// ── 게임 루프 박자 계산 (순수 계산, 즉시): core/game.js start() 의 누적기와 같은 식 ──
+//   acc += dt; while (acc >= 1/60 && steps < 5) { 틱; acc -= 1/60 }; 틱이 돈 rAF 에서만 그린다 (fpsCap 60).
+// 화면 주사율·시각 모형별로 "새 그림이 올라간 간격" 이 얼마나 고르지 않은지 센다 (진단의 '끊김' 과 같은 정의: 중앙값에서 35 % 넘게 벗어난 비율).
+export function simLoop(hz, model, frames = 7200) {
+  const STEP = 1 / 60; let seed = 99991; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+  const off = model === 'd50' ? 1 + 50e-6 : model === 'd500' ? 1 + 500e-6 : 1;   // d50 · d500 = 화면이 시계보다 50 · 500 ppm 빠름 + 0.1 ms 깎음
+  const stamp = (n) => { const x = 1234.5 + n * 1000 / (hz * off); return model === 'q100' || off !== 1 ? Math.floor(x * 10) / 10 : model === 'jit' ? x + (rnd() - 0.5) * 0.6 : x; };
+  let last = stamp(0), acc = 0, lastDraw = 0; const ci = []; let dbl = 0;
+  for (let n = 1; n <= frames; n++) {
+    const ts = stamp(n); let dt = (ts - last) / 1000; last = ts; if (dt > 0.25) dt = 0.25;
+    acc += dt; let steps = 0; while (acc >= STEP && steps < 5) { acc -= STEP; steps++; }
+    if (steps > 0) { if (lastDraw) ci.push(ts - lastDraw); lastDraw = ts; if (steps > 1) dbl++; }
+  }
+  const s = [...ci].sort((a, b) => a - b), med = s[s.length >> 1], un = ci.filter((v) => Math.abs(v - med) > med * 0.35).length;
+  return { hz, model, fps: Math.round(1000 * ci.length / ci.reduce((a, b) => a + b, 0)), uneven: +(100 * un / ci.length).toFixed(1), p95: +s[Math.floor(s.length * 0.95)].toFixed(1), max: +s[s.length - 1].toFixed(1), double: dbl };
+}
+if (!args['no-sim']) {
+  console.log('\n[게임 루프 박자 계산] 60 Hz 고정 틱 + "틱이 돈 프레임만 그리기" (지금 방식) — 10분 분량, 그리는 시간 0 으로 가정');
+  for (const [hz, model] of [[60, 'q100'], [60, 'd50'], [60, 'd500'], [60, 'jit'], [90, 'd500'], [120, 'exact'], [120, 'q100'], [120, 'd50'], [120, 'd500'], [120, 'jit'], [144, 'd500']]) {
+    const r = simLoop(hz, model, hz * 600);
+    console.log(`  ${String(hz).padStart(3)}Hz ${model.padEnd(5)} → 초당 ${r.fps}장 · 고르지 않은 그림 ${String(r.uneven).padStart(5)}% · 간격 95% ${r.p95}ms · 최장 ${r.max}ms · 두 틱을 한 번에 ${r.double}회`);
+  }
+  console.log('   (exact = 정확한 간격, q100 = 시각을 0.1 ms 로 깎음, d50 · d500 = 화면이 시계보다 50 · 500 ppm 빠름 + 0.1 ms 깎음, jit = ±0.3 ms 흔들림.\n    어느 모형이 폴드와 같은지는 모른다 — 기기에서 재야 한다. 매 화면 그리기 + 보간이면 모두 0 %)');
 }
 
 const port = 8300 + Math.floor(Math.random() * 600);
@@ -108,7 +134,7 @@ for (const device of DEVICES) {
 // WebGL 없음 → 안내가 든 결과 화면 (예외 없음)
 {
   const b2 = await chromium.launch({ executablePath: EXE, args: ['--disable-gpu', '--disable-3d-apis', '--autoplay-policy=no-user-gesture-required'] });
-  const page = await (await b2.newContext(contextOptions(DEVICES[0]))).newPage(); const errs = [];
+  const page = await (await b2.newContext(contextOptions(DEVICES[0] ?? 'fold_open'))).newPage(); const errs = [];
   page.on('pageerror', (e) => errs.push(e.message));
   await page.goto(`http://localhost:${port}/index.html?scene=v2bench&benchsec=1`);
   await page.waitForFunction(() => window.__v2bench?.phase === 'done', null, { timeout: 40000 }).catch(() => errs.push('끝나지 않음'));
@@ -123,7 +149,7 @@ for (const device of DEVICES) {
 // 그리는지가 그대로 나온다 (렌더러가 느려도 시각은 가짜 시계가 정한다). 입체 캐릭터는 빼고(느려서) 돌린다.
 // 모형: exact = 정확한 간격 · q100 = 시각을 0.1 ms 단위로 깎음(브라우저가 보통 이렇게 준다) · jit = ±0.3 ms 흔들림
 if (args.pace) {
-  const MODELS = String(args.pace === true ? '120:exact,120:q100,120:jit,60:q100,90:q100' : args.pace).split(',').map((m) => m.split(':'));
+  const MODELS = String(args.pace === true ? '120:q100,60:q100' : args.pace).split(',').map((m) => m.split(':'));
   console.log('\n[틀 검증] 가짜 화면 시계 — 값은 "그림이 올라가는 박자"만 뜻한다 (그리는 데 걸린 시간은 들어 있지 않다)');
   out.pace = {};
   for (const [hz, model] of MODELS) {
@@ -133,17 +159,19 @@ if (args.pace) {
     await page.route('**/*.glb', (r) => r.abort());
     await page.addInitScript(({ hz, model }) => {
       const t0 = Math.round(performance.now()) + 5, q = new Map(); let n = 0, id = 0, vt = t0, seed = 12345;
+      if (window.top !== window) return;
       const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
       const stamp = () => { const x = t0 + n * 1000 / hz; return model === 'q100' ? Math.floor(x * 10) / 10 : model === 'jit' ? x + (rnd() - 0.5) * 0.6 : x; };
       performance.now = () => vt;
       window.requestAnimationFrame = (cb) => { q.set(++id, cb); return id; };
       window.cancelAnimationFrame = (i) => { q.delete(i); };
-      const pump = () => { n++; vt = stamp(); const cbs = [...q.values()]; q.clear(); for (const cb of cbs) { try { cb(vt); } catch (e) { console.error(e); } } setTimeout(pump, 0); };
-      setTimeout(pump, 0);
+      const realRaf = window.requestAnimationFrame.bind(window);   // 진짜 화면 갱신 한 번에 가짜 프레임 하나 → 렌더러가 밀리지 않는다
+      const pump = () => { n++; vt = stamp(); const cbs = [...q.values()]; q.clear(); for (const cb of cbs) { try { cb(vt); } catch (e) { console.error(e); } } realRaf(pump); };
+      realRaf(pump);
     }, { hz: Number(hz), model });
-    await page.goto(`http://localhost:${port}/index.html?scene=v2bench&benchsec=1.5&benchskip=0.3`);
+    await page.goto(`http://localhost:${port}/index.html?scene=v2bench&benchsec=1&benchskip=0.25`);
     await page.waitForFunction(() => window.__v2bench?.phase === 'done', null, { timeout: 240000 }).catch(() => errs.push('끝나지 않음'));
-    const R = await page.evaluate(() => window.__v2bench?.report ?? null);
+    const R = await page.evaluate(() => window.__v2bench?.report ?? null).catch((e) => { errs.push(String(e.message).slice(0, 80)); return null; });
     if (!R || errs.length) { fail(`틀 검증 ${hz}Hz ${model}: ` + (errs[0] ?? '결과 없음')); await ctx.close(); continue; }
     const cap = R.rows.filter((r) => r.valid && r.pace === 'cap60'), ev = R.rows.filter((r) => r.valid && r.pace === 'every');
     const avg = (a, k) => (a.length ? a.reduce((s, r) => s + r[k], 0) / a.length : 0);

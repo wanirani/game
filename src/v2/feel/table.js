@@ -69,7 +69,7 @@ export const MOD = Object.freeze({
   // 받아치기: 플레이어의 완벽한 막기 — 맑은 울림 + 짧은 느린 화면
   parry: { only: [o('counter', 0, 0.9), o('clang', 0, 0.8, 1.25), n('ring', 0.02, 0.6, 1.2), o('impact_frame', 0, 0.5, 1, 1), s('snap', 0, 0.45, 1.4)], stop: 0.12, shake: 0.2, kick: 0, zoom: 1.05, zoomT: 0.25, slow: Object.freeze([0.28, 0.35]), duck: Object.freeze([0.5, 0.7]), gain: 1.05, haptic: 'parry', big: true },
   // 마무리 일격: 방의 마지막 적·보스 — 깊은 쿵 + 느린 화면 + 음악이 물러남
-  finisher: { add: [s('drop', 0, 0.55), o('kill_slowmo', 0.02, 0.55), o('impact_crack', 0.01, 0.45, 0.8), n('ring', 0.09, 0.3, 0.7, 2)], stop: 0.18, shakeAdd: 0.2, kick: 16, zoom: 1.08, zoomT: 0.4, slow: Object.freeze([0.36, 0.25]), duck: Object.freeze([0.5, 1.0]), gain: 0.74, haptic: 'finisher', big: true },
+  finisher: { add: [s('drop', 0, 0.6), o('kill_slowmo', 0.02, 0.6), n('ring', 0.09, 0.3, 0.7, 2)], stop: 0.18, shakeAdd: 0.2, kick: 16, zoom: 1.08, zoomT: 0.4, slow: Object.freeze([0.36, 0.25]), duck: Object.freeze([0.5, 1.0]), gain: 0.74, haptic: 'finisher', big: true },
 });
 /** flags 비트 */
 export const FLAG = Object.freeze({ crit: 1, kill: 2, guard: 4, parry: 8, finisher: 16 });

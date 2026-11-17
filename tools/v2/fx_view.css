@@ -1,0 +1,13 @@
+html, body { margin: 0; height: 100%; background: #05060a; overflow: hidden; font: 12px/1.35 system-ui, sans-serif; color: #d8dce8; touch-action: manipulation; }
+#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#top { position: fixed; left: 6px; top: 6px; display: flex; gap: 5px; align-items: center; flex-wrap: wrap; z-index: 3; }
+#top button, #top select, #list button { font: inherit; color: #e8ecf8; background: rgba(24, 28, 44, 0.82); border: 1px solid #3a4468; border-radius: 5px; padding: 5px 8px; }
+#top label { background: rgba(24, 28, 44, 0.6); border-radius: 5px; padding: 4px 6px; }
+#top button:active, #list button:active { background: #4a5a9a; }
+#list { position: fixed; left: 6px; top: 40px; bottom: 6px; width: 176px; overflow-y: auto; z-index: 2; display: flex; flex-direction: column; gap: 3px; }
+#list.hide { display: none; }
+#list h4 { margin: 6px 0 1px; font-size: 11px; color: #9fb0e0; font-weight: 600; }
+#list button { text-align: left; padding: 4px 7px; }
+#list button small { color: #8f9ab8; margin-left: 4px; }
+#stats { position: fixed; right: 6px; top: 6px; margin: 0; padding: 6px 8px; background: rgba(8, 10, 18, 0.62); border-radius: 5px; font: 11px/1.35 ui-monospace, monospace; z-index: 2; pointer-events: none; white-space: pre; }
+body.noui #top, body.noui #list, body.noui #stats { display: none; }

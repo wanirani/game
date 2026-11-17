@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>v2 fx — 효과 엔진 시험 화면</title>
+<link rel="stylesheet" href="fx_view.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="top">
+  <button id="tgl">목록</button>
+  <select id="tier"><option>low</option><option selected>mid</option><option>high</option></select>
+  <label><input type="checkbox" id="post" checked>후처리</label>
+  <label><input type="checkbox" id="feel" checked>손맛</label>
+  <button data-demo="combo">콤보</button>
+  <button data-demo="spells">마법 순회</button>
+  <button data-demo="heavy">난전</button>
+  <button id="half">½ 속도</button>
+</div>
+<div id="list"></div>
+<pre id="stats"></pre>
+<script type="module" src="fx_view.js"></script>
+</body>
+</html>
