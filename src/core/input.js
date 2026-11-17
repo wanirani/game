@@ -176,6 +176,8 @@ class Input {
 
   /** 예전 코드용: input.touchMode (읽기 전용 별칭; 쓰면 기기 전환) */
   get touchMode() { return this.mode === 'touch'; }
+  /** [v2] raw 360 degree touch stick {x, y, mag, raw} (read-only view of the pad's vector; v1 scenes do not use it) */
+  get touchStick() { return this._touchVec; }
   set touchMode(on) { this.setTouchMode(!!on); }
 
   init(game) {

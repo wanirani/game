@@ -206,7 +206,8 @@ export class Sim {
     const gsp = push ? Math.max(sp, (h.gaitMode === 'walk' ? 40 : 96)) : sp, walking = h.onGround && free && (push || sp > 24);   // 스틱을 민 동안은 걸음이 멎지 않는다 (벽에 대고 달려도 다리는 돈다)
     if (walking) {
       const g0 = h.gait, g1 = g0 + (gsp * dt) / (h.gaitMode === 'walk' ? T.strideWalk : T.strideRun);
-      if (g1 >= 1) this.emit('step', 'R', sp, h); else if (g0 < 0.5 && g1 >= 0.5) this.emit('step', 'L', sp, h);
+      const gl = T.stepL?.[h.gaitMode] ?? 0.5;
+      if (g1 >= 1) this.emit('step', 'R', sp, h); else if (g0 < gl && g1 >= gl) this.emit('step', 'L', sp, h);
       h.gait = g1 % 1;
     }
     this._anim(h, h.hurtT > 0 ? 'hurt' : h.parryOk > 0 && !h.move && h.dashT <= 0 ? 'parry' : h.blockT > 0 && !h.move && h.dashT <= 0 ? 'block' : h.move ? 'attack' : h.dashT > 0 ? 'roll'
@@ -567,9 +568,9 @@ export class Sim {
       const a = E[i]; if (a.dead || !a.active || a.state === 'dead') continue;
       for (let j = i + 1; j < E.length; j++) {
         const b = E[j]; if (b.dead || !b.active || b.state === 'dead' || !!a.def.fly !== !!b.def.fly) continue;
-        const dx = b.x - a.x, dz = b.z - a.z, d2 = dx * dx + dz * dz, R = a.r + b.r + 8;
+        const dx = b.x - a.x, dz = b.z - a.z, d2 = dx * dx + dz * dz, R = a.r + b.r + 18;
         if (d2 > R * R || d2 < 1e-4) continue;
-        const d = Math.sqrt(d2), p = (R - d) * 3 * dt, wa = 1 - a.def.weight * 0.8, wb = 1 - b.def.weight * 0.8;
+        const d = Math.sqrt(d2), p = (R - d) * 5 * dt, wa = 1 - a.def.weight * 0.8, wb = 1 - b.def.weight * 0.8;
         this._emove(a, (-dx / d) * p * wa, (-dz / d) * p * wa); this._emove(b, (dx / d) * p * wb, (dz / d) * p * wb);
       }
       // 영웅과 겹치지 않게 (구르는 동안은 지나갈 수 있다 — 갑주의 등 뒤로 돌아가는 길)

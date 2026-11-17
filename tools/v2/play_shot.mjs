@@ -2,7 +2,7 @@
 //   node tools/v2/play_shot.mjs                 모든 묶음 → /tmp/claude-0/v2/play/<이름>.jpg
 //   node tools/v2/play_shot.mjs run turn        이름이 그 글자로 시작하는 묶음만
 //   node tools/v2/play_shot.mjs --page=fight    폴드 편 화면 크기로 한 장면 전체(단추 포함) → page_<demo>.png
-//   --out=<폴더>  --list
+//   --out=<폴더>  --list  --sheet="demo:cam:t0:t1:step:cols:cw:ch[:box][:who]" --name=이름 (그때그때 한 장)
 // 한 번에 브라우저 하나. 헤드리스 WebGL 은 소프트웨어 렌더링이라 느리다(프레임 시간은 기기와 무관).
 import { chromium } from 'playwright-core';
 import http from 'node:http';
@@ -39,6 +39,8 @@ const SETS = [
   { n: 'fight_game', demo: 'fight', times: range(0.5, 20, 0.33), cam: 'game', cols: 10, cw: 260, ch: 190, box: true },
   { n: 'elite_game', demo: 'elite', times: range(0.5, 20, 0.33), cam: 'game', cols: 10, cw: 260, ch: 190, box: true },
 ];
+{ const ad = opt('sheet', null);   // --sheet="demo:cam:t0:t1:step:cols:cw:ch[:box][:who]" [--name=이름] — 그때그때 한 장
+  if (ad) { const [demo, cam, t0, t1, st, cols, cw, ch, box, who] = ad.split(':'); SETS.length = 0; SETS.push({ n: opt('name', 'adhoc_' + demo + '_' + cam), demo, cam, times: range(+t0, +t1, +st), cols: +cols, cw: +cw, ch: +ch, box: box === '1', who: who === '1' }); want.length = 0; } }
 if (argv.includes('--list')) { for (const s of SETS) console.log(s.n.padEnd(16), s.demo.padEnd(9), s.times.length + ' frames', s.cam); process.exit(0); }
 fs.mkdirSync(outDir, { recursive: true });
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.glb': 'model/gltf-binary', '.png': 'image/png', '.webp': 'image/webp', '.json': 'application/json' };

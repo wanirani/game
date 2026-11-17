@@ -67,6 +67,7 @@ const DEMOS = {
   ghost: { name: '무덤 유령', spawns: [{ kind: 'grave_ghost', x: 260, z: 40, active: true }], safe: true, seq: [[30, {}]] },
   armor: { name: '무덤지기 갑주', spawns: [{ kind: 'gravekeeper_armor', x: 250, z: 0, active: true }], safe: true, seq: [[30, {}]] },
   bat: { name: '박쥐 떼', spawns: ring('bat', 4, 240), safe: true, seq: [[30, {}]] },
+  crowd: { name: '해골 병사 다섯', spawns: ring('skeleton_soldier', 5, 300), safe: true, seq: [[30, {}]] },
   fight: { name: '싸움 (자동)', spawns: [{ kind: 'skeleton_soldier', x: 260, z: 40 }, { kind: 'skeleton_soldier', x: 300, z: -80 }, { kind: 'skeleton_mage', x: 420, z: 0 }, { kind: 'plague_corpse', x: -280, z: 60 }, { kind: 'bat', x: -200, z: -150 }, { kind: 'bat', x: -240, z: -110 }], safe: true, auto: 'fight', seq: [[60, {}]] },
   elite: { name: '갑주와 싸움 (자동)', spawns: [{ kind: 'gravekeeper_armor', x: 240, z: 0, active: true }, { kind: 'grave_ghost', x: -220, z: 80, active: true }], safe: true, auto: 'fight', seq: [[60, {}]] },
 };
@@ -254,7 +255,7 @@ async function main() {
   const sep = (t) => { const s = document.createElement('span'); s.textContent = t; ui.appendChild(s); };
   const sync = () => { for (const b of ui.children) b.classList?.toggle('on', !!b._on?.()); };
   sep('카엘'); for (const k of ['free', 'run8', 'turn', 'walk', 'combo', 'combo1', 'comboUp', 'roll', 'jump', 'guard', 'block', 'hurt']) btn(DEMOS[k].name, () => setDemo(k), () => S.demo === k);
-  sep('적'); for (const k of ['soldier', 'mage', 'corpse', 'ghost', 'armor', 'bat', 'fight', 'elite']) btn(DEMOS[k].name, () => setDemo(k), () => S.demo === k);
+  sep('적'); for (const k of ['soldier', 'crowd', 'mage', 'corpse', 'ghost', 'armor', 'bat', 'fight', 'elite']) btn(DEMOS[k].name, () => setDemo(k), () => S.demo === k);
   sep('보기'); for (const [k, n] of [['game', '게임 카메라'], ['high', '높이'], ['close', '가까이'], ['side', '옆'], ['front', '앞'], ['top', '위'], ['enemy', '적 가까이']]) btn(n, () => { S.cam = k; }, () => S.cam === k);
   btn('판정 보기', () => { S.box = !S.box; }, () => S.box); btn('느리게', () => { S.slow = !S.slow; }, () => S.slow); btn('멈춤', () => { S.pause = !S.pause; }, () => S.pause);
   sync();

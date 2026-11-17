@@ -82,10 +82,11 @@ export const AI = {
     sim.turnTo(e, dx, dz, D.turn, dt);
     const aligned = (dx * e.dirX + dz * e.dirZ) / dist > 0.7;
     if (e.cd <= 0 && aligned && Math.abs(h.y - e.y) < 70 && sim.mayAttack(e)) { const a = pickAttack(sim, e, D, dist); if (a) return sim.startAttack(e, a); }
-    const st = D.standoff;
+    // 차례를 기다리는 동안(방금 쳤거나, 다른 둘이 치는 중)은 한 발 물러서 둘러싼다 — 여럿이 한 점에 뭉쳐 서지 않게
+    const wait = !D.poise && (e.cd > 0.45 || !sim.mayAttack(e)), st = D.standoff + (wait ? D.ring ?? 52 : 0);
     if (dist > st + 8) { sim.steer(e, dx / dist, dz / dist, D.speed, dt); sim.setAnim(e, 'walk', dt); }
     else if (dist < st - 26) { sim.steer(e, -dx / dist, -dz / dist, D.speed * 0.6, dt, true); sim.setAnim(e, 'walk', dt); }
-    else if (e.cd > 0.3 && !D.poise) { sim.steer(e, (-dz / dist) * e.side, (dx / dist) * e.side, D.speed * 0.38, dt, true); sim.setAnim(e, 'walk', dt); }   // 기다리는 동안 옆으로 돈다
+    else if (wait) { sim.steer(e, (-dz / dist) * e.side, (dx / dist) * e.side, D.speed * 0.38, dt, true); sim.setAnim(e, 'walk', dt); }   // 기다리는 동안 옆으로 돈다
     else sim.setAnim(e, 'idle', dt);
   },
   /** 거리를 두고 쏜다 (해골 술사) */

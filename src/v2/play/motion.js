@@ -168,20 +168,16 @@ export function driveActor(ch, e, dt) {
   A.play(name, o);
   if (!S.init) { S.init = true; if (!A.ext) A.t = (e.id * 0.37) % (C[name].duration || 1); }   // 떼로 나올 때 같은 박자로 움직이지 않게
   A.update(dt);
-  if (D.floats) pinLegs(ch.rig);
+  // 숙임: 나는 것(박쥐)은 몸을 앞으로 숙여 날고 내리꽂을 때 더 숙인다. 떠다니는 것은 움직이는 만큼 숙여 자락이 뒤로 흐른다. (골반 뼈를 돌린다 → 장면은 ch.place 그대로)
+  const strike = atk && e.phase === 'strike', want = D.pitch ? D.pitch + (strike ? 24 : 0) : D.floats ? (strike ? 20 : 12 * clamp((e.moved ?? 0) / (D.speed || 60), 0, 1)) : 0;
+  S.pitch = (S.pitch ?? want) + (want - (S.pitch ?? want)) * Math.min(1, dt * 7);
+  if (S.pitch > 0.5 && e.state !== 'dead') pitchBone(ch.rig, 'hips', S.pitch);
+  if (D.floats) pinLegs(ch.rig); else if (S.pitch > 0.5 && e.state !== 'dead') ch.rig.pose();
+  // 비침: 유령의 흐림 · 또렷함을 장면의 그리기 옵션에 바로 적는다 (장면이 e.alpha 를 스스로 읽으면 그 값이 이긴다 — 같은 값이다)
+  if (ch.opt && D.fade != null) ch.opt.alpha = e.state === 'dead' ? 1 : clamp(e.alpha ?? 1, 0.05, 1);
 }
 
 /**
- * 놓기: ch.M 을 채워 돌려준다. 박쥐처럼 숙여 나는 것(KINDS.pitch 도)은 앞으로 숙인 행렬을 만든다. 그 밖에는 ch.place 와 같다.
- *   장면: const M = placeActor(ch, e); ch.draw(M, { alpha: e.alpha, … })
+ * 놓기: ch.place(e.x, e.y, e.z) 와 같다 (옛 이름을 남겨 둔다). 박쥐의 숙임은 driveActor 가 골반 뼈에 넣으므로 장면은 그냥 ch.place 를 써도 된다.
  */
-export function placeActor(ch, e, s = ch.scale) {
-  const D = e.def ?? KINDS[e.kind], p = ((D?.pitch ?? 0) * Math.PI) / 180;
-  if (!p) return ch.place(e.x, e.y, e.z);
-  const M = ch.M, dx = ch.dx, dz = ch.dz, c = Math.cos(p), sn = Math.sin(p);
-  M[0] = -dz * s; M[1] = 0; M[2] = dx * s; M[3] = 0;
-  M[4] = sn * dx * s; M[5] = c * s; M[6] = sn * dz * s; M[7] = 0;
-  M[8] = c * dx * s; M[9] = -sn * s; M[10] = c * dz * s; M[11] = 0;
-  M[12] = e.x; M[13] = e.y; M[14] = e.z; M[15] = 1;
-  return M;
-}
+export function placeActor(ch, e) { return ch.place(e.x, e.y, e.z); }
