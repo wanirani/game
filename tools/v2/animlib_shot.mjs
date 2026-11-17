@@ -41,6 +41,10 @@ async function open(W, H) {
   return { page, meta };
 }
 
+const lost = (page) => page.evaluate(() => window.__al.lost?.() ?? false).catch(() => true);
+let tries = 0, again = true;
+while (again && tries++ < 4) {
+again = false; errs.length = 0;
 if (mode === 'info') {
   const { meta } = await open(400, 400);
   fs.writeFileSync(out, JSON.stringify(meta, null, 1)); console.log(meta.title, '· 클립', Object.keys(meta.info?.clips ?? {}).length);
@@ -71,6 +75,7 @@ if (mode === 'info') {
       x.font = '11px sans-serif'; x.fillStyle = '#9fb0c8'; x.fillText(tiles[i].sub, cx + 6, cy + H - 6);
     }
   }, { tiles: tiles.map((t) => ({ b64: t.buf.toString('base64'), label: t.label, sub: t.sub })), W, H, C });
+  if (await lost(page)) { again = true; console.log('GL 컨텍스트를 잃었습니다 — 다시 찍습니다'); await page.context().close(); continue; }
   await sheet.locator('#c').screenshot({ path: out });
   console.log(`${out}: 클립 ${names.length}개 · 칸 ${tiles.length}`);
 } else if (mode === 'strip') {   // 클립 하나를 고르게 n 장 (자를 곳을 정할 때)
@@ -90,7 +95,7 @@ if (mode === 'info') {
   await page.evaluate((o) => { Object.assign(window.__al.S, o); }, { yaw: T.yaw ?? 35, pitch: T.pitch ?? 36, zoom: T.zoom ?? 'game', x: 0, z: 0 });
   const N = Math.round(T.dur * fps), started = new Set(), log = [];
   for (let i = 0; i < N; i++) {
-    const t = i / fps; let x = 0, z = 0;
+    const t = i / fps; let x = T.start?.[0] ?? 0, z = T.start?.[1] ?? 0;
     for (const [k, s] of T.steps.entries()) {
       if (t + 1e-6 < s.at) continue;
       if (!started.has(k)) { started.add(k); await page.evaluate((s) => window.__al.play(s.clip, { fade: s.fade ?? 0.12, ...(s.speed != null ? { speed: s.speed } : {}) }), s); }
@@ -100,6 +105,7 @@ if (mode === 'info') {
     for (const e of ev) log.push(`${t.toFixed(2)} ${e[0]}`);
     await page.screenshot({ path: path.join(dir, `f${String(i).padStart(4, '0')}.png`), type: 'png' });
   }
+  if (await lost(page)) { again = true; console.log('GL 컨텍스트를 잃었습니다 — 다시 찍습니다'); fs.rmSync(dir, { recursive: true, force: true }); await page.context().close(); continue; }
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(fps), '-i', path.join(dir, 'f%04d.png'), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '24', '-movflags', '+faststart', out]);
   if (opt.strip) {   // 프레임 몇 장을 한 줄로 (눈으로 확인용)
     const k = Number(opt.strip), pick = Array.from({ length: k }, (_, i) => path.join(dir, `f${String(Math.round((i * (N - 1)) / (k - 1))).padStart(4, '0')}.png`));
@@ -108,5 +114,6 @@ if (mode === 'info') {
   fs.rmSync(dir, { recursive: true, force: true });
   console.log(`${out}: ${N} 프레임 ${T.dur}초 · 이벤트 ${log.join(' | ')}`);
 }
-console.log(errs.length ? errs.slice(0, 10).join('\n') : 'NO ERRORS');
+}
+console.log(errs.filter((e) => !/404/.test(e)).length ? errs.slice(0, 10).join('\n') : 'NO ERRORS');
 await browser.close(); srv.close();

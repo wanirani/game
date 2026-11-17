@@ -60,23 +60,18 @@ try {
         await page.waitForTimeout(4000);
       }
       const info = await page.evaluate(() => {
-        const g = window.__game, t = g.top;
-        // 화면에 그림이 있는가: 모든 캔버스를 작은 캔버스에 모아 그려 색이 여러 가지인지 본다
-        const c = document.createElement('canvas'); c.width = 64; c.height = 48;
-        const x = c.getContext('2d');
-        for (const cv of document.querySelectorAll('canvas')) { try { x.drawImage(cv, 0, 0, 64, 48); } catch { /* */ } }
-        const d = x.getImageData(0, 0, 64, 48).data; const seen = new Set();
-        for (let i = 0; i < d.length; i += 4) seen.add((d[i] >> 4) << 8 | (d[i + 1] >> 4) << 4 | (d[i + 2] >> 4));
-        return { top: t?.constructor?.name, err: t?.err ? String(t.err.message || t.err) : null, v2: window.__v2 ? { id: window.__v2.id, section: window.__v2.section, hero: !!window.__v2.hero, enemies: (window.__v2.enemies || []).length } : null, colors: seen.size, canvases: document.querySelectorAll('canvas').length };
+        const t = window.__game.top;
+        return { top: t?.constructor?.name, err: t?.err ? String(t.err.message || t.err) : null, v2: window.__v2 ? { id: window.__v2.id, section: window.__v2.section, hero: !!window.__v2.hero, enemies: (window.__v2.enemies || []).length } : null , canvases: document.querySelectorAll('canvas').length };
       });
       ok(info.top && info.top !== 'V2Pending' && !info.err, `장면이 열림 (${info.top}${info.err ? ` · 오류: ${info.err}` : ''})`);
       if (!isBench) ok(!!info.v2?.hero, `window.__v2 (id ${info.v2?.id}, 구간 ${info.v2?.section}, 적 ${info.v2?.enemies})`);
-      ok(info.colors >= 24, `화면에 그림이 있음 (색 ${info.colors}가지, 캔버스 ${info.canvases}개)`);
+      // 화면에 그림이 있는가: 빈 화면의 PNG 는 아주 작다 (WebGL 캔버스는 다른 캔버스로 옮겨 그리면 비어 보일 수 있어 화면 캡처로 본다)
+      const shot = await page.screenshot(SHOTS ? { path: path.join(SHOTS, `${id}.png`) } : {});
+      ok(shot.length >= 150_000, `화면에 그림이 있음 (캡처 ${(shot.length / 1024).toFixed(0)} KB, 캔버스 ${info.canvases}개)`);
       ok(reqs.some((p) => p.endsWith('/kael.glb')), '입체 카엘 모델을 받음 (assets/v2/char3d/kael.glb)');
       if (id === 'v2c') ok(reqs.some((p) => p.startsWith('/assets/v2/env/')), `꾸민 배경 질감을 받음 (${reqs.filter((p) => p.startsWith('/assets/v2/env/')).length}개)`);
       ok(bad.length === 0, `400 이상 응답 없음${bad.length ? ` — ${bad.slice(0, 6).join(', ')}` : ''}`);
       ok(errs.length === 0, `페이지 오류 없음${errs.length ? ` — ${errs.slice(0, 4).join(' | ')}` : ''}`);
-      if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `${id}.png`) });
     } catch (e) {
       ok(false, `${id}: ${String(e.message).split('\n')[0]}${errs.length ? ` — ${errs.slice(0, 3).join(' | ')}` : ''}${bad.length ? ` — ${bad.slice(0, 4).join(', ')}` : ''}`);
     }

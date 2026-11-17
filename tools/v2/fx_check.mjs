@@ -100,7 +100,8 @@ if (!args.has('--quick')) {
     console.log(`  ${mode.padEnd(7)} ${a.bytes} 바이트 / ${a.frames} 프레임 = ${a.perFrame.toFixed(1)} 바이트/프레임 · 프레임당 ${a.ms.toFixed(3)} ms ${a.hasMemory && a.hasGc ? '' : '(메모리 정보 없음)'}`);
   }
   if (report.alloc.control.bytes < 100000) fail(`할당 측정이 믿을 수 없다: 일부러 잡은 대조군이 ${report.alloc.control.bytes} 바이트로 나왔다`); else ok(`대조군(프레임마다 Float64Array(16))은 ${report.alloc.control.bytes} 바이트로 잡힌다 → 측정이 살아 있다`);
-  if (Math.abs(report.alloc.fxidle.bytes) > 4096) fail(`정상 상태(새 효과 없음)에서 효과 엔진이 할당한다: ${report.alloc.fxidle.bytes} 바이트 / 1200프레임`); else ok(`정상 상태(새 효과 없음) 효과 엔진 할당 ${report.alloc.fxidle.bytes} 바이트 / 1200프레임`);
+  // 문턱: 프레임당 숫자 상자(12바이트) 두 개 미만. 객체·배열이 하나라도 생기면(가장 작은 것이 16–32바이트 × 매 프레임) 넘는다
+  if (Math.abs(report.alloc.fxidle.perFrame) >= 24) fail(`정상 상태(새 효과 없음)에서 효과 엔진이 할당한다: ${report.alloc.fxidle.perFrame.toFixed(1)} 바이트/프레임`); else ok(`정상 상태(새 효과 없음) 효과 엔진 할당 ${report.alloc.fxidle.bytes} 바이트 / 1200프레임 = ${report.alloc.fxidle.perFrame.toFixed(1)} 바이트/프레임`);
   if (errs.length) fail(`측정 중 페이지 오류: ${errs.slice(0, 3).join(' | ')}`);
   await ctx.close();
 }

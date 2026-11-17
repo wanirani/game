@@ -42,8 +42,13 @@ function events(F, c, J) {
     const h = new Float32Array(n); let mn = 1e9, mx = -1e9;
     for (let k = 0; k < n; k++) { h[k] = Math.min(J['foot' + s][k * 3 + 1] - 0.07, J['toe' + s][k * 3 + 1]); mn = Math.min(mn, h[k]); mx = Math.max(mx, h[k]); }
     const R = mx - mn; if (R < 0.035) continue;
-    let down = c.loop ? h[n - 1] < mn + R * 0.4 : h[0] < mn + R * 0.4;
-    for (let k = 1; k < n; k++) { if (!down && h[k] < mn + R * 0.3 && h[k] < mn + 0.06) { down = true; ev.push([r2(k * dt), 'foot' + s]); } else if (down && h[k] > mn + R * 0.55) down = false; }
+    if (c.loop) {   // 순환: 두 바퀴 돌려 둘째 바퀴에서만 적는다 (이음매에 걸친 발 디딤도 잡힌다)
+      let down = false; const m = n - 1;
+      for (let i = 1; i < 2 * m + 1; i++) { const k = i % m; if (!down && h[k] < mn + R * 0.3 && h[k] < mn + 0.06) { down = true; if (i > m) ev.push([r2(k * dt), 'foot' + s]); } else if (down && h[k] > mn + R * 0.55) down = false; }
+    } else {
+      let down = h[0] < mn + R * 0.4;
+      for (let k = 1; k < n; k++) { if (!down && h[k] < mn + R * 0.3 && h[k] < mn + 0.06) { down = true; ev.push([r2(k * dt), 'foot' + s]); } else if (down && h[k] > mn + R * 0.55) down = false; }
+    }
   }
   for (const e of c.ev ?? []) ev.push([e[0], e[1]]);
   ev.sort((a, b) => a[0] - b[0]);
