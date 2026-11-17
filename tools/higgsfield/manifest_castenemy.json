@@ -276,7 +276,9 @@
    },
    "ref": "oriented GLB media 24f086e5",
    "job_id": "e4fe5702-30a1-42f7-b98c-91a3e619b7f9",
-   "credits": 8
+   "credits": 8,
+   "kept": true,
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143540_e4fe5702-30a1-42f7-b98c-91a3e619b7f9.glb"
   },
   {
    "id": "skelmage",
@@ -290,7 +292,9 @@
    },
    "ref": "oriented GLB media 07542d9c",
    "job_id": "e54640b6-1f56-455b-bad5-27699ea1df3a",
-   "credits": 8
+   "credits": 8,
+   "kept": true,
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143541_e54640b6-1f56-455b-bad5-27699ea1df3a.glb"
   },
   {
    "id": "plague",
@@ -304,7 +308,9 @@
    },
    "ref": "oriented GLB media 4a2ffdee",
    "job_id": "bd8dbc1d-1418-4d33-ba7b-3c4be0a95c46",
-   "credits": 8
+   "credits": 8,
+   "kept": true,
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143542_bd8dbc1d-1418-4d33-ba7b-3c4be0a95c46.glb"
   },
   {
    "id": "ghost",
@@ -318,7 +324,9 @@
    },
    "ref": "oriented GLB media b7bf93e9",
    "job_id": "1e5dae6e-444a-4c57-8d82-b8e1e0a4146b",
-   "credits": 8
+   "credits": 8,
+   "kept": true,
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143544_1e5dae6e-444a-4c57-8d82-b8e1e0a4146b.glb"
   },
   {
    "id": "gravearmor",
@@ -332,8 +340,24 @@
    },
    "ref": "oriented GLB media fd44743a",
    "job_id": "4b4f4997-8060-4e2a-9b65-c6a30f85267e",
+   "credits": 8,
+   "kept": true,
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143545_4b4f4997-8060-4e2a-9b65-c6a30f85267e.glb"
+  },
+  {
+   "id": "banshee",
+   "file": "raw/banshee_rig_386.glb",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 2.7,
+    "enable_animation": true,
+    "animation_action_id": 386,
+    "animation": "Zombie_Scream"
+   },
+   "ref": "banshee_hd_oriented.glb media bffa83c3",
+   "job_id": "ca0d324f-ee08-4f54-95c8-cfbfca14a4c0",
    "credits": 8
   }
  ],
- "total_credits": 129
+ "total_credits": 137
 }

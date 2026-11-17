@@ -48,7 +48,7 @@ export default {
         W2(105, 180, { frame: 'timber' }), W2(240, 180, { lit: 0.5, frame: 'timber' }), W2(370, 180, { frame: 'timber' }), W2(495, 180, { lit: 0.6, frame: 'timber' }),
         W2(45, 200, { side: 'R', lit: 0.5, frame: 'timber', w: 36 })],
       doors: [{ u: 230, w: 58, h: 104, arch: 'round', rise: 7 }],
-      hang: [{ type: 'sconce', u: 175, y: 116 }, { type: 'sign', side: 'R', u: 45, y: 118, perp: true }],
+      hang: [{ type: 'sconce', u: 175, y: 116 }, { type: 'sign', side: 'R', u: 45, y: 250, perp: true }],   // 골목 쪽으로 내민 간판은 높이 단다 (낮으면 골목 카메라와 왼쪽 벽을 따라 걷는 영웅 사이에 걸린다 — 검수)
     } },
     { t: 'roof', x: -160, z: 260, w: 600, d: 90, y: 290, h: 62, kit: { gable: 'ashlar', chimneys: [{ u: 215, t: 0.72 }], dormers: [{ u: 330, lit: 0.6 }, { u: 480 }] } },
     { t: 'roof', x: 440, z: 260, w: 470, d: 90, y: 350, h: 70, kit: { chimneys: [{ u: 390, t: 0.75, h: 40 }], dormers: [{ u: 150, lit: 0.5 }] } },
@@ -71,7 +71,7 @@ export default {
     { t: 'prop', mesh: 'well', x: 1255, z: 44, h: 132, solid: 46, solidZ: 30 },
     { t: 'prop', mesh: 'crate', x: 2060, z: 236, h: 62, solid: 30, solidZ: 18 },
     { t: 'prop', mesh: 'stall', x: 700, z: 237, h: 130, w: 140, solid: 72, solidZ: 23 },             // 새로 놓은 가판대 (벽에 붙여 길을 막지 않는다)
-    { t: 'deco', mesh: 'barrel', x: 2084, z: 250, h: 60 }, { t: 'deco', mesh: 'crate', x: 2052, z: 232, y: 62, h: 40 },
+    { t: 'deco', mesh: 'barrel', x: 2084, z: 250, h: 60 },   // (검수: 위에 얹었던 상자는 뺐다 — 골목 카메라와 영웅 사이에 서서 영웅을 통째로 가렸다)
     // ── 모퉁이 + 종 구간: 골목 ──
     { t: 'wall', x: 2400, z: -60, w: 90, d: 1060, h: 450, mat: 'plaster', kit: {   // 동쪽 긴 집 (거리 끝 + 골목 오른쪽) — 보이는 면은 L (u = 1000 − z)
       style: 'timber', faces: 'L', storey: 216, jetty: 10, jettySides: 'L', mid: 330, cornice: true, tint: [1.0, 0.95, 0.9],
@@ -87,7 +87,7 @@ export default {
       windows: [{ side: 'R', u: 62, y: 92, w: 40, h: 84, arch: 'point', rows: 2 }, { side: 'R', u: 200, y: 92, w: 40, h: 84, arch: 'point', lit: 0.7, rows: 2 },
         ...[130, 290, 450, 585].map((u, i) => ({ side: 'R', u, y: 258, w: 38, h: 70, arch: 'round', lit: [0.5, 0.6, 0, 0.4][i] }))],
       buttress: [{ side: 'R', u: 8, h: 250, d: 16, w: 30 }, { side: 'R', u: 270, h: 250, d: 16, w: 30 }, { side: 'R', u: 540, h: 300, d: 16, w: 30 }],
-      hang: [{ type: 'sign', side: 'R', u: 120, y: 136, perp: true }, { type: 'banner', side: 'R', u: 400, y: 190, len: 110, w: 38, c: [0.2, 0.26, 0.5] }],
+      hang: [{ type: 'sign', side: 'R', u: 120, y: 250, perp: true }, { type: 'banner', side: 'R', u: 400, y: 190, len: 110, w: 38, c: [0.2, 0.26, 0.5] }],
     } },
     { t: 'floor', x: 1980, z: 260, w: 420, d: 440, mat: 'cobble', kit: { mat: 'slabs', strips: [{ x0: 0, x1: 54, mat: 'flags' }, { x0: 366, x1: 420, mat: 'flags' }] } },   // 골목 바닥은 v1 의 손그림 판석
     { t: 'stairs', x: 1980, z: 700, w: 420, d: 200, h: 96, dir: 'z+', steps: 8, mat: 'stone', kit: { cheeks: 'LR' } },

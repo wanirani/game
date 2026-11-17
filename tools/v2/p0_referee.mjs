@@ -376,7 +376,7 @@ if (SHOTS) {
       const t = new Touch(s.cdp, s.page); await ensureTouchMode(t, s.page); await s.page.waitForTimeout(300);
       await freeze(s.page);
       await s.page.evaluate(() => window.__qaStep(20, true));
-      for (const [name, js, n] of SPOTS[id]) {
+      for (const [name, js, n] of (SPOTS[id] ?? SPOTS.b)) {
         await s.page.evaluate(([id, js, n]) => {
           const g = window.__game, v = window.__v2, sc = v.scene, inp = g.input;
           const step = (k) => window.__qaStep(k, false);
