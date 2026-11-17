@@ -13,11 +13,11 @@ export const PACE_KO = { every: '매 화면', cap60: '초당 60' };
  * 시험 목록. main = 본편이 실제로 쓸 캐릭터 방식(입체가 되면 입체, 아니면 납작 그림) — 이 줄들만 「가장 좋은 설정」 후보(pick)다.
  * 나머지는 원인을 가르는 진단용: 납작 그림(= 지금 시범판 B 그대로) · 캐릭터 없음(= 세계만 그릴 때의 바닥값).
  */
-export function buildMatrix(has3d) {
+export function buildMatrix(has3d, audioOn = false) {
   const main = has3d ? '3d' : 'card', T = [];
-  const add = (present, resK, chars, pace, pick, why) => {
-    if (T.some((t) => t.present === present && t.resK === resK && t.chars === chars && t.pace === pace)) return;
-    T.push({ id: T.length + 1, present, resK, chars, pace, pick, why });
+  const add = (present, resK, chars, pace, pick, why, mute = false) => {
+    if (T.some((t) => t.present === present && t.resK === resK && t.chars === chars && t.pace === pace && t.mute === mute)) return;
+    T.push({ id: T.length + 1, present, resK, chars, pace, pick, why, mute });
   };
   add('blit', 1, 'card', 'cap60', main === 'card', '지금 시범판 B 그대로');
   add('layer', 1, 'card', 'cap60', main === 'card', '겹치는 법만 바꿈');
@@ -31,6 +31,7 @@ export function buildMatrix(has3d) {
   add('layer', 1, 'none', 'every', false, '세계만');
   add('blit', 1, 'none', 'every', false, '세계만');
   add('layer', 0.5, 'none', 'every', false, '세계만 · 절반 해상도');
+  if (audioOn) add('layer', 1, main, 'every', false, '소리 끔', true);   // 소리가 나고 있을 때만: 같은 설정을 소리를 멈추고 한 번 더
   return T;
 }
 
@@ -83,7 +84,7 @@ export const settingKo = (r) => `${PRESENT_KO[r.present]} · 해상도 ${Math.ro
 /** 한 줄 판정 (소유자가 읽는 말) */
 export function verdict(best) {
   if (!best) return '잴 수 있는 시험이 없었습니다';
-  const grade = best.uneven < 0.02 ? '부드럽습니다' : best.uneven < 0.08 ? '가끔 끊깁니다' : '어느 방식으로도 끊깁니다';
+  const grade = best.fps < 40 ? '어느 방식으로도 느립니다' : best.uneven < 0.02 ? '부드럽습니다' : best.uneven < 0.08 ? '가끔 끊깁니다' : '어느 방식으로도 끊깁니다';
   return `이 기기에서는 「${settingKo(best)}」 방식이 가장 부드럽습니다 (초당 ${best.fps}장, 끊김 ${(best.uneven * 100).toFixed(1)}% — ${grade})`;
 }
 /** localStorage 에 넣는 값 */
@@ -99,11 +100,12 @@ export function compactText(rep) {
   L.push(`GL ${e.gl.api} | ${e.gl.renderer} | maxTex ${e.gl.maxTex} | lost ${e.ctxLost} restored ${e.ctxRestored}`);
   L.push(`SCR dpr ${e.dpr} | win ${e.win[0]}x${e.win[1]} | css ${e.css[0]}x${e.css[1]} | canvas ${e.canvas[0]}x${e.canvas[1]} | view ${e.view[0]}x${e.view[1]} | tier ${e.tier}${e.auto ? '(auto)' : ''} | fpsCap ${e.fpsCap} | saver ${e.saver}`);
   L.push(`DEV mem ${e.mem ?? '?'}GB | cores ${e.cores ?? '?'} | touch ${e.touch} | refresh ${e.refresh.ms.toFixed(2)}ms (${e.refresh.hz}Hz${e.refresh.exact ? '' : '?'}) | calib p50 ${e.calib.p50} p95 ${e.calib.p95} max ${e.calib.max}`);
-  L.push(`CHR 3d ${e.char3d} | warm world ${e.warm.world}ms card ${e.warm.card}ms 3d ${e.warm.c3d}ms | load ${e.loadMs}ms | tris ${e.tris} draws ${e.draws}`);
-  L.push('# present res chars pace | raf p50 p95 max slow% | draw p50 p95 max uneven% fps | js p50 p95 max | up blit | heapMB/s gc gcStall long | px');
+  L.push(`CHR 3d ${e.char3d} | first-use world ${e.warm.world}ms card ${e.warm.card}ms 3d ${e.warm.c3d}ms | warmed ${e.warm.again}ms | after-resize ${e.warm.resize}ms | load ${e.loadMs}ms`);
+  L.push(`AUD ${e.audio} | touchEv ${e.touchEv} | sec ${e.sec}/${e.skip}`);
+  L.push('# present res chars pace | raf p50 p95 max slow% | draw p50 p95 max uneven% fps | js p50 p95 max | up blit glsync | heapMB/s gc gcStall long | px tris dc');
   for (const r of rep.rows) {
     if (!r.valid) { L.push(`${r.id} ${r.present} ${r.resK} ${r.chars} ${r.pace} | INVALID ${r.note ?? ''}`); continue; }
-    L.push(`${r.id}${r.best ? '*' : ''} ${r.present} ${r.resK} ${r.chars} ${r.pace} | ${r.p50} ${r.p95} ${r.max} ${(r.slow * 100).toFixed(1)} | ${r.c50} ${r.c95} ${r.cmax} ${(r.uneven * 100).toFixed(1)} ${r.fps} | ${r.js50} ${r.js95} ${r.jsMax} | ${r.upMs} ${r.blitMs} | ${r.heapRate} ${r.gc} ${r.gcStall} ${r.longTasks} | ${r.px[0]}x${r.px[1]}`);
+    L.push(`${r.id}${r.best ? '*' : ''} ${r.present} ${r.resK} ${r.chars} ${r.pace}${r.mute ? '+mute' : ''} | ${r.p50} ${r.p95} ${r.max} ${(r.slow * 100).toFixed(1)} | ${r.c50} ${r.c95} ${r.cmax} ${(r.uneven * 100).toFixed(1)} ${r.fps} | ${r.js50} ${r.js95} ${r.jsMax} | ${r.upMs} ${r.blitMs} ${r.glSync} | ${r.heapRate} ${r.gc} ${r.gcStall} ${r.longTasks} | ${r.px[0]}x${r.px[1]} ${r.tris} ${r.dc}`);
   }
   L.push(rep.best ? `BEST ${rep.best.present} ${rep.best.resK} ${rep.best.pace} (${rep.best.chars}) fps ${rep.best.fps} uneven ${(rep.best.uneven * 100).toFixed(1)}%` : 'BEST none');
   if (rep.note) L.push('NOTE ' + rep.note);

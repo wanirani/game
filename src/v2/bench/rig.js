@@ -30,7 +30,7 @@ export class Rig {
     this.list = []; this.has3d = false; this.err3d = '';
     this.layer = { on: false, hud: null, hctx: null, key: '' };
     this.cost = { upMs: 0, blitMs: 0, n: 0 };
-    this.warm = { world: 0, card: 0, c3d: 0 };
+    this.warm = { world: 0, card: 0, c3d: 0, again: 0, resize: 0 };
     this.loadMs = 0; this._animT = -1;
   }
   async load() {
@@ -104,11 +104,16 @@ export class Rig {
   }
   /** 셰이더·텍스처 첫 사용 비용을 미리 치른다 (한 번씩 그리고 gl.finish). 걸린 시간 = 미리 데우지 않으면 놀이 중에 멈출 시간 */
   warmUp() {
-    const glr = this.glr, keep = [this.present, this.resK, this.chars];
-    const run = (chars) => { this.setMode('blit', 1, chars); const a = now(); this.frame(null, 0.3, null); glr.finish(); this.frame(null, 0.33, null); glr.finish(); return Math.round((now() - a) * 10) / 10; };
+    const keep = [this.present, this.resK, this.chars], r1 = (v) => Math.round(v * 10) / 10;
+    const run = (chars, resK = 1) => { this.setMode('blit', resK, chars); const a = now(); this.frame(null, 0.3, null); this.sync(); return r1(now() - a); };
     this.warm.world = run('none'); this.warm.card = run('card'); this.warm.c3d = this.has3d ? run('3d') : 0;
+    // 이미 데운 뒤의 한 프레임(기준) 과, 해상도를 바꾼 첫 프레임 — 놀이 중에 해상도를 바꾸면(조절기) 이만큼 멈춘다
+    const main = this.has3d ? '3d' : 'card';
+    this.warm.again = run(main); this.warm.resize = run(main, 0.86); run(main, 1);
     this.setMode(...keep);
   }
+  /** 쌓인 GL 명령을 지금 다 실행시킨다 (1화소 읽기). 크롬의 gl.finish 는 기다리지 않으므로 이것으로 잰다 */
+  sync() { const gl = this.glr.gl; gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this._px ?? (this._px = new Uint8Array(4))); }
   /** 겹치는 법 · 해상도 배율 · 캐릭터 경로 */
   setMode(present, resK, chars) {
     this.present = present; this.resK = resK; this.chars = chars === '3d' && !this.has3d ? 'none' : chars;

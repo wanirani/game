@@ -15,6 +15,7 @@ import { Rig } from './rig.js';
 import { buildMatrix, summarize, snapRefresh, dist, pickBest, verdict, settingKo, storeValue, compactText, STORE_KEY, PRESENT_KO, CHARS_KO, PACE_KO } from './stats.js';
 
 const VER = 1;
+const SYNC_N = 5;   // 시험마다 끝에 GL 을 기다려 가며 그려 보는 프레임 수
 const now = () => performance.now();
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const GOLD = '#e8c872', BONE = '#efe4cf', DIM = '#a89a88';
@@ -33,6 +34,8 @@ export default class V2Bench extends Scene {
     this.rig.load().then(() => { if (this.rig?.ready) this._begin(); }).catch((e) => { this.error = String(e?.message ?? e); console.warn('[v2bench]', this.error); this._finish(); });
     this._probe = (ts) => { this._raf = requestAnimationFrame(this._probe); this._onFrame(ts); };
     this._raf = requestAnimationFrame(this._probe);
+    this.touchEv = 0; this._onTouch = () => { if (this.phase === 'run') this.touchEv++; };
+    globalThis.addEventListener?.('pointerdown', this._onTouch, { passive: true }); globalThis.addEventListener?.('pointermove', this._onTouch, { passive: true });
     try { this._po = new PerformanceObserver((l) => { this.longNow += l.getEntries().length; }); this._po.observe({ entryTypes: ['longtask'] }); } catch { this._po = null; }
     const sc = this;
     globalThis.__v2bench = { get phase() { return sc.phase; }, get report() { return sc.report; }, get text() { return sc.report ? compactText(sc.report) : ''; }, get progress() { return [sc.ti + 1, sc.tests.length]; }, get error() { return sc.error; } };
@@ -40,6 +43,8 @@ export default class V2Bench extends Scene {
   exit() {
     cancelAnimationFrame(this._raf); this._raf = 0;
     try { this._po?.disconnect(); } catch { /* 무시 */ }
+    globalThis.removeEventListener?.('pointerdown', this._onTouch); globalThis.removeEventListener?.('pointermove', this._onTouch);
+    this._mute(false);
     this._closeBox();
     if (this.rig) { this.rig.destroy(); this.rig = null; }
     if (globalThis.__v2bench) delete globalThis.__v2bench;
@@ -50,7 +55,10 @@ export default class V2Bench extends Scene {
   _begin() {
     const rig = this.rig;
     try { rig.warmUp(); } catch (e) { console.warn('[v2bench] 데우기 실패', e); }
-    this.tests = buildMatrix(rig.has3d).map((t) => ({ ...t, raw: null, valid: false, note: '' }));
+    const au = this.game.audio;
+    this.audioOn = !!au?.ctx && au.ctx.state === 'running';
+    this.audioInfo = !au?.ctx ? 'none' : `${au.ctx.state} music ${au.current ?? '-'} (${au.musicSource ?? '?'})`;
+    this.tests = buildMatrix(rig.has3d, this.audioOn).map((t) => ({ ...t, raw: null, valid: false, note: '' }));
     // 주사율 재기: 가장 가벼운 설정(겹쳐 얹기 · 절반 해상도 · 캐릭터 없음 · 매 화면)으로 1.2초 — 가만히 있는 화면은 기기가 주사율을 낮출 수 있어 움직이는 그림으로 잰다
     this.calib = this._newRaw(1200); this.phase = 'calib'; this.ti = -1; this.report = null;
     rig.setMode('layer', 0.5, 'none');
@@ -64,8 +72,15 @@ export default class V2Bench extends Scene {
     const T = this.tests[i], rig = this.rig;
     this.ti = i; T.raw = this._newRaw(this.DUR); T.valid = false; T.note = '';
     rig.setMode(T.present, T.resK, T.chars);
-    this.cur = { present: T.present, resK: T.resK, chars: T.chars, pace: T.pace, t0: 0, raw: T.raw, dur: this.DUR, skip: this.SKIP, lost: false, test: T };
+    this._mute(!!T.mute);
+    this.cur = { present: T.present, resK: T.resK, chars: T.chars, pace: T.pace, t0: 0, raw: T.raw, dur: this.DUR, skip: this.SKIP, lost: false, test: T, sync: null };
     this.simT = 0; this.steps = 0; this.phase = 'run';
+  }
+  /** 소리 끔 시험: 오디오 컨텍스트를 잠깐 멈췄다가 되돌린다 (게임이 화면이 가려질 때 쓰는 것과 같은 길) */
+  _mute(on) {
+    const au = this.game.audio; if (!au || on === !!this._muted) return;
+    try { if (on) au.suspend?.(); else au.resume?.(); } catch { /* 무시 */ }
+    this._muted = on;
   }
   /** 재는 고리: 화면이 한 번 갱신될 때마다 (게임 루프의 rAF 콜백 다음에 불린다) */
   _onFrame(ts) {
@@ -86,24 +101,30 @@ export default class V2Bench extends Scene {
     } else if (el < C.skip) { this.longNow = 0; this._heap = performance.memory?.usedJSHeapSize ?? 0; }
     this._js = 0;
     if (el >= C.dur) {
-      R.ms = C.dur - C.skip; R.long = this.longNow; R.up = rig.cost.n ? rig.cost.upMs / rig.cost.n : 0; R.blit = rig.cost.n ? rig.cost.blitMs / rig.cost.n : 0; R.n = rig.cost.n; R.px = rig.pixels;
-      if (this.phase === 'calib') { this.calibMs = dist(R.iv, R.ivN).p50 || 16.7; this.envTris = rig.tris; this._startTest(0); }
-      else { C.test.valid = R.ivN >= 3; if (this.ti + 1 < this.tests.length) this._startTest(this.ti + 1); else this._finish(); }
+      if (!C.sync) {   // 잰 구간 끝: 몇 프레임만 GL 을 끝까지 기다려 가며 그려 본다 → GL 한 프레임의 실제 무게 (스크립트 + GPU)
+        R.ms = C.dur - C.skip; R.long = this.longNow; R.up = rig.cost.n ? rig.cost.upMs / rig.cost.n : 0; R.blit = rig.cost.n ? rig.cost.blitMs / rig.cost.n : 0; R.n = rig.cost.n; R.px = rig.pixels; R.tris = rig.tris; R.dc = rig.draws;
+        C.sync = [];
+      } else if (C.sync.length >= SYNC_N || el > C.dur + 2500) {
+        R.glSync = C.sync.length ? [...C.sync].sort((p, q) => p - q)[C.sync.length >> 1] : 0;
+        if (this.phase === 'calib') { this.calibMs = dist(R.iv, R.ivN).p50 || 16.7; this._startTest(0); }
+        else { C.test.valid = R.ivN >= 3; if (this.ti + 1 < this.tests.length) this._startTest(this.ti + 1); else this._finish(); }
+      }
     }
   }
   _finish() {
     const rig = this.rig, g = this.game;
     this.cur = null; this.phase = 'done';
+    this._mute(false);
     rig?.hideLayer();
     // 주사율 = 가장 빨랐던 중앙값 (어떤 시험도 화면보다 빨리 돌 수는 없다)
     let ms = this.calibMs ?? 16.667;
     for (const T of this.tests) if (T.valid) { const p = dist(T.raw.iv, T.raw.ivN).p50; if (p > 2 && p < ms) ms = p; }
     const refresh = snapRefresh(ms), r1 = (v) => Math.round(v * 10) / 10;
     const rows = this.tests.map((T) => {
-      const base = { id: T.id, present: T.present, resK: T.resK, chars: T.chars, pace: T.pace, pick: T.pick, why: T.why, valid: T.valid, note: T.note, best: false };
+      const base = { id: T.id, present: T.present, resK: T.resK, chars: T.chars, pace: T.pace, mute: !!T.mute, pick: T.pick, why: T.why, valid: T.valid, note: T.note, best: false };
       if (!T.valid) return base;
       const R = T.raw, sec = Math.max(0.001, R.ms / 1000);
-      return { ...base, ...summarize(R, refresh.ms), upMs: r1(R.up), blitMs: r1(R.blit), heapRate: r1(R.heapUp / 1048576 / sec), gc: R.gc, gcStall: R.gcStall, longTasks: R.long, px: R.px };
+      return { ...base, ...summarize(R, refresh.ms), upMs: r1(R.up), blitMs: r1(R.blit), heapRate: r1(R.heapUp / 1048576 / sec), gc: R.gc, gcStall: R.gcStall, longTasks: R.long, px: R.px, glSync: r1(R.glSync ?? 0), tris: R.tris ?? 0, dc: R.dc ?? 0 };
     });
     const best = pickBest(rows); if (best) best.best = true;
     const cv = g.canvas, rc = g.canvasRect ?? { w: 0, h: 0 }, info = rig?.glr ? rig.glr.info() : { api: 'none', renderer: this.error ?? '', maxTex: 0 };
@@ -113,7 +134,8 @@ export default class V2Bench extends Scene {
       dpr: Math.round((globalThis.devicePixelRatio || 1) * 1000) / 1000, win: [globalThis.innerWidth | 0, globalThis.innerHeight | 0], css: [rc.w | 0, rc.h | 0], canvas: [cv.width, cv.height], view: [g.viewW, g.viewH],
       tier: g.tier, auto: g.autoQualityOn(), fpsCap: g.settings?.fpsCap ?? 60, saver: g.saverFps(), mem: navigator.deviceMemory ?? null, cores: navigator.hardwareConcurrency ?? null, touch: navigator.maxTouchPoints ?? 0,
       refresh, calib: { p50: r1(cal.p50), p95: r1(cal.p95), max: r1(cal.max) }, char3d: rig?.has3d ? 'ok' : 'no(' + (rig?.err3d || '-') + ')',
-      warm: rig?.warm ?? { world: 0, card: 0, c3d: 0 }, loadMs: rig?.loadMs ?? 0, tris: this.envTris ?? 0, draws: rig?.draws ?? 0, gameScale: r1(g.scale),
+      warm: rig?.warm ?? { world: 0, card: 0, c3d: 0, again: 0, resize: 0 }, loadMs: rig?.loadMs ?? 0, gameScale: r1(g.scale),
+      audio: this.audioInfo ?? 'none', touchEv: this.touchEv, sec: this.DUR / 1000, skip: this.SKIP / 1000,
     };
     const notes = [];
     if (this.error) notes.push(this.error);
@@ -135,11 +157,12 @@ export default class V2Bench extends Scene {
     if (this.phase === 'done') { this._result(ctx, Wv, Hv); return; }
     const msg = this.phase === 'load' || !C || !rig?.ready ? '성능 진단을 준비하는 중…' : rig.glr.lost ? '화면을 되살리는 중…' : '';
     if (msg) { ctx.fillStyle = '#07030a'; ctx.fillRect(0, 0, Wv, Hv); text(ctx, msg, Wv / 2, Hv / 2, { size: 22, weight: 700, align: 'center', color: BONE }); g.dirty = true; return; }
-    const t0 = now(), every = C.pace === 'every', ts = g.last;
+    const t0 = now(), every = C.pace === 'every' || !!C.sync, ts = g.last;
     if (every) g.dirty = true;                               // 다음 rAF 에도 그린다 (틱이 없어도)
     const fresh = every || this.steps > 0 || !C.lastDraw;    // 새 그림인가 (초당 60 방식은 틱이 돈 프레임만)
     const t = !C.t0 ? 0 : every ? Math.max(0, (ts - C.t0) / 1000) : this.simT;
     rig.frame(ctx, t, (o, w, h) => this._progress(o, w, h));
+    if (C.sync && C.sync.length < SYNC_N) { rig.sync(); C.sync.push(now() - t0); }
     if (C.t0 && fresh) {
       const el = ts - C.t0, R = C.raw;
       if (C.lastDraw && el >= C.skip && el < C.dur && R.ciN < R.ci.length) R.ci[R.ciN++] = ts - C.lastDraw;
@@ -188,7 +211,7 @@ export default class V2Bench extends Scene {
       const yy = y + rowH - Math.max(4, (rowH - fs) / 2 + 1), col = r.best ? '#fff4d8' : r.pick ? BONE : DIM, wt = r.best ? 800 : 500;
       cell(0, r.best ? '추천' : String(r.id), yy, { color: r.best ? GOLD : col, weight: wt });
       cell(1, PRESENT_KO[r.present], yy, { color: col, weight: wt }); cell(2, Math.round(r.resK * 100) + '%', yy, { color: col, weight: wt });
-      cell(3, CHARS_KO[r.chars], yy, { color: col, weight: wt }); cell(4, PACE_KO[r.pace], yy, { color: col, weight: wt });
+      cell(3, CHARS_KO[r.chars], yy, { color: col, weight: wt }); cell(4, PACE_KO[r.pace] + (r.mute ? ' · 소리 끔' : ''), yy, { color: col, weight: wt });
       if (!r.valid) { cell(8, '재지 못함', yy, { color: '#ff9a90' }); y += rowH; continue; }
       const uc = r.uneven < 0.02 ? '#b8f0a8' : r.uneven < 0.08 ? '#ffe08a' : '#ffa090';
       cell(5, r.fps + '장', yy, { color: col, weight: wt }); cell(6, (r.uneven * 100).toFixed(1) + '%', yy, { color: uc, weight: 700 });

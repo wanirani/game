@@ -385,7 +385,7 @@ export default class V2ProtoB extends Scene {
     if (!h.move || h.dead || dt <= 0) return;
     const W = ch.weaponMatrix(ch.place(h.x, this.visY ?? h.y, h.z)); if (!W) return;
     const pt = (y) => [W[4] * y + W[12], W[5] * y + W[13], W[6] * y + W[14]];
-    T.push({ a: pt(38), b: pt(90), t: 0, mv: h.move });
+    T.push({ a: pt(34), b: pt(80), t: 0, mv: h.move });
   }
   /** 성능 시험용 (?c3dbench=N): 영웅 둘레에 스킨 캐릭터 N 명을 더 그린다 — 입체 적 12마리가 화면에 있을 때의 값을 재려고 */
   bench3d(ch, tint, y) {
