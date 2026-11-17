@@ -66,7 +66,7 @@ export function createHud(game, opts = {}) {
   };
   hud.dispose = hud.release;
 
-  const pad = opts.pad === false ? null : createPad(game, { ...opts, input, onPause: () => { if (opts.onPause) opts.onPause(); else hud.openPause(); } });
+  const pad = opts.pad === false ? null : createPad(game, { ...opts, input, isModal: () => pause.open || dialog.open, onPause: () => { if (opts.onPause) opts.onPause(); else hud.openPause(); } });
 
   // taps while a dialogue or the pause menu is open: taken here (the canvas under it gets nothing)
   function onDown(e) {

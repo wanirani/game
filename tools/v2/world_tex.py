@@ -96,7 +96,7 @@ def grade(a, mul=(1, 1, 1), sat=1.0, gamma=1.0, add=0):
 def tex_cobble(): return stones(170, 141, relax_it=0, wlo=0.7, whi=1.35)
 def tex_cobble2(): return stones(230, 151, relax_it=1, wlo=0.85, whi=1.15, gap0=1.0, gap1=4.5, dome_px=22, flat=0.35, palette=[(120, 122, 130), (132, 128, 124), (108, 110, 120), (140, 136, 132)])
 def tex_cobworn(): return strokes(stones(150, 161, relax_it=0, wlo=0.7, whi=1.3, mud=0.6, flat=0.5), 260, 162, [(176, 150, 92), (150, 128, 80)], 8, 22, 0.2, 0.7, 1, 170)
-def tex_rubble(): return stones(46, 171, relax_it=1, wlo=0.7, whi=1.4, gap0=5.0, gap1=13.0, dome_px=70, flat=0.5, earth=(150, 144, 132), mossk=0.3, palette=[(132, 128, 126), (122, 120, 124), (138, 132, 124), (112, 108, 110), (126, 120, 114)])
+def tex_rubble(): return stones(120, 171, relax_it=1, wlo=0.6, whi=1.5, gap0=2.2, gap1=6.5, dome_px=40, flat=0.25, earth=(124, 118, 106), mossk=0.35, palette=[(128, 126, 126), (118, 118, 124), (136, 130, 122), (106, 104, 108), (124, 116, 108), (142, 138, 134)])
 
 
 def tex_thatch():

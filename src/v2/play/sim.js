@@ -436,7 +436,7 @@ export class Sim {
       if (!e.active) { this._place(e); this._anim(e, e.buried ? 'buried' : 'idle', dt); return; }
     }
     if (e.state === 'rise') {   // 땅에서 일어서는 중 (맞을 수는 있다)
-      e.stateT += dt; if (e.stun > 0) e.stun -= dt;
+      e.stateT += dt; if (e.stun > 0) e.stun -= dt; e.kx = e.kz = 0;   // 일어서는 동안은 밀리지 않는다
       if (e.stateT >= (D.riseT ?? 1.25)) { e.state = 'chase'; e.stateT = 0; e.cd = Math.max(e.cd, 0.35); }
       this._place(e); this._anim(e, 'rise', dt); return;
     }

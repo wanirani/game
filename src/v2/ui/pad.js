@@ -99,8 +99,11 @@ export function createPad(game, opts = {}) {
     baseCv.width = Math.ceil(bw * s); baseCv.height = Math.ceil(bw * s); baseCv.style.width = baseCv.style.height = bw + 'px';
     knobCv.width = Math.ceil(kw * s); knobCv.height = Math.ceil(kw * s); knobCv.style.width = knobCv.style.height = kw + 'px';
     drawStickBase(baseCv.getContext('2d'), bw, R, s); drawKnob(knobCv.getContext('2d'), kw, R * 0.46, s);
-    S.stick.ox = L.stick.cx; S.stick.oy = L.stick.cy; S.stick.x = 0; S.stick.y = 0; moveStick();
-    root.style.opacity = String(clamp(Number(st.touchOpacity ?? 0.95) + 0.05, 0.4, 1));
+    S.stick.ox = L.stick.cx; S.stick.oy = L.stick.cy; S.stick.x = 0; S.stick.y = 0;
+    // opacity goes on each small canvas, not on the full-screen root (a group opacity would cost a screen-sized surface)
+    S.op = clamp(Number(st.touchOpacity ?? 0.95) + 0.05, 0.4, 1);
+    for (const b of B) b.cv.style.opacity = String(S.op);
+    baseCv.style.opacity = ''; moveStick();
     S.layoutN++;
     paint();
   }
@@ -109,8 +112,8 @@ export function createPad(game, opts = {}) {
     const st = S.stick, L = S.L, bw = L.stick.r * 2 + 16, kw = L.stick.r * 0.92 + 12;
     baseCv.style.transform = `translate3d(${(st.ox - bw / 2).toFixed(1)}px,${(st.oy - bw / 2).toFixed(1)}px,0)`;
     knobCv.style.transform = `translate3d(${(st.ox + st.x - kw / 2).toFixed(1)}px,${(st.oy + st.y - kw / 2).toFixed(1)}px,0)`;
-    const o = st.live ? '1' : '0.66';
-    if (baseCv.style.opacity !== o) { baseCv.style.opacity = o; knobCv.style.opacity = st.live ? '1' : '0.8'; }
+    const o = String((st.live ? 1 : 0.66) * (S.op ?? 1));
+    if (baseCv.style.opacity !== o) { baseCv.style.opacity = o; knobCv.style.opacity = String((st.live ? 1 : 0.8) * (S.op ?? 1)); }
   }
 
   function drawStickBase(ctx, w, R, s) {
@@ -220,7 +223,7 @@ export function createPad(game, opts = {}) {
   }
   function releaseAll() { for (const b of B) press(b, false, -1, true); stickEnd(); paint(); }
 
-  const usable = (e) => S.shown && (e.pointerType !== 'mouse' || opts.mouse);
+  const usable = (e) => S.shown && !opts.isModal?.() && (e.pointerType !== 'mouse' || opts.mouse);
   const claim = (e) => { e.stopPropagation(); if (e.cancelable) e.preventDefault(); };
   function onDown(e) {
     if (!usable(e)) return;

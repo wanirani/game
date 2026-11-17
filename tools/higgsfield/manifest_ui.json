@@ -17,7 +17,9 @@
       "icon": "attack",
       "job_id": "8b2a5325-caa7-4d12-b1b2-74dbf7412056",
       "credits": 0.5,
-      "subject": "a hunter's barbed chain whip lashing in a wide sweeping crescent arc, braided handle at lower left, bold crescent ending in a sharp bladed tip, spark flecks"
+      "subject": "a hunter's barbed chain whip lashing in a wide sweeping crescent arc, braided handle at lower left, bold crescent ending in a sharp bladed tip, spark flecks",
+      "kept": false,
+      "note": "rejected: the chain whip is a thin line, weak silhouette at button size"
     },
     {
       "batch": 1,
@@ -25,7 +27,8 @@
       "icon": "jump",
       "job_id": "92e1e069-2aba-4bda-918b-761e0c513143",
       "credits": 0.5,
-      "subject": "a hunter's tall buckled boot with a small feathered wing at the heel, leaping upward, two bold upward chevron streaks beneath"
+      "subject": "a hunter's tall buckled boot with a small feathered wing at the heel, leaping upward, two bold upward chevron streaks beneath",
+      "kept": true
     },
     {
       "batch": 1,
@@ -33,7 +36,8 @@
       "icon": "roll",
       "job_id": "bb1266ce-8cb0-4f7d-993a-8e917ff38590",
       "credits": 0.5,
-      "subject": "a cloaked hunter curled into a tight dodge roll, cloak sweeping in one bold spiral swirl, two motion streaks"
+      "subject": "a cloaked hunter curled into a tight dodge roll, cloak sweeping in one bold spiral swirl, two motion streaks",
+      "kept": true
     },
     {
       "batch": 1,
@@ -41,7 +45,8 @@
       "icon": "guard",
       "job_id": "29db725e-1819-4b9d-8bf9-9799723b1b47",
       "credits": 0.5,
-      "subject": "a gothic kite shield from the front wrapped diagonally by a coiled chain whip, bell-shaped boss at centre"
+      "subject": "a gothic kite shield from the front wrapped diagonally by a coiled chain whip, bell-shaped boss at centre",
+      "kept": true
     },
     {
       "batch": 1,
@@ -49,7 +54,9 @@
       "icon": "skill_hook",
       "job_id": "67d138d0-556f-4f02-b351-53924a3523f3",
       "credits": 0.5,
-      "subject": "a chain whip thrown taut in a straight diagonal line, hooked tip clasped onto a floating ornate glowing ring"
+      "subject": "a chain whip thrown taut in a straight diagonal line, hooked tip clasped onto a floating ornate glowing ring",
+      "kept": false,
+      "note": "rejected: thin diagonal line, weak silhouette"
     },
     {
       "batch": 1,
@@ -57,7 +64,8 @@
       "icon": "skill_call",
       "job_id": "813e7af4-a7bd-486d-8883-9a26e5f7610e",
       "credits": 0.5,
-      "subject": "a curved hunting horn with ornate bands and a knotted cord, three small sound arcs"
+      "subject": "a curved hunting horn with ornate bands and a knotted cord, three small sound arcs",
+      "kept": true
     },
     {
       "batch": 1,
@@ -65,7 +73,8 @@
       "icon": "bell_short",
       "job_id": "48ad18ff-e553-44b5-9e82-b8668d933a8c",
       "credits": 0.5,
-      "subject": "a small ornate hand bell tilted as if just rung, two short sound-wave arcs each side"
+      "subject": "a small ornate hand bell tilted as if just rung, two short sound-wave arcs each side",
+      "kept": true
     },
     {
       "batch": 1,
@@ -73,7 +82,8 @@
       "icon": "bell_long",
       "job_id": "feffdbab-0e17-4a2b-9cd2-ea3301c07bd7",
       "credits": 0.5,
-      "subject": "a large cathedral bell hanging from a carved yoke, swinging, wide concentric ring ripples, crescent moon engraved on the bell"
+      "subject": "a large cathedral bell hanging from a carved yoke, swinging, wide concentric ring ripples, crescent moon engraved on the bell",
+      "kept": true
     },
     {
       "batch": 1,
@@ -81,7 +91,8 @@
       "icon": "next_target",
       "job_id": "983512f5-212c-4e62-82fa-f8f9ea1262c3",
       "credits": 0.5,
-      "subject": "a target reticle of four thorn-shaped brackets around a small diamond with one bold curved arrow sweeping around its right side"
+      "subject": "a target reticle of four thorn-shaped brackets around a small diamond with one bold curved arrow sweeping around its right side",
+      "kept": true
     },
     {
       "batch": 1,
@@ -89,7 +100,8 @@
       "icon": "pause",
       "job_id": "4be8a468-0ebf-49cd-ba6e-9508fbe9570e",
       "credits": 0.5,
-      "subject": "two thick vertical bars forming a pause symbol, each a short gothic pillar with capital and base"
+      "subject": "two thick vertical bars forming a pause symbol, each a short gothic pillar with capital and base",
+      "kept": true
     },
     {
       "batch": 1,
@@ -97,7 +109,8 @@
       "icon": "interact",
       "job_id": "af8d9235-3d69-4a28-a22e-4a2c438b4242",
       "credits": 0.5,
-      "subject": "an open gloved hand reaching upward, palm open, a four-point sparkle above the palm"
+      "subject": "an open gloved hand reaching upward, palm open, a four-point sparkle above the palm",
+      "kept": true
     },
     {
       "batch": 1,
@@ -105,7 +118,8 @@
       "icon": "candle_lit",
       "job_id": "16130bff-33d4-42b1-a6cd-eda6d515b0bd",
       "credits": 0.5,
-      "subject": "a short altar candle in a small ornate silver cup holder with a tall warm golden-orange flame (the only warm colour)"
+      "subject": "a short altar candle in a small ornate silver cup holder with a tall warm golden-orange flame (the only warm colour)",
+      "kept": true
     },
     {
       "batch": 2,
@@ -113,7 +127,9 @@
       "icon": "candle_unlit",
       "job_id": "e20cea84-2620-464b-934a-fb6817067ddc",
       "credits": 0.5,
-      "subject": "the same altar candle extinguished: burnt wick, thin wisp of smoke, dull grey ivory wax"
+      "subject": "the same altar candle extinguished: burnt wick, thin wisp of smoke, dull grey ivory wax",
+      "kept": false,
+      "note": "not used: the unlit candle is derived from candle_lit so both stand in the same holder"
     },
     {
       "batch": 2,
@@ -121,7 +137,8 @@
       "icon": "res_cell",
       "job_id": "245dee5a-0dfc-49da-9764-3e52e5fb071f",
       "credits": 0.5,
-      "subject": "a brilliant-cut crystal shard shaped like a tall narrow bell glowing pale cyan-white in a thin silver claw mount"
+      "subject": "a brilliant-cut crystal shard shaped like a tall narrow bell glowing pale cyan-white in a thin silver claw mount",
+      "kept": true
     },
     {
       "batch": 2,
@@ -129,7 +146,8 @@
       "icon": "moon_full",
       "job_id": "d52e7bad-9344-4c37-8097-aca0fd974b22",
       "credits": 0.5,
-      "subject": "a full moon disc straight on, engraved craters and seas like a silver coin relief"
+      "subject": "a full moon disc straight on, engraved craters and seas like a silver coin relief",
+      "kept": true
     },
     {
       "batch": 2,
@@ -137,7 +155,8 @@
       "icon": "night_now",
       "job_id": "fce128d0-2af1-42b3-8f54-abd064b6d09b",
       "credits": 0.5,
-      "subject": "a ruined gothic bell tower with a broken spire under a thin cold crescent moon, ash flecks, cold silver-blue"
+      "subject": "a ruined gothic bell tower with a broken spire under a thin cold crescent moon, ash flecks, cold silver-blue",
+      "kept": true
     },
     {
       "batch": 2,
@@ -145,7 +164,8 @@
       "icon": "night_past",
       "job_id": "511f561a-e369-4769-a354-26d59a93dfd4",
       "credits": 0.5,
-      "subject": "an intact gothic bell tower with a bell in its belfry under a large full moon, crimson red and gold light, silver tower"
+      "subject": "an intact gothic bell tower with a bell in its belfry under a large full moon, crimson red and gold light, silver tower",
+      "kept": true
     },
     {
       "batch": 2,
@@ -153,7 +173,8 @@
       "icon": "lock_ring",
       "job_id": "a7727db8-eb92-4710-8070-d90fbec31333",
       "credits": 0.5,
-      "subject": "a thin target ring of four separate curved bracket arcs with inward thorn tips, empty centre"
+      "subject": "a thin target ring of four separate curved bracket arcs with inward thorn tips, empty centre",
+      "kept": true
     },
     {
       "batch": 2,
@@ -161,7 +182,8 @@
       "icon": "orn_divider",
       "job_id": "961bec3d-9b37-4f67-86f4-a0705ccf53bb",
       "credits": 0.5,
-      "subject": "(21:9) a wide symmetrical gothic filigree divider with thorn vines and a tiny bell at the centre"
+      "subject": "(21:9) a wide symmetrical gothic filigree divider with thorn vines and a tiny bell at the centre",
+      "kept": true
     },
     {
       "batch": 2,
@@ -169,7 +191,8 @@
       "icon": "orn_corner",
       "job_id": "ac53d489-5fde-492e-b6f1-46552ecdbdd4",
       "credits": 0.5,
-      "subject": "an L-shaped gothic filigree corner bracket in the top-left corner with a small diamond at the elbow"
+      "subject": "an L-shaped gothic filigree corner bracket in the top-left corner with a small diamond at the elbow",
+      "kept": true
     },
     {
       "batch": 2,
@@ -177,7 +200,8 @@
       "icon": "orn_boss",
       "job_id": "75965976-cd5f-434a-8b00-2a0aa83b4a46",
       "credits": 0.5,
-      "subject": "(21:9) a crowned skull between two long swept wings of thorn branches and tattered feathers, wide and low"
+      "subject": "(21:9) a crowned skull between two long swept wings of thorn branches and tattered feathers, wide and low",
+      "kept": true
     },
     {
       "batch": 2,
@@ -185,7 +209,8 @@
       "icon": "menu_settings",
       "job_id": "1851dd21-8c0a-4d21-92ad-bfd9ee33c1ab",
       "credits": 0.5,
-      "subject": "an ornate cog wheel with eight teeth and a small bell at its hub"
+      "subject": "an ornate cog wheel with eight teeth and a small bell at its hub",
+      "kept": true
     },
     {
       "batch": 2,
@@ -194,7 +219,9 @@
       "job_id": "b10f6a77-e39d-429f-bcab-d4bf46798f04",
       "credits": 0.5,
       "subject": "a gothic arched doorway standing open with one bold arrow leaving to the right",
-      "status": "failed (service error, no image)"
+      "status": "failed (service error, no image)",
+      "kept": false,
+      "note": "failed on the service side (no image)"
     },
     {
       "batch": 2,
@@ -202,7 +229,8 @@
       "icon": "menu_resume",
       "job_id": "9ea5bd03-daae-48c7-a4c0-8f0144c5f39a",
       "credits": 0.5,
-      "subject": "a hunter lantern held up, bright flame, a right-pointing triangular pennant behind it"
+      "subject": "a hunter lantern held up, bright flame, a right-pointing triangular pennant behind it",
+      "kept": true
     },
     {
       "batch": 3,
@@ -210,7 +238,8 @@
       "icon": "attack_b",
       "job_id": "19705b86-c1c2-464c-8382-9159d7efae3b",
       "credits": 0.5,
-      "subject": "bolder: thick braided whip cracking forward with one broad solid crescent slash wake, bladed tip"
+      "subject": "bolder: thick braided whip cracking forward with one broad solid crescent slash wake, bladed tip",
+      "kept": true
     },
     {
       "batch": 3,
@@ -218,7 +247,9 @@
       "icon": "attack_c",
       "job_id": "1412e78b-8f24-422b-9323-303d702ac379",
       "credits": 0.5,
-      "subject": "bolder: large solid crescent slash with a thick whip coiled along its inner curve, heavy handle, spark diamonds"
+      "subject": "bolder: large solid crescent slash with a thick whip coiled along its inner curve, heavy handle, spark diamonds",
+      "kept": false,
+      "note": "spare (attack_b reads better as a strike)"
     },
     {
       "batch": 3,
@@ -226,7 +257,8 @@
       "icon": "skill_hook_b",
       "job_id": "b809d033-dbb2-4f65-ac32-8653f32e0992",
       "credits": 0.5,
-      "subject": "bolder: big glowing ring gripped by a three-pronged grappling claw on a thick whip in a short S-curve"
+      "subject": "bolder: big glowing ring gripped by a three-pronged grappling claw on a thick whip in a short S-curve",
+      "kept": true
     },
     {
       "batch": 3,
@@ -234,10 +266,25 @@
       "icon": "menu_leave_b",
       "job_id": "0790e14d-0f4e-47e7-b8f0-5689ba7b5182",
       "credits": 0.5,
-      "subject": "tall pointed gothic arch door frame with one leaf half open and a thick arrow pointing right"
+      "subject": "tall pointed gothic arch door frame with one leaf half open and a thick arrow pointing right",
+      "kept": true
+    },
+    {
+      "batch": 4,
+      "index": 28,
+      "icon": "pouch",
+      "job_id": "PENDING",
+      "credits": 0.5,
+      "subject": "a small drawstring pouch with a tiny bell charm and a sparkle (item pickup toast)"
     }
   ],
-  "credits_used": 14.0,
+  "credits_used": 14.5,
   "note": "full prompt = 'A single game interface emblem, centered, large, filling about 80 percent of the square. Subject: <subject>. ' + style_suffix. kept/rejected flags are filled in after looking at each image.",
-  "note2": "credits_used counts every submitted job at 0.5; job 22 (menu_leave) failed on the service side and may not have been charged."
+  "note2": "credits_used counts every submitted job at 0.5; job 22 (menu_leave) failed on the service side and may not have been charged.",
+  "atlas": {
+    "file": "assets/v2/ui/gem/atlas.webp",
+    "tool": "tools/v2/ui_atlas.py",
+    "sources": "tools/v2/ui_src/*.webp (640 px copies of the kept images)"
+  },
+  "looked_at": "every image was opened and judged (contact sheets /tmp/claude-0/v2/ui/gen/sheet1.png, sheet2.png)"
 }

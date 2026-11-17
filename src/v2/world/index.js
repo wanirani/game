@@ -53,7 +53,7 @@ export function validateArea(a, twin = null) {
   const errors = [], warnings = [], E = (m) => errors.push(m), Wn = (m) => warnings.push(m);
   for (const k of ['id', 'name', 'era', 'stage', 'spawns', 'exits', 'actors', 'enemies', 'triggers', 'interact']) if (a?.[k] == null) E('missing field: ' + k);
   if (errors.length) return { errors, warnings, stats: {} };
-  if (!/[가-힣]/.test(a.name)) E('name must be Korean: ' + a.name);
+  if (![...String(a.name)].some((c) => c.charCodeAt(0) >= 0xac00 && c.charCodeAt(0) <= 0xd7a3)) E('name must be Korean: ' + a.name);
   if (a.era !== 'now' && a.era !== 'past') E('era must be now | past');
   if (!a.spawns.default) E('spawns.default missing');
   if (a.room && !ROOMS.includes(a.room)) Wn('unknown room tag: ' + a.room);

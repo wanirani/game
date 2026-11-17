@@ -163,6 +163,11 @@ try {
   ok('legacy sfx names stay inside the set the scene knows; a block sends sfx guard + the guard hook', names(s).includes('guard') && sfx.includes('guard') && sfx.every((n) => known.has(n)), [...new Set(sfx)].join(' ')); }
 { const bad = []; for (const k of Object.keys(KINDS)) for (const a of KINDS[k].attacks) if (![a.windup, a.strike, a.recover, a.dmg].every((v) => typeof v === 'number' && v >= 0) || !(a.box || a.radius || a.shot) || typeof a.clip !== 'string') bad.push(k + '.' + a.id);
   ok('every enemy attack line has numeric windup / strike / recover / dmg, a shape and a clip', bad.length === 0, bad.join(' ')); }
+{ const s = mk([{ kind: 'melee', x: 420, z: 0, rise: true }, { kind: 'melee', x: -500, z: 0 }]); const e = s.enemies[0], o = s.enemies[1]; const seen = [];
+  run(s, 0.3, {}); const lying = e.buried === true && e.anim === 'buried' && !e.active && o.anim === 'idle' && !o.buried;
+  run(s, 0.2, { attack: true }); s.hero.x = e.x - 60; run(s, 0.3, { attack: true }); const untouched = e.hp === e.hpMax || e.active;   // 누워 있는 동안은 베이지 않는다(가까이 가면 곧 깨어난다)
+  run(s, 2.2, {}, (q) => { if (seen[seen.length - 1] !== q.enemies[0].state) seen.push(q.enemies[0].state); s.hero.hp = 100; });
+  ok('spawn flag rise: the enemy lies down until the hero comes near, gets up (state rise), then fights; other spawns are unchanged', lying && untouched && seen.includes('rise') && seen.indexOf('chase') > seen.indexOf('rise') && names(s).includes('wake'), seen.join('→')); }
 ok('moves carry strength (= str) for the scene', Object.values(MOVES).every((m) => m.strength === m.str && 'LMHF'.includes(m.strength)));
 
 // ── 12. 본 게임 장면이 쓰는 세계(환경 키트 compileEnv)에서도 끼이지 않는다 ──
@@ -173,8 +178,8 @@ try {
   run(s, 8, {}, () => { minD = Math.min(minD, Math.hypot(e.x - h.x, e.z - h.z)); });
   ok('env-kit world: wedge at the alley mouth is gone (enemy reaches the hero and attacks)', tells >= 1 && minD < 100, `closest ${minD.toFixed(0)} attacks ${tells}`);
   const s3 = new Sim(W, {}); s3.teleport('yard'); s3.hero.hp = s3.hero.hpMax = 1e6; let t3 = 0; s3.hooks.tell = () => { t3++; };
-  run(s3, 20, {});
-  const act = s3.enemies.filter((q) => q.active), far = act.filter((q) => q.def.ai === 'melee' && Math.hypot(q.x - s3.hero.x, q.z - s3.hero.z) > 300).length;
+  const since = new Map(); run(s3, 20, {}, (q, i) => { for (const e of q.enemies) if (e.active && !since.has(e.id)) since.set(e.id, i); });
+  const act = s3.enemies.filter((q) => q.active), far = act.filter((q) => q.def.ai === 'melee' && 1200 - since.get(q.id) > 480 && Math.hypot(q.x - s3.hero.x, q.z - s3.hero.z) > 300).length;   // 깨어난 지 8초가 넘었는데도 멀리 있는 것 (막 깨어난 것은 세지 않는다)
   ok('env-kit world: yard enemies wake, reach a standing hero and attack; no melee enemy left stuck far away', act.length >= 3 && t3 >= 5 && far === 0 && finite(s3), `active ${act.length} attacks ${t3} far ${far}`);
 } catch (err) { ok('env-kit world loads in node', false, String(err?.message ?? err).split('\n')[0]); }
 

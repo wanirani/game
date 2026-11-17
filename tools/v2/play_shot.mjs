@@ -37,6 +37,10 @@ const SETS = [
   { n: 'hurt_game', demo: 'hurt', times: range(0.4, 9.9, 0.16), cam: 'game', cols: 12, cw: 210, ch: 180 },
   ...['soldier', 'mage', 'corpse', 'ghost', 'armor', 'bat'].map((k) => ({ n: 'enemy_' + k, demo: k, times: range(0.4, 9.2, 0.2), cam: 'enemy', cols: 9, cw: 250, ch: 230, box: true, who: true })),
   ...['soldier', 'armor', 'corpse'].map((k) => ({ n: 'enemyfine_' + k, demo: k, times: range(1.0, 4.0, 0.0667), cam: 'enemy', cols: 12, cw: 190, ch: 200, who: true })),
+  { n: 'enemy_rise', demo: 'rise', times: range(0.2, 4.4, 0.2), cam: 'enemy', cols: 11, cw: 210, ch: 210, who: true },
+  { n: 'stop_close', demo: 'run8', times: range(0.75, 1.4, 0.0333), cam: 'close', cols: 10, cw: 230, ch: 250 },
+  { n: 'circle_close', demo: 'circle', times: range(0.3, 6.6, 0.21), cam: 'close', cols: 10, cw: 230, ch: 250 },
+  { n: 'crowd_high', demo: 'crowd', times: range(1, 11, 0.5), cam: 'high', cols: 7, cw: 330, ch: 280, box: true },
   { n: 'fight_game', demo: 'fight', times: range(0.5, 20, 0.33), cam: 'game', cols: 10, cw: 260, ch: 190, box: true },
   { n: 'elite_game', demo: 'elite', times: range(0.5, 20, 0.33), cam: 'game', cols: 10, cw: 260, ch: 190, box: true },
 ];

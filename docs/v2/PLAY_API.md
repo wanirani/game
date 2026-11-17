@@ -64,7 +64,9 @@ for (const e of sim.enemies) if (!e.dead) driveActor(charOf(e), e, dt);   // 적
 ## 3. 적 `sim.enemies[]` 와 종류표 `KINDS`
 
 적 상태: `id kind kid(바른 이름) def(= KINDS 한 줄) x y z gy dirX dirZ hp hpMax r h state stateT anim animT dead active yard` + `phase`(`'windup'｜'strike'｜'recover'｜null`) · `tele`(예고 0…1 — 장면이 번쩍임 · 바닥 표시를 그린다) · `atk`(지금 쓰는 공격 한 줄: `box`｜`radius`｜`shot`, `guard`, `windup` …) · `alpha`(유령의 비침 0…1) · `solid`(맞는가) · `hover`(뜬 높이 px — `y = gy + hover`) · `stagger`(튕겨져 비틀거리는 남은 초) · `stun` · `flashT` · `dying`(쓰러지는 남은 초).
-`state`: `idle`(아직 못 봄) `chase` `attack` `stagger` `dead`(쓰러지는 중 — `dying` 이 0 이 되면 `dead = true`). `anim`: `idle walk attack cast hurt stagger death`.
+`state`: `idle`(아직 못 봄) `rise`(땅에서 일어서는 중) `chase` `attack` `stagger` `dead`(쓰러지는 중 — `dying` 이 0 이 되면 `dead = true`). `anim`: `idle buried rise walk attack cast hurt stagger death`.
+
+**땅에서 일어나는 적**: 스테이지의 `spawns[]` 한 줄에 `rise: true` 를 주면(또는 종류에 `rise: true`) 그 적은 엎드려 누워 있다가(`e.buried`, 베이지 않고 락온되지 않는다) 영웅이 230 px 안에 오면 1.25초 동안 일어선 뒤 싸운다(`rise` 클립). 걷는 종류만 — 유령 · 박쥐는 무시한다. 기본은 꺼져 있다.
 
 `KINDS[kind]` = `{ name(한국어), model, weapon, height(m), material, grip?, hp, speed, r, hpx(맞는 상자 높이 px), ai, attacks:[…], clips:{idle,walk,hurt,stagger,death}, floats?, fly?, hover?, pitch?(도 — 앞으로 숙여 그린다), fade?, armorFront?, elite?, boss?, wakeSound? }`. 스테이지의 `spawns[].kind` 로 쓰는 이름:
 
@@ -190,6 +192,6 @@ registerKind('wolfman', {
 
 | 무엇 | 상태 |
 |---|---|
-| 공개 이름 · 규칙(영웅 기술 다섯 · 구르기 · 막기/튕겨내기 · 락온 · 적 여섯 종 · 끼임) | 동작 — `play_rules_test` 73/73 (시범판 B 의 세계와 환경 키트 세계 둘 다에서) |
+| 공개 이름 · 규칙(영웅 기술 다섯 · 구르기 · 막기/튕겨내기 · 락온 · 적 여섯 종 · 끼임) | 동작 — `play_rules_test` 74/74 (시범판 B 의 세계와 환경 키트 세계 둘 다에서) |
 | 움직임(`driveHero` · `driveActor` — 라이브러리 클립) | 동작 — `play_motion_check` 32/32, 붙임 그림 28묶음(`/tmp/claude-0/v2/play/`)으로 눈으로 봄 · 본 게임 장면(`v2g`)에서 오류 없이 돈다(`tools/v2/game_probe.mjs`) |
 | 길게 눌러 채찍 · 기술 단추 · 종 · 보스 | 범위 밖 (자리만) |

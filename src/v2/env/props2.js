@@ -8,12 +8,17 @@ import { railing, wallGrid } from './kit.js';
 const fx = (G) => G.fx ?? (G.fx = { glows: [], pools: [], shadows: [] });
 const shadow = (G, x, y, z, rx, rz = rx * 0.62, a = 0.5) => fx(G).shadows.push({ x, y, z, rx, rz, a });
 const BRONZE = [1.55, 1.08, 0.5], SOOT = [0.42, 0.38, 0.38], IRON = [0.5, 0.5, 0.56];
-/** 불꽃: 스스로 빛나는 삼각형 다발 (겉 주황 + 속 노랑) */
+/** 불꽃: 스스로 빛나는 혀 여러 가닥. 가닥마다 밑(밝은 노랑) → 가운데(주황) → 끝(검붉음) 세 마디로 휘고, 십자로 겹쳐 옆에서도 납작해 보이지 않는다 */
 function flames(G, x, y, z, w, h, n = 5, seed = 1) {
+  const C = [[1.0, 0.86, 0.46], [1.0, 0.52, 0.15], [0.74, 0.17, 0.06]], E = [1.6, 1.35, 1.0];
   for (let i = 0; i < n; i++) {
-    const t = n > 1 ? i / (n - 1) - 0.5 : 0, px = x + t * w, fh = h * (0.5 + 0.5 * hash(i + seed, x)), fw = w / n * 0.9 + 4, lean = (hash(x + i, seed) - 0.5) * fw, pz = z - (i % 2) * 3;
-    G.tri('white', [px - fw, y, pz], [px + fw, y, pz], [px + lean, y + fh, pz], [0, 0, -1], { emis: 1.5, tint: [1.0, 0.5 + 0.2 * hash(i, seed), 0.14], fog: 0.4 });
-    G.tri('white', [px - fw * 0.5, y, pz - 1], [px + fw * 0.5, y, pz - 1], [px + lean * 0.6, y + fh * 0.55, pz - 1], [0, 0, -1], { emis: 1.7, tint: [1.0, 0.86, 0.42], fog: 0.4 });
+    const t = n > 1 ? i / (n - 1) - 0.5 : 0, cx = x + t * w + (hash(i, seed) - 0.5) * 6, fh = h * (0.45 + 0.55 * hash(i + seed, x)), fw = Math.max(5, w / n * 0.62), sw = (hash(x + i, seed) - 0.5) * fw * 1.6, pz = z - (i % 3) * 2.5;
+    const cxAt = (k) => cx + sw * k * k + Math.sin(k * 3 + i) * fw * 0.18, wAt = (k) => fw * (1 - k * 0.72), yAt = (k) => y + fh * k;
+    for (const [ax, az] of [[1, 0], [0, 1]]) for (let s = 0; s < 3; s++) {
+      const k0 = s / 3, k1 = (s + 1) / 3, o = { emis: E[s], tint: C[s], fog: 0.45, keep: true }, n3 = [az, 0, -ax];
+      const a = [cxAt(k0) - wAt(k0) * ax, yAt(k0), pz - wAt(k0) * az * 0.7], b = [cxAt(k0) + wAt(k0) * ax, yAt(k0), pz + wAt(k0) * az * 0.7], c = [cxAt(k1) + wAt(k1) * ax, yAt(k1), pz + wAt(k1) * az * 0.7], d = [cxAt(k1) - wAt(k1) * ax, yAt(k1), pz - wAt(k1) * az * 0.7];
+      if (s < 2) G.quad4('white', a, b, c, d, n3, o); else G.tri('white', a, b, [cxAt(1), yAt(1), pz], n3, o);
+    }
   }
 }
 /** 세로 판(u–y 평면)의 다각형 + 옆 마구리. pts = [[u, y], …] (바깥에서 볼 때 반시계) */

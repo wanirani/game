@@ -40,34 +40,61 @@ function installBot() {
   const target = (h, E, now) => { let tg = null, bd = 1e9; for (const e of E) { if (e.state === 'dead' || (B.skipMap[e.id] ?? 0) > now) continue; const d = Math.hypot(e.x - h.x, (e.z - h.z) * 1.5); if (Math.abs(e.y - h.y) > 110) continue; if (!(e.active ? d < 620 : d < 300)) continue; if (d < bd) { bd = d; tg = e; } } return tg; };
   const waypoint = (h) => { let ni = B.wp, nd = 1e9; for (let i = B.wp; i < ROUTE.length; i++) { const d = Math.hypot(ROUTE[i][0] - h.x, ROUTE[i][1] - h.z); if (d < nd) { nd = d; ni = i; } } B.wp = ni; const w = ROUTE[B.wp]; if (Math.hypot(w[0] - h.x, w[1] - h.z) < 26 && B.wp < ROUTE.length - 1) B.wp++; return ROUTE[B.wp]; };
   input.setAutoSource(() => B.act);
-  const restart = () => { const d = v.scene.sim.deaths ?? 0; if (d !== B.deaths) { B.deaths = d; B.wp = 0; B.skipMap = {}; B.stuck = 0; B.jumpT = 0; } };   // fell and started over: follow the route from its beginning again
-  B.think = () => {
-    const st = v.scene.sim.time ?? 0; B.ticks++;
-    if (st === B.simT) return;   // hit-stop: the rules stand still, so the bot keeps its last decision (and does not mistake the freeze for being stuck)
-    B.simT = st; restart();
-    const h = v.hero, E = v.enemies, a = (B.act = {});
-    B.t++; B.minHp = Math.min(B.minHp, h.hp);
-    if (h.dead || v.section === 'done') return;
-    const tg = target(h, E, B.t);
-    let tx, tz, fight = false;
+  // ── one brain for both input paths: decide() -> analog wishes { mx, mz, attack, dash(roll), guard, jump } ──
+  //    tactics for the real rules: walk the route; guard an attack that is being wound up in front of the hero (the roll button
+  //    held without the stick), roll away from what cannot be guarded or comes from behind, strike in the gaps
+  const D = (B.d = { lx: 0, lz: 0, lt: 0, stuckT: 0, escT: 0, escS: 1, rollT: 0, fs: 0, o: { mx: 0, mz: 0, attack: false, dash: false, guard: false, jump: false } });
+  B.pt = 0; B.now = () => B.pt / 60;   // the bot's clock = rule ticks (works fast-forwarded, stands still during hit-stop)
+  B.decide = () => {
+    const sim = v.scene.sim, h = sim.hero, E = sim.enemies, now = B.now(), o = D.o;
+    o.mx = 0; o.mz = 0; o.attack = false; o.dash = false; o.guard = false; o.jump = false;
+    B.minHp = Math.min(B.minHp, h.hp);
+    if (h.dead || sim.section === 'done') return o;
+    const hdx = h.dirX ?? h.facing ?? 1, hdz = h.dirZ ?? 0;
+    // 1) something is about to hit: an enemy winding up within its reach, or a shot close by
+    let th = null, td = 1e9, tx0 = 0, tz0 = 0, canGuard = true;
+    for (let i = 0; i < E.length; i++) {
+      const e = E[i]; if (e.dead || e.state === 'dead' || Math.abs(e.y - h.y) > 110) continue;
+      const A = e.atk, wind = e.tele !== undefined ? e.tele > 0.2 && A && !A.shot : e.state === 'attack';
+      if (!wind) continue;
+      const d = Math.hypot(e.x - h.x, e.z - h.z), reach = A ? (A.box ? A.box.f1 + (A.lunge ?? 0) : A.radius ? A.radius.r + A.radius.fwd : 100) + 36 : 110;
+      if (d < reach && d < td) { td = d; th = e; tx0 = e.x; tz0 = e.z; canGuard = e.tele !== undefined && (!A || (A.guard !== 'break' && A.guard !== 'chip')); }
+    }
+    const S = sim.shots;
+    for (let i = 0; i < S.length; i++) { const q = S[i]; if (q.dead || q.friendly) continue; const d = Math.hypot(q.x - h.x, q.z - h.z); if (d < 150 && d < td && Math.abs(q.y - h.y - 60) < 90) { td = d; th = q; tx0 = q.x; tz0 = q.z; canGuard = sim.hero.guard !== undefined; } }
+    if (th) {
+      const ux = (tx0 - h.x) / (td || 1), uz = (tz0 - h.z) / (td || 1), front = hdx * ux + hdz * uz;
+      if (canGuard && front > 0.35) { o.guard = true; return o; }                       // face it and block (the rules turn an early block into a parry)
+      if (now > D.rollT) { D.rollT = now + 0.7; o.dash = true; o.mx = -ux; o.mz = -uz; if (Math.abs(o.mz) < 0.3 && (h.z < 100 || h.z > 2000)) o.mz = h.z < 100 ? 0.7 : -0.7; return o; }   // roll away
+      o.mx = -ux; o.mz = -uz; return o;                                                  // roll not ready: step back
+    }
+    // 2) fight the nearest enemy that has seen us (or stands in the way), else follow the route
+    const tg = target(h, v.enemies, B.t);
+    let tx = null, tz = 0, fight = false;
     if (tg) {
-      const side = h.x <= tg.x ? -1 : 1; tx = tg.x + side * 56; tz = tg.z; fight = true;
-      const dx = tg.x - h.x, dz = tg.z - h.z;
-      if (Math.abs(dx) < 96 && Math.abs(dx) > 18 && Math.abs(dz) < 20) {   // in reach and lined up in depth: look straight at it (attacks follow the 360 degree facing), then strike
-        const fx = h.face ? h.face[0] : h.facing, fz = h.face ? h.face[1] : 0, square = Math.abs(fz) < 0.25 && (dx > 0) === (fx > 0);
-        B.atk++; if (square && B.atk % 7 < 3) a.attack = true;
-        if (!square) { if (dx > 0) a.right = true; else a.left = true; }
-        B.act = a; B.dodge--; return;
-      }
+      fight = true; const dx = tg.x - h.x, dz = tg.z - h.z, d = Math.hypot(dx, dz);
+      if (d < 96 && Math.abs(dz) < 40) { o.mx = (dx / (d || 1)) * 0.55; o.mz = (dz / (d || 1)) * 0.55; o.attack = true; }   // in reach: face it (360 degrees) and strike
+      else { const side = h.x <= tg.x ? -1 : 1; tx = tg.x + side * 62; tz = tg.z; }
     } else { const w = waypoint(h); tx = w[0]; tz = w[1]; }
-    const dx = tx - h.x, dz = tz - h.z;
-    if (dx > 7) a.right = true; else if (dx < -7) a.left = true;
-    if (dz > 6) a.up = true; else if (dz < -6) a.down = true;
-    for (const s of v.shots) { if (Math.hypot(s.x - h.x, s.z - h.z) < 80 && Math.abs(s.z - h.z) < 26 && B.dodge <= 0) { a.dash = true; a.up = h.z < 120 || (s.z <= h.z && h.z < 2000); a.down = !a.up; a.left = a.right = false; B.dodge = 30; } }
-    B.dodge--;
-    if (B.t % 6 === 0) { const moved = Math.hypot(h.x - B.lx, h.z - B.lz); B.lx = h.x; B.lz = h.z; if ((a.left || a.right || a.up || a.down) && !a.attack && moved < 3) B.stuck++; else B.stuck = Math.max(0, B.stuck - 1); }
-    if (B.stuck >= 4) { if (fight && ++B.fs >= 3) { B.skipMap[tg.id] = B.t + 420; B.fs = 0; B.skips++; } B.jumpT = 26; B.stuck = 0; B.side = h.z > 150 && h.z < 260 ? -1 : 1; if (fight && Math.random() < 0.5) B.side = -B.side; }
-    if (B.jumpT > 0) { B.jumpT--; a.jump = B.jumpT > 12; if (B.side > 0) { a.up = true; a.down = false; } else { a.down = true; a.up = false; } }
+    if (tx !== null) { const dx = tx - h.x, dz = tz - h.z, d = Math.hypot(dx, dz); if (d > 6) { const k = d > 50 ? 1 : 0.6; o.mx = (dx / d) * k; o.mz = (dz / d) * k; } }
+    if (now - D.lt >= 0.25) { const moved = Math.hypot(h.x - D.lx, h.z - D.lz); D.lx = h.x; D.lz = h.z; D.lt = now; if ((o.mx || o.mz) && !o.attack && moved < 6) D.stuckT += 0.25; else D.stuckT = Math.max(0, D.stuckT - 0.25); }
+    if (D.stuckT >= 0.75) { if (fight && ++D.fs >= 3) { B.skipMap[tg.id] = B.t + 420; D.fs = 0; B.skips++; } D.stuckT = 0; D.escT = now + 0.5; D.escS = h.z > 150 && h.z < 260 ? -1 : 1; if (fight && Math.random() < 0.5) D.escS = -D.escS; }
+    if (now < D.escT) { o.jump = D.escT - now > 0.25; o.mz = D.escS; o.mx *= 0.3; o.attack = false; }
+    return o;
+  };
+  const restart = () => { const d = v.scene.sim.deaths ?? 0; if (d !== B.deaths) { B.deaths = d; B.wp = 0; B.skipMap = {}; D.stuckT = 0; D.escT = 0; } };   // fell and started over: follow the route from its beginning again
+  /** true when the rules moved since the last call (false during hit-stop: keep the last decision) */
+  const ruleTick = () => { const st = v.scene.sim.time ?? 0; B.ticks++; if (st === B.simT) return false; B.simT = st; B.t++; B.pt++; restart(); return true; };
+  // digital path (keyboard-like actions through the input auto source)
+  B.think = () => {
+    if (!ruleTick()) return;
+    const o = B.decide(), a = (B.act = {});
+    if (o.mx > 0.3) a.right = true; else if (o.mx < -0.3) a.left = true;
+    if (o.mz > 0.3) a.up = true; else if (o.mz < -0.3) a.down = true;
+    if (o.guard) a.dash = true;                                   // held with no direction = guard
+    else if (o.dash) a.dash = B.t % 2 === 0;                      // a fresh press
+    if (o.attack) { B.atk++; if (B.atk % 7 < 3) a.attack = true; }
+    if (o.jump) a.jump = true;
   };
   const watch = () => {
     const sc = v.scene, s = sc.c3, F = sc.fx?.feel, M = B.max, G = sc.glr.stats;
@@ -86,50 +113,31 @@ function installBot() {
     return B.status();
   };
   B.status = () => { const h = v.hero; return { ticks: B.ticks, sec: v.section, x: Math.round(h.x), z: Math.round(h.z), y: Math.round(h.y), hp: h.hp, left: v.enemies.length, yard: v.enemies.filter((e) => e.yard).length, wp: B.wp, t: B.t, deaths: v.scene.sim.deaths ?? 0, minHp: B.minHp, max: B.max, skips: B.skips, feelN: v.scene.feelN - B.feel0, simT: +(v.scene.sim.time ?? 0).toFixed(1) }; };
-  // analog pilot for the real touch run (called from outside about 25 times a second)
-  const P = (B.p = { lx: 0, lz: 0, lt: 0, stuckT: 0, escT: 0, escS: 1, atkT: 0, dodgeT: 0, fs: 0 });
-  B.pt = 0; B.now = () => B.pt / 60;   // the pilot's clock = its own ticks (so it works fast-forwarded)
-  B.pilot = () => {
-    const h = v.hero, E = v.enemies, now = B.now(), o = { mx: 0, mz: 0, attack: false, dash: false, jump: false, sec: v.section, x: Math.round(h.x), z: Math.round(h.z), hp: h.hp, dead: !!h.dead, left: E.length };
-    B.minHp = Math.min(B.minHp, h.hp); watch(); restart();
-    if (h.dead || v.section === 'done') return o;
-    const tg = target(h, E, now * 60);
-    let tx, tz, fight = false;
-    if (tg) {
-      fight = true; const dx = tg.x - h.x, dz = tg.z - h.z, d = Math.hypot(dx, dz);
-      if (d < 92 && Math.abs(dz) < 34) { o.mx = (dx / (d || 1)) * 0.5; o.mz = (dz / (d || 1)) * 0.5; o.attack = true; tx = null; }   // in reach: face it (360 degrees) and strike
-      else { const side = h.x <= tg.x ? -1 : 1; tx = tg.x + side * 60; tz = tg.z; }
-    } else { const w = waypoint(h); tx = w[0]; tz = w[1]; }
-    if (tx !== null) { const dx = tx - h.x, dz = tz - h.z, d = Math.hypot(dx, dz); if (d > 6) { const k = d > 50 ? 1 : 0.6; o.mx = (dx / d) * k; o.mz = (dz / d) * k; } }
-    for (const s of v.shots) { if (Math.hypot(s.x - h.x, s.z - h.z) < 130 && Math.abs(s.z - h.z) < 40 && now > P.dodgeT) { o.dash = true; o.mx = 0; o.mz = h.z < 120 || (s.z <= h.z && h.z < 2000) ? 1 : -1; P.dodgeT = now + 0.6; } }
-    if (now - P.lt > 0.25) { const moved = Math.hypot(h.x - P.lx, h.z - P.lz); P.lx = h.x; P.lz = h.z; P.lt = now; if ((o.mx || o.mz) && !o.attack && moved < 6) P.stuckT += 0.25; else P.stuckT = Math.max(0, P.stuckT - 0.25); }
-    if (P.stuckT >= 0.75) { if (fight && ++P.fs >= 3) { B.skipMap[tg.id] = now * 60 + 420; P.fs = 0; B.skips++; } P.stuckT = 0; P.escT = now + 0.5; P.escS = h.z > 150 && h.z < 260 ? -1 : 1; if (fight && Math.random() < 0.5) P.escS = -P.escS; }
-    if (now < P.escT) { o.jump = P.escT - now > 0.25; o.mz = P.escS; o.mx *= 0.3; o.attack = false; }
-    return o;
-  };
   // touch driver: the pilot's wishes go through the virtual pad's own pointer handlers (stick drag + button presses) every tick
   const fire = (type, id, x, y) => window.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: 'touch', isPrimary: id === 21, clientX: x, clientY: y, bubbles: true, cancelable: true, button: 0, buttons: type === 'pointerup' ? 0 : 1, width: 12, height: 12, pressure: type === 'pointerup' ? 0 : 0.5 }));
   const COOL = { attack: 5, dash: 24, jump: 12 }, FINGER = { attack: 11, dash: 12, jump: 13 };
-  B.touchSetup = (x0, y0, R, btn) => { B.ts = { x0, y0, R, btn, stick: false, held: { attack: 0, dash: 0, jump: 0 }, presses: { attack: 0, dash: 0, jump: 0 }, moves: 0 }; input.setAutoSource(null); B.act = {}; };
+  B.touchSetup = (x0, y0, R, btn) => { B.ts = { x0, y0, R, btn, stick: false, held: { attack: 0, dash: 0, jump: 0 }, presses: { attack: 0, dash: 0, jump: 0, guard: 0 }, moves: 0 }; input.setAutoSource(null); B.act = {}; };
   B.touchStep = () => {
-    const S = B.ts, w = B.pilot(); B.pt++;
+    const S = B.ts; if (!ruleTick()) return;
+    const w = B.decide(); watch();
     if (!S.stick) { fire('pointerdown', 21, S.x0, S.y0); S.stick = true; }
     fire('pointermove', 21, S.x0 + w.mx * S.R, S.y0 - w.mz * S.R); S.moves++;
     for (const k of ['attack', 'dash', 'jump']) {
       const b = S.btn[k]; let st = S.held[k]; if (!b) continue;
-      if (st > 0) { if (--st === 0) { fire('pointerup', FINGER[k], b.cx, b.cy); st = -COOL[k]; } }
+      if (k === 'dash' && st === 999) { if (!w.guard) { fire('pointerup', FINGER[k], b.cx, b.cy); st = -3; } }          // guarding: the roll button stays down
+      else if (k === 'dash' && w.guard && st <= 0) { fire('pointerdown', FINGER[k], b.cx, b.cy); S.presses.guard++; st = 999; }
+      else if (st > 0) { if (--st === 0) { fire('pointerup', FINGER[k], b.cx, b.cy); st = -COOL[k]; } }
       else if (st < 0) st++;
       else if (w[k]) { fire('pointerdown', FINGER[k], b.cx, b.cy); S.presses[k]++; st = 3; }
       S.held[k] = st;
     }
-    return w;
   };
   B.touchEnd = () => { const S = B.ts; if (!S) return; for (const k of ['attack', 'dash', 'jump']) if (S.held[k] > 0 && S.btn[k]) fire('pointerup', FINGER[k], S.btn[k].cx, S.btn[k].cy); if (S.stick) fire('pointerup', 21, S.x0, S.y0); S.stick = false; };
   B.touchRun = (n, renderEvery) => {
     g._pageHidden = true;
     for (let i = 0; i < n; i++) { B.touchStep(); g.tick(1 / 60); if (renderEvery && i % renderEvery === 0) { g.alpha = 1; g.render(); watch(); } if (v.section === 'done') break; }
     g.alpha = 1; g.render();
-    const st = B.status(); st.presses = B.ts.presses; st.stickMoves = B.ts.moves; st.mode = input.mode; st.pticks = B.pt; return st;
+    const st = B.status(); st.presses = B.ts.presses; st.stickMoves = B.ts.moves; st.mode = input.mode; return st;
   };
   B.stop = () => { B.act = {}; input.setAutoSource(null); };
   return true;
@@ -205,7 +213,7 @@ for (const dev of DEVICES) {
     //  prove the browser -> pad path, this step drives the same pad handlers with touch pointer events every tick)
     if (T && pad && want('troute')) {
       const vp = await page.evaluate(() => [innerWidth, innerHeight]);
-      await page.evaluate(([x0, y0, R, btn]) => { const v = window.__v2, B = window.__bot; v.scene.sim.reset(); v.scene.cam.snap = true; v.scene.fx?.clear(); B.wp = 0; B.minHp = 100; B.skipMap = {}; B.deaths = v.scene.sim.deaths ?? 0; B.feel0 = v.scene.feelN; B.touchSetup(x0, y0, R, btn); }, [Math.round(vp[0] * 0.2), Math.round(vp[1] * 0.68), 56, pad.buttons]);
+      await page.evaluate(([x0, y0, R, btn]) => { const v = window.__v2, B = window.__bot; v.scene.sim.reset(); v.scene.cam.snap = true; v.scene.fx?.clear(); B.wp = 0; B.minHp = 100; B.t = 0; B.ticks = 0; B.simT = -1; B.skipMap = {}; B.deaths = v.scene.sim.deaths ?? 0; B.feel0 = v.scene.feelN; B.touchSetup(x0, y0, R, btn); }, [Math.round(vp[0] * 0.2), Math.round(vp[1] * 0.68), 56, pad.buttons]);
       let r = null, seen = [], cap = new Set(); const t0 = Date.now(), d0 = await page.evaluate(() => window.__v2.scene.sim.deaths ?? 0);
       for (let i = 0; i < 80 && Date.now() - t0 < 300000; i++) {
         r = await page.evaluate(() => window.__bot.touchRun(240, 12));
@@ -216,7 +224,7 @@ for (const dev of DEVICES) {
       }
       await page.evaluate(() => window.__bot.touchEnd());
       R.touchRoute = { ...r, sections: seen, falls: r.deaths - d0, wallSec: +((Date.now() - t0) / 1000).toFixed(1) };
-      if (r?.sec === 'done' && r.mode === 'touch' && r.presses.attack > 10) ok(`touch bot finished the route through the virtual pad: ${(r.pticks / 60).toFixed(1)} s of play, stick moved ${r.stickMoves} times, buttons pressed attack ${r.presses.attack} · roll ${r.presses.dash} · jump ${r.presses.jump}, hp left ${r.hp} (lowest ${r.minHp}), fell ${R.touchRoute.falls} times, strikes ${r.feelN}, sections ${seen.join(' > ')}`);
+      if (r?.sec === 'done' && r.mode === 'touch' && r.presses.attack > 10) ok(`touch bot finished the route through the virtual pad: ${(r.ticks / 60).toFixed(1)} s of play, stick moved ${r.stickMoves} times, buttons pressed attack ${r.presses.attack} · roll ${r.presses.dash} · guard ${r.presses.guard} · jump ${r.presses.jump}, hp left ${r.hp} (lowest ${r.minHp}), fell ${R.touchRoute.falls} times, strikes ${r.feelN}, sections ${seen.join(' > ')}`);
       else fail(`${dev}: touch bot did not finish the route ${JSON.stringify(R.touchRoute)}`);
       await shot(page, `${dev}_05_touch_end`);
     }

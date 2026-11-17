@@ -31,7 +31,7 @@ export const KMATS = {
   // WORLD 구역이 더한 재질 (tools/v2/world_tex.py — ENV_KIT.md §12)
   cobble2: { tex: 'k_cobble2', tile: 170, tint: [0.84, 0.84, 0.94] },       // 잔돌 포장 (광장)
   cobworn: { tex: 'k_cobworn', tile: 210, tint: [0.9, 0.86, 0.84] },         // 닳고 진흙에 묻힌 길 가운데
-  fieldstone: { tex: 'k_rubble', tile: 230, tint: [0.86, 0.84, 0.92] },      // 막돌 쌓기 (굵은 회반죽)
+  fieldstone: { tex: 'k_rubble', tile: 280, tint: [0.86, 0.84, 0.92] },      // 막돌 쌓기 (굵은 회반죽)
   thatch: { tex: 'k_thatch', tile: 150, tint: [0.92, 0.88, 0.8] },           // 초가 지붕
   soil: { tex: 'k_soil', tile: 300, tint: [1.0, 0.96, 0.9] },                // 묘지 흙 + 마른 풀
   cellar: { tex: 'k_cellar', tile: 220, tint: [0.96, 1.0, 1.02] },           // 젖은 지하 돌

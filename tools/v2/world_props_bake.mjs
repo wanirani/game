@@ -141,8 +141,8 @@ function bakeSculpt(name, S) {
       r += (0.33 * sh - r) * moss; g += (0.44 * sh - g) * moss; b += (0.25 * sh - b) * moss;
       const lich = sm(0.72, 0.8, vn3(x * 0.19 + 3, y * 0.19, z * 0.19 + 9)) * 0.4; r += (0.86 * sh - r) * lich; g += (0.84 * sh - g) * lich; b += (0.7 * sh - b) * lich;
     } else {
-      const ang = Math.atan2(z, x), grain = vn3(ang * 5 + x * 0.25, y * 0.035, 1.7), crack = sm(0.62, 0.72, vn3(ang * 9 + x * 0.5, y * 0.05, 8.2));
-      sh *= 0.74 + 0.4 * grain + 0.1 * (fine - 0.5); sh *= 1 - 0.4 * crack;
+      const grain = vn3(x * 0.55, y * 0.03, z * 0.55 + 1.7), crack = sm(0.6, 0.72, vn3(x * 0.9 + 4, y * 0.045, z * 0.9 + 8.2));
+      sh *= 0.8 + 0.3 * grain + 0.1 * (fine - 0.5); sh *= 1 - 0.3 * crack;
       r = 0.5 * sh; g = 0.44 * sh; b = 0.41 * sh;
       const pale = sm(0.6, 0.85, bl) * 0.45; r += (0.72 * sh - r) * pale; g += (0.7 * sh - g) * pale; b += (0.66 * sh - b) * pale;
       const moss = sm(0.4, 0.8, n[1]) * sm(0.4, 0.7, sp) * 0.5; r += (0.3 * sh - r) * moss; g += (0.4 * sh - g) * moss; b += (0.22 * sh - b) * moss;

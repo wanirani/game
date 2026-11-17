@@ -12,7 +12,7 @@ export function eshville(era) {
   const now = era === 'now', past = !now, P = [], anchors = [], enemies = [], actors = [], interact = [], triggers = [];
   const add = (chunk, ...parts) => P.push(...inChunk(chunk, parts.flat()));
   const LAMP = (x, z, o = {}) => (now ? { t: 'prop', mesh: 'lamp', h: 196, solid: 9, solidZ: 9, light: { r: 330, i: 1.6, y: 170 }, x, z, ...o } : { t: 'prop', mesh: 'lanternpost', h: 190, solid: 9, solidZ: 9, light: { r: 300, i: 1.5, y: 130, c: [1, 0.7, 0.36] }, flicker: true, x, z, ...o });
-  const fire = (chunk, id, x, y, z, w, h, lr = 420) => { add(chunk, { t: 'deco', mesh: 'fire', x, y, z, w, h, light: FIRE(lr, 1.9) }); anchors.push({ id, kind: 'fire', x, y, z, size: +(h / 70).toFixed(2), light: true }); };
+  const fire = (chunk, id, x, y, z, w, h, lr = 420) => { add(chunk, { t: 'deco', mesh: 'fire', x, y, z, w, h, n: Math.max(4, Math.round(w / 18)), light: FIRE(lr, 1.9) }); anchors.push({ id, kind: 'fire', x, y, z, size: +(h / 70).toFixed(2), light: true }); };
 
   // ───────────── ground ─────────────
   add('out', { t: 'floor', x: -60, z: 0, w: 1560, d: 300, mat: 'dirt', kit: { mat: 'cobworn', rag: 44, strips: [{ z0: 0, z1: 56, mat: 'soil' }, { z0: 232, z1: 300, mat: 'soil' }] } });
@@ -97,8 +97,8 @@ export function eshville(era) {
       { t: 'prop', mesh: 'cart', x: 820, z: 252, h: 104, solid: 70, solidZ: 22 }, { t: 'prop', mesh: 'barrel', x: 1010, z: 262, h: 78, solid: 24 }, { t: 'prop', mesh: 'crate', x: 1070, z: 256, h: 62, solid: 30, solidZ: 18 },
       { t: 'prop', mesh: 'wreck', x: 1290, z: 258, w: 130, fire: false, solid: 60, solidZ: 24, solidH: 60 });
     anchors.push({ id: 'fire_wreck', kind: 'fire', x: 450, y: 20, z: 244, size: 1.2, light: true }, { id: 'smoke_wreck2', kind: 'smoke', x: 1290, y: 40, z: 250, size: 1 });
-    fire('out', 'fire_h1a', 90, 70, 296, 40, 56); fire('out', 'fire_h1roof', 200, 210, 300, 150, 120, 520); fire('out', 'fire_ruin', 440, 96, 300, 110, 90, 380);
-    fire('out', 'fire_h3a', 1120, 72, 296, 40, 60); fire('out', 'fire_h3roof', 1300, 230, 300, 170, 130, 540);
+    fire('out', 'fire_h1a', 90, 70, 296, 40, 56); fire('out', 'fire_h1roof', 200, 210, 300, 190, 84, 520); fire('out', 'fire_ruin', 440, 96, 300, 120, 64, 380);
+    fire('out', 'fire_h3a', 1120, 72, 296, 40, 60); fire('out', 'fire_h3roof', 1300, 230, 300, 210, 90, 540);
     for (const [x, z] of [[230, 120], [760, 200], [1180, 60]]) anchors.push({ id: 'embers_' + x, kind: 'embers', x, y: 0, z, size: 1 });
     add('street', { t: 'prop', mesh: 'crate', x: 2150, z: 258, h: 62, solid: 30, solidZ: 18 }, { t: 'prop', mesh: 'sacks', x: 1960, z: 266, h: 34, solid: 26, solidZ: 12 }, { t: 'prop', mesh: 'hay', x: 3060, z: 262, h: 62, solid: 34, solidZ: 16 });
     add('east', { t: 'prop', mesh: 'wreck', x: 4560, z: 200, w: 140, solid: 64, solidZ: 26, solidH: 60, light: FIRE(440, 2.0) }, { t: 'prop', mesh: 'cart', x: 3560, z: 830, h: 104, solid: 70, solidZ: 22 },
