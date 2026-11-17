@@ -17,6 +17,8 @@ import { compileStage, lightAt, groundAt, sectionAt, MATS } from './world.js';
 import { GLR, SpriteBatch } from './glr.js';
 import { CharAtlas, HERO_CELL, ENEMY_CELL, SWORD, makeHeroPuppet, makeEnemyPuppet, preloadChars } from './chars.js';
 import { Sim, TUNE } from './sim.js';
+import { CharRenderer } from '../char3d/render.js';
+import { loadCharAsset, Char3D, driveHero, HERO_URL } from '../char3d/hero3d.js';
 
 const FOCAL = 880;            // 초점 거리 (논리 px): 카메라에서 이만큼 떨어진 곳이 1단위 = 1px
 const NEAR = 60, FAR = 24000;
@@ -50,6 +52,9 @@ export default class V2ProtoB extends Scene {
     let q = null; try { q = new URLSearchParams(globalThis.location?.search ?? '').get('v2layer'); } catch { q = null; }
     this.layer = { on: false, forced: q === '1' ? true : q === '0' ? false : null, ema: 0, n: 0, hud: null, hctx: null, key: '', shown: true, timer: 0 };
     this.hurtV = 0;
+    // 영웅 그리기: 기본 = 입체 모델(char3d). ?hero=2d 면 예전의 납작한 퍼펫 빌보드 (비교용). 모델을 못 받으면 스스로 2D 로 돌아간다.
+    let hq = null, bq = null; try { const Q = new URLSearchParams(globalThis.location?.search ?? ''); hq = Q.get('hero'); bq = Q.get('c3dbench'); } catch { hq = null; }
+    this.hero2d = hq === '2d'; this.h3 = null; this.cr = null; this.h3bench = []; this.benchN = Math.max(0, Math.min(40, Number(bq) || 0)); this.c3d = { ms: 0, draws: 0, tris: 0, restored: 0, error: null };
     preloadChars();
     let gl1 = false; try { gl1 = new URLSearchParams(globalThis.location?.search ?? '').get('v2gl') === '1'; } catch { gl1 = false; }
     try { this.glr = new GLR({ forceGL1: gl1 }); } catch (e) { this.glError = String(e?.message ?? e); console.warn('[v2b]', this.glError); }
@@ -59,6 +64,7 @@ export default class V2ProtoB extends Scene {
   }
   exit() {
     this._setLayer(false);
+    if (this.cr) { this.cr.destroy(); this.cr = null; } this.h3 = null; this.h3bench = [];
     if (this.glr) { this.glr.destroy(); this.glr = null; }
     if (this.atlas) { this.atlas.canvas.width = 1; this.atlas.canvas.height = 1; this.atlas = null; }
     for (const c of this._canvases ?? []) { c.width = 1; c.height = 1; }
@@ -161,6 +167,17 @@ export default class V2ProtoB extends Scene {
     this.atlas = new CharAtlas(this.game.scale);
     this.charTex = glr.texture(null, { w: this.atlas.canvas.width, h: this.atlas.canvas.height, dynamic: true });
     this.batch = new SpriteBatch(glr);
+    if (!this.hero2d) {
+      try {
+        const asset = await loadCharAsset(HERO_URL);
+        if (!this.glr) return;
+        this.cr = new CharRenderer(glr.gl, { maxJoints: Math.max(32, asset.model.stats.joints) });
+        this.h3 = new Char3D(asset, this.cr, { maxTex: 2048 });
+        this.c3d.restored = glr.restored;
+        for (let i = 0; i < this.benchN; i++) { const c = new Char3D(asset, this.cr, { gpu: this.h3.gpu, weaponGpu: this.h3.weapon }); c.anim.play(i % 3 ? 'run' : 'idle', { fade: 0 }); c.anim.t = i * 0.07; this.h3bench.push(c); }   // 성능 시험용 들러리 (?c3dbench=12)
+      } catch (e) { this.c3d.error = String(e?.message ?? e); console.warn('[v2b] 입체 영웅을 불러오지 못해 2D 퍼펫으로 그립니다:', this.c3d.error); this.h3 = null; if (this.cr) { try { this.cr.destroy(); } catch { /* 무시 */ } this.cr = null; } }
+      if (!this.glr) return;
+    }
     this.ready = true;
   }
   // ───────────────────────── 갱신 ─────────────────────────
@@ -181,7 +198,8 @@ export default class V2ProtoB extends Scene {
     const deaths = sim.deaths;
     sim.update(dt, inp);
     if (inp.jumpUsed) input.consume('jump');
-    if (sim.deaths !== deaths) { this.cam.snap = true; this.game.flash?.('#000', 0.7, 2.5); }
+    if (sim.deaths !== deaths) { this.cam.snap = true; this.game.flash?.('#000', 0.7, 2.5); if (this.h3) { this.h3.dx = 1; this.h3.dz = 0; } }
+    if (this.h3) { const ta = performance.now(), adt = sim.stop > 0 ? 0 : dt; driveHero(this.h3, sim.hero, adt, TUNE); for (const c of this.h3bench) c.anim.update(adt); this.c3d.animMs = performance.now() - ta; }
     // 계단에서 발이 톡톡 튀지 않게 그리는 높이만 부드럽게 · 대시 잔상
     const hh = sim.hero;
     this.visY = hh.onGround && Math.abs((this.visY ?? hh.y) - hh.y) < 40 ? (this.visY ?? hh.y) + (hh.y - (this.visY ?? hh.y)) * (1 - Math.exp(-dt * 28)) : hh.y;
@@ -306,6 +324,7 @@ export default class V2ProtoB extends Scene {
     glr.uploadDyn(b.n);
     glr.drawDyn(this.skyTex, 0, nSky, false);
     for (const m of this.meshes) glr.drawMesh(m.mesh, m.tex);
+    if (this.h3) this._hero3d(glr);
     glr.gl.bindBuffer(glr.gl.ARRAY_BUFFER, glr.dyn.buf); glr._attribs();
     glr.drawDyn(this.propTex, nSky, nDecal, true);
     for (const r of runs) glr.drawDyn(r.t ? this.charTex : this.propTex, r.first, r.count, true);
@@ -337,6 +356,35 @@ export default class V2ProtoB extends Scene {
     const ms = performance.now() - t0 + P.upd; P.upd = 0;
     P.samples.push(ms); if (P.samples.length > 300) P.samples.shift();
   }
+  /** 입체 영웅 (char3d): 불투명 세계 메시 다음, 반투명 빌보드 앞에 그린다 → 깊이 버퍼가 기둥·적과의 가림을 풀어 준다 */
+  _hero3d(glr) {
+    const cr = this.cr, ch = this.h3, sim = this.sim, h = sim.hero, W = this.W, gl = glr.gl, t0 = performance.now();
+    if (this.c3d.restored !== glr.restored) { this.c3d.restored = glr.restored; cr.restore(); }   // 컨텍스트를 되찾았으면 자기 자원도 다시
+    const L = W.light, l = lightAt(W, h.x, h.y + 50, h.z);
+    const tint = [clamp(0.5 + 0.7 * l[0], 0, 1.6), clamp(0.5 + 0.7 * l[1], 0, 1.6), clamp(0.5 + 0.7 * l[2], 0, 1.6)];
+    cr.begin({ vp: this.vp, eye: this.eye, fog: W.fog, sunDir: L.moonDir, sun: [0.5, 0.5, 0.56], amb: [0.66, 0.67, 0.74] });
+    const blink = h.ifr > 0 && !h.dead && h.hurtT <= 0 && h.dashT <= 0 && Math.floor(h.t * 22) % 2 === 0;
+    const y = this.visY ?? h.y;
+    for (const g of this.trail ?? []) {   // 대시 잔상: 같은 자세를 빛으로 한 번 더
+      const k = 1 - g.t / 0.2;
+      ch.draw(ch.place(g.x, g.y, g.z), { tint: [0.35, 0.55, 1.3], solid: 1, alpha: 0.32 * k, add: true, rim: [0, 0, 0, 0] });
+    }
+    ch.draw(ch.place(h.x, y, h.z), { tint, flash: Math.max(h.flash > 0 ? h.flash * 0.6 : 0, blink ? 0.3 : 0) });
+    this.bench3d(ch, tint, y);
+    cr.end();
+    this.c3d.draws = cr.stats.draws; this.c3d.tris = cr.stats.tris;
+    glr.stats.draws += cr.stats.draws; glr.stats.tris += cr.stats.tris;
+    gl.useProgram(glr.prog); gl.disableVertexAttribArray(4);
+    this.c3d.ms = performance.now() - t0;
+  }
+  /** 성능 시험용 (?c3dbench=N): 영웅 둘레에 스킨 캐릭터 N 명을 더 그린다 — 입체 적 12마리가 화면에 있을 때의 값을 재려고 */
+  bench3d(ch, tint, y) {
+    const h = this.sim.hero, n = this.h3bench.length;
+    for (let i = 0; i < n; i++) {
+      const c = this.h3bench[i], a = (i / n) * Math.PI * 2, r = 90 + (i % 3) * 46;
+      c.draw(c.place(h.x + Math.cos(a) * r, y, h.z + Math.sin(a) * r * 0.8, -Math.cos(a), -Math.sin(a)), { tint });
+    }
+  }
   _message(ctx, a, b, c) {
     const W = this.game.viewW, H = this.game.viewH;
     ctx.fillStyle = '#0b0710'; ctx.fillRect(0, 0, W, H);
@@ -352,7 +400,7 @@ export default class V2ProtoB extends Scene {
     p.facing = h.facing; p.t = h.t; p.onGround = h.onGround; p.vy = -h.vy; p.dashT = h.dashT;
     p.vx = h.anim === 'run' ? Math.hypot(h.vx, h.vz) * h.facing : h.vx;
     p.move = h.move; p.moveT = h.moveT; p.anim = h.anim === 'attack' ? 'idle' : h.anim; p.animT = h.animT;
-    this.heroUV = A.hero(p);
+    this.heroUV = this.h3 ? null : A.hero(p);
     // 적: 화면 안 + 안개 끝 앞
     const Wv = this.game.viewW, Hv = this.game.viewH;
     for (const e of sim.enemies) {
@@ -502,7 +550,7 @@ export default class V2ProtoB extends Scene {
     text(ctx, (sec?.label ?? '') + (sim.section === 'yard' ? ' · 남은 적 ' + yardLeft : ''), x + 52, y + bh + 22, { size: 15, weight: 600, color: '#e8c872' });
     // 시범판 정보 (비교용): 방식 · 프레임 시간
     const st = this.stats();
-    text(ctx, `B · ${this.glr.webgl2 ? 'WebGL2' : 'WebGL1'} · ${st.mode}${this.resK < 1 ? ' ' + Math.round(this.resK * 100) + '%' : ''} · ${g.fps | 0}fps · ${st.frameMs.p50.toFixed(1)}ms · ${st.gl.draws}dc ${st.gl.tris}tri · 적 ${left}`, Wv / 2, Hv - 8 - s.b, { size: 11, weight: 500, align: 'center', color: 'rgba(220,210,200,0.6)', ow: 2 });
+    text(ctx, `B · ${this.h3 ? '입체 영웅' : '2D 영웅'} · ${this.glr.webgl2 ? 'WebGL2' : 'WebGL1'} · ${st.mode}${this.resK < 1 ? ' ' + Math.round(this.resK * 100) + '%' : ''} · ${g.fps | 0}fps · ${st.frameMs.p50.toFixed(1)}ms · ${st.gl.draws}dc ${st.gl.tris}tri · 적 ${left}`, Wv / 2, Hv - 8 - s.b, { size: 11, weight: 500, align: 'center', color: 'rgba(220,210,200,0.6)', ow: 2 });
     if (sim.time < 7 && !sim.done && !h.dead) {   // 처음 몇 초: 조작 안내
       ctx.globalAlpha = clamp(Math.min(sim.time / 0.5, (7 - sim.time) / 1), 0, 1);
       text(ctx, '스틱 위 = 화면 안쪽 · 공격은 세 번 이어집니다 · 깊이가 맞아야 맞습니다', Wv / 2, Hv - 30 - s.b, { size: 15, weight: 600, align: 'center', color: '#efe4cf' });
@@ -529,6 +577,7 @@ export default class V2ProtoB extends Scene {
       atlas: A ? { size: [A.canvas.width, A.canvas.height], scale: A.S, cells: A.cells, usedH: A.used } : null,
       world: this.W.stats, sprites: this.list.length, canvases: (this._canvases?.length ?? 0) + (A ? 1 : 0) + (G ? 1 : 0) + (this.layer.hud ? 1 : 0),
       mode: this.layer.on ? 'layer' : 'blit',
+      hero3d: this.h3 ? { on: true, drawMs: this.c3d.ms, animMs: this.c3d.animMs ?? 0, draws: this.c3d.draws, tris: this.c3d.tris, texBytes: this.cr.stats.texBytes, bufBytes: this.cr.stats.bufBytes, bench: this.h3bench.length, clip: this.h3.anim.cur?.name ?? '', dir: [this.h3.dx, this.h3.dz] } : { on: false, error: this.c3d.error },
     };
   }
   _api() {

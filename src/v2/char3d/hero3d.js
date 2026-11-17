@@ -48,8 +48,8 @@ export class Char3D {
   constructor(asset, renderer, opts = {}) {
     this.asset = asset; this.r = renderer;
     this.rig = new Rig(asset.model); this.anim = new Animator(this.rig, asset.clips);
-    this.gpu = renderer.add(asset.model, { maxTex: opts.maxTex ?? 2048 });
-    this.weapon = opts.weapon === false ? null : renderer.add(boxModel(BLADE));
+    this.gpu = opts.gpu ?? renderer.add(asset.model, { maxTex: opts.maxTex ?? 2048 });   // opts.gpu: 같은 모델을 여럿이 나눠 쓸 때
+    this.weapon = opts.weapon === false ? null : opts.weaponGpu ?? renderer.add(boxModel(BLADE));
     this.scale = opts.scale ?? UNIT;
     this.dx = 1; this.dz = 0;                       // 보는 방향 (세계 x·z 단위 벡터)
     this.M = new Float32Array(16); this.WM = new Float32Array(16); this._g = new Float32Array(16); this._t = new Float32Array(16);

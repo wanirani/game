@@ -64,3 +64,5 @@ svg .f { fill: currentColor; stroke: none; }
 #menu .mb > * { position: relative; min-height: 0; }
 #menu .fr { position: absolute; inset: 0; pointer-events: none; }
 #menu > .fr ~ *, #menu .mb > div > .fr ~ * { position: relative; }
+/* 가방 칸: 폴드는 40칸 전부(8줄), 휴대폰은 20칸(4줄)만 보이고 나머지는 넘겨 본다 */
+.phone .cells .cell:nth-child(n+21) { display: none; }

@@ -75,7 +75,7 @@ function build() {
   const h = T.hero, q = T.quest, b = T.boss;
   const acts = T.acts.map(([id, lb, k]) => `<button class="abtn" id="b-${id}" data-k="${id}"><i class="fr"></i><i class="fc"></i>${ic(k)}<i class="cd"></i><b class="ct"></b><span class="lb">${lb}</span></button>`).join('');
   const sys = T.sys.map(([id, lb, k]) => `<button class="sbtn" id="s-${id}" data-k="${id}"><i class="fr"></i>${ic(k)}<span class="lb">${lb}</span>${id === 'bag' ? '<b class="bd">3</b>' : ''}</button>`).join('');
-  const cells = Array.from({ length: 20 }, (_, i) => { const c = T.bag[i]; return c ? `<button class="cell r${c[1]}${i === 0 ? ' sel' : ''}"><i class="fr"></i>${ic(c[0])}${c[2] ? `<b>${c[2]}</b>` : ''}</button>` : '<button class="cell empty"><i class="fr"></i></button>'; }).join('');
+  const cells = Array.from({ length: 40 }, (_, i) => { const c = T.bag[i]; return c ? `<button class="cell r${c[1]}${i === 0 ? ' sel' : ''}"><i class="fr"></i>${ic(c[0])}${c[2] ? `<b>${c[2]}</b>` : ''}</button>` : '<button class="cell empty"><i class="fr"></i></button>'; }).join('');
   const eq = T.eq.map(([k, part, nm, plus, r]) => `<button class="slot r${r}${r ? '' : ' empty'}"><i class="fr"></i><span class="si">${ic(k)}</span><span class="sp">${part}</span><span class="sn">${nm}</span>${plus ? `<b class="pl">${plus}</b>` : ''}</button>`).join('');
   return `
 <div id="bg"></div><div id="shade"></div>
