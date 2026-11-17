@@ -135,9 +135,9 @@ export class Stage {
   footGround(x, z, r = 12, rz = 7) {
     return Math.max(this.walkAt(x, z), this.walkAt(x - r, z - rz), this.walkAt(x + r, z - rz), this.walkAt(x - r, z + rz), this.walkAt(x + r, z + rz));
   }
-  sectionAt(x, z) {
+  sectionAt(x, z, strict = false) {
     for (const s of this.sections) if (x >= s.x0 && x < s.x1 && z >= s.z0 && z < s.z1) return s;
-    return this.sections[0];
+    return strict ? null : this.sections[this.sections.length - 1];
   }
   pitAt(x, z) { for (const p of this.pits) if (x > p.x0 && x < p.x1 && z > p.z0 && z < p.z1) return p; return null; }
 

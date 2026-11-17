@@ -115,7 +115,6 @@ export default class V2ProtoA extends Scene {
     R.draw(ctx, cam, P.list(), P.done ? 'yard' : P.section, 1 / 60);
     P.drawFx(ctx, cam, R);
     // 가장자리 어둠 + 피격 붉은 빛
-    ui.vignette?.(ctx, W, H);
     if (P.vig > 0) { ctx.fillStyle = `rgba(160,10,20,${0.22 * P.vig})`; ctx.fillRect(0, 0, W, H); }
     this._hud(ctx, W, H);
     this.frame[this.fi] = this._now() - t0 + this.updMs; this.fi = (this.fi + 1) % this.frame.length; this.fn++; this.updMs = 0;

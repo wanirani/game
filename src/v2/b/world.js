@@ -21,6 +21,7 @@ export const MATS = {
   plaster: { tex: 'brick', tile: 290, tint: [1.0, 0.84, 0.74] },
   wood: { tex: 'wood', tile: 128, tint: [1.25, 1.05, 0.9] },
   dirt: { tex: 'dirt', tile: 340, tint: [1.05, 0.98, 0.95] },
+  roof: { tex: 'wood', tile: 150, tint: [0.62, 0.5, 0.62] },
 };
 
 class MeshWriter {
@@ -91,6 +92,15 @@ export function compileStage(S) {
         if (P.collideH > P.h) addBox({ x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, y0: y, y1: y + P.collideH, solid: true, walk: false, inv: true, part: P });
         break;
       }
+      case 'roof': {   // 맞배지붕: 용마루가 x 방향. 앞 경사면 + 양쪽 박공 (카메라는 뒤 경사면을 못 본다)
+        const ov = P.over ?? 14, x0 = P.x - ov, x1 = P.x + P.w + ov, z0 = P.z - ov, zm = P.z + P.d / 2, z1 = P.z + P.d, m = P.mat ?? 'roof';
+        const dz = zm - z0, l = Math.hypot(P.h, dz);
+        faces.push({ mat: m, p: [x0, y, z0], du: [x1 - x0, 0, 0], dv: [0, P.h, dz], n: [0, dz / l, -P.h / l], kind: 'top', y0: y });
+        faces.push({ mat: m, tri: [[x0, y, z1], [x0, y, z0], [x0, y + P.h, zm]], n: [-1, 0, 0], k: 0.8 });
+        faces.push({ mat: m, tri: [[x1, y, z0], [x1, y, z1], [x1, y + P.h, zm]], n: [1, 0, 0], k: 0.8 });
+        faces.push({ mat: m, p: [x0, y - 10, z0], du: [x1 - x0, 0, 0], dv: [0, 10, 0], n: [0, 0, -1], kind: 'side', y0: y - 10, k: 0.6 });   // 처마 끝
+        break;
+      }
       case 'blocker': {   // 보이지 않는 벽
         addBox({ x0: P.x, x1: P.x + P.w, z0: P.z, z1: P.z + P.d, y0: y, y1: y + (P.h ?? 600), solid: true, walk: false, inv: true, part: P });
         break;
@@ -144,6 +154,10 @@ export function compileStage(S) {
   for (const F of faces) {
     const M = MATS[F.mat]; if (!M) throw new Error('모르는 재질: ' + F.mat);
     const wr = writers[M.tex] ?? (writers[M.tex] = new MeshWriter());
+    if (F.tri) {   // 삼각형 한 장 (박공)
+      for (const v of F.tri) { const c = lightAt(W, v[0] + F.n[0] * 2, v[1], v[2], F.n[0], F.n[1], F.n[2]), kk = F.k ?? 1; wr.vert(v[0], v[1], v[2], -v[2] * F.n[0] / M.tile, -v[1] / M.tile, c[0] * kk * M.tint[0], c[1] * kk * M.tint[1], c[2] * kk * M.tint[2]); }
+      W.stats.quads += 0.5; continue;
+    }
     const lu = Math.hypot(F.du[0], F.du[1], F.du[2]), lv = Math.hypot(F.dv[0], F.dv[1], F.dv[2]);
     const nu = Math.max(1, Math.ceil(lu / CELL)), nv = Math.max(1, Math.ceil(lv / CELL));
     const T = M.tile;
@@ -166,7 +180,7 @@ export function compileStage(S) {
     }
   }
   for (const k in writers) W.mesh[k] = writers[k].done();
-  W.stats.tris = W.stats.quads * 2;
+  W.stats.quads = Math.round(W.stats.quads); W.stats.tris = Object.values(W.mesh).reduce((a, m) => a + m.count / 3, 0);
   W.stats.boxes = W.boxes.length;
   // 소품의 발밑 높이
   for (const s of W.sprites) if (s.kind === 'prop' && s.y == null) { const g = groundAt(W, s.x, s.z); s.y = Number.isFinite(g) ? g : 0; }
@@ -227,8 +241,8 @@ export function validateStage(S) {
   S.parts.forEach((P, i) => {
     const tag = `parts[${i}] ${P.t}`;
     if (!num(P.x) || !num(P.z)) errors.push(tag + ': x·z 가 숫자가 아님');
-    if (['floor', 'block', 'wall', 'blocker', 'stairs'].includes(P.t) && !(P.w > 0 && P.d > 0)) errors.push(tag + ': w·d 는 0보다 커야 함');
-    if (['block', 'wall', 'stairs', 'pillar'].includes(P.t) && !(P.h > 0)) errors.push(tag + ': h 는 0보다 커야 함');
+    if (['floor', 'block', 'wall', 'blocker', 'stairs', 'roof'].includes(P.t) && !(P.w > 0 && P.d > 0)) errors.push(tag + ': w·d 는 0보다 커야 함');
+    if (['block', 'wall', 'stairs', 'pillar', 'roof'].includes(P.t) && !(P.h > 0)) errors.push(tag + ': h 는 0보다 커야 함');
     if (P.t === 'stairs' && !['x+', 'x-', 'z+', 'z-'].includes(P.dir)) errors.push(tag + ': dir 은 x+ x- z+ z- 중 하나');
     if (P.t === 'stairs' && P.h / (P.steps ?? Math.max(2, Math.round(P.h / 12))) > STEP_UP) errors.push(tag + ': 한 칸이 걸어 오르는 턱보다 높음');
     if (P.mat && !MATS[P.mat]) errors.push(tag + ': 모르는 재질 ' + P.mat);

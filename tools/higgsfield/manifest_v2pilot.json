@@ -12,26 +12,26 @@
    "agent": "artpilot (중단됨)"
   },
   "2": {
-   "what": "소유자 의견(\"수렵 액션 게임의 등장인물 같은 느낌\") 뒤: 카엘 3방향 새로 + 위에서 본 시험 1 + 영웅 6인 측면 + 여성 흉상 2 + 적 다시 칠하기 시험 2",
-   "images": 20,
-   "credits": 5.75,
-   "when": "2026-11-17 11:32–11:49 UTC",
+   "what": "소유자 의견(\"수렵 액션 게임의 등장인물 같은 느낌\") 뒤: 카엘 3방향 새로 + 위에서 본 시험 1 + 영웅 6인 측면 + 여성 흉상 2 + 적 다시 칠하기 시험 2 + 얼굴 후보 2 + 마감 시험 2",
+   "images": 24,
+   "credits": 6.75,
+   "when": "2026-11-17 11:32–11:58 UTC",
    "agent": "artpilot2",
    "cap": "30장 · 12 크레딧"
   }
  },
- "images": 36,
- "kept": 36,
- "credits": 10.5,
- "billing_check": "transactions: 1차 16건(0.5×3 + 0.25×13 = 4.75), 2차 20건(0.5×3 + 0.25×17 = 5.75) 'GPT Image 2.5 Flare'. 잔액 64.25 → 59.5 (1차) → 53.75 (2차). 2차 도중 11:37:35 UTC 에 'Discord Connection Bonus' +50 지급이 계정에 들어와(이 작업과 무관) 끝 잔액 표시는 103.75",
+ "images": 40,
+ "kept": 40,
+ "credits": 11.5,
+ "billing_check": "transactions: 1차 16건(0.5×3 + 0.25×13 = 4.75), 2차 24건(0.5×3 + 0.25×21 = 6.75) 'GPT Image 2.5 Flare'. 잔액 64.25 → 59.5 (1차) → 52.75 (2차). 2차 도중 11:37:35 UTC 에 'Discord Connection Bonus' +50 지급이 계정에 들어와(이 작업과 무관) 끝 잔액 표시는 102.75",
  "balance": {
   "before_round1": 64.25,
   "before_round2": 59.5,
-  "after_round2": 103.75,
+  "after_round2": 102.75,
   "grant_during_round2": 50,
-  "spent_round2": 5.75
+  "spent_round2": 6.75
  },
- "rejected": "없음 (36장 모두 사용 — 다시 뽑은 그림 없음)",
+ "rejected": "없음 (다시 뽑은 그림 없음). 문서에 싣지 않은 것: 1차 뷰 3장, 2차 3D 마감 측면 1장",
  "items": [
   {
    "round": 1,
@@ -782,6 +782,92 @@
    "credits": 0.25,
    "kept": true,
    "note": "부품 6개 모두 같은 자리 (중심 이동 ≤ 8 px / 1168 px, 크기 1.01–1.11배)"
+  },
+  {
+   "round": 2,
+   "index": 40,
+   "name": "kaelD_bust_young",
+   "kind": "① 얼굴 후보 — 더 어리게 (흉상 편집)",
+   "file": "docs/v2/img/ap_face_alt.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/kaelD_bust_young.png (저장소 밖)",
+   "ref": [
+    "job 7a092290-cfd1-4cd3-b640-3795543248b3 (이 묶음의 측면 결과)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Edit this bust portrait. Keep the same composition, the same pose and head angle, the same outfit (tan drake-hide jacket with crimson panels, ivory bone-plate pauldron, pale wolf-fur collar, crimson headband) and the same chestnut-brown ponytail hair. Change ONLY his face and age: make him YOUNGER, about twenty years old - a fresh, boyish but handsome and very likeable young hunter with smooth skin and no deep lines, softer cheeks and jaw, large bright amber-brown eyes looking at the viewer, natural eyebrows and an open, friendly, cheerful smile. Semi-realistic, high-fidelity CG character illustration with the polish of official character art for a big-budget fantasy hunting-action game: lifelike skin and hair, crisp materials, bright clean soft lighting, rich clear colours. NOT anime, NOT cel-shaded, no oversized eyes, NOT grim, not a photograph of a real person. Plain flat solid #00FF00 green background, no text, no border, no frame.",
+   "job_id": "702d6efc-58e1-4b60-8fe4-9ee2040f1258",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 2,
+   "index": 41,
+   "name": "kaelD_bust_cool",
+   "kind": "① 얼굴 후보 — 진지하게, 미소 없이 (흉상 편집)",
+   "file": "docs/v2/img/ap_face_alt.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/kaelD_bust_cool.png (저장소 밖)",
+   "ref": [
+    "job 7a092290-cfd1-4cd3-b640-3795543248b3 (이 묶음의 측면 결과)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Edit this bust portrait. Keep the same composition, the same pose and head angle, the same outfit (tan drake-hide jacket with crimson panels, ivory bone-plate pauldron, pale wolf-fur collar, crimson headband) and the same chestnut-brown ponytail hair. Change ONLY his expression and character: a cool, composed, serious young hunter in his mid-twenties - NO smile, closed relaxed mouth, a calm steady focused gaze at the viewer, clean sharp handsome features, smooth healthy skin without deep lines, clean-shaven. He still looks attractive and trustworthy, not angry and not harsh. Semi-realistic, high-fidelity CG character illustration with the polish of official character art for a big-budget fantasy hunting-action game: lifelike skin and hair, crisp materials, bright clean soft lighting, rich clear colours. NOT anime, NOT cel-shaded, NOT grim, not a photograph of a real person. Plain flat solid #00FF00 green background, no text, no border, no frame.",
+   "job_id": "588330c3-558f-4d8f-92da-d5970132ce93",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 2,
+   "index": 42,
+   "name": "kaelD_bust_3d",
+   "kind": "① 마감 시험 — 3D 게임 모델 느낌 (흉상)",
+   "file": "docs/v2/img/ap_face_alt.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/kaelD_bust_3d.png (저장소 밖)",
+   "ref": [
+    "job 7a092290-cfd1-4cd3-b640-3795543248b3 (이 묶음의 측면 결과)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Re-render this bust portrait with a different finish. Keep the same man, the same face, the same friendly confident half-smile, the same composition, pose and head angle, the same outfit (tan drake-hide jacket with crimson panels, ivory bone-plate pauldron, pale wolf-fur collar, crimson headband) and the same chestnut-brown ponytail hair. NEW FINISH: it must look like a close-up of a high-end real-time 3D game character model from a big-budget fantasy hunting-action game - physically based materials, soft subsurface-scattered skin, individually rendered hair strands and fur, real depth and soft global illumination, gentle rim light, NO drawn outlines, NO ink lines, NO visible brush strokes, no painterly texture. Stylised realism: an attractive, likeable game character, not a photograph of a real person. NOT anime, NOT cel-shaded, NOT grim. Plain flat solid #00FF00 green background, no text, no border, no frame.",
+   "job_id": "8ea597ec-3d8b-4047-8690-cd63331d46a6",
+   "credits": 0.25,
+   "kept": true,
+   "note": "차이가 작다: 선·붓 자국이 줄고 매끈해지지만 일러스트 마감에 가깝다"
+  },
+  {
+   "round": 2,
+   "index": 43,
+   "name": "kaelD_side_3d",
+   "kind": "① 마감 시험 — 3D 게임 모델 느낌 (측면 keep-pose, 1k)",
+   "file": null,
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/kaelD_side_3d.png (저장소 밖)",
+   "ref": [
+    "job a48c7d88-74e6-42d3-b90f-09368d341b84 (이 묶음의 측면 결과)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Re-render this full-body side view with a different finish. Keep exactly the same man, the same face and hair, exactly the same outfit, colours and whip coil at the hip, and the exact same walking side pose facing right (same arm, hand and leg positions), the same camera angle, the same framing, the same scale and the same position on the canvas. NEW FINISH: it must look like a high-end real-time 3D game character model from a big-budget fantasy hunting-action game - physically based materials (leather, bone, fur, brass, cloth), soft subsurface-scattered skin, individually rendered hair strands and fur, real depth and soft global illumination, NO drawn outlines, NO ink lines, NO visible brush strokes, no painterly texture. Stylised realism, bright clean neutral studio lighting, rich clear colours. NOT anime, NOT cel-shaded, NOT grim. No cape, no cloak, nothing held in the hands, both hands empty. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "74b4b5b8-1017-44bf-867e-62ea1767b9a0",
+   "credits": 0.25,
+   "kept": true,
+   "note": "원래 측면과 거의 같아 문서에는 싣지 않음 — 이 모델로는 진짜 3D 렌더 마감이 나오지 않는다"
   }
  ]
 }

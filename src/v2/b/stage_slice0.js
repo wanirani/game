@@ -5,6 +5,7 @@
 //   wall    {x,z,w,d,h, y?, mat, collideH?}         건물·담 (위에 설 수 없다; collideH = 충돌 높이)
 //   stairs  {x,z,w,d,h, y?, dir:'x+|x-|z+|z-', steps}
 //   pillar  {x,z,r,h}                               8각 돌기둥
+//   roof    {x,z,w,d,h, y, over?}                   맞배지붕 (벽 위에 얹는다)
 //   blocker {x,z,w,d, y?, h?}                       보이지 않는 벽
 //   prop    {img,x,z,h, solid?, light?, glow?}      그림 소품 (v1 assets/props 빌보드)
 //   window  {x,z,y, side?}                          불 켜진 창 (+ 빛)
@@ -21,8 +22,8 @@ export default {
   light: { ambient: [0.3, 0.33, 0.47], moon: [0.5, 0.52, 0.7], moonDir: [-0.447, 0.745, -0.496] },
   sections: [
     { id: 'street', label: '거리', x0: -200, x1: 1900, z0: -100, z1: 300, cam: { yaw: 12 * D, pitch: 20 * D, dist: 790, lookY: 64, leadX: 90, leadZ: 0, minX: 40, zFollow: 0.55 } },
-    { id: 'corner', label: '모퉁이', x0: 1900, x1: 2600, z0: -100, z1: 300, cam: { yaw: 1 * D, pitch: 17 * D, dist: 800, lookY: 80, leadX: 0, leadZ: 150, zFollow: 0.9 } },
-    { id: 'alley', label: '골목', x0: 1800, x1: 2600, z0: 300, z1: 1500, cam: { yaw: 0, pitch: 13.5 * D, dist: 660, lookY: 62, leadX: 0, leadZ: 170, minX: 2030, maxX: 2350, zFollow: 1, yawLead: 3 * D } },
+    { id: 'corner', label: '모퉁이', x0: 1900, x1: 2600, z0: -100, z1: 300, cam: { yaw: 1 * D, pitch: 17 * D, dist: 800, lookY: 80, leadX: 0, leadZ: 150, zFollow: 0.9, tallK: 0.25 } },
+    { id: 'alley', label: '골목', x0: 1800, x1: 2600, z0: 300, z1: 1500, cam: { yaw: 0, pitch: 13.5 * D, dist: 660, lookY: 62, leadX: 0, leadZ: 140, minX: 2030, maxX: 2350, zFollow: 1, yawLead: 3 * D, tallK: 0.15 } },
     { id: 'yard', label: '마당', x0: 1500, x1: 2900, z0: 1500, z1: 2400, cam: { yaw: 0, pitch: 29 * D, dist: 900, lookY: 30, leadX: 0, leadZ: 40, minX: 2040, maxX: 2340, zFollow: 1, tallK: 0.12, center: { x: 2190, z: 1860, k: 0.3 } } },
   ],
   parts: [
@@ -37,12 +38,17 @@ export default {
     { t: 'wall', x: 440, z: 260, w: 470, d: 90, h: 350, mat: 'plaster' },
     { t: 'wall', x: 910, z: 260, w: 500, d: 90, h: 270, mat: 'facade' },
     { t: 'wall', x: 1410, z: 260, w: 570, d: 90, h: 330, mat: 'plaster' },
+    { t: 'roof', x: -160, z: 260, w: 600, d: 90, y: 290, h: 62 }, { t: 'roof', x: 440, z: 260, w: 470, d: 90, y: 350, h: 70 },
+    { t: 'roof', x: 910, z: 260, w: 500, d: 90, y: 270, h: 58 }, { t: 'roof', x: 1410, z: 260, w: 570, d: 90, y: 330, h: 66 },
     { t: 'window', x: 150, z: 259, y: 120 }, { t: 'window', x: 330, z: 259, y: 205, i: 0.5 }, { t: 'window', x: 640, z: 259, y: 230, i: 0.5 },
     { t: 'window', x: 1090, z: 259, y: 190, i: 0.6 }, { t: 'window', x: 1520, z: 259, y: 130 }, { t: 'window', x: 1760, z: 259, y: 240, i: 0.5 },
     { t: 'prop', img: 'deco_gate_banner', x: 520, z: 257, y: 120, h: 190 }, { t: 'prop', img: 'deco_gate_banner', x: 1330, z: 257, y: 70, h: 180 },
     // 가로등 2 · 기둥 2 (앞뒤로 지나갈 수 있다 — 가림 확인)
     { t: 'prop', ...LAMP, x: 430, z: 150 }, { t: 'prop', ...LAMP, x: 1660, z: 66 },
     { t: 'pillar', x: 700, z: 110, r: 24, h: 236 }, { t: 'pillar', x: 1565, z: 196, r: 22, h: 220 },
+    // 화면 앞 가장자리의 소품 (가까운 것이 빨리 지나간다 — 시차). 길을 막지 않는다
+    { t: 'prop', ...LAMP, solid: 0, x: 1010, z: 7 }, { t: 'prop', ...LAMP, solid: 0, x: 2345, z: 7 },
+    { t: 'prop', img: 'deco_village_fence', x: 330, z: 6, h: 58 }, { t: 'prop', img: 'deco_village_fence', x: 1480, z: 6, h: 58, flip: true },
     // 돌 단상 300×120×72 + 왼쪽 계단
     { t: 'block', x: 900, z: 130, w: 300, d: 120, h: 72, mat: 'stone' },
     { t: 'stairs', x: 804, z: 150, w: 96, d: 84, h: 72, dir: 'x+', steps: 6, mat: 'stone' },
@@ -59,8 +65,7 @@ export default {
     { t: 'floor', x: 1980, z: 260, w: 420, d: 440, mat: 'cobble' },
     { t: 'stairs', x: 1980, z: 700, w: 420, d: 200, h: 96, dir: 'z+', steps: 8, mat: 'stone' },
     { t: 'floor', x: 1980, z: 900, w: 420, d: 660, y: 96, thick: 330, mat: 'cobble' },
-    { t: 'wall', x: 1980, z: 560, w: 420, d: 30, y: 300, h: 44, mat: 'stone' },           // 골목 위 아치 1
-    { t: 'wall', x: 1980, z: 968, w: 420, d: 32, y: 392, h: 58, mat: 'stone' },           // 아치 2 (높은 벽이 끝나는 곳)
+    { t: 'wall', x: 1980, z: 560, w: 420, d: 30, y: 352, h: 50, mat: 'stone' },           // 골목 위 아치 (카메라 길보다 충분히 높게)
     { t: 'window', x: 2399, z: 480, y: 170, side: 'x-' }, { t: 'window', x: 1981, z: 640, y: 210, side: 'x+', i: 0.6 }, { t: 'window', x: 2399, z: 860, y: 280, side: 'x-', i: 0.6 },
     { t: 'prop', img: 'prop_barrel', x: 2016, z: 420, h: 78, solid: 24 }, { t: 'prop', img: 'prop_crate', x: 2364, z: 540, h: 66, solid: 28, solidZ: 20 },
     { t: 'prop', img: 'prop_barrel', x: 2366, z: 600, h: 74, solid: 22 },

@@ -1,10 +1,13 @@
 // 시범판 B 검사 (docs/v2/SLICE0.md §9): 헤드리스 Chromium(SwiftShader) 에서 fold_open · phone2 로 구간을 끝까지 걸어
 // 마당의 적을 모두 쓰러뜨린다. 페이지 오류 0, 프레임 시간·그리기 호출·텍스처 메모리 보고, 캡처 저장.
 //   node tools/v2/proto_b_check.mjs [--devices fold_open,phone2] [--shots /tmp/claude-0/v2/fold/b] [--no-shots] [--json out.json]
+//                                  [--dist dist/<빌드 폴더>]  ← build_web.mjs 결과물을 배포용 CSP 머리말과 함께 열어 본다 (번들 + CSP)
 // 함께 보는 것: 스테이지 데이터 검증(world.js validateStage) · WebGL 없음(안내만, 오류 0) · 컨텍스트 잃기→복구 · 장면 나가기(자원 정리).
 // 주의: 헤드리스의 WebGL 은 소프트웨어 렌더러라 프레임 시간이 실제 기기를 대표하지 않는다 (GL→2D 옮기기가 ReadPixels 로 돈다).
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
+import http from 'node:http';
+import path from 'node:path';
 import { start } from '../serve.mjs';
 import { contextOptions } from '../qa/lib/viewports.mjs';
 import { Touch, padLayout, pressButton, stickHold, ensureTouchMode } from '../qa/lib/touch.mjs';
@@ -29,7 +32,7 @@ const ok = (m) => console.log('  ✓ ' + m);
 
 const port = 8200 + Math.floor(Math.random() * 700);
 const srv = await start(port);
-const URL = `http://localhost:${port}/index.html?scene=v2b`;
+const PAGE_URL = `http://localhost:${port}/index.html?scene=v2b`;
 
 /** 페이지 안에서 도는 봇: 길을 따라 걷고, 가까운 적을 쫓아가 깊이를 맞춘 뒤 벤다 */
 function installBot() {
@@ -102,7 +105,7 @@ async function open(device, extraArgs = GL_ARGS) {
   const errs = [];
   page.on('console', (m) => { if (m.type() === 'error') errs.push('[console.error] ' + m.text()); });
   page.on('pageerror', (e) => errs.push('[pageerror] ' + e.message));
-  await page.goto(URL);
+  await page.goto(PAGE_URL);
   await page.waitForFunction(() => window.__v2?.id === 'b' && (window.__v2.ready || window.__v2.error), null, { timeout: 40000 }).catch(() => errs.push('준비 시간 초과'));
   return { browser, page, errs };
 }
@@ -126,11 +129,14 @@ for (const dev of DEVICES) {
       const h0 = await page.evaluate(() => window.__v2.hero);
       await stickHold(T, page, 46, -46, 1100);
       const h1 = await page.evaluate(() => window.__v2.hero);
-      const watch = (ms) => page.evaluate(async (ms) => { const seen = {}; let air = false; const t0 = performance.now(); while (performance.now() - t0 < ms) { const h = window.__v2.hero; seen[h.anim] = 1; if (!h.onGround) air = true; await new Promise((r) => setTimeout(r, 12)); } return { anims: Object.keys(seen), air }; }, ms);
-      const [, wa] = await Promise.all([pressButton(T, page, 'attack', 220), watch(700)]);
-      const [, wj] = await Promise.all([pressButton(T, page, 'jump', 220), watch(700)]);
-      const [, wd] = await Promise.all([pressButton(T, page, 'dash', 220), watch(600)]);
-      R.touch = { pad: ids, moved: [Math.round(h1.x - h0.x), Math.round(h1.z - h0.z)], attack: wa.anims.includes('attack'), jump: wj.air, dash: wd.anims.includes('dash') };
+      await page.evaluate(() => { for (const e of window.__v2.scene.sim.enemies) e.dead = true; });   // 조작만 본다 (맞아서 입력이 끊기지 않게)
+      const until = (what, ms) => page.evaluate(async ([what, ms]) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { const h = window.__v2.hero; if (what === 'air' ? !h.onGround : h.anim === what) return true; await new Promise((r) => setTimeout(r, 8)); } return false; }, [what, ms]);
+      const [, wa] = await Promise.all([pressButton(T, page, 'attack', 220), until('attack', 3000)]);
+      await page.waitForTimeout(500);
+      const [, wj] = await Promise.all([pressButton(T, page, 'jump', 220), until('air', 3000)]);
+      await page.waitForTimeout(900);
+      const [, wd] = await Promise.all([pressButton(T, page, 'dash', 220), until('dash', 3000)]);
+      R.touch = { pad: ids, moved: [Math.round(h1.x - h0.x), Math.round(h1.z - h0.z)], attack: wa, jump: wj, dash: wd };
       const T_OK = R.touch.moved[0] > 40 && R.touch.moved[1] > 25 && R.touch.attack && R.touch.jump && R.touch.dash && ['attack', 'jump', 'dash'].every((b) => ids.includes(b));
       if (T_OK) ok('터치: 스틱 오른쪽·위 → 이동 ' + R.touch.moved.join(',') + ', 공격·점프·대시 버튼 동작 (패드 버튼: ' + ids.join(' ') + ')'); else fail(`${dev}: 터치 조작 이상 ${JSON.stringify(R.touch)}`);
       await page.evaluate(() => { const v = window.__v2; v.scene.sim.reset(); v.scene.cam.snap = true; });
@@ -149,7 +155,15 @@ for (const dev of DEVICES) {
     if (st.sec === 'done') ok(`구간 끝: ${R.run.gameSec}초(게임), 남은 체력 ${st.hp} (최저 ${st.minHp}), 쓰러짐 ${st.deaths}회, 지난 구간 ${[...seen].join('→')}`);
     else fail(`${dev}: 끝까지 가지 못함 ${JSON.stringify(st)}`);
     for (const s of ['street', 'corner', 'alley', 'yard']) if (!seen.has(s)) fail(`${dev}: 구간 ${s} 을 지나지 않음`);
-    if (cap) await shot(page, '09_done_banner');
+    if (cap) { await page.evaluate(() => { const g = window.__game; for (let i = 0; i < 80; i++) g.tick(1 / 60); g.render(); }); await shot(page, '09_done_banner'); }
+    R.restart = await page.evaluate(() => {
+      const g = window.__game, v = window.__v2, input = g.input; window.__bot.stop();
+      for (let i = 0; i < 90; i++) g.tick(1 / 60);
+      const before = v.section;
+      input.setAutoSource(() => ({ attack: true })); g.tick(1 / 60); input.setAutoSource(null); for (let i = 0; i < 5; i++) g.tick(1 / 60);
+      return { before, after: v.section, enemies: v.enemies.length, hp: v.hero.hp, x: Math.round(v.hero.x) };
+    });
+    if (st.sec === 'done' && R.restart.before === 'done' && R.restart.after === 'street' && R.restart.enemies === 16) ok('끝 표시 뒤 공격 버튼 → 처음부터 다시 (적 16)'); else if (st.sec === 'done') fail(`${dev}: 다시 시작 이상 ${JSON.stringify(R.restart)}`);
     // ── 1.5) 규칙: 적의 공격 · 구덩이 · 계단 · 점프로 단상 오르기 · 깊이 판정 ──
     R.rules = await page.evaluate(() => {
       const g = window.__game, v = window.__v2, sc = v.scene, sim = sc.sim, input = g.input; window.__bot.stop(); g._pageHidden = true;
@@ -174,6 +188,10 @@ for (const dev of DEVICES) {
       sim.reset(); v.teleport('stairs'); run({ up: true }, 110); out.alleyStairsY = Math.round(sim.hero.y);
       // 대시는 스틱 방향(깊이 쪽)으로
       sim.reset(); v.teleport('alley'); const z0 = sim.hero.z; run({ up: true, dash: true }, 2); run({ up: true }, 10); out.dashDz = Math.round(sim.hero.z - z0);
+      // 쓰러지면 구간 처음에서 다시
+      sim.reset(); v.teleport('pillar'); e = sim.enemies[0]; e.x = sim.hero.x + 110; e.z = sim.hero.z; e.active = true; e.state = 'chase'; e.cd = 0; sim.hero.hp = 5; const d0 = sim.deaths;
+      run({}, 140); const dead = sim.hero.dead; run({}, 130);
+      out.death = { dead, deaths: sim.deaths - d0, hp: sim.hero.hp, x: Math.round(sim.hero.x) };
       sim.reset(); sc.cam.snap = true;
       return out;
     });
@@ -184,6 +202,7 @@ for (const dev of DEVICES) {
       if (!(q.pit.hp < 100 && q.pit.x < 1800 && q.pit.y === 0)) bad.push('구덩이 처리 이상');
       if (q.stairsY !== 72) bad.push('계단으로 단상에 못 오름'); if (q.jumpY !== 72) bad.push('점프로 단상에 못 오름'); if (q.alleyStairsY !== 96) bad.push('골목 계단 높이 이상');
       if (!(q.dashDz > 60)) bad.push('깊이 방향 대시 이상');
+      if (!(q.death.dead && q.death.deaths === 1 && q.death.hp === 100 && q.death.x === STAGE.start.x)) bad.push('쓰러짐 → 처음부터 이상');
       if (bad.length) fail(`${dev}: 규칙 ${bad.join(', ')} ${JSON.stringify(q)}`); else ok('규칙: ' + JSON.stringify(q));
     }
     await page.evaluate(installBot);
@@ -294,6 +313,32 @@ for (const dev of DEVICES) {
     if (r.err && !r.ready && !errs.length) ok('WebGL 이 없으면 안내 문구만 (' + r.err + '), 페이지 오류 0'); else fail('WebGL 없음 처리 이상: ' + JSON.stringify(report.noWebgl));
     if (SHOTS) { fs.mkdirSync(SHOTS, { recursive: true }); await page.screenshot({ path: `${SHOTS}/x_no_webgl.png` }); }
   } finally { await browser.close(); }
+}
+// ── 8) 배포 빌드 (번들 + CSP): --dist <폴더> ──
+if (args.dist) {
+  console.log('\n[배포 빌드 ' + args.dist + ']');
+  const root = path.resolve(String(args.dist));
+  const toml = fs.readFileSync(new URL('../../netlify.toml', import.meta.url), 'utf8');
+  const csp = (toml.match(/Content-Security-Policy\s*=\s*"([^"]+)"/) || [])[1] || "default-src 'self'";
+  const MIME = { html: 'text/html; charset=utf-8', js: 'text/javascript', css: 'text/css', json: 'application/json', webp: 'image/webp', png: 'image/png', woff2: 'font/woff2', webmanifest: 'application/manifest+json', m4a: 'audio/mp4', ogg: 'audio/ogg' };
+  const dsrv = http.createServer((req, res) => {
+    let u = decodeURIComponent(req.url.split('?')[0]); if (u === '/') u = '/index.html';
+    const f = path.join(root, u); if (!f.startsWith(root)) { res.writeHead(403); res.end(); return; }
+    fs.readFile(f, (err, data) => { if (err) { res.writeHead(404); res.end(); return; } res.writeHead(200, { 'Content-Type': MIME[f.split('.').pop()] || 'application/octet-stream', 'Content-Security-Policy': csp }); res.end(data); });
+  });
+  const dport = port + 1; await new Promise((r) => dsrv.listen(dport, r));
+  const browser = await chromium.launch({ executablePath: EXE, args: GL_ARGS });
+  try {
+    const page = await (await browser.newContext(contextOptions(DEVICES[0]))).newPage(); const errs = [];
+    page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); }); page.on('pageerror', (e) => errs.push(e.message));
+    await page.goto(`http://localhost:${dport}/index.html?scene=v2b`);
+    await page.waitForFunction(() => window.__v2?.id === 'b' && (window.__v2.ready || window.__v2.error), null, { timeout: 40000 }).catch(() => errs.push('준비 시간 초과'));
+    await page.waitForTimeout(1500);
+    const r = await page.evaluate(() => { const g = window.__game, v = window.__v2; g._pageHidden = true; g.input.setAutoSource(() => ({ right: true, attack: true })); for (let i = 0; i < 90; i++) g.tick(1 / 60); g.render(); g.input.setAutoSource(null); const s = v.stats; return { ready: v.ready, err: v.error, x: Math.round(v.hero.x), draws: s.gl?.draws, mode: s.mode, build: window.__BN_BUILD?.version ?? null }; });
+    report.dist = { ...r, csp, errors: errs.slice(0, 5) };
+    if (r.ready && !r.err && r.x > 300 && r.draws > 5 && !errs.length) ok(`번들된 빌드가 CSP(${csp.slice(0, 44)}…) 아래에서 열리고 그린다: ${JSON.stringify(r)}`); else fail('배포 빌드 이상: ' + JSON.stringify(report.dist));
+    if (SHOTS) await page.screenshot({ path: `${SHOTS}/x_dist_build.png` });
+  } finally { await browser.close(); dsrv.close(); }
 }
 srv.close();
 report.fails = fails;

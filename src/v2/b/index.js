@@ -498,6 +498,11 @@ export default class V2ProtoB extends Scene {
     // 시범판 정보 (비교용): 방식 · 프레임 시간
     const st = this.stats();
     text(ctx, `B · ${this.glr.webgl2 ? 'WebGL2' : 'WebGL1'} · ${g.fps | 0}fps · ${st.frameMs.p50.toFixed(1)}ms · ${st.gl.draws}dc ${st.gl.tris}tri · 적 ${left}`, Wv / 2, Hv - 8 - s.b, { size: 11, weight: 500, align: 'center', color: 'rgba(220,210,200,0.6)', ow: 2 });
+    if (sim.time < 7 && !sim.done && !h.dead) {   // 처음 몇 초: 조작 안내
+      ctx.globalAlpha = clamp(Math.min(sim.time / 0.5, (7 - sim.time) / 1), 0, 1);
+      text(ctx, '스틱 위 = 화면 안쪽 · 공격은 세 번 이어집니다 · 깊이가 맞아야 맞습니다', Wv / 2, Hv - 30 - s.b, { size: 15, weight: 600, align: 'center', color: '#efe4cf' });
+      ctx.globalAlpha = 1;
+    }
     if (sim.done) {
       const a = clamp(this.doneT / 0.5, 0, 1);
       ctx.globalAlpha = a * 0.6; ctx.fillStyle = '#05020a'; ctx.fillRect(0, Hv * 0.34, Wv, 124); ctx.globalAlpha = a;

@@ -8,6 +8,7 @@ import { PIT_Y, WALL } from './stage.js';
 const STRIP = 6;            // 띠 두께 (화면 px)
 const FAR = 3400;           // 이보다 먼 것은 그리지 않는다
 const NIGHT = [9, 7, 20];   // 어둠 색
+const FOG_MAX = 0.82, FOG_LV = 7;   // 가장 짙은 안개 · 안개 단계 수
 // 재질: tex = v1 타일 무늬, size = 무늬 한 장이 덮는 세계 px, tint = 밤 빛깔(곱하기), top/front/side = 면별 밝기
 const MATS = {
   cobble: { tex: 'tex/tex_castle_stone', size: 256, tint: '#8088b0', top: 0.78, front: 0.5, side: 0.36, flat: '#3a3c50' },
@@ -44,7 +45,8 @@ export class Renderer {
   constructor(game, stage) {
     this.game = game; this.stage = stage;
     this.canvases = [];                 // 장면을 나갈 때 놓을 캔버스
-    this.pats = new Map();              // 재질|면 → { pat, k } | null
+    this.pats = new Map();              // 재질|면|안개 단계 → { pat } | false(무늬 없는 재질)
+    this.bases = new Map();             // 재질|면 → 밤 빛깔을 구운 256 px 타일
     this.propImg = new Map();           // 소품 → 밤 빛깔을 구운 캔버스
     this.fog = stage.fog; this.fogRGB = hexRGB(stage.fog);
     this.items = [];                    // [B] 깊이 정렬 목록 (재사용)
@@ -60,7 +62,7 @@ export class Renderer {
     this.solidItems = stage.solids.map((s) => ({ key: 0, tie: 0, kind: 0, ref: s }));
     this.propItems = stage.props.map((p) => ({ key: 0, tie: 0, kind: 1, ref: p }));
   }
-  dispose() { for (const c of this.canvases) { c.width = 0; c.height = 0; } this.canvases.length = 0; this.pats.clear(); this.propImg.clear(); }
+  dispose() { for (const c of this.canvases) { c.width = 0; c.height = 0; } this.canvases.length = 0; this.pats.clear(); this.bases.clear(); this.propImg.clear(); this._skyC = null; }
   _keep(c) { this.canvases.push(c); return c; }
   _makeGlow() {
     const c = this._keep(mk(128, 128)), g = c.getContext('2d'), r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
@@ -88,31 +90,51 @@ export class Renderer {
     g.fillStyle = r; g.fillRect(-48, -48, 96, 96);
     return c;
   }
-  /** 재질·면별 무늬 (밤 빛깔과 면 밝기를 미리 구운 256 px 타일). 그림이 아직 없으면 null → 단색 */
-  _pat(ctx, matId, face) {
-    const key = matId + '|' + face;
+  /**
+   * 재질·면·안개 단계별 무늬. 밤 빛깔 · 면 밝기 · 안개를 타일에 미리 구워 둔다 → 그릴 때는 무늬 채우기 한 번뿐(덧칠 없음).
+   * 단계가 높을수록(멀수록) 타일도 작다(256 → 128 → 64 px) = 멀리서 반짝이지 않게 하는 밉맵 구실. 그림이 아직 없으면 null → 단색
+   */
+  _pat(ctx, matId, face, lvl = 0) {
+    const key = matId + '|' + face + '|' + lvl;
     let e = this.pats.get(key);
-    if (e !== undefined && e !== null) return e;
+    if (e !== undefined) return e;
     const m = MATS[matId] || MATS.cobble;
     if (!m.tex) { this.pats.set(key, false); return false; }
-    const img = assets.get(m.tex);
-    if (!img || !img.width) return null;
-    const c = this._keep(mk(256, 256)), g = c.getContext('2d');
-    g.drawImage(img, 0, 0, 256, 256);
-    g.globalCompositeOperation = 'multiply'; g.fillStyle = m.tint; g.fillRect(0, 0, 256, 256);
-    g.globalCompositeOperation = 'source-over';
-    const dark = 1 - m[face];
-    if (dark > 0.01) { g.fillStyle = `rgba(${NIGHT[0]},${NIGHT[1]},${NIGHT[2]},${dark})`; g.fillRect(0, 0, 256, 256); }
+    const bkey = matId + '|' + face;
+    let base = this.bases.get(bkey);
+    if (!base) {
+      const img = assets.get(m.tex);
+      if (!img || !img.width) return null;
+      base = this._keep(mk(256, 256));
+      const g = base.getContext('2d');
+      g.drawImage(img, 0, 0, 256, 256);
+      g.globalCompositeOperation = 'multiply'; g.fillStyle = m.tint; g.fillRect(0, 0, 256, 256);
+      g.globalCompositeOperation = 'source-over';
+      const dark = 1 - m[face];
+      if (dark > 0.01) { g.fillStyle = `rgba(${NIGHT[0]},${NIGHT[1]},${NIGHT[2]},${dark})`; g.fillRect(0, 0, 256, 256); }
+      this.bases.set(bkey, base);
+    }
+    const px = lvl <= 1 ? 256 : lvl <= 4 ? 128 : 64;
+    let c = base;
+    if (lvl > 0) {
+      c = this._keep(mk(px, px));
+      const g = c.getContext('2d');
+      g.imageSmoothingQuality = 'high';
+      g.drawImage(base, 0, 0, px, px);
+      g.fillStyle = this.fogCss(FOG_MAX * lvl / FOG_LV); g.fillRect(0, 0, px, px);
+    }
     const pat = ctx.createPattern(c, 'repeat');
-    const k = m.size / 256;
+    const k = m.size / px;
     pat.setTransform(new DOMMatrix([k, 0, 0, k, 0, 0]));
     e = { pat };
     this.pats.set(key, e);
     return e;
   }
-  _flat(matId, face) {
-    const m = MATS[matId] || MATS.cobble, [r, g, b] = hexRGB(m.flat), k = m[face] ?? 1;
-    return `rgb(${Math.round(r * k)},${Math.round(g * k)},${Math.round(b * k)})`;
+  /** 깊이 → 안개 단계 0..FOG_LV */
+  lvl(d) { return Math.round(this.fogK(d) / FOG_MAX * FOG_LV); }
+  _flat(matId, face, lvl = 0) {
+    const m = MATS[matId] || MATS.cobble, [r, g, b] = hexRGB(m.flat), k = m[face] ?? 1, f = m.tex ? FOG_MAX * lvl / FOG_LV : 0, F = this.fogRGB;
+    return `rgb(${Math.round(r * k * (1 - f) + F[0] * f)},${Math.round(g * k * (1 - f) + F[1] * f)},${Math.round(b * k * (1 - f) + F[2] * f)})`;
   }
   _prop(kind) {
     let c = this.propImg.get(kind);
@@ -128,7 +150,7 @@ export class Renderer {
     return c;
   }
   /** 깊이에 따른 안개 세기 0..0.82 (d = 초점에서 안쪽으로 떨어진 깊이) */
-  fogK(d) { const k = (d - 140) / 1500; return k <= 0 ? 0 : k >= 1 ? 0.82 : 0.82 * (1 - (1 - k) * (1 - k)); }
+  fogK(d) { const k = (d - 140) / 1500; return k <= 0 ? 0 : k >= 1 ? FOG_MAX : FOG_MAX * (1 - (1 - k) * (1 - k)); }
   fogCss(k) { const [r, g, b] = this.fogRGB; return `rgba(${r},${g},${b},${k.toFixed(3)})`; }
 
   // ───────────────────────── 한 프레임 ─────────────────────────
@@ -137,9 +159,13 @@ export class Renderer {
     const st = this.stats; st.strips = 0; st.faces = 0;
     this.t += dt;
     this.B = ctx.getTransform();
+    const low = this.game.quality === 'low';
+    this.sideW = low ? 6 : 3;
+    const smooth0 = ctx.imageSmoothingEnabled;
     const W = cam.W, H = cam.H;
     const off = this.off || {};
     if (!off.sky) this._sky(ctx, cam);
+    if (low) ctx.imageSmoothingEnabled = false;      // 낮은 화질: 무늬를 가장 가까운 점으로 (소프트웨어 래스터에서 30 % 싸다)
     // 벽 자르기 (마당에 들어서면 골목 벽이 가라앉는다)
     for (const p of this.stage.props) if (p.hideIn) { const on = p.hideIn.includes(sec) ? 1 : 0; p.hideK += (on - p.hideK) * Math.min(1, dt * 5); if (Math.abs(on - p.hideK) < 0.01) p.hideK = on; }
     for (const s of this.stage.solids) if (s.cutIn) { const on = s.cutIn.includes(sec) ? 1 : 0; s.cutK += (on - s.cutK) * Math.min(1, dt * 5); if (Math.abs(on - s.cutK) < 0.004) s.cutK = on; }
@@ -160,7 +186,7 @@ export class Renderer {
       it.key = p.z; it.tie = -1; L[n++] = it;
     }
     for (const a of actors) { if (a.z <= cam.zNear + 4 || a.z > cam.z + FAR) continue; L[n++] = a; a.key = a.z; a.tie = -2; }
-    for (let i = 0; i < 3; i++) { const c = this._cards[i]; c.key = cam.z + [430, 820, 1320][i]; c.tie = -3; L[n++] = c; }
+    for (let i = 0; i < 2; i++) { const c = this._cards[i]; c.key = cam.z + [520, 1080][i]; c.tie = -3; L[n++] = c; }
     L.length = n;
     L.sort(byDepth);
     st.items = n;
@@ -171,29 +197,52 @@ export class Renderer {
       else if (it.kind === 3) { if (!off.cards) this._card(ctx, cam, it.key); }
       else if (!off.actors) it.draw(ctx, cam, this);
     }
+    ctx.imageSmoothingEnabled = smooth0;
     void W; void H;
   }
   _cards = [{ kind: 3, key: 0, tie: 0 }, { kind: 3, key: 0, tie: 0 }, { kind: 3, key: 0, tie: 0 }];
 
+  /**
+   * 먼 배경 = 하늘 + 붉은 달과 성(v1 배경 그림) + 판이 없는 어두운 땅. 한 장에 구워 두고 프레임마다 한 번 옮겨 그린다.
+   * 굽는 해상도 = 캔버스 배율(최대 1.5) → 배율이 같으면 1:1 복사(가장 싼 경로)
+   */
   _sky(ctx, cam) {
-    const W = cam.W, H = cam.H, hz = cam.horizon;
-    const g = ctx.createLinearGradient(0, 0, 0, Math.max(60, hz + 200));
-    g.addColorStop(0, '#07060f'); g.addColorStop(0.6, '#1d1226'); g.addColorStop(1, '#3a1826');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    const img = assets.get('bg/s01_village');
-    if (img && img.width) {
-      // 붉은 달과 성: 지평선 뒤 먼 층 (x 시차 4 %, 깊이로 들어가면 조금 커지고 내려온다)
-      const k = Math.max(W * 1.3 / img.width, 0.44) * (1 + Math.min(0.2, Math.max(0, cam.z) * 0.00008));
-      const iw = img.width * k, ih = img.height * k;
-      const x = W / 2 - iw * 0.565 - (cam.x - 1200) * 0.04 + (cam.cx - W / 2) * 0.3;
-      const y = hz + 190 + Math.min(40, cam.z * 0.012) - ih * 0.93;
-      ctx.drawImage(img, x, y, iw, ih);
-      ctx.fillStyle = 'rgba(10,6,18,0.28)'; ctx.fillRect(0, 0, W, H);
+    const W = cam.W, H = cam.H, PAD = 90, B = this.B;
+    const img = assets.get('bg/s01_village'), has = !!(img && img.width);
+    const k = Math.min(1.5, B.a);
+    let S = this._skyC;
+    if (!S || S.W !== W || S.H !== H || S.has !== has || S.k !== k) {
+      if (S) { S.c.width = 0; S.c.height = 0; const i = this.canvases.indexOf(S.c); if (i >= 0) this.canvases.splice(i, 1); }
+      const cw = W + PAD * 2, ch = H + 60;
+      const c = this._keep(mk(Math.ceil(cw * k), Math.ceil(ch * k))), g = c.getContext('2d'), hz = Math.round(cam.horizon);
+      g.scale(k, k);
+      const sg = g.createLinearGradient(0, 0, 0, Math.max(60, hz + 200));
+      sg.addColorStop(0, '#07060f'); sg.addColorStop(0.6, '#1d1226'); sg.addColorStop(1, '#3a1826');
+      g.fillStyle = sg; g.fillRect(0, 0, cw, ch);
+      if (has) {
+        const ik = Math.max(W * 1.3 / img.width, 0.44), iw = img.width * ik, ih = img.height * ik;
+        g.drawImage(img, cw / 2 - iw * 0.565, hz + 190 - ih * 0.93, iw, ih);
+        g.fillStyle = 'rgba(10,6,18,0.28)'; g.fillRect(0, 0, cw, ch);
+      }
+      const g2 = g.createLinearGradient(0, hz, 0, hz + 260);
+      g2.addColorStop(0, this.fog); g2.addColorStop(0.55, '#120b16'); g2.addColorStop(1, '#07050b');
+      g.fillStyle = g2; g.fillRect(0, hz, cw, 260);
+      g.fillStyle = '#07050b'; g.fillRect(0, hz + 259, cw, ch - hz - 259);
+      S = this._skyC = { c, W, H, has, hz, k };
     }
-    // 어두운 땅 (판이 없는 곳): 지평선은 안개 색, 가까울수록 어둡다
-    const g2 = ctx.createLinearGradient(0, hz, 0, H);
-    g2.addColorStop(0, this.fog); g2.addColorStop(0.5, '#120b16'); g2.addColorStop(1, '#07050b');
-    ctx.fillStyle = g2; ctx.fillRect(0, Math.max(0, hz), W, H - Math.max(0, hz));
+    // x 시차 4 %, 지평선(눈 높이·흔들림)에 붙여 옮긴다
+    const ox = Math.max(0, Math.min(PAD * 2, PAD + (cam.x - 1300) * 0.04 - (cam.cx - W / 2) * 0.3));
+    const dy = Math.max(-60, Math.min(60, cam.horizon - S.hz));
+    if (k === B.a && B.a === B.d && B.e === 0 && B.f === 0 && B.b === 0) {
+      // 기기 px 그대로: 정수 자리에 1:1 로
+      const sx = Math.round(ox * k), sy = Math.round(Math.max(0, -dy) * k), ty = Math.round(Math.max(0, dy) * k);
+      const cw = ctx.canvas.width, chh = ctx.canvas.height;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      if (ty > 0) { ctx.fillStyle = '#07060f'; ctx.fillRect(0, 0, cw, ty + 1); }
+      ctx.drawImage(S.c, sx, sy, cw, chh - ty, 0, ty, cw, chh - ty);
+      ctx.setTransform(B);
+    } else if (dy > 0) { ctx.fillStyle = '#07060f'; ctx.fillRect(0, 0, W, dy + 1); ctx.drawImage(S.c, ox * k, 0, W * k, (H - dy) * k, 0, dy, W, H - dy); }
+    else ctx.drawImage(S.c, ox * k, -dy * k, W * k, H * k, 0, 0, W, H);
   }
 
   // ── [A] 바닥 묶음: 같은 높이·재질의 바닥을 한 번에 ──
@@ -222,8 +271,7 @@ export class Renderer {
       if (z0 < za) za = z0; if (z1 > zb) zb = z1;
     }
     if (!n) return;
-    const P = this._pat(ctx, mat, 'top');
-    ctx.fillStyle = P ? P.pat : this._flat(mat, 'top');
+    let P = null, lv = -1;
     let z = za, sA = cam.s(za), y = cam.py(top, za, sA);
     while (z < zb - 0.01) {
       let z2 = z + Math.max(2, cam.dzForPx(z, top, STRIP));
@@ -241,6 +289,8 @@ export class Renderer {
         any = true;
       }
       if (any) {
+        const l2 = fog ? this.lvl((z + z2) / 2 - cam.z) : 0;
+        if (l2 !== lv) { lv = l2; P = this._pat(ctx, mat, 'top', lv); ctx.fillStyle = P ? P.pat : this._flat(mat, 'top', lv); }
         if (P && vs > 1e-4) {
           const sm = (sA + sB) / 2;
           ctx.setTransform(B.a * sm, 0, 0, -B.d * vs, B.e + B.a * (cam.cx - cam.x * sm), B.f + B.d * (y + z * vs));
@@ -251,20 +301,6 @@ export class Renderer {
       }
       z = z2; y = y2; sA = sB;
     }
-    if (!fog) return;
-    const k1 = this.fogK(zb - cam.z);
-    if (k1 <= 0.02) return;
-    const ya = cam.py(top, za, cam.s(za)), yb = cam.py(top, zb, cam.s(zb));
-    const zm = (za + zb) / 2, ym = cam.py(top, zm, cam.s(zm));
-    const lg = ctx.createLinearGradient(0, ya, 0, yb);
-    lg.addColorStop(0, this.fogCss(this.fogK(za - cam.z))); lg.addColorStop(Math.min(1, Math.max(0, (ya - ym) / Math.max(1, ya - yb))), this.fogCss(this.fogK(zm - cam.z))); lg.addColorStop(1, this.fogCss(k1));
-    ctx.fillStyle = lg;
-    ctx.beginPath();
-    for (let i = 0; i < n; i++) {
-      const v = V[i], s0 = cam.s(v.z0), s1 = cam.s(v.z1), y0 = cam.py(top, v.z0, s0), y1 = cam.py(top, v.z1, s1);
-      ctx.moveTo(cam.px(v.s.x0, s0), y0); ctx.lineTo(cam.px(v.s.x1, s0), y0); ctx.lineTo(cam.px(v.s.x1, s1), y1); ctx.lineTo(cam.px(v.s.x0, s1), y1); ctx.closePath();
-    }
-    ctx.fill();
   }
   _vis = [];
   _one = [null];
@@ -272,29 +308,28 @@ export class Renderer {
   /** 판 하나의 보이는 옆면들 (앞면 + 카메라 쪽 옆면). top = 지금 윗면 높이 (잘린 벽은 낮다) */
   _faces(ctx, cam, s, top) {
     if (s.z1 <= cam.zNear) return;
-    if (cam.x < s.x0) for (const g of s.segL) if (g.base < top) this._side(ctx, cam, s.x0, g.a, g.b, g.base, top, s.mat);
-    if (cam.x > s.x1) for (const g of s.segR) if (g.base < top) this._side(ctx, cam, s.x1, g.a, g.b, g.base, top, s.mat);
+    const wall = s.kind === 'wall' && top - s.floorY > 60;
+    if (cam.x < s.x0) for (const g of s.segL) if (g.base < top) this._side(ctx, cam, s.x0, g.a, g.b, g.base, top, s.mat, wall);
+    if (cam.x > s.x1) for (const g of s.segR) if (g.base < top) this._side(ctx, cam, s.x1, g.a, g.b, g.base, top, s.mat, wall);
     if (s.z0 > cam.zNear) for (const g of s.segF) if (g.base < top) this._front(ctx, cam, g.a, g.b, s.z0, g.base, top, s);
   }
   _front(ctx, cam, xa, xb, z, base, top, slab) {
     const B = this.B, s = cam.s(z), W = cam.W, H = cam.H;
     const X0 = cam.px(xa, s), X1 = cam.px(xb, s), Y0 = cam.py(top, z, s), Y1 = cam.py(base, z, s);
     if (X1 < 0 || X0 > W || Y1 < 0 || Y0 > H || X1 - X0 < 0.5) return;
-    const P = this._pat(ctx, slab.mat, 'front');
+    const lv = this.lvl(z - cam.z), P = this._pat(ctx, slab.mat, 'front', lv);
     if (P) {
       ctx.fillStyle = P.pat;
       ctx.setTransform(B.a * s, 0, 0, -B.d * s, B.e + B.a * (cam.cx - cam.x * s), B.f + B.d * (cam.gy(z, s) + cam.y * s));
       ctx.fillRect(xa, base, xb - xa, top - base);
       ctx.setTransform(B);
-    } else { ctx.fillStyle = this._flat(slab.mat, 'front'); ctx.fillRect(X0, Y0, X1 - X0, Y1 - Y0); }
+    } else { ctx.fillStyle = this._flat(slab.mat, 'front', lv); ctx.fillRect(X0, Y0, X1 - X0, Y1 - Y0); }
     this.stats.faces++;
     if (slab.deco === 'house' && top - base > 200) this._house(ctx, cam, slab, xa, xb, z, base, top, s);
     // 바닥과 만나는 곳의 그늘 + 윗모서리 빛
     const hpx = Y1 - Y0;
     if (hpx > 10) { ctx.fillStyle = 'rgba(4,3,10,0.3)'; ctx.fillRect(X0, Y1 - Math.min(hpx * 0.3, 14 * s), X1 - X0, Math.min(hpx * 0.3, 14 * s)); }
     if (slab.kind !== 'wall' || slab.cutK > 0.5) { ctx.fillStyle = 'rgba(190,200,255,0.16)'; ctx.fillRect(X0, Y0, X1 - X0, Math.max(1, 1.6 * s)); }
-    const fk = this.fogK(z - cam.z);
-    if (fk > 0.02) { ctx.fillStyle = this.fogCss(fk); ctx.fillRect(X0, Y0 - 0.5, X1 - X0, Y1 - Y0 + 1); }
   }
   /** 집 정면 장식: 창(불 켜진 것·꺼진 것), 문, 지붕 — 세계 좌표에 고정된 격자 */
   _house(ctx, cam, slab, xa, xb, z, base, top, s) {
@@ -316,9 +351,6 @@ export class Renderer {
         if (lit) {
           ctx.fillStyle = h > 0.8 ? '#ffb24a' : '#e07a2a'; ctx.fillRect(x0, y0, w, hh);
           ctx.fillStyle = 'rgba(20,10,10,0.75)'; ctx.fillRect(x0 + w / 2 - s, y0, 2 * s, hh); ctx.fillRect(x0, y0 + hh * 0.45, w, 2 * s);
-          const ga = ctx.globalAlpha; ctx.globalAlpha = 0.34; ctx.globalCompositeOperation = 'lighter';
-          ctx.drawImage(this._tinted('#ff9a3a'), x0 - w * 1.1, y0 - hh * 0.8, w * 3.2, hh * 2.6);
-          ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = ga;
         } else { ctx.fillStyle = '#141826'; ctx.fillRect(x0, y0, w, hh); }
       }
     }
@@ -328,7 +360,7 @@ export class Renderer {
     ctx.fillStyle = '#2a1c18'; ctx.fillRect(X(dx), Y(base + 106), 64 * s, 106 * s);
     ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(X(dx + 31), Y(base + 106), 2 * s, 106 * s);
   }
-  _side(ctx, cam, xf, za, zb, base, top, mat) {
+  _side(ctx, cam, xf, za, zb, base, top, mat, wall) {
     const B = this.B, W = cam.W, H = cam.H;
     za = Math.max(za, cam.zNear); zb = Math.min(zb, cam.z + FAR);
     if (zb <= za) return;
@@ -345,37 +377,64 @@ export class Renderer {
     if (Math.max(xa, xb) < 0 || Math.min(xa, xb) > W) return;
     const ta = cam.py(top, za, sa), tb = cam.py(top, zb, sb), ba = cam.py(base, za, sa), bb = cam.py(base, zb, sb);
     if (Math.max(ba, bb) < 0 || Math.min(ta, tb) > H) return;
-    const P = this._pat(ctx, mat, 'side');
     this.stats.faces++;
-    if (!P) { ctx.fillStyle = this._flat(mat, 'side'); ctx.beginPath(); ctx.moveTo(xa, ta); ctx.lineTo(xb, tb); ctx.lineTo(xb, bb); ctx.lineTo(xa, ba); ctx.closePath(); ctx.fill(); }
-    else {
-      ctx.fillStyle = P.pat;
+    if (wall) {
+      // 큰 벽: 세로 띠를 '안쪽에 꼭 맞는 직사각형'으로 채운다 (경로 채우기보다 훨씬 싸다). 띠마다 위·아래에 남는 1–3 px 톱니는
+      // 아래는 바닥과 만나는 그늘 띠, 위는 어두운 갓돌 띠로 덮는다.
+      let P = null, lv = -1;
+      const dir = xb > xa ? 1 : -1, sw = this.sideW;
+      let z = za, x = xa, s = sa;
+      while (z < zb - 0.01) {
+        let z2 = z + Math.max(2, cam.dzForPxX(z, xf, sw));
+        if (zb - z2 < 2) z2 = zb;
+        const s2 = cam.s(z2), x2 = cam.px(xf, s2);
+        const us = (x2 - x) / (z2 - z);
+        if (Math.abs(us) > 1e-5) {
+          const l2 = this.lvl((z + z2) / 2 - cam.z);
+          if (l2 !== lv) { lv = l2; P = this._pat(ctx, mat, 'side', lv); ctx.fillStyle = P ? P.pat : this._flat(mat, 'side', lv); }
+          const gy1 = cam.gy(z, s), gy2 = cam.gy(z2, s2), sm = (s + s2) / 2, G = (gy1 + gy2) / 2 + cam.y * sm;
+          const yt = Math.max(gy1 - (top - cam.y) * s, gy2 - (top - cam.y) * s2), yb = Math.min(gy1 - (base - cam.y) * s, gy2 - (base - cam.y) * s2);
+          if (yb > yt && yb > 0 && yt < H) {
+            const ov = z2 < zb ? 0.75 / Math.abs(us) : 0;
+            if (P) {
+              ctx.setTransform(B.a * us, 0, 0, -B.d * sm, B.e + B.a * (x - z * us), B.f + B.d * G);
+              ctx.fillRect(z, (G - yb) / sm, z2 - z + ov, (yb - yt) / sm);
+              ctx.setTransform(B);
+            } else ctx.fillRect(Math.min(x, x2), yt, Math.abs(x2 - x) + 0.75, yb - yt);
+            this.stats.strips++;
+          }
+        }
+        z = z2; x = x2; s = s2;
+      }
+      void dir;
+      ctx.fillStyle = 'rgba(5,4,11,0.92)';
+      ctx.beginPath();
+      ctx.moveTo(xa, ba - 7 * sa); ctx.lineTo(xb, bb - 7 * sb); ctx.lineTo(xb, bb + 0.5); ctx.lineTo(xa, ba + 0.5); ctx.closePath();
+      ctx.moveTo(xa, ta - 0.5); ctx.lineTo(xb, tb - 0.5); ctx.lineTo(xb, tb + 9 * sb); ctx.lineTo(xa, ta + 9 * sa); ctx.closePath();
+      ctx.fill();
+      return;
+    }
+    {
+      let P = null, lv = -1;
       const dir = xb > xa ? 1 : -1;
       let z = za, x = xa, s = sa;
       while (z < zb - 0.01) {
-        let z2 = z + Math.max(3, cam.dzForPxX(z, xf, STRIP + 2));
+        let z2 = z + Math.max(3, cam.dzForPxX(z, xf, 7));
         if (zb - z2 < 3) z2 = zb;
         const s2 = cam.s(z2), x2 = cam.px(xf, s2), xe = x2 + (z2 < zb ? 0.75 * dir : 0);
         const us = (x2 - x) / (z2 - z);
         if (Math.abs(us) > 1e-5) {
+          const l2 = this.lvl((z + z2) / 2 - cam.z);
+          if (l2 !== lv) { lv = l2; P = this._pat(ctx, mat, 'side', lv); ctx.fillStyle = P ? P.pat : this._flat(mat, 'side', lv); }
           const gy1 = cam.gy(z, s), gy2 = cam.gy(z2, s2);
           ctx.beginPath();
           ctx.moveTo(x, gy1 - (top - cam.y) * s); ctx.lineTo(xe, gy2 - (top - cam.y) * s2); ctx.lineTo(xe, gy2 - (base - cam.y) * s2); ctx.lineTo(x, gy1 - (base - cam.y) * s); ctx.closePath();
           const sm = (s + s2) / 2;
-          ctx.setTransform(B.a * us, 0, 0, -B.d * sm, B.e + B.a * (x - z * us), B.f + B.d * ((gy1 + gy2) / 2 + cam.y * sm));
-          ctx.fill();
-          ctx.setTransform(B);
+          if (P) { ctx.setTransform(B.a * us, 0, 0, -B.d * sm, B.e + B.a * (x - z * us), B.f + B.d * ((gy1 + gy2) / 2 + cam.y * sm)); ctx.fill(); ctx.setTransform(B); } else ctx.fill();
           this.stats.strips++;
         }
         z = z2; x = x2; s = s2;
       }
-    }
-    ctx.beginPath(); ctx.moveTo(xa, ta); ctx.lineTo(xb, tb); ctx.lineTo(xb, bb); ctx.lineTo(xa, ba); ctx.closePath();
-    const k0 = this.fogK(za - cam.z), k1 = this.fogK(zb - cam.z);
-    if (k1 > 0.02) {
-      const lg = ctx.createLinearGradient(xa, 0, xb, 0);
-      lg.addColorStop(0, this.fogCss(k0)); lg.addColorStop(0.5, this.fogCss(this.fogK(cam.zAtS((sa + sb) / 2) - cam.z))); lg.addColorStop(1, this.fogCss(k1));
-      ctx.fillStyle = lg; ctx.fill();
     }
   }
   /** 솟은 판 (단상·상자·계단·벽): 옆면 → 윗면 */
@@ -407,7 +466,7 @@ export class Renderer {
       const s = cam.s(p.z), gyv = this.stage.topAt(p.x + (P.wall ? (p.flip ? -30 : 30) : 0), p.z, true);
       const X = cam.px(p.x + (P.wall ? (p.flip ? -46 : 46) : 0), s), Y = cam.py(gyv > WALL / 2 || gyv <= PIT_Y ? 0 : gyv, p.z, s);
       const fl = 0.9 + 0.1 * Math.sin(this.t * 9 + p.x) * (P.wall || p.kind === 'brazier' ? 1 : 0.3);
-      const rw = 250 * P.pool * s * fl, rh = rw * cam.squash(p.z) * 1.05;
+      const rw = 200 * P.pool * s * fl, rh = rw * cam.squash(p.z) * 1.05;
       if (X + rw < 0 || X - rw > cam.W || Y - rh > cam.H) continue;
       ctx.globalAlpha = 0.5 * (1 - this.fogK(p.z - cam.z));
       ctx.drawImage(this._tinted(p.light), X - rw, Y - rh, rw * 2, rh * 2);
@@ -433,7 +492,7 @@ export class Renderer {
     const fk = this.fogK(p.z - cam.z);
     if (p.light && P.glow) {
       const fl = 0.86 + 0.14 * Math.sin(this.t * 11 + p.x * 0.7) * (p.kind === 'lamp' ? 0.25 : 1);
-      const gx = X, gyy = Y - h * P.ay + h * (1 - P.glow) , r = 120 * s * fl;
+      const gx = X, gyy = Y - h * P.ay + h * (1 - P.glow), r = 96 * s * fl;
       ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.75 * (1 - fk * 0.6) * (1 - p.hideK);
       ctx.drawImage(this._tinted(p.light), gx - r, gyy - r, r * 2, r * 2);
       ctx.globalAlpha = 1 - p.hideK; ctx.globalCompositeOperation = 'source-over';
@@ -442,12 +501,13 @@ export class Renderer {
   /** 안개 판: 깊이 z 에서 통로를 가로지르는 반투명 판 → 그보다 먼 것(캐릭터 포함)이 흐려진다 */
   _card(ctx, cam, z) {
     const s = cam.s(z); if (s <= 0.05) return;
-    const sec = this.stage.sectionAt(cam.x, z);
+    const sec = this.stage.sectionAt(cam.x, z, true);
+    if (!sec) return;
     const X0 = Math.max(0, cam.px(sec.x0, s)), X1 = Math.min(cam.W, cam.px(sec.x1, s));
     if (X1 <= X0) return;
     const gyv = this.stage.topAt(cam.x, z, true);
-    const Y = cam.py(gyv > WALL / 2 || gyv <= PIT_Y ? cam.y : gyv, z, s), hh = 430 * s;
-    ctx.globalAlpha = 0.2;
+    const Y = cam.py(gyv > WALL / 2 || gyv <= PIT_Y ? cam.y : gyv, z, s), hh = 360 * s;
+    ctx.globalAlpha = 0.26;
     ctx.drawImage(this._fogBand, 0, 0, 4, 64, X0, Y - hh, X1 - X0, hh);
     ctx.globalAlpha = 1;
   }

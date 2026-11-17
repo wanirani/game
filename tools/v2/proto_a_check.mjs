@@ -110,15 +110,21 @@ try {
       const tp = await page.evaluate(() => { const r = []; for (const id of ['yard', 'alley', 'corner', 'street']) { window.__v2.teleport(id); window.__qaStep(3, true); r.push(window.__v2.section); } window.__v2.restart(); window.__qaStep(2, true); return r.join(','); });
       ok(tp === 'yard,alley,corner,street', `teleport 4구간 (${tp})`);
       await page.evaluate(installBot);
-      // 플레이: 240 틱씩 (틱마다 그린다 → 프레임 시간 표본)
-      const fm = [];
+      // 플레이: 240 틱씩. 틱마다 그리고, 그린 뒤 getImageData 로 래스터를 그 프레임에 끝내게 한다 →
+      //   JS 시간(갱신 + 그리기 명령) = __v2.stats.frameMs,  래스터 포함 시간 = 여기서 잰 한 스텝의 실제 시간
+      const fm = [], wall = [];
       let sec = 'street', steps = 0;
       while (steps < MAX && sec !== 'done') {
-        const r = await page.evaluate(() => { let sec = ''; for (let i = 0; i < 240; i++) { sec = window.__bot(); window.__qaStep(1, true); if (sec === 'done') break; } return { sec, f: window.__v2.stats.frameMs, st: window.__v2.stats, h: window.__v2.hero }; });
-        steps += 240; sec = r.sec; fm.push(r.f);
-        if (steps % 1200 === 0) console.log(`   … ${steps} 틱  ${sec}  hero ${r.h.x | 0},${r.h.z | 0} hp ${r.h.hp | 0}  ${r.f.p50}/${r.f.p95} ms`);
+        const r = await page.evaluate(() => {
+          const g = window.__game, now = g.__qaRealNow, ctx = g.ctx, w = [];
+          let sec = '';
+          for (let i = 0; i < 240; i++) { sec = window.__bot(); const t = now(); window.__qaStep(1, true); ctx.getImageData(0, 0, 1, 1); w.push(now() - t); if (sec === 'done') break; }
+          return { sec, f: window.__v2.stats.frameMs, h: window.__v2.hero, w };
+        });
+        steps += 240; sec = r.sec; fm.push(r.f); for (const x of r.w) wall.push(x);
+        if (steps % 1200 === 0) console.log(`   … ${steps} 틱  ${sec}  hero ${r.h.x | 0},${r.h.z | 0} hp ${r.h.hp | 0}  JS ${r.f.p50}/${r.f.p95} ms`);
       }
-      const b = await page.evaluate(() => { for (let i = 0; i < 90; i++) window.__qaStep(1, true); const B = window.__botState; return { seen: B.seen, deaths: B.deaths, pits: B.pits, steps: B.steps, minHp: B.minHp, kills: window.__v2.stats.kills, left: window.__v2.enemies.length, yard: window.__v2.enemies.filter((e) => e.group === 'yard').length, sec: window.__v2.section }; });
+      const b = await page.evaluate(() => { for (let i = 0; i < 90; i++) window.__qaStep(1, true); const B = window.__botState; return { seen: B.seen, deaths: B.deaths, pits: B.pits, steps: B.steps, minHp: B.minHp, kills: window.__v2.stats.kills, left: window.__v2.enemies.length, yard: window.__v2.enemies.filter((e) => e.group === 'yard').length, sec: window.__v2.section, q: window.__game.quality, cv: [window.__game.canvas.width, window.__game.canvas.height] }; });
       const order = ['street', 'corner', 'alley', 'yard', 'done'];
       let oi = 0; for (const x of b.seen) if (x === order[oi]) oi++;
       ok(b.sec === 'done', `마당의 적을 모두 쓰러뜨리고 'done' (${b.steps} 틱 = ${(b.steps / 60).toFixed(1)} 초, 처치 ${b.kills}, 남은 길 위 적 ${b.left})`);
@@ -127,10 +133,14 @@ try {
       console.log(`   봇: 쓰러짐 ${b.deaths} · 구덩이 ${b.pits} · 최저 체력 ${b.minHp | 0}`);
       const p50 = fm.map((f) => f.p50).sort((x, y) => x - y), p95 = fm.map((f) => f.p95).sort((x, y) => x - y);
       const med = (a) => a[Math.floor(a.length / 2)] ?? 0;
-      const res = { vp, view: `${shape.vw}x${shape.vh}`, steps: b.steps, kills: b.kills, deaths: b.deaths, pits: b.pits, p50: med(p50), p95med: med(p95), p95max: p95[p95.length - 1] ?? 0, windows: fm.length };
+      wall.sort((x, y) => x - y);
+      const res = { vp, view: `${shape.vw}x${shape.vh}`, canvas: b.cv.join('x'), quality: b.q, steps: b.steps, kills: b.kills, deaths: b.deaths, pits: b.pits,
+        js: { p50: med(p50), p95: med(p95), p95max: p95[p95.length - 1] ?? 0 },
+        raster: { p50: +(wall[Math.floor(wall.length * 0.5)] ?? 0).toFixed(2), p95: +(wall[Math.floor(wall.length * 0.95)] ?? 0).toFixed(2), n: wall.length } };
       results.push(res);
-      console.log(`   프레임 시간(갱신+그리기, 240틱 창 ${fm.length}개): p50 중앙 ${res.p50} ms · p95 중앙 ${res.p95med} ms · p95 최대 ${res.p95max} ms`);
-      ok(res.p95med <= 8, `프레임 시간 p95(창 중앙값) ${res.p95med} ms ≤ 8 ms`);
+      console.log(`   JS 프레임 시간(갱신 + 그리기 명령, 240틱 창 ${fm.length}개): p50 ${res.js.p50} ms · p95 ${res.js.p95} ms (창 최대 ${res.js.p95max} ms)`);
+      console.log(`   래스터 포함(소프트웨어 렌더러, 캔버스 ${res.canvas}, 화질 ${res.quality}): p50 ${res.raster.p50} ms · p95 ${res.raster.p95} ms  ${res.raster.p95 > 8 ? '← 8 ms 넘음 (proto_a.md §9)' : ''}`);
+      ok(res.js.p95 <= 8, `JS 프레임 시간 p95 ${res.js.p95} ms ≤ 8 ms`);
       // 다시 시작 → 처음 상태
       const again = await page.evaluate(() => { window.__v2.restart(); window.__qaStep(3, true); return { sec: window.__v2.section, n: window.__v2.enemies.length, hp: window.__v2.hero.hp }; });
       ok(again.sec === 'street' && again.n === 17 && again.hp === 100, `다시 시작 → 처음 상태 (적 ${again.n}, 체력 ${again.hp})`);
@@ -166,7 +176,7 @@ try {
 } finally { await env.close(); }
 
 console.log('== result ==');
-for (const r of results) console.log(`  ${r.vp} (${r.view}): ${r.steps} 틱 · 처치 ${r.kills} · 쓰러짐 ${r.deaths} · 구덩이 ${r.pits} · 프레임 p50 ${r.p50} ms / p95 ${r.p95med} ms (최대 ${r.p95max} ms)`);
+for (const r of results) console.log(`  ${r.vp} (${r.view}, 캔버스 ${r.canvas}, 화질 ${r.quality}): ${r.steps} 틱 · 처치 ${r.kills} · 쓰러짐 ${r.deaths} · 구덩이 ${r.pits} · JS p50 ${r.js.p50} / p95 ${r.js.p95} ms · 래스터 포함 p50 ${r.raster.p50} / p95 ${r.raster.p95} ms`);
 const out = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..', 'docs/v2');
 void out;
 try { fs.mkdirSync('/tmp/claude-0/v2', { recursive: true }); fs.writeFileSync('/tmp/claude-0/v2/proto_a_check.json', JSON.stringify({ at: new Date().toISOString(), fails, results }, null, 1)); } catch { /* 보고 파일 없이 */ }

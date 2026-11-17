@@ -91,6 +91,11 @@
     336,
     1072
    ]
-  ]
- }
+  ],
+  "skirtFar": null
+ },
+ "runtime": {
+  "band": null
+ },
+ "_fixes2": "다듬기 1회(v2 시범): ③ 머리띠 꼬리가 그림에 이미 있어 게임이 그리는 꼬리를 끔 → runtime.band null  ④ 새 옷에는 코트 안쪽 자락이 없어 먼 다리 무릎 보호대가 자락 부품으로 번짐 → regions.skirtFar null"
 }
