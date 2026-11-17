@@ -10,6 +10,8 @@ import { start } from '../serve.mjs';
 import { contextOptions } from '../qa/lib/viewports.mjs';
 import STAGE from '../../src/v2/env/stage_slice0_env.js';
 import { validateEnv, compileEnv } from '../../src/v2/env/build.js';
+import { loadPropsNode } from './world_node.mjs';
+loadPropsNode();   // 구운 소품 묶음 (천사상·가고일) — 브라우저와 같은 메시로 센다
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => { if (v.startsWith('--')) a.push([v.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true]); return a; }, []));
 const DEVICES = String(args.devices || 'fold_open,phone2').split(',');

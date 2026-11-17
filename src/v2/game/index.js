@@ -453,7 +453,7 @@ export default class V2Game extends Scene {
     if (!locked) { if (input.pressed('attack')) inp.attack = true; if (input.pressed('dash')) inp.dash = true; if (input.pressed('lock')) inp.lockNext = true; }   // latched until a rule step consumes them (hit-stop)
     if (sim.done) {
       this.doneT += dt;
-      if (this.doneT > 1.2 && (inp.attack || input.pressed('confirm') || input.pointer.tapped)) { sim.reset(); this.cam.snap = true; fx?.clear(); this._makeFxHandles(); for (const n of this.numbers) n.on = false; inp.attack = false; g.flash?.('#000', 0.6, 3); this.emit('hero.respawn', {}); return; }
+      if (!this.area.fromWorld && this.doneT > 1.2 && (inp.attack || input.pressed('confirm') || input.pointer.tapped)) { sim.reset(); this.cam.snap = true; fx?.clear(); this._makeFxHandles(); for (const n of this.numbers) n.on = false; inp.attack = false; g.flash?.('#000', 0.6, 3); this.emit('hero.respawn', {}); return; }
     }
     this._savePrev();
     const pdt = fx ? fx.update(dt) : dt;
@@ -590,7 +590,7 @@ export default class V2Game extends Scene {
   _state() {
     const s = this.state, g = this.game, sim = this.sim, W = this.W;
     s.viewW = g.viewW; s.viewH = g.viewH; s.safe = g.safe ?? s.safe; s.scale = g.scale; s.time = sim.time ?? 0; s.hero = sim.hero; s.heroHpMax = sim.hero.hpMax ?? TUNE.heroHp ?? 100;
-    s.enemies = sim.enemies; s.done = !!sim.done; s.doneT = this.doneT; s.dialog = this.ui.dialog; s.message = ''; s.message2 = '';
+    s.enemies = sim.enemies; s.done = !!sim.done && !this.area.fromWorld; s.cleared = !!sim.done; s.doneT = this.doneT; s.dialog = this.ui.dialog; s.message = ''; s.message2 = '';
     const id = sim.section === 'done' ? s.section.id || 'yard' : sim.section;
     if (id !== s.section.id) { s.section.id = id; let lab = ''; for (let i = 0; i < W.sections.length; i++) if (W.sections[i].id === id) lab = W.sections[i].label ?? ''; s.section.label = lab; }
     let left = 0, yard = 0; const E = sim.enemies;

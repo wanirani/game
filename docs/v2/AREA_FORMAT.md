@@ -6,6 +6,7 @@
 
 ## 바뀐 것
 - 22:10 first version (shape and names fixed; areas arrive the same day — see §8 for what exists).
+- 22:45 areas exist and validate (`eshville_now`, `eshville_past`, `graveyard_now`, `slice0`). Corrections to the first version: static meshes are opaque (no alpha cut-outs — removed `KIT_TEX.alpha`); a texture name may be a relative path (`'../props/props_atlas'`); **a locked exit should be solid** (§3); `stage.decals[].k` has 8 kinds (§2); `anchors` kinds listed in §6; `AREAS.slice0` added so the test route also gets its baked statues (§9).
 
 ## 1. One area = one object
 
@@ -55,14 +56,16 @@ Exactly the format of `src/v2/env/stage_slice0_env.js` (docs/v2/ENV_KIT.md §4):
   - `stage.start` = `spawns.default` (`{x, z}`)
   - `stage.spawns` = `enemies` mapped to the kit/B spawn shape `{ kind, x, z, yard, active, group }` (what `Sim` already reads from `W.spawns`)
   - `stage.sections[i].cam` = `camera[section.id]`
-- Textures: `W.env.stats.textures` lists the texture names the meshes use. A name is either a v1 tile (`flag block brick wood dirt`) or a kit file. **Kit file path = `assets/v2/env/<name>.webp`, except names listed in `KIT_TEX` (src/v2/env/mats.js) with a `file` field** — then the path is `assets/v2/<file>` (the baked prop atlas lives in `assets/v2/props/`). ENGINE: please load `KIT_TEX[n]?.file ? ASSET_ROOT + 'v2/' + KIT_TEX[n].file : ASSET_ROOT + 'v2/env/' + n + '.webp'` and honour `KIT_TEX[n].repeat` (false = clamp) and `KIT_TEX[n].alpha` (true = the mesh uses alpha test; draw it with the same shader, it only needs `discard` below 0.5 — see §9).
+- Textures: `W.env.stats.textures` lists the texture names the meshes use. A name is either a v1 tile (`flag block brick wood dirt`) or a kit file at `assets/v2/env/<name>.webp`. **One name is a relative path: `'../props/props_atlas'`** = `assets/v2/props/props_atlas.webp`, the atlas of the baked props. ENGINE's current loader (`ASSET_ROOT + 'v2/env/' + n + '.webp'`, `KIT_TEX[n]?.repeat ?? true`) already loads it correctly — the browser resolves the `..`. Everything in the static meshes is opaque; there are no alpha cut-outs.
+- **Baked props** (angel statue, gargoyle, dead tree — and generated models later) come from `assets/v2/props/props.bin`. It must be in memory before `compileEnv`: `AREAS[id]()` does that (`ensureWorldAssets()`). If it is missing, low-poly stand-ins are used and nothing breaks.
+- Ground decals `stage.decals[] = { k, x, z, rx, rz, y?, a? }`, `k` ∈ `moss puddle stain crack scorch ash leaves straw`. The sprite sheet for all eight is drawn by `drawDecalSprites(ctx, ox, oy)` in `src/v2/env/decals.js` (4 × 2 cells of 128 px; default alphas in `DECAL_ALPHA`). ENGINE's own copy knows only the first three — unknown kinds are skipped, so areas still load; importing the shared function shows all of them.
 - No flat cards: areas made by WORLD contain **no** `prop` with `img` (W.sprites has no `kind:'prop'`). Statues, gargoyles, bells … are baked 3D props inside `W.env.meshes`.
 - Sections: `{ id, label (Korean), x0, x1, z0, z1, cam, room? }`. Every walkable spot is inside exactly one section.
 
 ## 3. Spawns and exits
 
 - `spawns[name] = { x, z, face: [dx, dz] (unit vector the hero looks along), section }`. `default` always exists. Entering an area with an unknown spawn name falls back to `default`.
-- `exits[i] = { id, x0, x1, z0, z1, to, spawn, label, locked }` — an axis-aligned box on the ground. When the hero's feet are inside and `locked` is null → `gotoArea(to, spawn)`. `locked` is a string key (e.g. `'key_graveyard'`, `'story:bell_tower'`); STORY decides when it opens — ENGINE treats a locked exit as a wall-less no-op and raises event `exit.locked {id, locked}` once per entry.
+- `exits[i] = { id, x0, x1, z0, z1, to, spawn, label, locked }` — an axis-aligned box on the ground. When the hero's feet are inside and `locked` is null → `gotoArea(to, spawn)`. `locked` is a string key (e.g. `'key_graveyard'`, `'story:bell_tower'`); STORY decides when it opens. **While locked, ENGINE should treat the exit box as solid** (the gate or door prop stands there; there is no other collision for it) and raise event `exit.locked {id, locked}` when the hero pushes against it. `locked: 'not_built'` = the target does not exist yet.
 - Areas not built yet still appear as `to` targets; check `AREAS[to]` before travelling (if missing: toast the `label` and stay).
 - Twin rule: an area and its twin have the same spawn names at the same coordinates (the bell crossing keeps `x, z`): `gotoArea(area.twin, null, { keepPosition: true })` is always safe — the layout (floors, walls, collision of buildings) is generated from the same function for both eras; only dressing, lights, people and enemies differ. Props that block the way in one era only are kept off the main path (validated: every spawn/exit is reachable in both eras).
 
@@ -87,19 +90,40 @@ Exactly the format of `src/v2/env/stage_slice0_env.js` (docs/v2/ENV_KIT.md §4):
 
 ## 8. Areas (status)
 
-| id | name | era | twin | status |
+| id | name | era | twin | what is there |
 |---|---|---|---|---|
-| `eshville_now` | 에슈빌 | now | `eshville_past` | being built (burning outskirts → main street → square with the well → church front + bell tower door) |
-| `eshville_past` | 에슈빌 | past | `eshville_now` | being built (same layout, candle light, harvest stalls, plague flags) |
-| `graveyard_now` | 안개의 묘지 | now | `graveyard_past` (not built) | if time remains (road, gate, first graves) |
-| `slice0` | 시범 구간 | now | — | the old test route, kept for v2c / v2bench |
+| `eshville_now` | 에슈빌 | now | `eshville_past` | burning outskirts (2 groups of skeleton soldiers) → main street (inn, house with the trapped villager = `interact trapped_door` kind `pull`, smithy; soldiers + mages) → square with the well (arena group `sq`, Sera + the wounded man appear `when: 'square_clear'`, Rook's corner) → church front on a terrace (Alberto, Elise, the big bell = `interact big_bell`, rest candles, bell tower door = exit `to_belltower`) + the graveyard road and gate (exit `to_graveyard`, locked `key_graveyard`) |
+| `eshville_past` | 에슈빌 | past | `eshville_now` | the same layout, cool moonlight, thatch, harvest stalls, plague posts and black flags, candles; plague corpses in three groups; Lotte at the tower door, Edmund at the tavern door, Hadwin I at the smithy, two villagers at the stalls, Rook in the same corner |
+| `graveyard_now` | 안개의 묘지 | now | `graveyard_past` (not built) | road between grave gardens (soldiers, bats) → inner gate (elite `gravekeeper_armor`, rest candles) → grave field with solid stones in rows, the four Valkrein stones (`interact valkrein_stones`), two nameless graves to carve (`kind: 'grave'`), ghosts, mausoleum = exit `to_ossuary` (locked) |
+| `slice0` | 시범 구간 | now | — | the old test route as an area object (v2c default, v2bench uses the prototype stage directly) |
 
-Exit targets named but not built yet: `belltower_now`, `belltower_past`, `graveyard_past`, `inn_*`, `smithy_*`.
+Section ids: eshville `outskirts street square church graveroad`; graveyard `road field`. Spawn names: eshville `default from_west from_graveyard from_belltower bell inn square`; graveyard `default from_eshville from_ossuary gate`.
+Exit targets named but not built: `belltower_*`, `stable_*`, `graveyard_past`, `ossuary_*`. Place names use only glyphs the fonts have (font check passes; no name had to be changed).
 
 ## 9. What ENGINE has to do to load an area (short)
 
-1. `const area = await AREAS[id]()` → `const W = compileEnv(area.stage)`.
-2. Textures: for each name in `W.env.stats.textures` → §2 rule (`KIT_TEX[n].file`). Meshes: `W.env.meshes[i] = { chunk, tex, data, count }` as today. Meshes whose texture has `KIT_TEX[tex].alpha` contain cut-out texels (leaves, iron bars): the fragment shader should `discard` when `texture.a < 0.5` (cheap; the prototype renderer already blends alpha so they also work unsorted with slight halos).
-3. Hero at `area.spawns[spawn ?? 'default']`, looking along `face`.
-4. `Sim` gets `W` (enemies are already in `W.spawns`). People from `area.actors`. Exits/triggers/interact: test the hero's feet against the boxes/radii each tick.
-5. Reverb: `area.rooms[section.id] ?? area.room`. Music: `area.music`.
+1. In `src/v2/game/seams.js`: `export const WORLD_LOADER = () => import('../world/index.js');` — the file exists now. Route the default too: `AREAS.slice0` returns the test route **after** the baked props are loaded (calling `compileEnv(STAGE)` directly before `ensureWorldAssets()` gives low-poly stand-in statues).
+2. `const area = await AREAS[id]()` → `const W = compileEnv(area.stage)`. Textures: every name in `W.env.stats.textures` (§2 — no loader change needed). Meshes: `W.env.meshes[i] = { chunk, tex, data, count }` as today, chunk bounds in `W.env.bounds`.
+3. Hero at `area.spawns[spawn ?? 'default']`, looking along `face`. Note `compileEnv` puts the hero start at `spawns.default`; for another spawn set the hero position after `new Sim`.
+4. `Sim` gets `W`; enemies are in `W.spawns` as `{ kind, x, z, y, yard, active, group }` with the six real kinds. People from `area.actors` (honour `when`). Exits (solid while locked) / triggers / interact: test the hero's feet each tick.
+5. Reverb: `area.rooms[section.id] ?? area.room`. Music: `area.music`. Effects: `area.anchors` (§6).
+6. Budgets measured in scene v2c (headless, fold_open): see §11.
+
+## 10. Validation and tools
+
+- `validateArea(area, twin)` (pure JS): required fields, Korean name, era, **no flat prop cards left**, the stage itself (`validateEnv`), then a breadth-first walk on a 20-unit grid over **the kit's own collision** (`W.boxes`: floors, walls, raised pavements, door steps, prop footprints; steps up to the jump height) from `spawns.default`:
+  every spawn reachable and inside the section it names · every exit / trigger box contains reachable ground · every actor stands on ground, not inside a wall or prop, and the hero can get within talking distance · every enemy (except `bat`) stands on reachable ground · every interact has reachable ground within its radius · ids unique, kinds known, groups referenced by `wake` exist · twin: points back, other era, same spawn names and coordinates, same exit boxes, same sections, **same floors and building footprints**.
+- `node tools/v2/world_validate.mjs` — all areas in node (0.5 s). `node tools/v2/world_check.mjs` — validation + scene v2c on fold_open and phone2: opens each area, 0 page errors, per-spot numbers against budgets (static ≤ 35,000 triangles, frame ≤ 40 draw calls, textures ≤ +8 MB over the test route), and **a bot walks from the default spawn into every exit box** (route from the same reach grid), then captures to `/tmp/claude-0/v2/world/shots/`; `python3 tools/v2/world_sheet.py` makes the sheets.
+- Walk an area today: `index.html?scene=v2c&area=eshville_now` (`&spawn=square`, `&peace=1` = no enemies, `&areanav=0` = do not follow exits). Prototype rules: the six kinds are mapped to the prototype's melee / ranged, people are not drawn (v2c has no actor renderer), exits to built areas reload the scene in the target area, locked exits are only announced.
+- Look without the game: `tools/v2/env_view.html?area=eshville_past` (section camera buttons), `?mode=gallery` (every prop).
+
+## 11. Numbers (scene v2c, headless fold_open, 2026-11-17 22:44 UTC)
+
+| area | static triangles (whole area) | chunks: triangles / draw calls | worst view: static triangles · frame draw calls | lights | GL textures vs test route |
+|---|---|---|---|---|---|
+| `eshville_now` | 33,840 | out 5,545 / 10 · street 6,956 / 10 · east 21,339 / 13 | 33,840 · 37 (street by the inn: all three chunks in the frustum) | 55 | 35.8 MB (+5.4) |
+| `eshville_past` | 34,455 | out 6,028 / 11 · street 6,779 / 11 · east 21,648 / 13 | 34,455 · 39 | 59 | 37.1 MB (+6.7) |
+| `graveyard_now` | 21,336 | road 7,447 / 7 · field 13,889 / 12 | 21,336 · 23 | 9 | 33.1 MB (+2.7) |
+| `slice0` (test route) | 29,045 | street 10,961 / 9 · north 18,084 / 10 | 29,045 · 32 | 43 | 30.4 MB |
+
+Frame numbers include the hero model (19,638 triangles, 4 draws). Headless Chromium is a software renderer: frame times there say nothing about the device.

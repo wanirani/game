@@ -23,7 +23,7 @@ const LABEL_PX = { normal: 10.5, large: 12, xlarge: 13.5 };
  * Pure layout. bounds = the safe rectangle in CSS px {l, t, r, b} (absolute edges), scale = touchScale setting.
  * Returns { k, buttons: [{id, cx, cy, d}], stick: {cx, cy, r, zone: {x, y, w, h}}, labelPx }.
  */
-export function padLayout(bounds, scale = 1, textSize = 'normal') {
+export function padLayout(bounds, scale = 1, textSize = 'normal', leftHanded = false) {
   const W = bounds.r - bounds.l, H = bounds.b - bounds.t;
   const k = clamp(Math.min(W, H) / 520, 0.8, 1) * clamp(scale, 0.8, 1.3);
   const labelPx = LABEL_PX[textSize] ?? LABEL_PX.normal, lh = labelPx * 1.5;
@@ -41,10 +41,12 @@ export function padLayout(bounds, scale = 1, textSize = 'normal') {
     out.push({ id: b.id, cx: ax - ox, cy: ay - oy, d });
   }
   const sr = Math.round(66 * k);
-  return {
-    k, labelPx, buttons: out,
-    stick: { cx: bounds.l + 30 + sr, cy: bounds.b - 30 - sr, r: sr, zone: { x: bounds.l, y: bounds.t + 64, w: W * 0.45, h: H - 64 } },
-  };
+  const stick = { cx: bounds.l + 30 + sr, cy: bounds.b - 30 - sr, r: sr, zone: { x: bounds.l, y: bounds.t + 64, w: W * 0.45, h: H - 64 } };
+  if (leftHanded) {   // mirror the cluster and the stick; the pause button keeps its corner (the status block owns the top left)
+    for (let i = 0; i < out.length; i++) if (!BUTTONS[i].corner) out[i].cx = bounds.l + bounds.r - out[i].cx;
+    stick.cx = bounds.l + bounds.r - stick.cx; stick.zone.x = bounds.r - stick.zone.w;
+  }
+  return { k, labelPx, leftHanded, buttons: out, stick };
 }
 
 export function createPad(game, opts = {}) {
@@ -81,7 +83,7 @@ export function createPad(game, opts = {}) {
   function layout() {
     const st = game.settings ?? {};
     S.textSize = st.textSize ?? 'normal';
-    const L = (S.L = padLayout(readBounds(), Number(st.touchScale) || 1, S.textSize));
+    const L = (S.L = padLayout(readBounds(), Number(st.touchScale) || 1, S.textSize, !!st.touchLeftHanded));
     const s = dpr();
     const m = makeCanvas(2, 2).getContext('2d');
     for (const b of B) {

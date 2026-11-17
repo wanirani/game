@@ -49,7 +49,7 @@ async function staged() {
   };
   const KEYS = { Enter: 'confirm', KeyZ: 'attack', Space: 'jump', ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', Escape: 'menu', Backspace: 'cancel' };
   addEventListener('keydown', (e) => { const a = KEYS[e.code]; if (a) { queue.add(a); e.preventDefault(); } });
-  const game = { input, settings: { textSize, touchScale: Number(Q.get('tscale')) || 1, touchOpacity: 0.95 }, canvas: cv, registry: {}, viewW: 960, viewH: 540, scale: 1, cssScale: 1, canvasRect: { x: 0, y: 0, w: innerWidth, h: innerHeight }, safeCss: { l: 0, t: 0, r: 0, b: 0 } };
+  const game = { input, settings: { textSize, touchScale: Number(Q.get('tscale')) || 1, touchOpacity: 0.95, touchLeftHanded: Q.get('left') === '1' }, canvas: cv, registry: {}, viewW: 960, viewH: 540, scale: 1, cssScale: 1, canvasRect: { x: 0, y: 0, w: innerWidth, h: innerHeight }, safeCss: { l: 0, t: 0, r: 0, b: 0 } };
   const safe = { l: 0, t: 0, r: 0, b: 0 };
   const INS = (Q.get('inset') || '0,0,0,0').split(',').map(Number);   // simulated safe-area insets in CSS px: l,t,r,b (safeArea = full)
   game.safeCss = { l: INS[0] || 0, t: INS[1] || 0, r: INS[2] || 0, b: INS[3] || 0 };

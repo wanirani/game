@@ -5,6 +5,7 @@
 
 ## 바뀐 것
 - 22:04 첫 판 (이름·모양을 먼저 정함. 구현 상태는 §9).
+- 22:45 터치에서 단추 안내 알약을 누를 수 있다(§1 `prompts`). 왼손잡이 배치. 물건 알림 기본 아이콘(주머니). v1 모듈을 import 하지 않는다(§8).
 - 22:35 구현 끝. 바뀐 것: CSS 파일을 쓰지 않는다(단추는 단추마다 작은 캔버스 — `css/v2ui.css` 없음). 촛불이 9자루부터는 두 단(제단)으로 선다. 보스 막대 너비는 촛불 줄을 피해 줄어든다. 밤 알림(「오늘 밤이 달라졌다」)이 떠 있는 동안에는 지역·구역 이름 띠가 덮지 않는다. `hud.metrics()`(검사용 자리 값) 추가. §9 에 구현 상태 · 잰 값 · 장면이 할 일.
 
 ## 0. 한눈에
@@ -35,14 +36,14 @@ ENGINE_API §4 의 `state` 를 그대로 받는다. 아래에서 **굵은 칸은
 | `resonance` `{value, cells}` | 울림 눈금. `cells` 3–5(기본 3), `value` 0–cells(소수 = 차오르는 칸). 없으면 빈 3칸 |
 | `night` `'now'｜'past'` | 밤 표시(오늘 밤 / 그 밤). 없으면 `area.era`, 그것도 없으면 `'now'` |
 | `moon` `{phase}` | 달의 칸. `phase` 0–1 (0 = 초승, 1 = 보름). 없으면 그리지 않는다 |
-| **`area{id, name}`** · **`section{id, label}`** | 지역 · 구역 이름. `section.id` 가 바뀌면 구역 이름 띠가 저절로 뜬다 |
+| **`area{id, name}`** · **`section{id, label}`** · `left` | 지역 · 구역 이름. `area.id` 가 바뀌면 지역 이름 띠, `section.id` 가 바뀌면 구역 이름 띠가 저절로 뜬다. 구역 이름은 눈금 옆에 작게 늘 보인다. `left` > 0 이면 「· 남은 적 N」을 붙인다(없으면 `section.id === 'yard'` 일 때 `yardLeft`) |
 | **`enemies[]`** `{id, x, y, z, h, hp, hpMax, dead, state}` | 적. 락온 표식 · 작은 체력 막대에 쓴다 |
 | `boss` `{name, hp, hpMax, sub?, stagger?}` ｜ `null` | 보스 이름 + 막대(위 가운데). `stagger` 0–1 = 무릎 꿇음 눈금(선택) |
 | **`numbers[]`** `{x, y, z, str, color, t, on, big}` | 피해 숫자 풀(ENGINE). `big` = 크게. 붓글씨로 그린다 |
 | **`project(x, y, z, out)`** | 세계 점 → 논리 화면 `{x, y, w}` (w ≤ 1 = 화면 뒤) |
-| `prompts[]` `{action, label, x?, y?, z?}` | 단추 안내. 세계 좌표가 있으면 그 자리 위에, 없으면 아래 가운데 줄에. 키보드 · 패드는 키 이름 알약, 터치는 그 동작의 아이콘 |
+| `prompts[]` `{action, label, x?, y?, z?, icon?, onTap?}` | 단추 안내(최대 8개). 세계 좌표가 있으면 그 자리 위에, 없으면 아래 가운데 줄에. 키보드 · 패드는 키 이름 알약, 터치는 그 동작의 아이콘(`icon` 으로 바꿀 수 있다). **터치에서는 알약을 누르면 그 동작이 한 스텝 눌린다**(`input.touch.tap(action)`, 누르는 자리는 44 CSS px 이상 — 다섯 단추에 없는 「살핀다 · 말 건다」를 이렇게 누른다). `action` 은 `ACTIONS` 에 있는 이름이어야 한다(살피기는 `confirm` 을 권한다). `onTap(p)` 을 주면 그것을 대신 부른다 |
 | `pad` `{skill:{mode:'hook'｜'call', cd, disabled}, bell:{mode:'short'｜'long', charge, disabled}, roll:{cd, disabled}, attack:{disabled}, jump:{disabled}, lock:{disabled}}` | 단추 상태. `cd` 0–1 = 남은 쉼(1 = 방금 씀), `charge` 0–1 = 길게 누르는 중 차오름, `mode` = 아이콘 바꿈. 없으면 모두 보통 |
-| **`done, doneT`** · **`loading, message, message2`** | 지역 끝 · 불러오는 중 · 오류 글 (내장 HUD 와 같은 뜻) |
+| **`done, doneT`** · `doneTitle, doneSub` · **`loading, message, message2`** | 지역 끝(띠 「시범 구간 끝」 + 「공격 단추를 누르면 처음부터 다시 시작합니다」 — `doneTitle` · `doneSub` 로 바꾼다) · 불러오는 중 · 오류 글 (내장 HUD 와 같은 뜻). 영웅이 쓰러지면 「촛불이 꺼졌다」 |
 | **`dialog`** | 대화(§4 의 모양). `hud.showDialog()` 대신 상태로 넘겨도 된다 |
 | **`debug`** · `debugLine()` | 개발 줄 (`?v2dbg=1`) |
 
@@ -53,7 +54,7 @@ ENGINE_API §4 의 `state` 를 그대로 받는다. 아래에서 **굵은 칸은
 | 함수 | 하는 일 |
 |---|---|
 | `hud.banner(kind, title, sub?)` | 큰 알림 띠. `kind`: `'area'`(지역 이름) · `'section'` · `'night'`(「오늘 밤이 달라졌다」— title 을 안 주면 이 글) · `'clear'` · `'dead'` |
-| `hud.toast(text, opts?)` | 작은 알림(물건 주움 등). `opts {icon: 그림 URL ｜ 아이콘 id, kind: 'item'｜'info'｜'warn', time: 2.6}`. 최대 3개가 쌓인다 |
+| `hud.toast(text, opts?)` | 작은 알림(물건 주움 등). `opts {icon: 그림 URL ｜ 아이콘 id, kind: 'item'｜'info'｜'warn', time: 2.6}`. 최대 3개가 쌓인다(왼쪽, 상태 묶음 아래). 아이콘을 안 주면 item = 주머니 · info = 종 · warn = 꺼진 촛불. 아이콘 id 는 `src/v2/ui/atlas_map.js` 의 이름 |
 | `hud.callout(x, y, z, text, kind?)` | 세계 자리의 짧은 붓글씨(「튕겨냄」 등). `kind`: `'parry'｜'guard'｜'break'｜'info'` |
 | `hud.number(x, y, z, str, opts?)` | (선택) HUD 가 가진 숫자 풀에 넣는다 — ENGINE 의 `state.numbers` 를 쓰면 부르지 않아도 된다 |
 | `hud.showDialog(d)` / `hud.advanceDialog()` / `hud.closeDialog()` | 대화 창 (§4). `hud.dialogOpen` |
@@ -131,9 +132,9 @@ hud.showDialog({
 
 ## 8. 실행 중에 받는 파일 (`tools/deploy/v2_ship.txt` 에 넣을 것)
 
-- `assets/v2/ui/gem/atlas.webp` (279 KB, 1024×548, 조각 26개) — 아이콘 한 벌. **인터페이스가 받는 그림은 이것 하나다.** 조각 자리표는 코드에 들어 있다(`src/v2/ui/atlas_map.js`, 생성 파일). `atlas.json` 은 도구용이라 싣지 않아도 된다
+- `assets/v2/ui/gem/atlas.webp` (285 KB, 1024×548, 조각 27개) — 아이콘 한 벌. **인터페이스가 받는 그림은 이것 하나다.** 조각 자리표는 코드에 들어 있다(`src/v2/ui/atlas_map.js`, 생성 파일). `atlas.json` 은 도구용이라 싣지 않아도 된다
 - `assets/v2/portraits/<id>.webp` — 대화 창이 부를 때만(`alberto banshee_queen edmund edmund__smile elise elise__joy hadwin hadwin1 lotte marta rook sera sera__resolve`)
-- 글꼴은 게임이 이미 싣는 것만: 본문 Noto Sans KR, 제목 Hahmlet, 숫자 · 짧은 외침 BN Brush(`assets/fonts/bn-brush.woff2` — `core/ui.js` 의 `loadBrush()` 로 처음 한 번 받는다. 받기 전에는 Hahmlet 으로 그려지고 도착하면 다시 굽는다)
+- 글꼴은 게임이 이미 싣는 것만: 본문 Noto Sans KR, 제목 Hahmlet, 숫자 · 짧은 외침 BN Brush(`assets/fonts/bn-brush.woff2` — `core/ui.js` 가 등록해 둔 글꼴을 `document.fonts.load` 로 처음 한 번 받는다. 받기 전에는 Hahmlet 으로 그려지고 도착하면 다시 굽는다). UI 모듈은 v1 모듈을 하나도 import 하지 않는다(`game.input` · `game.settings` · `game.canvasRect` · `game.safeCss` · `game.cssScale` 만 읽는다)
 - CSS 파일 없음. 물건 알림에 그림 주소를 주면(`hud.toast(text, {icon: 'assets/icons/…webp'})`) 그 파일을 받는다 — 싣는 목록은 부르는 쪽 책임
 
 ## 9. 구현 상태 · 잰 값 · 장면이 할 일
@@ -161,7 +162,7 @@ hud.showDialog({
 
 ### 잰 값 (2026-11-17, 헤드리스 Chromium — GPU 없음. 기기 값이 아니다)
 
-- `node tools/v2/ui_check.mjs --live v2g`: fold_open · phone2 × 글자 크기 3종 = **2220개 통과 / 0 실패**, 실제 장면 연결 검사 8개 통과, 페이지 오류 0.
+- `node tools/v2/ui_check.mjs --live v2g`: fold_open · phone2 × 글자 크기 3종 + 실제 장면 연결 = **전부 통과 / 0 실패**(개수는 보고 참조), 페이지 오류 0. fold_cover · tablet 도 통과. fold_open_sq(아래 띠가 생기는 1.1 : 1 화면)는 시험 페이지가 띠 배치를 흉내 내지 않아 재지 못했다.
 - 단추(CSS px, 폴드 / 휴대폰): 공격 92 / 74 · 점프 66 / 53 · 구르기 66 / 53 · 솜씨 62 / 50 · 종 62 / 50 · 다음 적 46 / 44 · 멈춤 46 / 44, 가장 좁은 틈 13.6 / 10.7. 스틱 자리(왼쪽 45 %)와 겹침 없음, 안전 영역(여백 44 · 0 · 34 · 21 흉내) 밖 0.
 - 유리가 가리는 정도(흰 바탕 · 검은 바탕 두 장의 차, 2차 시안 검토와 같은 방법): 단추의 가장 맑은 1/4 지점 **29–41 %**(2차 「세공한 유리」 61 %, 더 맑은 판 51 %), 스틱 10 %. 화면에서 조금이라도 덮는 넓이 7.1 %(폴드) / 14.0 %(휴대폰), 절반 넘게 가리는 넓이 3.1 % / 6.3 %.
 - 그리기 비용: `hud.update + hud.draw` 의 스크립트 시간 0.05–0.12 ms/프레임(보스 화면, 숫자 · 외침 · 알림이 떠 있는 상태). 프레임마다 1픽셀을 읽어 래스터를 강제하면 2.6–3.1 ms(폴드 2000×1512 소프트웨어 래스터) · 1.5–1.8 ms(휴대폰 1480×720) — 캔버스 지우기를 포함한 값. 실제 장면 위(`--live v2g`): `hud.draw` 평균 0.6 ms · 가운데값 0.2 ms(처음 프레임들의 굽기 포함).
@@ -171,7 +172,7 @@ hud.showDialog({
 ### 알아 둘 것 · 남은 것
 
 - 실제 폴드에서 손가락으로 눌러 보지 않았다. 단추 크기 · 간격 · 스틱 감도(데드존 10 px, 반지름 66 px × 배율, 1.4R 넘으면 받침이 따라온다)는 기기에서 다듬어야 한다.
-- 단추 배치 편집기 · 왼손잡이 배치는 없다(v1 패드의 것은 v1 장면 전용). `settings.touchScale` · `touchOpacity` · `textSize` 는 따른다.
+- 단추 배치 편집기는 없다(v1 패드의 것은 v1 장면 전용). 설정 `touchScale` · `touchOpacity` · `textSize` · `touchLeftHanded`(왼손잡이 — 단추 무리와 스틱이 자리를 바꾼다, 멈춤 단추는 오른쪽 위 그대로)는 따른다.
 - 솜씨 길게 누르기의 "사냥꾼 고르는 둥근 판"은 만들지 않았다(장면이 `skill1` 누른 시간을 재고, 판은 다음 판에).
 - 연대기 · 지도 · 가게 · 종 편지 · 저장 화면(GDD §9.2)은 이 구역의 이번 범위 밖이다. `glassPanel` · `plate` · `bakeText` 로 같은 말투를 낼 수 있다.
 - 캔버스 HUD 는 게임 캔버스의 해상도를 따른다(화질 등급이 낮으면 조금 무르다). 단추 층은 늘 기기 해상도(최대 3배)다.

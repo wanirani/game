@@ -20,7 +20,7 @@
 <div id="ui"></div>
 <script type="module">
 // 환경 키트 보기 (게임 없이 배경만 판단할 때 쓴다). docs/v2/ENV_KIT.md §6
-//   ?mode=gallery (키트 조각·소품 늘어놓기, 기본) | slice (다시 지은 시범 구간)
+//   ?mode=gallery (키트 조각·소품 늘어놓기, 기본) | slice (다시 지은 시범 구간) | ?area=<id> (src/v2/world 의 지역: eshville_now · eshville_past · graveyard_now)
 //   &rig=street|corner|alley|yard (게임의 카메라 틀)  &x=&z= (보는 점)  &yaw=&pitch=&dist= (도)  &w=&h= (논리 화면 크기, 기본 960×726 = 폴드)
 //   드래그 = 돌려 보기 · 휠/두 손가락 = 거리 · 화살표/WASD = 보는 점 옮기기
 // 렌더러는 시범판 B 의 glr.js 그대로다 (같은 셰이더·정점 형식). 얼룩·빛 번짐 스티커는 여기서는 그리지 않는다.
@@ -30,6 +30,11 @@ import { KIT_TEX } from '../../src/v2/env/mats.js';
 import { PROPS } from '../../src/v2/env/props.js';
 import { Geo } from '../../src/v2/env/geo.js';
 import SLICE from '../../src/v2/env/stage_slice0_env.js';
+import { ensureProps } from '../../src/v2/env/baked.js';
+import { AREAS } from '../../src/v2/world/index.js';
+// WORLD: baked props first (statues, gargoyles, trees), then ?area=<id> shows an area of src/v2/world with its section camera rigs
+try { await ensureProps(new URL('../../assets/v2/props/props.bin', import.meta.url).href); } catch (e) { console.warn('baked props not loaded', e); }
+const AREA = new URLSearchParams(location.search).get('area'), AREA_DEF = AREA && AREAS[AREA] ? await AREAS[AREA]() : null;
 
 const q = new URLSearchParams(location.search), D = Math.PI / 180;
 const FOCAL = 880, NEAR = 60, FAR = 24000;
@@ -58,12 +63,15 @@ const GALLERY = {
     { t: 'stairs', x: 1984, z: 350, w: 96, d: 84, h: 72, dir: 'x+', steps: 6, kit: { cheeks: 'K' } },
     { t: 'pillar', x: 2400, z: 380, r: 24, h: 236 },
     { t: 'fence', kind: 'iron', x0: 2460, z0: 400, x1: 2760, z1: 400, h: 46 }, { t: 'fence', kind: 'wood', x0: 2460, z0: 330, x1: 2760, z1: 330, h: 50 },
+    ...['angel', 'gargoyle', 'deadtree', 'bell', 'cross', 'lanternpost', 'plaguepost', 'coffin', 'niche', 'sacks', 'harvest', 'candles', 'wreck'].map((m, i) => ({ t: 'deco', mesh: m, x: 40 + i * 205, z: 20, fire: true })),
+    ...['point', 'obelisk', 'ledger', 'broken', 'round', 'cross'].map((k, i) => ({ t: 'deco', mesh: 'grave', kind: k, x: 2760 + (i % 3) * 80, z: 40 + ((i / 3) | 0) * 130 })),
+    { t: 'deco', mesh: 'mausoleum', x: 2300, z: 250 }, { t: 'deco', mesh: 'cemgate', x: 2620, z: 260, w: 164 }, { t: 'deco', mesh: 'fire', x: 2480, z: 60, w: 80, h: 70 },
     ...PROP_ROW.map((m, i) => ({ t: 'deco', mesh: m, x: 60 + i * 215, z: m === 'tree' ? 200 : 150, h: { tree: 300, statue: 210 }[m], light: m === 'lamp' ? { r: 330, i: 1.7, y: 170 } : m === 'brazier' ? { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } : undefined })),
   ],
 };
 
-const mode = q.get('mode') === 'slice' ? 'slice' : 'gallery';
-const STAGE = mode === 'slice' ? SLICE : GALLERY;
+const mode = AREA_DEF || q.get('mode') === 'slice' ? 'slice' : 'gallery';
+const STAGE = AREA_DEF ? AREA_DEF.stage : mode === 'slice' ? SLICE : GALLERY;
 const Wd = compileEnv(STAGE, { cull: mode === 'slice' });   // 늘어놓기는 돌려 보므로 뒷면도 만든다
 const glr = new GLR();
 document.getElementById('gl').appendChild(glr.canvas);
@@ -86,7 +94,7 @@ const meshes = Wd.env.meshes.map((m) => ({ chunk: m.chunk, mesh: glr.mesh(m.data
 // 카메라: 게임(B 의 index.js _camera/_matrix)과 같은 식
 const LW = Number(q.get('w')) || 960, LH = Number(q.get('h')) || 726;
 const secOf = (id) => STAGE.sections.find((s) => s.id === id) ?? STAGE.sections[0];
-const SPOT = { street: [430, 130, 0], corner: [2150, 150, 0], alley: [2190, 480, 0], yard: [2190, 1860, 96] };
+const SPOT = AREA_DEF ? Object.fromEntries(STAGE.sections.map((sc) => { const sp = Object.values(AREA_DEF.spawns).find((p) => p.section === sc.id); return [sc.id, sp ? [sp.x, sp.z, 0] : [(sc.x0 + sc.x1) / 2, (sc.z0 + sc.z1) / 2, 0]]; })) : { street: [430, 130, 0], corner: [2150, 150, 0], alley: [2190, 480, 0], yard: [2190, 1860, 96] };
 const cam = { yaw: 0, pitch: 0.35, dist: 800, lookY: 64, tx: 0, ty: 0, tz: 0, rig: '' };
 function setRig(id) {
   const R = secOf(id).cam, p = mode === 'slice' ? (SPOT[id] ?? SPOT.street) : [1000, 150, 0];
@@ -110,7 +118,7 @@ function matrix() {
 // 단추
 const btn = (label, fn, data) => { const b = document.createElement('button'); b.textContent = label; if (data) b.dataset.rig = data; b.onclick = fn; ui.appendChild(b); return b; };
 btn(mode === 'slice' ? '키트 늘어놓기 보기' : '다시 지은 구간 보기', () => { const u = new URL(location.href); u.searchParams.set('mode', mode === 'slice' ? 'gallery' : 'slice'); location.href = u.href; });
-if (mode === 'slice') for (const s of SLICE.sections) btn(s.label + ' 카메라', () => setRig(s.id), s.id);
+if (mode === 'slice') for (const s of STAGE.sections) btn(s.label + ' 카메라', () => setRig(s.id), s.id);
 else for (let i = 0; i < 4; i++) btn(['집·예배당', '성문·담', '단상·기둥·울타리', '소품'][i], () => { setRig('street'); cam.tx = [520, 1500, 2350, 1200][i]; cam.tz = [330, 330, 300, 120][i]; if (i === 3) { cam.dist = 1500; cam.tx = 1250; } });
 setRig(q.get('rig') || 'street');
 if (q.get('x')) cam.tx = Number(q.get('x')); if (q.get('z')) cam.tz = Number(q.get('z')); if (q.get('y')) cam.ty = Number(q.get('y'));

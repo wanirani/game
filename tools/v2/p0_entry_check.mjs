@@ -210,18 +210,18 @@ for (const vp of ['fold_open', 'phone2']) {
     await padPress(page, 0);
     await page.waitForFunction(() => window.__game.top?.constructor?.name === 'V2Chooser', null, { timeout: 8000 });
     await page.waitForTimeout(900);
-    for (let i = 0; i < 3; i++) await padPress(page, 13, 90, 200);
+    for (let i = 0; i < 4; i++) await padPress(page, 13, 90, 200);   // 본 게임 · B · 꾸민 배경 · 성능 진단 다음이 시범판 A (다섯째 줄)
     const pi = await page.evaluate(() => window.__game.top.menu.index);
     await padPress(page, 0);
     await page.waitForFunction(() => window.__v2?.id === 'a', null, { timeout: 30000 });
-    ok(pi === 3, `A 단추 → 고르기 화면 → 십자키 ↓ 세 번(줄 ${pi}) → A 단추 → 시범판 A 가 열림`);
+    ok(pi === 4, `A 단추 → 고르기 화면 → 십자키 ↓ 네 번(줄 ${pi}) → A 단추 → 시범판 A 가 열림`);
     await page.waitForTimeout(1200);
     let paused = false;   // 기계가 바쁘면 짧은 누름이 한 틱도 못 잡히는 일이 있어, 될 때까지 몇 번 누른다
     for (let i = 0; i < 4 && !paused; i++) { await padPress(page, 9, 130, 400); paused = await page.evaluate(() => !!window.__v2?.scene?.paused); }
     for (let i = 0; i < 4; i++) { await padPress(page, 8, 130, 500); if (await page.evaluate(() => typeof window.__v2 === 'undefined')) break; }
     await page.waitForFunction(() => window.__game.top?.constructor?.name === 'V2Chooser' && typeof window.__v2 === 'undefined', null, { timeout: 8000 });
     const pidx = await page.evaluate(() => window.__game.top.menu.index);
-    ok(paused && pidx === 3, `START → 일시정지, SELECT → 고르기 화면으로 (시범판 A 줄: ${pidx})`);
+    ok(paused && pidx === 4, `START → 일시정지, SELECT → 고르기 화면으로 (시범판 A 줄: ${pidx})`);
     await page.waitForTimeout(900);
     await padPress(page, 1, 90, 400);
     await page.waitForFunction(() => window.__game.top?.constructor?.name === 'TitleScene', null, { timeout: 8000 });

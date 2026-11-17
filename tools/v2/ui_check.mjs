@@ -46,7 +46,7 @@ function geometry(tag, m, inset) {
     ok(L.x >= safe.l && L.x + L.w <= safe.r && L.y + L.h <= safe.b + 0.5, `${tag}: ${b.id} label outside the safe area (${JSON.stringify(L)})`);
     const cv = m.canvases.find((c) => c.id === b.id);
     ok(cv && L.x >= cv.x - 0.5 && L.x + L.w <= cv.x + cv.w + 0.5 && L.y + L.h <= cv.y + cv.h + 0.5, `${tag}: ${b.id} label clipped by its canvas`);
-    ok(b.cx - r > z.x + z.w, `${tag}: ${b.id} overlaps the stick zone`);
+    ok(b.cx - r > z.x + z.w || b.cx + r < z.x || b.cy + r < z.y, `${tag}: ${b.id} overlaps the stick zone`);
     for (const o of B) {
       if (o === b) continue;
       const gap = Math.hypot(o.cx - b.cx, o.cy - b.cy) - r - o.d / 2; minGap = Math.min(minGap, gap);
@@ -59,8 +59,8 @@ function geometry(tag, m, inset) {
     }
   }
   const s = P.stick;
-  ok(s.cx - s.r >= safe.l && s.cy + s.r <= safe.b, `${tag}: resting stick outside the safe area`);
-  ok(s.cx + s.r <= z.x + z.w, `${tag}: resting stick outside its zone`);
+  ok(s.cx - s.r >= safe.l && s.cx + s.r <= safe.r && s.cy + s.r <= safe.b, `${tag}: resting stick outside the safe area`);
+  ok(s.cx - s.r >= z.x && s.cx + s.r <= z.x + z.w, `${tag}: resting stick outside its zone`);
   return { minD, minGap: +minGap.toFixed(1), k: P.k, labelPx: P.labelPx, buttons: B.map((b) => [b.id, b.d, Math.round(b.cx), Math.round(b.cy)]), stick: [Math.round(s.cx), Math.round(s.cy), s.r] };
 }
 
@@ -189,6 +189,15 @@ try {
       }
       ok(page._errs.length === 0, `${tag}: prompt view page errors ${JSON.stringify(page._errs)}`);
       await page.close();
+      // 5c) left-handed setting: the cluster and the stick swap sides, same rules
+      page = await open(ctx, `view=boss&bg=black&dev=${dev}&text=${text}&freeze=1&left=1&inset=${INSET}`);
+      {
+        const ml = await metrics(page); geometry(tag + '/left', ml, ins);
+        const at = ml.pad.buttons.find((b) => b.id === 'attack');
+        ok(at.cx < ml.win.w / 2 && ml.pad.stick.cx > ml.win.w / 2, `${tag}: left-handed layout mirrors (attack x ${at.cx}, stick x ${ml.pad.stick.cx})`);
+        ok((await outside(page, ins)) === 0, `${tag}: left-handed view has opaque HUD pixels outside the safe area`);
+      }
+      await page.close();
       // 6) keyboard mode: the pad is gone, prompts show key caps
       page = await open(ctx, `view=kb&bg=black&dev=${dev}&text=${text}&freeze=1`);
       const mk = await metrics(page);
@@ -217,6 +226,7 @@ try {
       const m = await page.evaluate(() => { const u = window.__ui, m = u.hud.metrics(); return { pad: m.pad, modal: m.modal, builtin: !!u.scene.hud.builtin, hidePad: u.scene.hidePad, tpad: getComputedStyle(u.win.document.getElementById('tpad') ?? u.win.document.body).display, stats: u.hud.stats() }; });
       ok(!m.builtin && m.hidePad === true, `${tag}: scene uses the UI lane HUD and hides the v1 pad`);
       ok(m.pad.shown, `${tag}: v2 pad is shown in touch mode`);
+      ok(await page.evaluate(() => window.__ui.win.document.fonts.check('700 32px "BN Brush"', '0')), `${tag}: brush font loaded in the game`);
       const bt = Object.fromEntries(m.pad.buttons.map((b) => [b.id, b])), z = m.pad.stick.zone, sx = z.x + z.w * 0.4, sy = z.y + z.h * 0.7;
       const h0 = await hero();
       await touch(cl, 'touchStart', [[sx, sy]]); await touch(cl, 'touchMove', [[sx + 70, sy]]); await page.waitForTimeout(1600);

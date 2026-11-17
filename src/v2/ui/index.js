@@ -13,8 +13,9 @@ export const UI_ASSETS = ['assets/v2/ui/gem/atlas.webp'];
 export function createHud(game, opts = {}) {
   const input = opts.input ?? game.input;
   loadAtlas(opts.assetBase ?? 'assets/v2/ui/gem/');
-  // brush font for numbers and callouts: the game ships it and loads it on first use
-  try { (opts.loadBrush ?? (() => import('../../core/ui.js').then((m) => m.loadBrush?.())))()?.then?.(() => canvas.resize(), () => {}); } catch { /* the title font stands in */ }
+  // brush font for numbers and callouts: the game registers it lazily (core/ui.js FontFace "BN Brush"); ask for it once
+  // and bake the brush pieces again when it arrives. Until then the title font stands in.
+  try { (opts.loadBrush ? opts.loadBrush() : document.fonts?.load?.('700 32px "BN Brush"', '0가'))?.then?.(() => canvas.resize(), () => {}); } catch { /* no font API */ }
   const canvas = createCanvasHud(game, opts);
   const env = { game, input, hud: canvas, portraitBase: opts.portraitBase ?? 'assets/v2/portraits/' };
   const dialog = createDialog(env), pause = createPause(env);

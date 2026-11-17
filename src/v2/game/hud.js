@@ -17,7 +17,7 @@ const O_NUM = { size: 24, weight: 900, align: 'center', color: '#fff', family: F
 const P = { x: 0, y: 0, w: 0 };
 
 export function createBuiltinHud() {
-  let secId = '', banner = 0, hpShown = 1, dbg = '', dbgN = 0;
+  let secId = '', banner = 0, hpShown = 1, dbg = '', dbgN = 0, secLeft = -2, secLab = '', secStr = '';
   return {
     builtin: true,
     update(dt, s) {
@@ -65,7 +65,9 @@ export function createBuiltinHud() {
       ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(x, y, bw * k, bh * 0.4);
       ctx.strokeStyle = 'rgba(232,200,114,0.8)'; ctx.lineWidth = 1.5; ctx.strokeRect(x - 2.5, y - 2.5, bw + 5, bh + 5);
       text(ctx, '카엘', x + 4, y + bh + 22, O_NAME);
-      text(ctx, s.section.label + (s.section.id === 'yard' && !s.done ? ' · 남은 적 ' + s.yardLeft : ''), x + 52, y + bh + 22, O_SEC);
+      const left = s.section.id === 'yard' && !s.done ? s.yardLeft : -1;
+      if (left !== secLeft || s.section.label !== secLab) { secLeft = left; secLab = s.section.label; secStr = secLab + (left >= 0 ? ' · 남은 적 ' + left : ''); }   // the line is rebuilt only when it changes
+      text(ctx, secStr, x + 52, y + bh + 22, O_SEC);
       // section name banner when entering
       if (banner > 0 && !s.done && !h.dead && s.section.label) {
         ctx.globalAlpha = clamp(Math.min((2.6 - banner) / 0.35, banner / 0.7), 0, 1);
