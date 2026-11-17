@@ -18,7 +18,7 @@ export const SETS = {
     ['bell', 'eshville_now', 4100, 1410], ['brazier', 'eshville_now', 3760, 1550], ['wreck', 'eshville_now', 545, 205], ['cart', 'eshville_now', 925, 205], ['goods', 'eshville_now', 1040, 205], ['well', 'eshville_now', 3995, 410],
     ['esh_graves', 'eshville_now', 4310, 1130], ['fire', 'eshville_now', 2400, 180],
     ['stall', 'eshville_past', 2135, 205], ['plaguepost', 'eshville_past', 1215, 210], ['past_lantern', 'eshville_past', 700, 210],
-    ['s0_angel', 'slice0', 2120, 1160], ['s0_fountain', 'slice0', 1740, 1150], ['s0_gargoyle', 'slice0', 2080, 2080], ['s0_cart', 'slice0', 340, 180],
+    ['s0_angel', 'slice0', 2120, 1160], ['s0_fountain', 'slice0', 1960, 1230], ['s0_gargoyle', 'slice0', 2080, 2080], ['s0_cart', 'slice0', 340, 180],
   ],
   wide: [
     ['w_esh_now_1', 'eshville_now', 330, 150], ['w_esh_now_2', 'eshville_now', 3900, 640], ['w_esh_now_3', 'eshville_now', 3900, 1440],

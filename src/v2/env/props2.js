@@ -70,10 +70,10 @@ Object.assign(PROPS, {
     const gen = o.cross ? 'tomb_d' : hash(x, z) > 0.5 ? 'tomb_a' : 'tomb_b';
     return !o.code && bakedDef(gen) ? bakedProp(G, gen, x, y, z, { h: o.h ?? 90, flip: hash(z, x) > 0.5 }) : TOMB0(G, x, y, z, o);
   },
-  /** 불 (효과 닻 자리에 세우는 눈에 보이는 불길 + 바닥의 잉걸불). o.w · o.h · o.n (바깥 잎 수) · o.embers:false. 빛은 part 의 light 로 따로 준다 */
+  /** 불 (효과 닻 자리에 세우는 눈에 보이는 불길 + 바닥의 잉걸불). o.w · o.h · o.n (바깥 잎 수) · o.embers (기본: 바닥에 놓인 불만). 빛은 part 의 light 로 따로 준다 */
   fire(G, x, y, z, o = {}) {
     const w = o.w ?? 56, h = o.h ?? 78;
-    if (o.embers !== false) embers(G, x, y, z - 2, w * 0.62, o.coals ?? 9, 3);
+    if (o.embers ?? (o.y ?? 0) < 2) embers(G, x, y, z - 2, w * 0.55, o.coals ?? 9, 3);   // 바닥의 불만 (지붕 · 담 위의 불은 재 자리가 허공에 뜬다)
     flames(G, x, y, z, w, h, o.n ?? 5, 3);
     fx(G).glows.push({ x, y: y + h * 0.45, z: z - 4, r: h * 1.25, c: [1, 0.55, 0.2], flicker: true });
     fx(G).pools.push({ x, y, z: z - 10, r: o.pool ?? 230, c: [1, 0.5, 0.2], a: 0.36, flicker: true });

@@ -1,0 +1,265 @@
+{
+ "about": "generated prop models -> prop pack (tools/v2/world_props_bake.mjs, docs/v2/ENV_KIT.md 16). h = world height (hero = 175), rotY = degrees (the generator's models face +x), foot = collision half sizes, px = texels per world unit before the fit to the atlas, lum = wanted median brightness of the front picture (0..255), tris = triangles after decimation, emis = glowing texels are flagged per vertex, sat = colour saturation kept (1 = as generated), name = prop name in the pack if different from the file, cut = boxes of stray triangles to throw away, skip + why = rejected models",
+ "pitch": 24,
+ "yaw": 70,
+ "sideScale": 0.38,
+ "texels": 1600000,
+ "props": {
+  "angel": {
+   "h": 200,
+   "foot": [
+    30,
+    24
+   ],
+   "px": 3.3,
+   "lum": 94,
+   "tris": 850,
+   "sat": 0.8
+  },
+  "gargoyle": {
+   "h": 150,
+   "foot": [
+    30,
+    24
+   ],
+   "px": 3.3,
+   "lum": 94,
+   "tris": 800,
+   "sat": 0.85
+  },
+  "deadtree": {
+   "h": 300,
+   "foot": [
+    20,
+    14
+   ],
+   "footH": 240,
+   "px": 1.25,
+   "lum": 62,
+   "tris": 560,
+   "sat": 0.9
+  },
+  "bell": {
+   "h": 190,
+   "foot": [
+    62,
+    34
+   ],
+   "px": 2.4,
+   "lum": 78,
+   "tris": 620,
+   "sat": 0.9
+  },
+  "well": {
+   "h": 150,
+   "foot": [
+    46,
+    34
+   ],
+   "px": 2.0,
+   "lum": 76,
+   "tris": 500,
+   "sat": 0.8
+  },
+  "cart": {
+   "h": 104,
+   "foot": [
+    70,
+    24
+   ],
+   "px": 2.2,
+   "lum": 66,
+   "tris": 520,
+   "sat": 0.9
+  },
+  "cross": {
+   "h": 170,
+   "foot": [
+    24,
+    16
+   ],
+   "px": 2.7,
+   "lum": 92,
+   "tris": 300,
+   "sat": 0.8
+  },
+  "mausoleum": {
+   "h": 230,
+   "foot": [
+    62,
+    80
+   ],
+   "px": 1.35,
+   "lum": 78,
+   "tris": 600,
+   "name": "chapel",
+   "footH": 200,
+   "why": "used as an extra small tomb chapel (prop name chapel); the code-built mausoleum stays as the ossuary entrance (bigger, cleaner, the door the game uses)",
+   "sat": 0.75
+  },
+  "lanternpost": {
+   "h": 196,
+   "foot": [
+    9,
+    9
+   ],
+   "px": 2.3,
+   "lum": 62,
+   "tris": 160,
+   "emis": true,
+   "light": {
+    "y": 122,
+    "r": 320,
+    "i": 1.6
+   },
+   "glow": {
+    "r": 62,
+    "pool": 190,
+    "c": [
+     1,
+     0.72,
+     0.36
+    ]
+   },
+   "sat": 0.8
+  },
+  "brazier": {
+   "h": 112,
+   "foot": [
+    20,
+    14
+   ],
+   "px": 2.4,
+   "lum": 56,
+   "tris": 240,
+   "emis": true,
+   "light": {
+    "y": 90,
+    "r": 380,
+    "i": 1.8,
+    "c": [
+     1,
+     0.55,
+     0.22
+    ]
+   },
+   "glow": {
+    "r": 70,
+    "pool": 210,
+    "c": [
+     1,
+     0.55,
+     0.22
+    ]
+   },
+   "sat": 1
+  },
+  "coffin": {
+   "h": 64,
+   "foot": [
+    62,
+    22
+   ],
+   "px": 2.2,
+   "lum": 58,
+   "tris": 260,
+   "sat": 0.9
+  },
+  "goods": {
+   "h": 92,
+   "foot": [
+    66,
+    34
+   ],
+   "px": 2.3,
+   "lum": 66,
+   "tris": 480,
+   "sat": 0.9
+  },
+  "plaguepost": {
+   "h": 210,
+   "foot": [
+    10,
+    10
+   ],
+   "px": 1.8,
+   "lum": 64,
+   "tris": 420,
+   "sat": 0.9
+  },
+  "wreck": {
+   "skip": true,
+   "why": "charred pile reads as a pale crumpled lump at game size -> code-built wreck (beams read clearly) stays, with the new flames and embers"
+  },
+  "fountain": {
+   "h": 120,
+   "foot": [
+    58,
+    48
+   ],
+   "px": 1.7,
+   "lum": 90,
+   "tris": 600,
+   "cut": [
+    [
+     -0.37,
+     -0.2,
+     -0.46,
+     -0.16,
+     0.6,
+     -0.22
+    ]
+   ],
+   "sat": 0.8
+  },
+  "tombs4": {
+   "h": 96,
+   "px": 2.6,
+   "lum": 92,
+   "tris": 110,
+   "split": [
+    {
+     "name": "tomb_a",
+     "foot": [
+      20,
+      9
+     ]
+    },
+    {
+     "name": "tomb_b",
+     "foot": [
+      20,
+      9
+     ]
+    },
+    {
+     "name": "tomb_c",
+     "foot": [
+      20,
+      9
+     ]
+    },
+    {
+     "name": "tomb_d",
+     "foot": [
+      20,
+      9
+     ]
+    }
+   ],
+   "sat": 0.8
+  },
+  "gate": {
+   "skip": true,
+   "why": "bars melted into a sheet; the game needs the walk-through opening -> code-built cemgate stays"
+  },
+  "niche": {
+   "skip": true,
+   "why": "skull arches collapsed into a lump -> code-built niche stays"
+  },
+  "stall": {
+   "skip": true,
+   "why": "awning and goods melted into a crumpled box -> code-built stall stays"
+  }
+ }
+}
