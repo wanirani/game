@@ -48,7 +48,7 @@ class Fx {
     this.feelOn = opts.feel !== false;                            // false 면 프리셋이 손맛(멈춤·흔들림·번쩍임)을 내지 않는다
     this.protect = new Float32Array(16);                           // 가리면 안 되는 자리 4곳 (x,y,z,반지름); 옅어지는 한계는 fx.protMin (기본 0.4)
     this.chain = new Float32Array(12); this.chainN = 0;            // 연쇄 번개 표적 (최대 4)
-    this.profile = !!opts.profile;   // profile: fx.stats 를 채우고 update/draw 의 JS 시간을 잰다 (숫자 상자가 생긴다 → 평소엔 끔)
+    this.dtIn = 0.5; this.dt = 0.5; this.profile = !!opts.profile;   // profile: fx.stats 를 채우고 update/draw 의 JS 시간을 잰다 (숫자 상자가 생긴다 → 평소엔 끔)
     this.last = -1;                                                // 마지막 프리셋이 만든 '따라다닐 것'의 손잡이 (보호막)
     this.cam = { vp: new Float32Array(16), eye: new Float32Array(3), right: new Float32Array([1, 0, 0]), up: new Float32Array([0, 1, 0]), fwd: new Float32Array([0, 0, 1]) };
     this.stats = { draws: 0, particles: 0, quads: 0, ribbons: 0, ribbonVerts: 0, meshes: 0, meshTris: 0, lights: 0, seqs: 0, coverage: 0, gain: 1, cpuUpdate: 0, cpuDraw: 0, spawned: 0, dropped: 0, sfx: 0, postPasses: 0 };
@@ -73,16 +73,12 @@ class Fx {
   setProtect(i, x, y, z, r) { const o = i * 4; this.protect[o] = x; this.protect[o + 1] = y; this.protect[o + 2] = z; this.protect[o + 3] = r; }
 
   /** 프레임마다 한 번. realDt = 실제 흐른 초. 돌려주는 값 = 놀이용 dt (타격 멈춤 중 0) */
-  update(realDt) { this.feel.io[0] = realDt; this.tick(); return this.feel.io[1]; }
-  get dtIn() { return this.feel.io[0]; }
-  set dtIn(v) { this.feel.io[0] = v; }
-  /** 이번 프레임의 놀이용 dt */
-  get dt() { return this.feel.io[1]; }
+  update(realDt) { this.dtIn = realDt; this.tick(); return this.dt; }
   /** update 와 같지만 실수를 주고받지 않는다: fx.dtIn = 실제 dt 를 넣고 부르면 fx.dt 에 놀이용 dt 가 들어온다 */
   tick() {
-    const realDt = this.feel.io[0], prof = this.profile, t0 = prof ? performance.now() : 0;
+    const realDt = this.dtIn, prof = this.profile, t0 = prof ? performance.now() : 0;
     const F = this.feel, P = this.particles, Qd = this.quads, R = this.ribbons, M = this.meshes, L = this.lights, fr = this.fr;
-    F.step();
+    F.dtIn = realDt; F.step(); this.dt = F.dtOut;
     const fdt = realDt * F.fxScale; fr[0] += fdt; fr[3] = fdt;
     P.update(); Qd.update(); R.update(); M.update();
     this.seqs.update(this);

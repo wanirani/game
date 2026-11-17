@@ -532,7 +532,9 @@
    },
    "ref": "job ab26d737 (plague v2)",
    "job_id": "50a16aa6-5c9b-43e4-9880-b74c07a4ab53",
-   "credits": 9
+   "credits": 9,
+   "kept": true,
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_145544_50a16aa6-5c9b-43e4-9880-b74c07a4ab53.glb"
   }
  ],
  "total_credits": 199.5

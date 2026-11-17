@@ -1,0 +1,1050 @@
+{
+ "batch": "animlib (v2 공용 클립 라이브러리) 2026-11-17",
+ "cap_credits": 420,
+ "model_url": "https://d2ol7oe51mr4n9.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/d491f960-2688-4843-9251-fe90e7fe30df.glb",
+ "model_url_note": "tools/v2/char3d_orient.mjs 로 돌린 카엘 정지 모델(/tmp/claude-0/v2/char3d/raw/kael_tripo_raw.glb → /tmp/claude-0/v2/animlib/raw/kael_oriented.glb)을 media_upload(.glb) + media_confirm(type file) 로 올린 주소. 모든 리깅 호출이 이 주소 하나를 썼다 (올린 주소는 24시간 뒤 만료될 수 있다 — 그때는 다시 올린다).",
+ "reused_from_char3d": [
+  {
+   "animation_action_id": 16,
+   "animation": "RunFast",
+   "clips": [
+    "sprint"
+   ],
+   "raw": "/tmp/claude-0/v2/char3d/raw/kael_rigged_run.glb",
+   "credits": 0
+  },
+  {
+   "animation_action_id": 219,
+   "animation": "Right_Hand_Sword_Slash",
+   "clips": [
+    "atk1"
+   ],
+   "raw": "/tmp/claude-0/v2/char3d/raw/kael_rigged_slash.glb",
+   "credits": 0
+  },
+  {
+   "animation_action_id": 187,
+   "animation": "Knock_Down",
+   "clips": [
+    "knockdown"
+   ],
+   "raw": "/tmp/claude-0/v2/char3d/raw/kael_rigged_knockdown.glb",
+   "credits": 0
+  }
+ ],
+ "jobs": [
+  {
+   "animation_action_id": 249,
+   "animation": "Idle_9",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 249
+   },
+   "job_id": "e9a9b800-26cb-4aa1-a146-5723487f71f3",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "idle"
+   ],
+   "file": "assets/v2/char3d/clips/ (idle)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143021_e9a9b800-26cb-4aa1-a146-5723487f71f3.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/249_Idle_9.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 89,
+   "animation": "Combat_Stance",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 89
+   },
+   "job_id": "b6eecf81-c448-4b38-8579-03f8a114f1be",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "idle_combat"
+   ],
+   "file": "assets/v2/char3d/clips/ (idle_combat)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143022_b6eecf81-c448-4b38-8579-03f8a114f1be.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/89_Combat_Stance.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 566,
+   "animation": "walking_2",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 566
+   },
+   "job_id": "84c8e2f9-7665-4ee7-8ecd-62aeafafd2e8",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "walk"
+   ],
+   "file": "assets/v2/char3d/clips/ (walk)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143023_84c8e2f9-7665-4ee7-8ecd-62aeafafd2e8.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/566_walking_2.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 15,
+   "animation": "Run_03",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 15
+   },
+   "job_id": "0f2b9202-1fa2-43f9-8abf-813c71604785",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "run"
+   ],
+   "file": "assets/v2/char3d/clips/ (run)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143025_0f2b9202-1fa2-43f9-8abf-813c71604785.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/15_Run_03.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 531,
+   "animation": "Sprint_and_Sudden_Stop",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 531
+   },
+   "job_id": "0fb15349-11be-430e-b363-ff46b5dcbd71",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "run_stop"
+   ],
+   "file": "assets/v2/char3d/clips/ (run_stop)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143332_0fb15349-11be-430e-b363-ff46b5dcbd71.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/531_Sprint_and_Sudden_Stop.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 543,
+   "animation": "Step_Back",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 543
+   },
+   "job_id": "ebab6723-faae-4492-a615-d80f03d23c07",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "backstep"
+   ],
+   "file": "assets/v2/char3d/clips/ (backstep)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143334_ebab6723-faae-4492-a615-d80f03d23c07.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/543_Step_Back.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 21,
+   "animation": "Walk_Fight_Forward",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 21
+   },
+   "job_id": "3c5edf1a-3cb0-4160-8623-7ccbb6655a0a",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "guard_walk"
+   ],
+   "file": "assets/v2/char3d/clips/ (guard_walk)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143335_3c5edf1a-3cb0-4160-8623-7ccbb6655a0a.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/21_Walk_Fight_Forward.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 466,
+   "animation": "Regular_Jump",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 466
+   },
+   "job_id": "75fc6172-7dec-4aff-adf6-c9e8455d3bed",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "jump",
+    "land"
+   ],
+   "file": "assets/v2/char3d/clips/ (jump, land)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143337_75fc6172-7dec-4aff-adf6-c9e8455d3bed.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/466_Regular_Jump.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 503,
+   "animation": "Fall2",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 503
+   },
+   "job_id": "b36833dd-3ba4-4c95-b104-37db47d5a5d6",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "air"
+   ],
+   "file": "assets/v2/char3d/clips/ (air)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143338_b36833dd-3ba4-4c95-b104-37db47d5a5d6.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/503_Fall2.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 159,
+   "animation": "Roll_Dodge_1",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 159
+   },
+   "job_id": "91340025-8ccb-41dd-a8a1-160582db9295",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "roll"
+   ],
+   "file": "assets/v2/char3d/clips/ (roll)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143339_91340025-8ccb-41dd-a8a1-160582db9295.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/159_Roll_Dodge_1.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 468,
+   "animation": "Back_Jump",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 468
+   },
+   "job_id": "660a9d06-0537-46aa-9731-c93b6dbf8826",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "backhop"
+   ],
+   "file": "assets/v2/char3d/clips/ (backhop)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143341_660a9d06-0537-46aa-9731-c93b6dbf8826.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/468_Back_Jump.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 97,
+   "animation": "Left_Slash",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 97
+   },
+   "job_id": "f5f65ce7-b291-4341-bfce-755ba3c5215e",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "atk2",
+    "atk2_fore"
+   ],
+   "file": "assets/v2/char3d/clips/ (atk2, atk2_fore)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143342_f5f65ce7-b291-4341-bfce-755ba3c5215e.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/97_Left_Slash.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 238,
+   "animation": "Axe_Spin_Attack",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 238
+   },
+   "job_id": "4d4ff7ae-ca71-40a4-87bc-a1ada3c327c7",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "atk3"
+   ],
+   "file": "assets/v2/char3d/clips/ (atk3)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143431_4d4ff7ae-ca71-40a4-87bc-a1ada3c327c7.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/238_Axe_Spin_Attack.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 105,
+   "animation": "Triple_Combo_Attack",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 105
+   },
+   "job_id": "9f48f851-0204-4f8a-bd05-c56e97542bc7",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "combo_a1",
+    "combo_a2",
+    "combo_a3"
+   ],
+   "file": "assets/v2/char3d/clips/ (combo_a1, combo_a2, combo_a3)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143432_9f48f851-0204-4f8a-bd05-c56e97542bc7.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/105_Triple_Combo_Attack.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 128,
+   "animation": "Heavy_Hammer_Swing",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 128
+   },
+   "job_id": "ab58090c-ae7c-4345-b204-e8ec43cab5d6",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "heavy"
+   ],
+   "file": "assets/v2/char3d/clips/ (heavy)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143433_ab58090c-ae7c-4345-b204-e8ec43cab5d6.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/128_Heavy_Hammer_Swing.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 221,
+   "animation": "Charged_Upward_Slash",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 221
+   },
+   "job_id": "0bfa8262-4c82-467c-9db7-492f3227d691",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "launcher"
+   ],
+   "file": "assets/v2/char3d/clips/ (launcher)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143434_0bfa8262-4c82-467c-9db7-492f3227d691.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/221_Charged_Upward_Slash.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 464,
+   "animation": "Leap_and_Punch",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 464
+   },
+   "job_id": "f43eeb7c-2b14-4dbe-b23b-c3af5c29e9e0",
+   "credits": 0,
+   "kept": false,
+   "note": "서비스 쪽 실패 (\"문제가 발생했어요\") — 8 크레딧 환불됨. 같은 동작을 두 번 넣어 두 번 다 실패했으므로 다시 시도하지 말 것"
+  },
+  {
+   "animation_action_id": 242,
+   "animation": "Charged_Slash",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 242
+   },
+   "job_id": "60075e3e-03ff-4b46-87cd-323ed8bbad98",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "charged"
+   ],
+   "file": "assets/v2/char3d/clips/ (charged)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143436_60075e3e-03ff-4b46-87cd-323ed8bbad98.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/242_Charged_Slash.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 99,
+   "animation": "Reaping_Swing",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 99
+   },
+   "job_id": "b79f32ca-9930-4753-a872-d22669403ed0",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "whip_lash"
+   ],
+   "file": "assets/v2/char3d/clips/ (whip_lash)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143438_b79f32ca-9930-4753-a872-d22669403ed0.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/99_Reaping_Swing.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 140,
+   "animation": "Block3",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 140
+   },
+   "job_id": "7148fd28-da2d-4828-9f88-835c10795bfe",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "block"
+   ],
+   "file": "assets/v2/char3d/clips/ (block)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143438_7148fd28-da2d-4828-9f88-835c10795bfe.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/140_Block3.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 141,
+   "animation": "Block4",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 141
+   },
+   "job_id": "350a600f-12c5-450f-bf93-740c3688bd51",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "block_hit"
+   ],
+   "file": "assets/v2/char3d/clips/ (block_hit)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143440_350a600f-12c5-450f-bf93-740c3688bd51.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/141_Block4.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 147,
+   "animation": "Sword_Parry",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 147
+   },
+   "job_id": "76441848-86ed-477d-8490-09959458d67c",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "parry"
+   ],
+   "file": "assets/v2/char3d/clips/ (parry)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143541_76441848-86ed-477d-8490-09959458d67c.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/147_Sword_Parry.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 179,
+   "animation": "Hit_Reaction_1",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 179
+   },
+   "job_id": "35391743-2724-4555-a358-ee3276ae5bde",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "hit_light"
+   ],
+   "file": "assets/v2/char3d/clips/ (hit_light)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143542_35391743-2724-4555-a358-ee3276ae5bde.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/179_Hit_Reaction_1.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 171,
+   "animation": "Hit_Reaction_to_Waist",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 171
+   },
+   "job_id": "cf8c5fd5-bc5d-4734-bf8a-dcff900fb738",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "hit_heavy"
+   ],
+   "file": "assets/v2/char3d/clips/ (hit_heavy)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143543_cf8c5fd5-bc5d-4734-bf8a-dcff900fb738.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/171_Hit_Reaction_to_Waist.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 178,
+   "animation": "Hit_Reaction",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 178
+   },
+   "job_id": "afc847ff-7dff-4f45-8bb5-eec2e2414f0d",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "stagger"
+   ],
+   "file": "assets/v2/char3d/clips/ (stagger)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143545_afc847ff-7dff-4f45-8bb5-eec2e2414f0d.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/178_Hit_Reaction.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 7,
+   "animation": "BeHit_FlyUp",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 7
+   },
+   "job_id": "9ba79523-ab6c-4be6-9b98-d35db5e988e8",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "launched"
+   ],
+   "file": "assets/v2/char3d/clips/ (launched)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143546_9ba79523-ab6c-4be6-9b98-d35db5e988e8.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/7_BeHit_FlyUp.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 240,
+   "animation": "Thrust_Slash",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 240
+   },
+   "job_id": "dd566113-af22-4ed3-9585-95854ae1fed2",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "thrust",
+    "stab"
+   ],
+   "file": "assets/v2/char3d/clips/ (thrust, stab)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143611_dd566113-af22-4ed3-9585-95854ae1fed2.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/240_Thrust_Slash.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 3,
+   "animation": "Arise",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 3
+   },
+   "job_id": "339cdb52-af41-4562-b6a6-4b8117fd26bf",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "getup"
+   ],
+   "file": "assets/v2/char3d/clips/ (getup)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143613_339cdb52-af41-4562-b6a6-4b8117fd26bf.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/3_Arise.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 184,
+   "animation": "Shot_and_Fall_Forward",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 184
+   },
+   "job_id": "ede61561-bbf5-403e-89b2-0724032f765d",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "death_front"
+   ],
+   "file": "assets/v2/char3d/clips/ (death_front)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143614_ede61561-bbf5-403e-89b2-0724032f765d.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/184_Shot_and_Fall_Forward.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 189,
+   "animation": "dying_backwards",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 189
+   },
+   "job_id": "c5748a95-59f6-436b-9919-63ff84e97c18",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "death_back"
+   ],
+   "file": "assets/v2/char3d/clips/ (death_back)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143616_c5748a95-59f6-436b-9919-63ff84e97c18.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/189_dying_backwards.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 137,
+   "animation": "mage_soell_cast_8",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 137
+   },
+   "job_id": "5c2ba408-93a3-4e21-aa12-6dd62c3a78e6",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "cast_quick"
+   ],
+   "file": "assets/v2/char3d/clips/ (cast_quick)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143618_5c2ba408-93a3-4e21-aa12-6dd62c3a78e6.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/137_mage_soell_cast_8.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 132,
+   "animation": "mage_soell_cast_3",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 132
+   },
+   "job_id": "2e57cb72-6dec-4fcb-a5d0-4263b227a2b6",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "cast_channel",
+    "cast_channel_end"
+   ],
+   "file": "assets/v2/char3d/clips/ (cast_channel, cast_channel_end)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143645_2e57cb72-6dec-4fcb-a5d0-4263b227a2b6.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/132_mage_soell_cast_3.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 125,
+   "animation": "Charged_Spell_Cast",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 125
+   },
+   "job_id": "882fbeb5-1816-4626-ab16-40ff8e894551",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "cast_big"
+   ],
+   "file": "assets/v2/char3d/clips/ (cast_big)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143645_882fbeb5-1816-4626-ab16-40ff8e894551.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/125_Charged_Spell_Cast.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 129,
+   "animation": "mage_soell_cast",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 129
+   },
+   "job_id": "46aa756b-aca7-4b31-8207-a29277ced5f4",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "cast_raise"
+   ],
+   "file": "assets/v2/char3d/clips/ (cast_raise)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143646_46aa756b-aca7-4b31-8207-a29277ced5f4.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/129_mage_soell_cast.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 136,
+   "animation": "mage_soell_cast_7",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 136
+   },
+   "job_id": "080046ed-e7f2-46d7-836f-3bad6447c5a9",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "point"
+   ],
+   "file": "assets/v2/char3d/clips/ (point)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143647_080046ed-e7f2-46d7-836f-3bad6447c5a9.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/136_mage_soell_cast_7.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 313,
+   "animation": "Talk_with_Hands_Open",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 313
+   },
+   "job_id": "ec16635d-9202-4182-af14-70e64d691c75",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "talk1"
+   ],
+   "file": "assets/v2/char3d/clips/ (talk1)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143649_ec16635d-9202-4182-af14-70e64d691c75.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/313_Talk_with_Hands_Open.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 314,
+   "animation": "Talk_with_Right_Hand_Open",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 314
+   },
+   "job_id": "637a94cb-fa2f-45c0-8e79-428472333ece",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "talk2"
+   ],
+   "file": "assets/v2/char3d/clips/ (talk2)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143715_637a94cb-fa2f-45c0-8e79-428472333ece.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/314_Talk_with_Right_Hand_Open.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 365,
+   "animation": "Kneel_on_One_Knee_and_Stand",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 365
+   },
+   "job_id": "ac5f8178-2058-4e1f-93ea-47a50ce7a954",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "kneel_down",
+    "kneel_up"
+   ],
+   "file": "assets/v2/char3d/clips/ (kneel_down, kneel_up)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143716_ac5f8178-2058-4e1f-93ea-47a50ce7a954.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/365_Kneel_on_One_Knee_and_Stand.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 281,
+   "animation": "Female_Bend_Over_Pick_Up_Inspect",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 281
+   },
+   "job_id": "1ea09da5-ed61-42a9-a51c-efdfa5c0e49c",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "pickup"
+   ],
+   "file": "assets/v2/char3d/clips/ (pickup)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143717_1ea09da5-ed61-42a9-a51c-efdfa5c0e49c.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/281_Female_Bend_Over_Pick_Up_Inspect.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 449,
+   "animation": "Climb_Up_Rope",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 449
+   },
+   "job_id": "b746a89b-4ab9-4a3a-9976-7af362384066",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "pull_rope"
+   ],
+   "file": "assets/v2/char3d/clips/ (pull_rope)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143718_b746a89b-4ab9-4a3a-9976-7af362384066.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/449_Climb_Up_Rope.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 261,
+   "animation": "Push_and_Walk_Forward",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 261
+   },
+   "job_id": "66ffb5ca-eb81-4a8e-a681-46b4008308c6",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "push"
+   ],
+   "file": "assets/v2/char3d/clips/ (push)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143719_66ffb5ca-eb81-4a8e-a681-46b4008308c6.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/261_Push_and_Walk_Forward.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 285,
+   "animation": "open_door",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 285
+   },
+   "job_id": "bb8d9427-9b65-428c-9fe6-73165a5a7ab3",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "open_door"
+   ],
+   "file": "assets/v2/char3d/clips/ (open_door)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143744_bb8d9427-9b65-428c-9fe6-73165a5a7ab3.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/285_open_door.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 57,
+   "animation": "Stand_to_Sit_Transition_M",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 57
+   },
+   "job_id": "3a6139a2-b2aa-4898-8231-57692ba233a0",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "sit_down"
+   ],
+   "file": "assets/v2/char3d/clips/ (sit_down)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143745_3a6139a2-b2aa-4898-8231-57692ba233a0.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/57_Stand_to_Sit_Transition_M.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 303,
+   "animation": "Cheer_with_Both_Hands",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 303
+   },
+   "job_id": "834f2492-a099-4275-b207-fb5ce7aad7a3",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "cheer"
+   ],
+   "file": "assets/v2/char3d/clips/ (cheer)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143746_834f2492-a099-4275-b207-fb5ce7aad7a3.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/303_Cheer_with_Both_Hands.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 338,
+   "animation": "Short_Breathe_and_Look_Around",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 338
+   },
+   "job_id": "b482c115-30d3-4d87-a5ad-8dc220fa136b",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "look_around"
+   ],
+   "file": "assets/v2/char3d/clips/ (look_around)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143748_b482c115-30d3-4d87-a5ad-8dc220fa136b.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/338_Short_Breathe_and_Look_Around.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 551,
+   "animation": "Carry_Heavy_Object_Walk",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 551
+   },
+   "job_id": "06b5b6de-f2e0-40ae-8c39-7d91f7abeeae",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "carry"
+   ],
+   "file": "assets/v2/char3d/clips/ (carry)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143749_06b5b6de-f2e0-40ae-8c39-7d91f7abeeae.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/551_Carry_Heavy_Object_Walk.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 113,
+   "animation": "Mummy_Stagger",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 113
+   },
+   "job_id": "d2636bd7-1855-4223-ae0b-cc4768a0bb86",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "shamble"
+   ],
+   "file": "assets/v2/char3d/clips/ (shamble)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143816_d2636bd7-1855-4223-ae0b-cc4768a0bb86.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/113_Mummy_Stagger.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 557,
+   "animation": "Limping_Walk_3",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 557
+   },
+   "job_id": "73777848-8572-4b26-9cc8-b3b4d70d2303",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "limp"
+   ],
+   "file": "assets/v2/char3d/clips/ (limp)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143817_73777848-8572-4b26-9cc8-b3b4d70d2303.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/557_Limping_Walk_3.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 386,
+   "animation": "Zombie_Scream",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 386
+   },
+   "job_id": "c23865d7-65be-4037-99d8-a19b04cc9e4e",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "scream"
+   ],
+   "file": "assets/v2/char3d/clips/ (scream)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143818_c23865d7-65be-4037-99d8-a19b04cc9e4e.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/386_Zombie_Scream.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 347,
+   "animation": "Stand_Up4",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 347
+   },
+   "job_id": "359db159-1a63-4c0f-942b-8f7ced8243fc",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "rise"
+   ],
+   "file": "assets/v2/char3d/clips/ (rise)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143819_359db159-1a63-4c0f-942b-8f7ced8243fc.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/347_Stand_Up4.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 25,
+   "animation": "Agree_Gesture",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 25
+   },
+   "job_id": "c07d7990-174e-422d-9f95-de69e87d9d5c",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "nod"
+   ],
+   "file": "assets/v2/char3d/clips/ (nod)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143820_c07d7990-174e-422d-9f95-de69e87d9d5c.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/25_Agree_Gesture.glb (저장소 밖)"
+  },
+  {
+   "animation_action_id": 464,
+   "animation": "Leap_and_Punch",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 464
+   },
+   "job_id": "03d053c0-cea5-4207-9867-cadb879f95e3",
+   "credits": 0,
+   "kept": false,
+   "note": "서비스 쪽 실패 (\"문제가 발생했어요\") — 8 크레딧 환불됨. 같은 동작을 두 번 넣어 두 번 다 실패했으므로 다시 시도하지 말 것"
+  },
+  {
+   "animation_action_id": 102,
+   "animation": "Sword_Judgment",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 102
+   },
+   "job_id": "e2d950e7-53e0-46d4-bad1-37b5b6d0f84a",
+   "credits": 8,
+   "kept": true,
+   "clips": [
+    "plunge"
+   ],
+   "file": "assets/v2/char3d/clips/ (plunge)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144608_e2d950e7-53e0-46d4-bad1-37b5b6d0f84a.glb",
+   "raw": "/tmp/claude-0/v2/animlib/raw/102_Sword_Judgment.glb (저장소 밖)"
+  }
+ ],
+ "not_submitted": [
+  {
+   "animation_action_id": 391,
+   "animation": "Head_Hold_in_Pain",
+   "note": "종소리 · 밴시의 노래에 귀를 막는 반응(stun)으로 사려 했으나 호출이 권한 분류기에 막혀 내지 않았다. 다음에 살 것 1순위"
+  }
+ ],
+ "credits_total": 408,
+ "note": "리깅 + 클립 1개 = 8 크레딧 (get_cost 로 미리 확인). 성공 51건 × 8 = 408. 실패 2건(464 Leap_and_Punch)은 거래 내역에 '3D Rigging refund +8' 로 환불이 찍혔다. 미리보기 GIF 221개는 무료(cdn.meshy.ai). 라이브러리 번호 285 는 목록 이름이 open_door 인데 받은 클립 이름은 open_door_1 이다 (동작은 손잡이를 잡아 당기는 것으로 같다)."
+}

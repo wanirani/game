@@ -11,6 +11,7 @@ const LOADERS = {
   v2b: () => import('../v2/b/index.js'),
   v2c: () => import('../v2/env/index.js'),       // 꾸민 배경 시범 (B 의 세계 + 세밀한 건물·소품 키트)
   v2bench: () => import('../v2/bench/index.js'), // 기기 성능 진단 (방식·해상도별 프레임 시간 표)
+  v2g: () => import('../v2/game/index.js'),     // 본 게임 (P1 — docs/v2/P1_CONTRACT.md)
 };
 
 function lazyScene(id, load) {

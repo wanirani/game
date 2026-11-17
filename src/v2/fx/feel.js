@@ -15,7 +15,7 @@ export class Feel {
     this.kx = 0; this.ky = 0; this.kz = 0; this.kvx = 0; this.kvy = 0; this.kvz = 0;   // 밀림 스프링 (세계 좌표)
     this.zoom = 0; this.zoomV = 0; this.zoomHold = 0; this.zoomTarget = 0;
     this.t = 0.5;             // 실제 시간
-    this.io = new Float64Array(2);       // step() 의 입력(실제 dt)·출력(놀이 dt) — 실수를 인자·반환값·객체 필드로 넘기지 않기 위한 칸
+    this.dtIn = 0.5; this.dtOut = 0.5;   // step() 의 입력·출력 (실수를 인자·반환값으로 넘기지 않기 위한 칸)
     this.frozenRecent = 0;    // 최근 멈춘 시간 (입력 버퍼 보정용, 1 s/s 로 줄어든다)
     this._log = new Float32Array(LOG * 2); this._logN = 0;
     this._flashLog = new Float32Array(4); this._flashN = 0;
@@ -67,10 +67,10 @@ export class Feel {
   darken(a) { this.screen.dark = a; }
 
   /** 프레임마다 한 번. 실제 dt 를 주면 놀이용 dt 를 돌려준다 */
-  update(dt) { this.io[0] = dt; this.step(); return this.io[1]; }
-  /** update 와 같다: this.io[0] 을 읽고 this.io[1] 에 쓴다 */
+  update(dt) { this.dtIn = dt; this.step(); return this.dtOut; }
+  /** update 와 같다: this.dtIn 을 읽고 this.dtOut 에 쓴다 */
   step() {
-    const dt = this.io[0]; this.t += dt; this.calls = 0;
+    const dt = this.dtIn; this.t += dt; this.calls = 0;
     const scale = this.timeScale;
     if (this.stop > 0) { const used = Math.min(this.stop, dt); this.stop -= used; this.frozenRecent += used; }
     else if (this.slowT > 0) { this.slowT -= dt; if (this.slowT <= 0) { this.slowT = 0; this.slowScale = 1; } }
@@ -96,7 +96,7 @@ export class Feel {
     S.flash[3] = Math.max(0, S.flash[3] - S.flash[3] * S.flashDecay * dt - 0.15 * dt);
     S.vig[3] = Math.max(0, S.vig[3] - S.vig[3] * S.vigDecay * dt - 0.05 * dt);
     const ds = this.slowT > 0 ? 0.35 : 0; S.desat += (ds - S.desat) * Math.min(1, dt * 10);
-    this.io[1] = dt * scale;
+    this.dtOut = dt * scale;
   }
   /** 카메라 눈 위치에 흔들림·밀림을 더한다. eye·right·up = [x,y,z], out = 결과 (새 배열을 만들지 않는다) */
   applyToEye(eye, right, up, out) {
