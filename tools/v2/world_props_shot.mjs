@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { start } from '../serve.mjs';
 import { contextOptions } from '../qa/lib/viewports.mjs';
+import { freeze } from '../qa/lib/step.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => { if (v.startsWith('--')) a.push([v.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true]); return a; }, []));
 const OUT = String(args.out || '/tmp/claude-0/v2/props/shots_game');
@@ -43,8 +44,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       if (args.env) await over('**/assets/v2/env/*', String(args.env));
       const t0 = Date.now();
       await page.goto(`http://localhost:${port}/index.html?scene=v2c&area=${area}&peace=1&areanav=0&nosw`);
-      await page.waitForFunction(() => window.__v2?.scene?.sim?.hero && window.__qaStep && window.__v2.stats?.env, null, { timeout: 90000 });
-      await page.waitForTimeout(600);
+      await page.waitForFunction(() => window.__v2 && (window.__v2.ready || window.__v2.error), null, { timeout: 120000 });
+      await page.waitForTimeout(600); await freeze(page);
       for (const [name, , x, z] of list) {
         const r = await page.evaluate(([x, z]) => {
           const v = window.__v2, sc = v.scene, h = sc.sim.hero;
