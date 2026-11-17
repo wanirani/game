@@ -222,6 +222,23 @@ export function bakeText(str, s, o, into) {
   ctx.textBaseline = 'alphabetic';
   return out;
 }
+/**
+ * Make one line fit maxW: shrink the size (down to minK of it), then cut the string and end it with "..".
+ * Returns the shared object { str, size } - read it before the next call. Bake time only.
+ */
+const FIT = { str: '', size: 0 };
+export function fitText(str, size, maxW, weight = 700, family = FONTS.body, minK = 0.72) {
+  str = String(str ?? ''); FIT.str = str; FIT.size = size;
+  if (!(maxW > 0) || !str) return FIT;
+  meas.font = `${weight} ${size}px ${family}`;
+  const w = meas.measureText(str).width; if (w <= maxW) return FIT;
+  FIT.size = size * Math.max(minK, maxW / w);
+  meas.font = `${weight} ${FIT.size}px ${family}`;
+  if (meas.measureText(str).width <= maxW + 0.5) return FIT;
+  let n = str.length; while (n > 1 && meas.measureText(str.slice(0, n).trimEnd() + '..').width > maxW) n--;
+  FIT.str = str.slice(0, n).trimEnd() + '..';
+  return FIT;
+}
 export function measure(str, size, weight = 700, family = FONTS.body) { meas.font = `${weight} ${size}px ${family}`; return meas.measureText(str).width; }
 /** Wrap text into lines no wider than maxW (Korean: breaks at spaces first, then between characters). */
 export function wrapLines(str, maxW, size, weight = 500, family = FONTS.body) {

@@ -45,7 +45,7 @@ try {
   if (want('icons')) {
     info.icons = {};
     for (const dev of ['fold_open', 'phone2']) for (const bg of ['bright', 'dark']) {
-      const opt = contextOptions(dev), ctx = await browser.newContext(opt), page = await ctx.newPage();
+      const opt = { ...contextOptions(dev), deviceScaleFactor: 3 }, ctx = await browser.newContext(opt), page = await ctx.newPage();   // 3 device px per CSS px: the 3x row of the owner sheet is pixel-exact
       await page.goto(`http://localhost:${port}/tools/v2/ui_view.html?view=empty&bg=${bg}&dev=${dev}&freeze=1`);
       await page.waitForFunction(() => window.__ui?.ready && window.__ui.hud.ready, null, { timeout: 20000 });
       await sleep(500);

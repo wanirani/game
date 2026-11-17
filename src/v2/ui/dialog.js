@@ -1,7 +1,7 @@
 // v2 dialogue box and pause menu (docs/v2/UI_API.md 4, 5) - the same cut-glass language, denser where text sits.
 // Both are baked: the dialogue box is one canvas (panel, ornaments, portrait, name plate), each text page is one canvas
 // revealed line by line with drawImage source rectangles; the pause menu is one canvas per selected row.
-import { sprite, glassPanel, plate, bakeText, makeCanvas, measure, wrapLines, chamfer, clamp, COL, FONTS, onAtlas } from './draw.js';
+import { sprite, glassPanel, plate, bakeText, fitText, makeCanvas, measure, wrapLines, chamfer, clamp, COL, FONTS, onAtlas } from './draw.js';
 
 const CPS = 38, MAX_LINES = 4;
 
@@ -52,8 +52,9 @@ export function createDialog(env) {   // env: { game, input, hud (canvas HUD: la
       chamfer(c, x + 3, y + 3, fw - 6, fh - 6, px(10)); c.lineWidth = 0.8; c.strokeStyle = 'rgba(255,255,255,0.16)'; c.stroke();
     }
     if (d.speaker) {   // name plate on the top edge
-      const ns = tsz(15, L.tmin + 2.5), nx = box.tx + measure(d.speaker, ns, 800, FONTS.title) / 2 + ns * 0.4;
-      plate(c, d.speaker, right && d.portrait ? 8 + px(22) + measure(d.speaker, ns, 800, FONTS.title) / 2 + ns * 0.4 : nx, top + 1, ns, { family: FONTS.title, weight: 800, color: '#fff3d4', rim: 'rgba(241,212,138,0.8)' });
+      // a long name is shrunk, then cut, so the plate never leaves the panel
+      const fsp = fitText(d.speaker, tsz(15, L.tmin + 2.5), box.tw - px(10), 800, FONTS.title), who = fsp.str, ns = fsp.size, nx = box.tx + measure(who, ns, 800, FONTS.title) / 2 + ns * 0.4;
+      plate(c, who, right && d.portrait ? 8 + px(22) + measure(who, ns, 800, FONTS.title) / 2 + ns * 0.4 : nx, top + 1, ns, { family: FONTS.title, weight: 800, color: '#fff3d4', rim: 'rgba(241,212,138,0.8)' });
     }
     box.tx = 8 + px(22) + (d.portrait && !right ? box.pz * 0.86 + px(6) : 0);
   }
@@ -72,14 +73,14 @@ export function createDialog(env) {   // env: { game, input, hud (canvas HUD: la
   }
   function bakeChoices() {
     const d = D.d; if (!d.choices) return;
-    const ts = tsz(15.5, L.tmin + 3), h = Math.max(ts * 2.3, 46 / L.css); let w = px(150);
-    for (const t of d.choices) w = Math.max(w, measure(t, ts, 700) + ts * 3.2);
+    const ts = tsz(15.5, L.tmin + 3), h = Math.max(ts * 2.3, 46 / L.css), maxT = box.pw - px(24) - ts * 3.2; let w = px(150);
+    const txt = []; for (const t of d.choices) { const f = fitText(t, ts, maxT, 700, FONTS.body, 1); txt.push(f.str); w = Math.max(w, measure(f.str, ts, 700) + ts * 3.2); }
     for (let i = 0; i < 2 && i < d.choices.length; i++) {
       const p = choiceC[i], sel = i === D.sel, c = ctxOf(p, w + 12, h + 12);
       glassPanel(c, 6, 6, w, h, { cut: px(9), dense: sel ? 0.8 : 0.6, accent: sel ? 'gold' : null });
       if (sel) { chamfer(c, 6, 6, w, h, px(9)); c.lineWidth = 2; c.strokeStyle = COL.gold; c.stroke(); sprite(c, 'interact', 6 + ts * 1.1, 6 + h / 2, ts * 1.5, ts * 1.5); }
       c.font = `700 ${ts}px ${FONTS.body}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 2.6; c.lineJoin = 'round'; c.strokeStyle = 'rgba(4,4,12,0.75)';
-      c.strokeText(d.choices[i], 6 + w / 2 + (sel ? ts * 0.4 : 0), 6 + h / 2 + 1); c.fillStyle = sel ? '#fff3d4' : COL.silver; c.fillText(d.choices[i], 6 + w / 2 + (sel ? ts * 0.4 : 0), 6 + h / 2 + 1);
+      c.strokeText(txt[i], 6 + w / 2 + (sel ? ts * 0.4 : 0), 6 + h / 2 + 1); c.fillStyle = sel ? '#fff3d4' : COL.silver; c.fillText(txt[i], 6 + w / 2 + (sel ? ts * 0.4 : 0), 6 + h / 2 + 1);
       c.textBaseline = 'alphabetic';
       p.x = box.x + 8 + box.pw - p.w - px(10) + 6; p.y = box.y + box.top - (d.choices.length - i) * (h + px(8)) - px(6);
     }

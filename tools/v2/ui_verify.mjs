@@ -111,7 +111,14 @@ for (const dev of DEVICES) {
       await T.down(1, b.cx + 3, b.cy - 2); await sleep(420);
       ok((await downs(page, acts)).every(Boolean), `${dev}: hold ${id} keeps ${acts} down`);
       // slide off into empty space (toward the screen centre): the press is kept until the finger lifts
-      const ex = m.win.w * 0.5, ey = m.win.h * 0.45;
+      let ex = m.win.w * 0.5, ey = m.win.h * 0.45, found = false;
+      for (let a = 0; a < 24 && !found; a++) {   // a direction whose whole path is clear of the other buttons and inside the window
+        const ang = -Math.PI / 2 - a * Math.PI / 12, tx = b.cx + Math.cos(ang) * (b.d / 2 + 70), ty = b.cy + Math.sin(ang) * (b.d / 2 + 70);
+        if (tx < 4 || ty < 4 || tx > m.win.w - 4 || ty > m.win.h - 4) continue;
+        let clear = true;
+        for (let i = 1; i <= 8 && clear; i++) { const qx = b.cx + (tx - b.cx) * i / 8, qy = b.cy + (ty - b.cy) * i / 8; for (const o of m.pad.buttons) if (o.id !== b.id && Math.hypot(qx - o.cx, qy - o.cy) < o.d / 2 + 12) clear = false; }
+        if (clear) { ex = tx; ey = ty; found = true; }
+      }
       for (let i = 1; i <= 4; i++) await T.move(1, b.cx + (ex - b.cx) * i / 4, b.cy + (ey - b.cy) * i / 4);
       await sleep(80);
       const still = (await downs(page, acts)).every(Boolean);
@@ -147,6 +154,14 @@ for (const dev of DEVICES) {
     ok(!(await downs(page, ALL_ACTS)).some(Boolean), `${dev}: all fingers up -> nothing down`);
     const hx1 = await page.evaluate(() => window.__v2.hero.x);
     ok(hx1 > hx0 + 4, `${dev}: the stick moved the hero (${hx0.toFixed(0)} -> ${hx1.toFixed(0)})`);
+    // a long frame (main thread blocked 800 ms) while the stick and attack are held: the pad must not drop them
+    await T.down(1, sx, sy); for (let i = 1; i <= 6; i++) await T.move(1, sx + i * 12, sy); await T.down(2, B.attack.cx, B.attack.cy); await sleep(200);
+    await page.evaluate(() => { const t = performance.now(); while (performance.now() - t < 800); }); await sleep(350);
+    d = await downs(page, ['attack']);
+    vec = await page.evaluate(() => { const v = window.__game.input.touchStick ?? window.__game.input._touchVec; return { x: v.x, shown: window.__v2.scene.hud.metrics().pad.shown }; });
+    ok(d[0] && vec.x > 0.6 && vec.shown, `${dev}: an 800 ms hitch keeps the held stick and attack (attack ${d[0]}, stick ${vec.x}, pad shown ${vec.shown})`);
+    await T.up(2); await T.up(1); await sleep(300);
+    ok(!(await downs(page, ALL_ACTS)).some(Boolean), `${dev}: after the hitch test nothing stays down`);
     // touchcancel (system gesture) while holding: nothing may stay pressed
     await T.down(1, B.attack.cx, B.attack.cy); await T.down(2, sx, sy); await T.move(2, sx + 50, sy); await sleep(80); await T.cancel(); await sleep(150);
     ok(!(await downs(page, ALL_ACTS)).some(Boolean), `${dev}: touchcancel releases everything`);
@@ -271,14 +286,15 @@ for (const dev of DEVICES) {
         hud.toast('촛불이 한 자루 남았다', { kind: 'warn' }); hud.toast('길종이 울렸다', { kind: 'info' });
         s.prompts = [{ action: 'confirm', label: '종을 살핀다' }, { action: 'skill1', label: '채찍을 걸어 건너편 난간으로 넘어간다' }, { action: 'confirm', label: '문을 연다', x: sc.sim.hero.x + 60, y: 80, z: sc.sim.hero.z }];
         window.__spam = setInterval(() => { const N = sc.numbers, h = sc.sim.hero; for (let i = 0; i < N.length; i++) { const n = N[i]; n.on = true; n.t = Math.random() * 0.5; n.x = h.x + (Math.random() - 0.5) * 300; n.y = 40 + Math.random() * 80; n.z = h.z + (Math.random() - 0.5) * 80; n.str = String(Math.floor(Math.random() * 9999)); n.big = i % 4 === 0; n.color = i % 5 === 0 ? '#ff8a80' : '#fff'; } for (let i = 0; i < 4; i++) hud.callout(h.x + (Math.random() - 0.5) * 200, 90, h.z, i % 2 ? '튕겨냄' : '막음', i % 2 ? 'parry' : 'guard'); }, 50);
-        const c = window.__cnt; c.sb = c.fl = c.cv = c.gid = 0;
       });
       await sleep(900); await shot('stress');
       await page.evaluate(() => window.__v2.scene.hud.banner('night')); await sleep(900); await shot('stress_night');
-      await sleep(1500);
-      R.stress = await page.evaluate(() => { clearInterval(window.__spam); const sc = window.__v2.scene; return { hudKind: sc.hudKind, cnt: { ...window.__cnt }, hud: sc.hud.stats(), frameMs: window.__v2.stats.frameMs }; });
+      await page.evaluate(() => { const c = window.__cnt; c.sb = c.fl = c.cv = c.gid = 0; window.__t0 = performance.now(); });   // every slot has been baked once by now
+      await sleep(2500);
+      R.stress = await page.evaluate(() => { clearInterval(window.__spam); const sc = window.__v2.scene; return { hudKind: sc.hudKind, cnt: { ...window.__cnt }, ms: Math.round(performance.now() - window.__t0), hud: sc.hud.stats(), frameMs: window.__v2.stats.frameMs }; });
       ok(R.stress.hudKind === 'ui', `${dev}: HUD survived the stress state (hudKind ${R.stress.hudKind})`);
-      ok(R.stress.cnt.cv === 0 && R.stress.cnt.fl === 0, `${dev}: stress creates no canvas and sets no filter (${JSON.stringify(R.stress.cnt)})`);
+      ok(R.stress.cnt.cv === 0 && R.stress.cnt.fl === 0 && R.stress.cnt.gid === 0, `${dev}: after warm-up the number storm creates no canvas, sets no filter, reads no pixels (${JSON.stringify(R.stress.cnt)})`);
+      note(`${dev}: number storm (16 numbers + 4 callouts re-baked every 50 ms): ${R.stress.cnt.sb} glow bakes (shadow blur on a small offscreen canvas) in ${R.stress.ms} ms; hud.draw avg ${R.stress.hud.drawMs.avg.toFixed(2)} p95 ${R.stress.hud.drawMs.p95.toFixed(1)} max ${R.stress.hud.drawMs.max.toFixed(1)} ms`);
       await page.evaluate(() => { const s = window.__v2.scene.state; s.boss = null; s.prompts = null; s.candles = undefined; s.resonance = undefined; s.moon = undefined; });
     }
 
@@ -295,11 +311,11 @@ for (const dev of DEVICES) {
       };
       const seq = [await snap()];
       for (let i = 0; i < REENTER; i++) {
-        await page.evaluate(() => window.__game.go('v2pick', {}, {})); await page.waitForFunction(() => !window.__v2, null, { timeout: 20000 }).catch(() => {});
+        await page.evaluate(() => { const g = window.__game; g.go(g.registry.v2pick ? 'v2pick' : 'title', {}, { fade: false }); }); await page.waitForFunction(() => !window.__v2, null, { timeout: 20000 }).catch(() => {});
         await sleep(400);
         const away = await page.evaluate(() => ({ v2pads: document.querySelectorAll('#v2pad').length, top: window.__game.top?.name }));
-        ok(away.v2pads === 0, `${dev}: after leaving (${i + 1}) no #v2pad is left (top scene ${away.top})`);
-        await page.evaluate(() => window.__game.go('v2g', {}, {}));
+        ok(away.v2pads === 0 && away.top !== 'v2g', `${dev}: after leaving (${i + 1}) no #v2pad is left (top scene ${away.top})`);
+        await page.evaluate(() => window.__game.go('v2g', {}, { fade: false }));
         await page.waitForFunction(() => window.__v2 && window.__v2.ready && window.__v2.scene.hudKind === 'ui', null, { timeout: 90000 }).catch(() => page._errs.push('re-entry ' + (i + 1) + ' not ready'));
         await sleep(1200); await T.down(1, 300, 20); await T.up(1); await sleep(300);
         seq.push(await snap());

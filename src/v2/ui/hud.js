@@ -3,7 +3,7 @@
 //
 // Cost rules: every static piece is baked once into an offscreen canvas (re-baked only when the scale, the text size or
 // a string changes) and blitted with drawImage; text is never laid out per frame; nothing is allocated per frame.
-import { sprite, spriteUp, spriteAspect, glassPanel, gem, plate, bakeText, makeCanvas, measure, chamfer, clamp, TAU, COL, FONTS, atlas, onAtlas } from './draw.js';
+import { sprite, spriteUp, spriteAspect, glassPanel, gem, plate, bakeText, fitText, makeCanvas, measure, chamfer, clamp, TAU, COL, FONTS, atlas, onAtlas } from './draw.js';
 
 const P = { x: 0, y: 0, w: 0 };
 const TEXT_K = { normal: 1, large: 1.15, xlarge: 1.3 }, TEXT_MIN = { normal: 9.5, large: 12, xlarge: 13.5 };
@@ -97,9 +97,12 @@ export function createCanvasHud(game, opts = {}) {
     const bw = bossW(), ts = tsz(17, L.tmin + 2), crestH = px(34), barH = px(13), w = bw + 24, h = crestH + ts * 1.5 + barH + px(14);
     const c = ctxOf(bossP, w, h);
     sprite(c, 'orn_boss', w / 2, crestH / 2 + 1, px(150), crestH);
-    const nm = bakeText(name, L.s, { size: ts, family: FONTS.title, weight: 800, fill: ['#ffffff', '#cfd6f2'], lw: 3, stroke: 'rgba(8,6,18,0.86)' });
-    c.drawImage(nm.c, w / 2 - nm.w / 2, crestH - px(4), nm.w, nm.h);
-    if (sub) { const sb = bakeText(sub, L.s, { size: tsz(11), weight: 600, fill: COL.silverDim, lw: 2.4 }); c.drawImage(sb.c, w / 2 + nm.w / 2 - 4, crestH - px(4) + (nm.h - sb.h) / 2 + 2, sb.w, sb.h); }
+    // a long name is shrunk, then cut, to the bar width; the sub line sits right of the name only where it fits
+    const fn = fitText(name, ts, bw - ts * 0.9, 800, FONTS.title), nameStr = fn.str, nameTs = fn.size;
+    const nm = bakeText(nameStr, L.s, { size: nameTs, family: FONTS.title, weight: 800, fill: ['#ffffff', '#cfd6f2'], lw: 3, stroke: 'rgba(8,6,18,0.86)' });
+    c.drawImage(nm.c, w / 2 - nm.w / 2, crestH - px(4) + (ts - nameTs) * 0.75, nm.w, nm.h);
+    const subRoom = w / 2 - nm.w / 2 + 4 - 16;
+    if (sub && subRoom >= px(44)) { const fs = fitText(sub, tsz(11), subRoom, 600), sb = bakeText(fs.str, L.s, { size: fs.size, weight: 600, fill: COL.silverDim, lw: 2.4 }); c.drawImage(sb.c, w / 2 + nm.w / 2 - 4, crestH - px(4) + (ts - nameTs) * 0.75 + (nm.h - sb.h) / 2 + 2, sb.w, sb.h); }
     const by = crestH + ts * 1.5 - px(2);
     glassPanel(c, 12, by, bw, barH, { cut: px(4), top: 'rgba(30,10,20,0.62)', bot: 'rgba(8,4,12,0.74)' });
     bossP.barX = 12; bossP.barY = by; bossP.barW = bw; bossP.barH = barH;
@@ -113,21 +116,25 @@ export function createCanvasHud(game, opts = {}) {
     f.fillStyle = g; f.fillRect(0, barH, bw, barH);
     return bossP;
   }
-  function bakeSection(label, left) {
-    if (!stale(secP, label, left)) return secP;
-    const str = left > 0 ? label + ' · ' + (opts.labels?.left ?? '남은 적') + ' ' + left : label;
-    const t = bakeText(str, L.s, { size: tsz(12.5), weight: 600, fill: left > 0 ? '#ffd9de' : COL.silverDim, lw: 2.6, stroke: 'rgba(6,6,16,0.8)' }, secP.t);
+  function bakeSection(label, left, maxW) {
+    if (!stale(secP, label, left, Math.round(maxW))) return secP;
+    const full = left > 0 ? label + ' · ' + (opts.labels?.left ?? '남은 적') + ' ' + left : label;
+    const ft = fitText(full, tsz(12.5), Math.max(px(40), maxW - 12), 600, FONTS.body, 0.85), str = ft.str;
+    const t = bakeText(str, L.s, { size: ft.size, weight: 600, fill: left > 0 ? '#ffd9de' : COL.silverDim, lw: 2.6, stroke: 'rgba(6,6,16,0.8)' }, secP.t);
     secP.t = t; secP.c = t.c; secP.w = t.w; secP.h = t.h;
     return secP;
   }
   function bakeBanner() {
     const b = banner, big = b.kind === 'area' || b.kind === 'clear', night = b.kind === 'night', dead = b.kind === 'dead';
     const ts = tsz(night ? 40 : big ? 34 : dead ? 32 : 24, L.tmin + 6), divW = px(night ? 330 : big ? 300 : 210), divH = divW * (64 / 480);
-    const title = bakeText(b.title, L.s, night
-      ? { size: ts, family: FONTS.brush, weight: 700, fill: ['#fff6e0', '#ffc9a0'], lw: 4, stroke: 'rgba(20,4,10,0.9)', glow: 'rgba(226,54,78,0.55)', glowBlur: 9 }
-      : dead ? { size: ts, family: FONTS.title, weight: 900, fill: ['#ffd0d6', '#ff5a72'], lw: 4, stroke: 'rgba(16,2,8,0.9)' }
-      : { size: ts, family: FONTS.title, weight: 800, fill: ['#ffffff', '#cdd5f3'], lw: 4, stroke: 'rgba(6,6,18,0.86)' });
-    const sub = b.sub ? bakeText(b.sub, L.s, { size: tsz(14, L.tmin + 1), weight: 600, fill: COL.silverDim, lw: 2.6 }) : null;
+    const room = (T.availW || L.vw) - px(36);   // long titles shrink, then are cut, to the safe width
+    const ft = fitText(b.title, ts, room - ts, night ? 700 : dead ? 900 : 800, night ? FONTS.brush : FONTS.title, 0.6), tstr = ft.str, tsF = ft.size;
+    const fsub = b.sub ? fitText(b.sub, tsz(14, L.tmin + 1), room - 20, 600) : null, substr = fsub ? fsub.str : '', subTs = fsub ? fsub.size : 0;
+    const title = bakeText(tstr, L.s, night
+      ? { size: tsF, family: FONTS.brush, weight: 700, fill: ['#fff6e0', '#ffc9a0'], lw: 4, stroke: 'rgba(20,4,10,0.9)', glow: 'rgba(226,54,78,0.55)', glowBlur: 9 }
+      : dead ? { size: tsF, family: FONTS.title, weight: 900, fill: ['#ffd0d6', '#ff5a72'], lw: 4, stroke: 'rgba(16,2,8,0.9)' }
+      : { size: tsF, family: FONTS.title, weight: 800, fill: ['#ffffff', '#cdd5f3'], lw: 4, stroke: 'rgba(6,6,18,0.86)' });
+    const sub = substr ? bakeText(substr, L.s, { size: subTs, weight: 600, fill: COL.silverDim, lw: 2.6 }) : null;
     const w = Math.max(title.w, divW, sub ? sub.w : 0) + 8, h = divH * (big || night ? 2 : 1) + title.h * 0.86 + (sub ? sub.h * 0.8 : 0) + 6;
     const c = ctxOf(bannerP, w, h);
     let y = 2;
@@ -142,15 +149,16 @@ export function createCanvasHud(game, opts = {}) {
     }
   }
   function bakeToast(o) {
-    const ts = tsz(13.5, L.tmin + 1.5), ih = px(26), tw = measure(o.text, ts, 600), w = tw + ih + px(34), h = px(34);
+    const ft = fitText(o.text, tsz(13.5, L.tmin + 1.5), Math.min(L.vw * 0.36, px(330)), 600, FONTS.body, 0.85), text = ft.str, ts = ft.size;   // a toast never grows into the fight
+    const ih = px(26), tw = measure(text, ts, 600), w = tw + ih + px(34), h = px(34);
     const c = ctxOf(o, w + 6, h + 8);
     glassPanel(c, 3, 3, w, h, { cut: px(7), dense: 0.8, accent: o.kind === 'warn' ? 'ruby' : o.kind === 'item' ? 'gold' : null });
     const ix = 3 + px(9) + ih / 2, iy = 3 + h / 2;
     if (o.img && o.img.complete && o.img.naturalWidth) c.drawImage(o.img, ix - ih / 2, iy - ih / 2, ih, ih);
     else sprite(c, typeof o.icon === 'string' && !o.img ? o.icon : 'pouch', ix, iy, ih, ih);
     c.font = `600 ${ts}px ${FONTS.body}`; c.textBaseline = 'middle'; c.textAlign = 'left';
-    c.lineWidth = 3; c.strokeStyle = 'rgba(4,4,12,0.85)'; c.lineJoin = 'round'; c.strokeText(o.text, ix + ih / 2 + px(8), iy + 1);
-    c.fillStyle = o.kind === 'item' ? '#fff2d2' : '#ffffff'; c.fillText(o.text, ix + ih / 2 + px(8), iy + 1);
+    c.lineWidth = 3; c.strokeStyle = 'rgba(4,4,12,0.85)'; c.lineJoin = 'round'; c.strokeText(text, ix + ih / 2 + px(8), iy + 1);
+    c.fillStyle = o.kind === 'item' ? '#fff2d2' : '#ffffff'; c.fillText(text, ix + ih / 2 + px(8), iy + 1);
     c.textBaseline = 'alphabetic';
   }
   // one prompt chip: [key cap | action icon] label
@@ -285,7 +293,7 @@ export function createCanvasHud(game, opts = {}) {
       return;
     }
     const mode = opts.forceMode ?? input?.mode ?? 'touch';
-    taps.n = 0;
+    taps.n = 0; T.availW = vw - sf.l - sf.r;
     // 1) world-anchored: enemy bars, lock ring, numbers, callouts, prompts
     const E = s.enemies; let target = null;
     if (E) for (let i = 0; i < E.length; i++) {
@@ -359,7 +367,10 @@ export function createCanvasHud(game, opts = {}) {
     }
     let rx = cx0 + cells * cstep + px(4);
     if (s.moon) { const mp = bakeMoon(s.moon.phase ?? 0); blit(ctx, mp, rx, gy - cellH / 2 - mp.h / 2); rx += mp.w + px(4); }
-    if (s.section?.label) { const sp = bakeSection(s.section.label, s.left ?? (s.section.id === 'yard' && !s.done ? (s.yardLeft | 0) : 0)); blit(ctx, sp, rx, gy - cellH / 2 - sp.h / 2); }
+    if (s.section?.label) {   // the place name stays left of the boss bar (or of the screen centre) however long it is
+      const secMax = (s.boss ? vw / 2 - bossW() / 2 - px(6) : vw * 0.5) - rx;
+      const sp = bakeSection(s.section.label, s.left ?? (s.section.id === 'yard' && !s.done ? (s.yardLeft | 0) : 0), secMax); blit(ctx, sp, rx, gy - cellH / 2 - sp.h / 2);
+    }
 
     // 3) toasts under the status block
     let ty = y0 + bd.h + px(52);
@@ -383,9 +394,11 @@ export function createCanvasHud(game, opts = {}) {
     // 5) bottom centre: button prompts
     bakePrompts(s, mode);
     if (promptRow.n > 0 && promptRow.c) {
-      const bx = vw / 2 - promptRow.w / 2, by = vh - sf.b - promptRow.h - px(mode === 'touch' ? 8 : 14);
-      blit(ctx, promptRow, bx, by);
-      if (PR) for (let i = 0, k = 0; i < PR.length && k < 8; i++) if (PR[i].x == null) { tapAdd(PR[i], bx + rowX[k], by + 4, rowW[k], px(28)); k++; }
+      // a row wider than the free middle (between the stick and the buttons on touch) is drawn smaller, never under them
+      const room = mode === 'touch' ? vw * 0.46 : vw - sf.l - sf.r - px(24), pk = promptRow.w > room ? room / promptRow.w : 1;
+      const bx = vw / 2 - promptRow.w * pk / 2, by = vh - sf.b - promptRow.h * pk - px(mode === 'touch' ? 8 : 14);
+      ctx.drawImage(promptRow.c, bx, by, promptRow.w * pk, promptRow.h * pk);
+      if (PR) for (let i = 0, k = 0; i < PR.length && k < 8; i++) if (PR[i].x == null) { tapAdd(PR[i], bx + rowX[k] * pk, by + 4 * pk, rowW[k] * pk, px(28) * pk); k++; }
     }
     if (s.debug && s.debugLine) {
       if ((T.dbgN = (T.dbgN ?? 0) - 1) <= 0) { T.dbgN = 30; const t = bakeText(String(s.debugLine()), L.s, { size: 11, weight: 500, fill: 'rgba(225,228,245,0.7)', lw: 2 }, dbgP.t); dbgP.t = t; dbgP.c = t.c; dbgP.w = t.w; dbgP.h = t.h; }
