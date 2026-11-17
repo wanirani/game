@@ -404,7 +404,9 @@
    },
    "ref": "banshee_hd_oriented.glb media bffa83c3",
    "job_id": "05ad6c8e-c55d-4501-a344-2d2beb8a8073",
-   "credits": 8
+   "credits": 8,
+   "kept": true,
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144150_05ad6c8e-c55d-4501-a344-2d2beb8a8073.glb"
   },
   {
    "id": "w_sword",
@@ -444,7 +446,55 @@
    "prompt": "giant grave-keeper war spade, vertical, front",
    "job_id": "091dd2e6-2e1b-4179-bbf8-45a2c0fe5bc2",
    "credits": 0.5
+  },
+  {
+   "id": "w_sword",
+   "file": "raw/w_sword_tripo.glb",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 1500,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "job cba366c6",
+   "job_id": "6af45c52-c346-4600-a9db-a02414c910f5",
+   "credits": 9
+  },
+  {
+   "id": "w_staff",
+   "file": "raw/w_staff_tripo.glb",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 3000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "job 4172fa42",
+   "job_id": "96b36d28-028b-47e5-8f9d-1cc94b16e434",
+   "credits": 9
+  },
+  {
+   "id": "w_spade",
+   "file": "raw/w_spade_tripo.glb",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 2500,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "job 091dd2e6",
+   "job_id": "5c57cb9d-51ef-491e-80b6-d20d16fdba09",
+   "credits": 9
   }
  ],
- "total_credits": 162.5
+ "total_credits": 189.5
 }
