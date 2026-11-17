@@ -356,7 +356,9 @@
    },
    "ref": "banshee_hd_oriented.glb media bffa83c3",
    "job_id": "ca0d324f-ee08-4f54-95c8-cfbfca14a4c0",
-   "credits": 8
+   "credits": 8,
+   "kept": true,
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143727_ca0d324f-ee08-4f54-95c8-cfbfca14a4c0.glb"
   }
  ],
  "total_credits": 137

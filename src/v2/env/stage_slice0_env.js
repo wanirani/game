@@ -87,7 +87,7 @@ export default {
       windows: [{ side: 'R', u: 62, y: 92, w: 40, h: 84, arch: 'point', rows: 2 }, { side: 'R', u: 200, y: 92, w: 40, h: 84, arch: 'point', lit: 0.7, rows: 2 },
         ...[130, 290, 450, 585].map((u, i) => ({ side: 'R', u, y: 258, w: 38, h: 70, arch: 'round', lit: [0.5, 0.6, 0, 0.4][i] }))],
       buttress: [{ side: 'R', u: 8, h: 250, d: 16, w: 30 }, { side: 'R', u: 270, h: 250, d: 16, w: 30 }, { side: 'R', u: 540, h: 300, d: 16, w: 30 }],
-      hang: [{ type: 'sign', side: 'R', u: 120, y: 250, perp: true }, { type: 'banner', side: 'R', u: 400, y: 190, len: 110, w: 38, c: [0.2, 0.26, 0.5] }],
+      hang: [{ type: 'sign', side: 'R', u: 120, y: 136, w: 70, h: 20 } /* 벽에 붙인 간판: 내민 간판은 골목 카메라와 왼쪽 벽을 따라 걷는 영웅 사이에 걸려 영웅을 가렸다 (검수) */, { type: 'banner', side: 'R', u: 400, y: 190, len: 110, w: 38, c: [0.2, 0.26, 0.5] }],
     } },
     { t: 'floor', x: 1980, z: 260, w: 420, d: 440, mat: 'cobble', kit: { mat: 'slabs', strips: [{ x0: 0, x1: 54, mat: 'flags' }, { x0: 366, x1: 420, mat: 'flags' }] } },   // 골목 바닥은 v1 의 손그림 판석
     { t: 'stairs', x: 1980, z: 700, w: 420, d: 200, h: 96, dir: 'z+', steps: 8, mat: 'stone', kit: { cheeks: 'LR' } },
