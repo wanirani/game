@@ -2,27 +2,27 @@
  "batch": "castpeople (v2 첫 출시의 말하는 사람들 — 3D 모델 · 흉상) 2026-11-17",
  "server": "059c3459-8a16-4f9a-84d0-008cf204d39d (Higgsfield MCP)",
  "cap_credits": 300,
- "credits": 224.25,
+ "credits": 243.25,
  "credits_by_model": {
-  "gpt_image_2_5": 10.25,
-  "tripo_h3_1_image_to_3d": 126,
+  "gpt_image_2_5": 11.25,
+  "tripo_h3_1_image_to_3d": 144,
   "meshy_rigging": 88
  },
- "jobs_count": 51,
+ "jobs_count": 54,
  "billing_check": {
-  "checked_at_utc": "2026-11-17 15:12",
+  "checked_at_utc": "2026-11-17 15:12 (51건) + 15:27 (뒤에 더한 3건)",
   "method": "계정 거래 내역(transactions 160건, 15:07:09 → 11:37)을 받아 내 작업 51건을 결과 주소의 시각(hf_20261117_HHMMSS)과 금액으로 하나씩 맞춰 봄 (거래 내역에는 작업 번호가 없다)",
-  "matched": 51,
+  "matched": 54,
   "unmatched": 0,
-  "sum_transactions": 224.25,
-  "sum_ledger": 224.25,
+  "sum_transactions": 243.25,
+  "sum_ledger": 243.25,
   "by_model": {
-   "GPT Image 2.5 (그림 28장: 2k 13 × 0.5 + 1k 15 × 0.25)": 10.25,
-   "Tripo H3.1 (모델 12개: 표준 9 × 10 + 상세 18 × 2)": 126,
+   "GPT Image 2.5 (그림 30장: 2k 15 × 0.5 + 1k 15 × 0.25)": 11.25,
+   "Tripo H3.1 (모델 13개: 표준 9 × 10 + 상세 18 × 3)": 144,
    "3D Rigging + 클립 1개 (8 × 11)": 88
   },
   "refunds_mine": 0,
-  "note": "같은 시간대의 다른 거래(리깅 연속 구매, 14:26–14:29 의 그림 · 모델, 환불 2건)는 다른 묶음(animlib · castenemy)의 것이다. 14:46:59 거래는 결과 주소 시각 144658 과 1초 어긋나지만 금액 · 순서가 맞는 내 세라 표정 그림이다."
+  "note": "같은 시간대의 다른 거래(리깅 연속 구매, 14:26–14:29 의 그림 · 모델, 환불 2건)는 다른 묶음(animlib · castenemy)의 것이다. 14:46:59 거래는 결과 주소 시각 144658 과 1초 어긋나지만 금액 · 순서가 맞는 내 세라 표정 그림이다. 15:19:03 거래도 결과 주소 시각 151902 와 1초 어긋난다(세라 4차 그림)."
  },
  "uploads": {
   "KAEL_APOSE": "4d830e27-c0e1-45ca-8d48-02a32f411e30 (tools/v2/char3d_samples/kael3_apose_front.webp)",
@@ -922,6 +922,60 @@
    "kept": true,
    "file": "assets/v2/char3d/hadwin1.glb",
    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_150709_5018346a-9ccf-445f-91ad-2ba87be834a9.glb"
+  },
+  {
+   "char": "sera",
+   "step": "design_v4_veil",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "ref": "design job 6c696a8c (edit: short veil only)",
+   "job_id": "790faa2f-79af-4b73-90ae-6557707557df",
+   "credits": 0.5,
+   "kept": false,
+   "note": "세라 디자인 4차(베일을 턱까지 짧게): 시범 그림의 인상에서 너무 멀어져 모델로 보내지 않음",
+   "file": "버림",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_151902_790faa2f-79af-4b73-90ae-6557707557df.png"
+  },
+  {
+   "char": "sera",
+   "step": "design_v5_veil",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "ref": "design job 6c696a8c (edit: shoulder-length veil)",
+   "job_id": "a80c3178-c20e-44ab-9b26-1e3df221c3d3",
+   "credits": 0.5,
+   "kept": false,
+   "note": "세라 디자인 5차(베일을 어깨까지): 그림은 좋았으나 이것으로 뽑은 모델도 등 뒤 베일이 허리까지 나와 쓰지 않음",
+   "file": "버림",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_152001_a80c3178-c20e-44ab-9b26-1e3df221c3d3.png"
+  },
+  {
+   "char": "sera",
+   "step": "model_hd_v2",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 20000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "detailed",
+    "geometry_quality": "detailed",
+    "texture_alignment": "original_image"
+   },
+   "ref": "design job a80c3178 (sera d5, shoulder-length veil)",
+   "job_id": "64dff9d0-1875-462c-80ff-7ac1bd2979f4",
+   "credits": 18,
+   "kept": false,
+   "note": "세라 두 번째 상세 모델(5차 그림): 등 뒤 베일이 또 허리 아래까지 → 첫 모델을 그대로 씀. 리깅하지 않음",
+   "file": "버림",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_152055_64dff9d0-1875-462c-80ff-7ac1bd2979f4.glb"
   }
  ]
 }

@@ -78,6 +78,7 @@ function process1(c) {
   const meta = {
     n: c.n, g: c.g, id: c.id, src: F0.srcName, loop: !!c.loop, dur: r3(dur), keys: G.n, fps: Math.round((G.n - 1) / dur), speed: r2(speed), ev: E.ev,
     ...(E.strike ? { strike: E.strike } : {}), ...(far ? { travel: [r2(tr[0]), r2(tr[1])], ...(c.loop ? {} : { moveT: [r2(info.moveT[0]), r2(info.moveT[1])] }) } : {}),
+    ...(c.loop && far ? { mps: r2(Math.hypot(tr[0], tr[1]) / dur) } : c.mps ? { mps: c.mps } : {}),   // 순환 클립이 뜻하는 이동 속도 (m/s, 키 1.8 m) — 재생 배속 = 게임 속도 ÷ mps (검수에서 더함)
     cut: [r2(a * dt), r2(b * dt)], ...(c.rev ? { rev: true } : {}), ...(c.mir ? { mir: true } : {}), root: `${c.xz ?? 'auto'}/${c.y ?? 'keep'}`, use: c.use,
   };
   return { c, L, meta, loopErr, loopCost, tracks: L.tracks.length };

@@ -92,7 +92,10 @@ if (part === 'video' || part === 'all') {
   }
   await browser.close();
   const webm = `${OUT}/owner_fx.webm`;
-  execFileSync('ffmpeg', ['-y', '-v', 'error', '-framerate', String(FPS), '-i', `${dir}/f_%05d.jpg`, '-c:v', 'libvpx-vp9', '-b:v', '1500k', '-maxrate', '2200k', '-bufsize', '4000k', '-pix_fmt', 'yuv420p', '-row-mt', '1', '-cpu-used', '4', '-an', webm]);
+  // 두 번 돌려 묶는다 (한 번에 묶으면 libvpx-vp9 가 목표 비트레이트를 크게 넘겨 41 MB 가 나왔다) → 24초에 약 6.4 MB
+  const enc = (pass, out) => execFileSync('ffmpeg', ['-y', '-v', 'error', '-framerate', String(FPS), '-i', `${dir}/f_%05d.jpg`, '-c:v', 'libvpx-vp9', '-b:v', '2100k', '-minrate', '300k', '-maxrate', '2600k', '-pass', String(pass), '-passlogfile', `${TMP}/vp9pass`, '-pix_fmt', 'yuv420p', '-row-mt', '1', '-cpu-used', pass === 1 ? '4' : '3', '-an', ...out]);
+  enc(1, ['-f', 'null', '/dev/null']); enc(2, [webm]);
+  if (fs.statSync(webm).size > 8 * 1048576) console.log('경고: 8 MB 를 넘었다');
   console.log(webm, fs.statSync(webm).size, 'frames', n, 'sec', (n / FPS).toFixed(1));
   fs.rmSync(dir, { recursive: true, force: true });
 }

@@ -101,7 +101,6 @@ export const AI = {
   /** 흐린 채 맴돌다가 또렷해지며 덮친다. 덮친 뒤 잠깐만 맞는다 (무덤 유령) */
   ghost(sim, e, dt, D) {
     const h = sim.hero, dx = h.x - e.x, dz = h.z - e.z, dist = Math.hypot(dx, dz) || 1;
-    e.solidT = Math.max(0, (e.solidT ?? 0) - dt);
     if (e.state === 'attack') {
       const a = e.atk; if (e.stateT > a.windup * 0.45) e.solidT = Math.max(e.solidT, D.solidAfter);
       return sim.runAttack(e, dt);

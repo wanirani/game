@@ -25,7 +25,7 @@ import { PRESET_IDS } from '../fx/presets.js';
 const H = (weapon, strength, flags = 0) => Object.freeze({ k: 'hit', weapon, strength, flags });
 const E = (name, vol = 1, pitch = 1, approx = false) => Object.freeze({ k: 'ev', name, vol, pitch, approx });
 const V1 = (name, vol = 0.7) => Object.freeze({ k: 'v1', name, opt: Object.freeze({ vol }), approx: false });
-const MUTE = (why) => Object.freeze({ k: 'mute', why });
+const MUTE = Object.freeze({ k: 'mute' });   // 일부러 소리를 내지 않는 사건 (까닭은 표의 주석)
 
 /** fx 사건 이름 → 소리. approx = 전용 소리가 없어 가까운 것을 빌려 쓴 것 (들어 보고 따로 만들 후보) */
 export const FX_SOUND = Object.freeze({
@@ -38,14 +38,14 @@ export const FX_SOUND = Object.freeze({
   'hit.guard': H('sword', 'M', FLAG.guard),
   'hit.parry': H('sword', 'H', FLAG.parry),
   'hit.finisher': H('sword', 'F', FLAG.finisher | FLAG.kill),
-  'feel.slowmo': MUTE('마무리 일격의 소리 층(kill_slowmo)에 이미 들어 있다; 배속은 sync 가 넘긴다'),
+  'feel.slowmo': MUTE,   // 마무리 일격의 소리 층(kill_slowmo)에 이미 들어 있다; 배속은 sync 가 넘긴다
   'swing.light': Object.freeze({ k: 'swing', strength: 'L' }),
   'swing.heavy': Object.freeze({ k: 'swing', strength: 'H' }),
   // 이동
   'move.dash': E('move.dash'), 'move.jump': E('move.jump'), 'move.land': E('move.land'),
   'move.step': Object.freeze({ k: 'step' }),
   // 적
-  'enemy.hurt': MUTE('타격 소리(feel.hit)가 같은 순간에 난다'),
+  'enemy.hurt': MUTE,    // 타격 소리(feel.hit)가 같은 순간에 난다
   'enemy.death.bone': E('enemy.skel.collapse'),
   'enemy.death.ash': E('magic.blood.impact', 0.7, 0.7, true),
   'enemy.breath.cast': E('magic.fire.charge', 1, 0.8, true),

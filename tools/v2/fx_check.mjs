@@ -174,7 +174,7 @@ if (args.has('--doc') && report.cost.mid) {
   if (report.glCalls) L.push('', `- 프레임당 GL 호출 수(난전 6초 평균 · 최대; 유니폼·버퍼·그리기를 모두 센 것): 효과 그리기 low ${report.glCalls.low.fxAvg} · ${report.glCalls.low.fxMax} / mid ${report.glCalls.mid.fxAvg} · ${report.glCalls.mid.fxMax} / high ${report.glCalls.high.fxAvg} · ${report.glCalls.high.fxMax}, 후처리 low ${report.glCalls.low.postAvg} / mid ${report.glCalls.mid.postAvg} / high ${report.glCalls.high.postAvg}.`);
   L.push('', `- 장면(시험 화면의 바닥·벽·인형)은 따로 ${report.heavy.mid.sceneDraws}회. 효과 JS 시간 = \`fx.update\` + \`fx.draw\` 안에서 잰 \`performance.now()\` 차이(헤드리스·다른 작업과 CPU 를 나눠 쓰는 기계에서 잰 값; GPU 시간은 들어 있지 않다).`);
   L.push('', '**프레임당 할당** (`performance.memory.usedJSHeapSize`, `--enable-precise-memory-info` · 시작 전에 `gc()`; 먼저 900–2,400프레임을 돌려 JIT 를 데운 뒤 잰다)', '', '| 경우 | 잰 프레임 | 그동안 는 힙 | 프레임당 | 루프 시간 ÷ 프레임 (헤드리스) |', '|---|---|---|---|---|');
-  const AN = { fxidle: '**정상 상태, 효과 엔진만** (`fx.tick` + `fx.draw`; 살아 있는 문양만 있고 새로 내지 않음)',  fxonly: '난전, 효과 엔진만 (`fx.tick` + 프리셋 호출 + `fx.draw`)', page: '난전, 시험 화면 프레임 전체 (시험 화면의 장면 그리기 · 카메라 · 후처리 포함)' };
+  const AN = { fxidle: '**정상 상태, 효과 엔진만** (`fx.tick` + `fx.draw`; 살아 있는 문양만 있고 새로 내지 않음; 네 번까지 다시 재서 가라앉은 값 — 첫 측정은 JIT 데우기가 섞인다)',  fxonly: '난전, 효과 엔진만 (`fx.tick` + 프리셋 호출 + `fx.draw`)', page: '난전, 시험 화면 프레임 전체 (시험 화면의 장면 그리기 · 카메라 · 후처리 포함)' };
   AN.control = '대조: 정상 상태 루프에서 프레임마다 `new Float64Array(16)` 하나를 일부러 잡음';
   for (const m of ['fxidle', 'fxonly', 'page', 'control']) { const a = report.alloc[m]; L.push(`| ${AN[m]} | ${a.frames} | ${a.bytes} 바이트 | ${a.perFrame.toFixed(1)} 바이트 | ${a.ms.toFixed(3)} ms |`); }
   L.push('', '**메모리**', '');

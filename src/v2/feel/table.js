@@ -1,5 +1,5 @@
 // 타격감 표 (v2 · 3D 판) — 소리 층·시각·진동·경직·흔들림·줌의 **단일 기준**. 순수 데이터 + 순수 함수 (node 에서도 돈다, import 없음).
-//  소리 쪽(sound.js)과 효과 쪽(fxcore 등)이 같은 표를 읽는다 → 소리와 화면이 어긋나지 않는다. 설명·숫자 표: docs/v2/SOUND_FEEL.md
+//  소리 쪽(sound.js)이 이 표를 읽는다. 효과 쪽(src/v2/fx)은 아직 자기 프리셋 값을 쓴다 — 둘을 잇는 다리는 fxbridge.js, 값 비교는 docs/v2/FX.md §11.3. 설명·숫자 표: docs/v2/SOUND_FEEL.md
 //
 //  층(layer) = { k, n, at, g, p, pv, gv, sv, q }
 //    k  'o' v1 고급 효과음 샘플 (assets/audio/sfx_v2, 이름 n) · 'n' v2 새 샘플 (assets/v2/audio) · 's' 합성 층 (sound.js SYN[n])
