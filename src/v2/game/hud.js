@@ -76,7 +76,7 @@ export function createBuiltinHud() {
       }
       if (s.time < 7 && !s.done && !h.dead) {
         ctx.globalAlpha = clamp(Math.min(s.time / 0.5, (7 - s.time) / 1), 0, 1);
-        text(ctx, s.hero.guard !== undefined ? '공격은 세 번 이어집니다 · 대시: 밀면서 누르면 구르기, 서서 누르고 있으면 막기' : '스틱 위 = 화면 안쪽 · 공격은 세 번 이어집니다 · 깊이가 맞아야 맞습니다', Wv / 2, Hv - 30 - sf.b, O_TIP);
+        text(ctx, s.hero.guard !== undefined ? '대시: 밀면서 누르면 구르기 · 서서 누르고 있으면 막기' : '스틱 위 = 화면 안쪽 · 공격은 세 번 이어집니다 · 깊이가 맞아야 맞습니다', Wv / 2, Hv - 30 - sf.b, O_TIP);
         ctx.globalAlpha = 1;
       }
       if (s.done) {

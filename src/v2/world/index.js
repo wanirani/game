@@ -44,6 +44,7 @@ export const AREAS = {
   eshville_now: make(() => eshville('now')),
   eshville_past: make(() => eshville('past')),
   graveyard_now: make(() => graveyard('now')),
+  graveyard_past: make(() => graveyard('past')),
   slice0: make(slice0),
 };
 

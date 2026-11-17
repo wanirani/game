@@ -27,7 +27,7 @@ loadPropsNode();
 const { AREAS, validateAll } = await import('../../src/v2/world/index.js');
 const { compileEnv } = await import('../../src/v2/env/build.js');
 const { reachGrid } = await import('../../src/v2/world/reach.js');
-const LIST = String(args.areas || 'eshville_now,eshville_past,graveyard_now').split(',');
+const LIST = String(args.areas || 'eshville_now,eshville_past,graveyard_now,graveyard_past').split(',');
 
 console.log('[validate]');
 {

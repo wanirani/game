@@ -275,12 +275,13 @@
       "icon": "pouch",
       "job_id": "09c4eaea-8029-41cb-b4a3-ada9e1ed9c06",
       "credits": 0.5,
-      "subject": "a small drawstring pouch with a tiny bell charm and a sparkle (item pickup toast)"
+      "subject": "a small drawstring pouch with a tiny bell charm and a sparkle (item pickup toast)",
+      "kept": true
     }
   ],
   "credits_used": 14.5,
   "note": "full prompt = 'A single game interface emblem, centered, large, filling about 80 percent of the square. Subject: <subject>. ' + style_suffix. kept/rejected flags are filled in after looking at each image.",
-  "note2": "credits_used counts every submitted job at 0.5; job 22 (menu_leave) failed on the service side and may not have been charged.",
+  "note2": "29 jobs submitted at 0.5 credits (quality medium, 1k): 28 completed, 1 failed on the service side (index 22, probably not charged -> 14.0). 24 images are in the atlas (23 sources + candle_lit also gives the unlit candle and the flame), 4 rejected or spare.",
   "atlas": {
     "file": "assets/v2/ui/gem/atlas.webp",
     "tool": "tools/v2/ui_atlas.py",
