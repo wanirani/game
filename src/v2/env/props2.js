@@ -17,7 +17,7 @@ const LAYERS = [
   { hk: 0.72, wk: 0.8, a: [1.0, 0.72, 0.22], b: [0.98, 0.28, 0.06], ea: 1.5, eb: 1.1, dz: -1.6 },
   { hk: 0.46, wk: 0.6, a: [1.0, 0.95, 0.66], b: [1.0, 0.62, 0.18], ea: 1.75, eb: 1.4, dz: -3.2 },
 ];
-const TS = [0, 0.14, 0.36, 0.6, 0.83, 1];
+const TS = [0, 0.2, 0.5, 0.8, 1];
 function leaf(G, bx, by, bz, H, Wd, lean, ph, L) {
   const hw = (t) => Wd * 2.49 * Math.sqrt(t) * (1 - t) ** 0.9, cx = (t) => bx + lean * t * t + Math.sin(t * 2.4 + ph) * Wd * 0.3 * t;
   const col = (edge) => (p) => { const t = Math.max(0, Math.min(1, (p[1] - by) / H)), k = (L.ea + (L.eb - L.ea) * t) * (edge ? 0.7 : 1); return [(L.a[0] + (L.b[0] - L.a[0]) * t) * k, (L.a[1] + (L.b[1] - L.a[1]) * t) * k * (edge ? 0.8 : 1), (L.a[2] + (L.b[2] - L.a[2]) * t) * k * (edge ? 0.6 : 1)]; };
@@ -35,7 +35,7 @@ function leaf(G, bx, by, bz, H, Wd, lean, ph, L) {
 /** 불길 한 무더기: 너비 w · 높이 h · 바깥 잎 n 장 (가운데 · 속 겹은 거기에 맞춰 준다) */
 export function flames(G, x, y, z, w, h, n = 5, seed = 1) {
   LAYERS.forEach((L, li) => {
-    const m = Math.max(1, Math.round(n * [1, 0.7, 0.45][li]));
+    const m = Math.max(1, Math.round(Math.min(n, 6) * [1, 0.7, 0.45][li]));
     for (let i = 0; i < m; i++) {
       const t = m > 1 ? i / (m - 1) - 0.5 : 0, r1 = hash(i + seed * 3.1 + li * 7, x), r2 = hash(x + li, i + seed), r3 = hash(seed + i * 2.3, li + z);
       const fh = h * L.hk * (0.55 + 0.45 * r1) * (1 - 0.45 * Math.abs(t) * 2 * (li ? 0.6 : 1)), fw = Math.max(4, (w / Math.max(2, m)) * 0.78 * L.wk * (0.8 + 0.5 * r2));

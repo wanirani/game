@@ -1,5 +1,5 @@
 // CORE-VERIFY: plays scene v2g with trusted touches (CDP) on the virtual pad, tick-stepped, and saves stills + numbers.
-//   node tools/v2/coreverify_play.mjs [--devices fold_open,phone2] [--out /tmp/claude-0/v2/coreverify] [--only walk,rev,atk,combo,roll,guard,parry,plunge,bolt,die,spots,v2c]
+//   node tools/v2/coreverify_play.mjs [--devices fold_open,phone2] [--out /tmp/claude-0/v2/coreverify] [--only walk,rev,atk,combo,roll,guard,parry,jump,plunge,bolt,die,spots,v2c]
 // The page's own frame loop is paused (game._pageHidden) and the script steps game.tick(1/60) + game.render() itself,
 // so input timing is exact although the software renderer is slow. Touches are real touch events on the pad.
 import { chromium } from 'playwright-core';
@@ -36,7 +36,7 @@ function install() {
     step(n, render = true) { for (let i = 0; i < n; i++) g.tick(1 / 60); if (render) g.render(); return C.snap(); },
     /** step until fn(sim) is true (max n ticks); returns ticks used or -1 */
     until(src, n) { const fn = (0, eval)(src), sim = window.__v2.scene.sim; for (let i = 0; i < n; i++) { g.tick(1 / 60); if (fn(sim)) { g.render(); return i + 1; } } g.render(); return -1; },
-    hero(x, z) { const sim = window.__v2.scene.sim, h = sim.hero; h.x = x; h.z = z; h.y = sim.w.ground(x, z); h.vx = h.vz = h.vy = 0; h.onGround = true; h.move = null; h.dashT = 0; h.hurtT = 0; h.guard = false; h.hp = 100; h.dead = false; h.ifr = 0; h.safe = { x, z, y: h.y }; window.__v2.scene.cam.snap = true; },
+    hero(x, z) { const sim = window.__v2.scene.sim, h = sim.hero; h.x = x; h.z = z; h.y = sim.w?.ground ? sim.w.ground(x, z) : h.y; h.vx = h.vz = h.vy = 0; h.onGround = true; h.move = null; h.dashT = 0; h.hurtT = 0; h.guard = false; h.hp = 100; h.dead = false; h.ifr = 0; h.safe = { x, z, y: h.y }; window.__v2.scene.cam.snap = true; },
     /** keep one enemy of the kind alive as a test dummy, everything else outside the yard is removed */
     clear() { const sim = window.__v2.scene.sim; C.dm = {}; for (const e of sim.enemies) { if (e.yard) continue; const k = e.def?.shot || e.kind === 'ranged' || /mage/.test(e.def?.model ?? '') ? 'ranged' : 'melee'; if (!C.dm[k]) { C.dm[k] = e; C.park(k); } else e.dead = true; } return Object.keys(C.dm); },
     park(k) { const e = C.dm[k]; if (!e) return; e.x = 330; e.z = 120; e.y = e.gy = window.__v2.scene.sim.w.ground(330, 120); e.active = false; e.state = 'idle'; e.stateT = 0; e.atk = null; e.tele = 0; e.hp = e.hpMax = 9999; e.vx = e.vz = 0; e.stun = 0; e.stagger = 0; },
@@ -72,7 +72,7 @@ async function run(dev) {
     const btnDown = (id, f) => T.down(f ?? ({ attack: 11, jump: 12, dash: 13 })[id], pad.buttons[id].cx, pad.buttons[id].cy);
     const btnUp = (id, f) => T.up(f ?? ({ attack: 11, jump: 12, dash: 13 })[id]);
     const press = async (id, ticks = 3) => { await btnDown(id); const s = await step(ticks); await btnUp(id); return s; };
-    const BASE = [900, 190];
+    let BASE = [900, 190];
     const home = async () => { await T.upAll(); await ev((b) => { window.__cv.hero(b[0], b[1]); window.__cv.park('melee'); window.__cv.park('ranged'); }, BASE); await step(14); };
 
     // ───────── v2g ─────────
@@ -85,6 +85,11 @@ async function run(dev) {
     console.log(`[${dev}] v2g ready, input mode ${D.mode}, pad ${D.pad.source}: ${D.pad.buttons.join(' ')}, dummies ${kinds.join(' ')}`);
     if (!pad.buttons?.attack || !pad.buttons?.dash || !pad.buttons?.jump) fail(`${dev}: pad has no attack / dash / jump button`);
     await shot('00_start');
+    {   // a flat open spot for the tests: the same ground 150 px around in eight directions
+      const pick = await ev(() => { const w = window.__v2.scene.sim.w, out = []; for (const [x, z] of [[470, 110], [430, 90], [1130, 140], [1260, 120], [1420, 150], [2190, 900], [2190, 1250]]) { const g0 = w.ground(x, z); let flat = Number.isFinite(g0), free = true; for (let a = 0; a < 8 && flat; a++) for (const r of [50, 100, 150]) { const px = x + Math.cos(a * Math.PI / 4) * r, pz = z + Math.sin(a * Math.PI / 4) * r; if (w.ground(px, pz) !== g0) flat = false; } out.push([x, z, g0, flat]); } return out; });
+      const f = pick.find((q) => q[3]); if (f) BASE = [f[0], f[1]]; D.base = { BASE, flat: !!f, tried: pick };
+      note(`test spot ${BASE.join(',')} ${f ? '(flat 150 px around)' : '(NO flat spot found: ' + JSON.stringify(pick) + ')'}`);
+    }
 
     if (want('walk')) {
       const W = (D.walk = {});
@@ -208,9 +213,23 @@ async function run(dev) {
       (got ? ok : fail)(`${dev} parry by pressing the roll button late in an enemy wind-up: ` + P.map((p) => `tele>=${p.thr}: ${p.res ?? 'no wind-up'}${p.enemy ? ' enemy ' + p.enemy.state : ''}`).join(' · '));
     }
 
+    if (want('jump')) {
+      await home(); const a = await step(0); await btnDown('jump'); const b = await step(3); await btnUp('jump'); const c = await step(6); await shot('jump_09'); const d = await step(8); await shot('jump_17'); const e = await step(40);
+      D.jump = { before: [a.anim, a.clip, a.onGround, a.dashT, a.guard], t3: [b.anim, b.clip, b.onGround, b.y], t9: [c.anim, c.clip, c.onGround, c.y], t17: [d.anim, d.clip, d.onGround, d.y], end: [e.anim, e.clip, e.onGround, e.y] };
+      (!c.onGround && c.y > a.y + 20 ? ok : fail)(`${dev} jump button standing still: ${JSON.stringify(D.jump)}`);
+      // jump right after releasing the stick (the hero is still coasting)
+      await home(); await stick('R'); await step(10); await stickUp(); await step(1); await btnDown('jump'); const b2 = await step(3); await btnUp('jump'); const c2 = await step(6); const e2 = await step(40);
+      D.jumpCoast = { t3: [b2.anim, b2.clip, b2.onGround, b2.dashT, b2.guard], t9: [c2.anim, c2.clip, c2.onGround, c2.y] };
+      (!c2.onGround ? ok : fail)(`${dev} jump button just after releasing the stick: ${JSON.stringify(D.jumpCoast)}`);
+      // jump while running (stick held)
+      await home(); await stick('R'); await step(10); await btnDown('jump'); const b3 = await step(3); await btnUp('jump'); const c3 = await step(6); await shot('jump_run_09'); await stickUp(); await step(40);
+      D.jumpRun = { t3: [b3.anim, b3.clip, b3.onGround, b3.dashT, b3.guard], t9: [c3.anim, c3.clip, c3.onGround, c3.y] };
+      (!c3.onGround ? ok : fail)(`${dev} jump button while running: ${JSON.stringify(D.jumpRun)}`);
+    }
+
     if (want('plunge')) {
       await home(); await ev(([x, z]) => window.__cv.put('melee', x, z, false), [BASE[0] + 56, BASE[1]]); await stick('R'); await step(4); await stickUp(); await step(1);
-      await btnDown('jump'); await step(3); await btnUp('jump'); const up = await step(9); await shot('plunge_00_air');
+      await btnDown('jump'); const j3 = await step(3); await btnUp('jump'); const up = await step(9); await shot('plunge_00_air'); D.plungeDbg = { t3: [j3.anim, j3.clip, j3.onGround, j3.dashT, j3.guard, j3.y], t12: [up.anim, up.clip, up.onGround, up.dashT, up.guard, up.y] };
       await btnDown('attack'); await step(2); await btnUp('attack'); const f = []; let landed = -1;
       for (let t = 0; t < 14; t++) { const s = await step(3); f.push({ t: t * 3, move: s.move, clip: s.clip, y: s.y, onGround: s.onGround, stop: s.stop }); await shot(`plunge_${String(t * 3 + 3).padStart(2, '0')}`); if (s.onGround && landed < 0) landed = t * 3; }
       const hp = await ev(() => window.__cv.dmHp('melee'));
@@ -283,7 +302,7 @@ async function run(dev) {
       await T.upAll(); await open('v2c');
       D.spotsC = await spots('c'); ok(`${dev} v2c (before) fights: ` + Object.entries(D.spotsC).map(([k, v]) => `${k} ${v.hits} hits in ${v.ticks} ticks, ${v.shots} stills`).join(' · '));
       // roll (B: dash) and a mage bolt in v2c
-      await ev(() => { const g = window.__game, v = window.__v2, sim = v.scene.sim; sim.reset(); for (const e of sim.enemies) if (!e.yard) e.dead = true; window.__cv.hero(900, 190); window.__ca = {}; g.input.setAutoSource(() => window.__ca); });
+      await ev(() => { const g = window.__game, v = window.__v2, sim = v.scene.sim; sim.reset(); for (const e of sim.enemies) if (!e.yard) e.dead = true; sim.hero.x = 470; sim.hero.z = 110; v.scene.cam.snap = true; window.__ca = {}; g.input.setAutoSource(() => window.__ca); });
       await step(10); await ev(() => { window.__ca = { right: true }; }); await step(8); await ev(() => { window.__ca = { right: true, dash: true }; }); await step(2); await ev(() => { window.__ca = { right: true }; });
       for (const t of [5, 11, 17]) { await step(t === 5 ? 3 : 6); await shot(`c_roll_${String(t).padStart(2, '0')}`); }
       D.statsC = await ev(() => { const s = window.__v2.stats; if (s?.assets) delete s.assets; return s; });
