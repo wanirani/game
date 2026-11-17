@@ -1,0 +1,13 @@
+{
+ "batch": "envkit (리빌드 v2 환경 키트 텍스처 — docs/v2/ENV_KIT.md)",
+ "server": "Higgsfield MCP 059c3459",
+ "model_only": "gpt_image_2_5 (상한 6 크레딧, 텍스처만)",
+ "when": "2026-11-17 13:31 UTC",
+ "agent": "envkit",
+ "images": 0,
+ "kept": 0,
+ "credits": 0,
+ "balance": { "before": 6046.5, "after": 6046.5 },
+ "note": "generate_image_batch 한 번(텍스처 8장: 다듬은 돌벽·회벽·돌기와·조약돌·판석·참나무 널·불 켜진 납선 유리·짚, 예상 2.0 크레딧)을 보냈으나 실행 권한 단계에서 거절되어 작업이 만들어지지 않았다 (job id 없음, 과금 없음). 다시 시도하지 않았다. 키트 텍스처 6장은 코드로 만들었다: python3 tools/v2/envkit_tex.py → assets/v2/env/*.webp",
+ "items": []
+}
