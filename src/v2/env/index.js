@@ -13,36 +13,47 @@ import { ASSET_ROOT } from '../../core/assets.js';
 import STAGE from './stage_slice0_env.js';
 import { compileEnv } from './build.js';
 import { KIT_TEX } from './mats.js';
+import { drawDecalSprites, DECAL_ALPHA } from './decals.js';
+import { AREAS, PROTO_KIND, ensureWorldAssets } from '../world/index.js';
+
+/** 지역(AREA_FORMAT) → 시범판 규칙으로 걸을 수 있는 스테이지: 시작 = 고른 들머리, 적 = 근접/원거리 두 종류로 */
+function protoStage(a, spawnName, peace) {
+  const sp = a.spawns[spawnName] ?? a.spawns.default;
+  return { ...a.stage, start: { x: sp.x, z: sp.z }, spawns: peace ? [] : a.stage.spawns.map((s) => ({ ...s, kind: PROTO_KIND[s.kind] ?? 'melee', yard: false })) };
+}
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
-
-/** 얼룩 스티커 그림 (코드로 그린다 — B 의 소품 아틀라스 빈자리에 한 번만 넣는다) */
-function drawDecalSprites(x, ox, oy) {
-  const R = (seed) => { let s = seed; return () => ((s = (s * 16807) % 2147483647) / 2147483647); };
-  const blob = (cx, cy, n, r0, col, seed, a0 = 0.5) => {   // 불규칙한 얼룩: 작은 부드러운 원 여러 개
-    const r = R(seed);
-    for (let i = 0; i < n; i++) {
-      const a = r() * 6.283, d = Math.sqrt(r()) * 40, px = cx + Math.cos(a) * d, py = cy + Math.sin(a) * d * 0.9, rr = r0 * (0.5 + r());
-      const g = x.createRadialGradient(px, py, 0, px, py, rr); g.addColorStop(0, col.replace('A', String(a0 * (0.5 + 0.5 * r())))); g.addColorStop(1, col.replace('A', '0'));
-      x.fillStyle = g; x.fillRect(px - rr, py - rr, rr * 2, rr * 2);
-    }
-  };
-  x.save(); x.beginPath(); x.rect(ox, oy, 128, 128); x.clip(); blob(ox + 64, oy + 64, 60, 20, 'rgba(96,128,70,A)', 7, 0.55); blob(ox + 64, oy + 64, 80, 5, 'rgba(150,180,96,A)', 9, 0.6); x.restore();   // 이끼
-  x.save(); x.beginPath(); x.rect(ox + 132, oy, 128, 128); x.clip();   // 물웅덩이: 어두운 몸 + 하늘빛 + 반짝임
-  blob(ox + 196, oy + 64, 26, 30, 'rgba(10,14,26,A)', 11, 0.9);
-  blob(ox + 190, oy + 58, 10, 16, 'rgba(110,130,190,A)', 13, 0.35);
-  x.globalAlpha = 0.5; x.fillStyle = '#dfe6ff'; x.beginPath(); x.ellipse(ox + 180, oy + 52, 14, 2.2, -0.2, 0, 7); x.fill(); x.beginPath(); x.ellipse(ox + 206, oy + 70, 9, 1.6, -0.2, 0, 7); x.fill(); x.restore();
-  x.save(); x.beginPath(); x.rect(ox + 264, oy, 128, 128); x.clip(); blob(ox + 328, oy + 64, 40, 26, 'rgba(0,0,0,A)', 17, 0.4); x.restore();   // 때·그을음
-  const S = 1024;
-  return { k_moss: [ox, oy], k_puddle: [ox + 132, oy], k_stain: [ox + 264, oy], size: S };
-}
 
 export default class V2Env extends V2ProtoB {
   enter(params) {
     let q = null; try { q = new URLSearchParams(globalThis.location?.search ?? '').get('envq'); } catch { q = null; }
+    // 주소 옵션: ?area=<id> (src/v2/world 의 지역을 시범판 규칙으로 걷는다) · &spawn=<들머리> · &peace=1 (적 없음) · &areanav=0 (나가는 곳에 닿아도 넘어가지 않는다)
+    let Q = null; try { Q = new URLSearchParams(globalThis.location?.search ?? ''); } catch { Q = null; }
+    this.areaId = params?.area ?? Q?.get('area') ?? null; this.spawnName = params?.spawn ?? Q?.get('spawn') ?? 'default'; this.peace = Q?.get('peace') === '1'; this.areaNav = Q?.get('areanav') !== '0';
+    this.area = null; this.areaState = { in: {}, hits: [], fired: [], near: null, msg: '', msgT: 0, going: false };
     this.envQ = q === '0' ? 0 : 1; this.envMeshes = null; this.envStat = { chunks: 0, tris: 0, texBytes: 0, loadMs: 0, compileMs: 0 };
     super.enter(params);
-    if (globalThis.__v2) { globalThis.__v2.id = 'c'; globalThis.__v2.base = 'b'; }
+    if (globalThis.__v2) { globalThis.__v2.id = 'c'; globalThis.__v2.base = 'b'; Object.defineProperty(globalThis.__v2, 'areaInfo', { configurable: true, get: () => ({ id: this.area?.id ?? null, want: this.areaId, spawn: this.spawnName, hits: this.areaState.hits, fired: this.areaState.fired, near: this.areaState.near }) }); }
+  }
+  update(dt) {
+    super.update(dt);
+    if (this.area && this.ready && this.sim) this._areaTick(dt);
+  }
+  /** 지역의 나가는 곳 · 사건 상자 · 쓸 수 있는 것: 영웅 발이 닿았는지 본다 (시범 장면이라 잠긴 곳도 그냥 알려만 준다) */
+  _areaTick(dt) {
+    const h = this.sim.hero, a = this.area, st = this.areaState;
+    if (st.msgT > 0) st.msgT -= dt;
+    for (const x of a.exits) {
+      const inside = h.x >= x.x0 && h.x <= x.x1 && h.z >= x.z0 && h.z <= x.z1;
+      if (inside && !st.in[x.id]) {
+        st.hits.push(x.id); st.msg = '→ ' + (x.label ?? x.to) + (x.locked ? ' (잠김)' : AREAS[x.to] ? '' : ' (아직 없음)'); st.msgT = 3;
+        if (this.areaNav && AREAS[x.to] && !st.going) { st.going = true; try { const u = new URL(globalThis.location.href); u.searchParams.set('scene', 'v2c'); u.searchParams.set('area', x.to); u.searchParams.set('spawn', x.spawn); setTimeout(() => { globalThis.location.href = u.toString(); }, 500); } catch { st.going = false; } }
+      }
+      st.in[x.id] = inside;
+    }
+    for (const t of a.triggers) if (!st.fired.includes(t.id) && h.x >= t.x0 && h.x <= t.x1 && h.z >= t.z0 && h.z <= t.z1) { st.fired.push(t.id); st.msg = '사건: ' + t.event; st.msgT = 2; }
+    let near = null, bd = 1e9; for (const it of a.interact) { const d = Math.hypot(it.x - h.x, it.z - h.z); if (d < it.r && d < bd) { bd = d; near = it; } }
+    st.near = near ? near.id : null; st.nearLabel = near ? near.label : '';
   }
   exit() {
     super.exit(); this.envMeshes = null;
@@ -50,8 +61,17 @@ export default class V2Env extends V2ProtoB {
   }
   async _load() {
     const t0 = performance.now();
-    this.W = compileEnv(STAGE);                    // B 가 텍스처·소품을 받기 전에 세계를 바꿔 끼운다
+    await ensureWorldAssets();                     // 구운 소품 묶음 (석상·가고일·고목) — 못 받으면 저폴리 소품이 대신 선다
+    let stage = STAGE;
+    if (this.areaId && AREAS[this.areaId]) { try { this.area = await AREAS[this.areaId](); stage = protoStage(this.area, this.spawnName, this.peace); } catch (e) { console.warn('[v2c] area failed, using the test route:', e); this.area = null; } }
+    if (!this.glr && !this.glError) return;
+    this.W = compileEnv(stage);                    // B 가 텍스처·소품을 받기 전에 세계를 바꿔 끼운다
+    if (this.area) {   // 시범판 규칙은 "마당 적이 없으면 끝"이다 → 닿을 수 없는 먼 곳에 마당 적 하나를 세워 끝나지 않게 한다
+      this.W.boxes.push({ x0: -9100, x1: -9000, z0: -9100, z1: -9000, y0: -10, y1: 0, solid: true, walk: true, inv: true });
+      this.W.spawns.push({ kind: 'melee', x: -9050, z: -9050, y: 0, yard: true });
+    }
     this.sim = new Sim(this.W, this._hooks());
+    if (this.area) { const sp = this.area.spawns[this.spawnName] ?? this.area.spawns.default, h = this.sim.hero; h.facing = sp.face[0] < 0 ? -1 : 1; h.dirX = sp.face[0]; h.dirZ = sp.face[1]; }
     this.envStat.compileMs = performance.now() - t0;
     await super._load();
     if (!this.glr || !this.ready) return;
@@ -64,22 +84,22 @@ export default class V2Env extends V2ProtoB {
   async _loadEnv() {
     const glr = this.glr, W = this.W, E = W.env;
     // 1) 키트 텍스처
-    const names = Object.keys(KIT_TEX), imgs = {};
+    const names = E.stats.textures.filter((n) => !this.tex[n]), imgs = {};   // 이 지역이 쓰는 것만 받는다
     await Promise.all(names.map((n) => new Promise((res) => { const im = new Image(); im.onload = () => { imgs[n] = im; res(); }; im.onerror = () => { imgs[n] = null; console.warn('[v2c] kit texture failed to load:', n); res(); }; im.src = `${ASSET_ROOT}v2/env/${n}.webp`; })));
     if (!this.glr) return;
     const b0 = glr.stats.texBytes;
     for (const n of names) {
       const im = imgs[n], c = document.createElement('canvas'); c.width = im?.width ?? 64; c.height = im?.height ?? 64; this._canvases.push(c);
       const x = c.getContext('2d'); if (im) x.drawImage(im, 0, 0); else { x.fillStyle = '#77747c'; x.fillRect(0, 0, 64, 64); }
-      this.tex[n] = glr.texture(() => c, { repeat: KIT_TEX[n].repeat, mip: true });
+      this.tex[n] = glr.texture(() => c, { repeat: KIT_TEX[n]?.repeat ?? true, mip: true });
     }
     // 2) 얼룩 스티커 → B 의 소품 아틀라스 빈자리 (한 번만 올린다)
     this.envSpr = null;
     try {
       const c = this.propTex.src(), used = Math.max(...Object.values(this.spr).map((r) => r.v1)) * c.height, oy = Math.ceil(used) + 8;
-      if (oy + 130 <= c.height) {
+      if (oy + 266 <= c.height) {
         const r = drawDecalSprites(c.getContext('2d'), 4, oy), uv = ([px, py]) => ({ u0: (px + 1) / c.width, v0: (py + 1) / c.height, u1: (px + 127) / c.width, v1: (py + 127) / c.height });
-        this.envSpr = { moss: uv(r.k_moss), puddle: uv(r.k_puddle), stain: uv(r.k_stain) };
+        this.envSpr = {}; for (const k in r) this.envSpr[k] = uv(r[k]);
         glr.update(this.propTex, c, c.height);
       }
     } catch (e) { console.warn('[v2c] decal sprites skipped', e); }
@@ -116,9 +136,14 @@ export default class V2Env extends V2ProtoB {
   }
   _tag(ctx) {   // 어느 장면인지 작은 표시 (정보 줄 위)
     const g = this.game, s = g.safe ?? { l: 0, r: 0, t: 0, b: 0 }, e = this.envStat;
-    if (this.sim.time < 7.5 || this.sim.done) return;   // 처음 조작 안내·끝 표시와 겹치지 않게
+    if (!this.area && (this.sim.time < 7.5 || this.sim.done)) return;   // 처음 조작 안내·끝 표시와 겹치지 않게
     ctx.save(); ctx.font = '500 11px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(220,210,200,0.6)';
-    ctx.fillText(`C · env kit · ${e.chunks} chunks · ${Math.round(e.tris)} static tri · q${this.envQ}`, g.viewW / 2, g.viewH - 22 - s.b);
+    ctx.fillText(`C · ${this.area ? this.area.id : 'env kit'} · ${e.chunks} chunks · ${Math.round(e.tris)} static tri · q${this.envQ}`, g.viewW / 2, g.viewH - 22 - s.b);
+    if (this.area) {   // 지역 걷기: 나가는 곳 · 사건 · 쓸 수 있는 것 알림
+      const st = this.areaState; ctx.font = '600 15px sans-serif'; ctx.fillStyle = 'rgba(240,220,170,0.92)';
+      if (st.msgT > 0) ctx.fillText(st.msg, g.viewW / 2, g.viewH * 0.3);
+      if (st.near) ctx.fillText('[ ' + st.nearLabel + ' ]', g.viewW / 2, g.viewH * 0.36);
+    }
     ctx.restore();
   }
   /** 바닥 스티커: 얼룩·물웅덩이 → 빛 웅덩이 → 소품 그림자 → (B 의 그림자·예고) → 등불 번짐. 프레임마다 새로 만드는 배열 없음 */
@@ -129,7 +154,7 @@ export default class V2Env extends V2ProtoB {
     if (this.envQ && K) for (const d of E.decals) {
       if (!near(d.x, d.z, 1500)) continue;
       const uv = K[d.k]; if (!uv) continue;
-      const l = d._c, a = d.a ?? (d.k === 'stain' ? 0.5 : d.k === 'moss' ? 0.55 : 0.85);
+      const l = d._c, a = d.a ?? DECAL_ALPHA[d.k] ?? 0.7;
       b.quad(flat(d.x, (d.y ?? 0) + 0.6, d.z, d.rx, d.rz), uv.u0, uv.v0, uv.u1, uv.v1, l[0], l[1], l[2], a, 1, 0, 3, 1);
     }
     if (this.envQ) for (const p of E.fx.pools) {

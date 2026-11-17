@@ -1,10 +1,11 @@
 # UI_API — 3D 판 인터페이스 「세공한 유리」 규약 (UI 구역)
 
-2026-11-17 · 코드 `src/v2/ui/`, 그림 `assets/v2/ui/gem/`, 스타일 `css/v2ui.css`(모듈이 필요할 때 스스로 붙인다), 시험 페이지 `tools/v2/ui_view.html`, 검사 `node tools/v2/ui_check.mjs`, 캡처 `node tools/v2/ui_shot.mjs`.
+2026-11-17 · 코드 `src/v2/ui/`, 그림 `assets/v2/ui/gem/`, 시험 페이지 `tools/v2/ui_view.html`, 검사 `node tools/v2/ui_check.mjs [--live v2g]`, 캡처 `node tools/v2/ui_shot.mjs`, 아이콘 묶음 다시 만들기 `python3 tools/v2/ui_atlas.py`.
 다른 구역은 **이 문서만 보고** 맞춘다. 바꾸면 "바뀐 것"에 한 줄.
 
 ## 바뀐 것
-- 22:25 첫 판 (이름·모양을 먼저 정함. 구현 상태는 §9).
+- 22:04 첫 판 (이름·모양을 먼저 정함. 구현 상태는 §9).
+- 22:35 구현 끝. 바뀐 것: CSS 파일을 쓰지 않는다(단추는 단추마다 작은 캔버스 — `css/v2ui.css` 없음). 촛불이 9자루부터는 두 단(제단)으로 선다. 보스 막대 너비는 촛불 줄을 피해 줄어든다. 밤 알림(「오늘 밤이 달라졌다」)이 떠 있는 동안에는 지역·구역 이름 띠가 덮지 않는다. `hud.metrics()`(검사용 자리 값) 추가. §9 에 구현 상태 · 잰 값 · 장면이 할 일.
 
 ## 0. 한눈에
 
@@ -19,7 +20,7 @@ hud.release();                                     // 장면을 떠날 때 (= hu
 
 - `hud.hidePad === true` — 장면은 v1 가상 패드를 숨긴다(`scene.showPad = false; scene.hidePad = true`). **v1 패드 코드(`src/core/touchpad.js`)는 고치지 않았다.** v2 단추는 UI 모듈이 만든 DOM 층(`#v2pad`)이고 v1 입력 API(`input.touch.set / axis`)로 동작을 보낸다(§3).
 - 그리는 곳은 둘뿐이다: ① 게임 캔버스(`hud.draw` — 촛불 · 눈금 · 표식 · 숫자 · 알림 · 대화 창 · 일시정지), ② DOM 단추 층(`#v2pad` — 터치일 때만 보인다, 상태가 바뀔 때만 다시 칠한다). **실시간 흐림(backdrop-filter) 없음, 프레임마다 새 객체 없음.**
-- `opts`(모두 선택): `{ pad: true, rollGuard: 'both', assetBase: 'assets/v2/ui/gem/', portraitBase: 'assets/v2/portraits/', mount: document.getElementById('app'), onPause: null, labels: {…} }`
+- `opts`(모두 선택): `{ pad: true, rollGuard: 'both', assetBase: 'assets/v2/ui/gem/', portraitBase: 'assets/v2/portraits/', mount: document.getElementById('app'), onPause: null, labels: { now, past, nightChanged, clear, dead }, keyLabel(action, mode), input, loadBrush, forceShow, forceMode, mouse }` — 뒤의 다섯은 시험 페이지용.
 
 ## 1. `HudState` — `hud.update` / `hud.draw` 가 읽는 것
 
@@ -126,15 +127,52 @@ hud.showDialog({
 
 - `hud.draw`: 미리 구운 조각을 `drawImage` 로 찍는다. 글자는 바뀔 때만 작은 캔버스에 다시 굽는다(이름 · 구역 · 대사 쪽). 그림자 · 흐림 필터를 프레임마다 쓰지 않는다. 객체 · 배열 · 문자열을 프레임마다 만들지 않는다(피해 숫자는 `str` 이 바뀔 때만 굽는 작은 풀).
 - 단추 층: DOM(`transform` · `opacity` 만 움직인다). `backdrop-filter` · `filter` · 움직이는 `box-shadow` 없음. 쉼 부채꼴은 1/40 단위로만 다시 칠한다.
-- 잰 값은 §9 와 보고에.
+- 잰 값은 §9.
 
 ## 8. 실행 중에 받는 파일 (`tools/deploy/v2_ship.txt` 에 넣을 것)
 
-- `assets/v2/ui/gem/atlas.webp` · `assets/v2/ui/gem/atlas.json` — 아이콘 한 벌
-- `assets/v2/portraits/<id>.webp` — 대화 창이 부를 때만
-- `css/v2ui.css` (assets 밖 — 배포 스크립트가 css/ 를 통째로 싣는지 확인할 것)
-- 글꼴은 게임이 이미 싣는 것만: 본문 Noto Sans KR, 제목 Hahmlet, 숫자 · 짧은 외침 BN Brush(`ui.loadBrush()` 로 처음 한 번 받는다)
+- `assets/v2/ui/gem/atlas.webp` (279 KB, 1024×548, 조각 26개) — 아이콘 한 벌. **인터페이스가 받는 그림은 이것 하나다.** 조각 자리표는 코드에 들어 있다(`src/v2/ui/atlas_map.js`, 생성 파일). `atlas.json` 은 도구용이라 싣지 않아도 된다
+- `assets/v2/portraits/<id>.webp` — 대화 창이 부를 때만(`alberto banshee_queen edmund edmund__smile elise elise__joy hadwin hadwin1 lotte marta rook sera sera__resolve`)
+- 글꼴은 게임이 이미 싣는 것만: 본문 Noto Sans KR, 제목 Hahmlet, 숫자 · 짧은 외침 BN Brush(`assets/fonts/bn-brush.woff2` — `core/ui.js` 의 `loadBrush()` 로 처음 한 번 받는다. 받기 전에는 Hahmlet 으로 그려지고 도착하면 다시 굽는다)
+- CSS 파일 없음. 물건 알림에 그림 주소를 주면(`hud.toast(text, {icon: 'assets/icons/…webp'})`) 그 파일을 받는다 — 싣는 목록은 부르는 쪽 책임
 
-## 9. 구현 상태 · 알아 둘 것
+## 9. 구현 상태 · 잰 값 · 장면이 할 일
 
-(구현하면서 채운다.)
+### 파일
+
+| 파일 | 내용 |
+|---|---|
+| `src/v2/ui/index.js` | `createHud` — 아래 조각을 묶고, 대화 · 일시정지 중의 탭을 받는다. `UI_ASSETS` |
+| `src/v2/ui/pad.js` | 터치 단추 층(`#v2pad`): `padLayout(bounds, touchScale, textSize)`(순수 함수) · `BUTTONS` · 입력 연결 |
+| `src/v2/ui/hud.js` | 캔버스 HUD: 밤 표시 · 촛불 · 울림 눈금 · 달 · 락온 고리 · 보스 막대 · 붓 숫자 · 외침 · 알림 띠 · 물건 알림 · 단추 안내 |
+| `src/v2/ui/dialog.js` | 대화 창(쪽 나눔 · 글자 나타남 · 두 갈래) · 일시정지 판 |
+| `src/v2/ui/draw.js` | 유리 판(`glassPanel`) · 둥근 유리 단추(`gem`) · 이름표(`plate`) · 글자 굽기(`bakeText`) · 아이콘 묶음 읽기 |
+| `src/v2/ui/atlas_map.js` | 생성 파일(`tools/v2/ui_atlas.py`) — 손으로 고치지 않는다 |
+
+### 장면(`src/v2/game/`)이 할 일 — 붙이는 순서
+
+1. `src/v2/game/seams.js`: `export const UI_LOADER = () => import('../ui/index.js');` — 장면은 이미 `m.createHud(g)` 를 부르고 `hud.hidePad` 를 읽어 v1 패드를 숨긴다(지금 코드 그대로). `tools/v2/ui_view.html?live=v2g` 가 바로 이 연결을 장면 밖에서 해 보인다(검사 `--live v2g` 통과).
+2. 화면 크기 · 설정이 바뀌면 `hud.resize()` (장면의 `resize()` 에서). 창 `resize` 는 단추 층이 스스로 듣지만 캔버스 조각은 `state.scale · viewW · viewH · settings.textSize` 가 바뀌는 것을 보고 다시 굽는다 — 부르지 않아도 다음 프레임에 맞춰진다.
+3. `input.pressed('menu')` 에서 지금은 고르기 화면으로 나간다 → `if (!hud.modal) hud.openPause({ onLeave: () => g.go('v2pick') })` 로 바꾼다(터치의 멈춤 단추는 HUD 가 스스로 연다). `hud.modal === 'pause'` 일 때 규칙을 멈추는 것은 이미 들어 있다.
+4. 채워 주면 좋은 상태 칸(없어도 돈다): `candles{lit,max}`(없으면 hp 비율 × 5자루) · `resonance{value,cells}` · `moon{phase}` · `boss{name,hp,hpMax,sub,stagger}` · `prompts[]` · `pad{skill{mode,cd,disabled}, bell{mode,charge}, roll{…}}`.
+5. 사건: 튕겨냄 → `hud.callout(x, y, z, '튕겨냄', 'parry')`, 막음 → `'guard'`, 밤을 건넌 뒤 → `hud.banner('night')`, 물건 → `hud.toast('은종 조각 ×2', {kind: 'item'})`, 대사 → `hud.showDialog({...})` 또는 `scene.ui.dialog = {...}`.
+6. 지역 정리 뒤 "공격 단추 · 화면 탭으로 다시 시작"(`input.pointer.tapped`)은 그대로 된다 — 단추 · 스틱 자리 밖의 탭만 캔버스로 간다.
+7. `g.toast()`(v1 토스트)는 v1 글꼴 · 모양이다. v2 장면에서는 `hud.toast()` 를 쓴다(`hideToasts` 는 장면이 정한다).
+
+### 잰 값 (2026-11-17, 헤드리스 Chromium — GPU 없음. 기기 값이 아니다)
+
+- `node tools/v2/ui_check.mjs --live v2g`: fold_open · phone2 × 글자 크기 3종 = **2220개 통과 / 0 실패**, 실제 장면 연결 검사 8개 통과, 페이지 오류 0.
+- 단추(CSS px, 폴드 / 휴대폰): 공격 92 / 74 · 점프 66 / 53 · 구르기 66 / 53 · 솜씨 62 / 50 · 종 62 / 50 · 다음 적 46 / 44 · 멈춤 46 / 44, 가장 좁은 틈 13.6 / 10.7. 스틱 자리(왼쪽 45 %)와 겹침 없음, 안전 영역(여백 44 · 0 · 34 · 21 흉내) 밖 0.
+- 유리가 가리는 정도(흰 바탕 · 검은 바탕 두 장의 차, 2차 시안 검토와 같은 방법): 단추의 가장 맑은 1/4 지점 **29–41 %**(2차 「세공한 유리」 61 %, 더 맑은 판 51 %), 스틱 10 %. 화면에서 조금이라도 덮는 넓이 7.1 %(폴드) / 14.0 %(휴대폰), 절반 넘게 가리는 넓이 3.1 % / 6.3 %.
+- 그리기 비용: `hud.update + hud.draw` 의 스크립트 시간 0.05–0.12 ms/프레임(보스 화면, 숫자 · 외침 · 알림이 떠 있는 상태). 프레임마다 1픽셀을 읽어 래스터를 강제하면 2.6–3.1 ms(폴드 2000×1512 소프트웨어 래스터) · 1.5–1.8 ms(휴대폰 1480×720) — 캔버스 지우기를 포함한 값. 실제 장면 위(`--live v2g`): `hud.draw` 평균 0.6 ms · 가운데값 0.2 ms(처음 프레임들의 굽기 포함).
+- 프레임마다 만드는 것: 객체 · 배열 · 문자열 0. `node tools/v2/ui_alloc.mjs`(힙 표본, 치운 것까지 셈)로는 프레임당 약 3 KB 가 잡히는데 모두 캔버스 호출에 넘기는 소수 값의 상자(HeapNumber)다 — 캔버스에 그리는 한 피할 수 없고 젊은 세대에서 바로 치워진다.
+- 단추 층 다시 칠하기: 상태가 바뀔 때만(시험 한 판에 29번 — 누름 · 뗌 · 쉼 눈금). 평소 0.
+
+### 알아 둘 것 · 남은 것
+
+- 실제 폴드에서 손가락으로 눌러 보지 않았다. 단추 크기 · 간격 · 스틱 감도(데드존 10 px, 반지름 66 px × 배율, 1.4R 넘으면 받침이 따라온다)는 기기에서 다듬어야 한다.
+- 단추 배치 편집기 · 왼손잡이 배치는 없다(v1 패드의 것은 v1 장면 전용). `settings.touchScale` · `touchOpacity` · `textSize` 는 따른다.
+- 솜씨 길게 누르기의 "사냥꾼 고르는 둥근 판"은 만들지 않았다(장면이 `skill1` 누른 시간을 재고, 판은 다음 판에).
+- 연대기 · 지도 · 가게 · 종 편지 · 저장 화면(GDD §9.2)은 이 구역의 이번 범위 밖이다. `glassPanel` · `plate` · `bakeText` 로 같은 말투를 낼 수 있다.
+- 캔버스 HUD 는 게임 캔버스의 해상도를 따른다(화질 등급이 낮으면 조금 무르다). 단추 층은 늘 기기 해상도(최대 3배)다.
+- 아이콘은 「은 세공 + 서리 낀 수정」 한 벌(생성 그림, `tools/higgsfield/manifest_ui.json`)이고 밝기를 투명도로 바꿔 유리 위에 얹었다. 그림마다 어두운 그늘을 구워 넣어 밝은 불빛 위에서도 읽힌다. 새 아이콘은 같은 프롬프트 꼬리(`style_suffix`)로 만들고 `tools/v2/ui_atlas.py` 의 `SPRITES` 에 한 줄 더한다.

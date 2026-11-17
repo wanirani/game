@@ -160,7 +160,7 @@ def make_tile(path):
 
 
 TEX = {'k_cobble': tex_cobble, 'k_cobble2': tex_cobble2, 'k_cobworn': tex_cobworn, 'k_rubble': tex_rubble, 'k_thatch': tex_thatch, 'k_soil': tex_soil,
-       'k_cellar': tex_cellar, 'k_planks': tex_planks, 'k_bone': tex_bone, 'k_bark': tex_bark}
+       'k_cellar': tex_cellar, 'k_planks': tex_planks, 'k_bone': tex_bone}
 
 
 def save(name, arr):

@@ -74,7 +74,7 @@ function deadtree(x, y, z) {
  *           look: 'stone' | 'bark', h height, foot [rx, rz] collision half extents, footH }
  */
 export const SCULPTS = {
-  angel: { f: angel, box: [-62, 0, -34, 62, 216, 44], cell: 3.0, tris: 1400, tex: [224, 400], look: 'stone', h: 192, foot: [29, 23], footH: 150 },
-  gargoyle: { f: gargoyle, box: [-82, 0, -46, 82, 176, 50], cell: 2.8, tris: 1500, tex: [320, 352], look: 'stone', h: 152, foot: [29, 24], footH: 110 },
-  deadtree: { f: deadtree, box: [-112, 0, -42, 116, 304, 42], cell: 3.4, tris: 1300, tex: [288, 384], look: 'bark', h: 300, foot: [20, 14], footH: 200 },
+  angel: { f: angel, box: [-62, 0, -34, 62, 216, 44], cell: 3.0, tris: 950, tex: [224, 400], look: 'stone', h: 192, foot: [29, 23], footH: 150 },
+  gargoyle: { f: gargoyle, box: [-82, 0, -46, 82, 176, 50], cell: 2.8, tris: 1050, tex: [320, 352], look: 'stone', h: 152, foot: [29, 24], footH: 110 },
+  deadtree: { f: deadtree, box: [-112, 0, -42, 116, 304, 42], cell: 3.4, tris: 850, tex: [288, 384], look: 'bark', h: 300, foot: [20, 14], footH: 200 },
 };

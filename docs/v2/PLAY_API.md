@@ -23,7 +23,7 @@ for (const e of sim.enemies) if (!e.dead) driveActor(charOf(e), e, dt);   // 적
 
 - **규칙은 화면을 모른다.** 좌표는 x 오른쪽 · z 화면 안쪽 · y 위, 단위는 논리 px (1 m = `UNIT` 58).
 - **보는 방향은 규칙이 정한다**(`dirX`,`dirZ` 단위 벡터, 360°). 그림은 `driveHero`/`driveActor` 가 그 방향으로 부드럽게 돌린다(`ch.dx`,`ch.dz`): 한 번 돌기 시작한 쪽으로 끝까지 돌고(스틱을 반대로 꺾어도 오락가락하지 않는다), 반대로 꺾는 데 0.17–0.22초(한 틱에 16° 까지).
-- **그림에만 얹는 것**(`driveHero`): 달릴 때 윗몸을 12° 세우고, 돌 때 도는 쪽으로 기울이고, 락온한 적을 고개로 본다. 자세를 입힌 뒤 뼈 몇 개를 더 돌리는 것이라 클립은 그대로다(`TUNE.runLeanFix · runBank · lookMax` 를 0 으로 두면 꺼진다).
+- **그림에만 얹는 것**(`driveHero`): 달릴 때 윗몸을 12° 세우고, 돌 때 도는 쪽으로 기울이고, 락온한 적을 고개로 보고, 달리다 스틱을 놓으면 뒤로 버티며 미끄러져 선다(`run_stop`, 0.3초 — 다시 밀면 바로 끊긴다). 자세를 입힌 뒤 뼈 몇 개를 더 돌리는 것이라 클립은 그대로다(`TUNE.runLeanFix · runBank · lookMax` 를 0 으로 두면 꺼진다).
 - **클립은 공용 라이브러리**(`assets/v2/char3d/clips/`). 장면이 `ch.asset.clips` 에 이미 붙여 두었으면 그대로 쓰고, 없으면 `driveHero`/`driveActor` 가 처음 불릴 때 스스로 받는다(받기 전에는 시범판의 몰이로 돈다). 모델 파일에 든 클립(`float_idle` · `fly`)은 이름 그대로 `ch.asset.clips` 에 더한다. 미리 받으려면 `await loadPlayClips(asset)`.
 - 세계 `W`: `{ start:{x,y,z}, spawns:[{kind,x,y,z,yard?,active?}], boxes:[{x0,x1,z0,z1,y0,y1,solid,walk}], sections:[{id,x0,x1,z0,z1}], tele?:{id:[x,z]} }` (시범판 B 의 `compileStage` · 환경 키트 `compileEnv` 결과 그대로). 다른 충돌을 쓰려면 `W.groundAt(x,z,yMax)` · `W.moveXZ(e,dx,dz)` · `W.sectionAt(x,z)` 를 달아 주면 그것을 쓴다.
 - 타격 멈춤: 규칙은 `sim.stop`(초)을 스스로 건다(`TUNE.ownHitstop`). 장면이 멈춤을 쥐면(ENGINE_API §1) 틱마다 `sim.stop = 0` 으로 지우면 된다 — 지금 장면이 그렇게 한다. `hooks.hit` 이 `{ stop }` 을 돌려주면 그 값을 쓴다.
@@ -54,6 +54,7 @@ for (const e of sim.enemies) if (!e.dead) driveActor(charOf(e), e, dt);   // 적
 | `dashT` · `roll:{t,dur,dx,dz}` | 구르기 남은 초 (0 보다 크면 구르는 중) · 구르는 방향 |
 | `guard`(막는 중) · `parryT`(튕겨내기 창 남은 초) · `parryOk`(튕겨낸 뒤 남은 초) · `blockT`(막고 밀리는 초) | 막기 |
 | `lock` · `lockT` · `lockX lockY lockZ` | **락온한 적의 `id` 또는 `null`** — 장면이 표식을 그린다(`sim.byId(h.lock)`). `lockT` = 걸린 뒤 흐른 초. `lockX/Y/Z` = 그 적의 가슴 자리(틱마다 갱신) — 카엘이 고개를 돌려 그쪽을 본다 |
+| `pushed` | 이 틱에 스틱으로 걷고 달리는 중인가 |
 | `gait` · `gaitMode` | 걸음 주기(0…1 을 되풀이; 0 = 오른발, 0.5 = 왼발) · `'walk'｜'run'`. 발소리 사건과 달리기 클립이 이 값 하나를 같이 쓴다 |
 | `plungeEta` · `plungeLand` | 내려베기: 땅에 닿기까지 남은 초 · 닿은 때의 `moveT` |
 | `safe` | 마지막으로 선 안전한 자리 (구덩이에 빠지면 돌아오는 곳) |
@@ -111,7 +112,7 @@ for (const e of sim.enemies) if (!e.dead) driveActor(charOf(e), e, dt);   // 적
 | `parryWin 0.2` · `guardArc 100` · `guardTap 0.3` · `guardPush 130` | 막기 · 튕겨내기 |
 | `lockRange 380` · `lockKeep 470` · `lockAim 230` · `aimCone 55` · `lungeMax 78` | 락온 · 조준 보정 |
 | `heroHp 100` · `hurtIfr 0.95` · `hurtT 0.26` · `deadT 2.1` | 몸 |
-| `runLeanFix 12` · `runBank 1.1` · `lookMax 58` | 그림만 바뀌는 값: 달리기 클립의 숙임(26°)을 이만큼 세운다 · 달리며 돌 때 도는 쪽으로 기우는 정도(최대 11°) · 락온한 적을 고개로 보는 최대 각도 |
+| `runLeanFix 12` · `runBank 1.1` · `lookMax 58` · `stopSkidAbove 190` | 그림만 바뀌는 값: 달리기 클립의 숙임(26°)을 이만큼 세운다 · 달리며 돌 때 도는 쪽으로 기우는 정도(최대 11°) · 락온한 적을 고개로 보는 최대 각도 · 이 속도 넘게 달리다 놓으면 미끄러져 서는 동작 |
 | `stepL { run 0.54, walk 0.46 }` | 걸음 주기에서 왼발이 닿는 때(오른발 = 0) — 클립의 발 사건 자리. `step` 사건이 이때 난다 |
 
 ## 5. 사건 (hooks)
@@ -190,5 +191,5 @@ registerKind('wolfman', {
 | 무엇 | 상태 |
 |---|---|
 | 공개 이름 · 규칙(영웅 기술 다섯 · 구르기 · 막기/튕겨내기 · 락온 · 적 여섯 종 · 끼임) | 동작 — `play_rules_test` 73/73 (시범판 B 의 세계와 환경 키트 세계 둘 다에서) |
-| 움직임(`driveHero` · `driveActor` — 라이브러리 클립) | 동작 — `play_motion_check` 31/31, 붙임 그림 28묶음(`/tmp/claude-0/v2/play/`)으로 눈으로 봄 · 본 게임 장면(`v2g`)에서 오류 없이 돈다(`tools/v2/game_probe.mjs`) |
+| 움직임(`driveHero` · `driveActor` — 라이브러리 클립) | 동작 — `play_motion_check` 32/32, 붙임 그림 28묶음(`/tmp/claude-0/v2/play/`)으로 눈으로 봄 · 본 게임 장면(`v2g`)에서 오류 없이 돈다(`tools/v2/game_probe.mjs`) |
 | 길게 눌러 채찍 · 기술 단추 · 종 · 보스 | 범위 밖 (자리만) |

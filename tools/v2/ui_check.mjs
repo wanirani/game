@@ -181,6 +181,9 @@ try {
       page = await open(ctx, `view=kb&bg=black&dev=${dev}&text=${text}&freeze=1`);
       const mk = await metrics(page);
       ok(!mk.pad.shown, `${tag}: pad hidden in keyboard mode`);
+      const gone = await page.evaluate(() => { window.__ui.hud.release(); window.__ui.hud.release(); return !document.getElementById('v2pad'); });
+      await page.waitForTimeout(120);
+      ok(gone, `${tag}: release() removes the pad layer`);
       ok(page._errs.length === 0, `${tag}: kb view page errors ${JSON.stringify(page._errs)}`);
       await page.close();
       console.log(`  buttons ${JSON.stringify(R.geometry.buttons)} minGap ${R.geometry.minGap} label ${R.geometry.labelPx}px | cost ${JSON.stringify(R.cost)}`);

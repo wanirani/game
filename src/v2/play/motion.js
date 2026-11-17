@@ -150,6 +150,11 @@ export function driveHero(ch, h, dt, T = TUNE) {
   S.wasDead = !!h.dead;
   if (st === 'land' && S.prev !== 'land') S.landC = 0;
   if (S.landC != null) { S.landC += dt; if ((st !== 'land' && st !== 'idle') || S.landC > 0.3) S.landC = null; }
+  // 달리다 스틱을 놓으면: 뒤로 버티며 미끄러져 서는 동작 (run_stop 의 앞 0.55초를 0.3초에). 다시 밀거나 다른 동작이 오면 바로 끊긴다
+  const sp = Math.hypot(h.vx, h.vz), ground = h.onGround && !h.move && h.dashT <= 0 && (st === 'run' || st === 'walk' || st === 'idle');
+  if (S.wasPush && !h.pushed && ground && sp > (T.stopSkidAbove ?? 190) && C.run_stop) S.stopC = 0;
+  if (S.stopC != null) { S.stopC += dt; if (h.pushed || !ground || S.stopC > 0.3) S.stopC = null; }
+  S.wasPush = !!h.pushed;
   S.prev = st;
   if (h.dead) A.play(pick(C, 'knockdown', 'death'), PO(0.08, Math.min((h.deadT ?? h.animT) * 1.3, 2.45)));
   else if (st === 'hurt') A.play(h.heavyHurt && C.hit_heavy ? 'hit_heavy' : 'hit_light', PO(0.04, 0.02 + h.animT * 1.3));
@@ -166,6 +171,7 @@ export function driveHero(ch, h, dt, T = TUNE) {
   else if (st === 'jump') A.play('jump', PO(0.05, 0.1 + h.animT));
   else if (st === 'fall') A.play('air', PO(0.14));
   else if (S.landC != null) A.play('land', PO(0.04, 0.04 + S.landC * 1.5));
+  else if (S.stopC != null) A.play('run_stop', PO(0.07, 0.07 + S.stopC * 1.85));
   else if (st === 'run' || st === 'walk') { const c = C[st]; A.play(st, PO(0.14, ((h.gait + footOff(c)) % 1) * c.duration)); }
   else A.play(h.lock != null && C.idle_combat ? 'idle_combat' : 'idle', PO(0.2));
   A.update(dt);
@@ -209,6 +215,7 @@ export function driveActor(ch, e, dt) {
   if (e.state !== 'dead' && !e.dead) turn(ch, S, e.dirX, e.dirZ, dt, atk ? 24 : 13, 22);
   let name = null, o = PO(0.14);   // (PO 는 하나를 돌려 쓴다 — 마지막에 부른 값이 남는다)
   if (e.state === 'dead' || e.dead) { name = pick(C, K.death, 'death'); if (name && !C[name].loop) o = PO(0.08, Math.min(Math.max(0, D.dieT - e.dying) * 1.25 + 0.02, C[name].duration - 0.02)); }
+  else if (e.anim === 'buried' || e.state === 'rise') { name = pick(C, K.rise, 'rise'); if (name) o = PO(e.anim === 'buried' ? 0 : 0.1, e.anim === 'buried' ? 0.02 : Math.min(0.02 + e.stateT * (C[name].duration / (D.riseT ?? 1.25)), C[name].duration - 0.02)); }
   else if (e.state === 'stagger') { name = pick(C, e.staggerSide < 0 ? K.stagger + '_r' : null, K.stagger, K.hurt); if (name && !C[name].loop) o = PO(0.06, Math.min(0.02 + e.animT * 1.15, C[name].duration - 0.02)); }
   else if (e.anim === 'hurt') { name = pick(C, K.hurt); if (name && !C[name].loop) o = PO(0.04, 0.02 + e.animT * 1.3); }
   else if (atk) { name = pick(C, atk.clip); if (name) o = C[name].loop ? PO(0.08, null, e.phase === 'strike' ? 1.7 : 1.2) : PO(0.07, warpAttack(C[name], e.stateT, atk)); }

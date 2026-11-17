@@ -61,7 +61,7 @@ export function createCanvasHud(game, opts = {}) {
     const w = Math.max(r * 2 + 16, measure(label, ts) + ts * 1.1 + 8), h = r * 2 + 12 + ts * 1.3;
     const c = ctxOf(p, w, h);
     gem(c, w / 2, r + 6, r, { tint: which === 'past' ? 'ruby' : null, facets: 12 });
-    sprite(c, which === 'past' ? 'night_past' : 'night_now', w / 2, r + 6, r * 1.62, r * 1.62);
+    sprite(c, which === 'past' ? 'night_past' : 'night_now', w / 2, r + 6, r * 1.8, r * 1.8);
     plate(c, label, w / 2, r * 2 + 6 + ts * 0.5, ts, { rim: which === 'past' ? 'rgba(255,120,140,0.7)' : undefined, color: which === 'past' ? '#ffd9de' : COL.silver });
     return p;
   }
@@ -259,7 +259,7 @@ export function createCanvasHud(game, opts = {}) {
       if (aid !== T.areaId) { T.areaId = aid; T.secId = sid; if (s.area?.name && !keep) setBanner('area', s.area.name, s.section?.label && s.section.label !== s.area.name ? s.section.label : ''); }
       else if (sid !== T.secId) { T.secId = sid; if (s.section?.label && !keep && !(banner.on && banner.kind === 'area' && banner.t < 1.5)) setBanner('section', s.section.label); }
     }
-    if (s.done && !(banner.on && banner.kind === 'clear')) setBanner('clear', opts.labels?.clear ?? '길이 열렸다');
+    if (s.done && !(banner.on && banner.kind === 'clear')) setBanner('clear', s.doneTitle ?? opts.labels?.clear ?? '시범 구간 끝', s.doneSub ?? opts.labels?.clearSub ?? '공격 단추를 누르면 처음부터 다시 시작합니다');
     else if (!s.done && banner.on && banner.kind === 'clear') banner.on = false;
     if (hero.dead && !(banner.on && banner.kind === 'dead')) setBanner('dead', opts.labels?.dead ?? '촛불이 꺼졌다');
     else if (!hero.dead && banner.on && banner.kind === 'dead') banner.on = false;
@@ -320,6 +320,17 @@ export function createCanvasHud(game, opts = {}) {
     const PR = s.prompts;
     if (PR) { let j = 0; for (let i = 0; i < PR.length && j < PROMPT_SLOTS; i++) { const p = PR[i]; if (p.x == null) continue; const slot = wprompts[j++]; bakeWorldPrompt(slot, p, mode); s.project(p.x, p.y ?? 0, p.z ?? 0, P); if (P.w > 1) blit(ctx, slot, clamp(P.x - slot.w / 2, sf.l + 4, vw - sf.r - slot.w - 4), P.y - slot.h - 8 + Math.sin(T.t * 3) * 2); } }
 
+    // the banner goes under the status block and the toasts (its soft dark band spans the screen)
+    if (banner.on) {
+      if (banner.dirty || bannerP.key2 !== L.epoch) { bakeBanner(); banner.dirty = false; bannerP.key2 = L.epoch; }
+      const hold = banner.dur > 1e8, a = clamp(hold ? banner.t / 0.5 : Math.min(banner.t / 0.4, (banner.dur - banner.t) / 0.8), 0, 1);
+      const big = banner.kind !== 'section', cy = banner.kind === 'section' ? sf.t + vh * 0.2 : vh * (banner.kind === 'night' ? 0.36 : 0.33);
+      ctx.globalAlpha = a;
+      if (big && bandP.c) ctx.drawImage(bandP.c, 0, cy - bannerP.h * 0.85, vw, bannerP.h * 1.7);
+      const rise = (1 - clamp(banner.t / 0.5, 0, 1)) * px(10);
+      blit(ctx, bannerP, vw / 2 - bannerP.w / 2, cy - bannerP.h / 2 + rise);
+      ctx.globalAlpha = 1;
+    }
     // 2) top left: night badge, candles on their ledge, resonance cells, moon cell, place name
     const x0 = sf.l + px(10), y0 = sf.t + px(8);
     const which = (s.night ?? s.area?.era) === 'past' ? 'past' : 'now';
@@ -327,7 +338,7 @@ export function createCanvasHud(game, opts = {}) {
     // candles: one row up to eight; more stand on two altar tiers (the back tier is drawn first, half a step aside)
     const max = T.max, per = max > 8 ? Math.ceil(max / 2) : max, two = max > per, step = px(25), ch = px(43);
     const cx0 = x0 + bd.w + px(14), baseY = y0 + px(50) + (two ? px(20) : 0);
-    const litN = T.litShown, hurtK = T.hurt / 0.7;
+    const litN = T.litShown, hurtK = Math.max(T.hurt / 0.7, T.lit <= 1.05 ? 0.38 : 0);   // the last candle gutters
     T.statusR = cx0 + (per - 1) * step + px(20) + (two ? step / 2 : 0);
     if (two) { const sh2 = bakeShelf(max - per, step); blit(ctx, sh2, cx0 + step / 2 - px(18) - 2, baseY - px(24) - px(4.5)); for (let i = per; i < max; i++) candle(ctx, i, cx0 + step / 2 + (i - per) * step, baseY - px(24), ch * 0.92, litN, hurtK); }
     const sh = bakeShelf(per, step); blit(ctx, sh, cx0 - px(18) - 2, baseY - px(4.5));
@@ -362,16 +373,6 @@ export function createCanvasHud(game, opts = {}) {
       if (T.bossShown > k) ctx.drawImage(bossFill.c, 0, bp.barH * S, fw * T.bossShown * S, fh * S, fx, fy, fw * T.bossShown, fh);
       if (k > 0) ctx.drawImage(bossFill.c, 0, 0, fw * k * S, fh * S, fx, fy, fw * k, fh);
       if (b.stagger > 0) { ctx.fillStyle = COL.gold; ctx.fillRect(fx, fy + fh + 2.5, fw * clamp(b.stagger, 0, 1), px(2.2)); }
-    }
-    if (banner.on) {
-      if (banner.dirty || bannerP.key2 !== L.epoch) { bakeBanner(); banner.dirty = false; bannerP.key2 = L.epoch; }
-      const hold = banner.dur > 1e8, a = clamp(hold ? banner.t / 0.5 : Math.min(banner.t / 0.4, (banner.dur - banner.t) / 0.8), 0, 1);
-      const big = banner.kind !== 'section', cy = banner.kind === 'section' ? sf.t + vh * 0.2 : vh * (banner.kind === 'night' ? 0.36 : 0.33);
-      ctx.globalAlpha = a;
-      if (big && bandP.c) ctx.drawImage(bandP.c, 0, cy - bannerP.h * 0.85, vw, bannerP.h * 1.7);
-      const rise = (1 - clamp(banner.t / 0.5, 0, 1)) * px(10);
-      blit(ctx, bannerP, vw / 2 - bannerP.w / 2, cy - bannerP.h / 2 + rise);
-      ctx.globalAlpha = 1;
     }
     // 5) bottom centre: button prompts
     bakePrompts(s, mode);

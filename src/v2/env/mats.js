@@ -9,7 +9,7 @@ export const TRIM = {
   white: px(272, 400, 224, 96),
 };
 /** 키트가 새로 받는 텍스처 (파일 = assets/v2/env/<이름>.webp). repeat = 반복 + 밉맵 */
-export const KIT_TEX = { k_cobble2: { repeat: true }, k_cobworn: { repeat: true }, k_rubble: { repeat: true }, k_thatch: { repeat: true }, k_soil: { repeat: true }, k_cellar: { repeat: true }, k_planks: { repeat: true }, k_bone: { repeat: true }, k_bark: { repeat: true },
+export const KIT_TEX = { k_cobble2: { repeat: true }, k_cobworn: { repeat: true }, k_rubble: { repeat: true }, k_thatch: { repeat: true }, k_soil: { repeat: true }, k_cellar: { repeat: true }, k_planks: { repeat: true }, k_bone: { repeat: true },
   k_ashlar: { repeat: true }, k_plaster: { repeat: true }, k_slate: { repeat: true }, k_cobble: { repeat: true }, k_flag: { repeat: true }, k_trim: { repeat: false },
   '../props/props_atlas': { repeat: false } };   // 구운 소품 아틀라스 = assets/v2/props/props_atlas.webp (이름이 env 폴더 기준 상대 경로다)
 export const KMATS = {
@@ -37,8 +37,7 @@ export const KMATS = {
   cellar: { tex: 'k_cellar', tile: 220, tint: [0.96, 1.0, 1.02] },           // 젖은 지하 돌
   planks: { tex: 'k_planks', tile: 150, tint: [1.0, 0.95, 0.9] },            // 낡은 널
   bone: { tex: 'k_bone', tile: 120, tint: [1.0, 0.98, 0.94] },               // 해골 더미 (납골 벽감)
-  bark: { tex: 'k_bark', tile: 130, tint: [0.84, 0.8, 0.78] },               // 나무 껍질
-  charred: { tex: 'k_bark', tile: 130, tint: [0.3, 0.27, 0.27] },            // 탄 나무
+  charred: { tex: 'k_trim', reg: 'timber', tile: 150, tint: [0.3, 0.27, 0.27], grain: true },   // 탄 나무 (들보 조각을 검게)
   // 나무
   wood: { tex: 'wood', tile: 128, tint: [1.2, 1.02, 0.88] },
   darkwood: { tex: 'wood', tile: 128, tint: [0.66, 0.52, 0.46] },

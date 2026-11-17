@@ -264,7 +264,7 @@ export default class V2Game extends Scene {
     const kinds = [...new Set(W.spawns.map((s) => s.kind))].filter((k) => KINDS[k]);
     const missing = [...new Set(W.spawns.map((s) => s.kind))].filter((k) => !KINDS[k]);
     if (missing.length) console.warn('[v2g] spawn kinds without a KINDS entry are not drawn:', missing.join(', '));
-    if (!this.cr) { this.cr = new CharRenderer(glr.gl, { maxJoints: 24 }); this.cast = new Cast(this.cr); this._restored = glr.restored; }
+    if (!this.cr) { this.cr = new CharRenderer(glr.gl, { maxJoints: 32 }); this.cast = new Cast(this.cr); this._restored = glr.restored; }
     await this.cast.load([{ model: HERO_MODEL, hero: true }, ...kinds.map((k) => ({ model: KINDS[k].model }))], ['blade', ...kinds.map((k) => KINDS[k].weapon)], { texCap: this.perf.texCap, libWins: driveHero !== PLACEHOLDER_DRIVE_HERO });
     if (!this.glr) return;
     if (!this.heroA) this.heroA = this.cast.actor(HERO_MODEL, 'blade', {});

@@ -144,6 +144,12 @@ for (const [name, from, to] of [['right → left', [1, 0], [-1, 0]], ['up → do
   const base = headFwd({ kind: 'melee', x: 200, z: 0, active: true }), fl = rel(base, headFwd({ kind: 'melee', x: 120, z: 160, active: true })), fr = rel(base, headFwd({ kind: 'melee', x: 120, z: -160, active: true })), fb = rel(base, headFwd({ kind: 'melee', x: -200, z: 10, active: true }));
   const yaw = (f) => (Math.atan2(f[0], f[2]) * 180) / Math.PI;
   ok('lock-on: the head turns to look at the locked enemy (left / right), level, and not at one behind', yaw(fl) > 30 && yaw(fr) < -30 && Math.abs(fl[1]) < 0.08 && Math.abs(fr[1]) < 0.08 && Math.abs(yaw(fb)) < 3, `left ${yaw(fl).toFixed(0)}° · right ${yaw(fr).toFixed(0)}° · behind ${yaw(fb).toFixed(0)}° · tilt ${fl[1].toFixed(2)} / ${fr[1].toFixed(2)}`); }
+{ const sim = new Sim(flatArena(3000, 3000, []), {}), ch = mkChar('kael'), seen = [];
+  for (let i = 0; i < 60; i++) { sim.update(DT, { mx: 1, mz: 0 }); driveHero(ch, sim.hero, DT, TUNE); }
+  for (let i = 0; i < 40; i++) { sim.update(DT, {}); driveHero(ch, sim.hero, DT, TUNE); seen.push(ch.anim.cur?.name); }
+  const n = seen.filter((c) => c === 'run_stop').length;
+  for (let i = 0; i < 20; i++) { sim.update(DT, { mx: 0.4, mz: 0 }); driveHero(ch, sim.hero, DT, TUNE); } let slow = 0; for (let i = 0; i < 30; i++) { sim.update(DT, {}); driveHero(ch, sim.hero, DT, TUNE); if (ch.anim.cur?.name === 'run_stop') slow++; }
+  ok('letting go of the stick at run speed: brakes with the skid clip (about 0.3 s), then stands; not after a walk', seen[0] === 'run_stop' && n >= 14 && n <= 20 && /^idle/.test(seen[seen.length - 1]) && slow === 0 && finiteRig(ch), `run_stop for ${n} ticks, then ${seen[seen.length - 1]} · after a walk ${slow}`); }
 { const D = KINDS.bat, ch = mkChar(D.model), e = { def: D, kind: 'bat', id: 0, state: 'chase', anim: 'walk', animT: 0, dirX: 1, dirZ: 0, gait: 0, stateT: 0, moved: 100, alpha: 1 };
   for (let i = 0; i < 60; i++) driveActor(ch, e, DT);
   const W = ch.rig.boneWorld('hips'), up = [W[4], W[5], W[6]], l = Math.hypot(...up), tilt = (Math.atan2(up[2] / l, up[1] / l) * 180) / Math.PI;

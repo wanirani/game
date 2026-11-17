@@ -40,7 +40,7 @@ export class Sim {
       guard: false, guardT: 0, guardTap: 0, parryT: 0, parryCd: 0, parryOk: 0, blockT: 0,
       move: null, moveT: 0, combo: 0, hitIds: null, assist: null, queued: 0, swung: false, stepDist: 0, airAtk: false, plungeLand: null, plungeEta: 1,
       lock: null, lockT: 0, lockHold: 0, lockX: 0, lockY: 0, lockZ: 0,
-      gait: 0, gaitMode: 'run', wasMoving: false,
+      gait: 0, gaitMode: 'run', wasMoving: false, pushed: false,
       anim: 'idle', animT: 0, t: 0, cut: false, landT: 0, landV: 0,
       safe: { x: W.start.x, z: W.start.z, y: W.start.y },
     };
@@ -61,12 +61,18 @@ export class Sim {
     };
     if (D.fade != null) { e.solid = false; e.alpha = D.fade; }
     if (e.active) e.state = 'chase';
+    else if ((s.rise ?? D.rise) && !D.fly && !D.floats) e.buried = true;   // 엎드려 누워 있다가 영웅이 다가오면 일어선다 (스테이지 spawns[].rise)
     e.y = e.gy + e.hover;
     this.enemies.push(e);
     return e;
   }
   /** 잠든 적을 깨운다 (장면의 사건 · 무리 깨우기) */
-  wake(e) { if (!e || e.dead || e.active) return; e.active = true; if (e.state === 'idle') { e.state = 'chase'; e.stateT = 0; } this.emit('wake', e); if (e.def.wakeSound) this.hooks.sound?.(e.def.wakeSound, e); }
+  wake(e) {
+    if (!e || e.dead || e.active) return;
+    e.active = true; e.stateT = 0;
+    if (e.buried) { e.buried = false; e.state = 'rise'; } else if (e.state === 'idle') e.state = 'chase';   // 누워 있던 것은 먼저 일어선다
+    this.emit('wake', e); if (e.def.wakeSound) this.hooks.sound?.(e.def.wakeSound, e);
+  }
   /** 효과 · 소리 쪽이 정한 경직을 넣는다 (초) */
   hitStop(sec) { this.stop = Math.max(this.stop, sec); }
   /** 숨은 것을 드러낸다 (메아리 · 등불 자리): 반지름 r 안의 유령이 t 초 동안 또렷해져 맞는다 */
@@ -210,6 +216,7 @@ export class Sim {
     // 걷기 / 달리기는 스틱을 민 정도로 정한다(속도가 0 을 지나는 반전 · 출발에서 걸음이 걷기 · 서기로 깜박이지 않게). 스틱을 놓으면 멈출 때까지 그 걸음 그대로
     const sp = Math.hypot(h.vx, h.vz), free = !h.move && h.dashT <= 0 && h.hurtT <= 0 && !h.guard && h.blockT <= 0, push = moving && free;
     if (push) h.gaitMode = m * T.runX < T.walkBelow + 20 ? 'walk' : 'run';
+    h.pushed = push;   // 이 틱에 스틱으로 걷고 달리는 중인가 (그림이 "방금 놓았다"를 알아 멈춰 서는 동작을 튼다)
     const gsp = push ? Math.max(sp, (h.gaitMode === 'walk' ? 40 : 96)) : sp, walking = h.onGround && free && (push || sp > 24);   // 스틱을 민 동안은 걸음이 멎지 않는다 (벽에 대고 달려도 다리는 돈다)
     if (walking) {
       const g0 = h.gait, g1 = g0 + (gsp * dt) / (h.gaitMode === 'walk' ? T.strideWalk : T.strideRun);
@@ -309,7 +316,7 @@ export class Sim {
   }
   _heroHit(h, mv) {
     for (const e of this.enemies) {
-      if (e.dead || e.state === 'dead' || h.hitIds.has(e.id)) continue;
+      if (e.dead || e.state === 'dead' || e.buried || h.hitIds.has(e.id)) continue;
       if (!this._inShape(h, mv, e.x, e.z, e.r, e.y, e.y + e.h)) continue;
       h.hitIds.add(e.id);
       this._hitEnemy(e, mv, h);
@@ -323,7 +330,7 @@ export class Sim {
   _plungeImpact(h, mv) {
     const L = mv.land, cx = h.x + h.dirX * L.fwd, cz = h.z + h.dirZ * L.fwd;
     for (const e of this.enemies) {
-      if (e.dead || e.state === 'dead' || h.hitIds.has(e.id)) continue;
+      if (e.dead || e.state === 'dead' || e.buried || h.hitIds.has(e.id)) continue;
       if (Math.hypot(e.x - cx, e.z - cz) > L.r + e.r || e.y > h.y + L.y1 || e.y + e.h < h.y + L.y0) continue;
       h.hitIds.add(e.id); this._hitEnemy(e, mv, h);
     }
@@ -340,7 +347,7 @@ export class Sim {
     if (D.armorFront && e.stagger <= 0 && front > Math.cos(D.armorFront.arc * RAD)) { blocked = true; dmg = Math.max(1, Math.round(dmg * D.armorFront.k)); }
     const back = front < -0.3;
     if (!blocked && (back || e.stagger > 0)) dmg = Math.round(dmg * 1.3);   // 등 뒤 · 비틀거리는 틈
-    e.hp -= dmg; e.flashT = 0.13; e.active = true; if (e.state === 'idle') e.state = 'chase';
+    e.hp -= dmg; e.flashT = 0.13; if (!e.active) this.wake(e);
     const kill = e.hp <= 0;
     if (!blocked || kill) {
       const kb = mv.kb[0] * (1 - D.weight);
@@ -425,8 +432,13 @@ export class Sim {
     }
     const dx = h.x - e.x, dz = h.z - e.z, dist = Math.hypot(dx, dz);
     if (!e.active) {
-      if (dist < D.sight && !h.dead && (!e.yard || this.section === 'yard' || this.section === 'done') && Math.abs(h.y - e.gy) < 130) { e.active = true; e.state = 'chase'; e.stateT = 0; this.emit('wake', e); if (D.wakeSound) this.hooks.sound?.(D.wakeSound, e); }
-      this._place(e); this._anim(e, 'idle', dt); return;
+      if (dist < (e.buried ? Math.min(D.sight, D.riseAt ?? 230) : D.sight) && !h.dead && (!e.yard || this.section === 'yard' || this.section === 'done') && Math.abs(h.y - e.gy) < 130) this.wake(e);
+      if (!e.active) { this._place(e); this._anim(e, e.buried ? 'buried' : 'idle', dt); return; }
+    }
+    if (e.state === 'rise') {   // 땅에서 일어서는 중 (맞을 수는 있다)
+      e.stateT += dt; if (e.stun > 0) e.stun -= dt;
+      if (e.stateT >= (D.riseT ?? 1.25)) { e.state = 'chase'; e.stateT = 0; e.cd = Math.max(e.cd, 0.35); }
+      this._place(e); this._anim(e, 'rise', dt); return;
     }
     if (e.kx || e.kz) {   // 맞고 밀림
       const k = 1 - Math.min(1, 7 * dt); e.kx *= k; e.kz *= k;
