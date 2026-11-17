@@ -1,7 +1,2 @@
-// (작업 중) PLAY 판 공개 면 — 검사를 통과하면 index.js 가 이 내용으로 바뀐다
-export { Sim, TUNE } from './sim.js';
-export { UNIT } from './tune.js';
-export { MOVES, COMBO } from './moves.js';
-export { KINDS, AI, ATTACKS, kindOf, kindId, registerKind } from './enemies.js';
-export { flatArena, bindWorld } from './collide.js';
-export { driveHero, driveActor, placeActor, loadPlayClips, usePlayClips, playClipsReady, warpMove, warpAttack } from './motion.js';
+// (옛 작업용 들머리 — 이제 index.js 와 같다. 검사 스크립트의 PLAY_ENTRY 가 가리킬 수 있어 남겨 둔다)
+export * from './index.js';

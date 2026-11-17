@@ -41,7 +41,7 @@ function attach(asset, useLib) {
       if (!asset.clips[k]) { const loop = /idle|walk|run|fly|float|flap/i.test(k); asset.clips[k] = clipFromAnim(rig, a, { name: k, loop, inPlace: loop, rootRel: !loop }); }
     }
   }
-  if (!useLib) { asset._play = true; return true; }
+  if (!useLib || (asset.clips.roll?.meta && asset.clips.atk3 && asset.clips.idle_combat)) { asset._play = true; return true; }   // 장면이 이미 라이브러리를 붙여 두었으면 그대로 쓴다 (다시 받지 않는다)
   if (!LIB.clips) {
     if (!LIB.promise && !LIB.failed && typeof fetch === 'function' && typeof location !== 'undefined') loadPlayClips(indexUrlOf(asset));
     return false;
@@ -67,7 +67,7 @@ function footOff(clip) {
 }
 /** 영웅 기술: 규칙 시간 t → 클립 시각. 클립의 strike 구간이 판정 구간 [h0,h1] 과 겹친다 */
 export function warpMove(clip, t, mv) {
-  const S = clip.meta?.strike; if (!S) return (t / mv.dur) * clip.duration;
+  const S = mv.strike ?? clip.meta?.strike; if (!S) return (t / mv.dur) * clip.duration;
   const h0 = mv.hit[0], h1 = mv.hit[1], lead = mv.lead ?? 0.2, tail = mv.tail ?? 0.35;
   if (t < h0) return Math.max(0, S[0] - lead * (1 - t / h0));
   if (t < h1) return S[0] + (S[1] - S[0]) * ((t - h0) / (h1 - h0));
@@ -150,12 +150,12 @@ export function driveActor(ch, e, dt) {
   else if (e.state === 'stagger') { name = pick(C, e.staggerSide < 0 ? K.stagger + '_r' : null, K.stagger, K.hurt); if (name && !C[name].loop) o = { fade: 0.06, time: Math.min(0.02 + e.animT * 1.15, C[name].duration - 0.02) }; }
   else if (e.anim === 'hurt') { name = pick(C, K.hurt); if (name && !C[name].loop) o = { fade: 0.04, time: 0.02 + e.animT * 1.3 }; }
   else if (atk) { name = pick(C, atk.clip); if (name) o = C[name].loop ? { fade: 0.08, speed: e.phase === 'strike' ? 1.7 : 1.2 } : { fade: 0.07, time: warpAttack(C[name], e.stateT, atk) }; }
-  else if (e.anim === 'walk') { name = pick(C, K.walk); if (name && D.stride && !D.float && !D.fly) o = { fade: 0.16, time: ((e.gait + footOff(C[name])) % 1) * C[name].duration }; }
+  else if (e.anim === 'walk') { name = pick(C, K.walk); if (name && D.stride && !D.floats && !D.fly) o = { fade: 0.16, time: ((e.gait + footOff(C[name])) % 1) * C[name].duration }; }
   if (!name) name = pick(C, K.idle, 'idle', 'run') ?? Object.keys(C)[0];
   A.play(name, o);
   if (!S.init) { S.init = true; if (!A.ext) A.t = (e.id * 0.37) % (C[name].duration || 1); }   // 떼로 나올 때 같은 박자로 움직이지 않게
   A.update(dt);
-  if (D.float) pinLegs(ch.rig);
+  if (D.floats) pinLegs(ch.rig);
 }
 
 /**

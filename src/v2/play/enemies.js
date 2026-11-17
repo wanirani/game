@@ -42,7 +42,7 @@ export const KINDS = {
     hp: 82, speed: 46, stride: 50, turn: 3.2, weight: 0.5, stun: 0.14, poise: true, standoff: 96, attacks: [GRAB], dieT: 1.7,
     clips: { idle: 'idle', walk: 'shamble', hurt: 'hit_heavy', stagger: 'stagger', death: 'death_front' } }),
   grave_ghost: K({ name: '무덤 유령', model: 'grave_ghost', height: 1.95, material: 'ghost', ai: 'ghost',
-    hp: 30, speed: 80, turn: 6, float: true, hover: 14, fade: 0.3, solidAfter: 0.9, standoff: 130, attacks: [SWOOP], dieT: 0.8,
+    hp: 30, speed: 80, turn: 6, floats: true, hover: 14, fade: 0.3, solidAfter: 0.9, standoff: 130, attacks: [SWOOP], dieT: 0.8,
     clips: { idle: 'float_idle', walk: 'float_idle', hurt: 'hit_light', stagger: 'stun', death: 'hit_heavy' } }),
   gravekeeper_armor: K({ name: '무덤지기 갑주', model: 'gravekeeper_armor', weapon: 'w_grave_spade', grip: { pos: [0, 9, 4], rotX: -80, rotY: 0, rotZ: 0 }, height: 2.35, material: 'armor', ai: 'melee', elite: true,
     hp: 170, r: 24, speed: 58, stride: 78, turn: 2.4, weight: 0.85, stun: 0.12, poise: true, standoff: 92, armorFront: { arc: 80, k: 0.15 }, attacks: [SLAM, THRUST], dieT: 2.0, steps: true,
@@ -52,7 +52,7 @@ export const KINDS = {
     clips: { idle: 'fly', walk: 'fly', hurt: 'fly', stagger: 'fly', death: 'fly' } }),
   // 보스 자리: 모델과 숫자만 있다. 규칙(노래 · 유령 부르기 · 조종에 무릎 꿇기)은 AI.boss 를 채우면 된다 — docs/v2/PLAY_API.md §7
   banshee_queen: K({ name: '밴시 여왕', model: 'banshee_queen', height: 2.7, material: 'cloth', ai: 'boss', boss: true,
-    hp: 600, r: 30, speed: 60, turn: 3, float: true, hover: 23, weight: 1, stun: 0, poise: true, attacks: [], dieT: 2.4,
+    hp: 600, r: 30, speed: 60, turn: 3, floats: true, hover: 23, weight: 1, stun: 0, poise: true, attacks: [], dieT: 2.4,
     clips: { idle: 'float_idle', walk: 'float_idle', hurt: 'hit_light', stagger: 'stun', death: 'stun' } }),
 };
 const ALIAS = { melee: 'skeleton_soldier', soldier: 'skeleton_soldier', skeleton: 'skeleton_soldier', ranged: 'skeleton_mage', mage: 'skeleton_mage', corpse: 'plague_corpse', ghoul: 'plague_corpse',
