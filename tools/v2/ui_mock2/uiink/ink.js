@@ -40,7 +40,8 @@ export function stroke(ctx, pts, o = {}) {
   // 1) 먹이 진한 몸통
   const bodyEnd = 1 - dry * 0.5, le = [], ri = [];
   for (const q of S) { if (q.t > bodyEnd) break; const hw = 0.5 * w * prof(q.t) * (1 - sm(bodyEnd - 0.25, bodyEnd, q.t)) * (0.86 + 0.14 * nz(q.s * 0.5)); le.push([q.x + q.nx * hw, q.y + q.ny * hw]); ri.push([q.x - q.nx * hw, q.y - q.ny * hw]); }
-  if (le.length > 1) { ctx.beginPath(); ctx.moveTo(le[0][0], le[0][1]); for (const p of le) ctx.lineTo(p[0], p[1]); for (let i = ri.length - 1; i >= 0; i--) ctx.lineTo(ri[i][0], ri[i][1]); ctx.closePath(); ctx.fill(); const h0 = 0.5 * w * prof(0) * 0.9; ctx.beginPath(); ctx.arc(S[0].x, S[0].y, h0, 0, 7); ctx.fill(); }
+  if (le.length > 1) { ctx.beginPath(); ctx.moveTo(le[0][0], le[0][1]); for (const p of le) ctx.lineTo(p[0], p[1]); for (let i = ri.length - 1; i >= 0; i--) ctx.lineTo(ri[i][0], ri[i][1]); ctx.closePath(); ctx.fill(); const h0 = 0.5 * w * prof(0) * 0.9; ctx.beginPath(); ctx.arc(S[0].x, S[0].y, h0, 0, 7); ctx.fill();
+    if (!o.cut && w >= 6) { ctx.save(); ctx.globalCompositeOperation = 'destination-out'; const M = Math.round(w / 3.2); for (let i = 0; i < M; i++) { const u = (r() * 2 - 1) * 0.8, ph = r() * 999; ctx.globalAlpha = 0.3 + r() * 0.5; ctx.lineWidth = 0.3 + r() * 0.5; let pen = false; ctx.beginPath(); for (const q of S) { if (q.t > bodyEnd) break; const on = q.t > 0.16 && nz(ph + q.s * 0.2) > 0.52 - 0.3 * q.t; const off = u * w * prof(q.t) * 0.5, x = q.x + q.nx * off, y = q.y + q.ny * off; if (on) { if (!pen) { ctx.moveTo(x, y); pen = true; } else ctx.lineTo(x, y); } else pen = false; } ctx.stroke(); } ctx.restore(); } }
   // 2) 붓털: 끝으로 갈수록, 가장자리일수록 먹이 끊긴다(비백)
   const N = Math.max(4, Math.min(28, Math.round(w * 1.8)));
   for (let i = 0; i < N; i++) {
@@ -281,7 +282,8 @@ export function iconCanvas(name, px = 192) {
   const lc = layer.getContext('2d'); lc.scale(px / 100, px / 100);
   (ICONS[name] || ICONS.x)(kit(lc, name));
   const out = document.createElement('canvas'); out.width = out.height = px; const oc = out.getContext('2d');
-  oc.filter = `blur(${(px * 0.022).toFixed(2)}px)`; oc.globalAlpha = 0.5; oc.drawImage(layer, 0, 0);   // 먹 번짐
+  oc.filter = `blur(${(px * 0.07).toFixed(2)}px)`; oc.globalAlpha = 0.26; oc.drawImage(layer, 0, 0);   // 넓은 달빛 번짐
+  oc.filter = `blur(${(px * 0.02).toFixed(2)}px)`; oc.globalAlpha = 0.5; oc.drawImage(layer, 0, 0);   // 가까운 먹 번짐
   oc.filter = 'none'; oc.globalAlpha = 1; oc.drawImage(layer, 0, 0);
   cache.set(key, out); return out;
 }

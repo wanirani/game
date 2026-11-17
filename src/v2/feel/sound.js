@@ -160,11 +160,11 @@ function run(S, H) {
   for (let i = 0; i < ls.length; i++) {
     const l = ls[i];
     if (l.q > q) continue;
+    fs.layersPlayed++;
     if (l.k === 's') { const f = SYN[l.n]; if (f) f(SS, H, l); } else sample(SS, l, fs);
   }
   S.end = SS.end;
   if (filt) fs._track(filt, P.lp > 0 ? P.lp : 20000, S.t + SS.end);
-  fs.layersPlayed += ls.length;
 }
 let defined = false;
 function define() {

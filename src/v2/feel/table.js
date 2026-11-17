@@ -18,17 +18,17 @@ export const QUALITY = Object.freeze({ low: 0, medium: 1, high: 2 });
 // stop 경직(초, 60·120 Hz 공통) · shake 흔들림(트라우마 0–1 더하기) · kick 카메라 밀림(월드 단위, 타격 방향) · zoom 줌 배율·시간
 // duck [음악 낮춤 0–1, 초] · gain 소리 크기 · tailAt 꼬리 층을 늦추는 시간(경직이 풀릴 때 울림이 피어나게) · haptic 진동 이름
 export const STRENGTH = Object.freeze({
-  L: Object.freeze({ id: 'L', stop: 0.045, shake: 0.10, kick: 3, zoom: 1, zoomT: 0, duck: null, gain: 0.78, tailAt: 0.02, haptic: 'hitL' }),
-  M: Object.freeze({ id: 'M', stop: 0.067, shake: 0.16, kick: 5, zoom: 1, zoomT: 0, duck: null, gain: 0.9, tailAt: 0.03, haptic: 'hitM' }),
-  H: Object.freeze({ id: 'H', stop: 0.100, shake: 0.26, kick: 9, zoom: 1.02, zoomT: 0.14, duck: Object.freeze([0.3, 0.35]), gain: 1.0, tailAt: 0.05, haptic: 'hitH' }),
-  F: Object.freeze({ id: 'F', stop: 0.133, shake: 0.36, kick: 13, zoom: 1.035, zoomT: 0.18, duck: Object.freeze([0.45, 0.5]), gain: 1.06, tailAt: 0.07, haptic: 'hitF' }),
+  L: Object.freeze({ id: 'L', stop: 0.045, shake: 0.10, kick: 3, zoom: 1, zoomT: 0, duck: null, gain: 1.0, tailAt: 0.02, haptic: 'hitL' }),
+  M: Object.freeze({ id: 'M', stop: 0.067, shake: 0.16, kick: 5, zoom: 1, zoomT: 0, duck: null, gain: 1.0, tailAt: 0.03, haptic: 'hitM' }),
+  H: Object.freeze({ id: 'H', stop: 0.100, shake: 0.26, kick: 9, zoom: 1.02, zoomT: 0.14, duck: Object.freeze([0.3, 0.35]), gain: 1.04, tailAt: 0.05, haptic: 'hitH' }),
+  F: Object.freeze({ id: 'F', stop: 0.133, shake: 0.36, kick: 13, zoom: 1.035, zoomT: 0.18, duck: Object.freeze([0.45, 0.5]), gain: 1.02, tailAt: 0.07, haptic: 'hitF' }),
 });
 export const STRENGTHS = Object.freeze(Object.keys(STRENGTH));
 
 // ───────────────────────────── 무기 ─────────────────────────────
 // whoosh[세기] = 휘두름 층 (feel.swing 이 낸다) · lead = 휘두름 시작 → 닿는 순간(초): 애니메이션이 이만큼 먼저 swing 을 부르면 바람 소리 꼭대기가 타격에 맞는다
 // trans[세기] = 타격 순간음 · cut = 베는 무기(살·천 재질에서 베는 소리가 더해짐) · stopK 경직 배율
-const SW = (name, p = 1, g = 1) => ({ L: [o(name, 0, 0.5 * g, 1.1 * p)], M: [o(name, 0, 0.62 * g, p)], H: [o(name, 0, 0.75 * g, 0.92 * p), s('air', 0, 0.3, 0.9, 1)], F: [o('slash_heavy', 0, 0.85 * g, 0.84 * p), s('air', 0, 0.42, 0.75, 1), n('cloth', 0.03, 0.28, 0.9, 2)] });
+const SW = (name, p = 1, g = 1) => ({ L: [o(name, 0, 0.5 * g, 1.1 * p)], M: [o(name, 0, 0.62 * g, p)], H: [o(name, 0, 0.75 * g, 0.92 * p), s('air', 0, 0.3, 0.9, 1)], F: [o('slash_heavy', 0, 0.7 * g, 0.84 * p), s('air', 0, 0.42, 0.75, 1), n('cloth', 0.03, 0.28, 0.9, 2)] });
 export const WEAPON = Object.freeze({
   sword: { label: '한손검', cut: true, stopK: 1, lead: 0.085, whoosh: SW('slash'),
     trans: { L: [o('hit', 0, 0.7, 1.12)], M: [o('hit', 0, 0.85, 1.02), s('snap', 0, 0.28, 1, 1)], H: [o('hit_heavy', 0, 0.82, 1.03), s('snap', 0, 0.36)], F: [o('hit_heavy', 0, 0.95, 0.94), s('snap', 0, 0.42), o('impact_crack', 0.012, 0.55, 1, 1)] } },
@@ -62,14 +62,14 @@ export const MATERIALS = Object.freeze(Object.keys(MATERIAL));
 // ───────────────────────────── 덧붙임 (치명타·막힘·받아치기·마무리) ─────────────────────────────
 // add 더할 층 · stop/shake/zoom 은 세기 값에 더하거나(＋) 바꾼다(=) · slow [실시간 초, 배속] · only = 몸통·꼬리 대신 이 층만
 export const MOD = Object.freeze({
-  crit: { add: [o('crit', 0, 0.75), s('snap', 0, 0.3, 1.5, 1)], stopAdd: 0.033, shakeAdd: 0.08, zoom: 1.03, zoomT: 0.16, gain: 1.08, haptic: 'crit' },
+  crit: { add: [o('crit', 0, 0.6), s('snap', 0, 0.3, 1.5, 1)], stopAdd: 0.033, shakeAdd: 0.08, zoom: 1.03, zoomT: 0.16, gain: 1.0, haptic: 'crit' },
   kill: { stopAdd: 0.05, shakeAdd: 0.06, gain: 1.04 },
   // 막힘: 적의 방패·가드에 막혔다 — 몸통 없이 쇳소리, 경직은 짧고 딱딱하게
   guard: { only: [o('clang', 0, 0.95, 0.92), o('knight_guard', 0.004, 0.5, 1, 1), s('knock', 0, 0.4, 0.7), n('ring', 0.03, 0.3, 1.1, 1)], stop: 0.05, shake: 0.12, kick: -4, zoom: 1, gain: 0.95, haptic: 'guard' },
   // 받아치기: 플레이어의 완벽한 막기 — 맑은 울림 + 짧은 느린 화면
   parry: { only: [o('counter', 0, 0.9), o('clang', 0, 0.8, 1.25), n('ring', 0.02, 0.6, 1.2), o('impact_frame', 0, 0.5, 1, 1), s('snap', 0, 0.45, 1.4)], stop: 0.12, shake: 0.2, kick: 0, zoom: 1.05, zoomT: 0.25, slow: Object.freeze([0.28, 0.35]), duck: Object.freeze([0.5, 0.7]), gain: 1.05, haptic: 'parry', big: true },
   // 마무리 일격: 방의 마지막 적·보스 — 깊은 쿵 + 느린 화면 + 음악이 물러남
-  finisher: { add: [s('drop', 0, 0.8), o('kill_slowmo', 0.02, 0.7), o('impact_crack', 0.01, 0.6, 0.8), n('ring', 0.09, 0.3, 0.7, 2)], stop: 0.18, shakeAdd: 0.2, kick: 16, zoom: 1.08, zoomT: 0.4, slow: Object.freeze([0.36, 0.25]), duck: Object.freeze([0.5, 1.0]), gain: 1.12, haptic: 'finisher', big: true },
+  finisher: { add: [s('drop', 0, 0.55), o('kill_slowmo', 0.02, 0.55), o('impact_crack', 0.01, 0.45, 0.8), n('ring', 0.09, 0.3, 0.7, 2)], stop: 0.18, shakeAdd: 0.2, kick: 16, zoom: 1.08, zoomT: 0.4, slow: Object.freeze([0.36, 0.25]), duck: Object.freeze([0.5, 1.0]), gain: 0.74, haptic: 'finisher', big: true },
 });
 /** flags 비트 */
 export const FLAG = Object.freeze({ crit: 1, kill: 2, guard: 4, parry: 8, finisher: 16 });
@@ -133,7 +133,7 @@ export function swingFeel(weapon, strength) {
   let r = cache.get(key);
   if (r) return r;
   const W = pick(WEAPON, weapon, 'sword'), S = pick(STRENGTH, strength, 'M');
-  r = Object.freeze({ key, layers: Object.freeze(W.whoosh[S.id]), lead: W.lead, gain: 0.8 + 0.07 * STRENGTHS.indexOf(S.id), duck: null, haptic: null, big: false });
+  r = Object.freeze({ key, layers: Object.freeze(W.whoosh[S.id]), lead: W.lead, gain: 0.72 + 0.04 * STRENGTHS.indexOf(S.id), duck: null, haptic: null, big: false });
   cache.set(key, r);
   return r;
 }
@@ -143,15 +143,15 @@ export function swingFeel(weapon, strength) {
 const mag = (label, color, charge, release, loop, impact, fx) => Object.freeze({ label, color, charge, release, loop, impact, ...fx });
 export const MAGIC = Object.freeze({
   fire: mag('불', '#ff8a3c', [s('riser', 0, 0.5, 0.8, 0, { el: 'fire' }), o('fire_breath', 0.1, 0.3, 0.8, 1)], [o('fire', 0, 0.9), s('air', 0, 0.35, 0.7), s('sub', 0, 0.3, 1.2, 1)], 'fire',
-    [o('explode', 0, 0.85), o('fire', 0.02, 0.6, 0.8), s('sub', 0, 0.6), n('debris', 0.06, 0.35, 1, 1)], { stop: 0.09, shake: 0.34, zoom: 1.03, zoomT: 0.2, duck: [0.4, 0.5], haptic: 'magicHit' }),
+    [o('explode', 0, 0.7), o('fire', 0.02, 0.6, 0.8), s('sub', 0, 0.5), n('debris', 0.06, 0.35, 1, 1)], { loopG: 0.55, stop: 0.09, shake: 0.34, zoom: 1.03, zoomT: 0.2, duck: [0.4, 0.5], haptic: 'magicHit' }),
   ice: mag('얼음', '#8fd8ff', [s('riser', 0, 0.45, 1.5, 0, { el: 'ice' }), o('ice', 0.25, 0.25, 1.5, 1)], [o('ice', 0, 0.85, 1.1), s('air', 0, 0.3, 1.5), s('snap', 0, 0.3, 1.5, 1)], 'ice',
-    [o('ice', 0, 0.95, 0.85), o('hit_stone', 0, 0.5, 1.3), n('debris', 0.03, 0.5, 1.7), n('ring', 0.02, 0.3, 1.5, 1)], { stop: 0.1, shake: 0.26, zoom: 1.025, zoomT: 0.18, duck: [0.35, 0.45], haptic: 'magicHit' }),
-  lightning: mag('번개', '#fff27a', [s('riser', 0, 0.45, 1.2, 0, { el: 'lightning' }), s('zap', 0.2, 0.2, 1.4, 1)], [o('thunder', 0, 0.9, 1.1), s('zap', 0, 0.45), s('snap', 0, 0.4, 1.2)], 'lightning',
-    [o('thunderclap', 0, 0.95), o('thunder', 0.03, 0.5, 0.8), s('zap', 0, 0.5, 0.8), s('sub', 0, 0.55, 1.1)], { stop: 0.07, shake: 0.4, zoom: 1.04, zoomT: 0.14, duck: [0.45, 0.5], haptic: 'zap' }),
-  holy: mag('신성', '#fff4c8', [s('riser', 0, 0.42, 1, 0, { el: 'holy' }), s('shimmer', 0.2, 0.3, 1, 1)], [o('holy', 0, 0.8), n('bell_high', 0, 0.3, 1.5), s('air', 0, 0.25, 1.3, 1)], 'holy',
-    [o('holy', 0, 0.9, 0.9), o('cross', 0, 0.5, 1), n('bell_mid', 0.01, 0.45, 2), s('sub', 0, 0.45, 1.2), s('shimmer', 0.05, 0.35, 1, 1)], { stop: 0.09, shake: 0.24, zoom: 1.03, zoomT: 0.25, duck: [0.4, 0.6], haptic: 'magicHit' }),
+    [o('ice', 0, 0.95, 0.85), o('hit_stone', 0, 0.5, 1.3), n('debris', 0.03, 0.5, 1.7), n('ring', 0.02, 0.3, 1.5, 1)], { loopG: 0.32, stop: 0.1, shake: 0.26, zoom: 1.025, zoomT: 0.18, duck: [0.35, 0.45], haptic: 'magicHit' }),
+  lightning: mag('번개', '#fff27a', [s('riser', 0, 0.75, 1.2, 0, { el: 'lightning' }), s('zap', 0.2, 0.2, 1.4, 1)], [o('thunder', 0, 0.9, 1.1), s('zap', 0, 0.45), s('snap', 0, 0.4, 1.2)], 'lightning',
+    [o('thunderclap', 0, 0.8), o('thunder', 0.03, 0.5, 0.8), s('zap', 0, 0.5, 0.8), s('sub', 0, 0.5, 1.1)], { loopG: 0.85, stop: 0.07, shake: 0.4, zoom: 1.04, zoomT: 0.14, duck: [0.45, 0.5], haptic: 'zap' }),
+  holy: mag('신성', '#fff4c8', [s('riser', 0, 0.85, 1, 0, { el: 'holy' }), s('shimmer', 0.2, 0.3, 1, 1)], [o('holy', 0, 0.8), n('bell_high', 0, 0.3, 1.5), s('air', 0, 0.25, 1.3, 1)], 'holy',
+    [o('holy', 0, 0.9, 0.9), o('cross', 0, 0.5, 1), n('bell_mid', 0.01, 0.45, 2), s('sub', 0, 0.45, 1.2), s('shimmer', 0.05, 0.35, 1, 1)], { loopG: 0.3, stop: 0.09, shake: 0.24, zoom: 1.03, zoomT: 0.25, duck: [0.4, 0.6], haptic: 'magicHit' }),
   blood: mag('피·그림자', '#c0183c', [s('riser', 0, 0.5, 0.6, 0, { el: 'blood' }), o('heartbeat', 0.05, 0.6, 1, 1)], [o('dark', 0, 0.85), o('hit_flesh', 0, 0.5, 0.8), s('air', 0, 0.3, 0.6)], 'blood',
-    [o('dark', 0, 0.9, 0.85), o('soul_reap', 0.02, 0.55, 0.9), o('hit_flesh', 0, 0.7, 0.7), s('drop', 0, 0.55, 1.2), s('wisp', 0.06, 0.3, 0.7, 1)], { stop: 0.11, shake: 0.3, zoom: 1.035, zoomT: 0.22, duck: [0.45, 0.6], haptic: 'magicHit' }),
+    [o('dark', 0, 0.9, 0.85), o('soul_reap', 0.02, 0.55, 0.9), o('hit_flesh', 0, 0.7, 0.7), s('drop', 0, 0.55, 1.2), s('wisp', 0.06, 0.3, 0.7, 1)], { loopG: 0.55, stop: 0.11, shake: 0.3, zoom: 1.035, zoomT: 0.22, duck: [0.45, 0.6], haptic: 'magicHit' }),
 });
 export const ELEMENTS = Object.freeze(Object.keys(MAGIC));
 
@@ -172,37 +172,37 @@ export const BELLS = Object.freeze(Object.keys(BELL));
 const ev = (bus, layers, x) => Object.freeze({ bus, layers: Object.freeze(layers), gain: 1, ...x });
 export const EVENT = Object.freeze({
   // 이동 — 발소리는 애니메이션의 발 닿는 순간(contact)이 부른다. 속도(월드 단위/초)는 feel.step(speed) 가 walk/run/sprint 로 나눈다
-  'step.walk': ev('f3_step', [o('step_stone', 0, 1.0, 0.96)], { gain: 0.55 }),
-  'step.run': ev('f3_step', [o('step_stone', 0, 1.0, 1.02), s('scuff', 0, 0.12, 1, 2)], { gain: 0.8 }),
-  'step.sprint': ev('f3_step', [o('step_stone', 0, 1.0, 1.07), s('scuff', 0, 0.2, 1.1, 1), n('gear', 0.01, 0.1, 1.1, 2)], { gain: 1.0 }),
+  'step.walk': ev('f3_step', [o('step_stone', 0, 1.0, 0.96)], { gain: 1.05 }),
+  'step.run': ev('f3_step', [o('step_stone', 0, 1.0, 1.02), s('scuff', 0, 0.12, 1, 2)], { gain: 1.5 }),
+  'step.sprint': ev('f3_step', [o('step_stone', 0, 1.0, 1.07), s('scuff', 0, 0.2, 1.1, 1), n('gear', 0.01, 0.1, 1.1, 2)], { gain: 1.6 }),
   'move.dash': ev('f3_foley', [o('dash_burst', 0, 0.8), o('dash', 0, 0.6, 1.05), n('cloth', 0.01, 0.4, 1.1, 1), s('air', 0, 0.3, 1.1, 1)], { haptic: 'dash' }),
   'move.jump': ev('f3_foley', [o('jump', 0, 0.9), n('cloth', 0.01, 0.3, 1.25, 1), n('gear', 0, 0.16, 1.1, 2)]),
   'move.land': ev('f3_foley', [o('land', 0, 1.0), o('step_stone', 0.004, 0.9, 0.9), n('gear', 0.015, 0.2, 0.95, 1)], { haptic: 'land' }),
   'move.land_heavy': ev('f3_foley', [o('land_heavy', 0, 0.95), s('sub', 0, 0.4, 1.1), n('debris', 0.03, 0.22, 1.2, 1), n('gear', 0.02, 0.3, 0.9, 1)], { haptic: 'landHeavy', shake: 0.14, stop: 0 }),
   'foley.cloth': ev('f3_foley', [n('cloth', 0, 0.5)], { gain: 0.6 }),
   'foley.gear': ev('f3_foley', [n('gear', 0, 0.5)], { gain: 0.5 }),
-  'weapon.draw': ev('f3_foley', [n('draw', 0, 0.75), n('gear', 0, 0.2, 0.9, 1), n('ring', 0.24, 0.22, 1.3, 1)]),
+  'weapon.draw': ev('f3_foley', [n('draw', 0, 0.75), n('gear', 0, 0.2, 0.9, 1), n('ring', 0.24, 0.22, 1.3, 1)], { gain: 0.6 }),
   'weapon.sheath': ev('f3_foley', [o('sheath', 0, 0.9), n('gear', 0.12, 0.25, 0.9, 1)]),
-  'hero.hurt': ev('f3_hit', [o('hurt', 0, 0.9), o('hit_flesh', 0, 0.6, 0.85), s('thud', 0, 0.5, 0.8)], { haptic: 'hurt', stop: 0.05, shake: 0.3, duck: [0.3, 0.4] }),
+  'hero.hurt': ev('f3_hit', [o('hurt', 0, 0.9), o('hit_flesh', 0, 0.6, 0.85), s('thud', 0, 0.5, 0.8)], { gain: 1.3, haptic: 'hurt', stop: 0.05, shake: 0.3, duck: [0.3, 0.4] }),
   // 적
-  'enemy.skel.rattle': ev('f3_enemy', [o('bone_rattle', 0, 0.8), o('bone_rattle', 0.09, 0.45, 1.25, 1)], { gain: 0.7 }),
+  'enemy.skel.rattle': ev('f3_enemy', [o('bone_rattle', 0, 0.8), o('bone_rattle', 0.09, 0.45, 1.25, 1)], { gain: 0.85 }),
   'enemy.skel.collapse': ev('f3_enemy', [o('enemy_die_bone', 0, 0.9), o('bone_rattle', 0.12, 0.6, 0.85), o('bone_rattle', 0.27, 0.4, 1.15, 1), n('debris', 0.1, 0.4, 1.25, 1), s('thud', 0.05, 0.4, 0.9)]),
-  'enemy.mage.chant': ev('f3_enemy', [n('chant', 0, 0.8), s('wisp', 0.1, 0.25, 0.8, 1)], { gain: 0.8 }),
-  'enemy.bat.screech': ev('f3_enemy', [o('screech', 0, 0.5, 1.5), o('bat', 0.02, 0.8, 1.1)], { gain: 0.75 }),
-  'enemy.bat.flap': ev('f3_enemy', [o('wing_flap', 0, 0.7, 1.3)], { gain: 0.5 }),
+  'enemy.mage.chant': ev('f3_enemy', [n('chant', 0, 0.8), s('wisp', 0.1, 0.25, 0.8, 1)], { gain: 0.6 }),
+  'enemy.bat.screech': ev('f3_enemy', [o('screech', 0, 0.5, 1.5), o('bat', 0.02, 0.8, 1.1)], { gain: 1.1 }),
+  'enemy.bat.flap': ev('f3_enemy', [o('wing_flap', 0, 0.7, 1.3)], { gain: 1.2 }),
   // 세계
   'world.torch.light': ev('f3_enemy', [o('candle', 0, 0.8, 0.8), o('fire', 0.02, 0.3, 1.3, 1)], { gain: 0.6 }),
-  'loop.torch': ev('f3_loop', [], { loop: 'torch', gain: 0.5, life: 3600, keep: true }),
-  'loop.street': ev('f3_loop', [], { loop: 'street', gain: 0.5, life: 3600, keep: true, flat: true }),
+  'loop.torch': ev('f3_loop', [], { loop: 'torch', gain: 0.3, life: 3600, keep: true }),
+  'loop.street': ev('f3_loop', [], { loop: 'street', gain: 0.16, life: 3600, keep: true, flat: true }),
   // 인터페이스 (작게, 공간 처리 없음)
-  'ui.move': ev('f3_ui', [n('ui_tick', 0, 0.5)], { flat: true, gain: 0.5 }),
+  'ui.move': ev('f3_ui', [n('ui_tick', 0, 0.7)], { flat: true, gain: 0.5 }),
   'ui.tab': ev('f3_ui', [n('ui_tab', 0, 0.5)], { flat: true, gain: 0.55 }),
   'ui.open': ev('f3_ui', [n('ui_open', 0, 0.5)], { flat: true, gain: 0.55 }),
   'ui.close': ev('f3_ui', [n('ui_close', 0, 0.5)], { flat: true, gain: 0.55 }),
   'ui.ok': ev('f3_ui', [n('ui_ok', 0, 0.5)], { flat: true, gain: 0.6 }),
   'ui.deny': ev('f3_ui', [n('ui_deny', 0, 0.55)], { flat: true, gain: 0.6 }),
   // 종 (가락은 BELL — sound.js 가 층으로 푼다)
-  'bell.toll': ev('f3_big', [n('bell_toll', 0, 1.0), s('drop', 0, 0.5, 0.9), o('bell', 0.004, 0.35, 0.5, 1)], { duck: [0.5, 2.4], haptic: 'toll', shake: 0.3, stop: 0, zoom: 1.04, zoomT: 1.2, pv0: true }),
+  'bell.toll': ev('f3_bell', [n('bell_toll', 0, 0.85), s('drop', 0, 0.5, 0.9), o('bell', 0.004, 0.35, 0.5, 1)], { duck: [0.5, 2.4], haptic: 'toll', shake: 0.3, stop: 0, zoom: 1.04, zoomT: 1.2, pv0: true }),
 });
 // 마법·종 가락·고리도 사건 이름으로 부를 수 있게 펼친다: magic.<원소>.<charge|release|impact>, loop.magic.<원소>, bell.<가락>
 const X = {};
@@ -210,12 +210,12 @@ for (const el of ELEMENTS) {
   const m = MAGIC[el];
   X[`magic.${el}.charge`] = ev('f3_magic', m.charge, { gain: 0.8 });
   X[`magic.${el}.release`] = ev('f3_magic', m.release, { gain: 0.95, haptic: 'cast' });
-  X[`magic.${el}.impact`] = ev('f3_big', m.impact, { gain: 1.05, stop: m.stop, shake: m.shake, zoom: m.zoom, zoomT: m.zoomT, duck: m.duck, haptic: m.haptic });
-  X[`loop.magic.${el}`] = ev('f3_loop', [], { loop: m.loop, gain: 0.55, life: 8 });
+  X[`magic.${el}.impact`] = ev('f3_big', m.impact, { gain: 0.95, stop: m.stop, shake: m.shake, zoom: m.zoom, zoomT: m.zoomT, duck: m.duck, haptic: m.haptic });
+  X[`loop.magic.${el}`] = ev('f3_loop', [], { loop: m.loop, gain: m.loopG, life: 8 });
 }
 for (const b of BELLS) {
   const ls = BELL[b].notes.map(([semi, at, vel]) => (semi >= 9 ? L('n', 'bell_high', at, 0.62 * vel, Math.pow(2, (semi - 12) / 12), 0, { pv: 0, gv: 0.03 }) : L('n', 'bell_mid', at, 0.7 * vel, Math.pow(2, semi / 12), 0, { pv: 0, gv: 0.03 })));
-  X[`bell.${b}`] = ev('f3_big', ls, { duck: [0.5, 2.6], haptic: 'chime', gain: 0.9, pv0: true });
+  X[`bell.${b}`] = ev('f3_bell', ls, { duck: [0.5, 2.6], haptic: 'chime', gain: 0.72 });
 }
 export const EVENTS = Object.freeze({ ...EVENT, ...X });
 export const EVENT_NAMES = Object.freeze(Object.keys(EVENTS));

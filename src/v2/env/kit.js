@@ -188,10 +188,10 @@ export function dressWall(G, P, boxes) {
     const [F, len] = FS[side], n = Math.max(2, Math.round(len / 46));
     for (let i = 0; i < n; i++) if (i % 2 === 0) F.box(G, lower, len * i / n, len * (i + 1) / n, y1, y1 + 24, -16, 6, { faces: 'FLRT', top: 'trimstone', vary: 0.1 });
   }
-  if (K.rail) for (const side of K.rail) { const [F, len] = FS[side]; railing(G, F, 4, len - 4, y1 + (K.coping ? 6 : 0), K.railH ?? 38, -2); }
+  if (K.rail) for (const side of K.rail) { const [F, len] = FS[side]; railing(G, F, 4, len - 4, y1 + (K.coping ? 6 : 0), K.railH ?? 38, -(side === 'F' ? P.d : P.w) / 2); }
   if (K.piers) for (const side of K.faces ?? 'FLR') {   // 낮은 담의 기둥
     const [F, len] = FS[side], n = Math.max(1, Math.round(len / K.piers));
-    for (let i = 0; i <= n; i++) { const u = len * i / n; F.box(G, 'stone', u - 11, u + 11, y0, y1 + 16, -P.d * 0 - 4, 5, { faces: 'FLRT', top: 'trimstone' }); F.box(G, 'trimstone', u - 14, u + 14, y1 + 16, y1 + 22, -7, 8, { faces: 'FLRT', vary: 0 }); }
+    for (let i = 0; i <= n; i++) { const u = len * i / n; const th = side === 'F' ? P.d : P.w; F.box(G, 'stone', u - 11, u + 11, y0, y1 + 16, -th - 4, 5, { faces: 'FLRT', top: 'trimstone' }); F.box(G, 'trimstone', u - 14, u + 14, y1 + 16, y1 + 22, -th - 7, 8, { faces: 'FLRT', vary: 0 }); }
   }
   G.tintMul = null;
 }
@@ -320,10 +320,10 @@ export function dressBlock(G, P, W) {
   G.box('trimstone', x0 - 3.5, y1 - 7, z0 - 3.5, x1 + 3.5, y1, z1, { faces: 'FLR', vary: 0.1, cell: 80 });
   dressFloor(G, { x: x0 - 3.5, z: z0 - 3.5, w: P.w + 7, d: P.d + 3.5, y: y1, walk: false, kit: { mat: K.top ?? 'flags', cell: 40 } }, W);
   if (K.balustrade) {   // 뒤 가장자리 난간
-    const F = new Frame(x0, z1 - 9, 0, -1), h = 34;
+    const F = new Frame(x0, z1 - 5, 0, -1), h = 34;
     F.box(G, 'trimstone', 0, P.w, y1 + h - 6, y1 + h, -4, 4, { faces: 'FLRT', vary: 0.05 }); F.box(G, 'trimstone', 0, P.w, y1, y1 + 4, -3, 3, { faces: 'FLRT', vary: 0.05 });
-    for (let u = 12; u < P.w - 6; u += 22) G.lathe('trimstone', x0 + u, z1 - 9, [[3.2, y1 + 4], [4.6, y1 + 11], [2.4, y1 + 20], [3.4, y1 + h - 6]], 6, { vary: 0 });
-    for (const u of [0, P.w]) { G.box('stone', x0 + u - 7, y1, z1 - 16, x0 + u + 7, y1 + h + 6, z1 - 2, { faces: 'FLRT', top: 'trimstone' }); G.lathe('trimstone', x0 + u, z1 - 9, [[6, y1 + h + 6], [7, y1 + h + 11], [0, y1 + h + 20]], 6, { vary: 0 }); }
+    for (let u = 12; u < P.w - 6; u += 22) G.lathe('trimstone', x0 + u, z1 - 5, [[3.2, y1 + 4], [4.6, y1 + 11], [2.4, y1 + 20], [3.4, y1 + h - 6]], 6, { vary: 0 });
+    for (const u of [0, P.w]) { G.box('stone', x0 + u - 7, y1, z1 - 11, x0 + u + 7, y1 + h + 6, z1 + 1, { faces: 'FLRT', top: 'trimstone' }); G.lathe('trimstone', x0 + u, z1 - 5, [[6, y1 + h + 6], [7, y1 + h + 11], [0, y1 + h + 20]], 6, { vary: 0 }); }
   }
 }
 
@@ -347,7 +347,7 @@ export function dressStairs(G, P) {
       G.box('stone', xa - 2, y, P.z - 12, xb + 2, y + hRail + 10, P.z + 2, { faces: 'FLRT', top: 'trimstone' });
       G.box('stone', xa - 2, y + P.h, P.z + P.d - 2, xb + 2, y + P.h + hRail + 10, P.z + P.d + 12, { faces: 'FLRT', top: 'trimstone' });
     } else if (P.dir === 'x+' && s === 'K') {
-      const za = P.z + P.d - T, zb = P.z + P.d;
+      const za = P.z + P.d, zb = za + T;
       G.quad4('stone', [P.x, y, za], [P.x + P.w, y + P.h, za], [P.x + P.w, y + P.h + hRail, za], [P.x, y + hRail, za], [0, 0, -1], { k: 0.9 });
       G.quad4('trimstone', [P.x, y + hRail, za - 1], [P.x + P.w, y + P.h + hRail, za - 1], [P.x + P.w, y + P.h + hRail, zb], [P.x, y + hRail, zb], [-0.5, 0.86, 0], { vary: 0.05 });
       G.box('stone', P.x - 12, y, za - 2, P.x + 2, y + hRail + 10, zb, { faces: 'FLRT', top: 'trimstone' });
