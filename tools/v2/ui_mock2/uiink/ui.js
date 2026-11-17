@@ -6,6 +6,8 @@ export const DPR = Math.min(3, window.devicePixelRatio || 1);
 const smoke = smokeSprite(256, 4);
 const ENSO = { ink: ensoSprite(420, { w: 5.2, seed: 3 }), crim: ensoSprite(420, { w: 6, c: CRIM, seed: 8 }), gold: ensoSprite(420, { w: 4.6, c: GOLD, seed: 5 }), thin: ensoSprite(420, { w: 3.2, seed: 12, dry: 0.9, a0: 150, a1: 420 }) };
 const TAU = Math.PI * 2;
+// 검토(ui2review)에서 더함: ?glass=clear — 유리를 더 맑게 한 판(가운데 30 % → 가장자리 66 %). 기본값(48 → 78 %)은 그대로.
+const GL = /[?&]glass=clear/.test(location.search) ? [0.30, 0.42, 0.66] : [0.48, 0.60, 0.78];
 
 // 원판 한 장. o: s 지름(CSS px) · kind main|skill|aux|ult|sys|map · icon · 상태(pr 눌림 · on 켜짐 · off 잠김 · rdy 강조 · cool 남은 비율 0–1 · chg 충전 0–100 · ct 글자)
 export function paintButton(cv, o) {
@@ -21,7 +23,7 @@ export function paintButton(cv, o) {
   x.save(); x.beginPath(); x.arc(c, c, R, 0, TAU); x.clip();
   x.globalCompositeOperation = 'destination-out'; x.fillStyle = '#000'; x.fillRect(0, 0, full, full); x.globalCompositeOperation = 'source-over';
   const k = kind === 'map' ? 1.05 : 1, tint = big ? '34,10,16' : (o.on || ultReady) ? '58,8,18' : '14,14,20';
-  g = x.createRadialGradient(c, c - R * 0.18, R * 0.1, c, c, R); g.addColorStop(0, `rgba(${tint},${0.48 * k})`); g.addColorStop(0.72, `rgba(8,8,12,${0.60 * k})`); g.addColorStop(1, `rgba(2,2,5,${0.78 * k})`);
+  g = x.createRadialGradient(c, c - R * 0.18, R * 0.1, c, c, R); g.addColorStop(0, `rgba(${tint},${GL[0] * k})`); g.addColorStop(0.72, `rgba(8,8,12,${GL[1] * k})`); g.addColorStop(1, `rgba(2,2,5,${GL[2] * k})`);
   x.fillStyle = g; x.fillRect(0, 0, full, full);
   x.globalAlpha = 0.13; x.globalCompositeOperation = 'lighter'; x.drawImage(smoke, c - R, c - R, R * 2, R * 2); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
   g = x.createLinearGradient(0, c - R, 0, c); g.addColorStop(0, 'rgba(236,240,255,.20)'); g.addColorStop(1, 'rgba(236,240,255,0)');   // 위쪽 달빛 반사

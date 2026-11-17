@@ -1,0 +1,118 @@
+{
+ "batch": "castenemy (v2 1차 출시 적 6종 + 보스 밴시 여왕, 입체) 2026-11-17",
+ "cap_credits": 260,
+ "jobs": [
+  {
+   "id": "skeleton",
+   "file": "raw/img_skeleton.png",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "medium"
+   },
+   "ref": "style ref = tools/v2/char3d_samples/kael3_apose_front.webp (media 80d06194)",
+   "prompt": "skeleton soldier A-pose front: kettle helm, crimson scarf, leather cuirass, one pauldron, greaves",
+   "job_id": "468ab7f6-98a1-4f9d-9d7a-1b0e1b5a5f9b",
+   "credits": 1
+  },
+  {
+   "id": "skelmage",
+   "file": "raw/img_skelmage.png",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "medium"
+   },
+   "ref": "style ref (same)",
+   "prompt": "skeleton sorcerer A-pose front: short hooded mantle, split knee-length panels, legs visible",
+   "job_id": "370c7c45-2ffa-4c14-ab41-1488a1a6a7d9",
+   "credits": 1
+  },
+  {
+   "id": "plague",
+   "file": "raw/img_plague.png",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "medium"
+   },
+   "ref": "style ref (same)",
+   "prompt": "plague corpse 1697 villager A-pose front",
+   "job_id": "4d3caf4f-a711-4b7e-86ac-f233fedce818",
+   "credits": 1
+  },
+  {
+   "id": "ghost",
+   "file": "raw/img_ghost.png",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "medium"
+   },
+   "ref": "style ref (same)",
+   "prompt": "grave ghost hooded shroud, tapering tatter tail, no legs",
+   "job_id": "6790dd05-cfc1-4a46-97b6-e214938deee3",
+   "credits": 1
+  },
+  {
+   "id": "gravearmor",
+   "file": "raw/img_gravearmor.png",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "medium"
+   },
+   "ref": "style ref (same)",
+   "prompt": "grave-keeper armour giant hollow plate, brimmed helm, keys, lantern",
+   "job_id": "131088bc-c2f9-4c62-8e02-e6fe3efe866a",
+   "credits": 1
+  },
+  {
+   "id": "bat",
+   "file": "raw/img_bat.png",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:2",
+    "resolution": "2k",
+    "quality": "medium"
+   },
+   "prompt": "vampire bat front, wings fully spread flat",
+   "job_id": "3c5c48ea-931b-4939-b006-ddb40d84ecbc",
+   "credits": 1
+  },
+  {
+   "id": "banshee",
+   "file": "raw/img_banshee_a.png",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "medium"
+   },
+   "ref": "style ref (same)",
+   "prompt": "banshee queen A: beautiful pale face, thorn crown with bells, bell gown ending in tatters",
+   "job_id": "ffeb3af3-fc05-4727-b9ee-0ffea2d22cd6",
+   "credits": 1
+  },
+  {
+   "id": "banshee",
+   "file": "raw/img_banshee_b.png",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "medium"
+   },
+   "ref": "style ref (same)",
+   "prompt": "banshee queen B: half-skull face, cowl, lily pauldrons",
+   "job_id": "dcd7c9b1-18a2-4e99-bca1-cfc9f892822e",
+   "credits": 1
+  }
+ ],
+ "total_credits": 8
+}

@@ -117,7 +117,7 @@ if (app) {
     view = v;
     const d = dev();
     const bg = Q.get('bg') || (v === 'dialog' ? 'street' : 'yard');
-    app.className = `v-${v} ${d} bg-${bg}${SHOT ? ' shot' : ''}${Q.get('hide') ? ' hide-' + Q.get('hide') : ''}`;
+    app.className = `v-${v} ${d} bg-${bg}${SHOT ? ' shot' : ''}${Q.get('hide') ? ' hide-' + Q.get('hide') : ''}${Q.get('glass') === 'clear' ? ' clear' : ''}`;
     $('#bg').style.backgroundImage = `url(${BGDIR}${d === 'fold' ? 'fold_open' : 'phone2'}_${bg}.webp)`;
     if (v === 'dialog') $('.dt').textContent = T.dlg[line % T.dlg.length];
   };

@@ -147,7 +147,7 @@ const setup = await page.evaluate(async ({ SR, phone, oldNames }) => {
     at(0.1, () => { id = fsnd.loopStart('loop.street'); mv = fsnd.loopStart('loop.magic.fire', { x: -300, y: 40, z: 0 }); out.started = id > 0 && mv > 0 && fsnd.loops.length === 2; });
     at(0.4, () => { const h = fsnd.loops.find((x) => x.id === id); eng.steal(h.x, oc.currentTime); out.panBefore = fsnd.loops.find((x) => x.id === mv).x.node.pan.value; fsnd.loopMove(mv, { x: 400, y: 40, z: 0 }); });
     at(1.2, () => { fsnd.update(); const h = fsnd.loops.find((x) => x.id === id); out.restarted = !!h && !h.x.stolen && h.x.end > oc.currentTime + 10; out.panAfter = +fsnd.loops.find((x) => x.id === mv).x.node.pan.value.toFixed(2); });
-    at(1.4, () => { fsnd.hit('great', 'armor', 'F', 18, { x: 0, y: 40, z: 0 }); fl = fsnd.filters.find((x) => x.f); out.filterOpen = fl ? Math.round(fl.f.frequency.value) : 0; });
+    at(1.4, () => { fsnd.hit('great', 'armor', 'F', 18, { x: 0, y: 40, z: 0 }); fl = fsnd.filters[(fsnd._fi + fsnd.filters.length - 1) % fsnd.filters.length]; out.filterOpen = fl ? Math.round(fl.f.frequency.value) : 0; });
     at(1.6, () => fsnd.setTimeScale(0.25));
     at(2.0, () => { out.filterSlow = fl ? Math.round(fl.f.frequency.value) : 0; fsnd.setTimeScale(1); });
     at(2.5, () => { out.filterBack = fl ? Math.round(fl.f.frequency.value) : 0; fsnd.loopStop(mv); out.afterStop = fsnd.loops.length; });
@@ -205,7 +205,7 @@ if (has('shot')) {
     const calls = [], orig = navigator.vibrate; navigator.vibrate = (v) => { calls.push(v); return true; };
     const input = haptics.input, mode = input.mode; input.mode = 'touch';
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-    feel.hit('sword', 'bone', 'L', 0, null); await wait(90); feel.hit('sword', 'bone', 'H', 0, null); await wait(140); feel.hit('great', 'bone', 'F', FLAG.finisher | FLAG.kill, null); await wait(300); feel.play('ui.ok'); feel.bell('toll'); await wait(300);
+    feel.hit('sword', 'bone', 'L', 0, null); await wait(90); feel.hit('sword', 'bone', 'H', 0, null); await wait(140); feel.hit('great', 'bone', 'F', FLAG.finisher | FLAG.kill, null); await wait(420); feel.play('ui.ok'); feel.bell('toll'); await wait(300);   // 마무리 진동(320 ms)이 끝난 뒤 — v1 규칙: 더 센 진동이 울리는 동안 약한 것은 건너뛴다
     input.mode = mode; navigator.vibrate = orig; haptics.reset();
     return calls;
   });

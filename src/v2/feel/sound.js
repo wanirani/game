@@ -138,9 +138,9 @@ function sample(S, l, fs) {
   const e = S.e, m = l.k === 'n' ? (fs.bank ? fs.bank.sample(l.n) : null) : e.v2 ? e.v2.sample(l.n) : null;
   if (!m) {
     fs.miss++;
-    // 옛 샘플이 아직 안 풀렸거나(첫 호출) 이 브라우저가 m4a 를 못 풀면 → v1 합성음으로 대신한다 (소리가 비지 않게)
+    // 옛 샘플이 아직 안 풀렸거나(첫 호출) 이 브라우저가 m4a 를 못 풀면 → v1 합성음으로 대신한다 (소리가 비지 않게) — ×0.7: 합성음은 같은 음량에서 샘플보다 크다 (검사 fallback.* 로 맞춤)
     const d = l.k === 'o' && Object.hasOwn(SFX, l.n) ? SFX[l.n] : null;
-    if (d) { S2.e = e; S2.c = S.c; S2.t = S.t + l.at; S2.p = S.p * l.p; S2.v = S.v * l.g * (d.vol ?? 1); S2.out = S.out; S2.end = 0; try { d.fn(S2, fs.H); } catch { /* 무시 */ } if (l.at + S2.end > S.end) S.end = l.at + S2.end; }
+    if (d) { S2.e = e; S2.c = S.c; S2.t = S.t + l.at; S2.p = S.p * l.p; S2.v = S.v * l.g * (d.vol ?? 1) * 0.7; S2.out = S.out; S2.end = 0; try { d.fn(S2, fs.H); } catch { /* 무시 */ } if (l.at + S2.end > S.end) S.end = l.at + S2.end; }
     return;
   }
   const vr = m.vr, k = vr ? vr.length : m.bufs.length; let i = 0;
@@ -345,6 +345,7 @@ export class FeelSound {
       const h = this.loops[i], gone = !h.x || h.x.stolen || h.x.end <= now;
       if (!gone) continue;
       this.loops.splice(i, 1);
+      try { h.src.stop(); } catch { /* 이미 멈춤 */ }   // 빼앗긴 인스턴스의 고리 소스를 멈춘다 (끊긴 그래프에서 계속 돌지 않게)
       if (h.rec.keep && !h.dead) { const id = this.loopStart(h.name, h.pos, h.vol); const n = this._loop(id); if (n) n.id = h.id; }   // 같은 번호로 다시
     }
   }
