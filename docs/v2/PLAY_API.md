@@ -23,6 +23,7 @@ for (const e of sim.enemies) if (!e.dead) driveActor(charOf(e), e, dt);   // 적
 
 - **규칙은 화면을 모른다.** 좌표는 x 오른쪽 · z 화면 안쪽 · y 위, 단위는 논리 px (1 m = `UNIT` 58).
 - **보는 방향은 규칙이 정한다**(`dirX`,`dirZ` 단위 벡터, 360°). 그림은 `driveHero`/`driveActor` 가 그 방향으로 부드럽게 돌린다(`ch.dx`,`ch.dz`): 한 번 돌기 시작한 쪽으로 끝까지 돌고(스틱을 반대로 꺾어도 오락가락하지 않는다), 반대로 꺾는 데 0.2–0.27초.
+- **그림에만 얹는 것**(`driveHero`): 달릴 때 윗몸을 12° 세우고, 돌 때 도는 쪽으로 기울이고, 락온한 적을 고개로 본다. 자세를 입힌 뒤 뼈 몇 개를 더 돌리는 것이라 클립은 그대로다(`TUNE.runLeanFix · runBank · lookMax` 를 0 으로 두면 꺼진다).
 - **클립은 공용 라이브러리**(`assets/v2/char3d/clips/`). 장면이 `ch.asset.clips` 에 이미 붙여 두었으면 그대로 쓰고, 없으면 `driveHero`/`driveActor` 가 처음 불릴 때 스스로 받는다(받기 전에는 시범판의 몰이로 돈다). 모델 파일에 든 클립(`float_idle` · `fly`)은 이름 그대로 `ch.asset.clips` 에 더한다. 미리 받으려면 `await loadPlayClips(asset)`.
 - 세계 `W`: `{ start:{x,y,z}, spawns:[{kind,x,y,z,yard?,active?}], boxes:[{x0,x1,z0,z1,y0,y1,solid,walk}], sections:[{id,x0,x1,z0,z1}], tele?:{id:[x,z]} }` (시범판 B 의 `compileStage` · 환경 키트 `compileEnv` 결과 그대로). 다른 충돌을 쓰려면 `W.groundAt(x,z,yMax)` · `W.moveXZ(e,dx,dz)` · `W.sectionAt(x,z)` 를 달아 주면 그것을 쓴다.
 - 타격 멈춤: 규칙은 `sim.stop`(초)을 스스로 건다(`TUNE.ownHitstop`). 장면이 멈춤을 쥐면(ENGINE_API §1) 틱마다 `sim.stop = 0` 으로 지우면 된다 — 지금 장면이 그렇게 한다. `hooks.hit` 이 `{ stop }` 을 돌려주면 그 값을 쓴다.
@@ -52,7 +53,7 @@ for (const e of sim.enemies) if (!e.dead) driveActor(charOf(e), e, dt);   // 적
 | `move` · `moveT` · `combo` | 지금 기술(§4 의 한 줄, 없으면 `null`) · 기술 시간 · 연타 번호 0–2. `move.hit[0..1]` = 판정 구간, `move.id` · `move.strength` · `move.weapon` |
 | `dashT` · `roll:{t,dur,dx,dz}` | 구르기 남은 초 (0 보다 크면 구르는 중) · 구르는 방향 |
 | `guard`(막는 중) · `parryT`(튕겨내기 창 남은 초) · `parryOk`(튕겨낸 뒤 남은 초) · `blockT`(막고 밀리는 초) | 막기 |
-| `lock` · `lockT` | **락온한 적의 `id` 또는 `null`** — 장면이 표식을 그린다(`sim.byId(h.lock)`). `lockT` = 걸린 뒤 흐른 초 |
+| `lock` · `lockT` · `lockX lockY lockZ` | **락온한 적의 `id` 또는 `null`** — 장면이 표식을 그린다(`sim.byId(h.lock)`). `lockT` = 걸린 뒤 흐른 초. `lockX/Y/Z` = 그 적의 가슴 자리(틱마다 갱신) — 카엘이 고개를 돌려 그쪽을 본다 |
 | `gait` · `gaitMode` | 걸음 주기(0…1 을 되풀이; 0 = 오른발, 0.5 = 왼발) · `'walk'｜'run'`. 발소리 사건과 달리기 클립이 이 값 하나를 같이 쓴다 |
 | `plungeEta` · `plungeLand` | 내려베기: 땅에 닿기까지 남은 초 · 닿은 때의 `moveT` |
 | `safe` | 마지막으로 선 안전한 자리 (구덩이에 빠지면 돌아오는 곳) |
@@ -110,7 +111,8 @@ for (const e of sim.enemies) if (!e.dead) driveActor(charOf(e), e, dt);   // 적
 | `parryWin 0.2` · `guardArc 100` · `guardTap 0.3` · `guardPush 130` | 막기 · 튕겨내기 |
 | `lockRange 380` · `lockKeep 470` · `lockAim 230` · `aimCone 55` · `lungeMax 78` | 락온 · 조준 보정 |
 | `heroHp 100` · `hurtIfr 0.95` · `hurtT 0.26` · `deadT 2.1` | 몸 |
-| `runLeanFix 12` | 달리기 클립의 숙임(26°)을 이만큼 세운다(그림만) |
+| `runLeanFix 12` · `runBank 1.1` · `lookMax 58` | 그림만 바뀌는 값: 달리기 클립의 숙임(26°)을 이만큼 세운다 · 달리며 돌 때 도는 쪽으로 기우는 정도(최대 11°) · 락온한 적을 고개로 보는 최대 각도 |
+| `stepL { run 0.54, walk 0.46 }` | 걸음 주기에서 왼발이 닿는 때(오른발 = 0) — 클립의 발 사건 자리. `step` 사건이 이때 난다 |
 
 ## 5. 사건 (hooks)
 
@@ -149,7 +151,7 @@ for (const e of sim.enemies) if (!e.dead) driveActor(charOf(e), e, dt);   // 적
 | `wake` | `(e)` | 적이 영웅을 봄 |
 | `heroDie` | `(hero)` | 영웅 쓰러짐 |
 
-밖에서 부르는 함수: `sim.hitStop(초)` · `sim.hurtHero(dmg, dirX, dirZ, { e, atk, shot })` → `false｜'parry'｜'guard'｜'hurt'` · `sim.staggerEnemy(e, 초)`(종소리 등) · `sim.reveal(x, z, r, 초)` · `sim.addEnemy({kind, x, z, active?})` · `sim.byId(id)` · `sim.teleport(구역 id)`.
+밖에서 부르는 함수: `sim.wake(e)`(잠든 적 깨우기 — 스테이지 `spawns[].group` 은 `e.group` 으로 실려 온다) · `sim.hitStop(초)` · `sim.hurtHero(dmg, dirX, dirZ, { e, atk, shot })` → `false｜'parry'｜'guard'｜'hurt'` · `sim.staggerEnemy(e, 초)`(종소리 등) · `sim.reveal(x, z, r, 초)` · `sim.addEnemy({kind, x, z, active?})` · `sim.byId(id)` · `sim.teleport(구역 id)`.
 
 ## 6. 적 종류를 더하는 법
 

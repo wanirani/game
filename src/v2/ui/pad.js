@@ -60,7 +60,7 @@ export function createPad(game, opts = {}) {
     cv.className = 'v2b'; cv.dataset.id = def.id;
     cv.style.cssText = 'position:absolute;left:0;top:0;will-change:transform;transform-origin:50% 42%;';
     root.appendChild(cv);
-    return { def, cv, ctx: cv.getContext('2d'), cx: 0, cy: 0, d: 0, pad: 0, cw: 0, ch: 0, lw: 0, down: false, ptr: -1, t0: 0, cd: 0, charge: 0, disabled: false, icon: def.icon, label: def.label, dirty: true };
+    return { id: def.id, def, sent: '', cv, ctx: cv.getContext('2d'), cx: 0, cy: 0, d: 0, pad: 0, cw: 0, ch: 0, lw: 0, down: false, ptr: -1, t0: 0, cd: 0, charge: 0, disabled: false, icon: def.icon, label: def.label, dirty: true };
   });
   const byId = Object.fromEntries(B.map((b) => [b.id, b]));
   const mk = (cls) => { const c = document.createElement('canvas'); c.className = cls; c.style.cssText = 'position:absolute;left:0;top:0;will-change:transform,opacity;'; root.appendChild(c); return c; };
@@ -108,8 +108,8 @@ export function createPad(game, opts = {}) {
     const st = S.stick, L = S.L, bw = L.stick.r * 2 + 16, kw = L.stick.r * 0.92 + 12;
     baseCv.style.transform = `translate3d(${(st.ox - bw / 2).toFixed(1)}px,${(st.oy - bw / 2).toFixed(1)}px,0)`;
     knobCv.style.transform = `translate3d(${(st.ox + st.x - kw / 2).toFixed(1)}px,${(st.oy + st.y - kw / 2).toFixed(1)}px,0)`;
-    const o = st.live ? '1' : '0.5';
-    if (baseCv.style.opacity !== o) { baseCv.style.opacity = o; knobCv.style.opacity = st.live ? '1' : '0.62'; }
+    const o = st.live ? '1' : '0.66';
+    if (baseCv.style.opacity !== o) { baseCv.style.opacity = o; knobCv.style.opacity = st.live ? '1' : '0.8'; }
   }
 
   function drawStickBase(ctx, w, R, s) {

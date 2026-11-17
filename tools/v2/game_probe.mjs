@@ -7,7 +7,7 @@ import { contextOptions } from '../qa/lib/viewports.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => { if (v.startsWith('--')) a.push([v.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true]); return a; }, []));
 const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
-const GL_ARGS = ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'];
+const GL_ARGS = ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required', "--enable-precise-memory-info", "--js-flags=--expose-gc"];
 const port = 8900 + Math.floor(Math.random() * 90), srv = await start(port);
 const browser = await chromium.launch({ executablePath: EXE, args: GL_ARGS });
 try {

@@ -21,7 +21,7 @@ export function createCanvasHud(game, opts = {}) {
 
   // ───── baked pieces (each: { c, w, h, key }) ─────
   const mkPiece = () => ({ c: null, w: 0, h: 0, key: '' });
-  const badge = { now: mkPiece(), past: mkPiece() }, shelf = mkPiece(), moonP = mkPiece(), bossP = mkPiece(), bossFill = mkPiece(), secP = mkPiece();
+  const badge = { now: mkPiece(), past: mkPiece() }, shelves = {}, moonP = mkPiece(), bossP = mkPiece(), bossFill = mkPiece(), secP = mkPiece();
   const bannerP = mkPiece(), bandP = mkPiece(), promptRow = mkPiece(), msgP = mkPiece(), msg2P = mkPiece(), dbgP = mkPiece(), resLabel = mkPiece();
   const nums = []; for (let i = 0; i < NUM_SLOTS; i++) nums.push({ c: null, w: 0, h: 0, str: null, color: null, big: false, ep: 0 });
   const calls = []; for (let i = 0; i < CALL_SLOTS; i++) calls.push({ c: null, w: 0, h: 0, on: false, t: 0, x: 0, y: 0, z: 0, kind: '', dur: 1 });
@@ -56,7 +56,7 @@ export function createCanvasHud(game, opts = {}) {
   // night badge: a small gem with the emblem and a name plate
   function bakeBadge(which) {
     const p = badge[which]; if (!stale(p, which)) return p;
-    const r = px(23), ts = tsz(10.5), label = which === 'past' ? (opts.labels?.past ?? '그 밤') : (opts.labels?.now ?? '오늘 밤');
+    const r = px(27), ts = tsz(11), label = which === 'past' ? (opts.labels?.past ?? '그 밤') : (opts.labels?.now ?? '오늘 밤');
     const w = Math.max(r * 2 + 16, measure(label, ts) + ts * 1.1 + 8), h = r * 2 + 12 + ts * 1.3;
     const c = ctxOf(p, w, h);
     gem(c, w / 2, r + 6, r, { tint: which === 'past' ? 'ruby' : null, facets: 12 });
@@ -66,8 +66,9 @@ export function createCanvasHud(game, opts = {}) {
   }
   // the altar ledge the candles stand on
   function bakeShelf(n, step) {
+    const shelf = shelves[n] ?? (shelves[n] = mkPiece());
     if (!stale(shelf, n + '|' + step)) return shelf;
-    const w = (n - 1) * step + px(30), h = px(9);
+    const w = (n - 1) * step + px(36), h = px(10);
     const c = ctxOf(shelf, w + 4, h + 6);
     glassPanel(c, 2, 2, w, h, { cut: px(3.5), shadow: false, top: 'rgba(40,46,80,0.50)', bot: 'rgba(8,9,22,0.62)' });
     return shelf;
@@ -75,7 +76,7 @@ export function createCanvasHud(game, opts = {}) {
   function bakeMoon(ph) {
     const q = Math.round(clamp(ph, 0, 1) * 24);
     if (!stale(moonP, 'm' + q)) return moonP;
-    const r = px(11), w = r * 2 + 8, c = ctxOf(moonP, w, w), cx = w / 2;
+    const r = px(13), w = r * 2 + 8, c = ctxOf(moonP, w, w), cx = w / 2;
     c.save(); c.beginPath(); c.arc(cx, cx, r, 0, TAU); c.clip();
     sprite(c, 'moon', cx, cx, r * 2.06, r * 2.06);
     // the dark side: an offset disc of night blue
@@ -86,11 +87,11 @@ export function createCanvasHud(game, opts = {}) {
     c.lineWidth = 0.8; c.strokeStyle = 'rgba(2,3,10,0.55)'; c.beginPath(); c.arc(cx, cx, r + 1, 0, TAU); c.stroke();
     return moonP;
   }
-  function bossW() { return Math.min(px(400), L.vw * 0.44); }
+  function bossW() { return Math.max(px(150), Math.min(px(400), L.vw * 0.44, 2 * (L.vw / 2 - (T.statusR || 0) - px(14)))); }
   function bakeBoss(b) {
     const name = String(b.name ?? ''), sub = String(b.sub ?? '');
-    if (!stale(bossP, name + '|' + sub)) return bossP;
-    const bw = bossW(), ts = tsz(17, L.tmin + 2), crestH = px(34), barH = px(11), w = bw + 24, h = crestH + ts * 1.5 + barH + px(14);
+    if (!stale(bossP, name + '|' + sub + '|' + Math.round(bossW()))) return bossP;
+    const bw = bossW(), ts = tsz(17, L.tmin + 2), crestH = px(34), barH = px(13), w = bw + 24, h = crestH + ts * 1.5 + barH + px(14);
     const c = ctxOf(bossP, w, h);
     sprite(c, 'orn_boss', w / 2, crestH / 2 + 1, px(150), crestH);
     const nm = bakeText(name, L.s, { size: ts, family: FONTS.title, weight: 800, fill: ['#ffffff', '#cfd6f2'], lw: 3, stroke: 'rgba(8,6,18,0.86)' });
@@ -139,13 +140,13 @@ export function createCanvasHud(game, opts = {}) {
   function bakeToast(o) {
     const ts = tsz(13.5, L.tmin + 1.5), ih = px(26), tw = measure(o.text, ts, 600), w = tw + ih + px(34), h = px(34);
     const c = ctxOf(o, w + 6, h + 8);
-    glassPanel(c, 3, 3, w, h, { cut: px(7), dense: 0.5, accent: o.kind === 'warn' ? 'ruby' : o.kind === 'item' ? 'gold' : null });
+    glassPanel(c, 3, 3, w, h, { cut: px(7), dense: 0.8, accent: o.kind === 'warn' ? 'ruby' : o.kind === 'item' ? 'gold' : null });
     const ix = 3 + px(9) + ih / 2, iy = 3 + h / 2;
     if (o.img && o.img.complete && o.img.naturalWidth) c.drawImage(o.img, ix - ih / 2, iy - ih / 2, ih, ih);
     else sprite(c, typeof o.icon === 'string' && !o.img ? o.icon : 'interact', ix, iy, ih, ih);
     c.font = `600 ${ts}px ${FONTS.body}`; c.textBaseline = 'middle'; c.textAlign = 'left';
-    c.lineWidth = 2.4; c.strokeStyle = 'rgba(4,4,12,0.7)'; c.lineJoin = 'round'; c.strokeText(o.text, ix + ih / 2 + px(8), iy + 1);
-    c.fillStyle = o.kind === 'item' ? '#fff0cf' : COL.silver; c.fillText(o.text, ix + ih / 2 + px(8), iy + 1);
+    c.lineWidth = 3; c.strokeStyle = 'rgba(4,4,12,0.85)'; c.lineJoin = 'round'; c.strokeText(o.text, ix + ih / 2 + px(8), iy + 1);
+    c.fillStyle = o.kind === 'item' ? '#fff2d2' : '#ffffff'; c.fillText(o.text, ix + ih / 2 + px(8), iy + 1);
     c.textBaseline = 'alphabetic';
   }
   // one prompt chip: [key cap | action icon] label
@@ -195,7 +196,7 @@ export function createCanvasHud(game, opts = {}) {
   function bakeNumber(slot, n) {
     slot.str = n.str; slot.color = n.color; slot.big = !!n.big; slot.ep = L.epoch;
     const big = !!n.big, col = n.color || '#fff', white = col === '#fff' || col === '#ffffff' || col === 'white';
-    const o = NUM_STYLE; o.size = tsz(big ? 40 : 27, L.tmin + 4); o.lw = big ? 4.5 : 3.5;
+    const o = NUM_STYLE; o.size = tsz(big ? 52 : 35, L.tmin + 6); o.lw = big ? 5 : 4;
     NUM_FILL[0] = big ? '#fff5da' : white ? '#ffffff' : col; NUM_FILL[1] = big ? '#ff5a72' : white ? '#c9d3f5' : col; o.fill = NUM_FILL;
     o.glow = big ? 'rgba(226,54,78,0.6)' : null; o.swoosh = big ? 'rgba(226,54,78,0.8)' : null;
     bakeText(String(n.str), L.s, o, slot);
@@ -228,7 +229,7 @@ export function createCanvasHud(game, opts = {}) {
     let slot = calls.find((q) => !q.on); if (!slot) { slot = calls[0]; for (const q of calls) if (q.t > slot.t) slot = q; }
     slot.on = true; slot.t = 0; slot.x = x; slot.y = y; slot.z = z; slot.kind = kind; slot.dur = kind === 'num' ? 0.8 : 1.15;
     if (kind === 'num') { NUMTMP.str = text; NUMTMP.color = '#fff'; NUMTMP.big = big; bakeNumber(slot, NUMTMP); }
-    else { const st = CALL_STYLE[kind] ?? CALL_STYLE.info; bakeText(String(text), L.s || 2, { size: tsz(25, L.tmin + 4), family: FONTS.brush, weight: 700, fill: st.fill, lw: 3.6, stroke: 'rgba(10,6,18,0.92)', glow: st.glow, glowBlur: 7, swoosh: st.swoosh }, slot); }
+    else { const st = CALL_STYLE[kind] ?? CALL_STYLE.info; bakeText(String(text), L.s || 2, { size: tsz(31, L.tmin + 5), family: FONTS.brush, weight: 700, fill: st.fill, lw: 4, stroke: 'rgba(10,6,18,0.92)', glow: st.glow, glowBlur: 7, swoosh: st.swoosh }, slot); }
   }
   const NUMTMP = { str: '', color: '#fff', big: false };
   onAtlas(() => { L.epoch++; });
@@ -321,26 +322,16 @@ export function createCanvasHud(game, opts = {}) {
     const x0 = sf.l + px(10), y0 = sf.t + px(8);
     const which = (s.night ?? s.area?.era) === 'past' ? 'past' : 'now';
     const bd = bakeBadge(which); blit(ctx, bd, x0, y0);
-    const cx0 = x0 + bd.w + px(12), max = T.max, step = px(max > 8 ? 16.5 : 21), baseY = y0 + px(42), ch = px(35);
-    const sh = bakeShelf(max, step); blit(ctx, sh, cx0 - px(15) - 2, baseY - px(4));
+    // candles: one row up to eight; more stand on two altar tiers (the back tier is drawn first, half a step aside)
+    const max = T.max, per = max > 8 ? Math.ceil(max / 2) : max, two = max > per, step = px(25), ch = px(43);
+    const cx0 = x0 + bd.w + px(14), baseY = y0 + px(50) + (two ? px(20) : 0);
     const litN = T.litShown, hurtK = T.hurt / 0.7;
-    for (let i = 0; i < max; i++) {
-      const cx = cx0 + i * step, f = clamp(litN - i, 0, 1);
-      if (f > 0.02) {
-        spriteUp(ctx, 'candle', cx, baseY, ch);
-        const fl = 1 + 0.07 * Math.sin(T.t * 11 + phase[i]) + 0.05 * Math.sin(T.t * 23.7 + phase[i] * 2) + hurtK * 0.35 * Math.sin(T.t * 47 + phase[i] * 3);
-        const fh = px(21) * (0.55 + 0.45 * f) * fl, sway = hurtK * px(2.2) * Math.sin(T.t * 31 + phase[i]);
-        ctx.globalAlpha = clamp(0.86 + 0.14 * Math.sin(T.t * 17 + phase[i]) - hurtK * 0.25 * (0.5 + 0.5 * Math.sin(T.t * 53 + i)), 0.3, 1);
-        spriteUp(ctx, 'flame', cx + sway, baseY - ch * 0.80, fh);
-        ctx.globalAlpha = 1;
-      } else {
-        spriteUp(ctx, 'candle_dead', cx, baseY, ch);
-        const sm = smoke[i];
-        if (sm > 0) { const k = 1 - sm / 0.9; ctx.globalAlpha = (1 - k) * 0.55; ctx.fillStyle = '#c9cfe6'; ctx.beginPath(); ctx.arc(cx + Math.sin(k * 7 + i) * px(3), baseY - ch - k * px(16), px(2 + k * 4), 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
-      }
-    }
+    T.statusR = cx0 + (per - 1) * step + px(20) + (two ? step / 2 : 0);
+    if (two) { const sh2 = bakeShelf(max - per, step); blit(ctx, sh2, cx0 + step / 2 - px(18) - 2, baseY - px(24) - px(4.5)); for (let i = per; i < max; i++) candle(ctx, i, cx0 + step / 2 + (i - per) * step, baseY - px(24), ch * 0.92, litN, hurtK); }
+    const sh = bakeShelf(per, step); blit(ctx, sh, cx0 - px(18) - 2, baseY - px(4.5));
+    for (let i = 0; i < per; i++) candle(ctx, i, cx0 + i * step, baseY, ch, litN, hurtK);
     // resonance cells
-    const cells = clamp(Math.round(s.resonance?.cells ?? 3), 3, 5), gy = baseY + px(34), cellH = px(27), cstep = px(15.5), full = T.res >= cells - 0.02;
+    const cells = clamp(Math.round(s.resonance?.cells ?? 3), 3, 5), gy = baseY + px(41), cellH = px(32), cstep = px(18), full = T.res >= cells - 0.02;
     for (let i = 0; i < cells; i++) {
       const cx = cx0 + px(2) + i * cstep, f = clamp(T.res - i, 0, 1);
       spriteUp(ctx, 'cell_empty', cx, gy, cellH);
@@ -352,7 +343,7 @@ export function createCanvasHud(game, opts = {}) {
     if (s.section?.label) { const sp = bakeSection(s.section.label); blit(ctx, sp, rx, gy - cellH / 2 - sp.h / 2); }
 
     // 3) toasts under the status block
-    let ty = y0 + bd.h + px(40);
+    let ty = y0 + bd.h + px(52);
     for (let i = 0; i < TOAST_SLOTS; i++) {
       const o = toasts[i]; if (!o.on) continue;
       if (o.dirty || o.ep !== L.epoch) { bakeToast(o); o.dirty = false; o.ep = L.epoch; }
@@ -388,6 +379,21 @@ export function createCanvasHud(game, opts = {}) {
       blit(ctx, dbgP, vw / 2 - dbgP.w / 2, vh - sf.b - dbgP.h + 2);
     }
   }
+  function candle(ctx, i, cx, baseY, ch, litN, hurtK) {
+    const f = clamp(litN - i, 0, 1);
+    if (f > 0.02) {
+      spriteUp(ctx, 'candle', cx, baseY, ch);
+      const fl = 1 + 0.07 * Math.sin(T.t * 11 + phase[i]) + 0.05 * Math.sin(T.t * 23.7 + phase[i] * 2) + hurtK * 0.35 * Math.sin(T.t * 47 + phase[i] * 3);
+      const fh = ch * 0.6 * (0.55 + 0.45 * f) * fl, sway = hurtK * px(2.2) * Math.sin(T.t * 31 + phase[i]);
+      ctx.globalAlpha = clamp(0.86 + 0.14 * Math.sin(T.t * 17 + phase[i]) - hurtK * 0.25 * (0.5 + 0.5 * Math.sin(T.t * 53 + i)), 0.3, 1);
+      spriteUp(ctx, 'flame', cx + sway, baseY - ch * 0.80, fh);
+      ctx.globalAlpha = 1;
+    } else {
+      spriteUp(ctx, 'candle_dead', cx, baseY, ch);
+      const sm = smoke[i];
+      if (sm > 0) { const k = 1 - sm / 0.9; ctx.globalAlpha = (1 - k) * 0.55; ctx.fillStyle = '#c9cfe6'; ctx.beginPath(); ctx.arc(cx + Math.sin(k * 7 + i) * px(3), baseY - ch - k * px(16), px(2 + k * 4), 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
+    }
+  }
   // a baked word that pops, rises (the caller moves it) and fades; tilt differs per slot so numbers do not line up
   function drawPop(ctx, slot, x, y, k, t, dur, i) {
     if (!slot.c) return;
@@ -405,7 +411,7 @@ export function createCanvasHud(game, opts = {}) {
     resize() { L.epoch++; L.s = 0; },
     layout: L, px, tsz,
     info() { return { scale: L.s, hs: L.hs, textSize: L.textSize, epoch: L.epoch, banner: banner.on ? banner.kind : null, toasts: toasts.filter((q) => q.on).length, lit: T.lit, max: T.max }; },
-    release() { for (const p of [badge.now, badge.past, shelf, moonP, bossP, bossFill, bannerP, bandP, promptRow, msgP, msg2P, dbgP, ...nums, ...calls, ...toasts, ...wprompts]) if (p.c) { p.c.width = 1; p.c.height = 1; p.c = null; } icons.clear(); },
+    release() { for (const p of [badge.now, badge.past, ...Object.values(shelves), moonP, bossP, bossFill, bannerP, bandP, promptRow, msgP, msg2P, dbgP, ...nums, ...calls, ...toasts, ...wprompts]) if (p.c) { p.c.width = 1; p.c.height = 1; p.c = null; } icons.clear(); },
   };
 }
 const ZERO = { l: 0, t: 0, r: 0, b: 0 };

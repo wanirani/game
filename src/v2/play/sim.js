@@ -39,7 +39,7 @@ export class Sim {
       dashT: 0, rollCd: 0, dashCd: 0, dvx: 0, dvz: 0, roll: null, sweepWin: 0, sweepQ: false,
       guard: false, guardT: 0, guardTap: 0, parryT: 0, parryCd: 0, parryOk: 0, blockT: 0,
       move: null, moveT: 0, combo: 0, hitIds: null, assist: null, queued: 0, swung: false, stepDist: 0, airAtk: false, plungeLand: null, plungeEta: 1,
-      lock: null, lockT: 0, lockHold: 0,
+      lock: null, lockT: 0, lockHold: 0, lockX: 0, lockY: 0, lockZ: 0,
       gait: 0, gaitMode: 'run', wasMoving: false,
       anim: 'idle', animT: 0, t: 0, cut: false, landT: 0, landV: 0,
       safe: { x: W.start.x, z: W.start.z, y: W.start.y },
@@ -53,7 +53,7 @@ export class Sim {
   addEnemy(s) {
     const D = kindOf(s.kind), g = this.w.ground(s.x, s.z, (s.y ?? 1e9) + STEP_UP), gy = Number.isFinite(s.y) ? s.y : Number.isFinite(g) ? g : 0, id = this._nid++;
     const e = {
-      id, kind: s.kind, kid: kindId(s.kind), def: D, yard: !!s.yard, x: s.x, z: s.z, y: gy, gy, vx: 0, vz: 0, r: D.r, h: D.hpx,
+      id, kind: s.kind, kid: kindId(s.kind), def: D, yard: !!s.yard, group: s.group, x: s.x, z: s.z, y: gy, gy, vx: 0, vz: 0, r: D.r, h: D.hpx,
       hp: D.hp, hpMax: D.hp, facing: -1, dirX: -1, dirZ: 0, state: 'idle', stateT: 0, phase: null, tele: 0, atk: null, cd: rnd(0.3, 1.2),
       flashT: 0, stun: 0, stagger: 0, dying: 0, dead: false, active: !!s.active, solid: true, alpha: 1, hover: D.hover ?? 0, solidT: 0, revealT: 0,
       anim: 'idle', animT: 0, t: rnd(0, 5), hitDone: false, swung: false, kx: 0, kz: 0, gait: rnd(0, 1), moved: 0,
@@ -65,6 +65,8 @@ export class Sim {
     this.enemies.push(e);
     return e;
   }
+  /** 잠든 적을 깨운다 (장면의 사건 · 무리 깨우기) */
+  wake(e) { if (!e || e.dead || e.active) return; e.active = true; if (e.state === 'idle') { e.state = 'chase'; e.stateT = 0; } this.emit('wake', e); if (e.def.wakeSound) this.hooks.sound?.(e.def.wakeSound, e); }
   /** 효과 · 소리 쪽이 정한 경직을 넣는다 (초) */
   hitStop(sec) { this.stop = Math.max(this.stop, sec); }
   /** 숨은 것을 드러낸다 (메아리 · 등불 자리): 반지름 r 안의 유령이 t 초 동안 또렷해져 맞는다 */
@@ -263,6 +265,7 @@ export class Sim {
     }
     const id = cur ? cur.id : null;
     if (id !== h.lock) { h.lock = id; h.lockT = 0; this.emit('lock', id, cur); } else h.lockT += dt;
+    if (cur) { h.lockX = cur.x; h.lockY = cur.y + cur.h * 0.6; h.lockZ = cur.z; }   // 락온 대상의 자리 (그림이 고개를 돌려 본다 · 장면이 표식을 그린다)
   }
   /** 공격이 향할 적: 락온 대상이 맞는 방향이면 그것, 아니면 방향 안에서 가장 알맞은 적 */
   _aimTarget(h, fx, fz, stick) {

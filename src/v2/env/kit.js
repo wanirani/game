@@ -3,7 +3,7 @@
 //   dressRoof  맞배지붕 → 돌기와 경사면 · 처마 · 용마루 · 박공 · 굴뚝 · 지붕창
 //   dressFloor / dressBlock / dressStairs / dressPillar / arch / gate / pave / fence
 // 모든 조각은 "벽면 틀"(Frame: u 오른쪽 · y 위 · w 바깥) 위에서 짓기 때문에 벽이 어느 쪽을 보든 같은 코드다.
-import { Frame, sm, hash } from './geo.js';
+import { Frame, sm, hash, vnoise } from './geo.js';
 
 const CELL = 40;   // 빛을 굽는 격자 (B 는 64)
 
@@ -55,8 +55,8 @@ export function windowAt(G, F, s, w0, wallMat) {
   const lit = s.lit ?? 0, pm = lit ? 'glass' : 'glassDark', po = lit ? { emis: 0.72 + 0.4 * lit, fog: 0.72 } : { k: 1.15, vary: 0 };
   const cols = s.cols ?? (s.w > 30 ? 2 : 1), rows = s.rows ?? (s.h > 58 ? 2 : 1), wp = w0 - d;
   for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) F.face(G, pm, u0 + (u1 - u0) * i / cols, u0 + (u1 - u0) * (i + 1) / cols, y0 + (y1 - y0) * j / rows, y0 + (y1 - y0) * (j + 1) / rows, wp, { ...po, uo: hash(s.u + i, s.y + j), vo: hash(s.y + j, s.u) });
-  for (let i = 1; i < cols; i++) { const c = u0 + (u1 - u0) * i / cols; F.box(G, 'timber', c - 1.3, c + 1.3, y0, y1, wp, wp + 1.8, { faces: 'FLR', k: 0.62, vary: 0 }); }
-  for (let j = 1; j < rows; j++) { const c = y0 + (y1 - y0) * j / rows; F.box(G, 'timber', u0, u1, c - 1.3, c + 1.3, wp, wp + 1.8, { faces: 'FT', k: 0.62, vary: 0 }); }
+  for (let i = 1; i < cols; i++) { const c = u0 + (u1 - u0) * i / cols; F.box(G, 'timber', c - 1.9, c + 1.9, y0, y1, wp, wp + 1.8, { faces: 'FLR', k: 0.62, vary: 0 }); }
+  for (let j = 1; j < rows; j++) { const c = y0 + (y1 - y0) * j / rows; F.box(G, 'timber', u0, u1, c - 1.9, c + 1.9, wp, wp + 1.8, { faces: 'FT', k: 0.62, vary: 0 }); }
   if (rise) { spandrels(G, F, wallMat, s.u, hw, yS, rise, s.arch, w0, {}); if (fm) archBand(G, F, fm, s.u, hw, yS, rise, s.arch, w0 + 0.6, 6); }
   if (fm) {
     F.box(G, fm, u0 - 5, u0, y0, yS, w0, w0 + 2.2, { faces: 'FLRT', vary: 0 }); F.box(G, fm, u1, u1 + 5, y0, yS, w0, w0 + 2.2, { faces: 'FLRT', vary: 0 });
@@ -199,12 +199,12 @@ export function dressWall(G, P, boxes) {
 /** 쇠 난간: 기둥 + 위아래 가로대 + 창살 (끝이 뾰족하다) */
 export function railing(G, F, u0, u1, y, h, w = 0, o = {}) {
   const M = { k: o.k ?? 0.9, vary: 0 }, n = Math.max(1, Math.round((u1 - u0) / 64));
-  F.box(G, 'metal', u0, u1, y + h - 7, y + h - 4, w - 1.2, w + 1.2, { ...M, faces: 'FT' }); F.box(G, 'metal', u0, u1, y + 4, y + 7, w - 1.2, w + 1.2, { ...M, faces: 'FT' });
+  F.box(G, 'metal', u0, u1, y + h - 8, y + h - 3.5, w - 1.6, w + 1.6, { ...M, faces: 'FT' }); F.box(G, 'metal', u0, u1, y + 3.5, y + 8, w - 1.6, w + 1.6, { ...M, faces: 'FT' });
   for (let i = 0; i <= n; i++) { const u = u0 + (u1 - u0) * i / n; F.box(G, 'metal', u - 2.4, u + 2.4, y, y + h + 3, w - 2.4, w + 2.4, { ...M, faces: 'FLRT' }); F.box(G, 'metal', u - 3.6, u + 3.6, y + h + 3, y + h + 8, w - 3.6, w + 3.6, { ...M, faces: 'FLRT', k: 1.1 }); }
-  const step = o.step ?? 11;
+  const step = o.step ?? 14;   // 창살은 굵게·성기게 (가는 창살은 안티에일리어싱 없는 화면에서 톱니로 보였다)
   for (let u = u0 + step; u < u1 - 2; u += step) {
-    F.box(G, 'metal', u - 1, u + 1, y + 5, y + h, w - 1, w + 1, { ...M, faces: 'FLR' });
-    G.tri('metal', F.pt(u - 2.4, y + h, w), F.pt(u + 2.4, y + h, w), F.pt(u, y + h + 8, w), F.n, M);
+    F.box(G, 'metal', u - 1.7, u + 1.7, y + 5, y + h, w - 1.4, w + 1.4, { ...M, faces: 'FLR' });
+    G.tri('metal', F.pt(u - 3.2, y + h, w), F.pt(u + 3.2, y + h, w), F.pt(u, y + h + 9, w), F.n, M);
   }
 }
 /** 나무 울타리: 기둥 + 가로 널 두 줄 + 뾰족 말뚝 */
@@ -242,7 +242,7 @@ export function dressRoof(G, P) {
   const h = P.h, n = [0, dz / l, -h / l], ye = y - ov * h / (P.d / 2);   // 처마 끝은 벽 위보다 조금 낮다
   const hh = y + h - ye, sl = [0, hh, dz], nl = Math.hypot(hh, dz), nn = [0, dz / nl, -hh / nl];
   G.tintMul = K.tint ?? null;
-  G.quad('slate', [x0, ye, z0], [x1 - x0, 0, 0], sl, nn, { cell: 56, vary: 0.3, shade: (px, py) => 0.82 + 0.18 * sm(0, 30, py - ye) });
+  G.quad(K.mat ?? 'slate', [x0, ye, z0], [x1 - x0, 0, 0], sl, nn, { cell: 56, vary: 0.3, shade: (px, py) => 0.82 + 0.18 * sm(0, 30, py - ye) });
   G.quad('timber', [x0, ye - 7, z0], [x1 - x0, 0, 0], [0, 7, 0], [0, 0, -1], { k: 0.7, vary: 0.2 });                        // 처마 널
   G.quad('timber', [x0, ye - 7, z0], [x1 - x0, 0, 0], [0, 0, ov], [0, -1, 0], { k: 0.35, vary: 0, keep: true, underY: 0 });   // 처마 밑
   G.box('stone', x0 - 2, y + h - 3, zm - 5, x1 + 2, y + h + 4, zm + 5, { faces: 'FLRT', k: 0.8, tint: [0.7, 0.72, 0.9], vary: 0 });   // 용마루
@@ -269,7 +269,7 @@ export function dressRoof(G, P) {
     G.tri('plaster', [cx - w, yE, zf], [cx + w, yE, zf], [cx, yR, zf], [0, 0, -1], { k: 0.92 });
     for (const sx of [-1, 1]) {
       G.tri('plaster', [cx + sx * w, yb, zf], [cx + sx * w, yE, zf], [cx + sx * w, yE, zE], [sx, 0, 0], { k: 0.85 });
-      G.quad4('slate', [cx + sx * (w + 5), yE - 3, zf - 5], [cx, yR, zf - 5], [cx, yR, zR], [cx + sx * (w + 5), yE - 3, zE], [sx * 0.6, 0.8, 0], { vary: 0.25, ua: [0, 0, 1], va: [-sx * 0.8, 0.6, 0] });
+      G.quad4(K.mat ?? 'slate', [cx + sx * (w + 5), yE - 3, zf - 5], [cx, yR, zf - 5], [cx, yR, zR], [cx + sx * (w + 5), yE - 3, zE], [sx * 0.6, 0.8, 0], { vary: 0.25, ua: [0, 0, 1], va: [-sx * 0.8, 0.6, 0] });
       G.quad4('timber', [cx + sx * (w + 5), yE - 8, zf - 5.5], [cx, yR - 5, zf - 5.5], [cx, yR, zf - 5.5], [cx + sx * (w + 5), yE - 3, zf - 5.5], [0, 0, -1], { k: 0.8, vary: 0, rot: true });
     }
   }
@@ -280,14 +280,16 @@ export function dressRoof(G, P) {
 export function dressFloor(G, P, W) {
   const y = P.y ?? 0, K = P.kit ?? {}, mat = K.mat ?? { cobble: 'cobble', dirt: 'dirt', stone: 'flags' }[P.mat ?? 'cobble'] ?? 'cobble';
   const x0 = P.x, x1 = P.x + P.w, z0 = P.z, z1 = P.z + P.d, C = K.cell ?? 36;
-  const st = (K.strips ?? []).map((s) => ({ x0: x0 + (s.x0 ?? 0), x1: x0 + (s.x1 ?? P.w), z0: z0 + (s.z0 ?? 0), z1: z0 + (s.z1 ?? P.d), mat: s.mat }));
+  const st = (K.strips ?? []).map((s) => ({ x0: x0 + (s.x0 ?? 0), x1: x0 + (s.x1 ?? P.w), z0: z0 + (s.z0 ?? 0), z1: z0 + (s.z1 ?? P.d), mat: s.mat, rag: s.rag ?? K.rag ?? 0 }));
+  // rag > 0: 띠의 가장자리를 들쭉날쭉하게 (자로 그은 듯한 흙·판석 네모를 없앤다). 가장자리에서 rag 안쪽의 칸은 잡음에 따라 띠에 들거나 빠진다
+  const inStrip = (q, cx, cz) => { if (!q.rag) return cx > q.x0 && cx < q.x1 && cz > q.z0 && cz < q.z1; const e = q.rag * (vnoise(cx / 70 + 3.3, cz / 70 + 9.1) * 1.6 - 0.8 + (hash(cx, cz) - 0.5) * 0.7); return cx > q.x0 - (q.x0 > x0 + 1 ? e : -1) && cx < q.x1 + (q.x1 < x1 - 1 ? e : -1) && cz > q.z0 - (q.z0 > z0 + 1 ? e : -1) && cz < q.z1 + (q.z1 < z1 - 1 ? e : -1); };
   const cuts = (a, b, ex) => { const s = [a, b]; for (const e of ex) if (e > a + 1 && e < b - 1 && !s.some((q) => Math.abs(q - e) < 1)) s.push(e); const n = Math.max(1, Math.round((b - a) / C)); for (let i = 1; i < n; i++) { const c = a + (b - a) * i / n; if (!s.some((q) => Math.abs(q - c) < C * 0.35)) s.push(c); } return s.sort((p, q) => p - q); };
   const xs = cuts(x0, x1, st.flatMap((s) => [s.x0, s.x1])), zs = cuts(z0, z1, st.flatMap((s) => [s.z0, s.z1]));
   // 벽·단상·기둥 밑동 가까이는 어둡게 (닿는 곳의 그늘)
   const tall = W.boxes.filter((b) => !b.inv && b.y1 > y + 24 && b.y0 < y + 12);
   const ao = (px, py, pz) => { let d = 99; for (const b of tall) { const dx = Math.max(b.x0 - px, px - b.x1, 0), dzz = Math.max(b.z0 - pz, pz - b.z1, 0), q = dx > dzz ? dx + dzz * 0.4 : dzz + dx * 0.4; if (q < d) d = q; } return 0.5 + 0.5 * sm(0, 46, d); };
   for (let i = 0; i + 1 < xs.length; i++) for (let j = 0; j + 1 < zs.length; j++) {
-    const cx = (xs[i] + xs[i + 1]) / 2, cz = (zs[j] + zs[j + 1]) / 2, s = st.find((q) => cx > q.x0 && cx < q.x1 && cz > q.z0 && cz < q.z1);
+    const cx = (xs[i] + xs[i + 1]) / 2, cz = (zs[j] + zs[j + 1]) / 2, s = st.find((q) => inStrip(q, cx, cz));
     G.quad(s ? s.mat : mat, [xs[i], y, zs[j]], [xs[i + 1] - xs[i], 0, 0], [0, 0, zs[j + 1] - zs[j]], [0, 1, 0], { shade: ao, vary: 0.22 });
   }
   if (P.walk === false && !K.sides) return;

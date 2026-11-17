@@ -163,6 +163,19 @@ try {
   ok('legacy sfx names stay inside the set the scene knows; a block sends sfx guard + the guard hook', names(s).includes('guard') && sfx.includes('guard') && sfx.every((n) => known.has(n)), [...new Set(sfx)].join(' ')); }
 ok('moves carry strength (= str) for the scene', Object.values(MOVES).every((m) => m.strength === m.str && 'LMHF'.includes(m.strength)));
 
+// ── 12. 본 게임 장면이 쓰는 세계(환경 키트 compileEnv)에서도 끼이지 않는다 ──
+try {
+  const { compileEnv } = await import('../../src/v2/env/build.js'); const W = compileEnv((await import('../../src/v2/env/stage_slice0_env.js')).default);
+  const s = new Sim(W, {}), h = s.hero; h.x = 1960; h.z = 244; h.y = s.w.ground(h.x, h.z); h.safe = { x: h.x, z: h.z, y: h.y }; h.hp = h.hpMax = 1e6;
+  s.enemies.length = 0; const e = s.addEnemy({ kind: 'melee', x: 2020, z: 330, active: true }); let tells = 0, minD = 1e9; s.hooks.tell = () => { tells++; };
+  run(s, 8, {}, () => { minD = Math.min(minD, Math.hypot(e.x - h.x, e.z - h.z)); });
+  ok('env-kit world: wedge at the alley mouth is gone (enemy reaches the hero and attacks)', tells >= 1 && minD < 100, `closest ${minD.toFixed(0)} attacks ${tells}`);
+  const s3 = new Sim(W, {}); s3.teleport('yard'); s3.hero.hp = s3.hero.hpMax = 1e6; let t3 = 0; s3.hooks.tell = () => { t3++; };
+  run(s3, 20, {});
+  const act = s3.enemies.filter((q) => q.active), far = act.filter((q) => q.def.ai === 'melee' && Math.hypot(q.x - s3.hero.x, q.z - s3.hero.z) > 300).length;
+  ok('env-kit world: yard enemies wake, reach a standing hero and attack; no melee enemy left stuck far away', act.length >= 3 && t3 >= 5 && far === 0 && finite(s3), `active ${act.length} attacks ${t3} far ${far}`);
+} catch (err) { ok('env-kit world loads in node', false, String(err?.message ?? err).split('\n')[0]); }
+
 Math.random = realRandom;
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) { console.log('FAILED:\n  ' + fails.join('\n  ')); process.exit(1); }

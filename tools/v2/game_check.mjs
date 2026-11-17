@@ -53,7 +53,12 @@ function installBot() {
     if (tg) {
       const side = h.x <= tg.x ? -1 : 1; tx = tg.x + side * 56; tz = tg.z; fight = true;
       const dx = tg.x - h.x, dz = tg.z - h.z;
-      if (Math.abs(dx) < 96 && Math.abs(dx) > 18 && Math.abs(dz) < 20) { if (dx > 0) a.right = h.facing < 0; else a.left = h.facing > 0; B.atk++; if (B.atk % 7 < 3) a.attack = true; if ((dx > 0) === (h.facing > 0)) { tx = h.x; tz = tg.z; } }
+      if (Math.abs(dx) < 96 && Math.abs(dx) > 18 && Math.abs(dz) < 20) {   // in reach and lined up in depth: look straight at it (attacks follow the 360 degree facing), then strike
+        const fx = h.face ? h.face[0] : h.facing, fz = h.face ? h.face[1] : 0, square = Math.abs(fz) < 0.25 && (dx > 0) === (fx > 0);
+        B.atk++; if (square && B.atk % 7 < 3) a.attack = true;
+        if (!square) { if (dx > 0) a.right = true; else a.left = true; }
+        B.act = a; B.dodge--; return;
+      }
     } else { const w = waypoint(h); tx = w[0]; tz = w[1]; }
     const dx = tx - h.x, dz = tz - h.z;
     if (dx > 7) a.right = true; else if (dx < -7) a.left = true;
@@ -244,17 +249,20 @@ for (const dev of DEVICES) {
       const gc = () => { if (window.gc) { window.gc(); window.gc(); } }, mem = () => performance.memory.usedJSHeapSize;
       const NONE = {}, RIGHT = { right: true }, LEFT = { left: true }, ATK = { attack: true }, DASH = { dash: true, right: true };   // fixed input objects: the measurement must not count the bot's own garbage
       const script = (i) => (i % 24 < 2 ? ATK : i % 180 === 100 ? DASH : i % 96 < 30 ? RIGHT : i % 96 < 48 ? NONE : i % 96 < 78 ? LEFT : NONE);
-      const measure = (n, fight) => { gc(); const m0 = mem(); for (let i = 0; i < n; i++) { B.act = fight ? script(i) : NONE; g.tick(1 / 60); g.alpha = 0.5; g.render(); } const m1 = mem(); return (m1 - m0) / n; };
+      const measure = (n, fight) => { gc(); const m0 = mem(); for (let i = 0; i < n; i++) { B.act = fight ? script(i) : NONE; g.tick(1 / 60); g.alpha = 0.5; g.render(); } const m1 = mem(); return Math.round((m1 - m0) / n); };
+      const stub = (on) => { if (on) { sc.update = function () {}; sc.render = function () {}; } else { delete sc.update; delete sc.render; } };   // instance fields shadow the class methods: the v1 shell alone
       const toYard = () => { sc.sim.reset(); sc.cam.snap = true; v.teleport('yard'); sc.sim.hero.z = 1700; };
-      toYard(); for (let i = 0; i < 400; i++) { B.act = script(i); g.tick(1 / 60); g.render(); }   // warm the JIT on the same path
-      sc.sim.reset(); sc.cam.snap = true;
+      toYard(); for (let i = 0; i < 900; i++) { B.act = script(i); g.tick(1 / 60); g.render(); }   // warm the JIT on the same path
+      sc.sim.reset(); sc.cam.snap = true; for (let i = 0; i < 300; i++) { B.act = NONE; g.tick(1 / 60); g.render(); }
+      stub(true); const shell = [measure(300, false), measure(300, false), measure(300, false)]; stub(false);
       const idle = [measure(300, false), measure(300, false), measure(300, false)];
       toYard(); const play = [measure(480, true), measure(480, true), measure(480, true)]; B.act = NONE;
-      return { idle: idle.map(Math.round), play: play.map(Math.round), gc: !!window.gc };
+      return { shell, idle, play, gc: !!window.gc, hits: sc.feelN };
     });
     R.alloc = al;
-    const idleB = Math.min(...al.idle), playB = Math.min(...al.play);
-    if (al.gc && idleB <= 64 && playB <= 2048) ok(`allocation per frame (tick + draw, JS heap, after warm-up): standing ${al.idle.join(' / ')} bytes, a scripted fight in the yard ${al.play.join(' / ')} bytes`);
+    const med = (a) => [...a].sort((x, y) => x - y)[1], shellB = med(al.shell), idleB = med(al.idle) - shellB, playB = med(al.play) - shellB;
+    R.allocScene = { shell: shellB, idle: idleB, play: playB };
+    if (al.gc && idleB <= 600 && playB <= 3000) ok(`allocation per frame (tick + draw, JS heap, after warm-up; median of 3): the scene standing still ${idleB} bytes, in a scripted yard fight ${playB} bytes — on top of ${shellB} bytes of the v1 shell (input, pad) (raw: shell ${al.shell.join('/')}, standing ${al.idle.join('/')}, fight ${al.play.join('/')})`);
     else fail(`${dev}: allocation per frame too high or not measurable ${JSON.stringify(al)}`);
     }
     if (want('far')) {

@@ -90,7 +90,7 @@ async function staged() {
     if (view === 'boss' || view === 'states') { S.boss = { name: '밴시 여왕', sub: '배웅의 납골당', hp: 640, hpMax: 1000, stagger: 0.45 }; S.candles = { lit: 5.4, max: 8 }; S.resonance = { value: 4, cells: 4 }; }
     if (view === 'states') S.pad = { skill: { mode: 'call', cd: 0.62 }, bell: { mode: 'long', charge: 0.7 }, roll: { disabled: true }, attack: {} };
     if (view === 'many' || view === 'night') { S.candles = { lit: 11.5, max: 16 }; S.resonance = { value: 5, cells: 5 }; S.night = 'past'; S.area = { id: 'eshville_past', name: '에슈빌', era: 'past' }; S.moon = { phase: 1 }; }
-    if (view === 'kb' || view === 'padk' || view === 'play') S.prompts = [{ action: 'interact', label: '종을 살핀다' }, { action: 'skill1', label: '채찍 걸기' }, { action: 'interact', label: '문', x: vw() * 0.42, y: 150, z: vh() * 0.62 }];
+    if (view === 'kb' || view === 'padk' || view === 'play') S.prompts = [{ action: 'interact', label: '종을 살핀다' }, { action: 'skill1', label: '채찍 걸기' }, { action: 'interact', label: '문을 연다', x: vw() * 0.5, y: 0, z: vh() * 0.44 }];
     if (view === 'dialog') hud.showDialog({ speaker: '엘리제', portrait: 'elise', text: '종이 울리면 그 밤으로 건너가요. 돌아올 길은 종소리가 닿는 데까지예요.\n촛불을 아끼세요, 사냥꾼. 밤은 길고 우리는 아직 첫 종도 울리지 못했어요.' });
     if (view === 'choice') hud.showDialog({ speaker: '알베르토 신부', portrait: 'alberto', side: 'left', text: '그 밤으로 건너가겠나? 종이 식기 전에 돌아와야 하네.', choices: ['건넌다', '아직 아니다'] });
     if (view === 'pause') hud.openPause({ onResume() { log.push(['pause', 'resume']); }, onSettings() { log.push(['pause', 'settings']); }, onLeave() { log.push(['pause', 'leave']); } });
@@ -98,12 +98,13 @@ async function staged() {
     if (view === 'toast' || view === 'play' || view === 'boss') { hud.toast('은종 조각 ×2', { kind: 'item' }); hud.toast('길종이 울렸다', { kind: 'info', icon: 'bell' }); }
     if (view === 'toast') { hud.toast('촛불이 한 자루 남았다', { kind: 'warn', icon: 'interact' }); hud.banner('area', '안개의 묘지', '오늘 밤'); }
     if (freeze) {
-      spawn(0.62, 0.52, 0, '128', false, '#fff', 0.2); spawn(0.47, 0.36, 0, '342', true, '#fff', 0.25); spawn(0.74, 0.42, 0, '96', false, '#fff', 0.3); spawn(0.36, 0.6, 0, '-18', false, '#ff8a80', 0.2);
-      hud.callout(vw() * 0.55, 60, vh() * 0.6, '튕겨냄', 'parry'); hud.callout(vw() * 0.3, 40, vh() * 0.48, '막음', 'guard');
+      spawn(0.66, 0.40, 0, '128', false, '#fff', 0.2); spawn(0.47, 0.30, 0, '342', true, '#fff', 0.25); spawn(0.76, 0.36, 0, '96', false, '#fff', 0.3); spawn(0.36, 0.56, 0, '-18', false, '#ff8a80', 0.2);
+      hud.callout(vw() * 0.55, 0, vh() * 0.47, '튕겨냄', 'parry'); hud.callout(vw() * 0.27, 0, vh() * 0.42, '막음', 'guard');
     }
   }
+  if (freeze) for (let i = 0; i < 260; i++) hud.update(1 / 60, S);    // a frozen capture starts after the place-name banner has gone
   setup();
-  for (let i = 0; i < (freeze ? 24 : 2); i++) hud.update(1 / 60, S);   // let banners and toasts fade in before a frozen capture
+  for (let i = 0; i < (freeze ? 30 : 2); i++) hud.update(1 / 60, S);   // let banners and toasts fade in
 
   let lastT = performance.now(), acc = 0;
   function frame(now) {

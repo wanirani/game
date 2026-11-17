@@ -99,8 +99,8 @@ export default {
     // 높은 벽이 끝난 뒤: 낮은 담(갓돌 + 쇠 난간) + 양옆 묘지 뜰
     { t: 'wall', x: 1936, z: 1000, w: 44, d: 560, y: 96, h: 52, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'FR', coping: true, rail: 'R', piers: 187 } },
     { t: 'wall', x: 2400, z: 1000, w: 44, d: 560, y: 96, h: 52, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'FL', coping: true, rail: 'L', piers: 187 } },
-    { t: 'floor', x: 1480, z: 1000, w: 456, d: 560, y: 92, thick: 330, mat: 'dirt', walk: false, kit: { strips: [{ x0: 300, x1: 456, z0: 150, z1: 420, mat: 'moss' }] } },
-    { t: 'floor', x: 2444, z: 1000, w: 456, d: 560, y: 92, thick: 330, mat: 'dirt', walk: false, kit: { strips: [{ x0: 0, x1: 170, z0: 200, z1: 470, mat: 'moss' }] } },
+    { t: 'floor', x: 1480, z: 1000, w: 456, d: 560, y: 92, thick: 330, mat: 'dirt', walk: false, kit: { strips: [{ x0: 300, x1: 456, z0: 150, z1: 420, mat: 'moss', rag: 40 }] } },
+    { t: 'floor', x: 2444, z: 1000, w: 456, d: 560, y: 92, thick: 330, mat: 'dirt', walk: false, kit: { strips: [{ x0: 0, x1: 170, z0: 200, z1: 470, mat: 'moss', rag: 40 }] } },
     { t: 'wall', x: 1400, z: 1000, w: 80, d: 1240, y: 92, h: 250, mat: 'facade', kit: { style: 'rubble', faces: 'R', battlement: true, buttress: [220, 520, 820, 1120].map((u) => ({ side: 'R', u, h: 200, d: 20 })) } },
     { t: 'wall', x: 2900, z: 1000, w: 80, d: 1240, y: 92, h: 250, mat: 'facade', kit: { style: 'rubble', faces: 'L', battlement: true, buttress: [120, 420, 720, 1020].map((u) => ({ side: 'L', u, h: 200, d: 20 })) } },
     // 천사상: 구운 입체 소품 (assets/v2/props — tools/v2/world_props_bake.mjs). 묶음을 받지 못하면 키트의 저폴리 석상이 대신 선다
@@ -113,7 +113,7 @@ export default {
     { t: 'deco', mesh: 'fountain', x: 1640, z: 1180, y: 92 },
     { t: 'prop', ...LAMP, x: 2014, z: 1420 },
     // ── 마당 900×600 ──
-    { t: 'floor', x: 1740, z: 1560, w: 900, d: 600, y: 96, thick: 330, mat: 'dirt', kit: { strips: [{ x0: 380, x1: 520, mat: 'flags' }, { z0: 250, z1: 350, mat: 'flags' }, { z0: 0, z1: 26, mat: 'flags' }, { z0: 574, z1: 600, mat: 'flags' }, { x0: 0, x1: 26, mat: 'flags' }, { x0: 874, x1: 900, mat: 'flags' }] } },
+    { t: 'floor', x: 1740, z: 1560, w: 900, d: 600, y: 96, thick: 330, mat: 'dirt', kit: { rag: 34, strips: [{ x0: 380, x1: 520, mat: 'flags' }, { z0: 250, z1: 350, mat: 'flags' }, { z0: 0, z1: 26, mat: 'flags' }, { z0: 574, z1: 600, mat: 'flags' }, { x0: 0, x1: 26, mat: 'flags' }, { x0: 874, x1: 900, mat: 'flags' }] } },
     { t: 'wall', x: 1480, z: 1500, w: 456, d: 60, y: 92, h: 56, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'F', coping: true, rail: 'F', piers: 228 } },
     { t: 'wall', x: 2444, z: 1500, w: 456, d: 60, y: 92, h: 56, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'F', coping: true, rail: 'F', piers: 228 } },
     { t: 'wall', x: 1680, z: 1560, w: 60, d: 600, y: 92, h: 170, collideH: 800, mat: 'stone', kit: { style: 'stone', faces: 'FR', plinth: 22, cornice: false, coping: true, battlement: true, buttress: [150, 450].map((u) => ({ side: 'R', u, h: 130, d: 14, w: 30 })), hang: [{ type: 'banner', side: 'R', u: 300, y: 40, len: 100, w: 40 }] } },

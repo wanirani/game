@@ -9,7 +9,8 @@ export const TRIM = {
   white: px(272, 400, 224, 96),
 };
 /** 키트가 새로 받는 텍스처 (파일 = assets/v2/env/<이름>.webp). repeat = 반복 + 밉맵 */
-export const KIT_TEX = { k_ashlar: { repeat: true }, k_plaster: { repeat: true }, k_slate: { repeat: true }, k_cobble: { repeat: true }, k_flag: { repeat: true }, k_trim: { repeat: false },
+export const KIT_TEX = { k_cobble2: { repeat: true }, k_cobworn: { repeat: true }, k_rubble: { repeat: true }, k_thatch: { repeat: true }, k_soil: { repeat: true }, k_cellar: { repeat: true }, k_planks: { repeat: true }, k_bone: { repeat: true }, k_bark: { repeat: true },
+  k_ashlar: { repeat: true }, k_plaster: { repeat: true }, k_slate: { repeat: true }, k_cobble: { repeat: true }, k_flag: { repeat: true }, k_trim: { repeat: false },
   '../props/props_atlas': { repeat: false } };   // 구운 소품 아틀라스 = assets/v2/props/props_atlas.webp (이름이 env 폴더 기준 상대 경로다)
 export const KMATS = {
   props: { tex: '../props/props_atlas', tile: 1, tint: [1, 1, 1] },          // 구운 소품 아틀라스 (baked.js — uv 는 묶음에 들어 있다)
@@ -27,6 +28,17 @@ export const KMATS = {
   moss: { tex: 'flag', tile: 240, tint: [0.72, 0.8, 0.8] },                  // 이끼 낀 돌 (B 의 cobble 텍스처에 초록빛)
   slabs: { tex: 'flag', tile: 240, tint: [0.76, 0.78, 0.92] },                // 갈라진 큰 판석 (v1 손그림 타일 그대로 — 골목)
   dirt: { tex: 'dirt', tile: 340, tint: [1.05, 0.98, 0.95] },
+  // WORLD 구역이 더한 재질 (tools/v2/world_tex.py — ENV_KIT.md §12)
+  cobble2: { tex: 'k_cobble2', tile: 170, tint: [0.84, 0.84, 0.94] },       // 잔돌 포장 (광장)
+  cobworn: { tex: 'k_cobworn', tile: 210, tint: [0.9, 0.86, 0.84] },         // 닳고 진흙에 묻힌 길 가운데
+  fieldstone: { tex: 'k_rubble', tile: 230, tint: [0.86, 0.84, 0.92] },      // 막돌 쌓기 (굵은 회반죽)
+  thatch: { tex: 'k_thatch', tile: 150, tint: [0.92, 0.88, 0.8] },           // 초가 지붕
+  soil: { tex: 'k_soil', tile: 300, tint: [1.0, 0.96, 0.9] },                // 묘지 흙 + 마른 풀
+  cellar: { tex: 'k_cellar', tile: 220, tint: [0.96, 1.0, 1.02] },           // 젖은 지하 돌
+  planks: { tex: 'k_planks', tile: 150, tint: [1.0, 0.95, 0.9] },            // 낡은 널
+  bone: { tex: 'k_bone', tile: 120, tint: [1.0, 0.98, 0.94] },               // 해골 더미 (납골 벽감)
+  bark: { tex: 'k_bark', tile: 130, tint: [0.84, 0.8, 0.78] },               // 나무 껍질
+  charred: { tex: 'k_bark', tile: 130, tint: [0.3, 0.27, 0.27] },            // 탄 나무
   // 나무
   wood: { tex: 'wood', tile: 128, tint: [1.2, 1.02, 0.88] },
   darkwood: { tex: 'wood', tile: 128, tint: [0.66, 0.52, 0.46] },

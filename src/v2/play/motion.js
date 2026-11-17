@@ -87,11 +87,26 @@ function pinLegs(rig) {   // 떠다니는 적: 다리 뼈를 쉬는 자세로 �
   for (const b of LEGS) { const j = rig.key.get(b); if (j != null) for (let c = 0; c < 4; c++) rig.R[j * 4 + c] = rig.restR[j * 4 + c]; }
   rig.pose();
 }
-const _q = [0, 0, 0, 1], _a = [0, 0, 0, 1], _b = [0, 0, 0, 1], _c = [0, 0, 0, 1];
-/** 뼈 하나를 모델 공간의 옆 축(X)으로 deg 만큼 더 돌린다 (+ = 앞으로 숙임, − = 젖힘). 자세를 입힌 뒤에 부르고, 끝에 rig.pose() 를 한 번 부른다 */
-function pitchBone(rig, key, deg, axis = 0) {   // axis 0 = 옆 축(X: 숙임), 2 = 앞 축(Z: 옆으로 기울임 — + 는 오른쪽으로)
+const _q = [0, 0, 0, 1], _a = [0, 0, 0, 1], _b = [0, 0, 0, 1], _c = [0, 0, 0, 1], _p = [0, 0, 0, 1];
+/** 노드의 지금 세계 회전(모델 공간)을 사원수로. 크기는 버린다 */
+function worldQuat(rig, n, o) {
+  if (n < 0) { o[0] = o[1] = o[2] = 0; o[3] = 1; return o; }
+  const W = rig.world, k = n * 16;
+  const sx = 1 / (Math.hypot(W[k], W[k + 1], W[k + 2]) || 1), sy = 1 / (Math.hypot(W[k + 4], W[k + 5], W[k + 6]) || 1), sz = 1 / (Math.hypot(W[k + 8], W[k + 9], W[k + 10]) || 1);
+  const m00 = W[k] * sx, m10 = W[k + 1] * sx, m20 = W[k + 2] * sx, m01 = W[k + 4] * sy, m11 = W[k + 5] * sy, m21 = W[k + 6] * sy, m02 = W[k + 8] * sz, m12 = W[k + 9] * sz, m22 = W[k + 10] * sz, t = m00 + m11 + m22;
+  if (t > 0) { const r = Math.sqrt(t + 1) * 2; o[3] = r / 4; o[0] = (m21 - m12) / r; o[1] = (m02 - m20) / r; o[2] = (m10 - m01) / r; }
+  else if (m00 > m11 && m00 > m22) { const r = Math.sqrt(1 + m00 - m11 - m22) * 2; o[3] = (m21 - m12) / r; o[0] = r / 4; o[1] = (m01 + m10) / r; o[2] = (m02 + m20) / r; }
+  else if (m11 > m22) { const r = Math.sqrt(1 + m11 - m00 - m22) * 2; o[3] = (m02 - m20) / r; o[0] = (m01 + m10) / r; o[1] = r / 4; o[2] = (m12 + m21) / r; }
+  else { const r = Math.sqrt(1 + m22 - m00 - m11) * 2; o[3] = (m10 - m01) / r; o[0] = (m02 + m20) / r; o[1] = (m12 + m21) / r; o[2] = r / 4; }
+  return o;
+}
+/**
+ * 뼈 하나를 모델 공간의 축으로 deg 만큼 더 돌린다. axis 0 = 옆 축(X: + 는 앞으로 숙임), 1 = 세로 축(Y: + 는 왼쪽으로 돌림), 2 = 앞 축(Z: + 는 오른쪽으로 기울임).
+ * 자세를 입힌 뒤(Animator.update 뒤)에 부르고, 끝에 rig.pose() 를 한 번 부른다. 부모의 "지금" 세계 회전으로 옮겨 넣으므로 어떤 자세에서도 축이 맞는다
+ */
+function pitchBone(rig, key, deg, axis = 0) {
   const j = rig.key.get(key); if (j == null) return;
-  const h = (deg * Math.PI) / 360, P = rig.parWR.subarray(j * 4, j * 4 + 4), R = rig.R.subarray(j * 4, j * 4 + 4);
+  const h = (deg * Math.PI) / 360, P = worldQuat(rig, rig.parent[j], _p), R = rig.R.subarray(j * 4, j * 4 + 4);
   _q[0] = 0; _q[1] = 0; _q[2] = 0; _q[axis] = Math.sin(h); _q[3] = Math.cos(h);
   qmul(qconj(P, _a), _q, _b); qmul(_b, P, _c); qmul(_c, R, _a); qnorm(_a);   // R' = P⁻¹ · q · P · R
   R[0] = _a[0]; R[1] = _a[1]; R[2] = _a[2]; R[3] = _a[3];
@@ -146,8 +161,18 @@ export function driveHero(ch, h, dt, T = TUNE) {
     pitchBone(ch.rig, 'spine', -(T.runLeanFix ?? 12) * 0.55 * S.lean); pitchBone(ch.rig, 'spine2', -(T.runLeanFix ?? 12) * 0.45 * S.lean);
     const bank = clamp(-(S.angV ?? 0) * (T.runBank ?? 1.1), -11, 11) * S.lean;   // 돌 때 도는 쪽으로 몸을 기울인다 (달리는 동안만)
     if (Math.abs(bank) > 0.3) { pitchBone(ch.rig, 'hips', bank * 0.5, 2); pitchBone(ch.rig, 'spine', bank * 0.5, 2); }
-    ch.rig.pose();
   }
+  // 락온한 적을 고개로 본다 (서 있거나 걷고 달릴 때만; 공격 · 구르기 중에는 몸이 이미 그쪽을 본다)
+  let look = 0;
+  if (h.lock != null && !h.dead && (st === 'idle' || st === 'run' || st === 'walk' || st === 'guard' || st === 'land')) {
+    const tx = h.lockX - h.x, tz = h.lockZ - h.z, f = tx * ch.dx + tz * ch.dz, l = tz * ch.dx - tx * ch.dz;   // 앞 · 왼쪽 성분 (모델의 +X = 왼쪽)
+    if (f * f + l * l > 400) look = clamp(Math.atan2(l, f) * 57.3, -(T.lookMax ?? 58), T.lookMax ?? 58);
+    if (Math.abs(Math.atan2(l, f)) > 2.4) look = 0;   // 등 뒤의 적까지 목을 꺾어 보지는 않는다
+  }
+  S.look = (S.look ?? 0) + (look - (S.look ?? 0)) * Math.min(1, dt * 8);
+  const posed = S.lean > 0.02, looking = Math.abs(S.look) > 0.5;
+  if (looking) { pitchBone(ch.rig, 'neck', S.look * 0.4, 1); pitchBone(ch.rig, 'head', S.look * 0.45, 1); pitchBone(ch.rig, 'spine2', S.look * 0.15, 1); }
+  if (posed || looking) ch.rig.pose();
 }
 
 /**
