@@ -26,7 +26,8 @@ function resize() {
   const cw = Math.max(1, window.innerWidth), ch = Math.max(1, window.innerHeight), asp = cw / ch;
   view.W = clamp(Math.round(540 * asp), 960, 1280); view.H = clamp(Math.round(view.W / asp), 540, 760);
   view.dpr = Math.min(window.devicePixelRatio || 1, Number(qs.get('dpr')) || 1.5);
-  const bw = Math.round(cw * view.dpr), bh = Math.round(ch * view.dpr);
+  const small = window.__fx && window.__fx.small;   // 측정용: 아주 작은 캔버스 (개수·CPU 시간은 해상도와 무관하다)
+  const bw = small ? 160 : Math.round(cw * view.dpr), bh = small ? 120 : Math.round(ch * view.dpr);
   if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh; }
 }
 function camera() {
@@ -207,11 +208,12 @@ function heavyStep(gdt) {
 
 // ───────── 프레임 ─────────
 let sceneDraws = 0, speed = 1;
-function frame(realDt) {
+function frame(realDt, render = true) {
   const gdt = fx.update(realDt);
   demoStep(gdt); swingStep(gdt);
   fx.setProtect(0, hero.x + hero.off, 55, hero.z, 46);       // 읽기 규칙: 영웅 앞을 지나는 큰 입자는 옅게
   camera();
+  if (!render) return;
   fx.post.begin(cv.width, cv.height, null);
   sceneDraws = drawScene();
   fx.draw(cam);
@@ -252,11 +254,11 @@ window.addEventListener('resize', resize);
 
 // ───────── 검사·캡처용 손잡이 ─────────
 const api = window.__fx = {
-  fx, fire, startDemo, frame, view, cam, D, presets: PRESET_LIST.map((p) => ({ name: p.name, group: p.group, ko: p.ko, args: p.args, sfx: p.sfx, feel: p.feel })), sfxSeen, manual: false, texReady: false, alt: false, pk: 0,
+  fx, fire, startDemo, frame, view, cam, D, presets: PRESET_LIST.map((p) => ({ name: p.name, group: p.group, ko: p.ko, args: p.args, sfx: p.sfx, feel: p.feel })), sfxSeen, manual: false, small: false, texReady: false, alt: false, pk: 0,
   get demoName() { return demo.name; },
   reset(tier) { if (tier) { fx.setTier(tier); tierEl.value = tier; } fx.clear(); fx.time = 0; for (const d of D) { d.deadT = -9; d.hitT = -9; d.off = 0; } demo.name = ''; showAll = false; sw.on = false; },
   /** dt 씩 n 프레임 (동기) */
-  steps(n, dt) { resize(); for (let i = 0; i < n; i++) frame(dt); },
+  steps(n, dt, render = true) { resize(); for (let i = 0; i < n; i++) frame(dt, render); },
   /** 프리셋 하나의 비용: 혼자 쏘고 끝날 때까지 돌려 최댓값을 잰다 */
   cost(name, tier) {
     api.reset(tier); fx.feelOn = false; resize(); frame(1 / 60);
@@ -307,7 +309,8 @@ const api = window.__fx = {
       api.reset(tier); frame(1 / 60); let t = 0;
       const p = PRESET_LIST[ID[row[0]]]; fire(row[0], row[4] != null ? D[row[4]] : undefined);
       for (let j = 0; j < 3; j++) {
-        while (t < row[1 + j] - 1e-6) { frame(1 / 120); t += 1 / 120; }
+        while (t < row[1 + j] - 1e-6) { frame(1 / 120, false); t += 1 / 120; }
+        frame(0, true);
         const x = pad + j * (cw + pad), y = head + ri * (ch + pad), k = crop || 1, sw2 = cv.width * k, sh2 = cv.height * k, cxp = row[5] != null ? row[5] : 0.5, cyp = row[6] != null ? row[6] : 0.56;
         const sx = clamp(cv.width * cxp - sw2 / 2, 0, cv.width - sw2), sy = clamp(cv.height * cyp - sh2 / 2, 0, cv.height - sh2);
         g.drawImage(cv, sx, sy, sw2, sh2, x, y, cw, ch);
@@ -318,7 +321,7 @@ const api = window.__fx = {
     return sh.toDataURL('image/jpeg', 0.9);
   },
   /** 한 프레임 그리고 JPEG 로 (영상용) */
-  shot(dt, sub, q) { for (let i = 0; i < (sub || 1); i++) frame(dt / (sub || 1)); return cv.toDataURL('image/jpeg', q || 0.85); },
+  shot(dt, sub, q) { const n = sub || 1; for (let i = 0; i < n; i++) frame(dt / n, i === n - 1); return cv.toDataURL('image/jpeg', q || 0.85); },
 };
 resize(); camera();
 requestAnimationFrame(loop);

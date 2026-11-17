@@ -120,6 +120,10 @@ export default class V2Bench extends Scene {
     let ms = this.calibMs ?? 16.667;
     for (const T of this.tests) if (T.valid) { const p = dist(T.raw.iv, T.raw.ivN).p50; if (p > 2 && p < ms) ms = p; }
     const refresh = snapRefresh(ms), r1 = (v) => Math.round(v * 10) / 10;
+    // 참고값: 모든 화면 간격 가운데 빠른 쪽 5 % — 가장 가벼운 시험도 주사율을 못 따라간 기기에서 진짜 주사율을 짐작하게 해 준다
+    const all = []; if (this.calib) for (let i = 0; i < this.calib.ivN; i++) all.push(this.calib.iv[i]);
+    for (const T of this.tests) if (T.valid) for (let i = 0; i < T.raw.ivN; i++) all.push(T.raw.iv[i]);
+    all.sort((p, q) => p - q); const ivP05 = all.length ? r1(all[Math.floor(all.length * 0.05)]) : 0;
     const rows = this.tests.map((T) => {
       const base = { id: T.id, present: T.present, resK: T.resK, chars: T.chars, pace: T.pace, mute: !!T.mute, pick: T.pick, why: T.why, valid: T.valid, note: T.note, best: false };
       if (!T.valid) return base;
@@ -133,7 +137,7 @@ export default class V2Bench extends Scene {
       at: new Date().toISOString(), ua: String(navigator.userAgent ?? ''), gl: info, ctxLost: this.ctxLost, ctxRestored: rig?.glr?.restored ?? 0,
       dpr: Math.round((globalThis.devicePixelRatio || 1) * 1000) / 1000, win: [globalThis.innerWidth | 0, globalThis.innerHeight | 0], css: [rc.w | 0, rc.h | 0], canvas: [cv.width, cv.height], view: [g.viewW, g.viewH],
       tier: g.tier, auto: g.autoQualityOn(), fpsCap: g.settings?.fpsCap ?? 60, saver: g.saverFps(), mem: navigator.deviceMemory ?? null, cores: navigator.hardwareConcurrency ?? null, touch: navigator.maxTouchPoints ?? 0,
-      refresh, calib: { p50: r1(cal.p50), p95: r1(cal.p95), max: r1(cal.max) }, char3d: rig?.has3d ? 'ok' : 'no(' + (rig?.err3d || '-') + ')',
+      refresh, ivP05, calib: { p50: r1(cal.p50), p95: r1(cal.p95), max: r1(cal.max) }, char3d: rig?.has3d ? 'ok' : 'no(' + (rig?.err3d || '-') + ')',
       warm: rig?.warm ?? { world: 0, card: 0, c3d: 0, again: 0, resize: 0 }, loadMs: rig?.loadMs ?? 0, gameScale: r1(g.scale),
       audio: this.audioInfo ?? 'none', touchEv: this.touchEv, sec: this.DUR / 1000, skip: this.SKIP / 1000,
     };
@@ -221,12 +225,13 @@ export default class V2Bench extends Scene {
     y += tight ? 14 : 18;
     text(ctx, '끊김 = 새 그림이 고르지 않게 올라온 비율 (낮을수록 부드럽다) · 흐린 줄은 원인을 가르려고 잰 참고용', x0, y, { size: 12, color: DIM, ow: 0, maxWidth: w });
     if (rep.note) text(ctx, rep.note, x0, y + 16, { size: 12, color: '#ffb0a0', ow: 0, maxWidth: w });
-    else if (this.saved || this.stored) text(ctx, this.saved ? '이 설정을 기기에 저장했습니다 (다음부터 3D 판이 이 설정을 씁니다)' : `저장된 설정: ${settingKo({ present: this.stored.present, resK: this.stored.resK, pace: this.stored.cap === 60 ? 'cap60' : 'every' })}`, x0, y + 16, { size: 12, color: '#b8f0a8', ow: 0, maxWidth: w });
+    if (this.saved || this.stored) text(ctx, this.saved ? '이 설정을 기기에 저장했습니다 (다음부터 3D 판이 이 설정을 씁니다)' : `저장된 설정: ${settingKo({ present: this.stored.present, resK: this.stored.resK, pace: this.stored.cap === 60 ? 'cap60' : 'every' })}`, x0, y + (rep.note ? 32 : 16), { size: 12, color: '#b8f0a8', ow: 0, maxWidth: w });
     // 버튼
     const labels = [this.box ? '상자 닫기' : '결과 복사', '이 설정으로 하기', '다시 재기', '나가기'];
     const gap = 10, bw = Math.min(210, (w - gap * 3) / 4), bx = x0 + (w - (bw * 4 + gap * 3)) / 2, by = Hv - s.b - btnH - 10;
     const hit = labels.map((l, i) => button(ctx, { x: bx + i * (bw + gap), y: by, w: bw, h: btnH }, l, { size: tight ? 15 : 17, disabled: i === 1 && !best, selected: i === 0 && !this.box && !this.copied }));
     this._boxRect = { x: x0, y: s.t + (tight ? 60 : 78), w, h: by - 12 - (s.t + (tight ? 60 : 78)) };
+    this.toastY = by - 16; this.toastUp = true;   // 알림은 단추 바로 위에 (표 머리를 가리지 않게)
     if (this.box) this._placeBox();
     if (hit[0]) { if (this.box) this._closeBox(); else this._copy(); }
     else if (hit[1] && best) this._save();

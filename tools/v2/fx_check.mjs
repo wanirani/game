@@ -41,16 +41,16 @@ for (const vp of ['fold_open', 'phone2']) {
     for (const p of a.presets) {
       a.reset('mid'); a.steps(2, 1 / 60); const s0 = a.fx.particles.spawned, e0 = a.fx.stats.sfx;
       a.fire(p.name); let peak = 0, any = 0;
-      for (let i = 0; i < 100; i++) { a.steps(1, 1 / 30); const m = a.fx.measure(); peak = Math.max(peak, m.particles); any = Math.max(any, m.particles + m.quads + m.meshes + m.ribbons); }
+      for (let i = 0; i < 100; i++) { a.steps(1, 1 / 30, i % 12 === 3); const m = a.fx.measure(); peak = Math.max(peak, m.particles); any = Math.max(any, m.particles + m.quads + m.meshes + m.ribbons); }
       out.n++;
       if (any === 0) out.bad.push(p.name + ': 아무것도 그리지 않음');
       if (a.fx.stats.sfx === e0) out.bad.push(p.name + ': 소리 사건 없음');
       for (const s of p.sfx) if (!a.sfxSeen.has(s) && !['hit.parry', 'pickup.heal', 'pickup.mana', 'hit.guard'].includes(s)) out.sfxMissing.push(p.name + ' → ' + s);
     }
     // 단계 바꾸기 · 후처리 끄기 · 시범 두 개가 끝까지 도는지
-    for (const t of ['low', 'high', 'mid']) { a.reset(t); a.fire('fire.pillar'); a.steps(40, 1 / 60); }
-    a.fx.setPost(false); a.fire('hit.finisher'); a.steps(30, 1 / 60); a.fx.setPost(true);
-    for (const d of ['combo', 'spells']) { a.startDemo(d); let n = 0; while (a.demoName && n++ < 60 * 30) a.steps(1, 1 / 60); if (a.demoName) out.bad.push('시범 ' + d + ' 가 끝나지 않음'); }
+    for (const t of ['low', 'high', 'mid']) { a.reset(t); a.fire('fire.pillar'); a.steps(40, 1 / 60, false); a.steps(2, 1 / 60); }
+    a.fx.setPost(false); a.fire('hit.finisher'); a.steps(4, 1 / 60); a.fx.setPost(true); a.steps(2, 1 / 60);
+    for (const d of ['combo', 'spells']) { a.startDemo(d); let n = 0; while (a.demoName && n++ < 60 * 30) a.steps(1, 1 / 60, n % 40 === 0); if (a.demoName) out.bad.push('시범 ' + d + ' 가 끝나지 않음'); }
     const c = document.getElementById('c'); out.canvas = [c.width, c.height]; out.glErr = a.fx.gl.getError(); out.gpuBytes = a.fx.gpuBytes; out.texBytes = a.fx.tex.bytes; out.postBytes = a.fx.post.bytes;
     return out;
   });
@@ -65,6 +65,7 @@ for (const vp of ['fold_open', 'phone2']) {
 
 if (!args.has('--quick')) {
   const { ctx, page, errs } = await open('fold_open', '&tier=mid');
+  await page.evaluate(() => { window.__fx.small = true; });   // 측정은 160×120 캔버스로 (개수·JS 시간은 해상도와 무관)
   // ── 2. 프리셋별 비용 (세 단계) ──
   console.log('\n[프리셋별 비용 — fold_open; 입자 = 뿜은 수/동시에 산 최댓값, 덧칠 = 화면(960×726) 대비 배수의 최댓값]');
   for (const tier of ['low', 'mid', 'high']) {
@@ -111,7 +112,7 @@ if (args.has('--sheets')) {
   }
   // 단계 비교 한 장 (난전의 같은 순간)
   for (const tier of ['low', 'mid', 'high']) {
-    const url = await page.evaluate((tier) => { const a = window.__fx; a.reset(tier); a.startDemo('heavy'); a.steps(60 * 4 + 20, 1 / 60); return document.getElementById('c').toDataURL('image/jpeg', 0.88); }, tier);
+    const url = await page.evaluate((tier) => { const a = window.__fx; a.reset(tier); a.startDemo('heavy'); a.steps(60 * 4 + 20, 1 / 60, false); a.steps(1, 0); return document.getElementById('c').toDataURL('image/jpeg', 0.88); }, tier);
     fs.writeFileSync(`${OUT}/heavy_${tier}.jpg`, Buffer.from(url.split(',')[1], 'base64'));
   }
   console.log(`  ${OUT}/heavy_{low,mid,high}.jpg`);
@@ -125,7 +126,7 @@ if (args.has('--video')) {
   const dir = `${TMP}/frames`; fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
   let n = 0;
   const shoot = async () => { const url = await page.evaluate(() => window.__fx.shot(1 / 30, 2, 0.82)); fs.writeFileSync(`${dir}/f_${String(n++).padStart(5, '0')}.jpg`, Buffer.from(url.split(',')[1], 'base64')); };
-  for (const [d, loops] of [['combo', 2], ['spells', 1]]) {
+  for (const [d, loops] of [['combo', 1], ['spells', 1]]) {
     for (let l = 0; l < loops; l++) {
       await page.evaluate((d) => { window.__fx.reset('high'); window.__fx.startDemo(d); }, d);
       let guard = 0; while (guard++ < 30 * 26) { await shoot(); if (!(await page.evaluate(() => window.__fx.demoName))) break; }

@@ -20,7 +20,7 @@ export function paintButton(cv, o) {
   // 2) 그을린 유리: 가운데는 비치고 가장자리로 갈수록 두껍다
   x.save(); x.beginPath(); x.arc(c, c, R, 0, TAU); x.clip();
   x.globalCompositeOperation = 'destination-out'; x.fillStyle = '#000'; x.fillRect(0, 0, full, full); x.globalCompositeOperation = 'source-over';
-  const k = kind === 'sys' ? 0.8 : kind === 'map' ? 1.05 : 1, tint = big ? '34,10,16' : (o.on || ultReady) ? '58,8,18' : '14,14,20';
+  const k = kind === 'map' ? 1.05 : 1, tint = big ? '34,10,16' : (o.on || ultReady) ? '58,8,18' : '14,14,20';
   g = x.createRadialGradient(c, c - R * 0.18, R * 0.1, c, c, R); g.addColorStop(0, `rgba(${tint},${0.48 * k})`); g.addColorStop(0.72, `rgba(8,8,12,${0.60 * k})`); g.addColorStop(1, `rgba(2,2,5,${0.78 * k})`);
   x.fillStyle = g; x.fillRect(0, 0, full, full);
   x.globalAlpha = 0.13; x.globalCompositeOperation = 'lighter'; x.drawImage(smoke, c - R, c - R, R * 2, R * 2); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;

@@ -96,7 +96,7 @@
 UA …                                  ← 브라우저(WebView 버전)
 GL webgl2 | <GPU 이름> | maxTex … | lost 0 restored 0      ← WebGL 판, 렌더러, 컨텍스트를 잃은 횟수
 SCR dpr … | win … | css … | canvas 1455x1100 | view 960x726 | tier medium(auto) | fpsCap 60 | saver 0
-DEV mem 8GB | cores 8 | touch 5 | refresh 8.33ms (120Hz) | calib p50 … p95 … max …
+DEV mem 8GB | cores 8 | touch 5 | refresh 8.33ms (120Hz) | fastest5% 8.3ms | calib p50 … p95 … max …
 CHR 3d ok | first-use world …ms card …ms 3d …ms | warmed …ms | after-resize …ms | load …ms
 AUD running music title (recorded) | touchEv 0 | sec 4/1
 # present res chars pace | raf p50 p95 max slow% | draw p50 p95 max uneven% fps | js p50 p95 max | up blit glsync | heapMB/s gc gcStall long | px tris dc
@@ -107,6 +107,7 @@ BEST layer 1 every (3d) fps 120 uneven 0.4%
 
 | 칸 | 뜻 |
 |---|---|
+| `refresh` · `fastest5%` | 주사율 = 시험들 가운데 가장 빨랐던 화면 간격 중앙값. `fastest5%` = 모든 화면 간격의 빠른 쪽 5 % 값 — 둘이 다르면(예: 16.7 과 8.3) 화면은 더 빠른데 어떤 설정도 못 따라간 것이다 |
 | `raf p50 p95 max slow%` | 화면 간격(ms)과 1.5배 넘은 비율. p50 이 곧 그 시험에서 본 주사율 간격 |
 | `draw p50 p95 max uneven% fps` | 새 그림 간격(ms), 끊김 %, 초당 그림 |
 | `js p50 p95 max` | 한 프레임의 스크립트 시간(ms) — 장면 그리기 호출까지. GPU 일은 안 들어간다 |

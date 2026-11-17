@@ -103,7 +103,7 @@ export function compactText(rep) {
   L.push(`UA ${e.ua}`);
   L.push(`GL ${e.gl.api} | ${e.gl.renderer} | maxTex ${e.gl.maxTex} | lost ${e.ctxLost} restored ${e.ctxRestored}`);
   L.push(`SCR dpr ${e.dpr} | win ${e.win[0]}x${e.win[1]} | css ${e.css[0]}x${e.css[1]} | canvas ${e.canvas[0]}x${e.canvas[1]} | view ${e.view[0]}x${e.view[1]} | tier ${e.tier}${e.auto ? '(auto)' : ''} | fpsCap ${e.fpsCap} | saver ${e.saver}`);
-  L.push(`DEV mem ${e.mem ?? '?'}GB | cores ${e.cores ?? '?'} | touch ${e.touch} | refresh ${e.refresh.ms.toFixed(2)}ms (${e.refresh.hz}Hz${e.refresh.exact ? '' : '?'}) | calib p50 ${e.calib.p50} p95 ${e.calib.p95} max ${e.calib.max}`);
+  L.push(`DEV mem ${e.mem ?? '?'}GB | cores ${e.cores ?? '?'} | touch ${e.touch} | refresh ${e.refresh.ms.toFixed(2)}ms (${e.refresh.hz}Hz${e.refresh.exact ? '' : '?'}) | fastest5% ${e.ivP05}ms | calib p50 ${e.calib.p50} p95 ${e.calib.p95} max ${e.calib.max}`);
   L.push(`CHR 3d ${e.char3d} | first-use world ${e.warm.world}ms card ${e.warm.card}ms 3d ${e.warm.c3d}ms | warmed ${e.warm.again}ms | after-resize ${e.warm.resize}ms | load ${e.loadMs}ms`);
   L.push(`AUD ${e.audio} | touchEv ${e.touchEv} | sec ${e.sec}/${e.skip}`);
   L.push('# present res chars pace | raf p50 p95 max slow% | draw p50 p95 max uneven% fps | js p50 p95 max | up blit glsync | heapMB/s gc gcStall long | px tris dc');

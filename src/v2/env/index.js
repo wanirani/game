@@ -116,37 +116,38 @@ export default class V2Env extends V2ProtoB {
   }
   _tag(ctx) {   // 어느 장면인지 작은 표시 (정보 줄 위)
     const g = this.game, s = g.safe ?? { l: 0, r: 0, t: 0, b: 0 }, e = this.envStat;
+    if (this.sim.time < 7.5 || this.sim.done) return;   // 처음 조작 안내·끝 표시와 겹치지 않게
     ctx.save(); ctx.font = '500 11px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(220,210,200,0.6)';
     ctx.fillText(`C · env kit · ${e.chunks} chunks · ${Math.round(e.tris)} static tri · q${this.envQ}`, g.viewW / 2, g.viewH - 22 - s.b);
     ctx.restore();
   }
-  /** 바닥 스티커: 얼룩·물웅덩이 → 빛 웅덩이 → (B 의 그림자·예고) → 소품 그림자 → 등불 번짐 */
+  /** 바닥 스티커: 얼룩·물웅덩이 → 빛 웅덩이 → 소품 그림자 → (B 의 그림자·예고) → 등불 번짐. 프레임마다 새로 만드는 배열 없음 */
   _decals(b) {
-    const E = this.W.env, S = this.spr, K = this.envSpr, c = this.cam, t = this.sim.time, near = (x, z, m = 1500) => Math.abs(x - c.tx) < m && z - c.tz > -700 && z - c.tz < 2600;
+    const E = this.W.env, S = this.spr, K = this.envSpr, c = this.cam, t = this.sim.time, P = this._q ?? (this._q = new Array(12));
+    const near = (x, z, m) => Math.abs(x - c.tx) < m && z - c.tz > -700 && z - c.tz < 2600;
+    const flat = (x, y, z, rx, rz) => { P[0] = x - rx; P[1] = y; P[2] = z - rz; P[3] = x + rx; P[4] = y; P[5] = z - rz; P[6] = x + rx; P[7] = y; P[8] = z + rz; P[9] = x - rx; P[10] = y; P[11] = z + rz; return P; };
     if (this.envQ && K) for (const d of E.decals) {
-      if (!near(d.x, d.z)) continue;
+      if (!near(d.x, d.z, 1500)) continue;
       const uv = K[d.k]; if (!uv) continue;
-      const y = (d.y ?? 0) + 0.6, l = d._c, a = d.a ?? (d.k === 'stain' ? 0.5 : d.k === 'moss' ? 0.55 : 0.85);
-      b.quad([d.x - d.rx, y, d.z - d.rz, d.x + d.rx, y, d.z - d.rz, d.x + d.rx, y, d.z + d.rz, d.x - d.rx, y, d.z + d.rz], uv.u0, uv.v0, uv.u1, uv.v1, l[0], l[1], l[2], a, 1, 0, 3, 1);
+      const l = d._c, a = d.a ?? (d.k === 'stain' ? 0.5 : d.k === 'moss' ? 0.55 : 0.85);
+      b.quad(flat(d.x, (d.y ?? 0) + 0.6, d.z, d.rx, d.rz), uv.u0, uv.v0, uv.u1, uv.v1, l[0], l[1], l[2], a, 1, 0, 3, 1);
     }
     if (this.envQ) for (const p of E.fx.pools) {
-      if (!near(p.x, p.z)) continue;
-      const g = S.glow, f = p.flicker ? 0.86 + 0.14 * Math.sin(t * 11 + p.x) : 1, r = p.r * (p.flicker ? 0.96 + 0.05 * Math.sin(t * 7 + p.z) : 1), y = p.y + 0.8;
-      b.quad([p.x - r, y, p.z - r * 0.8, p.x + r, y, p.z - r * 0.8, p.x + r, y, p.z + r * 0.8, p.x - r, y, p.z + r * 0.8], g.u0, g.v0, g.u1, g.v1, p.c[0], p.c[1], p.c[2], p.a * f, 0, 0, 4, 0.8);
+      if (!near(p.x, p.z, 1500)) continue;
+      const g = S.glow, f = p.flicker ? 0.86 + 0.14 * Math.sin(t * 11 + p.x) : 1, r = p.r * (p.flicker ? 0.96 + 0.05 * Math.sin(t * 7 + p.z) : 1);
+      b.quad(flat(p.x, p.y + 0.8, p.z, r, r * 0.8), g.u0, g.v0, g.u1, g.v1, p.c[0], p.c[1], p.c[2], p.a * f, 0, 0, 4, 0.8);
     }
     const bl = S.blob;
-    for (const s of E.fx.shadows) {
-      if (!near(s.x, s.z)) continue;
-      const y = s.y + 0.9; b.quad([s.x - s.rx, y, s.z - s.rz, s.x + s.rx, y, s.z - s.rz, s.x + s.rx, y, s.z + s.rz, s.x - s.rx, y, s.z + s.rz], bl.u0, bl.v0, bl.u1, bl.v1, 0, 0, 0, s.a, 1, 0, 4, 1);
-    }
+    for (const s of E.fx.shadows) if (near(s.x, s.z, 1500)) b.quad(flat(s.x, s.y + 0.9, s.z, s.rx, s.rz), bl.u0, bl.v0, bl.u1, bl.v1, 0, 0, 0, s.a, 1, 0, 4, 1);
     super._decals(b);
     const R = this.camR, U = this.camU, g = S.glow;
-    if (R && U) for (const s of E.fx.glows) {   // 등불 번짐: 카메라를 보는 더하기 빛 (안쪽 겹 + 넓은 겹)
+    if (R && U) for (const s of E.fx.glows) {   // 등불 번짐: 카메라를 보는 더하기 빛 (안쪽 겹 + 넓은 겹; envq=0 이면 안쪽 겹만)
       if (!near(s.x, s.z, 1700)) continue;
       const k = s.flicker ? 0.9 + 0.12 * Math.sin(t * 13 + s.x) + 0.06 * Math.sin(t * 31 + s.z) : 1;
-      for (const [rr, a] of this.envQ ? [[s.r * k, 0.8], [s.r * 2.6 * k, 0.2]] : [[s.r * k, 0.8]]) {
-        const p = []; for (const [su, sv] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) p.push(s.x + (R[0] * su + U[0] * sv) * rr, s.y + (R[1] * su + U[1] * sv) * rr, s.z + (R[2] * su + U[2] * sv) * rr);
-        b.quad(p, g.u0, g.v0, g.u1, g.v1, s.c[0], s.c[1], s.c[2], a, 0, 0, 14, 0.6);
+      for (let j = 0; j < (this.envQ ? 2 : 1); j++) {
+        const rr = s.r * k * (j ? 2.6 : 1);
+        for (let i = 0; i < 4; i++) { const su = i === 0 || i === 3 ? -rr : rr, sv = i < 2 ? -rr : rr; P[i * 3] = s.x + R[0] * su + U[0] * sv; P[i * 3 + 1] = s.y + R[1] * su + U[1] * sv; P[i * 3 + 2] = s.z + R[2] * su + U[2] * sv; }
+        b.quad(P, g.u0, g.v0, g.u1, g.v1, s.c[0], s.c[1], s.c[2], j ? 0.2 : 0.8, 0, 0, 14, 0.6);
       }
     }
   }
