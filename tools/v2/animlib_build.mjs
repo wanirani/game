@@ -6,7 +6,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { writeGLB } from './char3d_glbio.mjs';
 import * as C from './animlib_core.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -85,27 +84,7 @@ function process1(c) {
 }
 
 // ── 묶음 GLB 쓰기 ──
-function writeGroup(g, items) {
-  const chunks = []; let size = 0; const views = [], accessors = [], animations = [];
-  const push = (bytes) => { const pad = (4 - (size % 4)) % 4; if (pad) { chunks.push(new Uint8Array(pad)); size += pad; } const off = size; chunks.push(new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength)); size += bytes.byteLength; return off; };
-  for (const it of items) {
-    const { L, meta } = it, n = L.times.length, start = size + ((4 - (size % 4)) % 4);
-    push(L.times); push(L.root.v); for (const t of L.tracks) push(t.q);
-    const bv = views.length; views.push({ buffer: 0, byteOffset: start, byteLength: size - start });
-    const aT = accessors.length; accessors.push({ bufferView: bv, byteOffset: 0, componentType: 5126, count: n, type: 'SCALAR', min: [0], max: [L.times[n - 1]] });
-    const samplers = [], channels = [];
-    accessors.push({ bufferView: bv, byteOffset: n * 4, componentType: 5126, count: n, type: 'VEC3' });
-    samplers.push({ input: aT, output: accessors.length - 1 }); channels.push({ sampler: 0, target: { node: L.root.node, path: 'translation' } });
-    L.tracks.forEach((t, i) => { accessors.push({ bufferView: bv, byteOffset: n * 16 + i * n * 8, componentType: 5122, normalized: true, count: n, type: 'VEC4' }); samplers.push({ input: aT, output: accessors.length - 1 }); channels.push({ sampler: samplers.length - 1, target: { node: t.node, path: 'rotation' } }); });
-    animations.push({ name: meta.n, samplers, channels });
-    it.bytes = size - start;
-  }
-  const J = REF.g.json;
-  const nodes = J.nodes.map((nd) => { const o = { name: nd.name }; for (const k of ['children', 'translation', 'rotation', 'scale', 'matrix']) if (nd[k]) o[k] = nd[k]; return o; });
-  const json = { asset: { version: '2.0', generator: 'bloodmoon tools/v2/animlib_build.mjs' }, scene: 0, scenes: [{ nodes: J.scenes[J.scene ?? 0].nodes }], nodes, skins: [{ joints: J.skins[0].joints }], animations, accessors, bufferViews: views };
-  const bin = new Uint8Array(size); { let o = 0; for (const ch of chunks) { bin.set(ch, o); o += ch.byteLength; } }
-  return writeGLB(path.join(OUT, g + '.glb'), json, bin);
-}
+const writeGroup = (g, items) => C.writeClipGLB(path.join(OUT, g + '.glb'), REF.g.json, items.map((it) => ({ name: it.meta.n, L: it.L, it })));
 
 fs.mkdirSync(OUT, { recursive: true });
 const done = [], missing = [];

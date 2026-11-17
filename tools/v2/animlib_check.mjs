@@ -52,7 +52,8 @@ for (const mp of models) {
       for (let i = 0; i < rig.jm.length; i++) if (!Number.isFinite(rig.jm[i])) nan = true;
       JOINTS.forEach((j, ji) => { const w = rig.key.get(j) * 16; for (let a = 0; a < 3; a++) pos[(k * JOINTS.length + ji) * 3 + a] = rig.world[w + 12 + a] / hip; });
       const fy = Math.min(rig.world[rig.key.get('footL') * 16 + 13] - rest.footL, rig.world[rig.key.get('footR') * 16 + 13] - rest.footR, rig.world[rig.key.get('toeL') * 16 + 13] - rest.toeL, rig.world[rig.key.get('toeR') * 16 + 13] - rest.toeR);
-      minFoot = Math.min(minFoot, fy); sinkF = Math.max(sinkF, -fy);
+      minFoot = Math.min(minFoot, fy);   // 쉬는 자세보다 얼마나 떠 있나 (걷는 순환용)
+      sinkF = Math.max(sinkF, -(Math.min(rig.world[rig.key.get('footL') * 16 + 13], rig.world[rig.key.get('footR') * 16 + 13], rig.world[rig.key.get('toeL') * 16 + 13] + 0.03, rig.world[rig.key.get('toeR') * 16 + 13] + 0.03) - rig.minY));   // 발목 · 발끝 뼈가 바닥(메시의 가장 낮은 곳) 아래로
       sinkH = Math.max(sinkH, -Math.min(rig.world[rig.key.get('handL') * 16 + 13], rig.world[rig.key.get('handR') * 16 + 13], rig.world[rig.key.get('head') * 16 + 13] - 0.08));
     }
     out.clips[m.n] = { pos, n, nan, sinkF: sinkF / hip, sinkH: sinkH / hip, minFoot: minFoot / hip };
@@ -67,11 +68,11 @@ for (const m of index.clips) {
   for (let i = 1; i < per.length; i++) { const b = per[i].clips[m.n]; let d = 0, sum = 0; for (let k = 0; k < a.pos.length; k += 3) { const e = Math.hypot(a.pos[k] - b.pos[k], a.pos[k + 1] - b.pos[k + 1], a.pos[k + 2] - b.pos[k + 2]); d = Math.max(d, e); sum += e; } r.dev.push([+d.toFixed(3), +(sum / (a.pos.length / 3)).toFixed(3)]); }
   rows.push(r);
 }
-// 문턱 (골반 높이 단위): 발이 쉬는 자세보다 0.10 넘게 꺼짐 / 손·머리가 바닥 아래 0.08 / 걷는 순환에서 발이 0.06 넘게 뜸 / 모델 사이 관절 위치 차이 최대 0.45
+// 문턱 (골반 높이 단위): 발목 · 발끝 뼈가 바닥 아래 0.03 / 손·머리가 바닥 아래 0.08 / 걷는 순환에서 발이 0.06 넘게 뜸 / 모델 사이 관절 위치 차이 최대 0.45
 const flag = [];
 for (const r of rows) {
   const m = index.clips.find((c) => c.n === r.n), f = [];
-  r.sinkF.forEach((v, i) => { if (v > 0.1) f.push(`${per[i].name}: 발이 바닥 아래로 ${(v * per[i].hip * 100).toFixed(0)} cm`); });
+  r.sinkF.forEach((v, i) => { if (v > 0.03) f.push(`${per[i].name}: 발 뼈가 바닥 아래로 ${(v * per[i].hip * 100).toFixed(0)} cm`); });
   r.sinkH.forEach((v, i) => { if (v > 0.08) f.push(`${per[i].name}: 손/머리가 바닥 아래로 ${(v * per[i].hip * 100).toFixed(0)} cm`); });
   if (m.loop && /walk|run|sprint|shamble|limp|push|carry/.test(m.n)) r.float.forEach((v, i) => { if (v > 0.06) f.push(`${per[i].name}: 발이 ${(v * per[i].hip * 100).toFixed(0)} cm 떠 있음`); });
   r.dev.forEach((d, i) => { if (d[0] > 0.45) f.push(`${per[i + 1].name}: ${per[0].name} 와 관절 위치 차이 최대 ${d[0]} (골반 높이 단위)`); });

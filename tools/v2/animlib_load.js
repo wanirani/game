@@ -22,7 +22,7 @@ export function clipsFromGroup(model, index) {
 
 export async function loadAnimLib(indexUrl, { groups = null } = {}) {
   const res = await fetch(indexUrl);
-  if (!res.ok) throw new Error('클립 목록을 받지 못했습니다: ' + indexUrl + ' (' + res.status + ')');
+  if (!res.ok) throw new Error('animlib: index ' + indexUrl + ' -> ' + res.status);   // 글자는 ASCII 로 (src/ 로 옮겼을 때 글꼴 부분집합 검사에 걸리지 않게)
   const index = await res.json(), base = indexUrl.replace(/[^/]*$/, ''), clips = {};
   await Promise.all(index.groups.filter((g) => !groups || groups.includes(g.g)).map(async (g) => Object.assign(clips, clipsFromGroup(await loadGLB(base + g.file), index))));
   return { index, clips };

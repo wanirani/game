@@ -523,7 +523,8 @@
    "ref": "style ref (same)",
    "prompt": "plague ghoul v2: more monstrous — shroud hood, swollen belly, ribs, long arms, yellow-green eyes",
    "job_id": "ab26d737-6944-4e68-ad98-7a430c38c68b",
-   "credits": 1
+   "credits": 1,
+   "kept": true
   },
   {
    "id": "plague",
@@ -575,5 +576,20 @@
    "kept": true
   }
  ],
- "total_credits": 208.0
+ "total_credits": 208.0,
+ "verified": "2026-11-17 15:10 UTC — 계정 거래 내역(transactions)과 한 건씩 대조: 그림 1.0×9 + 0.5×4, Tripo 9×11 + 18×1, 리깅 8×10 = 208. 실패 · 환불 없음. 다른 담당(castpeople · animlib)의 거래와 섞여 있어 시각과 결과 주소의 작업 번호로 가려냄.",
+ "shipped": [
+  "assets/v2/char3d/skeleton_soldier.glb",
+  "assets/v2/char3d/skeleton_mage.glb",
+  "assets/v2/char3d/plague_corpse.glb",
+  "assets/v2/char3d/grave_ghost.glb",
+  "assets/v2/char3d/gravekeeper_armor.glb",
+  "assets/v2/char3d/bat.glb",
+  "assets/v2/char3d/banshee_queen.glb",
+  "assets/v2/char3d/w_rusty_sword.glb",
+  "assets/v2/char3d/w_crystal_staff.glb",
+  "assets/v2/char3d/w_grave_spade.glb",
+  "assets/v2/portraits/banshee_queen.webp"
+ ],
+ "raw_dir": "/tmp/claude-0/v2/castenemy/raw/ (저장소 밖)"
 }

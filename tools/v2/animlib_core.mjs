@@ -1,6 +1,6 @@
 // v2 animlib — 산 클립(GLB) → 정규 프레임 → 자르기 · 제자리 만들기 · 순환 닫기 · 이벤트 찾기 · 다시 쓰기. docs/v2/ANIM_LIBRARY.md
 // 런타임(src/v2/char3d/skel.js)의 정규 클립 형식을 그대로 쓴다: 뼈 이름 → "쉬는 자세에서 캐릭터 축으로 얼마나 돌았나" + 골반 이동(골반 높이 = 1).
-import { readGLB } from './char3d_glbio.mjs';
+import { readGLB, writeGLB } from './char3d_glbio.mjs';
 import { buildModel } from '../../src/v2/char3d/glb.js';
 import { Rig, CPose, clipFromAnim, sampleClip, applyPose, qmul, qconj, qnorm } from '../../src/v2/char3d/skel.js';
 
@@ -9,11 +9,12 @@ export const SRC_FPS = 30;
 
 export function loadRig(path) { const g = readGLB(path), model = buildModel(g); return { g, model, rig: new Rig(model) }; }
 
-/** 산 GLB 의 첫 애니메이션 → 30fps 정규 프레임 {n, dt, rot: {key: Float32Array(n*4)}, root: Float32Array(n*3)} */
-export function rawFrames(path) {
+/** 산 GLB 의 애니메이션(이름을 주면 그것, 없으면 첫째) → 30fps 정규 프레임 {n, dt, rot: {key: Float32Array(n*4)}, root: Float32Array(n*3)} */
+export function rawFrames(path, animName = null) {
   const { model, rig } = loadRig(path);
-  if (!model.anims.length) throw new Error('애니메이션이 없습니다: ' + path);
-  const clip = clipFromAnim(rig, model.anims[0], { loop: false });
+  const anim = animName ? model.anims.find((x) => x.name === animName || x.name.replace(/^Armature\|/, '').replace(/\|baselayer$/, '') === animName) : model.anims[0];
+  if (!anim) throw new Error('애니메이션이 없습니다: ' + path + (animName ? ' #' + animName : ''));
+  const clip = clipFromAnim(rig, anim, { loop: false });
   const dt = 1 / SRC_FPS, n = Math.max(2, Math.round(clip.duration / dt) + 1);
   const F = newFrames(n, dt), P = new CPose();
   for (let k = 0; k < n; k++) {
@@ -22,7 +23,7 @@ export function rawFrames(path) {
     F.root.set(P.root, k * 3);
   }
   for (const key of KEYS) fixSigns(F.rot[key], n);
-  F.srcName = model.anims[0].name.replace(/^Armature\|/, '').replace(/\|baselayer$/, ''); F.srcDur = clip.duration;
+  F.srcName = anim.name.replace(/^Armature\|/, '').replace(/\|baselayer$/, ''); F.srcDur = clip.duration;
   return F;
 }
 export function newFrames(n, dt) { const rot = {}; for (const k of KEYS) rot[k] = new Float32Array(n * 4); return { n, dt, rot, root: new Float32Array(n * 3) }; }
@@ -193,4 +194,30 @@ export function toLocal(F, rig, eps = 1e-5) {
   }
   const times = new Float32Array(F.n); for (let k = 0; k < F.n; k++) times[k] = +(k * F.dt).toFixed(5);
   return { times, tracks, root: { node: j, v } };
+}
+
+/**
+ * 뼈대 + 스킨 + 애니메이션만 든 GLB (메시 없음) 를 쓴다. refJson: 기준 캐릭터 GLB 의 JSON (노드 · 스킨을 빌린다).
+ * items: [{name, L(toLocal 결과), it?}] — 클립마다 버퍼뷰 하나: [시각 f32][골반 이동 f32×3][회전 int16×4 × 뼈…]. it 가 있으면 it.bytes 에 크기를 적는다.
+ */
+export function writeClipGLB(outPath, refJson, items) {
+  const chunks = []; let size = 0; const views = [], accessors = [], animations = [];
+  const push = (bytes) => { const pad = (4 - (size % 4)) % 4; if (pad) { chunks.push(new Uint8Array(pad)); size += pad; } chunks.push(new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength)); size += bytes.byteLength; };
+  for (const { name, L, it } of items) {
+    const n = L.times.length, start = size + ((4 - (size % 4)) % 4);
+    push(L.times); push(L.root.v); for (const t of L.tracks) push(t.q);
+    const bv = views.length; views.push({ buffer: 0, byteOffset: start, byteLength: size - start });
+    const aT = accessors.length; accessors.push({ bufferView: bv, byteOffset: 0, componentType: 5126, count: n, type: 'SCALAR', min: [0], max: [L.times[n - 1]] });
+    const samplers = [], channels = [];
+    accessors.push({ bufferView: bv, byteOffset: n * 4, componentType: 5126, count: n, type: 'VEC3' });
+    samplers.push({ input: aT, output: accessors.length - 1 }); channels.push({ sampler: 0, target: { node: L.root.node, path: 'translation' } });
+    L.tracks.forEach((t, i) => { accessors.push({ bufferView: bv, byteOffset: n * 16 + i * n * 8, componentType: 5122, normalized: true, count: n, type: 'VEC4' }); samplers.push({ input: aT, output: accessors.length - 1 }); channels.push({ sampler: samplers.length - 1, target: { node: t.node, path: 'rotation' } }); });
+    animations.push({ name, samplers, channels });
+    if (it) it.bytes = size - start;
+  }
+  const J = refJson;
+  const nodes = J.nodes.map((nd) => { const o = { name: nd.name }; for (const k of ['children', 'translation', 'rotation', 'scale', 'matrix']) if (nd[k]) o[k] = nd[k]; return o; });
+  const json = { asset: { version: '2.0', generator: 'bloodmoon tools/v2/animlib' }, scene: 0, scenes: [{ nodes: J.scenes[J.scene ?? 0].nodes }], nodes, skins: [{ joints: J.skins[0].joints }], animations, accessors, bufferViews: views };
+  const bin = new Uint8Array(size); { let o = 0; for (const ch of chunks) { bin.set(ch, o); o += ch.byteLength; } }
+  return writeGLB(outPath, json, bin);
 }
