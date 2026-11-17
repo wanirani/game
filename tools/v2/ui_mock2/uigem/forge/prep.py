@@ -90,3 +90,21 @@ for nm in ['sword_5', 'sword_3', 'whip_5', 'moneybag', 'sub_bible', 'u_grimoire'
     arr = np.asarray(im, np.float32) / 255.0
     arr[..., 3] = np.clip((arr[..., 3] - 0.35) / 0.5, 0, 1)   # 그림에 붙은 옅은 빛무리·반짝이는 뺀다
     print(nm, save(ivory(arr, detail=1.35, edge=0.6, base=0.75), 'obj_' + nm))
+
+# 탑승: v1 군마(mt_warhorse) 퍼핏의 머리 부위 → 상아 톤
+import json
+_m = json.load(open('assets/painted/companions/mt_warhorse/manifest.json')); _p = (_m.get('parts') or _m)['head']
+_im = Image.open('assets/painted/companions/mt_warhorse/atlas.webp').convert('RGBA').crop((_p['x'], _p['y'], _p['x'] + _p['w'], _p['y'] + _p['h']))
+_im = _im.resize((_im.width * 3, _im.height * 3), Image.LANCZOS)
+_a = np.asarray(_im, np.float32) / 255.0
+_a[..., 3] = np.clip((_a[..., 3] - 0.3) / 0.5, 0, 1)
+print('horse', save(ivory(_a, detail=1.5, edge=0.6, base=0.76), 'obj_horse'))
+# 종: v1 기술 그림(세라 「일곱 번째 종」)의 가운데 종만 밝기로 오려 상아 톤 (둘레의 붉은 고리·검은 바탕은 버린다)
+_im = Image.open('assets/icons/skills/asc_sera_seventhbell.webp').convert('RGB').resize((512, 512), Image.LANCZOS)
+_r = np.asarray(_im, np.float32) / 255.0
+_yy, _xx = np.mgrid[0:512, 0:512]
+_rad = np.hypot(_xx - 256, _yy - 256)
+_lum = _r.max(-1)
+_al = np.clip((_lum - 0.22) / 0.2, 0, 1) * np.clip((176 - _rad) / 10, 0, 1)
+_al = ndi.gaussian_filter(ndi.binary_fill_holes(_al > 0.5).astype(np.float32), 1.2)
+print('bell', save(ivory(np.dstack([_r, _al]), detail=1.4, edge=0.6, base=0.76), 'obj_bell'))

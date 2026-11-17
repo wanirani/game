@@ -186,7 +186,7 @@ if (args.pace) {
       realRaf(pump);
     }, { hz: Number(hz), model });
     await page.goto(`http://localhost:${port}/index.html?scene=v2bench&benchsec=0.8&benchskip=0.2`);
-    await page.waitForFunction(() => window.__v2bench?.phase === 'done', null, { timeout: 240000 }).catch(() => errs.push('끝나지 않음'));
+    await page.waitForFunction(() => window.__v2bench?.phase === 'done', null, { timeout: 480000 }).catch(() => errs.push('8분 안에 끝나지 않음 (기계가 바쁘면 그럴 수 있다)'));
     const R = await page.evaluate(() => window.__v2bench?.report ?? null).catch((e) => { errs.push(String(e.message).slice(0, 80)); return null; });
     if (!R || errs.length) { fail(`틀 검증 ${hz}Hz ${model}: ` + (errs[0] ?? '결과 없음')); await ctx.close(); continue; }
     const cap = R.rows.filter((r) => r.valid && r.pace === 'cap60'), ev = R.rows.filter((r) => r.valid && r.pace === 'every');

@@ -6,7 +6,6 @@
 //     --quick   타격 조합을 한손검만 (기본: 무기 6 × 재질 7 × 세기 4 전부)
 //     --shot    시험 페이지(tools/v2/sound_view.html)를 열어 3연타 시연을 누르고 화면을 찍는다
 //   산출: <out>/sound_check.json (전체 표) · <out>/demo_<이름>.m4a + .png(스펙트로그램) · 콘솔 요약
-//         (스펙트로그램의 1.4 kHz 언저리 가로 검은 줄은 ffmpeg 로그 눈금 그리기의 흠이다 — 소리에는 없다)
 //   헤드리스 Chromium 은 AAC 를 못 풀어서 .m4a 요청을 같은 내용의 WAV 로 바꿔 준다 (tools/audio/m4a_route.mjs 와 같은 방법) — 소리 내용은 같다.
 //   여기서 재는 것은 소리 크기·길이이지 속도가 아니다 (오프라인 렌더 시간은 기기 성능과 무관). 기기에 그대로 옮겨지는 숫자: 층 수·노드 수·파일 바이트.
 import { chromium } from 'playwright-core';
@@ -152,7 +151,7 @@ for (const j of jobs) {
     const base = path.join(OUT, j.id.replace('.', '_')), wav = path.join('/dev/shm/soundfeel', j.id + '.wav');
     fs.mkdirSync('/dev/shm/soundfeel', { recursive: true }); writeWav(wav, f32(r.L), f32(r.R));
     execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', wav, '-c:a', 'aac', '-b:a', '128k', base + '.m4a']);
-    execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', wav, '-lavfi', 'showspectrumpic=s=1200x360:legend=1:mode=combined:scale=log:fscale=log:drange=70:stop=16000', base + '.png']);
+    execFileSync('python3', [path.join(root, 'tools/v2/audio/spectro.py'), wav, base + '.png']);   // 로그 주파수 스펙트로그램 (눈금 포함)
     fs.unlinkSync(wav);
   }
   delete r.L; delete r.R;

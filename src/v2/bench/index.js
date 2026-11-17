@@ -225,7 +225,7 @@ export default class V2Bench extends Scene {
     y += tight ? 14 : 18;
     text(ctx, '끊김 = 새 그림이 고르지 않게 올라온 비율 (낮을수록 부드럽다) · 흐린 줄은 원인을 가르려고 잰 참고용', x0, y, { size: 12, color: DIM, ow: 0, maxWidth: w });
     if (rep.note) text(ctx, rep.note, x0, y + 16, { size: 12, color: '#ffb0a0', ow: 0, maxWidth: w });
-    if (this.saved || this.stored) text(ctx, this.saved ? '이 설정을 기기에 저장했습니다 (다음부터 3D 판이 이 설정을 씁니다)' : `저장된 설정: ${settingKo({ present: this.stored.present, resK: this.stored.resK, pace: this.stored.cap === 60 ? 'cap60' : 'every' })}`, x0, y + (rep.note ? 32 : 16), { size: 12, color: '#b8f0a8', ow: 0, maxWidth: w });
+    if (this.saved || this.stored) text(ctx, this.saved ? '이 설정을 기기에 저장했습니다 (3D 판이 이 값을 쓰도록 고치는 중입니다)' : `저장된 설정: ${settingKo({ present: this.stored.present, resK: this.stored.resK, pace: this.stored.cap === 60 ? 'cap60' : 'every' })}`, x0, y + (rep.note ? 32 : 16), { size: 12, color: '#b8f0a8', ow: 0, maxWidth: w });
     // 버튼
     const labels = [this.box ? '상자 닫기' : '결과 복사', '이 설정으로 하기', '다시 재기', '나가기'];
     const gap = 10, bw = Math.min(210, (w - gap * 3) / 4), bx = x0 + (w - (bw * 4 + gap * 3)) / 2, by = Hv - s.b - btnH - 10;

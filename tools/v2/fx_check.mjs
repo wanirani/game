@@ -16,18 +16,20 @@ const OUT = '/tmp/claude-0/v2/fxcore', TMP = '/dev/shm/fxcore';
 fs.mkdirSync(OUT, { recursive: true }); fs.mkdirSync(TMP, { recursive: true });
 const port = 8900 + (process.pid % 90);
 const srv = await start(port);
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--enable-precise-memory-info', '--js-flags=--expose-gc'] });
+const launch = () => chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--enable-precise-memory-info', '--js-flags=--expose-gc'] });
 const fails = [], report = { date: new Date().toISOString(), views: {}, cost: {}, heavy: {}, alloc: {} };
 const fail = (m) => { fails.push(m); console.log('  ✗ ' + m); };
 const ok = (m) => console.log('  ✓ ' + m);
 
 async function open(preset, query = '') {
-  const ctx = await browser.newContext({ ...contextOptions(preset), deviceScaleFactor: 1 });
-  const page = await ctx.newPage(); const errs = [];
+  const browser = await launch();   // 화면마다 새 브라우저 (같은 브라우저에서 두 번째 WebGL 페이지가 멈추는 일이 있었다)
+  const ctx = { close: () => browser.close() };
+  const page = await (await browser.newContext({ ...contextOptions(preset), deviceScaleFactor: 1 })).newPage(); const errs = [];
   page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/favicon|404/.test(m.text())) errs.push('console: ' + m.text()); });
-  await page.goto(`http://localhost:${port}/tools/v2/fx_view.html?ui=0${query}`);
-  await page.waitForFunction(() => window.__fx && window.__fx.ready && window.__fx.texReady, null, { timeout: 20000 }).catch(() => errs.push('부팅 시간 초과'));
+  const url = `http://localhost:${port}/tools/v2/fx_view.html?ui=0${query}`;
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 }));
+  await page.waitForFunction(() => window.__fx && window.__fx.ready && window.__fx.texReady, null, { timeout: 60000 }).catch(() => errs.push('부팅 시간 초과'));
   await page.evaluate(() => { if (window.__fx) window.__fx.manual = true; });
   return { ctx, page, errs };
 }
@@ -142,6 +144,6 @@ if (args.has('--video')) {
 
 report.fails = fails;
 fs.writeFileSync(`${OUT}/fx_check.json`, JSON.stringify(report, null, 1));
-await browser.close(); srv.close();
+srv.close();
 console.log(fails.length ? `\n실패 ${fails.length}건` : '\n모두 통과');
 process.exit(fails.length ? 1 : 0);

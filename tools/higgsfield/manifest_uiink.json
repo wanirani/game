@@ -1,0 +1,9 @@
+{
+  "bundle": "uiink",
+  "date": "2026-11-17",
+  "purpose": "v2 인터페이스 2차 시안 「먹과 달빛」 아이콘 · 재질",
+  "credit_cap": 25,
+  "credits_used": 0,
+  "note": "gpt_image_2_5 아이콘 12장 묶음 호출 1회가 권한 분류기에서 거부되어 제출되지 않았다(작업 0건, 0 크레딧). 아이콘 · 재질은 전부 tools/v2/ui_mock2/uiink/ink.js 붓 엔진으로 그렸다.",
+  "jobs": []
+}

@@ -12,4 +12,5 @@ await page.waitForFunction(() => window.__done, null, { timeout: 60000 });
 const list = await page.evaluate(() => window.__export);
 for (const e of list) { mkdirSync(`${dir}/${e.group}`, { recursive: true }); writeFileSync(`${dir}/${e.group}/${e.name}.png`, Buffer.from(e.url.split(',')[1], 'base64')); }
 console.log('exported', list.length, 'sprites to', dir);
+console.log('bake time (headless Chromium, incl. toDataURL):', JSON.stringify(await page.evaluate(() => window.__bake)));
 await browser.close(); srv.close();
