@@ -12,7 +12,7 @@ import { Scene } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { text, button, FONT } from '../../core/ui.js';
 import { Rig } from './rig.js';
-import { buildMatrix, summarize, snapRefresh, dist, pickBest, verdict, settingKo, storeValue, compactText, STORE_KEY, PRESENT_KO, CHARS_KO, PACE_KO } from './stats.js';
+import { buildMatrix, summarize, snapRefresh, dist, pickBest, verdict, verdictLevel, settingKo, storeValue, compactText, STORE_KEY, PRESENT_KO, CHARS_KO, PACE_KO } from './stats.js';
 
 const VER = 1;
 const SYNC_N = 5;   // 시험마다 끝에 GL 을 기다려 가며 그려 보는 프레임 수
@@ -62,7 +62,7 @@ export default class V2Bench extends Scene {
     // 주사율 재기: 가장 가벼운 설정(겹쳐 얹기 · 절반 해상도 · 캐릭터 없음 · 매 화면)으로 1.2초 — 가만히 있는 화면은 기기가 주사율을 낮출 수 있어 움직이는 그림으로 잰다
     this.calib = this._newRaw(1200); this.phase = 'calib'; this.ti = -1; this.report = null;
     rig.setMode('layer', 0.5, 'none');
-    this.cur = { present: 'layer', resK: 0.5, chars: 'none', pace: 'every', t0: 0, raw: this.calib, dur: 1500, skip: 300, lost: false };
+    this.cur = { present: 'layer', resK: 0.5, chars: 'none', pace: 'every', t0: 0, raw: this.calib, dur: 1800, skip: 600, lost: false, sync: null };
   }
   _newRaw(ms) {
     const cap = Math.ceil(ms * 0.26) + 64;
@@ -90,7 +90,7 @@ export default class V2Bench extends Scene {
     if (document.hidden || this.game._pageHidden || !(d > 0) || d > 1500) { C.t0 = 0; this._js = 0; return; }   // 가려졌다 돌아오면 이 시험을 처음부터
     if (rig.glr?.lost) { if (!C.lost) { C.lost = true; this.ctxLost++; C.lostAt = ts; } else if (ts - C.lostAt > 6000) { this.error = '화면(WebGL)을 되살리지 못했습니다'; this._finish(); } this._js = 0; return; }
     if (C.lost) { C.lost = false; C.t0 = 0; if (C.test) C.test.note = 'ctx lost → 다시 잼'; }
-    if (!C.t0) { C.t0 = ts; C.lastDraw = 0; this.simT = 0; this.steps = 0; this._js = 0; this.longNow = 0; this._heap = 0; const R = C.raw; R.ivN = R.ciN = R.jsN = 0; R.gc = R.gcStall = R.heapUp = R.long = 0; return; }
+    if (!C.t0) { C.t0 = ts; C.lastDraw = 0; C.sync = null; this.simT = 0; this.steps = 0; this._js = 0; this.longNow = 0; this._heap = 0; const R = C.raw; R.ivN = R.ciN = R.jsN = 0; R.gc = R.gcStall = R.heapUp = R.long = 0; return; }
     const el = ts - C.t0, R = C.raw;
     if (el >= C.skip && el < C.dur) {
       if (R.ivN < R.iv.length) R.iv[R.ivN++] = d;
@@ -194,7 +194,7 @@ export default class V2Bench extends Scene {
     text(ctx, '성능 진단 결과', x0, y, { size: tight ? 22 : 26, weight: 800, family: FONT.title, color: GOLD, ow: 4 });
     text(ctx, `화면 ${env.refresh.hz}Hz · 그림 크기 ${env.canvas[0]}×${env.canvas[1]} · 품질 ${TIER_KO[env.tier] ?? env.tier} · ${env.gl.api === 'webgl2' ? 'WebGL2' : env.gl.api === 'webgl1' ? 'WebGL1' : 'WebGL 없음'}`, x1, y - 2, { size: 13, align: 'right', color: DIM, ow: 2, maxWidth: w * 0.6 });
     y += tight ? 24 : 30;
-    text(ctx, verdict(best), x0, y, { size: tight ? 15 : 17, weight: 700, color: best && best.uneven < 0.02 ? '#b8f0a8' : best && best.uneven < 0.08 ? '#ffe08a' : '#ffa090', ow: 3, maxWidth: w });
+    text(ctx, verdict(best), x0, y, { size: tight ? 15 : 17, weight: 700, color: ['#b8f0a8', '#ffe08a', '#ffa090'][verdictLevel(best)], ow: 3, maxWidth: w });
     y += tight ? 12 : 16;
     // 표
     const btnH = tight ? 40 : 46, footH = btnH + (tight ? 44 : 58) + s.b, headH = tight ? 22 : 26;
@@ -221,7 +221,7 @@ export default class V2Bench extends Scene {
     y += tight ? 14 : 18;
     text(ctx, '끊김 = 새 그림이 고르지 않게 올라온 비율 (낮을수록 부드럽다) · 흐린 줄은 원인을 가르려고 잰 참고용', x0, y, { size: 12, color: DIM, ow: 0, maxWidth: w });
     if (rep.note) text(ctx, rep.note, x0, y + 16, { size: 12, color: '#ffb0a0', ow: 0, maxWidth: w });
-    else if (this.saved || this.stored) text(ctx, this.saved ? '이 설정을 기기에 저장했습니다 (3D 판이 다음부터 이 설정으로 돕니다)' : `저장된 설정: ${settingKo({ present: this.stored.present, resK: this.stored.resK, pace: this.stored.cap === 60 ? 'cap60' : 'every' })}`, x0, y + 16, { size: 12, color: '#b8f0a8', ow: 0, maxWidth: w });
+    else if (this.saved || this.stored) text(ctx, this.saved ? '이 설정을 기기에 저장했습니다 (다음부터 3D 판이 이 설정을 씁니다)' : `저장된 설정: ${settingKo({ present: this.stored.present, resK: this.stored.resK, pace: this.stored.cap === 60 ? 'cap60' : 'every' })}`, x0, y + 16, { size: 12, color: '#b8f0a8', ow: 0, maxWidth: w });
     // 버튼
     const labels = [this.box ? '상자 닫기' : '결과 복사', '이 설정으로 하기', '다시 재기', '나가기'];
     const gap = 10, bw = Math.min(210, (w - gap * 3) / 4), bx = x0 + (w - (bw * 4 + gap * 3)) / 2, by = Hv - s.b - btnH - 10;

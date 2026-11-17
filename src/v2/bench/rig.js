@@ -97,7 +97,7 @@ export class Rig {
       this.hero.c3 = h3; h3.anim.play('run', { fade: 0 });
       this.crowd.forEach((c, i) => { c.c3 = new H.Char3D(asset, this.cr, { gpu: h3.gpu, weaponGpu: h3.weapon }); c.c3.anim.play(i % 3 ? 'run' : 'idle', { fade: 0 }); c.c3.anim.t = i * 0.07; });
       this.c3restored = glr.restored; this.has3d = true;
-    } catch (e) { this.has3d = false; this.err3d = String(e?.message ?? e).slice(0, 80); console.info('[v2bench] 입체 캐릭터를 쓸 수 없어 그 시험은 건너뜁니다:', this.err3d); if (this.cr) { try { this.cr.destroy(); } catch { /* 무시 */ } this.cr = null; } }
+    } catch (e) { this.has3d = false; this.err3d = String(e?.message ?? e).slice(0, 80); console.info('[v2bench] 입체 캐릭터를 쓸 수 없어 그 시험은 하지 않습니다:', this.err3d); if (this.cr) { try { this.cr.destroy(); } catch { /* 무시 */ } this.cr = null; } }
     if (!this.glr) return;
     this.loadMs = Math.round(now() - t0);
     this.ready = true;

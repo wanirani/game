@@ -8,7 +8,7 @@
 //  역할: 휘두름(whoosh, 타격 전) → 순간음(trans) → 몸통(body) → 꼬리(tail: 울림·뼈·천·돌)
 const L = (k, n, at = 0, g = 1, p = 1, q = 0, x) => Object.freeze({ k, n, at, g, p, q, pv: 0.045, gv: 0.08, sv: 0, ...x });
 const o = (n, at, g, p, q, x) => L('o', n, at, g, p, q, x);
-const n = (nm, at, g, p, q, x) => L('n', nm, at, g, p, q, x);
+const n = (nm, at, g, p, q, x) => L('n', nm, at, g, p, q, { sv: nm === 'cloth' || nm === 'debris' || nm === 'gear' ? 0.012 : 0, ...x });
 const s = (nm, at, g, p, q, x) => L('s', nm, at, g, p, q, x);
 
 /** 품질 단계 이름 → 번호 */
@@ -114,14 +114,13 @@ export function hitFeel(weapon, material, strength, flags = 0) {
       if (!(flags & FLAG[m])) continue;
       const D = MOD[m];
       if (D.add) layers.push(...D.add);
-      if (m === 'kill' || m === 'finisher') layers.push(...shift(M.die, m === 'finisher' ? 0.02 : 0));
       if (D.stop != null) stop = Math.max(stop, D.stop); if (D.stopAdd) stop += D.stopAdd;
       if (D.shakeAdd) shake += D.shakeAdd; if (D.kick != null) kick = Math.max(kick, D.kick);
       if (D.zoom) { zoom = Math.max(zoom, D.zoom); zoomT = Math.max(zoomT, D.zoomT || 0); }
       if (D.slow) slow = D.slow; if (D.duck) duck = D.duck; if (D.gain) gain *= D.gain; if (D.big) big = true;
       if (D.haptic && (m !== 'crit' || si < 3)) haptic = D.haptic;
     }
-    if ((flags & FLAG.kill) && (flags & FLAG.finisher)) layers = layers.filter((l, i) => layers.findIndex((x) => x.n === l.n && x.at === l.at) === i);   // 죽음 층 겹침 제거
+    if (flags & (FLAG.kill | FLAG.finisher)) layers.push(...M.die);   // 죽음 층 (재질별: 뼈 무너짐·돌 부서짐 …)
   }
   layers.sort((a, b) => a.at - b.at);
   r = Object.freeze({ key, weapon, material, strength: S.id, flags, layers: Object.freeze(layers), stop: +Math.min(0.3, stop).toFixed(3), shake: +Math.min(1, shake).toFixed(2), kick, zoom, zoomT, slow, duck, gain: +gain.toFixed(3), haptic, spark: M.spark, big });

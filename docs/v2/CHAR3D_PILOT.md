@@ -15,7 +15,11 @@
 
 ![같은 자리의 2D 와 입체](img/c3d_compare_move.webp)
 
+![점프 · 대시 · 공격 · 전투 · 피격](img/c3d_compare_action.webp)
+
 ![골목: 화면 안쪽으로 달리는 입체 카엘](img/c3d_full_alley.webp)
+
+![거리: 오른쪽으로 달리는 입체 카엘](img/c3d_full_street.webp)
 
 ## 1. 해 본 순서
 

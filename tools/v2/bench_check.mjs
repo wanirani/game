@@ -1,7 +1,7 @@
 // 성능 진단 장면(v2bench) 검사 — docs/v2/PERF_NOTES.md §6
 // 헤드리스 Chromium 에서 index.html?scene=v2bench 를 fold_open · phone2 로 열어 끝까지 돌리고, 표를 찍고, 결과 화면의 단추를 눌러 본다.
-//   node tools/v2/bench_check.mjs [--devices fold_open,phone2] [--sec 1.6] [--full] [--shots /tmp/claude-0/v2/bench] [--no-shots] [--json out.json]
-//     --sec N   시험 하나의 길이(초). 기본 1.6 (앞 0.5초 버림) — 빨리 끝내려고 줄인 값이다. --full = 기기와 같은 4초(앞 1초 버림), 약 1분.
+//   node tools/v2/bench_check.mjs [--devices fold_open,phone2] [--sec 2] [--full] [--shots /tmp/claude-0/v2/bench] [--no-shots] [--json out.json]
+//     --sec N   시험 하나의 길이(초). 기본 2 (앞 0.5초 버림) — 빨리 끝내려고 줄인 값이다. --full = 기기와 같은 4초(앞 1초 버림), 약 1분.
 // ★ 주의: 헤드리스의 WebGL 은 소프트웨어 렌더러(SwiftShader)다. 여기 나오는 프레임 시간·끊김·추천 설정은 실제 기기의 값이 아니다.
 //   이 도구가 확인하는 것은 "장면이 뜨고, 모든 시험을 돌고, 표와 단추가 동작하고, 페이지 오류가 없다" 뿐이다.
 import { chromium } from 'playwright-core';
@@ -12,7 +12,7 @@ import { buildMatrix, pickBest, STORE_KEY } from '../../src/v2/bench/stats.js';
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => { if (v.startsWith('--')) a.push([v.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true]); return a; }, []));
 const DEVICES = String(args.devices || 'fold_open,phone2').split(',');
-const SEC = args.full ? 4 : Number(args.sec || 1.6), SKIP = args.full ? 1 : Math.min(0.5, SEC / 3);
+const SEC = args.full ? 4 : Number(args.sec || 2), SKIP = args.full ? 1 : Math.min(0.5, SEC / 3);
 const SHOTS = args['no-shots'] ? null : String(args.shots || '/tmp/claude-0/v2/bench');
 const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const GL_ARGS = ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'];

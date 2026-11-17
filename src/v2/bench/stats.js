@@ -83,10 +83,14 @@ export function pickBest(rows) {
 export const settingKo = (r) => `${PRESENT_KO[r.present]} · 해상도 ${Math.round(r.resK * 100)}% · ${PACE_KO[r.pace]}`;
 /** 한 줄 판정 (소유자가 읽는 말) */
 export function verdict(best) {
-  if (!best) return '잴 수 있는 시험이 없었습니다';
-  const grade = best.fps < 40 ? '어느 방식으로도 느립니다' : best.uneven < 0.02 ? '부드럽습니다' : best.uneven < 0.08 ? '가끔 끊깁니다' : '어느 방식으로도 끊깁니다';
-  return `이 기기에서는 「${settingKo(best)}」 방식이 가장 부드럽습니다 (초당 ${best.fps}장, 끊김 ${(best.uneven * 100).toFixed(1)}% — ${grade})`;
+  if (!best) return '측정한 시험이 없습니다';
+  const head = `이 기기에서는 「${settingKo(best)}」 방식이 가장 부드럽습니다`, num = `초당 ${best.fps}장, 끊김 ${(best.uneven * 100).toFixed(1)}%`;
+  if (best.fps < 40) return `${head}만 그래도 느립니다 (${num})`;
+  if (best.uneven < 0.02) return `${head} (${num})`;
+  return best.uneven < 0.08 ? `${head} (${num} — 가끔 끊깁니다)` : `${head}만 그래도 끊깁니다 (${num})`;
 }
+/** 판정의 등급: 0 부드러움 · 1 가끔 끊김 · 2 끊김/느림 (결과 화면의 색) */
+export const verdictLevel = (best) => (!best || best.fps < 40 || best.uneven >= 0.08 ? 2 : best.uneven >= 0.02 ? 1 : 0);
 /** localStorage 에 넣는 값 */
 export function storeValue(best, env) {
   return { v: STORE_VER, present: best.present, resK: best.resK, cap: best.pace === 'cap60' ? 60 : 0, chars: best.chars, hz: env.refresh?.hz ?? 0, at: env.at ?? '' };
