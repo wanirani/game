@@ -11,7 +11,7 @@ const W2 = (u, y, o = {}) => ({ u, y, w: 42, h: 62, ...o });   // 보통 창
 export default {
   id: 'slice0_env', name: '시범 구간 (꾸민 배경)',
   start: B0.start, goal: B0.goal, sky: B0.sky, fog: B0.fog, light: B0.light, sections: B0.sections, spawns: B0.spawns,
-  chunks: [{ id: 'street', z1: 300 }, { id: 'alley', z1: 1500 }, { id: 'yard', z1: Infinity }],   // 메시를 나누는 덩어리 (보이는 것만 그린다)
+  chunks: [{ id: 'street', z1: 360 }, { id: 'alley', z1: 1500 }, { id: 'yard', z1: Infinity }],   // 메시를 나누는 덩어리 (보이는 것만 그린다)
   parts: [
     // ── 횡 구간: 거리 ──
     { t: 'floor', x: -60, z: 0, w: 1860, d: 260, mat: 'cobble', kit: { strips: [{ z0: 0, z1: 16, mat: 'flags' }] } },

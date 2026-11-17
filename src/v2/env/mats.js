@@ -19,7 +19,7 @@ export const KMATS = {
   plaster: { tex: 'k_plaster', tile: 300, tint: [0.98, 0.9, 0.8] },          // 회벽
   slate: { tex: 'k_slate', tile: 190, tint: [0.78, 0.8, 0.98] },             // 지붕 돌기와
   // 바닥
-  cobble: { tex: 'k_cobble', tile: 230, tint: [0.82, 0.84, 0.98] },          // 조약돌 길
+  cobble: { tex: 'k_cobble', tile: 150, tint: [0.8, 0.8, 0.9] },          // 조약돌 길
   flags: { tex: 'k_flag', tile: 300, tint: [0.86, 0.86, 0.96] },             // 판석
   moss: { tex: 'flag', tile: 240, tint: [0.72, 0.8, 0.8] },                  // 이끼 낀 돌 (B 의 cobble)
   dirt: { tex: 'dirt', tile: 340, tint: [1.05, 0.98, 0.95] },

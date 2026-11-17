@@ -202,7 +202,7 @@ export const EVENT = Object.freeze({
   'ui.ok': ev('f3_ui', [n('ui_ok', 0, 0.5)], { flat: true, gain: 0.6 }),
   'ui.deny': ev('f3_ui', [n('ui_deny', 0, 0.55)], { flat: true, gain: 0.6 }),
   // 종 (가락은 BELL — sound.js 가 층으로 푼다)
-  'bell.toll': ev('f3_bell', [n('bell_toll', 0, 0.85), s('drop', 0, 0.5, 0.9), o('bell', 0.004, 0.35, 0.5, 1)], { duck: [0.5, 2.4], haptic: 'toll', shake: 0.3, stop: 0, zoom: 1.04, zoomT: 1.2, pv0: true }),
+  'bell.toll': ev('f3_bell', [n('bell_toll', 0, 0.85), s('drop', 0, 0.5, 0.9), o('bell', 0.004, 0.35, 0.5, 1)], { duck: [0.5, 2.4], haptic: 'toll', shake: 0.3, stop: 0, zoom: 1.04, zoomT: 1.2 }),
 });
 // 마법·종 가락·고리도 사건 이름으로 부를 수 있게 펼친다: magic.<원소>.<charge|release|impact>, loop.magic.<원소>, bell.<가락>
 const X = {};

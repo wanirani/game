@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>v2 타격감 소리 시험</title>
+<style>
+  :root { --bg: #14121a; --panel: #1e1b27; --line: #35304a; --ink: #e9e4f2; --dim: #9a93ad; --acc: #e8b04a; --hot: #e2553f; --ok: #6fc28b; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, 'Noto Sans KR', sans-serif; padding: 12px 14px 60px; -webkit-tap-highlight-color: transparent; }
+  h1 { font-size: 18px; margin: 0 0 2px; } h2 { font-size: 14px; margin: 0 0 8px; color: var(--acc); letter-spacing: .02em; }
+  p.sub { margin: 0 0 10px; color: var(--dim); font-size: 12px; }
+  .grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .row > label { color: var(--dim); font-size: 12px; min-width: 52px; }
+  button { background: #2a2636; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px; font: inherit; cursor: pointer; min-height: 34px; }
+  button:active { transform: translateY(1px); background: #3a3450; }
+  button.on { background: #4a3a1c; border-color: var(--acc); color: #ffe2a8; }
+  button.big { background: #5a2a22; border-color: var(--hot); font-weight: 700; padding: 10px 16px; }
+  button.demo { background: #223a3a; border-color: #3f8f8a; font-weight: 600; }
+  #unlock { background: var(--acc); color: #1a1408; font-weight: 700; border: 0; padding: 10px 18px; }
+  input[type=range] { flex: 1; min-width: 120px; accent-color: var(--acc); }
+  select { background: #2a2636; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; font: inherit; }
+  .val { font-variant-numeric: tabular-nums; color: var(--acc); min-width: 44px; text-align: right; font-size: 12px; }
+  #status { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+  #status b { color: var(--ok); font-weight: 600; } #status b.bad { color: var(--hot); }
+  canvas { width: 100%; height: 86px; display: block; background: #0d0c12; border-radius: 6px; border: 1px solid var(--line); }
+  #recipe { font: 12px/1.5 ui-monospace, 'SF Mono', Menlo, monospace; color: #cfc8e0; white-space: pre-wrap; background: #131119; border-radius: 6px; padding: 8px; margin-top: 6px; min-height: 96px; }
+  #recipe i { color: var(--acc); font-style: normal; } #recipe u { color: var(--ok); text-decoration: none; }
+  .grp { margin-bottom: 8px; } .grp > span { display: block; color: var(--dim); font-size: 11px; margin-bottom: 3px; }
+  .top { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<div class="top">
+  <div><h1>v2 타격감 소리 시험</h1><p class="sub">표(src/v2/feel/table.js)의 모든 사건을 게임 오디오 엔진으로 그대로 울린다. 이어폰과 휴대폰 스피커 둘 다로 들어 볼 것.</p></div>
+  <button id="unlock">소리 켜기</button>
+  <div id="status">소리가 꺼져 있다 — 「소리 켜기」를 누른다</div>
+</div>
+<div class="grid">
+  <section>
+    <h2>레벨 미터 (마스터 버스)</h2>
+    <canvas id="meter" width="900" height="172"></canvas>
+    <div class="row" style="margin-top:8px"><label>방 울림</label><select id="room"></select><label>품질</label><select id="quality"><option value="high">높음</option><option value="medium">보통</option><option value="low">낮음</option></select></div>
+    <div class="row"><label>거리</label><input id="dist" type="range" min="0.5" max="3" step="0.05" value="1"><span class="val" id="distV">1.00×</span></div>
+    <div class="row"><label>좌우</label><input id="pan" type="range" min="-1" max="1" step="0.05" value="0.2"><span class="val" id="panV">+0.20</span></div>
+    <div class="row"><label>시간 배속</label><input id="ts" type="range" min="0.25" max="1" step="0.05" value="1"><span class="val" id="tsV">1.00</span></div>
+    <div class="row"><button id="music">배경 음악 (음악 낮춤 확인)</button><button id="vib" class="on">진동</button><span class="val" id="hap" style="min-width:0;text-align:left"></span></div>
+  </section>
+  <section>
+    <h2>타격 — 무기 × 재질 × 세기</h2>
+    <div class="row" id="weapons"><label>무기</label></div>
+    <div class="row" id="materials"><label>재질</label></div>
+    <div class="row" id="strengths"><label>세기</label></div>
+    <div class="row" id="flags"><label>덧붙임</label></div>
+    <div class="row"><button class="big" id="doHit">휘두름 → 타격</button><button id="doHitOnly">타격만</button><button id="doSwing">휘두름만</button><button id="doRapid">8연타</button></div>
+    <div id="recipe">레시피가 여기에 나온다</div>
+  </section>
+  <section>
+    <h2>시연 (시간표대로 자동 재생)</h2>
+    <div class="row" id="demos"></div>
+    <h2 style="margin-top:10px">종 — 배운 가락 다섯 + 깊은 종</h2>
+    <div class="row" id="bells"></div>
+    <h2 style="margin-top:10px">고리 (켜고 끄기)</h2>
+    <div class="row" id="loops"></div>
+  </section>
+  <section>
+    <h2>사건 (이름마다 단추 하나)</h2>
+    <div id="events"></div>
+  </section>
+</div>
+<script type="module">
+import { audio } from '../../src/core/audio.js';
+import { haptics } from '../../src/core/haptics.js';
+import { feel, WEAPON, WEAPONS, MATERIAL, MATERIALS, STRENGTHS, FLAG, EVENTS, EVENT_NAMES, BELL, BELLS, MAGIC, HAPTIC, ROOMS, hitFeel, swingFeel } from '../../src/v2/feel/index.js';
+import { DEMOS, LISTENER, runLine } from './sound_demos.js';
+
+const $ = (id) => document.getElementById(id), el = (tag, text, cls) => { const e = document.createElement(tag); if (text) e.textContent = text; if (cls) e.className = cls; return e; };
+const touch = matchMedia('(pointer: coarse)').matches;
+// 진동: v1 진동 소유자에 시험용 설정을 준다 (게임에서는 game.settings · input 이 준다)
+haptics.init({ settings: { vibration: true, vibeLevel: 'mid', ctrlRumble: 0.8 } }, { mode: touch ? 'touch' : 'pad', activePad() { try { return [...navigator.getGamepads()].find(Boolean) || null; } catch { return null; } } });
+
+const state = { weapon: 'sword', material: 'bone', strength: 'H', flags: 0, ready: false, loops: new Map(), timers: [] };
+window.__sv = { get ready() { return state.ready; }, stats: () => ({ ...feel.sound.stats(), haptic: feel.haptics.last, hapticCount: feel.haptics.count }) };
+
+// ── 위치 (거리·좌우 미끄럼 막대 → 월드 좌표). 듣는 이는 시범판 B 의 거리 카메라와 비슷한 값 ──
+feel.setListener(...LISTENER);
+const pos = { x: 0, y: 50, z: 0 };
+function syncPos() {
+  const d = +$('dist').value, p = +$('pan').value;
+  pos.z = (d - 1) * 800; pos.x = p * 0.62 * (700 + pos.z);
+  $('distV').textContent = d.toFixed(2) + '×'; $('panV').textContent = (p >= 0 ? '+' : '') + p.toFixed(2);
+}
+for (const id of ['dist', 'pan']) $(id).addEventListener('input', syncPos); syncPos();
+$('ts').addEventListener('input', () => { const v = +$('ts').value; $('tsV').textContent = v.toFixed(2); feel.setTimeScale(v); });
+for (const k in ROOMS) { const o = el('option', ROOMS[k].label); o.value = k; $('room').append(o); }
+$('room').addEventListener('change', () => feel.setRoom($('room').value));
+$('quality').addEventListener('change', () => feel.setQuality($('quality').value));
+$('vib').addEventListener('click', () => { feel.vibrate = !feel.vibrate; $('vib').classList.toggle('on', feel.vibrate); });
+let musicOn = false;
+$('music').addEventListener('click', () => { musicOn = !musicOn; $('music').classList.toggle('on', musicOn); if (musicOn) audio.music('hub', { fade: 0.5 }); else audio.stopMusic(0.5); });
+
+// ── 소리 켜기 ──
+let an = null, td = null;
+$('unlock').addEventListener('click', async () => {
+  audio.unlock();
+  if (!audio.eng) { $('status').textContent = '이 브라우저에서는 소리를 켤 수 없다'; return; }
+  if (!an) { const c = audio.ctx, z = c.createGain(); an = c.createAnalyser(); an.fftSize = 2048; td = new Float32Array(an.fftSize); z.gain.value = 0; audio.eng.master.connect(an); an.connect(z); z.connect(c.destination); }
+  $('unlock').textContent = '샘플 받는 중…';
+  await feel.preload();
+  state.ready = true; $('unlock').textContent = '소리 켜짐'; $('unlock').disabled = true;
+});
+
+// ── 타격 ──
+function pick(box, items, labelOf, key) {
+  for (const k of items) { const b = el('button', labelOf(k)); b.dataset.k = k; b.addEventListener('click', () => { state[key] = k; for (const x of box.querySelectorAll('button')) x.classList.toggle('on', x.dataset.k === k); showRecipe(); }); if (state[key] === k) b.classList.add('on'); box.append(b); }
+}
+pick($('weapons'), WEAPONS, (k) => WEAPON[k].label, 'weapon');
+pick($('materials'), MATERIALS, (k) => MATERIAL[k].label, 'material');
+pick($('strengths'), STRENGTHS, (k) => ({ L: '약 L', M: '중 M', H: '강 H', F: '끝 F' })[k], 'strength');
+const FLAG_KO = { crit: '치명타', kill: '처치', guard: '막힘', parry: '받아치기', finisher: '마무리 일격' };
+for (const k in FLAG) { const b = el('button', FLAG_KO[k]); b.addEventListener('click', () => { state.flags ^= FLAG[k]; b.classList.toggle('on', !!(state.flags & FLAG[k])); showRecipe(); }); $('flags').append(b); }
+function showRecipe(r = hitFeel(state.weapon, state.material, state.strength, state.flags)) {
+  const sw = swingFeel(state.weapon, state.strength), h = HAPTIC[r.haptic] || {}, kind = { o: '옛', n: '새', s: '합성' };
+  $('recipe').innerHTML = `<i>${r.key}</i>\n경직 <u>${(r.stop * 1000).toFixed(0)} ms</u> · 흔들림 <u>${r.shake}</u> · 밀림 <u>${r.kick}</u> · 줌 <u>${r.zoom}×/${r.zoomT}s</u> · 느린 화면 <u>${r.slow ? r.slow[0] + 's @' + r.slow[1] + '×' : '없음'}</u> · 음악 낮춤 <u>${r.duck ? r.duck.join('/') : '없음'}</u>\n진동 <u>${r.haptic}</u> 패드 ${h.pad ? h.pad.join('/') : '-'} · 휴대폰 ${h.phone ? JSON.stringify(h.phone) + ' ms' : '없음'} · 불티 ${r.spark}\n휘두름(닿기 ${(sw.lead * 1000).toFixed(0)} ms 전): ${sw.layers.map((l) => l.n).join(' + ')}\n` +
+    r.layers.map((l) => `  ${String(Math.round(l.at * 1000)).padStart(3)} ms  ${kind[l.k]} ${l.n.padEnd(14)} ×${l.g.toFixed(2)} 피치 ${l.p.toFixed(2)}${l.q ? '  (품질 ' + ['', '보통', '높음'][l.q] + '부터)' : ''}`).join('\n');
+}
+showRecipe();
+const later = (ms, fn) => state.timers.push(setTimeout(fn, ms));
+function doHit(withSwing) {
+  const { weapon, material, strength, flags } = state;
+  if (!withSwing) { const r = feel.hit(weapon, material, strength, flags, pos); showRecipe(r); slow(r); return; }
+  const sw = feel.swing(weapon, strength, pos);
+  later(sw.lead * 1000, () => { const r = feel.hit(weapon, material, strength, flags, pos); showRecipe(r); slow(r); });
+}
+function slow(r) { if (!r.slow) return; later(r.stop * 1000, () => { feel.setTimeScale(r.slow[1]); later(r.slow[0] * 1000, () => feel.setTimeScale(+$('ts').value)); }); }   // 느린 화면: 경직이 풀린 뒤 r.slow[0] 초 동안
+$('doHit').addEventListener('click', () => doHit(true));
+$('doHitOnly').addEventListener('click', () => doHit(false));
+$('doSwing').addEventListener('click', () => feel.swing(state.weapon, state.strength, pos));
+$('doRapid').addEventListener('click', () => { for (let i = 0; i < 8; i++) later(i * 130, () => feel.hit(state.weapon, state.material, i === 7 ? 'H' : 'L', 0, pos)); });
+
+// ── 시연 ──
+function runDemo(k) {
+  const d = DEMOS[k]; for (const t of state.timers) clearTimeout(t); state.timers.length = 0;
+  feel.setRoom(d.room); $('room').value = d.room; feel.setTimeScale(1);
+  for (const e of d.ev) later(e.t * 1000, () => { const r = runLine(feel, e, state.loops); if (e.c === 'hit' && r) showRecipe(r); });
+  later(d.dur * 1000, () => { for (const [n, id] of state.loops) { feel.loopStop(id); state.loops.delete(n); } syncLoops(); feel.setTimeScale(+$('ts').value); });
+}
+for (const k in DEMOS) { const b = el('button', DEMOS[k].label, 'demo'); b.dataset.demo = k; b.addEventListener('click', () => runDemo(k)); $('demos').append(b); }
+for (const k of BELLS) { const b = el('button', BELL[k].label); b.title = BELL[k].text; b.addEventListener('click', () => feel.bell(k)); $('bells').append(b); }
+{ const b = el('button', '깊은 종', 'big'); b.addEventListener('click', () => feel.bell('toll')); $('bells').append(b); }
+
+// ── 고리 ──
+const LOOP_KO = { 'loop.torch': '횃불', 'loop.street': '밤거리 바탕' };
+function syncLoops() { for (const b of $('loops').querySelectorAll('button')) b.classList.toggle('on', state.loops.has(b.dataset.k)); }
+for (const n of EVENT_NAMES.filter((x) => EVENTS[x].loop)) {
+  const b = el('button', LOOP_KO[n] || `${MAGIC[n.split('.')[2]].label} 날아감`); b.dataset.k = n;
+  b.addEventListener('click', () => { if (state.loops.has(n)) { feel.loopStop(state.loops.get(n)); state.loops.delete(n); } else { const id = feel.loopStart(n, EVENTS[n].flat ? null : pos); if (id) state.loops.set(n, id); } syncLoops(); });
+  $('loops').append(b);
+}
+
+// ── 사건 단추 ──
+const GROUPS = [['이동', /^(step|move)\./], ['장비·무기·피격', /^(foley|weapon|hero)\./], ['적', /^enemy\./], ['세계', /^world\./], ['인터페이스', /^ui\./], ...Object.keys(MAGIC).map((m) => [`마법 — ${MAGIC[m].label}`, new RegExp(`^magic\\.${m}\\.`)])];
+const KO = { walk: '걷기', run: '달리기', sprint: '전력', dash: '대시', jump: '점프', land: '착지', land_heavy: '무거운 착지', cloth: '옷자락', gear: '장비', draw: '칼 뽑기', sheath: '칼집', hurt: '피격', 'skel.rattle': '해골 덜그럭', 'skel.collapse': '해골 무너짐', 'mage.chant': '마법사 주문', 'bat.screech': '박쥐 울음', 'bat.flap': '박쥐 날갯짓', 'torch.light': '횃불 붙음', move: '이동', tab: '탭', open: '열기', close: '닫기', ok: '확인', deny: '안 됨', charge: '모으기', release: '쏘기', impact: '맞음' };
+for (const [title, re] of GROUPS) {
+  const g = el('div', null, 'grp'); g.append(el('span', title)); const row = el('div', null, 'row');
+  for (const n of EVENT_NAMES.filter((x) => re.test(x) && !EVENTS[x].loop)) {
+    const tail = n.split('.').slice(n.startsWith('magic.') ? 2 : 1).join('.'), b = el('button', KO[tail] || tail); b.title = n; b.dataset.ev = n;
+    b.addEventListener('click', () => { if (n.startsWith('step.')) feel.step({ 'step.walk': 100, 'step.run': 200, 'step.sprint': 340 }[n], pos); else feel.play(n, EVENTS[n].flat ? null : pos); });
+    row.append(b);
+  }
+  g.append(row); $('events').append(g);
+}
+
+// ── 미터·상태 ──
+const cv = $('meter'), g2 = cv.getContext('2d'), hist = new Float32Array(300); let hi = 0, hold = -90, holdT = 0, frame = 0;
+const dB = (v) => (v > 1e-6 ? 20 * Math.log10(v) : -120), X = (d) => Math.max(0, Math.min(1, (d + 60) / 60));
+function tick() {
+  requestAnimationFrame(tick); feel.update();
+  let pk = 0, rms = 0;
+  if (an) { an.getFloatTimeDomainData(td); for (let i = 0; i < td.length; i++) { const a = Math.abs(td[i]); if (a > pk) pk = a; rms += td[i] * td[i]; } rms = Math.sqrt(rms / td.length); }
+  const pd = dB(pk), rd = dB(rms), now = performance.now();
+  if (pd > hold || now - holdT > 1500) { hold = pd; holdT = now; }
+  hist[hi] = pd; hi = (hi + 1) % hist.length;
+  const W = cv.width, Hh = cv.height;
+  g2.fillStyle = '#0d0c12'; g2.fillRect(0, 0, W, Hh);
+  g2.fillStyle = '#2b2740'; for (const d of [-48, -36, -24, -12, -6, 0]) g2.fillRect(X(d) * W, 0, 1, Hh);
+  g2.fillStyle = pd > -1 ? '#e2553f' : pd > -6 ? '#e8b04a' : '#6fc28b'; g2.fillRect(0, 10, X(pd) * W, 30);
+  g2.fillStyle = '#5a8fd0'; g2.fillRect(0, 46, X(rd) * W, 18);
+  g2.fillStyle = '#fff'; g2.fillRect(X(hold) * W - 2, 6, 3, 38);
+  g2.strokeStyle = '#e8b04a'; g2.lineWidth = 2; g2.beginPath();
+  for (let i = 0; i < hist.length; i++) { const v = hist[(hi + i) % hist.length], x = i / (hist.length - 1) * W, y = Hh - 8 - X(v) * (Hh - 84); if (i) g2.lineTo(x, y); else g2.moveTo(x, y); }
+  g2.stroke();
+  g2.fillStyle = '#e9e4f2'; g2.font = '22px system-ui'; g2.fillText(`피크 ${pd < -90 ? '-∞' : pd.toFixed(1)} dB   평균 ${rd < -90 ? '-∞' : rd.toFixed(1)} dB   최고 ${hold < -90 ? '-∞' : hold.toFixed(1)} dB`, 12, 94);
+  if (frame++ % 15 === 0) {
+    const s = feel.sound.stats(), e = audio.eng, v2 = audio.v2Stats ? audio.v2Stats() : {};
+    $('status').innerHTML = e ? `엔진 <b>${audio.ctx.state}</b> ${audio.ctx.sampleRate} Hz · 옛 샘플 <b>${v2.loaded ?? 0}</b>/${v2.names ?? 0} · 새 샘플 <b class="${s.bank && s.bank.loaded === s.bank.names ? '' : 'bad'}">${s.bank ? s.bank.loaded : 0}</b>/${s.bank ? s.bank.names : 0} (${s.bank ? (s.bank.bytes / 1048576).toFixed(1) : 0} MB 풀림) · 시작 ${s.starts} · 울리는 중 ${e.liveCount('')} · 층 ${s.layers} · 빈 층 <b class="${s.miss ? 'bad' : ''}">${s.miss}</b> · 걸러짐 ${e.stats.dropped}` : '소리가 꺼져 있다 — 「소리 켜기」를 누른다';
+    $('hap').textContent = feel.haptics.last ? `마지막 진동: ${feel.haptics.last} (${feel.haptics.count}번, 장치 ${feel.haptics.sent}번)` : '';
+  }
+}
+tick();
+</script>
+</body>
+</html>
