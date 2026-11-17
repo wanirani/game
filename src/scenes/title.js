@@ -385,13 +385,16 @@ export class TitleScene extends Scene {
     const S = hudSafe(g);
     const sl = (S.l || 0) / k, sr = (S.r || 0) / k, st = (S.t || 0) / k, sb = (S.b || 0) / k;
     const n = this.items.length;
-    const rowH = clamp(Math.ceil(MAX_ROW_CSS / per), 44, 52);
+    let rowH = clamp(Math.ceil(MAX_ROW_CSS / per), 44, 52);
     // 세로가 넉넉하면(폴드 · 데스크톱) 마지막 줄 '회랑'과 아래 안내 줄 사이를 띄운다 (PLAY P22)
     const bottom = H - sb - (H - st - sb >= 600 ? 46 : 30);
     let gap = 3, menuH = n * rowH + (n - 1) * gap;
     if (bottom - menuH < 150) { gap = 1; menuH = n * rowH + (n - 1) * gap; }
+    // 줄이 아홉(리빌드 시범 줄 포함)이라 낮은 화면(휴대폰 · UI 높이 432)에서는 넘친다 → 줄 사이를 없애고 줄 높이를 하한(44)까지, 위 여백도 4 로
+    let topPad = 10;
+    if (bottom - menuH < st + topPad) { gap = 0; topPad = 4; rowH = clamp(Math.floor((bottom - st - topPad) / n), 44, rowH); menuH = n * rowH; }
     const x = 36 + sl, w = Math.min(330, W * 0.36);
-    const y0 = Math.max(st + 10, bottom - menuH);
+    const y0 = Math.max(st + topPad, bottom - menuH);
     // 알림 카드 (오른쪽 아래, 아래에서 위로 쌓는다)
     const nw = Math.min(380, W * 0.44), nx = W - 14 - sr - nw;
     let ny = H - (this.game.meta?.konami ? 44 : 30) - sb;

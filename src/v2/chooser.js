@@ -16,10 +16,13 @@ const ROWS = [
   { id: 'back', label: '돌아가기', desc: null },
 ];
 
+let lastBack = null;   // 타이틀에서 열 때 받은 줄 번호 — 시범판에서 돌아올 때는 안 넘어오므로 기억해 둔다
+
 export default class V2Chooser extends Scene {
   constructor(game) { super(game); this.uiScale = true; this.hidePad = true; this.menu = new TapMenu(ROWS.length, { index: 0 }); this.backIndex = null; }
   enter(params) {
-    this.backIndex = params?.backIndex ?? null;
+    if (params?.backIndex != null) lastBack = params.backIndex;
+    this.backIndex = lastBack;
     this.menu = new TapMenu(ROWS.length, { index: Math.min(ROWS.length - 1, Math.max(0, params?.index ?? 0)) });
   }
   update(dt) {
