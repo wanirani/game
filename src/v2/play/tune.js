@@ -28,5 +28,5 @@ export const TUNE = {
   queueT: 0.25,                    // 먼저 누른 공격을 기억하는 시간
   // ── 영웅: 몸 ──
   heroHp: 100, hurtIfr: 0.95, hurtT: 0.26, pitDmg: 8, pitY: -170, deadT: 2.1,
-  ownHitstop: true,                // 맞혔을 때 규칙이 스스로 멈춘다 (hooks.hit 이 숫자를 돌려주면 그 값을 쓴다)
+  ownHitstop: true,                // 맞혔을 때 규칙이 스스로 멈춘다 (hooks.hit 이 { stop } 을 돌려주면 그 값을 쓴다)
 };

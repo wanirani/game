@@ -15,7 +15,7 @@ const W = Number(opt.cw ?? 250), H = Number(opt.ch ?? 300);
 const ROWS = [
   { title: '달리기 · 구르기', tiles: [
     { c: 'run', t: 0.0, l: '달리기 ① 오른발 디딤' }, { c: 'run', t: 0.2, l: '달리기 ② 뜬 순간' }, { c: 'run', t: 0.43, l: '달리기 ③ 왼발 디딤' },
-    { c: 'roll', t: 0.18, l: '구르기 ① 몸을 낮춤' }, { c: 'roll', t: 0.5, l: '구르기 ② 구르는 중' }, { c: 'roll', t: 0.8, l: '구르기 ③ 일어섬' }, { c: 'roll', t: 1.15, l: '구르기 ④ 다시 준비 자세' } ] },
+    { c: 'roll', t: 0.18, l: '구르기 ① 몸을 낮춤' }, { c: 'roll', t: 0.5, l: '구르기 ② 구르는 중' }, { c: 'roll', t: 0.8, l: '구르기 ③ 넘어가는 중' }, { c: 'roll', t: 1.15, l: '구르기 ④ 일어섬' } ] },
   { title: '3연타 — 사선 내려베기 → 되받아 긋기 → 한 바퀴 돌며 넓게', tiles: [
     { c: 'atk1', t: 0.14, l: '1타 준비' }, { c: 'atk1', t: 0.33, l: '1타 타격', k: 'hit' },
     { c: 'atk2', t: 0.17, l: '2타 준비' }, { c: 'atk2', t: 0.4, l: '2타 타격', k: 'hit' },
@@ -39,7 +39,7 @@ while (!ok && tries++ < 4) {
   const meta = await page.evaluate(() => { window.__al.hold = true; document.getElementById('ui').style.display = 'none'; document.getElementById('info').style.display = 'none'; return { info: window.__al.info, error: window.__al.error }; });
   if (meta.error) { console.error('뷰어 오류: ' + meta.error); break; }
   const rows = [];
-  for (const r of ROWS) { const tiles = []; for (const t of r.tiles) { if (!meta.info.clips[t.c]) { console.error('없는 클립 ' + t.c); continue; } await page.evaluate((o) => window.__al.draw(o), { clip: t.c, fixed: t.t, yaw: Number(opt.yaw ?? 38), pitch: Number(opt.pitch ?? 30), zoom: opt.zoom ?? 'body' }); tiles.push({ b64: (await page.screenshot({ type: 'png' })).toString('base64'), l: t.l, k: t.k ?? '', sub: `${t.c} ${t.t.toFixed(2)}초` }); } rows.push({ title: r.title, tiles }); }
+  for (const r of ROWS) { const tiles = []; for (const t of r.tiles) { if (!meta.info.clips[t.c]) { console.error('없는 클립 ' + t.c); continue; } await page.evaluate((o) => window.__al.draw(o), { clip: t.c, fixed: t.t, yaw: Number(opt.yaw ?? 64), pitch: Number(opt.pitch ?? 30), zoom: opt.zoom ?? 'body' }); tiles.push({ b64: (await page.screenshot({ type: 'png' })).toString('base64'), l: t.l, k: t.k ?? '', sub: `${t.c} ${t.t.toFixed(2)}초` }); } rows.push({ title: r.title, tiles }); }
   if (await page.evaluate(() => window.__al.lost?.() ?? false)) { console.log('GL 컨텍스트를 잃었습니다 — 다시 찍습니다'); await page.context().close(); continue; }
   const C = Math.max(...rows.map((r) => r.tiles.length)), TH = 34, HEAD = 64, FOOT = 30, SW = C * W, SH = HEAD + rows.length * (TH + H) + FOOT;
   const sheet = await browser.newPage({ viewport: { width: SW, height: SH }, deviceScaleFactor: 1 });

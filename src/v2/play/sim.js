@@ -341,7 +341,7 @@ export class Sim {
     const info = { strength: mv.str, weapon: mv.weapon, material: D.material, blocked, back, kill, dirX: ax, dirZ: az, elite: !!D.elite, boss: !!D.boss };
     const hx = e.x - ax * 8, hy = e.y + Math.min(e.h * 0.62, 70), hz = e.z - az * 8;
     const r = this.emit('hit', e, dmg, mv, hx, hy, hz, info);
-    if (T.ownHitstop) this.stop = Math.max(this.stop, typeof r === 'number' ? r : mv.hitstop * (blocked ? 1.5 : 1.25));
+    if (T.ownHitstop) this.stop = Math.max(this.stop, r && typeof r.stop === 'number' ? Math.min(0.3, r.stop) : mv.hitstop * (blocked ? 1.5 : 1.25));   // hooks.hit 이 { stop } 을 돌려주면(feel.hit 의 결과 그대로) 그 경직을 쓴다
     if (kill) this._kill(e);
     return true;
   }

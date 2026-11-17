@@ -19,7 +19,7 @@ for (const k of ['melee', 'ranged', 'skeleton_soldier', 'skeleton_mage', 'plague
 ok('legacy kinds map: melee→skeleton_soldier, ranged→skeleton_mage', KINDS.melee.model === 'skeleton_soldier' && KINDS.melee.weapon === 'w_rusty_sword' && KINDS.ranged.model === 'skeleton_mage' && KINDS.ranged.weapon === 'w_crystal_staff');
 
 // ── 2. 이동 · 방향 ──
-{ const s = mk(); run(s, 0.6, { mx: 0, mz: 1 }); ok('move up: dir = (0,1), z grows', s.hero.dirZ > 0.99 && s.hero.z > 60 && s.hero.anim === 'run', `z ${s.hero.z.toFixed(0)} anim ${s.hero.anim}`);
+{ const s = mk(); run(s, 0.6, { mx: 0, mz: 1 }); const z06 = s.hero.z; run(s, 1.2, { mx: 0, mz: 1 }); ok('move up: dir = (0,1), z grows', s.hero.dirZ > 0.99 && z06 > 60 && s.hero.anim === 'run', `z ${z06.toFixed(0)} anim ${s.hero.anim}`);
   run(s, 0.05, { mx: 0, mz: -1 }); ok('stick reverse: rule dir flips at once', s.hero.dirZ < -0.99);
   const steps = s.log.filter((l) => l[0] === 'step'); ok('footsteps alternate L/R while running', steps.length >= 2 && steps.every((l, i) => i === 0 || l[1] !== steps[i - 1][1]), steps.map((l) => l[1]).join('')); }
 { const s = mk(); run(s, 1.0, { mx: 0.35, mz: 0 }); ok('half stick = walk gait', s.hero.anim === 'walk' && s.hero.gaitMode === 'walk', `anim ${s.hero.anim} v ${s.hero.vx.toFixed(0)}`); }
@@ -44,7 +44,7 @@ for (let k = 0; k < 8; k++) {
   ok('combo runs c1 → c2 → c3', seen.join('>').startsWith('c1>c2>c3'), seen.join('>'));
   ok('third hit is wide (hits all three around)', by.c3 && by.c3.size === 3 && by.c1 && by.c1.size === 1, `c1 ${by.c1?.size} c2 ${by.c2?.size} c3 ${by.c3?.size}`); }
 { // 점프 중 내려베기
-  const s = mk([{ kind: 'melee', x: 60, z: 0, active: true }]); s.enemies[0].cd = 99; let hits = []; s.hooks.hit = (e, d, mv) => hits.push(mv.id);
+  const s = mk([{ kind: 'melee', x: 60, z: 0, active: true }]); s.enemies[0].cd = 99; let hits = []; s.hooks.hit = (e, d, mv) => { hits.push(mv.id); };
   run(s, 1.2, (i) => ({ mx: 0, mz: 0, jump: i === 0, jumpHeld: true, attack: i === 16 }));
   ok('jump attack = plunge, hits, ends on ground', hits.includes('plunge') && s.hero.onGround && !s.hero.move, hits.join(',')); }
 { // 구른 직후 훑기
@@ -115,7 +115,7 @@ for (const kind of ['skeleton_soldier', 'skeleton_mage', 'plague_corpse', 'grave
 
 // ── 8. 옛 스테이지(시범판 B)에서: melee/ranged 가 그대로 돌고, 끼이지 않는다 ──
 try {
-  const { compileStage } = await import('../../src/v2/b/world.js'); const { STAGE } = await import('../../src/v2/b/stage_slice0.js');
+  const { compileStage } = await import('../../src/v2/b/world.js'); const STAGE = (await import('../../src/v2/b/stage_slice0.js')).default;
   const W = compileStage(STAGE); const s = new Sim(W, {});
   ok('B stage: Sim builds, spawns melee/ranged', s.enemies.length === W.spawns.length && s.enemies.every((e) => e.def && (e.kind === 'melee' || e.kind === 'ranged')), `${s.enemies.length} enemies`);
   run(s, 3, { mx: 1, mz: 0 }); ok('B stage: runs 3 s without NaN', finite(s) && s.hero.x > W.start.x + 100, `x ${s.hero.x.toFixed(0)}`);
