@@ -385,7 +385,7 @@ export class Sim {
         h.blockT = T.blockT; h.vx = -ax * T.guardPush * (chip ? 1.8 : 1); h.vz = -az * T.guardPush * 0.8 * (chip ? 1.8 : 1);
         if (chip) { h.hp -= chip; h.flash = 0.6; this.hooks.number?.(h.x, h.y + 100, h.z, '-' + chip, '#ffb060'); }
         this.stop = Math.max(this.stop, 0.05);
-        this.emit('guard', px, py, pz, chip, src); this.hooks.spark?.(px, py, pz, 'guard');   // (sfx 로는 내지 않는다: 옛 장면은 모르는 sfx 이름을 영웅의 휘두름 소리로 튼다)
+        this.emit('guard', px, py, pz, chip, src); this.hooks.sfx?.('guard'); this.hooks.spark?.(px, py, pz, 'guard');   // 장면은 sfx('guard') 로 막기 소리 · 불꽃을 낸다
         if (h.hp <= 0) this._die(h);
         return 'guard';
       }

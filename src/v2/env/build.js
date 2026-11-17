@@ -8,9 +8,24 @@ import { compileStage, groundAt, validateStage } from '../b/world.js';
 import { Geo, Frame } from './geo.js';
 import * as K from './kit.js';
 import { PROPS, WALLPROPS } from './props.js';
+import { bakedDef, bakedProp } from './baked.js';
+
+/** 구운 소품이 없을 때(묶음을 받기 전) 대신 세우는 손으로 짠 소품 */
+const FALLBACK = { angel: 'statue', gargoyle: 'statue', deadtree: 'tree' };
+const propFn = (name) => (bakedDef(name) ? (G, x, y, z, o) => bakedProp(G, name, x, y, z, o) : PROPS[name] ?? PROPS[FALLBACK[name]]);
 
 const KIT_ONLY = new Set(['pave', 'arch', 'fence', 'deco']);
-const bPart = (P) => (P.t === 'prop' && P.mesh ? { ...P, img: '__mesh' } : P);
+const bPart = (P) => {
+  if (P.t !== 'prop' || !P.mesh) return P;
+  const d = bakedDef(P.mesh), o = { ...P, img: '__mesh' };
+  if (d) {   // 구운 소품: 충돌 발자국과 빛을 묶음에서 채운다 (part 에 적은 값이 이긴다)
+    const s = (P.h ?? d.h) / d.h;
+    if (o.h == null) o.h = d.h;
+    if (o.solid == null && d.foot?.[0]) { o.solid = d.foot[0] * s; o.solidZ = d.foot[1] * s; o.solidH = (d.footH ?? d.h * 0.8) * s; }
+    if (o.light == null && d.light) o.light = d.light;
+  }
+  return o;
+};
 /** B 의 형식으로 걸러 낸 스테이지 (충돌·검증용) */
 export const toB = (S) => ({ ...S, parts: S.parts.filter((P) => !KIT_ONLY.has(P.t)).map(bPart) });
 export const validateEnv = (S) => validateStage(toB(S));
@@ -57,7 +72,7 @@ export function compileEnv(S, { cull = true } = {}) {
       }
       case 'prop': case 'deco': {
         if (!P.mesh) break;
-        const g = P.y ?? groundAt(W, P.x, P.z), fn = PROPS[P.mesh]; if (!fn) throw new Error('모르는 소품: ' + P.mesh);
+        const g = P.y ?? groundAt(W, P.x, P.z), fn = propFn(P.mesh); if (!fn) throw new Error('모르는 소품: ' + P.mesh);
         G.lift = true; fn(G, P.x, Number.isFinite(g) ? g : 0, P.z, P); G.lift = false;
         break;
       }

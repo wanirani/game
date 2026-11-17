@@ -9,8 +9,11 @@ export const TRIM = {
   white: px(272, 400, 224, 96),
 };
 /** 키트가 새로 받는 텍스처 (파일 = assets/v2/env/<이름>.webp). repeat = 반복 + 밉맵 */
-export const KIT_TEX = { k_ashlar: { repeat: true }, k_plaster: { repeat: true }, k_slate: { repeat: true }, k_cobble: { repeat: true }, k_flag: { repeat: true }, k_trim: { repeat: false } };
+export const KIT_TEX = { k_ashlar: { repeat: true }, k_plaster: { repeat: true }, k_slate: { repeat: true }, k_cobble: { repeat: true }, k_flag: { repeat: true }, k_trim: { repeat: false },
+  '../props/props_atlas': { repeat: false } };   // 구운 소품 아틀라스 = assets/v2/props/props_atlas.webp (이름이 env 폴더 기준 상대 경로다)
 export const KMATS = {
+  props: { tex: '../props/props_atlas', tile: 1, tint: [1, 1, 1] },          // 구운 소품 아틀라스 (baked.js — uv 는 묶음에 들어 있다)
+
   // 벽
   ashlar: { tex: 'k_ashlar', tile: 250, tint: [0.84, 0.85, 0.97] },          // 다듬은 돌 쌓기
   rubble: { tex: 'brick', tile: 210, tint: [0.8, 0.76, 0.86] },              // 거친 돌 (B 의 facade)

@@ -103,8 +103,8 @@ export default {
     { t: 'floor', x: 2444, z: 1000, w: 456, d: 560, y: 92, thick: 330, mat: 'dirt', walk: false, kit: { strips: [{ x0: 0, x1: 170, z0: 200, z1: 470, mat: 'moss' }] } },
     { t: 'wall', x: 1400, z: 1000, w: 80, d: 1240, y: 92, h: 250, mat: 'facade', kit: { style: 'rubble', faces: 'R', battlement: true, buttress: [220, 520, 820, 1120].map((u) => ({ side: 'R', u, h: 200, d: 20 })) } },
     { t: 'wall', x: 2900, z: 1000, w: 80, d: 1240, y: 92, h: 250, mat: 'facade', kit: { style: 'rubble', faces: 'L', battlement: true, buttress: [120, 420, 720, 1020].map((u) => ({ side: 'L', u, h: 200, d: 20 })) } },
-    // 천사상도 그림판으로 남긴다: 키트의 3D 석상(PROPS.statue, 두건 쓴 수호자)은 가까이서 덩어리로만 읽혀 그림보다 못했다 (보기 도구의 늘어놓기에서 볼 수 있다)
-    { t: 'prop', img: 'prop_statue', x: 2034, z: 1190, h: 210, solid: 26 }, { t: 'prop', img: 'prop_statue', x: 2346, z: 1190, h: 210, solid: 26, flip: true },
+    // 천사상: 구운 입체 소품 (assets/v2/props — tools/v2/world_props_bake.mjs). 묶음을 받지 못하면 키트의 저폴리 석상이 대신 선다
+    { t: 'prop', mesh: 'angel', x: 2034, z: 1190, h: 210, solid: 26 }, { t: 'prop', mesh: 'angel', x: 2346, z: 1190, h: 210, solid: 26, flip: true },
     { t: 'deco', mesh: 'tree', x: 1760, z: 1230, y: 92, h: 330 }, { t: 'deco', mesh: 'tree', x: 2650, z: 1360, y: 92, h: 300, flip: true },
     { t: 'deco', mesh: 'tree', x: 1640, z: 1450, y: 92, h: 280, flip: true }, { t: 'deco', mesh: 'tree', x: 2790, z: 1130, y: 92, h: 250 },
     { t: 'fence', kind: 'wood', x0: 1700, z0: 1080, x1: 1900, z1: 1080, y: 92, h: 50 }, { t: 'fence', kind: 'wood', x0: 2520, z0: 1120, x1: 2720, z1: 1120, y: 92, h: 50 },
@@ -129,8 +129,8 @@ export default {
     } },
     { t: 'prop', ...BRAZIER, x: 1790, z: 1630 }, { t: 'prop', ...BRAZIER, x: 2590, z: 1630 },
     { t: 'prop', ...BRAZIER, x: 1790, z: 2100 }, { t: 'prop', ...BRAZIER, x: 2590, z: 2100 },
-    // 가고일은 그림판으로 남긴다 (손으로 짠 저폴리로는 그림보다 못하다 — ENV_KIT.md §7)
-    { t: 'prop', img: 'prop_gargoyle', x: 1990, z: 2128, h: 150, solid: 34, solidZ: 22 }, { t: 'prop', img: 'prop_gargoyle', x: 2390, z: 2128, h: 150, solid: 34, solidZ: 22, flip: true },
+    // 가고일: 구운 입체 소품 (그림판은 이제 없다)
+    { t: 'prop', mesh: 'gargoyle', x: 1990, z: 2128, h: 150, solid: 34, solidZ: 22 }, { t: 'prop', mesh: 'gargoyle', x: 2390, z: 2128, h: 150, solid: 34, solidZ: 22, flip: true },
   ],
   // 바닥에 붙는 반투명 얼룩 (이끼 · 물웅덩이 · 때) — 그리기 한 번에 묶인다
   decals: [

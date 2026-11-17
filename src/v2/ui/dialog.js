@@ -1,0 +1,239 @@
+// v2 dialogue box and pause menu (docs/v2/UI_API.md 4, 5) - the same cut-glass language, denser where text sits.
+// Both are baked: the dialogue box is one canvas (panel, ornaments, portrait, name plate), each text page is one canvas
+// revealed line by line with drawImage source rectangles; the pause menu is one canvas per selected row.
+import { sprite, glassPanel, plate, bakeText, makeCanvas, measure, wrapLines, chamfer, clamp, COL, FONTS, onAtlas } from './draw.js';
+
+const CPS = 38, MAX_LINES = 4;
+
+export function createDialog(env) {   // env: { game, input, hud (canvas HUD: layout L, px, tsz), portraitBase }
+  const L = env.hud.layout, px = env.hud.px, tsz = env.hud.tsz;
+  const D = { d: null, src: null, open: false, pages: [], page: 0, shown: 0, total: 0, sel: 0, t: 0, epoch: -1, portrait: null, pid: '', done: false };
+  const box = { c: null, w: 0, h: 0, x: 0, y: 0, tx: 0, ty: 0, tw: 0, lineH: 0, ts: 0 }, pageC = { c: null, w: 0, h: 0, cum: [], starts: [] };
+  const choiceC = [{ c: null, w: 0, h: 0, x: 0, y: 0 }, { c: null, w: 0, h: 0, x: 0, y: 0 }];
+  const portraits = new Map();
+  let vw = 0, vh = 0, sf = { l: 0, t: 0, r: 0, b: 0 };
+
+  function portraitOf(id) {
+    if (!id) return null;
+    let im = portraits.get(id);
+    if (!im) { im = new Image(); im.decoding = 'async'; im.src = /[./]/.test(id) ? id : env.portraitBase + id + '.webp'; im.addEventListener('load', () => { D.epoch = -1; }, { once: true }); portraits.set(id, im); }
+    return im;
+  }
+  function ctxOf(p, w, h) {
+    const cw = Math.ceil(w * L.s), ch = Math.ceil(h * L.s);
+    if (!p.c) p.c = makeCanvas(cw, ch); else if (p.c.width !== cw || p.c.height !== ch) { p.c.width = cw; p.c.height = ch; }
+    p.w = w; p.h = h; const c = p.c.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cw, ch); c.setTransform(L.s, 0, 0, L.s, 0, 0); return c;
+  }
+  function geometry() {
+    const d = D.d, ts = tsz(17.5, L.tmin + 3.5), lineH = ts * 1.52;
+    const pw = Math.min(vw - sf.l - sf.r - px(28), px(800)), ph = Math.max(px(112), lineH * MAX_LINES + px(34));
+    const hasP = !!d.portrait, pz = hasP ? ph + px(30) : 0, right = d.side === 'right';
+    box.ts = ts; box.lineH = lineH; box.pw = pw; box.ph = ph; box.pz = pz; box.top = pz ? pz - ph + px(6) : px(18);
+    box.x = (vw - pw) / 2 - 8; box.y = vh - sf.b - ph - px(14) - box.top;
+    box.tw = pw - px(40) - (hasP ? pz * 0.86 + px(6) : 0);
+    box.tx = 8 + px(22) + (hasP && !right ? pz * 0.86 + px(6) : 0); box.ty = box.top + px(24);
+  }
+  function bakeBox() {
+    const d = D.d; geometry();
+    const pw = box.pw, ph = box.ph, top = box.top, c = ctxOf(box, pw + 16, top + ph + 10), right = d.side === 'right';
+    glassPanel(c, 8, top, pw, ph, { cut: px(13), dense: 0.72 });
+    // corner ornaments (one sprite, mirrored)
+    const o = px(40);
+    for (let i = 0; i < 4; i++) { c.save(); c.translate(8 + (i % 2 ? pw - 3 : 3), top + (i > 1 ? ph - 3 : 3)); c.scale(i % 2 ? -1 : 1, i > 1 ? -1 : 1); c.globalAlpha = 0.9; sprite(c, 'orn_corner', o / 2, o / 2, o, o); c.restore(); }
+    if (d.portrait) {   // bust in a cut frame that rises above the panel
+      const pz = box.pz, fw = pz * 0.82, x = right ? 8 + pw - fw - px(12) : 8 + px(12), y = 2, fh = pz - px(8);
+      c.save(); chamfer(c, x, y, fw, fh, px(12)); c.clip();
+      const g = c.createLinearGradient(0, y, 0, y + fh); g.addColorStop(0, 'rgba(40,46,84,0.78)'); g.addColorStop(1, 'rgba(8,9,22,0.92)'); c.fillStyle = g; c.fillRect(x, y, fw, fh);
+      const im = D.portrait;
+      if (im && im.complete && im.naturalWidth) { const k = Math.max(fw / im.naturalWidth, fh / im.naturalHeight), dw = im.naturalWidth * k, dh = im.naturalHeight * k; c.drawImage(im, x + (fw - dw) / 2, y + (fh - dh) * 0.12, dw, dh); }
+      const sh = c.createLinearGradient(0, y + fh * 0.72, 0, y + fh); sh.addColorStop(0, 'rgba(6,7,18,0)'); sh.addColorStop(1, 'rgba(6,7,18,0.7)'); c.fillStyle = sh; c.fillRect(x, y + fh * 0.72, fw, fh * 0.28);
+      c.restore();
+      chamfer(c, x, y, fw, fh, px(12)); c.lineWidth = 1.5; const rg = c.createLinearGradient(x, y, x + fw, y + fh); rg.addColorStop(0, 'rgba(246,249,255,0.95)'); rg.addColorStop(0.5, 'rgba(140,156,200,0.6)'); rg.addColorStop(1, 'rgba(226,234,255,0.85)'); c.strokeStyle = rg; c.stroke();
+      chamfer(c, x + 3, y + 3, fw - 6, fh - 6, px(10)); c.lineWidth = 0.8; c.strokeStyle = 'rgba(255,255,255,0.16)'; c.stroke();
+    }
+    if (d.speaker) {   // name plate on the top edge
+      const ns = tsz(15, L.tmin + 2.5), nx = box.tx + measure(d.speaker, ns, 800, FONTS.title) / 2 + ns * 0.4;
+      plate(c, d.speaker, right && d.portrait ? 8 + px(22) + measure(d.speaker, ns, 800, FONTS.title) / 2 + ns * 0.4 : nx, top + 1, ns, { family: FONTS.title, weight: 800, color: '#fff3d4', rim: 'rgba(241,212,138,0.8)' });
+    }
+    box.tx = 8 + px(22) + (d.portrait && !right ? box.pz * 0.86 + px(6) : 0);
+  }
+  function bakePage() {
+    const lines = D.pages[D.page] ?? [], ts = box.ts, lh = box.lineH;
+    const c = ctxOf(pageC, box.tw + 6, lh * MAX_LINES + 6);
+    c.font = `500 ${ts}px ${FONTS.body}`; c.textBaseline = 'middle'; c.textAlign = 'left'; c.lineJoin = 'round';
+    pageC.cum.length = 0; pageC.starts.length = 0; let n = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const y = 3 + lh * (i + 0.5), ln = lines[i];
+      c.lineWidth = 2.6; c.strokeStyle = 'rgba(4,4,12,0.75)'; c.strokeText(ln, 2, y);
+      c.fillStyle = '#f2f4ff'; c.fillText(ln, 2, y);
+      pageC.starts.push(n); const cum = [0]; for (let k = 1; k <= ln.length; k++) cum.push(c.measureText(ln.slice(0, k)).width + 4); pageC.cum.push(cum); n += ln.length;
+    }
+    D.total = n; c.textBaseline = 'alphabetic';
+  }
+  function bakeChoices() {
+    const d = D.d; if (!d.choices) return;
+    const ts = tsz(15.5, L.tmin + 3), h = ts * 2.3; let w = px(150);
+    for (const t of d.choices) w = Math.max(w, measure(t, ts, 700) + ts * 3.2);
+    for (let i = 0; i < 2 && i < d.choices.length; i++) {
+      const p = choiceC[i], sel = i === D.sel, c = ctxOf(p, w + 12, h + 12);
+      glassPanel(c, 6, 6, w, h, { cut: px(9), dense: sel ? 0.8 : 0.6, accent: sel ? 'gold' : null });
+      if (sel) { chamfer(c, 6, 6, w, h, px(9)); c.lineWidth = 2; c.strokeStyle = COL.gold; c.stroke(); sprite(c, 'interact', 6 + ts * 1.1, 6 + h / 2, ts * 1.5, ts * 1.5); }
+      c.font = `700 ${ts}px ${FONTS.body}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 2.6; c.lineJoin = 'round'; c.strokeStyle = 'rgba(4,4,12,0.75)';
+      c.strokeText(d.choices[i], 6 + w / 2 + (sel ? ts * 0.4 : 0), 6 + h / 2 + 1); c.fillStyle = sel ? '#fff3d4' : COL.silver; c.fillText(d.choices[i], 6 + w / 2 + (sel ? ts * 0.4 : 0), 6 + h / 2 + 1);
+      c.textBaseline = 'alphabetic';
+      p.x = box.x + 8 + box.pw - p.w - px(10) + 6; p.y = box.y + box.top - (d.choices.length - i) * (h + px(8)) - px(6);
+    }
+  }
+  function rebuild() {
+    const d = D.d;
+    D.portrait = portraitOf(d.portrait);
+    geometry();
+    const lines = wrapLines(d.text ?? '', box.tw - 6, box.ts, 500);
+    D.pages.length = 0; for (let i = 0; i < lines.length; i += MAX_LINES) D.pages.push(lines.slice(i, i + MAX_LINES));
+    if (!D.pages.length) D.pages.push(['']);
+    D.page = Math.min(D.page, D.pages.length - 1);
+    bakeBox(); bakePage(); bakeChoices(); D.epoch = L.epoch;
+  }
+  const lastPage = () => D.page >= D.pages.length - 1;
+  const revealed = () => D.shown >= D.total;
+  function finish(choice) {
+    const d = D.d; D.open = false; D.d = null; D.done = true;
+    try { if (choice != null) d.onChoice?.(choice); else d.onDone?.(); } catch (e) { console.error('[v2ui] dialog callback', e); }
+  }
+
+  return {
+    get open() { return D.open; },
+    show(d, fromState = false) { D.d = d; D.fromState = fromState; D.open = true; D.page = 0; D.shown = 0; D.sel = 0; D.t = 0; D.epoch = -1; D.done = false; },
+    close() { D.open = false; D.d = null; },
+    /** state.dialog path: the same object keeps the same conversation; a new object starts a new one; null closes. */
+    sync(obj) {
+      obj = obj ?? null;
+      if (obj === D.src) return;
+      D.src = obj;
+      if (!obj) { if (D.open && D.fromState) this.close(); return; }
+      this.show(obj, true);
+    },
+    advance() {
+      if (!D.open) return;
+      if (!revealed()) { D.shown = D.total; return; }
+      if (!lastPage()) { D.page++; D.shown = 0; bakePage(); return; }
+      if (D.d.choices) finish(D.sel); else finish(null);
+    },
+    select(i) { if (D.open && D.d.choices && i !== D.sel && i >= 0 && i < D.d.choices.length) { D.sel = i; bakeChoices(); } },
+    /** tap in logical px */
+    tap(x, y) {
+      if (!D.open) return;
+      if (D.d.choices && revealed() && lastPage()) {
+        for (let i = 0; i < 2 && i < D.d.choices.length; i++) { const p = choiceC[i]; if (x >= p.x && x <= p.x + p.w && y >= p.y && y <= p.y + p.h) { D.sel = i; finish(i); return; } }
+        return;
+      }
+      this.advance();
+    },
+    update(dt, s) {
+      if (!D.open) return;
+      vw = s.viewW; vh = s.viewH; sf = s.safe ?? sf;
+      if (D.epoch !== L.epoch) rebuild();
+      D.t += dt; D.shown = Math.min(D.total, D.shown + dt * CPS);
+      const inp = env.input;
+      if (inp?.pressed) {
+        if (D.d.choices && revealed() && lastPage()) {
+          if (inp.pressed('up') || inp.pressed('left')) this.select(0); else if (inp.pressed('down') || inp.pressed('right')) this.select(1);
+        }
+        if (inp.pressed('confirm') || inp.pressed('attack') || inp.pressed('jump')) this.advance();
+      }
+      if (D.open && D.d.auto && revealed() && D.t > D.total / CPS + 1.6) { D.t = 0; this.advance(); }
+    },
+    draw(ctx, s) {
+      if (!D.open) return;
+      vw = s.viewW; vh = s.viewH; sf = s.safe ?? sf;
+      if (D.epoch !== L.epoch) rebuild();
+      const a = clamp(D.t / 0.18, 0, 1), dy = (1 - a) * px(12);
+      ctx.globalAlpha = a;
+      ctx.drawImage(box.c, box.x, box.y + dy, box.w, box.h);
+      const S = L.s, lh = box.lineH, ox = box.x + box.tx, oy = box.y + box.ty + dy;
+      for (let i = 0; i < pageC.cum.length; i++) {
+        const k = Math.floor(D.shown) - pageC.starts[i]; if (k <= 0) break;
+        const cum = pageC.cum[i], w = cum[Math.min(k, cum.length - 1)]; if (w <= 0) continue;
+        ctx.drawImage(pageC.c, 0, Math.floor((3 + lh * i) * S), Math.ceil(w * S), Math.ceil(lh * S), ox, oy + lh * i, Math.ceil(w * S) / S, Math.ceil(lh * S) / S);
+      }
+      if (revealed()) {
+        if (D.d.choices && lastPage()) { for (let i = 0; i < 2 && i < D.d.choices.length; i++) { const p = choiceC[i]; if (p.c) ctx.drawImage(p.c, p.x, p.y + dy, p.w, p.h); } }
+        else {   // "next" marker: a small diamond that bobs
+          const mx = box.x + 8 + box.pw - px(24), my = box.y + box.top + box.ph - px(18) + Math.sin(D.t * 5) * px(2.5), q = px(5.5);
+          ctx.fillStyle = COL.gold; ctx.beginPath(); ctx.moveTo(mx, my + q * 1.25); ctx.lineTo(mx + q, my); ctx.lineTo(mx, my - q * 0.8); ctx.lineTo(mx - q, my); ctx.closePath(); ctx.fill();
+          ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,250,235,0.9)'; ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = 1;
+    },
+    info() { return D.open ? { page: D.page, pages: D.pages.length, shown: Math.floor(D.shown), total: D.total, sel: D.sel, choices: D.d.choices ?? null, box: { x: box.x + 8, y: box.y + box.top, w: box.pw, h: box.ph, top: box.y }, text: { x: box.x + box.tx, y: box.y + box.ty, w: box.tw, h: box.lineH * MAX_LINES }, choiceRects: D.d.choices ? choiceC.slice(0, D.d.choices.length).map((p) => ({ x: p.x, y: p.y, w: p.w, h: p.h })) : [] } : null; },
+    release() { for (const p of [box, pageC, ...choiceC]) if (p.c) { p.c.width = 1; p.c.height = 1; p.c = null; } portraits.clear(); },
+  };
+}
+
+const ROWS = [['resume', '이어 하기'], ['settings', '설정'], ['leave', '나가기']];
+export function createPause(env) {
+  const L = env.hud.layout, px = env.hud.px, tsz = env.hud.tsz;
+  const M = { open: false, sel: 0, t: 0, key: '', o: null, x: 0, y: 0, rowY: [0, 0, 0], rowH: 0 };
+  const panel = { c: null, w: 0, h: 0 };
+  function bake() {
+    const ts = tsz(17, L.tmin + 4), rowH = Math.max(px(46), 46 / L.css, ts * 2.5), w = Math.max(px(300), measure(ROWS[0][1], ts, 700) + px(170)), titleH = px(74), h = titleH + rowH * 3 + px(34);
+    const cw = Math.ceil((w + 24) * L.s), ch = Math.ceil((h + 24) * L.s);
+    if (!panel.c) panel.c = makeCanvas(cw, ch); else if (panel.c.width !== cw || panel.c.height !== ch) { panel.c.width = cw; panel.c.height = ch; }
+    panel.w = w + 24; panel.h = h + 24;
+    const c = panel.c.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cw, ch); c.setTransform(L.s, 0, 0, L.s, 0, 0);
+    glassPanel(c, 12, 12, w, h, { cut: px(16), dense: 0.78 });
+    const o = px(44);
+    for (let i = 0; i < 4; i++) { c.save(); c.translate(12 + (i % 2 ? w - 3 : 3), 12 + (i > 1 ? h - 3 : 3)); c.scale(i % 2 ? -1 : 1, i > 1 ? -1 : 1); sprite(c, 'orn_corner', o / 2, o / 2, o, o); c.restore(); }
+    const title = bakeText(M.o?.title ?? '잠시 멈춤', L.s, { size: tsz(24, L.tmin + 7), family: FONTS.title, weight: 800, fill: ['#ffffff', '#cdd5f3'], lw: 3.5, stroke: 'rgba(6,6,18,0.86)' });
+    c.drawImage(title.c, 12 + w / 2 - title.w / 2, 12 + px(10), title.w, title.h);
+    sprite(c, 'orn_div', 12 + w / 2, 12 + px(10) + title.h * 0.92, w * 0.62, w * 0.62 * 64 / 480);
+    for (let i = 0; i < 3; i++) {
+      const y = 12 + titleH + i * rowH, sel = i === M.sel, rx = 12 + px(20), rw = w - px(40);
+      glassPanel(c, rx, y + 3, rw, rowH - 7, { cut: px(8), shadow: false, dense: sel ? 0.5 : 0.1, accent: sel ? 'gold' : null });
+      if (sel) { chamfer(c, rx, y + 3, rw, rowH - 7, px(8)); c.lineWidth = 1.8; c.strokeStyle = COL.gold; c.stroke(); }
+      sprite(c, ROWS[i][0], rx + rowH * 0.55, y + rowH / 2, rowH * 0.66, rowH * 0.66);
+      c.font = `700 ${ts}px ${FONTS.body}`; c.textAlign = 'left'; c.textBaseline = 'middle'; c.lineJoin = 'round'; c.lineWidth = 2.6; c.strokeStyle = 'rgba(4,4,12,0.75)';
+      c.strokeText(ROWS[i][1], rx + rowH * 1.1, y + rowH / 2 + 1); c.fillStyle = sel ? '#fff3d4' : COL.silver; c.fillText(ROWS[i][1], rx + rowH * 1.1, y + rowH / 2 + 1);
+      c.textBaseline = 'alphabetic'; M.rowY[i] = 12 + titleH + i * rowH;
+    }
+    M.rowH = rowH; M.key = L.epoch + '|' + M.sel;
+  }
+  function pick(i) {
+    const o = M.o ?? {}, g = env.game; M.open = false;
+    try {
+      if (i === 0) o.onResume?.();
+      else if (i === 1) { if (o.onSettings) o.onSettings(); else if (g.registry?.options && g.push) g.push('options'); }
+      else if (o.onLeave) o.onLeave(); else if (g.registry?.v2pick) g.go('v2pick', {}, { fade: true }); else if (g.registry?.title) g.go('title', {}, { fade: true });
+    } catch (e) { console.error('[v2ui] pause callback', e); }
+  }
+  onAtlas(() => { M.key = ''; });
+  return {
+    get open() { return M.open; },
+    show(o) { M.o = o ?? null; M.open = true; M.sel = 0; M.t = 0; M.key = ''; },
+    close() { if (M.open) pick(0); },
+    tap(x, y) {
+      if (!M.open) return;
+      const lx = x - M.x, ly = y - M.y;
+      for (let i = 0; i < 3; i++) if (lx >= 12 && lx <= panel.w - 12 && ly >= M.rowY[i] && ly < M.rowY[i] + M.rowH) { M.sel = i; pick(i); return; }
+    },
+    update(dt, s) {
+      if (!M.open) return;
+      M.t += dt;
+      const inp = env.input; if (!inp?.pressed || M.t < 0.12) return;
+      if (inp.pressed('up')) M.sel = (M.sel + 2) % 3; else if (inp.pressed('down')) M.sel = (M.sel + 1) % 3;
+      else if (inp.pressed('confirm') || inp.pressed('attack')) pick(M.sel);
+      else if (inp.pressed('cancel') || inp.pressed('menu')) pick(0);
+    },
+    draw(ctx, s) {
+      if (!M.open) return;
+      if (M.key !== L.epoch + '|' + M.sel) bake();
+      const a = clamp(M.t / 0.16, 0, 1);
+      ctx.globalAlpha = a * 0.58; ctx.fillStyle = '#04050c'; ctx.fillRect(0, 0, s.viewW, s.viewH);
+      M.x = s.viewW / 2 - panel.w / 2; M.y = s.viewH / 2 - panel.h / 2;
+      ctx.globalAlpha = a; ctx.drawImage(panel.c, M.x, M.y + (1 - a) * px(10), panel.w, panel.h); ctx.globalAlpha = 1;
+    },
+    info() { return M.open ? { sel: M.sel, rows: M.rowY.map((y) => ({ x: M.x + 12, y: M.y + y, w: panel.w - 24, h: M.rowH })) } : null; },
+    release() { if (panel.c) { panel.c.width = 1; panel.c.height = 1; panel.c = null; } },
+  };
+}

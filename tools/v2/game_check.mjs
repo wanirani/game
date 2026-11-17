@@ -36,11 +36,15 @@ const srv = await start(port);
 function installBot() {
   const g = window.__game, v = window.__v2, input = g.input;
   const ROUTE = [[330, 120], [560, 182], [790, 190], [1230, 190], [1300, 182], [1480, 182], [1520, 130], [1720, 190], [1990, 190], [2190, 190], [2190, 420], [2190, 960], [2190, 1500], [2190, 1720], [2190, 1860]];
-  const B = (window.__bot = { wp: 0, t: 0, act: {}, stuck: 0, lx: 0, lz: 0, side: 0, atk: 0, minHp: 100, jumpT: 0, dodge: 0, fs: 0, skipMap: {}, skips: 0, max: { draws: 0, tris: 0, charTris: 0, drawn: 0, culled: 0, stop: 0, shots: 0, dying: 0, lights: 0 }, feel0: 0 });
+  const B = (window.__bot = { wp: 0, t: 0, ticks: 0, simT: -1, deaths: v.scene.sim.deaths ?? 0, act: {}, stuck: 0, lx: 0, lz: 0, side: 0, atk: 0, minHp: 100, jumpT: 0, dodge: 0, fs: 0, skipMap: {}, skips: 0, max: { draws: 0, tris: 0, charTris: 0, drawn: 0, culled: 0, stop: 0, shots: 0, dying: 0, lights: 0 }, feel0: 0 });
   const target = (h, E, now) => { let tg = null, bd = 1e9; for (const e of E) { if (e.state === 'dead' || (B.skipMap[e.id] ?? 0) > now) continue; const d = Math.hypot(e.x - h.x, (e.z - h.z) * 1.5); if (Math.abs(e.y - h.y) > 110) continue; if (!(e.active ? d < 620 : d < 300)) continue; if (d < bd) { bd = d; tg = e; } } return tg; };
   const waypoint = (h) => { let ni = B.wp, nd = 1e9; for (let i = B.wp; i < ROUTE.length; i++) { const d = Math.hypot(ROUTE[i][0] - h.x, ROUTE[i][1] - h.z); if (d < nd) { nd = d; ni = i; } } B.wp = ni; const w = ROUTE[B.wp]; if (Math.hypot(w[0] - h.x, w[1] - h.z) < 26 && B.wp < ROUTE.length - 1) B.wp++; return ROUTE[B.wp]; };
   input.setAutoSource(() => B.act);
+  const restart = () => { const d = v.scene.sim.deaths ?? 0; if (d !== B.deaths) { B.deaths = d; B.wp = 0; B.skipMap = {}; B.stuck = 0; B.jumpT = 0; } };   // fell and started over: follow the route from its beginning again
   B.think = () => {
+    const st = v.scene.sim.time ?? 0; B.ticks++;
+    if (st === B.simT) return;   // hit-stop: the rules stand still, so the bot keeps its last decision (and does not mistake the freeze for being stuck)
+    B.simT = st; restart();
     const h = v.hero, E = v.enemies, a = (B.act = {});
     B.t++; B.minHp = Math.min(B.minHp, h.hp);
     if (h.dead || v.section === 'done') return;
@@ -76,12 +80,12 @@ function installBot() {
     g.alpha = 1; g.render();
     return B.status();
   };
-  B.status = () => { const h = v.hero; return { sec: v.section, x: Math.round(h.x), z: Math.round(h.z), y: Math.round(h.y), hp: h.hp, left: v.enemies.length, yard: v.enemies.filter((e) => e.yard).length, wp: B.wp, t: B.t, deaths: v.scene.sim.deaths ?? 0, minHp: B.minHp, max: B.max, skips: B.skips, feelN: v.scene.feelN - B.feel0, simT: +(v.scene.sim.time ?? 0).toFixed(1) }; };
+  B.status = () => { const h = v.hero; return { ticks: B.ticks, sec: v.section, x: Math.round(h.x), z: Math.round(h.z), y: Math.round(h.y), hp: h.hp, left: v.enemies.length, yard: v.enemies.filter((e) => e.yard).length, wp: B.wp, t: B.t, deaths: v.scene.sim.deaths ?? 0, minHp: B.minHp, max: B.max, skips: B.skips, feelN: v.scene.feelN - B.feel0, simT: +(v.scene.sim.time ?? 0).toFixed(1) }; };
   // analog pilot for the real touch run (called from outside about 25 times a second)
   const P = (B.p = { lx: 0, lz: 0, lt: 0, stuckT: 0, escT: 0, escS: 1, atkT: 0, dodgeT: 0, fs: 0 });
   B.pilot = () => {
     const h = v.hero, E = v.enemies, now = performance.now() / 1000, o = { mx: 0, mz: 0, attack: false, dash: false, jump: false, sec: v.section, x: Math.round(h.x), z: Math.round(h.z), hp: h.hp, dead: !!h.dead, left: E.length };
-    B.minHp = Math.min(B.minHp, h.hp); watch();
+    B.minHp = Math.min(B.minHp, h.hp); watch(); restart();
     if (h.dead || v.section === 'done') return o;
     const tg = target(h, E, now * 60);
     let tx, tz, fight = false;
@@ -193,11 +197,12 @@ for (const dev of DEVICES) {
 
     // ── 4) the route fast-forwarded: frame numbers ──
     if (want('route')) {
-    await page.evaluate(() => { const v = window.__v2, B = window.__bot; window.__game._pageHidden = true; v.scene.sim.reset(); v.scene.cam.snap = true; v.scene.fx?.clear(); B.wp = 0; B.minHp = 100; B.t = 0; B.skipMap = {}; B.feel0 = v.scene.feelN; for (const k of Object.keys(B.max)) B.max[k] = 0; window.__game.input.setAutoSource(() => B.act); });
+    await page.evaluate(() => { const v = window.__v2, B = window.__bot; window.__game._pageHidden = true; v.scene.sim.reset(); v.scene.cam.snap = true; v.scene.fx?.clear(); B.wp = 0; B.minHp = 100; B.t = 0; B.ticks = 0; B.simT = -1; B.deaths = v.scene.sim.deaths ?? 0; B.skipMap = {}; B.feel0 = v.scene.feelN; for (const k of Object.keys(B.max)) B.max[k] = 0; window.__game.input.setAutoSource(() => B.act); });
+    if (args.debug) await page.evaluate((js) => { const v = window.__v2, sc = v.scene, sim = sc.sim, g = window.__game; (0, eval)(`(function(g,v,sc,sim){${js}})`)(g, v, sc, sim); }, String(args.debug));   // debugging aid: run a snippet before the route
     let r = null; const t0 = Date.now();
     for (let i = 0; i < 60 && Date.now() - t0 < 240000; i++) { r = await page.evaluate(() => window.__bot.run(300, 10)); if (args.verbose) console.log('       ' + JSON.stringify({ sec: r.sec, x: r.x, z: r.z, hp: r.hp, left: r.left, deaths: r.deaths, wp: r.wp, skips: r.skips, feelN: r.feelN })); if (r.sec === 'done') break; }
     R.bot = r;
-    if (r?.sec === 'done') ok(`fast-forward bot finished: ${(r.t / 60).toFixed(1)} s of ticks, hp left ${r.hp} (lowest ${r.minHp}), fell ${r.deaths} times, strikes ${r.feelN}`);
+    if (r?.sec === 'done') ok(`fast-forward bot finished: ${(r.ticks / 60).toFixed(1)} s of ticks (${(r.t / 60).toFixed(1)} s of rule time, the rest is hit-stop), hp left ${r.hp} (lowest ${r.minHp}), fell ${r.deaths} times, strikes ${r.feelN}`);
     else fail(`${dev}: fast-forward bot did not finish ${JSON.stringify(r)}`);
     if (r) console.log(`       peak during the route: draw calls ${r.max.draws} · triangles ${Math.round(r.max.tris)} (characters ${Math.round(r.max.charTris)}) · characters drawn ${r.max.drawn}, skipped ${r.max.culled} · effect lights ${r.max.lights}`);
     // ── 5) hit feel ──

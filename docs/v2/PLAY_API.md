@@ -5,7 +5,7 @@
 **바뀐 것**
 - 22:20 (2차) **알맹이를 PLAY 판으로 바꿨다.** `index.js` 가 이제 `src/v2/play/` 의 규칙과 움직임을 내보낸다(시범판 B 의 것이 아니다). 이름과 모양은 그대로: `Sim` · `TUNE` · `KINDS` · `driveHero` · `driveActor`. 더해진 것: `MOVES` · `kindOf` · `registerKind` · `placeActor` · `loadPlayClips` · `flatArena` …
   - `KINDS[kind].float`(숫자)는 **없다.** 떠 있는 높이는 규칙이 `e.y` 에 이미 넣는다(`e.gy` = 발밑 땅, `e.hover` = 뜬 높이). 장면이 `float` 를 더하던 줄은 0 이 더해져 그대로 맞는다. 뜨는 종류 표시는 `floats: true` · `fly: true`.
-  - 옛 `sfx(name)` 으로는 장면이 아는 이름만 낸다: `dash jump land swing cast parry die slash slash_heavy`. 막기 소리는 새 훅 `guard(…)` 로만 온다(§5).
+  - 옛 `sfx(name)` 으로는 장면이 아는 이름만 낸다: `dash jump land swing cast parry guard die slash slash_heavy` (`guard` = 막음 — 새 훅 `guard(…)` 도 같이 온다, §5).
   - 기술 한 줄에 `strength`(= `str`)가 있다 — 장면의 `mv.strength` 읽기가 그대로 맞는다.
 - 15:20 첫 판 (이름과 모양)
 
@@ -79,6 +79,7 @@ for (const e of sim.enemies) if (!e.dead) driveActor(charOf(e), e, dt);   // 적
 `kindOf(kind)` 가 다른 이름까지 풀어 한 줄을 돌려준다(모르는 이름은 `skeleton_soldier`). `KINDS.melee === KINDS.skeleton_soldier`.
 
 - **판정은 보는 방향 기준 상자**다(영웅과 같다): `atk.box = { f0, f1, side, y0, y1 }`(앞으로 f0…f1, 옆 ±side) 또는 `atk.radius = { r, fwd }`(앞으로 fwd 떨어진 원). 예고 동안 `atk.track`(rad/초)로 영웅을 따라 돌다가 예고의 마지막 20 % 에서 방향이 굳는다 → 그때 옆으로 비키면 빗나간다.
+- 옛 장면 코드를 위해 `TUNE[kind] = { windup, reachZ }`(첫 공격의 값)도 채워 둔다. 공격마다 예고 길이가 다르므로 새 코드는 `e.atk.windup` · `e.tele` 를 읽는다.
 - **한 번에 둘까지**: 걷는 적은 둘까지만 동시에 공격한다(`sim.mayAttack`; 정예 · 보스는 예외, 나는 것은 따로 하나). 차례를 기다리는 적은 52 px 물러선 고리에서 옆으로 돈다 → 여럿이 한 점에 뭉치지 않는다.
 - **길 찾기**: `sim.steer(e, wx, wz, speed, dt)` — 가려는 쪽이 0.1초 넘게 막히면 옆으로 0.55–0.75초 돌아간다(벽 모서리와 소품 사이에 끼어 서 있던 문제, requests.md envkit 3 — `play_rules_test` 가 그 자리를 그대로 재현해 본다). 걷는 적은 낭떠러지로 가지 않는다.
 
@@ -122,7 +123,7 @@ for (const e of sim.enemies) if (!e.dead) driveActor(charOf(e), e, dt);   // 적
 | `hit(e, dmg, mv, x, y, z, info)` | 영웅의 공격(또는 되돌린 탄)이 적에게 닿음. `mv.strength` · `mv.weapon`. `info = { strength, weapon, material, blocked(갑주 앞면), back(등 뒤), kill, dirX, dirZ, elite, boss }`. `{ stop }` 을 돌려주면 그 초만큼 멈춘다 |
 | `kill(e)` | 적이 쓰러지기 시작 (`e.state === 'dead'`) |
 | `heroHurt(dmg, pit, src)` | 영웅이 맞음 (`pit` = 구덩이). `src = { e, atk, shot }` |
-| `sfx(name)` | `dash`(구르기) `jump` `land` `slash`/`slash_heavy`(영웅 휘두름 — 판정 0.085초 전) `swing`(적 휘두름 — 판정 0.12초 전) `cast`(주문) `parry`(튕겨냄 · 탄을 벰) `die` |
+| `sfx(name)` | `dash`(구르기) `jump` `land` `slash`/`slash_heavy`(영웅 휘두름 — 판정 0.085초 전) `swing`(적 휘두름 — 판정 0.12초 전; 바로 앞에 `enemySwing(e)` 가 온다) `cast`(주문) `parry`(튕겨냄 · 탄을 벰) `guard`(막음) `die` |
 | `spark(x, y, z, kind)` | `dust` `shot` `parry` `guard` `slam` `wisp`(흐린 유령을 헛벰) |
 | `number(x, y, z, text, color)` · `shake(px)` · `done()` | 영웅 피해 숫자 · 흔들림 · 마당 정리 끝 |
 | `sound(name, pos)` | SOUND_FEEL §6 의 사건 이름: `enemy.skel.rattle`(해골이 깨어남) · `enemy.bat.screech`(박쥐가 내리꽂기 시작) |
@@ -137,7 +138,7 @@ for (const e of sim.enemies) if (!e.dead) driveActor(charOf(e), e, dt);   // 적
 | `roll` · `jump` · `land` | `(dx, dz, hero)` · `(hero)` · `(speed, heavy, hero)` | 구르기 · 도약 · 착지 (`heavy` = 높은 데서 또는 내려베기) |
 | `dodge` | `(hero, src)` | 구르기 무적으로 공격을 흘림 |
 | `guardUp` | `(hero)` | 막기를 듦 |
-| `guard` | `(x, y, z, chip, src)` | **막음** → `feel.guard('sword', pos)` + 막기 불꽃. `chip` = 닳은 체력 |
+| `guard` | `(x, y, z, chip, src)` | **막음** (옛 `sfx('guard')` 도 같이 온다 — 둘 가운데 하나만 쓴다). `chip` = 닳은 체력 |
 | `parry` | `(x, y, z, src)` | **튕겨냄** (옛 `sfx('parry')` 도 같이 온다) |
 | `stagger` | `(e, 초)` | 적이 비틀거리기 시작 |
 | `tell` | `(e, atk)` | 적의 예고 시작 → 바닥 표시 · 번쩍임 (`e.tele` 0…1 을 틱마다 읽어도 된다) |

@@ -159,8 +159,8 @@ try {
   ok('sound hook: bat screech on dive, skeleton rattle on wake (names from SOUND_FEEL §6, with a position)', snd.includes('enemy.bat.screech') && snd.includes('enemy.skel.rattle'), [...new Set(snd)].join(' ')); }
 { const s = mk([{ kind: 'melee', x: 70, z: 0, active: true }]); let sfx = []; s.hooks.sfx = (n) => sfx.push(n); s.enemies[0].cd = 0;
   run(s, 3, { guard: true }, () => { s.hero.hp = 100; s.hero.parryCd = 9; s.hero.parryT = 0; });
-  const known = new Set(['dash', 'jump', 'land', 'swing', 'cast', 'parry', 'die', 'slash', 'slash_heavy']);
-  ok('legacy sfx names stay inside the set the scene knows (a block does not sound like a hero swing)', names(s).includes('guard') && sfx.every((n) => known.has(n)), [...new Set(sfx)].join(' ')); }
+  const known = new Set(['dash', 'jump', 'land', 'swing', 'cast', 'parry', 'guard', 'die', 'slash', 'slash_heavy']);
+  ok('legacy sfx names stay inside the set the scene knows; a block sends sfx guard + the guard hook', names(s).includes('guard') && sfx.includes('guard') && sfx.every((n) => known.has(n)), [...new Set(sfx)].join(' ')); }
 ok('moves carry strength (= str) for the scene', Object.values(MOVES).every((m) => m.strength === m.str && 'LMHF'.includes(m.strength)));
 
 Math.random = realRandom;

@@ -4,7 +4,7 @@
 //   box{f0,f1,side,y0,y1} | radius{r,fwd,y0,y1} | shot{…}, lunge(판정 동안 앞으로 가는 거리), track(예고 동안 영웅을 따라 도는 빠르기 rad/초),
 //   guard: 'block'(막힌다) | 'chip'(막아도 조금 닳는다) | 'break'(막을 수 없다 — 구른다), parry(튕겨낼 수 있나), staggerT(튕겨진 뒤 비틀거리는 초),
 //   cd[최소,최대] 다음 공격까지, weapon · str (소리 · 타격감 표의 무기와 세기), sound (예고가 시작될 때 hooks.sound 로 낼 사건 이름 — SOUND_FEEL §6) }
-import { UNIT } from './tune.js';
+import { UNIT, TUNE } from './tune.js';
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 const A = (o) => Object.freeze({ guard: 'block', parry: true, staggerT: 1.25, track: 6, cd: [0.8, 1.4], weapon: 'sword', str: 'M', knock: 240, ...o });
@@ -59,6 +59,8 @@ const ALIAS = { melee: 'skeleton_soldier', soldier: 'skeleton_soldier', skeleton
   ghost: 'grave_ghost', armor: 'gravekeeper_armor', armour: 'gravekeeper_armor', boss: 'banshee_queen' };
 // 스테이지가 쓰는 옛 이름도 표에서 바로 찾을 수 있게 같은 줄을 가리킨다 (KINDS.melee.model …)
 for (const k in ALIAS) KINDS[k] = KINDS[ALIAS[k]];
+// 옛 장면 코드용: TUNE[kind] = { windup, reachZ } — 바닥 예고 표시가 이 값을 읽는다. 새 코드는 e.atk(box｜radius) · e.tele 를 읽는다 (PLAY_API §3)
+for (const k in KINDS) { const a0 = KINDS[k].attacks[0]; if (a0 && !a0.shot && !KINDS[k].fly) TUNE[k] = { windup: a0.windup, reachZ: a0.box ? a0.box.side : a0.radius.r * 0.5 }; }
 /** 종류 이름(다른 이름 포함) → 종류 한 줄. 모르는 이름은 해골 병사 */
 export function kindOf(kind) { return KINDS[kind] ?? KINDS.skeleton_soldier; }
 /** 다른 이름을 푼 바른 이름 */
