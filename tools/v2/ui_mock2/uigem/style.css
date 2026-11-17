@@ -14,7 +14,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #000; touc
   --numf: "Cinzel", "Hahmlet", "Hahmlet Ext", serif;
   --sl: env(safe-area-inset-left, 0px); --sr: env(safe-area-inset-right, 0px); --st: env(safe-area-inset-top, 0px); --sb: env(safe-area-inset-bottom, 0px);
   --iv: #f6efdf; --dim: rgba(240, 234, 220, .68); --pt: #e9edf5; --ruby: #e2334a; --moon: #c7d6ff; --gold: #ecd49a;
-  --sh: 0 1px 2px rgba(0, 0, 0, .95), 0 0 7px rgba(0, 0, 0, .65);
+  --sh: 0 1px 2px rgba(0, 0, 0, .95), 0 0 4px rgba(0, 0, 0, .8), 0 0 9px rgba(0, 0, 0, .6);
   --plat: linear-gradient(180deg, #fbfcfe, #9aa2b3 42%, #eef1f6 56%, #6f7789);
   --rubyg: radial-gradient(circle at 36% 30%, #ffc9c6 0, #ff4a5c 30%, #c8142e 68%, #7a0a1e 100%);
 }
@@ -75,8 +75,8 @@ ul { list-style: none; } i { font-style: normal; display: block; } img { display
 .abtn.cool .cd { display: block; background: radial-gradient(circle, rgba(4, 5, 12, .56), rgba(4, 5, 12, .40)); }
 .abtn.cool .prog { display: block; background: conic-gradient(#ffffff 0, #dfe8ff calc((100 - var(--cdp, 0)) * 1%), transparent 0); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5.400px), #000 calc(100% - 4.800px), #000 calc(100% - .600px), transparent calc(100% - .100px)); mask: radial-gradient(farthest-side, transparent calc(100% - 5.400px), #000 calc(100% - 4.800px), #000 calc(100% - .600px), transparent calc(100% - .100px)); filter: drop-shadow(0 0 4px rgba(200, 218, 255, 1)); }
 /* 잠김 */
-.abtn.off .gl { background: radial-gradient(circle, rgba(9, 11, 24, .30), rgba(5, 6, 15, .5)); box-shadow: none; }
-.abtn.off .rim { background-image: var(--rim-dim); } .abtn.off .ico { opacity: .34; filter: grayscale(1); } .abtn.off .lk { display: block; }
+.abtn.off .gl { background: radial-gradient(circle, rgba(9, 11, 24, .46), rgba(5, 6, 15, .62)); box-shadow: none; }
+.abtn.off .rim { background-image: var(--rim-dim); } .abtn.off .ico { opacity: .46; filter: grayscale(1) drop-shadow(0 0 2px rgba(4, 5, 12, .8)); } .abtn.off .lk { display: block; }
 /* 켜짐(조준·막기 유지): 루비빛 유리 */
 .abtn.on .gl { background: radial-gradient(ellipse 64% 36% at 50% 12%, rgba(255, 255, 255, .34), rgba(255, 255, 255, 0) 72%), var(--guil) center / 100% 100% no-repeat, radial-gradient(circle, rgba(226, 51, 74, .40) 0%, rgba(150, 14, 36, .52) 60%, rgba(60, 4, 14, .7) 100%); box-shadow: 0 0 12px rgba(255, 60, 84, .55); }
 .abtn.on .gem { display: block; width: 8px; height: 8px; margin-left: -4px; top: -3px; }

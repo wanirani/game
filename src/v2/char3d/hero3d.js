@@ -108,6 +108,8 @@ export function driveHero(ch, h, dt, T = {}) {
   const cur = Math.atan2(ch.dz, ch.dx), a = cur + wrapPi(Math.atan2(tz, tx) - cur) * (1 - Math.exp(-dt * rate));
   ch.dx = Math.cos(a); ch.dz = Math.sin(a);
   const A = ch.anim;
+  if (ch.wasDead && !h.dead) A.play('idle', { fade: 0, restart: true });   // 다시 시작: 누운 자세에서 0.16초 만에 일어서는 섞임 없이 바로 선다
+  ch.wasDead = !!h.dead;
   if (h.dead) A.play('death', { fade: 0.08, time: Math.min((h.deadT ?? h.animT) * 1.35, 2.5) });
   else if (h.hurtT > 0) A.play('hurt', { fade: 0.04, time: h.animT });
   else if (h.move) {

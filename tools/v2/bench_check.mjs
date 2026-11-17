@@ -1,10 +1,10 @@
 // 성능 진단 장면(v2bench) 검사 — docs/v2/PERF_NOTES.md §6
 // 헤드리스 Chromium 에서 index.html?scene=v2bench 를 fold_open · phone2 로 열어 끝까지 돌리고, 표를 찍고, 결과 화면의 단추를 눌러 본다.
-//   node tools/v2/bench_check.mjs [--devices fold_open,phone2] [--sec 2] [--full] [--shots /tmp/claude-0/v2/bench] [--no-shots] [--json out.json]
+//   node tools/v2/bench_check.mjs [--devices fold_open,phone2] [--sec 2.5] [--full] [--shots /tmp/claude-0/v2/bench] [--no-shots] [--json out.json]
 //     --pace [120:q100,…]  틀 검증: 가짜 화면 시계(주사율:모형)로 돌려 '초당 60' 과 '매 화면' 의 박자를 본다 (아래 설명)
 //     --no-devices  기기 프리셋 실행을 건너뛴다 (박자 계산·틀 검증만) · --no-sim  박자 계산을 건너뛴다
 //     --dist dist/<폴더>   build_web.mjs 결과물(번들)을 배포용 CSP 머리말과 함께 연다
-//     --sec N   시험 하나의 길이(초). 기본 2 (앞 0.5초 버림) — 빨리 끝내려고 줄인 값이다. --full = 기기와 같은 4초(앞 1초 버림), 약 1분.
+//     --sec N   시험 하나의 길이(초). 기본 2.5 (앞 0.5초 버림; 기계가 바쁘면 --sec 4) — 빨리 끝내려고 줄인 값이다. --full = 기기와 같은 4초(앞 1초 버림), 약 1분.
 // ★ 주의: 헤드리스의 WebGL 은 소프트웨어 렌더러(SwiftShader)다. 여기 나오는 프레임 시간·끊김·추천 설정은 실제 기기의 값이 아니다.
 //   이 도구가 확인하는 것은 "장면이 뜨고, 모든 시험을 돌고, 표와 단추가 동작하고, 페이지 오류가 없다" 뿐이다.
 import { chromium } from 'playwright-core';
@@ -17,7 +17,7 @@ import { buildMatrix, pickBest, STORE_KEY } from '../../src/v2/bench/stats.js';
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => { if (v.startsWith('--')) a.push([v.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true]); return a; }, []));
 const DEVICES = args['no-devices'] ? [] : String(args.devices || 'fold_open,phone2').split(',');
-const SEC = args.full ? 4 : Number(args.sec || 2), SKIP = args.full ? 1 : Math.min(0.5, SEC / 3);
+const SEC = args.full ? 4 : Number(args.sec || 2.5), SKIP = args.full ? 1 : Math.min(0.5, SEC / 3);
 const SHOTS = args['no-shots'] ? null : String(args.shots || '/tmp/claude-0/v2/bench');
 const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const GL_ARGS = ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'];
@@ -169,7 +169,7 @@ if (args.pace) {
   console.log('\n[틀 검증] 가짜 화면 시계 — 값은 "그림이 올라가는 박자"만 뜻한다 (그리는 데 걸린 시간은 들어 있지 않다)');
   out.pace = {};
   for (const [hz, model] of MODELS) {
-    const ctx = await browser.newContext({ viewport: { width: 640, height: 360 }, deviceScaleFactor: 1 });
+    const ctx = await browser.newContext({ viewport: { width: 480, height: 270 }, deviceScaleFactor: 1 });
     const page = await ctx.newPage(); const errs = [];
     page.on('pageerror', (e) => errs.push(e.message));
     await page.route('**/*.glb', (r) => r.abort());
@@ -185,7 +185,7 @@ if (args.pace) {
       const pump = () => { n++; vt = stamp(); const cbs = [...q.values()]; q.clear(); for (const cb of cbs) { try { cb(vt); } catch (e) { console.error(e); } } realRaf(pump); };
       realRaf(pump);
     }, { hz: Number(hz), model });
-    await page.goto(`http://localhost:${port}/index.html?scene=v2bench&benchsec=1&benchskip=0.25`);
+    await page.goto(`http://localhost:${port}/index.html?scene=v2bench&benchsec=0.8&benchskip=0.2`);
     await page.waitForFunction(() => window.__v2bench?.phase === 'done', null, { timeout: 240000 }).catch(() => errs.push('끝나지 않음'));
     const R = await page.evaluate(() => window.__v2bench?.report ?? null).catch((e) => { errs.push(String(e.message).slice(0, 80)); return null; });
     if (!R || errs.length) { fail(`틀 검증 ${hz}Hz ${model}: ` + (errs[0] ?? '결과 없음')); await ctx.close(); continue; }

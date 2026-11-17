@@ -293,7 +293,7 @@ export const iconURL = (name, px = 192) => iconCanvas(name, px).toDataURL('image
 export function strokeSprite(w, h, o = {}) {
   const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); const k = h / 20; x.scale(k, k); const W = w / k;
   const layer = document.createElement('canvas'); layer.width = w; layer.height = h; const lc = layer.getContext('2d'); lc.scale(k, k);
-  stroke(lc, [[5, 10.5], [W * 0.3, 9.5], [W * 0.7, 10.6], [W - 4, 9.8]], { w: o.w ?? 15, p: o.p || ((t) => (0.62 + 0.38 * sm(0, 0.04, t)) * (1 - 0.5 * sm(0.72, 1, t))), dry: o.dry ?? 0.65, ds: o.ds ?? 0.55, c: o.c || INK, seed: o.seed ?? 5, sp: o.sp ?? 0 });
+  stroke(lc, [[5, 10.5], [W * 0.3, 9.5], [W * 0.7, 10.6], [W - 4, 9.8]], { w: o.w ?? 15, p: o.p || ((t) => (0.62 + 0.38 * sm(0, 0.04, t)) * (1 - 0.5 * sm(0.72, 1, t))), dry: o.dry ?? 0.65, ds: o.ds ?? 0.78, c: o.c || INK, seed: o.seed ?? 5, sp: o.sp ?? 0 });
   x.setTransform(1, 0, 0, 1, 0, 0); x.filter = `blur(${(h * 0.05).toFixed(2)}px)`; x.globalAlpha = 0.45; x.drawImage(layer, 0, 0); x.filter = 'none'; x.globalAlpha = 1; x.drawImage(layer, 0, 0);
   return c;
 }

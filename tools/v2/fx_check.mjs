@@ -1,0 +1,146 @@
+// v2 fx — 자동 검사 + 숫자 + 캡처. docs/v2/FX.md §8
+//   node tools/v2/fx_check.mjs              검사 (fold_open · phone2: 부팅, 모든 프리셋, 오류 0) + 프리셋별 비용 + 난전 예산 + 할당 검사
+//   node tools/v2/fx_check.mjs --sheets     + 접촉 시트 (계열마다 한 장; 효과마다 세 순간)   → /tmp/claude-0/v2/fxcore/sheet_*.jpg
+//   node tools/v2/fx_check.mjs --video      + 시범 두 개(콤보 · 마법 순회) 영상              → /tmp/claude-0/v2/fxcore/fx_demos.mp4
+//   node tools/v2/fx_check.mjs --quick      부팅·프리셋 검사만
+// 헤드리스 Chromium 은 소프트웨어 렌더러(SwiftShader)다 → 프레임 시간은 기기 값이 아니다. 개수(그리기 호출·입자·삼각형·바이트)와
+// JS 쪽 CPU 시간(효과 엔진의 update+draw)만 옮겨 읽는다.
+import { chromium } from 'playwright-core';
+import { start } from '../serve.mjs';
+import { contextOptions } from '../qa/lib/viewports.mjs';
+import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
+
+const args = new Set(process.argv.slice(2));
+const OUT = '/tmp/claude-0/v2/fxcore', TMP = '/dev/shm/fxcore';
+fs.mkdirSync(OUT, { recursive: true }); fs.mkdirSync(TMP, { recursive: true });
+const port = 8900 + (process.pid % 90);
+const srv = await start(port);
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--enable-precise-memory-info', '--js-flags=--expose-gc'] });
+const fails = [], report = { date: new Date().toISOString(), views: {}, cost: {}, heavy: {}, alloc: {} };
+const fail = (m) => { fails.push(m); console.log('  ✗ ' + m); };
+const ok = (m) => console.log('  ✓ ' + m);
+
+async function open(preset, query = '') {
+  const ctx = await browser.newContext({ ...contextOptions(preset), deviceScaleFactor: 1 });
+  const page = await ctx.newPage(); const errs = [];
+  page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
+  page.on('console', (m) => { if (m.type() === 'error' && !/favicon|404/.test(m.text())) errs.push('console: ' + m.text()); });
+  await page.goto(`http://localhost:${port}/tools/v2/fx_view.html?ui=0${query}`);
+  await page.waitForFunction(() => window.__fx && window.__fx.ready && window.__fx.texReady, null, { timeout: 20000 }).catch(() => errs.push('부팅 시간 초과'));
+  await page.evaluate(() => { if (window.__fx) window.__fx.manual = true; });
+  return { ctx, page, errs };
+}
+
+// ── 1. 부팅 + 모든 프리셋 (두 화면) ──
+for (const vp of ['fold_open', 'phone2']) {
+  console.log(`\n[${vp}]`);
+  const { ctx, page, errs } = await open(vp, '&tier=mid');
+  const r = await page.evaluate(() => {
+    const a = window.__fx, out = { n: 0, bad: [], view: a.view, canvas: [0, 0], glErr: 0, sfxMissing: [] };
+    for (const p of a.presets) {
+      a.reset('mid'); a.steps(2, 1 / 60); const s0 = a.fx.particles.spawned, e0 = a.fx.stats.sfx;
+      a.fire(p.name); let peak = 0, any = 0;
+      for (let i = 0; i < 100; i++) { a.steps(1, 1 / 30); const m = a.fx.measure(); peak = Math.max(peak, m.particles); any = Math.max(any, m.particles + m.quads + m.meshes + m.ribbons); }
+      out.n++;
+      if (any === 0) out.bad.push(p.name + ': 아무것도 그리지 않음');
+      if (a.fx.stats.sfx === e0) out.bad.push(p.name + ': 소리 사건 없음');
+      for (const s of p.sfx) if (!a.sfxSeen.has(s) && !['hit.parry', 'pickup.heal', 'pickup.mana', 'hit.guard'].includes(s)) out.sfxMissing.push(p.name + ' → ' + s);
+    }
+    // 단계 바꾸기 · 후처리 끄기 · 시범 두 개가 끝까지 도는지
+    for (const t of ['low', 'high', 'mid']) { a.reset(t); a.fire('fire.pillar'); a.steps(40, 1 / 60); }
+    a.fx.setPost(false); a.fire('hit.finisher'); a.steps(30, 1 / 60); a.fx.setPost(true);
+    for (const d of ['combo', 'spells']) { a.startDemo(d); let n = 0; while (a.demoName && n++ < 60 * 30) a.steps(1, 1 / 60); if (a.demoName) out.bad.push('시범 ' + d + ' 가 끝나지 않음'); }
+    const c = document.getElementById('c'); out.canvas = [c.width, c.height]; out.glErr = a.fx.gl.getError(); out.gpuBytes = a.fx.gpuBytes; out.texBytes = a.fx.tex.bytes; out.postBytes = a.fx.post.bytes;
+    return out;
+  });
+  report.views[vp] = r;
+  if (errs.length) fail(`${vp}: 페이지 오류 ${errs.length}건 — ${errs.slice(0, 3).join(' | ')}`); else ok('페이지 오류 0');
+  if (r.bad.length) fail(`${vp}: ${r.bad.join(' · ')}`); else ok(`프리셋 ${r.n}개 모두 그려지고 소리 사건을 냄`);
+  if (r.sfxMissing.length) fail(`${vp}: 선언했지만 나오지 않은 소리 사건 — ${r.sfxMissing.join(', ')}`);
+  if (r.glErr) fail(`${vp}: gl.getError() = ${r.glErr}`); else ok('GL 오류 0');
+  console.log(`  캔버스 ${r.canvas.join('×')} · 논리 ${r.view.W}×${r.view.H} · GPU 메모리(효과) ${(r.gpuBytes / 1048576).toFixed(2)} MB (텍스처 ${(r.texBytes / 1048576).toFixed(2)} · 후처리 버퍼 ${(r.postBytes / 1048576).toFixed(2)})`);
+  await ctx.close();
+}
+
+if (!args.has('--quick')) {
+  const { ctx, page, errs } = await open('fold_open', '&tier=mid');
+  // ── 2. 프리셋별 비용 (세 단계) ──
+  console.log('\n[프리셋별 비용 — fold_open; 입자 = 뿜은 수/동시에 산 최댓값, 덧칠 = 화면(960×726) 대비 배수의 최댓값]');
+  for (const tier of ['low', 'mid', 'high']) {
+    report.cost[tier] = await page.evaluate((tier) => window.__fx.presets.map((p) => window.__fx.cost(p.name, tier)), tier);
+  }
+  console.log('프리셋'.padEnd(20) + ['low', 'mid', 'high'].map((t) => `| ${t}: 뿜음/동시 그리기 덧칠`.padEnd(34)).join(''));
+  report.cost.mid.forEach((c, i) => {
+    console.log(c.name.padEnd(20) + ['low', 'mid', 'high'].map((t) => { const x = report.cost[t][i]; return `| ${String(x.emitted).padStart(4)}/${String(x.peakParticles).padEnd(4)} ${String(x.peakDraws).padStart(2)}회 ${x.peakOverdraw.toFixed(2).padStart(5)}  문양${x.peakQuads} 메시${x.peakMeshes} 빛${x.peakLights}`.padEnd(34); }).join(''));
+  });
+  // ── 3. 난전 예산 ──
+  console.log('\n[난전 10초 — 적 12 · 초당 타격 6 · 마법 2.5/초(3개쯤 떠 있음) · 큰 마법 2.4초마다]');
+  for (const tier of ['low', 'mid', 'high']) {
+    const h = await page.evaluate((tier) => window.__fx.heavy(tier, 10), tier); report.heavy[tier] = h;
+    console.log(`  ${tier.padEnd(4)} 그리기(효과) 최대 ${h.draws.max} 평균 ${h.draws.avg} + 후처리 ${h.postPasses} + 장면 ${h.sceneDraws} · 입자 제출 최대 ${h.particles.max} (실제 산 것 최대 ${h.live.max} 평균 ${h.live.avg}) · 문양 ${h.quads.max} · 메시 ${h.meshes.max} (${h.meshTris.max}△) · 띠 ${h.ribbons.max} (${h.ribbonVerts.max}v) · 빛 ${h.lights.max} · 덧칠 최대 ${h.overdraw.max} 평균 ${h.overdraw.avg} 화면 · 밝기 최저 ${h.gainMin.toFixed(2)} · CPU(효과 JS) 평균 ${h.cpu.avg} p95 ${h.cpu.p95} 최대 ${h.cpu.max} ms`);
+  }
+  // ── 4. 할당 검사 ──
+  console.log('\n[프레임당 할당 — performance.memory (정밀) · 미리 2400프레임 돌려 JIT 를 데운 뒤 1200프레임 동안 JS 힙 증가]');
+  for (const mode of ['idle', 'fxonly', 'page']) {
+    const a = await page.evaluate((mode) => window.__fx.alloc('mid', 2400, 1200, mode), mode); report.alloc[mode] = a;
+    console.log(`  ${mode.padEnd(7)} ${a.bytes} 바이트 / ${a.frames} 프레임 = ${a.perFrame.toFixed(1)} 바이트/프레임 ${a.hasMemory && a.hasGc ? '' : '(메모리 정보 없음)'}`);
+  }
+  if (report.alloc.idle.bytes > 2048) fail(`정상 상태(새 효과 없음)에서 할당이 있다: ${report.alloc.idle.bytes} 바이트`); else ok('정상 상태(새 효과 없음) 할당 0');
+  if (errs.length) fail(`측정 중 페이지 오류: ${errs.slice(0, 3).join(' | ')}`);
+  await ctx.close();
+}
+
+// ── 5. 접촉 시트 ──
+if (args.has('--sheets')) {
+  console.log('\n[접촉 시트]');
+  const { ctx, page } = await open('fold_open', '&tier=high');
+  const SHEETS = [
+    ['hits', '타격', 0.5, [['hit.slash.light', 0.04, 0.1, 0.2, null, 0.37, 0.62], ['hit.slash.heavy', 0.05, 0.16, 0.3, null, 0.37, 0.62], ['hit.blunt', 0.05, 0.16, 0.34, null, 0.37, 0.62], ['hit.pierce', 0.04, 0.12, 0.22, null, 0.37, 0.62], ['hit.crit', 0.05, 0.2, 0.36, null, 0.37, 0.62], ['hit.guard', 0.04, 0.12, 0.24, null, 0.37, 0.62], ['hit.finisher', 0.06, 0.3, 0.6, null, 0.37, 0.62], ['swing.light', 0.04, 0.08, 0.13, null, 0.3, 0.62], ['swing.heavy', 0.05, 0.11, 0.18, null, 0.3, 0.62]]],
+    ['move_enemy', '이동 · 적 · 줍기', 0.5, [['move.dash', 0.04, 0.12, 0.26, null, 0.27, 0.66], ['move.land', 0.04, 0.14, 0.3, null, 0.27, 0.66], ['move.step', 0.04, 0.12, 0.24, null, 0.27, 0.66], ['move.jump', 0.04, 0.12, 0.24, null, 0.27, 0.66], ['enemy.hurt', 0.03, 0.08, 0.16, null, 0.37, 0.62], ['enemy.death.bone', 0.08, 0.3, 0.7, null, 0.68, 0.6], ['enemy.death.ash', 0.15, 0.45, 0.85, null, 0.68, 0.6], ['pickup', 0.05, 0.18, 0.36, null, 0.5, 0.56]]],
+    ['fire', '불', 1, [['fire.bolt', 0.16, 0.42, 0.66], ['fire.pillar', 0.5, 0.84, 1.15], ['fire.meteor', 0.5, 0.98, 1.3]]],
+    ['ice', '얼음', 1, [['ice.lance', 0.14, 0.32, 0.6], ['ice.nova', 0.35, 0.66, 1.1]]],
+    ['lightning', '번개', 1, [['lightning.chain', 0.14, 0.24, 0.42], ['lightning.strike', 0.45, 0.66, 0.9, 4]]],
+    ['holy', '성', 1, [['holy.pillar', 0.45, 0.78, 1.15, 3], ['holy.wave', 0.3, 0.52, 0.72], ['holy.bell', 0.22, 0.62, 1.05]]],
+    ['blood', '피 · 그림자', 1, [['blood.orb', 0.25, 0.75, 1.12], ['shadow.claws', 0.28, 0.5, 0.68, 1]]],
+    ['ult', '궁극기 「붉은 달의 종」', 1, [['ult.bloodmoon', 0.5, 1.3, 2.0], ['ult.bloodmoon', 2.6, 3.4, 3.9]]],
+  ];
+  for (const [file, title, crop, rows] of SHEETS) {
+    const url = await page.evaluate(([rows, crop, title]) => window.__fx.sheet(rows, 'high', crop, title), [rows, crop, title]);
+    const f = `${OUT}/sheet_${file}.jpg`; fs.writeFileSync(f, Buffer.from(url.split(',')[1], 'base64')); console.log('  ' + f);
+  }
+  // 단계 비교 한 장 (난전의 같은 순간)
+  for (const tier of ['low', 'mid', 'high']) {
+    const url = await page.evaluate((tier) => { const a = window.__fx; a.reset(tier); a.startDemo('heavy'); a.steps(60 * 4 + 20, 1 / 60); return document.getElementById('c').toDataURL('image/jpeg', 0.88); }, tier);
+    fs.writeFileSync(`${OUT}/heavy_${tier}.jpg`, Buffer.from(url.split(',')[1], 'base64'));
+  }
+  console.log(`  ${OUT}/heavy_{low,mid,high}.jpg`);
+  await ctx.close();
+}
+
+// ── 6. 시범 영상 (프레임을 하나씩 찍어 ffmpeg 로 묶는다 → 소프트웨어 렌더러의 느린 속도와 무관하게 30 fps) ──
+if (args.has('--video')) {
+  console.log('\n[영상]');
+  const { ctx, page } = await open('fold_open', '&tier=high');
+  const dir = `${TMP}/frames`; fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+  let n = 0;
+  const shoot = async () => { const url = await page.evaluate(() => window.__fx.shot(1 / 30, 2, 0.82)); fs.writeFileSync(`${dir}/f_${String(n++).padStart(5, '0')}.jpg`, Buffer.from(url.split(',')[1], 'base64')); };
+  for (const [d, loops] of [['combo', 2], ['spells', 1]]) {
+    for (let l = 0; l < loops; l++) {
+      await page.evaluate((d) => { window.__fx.reset('high'); window.__fx.startDemo(d); }, d);
+      let guard = 0; while (guard++ < 30 * 26) { await shoot(); if (!(await page.evaluate(() => window.__fx.demoName))) break; }
+      for (let i = 0; i < 12; i++) await shoot();
+    }
+  }
+  const mp4 = `${OUT}/fx_demos.mp4`;
+  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', '30', '-i', `${dir}/f_%05d.jpg`, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '24', '-movflags', '+faststart', mp4]);
+  fs.rmSync(dir, { recursive: true, force: true });
+  console.log(`  ${mp4} (${n} 프레임, ${(n / 30).toFixed(1)}초, ${(fs.statSync(mp4).size / 1048576).toFixed(2)} MB)`);
+  await ctx.close();
+}
+
+report.fails = fails;
+fs.writeFileSync(`${OUT}/fx_check.json`, JSON.stringify(report, null, 1));
+await browser.close(); srv.close();
+console.log(fails.length ? `\n실패 ${fails.length}건` : '\n모두 통과');
+process.exit(fails.length ? 1 : 0);
