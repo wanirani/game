@@ -39,17 +39,17 @@ const P_HURT = { ...READY, armL: [-30, 0, 18], forearmL: [-50, 0, 0], armR: [-10
 const P_DOWN = { ...READY, armL: [-60, 0, 30], forearmL: [-20, 0, 0], armR: [-50, 0, -30], forearmR: [-20, 0, 0], spine: [-10, 0, 0], spine2: [-8, 0, 0], head: [-10, 0, 0], hips: [-80, 0, 0], uplegL: [-10, 0, 0], legL: [16, 0, 0], uplegR: [4, 0, 0], legR: [8, 0, 0], root: [0, -0.86, -0.3] };
 // 2타: 왼쪽에서 오른쪽으로 긋는 가로 베기 (백핸드)
 const A2 = [
-  [0.00, { ...READY, spine: [6, 34, 0], spine2: [4, 26, 0], head: [-4, -30, 0], armR: [-78, 78, 44], forearmR: [-52, 0, 0], armL: [20, 0, -34], forearmL: [-30, 0, 0], uplegL: [-16, 0, 0], legL: [22, 0, 0], root: [0, -0.05, 0] }],
-  [0.20, { ...READY, spine: [8, 38, 0], spine2: [5, 30, 0], head: [-4, -34, 0], armR: [-82, 86, 44], forearmR: [-60, 0, 0], armL: [24, 0, -34], forearmL: [-30, 0, 0], uplegL: [-18, 0, 0], legL: [24, 0, 0], root: [0, -0.06, 0] }],
+  [0.00, { ...READY, spine: [6, 34, 0], spine2: [4, 26, 0], head: [-4, -30, 0], armR: [-72, 58, 36], forearmR: [-64, 0, 0], armL: [20, 0, -34], forearmL: [-30, 0, 0], uplegL: [-16, 0, 0], legL: [22, 0, 0], root: [0, -0.05, 0] }],
+  [0.20, { ...READY, spine: [8, 38, 0], spine2: [5, 30, 0], head: [-4, -34, 0], armR: [-76, 64, 36], forearmR: [-72, 0, 0], armL: [24, 0, -34], forearmL: [-30, 0, 0], uplegL: [-18, 0, 0], legL: [24, 0, 0], root: [0, -0.06, 0] }],
   [0.50, { ...READY, spine: [10, -30, 0], spine2: [6, -26, 0], head: [-4, 24, 0], armR: [-86, -56, 44], forearmR: [-6, 0, 0], armL: [34, 0, -30], forearmL: [-36, 0, 0], uplegL: [-26, 0, 0], legL: [32, 0, 0], uplegR: [14, 0, 0], legR: [14, 0, 0], root: [0, -0.07, 0.03] }],
   [1.00, { ...READY, spine: [6, -22, 0], spine2: [4, -18, 0], head: [-4, 18, 0], armR: [-60, -70, 44], forearmR: [-30, 0, 0], armL: [20, 0, -34], forearmL: [-30, 0, 0], root: [0, -0.04, 0.02] }],
 ];
 // 3타: 앞으로 크게 내딛는 찌르기
 const A3 = [
-  [0.00, { ...READY, spine: [4, -30, 0], spine2: [2, -24, 0], head: [-4, 34, 0], armR: [34, -10, 34], forearmR: [-118, 0, 0], armL: [-58, 0, -30], forearmL: [-20, 0, 0], uplegL: [-20, 0, 0], legL: [30, 0, 0], uplegR: [10, 0, 0], legR: [16, 0, 0], root: [0, -0.07, -0.02] }],
-  [0.23, { ...READY, spine: [6, -36, 0], spine2: [3, -28, 0], head: [-4, 40, 0], armR: [44, -10, 34], forearmR: [-128, 0, 0], armL: [-66, 0, -30], forearmL: [-16, 0, 0], uplegL: [-24, 0, 0], legL: [34, 0, 0], uplegR: [12, 0, 0], legR: [18, 0, 0], root: [0, -0.08, -0.03] }],
-  [0.50, { ...READY, spine: [24, 22, 0], spine2: [10, 16, 0], head: [-26, -22, 0], armR: [-92, 8, 44], forearmR: [0, 0, 0], armL: [50, 0, -24], forearmL: [-20, 0, 0], uplegL: [-62, 0, 0], legL: [58, 0, 0], footL: [-4, 0, 0], uplegR: [30, 0, 0], legR: [10, 0, 0], footR: [30, 0, 0], root: [0, -0.15, 0.12] }],
-  [1.00, { ...READY, spine: [16, 14, 0], spine2: [8, 10, 0], head: [-18, -14, 0], armR: [-80, 6, 44], forearmR: [-14, 0, 0], armL: [36, 0, -28], forearmL: [-24, 0, 0], uplegL: [-48, 0, 0], legL: [50, 0, 0], uplegR: [22, 0, 0], legR: [12, 0, 0], footR: [20, 0, 0], root: [0, -0.11, 0.09] }],
+  [0.00, { ...READY, spine: [4, -30, 0], spine2: [2, -24, 0], head: [-4, 34, 0], armR: [34, -10, 34], forearmR: [-118, 0, 0], handR: [-40, 0, 0], armL: [-58, 0, -30], forearmL: [-20, 0, 0], uplegL: [-20, 0, 0], legL: [30, 0, 0], uplegR: [10, 0, 0], legR: [16, 0, 0], root: [0, -0.07, -0.02] }],
+  [0.23, { ...READY, spine: [6, -36, 0], spine2: [3, -28, 0], head: [-4, 40, 0], armR: [44, -10, 34], forearmR: [-128, 0, 0], handR: [-50, 0, 0], armL: [-66, 0, -30], forearmL: [-16, 0, 0], uplegL: [-24, 0, 0], legL: [34, 0, 0], uplegR: [12, 0, 0], legR: [18, 0, 0], root: [0, -0.08, -0.03] }],
+  [0.50, { ...READY, spine: [24, 22, 0], spine2: [10, 16, 0], head: [-26, -22, 0], armR: [-92, 8, 44], forearmR: [0, 0, 0], handR: [-78, 0, 0], armL: [50, 0, -24], forearmL: [-20, 0, 0], uplegL: [-62, 0, 0], legL: [58, 0, 0], footL: [-4, 0, 0], uplegR: [30, 0, 0], legR: [10, 0, 0], footR: [30, 0, 0], root: [0, -0.15, 0.12] }],
+  [1.00, { ...READY, spine: [16, 14, 0], spine2: [8, 10, 0], head: [-18, -14, 0], armR: [-80, 6, 44], forearmR: [-14, 0, 0], handR: [-60, 0, 0], armL: [36, 0, -28], forearmL: [-24, 0, 0], uplegL: [-48, 0, 0], legL: [50, 0, 0], uplegR: [22, 0, 0], legR: [12, 0, 0], footR: [20, 0, 0], root: [0, -0.11, 0.09] }],
 ];
 // 공중 베기: 위에서 아래로
 const AA = [

@@ -63,4 +63,4 @@ svg .f { fill: currentColor; stroke: none; }
 .cell, .slot { position: relative; display: grid; place-items: center; }
 #menu .mb > * { position: relative; min-height: 0; }
 #menu .fr { position: absolute; inset: 0; pointer-events: none; }
-#menu .fr ~ * { position: relative; }
+#menu > .fr ~ *, #menu .mb > div > .fr ~ * { position: relative; }
