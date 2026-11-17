@@ -141,6 +141,28 @@ try {
   const need = ['step', 'swing', 'attack', 'hit', 'roll', 'land', 'jump', 'tell', 'enemySwing', 'cast', 'shot', 'lock', 'heroHurt'];
   ok('events seen: ' + need.join(' '), need.every((n) => ev.has(n)), 'missing: ' + need.filter((n) => !ev.has(n)).join(',') + ' | all: ' + [...ev].join(' ')); }
 
+// ── 11. 이어 하기(2차)에서 더한 것 ──
+{ const s = mk(); const seen = new Set(); run(s, 1.0, { mx: 1, mz: 0 }); run(s, 0.5, { mx: -1, mz: 0 }, (q) => seen.add(q.hero.anim)); run(s, 0.5, { mx: 0.2, mz: 0.98 }, (q) => seen.add(q.hero.anim));
+  ok('stick reversal keeps the run state (no idle / walk flicker while speed passes zero)', seen.size === 1 && seen.has('run'), [...seen].join(' ')); }
+{ const s = mk(); s.hero.x = 500; run(s, 0.6, { mx: 1, mz: 0 }); const g0 = s.hero.gait; let moved = 0; run(s, 0.5, { mx: 1, mz: 0 }, (q) => { moved += Math.abs(q.hero.gait - g0) > 0.01 ? 1 : 0; });
+  ok('running into a wall: legs keep cycling (gait advances), state stays run', moved > 5 && s.hero.anim === 'run' && s.hero.x <= 520 - s.hero.r + 0.01, `x ${s.hero.x.toFixed(1)}`); }
+{ const s = mk([{ kind: 'dummy0', x: 60, z: 0, active: true }]); s.enemies[0].def = { ...s.enemies[0].def, attacks: [] }; let eta = [], land = -1;
+  run(s, 1.4, (i) => ({ mx: 0, mz: 0, jump: i === 0, jumpHeld: true, attack: i === 14 }), (q, i) => { if (q.hero.move?.kind === 'plunge' && !q.hero.onGround) eta.push(q.hero.plungeEta); if (land < 0 && q.hero.plungeLand != null) land = i; });
+  ok('plunge: time-to-ground estimate falls to ~0 at landing', eta.length > 4 && eta[eta.length - 1] < 0.035 && eta[0] > eta[eta.length - 1] && land > 0, `eta ${eta[0]?.toFixed(2)} → ${eta[eta.length - 1]?.toFixed(3)} · landed frame ${land}`); }
+{ const s = mk([{ kind: 'ranged', x: 60, z: 0, active: true }]); const e = s.enemies[0]; e.cd = 0; let casts = 0; const d0 = Math.hypot(e.x - s.hero.x, e.z - s.hero.z);
+  run(s, 0.4, {}, (q) => { if (q.enemies[0].state === 'attack') casts++; s.hero.hp = 100; });
+  ok('mage at point-blank backs away first instead of casting', casts === 0 && Math.hypot(e.x - s.hero.x, e.z - s.hero.z) > d0 + 20, `dist ${d0.toFixed(0)} → ${Math.hypot(e.x - s.hero.x, e.z - s.hero.z).toFixed(0)}`);
+  run(s, 6, {}, (q) => { if (q.enemies[0].state === 'attack') casts++; s.hero.hp = 100; });
+  ok('… and casts once it has room', casts > 0); }
+{ const snd = []; const s = mk([{ kind: 'bat', x: 150, z: 0, active: true }, { kind: 'melee', x: -300, z: 0 }], { sound: (n, pos) => snd.push(n + (pos && Number.isFinite(pos.x) ? '' : '?')) });
+  run(s, 8, {}, () => { s.hero.hp = 100; });
+  ok('sound hook: bat screech on dive, skeleton rattle on wake (names from SOUND_FEEL §6, with a position)', snd.includes('enemy.bat.screech') && snd.includes('enemy.skel.rattle'), [...new Set(snd)].join(' ')); }
+{ const s = mk([{ kind: 'melee', x: 70, z: 0, active: true }]); let sfx = []; s.hooks.sfx = (n) => sfx.push(n); s.enemies[0].cd = 0;
+  run(s, 3, { guard: true }, () => { s.hero.hp = 100; s.hero.parryCd = 9; s.hero.parryT = 0; });
+  const known = new Set(['dash', 'jump', 'land', 'swing', 'cast', 'parry', 'die', 'slash', 'slash_heavy']);
+  ok('legacy sfx names stay inside the set the scene knows (a block does not sound like a hero swing)', names(s).includes('guard') && sfx.every((n) => known.has(n)), [...new Set(sfx)].join(' ')); }
+ok('moves carry strength (= str) for the scene', Object.values(MOVES).every((m) => m.strength === m.str && 'LMHF'.includes(m.strength)));
+
 Math.random = realRandom;
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) { console.log('FAILED:\n  ' + fails.join('\n  ')); process.exit(1); }

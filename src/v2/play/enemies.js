@@ -3,7 +3,7 @@
 // 공격 한 줄: { id, clip, range(이 거리 안에서 시작; [가까이, 멀리] 도 됨), windup(예고) · strike(판정) · recover(틈), dmg,
 //   box{f0,f1,side,y0,y1} | radius{r,fwd,y0,y1} | shot{…}, lunge(판정 동안 앞으로 가는 거리), track(예고 동안 영웅을 따라 도는 빠르기 rad/초),
 //   guard: 'block'(막힌다) | 'chip'(막아도 조금 닳는다) | 'break'(막을 수 없다 — 구른다), parry(튕겨낼 수 있나), staggerT(튕겨진 뒤 비틀거리는 초),
-//   cd[최소,최대] 다음 공격까지, weapon · str (소리 · 타격감 표의 무기와 세기) }
+//   cd[최소,최대] 다음 공격까지, weapon · str (소리 · 타격감 표의 무기와 세기), sound (예고가 시작될 때 hooks.sound 로 낼 사건 이름 — SOUND_FEEL §6) }
 import { UNIT } from './tune.js';
 
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -22,7 +22,7 @@ const SLAM = A({ id: 'slam', clip: 'ground_slam', range: 132, windup: 1.0, strik
 const THRUST = A({ id: 'thrust', clip: 'thrust', range: [136, 226], chance: 0.6, windup: 0.72, strike: 0.18, recover: 0.75, dmg: 16, lunge: 62, track: 1.6, staggerT: 1.7, cd: [1.0, 1.6], weapon: 'great', str: 'H', knock: 320,
   box: { f0: 10, f1: 196, side: 28, y0: 10, y1: 120 } });
 const DIVE = A({ id: 'dive', clip: 'fly', range: 250, windup: 0.36, strike: 0.5, recover: 0.3, dmg: 5, lunge: 215, track: 12, staggerT: 1.0, cd: [2.0, 3.6], weapon: 'dagger', str: 'L', knock: 150,
-  radius: { r: 24, fwd: 0, y0: -30, y1: 60 } });
+  radius: { r: 24, fwd: 0, y0: -30, y1: 60 }, sound: 'enemy.bat.screech' });
 
 const K = (o) => {
   const k = { weapon: null, r: 15, hp: 30, speed: 90, turn: 8, sight: 440, weight: 0, stun: 0.3, dieT: 1.3, standoff: 62, attacks: [], lib: true, ...o };
@@ -33,10 +33,10 @@ const K = (o) => {
 /** 적 · 보스 종류표. model = assets/v2/char3d/<model>.glb, weapon = 손에 붙일 소품 모델 id */
 export const KINDS = {
   skeleton_soldier: K({ name: '해골 병사', model: 'skeleton_soldier', weapon: 'w_rusty_sword', height: 1.75, material: 'bone', ai: 'melee',
-    hp: 34, speed: 104, stride: 86, attacks: [SLASH, STAB],
+    hp: 34, speed: 104, stride: 86, attacks: [SLASH, STAB], wakeSound: 'enemy.skel.rattle',
     clips: { idle: 'idle_combat', walk: 'walk', hurt: 'hit_light', stagger: 'stagger', death: 'death_back' } }),
   skeleton_mage: K({ name: '해골 술사', model: 'skeleton_mage', weapon: 'w_crystal_staff', grip: { pos: [0, 7, 3], rotX: 100, rotY: 0, rotZ: 0 }, height: 1.85, material: 'bone', ai: 'ranged',
-    hp: 26, speed: 78, stride: 80, sight: 540, near: 190, far: 350, attacks: [BOLT],
+    hp: 26, speed: 78, stride: 80, sight: 540, near: 190, far: 350, attacks: [BOLT], wakeSound: 'enemy.skel.rattle',
     clips: { idle: 'idle', walk: 'walk', hurt: 'hit_light', stagger: 'stagger', death: 'death_back' } }),
   plague_corpse: K({ name: '역병 주검', model: 'plague_corpse', height: 1.76, material: 'flesh', ai: 'melee',
     hp: 82, speed: 46, stride: 50, turn: 3.2, weight: 0.5, stun: 0.14, poise: true, standoff: 96, attacks: [GRAB], dieT: 1.7,
@@ -93,8 +93,10 @@ export const AI = {
     const h = sim.hero, dx = h.x - e.x, dz = h.z - e.z, dist = Math.hypot(dx, dz) || 1;
     if (e.state === 'attack') return sim.runAttack(e, dt);
     sim.turnTo(e, dx, dz, D.turn, dt);
-    if (e.cd <= 0 && dist < D.sight + 60) return sim.startAttack(e, D.attacks[0]);
-    if (dist < D.near) { sim.steer(e, -dx / dist, -dz / dist, D.speed * 1.1, dt, true); sim.setAnim(e, 'walk', dt); }
+    const close = dist < D.near * 0.6;   // 코앞에서는 쏘지 않고 먼저 물러선다 (1초 넘게 쫓기면 그냥 쏜다)
+    e.fleeT = close ? (e.fleeT ?? 0) + dt : 0;
+    if (e.cd <= 0 && dist < D.sight + 60 && (!close || e.fleeT > 1)) { e.fleeT = 0; return sim.startAttack(e, D.attacks[0]); }
+    if (dist < D.near) { sim.steer(e, -dx / dist, -dz / dist, D.speed * (close ? 1.5 : 1.1), dt, true); sim.setAnim(e, 'walk', dt); }
     else if (dist > D.far) { sim.steer(e, dx / dist, dz / dist, D.speed, dt); sim.setAnim(e, 'walk', dt); }
     else sim.setAnim(e, 'idle', dt);
   },

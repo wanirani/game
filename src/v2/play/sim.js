@@ -416,7 +416,7 @@ export class Sim {
     }
     const dx = h.x - e.x, dz = h.z - e.z, dist = Math.hypot(dx, dz);
     if (!e.active) {
-      if (dist < D.sight && !h.dead && (!e.yard || this.section === 'yard' || this.section === 'done') && Math.abs(h.y - e.gy) < 130) { e.active = true; e.state = 'chase'; e.stateT = 0; this.emit('wake', e); }
+      if (dist < D.sight && !h.dead && (!e.yard || this.section === 'yard' || this.section === 'done') && Math.abs(h.y - e.gy) < 130) { e.active = true; e.state = 'chase'; e.stateT = 0; this.emit('wake', e); if (D.wakeSound) this.hooks.sound?.(D.wakeSound, e); }
       this._place(e); this._anim(e, 'idle', dt); return;
     }
     if (e.kx || e.kz) {   // 맞고 밀림
@@ -467,6 +467,7 @@ export class Sim {
     e.state = 'attack'; e.stateT = 0; e.atk = a; e.phase = 'windup'; e.tele = 0; e.hitDone = false; e.swung = false;
     this._anim(e, a.kind === 'cast' ? 'cast' : 'attack', 0); e.animT = 0;
     this.emit('tell', e, a);
+    if (a.sound) this.hooks.sound?.(a.sound, e);
     if (a.kind === 'cast') this.emit('cast', e, 'charge');
   }
   /** 공격 진행: 예고(따라 돌기) → 판정(내딛기 · 맞히기 · 쏘기) → 틈 */

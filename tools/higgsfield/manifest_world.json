@@ -1,0 +1,32 @@
+{
+ "batch": "world",
+ "cap_credits": 260,
+ "total_credits": 0,
+ "note": "All paid calls were refused by the permission system at the first attempt (2026-11-17 ~22:09 UTC, 3 x generate_image_batch). Nothing was generated. The exact calls are in /tmp/claude-0/v2/world/gen_requests.json (31 images, then 19 image-to-3D). The lane shipped procedural stand-ins instead.",
+ "jobs": [
+  {
+   "id": "props_design_batch_1",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "items": 12,
+   "status": "refused_by_permission",
+   "credits": 0
+  },
+  {
+   "id": "props_design_batch_2",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "items": 7,
+   "status": "refused_by_permission",
+   "credits": 0
+  },
+  {
+   "id": "textures_batch",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "items": 12,
+   "status": "refused_by_permission",
+   "credits": 0
+  }
+ ]
+}

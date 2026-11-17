@@ -21,7 +21,7 @@ import { bindFxSound } from '../feel/fxbridge.js';
 import { GLR, SpriteBatch } from './glr.js';
 import { CharRenderer } from './charr.js';
 import { Cast } from './cast.js';
-import { loadArea, roomOf, DEFAULT_AREA } from './area.js';
+import { loadArea, hasArea, roomOf, kitTexPath, DEFAULT_AREA } from './area.js';
 import { createBuiltinHud } from './hud.js';
 import { readPerf } from './perf.js';
 import { UI_LOADER } from './seams.js';
@@ -95,7 +95,7 @@ export default class V2Game extends Scene {
     const sc = this;
     this.state = {
       viewW: g.viewW, viewH: g.viewH, safe: g.safe ?? { l: 0, t: 0, r: 0, b: 0 }, scale: g.scale, time: 0, hero: null, heroHpMax: TUNE.heroHp ?? 100,
-      area: { id: '', name: '' }, section: { id: '', label: '' }, enemies: [], enemiesLeft: 0, yardLeft: 0, numbers: this.numbers, numberN: 0,
+      area: { id: '', name: '', era: 'now' }, night: 'now', section: { id: '', label: '' }, enemies: [], enemiesLeft: 0, yardLeft: 0, numbers: this.numbers, numberN: 0,
       project: (x, y, z, out) => sc.project(x, y, z, out), done: false, doneT: 0, loading: true, message: '', message2: '', debug: this.perf.debug,
       debugLine: () => sc._debugLine(), stats: () => sc.stats(), dialog: null,
     };
@@ -111,7 +111,7 @@ export default class V2Game extends Scene {
   exit() {
     this._detach();
     try { feel.setTimeScale(1); feel.release(); } catch { /* no audio */ }
-    try { this.hud?.dispose?.(); } catch { /* ui lane */ }
+    try { const hd = this.hud; if (hd) (hd.release ?? hd.dispose)?.call(hd); } catch { /* ui lane */ }
     if (this.fx) { try { this.fx.dispose(); } catch { /* lost context */ } this.fx = null; }
     if (this.cr) { this.cr.destroy(); this.cr = null; }
     if (this.glr) { this.glr.destroy(); this.glr = null; }
@@ -120,6 +120,23 @@ export default class V2Game extends Scene {
     if (globalThis.__v2?.scene === this) delete globalThis.__v2;
   }
   setStory(fn) { this.story = typeof fn === 'function' ? fn : null; }
+  /** wake every enemy of a spawn group (area triggers `wake`, or the story) */
+  wakeGroup(group) {
+    const SP = this.W?.spawns ?? [], E = this.sim?.enemies ?? []; let n = 0;
+    for (let i = 0; i < E.length; i++) { const e = E[i], g = e.group ?? (E.length === SP.length ? SP[i].group : null); if (g !== group || e.dead || e.state === 'dead') continue; e.active = true; if (e.state === 'idle') { e.state = 'chase'; e.stateT = 0; } n++; }
+    return n;
+  }
+  /** the hero stepped into an open exit: go there if that area exists, otherwise only name it */
+  _travel(x) {
+    this._exitBusy = true;
+    hasArea(x.to).then((ok) => {
+      if (!this.glr) return;
+      if (!ok) { this._exitBusy = false; if (x.label) this.game.toast?.(x.label); this.emit('exit.missing', { id: x.id, to: x.to }); return; }
+      this.emit('exit', { id: x.id, to: x.to, spawn: x.spawn ?? null });
+      this.game.flash?.('#000', 0.9, 2.2);
+      return this.gotoArea(x.to, x.spawn ?? null);
+    }).catch((e) => { this._exitBusy = false; console.error('[v2g] travel failed', e); });
+  }
   /** story / event seam: the scene calls story(name, data, api) on triggers */
   emit(name, data) {
     if (!this.story) return;
@@ -171,7 +188,7 @@ export default class V2Game extends Scene {
     st.left = r.left + 'px'; st.top = r.top + 'px'; st.width = r.width + 'px'; st.height = r.height + 'px';
     if (L.hud) { const hs = L.hud.style; hs.left = st.left; hs.top = st.top; hs.width = st.width; hs.height = st.height; L.hud.width = cv.width; L.hud.height = cv.height; }
   }
-  resize() { if (this.layer) this.layer.force = true; }
+  resize() { if (this.layer) this.layer.force = true; try { this.hud?.resize?.(); } catch { /* ui lane */ } }
   // ───────────────────────── loading ─────────────────────────
   _releaseArea() {
     const glr = this.glr, gl = glr.gl;
@@ -193,7 +210,7 @@ export default class V2Game extends Scene {
     const imgs = {}, jobs = [];
     for (const n of need) {
       if (TEX_SRC[n]) jobs.push(assets.load(TEX_SRC[n].src).then((im) => { imgs[n] = im && im.width > 1 ? im : null; }, () => { imgs[n] = null; }));
-      else jobs.push(new Promise((res) => { const im = new Image(); im.onload = () => { imgs[n] = im; res(); }; im.onerror = () => { imgs[n] = null; console.warn('[v2g] texture failed to load:', n); res(); }; im.src = `${ASSET_ROOT}v2/env/${n}.webp`; this.urls.add(`assets/v2/env/${n}.webp`); }));
+      else jobs.push(new Promise((res) => { const im = new Image(); im.onload = () => { imgs[n] = im; res(); }; im.onerror = () => { imgs[n] = null; console.warn('[v2g] texture failed to load:', n); res(); }; im.src = ASSET_ROOT + kitTexPath(n); this.urls.add('assets/' + kitTexPath(n)); }));
     }
     if (first) jobs.push(assets.load(W.sky.img).then((im) => { imgs.__sky = im && im.width > 1 ? im : null; }, () => { imgs.__sky = null; }));
     await Promise.all(jobs);
@@ -244,9 +261,9 @@ export default class V2Game extends Scene {
     this.area = area; this.W = W; this.env.fog = W.fog;
     { const d = W.light.moonDir, l = Math.hypot(d[0], d[1], d[2]) || 1; this.env.sunDir[0] = d[0] / l; this.env.sunDir[1] = d[1] / l; this.env.sunDir[2] = d[2] / l; }
     this.sim = new Sim(W, this._hooks());
-    if (spawn && this.sim.teleport) this.sim.teleport(spawn);
+    this._enterAt(spawn);
     this._deaths = this.sim.deaths ?? 0; this._secId = ''; this.cam.snap = true; this.doneT = 0; this.fired.clear();
-    this.state.area.id = area.id; this.state.area.name = area.name;
+    this.state.area.id = area.id; this.state.area.name = area.name; this.state.area.era = area.era; this.state.night = area.era;
     // 6) warm everything behind the loading screen, then wait for the GPU
     for (const k of kinds) for (let i = this._poolOf(KINDS[k].model).length; i < Math.min(4, W.spawns.length); i++) { const a = this._newActor(k); if (a) this._free(a); }
     this._tick0();
@@ -254,6 +271,16 @@ export default class V2Game extends Scene {
     this.loadMs = Math.round(performance.now() - t0);
     this.ready = true; this.state.loading = false; this.sampleN = 0;
     this.emit('area.enter', { area: area.id });
+  }
+  /** put the hero at a named spawn of the area (docs/v2/AREA_FORMAT.md 3); a section id still works for the test route */
+  _enterAt(spawn) {
+    const sim = this.sim, h = sim.hero, sp = spawn ? this.area.spawns?.[spawn] : null, ha = this.heroA;
+    if (sp && Number.isFinite(sp.x) && Number.isFinite(sp.z)) {
+      h.x = sp.x; h.z = sp.z; const gy = groundAt(this.W, h.x, h.z, sp.y != null ? sp.y + 40 : Infinity); if (Number.isFinite(gy)) h.y = gy;
+      h.vx = 0; h.vz = 0; h.vy = 0; if (h.safe) { h.safe.x = h.x; h.safe.y = h.y; h.safe.z = h.z; }
+      if (Array.isArray(sp.face)) { const l = Math.hypot(sp.face[0], sp.face[1]) || 1; h.dirX = sp.face[0] / l; h.dirZ = sp.face[1] / l; if (h.facing !== undefined) h.facing = h.dirX < 0 ? -1 : 1; if (ha) { ha.dx = h.dirX; ha.dz = h.dirZ; } }
+    } else if (spawn && sim.teleport) sim.teleport(spawn);
+    this._exitIn = null; this._exitBusy = false;
   }
   _makeFx() {
     const p = this.perf;
@@ -404,10 +431,12 @@ export default class V2Game extends Scene {
     const sim = this.sim, inp = this.inp, fx = this.fx;
     let mx = input.analogX || input.axisX, mz = -(input.analogY || input.axisY);
     { const T = input.touchStick ?? input._touchVec; if (input.mode === 'touch' && T && T.mag > 0.1) { mx = T.x; mz = -T.y; } }   // touch stick: raw 360 degrees
-    if (this.locked) { mx = 0; mz = 0; }
-    inp.mx = mx; inp.mz = mz; inp.jump = !this.locked && input.buffered('jump', 0.12); inp.jumpHeld = input.down('jump'); inp.jumpUsed = false;
+    const modal = this.hud.modal ?? null, locked = this.locked || modal === 'dialog';   // UI_API 2: 'pause' freezes the rules, 'dialog' locks the hero
+    if (modal === 'pause') { this._state(); this.hud.update(dt, this.state); this.updMs += performance.now() - t0; return; }
+    if (locked) { mx = 0; mz = 0; }
+    inp.mx = mx; inp.mz = mz; inp.jump = !locked && input.buffered('jump', 0.12); inp.jumpHeld = input.down('jump'); inp.jumpUsed = false;
     inp.attackHeld = input.down('attack'); inp.guard = input.down('guard');
-    if (!this.locked) { if (input.pressed('attack')) inp.attack = true; if (input.pressed('dash')) inp.dash = true; if (input.pressed('lock')) inp.lockNext = true; }   // latched until a rule step consumes them (hit-stop)
+    if (!locked) { if (input.pressed('attack')) inp.attack = true; if (input.pressed('dash')) inp.dash = true; if (input.pressed('lock')) inp.lockNext = true; }   // latched until a rule step consumes them (hit-stop)
     if (sim.done) {
       this.doneT += dt;
       if (this.doneT > 1.2 && (inp.attack || input.pressed('confirm') || input.pointer.tapped)) { sim.reset(); this.cam.snap = true; fx?.clear(); this._makeFxHandles(); for (const n of this.numbers) n.on = false; inp.attack = false; g.flash?.('#000', 0.6, 3); this.emit('hero.respawn', {}); return; }
@@ -449,7 +478,22 @@ export default class V2Game extends Scene {
     // section -> room reverb + story
     if (sim.section !== this._secId) { const from = this._secId; this._secId = sim.section; if (sim.section !== 'done') { try { feel.setRoom(roomOf(this.area, sim.section)); } catch { /* no audio */ } this.emit('section.enter', { id: sim.section, from }); } }
     const TR = this.area.triggers;
-    for (let i = 0; i < TR.length; i++) { const t = TR[i]; if (!this.fired.has(t.id) && h.x >= t.x0 && h.x < t.x1 && h.z >= t.z0 && h.z < t.z1) { this.fired.add(t.id); this.emit('trigger', { id: t.id, trigger: t }); } }
+    for (let i = 0; i < TR.length; i++) {
+      const t = TR[i], inside = h.x >= t.x0 && h.x < t.x1 && h.z >= t.z0 && h.z < t.z1;
+      if (!inside) { if (t.once === false) this.fired.delete(t.id); continue; }
+      if (this.fired.has(t.id)) continue;
+      this.fired.add(t.id);
+      if (t.wake) this.wakeGroup(t.wake);
+      this.emit('trigger', { id: t.id, event: t.event ?? null, data: t.data ?? null, trigger: t });
+    }
+    const EX = this.area.exits;
+    for (let i = 0; i < EX.length; i++) {
+      const x = EX[i], inside = h.x >= x.x0 && h.x < x.x1 && h.z >= x.z0 && h.z < x.z1;
+      if (!inside) { if (this._exitIn === x) this._exitIn = null; continue; }
+      if (this._exitIn === x || this._exitBusy || h.dead) continue;
+      this._exitIn = x;
+      if (x.locked) this.emit('exit.locked', { id: x.id, locked: x.locked, exit: x }); else this._travel(x);
+    }
     // hero: animation, blade trail, dash trail, steps
     if (pdt > 0) { const a0 = Math.atan2(ha.dz, ha.dx); driveHero(ha, h, pdt, TUNE); this._turn(ha, h, a0, pdt); }
     this.visY = h.onGround && Math.abs(this.visY - h.y) < 40 && dt > 0 ? this.visY + (h.y - this.visY) * (1 - Math.exp(-dt * 28)) : h.y;   // stairs: do not pop

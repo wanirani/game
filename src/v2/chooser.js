@@ -1,8 +1,8 @@
 // 리빌드(v2) 시범판 고르기 — 타이틀의 '리빌드 시범' 줄이 여는 작은 화면 (docs/v2/P0_COMPARE.md)
 // 타이틀이 고를 때에만 동적 import 로 받는다 (첫 화면 묶음에 들어가지 않는다). 장면 이름 'v2pick'.
 // 터치(줄을 누름) · 키보드/패드(위·아래 + 확인 · 취소) 모두 TapMenu 한 곳에서 읽는다.
-// 줄: 시범판 B(고른 방식) · 꾸민 배경(v2c) · 성능 진단(v2bench) · 시범판 A · 돌아가기.
-//   줄 높이는 화면 높이에 맞춰 줄인다 — UI 최소 높이(400)에서도 다섯 줄이 모두 들어간다 (tools/v2/p0_entry_check.mjs 가 잰다).
+// 줄: 본 게임(v2g, 만드는 중) · 시범판 B(고른 방식) · 꾸민 배경(v2c) · 성능 진단(v2bench) · 시범판 A · 돌아가기.
+//   줄 높이는 화면 높이에 맞춰 줄인다 — UI 최소 높이(400)에서도 여섯 줄이 모두 들어간다 (tools/v2/p0_entry_check.mjs 가 잰다).
 //   시범 장면에서 돌아오면 방금 고른 줄이 골라져 있다 (장면이 넘기는 index 는 옛 줄 번호라 쓰지 않고, 고른 id 를 여기서 기억한다).
 import { Scene } from '../core/game.js';
 import { input } from '../core/input.js';
@@ -14,6 +14,7 @@ import { hudSafe } from '../render/hud_layout.js';
 import { TapMenu, frame, ornament, GOLD, BONE, DIM } from '../scenes/front/common.js';
 
 export const ROWS = [
+  { id: 'v2g', label: '본 게임', tag: '만드는 중', desc: '적까지 모두 입체 · 타격 효과와 소리 · 아직 만드는 중' },
   { id: 'v2b', label: '시범판 B', tag: '고른 방식', desc: '길·건물·영웅을 입체로 세운 화면 (카메라가 돈다)' },
   { id: 'v2c', label: '꾸민 배경', tag: '새 배경', desc: '시범판 B 에 창·문·지붕·소품까지 입체로 지은 화면' },
   { id: 'v2bench', label: '성능 진단', tag: '약 1분', desc: '이 기기에서 왜 끊기는지 재서 표로 보여 줍니다' },
@@ -59,12 +60,12 @@ export default class V2Chooser extends Scene {
     // 높이 나누기: 넉넉하면 머리말(제목 + 꾸밈 + 안내 글)을 다 쓰고, 좁으면 제목 한 줄만 두고 줄 높이를 줄인다
     const availH = H - st - sb, tight = availH < 520, hintH = input.mode === 'touch' ? 0 : 30;
     const w = Math.min(640, W - sl - sr - 48), x = sl + (W - sl - sr - w) / 2;
-    const headH = tight ? 40 : 96, backH = tight ? 44 : 52, gap = tight ? 6 : 10;
-    const cardH = clamp(Math.floor((availH - hintH - headH - backH - gap * CARDS - 12) / CARDS), 54, 88);
+    const headH = tight ? 36 : 96, backH = tight ? 40 : 52, gap = tight ? 5 : 10;
+    const cardH = clamp(Math.floor((availH - hintH - headH - backH - gap * CARDS - 8) / CARDS), 46, 88);
     const total = headH + cardH * CARDS + backH + gap * CARDS;
     let y = st + Math.max(6, (availH - hintH - total) / 2);
     this.layout = { tight, cardH, backH, headH, total, top: y, availH };
-    text(ctx, '리빌드 시범', W / 2, y + (tight ? 28 : 36), { size: tight ? 24 : 32, align: 'center', weight: 800, family: FONT.title, color: GOLD, ow: 5, maxWidth: w });
+    text(ctx, '리빌드 시범', W / 2, y + (tight ? 26 : 36), { size: tight ? 24 : 32, align: 'center', weight: 800, family: FONT.title, color: GOLD, ow: 5, maxWidth: w });
     if (!tight) {
       ornament(ctx, W / 2, y + 50, Math.min(300, w * 0.6));
       text(ctx, HEAD_NOTE, W / 2, y + headH - 18, { size: 15, align: 'center', color: BONE, ow: 3, maxWidth: w });
@@ -77,8 +78,8 @@ export default class V2Chooser extends Scene {
       this.menu.hit(i, r);
       frame(ctx, r.x, r.y, r.w, r.h, { accent: sel ? GOLD : '#5a4650', glow: sel ? 0.6 : 0, corners: sel });
       if (row.desc) {
-        const big = h >= 80, ly = r.y + Math.round(h * 0.43), dy = r.y + h - Math.round(h * 0.17);
-        text(ctx, row.label, r.x + 22, ly, { size: big ? 24 : 21, weight: 800, family: FONT.title, color: sel ? '#fff0d0' : BONE, ow: 4 });
+        const big = h >= 80, small = h < 54, ly = r.y + Math.round(h * 0.43), dy = r.y + h - Math.round(h * (small ? 0.13 : 0.17));
+        text(ctx, row.label, r.x + 22, ly, { size: big ? 24 : small ? 19 : 21, weight: 800, family: FONT.title, color: sel ? '#fff0d0' : BONE, ow: 4 });
         if (row.tag) text(ctx, row.tag, r.x + r.w - 22, ly - 2, { size: 13, weight: 700, align: 'right', color: sel ? GOLD : '#9a8468', ow: 3 });
         text(ctx, row.desc, r.x + 22, dy, { size: 15, color: sel ? BONE : DIM, ow: 3, maxWidth: w - 44 });
       } else text(ctx, row.label, r.x + r.w / 2, r.y + h / 2 + 7, { size: 19, weight: 700, align: 'center', color: sel ? '#fff0d0' : DIM, ow: 3 });

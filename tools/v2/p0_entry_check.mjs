@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 타이틀의 '리빌드 시범' 줄 → 고르기 화면(src/v2/chooser.js: 시범판 B · 꾸민 배경(v2c) · 성능 진단(v2bench) · 시범판 A · 돌아가기) → 각 장면 → 돌아오기 검사
+// 타이틀의 '리빌드 시범' 줄 → 고르기 화면(src/v2/chooser.js: 본 게임(v2g) · 시범판 B · 꾸민 배경(v2c) · 성능 진단(v2bench) · 시범판 A · 돌아가기) → 각 장면 → 돌아오기 검사
 //   node tools/v2/p0_entry_check.mjs [--shots <폴더>]
 //  터치(fold_open · phone2, 글자 크기 기본·크게·아주 크게): 다섯 줄이 화면 안에 있고 서로 겹치지 않는가 · 글이 줄어들지 않는가,
 //    눌러서 고르기 화면 → A → 일시정지 → 고르기(A 줄) → 꾸민 배경 → 일시정지 단추 → 고르기(꾸민 배경 줄) → 성능 진단 → 나가기 → 고르기(성능 진단 줄) → 돌아가기
@@ -64,10 +64,10 @@ for (const vp of ['fold_open', 'phone2']) {
       await page.waitForTimeout(900);
       const C = await page.evaluate(() => { const t = window.__game.top, g = window.__game; return { rects: t.menu.rects.map((r) => ({ x: r.x, y: r.y, w: r.w, h: r.h })), H: g.uiH, W: g.uiW, k: g.uiK, css: g.cssScale, lay: t.layout, idx: t.menu.index }; });
       const cIn = C.rects.every((r) => r.y > 30 && r.y + r.h <= C.H && r.x >= 0 && r.x + r.w <= C.W), cGap = C.rects.every((r, i) => i === 0 || r.y >= C.rects[i - 1].y + C.rects[i - 1].h + 2), cTap = C.rects.every((r) => r.h * C.k * C.css >= 34);
-      ok(C.rects.length === 5 && cIn && cGap && cTap && C.idx === 0, `고르기 화면: 5줄이 화면 안 · 겹침 없음 (첫 줄 y ${Math.round(C.rects[0].y)}, 끝 줄 아래 ${Math.round(C.rects[4].y + C.rects[4].h)} / ${Math.round(C.H)}, 줄 높이 ${C.rects.map((r) => (r.h * C.k * C.css).toFixed(0)).join('·')} CSS px, ${C.lay?.tight ? '좁은' : '넉넉한'} 배치)`);
+      ok(C.rects.length === 6 && cIn && cGap && cTap && C.idx === 0, `고르기 화면: 6줄이 화면 안 · 겹침 없음 (첫 줄 y ${Math.round(C.rects[0].y)}, 끝 줄 아래 ${Math.round(C.rects[5].y + C.rects[5].h)} / ${Math.round(C.H)}, 줄 높이 ${C.rects.map((r) => (r.h * C.k * C.css).toFixed(0)).join('·')} CSS px, ${C.lay?.tight ? '좁은' : '넉넉한'} 배치)`);
       // 글자가 줄 너비를 넘지 않는가 (같은 글꼴·크기로 재 본다 — maxWidth 로 줄어들면 읽기 어렵다). 글은 chooser.js 가 내보내는 것을 그대로 읽는다
       const fit = await page.evaluate(async () => { const m = await import('/src/v2/chooser.js'); const g = window.__game, ctx = g.ctx, t = g.top, w = t.menu.rects[0].w - 44; const size = Math.max(15, g.textFloor || 0); const meas = (str, wt = 500) => { ctx.save(); ctx.font = `${wt} ${size}px "Noto Sans KR", sans-serif`; const v = Math.round(ctx.measureText(str).width); ctx.restore(); return v; }; const descs = m.ROWS.filter((r) => r.desc); return { ids: m.ROWS.map((r) => r.id), out: descs.map((r) => meas(r.desc)), tags: descs.map((r) => (r.tag ? meas(r.label, 800) * 1.7 + meas(r.tag, 700) : 0)), head: meas(m.HEAD_NOTE), headShown: !t.layout.tight, w: Math.round(w), full: Math.round(t.menu.rects[0].w), floor: g.textFloor, cardH: t.layout.cardH }; });
-      ok(fit.ids.join(' ') === 'v2b v2c v2bench v2a back', `줄 순서: ${fit.ids.join(' ')}`);
+      ok(fit.ids.join(' ') === 'v2g v2b v2c v2bench v2a back', `줄 순서: ${fit.ids.join(' ')}`);
       ok(fit.out.every((v) => v <= fit.w) && (!fit.headShown || fit.head <= fit.full) && fit.tags.every((v) => v <= fit.w), `설명 글이 줄어들지 않고 들어감 (글 폭 ${fit.out.join('·')} ≤ ${fit.w}${fit.headShown ? `, 머리말 ${fit.head} ≤ ${fit.full}` : ', 머리말 안내 글은 좁은 배치에서 생략'}, 글자 하한 ${fit.floor}, 줄 높이 ${fit.cardH} UI)`);
       if (SHOTS) await page.screenshot({ path: `${SHOTS}/chooser_${vp}_${ts}.png` });
       if (ts === 'normal') {
@@ -80,8 +80,19 @@ for (const vp of ['fold_open', 'phone2']) {
         };
         const pauseBtn = () => page.evaluate(async () => { const tp = (await import('/src/core/touchpad.js')).touchpad; const b = tp.buttons().find((x) => x.id === 'pause'); return b ? { x: b.cx ?? b.x + b.w / 2, y: b.cy ?? b.y + b.h / 2 } : null; });
         const cv0 = await page.evaluate(() => document.querySelectorAll('canvas').length);
-        // 시범판 A (넷째 줄)
-        const a = await cssOf(page, C.rects[3]);
+        // 본 게임 (첫 줄, v2g) — 가상 패드의 일시정지 단추가 나가기
+        const g0 = await cssOf(page, C.rects[0]);
+        await page.touchscreen.tap(g0.x, g0.y);
+        await page.waitForFunction(() => window.__v2?.id === 'g' && (window.__v2.ready || window.__v2.error), null, { timeout: 60000 });
+        const gst = await page.evaluate(() => ({ ready: !!window.__v2.ready, err: window.__v2.error ?? null, mode: window.__v2.stats?.mode ?? null }));
+        ok(gst.ready && !gst.err, `본 게임 줄을 눌러 v2g 가 열림 (${JSON.stringify(gst)})`);
+        await page.waitForTimeout(1500);
+        if (SHOTS) await page.screenshot({ path: `${SHOTS}/v2g_${vp}.png` });
+        const pg = await pauseBtn();
+        await page.touchscreen.tap(pg.x, pg.y);
+        await chooserBack('본 게임 → 일시정지 단추', 0);
+        // 시범판 A (다섯째 줄)
+        const a = await cssOf(page, C.rects[4]);
         await page.touchscreen.tap(a.x, a.y);
         await page.waitForFunction(() => window.__v2?.id === 'a', null, { timeout: 30000 });
         await page.waitForTimeout(1200);
@@ -89,9 +100,9 @@ for (const vp of ['fold_open', 'phone2']) {
         await page.touchscreen.tap(pb.x, pb.y); await page.waitForTimeout(500);
         const tb = await page.evaluate(() => { const g = window.__game, r = window.__v2.scene.btns.title, c = g.canvasRect, k = g.cssScale; return { x: c.x + (r.x + r.w / 2) * k, y: c.y + (r.y + r.h / 2) * k }; });
         await page.touchscreen.tap(tb.x, tb.y);
-        await chooserBack('A 를 눌러 들어감 → 일시정지 → [타이틀로]', 3);
-        // 꾸민 배경 (둘째 줄) — 가상 패드의 일시정지 단추가 나가기
-        const c1 = await cssOf(page, C.rects[1]);
+        await chooserBack('A 를 눌러 들어감 → 일시정지 → [타이틀로]', 4);
+        // 꾸민 배경 (셋째 줄) — 가상 패드의 일시정지 단추가 나가기
+        const c1 = await cssOf(page, C.rects[2]);
         await page.touchscreen.tap(c1.x, c1.y);
         await page.waitForFunction(() => window.__v2?.id === 'c' && (window.__v2.ready || window.__v2.error), null, { timeout: 40000 });
         const cst = await page.evaluate(() => ({ ready: !!window.__v2.ready, err: window.__v2.error ?? null, chunks: window.__v2.stats?.env?.visibleChunks ?? null }));
@@ -100,19 +111,19 @@ for (const vp of ['fold_open', 'phone2']) {
         if (SHOTS) await page.screenshot({ path: `${SHOTS}/v2c_${vp}.png` });
         const pc = await pauseBtn();
         await page.touchscreen.tap(pc.x, pc.y);
-        await chooserBack('꾸민 배경 → 일시정지 단추', 1);
-        // 성능 진단 (셋째 줄) — 재는 도중에는 단추가 없으므로(끝나면 「나가기」) 여기서는 취소 키로 나온다
-        const c2 = await cssOf(page, C.rects[2]);
+        await chooserBack('꾸민 배경 → 일시정지 단추', 2);
+        // 성능 진단 (넷째 줄) — 재는 도중에는 단추가 없으므로(끝나면 「나가기」) 여기서는 취소 키로 나온다
+        const c2 = await cssOf(page, C.rects[3]);
         await page.touchscreen.tap(c2.x, c2.y);
         await page.waitForFunction(() => window.__game.top?.constructor?.name === 'V2Bench' && !!window.__v2bench, null, { timeout: 30000 });
         ok(true, '성능 진단 줄을 눌러 v2bench 가 열림');
         await page.waitForTimeout(2500);
         if (SHOTS) await page.screenshot({ path: `${SHOTS}/v2bench_${vp}.png` });
         await page.keyboard.press('Escape');
-        const after = await chooserBack('성능 진단 → 취소', 2);
+        const after = await chooserBack('성능 진단 → 취소', 3);
         ok(after.gl <= cv0, `장면들을 드나든 뒤 캔버스가 늘지 않음 (${cv0} → ${after.gl})`);
         const C2 = await page.evaluate(() => window.__game.top.menu.rects.map((r) => ({ x: r.x, y: r.y, w: r.w, h: r.h })));
-        const b = await cssOf(page, C2[4]);
+        const b = await cssOf(page, C2[5]);
         await page.touchscreen.tap(b.x, b.y);
         await page.waitForFunction(() => window.__game.top?.constructor?.name === 'TitleScene', null, { timeout: 8000 });
         await page.waitForTimeout(500);
@@ -141,13 +152,23 @@ for (const vp of ['fold_open', 'phone2']) {
     await page.waitForTimeout(900);
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/chooser_desk.png` });
     await key('Enter');
-    await page.waitForFunction(() => window.__v2?.id === 'b' && (window.__v2.ready || window.__v2.error), null, { timeout: 30000 });
-    ok(await page.evaluate(() => !!window.__v2.ready), 'Enter → Enter 로 시범판 B 가 열림 (첫 줄)');
+    await page.waitForFunction(() => window.__v2?.id === 'g' && (window.__v2.ready || window.__v2.error), null, { timeout: 60000 });
+    ok(await page.evaluate(() => !!window.__v2.ready), 'Enter → Enter 로 본 게임(v2g)이 열림 (첫 줄)');
     await page.waitForTimeout(1500);
+    if (SHOTS) await page.screenshot({ path: `${SHOTS}/v2g_desk.png` });
     await key('Escape', 400);
     await page.waitForFunction(() => window.__game.top?.constructor?.name === 'V2Chooser' && typeof window.__v2 === 'undefined', null, { timeout: 8000 });
     let idx = await page.evaluate(() => window.__game.top.menu.index);
-    ok(idx === 0, `B 에서 Esc → 고르기 화면 (B 줄이 골라져 있음: ${idx})`);
+    ok(idx === 0, `본 게임에서 Esc → 고르기 화면 (본 게임 줄이 골라져 있음: ${idx})`);
+    await page.waitForTimeout(900);
+    await key('ArrowDown'); await key('Enter');
+    await page.waitForFunction(() => window.__v2?.id === 'b' && (window.__v2.ready || window.__v2.error), null, { timeout: 30000 });
+    ok(await page.evaluate(() => !!window.__v2.ready), '↓ Enter 로 시범판 B 가 열림 (둘째 줄)');
+    await page.waitForTimeout(1500);
+    await key('Escape', 400);
+    await page.waitForFunction(() => window.__game.top?.constructor?.name === 'V2Chooser' && typeof window.__v2 === 'undefined', null, { timeout: 8000 });
+    idx = await page.evaluate(() => window.__game.top.menu.index);
+    ok(idx === 1, `B 에서 Esc → 고르기 화면 (B 줄이 골라져 있음: ${idx})`);
     await page.waitForTimeout(900);
     await key('ArrowDown'); await key('Enter');
     await page.waitForFunction(() => window.__v2?.id === 'c' && (window.__v2.ready || window.__v2.error), null, { timeout: 40000 });
@@ -156,7 +177,7 @@ for (const vp of ['fold_open', 'phone2']) {
     await key('Escape', 400);
     await page.waitForFunction(() => window.__game.top?.constructor?.name === 'V2Chooser' && typeof window.__v2 === 'undefined', null, { timeout: 8000 });
     idx = await page.evaluate(() => window.__game.top.menu.index);
-    ok(idx === 1, `꾸민 배경에서 Esc → 고르기 화면 (꾸민 배경 줄: ${idx})`);
+    ok(idx === 2, `꾸민 배경에서 Esc → 고르기 화면 (꾸민 배경 줄: ${idx})`);
     await page.waitForTimeout(900);
     await key('ArrowDown'); await key('Enter');
     await page.waitForFunction(() => window.__game.top?.constructor?.name === 'V2Bench' && !!window.__v2bench, null, { timeout: 30000 });
@@ -165,7 +186,7 @@ for (const vp of ['fold_open', 'phone2']) {
     await key('Escape', 400);
     await page.waitForFunction(() => window.__game.top?.constructor?.name === 'V2Chooser' && typeof window.__v2bench === 'undefined', null, { timeout: 8000 });
     idx = await page.evaluate(() => window.__game.top.menu.index);
-    ok(idx === 2, `성능 진단에서 Esc → 고르기 화면 (성능 진단 줄: ${idx})`);
+    ok(idx === 3, `성능 진단에서 Esc → 고르기 화면 (성능 진단 줄: ${idx})`);
     await page.waitForTimeout(900);
     await key('Escape', 500);
     await page.waitForFunction(() => window.__game.top?.constructor?.name === 'TitleScene', null, { timeout: 8000 });
