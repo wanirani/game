@@ -235,6 +235,7 @@ APK 상한은 95 MB 이고 지금 v1 APK 가 약 69 MB 다. **1장을 더하는 
 ```
 # 보기 (게임 없이)
 node tools/serve.mjs 8080  →  http://localhost:8080/tools/v2/char3d_view.html
+#   …/char3d_view.html?glb=char3d_samples/skeleton.glb&clips=../../assets/v2/char3d/kael.glb   ← 해골 병사에 카엘의 클립 틀기
 # 게임 안
 index.html?scene=v2b            입체 영웅 (기본)
 index.html?scene=v2b&hero=2d    예전 2D 퍼펫
@@ -248,5 +249,7 @@ index.html?scene=v2b&c3dbench=12  성능 시험: 스킨 캐릭터 12명 더
 node tools/v2/char3d_shot.mjs out.png ../../assets/v2/char3d/kael.glb '[{"yaw":0},{"yaw":90,"clip":"run","t":0.1}]'
 node tools/v2/char3d_evidence.mjs /tmp/claude-0/v2/char3d/ev fold_open 2d,3d
 ```
+
+시험용 견본(게임에는 싣지 않음): `tools/v2/char3d_samples/` — 해골 병사 `skeleton.glb`(416 KB)와 두 캐릭터의 A 자세 원본 그림. 서비스에서 받은 원본 GLB 는 `/tmp/claude-0/v2/char3d/raw/`(저장소 밖)와 `tools/higgsfield/manifest_char3d.json` 의 `result_url`.
 
 캡처 원본: `/tmp/claude-0/v2/char3d/` (8방향 `turntable8.png`, 얼굴 `face_closeup.png`, 클립 `clips_library.png` · `clips_procedural.png`, 비교 `compare_move.jpg` · `compare_action.jpg`, 자리별 `ev/`, 클립 나눠 쓰기 `retarget_skeleton.png`, 성능 `perf_*/` · `bench12_*/`).

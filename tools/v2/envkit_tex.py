@@ -85,7 +85,8 @@ def blocks(rows, wmin, wmax, seed, n=N):
         ws = []
         while sum(ws) < n: ws.append(int(r.uniform(wmin, wmax)))
         ws[-1] -= sum(ws) - n
-        if ws[-1] < wmin * 0.5 and len(ws) > 1: ws[-2] += ws.pop()
+        if ws[-1] < wmin * 0.5 and len(ws) > 1:
+            last = ws.pop(); ws[-1] += last
         assert sum(ws) == n and min(ws) > 0
         off = int(r.uniform(0, wmax)); x = 0
         dx = np.zeros(n, np.float32); idr = np.zeros(n, np.int32)
