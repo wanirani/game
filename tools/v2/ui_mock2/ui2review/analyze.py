@@ -30,6 +30,8 @@ for key, m in dom.items():
         v = a[disc]
         # 원판 안에서 그림·테가 아닌 "유리" 부분의 불투명도 = 아래쪽 40 % 분위(그림은 거의 1 이라 위쪽에 몰린다)
         btn[b['id']] = {'mean': round(float(v.mean()), 2), 'glass_p25': round(float(np.percentile(v, 25)), 2), 'see_through_pct': round(float((v < .7).mean() * 100))}
+    ready = [v['glass_p25'] for k2, v in btn.items() if k2.startswith('b-') and k2 not in ('b-ult', 'b-lock', 'b-mount', 'b-s2', 'b-jump')]   # 준비된 보통 버튼만
+    r['glass_avg'] = round(float(np.mean(ready)), 2)
     r['sizes'] = sizes; r['btn_alpha'] = btn; r['min_touch'] = min(sizes.values()); r['box_pct'] = round(box / (m['W'] * m['H']) * 100, 1)
     r['min_gap'] = m['minGap']; r['gap_who'] = m['gapWho']; r['hit_fail'] = [b['id'] for b in m['rects'] if not b['hitOk']]; r['errors'] = m['errors']
     out[key] = r
