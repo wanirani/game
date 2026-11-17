@@ -78,6 +78,16 @@ export class Rig {
     this.key = new Map(); this.keyOf = new Array(N).fill(null);
     const joints = model.skin ? model.skin.joints : [];
     for (const j of joints) { const k = boneKey(model.nodes[j].name); if (!this.key.has(k)) { this.key.set(k, j); this.keyOf[j] = k; } }
+    {   // 척추는 이름의 번호가 서비스마다 거꾸로일 수 있다 (Meshy: Hips → Spine02 → Spine01 → Spine) → 골반에서 가까운 순서로 spine · spine1 · spine2(가슴)
+      const chain = []; let cur = this.key.get('hips');
+      while (cur != null) { const nx = model.nodes[cur].children.find((c) => /^spine/.test(this.keyOf[c] ?? '')); if (nx == null) break; chain.push(nx); cur = nx; }
+      if (chain.length) {
+        for (const k of ['spine', 'spine1', 'spine2']) this.key.delete(k);
+        const names = chain.length === 1 ? ['spine'] : chain.length === 2 ? ['spine', 'spine2'] : ['spine', 'spine1', 'spine2'];
+        chain.slice(0, 3).forEach((j, i) => { this.key.set(names[i], j); this.keyOf[j] = names[i]; });
+        for (const j of chain.slice(3)) this.keyOf[j] = null;
+      }
+    }
     this.nj = joints.length || 1;
     this.jm = new Float32Array(this.nj * 12);  // 뼈 행렬 (3×4 행 우선) — 셰이더 uniform
     this.jw = new Float32Array(this.nj * 16);  // 뼈 세계 행렬 (모델 공간) — 무기 붙이기용
@@ -134,8 +144,12 @@ export class CPose {
 export function clipFromAnim(rig, anim, opts = {}) {
   const tracks = []; let root = null;
   const q = [0, 0, 0, 1], a = [0, 0, 0, 1], b = [0, 0, 0, 1], v = [0, 0, 0];
-  for (const c of anim.channels) {
-    const key = rig.keyOf[c.node]; if (!key) continue;
+  let t0 = Infinity, t1 = 0;
+  for (const c of anim.channels) if (c.times.length) { t0 = Math.min(t0, c.times[0]); t1 = Math.max(t1, c.times[c.times.length - 1]); }
+  if (!Number.isFinite(t0)) t0 = 0;
+  for (const c0 of anim.channels) {
+    const key = rig.keyOf[c0.node]; if (!key) continue;
+    const c = { ...c0, times: c0.times.map((t) => t - t0) };   // 첫 키를 0초로
     const i = c.node, P = rig.parWR.subarray(i * 4, i * 4 + 4), Lr = rig.restR.subarray(i * 4, i * 4 + 4);
     if (c.path === 'rotation') {
       const out = new Float32Array(c.values.length); let moved = false;
@@ -158,10 +172,11 @@ export function clipFromAnim(rig, anim, opts = {}) {
         for (let k = 0; k < n; k++) { const u = (c.times[k] - c.times[0]) / T; out[k * 3] -= x0 + (x1 - x0) * u; out[k * 3 + 2] -= z0 + (z1 - z0) * u; mx += out[k * 3]; mz += out[k * 3 + 2]; }
         for (let k = 0; k < n; k++) { out[k * 3] -= mx / n; out[k * 3 + 2] -= mz / n; }
       }
+      if (opts.rootRel && n > 0) { const x0 = out[0], z0 = out[2]; for (let k = 0; k < n; k++) { out[k * 3] -= x0; out[k * 3 + 2] -= z0; } }   // 첫 키의 수평 위치를 원점으로
       root = { times: c.times, pos: out, travel: n > 1 ? [c.values[(n - 1) * 3] - c.values[0], c.values[(n - 1) * 3 + 2] - c.values[2]] : [0, 0] };
     }
   }
-  return { name: opts.name ?? anim.name, duration: anim.duration, loop: opts.loop ?? true, tracks, root, source: 'library' };
+  return { name: opts.name ?? anim.name, duration: Math.max(0.001, t1 - t0), loop: opts.loop ?? true, tracks, root, source: 'library' };
 }
 
 function seek(times, t) { let lo = 0, hi = times.length - 1; if (t <= times[0]) return 0; if (t >= times[hi]) return hi - 1 < 0 ? 0 : hi - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (times[m] <= t) lo = m; else hi = m; } return lo; }
