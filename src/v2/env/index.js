@@ -65,7 +65,7 @@ export default class V2Env extends V2ProtoB {
     const glr = this.glr, W = this.W, E = W.env;
     // 1) 키트 텍스처
     const names = Object.keys(KIT_TEX), imgs = {};
-    await Promise.all(names.map((n) => new Promise((res) => { const im = new Image(); im.onload = () => { imgs[n] = im; res(); }; im.onerror = () => { imgs[n] = null; console.warn('[v2c] 텍스처를 받지 못했습니다:', n); res(); }; im.src = `${ASSET_ROOT}v2/env/${n}.webp`; })));
+    await Promise.all(names.map((n) => new Promise((res) => { const im = new Image(); im.onload = () => { imgs[n] = im; res(); }; im.onerror = () => { imgs[n] = null; console.warn('[v2c] kit texture failed to load:', n); res(); }; im.src = `${ASSET_ROOT}v2/env/${n}.webp`; })));
     if (!this.glr) return;
     const b0 = glr.stats.texBytes;
     for (const n of names) {
@@ -82,7 +82,7 @@ export default class V2Env extends V2ProtoB {
         this.envSpr = { moss: uv(r.k_moss), puddle: uv(r.k_puddle), stain: uv(r.k_stain) };
         glr.update(this.propTex, c, c.height);
       }
-    } catch (e) { console.warn('[v2c] 얼룩 스티커를 만들지 못했습니다', e); }
+    } catch (e) { console.warn('[v2c] decal sprites skipped', e); }
     // 3) 정적 메시 (덩어리 × 텍스처)
     this.envMeshes = E.meshes.map((m) => ({ chunk: m.chunk, mesh: glr.mesh(m.data, m.count), tex: this.tex[m.tex], tris: m.count / 3 })).filter((m) => m.tex);
     this.envChunks = [...E.bounds.entries()].map(([id, b]) => ({ id, b, on: true }));

@@ -1,0 +1,18 @@
+{
+  "batch": "uigem",
+  "date": "2026-11-17",
+  "purpose": "v2 인터페이스 2차 시안 「세공한 유리」 아이콘 한 벌 · 재질 (tools/v2/ui_mock2/uigem/)",
+  "credit_cap": 25,
+  "credits_used": 0,
+  "jobs": [],
+  "attempted": [
+    {
+      "tool": "generate_image_batch",
+      "model": "gpt_image_2_5",
+      "count": 4,
+      "what": "양식 시험용 아이콘 4장 (공격·점프·조준·지도, 상아 부조풍, 검은 배경)",
+      "result": "실행되지 않음 — 권한 검사(자동 모드)가 유료 생성 호출을 거절했다. 다시 시도하지 않았다. 작업도 크레딧도 발생하지 않음"
+    }
+  ],
+  "note": "유료 생성 없음. 아이콘 20개는 게임이 이미 가진 그림으로 만들었다: 카엘 3D 모델의 동작 렌더(/tmp/claude-0/v2/char3d/clips_*.png)와 v1 아이템 그림(assets/icons)을 tools/v2/ui_mock2/uigem/forge/prep.py 가 상아 부조 톤으로 바꾸고, forge.mjs 가 벡터 요소(궤적·달·과녁·지도·종·말)와 합쳐 구웠다. 유리·테·무늬·판은 전부 코드(SVG/CSS)."
+}

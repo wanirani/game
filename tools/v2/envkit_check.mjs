@@ -2,7 +2,7 @@
 //   ① 저작 데이터 검증(B 의 validateStage — 충돌이 B 와 같은 규칙) ② 봇이 처음부터 마당까지 걸어 적을 모두 쓰러뜨림(무적 없음; B 검사와 같은 봇)
 //   ③ 페이지 오류 0 ④ 구간별 숫자(삼각형·그리기 호출·텍스처·정점 버퍼)와 예산(보이는 삼각형 ≤ 60,000 · 그리기 호출 ≤ 40) ⑤ 프레임마다 캔버스 올리기가 늘지 않았는지
 //   ⑥ 텍스처 파일 크기(장당 ≤ 150 KB) ⑦ 나가기(자원 정리).
-//   node tools/v2/envkit_check.mjs [--devices fold_open,phone2] [--json out.json] [--base v2b 도 같이 재서 견준다]
+//   node tools/v2/envkit_check.mjs [--devices fold_open,phone2] [--json out.json] [--base 1 = v2b 도 같이 재서 견준다] [--dist dist/<빌드 폴더> = 배포 빌드에서도 열어 본다]
 // 주의: 헤드리스 Chromium 의 WebGL 은 소프트웨어 렌더러(SwiftShader)다 — 프레임 시간은 실제 기기 값이 아니다.
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
@@ -140,6 +140,32 @@ for (const dev of DEVICES) {
     const b = await open(dev, 'v2b');
     try { R.base = await sample(b.page); const N = R.base; console.log(`  [견줌] v2b: ` + Object.entries(N.sections).map(([s, q]) => `${s} ${q.draws}dc/${q.tris}tri`).join(' · ') + ` · 텍스처 ${N.texMB} MB · 버퍼 ${N.bufKB} KB`); } finally { await b.browser.close(); }
   }
+}
+// ── 배포 빌드 (번들 + CSP): --dist <폴더> — build_web.mjs 결과물에서 v2c 가 뜨고 키트 텍스처를 실제로 받는지 ──
+if (args.dist) {
+  console.log('\n[배포 빌드 ' + args.dist + ']');
+  const http = await import('node:http'), path = await import('node:path');
+  const root = path.resolve(String(args.dist));
+  const toml = fs.readFileSync(new URL('../../netlify.toml', import.meta.url), 'utf8');
+  const csp = (toml.match(/Content-Security-Policy\s*=\s*"([^"]+)"/) || [])[1] || "default-src 'self'";
+  const MIME = { html: 'text/html; charset=utf-8', js: 'text/javascript', css: 'text/css', json: 'application/json', webp: 'image/webp', png: 'image/png', woff2: 'font/woff2', webmanifest: 'application/manifest+json', m4a: 'audio/mp4', ogg: 'audio/ogg', glb: 'model/gltf-binary' };
+  const dsrv = http.createServer((req, res) => {
+    let u = decodeURIComponent(req.url.split('?')[0]); if (u === '/') u = '/index.html';
+    const f = path.join(root, u); if (!f.startsWith(root)) { res.writeHead(403); res.end(); return; }
+    fs.readFile(f, (err, data) => { if (err) { res.writeHead(404); res.end(); return; } res.writeHead(200, { 'Content-Type': MIME[f.split('.').pop()] || 'application/octet-stream', 'Content-Security-Policy': csp }); res.end(data); });
+  });
+  const dport = port + 1; await new Promise((r) => dsrv.listen(dport, r));
+  const browser = await chromium.launch({ executablePath: EXE, args: GL_ARGS });
+  try {
+    const page = await (await browser.newContext(contextOptions(DEVICES[0]))).newPage(); const errs = [];
+    page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); }); page.on('pageerror', (e) => errs.push(e.message));
+    await page.goto(`http://localhost:${dport}/index.html?scene=v2c`);
+    await page.waitForFunction(() => window.__v2?.id === 'c' && (window.__v2.ready || window.__v2.error), null, { timeout: 40000 }).catch(() => errs.push('준비 시간 초과'));
+    await page.waitForTimeout(1200);
+    const r = await page.evaluate(() => { const g = window.__game, v = window.__v2; if (!v) return { ready: false }; g._pageHidden = true; g.input.setAutoSource(() => ({ right: true })); for (let i = 0; i < 90; i++) g.tick(1 / 60); g.render(); g.input.setAutoSource(null); const s = v.stats; return { ready: v.ready, err: v.error, x: Math.round(v.hero.x), draws: s.gl?.draws, staticDraws: s.env?.staticDraws, kitTexMB: +((s.env?.kitTexBytes ?? 0) / 1048576).toFixed(1), build: window.__BN_BUILD?.ver ?? null }; });
+    report.dist = { ...r, errors: errs.slice(0, 5) };
+    if (r.ready && !r.err && r.x > 300 && r.staticDraws > 5 && r.kitTexMB > 5 && !errs.length) ok(`번들된 빌드가 CSP 아래에서 열리고 키트 텍스처를 받아 그린다: ${JSON.stringify(r)}`); else fail('배포 빌드 이상: ' + JSON.stringify(report.dist));
+  } finally { await browser.close(); dsrv.close(); }
 }
 srv.close();
 if (args.json) fs.writeFileSync(String(args.json), JSON.stringify(report, null, 1));
