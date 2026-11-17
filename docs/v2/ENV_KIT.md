@@ -4,6 +4,8 @@
 작성 2026-11-17. 소유자 의견("적과 모든 것들을 3D 로, 배경도 좀 더 디테일하게 — 사물이나 벽면 등도")에 대한 **배경 쪽 답**이다.
 숫자는 §5. 헤드리스 Chromium 은 소프트웨어 렌더러(SwiftShader)라 **프레임 시간은 실제 기기 값이 아니다** — 삼각형·그리기 호출·메모리만 믿을 수 있다.
 
+> **2026-11-17 22:50 UTC, WORLD 구역이 더한 것은 §11–§14** (구운 입체 소품 · 새 소품 15종 · 새 텍스처와 되풀이 깨기 · 지역 세 곳). §2 의 "그림판으로 남긴 것"과 §7-2·§10 의 "천사상·가고일은 그림판"은 이제 옛 얘기다 — 시범 구간에도 납작한 그림판이 없다.
+
 ## 0. 한눈에
 
 - 시범판 B 는 **납작한 상자에 타일을 바른 벽 + 색칠한 네모 창 + 세워 둔 그림판 소품**이었다. 키트는 같은 자리를 **실제 기하**로 다시 짓는다:
@@ -227,3 +229,67 @@
 - 실제 폴드에서의 프레임. 세계 삼각형 3배·정점 버퍼 2.7배·텍스처 +7 MB 가 끊김을 늘리는지는 기기에서만 알 수 있다. 「성능 진단」은 아직 B 의 세계로만 잰다(꾸민 배경 줄 없음 — 요청서에 적음).
 - 낀 적(골목 어귀 x 2020, z 269)은 그대로다. 검사 봇이 7초 뒤 잊고 가는 것으로 피해 갈 뿐이다.
 
+
+## 11. 구운 입체 소품 — 소품 하나는 그리기 호출이 아니라 삼각형 값만 든다 (WORLD, 2026-11-17)
+
+**만드는 쪽** `node tools/v2/world_props_bake.mjs [--glb <폴더>]` → `assets/v2/props/props.bin`(기하 묶음) + `assets/v2/props/props_atlas.webp`(아틀라스 **한 장**).
+- 원천 ① **빚은 소품**(`tools/v2/world_sculpts.mjs`): 부호 거리 함수(캡슐·타원체·상자를 부드럽게 잇기)로 빚는다 → 표면 그물(surface nets, 격자 2.8–3.4 단위, 1.0–1.5만 삼각형) → 2차 오차 모서리 접기로 850–1,050 삼각형 → 법선은 거리 함수의 기울기 → **텍스처는 줄이기 전의 세밀한 표면을 앞에서(18° 내려다보며) 찍어 굽는다**(빛 + 틈새 그늘 + 돌 얼룩·이끼·빗물 자국/나무결). 그래서 삼각형은 적어도 깃털 줄·옷 주름·얼굴 그늘이 그림에 남는다. 지금 3종: 우는 천사상 `angel` 950 · 가고일 `gargoyle` 1,050 · 고목 `deadtree` 850 삼각형.
+- 원천 ② **생성 모델 GLB**(그림 → 입체): `--glb 폴더` 의 `<id>.glb`(+ 선택 `<id>.json` `{h, rotY, foot, footH, light, tris, tex}`)를 읽어 키·발밑 원점·앞(−z)을 맞추고, 1,500 삼각형을 넘으면 접고, 그림을 아틀라스 칸(기본 320²)에 넣는다. 같은 이름의 빚은 소품을 대신한다. **이번 작업에서는 유료 생성이 권한 단계에서 거절돼(0 크레딧) 이 길은 `assets/v2/char3d/w_rusty_sword.glb` 같은 기존 GLB 로만 돌려 봤다** — 돌릴 호출은 `/tmp/claude-0/v2/world/gen_requests.json`(그림 31장 → 입체 19개).
+- 묶음 형식: `'BNP1'` + JSON 길이 + JSON(`props[name] = { nv, ni, lo, hi, h, foot, footH, light, cell, pos, nrm, uv, idx }`) + 본문(위치 int16 · 법선 int8 · uv uint16 · 색인 uint16). 지금 **37 KB**(3종) + 아틀라스 1024×512 **22 KB**(GPU 2.8 MB). 상한: 아틀라스 ≤ 2048², 묶음 ≤ 1.5 MB.
+
+**쓰는 쪽** `src/v2/env/baked.js`
+- `await ensureProps(url)`(브라우저) / `setPropPack(buffer)`(node: `tools/v2/world_node.mjs loadPropsNode()`) 로 한 번 받아 둔다. `compileEnv` 는 동기라 **컴파일 전에** 받아야 한다 — `src/v2/world` 의 `AREAS[id]()` 와 장면 `v2c` 가 그렇게 한다.
+- 스테이지에는 여느 소품처럼 `{ t: 'prop' | 'deco', mesh: 'angel', x, z, h, flip, rot }`. `build.js` 가 이름이 묶음에 있으면 `bakedProp()` 으로, 없으면 `PROPS[이름]`(손으로 짠 것)으로, 묶음을 못 받았으면 대신 세울 저폴리(`statue`·`tree`)로 짓는다.
+- `bakedProp` 은 삼각형을 **그 자리 덩어리의 메시(텍스처 = 아틀라스)에 써 넣고** 꼭짓점마다 그 자리 빛을 굽는다(`Geo.mesh`). 카메라가 못 보는 뒤쪽 삼각형은 버린다(약 35 %). 같은 덩어리의 구운 소품은 전부 **그리기 1회**.
+- 충돌 발자국·빛: part 에 `solid` 가 없으면 묶음의 `foot`(반너비 x·z)·`footH` 를, `light` 가 없으면 묶음의 `light` 를 쓴다(크기 `h` 에 맞춰 줄어든다).
+- 텍스처 이름은 `'../props/props_atlas'`(`assets/v2/env/` 기준 상대 경로) — 키트 텍스처를 `v2/env/<이름>.webp` 로 받는 기존 코드가 그대로 받는다.
+
+## 12. 새 소품 15종 (`src/v2/env/props2.js`) · 새 표면 · 되풀이 깨기
+
+| 소품 `mesh` | 삼각형(보이는 면) | 생김새 |
+|---|---|---|
+| `bell` | 약 330 | 돌 받침 + 참나무 틀·가새 + 멍에·쇠띠 + **금 간 청동 종**(12각 회전체) + 줄 |
+| `grave` (`kind`: round · point · obelisk · ledger · broken · cross) | 30–60 | 비석 여섯 꼴 (기울기·떨어진 조각) |
+| `cross` | 약 60 | 고리 달린 돌 십자가 + 두 단 받침 |
+| `mausoleum` | 약 330 | 계단 3 + 뾰족 아치 쇠문 + 기둥 2 + 박공 지붕 + 십자가 |
+| `cemgate` | 약 520 | 돌기둥 2(갓돌·항아리) + 쇠 아치 두 줄 + 굵은 창살 문짝 2 (`open` 0–1.25) |
+| `lanternpost` | 약 90 | 나무 기둥 + 쇠 팔 + 매달린 등(빛 색 `c`, `lit:false` 면 꺼진 등) |
+| `coffin` · `niche` · `plaguepost` | 60 · 220 · 110 | 여섯 모 관 / 해골이 찬 감실 셋 + 촛불 선반(`k_bone`) / 검은·흰 천과 붉은 가위표 판 |
+| `wreck` · `fire` | 약 200 · 가닥당 10 | 그을린 벽 모서리 + 쓰러진 들보 + 재 + 잉걸불 / 불길(가닥마다 노랑→주황→검붉음 세 마디, 십자로 겹침). 빛은 part 의 `light`, 진짜 불티·연기는 지역의 `anchors` 자리에 효과가 낸다 |
+| `sacks` · `harvest` · `candles` | 60–130 | 자루 더미 / 호박 셋 + 밀단 둘 / 촛불 무리(쉼터) |
+
+**표면** (`python3 tools/v2/world_tex.py`, 3×3 으로 이어 붙여 눈으로 확인 — `/tmp/claude-0/v2/world/tex_sheet.png`). 모두 512², WebP, 장당 42–78 KB(상한 160 KB).
+- 코드로 새로 만든 것: `k_cobble`(조약돌 — 크기·색이 제각각인 가중 셀 잡음으로 **다시 만듦**, 예전의 고른 모자이크 대신) · `k_cobble2`(잔돌 포장) · `k_cobworn`(닳고 진흙에 묻힌 길 가운데 + 짚) · `k_rubble`(막돌 + 밝은 회반죽) · `k_thatch`(초가).
+- 게임의 **기존 손그림 타일**(`assets/tex/*.webp`, 이음매 없음)에서 뽑은 것: `k_soil`(묘지 흙 + 마른 풀·낙엽) · `k_cellar`(젖은 지하 돌) · `k_planks`(낡은 널) · `k_bone`(해골 더미).
+- `--from 그림 --name k_xxx`: 생성·채색한 정사각 그림을 이어 붙게 만들어(가장자리 섞기 + 느린 밝기 흐름 제거) 넣는 길. 유료 생성이 거절돼 이번에는 쓰지 못했다(프롬프트는 gen_requests.json). **남은 약점:** `k_ashlar`·`k_plaster`·`k_slate`·`k_flag` 는 예전 코드 텍스처 그대로다.
+- 새 재질(`mats.js`): `cobble2 cobworn fieldstone thatch soil cellar planks bone charred`. 지붕 `kit.mat:'thatch'`, 굴뚝 `kit.chimney`, 벽 `kit.lower:'fieldstone'`, 큰 벽의 빛 격자 `kit.cell`.
+
+**되풀이·싼 티 줄이기 (코드)**
+- 바닥 띠 `strips[].rag`(또는 `kit.rag`): 띠 가장자리를 잡음으로 들쭉날쭉하게 → **자로 그은 흙·판석 네모가 사라진다**(시범 구간 마당·뜰에도 적용).
+- 길 가운데 닳은 띠(`cobworn`), 광장의 우물 둘레 판석처럼 **재질을 섞어** 한 무늬가 넓게 깔리지 않게.
+- 바닥 스티커 8종(`src/v2/env/decals.js`): 이끼·물웅덩이·때 + **금·그을음·재·낙엽·짚**. 동적 묶음 1회에 같이 그려진다.
+- 쇠 난간·문짝 창살을 굵고 성기게(창살 2 → 3.4 단위, 간격 11 → 14), 창 살대 2.6 → 3.8 단위: 안티에일리어싱이 없어도 톱니가 덜 보인다. (알파 잘라내기·alpha-to-coverage 는 정적 메시가 불투명 한 종류라 쓰지 않았다.)
+
+## 13. 지역 (`src/v2/world/`, 형식 `docs/v2/AREA_FORMAT.md`)
+
+`eshville_now` · `eshville_past`(같은 배치 함수, 두 밤) · `graveyard_now` · `slice0`. 집은 `gen.js house()` 가 한 줄로 찍는다(창·문·간판·지붕·굴뚝을 씨앗으로 배치, `burnt` 면 지붕 없는 그을린 폐가).
+검사 `node tools/v2/world_check.mjs`(§결과는 AREA_FORMAT §11): 세 지역 모두 검증 오류 0, 폴드·휴대폰에서 페이지 오류 0, 봇이 기본 들머리에서 **모든 나가는 곳**(8개)까지 걸어 들어감. 걸어 보기 `index.html?scene=v2c&area=eshville_now`.
+
+| 지역 | 정적 삼각형 | 가장 무거운 화면(정적 삼각형 · 프레임 그리기) | 텍스처(시범 구간 대비) |
+|---|---|---|---|
+| 에슈빌 오늘 밤 | 33,840 | 33,840 · 37 | +5.4 MB |
+| 에슈빌 그 밤 | 34,455 | 34,455 · 39 | +6.7 MB |
+| 안개의 묘지 | 21,336 | 21,336 · 23 | +2.7 MB |
+| 시범 구간(그림판 4개를 입체로 바꾼 뒤) | 29,045 (전 26,383) | 29,045 · 32 | 30.4 MB (전 27.7: 아틀라스 +2.8) |
+
+## 14. 실행 중 받는 `assets/v2/` 파일 (배포 목록 `tools/deploy/v2_ship.txt` 에 넣을 것)
+
+```
+assets/v2/props/props.bin            assets/v2/props/props_atlas.webp          (모든 지역 · 시범 구간)
+assets/v2/env/k_ashlar.webp  k_flag.webp  k_slate.webp  k_trim.webp            (모든 지역)
+assets/v2/env/k_cobble.webp  k_plaster.webp                                    (에슈빌 두 밤 · 시범 구간)
+assets/v2/env/k_cobble2.webp  k_cobworn.webp  k_rubble.webp  k_soil.webp       (에슈빌 두 밤 · 묘지[k_cobble2 제외])
+assets/v2/env/k_thatch.webp                                                    (에슈빌 그 밤)
+assets/v2/env/k_bone.webp                                                      (안개의 묘지)
+```
+아직 어느 지역도 쓰지 않는 것(납골당용): `k_cellar.webp` · `k_planks.webp`. 폴더 합계 819 KB. v1 파일(하늘 `assets/bg/s01_village` · `s02_graveyard`, 타일 `assets/tex/tex_{mossy_stone,castle_stone,wet_stone,wood,dirt}`)은 이미 실려 있다.

@@ -290,10 +290,13 @@ for (const dev of DEVICES) {
       return { shell, idle, play, gc: !!window.gc, hits: sc.feelN };
     });
     R.alloc = al;
-    // lowest of the repeats: V8 allocates number boxes in code it has not optimised yet, so early repeats read high (same finding as tools/v2/fx_check.mjs)
-    const shellB = Math.min(...al.shell), idleB = Math.min(...al.idle) - shellB, playB = Math.min(...al.play) - shellB;
+    // The heap counter also moves when the collector runs inside a repeat, so single repeats scatter (even below the shell-only figure);
+    // the median of the repeats is compared with the shell alone. V8 allocates number boxes in code it has not optimised yet,
+    // which is why tools/v2/fx_check.mjs found the same kind of leftover bytes.
+    const med = (a) => { const q = [...a].sort((x, y) => x - y); return q.length % 2 ? q[(q.length - 1) / 2] : Math.round((q[q.length / 2 - 1] + q[q.length / 2]) / 2); };
+    const shellB = med(al.shell), idleB = med(al.idle), playB = med(al.play);
     R.allocScene = { shell: shellB, idle: idleB, play: playB };
-    if (al.gc && idleB <= 2048 && playB <= 8192) ok(`allocation per frame (tick + draw, JS heap, lowest of the repeats): the scene standing still ${idleB} bytes, in a scripted yard fight ${playB} bytes — on top of ${shellB} bytes of the v1 shell (input, pad) (raw: shell ${al.shell.join('/')}, standing ${al.idle.join('/')}, fight ${al.play.join('/')})`);
+    if (al.gc && idleB <= shellB + 2048 && playB <= shellB + 4096) ok(`allocation per frame (tick + draw, JS heap, median of the repeats): v1 shell alone (input, pad) ${shellB} bytes · with the scene standing still ${idleB} bytes · in a scripted yard fight ${playB} bytes (repeats: shell ${al.shell.join('/')}, standing ${al.idle.join('/')}, fight ${al.play.join('/')})`);
     else fail(`${dev}: allocation per frame too high or not measurable ${JSON.stringify(al)}`);
     }
     if (want('far')) {

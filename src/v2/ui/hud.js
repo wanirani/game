@@ -280,6 +280,8 @@ export function createCanvasHud(game, opts = {}) {
       if (stale(msgP, s.message)) { const t = bakeText(String(s.message), L.s, { size: tsz(21), family: FONTS.title, weight: 700, fill: '#e8e2f4' }, msgP.t); msgP.t = t; msgP.c = t.c; msgP.w = t.w; msgP.h = t.h; }
       blit(ctx, msgP, vw / 2 - msgP.w / 2, vh / 2 - msgP.h / 2 - 10);
       if (s.message2) { if (stale(msg2P, s.message2)) { const t = bakeText(String(s.message2), L.s, { size: tsz(13.5), weight: 500, fill: '#b3adc6' }, msg2P.t); msg2P.t = t; msg2P.c = t.c; msg2P.w = t.w; msg2P.h = t.h; } blit(ctx, msg2P, vw / 2 - msg2P.w / 2, vh / 2 + 12); }
+      // behind the loading screen: bake the static pieces now, so the first frame of play does not pay for them
+      if (atlas.ready && T.warm !== L.epoch) { T.warm = L.epoch; bakeBadge('now'); bakeBadge('past'); bakeShelf(T.max > 8 ? Math.ceil(T.max / 2) : T.max, px(25)); bakeMoon(s.moon?.phase ?? 0); }
       return;
     }
     const mode = opts.forceMode ?? input?.mode ?? 'touch';

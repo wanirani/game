@@ -233,8 +233,10 @@ try {
       const h1 = await hero(); await touch(cl, 'touchEnd', []);
       ok(h1.x > h0.x + 15, `${tag}: stick right moves the hero (x ${h0.x.toFixed(0)} -> ${h1.x.toFixed(0)})`);
       let seen = '';
-      await touch(cl, 'touchStart', [[bt.attack.cx, bt.attack.cy]]); await page.waitForTimeout(90); await touch(cl, 'touchEnd', []);
-      for (let i = 0; i < 20 && seen !== 'attack'; i++) { await page.waitForTimeout(60); seen = (await hero()).anim; }
+      for (let n = 0; n < 6 && seen !== 'attack'; n++) {   // an enemy may be hitting the hero just then: try again
+        await touch(cl, 'touchStart', [[bt.attack.cx, bt.attack.cy]]); await page.waitForTimeout(90); await touch(cl, 'touchEnd', []);
+        for (let i = 0; i < 10 && seen !== 'attack'; i++) { await page.waitForTimeout(60); seen = (await hero()).anim; }
+      }
       ok(seen === 'attack', `${tag}: attack button starts an attack (anim ${seen})`);
       await page.waitForTimeout(900);
       await touch(cl, 'touchStart', [[bt.pause.cx, bt.pause.cy]]); await page.waitForTimeout(60); await touch(cl, 'touchEnd', []); await page.waitForTimeout(500);
