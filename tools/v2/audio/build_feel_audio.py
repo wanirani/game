@@ -253,11 +253,12 @@ FILES = {
     'ui_close_1': (lambda: ui('ui_close'), None), 'ui_ok_1': (lambda: ui('ui_ok'), None), 'ui_deny_1': (lambda: ui('ui_deny'), None),
 }
 # 이름 → {f: 파일 id 들, g: 엔진 음량, vr: 재생 속도 변형(녹음 1벌로 변형 3개), room: 방 울림 배율}
+# lazy = 드문 소리: 핵심 소리 뒤에 받고 휴대폰에서는 24 kHz 로 푼다 (깊은 종 6초 · 주문 — 메모리)
 SETS = {
-    'bell_mid': dict(f=['bell_mid_1'], g=1.0), 'bell_high': dict(f=['bell_high_1'], g=1.0), 'bell_toll': dict(f=['bell_toll_1'], g=1.0),
+    'bell_mid': dict(f=['bell_mid_1'], g=1.0), 'bell_high': dict(f=['bell_high_1'], g=1.0), 'bell_toll': dict(f=['bell_toll_1'], g=1.0, lazy=1),
     'ring': dict(f=['ring_1', 'ring_2', 'ring_3'], g=1.0), 'cloth': dict(f=['cloth_1', 'cloth_2', 'cloth_3'], g=1.0),
     'debris': dict(f=['debris_1', 'debris_2', 'debris_3'], g=1.0), 'gear': dict(f=['gear_1', 'gear_2', 'gear_3'], g=1.0),
-    'draw': dict(f=['draw_1'], g=1.0, vr=[1, 0.94, 1.06]), 'chant': dict(f=['chant_1', 'chant_2'], g=1.0),
+    'draw': dict(f=['draw_1'], g=1.0, vr=[1, 0.94, 1.06]), 'chant': dict(f=['chant_1', 'chant_2'], g=1.0, lazy=1),
     'ui_tick': dict(f=['ui_tick_1'], g=1.0, room=0), 'ui_tab': dict(f=['ui_tab_1'], g=1.0, room=0), 'ui_open': dict(f=['ui_open_1'], g=1.0, room=0),
     'ui_close': dict(f=['ui_close_1'], g=1.0, room=0), 'ui_ok': dict(f=['ui_ok_1'], g=1.0, room=0), 'ui_deny': dict(f=['ui_deny_1'], g=1.0, room=0),
 }

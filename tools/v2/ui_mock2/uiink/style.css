@@ -29,7 +29,9 @@ ul { list-style: none; } i { font-style: normal; display: block; } img, canvas {
 .v-dialog #menu, .v-dialog #acts, .v-dialog #stick, .v-dialog #boss, .v-dialog #toast, .v-dialog .dmg, .v-dialog #quest, .v-dialog #mini { display: none; }
 .v-menu #hud, .v-menu #dlg { display: none; }
 .bar { position: relative; overflow: hidden; } .bar .fill, .bar .lag, .bar .seg { position: absolute; left: 0; top: 0; bottom: 0; } .bar .seg { right: 0; }
-.bar .fill::after { content: ""; position: absolute; right: 0; top: 12%; bottom: 12%; width: 2px; border-radius: 1px; background: #fff; box-shadow: 0 0 6px 2px rgba(255, 255, 255, .75); opacity: .9; }   /* 젖은 붓끝 */
+/* 막대가 줄어든 끝은 곧게 자르지 않고 마른 붓끝으로 흩는다: (붓 한 획) ∩ (꽉 찬 앞부분 + 마른 끝) */
+.bar .fill, .bar .lag { -webkit-mask-image: var(--st-ink), linear-gradient(#000, #000), var(--st-tip) !important; mask-image: var(--st-ink), linear-gradient(#000, #000), var(--st-tip) !important; -webkit-mask-size: var(--bw) 100%, calc(100% - 22px) 100%, 24px 100% !important; mask-size: var(--bw) 100%, calc(100% - 22px) 100%, 24px 100% !important; -webkit-mask-position: 0 0, 0 0, 100% 0 !important; mask-position: 0 0, 0 0, 100% 0 !important; -webkit-mask-repeat: no-repeat !important; mask-repeat: no-repeat !important; -webkit-mask-composite: source-in, source-over !important; mask-composite: intersect, add !important; }
+#hero .hp { --bw: 216px; } #hero .st { --bw: 160px; } #boss .bbar { --bw: 336px; } .phone #hero .hp { --bw: 160px; } .phone #hero .st { --bw: 120px; } .phone #boss .bbar { --bw: 236px; }
 .seal { display: grid; place-items: center; width: 21px; height: 21px; flex: none; background: var(--crim); color: #fff; font: 400 15px/1 "BN Seal", serif; border-radius: 2.500px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .4), 0 1px 3px rgba(0, 0, 0, .6); transform: rotate(-5deg); text-shadow: none; }
 
 /* ── 행동 버튼 (원판은 캔버스: ui.js paintButton) ── */
@@ -47,7 +49,7 @@ ul { list-style: none; } i { font-style: normal; display: block; } img, canvas {
 #hero .nm { font: 800 19px var(--serif); letter-spacing: .06em; } #hero .cls { font: 500 11px var(--sans); color: var(--dim); }
 #hero .num { margin-left: auto; font: 800 16px var(--num); } #hero .num em { font-style: normal; font-size: 11.500px; color: var(--dim); }
 #hero .hp { width: 216px; height: 18px; background: var(--st-dark) 0 0 / 100% 100% no-repeat; }
-#hero .hp .lag { -webkit-mask: var(--st-ink) 0 0 / 216px 100% no-repeat; mask: var(--st-ink) 0 0 / 216px 100% no-repeat; background: #f6e3c0; opacity: .5; } #hero .hp .fill { -webkit-mask: var(--st-ink) 0 0 / 216px 100% no-repeat; mask: var(--st-ink) 0 0 / 216px 100% no-repeat; background: linear-gradient(180deg, #ff8090 0%, #ee2c44 34%, #b3122a 78%, #7c0a1c 100%); }
+#hero .hp .lag { -webkit-mask: var(--st-ink) 0 0 / 216px 100% no-repeat; mask: var(--st-ink) 0 0 / 216px 100% no-repeat; background: #f6e3c0; opacity: .38; } #hero .hp .fill { -webkit-mask: var(--st-ink) 0 0 / 216px 100% no-repeat; mask: var(--st-ink) 0 0 / 216px 100% no-repeat; background: linear-gradient(180deg, #ff8090 0%, #ee2c44 34%, #b3122a 78%, #7c0a1c 100%); }
 #hero .st { width: 160px; height: 10px; margin-top: 0; background: var(--st-dark) 0 0 / 100% 100% no-repeat; } #hero .st .fill { -webkit-mask: var(--st-gold) 0 0 / 160px 100% no-repeat; mask: var(--st-gold) 0 0 / 160px 100% no-repeat; background: linear-gradient(180deg, #fff0bf 0%, #e8c56c 45%, #a57e2c 100%); }
 
 /* ── 시스템 줄: 작은 유리 원판 + 이름 ── */
@@ -76,7 +78,7 @@ ul { list-style: none; } i { font-style: normal; display: block; } img, canvas {
 #boss .bn b { font: 800 16.500px var(--serif); letter-spacing: .2em; white-space: nowrap; } #boss .bs { display: none; }
 #boss .bp { position: absolute; right: 2px; bottom: 1px; font: 800 16px var(--num); color: #ff8494; } #boss .bp em { font-style: normal; font-size: 11px; }
 #boss .bbar { height: 22px; background: var(--st-dark) 0 0 / 100% 100% no-repeat; }
-#boss .bbar .lag { -webkit-mask: var(--st-ink) 0 0 / 336px 100% no-repeat; mask: var(--st-ink) 0 0 / 336px 100% no-repeat; background: #f6e3c0; opacity: .5; } #boss .bbar .fill { -webkit-mask: var(--st-ink) 0 0 / 336px 100% no-repeat; mask: var(--st-ink) 0 0 / 336px 100% no-repeat; background: linear-gradient(180deg, #ff8090 0%, #ee2c44 34%, #b3122a 78%, #7c0a1c 100%); }
+#boss .bbar .lag { -webkit-mask: var(--st-ink) 0 0 / 336px 100% no-repeat; mask: var(--st-ink) 0 0 / 336px 100% no-repeat; background: #f6e3c0; opacity: .38; } #boss .bbar .fill { -webkit-mask: var(--st-ink) 0 0 / 336px 100% no-repeat; mask: var(--st-ink) 0 0 / 336px 100% no-repeat; background: linear-gradient(180deg, #ff8090 0%, #ee2c44 34%, #b3122a 78%, #7c0a1c 100%); }
 #boss .bbar .seg { background: repeating-linear-gradient(90deg, transparent 0 24.600%, rgba(3, 3, 6, .9) 24.600% 25%); }
 
 /* ── 획득 알림 ── */

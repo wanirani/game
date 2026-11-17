@@ -98,6 +98,7 @@ export function installSprites() {
   const R = document.documentElement.style, url = (cv) => `url(${cv.toDataURL('image/png')})`;
   R.setProperty('--st-crim', url(strokeSprite(640, 44, { c: CRIM, seed: 21 })));
   R.setProperty('--st-ink', url(strokeSprite(640, 44, { c: INK, seed: 21 })));
+  R.setProperty('--st-tip', url(strokeSprite(120, 44, { c: INK, seed: 27, dry: 0.97, ds: 0.05, w: 17, p: () => 1 })));
   R.setProperty('--st-gold', url(strokeSprite(520, 36, { c: GOLD, seed: 33, w: 13 })));
   R.setProperty('--st-dark', url(strokeSprite(640, 44, { c: '#050508', seed: 21, dry: 0.25, w: 17 })));
   R.setProperty('--st-wash', url(strokeSprite(560, 120, { c: '#050508', seed: 41, dry: 0.5, w: 19, ds: 0.6 })));
