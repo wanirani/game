@@ -57,6 +57,9 @@ export const EVENTS = [
   { id: 'ev_inn_door', minute: '5-12', on: 'interact', match: { event: 'door.inn' }, once: false, steps: [
     ['say', 'door.inn'],
   ] },
+  { id: 'ev_tavern_door', minute: '20-26', on: 'interact', match: { event: 'door.tavern' }, once: false, steps: [
+    ['say', 'door.inn'],
+  ] },
 
   // ═════════ 12–15 성당 ═════════
   { id: 'ev_church_arrive', minute: '12-15', on: 'trigger', match: { event: 'church.arrive' }, if: ['era:now', '!promise'], steps: [
@@ -119,7 +122,6 @@ export const EVENTS = [
     ['camera', 'wake_past', 2],
     ['say', 'past.wake'],
     ['camera', null],
-    ['setFlag', 'met_lotte'],
     ['objective', 'find_key'],
   ] },
   { id: 'ev_past_street', minute: '20-26', on: 'trigger', match: { event: 'past.street' }, steps: [
@@ -216,7 +218,6 @@ export const EVENTS = [
   ] },
   { id: 'ev_echo_first', minute: '36-45', on: 'bell.echo', if: ['area:graveyard_now', 'done:ev_echo_hint'], steps: [
     ['prompt', null],
-    ['setFlag', 'echo_learned'],
     ['toast', '숨은 유령이 드러났다', 'info'],
   ] },
 
@@ -259,6 +260,7 @@ export const EVENTS = [
     ['say', 'grave.edmund'],
     ['give', 'road_bell'],
     ['prompt', 'hook'],
+    ['prompt', 'hang'],
     ['say', 'grave.hang'],
     ['take', 'road_bell'],
     ['setFlag', 'bell_hung'],

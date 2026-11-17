@@ -104,7 +104,7 @@ export default {
     { t: 'wall', x: 1400, z: 1000, w: 80, d: 1240, y: 92, h: 250, mat: 'facade', kit: { style: 'rubble', faces: 'R', battlement: true, buttress: [220, 520, 820, 1120].map((u) => ({ side: 'R', u, h: 200, d: 20 })) } },
     { t: 'wall', x: 2900, z: 1000, w: 80, d: 1240, y: 92, h: 250, mat: 'facade', kit: { style: 'rubble', faces: 'L', battlement: true, buttress: [120, 420, 720, 1020].map((u) => ({ side: 'L', u, h: 200, d: 20 })) } },
     // 천사상: 구운 입체 소품 (assets/v2/props — tools/v2/world_props_bake.mjs). 묶음을 받지 못하면 키트의 저폴리 석상이 대신 선다
-    { t: 'prop', mesh: 'angel', x: 2034, z: 1190, h: 210, solid: 26 }, { t: 'prop', mesh: 'angel', x: 2346, z: 1190, h: 210, solid: 26, flip: true },
+    { t: 'prop', mesh: 'angel', x: 2034, z: 1190, h: 188, solid: 26 }, { t: 'prop', mesh: 'angel', x: 2346, z: 1190, h: 188, solid: 26, flip: true },
     { t: 'deco', mesh: 'tree', x: 1760, z: 1230, y: 92, h: 330 }, { t: 'deco', mesh: 'tree', x: 2650, z: 1360, y: 92, h: 300, flip: true },
     { t: 'deco', mesh: 'tree', x: 1640, z: 1450, y: 92, h: 280, flip: true }, { t: 'deco', mesh: 'tree', x: 2790, z: 1130, y: 92, h: 250 },
     { t: 'fence', kind: 'wood', x0: 1700, z0: 1080, x1: 1900, z1: 1080, y: 92, h: 50 }, { t: 'fence', kind: 'wood', x0: 2520, z0: 1120, x1: 2720, z1: 1120, y: 92, h: 50 },

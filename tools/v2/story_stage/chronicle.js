@@ -17,7 +17,7 @@ export const CHRONICLE = {
     body: '역병이 돌던 그해, 이름을 새기지 못한 무덤이 둘 있다.',
     past: '그 밤 — 남매의 이름을 새겼다. 누나 한나, 동생 틸.',
     now: '오늘 밤 — 이끼 낀 비석에 이름이 있고, 누가 두고 간 마른 꽃이 있다.',
-    unlock: ['carved_a', 'carved_b', 'saw_names'], show: ['gate_open'] },
+    unlock: ['carved_a', 'carved_b', 'saw_names'], show: ['saw_ghosts'] },
   road_bell: { id: 'road_bell', order: 5, kind: 'blank', title: '납골당 앞 길종',
     body: '납골당 앞 종대에는 종이 걸린 적이 없다.',
     past: '그 밤 — 빈 종대에 길종을 걸었다.',

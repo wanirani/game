@@ -100,7 +100,7 @@ export default class V2Game extends Scene {
       project: (x, y, z, out) => sc.project(x, y, z, out), done: false, doneT: 0, loading: true, message: '', message2: '', debug: this.perf.debug,
       debugLine: () => sc._debugLine(), stats: () => sc.stats(), dialog: null,
     };
-    try { this.glr = new GLR({}); } catch (e) { this.glError = String(e?.message ?? e); console.warn('[v2g]', this.glError); }
+    try { this.glr = new GLR({ forceGL1: /[?&]v2gl=1(&|$)/.test(globalThis.location?.search ?? '') }); } catch (e) { this.glError = String(e?.message ?? e); console.warn('[v2g]', this.glError); }
     if (this.glr) {
       this._attach();
       this._load(params?.area ?? DEFAULT_AREA, params?.spawn ?? null).catch((e) => { if (!this.glr) return; this.glError = String(e?.message ?? e); console.error('[v2g] load failed', e); });   // (left the scene while loading: nothing to report)

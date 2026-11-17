@@ -21,7 +21,8 @@ export const DIALOGS_NOW = {
       ['trapped', '성당에 종 치는 아이가 있어요.\n혼자예요. 어서 가 보세요!'],
     ] },
     { if: ['elise_home'], pages: [['trapped', '종소리가 달라졌어요.\n이제 숨이 좀 쉬어져요.']] },
-    { pages: [['trapped', '저는 괜찮아요. 어서 성당으로요!']] },
+    { if: ['!fell'], pages: [['trapped', '저는 괜찮아요. 어서 성당으로요!']] },
+    { pages: [['trapped', '종 치던 아이는요?\n무사해야 할 텐데….']] },
   ],
   'marta.inn.now': [
     { if: ['!fell'], once: true, pages: [
@@ -49,7 +50,7 @@ export const DIALOGS_NOW = {
       ['kael', '납골 언덕에 있습니다.\n찾으러 갑니다.'],
       ['sera', '이분을 옮기고 따라갈게요.\n등불이 쓸모 있을 거예요.', 'resolve'],
     ], then: [['setFlag', 'sera_follows']] },
-    { if: ['!elise_home'], pages: [['sera', '먼저 가세요. 곧 따라갈게요.']] },
+    { if: ['!elise_home', 'sera_follows'], pages: [['sera', '먼저 가세요. 곧 따라갈게요.']] },
     { pages: [['sera', '종소리가 수녀원까지 닿았을 거예요.\n다음은 제가 나설 차례네요.', 'resolve']] },
   ],
   'wounded.square': [
@@ -97,7 +98,7 @@ export const DIALOGS_NOW = {
   'alberto.church': [
     { if: ['!promise'], pages: [['alberto', '어서 오게. 종이 자네를 불렀네.']] },
     { if: ['!fell'], pages: [['alberto', '아이는 종탑으로 올라갔네.\n문은 성당 옆에 있다네.']] },
-    { if: ['!got_key'], pages: [['alberto', '대장간에 가 보게. 하드윈이\n서랍을 뒤지고 있다네.']] },
+    { if: ['!got_key'], pages: [['alberto', '대장간에는 들렀나?\n하드윈이 기다린다네.']] },
     { if: ['!elise_home'], pages: [['alberto', '연대기의 빈칸은 자네 몫일세.\n촛불을 잊지 말게.']] },
     { pages: [['alberto', '허허. 자네 얼굴을 보니\n오래된 밤이 생각나는군.']] },
   ],
@@ -133,7 +134,7 @@ export const DIALOGS_NOW = {
       ['kael', '이름 칸에는 카엘이라고\n적어 주십시오.'],
       ['hadwin', '…적었소. 백 년 만에 닫는 장부요.'],
     ], then: [['give', 'key_silver'], ['give', 'order_slip'], ['setFlag', 'got_key'], ['chronicle', 'graveyard_key'], ['objective', 'open_gate']] },
-    { if: ['key_entrusted', '!got_key'], pages: [
+    { if: ['key_entrusted', '!got_key', 'key_order_iron'], pages: [
       ['hadwin', '…당신이오? 채찍 든 길손이.'],
       ['hadwin', '할아버지 때부터 내려온 건데,\n이름 칸이 비어 있소.'],
       ['hadwin', '선불이랍디다.'],
@@ -149,6 +150,7 @@ export const DIALOGS_NOW = {
 
   // ───────── 36–45 묘지 가는 길 ─────────
   'gate.now': [
+    { if: ['gate_open'], pages: [['narrator', '묘지 문. 열려 있다.']] },
     { if: ['has:key_silver'], pages: [['narrator', '은 열쇠를 돌린다.\n백 년 묵은 자물쇠가 열린다.']],
       then: [['unlockExit', 'to_graveyard', 'eshville_now'], ['setFlag', 'gate_open'], ['objective', 'find_ossuary']] },
     { if: ['fell'], pages: [['kael', '(잠겼다. 열쇠는 대장간에\n맡겨 두었지.)']] },
@@ -233,7 +235,8 @@ export const DIALOGS_NOW = {
     { if: ['elise_found'], pages: [['elise', '괜찮아요. 종은 안 멎어요!']] },
     { pages: [['alberto', '허허, 서두를 것 없네.\n밤은 아직 길다네.']] },
   ],
-  'retry.boss': [{ pages: [
-    ['sera', '사냥꾼님, 노래를 듣지 마세요!\n조종부터 울려요!', 'resolve'],
-  ] }],
+  'retry.boss': [
+    { if: ['sera_lamp'], pages: [['sera', '사냥꾼님, 노래를 듣지 마세요!\n조종부터 울려요!', 'resolve']] },
+    { pages: [['kael', '(노래를 듣지 마라. 조종부터다.)']] },
+  ],
 };

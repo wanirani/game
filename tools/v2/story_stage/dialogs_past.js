@@ -119,6 +119,7 @@ export const DIALOGS_PAST = {
 
   // ───────── 45–58 그 밤의 묘지 ─────────
   'gate.past': [
+    { if: ['past_gate_open'], pages: [['narrator', '묘지 문. 열려 있다.']] },
     { if: ['has:key_silver'], pages: [['narrator', '백 년 뒤의 열쇠가\n백 년 전의 자물쇠를 연다.']],
       then: [['unlockExit', 'to_graveyard', 'eshville_past'], ['setFlag', 'past_gate_open']] },
     { pages: [['kael', '(잠겼다. 열쇠는 대장간에\n있다고 했지.)']] },

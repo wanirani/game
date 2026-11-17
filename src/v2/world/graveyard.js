@@ -46,8 +46,8 @@ export function graveyard(era = 'now') {
   add('field', { t: 'prop', mesh: 'mausoleum', x: 600, z: 2040, w: 200, h: 150, d: 110, solid: 104, solidZ: 60, solidH: 200 },
     { t: 'prop', mesh: 'niche', x: 330, z: 2078, w: 170, h: 160, solid: 86, solidZ: 20 }, { t: 'prop', mesh: 'niche', x: 870, z: 2078, w: 170, h: 160, solid: 86, solidZ: 20 },
     { t: 'prop', mesh: 'gargoyle', x: 450, z: 2010, h: 150 }, { t: 'prop', mesh: 'gargoyle', x: 750, z: 2010, h: 150, flip: true },
-    { t: 'prop', mesh: 'angel', x: 190, z: 1520, h: 210 }, { t: 'prop', mesh: 'angel', x: 1010, z: 1520, h: 210, flip: true },
-    { t: 'prop', mesh: 'deadtree', x: 180, z: 1040, h: 310 }, { t: 'prop', mesh: 'deadtree', x: 1010, z: 1900, h: 300, flip: true }, { t: 'prop', mesh: 'deadtree', x: 960, z: 1060, h: 260 },
+    { t: 'prop', mesh: 'angel', x: 190, z: 1520, h: 196 }, { t: 'prop', mesh: 'angel', x: 1010, z: 1520, h: 196, flip: true },
+    { t: 'deco', mesh: 'deadtree', x: -46, y: 0, z: 1090, h: 420 }, { t: 'deco', mesh: 'deadtree', x: 1250, y: 0, z: 1820, h: 400, flip: true }, { t: 'deco', mesh: 'deadtree', x: 1246, y: 0, z: 1130, h: 380 },   // the field's dead trees now stand OUTSIDE the side walls (crowns over the battlements): the generated tree has a wide root flare and hid the hero behind it
     { t: 'prop', mesh: 'cross', x: 400, z: 1700, h: 180, solid: 26, solidZ: 18 }, { t: 'prop', mesh: 'cross', x: 800, z: 1250, h: 170, solid: 26, solidZ: 18 },
     { t: 'prop', mesh: 'coffin', x: 770, z: 1730, solid: 60, solidZ: 22, h: 62, solidH: 50 }, { t: 'prop', mesh: 'coffin', x: 300, z: 1300, solid: 56, solidZ: 20, h: 58, solidH: 46, flip: true },
     { t: 'prop', mesh: 'chapel', x: 172, z: 2012, h: 220, solid: 60, solidZ: 72, solidH: 210 },   // a small tomb chapel in the back corner (generated model; against the back and side walls: nothing walkable behind it). It took the place of a dead tree

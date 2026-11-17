@@ -218,13 +218,13 @@ try {
 
   // ───────── 120 Hz and uneven frame timing: drive the real frame loop with made-up timestamps ─────────
   if (want('hz')) {
-    const { ctx, page } = await open('scene=v2g', { init: `(() => { const real = window.requestAnimationFrame.bind(window); window.__raf = { cb: null, manual: false }; window.requestAnimationFrame = (cb) => { if (window.__raf.manual) { window.__raf.cb = cb; return 0; } return real(cb); }; })();` });
+    const { ctx, page } = await open('scene=v2g', { init: `(() => { const real = window.requestAnimationFrame.bind(window); window.__raf = { q: [], manual: false }; window.requestAnimationFrame = (cb) => { if (window.__raf.manual) { window.__raf.q.push(cb); return 0; } return real(cb); }; })();` });
     await page.evaluate(installBot);
     const hz = await page.evaluate(async () => {
       const g = window.__game, v = window.__v2, sc = v.scene, sim = sc.sim, B = window.__fb, R = window.__raf, out = {};
       g._pageHidden = false; R.manual = true; await new Promise((r) => setTimeout(r, 400));   // the pending real rAF fires once and re-registers through the manual hook
-      if (!R.cb) return { error: 'frame loop not captured' };
-      let ts = performance.now() + 1000; const frame = (ms) => { ts += ms; const cb = R.cb; R.cb = null; cb(ts); };
+      if (!R.q.length) return { error: 'frame loop not captured' };
+      let ts = performance.now() + 1000; const frame = (ms) => { ts += ms; const q = R.q; R.q = []; for (const cb of q) cb(ts); };   // every pending rAF callback (the game loop is one of several)
       const pattern = { hz60: () => 1000 / 60, hz120: () => 1000 / 120, hz90: () => 1000 / 90, uneven: (i) => (i % 9 === 8 ? 34 : i % 2 ? 6.2 : 10.4), hz48: () => 1000 / 48 };
       for (const k of Object.keys(pattern)) {
         sim.reset(); for (const e of sim.enemies) if (!e.yard) e.dead = true; sim.hero.x = 700; sim.hero.z = 190; sc.cam.snap = true; B.cur = B.ACT[0];

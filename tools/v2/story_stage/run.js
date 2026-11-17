@@ -150,6 +150,7 @@ export function createStory(data, opts) {
   function give(id, n, api, quiet) {
     const it = ITEMS[id];
     if (!it) warn('item "' + id + '" is not in ITEMS');
+    if (n < 0 && (state.items[id] | 0) < -n) warn('take: "' + id + '" is not in the bag');
     const c = Math.max(0, (state.items[id] | 0) + n);
     if (c) state.items[id] = c; else delete state.items[id];
     callOpt(api, 'onItem', id, c);
@@ -169,10 +170,6 @@ export function createStory(data, opts) {
     if (logFn) logFn('begin ' + rec.id);
     pump();
   }
-  function enqueue(rec, api) {
-    if (cur) { queue.push({ rec, api }); return; }
-    begin(rec, api);
-  }
   function finish() {
     const rec = cur.rec;
     markDone(rec);
@@ -188,7 +185,7 @@ export function createStory(data, opts) {
           if (!queue.length) break;
           const q = queue.shift();
           // a queued once-sequence may have been finished meanwhile (run step) or its conditions may no longer hold
-          if ((q.rec.once && doneSet.has(q.rec.id)) || (!q.force && !holds(q.rec.all, q.rec.any))) continue;
+          if (q.rec.once && doneSet.has(q.rec.id)) continue;
           snap = serialize();
           cur = { rec: q.rec, frames: [{ steps: q.rec.steps, pc: 0 }], api: q.api || lastApi, wait: null, token: 0 };
           if (logFn) logFn('begin ' + q.rec.id);
@@ -230,7 +227,7 @@ export function createStory(data, opts) {
   function showPage(api, who, text, mood, choice) {
     const p = PEOPLE[who];
     if (!p && who !== 'narrator') warn('speaker "' + who + '" is not in PEOPLE');
-    const d = { speaker: p && p.name && who !== 'narrator' ? p.name : '', portrait: null, side: (p && p.side) || 'left', text: text || '' };
+    const d = { who, speaker: p && p.name && who !== 'narrator' ? p.name : '', portrait: null, side: (p && p.side) || 'left', text: text || '' };
     if (p) d.portrait = (mood && p.moods && p.moods[mood]) || p.portrait || null;
     if (mood && p && !(p.moods && p.moods[mood])) warn('mood "' + mood + '" of "' + who + '" has no portrait');
     const tok = hold('dialog');
@@ -311,8 +308,10 @@ export function createStory(data, opts) {
       case 'lockInput': call(api, 'lock', !!s[1]); break;
       case 'save': {
         // the copy includes this sequence as finished when save is its last step
-        const top = cur.frames.length === 1 && cur.frames[0].pc >= cur.frames[0].steps.length;
-        if (top) markDone(cur.rec); else warn('save in ' + cur.rec.id + ' is not the last step — the scene would replay after loading');
+        let last = true;
+        for (let i = 0; i < cur.frames.length; i++) if (cur.frames[i].pc < cur.frames[i].steps.length) last = false;
+        if (last) { for (let i = 0; i < cur.frames.length; i++) if (cur.frames[i].mark) markDone(cur.frames[i].mark); markDone(cur.rec); }
+        else warn('save in ' + cur.rec.id + ' is not the last step — the scene would replay after loading');
         call(api, 'save', serialize());
         break;
       }
@@ -365,18 +364,24 @@ export function createStory(data, opts) {
     if (cur && cur.wait === 'area') { const t = cur.token; cur.wait = null; cur.token = 0; if (t) pump(); }
   }
 
+  // All listeners are tested against the state as it is when the event arrives, then started in table order.
+  // (A sequence that finishes at once must not make a later listener of the same event match.)
+  const hits = [];
+  let hitTop = 0;
   function dispatch(name, d, api) {
     const list = byName.get(name);
     if (!list) return 0;
-    let n = 0;
+    const base = hitTop;
     for (let i = 0; i < list.length; i++) {
       const rec = list[i];
       if (rec.once && doneSet.has(rec.id)) continue;
       if (!matches(rec, d) || !holds(rec.all, rec.any)) continue;
       if (rec.once && ((cur && cur.rec === rec) || queued(rec))) continue;
-      n++;
-      enqueue(rec, api);
+      hits[hitTop++] = rec;
     }
+    const n = hitTop - base;
+    for (let i = base; i < base + n; i++) { const rec = hits[i]; hits[i] = null; if (cur) queue.push({ rec, api, force: true }); else begin(rec, api); }
+    hitTop = base;
     return n;
   }
   function queued(rec) { for (let i = 0; i < queue.length; i++) if (queue[i].rec === rec) return true; return false; }

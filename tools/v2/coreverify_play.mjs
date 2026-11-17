@@ -305,6 +305,9 @@ async function run(dev) {
       await ev(() => { const g = window.__game, v = window.__v2, sim = v.scene.sim; sim.reset(); for (const e of sim.enemies) if (!e.yard) e.dead = true; sim.hero.x = 470; sim.hero.z = 110; v.scene.cam.snap = true; window.__ca = {}; g.input.setAutoSource(() => window.__ca); });
       await step(10); await ev(() => { window.__ca = { right: true }; }); await step(8); await ev(() => { window.__ca = { right: true, dash: true }; }); await step(2); await ev(() => { window.__ca = { right: true }; });
       for (const t of [5, 11, 17]) { await step(t === 5 ? 3 : 6); await shot(`c_roll_${String(t).padStart(2, '0')}`); }
+      // a mage bolt reaching the hero in v2c
+      const cb = await ev(() => { const g = window.__game, v = window.__v2, sim = v.scene.sim; sim.reset(); window.__ca = {}; const m = sim.enemies.find((e) => e.kind === 'ranged'); if (!m) return { none: true }; sim.hero.x = m.x - 230; sim.hero.z = m.z; v.scene.cam.snap = true; let hp = sim.hero.hp, n = 0, fly = -1; for (; n < 1500; n++) { g.tick(1 / 60); sim.hero.x = m.x - 230; if (fly < 0 && sim.shots.some((q) => !q.dead)) fly = n; if (sim.hero.hp < hp) break; } g.render(); return { n, fly, hp0: hp, hp: sim.hero.hp }; });
+      D.boltC = cb; await shot('c_bolt_hit_0'); await step(2); await shot('c_bolt_hit_2'); await step(4); await shot('c_bolt_hit_6'); note('v2c bolt: ' + JSON.stringify(cb));
       D.statsC = await ev(() => { const s = window.__v2.stats; if (s?.assets) delete s.assets; return s; });
     }
     D.errors = errs.slice(0, 20);

@@ -187,7 +187,7 @@ export class Sim {
       }
       // 점프 (공격은 끊을 수 있는 시각부터)
       if (pJump && (h.onGround || h.coyote > 0) && h.dashT <= 0 && (!h.move || (h.move.kind !== 'plunge' && h.moveT >= h.move.cancel))) {
-        h.vy = T.jumpV; h.onGround = false; h.coyote = 0; h.cut = false; h.move = null; h.combo = 0; h.guard = false; h.guardTap = 0; h.airAtk = false; inp.jumpUsed = true;
+        h.vy = T.jumpV; h.onGround = false; h.coyote = 0; h.cut = false; h.move = null; h.combo = 0; h.guard = false; h.guardTap = 0; h.parryOk = 0; h.blockT = 0; h.airAtk = false; inp.jumpUsed = true;   // parryOk · blockT: a jump right after a parry must not keep the parry pose in the air
         this.emit('jump', h); this.hooks.sfx?.('jump'); this.hooks.spark?.(h.x, h.y + 4, h.z, 'dust');
       }
       if (!h.onGround && !inp.jumpHeld && !h.cut && h.vy > T.jumpV * T.jumpCut && !h.move) { h.vy = T.jumpV * T.jumpCut; h.cut = true; }
