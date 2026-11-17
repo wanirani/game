@@ -15,10 +15,10 @@ export const VERT_BYTES = 28;
 
 /** 재질 → 텍스처 키 · 타일 크기(월드 단위) · 색 */
 export const MATS = {
-  cobble: { tex: 'flag', tile: 330, tint: [0.74, 0.76, 0.9] },
+  cobble: { tex: 'flag', tile: 240, tint: [0.74, 0.76, 0.9] },
   stone: { tex: 'block', tile: 256, tint: [0.88, 0.88, 0.98] },
-  facade: { tex: 'brick', tile: 300, tint: [0.8, 0.76, 0.86] },
-  plaster: { tex: 'brick', tile: 430, tint: [1.0, 0.84, 0.74] },
+  facade: { tex: 'brick', tile: 210, tint: [0.8, 0.76, 0.86] },
+  plaster: { tex: 'brick', tile: 290, tint: [1.0, 0.84, 0.74] },
   wood: { tex: 'wood', tile: 128, tint: [1.25, 1.05, 0.9] },
   dirt: { tex: 'dirt', tile: 340, tint: [1.05, 0.98, 0.95] },
 };
@@ -71,18 +71,18 @@ export function compileStage(S) {
   const boxFaces = (b, mat, o = {}) => {
     if (!mat) return;
     const { x0, x1, z0, z1, y0, y1 } = b;
-    const top = o.topMat ?? mat;
+    const top = o.topMat ?? mat, side = o.sideMat ?? mat, k = o.sideK ?? 1;
     if (!o.noTop) faces.push({ mat: top, p: [x0, y1, z0], du: [x1 - x0, 0, 0], dv: [0, 0, z1 - z0], n: [0, 1, 0], kind: 'top', y0 });
-    if (!o.noFront) faces.push({ mat, p: [x0, y0, z0], du: [x1 - x0, 0, 0], dv: [0, y1 - y0, 0], n: [0, 0, -1], kind: 'side', y0, ao: o.ao });
-    if (!o.noLeft) faces.push({ mat, p: [x0, y0, z1], du: [0, 0, z0 - z1], dv: [0, y1 - y0, 0], n: [-1, 0, 0], kind: 'side', y0, ao: o.ao });
-    if (!o.noRight) faces.push({ mat, p: [x1, y0, z0], du: [0, 0, z1 - z0], dv: [0, y1 - y0, 0], n: [1, 0, 0], kind: 'side', y0, ao: o.ao });
+    if (!o.noFront) faces.push({ mat: side, p: [x0, y0, z0], du: [x1 - x0, 0, 0], dv: [0, y1 - y0, 0], n: [0, 0, -1], kind: 'side', y0, ao: o.ao, k });
+    if (!o.noLeft) faces.push({ mat: side, p: [x0, y0, z1], du: [0, 0, z0 - z1], dv: [0, y1 - y0, 0], n: [-1, 0, 0], kind: 'side', y0, ao: o.ao, k });
+    if (!o.noRight) faces.push({ mat: side, p: [x1, y0, z0], du: [0, 0, z1 - z0], dv: [0, y1 - y0, 0], n: [1, 0, 0], kind: 'side', y0, ao: o.ao, k });
   };
   for (const P of S.parts) {
     const y = P.y ?? 0;
     switch (P.t) {
       case 'floor': {   // 바닥 판: 윗면 y, 아래로 thick 만큼
         const b = addBox({ x0: P.x, x1: P.x + P.w, z0: P.z, z1: P.z + P.d, y0: y - (P.thick ?? 220), y1: y, solid: true, walk: P.walk !== false, part: P });
-        boxFaces(b, P.mat ?? 'cobble', { ao: false });
+        boxFaces(b, P.mat ?? 'cobble', { ao: false, sideMat: 'stone', sideK: 0.55 });   // 판의 옆면(길 가장자리·구덩이 벽)은 어두운 돌
         break;
       }
       case 'block': case 'wall': {   // 단상·상자·건물 벽: 밑 y, 높이 h
@@ -153,7 +153,7 @@ export function compileStage(S) {
     const vtx = (s, t) => {
       const x = F.p[0] + F.du[0] * s + F.dv[0] * t, y = F.p[1] + F.du[1] * s + F.dv[1] * t, z = F.p[2] + F.du[2] * s + F.dv[2] * t;
       const c = lightAt(W, x + F.n[0] * 2, y + F.n[1] * 2, z + F.n[2] * 2, F.n[0], F.n[1], F.n[2]);
-      let k = 1;
+      let k = F.k ?? 1;
       if (F.kind === 'side' && F.ao) k *= 0.5 + 0.5 * sm(0, 70, y - F.y0);          // 벽 밑동은 어둡게 (땅과 만나는 곳)
       if (y < -1) k *= Math.max(0.1, 1 + y / 170);                                      // 구덩이·바닥 판 옆면은 아래로 갈수록 어둡게
       const [u, v] = uvOf(x, y, z);

@@ -22,8 +22,8 @@ export function heroLook() {
   return look;
 }
 export function preloadChars() {
-  try { preloadPuppet('kael', 'kael_hunter'); } catch (e) { console.warn('[v2b] 퍼펫 미리 받기 실패', e); }
-  try { preloadPaintedEnemies(Object.values(ENEMY_KIND)); } catch (e) { console.warn('[v2b] 적 그림 미리 받기 실패', e); }
+  try { preloadPuppet('kael', 'kael_hunter'); } catch (e) { console.warn('[v2b] hero art preload failed', e); }
+  try { preloadPaintedEnemies(Object.values(ENEMY_KIND)); } catch (e) { console.warn('[v2b] enemy art preload failed', e); }
 }
 /** drawHero 가 읽는 v1 영웅 모양 (hero.js 머리말의 p) */
 export function makeHeroPuppet() {

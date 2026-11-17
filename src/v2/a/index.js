@@ -112,11 +112,8 @@ export default class V2ProtoA extends Scene {
     cam.zoom = clamp(H / 600, 1, 1.25);
     const tr = P.trauma * P.trauma * (g.settings?.shake === false ? 0 : 1), tt = this.t * 60;
     cam.setView(W, H, Math.sin(tt * 1.7) * 9 * tr, Math.cos(tt * 2.3) * 7 * tr);
-    ctx.save();
-    ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
     R.draw(ctx, cam, P.list(), P.done ? 'yard' : P.section, 1 / 60);
     P.drawFx(ctx, cam, R);
-    ctx.restore();
     // 가장자리 어둠 + 피격 붉은 빛
     ui.vignette?.(ctx, W, H);
     if (P.vig > 0) { ctx.fillStyle = `rgba(160,10,20,${0.22 * P.vig})`; ctx.fillRect(0, 0, W, H); }

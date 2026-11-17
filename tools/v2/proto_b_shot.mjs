@@ -1,8 +1,8 @@
-// 시범판 B 빠른 캡처: node tools/v2/proto_b_shot.mjs <device> <out 머리말> [teleport,teleport…] [steps] [evalJS] → <out>_<teleport>.png
+// 시범판 B 빠른 캡처: node tools/v2/proto_b_shot.mjs <device> <out 머리말> [teleport,teleport…] [steps] [evalJS] [추가 쿼리 예: v2layer=1] → <out>_<teleport>.png
 import { chromium } from 'playwright-core';
 import { start } from '../serve.mjs';
 import { contextOptions } from '../qa/lib/viewports.mjs';
-const [dev = 'fold_open', out = '/dev/shm/protob/s.png', tp = '', steps = '30', ev = ''] = process.argv.slice(2);
+const [dev = 'fold_open', out = '/dev/shm/protob/s.png', tp = '', steps = '30', ev = '', query = ''] = process.argv.slice(2);
 const port = 8100 + Math.floor(Math.random() * 800);
 const srv = await start(port);
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
@@ -11,7 +11,7 @@ const page = await ctx.newPage();
 const errs = [];
 page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errs.push(`[${m.type()}] ${m.text()}`); });
 page.on('pageerror', (e) => errs.push('[pageerror] ' + e.message + '\n' + e.stack));
-await page.goto(`http://localhost:${port}/index.html?scene=v2b`);
+await page.goto(`http://localhost:${port}/index.html?scene=v2b${query ? '&' + query : ''}`);
 try { await page.waitForFunction(() => window.__v2?.id === 'b' && (window.__v2.ready || window.__v2.error), null, { timeout: 30000 }); } catch (e) { errs.push('timeout waiting ready'); }
 await page.waitForTimeout(1500);
 let r = null;

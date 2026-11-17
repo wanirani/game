@@ -14,7 +14,7 @@ const BRAZIER = { img: 'deco_gate_brazier', h: 112, solid: 20, glow: { y: 0.72, 
 
 export default {
   id: 'slice0', name: '시범 구간',
-  start: { x: 130, z: 130 },
+  start: { x: 260, z: 130 },
   goal: { x: 2190, z: 1860 },
   sky: { img: 'bg/s01_village', crop: 0.66, span: 84 * D, bottom: -7 * D, top: [0.035, 0.05, 0.075] },
   fog: { color: [0.07, 0.095, 0.135], near: 760, far: 3300, max: 0.94 },
@@ -23,7 +23,7 @@ export default {
     { id: 'street', label: '거리', x0: -200, x1: 1900, z0: -100, z1: 300, cam: { yaw: 12 * D, pitch: 20 * D, dist: 790, lookY: 64, leadX: 90, leadZ: 0, minX: 40, zFollow: 0.55 } },
     { id: 'corner', label: '모퉁이', x0: 1900, x1: 2600, z0: -100, z1: 300, cam: { yaw: 1 * D, pitch: 17 * D, dist: 800, lookY: 80, leadX: 0, leadZ: 150, zFollow: 0.9 } },
     { id: 'alley', label: '골목', x0: 1800, x1: 2600, z0: 300, z1: 1500, cam: { yaw: 0, pitch: 13.5 * D, dist: 660, lookY: 62, leadX: 0, leadZ: 170, minX: 2030, maxX: 2350, zFollow: 1, yawLead: 3 * D } },
-    { id: 'yard', label: '마당', x0: 1500, x1: 2900, z0: 1500, z1: 2400, cam: { yaw: 0, pitch: 29 * D, dist: 900, lookY: 30, leadX: 0, leadZ: 40, minX: 2040, maxX: 2340, zFollow: 1, center: { x: 2190, z: 1860, k: 0.3 } } },
+    { id: 'yard', label: '마당', x0: 1500, x1: 2900, z0: 1500, z1: 2400, cam: { yaw: 0, pitch: 29 * D, dist: 900, lookY: 30, leadX: 0, leadZ: 40, minX: 2040, maxX: 2340, zFollow: 1, tallK: 0.12, center: { x: 2190, z: 1860, k: 0.3 } } },
   ],
   parts: [
     // ── 횡 구간: 거리 (x 0–2400, z 0–260). 구덩이 = x 1800–1960, z 0–130 에 판이 없다 ──

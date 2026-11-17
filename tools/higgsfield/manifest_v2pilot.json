@@ -1,0 +1,787 @@
+{
+ "batch": "v2pilot (리빌드 v2 캐릭터 재디자인 시범 — docs/v2/ART_PILOT.md)",
+ "server": "Higgsfield MCP 059c3459",
+ "model_only": "gpt_image_2_5 (quality low; 1k = 0.25, 2k = 0.5 크레딧) — 다른 모델·Kling 은 쓰지 않음",
+ "uploads": "게임 그림만: 영웅 7인의 기본 측면 원화(JPEG), 가고일 참고 그림·부품 시트(워터마크 제거 JPEG). 나머지 참고 그림은 앞선 작업의 job id",
+ "rounds": {
+  "1": {
+   "what": "소유자 의견 전: 기존 채색 화풍으로 카엘 3방향(측면·뷰·흉상) + 분위기 판 3 + 텍스처 4",
+   "images": 16,
+   "credits": 4.75,
+   "when": "2026-11-17 11:24–11:26 UTC",
+   "agent": "artpilot (중단됨)"
+  },
+  "2": {
+   "what": "소유자 의견(\"수렵 액션 게임의 등장인물 같은 느낌\") 뒤: 카엘 3방향 새로 + 위에서 본 시험 1 + 영웅 6인 측면 + 여성 흉상 2 + 적 다시 칠하기 시험 2",
+   "images": 20,
+   "credits": 5.75,
+   "when": "2026-11-17 11:32–11:49 UTC",
+   "agent": "artpilot2",
+   "cap": "30장 · 12 크레딧"
+  }
+ },
+ "images": 36,
+ "kept": 36,
+ "credits": 10.5,
+ "billing_check": "transactions: 1차 16건(0.5×3 + 0.25×13 = 4.75), 2차 20건(0.5×3 + 0.25×17 = 5.75) 'GPT Image 2.5 Flare'. 잔액 64.25 → 59.5 (1차) → 53.75 (2차). 2차 도중 11:37:35 UTC 에 'Discord Connection Bonus' +50 지급이 계정에 들어와(이 작업과 무관) 끝 잔액 표시는 103.75",
+ "balance": {
+  "before_round1": 64.25,
+  "before_round2": 59.5,
+  "after_round2": 103.75,
+  "grant_during_round2": 50,
+  "spent_round2": 5.75
+ },
+ "rejected": "없음 (36장 모두 사용 — 다시 뽑은 그림 없음)",
+ "items": [
+  {
+   "round": 1,
+   "index": 0,
+   "name": "kaelA_side",
+   "kind": "기존 화풍 A — 고딕 뱀파이어 헌터 코트 (측면 keep-pose)",
+   "file": "docs/v2/img/ap_round1.webp",
+   "raw": "/tmp/claude-0/v2/art/batch0/dl/kaelA_side.png (저장소 밖)",
+   "ref": [
+    "tools/puppet/src/kael/kael_hunter_side.webp (JPEG upload)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young man: the same face, the same brown hair tied in a ponytail, the same body proportions and the exact same walking side pose facing right (same arm, hand and leg positions), the same camera angle, the same framing, the same scale and the same position on the canvas. Keep the same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D render) with the same soft lighting and brush detail. The coiled leather whip stays hanging at his hip in the same place. REDESIGN his costume into a classic gothic vampire hunter with a bolder, more readable silhouette: a long oxblood-brown leather hunter's coat with a tall stiff upturned collar, a broad layered leather shoulder yoke, a wide flaring coat skirt of the same length with a bright crimson lining visible at the hem, a broad crimson headband with short tails, polished silver cross-shaped buckles and silver edge trim along the coat, a silver cross pendant, a crimson neckcloth, dark charcoal trousers, tall dark boots with folded cuffs and silver buckles, thick leather gauntlet gloves. Colors: deep oxblood brown, crimson, bright silver. Large simple shapes that read clearly when the figure is very small. No cape, no cloak, no wings, nothing held in the hands, both gloved hands empty. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "6ebd9349-d2e8-481a-baa3-ffcbac0c29bc",
+   "credits": 0.5,
+   "kept": true
+  },
+  {
+   "round": 1,
+   "index": 1,
+   "name": "kaelB_side",
+   "kind": "기존 화풍 B — 흑철 반판금 기사 (측면 keep-pose)",
+   "file": "docs/v2/img/ap_round1.webp",
+   "raw": "/tmp/claude-0/v2/art/batch0/dl/kaelB_side.png (저장소 밖)",
+   "ref": [
+    "tools/puppet/src/kael/kael_hunter_side.webp (JPEG upload)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young man: the same face, the same brown hair tied in a ponytail, the same body proportions and the exact same walking side pose facing right (same arm, hand and leg positions), the same camera angle, the same framing, the same scale and the same position on the canvas. Keep the same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D render) with the same soft lighting and brush detail. The coiled leather whip stays hanging at his hip in the same place. REDESIGN his costume into a heavy, dark knightly monster slayer: blackened steel half-plate armour - a large rounded pauldron on the near shoulder, a steel breastplate with an engraved silver cross, articulated steel vambraces and steel gauntlets, steel greaves and sabatons over dark quilted trousers - worn over a dark padded gambeson, with a long deep-crimson waist tabard cloth hanging from the belt to the knees with a silver cross emblem (it replaces the coat skirt in the same place and the same length), a dark wolf-fur collar around the neck, a narrow crimson headband. His face stays fully visible, bare-headed, no helmet. Colors: blackened gunmetal steel with pale silver edges, deep crimson cloth, dark fur. A heavier, broader, more armoured silhouette, but the same body pose. No cape, no cloak, no wings, nothing held in the hands, both gauntleted hands empty. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "a514419a-1cf5-4ce7-875b-b54b4297b198",
+   "credits": 0.5,
+   "kept": true
+  },
+  {
+   "round": 1,
+   "index": 2,
+   "name": "kaelC_side",
+   "kind": "기존 화풍 C — 가벼운 방랑 사냥꾼 (측면 keep-pose)",
+   "file": "docs/v2/img/ap_round1.webp",
+   "raw": "/tmp/claude-0/v2/art/batch0/dl/kaelC_side.png (저장소 밖)",
+   "ref": [
+    "tools/puppet/src/kael/kael_hunter_side.webp (JPEG upload)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep exactly the same young man: the same face, the same brown hair tied in a ponytail, the same body proportions and the exact same walking side pose facing right (same arm, hand and leg positions), the same camera angle, the same framing, the same scale and the same position on the canvas. Keep the same realistic painterly dark-fantasy game-art style (NOT anime, NOT cel-shaded, NOT 3D render) with the same soft lighting and brush detail. The coiled leather whip stays hanging at his hip in the same place. REDESIGN his costume into a lean wandering monster hunter who travels light: a short hip-length weathered pale ash-grey leather jacket (no long coat, the legs are fully visible), a short tattered faded-red shoulder capelet with a hood lying down behind the neck that ends above the elbows, a bandolier of wooden stakes and small glass vials across the chest, leather belt pouches, a faded red headband, fingerless leather gloves with cloth-wrapped forearms, slim dark-brown trousers, soft knee-high travelling boots with wrapped straps, a small bedroll strapped at the back of the belt. Colors: pale ash grey, faded brick red, warm tan leather. A lean, agile, light silhouette. No long cape, no cloak, no wings, nothing held in the hands, both hands empty. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "9d3ecf66-360e-4a86-bc35-0b5d7def2175",
+   "credits": 0.5,
+   "kept": true
+  },
+  {
+   "round": 1,
+   "index": 3,
+   "name": "plate_moon",
+   "kind": "세계 분위기 판 — 달빛 안개",
+   "file": "assets/v2/pilot/plate_moon.webp",
+   "raw": "/tmp/claude-0/v2/art/batch0/dl/plate_moon.png (저장소 밖)",
+   "ref": null,
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "4:3",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Stage background plate for a painted dark-fantasy action game, realistic painterly game-art style (NOT anime, NOT cel-shaded, NOT a 3D render). A gothic town street at night, seen from a RAISED three-quarter camera angle (the camera is about 35 degrees above the horizon looking down at the ground, like a classic belt-scroll brawler or isometric-like action RPG stage). A wide cobblestone street runs from left to right across the image. The lower 60 percent of the image is open, flat, walkable cobblestone ground seen from above at an angle, with clear depth: the near kerb at the bottom edge, the far side of the street at a row of buildings. Along the far side, a row of gothic half-timbered houses, shop fronts, an iron street lamp and a stone well, seen from the front and slightly from above; beyond the rooftops a huge gothic castle on a hill. MOOD: cold moonlight and fog - a pale full moon, desaturated blue-grey palette, thick low mist drifting over the cobbles, only two dim lanterns. Empty street, no characters, no people, no animals, no text, no border, no frame.",
+   "job_id": "83bd1be8-fd73-4428-9677-ec4ef97660ce",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 1,
+   "index": 4,
+   "name": "plate_lantern",
+   "kind": "세계 분위기 판 — 빗속 등불",
+   "file": "assets/v2/pilot/plate_lantern.webp",
+   "raw": "/tmp/claude-0/v2/art/batch0/dl/plate_lantern.png (저장소 밖)",
+   "ref": null,
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "4:3",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Stage background plate for a painted dark-fantasy action game, realistic painterly game-art style (NOT anime, NOT cel-shaded, NOT a 3D render). A gothic town street at night, seen from a RAISED three-quarter camera angle (the camera is about 35 degrees above the horizon looking down at the ground, like a classic belt-scroll brawler or isometric-like action RPG stage). A wide cobblestone street runs from left to right across the image. The lower 60 percent of the image is open, flat, walkable cobblestone ground seen from above at an angle, with clear depth: the near kerb at the bottom edge, the far side of the street at a row of buildings. Along the far side, a row of gothic half-timbered houses, a tavern front, iron street lamps and market stalls, seen from the front and slightly from above; beyond the rooftops a huge gothic castle on a hill. MOOD: warm lantern light in the rain - many glowing amber lanterns and lit windows, rain-wet cobblestones with warm reflections and puddles, deep teal-black shadows, falling rain. Empty street, no characters, no people, no animals, no text, no border, no frame.",
+   "job_id": "316fc3cd-b13a-4d60-b152-821e6b7563b4",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 1,
+   "index": 5,
+   "name": "plate_blood",
+   "kind": "세계 분위기 판 — 붉은 달",
+   "file": "assets/v2/pilot/plate_blood.webp",
+   "raw": "/tmp/claude-0/v2/art/batch0/dl/plate_blood.png (저장소 밖)",
+   "ref": null,
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "4:3",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Stage background plate for a painted dark-fantasy action game, realistic painterly game-art style (NOT anime, NOT cel-shaded, NOT a 3D render). A gothic town street at night, seen from a RAISED three-quarter camera angle (the camera is about 35 degrees above the horizon looking down at the ground, like a classic belt-scroll brawler or isometric-like action RPG stage). A wide cobblestone street runs from left to right across the image. The lower 60 percent of the image is open, flat, walkable cobblestone ground seen from above at an angle, with clear depth: the near kerb at the bottom edge, the far side of the street at a row of buildings. Along the far side, a row of gothic half-timbered houses with boarded windows, a broken cart, iron fences and a gallows post, seen from the front and slightly from above; beyond the rooftops a huge gothic castle on a hill. MOOD: blood moon - an enormous blood-red moon behind the castle, crimson and black sky, red rim light on the wet stones, glowing embers drifting in the air, strong contrast and black silhouettes. Empty street, no characters, no people, no animals, no text, no border, no frame.",
+   "job_id": "16d78de3-d1ab-45f9-8b21-87fb4b0d96a8",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 1,
+   "index": 6,
+   "name": "tex_cobble",
+   "kind": "바닥 텍스처 — 자갈길",
+   "file": "assets/v2/pilot/tex_cobble.webp",
+   "raw": "/tmp/claude-0/v2/art/batch0/dl/tex_cobble.png (저장소 밖)",
+   "ref": null,
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "1:1",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Seamless tileable game ground texture, top-down orthographic view looking straight down, flat even diffuse lighting, no perspective, no vignette, no cast shadows, the pattern fills the entire image edge to edge with uniform density: old worn dark blue-grey cobblestones of irregular rounded shapes, tightly packed (about ten stones across the image), with dark mortar gaps and a slightly damp sheen. Hand-painted realistic dark-fantasy game-art style, muted colours. No text, no border, no frame, no objects.",
+   "job_id": "580c5330-d439-4a72-bc1b-0fc19f6a1e2c",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 1,
+   "index": 7,
+   "name": "tex_wall",
+   "kind": "벽 텍스처 — 돌벽",
+   "file": "assets/v2/pilot/tex_wall.webp",
+   "raw": "/tmp/claude-0/v2/art/batch0/dl/tex_wall.png (저장소 밖)",
+   "ref": null,
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "1:1",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Seamless tileable game wall texture, flat front elevation view straight-on, flat even diffuse lighting, no perspective, no vignette, no cast shadows, the pattern fills the entire image edge to edge with uniform density: an old gothic town wall of large rough-hewn dark grey stone blocks laid in regular horizontal courses (about six courses across the image), with weathered mortar joints, small cracks and a little moss. Hand-painted realistic dark-fantasy game-art style, muted colours. No text, no border, no frame, no windows, no objects.",
+   "job_id": "5854effc-dabb-47a6-a3c7-c295a7d77f7f",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 1,
+   "index": 8,
+   "name": "tex_planks",
+   "kind": "바닥 텍스처 — 나무 널",
+   "file": "assets/v2/pilot/tex_planks.webp",
+   "raw": "/tmp/claude-0/v2/art/batch0/dl/tex_planks.png (저장소 밖)",
+   "ref": null,
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "1:1",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Seamless tileable game floor texture, top-down orthographic view looking straight down, flat even diffuse lighting, no perspective, no vignette, no cast shadows, the pattern fills the entire image edge to edge with uniform density: old dark weathered wooden floor planks running horizontally (about eight planks across the image), with worn grain, iron nail heads, small cracks and narrow dark gaps between the planks. Hand-painted realistic dark-fantasy game-art style, muted brown colours. No text, no border, no frame, no objects.",
+   "job_id": "4d67b9dc-88e7-4fcc-bfa4-a5e45e644ee1",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 1,
+   "index": 9,
+   "name": "tex_grass",
+   "kind": "바닥 텍스처 — 풀·흙",
+   "file": "assets/v2/pilot/tex_grass.webp",
+   "raw": "/tmp/claude-0/v2/art/batch0/dl/tex_grass.png (저장소 밖)",
+   "ref": null,
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "1:1",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Seamless tileable game ground texture, top-down orthographic view looking straight down, flat even diffuse lighting, no perspective, no vignette, no cast shadows, the pattern fills the entire image edge to edge with uniform density: patchy dark moorland grass with short tufts mixed with bare dark-brown dirt patches and a few small pebbles, evenly scattered. Hand-painted realistic dark-fantasy game-art style, muted dark green and brown colours. No text, no border, no frame, no objects.",
+   "job_id": "0bf5bb93-8735-42fb-bd03-0d02d175f4d0",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 1,
+   "index": 10,
+   "name": "kaelA_views",
+   "kind": "기존 화풍 A — 3/4 앞 + 뒤",
+   "file": null,
+   "raw": "/tmp/claude-0/v2/art/batch0/dl/kaelA_views.png (저장소 밖)",
+   "ref": [
+    "job 6ebd9349-d2e8-481a-baa3-ffcbac0c29bc (이 묶음의 측면 결과)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "4:3",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Character design sheet of the man in the reference image, wearing exactly the same outfit (long oxblood leather hunter's coat with tall collar, shoulder yoke, crimson lining, silver cross buckles, crimson headband and neckcloth, coiled whip at the hip). Two full-body standing views side by side on one image, well separated, same scale, feet on the same baseline. LEFT figure: three-quarter FRONT view, body turned about 45 degrees toward the viewer's right, face visible. RIGHT figure: straight BACK view seen exactly from behind, showing the back of his head, the ponytail and the back of the coat. Relaxed standing pose, arms slightly away from the body, empty hands. Same realistic painterly dark-fantasy game-art style and lighting as the reference (NOT anime, NOT cel-shaded, NOT 3D render). No cape, no cloak, nothing held in the hands. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "f4e54de8-fa90-4ff7-aad6-a46d471d9d63",
+   "credits": 0.25,
+   "kept": true,
+   "note": "문서에는 싣지 않음 (비교군 참고용)"
+  },
+  {
+   "round": 1,
+   "index": 11,
+   "name": "kaelB_views",
+   "kind": "기존 화풍 B — 3/4 앞 + 뒤",
+   "file": null,
+   "raw": "/tmp/claude-0/v2/art/batch0/dl/kaelB_views.png (저장소 밖)",
+   "ref": [
+    "job a514419a-1cf5-4ce7-875b-b54b4297b198 (이 묶음의 측면 결과)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "4:3",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Character design sheet of the man in the reference image, wearing exactly the same outfit (blackened steel half-plate armour with a large pauldron, engraved cross breastplate, dark wolf-fur collar, crimson waist tabard with silver cross, steel gauntlets and greaves, crimson headband, coiled whip at the hip). Two full-body standing views side by side on one image, well separated, same scale, feet on the same baseline. LEFT figure: three-quarter FRONT view, body turned about 45 degrees toward the viewer's right, face visible, bare-headed. RIGHT figure: straight BACK view seen exactly from behind, showing the back of his head, the ponytail, the fur collar and the back plate. Relaxed standing pose, arms slightly away from the body, empty hands. Same realistic painterly dark-fantasy game-art style and lighting as the reference (NOT anime, NOT cel-shaded, NOT 3D render). No cape, no cloak, no helmet, nothing held in the hands. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "e7962657-81ed-48b5-b84f-94fc717a8578",
+   "credits": 0.25,
+   "kept": true,
+   "note": "문서에는 싣지 않음 (비교군 참고용)"
+  },
+  {
+   "round": 1,
+   "index": 12,
+   "name": "kaelC_views",
+   "kind": "기존 화풍 C — 3/4 앞 + 뒤",
+   "file": null,
+   "raw": "/tmp/claude-0/v2/art/batch0/dl/kaelC_views.png (저장소 밖)",
+   "ref": [
+    "job 9d3ecf66-360e-4a86-bc35-0b5d7def2175 (이 묶음의 측면 결과)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "4:3",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Character design sheet of the man in the reference image, wearing exactly the same outfit (short pale ash-grey leather jacket, tattered faded-red shoulder capelet with hood down, bandolier of stakes and vials, belt pouches, bedroll at the back of the belt, wrapped forearms and fingerless gloves, brown trousers, cuffed travelling boots, faded red headband, coiled whip at the hip). Two full-body standing views side by side on one image, well separated, same scale, feet on the same baseline. LEFT figure: three-quarter FRONT view, body turned about 45 degrees toward the viewer's right, face visible. RIGHT figure: straight BACK view seen exactly from behind, showing the back of his head, the ponytail, the hood lying on his back and the bedroll. Relaxed standing pose, arms slightly away from the body, empty hands. Same realistic painterly dark-fantasy game-art style and lighting as the reference (NOT anime, NOT cel-shaded, NOT 3D render). No long cape, no cloak, nothing held in the hands. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "251e33c8-2844-4785-97bf-e645993cb534",
+   "credits": 0.25,
+   "kept": true,
+   "note": "문서에는 싣지 않음 (비교군 참고용)"
+  },
+  {
+   "round": 1,
+   "index": 13,
+   "name": "kaelA_bust",
+   "kind": "기존 화풍 A — 흉상",
+   "file": "docs/v2/img/ap_round1.webp",
+   "raw": "/tmp/claude-0/v2/art/batch0/dl/kaelA_bust.png (저장소 밖)",
+   "ref": [
+    "job 6ebd9349-d2e8-481a-baa3-ffcbac0c29bc (이 묶음의 측면 결과)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Bust portrait of the man in the reference image, same face, same brown ponytail hair and crimson headband, wearing exactly the same outfit (oxblood leather hunter's coat with tall upturned collar, shoulder yoke, crimson neckcloth, silver cross buckles): head, shoulders and upper chest, three-quarter view turned slightly toward the viewer's right, calm determined expression, amber eyes, soft key light from the upper left with a subtle cool rim light. Realistic painterly dark-fantasy game-art style with visible brushwork, the same rendering as the reference (NOT anime, NOT cel-shaded, NOT a 3D render, NOT a photo). Plain flat solid #00FF00 green background, no text, no border, no frame.",
+   "job_id": "0a147244-c7bd-4f9d-83b4-d2c87620eb90",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 1,
+   "index": 14,
+   "name": "kaelB_bust",
+   "kind": "기존 화풍 B — 흉상",
+   "file": "docs/v2/img/ap_round1.webp",
+   "raw": "/tmp/claude-0/v2/art/batch0/dl/kaelB_bust.png (저장소 밖)",
+   "ref": [
+    "job a514419a-1cf5-4ce7-875b-b54b4297b198 (이 묶음의 측면 결과)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Bust portrait of the man in the reference image, same face, same brown ponytail hair and crimson headband, wearing exactly the same outfit (blackened steel breastplate with engraved cross, large steel pauldron, dark wolf-fur collar): head, shoulders and upper chest, bare-headed, three-quarter view turned slightly toward the viewer's right, stern resolute expression, amber eyes, soft key light from the upper left with a subtle cool rim light on the steel. Realistic painterly dark-fantasy game-art style with visible brushwork, the same rendering as the reference (NOT anime, NOT cel-shaded, NOT a 3D render, NOT a photo). Plain flat solid #00FF00 green background, no text, no border, no frame.",
+   "job_id": "6d17b7df-584c-4c41-8ea3-8589122e19df",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 1,
+   "index": 15,
+   "name": "kaelC_bust",
+   "kind": "기존 화풍 C — 흉상",
+   "file": "docs/v2/img/ap_round1.webp",
+   "raw": "/tmp/claude-0/v2/art/batch0/dl/kaelC_bust.png (저장소 밖)",
+   "ref": [
+    "job 9d3ecf66-360e-4a86-bc35-0b5d7def2175 (이 묶음의 측면 결과)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Bust portrait of the man in the reference image, same face, same brown ponytail hair and faded red headband, wearing exactly the same outfit (pale ash-grey leather jacket, tattered faded-red shoulder capelet with the hood down, bandolier of wooden stakes and glass vials): head, shoulders and upper chest, three-quarter view turned slightly toward the viewer's right, wary road-worn expression, light stubble, amber eyes, soft key light from the upper left with a subtle cool rim light. Realistic painterly dark-fantasy game-art style with visible brushwork, the same rendering as the reference (NOT anime, NOT cel-shaded, NOT a 3D render, NOT a photo). Plain flat solid #00FF00 green background, no text, no border, no frame.",
+   "job_id": "00487b4c-9d6f-4ad6-8427-be1ae0de4a11",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 2,
+   "index": 20,
+   "name": "kaelD_side",
+   "kind": "① 길드의 사냥꾼 — 측면 keep-pose (2k)",
+   "file": "assets/v2/pilot/hero_kael_1_side.webp · tools/puppet/src/v2pilot/kael_guild_side.webp · docs/v2/img/ap_dir_1.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/kaelD_side.png (저장소 밖)",
+   "ref": [
+    "tools/puppet/src/kael/kael_hunter_side.webp (JPEG upload)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep the exact same walking side pose facing right (same arm, hand and leg positions, same head position and size), the same body proportions, the same camera angle, the same framing, the same scale and the same position on the canvas. COMPLETELY REDESIGN the character and RE-RENDER the whole figure in a new art style: a semi-realistic, high-fidelity CG character illustration with the polish of official character art for a big-budget fantasy hunting-action game - crisp believable materials (stitched leather, layered scales, thick fur, carved bone, forged metal), clean bright neutral studio lighting, rich clear colours, sharp detail everywhere. NOT anime, NOT cel-shaded, NOT a loose oil painting, NOT grim, NOT muddy. THE MAN: a handsome, likeable young hunter in his mid-twenties, an attractive well-proportioned face in profile with a straight nose, a clean strong jaw, bright warm eyes, healthy sun-touched skin and a faint confident smile; healthy athletic build about eight heads tall; chestnut-brown hair tied in a short ponytail with loose strands over the forehead. OUTFIT - a bright, heroic guild hunter in an elaborately crafted armour set made from night-creature materials: a hip-length fitted jacket of warm tan drake-hide leather with crimson quilted panels, a large asymmetric pauldron on the near shoulder built from overlapping ivory bone plates edged with brass rivets, a thick pale-grey wolf-fur collar, a carved bone-and-steel vambrace on the near forearm with a sturdy leather glove, a broad belt with a brass buckle, leather pouches, a small hunting horn and tool loops, a knee-length crimson waist cloth hanging from the belt at the back of the hip, dark brown trousers, ivory bone knee guards and tall strapped leather boots with steel toe caps, a crimson headband with short tails. A heavy coiled hunter's whip of braided dark leather with silver-capped bone segments hangs at his hip in the same place as the whip in the image. Colour identity: crimson, ivory bone, warm tan leather, brass. No cape, no cloak, no wings, no helmet, nothing held in the hands, both hands empty. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "a48c7d88-74e6-42d3-b90f-09368d341b84",
+   "credits": 0.5,
+   "kept": true,
+   "note": "부모 알파 IoU .80 · 퍼펫 시범에 사용"
+  },
+  {
+   "round": 2,
+   "index": 21,
+   "name": "kaelE_side",
+   "kind": "② 은빛 밤사냥꾼 — 측면 keep-pose (2k)",
+   "file": "assets/v2/pilot/hero_kael_2_side.webp · docs/v2/img/ap_dir_2.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/kaelE_side.png (저장소 밖)",
+   "ref": [
+    "tools/puppet/src/kael/kael_hunter_side.webp (JPEG upload)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep the exact same walking side pose facing right (same arm, hand and leg positions, same head position and size), the same body proportions, the same camera angle, the same framing, the same scale and the same position on the canvas. COMPLETELY REDESIGN the character and RE-RENDER the whole figure in a new art style: a semi-realistic, high-fidelity CG character illustration with the polish of official character art for a big-budget fantasy hunting-action game - crisp believable materials (stitched leather, layered scales, thick fur, carved bone, forged metal), clean bright neutral studio lighting, rich clear colours, sharp detail everywhere. NOT anime, NOT cel-shaded, NOT a loose oil painting, NOT grim, NOT muddy. THE MAN: a handsome, likeable young hunter in his mid-twenties, an attractive well-proportioned face in profile with a straight nose, a clean strong jaw, bright warm eyes, healthy skin and a calm confident look; healthy athletic build about eight heads tall; chestnut-brown hair tied in a short ponytail with loose strands over the forehead. OUTFIT - a gothic night hunter in silver and crimson, an elaborately crafted armour set made from night-creature materials: a long knee-length coat of black bat-wing leather with the same flaring coat skirt as in the image and a deep crimson lining showing at the hem and the collar, a large asymmetric pauldron on the near shoulder made of overlapping polished silver dragon scales, a collar of dark charcoal wolf fur, a chest harness with a row of polished silver stakes, a silver scale vambrace and a black leather glove on the near arm, a belt with a silver buckle, leather pouches and small glass vials, black trousers, tall black boots with silver shin plates, a crimson headband with short tails. A heavy coiled hunter's whip of braided dark leather with silver-capped bone segments hangs at his hip in the same place as the whip in the image. Colour identity: black, bright silver, deep crimson. The outfit is dark but it is lit brightly and cleanly so every material reads clearly. No cape, no cloak, no wings, no helmet, nothing held in the hands, both hands empty. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "78bb7d24-ac81-41de-a78f-7b285ceee789",
+   "credits": 0.5,
+   "kept": true
+  },
+  {
+   "round": 2,
+   "index": 22,
+   "name": "kaelF_side",
+   "kind": "③ 바람길 추적자 — 측면 keep-pose (2k)",
+   "file": "assets/v2/pilot/hero_kael_3_side.webp · docs/v2/img/ap_dir_3.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/kaelF_side.png (저장소 밖)",
+   "ref": [
+    "tools/puppet/src/kael/kael_hunter_side.webp (JPEG upload)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep the exact same walking side pose facing right (same arm, hand and leg positions, same head position and size), the same body proportions, the same camera angle, the same framing, the same scale and the same position on the canvas. COMPLETELY REDESIGN the character and RE-RENDER the whole figure in a new art style: a semi-realistic, high-fidelity CG character illustration with the polish of official character art for a big-budget fantasy hunting-action game - crisp believable materials (stitched leather, layered scales, thick fur, carved bone, forged metal), clean bright neutral studio lighting, rich clear colours, sharp detail everywhere. NOT anime, NOT cel-shaded, NOT a loose oil painting, NOT grim, NOT muddy. THE MAN: a handsome, likeable young hunter in his early twenties, an attractive well-proportioned face in profile with a straight nose, a clean jaw, bright warm eyes, healthy sun-touched skin and an easy confident smile; lean athletic build about eight heads tall; NO headband - his chestnut-brown hair is fuller and longer, swept back into a loose ponytail with soft strands framing the face. OUTFIT - a light-armoured, agile tracker whose face and hair are fully visible, crafted from night-creature materials: a sleeveless short vest of dark teal-blue dragon scale over a cream linen shirt with the sleeve rolled above the elbow showing a toned forearm, one small bone-and-leather shoulder guard on the near shoulder, a leather bracer set with a carved fang and a fingerless leather glove, a crimson sash wound around the waist with two short tails hanging at the hip, a belt with leather pouches, a skinning knife and small bone charms, slim dark-grey trousers with light scale knee guards, soft knee-high leather boots with wrapped straps. No long coat: the legs are fully visible. A heavy coiled hunter's whip of braided dark leather with silver-capped bone segments hangs at his hip in the same place as the whip in the image. Colour identity: crimson sash, cream linen, dark teal scale, warm leather. No cape, no cloak, no wings, no helmet, nothing held in the hands, both hands empty. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "9fe14774-418e-494a-9921-f50e6126edce",
+   "credits": 0.5,
+   "kept": true
+  },
+  {
+   "round": 2,
+   "index": 23,
+   "name": "kaelD_view",
+   "kind": "① 3/4 앞모습 + 용 등뼈 대채찍",
+   "file": "docs/v2/img/ap_dir_1.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/kaelD_view.png (저장소 밖)",
+   "ref": [
+    "job a48c7d88-74e6-42d3-b90f-09368d341b84 (이 묶음의 측면 결과)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Character art of the hunter in the reference image: the same handsome young man with the same face, the same chestnut ponytail and crimson headband, wearing exactly the same outfit and colours (tan drake-hide jacket with crimson quilted panels, large ivory bone-plate pauldron on one shoulder, pale wolf-fur collar, bone-and-steel vambrace, belt with pouches and hunting horn, crimson waist cloth, bone knee guards, strapped leather boots). ONE single full-body figure in a three-quarter FRONT view, body turned about 35 degrees toward the viewer's right, his attractive face clearly visible with a warm confident smile, standing in a confident heroic stance with feet apart. He holds his big iconic weapon: an oversized hunter's great-whip made from the linked vertebrae of a night dragon, each ivory bone segment capped with brass and silver, with a heavy brass-bound handle in his right hand and a barbed silver tip; the thick whip hangs in two big loops from his hand and trails on the ground in a curve in front of him. Semi-realistic, high-fidelity CG character illustration with the polish of official character art for a big-budget fantasy hunting-action game: crisp believable materials, clean bright neutral studio lighting, rich clear colours. NOT anime, NOT cel-shaded, NOT grim. Full body from head to boots with margin, nothing cropped. No cape, no cloak, no helmet. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "1cc036ce-69a3-44ea-8201-537f49adf59d",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 2,
+   "index": 24,
+   "name": "kaelE_view",
+   "kind": "② 3/4 앞모습 + 은사슬 십자 채찍",
+   "file": "docs/v2/img/ap_dir_2.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/kaelE_view.png (저장소 밖)",
+   "ref": [
+    "job 78bb7d24-ac81-41de-a78f-7b285ceee789 (이 묶음의 측면 결과)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Character art of the hunter in the reference image: the same handsome young man with the same face, the same chestnut ponytail and crimson headband, wearing exactly the same outfit and colours (long black bat-wing leather coat with crimson lining, large polished silver dragon-scale pauldron on one shoulder, dark wolf-fur collar, chest harness with silver stakes, silver scale vambrace, belt with vials, black boots with silver shin plates). ONE single full-body figure in a three-quarter FRONT view, body turned about 35 degrees toward the viewer's right, his attractive face clearly visible with a calm confident look, standing in a confident heroic stance with feet apart. He holds his big iconic weapon: an oversized hunter's great-whip of heavy polished silver chain links and black braided leather that ends in a large cross-shaped silver blade, with a silver-bound handle in his right hand; the thick whip hangs in two big loops from his hand and trails on the ground in a curve in front of him. Semi-realistic, high-fidelity CG character illustration with the polish of official character art for a big-budget fantasy hunting-action game: crisp believable materials, clean bright neutral studio lighting so the dark outfit reads clearly, rich clear colours. NOT anime, NOT cel-shaded, NOT grim. Full body from head to boots with margin, nothing cropped. No cape, no cloak, no helmet. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "4d7872ef-7a99-4e09-8cde-6cf1dd939387",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 2,
+   "index": 25,
+   "name": "kaelF_view",
+   "kind": "③ 3/4 앞모습 + 송곳니 가죽 채찍",
+   "file": "docs/v2/img/ap_dir_3.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/kaelF_view.png (저장소 밖)",
+   "ref": [
+    "job 9fe14774-418e-494a-9921-f50e6126edce (이 묶음의 측면 결과)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Character art of the hunter in the reference image: the same handsome young man with the same face and the same loose chestnut ponytail with strands framing his face (no headband), wearing exactly the same outfit and colours (sleeveless dark teal-blue dragon-scale vest over a cream linen shirt with rolled sleeves, small bone shoulder guard, fang bracers, crimson waist sash with hanging tails, belt with pouches and bone charms, dark-grey trousers with scale knee guards, cuffed leather boots). ONE single full-body figure in a three-quarter FRONT view, body turned about 35 degrees toward the viewer's right, his attractive face clearly visible with an easy confident smile, standing in a relaxed, ready, agile stance with feet apart. He holds his big iconic weapon: an oversized hunter's great-whip of braided dark leather strung with large curved fangs and silver rings, with a carved bone handle in his right hand and a hooked silver tip; the thick whip hangs in two big loops from his hand and trails on the ground in a curve in front of him. Semi-realistic, high-fidelity CG character illustration with the polish of official character art for a big-budget fantasy hunting-action game: crisp believable materials, clean bright neutral studio lighting, rich clear colours. NOT anime, NOT cel-shaded, NOT grim. Full body from head to boots with margin, nothing cropped. No cape, no cloak, no helmet. Plain flat solid #00FF00 green background, no floor shadow, no text, no labels, no border, no frame.",
+   "job_id": "ef9d1b18-39d3-4911-a4b7-cb5bca44c396",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 2,
+   "index": 26,
+   "name": "kaelD_bust",
+   "kind": "① 흉상",
+   "file": "docs/v2/img/ap_dir_1.webp · ap_faces.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/kaelD_bust.png (저장소 밖)",
+   "ref": [
+    "job a48c7d88-74e6-42d3-b90f-09368d341b84 (이 묶음의 측면 결과)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Bust portrait of the hunter in the reference image, wearing exactly the same outfit (tan drake-hide jacket with crimson panels, large ivory bone-plate pauldron, pale wolf-fur collar, crimson headband): head, shoulders and upper chest, three-quarter view turned slightly toward the viewer's right, eyes looking at the viewer. His face is the focus and must be handsome, attractive and likeable: a young man in his mid-twenties with a warm confident half-smile, bright amber-brown eyes, straight nose, clean strong jaw, healthy sun-touched skin, natural chestnut-brown hair in a short ponytail with loose strands over the forehead. Semi-realistic, high-fidelity CG character illustration with the polish of official character art for a big-budget fantasy hunting-action game: lifelike skin and hair, crisp materials, bright clean soft key light from the upper left with a gentle rim light, rich clear colours. NOT anime, NOT cel-shaded, NOT grim, NOT harsh, not a photograph of a real person. Plain flat solid #00FF00 green background, no text, no border, no frame.",
+   "job_id": "7a092290-cfd1-4cd3-b640-3795543248b3",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 2,
+   "index": 27,
+   "name": "kaelE_bust",
+   "kind": "② 흉상",
+   "file": "docs/v2/img/ap_dir_2.webp · ap_faces.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/kaelE_bust.png (저장소 밖)",
+   "ref": [
+    "job 78bb7d24-ac81-41de-a78f-7b285ceee789 (이 묶음의 측면 결과)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Bust portrait of the hunter in the reference image, wearing exactly the same outfit (black bat-wing leather coat with crimson-lined collar, large polished silver dragon-scale pauldron, dark wolf-fur collar, harness with silver stakes, crimson headband): head, shoulders and upper chest, three-quarter view turned slightly toward the viewer's right, eyes looking at the viewer. His face is the focus and must be handsome, attractive and likeable: a young man in his mid-twenties with a calm, self-assured look and the hint of a smile, bright amber-brown eyes, straight nose, clean strong jaw, healthy skin, natural chestnut-brown hair in a short ponytail with loose strands over the forehead. Semi-realistic, high-fidelity CG character illustration with the polish of official character art for a big-budget fantasy hunting-action game: lifelike skin and hair, crisp materials, bright clean soft key light from the upper left with a gentle cool rim light on the silver, rich clear colours. NOT anime, NOT cel-shaded, NOT grim, NOT harsh, not a photograph of a real person. Plain flat solid #00FF00 green background, no text, no border, no frame.",
+   "job_id": "56868d45-f158-4e2e-921e-ef141cd847cf",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 2,
+   "index": 28,
+   "name": "kaelF_bust",
+   "kind": "③ 흉상",
+   "file": "docs/v2/img/ap_dir_3.webp · ap_faces.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/kaelF_bust.png (저장소 밖)",
+   "ref": [
+    "job 9fe14774-418e-494a-9921-f50e6126edce (이 묶음의 측면 결과)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Bust portrait of the hunter in the reference image, wearing exactly the same outfit (sleeveless dark teal-blue dragon-scale vest over an open-collared cream linen shirt, small bone shoulder guard with fangs): head, shoulders and upper chest, three-quarter view turned slightly toward the viewer's right, eyes looking at the viewer. His face is the focus and must be handsome, attractive and likeable: a young man in his early twenties with an easy friendly confident smile, bright amber-brown eyes, straight nose, clean jaw, healthy sun-touched skin, no headband, full natural chestnut-brown hair swept back into a loose ponytail with soft strands framing the face. Semi-realistic, high-fidelity CG character illustration with the polish of official character art for a big-budget fantasy hunting-action game: lifelike skin and hair, crisp materials, bright clean soft key light from the upper left with a gentle rim light, rich clear colours. NOT anime, NOT cel-shaded, NOT grim, NOT harsh, not a photograph of a real person. Plain flat solid #00FF00 green background, no text, no border, no frame.",
+   "job_id": "412389c5-02a4-405d-bbee-05f6368f13cf",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 2,
+   "index": 29,
+   "name": "kaelD_raised",
+   "kind": "① 살짝 위에서 본 3/4 옆모습 (가독성 비교용)",
+   "file": "assets/v2/pilot/hero_kael_1_raised.webp · docs/v2/img/ap_read_fold.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/kaelD_raised.png (저장소 밖)",
+   "ref": [
+    "job a48c7d88-74e6-42d3-b90f-09368d341b84 (이 묶음의 측면 결과)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Redraw the hunter in the reference image - the same man, the same face, hair, crimson headband and exactly the same outfit and colours, in the same mid-stride walking pose heading to the right with both hands empty and the coiled whip at his hip - but seen from a different camera: a RAISED three-quarter side view for a top-down-angled action game. The camera is about 30 degrees above his eye level looking down at him, and he is turned about 25 degrees toward the viewer, so we see the top of his head and hair, the tops of both shoulders and the pauldron from above, a little of his chest and face, and his feet planted on a ground plane seen from above (the far foot is placed higher in the image than the near foot). One single full-body figure, the same scale as the reference. Semi-realistic, high-fidelity CG character illustration, crisp believable materials, clean bright neutral studio lighting, rich clear colours. NOT anime, NOT cel-shaded. No cape, no cloak, no helmet, nothing held in the hands. Full body from head to boots with margin, nothing cropped. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "6c5feef3-dad6-4459-afd7-4f4bb24c6918",
+   "credits": 0.25,
+   "kept": true,
+   "note": "자세가 달라 기존 리그 재사용 불가"
+  },
+  {
+   "round": 2,
+   "index": 30,
+   "name": "sera_side",
+   "kind": "세라 — 측면 keep-pose (1k), 지팡이는 등에",
+   "file": "assets/v2/pilot/hero_sera_side.webp · docs/v2/img/ap_lineup.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/sera_side.png (저장소 밖)",
+   "ref": [
+    "tools/puppet/src/sera/sera_exorcist_side.webp (JPEG upload, 1152×2040)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep the exact same walking side pose facing right (same arm, hand and leg positions, same head position and size), the same body proportions, the same camera angle, the same framing, the same scale and the same position on the canvas. COMPLETELY REDESIGN the character's gear and RE-RENDER the whole figure in a new art style: a semi-realistic, high-fidelity CG character illustration with the polish of official character art for a big-budget fantasy hunting-action game - crisp believable materials (stitched leather, layered scales, thick fur, carved bone, forged metal, fine cloth), clean bright neutral studio lighting, rich clear colours, sharp detail everywhere. NOT anime, NOT cel-shaded, NOT a loose oil painting, NOT grim, NOT muddy. Realistic adult proportions about eight heads tall, realistic facial features. THE WOMAN: a beautiful, likeable young battle priestess in her early twenties with a lovely gentle face in profile, bright blue eyes, a soft confident smile, healthy fair skin and long silver-blonde hair. OUTFIT - a monster-hunting exorcist nun in elaborately crafted gear made from night-creature materials: a short white veil with a gold circlet that falls only to her shoulder blades and leaves her whole face and fringe visible, a fitted knee-length white battle habit of pale moth-silk and ivory drake leather with gold-plated bone trim and the same flaring skirt shape as in the image, one asymmetric shoulder guard of overlapping ivory horn plates with gold edges, a gold-and-ivory breast guard, sapphire-blue quilted leggings, white leather boots with gold shin guards, white gloves with gold bracers, a belt with a leather-bound holy book in a harness, a rosary of small fangs and blue glass vials. Her weapon is stowed, not held: a long rosary staff with a large golden cross-ring head and a blue crystal is slung diagonally across her back. Colour identity: white, gold, sapphire blue. No cape, no cloak, no wings, nothing held in the hands, both hands empty. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "568409ad-edec-46cc-a3f5-b1dea91e1e55",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 2,
+   "index": 31,
+   "name": "victor_side",
+   "kind": "빅터 — 측면 keep-pose (1k), 쌍권총은 권총집에",
+   "file": "assets/v2/pilot/hero_victor_side.webp · docs/v2/img/ap_lineup.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/victor_side.png (저장소 밖)",
+   "ref": [
+    "tools/puppet/src/victor/victor_gunslinger_side.webp (JPEG upload)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep the exact same walking side pose facing right (same arm, hand and leg positions, same head position and size), the same body proportions, the same camera angle, the same framing, the same scale and the same position on the canvas. COMPLETELY REDESIGN the character's gear and RE-RENDER the whole figure in a new art style: a semi-realistic, high-fidelity CG character illustration with the polish of official character art for a big-budget fantasy hunting-action game - crisp believable materials (stitched leather, layered scales, thick fur, carved bone, forged metal), clean bright neutral studio lighting, rich clear colours, sharp detail everywhere. NOT anime, NOT cel-shaded, NOT a loose oil painting, NOT grim, NOT muddy. Realistic adult proportions about eight heads tall, realistic facial features. THE MAN: a ruggedly handsome, likeable gunslinger in his mid-thirties with an attractive face in profile clearly visible under the hat brim, short dark stubble, sharp bright eyes and a confident smirk, dark shoulder-length hair. OUTFIT - a monster-hunting gunslinger in elaborately crafted gear made from night-creature materials: a wide-brimmed black hat of bat-wing leather with a band of small fangs and a silver concho, a long dark-brown duster coat of thick beast hide with the same coat shape as in the image, one asymmetric shoulder guard of dark overlapping scales with brass rivets, a crimson neck scarf, two crossed bandoliers of large silver cartridges, a broad gun belt with brass buckle and leather pouches, charcoal trousers, tall brown boots with spurs and bone knee caps, dark leather gloves. His weapons are stowed, not held: two oversized ornate silver revolvers with carved bone grips sit in big holsters at his hip and thigh. Colour identity: dark brown leather, black, crimson scarf, bright silver. No cape, no cloak, no wings, nothing held in the hands, both hands empty. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "c9534090-6c15-4f06-ba3d-f89179e60e2f",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 2,
+   "index": 32,
+   "name": "bran_side",
+   "kind": "브란 — 측면 keep-pose (1k), 대검은 등에",
+   "file": "assets/v2/pilot/hero_bran_side.webp · docs/v2/img/ap_lineup.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/bran_side.png (저장소 밖)",
+   "ref": [
+    "tools/puppet/src/bran/bran_knight_side.webp (JPEG upload)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep the exact same walking side pose facing right (same arm, hand and leg positions, same head position and size), the same body proportions, the same camera angle, the same framing, the same scale and the same position on the canvas. COMPLETELY REDESIGN the character's gear and RE-RENDER the whole figure in a new art style: a semi-realistic, high-fidelity CG character illustration with the polish of official character art for a big-budget fantasy hunting-action game - crisp believable materials (stitched leather, layered scales, thick fur, carved bone, forged metal), clean bright neutral studio lighting, rich clear colours, sharp detail everywhere. NOT anime, NOT cel-shaded, NOT a loose oil painting, NOT grim, NOT muddy. Realistic adult proportions, realistic facial features. THE MAN: a big, strong, likeable knight in his thirties with a handsome friendly face in profile, a full well-kept copper-red beard, short copper-red hair with shaved sides, bright eyes and a warm confident smile; bare-headed, no helmet. OUTFIT - a towering monster-hunting knight in elaborately crafted heavy armour made from night-creature materials: polished steel plate layered with blue-grey gargoyle-stone plates, a huge asymmetric pauldron on the near shoulder crowned with two short curved horns, a thick grey wolf-fur mantle around the neck, a steel breastplate with a cobalt-blue enamel crest, heavy gauntlets, a cobalt-blue waist cloth with silver embroidery hanging to the knees in the same place as the cloth in the image, steel greaves with horn knee guards, a broad belt with pouches. His weapon is stowed, not held: a colossal greatsword - a broad slab of dark steel with a jagged pale bone edge and a long leather-wrapped hilt - is slung diagonally across his back, its hilt rising above his shoulder. Colour identity: steel grey, cobalt blue, copper-red beard. No cape, no cloak, no wings, no helmet, nothing held in the hands, both hands empty. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "8397cbd9-db1d-4fdc-b1bb-d454200209d4",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 2,
+   "index": 33,
+   "name": "lia_side",
+   "kind": "리아 — 측면 keep-pose (1k), 쌍단검은 허리 뒤",
+   "file": "assets/v2/pilot/hero_lia_side.webp · docs/v2/img/ap_lineup.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/lia_side.png (저장소 밖)",
+   "ref": [
+    "tools/puppet/src/lia/lia_assassin_side.webp (JPEG upload)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep the exact same walking side pose facing right (same arm, hand and leg positions, same head position and size), the same body proportions, the same camera angle, the same framing, the same scale and the same position on the canvas. COMPLETELY REDESIGN the character's gear and RE-RENDER the whole figure in a new art style: a semi-realistic, high-fidelity CG character illustration with the polish of official character art for a big-budget fantasy hunting-action game - crisp believable materials (stitched leather, layered scales, feathers, carved bone, forged metal), clean bright neutral studio lighting, rich clear colours, sharp detail everywhere. NOT anime, NOT cel-shaded, NOT a loose oil painting, NOT grim, NOT muddy. Realistic adult proportions about eight heads tall, realistic facial features. THE WOMAN: a beautiful, likeable young assassin in her early twenties with a pretty, sharp face in profile, bright dark eyes, a small confident smile, healthy skin and a glossy black chin-length bob; her half-mask is pulled DOWN around her neck so her whole face, nose and mouth are fully visible. OUTFIT - a nimble monster-hunting assassin in elaborately crafted light armour made from night-creature materials: a fitted sleeveless jacket of black bat-wing leather with fine stitching, a small asymmetric shoulder mantle of glossy black raven feathers with a blue-violet sheen on the near shoulder, a crimson scarf wrapped around the neck with one short tail, a crimson waist sash, light black scale bracers and fingerless gloves, a belt with small pouches and throwing knives, slim black trousers, soft knee-high black boots with crimson wraps and small fang charms. Her weapons are stowed, not held: two long curved fang daggers with crimson-wrapped grips are sheathed crosswise at the back of her belt. Colour identity: black, crimson, raven-feather sheen. No cape, no cloak, no wings, no hood, nothing held in the hands, both hands empty. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "92a137fb-a9d7-4145-ae0c-c9a1fb64fbd3",
+   "credits": 0.25,
+   "kept": true,
+   "note": "복면을 목으로 내려 얼굴이 보임"
+  },
+  {
+   "round": 2,
+   "index": 34,
+   "name": "azel_side",
+   "kind": "아젤 — 측면 keep-pose (1k), 장검은 허리에",
+   "file": "assets/v2/pilot/hero_azel_side.webp · docs/v2/img/ap_lineup.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/azel_side.png (저장소 밖)",
+   "ref": [
+    "tools/puppet/src/azel/azel_dhampir_side.webp (JPEG upload)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep the exact same walking side pose facing right (same arm, hand and leg positions, same head position and size), the same body proportions, the same camera angle, the same framing, the same scale and the same position on the canvas. COMPLETELY REDESIGN the character's gear and RE-RENDER the whole figure in a new art style: a semi-realistic, high-fidelity CG character illustration with the polish of official character art for a big-budget fantasy hunting-action game - crisp believable materials (stitched leather, layered scales, fur, carved bone, forged metal, fine cloth), clean bright neutral studio lighting, rich clear colours, sharp detail everywhere. NOT anime, NOT cel-shaded, NOT a loose oil painting, NOT grim, NOT muddy. Realistic adult proportions about eight heads tall, realistic facial features. THE MAN: a strikingly handsome, elegant young half-vampire swordsman with a refined attractive face in profile, calm crimson eyes, pale but healthy skin, a faint knowing smile and long flowing silver-white hair with the same shape as in the image. OUTFIT - a noble night hunter in elaborately crafted gear made from night-creature materials: a long black coat of fine bat-wing leather with gold-thread embroidery, gold buttons and a blood-red lining, with the same coat shape as in the image, a high collar, one asymmetric shoulder guard of dark crimson dragon scales edged with gold on the near shoulder, a black-and-gold scale vambrace and black glove, a belt with a gold buckle and a small vial case, black trousers, tall black boots with gold-edged shin plates. His weapon is stowed, not held: a long ornate sword with a gold bat-wing crossguard and a red gem, in a black-and-gold scabbard, hangs at his hip. Colour identity: black, gold, blood red, silver-white hair. No cape, no cloak, no wings, nothing held in the hands, both hands empty. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "91becabf-9000-4a37-aadd-606bec945dc5",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 2,
+   "index": 35,
+   "name": "isolde_side",
+   "kind": "이졸데 — 측면 keep-pose (1k), 창은 등에",
+   "file": "assets/v2/pilot/hero_isolde_side.webp · docs/v2/img/ap_lineup.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/isolde_side.png (저장소 밖)",
+   "ref": [
+    "tools/puppet/src/isolde/isolde_lancer_side.webp (JPEG upload)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "9:16",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep the exact same walking side pose facing right (same arm, hand and leg positions, same head position and size), the same body proportions, the same camera angle, the same framing, the same scale and the same position on the canvas. COMPLETELY REDESIGN the character's gear and RE-RENDER the whole figure in a new art style: a semi-realistic, high-fidelity CG character illustration with the polish of official character art for a big-budget fantasy hunting-action game - crisp believable materials (stitched leather, layered scales, fur, carved bone, forged metal, fine cloth), clean bright neutral studio lighting, rich clear colours, sharp detail everywhere. NOT anime, NOT cel-shaded, NOT a loose oil painting, NOT grim, NOT muddy. Realistic adult proportions about eight heads tall, realistic facial features. THE WOMAN: a beautiful, likeable young dragon knight in her mid-twenties with a lovely proud face in profile, bright ice-blue eyes, a confident smile, healthy fair skin and silver-white hair in one long thick braid with the same shape as in the image; she wears a small winged silver circlet, NOT a helmet, so her whole face is visible. OUTFIT - a dragon-lancer in elaborately crafted armour made from night-creature materials: sleek polished silver plate layered with pale ice-blue dragon scales, one large asymmetric pauldron on the near shoulder shaped like a folded dragon wing, a fitted scale cuirass, silver gauntlets, an ice-cyan and navy waist cloth hanging behind the hip in the same place as the cloth in the image, armoured thigh plates, silver greaves with dragon-claw knee guards, a belt with pouches and a small dragon-fang charm. Her weapon is stowed, not held: a great dragon-lance - a long spear with a broad pale dragon-fang blade and a short cyan pennant - is slung diagonally across her back. Colour identity: silver, ice cyan, navy. No cape, no cloak, no wings on the body, no helmet, nothing held in the hands, both hands empty. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "c099b2d5-a580-4f05-aa82-3b4381684964",
+   "credits": 0.25,
+   "kept": true,
+   "note": "투구 대신 날개 관"
+  },
+  {
+   "round": 2,
+   "index": 36,
+   "name": "sera_bust",
+   "kind": "세라 흉상",
+   "file": "docs/v2/img/ap_faces.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/sera_bust.png (저장소 밖)",
+   "ref": [
+    "job 568409ad-edec-46cc-a3f5-b1dea91e1e55 (이 묶음의 측면 결과)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Bust portrait of the battle priestess in the reference image, wearing exactly the same outfit (short white veil with a gold circlet, white and ivory battle habit with gold trim, ivory horn-plate shoulder guard with gold edges, sapphire-blue details, the golden cross-ring head of her staff visible behind her shoulder): head, shoulders and upper chest, three-quarter view turned slightly toward the viewer's right, eyes looking at the viewer. Her face is the focus and must be beautiful, attractive and likeable with realistic adult features: a young woman in her early twenties with a gentle warm smile, bright clear blue eyes of natural size, a soft straight nose, healthy fair skin with a natural blush, long silver-blonde hair with a soft fringe showing under the veil. Semi-realistic, high-fidelity CG character illustration with the polish of official character art for a big-budget fantasy hunting-action game: lifelike skin and hair, crisp materials, bright clean soft key light from the upper left with a gentle rim light, rich clear colours. NOT anime, NOT cel-shaded, no oversized eyes, NOT grim, NOT harsh, not a photograph of a real person. Plain flat solid #00FF00 green background, no text, no border, no frame.",
+   "job_id": "5197b436-48ce-4840-812b-54a428a0d198",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 2,
+   "index": 37,
+   "name": "lia_bust",
+   "kind": "리아 흉상",
+   "file": "docs/v2/img/ap_faces.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/lia_bust.png (저장소 밖)",
+   "ref": [
+    "job 92a137fb-a9d7-4145-ae0c-c9a1fb64fbd3 (이 묶음의 측면 결과)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Bust portrait of the assassin in the reference image, wearing exactly the same outfit (fitted black bat-wing leather jacket, small shoulder mantle of glossy black raven feathers with a blue-violet sheen, crimson scarf around the neck with her half-mask pulled down into it): head, shoulders and upper chest, three-quarter view turned slightly toward the viewer's right, eyes looking at the viewer. Her face is the focus and must be beautiful, attractive and likeable with realistic adult features: a young woman in her early twenties with a small confident, slightly playful smile, bright dark-brown eyes of natural size, a neat straight nose, healthy skin, a glossy black chin-length bob with a side-swept fringe; her whole face is uncovered. Semi-realistic, high-fidelity CG character illustration with the polish of official character art for a big-budget fantasy hunting-action game: lifelike skin and hair, crisp materials, bright clean soft key light from the upper left with a gentle cool rim light, rich clear colours. NOT anime, NOT cel-shaded, no oversized eyes, NOT grim, NOT harsh, not a photograph of a real person. Plain flat solid #00FF00 green background, no text, no border, no frame.",
+   "job_id": "a3a47bd6-b65e-480e-9b9d-20c7bdd55c69",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 2,
+   "index": 38,
+   "name": "gargoyle_ref",
+   "kind": "적 다시 칠하기 시험 — 가고일 참고 그림 keep-pose",
+   "file": "docs/v2/img/ap_enemy.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/gargoyle_ref.png (저장소 밖)",
+   "ref": [
+    "tools/painted/enemies/gargoyle/src/gargoyle_ref.webp (watermark removed, half size JPEG upload)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "4:3",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. Keep the same two creature figures in exactly the same poses, the same positions, the same scale and the same framing on the canvas (left: the gargoyle with folded wings crouching, right: the same gargoyle with wings spread). REDESIGN and RE-RENDER the creature in a new art style: a semi-realistic, high-fidelity CG creature illustration with the polish of official monster art for a big-budget fantasy hunting-action game - a powerful, believable night-gargoyle wyvern-beast with weathered grey stone-scale hide, cracked obsidian horn plates along the spine, leathery bat-like wing membranes with visible veins, moss in the cracks, faint amber glow in the fissures, heavy claws, glowing amber eyes, a fanged jaw. Crisp believable materials, clean bright neutral studio lighting, rich clear colours, sharp detail. NOT anime, NOT cel-shaded, NOT a loose painting, NOT muddy. Plain flat solid #00FF00 green background, no floor shadow, no text, no border, no frame.",
+   "job_id": "9e081a28-3669-40e5-b223-fabbb822a1f4",
+   "credits": 0.25,
+   "kept": true
+  },
+  {
+   "round": 2,
+   "index": 39,
+   "name": "gargoyle_sheet1",
+   "kind": "적 다시 칠하기 시험 — 가고일 부품 시트 keep-layout",
+   "file": "docs/v2/img/ap_enemy.webp",
+   "raw": "/tmp/claude-0/v2/art/batch1/dl/gargoyle_sheet1.png (저장소 밖)",
+   "ref": [
+    "tools/painted/enemies/gargoyle/src/gargoyle_sheet1.webp (watermark removed, half size JPEG upload)"
+   ],
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "4:3",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "prompt": "Edit this image. This is a sheet of separate cut-out body parts of one gargoyle creature for a 2D puppet. Keep EVERY part exactly where it is: the same number of parts, the same shape, outline, size, rotation and position of each part on the canvas, well separated, nothing added, nothing removed, nothing moved (top row: torso, head with closed jaw, head with open jaw; bottom: arm, one wing, tail). RE-RENDER only the surface of each part in a new art style: a semi-realistic, high-fidelity CG creature illustration with the polish of official monster art for a big-budget fantasy hunting-action game - weathered grey stone-scale hide, cracked obsidian horn plates, leathery bat-like wing membrane with visible veins, moss in the cracks, faint amber glow in the fissures, glowing amber eyes, sharp fangs. Crisp believable materials, clean bright neutral lighting, rich clear colours, sharp detail. No outer glow, no outline halo around the parts. NOT anime, NOT cel-shaded, NOT muddy. Plain flat solid #00FF00 green background, no shadows, no text, no labels, no border, no frame.",
+   "job_id": "f36b2276-e61a-4837-b598-e3419df27212",
+   "credits": 0.25,
+   "kept": true,
+   "note": "부품 6개 모두 같은 자리 (중심 이동 ≤ 8 px / 1168 px, 크기 1.01–1.11배)"
+  }
+ ]
+}

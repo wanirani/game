@@ -58,12 +58,12 @@ export class GLR {
   }
   _initGL() {
     const gl = this.gl;
-    const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS) && !gl.isContextLost()) throw new Error('셰이더: ' + gl.getShaderInfoLog(s)); return s; };
+    const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS) && !gl.isContextLost()) throw new Error('GLSL: ' + gl.getShaderInfoLog(s)); return s; };
     const pr = gl.createProgram();
     gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS));
     ['aPos', 'aUV', 'aCol', 'aExt'].forEach((n, i) => gl.bindAttribLocation(pr, i, n));
     gl.linkProgram(pr);
-    if (!gl.getProgramParameter(pr, gl.LINK_STATUS) && !gl.isContextLost()) throw new Error('프로그램: ' + gl.getProgramInfoLog(pr));
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS) && !gl.isContextLost()) throw new Error('GL link: ' + gl.getProgramInfoLog(pr));
     this.prog = pr;
     this.u = { vp: gl.getUniformLocation(pr, 'uVP'), fog: gl.getUniformLocation(pr, 'uFog'), fogCol: gl.getUniformLocation(pr, 'uFogCol'), bias: gl.getUniformLocation(pr, 'uBiasK'), tex: gl.getUniformLocation(pr, 'uTex') };
     gl.useProgram(pr); gl.uniform1i(this.u.tex, 0);

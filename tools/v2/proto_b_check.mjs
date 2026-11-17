@@ -7,6 +7,7 @@ import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import { start } from '../serve.mjs';
 import { contextOptions } from '../qa/lib/viewports.mjs';
+import { Touch, padLayout, pressButton, stickHold, ensureTouchMode } from '../qa/lib/touch.mjs';
 import STAGE from '../../src/v2/b/stage_slice0.js';
 import { validateStage } from '../../src/v2/b/world.js';
 
@@ -61,9 +62,13 @@ function installBot() {
         if ((dx > 0) === (h.facing > 0)) { tx = h.x; tz = tg.z; }
       }
     } else {
-      const w = ROUTE[Math.min(B.wp, ROUTE.length - 1)];
+      // 싸우느라 길에서 벗어났으면 가장 가까운 길목부터 다시
+      let ni = B.wp, nd = 1e9;
+      for (let i = B.wp; i < ROUTE.length; i++) { const d = Math.hypot(ROUTE[i][0] - h.x, ROUTE[i][1] - h.z); if (d < nd) { nd = d; ni = i; } }
+      B.wp = ni;
+      const w = ROUTE[B.wp];
       if (Math.hypot(w[0] - h.x, w[1] - h.z) < 26 && B.wp < ROUTE.length - 1) B.wp++;
-      tx = ROUTE[Math.min(B.wp, ROUTE.length - 1)][0]; tz = ROUTE[Math.min(B.wp, ROUTE.length - 1)][1];
+      tx = ROUTE[B.wp][0]; tz = ROUTE[B.wp][1];
     }
     const dx = tx - h.x, dz = tz - h.z;
     if (dx > 7) a.right = true; else if (dx < -7) a.left = true;
@@ -111,6 +116,25 @@ for (const dev of DEVICES) {
     await page.waitForTimeout(1200);   // 퍼펫·적 그림이 다 받아질 때까지
     await page.evaluate(installBot);
     const cap = dev === DEVICES[0];
+    // ── 0.5) 터치: 가상 패드의 스틱·버튼이 실제로 영웅을 움직이는가 (실시간 루프) ──
+    if (contextOptions(dev).hasTouch) {
+      const cdp = await page.context().newCDPSession(page), T = new Touch(cdp, page);
+      await ensureTouchMode(T, page);
+      await page.waitForTimeout(300);
+      const pad = await padLayout(page);
+      const ids = Object.keys(pad.buttons ?? {});
+      const h0 = await page.evaluate(() => window.__v2.hero);
+      await stickHold(T, page, 46, -46, 1100);
+      const h1 = await page.evaluate(() => window.__v2.hero);
+      const watch = (ms) => page.evaluate(async (ms) => { const seen = {}; let air = false; const t0 = performance.now(); while (performance.now() - t0 < ms) { const h = window.__v2.hero; seen[h.anim] = 1; if (!h.onGround) air = true; await new Promise((r) => setTimeout(r, 12)); } return { anims: Object.keys(seen), air }; }, ms);
+      const [, wa] = await Promise.all([pressButton(T, page, 'attack', 220), watch(700)]);
+      const [, wj] = await Promise.all([pressButton(T, page, 'jump', 220), watch(700)]);
+      const [, wd] = await Promise.all([pressButton(T, page, 'dash', 220), watch(600)]);
+      R.touch = { pad: ids, moved: [Math.round(h1.x - h0.x), Math.round(h1.z - h0.z)], attack: wa.anims.includes('attack'), jump: wj.air, dash: wd.anims.includes('dash') };
+      const T_OK = R.touch.moved[0] > 40 && R.touch.moved[1] > 25 && R.touch.attack && R.touch.jump && R.touch.dash && ['attack', 'jump', 'dash'].every((b) => ids.includes(b));
+      if (T_OK) ok('터치: 스틱 오른쪽·위 → 이동 ' + R.touch.moved.join(',') + ', 공격·점프·대시 버튼 동작 (패드 버튼: ' + ids.join(' ') + ')'); else fail(`${dev}: 터치 조작 이상 ${JSON.stringify(R.touch)}`);
+      await page.evaluate(() => { const v = window.__v2; v.scene.sim.reset(); v.scene.cam.snap = true; });
+    }
     // ── 1) 끝까지 걷기 ──
     let st = null, seen = new Set(), liveShots = { street: false, yard: false };
     const t0 = Date.now();
@@ -126,18 +150,59 @@ for (const dev of DEVICES) {
     else fail(`${dev}: 끝까지 가지 못함 ${JSON.stringify(st)}`);
     for (const s of ['street', 'corner', 'alley', 'yard']) if (!seen.has(s)) fail(`${dev}: 구간 ${s} 을 지나지 않음`);
     if (cap) await shot(page, '09_done_banner');
+    // ── 1.5) 규칙: 적의 공격 · 구덩이 · 계단 · 점프로 단상 오르기 · 깊이 판정 ──
+    R.rules = await page.evaluate(() => {
+      const g = window.__game, v = window.__v2, sc = v.scene, sim = sc.sim, input = g.input; window.__bot.stop(); g._pageHidden = true;
+      const run = (keys, n) => { input.setAutoSource(() => keys); for (let i = 0; i < n; i++) g.tick(1 / 60); input.setAutoSource(null); g.tick(1 / 60); };
+      const out = {};
+      // 적 근접 공격이 가만히 선 영웅에게 들어온다
+      sim.reset(); v.teleport('pillar'); let e = sim.enemies[0]; e.x = sim.hero.x + 120; e.z = sim.hero.z; e.active = true; e.state = 'chase'; e.cd = 0;
+      run({}, 150); out.meleeDmg = 100 - sim.hero.hp;
+      // 원거리 탄이 날아와 맞는다
+      sim.reset(); v.teleport('pillar'); e = sim.enemies[2]; e.x = sim.hero.x + 260; e.z = sim.hero.z + 30; e.y = 0; e.active = true; e.state = 'chase'; e.cd = 0;
+      run({}, 200); out.shotDmg = 100 - sim.hero.hp;
+      // 깊이 판정: z 가 40 어긋난 적은 맞지 않고(도움 범위 밖 80), 20 이면 맞는다
+      const swing = (dz) => { sim.reset(); v.teleport('pillar'); const q = sim.enemies[0]; q.x = sim.hero.x + 60; q.z = sim.hero.z + dz; q.cd = 99; sim.hero.facing = 1; run({ attack: true }, 3); run({}, 20); return q.hpMax - q.hp; };
+      out.hitDz20 = swing(20); out.hitDz80 = swing(80);
+      // 구덩이: 떨어지면 체력이 깎이고 가장자리로 돌아온다
+      sim.reset(); v.teleport('pit'); sim.hero.x = 1770; sim.hero.z = 70; run({}, 5); run({ right: true }, 70); run({}, 30);
+      out.pit = { hp: sim.hero.hp, x: Math.round(sim.hero.x), y: Math.round(sim.hero.y) };
+      // 계단으로 단상에 오른다 / 점프로 오른다
+      sim.reset(); v.teleport('platform'); run({ right: true }, 60); out.stairsY = Math.round(sim.hero.y);
+      sim.reset(); v.teleport('platform'); sim.hero.x = 1050; sim.hero.z = 95; run({}, 3); run({ up: true, jump: true }, 40); run({}, 20); out.jumpY = Math.round(sim.hero.y);
+      // 골목 계단 +96
+      sim.reset(); v.teleport('stairs'); run({ up: true }, 110); out.alleyStairsY = Math.round(sim.hero.y);
+      // 대시는 스틱 방향(깊이 쪽)으로
+      sim.reset(); v.teleport('alley'); const z0 = sim.hero.z; run({ up: true, dash: true }, 2); run({ up: true }, 10); out.dashDz = Math.round(sim.hero.z - z0);
+      sim.reset(); sc.cam.snap = true;
+      return out;
+    });
+    {
+      const q = R.rules, bad = [];
+      if (!(q.meleeDmg > 0)) bad.push('근접 적 공격이 안 들어옴'); if (!(q.shotDmg > 0)) bad.push('탄이 안 맞음');
+      if (!(q.hitDz20 > 0)) bad.push('깊이 20 에서 안 맞음'); if (q.hitDz80 !== 0) bad.push('깊이 80 에서 맞음');
+      if (!(q.pit.hp < 100 && q.pit.x < 1800 && q.pit.y === 0)) bad.push('구덩이 처리 이상');
+      if (q.stairsY !== 72) bad.push('계단으로 단상에 못 오름'); if (q.jumpY !== 72) bad.push('점프로 단상에 못 오름'); if (q.alleyStairsY !== 96) bad.push('골목 계단 높이 이상');
+      if (!(q.dashDz > 60)) bad.push('깊이 방향 대시 이상');
+      if (bad.length) fail(`${dev}: 규칙 ${bad.join(', ')} ${JSON.stringify(q)}`); else ok('규칙: ' + JSON.stringify(q));
+    }
+    await page.evaluate(installBot);
     // ── 2) 프레임 시간 (렌더 포함 연속 240프레임, gl.finish 포함) ──
     await page.evaluate(() => { const v = window.__v2, sc = v.scene; window.__bot.stop(); sc.sim.reset(); v.teleport('yard'); sc.cam.snap = true; v.perfFinish(true); });
     await page.evaluate(installBot);
     R.perf = await page.evaluate(() => {
-      const g = window.__game, v = window.__v2; g._pageHidden = true;
-      for (let i = 0; i < 240; i++) { window.__bot.think(); g.tick(1 / 60); g.render(); }
+      const g = window.__game, v = window.__v2, sc = v.scene; g._pageHidden = true; sc.resK = 1;
+      const auto = v.stats.mode;
+      const measure = (layer, n) => { v.setLayer(layer); v.perfFinish(true); for (let i = 0; i < n; i++) { window.__bot.think(); g.tick(1 / 60); g.render(); } const s = v.stats; return { frameMs: s.frameMs, parts: s.parts }; };
+      const blit = measure(false, 90), layer = measure(true, 240);
       const s = v.stats; v.perfFinish(false);
-      return { frameMs: s.frameMs, parts: s.parts, gl: s.gl, atlas: s.atlas, world: s.world, sprites: s.sprites, canvases: s.canvases, backing: [g.canvas.width, g.canvas.height], view: [g.viewW, g.viewH], scale: g.scale, tier: g.tier };
+      return { auto, blit, layer, gl: s.gl, atlas: s.atlas, world: s.world, sprites: s.sprites, canvases: s.canvases, dom: document.querySelectorAll('canvas').length, backing: [g.canvas.width, g.canvas.height], view: [g.viewW, g.viewH], scale: g.scale, tier: g.tier };
     });
-    const P = R.perf;
-    console.log(`  프레임 시간(SwiftShader, 대표값 아님) p50 ${P.frameMs.p50.toFixed(1)} ms · p95 ${P.frameMs.p95.toFixed(1)} ms | 아틀라스 ${P.parts.atlasMs.toFixed(1)} · GL ${P.parts.glMs.toFixed(1)} · 2D 옮기기 ${P.parts.blitMs.toFixed(1)} ms`);
-    console.log(`  그리기 호출 ${P.gl.draws} · 삼각형 ${P.gl.tris} · 텍스처 ${(P.gl.texBytes / 1048576).toFixed(1)} MB · 버퍼 ${(P.gl.bufBytes / 1024).toFixed(0)} KB · GL 캔버스 ${P.gl.canvas.join('×')} · 게임 캔버스 ${P.backing.join('×')} (논리 ${P.view.join('×')}) · ${P.gl.api} ${P.gl.renderer.slice(0, 60)}`);
+    const P = R.perf, f1 = (x) => x.toFixed(1);
+    console.log(`  프레임 시간 (SwiftShader 소프트웨어 렌더러 — 실제 기기 대표값 아님; 갱신+그리기+gl.finish)`);
+    console.log(`    DOM 층 방식  p50 ${f1(P.layer.frameMs.p50)} ms · p95 ${f1(P.layer.frameMs.p95)} ms | 아틀라스 ${f1(P.layer.parts.atlasMs)} · GL ${f1(P.layer.parts.glMs)} · HUD ${f1(P.layer.parts.blitMs)} ms`);
+    console.log(`    drawImage 방식 p50 ${f1(P.blit.frameMs.p50)} ms · p95 ${f1(P.blit.frameMs.p95)} ms | 아틀라스 ${f1(P.blit.parts.atlasMs)} · GL ${f1(P.blit.parts.glMs)} · 옮기기 ${f1(P.blit.parts.blitMs)} ms  (헤드리스에서는 ReadPixels 로 돌아 느리다 → 자동으로 고른 방식: ${P.auto})`);
+    console.log(`  그리기 호출 ${P.gl.draws} · 삼각형 ${P.gl.tris} · 텍스처 ${(P.gl.texBytes / 1048576).toFixed(1)} MB · 버퍼 ${(P.gl.bufBytes / 1024).toFixed(0)} KB · GL 캔버스 ${P.gl.canvas.join('×')} · 게임 캔버스 ${P.backing.join('×')} (논리 ${P.view.join('×')}, 등급 ${P.tier}) · 캔버스 ${P.canvases}개(DOM ${P.dom}) · ${P.gl.api} ${P.gl.renderer.slice(0, 48)}`);
     // ── 3) 캐릭터 12명 아틀라스 비용 ──
     R.atlas12 = await page.evaluate(() => {
       const v = window.__v2, sc = v.scene, sim = sc.sim, g = window.__game; window.__bot.stop();
@@ -206,7 +271,7 @@ for (const dev of DEVICES) {
     // ── 6) 나가기: 타이틀로 → 자원 정리, v1 장면 정상 ──
     R.exit = await page.evaluate(async () => {
       const g = window.__game; g._pageHidden = false;
-      const before = document.querySelectorAll('canvas').length;
+      const before = document.querySelectorAll('canvas:not(#v2b-gl):not(#v2b-hud)').length;
       g.go('title', {}, { fade: false });
       await new Promise((r) => setTimeout(r, 900));
       return { top: g.top?.name, v2: typeof window.__v2, canvases: document.querySelectorAll('canvas').length, before };

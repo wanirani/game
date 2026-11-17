@@ -45,17 +45,45 @@ export default class V2ProtoB extends Scene {
     this.perf = { samples: [], upd: 0, last: 0, ema: 16.7, slow: 0, fast: 0, atlasMs: 0, glMs: 0, blitMs: 0, finish: false };
     this.resK = 1;
     this.list = [];
+    // 겹치는 법: 'blit' = GL 캔버스를 게임 캔버스에 drawImage (기본) / 'layer' = GL 캔버스와 HUD 캔버스를 #screen 위에 DOM 으로 얹는다.
+    // ?v2layer=1|0 으로 고정. 지정이 없으면 drawImage 가 느린 환경(2D 캔버스가 소프트웨어 → ReadPixels)에서 스스로 layer 로 바꾼다.
+    let q = null; try { q = new URLSearchParams(globalThis.location?.search ?? '').get('v2layer'); } catch { q = null; }
+    this.layer = { on: false, forced: q === '1' ? true : q === '0' ? false : null, ema: 0, n: 0, hud: null, hctx: null, key: '', shown: true, timer: 0 };
+    this.hurtV = 0;
     preloadChars();
     try { this.glr = new GLR(); } catch (e) { this.glError = String(e?.message ?? e); console.warn('[v2b]', this.glError); }
+    if (this.glr && this.layer.forced) this._setLayer(true);
     if (this.glr) this._load().catch((e) => { this.glError = '그림을 준비하지 못했습니다: ' + String(e?.message ?? e); console.error('[v2b]', e); });
     this._api();
   }
   exit() {
+    this._setLayer(false);
     if (this.glr) { this.glr.destroy(); this.glr = null; }
     if (this.atlas) { this.atlas.canvas.width = 1; this.atlas.canvas.height = 1; this.atlas = null; }
     for (const c of this._canvases ?? []) { c.width = 1; c.height = 1; }
     this._canvases = null; this.ready = false;
     if (globalThis.__v2?.id === 'b') delete globalThis.__v2;
+  }
+  /** GL 캔버스를 DOM 에 얹거나(layer) 뗀다(blit). 얹을 때는 HUD 용 투명 2D 캔버스를 그 위에 하나 더 둔다 */
+  _setLayer(on) {
+    const L = this.layer; if (!L || !this.glr || on === L.on) return;
+    const app = this.game.canvas?.parentNode; if (!app) return;
+    const gc = this.glr.canvas;
+    if (on) {
+      const hc = document.createElement('canvas'); hc.width = 2; hc.height = 2;
+      gc.id = 'v2b-gl'; hc.id = 'v2b-hud';
+      for (const [c, z] of [[gc, '1'], [hc, '2']]) { const st = c.style; st.position = 'absolute'; st.zIndex = z; st.pointerEvents = 'none'; st.display = 'block'; st.left = '0px'; st.top = '0px'; app.appendChild(c); }
+      L.hud = hc; L.hctx = hc.getContext('2d'); L.key = ''; L.shown = true;
+      L.timer = setInterval(() => this._layerShow(this.game.top === this && this.ready && !this.glr?.lost), 200);   // 다른 장면이 위에 오면 가린다
+    } else {
+      clearInterval(L.timer); L.timer = 0;
+      gc.remove(); if (L.hud) { L.hud.remove(); L.hud.width = 1; L.hud.height = 1; } L.hud = null; L.hctx = null;
+    }
+    L.on = on;
+  }
+  _layerShow(v) {
+    const L = this.layer; if (!L?.on || L.shown === v) return;
+    L.shown = v; const d = v ? 'block' : 'none'; this.glr.canvas.style.display = d; if (L.hud) L.hud.style.display = d;
   }
   _hooks() {
     const sfx = (n, o) => { try { this.game.audio?.sfx?.(n, o); } catch { /* 소리 없음 */ } };
@@ -72,7 +100,7 @@ export default class V2ProtoB extends Scene {
         try { input.rumble?.(0.3, 0.5, 40); } catch { /* 진동 없음 */ }
       },
       kill: (e) => { this._burst(e.x, e.y + 40, e.z, 'bone'); sfx('enemy_die', { vol: 0.6 }); },
-      heroHurt: (dmg, pit) => { this.shake = Math.max(this.shake, 9); this.game.vignette?.('#ff0020', 0.5, 2.5); sfx('hurt', { vol: 0.7 }); if (!pit) this._burst(this.sim.hero.x, this.sim.hero.y + 50, this.sim.hero.z, 'hit'); },
+      heroHurt: (dmg, pit) => { this.shake = Math.max(this.shake, 9); this.hurtV = 1; this.game.vignette?.('#ff0020', 0.5, 2.5); sfx('hurt', { vol: 0.7 }); if (!pit) this._burst(this.sim.hero.x, this.sim.hero.y + 50, this.sim.hero.z, 'hit'); },
       done: () => { this.doneT = 0; sfx('win', { vol: 0.6 }); },
     };
   }
@@ -150,12 +178,17 @@ export default class V2ProtoB extends Scene {
     sim.update(dt, inp);
     if (inp.jumpUsed) input.consume('jump');
     if (sim.deaths !== deaths) { this.cam.snap = true; this.game.flash?.('#000', 0.7, 2.5); }
+    // 계단에서 발이 톡톡 튀지 않게 그리는 높이만 부드럽게 · 대시 잔상
+    const hh = sim.hero;
+    this.visY = hh.onGround && Math.abs((this.visY ?? hh.y) - hh.y) < 40 ? (this.visY ?? hh.y) + (hh.y - (this.visY ?? hh.y)) * (1 - Math.exp(-dt * 28)) : hh.y;
+    this.trail = (this.trail ?? []).filter((g) => (g.t += dt) < 0.2);
+    if (hh.dashT > 0 && sim.stop <= 0 && (this._trailN = (this._trailN ?? 0) + 1) % 2 === 0) this.trail.push({ x: hh.x, y: hh.y, z: hh.z, t: 0 });
     // 효과
     for (const p of this.fx) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; p.vy -= (p.g ?? 0) * dt; if (p.drag) { const k = 1 - Math.min(1, p.drag * dt); p.vx *= k; p.vy *= k; p.vz *= k; } }
     if (this.fx.length) this.fx = this.fx.filter((p) => p.t < p.life);
     for (const n of this.nums) n.t += dt;
     if (this.nums.length) this.nums = this.nums.filter((n) => n.t < 0.8);
-    this.shake = Math.max(0, this.shake - dt * 40 - this.shake * dt * 6);
+    this.shake = Math.max(0, this.shake - dt * 40 - this.shake * dt * 6); this.hurtV = Math.max(0, this.hurtV - dt * 2.5);
     this.shakeX = (Math.random() * 2 - 1) * this.shake; this.shakeY = (Math.random() * 2 - 1) * this.shake;
     this._camera(dt);
     this.perf.upd += performance.now() - t0;
@@ -194,7 +227,9 @@ export default class V2ProtoB extends Scene {
     const gy = h.onGround ? h.y : Math.min(h.y, c.ty + 40 > h.y ? c.ty : h.y - 40);
     c.tx += (tx - c.tx) * kt; c.tz += (tz - c.tz) * kt; c.ty += (gy - c.ty) * (snap ? 1 : 1 - Math.exp(-dt * 4));
     const cp = Math.cos(c.pitch), sp = Math.sin(c.pitch);
-    const lx = c.tx, ly = c.ty + c.lookY, lz = c.tz;
+    const tall = Math.max(0, this.game.viewH - 540);   // 세로로 긴 화면(폴드): 남는 높이는 앞바닥이 아니라 벽·하늘 쪽에 쓴다
+    c.tallK = (c.tallK ?? 0.4) + ((R.tallK ?? 0.4) - (c.tallK ?? 0.4)) * k;
+    const lx = c.tx, ly = c.ty + c.lookY + tall * c.tallK, lz = c.tz;
     let px = lx - Math.sin(c.yaw) * cp * c.dist, py = ly + sp * c.dist, pz = lz - Math.cos(c.yaw) * cp * c.dist;
     c.minX = (c.minX ?? -1e5) + ((R.minX ?? -1e5) - (c.minX ?? -1e5)) * (snap ? 1 : 1 - Math.exp(-dt * 3));
     c.maxX = (c.maxX ?? 1e5) + ((R.maxX ?? 1e5) - (c.maxX ?? 1e5)) * (snap ? 1 : 1 - Math.exp(-dt * 3));
@@ -211,7 +246,8 @@ export default class V2ProtoB extends Scene {
     const rl = Math.hypot(fz, fx) || 1, rx = fz / rl, rz = -fx / rl;          // r = up × f
     const ux = fy * rz, uy = fz * rx - fx * rz, uz = -fy * rx;                  // u = f × r
     const px = c.px + rx * this.shakeX, py = c.py + this.shakeY, pz = c.pz + rz * this.shakeX;
-    const sx = FOCAL / (Wv / 2), sy = FOCAL / (Hv / 2), A = (FAR + NEAR) / (FAR - NEAR), B = -2 * FAR * NEAR / (FAR - NEAR);
+    const F = FOCAL * (1 + Math.max(0, Hv - 540) / 540 * 0.3);   // 긴 화면은 조금 당겨 보여 준다
+    const sx = F / (Wv / 2), sy = F / (Hv / 2), A = (FAR + NEAR) / (FAR - NEAR), B = -2 * FAR * NEAR / (FAR - NEAR);
     const rd = -(rx * px + rz * pz), ud = -(ux * px + uy * py + uz * pz), fd = -(fx * px + fy * py + fz * pz);
     m[0] = sx * rx; m[4] = 0; m[8] = sx * rz; m[12] = sx * rd;
     m[1] = sy * ux; m[5] = sy * uy; m[9] = sy * uz; m[13] = sy * ud;
@@ -233,6 +269,7 @@ export default class V2ProtoB extends Scene {
   render(ctx) {
     const g = this.game, Wv = g.viewW, Hv = g.viewH, P = this.perf;
     const t0 = performance.now();
+    if (this.layer.on) this._layerShow(this.ready && !this.glr?.lost && g.top === this);
     if (this.glError || !this.glr) { this._message(ctx, 'WebGL 을 쓸 수 없어 시범판 B 를 열 수 없습니다', this.glError || '', '기기나 브라우저가 WebGL 을 지원하지 않습니다 · 뒤로 = 타이틀'); return; }
     if (!this.ready) { this._message(ctx, '불러오는 중…', '', ''); return; }
     const glr = this.glr;
@@ -269,12 +306,29 @@ export default class V2ProtoB extends Scene {
     for (const r of runs) glr.drawDyn(r.t ? this.charTex : this.propTex, r.first, r.count, true);
     if (P.finish) glr.finish();
     P.glMs = performance.now() - tg;
-    // 4) 게임 캔버스로 옮기고 2D 덧그림
-    const tb = performance.now();
-    ctx.drawImage(glr.canvas, 0, 0, Wv, Hv);
-    P.blitMs = performance.now() - tb;
-    this._numbers(ctx);
-    this._hud(ctx, Wv, Hv);
+    // 4) 화면에 올리기 + 2D 덧그림 (피해 숫자 · HUD)
+    const tb = performance.now(), L = this.layer;
+    if (L.on) {
+      const r = g.canvas.getBoundingClientRect(), key = [r.left, r.top, r.width, r.height, g.canvas.width, g.canvas.height].join(',');
+      if (key !== L.key) {
+        L.key = key;
+        for (const c of [glr.canvas, L.hud]) { const st = c.style; st.left = r.left + 'px'; st.top = r.top + 'px'; st.width = r.width + 'px'; st.height = r.height + 'px'; }
+        L.hud.width = g.canvas.width; L.hud.height = g.canvas.height;
+      }
+      const o = L.hctx;
+      o.setTransform(1, 0, 0, 1, 0, 0); o.clearRect(0, 0, L.hud.width, L.hud.height); o.setTransform(g.scale, 0, 0, g.scale, 0, 0);
+      if (this.hurtV > 0.02) {   // 게임의 비네트는 GL 층 아래에 깔리므로 여기서 한 번 더
+        const gr = o.createRadialGradient(Wv / 2, Hv / 2, Hv * 0.3, Wv / 2, Hv / 2, Math.hypot(Wv, Hv) / 2);
+        gr.addColorStop(0, 'rgba(255,0,32,0)'); gr.addColorStop(1, `rgba(255,0,32,${(0.45 * this.hurtV).toFixed(3)})`); o.fillStyle = gr; o.fillRect(0, 0, Wv, Hv);
+      }
+      this._numbers(o); this._hud(o, Wv, Hv);
+      P.blitMs = performance.now() - tb;
+    } else {
+      ctx.drawImage(glr.canvas, 0, 0, Wv, Hv);
+      P.blitMs = performance.now() - tb;
+      this._numbers(ctx); this._hud(ctx, Wv, Hv);
+      if (L.forced == null) { L.n++; L.ema += (P.blitMs - L.ema) * 0.1; if (L.n > 45 && L.ema > 6) { console.info('[v2b] drawImage(GL) 가 느립니다 (' + L.ema.toFixed(1) + ' ms) → DOM 층으로 바꿉니다'); this._setLayer(true); } }
+    }
     const ms = performance.now() - t0 + P.upd; P.upd = 0;
     P.samples.push(ms); if (P.samples.length > 300) P.samples.shift();
   }
@@ -328,8 +382,20 @@ export default class V2ProtoB extends Scene {
         b.quad(p, w.u0, w.v0, w.u1, w.v1, 1.5, 1.4, 1.25, 1, 1, 0, 3, 0.75);
       } else if (s.shadow) { const im = S['p:' + s.img]; if (im) shadow(s.x, s.z, s.y, s.h * im.w / im.h * 0.42, s.shadow); }
     }
-    const h = sim.hero; shadow(h.x, h.z, h.y, 30, 0.95);
-    for (const e of sim.enemies) if (!e.dead && e.uv) shadow(e.x, e.z, e.y, 26, 0.9 * (e.state === 'dead' ? e.dying / 0.55 : 1));
+    const h = sim.hero;
+    { // 영웅 발밑의 옅은 빛 (어두운 길에서 위치·깊이를 읽기 쉽게)
+      const gy = groundAt(W, h.x, h.z, h.y + 20), gl = S.glow, r = 150;
+      if (Number.isFinite(gy)) b.quad([h.x - r, gy + 0.5, h.z - r * 0.7, h.x + r, gy + 0.5, h.z - r * 0.7, h.x + r, gy + 0.5, h.z + r * 0.7, h.x - r, gy + 0.5, h.z + r * 0.7], gl.u0, gl.v0, gl.u1, gl.v1, 0.55, 0.62, 0.9, 0.16, 0, 0, 4, 1);
+    }
+    shadow(h.x, h.z, h.y, 30, 0.95);
+    for (const e of sim.enemies) {
+      if (e.dead || !e.uv) continue;
+      shadow(e.x, e.z, e.y, 26, 0.9 * (e.state === 'dead' ? e.dying / 0.55 : 1));
+      if (e.kind === 'melee' && e.state === 'attack' && e.stateT < TUNE.melee.windup + 0.08) {   // 휘두를 자리 예고 (깊이를 맞춰 피하라는 표시)
+        const k = clamp(e.stateT / TUNE.melee.windup, 0, 1), gl = S.glow, cx = e.x + e.facing * 46, rx = 34 + 26 * k, rz = TUNE.melee.reachZ * 0.9, gy = e.y + 0.6;
+        b.quad([cx - rx, gy, e.z - rz, cx + rx, gy, e.z - rz, cx + rx, gy, e.z + rz, cx - rx, gy, e.z + rz], gl.u0, gl.v0, gl.u1, gl.v1, 1.5, 0.25, 0.12, 0.2 + 0.5 * k, 0, 0, 5, 1);
+      }
+    }
     for (const s of sim.shots) if (!s.dead) shadow(s.x, s.z, s.y, 15, 0.7);
     // 영웅 발밑 고리 (깊이를 읽기 쉽게) — 아주 옅게
     void t;
@@ -345,7 +411,7 @@ export default class V2ProtoB extends Scene {
       const d = depth(x, y, z) + dOff; if (d < NEAR * 0.5) return;
       L.push({ d, tex, uv, p: [x - left, y - down, z, x + right, y - down, z, x + right, y + up, z, x - left, y + up, z], col, a, mode, flash, bias, fog });
     };
-    const tint = (x, y, z, lit = 1) => { const l = lightAt(W, x, y, z); return [clamp(0.36 + 0.74 * l[0], 0, 1.5) * lit, clamp(0.36 + 0.74 * l[1], 0, 1.5) * lit, clamp(0.36 + 0.74 * l[2], 0, 1.5) * lit]; };
+    const tint = (x, y, z, lit = 1) => { const l = lightAt(W, x, y, z); return [clamp(0.5 + 0.7 * l[0], 0, 1.6) * lit, clamp(0.5 + 0.7 * l[1], 0, 1.6) * lit, clamp(0.5 + 0.7 * l[2], 0, 1.6) * lit]; };
     // 소품
     for (const s of W.sprites) {
       if (s.kind !== 'prop') continue;
@@ -363,7 +429,11 @@ export default class V2ProtoB extends Scene {
     const h = sim.hero;
     if (this.heroUV && !(h.ifr > 0 && !h.dead && h.hurtT <= 0 && Math.floor(h.t * 22) % 2 === 0 && h.dashT <= 0)) {
       const C = HERO_CELL, col = tint(h.x, h.y + 50, h.z);
-      card(1, this.heroUV, h.x, h.y, h.z, C.ox, C.w - C.ox, (C.h - C.oy) * hk, C.oy * hk, col, 1, 1, h.flash > 0 ? h.flash * 0.6 : 0, 6, 1);
+      card(1, this.heroUV, h.x, this.visY ?? h.y, h.z, C.ox, C.w - C.ox, (C.h - C.oy) * hk, C.oy * hk, col, 1, 1, h.flash > 0 ? h.flash * 0.6 : 0, 6, 1);
+    }
+    if (this.heroUV) for (const g of this.trail ?? []) {   // 대시 잔상 (같은 칸을 빛으로 한 번 더)
+      const C = HERO_CELL, k = 1 - g.t / 0.2;
+      card(1, this.heroUV, g.x, g.y, g.z, C.ox, C.w - C.ox, (C.h - C.oy) * hk, C.oy * hk, [0.35, 0.55, 1.3], 0.5 * k, 0, 0, 4, 1, 2);
     }
     for (const e of sim.enemies) {
       if (e.dead || !e.uv) continue;
@@ -405,6 +475,13 @@ export default class V2ProtoB extends Scene {
       text(ctx, n.str, pr.x, pr.y, { size: Math.round(24 * k * pop), weight: 900, align: 'center', color: n.color, family: FONT.num, ow: 4 });
     }
     ctx.globalAlpha = 1;
+    for (const e of this.sim.enemies) {   // 다친 적의 체력 막대
+      if (e.dead || e.state === 'dead' || e.hp >= e.hpMax || !e.uv) continue;
+      this.project(e.x, e.y + e.h + 10, e.z, pr); if (pr.w <= 1) continue;
+      const k = clamp(FOCAL / pr.w, 0.5, 1.4), w = 40 * k, hgt = 4 * k;
+      ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(pr.x - w / 2 - 1, pr.y - 1, w + 2, hgt + 2);
+      ctx.fillStyle = '#e04a3a'; ctx.fillRect(pr.x - w / 2, pr.y, w * clamp(e.hp / e.hpMax, 0, 1), hgt);
+    }
   }
   _hud(ctx, Wv, Hv) {
     const g = this.game, sim = this.sim, h = sim.hero, s = g.safe ?? { l: 0, t: 0, r: 0, b: 0 };
@@ -440,7 +517,8 @@ export default class V2ProtoB extends Scene {
       parts: { atlasMs: this.perf.atlasMs, glMs: this.perf.glMs, blitMs: this.perf.blitMs },
       gl: G ? { ...G.info(), draws: G.stats.draws, tris: Math.round(G.stats.tris), texBytes: G.stats.texBytes, bufBytes: G.stats.bufBytes, uploadPx: G.stats.uploadPx, canvas: [G.canvas.width, G.canvas.height], lost: G.lost, restored: G.restored, resK: this.resK } : null,
       atlas: A ? { size: [A.canvas.width, A.canvas.height], scale: A.S, cells: A.cells, usedH: A.used } : null,
-      world: this.W.stats, sprites: this.list.length, canvases: (this._canvases?.length ?? 0) + (A ? 1 : 0) + (G ? 1 : 0),
+      world: this.W.stats, sprites: this.list.length, canvases: (this._canvases?.length ?? 0) + (A ? 1 : 0) + (G ? 1 : 0) + (this.layer.hud ? 1 : 0),
+      mode: this.layer.on ? 'layer' : 'blit',
     };
   }
   _api() {
@@ -457,6 +535,7 @@ export default class V2ProtoB extends Scene {
       teleport(sec) { const ok = sc.sim.teleport(sec); sc.cam.snap = true; return ok; },
       project(x, y, z) { return sc.project(x, y, z, {}); },
       perfFinish(on) { sc.perf.finish = !!on; sc.perf.samples.length = 0; },
+      setLayer(on) { sc.layer.forced = !!on; sc._setLayer(!!on); sc.perf.samples.length = 0; return sc.layer.on; },
       loseContext() { const e = sc.glr?.gl.getExtension('WEBGL_lose_context'); if (!e) return false; e.loseContext(); setTimeout(() => e.restoreContext(), 300); return true; },
     };
   }

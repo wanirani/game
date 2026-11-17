@@ -34,7 +34,7 @@ export class Sim {
     this.section = sectionAt(W, this.hero.x, this.hero.z)?.id ?? 'street';
   }
   teleport(sec) {
-    const P = { street: [130, 130], pillar: [640, 60], platform: [760, 190], pit: [1740, 100], corner: [2150, 150], alley: [2190, 380], stairs: [2190, 660], garden: [2190, 1250], yard: [2190, 1600] }[sec];
+    const P = { street: [260, 130], pillar: [640, 60], platform: [760, 190], pit: [1740, 100], corner: [2150, 150], alley: [2190, 380], stairs: [2190, 660], garden: [2190, 1250], yard: [2190, 1600] }[sec];
     if (!P) return false;
     const h = this.hero; h.x = P[0]; h.z = P[1]; h.y = groundAt(this.W, h.x, h.z); h.vx = h.vz = h.vy = 0; h.onGround = true; h.move = null; h.safe = { x: h.x, z: h.z, y: h.y };
     this.section = sectionAt(this.W, h.x, h.z)?.id ?? this.section;

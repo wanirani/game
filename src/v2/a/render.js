@@ -138,13 +138,14 @@ export class Renderer {
     this.t += dt;
     this.B = ctx.getTransform();
     const W = cam.W, H = cam.H;
-    this._sky(ctx, cam);
+    const off = this.off || {};
+    if (!off.sky) this._sky(ctx, cam);
     // 벽 자르기 (마당에 들어서면 골목 벽이 가라앉는다)
     for (const p of this.stage.props) if (p.hideIn) { const on = p.hideIn.includes(sec) ? 1 : 0; p.hideK += (on - p.hideK) * Math.min(1, dt * 5); if (Math.abs(on - p.hideK) < 0.01) p.hideK = on; }
     for (const s of this.stage.solids) if (s.cutIn) { const on = s.cutIn.includes(sec) ? 1 : 0; s.cutK += (on - s.cutK) * Math.min(1, dt * 5); if (Math.abs(on - s.cutK) < 0.004) s.cutK = on; }
     // [A] 바닥 묶음
-    for (const g of this.stage.floorGroups) this._floorGroup(ctx, cam, g);
-    this._pools(ctx, cam);
+    if (!off.floor) for (const g of this.stage.floorGroups) this._floorGroup(ctx, cam, g);
+    if (!off.pools) this._pools(ctx, cam);
     // [B] 깊이 정렬
     const L = this.items; let n = 0;
     for (const it of this.solidItems) {
@@ -165,10 +166,10 @@ export class Renderer {
     st.items = n;
     for (let i = 0; i < n; i++) {
       const it = L[i];
-      if (it.kind === 0) this._solid(ctx, cam, it.ref);
-      else if (it.kind === 1) this._propDraw(ctx, cam, it.ref);
-      else if (it.kind === 3) this._card(ctx, cam, it.key);
-      else it.draw(ctx, cam, this);
+      if (it.kind === 0) { if (!off.solid) this._solid(ctx, cam, it.ref); }
+      else if (it.kind === 1) { if (!off.props) this._propDraw(ctx, cam, it.ref); }
+      else if (it.kind === 3) { if (!off.cards) this._card(ctx, cam, it.key); }
+      else if (!off.actors) it.draw(ctx, cam, this);
     }
     void W; void H;
   }
@@ -197,64 +198,76 @@ export class Renderer {
 
   // ── [A] 바닥 묶음: 같은 높이·재질의 바닥을 한 번에 ──
   _floorGroup(ctx, cam, g) {
-    const B = this.B, W = cam.W, H = cam.H, top = g.top;
+    for (const s of g.slabs) this._faces(ctx, cam, s, s.top);      // 옆면 (구덩이 안벽·계단 챌면)
+    this._tops(ctx, cam, g.slabs, g.top, g.mat, g.mat !== 'pit');
+  }
+  /**
+   * 윗면 그리기 (같은 높이의 판 여러 장을 한 번에). 깊이를 화면 STRIP px 두께의 띠로 나누고, 띠마다
+   *   ① 기본 변환에서 그 띠에 걸친 판들의 사다리꼴을 경로로 만들고  ② 변환을 그 깊이의 배율로 바꾼 뒤 무늬로 채운다
+   * (경로는 만들 때의 변환, 무늬는 채울 때의 변환을 따른다 → 가장자리는 정확한 사선, 무늬는 세계에 붙은 원근 — clip 없이).
+   */
+  _tops(ctx, cam, slabs, top, mat, fog) {
+    const B = this.B, W = cam.W, H = cam.H;
     const hh = cam.h - (top - cam.y);
-    // 옆면 (구덩이 안벽·계단 챌면)
-    for (const s of g.slabs) this._faces(ctx, cam, s, s.top);
     if (!cam.ortho && hh <= 6) return;
     const zLo = Math.max(cam.zNear, cam.zAtY(H + 10, top)), zHi = cam.z + FAR;
-    let za = Infinity, zb = -Infinity, xa = Infinity, xb = -Infinity, any = false;
-    ctx.beginPath();
-    for (const s of g.slabs) {
+    const V = this._vis; let n = 0, za = Infinity, zb = -Infinity;
+    for (const s of slabs) {
       const z0 = Math.max(s.z0, zLo), z1 = Math.min(s.z1, zHi);
       if (z1 <= z0) continue;
       const s0 = cam.s(z0), s1 = cam.s(z1);
-      const ax = cam.px(s.x0, s0), bx = cam.px(s.x1, s0), cx2 = cam.px(s.x1, s1), dx = cam.px(s.x0, s1);
-      if (Math.max(bx, cx2) < -2 || Math.min(ax, dx) > W + 2) continue;
-      const y0 = cam.py(top, z0, s0), y1 = cam.py(top, z1, s1);
-      if (y0 < -2 || y1 > H + 2) continue;
-      ctx.moveTo(ax, y0); ctx.lineTo(bx, y0); ctx.lineTo(cx2, y1); ctx.lineTo(dx, y1); ctx.closePath();
-      any = true;
-      if (z0 < za) za = z0; if (z1 > zb) zb = z1; if (s.x0 < xa) xa = s.x0; if (s.x1 > xb) xb = s.x1;
+      if (Math.max(cam.px(s.x1, s0), cam.px(s.x1, s1)) < -2 || Math.min(cam.px(s.x0, s0), cam.px(s.x0, s1)) > W + 2) continue;
+      if (cam.py(top, z0, s0) < -2 || cam.py(top, z1, s1) > H + 2) continue;
+      const v = V[n] || (V[n] = {}); v.s = s; v.z0 = z0; v.z1 = z1; n++;
+      if (z0 < za) za = z0; if (z1 > zb) zb = z1;
     }
-    if (!any) return;
-    const P = this._pat(ctx, g.mat, 'top');
+    if (!n) return;
+    const P = this._pat(ctx, mat, 'top');
+    ctx.fillStyle = P ? P.pat : this._flat(mat, 'top');
+    let z = za, sA = cam.s(za), y = cam.py(top, za, sA);
+    while (z < zb - 0.01) {
+      let z2 = z + Math.max(2, cam.dzForPx(z, top, STRIP));
+      if (zb - z2 < 2) z2 = zb;
+      const sB = cam.s(z2), y2 = cam.py(top, z2, sB);
+      const vs = (y - y2) / (z2 - z);
+      let any = false;
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        const v = V[i], a = v.z0 > z ? v.z0 : z, b = v.z1 < z2 ? v.z1 : z2;
+        if (b <= a) continue;
+        const sa = a === z ? sA : cam.s(a), sb = b === z2 ? sB : cam.s(b);
+        const ya = a === z ? y : cam.py(top, a, sa), yb = (b === z2 ? y2 : cam.py(top, b, sb)) - (b < v.z1 ? 0.75 : 0);
+        ctx.moveTo(cam.px(v.s.x0, sa), ya); ctx.lineTo(cam.px(v.s.x1, sa), ya); ctx.lineTo(cam.px(v.s.x1, sb), yb); ctx.lineTo(cam.px(v.s.x0, sb), yb); ctx.closePath();
+        any = true;
+      }
+      if (any) {
+        if (P && vs > 1e-4) {
+          const sm = (sA + sB) / 2;
+          ctx.setTransform(B.a * sm, 0, 0, -B.d * vs, B.e + B.a * (cam.cx - cam.x * sm), B.f + B.d * (y + z * vs));
+          ctx.fill();
+          ctx.setTransform(B);
+        } else ctx.fill();
+        this.stats.strips++;
+      }
+      z = z2; y = y2; sA = sB;
+    }
+    if (!fog) return;
+    const k1 = this.fogK(zb - cam.z);
+    if (k1 <= 0.02) return;
     const ya = cam.py(top, za, cam.s(za)), yb = cam.py(top, zb, cam.s(zb));
-    if (!P) {
-      ctx.fillStyle = this._flat(g.mat, 'top'); ctx.fill();
-    } else {
-      ctx.save(); ctx.clip();
-      ctx.fillStyle = P.pat;
-      let z = za, y = ya;
-      while (z < zb - 0.01) {
-        let z2 = z + Math.max(2, cam.dzForPx(z, top, STRIP));
-        if (zb - z2 < 2) z2 = zb;
-        const sm = cam.s((z + z2) / 2), y2 = cam.py(top, z2, cam.s(z2));
-        const vs = (y - y2) / (z2 - z);
-        if (vs > 1e-4) {
-          const ov = 0.7 / vs;
-          const x0 = Math.max(xa, cam.x - (cam.cx + 6) / sm), x1 = Math.min(xb, cam.x + (W - cam.cx + 6) / sm);
-          if (x1 > x0) {
-            ctx.setTransform(B.a * sm, 0, 0, -B.d * vs, B.e + B.a * (cam.cx - cam.x * sm), B.f + B.d * (y + z * vs));
-            ctx.fillRect(x0, z - ov, x1 - x0, z2 - z + ov * 2);
-            this.stats.strips++;
-          }
-        }
-        z = z2; y = y2;
-      }
-      ctx.setTransform(B);
-      ctx.restore();
-      // restore 가 경로를 지우지 않는다 → 같은 경로에 안개를 덮는다
+    const zm = (za + zb) / 2, ym = cam.py(top, zm, cam.s(zm));
+    const lg = ctx.createLinearGradient(0, ya, 0, yb);
+    lg.addColorStop(0, this.fogCss(this.fogK(za - cam.z))); lg.addColorStop(Math.min(1, Math.max(0, (ya - ym) / Math.max(1, ya - yb))), this.fogCss(this.fogK(zm - cam.z))); lg.addColorStop(1, this.fogCss(k1));
+    ctx.fillStyle = lg;
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const v = V[i], s0 = cam.s(v.z0), s1 = cam.s(v.z1), y0 = cam.py(top, v.z0, s0), y1 = cam.py(top, v.z1, s1);
+      ctx.moveTo(cam.px(v.s.x0, s0), y0); ctx.lineTo(cam.px(v.s.x1, s0), y0); ctx.lineTo(cam.px(v.s.x1, s1), y1); ctx.lineTo(cam.px(v.s.x0, s1), y1); ctx.closePath();
     }
-    if (g.mat !== 'pit') {
-      const k0 = this.fogK(za - cam.z), k1 = this.fogK(zb - cam.z);
-      if (k1 > 0.02) {
-        const zm = (za + zb) / 2, lg = ctx.createLinearGradient(0, ya, 0, yb), ym = cam.py(top, zm, cam.s(zm));
-        lg.addColorStop(0, this.fogCss(k0)); lg.addColorStop(Math.min(1, Math.max(0, (ya - ym) / Math.max(1, ya - yb))), this.fogCss(this.fogK(zm - cam.z))); lg.addColorStop(1, this.fogCss(k1));
-        ctx.fillStyle = lg; ctx.fill();
-      }
-    }
+    ctx.fill();
   }
+  _vis = [];
+  _one = [null];
 
   /** 판 하나의 보이는 옆면들 (앞면 + 카메라 쪽 옆면). top = 지금 윗면 높이 (잘린 벽은 낮다) */
   _faces(ctx, cam, s, top) {
@@ -332,30 +345,32 @@ export class Renderer {
     if (Math.max(xa, xb) < 0 || Math.min(xa, xb) > W) return;
     const ta = cam.py(top, za, sa), tb = cam.py(top, zb, sb), ba = cam.py(base, za, sa), bb = cam.py(base, zb, sb);
     if (Math.max(ba, bb) < 0 || Math.min(ta, tb) > H) return;
-    ctx.beginPath(); ctx.moveTo(xa, ta); ctx.lineTo(xb, tb); ctx.lineTo(xb, bb); ctx.lineTo(xa, ba); ctx.closePath();
     const P = this._pat(ctx, mat, 'side');
     this.stats.faces++;
-    if (!P) { ctx.fillStyle = this._flat(mat, 'side'); ctx.fill(); }
+    if (!P) { ctx.fillStyle = this._flat(mat, 'side'); ctx.beginPath(); ctx.moveTo(xa, ta); ctx.lineTo(xb, tb); ctx.lineTo(xb, bb); ctx.lineTo(xa, ba); ctx.closePath(); ctx.fill(); }
     else {
-      ctx.save(); ctx.clip();
       ctx.fillStyle = P.pat;
+      const dir = xb > xa ? 1 : -1;
       let z = za, x = xa, s = sa;
       while (z < zb - 0.01) {
         let z2 = z + Math.max(3, cam.dzForPxX(z, xf, STRIP + 2));
         if (zb - z2 < 3) z2 = zb;
-        const s2 = cam.s(z2), x2 = cam.px(xf, s2);
+        const s2 = cam.s(z2), x2 = cam.px(xf, s2), xe = x2 + (z2 < zb ? 0.75 * dir : 0);
         const us = (x2 - x) / (z2 - z);
         if (Math.abs(us) > 1e-5) {
-          const ov = 0.7 / Math.abs(us);
-          ctx.setTransform(B.a * us, 0, 0, -B.d * s, B.e + B.a * (x - z * us), B.f + B.d * (cam.gy(z, s) + cam.y * s));
-          ctx.fillRect(z - ov, base - 2, z2 - z + ov * 2, top - base + 4);
+          const gy1 = cam.gy(z, s), gy2 = cam.gy(z2, s2);
+          ctx.beginPath();
+          ctx.moveTo(x, gy1 - (top - cam.y) * s); ctx.lineTo(xe, gy2 - (top - cam.y) * s2); ctx.lineTo(xe, gy2 - (base - cam.y) * s2); ctx.lineTo(x, gy1 - (base - cam.y) * s); ctx.closePath();
+          const sm = (s + s2) / 2;
+          ctx.setTransform(B.a * us, 0, 0, -B.d * sm, B.e + B.a * (x - z * us), B.f + B.d * ((gy1 + gy2) / 2 + cam.y * sm));
+          ctx.fill();
+          ctx.setTransform(B);
           this.stats.strips++;
         }
         z = z2; x = x2; s = s2;
       }
-      ctx.setTransform(B);
-      ctx.restore();
     }
+    ctx.beginPath(); ctx.moveTo(xa, ta); ctx.lineTo(xb, tb); ctx.lineTo(xb, bb); ctx.lineTo(xa, ba); ctx.closePath();
     const k0 = this.fogK(za - cam.z), k1 = this.fogK(zb - cam.z);
     if (k1 > 0.02) {
       const lg = ctx.createLinearGradient(xa, 0, xb, 0);
@@ -367,39 +382,21 @@ export class Renderer {
   _solid(ctx, cam, s) {
     const top = s.cutK > 0 ? s.top + (s.floorY + 22 - s.top) * s.cutK : s.top;
     this._faces(ctx, cam, s, top);
-    const hh = cam.h - (top - cam.y);
-    if (hh <= 6 && !cam.ortho) return;
-    const W = cam.W, H = cam.H, B = this.B;
-    const z0 = Math.max(s.z0, cam.zNear, cam.zAtY(H + 10, top)), z1 = Math.min(s.z1, cam.z + FAR);
-    if (z1 <= z0) return;
-    const s0 = cam.s(z0), s1 = cam.s(z1);
-    const ax = cam.px(s.x0, s0), bx = cam.px(s.x1, s0), cx2 = cam.px(s.x1, s1), dx = cam.px(s.x0, s1);
-    if (Math.max(bx, cx2) < 0 || Math.min(ax, dx) > W) return;
-    const y0 = cam.py(top, z0, s0), y1 = cam.py(top, z1, s1);
-    if (y0 < 0 || y1 > H) return;
-    ctx.beginPath(); ctx.moveTo(ax, y0); ctx.lineTo(bx, y0); ctx.lineTo(cx2, y1); ctx.lineTo(dx, y1); ctx.closePath();
-    const P = this._pat(ctx, s.mat, 'top');
-    if (!P) { ctx.fillStyle = this._flat(s.mat, 'top'); ctx.fill(); }
-    else {
-      ctx.save(); ctx.clip(); ctx.fillStyle = P.pat;
-      let z = z0, y = y0;
-      while (z < z1 - 0.01) {
-        let z2 = z + Math.max(2, cam.dzForPx(z, top, STRIP));
-        if (z1 - z2 < 2) z2 = z1;
-        const sm = cam.s((z + z2) / 2), y2 = cam.py(top, z2, cam.s(z2)), vs = (y - y2) / (z2 - z);
-        if (vs > 1e-4) {
-          const ov = 0.7 / vs;
-          ctx.setTransform(B.a * sm, 0, 0, -B.d * vs, B.e + B.a * (cam.cx - cam.x * sm), B.f + B.d * (y + z * vs));
-          ctx.fillRect(s.x0 - 4, z - ov, s.x1 - s.x0 + 8, z2 - z + ov * 2);
-          this.stats.strips++;
-        }
-        z = z2; y = y2;
-      }
-      ctx.setTransform(B); ctx.restore();
-    }
-    const fk = this.fogK((z0 + z1) / 2 - cam.z);
-    if (fk > 0.02) { ctx.fillStyle = this.fogCss(fk); ctx.fill(); }
-    if (s.tag === 'crate') { ctx.strokeStyle = 'rgba(20,10,6,0.7)'; ctx.lineWidth = Math.max(1, 3 * s0); ctx.stroke(); }
+    this._one[0] = s;
+    this._tops(ctx, cam, this._one, top, s.mat, true);
+    if (s.tag === 'crate') this._crateEdges(ctx, cam, s, top);
+  }
+  /** 상자: 모서리 선 (덩어리가 읽히게) */
+  _crateEdges(ctx, cam, s, top) {
+    if (s.z0 <= cam.zNear) return;
+    const s0 = cam.s(s.z0), s1 = cam.s(s.z1);
+    ctx.strokeStyle = 'rgba(16,8,4,0.75)'; ctx.lineWidth = Math.max(1, 2.5 * s0); ctx.lineJoin = 'round';
+    ctx.beginPath();
+    const ax = cam.px(s.x0, s0), bx = cam.px(s.x1, s0), y0 = cam.py(top, s.z0, s0), yb = cam.py(s.floorY, s.z0, s0);
+    ctx.rect(ax, y0, bx - ax, yb - y0);
+    ctx.moveTo(ax, y0); ctx.lineTo(cam.px(s.x0, s1), cam.py(top, s.z1, s1)); ctx.lineTo(cam.px(s.x1, s1), cam.py(top, s.z1, s1)); ctx.lineTo(bx, y0);
+    ctx.moveTo(ax + (bx - ax) * 0.08, y0 + (yb - y0) * 0.1); ctx.lineTo(bx - (bx - ax) * 0.08, yb - (yb - y0) * 0.1);
+    ctx.stroke();
   }
   // ── 빛 웅덩이 (바닥 위, 더하기) ──
   _pools(ctx, cam) {
