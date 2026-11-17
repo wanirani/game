@@ -51,6 +51,8 @@ async function staged() {
   addEventListener('keydown', (e) => { const a = KEYS[e.code]; if (a) { queue.add(a); e.preventDefault(); } });
   const game = { input, settings: { textSize, touchScale: Number(Q.get('tscale')) || 1, touchOpacity: 0.95 }, canvas: cv, registry: {}, viewW: 960, viewH: 540, scale: 1, cssScale: 1, canvasRect: { x: 0, y: 0, w: innerWidth, h: innerHeight }, safeCss: { l: 0, t: 0, r: 0, b: 0 } };
   const safe = { l: 0, t: 0, r: 0, b: 0 };
+  const INS = (Q.get('inset') || '0,0,0,0').split(',').map(Number);   // simulated safe-area insets in CSS px: l,t,r,b (safeArea = full)
+  game.safeCss = { l: INS[0] || 0, t: INS[1] || 0, r: INS[2] || 0, b: INS[3] || 0 };
   function resize() {
     const W = innerWidth, H = innerHeight, asp = W / H;                 // the same view rule as src/core/game.js (tall view)
     if (asp >= 16 / 9) { game.viewH = 540; game.viewW = Math.round(540 * asp); } else { game.viewW = 960; game.viewH = Math.min(760, Math.round(960 / asp)); }
@@ -58,6 +60,7 @@ async function staged() {
     cv.width = Math.floor(W * dpr); cv.height = Math.floor(H * dpr);
     game.scale = cv.width / game.viewW; game.cssScale = H / game.viewH; game.canvasRect = { x: 0, y: 0, w: W, h: H };
     S.viewW = game.viewW; S.viewH = game.viewH; S.scale = game.scale;
+    const c = game.cssScale, q = game.safeCss; safe.l = q.l / c; safe.t = q.t / c; safe.r = q.r / c; safe.b = q.b / c;
   }
 
   // ── scripted HudState (the shape of docs/v2/UI_API.md 1) ──
@@ -91,8 +94,8 @@ async function staged() {
     if (view === 'states') S.pad = { skill: { mode: 'call', cd: 0.62 }, bell: { mode: 'long', charge: 0.7 }, roll: { disabled: true }, attack: {} };
     if (view === 'many' || view === 'night') { S.candles = { lit: 11.5, max: 16 }; S.resonance = { value: 5, cells: 5 }; S.night = 'past'; S.area = { id: 'eshville_past', name: '에슈빌', era: 'past' }; S.moon = { phase: 1 }; }
     if (view === 'kb' || view === 'padk' || view === 'play') S.prompts = [{ action: 'interact', label: '종을 살핀다' }, { action: 'skill1', label: '채찍 걸기' }, { action: 'interact', label: '문을 연다', x: vw() * 0.5, y: 0, z: vh() * 0.44 }];
-    if (view === 'dialog') hud.showDialog({ speaker: '엘리제', portrait: 'elise', text: '종이 울리면 그 밤으로 건너가요. 돌아올 길은 종소리가 닿는 데까지예요.\n촛불을 아끼세요, 사냥꾼. 밤은 길고 우리는 아직 첫 종도 울리지 못했어요.' });
-    if (view === 'choice') hud.showDialog({ speaker: '알베르토 신부', portrait: 'alberto', side: 'left', text: '그 밤으로 건너가겠나? 종이 식기 전에 돌아와야 하네.', choices: ['건넌다', '아직 아니다'] });
+    if (view === 'dialog') hud.showDialog({ speaker: '엘리제', portrait: 'elise', text: '종이 울리면 그 밤으로 건너가요. 돌아올 길은 종소리가 닿는 데까지예요.\n촛불을 아끼세요, 사냥꾼. 밤은 길고 우리는 아직 첫 종도 울리지 못했어요.', onDone() { log.push(['dialog', 'done']); } });
+    if (view === 'choice') hud.showDialog({ speaker: '알베르토 신부', portrait: 'alberto', side: 'left', text: '그 밤으로 건너가겠나? 종이 식기 전에 돌아와야 하네.', choices: ['건넌다', '아직 아니다'], onChoice(i) { log.push(['dialog', 'choice', i]); } });
     if (view === 'pause') hud.openPause({ onResume() { log.push(['pause', 'resume']); }, onSettings() { log.push(['pause', 'settings']); }, onLeave() { log.push(['pause', 'leave']); } });
     if (view === 'night' || view === 'many') hud.banner('night');
     if (view === 'toast' || view === 'play' || view === 'boss') { hud.toast('은종 조각 ×2', { kind: 'item' }); hud.toast('길종이 울렸다', { kind: 'info', icon: 'bell' }); }
@@ -105,6 +108,7 @@ async function staged() {
   if (freeze) for (let i = 0; i < 260; i++) hud.update(1 / 60, S);    // a frozen capture starts after the place-name banner has gone
   setup();
   for (let i = 0; i < (freeze ? 30 : 2); i++) hud.update(1 / 60, S);   // let banners and toasts fade in
+  if (freeze && hud.dialogOpen) { hud.advanceDialog(); hud.update(1 / 60, S); }   // a frozen capture shows the whole page
 
   let lastT = performance.now(), acc = 0;
   function frame(now) {

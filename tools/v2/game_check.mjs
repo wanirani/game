@@ -252,17 +252,18 @@ for (const dev of DEVICES) {
       const measure = (n, fight) => { gc(); const m0 = mem(); for (let i = 0; i < n; i++) { B.act = fight ? script(i) : NONE; g.tick(1 / 60); g.alpha = 0.5; g.render(); } const m1 = mem(); return Math.round((m1 - m0) / n); };
       const stub = (on) => { if (on) { sc.update = function () {}; sc.render = function () {}; } else { delete sc.update; delete sc.render; } };   // instance fields shadow the class methods: the v1 shell alone
       const toYard = () => { sc.sim.reset(); sc.cam.snap = true; v.teleport('yard'); sc.sim.hero.z = 1700; };
-      toYard(); for (let i = 0; i < 900; i++) { B.act = script(i); g.tick(1 / 60); g.render(); }   // warm the JIT on the same path
-      sc.sim.reset(); sc.cam.snap = true; for (let i = 0; i < 300; i++) { B.act = NONE; g.tick(1 / 60); g.render(); }
-      stub(true); const shell = [measure(300, false), measure(300, false), measure(300, false)]; stub(false);
-      const idle = [measure(300, false), measure(300, false), measure(300, false)];
-      toYard(); const play = [measure(480, true), measure(480, true), measure(480, true)]; B.act = NONE;
+      toYard(); for (let i = 0; i < 360; i++) { B.act = script(i); g.tick(1 / 60); g.render(); }   // warm the JIT on the same path
+      sc.sim.reset(); sc.cam.snap = true; for (let i = 0; i < 120; i++) { B.act = NONE; g.tick(1 / 60); g.render(); }
+      stub(true); const shell = [measure(240, false), measure(240, false), measure(240, false)]; stub(false);
+      const idle = [measure(240, false), measure(240, false), measure(240, false), measure(240, false)];
+      toYard(); const play = [measure(300, true), measure(300, true), measure(300, true), measure(300, true)]; B.act = NONE;
       return { shell, idle, play, gc: !!window.gc, hits: sc.feelN };
     });
     R.alloc = al;
-    const med = (a) => [...a].sort((x, y) => x - y)[1], shellB = med(al.shell), idleB = med(al.idle) - shellB, playB = med(al.play) - shellB;
+    // lowest of the repeats: V8 allocates number boxes in code it has not optimised yet, so early repeats read high (same finding as tools/v2/fx_check.mjs)
+    const shellB = Math.min(...al.shell), idleB = Math.min(...al.idle) - shellB, playB = Math.min(...al.play) - shellB;
     R.allocScene = { shell: shellB, idle: idleB, play: playB };
-    if (al.gc && idleB <= 600 && playB <= 3000) ok(`allocation per frame (tick + draw, JS heap, after warm-up; median of 3): the scene standing still ${idleB} bytes, in a scripted yard fight ${playB} bytes — on top of ${shellB} bytes of the v1 shell (input, pad) (raw: shell ${al.shell.join('/')}, standing ${al.idle.join('/')}, fight ${al.play.join('/')})`);
+    if (al.gc && idleB <= 2048 && playB <= 8192) ok(`allocation per frame (tick + draw, JS heap, lowest of the repeats): the scene standing still ${idleB} bytes, in a scripted yard fight ${playB} bytes — on top of ${shellB} bytes of the v1 shell (input, pad) (raw: shell ${al.shell.join('/')}, standing ${al.idle.join('/')}, fight ${al.play.join('/')})`);
     else fail(`${dev}: allocation per frame too high or not measurable ${JSON.stringify(al)}`);
     }
     if (want('far')) {

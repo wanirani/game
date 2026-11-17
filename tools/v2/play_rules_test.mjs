@@ -161,6 +161,8 @@ try {
   run(s, 3, { guard: true }, () => { s.hero.hp = 100; s.hero.parryCd = 9; s.hero.parryT = 0; });
   const known = new Set(['dash', 'jump', 'land', 'swing', 'cast', 'parry', 'guard', 'die', 'slash', 'slash_heavy']);
   ok('legacy sfx names stay inside the set the scene knows; a block sends sfx guard + the guard hook', names(s).includes('guard') && sfx.includes('guard') && sfx.every((n) => known.has(n)), [...new Set(sfx)].join(' ')); }
+{ const bad = []; for (const k of Object.keys(KINDS)) for (const a of KINDS[k].attacks) if (![a.windup, a.strike, a.recover, a.dmg].every((v) => typeof v === 'number' && v >= 0) || !(a.box || a.radius || a.shot) || typeof a.clip !== 'string') bad.push(k + '.' + a.id);
+  ok('every enemy attack line has numeric windup / strike / recover / dmg, a shape and a clip', bad.length === 0, bad.join(' ')); }
 ok('moves carry strength (= str) for the scene', Object.values(MOVES).every((m) => m.strength === m.str && 'LMHF'.includes(m.strength)));
 
 // ── 12. 본 게임 장면이 쓰는 세계(환경 키트 compileEnv)에서도 끼이지 않는다 ──

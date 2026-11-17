@@ -3,13 +3,14 @@
 // 공격 한 줄: { id, clip, range(이 거리 안에서 시작; [가까이, 멀리] 도 됨), windup(예고) · strike(판정) · recover(틈), dmg,
 //   box{f0,f1,side,y0,y1} | radius{r,fwd,y0,y1} | shot{…}, lunge(판정 동안 앞으로 가는 거리), track(예고 동안 영웅을 따라 도는 빠르기 rad/초),
 //   guard: 'block'(막힌다) | 'chip'(막아도 조금 닳는다) | 'break'(막을 수 없다 — 구른다), parry(튕겨낼 수 있나), staggerT(튕겨진 뒤 비틀거리는 초),
+//   cut [클립 초, 클립 초] 무기가 몸 앞을 지나는 클립 구간 — 판정 구간(strike 초 동안)에 겹쳐 튼다 (없으면 클립 자료의 strike; 재는 법: node tools/v2/play_cliptrace.mjs <clip>),
 //   cd[최소,최대] 다음 공격까지, weapon · str (소리 · 타격감 표의 무기와 세기), sound (예고가 시작될 때 hooks.sound 로 낼 사건 이름 — SOUND_FEEL §6) }
 import { UNIT, TUNE } from './tune.js';
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 const A = (o) => Object.freeze({ guard: 'block', parry: true, staggerT: 1.25, track: 6, cd: [0.8, 1.4], weapon: 'sword', str: 'M', knock: 240, ...o });
 
-const SLASH = A({ id: 'slash', clip: 'atk2_fore', range: 86, windup: 0.46, strike: 0.14, recover: 0.42, dmg: 10, lunge: 22, box: { f0: -6, f1: 100, side: 38, y0: 0, y1: 112 } });
+const SLASH = A({ id: 'slash', clip: 'atk2_fore', cut: [0.28, 0.46], range: 86, windup: 0.46, strike: 0.14, recover: 0.42, dmg: 10, lunge: 22, box: { f0: -6, f1: 100, side: 38, y0: 0, y1: 112 } });
 const STAB = A({ id: 'stab', clip: 'stab', range: [92, 156], chance: 0.5, windup: 0.52, strike: 0.16, recover: 0.5, dmg: 11, lunge: 74, box: { f0: 0, f1: 112, side: 26, y0: 10, y1: 100 } });
 const BOLT = A({ id: 'bolt', kind: 'cast', clip: 'cast_raise', range: 600, windup: 0.8, strike: 0.1, recover: 0.45, dmg: 9, track: 9, cd: [2.2, 3.2], weapon: 'arrow',
   shot: { kind: 'bolt', element: 'blood', speed: 250, r: 13, life: 3.6, y: 0.66 } });
@@ -24,6 +25,7 @@ const THRUST = A({ id: 'thrust', clip: 'thrust', range: [136, 226], chance: 0.6,
 const DIVE = A({ id: 'dive', clip: 'fly', range: 250, windup: 0.36, strike: 0.5, recover: 0.3, dmg: 5, lunge: 215, track: 12, staggerT: 1.0, cd: [2.0, 3.6], weapon: 'dagger', str: 'L', knock: 150,
   radius: { r: 24, fwd: 0, y0: -30, y1: 60 }, sound: 'enemy.bat.screech' });
 
+// stride = 걷기 클립 한 주기에 나아가는 거리(px). 디딘 발이 가장 덜 미끄러지는 값을 뼈대에서 재서 넣었다 (병사 11 % · 술사 31 % · 주검 52 % · 갑주 32 % — 주검의 어기적 걸음은 본래 발을 끄는 동작이다)
 const K = (o) => {
   const k = { weapon: null, r: 15, hp: 30, speed: 90, turn: 8, sight: 440, weight: 0, stun: 0.3, dieT: 1.3, standoff: 62, attacks: [], lib: true, ...o };
   k.hpx = Math.round(k.height * UNIT * 0.94);   // 맞는 상자 높이 (px)
@@ -33,19 +35,19 @@ const K = (o) => {
 /** 적 · 보스 종류표. model = assets/v2/char3d/<model>.glb, weapon = 손에 붙일 소품 모델 id */
 export const KINDS = {
   skeleton_soldier: K({ name: '해골 병사', model: 'skeleton_soldier', weapon: 'w_rusty_sword', height: 1.75, material: 'bone', ai: 'melee',
-    hp: 34, speed: 104, stride: 86, attacks: [SLASH, STAB], wakeSound: 'enemy.skel.rattle',
+    hp: 34, speed: 104, stride: 78, attacks: [SLASH, STAB], wakeSound: 'enemy.skel.rattle',
     clips: { idle: 'idle_combat', walk: 'walk', hurt: 'hit_light', stagger: 'stagger', death: 'death_back' } }),
   skeleton_mage: K({ name: '해골 술사', model: 'skeleton_mage', weapon: 'w_crystal_staff', grip: { pos: [0, 7, 3], rotX: 100, rotY: 0, rotZ: 0 }, height: 1.85, material: 'bone', ai: 'ranged',
-    hp: 26, speed: 78, stride: 80, sight: 540, near: 190, far: 350, attacks: [BOLT], wakeSound: 'enemy.skel.rattle',
+    hp: 26, speed: 78, stride: 86, sight: 540, near: 190, far: 350, attacks: [BOLT], wakeSound: 'enemy.skel.rattle',
     clips: { idle: 'idle', walk: 'walk', hurt: 'hit_light', stagger: 'stagger', death: 'death_back' } }),
   plague_corpse: K({ name: '역병 주검', model: 'plague_corpse', height: 1.76, material: 'flesh', ai: 'melee',
-    hp: 82, speed: 46, stride: 50, turn: 3.2, weight: 0.5, stun: 0.14, poise: true, standoff: 96, attacks: [GRAB], dieT: 1.7,
+    hp: 82, speed: 46, stride: 40, turn: 3.2, weight: 0.5, stun: 0.14, poise: true, standoff: 96, attacks: [GRAB], dieT: 1.7,
     clips: { idle: 'idle', walk: 'shamble', hurt: 'hit_heavy', stagger: 'stagger', death: 'death_front' } }),
   grave_ghost: K({ name: '무덤 유령', model: 'grave_ghost', height: 1.95, material: 'ghost', ai: 'ghost',
     hp: 30, speed: 80, turn: 6, floats: true, hover: 14, fade: 0.3, solidAfter: 0.9, standoff: 130, attacks: [SWOOP], dieT: 0.8,
     clips: { idle: 'float_idle', walk: 'float_idle', hurt: 'hit_light', stagger: 'stun', death: 'hit_heavy' } }),
   gravekeeper_armor: K({ name: '무덤지기 갑주', model: 'gravekeeper_armor', weapon: 'w_grave_spade', grip: { pos: [0, 9, 4], rotX: -80, rotY: 0, rotZ: 0 }, height: 2.35, material: 'armor', ai: 'melee', elite: true,
-    hp: 170, r: 24, speed: 58, stride: 78, turn: 2.4, weight: 0.85, stun: 0.12, poise: true, standoff: 92, armorFront: { arc: 80, k: 0.15 }, attacks: [SLAM, THRUST], dieT: 2.0, steps: true,
+    hp: 170, r: 24, speed: 58, stride: 86, turn: 2.4, weight: 0.85, stun: 0.12, poise: true, standoff: 92, armorFront: { arc: 80, k: 0.15 }, attacks: [SLAM, THRUST], dieT: 2.0, steps: true,
     clips: { idle: 'idle_combat', walk: 'brute_walk', hurt: 'block_hit', stagger: 'stagger', death: 'knockdown' } }),
   bat: K({ name: '박쥐', model: 'bat', height: 0.45, material: 'flesh', ai: 'bat', lib: false,
     hp: 8, r: 11, speed: 200, turn: 14, fly: true, hover: 96, pitch: 50, orbit: [130, 190], attacks: [DIVE], dieT: 0.7, sight: 520,

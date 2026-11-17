@@ -80,7 +80,7 @@ export class CharRenderer {
     this._id = new Float32Array(maxJoints * 12); for (let i = 0; i < maxJoints; i++) { this._id[i * 12] = 1; this._id[i * 12 + 5] = 1; this._id[i * 12 + 10] = 1; }
     this.gl2 = typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext;
     this.u32 = this.gl2 || !!gl.getExtension('OES_element_index_uint');
-    this.noise = null; this.white = null;
+    this.noise = null; this.white = null; this._lp = undefined; this._lpv = ZERO16; this._lcv = ZERO16;
     this._init();
   }
   _init() {
@@ -172,7 +172,8 @@ export class CharRenderer {
     gl.uniform3fv(u.uFogCol, env.fog.color);
     gl.uniform3fv(u.uSunDir, env.sunDir); gl.uniform3fv(u.uSun, env.sun); gl.uniform3fv(u.uAmb, env.amb);
     gl.uniform3fv(u.uEye, env.eye);
-    gl.uniform4fv(u.uLP, lp ? lp.subarray(0, NL * 4) : ZERO16); gl.uniform4fv(u.uLC, lc ? lc.subarray(0, NL * 4) : ZERO16);
+    if (lp !== this._lp) { this._lp = lp; this._lpv = lp ? lp.subarray(0, NL * 4) : ZERO16; this._lcv = lc ? lc.subarray(0, NL * 4) : ZERO16; }   // views are made once per light list, not per frame
+    gl.uniform4fv(u.uLP, this._lpv); gl.uniform4fv(u.uLC, this._lcv);
     gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, noiseTex ?? this.white); gl.activeTexture(gl.TEXTURE0);
     this.hasNoise = !!noiseTex;
     gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL);

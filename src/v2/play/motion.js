@@ -76,7 +76,8 @@ export function warpMove(clip, t, mv) {
 /** 적 공격: 예고(windup) 동안 준비 동작을 천천히 올려 붙들고, 판정(strike) 동안 strike 구간을, 그 뒤는 마무리 */
 export function warpAttack(clip, t, a) {
   const dur = clip.duration; let s0, s1;
-  if (clip.meta?.strike) { s0 = clip.meta.strike[0]; s1 = clip.meta.strike[1]; }
+  const SK = a.cut ?? clip.meta?.strike;   // (a.strike 는 판정 길이(초)다 — 클립 구간은 a.cut)
+  if (SK) { s0 = SK[0]; s1 = SK[1]; }
   else { const r = clip.events?.find((e) => e[1] === 'release'); if (r) { s0 = r[0]; s1 = Math.min(dur, r[0] + 0.16); } else { s0 = dur * 0.4; s1 = dur * 0.62; } }
   const w = a.windup, st = a.strike;
   if (t < w) { const u = 1 - t / w, lead = Math.min(s0, w * 1.5); return s0 - lead * u * u; }

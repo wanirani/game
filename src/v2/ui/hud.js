@@ -150,7 +150,7 @@ export function createCanvasHud(game, opts = {}) {
     c.textBaseline = 'alphabetic';
   }
   // one prompt chip: [key cap | action icon] label
-  function promptW(p, ts) { return measure(p.label ?? '', ts, 600) + px(30) + px(26); }
+  function promptW(p, ts) { return measure(p.label ?? '', ts, 600) + px(18) + px(26); }
   function drawPrompt(c, p, x, y, ts, mode) {
     const h = px(28), w = promptW(p, ts);
     glassPanel(c, x, y, w, h, { cut: px(6), dense: 0.45 });
@@ -254,8 +254,9 @@ export function createCanvasHud(game, opts = {}) {
     // names appear by themselves when the place changes
     const aid = s.area?.id ?? null, sid = s.section?.id ?? null;
     if (!s.loading && !s.message) {
-      if (aid !== T.areaId) { T.areaId = aid; T.secId = sid; if (s.area?.name) setBanner('area', s.area.name, s.section?.label && s.section.label !== s.area.name ? s.section.label : ''); }
-      else if (sid !== T.secId) { T.secId = sid; if (s.section?.label && !(banner.on && banner.kind === 'area' && banner.t < 1.5)) setBanner('section', s.section.label); }
+      const keep = banner.on && banner.kind === 'night';   // the night banner is never replaced by a place name
+      if (aid !== T.areaId) { T.areaId = aid; T.secId = sid; if (s.area?.name && !keep) setBanner('area', s.area.name, s.section?.label && s.section.label !== s.area.name ? s.section.label : ''); }
+      else if (sid !== T.secId) { T.secId = sid; if (s.section?.label && !keep && !(banner.on && banner.kind === 'area' && banner.t < 1.5)) setBanner('section', s.section.label); }
     }
     if (s.done && !(banner.on && banner.kind === 'clear')) setBanner('clear', opts.labels?.clear ?? '길이 열렸다');
     else if (!s.done && banner.on && banner.kind === 'clear') banner.on = false;
