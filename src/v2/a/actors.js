@@ -59,7 +59,7 @@ export class Hero {
     this.facing = 1; this.onGround = true; this.ground = 0; this.landed = false;
     this.hp = HERO_HP; this.maxHp = HERO_HP; this.ghostHp = HERO_HP;
     this.state = 'free'; this.st = 0; this.inv = 0; this.dashCd = 0; this.airJumps = 1; this.coyote = 0;
-    this.combo = 0; this.comboT = 0; this.mv = null; this.mvT = 0; this.hitSet = new Map(); this.kbx = 0;
+    this.combo = 0; this.comboT = 0; this.mv = null; this.mvT = 0; this.hitSet = new Map(); this.kbx = 0; this.assistZ = null;
     this.anim = 'idle'; this.animT = 0; this.t = 0; this.speed = 0; this.drawY = 0;
     this.safe = { x: 0, z: 0 }; this.safeT = 0;
     const W = MOVESETS.whip;
@@ -97,7 +97,8 @@ export class Hero {
     } else if (this.state === 'attack') {
       const mv = this.mv; this.mvT += dt;
       const fr = this.onGround ? 0.82 : 0.96;
-      this.vx *= fr; this.vz = mz * 80;
+      this.vx *= fr;
+      if (this.assistZ !== null && this.mvT < mv.hit[1]) this.vz = clamp((this.assistZ - this.z) * 16, -320, 320); else this.vz = mz * 80;
       if (this.mvT >= mv.hit[0] && this.mvT <= mv.hit[1]) P.heroStrike(this, mv);
       const canCancel = this.mvT >= mv.cancel;
       if (canCancel && input.buffered('attack', 0.22) && this.onGround && this.combo < this.moves.length - 1) { input.consume('attack'); this.startAttack(this.combo + 1, mx); }
@@ -136,8 +137,20 @@ export class Hero {
   }
   _free() { this.state = 'free'; this.mv = null; this.comboT = 0.32; }
   startAttack(i, mx) {
-    if (Math.abs(mx) > 0.25) this.facing = sgn(mx);
+    const P = this.play;
     this.mv = i < 0 ? this.airMove : this.moves[i];
+    const reach = this.mv.box.x + this.mv.box.w;
+    // 조준 도움 ①: 스틱을 옆으로 밀지 않았으면 닿는 거리 안의 가장 가까운 적 쪽을 본다
+    if (Math.abs(mx) > 0.25) this.facing = sgn(mx);
+    else {
+      let bd = 1e9, t = null;
+      for (const e of P.enemies) { if (e.dead) continue; const dx = Math.abs(e.x - this.x), dz = Math.abs(e.z - this.z); if (dx < reach + 20 && dz < 64 && dx + dz * 2 < bd) { bd = dx + dz * 2; t = e; } }
+      if (t && Math.abs(t.x - this.x) > 10) this.facing = sgn(t.x - this.x);
+    }
+    // 조준 도움 ②(깊이 자석): 앞쪽 닿는 거리 안에서 깊이가 조금 어긋난 적이 있으면 휘두르는 동안 그 깊이로 붙는다
+    this.assistZ = null;
+    { let bd = 66;
+      for (const e of P.enemies) { if (e.dead) continue; const fx = (e.x - this.x) * this.facing, dz = Math.abs(e.z - this.z); if (fx > -24 && fx < reach + 30 && dz < bd && e.y < this.y + 120 && e.y + e.h > this.y - 30) { bd = dz; this.assistZ = e.z; } } }
     this.combo = Math.max(0, i); this.mvT = 0; this.state = 'attack'; this.st = 0; this.hitSet.clear(); this.comboT = 1;
     if (this.onGround) this.vx = this.facing * (60 + (this.mv.lunge || 0));
     else if (this.mv.airStall) this.vy = Math.max(this.vy, 120);
@@ -238,7 +251,7 @@ export class Enemy {
     if (!this.awake) {
       const sameGroup = this.group === 'yard' ? P.section === 'yard' : dist < 430 && Math.abs(hero.y - this.ground) < 150;
       if (sameGroup && hero.state !== 'dead') { this.awake = true; this.setState('chase', this.fly ? 'fly' : 'walk'); }
-      else { if (this.fly) this.y = this.ground + this.baseY + Math.sin(this.t * 3) * 6; moveBody(st, this, dt, true); return true; }
+      else { if (this.fly) this.y = (this.ground > PIT_Y + 1 ? this.ground : 0) + this.baseY + Math.sin(this.t * 3) * 6; moveBody(st, this, dt, true); return true; }
     }
     if (this.state === 'hurt') {
       this.vx *= 0.86; this.vz *= 0.86;

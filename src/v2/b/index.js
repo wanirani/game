@@ -51,7 +51,8 @@ export default class V2ProtoB extends Scene {
     this.layer = { on: false, forced: q === '1' ? true : q === '0' ? false : null, ema: 0, n: 0, hud: null, hctx: null, key: '', shown: true, timer: 0 };
     this.hurtV = 0;
     preloadChars();
-    try { this.glr = new GLR(); } catch (e) { this.glError = String(e?.message ?? e); console.warn('[v2b]', this.glError); }
+    let gl1 = false; try { gl1 = new URLSearchParams(globalThis.location?.search ?? '').get('v2gl') === '1'; } catch { gl1 = false; }
+    try { this.glr = new GLR({ forceGL1: gl1 }); } catch (e) { this.glError = String(e?.message ?? e); console.warn('[v2b]', this.glError); }
     if (this.glr && this.layer.forced) this._setLayer(true);
     if (this.glr) this._load().catch((e) => { this.glError = '그림을 준비하지 못했습니다: ' + String(e?.message ?? e); console.error('[v2b]', e); });
     this._api();
@@ -167,6 +168,8 @@ export default class V2ProtoB extends Scene {
     const t0 = performance.now();
     if (input.pressed('menu') && this.game.registry.title) { this.game.go('title', {}, { fade: true }); return; }
     if (!this.ready) return;
+    const pt = input.pointer;   // 맨 아래 정보 줄을 누르면 겹치는 법(blit ↔ layer)을 바꾼다 — 기기에서 비교용
+    if (pt.tapped && pt.y > this.game.viewH - 26 && Math.abs(pt.x - this.game.viewW / 2) < 230) { this.layer.forced = !this.layer.on; this._setLayer(!this.layer.on); this.perf.samples.length = 0; }
     const sim = this.sim;
     let mx = input.analogX || input.axisX, mz = -(input.analogY || input.axisY);
     const inp = { mx, mz, jump: input.buffered('jump', 0.12), jumpHeld: input.down('jump'), attack: input.pressed('attack'), dash: input.pressed('dash'), jumpUsed: false };
@@ -276,10 +279,11 @@ export default class V2ProtoB extends Scene {
     if (glr.lost) { this._message(ctx, '화면을 되살리는 중…', '', ''); return; }
     // 품질: GL 내부 해상도만 줄인다 (2D HUD 는 그대로 선명)
     const now = performance.now();
-    if (P.last && !g._pageHidden) {
+    if (P.last && !g._pageHidden && this.sim.time > 2) {   // 처음 2초(데우기)는 재지 않는다
       const d = Math.min(100, now - P.last); P.ema += (d - P.ema) * 0.08;
       if (P.ema > 22) { P.slow += d; P.fast = 0; if (P.slow > 3000 && this.resK > 0.6) { this.resK = Math.max(0.6, this.resK - 0.14); P.slow = 0; } }
-      else if (P.ema < 13.5) { P.fast += d; P.slow = 0; if (P.fast > 15000 && this.resK < 1) { this.resK = Math.min(1, this.resK + 0.14); P.fast = 0; } } else { P.slow = 0; }
+      else if (P.ema < 17.6) { P.fast += d; P.slow = 0; if (P.fast > 12000 && this.resK < 1 && (P.raises ?? 0) < 2) { this.resK = Math.min(1, this.resK + 0.14); P.fast = 0; P.raises = (P.raises ?? 0) + 1; } }   // 60 Hz 수직 동기(16.7 ms)도 '여유 있음' 으로 본다; 올리기는 두 번까지 (오르내림 방지)
+      else { P.slow = 0; P.fast = 0; }
     }
     P.last = now;
     glr.resize(Math.max(2, Math.round(g.canvas.width * this.resK)), Math.max(2, Math.round(g.canvas.height * this.resK)));
@@ -497,7 +501,7 @@ export default class V2ProtoB extends Scene {
     text(ctx, (sec?.label ?? '') + (sim.section === 'yard' ? ' · 남은 적 ' + yardLeft : ''), x + 52, y + bh + 22, { size: 15, weight: 600, color: '#e8c872' });
     // 시범판 정보 (비교용): 방식 · 프레임 시간
     const st = this.stats();
-    text(ctx, `B · ${this.glr.webgl2 ? 'WebGL2' : 'WebGL1'} · ${g.fps | 0}fps · ${st.frameMs.p50.toFixed(1)}ms · ${st.gl.draws}dc ${st.gl.tris}tri · 적 ${left}`, Wv / 2, Hv - 8 - s.b, { size: 11, weight: 500, align: 'center', color: 'rgba(220,210,200,0.6)', ow: 2 });
+    text(ctx, `B · ${this.glr.webgl2 ? 'WebGL2' : 'WebGL1'} · ${st.mode}${this.resK < 1 ? ' ' + Math.round(this.resK * 100) + '%' : ''} · ${g.fps | 0}fps · ${st.frameMs.p50.toFixed(1)}ms · ${st.gl.draws}dc ${st.gl.tris}tri · 적 ${left}`, Wv / 2, Hv - 8 - s.b, { size: 11, weight: 500, align: 'center', color: 'rgba(220,210,200,0.6)', ow: 2 });
     if (sim.time < 7 && !sim.done && !h.dead) {   // 처음 몇 초: 조작 안내
       ctx.globalAlpha = clamp(Math.min(sim.time / 0.5, (7 - sim.time) / 1), 0, 1);
       text(ctx, '스틱 위 = 화면 안쪽 · 공격은 세 번 이어집니다 · 깊이가 맞아야 맞습니다', Wv / 2, Hv - 30 - s.b, { size: 15, weight: 600, align: 'center', color: '#efe4cf' });

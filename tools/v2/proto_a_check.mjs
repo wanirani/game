@@ -144,33 +144,52 @@ try {
       // 다시 시작 → 처음 상태
       const again = await page.evaluate(() => { window.__v2.restart(); window.__qaStep(3, true); return { sec: window.__v2.section, n: window.__v2.enemies.length, hp: window.__v2.hero.hp }; });
       ok(again.sec === 'street' && again.n === 17 && again.hp === 100, `다시 시작 → 처음 상태 (적 ${again.n}, 체력 ${again.hp})`);
-      // 캡처
-      if (SHOTS && vp === 'fold_open') {
-        fs.mkdirSync(SHOTS, { recursive: true });
-        const shot = async (name, js, n = 24) => {
-          await page.evaluate(([js, n]) => { const g = window.__game, P = window.__v2.scene.play, h = P.hero, inp = g.input; inp.touch.axis(0, 0); inp.touch.set('attack', false); (0, eval)(`(P,h,inp,v)=>{${js}}`)(P, h, inp, window.__v2); window.__v2.scene._cam(1, true); window.__qaStep(n, true); }, [js, n]);
-          await page.waitForTimeout(40);
-          await page.evaluate(() => window.__qaStep(1, true));
-          await page.screenshot({ path: path.join(SHOTS, name + '.png') });
-          console.log('   shot', name);
-        };
-        await page.evaluate(() => { window.__v2.restart(); window.__qaStep(2, true); });
-        await shot('01_street', 'h.place(300,120); h.facing=1;');
-        await shot('02_behind_pillar', 'h.place(462,176); h.facing=-1;');
-        await shot('03_front_of_pillar', 'h.place(446,100); h.facing=1;');
-        await shot('04_on_platform', 'for(const e of P.enemies) if(e.x<1300) e.awake=false; h.place(900,200); h.facing=-1;', 6);
-        await shot('05_by_pit', 'h.place(1470,150); h.facing=1;', 10);
-        await shot('06_corner_turning', 'h.place(2150,250); h.facing=1;', 10);
-        await shot('07_alley', 'h.place(2190,430); h.facing=1;', 10);
-        await shot('08_alley_stairs', 'h.place(2190,650); h.facing=1;', 10);
-        await shot('09_alley_upper', 'h.place(2190,1050); h.facing=1;', 10);
-        await shot('10_yard_fight', 'h.place(2190,1700); h.facing=1;', 100);
-      }
       // 장면을 나가면 자원을 놓는가
       const left = await page.evaluate(() => { const sc = window.__v2.scene, R = sc.R; window.__game.go('title', {}, { fade: false }); window.__qaStep(4, true); return { v2: typeof window.__v2, cv: R.canvases.length, top: window.__game.scenes[window.__game.scenes.length - 1]?.constructor?.name }; });
       ok(left.v2 === 'undefined' && left.cv === 0, `장면을 나가면 __v2 삭제 · 만든 캔버스 0 (맨 위 장면 ${left.top})`);
     } catch (e) { ok(false, `${vp}: ${e.message}`); }
     ok(s.errs.length === 0, `페이지 오류 0${s.errs.length ? ' — ' + s.errs.slice(0, 3).join(' / ') : ''}`);
+    await s.close();
+  }
+  // ───────────────────────── 3. 캡처 (폴드, 화질 '높음' = 기기에서 보는 모습에 가깝게) ─────────────────────────
+  if (SHOTS) {
+    console.log('== shots (fold_open, quality high) ==');
+    fs.mkdirSync(SHOTS, { recursive: true });
+    const open = async (q) => {
+      const s = await env.page('fold_open', URL + q, { settings: { quality: 'high' } });
+      await s.page.waitForFunction(() => window.__v2 && window.__game, null, { timeout: 40000 });
+      await s.page.waitForTimeout(1800);
+      await freeze(s.page);
+      await s.page.evaluate(() => window.__qaStep(20, true));
+      return s;
+    };
+    const shot = async (page, name, js, n = 24) => {
+      await page.evaluate(([js, n]) => { const g = window.__game, P = window.__v2.scene.play, h = P.hero, inp = g.input; inp.touch.axis(0, 0); inp.touch.set('attack', false); (0, eval)(`(P,h,inp,v)=>{${js}}`)(P, h, inp, window.__v2); window.__v2.scene._cam(1, true); for (let i = 0; i < n; i++) window.__qaStep(1, true); }, [js, n]);
+      await page.waitForTimeout(60);
+      await page.evaluate(() => window.__qaStep(1, true));
+      await page.screenshot({ path: path.join(SHOTS, name + '.png') });
+      console.log('   shot', name);
+    };
+    let s = await open('');
+    const info = await s.page.evaluate(() => { const g = window.__game, now = g.__qaRealNow, ctx = g.ctx, a = []; for (let i = 0; i < 90; i++) { const t = now(); window.__qaStep(1, true); ctx.getImageData(0, 0, 1, 1); a.push(now() - t); } a.sort((x, y) => x - y); return { q: g.quality, cv: [g.canvas.width, g.canvas.height], p50: +a[45].toFixed(1), p95: +a[85].toFixed(1), js: window.__v2.stats.frameMs, st: window.__v2.stats }; });
+    console.log(`   화질 ${info.q} · 캔버스 ${info.cv.join('x')} · JS p50 ${info.js.p50} / p95 ${info.js.p95} ms · 래스터 포함 p50 ${info.p50} / p95 ${info.p95} ms · 띠 ${info.st.strips} 면 ${info.st.faces}`);
+    results.push({ vp: 'fold_open(high)', view: '960x726', canvas: info.cv.join('x'), quality: info.q, steps: 90, kills: 0, deaths: 0, pits: 0, js: info.js, raster: { p50: info.p50, p95: info.p95, n: 90 } });
+    await shot(s.page, '01_street', 'h.place(300,120); h.facing=1;');
+    await shot(s.page, '02_behind_pillar', 'h.place(466,178); h.facing=-1;');
+    await shot(s.page, '03_front_of_pillar', 'h.place(446,100); h.facing=1;');
+    await shot(s.page, '04_on_platform', 'for(const e of P.enemies) if(e.x<1300) e.awake=false; h.place(900,200); h.facing=-1;', 6);
+    await shot(s.page, '05_by_pit', 'h.place(1452,176); h.facing=1;', 10);
+    await shot(s.page, '06_corner_turning', 'h.place(2150,250); h.facing=1;', 10);
+    await shot(s.page, '07_alley', 'h.place(2190,430); h.facing=1;', 10);
+    await shot(s.page, '08_alley_stairs', 'h.place(2190,650); h.facing=1;', 10);
+    await shot(s.page, '09_alley_upper', 'h.place(2190,1050); h.facing=1;', 10);
+    await shot(s.page, '10_yard_fight', 'h.place(2190,1700); h.facing=1;', 100);
+    await shot(s.page, '11_yard_attack', 'const e=P.enemies.find((x)=>x.group==="yard"&&!x.fly&&!x.dead); if(e){h.place(e.x-84,e.z); h.facing=1;} inp.touch.set("attack",true);', 9);
+    ok(s.errs.length === 0, `캡처 중 페이지 오류 0${s.errs.length ? ' — ' + s.errs.slice(0, 2).join(' / ') : ''}`);
+    await s.close();
+    s = await open('&proj=oblique');      // 비교: 평행 투영 (채택하지 않음, proto_a.md §2)
+    await shot(s.page, '90_oblique_street', 'h.place(300,120); h.facing=1;');
+    await shot(s.page, '91_oblique_alley', 'h.place(2190,650); h.facing=1;', 10);
     await s.close();
   }
 } finally { await env.close(); }

@@ -135,7 +135,10 @@ for (const dev of DEVICES) {
       await page.waitForTimeout(500);
       const [, wj] = await Promise.all([pressButton(T, page, 'jump', 220), until('air', 3000)]);
       await page.waitForTimeout(900);
-      const [, wd] = await Promise.all([pressButton(T, page, 'dash', 220), until('dash', 3000)]);
+      // 대시는 0.19초라 느린 헤드리스 프레임 하나에 통째로 지나갈 수 있다 → 자세 대신 밀려난 거리로 본다
+      const dx0 = (await page.evaluate(() => window.__v2.hero)).x;
+      await pressButton(T, page, 'dash', 220); await page.waitForTimeout(700);
+      const wd = Math.abs((await page.evaluate(() => window.__v2.hero)).x - dx0) > 40;
       R.touch = { pad: ids, moved: [Math.round(h1.x - h0.x), Math.round(h1.z - h0.z)], attack: wa, jump: wj, dash: wd };
       const T_OK = R.touch.moved[0] > 40 && R.touch.moved[1] > 25 && R.touch.attack && R.touch.jump && R.touch.dash && ['attack', 'jump', 'dash'].every((b) => ids.includes(b));
       if (T_OK) ok('터치: 스틱 오른쪽·위 → 이동 ' + R.touch.moved.join(',') + ', 공격·점프·대시 버튼 동작 (패드 버튼: ' + ids.join(' ') + ')'); else fail(`${dev}: 터치 조작 이상 ${JSON.stringify(R.touch)}`);

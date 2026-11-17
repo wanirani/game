@@ -5,7 +5,6 @@
 import { assets } from '../../core/assets.js';
 import { PIT_Y, WALL } from './stage.js';
 
-const STRIP = 6;            // 띠 두께 (화면 px)
 const FAR = 3400;           // 이보다 먼 것은 그리지 않는다
 const NIGHT = [9, 7, 20];   // 어둠 색
 const FOG_MAX = 0.82, FOG_LV = 7;   // 가장 짙은 안개 · 안개 단계 수
@@ -52,6 +51,7 @@ export class Renderer {
     this.items = [];                    // [B] 깊이 정렬 목록 (재사용)
     this.nItems = 0;
     this.stats = { strips: 0, faces: 0, items: 0 };
+    this.strip = 4; this.sideW = 3;
     this.t = 0;
     this._glow = this._makeGlow();
     this._fogBand = this._makeFogBand();
@@ -166,14 +166,23 @@ export class Renderer {
     const st = this.stats; st.strips = 0; st.faces = 0;
     this.B = ctx.getTransform();
     const low = this.game.quality === 'low';
-    this.sideW = low ? 6 : 3;
+    this.strip = low ? 9 : 4; this.sideW = low ? 9 : 3;      // 띠 두께: 낮은 화질(소프트웨어 래스터)은 굵게 = 그리기 호출 절반
     const smooth0 = ctx.imageSmoothingEnabled;
     const W = cam.W, H = cam.H;
     const off = this.off || {};
     if (!off.sky) this._sky(ctx, cam);
     if (low) ctx.imageSmoothingEnabled = false;      // 낮은 화질: 무늬를 가장 가까운 점으로 (소프트웨어 래스터에서 30 % 싸다)
     // [A] 바닥 묶음
-    if (!off.floor) for (const g of this.stage.floorGroups) this._floorGroup(ctx, cam, g);
+    if (!off.floor) {
+      // 같은 높이의 묶음은 옆면을 모두 먼저, 윗면을 그 뒤에 (구덩이 안벽이 다른 재질의 바닥을 덮지 않게)
+      const G = this.stage.floorGroups;
+      for (let i = 0; i < G.length;) {
+        let j = i; while (j < G.length && G[j].top === G[i].top) j++;
+        for (let k = i; k < j; k++) for (const s of G[k].slabs) this._faces(ctx, cam, s, s.top);
+        for (let k = i; k < j; k++) this._tops(ctx, cam, G[k].slabs, G[k].top, G[k].mat, G[k].mat !== 'pit');
+        i = j;
+      }
+    }
     if (!off.pools) this._pools(ctx, cam);
     // [B] 깊이 정렬
     const L = this.items; let n = 0;
@@ -249,10 +258,6 @@ export class Renderer {
   }
 
   // ── [A] 바닥 묶음: 같은 높이·재질의 바닥을 한 번에 ──
-  _floorGroup(ctx, cam, g) {
-    for (const s of g.slabs) this._faces(ctx, cam, s, s.top);      // 옆면 (구덩이 안벽·계단 챌면)
-    this._tops(ctx, cam, g.slabs, g.top, g.mat, g.mat !== 'pit');
-  }
   /**
    * 윗면 그리기 (같은 높이의 판 여러 장을 한 번에). 깊이를 화면 STRIP px 두께의 띠로 나누고, 띠마다
    *   ① 기본 변환에서 그 띠에 걸친 판들의 사다리꼴을 경로로 만들고  ② 변환을 그 깊이의 배율로 바꾼 뒤 무늬로 채운다
@@ -277,7 +282,7 @@ export class Renderer {
     let P = null, lv = -1;
     let z = za, sA = cam.s(za), y = cam.py(top, za, sA);
     while (z < zb - 0.01) {
-      let z2 = z + Math.max(2, cam.dzForPx(z, top, STRIP));
+      let z2 = z + Math.max(2, cam.dzForPx(z, top, this.strip));
       if (zb - z2 < 2) z2 = zb;
       const sB = cam.s(z2), y2 = cam.py(top, z2, sB);
       const vs = (y - y2) / (z2 - z);
@@ -431,7 +436,7 @@ export class Renderer {
       const dir = xb > xa ? 1 : -1;
       let z = za, x = xa, s = sa;
       while (z < zb - 0.01) {
-        let z2 = z + Math.max(3, cam.dzForPxX(z, xf, 7));
+        let z2 = z + Math.max(3, cam.dzForPxX(z, xf, this.sideW + 3));
         if (zb - z2 < 3) z2 = zb;
         const s2 = cam.s(z2), x2 = cam.px(xf, s2), xe = x2 + (z2 < zb ? 0.75 * dir : 0);
         const us = (x2 - x) / (z2 - z);

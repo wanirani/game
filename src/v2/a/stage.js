@@ -101,11 +101,15 @@ export class Stage {
   _exposure(s) {
     const out = (x, z) => { let t = -Infinity; for (const o of this.slabs) if (o !== s && !o.hidden && x > o.x0 && x < o.x1 && z > o.z0 && z < o.z1 && o.top > t) t = o.top; return t; };
     const cuts = (lo, hi, ka, kb) => { const c = [lo, hi]; for (const o of this.slabs) { if (o === s || o.hidden) continue; if (o[ka] > lo && o[ka] < hi) c.push(o[ka]); if (o[kb] > lo && o[kb] < hi) c.push(o[kb]); } return [...new Set(c)].sort((p, q) => p - q); };
-    const segs = (c, probe) => {
+    // 솟은 판(block·wall)은 '딛고 선 바닥'보다 아래로 내려가지 않는다 (구덩이 옆 건물의 벽이 구덩이 속까지 내려가지 않게)
+    const under = (x, z) => { let t = -Infinity; for (const o of this.slabs) if (o !== s && !o.hidden && o.top < s.top && x > o.x0 && x < o.x1 && z > o.z0 && z < o.z1 && o.top > t) t = o.top; return t; };
+    const segs = (c, probe, inside) => {
       const r = [];
       for (let i = 0; i + 1 < c.length; i++) {
-        const h = probe((c[i] + c[i + 1]) / 2);
+        const m = (c[i] + c[i + 1]) / 2;
+        let h = probe(m);
         if (h >= s.top - 0.01) continue;
+        if (s.kind !== 'floor') h = Math.max(h, inside(m));
         const base = h > -Infinity ? h : (s.kind === 'floor' ? s.top - 250 : Math.min(0, s.top - 250));
         const last = r[r.length - 1];
         if (last && last.b === c[i] && last.base === base) last.b = c[i + 1]; else r.push({ a: c[i], b: c[i + 1], base });
@@ -113,9 +117,9 @@ export class Stage {
       return r;
     };
     const cx = cuts(s.x0, s.x1, 'x0', 'x1'), cz = cuts(s.z0, s.z1, 'z0', 'z1');
-    s.segF = segs(cx, (x) => out(x, s.z0 - 0.5));
-    s.segL = segs(cz, (z) => out(s.x0 - 0.5, z));
-    s.segR = segs(cz, (z) => out(s.x1 + 0.5, z));
+    s.segF = segs(cx, (x) => out(x, s.z0 - 0.5), (x) => under(x, s.z0 + 0.5));
+    s.segL = segs(cz, (z) => out(s.x0 - 0.5, z), (z) => under(s.x0 + 0.5, z));
+    s.segR = segs(cz, (z) => out(s.x1 + 0.5, z), (z) => under(s.x1 - 0.5, z));
     let lo = s.top; for (const g of [...s.segF, ...s.segL, ...s.segR]) lo = Math.min(lo, g.base);
     s.floorY = s.kind === 'floor' ? s.top : (lo < s.top ? lo : 0);   // 솟은 판이 서 있는 바닥 높이
   }
