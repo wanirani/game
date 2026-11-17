@@ -12,6 +12,7 @@ import { register as regFront } from './reg_front.js';   // 타이틀/슬롯/난
 import { register as regTown } from './reg_town.js';     // 마을 허브/월드맵/상점/대장간/성당/퀘스트 게시판
 import { register as regMenu } from './reg_menu.js';     // 인게임 메뉴(상태/장비/인벤토리/스킬/직업/퀘스트/비전서/도감)
 import { register as regGames } from './reg_games.js';   // 여관 미니게임
+import { register as regV2 } from './reg_v2.js';       // 리빌드(v2) 시범 장면 (docs/v2/README.md) — 지연 로딩 자리 장면만
 
 export function registerScenes(game) {
   game.register('title', TitleScene);
@@ -30,4 +31,5 @@ export function registerScenes(game) {
   regTown(game);
   regMenu(game);
   regGames(game);
+  regV2(game);
 }
