@@ -1,0 +1,7 @@
+{
+ "batch": "fxcore (v2 효과 엔진) 2026-11-17",
+ "cap_credits": 10,
+ "used_credits": 0,
+ "jobs": [],
+ "note": "생성 이미지를 쓰지 않았다. 입자·문양·잡음 텍스처는 모두 src/v2/fx/sprites.js 가 코드로 한 번 그리고, 움직임은 셰이더가 만든다."
+}

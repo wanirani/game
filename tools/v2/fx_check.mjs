@@ -87,6 +87,8 @@ if (!args.has('--quick')) {
     const h = await page.evaluate((tier) => window.__fx.heavy(tier, 15), tier); report.heavy[tier] = h;
     console.log(`  ${tier.padEnd(4)} 그리기(효과) 최대 ${h.draws.max} 평균 ${h.draws.avg} + 후처리 ${h.postPasses} + 장면 ${h.sceneDraws} · 입자 제출 최대 ${h.particles.max} (실제 산 것 최대 ${h.live.max} 평균 ${h.live.avg}) · 문양 ${h.quads.max} · 메시 ${h.meshes.max} (${h.meshTris.max}△) · 띠 ${h.ribbons.max} (${h.ribbonVerts.max}v) · 빛 ${h.lights.max} · 덧칠 최대 ${h.overdraw.max} 평균 ${h.overdraw.avg} 화면 · 밝기 최저 ${h.gainMin.toFixed(2)} · CPU(효과 JS) 평균 ${h.cpu.avg} p95 ${h.cpu.p95} 최대 ${h.cpu.max} ms`);
   }
+  report.glCalls = {}; for (const tier of ['low', 'mid', 'high']) report.glCalls[tier] = await page.evaluate((tier) => window.__fx.glCalls(tier, 6), tier);
+  console.log('  GL 호출/프레임 (효과 그리기 평균·최대 / 후처리): ' + ['low', 'mid', 'high'].map((t) => `${t} ${report.glCalls[t].fxAvg}·${report.glCalls[t].fxMax} / ${report.glCalls[t].postAvg}`).join('   '));
   }
   // ── 4. 할당 검사 ──
   console.log('\n[프레임당 할당 — performance.memory (정밀) · 미리 2400프레임 돌려 JIT 를 데운 뒤 1200프레임 동안 JS 힙 증가]');
@@ -160,6 +162,7 @@ if (args.has('--doc') && report.cost.mid) {
   L.push('', '**난전 한 프레임의 예산** (15초 = 900프레임, 사건은 실제 시간 기준: 적 12, 초당 타격 6회 + 휘두르기, 발걸음 초당 24, 마법 초당 2.5개(늘 3개쯤 떠 있음), 큰 마법 2.4초마다, 죽음 1.5초마다)', '', '| 단계 | 효과 그리기 호출 최대 (평균) | + 후처리 패스 | 입자: 제출 최대 / 실제 산 것 최대 (평균) / 상한 | 문양 최대 | 메시 최대 (삼각형) | 띠 최대 (정점) | 빛 최대 | 덧칠 최대 (평균) | 밝기 조절 최저 | 효과 JS 시간 평균 · p95 · 최대 (ms) |', '|---|---|---|---|---|---|---|---|---|---|---|');
   const CAP = { low: 1024, mid: 2048, high: 4096 };
   for (const t of ['low', 'mid', 'high']) { const h = report.heavy[t]; L.push(`| ${t} | ${h.draws.max} (${h.draws.avg.toFixed(1)}) | ${h.postPasses} | ${h.particles.max} / ${h.live.max} (${Math.round(h.live.avg)}) / ${CAP[t]} | ${h.quads.max} | ${h.meshes.max} (${h.meshTris.max}) | ${h.ribbons.max} (${h.ribbonVerts.max}) | ${h.lights.max} | ${h.overdraw.max.toFixed(2)} (${h.overdraw.avg.toFixed(2)}) | ${h.gainMin.toFixed(2)} | ${h.cpu.avg.toFixed(2)} · ${h.cpu.p95.toFixed(2)} · ${h.cpu.max.toFixed(2)} |`); }
+  if (report.glCalls) L.push('', `- 프레임당 GL 호출 수(난전 6초 평균 · 최대; 유니폼·버퍼·그리기를 모두 센 것): 효과 그리기 low ${report.glCalls.low.fxAvg} · ${report.glCalls.low.fxMax} / mid ${report.glCalls.mid.fxAvg} · ${report.glCalls.mid.fxMax} / high ${report.glCalls.high.fxAvg} · ${report.glCalls.high.fxMax}, 후처리 low ${report.glCalls.low.postAvg} / mid ${report.glCalls.mid.postAvg} / high ${report.glCalls.high.postAvg}.`);
   L.push('', `- 장면(시험 화면의 바닥·벽·인형)은 따로 ${report.heavy.mid.sceneDraws}회. 효과 JS 시간 = \`fx.update\` + \`fx.draw\` 안에서 잰 \`performance.now()\` 차이(헤드리스·다른 작업과 CPU 를 나눠 쓰는 기계에서 잰 값; GPU 시간은 들어 있지 않다).`);
   L.push('', '**프레임당 할당** (`performance.memory.usedJSHeapSize`, `--enable-precise-memory-info` · 시작 전에 `gc()`; 2,400프레임을 먼저 돌려 JIT 를 데운 뒤 1,200프레임 동안 힙이 는 양)', '', '| 경우 | 1,200프레임 동안 는 힙 | 프레임당 | 프레임당 JS 시간 (1,200프레임 평균) |', '|---|---|---|---|');
   const AN = { fxidle: '**정상 상태, 효과 엔진만** (`fx.tick` + `fx.draw`; 살아 있는 문양만 있고 새로 내지 않음)', idle: '정상 상태, 시험 화면 프레임 전체 (장면 그리기 · 후처리 포함)', fxonly: '난전, 효과 엔진만 (`fx.tick` + 프리셋 호출 + `fx.draw`)', page: '난전: 시험 화면 프레임 전체 (장면 그리기 · 후처리 포함)' };

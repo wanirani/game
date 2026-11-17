@@ -60,7 +60,7 @@ const body = `<h1>인터페이스 2차 시안 비교 — 반투명은 그대로,
 
 <h3>잰 값 (검토자가 다시 잰 것)</h3>
 <table><tr><th></th><th>Ⓐ 세공한 유리 (폴드 / 휴대폰)</th><th>Ⓑ 먹과 달빛 (폴드 / 휴대폰)</th><th>1차 달빛 유리</th></tr>
-<tr><td>가장 작은 버튼 (44 이상이어야 함)</td><td>${g.min_touch} / ${gp.min_touch}</td><td>${k.min_touch} / ${kp.min_touch}</td><td>44</td></tr>
+<tr><td>가장 작은 버튼 (44 이상이어야 함)</td><td>${g.min_touch} / ${gp.min_touch}</td><td>${k.min_touch} / ${kp.min_touch}</td><td>46 / 44</td></tr>
 <tr><td>공격 버튼</td><td>${g.sizes['b-attack']} / ${gp.sizes['b-attack']}</td><td>${k.sizes['b-attack']} / ${kp.sizes['b-attack']}</td><td>—</td></tr>
 <tr><td>인터페이스가 조금이라도 덮는 넓이</td><td>${g.any_pct} % / ${gp.any_pct} %</td><td>${k.any_pct} % / ${kp.any_pct} %</td><td>${C.r1glass_fold_open.any_pct} % / ${C.r1glass_phone2.any_pct} %</td></tr>
 <tr><td>절반 넘게 가리는 넓이</td><td>${g.half_pct} % / ${gp.half_pct} %</td><td>${k.half_pct} % / ${kp.half_pct} %</td><td>${C.r1glass_fold_open.half_pct} % / ${C.r1glass_phone2.half_pct} %</td></tr>

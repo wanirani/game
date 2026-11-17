@@ -77,6 +77,7 @@ export class Post {
     this.pComp = program(gl, VS, FS_COMP, 'post.comp'); this.pCompT = program(gl, VS, FS_COMP.replace('precision mediump float;', 'precision mediump float;\n#define TENT'), 'post.compT');
     this.pOver = program(gl, VS, FS_OVER, 'post.over');
     for (const p of [this.pComp, this.pCompT]) { gl.useProgram(p.p); gl.uniform1i(p.u.uScene, 0); gl.uniform1i(p.u.uBloom, 1); }
+    this._v = new Float32Array(4);
     this.vao = gl.createVertexArray();   // 속성 없음 (gl_VertexID 로 화면을 덮는 삼각형)
   }
   setLevels(levels) { if (levels === this.levels) return; this.levels = levels; this.enabled = levels > 0; this._free(); this.w = 0; }
@@ -107,12 +108,12 @@ export class Post {
   }
   /** 장면·효과를 다 그린 뒤에. screen = feel.screen */
   end(screen) {
-    const gl = this.gl, F = screen.flash, V = screen.vig; this.passes = 0;
+    const gl = this.gl, F = screen.flash, Vg = screen.vig, V = this._v; this.passes = 0;   // V: 실수 유니폼은 배열로 올린다 (숫자 상자를 만들지 않게)
     gl.bindVertexArray(this.vao); gl.disable(gl.DEPTH_TEST); gl.depthMask(false); gl.disable(gl.CULL_FACE);
     if (!this.active) {
-      if (F[3] > 0.004 || V[3] > 0.004 || screen.dark > 0.004) {
+      if (F[3] > 0.004 || Vg[3] > 0.004 || screen.dark > 0.004) {
         gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-        const p = this.pOver; gl.useProgram(p.p); gl.uniform4fv(p.u.uFlash, F); gl.uniform4fv(p.u.uVig, V); gl.uniform4f(p.u.uK, 0, 0, 0, screen.dark);
+        const p = this.pOver; gl.useProgram(p.p); gl.uniform4fv(p.u.uFlash, F); gl.uniform4fv(p.u.uVig, Vg); V[0] = 0; V[1] = 0; V[2] = 0; V[3] = screen.dark; gl.uniform4fv(p.u.uK, V);
         gl.drawArrays(gl.TRIANGLES, 0, 3); this.passes = 1;
       }
       gl.enable(gl.DEPTH_TEST); gl.depthMask(true); gl.bindVertexArray(null); return;
@@ -121,20 +122,20 @@ export class Post {
     const L = this.lv, n = L.length;
     // 1) 밝은 부분 → 1/4
     gl.bindFramebuffer(gl.FRAMEBUFFER, L[0].fbo); gl.viewport(0, 0, L[0].w, L[0].h);
-    gl.useProgram(this.pBright.p); gl.bindTexture(gl.TEXTURE_2D, this.sceneTex); gl.uniform4f(this.pBright.u.uTP, 1 / this.w, 1 / this.h, this.threshold, this.knee);
+    gl.useProgram(this.pBright.p); gl.bindTexture(gl.TEXTURE_2D, this.sceneTex); V[0] = 1 / this.w; V[1] = 1 / this.h; V[2] = this.threshold; V[3] = this.knee; gl.uniform4fv(this.pBright.u.uTP, V);
     gl.drawArrays(gl.TRIANGLES, 0, 3); this.passes++;
     // 2) 더 줄이기
     gl.useProgram(this.pDown.p);
-    for (let i = 1; i < n; i++) { gl.bindFramebuffer(gl.FRAMEBUFFER, L[i].fbo); gl.viewport(0, 0, L[i].w, L[i].h); gl.bindTexture(gl.TEXTURE_2D, L[i - 1].tex); gl.uniform4f(this.pDown.u.uTP, 1 / L[i - 1].w, 1 / L[i - 1].h, 0, 0); gl.drawArrays(gl.TRIANGLES, 0, 3); this.passes++; }
+    for (let i = 1; i < n; i++) { gl.bindFramebuffer(gl.FRAMEBUFFER, L[i].fbo); gl.viewport(0, 0, L[i].w, L[i].h); gl.bindTexture(gl.TEXTURE_2D, L[i - 1].tex); V[0] = 1 / L[i - 1].w; V[1] = 1 / L[i - 1].h; V[2] = 0; V[3] = 0; gl.uniform4fv(this.pDown.u.uTP, V); gl.drawArrays(gl.TRIANGLES, 0, 3); this.passes++; }
     // 3) 되올리며 더하기
     gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.useProgram(this.pUp.p);
-    for (let i = n - 1; i > 0; i--) { gl.bindFramebuffer(gl.FRAMEBUFFER, L[i - 1].fbo); gl.viewport(0, 0, L[i - 1].w, L[i - 1].h); gl.bindTexture(gl.TEXTURE_2D, L[i].tex); gl.uniform4f(this.pUp.u.uTP, 1 / L[i].w, 1 / L[i].h, 1.0, 0); gl.drawArrays(gl.TRIANGLES, 0, 3); this.passes++; }
+    for (let i = n - 1; i > 0; i--) { gl.bindFramebuffer(gl.FRAMEBUFFER, L[i - 1].fbo); gl.viewport(0, 0, L[i - 1].w, L[i - 1].h); gl.bindTexture(gl.TEXTURE_2D, L[i].tex); V[0] = 1 / L[i].w; V[1] = 1 / L[i].h; V[2] = 1.0; V[3] = 0; gl.uniform4fv(this.pUp.u.uTP, V); gl.drawArrays(gl.TRIANGLES, 0, 3); this.passes++; }
     gl.disable(gl.BLEND);
     // 4) 합성
     const p = this.levels >= 3 ? this.pCompT : this.pComp;
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.target); gl.viewport(0, 0, this.bw, this.bh);
     gl.useProgram(p.p); gl.bindTexture(gl.TEXTURE_2D, this.sceneTex); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, L[0].tex); gl.activeTexture(gl.TEXTURE0);
-    gl.uniform4f(p.u.uK, this.bloom * this.gain, this.baseVig, screen.desat, screen.dark); gl.uniform4fv(p.u.uFlash, F); gl.uniform4fv(p.u.uVig, V); gl.uniform4f(p.u.uTP, 1 / L[0].w, 1 / L[0].h, 0, 0);
+    V[0] = this.bloom * this.gain; V[1] = this.baseVig; V[2] = screen.desat; V[3] = screen.dark; gl.uniform4fv(p.u.uK, V); gl.uniform4fv(p.u.uFlash, F); gl.uniform4fv(p.u.uVig, Vg); V[0] = 1 / L[0].w; V[1] = 1 / L[0].h; V[2] = 0; V[3] = 0; gl.uniform4fv(p.u.uTP, V);
     gl.drawArrays(gl.TRIANGLES, 0, 3); this.passes++;
     gl.enable(gl.DEPTH_TEST); gl.depthMask(true); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.bindVertexArray(null);
   }

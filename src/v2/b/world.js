@@ -78,6 +78,12 @@ export function compileStage(S) {
     if (!o.noLeft) faces.push({ mat: side, p: [x0, y0, z1], du: [0, 0, z0 - z1], dv: [0, y1 - y0, 0], n: [-1, 0, 0], kind: 'side', y0, ao: o.ao, k });
     if (!o.noRight) faces.push({ mat: side, p: [x1, y0, z0], du: [0, 0, z1 - z0], dv: [0, y1 - y0, 0], n: [1, 0, 0], kind: 'side', y0, ao: o.ao, k });
   };
+  // 소품의 충돌 상자와 빛. y = 소품이 선 바닥 높이
+  const lateProps = [];
+  const propBody = (P, y) => {
+    if (P.solid) addBox({ x0: P.x - P.solid, x1: P.x + P.solid, z0: P.z - (P.solidZ ?? P.solid * 0.6), z1: P.z + (P.solidZ ?? P.solid * 0.6), y0: y, y1: y + (P.solidH ?? P.h * 0.8), solid: true, walk: !!P.walk, inv: true, part: P });
+    if (P.light) W.lights.push({ x: P.x, y: y + (P.light.y ?? P.h * 0.85), z: P.z - 6, r: P.light.r ?? 280, c: P.light.c ?? [1.0, 0.6, 0.28], i: P.light.i ?? 1.5 });
+  };
   for (const P of S.parts) {
     const y = P.y ?? 0;
     switch (P.t) {
@@ -136,8 +142,8 @@ export function compileStage(S) {
       case 'prop': {   // 그림 소품 (빌보드). solid = 충돌 반지름, h = 세계 높이
         const py = P.y ?? null;
         W.sprites.push({ kind: 'prop', img: P.img, x: P.x, z: P.z, y: py, h: P.h, flip: !!P.flip, glow: P.glow ?? null, shadow: P.shadow ?? 0.5, lit: P.lit ?? 1 });
-        if (P.solid) addBox({ x0: P.x - P.solid, x1: P.x + P.solid, z0: P.z - (P.solidZ ?? P.solid * 0.6), z1: P.z + (P.solidZ ?? P.solid * 0.6), y0: y, y1: y + (P.solidH ?? P.h * 0.8), solid: true, walk: !!P.walk, inv: true, part: P });
-        if (P.light) W.lights.push({ x: P.x, y: (P.y ?? 0) + (P.light.y ?? P.h * 0.85), z: P.z - 6, r: P.light.r ?? 280, c: P.light.c ?? [1.0, 0.6, 0.28], i: P.light.i ?? 1.5 });
+        if (py == null) { lateProps.push(P); break; }   // 높이를 안 적은 소품: 바닥이 다 놓인 뒤에 그 자리 바닥 높이에 세운다 (아래 propBody)
+        propBody(P, y);
         break;
       }
       case 'window': {   // 벽에 붙는 불 켜진 창 (빛을 내는 사각형 + 빛)
@@ -149,6 +155,9 @@ export function compileStage(S) {
       default: throw new Error('모르는 part: ' + P.t);
     }
   }
+  // 높이를 안 적은 소품은 그 자리의 바닥 높이에 세운다. 전에는 늘 y 0 이라, 올린 바닥(뜰·마당 = 96) 위의 화로는 충돌 상자(0…90)가 바닥 밑에 묻혀
+  // 그냥 지나가졌고, 가로등·화로의 빛도 96 만큼 낮은 곳(화로는 바닥 아래)에서 났다 (envverify 검수 2026-11-17).
+  for (const P of lateProps) { const g = groundAt(W, P.x, P.z); propBody(P, Number.isFinite(g) ? g : 0); }
   // ── 면 → 격자로 쪼개 빛을 구운 삼각형 ──
   const writers = {};
   for (const F of faces) {

@@ -1,6 +1,5 @@
-// v2 cast: 뷰어(tools/v2/cast_view.html — 적 · 보스용)를 헤드리스로 띄워 장면을 찍는다. char3d_shot.mjs 와 같은 쓰임. 칸마다 legs·pitchm 을 줄 수 있다.
-//   node tools/v2/cast_shot.mjs <out.png> <glb> '<JSON>' [칸 w] [칸 h] [열] [추가 쿼리: clips=a.glb,b.glb&legs=0&pitchm=40]
-//   node tools/v2/char3d_shot.mjs <out.png> <glb 주소 또는 /__x/파일> '<JSON 목록: [{yaw,clip,t,zoom,pitch,light,weapon,label}]>' [칸 w] [칸 h] [열] [추가 쿼리]
+// v2 char3d: 뷰어(tools/v2/cast_view.html)를 헤드리스로 띄워 장면을 찍는다.
+//   node tools/v2/cast_shot.mjs <out.png> <glb 주소 또는 /__x/파일> '<JSON 목록: [{yaw,clip,t,zoom,pitch,light,weapon,label}]>' [칸 w] [칸 h] [열] [추가 쿼리]
 //   --extra=<dir> 를 주면 그 폴더를 /__x/ 로 내준다 (저장소 밖 작업 파일을 볼 때).
 import { chromium } from 'playwright-core';
 import http from 'node:http';
@@ -32,8 +31,8 @@ try { await page.waitForFunction(() => window.__c3d?.ready || window.__c3d?.erro
 const meta = await page.evaluate(() => { window.__c3d.hold = true; document.getElementById('ui').style.display = 'none'; document.getElementById('info').style.display = 'none'; return { info: window.__c3d.info, error: window.__c3d.error, gl: window.__c3d.gl }; });
 const tiles = [];
 for (const s of shots) {
-  await page.evaluate((s) => { if (s.legs != null) window.__c3d.noLegs = !s.legs; if (s.pitchm != null) window.__c3d.pitchM = s.pitchm; if (s.fit != null) window.__c3d.fit = s.fit; return window.__c3d.draw({ yaw: s.yaw ?? 20, pitch: s.pitch ?? 6, clip: s.clip ?? 'idle', fixed: s.t ?? 0, zoom: s.zoom ?? 'body', light: s.light ?? 'studio', weapon: s.weapon ?? false }); }, s);
-  tiles.push({ buf: await page.screenshot({ type: 'png' }), label: s.label ?? `${s.clip ?? 'idle'} ${s.t ?? 0} y${s.yaw ?? 20}` });
+  await page.evaluate((s) => window.__c3d.draw({ yaw: s.yaw ?? 20, pitch: s.pitch ?? 6, clip: s.clip ?? 'bind', fixed: s.t ?? 0, zoom: s.zoom ?? 'body', light: s.light ?? 'studio', weapon: s.weapon ?? false, tint: s.tint ?? [1, 1, 1] }), s);
+  tiles.push({ buf: await page.screenshot({ type: 'png' }), label: s.label ?? `${s.clip ?? 'bind'} ${s.t ?? 0} y${s.yaw ?? 20}` });
 }
 // 한 장으로 이어 붙인다 (브라우저 캔버스로)
 const sheet = await browser.newPage({ viewport: { width: C * W, height: rows * H }, deviceScaleFactor: 1 });

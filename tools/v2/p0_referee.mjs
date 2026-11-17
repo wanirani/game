@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // 시범판 A·B 심판 검사 (docs/v2/P0_COMPARE.md) — 두 시범판을 '같은 방법'으로 돌린다.
-//   node tools/v2/p0_referee.mjs [--protos a,b] [--vp fold_open,phone2] [--shots <폴더>] [--json out.json] [--no-play]
+//   node tools/v2/p0_referee.mjs [--protos a,b | c (= 꾸민 배경 v2c, B 와 같은 길로 검사)] [--vp fold_open,phone2] [--shots <폴더>] [--json out.json] [--no-play]
 //  1 진짜 터치(CDP 터치 이벤트 → 가상 패드)만으로: 스틱 8방향 · 죽은 구역 · 공격/점프/대시 단추 · 점프로 단상 · 구덩이
 //  2 깊이 판정 훑기 (Δz 0…80 에서 한 번 휘둘러 맞는가)
 //  3 처음부터 끝까지: 같은 봇이 터치 스틱 + 공격 단추로 걷고 싸운다 (루프를 얼리고 3틱씩; 마지막 틱은 그리고 읽어 내 시간을 잰다)
@@ -241,7 +241,7 @@ for (const id of PROTOS) {
       ok(R.depth[0] > 0 && R.depth[20] > 0 && R.depth[80] === 0, `깊이 판정: Δz 0·20 맞음, 80 빗나감`);
       // ── 4) 처음부터 끝까지 (터치 스틱 + 공격 단추) ──
       if (!NO_PLAY) {
-        await page.evaluate(([id, layer]) => { const process_blit = layer; window.__ref.restart(); if (id === 'b') { window.__v2.setLayer?.(process_blit); window.__v2.perfFinish?.(true); } window.__qaStep(3, true); const r = window.__ref; r.wp = 0; r.wall = []; r.seen = []; r.deaths = 0; r.minHp = 100; r.it = 0; }, [id, B_LAYER]);   // B: 기본은 blit(GL 그림을 게임 캔버스에 옮김 → 읽어 내기가 화면 전체를 끝낸다), --b-layer 면 DOM 층 방식
+        await page.evaluate(([id, layer]) => { const process_blit = layer; window.__ref.restart(); if (id !== 'a') { window.__v2.setLayer?.(process_blit); window.__v2.perfFinish?.(true); } window.__qaStep(3, true); const r = window.__ref; r.wp = 0; r.wall = []; r.seen = []; r.deaths = 0; r.minHp = 100; r.it = 0; }, [id, B_LAYER]);   // B: 기본은 blit(GL 그림을 게임 캔버스에 옮김 → 읽어 내기가 화면 전체를 끝낸다), --b-layer 면 DOM 층 방식
         let d = await page.evaluate(() => window.__ref.think());
         let atkOn = false; const T0 = Date.now(); let shotStreet = false, stuckKey = '', stuckN = 0;
         const MAXIT = 3200;
@@ -270,7 +270,7 @@ for (const id of PROTOS) {
         const order = ['street', 'corner', 'alley', 'yard', 'done']; let oi = 0; for (const x of b.seen) if (x === order[oi]) oi++;
         R.play = { sec: b.sec, ticks: b.ticks, gameSec: +(b.ticks / 60).toFixed(1), wallSec: +((Date.now() - T0) / 1000).toFixed(1), deaths: b.deaths, minHp: Math.round(b.minHp), left: b.left, seen: b.seen };
         R.frame = { n: b.wall.length, p50: pct(b.wall, 0.5), p95: pct(b.wall, 0.95), max: pct(b.wall, 1), js: b.js };
-        if (id === 'b') { const G = b.st.gl || {}; R.gl = { draws: G.draws, tris: G.tris, texMB: +(G.texBytes / 1048576).toFixed(1), bufKB: Math.round(G.bufBytes / 1024), canvas: G.canvas, mode: b.st.mode, canvases: b.st.canvases, parts: b.st.parts, atlas: b.st.atlas }; }
+        if (id !== 'a') { const G = b.st.gl || {}; R.gl = { draws: G.draws, tris: G.tris, texMB: +(G.texBytes / 1048576).toFixed(1), bufKB: Math.round(G.bufBytes / 1024), canvas: G.canvas, mode: b.st.mode, canvases: b.st.canvases, parts: b.st.parts, atlas: b.st.atlas }; }
         else R.cv = await page.evaluate(() => { const c = window.__v2.scene.R.canvases; let n = 0; for (const x of c) n += x.width * x.height * 4; return { n: c.length, mb: +(n / 1048576).toFixed(1), strips: window.__v2.stats.strips, faces: window.__v2.stats.faces }; });
         ok(b.sec === 'done' && oi === order.length, `터치 봇이 끝까지: ${R.play.gameSec}초(게임) · 구간 ${b.seen.join('→')} · 쓰러짐 ${b.deaths} · 최저 체력 ${R.play.minHp} · 남은 적 ${b.left}`);
         console.log(`   프레임 시간 (틱 + 그리기 + 읽어 내기, 소프트웨어 렌더러, n ${R.frame.n}): p50 ${R.frame.p50} ms · p95 ${R.frame.p95} ms · 최대 ${R.frame.max} ms | 장면이 잰 값 p50 ${b.js.p50} / p95 ${b.js.p95}`);

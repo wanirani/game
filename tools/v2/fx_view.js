@@ -303,6 +303,19 @@ const api = window.__fx = {
     const ms = (performance.now() - t0) / n, b = mem ? performance.memory.usedJSHeapSize : 0;
     fx.profile = true; demo.name = ''; return { mode, frames: n, ms, bytes: b - a, perFrame: (b - a) / n, hasMemory: !!mem, hasGc: !!window.gc };
   },
+  /** 난전에서 프레임당 GL 호출 수 (효과 그리기 / 후처리). 컨텍스트의 함수를 잠깐 감싸서 센다 */
+  glCalls(tier, seconds) {
+    api.reset(tier); startDemo('heavy'); resize();
+    let c = 0; const names = [], proto = WebGL2RenderingContext.prototype;
+    for (const k of Object.getOwnPropertyNames(proto)) { let d; try { d = Object.getOwnPropertyDescriptor(proto, k); } catch { continue; } if (d && typeof d.value === 'function') { names.push(k); const f = d.value; gl[k] = function () { c++; return f.apply(gl, arguments); }; } }
+    const n = Math.round(seconds * 60); let fxSum = 0, fxMax = 0, postSum = 0;
+    for (let i = 0; i < n; i++) {
+      const gdt = fx.update(1 / 60); demoStep(gdt, 1 / 60); swingStep(gdt); camera();
+      c = 0; fx.post.begin(cv.width, cv.height, null); const pc = c; drawScene(); c = 0; fx.draw(cam); fxSum += c; if (c > fxMax) fxMax = c; c = 0; fx.post.end(fx.feel.screen); postSum += c + pc;
+    }
+    for (const k of names) delete gl[k];
+    demo.name = ''; return { fxAvg: Math.round(fxSum / n), fxMax, postAvg: Math.round(postSum / n) };
+  },
   /** 할당을 조각별로: 이름 붙은 조각을 n 번 돌린 앞뒤의 힙 차이 (어디서 새는지 찾는 용도) */
   probe(n) {
     api.reset('mid'); startDemo('heavy'); resize(); for (let i = 0; i < 2400; i++) frame(1 / 60); fx.profile = false;

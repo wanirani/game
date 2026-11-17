@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>블러드 녹턴 3D — 등장 캐릭터 보기 (적 · 보스)</title>
+<title>붉은밤 — 입체 캐릭터 보기</title>
 <style>
   html, body { margin: 0; height: 100%; background: #10141c; color: #e8e0d0; font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
   canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
@@ -18,10 +18,9 @@
 <div id="info">불러오는 중…</div>
 <div id="ui"></div>
 <script type="module">
-// cast_view: char3d_view.html 을 바탕으로 한 적 · 보스용 보기 (docs/v2/CAST_R1_ENEMIES.md).
-//   다른 점: (1) GLB 에 든 클립을 이름 그대로 모두 단추로 낸다 (2) &clips=a.glb,b.glb 여러 파일에서 빌려 온다
-//   (3) 키에 맞춰 카메라 거리를 잡는다 (&fit=0 이면 고정) (4) &legs=0 다리 뼈를 쉬는 자세로 묶는다(떠다니는 적) (5) &pitchm=도 모델을 앞으로 숙인다(박쥐)
-// 입체 캐릭터 보기: 돌려 보기(드래그) + 클립 단추. 게임 없이 모델만 판단할 때 쓴다.
+// 출연진(cast) 보기 — char3d_view.html 의 사본에 세 가지를 더했다 (castpeople, 2026-11-17):
+//   ① 리깅 전 정지 모델(스킨 없음)도 그린다  ② 모델에 든 라이브러리 클립을 모두 제 이름과 lib0, lib1… 로 틀 수 있다 + bind(쉬는 자세)
+//   ③ &tint=r,g,b (곱하는 색 — 두 밤의 옷 색조 시험) &scale=1.8 (정지 모델 키) · 무기는 기본으로 끈다
 //   ?glb=주소 (기본 ../../assets/v2/char3d/kael.glb) &clip=run &t=0.2(고정 시각) &yaw=45 &pitch=8 &zoom=body|face|upper &auto=0|1 &weapon=0|1 &tex=1024 &light=studio|night
 //   &clips=주소 : 다른 GLB 의 클립을 이 모델에 튼다 (같은 서비스로 리깅한 캐릭터끼리 클립을 나눠 쓰는 시험)
 import { CharRenderer } from '../../src/v2/char3d/render.js';
@@ -32,9 +31,9 @@ import { buildClips } from '../../src/v2/char3d/clips.js';
 
 const q = new URLSearchParams(location.search);
 const cv = document.getElementById('cv'), info = document.getElementById('info'), ui = document.getElementById('ui');
-const S = { yaw: Number(q.get('yaw') ?? 20), pitch: Number(q.get('pitch') ?? 6), zoom: q.get('zoom') ?? 'body', auto: q.get('auto') === '1', clip: q.get('clip') ?? 'idle', fixed: q.has('t') ? Number(q.get('t')) : null, weapon: q.get('weapon') !== '0', light: q.get('light') ?? 'studio', speed: 1 };
+const S = { yaw: Number(q.get('yaw') ?? 20), pitch: Number(q.get('pitch') ?? 6), zoom: q.get('zoom') ?? 'body', auto: q.get('auto') === '1', clip: q.get('clip') ?? 'bind', tint: q.get('tint') ? q.get('tint').split(',').map(Number) : [1, 1, 1], scale: Number(q.get('scale') ?? 1.8), fixed: q.has('t') ? Number(q.get('t')) : null, weapon: q.get('weapon') === '1', light: q.get('light') ?? 'studio', speed: 1 };
 const api = (window.__c3d = { ready: false, error: null, S });
-let gl, R, ch, asset;
+let gl, R, ch, asset, staticGpu = null;
 
 function persp(fovDeg, aspect, n, f, o) { const t = 1 / Math.tan((fovDeg * Math.PI) / 360); o.fill(0); o[0] = t / aspect; o[5] = t; o[10] = (f + n) / (n - f); o[11] = -1; o[14] = (2 * f * n) / (n - f); return o; }
 function lookAt(e, c, o) {
@@ -55,22 +54,23 @@ function frame(dt) {
   gl.viewport(0, 0, w, h);
   const night = S.light === 'night';
   gl.clearColor(night ? 0.05 : 0.2, night ? 0.065 : 0.215, night ? 0.1 : 0.24, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  if (!ch) return;
+  if (!ch && !staticGpu) return;
   if (S.auto) S.yaw += dt * 40;
-  ch.weapon = S.weapon ? ch._weapon : null;
-  const A = ch.anim;
-  A.play(S.clip, { fade: 0.15, ...(S.fixed != null ? { time: S.fixed } : { speed: S.speed }) });
-  A.update(S.fixed != null ? 0.5 : dt);
-  const Z0 = { body: { d: 4.6, y: 0.92 }, upper: { d: 2.3, y: 1.35 }, face: { d: 1.05, y: 1.62 }, wide: { d: 6.2, y: 0.85 } }[S.zoom] ?? { d: 4.6, y: 0.92 };
-  const k = api.fit, Z = { d: Z0.d * k, y: Z0.y * k + (api.baseY ?? 0) };
-  if (api.noLegs) { const rg = ch.rig; for (const b of ['uplegL', 'uplegR', 'legL', 'legR', 'footL', 'footR', 'toeL', 'toeR']) { const j = rg.key.get(b); if (j != null) for (let c = 0; c < 4; c++) rg.R[j * 4 + c] = rg.restR[j * 4 + c]; } rg.pose(); }
+  if (ch) {
+    ch.weapon = S.weapon ? ch._weapon : null;
+    const A = ch.anim;
+    A.play(S.clip, { fade: 0.15, ...(S.fixed != null ? { time: S.fixed } : { speed: S.speed }) });
+    A.update(S.fixed != null ? 0.5 : dt);
+  }
+  const Z = { body: { d: 4.6, y: 0.92 }, upper: { d: 2.3, y: 1.35 }, face: { d: 1.05, y: 1.62 }, wide: { d: 6.2, y: 0.85 } }[S.zoom] ?? { d: 4.6, y: 0.92 };
   const p = (S.pitch * Math.PI) / 180, eye = [0, Z.y + Math.sin(p) * Z.d, Math.cos(p) * Z.d];
   persp(30, w / h, 0.1, 50, Pm); lookAt(eye, [0, Z.y, 0], Vm); mul(Pm, Vm, VP);
   const y = (S.yaw * Math.PI) / 180, c = Math.cos(y), s = Math.sin(y);
-  const pm = (api.pitchM * Math.PI) / 180, cp = Math.cos(pm), sp = Math.sin(pm);   // 모델을 앞(+Z)으로 숙인다: Ry(yaw) · Rx(pitch)
-  M.set([c, 0, -s, 0, s * sp, cp, c * sp, 0, s * cp, -sp, c * cp, 0, 0, 0, 0, 1]);
+  const k = ch ? 1 : S.scale;
+  M.set([c * k, 0, -s * k, 0, 0, k, 0, 0, s * k, 0, c * k, 0, 0, 0, 0, 1]);
   R.begin({ vp: VP, eye, fog: { near: 100, far: 200, max: 0, color: [0, 0, 0] }, sunDir: night ? [-0.447, 0.745, 0.496] : [0.35, 0.8, 0.6], sun: night ? [0.62, 0.64, 0.82] : [0.62, 0.6, 0.56], amb: night ? [0.42, 0.45, 0.6] : [0.62, 0.63, 0.66] });
-  ch.draw(M, { rim: night ? [0.55, 0.65, 0.9, 0.35] : [1, 1, 1, 0.08] });
+  const o = { rim: night ? [0.55, 0.65, 0.9, 0.35] : [1, 1, 1, 0.08], tint: S.tint };
+  if (ch) ch.draw(M, o); else R.draw(staticGpu, null, M, { ...o, cull: 'back' });
   R.end();
   api.stats = { ...R.stats };
 }
@@ -81,22 +81,27 @@ async function main() {
   if (!gl) throw new Error('WebGL 을 쓸 수 없습니다');
   api.gl = gl instanceof WebGL2RenderingContext ? 'webgl2' : 'webgl1';
   const url = q.get('glb') ?? '../../assets/v2/char3d/kael.glb';
-  asset = await loadCharAsset(url);
-  const LOOP = /walk|run|idle|stagger|strut|fly|flap|hover|float/i;
-  const addAll = (rig, anims) => { for (const a of anims) { const k = String(a.name).replace(/[^A-Za-z0-9_]/g, '_'); if (!asset.clips[k]) { const loop = LOOP.test(k); asset.clips[k] = clipFromAnim(rig, a, { name: k, loop, inPlace: loop, rootRel: !loop }); } } };
-  addAll(new Rig(asset.model), asset.model.anims);
-  if (q.get('clips')) {   // 다른 캐릭터의 클립을 빌려 온다 (뼈 이름으로 다시 맞춘다). 쉼표로 여러 파일
-    for (const u of q.get('clips').split(',')) {
-      const other = await loadGLB(u), orig = new Rig(other), named = buildClips(orig, other.anims);
-      for (const k of ['run', 'atk1', 'death']) if (named[k]?.source === 'library' && asset.clips[k]?.source !== 'library') asset.clips[k] = named[k];
-      addAll(orig, other.anims);
-    }
+  const model = await loadGLB(url);
+  if (!model.skin) {   // 리깅 전 정지 모델: 뼈 없이 그대로 그린다
+    R = new CharRenderer(gl, { maxJoints: 32 });
+    staticGpu = R.add(model, { maxTex: Number(q.get('tex') ?? 4096) });
+    const st = model.stats, im = model.bitmaps?.[0];
+    api.info = { ...st, tex: im ? [im.width, im.height] : null, clips: {}, static: true };
+    info.textContent = `${url.split('/').pop()} · 정지 모델 · 삼각형 ${st.tris} · 정점 ${st.verts} · 그림 ${im ? im.width + '×' + im.height : '없음'}`;
+    api.ready = true; return;
+  }
+  const rig0 = new Rig(model), clips = buildClips(rig0, model.anims);
+  clips.bind = { name: 'bind', duration: 1, loop: true, fn: () => {}, source: 'procedural' };
+  model.anims.forEach((a, i) => { const c = clipFromAnim(rig0, a, { name: a.name, loop: true, inPlace: true }); c.source = 'library'; clips['lib' + i] = c; if (!clips[a.name]) clips[a.name] = c; });
+  asset = { model, clips, url };
+  if (q.get('clips')) {   // 다른 캐릭터의 클립을 빌려 온다 (뼈 이름으로 다시 맞춘다)
+    const other = await loadGLB(q.get('clips'));
+    asset.clips = buildClips(new Rig(other), other.anims);
     api.borrowed = q.get('clips');
   }
   R = new CharRenderer(gl, { maxJoints: Math.max(32, asset.model.stats.joints) });
   ch = new Char3D(asset, R, { maxTex: Number(q.get('tex') ?? 4096) });
   ch._weapon = ch.weapon;
-  { const rg = ch.rig, H = Math.max(0.2, rg.maxY - rg.minY); api.height = H; api.fit = q.get('fit') === '0' ? 1 : (q.has('fit') ? Number(q.get('fit')) : H / 1.8); api.baseY = rg.minY; api.noLegs = q.get('legs') === '0'; api.pitchM = Number(q.get('pitchm') ?? 0); }
   if (q.get('grip')) { const g = q.get('grip').split(',').map(Number); ch.grip = { pos: [g[0], g[1], g[2]], rotX: g[3], rotY: g[4], rotZ: g[5] }; }
   const st = asset.model.stats, im = asset.model.bitmaps?.[0];
   api.info = { ...st, tex: im ? [im.width, im.height] : null, clips: Object.fromEntries(Object.entries(asset.clips).map(([k, c]) => [k, { d: +c.duration.toFixed(3), src: c.source }])), bones: [...ch.rig.key.keys()] };

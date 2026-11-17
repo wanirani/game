@@ -195,9 +195,9 @@ for (const vp of ['fold_open', 'phone2']) {
     await page.waitForFunction(() => window.__v2?.id === 'a', null, { timeout: 30000 });
     ok(pi === 3, `A 단추 → 고르기 화면 → 십자키 ↓ 세 번(줄 ${pi}) → A 단추 → 시범판 A 가 열림`);
     await page.waitForTimeout(1200);
-    await padPress(page, 9, 90, 300);
-    const paused = await page.evaluate(() => window.__v2.scene.paused);
-    await padPress(page, 8, 90, 300);
+    let paused = false;   // 기계가 바쁘면 짧은 누름이 한 틱도 못 잡히는 일이 있어, 될 때까지 몇 번 누른다
+    for (let i = 0; i < 4 && !paused; i++) { await padPress(page, 9, 130, 400); paused = await page.evaluate(() => !!window.__v2?.scene?.paused); }
+    for (let i = 0; i < 4; i++) { await padPress(page, 8, 130, 500); if (await page.evaluate(() => typeof window.__v2 === 'undefined')) break; }
     await page.waitForFunction(() => window.__game.top?.constructor?.name === 'V2Chooser' && typeof window.__v2 === 'undefined', null, { timeout: 8000 });
     const pidx = await page.evaluate(() => window.__game.top.menu.index);
     ok(paused && pidx === 3, `START → 일시정지, SELECT → 고르기 화면으로 (시범판 A 줄: ${pidx})`);

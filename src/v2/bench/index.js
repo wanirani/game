@@ -31,7 +31,8 @@ export default class V2Bench extends Scene {
     this.tests = []; this.ti = -1; this.cur = null; this.calib = null; this.simT = 0; this.steps = 0; this._js = 0; this._pts = 0;
     this.ctxLost = 0; this.longNow = 0; this._heap = 0;
     this.rig = new Rig(this.game); this.warmed = false;
-    this.rig.load().then(() => { if (this.rig?.ready) this._begin(); }).catch((e) => { this.error = String(e?.message ?? e); console.warn('[v2bench]', this.error); this._finish(); });
+    this.loadT = 0;
+    this.rig.load().then(() => { if (this.rig?.ready && this.phase === 'load') this._begin(); }).catch((e) => { this.error = String(e?.message ?? e); console.warn('[v2bench]', this.error); this._finish(); });
     this._probe = (ts) => { this._raf = requestAnimationFrame(this._probe); this._onFrame(ts); };
     this._raf = requestAnimationFrame(this._probe);
     this.touchEv = 0; this._onTouch = () => { if (this.phase === 'run') this.touchEv++; };
@@ -87,7 +88,15 @@ export default class V2Bench extends Scene {
     const d = ts - this._pts; this._pts = ts;
     const C = this.cur, rig = this.rig;
     if (!C || !rig || (this.phase !== 'run' && this.phase !== 'calib')) { this._js = 0; return; }
-    if (document.hidden || this.game._pageHidden || !(d > 0) || d > 1500) { C.t0 = 0; this._js = 0; return; }   // 가려졌다 돌아오면 이 시험을 처음부터
+    if (document.hidden || this.game._pageHidden || !(d > 0) || d > 1500) {   // 가려졌다 돌아오면 이 시험을 처음부터
+      C.t0 = 0; this._js = 0;
+      // 멈춤 방지: 한 화면이 1.5초를 넘는 일이 같은 시험에서 세 번 되풀이되면(아주 느린 기기) 끝없이 다시 시작하지 않고 '재지 못함' 으로 두고 넘어간다
+      if (d > 1500 && (C.retry = (C.retry || 0) + 1) >= 3) {
+        if (this.phase === 'calib') { this.calibMs = 16.7; this._startTest(0); }
+        else { C.test.valid = false; C.test.note = '한 화면이 1.5초를 넘어 재지 못함'; if (this.ti + 1 < this.tests.length) this._startTest(this.ti + 1); else this._finish(); }
+      }
+      return;
+    }
     if (rig.glr?.lost) { if (!C.lost) { C.lost = true; this.ctxLost++; C.lostAt = ts; } else if (ts - C.lostAt > 6000) { this.error = '화면(WebGL)을 되살리지 못했습니다'; this._finish(); } this._js = 0; return; }
     if (C.lost) { C.lost = false; C.t0 = 0; if (C.test) C.test.note = 'ctx lost → 다시 잼'; }
     if (!C.t0) { C.t0 = ts; C.lastDraw = 0; C.sync = null; this.simT = 0; this.steps = 0; this._js = 0; this.longNow = 0; this._heap = 0; const R = C.raw; R.ivN = R.ciN = R.jsN = 0; R.gc = R.gcStall = R.heapUp = R.long = 0; return; }
@@ -155,6 +164,8 @@ export default class V2Bench extends Scene {
   update(dt) {
     if (input.pressed('menu') || input.pressed('cancel')) { if (this.box) { this._closeBox(); return; } this._leave(); return; }
     if (this.phase === 'run' || this.phase === 'calib') { this.simT += dt; this.steps++; }
+    // 멈춤 방지: 준비(세계·모델 받기)가 30초 안에 끝나지 않으면 기다리지 않고 결과 화면에 알린다 (「다시 재기」·「나가기」 를 쓸 수 있다)
+    else if (this.phase === 'load' && (this.loadT += dt) > 30) { this.error = '준비가 30초 안에 끝나지 않았습니다'; console.warn('[v2bench]', this.error); this._finish(); }
   }
   render(ctx) {
     const g = this.game, Wv = g.viewW, Hv = g.viewH, C = this.cur, rig = this.rig;
