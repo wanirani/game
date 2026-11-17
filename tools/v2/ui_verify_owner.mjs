@@ -29,17 +29,18 @@ img.s{display:block;width:100%;border-radius:8px;box-shadow:0 0 0 1px rgba(255,2
 `;
 const img = (n) => `file://${dir}/${n}.png`;
 const ids = ['attack', 'jump', 'roll', 'skill', 'bell', 'lock', 'pause'];
-const sizeOf = Object.fromEntries((shots.icons?.fold_open ?? []).map((r) => [r[0], [r[1], r[2]]]));
+const shots2 = existsSync(dir + '/shots_icons_glass.json') ? JSON.parse(readFileSync(dir + '/shots_icons_glass.json', 'utf8')) : shots;
+const sizeOf = Object.fromEntries((shots2.icons?.fold_open ?? shots.icons?.fold_open ?? []).map((r) => [r[0], [r[1], r[2]]]));
 const row = (bg, k, tag) => `<div class="icons"><div class="tag">${tag}</div>${ids.map((id) => { const z = sizeOf[id] ?? [90, 100]; return `<img src="file://${dir}/icons/fold_open_${bg}_${id}.png" style="width:${z[0] * k}px;height:${z[1] * k}px">`; }).join('')}</div>`;
 const body = `<h1>세공한 유리 — 검증판<small>실제 3D 장면 위에 새 인터페이스를 꽂아 손가락 입력으로 확인한 그림입니다 (폴드 펼침 크기)</small></h1>
 <p class="desc">아래 그림은 모두 실제 게임 장면(v2g)에 새 인터페이스를 켜고 찍었습니다. 단추는 흐림 효과 없이 맑은 유리로 그려 배경이 그대로 비칩니다. 다만 화면은 검사용 컴퓨터에서 찍은 것이고, 실제 폴드에서 손으로 눌러 본 것은 아닙니다.</p>
-<img class="s" src="${img('fold_open_live_fight')}"><p class="cap">① 싸움 중<span>공격 단추로 실제 적을 때린 장면 — 붓글씨 피해 숫자, 락온 고리(가시 테), 「튕겨냄」, 왼쪽 위 촛불(체력)</span></p>
+<img class="s" src="${img('fold_open_live_fight')}"><p class="cap">① 싸움 중<span>공격 단추를 눌러 실제 적을 때린 장면 — 붓글씨 피해 숫자, 락온 고리(가시 테), 「튕겨냄」, 왼쪽 위 촛불(체력). 찍으려고 적 체력을 늘리고 숫자를 잠깐 붙들어 두었습니다</span></p>
 <div class="r r2"><div><img class="s" src="${img('fold_open_live_idle')}"><p class="cap">② 평소 화면<span>지역 이름 띠 · 왼쪽 떠 있는 스틱 · 오른쪽 단추 일곱 개와 한글 이름표</span></p></div>
 <div><img class="s" src="${img('fold_open_live_boss')}"><p class="cap">③ 보스 막대<span>이름 · 문장 · 붉은 막대, 촛불 열여섯 자루(두 단), 울림 눈금 다섯 칸과 보름달 — 값은 검사용으로 넣은 것</span></p></div></div>
 <div class="r r2"><div><img class="s" src="${img('fold_open_live_dialog')}"><p class="cap">④ 대화 창<span>초상 · 이름표 · 글자가 차례로 나타남 (대화 중에는 단추가 숨습니다)</span></p></div>
 <div><img class="s" src="${img('fold_open_live_pause')}"><p class="cap">⑤ 일시정지<span>멈춤 단추 → 이어 하기 · 설정 · 나가기 (놀이가 멈춥니다)</span></p></div></div>
 <h2>단추 아이콘을 가까이서</h2>
-${row('bright', 1, '실제 크기<br>밝은 배경')}${row('dark', 1, '실제 크기<br>어두운 배경')}${row('bright', 3, '3배 확대<br>밝은 배경')}
+${row('bright', 1, '실제 크기<br>가로등 거리')}${row('dark', 1, '실제 크기<br>붉은 골목')}${row('white', 1, '실제 크기<br>흰 바탕<br>(가장 밝을 때)')}${row('bright', 3, '3배 확대<br>가로등 거리')}
 <p class="cap">왼쪽부터 공격 · 점프 · 구르기 · 솜씨 · 종 · 다음 적 · 멈춤<span>은 세공과 서리 낀 수정으로 그린 한 벌. 유리 가운데로 배경이 비칩니다.</span></p>
 <h2>전과 후 (같은 3D 장면)</h2>
 <div class="r r2"><div><img class="s" src="${img('fold_open_before_v1pad')}"><p class="cap">전 — 지금 기본값<span>옛 2D 판의 금테 단추와 임시 체력 표시</span></p></div>

@@ -5,6 +5,7 @@
 (The body is in English so that every lane can read it fast. Player-visible names are Korean.)
 
 ## 바뀐 것
+- 23:15 **WORLD-VERIFY** (review by another lane): `graveyard_*` inner gate wall is now a low wall with a railing (was 190 high and hid the hero behind it), the 1697 keeper's hut is lower (132 + roof 30, no chimney); burnt ruins made by `house()` always collide up to 800 (a 96-high ruin in `eshville_now` could be hopped into → the hero fell through the world); `stage.spawns[i]` now also carries `face` (§2). Numbers of the graveyard in §11 re-measured. Mismatches with ENGINE_API.md are listed in `/tmp/claude-0/v2/requests.md` (section WORLD-VERIFY) and in §12 below.
 - 22:10 first version (shape and names fixed; areas arrive the same day — see §8 for what exists).
 - 22:55 `graveyard_past` added (twin of `graveyard_now`).
 - 22:45 areas exist and validate (`eshville_now`, `eshville_past`, `graveyard_now`, `slice0`). Corrections to the first version: static meshes are opaque (no alpha cut-outs — removed `KIT_TEX.alpha`); a texture name may be a relative path (`'../props/props_atlas'`); **a locked exit should be solid** (§3); `stage.decals[].k` has 8 kinds (§2); `anchors` kinds listed in §6; `AREAS.slice0` added so the test route also gets its baked statues (§9).
@@ -55,7 +56,7 @@ Exactly the format of `src/v2/env/stage_slice0_env.js` (docs/v2/ENV_KIT.md §4):
 - `compileEnv(area.stage)` (from `src/v2/env/build.js`) → `W` (boxes, lights, sections, spawns, fog, light, sky, `env{meshes, bounds, decals, fx, stats}`). Nothing else is needed to draw and collide.
 - The area loader **fills three stage fields from the area fields**, so you never have to merge by hand:
   - `stage.start` = `spawns.default` (`{x, z}`)
-  - `stage.spawns` = `enemies` mapped to the kit/B spawn shape `{ kind, x, z, yard, active, group }` (what `Sim` already reads from `W.spawns`)
+  - `stage.spawns` = `enemies` mapped to the kit/B spawn shape `{ kind, x, z, yard, active, group, face }` (what `Sim` already reads from `W.spawns`; `face` = the enemy's `face` or null)
   - `stage.sections[i].cam` = `camera[section.id]`
 - Textures: `W.env.stats.textures` lists the texture names the meshes use. A name is either a v1 tile (`flag block brick wood dirt`) or a kit file at `assets/v2/env/<name>.webp`. **One name is a relative path: `'../props/props_atlas'`** = `assets/v2/props/props_atlas.webp`, the atlas of the baked props. ENGINE's current loader (`ASSET_ROOT + 'v2/env/' + n + '.webp'`, `KIT_TEX[n]?.repeat ?? true`) already loads it correctly — the browser resolves the `..`. Everything in the static meshes is opaque; there are no alpha cut-outs.
 - **Baked props** (angel statue, gargoyle, dead tree — and generated models later) come from `assets/v2/props/props.bin`. It must be in memory before `compileEnv`: `AREAS[id]()` does that (`ensureWorldAssets()`). If it is missing, low-poly stand-ins are used and nothing breaks.
@@ -125,8 +126,21 @@ Exit targets named but not built: `belltower_*`, `stable_*`, `ossuary_*`. Place 
 |---|---|---|---|---|---|
 | `eshville_now` | 33,840 | out 5,545 / 10 · street 6,956 / 10 · east 21,339 / 13 | 33,840 · 37 (street by the inn: all three chunks in the frustum) | 55 | 35.8 MB (+5.4) |
 | `eshville_past` | 34,455 | out 6,028 / 11 · street 6,779 / 11 · east 21,648 / 13 | 34,455 · 39 | 59 | 37.1 MB (+6.7) |
-| `graveyard_now` | 21,545 | road 7,447 / 7 · field 14,098 / 12 | 21,545 · 23 | 9 | 33.1 MB (+2.7) |
-| `graveyard_past` | 21,646 | road 7,462 / 7 · field 14,184 / 13 | 21,646 · 24 | 10 | 34.4 MB (+4.0) |
+| `graveyard_now` | 21,473 | road 7,447 / 7 · field 14,026 / 12 | 21,473 · 23 | 9 | 33.1 MB (+2.7) |
+| `graveyard_past` | 21,520 | road 7,462 / 7 · field 14,058 / 13 | 21,520 · 24 | 10 | 34.4 MB (+4.0) |
 | `slice0` (test route) | 29,045 | street 10,961 / 9 · north 18,084 / 10 | 29,045 · 32 | 43 | 30.4 MB |
 
 Frame numbers include the hero model (19,638 triangles, 4 draws). Headless Chromium is a software renderer: frame times there say nothing about the device.
+
+## 12. Review (WORLD-VERIFY, 2026-11-17 23:00–23:20 UTC)
+
+Tools: `node tools/v2/world_verify_node.mjs` (no browser: an independent walk flood with the rules' own `moveXZ` on a 10-unit grid, open edges, props without collision on walkable ground, lights under the floor, camera rays from the section rig to the hero's feet / chest / head against the static meshes) · `node tools/v2/world_verify_shot.mjs` (scene v2c on fold_open and phone2 with **real touch events** on the virtual stick: a push from every spawn, the last stretch into every exit box; worst view over a lattice of standable spots; captures; enter / leave five times) · `node tools/v2/world_verify_owner.mjs` (owner sheet).
+
+- Collision: no standable cell outside a section in any area; no open edge into nothing left (one was found and closed: the 96-high burnt ruin at x 360..520, z 300 in `eshville_now` — anything lower than about 130 can be hopped over: jump apex 112 + step 18. **Rule for new areas: every wall the hero must not cross needs `h` ≥ 130 or `collideH`.**)
+- Props without collision that the hero walks through: the open cemetery gate leaves (`cemgate`, by design), ground candles (5 places), one coffin (`graveyard_*` 300, 1300). Roadside graves, trees and the angel in the non-walkable gardens stand on visual-only floors at y 0 (fine).
+- Lights under the floor: none. Fires at y 70 / 72 on the outskirts are on the ruin's wall top (intended).
+- **Hero hidden by the world** (all three rays blocked, worst of both facings, fold_open / phone2): `eshville_now` 317 / 323 of 13,386 cells (2.4 %), `eshville_past` 425 / 428 of 13,201 (3.2 %), `graveyard_now` 538 / 597 of 5,741 (9.4 %; was 1,131 = 19.7 %), `graveyard_past` 649 / 713 (11.3 %; was 1,301 = 22.7 %), `slice0` 311 / 344 of 7,786 (4.0 %). Left in the graveyard: behind each gate post (70 × 300), behind the dead trees and tall angels, a narrow band behind the hut. In `slice0` the two garden angels (now meshes, as big as the old cards) hide about 100 cells each. Left in Eshville: behind the big bell and the terrace statues, along the east wall of the grave road.
+- Spawn `bell` (4200, 1390) faces the bell 16 units ahead on purpose; every other spawn has free ground along its `face`.
+- GL resources: enter / leave ×5 in `eshville_now`, `graveyard_now`, `slice0` — `__v2` gone and the GL canvas removed every time, texture and buffer bytes identical on every re-entry, 2 DOM canvases throughout.
+- Known gaps the format has (see requests.md): no way to unlock an exit, no `keepPosition` in ENGINE's `gotoArea`, `AREAS[id]()` takes no flags although §6 speaks of village states, `locked: 'not_built'` reads as a normal lock in ENGINE.
+

@@ -1,7 +1,7 @@
 {
  "batch": "world",
  "cap_credits": 260,
- "total_credits": 0,
+ "total_credits": "pending: 19 x 9 = 171 for 3D + images (see balance delta)",
  "note": "All paid calls were refused by the permission system at the first attempt (2026-11-17 ~22:09 UTC, 3 x generate_image_batch). Nothing was generated. The exact calls are in /tmp/claude-0/v2/world/gen_requests.json (31 images, then 19 image-to-3D). The lane shipped procedural stand-ins instead.",
  "jobs": [
   {
@@ -27,6 +27,526 @@
    "items": 12,
    "status": "refused_by_permission",
    "credits": 0
+  },
+  {
+   "id": "img_angel",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "83b6e9e9-c3d9-44a7-9630-1764163b9dbe",
+   "aspect_ratio": "3:4",
+   "prompt": "A weathered stone statue of a weeping angel standing on a square stone pedestal, head bowed into its hands, large folded feathered wings, long robe, moss and rain streaks, chipped edges. Single isolated game prop, whole object visible and centered, three-quarter front view from slightly above eye level, semi-realistic hand-painted dark fantasy style with crafted detail, soft even neutral lighting, no ground shadow, no text, no border, plain flat solid light gray background.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/angel.png"
+  },
+  {
+   "id": "img_gargoyle",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "fb6f99b1-75fd-4293-b498-4e6a3608bfb7",
+   "aspect_ratio": "3:4",
+   "prompt": "A crouching stone gargoyle sculpture perched on a short square stone plinth, horned head, bat wings half folded, clawed hands gripping the plinth edge, snarling beak-like mouth, weathered grey stone with lichen. Single isolated game prop, whole object visible and centered, three-quarter front view from slightly above eye level, semi-realistic hand-painted dark fantasy style with crafted detail, soft even neutral lighting, no ground shadow, no text, no border, plain flat solid light gray background.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/gargoyle.png"
+  },
+  {
+   "id": "img_bell",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "c0aaaa18-8a87-49b7-86cf-b0a6eeee8297",
+   "aspect_ratio": "3:4",
+   "prompt": "A large old bronze church bell with a visible crack, hanging from a heavy oak yoke inside a sturdy free-standing timber frame of thick beams on a low stone base, iron straps and bolts, a thick rope hanging from the clapper, green patina on the bronze. Single isolated game prop, whole object visible and centered, three-quarter front view from slightly above eye level, semi-realistic hand-painted dark fantasy style with crafted detail, soft even neutral lighting, no ground shadow, no text, no border, plain flat solid light gray background.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/bell.png"
+  },
+  {
+   "id": "img_well",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "e9621eef-ad93-4920-bbc8-40b8b3ad009e",
+   "aspect_ratio": "3:4",
+   "prompt": "A medieval village stone well: round wall of rough mossy stones, two thick wooden posts holding a small shingled roof, a wooden windlass with rope and an iron-banded wooden bucket hanging. Single isolated game prop, whole object visible and centered, three-quarter front view from slightly above eye level, semi-realistic hand-painted dark fantasy style with crafted detail, soft even neutral lighting, no ground shadow, no text, no border, plain flat solid light gray background.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/well.png"
+  },
+  {
+   "id": "img_cart",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "dc6b7f50-95b7-4978-b113-f0fc7b4e2331",
+   "aspect_ratio": "4:3",
+   "prompt": "A medieval two-wheeled wooden market hand cart with large spoked wheels and long handles, loaded with burlap sacks, a small barrel and a crate of turnips, worn oak planks and iron fittings. Single isolated game prop, whole object visible and centered, three-quarter side view from slightly above eye level, semi-realistic hand-painted dark fantasy style with crafted detail, soft even neutral lighting, no ground shadow, no text, no border, plain flat solid light gray background.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/cart.png"
+  },
+  {
+   "id": "img_tombs4",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "30e20d4e-37c9-433f-94de-7e889c24fde5",
+   "aspect_ratio": "16:9",
+   "prompt": "Four different old gravestones standing upright in one straight row with clear wide empty gaps between them, not touching: a round-topped slab, a pointed gothic arch slab with carved rosette, a short thick slab leaning with a broken corner, and a slab topped with a small carved skull and wings. Weathered grey stone with moss, each on its own small stone base. No letters. Single isolated game prop, whole object visible and centered, front three-quarter view from slightly above eye level, semi-realistic hand-painted dark fantasy style with crafted detail, soft even neutral lighting, no ground shadow, no text, no border, plain flat solid light gray background.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/tombs4.png"
+  },
+  {
+   "id": "img_cross",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "9d16ba34-e433-4190-9ed3-16ea63185de2",
+   "aspect_ratio": "3:4",
+   "prompt": "A tall weathered stone graveyard cross with a ring around the crossing and carved knotwork, standing on a stepped square stone base, moss in the crevices, chipped edges. Single isolated game prop, whole object visible and centered, three-quarter front view from slightly above eye level, semi-realistic hand-painted dark fantasy style with crafted detail, soft even neutral lighting, no ground shadow, no text, no border, plain flat solid light gray background.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/cross.png"
+  },
+  {
+   "id": "img_mausoleum",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "32f3338e-be04-4873-b630-d40f6d5303e2",
+   "aspect_ratio": "1:1",
+   "prompt": "A small gothic stone mausoleum crypt building: front facade with a pointed arch doorway, a heavy rusted iron door with ring handle, two short columns, a steep stone gable roof with a small cross on top, three worn steps, ivy and moss. Single isolated game prop, whole object visible and centered, three-quarter front view from slightly above eye level, semi-realistic hand-painted dark fantasy style with crafted detail, soft even neutral lighting, no ground shadow, no text, no border, plain flat solid light gray background.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/mausoleum.png"
+  },
+  {
+   "id": "img_gate",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "42319d73-cff9-466a-9cd0-597911adb36f",
+   "aspect_ratio": "1:1",
+   "prompt": "A wrought iron cemetery gate: two tall square stone pillars with carved caps and stone urns on top, a pointed iron arch between them, and a double gate of thick iron bars with spear tips standing half open. Bars are thick and solid. Single isolated game prop, whole object visible and centered, front view turned slightly to the side from slightly above eye level, semi-realistic hand-painted dark fantasy style with crafted detail, soft even neutral lighting, no ground shadow, no text, no border, plain flat solid light gray background.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/gate.png"
+  },
+  {
+   "id": "img_deadtree",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "0c61df64-24da-4c10-8de0-8d724517c566",
+   "aspect_ratio": "3:4",
+   "prompt": "A dead leafless gnarled old tree with a thick twisted trunk, exposed roots, a hollow knot and a few thick bare crooked branches (no thin twigs, no leaves), dark cracked bark. Single isolated game prop, whole object visible and centered, front view from slightly above eye level, semi-realistic hand-painted dark fantasy style with crafted detail, soft even neutral lighting, no ground shadow, no text, no border, plain flat solid light gray background.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/deadtree.png"
+  },
+  {
+   "id": "img_lanternpost",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "5baf897e-aa15-44e3-9100-0c7c61f46b69",
+   "aspect_ratio": "3:4",
+   "prompt": "A tall rustic wooden lantern post: a thick squared oak post on a stone footing with a curved wrought iron bracket arm, from which hangs a large iron-and-glass lantern with a warm glowing candle inside, iron bands and nails. Single isolated game prop, whole object visible and centered, three-quarter front view from slightly above eye level, semi-realistic hand-painted dark fantasy style with crafted detail, soft even neutral lighting, no ground shadow, no text, no border, plain flat solid light gray background.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/lanternpost.png"
+  },
+  {
+   "id": "img_brazier",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "7242ac2e-123a-463c-9d67-0b1299dd3e16",
+   "aspect_ratio": "3:4",
+   "prompt": "A heavy forged iron brazier: a wide soot-blackened iron bowl full of glowing orange coals and short flames, standing on three thick curved iron legs with a ring brace, hammered metal texture and rust. Single isolated game prop, whole object visible and centered, three-quarter front view from slightly above eye level, semi-realistic hand-painted dark fantasy style with crafted detail, soft even neutral lighting, no ground shadow, no text, no border, plain flat solid light gray background.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/brazier.png"
+  },
+  {
+   "id": "img_coffin",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "20a81645-3a42-4927-b50b-e0c06a826c3d",
+   "aspect_ratio": "4:3",
+   "prompt": "An old wooden coffin resting on two short trestle blocks, six-sided tapered shape, dark oak planks with iron corner straps and nails, the lid slid slightly open, dusty and cracked. Single isolated game prop, whole object visible and centered, three-quarter view from slightly above eye level, semi-realistic hand-painted dark fantasy style with crafted detail, soft even neutral lighting, no ground shadow, no text, no border, plain flat solid light gray background.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/coffin.png"
+  },
+  {
+   "id": "img_niche",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "99b11592-f845-424b-82ee-a54d00a74283",
+   "aspect_ratio": "1:1",
+   "prompt": "A free-standing section of an ossuary wall: a thick block of old stone masonry with three arched niches packed with stacked skulls and long bones, a stone ledge with melted candles, cobwebs and dust. Single isolated game prop, whole object visible and centered, front view turned slightly to the side from slightly above eye level, semi-realistic hand-painted dark fantasy style with crafted detail, soft even neutral lighting, no ground shadow, no text, no border, plain flat solid light gray background.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/niche.png"
+  },
+  {
+   "id": "img_goods",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "f7eba53d-3369-4906-9be5-c680a3c2bb1e",
+   "aspect_ratio": "4:3",
+   "prompt": "A tight cluster of medieval storage goods standing together touching each other: one large oak barrel with iron hoops, one smaller barrel on its side on top of a wooden crate, a second crate with rope handles, and two full burlap sacks leaning against them. Single isolated game prop, whole object visible and centered, three-quarter front view from slightly above eye level, semi-realistic hand-painted dark fantasy style with crafted detail, soft even neutral lighting, no ground shadow, no text, no border, plain flat solid light gray background.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/goods.png"
+  },
+  {
+   "id": "img_plaguepost",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "dda6cb85-d825-4146-beaa-19b9781c3e5c",
+   "aspect_ratio": "3:4",
+   "prompt": "A medieval plague warning post for a village square: a tall thick wooden post on a stone footing with a crossbeam, hung with tattered black and bone-white cloth banners, a small iron hand bell, a bundle of dried herbs and a cracked wooden board painted with a simple red X mark. No letters. Single isolated game prop, whole object visible and centered, three-quarter front view from slightly above eye level, semi-realistic hand-painted dark fantasy style with crafted detail, soft even neutral lighting, no ground shadow, no text, no border, plain flat solid light gray background.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/plaguepost.png"
+  },
+  {
+   "id": "img_stall",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "96d61057-c9c7-4f24-9e00-c0d123a53da9",
+   "aspect_ratio": "4:3",
+   "prompt": "A medieval harvest market stall: a sturdy wooden counter under a patched striped canvas awning on four posts, the counter piled with pumpkins, apples in baskets, wheat sheaves and clay jugs, a wooden crate below. Single isolated game prop, whole object visible and centered, three-quarter front view from slightly above eye level, semi-realistic hand-painted dark fantasy style with crafted detail, soft even neutral lighting, no ground shadow, no text, no border, plain flat solid light gray background.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/stall.png"
+  },
+  {
+   "id": "img_wreck",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "6afe34fa-baf1-4800-8c02-b4e5e819ac44",
+   "aspect_ratio": "4:3",
+   "prompt": "A heap of burnt house wreckage: charred collapsed roof beams leaning on a broken blackened stone wall corner, scorched planks, a toppled burnt cart wheel, grey ash and a few glowing embers. Compact solid pile. Single isolated game prop, whole object visible and centered, three-quarter front view from slightly above eye level, semi-realistic hand-painted dark fantasy style with crafted detail, soft even neutral lighting, no ground shadow, no text, no border, plain flat solid light gray background.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/wreck.png"
+  },
+  {
+   "id": "img_fountain",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "212c7581-91ab-45c7-a89f-30c93b952108",
+   "aspect_ratio": "3:4",
+   "prompt": "An octagonal stone village fountain: a wide basin of worn carved stone filled with dark water, a central column with a second small bowl and a carved stone lion head spout on top, moss and water stains. Single isolated game prop, whole object visible and centered, three-quarter front view from slightly above eye level, semi-realistic hand-painted dark fantasy style with crafted detail, soft even neutral lighting, no ground shadow, no text, no border, plain flat solid light gray background.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/fountain.png"
+  },
+  {
+   "id": "img_k_ashlar",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "1ce5d0a0-b02f-4e9e-bcbd-23e57f105740",
+   "aspect_ratio": "1:1",
+   "prompt": "Seamless tileable texture of an old ashlar stone wall: large dressed rectangular limestone blocks in regular courses of slightly varying height, thin dark mortar joints, chipped corners, subtle stains and moss in joints. Hand-painted semi-realistic game texture, flat straight-on orthographic view, perfectly even flat lighting with no cast shadows, no perspective, no vignette, uniform brightness across the whole image, fills the entire frame edge to edge, no text.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/k_ashlar.png"
+  },
+  {
+   "id": "img_k_rubble",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "394c51a2-687c-4dd7-a36a-07b9099a1dd6",
+   "aspect_ratio": "1:1",
+   "prompt": "Seamless tileable texture of a rough rubble fieldstone wall: irregular rounded and angular stones of mixed sizes packed with thick grey lime mortar, a few darker stones, lichen spots. Hand-painted semi-realistic game texture, flat straight-on orthographic view, perfectly even flat lighting with no cast shadows, no perspective, no vignette, uniform brightness across the whole image, fills the entire frame edge to edge, no text.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/k_rubble.png"
+  },
+  {
+   "id": "img_k_plaster",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "92a16c22-cc07-4027-ac1b-5e444aac2995",
+   "aspect_ratio": "1:1",
+   "prompt": "Seamless tileable texture of an old lime plaster wall: warm off-white daub with fine cracks, trowel marks, faint water stains, a few small patches where the plaster has flaked to show straw and clay underneath. No timber beams. Hand-painted semi-realistic game texture, flat straight-on orthographic view, perfectly even flat lighting with no cast shadows, no perspective, no vignette, uniform brightness across the whole image, fills the entire frame edge to edge, no text.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/k_plaster.png"
+  },
+  {
+   "id": "img_k_cobble",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "d370b86b-ea87-4e53-8edd-45b8f24fb4c4",
+   "aspect_ratio": "1:1",
+   "prompt": "Seamless tileable top-down texture of a medieval cobblestone street: rounded river cobbles of varied sizes and grey-blue to brown tones laid in an irregular organic pattern, dark damp earth between the stones. Hand-painted semi-realistic game texture, straight top-down orthographic view, perfectly even flat lighting with no cast shadows, no perspective, no vignette, uniform brightness across the whole image, fills the entire frame edge to edge, no text.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/k_cobble.png"
+  },
+  {
+   "id": "img_k_cobble2",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "6c905841-dd6c-4f3d-89fa-7f03d1777da4",
+   "aspect_ratio": "1:1",
+   "prompt": "Seamless tileable top-down texture of a medieval street paved with squarish granite setts in loose fan-shaped arcs, uneven sizes, worn smooth tops, sand and tiny weeds in the joints. Hand-painted semi-realistic game texture, straight top-down orthographic view, perfectly even flat lighting with no cast shadows, no perspective, no vignette, uniform brightness across the whole image, fills the entire frame edge to edge, no text.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/k_cobble2.png"
+  },
+  {
+   "id": "img_k_cobworn",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "ccdaca99-55b5-49fd-87bf-f5f56102b002",
+   "aspect_ratio": "1:1",
+   "prompt": "Seamless tileable top-down texture of a worn muddy cart track in a cobbled street: flattened sunken cobbles half buried in packed dark mud, wheel ruts faintly visible, scattered straw and small puddles. Hand-painted semi-realistic game texture, straight top-down orthographic view, perfectly even flat lighting with no cast shadows, no perspective, no vignette, uniform brightness across the whole image, fills the entire frame edge to edge, no text.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/k_cobworn.png"
+  },
+  {
+   "id": "img_k_flag",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "c189e797-d14a-4163-b965-3f47767d0334",
+   "aspect_ratio": "1:1",
+   "prompt": "Seamless tileable top-down texture of old flagstone paving: large irregular rectangular slabs of worn grey stone with cracks, chipped edges, dark joints with moss. Hand-painted semi-realistic game texture, straight top-down orthographic view, perfectly even flat lighting with no cast shadows, no perspective, no vignette, uniform brightness across the whole image, fills the entire frame edge to edge, no text.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/k_flag.png"
+  },
+  {
+   "id": "img_k_soil",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "4b96c2d7-a5a4-44b9-8938-5f80bdd49f4f",
+   "aspect_ratio": "1:1",
+   "prompt": "Seamless tileable top-down texture of graveyard soil: dark turned earth with small stones, patches of dry dead yellow-brown grass, fallen brown leaves and thin roots. Hand-painted semi-realistic game texture, straight top-down orthographic view, perfectly even flat lighting with no cast shadows, no perspective, no vignette, uniform brightness across the whole image, fills the entire frame edge to edge, no text.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/k_soil.png"
+  },
+  {
+   "id": "img_k_cellar",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "d373f3ed-4f31-437c-8c3a-38ecd605b3b8",
+   "aspect_ratio": "1:1",
+   "prompt": "Seamless tileable texture of wet cellar stone: dark damp roughly squared stone blocks with glistening moisture, green-black algae streaks, white mineral deposits in the joints. Hand-painted semi-realistic game texture, flat straight-on orthographic view, perfectly even flat lighting with no cast shadows, no perspective, no vignette, uniform brightness across the whole image, fills the entire frame edge to edge, no text.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/k_cellar.png"
+  },
+  {
+   "id": "img_k_slate",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "e53d486c-f48a-4853-bb38-64fa2eda8892",
+   "aspect_ratio": "1:1",
+   "prompt": "Seamless tileable texture of an old slate roof: overlapping rows of rough hand-split blue-grey slate tiles of uneven widths, chipped lower edges, a few slipped or lighter tiles, lichen spots. Rows are horizontal. Hand-painted semi-realistic game texture, flat straight-on orthographic view, perfectly even flat lighting with no cast shadows, no perspective, no vignette, uniform brightness across the whole image, fills the entire frame edge to edge, no text.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/k_slate.png"
+  },
+  {
+   "id": "img_k_thatch",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "5227cb05-78e0-427d-b4d7-818e1d9ca1f1",
+   "aspect_ratio": "1:1",
+   "prompt": "Seamless tileable texture of an old thatched roof: thick layered bundles of weathered grey-golden straw combed downward in horizontal overlapping courses, darker damp patches, a little moss. Hand-painted semi-realistic game texture, flat straight-on orthographic view, perfectly even flat lighting with no cast shadows, no perspective, no vignette, uniform brightness across the whole image, fills the entire frame edge to edge, no text.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/k_thatch.png"
+  },
+  {
+   "id": "img_k_planks",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "e2de0a9c-6b96-48b7-87c0-c8d3071195fb",
+   "aspect_ratio": "1:1",
+   "prompt": "Seamless tileable texture of old oak planks: wide vertical weathered dark-brown boards of slightly different widths with deep grain, knots, cracks, rusty nail heads and narrow dark gaps between boards. Hand-painted semi-realistic game texture, flat straight-on orthographic view, perfectly even flat lighting with no cast shadows, no perspective, no vignette, uniform brightness across the whole image, fills the entire frame edge to edge, no text.",
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world/raw/k_planks.png"
+  },
+  {
+   "id": "3d_angel",
+   "tool": "generate_3d",
+   "model": "tripo_h3_1_image_to_3d",
+   "job_id": "5335f989-5196-443b-a08e-50b890d38923",
+   "source_image_job": "83b6e9e9-c3d9-44a7-9630-1764163b9dbe",
+   "face_limit": 1500,
+   "credits": 9,
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world/raw/angel.glb"
+  },
+  {
+   "id": "3d_gargoyle",
+   "tool": "generate_3d",
+   "model": "tripo_h3_1_image_to_3d",
+   "job_id": "d8fc5f31-5031-4a9d-8f9e-9a6d7b7a8b75",
+   "source_image_job": "fb6f99b1-75fd-4293-b498-4e6a3608bfb7",
+   "face_limit": 1500,
+   "credits": 9,
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world/raw/gargoyle.glb"
+  },
+  {
+   "id": "3d_bell",
+   "tool": "generate_3d",
+   "model": "tripo_h3_1_image_to_3d",
+   "job_id": "4b472930-028d-4688-ba81-8bd449f4d993",
+   "source_image_job": "c0aaaa18-8a87-49b7-86cf-b0a6eeee8297",
+   "face_limit": 1400,
+   "credits": 9,
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world/raw/bell.glb"
+  },
+  {
+   "id": "3d_well",
+   "tool": "generate_3d",
+   "model": "tripo_h3_1_image_to_3d",
+   "job_id": "e4c02d52-cf45-4879-bcd7-8fe22ef089d1",
+   "source_image_job": "e9621eef-ad93-4920-bbc8-40b8b3ad009e",
+   "face_limit": 1200,
+   "credits": 9,
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world/raw/well.glb"
+  },
+  {
+   "id": "3d_cart",
+   "tool": "generate_3d",
+   "model": "tripo_h3_1_image_to_3d",
+   "job_id": "808ece8b-bb51-47bb-8d84-26f3f12c5c75",
+   "source_image_job": "dc6b7f50-95b7-4978-b113-f0fc7b4e2331",
+   "face_limit": 1400,
+   "credits": 9,
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world/raw/cart.glb"
+  },
+  {
+   "id": "3d_tombs4",
+   "tool": "generate_3d",
+   "model": "tripo_h3_1_image_to_3d",
+   "job_id": "93189a9b-cd86-4ddc-a691-36008cb6c256",
+   "source_image_job": "30e20d4e-37c9-433f-94de-7e889c24fde5",
+   "face_limit": 1600,
+   "credits": 9,
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world/raw/tombs4.glb"
+  },
+  {
+   "id": "3d_cross",
+   "tool": "generate_3d",
+   "model": "tripo_h3_1_image_to_3d",
+   "job_id": "7e470c2d-969a-4018-b3b3-64626ac0825b",
+   "source_image_job": "9d16ba34-e433-4190-9ed3-16ea63185de2",
+   "face_limit": 1000,
+   "credits": 9,
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world/raw/cross.glb"
+  },
+  {
+   "id": "3d_mausoleum",
+   "tool": "generate_3d",
+   "model": "tripo_h3_1_image_to_3d",
+   "job_id": "d157aca2-7941-441c-88e3-c4547e55334f",
+   "source_image_job": "32f3338e-be04-4873-b630-d40f6d5303e2",
+   "face_limit": 1500,
+   "credits": 9,
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world/raw/mausoleum.glb"
+  },
+  {
+   "id": "3d_gate",
+   "tool": "generate_3d",
+   "model": "tripo_h3_1_image_to_3d",
+   "job_id": "7ae8589f-b0a5-495e-a7e6-caba614c005c",
+   "source_image_job": "42319d73-cff9-466a-9cd0-597911adb36f",
+   "face_limit": 1500,
+   "credits": 9,
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world/raw/gate.glb"
+  },
+  {
+   "id": "3d_deadtree",
+   "tool": "generate_3d",
+   "model": "tripo_h3_1_image_to_3d",
+   "job_id": "654b8af2-0c1e-404f-b7d0-6c039a8506c1",
+   "source_image_job": "0c61df64-24da-4c10-8de0-8d724517c566",
+   "face_limit": 1400,
+   "credits": 9,
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world/raw/deadtree.glb"
+  },
+  {
+   "id": "3d_lanternpost",
+   "tool": "generate_3d",
+   "model": "tripo_h3_1_image_to_3d",
+   "job_id": "4f9cc778-bab1-4dc9-bc20-6c9fe614513f",
+   "source_image_job": "5baf897e-aa15-44e3-9100-0c7c61f46b69",
+   "face_limit": 1000,
+   "credits": 9,
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world/raw/lanternpost.glb"
+  },
+  {
+   "id": "3d_brazier",
+   "tool": "generate_3d",
+   "model": "tripo_h3_1_image_to_3d",
+   "job_id": "fe227dc2-5ffb-4299-8295-c50b1d375513",
+   "source_image_job": "7242ac2e-123a-463c-9d67-0b1299dd3e16",
+   "face_limit": 1000,
+   "credits": 9,
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world/raw/brazier.glb"
+  },
+  {
+   "id": "3d_coffin",
+   "tool": "generate_3d",
+   "model": "tripo_h3_1_image_to_3d",
+   "job_id": "58902f60-49bb-443b-a733-00da7ff01acb",
+   "source_image_job": "20a81645-3a42-4927-b50b-e0c06a826c3d",
+   "face_limit": 1000,
+   "credits": 9,
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world/raw/coffin.glb"
+  },
+  {
+   "id": "3d_niche",
+   "tool": "generate_3d",
+   "model": "tripo_h3_1_image_to_3d",
+   "job_id": "8af2c440-a7e3-4de9-a330-e9a1ca50b187",
+   "source_image_job": "99b11592-f845-424b-82ee-a54d00a74283",
+   "face_limit": 1500,
+   "credits": 9,
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world/raw/niche.glb"
+  },
+  {
+   "id": "3d_goods",
+   "tool": "generate_3d",
+   "model": "tripo_h3_1_image_to_3d",
+   "job_id": "d9ce6b6d-c499-4173-b7ee-1825eade87ba",
+   "source_image_job": "f7eba53d-3369-4906-9be5-c680a3c2bb1e",
+   "face_limit": 1200,
+   "credits": 9,
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world/raw/goods.glb"
+  },
+  {
+   "id": "3d_plaguepost",
+   "tool": "generate_3d",
+   "model": "tripo_h3_1_image_to_3d",
+   "job_id": "1d0ed81b-8c73-410f-8d99-6a7da575b6e6",
+   "source_image_job": "dda6cb85-d825-4146-beaa-19b9781c3e5c",
+   "face_limit": 1000,
+   "credits": 9,
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world/raw/plaguepost.glb"
+  },
+  {
+   "id": "3d_stall",
+   "tool": "generate_3d",
+   "model": "tripo_h3_1_image_to_3d",
+   "job_id": "33afa932-f183-41e6-88d4-dfc2ae793d20",
+   "source_image_job": "96d61057-c9c7-4f24-9e00-c0d123a53da9",
+   "face_limit": 1500,
+   "credits": 9,
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world/raw/stall.glb"
+  },
+  {
+   "id": "3d_wreck",
+   "tool": "generate_3d",
+   "model": "tripo_h3_1_image_to_3d",
+   "job_id": "d9943a3c-9491-48f3-9c09-9d91f283c23b",
+   "source_image_job": "6afe34fa-baf1-4800-8c02-b4e5e819ac44",
+   "face_limit": 1400,
+   "credits": 9,
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world/raw/wreck.glb"
+  },
+  {
+   "id": "3d_fountain",
+   "tool": "generate_3d",
+   "model": "tripo_h3_1_image_to_3d",
+   "job_id": "ba881b1e-239a-4da6-b3c8-4c59e161d8a4",
+   "source_image_job": "212c7581-91ab-45c7-a89f-30c93b952108",
+   "face_limit": 1200,
+   "credits": 9,
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world/raw/fountain.glb"
   }
- ]
+ ],
+ "note_main_session": "2026-11-17 23:14-23:22 UTC: the main session ran the requests of /tmp/claude-0/v2/world/gen_requests.json (the lane's own calls had been refused). 31 images (gpt_image_2_5, 1k, medium) then 19 image-to-3D (tripo_h3_1_image_to_3d, 9 credits each; face_limit below 1000 is clamped to 1000 by the service)."
 }

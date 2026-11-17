@@ -69,6 +69,7 @@ for (const dev of DEVICES) {
   const shot = (name) => page.screenshot({ path: `${OUT}/${dev}_${name}.png` });
   try {
     await page.waitForFunction(() => window.__v2?.scene?.hudKind === 'ui' && window.__v2.scene.hud.ready, null, { timeout: 30000 }).catch(() => {});
+    if (args.tough) await page.evaluate(() => { window.__tough = true; });
     // instrumentation: input log, canvas pointerdown counter, per-frame blur / filter / canvas creation counters
     await page.evaluate(() => {
       window.__vl = []; const T = window.__game.input.touch;
@@ -280,7 +281,7 @@ for (const dev of DEVICES) {
 
     }
     // ── fight: walk into the nearest enemy, lock on, attack (real buttons) ──
-    await page.evaluate(() => { const sim = window.__v2.scene.sim, h = sim.hero; let best = null, bd = 1e9; for (const e of sim.enemies) { if (e.dead) continue; const dd = Math.hypot(e.x - h.x, e.z - h.z); if (dd < bd) { bd = dd; best = e; } } if (best) { h.x = best.x - 70; h.z = best.z; window.__v2.scene.cam.snap = true; } });
+    await page.evaluate(() => { const sim = window.__v2.scene.sim, h = sim.hero; let best = null, bd = 1e9; for (const e of sim.enemies) { if (e.dead) continue; const dd = Math.hypot(e.x - h.x, e.z - h.z); if (dd < bd) { bd = dd; best = e; } } if (best) { h.x = best.x - 70; h.z = best.z; window.__v2.scene.cam.snap = true; if (window.__tough) { best.hpMax = 5000; best.hp = 5000; } window.__best = best.id; } });
     await sleep(600);
     await T.down(1, B.lock.cx, B.lock.cy); await sleep(60); await T.up(1); await sleep(200);
     let gotNum = false;
@@ -289,12 +290,13 @@ for (const dev of DEVICES) {
     ok(gotNum, `${dev}: attacking a real enemy with the attack button shows damage numbers (${JSON.stringify(R.fight)})`);
     ok(R.fight.lock != null, `${dev}: the lock button locks on (${R.fight.lock})`);
     await page.evaluate(() => { const sc = window.__v2.scene, h = sc.sim.hero; sc.hud.callout(h.x + 40, 90, h.z, '튕겨냄', 'parry'); });
-    await page.evaluate(() => { const N = window.__v2.scene.numbers; window.__keep = setInterval(() => { for (const n of N) if (n.on && n.t > 0.22) n.t = 0.22; }, 16); });   // the numbers of the last real hits stay up for the capture
+    await page.evaluate(() => { const N = window.__v2.scene.numbers; window.__keep = setInterval(() => { let k = 0; for (const n of N) if (n.on) { const cap = 0.16 + 0.15 * (k++ % 4); if (n.t > cap) n.t = cap; } }, 16); });   // the numbers of the last real hits stay up for the capture
     for (let i = 0; i < 3; i++) { await T.down(1, B.attack.cx, B.attack.cy); await sleep(90); await T.up(1); await sleep(300); }
     // make sure the capture shows a lock ring on a living enemy: press "next target" until the locked enemy is alive and on screen
     for (let i = 0; i < 4; i++) {
       const good = await page.evaluate(() => { const sc = window.__v2.scene, id = sc.sim.hero.lock; if (id == null) return false; const e = sc.sim.enemies.find((q) => q.id === id); if (!e || e.dead || e.state === 'dead') return false; const p = sc.project(e.x, e.y + 40, e.z, {}); return p.w > 1 && p.x > 60 && p.x < window.__game.viewW - 60 && p.y > 60 && p.y < window.__game.viewH - 60; });
       if (good) break;
+      if (i === 3) { await page.evaluate(() => { if (window.__best != null) window.__v2.scene.sim.hero.lock = window.__best; }); note(`${dev}: lock ring for the capture set directly (the lock button did not land on the staged enemy)`); break; }
       await T.down(1, B.lock.cx, B.lock.cy); await sleep(60); await T.up(1); await sleep(250);
     }
     await T.down(1, B.attack.cx, B.attack.cy); await sleep(90); await T.up(1); await sleep(200);

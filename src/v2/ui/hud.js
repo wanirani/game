@@ -323,7 +323,8 @@ export function createCanvasHud(game, opts = {}) {
       const slot = nums[i];
       if (slot.str !== n.str || slot.color !== n.color || slot.big !== !!n.big || slot.ep !== L.epoch) bakeNumber(slot, n);
       s.project(n.x, n.y + n.t * 70, n.z, P); if (P.w <= 1) continue;
-      drawPop(ctx, slot, P.x, P.y, clamp(880 / P.w, 0.6, 1.5), n.t, 0.8, i);
+      const nk = clamp(880 / P.w, 0.6, 1.5);
+      drawPop(ctx, slot, P.x + (((i * 53) % 5) - 2) * 11 * nk, P.y, nk, n.t, 0.8, i);   // quick hits on one enemy fan out sideways instead of stacking on one spot
     }
     for (let i = 0; i < CALL_SLOTS; i++) {
       const o = calls[i]; if (!o.on) continue;

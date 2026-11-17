@@ -20,9 +20,9 @@ const T = {
   ba: '시범 구간의 약했던 곳 — 왼쪽: 전 · 오른쪽: 후',
   ba1a: '전: 천사상이 납작한 그림판', ba1b: '후: 입체 석상 (그림은 예전 것이 더 또렷합니다)',
   ba2a: '전: 자로 그은 흙 네모, 가는 난간, 그림판 가고일', ba2b: '후: 들쭉날쭉한 가장자리, 굵은 난간, 입체 가고일',
-  fix: '이번 검수에서 고친 것 — 묘지 안쪽 담이 너무 높아 그 뒤에서 영웅이 보이지 않던 것',
-  fixa: '전: 높은 담 (담 뒤 넓은 자리가 가려짐)', fixb: '후: 낮은 담과 쇠 난간 (묘지가 보임)', fixc: '남은 것: 오두막 바로 뒤에 서면 아직 가려짐',
-  weak: '아직 약한 곳: 석상 · 가고일 · 고목은 코드로 빚은 것이라 가까이서 무르고 흐릿합니다 (유료 모델 생성이 거절됨). 불길은 세 가지 색의 뿔 모양입니다. 막돌 벽 무늬가 크게 되풀이됩니다. 큰길은 적이 없어도 그리기 호출이 37–39 로 예산(40)에 닿습니다.',
+  fix: '이번 검수에서 고친 것 — 묘지 안쪽 담과 오두막이 너무 높아 그 뒤에서 영웅이 보이지 않던 것',
+  fixa: '전: 높은 담 (담 뒤 넓은 자리가 가려짐)', fixb: '후: 낮은 담과 쇠 난간 (묘지가 보임)', fixc: '오두막도 낮춤: 뒤에 선 영웅이 보임 (문기둥 · 고목 바로 뒤는 아직 가려짐)',
+  weak: '아직 약한 곳: 석상 · 가고일 · 고목은 코드로 빚은 것이라 가까이서 무르고 흐릿합니다 (유료 모델 생성이 거절됨). 불길은 세 가지 색의 뿔 모양입니다. 막돌 벽 무늬가 크게 되풀이됩니다. 큰길은 적이 없어도 그리기 호출이 37–39 로 예산(40)에 닿습니다. 묘지의 문기둥 · 고목 · 석상 바로 뒤에서는 영웅이 가려집니다.',
 };
 if (process.argv.includes('--check')) {
   const all = [...new Set(Object.values(T).flat().join(''))].join('');
@@ -36,11 +36,16 @@ miss=[c for c in sys.argv[1] if ord(c)>0x2000 and ord(c) not in cm]
 print('missing glyphs:', ''.join(miss) or 'none')`, all]).toString());
   process.exit(0);
 }
-const img = (src, cap, crop) => `<figure>${crop ? `<div class="crop" style="background-image:url('${src}');background-size:${crop[2]}%;background-position:${crop[0]}% ${crop[1]}%"></div>` : `<img src="${src}">`}${cap ? `<figcaption>${cap}</figcaption>` : ''}</figure>`;
+// crop = [cx, cy, zoom, cell aspect h/w = 1.15, source aspect h/w = 1966/2600]: the window is centred on (cx, cy) of the source picture
+const img = (src, cap, crop) => {
+  if (!crop) return `<figure><img src="${src}">${cap ? `<figcaption>${cap}</figcaption>` : ''}</figure>`;
+  const [cx, cy, Z, ca = 1.15, sa = 1966 / 2600] = crop, fx = 1 / Z, fy = ca / (Z * sa), c = (v) => Math.max(0, Math.min(100, v * 100)).toFixed(1);
+  return `<figure><div class="crop" style="aspect-ratio:1/${ca};background-image:url('${src}');background-size:${Z * 100}%;background-position:${c((cx - fx / 2) / (1 - fx))}% ${c((cy - fy / 2) / (1 - fy))}%"></div>${cap ? `<figcaption>${cap}</figcaption>` : ''}</figure>`;
+};
 const E = ['1_outskirts', '3_street_inn', '6_square_well', '8_church_front'], G = ['1_road', '3_gate', '4_field', '6_mausoleum'];
-const PROPS = [   // [capture, x%, y%, zoom%]
-  ['slice0_3_garden', 4, 78, 330], ['eshville_past_8_church_front', 18, 58, 380], ['eshville_now_x_bell_behind', 86, 52, 300], ['graveyard_past_6_mausoleum', 50, 12, 210],
-  ['graveyard_past_3_gate', 50, 50, 230], ['eshville_now_6_square_well', 50, 74, 330], ['eshville_now_1_outskirts', 66, 62, 300], ['eshville_now_1_outskirts', 14, 50, 280], ['eshville_past_3_street_inn', 88, 62, 300],
+const PROPS = [   // [capture, cx, cy, zoom]
+  ['slice0_3_garden', 0.17, 0.72, 2.6], ['eshville_past_8_church_front', 0.24, 0.55, 3], ['eshville_now_x_bell_behind', 0.47, 0.62, 3], ['graveyard_past_6_mausoleum', 0.5, 0.42, 1.8],
+  ['graveyard_past_3_gate', 0.5, 0.5, 2.2], ['eshville_now_6_square_well', 0.5, 0.78, 3], ['eshville_now_1_outskirts', 0.68, 0.62, 3], ['eshville_now_1_outskirts', 0.22, 0.5, 2.6], ['eshville_past_3_street_inn', 0.9, 0.72, 2.8],
 ];
 const html = `<!doctype html><meta charset="utf-8"><style>
 @font-face { font-family: K; src: url('${F}noto-sans-kr.woff2'); } @font-face { font-family: K; src: url('${F}noto-sans-kr-ext.woff2'); unicode-range: U+AC00-D7A3; }
@@ -49,7 +54,7 @@ const html = `<!doctype html><meta charset="utf-8"><style>
 h1 { font: 700 40px H, K; margin: 0 0 6px; color: #f0d9a0; } p.sub { font-size: 19px; margin: 0 0 18px; color: #b9b2a6; }
 h2 { font-size: 23px; margin: 22px 0 8px; color: #f0d9a0; font-weight: 700; border-left: 6px solid #a8323a; padding-left: 12px; }
 .g4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; } .g9 { display: grid; grid-template-columns: repeat(9, 1fr); gap: 8px; } .g3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-figure { margin: 0; position: relative; background: #000; } img { width: 100%; display: block; } .crop { width: 100%; aspect-ratio: 1 / 1.15; background-repeat: no-repeat; }
+figure { margin: 0; position: relative; background: #000; } img { width: 100%; display: block; } .crop { width: 100%; background-repeat: no-repeat; }
 figcaption { font-size: 17px; padding: 5px 8px 6px; background: #221f2a; color: #e8e2d6; } .cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; font-size: 18px; color: #cfc8ba; margin-bottom: 4px; } .cols span { padding-left: 4px; }
 .row { margin-bottom: 8px; } .weak { margin-top: 22px; font-size: 21px; line-height: 1.5; background: #2a1c20; border: 2px solid #a8323a; padding: 12px 16px; color: #f2e6d8; }
 </style>
@@ -60,7 +65,7 @@ figcaption { font-size: 17px; padding: 5px 8px 6px; background: #221f2a; color: 
 <div class="g4 row">${G.map((n) => img(`${S}graveyard_now_${n}.png`)).join('')}</div><div class="g4">${G.map((n) => img(`${S}graveyard_past_${n}.png`)).join('')}</div>
 <h2>${T.props}</h2><div class="g9">${PROPS.map((p, i) => img(`${S}${p[0]}.png`, T.propNames[i], [p[1], p[2], p[3]])).join('')}</div>
 <h2>${T.ba}</h2><div class="g4">${img(`${OLD}c_5_stairs.png`, T.ba1a)}${img(`${S}slice0_c5_stairs.png`, T.ba1b)}${img(`${OLD}c_6_yard.png`, T.ba2a)}${img(`${S}slice0_c6_yard.png`, T.ba2b)}</div>
-<h2>${T.fix}</h2><div class="g3">${img(LANE, T.fixa, [0, 61.2, 200])}${img(`${S}graveyard_now_4_field.png`, T.fixb)}${img(`${S}graveyard_past_x_hut_behind.png`, T.fixc)}</div>
+<h2>${T.fix}</h2><div class="g3">${img(LANE, T.fixa, [0.25, 0.6425, 2, 1966 / 2600, 4235 / 1600])}${img(`${S}graveyard_now_4_field.png`, T.fixb)}${img(`${S}graveyard_past_x_hut_behind.png`, T.fixc)}</div>
 <div class="weak">${T.weak}</div>`;
 fs.writeFileSync(HTML, html);
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' }), page = await browser.newPage({ viewport: { width: 2000, height: 1200 } });
