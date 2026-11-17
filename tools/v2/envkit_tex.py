@@ -131,10 +131,10 @@ def tex_plaster():
     crack = 1 - sm(0.0, 0.012, np.abs(n4 - 0.5)) * 1.0                            # 실금
     crack *= sm(0.45, 0.6, fbm(beta=3.0, seed=25))
     shade *= 1 - 0.38 * crack
-    streak = fbm(beta=2.4, seed=26, aniso=(4.0, 0.5))                             # 세로로 흘러내린 물때
+    streak = fbm(beta=2.4, seed=26, aniso=(0.5, 4.0))                             # 세로로 흘러내린 물때
     shade *= 1 - 0.2 * sm(0.55, 0.85, streak)
     c = rgb((206, 190, 160), shade).astype(np.float32)
-    patch = sm(0.74, 0.8, fbm(beta=3.4, seed=27))                                # 떨어져 나간 자리 (어두운 속벽)
+    patch = sm(0.76, 0.8, fbm(beta=2.6, seed=27))                                # 떨어져 나간 자리 (어두운 속벽)
     c = c * (1 - 0.5 * patch[:, :, None]) + np.array([120, 96, 80])[None, None, :] * 0.5 * patch[:, :, None] * (0.8 + 0.4 * n2[:, :, None])
     return np.clip(c, 0, 255).astype(np.uint8)
 
@@ -167,12 +167,12 @@ def tex_slate(n=256):
 
 def tex_cobble():
     r = np.random.default_rng(41)
-    pts = relax(r.uniform(0, 1, (150, 2)), 2)
+    pts = relax(r.uniform(0, 1, (105, 2)), 2)
     f1, f2, idx = worley(N, pts)
     n1 = fbm(beta=2.0, seed=42); n2 = fbm(beta=1.0, seed=43)
     gap = (f2 - f1) * N                                                          # 줄눈까지 거리 (px 근사)
     stone = sm(1.5, 7.0, gap + (n2 - 0.5) * 3)
-    dome = np.clip(1 - f1 * N / 26, 0, 1)
+    dome = np.clip(1 - f1 * N / 32, 0, 1)
     h = stone * (0.5 + 0.5 * np.sqrt(dome)) + n2 * 0.12
     lit = emboss(h, 3.2)
     k = len(pts)
@@ -206,7 +206,7 @@ def tile_timber(n=256):
     """어두운 참나무 널 (세로 결)"""
     yy, xx = np.mgrid[0:n, 0:n]
     pw = n // 4; pl = xx // pw; tx = (xx % pw)
-    grain = fbm(n, beta=2.0, seed=61, aniso=(6.0, 0.35)); g2 = fbm(n, beta=1.0, seed=62, aniso=(8.0, 0.2)); n1 = fbm(n, beta=2.6, seed=63)
+    grain = fbm(n, beta=2.0, seed=61, aniso=(0.35, 6.0)); g2 = fbm(n, beta=1.0, seed=62, aniso=(0.2, 8.0)); n1 = fbm(n, beta=2.6, seed=63)
     gap = 1 - sm(0.5, 2.5, np.minimum(tx, pw - 1 - tx))
     shade = (0.62 + 0.55 * grain) * (0.85 + 0.3 * g2) * per(pl, 4, 0.82, 1.1, 64) * (0.88 + 0.24 * n1) * (1 - 0.7 * gap)
     lit = emboss(grain * 0.5 + (1 - gap) * 0.5, 1.5)
@@ -244,7 +244,7 @@ def tile_glass_dark(n=128):
 
 
 def tile_straw(n=128):
-    g = fbm(n, beta=1.2, seed=81, aniso=(0.25, 6.0)); g2 = fbm(n, beta=2.0, seed=82, aniso=(0.5, 3.0)); n1 = fbm(n, beta=2.6, seed=83)
+    g = fbm(n, beta=1.2, seed=81, aniso=(6.0, 0.25)); g2 = fbm(n, beta=2.0, seed=82, aniso=(3.0, 0.5)); n1 = fbm(n, beta=2.6, seed=83)
     shade = (0.55 + 0.7 * g) * (0.85 + 0.3 * g2) * (0.85 + 0.3 * n1)
     lit = emboss(g, 2.0)
     return rgb((214, 176, 92), shade * (0.8 + 0.4 * lit))

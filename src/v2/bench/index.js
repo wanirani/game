@@ -52,7 +52,7 @@ export default class V2Bench extends Scene {
     try { rig.warmUp(); } catch (e) { console.warn('[v2bench] 데우기 실패', e); }
     this.tests = buildMatrix(rig.has3d).map((t) => ({ ...t, raw: null, valid: false, note: '' }));
     // 주사율 재기: 가장 가벼운 설정(겹쳐 얹기 · 절반 해상도 · 캐릭터 없음 · 매 화면)으로 1.2초 — 가만히 있는 화면은 기기가 주사율을 낮출 수 있어 움직이는 그림으로 잰다
-    this.calib = this._newRaw(1200); this.phase = 'calib';
+    this.calib = this._newRaw(1200); this.phase = 'calib'; this.ti = -1; this.report = null;
     rig.setMode('layer', 0.5, 'none');
     this.cur = { present: 'layer', resK: 0.5, chars: 'none', pace: 'every', t0: 0, raw: this.calib, dur: 1500, skip: 300, lost: false };
   }
@@ -129,14 +129,12 @@ export default class V2Bench extends Scene {
   update(dt) {
     if (input.pressed('menu') || input.pressed('cancel')) { if (this.box) { this._closeBox(); return; } this._leave(); return; }
     if (this.phase === 'run' || this.phase === 'calib') { this.simT += dt; this.steps++; }
-    else if (this.phase === 'done' && input.pressed('confirm') && !this.box) this._copy();
   }
   render(ctx) {
     const g = this.game, Wv = g.viewW, Hv = g.viewH, C = this.cur, rig = this.rig;
     if (this.phase === 'done') { this._result(ctx, Wv, Hv); return; }
-    ctx.fillStyle = '#07030a'; ctx.fillRect(0, 0, Wv, Hv);
-    if (this.phase === 'load' || !C || !rig?.ready) { text(ctx, '성능 진단을 준비하는 중…', Wv / 2, Hv / 2, { size: 22, weight: 700, align: 'center', color: BONE }); g.dirty = true; return; }
-    if (rig.glr.lost) { text(ctx, '화면을 되살리는 중…', Wv / 2, Hv / 2, { size: 22, weight: 700, align: 'center', color: BONE }); g.dirty = true; return; }
+    const msg = this.phase === 'load' || !C || !rig?.ready ? '성능 진단을 준비하는 중…' : rig.glr.lost ? '화면을 되살리는 중…' : '';
+    if (msg) { ctx.fillStyle = '#07030a'; ctx.fillRect(0, 0, Wv, Hv); text(ctx, msg, Wv / 2, Hv / 2, { size: 22, weight: 700, align: 'center', color: BONE }); g.dirty = true; return; }
     const t0 = now(), every = C.pace === 'every', ts = g.last;
     if (every) g.dirty = true;                               // 다음 rAF 에도 그린다 (틱이 없어도)
     const fresh = every || this.steps > 0 || !C.lastDraw;    // 새 그림인가 (초당 60 방식은 틱이 돈 프레임만)
