@@ -43,7 +43,7 @@ export class Geo {
   _wr(tex) { const k = this.chunk + '|' + tex; let w = this.out.get(k); if (!w) { w = new Writer(); w.chunk = this.chunk; w.tex = tex; this.out.set(k, w); } return w; }
   /** 꼭짓점 하나의 색 */
   _col(M, p, n, o) {
-    if (o.emis) { const e = o.emis === true ? 1 : o.emis, t = o.tint ?? M.tint; return [t[0] * e, t[1] * e, t[2] * e]; }
+    if (o.emis) { if (typeof o.emis === 'function') return o.emis(p); const e = o.emis === true ? 1 : o.emis, t = o.tint ?? M.tint; return [t[0] * e, t[1] * e, t[2] * e]; }   // emis 가 함수면 꼭짓점마다 색을 준다 (불꽃의 구운 색 흐름)
     const c = lightAt(this.W, p[0] + n[0] * 2, p[1] + n[1] * 2, p[2] + n[2] * 2, n[0], n[1], n[2]);
     if (this.lift) { c[0] = Math.min(1.6, 0.42 + 0.72 * c[0]); c[1] = Math.min(1.6, 0.42 + 0.72 * c[1]); c[2] = Math.min(1.6, 0.42 + 0.72 * c[2]); }   // 소품은 캐릭터와 같은 식으로 밝힌다 (B 의 그림판 색조와 같은 생각 — 어두운 길에서도 장애물이 읽히게)
     let k = o.k ?? 1;
@@ -164,13 +164,13 @@ export class Geo {
   }
   /**
    * 구운 소품의 삼각형 묶음 (src/v2/env/baked.js). V = [x,y,z, nx,ny,nz, u,v] × n (세계 좌표 · 바깥 법선 · 아틀라스 uv), I = 색인 (바깥에서 볼 때 반시계).
-   * 꼭짓점마다 그 자리의 빛을 굽고, 카메라가 못 보는 뒤쪽 삼각형은 버린다.
+   * 꼭짓점마다 그 자리의 빛을 굽고, 카메라가 못 보는 뒤쪽 삼각형은 버린다. o.E[i] = 1 인 꼭짓점은 빛을 굽지 않고 밝기 o.emisK 로 둔다 (등불 유리 · 숯불).
    */
   mesh(mat, V, I, o = {}) {
     const M = KMATS[mat]; if (!M) throw new Error('모르는 재질: ' + mat);
     const wr = this._wr(M.tex), nv = V.length / 8, C = new Float32Array(nv * 3), done = new Uint8Array(nv), oo = { vary: 0, ...o };
     let b = this.bounds.get(this.chunk); if (!b) { b = [1e9, 1e9, 1e9, -1e9, -1e9, -1e9]; this.bounds.set(this.chunk, b); }
-    const cull = this.cull && !o.keep;
+    const cull = this.cull && !o.keep, E = o.E ?? null, ek = o.emisK ?? 1.45, et = o.emisTint ?? [1, 1, 1];
     for (let t = 0; t < I.length; t += 3) {
       const i0 = I[t], i1 = I[t + 1], i2 = I[t + 2], a = i0 * 8, c = i1 * 8, d = i2 * 8;
       if (cull) {   // 면 법선이 뒤(+z)를 보면 버린다
@@ -180,8 +180,12 @@ export class Geo {
       }
       for (const i of [i0, i2, i1]) {   // 키트의 감기 규칙 (바깥에서 볼 때 시계)
         const q = i * 8;
-        if (!done[i]) { const col = this._col(M, [V[q], V[q + 1], V[q + 2]], [V[q + 3], V[q + 4], V[q + 5]], oo); C[i * 3] = col[0]; C[i * 3 + 1] = col[1]; C[i * 3 + 2] = col[2]; done[i] = 1; }
-        wr.vert(V[q], V[q + 1], V[q + 2], V[q + 6], V[q + 7], C[i * 3], C[i * 3 + 1], C[i * 3 + 2], 255);
+        if (!done[i]) {
+          if (E && E[i]) { C[i * 3] = ek * et[0]; C[i * 3 + 1] = ek * et[1]; C[i * 3 + 2] = ek * et[2]; }   // glowing vertex: the texture at a fixed brightness, whatever the night
+          else { const col = this._col(M, [V[q], V[q + 1], V[q + 2]], [V[q + 3], V[q + 4], V[q + 5]], oo); C[i * 3] = col[0]; C[i * 3 + 1] = col[1]; C[i * 3 + 2] = col[2]; }
+          done[i] = 1;
+        }
+        wr.vert(V[q], V[q + 1], V[q + 2], V[q + 6], V[q + 7], C[i * 3], C[i * 3 + 1], C[i * 3 + 2], E && E[i] && ek > 1 ? 190 : 255);
         if (V[q] < b[0]) b[0] = V[q]; if (V[q + 1] < b[1]) b[1] = V[q + 1]; if (V[q + 2] < b[2]) b[2] = V[q + 2]; if (V[q] > b[3]) b[3] = V[q]; if (V[q + 1] > b[4]) b[4] = V[q + 1]; if (V[q + 2] > b[5]) b[5] = V[q + 2];
       }
       this.tris++;

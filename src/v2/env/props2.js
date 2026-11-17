@@ -8,17 +8,48 @@ import { railing, wallGrid } from './kit.js';
 const fx = (G) => G.fx ?? (G.fx = { glows: [], pools: [], shadows: [] });
 const shadow = (G, x, y, z, rx, rz = rx * 0.62, a = 0.5) => fx(G).shadows.push({ x, y, z, rx, rz, a });
 const BRONZE = [1.55, 1.08, 0.5], SOOT = [0.42, 0.38, 0.38], IRON = [0.5, 0.5, 0.56];
-/** 불꽃: 스스로 빛나는 혀 여러 가닥. 가닥마다 밑(밝은 노랑) → 가운데(주황) → 끝(검붉음) 세 마디로 휘고, 십자로 겹쳐 옆에서도 납작해 보이지 않는다 */
-function flames(G, x, y, z, w, h, n = 5, seed = 1) {
-  const C = [[1.0, 0.86, 0.46], [1.0, 0.52, 0.15], [0.74, 0.17, 0.06]], E = [1.6, 1.35, 1.0];
-  for (let i = 0; i < n; i++) {
-    const t = n > 1 ? i / (n - 1) - 0.5 : 0, cx = x + t * w + (hash(i, seed) - 0.5) * (w / n) * 0.9, fh = h * (0.28 + 0.72 * hash(i + seed, x) ** 1.4) * (1 - 0.5 * Math.abs(t)), fw = Math.max(5, w / n * (0.45 + 0.5 * hash(seed, i + x))), sw = (hash(x + i, seed) - 0.5) * fw * 1.6, pz = z - (i % 3) * 2.5;
-    const cxAt = (k) => cx + sw * k * k + Math.sin(k * 3 + i) * fw * 0.18, wAt = (k) => fw * (1 - k * 0.72), yAt = (k) => y + fh * k;
-    for (const [ax, az] of [[1, 0], [0, 1]]) for (let s = 0; s < 3; s++) {
-      const k0 = s / 3, k1 = (s + 1) / 3, o = { emis: E[s], tint: C[s], fog: 0.45, keep: true }, n3 = [az, 0, -ax];
-      const a = [cxAt(k0) - wAt(k0) * ax, yAt(k0), pz - wAt(k0) * az * 0.7], b = [cxAt(k0) + wAt(k0) * ax, yAt(k0), pz + wAt(k0) * az * 0.7], c = [cxAt(k1) + wAt(k1) * ax, yAt(k1), pz + wAt(k1) * az * 0.7], d = [cxAt(k1) - wAt(k1) * ax, yAt(k1), pz - wAt(k1) * az * 0.7];
-      if (s < 2) G.quad4('white', a, b, c, d, n3, o); else G.tri('white', a, b, [cxAt(1), yAt(1), pz], n3, o);
+/**
+ * 불꽃: 스스로 빛나는 잎 모양 여러 겹 (정적 메시 — 실행 중 계산 0). 바깥 겹은 검붉고 길게, 가운데 겹은 주황, 속은 밝은 노랑으로 짧게.
+ * 잎마다 밑에서 끝으로, 가운데에서 가장자리로 색이 흐르게 꼭짓점 색을 굽는다. 진짜 불티 · 연기는 지역의 anchors 자리에 효과가 얹는다.
+ */
+const LAYERS = [
+  { hk: 1.0, wk: 1.0, a: [1.0, 0.4, 0.1], b: [0.5, 0.07, 0.03], ea: 1.2, eb: 0.85, dz: 0 },
+  { hk: 0.72, wk: 0.8, a: [1.0, 0.72, 0.22], b: [0.98, 0.28, 0.06], ea: 1.5, eb: 1.1, dz: -1.6 },
+  { hk: 0.46, wk: 0.6, a: [1.0, 0.95, 0.66], b: [1.0, 0.62, 0.18], ea: 1.75, eb: 1.4, dz: -3.2 },
+];
+const TS = [0, 0.14, 0.36, 0.6, 0.83, 1];
+function leaf(G, bx, by, bz, H, Wd, lean, ph, L) {
+  const hw = (t) => Wd * 2.49 * Math.sqrt(t) * (1 - t) ** 0.9, cx = (t) => bx + lean * t * t + Math.sin(t * 2.4 + ph) * Wd * 0.3 * t;
+  const col = (edge) => (p) => { const t = Math.max(0, Math.min(1, (p[1] - by) / H)), k = (L.ea + (L.eb - L.ea) * t) * (edge ? 0.7 : 1); return [(L.a[0] + (L.b[0] - L.a[0]) * t) * k, (L.a[1] + (L.b[1] - L.a[1]) * t) * k * (edge ? 0.8 : 1), (L.a[2] + (L.b[2] - L.a[2]) * t) * k * (edge ? 0.6 : 1)]; };
+  const n = [0, 0, -1], P = (t, sd) => [cx(t) + sd * hw(t), by + H * t, bz];
+  for (let i = 0; i + 1 < TS.length; i++) {
+    const t0 = TS[i], t1 = TS[i + 1];
+    for (const sd of [-1, 1]) {   // 반쪽 둘: 가운데 줄은 밝고 가장자리는 어둡다 (가장자리 꼭짓점만 어두운 색)
+      const o = { fog: 0.4, keep: true, emis: (p) => (Math.abs(p[0] - cx((p[1] - by) / H)) > 0.01 ? col(true)(p) : col(false)(p)) };
+      if (i === 0) G.tri('white', P(0, 0), sd < 0 ? P(t1, -1) : P(t1, 0), sd < 0 ? P(t1, 0) : P(t1, 1), n, o);
+      else if (i === TS.length - 2) G.tri('white', sd < 0 ? P(t0, -1) : P(t0, 0), sd < 0 ? P(t0, 0) : P(t0, 1), P(1, 0), n, o);
+      else G.quad4('white', sd < 0 ? P(t0, -1) : P(t0, 0), sd < 0 ? P(t0, 0) : P(t0, 1), sd < 0 ? P(t1, 0) : P(t1, 1), sd < 0 ? P(t1, -1) : P(t1, 0), n, o);
     }
+  }
+}
+/** 불길 한 무더기: 너비 w · 높이 h · 바깥 잎 n 장 (가운데 · 속 겹은 거기에 맞춰 준다) */
+export function flames(G, x, y, z, w, h, n = 5, seed = 1) {
+  LAYERS.forEach((L, li) => {
+    const m = Math.max(1, Math.round(n * [1, 0.7, 0.45][li]));
+    for (let i = 0; i < m; i++) {
+      const t = m > 1 ? i / (m - 1) - 0.5 : 0, r1 = hash(i + seed * 3.1 + li * 7, x), r2 = hash(x + li, i + seed), r3 = hash(seed + i * 2.3, li + z);
+      const fh = h * L.hk * (0.55 + 0.45 * r1) * (1 - 0.45 * Math.abs(t) * 2 * (li ? 0.6 : 1)), fw = Math.max(4, (w / Math.max(2, m)) * 0.78 * L.wk * (0.8 + 0.5 * r2));
+      leaf(G, x + t * w * (li ? 0.7 : 0.92) + (r3 - 0.5) * fw * 0.6, y, z + L.dz - i * 0.12, fh, fw, (r2 - 0.5) * fw * 2.2 + t * w * 0.18, r3 * 6.28, L);
+    }
+  });
+}
+/** 바닥의 잉걸불: 그을린 재 자리 + 빛나는 숯 조각들 */
+export function embers(G, x, y, z, r, n = 9, seed = 1) {
+  const ash = []; for (let k = 0; k < 9; k++) { const a = k * 2 * Math.PI / 9, rr = r * (0.8 + 0.35 * hash(k + seed, x)); ash.push([x + Math.cos(a) * rr, y + 0.5, z + Math.sin(a) * rr * 0.55]); }
+  G.poly('coal', ash, [0, 1, 0], { tint: [0.34, 0.3, 0.3], vary: 0.3, keep: true });
+  for (let i = 0; i < n; i++) {
+    const a = i * 2.4 + seed, rr = r * (0.15 + 0.8 * hash(i, x + seed)), ex = x + Math.cos(a) * rr, ez = z + Math.sin(a) * rr * 0.5, s = 2.2 + 3.4 * hash(x + seed, i), hot = hash(i + 3, seed);
+    G.poly('white', [[ex - s, y + 1, ez], [ex, y + 1, ez - s * 0.6], [ex + s, y + 1, ez], [ex, y + 1, ez + s * 0.6]], [0, 1, 0], { emis: 1.1 + 0.6 * hot, tint: [1, 0.36 + 0.4 * hot, 0.08 + 0.2 * hot], fog: 0.45, keep: true });
   }
 }
 /** 세로 판(u–y 평면)의 다각형 + 옆 마구리. pts = [[u, y], …] (바깥에서 볼 때 반시계) */
@@ -32,9 +63,10 @@ function slab(G, F, pts, t, mat, o = {}) {
 }
 
 Object.assign(PROPS, {
-  /** 불 (효과 닻 자리에 세우는 눈에 보이는 불길). o.w · o.h. 빛은 part 의 light 로 따로 준다 */
+  /** 불 (효과 닻 자리에 세우는 눈에 보이는 불길 + 바닥의 잉걸불). o.w · o.h · o.n (바깥 잎 수) · o.embers:false. 빛은 part 의 light 로 따로 준다 */
   fire(G, x, y, z, o = {}) {
     const w = o.w ?? 56, h = o.h ?? 78;
+    if (o.embers !== false) embers(G, x, y, z - 2, w * 0.62, o.coals ?? 9, 3);
     flames(G, x, y, z, w, h, o.n ?? 5, 3);
     fx(G).glows.push({ x, y: y + h * 0.45, z: z - 4, r: h * 1.25, c: [1, 0.55, 0.2], flicker: true });
     fx(G).pools.push({ x, y, z: z - 10, r: o.pool ?? 230, c: [1, 0.5, 0.2], a: 0.36, flicker: true });
@@ -242,3 +274,21 @@ Object.assign(PROPS, {
     fx(G).glows.push({ x, y: y + 22, z: z - 6, r: 44, c: [1, 0.72, 0.36], flicker: true }); fx(G).pools.push({ x, y, z, r: 120, c: [1, 0.66, 0.3], a: 0.3, flicker: true });
   },
 });
+
+/**
+ * 구운 소품(생성 모델)에 덧붙이는 것. build.js 가 bakedProp 뒤에 부른다: (G, x, y, z, o, s) — s = 크기 배율.
+ * 모델의 그림에 든 불빛(숯 · 등불 유리)은 꼭짓점 깃발로 밝게 남고, 여기서는 불길 · 잉걸불 · 빛 번짐을 더한다.
+ */
+export const BAKED_EXTRA = {
+  wreck(G, x, y, z, o, s) {
+    for (let i = 0; i < 6; i++) { const ex = x + (-52 + 21 * i) * s, ez = z - (30 + 9 * hash(i, x)) * s, r = (4 + 4 * hash(x, i)) * s, pts = []; for (let k = 0; k < 5; k++) pts.push([ex + Math.cos(k * 1.26) * r, y + 1.2, ez + Math.sin(k * 1.26) * r * 0.6]); G.poly('white', pts, [0, 1, 0], { emis: 1.3, tint: [1, 0.4 + 0.3 * hash(i, 2), 0.1], fog: 0.45, keep: true }); }
+    if (o.fire === false) return;
+    flames(G, x + 6 * s, y + 4 * s, z - 34 * s, 74 * s, 62 * s, 5, 7);
+    fx(G).glows.push({ x: x + 6 * s, y: y + 40 * s, z: z - 36 * s, r: 96 * s, c: [1, 0.5, 0.18], flicker: true }); fx(G).pools.push({ x, y, z: z - 30 * s, r: 240 * s, c: [1, 0.48, 0.18], a: 0.38, flicker: true });
+  },
+  brazier(G, x, y, z, o, s) { if (o.lit !== false) flames(G, x, y + 96 * s, z - 6 * s, 34 * s, 40 * s, 3, 5); },
+};
+/** 구운 소품이 손으로 짠 것과 다른 인자를 받을 때 맞춰 준다 (o, 묶음의 정의) → o */
+export const BAKED_ARGS = {
+  wreck: (o, d) => (o.h == null && o.w ? { ...o, h: Math.round(o.w * 0.63) } : o),   // 손으로 짠 잔해는 너비 w 로 크기를 받았다
+};

@@ -9,19 +9,24 @@ import { Geo, Frame } from './geo.js';
 import * as K from './kit.js';
 import { PROPS, WALLPROPS } from './props.js';
 import { bakedDef, bakedProp } from './baked.js';
-import './props2.js';   // WORLD 구역의 소품을 PROPS 에 더한다
+import { BAKED_EXTRA, BAKED_ARGS } from './props2.js';   // WORLD 구역의 소품을 PROPS 에 더한다 + 구운 소품에 덧붙이는 것
 
 /** 구운 소품이 없을 때(묶음을 받기 전) 대신 세우는 손으로 짠 소품 */
-const FALLBACK = { angel: 'statue', gargoyle: 'statue', deadtree: 'tree' };
-const propFn = (name) => (bakedDef(name) ? (G, x, y, z, o) => bakedProp(G, name, x, y, z, o) : PROPS[name] ?? PROPS[FALLBACK[name]]);
+const FALLBACK = { angel: 'statue', gargoyle: 'statue', deadtree: 'tree', tomb_a: 'tomb', tomb_b: 'tomb', tomb_c: 'tomb', tomb_d: 'tomb', goods: 'barrel', chapel: 'mausoleum' };
+/** 이름이 묶음에 있으면 구운 소품(+ 덧붙임), 없으면 손으로 짠 소품. part 에 code:true 면 묶음에 있어도 손으로 짠 것을 쓴다 */
+const propFn = (name, code) => {
+  const d = code ? null : bakedDef(name);
+  if (!d) return PROPS[name] ?? PROPS[FALLBACK[name]];
+  return (G, x, y, z, o) => { const oo = BAKED_ARGS[name] ? BAKED_ARGS[name](o, d) : o; bakedProp(G, name, x, y, z, oo); BAKED_EXTRA[name]?.(G, x, y, z, oo, (oo.h ?? d.h) / d.h); };
+};
 
 const KIT_ONLY = new Set(['pave', 'arch', 'fence', 'deco']);
 const bPart = (P) => {
   if (P.t !== 'prop' || !P.mesh) return P;
-  const d = bakedDef(P.mesh), o = { ...P, img: '__mesh' };
+  const d = P.code ? null : bakedDef(P.mesh), o = { ...P, img: '__mesh' };
   if (d) {   // 구운 소품: 충돌 발자국과 빛을 묶음에서 채운다 (part 에 적은 값이 이긴다)
-    const s = (P.h ?? d.h) / d.h;
-    if (o.h == null) o.h = d.h;
+    const h = P.h ?? BAKED_ARGS[P.mesh]?.(P, d).h ?? d.h, s = h / d.h;
+    if (o.h == null) o.h = h;
     if (o.solid == null && d.foot?.[0]) { o.solid = d.foot[0] * s; o.solidZ = d.foot[1] * s; o.solidH = (d.footH ?? d.h * 0.8) * s; }
     if (o.light == null && d.light) o.light = d.light;
   }
@@ -44,7 +49,7 @@ export function compileEnv(S, { cull = true } = {}) {
   W.mesh = {};                                                           // B 의 납작한 메시는 쓰지 않는다
   W.sprites = W.sprites.filter((s) => s.kind === 'prop' && s.img !== '__mesh');   // 그림판으로 남긴 소품만
   const G = new Geo(W, { cull }); G.fx = { glows: [], pools: [], shadows: [] };
-  const extra = [];
+  const extra = [], propTris = {};
   // 1) 굽기 전에 빛을 모은다: 불 켜진 창 · 벽등
   for (const P of S.parts) {
     if (P.t === 'wall' && P.kit) { W.lights.push(...K.wallLights(P)); for (const [F, h] of wallHang(P)) if (h.type === 'sconce') { const p = F.pt(h.u, h.y - 4, 22); W.lights.push({ x: p[0], y: p[1], z: p[2], r: h.lr ?? 250, c: [1.0, 0.6, 0.28], i: h.li ?? 1.3 }); } }
@@ -73,8 +78,9 @@ export function compileEnv(S, { cull = true } = {}) {
       }
       case 'prop': case 'deco': {
         if (!P.mesh) break;
-        const g = P.y ?? groundAt(W, P.x, P.z), fn = propFn(P.mesh); if (!fn) throw new Error('모르는 소품: ' + P.mesh);
-        G.lift = true; fn(G, P.x, Number.isFinite(g) ? g : 0, P.z, P); G.lift = false;
+        const g = P.y ?? groundAt(W, P.x, P.z), fn = propFn(P.mesh, P.code); if (!fn) throw new Error('모르는 소품: ' + P.mesh);
+        const t0 = G.tris; G.lift = true; fn(G, P.x, Number.isFinite(g) ? g : 0, P.z, P); G.lift = false;
+        const pm = propTris[P.mesh] ?? (propTris[P.mesh] = [0, 0]); pm[0]++; pm[1] += G.tris - t0;   // 소품별 [개수, 삼각형] (검사 · 문서의 숫자)
         break;
       }
       case 'blocker': case 'light': case 'window': break;
@@ -86,7 +92,7 @@ export function compileEnv(S, { cull = true } = {}) {
   W.start.y = groundAt(W, W.start.x, W.start.z);
   const out = G.done(), per = {};
   for (const m of out.meshes) { const c = per[m.chunk] ?? (per[m.chunk] = { tris: 0, bytes: 0, draws: 0 }); c.tris += m.count / 3; c.bytes += m.data.byteLength; c.draws++; }
-  W.env = { meshes: out.meshes, bounds: out.bounds, fx: G.fx, decals: S.decals ?? [], stats: { tris: out.tris, bytes: out.meshes.reduce((a, m) => a + m.data.byteLength, 0), chunks: per, textures: [...new Set(out.meshes.map((m) => m.tex))] } };
+  W.env = { meshes: out.meshes, bounds: out.bounds, fx: G.fx, decals: S.decals ?? [], stats: { tris: out.tris, bytes: out.meshes.reduce((a, m) => a + m.data.byteLength, 0), chunks: per, textures: [...new Set(out.meshes.map((m) => m.tex))], props: propTris } };
   W.stats = { ...W.stats, bTris: W.stats.tris, tris: out.tris, boxes: W.boxes.length };
   return W;
 }
