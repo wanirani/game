@@ -9,9 +9,10 @@
 - **WebGL2 용 작은 효과 엔진**(라이브러리 없음, 6파일 약 1,900줄 · 153 KB)과 **한 번 부르면 되는 효과 32종**이다. 게임(`src/v2/b/`)에는 아직 꽂지 않았다 — 혼자 도는 모듈 + 시험 화면이고, 꽂는 법은 §3 에 적었다.
 - 입자와 바닥 문양은 **태어날 때 한 번만 버퍼에 쓰고, 그 뒤의 움직임은 셰이더가 시간으로 계산**한다. 프레임마다 CPU 가 입자를 돌지 않고, 텍스처를 올리지 않는다.
 - 그림은 **전부 코드로 한 번 그린 것**(입자 16칸 · 바닥 문양 4칸 · 잡음)이다. 생성 이미지는 쓰지 않았다(크레딧 0) — 플립북 대신 셰이더가 움직인다.
-- 난전(적 12, 마법 3개가 떠 있음) 한 프레임에 **효과 그리기 호출 평균 6회 · 최대 12회, 살아 있는 입자 최대 135 / 200 / 300개**(low / mid / high). 숫자는 §8.
+- 난전(적 12, 마법 3개가 떠 있음) 한 프레임에 **효과 그리기 호출 평균 6회 · 최대 12회, 살아 있는 입자 최대 약 135 / 220 / 300개**(low / mid / high; 검수 재측정 135 / 218 / 303). 숫자는 §8.
 - 헤드리스 Chromium 은 소프트웨어 렌더러라 **프레임 시간은 기기 값이 아니다.** 폴드에서의 실제 채움(fill) 비용은 재지 못했다(§9).
-- 프레임당 할당은 **완전한 0 이 아니다**: 새 효과를 내지 않는 프레임에 12–20바이트(숫자 상자 한두 개, 객체는 0), 낼 때는 더(§8).
+- 프레임당 할당: **새 효과를 내지 않는 프레임은 0**(검수 재측정: 4,800프레임에 52바이트 — 처음 적었던 12–20바이트는 V8 이 최적화를 끝내기 전의 값이었다, §12). **새 효과를 내는 프레임은 0 이 아니다** — 난전에서 프레임당 60–210바이트(짧게 사는 숫자 상자; 객체는 없음, §8).
+- 소리는 사건 이름만 내보낸다고 했지만 그 이름 53개 가운데 소리 표(`src/v2/feel/table.js`)와 같은 것은 3개뿐이었다 → 검수에서 다리 `src/v2/feel/fxbridge.js` 를 넣었다(§11).
 
 | 파일 | 내용 |
 |---|---|
@@ -81,7 +82,7 @@ fx.post.end(fx.feel.screen);         // 번짐·톤·번쩍임을 입혀 화면(
 - **그리는 자리**: 불투명한 세계와 캐릭터 뒤. 게임이 따로 그리는 반투명 빌보드가 있으면 그 뒤가 좋다(효과는 깊이를 쓰지 않는다).
 - **GL 상태**: `fx.draw` · `fx.post.*` 는 자기 VAO·프로그램·텍스처 단위 0–1 을 쓰고, 끝나면 VAO = null · 섞기 `(ONE, ONE_MINUS_SRC_ALPHA)` · 깊이 쓰기 켬 · 깊이 시험 켬 · 뒷면 제거 끔 · 활성 텍스처 단위 0 으로 둔다. **프로그램과 ARRAY_BUFFER·속성 포인터는 부른 쪽이 다시 잡는다**(glr 은 그릴 때마다 잡으므로 `fx.draw` 뒤에 `gl.useProgram(glr.prog)` 한 줄이면 된다; char3d 와 같은 약속). `UNPACK_PREMULTIPLY_ALPHA_WEBGL` 은 건드리지 않는다(만들 때 잠깐 바꿨다가 되돌린다).
 - **후처리와 B 의 겹치기 방식**: `post.begin` 은 캔버스(기본 프레임버퍼) 대신 자기 프레임버퍼를 묶는다. B 의 `glr.begin` 이 `gl.viewport`·`gl.clear` 를 하므로 `post.begin` 을 그 앞에 부르면 된다.
-- **컨텍스트를 잃었다 되찾으면**: 옛 GL 객체는 모두 죽는다 → `fx = createFx(gl, opts)` 로 다시 만든다(만드는 데 드는 것: 셰이더 10개 + 512² 텍스처 2장 그리기).
+- **컨텍스트를 잃었다 되찾으면**: 옛 GL 객체는 모두 죽는다 → `fx = createFx(gl, opts)` 로 다시 만든다(만드는 데 드는 것: 셰이더 10개 + 512² 텍스처 2장 그리기). **되찾은 뒤에** 만들어야 한다 — 잃은 동안 `createFx` 를 부르면 오류 없이 객체가 나오지만 그 안의 GL 자원은 전부 비어 있어 아무것도 그리지 못한다(검수에서 확인). 잃은 동안 `fx.update`·`fx.play`·`fx.draw`·`fx.post.*`·`fx.dispose` 를 불러도 예외는 나지 않는다.
 - 방을 옮길 때 `fx.clear()` (살아 있는 효과·손맛을 지운다). 끝낼 때 `fx.dispose()`.
 
 ### 3.2 효과 내기
@@ -117,7 +118,7 @@ B 의 세계는 빛을 꼭짓점에 구워 두므로 조각 셰이더에 세계 
 
 ### 3.6 소리 사건
 
-`onEvent(name, x, y, z, vol)` — 프리셋이 박자마다 부른다. 이름은 §8 표의 「소리 사건」 칸이 전부다(53개). 소리 담당은 이름 → 소리 표만 만들면 되고, 없는 이름은 무시하면 된다. `vol` 은 0–1(착지 세기, 종의 둘째·셋째 울림이 조금 작다).
+`onEvent(name, x, y, z, vol)` — 프리셋이 박자마다 부른다. 이름은 §8 표의 「소리 사건」 칸이 전부다(53개). **이 이름들은 소리 표의 이름과 다르다**(같은 것 3개) → `bindFxSound(feel).onEvent` 를 그대로 넘긴다(§11.2; 53개를 소리 쪽 호출로 옮기는 표 `FX_SOUND`, 검사 `node tools/v2/fx_sound_link.mjs`). `vol` 은 0–1(착지 세기, 종의 둘째·셋째 울림이 조금 작다).
 
 ## 4. 화면·카메라 손맛
 
@@ -321,11 +322,162 @@ JS 시간을 읽는 법: 표의 「효과 JS 시간」은 `fx.update`·`fx.draw`
 12. 마무리 일격은 0.3초쯤(슬로모션 포함) 맞는 적이 흰 빛에 묻히고, 궁극기 마무리 0.2초쯤은 화면 가운데가 거의 하얗다(번쩍임 0.6 + 큰 고리 + 초승달). 상한 안이지만 그 순간에는 인물이 묻힌다. 바닥의 종 문양은 비스듬히 보면 세모처럼 읽힌다(그림을 다시 그릴 것).
 13. 발걸음 먼지는 거의 안 보일 만큼 옅다(일부러 약하게 잡았지만 폴드에서 보고 다시 정할 것). 타격은 재질(살·뼈·쇠·유령) 구분이 아직 없다. 효과는 인형으로만 봤고 진짜 캐릭터(char3d)·진짜 스테이지(B) 위에서는 보지 못했다.
 
+14. (검수에서 찾음) **영웅이 맞는 효과가 없다** — `enemy.hurt` 는 있지만 영웅 피격(붉은 가장자리 · 흔들림 · 짧은 멈춤)을 한 번에 내는 프리셋이 없다. 통합 때는 `fx.feel` 을 직접 부른다(§11.1 의 5).
+15. (검수에서 찾음) **시퀀스 풀이 차면 새 마법은 조용히 버려진다** — low 단계는 동시에 24개까지. 운석 40개를 한꺼번에 쏜 뒤 부른 궁극기는 아예 나오지 않았다(오류도 없다). 놀이에서는 드물지만, 궁극기는 풀이 차도 나오게 자리를 빼앗는 규칙이 필요하다.
+16. (검수에서 찾음) 휴대폰 가로 화면(740×360)에서는 궁극기의 종이 화면 위로 반쯤 잘린다. 피의 구슬은 다른 계열에 견주어 작고 어둡다(계열 가운데 가장 약하다). 그림자 발톱은 작은 화면에서 발톱 모양이 잘 읽히지 않는다.
+17. (검수에서 찾음) 타격 멈춤의 "1초에 0.40초" 상한은 **최소 1프레임 규칙 때문에** 극단에서는 넘는다: 120 Hz 에서 초당 20번 강타를 넣으면 1초에 0.60초가 멈췄다. 초당 6타 수준에서는 문제없다.
+
 ## 10. 다음 단계
 
 1. **B 에 꽂기**(§3 순서 그대로): `fx.update` 의 dt 로 sim 을 돌리고, `_matrix` 에 `applyToEye`·줌, `render` 에 `post.begin` / `fx.draw` / `post.end`, sim 의 hooks(타격·피격·대시·착지·죽음)에서 `playAt`. B 가 지금 쓰는 `_burst` 스프라이트 효과와 `shake` 는 뗀다.
 2. **폴드 실측**: 난전 장면에서 단계별 프레임 시간, 후처리 켬/끔 차이 → 기본 단계와 후처리 기본값을 정한다. 셸의 품질 조절기에 `fx.setTier` 를 물린다.
 3. char3d 에 `hurtFlash`·`fxDissolve`·`fxLights` 연결, 칼 뼈에서 궤적 띠.
-4. 소리 담당과 사건 이름 맞추기(§8 표). 진동(`haptics`)도 같은 사건에서.
+4. ~~소리 담당과 사건 이름 맞추기~~ → 검수에서 다리(`src/v2/feel/fxbridge.js`)로 이었다. 남은 것: 빌려 쓴 소리 16개를 들어 보고 전용 소리로 바꾸기(§11.2), 타격 연출값을 한 표로 합치기(§11.3).
 5. 방출 함수에 좌표를 스크래치 배열로 넘겨 사건 때의 숫자 상자도 없애기. 큰 고리를 띠 메시로, 터짐 전용 프리셋, 적 공격 예고 프리셋(원·선·부채꼴을 위험색으로 한 번에), 피해 숫자(3D 자리에서 화면으로).
 6. 적 재질별 타격(살·뼈·쇠·유령 — feel.md §4.7)과 무기별 색.
+
+## 11. 통합 순서 — 다음 사람이 그대로 따라 하는 단계 (검수에서 B · char3d · 소리 쪽의 실제 코드와 맞춰 봄)
+
+검수에서 확인한 사실(계약을 쓸 때의 가정과 다른 것):
+
+- B 의 장면 클래스는 **이미 `this.fx`(스프라이트 불티 배열) · `this.shake` · `this.shakeX/Y` 를 쓴다** → 효과 엔진은 `this.vfx` 처럼 다른 이름에 둔다.
+- B 의 sim 훅: `hit(e, dmg, mv, x, y, z)`(이때 `e.hp` 는 이미 깎여 있다) · `kill(e)` · `heroHurt(dmg, pit)` · `spark(x, y, z, kind)`(sim 이 내는 kind 는 `'dust'` · `'shot'`) · `sfx(name)`(`'swing'` · `'cast'` · `'parry'` · `'die'` · `'dash'` · `'jump'` · `'land'` · `mv.sfx`) · `shake(px)` · `number` · `done`. 적 정의에 `material` 은 없다(소리 쪽 요청 1번이 아직 안 됐다) → 그때까지 `'bone'`.
+- B 의 `_matrix()` 는 `this.camR` · `this.camU` · `this.eye` 를 프레임마다 새 배열로 만든다(B 쪽 할당). `glr.js` 는 프레임버퍼를 묶지 않는다 → `post.begin` 을 `glr.begin` 앞에 부르면 장면이 그대로 후처리 버퍼로 들어간다.
+- `glr` 은 WebGL2 가 없으면 WebGL1 로 내려간다(`glr.webgl2`). 그때 `createFx` 는 null → 아래 코드는 `V` 가 null 이어도 돌게 썼다(소리는 다리가 그대로 낸다).
+- 컨텍스트 복구는 `glr.restored` 숫자로 안다(char3d 의 `cr.restore()` 와 같은 방식).
+- char3d 조각 셰이더는 GLSL ES 1.00(`gl_FragColor`)이고 `vWP` · `vN` · `uFx.x`(번쩍임, `Char3D.draw(place, { flash })`)가 이미 있다. **칼 뼈의 세계 좌표를 내주는 함수는 없다** → 칼 궤적 띠는 char3d 가 그 함수를 낸 뒤에.
+- 효과 셰이더 문자열 안의 한글 주석은 검수에서 영어로 바꿨다(글꼴 검사가 그 글자들 때문에 실패했고, WebGL1 셰이더에 붙일 때 문제가 될 수 있다).
+
+### 11.1 `src/v2/b/index.js` 에 꽂기
+
+```js
+import { createFx, PRESET_IDS } from '../fx/index.js';
+import { feel, FLAG } from '../feel/index.js';
+import { bindFxSound } from '../feel/fxbridge.js';
+
+// 1) 만들기 — glr 을 만든 뒤 한 번
+this.bridge = bindFxSound(feel);
+this._mkFx = () => {                                      // 처음 + 컨텍스트를 되찾은 뒤
+  this.vfx = this.glr.webgl2 ? createFx(this.glr.gl, { tier: 'mid', lightPools: true, onEvent: this.bridge.onEvent }) : null;
+  this.vfxGen = this.glr.restored;
+};
+this._mkFx(); feel.preload(); feel.setRoom('street');
+this.camF = [0, 0, 1]; this.vcam = { vp: this.vp, eye: null, right: null, up: null, fwd: this.camF };   // 한 번만 잡는다
+
+// 2) update(dt) — sim.update 를 감싼다. 213–214행의 this.shake · shakeX · shakeY 계산은 지운다
+const V = this.vfx, gdt = V ? V.update(dt) : dt;          // 타격 멈춤 중 0 · 느린 화면 중 줄어든 값
+this.bridge.sync(V);                                      // 느린 화면 → 소리 배속
+sim.update(gdt, inp);
+this.bridge.speed = Math.hypot(sim.hero.vx, sim.hero.vz); // 발소리 빠르기
+const c = this.cam; feel.setListener(c.px, c.py, c.pz, c.fx, c.fy, c.fz, c.dist, (this.game.viewW / 2) / FOCAL); feel.update();
+
+// 3) _matrix — 흔들림 · 밀림 · 줌 (shakeX/Y 를 쓰던 270행과 초점 F 의 271행)
+const k = this.vfx ? this.vfx.feel.cam : null;
+const px = c.px + (k ? rx * k.sx + ux * k.sy + k.kx : 0), py = c.py + (k ? uy * k.sy + k.ky : 0), pz = c.pz + (k ? rz * k.sx + uz * k.sy + k.kz : 0);
+const F = FOCAL * (1 + Math.max(0, Hv - 540) / 540 * 0.3) * (k ? k.zoom : 1);
+
+// 4) render — glr.begin(323행) 앞과 마지막 drawDyn 뒤
+if (this.vfxGen !== glr.restored) this._mkFx();           // 되찾은 뒤에만 다시 만든다 (§3.1)
+const V = this.vfx, h = this.sim.hero;
+if (V) { V.setProtect(0, h.x, h.y + 55, h.z, 46); V.post.begin(glr.gl.drawingBufferWidth, glr.gl.drawingBufferHeight); }
+glr.begin(vp, fog, this.W.sky.top, this.A);  /* … 하늘 · 세계 메시 · 입체 영웅 · 빌보드 … */
+if (V) {
+  const C = this.vcam, cm = this.cam; this.camF[0] = cm.fx; this.camF[1] = cm.fy; this.camF[2] = cm.fz; C.eye = this.eye; C.right = this.camR; C.up = this.camU;
+  V.draw(C); V.post.end(V.feel.screen);
+  glr.gl.useProgram(glr.prog); glr.gl.bindBuffer(glr.gl.ARRAY_BUFFER, glr.dyn.buf); glr._attribs();   // 뒤에 glr 로 더 그릴 것이 있으면
+}
+
+// 5) 훅 (_hooks) — _burst · shake · 직접 부르던 v1 효과음을 뗀다
+hit: (e, dmg, mv, x, y, z) => {
+  const hr = this.sim.hero, dl = Math.hypot(e.x - hr.x, e.z - hr.z) || 1;
+  const st = mv.finisher ? 'F' : mv.id === 'sw3' ? 'H' : 'L';
+  const fl = (mv.finisher ? FLAG.finisher : 0) | (e.hp <= 0 ? FLAG.kill : 0);
+  this.bridge.strike(this.vfx, 'sword', e.material ?? 'bone', st, fl, x, y, z, (e.x - hr.x) / dl, (e.z - hr.z) / dl);   // 효과 + 소리 + 진동, 한 번씩
+  /* 피해 숫자(this.nums.push)는 그대로 */
+},
+kill: (e) => { this.vfx?.playAt(PRESET_IDS['enemy.death.bone'], e.x, e.y, e.z, 1, 0, 1, e.x, e.y, e.z); },
+heroHurt: (dmg, pit) => {                                 // 영웅 피격 프리셋은 아직 없다 (§9-14)
+  feel.play('hero.hurt', this.sim.hero);
+  const Ff = this.vfx?.feel; if (Ff) { Ff.hitStop(0.05); Ff.addTrauma(0.3, 0, 0); Ff.vignette(0.9, 0.05, 0.08, 0.5, 2.5); }
+},
+sfx: (n) => {                                             // h = this.sim.hero, (fx, fz) = 영웅이 보는 방향
+  const id = { swing: 'swing.light', dash: 'move.dash', jump: 'move.jump', land: 'move.land' }[n];
+  if (id && this.vfx) this.vfx.playAt(PRESET_IDS[id], h.x, h.y, h.z, fx, fz, 1, h.x, h.y, h.z);   // 소리는 onEvent 로 따라 난다
+  else if (id) this.bridge.onEvent(id, h.x, h.y, h.z, 1);                                        // WebGL1: 소리만
+  else if (n === 'parry') this.bridge.strike(this.vfx, 'sword', 'armor', 'H', FLAG.parry, h.x + fx * 30, h.y + 60, h.z + fz * 30, fx, fz);
+  else if (n === 'cast') feel.play('enemy.mage.chant', /* 시전한 적 */ null);
+},
+spark: (x, y, z, kind) => { if (kind === 'dust') this.vfx?.playAt(PRESET_IDS['move.step'], x, y, z, 1, 0, 1, x, y, z); },
+shake: () => {},                                          // 프리셋이 낸다
+
+// 6) 떠날 때
+this.vfx?.dispose(); feel.release();                      // 방을 옮길 때는 this.vfx?.clear(); feel.setRoom(…)
+```
+
+품질: 셸의 품질 조절기에서 `this.vfx.setTier('low' | 'mid' | 'high')` · `this.vfx.setPost(false)`. 단계를 바꾸면 살아 있는 효과는 지워진다(궁극기 도중에 바꿔도 화면이 어두운 채 남지 않게 검수에서 고쳤다).
+
+### 11.2 소리 다리 (`src/v2/feel/fxbridge.js`)
+
+효과의 소리 사건 53개 → 소리 쪽 호출. 검사: `node tools/v2/fx_sound_link.mjs`(node 만으로 돈다; 표가 어긋나면 실패).
+
+| 종류 | 개수 | 어떻게 |
+|---|---|---|
+| 타격 `hit.*` | 8 | `feel.hit(무기, 재질, 세기, flags, 자리)` — 무기·재질·세기는 `bridge.strike(...)` 가 넘긴 것, 프리셋만 따로 불렀으면 표의 기본값(한손검 · 살) |
+| 소리 표의 사건 그대로 | 20 | `feel.play(이름, 자리, vol)` — 이동 3 · 뼈 죽음 · 불/얼음/번개/성/피의 시전·날아감·터짐 · 종 · 궁극기 시작(= 종 가락 `bell.bloodmoon`) |
+| **빌려 쓴 것** | 16 | 전용 소리가 없어 가까운 소리의 높낮이·크기만 바꿨다: 재 죽음 · 적 숨결 시전 · 보호막 · 불기둥 · 운석 3 · 서리 폭발 2 · 낙뢰 2 · 종 시전 · 그림자 2 · 궁극기 빛창 · 궁극기 마무리. **들어 보고 따로 만들 후보** |
+| v1 효과음 | 4 | 금화 · 회복 · 마력 줍기, 적 화염 숨결(`fire_breath`) — `audio.sfx` 를 그대로 |
+| 휘두름 · 발소리 | 3 | `feel.swing` · `feel.step(bridge.speed)` |
+| 일부러 무음 | 2 | `enemy.hurt`(타격 소리가 같은 순간에 난다) · `feel.slowmo`(마무리 소리에 들어 있다) |
+
+거꾸로, 소리 표에는 있는데 효과가 부르지 않는 것(게임 코드가 직접 부른다): 걷기·질주 발소리, 천·장비 소리, 칼 뽑기·넣기, 영웅 피격, 해골 덜그럭·마법사 주문·박쥐, 횃불, 고리 소리(횃불·밤거리·날아가는 마법 5), 메뉴 6, 종 가락 4, `move.land_heavy`. 날아가는 마법의 고리 소리(`loop.magic.*`)는 효과가 탄의 자리를 밖으로 내주지 않아 아직 못 붙인다.
+
+### 11.3 두 표가 같은 타격에 다른 값을 적어 둔 것 (한 번만 건다)
+
+화면이 실제로 쓰는 값은 **효과 프리셋의 것**이다. `feel.hit` 이 돌려주는 `r.stop` · `r.shake` · `r.kick` · `r.zoom` · `r.slow` 를 프리셋을 낸 타격에 또 걸면 흔들림이 두 배가 된다(멈춤은 큰 쪽만 남는다).
+
+| 타격 | 효과 프리셋: 멈춤 · 흔들림 · 밀림 | 소리 표의 추천값(뼈) |
+|---|---|---|
+| 약한 베기 | 0.050 · 0.10 · 3 | 0.047 · 0.10 · 3 |
+| 강한 베기 | 0.100 · 0.24 · 8 | 0.105 · 0.26 · 9 |
+| 둔기 | 0.100 · 0.28 · 8 | 0.137 · 0.26 · 9 |
+| 찌르기 | 0.060 · 0.12 · 5 | 0.056 · 0.16 · 5 |
+| 치명타 | 0.133 · 0.30 · 8 | 0.103 · 0.24 · 5 |
+| 막기 | 0.070 · 0.14 · 4 | 0.050 · 0.12 · −4 |
+| 마무리 일격 | 0.133 · 0.50 · 12 + 느린 화면 0.30초 × 0.25배 | 0.190 · 0.62 · 16 + 느린 화면 0.36초 × 0.25배 |
+
+대체로 가깝지만 같지 않다. 재질별 멈춤 배율(돌 ×1.25 · 영체 ×0.7)은 소리 표에만 있고 화면에는 아직 반영되지 않는다. 하나로 합치려면 프리셋의 `feel(...)` 호출이 `hitFeel(...)` 을 읽게 바꾼다(다음 단계).
+
+### 11.4 char3d
+
+- 번쩍임: `Char3D.draw(place, { flash: hurtFlash(sim.time − 맞은 시각) })` (B 의 적은 `e.flashT` 가 0.13 에서 줄어든다 → `hurtFlash(0.13 − e.flashT)`).
+- 분해 · 빛: `FX_DISSOLVE_GLSL` · `FX_LIGHT_GLSL` 을 char3d 조각 셰이더에 붙일 때 `#define TEX texture2D`, 유니폼 `uFxNoise`(텍스처 단위는 char3d 가 안 쓰는 번호) · `uFxDis` · `uFxLP` · `uFxLC` 를 `UNI` 목록에 더한다. 아직 아무도 붙여 보지 않았다(시험 화면의 인형 셰이더에서만 확인).
+
+## 12. 검수 (fxverify, 2026-11-17 15:10–15:55 UTC)
+
+판정: **고쳐서 통과(PASS-WITH-FIXES)**. 헤드리스 Chromium + SwiftShader 에서 본 것이다 — 프레임 시간은 기기 값이 아니다.
+
+다시 돌려 확인한 것:
+
+- `node tools/v2/fx_check.mjs`: 두 화면(fold_open 1000×756 · phone2 740×360) 부팅, 프리셋 32개, 시범 둘, 단계 바꾸기, 후처리 끔/켬, 정리 — 페이지 오류 0 · GL 오류 0. 난전 숫자는 보고와 같다(그리기 호출 최대 9 / 12 / 12, 살아 있는 입자 최대 135 / 218 / 303, 덧칠 최대 1.29 / 1.42 / 1.61 화면).
+- **가장 낮은 단계는 정말 싸다**: low 는 후처리 패스 0 · 후처리 버퍼 0바이트(버퍼를 실제로 지운다) · 효과 GPU 메모리 3.3 MB. `setPost(false)` 도 mid · high 에서 패스 0 · 버퍼 0 이 되고 화면 밝기는 그대로다(평균 밝기 70–73 → 70).
+- **GL 컨텍스트 잃기 · 되찾기**(`WEBGL_lose_context`): 잃은 동안 update · play · draw · post · dispose 가 예외 없이 지나가고, 되찾은 뒤 `createFx` 로 다시 만들면 정상으로 그린다(GL 오류 0). 잃은 동안 만든 객체는 죽어 있다(§3.1 에 적음).
+- **누수 없음**: 난전 90초를 두 번(입자 11만 4천 개) 돌린 뒤 gc 하고 남은 힙 증가 +1.9 KB · +3.8 KB.
+- 상한: 번쩍임 최대 0.39(마무리 + 궁극기를 60프레임 연속으로 겹쳐도 0.7 아래), 이상한 입력(빈 객체 · NaN · 없는 이름 · dt 0 · dt 5초)에 예외 없음.
+- 그림(계열마다 본 것): 타격 7종은 모양과 색이 서로 다르다(가는 선 / 굵은 선 + 고리 / 둥근 충격 / 긴 관통선 + 푸른 고리 / 금빛 고리 / 푸른 방패 / 큰 섬광 + 균열). 마법은 바닥 예고 문양 · 원근이 맞는 기둥 · 종 메시 덕에 화면에 붙인 그림이 아니라 장면 안의 입체로 읽힌다. 인물을 가리는 것은 마무리 일격의 0.3초와 궁극기 마무리뿐이다(§9-12 에 이미 적혀 있다).
+
+고친 것:
+
+1. **궁극기 도중에 품질 단계를 바꾸면 화면이 영영 40 % 어두웠다**(`setTier` 가 시퀀스는 지우고 '장면 어둡게'는 그대로 뒀다) → `setTier` 가 같이 푼다. 폴드에서 자동 품질 조절이 단계를 바꿀 때 밟을 수 있던 결함이다.
+2. **소리 사건 이름이 소리 표와 맞지 않았다**(53개 가운데 3개만 같음) → 다리 `src/v2/feel/fxbridge.js` + 검사 `tools/v2/fx_sound_link.mjs` (§11.2).
+3. **글꼴 검사 실패**(`build_fonts.py --check`): 셰이더 문자열 안의 한글 주석 12줄을 영어로(`post.js` · `engine.js` · `feel.js`). 이제 통과한다 → `build_web.mjs` 에 `--allow-font-gaps` 가 필요 없다.
+4. **할당 검사가 붙었다 떨어졌다 했다**: 같은 트리에서 다시 돌리니 정상 상태 값이 120바이트/프레임으로 나와 검사가 실패했다(보고의 12–20바이트도 같은 현상). 같은 페이지에서 되풀이해 재면 15.8 → 0.04 → 0.05 → 0.01 바이트/프레임으로 가라앉는다 — 남던 것은 엔진의 할당이 아니라 V8 이 최적화를 끝내기 전의 숫자 상자였다. `fx_check.mjs` 가 네 번까지 다시 재고 문턱을 2바이트/프레임으로 낮췄다.
+
+보고가 실제와 달랐던 것(문서를 고침):
+
+- "정상 상태에 12–20바이트가 남고 어디서 생기는지 못 찾았다" → 데워진 뒤에는 **0**(4,800프레임에 52바이트). 반대로 **새 효과를 낼 때**는 보고의 61바이트/프레임보다 많이 나왔다: 127 · 210바이트/프레임(1,200 · 4,800프레임).
+- "입자 300개 이하" → high 단계에서 303개까지 봤다(풀 상한 4,096 에는 한참 못 미친다).
+- "소리 담당은 이름 → 소리 표만 만들면 된다" → 그 표는 없었다(위 2).
+
+남은 위험(고치지 않음): 폴드 실기에서 한 번도 돌리지 않았다(채움 비용 · 후처리 비용은 기기에서만 안다) · 게임에 꽂혀 있지 않다 · 진짜 캐릭터 위에서 본 적이 없다 · §9 의 14–17.
+
+검수 도구: `node tools/v2/fx_verify.mjs [state|tiers|ctx|alloc|bridge]`, `node tools/v2/fx_sound_link.mjs`, `node tools/v2/fx_owner.mjs [sheet|video]`(소유자용 한 장 · 영상).
