@@ -239,7 +239,7 @@ for (const id of PROTOS) {
       if (!NO_PLAY) {
         await page.evaluate((id) => { window.__ref.restart(); if (id === 'b') window.__v2.perfFinish?.(true); window.__qaStep(3, true); const r = window.__ref; r.wp = 0; r.wall = []; r.seen = []; r.deaths = 0; r.minHp = 100; r.it = 0; }, id);
         let d = await page.evaluate(() => window.__ref.think());
-        let atkOn = false; const T0 = Date.now(); let shotStreet = false;
+        let atkOn = false; const T0 = Date.now(); let shotStreet = false, stuckKey = '', stuckN = 0;
         const MAXIT = 3200;
         for (let i = 0; i < MAXIT && d.sec !== 'done'; i++) {
           await pad.axis(d.ax, d.az);
@@ -247,6 +247,16 @@ for (const id of PROTOS) {
           if (wantAtk !== atkOn) { await pad.btn('attack', wantAtk); atkOn = wantAtk; }
           await pad.btn('jump', !!d.jump);
           d = await page.evaluate(() => window.__ref.iter());
+          // 멈춤 감지: 100번(300틱 = 5초) 동안 영웅 자리가 그대로면 상태를 찍고 그만둔다
+          { const key = `${d.x},${d.z},${d.y},${d.hp}`; if (key === stuckKey) stuckN++; else { stuckKey = key; stuckN = 0; }
+            if (stuckN >= 100 && d.sec !== 'done') {
+              R.stuck = await page.evaluate((id) => { const g = window.__game, v = window.__v2, sc = v.scene, i = g.input, T = i._touchVec, h = window.__ref.heroRaw(), sim = sc.sim || sc.play;
+                const pick = (o, ks) => Object.fromEntries(ks.filter((k) => o && o[k] !== undefined).map((k) => [k, typeof o[k] === 'number' ? +o[k].toFixed(3) : (typeof o[k] === 'object' ? (o[k] && (o[k].id || o[k].name || 'obj')) : o[k])]));
+                return { hero: pick(h, ['x', 'y', 'z', 'vx', 'vy', 'vz', 'hp', 'onGround', 'state', 'st', 'anim', 'dead', 'hurtT', 'dashT', 'dashCd', 'move', 'moveT', 'ifr', 'coyote', 'combo', 'queued']), sim: pick(sim, ['stop', 'time', 'done', 'section', 'deaths', 'hitstop', 'freeze']), fade: g.fade && pick(g.fade, ['a', 'dir', 'speed']), scenes: g.scenes.map((s) => s.constructor.name), mode: i.mode, T: [T.x, T.y, T.mag], ax: [i.axisX, i.axisY], an: [i.analogX, i.analogY], paused: sc.paused, ready: sc.ready, lost: sc.glr?.lost, frame: g.frame }; }, id);
+              console.log('   [멈춤] ' + JSON.stringify(R.stuck) + ' · 봇 입력 ' + JSON.stringify({ ax: d.ax, az: d.az, atk: d.atk, jump: d.jump }) + ' · 누르고 있는 터치 ' + JSON.stringify([...t.active.keys()]));
+              if (SHOTS) await page.screenshot({ path: `${SHOTS}/${id}_stuck_${vp}.png` });
+              break;
+            } }
           if (i % 300 === 299) console.log(`   … ${(i + 1) * 3} 틱  ${d.sec}  영웅 ${d.x},${d.z},${d.y}  체력 ${Math.round(d.hp)}  남은 적 ${d.n}`);
           if (SHOTS && vp === 'fold_open' && !shotStreet && d.atk) { shotStreet = true; await page.screenshot({ path: `${SHOTS}/${id}_live_fight.png` }); }
         }
