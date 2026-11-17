@@ -65,7 +65,13 @@ try {
     const f = path.join(outDir, `page_${pageDemo}.png`); await page.screenshot({ path: f }); console.log('wrote', f, JSON.stringify(await page.evaluate(() => window.__play.state())).slice(0, 600));
   } else {
     await page.evaluate(() => { document.getElementById('ui').style.display = 'none'; document.getElementById('info').style.display = 'none'; });
-    for (const s of SETS) {
+    const gal = opt('gallery', null);   // --gallery="idle:0,idle_combat:0.5,…" [--gcam=close] [--gdir=1,0] [--gname=이름]
+    if (gal) {
+      const list = gal.split(',').map((x) => { const [n, t] = x.split(':'); return [n, Number(t ?? 0)]; }), gd = opt('gdir', '1,0').split(',').map(Number);
+      const url = await page.evaluate(([list, cam, dir]) => window.__play.gallery(list, { cam, dir, cols: Math.min(8, list.length), cw: 250, ch: 270 }), [list, opt('gcam', 'close'), gd]);
+      const f = path.join(outDir, 'gallery_' + opt('gname', 'clips') + '.jpg'); fs.writeFileSync(f, Buffer.from(url.split(',')[1], 'base64')); console.log('wrote', f);
+    }
+    for (const s of gal ? [] : SETS) {
       if (want.length && !want.some((w) => s.n.startsWith(w))) continue;
       const t0 = Date.now();
       const url = await page.evaluate((s) => window.__play.sheet(s.demo, s.times, { cols: s.cols, cw: s.cw, ch: s.ch, cam: s.cam, box: s.box, who: s.who }), s);

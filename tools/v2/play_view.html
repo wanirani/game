@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>블러드 녹턴 3D — 움직임 · 규칙 보기 (play)</title>
+<link rel="icon" href="data:,">
 <style>
   html, body { margin: 0; height: 100%; background: #10141c; color: #e8e0d0; font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
   canvas { position: absolute; left: 0; top: 0; display: block; touch-action: none; }
@@ -32,7 +33,7 @@ import { Sim, TUNE, KINDS, flatArena, driveHero, driveActor, placeActor, loadPla
 const q = new URLSearchParams(location.search);
 const cv = document.getElementById('cv'), ov = document.getElementById('ov'), info = document.getElementById('info'), ui = document.getElementById('ui');
 const DIR = '../../assets/v2/char3d/';
-const CAMS = { game: { yaw: 0, pitch: 0.35, dist: 800, lookY: 60 }, high: { yaw: 0, pitch: 0.62, dist: 760, lookY: 50 }, close: { yaw: 0, pitch: 0.3, dist: 430, lookY: 62 }, side: { yaw: 1.5708, pitch: 0.12, dist: 520, lookY: 55 }, front: { yaw: 3.1416, pitch: 0.2, dist: 470, lookY: 58 }, top: { yaw: 0, pitch: 1.35, dist: 700, lookY: 0 } };
+const CAMS = { game: { yaw: 0, pitch: 0.35, dist: 800, lookY: 60 }, high: { yaw: 0, pitch: 0.62, dist: 760, lookY: 50 }, close: { yaw: 0, pitch: 0.3, dist: 300, lookY: 58 }, side: { yaw: 1.5708, pitch: 0.12, dist: 330, lookY: 55 }, front: { yaw: 3.1416, pitch: 0.2, dist: 320, lookY: 58 }, top: { yaw: 0, pitch: 1.35, dist: 700, lookY: 0 } };
 const GRIPS = { w_rusty_sword: { pos: [0, 7, 3], rotX: -80, rotY: 0, rotZ: 0 }, w_crystal_staff: { pos: [0, 7, 3], rotX: 100, rotY: 0, rotZ: 0 }, w_grave_spade: { pos: [0, 9, 4], rotX: -80, rotY: 0, rotZ: 0 } };
 const S = { demo: q.get('demo') ?? 'run8', cam: q.get('cam') ?? 'game', slow: q.get('slow') === '1', box: q.get('box') === '1', pause: false, follow: true };
 const api = (window.__play = { ready: false, error: null, S, hold: q.get('hold') === '1' });
@@ -142,7 +143,7 @@ function shape(o, mv, col, fill) {   // 보는 방향 기준 판정 (상자 · �
 }
 function draw(label) {
   const C = CAMS[S.cam] ?? CAMS.game, h = sim.hero;
-  if (S.follow) { cam.x = h.x; cam.z = h.z; cam.y = 0; }
+  if (S.follow) { cam.x = h.x; cam.z = h.z; cam.y = Math.max(0, h.y) * 0.75; }
   camMatrix(C);
   gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(0.13, 0.15, 0.2, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   R.begin({ vp, eye, fog: { near: 3000, far: 9000, max: 0, color: [0.13, 0.15, 0.2] }, sunDir: [-0.35, 0.8, -0.5], sun: [0.7, 0.68, 0.66], amb: [0.6, 0.62, 0.68] });
@@ -215,6 +216,19 @@ api.sheet = (id, times, o = {}) => {
   });
   api.lastStates = out;
   return sh.toDataURL('image/jpeg', 0.86);
+};
+/** 클립 보기: [[클립, 초], …] 를 카엘에게 그대로 입혀 칸으로 붙인다 (규칙 없이 — 클립을 눈으로 고를 때). o: { cols, cw, ch, cam, dir:[x,z] } */
+api.gallery = (list, o = {}) => {
+  Object.assign(S, { cam: o.cam ?? 'close', box: false }); setDemo('walk'); S.cam = o.cam ?? 'close';
+  const cols = o.cols ?? 8, cw = o.cw ?? 240, chh = o.ch ?? 260, rows = Math.ceil(list.length / cols), d = o.dir ?? [1, 0];
+  size(cw, chh);
+  const sh = document.createElement('canvas'); sh.width = cols * cw; sh.height = rows * chh; const g = sh.getContext('2d');
+  list.forEach(([name, t], k) => {
+    heroCh.dx = d[0]; heroCh.dz = d[1]; sim.hero.dirX = d[0]; sim.hero.dirZ = d[1];
+    heroCh.anim.play(name, { fade: 0, time: t, restart: true }); heroCh.anim.update(0);
+    draw(`${name} ${t.toFixed(2)}`); g.drawImage(cv, (k % cols) * cw, Math.floor(k / cols) * chh); g.drawImage(ov, (k % cols) * cw, Math.floor(k / cols) * chh);
+  });
+  return sh.toDataURL('image/jpeg', 0.88);
 };
 const state = () => { const h = sim.hero; return { t: +time.toFixed(3), hero: { x: +h.x.toFixed(1), z: +h.z.toFixed(1), y: +h.y.toFixed(1), anim: h.anim, move: h.move?.id ?? null, clip: heroCh.anim.cur?.name ?? null, dir: [+h.dirX.toFixed(2), +h.dirZ.toFixed(2)], body: [+heroCh.dx.toFixed(2), +heroCh.dz.toFixed(2)], hp: h.hp, lock: h.lock }, enemies: sim.enemies.filter((e) => !e.dead).map((e) => ({ id: e.id, kind: e.kid, state: e.state, phase: e.phase, clip: chars.get(e.id)?.anim.cur?.name ?? null, hp: e.hp })), events: events.slice(-12) }; };
 api.state = state;

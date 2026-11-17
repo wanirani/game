@@ -193,7 +193,8 @@
       "icon": "menu_leave",
       "job_id": "b10f6a77-e39d-429f-bcab-d4bf46798f04",
       "credits": 0.5,
-      "subject": "a gothic arched doorway standing open with one bold arrow leaving to the right"
+      "subject": "a gothic arched doorway standing open with one bold arrow leaving to the right",
+      "status": "failed (service error, no image)"
     },
     {
       "batch": 2,
@@ -202,8 +203,41 @@
       "job_id": "9ea5bd03-daae-48c7-a4c0-8f0144c5f39a",
       "credits": 0.5,
       "subject": "a hunter lantern held up, bright flame, a right-pointing triangular pennant behind it"
+    },
+    {
+      "batch": 3,
+      "index": 24,
+      "icon": "attack_b",
+      "job_id": "19705b86-c1c2-464c-8382-9159d7efae3b",
+      "credits": 0.5,
+      "subject": "bolder: thick braided whip cracking forward with one broad solid crescent slash wake, bladed tip"
+    },
+    {
+      "batch": 3,
+      "index": 25,
+      "icon": "attack_c",
+      "job_id": "1412e78b-8f24-422b-9323-303d702ac379",
+      "credits": 0.5,
+      "subject": "bolder: large solid crescent slash with a thick whip coiled along its inner curve, heavy handle, spark diamonds"
+    },
+    {
+      "batch": 3,
+      "index": 26,
+      "icon": "skill_hook_b",
+      "job_id": "b809d033-dbb2-4f65-ac32-8653f32e0992",
+      "credits": 0.5,
+      "subject": "bolder: big glowing ring gripped by a three-pronged grappling claw on a thick whip in a short S-curve"
+    },
+    {
+      "batch": 3,
+      "index": 27,
+      "icon": "menu_leave_b",
+      "job_id": "0790e14d-0f4e-47e7-b8f0-5689ba7b5182",
+      "credits": 0.5,
+      "subject": "tall pointed gothic arch door frame with one leaf half open and a thick arrow pointing right"
     }
   ],
-  "credits_used": 12.0,
-  "note": "full prompt = 'A single game interface emblem, centered, large, filling about 80 percent of the square. Subject: <subject>. ' + style_suffix. kept/rejected flags are filled in after looking at each image."
+  "credits_used": 14.0,
+  "note": "full prompt = 'A single game interface emblem, centered, large, filling about 80 percent of the square. Subject: <subject>. ' + style_suffix. kept/rejected flags are filled in after looking at each image.",
+  "note2": "credits_used counts every submitted job at 0.5; job 22 (menu_leave) failed on the service side and may not have been charged."
 }
