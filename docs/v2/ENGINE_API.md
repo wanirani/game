@@ -46,7 +46,11 @@ src/v2/game/
 | `h, r` | 맞는 상자 높이 · 반지름 (체력 막대 · 효과 높이에 쓴다) |
 | `kind` | 적·인물 종류 → `KINDS[kind]` |
 | `id` | 적마다 다른 값 (장면이 `Map` 열쇠로 쓴다) |
-| `dead` | true = 사라짐 (그리지 않는다). `state === 'dead'` 인 동안은 "쓰러지는 중" — 장면이 0.9초 동안 재로 흩는다 |
+| `dead` | true = 사라짐. `state === 'dead'` 인 동안은 "쓰러지는 중": 그 종류의 쓰러지는 시간(`e.dying`, 없으면 0.9초) 가운데 **마지막 0.9초**를 장면이 재로 흩는다(앞부분은 죽는 클립이 보인다). `dead` 가 먼저 와도 흩어짐은 끝까지 그린다 |
+| `alpha` | (선택) 0..1 — 유령처럼 흐려지는 적. 0.12 아래로는 그리지 않게 묶는다 |
+| `hover` | (선택) 떠 있는 높이 px — `y` 에 이미 들어 있다고 본다(그림자와 바닥 예고만 `y − hover` 에 그린다) |
+| `tele` · `atk` | (선택) 예고 0..1 과 지금 공격 한 줄 — 바닥 예고 빛을 `atk.box{f0,f1,side}` 또는 `atk.radius{r,fwd}` 자리에 그린다(`atk.shot` 은 그리지 않는다). 없으면 옛 방식(`TUNE[kind].windup`) |
+| 영웅 `lock` | 락온한 적 id — 내장 HUD 는 그 적 위에 금빛 세모를 그린다 |
 | `flashT` / `flash` | 맞은 직후 > 0 (적 0.13초 · 영웅 1 → 0). 장면은 맞은 순간만 쓰고 번쩍임 곡선은 `fx` 의 `hurtFlash` 를 쓴다 |
 | `ifr, hurtT, dashT, move, moveT, combo, onGround, vy, landT` | 영웅: 깜박임 · 칼 궤적 · 잔상 · 먼지에 쓴다 (`move.hit[0..1]` = 판정 구간, `move.id`) |
 | `stateT, state, active, yard` | 적: 예고 표시(공격 준비) · 마당 적 세기 |
@@ -138,11 +142,11 @@ hud.padHideButtons           // (선택) 숨길 v1 패드 단추 id 배열 · hu
 
 - 그리기 순서: WebGL(세계 · 캐릭터 · 효과) → 그 위에 게임 캔버스(HUD) → v1 의 토스트 · 번쩍임 · 페이드 · 가상 패드. **HUD 용 캔버스를 따로 만들지 않는다.**
 - 입력은 지금 v1 가상 패드(이동 스틱 · 공격 · 점프 · 구르기)다. 장면이 읽는 동작 이름: `attack · jump · dash · guard · lock · menu`(`menu` = 고르기 화면으로 나가기). v1 패드의 꾸밈 그림은 값싸게 바꿀 스위치가 없어 그대로 둔다 — UI 의 `hud.hidePad` 가 오면 통째로 숨는다.
-- UI 모듈을 꽂는 법: `src/v2/game/seams.js` 의 `UI_LOADER` 를 `() => import('../ui/index.js')` 로. 그 모듈의 `createHud(game)` 가 내장 HUD 를 대신한다(불러오기 실패면 내장 HUD 로 돈다).
+- **UI 모듈은 이미 꽂혀 있다 — 다만 기본은 내장 HUD 다.** `src/v2/game/seams.js`: `UI_LOADER = () => import('../ui/index.js')`, `UI_DEFAULT = false`. 켜 보기: 주소 `?scene=v2g&v2ui=1` 또는 `localStorage['bn.v2.ui'] = '1'`(끄기 `'0'`). UI 구역이 "됐다"고 하면 `UI_DEFAULT = true` 한 줄. 그 모듈의 `createHud(game)` 가 내장 HUD 를 대신하고, **불러오기에 실패하거나 `update`/`draw` 가 예외를 던지면 경고 한 줄을 남기고 내장 HUD 와 v1 패드로 돌아간다**(놀이는 멈추지 않는다). `__v2.stats.hud` = `'ui'｜'builtin'`.
 
 ## 5. 입력 → `sim.update(dt, inp)`
 
-`inp = { mx, mz, jump, jumpHeld, attack, attackHeld, dash, guard, lockNext, jumpUsed }` — 장면이 한 객체를 다시 쓴다. `mx, mz` 는 −1..1, 터치 스틱은 8방향에 붙이지 않은 360° 값. `Sim` 이 `inp.jumpUsed = true` 로 돌려주면 점프 입력 버퍼를 비운다.
+`inp = { mx, mz, jump, jumpHeld, attack, attackHeld, dash, guard, lockNext, jumpUsed }` — 장면이 한 객체를 다시 쓴다. `guard` = `guard` 동작 **또는 구르기 단추(`dash`)를 누르고 있는 동안**(PLAY_API §1: 같은 단추에서 구르기와 막기). `attack · dash · lockNext` 는 눌린 틱에 켜지고, 타격 멈춤으로 규칙이 쉬는 동안에는 다음 규칙 틱까지 남는다(입력을 삼키지 않는다). `mx, mz` 는 −1..1, 터치 스틱은 8방향에 붙이지 않은 360° 값. `Sim` 이 `inp.jumpUsed = true` 로 돌려주면 점프 입력 버퍼를 비운다.
 
 ## 6. 이야기 · 사건 (STORY ↔ ENGINE)
 
@@ -176,7 +180,7 @@ hud.padHideButtons           // (선택) 숨길 v1 패드 단추 id 배열 · hu
 
 ## 10. 아직 안 된 것 · 알아 둘 것
 
-- **꽂는 스위치 둘은 꺼져 있다**(`seams.js`): `src/v2/world/index.js` · `src/v2/ui/index.js` 가 저장소에 생기면 한 줄씩 켠다(배포 빌드는 없는 파일을 가리키는 `import()` 에서 멈추므로 미리 켜 두지 않았다).
+- **꽂는 스위치**(`seams.js`): `WORLD_LOADER` 는 꺼져 있다 — `src/v2/world/index.js` 가 저장소에 생기면 `() => import('../world/index.js')` 로 켠다(배포 빌드는 없는 파일을 가리키는 `import()` 에서 멈추므로 미리 켜 두지 않았다). `UI_LOADER` 는 켜져 있고 기본값만 내장 HUD 다(§4) — 그래서 **배포 빌드는 이제 `src/v2/ui/` 가 묶일 수 있어야 한다.**
 - 지역의 `interact` · `actors`(사람) · `anchors`(불·연기 효과 자리) · 음악(`music`)은 아직 장면이 쓰지 않는다. 저장(`state·save`)도 없다 — 죽으면 규칙(`Sim`)이 처음으로 되돌린다.
 - 영웅 칼은 아직 상자로 만든 임시 칼(`blade`)이다. 적 무기는 모델(`w_rusty_sword` · `w_crystal_staff`).
 - 캐릭터 모델이 무겁다: 영웅 19.6천 삼각형, 해골 병사·마법사도 각 1만 7천 안팎 → 적 다섯이 화면에 들어오면 캐릭터만 10만 삼각형을 넘는다. 화면 밖 건너뛰기로 줄였지만 **모델을 가볍게(LOD) 하는 일이 폴드에서 가장 큰 숙제**다(§7 숫자).

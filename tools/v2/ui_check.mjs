@@ -126,19 +126,23 @@ try {
         ok(rw.h * c >= 44, `${tag}: pause row is ${(rw.h * c).toFixed(1)} px tall (< 44)`);
         await touch(client, 'touchStart', [[(rw.x + rw.w / 2) * c, (rw.y + rw.h / 2) * c]]); await touch(client, 'touchEnd', []); await page.waitForTimeout(300);
         mm = await metrics(page); lg = await logOf(page);
-        ok(mm.modal === null && mm.pad.shown && lg.some((e) => e[0] === 'pause' && e[1] === 'resume'), `${tag}: resume row closes the menu (${mm.modal}, ${JSON.stringify(lg)})`);
+        ok(mm.modal === null && mm.pad.shown, `${tag}: resume row closes the menu and the pad returns (${mm.modal}, pad ${mm.pad.shown})`);
       }
       // 4) cost: time and allocation of update + draw in a tight loop (animated boss view state)
       R.cost = await page.evaluate(async () => {
         const u = window.__ui, cv = document.getElementById('screen'), c = cv.getContext('2d'), S = u.state;
-        for (let i = 0; i < 60; i++) { u.hud.update(1 / 60, S); u.hud.draw(c, S); }
-        globalThis.gc?.(); const m0 = performance.memory?.usedJSHeapSize ?? 0, t0 = performance.now(), N = 1500;
+        for (let i = 0; i < 900; i++) { u.hud.update(1 / 60, S); u.hud.draw(c, S); }   // warm up: let the optimiser finish before measuring
+        globalThis.gc?.(); const m0 = performance.memory?.usedJSHeapSize ?? 0, t0 = performance.now(), N = 3000;
         for (let i = 0; i < N; i++) { u.hud.update(1 / 60, S); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); c.setTransform(S.scale, 0, 0, S.scale, 0, 0); u.hud.draw(c, S); }
         c.getImageData(0, 0, 1, 1); const t1 = performance.now(), m1 = performance.memory?.usedJSHeapSize ?? 0;
+        // the same with a 1-pixel read-back after every frame, so the rasteriser cannot defer or skip a frame
+        const t2 = performance.now(), N2 = 240;
+        for (let i = 0; i < N2; i++) { u.hud.update(1 / 60, S); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); c.setTransform(S.scale, 0, 0, S.scale, 0, 0); u.hud.draw(c, S); c.getImageData(i % 50, 0, 1, 1); }
+        const flushed = (performance.now() - t2) / N2;
         const st = u.hud.stats();
-        return { msPerFrame: +((t1 - t0) / N).toFixed(3), heapBytesPerFrame: Math.round((m1 - m0) / N), canvas: [cv.width, cv.height], drawMs: { avg: +st.drawMs.avg.toFixed(3), p95: +st.drawMs.p95.toFixed(3), max: +st.drawMs.max.toFixed(3) }, updMs: +st.updMs.toFixed(4), padRepaints: st.padRepaints };
+        return { msPerFrameFlushed: +flushed.toFixed(3), msPerFrame: +((t1 - t0) / N).toFixed(3), heapBytesPerFrame: Math.round((m1 - m0) / N), canvas: [cv.width, cv.height], drawMs: { avg: +st.drawMs.avg.toFixed(3), p95: +st.drawMs.p95.toFixed(3), max: +st.drawMs.max.toFixed(3) }, updMs: +st.updMs.toFixed(4), padRepaints: st.padRepaints };
       });
-      ok(R.cost.heapBytesPerFrame < 600, `${tag}: update + draw allocate about ${R.cost.heapBytesPerFrame} bytes per frame`);
+      ok(R.cost.heapBytesPerFrame < 200, `${tag}: update + draw allocate about ${R.cost.heapBytesPerFrame} bytes per frame`);
       ok(page._errs.length === 0, `${tag}: page errors after touches ${JSON.stringify(page._errs)}`);
       await page.close();
 

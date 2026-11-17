@@ -30,18 +30,24 @@ export async function loadPlayClips(assetOrUrl) {
   if (assetOrUrl && typeof assetOrUrl === 'object') attach(assetOrUrl, true);
   return LIB.clips;
 }
-/** 캐릭터 자료에 클립을 붙인다: 모델에 든 클립은 제 이름으로(float_idle · fly …), 라이브러리는 그 위에. 붙었으면 true */
+/**
+ * 모델 파일에 든 클립 하나를 이름으로 찾아 asset.clips 에 더한다 (float_idle · fly 처럼 라이브러리에 없는 것만 — 필요한 이름만 만들어 첫 틱이 무겁지 않게).
+ * 있으면(또는 만들었으면) true
+ */
+function ownClip(asset, name) {
+  if (!name) return false;
+  if (asset.clips[name]) return true;
+  const miss = (asset._playMiss ??= new Set()); if (miss.has(name)) return false;
+  const a = (asset.model.anims ?? []).find((q) => String(q.name).replace(/[^A-Za-z0-9_]/g, '_') === name);
+  if (!a) { miss.add(name); return false; }
+  const loop = /idle|walk|run|fly|float|flap/i.test(name);
+  asset.clips[name] = clipFromAnim((asset._playRig ??= new Rig(asset.model)), a, { name, loop, inPlace: loop, rootRel: !loop });
+  return true;
+}
+/** 캐릭터 자료에 라이브러리 클립을 붙인다. 붙었으면(또는 필요 없으면) true. 장면이 이미 붙여 두었으면 그대로 쓴다 (다시 받지 않는다) */
 function attach(asset, useLib) {
   if (asset._play) return true;
-  if (!asset._playOwn) {
-    asset._playOwn = true;
-    const rig = new Rig(asset.model);
-    for (const a of asset.model.anims ?? []) {
-      const k = String(a.name).replace(/[^A-Za-z0-9_]/g, '_');
-      if (!asset.clips[k]) { const loop = /idle|walk|run|fly|float|flap/i.test(k); asset.clips[k] = clipFromAnim(rig, a, { name: k, loop, inPlace: loop, rootRel: !loop }); }
-    }
-  }
-  if (!useLib || (asset.clips.roll?.meta && asset.clips.atk3 && asset.clips.idle_combat)) { asset._play = true; return true; }   // 장면이 이미 라이브러리를 붙여 두었으면 그대로 쓴다 (다시 받지 않는다)
+  if (!useLib || (asset.clips.roll?.meta && asset.clips.atk3 && asset.clips.idle_combat)) { asset._play = true; return true; }
   if (!LIB.clips) {
     if (!LIB.promise && !LIB.failed && typeof fetch === 'function' && typeof location !== 'undefined') loadPlayClips(indexUrlOf(asset));
     return false;
@@ -49,6 +55,13 @@ function attach(asset, useLib) {
   Object.assign(asset.clips, LIB.clips);
   asset._play = true;
   return true;
+}
+/** 종류표가 이름으로 부르는 클립 가운데 모델 파일에만 있는 것을 꺼내 둔다 (자료마다 한 번) */
+function attachKind(asset, D) {
+  if (asset._playKind === D) return;
+  asset._playKind = D;
+  for (const k in D.clips) ownClip(asset, D.clips[k]);
+  for (const a of D.attacks) ownClip(asset, a.clip);
 }
 
 /** 방향을 (tx,tz) 쪽으로 돌린다. k = 따라가는 빠르기(1/초), cap = 가장 빠른 회전(rad/초) */
@@ -186,11 +199,12 @@ export function driveActor(ch, e, dt) {
   if (!D) {
     attach(ch.asset, true);
     turn(ch, S, e.dirX ?? e.facing ?? 1, e.dirZ ?? 0, dt, 12, 14);
+    if (e.clip && !C[e.clip]) ownClip(ch.asset, e.clip);   // 그 모델에만 든 클립 (마을 사람의 걸음 등)
     const want = e.state === 'dead' ? pick(C, 'death_back', 'death') : pick(C, e.clip, e.anim);
     A.play(want ?? pick(C, 'idle') ?? Object.keys(C)[0], PO(0.15));
     A.update(dt); return;
   }
-  attach(ch.asset, D.lib !== false);
+  attach(ch.asset, D.lib !== false); attachKind(ch.asset, D);
   const K = D.clips, atk = e.state === 'attack' && e.atk;
   if (e.state !== 'dead' && !e.dead) turn(ch, S, e.dirX, e.dirZ, dt, atk ? 24 : 13, 22);
   let name = null, o = PO(0.14);   // (PO 는 하나를 돌려 쓴다 — 마지막에 부른 값이 남는다)

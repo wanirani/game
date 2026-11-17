@@ -51,7 +51,8 @@ export function createCanvasHud(game, opts = {}) {
       L.epoch++;
     }
   }
-  const stale = (p, key) => { const k = L.epoch + '|' + key; if (p.key === k) return false; p.key = k; return true; };
+  // has this piece been baked for these values at this epoch? (plain comparisons: no strings are built per frame)
+  const stale = (p, a, b, c) => { if (p.ep === L.epoch && p.ka === a && p.kb === b && p.kc === c) return false; p.ep = L.epoch; p.ka = a; p.kb = b; p.kc = c; return true; };
 
   // night badge: a small gem with the emblem and a name plate
   function bakeBadge(which) {
@@ -67,7 +68,7 @@ export function createCanvasHud(game, opts = {}) {
   // the altar ledge the candles stand on
   function bakeShelf(n, step) {
     const shelf = shelves[n] ?? (shelves[n] = mkPiece());
-    if (!stale(shelf, n + '|' + step)) return shelf;
+    if (!stale(shelf, n, step)) return shelf;
     const w = (n - 1) * step + px(36), h = px(10);
     const c = ctxOf(shelf, w + 4, h + 6);
     glassPanel(c, 2, 2, w, h, { cut: px(3.5), shadow: false, top: 'rgba(40,46,80,0.50)', bot: 'rgba(8,9,22,0.62)' });
@@ -75,7 +76,7 @@ export function createCanvasHud(game, opts = {}) {
   }
   function bakeMoon(ph) {
     const q = Math.round(clamp(ph, 0, 1) * 24);
-    if (!stale(moonP, 'm' + q)) return moonP;
+    if (!stale(moonP, q)) return moonP;
     const r = px(13), w = r * 2 + 8, c = ctxOf(moonP, w, w), cx = w / 2;
     c.save(); c.beginPath(); c.arc(cx, cx, r, 0, TAU); c.clip();
     sprite(c, 'moon', cx, cx, r * 2.06, r * 2.06);
@@ -89,8 +90,8 @@ export function createCanvasHud(game, opts = {}) {
   }
   function bossW() { return Math.max(px(150), Math.min(px(400), L.vw * 0.44, 2 * (L.vw / 2 - (T.statusR || 0) - px(14)))); }
   function bakeBoss(b) {
+    if (!stale(bossP, b.name, b.sub, Math.round(bossW()))) return bossP;
     const name = String(b.name ?? ''), sub = String(b.sub ?? '');
-    if (!stale(bossP, name + '|' + sub + '|' + Math.round(bossW()))) return bossP;
     const bw = bossW(), ts = tsz(17, L.tmin + 2), crestH = px(34), barH = px(13), w = bw + 24, h = crestH + ts * 1.5 + barH + px(14);
     const c = ctxOf(bossP, w, h);
     sprite(c, 'orn_boss', w / 2, crestH / 2 + 1, px(150), crestH);
@@ -131,7 +132,7 @@ export function createCanvasHud(game, opts = {}) {
     c.drawImage(title.c, w / 2 - title.w / 2, y - title.h * 0.07, title.w, title.h); y += title.h * 0.80;
     if (sub) { c.drawImage(sub.c, w / 2 - sub.w / 2, y - sub.h * 0.1, sub.w, sub.h); y += sub.h * 0.72; }
     c.save(); c.translate(w / 2, y + divH / 2); if (big || night) c.scale(1, -1); sprite(c, 'orn_div', 0, 0, divW, divH); c.restore();
-    if (!bandP.c || stale(bandP, 'band')) {   // the soft dark band behind big banners: a 1 px wide gradient, stretched when drawn
+    if (!bandP.c || stale(bandP, 1)) {   // the soft dark band behind big banners: a 1 px wide gradient, stretched when drawn
       const k = ctxOf(bandP, 1, 64), g = k.createLinearGradient(0, 0, 0, 64);
       g.addColorStop(0, 'rgba(4,4,12,0)'); g.addColorStop(0.3, 'rgba(4,4,12,0.52)'); g.addColorStop(0.7, 'rgba(4,4,12,0.52)'); g.addColorStop(1, 'rgba(4,4,12,0)');
       k.fillStyle = g; k.fillRect(0, 0, 1, 64);
@@ -176,11 +177,11 @@ export function createCanvasHud(game, opts = {}) {
   }
   const promptSig = [];
   function bakePrompts(s, mode) {
-    const list = s.prompts; let n = 0, changed = promptRow.key !== L.epoch + '|' + mode;
+    const list = s.prompts; let n = 0, changed = promptRow.ep !== L.epoch || promptRow.mode !== mode;
     if (list) for (let i = 0; i < list.length; i++) { const p = list[i]; if (p.x != null) continue; if (promptSig[n * 2] !== p.action || promptSig[n * 2 + 1] !== p.label) { changed = true; promptSig[n * 2] = p.action; promptSig[n * 2 + 1] = p.label; } n++; }
     if (promptRow.n !== n) changed = true;
     if (!changed) return;
-    promptRow.key = L.epoch + '|' + mode; promptRow.n = n;
+    promptRow.ep = L.epoch; promptRow.mode = mode; promptRow.n = n;
     if (!n) { promptRow.w = 0; return; }
     const ts = tsz(13, L.tmin + 1), gap = px(8); let w = 6;
     for (let i = 0; i < list.length; i++) if (list[i].x == null) w += promptW(list[i], ts) + gap;
@@ -188,7 +189,7 @@ export function createCanvasHud(game, opts = {}) {
     for (let i = 0; i < list.length; i++) if (list[i].x == null) x += drawPrompt(c, list[i], x, 4, ts, mode) + gap;
   }
   function bakeWorldPrompt(slot, p, mode) {
-    if (!stale(slot, mode + '|' + p.action + '|' + p.label)) return;
+    if (!stale(slot, mode, p.action, p.label)) return;
     const ts = tsz(13, L.tmin + 1), w = promptW(p, ts), c = ctxOf(slot, w + 8, px(28) + 10);
     drawPrompt(c, p, 4, 4, ts, mode);
   }
@@ -273,9 +274,9 @@ export function createCanvasHud(game, opts = {}) {
     const vw = s.viewW, vh = s.viewH, sf = s.safe ?? ZERO, hero = s.hero ?? ZERO;
     if (s.message) {   // loading / error: the only opaque screen
       ctx.fillStyle = '#080611'; ctx.fillRect(0, 0, vw, vh);
-      if (stale(msgP, 'm' + s.message)) { const t = bakeText(String(s.message), L.s, { size: tsz(21), family: FONTS.title, weight: 700, fill: '#e8e2f4' }, msgP.t); msgP.t = t; msgP.c = t.c; msgP.w = t.w; msgP.h = t.h; }
+      if (stale(msgP, s.message)) { const t = bakeText(String(s.message), L.s, { size: tsz(21), family: FONTS.title, weight: 700, fill: '#e8e2f4' }, msgP.t); msgP.t = t; msgP.c = t.c; msgP.w = t.w; msgP.h = t.h; }
       blit(ctx, msgP, vw / 2 - msgP.w / 2, vh / 2 - msgP.h / 2 - 10);
-      if (s.message2) { if (stale(msg2P, 'm' + s.message2)) { const t = bakeText(String(s.message2), L.s, { size: tsz(13.5), weight: 500, fill: '#b3adc6' }, msg2P.t); msg2P.t = t; msg2P.c = t.c; msg2P.w = t.w; msg2P.h = t.h; } blit(ctx, msg2P, vw / 2 - msg2P.w / 2, vh / 2 + 12); }
+      if (s.message2) { if (stale(msg2P, s.message2)) { const t = bakeText(String(s.message2), L.s, { size: tsz(13.5), weight: 500, fill: '#b3adc6' }, msg2P.t); msg2P.t = t; msg2P.c = t.c; msg2P.w = t.w; msg2P.h = t.h; } blit(ctx, msg2P, vw / 2 - msg2P.w / 2, vh / 2 + 12); }
       return;
     }
     const mode = opts.forceMode ?? input?.mode ?? 'touch';

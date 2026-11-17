@@ -8,12 +8,12 @@ import { gem, plate, plateWidth, sprite, makeCanvas, onAtlas, clamp, TAU, COL, F
 
 /** id, input action(s), base diameter (CSS px at k = 1), default icon, default label, offset from the attack centre (x to the left, y up) */
 export const BUTTONS = [
-  { id: 'attack', act: 'attack', d: 92, icon: 'attack', label: '공격', ox: 0, oy: 0, tint: 'ruby', iconK: 0.74 },
-  { id: 'jump', act: 'jump', d: 66, icon: 'jump', label: '점프', ox: 96, oy: -8, iconK: 0.7 },
-  { id: 'roll', act: 'dash,guard', d: 66, icon: 'roll', label: '구르기', ox: 72, oy: 70, iconK: 0.76 },
-  { id: 'skill', act: 'skill1', d: 62, icon: 'hook', label: '솜씨', ox: 44, oy: 152, iconK: 0.74 },
-  { id: 'bell', act: 'ult', d: 62, icon: 'bell', label: '종', ox: 162, oy: 54, iconK: 0.72 },
-  { id: 'lock', act: 'lock', d: 46, icon: 'next', label: '다음 적', ox: -10, oy: 82, iconK: 0.74 },
+  { id: 'attack', act: 'attack', d: 92, icon: 'attack', label: '공격', ox: 0, oy: 0, tier: 0, tint: 'ruby', iconK: 0.74 },
+  { id: 'jump', act: 'jump', d: 66, icon: 'jump', label: '점프', ox: 96, oy: -8, tier: 0, iconK: 0.7 },
+  { id: 'roll', act: 'dash,guard', d: 66, icon: 'roll', label: '구르기', ox: 72, oy: 70, tier: 1, iconK: 0.76 },
+  { id: 'skill', act: 'skill1', d: 62, icon: 'hook', label: '솜씨', ox: 44, oy: 152, tier: 2, iconK: 0.74 },
+  { id: 'bell', act: 'ult', d: 62, icon: 'bell', label: '종', ox: 162, oy: 54, tier: 1, iconK: 0.72 },
+  { id: 'lock', act: 'lock', d: 46, icon: 'next', label: '다음 적', ox: -10, oy: 82, tier: 1, iconK: 0.74 },
   { id: 'pause', act: '', d: 46, icon: 'pause', label: '멈춤', corner: true, iconK: 0.62 },
 ];
 const MIN_D = 44, MARGIN = 20, HIT_PAD = 8, DEAD = 10, CD_STEPS = 40;
@@ -35,8 +35,9 @@ export function padLayout(bounds, scale = 1, textSize = 'normal') {
     const d = sz(b);
     if (b.corner) { out.push({ id: b.id, cx: bounds.r - 14 - d / 2, cy: bounds.t + 12 + d / 2, d }); continue; }
     // small buttons keep their gap when the 44 px floor makes them larger than the scaled size
-    const grow = (d - b.d * k) / 2, len = Math.hypot(b.ox, b.oy) || 1;
-    const ox = b.ox * k + (b.ox / len) * grow, oy = b.oy * k + (b.oy / len) * grow;
+    // and each tier above the bottom row moves up (and a little outward) by what a larger name plate needs
+    const grow = (d - b.d * k) / 2, len = Math.hypot(b.ox, b.oy) || 1, more = Math.max(0, labelPx * 0.9 - 9 * k) * 1.5 * (b.tier || 0);
+    const ox = b.ox * k + (b.ox / len) * grow + (b.ox > 20 ? more * 0.45 : 0), oy = b.oy * k + (b.oy / len) * grow + more;
     out.push({ id: b.id, cx: ax - ox, cy: ay - oy, d });
   }
   const sr = Math.round(66 * k);

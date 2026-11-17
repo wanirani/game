@@ -48,9 +48,11 @@ export function createBuiltinHud() {
       // hurt enemies: small health bars
       const E = s.enemies;
       for (let i = 0; i < E.length; i++) {
-        const e = E[i]; if (e.dead || e.state === 'dead' || e.hp >= e.hpMax || !e._a3 || !e._a3.vis) continue;
+        const e = E[i], lock = h.lock != null && h.lock === e.id; if (e.dead || e.state === 'dead' || (e.hp >= e.hpMax && !lock) || !e._a3 || !e._a3.vis) continue;
         s.project(e.x, e.y + (e.h ?? 80) + 26, e.z, P); if (P.w <= 1) continue;
         const k = clamp(880 / P.w, 0.5, 1.4), w = 40 * k, hg = 4 * k;
+        if (lock) { ctx.fillStyle = '#e8c872'; ctx.beginPath(); ctx.moveTo(P.x - 7 * k, P.y - 16 * k); ctx.lineTo(P.x + 7 * k, P.y - 16 * k); ctx.lineTo(P.x, P.y - 5 * k); ctx.closePath(); ctx.fill(); }   // lock-on mark
+        if (e.hp >= e.hpMax) continue;
         ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(P.x - w / 2 - 1, P.y - 1, w + 2, hg + 2);
         ctx.fillStyle = '#e04a3a'; ctx.fillRect(P.x - w / 2, P.y, w * clamp(e.hp / e.hpMax, 0, 1), hg);
       }

@@ -24,7 +24,7 @@ import { Cast } from './cast.js';
 import { loadArea, hasArea, roomOf, kitTexPath, DEFAULT_AREA } from './area.js';
 import { createBuiltinHud } from './hud.js';
 import { readPerf } from './perf.js';
-import { UI_LOADER } from './seams.js';
+import { UI_LOADER, UI_DEFAULT } from './seams.js';
 import { elementOf, shotAttach, shotMove, shotDetach, shotImpact } from './magic.js';
 
 const FOCAL = 880, NEAR = 60, FAR = 24000, DIE_T = 0.9, HERO_MODEL = 'kael';
@@ -33,7 +33,7 @@ const TEX_SRC = {
   flag: { src: 'tex/tex_mossy_stone', desat: 0.35 }, block: { src: 'tex/tex_castle_stone' }, brick: { src: 'tex/tex_wet_stone', desat: 0.8 },
   wood: { src: 'tex/tex_wood' }, dirt: { src: 'tex/tex_dirt' },
 };
-const HIDE_BTNS = ['sub', 'skill1', 'skill2', 'ult', 'swap', 'mount', 'guard', 'lock'];
+const HIDE_BTNS = ['sub', 'skill1', 'skill2', 'ult', 'swap', 'mount', 'guard', 'lock', 'auto', 'maptog', 'bag'];   // v1 pad buttons with no meaning here (pause = leave, fullscreen stay)
 const DASH_TRAIL = RB({ mode: 1, life: 0.24, width: 58, col: [0.45, 0.8, 2.2, 0.5] });
 const SUN = [0.56, 0.56, 0.62], AMB = [0.76, 0.77, 0.84], RIM_HERO = [0.6, 0.7, 1, 0.5], RIM_WARN = [1.7, 0.35, 0.2, 0.85], RIM_ENEMY = [0.55, 0.65, 0.9, 0.35];
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -102,9 +102,16 @@ export default class V2Game extends Scene {
     try { this.glr = new GLR({}); } catch (e) { this.glError = String(e?.message ?? e); console.warn('[v2g]', this.glError); }
     if (this.glr) {
       this._attach();
-      this._load(params?.area ?? DEFAULT_AREA).catch((e) => { this.glError = String(e?.message ?? e); console.error('[v2g] load failed', e); });
+      this._load(params?.area ?? DEFAULT_AREA, params?.spawn ?? null).catch((e) => { if (!this.glr) return; this.glError = String(e?.message ?? e); console.error('[v2g] load failed', e); });   // (left the scene while loading: nothing to report)
     }
-    if (UI_LOADER) UI_LOADER().then((m) => { if (this.glr && typeof m.createHud === 'function') { const h = m.createHud(g); if (h) { this.hud = h; if (h.padHideButtons) this.padHideButtons = h.padHideButtons; if (h.hidePad) { this.showPad = false; this.hidePad = true; } } } }).catch((e) => console.warn('[v2g] ui module failed to load, using the built-in HUD:', String(e?.message ?? e)));
+    this.hudKind = 'builtin';
+    if (UI_LOADER && (this.perf.ui ?? UI_DEFAULT)) UI_LOADER().then((m) => {
+      if (!this.glr || g.top !== this || typeof m.createHud !== 'function') return;
+      const h = m.createHud(g); if (!h) return;
+      this.hud = h; this.hudKind = 'ui';
+      if (h.padHideButtons) this.padHideButtons = h.padHideButtons;
+      if (h.hidePad) { this.showPad = false; this.hidePad = true; }
+    }).catch((e) => this._hudFail(e));
     try { feel.preload(); } catch { /* no audio yet */ }
     this._api();
   }
@@ -118,6 +125,12 @@ export default class V2Game extends Scene {
     for (const c of this._canvases ?? []) { c.width = 1; c.height = 1; }
     this._canvases = null; this.ready = false; this.actors.length = 0; this.pool.clear(); this.heroA = null; this.cast = null; this.sim = null; this.W = null;
     if (globalThis.__v2?.scene === this) delete globalThis.__v2;
+  }
+  /** the plugged-in HUD threw (or did not load): say so once and carry on with the built-in one — play never stops for the interface */
+  _hudFail(e) {
+    console.warn('[v2g] interface module failed, using the built-in HUD:', String(e?.stack ?? e?.message ?? e));
+    const old = this.hud; this.hud = createBuiltinHud(); this.hudKind = 'builtin'; this.showPad = true; this.hidePad = false; this.padHideButtons = HIDE_BTNS;
+    try { if (old && old !== this.hud) (old.release ?? old.dispose)?.call(old); } catch { /* already broken */ }
   }
   setStory(fn) { this.story = typeof fn === 'function' ? fn : null; }
   /** wake every enemy of a spawn group (area triggers `wake`, or the story) */
@@ -154,7 +167,7 @@ export default class V2Game extends Scene {
     if (!this.glr) return false;
     this.ready = false; this.state.loading = true;
     this._releaseArea();
-    await this._load(id, spawn);
+    try { await this._load(id, spawn); } catch (e) { if (this.glr) { this.glError = String(e?.message ?? e); console.error('[v2g] area load failed', e); } }
     return this.ready;
   }
   // ───────────────────────── DOM layers ─────────────────────────
@@ -313,12 +326,14 @@ export default class V2Game extends Scene {
   _take(e) {
     const K = KINDS[e.kind]; if (!K) return null;
     const p = this._poolOf(K.model); let a = p.length ? p.pop() : this._newActor(e.kind); if (!a) return null;
-    a.kind = e.kind; a.e = e; a.hitAge = 9; a.dieAge = -1; a.vis = true; a.kbT = 0; a.wasDead = false; a.seed = Math.random() * 7;
+    a.kind = e.kind; a.e = e; a.hitAge = 9; a.dieAge = -1; a.dieHold = 0; a.vis = true; a.kbT = 0; a.wasDead = false; a.seed = Math.random() * 7;
     const fx = e.dirX ?? e.facing ?? -1, fz = e.dirZ ?? 0, l = Math.hypot(fx, fz) || 1; a.dx = fx / l; a.dz = fz / l;
     a.anim.play(a.asset.clips.idle ? 'idle' : Object.keys(a.asset.clips)[0], { fade: 0, restart: true }); a.anim.update(0);
     e._a3 = a; this.actors.push(a);
     return a;
   }
+  /** an enemy starts to die: its death clip plays for the kind's own time (e.dying), the last DIE_T seconds dissolve to ash */
+  _dying(a, e) { a.dieAge = 0; a.dieHold = Math.max(0, (e.dying > 0 ? e.dying : DIE_T) - DIE_T); }
   _free(a) { if (a.e && a.e._a3 === a) a.e._a3 = null; a.e = null; this._poolOf(a.asset.id).push(a); }
   /** baked light of the stage at a point -> out[0..2] (same formula as world.js lightAt without a normal; allocation-free) */
   _tintAt(W, x, y, z, k0, max, out) {
@@ -381,10 +396,9 @@ export default class V2Game extends Scene {
       },
       kill(e) {
         const K = KINDS[e.kind], h = sc.sim.hero, dx = h.dirX ?? h.facing ?? 1, dz = h.dirZ ?? 0, a = e._a3;
-        if (a && a.dieAge < 0) a.dieAge = 0;
+        if (a && a.dieAge < 0) sc._dying(a, e);
         const bone = (K?.death ?? (K?.material === 'bone' ? 'bone' : 'ash')) === 'bone';
         if (bone) sc._fxp('enemy.death.bone', e.x, e.y, e.z, dx, dz, 1, true);   // the kill layer of the hit sound already carries the collapse
-        sc._fxp('enemy.death.ash', e.x, e.y, e.z, dx, dz, 1, true);
         sc.emit('enemy.kill', { enemy: e });
       },
       heroHurt(dmg, pit) {
@@ -432,10 +446,10 @@ export default class V2Game extends Scene {
     let mx = input.analogX || input.axisX, mz = -(input.analogY || input.axisY);
     { const T = input.touchStick ?? input._touchVec; if (input.mode === 'touch' && T && T.mag > 0.1) { mx = T.x; mz = -T.y; } }   // touch stick: raw 360 degrees
     const modal = this.hud.modal ?? null, locked = this.locked || modal === 'dialog';   // UI_API 2: 'pause' freezes the rules, 'dialog' locks the hero
-    if (modal === 'pause') { this._state(); this.hud.update(dt, this.state); this.updMs += performance.now() - t0; return; }
+    if (modal === 'pause') { this._state(); try { this.hud.update(dt, this.state); } catch (e) { this._hudFail(e); } this.updMs += performance.now() - t0; return; }
     if (locked) { mx = 0; mz = 0; }
     inp.mx = mx; inp.mz = mz; inp.jump = !locked && input.buffered('jump', 0.12); inp.jumpHeld = input.down('jump'); inp.jumpUsed = false;
-    inp.attackHeld = input.down('attack'); inp.guard = input.down('guard');
+    inp.attackHeld = input.down('attack'); inp.guard = !locked && (input.down('guard') || input.down('dash'));
     if (!locked) { if (input.pressed('attack')) inp.attack = true; if (input.pressed('dash')) inp.dash = true; if (input.pressed('lock')) inp.lockNext = true; }   // latched until a rule step consumes them (hit-stop)
     if (sim.done) {
       this.doneT += dt;
@@ -454,7 +468,7 @@ export default class V2Game extends Scene {
     this._sync(pdt, dt);
     this._camera(dt);
     for (let i = 0; i < this.numbers.length; i++) { const n = this.numbers[i]; if (n.on && (n.t += dt) >= 0.8) n.on = false; }
-    this._state(); this.hud.update(dt, this.state);
+    this._state(); try { this.hud.update(dt, this.state); } catch (e) { this._hudFail(e); }
     const c = this.cam;
     try { feel.setListener(c.px, c.py, c.pz, c.fx, c.fy, c.fz, c.dist, (g.viewW / 2) / this.focal); feel.update(); } catch { /* no audio */ }
     this.updMs += performance.now() - t0;
@@ -525,8 +539,12 @@ export default class V2Game extends Scene {
     for (let i = L.length - 1; i >= 0; i--) {
       const a = L[i], e = a.e;
       a.hitAge += fdt;
-      if (a.dieAge < 0 && (e.state === 'dead' || e.dead)) a.dieAge = e.dead ? DIE_T : 0;
-      if (a.dieAge >= 0) { a.dieAge += fdt; if (a.dieAge >= DIE_T) { this._free(a); L[i] = L[L.length - 1]; L.length--; continue; } }
+      if (a.dieAge < 0 && (e.state === 'dead' || e.dead)) { this._dying(a, e); if (e.dead) a.dieAge = a.dieHold + DIE_T; }
+      if (a.dieAge >= 0) {
+        const before = a.dieAge; a.dieAge += fdt;
+        if (before <= a.dieHold && a.dieAge > a.dieHold && a.vis) this._fxp('enemy.death.ash', e.x, e.y, e.z, a.dx, a.dz, 1, true);   // the body starts to fall to ash
+        if (a.dieAge >= a.dieHold + DIE_T) { this._free(a); L[i] = L[L.length - 1]; L.length--; continue; }
+      }
       if (pdt <= 0 || (!a.vis && a.dieAge < 0)) continue;   // off-screen: no animation work
       if (e.dead) a.anim.update(pdt);
       else {
@@ -649,7 +667,7 @@ export default class V2Game extends Scene {
     if (off) {
       if (this.mode === 'layer') this._show(false);
       s.message = off === 1 ? 'WebGL 을 쓸 수 없어 게임을 열 수 없습니다' : off === 2 ? '불러오는 중…' : '화면을 되살리는 중…'; s.message2 = off === 1 ? String(this.glError || '') : '';
-      this.hud.draw(ctx, s); s.message = '';
+      try { this.hud.draw(ctx, s); } catch (e) { this._hudFail(e); } s.message = '';
       return;
     }
     if (this.mode === 'layer') this._show(g.top === this);
@@ -659,7 +677,7 @@ export default class V2Game extends Scene {
     const a = this.everyFrame ? clamp(g.alpha ?? 1, 0, 1) : 1;
     this._gl(Wv, Hv, a, false);
     if (hctx !== ctx) { hctx.setTransform(1, 0, 0, 1, 0, 0); hctx.clearRect(0, 0, L.hud.width, L.hud.height); hctx.setTransform(g.scale, 0, 0, g.scale, 0, 0); }
-    this.hud.draw(hctx, s);
+    try { this.hud.draw(hctx, s); } catch (e) { this._hudFail(e); }
     const ms = performance.now() - t0 + this.updMs; this.updMs = 0;
     this.samples[this.sampleN % 300] = ms; this.sampleN++;
   }
@@ -727,8 +745,9 @@ export default class V2Game extends Scene {
       const x = e._px === undefined ? e.x : e._px + (e.x - e._px) * k, y = e._py === undefined ? e.y : e._py + (e.y - e._py) * k, z = e._pz === undefined ? e.z : e._pz + (e.z - e._pz) * k;
       ac.vis = this._seen(m, x, y, z, ac.height);
       if (!ac.vis) { culled++; continue; }
-      const o = ac.opt; o.flash = hurtFlash(ac.hitAge) * 0.85; o.dis = ac.dieAge >= 0 ? dissolveK(ac.dieAge, DIE_T) : 0; o.seed = ac.seed;
-      o.rim = e.state === 'attack' || e.state === 'cast' ? RIM_WARN : RIM_ENEMY;
+      const o = ac.opt; o.flash = hurtFlash(ac.hitAge) * 0.85; o.dis = ac.dieAge > ac.dieHold ? dissolveK(ac.dieAge - ac.dieHold, DIE_T) : 0; o.seed = ac.seed;
+      o.alpha = e.alpha !== undefined && ac.dieAge < 0 ? clamp(e.alpha, 0.12, 1) : 1;   // ghosts fade in and out by the rules
+      o.rim = e.state === 'attack' || e.state === 'cast' || e.tele > 0 ? RIM_WARN : RIM_ENEMY;
       ac.draw(cr, ac.place(x, y + (KINDS[ac.kind]?.float ?? 0), z)); drawn++;
     }
     this.c3.drawn = drawn; this.c3.culled = culled;
@@ -772,11 +791,15 @@ export default class V2Game extends Scene {
     for (let i = 0; i < L.length; i++) {
       const ac = L[i], e = ac.e; if (!ac.vis) continue;
       const ex = e._px === undefined ? e.x : e._px + (e.x - e._px) * a, ez = e._pz === undefined ? e.z : e._pz + (e.z - e._pz) * a;
-      this._shadow(b, ex, ez, e.y, 26, 0.9 * (ac.dieAge >= 0 ? clamp(1 - ac.dieAge / DIE_T, 0, 1) : 1));
-      const T = TUNE[e.kind];
-      if (e.state === 'attack' && T && T.windup && e.stateT < T.windup + 0.08) {   // where the swing will land (line up in depth to dodge)
-        const k = clamp(e.stateT / T.windup, 0, 1), cx = ex + ac.dx * 46, cz = ez + ac.dz * 46, rr = 34 + 26 * k;
-        b.quad(this._flat(cx, e.y + 0.6, cz, rr, Math.max(rr * 0.6, (T.reachZ ?? 30) * 0.9)), g.u0, g.v0, g.u1, g.v1, 1.5, 0.25, 0.12, 0.2 + 0.5 * k, 0, 0, 5, 1);
+      this._shadow(b, ex, ez, e.y - (e.hover ?? 0), 26, 0.9 * (ac.dieAge > ac.dieHold ? clamp(1 - (ac.dieAge - ac.dieHold) / DIE_T, 0, 1) : 1) * (e.alpha ?? 1));
+      // where the attack will land. Newer rules give e.tele (0..1) and the attack's reach; the prototype rules give a wind-up time
+      let k = 0, reach = 46, rad = 0, wide = 30;
+      const A = e.atk;
+      if (e.tele !== undefined) { if (e.tele > 0 && e.state !== 'dead' && A && !A.shot) { k = clamp(e.tele, 0.02, 1); if (A.box) { reach = (A.box.f0 + A.box.f1) * 0.5; rad = Math.max((A.box.f1 - A.box.f0) * 0.5, A.box.side); } else if (A.radius) { reach = A.radius.fwd; rad = A.radius.r; } } }
+      else { const T = TUNE[e.kind]; if (e.state === 'attack' && T && T.windup && e.stateT < T.windup + 0.08) { k = clamp(e.stateT / T.windup, 0.02, 1); wide = T.reachZ ?? 30; } }
+      if (k > 0) {
+        const cx = ex + ac.dx * reach, cz = ez + ac.dz * reach, rr = rad > 0 ? rad * (0.7 + 0.5 * k) : 34 + 26 * k;
+        b.quad(this._flat(cx, e.y - (e.hover ?? 0) + 0.6, cz, rr, rad > 0 ? rr * 0.9 : Math.max(rr * 0.6, wide * 0.9)), g.u0, g.v0, g.u1, g.v1, 1.5, 0.25, 0.12, 0.2 + 0.5 * k, 0, 0, 5, 1);
       }
     }
     const SS = sim.shots;
@@ -810,7 +833,7 @@ export default class V2Game extends Scene {
       world: { tris: Math.round(this.envStat.tris), draws: this.envStat.draws, chunks: this.envStat.chunks, texBytes: G?.stats.texBytes ?? 0, flatPropsDropped: this.area?.flatProps.length ?? 0 },
       chars: cr ? { draws: this.c3.draws, tris: Math.round(this.c3.tris), drawn: this.c3.drawn, culled: this.c3.culled, texBytes: cr.stats.texBytes, bufBytes: cr.stats.bufBytes, models: cast ? [...cast.assets.keys()] : [], weapons: cast ? [...cast.weapons.keys()] : [], clips: cast?.lib ? Object.keys(cast.lib.clips).length : 0, libError: cast?.libError ?? null, actors: this.actors.length, heroClip: this.heroA?.anim.cur?.name ?? '' } : null,
       fx: fx ? { tier: fx.tier, post: fx.postOn, bytes: fx.gpuBytes, particles: fx.particles.drawn ?? 0, lights: fx.lights.count } : null,
-      mode: this.mode, resK: this.perf.resK, everyFrame: this.everyFrame, perfSaved: this.perf.saved, loadMs: this.loadMs ?? 0,
+      mode: this.mode, hud: this.hudKind, resK: this.perf.resK, everyFrame: this.everyFrame, perfSaved: this.perf.saved, loadMs: this.loadMs ?? 0,
       canvases: (this._canvases?.length ?? 0) + (G ? 1 : 0) + (this.layer.hud ? 1 : 0), assets: this.assetList(),
     };
   }

@@ -163,10 +163,12 @@ for (const dev of DEVICES) {
       await page.waitForTimeout(500);
       const [, wj] = await Promise.all([pressButton(T, page, 'jump', 220), until('air', 3000)]);
       await page.waitForTimeout(900);
-      const p0 = await page.evaluate(() => window.__v2.hero);
-      await pressButton(T, page, 'dash', 220); await page.waitForTimeout(700);
-      const p1 = await page.evaluate(() => window.__v2.hero);
-      const wd = Math.hypot(p1.x - p0.x, p1.z - p0.z) > 40;
+      // roll = the roll button while the stick is pushed (without the stick the same button guards — PLAY_API 1)
+      const rolling = page.evaluate(async () => { const t0 = performance.now(); while (performance.now() - t0 < 3500) { const h = window.__v2.scene.sim.hero; if (h.dashT > 0 || h.anim === 'roll' || h.anim === 'dash') return true; await new Promise((r) => setTimeout(r, 8)); } return false; });
+      await stickHold(T, page, 50, 0, 250, { keep: true });
+      await pressButton(T, page, 'dash', 200); await page.waitForTimeout(300);
+      await T.upAll();
+      const wd = await rolling;
       R.touch = { pad: ids, moved: [Math.round(h1.x - h0.x), Math.round(h1.z - h0.z)], face: h1.face.map((n) => +n.toFixed(2)), attack: wa, jump: wj, dash: wd };
       const T_OK = R.touch.moved[0] > 40 && R.touch.moved[1] > 25 && wa && wj && wd && ['attack', 'jump', 'dash'].every((b) => ids.includes(b));
       if (T_OK) ok(`touch: stick right+up moved the hero ${R.touch.moved.join(',')} facing (${R.touch.face.join(',')}), attack / jump / roll buttons work (pad buttons: ${ids.join(' ')})`); else fail(`${dev}: touch controls ${JSON.stringify(R.touch)}`);

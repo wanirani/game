@@ -165,9 +165,9 @@ registerKind('wolfman', {
 });   // 세 번째 인자로 행동 함수 (sim, e, dt, D) 를 주면 그것을 쓴다 (없으면 ai 이름의 것: melee · ranged · ghost · bat · boss)
 ```
 
-- 공격 한 줄: `range`(이 거리 안에서 시작; `[가까이, 멀리]` 도 됨 · `chance`) · `windup` → `strike` → `recover` · `box`｜`radius`｜`shot` · `lunge`(판정 동안 앞으로) · `track`(예고 동안 따라 도는 빠르기) · `guard: 'block'｜'chip'｜'break'` · `parry`(튕겨낼 수 있나) · `staggerT` · `cd:[최소,최대]` · `weapon` · `str` · `clip`(틀 클립 — 칼이 지나는 구간이 판정에 겹치게 `warpAttack` 이 시간을 접는다) · `sound`.
+- 공격 한 줄: `range`(이 거리 안에서 시작; `[가까이, 멀리]` 도 됨 · `chance`) · `windup` → `strike` → `recover` · `box`｜`radius`｜`shot` · `lunge`(판정 동안 앞으로) · `track`(예고 동안 따라 도는 빠르기) · `guard: 'block'｜'chip'｜'break'` · `parry`(튕겨낼 수 있나) · `staggerT` · `cd:[최소,최대]` · `weapon` · `str` · `clip`(틀 클립 — 칼이 지나는 구간이 판정에 겹치게 `warpAttack` 이 시간을 접는다) · `cut:[클립 초, 클립 초]`(그 구간을 직접 줄 때 — 없으면 클립 자료의 `strike`; **`strike` 는 판정 길이(초)** 이니 헷갈리지 말 것) · `sound`.
 - 행동 함수는 "언제 무엇을 시작하고 그 사이에 어떻게 움직이나"만 정한다: `sim.turnTo` · `sim.steer` · `sim.mayAttack` · `sim.startAttack(e, atk)` · `sim.runAttack(e, dt)` · `sim.setAnim(e, 'walk', dt)`.
-- 그림: `driveActor` 가 `clips` 의 이름으로 튼다. 걷기 클립은 `stride`(px/주기)로 발을 맞춘다. 뜨는 것은 `floats: true`(다리 뼈를 묶는다), 나는 것은 `fly: true` + `pitch`.
+- 그림: `driveActor` 가 `clips` 의 이름으로 튼다. 걷기 클립은 `stride`(px/주기)로 발을 맞춘다(지금 값은 뼈대에서 잰 것: 병사 78 · 술사 86 · 주검 40 · 갑주 86). 뜨는 것은 `floats: true`(다리 뼈를 묶는다), 나는 것은 `fly: true` + `pitch`.
 
 ## 7. 보스 자리
 
@@ -189,6 +189,6 @@ registerKind('wolfman', {
 
 | 무엇 | 상태 |
 |---|---|
-| 공개 이름 · 규칙(영웅 기술 다섯 · 구르기 · 막기/튕겨내기 · 락온 · 적 여섯 종 · 끼임) | 동작 — `play_rules_test` 70/70 |
+| 공개 이름 · 규칙(영웅 기술 다섯 · 구르기 · 막기/튕겨내기 · 락온 · 적 여섯 종 · 끼임) | 동작 — `play_rules_test` 73/73 (시범판 B 의 세계와 환경 키트 세계 둘 다에서) |
 | 움직임(`driveHero` · `driveActor` — 라이브러리 클립) | 동작 — `play_motion_check` 27/27, 붙임 그림으로 눈으로 봄 |
 | 길게 눌러 채찍 · 기술 단추 · 종 · 보스 | 범위 밖 (자리만) |

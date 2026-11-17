@@ -72,7 +72,7 @@ export function createDialog(env) {   // env: { game, input, hud (canvas HUD: la
   }
   function bakeChoices() {
     const d = D.d; if (!d.choices) return;
-    const ts = tsz(15.5, L.tmin + 3), h = ts * 2.3; let w = px(150);
+    const ts = tsz(15.5, L.tmin + 3), h = Math.max(ts * 2.3, 46 / L.css); let w = px(150);
     for (const t of d.choices) w = Math.max(w, measure(t, ts, 700) + ts * 3.2);
     for (let i = 0; i < 2 && i < d.choices.length; i++) {
       const p = choiceC[i], sel = i === D.sel, c = ctxOf(p, w + 12, h + 12);
@@ -174,7 +174,7 @@ export function createDialog(env) {   // env: { game, input, hud (canvas HUD: la
 const ROWS = [['resume', '이어 하기'], ['settings', '설정'], ['leave', '나가기']];
 export function createPause(env) {
   const L = env.hud.layout, px = env.hud.px, tsz = env.hud.tsz;
-  const M = { open: false, sel: 0, t: 0, key: '', o: null, x: 0, y: 0, rowY: [0, 0, 0], rowH: 0 };
+  const M = { open: false, sel: 0, t: 0, key: -1, o: null, x: 0, y: 0, rowY: [0, 0, 0], rowH: 0 };
   const panel = { c: null, w: 0, h: 0 };
   function bake() {
     const ts = tsz(17, L.tmin + 4), rowH = Math.max(px(46), 46 / L.css, ts * 2.5), w = Math.max(px(300), measure(ROWS[0][1], ts, 700) + px(170)), titleH = px(74), h = titleH + rowH * 3 + px(34);
@@ -197,7 +197,7 @@ export function createPause(env) {
       c.strokeText(ROWS[i][1], rx + rowH * 1.1, y + rowH / 2 + 1); c.fillStyle = sel ? '#fff3d4' : COL.silver; c.fillText(ROWS[i][1], rx + rowH * 1.1, y + rowH / 2 + 1);
       c.textBaseline = 'alphabetic'; M.rowY[i] = 12 + titleH + i * rowH;
     }
-    M.rowH = rowH; M.key = L.epoch + '|' + M.sel;
+    M.rowH = rowH; M.key = L.epoch * 8 + M.sel;
   }
   function pick(i) {
     const o = M.o ?? {}, g = env.game; M.open = false;
@@ -207,10 +207,10 @@ export function createPause(env) {
       else if (o.onLeave) o.onLeave(); else if (g.registry?.v2pick) g.go('v2pick', {}, { fade: true }); else if (g.registry?.title) g.go('title', {}, { fade: true });
     } catch (e) { console.error('[v2ui] pause callback', e); }
   }
-  onAtlas(() => { M.key = ''; });
+  onAtlas(() => { M.key = -1; });
   return {
     get open() { return M.open; },
-    show(o) { M.o = o ?? null; M.open = true; M.sel = 0; M.t = 0; M.key = ''; },
+    show(o) { M.o = o ?? null; M.open = true; M.sel = 0; M.t = 0; M.key = -1; },
     close() { if (M.open) pick(0); },
     tap(x, y) {
       if (!M.open) return;
@@ -227,7 +227,7 @@ export function createPause(env) {
     },
     draw(ctx, s) {
       if (!M.open) return;
-      if (M.key !== L.epoch + '|' + M.sel) bake();
+      if (M.key !== L.epoch * 8 + M.sel) bake();
       const a = clamp(M.t / 0.16, 0, 1);
       ctx.globalAlpha = a * 0.58; ctx.fillStyle = '#04050c'; ctx.fillRect(0, 0, s.viewW, s.viewH);
       M.x = s.viewW / 2 - panel.w / 2; M.y = s.viewH / 2 - panel.h / 2;
