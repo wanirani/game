@@ -156,7 +156,7 @@ try {
         };
         await page.evaluate(() => { window.__v2.restart(); window.__qaStep(2, true); });
         await shot('01_street', 'h.place(300,120); h.facing=1;');
-        await shot('02_behind_pillar', 'h.place(432,170); h.facing=1;');
+        await shot('02_behind_pillar', 'h.place(462,176); h.facing=-1;');
         await shot('03_front_of_pillar', 'h.place(446,100); h.facing=1;');
         await shot('04_on_platform', 'for(const e of P.enemies) if(e.x<1300) e.awake=false; h.place(900,200); h.facing=-1;', 6);
         await shot('05_by_pit', 'h.place(1470,150); h.facing=1;', 10);

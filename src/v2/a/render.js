@@ -26,7 +26,7 @@ const PROPS = {
   pillar: { img: 'props/prop_pillar', k: 1.32, ay: 0.975, tint: '#9a94b8' },
   lamp: { img: 'props/deco_village_lamppost', k: 1.5, ay: 0.985, tint: '#b0a8c0', glow: 0.83, pool: 1 },
   fence: { img: 'props/deco_village_fence', k: 1.3, ay: 0.98, tint: '#3a3852' },
-  cart: { img: 'props/deco_village_cart', k: 1.5, ay: 0.93, tint: '#444058' },
+  cart: { img: 'props/deco_village_cart', k: 1.15, ay: 0.93, tint: '#444058' },
   haybale: { img: 'props/deco_village_haybale', k: 1.3, ay: 0.97, tint: '#3c3850' },
   barrel: { img: 'props/prop_barrel', k: 0.8, ay: 0.97, tint: '#9088a8' },
   crateP: { img: 'props/prop_crate', k: 0.8, ay: 0.99, tint: '#9088a8' },
@@ -155,9 +155,15 @@ export class Renderer {
 
   // ───────────────────────── 한 프레임 ─────────────────────────
   /** actors: [{ z, draw(ctx, cam, R) }] — 깊이 정렬에 낄 캐릭터·탄. sec = 영웅이 있는 구간 id (벽 자르기) */
-  draw(ctx, cam, actors, sec, dt) {
-    const st = this.stats; st.strips = 0; st.faces = 0;
+  /** 시간에 따라 바뀌는 것: 불빛 깜박임 · 벽 자르기(마당에 들어서면 골목 벽이 가라앉는다) · 소품 숨기기. snap = 곧바로 */
+  tick(dt, sec, snap = false) {
     this.t += dt;
+    const k = snap ? 1 : Math.min(1, dt * 5);
+    for (const p of this.stage.props) if (p.hideIn) { const on = p.hideIn.includes(sec) ? 1 : 0; p.hideK += (on - p.hideK) * k; if (Math.abs(on - p.hideK) < 0.01) p.hideK = on; }
+    for (const s of this.stage.solids) if (s.cutIn) { const on = s.cutIn.includes(sec) ? 1 : 0; s.cutK += (on - s.cutK) * k; if (Math.abs(on - s.cutK) < 0.004) s.cutK = on; }
+  }
+  draw(ctx, cam, actors) {
+    const st = this.stats; st.strips = 0; st.faces = 0;
     this.B = ctx.getTransform();
     const low = this.game.quality === 'low';
     this.sideW = low ? 6 : 3;
@@ -166,9 +172,6 @@ export class Renderer {
     const off = this.off || {};
     if (!off.sky) this._sky(ctx, cam);
     if (low) ctx.imageSmoothingEnabled = false;      // 낮은 화질: 무늬를 가장 가까운 점으로 (소프트웨어 래스터에서 30 % 싸다)
-    // 벽 자르기 (마당에 들어서면 골목 벽이 가라앉는다)
-    for (const p of this.stage.props) if (p.hideIn) { const on = p.hideIn.includes(sec) ? 1 : 0; p.hideK += (on - p.hideK) * Math.min(1, dt * 5); if (Math.abs(on - p.hideK) < 0.01) p.hideK = on; }
-    for (const s of this.stage.solids) if (s.cutIn) { const on = s.cutIn.includes(sec) ? 1 : 0; s.cutK += (on - s.cutK) * Math.min(1, dt * 5); if (Math.abs(on - s.cutK) < 0.004) s.cutK = on; }
     // [A] 바닥 묶음
     if (!off.floor) for (const g of this.stage.floorGroups) this._floorGroup(ctx, cam, g);
     if (!off.pools) this._pools(ctx, cam);
@@ -311,7 +314,11 @@ export class Renderer {
     const wall = s.kind === 'wall' && top - s.floorY > 60;
     if (cam.x < s.x0) for (const g of s.segL) if (g.base < top) this._side(ctx, cam, s.x0, g.a, g.b, g.base, top, s.mat, wall);
     if (cam.x > s.x1) for (const g of s.segR) if (g.base < top) this._side(ctx, cam, s.x1, g.a, g.b, g.base, top, s.mat, wall);
-    if (s.z0 > cam.zNear) for (const g of s.segF) if (g.base < top) this._front(ctx, cam, g.a, g.b, s.z0, g.base, top, s);
+    if (s.z0 > cam.zNear) {
+      let hb = -Infinity;
+      for (const g of s.segF) if (g.base < top) { this._front(ctx, cam, g.a, g.b, s.z0, g.base, top, s); if (g.base > hb) hb = g.base; }
+      if (s.deco === 'house' && top - hb > 200 && s.cutK < 0.5) { const sc = cam.s(s.z0); if (cam.px(s.x1, sc) > -40 && cam.px(s.x0, sc) < cam.W + 40) this._house(ctx, cam, s, s.x0, s.x1, s.z0, hb, top, sc); }
+    }
   }
   _front(ctx, cam, xa, xb, z, base, top, slab) {
     const B = this.B, s = cam.s(z), W = cam.W, H = cam.H;
@@ -325,7 +332,12 @@ export class Renderer {
       ctx.setTransform(B);
     } else { ctx.fillStyle = this._flat(slab.mat, 'front', lv); ctx.fillRect(X0, Y0, X1 - X0, Y1 - Y0); }
     this.stats.faces++;
-    if (slab.deco === 'house' && top - base > 200) this._house(ctx, cam, slab, xa, xb, z, base, top, s);
+    if (slab.pitWall || base <= -200) {      // 구덩이 안벽: 아래로 갈수록 어둡다
+      const Yg = cam.py(Math.min(top, 0), z, s), lg = ctx.createLinearGradient(0, Yg, 0, Y1);
+      lg.addColorStop(0, 'rgba(3,2,8,0.25)'); lg.addColorStop(0.7, 'rgba(3,2,8,0.92)'); lg.addColorStop(1, 'rgba(3,2,8,0.97)');
+      ctx.fillStyle = lg; ctx.fillRect(X0, Yg, X1 - X0, Y1 - Yg);
+      return;
+    }
     // 바닥과 만나는 곳의 그늘 + 윗모서리 빛
     const hpx = Y1 - Y0;
     if (hpx > 10) { ctx.fillStyle = 'rgba(4,3,10,0.3)'; ctx.fillRect(X0, Y1 - Math.min(hpx * 0.3, 14 * s), X1 - X0, Math.min(hpx * 0.3, 14 * s)); }
@@ -435,6 +447,12 @@ export class Renderer {
         }
         z = z2; x = x2; s = s2;
       }
+    }
+    if (base <= -200) {      // 구덩이 안벽: 아래로 갈수록 어둡다
+      const lg = ctx.createLinearGradient(0, Math.min(ta, tb), 0, Math.max(ba, bb));
+      lg.addColorStop(0, 'rgba(3,2,8,0.3)'); lg.addColorStop(0.7, 'rgba(3,2,8,0.93)'); lg.addColorStop(1, 'rgba(3,2,8,0.97)');
+      ctx.fillStyle = lg;
+      ctx.beginPath(); ctx.moveTo(xa, ta); ctx.lineTo(xb, tb); ctx.lineTo(xb, bb + 1); ctx.lineTo(xa, ba + 1); ctx.closePath(); ctx.fill();
     }
   }
   /** 솟은 판 (단상·상자·계단·벽): 옆면 → 윗면 */

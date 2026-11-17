@@ -78,7 +78,7 @@ export default class V2ProtoA extends Scene {
     // 높이는 '바닥' 높이만 따라간다 (단상·상자 위에 올라서면 영웅이 화면에서 올라간다)
     let fy = -Infinity; for (const s of st.slabs) if (s.kind === 'floor' && !s.pit && h.x >= s.x0 && h.x <= s.x1 && h.z >= s.z0 && h.z <= s.z1 && s.top > fy) fy = s.top;
     if (fy > -Infinity) this.floorY = fy;
-    if (snap) { cam.x = tx; cam.z = tz; cam.y = this.floorY; cam.f = tf; cam.h = th; return; }
+    if (snap) { cam.x = tx; cam.z = tz; cam.y = this.floorY; cam.f = tf; cam.h = th; this.R?.tick(0, st.sectionAt(h.x, h.z).id, true); return; }
     const kx = 1 - Math.exp(-dt * 5.5), kz = 1 - Math.exp(-dt * 4.5);
     cam.x += (tx - cam.x) * kx; cam.z += (tz - cam.z) * kz; cam.y += (this.floorY - cam.y) * (1 - Math.exp(-dt * 5));
     cam.f += (tf - cam.f) * kz; cam.h += (th - cam.h) * kz;
@@ -100,6 +100,7 @@ export default class V2ProtoA extends Scene {
     }
     P.update(dt);
     this._cam(dt, false);
+    this.R.tick(dt, P.done ? 'yard' : P.section);
     if (P.done && P.doneT > 0.8 && (this._tap('again') || input.pressed('confirm') && P.doneT > 1.5)) { P.restart(); this._cam(1, true); }
     this.updMs += this._now() - t0;
   }
@@ -112,7 +113,7 @@ export default class V2ProtoA extends Scene {
     cam.zoom = clamp(H / 600, 1, 1.25);
     const tr = P.trauma * P.trauma * (g.settings?.shake === false ? 0 : 1), tt = this.t * 60;
     cam.setView(W, H, Math.sin(tt * 1.7) * 9 * tr, Math.cos(tt * 2.3) * 7 * tr);
-    R.draw(ctx, cam, P.list(), P.done ? 'yard' : P.section, 1 / 60);
+    R.draw(ctx, cam, P.list());
     P.drawFx(ctx, cam, R);
     // 가장자리 어둠 + 피격 붉은 빛
     if (P.vig > 0) { ctx.fillStyle = `rgba(160,10,20,${0.22 * P.vig})`; ctx.fillRect(0, 0, W, H); }
