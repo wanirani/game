@@ -155,7 +155,6 @@ export class CharRenderer {
     gl.uniform4fv(u.uJ, j.length > this.maxJ * 12 ? j.subarray(0, this.maxJ * 12) : j);
     gl.uniformMatrix4fv(u.uM, false, M);
     const tint = o.tint ?? [1, 1, 1], alpha = o.alpha ?? 1, blend = alpha < 1 || !!o.add;
-    gl.uniform3f(u.uTint, tint[0], tint[1], tint[2]);
     gl.uniform4f(u.uFx, o.flash ?? 0, alpha, o.add ? 1 : 0, o.solid ?? 0);
     const rim = o.rim ?? [0.55, 0.65, 0.9, 0.35]; gl.uniform4f(u.uRim, rim[0], rim[1], rim[2], rim[3]);
     if (blend) { gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); } else gl.disable(gl.BLEND);
@@ -167,6 +166,7 @@ export class CharRenderer {
       if (!p.vbo) continue;
       if (p.u32 && !this._u32ok()) continue;
       gl.bindTexture(gl.TEXTURE_2D, (p.image >= 0 && m.tex[p.image]?.tex) || this.white);
+      gl.uniform3f(u.uTint, tint[0] * p.color[0], tint[1] * p.color[1], tint[2] * p.color[2]);
       gl.bindBuffer(gl.ARRAY_BUFFER, p.vbo); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, p.ibo);
       gl.vertexAttribPointer(0, 3, gl.FLOAT, false, STRIDE, 0);
       gl.vertexAttribPointer(1, 3, gl.FLOAT, false, STRIDE, 12);

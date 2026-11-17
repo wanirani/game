@@ -12,7 +12,7 @@
 #hero .lv { font: 700 11px var(--sans); border: 1px solid rgba(255, 255, 255, .55); border-radius: 9px; padding: 0 7px; line-height: 16px; background: rgba(9, 11, 18, .4); }
 #hero .hp { width: 236px; height: 11px; transform: skewX(-22deg); transform-origin: left bottom; background: rgba(6, 8, 14, .62); box-shadow: 0 0 0 1px rgba(255, 255, 255, .28); overflow: visible; }
 #hero .hp .lag { background: var(--acc); opacity: .8; } #hero .hp .fill { background: linear-gradient(90deg, #dfe6f2, #ffffff); }
-#hero .hp .num { position: absolute; left: calc(100% + 12px); top: -4px; transform: skewX(22deg); font: 800 14px/19px var(--sans); text-shadow: var(--sh); white-space: nowrap; } #hero .hp .num em { font-style: normal; font-weight: 500; font-size: 11px; color: var(--dim); }
+#hero .hp .num { position: absolute; right: -2px; top: -25px; transform: skewX(22deg); font: 800 14px/19px var(--sans); text-shadow: var(--sh); white-space: nowrap; } #hero .hp .num em { font-style: normal; font-weight: 500; font-size: 11px; color: var(--dim); }
 #hero .st { width: 176px; height: 5px; margin-top: 6px; transform: skewX(-22deg); transform-origin: left bottom; background: rgba(6, 8, 14, .62); box-shadow: 0 0 0 1px rgba(255, 255, 255, .2); } #hero .st .fill { background: var(--amber); }
 
 /* ── 시스템 줄: 테 없는 아이콘 ── */
@@ -98,7 +98,7 @@
 .mtabs button.on { color: #fff; font-weight: 800; } .mtabs button.on::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: -1px; height: 3px; background: var(--acc); }
 .mcur { margin-left: auto; display: flex; gap: 16px; font: 700 15px var(--sans); } .mcur span { display: flex; align-items: center; gap: 6px; } .mcur svg { width: 18px; height: 18px; color: var(--amber); stroke-width: 1.800; } .mcur .c2 svg { color: var(--acc); }
 .mclose { width: 46px; height: 46px; display: grid; place-items: center; margin-left: 8px; } .mclose svg { width: 24px; height: 24px; }
-.mb { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px 226px 1fr 250px; }
+.mb { flex: 1; min-height: 0; display: grid; grid-template-columns: 200px 214px 1fr 236px; }
 .mb > div { padding: 0 16px; display: flex; flex-direction: column; min-width: 0; border-left: 1px solid rgba(255, 255, 255, .12); } .mb > div:first-child { border-left: 0; padding-left: 0; } .mb > div:last-child { padding-right: 0; }
 .mb > div > .fr { display: none; }
 .mb h3 { font: 700 12px var(--sans); letter-spacing: .14em; color: var(--dim); margin-bottom: 10px; display: flex; justify-content: space-between; } .mb h3 span { letter-spacing: 0; }
@@ -134,7 +134,7 @@
 
 /* ── 휴대폰 ── */
 .phone #hero { left: calc(14px + var(--sl)); top: calc(9px + var(--st)); } .phone #hero .nm { font-size: 14px; } .phone #hero .hn { margin-bottom: 4px; gap: 6px; }
-.phone #hero .hp { width: 176px; height: 9px; } .phone #hero .hp .num { font-size: 12px; left: calc(100% + 9px); top: -5px; } .phone #hero .hp .num em { display: none; } .phone #hero .st { width: 130px; height: 4px; margin-top: 5px; }
+.phone #hero .hp { width: 176px; height: 9px; } .phone #hero .hp .num { font-size: 12px; top: -21px; } .phone #hero .hp .num em { display: none; } .phone #hero .st { width: 130px; height: 4px; margin-top: 5px; }
 .phone #sys { right: calc(6px + var(--sr)); top: calc(3px + var(--st)); gap: 0; } .phone .sbtn { width: 44px; height: 44px; } .phone .sbtn svg { width: 22px; height: 22px; }
 .phone #mini { right: calc(12px + var(--sr)); top: calc(49px + var(--st)); width: 78px; height: 78px; } .phone #mini .mm { inset: 12px; width: 54px; height: 54px; }
 .phone #quest { right: auto; left: calc(14px + var(--sl)); top: calc(56px + var(--st)); text-align: left; padding: 3px 24px 4px 9px; border-right: 0; border-left: 2.500px solid var(--acc); background: linear-gradient(90deg, rgba(6, 8, 14, .62), rgba(6, 8, 14, 0)); }
