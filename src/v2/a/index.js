@@ -34,6 +34,7 @@ export default class V2ProtoA extends Scene {
     this.debug = q.has('debug');
     this.paused = false; this.frame = new Float32Array(240); this.fi = 0; this.fn = 0;
     this._cam(1, true);
+    try { this.game.audio?.music?.('s01', { fade: 0.8 }); } catch { /* 소리 없음 */ }
     const self = this, P = this.play;
     window.__v2 = {
       id: 'a', scene: this,
@@ -110,7 +111,7 @@ export default class V2ProtoA extends Scene {
     const t0 = this._now();
     const g = this.game, W = g.viewW, H = g.viewH || 540, P = this.play, cam = this.cam, R = this.R;
     // 화면 흔들림 (트라우마²)
-    cam.zoom = clamp(H / 600, 1, 1.25);
+    cam.zoom = clamp(H / 560, 1, 1.32);      // 폴드(높이 726)는 1.3배: 캐릭터가 화면 높이의 15 % 쯤 되게
     const tr = P.trauma * P.trauma * (g.settings?.shake === false ? 0 : 1), tt = this.t * 60;
     cam.setView(W, H, Math.sin(tt * 1.7) * 9 * tr, Math.cos(tt * 2.3) * 7 * tr);
     R.draw(ctx, cam, P.list());
@@ -134,7 +135,12 @@ export default class V2ProtoA extends Scene {
       const f = this.frameStats(), c = this.cam;
       ui.text(ctx, `${f.p50} / ${f.p95} ms  strips ${this.R.stats.strips} faces ${this.R.stats.faces} items ${this.R.stats.items}  cam ${c.x | 0},${c.z | 0},${c.y | 0} f${c.f | 0}  hero ${h.x | 0},${h.z | 0},${h.y | 0}`, x, y + 62, { size: 12, color: '#9fd0a0', ow: 2 });
     }
-    if (input.mode !== 'touch' && this.t < 9 && !P.done) ui.text(ctx, '방향키 이동(위·아래 = 앞뒤)  ·  Z 점프  ·  X 공격  ·  C 대시  ·  Enter 일시정지', W / 2, H - 14, { size: 13, align: 'center', color: '#b8a898', ow: 2 });
+    if (this.t < 9 && !P.done && !this.paused) {
+      const a = clamp((9 - this.t) / 1.5, 0, 1); ctx.globalAlpha = a;
+      if (input.mode !== 'touch') ui.text(ctx, '방향키 이동 (위·아래 = 앞뒤)  ·  Z 점프  ·  X 공격  ·  C 대시  ·  Enter 일시정지', W / 2, H - 14, { size: 13, align: 'center', color: '#b8a898', ow: 2 });
+      else ui.text(ctx, '스틱 위·아래 = 앞뒤 이동', W / 2, sf.t + 86, { size: 16, align: 'center', color: '#e8d8c0', ow: 3 });
+      ctx.globalAlpha = 1;
+    }
     this.btns = {};
     if (P.done) {
       const k = clamp(P.doneT / 0.5, 0, 1);
