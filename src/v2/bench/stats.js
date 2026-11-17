@@ -72,7 +72,7 @@ export function summarize(raw, refreshMs) {
  *  절반 해상도(0.5)는 0.75 이상에서 부드러운 것(끊김 4 % 미만)이 하나도 없을 때만 고른다 (너무 흐리다).
  */
 export function pickBest(rows) {
-  const ok = rows.filter((r) => r.pick && r.valid && r.draws > 20);
+  const ok = rows.filter((r) => r.pick && r.valid && r.draws >= 2);
   if (!ok.length) return null;
   const band = (r) => Math.floor(r.uneven / 0.02 + 1e-9), fb = (r) => Math.round(r.fps / 10);
   const key = (a, b) => band(a) - band(b) || fb(b) - fb(a) || b.resK - a.resK || (a.present === 'layer' ? 0 : 1) - (b.present === 'layer' ? 0 : 1) || (a.pace === 'every' ? 0 : 1) - (b.pace === 'every' ? 0 : 1);

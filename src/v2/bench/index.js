@@ -88,7 +88,7 @@ export default class V2Bench extends Scene {
     if (el >= C.dur) {
       R.ms = C.dur - C.skip; R.long = this.longNow; R.up = rig.cost.n ? rig.cost.upMs / rig.cost.n : 0; R.blit = rig.cost.n ? rig.cost.blitMs / rig.cost.n : 0; R.n = rig.cost.n; R.px = rig.pixels;
       if (this.phase === 'calib') { this.calibMs = dist(R.iv, R.ivN).p50 || 16.7; this.envTris = rig.tris; this._startTest(0); }
-      else { C.test.valid = R.ivN > 5; if (this.ti + 1 < this.tests.length) this._startTest(this.ti + 1); else this._finish(); }
+      else { C.test.valid = R.ivN >= 3; if (this.ti + 1 < this.tests.length) this._startTest(this.ti + 1); else this._finish(); }
     }
   }
   _finish() {
