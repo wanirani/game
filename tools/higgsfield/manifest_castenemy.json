@@ -14,7 +14,8 @@
    "ref": "style ref = tools/v2/char3d_samples/kael3_apose_front.webp (media 80d06194)",
    "prompt": "skeleton soldier A-pose front: kettle helm, crimson scarf, leather cuirass, one pauldron, greaves",
    "job_id": "468ab7f6-98a1-4f9d-9d7a-1b0e1b5a5f9b",
-   "credits": 1
+   "credits": 1,
+   "kept": true
   },
   {
    "id": "skelmage",
@@ -28,7 +29,8 @@
    "ref": "style ref (same)",
    "prompt": "skeleton sorcerer A-pose front: short hooded mantle, split knee-length panels, legs visible",
    "job_id": "370c7c45-2ffa-4c14-ab41-1488a1a6a7d9",
-   "credits": 1
+   "credits": 1,
+   "kept": true
   },
   {
    "id": "plague",
@@ -42,7 +44,8 @@
    "ref": "style ref (same)",
    "prompt": "plague corpse 1697 villager A-pose front",
    "job_id": "4d3caf4f-a711-4b7e-86ac-f233fedce818",
-   "credits": 1
+   "credits": 1,
+   "kept": true
   },
   {
    "id": "ghost",
@@ -56,7 +59,8 @@
    "ref": "style ref (same)",
    "prompt": "grave ghost hooded shroud, tapering tatter tail, no legs",
    "job_id": "6790dd05-cfc1-4a46-97b6-e214938deee3",
-   "credits": 1
+   "credits": 1,
+   "kept": true
   },
   {
    "id": "gravearmor",
@@ -70,7 +74,8 @@
    "ref": "style ref (same)",
    "prompt": "grave-keeper armour giant hollow plate, brimmed helm, keys, lantern",
    "job_id": "131088bc-c2f9-4c62-8e02-e6fe3efe866a",
-   "credits": 1
+   "credits": 1,
+   "kept": true
   },
   {
    "id": "bat",
@@ -83,7 +88,8 @@
    },
    "prompt": "vampire bat front, wings fully spread flat",
    "job_id": "3c5c48ea-931b-4939-b006-ddb40d84ecbc",
-   "credits": 1
+   "credits": 1,
+   "kept": true
   },
   {
    "id": "banshee",
@@ -97,7 +103,8 @@
    "ref": "style ref (same)",
    "prompt": "banshee queen A: beautiful pale face, thorn crown with bells, bell gown ending in tatters",
    "job_id": "ffeb3af3-fc05-4727-b9ee-0ffea2d22cd6",
-   "credits": 1
+   "credits": 1,
+   "kept": true
   },
   {
    "id": "banshee",
@@ -111,8 +118,106 @@
    "ref": "style ref (same)",
    "prompt": "banshee queen B: half-skull face, cowl, lily pauldrons",
    "job_id": "dcd7c9b1-18a2-4e99-bca1-cfc9f892822e",
-   "credits": 1
+   "credits": 1,
+   "kept": false,
+   "note": "반쪽 해골 얼굴 · 백합 어깨 장식 안 — 예비 (A 안이 더 아름답고 종 소재가 게임과 맞음)"
+  },
+  {
+   "id": "skeleton",
+   "file": "raw/skeleton_tripo.glb",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 12000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "job 468ab7f6",
+   "job_id": "43b8134d-dbac-4ed4-b341-09a0b5f23d10",
+   "credits": 9
+  },
+  {
+   "id": "skelmage",
+   "file": "raw/skelmage_tripo.glb",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 12000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "job 370c7c45",
+   "job_id": "e7c42824-540d-452e-bb00-c16236343ae9",
+   "credits": 9
+  },
+  {
+   "id": "plague",
+   "file": "raw/plague_tripo.glb",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 12000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "job 4d3caf4f",
+   "job_id": "1370085e-e2fb-4375-854c-c8b2946bf65b",
+   "credits": 9
+  },
+  {
+   "id": "ghost",
+   "file": "raw/ghost_tripo.glb",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 10000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "job 6790dd05",
+   "job_id": "f4afe354-156f-4af5-9e20-d96c06a0f31d",
+   "credits": 9
+  },
+  {
+   "id": "gravearmor",
+   "file": "raw/gravearmor_tripo.glb",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 12000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "job 131088bc",
+   "job_id": "9af9881a-9763-4921-95df-d39adebdb6c0",
+   "credits": 9
+  },
+  {
+   "id": "bat",
+   "file": "raw/bat_tripo.glb",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 5000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "job 3c5c48ea",
+   "job_id": "2bea874e-364e-4327-b6c3-054c10afc589",
+   "credits": 9
   }
  ],
- "total_credits": 8
+ "total_credits": 62
 }

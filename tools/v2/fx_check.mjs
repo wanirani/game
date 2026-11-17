@@ -70,6 +70,7 @@ if (!args.has('--quick')) {
   const { ctx, page, errs } = await open('fold_open', '&tier=mid');
   await page.evaluate(() => { window.__fx.small = true; });
   report.presets = await page.evaluate(() => window.__fx.presets);   // 측정은 160×120 캔버스로 (개수·JS 시간은 해상도와 무관)
+  if (args.has('--probe')) { console.log(JSON.stringify(await page.evaluate(() => window.__fx.probe(1200)), null, 1)); await ctx.close(); srv.close(); process.exit(0); }
   if (!args.has('--alloc')) {
   // ── 2. 프리셋별 비용 (세 단계) ──
   console.log('\n[프리셋별 비용 — fold_open; 입자 = 뿜은 수/동시에 산 최댓값, 덧칠 = 화면(960×726) 대비 배수의 최댓값]');

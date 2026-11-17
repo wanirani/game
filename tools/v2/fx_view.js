@@ -301,6 +301,29 @@ const api = window.__fx = {
     const ms = (performance.now() - t0) / n, b = mem ? performance.memory.usedJSHeapSize : 0;
     demo.name = ''; return { mode, frames: n, ms, bytes: b - a, perFrame: (b - a) / n, hasMemory: !!mem, hasGc: !!window.gc };
   },
+  /** 할당을 조각별로: 이름 붙은 조각을 n 번 돌린 앞뒤의 힙 차이 (어디서 새는지 찾는 용도) */
+  probe(n) {
+    api.reset('mid'); startDemo('heavy'); resize(); for (let i = 0; i < 2400; i++) frame(1 / 60);
+    const P = {
+      'performance.now ×2': () => { const a = performance.now(); return performance.now() - a; },
+      'feel.update': () => fx.feel.update(1 / 60),
+      'fx.update (난전 진행 없음)': () => fx.update(1 / 60),
+      'heavyStep + fx.update': () => { heavyStep(1 / 60); fx.update(1 / 60); },
+      'fx.draw': () => fx.draw(cam),
+      'camera()': () => camera(),
+      'drawScene': () => drawScene(),
+      'post.begin+end': () => { fx.post.begin(cv.width, cv.height, null); fx.post.end(fx.feel.screen); },
+      'particles.draw': () => fx.particles.draw(fx.cam, 1, fx.protect, 0.4),
+      'quads.draw': () => fx.quads.draw(fx.cam, 1),
+      'ribbons.draw': () => fx.ribbons.draw(fx.cam, 1),
+      'meshes.draw': () => fx.meshes.draw(fx.cam, 1),
+      'lights.update': () => fx.lights.update(fx.time),
+      'seqs.update': () => fx.seqs.update(fx, 1 / 60),
+    };
+    const out = {};
+    for (const k in P) { const f = P[k]; for (let i = 0; i < 300; i++) f(); if (window.gc) window.gc(); const a = performance.memory.usedJSHeapSize; for (let i = 0; i < n; i++) f(); out[k] = (performance.memory.usedJSHeapSize - a) / n; }
+    demo.name = ''; return out;
+  },
   /** 접촉 시트: rows = [[이름, t1, t2, t3, 표적 번호?]]. 각 효과를 세 순간에 찍어 한 장으로. 돌려주는 값 = JPEG data URL */
   sheet(rows, tier, crop, title) {
     resize(); const cw = 460, ch = Math.round(cw * cv.height / cv.width), pad = 4, head = 26;

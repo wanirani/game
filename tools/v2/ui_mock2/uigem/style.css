@@ -269,3 +269,5 @@ ul { list-style: none; } i { font-style: normal; display: block; } img { display
     var(--guil) center / 100% 100% no-repeat,
     radial-gradient(circle, rgba(9, 11, 24, .12) 0%, rgba(9, 11, 24, .18) 52%, rgba(5, 6, 15, .52) 100%); }
 .clear #b-attack .gl { background: radial-gradient(ellipse 64% 34% at 50% 11%, rgba(255, 255, 255, .32), rgba(255, 255, 255, 0) 72%), radial-gradient(ellipse 76% 44% at 50% 104%, rgba(255, 86, 106, .36), rgba(255, 86, 106, 0) 72%), var(--guil2) center / 100% 100% no-repeat, radial-gradient(circle, rgba(9, 11, 24, .10) 0%, rgba(9, 11, 24, .16) 52%, rgba(5, 6, 15, .54) 100%) !important; }
+/* 검토(ui2review)에서 고침: 교대 아이콘(엇갈린 두 검 + 돌림 화살)은 선이 가늘어 44–50 px 버튼에서 뭉개졌다 → 원판을 더 채우게 키운다. */
+#b-swap .ico { width: 92%; height: 92%; }
