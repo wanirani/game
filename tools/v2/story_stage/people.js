@@ -3,7 +3,7 @@
 
 export const PEOPLE = {
   narrator: { id: 'narrator', name: '', title: '해설', eras: ['now', 'past'], model: null, portrait: null, side: 'left',
-    voice: '짧은 현재형 평서문(~다). 화면에 보이는 것은 말하지 않는다.' },
+    voice: '짧은 평서문(~다). 화면에 보이는 것은 말하지 않는다.' },
   sign: { id: 'sign', name: '', title: '글씨', eras: ['now', 'past'], model: null, portrait: null, side: 'left',
     voice: '비석·쪽지·공고에 적힌 글. 따옴표 없이 적힌 그대로.' },
 
@@ -41,7 +41,7 @@ export const PEOPLE = {
     voice: '투덜대는 반말(~구먼, ~라니까).' },
   wounded: { id: 'wounded', name: '다친 남자', title: '오늘 밤의 마을 사람', eras: ['now'], model: 'villager_m', portrait: null, side: 'left',
     voice: '숨이 찬 합쇼체(~습니다). 짧게 끊어 말한다.' },
-  trapped: { id: 'trapped', name: '갇혔던 여인', title: '오늘 밤의 마을 사람', eras: ['now'], model: 'villager_f', portrait: null, side: 'left',
+  trapped: { id: 'trapped', name: '마을 여인', title: '오늘 밤의 마을 사람 (문에 갇혔던 사람)', eras: ['now'], model: 'villager_f', portrait: null, side: 'left',
     voice: '해요체. 놀란 숨으로 빠르게.' },
 
   ghost_hanna: { id: 'ghost_hanna', name: '이름 없는 유령', title: '묘지의 유령 (누나)', eras: ['now'], model: 'grave_ghost', portrait: null, side: 'left',

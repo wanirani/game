@@ -66,6 +66,7 @@ export const EVENTS = [
     ['prompt', null],
     ['say', 'church.meet'],
     ['setFlag', 'promise'],
+    ['hideActor', 'elise', 'eshville_now'],
     ['unlockExit', 'to_belltower', 'eshville_now'],
     ['prompt', 'rest'],
     ['objective', 'climb_tower'],
@@ -145,7 +146,7 @@ export const EVENTS = [
     ['music', 'village_past'],
     ['setFlag', 'met_edmund'],
     ['chronicle', 'fourth_moon'],
-    ['if', ['key_entrusted'], [['objective', 'ring_big_bell']], [['objective', 'find_key']]],
+    ['if', ['key_entrusted'], [['objective', 'ring_big_bell'], ['prompt', 'cross']], [['objective', 'find_key']]],
   ] },
   { id: 'ev_smithy_past', minute: '26-33', on: 'talk', match: { talk: 'hadwin1.smithy' }, if: ['!key_entrusted'], steps: [
     ['prompt', 'mark'],
@@ -154,7 +155,7 @@ export const EVENTS = [
     ['setFlag', 'pending_change'],
     ['prompt', 'entrust'],
     ['toast', '맡겼다 — 묘지 문 열쇠', 'info'],
-    ['if', ['has:valkrein_knot'], [['objective', 'ring_big_bell']]],
+    ['if', ['has:valkrein_knot'], [['objective', 'ring_big_bell'], ['prompt', 'cross']]],
   ] },
 
   // ═════════ 33–36 성당 앞 큰 종 → 오늘 밤 ═════════
@@ -165,13 +166,12 @@ export const EVENTS = [
   { id: 'ev_bell_first', minute: '33-36', on: 'interact', match: BELL, if: ['era:past', 'has:valkrein_knot', 'key_entrusted', '!crossed'], steps: [
     ['say', 'bell.first'],
     ['give', 'lotte_bread'],
-    ['prompt', 'cross'],
+    ['prompt', null],
     ['setFlag', 'crossed'],
     ['clearFlag', 'pending_change'],
     ['camera', 'years', 3],
     ['bellCross', { years: true }],
     ['camera', null],
-    ['prompt', null],
     ['banner', 'night', '오늘 밤이 달라졌다', '1797 · 오늘 밤'],
     ['say', 'return.first'],
     ['objective', 'to_smithy_now'],
@@ -200,7 +200,6 @@ export const EVENTS = [
   ] },
   { id: 'ev_graveyard_enter', minute: '36-45', on: 'area.enter', match: { area: 'graveyard_now' }, steps: [
     ['banner', 'area', '2장 — 안개의 묘지', '열쇠와 이름과 길종'],
-    ['objective', 'find_ossuary'],
   ] },
   { id: 'ev_bats', minute: '36-45', on: 'trigger', match: { event: 'bats.swoop' }, steps: [
     ['prompt', 'wide'],
@@ -296,7 +295,7 @@ export const EVENTS = [
     ['say', 'oss.past.first'],
   ] },
   { id: 'ev_oss_wedge', minute: '68-82', waiting: 'ossuary_past', on: 'interact', match: { event: 'oss.wedge' }, once: false, steps: [
-    ['prompt', 'aging'],
+    ['if', ['!wedge_stone'], [['prompt', 'aging']]],
     ['say', 'oss.wedge'],
   ] },
   { id: 'ev_oss_gap', minute: '68-82', waiting: 'ossuary_now', on: 'trigger', match: { event: 'oss.gap' }, once: false, steps: [
@@ -349,7 +348,7 @@ export const EVENTS = [
     ['music', 'boss_banshee'],
     ['say', 'boss.intro'],
     ['camera', null],
-    ['if', ['knells_hung'], [['chronicle', 'four_knells'], ['prompt', 'knellpost']]],
+    ['if', ['knells_hung'], [['prompt', 'knellpost']]],
     ['objective', 'face_queen'],
   ] },
   { id: 'ev_boss_flee', minute: '104-114', waiting: 'ossuary_now', on: 'boss.phase', match: { phase: 'flee' }, steps: [
@@ -376,6 +375,7 @@ export const EVENTS = [
     ['music', 'quiet'],
     ['say', 'boss.sent'],
     ['setFlag', 'queen_sent'],
+    ['if', ['knells_hung'], [['chronicle', 'four_knells']]],
     ['chronicle', 'banshee'],
     ['candle', 1],
     ['say', 'lia.warn'],
@@ -397,7 +397,7 @@ export const EVENTS = [
     ['run', 'ev_knell_1'], ['run', 'ev_knell_2'], ['run', 'ev_knell_3'], ['run', 'ev_knell_4'],
     ['run', 'ev_boss_rest'],
     ['run', 'ev_boss_intro'], ['run', 'ev_boss_flee'], ['run', 'ev_boss_past'], ['run', 'ev_boss_driven'], ['run', 'ev_boss_kneel'],
-    ['setFlag', 'queen_sent'], ['say', 'boss.sent'], ['chronicle', 'banshee'], ['candle', 1], ['say', 'lia.warn'], ['give', 'crow_feather'],
+    ['setFlag', 'queen_sent'], ['say', 'boss.sent'], ['chronicle', 'four_knells'], ['chronicle', 'banshee'], ['candle', 1], ['say', 'lia.warn'], ['give', 'crow_feather'],
     ['run', 'ev_elise_wake'],
   ] },
 

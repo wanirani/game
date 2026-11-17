@@ -89,8 +89,8 @@ export const DIALOGS_NOW = {
     ['kael', '카엘 발크레인입니다.\n종은 누가 칩니까.'],
     ['elise', '저요! 엘리제예요.\n신부님 대신 제가 쳐요.'],
     ['alberto', '이 아이가 에슈빌의 종지기일세.\n종이 멎으면 마을도 멎는다네.'],
-    ['elise', '아저씨, 종탑에 박쥐가 잔뜩이에요.\n줄을 놓으면 안 되는데….'],
-    ['kael', '놓지 마라. 내가 올라가마.'],
+    ['elise', '종탑에 박쥐가 잔뜩이에요.\n그래도 줄은 제가 잡아야 해요!'],
+    ['kael', '먼저 올라가라. 곧 따라가마.'],
     ['elise', '정말요? 그럼 약속!', 'joy'],
     ['kael', '…약속.'],
     ['alberto', '두려워 말게. 촛불은 작아도,\n밤을 이긴 적이 여러 번 있다네.'],
@@ -104,7 +104,6 @@ export const DIALOGS_NOW = {
   ],
   'elise.promise': [
     { if: ['!promise'], pages: [['elise', '종은 제가 지켜요!']] },
-    { if: ['!fell'], pages: [['elise', '줄은 꼭 잡고 있을게요.\n약속!', 'joy']] },
     { if: ['elise_home'], once: true, pages: [
       ['elise', '아저씨! 로테 언니가 종으로\n답했어요. 들었어요?', 'joy'],
     ] },
@@ -113,7 +112,7 @@ export const DIALOGS_NOW = {
     ] },
   ],
   'bell.now.before': [{ pages: [
-    ['narrator', '큰 종. 줄이 종탑 위로 이어져 있다.'],
+    ['narrator', '큰 종. 박쥐 떼가\n종탑 위를 맴돈다.'],
   ] }],
 
   // ───────── 33–36 오늘 밤으로 ─────────
@@ -141,7 +140,7 @@ export const DIALOGS_NOW = {
       ['narrator', '서랍에서 붉게 녹슨 쇳덩이가 나온다.\n열쇠였던 것이다.'],
       ['hadwin', '…쇠는 백 년을 못 버티오.\n헌데 밑에 하나가 더 있소.'],
       ['sign', '혹시 몰라 은으로 하나 더 벼려 둠.\n값은 받았음. — 하드윈'],
-      ['kael', '(…고맙습니다, 어르신.)'],
+      ['kael', '(혹시 몰라서, 라. …빚을 졌군.)'],
       ['kael', '이름 칸에는 카엘이라고\n적어 주십시오.'],
       ['hadwin', '…적었소. 백 년 만에 닫는 장부요.'],
     ], then: [['give', 'key_rust'], ['give', 'key_silver'], ['give', 'order_slip'], ['setFlag', 'got_key'], ['chronicle', 'graveyard_key'], ['objective', 'open_gate']] },
@@ -213,7 +212,7 @@ export const DIALOGS_NOW = {
       ['kael', '(베어도 다시 선다.\n…이름을 찾는 거군.)'],
     ], then: [['setFlag', 'saw_ghosts'], ['objective', 'carve_names']] },
     { if: ['!bell_hung'], pages: [
-      ['narrator', '유령은 비켜섰다. 하지만\n문 앞 돌길이 끊겨 있다.'],
+      ['narrator', '유령은 비켜선다. 하지만\n문 앞 돌길이 끊겨 있다.'],
       ['kael', '(건너편 종대가 비어 있다.\n그 밤이라면 걸 수 있겠군.)'],
     ], then: [['objective', 'hang_bell']] },
     { if: ['!ossuary_open'], pages: [

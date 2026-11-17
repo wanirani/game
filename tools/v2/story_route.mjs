@@ -71,7 +71,6 @@ const VILLAGE_NOW = [
   ['talk', 'elise.promise'],
   T('church_steps', 'church.arrive'),
   ['talk', 'alberto.church'],
-  ['talk', 'elise.promise'],
   I('church_rest', 'rest', 'rest'),
   BELL(),
 ];

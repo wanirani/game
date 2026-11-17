@@ -89,15 +89,14 @@ export const DIALOGS_DUNGEON = {
   // ───────── 104–114 밴시 여왕 ─────────
   'boss.intro': [{ pages: [
     ['banshee_queen', '…또 발크레인이구나.'],
-    ['banshee_queen', '붉은 달마다 하나씩 성으로 갔지.\n나는 문간에서 노래로 배웅했단다.'],
-    ['banshee_queen', '돌아온 이는 없었다. 그래서\n노래가 끝나지 않는구나.'],
-    ['kael', '아이는 어디 있나.'],
+    ['banshee_queen', '붉은 달마다 하나씩 이 묘지에\n묻혔지. 나는 노래로 배웅했단다.'],
+    ['banshee_queen', '백 년마다 또 하나가 온다.\n그래서 노래가 끝나지 않는구나.'],
+    ['kael', '아이는 어디 있지.'],
     ['banshee_queen', '…잠들었다. 내 노래 안에서는\n아무도 떠나지 않는단다.'],
     ['kael', '그건 배웅이 아니다. 붙드는 거지.'],
   ] }],
   'boss.flee': [{ pages: [
     ['banshee_queen', '…그 밤이 좋았단다.\n다들 살아 있던 밤.'],
-    ['narrator', '여왕이 종의 금 사이로 달아난다.'],
   ] }],
   'boss.past': [{ pages: [
     ['narrator', '그 밤의 예배굴. 제단 아래\n엘리제가 잠들어 있다.'],
@@ -105,13 +104,11 @@ export const DIALOGS_DUNGEON = {
   ] }],
   'boss.driven': [{ pages: [
     ['banshee_queen', '…이 밤은 건드리지 마라!'],
-    ['narrator', '여왕이 오늘 밤으로 밀려난다.'],
   ] }],
   'boss.sent': [{ pages: [
     ['banshee_queen', '…이번 발크레인은 배웅이 아니라\n마중이구나.'],
     ['banshee_queen', '…잘 가라는 말, 나도\n듣고 싶었단다.'],
     ['kael', '잘 가라. 배웅은 내가 하지.'],
-    ['narrator', '조종이 울린다. 노래가 멎는다.'],
   ] }],
   'lia.warn': [{ pages: [
     ['lia', '발크레인.'],
@@ -130,10 +127,10 @@ export const DIALOGS_DUNGEON = {
     ['lotte', '찾았네요! 그 애예요?'],
     ['elise', '엘리제예요! 언니가\n여기 종지기예요?'],
     ['lotte', '응, 로테야. …너, 손에\n종 줄 자국이 있네.'],
-    ['narrator', '두 아이가 종 줄을\n사이에 두고 선다.'],
     ['lotte', '있잖아, 내가 치면 네가 답해.\n약속!'],
     ['elise', '약속!', 'joy'],
-    ['lotte', '아저씨. 빵은 맛있었어요?'],
+    ['lotte', '아저씨도요. 길을 모르겠으면\n종으로 물어요. 종으로 답할게요.'],
+    ['lotte', '참, 빵은 맛있었어요?'],
     ['kael', '…달았다.'],
     ['lotte', '거짓말. 그거 딱딱하기만 한데.'],
   ] }],
@@ -141,14 +138,13 @@ export const DIALOGS_DUNGEON = {
   // ───────── 118–120 오늘 밤의 에슈빌 ─────────
   'ending.bell': [{ pages: [
     ['narrator', '그 밤에서 로테가 종을 친다.\n오늘 밤, 엘리제가 답한다.'],
-    ['narrator', '금 간 종이 제 울림을 되찾는다.'],
   ] }],
   'ending.town': [{ pages: [
     ['marta', '엘리제! 이 녀석,\n어디 갔다 이제 와!'],
     ['elise', '이모! 저 백 년 전에 다녀왔어요!\n로테 언니도 만났어요!', 'joy'],
     ['marta', '하하, 그래그래. 수프부터 먹어.\n사냥꾼 양반도 앉아!'],
     ['alberto', '…로테? 방금 로테라고 했나.'],
-    ['narrator', '신부가 잠깐 말을 잃는다.'],
+    ['alberto', '…….'],
     ['alberto', '…아닐세. 오래된 이름이라서.'],
     ['narrator', '여관 창가에 까마귀 깃털 하나가\n놓여 있다.'],
   ] }],

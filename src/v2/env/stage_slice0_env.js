@@ -68,7 +68,7 @@ export default {
     { t: 'prop', mesh: 'barrel', x: 1500, z: 214, h: 78, solid: 24 },
     { t: 'prop', mesh: 'cart', x: 250, z: 226, h: 104, solid: 70, solidZ: 22 },
     { t: 'prop', mesh: 'hay', x: 585, z: 236, h: 62, solid: 34, solidZ: 16 },
-    { t: 'prop', mesh: 'well', x: 1255, z: 44, h: 132, solid: 46, solidZ: 30 },
+    { t: 'prop', mesh: 'well', x: 1255, z: 44, h: 120, solid: 46, solidZ: 30 },
     { t: 'prop', mesh: 'crate', x: 2060, z: 236, h: 62, solid: 30, solidZ: 18 },
     { t: 'prop', mesh: 'stall', x: 700, z: 237, h: 130, w: 140, solid: 72, solidZ: 23 },             // 새로 놓은 가판대 (벽에 붙여 길을 막지 않는다)
     { t: 'deco', mesh: 'barrel', x: 2084, z: 250, h: 60 },   // (검수: 위에 얹었던 상자는 뺐다 — 골목 카메라와 영웅 사이에 서서 영웅을 통째로 가렸다)
@@ -104,7 +104,7 @@ export default {
     { t: 'wall', x: 1400, z: 1000, w: 80, d: 1240, y: 92, h: 250, mat: 'facade', kit: { style: 'rubble', faces: 'R', battlement: true, buttress: [220, 520, 820, 1120].map((u) => ({ side: 'R', u, h: 200, d: 20 })) } },
     { t: 'wall', x: 2900, z: 1000, w: 80, d: 1240, y: 92, h: 250, mat: 'facade', kit: { style: 'rubble', faces: 'L', battlement: true, buttress: [120, 420, 720, 1020].map((u) => ({ side: 'L', u, h: 200, d: 20 })) } },
     // 천사상: 구운 입체 소품 (assets/v2/props — tools/v2/world_props_bake.mjs). 묶음을 받지 못하면 키트의 저폴리 석상이 대신 선다
-    { t: 'prop', mesh: 'angel', x: 2034, z: 1190, h: 188, solid: 26 }, { t: 'prop', mesh: 'angel', x: 2346, z: 1190, h: 188, solid: 26, flip: true },
+    { t: 'prop', mesh: 'angel', x: 2034, z: 1190, h: 178, solid: 26 }, { t: 'prop', mesh: 'angel', x: 2346, z: 1190, h: 178, solid: 26, flip: true },
     { t: 'deco', mesh: 'tree', x: 1760, z: 1230, y: 92, h: 330 }, { t: 'deco', mesh: 'tree', x: 2650, z: 1360, y: 92, h: 300, flip: true },
     { t: 'deco', mesh: 'tree', x: 1640, z: 1450, y: 92, h: 280, flip: true }, { t: 'deco', mesh: 'tree', x: 2790, z: 1130, y: 92, h: 250 },
     { t: 'fence', kind: 'wood', x0: 1700, z0: 1080, x1: 1900, z1: 1080, y: 92, h: 50 }, { t: 'fence', kind: 'wood', x0: 2520, z0: 1120, x1: 2720, z1: 1120, y: 92, h: 50 },

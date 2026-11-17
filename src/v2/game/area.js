@@ -33,6 +33,15 @@ function fillStage(def, stage) {
  * W = compileEnv() result. Flat prop cards (W.sprites kind 'prop') are never drawn by v2g; they are listed in flatProps
  * so the report can say what is missing as a 3D mesh. An unknown id (or no WORLD module yet) gives the test route.
  */
+/** every collision box gets the same keys in the same order. The collision loops (ground under a point, sliding along walls) read
+ *  x0 ... walk of every box many times a tick; the test route had 5 different key layouts among its 78 boxes, which makes the
+ *  engine fall back to a generic read that allocates a number object per read (CORE-VERIFY heap profile: about 38 KB a frame). */
+function uniformBoxes(W) {
+  const B = W?.boxes; if (!Array.isArray(B)) return;
+  const keys = ['x0', 'x1', 'z0', 'z1', 'y0', 'y1', 'solid', 'walk'];
+  for (let i = 0; i < B.length; i++) for (const k of Object.keys(B[i])) if (!keys.includes(k)) keys.push(k);
+  for (let i = 0; i < B.length; i++) { const b = B[i], o = {}; for (let j = 0; j < keys.length; j++) o[keys[j]] = b[keys[j]]; B[i] = o; }
+}
 export async function loadArea(id = DEFAULT_AREA) {
   let def = null;
   if (id !== DEFAULT_AREA && WORLD_LOADER) {
@@ -41,6 +50,7 @@ export async function loadArea(id = DEFAULT_AREA) {
   }
   const stage = def ? fillStage(def, def.stage ?? def) : STAGE;
   const W = compileEnv(stage);
+  uniformBoxes(W);
   const flatProps = W.sprites.filter((s) => s.kind === 'prop').map((s) => ({ img: s.img, x: s.x, z: s.z }));
   const arr = (v) => (Array.isArray(v) ? v : []);
   return {

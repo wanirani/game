@@ -403,32 +403,40 @@ fs.writeFileSync(path.join(OUT, 'font_new_chars.txt'), [
 
 // ───────────────────────── 5. play it ─────────────────────────
 const twinOf = (id) => (world.areas[id] && world.areas[id].twin) || (id.endsWith('_now') ? id.slice(0, -4) + '_past' : id.endsWith('_past') ? id.slice(0, -5) + '_now' : id);
-function play(route, policy, label) {
+function play(route, policy, label, deferred) {
   const rec = [];             // transcript records
   const runWarn = [];
   const ended = new Set(), began = new Set(), flagsSeen = new Set(), itemsSeen = new Set(), variantsSeen = new Set(), dialogsSeen = new Set();
   let minute = null, curEv = null, choiceN = 0, st = null, area = null, endId = null, saves = 0, prompt = null, lastSave = null;
-  const out = (kind, a, b) => rec.push({ m: minute, kind, a, b, ev: curEv });
+  const evMinute = (id) => { const e = id && evById.get(id); return e && minuteSet.has(e.minute) ? e.minute : null; };
+  const out = (kind, a, b) => { if (!curEv && (kind === 'unlock' || kind === 'actor' || kind === 'lock')) return; rec.push({ m: evMinute(curEv) || minute, kind, a, b, ev: curEv }); };
   const mk = () => createStory(S, {
     warn: (m) => runWarn.push(m),
     log: (m) => { const [w, id] = m.split(' '); if (w === 'begin') { began.add(id); curEv = id; } else { ended.add(id); curEv = null; } },
   });
+  const later = [];           // deferred mode: callbacks wait here and are delivered one at a time, like a real screen
+  let openDialogs = 0, maxLater = 0, midSaveOk = 0;
+  const defer = (fn) => { if (deferred) { later.push(fn); if (later.length > maxLater) maxLater = later.length; } else fn(); };
   const api = {
     showDialog(d) {
       if (!d || typeof d.text !== 'string') throw new Error('bad dialog');
+      if (openDialogs) runWarn.push('a second dialogue was opened while one is open: ' + d.text);
+      openDialogs++;
       out('say', d.speaker || (d.who === 'sign' ? '(글)' : '(해설)'), d.text);
       if (d.portrait && !fs.existsSync(path.join(ROOT, 'assets/v2/portraits', d.portrait + '.webp'))) runWarn.push('portrait missing: ' + d.portrait);
-      if (d.choices) { const k = policy[choiceN++ % policy.length]; out('choice', d.choices.join(' / '), d.choices[k]); d.onChoice(k); } else d.onDone();
+      const k = d.choices ? policy[choiceN++ % policy.length] : -1;
+      if (d.choices) out('choice', d.choices.join(' / '), d.choices[k]);
+      defer(() => { openDialogs--; if (d.choices) d.onChoice(k); else d.onDone(); });
     },
     banner: (kind, title, sub) => out('banner', kind, title + (sub ? ' — ' + sub : '')),
     toast: (text, o) => out('toast', (o && o.kind) || 'info', text),
     prompt: (p) => { prompt = p; if (p) out('prompt', p.label, p.action); },
     lock: () => {},
-    gotoArea: (id, spawn) => { out('goto', id, spawn || 'default'); area = id; st.story('area.enter', { area: id }, api); },
-    bellCross: (o) => { const to = twinOf(area); out('cross', to, o && o.years ? 'years' : ''); area = to; st.story('area.enter', { area: to }, api); },
+    gotoArea: (id, spawn) => { out('goto', id, spawn || 'default'); defer(() => { area = id; st.story('area.enter', { area: id }, api); }); },
+    bellCross: (o) => { const to = twinOf(area); out('cross', to, o && o.years ? 'years' : ''); defer(() => { area = to; st.story('area.enter', { area: to }, api); }); },
     sound: (n) => out('sound', n), fx: () => {}, music: (id) => out('music', id),
-    wakeGroup: (g) => out('wake', g), spawn: () => {}, moveActor: (id, to, o, done) => done(), hideActor: (id, a) => out('actor', 'hide', a + '/' + id), showActor: (id, a) => out('actor', 'show', a + '/' + id),
-    camera: (shot, sec, done) => { if (shot) out('camera', shot, TEXT.shots[shot]); done(); }, wait: (s, done) => done(),
+    wakeGroup: (g) => out('wake', g), spawn: () => {}, moveActor: (id, to, o, done) => defer(done), hideActor: (id, a) => out('actor', 'hide', a + '/' + id), showActor: (id, a) => out('actor', 'show', a + '/' + id),
+    camera: (shot, sec, done) => { if (shot) out('camera', shot, TEXT.shots[shot]); defer(done); }, wait: (s, done) => defer(done),
     unlockExit: (id, a) => out('unlock', a + '/' + id), lockExit: (id, k, a) => out('lock', a + '/' + id),
     objective: (text) => out('objective', text), chronicle: (e) => out('chronicle', e.title, e.kind === 'blank' ? e.past + ' → ' + e.now : e.body),
     candle: (n) => out('candle', n), moon: (n) => out('moon', n), ring: (n) => out('ring', n),
@@ -450,17 +458,29 @@ function play(route, policy, label) {
         st = st2;
       }
     } catch (e) { runWarn.push(`route step ${JSON.stringify(step)} threw: ${e.stack || e.message}`); }
+    // deferred mode: the screen answers later. While a sequence waits, save() must give the state from before it began.
+    if (deferred && later.length && st.busy) {
+      const before = JSON.stringify(st.save()), was = st.running;
+      const fn = later.shift(); try { fn(); } catch (e) { runWarn.push('deferred callback threw: ' + e.message); }
+      if (st.busy && st.running === was) { if (JSON.stringify(st.save()) !== before) runWarn.push(`save() changed in the middle of ${st.running}`); else midSaveOk++; }
+    }
+    for (let guard = 0; later.length; guard++) {
+      if (guard > 5000) { runWarn.push('deferred callbacks never end'); break; }
+      const fn = later.shift(); try { fn(); } catch (e) { runWarn.push('deferred callback threw: ' + e.stack); }
+    }
     if (st.busy) runWarn.push(`sequence ${st.running} is still waiting after route step ${JSON.stringify(step)}`);
   }
   // which dialogue variants were shown: replay marks from state.seen
   for (const k of Object.keys(st.state.seen)) { if (k.includes('#')) variantsSeen.add(k); else dialogsSeen.add(k); }
-  return { rec, runWarn, ended, began, flagsSeen, itemsSeen, dialogsSeen, st, endId, saves, label, lastSave };
+  return { rec, runWarn, ended, began, flagsSeen, itemsSeen, dialogsSeen, st, endId, saves, label, lastSave, maxLater, midSaveOk };
 }
 
 const A = play(ROUTE_A, [0], 'A');
 const A2 = play(ROUTE_A, [0], 'A again');
 const B = play(ROUTE_B, [1], 'B');
-for (const r of [A, B]) {
+const AD = play(ROUTE_A, [0], 'A deferred', true);     // the same route with every dialogue, camera and area change answered later
+const BD = play(ROUTE_B, [1], 'B deferred', true);
+for (const r of [A, B, AD, BD]) {
   for (const w of r.runWarn) err(`play ${r.label}: ${w}`);
   const s = r.st.state;
   for (const f of ['fell', 'crossed', 'got_key', 'gate_open', 'carved_a', 'carved_b', 'bell_hung', 'ossuary_open', 'knells_hung', 'queen_sent', 'elise_found', 'keepers_promised', 'elise_home', 'bells_answered']) if (!s.flags[f]) err(`play ${r.label}: flag ${f} is not set at the end`);
@@ -474,6 +494,12 @@ for (const r of [A, B]) {
 }
 const lineOf = (r) => `${r.m}|${r.kind}|${r.a}|${r.b}`;
 if (A.rec.map(lineOf).join('\n') !== A2.rec.map(lineOf).join('\n')) err('play A is not deterministic (two runs differ)');
+for (const [x, y] of [[A, AD], [B, BD]]) {
+  const p = x.rec.map(lineOf), q = y.rec.map(lineOf);
+  if (p.join('\n') !== q.join('\n')) { const i = p.findIndex((l, j) => l !== q[j]); err(`play ${y.label} differs from play ${x.label} at record ${i}: "${p[i]}" vs "${q[i]}"`); }
+  if (y.maxLater > 1) err(`play ${y.label}: ${y.maxLater} callbacks were pending at once (a waiting step did not wait)`);
+  if (!y.midSaveOk) err(`play ${y.label}: save() in the middle of a sequence was never exercised`);
+}
 // reach: every sequence, flag, item, dialogue is met in A or B
 const endedAll = new Set([...A.ended, ...B.ended]);
 for (const ev of EVENTS) if (!endedAll.has(ev.id) && ![...refs.run.keys()].includes(ev.id)) err(`${ev.id}: never finished in play A or B (unreachable sequence?)`);

@@ -29,7 +29,7 @@ export const CHRONICLE = {
     now: '오늘 밤 — 조종이 울리자 여왕의 노래가 끊겼다.',
     unlock: ['knells_hung'], show: ['ossuary_open'] },
   banshee: { id: 'banshee', order: 7, kind: 'line', title: '배웅하는 노래',
-    body: '납골당의 곡하는 이는 붉은 달마다 발크레인을 노래로 배웅했다. 돌아온 이가 없어 노래는 끝나지 않았다. 1797년, 다섯째 발크레인이 조종을 쳐 그 노래를 끝냈다.',
+    body: '납골당의 곡하는 이는 붉은 달마다 묘지에 묻히는 발크레인을 노래로 배웅했다. 백 년마다 또 한 사람이 와서 노래는 끝나지 않았다. 1797년, 다섯째 발크레인이 조종을 쳐 그 노래를 끝냈다.',
     unlock: ['queen_sent'], show: ['ossuary_open'] },
   two_keepers: { id: 'two_keepers', order: 8, kind: 'blank', title: '두 종지기',
     body: '금 간 종은 제 소리를 내지 못한다.',

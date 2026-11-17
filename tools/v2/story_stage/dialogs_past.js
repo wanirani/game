@@ -70,14 +70,13 @@ export const DIALOGS_PAST = {
     ['sign', '사람 찾음. 채찍 쓰는 길손.\n사례금 ( )'],
     ['edmund', '칸은 비워 둬라.\n돌아와서 채우지.', 'smile'],
     ['agnes', '돌아와서, 입니다. 꼭 그리하십시오.'],
-    ['kael', '아이 하나를 찾습니다.\n납골 언덕으로 끌려갔습니다.'],
-    ['edmund', '묘지 문 열쇠는 하드윈이 쥐고 있다.\n대장간은 바로 옆이다.'],
     ['edmund', '그 손에 쥔 건 뭐지.'],
     ['kael', '종 조각입니다.\n떨어질 때 쥐고 있었습니다.'],
     ['edmund', '채찍 이리 다오. 끝에 묶어 주지.\n발크레인 매듭이다. 안 풀린다.'],
     ['edmund', '큰 종 앞에서 울려 봐라.\n종은 종끼리 답하는 법이지.'],
   ] }],
   'edmund.tavern': [
+    { if: ['bell_hung'], pages: [['edmund', '수프는 아직 따뜻하다, 젊은이.\n너도 식기 전에 돌아와라.', 'smile']] },
     { if: ['crossed'], pages: [['edmund', '아직 있었군, 젊은이.\n수프는 남겨 뒀다.', 'smile']] },
     { if: ['key_entrusted'], pages: [['edmund', '큰 종 앞에서 울려 봐라.\n종은 종끼리 답하지.']] },
     { pages: [['edmund', '열쇠는 하드윈에게 물어라.\n대장간은 바로 옆이다.']] },
@@ -85,7 +84,7 @@ export const DIALOGS_PAST = {
   'smithy.entrust': [{ pages: [
     ['hadwin1', '묘지 문 열쇠? 허, 그건 못 내주오.\n묘지기와 나, 둘만 쥐는 열쇠구려.'],
     ['kael', '하나 더 벼려 주십시오.'],
-    ['hadwin1', '벼릴 수야 있소. 헌데 날이 새야\n끝나오. 쇠도 식을 틈이 있어야지.'],
+    ['hadwin1', '벼릴 수야 있소. 헌데 날이 새야\n끝나오. 쇠도 식어야 하오.'],
     ['kael', '(날이 새면 늦는다.\n…백 년이면 넉넉하겠지.)'],
     ['kael', '맡겨 두겠습니다.\n쓸 사람은 백 년 뒤에 옵니다.'],
     ['hadwin1', '허, 농도 잘하시는구려.\n좋소, 선불이오.'],
@@ -95,11 +94,11 @@ export const DIALOGS_PAST = {
     { label: '쇠 열쇠', pages: [['hadwin1', '쇠가 튼튼하긴 하오.\n녹만 안 슬면 말이오.']], then: [['setFlag', 'key_order_iron']] },
   ] }, then: [['say', 'smithy.slip']] }],
   'smithy.slip': [{ pages: [
-    ['hadwin1', '주문서에 이름을 적어야 하오.\n허, 백 년 뒤 사람 이름을 어찌 아나.'],
+    ['hadwin1', '주문서에 이름을 적어야 하오.\n허, 백 년 뒤 이름을 어찌 알겠소.'],
     ['kael', '비워 두십시오.'],
   ] }],
   'hadwin1.smithy': [
-    { if: ['crossed'], pages: [['hadwin1', '허, 또 오셨구려. 열쇠는 아직이오.\n쇠가 식어야지.']] },
+    { if: ['crossed'], pages: [['hadwin1', '허, 또 오셨구려. 열쇠는 아직이오.\n쇠가 식어야 하오.']] },
     { pages: [['hadwin1', '허, 걱정 마시오. 벼려 두겠소.\n백 년이든 이백 년이든.']] },
   ],
 
@@ -140,13 +139,13 @@ export const DIALOGS_PAST = {
       ['keeper', '고맙습니다, 손님. 이름이 있어야\n누가 찾아와도 찾지요.'],
       ['keeper', '꽃은 제가 놓아 두겠습니다.'],
     ] },
+    { if: ['bell_hung'], pages: [['keeper', '길종을 거셨지요? 소리가 곱습니다.\n이제 밤길이 덜 무섭겠지요.']] },
     { pages: [['keeper', '납골당 쪽은 노랫소리가 난답니다.\n귀를 막고 가시지요.']] },
   ],
   'grave.carve.a': [
     { if: ['!names_known'], pages: [['kael', '(무슨 이름을 새길지 모른다.)']] },
     { if: ['!carved_a'], pages: [
       ['narrator', '새 비석에 작은 종 무늬가 있다.\n끌을 대고 이름을 새긴다.'],
-      ['sign', '한나.'],
     ], then: [['setFlag', 'carved_a'], ['setFlag', 'pending_change'], ['toast', '새겼다 — 한나', 'info'],
       ['if', ['carved_b'], [['prompt', null], ['objective', 'hang_bell']]]] },
     { pages: [['sign', '한나.']] },
@@ -155,7 +154,6 @@ export const DIALOGS_PAST = {
     { if: ['!names_known'], pages: [['kael', '(무슨 이름을 새길지 모른다.)']] },
     { if: ['!carved_b'], pages: [
       ['narrator', '끌을 대고 이름을 새긴다.'],
-      ['sign', '틸. 한나의 동생.'],
     ], then: [['setFlag', 'carved_b'], ['setFlag', 'pending_change'], ['toast', '새겼다 — 틸', 'info'],
       ['if', ['carved_a'], [['prompt', null], ['objective', 'hang_bell']]]] },
     { pages: [['sign', '틸. 한나의 동생.']] },
@@ -176,7 +174,6 @@ export const DIALOGS_PAST = {
     ['edmund', '건너편 종대가 비었더군. 네가 걸어라.\n고리에 채찍을 걸면 닿는다.'],
   ] }],
   'grave.hang': [{ pages: [
-    ['narrator', '빈 종대에 길종을 건다.'],
     ['edmund', '잘 걸었다. 백 년은 가겠군.', 'smile'],
     ['kael', '돌아오십시오. 수프가 식습니다.'],
     ['edmund', '하, 제법이군. 그래, 식기 전에.', 'smile'],
