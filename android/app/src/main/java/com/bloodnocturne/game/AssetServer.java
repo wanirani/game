@@ -79,6 +79,7 @@ final class AssetServer {
         MIME.put("opus", "audio/ogg");
         MIME.put("wav", "audio/wav");
         MIME.put("m4a", "audio/mp4");
+        MIME.put("glb", "model/gltf-binary");   // v2 (3D 판) 캐릭터 모델 — fetch 로 받아 ArrayBuffer 로 읽는다
         MIME.put("aac", "audio/aac");
         MIME.put("flac", "audio/flac");
         MIME.put("mp4", "video/mp4");
