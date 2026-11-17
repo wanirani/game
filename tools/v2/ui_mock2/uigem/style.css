@@ -60,7 +60,7 @@ ul { list-style: none; } i { font-style: normal; display: block; } img { display
 
 /* ── 행동 버튼 ───────────────────────────────────────────── */
 .abtn { position: absolute; right: calc(var(--x) * 1px - var(--s) * .5px + var(--sr)); bottom: calc(var(--y) * 1px - var(--s) * .5px + var(--sb)); width: calc(var(--s) * 1px); height: calc(var(--s) * 1px); display: grid; place-items: center; border-radius: 50%; transition: transform .08s; }
-.abtn .ico { position: relative; width: 72%; height: 72%; object-fit: contain; filter: drop-shadow(0 1px 1.500px rgba(0, 0, 0, .8)) drop-shadow(0 0 2.500px rgba(4, 5, 12, .8)) drop-shadow(0 0 7px rgba(4, 5, 12, .55)); }
+.abtn .ico { position: relative; width: 76%; height: 76%; object-fit: contain; filter: drop-shadow(0 1px 1.500px rgba(0, 0, 0, .8)) drop-shadow(0 0 2.500px rgba(4, 5, 12, .8)) drop-shadow(0 0 7px rgba(4, 5, 12, .55)); }
 .abtn .prog, .abtn .cd { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; display: none; }
 .abtn .ct { position: absolute; pointer-events: none; font: 700 22px var(--numf); color: #fff; text-shadow: var(--sh); }
 .abtn .lb { display: none; }
@@ -83,12 +83,12 @@ ul { list-style: none; } i { font-style: normal; display: block; } img { display
 /* 공격: 가장 큰 원판, 겹테, 꼭대기 루비 */
 #b-attack .rim { background-image: var(--rim-atk); } #b-attack .gem { display: block; width: 13px; height: 13px; margin-left: -6.500px; top: -4.500px; }
 #b-attack .gl { background: radial-gradient(ellipse 64% 34% at 50% 11%, rgba(255, 255, 255, .38), rgba(255, 255, 255, 0) 72%), radial-gradient(ellipse 76% 44% at 50% 104%, rgba(255, 86, 106, .42), rgba(255, 86, 106, 0) 72%), var(--guil2) center / 100% 100% no-repeat, radial-gradient(circle, rgba(9, 11, 24, .24) 0%, rgba(9, 11, 24, .33) 52%, rgba(5, 6, 15, .66) 100%); }
-#b-attack .ico { width: 66%; height: 66%; }
+#b-attack .ico { width: 68%; height: 68%; }
 /* 궁극기: 테가 루비색으로 차오르고, 다 차면 붉은 달빛이 번진다 */
 #b-ult .prog { display: block; background: conic-gradient(#ff6b7c 0, #e2334a calc(var(--chg, 0) * 1%), transparent 0); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4.400px), #000 calc(100% - 3.800px), #000 calc(100% - .800px), transparent calc(100% - .200px)); mask: radial-gradient(farthest-side, transparent calc(100% - 4.400px), #000 calc(100% - 3.800px), #000 calc(100% - .800px), transparent calc(100% - .200px)); }
 #b-ult.full { --chg: 100; } #b-ult.full .gem { display: block; }
 #b-ult.full .gl { box-shadow: 0 0 0 3px rgba(226, 51, 74, .26), 0 0 20px 3px rgba(255, 60, 84, .62); background: radial-gradient(ellipse 64% 36% at 50% 12%, rgba(255, 255, 255, .36), rgba(255, 255, 255, 0) 72%), var(--guil) center / 100% 100% no-repeat, radial-gradient(circle, rgba(226, 51, 74, .30) 0%, rgba(120, 10, 30, .46) 60%, rgba(40, 4, 12, .72) 100%); }
-#b-ult .ico { width: 78%; height: 78%; }
+#b-ult .ico { width: 80%; height: 80%; }
 #b-guard .rim, #b-swap .rim, #b-lock .rim, #b-mount .rim { background-image: var(--rim-s); } #b-mount.off .rim { background-image: var(--rim-dim); }
 #b-attack { --x: 84; --y: 90; --s: 94; }
 #b-dash { --x: 186; --y: 82; --s: 58; } #b-jump { --x: 160; --y: 158; --s: 58; } #b-s1 { --x: 86; --y: 194; --s: 58; }
