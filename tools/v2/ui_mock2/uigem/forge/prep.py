@@ -78,7 +78,7 @@ def cells(path, cols, rows, names, cw=300, ch=380, top=24):
         # 2배로 키워서(부드럽게) 조각 톤 → 아이콘 크기에서 선이 덜 깨진다
         im = Image.fromarray((k * 255 + 0.5).astype(np.uint8), 'RGBA').resize((cw * 2, (ch - top) * 2), Image.LANCZOS)
         k2 = np.asarray(im, np.float32) / 255.0
-        print(nm, save(ivory(k2, detail=1.35, edge=0.6, base=0.80), 'fig_' + nm))
+        print(nm, save(ivory(k2, detail=1.7, edge=0.8, base=0.75), 'fig_' + nm))
 
 cells('/tmp/claude-0/v2/char3d/clips_procedural.png', 6, 2,
       ['idle', 'jump', 'fall', 'land', 'dash', 'hurt', 'a2prep', 'a2slash', 'a3prep', 'a3thrust', 'airprep', 'airslash'])
@@ -89,4 +89,4 @@ for nm in ['sword_5', 'sword_3', 'whip_5', 'moneybag', 'sub_bible', 'u_grimoire'
     im = Image.open(f'assets/icons/{nm}.png').convert('RGBA').resize((384, 384), Image.LANCZOS)
     arr = np.asarray(im, np.float32) / 255.0
     arr[..., 3] = np.clip((arr[..., 3] - 0.35) / 0.5, 0, 1)   # 그림에 붙은 옅은 빛무리·반짝이는 뺀다
-    print(nm, save(ivory(arr, detail=1.1, edge=0.5, base=0.78), 'obj_' + nm))
+    print(nm, save(ivory(arr, detail=1.35, edge=0.6, base=0.75), 'obj_' + nm))

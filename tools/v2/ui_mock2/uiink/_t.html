@@ -1,0 +1,8 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0;background:#15161c;color:#ccc;font:12px sans-serif">
+<div id="g" style="display:grid;grid-template-columns:repeat(8,210px);gap:6px;padding:10px"></div>
+<script type="module">
+import { ICONS, iconCanvas } from '/tools/v2/ui_mock2/uiink/ink.js';
+const g=document.getElementById('g');
+for (const n of Object.keys(ICONS)) { const d=document.createElement('div'); d.style.cssText='background:#0b0b10;padding:4px;position:relative'; const c=iconCanvas(n,400); c.style.cssText='width:200px;height:200px;display:block'; d.appendChild(c); const s=iconCanvas(n,120); s.style.cssText='width:40px;height:40px;position:absolute;right:4px;bottom:4px;background:#333'; d.appendChild(s); const l=document.createElement('span'); l.textContent=n; l.style.cssText='position:absolute;left:6px;top:4px'; d.appendChild(l); g.appendChild(d);} 
+window.__done=1;
+</script>

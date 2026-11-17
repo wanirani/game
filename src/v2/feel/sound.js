@@ -113,7 +113,7 @@ export const SYN = {
 };
 
 // ───────────────────────────── 재생 (엔진이 부르는 fn) ─────────────────────────────
-const P = { rec: null, fs: null, lp: 0, send: 0, q: 2, handle: null };   // 이번 호출의 인자 (audio.sfx 는 동기라 모듈 변수로 넘긴다)
+const P = { rec: null, fs: null, lp: 0, send: 0, q: 2, dv: 1, handle: null };   // 이번 호출의 인자 (audio.sfx 는 동기라 모듈 변수로 넘긴다)
 const SS = { e: null, c: null, t: 0, p: 1, v: 1, out: null, end: 0 };   // 층에 넘기는 S (목적지만 바꾼 사본, 다시 씀)
 const S2 = { e: null, c: null, t: 0, p: 1, v: 1, out: null, end: 0 };   // 옛 합성음 대체용
 function sample(S, l, fs) {
@@ -154,7 +154,7 @@ function run(S, H) {
     src.buffer = loopBuf(c, rec.loop); src.loop = true; src.playbackRate.value = S.p;
     g.gain.setValueAtTime(0, S.t); g.gain.linearRampToValueAtTime(S.v, S.t + 0.18);
     src.connect(g); g.connect(dst); src.start(S.t, R() * src.buffer.duration); src.stop(S.t + life);
-    SS.end = life; P.handle = { src, g, filt, v: S.v };
+    SS.end = life; P.handle = { src, g, filt, v: S.v / (P.dv || 1) };   // v = 거리 감쇠를 뺀 기준 음량 (loopMove 가 거리를 다시 곱한다)
   }
   const ls = rec.layers;
   for (let i = 0; i < ls.length; i++) {
@@ -256,7 +256,7 @@ export class FeelSound {
     }
     const ts = this.timeScale;
     if (ts < 0.95) { const s = this._slowLp(ts); lp = lp > 0 ? Math.min(lp, s) : s; pitch *= 0.72 + 0.28 * ts; }
-    P.rec = rec; P.fs = this; P.lp = lp; P.q = q; P.handle = null;
+    P.rec = rec; P.fs = this; P.lp = lp; P.q = q; P.dv = dv; P.handle = null;
     P.send = rec.flat || q === 0 ? 0 : ROOMS[this.room].send * (rec.roomK ?? 1);
     OPT.vol = vol * dv * (rec.gain ?? 1); OPT.pitch = pitch; OPT.pan = rec.loop && pos && !rec.flat && pan === 0 ? 0.001 : pan; OPT.delay = delay;
     const before = e.stats.starts;

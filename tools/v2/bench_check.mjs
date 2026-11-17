@@ -1,6 +1,7 @@
 // 성능 진단 장면(v2bench) 검사 — docs/v2/PERF_NOTES.md §6
 // 헤드리스 Chromium 에서 index.html?scene=v2bench 를 fold_open · phone2 로 열어 끝까지 돌리고, 표를 찍고, 결과 화면의 단추를 눌러 본다.
 //   node tools/v2/bench_check.mjs [--devices fold_open,phone2] [--sec 2] [--full] [--shots /tmp/claude-0/v2/bench] [--no-shots] [--json out.json]
+//     --pace [120:q100,…]  틀 검증: 가짜 화면 시계(주사율:모형)로 돌려 '초당 60' 과 '매 화면' 의 박자를 본다 (아래 설명)
 //     --sec N   시험 하나의 길이(초). 기본 2 (앞 0.5초 버림) — 빨리 끝내려고 줄인 값이다. --full = 기기와 같은 4초(앞 1초 버림), 약 1분.
 // ★ 주의: 헤드리스의 WebGL 은 소프트웨어 렌더러(SwiftShader)다. 여기 나오는 프레임 시간·끊김·추천 설정은 실제 기기의 값이 아니다.
 //   이 도구가 확인하는 것은 "장면이 뜨고, 모든 시험을 돌고, 표와 단추가 동작하고, 페이지 오류가 없다" 뿐이다.
@@ -11,7 +12,7 @@ import { contextOptions } from '../qa/lib/viewports.mjs';
 import { buildMatrix, pickBest, STORE_KEY } from '../../src/v2/bench/stats.js';
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => { if (v.startsWith('--')) a.push([v.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true]); return a; }, []));
-const DEVICES = String(args.devices || 'fold_open,phone2').split(',');
+const DEVICES = String(args.devices || 'fold_open,phone2').split(',').filter(Boolean);
 const SEC = args.full ? 4 : Number(args.sec || 2), SKIP = args.full ? 1 : Math.min(0.5, SEC / 3);
 const SHOTS = args['no-shots'] ? null : String(args.shots || '/tmp/claude-0/v2/bench');
 const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
@@ -115,6 +116,44 @@ for (const device of DEVICES) {
   if (!errs.length && r.api === 'none' && r.text.startsWith('[BN v2bench')) ok('\nWebGL 없음 → 결과 화면에 안내 (' + r.note + '), 오류 0'); else fail('WebGL 없음 처리: ' + JSON.stringify({ errs, r }).slice(0, 300));
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/nowebgl.png` });
   await b2.close();
+}
+
+// ── 틀 검증 (--pace): 가짜 화면 시계로 '화면 주사율'을 정해 주고, 진단이 그 주사율과 고르지 않은 그림 간격을 제대로 읽는지 본다 ──
+// rAF 와 performance.now 를 페이지가 뜨기 전에 바꿔 끼운다 → 게임 루프(core/game.js)의 60 Hz 고정 틱이 그 주사율에서 실제로 어떤 박자로
+// 그리는지가 그대로 나온다 (렌더러가 느려도 시각은 가짜 시계가 정한다). 입체 캐릭터는 빼고(느려서) 돌린다.
+// 모형: exact = 정확한 간격 · q100 = 시각을 0.1 ms 단위로 깎음(브라우저가 보통 이렇게 준다) · jit = ±0.3 ms 흔들림
+if (args.pace) {
+  const MODELS = String(args.pace === true ? '120:exact,120:q100,120:jit,60:q100,90:q100' : args.pace).split(',').map((m) => m.split(':'));
+  console.log('\n[틀 검증] 가짜 화면 시계 — 값은 "그림이 올라가는 박자"만 뜻한다 (그리는 데 걸린 시간은 들어 있지 않다)');
+  out.pace = {};
+  for (const [hz, model] of MODELS) {
+    const ctx = await browser.newContext({ viewport: { width: 640, height: 360 }, deviceScaleFactor: 1 });
+    const page = await ctx.newPage(); const errs = [];
+    page.on('pageerror', (e) => errs.push(e.message));
+    await page.route('**/*.glb', (r) => r.abort());
+    await page.addInitScript(({ hz, model }) => {
+      const t0 = Math.round(performance.now()) + 5, q = new Map(); let n = 0, id = 0, vt = t0, seed = 12345;
+      const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+      const stamp = () => { const x = t0 + n * 1000 / hz; return model === 'q100' ? Math.floor(x * 10) / 10 : model === 'jit' ? x + (rnd() - 0.5) * 0.6 : x; };
+      performance.now = () => vt;
+      window.requestAnimationFrame = (cb) => { q.set(++id, cb); return id; };
+      window.cancelAnimationFrame = (i) => { q.delete(i); };
+      const pump = () => { n++; vt = stamp(); const cbs = [...q.values()]; q.clear(); for (const cb of cbs) { try { cb(vt); } catch (e) { console.error(e); } } setTimeout(pump, 0); };
+      setTimeout(pump, 0);
+    }, { hz: Number(hz), model });
+    await page.goto(`http://localhost:${port}/index.html?scene=v2bench&benchsec=1.5&benchskip=0.3`);
+    await page.waitForFunction(() => window.__v2bench?.phase === 'done', null, { timeout: 240000 }).catch(() => errs.push('끝나지 않음'));
+    const R = await page.evaluate(() => window.__v2bench?.report ?? null);
+    if (!R || errs.length) { fail(`틀 검증 ${hz}Hz ${model}: ` + (errs[0] ?? '결과 없음')); await ctx.close(); continue; }
+    const cap = R.rows.filter((r) => r.valid && r.pace === 'cap60'), ev = R.rows.filter((r) => r.valid && r.pace === 'every');
+    const avg = (a, k) => (a.length ? a.reduce((s, r) => s + r[k], 0) / a.length : 0);
+    const line = { hz: Number(hz), model, seenHz: R.env.refresh.hz, cap60: { fps: Math.round(avg(cap, 'fps')), uneven: +(avg(cap, 'uneven') * 100).toFixed(1), c95: +avg(cap, 'c95').toFixed(1) }, every: { fps: Math.round(avg(ev, 'fps')), uneven: +(avg(ev, 'uneven') * 100).toFixed(1), c95: +avg(ev, 'c95').toFixed(1) } };
+    out.pace[hz + ':' + model] = line;
+    console.log(`  ${hz}Hz ${model.padEnd(5)} → 읽은 주사율 ${line.seenHz}Hz | 초당 60(지금 방식): 초당 ${line.cap60.fps}장 · 고르지 않은 그림 ${line.cap60.uneven}% · 느릴 때 간격 ${line.cap60.c95}ms | 매 화면: 초당 ${line.every.fps}장 · ${line.every.uneven}% · ${line.every.c95}ms`);
+    if (line.seenHz !== Number(hz)) fail(`틀 검증: ${hz}Hz 를 ${line.seenHz}Hz 로 읽었다`);
+    if (line.every.uneven > 1 || Math.abs(line.every.fps - Number(hz)) > 2) fail(`틀 검증 ${hz}Hz ${model}: '매 화면' 이 고르지 않다 (${line.every.fps}장, ${line.every.uneven}%)`);
+    await ctx.close();
+  }
 }
 
 await browser.close(); srv.close();
