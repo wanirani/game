@@ -4,6 +4,7 @@
 const Q = new URLSearchParams(location.search);
 const root = document.documentElement;
 const SHOT = Q.get('shot') === '1';
+if (Q.get('lite') === '1') root.classList.add('lite');   // 전투 중 가볍게 한 모습 (스타일이 .lite 규칙을 갖고 있을 때만 달라진다)
 const dev = () => (innerHeight < 480 ? 'phone' : 'fold');
 
 // ── 아이콘 (24×24, 선 그림. 굵기·끝 모양·색은 스타일 CSS 가 정한다) ─────────────────────

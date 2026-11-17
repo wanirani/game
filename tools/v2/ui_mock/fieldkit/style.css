@@ -210,3 +210,13 @@
 .phone .mdet .di { width: 44px; height: 44px; } .phone .mdet .di svg { width: 26px; height: 26px; } .phone .mdet .dh b { font-size: 15px; } .phone .mdet .dh { margin-bottom: 4px; }
 .phone .ds li { font-size: 12px; line-height: 1.700; } .phone .dd { font-size: 11.500px; margin-top: 5px; line-height: 1.450; }
 .phone .dbtn { grid-template-columns: 1.300fr 1fr 1fr; gap: 5px; margin-top: 5px; } .phone .dbtn button, .phone .dbtn .pri { height: 44px; font-size: 13.500px; grid-column: auto; }
+
+/* ── ?lite=1 — 전투 중 가볍게 (추천안): 양피지를 한 단계 어둡게 무두질한 색으로, 퀘스트 한 줄, 이름표 끔 ── */
+.lite #hud { --paper: var(--noise), linear-gradient(170deg, #c3ab80 0%, #ad9468 60%, #988053 100%); }
+.lite #quest .qt, .lite #quest .ql + .ql, .lite .abtn .lb, .lite .sbtn .lb, .lite #hero .cls, .lite #mini .mn { display: none; }
+.lite #quest { padding: 7px 10px 7px 13px; width: 184px; top: calc(186px + var(--st)); } .lite #quest .qn { font-size: 13.500px; margin-bottom: 2px; }
+.lite #mini { width: 122px; height: 92px; top: calc(74px + var(--st)); } .lite #mini .mm { left: 21px; top: 5px; width: 80px; height: 82px; }
+.lite #toast { height: 38px; } .lite #toast .tt { font-size: 13px; }
+.lite.phone #mini, .phone.lite #mini { width: 104px; height: 62px; top: calc(57px + var(--st)); }
+.lite .phone #mini { width: 104px; height: 62px; top: calc(57px + var(--st)); } .lite .phone #mini .mm { left: 26px; top: 3px; width: 52px; height: 56px; }
+.lite .phone #quest { top: calc(68px + var(--st)); width: 172px; padding: 5px 9px 5px 12px; }

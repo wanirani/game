@@ -53,7 +53,8 @@ for (const [st, nm, mat, d1, d2] of STYLES) {
   await shot(`owner_ui_${st}`, `<h1>${nm}<small>${mat}</small></h1><p class="desc">${d1}<br>${d2}</p>
 <div class="g2"><div><img src="${img(st, 'fold_open_play')}" width="1180"><p class="cap">폴드 펼침 · 전투 (마당, 보스 체력·피해 숫자·획득 알림)</p></div><div><img src="${img(st, 'fold_open_menu')}" width="1180"><p class="cap">폴드 펼침 · 장비/가방 메뉴</p></div>
 <div><img src="${img(st, 'phone2_play')}" width="1180"><p class="cap">일반 휴대폰(가로) · 전투</p></div><div><img class="crop" src="${img(st, 'fold_open_dialog')}"><p class="cap">폴드 펼침 · 대화 (화면 아래쪽)</p></div>
-<div><img src="${img(st, 'fold_open_play_alley')}" width="1180"><p class="cap">폴드 펼침 · 종 구간(골목) 전투</p></div><div><img src="${img(st, 'phone2_menu')}" width="1180"><p class="cap">일반 휴대폰(가로) · 장비/가방 메뉴</p></div></div>`);
+<div><img src="${img(st, 'fold_open_play_alley')}" width="1180"><p class="cap">폴드 펼침 · 종 구간(골목) 전투</p></div><div><img src="${img(st, 'phone2_menu')}" width="1180"><p class="cap">일반 휴대폰(가로) · 장비/가방 메뉴</p>${st === 'fieldkit' ? `<img src="${img(st, 'phone2_play_lite')}" width="1180"><p class="cap">휴대폰 · 전투 「가볍게」 (추천안: 양피지 어둡게 · 퀘스트 한 줄 · 이름표 끔)</p>` : ''}</div>
+${st === 'fieldkit' ? `<div><img src="${img(st, 'fold_open_play_lite')}" width="1180"><p class="cap">폴드 펼침 · 전투 「가볍게」 (추천안: 양피지 어둡게 · 퀘스트 한 줄 · 이름표 끔)</p></div>` : ''}</div>`);
 }
 const rows = [['fold_open_play', '폴드<br>전투', '횡·마당', ''], ['fold_open_play_alley', '폴드<br>종 구간', '골목', ''], ['phone2_play', '휴대폰<br>전투', '740×360', ''], ['fold_open_menu', '폴드<br>가방', '장비·가방', ''], ['fold_open_dialog', '폴드<br>대화', '아래쪽', 'c2'], ['phone2_menu', '휴대폰<br>가방', '', '']];
 await shot('owner_ui_compare', `<div class="top"><h1>「붉은밤」 새 인터페이스 — 세 가지 시안</h1><p>같은 장면 · 같은 내용 · 같은 버튼을 세 가지 생김새로. 바탕은 시범판 B 의 실제 화면입니다.</p></div>

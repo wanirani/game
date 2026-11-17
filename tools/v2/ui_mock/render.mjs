@@ -21,12 +21,12 @@ for (const dev of devs) {
   page.on('console', (m) => { if (m.type() === 'error' && !/404/.test(m.text())) errs.push('[console] ' + m.text()); });
   page.on('response', (r) => { if (r.status() >= 400 && !/favicon/.test(r.url())) errs.push(`[${r.status()}] ` + r.url()); });
   page.on('requestfailed', (r) => errs.push('[404] ' + r.url()));
-  for (const st of styles) for (const [view, bg] of [['play', 'yard'], ['play', 'alley'], ['dialog', 'street'], ['menu', 'yard']]) {
-    await page.goto(`http://localhost:${port}/tools/v2/ui_mock/${st}/index.html?view=${view}&bg=${bg}&shot=1`);
+  for (const st of styles) for (const [view, bg, lite] of [['play', 'yard'], ['play', 'alley'], ['dialog', 'street'], ['menu', 'yard'], ...(st === 'fieldkit' ? [['play', 'yard', 1]] : [])]) {
+    await page.goto(`http://localhost:${port}/tools/v2/ui_mock/${st}/index.html?view=${view}&bg=${bg}&shot=1${lite ? '&lite=1' : ''}`);
     await page.waitForFunction(() => window.__ui && document.fonts.status === 'loaded');
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(350);
-    const name = `${st}_${dev}_${view}${view === 'play' && bg !== 'yard' ? '_' + bg : ''}`;
+    const name = `${st}_${dev}_${view}${view === 'play' && bg !== 'yard' ? '_' + bg : ''}${lite ? '_lite' : ''}`;
     await page.screenshot({ path: `${out}/${name}.png` });
     const m = await page.evaluate(() => window.__ui.measure());
     report[name] = m;

@@ -175,7 +175,7 @@ export default class V2ProtoB extends Scene {
         this.h3 = new Char3D(asset, this.cr, { maxTex: 2048 });
         this.c3d.restored = glr.restored;
         for (let i = 0; i < this.benchN; i++) { const c = new Char3D(asset, this.cr, { gpu: this.h3.gpu, weaponGpu: this.h3.weapon }); c.anim.play(i % 3 ? 'run' : 'idle', { fade: 0 }); c.anim.t = i * 0.07; this.h3bench.push(c); }   // 성능 시험용 들러리 (?c3dbench=12)
-      } catch (e) { this.c3d.error = String(e?.message ?? e); console.warn('[v2b] 입체 영웅을 불러오지 못해 2D 퍼펫으로 그립니다:', this.c3d.error); this.h3 = null; if (this.cr) { try { this.cr.destroy(); } catch { /* 무시 */ } this.cr = null; } }
+      } catch (e) { this.c3d.error = String(e?.message ?? e); console.warn('[v2b] 입체 영웅을 불러오지 못해 2D 그림으로 그립니다:', this.c3d.error); this.h3 = null; if (this.cr) { try { this.cr.destroy(); } catch { /* 무시 */ } this.cr = null; } }
       if (!this.glr) return;
     }
     this.ready = true;
