@@ -17,7 +17,7 @@ const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', GL_ARGS = ['--
 const SPOTS = {
   eshville: [['1_outskirts', 330, 150], ['3_street_inn', 1840, 150], ['6_square_well', 3900, 640], ['8_church_front', 3900, 1440], ['9_grave_road', 4590, 1090], ['x_bell_behind', 4250, 1450]],
   graveyard: [['1_road', 600, 300], ['3_gate', 600, 1010], ['4_field', 600, 1300], ['5_field_west', 300, 1150], ['6_mausoleum', 600, 1860], ['x_hut_behind', 900, 1250]],
-  slice0: [['1_street', 420, 150], ['2_alley', 2190, 520], ['3_garden', 2190, 1250], ['4_yard', 2190, 1860], ['x_garden_side', 2340, 1350]],
+  slice0: [['1_street', 420, 150], ['2_alley', 2190, 520], ['3_garden', 2190, 1250], ['4_yard', 2190, 1860], ['x_garden_side', 2340, 1350], ['c5_stairs', 2190, 640], ['c6_yard', 2190, 1640]],
 };
 fs.mkdirSync(OUT, { recursive: true });
 loadPropsNode();
@@ -72,7 +72,9 @@ for (const dev of DEVICES) {
       for (const s of P.spawns) {
         const a = await place(page, s.x, s.z, 30); await axis(s.face[0], s.face[1]); await stepN(page, 45); const b = await heroAt(page); await t.upAll(); await stepN(page, 3);
         const moved = Math.hypot(b.x - a.x, b.z - a.z), along = (b.x - a.x) * s.face[0] + (b.z - a.z) * s.face[1]; R.spawns[s.n] = { landed: [a.x, a.z, a.y], moved: Math.round(moved), along: Math.round(along) };
-        ok(Math.abs(a.x - s.x) < 3 && Math.abs(a.z - s.z) < 3 && along > 60, `touch stick from spawn ${s.n} (${s.x},${s.z}) along face [${s.face}]: moved ${Math.round(along)} in 45 ticks (stands at y ${a.y})`);
+        let back = 0;   // a spawn may face a solid thing on purpose (the bell): then the hero must at least walk away from it
+        if (along <= 60) { await place(page, s.x, s.z, 30); await axis(-s.face[0], -s.face[1]); await stepN(page, 45); const c = await heroAt(page); await t.upAll(); await stepN(page, 3); back = -((c.x - s.x) * s.face[0] + (c.z - s.z) * s.face[1]); R.spawns[s.n].back = Math.round(back); }
+        ok(Math.abs(a.x - s.x) < 3 && Math.abs(a.z - s.z) < 3 && (along > 60 || back > 60), `touch stick from spawn ${s.n} (${s.x},${s.z}) along face [${s.face}]: moved ${Math.round(along)} in 45 ticks${along <= 60 ? ' (faces something solid ' + Math.round(along + 14) + ' ahead; walking away: ' + Math.round(back) + ')' : ''} (stands at y ${a.y})`);
       }
       // real touch: steer the last stretch into every exit
       R.exits = {};

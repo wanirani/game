@@ -4,7 +4,8 @@
 import json, sys
 from PIL import Image
 out = sys.argv[1] if len(sys.argv) > 1 else '/tmp/claude-0/v2/uiverify'
-info = json.load(open(out + '/shots_glass.json'))['glass']
+import glob
+info = json.load(open(sorted(glob.glob(out + '/shots*glass*.json'))[-1]))['glass']
 res = {}
 for dev, m in info.items():
     w = Image.open(f'{out}/glass_{dev}_white.png').convert('L'); b = Image.open(f'{out}/glass_{dev}_black.png').convert('L')
