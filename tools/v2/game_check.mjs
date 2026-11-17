@@ -9,7 +9,8 @@
 //   8 GL context loss -> restore
 //   9 leave and re-enter three times: no canvas / GL / heap growth; a v1 stage still runs afterwards
 //  10 without WebGL: a Korean notice only, no page error
-//   node tools/v2/game_check.mjs [--devices fold_open,phone2] [--json out.json] [--shots /tmp/claude-0/v2/engine] [--quick 1 = skip the no-WebGL pass] [--only touch,troute,route,turn,interp,alloc,far,shots,ctx,cycle,v1,nogl] [--verbose 1]
+//  11 seams: story events and area reload; the UI lane's HUD through the opt-in switch (?v2ui=1) never stops the scene
+//   node tools/v2/game_check.mjs [--devices fold_open,phone2] [--json out.json] [--shots /tmp/claude-0/v2/engine] [--quick 1 = skip the no-WebGL pass] [--only touch,troute,route,turn,interp,alloc,far,shots,seams,ctx,cycle,v1,nogl,ui] [--verbose 1]
 // Headless Chromium draws WebGL with a software renderer: frame times here say nothing about a phone.
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
@@ -318,6 +319,29 @@ for (const dev of DEVICES) {
     for (const [s, q] of Object.entries(nums.sections)) console.log(`       ${s.padEnd(7)} draw calls ${String(q.draws).padStart(2)} · triangles ${String(q.tris).padStart(6)} (world ${q.world}, characters ${q.chars}: ${q.drawn} drawn, ${q.culled} skipped)`);
     console.log(`       GPU memory: textures ${nums.texMB} MB (world ${nums.worldTexMB} + characters ${nums.charTexMB} + effects ${nums.fxMB}) · vertex buffers ${nums.bufKB} KB · ${nums.assets.length} assets/v2 files loaded`);
 
+    // ── seams: story events, area reload ──
+    if (want('seams')) {
+      const sm = await page.evaluate(async () => {
+        const g = window.__game, v = window.__v2, sc = v.scene; g._pageHidden = true; window.__bot.act = {};
+        const log = []; let apiOk = false;
+        sc.setStory((name, data, api) => { log.push(name); apiOk = typeof api.lock === 'function' && typeof api.gotoArea === 'function' && api.sim === sc.sim; });
+        sc.sim.reset(); sc.cam.snap = true; for (let i = 0; i < 5; i++) g.tick(1 / 60);
+        v.teleport('alley'); for (let i = 0; i < 5; i++) g.tick(1 / 60);
+        const e = sc.sim.enemies.find((q) => !q.dead && !q.yard), h = sc.sim.hero; h.x = e.x - 60; h.z = e.z; h.y = e.y; e.hp = 1; e.active = true;
+        for (let i = 0; i < 90 && e.hp > 0; i++) { window.__bot.act = i % 8 < 2 ? { attack: true, right: true } : { right: true }; g.tick(1 / 60); }
+        window.__bot.act = {};
+        const s0 = v.stats, before = { tex: s0.gl.texBytes, buf: s0.gl.bufBytes, canvases: s0.canvases };
+        const okGo = await sc.gotoArea('slice0', 'yard');
+        for (let i = 0; i < 20; i++) g.tick(1 / 60); g.render();
+        const s1 = v.stats; sc.setStory(null);
+        return { events: [...new Set(log)], apiOk, okGo, section: v.section, after: { tex: s1.gl.texBytes, buf: s1.gl.bufBytes, canvases: s1.canvases }, before, enemies: v.enemies.length, drawn: s1.chars.drawn, ready: v.ready };
+      });
+      R.seams = sm;
+      const need = ['section.enter', 'enemy.kill', 'area.enter'];
+      if (sm.apiOk && need.every((n) => sm.events.includes(n)) && sm.okGo && sm.ready && sm.section === 'yard' && sm.after.tex === sm.before.tex && sm.after.buf === sm.before.buf && sm.after.canvases === sm.before.canvases && sm.enemies === 16) ok(`seams: the story function received ${sm.events.join(' · ')}; gotoArea() reloaded the area at spawn "yard" with the same GPU bytes and canvases`);
+      else fail(`${dev}: seams ${JSON.stringify(sm)}`);
+    }
+
     // ── 8) context loss ──
     if (want('ctx')) {
     R.ctxLoss = await page.evaluate(async () => {
@@ -386,6 +410,19 @@ if (!args.quick && want('nogl')) {
     if (r.err && !r.ready && !errs.length) ok('without WebGL: a notice only (' + r.err + '), 0 page errors'); else fail('no-WebGL handling: ' + JSON.stringify(report.noWebgl));
     await page.screenshot({ path: `${SHOTS}/x_no_webgl.png` });
   } finally { await browser.close(); }
+}
+// ── 11) the UI lane's HUD through the seam (opt-in): the scene must keep running whatever that module does ──
+if (want('ui')) {
+  console.log('\n[UI seam: ?v2ui=1]');
+  const { browser, page, errs } = await open(DEVICES[0], GL_ARGS, '&v2ui=1');
+  try {
+    await page.waitForTimeout(1500);
+    const r = await page.evaluate(() => { const g = window.__game, v = window.__v2; if (!v?.ready) return { ready: false, err: v?.error ?? null }; g._pageHidden = true; g.input.setAutoSource(() => ({ right: true })); for (let i = 0; i < 120; i++) { g.tick(1 / 60); if (i % 10 === 0) g.render(); } g.render(); g.input.setAutoSource(null); const s = v.stats; return { ready: true, hud: s.hud, x: Math.round(v.hero.x), draws: s.gl.draws, pad: !!document.getElementById('v2pad'), hidePad: !!v.scene.hidePad }; });
+    report.ui = { ...r, errors: errs.slice(0, 5) };
+    await page.screenshot({ path: `${SHOTS}/x_ui_seam.png` });
+    if (r.ready && r.x > 300 && r.draws > 5 && !errs.length) ok(`with v2ui=1 the scene runs with the "${r.hud}" HUD (${r.hud === 'ui' ? 'the UI lane module drew without an exception' : 'the UI module failed and the built-in HUD took over'}), hero walked to x ${r.x}, 0 page errors`);
+    else fail('UI seam: ' + JSON.stringify(report.ui));
+  } catch (e) { fail('UI seam: check script exception ' + e.message); } finally { await browser.close(); }
 }
 srv.close();
 report.fails = fails;

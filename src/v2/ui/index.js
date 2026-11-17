@@ -57,7 +57,7 @@ export function createHud(game, opts = {}) {
       return { drawMs: { avg: n ? sum / n : 0, p50: n ? a[n >> 1] : 0, p95: n ? a[Math.min(n - 1, Math.floor(n * 0.95))] : 0, max: n ? a[n - 1] : 0, n }, updMs: perf.updN ? perf.upd / perf.updN : 0, padRepaints: pad?.metrics().repaints ?? 0, atlas: atlas.ready, ...canvas.info() };
     },
     /** QA: geometry of everything that can be measured (CSS px for the pad, logical px for the canvas pieces). */
-    metrics() { return { pad: pad?.metrics() ?? null, dialog: dialog.info(), pause: pause.info(), hud: canvas.info(), modal: hud.modal }; },
+    metrics() { return { pad: pad?.metrics() ?? null, dialog: dialog.info(), pause: pause.info(), hud: canvas.info(), prompts: canvas.promptRects(), modal: hud.modal }; },
     release() {
       if (released) return; released = true;
       window.removeEventListener('pointerdown', onDown, true);
@@ -66,15 +66,32 @@ export function createHud(game, opts = {}) {
   };
   hud.dispose = hud.release;
 
-  const pad = opts.pad === false ? null : createPad(game, { ...opts, input, isModal: () => pause.open || dialog.open, onPause: () => { if (opts.onPause) opts.onPause(); else hud.openPause(); } });
+  const pad = opts.pad === false ? null : createPad(game, { ...opts, input, isModal: () => pause.open || dialog.open, claims: (e) => !!promptHit(e), onPause: () => { if (opts.onPause) opts.onPause(); else hud.openPause(); } });
 
-  // taps while a dialogue or the pause menu is open: taken here (the canvas under it gets nothing)
+  // taps while a dialogue or the pause menu is open are taken here (the canvas under it gets nothing);
+  // in play, a tap on a prompt chip (touch mode) presses that prompt's action for one step
+  const LP = { x: 0, y: 0 };
+  function toLogical(e) {
+    const r = game.canvasRect ?? { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
+    LP.x = ((e.clientX - r.x) / (r.w || 1)) * last.viewW; LP.y = ((e.clientY - r.y) / (r.h || 1)) * last.viewH;
+    return LP;
+  }
+  function promptHit(e) {
+    if (!last || hud.modal || e.pointerType === 'mouse' || (opts.forceMode ?? input?.mode ?? 'touch') !== 'touch') return null;
+    const q = toLogical(e); return canvas.promptAt(q.x, q.y);
+  }
   function onDown(e) {
-    const m = hud.modal; if (!m || !last) return;
-    const r = game.canvasRect ?? (game.canvas?.getBoundingClientRect ? (() => { const b = game.canvas.getBoundingClientRect(); return { x: b.left, y: b.top, w: b.width, h: b.height }; })() : { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight });
-    const x = ((e.clientX - r.x) / (r.w || 1)) * last.viewW, y = ((e.clientY - r.y) / (r.h || 1)) * last.viewH;
+    if (!last) return;
+    const m = hud.modal;
+    if (!m) {
+      const p = promptHit(e); if (!p) return;
+      e.stopPropagation();
+      try { if (p.onTap) p.onTap(p); else input.touch.tap(p.action); } catch (err) { console.error('[v2ui] prompt tap', err); }
+      return;
+    }
+    const q = toLogical(e);
     e.stopPropagation();
-    if (m === 'pause') pause.tap(x, y); else dialog.tap(x, y);
+    if (m === 'pause') pause.tap(q.x, q.y); else dialog.tap(q.x, q.y);
   }
   window.addEventListener('pointerdown', onDown, true);
   return hud;

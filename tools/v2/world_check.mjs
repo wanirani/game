@@ -66,8 +66,8 @@ const walk = (page, wps) => page.evaluate(([wps]) => {
   let i = 0, stuck = 0, lx = 0, lz = 0, jump = 0, t = 0;
   for (; t < 9000 && i < wps.length; t++) {
     const h = sc.sim.hero, dx = wps[i][0] - h.x, dz = wps[i][1] - h.z;
-    if (Math.hypot(dx, dz) < 22) { i++; continue; }
-    act = {}; if (dx > 7) act.right = true; else if (dx < -7) act.left = true; if (dz > 6) act.up = true; else if (dz < -6) act.down = true;
+    if (Math.hypot(dx, dz) < (i === wps.length - 1 ? 5 : 22)) { i++; continue; }
+    act = {}; if (dx > 3) act.right = true; else if (dx < -3) act.left = true; if (dz > 3) act.up = true; else if (dz < -3) act.down = true;
     if (t % 6 === 0) { const m = Math.hypot(h.x - lx, h.z - lz); lx = h.x; lz = h.z; stuck = m < 2 ? stuck + 1 : 0; if (stuck >= 4) { jump = 22; stuck = 0; } }
     if (jump > 0) { jump--; act.jump = jump > 8; }
     g.tick(1 / 60);

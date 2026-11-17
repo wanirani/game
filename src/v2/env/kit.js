@@ -148,9 +148,10 @@ export function dressWall(G, P, boxes) {
     const hole = (s) => ({ u0: s.u - s.w / 2, u1: s.u + s.w / 2, y0: s.y, y1: s.y + s.h });
     const dh = doors.map((s) => ({ u0: s.u - s.w / 2, u1: s.u + s.w / 2, y0: base, y1: base + (s.rise ?? 0) + s.h }));
     const lo = wins.filter((s) => !yJ || s.y < yJ), hi = wins.filter((s) => yJ && s.y >= yJ);
-    wallGrid(G, F, lower, 0, len, y0, yJ ?? y1, 0, [...lo.map(hole), ...dh]);
+    const go = K.cell ? { cell: K.cell } : {};   // 큰 벽은 빛 굽는 격자를 성기게 (삼각형 절약)
+    wallGrid(G, F, lower, 0, len, y0, yJ ?? y1, 0, [...lo.map(hole), ...dh], go);
     if (yJ) {
-      wallGrid(G, F, upper, 0, len, yJ, y1, jet, hi.map(hole));
+      wallGrid(G, F, upper, 0, len, yJ, y1, jet, hi.map(hole), go);
       if (jet) {   // 내민 위층: 옆 마구리 + 장선 끝
         F.box(G, upper, 0, len, yJ, y1, 0, jet, { faces: 'LR' });
         for (let u = 10; u < len - 4; u += 34) F.box(G, 'timber', u - 4, u + 4, yJ - 10, yJ, 0, jet + 3, { faces: 'FLR', k: 0.8, vary: 0 });
@@ -256,9 +257,9 @@ export function dressRoof(G, P) {
   const yAt = (z) => ye + (z - z0) * hh / dz;
   for (const c of K.chimneys ?? []) {   // 굴뚝: 몸통 + 갓돌 + 연통
     const cx = P.x + c.u, cz = z0 + dz * (c.t ?? 0.7), w = (c.w ?? 28) / 2, top = y + h + (c.h ?? 34);
-    G.box('rubble', cx - w, yAt(cz - w) - 2, cz - w, cx + w, top, cz + w, { faces: 'FLR', tint: [0.95, 0.8, 0.78], vary: 0.2 });
+    G.box(K.chimney ?? 'rubble', cx - w, yAt(cz - w) - 2, cz - w, cx + w, top, cz + w, { faces: 'FLR', tint: [0.95, 0.8, 0.78], vary: 0.2 });
     G.box('trimstone', cx - w - 3, top, cz - w - 3, cx + w + 3, top + 6, cz + w + 3, { faces: 'FLRT', vary: 0 });
-    for (const dx of w > 12 ? [-w * 0.45, w * 0.45] : [0]) G.lathe('rubble', cx + dx, cz, [[5, top + 6], [4.2, top + 20], [5, top + 21]], 6, { tint: [0.9, 0.62, 0.5], cap: 'stone', capK: 0.2, vary: 0 });
+    for (const dx of w > 12 ? [-w * 0.45, w * 0.45] : [0]) G.lathe(K.chimney ?? 'rubble', cx + dx, cz, [[5, top + 6], [4.2, top + 20], [5, top + 21]], 6, { tint: [0.9, 0.62, 0.5], cap: 'stone', capK: 0.2, vary: 0 });
   }
   for (const d of K.dormers ?? []) {   // 지붕창: 앞벽 + 작은 맞배 + 볼
     const w = (d.w ?? 46) / 2, cx = P.x + d.u, zf = z0 + dz * (d.t ?? 0.3), yb = yAt(zf), wh = d.h ?? 30, gh = w * 0.75, yE = yb + wh, yR = yE + gh;

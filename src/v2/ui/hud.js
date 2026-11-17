@@ -29,6 +29,8 @@ export function createCanvasHud(game, opts = {}) {
   const wprompts = []; for (let i = 0; i < PROMPT_SLOTS; i++) wprompts.push({ c: null, w: 0, h: 0, key: '' });
   const banner = { on: false, kind: '', t: 0, dur: 2.8, title: '', sub: '' };
   const icons = new Map();   // toast icon URL -> Image
+  const taps = { n: 0, rect: new Float32Array(8 * 4), ref: [null, null, null, null, null, null, null, null] }, rowX = new Float32Array(8), rowW = new Float32Array(8);   // prompt chips that can be tapped (touch)
+  const tapAdd = (p, x, y, w, h) => { if (taps.n >= 8) return; const i = taps.n++ * 4; taps.rect[i] = x; taps.rect[i + 1] = y; taps.rect[i + 2] = w; taps.rect[i + 3] = h; taps.ref[taps.n - 1] = p; };
 
   const px = (v) => v * L.hs;                                           // HUD graphics size (logical px)
   const tsz = (base, min = L.tmin) => Math.max(base * L.hs * L.tk, min / L.css);   // text size with the setting and the CSS-px floor
@@ -111,9 +113,10 @@ export function createCanvasHud(game, opts = {}) {
     f.fillStyle = g; f.fillRect(0, barH, bw, barH);
     return bossP;
   }
-  function bakeSection(label) {
-    if (!stale(secP, label)) return secP;
-    const t = bakeText(label, L.s, { size: tsz(12.5), weight: 600, fill: COL.silverDim, lw: 2.6, stroke: 'rgba(6,6,16,0.8)' }, secP.t);
+  function bakeSection(label, left) {
+    if (!stale(secP, label, left)) return secP;
+    const str = left > 0 ? label + ' · ' + (opts.labels?.left ?? '남은 적') + ' ' + left : label;
+    const t = bakeText(str, L.s, { size: tsz(12.5), weight: 600, fill: left > 0 ? '#ffd9de' : COL.silverDim, lw: 2.6, stroke: 'rgba(6,6,16,0.8)' }, secP.t);
     secP.t = t; secP.c = t.c; secP.w = t.w; secP.h = t.h;
     return secP;
   }
@@ -144,7 +147,7 @@ export function createCanvasHud(game, opts = {}) {
     glassPanel(c, 3, 3, w, h, { cut: px(7), dense: 0.8, accent: o.kind === 'warn' ? 'ruby' : o.kind === 'item' ? 'gold' : null });
     const ix = 3 + px(9) + ih / 2, iy = 3 + h / 2;
     if (o.img && o.img.complete && o.img.naturalWidth) c.drawImage(o.img, ix - ih / 2, iy - ih / 2, ih, ih);
-    else sprite(c, typeof o.icon === 'string' && !o.img ? o.icon : 'interact', ix, iy, ih, ih);
+    else sprite(c, typeof o.icon === 'string' && !o.img ? o.icon : 'pouch', ix, iy, ih, ih);
     c.font = `600 ${ts}px ${FONTS.body}`; c.textBaseline = 'middle'; c.textAlign = 'left';
     c.lineWidth = 3; c.strokeStyle = 'rgba(4,4,12,0.85)'; c.lineJoin = 'round'; c.strokeText(o.text, ix + ih / 2 + px(8), iy + 1);
     c.fillStyle = o.kind === 'item' ? '#fff2d2' : '#ffffff'; c.fillText(o.text, ix + ih / 2 + px(8), iy + 1);
@@ -156,7 +159,7 @@ export function createCanvasHud(game, opts = {}) {
     const h = px(28), w = promptW(p, ts);
     glassPanel(c, x, y, w, h, { cut: px(6), dense: 0.45 });
     const ix = x + px(8) + px(11), iy = y + h / 2;
-    if (mode === 'touch') sprite(c, PROMPT_ICON[p.action] ?? 'interact', ix, iy, px(23), px(23));
+    if (mode === 'touch') sprite(c, p.icon ?? PROMPT_ICON[p.action] ?? 'interact', ix, iy, px(23), px(23));
     else {
       const name = keyName(p.action, mode), ks = Math.max(9, ts * 0.86), kw = Math.max(px(20), measure(name, ks, 800) + 8);
       chamfer(c, ix - kw / 2, iy - px(10), kw, px(20), px(4)); c.fillStyle = 'rgba(236,241,255,0.92)'; c.fill();
@@ -186,7 +189,7 @@ export function createCanvasHud(game, opts = {}) {
     const ts = tsz(13, L.tmin + 1), gap = px(8); let w = 6;
     for (let i = 0; i < list.length; i++) if (list[i].x == null) w += promptW(list[i], ts) + gap;
     const c = ctxOf(promptRow, w, px(28) + 10); let x = 3;
-    for (let i = 0; i < list.length; i++) if (list[i].x == null) x += drawPrompt(c, list[i], x, 4, ts, mode) + gap;
+    for (let i = 0, k = 0; i < list.length; i++) if (list[i].x == null) { const cw = drawPrompt(c, list[i], x, 4, ts, mode); if (k < 8) { rowX[k] = x; rowW[k] = cw; k++; } x += cw + gap; }
   }
   function bakeWorldPrompt(slot, p, mode) {
     if (!stale(slot, mode, p.action, p.label)) return;
@@ -219,7 +222,7 @@ export function createCanvasHud(game, opts = {}) {
   function addToast(text, o = {}) {
     let slot = toasts.find((q) => !q.on);
     if (!slot) { slot = toasts[0]; for (const q of toasts) if (q.t > slot.t) slot = q; }
-    slot.on = true; slot.t = 0; slot.dur = o.time ?? 2.6; slot.text = String(text); slot.kind = o.kind ?? 'info'; slot.icon = o.icon ?? (slot.kind === 'item' ? 'interact' : 'bell'); slot.img = null; slot.dirty = true; slot.y = -1;
+    slot.on = true; slot.t = 0; slot.dur = o.time ?? 2.6; slot.text = String(text); slot.kind = o.kind ?? 'info'; slot.icon = o.icon ?? (slot.kind === 'item' ? 'pouch' : slot.kind === 'warn' ? 'candle_dead' : 'bell'); slot.img = null; slot.dirty = true; slot.y = -1;
     if (typeof o.icon === 'string' && /[./]/.test(o.icon)) {   // an image URL (item art): bake again when it arrives
       let im = icons.get(o.icon);
       if (!im) { im = new Image(); im.src = o.icon; icons.set(o.icon, im); }
@@ -280,6 +283,7 @@ export function createCanvasHud(game, opts = {}) {
       return;
     }
     const mode = opts.forceMode ?? input?.mode ?? 'touch';
+    taps.n = 0;
     // 1) world-anchored: enemy bars, lock ring, numbers, callouts, prompts
     const E = s.enemies; let target = null;
     if (E) for (let i = 0; i < E.length; i++) {
@@ -318,7 +322,7 @@ export function createCanvasHud(game, opts = {}) {
     }
     ctx.globalAlpha = 1;
     const PR = s.prompts;
-    if (PR) { let j = 0; for (let i = 0; i < PR.length && j < PROMPT_SLOTS; i++) { const p = PR[i]; if (p.x == null) continue; const slot = wprompts[j++]; bakeWorldPrompt(slot, p, mode); s.project(p.x, p.y ?? 0, p.z ?? 0, P); if (P.w > 1) blit(ctx, slot, clamp(P.x - slot.w / 2, sf.l + 4, vw - sf.r - slot.w - 4), P.y - slot.h - 8 + Math.sin(T.t * 3) * 2); } }
+    if (PR) { let j = 0; for (let i = 0; i < PR.length && j < PROMPT_SLOTS; i++) { const p = PR[i]; if (p.x == null) continue; const slot = wprompts[j++]; bakeWorldPrompt(slot, p, mode); s.project(p.x, p.y ?? 0, p.z ?? 0, P); if (P.w > 1) { const wx = clamp(P.x - slot.w / 2, sf.l + 4, vw - sf.r - slot.w - 4), wy = P.y - slot.h - 8; blit(ctx, slot, wx, wy + Math.sin(T.t * 3) * 2); tapAdd(p, wx, wy, slot.w, slot.h); } } }
 
     // the banner goes under the status block and the toasts (its soft dark band spans the screen)
     if (banner.on) {
@@ -353,7 +357,7 @@ export function createCanvasHud(game, opts = {}) {
     }
     let rx = cx0 + cells * cstep + px(4);
     if (s.moon) { const mp = bakeMoon(s.moon.phase ?? 0); blit(ctx, mp, rx, gy - cellH / 2 - mp.h / 2); rx += mp.w + px(4); }
-    if (s.section?.label) { const sp = bakeSection(s.section.label); blit(ctx, sp, rx, gy - cellH / 2 - sp.h / 2); }
+    if (s.section?.label) { const sp = bakeSection(s.section.label, s.left ?? (s.section.id === 'yard' && !s.done ? (s.yardLeft | 0) : 0)); blit(ctx, sp, rx, gy - cellH / 2 - sp.h / 2); }
 
     // 3) toasts under the status block
     let ty = y0 + bd.h + px(52);
@@ -376,7 +380,11 @@ export function createCanvasHud(game, opts = {}) {
     }
     // 5) bottom centre: button prompts
     bakePrompts(s, mode);
-    if (promptRow.n > 0 && promptRow.c) blit(ctx, promptRow, vw / 2 - promptRow.w / 2, vh - sf.b - promptRow.h - px(mode === 'touch' ? 8 : 14));
+    if (promptRow.n > 0 && promptRow.c) {
+      const bx = vw / 2 - promptRow.w / 2, by = vh - sf.b - promptRow.h - px(mode === 'touch' ? 8 : 14);
+      blit(ctx, promptRow, bx, by);
+      if (PR) for (let i = 0, k = 0; i < PR.length && k < 8; i++) if (PR[i].x == null) { tapAdd(PR[i], bx + rowX[k], by + 4, rowW[k], px(28)); k++; }
+    }
     if (s.debug && s.debugLine) {
       if ((T.dbgN = (T.dbgN ?? 0) - 1) <= 0) { T.dbgN = 30; const t = bakeText(String(s.debugLine()), L.s, { size: 11, weight: 500, fill: 'rgba(225,228,245,0.7)', lw: 2 }, dbgP.t); dbgP.t = t; dbgP.c = t.c; dbgP.w = t.w; dbgP.h = t.h; }
       blit(ctx, dbgP, vw / 2 - dbgP.w / 2, vh - sf.b - dbgP.h + 2);
@@ -412,6 +420,15 @@ export function createCanvasHud(game, opts = {}) {
     draw,
     number(x, y, z, str, o) { addCallout(x, y, z, String(str), 'num', !!o?.big); },
     resize() { L.epoch++; L.s = 0; },
+    /** touch: the prompt chip under a logical point (hit area grown to 44 CSS px), or null */
+    promptAt(x, y) {
+      for (let k = 0; k < taps.n; k++) {
+        const i = k * 4, h = taps.rect[i + 3], g = Math.max(0, (44 / L.css - h) / 2);
+        if (x >= taps.rect[i] - 6 && x <= taps.rect[i] + taps.rect[i + 2] + 6 && y >= taps.rect[i + 1] - g && y <= taps.rect[i + 1] + h + g) return taps.ref[k];
+      }
+      return null;
+    },
+    promptRects() { const o = []; for (let k = 0; k < taps.n; k++) o.push({ action: taps.ref[k]?.action, x: taps.rect[k * 4], y: taps.rect[k * 4 + 1], w: taps.rect[k * 4 + 2], h: taps.rect[k * 4 + 3] }); return o; },
     layout: L, px, tsz,
     info() { return { scale: L.s, hs: L.hs, textSize: L.textSize, epoch: L.epoch, banner: banner.on ? banner.kind : null, toasts: toasts.filter((q) => q.on).length, lit: T.lit, max: T.max }; },
     release() { for (const p of [badge.now, badge.past, ...Object.values(shelves), moonP, bossP, bossFill, bannerP, bandP, promptRow, msgP, msg2P, dbgP, ...nums, ...calls, ...toasts, ...wprompts]) if (p.c) { p.c.width = 1; p.c.height = 1; p.c = null; } icons.clear(); },

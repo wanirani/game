@@ -59,7 +59,7 @@ export function createPad(game, opts = {}) {
   const B = BUTTONS.map((def) => {
     const cv = document.createElement('canvas');
     cv.className = 'v2b'; cv.dataset.id = def.id;
-    cv.style.cssText = 'position:absolute;left:0;top:0;will-change:transform;transform-origin:50% 42%;';
+    cv.style.cssText = 'position:absolute;left:0;top:0;will-change:transform;transform-origin:50% 42%;transition:transform 70ms ease-out;';
     root.appendChild(cv);
     return { id: def.id, def, sent: '', cv, ctx: cv.getContext('2d'), cx: 0, cy: 0, d: 0, pad: 0, cw: 0, ch: 0, lw: 0, down: false, ptr: -1, t0: 0, cd: 0, charge: 0, disabled: false, icon: def.icon, label: def.label, dirty: true };
   });
@@ -110,6 +110,8 @@ export function createPad(game, opts = {}) {
   function place(b) { b.cv.style.transform = `translate3d(${(b.cx - b.cw / 2).toFixed(1)}px,${(b.cy - b.d / 2 - b.pad).toFixed(1)}px,0) scale(${b.down ? 0.94 : 1})`; }
   function moveStick() {
     const st = S.stick, L = S.L, bw = L.stick.r * 2 + 16, kw = L.stick.r * 0.92 + 12;
+    const tr = st.live ? 'none' : 'transform 120ms ease-out';   // the knob eases home, but follows the finger without lag
+    if (knobCv.style.transition !== tr) { knobCv.style.transition = tr; baseCv.style.transition = tr; }
     baseCv.style.transform = `translate3d(${(st.ox - bw / 2).toFixed(1)}px,${(st.oy - bw / 2).toFixed(1)}px,0)`;
     knobCv.style.transform = `translate3d(${(st.ox + st.x - kw / 2).toFixed(1)}px,${(st.oy + st.y - kw / 2).toFixed(1)}px,0)`;
     const o = String((st.live ? 1 : 0.66) * (S.op ?? 1));
@@ -223,7 +225,7 @@ export function createPad(game, opts = {}) {
   }
   function releaseAll() { for (const b of B) press(b, false, -1, true); stickEnd(); paint(); }
 
-  const usable = (e) => S.shown && !opts.isModal?.() && (e.pointerType !== 'mouse' || opts.mouse);
+  const usable = (e) => S.shown && !opts.isModal?.() && (e.pointerType !== 'mouse' || opts.mouse) && !opts.claims?.(e);
   const claim = (e) => { e.stopPropagation(); if (e.cancelable) e.preventDefault(); };
   function onDown(e) {
     if (!usable(e)) return;

@@ -33,7 +33,7 @@ def per(idx, k, lo, hi, seed):
     return np.random.default_rng(seed).uniform(lo, hi, k)[idx]
 
 
-def stones(npts, seed, relax_it=0, wlo=0.75, whi=1.3, gap0=1.2, gap1=6.0, dome_px=30, palette=None, mud=0.0, flat=0.0, earth=(58, 50, 40), mossk=0.6):
+def stones(npts, seed, relax_it=0, wlo=0.75, whi=1.3, gap0=1.2, gap1=6.0, dome_px=30, palette=None, mud=0.0, flat=0.0, earth=(58, 50, 40), mossk=0.6, edge=0.28):
     r = np.random.default_rng(seed)
     pts = r.uniform(0, 1, (npts, 2))
     if relax_it: pts = relax(pts, relax_it)
@@ -46,7 +46,7 @@ def stones(npts, seed, relax_it=0, wlo=0.75, whi=1.3, gap0=1.2, gap1=6.0, dome_p
     h = stone * ((0.45 + 0.55 * np.sqrt(dome)) * (1 - flat) + flat * 0.8) + n2 * 0.14
     lit = emboss(h, 3.4)
     k = npts
-    shade = (0.46 + 0.8 * lit) * per(idx, k, 0.72, 1.16, seed + 4) * (0.82 + 0.36 * n1) * (0.28 + 0.72 * stone)
+    shade = (0.46 + 0.8 * lit) * per(idx, k, 0.72, 1.16, seed + 4) * (0.82 + 0.36 * n1) * (edge + (1 - edge) * stone)
     shade *= 1 + 0.2 * sm(0.5, 0.95, dome) * stone
     pal = np.array(palette or [(126, 130, 142), (140, 132, 122), (104, 108, 118), (150, 146, 140), (118, 104, 96), (96, 104, 112)], np.float32)
     col = pal[r.integers(0, len(pal), k)][idx]
@@ -96,7 +96,7 @@ def grade(a, mul=(1, 1, 1), sat=1.0, gamma=1.0, add=0):
 def tex_cobble(): return stones(170, 141, relax_it=0, wlo=0.7, whi=1.35)
 def tex_cobble2(): return stones(230, 151, relax_it=1, wlo=0.85, whi=1.15, gap0=1.0, gap1=4.5, dome_px=22, flat=0.35, palette=[(120, 122, 130), (132, 128, 124), (108, 110, 120), (140, 136, 132)])
 def tex_cobworn(): return strokes(stones(150, 161, relax_it=0, wlo=0.7, whi=1.3, mud=0.6, flat=0.5), 260, 162, [(176, 150, 92), (150, 128, 80)], 8, 22, 0.2, 0.7, 1, 170)
-def tex_rubble(): return stones(120, 171, relax_it=1, wlo=0.6, whi=1.5, gap0=2.2, gap1=6.5, dome_px=40, flat=0.25, earth=(124, 118, 106), mossk=0.35, palette=[(128, 126, 126), (118, 118, 124), (136, 130, 122), (106, 104, 108), (124, 116, 108), (142, 138, 134)])
+def tex_rubble(): return stones(120, 171, relax_it=1, wlo=0.6, whi=1.5, gap0=2.2, gap1=6.5, dome_px=40, flat=0.25, earth=(150, 142, 128), mossk=0.3, edge=0.82, palette=[(128, 126, 126), (118, 118, 124), (136, 130, 122), (106, 104, 108), (124, 116, 108), (142, 138, 134)])
 
 
 def tex_thatch():

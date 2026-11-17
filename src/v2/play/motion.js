@@ -175,7 +175,7 @@ export function driveHero(ch, h, dt, T = TUNE) {
   else if (st === 'run' || st === 'walk') { const c = C[st]; A.play(st, PO(0.14, ((h.gait + footOff(c)) % 1) * c.duration)); }
   else A.play(h.lock != null && C.idle_combat ? 'idle_combat' : 'idle', PO(0.2));
   A.update(dt);
-  // 달릴 때 윗몸을 조금 세운다: 달리기 클립은 26° 숙어 있어 위에서 비스듬히 보는 카메라에 얼굴이 묻힌다 → 14° 쯤으로
+  // 달릴 때 윗몸을 조금 세운다: 달리기 클립은 26° 숙어 있어 위에서 비스듬히 보는 카메라에 얼굴이 묻힌다 → 골반–머리 선으로 19° 쯤
   S.lean = (S.lean ?? 0) + ((st === 'run' && !h.dead ? 1 : 0) - (S.lean ?? 0)) * Math.min(1, dt * 9);
   if (S.lean > 0.02) {
     pitchBone(ch.rig, 'spine', -(T.runLeanFix ?? 12) * 0.55 * S.lean); pitchBone(ch.rig, 'spine2', -(T.runLeanFix ?? 12) * 0.45 * S.lean);

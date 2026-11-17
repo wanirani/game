@@ -12,7 +12,7 @@ const BRONZE = [1.55, 1.08, 0.5], SOOT = [0.42, 0.38, 0.38], IRON = [0.5, 0.5, 0
 function flames(G, x, y, z, w, h, n = 5, seed = 1) {
   const C = [[1.0, 0.86, 0.46], [1.0, 0.52, 0.15], [0.74, 0.17, 0.06]], E = [1.6, 1.35, 1.0];
   for (let i = 0; i < n; i++) {
-    const t = n > 1 ? i / (n - 1) - 0.5 : 0, cx = x + t * w + (hash(i, seed) - 0.5) * 6, fh = h * (0.45 + 0.55 * hash(i + seed, x)), fw = Math.max(5, w / n * 0.62), sw = (hash(x + i, seed) - 0.5) * fw * 1.6, pz = z - (i % 3) * 2.5;
+    const t = n > 1 ? i / (n - 1) - 0.5 : 0, cx = x + t * w + (hash(i, seed) - 0.5) * (w / n) * 0.9, fh = h * (0.28 + 0.72 * hash(i + seed, x) ** 1.4) * (1 - 0.5 * Math.abs(t)), fw = Math.max(5, w / n * (0.45 + 0.5 * hash(seed, i + x))), sw = (hash(x + i, seed) - 0.5) * fw * 1.6, pz = z - (i % 3) * 2.5;
     const cxAt = (k) => cx + sw * k * k + Math.sin(k * 3 + i) * fw * 0.18, wAt = (k) => fw * (1 - k * 0.72), yAt = (k) => y + fh * k;
     for (const [ax, az] of [[1, 0], [0, 1]]) for (let s = 0; s < 3; s++) {
       const k0 = s / 3, k1 = (s + 1) / 3, o = { emis: E[s], tint: C[s], fog: 0.45, keep: true }, n3 = [az, 0, -ax];

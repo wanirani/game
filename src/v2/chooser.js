@@ -60,7 +60,7 @@ export default class V2Chooser extends Scene {
     // 높이 나누기: 넉넉하면 머리말(제목 + 꾸밈 + 안내 글)을 다 쓰고, 좁으면 제목 한 줄만 두고 줄 높이를 줄인다
     const availH = H - st - sb, tight = availH < 520, hintH = input.mode === 'touch' ? 0 : 30;
     const w = Math.min(640, W - sl - sr - 48), x = sl + (W - sl - sr - w) / 2;
-    const headH = tight ? 36 : 96, backH = tight ? 40 : 52, gap = tight ? 5 : 10;
+    const headH = tight ? 36 : 96, backH = tight ? 44 : 52, gap = tight ? 5 : 10;
     const cardH = clamp(Math.floor((availH - hintH - headH - backH - gap * CARDS - 8) / CARDS), 46, 88);
     const total = headH + cardH * CARDS + backH + gap * CARDS;
     let y = st + Math.max(6, (availH - hintH - total) / 2);

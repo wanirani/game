@@ -26,7 +26,7 @@ SPRITES = [
     ('guard', 'guard', 144, 144, 'solid'), ('hook', 'skill_hook_b', 144, 144, 'solid'), ('call', 'skill_call', 144, 144, 'solid'),
     ('bell', 'bell_short', 144, 144, 'solid'), ('bell_long', 'bell_long', 144, 144, 'solid'), ('next', 'next_target', 128, 128, 'solid'),
     ('pause', 'pause', 112, 112, 'solid'), ('interact', 'interact', 128, 128, 'solid'),
-    ('resume', 'menu_resume', 96, 96, 'solid'), ('settings', 'menu_settings', 96, 96, 'solid'), ('leave', 'menu_leave', 96, 96, 'solid'),
+    ('pouch', 'pouch', 96, 96, 'solid'), ('resume', 'menu_resume', 96, 96, 'solid'), ('settings', 'menu_settings', 96, 96, 'solid'), ('leave', 'menu_leave', 96, 96, 'solid'),
     ('cell', 'res_cell', 52, 108, 'solid'), ('moon', 'moon_full', 96, 96, 'solid'),
     ('night_now', 'night_now', 128, 128, 'solid'), ('night_past', 'night_past', 128, 128, 'solid'),
     ('lock', 'lock_ring', 200, 200, 'line'), ('orn_div', 'orn_divider', 480, 64, 'line'),

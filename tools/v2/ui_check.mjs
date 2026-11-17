@@ -177,6 +177,18 @@ try {
         ok(page._errs.length === 0, `${tag}: view ${view} page errors ${JSON.stringify(page._errs)}`);
         await page.close();
       }
+      // 5b) touch: a tap on a prompt chip presses that prompt's action (hit area at least 44 CSS px), not the stick
+      page = await open(ctx, `view=play&bg=black&dev=${dev}&text=${text}&freeze=1`);
+      {
+        const mp = await metrics(page), c = mp.css, cl = await ctx.newCDPSession(page);
+        ok(mp.prompts.length === 3, `${tag}: three prompt chips drawn (${mp.prompts.length})`);
+        await logOf(page);
+        for (const q of mp.prompts) { await touch(cl, 'touchStart', [[(q.x + q.w / 2) * c, (q.y + q.h / 2) * c]]); await touch(cl, 'touchEnd', []); await page.waitForTimeout(60); }
+        const lp = await logOf(page), st = await page.evaluate(() => window.__ui.hud.metrics().pad.stick.live);
+        ok(lp.filter((e) => e[0] === 'tap').length === 3 && lp.some((e) => e[0] === 'tap' && e[1] === 'skill1') && !lp.some((e) => e[0] === 'axis') && !st, `${tag}: prompt chips take taps (${JSON.stringify(lp)})`);
+      }
+      ok(page._errs.length === 0, `${tag}: prompt view page errors ${JSON.stringify(page._errs)}`);
+      await page.close();
       // 6) keyboard mode: the pad is gone, prompts show key caps
       page = await open(ctx, `view=kb&bg=black&dev=${dev}&text=${text}&freeze=1`);
       const mk = await metrics(page);

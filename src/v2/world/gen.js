@@ -38,7 +38,7 @@ export function house(o) {
   };
   const parts = [{ t: 'wall', x, z, w, d, h, y, mat: st === 'timber' || st === 'plaster' ? 'plaster' : 'facade', kit, chunk: o.chunk }];
   if (o.roof !== false && !o.burnt) {
-    const rk = { mat: o.roofMat, gable: st === 'stone' ? 'ashlar' : st === 'rubble' ? 'rubble' : undefined, chimneys: [{ u: Math.round(w * (0.18 + 0.64 * r())), t: 0.72, h: 30 + 10 * r() }], dormers: w > 400 && r() < 0.7 ? [{ u: Math.round(w * (0.3 + 0.4 * r())), lit: r() < lit ? 0.5 : 0 }] : [] };
+    const rk = { mat: o.roofMat, chimney: 'fieldstone', gable: st === 'stone' ? 'ashlar' : st === 'rubble' ? 'fieldstone' : undefined, chimneys: [{ u: Math.round(w * (0.18 + 0.64 * r())), t: 0.72, h: 30 + 10 * r() }], dormers: w > 400 && r() < 0.7 ? [{ u: Math.round(w * (0.3 + 0.4 * r())), lit: r() < lit ? 0.5 : 0 }] : [] };
     parts.push({ t: 'roof', x, z, w, d, y: y + h, h: o.roofH ?? Math.round(56 + 16 * r()), kit: { ...rk, ...(o.roofKit ?? {}) }, chunk: o.chunk });
   }
   return parts;
