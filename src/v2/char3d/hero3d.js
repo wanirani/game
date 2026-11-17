@@ -52,6 +52,7 @@ export class Char3D {
     this.weapon = opts.weapon === false ? null : opts.weaponGpu ?? renderer.add(boxModel(BLADE), { mip: false });
     this.scale = opts.scale ?? UNIT;
     this.dx = 1; this.dz = 0;                       // 보는 방향 (세계 x·z 단위 벡터)
+    this.kbT = 0; this.kbSp = 0;                    // 맞고 밀리는 중인가 (driveHero)
     this.M = new Float32Array(16); this.WM = new Float32Array(16); this._g = new Float32Array(16); this._t = new Float32Array(16);
     this.grip = { ...GRIP };
     this.anim.play('idle', { fade: 0 }); this.anim.update(0);
@@ -93,11 +94,17 @@ const wrapPi = (a) => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.P
  */
 export function driveHero(ch, h, dt, T = {}) {
   const sp = Math.hypot(h.vx, h.vz);
+  // 맞고 밀리는 속도는 "달리기"가 아니다: 밀리는 동안과 그 직후(속도가 다시 붙기 전)에는 그쪽으로 돌지도 달리지도 않는다.
+  // (pilotreview 검수에서 고침: 맞을 때마다 밀리는 쪽으로 돌다 말아 카메라에 등을 지고 서던 문제)
+  if (h.hurtT > 0 || h.dead) ch.kbT = 0.2;
+  else if (ch.kbT > 0) { ch.kbT -= dt; if (sp > ch.kbSp + 0.5 || h.move || h.dashT > 0 || !h.onGround) ch.kbT = 0; }
+  ch.kbSp = sp;
+  const slide = ch.kbT > 0;
   let tx = ch.dx, tz = ch.dz, rate = 14;
   if (h.dead || h.hurtT > 0) { /* 그대로 */ }
   else if (h.move) { tx = h.facing; tz = 0; rate = 34; }
   else if (h.dashT > 0) { const d = Math.hypot(h.dvx, h.dvz) || 1; tx = h.dvx / d; tz = h.dvz / d; rate = 40; }
-  else if (sp > 24) { tx = h.vx / sp; tz = h.vz / sp; }
+  else if (sp > 24 && !slide) { tx = h.vx / sp; tz = h.vz / sp; }
   const cur = Math.atan2(ch.dz, ch.dx), a = cur + wrapPi(Math.atan2(tz, tx) - cur) * (1 - Math.exp(-dt * rate));
   ch.dx = Math.cos(a); ch.dz = Math.sin(a);
   const A = ch.anim;
@@ -117,7 +124,7 @@ export function driveHero(ch, h, dt, T = {}) {
   else if (h.dashT > 0) A.play('dash', { fade: 0.03, time: h.animT });
   else if (!h.onGround) { if (h.vy > 60) A.play('jump', { fade: 0.05, time: h.animT }); else A.play('fall', { fade: 0.16 }); }
   else if (h.landT > 0) A.play('land', { fade: 0.03, time: 0.14 * (1 - h.landT / 0.1) });
-  else if (sp > 36) A.play('run', { fade: 0.12, speed: Math.max(0.55, Math.min(1.2, sp / (T.runX ?? 275))) });
+  else if (sp > 36 && !slide) A.play('run', { fade: 0.12, speed: Math.max(0.55, Math.min(1.2, sp / (T.runX ?? 275))) });
   else A.play('idle', { fade: 0.16 });
   A.update(dt);
 }

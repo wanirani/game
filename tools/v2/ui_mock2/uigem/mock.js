@@ -36,6 +36,7 @@ function corner(rot, gem = '#e9edf5') {
 const st = root.style;
 st.setProperty('--guil', guilloche());
 st.setProperty('--guil2', guilloche(44, 30, 20, 0.11));
+st.setProperty('--guil3', guilloche(36, 30, 20, 0.07));
 st.setProperty('--rim', rim());
 st.setProperty('--rim-s', rim({ w: 4.6 }));
 st.setProperty('--rim-atk', rim({ w: 3.4, dbl: true }));
@@ -98,7 +99,7 @@ function build() {
   <div class="mb">
     <div class="mchar pn"><i class="fr"></i><div class="mpt"><img src="kael3_bust.webp" alt=""></div><div class="mcn"><b>${h.name}</b><span>Lv.${h.lv} · ${h.cls}</span></div><ul class="mstat">${T.stats.map(([k, v]) => `<li>${k}<b>${v}</b></li>`).join('')}</ul></div>
     <div class="meq pn"><i class="fr"></i><h3><span>착용 중</span></h3><div class="slots">${eq}</div></div>
-    <div class="mgrid pn"><i class="fr"></i><h3><span>가방</span><em>18 / 40</em></h3><div class="cells">${cells}</div></div>
+    <div class="mgrid pn"><i class="fr"></i><h3><span>가방</span><em>18 / 40</em></h3><div class="cells">${cells}</div><p class="mhint">두 번 누르면 장착 · 길게 누르면 비교</p></div>
     <div class="mdet pn"><i class="fr"></i><div class="dh"><span class="di r3"><img src="${IT(T.item.ic)}" alt=""></span><div><b>${T.item.name}</b><span class="rar">${T.item.rar}</span></div></div>
       <ul class="ds">${T.item.stats.map(([k, v, d]) => `<li>${k}<b>${v}</b>${d ? `<em>${d}</em>` : ''}</li>`).join('')}</ul><p class="dd">${T.item.desc}</p>
       <div class="dbtn"><button class="pri"><i class="gem"></i><span>장착</span></button><button><span>강화</span></button><button class="ghost"><span>버리기</span></button></div></div>
@@ -181,5 +182,7 @@ if (app) {
     setView,
   };
 } else {
-  window.__gem = { IC, IT, abtn, LOCK };   // sheet.html · strip.html 이 같은 버튼 마크업을 쓴다
+  // sheet.html · strip.html 용: 같은 마크업 조각을 꺼내 쓴다
+  const parts = () => { const d = document.createElement('div'); d.innerHTML = build(); const g = (s) => d.querySelector(s).outerHTML; return { hero: g('#hero'), toast: g('#toast'), quest: g('#quest'), boss: g('#boss'), map: g('#s-map'), bag: g('#s-bag'), acts: Object.fromEntries([...d.querySelectorAll('.abtn')].map((e) => [e.dataset.k, e.outerHTML])) }; };
+  window.__gem = { IC, IT, abtn, LOCK, parts, T };   // sheet.html · strip.html 이 같은 버튼 마크업을 쓴다
 }

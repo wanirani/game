@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>uigem 아이콘 한 벌</title><link rel="icon" href="data:,"><link rel="stylesheet" href="style.css">
+<style>
+html, body { overflow: auto; height: auto; background: #10121c; touch-action: auto; }
+body { font-family: var(--sans); color: var(--iv); padding: 22px 24px 26px; width: 1000px; }
+h1 { font: 800 24px var(--serif); letter-spacing: .1em; } h1 small { font: 500 13px var(--sans); color: var(--dim); letter-spacing: 0; margin-left: 12px; }
+.g { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 16px; }
+.c { position: relative; border-radius: 10px; padding: 10px 10px 8px; border: 1px solid rgba(233,237,245,.22); background: linear-gradient(180deg, rgba(40,48,84,.5), rgba(14,17,34,.6)); }
+.c .big { width: 128px; height: 128px; margin: 0 auto; } .c .big img { width: 100%; height: 100%; }
+.c .row { display: flex; align-items: center; justify-content: center; gap: 12px; height: 70px; margin-top: 4px; border-radius: 8px; background-size: cover; background-position: center; }
+.c:nth-child(3n+1) .row { background-image: url(../../ui_mock/bg/phone2_yard.webp); background-size: 900%; background-position: 14% 48%; }
+.c:nth-child(3n+2) .row { background-image: url(../../ui_mock/bg/phone2_yard.webp); background-size: 500%; background-position: 50% 80%; }
+.c:nth-child(3n) .row { background-image: url(../../ui_mock/bg/phone2_street.webp); background-size: 500%; background-position: 10% 8%; }
+.c .abtn { position: relative; right: auto; bottom: auto; flex: none; }
+.c p { text-align: center; font: 700 13px var(--serif); letter-spacing: .08em; margin-top: 7px; } .c p span { display: block; font: 500 10.500px var(--sans); color: var(--dim); letter-spacing: 0; }
+.note { font: 500 12px var(--sans); color: var(--dim); margin-top: 12px; line-height: 1.6; }
+</style></head><body>
+<h1>아이콘 한 벌 — 상아 조각<small>크게(128) · 실제 크기: 64px 버튼 / 48px 버튼 (세 가지 실제 배경 위)</small></h1>
+<div class="g" id="g"></div>
+<p class="note">동작 아이콘 8개(공격·점프·대시·막기·기술 둘·궁극기 + 조준)는 게임의 카엘 3D 모델이 실제로 그 동작을 하는 모습을 상아 부조 톤으로 구운 것. 사물 아이콘은 v1 아이템 그림과 벡터를 같은 필터로 구웠다. 유료 생성 0.</p>
+<script type="module">
+import './mock.js';
+const N = { attack: ['공격', '베기 자세 + 붉은 궤적'], jump: ['점프', '뛰어오르는 카엘'], dash: ['대시', '내달리는 카엘 + 속도선'], guard: ['막기', '검을 세운 자세 + 방벽'], lock: ['조준', '과녁 속 박쥐'], swap: ['교대', '엇갈린 두 검 + 돌림 화살'], mount: ['탑승', '말 머리'], s1: ['기술 1 · 회오리 베기', '몸을 돌리는 자세 + 고리'], s2: ['기술 2 · 세 갈래 베기', '찌르기 + 세 줄기'], s3: ['기술 3 · 종의 울림', '교회 종 + 울림'], ult: ['궁극기 · 붉은 달', '붉은 달 앞의 카엘'], map: ['지도', '접은 지도 + 붉은 핀'], bag: ['가방', '사냥 주머니'], menu: ['메뉴', '사냥 수첩'], auto: ['자동', '회중시계 + 돌림 화살'], quest: ['임무 · 표식', '봉인된 두루마리'], potion: ['물약', '붉은 방울 병'], key: ['열쇠 · 상호작용', '장식 열쇠'], lantern: ['등불', '틈새 등불'], fang: ['전리품', '송곳니'] };
+const { IC } = window.__gem;
+const b = (k, s) => `<button class="abtn" style="--s:${s}"><i class="gl"></i><i class="rim"></i><img class="ico" src="${IC(k)}" alt=""></button>`;
+document.getElementById('g').innerHTML = Object.entries(N).map(([k, [n, d]]) => `<div class="c"><div class="big"><img src="${IC(k)}" alt=""></div><div class="row">${b(k, 64)}${b(k, 48)}</div><p>${n}<span>${d}</span></p></div>`).join('');
+Promise.all([document.fonts.ready, ...[...document.images].map((i) => i.decode().catch(() => 0))]).then(() => { window.__ready = true; });
+</script></body></html>

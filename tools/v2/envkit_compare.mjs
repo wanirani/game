@@ -22,13 +22,14 @@ for (const [tag, scene] of [['b', 'v2b'], ['c', 'v2c']]) {
     i++;
     const r = await page.evaluate(([x, z, dist, face]) => {
       const g = window.__game, v = window.__v2, sc = v.scene, sim = sc.sim; g._pageHidden = true;
-      for (const e of sim.enemies) { e.dead = true; e.hp = 0; }   // 배경만 본다
+      for (const e of sim.enemies) if (!e.yard) { e.dead = true; e.hp = 0; }   // 배경만 본다 (마당의 적은 남긴다 — 다 치우면 '끝' 표시가 뜬다)
       sim.time = 20;                                              // 조작 안내 글자를 지운다
-      const h = sim.hero; h.x = x; h.z = z; h.y = 400; h.vy = 0; h.facing = face; h.hp = 100; h.ifr = 0;
+      v.teleport(z > 1500 ? 'yard' : z > 300 ? 'alley' : 'street');
+      const h = sim.hero; h.x = x; h.z = z; h.vy = 0; h.facing = face; h.hp = 100; h.ifr = 0;
       const sec = sc.W.sections.find((s) => x >= s.x0 && x < s.x1 && z >= s.z0 && z < s.z1), old = sec.cam.dist;
       if (dist) sec.cam.dist = dist;
       sc.cam.snap = true;
-      for (let k = 0; k < 150; k++) { h.hp = 100; g.tick(1 / 60); }
+      for (let k = 0; k < 24; k++) { h.hp = 100; g.tick(1 / 60); sc.cam.snap = true; }
       g.render(); g.render();
       sec.cam.dist = old;
       const st = v.stats; return { draws: st.gl.draws, tris: st.gl.tris, hero: [Math.round(h.x), Math.round(h.y), Math.round(h.z)] };

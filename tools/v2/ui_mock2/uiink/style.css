@@ -134,8 +134,8 @@ ul { list-style: none; } i { font-style: normal; display: block; } img, canvas {
 .slots { display: flex; flex-direction: column; flex: 1; justify-content: space-between; }
 .slot { display: grid; grid-template-columns: 48px 1fr auto; grid-template-rows: auto auto; column-gap: 12px; align-items: center; text-align: left; min-height: 62px; border-top: 1px solid rgba(255, 255, 255, .08); position: relative; }
 .slot .si { grid-row: 1 / 3; grid-column: 1; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 50% 30%, rgba(46, 46, 60, .7), rgba(5, 5, 9, .82)); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16), inset 0 1px 0 rgba(236, 240, 255, .55); } .slot .si img { width: 34px; height: 34px; }
-.slot .sp { grid-column: 2; grid-row: 1; align-self: end; font: 500 11.500px var(--sans); color: var(--dim); } .slot .sn { grid-column: 2; grid-row: 2; align-self: start; font: 700 14.500px var(--serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.slot .pl { grid-column: 3; grid-row: 1 / 3; font: 800 16px var(--num); color: var(--gold); }
+.slot .sp { grid-column: 2; grid-row: 1; align-self: end; font: 500 11.500px var(--sans); color: var(--dim); } .slot .sn { grid-column: 2 / 4; grid-row: 2; align-self: start; font: 700 14.500px var(--serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slot .pl { grid-column: 3; grid-row: 1; align-self: end; font: 800 15px var(--num); color: var(--gold); }
 .slot.empty .si { background: none; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); } .slot.empty img, .slot.empty .sn { opacity: .35; }
 .cells { flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); grid-auto-rows: 1fr; gap: 7px; min-height: 0; }
 .cell { min-height: 44px; position: relative; display: grid; place-items: center; }

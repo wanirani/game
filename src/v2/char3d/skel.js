@@ -228,14 +228,37 @@ export function applyPose(rig, A, B = null, w = 0) {
   rig.pose();
 }
 
-/** 클립 재생기: 지금 클립 + 직전 클립을 짧게 섞는다 (cross-fade) */
+/** 정규 자세 둘을 섞어 정규 자세로 (w = B 의 비율). applyPose 와 같은 규칙: 한쪽에만 있는 뼈는 "안 돌림"과 섞는다 */
+export function mixPose(A, B, w, out) {
+  out.clear();
+  const ID = [0, 0, 0, 1];
+  for (const P of [A, B]) for (const key of P.rot.keys()) {
+    const qa = A.rot.get(key), qb = B.rot.get(key), ha = qa && qa.set, hb = qb && qb.set;
+    if ((!ha && !hb) || (out.rot.get(key) && out.rot.get(key).set)) continue;
+    const d = ha ? qa : ID, e = hb ? qb : ID, s = d[0] * e[0] + d[1] * e[1] + d[2] * e[2] + d[3] * e[3] < 0 ? -w : w, o = out.q(key);
+    o[0] = d[0] * (1 - w) + e[0] * s; o[1] = d[1] * (1 - w) + e[1] * s; o[2] = d[2] * (1 - w) + e[2] * s; o[3] = d[3] * (1 - w) + e[3] * s; qnorm(o);
+  }
+  for (let c = 0; c < 3; c++) out.root[c] = A.root[c] * (1 - w) + B.root[c] * w;
+  return out;
+}
+
+/**
+ * 클립 재생기: 지금 클립 + 직전 클립을 짧게 섞는다 (cross-fade).
+ * 섞는 도중에 클립이 또 바뀌면 그 순간 보이던(섞인) 자세를 굳혀 거기서부터 섞는다 — 직전 클립의 순수 자세로 튀지 않게 (pilotreview 검수에서 고침:
+ * 달리다 멈추자마자 다시 달리거나, 맞은 뒤 밀리다 서면 머리가 한 틱에 0.4 m 튀었다).
+ */
 export class Animator {
-  constructor(rig, clips) { this.rig = rig; this.clips = clips; this.cur = null; this.t = 0; this.prev = null; this.pt = 0; this.fade = 0; this.fadeT = 0; this.A = new CPose(); this.B = new CPose(); this.speed = 1; }
+  constructor(rig, clips) { this.rig = rig; this.clips = clips; this.cur = null; this.t = 0; this.prev = null; this.pt = 0; this.fade = 0; this.fadeT = 0; this.A = new CPose(); this.B = new CPose(); this.S = new CPose(); this.S2 = new CPose(); this.snap = false; this.w = 1; this.speed = 1; }
   /** name 클립으로 바꾼다. opts: {fade(초), restart, time(밖에서 정한 시각 — 주면 스스로 흐르지 않는다), speed} */
   play(name, opts = {}) {
     const c = this.clips[name]; if (!c) return false;
     if (c !== this.cur || opts.restart) {
-      if (this.cur && (opts.fade ?? 0.12) > 0) { this.prev = this.cur; this.pt = this.t; this.fade = opts.fade ?? 0.12; this.fadeT = 0; } else this.prev = null;
+      const fade = opts.fade ?? 0.12;
+      if (this.cur && fade > 0) {
+        if (this.prev || this.snap) { mixPose(this.snap ? this.S : this.B, this.A, this.w, this.S2); const t = this.S; this.S = this.S2; this.S2 = t; this.snap = true; this.prev = null; }
+        else { this.prev = this.cur; this.pt = this.t; }
+        this.fade = fade; this.fadeT = 0;
+      } else { this.prev = null; this.snap = false; }
       this.cur = c; this.t = 0;
     }
     this.speed = opts.speed ?? 1; this.ext = opts.time != null;
@@ -245,9 +268,12 @@ export class Animator {
   update(dt) {
     if (!this.cur) return;
     if (!this.ext) this.t += dt * this.speed;
-    if (this.prev) { this.fadeT += dt; if (this.fadeT >= this.fade) this.prev = null; }
+    if (this.prev || this.snap) { this.fadeT += dt; if (this.fadeT >= this.fade) { this.prev = null; this.snap = false; } }
     sampleClip(this.cur, this.t, this.A);
-    if (this.prev) { sampleClip(this.prev, this.pt, this.B); const u = this.fadeT / this.fade; applyPose(this.rig, this.B, this.A, u * u * (3 - 2 * u)); }
-    else applyPose(this.rig, this.A);
+    if (this.prev || this.snap) {
+      if (this.prev) sampleClip(this.prev, this.pt, this.B);
+      const u = this.fadeT / this.fade; this.w = u * u * (3 - 2 * u);
+      applyPose(this.rig, this.snap ? this.S : this.B, this.A, this.w);
+    } else { this.w = 1; applyPose(this.rig, this.A); }
   }
 }

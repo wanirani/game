@@ -1,0 +1,21 @@
+블러드 녹턴 3D 판(v2) 소리 — assets/v2/audio/
+Blood Nocturne 3D (v2) audio — assets/v2/audio/
+
+이 폴더의 모든 .m4a 파일(24개)은 이 게임을 위해 수식으로 직접 합성한 원작이다.
+외부 녹음·샘플·사운드폰트·생성 AI 를 쓰지 않았다. 만드는 법: tools/v2/audio/build_feel_audio.py
+(numpy/scipy 로 파형을 계산 → 라우드니스 맞춤 → FFmpeg AAC 인코딩. 씨앗이 고정돼 있어 다시 빌드해도 같은 소리가 나온다.)
+종 가락 다섯(dawn · dusk · bloodmoon · return · still)도 이 게임을 위해 새로 지은 것이다 (src/v2/feel/table.js BELL).
+
+All 24 .m4a files in this folder are original works synthesized from formulas for this game
+(tools/v2/audio/build_feel_audio.py). No third-party recordings, samples, soundfonts or generative AI were used.
+The five bell motifs are original compositions for this game. Same terms as the rest of the project's original assets.
+
+  bell_mid_1 bell_high_1 bell_toll_1   교회 종 (가법 합성: 험·으뜸·단3도·5도·명목음 + 윗부분음, 맥놀이)
+  ring_1..3                            칼날 울림 꼬리 (비조화 부분음)
+  cloth_1..3  gear_1..3  draw_1        천·장비·칼 뽑기 (띠 잡음 + 감쇠 사인)
+  debris_1..3                          돌 부스러기 (작은 충돌음 여럿)
+  chant_1..2                           마법사 주문 (톱니파 → 포먼트 필터)
+  ui_tick ui_tab ui_open ui_close ui_ok ui_deny   인터페이스 (종과 같은 음계의 짧은 울림)
+
+빌드 도구(게임에 실리지 않음): FFmpeg native AAC encoder, NumPy, SciPy.
+타격·마법 소리의 다른 층은 v1 의 고급 효과음(assets/audio/sfx_v2, 전부 CC0 소재 — assets/audio/LICENSE-CREDITS.txt)을 그대로 쓴다.

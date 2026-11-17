@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>먹과 달빛 — 바탕 세 가지 위의 버튼</title><link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="sheet.css"></head>
+<body class="sheet">
+<h1><b class="seal" style="width:30px;height:30px;font-size:21px">狩</b>바탕 세 가지 위의 버튼<small>실제 게임 화면에서 잘라 키운 바탕 · 배경 흐림(backdrop blur)은 쓰지 않았다 — 보이는 그대로가 캔버스에서 그려지는 모습</small></h1><div class="rule"></div>
+<h2>버튼 종류 × 상태<small>윗줄: 공격(기본 · 눌림) · 기술(강조 · 재사용 대기) · 궁극기(충전 80% · 가득) / 아랫줄: 막기 · 조준(켜짐) · 탑승(잠김) · 시스템 · 스틱 손잡이</small></h2>
+<div class="panels" id="panels"></div>
+<p class="foot" id="foot"></p>
+<script type="module">
+import { paintButton, paintKnob, installSprites, fontsReady, DPR } from './ui.js';
+await fontsReady(); installSprites();
+const img = new Image(); img.src = 'img/fold_open_yard.webp'; await img.decode();
+// 바탕: 실제 화면(1800×1361)에서 자른 곳 [sx, sy, sw, sh]
+const BG = [['밝은 불빛', '등불 유리 한가운데를 키운 것 — 화면에서 가장 밝은 곳', [340, 715, 110, 113]], ['중간 밝기 돌바닥', '마당 바닥 — 전투가 벌어지는 곳', [640, 690, 320, 330]], ['거의 검은 곳', '담 그늘 — 화면에서 가장 어두운 곳', [0, 0, 160, 165]]];
+const W = 306, H = 330;
+const ROWS = [
+  [[52, 62, { s: 76, kind: 'main', icon: 'attack' }, '공격'], [140, 62, { s: 76, kind: 'main', icon: 'attack', pr: 1 }, '눌림'], [220, 46, { s: 56, kind: 'skill', icon: 's1', rdy: 1 }, '강조'], [272, 100, { s: 56, kind: 'skill', icon: 's2', cool: 0.58, ct: '3' }, '대기']],
+  [[44, 160, { s: 60, kind: 'ult', icon: 'ult', chg: 80, ct: '80%' }, '충전 80%'], [120, 160, { s: 60, kind: 'ult', icon: 'ult', chg: 100 }, '가득'], [192, 166, { s: 50, kind: 'aux', icon: 'guard' }, '막기'], [256, 172, { s: 50, kind: 'aux', icon: 'lock', on: 1 }, '켜짐']],
+  [[38, 240, { s: 48, kind: 'aux', icon: 'mount', off: 1 }, '잠김'], [98, 240, { s: 38, kind: 'sys', icon: 'bag' }, '시스템'], [152, 240, { s: 38, kind: 'sys', icon: 'map' }, ''], [214, 240, 'knob', '스틱'], [272, 240, { s: 50, kind: 'skill', icon: 'dash' }, '대시']],
+];
+const lum = (r, g, b) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+const cr = (a, b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+const INKL = lum(243, 241, 234);
+const res = [];
+for (const [name, desc, [sx, sy, sw, sh]] of BG) {
+  const p = document.createElement('div'); p.className = 'panel';
+  const bg = document.createElement('canvas'); bg.className = 'pbg'; bg.width = Math.round(W * DPR); bg.height = Math.round(H * DPR); const bx = bg.getContext('2d'); bx.imageSmoothingQuality = 'high'; bx.drawImage(img, sx, sy, sw, sh, 0, 0, bg.width, bg.height); p.appendChild(bg);
+  const lay = document.createElement('div'); lay.className = 'lay'; p.appendChild(lay);
+  const whole = bx.getImageData(0, 0, bg.width, bg.height).data; let Lb = 0; for (let i = 0; i < whole.length; i += 4) Lb += lum(whole[i], whole[i + 1], whole[i + 2]); Lb /= whole.length / 4;
+  const stats = [];
+  for (const row of ROWS) for (const [x, y, o, cap] of row) {
+    const w = document.createElement('span'); w.className = 'cell2'; w.style.left = x + 'px'; w.style.top = y + 'px';
+    if (o === 'knob') { const c = document.createElement('canvas'); paintKnob(c, 46); w.style.width = w.style.height = '62px'; w.appendChild(c); lay.appendChild(w); }
+    else {
+      w.style.width = w.style.height = o.s + 'px'; const c = document.createElement('canvas'); paintButton(c, o); w.appendChild(c); lay.appendChild(w);
+      // 대비: 같은 버튼을 그림 없이 한 번 더 그려, 그림이 놓인 점과 유리만 있는 점을 가른다 (바탕 위에 실제로 합성한 값)
+      const c0 = document.createElement('canvas'); paintButton(c0, { ...o, icon: null, ct: null });
+      const pad = +c.dataset.pad, full = c.width, t = document.createElement('canvas'); t.width = t.height = full; const tx = t.getContext('2d', { willReadFrequently: true });
+      const ox = Math.round((x - o.s / 2 - pad) * DPR), oy = Math.round((y - o.s / 2 - pad) * DPR);
+      tx.drawImage(bg, ox, oy, full, full, 0, 0, full, full); tx.drawImage(c0, 0, 0); const g = tx.getImageData(0, 0, full, full).data;
+      tx.clearRect(0, 0, full, full); tx.drawImage(bg, ox, oy, full, full, 0, 0, full, full); tx.drawImage(c, 0, 0); const d = tx.getImageData(0, 0, full, full).data;
+      const R = (o.s / 2 - 3) * DPR, cc = full / 2; let li = 0, ni = 0, lg = 0, ng = 0;
+      for (let yy = 0; yy < full; yy++) for (let xx = 0; xx < full; xx++) { if (Math.hypot(xx - cc, yy - cc) > R) continue; const i = (yy * full + xx) * 4, diff = Math.abs(d[i] - g[i]) + Math.abs(d[i + 1] - g[i + 1]) + Math.abs(d[i + 2] - g[i + 2]); const l0 = lum(g[i], g[i + 1], g[i + 2]); lg += l0; ng++; if (diff > 150 && !o.off && !(o.cool > 0)) { li += lum(d[i], d[i + 1], d[i + 2]); ni++; } }
+      if (ni > 20) stats.push({ cap: cap || o.icon, icon: li / ni, glass: lg / ng, ratio: cr(li / ni, lg / ng) });
+      else stats.push({ cap: cap || o.icon, glass: lg / ng, inkOnGlass: cr(INKL, lg / ng), dim: 1 });
+    }
+    if (cap) lay.insertAdjacentHTML('beforeend', `<span class="cap" style="left:${x}px;top:${y + (o === 'knob' ? 31 : o.s / 2 + 7)}px">${cap}</span>`);
+  }
+  lay.insertAdjacentHTML('beforeend', `<div class="txt"><span class="bare">카엘</span><span class="hpdemo"><i></i></span><span class="wash">문을 열어라<b>2/5</b></span></div>`);
+  const full = stats.filter((s) => s.ratio), minR = Math.min(...full.map((s) => s.ratio)), avgR = full.reduce((a, s) => a + s.ratio, 0) / full.length, glass = stats.reduce((a, s) => a + s.glass, 0) / stats.length;
+  const r = { name, bgLum: +Lb.toFixed(3), glassLum: +glass.toFixed(3), iconMin: +minR.toFixed(1), iconAvg: +avgR.toFixed(1), iconWorst: full.sort((a, b) => a.ratio - b.ratio)[0].cap, bareInk: +cr(INKL, Lb).toFixed(1), inkOnWash: +cr(INKL, lum(5 + (Lb > 0.5 ? 6 : 0), 5, 8)).toFixed(1), seeThrough: +(100 * (1 - 0.55)).toFixed(0), per: full.map((s) => `${s.cap} ${s.ratio.toFixed(1)}`) };
+  res.push(r);
+  p.insertAdjacentHTML('beforeend', `<h3>${name}</h3><p>${desc}</p><ul><li>바탕 밝기(상대 휘도) <b>${r.bgLum.toFixed(2)}</b> → 유리 밑은 <b>${r.glassLum.toFixed(2)}</b></li><li>그림 : 유리 대비 — 가장 낮은 곳 <b>${r.iconMin} : 1</b> (${r.iconWorst}), 평균 <b>${r.iconAvg} : 1</b></li><li>맨 글자(바탕에 바로) <b>${r.bareInk} : 1</b> · 먹 얼룩 위 글자 <b>${r.inkOnWash} : 1</b></li></ul>`);
+  document.getElementById('panels').appendChild(p);
+}
+document.getElementById('foot').textContent = '대비는 WCAG 방식(상대 휘도)으로, 버튼을 바탕 위에 실제로 합성한 점들에서 쟀다: 그림이 놓인 점의 평균 휘도 대 그림 없는 유리 점의 평균 휘도. 잠김 · 재사용 대기 버튼은 일부러 흐리게 한 것이라 빼고 쟀다. 「맨 글자」는 그림자 · 테두리 없이 바탕에 바로 올렸을 때의 값이고, 실제 글자는 어두운 그림자와 먹 얼룩을 깐다.';
+window.__contrast = res; window.__done = 1;
+</script></body></html>

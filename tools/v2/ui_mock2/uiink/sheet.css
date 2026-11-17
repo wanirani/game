@@ -1,0 +1,27 @@
+/* 아이콘 묶음 · 바탕 세 가지 비교 쪽 공통 */
+html, body.sheet { overflow: auto; height: auto; background: #0b0b10; touch-action: auto; }
+body.sheet { color: #f3f1ea; font-family: var(--sans); padding: 26px 28px 30px; width: 1000px; position: relative; }
+body.sheet::before { content: ""; position: absolute; inset: 0; background: var(--smoke) center / 900px; opacity: .16; mix-blend-mode: screen; pointer-events: none; }
+h1 { font: 400 44px/1 "BN Brush", var(--serif); display: flex; align-items: center; gap: 12px; } h1 small { font: 500 14px var(--sans); color: var(--dim); margin-left: 8px; }
+h2 { font: 700 15px var(--serif); letter-spacing: .2em; color: var(--gold); margin: 24px 0 12px; display: flex; align-items: baseline; gap: 12px; } h2 small { font: 500 12.500px var(--sans); color: var(--dim); letter-spacing: 0; }
+.rule { height: 9px; margin: 8px 0 0; background: var(--st-line) 0 0 / 100% 100% no-repeat; opacity: .6; }
+.grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; position: relative; }
+.card { position: relative; padding: 8px 8px 9px; background: linear-gradient(180deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .012) 45%, rgba(0, 0, 0, .14)); border: 1px solid rgba(255, 255, 255, .09); border-top-color: rgba(236, 240, 255, .44); text-align: center; }
+.card .big { width: 132px; height: 132px; margin: 0 auto; } .card .real { height: 74px; margin: 4px -8px 6px; display: flex; align-items: center; justify-content: center; gap: 14px; background: url(img/fold_open_yard.webp) 46% 62% / 1500px auto; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .5); }
+.card .rb { position: relative; display: block; flex: none; } .card .rb canvas { position: absolute; left: 0; top: 0; }
+.card b { font: 800 15px var(--serif); display: block; letter-spacing: .06em; } .card span.d { font: 400 11.500px/1.4 var(--sans); color: var(--dim); display: block; margin-top: 2px; word-break: keep-all; }
+.card .px { position: absolute; right: 6px; top: 5px; font: 500 10px var(--sans); color: rgba(243, 241, 234, .45); }
+.items { display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; position: relative; }
+.item { text-align: center; padding: 6px 4px 7px; background: linear-gradient(180deg, rgba(48, 48, 62, .5), rgba(6, 6, 10, .7)); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .10), inset 0 1px 0 rgba(236, 240, 255, .34); } .item canvas { width: 62px; height: 62px; margin: 0 auto; } .item .sm { width: 26px; height: 26px; margin: 2px auto 3px; } .item b { font: 600 11.500px var(--sans); }
+.foot { font: 400 12.500px/1.6 var(--sans); color: var(--dim); margin-top: 16px; position: relative; word-break: keep-all; }
+/* 바탕 세 가지 */
+.panels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; position: relative; }
+.panel { position: relative; } .panel > canvas.pbg { width: 100%; height: 330px; display: block; box-shadow: 0 0 0 1px rgba(255, 255, 255, .16); }
+.panel .lay { position: absolute; left: 0; top: 0; right: 0; height: 330px; }
+.panel .cell2 { position: absolute; transform: translate(-50%, -50%); } .panel .cell2 canvas { position: absolute; left: 0; top: 0; }
+.panel .cap { position: absolute; transform: translateX(-50%); font: 600 10.500px var(--sans); white-space: nowrap; text-shadow: var(--sh); }
+.panel h3 { font: 800 16px var(--serif); margin: 10px 0 4px; letter-spacing: .04em; } .panel p, .panel li { font: 400 12.500px/1.6 var(--sans); color: var(--dim); } .panel li b { color: #fff; font-weight: 700; } .panel ul { list-style: none; }
+.panel .txt { position: absolute; left: 12px; bottom: 10px; display: flex; align-items: center; gap: 14px; }
+.panel .bare { font: 800 17px var(--serif); text-shadow: var(--sh); letter-spacing: .05em; } .panel .wash { padding: 8px 20px 9px 24px; background: var(--st-wash) center / 100% 100% no-repeat; font: 700 13.500px var(--serif); text-shadow: var(--sh); } .panel .wash b { color: var(--gold); font: 800 13.500px var(--num); margin-left: 6px; }
+.panel .hpdemo { width: 150px; height: 16px; position: relative; background: var(--st-dark) 0 0 / 100% 100% no-repeat; } .panel .hpdemo i { position: absolute; left: 0; top: 0; bottom: 0; width: 72%; -webkit-mask: var(--st-ink) 0 0 / 150px 100% no-repeat; mask: var(--st-ink) 0 0 / 150px 100% no-repeat; background: linear-gradient(180deg, #ff8090 0%, #ee2c44 34%, #b3122a 78%, #7c0a1c 100%); }
+.panel .dm { position: absolute; right: 14px; bottom: 8px; font: 400 30px/1 "BN Dmg"; color: var(--ink); -webkit-text-stroke: 4px rgba(5, 5, 8, .92); paint-order: stroke fill; transform: rotate(-5deg) skewX(-7deg); }

@@ -71,6 +71,8 @@ export const MOD = Object.freeze({
   // 마무리 일격: 방의 마지막 적·보스 — 깊은 쿵 + 느린 화면 + 음악이 물러남
   finisher: { add: [s('drop', 0, 0.6), o('kill_slowmo', 0.02, 0.6), n('ring', 0.09, 0.3, 0.7, 2)], stop: 0.18, shakeAdd: 0.2, kick: 16, zoom: 1.08, zoomT: 0.4, slow: Object.freeze([0.36, 0.25]), duck: Object.freeze([0.5, 1.0]), gain: 0.74, haptic: 'finisher', big: true },
 });
+/** 경직 상한 (초): 보통 타격 · 큰 순간(마무리 일격·받아치기). 효과 쪽은 여기에 '1초 창에 합계 0.4초' 상한(v1 feel §4.1)을 더 건다 */
+export const STOP_MAX = 0.2, STOP_MAX_BIG = 0.25;
 /** flags 비트 */
 export const FLAG = Object.freeze({ crit: 1, kill: 2, guard: 4, parry: 8, finisher: 16 });
 
@@ -123,7 +125,8 @@ export function hitFeel(weapon, material, strength, flags = 0) {
     if (flags & (FLAG.kill | FLAG.finisher)) layers.push(...M.die);   // 죽음 층 (재질별: 뼈 무너짐·돌 부서짐 …)
   }
   layers.sort((a, b) => a.at - b.at);
-  r = Object.freeze({ key, weapon, material, strength: S.id, flags, layers: Object.freeze(layers), stop: +Math.min(0.3, stop).toFixed(3), shake: +Math.min(1, shake).toFixed(2), kick, zoom, zoomT, slow, duck, gain: +gain.toFixed(3), haptic, spark: M.spark, big });
+  // 경직 상한: 보통 타격 0.2초 (무기·재질 배율과 치명타·처치를 다 더해도 — 길면 움직임이 무거워진다), 마무리 일격·받아치기만 0.25초
+  r = Object.freeze({ key, weapon, material, strength: S.id, flags, layers: Object.freeze(layers), stop: +Math.min(big ? STOP_MAX_BIG : STOP_MAX, stop).toFixed(3), shake: +Math.min(1, shake).toFixed(2), kick, zoom, zoomT, slow, duck, gain: +gain.toFixed(3), haptic, spark: M.spark, big });
   cache.set(key, r);
   return r;
 }

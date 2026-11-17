@@ -1,6 +1,38 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>먹과 달빛 — 아이콘 묶음</title><link rel="icon" href="data:,">
-<link rel="stylesheet" href="base.css"><link rel="stylesheet" href="sheet.css"></head>
-<body class="sheet"><div id="sheet"></div>
-<script type="module" src="icons_page.js"></script></body></html>
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="sheet.css"></head>
+<body class="sheet">
+<h1><b class="seal" style="width:30px;height:30px;font-size:21px">狩</b>먹과 달빛 · 아이콘 묶음<small>붓 엔진(ink.js)이 그린 그림 — 생성 그림 0장 · 100×100 칸의 획 정의에서 어떤 크기로든 다시 굽는다</small></h1><div class="rule"></div>
+<h2>행동 · 시스템 16종 + 기술 3<small>위: 크게 본 그림(132 px) · 아래: 실제 크기 — 폴드 버튼 62 px / 휴대폰 버튼 50 px / 시스템 줄 38 px, 실제 게임 화면 위</small></h2>
+<div class="grid" id="main"></div>
+<h2>물건 · 곁들이<small>가방 칸 · 알림 · 보스 문장 — 62 px 과 26 px</small></h2>
+<div class="items" id="items"></div>
+<p class="foot">색은 세 가지뿐이다: 달빛 흰 먹 · 핏빛(강조 한 획) · 금빛(쇠붙이 · 돈). 사람 그림은 머리 · 몸통 · 팔다리 · 외투 자락을 각각 붓 한 획으로 그어 동작이 먼저 읽히게 했다. 획 끝의 마른 붓 자국(비백)과 번짐은 굽는 크기에 맞춰 다시 계산되므로 작은 크기에서도 뭉개지지 않는다.</p>
+<script type="module">
+import { paintButton, installSprites, fontsReady } from './ui.js';
+import { iconCanvas } from './ink.js';
+await fontsReady(); installSprites();
+const MAIN = [['attack', '공격', '찌르며 크게 베는 사냥꾼', 'main'], ['jump', '점프', '무릎 접고 솟구침 · 초승달', 'skill'], ['dash', '대시', '낮게 파고드는 질주', 'skill'], ['guard', '막기', '세운 검과 감싸는 호', 'aux'], ['lock', '조준', '맹수의 눈 · 네 눈금', 'aux'], ['swap', '교대', '엇갈린 검 · 쫓는 두 획', 'aux'],
+  ['mount', '탑승', '달리는 말과 사냥꾼', 'aux'], ['s1', '기술 · 채찍 감기', '크게 감기는 채찍', 'skill'], ['s2', '기술 · 세 갈래 베기', '발톱 같은 세 획', 'skill'], ['s3', '기술 · 종 울림', '흔들리는 교회 종', 'skill'], ['ult', '궁극기', '붉은 달 앞의 도약', 'ult'], ['quest', '임무 · 표식', '창에 단 붉은 깃발', 'sys'],
+  ['map', '지도', '두루마리 · 길 · 붉은 표', 'sys'], ['bag', '가방', '죔쇠 달린 가죽 가방', 'sys'], ['menu', '메뉴', '사냥 수첩', 'sys'], ['auto', '자동', '스스로 도는 붓 고리', 'sys'], ['potion', '물약', '핏빛 약병', 'sys'], ['skull', '보스 문장', '붉은 눈의 해골', 'sys']];
+const ITEMS = [['whip', '채찍'], ['fang', '송곳니'], ['herb', '약초'], ['bone', '뼈'], ['gem', '보석'], ['armor', '조끼'], ['helm', '투구'], ['pauldron', '견갑'], ['boot', '장화'], ['ring', '반지'], ['key', '열쇠'], ['coin', '은화'], ['moon', '달조각'], ['padlock', '잠김'], ['x', '닫기'], ['next', '다음']];
+const DPR = Math.min(3, devicePixelRatio || 1);
+const cv = (name, css) => { const src = iconCanvas(name, Math.round(css * DPR)), c = document.createElement('canvas'); c.width = c.height = src.width; c.getContext('2d').drawImage(src, 0, 0); c.style.width = c.style.height = css + 'px'; return c; };
+const btn = (o) => { const w = document.createElement('span'); w.className = 'rb'; w.style.width = w.style.height = o.s + 'px'; const c = document.createElement('canvas'); w.appendChild(c); paintButton(c, o); return w; };
+const main = document.getElementById('main');
+for (const [k, nm, d, kind] of MAIN) {
+  const el = document.createElement('div'); el.className = 'card';
+  const big = cv(k, 132); big.className = 'big'; el.appendChild(big);
+  const real = document.createElement('div'); real.className = 'real';
+  const sysKind = kind === 'sys';
+  if (sysKind) { real.appendChild(btn({ s: 46, kind: 'aux', icon: k })); real.appendChild(btn({ s: 38, kind: 'sys', icon: k })); real.appendChild(btn({ s: 34, kind: 'sys', icon: k })); }
+  else { const f = kind === 'main' ? 94 : kind === 'ult' ? 68 : kind === 'aux' ? 54 : 62, p = kind === 'main' ? 72 : kind === 'ult' ? 52 : kind === 'aux' ? 46 : 50; if (kind === 'main') real.style.height = '104px'; real.appendChild(btn({ s: f, kind, icon: k, chg: 100 })); real.appendChild(btn({ s: p, kind, icon: k, chg: 100 })); }
+  el.appendChild(real);
+  el.insertAdjacentHTML('beforeend', `<b>${nm}</b><span class="d">${d}</span>`);
+  main.appendChild(el);
+}
+const items = document.getElementById('items');
+for (const [k, nm] of ITEMS) { const el = document.createElement('div'); el.className = 'item'; el.appendChild(cv(k, 62)); const s = cv(k, 26); s.className = 'sm'; el.appendChild(s); el.insertAdjacentHTML('beforeend', `<b>${nm}</b>`); items.appendChild(el); }
+window.__done = 1;
+</script></body></html>

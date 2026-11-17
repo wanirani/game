@@ -512,7 +512,7 @@ export const MESH = { CRESCENT: 0, TUBE: 1, CONE: 2, SPHERE: 3, SHARDS: 4, BELL:
 export const MODE = { SLASH: 0, BEAM: 1, CONE: 2, SHIELD: 3, SHARDS: 4, SOLID: 5, BELL: 6 };
 const M_VS = `#version 300 es
 layout(location=0) in vec3 aPos; layout(location=1) in vec3 aN; layout(location=2) in vec2 aUV;
-uniform mat4 uVP; uniform mat4 uM; uniform vec4 uPar; uniform int uMode;
+uniform mat4 uVP; uniform mat4 uM; uniform vec4 uPar; uniform highp int uMode;
 out vec3 vN; out vec3 vW; out vec2 vUV;
 void main() {
   vec3 p = aPos; float k = uPar.x;
@@ -525,7 +525,7 @@ void main() {
 const M_FS = `#version 300 es
 precision highp float;
 in vec3 vN; in vec3 vW; in vec2 vUV;
-uniform vec4 uCA; uniform vec4 uCB; uniform vec4 uPar; uniform int uMode; uniform vec3 uEye; uniform sampler2D uNoise; uniform vec3 uTAG; out vec4 o;
+uniform vec4 uCA; uniform vec4 uCB; uniform vec4 uPar; uniform highp int uMode; uniform vec3 uEye; uniform sampler2D uNoise; uniform vec3 uTAG; out vec4 o;
 void main() {
   float k = uPar.x, tm = uTAG.x; vec3 n = normalize(vN); vec3 v = normalize(uEye - vW); float nv = abs(dot(n, v));
   vec3 rgb; float a; float env = smoothstep(0.0, 0.08, k) * (1.0 - smoothstep(0.6, 1.0, k));

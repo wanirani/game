@@ -60,8 +60,10 @@ def place(dst, src, at):
 
 # ───────────────────────────── 종 ─────────────────────────────
 # 교회 종 부분음 (으뜸음 = prime 기준 비율, 세기, 감쇠 배율): 험(아래 옥타브)·으뜸·단3도·5도·명목음(위 옥타브) + 윗부분음
+# 윗부분음(8배 위)은 치는 순간의 쇳소리 — 빨리 꺼지지만 휴대폰 스피커(300 Hz 아래가 거의 안 나옴)에서 종을 종답게 들리게 한다
 BELL = [(0.5, 0.42, 1.00), (1.0, 0.85, 0.72), (1.19, 0.70, 0.58), (1.5, 0.28, 0.46), (2.0, 1.00, 0.42),
-        (2.51, 0.34, 0.26), (3.0, 0.40, 0.22), (4.0, 0.30, 0.16), (5.34, 0.16, 0.11), (6.72, 0.10, 0.08), (8.2, 0.05, 0.05)]
+        (2.51, 0.45, 0.30), (3.0, 0.55, 0.26), (4.0, 0.50, 0.20), (5.34, 0.36, 0.15), (6.72, 0.26, 0.12), (8.2, 0.18, 0.09),
+        (10.1, 0.13, 0.07), (12.3, 0.10, 0.055), (14.7, 0.08, 0.045), (17.4, 0.06, 0.038), (20.3, 0.05, 0.032), (23.6, 0.04, 0.027), (27.2, 0.03, 0.023)]
 
 
 def bell(name, f0, dur, bright=1.0, thump=0.0, lo=38.0):
@@ -70,7 +72,7 @@ def bell(name, f0, dur, bright=1.0, thump=0.0, lo=38.0):
     y = np.zeros_like(t)
     for ratio, amp, dk in BELL:
         f = f0 * ratio
-        if f < lo or f > 15000:
+        if f < lo or f > 9000:
             continue
         tau = dur * 0.34 * dk
         a = amp * (bright ** np.log2(max(1.0, ratio)))
@@ -236,10 +238,11 @@ def ui(name):
 # ───────────────────────────── 목록 ─────────────────────────────
 D4 = 293.665
 # id → (만드는 함수, 비트레이트). 이름(sfx) 묶음은 SETS
+# 깊은 종은 으뜸 D3: 험 D2(73 Hz)는 이어폰에서, 147 Hz 위 부분음은 휴대폰 스피커에서 들린다
 FILES = {
-    'bell_mid_1': (lambda: bell('bell_mid_1', D4, 2.6, bright=0.92), '80k'),
-    'bell_high_1': (lambda: bell('bell_high_1', D4 * 2, 1.9, bright=0.86), '80k'),
-    'bell_toll_1': (lambda: bell('bell_toll_1', D4 / 4, 6.0, bright=1.12, thump=0.9, lo=60.0), '80k'),
+    'bell_mid_1': (lambda: bell('bell_mid_1', D4, 2.6, bright=1.0), '80k'),
+    'bell_high_1': (lambda: bell('bell_high_1', D4 * 2, 1.9, bright=0.94), '80k'),
+    'bell_toll_1': (lambda: bell('bell_toll_1', D4 / 2, 6.0, bright=1.1, thump=0.8, lo=60.0), '80k'),
     'ring_1': (lambda: ring('ring_1', 2350), None), 'ring_2': (lambda: ring('ring_2', 2890), None), 'ring_3': (lambda: ring('ring_3', 1980), None),
     'cloth_1': (lambda: cloth('cloth_1'), None), 'cloth_2': (lambda: cloth('cloth_2'), None), 'cloth_3': (lambda: cloth('cloth_3'), None),
     'debris_1': (lambda: debris('debris_1'), None), 'debris_2': (lambda: debris('debris_2'), None), 'debris_3': (lambda: debris('debris_3', 0.5), None),
