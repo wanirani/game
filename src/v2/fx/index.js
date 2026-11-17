@@ -46,7 +46,7 @@ class Fx {
     this.feelOn = opts.feel !== false;                            // false 면 프리셋이 손맛(멈춤·흔들림·번쩍임)을 내지 않는다
     this.protect = new Float32Array(16); this.protMin = 0.4;      // 가리면 안 되는 자리 4곳 (x,y,z,반지름)
     this.chain = new Float32Array(12); this.chainN = 0;            // 연쇄 번개 표적 (최대 4)
-    this.dtIn = 0.5; this.dt = 0.5; this.profile = !!opts.profile;   // profile: update/draw 의 JS 시간을 잰다 (performance.now 가 숫자 상자를 만든다 → 평소엔 끔)
+    this.dtIn = 0.5; this.dt = 0.5; this.profile = !!opts.profile;   // profile: fx.stats 를 채우고 update/draw 의 JS 시간을 잰다 (숫자 상자가 생긴다 → 평소엔 끔)
     this.last = -1;                                                // 마지막 프리셋이 만든 '따라다닐 것'의 손잡이 (보호막)
     this.gain = 0.5; this.gain = 1;                                                 // 밝기 조절기 (덧칠이 많으면 더하기 색을 낮춘다)
     this.cam = { vp: new Float32Array(16), eye: new Float32Array(3), right: new Float32Array([1, 0, 0]), up: new Float32Array([0, 1, 0]), fwd: new Float32Array([0, 0, 1]) };
@@ -82,8 +82,7 @@ class Fx {
     const cov = this.particles.liveArea / REF_AREA, T = this.T;
     const over = Math.min(1, Math.max(0, (cov - T.coverSoft) / (T.coverHard - T.coverSoft)));
     this.particles.gov = 1 - over * 0.75; this.gain += ((1 - over * 0.45) - this.gain) * Math.min(1, realDt * 8); this.post.gain = this.gain;
-    const S = this.stats; S.coverage = cov; S.gain = this.gain; S.seqs = this.seqs.live; S.lights = this.lights.count; S.spawned = this.particles.spawned; S.dropped = this.particles.dropped;
-    if (prof) S.cpuUpdate = performance.now() - t0;
+    if (prof) { const S = this.stats; S.coverage = cov; S.gain = this.gain; S.seqs = this.seqs.live; S.lights = this.lights.count; S.spawned = this.particles.spawned; S.dropped = this.particles.dropped; S.cpuUpdate = performance.now() - t0; }   // 통계는 profile 일 때만 (평소 경로에는 숫자 쓰기도 없다)
   }
   /** 효과를 그린다 (불투명 장면·캐릭터 뒤에). cam = { vp: Float32Array(16) 열 우선 view·projection, eye, right, up, fwd: [x,y,z] } */
   draw(cam) {
@@ -96,10 +95,11 @@ class Fx {
     this.ribbons.draw(C);
     this.particles.draw(C, this.protect);
     gl.bindVertexArray(null); gl.depthMask(true); gl.activeTexture(gl.TEXTURE0);
+    if (!prof) return;
     const S = this.stats;
     S.draws = this.quads.draws + this.meshes.draws + this.ribbons.draws + this.particles.draws;
     S.particles = this.particles.drawn; S.quads = this.quads.live; S.ribbons = this.ribbons.live; S.ribbonVerts = this.ribbons.nv; S.meshes = this.meshes.live; S.meshTris = this.meshes.tris; S.postPasses = this.post.passes;
-    if (prof) S.cpuDraw = performance.now() - t0;
+    S.cpuDraw = performance.now() - t0;
   }
   // ── 사건 ──
   /** 이름으로 효과를 낸다. o = { x, y, z, dx, dz, pow, tx, ty, tz } (없는 값은 기본값). 편한 쪽 — 호출마다 작은 객체 1개 */

@@ -257,7 +257,7 @@ window.addEventListener('resize', resize);
 const api = window.__fx = {
   fx, fire, startDemo, frame, view, cam, D, presets: PRESET_LIST.map((p) => ({ name: p.name, group: p.group, ko: p.ko, args: p.args, sfx: p.sfx, feel: p.feel })), sfxSeen, manual: false, small: false, texReady: false, alt: false, pk: 0,
   get demoName() { return demo.name; },
-  reset(tier) { if (tier) { fx.setTier(tier); tierEl.value = tier; } fx.clear(); fx.time = 0; for (const d of D) { d.deadT = -9; d.hitT = -9; d.off = 0; } demo.name = ''; showAll = false; sw.on = false; },
+  reset(tier) { if (tier) { fx.setTier(tier); tierEl.value = tier; } fx.clear(); for (const d of D) { d.deadT = -9; d.hitT = -9; d.off = 0; } demo.name = ''; showAll = false; sw.on = false; },
   /** dt 씩 n 프레임 (동기) */
   steps(n, dt, render = true) { resize(); for (let i = 0; i < n; i++) frame(dt, render); },
   /** 프리셋 하나의 비용: 혼자 쏘고 끝날 때까지 돌려 최댓값을 잰다 */
@@ -296,7 +296,7 @@ const api = window.__fx = {
     const mem = !!performance.memory; if (window.gc) window.gc();   // performance.memory 는 읽을 때마다 새로 재야 한다 (객체를 잡아 두면 옛 값)
     const a = mem ? performance.memory.usedJSHeapSize : 0, t0 = performance.now();
     fx.profile = false;
-    if (mode === 'control') { const keep = []; for (let i = 0; i < n; i++) { frame(1 / 60); keep.push(new Float64Array(16)); } api._keep = keep; }   // 대조: 프레임마다 일부러 128바이트 + 를 잡는다
+    if (mode === 'control') { const keep = []; fx.dtIn = 1 / 60; for (let i = 0; i < n; i++) { fx.tick(); fx.draw(cam); keep.push(new Float64Array(16)); } api._keep = keep; }   // 대조: 프레임마다 일부러 128바이트 + 를 잡는다
     else if (mode === 'fxonly') { fx.dtIn = 1 / 60; for (let i = 0; i < n; i++) { fx.tick(); heavyStep(1 / 60); fx.draw(cam); } }
     else if (mode === 'fxidle') { fx.dtIn = 1 / 60; for (let i = 0; i < n; i++) { fx.tick(); fx.draw(cam); } }
     else for (let i = 0; i < n; i++) frame(1 / 60);
@@ -318,12 +318,17 @@ const api = window.__fx = {
   },
   /** 할당을 조각별로: 이름 붙은 조각을 n 번 돌린 앞뒤의 힙 차이 (어디서 새는지 찾는 용도) */
   probe(n) {
-    api.reset('mid'); startDemo('heavy'); resize(); for (let i = 0; i < 2400; i++) frame(1 / 60); fx.profile = false;
+    api.reset('mid'); startDemo('heavy'); resize(); for (let i = 0; i < 1500; i++) frame(1 / 60); fx.profile = false; fx.dtIn = 1 / 60;
     const P = {
       'performance.now ×2': () => { const a = performance.now(); return performance.now() - a; },
-      'feel.update': () => fx.feel.update(1 / 60),
-      'fx.tick (새 효과 없음)': () => { fx.dtIn = 1 / 60; fx.tick(); },
-      'heavyStep + fx.tick': () => { heavyStep(1 / 60); fx.dtIn = 1 / 60; fx.tick(); },
+      'feel.step': () => { fx.feel.step(); },
+      'particles.update': () => { fx.particles.update(); },
+      'quads.update': () => { fx.quads.update(); },
+      'ribbons.update': () => { fx.ribbons.update(); },
+      'meshes.update': () => { fx.meshes.update(); },
+      'fx.tick + fx.draw': () => { fx.tick(); fx.draw(cam); },
+      'fx.tick (새 효과 없음)': () => { fx.tick(); },
+      'heavyStep + fx.tick': () => { heavyStep(1 / 60); fx.tick(); },
       'fx.draw': () => fx.draw(cam),
       'camera()': () => camera(),
       'drawScene': () => drawScene(),

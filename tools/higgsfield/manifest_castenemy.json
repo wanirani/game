@@ -359,7 +359,92 @@
    "credits": 8,
    "kept": true,
    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143727_ca0d324f-ee08-4f54-95c8-cfbfca14a4c0.glb"
+  },
+  {
+   "id": "banshee",
+   "file": "raw/banshee_rig_125.glb",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 2.7,
+    "enable_animation": true,
+    "animation_action_id": 125,
+    "animation": "Charged_Spell_Cast"
+   },
+   "ref": "banshee_hd_oriented.glb media bffa83c3",
+   "job_id": "667c45aa-1524-4813-b6ea-17bcec03bafe",
+   "credits": 8,
+   "kept": true,
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144147_667c45aa-1524-4813-b6ea-17bcec03bafe.glb"
+  },
+  {
+   "id": "banshee",
+   "file": "raw/banshee_rig_130.glb",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 2.7,
+    "enable_animation": true,
+    "animation_action_id": 130,
+    "animation": "mage_soell_cast_1"
+   },
+   "ref": "banshee_hd_oriented.glb media bffa83c3",
+   "job_id": "9e4b6a79-76f4-404f-b608-1ff55fc533ea",
+   "credits": 8,
+   "kept": true,
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144149_9e4b6a79-76f4-404f-b608-1ff55fc533ea.glb"
+  },
+  {
+   "id": "banshee",
+   "file": "raw/banshee_rig_391.glb",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 2.7,
+    "enable_animation": true,
+    "animation_action_id": 391,
+    "animation": "Head_Hold_in_Pain"
+   },
+   "ref": "banshee_hd_oriented.glb media bffa83c3",
+   "job_id": "05ad6c8e-c55d-4501-a344-2d2beb8a8073",
+   "credits": 8
+  },
+  {
+   "id": "w_sword",
+   "file": "raw/img_w_sword.png",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "medium"
+   },
+   "prompt": "rusty arming sword, vertical, front",
+   "job_id": "cba366c6-bde0-45fe-bd8e-c08d9361b1ee",
+   "credits": 0.5
+  },
+  {
+   "id": "w_staff",
+   "file": "raw/img_w_staff.png",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "medium"
+   },
+   "prompt": "necromancer staff with violet crystal, vertical, front",
+   "job_id": "4172fa42-2f37-4f7d-ad08-dfb3f9c0514c",
+   "credits": 0.5
+  },
+  {
+   "id": "w_spade",
+   "file": "raw/img_w_spade.png",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "medium"
+   },
+   "prompt": "giant grave-keeper war spade, vertical, front",
+   "job_id": "091dd2e6-2e1b-4179-bbf8-45a2c0fe5bc2",
+   "credits": 0.5
   }
  ],
- "total_credits": 137
+ "total_credits": 162.5
 }
