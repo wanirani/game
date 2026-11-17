@@ -21,6 +21,7 @@ const VPS = opt('--vp', 'fold_open,phone2').split(',');
 const SHOTS = opt('--shots', null);
 const JSON_OUT = opt('--json', null);
 const NO_PLAY = argv.includes('--no-play');
+const B_LAYER = argv.includes('--b-layer');
 const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const GL_ARGS = ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'];
 const IGNORE = /Failed to load resource|ERR_CERT|ERR_INTERNET_DISCONNECTED|fonts\.g/;
@@ -237,7 +238,7 @@ for (const id of PROTOS) {
       ok(R.depth[0] > 0 && R.depth[20] > 0 && R.depth[80] === 0, `깊이 판정: Δz 0·20 맞음, 80 빗나감`);
       // ── 4) 처음부터 끝까지 (터치 스틱 + 공격 단추) ──
       if (!NO_PLAY) {
-        await page.evaluate((id) => { window.__ref.restart(); if (id === 'b') window.__v2.perfFinish?.(true); window.__qaStep(3, true); const r = window.__ref; r.wp = 0; r.wall = []; r.seen = []; r.deaths = 0; r.minHp = 100; r.it = 0; }, id);
+        await page.evaluate(([id, layer]) => { const process_blit = layer; window.__ref.restart(); if (id === 'b') { window.__v2.setLayer?.(process_blit); window.__v2.perfFinish?.(true); } window.__qaStep(3, true); const r = window.__ref; r.wp = 0; r.wall = []; r.seen = []; r.deaths = 0; r.minHp = 100; r.it = 0; }, [id, B_LAYER]);   // B: 기본은 blit(GL 그림을 게임 캔버스에 옮김 → 읽어 내기가 화면 전체를 끝낸다), --b-layer 면 DOM 층 방식
         let d = await page.evaluate(() => window.__ref.think());
         let atkOn = false; const T0 = Date.now(); let shotStreet = false, stuckKey = '', stuckN = 0;
         const MAXIT = 3200;
@@ -248,8 +249,9 @@ for (const id of PROTOS) {
           await pad.btn('jump', !!d.jump);
           d = await page.evaluate(() => window.__ref.iter());
           // 멈춤 감지: 100번(300틱 = 5초) 동안 영웅 자리가 그대로면 상태를 찍고 그만둔다
-          { const key = `${d.x},${d.z},${d.y},${d.hp}`; if (key === stuckKey) stuckN++; else { stuckKey = key; stuckN = 0; }
-            if (stuckN >= 100 && d.sec !== 'done') {
+          { const key = `${Math.round(d.x / 90)},${Math.round(d.z / 90)},${d.n},${Math.round(d.hp)}`; if (key === stuckKey) stuckN++; else { stuckKey = key; stuckN = 0; }   // 90 px 칸 안에서 400번(20초) 맴돌면 멈춘 것
+            if (stuckN >= 400 && d.sec !== 'done') {
+              console.log('   [멈춤] 적: ' + JSON.stringify(await page.evaluate(() => window.__v2.enemies.map((e) => ({ k: e.kind, x: Math.round(e.x), y: Math.round(e.y), z: Math.round(e.z), hp: e.hp, st: e.state, aw: e.awake ?? e.active, yard: e.yard ?? e.group })))));
               R.stuck = await page.evaluate((id) => { const g = window.__game, v = window.__v2, sc = v.scene, i = g.input, T = i._touchVec, h = window.__ref.heroRaw(), sim = sc.sim || sc.play;
                 const pick = (o, ks) => Object.fromEntries(ks.filter((k) => o && o[k] !== undefined).map((k) => [k, typeof o[k] === 'number' ? +o[k].toFixed(3) : (typeof o[k] === 'object' ? (o[k] && (o[k].id || o[k].name || 'obj')) : o[k])]));
                 return { hero: pick(h, ['x', 'y', 'z', 'vx', 'vy', 'vz', 'hp', 'onGround', 'state', 'st', 'anim', 'dead', 'hurtT', 'dashT', 'dashCd', 'move', 'moveT', 'ifr', 'coyote', 'combo', 'queued']), sim: pick(sim, ['stop', 'time', 'done', 'section', 'deaths', 'hitstop', 'freeze']), fade: g.fade && pick(g.fade, ['a', 'dir', 'speed']), scenes: g.scenes.map((s) => s.constructor.name), mode: i.mode, T: [T.x, T.y, T.mag], ax: [i.axisX, i.axisY], an: [i.analogX, i.analogY], paused: sc.paused, ready: sc.ready, lost: sc.glr?.lost, frame: g.frame }; }, id);
