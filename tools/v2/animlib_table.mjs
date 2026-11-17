@@ -17,7 +17,7 @@ for (const g of GROUPS) {
   b += `\n**${GROUP_KO[g]}**\n\n| 이름 | 원본 (번호) | 고른 까닭 | 버린 후보 |\n|---|---|---|---|\n`;
   for (const c of rows) {
     const m = by.get(c.n), ev = m.ev.map((e) => `${EV[e[1]] ?? e[1]} ${e[0]}`).join(' · ') || '—';
-    const src = `${m.src} (${m.id})${m.rev ? ' 거꾸로' : ''}${m.mir ? ' 거울상' : ''}${c.own ? ' ★' : ''}`;
+    const src = `${m.src} (${m.id})${m.rev ? ' 거꾸로' : ''}${m.mir ? ' 거울상' : ''}${c.own ? ' ★' : ''}${c.gift ? ' ☆' : ''}`;
     a += `| \`${m.n}\` | ${c.use} | ${src} | ${m.loop ? '순환' : '한 번'} | ${m.dur.toFixed(2)}초 | ×${m.speed} | ${ev} | ${m.travel ? `앞 ${m.travel[1]} · 옆 ${m.travel[0]}` : '—'} |\n`;
     b += `| \`${m.n}\` | ${src} · ${m.cut[0]}–${m.cut[1]}초 | ${c.why} | ${c.rej} |\n`;
   }

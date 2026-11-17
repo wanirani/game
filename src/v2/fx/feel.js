@@ -116,8 +116,8 @@ export function dissolveK(age, dur = 0.9) { const k = age / dur; return k <= 0 ?
 
 /** 캐릭터 셰이더에 붙이는 분해 조각 (ES 1.00 · 3.00 공용; 잡음 텍스처는 fx.tex.noise). docs/v2/FX.md §3.5 */
 export const FX_DISSOLVE_GLSL = `
-uniform sampler2D uFxNoise; uniform vec4 uFxDis;   // (분해 0..1, 가장자리 폭, 잡음 배율, 씨앗)
-// 돌려주는 값: 가장자리 빛 세기(0..1). 사라질 픽셀이면 -1 → 호출한 쪽이 discard
+uniform sampler2D uFxNoise; uniform vec4 uFxDis;   // (dissolve 0..1, edge width, noise scale, seed)
+// returns edge glow 0..1; -1 when the pixel is gone (caller discards)
 float fxDissolve(vec3 wp) {
   if (uFxDis.x <= 0.0) return 0.0;
   float n = TEX(uFxNoise, wp.xy * uFxDis.z + vec2(wp.z * uFxDis.z, uFxDis.w)).r * 0.75 + TEX(uFxNoise, wp.xy * uFxDis.z * 3.1).b * 0.25;

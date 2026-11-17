@@ -1,0 +1,927 @@
+{
+ "batch": "castpeople (v2 첫 출시의 말하는 사람들 — 3D 모델 · 흉상) 2026-11-17",
+ "server": "059c3459-8a16-4f9a-84d0-008cf204d39d (Higgsfield MCP)",
+ "cap_credits": 300,
+ "credits": 224.25,
+ "credits_by_model": {
+  "gpt_image_2_5": 10.25,
+  "tripo_h3_1_image_to_3d": 126,
+  "meshy_rigging": 88
+ },
+ "jobs_count": 51,
+ "billing_check": {
+  "checked_at_utc": "2026-11-17 15:12",
+  "method": "계정 거래 내역(transactions 160건, 15:07:09 → 11:37)을 받아 내 작업 51건을 결과 주소의 시각(hf_20261117_HHMMSS)과 금액으로 하나씩 맞춰 봄 (거래 내역에는 작업 번호가 없다)",
+  "matched": 51,
+  "unmatched": 0,
+  "sum_transactions": 224.25,
+  "sum_ledger": 224.25,
+  "by_model": {
+   "GPT Image 2.5 (그림 27장)": 10.25,
+   "Tripo H3.1 (모델 13개: 표준 9 × 10 + 상세 18 × 2)": 126,
+   "3D Rigging + 클립 1개 (8 × 11)": 88
+  },
+  "refunds_mine": 0,
+  "note": "같은 시간대의 다른 거래(리깅 연속 구매, 14:26–14:29 의 그림 · 모델, 환불 2건)는 다른 묶음(animlib · castenemy)의 것이다. 14:46:59 거래는 결과 주소 시각 144658 과 1초 어긋나지만 금액 · 순서가 맞는 내 세라 표정 그림이다."
+ },
+ "uploads": {
+  "KAEL_APOSE": "4d830e27-c0e1-45ca-8d48-02a32f411e30 (tools/v2/char3d_samples/kael3_apose_front.webp)",
+  "SERA_SIDE": "5a386f34-67b3-4565-8b97-ad4c88afe007 (시범 줄 세우기의 세라 측면)",
+  "KAEL_BUST": "c4db5e8f-79fb-4c7b-8319-5b2c4e960523 (카엘 ③ 흉상, 녹색 바탕)"
+ },
+ "prices_seen": {
+  "gpt_image_2_5 2k low": 0.5,
+  "gpt_image_2_5 2k medium (쓰지 않음)": 1,
+  "gpt_image_2_5 1k low": 0.25,
+  "tripo_h3_1 standard": 9,
+  "tripo_h3_1 texture detailed (쓰지 않음)": 12,
+  "tripo_h3_1 texture+geometry detailed": 18,
+  "meshy_rigging + clip 1": 8
+ },
+ "prompt_common_design": "Character model reference sheet for a 3D game character. CHARACTER: <인물마다 다름 — 나이 · 체형 · 얼굴 · 머리> OUTFIT (colour identity: …): <옷 · 장비; 치마는 KNEE-LENGTH … both lower legs are fully visible and separate, 긴 겉옷은 OPEN at the front … ends at mid-calf> POSE AND FRAMING: one single full-body figure seen STRAIGHT FROM THE FRONT, standing upright and symmetrical in a neutral A-POSE for 3D rigging: both arms straight and stretched out to the sides, lowered about 35 degrees below horizontal, far away from the body with clear empty background between the arms and the torso; both hands are closed fists, nothing held; legs straight and clearly apart with a visible gap of background between the legs; feet flat, toes pointing forward; head upright facing the viewer. The whole body … inside the frame with a margin. STYLE: the same art finish as the reference character sheet - semi-realistic, high-fidelity CG character illustration with the polish of character art for a big-budget fantasy hunting-action game; realistic proportions; lifelike, attractive, likeable face; crisp believable hand-crafted materials with stitching, embroidery, tooling and wear; rich clear colours. Even flat soft front lighting, NO cast shadows, no floor shadow. Plain flat light grey background. No text, no labels, no border, no frame, no extra views, no props, no cape, no cloak. NOT anime, NOT cel-shaded, not a photograph of a real person. Use the reference image ONLY for the art finish, lighting, camera, pose and body scale - do NOT copy that man's face, hair or clothes.",
+ "prompt_common_portrait": "Bust portrait for a game dialogue box. Two reference images: the FIRST (a full-body character sheet on a grey background) shows the character to draw - keep exactly this person … The SECOND (a bust of a young man on a green background) shows ONLY the finish, framing, crop size, lighting and head angle to match - do not copy that man. Draw … as a bust: head, shoulders and upper chest, three-quarter view turned slightly toward the viewer's right, eyes looking at the viewer, arms down at the sides. EXPRESSION: neutral and calm, mouth closed … Semi-realistic, high-fidelity CG character illustration … NOT anime, NOT cel-shaded … Plain flat solid #00FF00 green background, no text, no border, no frame.  (표정 · 눈 색 고침은 \"Edit this bust portrait. Keep everything exactly the same … Change ONLY …\")",
+ "design_notes": {
+  "alberto": "75세로 보이는 노신부 · 흰 머리와 다듬은 흰 수염 · 둥근 철테 안경 · 검은 모자 / 앞이 트인 종아리 길이 검은 수단(바지와 장화가 보임) · 보라-은 영대 · 연대기 책 · 열쇠 · 종 모양 목걸이",
+  "elise": "13세 종지기 소녀 · 꿀빛 금발 두 갈래 땋은 머리 · 호박색 눈 · 주근깨 / 크림색 블라우스 · 촛불빛 노랑 조끼 · 무릎 길이 크림 치마 · 종 줄 손바닥 보호대 · 허리의 작은 놋종",
+  "lotte": "15세, 1697년의 종지기 · 밀빛 갈색 땋은 머리를 두건 아래 올림 · 호박색 눈 / 짙은 초록 조끼 · 적갈색 무릎 치마 · 짧은 앞치마 · 밧줄 허리띠와 백랍 종",
+  "sera": "시범 줄 세우기의 세라를 정면 A 자세로: 흰 베일과 금 머리테 · 은빛 금발 · 흰-금 전투 수녀복(앞이 트이고 무릎 위에서 끝나는 갈래 자락) · 상아빛 뿔 견갑 · 사파이어 누비 바지 · 금 정강이받이 흰 장화. 3차에서 얼굴만 실제 사람 비율로",
+  "marta": "45세 여관 안주인 · 통통하고 든든한 체형 · 적갈색 땋아 올린 머리 · 초록 눈 / 크림 블라우스 · 포도주빛 조끼 · 무릎 길이 숯빛 치마 · 검은 고양이 수 앞치마 · 줄무늬 양말 · 고양이 브로치",
+  "hadwin": "50세 대장장이 · 거구 · 민머리 · 흉터 · 고리로 묶은 회색 땋은 수염 / 사슬 조끼 · 불씨빛 가죽 앞치마(허리 아래는 두 갈래로 갈라 허벅지에 묶음) · 쇠 견갑 · 긴 가죽 토시",
+  "hadwin1": "1697년의 할아버지, 45세 · 같은 체형과 눈매 · 짙은 갈색 머리를 뒤로 묶음 · 놋고리로 묶은 짙은 수염 · 흉터 없음 / 삼베 셔츠 · 바랜 파란 목수건 · 검붉은 가죽 앞치마(두 갈래) · 큰 열쇠 꾸러미",
+  "edmund": "42세, 카엘의 고조할아버지 · 같은 밤색 머리(관자놀이가 셈) · 호박갈색 눈 · 짧은 수염 · 눈썹 흉터 / 진홍 용비늘 조끼 + 청록 허리띠(카엘의 색을 뒤집음) · 늑대 털 깃 · 송곳니 박힌 뼈 견갑 · 은 말뚝 띠 · 허리의 채찍",
+  "rook": "얼굴을 가린 떠돌이 상인 · 검은 두건 · 까마귀 부리 가죽 가면(호박색 유리 눈) · 짧은 깃털 어깨망토 / 허벅지 길이 검은 누비 겉옷(앞 트임) · 보라 목수건 · 주머니와 약병이 달린 띠",
+  "villager_m": "35세 평범한 마을 남자 · 납작 모자 / 색을 입히기 좋게 무채색: 삼베 셔츠 · 연회색 조끼 · 회갈색 바지 · 갈색 장화",
+  "villager_f": "30세 평범한 마을 여자 · 흰 두건 / 무채색: 삼베 블라우스 · 연회색 조끼 · 무릎 길이 회갈색 치마 · 흰 앞치마와 양말"
+ },
+ "jobs": [
+  {
+   "char": "alberto",
+   "step": "design_v1",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "ref": "KAEL_APOSE media 4d830e27",
+   "job_id": "c74db723-2c3d-43d0-a29c-07c8d00c3e7a",
+   "credits": 0.5,
+   "kept": true,
+   "file": "docs/v2/img/cast_design_alberto.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143015_c74db723-2c3d-43d0-a29c-07c8d00c3e7a.png"
+  },
+  {
+   "char": "elise",
+   "step": "design_v1",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "ref": "KAEL_APOSE media 4d830e27",
+   "job_id": "c781e5b3-d702-40c6-badb-853a28653a90",
+   "credits": 0.5,
+   "kept": true,
+   "file": "docs/v2/img/cast_design_elise.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143015_c781e5b3-d702-40c6-badb-853a28653a90.png"
+  },
+  {
+   "char": "lotte",
+   "step": "design_v1",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "ref": "KAEL_APOSE media 4d830e27",
+   "job_id": "ae61e2d1-2091-4bb3-9e3d-2746302b8c8f",
+   "credits": 0.5,
+   "kept": true,
+   "file": "docs/v2/img/cast_design_lotte.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143014_ae61e2d1-2091-4bb3-9e3d-2746302b8c8f.png"
+  },
+  {
+   "char": "sera",
+   "step": "design_v1",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "ref": "KAEL_APOSE media 4d830e27 + SERA_SIDE media 5a386f34",
+   "job_id": "739b76c9-2252-4849-8811-7034c1cc8f3d",
+   "credits": 0.5,
+   "kept": false,
+   "note": "세라 디자인 1차: 눈이 크고 인형 같다 → 3차(얼굴만 고침)를 씀",
+   "file": "버림",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143012_739b76c9-2252-4849-8811-7034c1cc8f3d.png"
+  },
+  {
+   "char": "marta",
+   "step": "design_v1",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "ref": "KAEL_APOSE media 4d830e27",
+   "job_id": "de49f384-626f-44b5-96b3-276c8170453b",
+   "credits": 0.5,
+   "kept": true,
+   "file": "docs/v2/img/cast_design_marta.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143015_de49f384-626f-44b5-96b3-276c8170453b.png"
+  },
+  {
+   "char": "hadwin",
+   "step": "design_v1",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "ref": "KAEL_APOSE media 4d830e27",
+   "job_id": "42c3edd1-b58d-4af7-a9e4-789281520295",
+   "credits": 0.5,
+   "kept": true,
+   "file": "docs/v2/img/cast_design_hadwin.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143014_42c3edd1-b58d-4af7-a9e4-789281520295.png"
+  },
+  {
+   "char": "edmund",
+   "step": "design_v1",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "ref": "KAEL_APOSE media 4d830e27",
+   "job_id": "7b923ef2-bf3c-4306-9d06-e027e0ac6d91",
+   "credits": 0.5,
+   "kept": true,
+   "file": "docs/v2/img/cast_design_edmund.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143014_7b923ef2-bf3c-4306-9d06-e027e0ac6d91.png"
+  },
+  {
+   "char": "rook",
+   "step": "design_v1",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "ref": "KAEL_APOSE media 4d830e27",
+   "job_id": "121b7631-66a9-47cf-8a55-3bd3a8cf5d74",
+   "credits": 0.5,
+   "kept": true,
+   "file": "docs/v2/img/cast_design_rook.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143012_121b7631-66a9-47cf-8a55-3bd3a8cf5d74.png"
+  },
+  {
+   "char": "villager_m",
+   "step": "design_v1",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "ref": "KAEL_APOSE media 4d830e27",
+   "job_id": "9314b78c-1931-4c0a-919a-5b2e4d8b98f9",
+   "credits": 0.5,
+   "kept": true,
+   "file": "docs/v2/img/cast_design_villager_m.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143013_9314b78c-1931-4c0a-919a-5b2e4d8b98f9.png"
+  },
+  {
+   "char": "villager_f",
+   "step": "design_v1",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "ref": "KAEL_APOSE media 4d830e27",
+   "job_id": "1712afb0-f941-4ebf-af63-6dda3db82c48",
+   "credits": 0.5,
+   "kept": true,
+   "file": "docs/v2/img/cast_design_villager_f.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143016_1712afb0-f941-4ebf-af63-6dda3db82c48.png"
+  },
+  {
+   "char": "edmund",
+   "step": "model_std",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 20000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "design job 7b923ef2",
+   "job_id": "58551977-3e49-43f0-b4f6-450fdcc3202f",
+   "credits": 9,
+   "kept": false,
+   "note": "에드문트 표준 모델 — 상세 모델과의 비교용. 얼굴이 매끈한 밀랍 같아 상세 쪽을 씀",
+   "file": "버림",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143223_58551977-3e49-43f0-b4f6-450fdcc3202f.glb"
+  },
+  {
+   "char": "edmund",
+   "step": "model_hd",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 20000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "detailed",
+    "geometry_quality": "detailed",
+    "texture_alignment": "original_image"
+   },
+   "ref": "design job 7b923ef2",
+   "job_id": "84d716dd-3bc5-469f-9b0a-ac6099ca85d1",
+   "credits": 18,
+   "kept": true,
+   "file": "(정지 모델 — 저장소에는 다시 싼 assets/v2/char3d/edmund.glb 만)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143226_84d716dd-3bc5-469f-9b0a-ac6099ca85d1.glb"
+  },
+  {
+   "char": "hadwin",
+   "step": "model_std",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 18000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "design job 42c3edd1",
+   "job_id": "5309266c-3ab2-4513-b126-f31de5387eb1",
+   "credits": 9,
+   "kept": true,
+   "file": "(정지 모델 — 저장소에는 다시 싼 assets/v2/char3d/hadwin.glb 만)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143228_5309266c-3ab2-4513-b126-f31de5387eb1.glb"
+  },
+  {
+   "char": "rook",
+   "step": "model_std",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 18000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "design job 121b7631",
+   "job_id": "e0c03348-1fe8-4a84-bd87-eae0c53d8390",
+   "credits": 9,
+   "kept": true,
+   "file": "(정지 모델 — 저장소에는 다시 싼 assets/v2/char3d/rook.glb 만)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143230_e0c03348-1fe8-4a84-bd87-eae0c53d8390.glb"
+  },
+  {
+   "char": "villager_m",
+   "step": "model_std",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 12000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "design job 9314b78c",
+   "job_id": "cd20d153-dc12-4315-a1cb-a6f242ae81ee",
+   "credits": 9,
+   "kept": true,
+   "file": "(정지 모델 — 저장소에는 다시 싼 assets/v2/char3d/villager_m.glb 만)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143233_cd20d153-dc12-4315-a1cb-a6f242ae81ee.glb"
+  },
+  {
+   "char": "elise",
+   "step": "model_std",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 16000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "design job c781e5b3",
+   "job_id": "69d27a25-4151-4b83-bfa8-10708a022fe3",
+   "credits": 9,
+   "kept": true,
+   "file": "(정지 모델 — 저장소에는 다시 싼 assets/v2/char3d/elise.glb 만)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143236_69d27a25-4151-4b83-bfa8-10708a022fe3.glb"
+  },
+  {
+   "char": "alberto",
+   "step": "model_std",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 18000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "design job c74db723",
+   "job_id": "ca15ff65-9ba3-4d47-88cc-8b716a5ad532",
+   "credits": 9,
+   "kept": true,
+   "file": "(정지 모델 — 저장소에는 다시 싼 assets/v2/char3d/alberto.glb 만)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143240_ca15ff65-9ba3-4d47-88cc-8b716a5ad532.glb"
+  },
+  {
+   "char": "alberto",
+   "step": "portrait_neutral",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "ref": "design job c74db723 + KAEL_BUST media c4db5e8f",
+   "job_id": "f53b4940-489b-480c-ac1a-4b442a97cc2c",
+   "credits": 0.25,
+   "kept": true,
+   "file": "assets/v2/portraits/alberto.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143346_f53b4940-489b-480c-ac1a-4b442a97cc2c.png"
+  },
+  {
+   "char": "elise",
+   "step": "portrait_neutral",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "ref": "design job c781e5b3 + KAEL_BUST media c4db5e8f",
+   "job_id": "fd9e1215-decb-4e39-a666-74e8f49049f7",
+   "credits": 0.25,
+   "kept": false,
+   "note": "엘리제 흉상 1차: 눈이 초록 → 호박색으로 고친 2차를 씀",
+   "file": "버림",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143349_fd9e1215-decb-4e39-a666-74e8f49049f7.png"
+  },
+  {
+   "char": "lotte",
+   "step": "portrait_neutral",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "ref": "design job ae61e2d1 + KAEL_BUST media c4db5e8f",
+   "job_id": "282787bf-717f-4dd9-b2b1-1775610a55e3",
+   "credits": 0.25,
+   "kept": false,
+   "note": "로테 흉상 1차: 눈이 초록 → 호박색으로 고친 2차를 씀",
+   "file": "버림",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143347_282787bf-717f-4dd9-b2b1-1775610a55e3.png"
+  },
+  {
+   "char": "marta",
+   "step": "portrait_neutral",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "ref": "design job de49f384 + KAEL_BUST media c4db5e8f",
+   "job_id": "80a10dfa-8b36-49eb-a1ec-14822d4d3324",
+   "credits": 0.25,
+   "kept": true,
+   "file": "assets/v2/portraits/marta.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143350_80a10dfa-8b36-49eb-a1ec-14822d4d3324.png"
+  },
+  {
+   "char": "hadwin",
+   "step": "portrait_neutral",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "ref": "design job 42c3edd1 + KAEL_BUST media c4db5e8f",
+   "job_id": "6bb08402-c1b8-4dc3-ac1d-bbe734d90601",
+   "credits": 0.25,
+   "kept": true,
+   "file": "assets/v2/portraits/hadwin.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143350_6bb08402-c1b8-4dc3-ac1d-bbe734d90601.png"
+  },
+  {
+   "char": "edmund",
+   "step": "portrait_neutral",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "ref": "design job 7b923ef2 + KAEL_BUST media c4db5e8f",
+   "job_id": "ac901d0b-2e61-4c97-a58c-2769230310a7",
+   "credits": 0.25,
+   "kept": false,
+   "note": "에드문트 흉상 1차: 눈이 회색 → 호박갈색으로 고친 2차를 씀",
+   "file": "버림",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143347_ac901d0b-2e61-4c97-a58c-2769230310a7.png"
+  },
+  {
+   "char": "rook",
+   "step": "portrait_neutral",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "ref": "design job 121b7631 + KAEL_BUST media c4db5e8f",
+   "job_id": "45c5b7d2-d242-4695-ba96-4b1caba9fe68",
+   "credits": 0.25,
+   "kept": true,
+   "file": "assets/v2/portraits/rook.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143348_45c5b7d2-d242-4695-ba96-4b1caba9fe68.png"
+  },
+  {
+   "char": "sera",
+   "step": "design_v2_face",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "ref": "design job 739b76c9 (edit: face only)",
+   "job_id": "2edffb81-0204-450f-96a4-b20f1f61b430",
+   "credits": 0.5,
+   "kept": false,
+   "note": "세라 디자인 2차: 얼굴이 실사에 가까워졌지만 서른 넘어 보인다 → 버림",
+   "file": "버림",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143349_2edffb81-0204-450f-96a4-b20f1f61b430.png"
+  },
+  {
+   "char": "elise",
+   "step": "rig+clip",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.48,
+    "enable_animation": true,
+    "animation_action_id": 303,
+    "animation": "Cheer_with_Both_Hands"
+   },
+   "ref": "elise_or.glb media 42e22193",
+   "job_id": "3beb53ff-5579-4155-a2da-4b107bd179c7",
+   "credits": 8,
+   "kept": true,
+   "file": "assets/v2/char3d/elise.glb",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143847_3beb53ff-5579-4155-a2da-4b107bd179c7.glb"
+  },
+  {
+   "char": "alberto",
+   "step": "rig+clip",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.72,
+    "enable_animation": true,
+    "animation_action_id": 365,
+    "animation": "Kneel_on_One_Knee_and_Stand"
+   },
+   "ref": "alberto_or.glb media c4731d3d",
+   "job_id": "fff16f5c-9b06-4a64-a2dd-003b64641e19",
+   "credits": 8,
+   "kept": true,
+   "file": "assets/v2/char3d/alberto.glb",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143849_fff16f5c-9b06-4a64-a2dd-003b64641e19.glb"
+  },
+  {
+   "char": "sera",
+   "step": "design_v3_face",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "ref": "design job 739b76c9 (edit: face only, keep young)",
+   "job_id": "6c696a8c-e25d-406b-81c3-88f77081a687",
+   "credits": 0.5,
+   "kept": true,
+   "file": "docs/v2/img/cast_design_sera.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143934_6c696a8c-e25d-406b-81c3-88f77081a687.png"
+  },
+  {
+   "char": "edmund",
+   "step": "rig+clip",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.86,
+    "enable_animation": true,
+    "animation_action_id": 33,
+    "animation": "Chair_Sit_Idle_M"
+   },
+   "ref": "edmund_hd_or.glb media 8ec49b6b",
+   "job_id": "fc858808-18ac-420a-ade8-29d79ba4752e",
+   "credits": 8,
+   "kept": true,
+   "file": "assets/v2/char3d/edmund.glb",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144200_fc858808-18ac-420a-ade8-29d79ba4752e.glb"
+  },
+  {
+   "char": "hadwin",
+   "step": "rig+clip",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.92,
+    "enable_animation": true,
+    "animation_action_id": 128,
+    "animation": "Heavy_Hammer_Swing"
+   },
+   "ref": "hadwin_or.glb media dc19bef3",
+   "job_id": "a77cc77b-59e2-4f26-b3e2-86553e9a5fc2",
+   "credits": 8,
+   "kept": true,
+   "file": "assets/v2/char3d/hadwin.glb",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144201_a77cc77b-59e2-4f26-b3e2-86553e9a5fc2.glb"
+  },
+  {
+   "char": "rook",
+   "step": "rig+clip",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.74,
+    "enable_animation": true,
+    "animation_action_id": 42,
+    "animation": "Gentlemans_Bow"
+   },
+   "ref": "rook_or.glb media 945284ea",
+   "job_id": "908e6b37-6996-48d6-9d3f-eb10d80a48fc",
+   "credits": 8,
+   "kept": true,
+   "file": "assets/v2/char3d/rook.glb",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144202_908e6b37-6996-48d6-9d3f-eb10d80a48fc.glb"
+  },
+  {
+   "char": "villager_m",
+   "step": "rig+clip",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.76,
+    "enable_animation": true,
+    "animation_action_id": 611,
+    "animation": "Carry_Heavy_Object_Walk_inplace"
+   },
+   "ref": "villager_m_or.glb media e6088b02",
+   "job_id": "83f01e1f-8990-417c-ad7d-a5639100b9ec",
+   "credits": 8,
+   "kept": true,
+   "file": "assets/v2/char3d/villager_m.glb",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144203_83f01e1f-8990-417c-ad7d-a5639100b9ec.glb"
+  },
+  {
+   "char": "sera",
+   "step": "model_hd",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 20000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "detailed",
+    "geometry_quality": "detailed",
+    "texture_alignment": "original_image"
+   },
+   "ref": "design job 6c696a8c (sera d3)",
+   "job_id": "5bf4ec9f-8849-4fda-b5d4-0746152e9ba2",
+   "credits": 18,
+   "kept": true,
+   "file": "(정지 모델 — 저장소에는 다시 싼 assets/v2/char3d/sera.glb 만)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144344_5bf4ec9f-8849-4fda-b5d4-0746152e9ba2.glb"
+  },
+  {
+   "char": "lotte",
+   "step": "model_std",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 16000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "design job ae61e2d1",
+   "job_id": "c6ed91fb-e64e-4a0b-9232-ca43cfda5bb6",
+   "credits": 9,
+   "kept": true,
+   "file": "(정지 모델 — 저장소에는 다시 싼 assets/v2/char3d/lotte.glb 만)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144348_c6ed91fb-e64e-4a0b-9232-ca43cfda5bb6.glb"
+  },
+  {
+   "char": "marta",
+   "step": "model_std",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 18000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "design job de49f384",
+   "job_id": "5f319e2d-0069-47c9-be5c-67daafba9eb0",
+   "credits": 9,
+   "kept": true,
+   "file": "(정지 모델 — 저장소에는 다시 싼 assets/v2/char3d/marta.glb 만)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144350_5f319e2d-0069-47c9-be5c-67daafba9eb0.glb"
+  },
+  {
+   "char": "villager_f",
+   "step": "model_std",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 12000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "design job 1712afb0",
+   "job_id": "37f94f40-bdea-4391-a210-376c008b8e72",
+   "credits": 9,
+   "kept": true,
+   "file": "(정지 모델 — 저장소에는 다시 싼 assets/v2/char3d/villager_f.glb 만)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144353_37f94f40-bdea-4391-a210-376c008b8e72.glb"
+  },
+  {
+   "char": "sera",
+   "step": "portrait_neutral",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "ref": "design job 6c696a8c + KAEL_BUST",
+   "job_id": "8da981d5-24de-401c-baa3-2d7082062057",
+   "credits": 0.25,
+   "kept": true,
+   "file": "assets/v2/portraits/sera.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144431_8da981d5-24de-401c-baa3-2d7082062057.png"
+  },
+  {
+   "char": "elise",
+   "step": "portrait_neutral_v2_eyes",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "ref": "edit of portrait job fd9e1215 (amber eyes)",
+   "job_id": "5ed258c1-8cea-4149-8713-6b351df4c7c1",
+   "credits": 0.25,
+   "kept": true,
+   "file": "assets/v2/portraits/elise.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144431_5ed258c1-8cea-4149-8713-6b351df4c7c1.png"
+  },
+  {
+   "char": "elise",
+   "step": "portrait_joy",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "ref": "edit of portrait job fd9e1215 (amber eyes + joyful)",
+   "job_id": "91beb702-0636-430a-b7f3-d8f05b7cb09c",
+   "credits": 0.25,
+   "kept": true,
+   "file": "assets/v2/portraits/elise__joy.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144431_91beb702-0636-430a-b7f3-d8f05b7cb09c.png"
+  },
+  {
+   "char": "lotte",
+   "step": "portrait_neutral_v2_eyes",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "ref": "edit of portrait job 282787bf (amber eyes)",
+   "job_id": "bef48d5c-f65c-4dd0-a24f-f7ac208e4ed1",
+   "credits": 0.25,
+   "kept": true,
+   "file": "assets/v2/portraits/lotte.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144430_bef48d5c-f65c-4dd0-a24f-f7ac208e4ed1.png"
+  },
+  {
+   "char": "edmund",
+   "step": "portrait_neutral_v2_eyes",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "ref": "edit of portrait job ac901d0b (amber-brown eyes)",
+   "job_id": "6fd3a0e0-0507-477e-a3dd-047166e4fab8",
+   "credits": 0.25,
+   "kept": true,
+   "file": "assets/v2/portraits/edmund.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144432_6fd3a0e0-0507-477e-a3dd-047166e4fab8.png"
+  },
+  {
+   "char": "edmund",
+   "step": "portrait_smile",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "ref": "edit of portrait job ac901d0b (amber-brown eyes + warm smile)",
+   "job_id": "d3156a72-e956-4e77-a4b3-5c792b856d63",
+   "credits": 0.25,
+   "kept": true,
+   "file": "assets/v2/portraits/edmund__smile.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144433_d3156a72-e956-4e77-a4b3-5c792b856d63.png"
+  },
+  {
+   "char": "sera",
+   "step": "portrait_resolve",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "ref": "edit of portrait job 8da981d5 (resolute)",
+   "job_id": "35316e6c-17eb-4dbc-9d94-24428aa39e9e",
+   "credits": 0.25,
+   "kept": true,
+   "file": "assets/v2/portraits/sera__resolve.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144658_35316e6c-17eb-4dbc-9d94-24428aa39e9e.png"
+  },
+  {
+   "char": "sera",
+   "step": "rig+clip",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.68,
+    "enable_animation": true,
+    "animation_action_id": 337,
+    "animation": "Torch_Look_Around"
+   },
+   "ref": "sera_or.glb media 005d1db1",
+   "job_id": "0e202041-eef7-4fa7-a968-4c46e6830a5d",
+   "credits": 8,
+   "kept": true,
+   "file": "assets/v2/char3d/sera.glb",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_145154_0e202041-eef7-4fa7-a968-4c46e6830a5d.glb"
+  },
+  {
+   "char": "lotte",
+   "step": "rig+clip",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.58,
+    "enable_animation": true,
+    "animation_action_id": 290,
+    "animation": "Wave_One_Hand"
+   },
+   "ref": "lotte_or.glb media 97a2e125",
+   "job_id": "d23f1fcd-efe8-434c-9a8e-f120e911e47d",
+   "credits": 8,
+   "kept": true,
+   "file": "assets/v2/char3d/lotte.glb",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_145155_d23f1fcd-efe8-434c-9a8e-f120e911e47d.glb"
+  },
+  {
+   "char": "marta",
+   "step": "rig+clip",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.62,
+    "enable_animation": true,
+    "animation_action_id": 309,
+    "animation": "Talk_with_Left_Hand_on_Hip"
+   },
+   "ref": "marta_or.glb media d2559050",
+   "job_id": "005278d1-7456-444c-97b4-427efe74f522",
+   "credits": 8,
+   "kept": true,
+   "file": "assets/v2/char3d/marta.glb",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_145157_005278d1-7456-444c-97b4-427efe74f522.glb"
+  },
+  {
+   "char": "villager_f",
+   "step": "rig+clip",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.64,
+    "enable_animation": true,
+    "animation_action_id": 613,
+    "animation": "Casual_Walk_inplace"
+   },
+   "ref": "villager_f_or.glb media aa73faf9",
+   "job_id": "515f6737-0f98-4d85-93cf-80bf55f3d183",
+   "credits": 8,
+   "kept": true,
+   "file": "assets/v2/char3d/villager_f.glb",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_145158_515f6737-0f98-4d85-93cf-80bf55f3d183.glb"
+  },
+  {
+   "char": "hadwin1",
+   "step": "design_v1",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "ref": "hadwin design job 42c3edd1 (grandfather, 1697)",
+   "job_id": "cd97655d-1d9c-4cca-91e8-0a6877311927",
+   "credits": 0.5,
+   "kept": true,
+   "file": "docs/v2/img/cast_design_hadwin1.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_145606_cd97655d-1d9c-4cca-91e8-0a6877311927.png"
+  },
+  {
+   "char": "hadwin1",
+   "step": "model_std",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 18000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "design job cd97655d",
+   "job_id": "396f0870-9c0d-499e-8343-ebb0fd09ab17",
+   "credits": 9,
+   "kept": true,
+   "file": "(정지 모델 — 저장소에는 다시 싼 assets/v2/char3d/hadwin1.glb 만)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_145729_396f0870-9c0d-499e-8343-ebb0fd09ab17.glb"
+  },
+  {
+   "char": "hadwin1",
+   "step": "portrait_neutral",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "ref": "design job cd97655d + KAEL_BUST",
+   "job_id": "9cd5de78-9ade-415b-9361-c625f88cc0b9",
+   "credits": 0.25,
+   "kept": true,
+   "file": "assets/v2/portraits/hadwin1.webp",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_145734_9cd5de78-9ade-415b-9361-c625f88cc0b9.png"
+  },
+  {
+   "char": "hadwin1",
+   "step": "rig+clip",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.9,
+    "enable_animation": true,
+    "animation_action_id": 313,
+    "animation": "Talk_with_Hands_Open"
+   },
+   "ref": "hadwin1_or.glb media 28feb9b1",
+   "job_id": "5018346a-9ccf-445f-91ad-2ba87be834a9",
+   "credits": 8,
+   "kept": true,
+   "file": "assets/v2/char3d/hadwin1.glb",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_150709_5018346a-9ccf-445f-91ad-2ba87be834a9.glb"
+  }
+ ]
+}

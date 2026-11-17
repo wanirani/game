@@ -6,6 +6,7 @@
 //   rev 거꾸로 · mir 좌우 거울상 · xz 'loop'|'auto'|'keep' (골반 수평 이동) · y 'keep'|'zero'|'clamp'|'detrend' · fps 저장 키 간격 · speed 권장 재생 배속
 //   kind 'loco'|'attack'|'cast'|'react'|'pull'|'story' (이벤트 찾는 방법) · hits 타격 수 · ev 손으로 적은 이벤트 [[초, 이름]] (자른 뒤의 시각)
 //   man {strike:[t0,t1], hit:t} 타격 구간을 손으로 정함 (자동으로 찾은 것이 틀릴 때)
+//   gift 다른 캐릭터를 리깅할 때 끼워 산 클립을 tools/v2/animlib_extract.mjs 로 꺼내 온 것 (그 캐릭터 파일 이름)
 //   use 쓰임 · why 고른 까닭 · rej 버린 후보
 export const RAW_DIR = '/tmp/claude-0/v2/animlib/raw', OWN_DIR = '/tmp/claude-0/v2/char3d/raw';
 export const GROUPS = ['locomotion', 'combat', 'reactions', 'magic', 'story', 'enemy'];
@@ -51,6 +52,7 @@ export const CLIPS = [
   { n: 'hit_heavy', g: 'reactions', id: 171, src: '171_Hit_Reaction_to_Waist', cut: [0.08, 1.5], xz: 'auto', fps: 30, speed: 1.25, kind: 'react', ev: [[0.08, 'hurt']], use: '강한 피격 — 배를 맞고 꺾임', why: '몸이 접혔다 펴지는 큰 반응이 1.6초 안에 끝난다', rej: 'Electrocution_Reaction(172) 감전, Shot_and_Blown_Back(182) 날아가 쓰러짐' },
   { n: 'stagger', g: 'reactions', id: 178, src: '178_Hit_Reaction', xz: 'auto', fps: 30, speed: 1.2, kind: 'react', ev: [[0.02, 'hurt']], use: '비틀거림 — 가드가 깨졌을 때 · 튕겨내기에 당한 적', why: '옆으로 1 m 쯤 비틀거리며 팔이 풀린다', rej: 'Hit_in_Back_While_Running(416) 달리다 맞음, Stumble_Walk(562) 걷기' },
   { n: 'stagger_r', g: 'reactions', id: 178, src: '178_Hit_Reaction', mir: true, xz: 'auto', fps: 30, speed: 1.2, kind: 'react', ev: [[0.02, 'hurt']], use: '비틀거림 (반대쪽) — stagger 의 좌우 거울상', why: '거울상은 값이 들지 않는다. 맞은 쪽에 따라 골라 쓴다', rej: '—' },
+  { n: 'stun', g: 'reactions', id: 391, src: '391_Head_Hold_in_Pain', gift: 'banshee_queen.glb', xz: 'keep', fps: 24, speed: 1, kind: 'react', ev: [[0.1, 'hurt']], use: '귀 막기 · 어지럼 — 종소리에 움찔하는 적, 밴시의 노래에 당한 영웅', why: '머리를 감싸 쥐고 비틀거린다. 밴시 여왕을 리깅할 때 끼워 산 것을 꺼내 왔다(값 0)', rej: 'Electrocution_Reaction(172) 감전' },
   { n: 'launched', g: 'reactions', id: 7, src: '7_BeHit_FlyUp', cut: [0, 1.15], xz: 'auto', fps: 30, speed: 1, kind: 'react', ev: [[0.02, 'hurt']], use: '띄워짐 — 올려치기에 맞고 떠올랐다 등으로 떨어짐', why: '1.5초, 높이 떴다 떨어진다. 끝 자세가 getup 의 첫 자세(누움)와 맞는다', rej: 'Shot_and_Blown_Back(182) 뒤로 날아감' },
   { n: 'knockdown', g: 'reactions', id: 187, src: 'kael_rigged_knockdown', own: true, xz: 'auto', fps: 30, speed: 1.3, kind: 'react', ev: [[0.02, 'hurt']], use: '쓰러짐 — 영웅이 쓰러질 때', why: '시범 때 산 것', rej: 'Knock_Down_1(190) 3.2초' },
   { n: 'getup', g: 'reactions', id: 3, src: '3_Arise', xz: 'auto', fps: 30, speed: 1.2, kind: 'react', use: '일어나기 (등으로 누운 데서 → 준비 자세)', why: '1.8초, 누운 자세에서 바로 싸울 자세로 선다', rej: 'Stand_Up1–10(344–353): 3–11초이거나 엎드린 데서 시작 (347 은 적 전용 rise 로 삼)' },
@@ -64,6 +66,8 @@ export const CLIPS = [
   { n: 'cast_big', g: 'magic', id: 125, src: '125_Charged_Spell_Cast', cut: [0.08, 2.5], xz: 'keep', fps: 30, speed: 1.15, kind: 'cast', hits: 2, use: '큰 주문 — 웅크려 모았다가 두 손을 하늘로 (조종 · 세라의 큰 등불)', why: '모으기(0.6초)와 터뜨리기(1.7초)가 뚜렷이 나뉘어 효과 · 소리를 두 번 얹기 좋다', rej: 'Charged_Ground_Slam(127) 땅 찍기, Skill_01–03(17–19) 무술 동작' },
   { n: 'cast_raise', g: 'magic', id: 129, src: '129_mage_soell_cast', cut: [0.1, 1.9], xz: 'keep', fps: 30, speed: 1.15, kind: 'cast', use: '들어 올리기 — 한 손을 높이 듦 (부름 · 소환 · 종 조각을 들어 메아리)', why: '오른손을 머리 위로 올려 멈춘다. 부르는 신호로 읽힌다', rej: 'Arise(3) 는 누운 데서 일어나는 것, Call_Gesture(29) 7.6초' },
   { n: 'point', g: 'magic', id: 136, src: '136_mage_soell_cast_7', cut: [0.2, 2.45], xz: 'keep', fps: 24, speed: 1.1, kind: 'cast', use: '가리키기 — 팔을 뻗어 지목 (명령 · 표적 지정 · 등불 비추기)', why: '팔을 앞으로 뻗어 1초쯤 유지한다', rej: 'baseball_pitching(393) 3.9초, Crouch_Charge_and_Throw(398) 7.4초, Over_Shoulder_Throw(421) 업어치기 — 던지기는 사지 않았다' },
+
+  { n: 'cast_sweep', g: 'magic', id: 130, src: '130_mage_soell_cast_1', gift: 'banshee_queen.glb', cut: [0.2, 2.7], xz: 'keep', fps: 30, speed: 1.15, kind: 'cast', hits: 2, use: '쓸어 뿌리기 — 몸을 틀며 팔을 크게 휘저음 (넓은 범위 주문 · 보스)', why: '밴시 여왕을 리깅할 때 끼워 산 것을 꺼내 왔다(값 0). 다른 주문보다 옆으로 넓게 움직인다', rej: '—' },
 
   // ───────── 이야기 · 세계 ─────────
   { n: 'talk1', g: 'story', id: 313, src: '313_Talk_with_Hands_Open', loop: true, xz: 'loop', fps: 15, kind: 'story', use: '말하기 1 — 두 손을 펴 보이며', why: '4초 순환, 손짓이 크지 않아 누구에게나 맞는다', rej: 'Talk_Passionately(308) 9.9초, Stand_Talking_Angry(311) 20초, Stand_and_Chat(56) 5.2초' },
@@ -80,9 +84,17 @@ export const CLIPS = [
   { n: 'look_around', g: 'story', id: 338, src: '338_Short_Breathe_and_Look_Around', loop: true, xz: 'loop', fps: 12, kind: 'story', use: '둘러보기 — 숨 고르며 좌우를 살핌 (서 있기의 변주)', why: '과장 없이 고개와 어깨만 움직인다. 7.8초 순환을 12fps 로 줄여 싣는다', rej: 'Long_Breathe_and_Look_Around(336) 10.9초, Look_Around_Dumbfounded(333) 우스꽝스러움, Torch_Look_Around(337) 9초 횃불(세라 등불용으로 다음에)' },
   { n: 'carry', g: 'story', id: 551, src: '551_Carry_Heavy_Object_Walk', cut: { loop: [1.7, 2.4], from: 0.5, to: 6.0 }, loop: true, xz: 'loop', fps: 24, kind: 'loco', use: '들고 걷기 — 두 팔로 무거운 것을 안고 (엘리제 · 관 · 상자)', why: '6.5초 가운데 걸음 한 주기만 순환으로 잘랐다', rej: 'Carry_Water_Bucket_Walk(552) 9초 · 한 손 양동이, Carry_Heavy_Cannon_Forward(550) 어깨에 멤' },
 
+  { n: 'talk3', g: 'story', id: 309, src: '309_Talk_with_Left_Hand_on_Hip', gift: 'marta.glb', loop: true, xz: 'loop', fps: 15, kind: 'story', use: '말하기 3 — 한 손을 허리에 얹고 (마르타 · 주막)', why: '마르타를 리깅할 때 끼워 산 것을 꺼내 왔다(값 0)', rej: '—' },
+  { n: 'wave', g: 'story', id: 290, src: '290_Wave_One_Hand', gift: 'lotte.glb', cut: [0.15, 3.7], xz: 'keep', fps: 15, kind: 'story', use: '손 흔들기 — 인사 · 부르기 (로테)', why: '로테를 리깅할 때 끼워 산 것을 꺼내 왔다(값 0)', rej: 'Big_Wave_Hello(28) · Wave_for_Help(291–296)' },
+  { n: 'bow', g: 'story', id: 42, src: '42_Gentlemans_Bow', gift: 'rook.glb', cut: [0.3, 5.7], xz: 'keep', fps: 15, speed: 1.2, kind: 'story', use: '절 — 허리 숙여 인사 (로크 · 배웅)', why: '로크를 리깅할 때 끼워 산 것을 꺼내 왔다(값 0)', rej: 'Formal_Bow(41) 7.7초' },
+  { n: 'sit_idle', g: 'story', id: 33, src: '33_Chair_Sit_Idle_M', gift: 'edmund.glb', cut: { loop: [3.0, 4.6], from: 2.4, to: 7.8 }, loop: true, xz: 'loop', fps: 12, kind: 'story', use: '앉아 있기 (순환) — 식탁 · 주막 (sit_down 다음에)', why: '에드문트를 리깅할 때 끼워 산 것을 꺼내 왔다(값 0). 10.7초 가운데 조용한 한 대목만 순환으로', rej: '—' },
+  { n: 'lantern_look', g: 'story', id: 337, src: '337_Torch_Look_Around', gift: 'sera.glb', loop: true, xz: 'loop', fps: 10, kind: 'story', use: '등불 들고 살피기 — 한 손에 빛을 들고 둘러봄 (세라의 등불대 · 어두운 방)', why: '세라를 리깅할 때 끼워 산 것을 꺼내 왔다(값 0). 9.3초 순환을 10fps 로 줄여 싣는다', rej: '—' },
+
   // ───────── 적 전용 ─────────
   { n: 'shamble', g: 'enemy', id: 113, src: '113_Mummy_Stagger', cut: { loop: [1.4, 2.1] }, loop: true, xz: 'loop', fps: 24, kind: 'loco', use: '어기적 걷기 — 역병 주검 (두 팔을 앞으로 든 채)', why: '팔을 든 실루엣이 위에서도 "주검"으로 읽힌다', rej: 'Monster_Walk(112) 뻣뻣하기만 함, Slow_Orc_Walk(119) 덩치 걸음(갑주용으로 다음에), Unsteady_Walk(123) 취한 걸음' },
   { n: 'limp', g: 'enemy', id: 557, src: '557_Limping_Walk_3', cut: { loop: [1.25, 1.65] }, loop: true, xz: 'loop', fps: 30, kind: 'loco', use: '절뚝이며 달리기 — 다친 적 · 빠른 주검 (1.3–1.6배속으로)', why: '절뚝 걸음 넷 가운데 가장 빠르고 팔을 크게 휘젓는다', rej: 'Limping_Walk(558) · _1(555) · _2(556) 느림, Injured_Walk(111) 8.7초' },
   { n: 'scream', g: 'enemy', id: 386, src: '386_Zombie_Scream', cut: [0.1, 2.6], xz: 'keep', fps: 24, speed: 1.15, kind: 'cast', ev: [[0.75, 'scream']], use: '포효 · 비명 — 몸을 웅크리며 내지름 (주검 · 밴시 · 등장 연출)', why: '2.8초, 웅크리는 순간이 뚜렷해 소리 · 화면 흔들림을 얹기 좋다', rej: 'Shouting_Angrily(51) 7.2초, Sword_Shout(101) 6.2초 칼을 듦, Chest_Pound_Taunt(88) 4.9초' },
   { n: 'rise', g: 'enemy', id: 347, src: '347_Stand_Up4', xz: 'auto', fps: 30, speed: 1, kind: 'react', use: '땅에서 일어남 — 엎드린 데서 기어 일어섬 (무덤에서 나오는 주검 · 해골)', why: '1.7초, 엎드린 자세에서 손으로 짚고 일어난다', rej: 'Stand_Up1(344) 8초, Stand_Up5(348) 11초, Crawl_and_Look_Back(340) 기어가기, Prone_Reach_Help(372) 17.8초' },
+  { n: 'brute_walk', g: 'enemy', id: 119, src: '119_Slow_Orc_Walk_inplace', gift: 'gravekeeper_armor.glb', cut: { loop: [2.5, 2.95] }, loop: true, xz: 'loop', fps: 20, kind: 'loco', use: '덩치 걸음 — 어깨를 벌리고 무겁게 (무덤지기 갑주 · 큰 적)', why: '무덤지기 갑주를 리깅할 때 끼워 산 것을 꺼내 왔다(값 0)', rej: '—' },
+  { n: 'ground_slam', g: 'enemy', id: 127, src: '127_Charged_Ground_Slam', gift: 'gravekeeper_armor.glb', cut: [0.1, 2.7], xz: 'auto', fps: 30, speed: 1.1, kind: 'attack', hand: 'both', ev: [[0.2, 'charge']], use: '땅 찍기 — 모았다가 두 손으로 바닥을 침 (충격파 · 갑주와 보스의 큰 기술)', why: '무덤지기 갑주를 리깅할 때 끼워 산 것을 꺼내 왔다(값 0)', rej: '—' },
 ];

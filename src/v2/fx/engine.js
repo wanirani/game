@@ -73,7 +73,7 @@ void main() {
   }
   vec4 col = mix(aC0, aC1, k); col.rgb *= 4.0;
   float a = col.a * min(1.0, k / max(aF.z, 0.0001)) * (1.0 - smoothstep(0.85, 1.0, k));
-  float dim = 1.0;   // 읽기 규칙: 영웅·예고 중인 적 앞을 지나는 큰 입자는 옅게
+  float dim = 1.0;   // readability rule: big particles in front of protected spots are dimmed
   for (int i = 0; i < 4; i++) {
     vec4 z = uProt[i];
     if (z.w > 0.0) {
@@ -390,13 +390,13 @@ precision mediump float;
 in vec2 vUV; in vec4 vCol; in vec2 vSt; uniform sampler2D uNoise; uniform vec2 uTG; out vec4 o;
 void main() {
   float u = vUV.x, v = vUV.y, e = 1.0 - abs(v * 2.0 - 1.0); vec3 rgb; float a;
-  if (vSt.x < 0.5) {            // 칼 궤적: 날 끝(v=1) 쪽이 밝고 뒤로 갈수록 스러진다
+  if (vSt.x < 0.5) {            // blade trail: bright at the tip (v=1), fades toward the tail
     float st = texture(uNoise, vec2(u * 1.3, v * 2.5)).g;
     a = pow(1.0 - u, 1.6) * (v * v * 0.95 + 0.12) * (0.65 + 0.7 * st) * smoothstep(0.0, 0.06, 1.0 - v) * smoothstep(0.0, 0.08, u + 0.05);
     rgb = vCol.rgb + vec3(1.0) * smoothstep(0.78, 0.98, v) * (1.0 - u) * 0.9;
-  } else if (vSt.x < 1.5) {     // 꼬리: 가운데가 밝은 띠
+  } else if (vSt.x < 1.5) {     // projectile tail: bright core band
     a = pow(1.0 - u, 1.4) * e * e; rgb = vCol.rgb + vec3(1.0) * smoothstep(0.6, 1.0, e) * (1.0 - u) * 0.6;
-  } else {                      // 번개: 흰 핵 + 색 후광
+  } else {                      // lightning: white core + coloured halo
     float core = smoothstep(0.5, 0.9, e); a = e * e * 0.7 + core; rgb = vCol.rgb * (e * e) + vec3(1.0) * core;
   }
   a *= vCol.a;

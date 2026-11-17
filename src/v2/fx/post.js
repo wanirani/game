@@ -12,7 +12,7 @@ void main() { vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2
 // 밝은 부분만 뽑으며 1/4 로 줄인다 (2×2 쌍선형 4번 = 4×4 상자)
 const FS_BRIGHT = `#version 300 es
 precision mediump float;
-in vec2 vUV; uniform sampler2D uTex; uniform vec4 uTP; out vec4 o;   // uTP = (텍셀 x, 텍셀 y, 문턱, 무릎)
+in vec2 vUV; uniform sampler2D uTex; uniform vec4 uTP; out vec4 o;   // uTP = (texel x, texel y, threshold, knee)
 void main() {
   vec3 c = texture(uTex, vUV + uTP.xy * vec2(-1.0, -1.0)).rgb + texture(uTex, vUV + uTP.xy * vec2(1.0, -1.0)).rgb + texture(uTex, vUV + uTP.xy * vec2(-1.0, 1.0)).rgb + texture(uTex, vUV + uTP.xy * vec2(1.0, 1.0)).rgb;
   c *= 0.25; float l = max(c.r, max(c.g, c.b)); float w = smoothstep(uTP.z, uTP.z + uTP.w, l);
@@ -36,7 +36,7 @@ void main() {
 const FS_COMP = `#version 300 es
 precision mediump float;
 in vec2 vUV; uniform sampler2D uScene; uniform sampler2D uBloom;
-uniform vec4 uK;      // (번짐 세기, 기본 비네트, 채도 빼기, 어둡게)
+uniform vec4 uK;      // (bloom gain, base vignette, desaturate, darken)
 uniform vec4 uFlash; uniform vec4 uVig; uniform vec4 uTP; out vec4 o;
 void main() {
   vec3 c = texture(uScene, vUV).rgb;
@@ -44,15 +44,15 @@ void main() {
 #ifdef TENT
   b += texture(uBloom, vUV + uTP.xy * vec2(1.0, -1.0)).rgb + texture(uBloom, vUV + uTP.xy * vec2(-1.0, 1.0)).rgb; b *= 0.5;
 #endif
-  c *= 1.0 - uK.w;                     // 필살기: 장면만 어둡게, 번짐은 그대로
+  c *= 1.0 - uK.w;                     // ultimate: darken the scene only, bloom stays
   c += b * (0.26 * uK.x);
-  vec3 x = max(c - 0.6, 0.0); c = c - x + x / (1.0 + x * 0.85);   // 밝은 쪽만 부드럽게 눌러 흰색으로 날아가지 않게
+  vec3 x = max(c - 0.6, 0.0); c = c - x + x / (1.0 + x * 0.85);   // soft-compress highlights only (no white-out)
   float l = dot(c, vec3(0.3, 0.59, 0.11)); c = mix(c, vec3(l) * vec3(0.92, 0.97, 1.08), uK.z);
   vec2 q = vUV - 0.5; float e = smoothstep(0.38, 0.98, length(q) * 1.28);
   c *= 1.0 - uK.y * e;
   c = mix(c, uVig.rgb, uVig.a * e);
   c = mix(c, uFlash.rgb, uFlash.a);
-  c += (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) / 255.0;   // 띠 방지
+  c += (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) / 255.0;   // anti-banding dither
   o = vec4(c, 1.0);
 }`;
 // 후처리가 꺼졌을 때의 덧칠 (알파 섞기)
