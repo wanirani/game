@@ -52,6 +52,7 @@ export class Renderer {
     this.nItems = 0;
     this.stats = { strips: 0, faces: 0, items: 0 };
     this.strip = 4; this.sideW = 3;
+    this.focus = null;                  // 영웅의 화면 자리 { x, y(발), h } — 앞쪽 소품을 반투명으로 할 때 쓴다
     this.t = 0;
     this._glow = this._makeGlow();
     this._fogBand = this._makeFogBand();
@@ -499,15 +500,23 @@ export class Renderer {
   _propDraw(ctx, cam, p) {
     const P = PROPS[p.kind]; if (!P || p.hideK >= 1) return;
     const img = this._prop(p.kind);
-    if (p.hideK > 0) { ctx.save(); ctx.globalAlpha = 1 - p.hideK; this._propBody(ctx, cam, p, P, img); ctx.restore(); return; }
-    this._propBody(ctx, cam, p, P, img);
+    // 화면 앞쪽(걷지 않는 갓길)의 소품이 영웅을 덮으면 반투명으로 (가림은 보이되 싸움이 가려지지 않게). 걷는 곳의 기둥은 그대로 가린다
+    const F = this.focus;
+    if (F && p.z < 0 && img) {
+      const s = cam.s(p.z), X = cam.px(p.x, s), w = img.width * P.k * p.scale * s, h = img.height * P.k * p.scale * s, Y = cam.py(p.y, p.z, s);
+      const on = Math.abs(X - F.x) < w * 0.5 + 26 && Y - h * P.ay < F.y && Y > F.y - F.h;
+      p.fade = (p.fade || 0) + ((on ? 1 : 0) - (p.fade || 0)) * 0.18;
+    }
+    const a = (1 - p.hideK) * (1 - 0.6 * (p.fade || 0));
+    if (a < 0.995) { ctx.save(); ctx.globalAlpha = a; this._propBody(ctx, cam, p, P, img, a); ctx.restore(); return; }
+    this._propBody(ctx, cam, p, P, img, 1);
   }
-  _propBody(ctx, cam, p, P, img) {
+  _propBody(ctx, cam, p, P, img, A) {
     const s = cam.s(p.z), X = cam.px(p.x, s), Y = cam.py(p.y, p.z, s);
     const k = P.k * p.scale * s;
     const w = (img ? img.width : 60) * k, h = (img ? img.height : 120) * k;
     if (X + w < 0 || X - w > cam.W || Y - h > cam.H + 40 || Y + h < -40) return;
-    if (!P.wall && p.kind !== 'banner') { ctx.globalAlpha = 0.5; ctx.drawImage(this._shadow, X - w * 0.42, Y - w * 0.13, w * 0.84, w * 0.26); ctx.globalAlpha = 1 - p.hideK; }
+    if (!P.wall && p.kind !== 'banner') { ctx.globalAlpha = 0.5 * A; ctx.drawImage(this._shadow, X - w * 0.42, Y - w * 0.13, w * 0.84, w * 0.26); ctx.globalAlpha = A; }
     if (img) {
       if (p.flip) { ctx.save(); ctx.translate(X, 0); ctx.scale(-1, 1); ctx.drawImage(img, -w / 2, Y - h * P.ay, w, h); ctx.restore(); }
       else ctx.drawImage(img, X - w / 2, Y - h * P.ay, w, h);
@@ -516,9 +525,9 @@ export class Renderer {
     if (p.light && P.glow) {
       const fl = 0.86 + 0.14 * Math.sin(this.t * 11 + p.x * 0.7) * (p.kind === 'lamp' ? 0.25 : 1);
       const gx = X, gyy = Y - h * P.ay + h * (1 - P.glow), r = 96 * s * fl;
-      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.75 * (1 - fk * 0.6) * (1 - p.hideK);
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.75 * (1 - fk * 0.6) * A;
       ctx.drawImage(this._tinted(p.light), gx - r, gyy - r, r * 2, r * 2);
-      ctx.globalAlpha = 1 - p.hideK; ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = A; ctx.globalCompositeOperation = 'source-over';
     }
   }
   /** 안개 판: 깊이 z 에서 통로를 가로지르는 반투명 판 → 그보다 먼 것(캐릭터 포함)이 흐려진다 */
@@ -533,6 +542,22 @@ export class Renderer {
     ctx.globalAlpha = 0.26;
     ctx.drawImage(this._fogBand, 0, 0, 4, 64, X0, Y - hh, X1 - X0, hh);
     ctx.globalAlpha = 1;
+  }
+  /** 공기 중의 불티: 카메라 둘레 상자(가로 1400 × 깊이 1150)에 세계 좌표로 떠 있다 → 걸으면 깊이마다 다른 속도로 흘러간다(시차) */
+  air(ctx, cam) {
+    const E = this._embers || (this._embers = Array.from({ length: 26 }, (_, i) => ({ ox: hash(i) * 1400, oz: hash(i + 50) * 1150, y: hash(i + 99) * 320, ph: hash(i + 7) * 6.283, sp: 12 + hash(i + 3) * 26, r: 1.1 + hash(i + 11) * 1.6 })));
+    const img = this._tinted('#ff8a3a'), t = this.t, mod = (a, n) => ((a % n) + n) % n;
+    ctx.globalCompositeOperation = 'lighter';
+    for (const e of E) {
+      const z = cam.z - 250 + mod(e.oz - cam.z, 1150);
+      if (z <= cam.zNear + 10) continue;
+      const x = cam.x - 700 + mod(e.ox - cam.x, 1400) + Math.sin(t * 0.8 + e.ph) * 14, y = cam.y + 10 + mod(e.y + t * e.sp, 320);
+      const s = cam.s(z), X = cam.px(x, s), Y = cam.py(y, z, s), r = e.r * s * 3;
+      if (X < -r || X > cam.W + r || Y < -r || Y > cam.H + r) continue;
+      ctx.globalAlpha = (0.4 + 0.3 * Math.sin(t * 3 + e.ph * 3)) * (1 - this.fogK(z - cam.z) * 0.7);
+      ctx.drawImage(img, X - r, Y - r, r * 2, r * 2);
+    }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   }
   /** 땅 그림자: 발밑 땅(ground)에 떨어진다. alt = 땅에서 떠 있는 높이 → 작고 옅어진다 */
   shadow(ctx, cam, x, z, ground, alt, r) {

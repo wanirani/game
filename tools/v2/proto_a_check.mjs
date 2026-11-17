@@ -10,7 +10,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openEnv } from '../qa/lib/server.mjs';
-import { freeze } from '../qa/lib/step.mjs';
+import { freeze, unfreeze } from '../qa/lib/step.mjs';
+import { Touch, stickHold, pressButton, padLayout, padVisible, ensureTouchMode } from '../qa/lib/touch.mjs';
 import { buildSlice0 } from '../../src/v2/a/stage.js';
 
 const args = process.argv.slice(2);
@@ -105,10 +106,61 @@ try {
       ok(shape.id === 'a' && shape.hero && shape.e0 && shape.cam && shape.fm && shape.tp, `__v2 API 모양 (id·hero·enemies ${shape.en}·cam·stats.frameMs·teleport)`);
       ok(shape.sec === 'street', `시작 구간 = street (화면 ${shape.vw}×${shape.vh})`);
       ok(shape.val === 0, '브라우저 안 stage.validate 오류 0');
+      // 진짜 터치(CDP) → 가상 패드 → 영웅, 실시간 루프에서: 스틱(대각선 = x 와 z 함께) · 공격 · 점프 · 대시 · 일시정지 · 단추 탭
+      {
+        const t = new Touch(s.cdp, page);
+        await ensureTouchMode(t, page);
+        await page.waitForTimeout(350);
+        const pv = await padVisible(page), ids = Object.keys((await padLayout(page)).buttons);
+        ok(pv.visible && ['attack', 'jump', 'dash', 'pause'].every((id) => ids.includes(id)) && !ids.includes('skill1') && !ids.includes('ult'), `가상 패드: 동작 단추는 공격·점프·대시만 + 시스템 단추 (${ids.join(',')})`);
+        await page.evaluate(() => { for (const e of window.__v2.scene.play.enemies) if (e.group !== 'yard') { e.x = 1000; e.z = 60; e.awake = false; } });
+        const h0 = await page.evaluate(() => window.__v2.hero);
+        await stickHold(t, page, 46, -46, 800);
+        const h1 = await page.evaluate(() => window.__v2.hero);
+        ok(h1.x - h0.x > 80 && h1.z - h0.z > 50, `스틱 ↗ → 오른쪽 +${(h1.x - h0.x) | 0}, 화면 안쪽 +${(h1.z - h0.z) | 0}`);
+        const seen = new Set();
+        const poll = async (ms) => { const t1 = Date.now(); while (Date.now() - t1 < ms) { seen.add(await page.evaluate(() => { const h = window.__v2.scene.play.hero; return h.state === 'free' && !h.onGround ? 'air' : h.state; })); await page.waitForTimeout(16); } };
+        pressButton(t, page, 'attack', 120).catch(() => {}); await poll(500);
+        pressButton(t, page, 'jump', 120).catch(() => {}); await poll(700);
+        pressButton(t, page, 'dash', 120).catch(() => {}); await poll(500);
+        ok(seen.has('attack') && seen.has('air') && seen.has('dash'), `단추 → 공격·점프·대시 (${[...seen].join(',')})`);
+        await pressButton(t, page, 'pause', 100); await page.waitForTimeout(300);
+        const paused = await page.evaluate(() => window.__v2.scene.paused);
+        const bt = await page.evaluate(() => { const g = window.__game, r = window.__v2.scene.btns.resume, c = g.canvasRect, k = g.cssScale; return r ? { x: c.x + (r.x + r.w / 2) * k, y: c.y + (r.y + r.h / 2) * k } : null; });
+        if (bt) await t.tap(bt.x, bt.y);
+        await page.waitForTimeout(300);
+        const live = await page.evaluate(() => ({ paused: window.__v2.scene.paused, fps: window.__game.fps | 0, f: window.__v2.stats.frameMs }));
+        ok(paused && !live.paused, `일시정지 단추 → 멈춤, '계속하기' 탭 → 다시 (실시간 ${live.fps} fps, JS ${live.f.p50}/${live.f.p95} ms)`);
+        await page.evaluate(() => window.__v2.restart());
+      }
       await freeze(page);
       // teleport 왕복
       const tp = await page.evaluate(() => { const r = []; for (const id of ['yard', 'alley', 'corner', 'street']) { window.__v2.teleport(id); window.__qaStep(3, true); r.push(window.__v2.section); } window.__v2.restart(); window.__qaStep(2, true); return r.join(','); });
       ok(tp === 'yard,alley,corner,street', `teleport 4구간 (${tp})`);
+      // 움직임·판정 (적을 치워 두고 가상 패드 입력으로): 계단 · 점프로 상자 위 · 구덩이 · 깊이 판정 · 쓰러짐
+      const mech = await page.evaluate(() => {
+        const v = window.__v2, P = v.scene.play, h = P.hero, inp = window.__game.input, out = {}, all = P.enemies;
+        const run = (n, ax, az, btn, hold = 4) => { for (let i = 0; i < n; i++) { inp.touch.axis(ax, -az); if (btn) inp.touch.set(btn, i < hold); window.__qaStep(1, false); } inp.touch.axis(0, 0); if (btn) inp.touch.set(btn, false); };
+        const far = all.filter((x) => x.group === 'yard').slice(0, 1);      // 마당의 적 하나는 남겨 둔다 (없으면 '끝' 이 된다)
+        P.enemies = far;
+        h.place(664, 206); run(80, 1, 0); out.stairs = { x: Math.round(h.x), y: h.y };
+        h.place(1215, 116); run(14, 1, 0, 'jump'); run(60, 0, 0); out.crate = { x: Math.round(h.x), y: h.y, g: h.onGround };
+        h.place(900, 60); run(40, 0, 1); out.blocked = { z: Math.round(h.z) };                      // 단상 앞면에 막힌다 (z < 140)
+        h.place(1470, 195); const hp0 = h.hp; for (let i = 0; i < 90 && h.hp === hp0; i++) run(1, 1, 0); run(40, 0, 0); out.pit = { lost: hp0 - h.hp, x: Math.round(h.x), y: h.y };
+        const e = all.find((x) => x.kindId === 'skeleton'); P.enemies = [e, ...far]; e.awake = false; e.hp = e.maxHp;
+        h.place(300, 60); h.facing = 1; e.x = 390; e.z = 60 + 72; run(30, 0, 0, 'attack'); out.missFar = e.maxHp - e.hp;      // 깊이 72 차이 → 빗나감
+        e.x = 390; e.z = 60 + 20; e.vx = e.vz = 0; h.place(300, 60); h.facing = 1; run(30, 0, 0, 'attack'); out.hitNear = e.maxHp - e.hp; // 깊이 20 → 맞음
+        P.enemies = far;
+        h.place(300, 60); h.hp = 100; h.inv = 0; h.takeHit(999, h.x - 10, h.z); const dead = h.state; run(130, 0, 0); out.death = { dead, state: h.state, hp: h.hp, x: Math.round(h.x), z: Math.round(h.z) };
+        v.restart(); window.__qaStep(2, true);
+        return out;
+      });
+      ok(mech.stairs.y === 72 && mech.stairs.x > 760, `계단으로 단상 위 (x ${mech.stairs.x}, y ${mech.stairs.y})`);
+      ok(mech.crate.y === 58 && mech.crate.g, `점프로 상자 위 (x ${mech.crate.x}, y ${mech.crate.y})`);
+      ok(mech.blocked.z < 140, `단상 옆면에 막힘 (z ${mech.blocked.z} < 140)`);
+      ok(mech.pit.lost === 8 && mech.pit.x < 1500 && mech.pit.y === 0, `구덩이: 체력 −${mech.pit.lost}, 가장자리에서 다시 (x ${mech.pit.x})`);
+      ok(mech.missFar === 0 && mech.hitNear > 0, `깊이 판정: Δz 72 빗나감(${mech.missFar}) · Δz 20 맞음(−${mech.hitNear})`);
+      ok(mech.death.dead === 'dead' && mech.death.state === 'free' && mech.death.hp === 100 && mech.death.x === 150, `쓰러짐 → 구간 처음에서 다시 (${mech.death.x},${mech.death.z}, 체력 ${mech.death.hp})`);
       await page.evaluate(installBot);
       // 플레이: 240 틱씩. 틱마다 그리고, 그린 뒤 getImageData 로 래스터를 그 프레임에 끝내게 한다 →
       //   JS 시간(갱신 + 그리기 명령) = __v2.stats.frameMs,  래스터 포함 시간 = 여기서 잰 한 스텝의 실제 시간
@@ -124,13 +176,13 @@ try {
         steps += 240; sec = r.sec; fm.push(r.f); for (const x of r.w) wall.push(x);
         if (steps % 1200 === 0) console.log(`   … ${steps} 틱  ${sec}  hero ${r.h.x | 0},${r.h.z | 0} hp ${r.h.hp | 0}  JS ${r.f.p50}/${r.f.p95} ms`);
       }
-      const b = await page.evaluate(() => { for (let i = 0; i < 90; i++) window.__qaStep(1, true); const B = window.__botState; return { seen: B.seen, deaths: B.deaths, pits: B.pits, steps: B.steps, minHp: B.minHp, kills: window.__v2.stats.kills, left: window.__v2.enemies.length, yard: window.__v2.enemies.filter((e) => e.group === 'yard').length, sec: window.__v2.section, q: window.__game.quality, cv: [window.__game.canvas.width, window.__game.canvas.height] }; });
+      const b = await page.evaluate(() => { for (let i = 0; i < 90; i++) window.__qaStep(1, true); const B = window.__botState; return { seen: B.seen, deaths: B.deaths, pits: B.pits, steps: B.steps, minHp: B.minHp, kills: window.__v2.stats.kills, left: window.__v2.enemies.length, yard: window.__v2.enemies.filter((e) => e.group === 'yard').length, sec: window.__v2.section, q: window.__game.quality, cv: [window.__game.canvas.width, window.__game.canvas.height], mem: (() => { const c = window.__v2.scene.R.canvases; let b = 0; for (const x of c) b += x.width * x.height * 4; return { n: c.length, mb: +(b / 1048576).toFixed(1) }; })() }; });
       const order = ['street', 'corner', 'alley', 'yard', 'done'];
       let oi = 0; for (const x of b.seen) if (x === order[oi]) oi++;
       ok(b.sec === 'done', `마당의 적을 모두 쓰러뜨리고 'done' (${b.steps} 틱 = ${(b.steps / 60).toFixed(1)} 초, 처치 ${b.kills}, 남은 길 위 적 ${b.left})`);
       ok(oi === order.length, `구간 순서 street → corner → alley → yard → done (${b.seen.join(' → ')})`);
       ok(b.yard === 0, '마당의 적 0');
-      console.log(`   봇: 쓰러짐 ${b.deaths} · 구덩이 ${b.pits} · 최저 체력 ${b.minHp | 0}`);
+      console.log(`   봇: 쓰러짐 ${b.deaths} · 구덩이 ${b.pits} · 최저 체력 ${b.minHp | 0} · 장면이 만든 캔버스 ${b.mem.n}장 ${b.mem.mb} MB`);
       const p50 = fm.map((f) => f.p50).sort((x, y) => x - y), p95 = fm.map((f) => f.p95).sort((x, y) => x - y);
       const med = (a) => a[Math.floor(a.length / 2)] ?? 0;
       wall.sort((x, y) => x - y);
@@ -141,9 +193,16 @@ try {
       console.log(`   JS 프레임 시간(갱신 + 그리기 명령, 240틱 창 ${fm.length}개): p50 ${res.js.p50} ms · p95 ${res.js.p95} ms (창 최대 ${res.js.p95max} ms)`);
       console.log(`   래스터 포함(소프트웨어 렌더러, 캔버스 ${res.canvas}, 화질 ${res.quality}): p50 ${res.raster.p50} ms · p95 ${res.raster.p95} ms  ${res.raster.p95 > 8 ? '← 8 ms 넘음 (proto_a.md §9)' : ''}`);
       ok(res.js.p95 <= 8, `JS 프레임 시간 p95 ${res.js.p95} ms ≤ 8 ms`);
-      // 다시 시작 → 처음 상태
-      const again = await page.evaluate(() => { window.__v2.restart(); window.__qaStep(3, true); return { sec: window.__v2.section, n: window.__v2.enemies.length, hp: window.__v2.hero.hp }; });
-      ok(again.sec === 'street' && again.n === 17 && again.hp === 100, `다시 시작 → 처음 상태 (적 ${again.n}, 체력 ${again.hp})`);
+      // '다시 시작' 단추를 진짜 터치로 누른다 (루프를 풀고): 떠 있는 스틱 구역(왼쪽 45 %)에 걸친 단추도 눌려야 한다
+      await page.evaluate(() => { window.__game.input.touch.axis(0, 0); window.__game.input.touch.set('attack', false); });
+      await unfreeze(page);
+      await page.waitForTimeout(1600);
+      const bt = await page.evaluate(() => { const g = window.__game, r = window.__v2.scene.btns.again, c = g.canvasRect, k = g.cssScale; return r ? { x: c.x + (r.x + r.w * 0.3) * k, y: c.y + (r.y + r.h / 2) * k } : null; });
+      if (bt) await page.touchscreen.tap(bt.x, bt.y);
+      await page.waitForTimeout(700);
+      const again = await page.evaluate(() => ({ sec: window.__v2.section, n: window.__v2.enemies.length, hp: window.__v2.hero.hp }));
+      ok(!!bt && again.sec === 'street' && again.n === 17 && again.hp === 100, `'다시 시작' 단추 터치 → 처음 상태 (구간 ${again.sec}, 적 ${again.n}, 체력 ${again.hp})`);
+      await freeze(page);
       // 장면을 나가면 자원을 놓는가
       const left = await page.evaluate(() => { const sc = window.__v2.scene, R = sc.R; window.__game.go('title', {}, { fade: false }); window.__qaStep(4, true); return { v2: typeof window.__v2, cv: R.canvases.length, top: window.__game.scenes[window.__game.scenes.length - 1]?.constructor?.name }; });
       ok(left.v2 === 'undefined' && left.cv === 0, `장면을 나가면 __v2 삭제 · 만든 캔버스 0 (맨 위 장면 ${left.top})`);

@@ -132,7 +132,15 @@ export class Hero {
     if (this.landed) { P.sfx('land'); P.dust(this.x, this.y, this.z, 4); }
     // 구덩이
     if (this.y < -110 && st.pitAt(this.x, this.z)) P.pitFall();
-    else if (this.onGround && !st.pitAt(this.x, this.z)) { this.safeT += dt; if (this.safeT > 0.2 && this.state !== 'hurt') { this.safeT = 0; this.safe.x = this.x; this.safe.z = this.z; } }
+    else if (this.onGround && this.state !== 'hurt') {
+      // 다시 설 자리: 발 둘레(±30, ±18)가 모두 같은 높이의 땅일 때만 기억한다 (구덩이 턱에서 되살아나 곧장 다시 빠지지 않게)
+      this.safeT += dt;
+      if (this.safeT > 0.15) {
+        this.safeT = 0;
+        const g = this.ground;
+        if (st.walkAt(this.x - 30, this.z - 18) === g && st.walkAt(this.x + 30, this.z - 18) === g && st.walkAt(this.x - 30, this.z + 18) === g && st.walkAt(this.x + 30, this.z + 18) === g) { this.safe.x = this.x; this.safe.z = this.z; }
+      }
+    }
     this._post(dt);
   }
   _free() { this.state = 'free'; this.mv = null; this.comboT = 0.32; }
@@ -380,7 +388,7 @@ export class Play {
     this.game = game; this.stage = stage;
     this.hero = new Hero(this);
     this.enemies = []; this.shots = []; this.parts = []; this.nums = [];
-    this.hitstop = 0; this.trauma = 0; this.kills = 0; this.section = 'street'; this.done = false; this.doneT = 0; this.time = 0; this.vig = 0;
+    this.hitstop = 0; this.trauma = 0; this.kills = 0; this.section = 'street'; this.done = false; this.doneT = 0; this.time = 0; this.vig = 0; this.punch = 0;
     this.actors = [];
     preloadEnemies(['skeleton', 'bat']);
     this.restart();
@@ -435,7 +443,8 @@ export class Play {
       this.burst(e.x - dir * 6, e.y + e.h * 0.55, e.z - 2, mv.finisher ? 10 : 6, '#fff0c0');
       this.slashFx(e.x, e.y + e.h * 0.55, e.z, dir);
       any = true;
-      if (e.dead) { this.shake(0.35); this.hitstop = Math.max(this.hitstop, 0.09); }
+      if (e.dead) { this.shake(0.35); this.hitstop = Math.max(this.hitstop, 0.09); this.punch = 1; }
+      else if (mv.finisher) this.punch = Math.max(this.punch, 0.6);
     }
     if (any) {
       this.hitstop = Math.max(this.hitstop, (mv.hitstop || 0.045) * 1.25); this.shake(0.12 + (mv.shake || 2) * 0.045);
@@ -458,6 +467,7 @@ export class Play {
     this.time += dt;
     if (this.trauma > 0) this.trauma = Math.max(0, this.trauma - dt * 2.2);
     if (this.vig > 0) this.vig = Math.max(0, this.vig - dt * 2.5);
+    if (this.punch > 0) this.punch = Math.max(0, this.punch - dt * 5);
     const fxDt = this.hitstop > 0 ? dt * 0.3 : dt;
     for (let i = this.parts.length - 1; i >= 0; i--) { const p = this.parts[i]; p.life -= fxDt; if (p.life <= 0) { this.parts.splice(i, 1); continue; } p.vy -= p.g * fxDt; p.x += p.vx * fxDt; p.y += p.vy * fxDt; p.z += p.vz * fxDt; }
     for (let i = this.nums.length - 1; i >= 0; i--) { const n = this.nums[i]; n.life -= dt; n.y += 46 * dt; if (n.life <= 0) this.nums.splice(i, 1); }

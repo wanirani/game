@@ -105,16 +105,19 @@ export default class V2ProtoA extends Scene {
     if (P.done && P.doneT > 0.8 && (this._tap('again') || input.pressed('confirm') && P.doneT > 1.5)) { P.restart(); this._cam(1, true); }
     this.updMs += this._now() - t0;
   }
-  _tap(id) { const r = this.btns[id], p = input.pointer; return !!(r && p.tapped && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h); }
+  // 버튼은 공용 탭 등록부(ui.taps)에 올린다 → 떠 있는 스틱이 그 자리의 탭을 가져가지 않는다 (core/touchpad.js)
+  _tap(id) { if (this._hitT !== this.game.frame) { this._hitT = this.game.frame; this._hit = ui.taps.hit(this); } return this._hit === id; }
 
   render(ctx) {
     const t0 = this._now();
     const g = this.game, W = g.viewW, H = g.viewH || 540, P = this.play, cam = this.cam, R = this.R;
     // 화면 흔들림 (트라우마²)
-    cam.zoom = clamp(H / 560, 1, 1.32);      // 폴드(높이 726)는 1.3배: 캐릭터가 화면 높이의 15 % 쯤 되게
+    cam.zoom = clamp(H / 560, 1, 1.32) * (1 + 0.035 * P.punch);      // 폴드(높이 726)는 1.3배: 캐릭터가 화면 높이의 15 % 쯤 되게
     const tr = P.trauma * P.trauma * (g.settings?.shake === false ? 0 : 1), tt = this.t * 60;
     cam.setView(W, H, Math.sin(tt * 1.7) * 9 * tr, Math.cos(tt * 2.3) * 7 * tr);
+    { const h = P.hero, s = cam.s(h.z); (R.focus ||= {}).x = cam.px(h.x, s); R.focus.y = cam.py(h.drawY, h.z, s); R.focus.h = 96 * s; }
     R.draw(ctx, cam, P.list());
+    R.air(ctx, cam);
     P.drawFx(ctx, cam, R);
     // 가장자리 어둠 + 피격 붉은 빛
     if (P.vig > 0) { ctx.fillStyle = `rgba(160,10,20,${0.22 * P.vig})`; ctx.fillRect(0, 0, W, H); }
@@ -160,6 +163,7 @@ export default class V2ProtoA extends Scene {
   }
   _btn(ctx, id, label, x, y, w, h) {
     this.btns[id] = { x, y, w, h };
+    ui.taps.add(id, this.btns[id], { owner: this, kind: 'primary', src: 'v2a.' + id });
     ui.panel(ctx, x, y, w, h, {});
     ui.text(ctx, label, x + w / 2, y + h / 2 + 8, { size: 22, align: 'center', weight: 700, color: '#ffe8c0' });
   }
