@@ -14,6 +14,9 @@ const fr = () => page.frames().find((f) => /scene=v2b/.test(f.url()));
 await page.waitForFunction(() => { const f = document.querySelector('iframe'); return f && f.contentWindow.__v2 && (f.contentWindow.__v2.ready || f.contentWindow.__v2.error); }, null, { timeout: 40000 });
 await page.waitForTimeout(2500);
 const before = await fr().evaluate(() => ({ ...window.__v2.hero, mode: window.__v2.stats.mode }));
+// 먼저 가만히 서서 공격·점프를 누른다 (적이 닿기 전)
+const poll = async (id) => { const seen = new Set(); await page.dispatchEvent(id, 'pointerdown', { pointerId: 9, bubbles: true }); for (let i = 0; i < 10; i++) { await page.waitForTimeout(50); seen.add(await fr().evaluate(() => window.__v2.hero.anim)); } return [...seen]; };
+const atk0 = await poll('#b-attack'); await page.waitForTimeout(700); const jump0 = await poll('#b-jump'); await page.waitForTimeout(700); const dash0 = await poll('#b-dash'); await page.waitForTimeout(500);
 // 시안의 스틱을 오른쪽으로 끌고, 공격을 누른다
 const st = await page.locator('#stick').boundingBox();
 await page.touchscreen.tap(st.x + st.width / 2, st.y + st.height / 2).catch(() => {});
@@ -27,5 +30,5 @@ for (let i = 0; i < 12; i++) { await page.waitForTimeout(60); seen.add(await fr(
 const atk = [...seen];
 await page.screenshot({ path: `/tmp/claude-0/v2/uipilot/live_${process.argv[2] || 'glass'}_fold_open.png` });
 await page.dispatchEvent('#stick', 'pointerup', { pointerId: 7, bubbles: true });
-console.log(JSON.stringify({ before, mid, atk, errs }));
+console.log(JSON.stringify({ before, atk0, jump0, dash0, mid, atk, errs }));
 await browser.close(); srv.close();

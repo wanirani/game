@@ -241,10 +241,10 @@ for (const dev of DEVICES) {
       }
       g.render();
       const A = sc.atlas;
-      return { cells: A.cells, drawMs: draw / N, uploadMs: up / N, uploadPx: sc.glr.stats.uploadPx, atlas: [A.canvas.width, A.canvas.height], scale: A.S };
+      return { cells: A.cells, hero3d: !!sc.h3, drawMs: draw / N, uploadMs: up / N, uploadPx: sc.glr.stats.uploadPx, atlas: [A.canvas.width, A.canvas.height], scale: A.S };
     });
-    console.log(`  캐릭터 ${R.atlas12.cells}칸(영웅 1 + 적 12): 퍼펫 그리기 ${R.atlas12.drawMs.toFixed(2)} ms + 텍스처 올리기 ${R.atlas12.uploadMs.toFixed(2)} ms (${(R.atlas12.uploadPx / 1e6).toFixed(2)} MP, 배율 ${R.atlas12.scale})`);
-    if (R.atlas12.cells < 13) fail(`${dev}: 아틀라스 칸이 모자람 (${R.atlas12.cells}/13)`);
+    console.log(`  캐릭터 ${R.atlas12.cells}칸(${R.atlas12.hero3d ? '영웅은 입체 모델이라 칸 없음' : '영웅 1'} + 적 12): 퍼펫 그리기 ${R.atlas12.drawMs.toFixed(2)} ms + 텍스처 올리기 ${R.atlas12.uploadMs.toFixed(2)} ms (${(R.atlas12.uploadPx / 1e6).toFixed(2)} MP, 배율 ${R.atlas12.scale})`);
+    { const need = R.atlas12.hero3d ? 12 : 13; if (R.atlas12.cells < need) fail(`${dev}: 아틀라스 칸이 모자람 (${R.atlas12.cells}/${need})`); }   // 입체 영웅(char3d)은 아틀라스를 쓰지 않는다
     if (cap) await shot(page, 'x_atlas_12_enemies');
     // ── 4) 연출 캡처 (첫 기기만) ──
     if (cap && SHOTS) {
