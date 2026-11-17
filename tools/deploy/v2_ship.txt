@@ -5,3 +5,5 @@
 
 assets/v2/env/                 # 꾸민 배경(v2c) 질감
 assets/v2/char3d/kael.glb      # 입체 카엘 (v2b · v2c · v2bench)
+assets/v2/props/               # 구운 입체 소품 묶음 + 아틀라스 (지역 · 시범 구간의 석상)
+assets/v2/ui/gem/atlas.webp    # 「세공한 유리」 인터페이스 아이콘 아틀라스

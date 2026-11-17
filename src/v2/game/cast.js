@@ -3,7 +3,8 @@
 // (assets/v2/char3d/clips/, docs/v2/ANIM_LIBRARY.md); play's driveHero / driveActor pick the clips.
 // Actor3D has the same public fields as char3d's Char3D (asset.clips, rig, anim, dx, dz, kbT, kbSp, place, weaponMatrix).
 import { loadGLB } from '../char3d/glb.js';
-import { Rig, Animator } from '../char3d/skel.js';
+import { Rig } from '../char3d/skel.js';
+import { PoseAnimator } from './anim.js';
 import { buildClips } from '../char3d/clips.js';
 import { boxModel } from '../char3d/render.js';
 import { UNIT } from '../char3d/hero3d.js';
@@ -50,7 +51,8 @@ function trs(g, o) {   // R = Ry * Rx * Rz (degrees), then translate
 
 export class Actor3D {
   constructor(asset, weapon, o = {}) {
-    this.asset = asset; this.rig = new Rig(asset.model); this.anim = new Animator(this.rig, asset.clips);
+    this.asset = asset; this.rig = new Rig(asset.model); this.anim = new PoseAnimator(this.rig, asset.clips);   // same Animator, pose step without per-bone temporaries
+    this._hand = undefined;
     this.gpu = asset.gpu; this.weapon = weapon ? weapon.gpu : null;
     this.grip = o.grip ?? (weapon ? weapon.grip : GRIPS.blade);
     this.scale = o.scale ?? UNIT * (o.height ? o.height / Math.max(0.2, asset.height) : 1);
@@ -72,7 +74,8 @@ export class Actor3D {
   }
   /** hand bone -> weapon world matrix (after place()) */
   weaponMatrix(M = this.M) {
-    const b = this.rig.boneWorld('handR'); if (!b) return null;
+    if (this._hand === undefined) this._hand = this.rig.boneWorld('handR') ?? null;   // a view into rig.world, made once (boneWorld() makes a new view per call)
+    const b = this._hand; if (!b) return null;
     mul4(b, this._g, this._t);
     return mul4(M, this._t, this.WM);
   }
