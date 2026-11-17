@@ -62,7 +62,7 @@ function process1(c) {
   else if (c.cut?.loop) { [a, b, loopCost] = C.findLoop(F0, c.cut.loop[0], c.cut.loop[1], Math.round((c.cut.from ?? 0) / dt), Math.round((c.cut.to ?? 1e9) / dt) > F0.n - 1 ? F0.n - 1 : Math.round(c.cut.to / dt)); }
   else if (c.loop) { a = 0; b = F0.n - 1; }
   else [a, b] = C.autoTrim(F0);
-  const F = C.slice(F0, a, b, !!c.rev);
+  const F = c.mir ? C.mirror(C.slice(F0, a, b, !!c.rev)) : C.slice(F0, a, b, !!c.rev);
   const info = C.fixRoot(F, c.xz ?? 'auto', c.y === 'clamp' ? 'keep' : c.y ?? 'keep');
   if (c.y === 'clamp') for (let k = 0; k < F.n; k++) F.root[k * 3 + 1] = Math.min(F.root[k * 3 + 1], 0.02);
   const loopErr = c.loop ? C.closeLoop(F, Math.min(6, Math.floor(F.n / 4))) : null;
@@ -75,7 +75,7 @@ function process1(c) {
   const meta = {
     n: c.n, g: c.g, id: c.id, src: F0.srcName, loop: !!c.loop, dur: r3(dur), keys: G.n, fps: Math.round((G.n - 1) / dur), speed: r2(speed), ev: E.ev,
     ...(E.strike ? { strike: E.strike } : {}), ...(far ? { travel: [r2(tr[0]), r2(tr[1])], ...(c.loop ? {} : { moveT: [r2(info.moveT[0]), r2(info.moveT[1])] }) } : {}),
-    cut: [r2(a * dt), r2(b * dt)], ...(c.rev ? { rev: true } : {}), root: `${c.xz ?? 'auto'}/${c.y ?? 'keep'}`, use: c.use,
+    cut: [r2(a * dt), r2(b * dt)], ...(c.rev ? { rev: true } : {}), ...(c.mir ? { mir: true } : {}), root: `${c.xz ?? 'auto'}/${c.y ?? 'keep'}`, use: c.use,
   };
   return { c, L, meta, loopErr, loopCost, tracks: L.tracks.length };
 }

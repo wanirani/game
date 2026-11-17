@@ -3,7 +3,7 @@
 // 한 줄 = 게임이 쓰는 클립 하나. 산 클립 하나에서 여러 줄을 잘라 낼 수 있다(cut).
 //   n 이름 · g 묶음 · id 라이브러리 번호 · src 원본 파일(확장자 없이) · own: 시범 때 이미 산 것(/tmp/claude-0/v2/char3d/raw)
 //   loop · cut [시작초, 끝초] | {loop:[최소초, 최대초], from, to}(가장 잘 이어지는 순환 구간을 찾는다) | 없으면 죽은 프레임만 자동으로 뺀다
-//   rev 거꾸로 · xz 'loop'|'auto'|'keep' (골반 수평 이동) · y 'keep'|'zero'|'clamp'|'detrend' · fps 저장 키 간격 · speed 권장 재생 배속
+//   rev 거꾸로 · mir 좌우 거울상 · xz 'loop'|'auto'|'keep' (골반 수평 이동) · y 'keep'|'zero'|'clamp'|'detrend' · fps 저장 키 간격 · speed 권장 재생 배속
 //   kind 'loco'|'attack'|'cast'|'react'|'story' (이벤트 찾는 방법) · hits 타격 수 · ev 손으로 적은 이벤트 [[초, 이름]] (자른 뒤의 시각)
 //   man {strike:[t0,t1], hit:t} 타격 구간을 손으로 정함 (자동으로 찾은 것이 틀릴 때)
 //   use 쓰임 · why 고른 까닭 · rej 버린 후보
@@ -50,6 +50,7 @@ export const CLIPS = [
   { n: 'hit_light', g: 'reactions', id: 179, src: '179_Hit_Reaction_1', cut: [0, 0.85], xz: 'auto', fps: 30, speed: 1.3, kind: 'react', ev: [[0.02, 'hurt']], use: '약한 피격 (앞에서) — 움찔', why: '1.2초 가운데 앞 0.4초에 반응이 몰려 있어 짧게 끊어 쓰기 좋다', rej: 'Face_Punch_Reaction(174–176) 2.8–5.4초, Slap_Reaction(173) 4.7초, Gunshot_Reaction(177) 팔을 듦, 손으로 쓴 hurt — 굳은 자세' },
   { n: 'hit_heavy', g: 'reactions', id: 171, src: '171_Hit_Reaction_to_Waist', cut: [0.08, 1.5], xz: 'auto', fps: 30, speed: 1.25, kind: 'react', ev: [[0.08, 'hurt']], use: '강한 피격 — 배를 맞고 꺾임', why: '몸이 접혔다 펴지는 큰 반응이 1.6초 안에 끝난다', rej: 'Electrocution_Reaction(172) 감전, Shot_and_Blown_Back(182) 날아가 쓰러짐' },
   { n: 'stagger', g: 'reactions', id: 178, src: '178_Hit_Reaction', xz: 'auto', fps: 30, speed: 1.2, kind: 'react', ev: [[0.02, 'hurt']], use: '비틀거림 — 가드가 깨졌을 때 · 튕겨내기에 당한 적', why: '옆으로 1 m 쯤 비틀거리며 팔이 풀린다', rej: 'Hit_in_Back_While_Running(416) 달리다 맞음, Stumble_Walk(562) 걷기' },
+  { n: 'stagger_r', g: 'reactions', id: 178, src: '178_Hit_Reaction', mir: true, xz: 'auto', fps: 30, speed: 1.2, kind: 'react', ev: [[0.02, 'hurt']], use: '비틀거림 (반대쪽) — stagger 의 좌우 거울상', why: '거울상은 값이 들지 않는다. 맞은 쪽에 따라 골라 쓴다', rej: '—' },
   { n: 'launched', g: 'reactions', id: 7, src: '7_BeHit_FlyUp', cut: [0, 1.15], xz: 'auto', fps: 30, speed: 1, kind: 'react', ev: [[0.02, 'hurt']], use: '띄워짐 — 올려치기에 맞고 떠올랐다 등으로 떨어짐', why: '1.5초, 높이 떴다 떨어진다. 끝 자세가 getup 의 첫 자세(누움)와 맞는다', rej: 'Shot_and_Blown_Back(182) 뒤로 날아감' },
   { n: 'knockdown', g: 'reactions', id: 187, src: 'kael_rigged_knockdown', own: true, xz: 'auto', fps: 30, speed: 1.3, kind: 'react', ev: [[0.02, 'hurt']], use: '쓰러짐 — 영웅이 쓰러질 때', why: '시범 때 산 것', rej: 'Knock_Down_1(190) 3.2초' },
   { n: 'getup', g: 'reactions', id: 3, src: '3_Arise', xz: 'auto', fps: 30, speed: 1.2, kind: 'react', use: '일어나기 (등으로 누운 데서 → 준비 자세)', why: '1.8초, 누운 자세에서 바로 싸울 자세로 선다', rej: 'Stand_Up1–10(344–353): 3–11초이거나 엎드린 데서 시작 (347 은 적 전용 rise 로 삼)' },

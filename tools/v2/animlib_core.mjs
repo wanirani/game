@@ -41,6 +41,14 @@ export function slice(F, a, b, reverse = false) {
   return G;
 }
 
+/** 좌우 거울상: 왼쪽·오른쪽 뼈를 맞바꾸고 회전을 캐릭터의 가운데 면에 비춘다 (쉬는 자세가 좌우 대칭이라 가능) */
+export function mirror(F) {
+  const G = newFrames(F.n, F.dt), sw = (k) => (/L$/.test(k) ? k.slice(0, -1) + 'R' : /R$/.test(k) ? k.slice(0, -1) + 'L' : k);
+  for (const key of KEYS) { const src = F.rot[sw(key)], dst = G.rot[key]; for (let k = 0; k < F.n; k++) { dst[k * 4] = src[k * 4]; dst[k * 4 + 1] = -src[k * 4 + 1]; dst[k * 4 + 2] = -src[k * 4 + 2]; dst[k * 4 + 3] = src[k * 4 + 3]; } }
+  for (let k = 0; k < F.n; k++) { G.root[k * 3] = -F.root[k * 3]; G.root[k * 3 + 1] = F.root[k * 3 + 1]; G.root[k * 3 + 2] = F.root[k * 3 + 2]; }
+  return G;
+}
+
 /** 프레임 사이 "움직임 양" (뼈 회전 각속도 합 rad/s + 골반 속도) — 죽은 구간 찾기용 */
 export function energy(F) {
   const e = new Float32Array(F.n);
