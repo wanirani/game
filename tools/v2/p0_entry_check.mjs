@@ -3,10 +3,12 @@
 //   node tools/v2/p0_entry_check.mjs [--shots <폴더>]
 //  터치(fold_open · phone2, 글자 크기 기본·크게·아주 크게): 줄이 화면 안에 있고 서로 겹치지 않는가, 눌러서 고르기 화면 → A → 일시정지 → 고르기 → 돌아가기
 //  키보드(desk): 방향키 + Enter 로 고르기 → B → Esc(일시정지 = 나가기) → 고르기 → Esc → 타이틀 (줄이 그대로 골라져 있는가)
+//  패드(desk, 가짜 게임패드): 십자키 + A 로 고르기 → A → START(일시정지) → SELECT(나가기) → 고르기 → B(취소) → 타이틀
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import { start } from '../serve.mjs';
 import { contextOptions } from '../qa/lib/viewports.mjs';
+import { fakePadInit, press as padPress } from '../qa/lib/fakepad.mjs';
 
 const argv = process.argv.slice(2);
 const SHOTS = argv.includes('--shots') ? argv[argv.indexOf('--shots') + 1] : null;
@@ -19,10 +21,11 @@ const srv = await start(port);
 const fails = [];
 const ok = (c, m) => { console.log(`${c ? '  ok  ' : '  FAIL'} ${m}`); if (!c) fails.push(m); return c; };
 
-async function open(vp, settings) {
+async function open(vp, settings, init) {
   const browser = await chromium.launch({ executablePath: EXE, args: GL_ARGS });
   const ctx = await browser.newContext(contextOptions(vp));
   await ctx.addInitScript((s) => { try { localStorage.setItem('bloodnocturne_settings', JSON.stringify({ settingsVersion: 2, ...s })); } catch { /* */ } }, settings || {});
+  if (init) await ctx.addInitScript(init.fn, init.arg);
   const page = await ctx.newPage();
   const errs = [];
   page.on('console', (m) => { if (m.type() === 'error' && !IGNORE.test(m.text())) errs.push(m.text().slice(0, 200)); });
@@ -123,8 +126,36 @@ for (const vp of ['fold_open', 'phone2']) {
   await s.browser.close();
 }
 {
-  // 패드: 가짜 게임패드 대신 의미 액션이 같은 길(ListMenu)로 들어오는지 — 패드 A(confirm)·B(cancel) 는 키보드 confirm/cancel 과 같은 액션을 쓴다 (input.js)
-  console.log('\n(패드: confirm/cancel/위·아래 는 키보드와 같은 의미 액션 — tools/qa/bindings.mjs 가 배치를 검사)');
+  // 패드: 가짜 게임패드(tools/qa/lib/fakepad.mjs) — A(0) = 확인, B(1) = 취소, START(9) = 일시정지, SELECT(8) = 지도/가방, 십자키 아래(13)
+  console.log('\n== 패드 · desk ==');
+  const s = await open('desk', {}, fakePadInit({ connected: true }));
+  const { page } = s;
+  try {
+    for (let i = 0; i < 6; i++) { if ((await page.evaluate(() => window.__game.top.mode)) === 'menu') break; await padPress(page, 0, 90, 600); }
+    await page.waitForTimeout(1200);
+    let R = await rows(page);
+    for (let i = 0; i < 12 && R.ids[R.idx] !== 'v2'; i++) { await padPress(page, 13, 90, 160); R = await rows(page); }
+    ok(R.ids[R.idx] === 'v2', '십자키 ↓ 로 리빌드 시범 줄까지');
+    await padPress(page, 0);
+    await page.waitForFunction(() => window.__game.top?.constructor?.name === 'V2Chooser', null, { timeout: 8000 });
+    await page.waitForTimeout(900);
+    await padPress(page, 0);
+    await page.waitForFunction(() => window.__v2?.id === 'a', null, { timeout: 30000 });
+    ok(true, 'A 단추 → 고르기 화면 → A 단추 → 시범판 A 가 열림');
+    await page.waitForTimeout(1200);
+    await padPress(page, 9, 90, 300);
+    const paused = await page.evaluate(() => window.__v2.scene.paused);
+    await padPress(page, 8, 90, 300);
+    await page.waitForFunction(() => window.__game.top?.constructor?.name === 'V2Chooser' && typeof window.__v2 === 'undefined', null, { timeout: 8000 });
+    ok(paused, 'START → 일시정지, SELECT → 고르기 화면으로');
+    await page.waitForTimeout(900);
+    await padPress(page, 1, 90, 400);
+    await page.waitForFunction(() => window.__game.top?.constructor?.name === 'TitleScene', null, { timeout: 8000 });
+    R = await rows(page);
+    ok(R.mode === 'menu' && R.ids[R.idx] === 'v2', 'B 단추(취소) → 타이틀 메뉴 (리빌드 시범 줄)');
+  } catch (e) { ok(false, `pad: ${String(e.message).slice(0, 240)} (맨 위 ${await top(page).catch(() => '?')})`); }
+  ok(s.errs.length === 0, `페이지 오류 0${s.errs.length ? ' — ' + s.errs.slice(0, 2).join(' / ') : ''}`);
+  await s.browser.close();
 }
 await new Promise((r) => srv.close(() => r()));
 console.log(fails.length ? `\nFAIL ${fails.length}\n - ` + fails.join('\n - ') : '\nPASS');
