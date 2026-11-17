@@ -58,7 +58,8 @@ export class Char3D {
   }
   /**
    * 놀이 세계(왼손 좌표: x 오른쪽 · y 위 · z 화면 안쪽)용 세계 행렬. 모델의 앞(+Z)이 (dx,dz) 를 보게 놓는다.
-   * 화면에서 거울상이 되지 않게 모델의 왼쪽(+X)은 (−dz, dx) 로 보낸다 → 행렬식이 음수이므로 그릴 때 cull:'front'.
+   * 화면에서 거울상이 되지 않게 모델의 왼쪽(+X)은 (−dz, dx) 로 보낸다. 이 행렬은 뒤집기(행렬식 음수)지만 놀이 세계 → 화면 변환이
+   * 보통의 GL 과 달리 z 를 뒤집지 않으므로 뒤집기 횟수는 보통 파이프라인과 같다 → 면 방향은 그대로, cull:'back'.
    */
   place(x, y, z, dx = this.dx, dz = this.dz, s = this.scale) {
     const M = this.M;
@@ -75,9 +76,9 @@ export class Char3D {
     mul4(b, trs(g.pos, g.rotX, g.rotY, g.rotZ, this._g), this._t);
     return mul4(M, this._t, this.WM);
   }
-  /** 그린다 (renderer.begin 뒤). o: CharRenderer.draw 의 옵션 + {mirror(놀이 세계 = true)} */
+  /** 그린다 (renderer.begin 뒤). o: CharRenderer.draw 의 옵션 */
   draw(M = this.M, o = {}) {
-    const cull = o.cull ?? (o.mirror === false ? 'back' : 'front');
+    const cull = o.cull ?? 'back';
     this.r.draw(this.gpu, this.rig.jm, M, { ...o, cull });
     if (this.weapon) { const W = this.weaponMatrix(M); if (W) this.r.draw(this.weapon, null, W, { ...o, cull, rim: [0.7, 0.8, 1, 0.5] }); }
   }

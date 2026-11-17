@@ -199,7 +199,7 @@ export default class V2ProtoB extends Scene {
     sim.update(dt, inp);
     if (inp.jumpUsed) input.consume('jump');
     if (sim.deaths !== deaths) { this.cam.snap = true; this.game.flash?.('#000', 0.7, 2.5); if (this.h3) { this.h3.dx = 1; this.h3.dz = 0; } }
-    if (this.h3) { const ta = performance.now(), adt = sim.stop > 0 ? 0 : dt; driveHero(this.h3, sim.hero, adt, TUNE); for (const c of this.h3bench) c.anim.update(adt); this.c3d.animMs = performance.now() - ta; }
+    if (this.h3) { const ta = performance.now(), adt = sim.stop > 0 ? 0 : dt; driveHero(this.h3, sim.hero, adt, TUNE); for (const c of this.h3bench) c.anim.update(adt); this._blade(adt); this.c3d.animMs = performance.now() - ta; }
     // 계단에서 발이 톡톡 튀지 않게 그리는 높이만 부드럽게 · 대시 잔상
     const hh = sim.hero;
     this.visY = hh.onGround && Math.abs((this.visY ?? hh.y) - hh.y) < 40 ? (this.visY ?? hh.y) + (hh.y - (this.visY ?? hh.y)) * (1 - Math.exp(-dt * 28)) : hh.y;
@@ -362,20 +362,30 @@ export default class V2ProtoB extends Scene {
     if (this.c3d.restored !== glr.restored) { this.c3d.restored = glr.restored; cr.restore(); }   // 컨텍스트를 되찾았으면 자기 자원도 다시
     const L = W.light, l = lightAt(W, h.x, h.y + 50, h.z);
     const tint = [clamp(0.5 + 0.7 * l[0], 0, 1.6), clamp(0.5 + 0.7 * l[1], 0, 1.6), clamp(0.5 + 0.7 * l[2], 0, 1.6)];
-    cr.begin({ vp: this.vp, eye: this.eye, fog: W.fog, sunDir: L.moonDir, sun: [0.5, 0.5, 0.56], amb: [0.66, 0.67, 0.74] });
+    cr.begin({ vp: this.vp, eye: this.eye, fog: W.fog, sunDir: L.moonDir, sun: [0.56, 0.56, 0.62], amb: [0.76, 0.77, 0.84] });
     const blink = h.ifr > 0 && !h.dead && h.hurtT <= 0 && h.dashT <= 0 && Math.floor(h.t * 22) % 2 === 0;
     const y = this.visY ?? h.y;
     for (const g of this.trail ?? []) {   // 대시 잔상: 같은 자세를 빛으로 한 번 더
       const k = 1 - g.t / 0.2;
       ch.draw(ch.place(g.x, g.y, g.z), { tint: [0.35, 0.55, 1.3], solid: 1, alpha: 0.32 * k, add: true, rim: [0, 0, 0, 0] });
     }
-    ch.draw(ch.place(h.x, y, h.z), { tint, flash: Math.max(h.flash > 0 ? h.flash * 0.6 : 0, blink ? 0.3 : 0) });
+    ch.draw(ch.place(h.x, y, h.z), { tint, flash: Math.max(h.flash > 0 ? h.flash * 0.6 : 0, blink ? 0.3 : 0), rim: [0.6, 0.7, 1, 0.5] });
     this.bench3d(ch, tint, y);
     cr.end();
     this.c3d.draws = cr.stats.draws; this.c3d.tris = cr.stats.tris;
     glr.stats.draws += cr.stats.draws; glr.stats.tris += cr.stats.tris;
     gl.useProgram(glr.prog); gl.disableVertexAttribArray(4);
     this.c3d.ms = performance.now() - t0;
+  }
+  /** 칼 궤적: 공격하는 동안 날의 밑동·끝이 지나간 자리를 몇 장 기억해 두고 빛나는 띠로 잇는다 (2D 퍼펫의 베기 호를 대신한다) */
+  _blade(dt) {
+    const ch = this.h3, h = this.sim.hero, T = this.blade ?? (this.blade = []);
+    for (const s of T) s.t += dt;
+    while (T.length && T[0].t > 0.15) T.shift();
+    if (!h.move || h.dead || dt <= 0) return;
+    const W = ch.weaponMatrix(ch.place(h.x, this.visY ?? h.y, h.z)); if (!W) return;
+    const pt = (y) => [W[4] * y + W[12], W[5] * y + W[13], W[6] * y + W[14]];
+    T.push({ a: pt(24), b: pt(90), t: 0, mv: h.move });
   }
   /** 성능 시험용 (?c3dbench=N): 영웅 둘레에 스킨 캐릭터 N 명을 더 그린다 — 입체 적 12마리가 화면에 있을 때의 값을 재려고 */
   bench3d(ch, tint, y) {
@@ -487,6 +497,14 @@ export default class V2ProtoB extends Scene {
     if (this.heroUV) for (const g of this.trail ?? []) {   // 대시 잔상 (같은 칸을 빛으로 한 번 더)
       const C = HERO_CELL, k = 1 - g.t / 0.2;
       card(1, this.heroUV, g.x, g.y, g.z, C.ox, C.w - C.ox, (C.h - C.oy) * hk, C.oy * hk, [0.35, 0.55, 1.3], 0.5 * k, 0, 0, 4, 1, 2);
+    }
+    if (this.h3 && (this.blade?.length ?? 0) > 1) {   // 입체 영웅의 칼 궤적 (더하기 빛)
+      const T = this.blade, G = S.glow, um = (G.u0 + G.u1) / 2, vm = (G.v0 + G.v1) / 2, uv = { u0: um, u1: um, v0: vm, v1: vm + (G.v1 - vm) * 0.8 };
+      for (let i = 1; i < T.length; i++) {
+        const p = T[i - 1], q = T[i]; if (p.mv !== q.mv) continue;
+        const k = 1 - q.t / 0.15, d = depth((p.b[0] + q.b[0]) / 2, (p.b[1] + q.b[1]) / 2, (p.b[2] + q.b[2]) / 2); if (d < NEAR) continue;
+        L.push({ d: d - 10, tex: 0, uv, p: [p.a[0], p.a[1], p.a[2], q.a[0], q.a[1], q.a[2], q.b[0], q.b[1], q.b[2], p.b[0], p.b[1], p.b[2]], col: [1.25, 1.35, 1.7], a: 0.85 * k * k, mode: 0, flash: 0, bias: 10, fog: 0.6 });
+      }
     }
     for (const e of sim.enemies) {
       if (e.dead || !e.uv) continue;

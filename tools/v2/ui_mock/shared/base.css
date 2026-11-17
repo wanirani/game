@@ -54,6 +54,8 @@ svg .f { fill: currentColor; stroke: none; }
 /* 피해 숫자: 바탕 그림(마당) 속 적·영웅 머리 위 */
 .dmg { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; pointer-events: none; }
 .fold .d1 { left: 32%; top: 40%; } .fold .d2 { left: 68.500%; top: 39%; } .fold .d3 { left: 50%; top: 29.500%; } .fold .d4 { left: 54.500%; top: 50%; }
+.fold.bg-alley .d1 { left: 59%; top: 54.500%; } .fold.bg-alley .d2 { left: 64%; top: 43%; } .fold.bg-alley .d3 { left: 39%; top: 25%; } .fold.bg-alley .d4 { left: 46.500%; top: 61%; }
+.phone.bg-alley .d1 { left: 57.500%; top: 50%; } .phone.bg-alley .d2 { left: 62%; top: 32%; } .phone.bg-alley .d3 { left: 43.500%; top: 19%; } .phone.bg-alley .d4 { left: 46%; top: 58%; }
 .phone .d1 { left: 35%; top: 34%; } .phone .d2 { left: 65%; top: 31%; } .phone .d3 { left: 50%; top: 20%; } .phone .d4 { left: 54.500%; top: 43%; }
 
 /* 보기 전환 칩 (시안을 손으로 넘겨 볼 때만) */

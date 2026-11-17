@@ -203,7 +203,7 @@
 .phone #toast { top: 44%; height: 34px; left: calc(10px + var(--sl)); padding: 0 13px 0 6px; gap: 7px; --c: 7px; } .phone #toast .ti { width: 24px; height: 24px; } .phone #toast .ti svg { width: 12px; height: 12px; } .phone #toast .tt { font-size: 12px; } .phone #toast .tt b { font-size: 12.500px; }
 .phone .dmg { font-size: 20px; } .phone .dmg.crit { font-size: 27px; } .phone .dmg.crit em { font-size: 10.500px; } .phone .dmg.hurt { font-size: 17px; }
 .phone #stick { left: calc(24px + var(--sl)); bottom: calc(18px + var(--sb)); width: 114px; height: 114px; --s: 114; } .phone #stick .ar { inset: 8px; --s: 98; } .phone #stick .knob { width: 46px; height: 46px; transform: translate(12px, -8px); }
-.phone .abtn .ct { font-size: 17px; } .phone #b-ult .ct { font-size: 9.500px; bottom: 5px; } .phone #b-ult .ic { margin-top: -6px; } .phone .abtn .fc::after { inset: 3.500px; }
+.phone .abtn .ct { font-size: 17px; } .phone #b-ult .ct { font-size: 10px; bottom: 5px; } .phone #b-ult .ic { margin-top: -6px; } .phone .abtn .fc::after { inset: 3.500px; }
 .phone #b-attack { --x: 60; --y: 64; --s: 72; }
 .phone #b-jump { --x: 146; --y: 48; --s: 48; } .phone #b-dash { --x: 128; --y: 110; --s: 48; } .phone #b-s1 { --x: 66; --y: 142; --s: 48; }
 .phone #b-s2 { --x: 188; --y: 140; --s: 48; } .phone #b-ult { --x: 130; --y: 178; --s: 50; }

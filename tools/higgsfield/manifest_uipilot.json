@@ -1,0 +1,9 @@
+{
+  "batch": "uipilot",
+  "date": "2026-11-17",
+  "purpose": "v2 「붉은밤」 인터페이스 시안 3종 (docs/v2/UI_PILOT.md)",
+  "credit_cap": 3,
+  "credits_used": 0,
+  "jobs": [],
+  "note": "유료 생성 없음. 가죽·양피지 질감, 은선, 아이콘, 틀은 전부 CSS/SVG 코드로 그렸다 (tools/v2/ui_mock/). 초상은 ART_PILOT 의 카엘 ③ 흉상(/tmp/claude-0/v2/art/batch1/cut/kaelF_bust.png)을 줄여 썼다."
+}

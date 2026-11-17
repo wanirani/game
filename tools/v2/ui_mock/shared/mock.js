@@ -118,8 +118,8 @@ const $ = (s) => app.querySelector(s);
 function setView(v) {
   view = v;
   const d = dev();
-  app.className = `v-${v} ${d}${SHOT ? ' shot' : ''}`;
   const bg = Q.get('bg') || (v === 'dialog' ? 'street' : 'yard');
+  app.className = `v-${v} ${d} bg-${bg}${SHOT ? ' shot' : ''}`;
   $('#bg').style.backgroundImage = `url(../bg/${d === 'fold' ? 'fold_open' : 'phone2'}_${bg}.webp)`;
   if (v === 'dialog') $('.dt').textContent = T.dlg[line % T.dlg.length];
 }
@@ -179,7 +179,10 @@ window.__ui = {
     const cx0 = W * 0.2, cy0 = H * 0.2, cw = W * 0.6, ch = H * 0.6; let cover = 0;
     for (const r of blocks) { const ox = Math.max(0, Math.min(r.x + r.w, cx0 + cw) - Math.max(r.x, cx0)), oy = Math.max(0, Math.min(r.y + r.h, cy0 + ch) - Math.max(r.y, cy0)); cover += ox * oy; }
     let area = 0; for (const r of blocks) area += r.w * r.h;
-    return { W, H, minTouch: Math.min(...touch.map((r) => Math.min(r.w, r.h))), small: touch.filter((r) => Math.min(r.w, r.h) < 44).map((r) => `${r.id} ${r.w}x${r.h}`), overlaps, out, reachMax: Math.max(0, ...reach.map((r) => r.d)), reachWho: (reach.sort((a, b) => b.d - a.d)[0] || {}).id, centerCoverPct: +(cover / (cw * ch) * 100).toFixed(1), hudAreaPct: +(area / (W * H) * 100).toFixed(1), n: touch.length };
+    // 가장 작은 글자 (CSS px): 글자가 직접 들어 있는 보이는 요소만
+    let minFont = 99, minFontWho = '';
+    for (const e of app.querySelectorAll('*')) { if (![...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue; if (!vis(e)) continue; const f = parseFloat(getComputedStyle(e).fontSize); if (f > 0 && f < minFont) { minFont = f; minFontWho = (e.className || e.tagName) + ':' + e.textContent.trim().slice(0, 8); } }
+    return { W, H, minTouch: Math.min(...touch.map((r) => Math.min(r.w, r.h))), small: touch.filter((r) => Math.min(r.w, r.h) < 44).map((r) => `${r.id} ${r.w}x${r.h}`), overlaps, out, reachMax: Math.max(0, ...reach.map((r) => r.d)), reachWho: (reach.sort((a, b) => b.d - a.d)[0] || {}).id, centerCoverPct: +(cover / (cw * ch) * 100).toFixed(1), hudAreaPct: +(area / (W * H) * 100).toFixed(1), n: touch.length, minFont, minFontWho };
   },
   setView,
 };

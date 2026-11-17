@@ -64,7 +64,7 @@ function frame(dt) {
   const y = (S.yaw * Math.PI) / 180, c = Math.cos(y), s = Math.sin(y);
   M.set([c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1]);
   R.begin({ vp: VP, eye, fog: { near: 100, far: 200, max: 0, color: [0, 0, 0] }, sunDir: night ? [-0.447, 0.745, 0.496] : [0.35, 0.8, 0.6], sun: night ? [0.62, 0.64, 0.82] : [0.62, 0.6, 0.56], amb: night ? [0.42, 0.45, 0.6] : [0.62, 0.63, 0.66] });
-  ch.draw(M, { mirror: false, rim: night ? [0.55, 0.65, 0.9, 0.35] : [1, 1, 1, 0.08] });
+  ch.draw(M, { rim: night ? [0.55, 0.65, 0.9, 0.35] : [1, 1, 1, 0.08] });
   R.end();
   api.stats = { ...R.stats };
 }

@@ -1,14 +1,156 @@
 {
-  "batch": "char3d (v2 입체 캐릭터 시범) 2026-11-17",
-  "cap_credits": 60,
-  "jobs": [
-    {"file": "/tmp/claude-0/v2/char3d/src_apose_candidates.jpg (왼쪽)", "model": "gpt_image_2_5", "params": {"aspect_ratio": "3:4", "resolution": "2k", "quality": "low"}, "ref": "/tmp/claude-0/v2/art/batch1/dl/kaelF_view.png (카엘 ③ 3/4 앞모습)", "prompt": "Character model reference sheet … STRAIGHT FROM THE FRONT … neutral A-POSE … arms out at about 45 degrees … no weapon … even flat lighting … plain light grey background", "job_id": "084f2925-0b73-470f-9333-c02aea6249eb", "credits": 0.5, "kept": false, "note": "얼굴은 더 친근하지만 팔이 몸에 가깝고 허리띠 자락이 넓다 → 예비"},
-    {"file": "assets/v2/char3d/src/kael3_apose_front.webp", "model": "gpt_image_2_5", "params": {"aspect_ratio": "3:4", "resolution": "2k", "quality": "low"}, "ref": "같음", "prompt": "… neutral T-POSE-like A-POSE for 3D rigging: both arms straight and stretched out to the sides, lowered about 35 degrees below horizontal … legs clearly apart with a visible gap … sash wrapped tight with two very short tails … even flat front lighting, NO cast shadows … plain light grey background", "job_id": "f4366372-a55e-4989-865b-f5f484a94d7a", "credits": 0.5, "kept": true, "note": "3D 의 원본 그림"},
-    {"file": "/dev/shm 의 정지 모델 (저장소에는 다시 싼 assets/v2/char3d/kael.glb 만)", "model": "tripo_h3_1_image_to_3d", "params": {"face_limit": 20000, "texture": true, "pbr": false, "texture_quality": "standard", "geometry_quality": "standard", "texture_alignment": "original_image"}, "ref": "job f4366372-a55e-4989-865b-f5f484a94d7a", "job_id": "10b4591f-75a8-401e-ae0e-7652f746405d", "credits": 9, "kept": true, "note": "삼각형 19,578 · 정점 13,018 · 텍스처 2048² JPEG 1.14 MB. 모델이 +X 를 보고 나온다(팔이 Z 축)"},
-    {"file": "버림", "model": "meshy_rigging", "params": {"height_meters": 1.8, "enable_animation": true, "animation_action_id": 16}, "ref": "위 Tripo 결과 URL 그대로", "job_id": "5185717b-fa4c-4d4f-8d6e-a0179f42831f", "credits": 8, "kept": false, "note": "실패: 리깅 서비스는 모델이 +Z 를 본다고 가정한다. 옆으로 선 모델을 그대로 넣어 뼈가 엉뚱한 곳에 박혔다 (좌우 비대칭, 다리 뼈가 앞뒤로). → tools/v2/char3d_orient.mjs 로 돌려서 다시"},
-    {"file": "assets/v2/char3d/kael.glb (메시·뼈대·달리기)", "model": "meshy_rigging", "params": {"height_meters": 1.8, "enable_animation": true, "animation_action_id": 16, "animation": "RunFast"}, "ref": "돌려 놓은 GLB 를 media_upload(.glb) 로 올린 URL", "job_id": "2c487ff6-32bb-4de2-9a49-601ca9b4136d", "credits": 8, "kept": true, "note": "뼈 24개 (손가락 없음), 좌우 대칭, 달리기 0.5초 15키"},
-    {"file": "assets/v2/char3d/kael.glb (베기 클립만 꺼내 합침)", "model": "meshy_rigging", "params": {"height_meters": 1.8, "enable_animation": true, "animation_action_id": 219, "animation": "Right_Hand_Sword_Slash"}, "ref": "같음", "job_id": "318fdc3f-178c-4ae3-a0b6-fcaed770cb8c", "credits": 8, "kept": true},
-    {"file": "assets/v2/char3d/kael.glb (쓰러짐 클립만 꺼내 합침)", "model": "meshy_rigging", "params": {"height_meters": 1.8, "enable_animation": true, "animation_action_id": 187, "animation": "Knock_Down"}, "ref": "같음", "job_id": "2ffe269c-fd04-4fd4-945f-fe039b4eca68", "credits": 8, "kept": true}
-  ],
-  "credits_total": 42.0
+ "batch": "char3d (v2 입체 캐릭터 시범) 2026-11-17",
+ "cap_credits": 60,
+ "jobs": [
+  {
+   "file": "/tmp/claude-0/v2/char3d/src_apose_candidates.jpg (왼쪽)",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "ref": "/tmp/claude-0/v2/art/batch1/dl/kaelF_view.png (카엘 ③ 3/4 앞모습)",
+   "prompt": "Character model reference sheet … STRAIGHT FROM THE FRONT … neutral A-POSE … arms out at about 45 degrees … no weapon … even flat lighting … plain light grey background",
+   "job_id": "084f2925-0b73-470f-9333-c02aea6249eb",
+   "credits": 0.5,
+   "kept": false,
+   "note": "얼굴은 더 친근하지만 팔이 몸에 가깝고 허리띠 자락이 넓다 → 예비"
+  },
+  {
+   "file": "assets/v2/char3d/src/kael3_apose_front.webp",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "low"
+   },
+   "ref": "같음",
+   "prompt": "… neutral T-POSE-like A-POSE for 3D rigging: both arms straight and stretched out to the sides, lowered about 35 degrees below horizontal … legs clearly apart with a visible gap … sash wrapped tight with two very short tails … even flat front lighting, NO cast shadows … plain light grey background",
+   "job_id": "f4366372-a55e-4989-865b-f5f484a94d7a",
+   "credits": 0.5,
+   "kept": true,
+   "note": "3D 의 원본 그림"
+  },
+  {
+   "file": "/dev/shm 의 정지 모델 (저장소에는 다시 싼 assets/v2/char3d/kael.glb 만)",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 20000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "job f4366372-a55e-4989-865b-f5f484a94d7a",
+   "job_id": "10b4591f-75a8-401e-ae0e-7652f746405d",
+   "credits": 9,
+   "kept": true,
+   "note": "삼각형 19,578 · 정점 13,018 · 텍스처 2048² JPEG 1.14 MB. 모델이 +X 를 보고 나온다(팔이 Z 축)"
+  },
+  {
+   "file": "버림",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 16
+   },
+   "ref": "위 Tripo 결과 URL 그대로",
+   "job_id": "5185717b-fa4c-4d4f-8d6e-a0179f42831f",
+   "credits": 8,
+   "kept": false,
+   "note": "실패: 리깅 서비스는 모델이 +Z 를 본다고 가정한다. 옆으로 선 모델을 그대로 넣어 뼈가 엉뚱한 곳에 박혔다 (좌우 비대칭, 다리 뼈가 앞뒤로). → tools/v2/char3d_orient.mjs 로 돌려서 다시"
+  },
+  {
+   "file": "assets/v2/char3d/kael.glb (메시·뼈대·달리기)",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 16,
+    "animation": "RunFast"
+   },
+   "ref": "돌려 놓은 GLB 를 media_upload(.glb) 로 올린 URL",
+   "job_id": "2c487ff6-32bb-4de2-9a49-601ca9b4136d",
+   "credits": 8,
+   "kept": true,
+   "note": "뼈 24개 (손가락 없음), 좌우 대칭, 달리기 0.5초 15키"
+  },
+  {
+   "file": "assets/v2/char3d/kael.glb (베기 클립만 꺼내 합침)",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 219,
+    "animation": "Right_Hand_Sword_Slash"
+   },
+   "ref": "같음",
+   "job_id": "318fdc3f-178c-4ae3-a0b6-fcaed770cb8c",
+   "credits": 8,
+   "kept": true
+  },
+  {
+   "file": "assets/v2/char3d/kael.glb (쓰러짐 클립만 꺼내 합침)",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.8,
+    "enable_animation": true,
+    "animation_action_id": 187,
+    "animation": "Knock_Down"
+   },
+   "ref": "같음",
+   "job_id": "2ffe269c-fd04-4fd4-945f-fe039b4eca68",
+   "credits": 8,
+   "kept": true
+  },
+  {
+   "file": "/tmp/claude-0/v2/char3d/src_skeleton_apose.jpg",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "low"
+   },
+   "ref": "tools/painted/enemies/skeleton/src/skeleton_ref.webp (v1 해골 병사)",
+   "prompt": "Character model reference sheet of the undead skeleton soldier in the reference image … STRAIGHT FROM THE FRONT … neutral A-POSE for 3D rigging … sturdy bones, closed ribcage covered by a torn tabard … no weapon … even flat lighting … plain light grey background",
+   "job_id": "953f6ab9-e74a-4160-b2a3-ce8f9833fabd",
+   "credits": 0.25,
+   "kept": true,
+   "note": "클립 나눠 쓰기 시험용 두 번째 사람형"
+  },
+  {
+   "file": "/dev/shm (시험용; 저장소에 싣지 않음 — 다시 싼 크기 416 KB)",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 10000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "job 953f6ab9-e74a-4160-b2a3-ce8f9833fabd",
+   "job_id": "10cb3492-fc5a-4435-b194-8db79acac098",
+   "credits": 9,
+   "kept": true,
+   "note": "삼각형 9,731 · 정점 8,801. 가는 뼈·갈비뼈가 무너지지 않았다"
+  },
+  {
+   "file": "같음 (리깅만, 클립 없음)",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.75,
+    "enable_animation": false
+   },
+   "ref": "tools/v2/char3d_orient.mjs 로 돌린 GLB 를 올린 URL",
+   "job_id": "a0573656-5212-4075-a1e5-3c0b4652d9d3",
+   "credits": 5,
+   "kept": true,
+   "note": "뼈 24개 · 카엘과 같은 이름 → 카엘에게 산 달리기·베기·쓰러짐 클립이 그대로 돈다 (/tmp/claude-0/v2/char3d/retarget_skeleton.png)"
+  }
+ ],
+ "credits_total": 56.25
 }
