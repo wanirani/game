@@ -131,13 +131,30 @@ const set = (id, cdp, ct) => { const e = $('#b-' + id); e.style.setProperty('--c
 set('s2', 58, '3'); $('#b-ult').style.setProperty('--chg', 80); $('#b-ult').querySelector('.ct').textContent = '80%';
 $('#b-mount').classList.add('off'); $('#b-lock').classList.add('on');
 
+// ── ?live=1: 정지 그림 대신 실제 시범판 B 를 바탕에 깐다 (같은 출처 iframe, 시범판 코드는 건드리지 않는다) ──────────
+// 시범판의 옛 HUD·가상 패드는 CSS 로 가리고, 시안의 스틱·공격·점프·대시를 키 입력(v1 기본 키)으로 넘겨 준다.
+let liveWin = null;
+if (Q.get('live') === '1') {
+  const f = document.createElement('iframe');
+  f.src = '../../../../index.html?scene=v2b&v2layer=1';
+  f.tabIndex = -1;
+  f.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none';
+  f.addEventListener('load', () => { try { const d = f.contentDocument, st = d.createElement('style'); st.textContent = '#v2b-hud,#tpad{visibility:hidden!important}'; d.head.appendChild(st); liveWin = f.contentWindow; } catch (e) { console.warn('live', e); } });
+  $('#bg').appendChild(f);
+  root.classList.add('live');
+}
+const LIVE_KEYS = { attack: 'KeyX', jump: 'KeyZ', dash: 'KeyC' };
+const held = new Set();
+const key = (code, down) => { if (!liveWin || down === held.has(code)) return; down ? held.add(code) : held.delete(code); liveWin.dispatchEvent(new liveWin.KeyboardEvent(down ? 'keydown' : 'keyup', { code, key: code, bubbles: true, cancelable: true })); };
+const stickKeys = (nx, ny) => { key('ArrowLeft', nx < -0.35); key('ArrowRight', nx > 0.35); key('ArrowUp', ny < -0.35); key('ArrowDown', ny > 0.35); };
+
 // ── 움직임 (시안이 실제로 눌리는지 보기 위한 최소한) ─────────────────────────────
 const stick = $('#stick'), knob = $('#stick .knob');
 let sid = null;
-const moveKnob = (e) => { const r = stick.getBoundingClientRect(), R = r.width * 0.3; let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2); const m = Math.hypot(dx, dy); if (m > R) { dx *= R / m; dy *= R / m; } knob.style.transform = `translate(${dx}px,${dy}px)`; };
-stick.addEventListener('pointerdown', (e) => { sid = e.pointerId; stick.setPointerCapture(sid); stick.classList.add('pr'); moveKnob(e); });
+const moveKnob = (e) => { const r = stick.getBoundingClientRect(), R = r.width * 0.3; let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2); const m = Math.hypot(dx, dy); if (m > R) { dx *= R / m; dy *= R / m; } knob.style.transform = `translate(${dx}px,${dy}px)`; stickKeys(dx / R, dy / R); };
+stick.addEventListener('pointerdown', (e) => { sid = e.pointerId; try { stick.setPointerCapture(sid); } catch { /* 합성 이벤트 */ } stick.classList.add('pr'); moveKnob(e); });
 stick.addEventListener('pointermove', (e) => { if (e.pointerId === sid) moveKnob(e); });
-const up = (e) => { if (e.pointerId === sid) { sid = null; stick.classList.remove('pr'); knob.style.transform = ''; } };
+const up = (e) => { if (e.pointerId === sid) { sid = null; stick.classList.remove('pr'); knob.style.transform = ''; stickKeys(0, 0); } };
 stick.addEventListener('pointerup', up); stick.addEventListener('pointercancel', up);
 app.addEventListener('pointerdown', (e) => {
   const b = e.target.closest('.abtn,.sbtn,.cell,.slot,.mtabs button,.dbtn button,.mclose,#views button,.dskip');
@@ -151,6 +168,7 @@ app.addEventListener('pointerdown', (e) => {
   else if (b.matches('.cell')) { app.querySelectorAll('.cell').forEach((x) => x.classList.toggle('sel', x === b)); }
   else if (b.matches('.abtn')) {
     const k = b.dataset.k;
+    if (LIVE_KEYS[k]) { key(LIVE_KEYS[k], true); setTimeout(() => key(LIVE_KEYS[k], false), 110); }
     if (k === 'lock' || k === 'guard') b.classList.toggle('on');
     if ((k === 's1' || k === 's2') && !b.classList.contains('cool')) { const t0 = performance.now(), D = 4000; const step = (t) => { const p = 1 - (t - t0) / D; if (p <= 0) { set(k, 0, ''); return; } set(k, p * 100, String(Math.ceil(p * D / 1000))); requestAnimationFrame(step); }; requestAnimationFrame(step); }
   }

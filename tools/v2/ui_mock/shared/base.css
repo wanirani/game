@@ -68,3 +68,5 @@ svg .f { fill: currentColor; stroke: none; }
 #menu > .fr ~ *, #menu .mb > div > .fr ~ * { position: relative; }
 /* 가방 칸: 폴드는 40칸 전부(8줄), 휴대폰은 20칸(4줄)만 보이고 나머지는 넘겨 본다 */
 .phone .cells .cell:nth-child(n+21) { display: none; }
+/* ?live=1 (실제 시범판 위에 얹어 볼 때): 꾸며 넣은 피해 숫자·보스 막대·알림은 뺀다 */
+.live .dmg, .live #boss, .live #toast { display: none; }

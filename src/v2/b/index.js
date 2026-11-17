@@ -381,11 +381,11 @@ export default class V2ProtoB extends Scene {
   _blade(dt) {
     const ch = this.h3, h = this.sim.hero, T = this.blade ?? (this.blade = []);
     for (const s of T) s.t += dt;
-    while (T.length && T[0].t > 0.15) T.shift();
+    while (T.length && T[0].t > 0.12) T.shift();
     if (!h.move || h.dead || dt <= 0) return;
     const W = ch.weaponMatrix(ch.place(h.x, this.visY ?? h.y, h.z)); if (!W) return;
     const pt = (y) => [W[4] * y + W[12], W[5] * y + W[13], W[6] * y + W[14]];
-    T.push({ a: pt(24), b: pt(90), t: 0, mv: h.move });
+    T.push({ a: pt(38), b: pt(90), t: 0, mv: h.move });
   }
   /** 성능 시험용 (?c3dbench=N): 영웅 둘레에 스킨 캐릭터 N 명을 더 그린다 — 입체 적 12마리가 화면에 있을 때의 값을 재려고 */
   bench3d(ch, tint, y) {
@@ -502,8 +502,8 @@ export default class V2ProtoB extends Scene {
       const T = this.blade, G = S.glow, um = (G.u0 + G.u1) / 2, vm = (G.v0 + G.v1) / 2, uv = { u0: um, u1: um, v0: vm, v1: vm + (G.v1 - vm) * 0.8 };
       for (let i = 1; i < T.length; i++) {
         const p = T[i - 1], q = T[i]; if (p.mv !== q.mv) continue;
-        const k = 1 - q.t / 0.15, d = depth((p.b[0] + q.b[0]) / 2, (p.b[1] + q.b[1]) / 2, (p.b[2] + q.b[2]) / 2); if (d < NEAR) continue;
-        L.push({ d: d - 10, tex: 0, uv, p: [p.a[0], p.a[1], p.a[2], q.a[0], q.a[1], q.a[2], q.b[0], q.b[1], q.b[2], p.b[0], p.b[1], p.b[2]], col: [1.25, 1.35, 1.7], a: 0.85 * k * k, mode: 0, flash: 0, bias: 10, fog: 0.6 });
+        const k = Math.max(0, 1 - q.t / 0.12), d = depth((p.b[0] + q.b[0]) / 2, (p.b[1] + q.b[1]) / 2, (p.b[2] + q.b[2]) / 2); if (d < NEAR) continue;
+        L.push({ d: d - 10, tex: 0, uv, p: [p.a[0], p.a[1], p.a[2], q.a[0], q.a[1], q.a[2], q.b[0], q.b[1], q.b[2], p.b[0], p.b[1], p.b[2]], col: [0.75, 0.86, 1.25], a: 0.34 * k * k, mode: 0, flash: 0, bias: 10, fog: 0.6 });
       }
     }
     for (const e of sim.enemies) {
