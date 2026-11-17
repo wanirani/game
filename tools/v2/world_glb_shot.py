@@ -46,9 +46,9 @@ def raster(P, N, UV, T, tex, view, size, bg=(52, 54, 60)):
         x0, y0, x1, y1, x2, y2 = sx[a], sy[a], sx[b], sy[b], sx[c], sy[c]
         area = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0)
         if abs(area) < 1e-9: continue
-        # back faces: game winding is "cross(b-a, c-a) = outward"; outward z toward camera must be > 0
+        # back faces. game winding: cross(b-a, c-a) = outward in game axes; the view basis is mirrored, so front faces have cross.z < 0 here
         ux, uy, uz = Q[b] - Q[a]; vx, vy, vz = Q[c] - Q[a]
-        if ux * vy - uy * vx <= 0: continue
+        if ux * vy - uy * vx >= 0: continue
         xa = max(0, int(math.floor(min(x0, x1, x2)))); xb = min(size - 1, int(math.ceil(max(x0, x1, x2))))
         ya = max(0, int(math.floor(min(y0, y1, y2)))); yb = min(size - 1, int(math.ceil(max(y0, y1, y2))))
         if xa > xb or ya > yb: continue

@@ -9,10 +9,12 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { SCULPTS } from './world_sculpts.mjs';
+import { readGLB } from './char3d_glbio.mjs';
+import { buildModel } from '../../src/v2/char3d/glb.js';
 
 const argv = process.argv.slice(2), opt = {};
 for (let i = 0; i < argv.length; i++) if (argv[i].startsWith('--')) opt[argv[i].slice(2)] = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : '1';
-const OUT = opt.out ?? 'assets/v2/props', TMP = opt.tmp ?? '/tmp/claude-0/v2/world/bake', PITCH = 18 * Math.PI / 180, CP = Math.cos(PITCH), SP = Math.sin(PITCH);
+const OUT = opt.out ?? 'assets/v2/props', SRC = opt.glb ?? 'tools/v2/world_src/props', TMP = opt.tmp ?? '/tmp/claude-0/v2/world/bake', PITCH = 18 * Math.PI / 180, CP = Math.cos(PITCH), SP = Math.sin(PITCH);
 fs.mkdirSync(OUT, { recursive: true }); fs.mkdirSync(TMP, { recursive: true });
 /** heights (world px) and footprints for generated models, by id (tools: /tmp/claude-0/v2/world/gen_requests.json) */
 const GLB_META = {
@@ -160,25 +162,82 @@ function bakeSculpt(name, S) {
   return { name, src: 'sculpt', P: Float32Array.from(P), N: Nrm, UV, T: Uint16Array.from(T), tw, th, rgb, h: S.h, foot: S.foot, footH: S.footH, light: S.light ?? null };
 }
 
-// ───────── generated GLB -> mesh + texture ─────────
-async function bakeGlb(id, file) {
-  const { readGLB } = await import('./char3d_glbio.mjs'), { buildModel } = await import('../../src/v2/char3d/glb.js');
-  const side = fs.existsSync(file.replace(/\.glb$/, '.json')) ? JSON.parse(fs.readFileSync(file.replace(/\.glb$/, '.json'), 'utf8')) : {}, meta = { ...(GLB_META[id] ?? { h: 120, foot: [20, 14] }), ...side };
-  const M = buildModel(readGLB(file)), pr = M.prims[0]; let P = Float64Array.from(pr.pos), N = Float32Array.from(pr.nrm), UV = Float32Array.from(pr.uv), T = Int32Array.from(pr.idx);
-  if (T.length / 3 > (meta.tris ?? 1500)) { const d = decimate(P, T, meta.tris ?? 1500, true), k = d.keepIdx; P = d.P; T = d.T; N = Float32Array.from(k.flatMap((v) => [N[v * 3], N[v * 3 + 1], N[v * 3 + 2]])); UV = Float32Array.from(k.flatMap((v) => [UV[v * 2], UV[v * 2 + 1]])); }
-  const ry = (meta.rotY ?? 0) * Math.PI / 180, c = Math.cos(ry), s = Math.sin(ry), nv = P.length / 3; let lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
-  for (let i = 0; i < nv; i++) { const x = P[i * 3], z = P[i * 3 + 2]; P[i * 3] = c * x + s * z; P[i * 3 + 2] = -s * x + c * z; const a = N[i * 3], b = N[i * 3 + 2]; N[i * 3] = c * a + s * b; N[i * 3 + 2] = -s * a + c * b; for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], P[i * 3 + k]); hi[k] = Math.max(hi[k], P[i * 3 + k]); } }
-  const sc = meta.h / (hi[1] - lo[1]), cx = (lo[0] + hi[0]) / 2, cz = (lo[2] + hi[2]) / 2;
-  for (let i = 0; i < nv; i++) { P[i * 3] = (P[i * 3] - cx) * sc; P[i * 3 + 1] = (P[i * 3 + 1] - lo[1]) * sc; P[i * 3 + 2] = (P[i * 3 + 2] - cz) * sc; }
-  const tex = meta.tex ?? 320, imgFile = path.join(TMP, id + '.img'); fs.writeFileSync(imgFile, M.images[pr.image]?.bytes ?? new Uint8Array(0));
-  console.log(`  glb ${id}: ${T.length / 3} tris, ${nv} verts, h ${meta.h}, texture -> ${tex}x${tex}`);
-  return { name: id, src: 'glb', P: Float32Array.from(P), N, UV, T: Uint16Array.from(T), tw: tex, th: tex, imgFile, h: meta.h, foot: meta.foot ?? [0, 0], footH: meta.footH ?? meta.h * 0.8, light: meta.light ?? null };
+// ───────── generated GLB -> mesh + texture (docs/v2/ENV_KIT.md 16) ─────────
+// game axes = (glb.x, glb.y, -glb.z) then rotY (the generator's models face +x: rotY 90 turns the front to the camera, -z). Steps:
+//   weld the UV-split vertices by position -> connected parts (keep / drop / split into several props) -> scale to the wanted height, feet on y = 0,
+//   centred on the footprint -> quadric decimation of the welded mesh -> tools/v2/world_glb_prep.py bakes the texture for the game camera
+//   (three orthographic pictures of the FULL model: front | left | right) and gives the low model its uv, split normals and glow flags.
+function loadGlbParts(id, file, meta) {
+  const pr = buildModel(readGLB(file)).prims[0], nv0 = pr.pos.length / 3, ry = (meta.rotY ?? 90) * Math.PI / 180, c = Math.cos(ry), s = Math.sin(ry);
+  const P0 = new Float64Array(nv0 * 3), UV0 = Float64Array.from(pr.uv), T0 = Int32Array.from(pr.idx);
+  for (let i = 0; i < nv0; i++) { const x = pr.pos[i * 3], z = -pr.pos[i * 3 + 2]; P0[i * 3] = c * x + s * z; P0[i * 3 + 1] = pr.pos[i * 3 + 1]; P0[i * 3 + 2] = -s * x + c * z; }
+  for (let t = 0; t < T0.length; t += 3) { const q = T0[t + 1]; T0[t + 1] = T0[t + 2]; T0[t + 2] = q; }   // mirrored axis: keep cross(b-a, c-a) = outward
+  // weld
+  const key = new Map(), w = new Int32Array(nv0), WP = [];
+  for (let i = 0; i < nv0; i++) { const k = `${Math.round(P0[i * 3] * 2e4)},${Math.round(P0[i * 3 + 1] * 2e4)},${Math.round(P0[i * 3 + 2] * 2e4)}`; let j = key.get(k); if (j == null) { j = WP.length / 3; key.set(k, j); WP.push(P0[i * 3], P0[i * 3 + 1], P0[i * 3 + 2]); } w[i] = j; }
+  const nw = WP.length / 3, par = Int32Array.from({ length: nw }, (_, i) => i), find = (a) => { while (par[a] !== a) { par[a] = par[par[a]]; a = par[a]; } return a; };
+  for (let t = 0; t < T0.length; t += 3) { const a = find(w[T0[t]]), b = find(w[T0[t + 1]]), d = find(w[T0[t + 2]]); par[b] = a; par[find(d)] = a; }
+  const comp = new Map();   // root -> { tris: [triangle starts], lo, hi }
+  for (let t = 0; t < T0.length; t += 3) { const r = find(w[T0[t]]); let C = comp.get(r); if (!C) { C = { tris: [], lo: [1e9, 1e9, 1e9], hi: [-1e9, -1e9, -1e9] }; comp.set(r, C); } C.tris.push(t); for (let e = 0; e < 3; e++) for (let k = 0; k < 3; k++) { const v = P0[T0[t + e] * 3 + k]; if (v < C.lo[k]) C.lo[k] = v; if (v > C.hi[k]) C.hi[k] = v; } }
+  let comps = [...comp.values()].sort((a, b) => b.tris.length - a.tris.length);
+  if (opt.parts) console.log(`  ${id} parts: ` + comps.map((C) => `${C.tris.length}t x[${C.lo[0].toFixed(2)},${C.hi[0].toFixed(2)}] y[${C.lo[1].toFixed(2)},${C.hi[1].toFixed(2)}] z[${C.lo[2].toFixed(2)},${C.hi[2].toFixed(2)}]`).join(' | '));
+  if (meta.dropThin) comps = comps.filter((C) => !(C.hi[1] - C.lo[1] > meta.dropThin[0] && Math.max(C.hi[0] - C.lo[0], C.hi[2] - C.lo[2]) < meta.dropThin[1]));   // [taller than, thinner than] (unit model): stray spikes
+  if (meta.keep) comps = comps.slice(0, meta.keep);
+  let groups = [{ name: id, comps, meta }];
+  if (meta.split) {   // the biggest parts, left to right; every other fragment joins the nearest one
+    const main = comps.slice(0, meta.split.length).sort((a, b) => (a.lo[0] + a.hi[0]) - (b.lo[0] + b.hi[0]));
+    groups = main.map((C, i) => ({ name: meta.split[i].name, comps: [C], meta: { ...meta, split: null, ...meta.split[i] } }));
+    for (const C of comps.slice(meta.split.length)) { const cx = (C.lo[0] + C.hi[0]) / 2; let best = 0, bd = 1e9; main.forEach((M, i) => { const d = Math.abs((M.lo[0] + M.hi[0]) / 2 - cx); if (d < bd) { bd = d; best = i; } }); groups[best].comps.push(C); }
+  }
+  let ylo = 1e9, yhi = -1e9; for (const C of comps) { ylo = Math.min(ylo, C.lo[1]); yhi = Math.max(yhi, C.hi[1]); }
+  const unit = meta.h / (yhi - ylo);   // one scale for the whole model; a split part may give its own h
+  return groups.map((g) => {
+    const tris = g.comps.flatMap((C) => C.tris).sort((a, b) => a - b), lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
+    for (const C of g.comps) for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], C.lo[k]); hi[k] = Math.max(hi[k], C.hi[k]); }
+    const sc = g.meta.split === null && g.meta.h !== meta.h ? g.meta.h / (hi[1] - lo[1]) : unit, cx = (lo[0] + hi[0]) / 2, cz = (lo[2] + hi[2]) / 2;
+    const used = new Map(), fpos = [], fuv = [], fidx = [], wused = new Map(), lpos = [], lidx = [];
+    for (const t of tris) for (let e = 0; e < 3; e++) {
+      const v = T0[t + e]; let j = used.get(v);
+      if (j == null) { j = fpos.length / 3; used.set(v, j); fpos.push((P0[v * 3] - cx) * sc, (P0[v * 3 + 1] - lo[1]) * sc, (P0[v * 3 + 2] - cz) * sc); fuv.push(UV0[v * 2], UV0[v * 2 + 1]); }
+      fidx.push(j);
+      const wv = w[v]; let q = wused.get(wv); if (q == null) { q = lpos.length / 3; wused.set(wv, q); lpos.push((WP[wv * 3] - cx) * sc, (WP[wv * 3 + 1] - lo[1]) * sc, (WP[wv * 3 + 2] - cz) * sc); } lidx.push(q);
+    }
+    let LP = Float64Array.from(lpos), LT = Int32Array.from(lidx); const want = g.meta.tris ?? 900;
+    // drop degenerate welded triangles, then decimate
+    LT = Int32Array.from(Array.from({ length: LT.length / 3 }, (_, t) => [LT[t * 3], LT[t * 3 + 1], LT[t * 3 + 2]]).filter(([a, b, d]) => a !== b && b !== d && a !== d).flat());
+    if (LT.length / 3 > want) { const d = decimate(LP, LT, want); LP = d.P; LT = d.T; }
+    return { name: g.name, meta: g.meta, full: { pos: fpos, uv: fuv, idx: fidx }, low: { pos: Array.from(LP), idx: Array.from(LT) }, fullTris: fidx.length / 3, h: (hi[1] - lo[1]) * sc };
+  });
+}
+function bakeGlbs(dir, only) {
+  const META = JSON.parse(fs.readFileSync(path.join(dir, 'meta.json'), 'utf8')), parts = [];
+  for (const [id, m] of Object.entries(META.props)) {
+    const file = path.join(dir, id + '.glb'); if (m.skip || !fs.existsSync(file)) continue;
+    const side = fs.existsSync(file.replace(/\.glb$/, '.json')) ? JSON.parse(fs.readFileSync(file.replace(/\.glb$/, '.json'), 'utf8')) : {};
+    const texFile = path.join(TMP, id + '.srcimg'), M = buildModel(readGLB(file)); fs.writeFileSync(texFile, M.images[M.prims[0].image].bytes);
+    for (const p of loadGlbParts(id, file, { ...m, ...side })) if (!only || only.has(p.name) || only.has(id)) parts.push({ ...p, texFile });
+  }
+  if (!parts.length) return [];
+  const job = { pitch: META.pitch ?? 24, yaw: META.yaw ?? 65, sideScale: META.sideScale ?? 0.5, budget: Number(opt.texels ?? META.texels ?? 1.7e6), items: [] };
+  for (const p of parts) {
+    const base = path.join(TMP, p.name); fs.writeFileSync(base + '.in.json', JSON.stringify({ full: p.full, low: p.low }));
+    job.items.push({ id: p.name, in: base + '.in.json', tex: p.texFile, png: base + '.cell.png', out: base + '.out.json', px: p.meta.px ?? 2.2, lum: p.meta.lum ?? 104, gainMax: p.meta.gainMax ?? 3.4, emis: !!p.meta.emis, emisFrac: p.meta.emisFrac ?? 0.5 });
+  }
+  fs.writeFileSync(path.join(TMP, 'glb_job.json'), JSON.stringify(job));
+  execFileSync('python3', ['-I', path.join(path.dirname(new URL(import.meta.url).pathname), 'world_glb_prep.py'), path.join(TMP, 'glb_job.json')], { stdio: 'inherit' });
+  return parts.map((p) => {
+    const o = JSON.parse(fs.readFileSync(path.join(TMP, p.name + '.out.json'), 'utf8')), m = p.meta;
+    if (o.pos.length / 3 > 65535) throw new Error(p.name + ': too many vertices');
+    console.log(`  glb ${p.name}: ${p.fullTris} -> ${o.idx.length / 3} tris, ${o.pos.length / 3} verts, h ${p.h.toFixed(0)}, cell ${o.w}x${o.h}`);
+    return { name: p.name, src: 'glb', P: Float32Array.from(o.pos), N: Float32Array.from(o.nrm), UV: Float32Array.from(o.uv), E: Uint8Array.from(o.e), T: Uint16Array.from(o.idx), tw: o.w, th: o.h, imgFile: path.join(TMP, p.name + '.cell.png'), h: m.h, foot: m.foot ?? [0, 0], footH: m.footH ?? p.h * 0.8, light: m.light ?? null, glow: m.glow ?? null, emis: !!m.emis };
+  });
 }
 
 // ───────── run ─────────
 const only = opt.only ? new Set(opt.only.split(',')) : null, items = new Map();
-for (const [name, S] of Object.entries(SCULPTS)) if (!only || only.has(name)) items.set(name, bakeSculpt(name, S));
-if (opt.glb && fs.existsSync(opt.glb)) for (const fn of fs.readdirSync(opt.glb).filter((n) => n.endsWith('.glb')).sort()) { const id = fn.replace(/\.glb$/, ''); if (!only || only.has(id)) items.set(id, await bakeGlb(id, path.join(opt.glb, fn))); }
+const glbItems = fs.existsSync(path.join(SRC, 'meta.json')) ? bakeGlbs(SRC, only) : [], replaced = new Set(glbItems.map((g) => g.name));
+for (const [name, S] of Object.entries(SCULPTS)) if ((!only || only.has(name)) && !replaced.has(name) && !opt.nosculpt) items.set(name, bakeSculpt(name, S));   // a generated model of the same name replaces the sculpt
+for (const g of glbItems) items.set(g.name, g);
 // atlas: shelves, widest first
 const list = [...items.values()].sort((a, b) => b.th - a.th), PAD = 4, AW = Number(opt.atlas ?? 1024); let x = PAD, y = PAD, rowH = 0;
 for (const it of list) { if (x + it.tw + PAD > AW) { x = PAD; y += rowH + PAD; rowH = 0; } it.ax = x; it.ay = y; x += it.tw + PAD; rowH = Math.max(rowH, it.th); }
