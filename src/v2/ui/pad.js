@@ -171,7 +171,7 @@ export function createPad(game, opts = {}) {
     plate(ctx, b.label, cx, b.pad + b.d + L.labelPx * 0.12, L.labelPx, { alpha: b.disabled ? 0.5 : 1 });
     b.dirty = false; S.repaints++;
   }
-  function paint() { for (const b of B) if (b.dirty) drawButton(b); }
+  function paint() { for (let i = 0; i < B.length; i++) if (B[i].dirty) drawButton(B[i]); }
 
   // ───── input ─────
   const acts = (b) => {

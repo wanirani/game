@@ -9,6 +9,7 @@ import { Geo, Frame } from './geo.js';
 import * as K from './kit.js';
 import { PROPS, WALLPROPS } from './props.js';
 import { bakedDef, bakedProp } from './baked.js';
+import './props2.js';   // WORLD 구역의 소품을 PROPS 에 더한다
 
 /** 구운 소품이 없을 때(묶음을 받기 전) 대신 세우는 손으로 짠 소품 */
 const FALLBACK = { angel: 'statue', gargoyle: 'statue', deadtree: 'tree' };

@@ -134,7 +134,7 @@ export function createCanvasHud(game, opts = {}) {
     c.save(); c.translate(w / 2, y + divH / 2); if (big || night) c.scale(1, -1); sprite(c, 'orn_div', 0, 0, divW, divH); c.restore();
     if (!bandP.c || stale(bandP, 1)) {   // the soft dark band behind big banners: a 1 px wide gradient, stretched when drawn
       const k = ctxOf(bandP, 1, 64), g = k.createLinearGradient(0, 0, 0, 64);
-      g.addColorStop(0, 'rgba(4,4,12,0)'); g.addColorStop(0.3, 'rgba(4,4,12,0.52)'); g.addColorStop(0.7, 'rgba(4,4,12,0.52)'); g.addColorStop(1, 'rgba(4,4,12,0)');
+      g.addColorStop(0, 'rgba(4,4,12,0)'); g.addColorStop(0.32, 'rgba(4,4,12,0.56)'); g.addColorStop(0.68, 'rgba(4,4,12,0.56)'); g.addColorStop(1, 'rgba(4,4,12,0)');
       k.fillStyle = g; k.fillRect(0, 0, 1, 64);
     }
   }

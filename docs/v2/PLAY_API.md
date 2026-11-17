@@ -22,7 +22,7 @@ for (const e of sim.enemies) if (!e.dead) driveActor(charOf(e), e, dt);   // 적
 ```
 
 - **규칙은 화면을 모른다.** 좌표는 x 오른쪽 · z 화면 안쪽 · y 위, 단위는 논리 px (1 m = `UNIT` 58).
-- **보는 방향은 규칙이 정한다**(`dirX`,`dirZ` 단위 벡터, 360°). 그림은 `driveHero`/`driveActor` 가 그 방향으로 부드럽게 돌린다(`ch.dx`,`ch.dz`): 한 번 돌기 시작한 쪽으로 끝까지 돌고(스틱을 반대로 꺾어도 오락가락하지 않는다), 반대로 꺾는 데 0.2–0.27초.
+- **보는 방향은 규칙이 정한다**(`dirX`,`dirZ` 단위 벡터, 360°). 그림은 `driveHero`/`driveActor` 가 그 방향으로 부드럽게 돌린다(`ch.dx`,`ch.dz`): 한 번 돌기 시작한 쪽으로 끝까지 돌고(스틱을 반대로 꺾어도 오락가락하지 않는다), 반대로 꺾는 데 0.17–0.22초(한 틱에 16° 까지).
 - **그림에만 얹는 것**(`driveHero`): 달릴 때 윗몸을 12° 세우고, 돌 때 도는 쪽으로 기울이고, 락온한 적을 고개로 본다. 자세를 입힌 뒤 뼈 몇 개를 더 돌리는 것이라 클립은 그대로다(`TUNE.runLeanFix · runBank · lookMax` 를 0 으로 두면 꺼진다).
 - **클립은 공용 라이브러리**(`assets/v2/char3d/clips/`). 장면이 `ch.asset.clips` 에 이미 붙여 두었으면 그대로 쓰고, 없으면 `driveHero`/`driveActor` 가 처음 불릴 때 스스로 받는다(받기 전에는 시범판의 몰이로 돈다). 모델 파일에 든 클립(`float_idle` · `fly`)은 이름 그대로 `ch.asset.clips` 에 더한다. 미리 받으려면 `await loadPlayClips(asset)`.
 - 세계 `W`: `{ start:{x,y,z}, spawns:[{kind,x,y,z,yard?,active?}], boxes:[{x0,x1,z0,z1,y0,y1,solid,walk}], sections:[{id,x0,x1,z0,z1}], tele?:{id:[x,z]} }` (시범판 B 의 `compileStage` · 환경 키트 `compileEnv` 결과 그대로). 다른 충돌을 쓰려면 `W.groundAt(x,z,yMax)` · `W.moveXZ(e,dx,dz)` · `W.sectionAt(x,z)` 를 달아 주면 그것을 쓴다.
@@ -178,7 +178,7 @@ registerKind('wolfman', {
 - `tools/v2/play_view.html` — 평평한 마당에서 진짜 규칙을 돌려 카엘의 모든 기술(여덟 방향)과 적 여섯 종을 본다. 단추: 시범 고르기 · 카메라(게임/높이/가까이/옆/앞/위/적 가까이) · 판정 보기 · 느리게 · 멈춤. `?demo=free` 는 직접 조작(방향키/WASD · J 공격 · K 점프 · L 구르기/막기 · O 락온).
 - `node tools/v2/play_shot.mjs [이름…]` — 그 화면을 헤드리스로 띄워 붙임 그림을 `/tmp/claude-0/v2/play/` 에 찍는다(`--list` 로 묶음 목록, `--gallery="clip:초,…"` 로 클립 자세만).
 - `node tools/v2/play_rules_test.mjs` — 규칙(화면 없음): 기술 · 여덟 방향 판정 · 구르기 무적 · 막기/튕겨내기 · 락온 · 여섯 종 · 끼임 · 사건.
-- `node tools/v2/play_motion_check.mjs [--stride]` — 뼈대 숫자로: 칼이 판정 구간 안에서 몸 앞을 지나는가 · 디딘 발이 미끄러지지 않는가 · 반전 때 한쪽으로만 도는가 · NaN · 클립 이름.
+- `node tools/v2/play_motion_check.mjs [--stride]` — 뼈대 숫자로: 칼이 판정 구간 안에서 몸 앞을 지나는가 · 디딘 발이 미끄러지지 않는가 · 반전 때 한쪽으로만 도는가 · NaN · 클립 이름 · 달리기 숙임/기울임 · 락온한 적 보기 · 박쥐 숙임.
 - `node tools/v2/play_cliptrace.mjs <clip…>` — 칼끝 궤적 · 골반 높이 · 숙임을 시간순으로 찍는다(판정에 맞출 구간을 고를 때).
 
 ## 9. 장면(ENGINE)이 해 주면 좋은 것
@@ -190,5 +190,5 @@ registerKind('wolfman', {
 | 무엇 | 상태 |
 |---|---|
 | 공개 이름 · 규칙(영웅 기술 다섯 · 구르기 · 막기/튕겨내기 · 락온 · 적 여섯 종 · 끼임) | 동작 — `play_rules_test` 73/73 (시범판 B 의 세계와 환경 키트 세계 둘 다에서) |
-| 움직임(`driveHero` · `driveActor` — 라이브러리 클립) | 동작 — `play_motion_check` 27/27, 붙임 그림으로 눈으로 봄 |
+| 움직임(`driveHero` · `driveActor` — 라이브러리 클립) | 동작 — `play_motion_check` 31/31, 붙임 그림 28묶음(`/tmp/claude-0/v2/play/`)으로 눈으로 봄 · 본 게임 장면(`v2g`)에서 오류 없이 돈다(`tools/v2/game_probe.mjs`) |
 | 길게 눌러 채찍 · 기술 단추 · 종 · 보스 | 범위 밖 (자리만) |

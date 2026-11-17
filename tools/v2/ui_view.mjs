@@ -31,7 +31,7 @@ async function staged() {
   const { createHud } = await import('/src/v2/ui/index.js');
   const cv = document.getElementById('screen'), ctx = cv.getContext('2d'), bg = document.getElementById('bg');
   const dev = Q.get('dev') || (innerWidth / innerHeight > 1.6 ? 'phone2' : 'fold_open'), bgName = Q.get('bg') || 'bright';
-  if (bgName === 'white' || bgName === 'black') { bg.style.display = 'none'; document.body.style.background = bgName === 'white' ? '#fff' : '#000'; }
+  if (bgName === 'white' || bgName === 'black') { bg.style.display = 'none'; document.getElementById('app').style.background = document.body.style.background = bgName === 'white' ? '#fff' : '#000'; }
   else { bg.src = `ui_bg/${dev}_${bgName}.jpg`; await bg.decode().catch(() => {}); }
 
   // ── stand-in game: just what the HUD module reads ──

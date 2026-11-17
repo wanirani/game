@@ -129,5 +129,25 @@ for (const [name, from, to] of [['right → left', [1, 0], [-1, 0]], ['up → do
     ok(`${k}: every clip named in KINDS exists on the model/library`, miss.length === 0, miss.length ? 'missing ' + miss.join(',') : names.length + ' names');
   }
 }
+// ── ⑤ 그림에만 얹는 것: 달리기 숙임 · 도는 쪽 기울임 · 락온한 적 보기 · 박쥐 숙임 ──
+{ const lean = (fix) => { const T = { ...TUNE, runLeanFix: fix }, sim = new Sim(flatArena(3000, 3000, []), {}), ch = mkChar('kael'); let s = 0, n = 0;
+    for (let i = 0; i < 150; i++) { sim.update(DT, { mx: 1, mz: 0 }); driveHero(ch, sim.hero, DT, T); if (i > 80) { const hd = ch.rig.boneWorld('head'), hp = ch.rig.boneWorld('hips'); s += (Math.atan2(hd[14] - hp[14], hd[13] - hp[13]) * 180) / Math.PI; n++; } } return s / n; };
+  const raw = lean(0), fixed = lean(TUNE.runLeanFix);
+  ok('run: torso is raised so the face shows from the raised camera (lean reduced by 5–12°)', raw - fixed > 5 && raw - fixed < 13 && fixed > 8, `clip lean ${raw.toFixed(1)}° → ${fixed.toFixed(1)}°`); }
+{ const side = (sgn) => { const sim = new Sim(flatArena(3000, 3000, []), {}), ch = mkChar('kael'); let s = 0, n = 0;
+    for (let i = 0; i < 240; i++) { const a = sgn * i * 0.06; sim.update(DT, { mx: Math.cos(a), mz: Math.sin(a) }); driveHero(ch, sim.hero, DT, TUNE); if (i > 120) { s += ch.rig.boneWorld('head')[12] - ch.rig.boneWorld('hips')[12]; n++; } } return s / n; };
+  const L = side(1), R0 = side(-1), M = side(0);
+  ok('run: banks into the turn (head shifts to the inside of the circle, both ways)', L > M + 0.012 && R0 < M - 0.012, `left turn ${L.toFixed(3)} m · straight ${M.toFixed(3)} · right turn ${R0.toFixed(3)} (model +X = left)`); }
+{ const headFwd = (spawn) => { const sim = new Sim(flatArena(900, 900, [spawn]), {}), ch = mkChar('kael'); sim.enemies[0].def = { ...sim.enemies[0].def, attacks: [], speed: 0 };
+    for (let i = 0; i < 90; i++) { sim.update(DT, {}); sim.enemies[0].x = spawn.x; sim.enemies[0].z = spawn.z; driveHero(ch, sim.hero, DT, TUNE); } return Array.from(ch.rig.boneWorld('head')); };
+  const rel = (a, b) => { const col = (W, i) => { const v = [W[i * 4], W[i * 4 + 1], W[i * 4 + 2]], l = Math.hypot(...v); return v.map((x) => x / l); }, A = [col(a, 0), col(a, 1), col(a, 2)], B = [col(b, 0), col(b, 1), col(b, 2)], loc = A.map((c) => c[2]); return [0, 1, 2].map((k) => B[0][k] * loc[0] + B[1][k] * loc[1] + B[2][k] * loc[2]); };
+  const base = headFwd({ kind: 'melee', x: 200, z: 0, active: true }), fl = rel(base, headFwd({ kind: 'melee', x: 120, z: 160, active: true })), fr = rel(base, headFwd({ kind: 'melee', x: 120, z: -160, active: true })), fb = rel(base, headFwd({ kind: 'melee', x: -200, z: 10, active: true }));
+  const yaw = (f) => (Math.atan2(f[0], f[2]) * 180) / Math.PI;
+  ok('lock-on: the head turns to look at the locked enemy (left / right), level, and not at one behind', yaw(fl) > 30 && yaw(fr) < -30 && Math.abs(fl[1]) < 0.08 && Math.abs(fr[1]) < 0.08 && Math.abs(yaw(fb)) < 3, `left ${yaw(fl).toFixed(0)}° · right ${yaw(fr).toFixed(0)}° · behind ${yaw(fb).toFixed(0)}° · tilt ${fl[1].toFixed(2)} / ${fr[1].toFixed(2)}`); }
+{ const D = KINDS.bat, ch = mkChar(D.model), e = { def: D, kind: 'bat', id: 0, state: 'chase', anim: 'walk', animT: 0, dirX: 1, dirZ: 0, gait: 0, stateT: 0, moved: 100, alpha: 1 };
+  for (let i = 0; i < 60; i++) driveActor(ch, e, DT);
+  const W = ch.rig.boneWorld('hips'), up = [W[4], W[5], W[6]], l = Math.hypot(...up), tilt = (Math.atan2(up[2] / l, up[1] / l) * 180) / Math.PI;
+  ok('bat: body is pitched forward by the pose itself (the scene can place it with a plain ch.place)', Math.abs(tilt - D.pitch) < 12, `tilt ${tilt.toFixed(0)}° (KINDS.bat.pitch ${D.pitch})`); }
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) { console.log('FAILED:\n  ' + fails.join('\n  ')); process.exit(1); }

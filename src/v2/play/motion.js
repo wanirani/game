@@ -143,7 +143,7 @@ export function driveHero(ch, h, dt, T = TUNE) {
   else if (st === 'attack' || st === 'parry' || st === 'block') turn(ch, S, h.dirX, h.dirZ, dt, 42, 40);
   else if (st === 'roll') turn(ch, S, h.roll?.dx ?? h.dirX, h.roll?.dz ?? h.dirZ, dt, 34, 32);
   else if (st === 'guard') turn(ch, S, h.dirX, h.dirZ, dt, 22, 18);
-  else turn(ch, S, h.dirX, h.dirZ, dt, h.onGround ? 17 : 11, 15);
+  else turn(ch, S, h.dirX, h.dirZ, dt, h.onGround ? 22 : 12, 17);
   { const a1 = Math.atan2(ch.dz, ch.dx), w = dt > 0 ? wrapPi(a1 - (S.ang ?? a1)) / dt : 0; S.ang = a1; S.angV = (S.angV ?? 0) + (w - (S.angV ?? 0)) * Math.min(1, dt * 14); }   // 도는 빠르기 (rad/초, + = 왼쪽으로)
   // ── 클립 ──
   if (S.wasDead && !h.dead) A.play('idle', PO(0, null, 1, true));   // 다시 시작: 누운 자세에서 섞이지 않고 바로 선다

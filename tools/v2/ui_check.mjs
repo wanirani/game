@@ -1,5 +1,5 @@
 // UI lane: checks of the v2 interface (docs/v2/UI_API.md) on the test page tools/v2/ui_view.html.
-//   node tools/v2/ui_check.mjs [--devices fold_open,phone2] [--texts normal,large,xlarge] [--json /tmp/claude-0/v2/ui/check.json]
+//   node tools/v2/ui_check.mjs [--devices fold_open,phone2] [--texts normal,large,xlarge] [--json /tmp/claude-0/v2/ui/check.json] [--live v2g]
 // Per device and text size: page errors 0; every button >= 44 CSS px; buttons, labels and the resting stick inside
 // the safe area (also with simulated insets); labels not clipped by their canvas and not under another button; buttons
 // clear of the stick zone and of each other; touches become the documented input actions (tap, hold, slide, stick);
@@ -18,7 +18,7 @@ const fails = [], report = {};
 let passN = 0;
 const ok = (c, m) => { if (c) { passN++; } else { fails.push(m); console.log('  FAIL ' + m); } return c; };
 const port = 8200 + Math.floor(Math.random() * 700), srv = await start(port);
-const browser = await chromium.launch({ executablePath: EXE, args: ['--enable-precise-memory-info', '--js-flags=--expose-gc'] });
+const browser = await chromium.launch({ executablePath: EXE, args: ['--enable-precise-memory-info', '--js-flags=--expose-gc', '--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
 
 async function open(ctx, q) {
   const page = await ctx.newPage(); page._errs = [];
@@ -142,7 +142,7 @@ try {
         const st = u.hud.stats();
         return { msPerFrameFlushed: +flushed.toFixed(3), msPerFrame: +((t1 - t0) / N).toFixed(3), heapBytesPerFrame: Math.round((m1 - m0) / N), canvas: [cv.width, cv.height], drawMs: { avg: +st.drawMs.avg.toFixed(3), p95: +st.drawMs.p95.toFixed(3), max: +st.drawMs.max.toFixed(3) }, updMs: +st.updMs.toFixed(4), padRepaints: st.padRepaints };
       });
-      ok(R.cost.heapBytesPerFrame < 200, `${tag}: update + draw allocate about ${R.cost.heapBytesPerFrame} bytes per frame`);
+      // (allocation is measured by tools/v2/ui_alloc.mjs with the sampling heap profiler; performance.memory is too coarse to assert on)
       ok(page._errs.length === 0, `${tag}: page errors after touches ${JSON.stringify(page._errs)}`);
       await page.close();
 
@@ -186,6 +186,43 @@ try {
       console.log(`  buttons ${JSON.stringify(R.geometry.buttons)} minGap ${R.geometry.minGap} label ${R.geometry.labelPx}px | cost ${JSON.stringify(R.cost)}`);
       await ctx.close();
     }
+  }
+  // 7) --live <scene>: the HUD plugged into the real game scene (iframe, the scene's own HUD seam); the pad must drive the hero
+  if (args.live) {
+    const tag = 'live/' + args.live; console.log(`[${tag}]`);
+    const ctx = await browser.newContext(contextOptions('fold_open'));
+    const page = await ctx.newPage(), errs = [];
+    page.on('pageerror', (e) => errs.push(String(e.message).slice(0, 200)));
+    await page.goto(`http://localhost:${port}/tools/v2/ui_view.html?live=${args.live}`);
+    const up = await page.waitForFunction(() => window.__ui?.live, null, { timeout: 120000 }).then(() => true, () => false);
+    if (ok(up, `${tag}: live page did not come up`)) {
+      await page.waitForTimeout(1500);
+      const cl = await ctx.newCDPSession(page);
+      const hero = () => page.evaluate(() => { const v = window.__ui.win.__v2, h = v.hero; return { x: h.x, z: h.z, anim: h.anim, hp: h.hp }; });
+      const m = await page.evaluate(() => { const u = window.__ui, m = u.hud.metrics(); return { pad: m.pad, modal: m.modal, builtin: !!u.scene.hud.builtin, hidePad: u.scene.hidePad, tpad: getComputedStyle(u.win.document.getElementById('tpad') ?? u.win.document.body).display, stats: u.hud.stats() }; });
+      ok(!m.builtin && m.hidePad === true, `${tag}: scene uses the UI lane HUD and hides the v1 pad`);
+      ok(m.pad.shown, `${tag}: v2 pad is shown in touch mode`);
+      const bt = Object.fromEntries(m.pad.buttons.map((b) => [b.id, b])), z = m.pad.stick.zone, sx = z.x + z.w * 0.4, sy = z.y + z.h * 0.7;
+      const h0 = await hero();
+      await touch(cl, 'touchStart', [[sx, sy]]); await touch(cl, 'touchMove', [[sx + 70, sy]]); await page.waitForTimeout(1600);
+      const h1 = await hero(); await touch(cl, 'touchEnd', []);
+      ok(h1.x > h0.x + 15, `${tag}: stick right moves the hero (x ${h0.x.toFixed(0)} -> ${h1.x.toFixed(0)})`);
+      let seen = '';
+      await touch(cl, 'touchStart', [[bt.attack.cx, bt.attack.cy]]); await page.waitForTimeout(90); await touch(cl, 'touchEnd', []);
+      for (let i = 0; i < 20 && seen !== 'attack'; i++) { await page.waitForTimeout(60); seen = (await hero()).anim; }
+      ok(seen === 'attack', `${tag}: attack button starts an attack (anim ${seen})`);
+      await page.waitForTimeout(900);
+      await touch(cl, 'touchStart', [[bt.pause.cx, bt.pause.cy]]); await page.waitForTimeout(60); await touch(cl, 'touchEnd', []); await page.waitForTimeout(500);
+      const pm = await page.evaluate(() => { const u = window.__ui, m = u.hud.metrics(); return { modal: m.modal, pause: m.pause, css: u.game.cssScale, rect: u.game.canvasRect, shown: m.pad.shown }; });
+      ok(pm.modal === 'pause' && !pm.shown, `${tag}: pause button opens the pause menu (modal ${pm.modal})`);
+      if (pm.pause) { const r = pm.pause.rows[0]; await touch(cl, 'touchStart', [[pm.rect.x + (r.x + r.w / 2) * pm.css, pm.rect.y + (r.y + r.h / 2) * pm.css]]); await touch(cl, 'touchEnd', []); await page.waitForTimeout(500); }
+      const end = await page.evaluate(() => { const u = window.__ui, m = u.hud.metrics(); return { modal: m.modal, shown: m.pad.shown, stats: u.hud.stats(), frame: u.win.__v2.stats?.frameMs ?? null }; });
+      ok(end.modal === null && end.shown, `${tag}: resume returns to play (modal ${end.modal})`);
+      report.live = { scene: args.live, hudDrawMs: end.stats.drawMs, hudUpdMs: end.stats.updMs, padRepaints: end.stats.padRepaints, frameMs: end.frame };
+      console.log('  live HUD draw ms', JSON.stringify(end.stats.drawMs), 'update ms', end.stats.updMs.toFixed(4), 'pad repaints', end.stats.padRepaints, 'scene frame', JSON.stringify(end.frame));
+    }
+    ok(errs.length === 0, `${tag}: page errors ${JSON.stringify(errs)}`);
+    await ctx.close();
   }
 } finally { await browser.close(); srv.close(); }
 report.pass = passN; report.fail = fails.length; report.fails = fails;

@@ -1,7 +1,7 @@
 // v2g check (ENGINE lane, docs/v2/ENGINE_API.md 9): opens the real game scene on fold_open and phone2 and checks
 //   1 scene ready, every character a 3D model, nothing flat left, saved perf settings honoured
 //   2 real touch: 360 degree stick, attack / jump / roll buttons
-//   3 real touch: a bot plays the whole route (street -> corner -> alley -> yard) with the touch stick and buttons, in real time
+//   3 touch route: a bot plays the whole route (street -> corner -> alley -> yard) through the virtual pad's stick and buttons (touch pointer events every tick)
 //   4 the same route fast-forwarded (input auto source) for the frame numbers: draw calls, triangles, texture MB
 //   5 hit feel is wired: strikes through the bridge, hit-stop, shots as effects, dissolve on death
 //   6 turning: a stick reversal turns the hero at a bounded rate, in one direction, without wobble
@@ -9,7 +9,7 @@
 //   8 GL context loss -> restore
 //   9 leave and re-enter three times: no canvas / GL / heap growth; a v1 stage still runs afterwards
 //  10 without WebGL: a Korean notice only, no page error
-//   node tools/v2/game_check.mjs [--devices fold_open,phone2] [--json out.json] [--shots /tmp/claude-0/v2/engine] [--quick 1 = skip the real-time touch route]
+//   node tools/v2/game_check.mjs [--devices fold_open,phone2] [--json out.json] [--shots /tmp/claude-0/v2/engine] [--quick 1 = skip the no-WebGL pass] [--only touch,troute,route,turn,interp,alloc,far,shots,ctx,cycle,v1,nogl] [--verbose 1]
 // Headless Chromium draws WebGL with a software renderer: frame times here say nothing about a phone.
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
@@ -88,8 +88,9 @@ function installBot() {
   B.status = () => { const h = v.hero; return { ticks: B.ticks, sec: v.section, x: Math.round(h.x), z: Math.round(h.z), y: Math.round(h.y), hp: h.hp, left: v.enemies.length, yard: v.enemies.filter((e) => e.yard).length, wp: B.wp, t: B.t, deaths: v.scene.sim.deaths ?? 0, minHp: B.minHp, max: B.max, skips: B.skips, feelN: v.scene.feelN - B.feel0, simT: +(v.scene.sim.time ?? 0).toFixed(1) }; };
   // analog pilot for the real touch run (called from outside about 25 times a second)
   const P = (B.p = { lx: 0, lz: 0, lt: 0, stuckT: 0, escT: 0, escS: 1, atkT: 0, dodgeT: 0, fs: 0 });
+  B.pt = 0; B.now = () => B.pt / 60;   // the pilot's clock = its own ticks (so it works fast-forwarded)
   B.pilot = () => {
-    const h = v.hero, E = v.enemies, now = performance.now() / 1000, o = { mx: 0, mz: 0, attack: false, dash: false, jump: false, sec: v.section, x: Math.round(h.x), z: Math.round(h.z), hp: h.hp, dead: !!h.dead, left: E.length };
+    const h = v.hero, E = v.enemies, now = B.now(), o = { mx: 0, mz: 0, attack: false, dash: false, jump: false, sec: v.section, x: Math.round(h.x), z: Math.round(h.z), hp: h.hp, dead: !!h.dead, left: E.length };
     B.minHp = Math.min(B.minHp, h.hp); watch(); restart();
     if (h.dead || v.section === 'done') return o;
     const tg = target(h, E, now * 60);
@@ -105,6 +106,30 @@ function installBot() {
     if (P.stuckT >= 0.75) { if (fight && ++P.fs >= 3) { B.skipMap[tg.id] = now * 60 + 420; P.fs = 0; B.skips++; } P.stuckT = 0; P.escT = now + 0.5; P.escS = h.z > 150 && h.z < 260 ? -1 : 1; if (fight && Math.random() < 0.5) P.escS = -P.escS; }
     if (now < P.escT) { o.jump = P.escT - now > 0.25; o.mz = P.escS; o.mx *= 0.3; o.attack = false; }
     return o;
+  };
+  // touch driver: the pilot's wishes go through the virtual pad's own pointer handlers (stick drag + button presses) every tick
+  const fire = (type, id, x, y) => window.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: 'touch', isPrimary: id === 21, clientX: x, clientY: y, bubbles: true, cancelable: true, button: 0, buttons: type === 'pointerup' ? 0 : 1, width: 12, height: 12, pressure: type === 'pointerup' ? 0 : 0.5 }));
+  const COOL = { attack: 5, dash: 24, jump: 12 }, FINGER = { attack: 11, dash: 12, jump: 13 };
+  B.touchSetup = (x0, y0, R, btn) => { B.ts = { x0, y0, R, btn, stick: false, held: { attack: 0, dash: 0, jump: 0 }, presses: { attack: 0, dash: 0, jump: 0 }, moves: 0 }; input.setAutoSource(null); B.act = {}; };
+  B.touchStep = () => {
+    const S = B.ts, w = B.pilot(); B.pt++;
+    if (!S.stick) { fire('pointerdown', 21, S.x0, S.y0); S.stick = true; }
+    fire('pointermove', 21, S.x0 + w.mx * S.R, S.y0 - w.mz * S.R); S.moves++;
+    for (const k of ['attack', 'dash', 'jump']) {
+      const b = S.btn[k]; let st = S.held[k]; if (!b) continue;
+      if (st > 0) { if (--st === 0) { fire('pointerup', FINGER[k], b.cx, b.cy); st = -COOL[k]; } }
+      else if (st < 0) st++;
+      else if (w[k]) { fire('pointerdown', FINGER[k], b.cx, b.cy); S.presses[k]++; st = 3; }
+      S.held[k] = st;
+    }
+    return w;
+  };
+  B.touchEnd = () => { const S = B.ts; if (!S) return; for (const k of ['attack', 'dash', 'jump']) if (S.held[k] > 0 && S.btn[k]) fire('pointerup', FINGER[k], S.btn[k].cx, S.btn[k].cy); if (S.stick) fire('pointerup', 21, S.x0, S.y0); S.stick = false; };
+  B.touchRun = (n, renderEvery) => {
+    g._pageHidden = true;
+    for (let i = 0; i < n; i++) { B.touchStep(); g.tick(1 / 60); if (renderEvery && i % renderEvery === 0) { g.alpha = 1; g.render(); watch(); } if (v.section === 'done') break; }
+    g.alpha = 1; g.render();
+    const st = B.status(); st.presses = B.ts.presses; st.stickMoves = B.ts.moves; st.mode = input.mode; st.pticks = B.pt; return st;
   };
   B.stop = () => { B.act = {}; input.setAutoSource(null); };
   return true;
@@ -175,32 +200,26 @@ for (const dev of DEVICES) {
       await page.evaluate(() => { const v = window.__v2; v.scene.sim.reset(); v.scene.cam.snap = true; window.__bot.wp = 0; window.__bot.minHp = 100; window.__bot.feel0 = v.scene.feelN; });
     }
 
-    // ── 3) real touch: the whole route in real time ──
-    if (T && !args.quick && want('troute')) {
+    // ── 3) touch route: the pilot plays the whole route through the virtual pad (stick drag + button presses), fast-forwarded ──
+    // (CDP touches are answered only about once a second by the software-rendered page, too slow to fight with; the trusted touches of step 2
+    //  prove the browser -> pad path, this step drives the same pad handlers with touch pointer events every tick)
+    if (T && pad && want('troute')) {
       const vp = await page.evaluate(() => [innerWidth, innerHeight]);
-      const x0 = Math.round(vp[0] * 0.2), y0 = Math.round(vp[1] * 0.68), RAD = 56, btn = pad.buttons, t0 = Date.now();
-      let last = null, n = 0, atkAt = 0, seen = new Set(), shotsTaken = new Set(), deaths0 = await page.evaluate(() => window.__v2.scene.sim.deaths ?? 0);
-      await T.down(21, x0, y0); await sleep(40);
-      const tap = async (id, finger) => { const b = btn[id]; if (!b) return; await T.down(finger, b.cx, b.cy); await sleep(45); await T.up(finger); };
-      while (Date.now() - t0 < 260000) {
-        const w = await page.evaluate(() => window.__bot.pilot()); last = w; n++;
-        if (w.sec === 'done') break;
-        seen.add(w.sec);
-        await T.move(21, x0 + w.mx * RAD, y0 - w.mz * RAD);
-        if (w.dash) await tap('dash', 12);
-        else if (w.jump) await tap('jump', 13);
-        else if (w.attack && Date.now() - atkAt > 150) { atkAt = Date.now(); await tap('attack', 11); }
-        if (dev === DEVICES[0]) for (const [sec, name] of [['alley', '03_touch_alley'], ['yard', '04_touch_yard']]) if (w.sec === sec && !shotsTaken.has(sec)) { shotsTaken.add(sec); await sleep(700); await page.screenshot({ path: `${SHOTS}/${dev}_${name}.png` }); }
-        if (dev === DEVICES[0] && w.attack && !shotsTaken.has('fight') && w.left < 16) { shotsTaken.add('fight'); await page.screenshot({ path: `${SHOTS}/${dev}_02_touch_fight.png` }); }
-        await sleep(22);
+      await page.evaluate(([x0, y0, R, btn]) => { const v = window.__v2, B = window.__bot; v.scene.sim.reset(); v.scene.cam.snap = true; v.scene.fx?.clear(); B.wp = 0; B.minHp = 100; B.skipMap = {}; B.deaths = v.scene.sim.deaths ?? 0; B.feel0 = v.scene.feelN; B.touchSetup(x0, y0, R, btn); }, [Math.round(vp[0] * 0.2), Math.round(vp[1] * 0.68), 56, pad.buttons]);
+      let r = null, seen = [], cap = new Set(); const t0 = Date.now(), d0 = await page.evaluate(() => window.__v2.scene.sim.deaths ?? 0);
+      for (let i = 0; i < 80 && Date.now() - t0 < 300000; i++) {
+        r = await page.evaluate(() => window.__bot.touchRun(240, 12));
+        if (!seen.includes(r.sec)) seen.push(r.sec);
+        if (args.verbose) console.log('       ' + JSON.stringify({ sec: r.sec, x: r.x, z: r.z, hp: r.hp, left: r.left, deaths: r.deaths, wp: r.wp, skips: r.skips, feelN: r.feelN, presses: r.presses }));
+        if (dev === DEVICES[0]) for (const [sec, name] of [['corner', '02_touch_corner'], ['alley', '03_touch_alley'], ['yard', '04_touch_yard']]) if (r.sec === sec && !cap.has(sec)) { cap.add(sec); await shot(page, `${dev}_${name}`); }
+        if (r.sec === 'done') break;
       }
-      await T.upAll();
-      const fin = await page.evaluate(() => window.__bot.status());
-      R.touchRoute = { ...fin, realSec: +((Date.now() - t0) / 1000).toFixed(1), polls: n, sections: [...seen], deaths: fin.deaths - deaths0 };
-      if (fin.sec === 'done') ok(`touch bot finished the route with the real stick and buttons: ${R.touchRoute.realSec} s real time (${fin.simT} s of game time after the last restart), hp left ${fin.hp} (lowest ${fin.minHp}), fell ${R.touchRoute.deaths} times, strikes ${fin.feelN}, sections ${[...seen].join(' > ')}`);
+      await page.evaluate(() => window.__bot.touchEnd());
+      R.touchRoute = { ...r, sections: seen, falls: r.deaths - d0, wallSec: +((Date.now() - t0) / 1000).toFixed(1) };
+      if (r?.sec === 'done' && r.mode === 'touch' && r.presses.attack > 10) ok(`touch bot finished the route through the virtual pad: ${(r.pticks / 60).toFixed(1)} s of play, stick moved ${r.stickMoves} times, buttons pressed attack ${r.presses.attack} · roll ${r.presses.dash} · jump ${r.presses.jump}, hp left ${r.hp} (lowest ${r.minHp}), fell ${R.touchRoute.falls} times, strikes ${r.feelN}, sections ${seen.join(' > ')}`);
       else fail(`${dev}: touch bot did not finish the route ${JSON.stringify(R.touchRoute)}`);
       await shot(page, `${dev}_05_touch_end`);
-    } else if (T) console.log('       (real-time touch route skipped: --quick)');
+    }
 
     // ── 4) the route fast-forwarded: frame numbers ──
     if (want('route')) {
