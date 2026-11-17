@@ -517,7 +517,23 @@
    "prompt": "plague ghoul v2: more monstrous — shroud hood, swollen belly, ribs, long arms, yellow-green eyes",
    "job_id": "ab26d737-6944-4e68-ad98-7a430c38c68b",
    "credits": 1
+  },
+  {
+   "id": "plague",
+   "file": "raw/plague2_tripo.glb",
+   "model": "tripo_h3_1_image_to_3d",
+   "params": {
+    "face_limit": 12000,
+    "texture": true,
+    "pbr": false,
+    "texture_quality": "standard",
+    "geometry_quality": "standard",
+    "texture_alignment": "original_image"
+   },
+   "ref": "job ab26d737 (plague v2)",
+   "job_id": "50a16aa6-5c9b-43e4-9880-b74c07a4ab53",
+   "credits": 9
   }
  ],
- "total_credits": 190.5
+ "total_credits": 199.5
 }
