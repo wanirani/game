@@ -47,9 +47,10 @@ export function graveyard(era = 'now') {
     { t: 'prop', mesh: 'niche', x: 330, z: 2078, w: 170, h: 160, solid: 86, solidZ: 20 }, { t: 'prop', mesh: 'niche', x: 870, z: 2078, w: 170, h: 160, solid: 86, solidZ: 20 },
     { t: 'prop', mesh: 'gargoyle', x: 450, z: 2010, h: 150 }, { t: 'prop', mesh: 'gargoyle', x: 750, z: 2010, h: 150, flip: true },
     { t: 'prop', mesh: 'angel', x: 190, z: 1520, h: 210 }, { t: 'prop', mesh: 'angel', x: 1010, z: 1520, h: 210, flip: true },
-    { t: 'prop', mesh: 'deadtree', x: 180, z: 1040, h: 310 }, { t: 'prop', mesh: 'deadtree', x: 1010, z: 1900, h: 300, flip: true }, { t: 'prop', mesh: 'deadtree', x: 960, z: 1060, h: 260 }, { t: 'prop', mesh: 'deadtree', x: 200, z: 1960, h: 270, flip: true },
+    { t: 'prop', mesh: 'deadtree', x: 180, z: 1040, h: 310 }, { t: 'prop', mesh: 'deadtree', x: 1010, z: 1900, h: 300, flip: true }, { t: 'prop', mesh: 'deadtree', x: 960, z: 1060, h: 260 },
     { t: 'prop', mesh: 'cross', x: 400, z: 1700, h: 180, solid: 26, solidZ: 18 }, { t: 'prop', mesh: 'cross', x: 800, z: 1250, h: 170, solid: 26, solidZ: 18 },
-    { t: 'prop', mesh: 'coffin', x: 770, z: 1730, solid: 54, solidZ: 20, h: 40 }, { t: 'prop', mesh: 'coffin', x: 300, z: 1300, len: 100, solid: 54, solidZ: 20, h: 40 },
+    { t: 'prop', mesh: 'coffin', x: 770, z: 1730, solid: 60, solidZ: 22, h: 62, solidH: 50 }, { t: 'prop', mesh: 'coffin', x: 300, z: 1300, solid: 56, solidZ: 20, h: 58, solidH: 46, flip: true },
+    { t: 'prop', mesh: 'chapel', x: 172, z: 2012, h: 220, solid: 60, solidZ: 72, solidH: 210 },   // a small tomb chapel in the back corner (generated model; against the back and side walls: nothing walkable behind it). It took the place of a dead tree
     LP(470, 1010), LP(730, 1010, { flip: true }), LP(470, 1520), LP(730, 1880, { flip: true }), LP(250, 1530), LP(950, 1530, { flip: true }),
     // the four Valkrein stones beside the middle path
     ...[[452, 1640, 'point', 120], [452, 1730, 'round', 110], [452, 1820, 'round', 110], ...(now ? [[748, 1640, 'broken', 100]] : [])].map(([x, z, kind, h]) => ({ t: 'prop', mesh: 'grave', kind, x, z, h, solid: 26, solidZ: 10, solidH: 70 })),

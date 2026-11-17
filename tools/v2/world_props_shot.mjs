@@ -14,7 +14,7 @@ const OUT = String(args.out || '/tmp/claude-0/v2/props/shots_game');
 export const SETS = {
   props: [
     ['angel', 'graveyard_now', 275, 1480], ['gargoyle', 'graveyard_now', 520, 1960], ['deadtree', 'graveyard_now', 275, 1010], ['cross', 'graveyard_now', 715, 1215], ['coffin', 'graveyard_now', 690, 1690],
-    ['graves', 'graveyard_now', 520, 1180], ['mausoleum', 'graveyard_now', 600, 1900], ['niche', 'graveyard_now', 330, 1990], ['cemgate', 'graveyard_now', 600, 860], ['lanternpost', 'graveyard_now', 600, 1040],
+    ['graves', 'graveyard_now', 520, 1180], ['mausoleum', 'graveyard_now', 600, 1900], ['chapel', 'graveyard_now', 290, 1930], ['niche', 'graveyard_now', 330, 1990], ['cemgate', 'graveyard_now', 600, 860], ['lanternpost', 'graveyard_now', 600, 1040],
     ['bell', 'eshville_now', 4100, 1410], ['brazier', 'eshville_now', 3760, 1550], ['wreck', 'eshville_now', 545, 205], ['cart', 'eshville_now', 925, 205], ['goods', 'eshville_now', 1040, 205], ['well', 'eshville_now', 3995, 410],
     ['esh_graves', 'eshville_now', 4310, 1130], ['fire', 'eshville_now', 2400, 180],
     ['stall', 'eshville_past', 2135, 205], ['plaguepost', 'eshville_past', 1215, 210], ['past_lantern', 'eshville_past', 700, 210],

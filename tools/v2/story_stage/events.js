@@ -175,7 +175,7 @@ export const EVENTS = [
     ['objective', 'to_smithy_now'],
     ['save'],
   ] },
-  { id: 'ev_smithy_now', minute: '33-36', waiting: 'hook:eshville_now/actor hadwin', on: 'interact', match: { event: 'shop.smithy' }, if: ['era:now'], once: false, steps: [
+  { id: 'ev_smithy_now', minute: '33-36', bridge: true, on: 'interact', match: { event: 'shop.smithy' }, if: ['era:now'], once: false, steps: [
     ['say', 'hadwin.smithy.now'],
   ] },
   // every later crossing at any bell (the big bell, road bells, bells inside the dungeon)
@@ -347,9 +347,8 @@ export const EVENTS = [
     ['music', 'boss_banshee'],
     ['say', 'boss.intro'],
     ['camera', null],
-    ['chronicle', 'four_knells'],
+    ['if', ['knells_hung'], [['chronicle', 'four_knells'], ['prompt', 'knellpost']]],
     ['objective', 'face_queen'],
-    ['prompt', 'knellpost'],
   ] },
   { id: 'ev_boss_flee', minute: '104-114', waiting: 'ossuary_now', on: 'boss.phase', match: { phase: 'flee' }, steps: [
     ['say', 'boss.flee'],
@@ -401,7 +400,7 @@ export const EVENTS = [
   ] },
 
   // ═════════ 114–118 그 밤의 종탑 (종탑이 지어지기 전에는 큰 종 앞) ═════════
-  { id: 'ev_keepers', minute: '114-118', waiting: 'belltower_past', on: 'area.enter', match: { area: 'eshville_past' }, if: ['elise_found', '!keepers_promised'], steps: [
+  { id: 'ev_keepers', minute: '114-118', on: 'area.enter', match: { area: 'eshville_past' }, if: ['elise_found', '!keepers_promised'], steps: [
     ['showActor', 'elise', 'eshville_past'],
     ['camera', 'two_keepers', 3],
     ['say', 'keepers.promise'],
@@ -446,7 +445,7 @@ export const EVENTS = [
   { id: 'ev_retry_boss', minute: 'any', waiting: 'ossuary_now', on: 'hero.respawn', if: ['done:ev_boss_intro', '!queen_sent'], steps: [
     ['say', 'retry.boss'],
   ] },
-  { id: 'ev_retry_1', minute: 'any', on: 'hero.respawn', steps: [
+  { id: 'ev_retry_1', minute: 'any', on: 'hero.respawn', ifAny: ['!done:ev_boss_intro', 'queen_sent'], steps: [
     ['say', 'retry.line'],
   ] },
   { id: 'ev_retry_2', minute: 'any', on: 'hero.respawn', if: ['done:ev_retry_1'], steps: [

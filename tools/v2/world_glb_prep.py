@@ -5,7 +5,7 @@
  UV sheet (most of it spent on faces the camera never sees) the cell holds three orthographic pictures of the FULL-detail model:
    front (24 deg down) | left side | right side (65 deg yaw, half scale)
  and every triangle of the decimated model takes its texels from the picture it faces. Result: about 3x the texels on what is seen.
- job = { pitch, yaw, sideScale, budget (texels for all items), items: [{ id, in, tex, png, out, px, lum, emis }] }
+ job = { pitch, yaw, sideScale, budget (texels for all items), items: [{ id, in, tex, png, out, px, lum, sat, gainMax, emis, emisFrac }] }
  in  = { full: { pos, uv, idx }, low: { pos, idx } }   (game axes, world units, feet at y = 0; winding: cross(b-a, c-a) = outward)
  out = { w, h, pos, nrm, uv, e, idx, gain, k }          (uv 0..1 inside the cell, e = 1 where the surface glows)
 """
@@ -110,7 +110,11 @@ def main():
         # brightness: the generated sheets are dark; lift the median of the front picture to the wanted level (flames may clip)
         fw, fh = sizes[0][0], sizes[0][1]; fm = mask[0:fh, 0:fw]; lum = (raw[0:fh, 0:fw] @ np.array([0.3, 0.59, 0.11]))[fm]
         gain = float(np.clip(it.get('lum', 104) / max(1.0, np.median(lum)), 1.0, it.get('gainMax', 3.4))) if lum.size else 1.0
-        g = raw * gain; hot = glow(raw)
+        hot = glow(raw); sat = it.get('sat', 1.0)
+        if sat != 1.0:   # pull the colours toward grey (mossy greens and orange wood shout in the cold night scenes); glowing texels keep theirs
+            grey = (raw @ np.array([0.3, 0.59, 0.11]))[..., None]; cool = grey + (raw - grey) * sat; raw2 = np.where(hot[..., None], raw, cool)
+        else: raw2 = raw
+        g = raw2 * gain
         if it.get('emis'): g[hot] = np.maximum(g[hot], np.minimum(255, raw[hot] * max(gain, 1.25)))
         out = np.minimum(255, g)
         Image.fromarray(np.clip(out + 0.5, 0, 255).astype(np.uint8)).save(it['png'])

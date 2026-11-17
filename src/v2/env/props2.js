@@ -4,9 +4,11 @@
 import { Frame, hash } from './geo.js';
 import { PROPS } from './props.js';
 import { railing, wallGrid } from './kit.js';
+import { bakedDef, bakedProp } from './baked.js';
 
 const fx = (G) => G.fx ?? (G.fx = { glows: [], pools: [], shadows: [] });
 const shadow = (G, x, y, z, rx, rz = rx * 0.62, a = 0.5) => fx(G).shadows.push({ x, y, z, rx, rz, a });
+const GEN_TOMB = { round: 'tomb_a', point: 'tomb_b', broken: 'tomb_c', cross: 'tomb_d' }, TOMB0 = PROPS.tomb;
 const BRONZE = [1.55, 1.08, 0.5], SOOT = [0.42, 0.38, 0.38], IRON = [0.5, 0.5, 0.56];
 /**
  * 불꽃: 스스로 빛나는 잎 모양 여러 겹 (정적 메시 — 실행 중 계산 0). 바깥 겹은 검붉고 길게, 가운데 겹은 주황, 속은 밝은 노랑으로 짧게.
@@ -17,9 +19,9 @@ const LAYERS = [
   { hk: 0.72, wk: 0.8, a: [1.0, 0.72, 0.22], b: [0.98, 0.28, 0.06], ea: 1.5, eb: 1.1, dz: -1.6 },
   { hk: 0.46, wk: 0.6, a: [1.0, 0.95, 0.66], b: [1.0, 0.62, 0.18], ea: 1.75, eb: 1.4, dz: -3.2 },
 ];
-const TS = [0, 0.2, 0.5, 0.8, 1];
+const TS = [0, 0.12, 0.34, 0.62, 1];
 function leaf(G, bx, by, bz, H, Wd, lean, ph, L) {
-  const hw = (t) => Wd * 2.49 * Math.sqrt(t) * (1 - t) ** 0.9, cx = (t) => bx + lean * t * t + Math.sin(t * 2.4 + ph) * Wd * 0.3 * t;
+  const hw = (t) => Wd * 2.9 * Math.sqrt(t) * (1 - t) ** 1.25, cx = (t) => bx + lean * t * t + Math.sin(t * 3.1 + ph) * Wd * 0.55 * t;   // 밑은 둥글고 끝은 뾰족하게 휘는 잎
   const col = (edge) => (p) => { const t = Math.max(0, Math.min(1, (p[1] - by) / H)), k = (L.ea + (L.eb - L.ea) * t) * (edge ? 0.7 : 1); return [(L.a[0] + (L.b[0] - L.a[0]) * t) * k, (L.a[1] + (L.b[1] - L.a[1]) * t) * k * (edge ? 0.8 : 1), (L.a[2] + (L.b[2] - L.a[2]) * t) * k * (edge ? 0.6 : 1)]; };
   const n = [0, 0, -1], P = (t, sd) => [cx(t) + sd * hw(t), by + H * t, bz];
   for (let i = 0; i + 1 < TS.length; i++) {
@@ -38,8 +40,8 @@ export function flames(G, x, y, z, w, h, n = 5, seed = 1) {
     const m = Math.max(1, Math.round(Math.min(n, 6) * [1, 0.7, 0.45][li]));
     for (let i = 0; i < m; i++) {
       const t = m > 1 ? i / (m - 1) - 0.5 : 0, r1 = hash(i + seed * 3.1 + li * 7, x), r2 = hash(x + li, i + seed), r3 = hash(seed + i * 2.3, li + z);
-      const fh = h * L.hk * (0.55 + 0.45 * r1) * (1 - 0.45 * Math.abs(t) * 2 * (li ? 0.6 : 1)), fw = Math.max(4, (w / Math.max(2, m)) * 0.78 * L.wk * (0.8 + 0.5 * r2));
-      leaf(G, x + t * w * (li ? 0.7 : 0.92) + (r3 - 0.5) * fw * 0.6, y, z + L.dz - i * 0.12, fh, fw, (r2 - 0.5) * fw * 2.2 + t * w * 0.18, r3 * 6.28, L);
+      const fh = h * L.hk * (0.6 + 0.55 * r1) * (1 - 0.5 * Math.abs(t) * 2 * (li ? 0.6 : 1)), fw = Math.max(3, Math.min(fh * 0.34, (w / Math.max(2, m)) * 0.7 * L.wk * (0.8 + 0.5 * r2)));
+      leaf(G, x + t * w * (li ? 0.62 : 0.86) + (r3 - 0.5) * fw * 0.6, y, z + L.dz - i * 0.12, fh, fw, (r2 - 0.5) * fw * 2.6 + t * w * 0.22, r3 * 6.28, L);
     }
   });
 }
@@ -63,6 +65,11 @@ function slab(G, F, pts, t, mat, o = {}) {
 }
 
 Object.assign(PROPS, {
+  /** 비석 (props.js 의 것을 감싼다): 묶음에 생성 모델 비석이 있으면 그것으로 — o.cross 는 날개 달린 해골 비석, 나머지는 자리마다 둥근 것 · 뾰족 아치. o.code 면 손으로 짠 것 */
+  tomb(G, x, y, z, o = {}) {
+    const gen = o.cross ? 'tomb_d' : hash(x, z) > 0.5 ? 'tomb_a' : 'tomb_b';
+    return !o.code && bakedDef(gen) ? bakedProp(G, gen, x, y, z, { h: o.h ?? 90, flip: hash(z, x) > 0.5 }) : TOMB0(G, x, y, z, o);
+  },
   /** 불 (효과 닻 자리에 세우는 눈에 보이는 불길 + 바닥의 잉걸불). o.w · o.h · o.n (바깥 잎 수) · o.embers:false. 빛은 part 의 light 로 따로 준다 */
   fire(G, x, y, z, o = {}) {
     const w = o.w ?? 56, h = o.h ?? 78;
@@ -100,7 +107,9 @@ Object.assign(PROPS, {
   /** 비석 여러 꼴. o.kind: round(기본) · point(뾰족 아치) · obelisk · ledger(누운 판 + 작은 머릿돌) · broken · cross. o.h */
   grave(G, x, y, z, o = {}) {
     const kind = o.kind ?? 'round', h = o.h ?? 90, w = h * 0.5, t = 10, lean = (hash(x, z) - 0.5) * 9, M = { vary: 0.35, tint: [0.92, 0.95, 1.0] };
-    if (kind === 'round' || kind === 'cross') return PROPS.tomb(G, x, y, z, { ...o, cross: kind === 'cross' });
+    const gen = !o.code && GEN_TOMB[kind];   // 생성 모델 비석 넷 (묶음에 있을 때): 둥근 것 · 뾰족 아치 · 깨진 것 · 날개 달린 해골
+    if (gen && bakedDef(gen)) return bakedProp(G, gen, x, y, z, { h, flip: hash(z, x) > 0.5 });
+    if (kind === 'round' || kind === 'cross') return TOMB0(G, x, y, z, { ...o, cross: kind === 'cross' });
     if (kind === 'obelisk') {
       G.box('stone', x - w * 0.5, y, z - w * 0.5, x + w * 0.5, y + 10, z + w * 0.5, { faces: 'FLRT', top: 'trimstone' });
       G.lathe('trimstone', x, z, [[w * 0.4, y + 10], [w * 0.4, y + 22], [w * 0.3, y + 24], [w * 0.2, y + h * 0.88], [0, y + h]], 4, { a0: Math.PI / 4, flat: true, ...M });
@@ -109,7 +118,7 @@ Object.assign(PROPS, {
     if (kind === 'ledger') {
       G.box('trimstone', x - 25, y, z - 50, x + 25, y + 9, z + 44, { faces: 'FLRT', ...M });
       G.box('stone', x - 19, y + 9, z - 44, x + 19, y + 11.5, z + 38, { faces: 'FLRT', k: 0.8 });
-      PROPS.tomb(G, x, y, z + 52, { h: h * 0.62 });
+      PROPS.tomb(G, x, y, z + 52, { h: h * 0.62, code: o.code });
       return shadow(G, x, y, z, 34, 54, 0.4);
     }
     const F = new Frame(x - w / 2, z - t / 2, 0, -1), sk = (u, yy) => [u + lean * (yy - y) / h, yy];
@@ -280,15 +289,7 @@ Object.assign(PROPS, {
  * 모델의 그림에 든 불빛(숯 · 등불 유리)은 꼭짓점 깃발로 밝게 남고, 여기서는 불길 · 잉걸불 · 빛 번짐을 더한다.
  */
 export const BAKED_EXTRA = {
-  wreck(G, x, y, z, o, s) {
-    for (let i = 0; i < 6; i++) { const ex = x + (-52 + 21 * i) * s, ez = z - (30 + 9 * hash(i, x)) * s, r = (4 + 4 * hash(x, i)) * s, pts = []; for (let k = 0; k < 5; k++) pts.push([ex + Math.cos(k * 1.26) * r, y + 1.2, ez + Math.sin(k * 1.26) * r * 0.6]); G.poly('white', pts, [0, 1, 0], { emis: 1.3, tint: [1, 0.4 + 0.3 * hash(i, 2), 0.1], fog: 0.45, keep: true }); }
-    if (o.fire === false) return;
-    flames(G, x + 6 * s, y + 4 * s, z - 34 * s, 74 * s, 62 * s, 5, 7);
-    fx(G).glows.push({ x: x + 6 * s, y: y + 40 * s, z: z - 36 * s, r: 96 * s, c: [1, 0.5, 0.18], flicker: true }); fx(G).pools.push({ x, y, z: z - 30 * s, r: 240 * s, c: [1, 0.48, 0.18], a: 0.38, flicker: true });
-  },
   brazier(G, x, y, z, o, s) { if (o.lit !== false) flames(G, x, y + 96 * s, z - 6 * s, 34 * s, 40 * s, 3, 5); },
 };
 /** 구운 소품이 손으로 짠 것과 다른 인자를 받을 때 맞춰 준다 (o, 묶음의 정의) → o */
-export const BAKED_ARGS = {
-  wreck: (o, d) => (o.h == null && o.w ? { ...o, h: Math.round(o.w * 0.63) } : o),   // 손으로 짠 잔해는 너비 w 로 크기를 받았다
-};
+export const BAKED_ARGS = {};

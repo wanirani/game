@@ -55,7 +55,7 @@ function surfaceNets(f, B, cell) {
 
 // ───────── quadric edge-collapse decimation ─────────
 /** subset = true keeps original vertices only (attributes stay valid: used for GLB models with uv) */
-function decimate(P, T, target, subset = false) {
+function decimate(P, T, target, subset = false, loose = false) {
   const nv = P.length / 3, nt0 = T.length / 3, Q = new Float64Array(nv * 10), vf = Array.from({ length: nv }, () => []), tAlive = new Uint8Array(nt0).fill(1), vAlive = new Uint8Array(nv).fill(1), stamp = new Int32Array(nv);
   const tn = (t, out) => { const a = T[t * 3] * 3, b = T[t * 3 + 1] * 3, c = T[t * 3 + 2] * 3, ux = P[b] - P[a], uy = P[b + 1] - P[a + 1], uz = P[b + 2] - P[a + 2], vx = P[c] - P[a], vy = P[c + 1] - P[a + 1], vz = P[c + 2] - P[a + 2]; out[0] = uy * vz - uz * vy; out[1] = uz * vx - ux * vz; out[2] = ux * vy - uy * vx; return out; };
   const N = [0, 0, 0];
@@ -84,7 +84,7 @@ function decimate(P, T, target, subset = false) {
     const [, a, b, sa, sb, mode] = pop();
     if (!vAlive[a] || !vAlive[b] || stamp[a] !== sa || stamp[b] !== sb) continue;
     const na = nbr(a), nb = nbr(b); let common = 0; for (const v of na) if (nb.has(v)) common++;
-    if (common !== 2) continue;   // keeps the surface a manifold (and leaves open borders alone)
+    if (common !== 2 && !loose) continue;   // keeps the surface a manifold and leaves open borders alone (loose: generated shells with cracks and cloth sheets may collapse anywhere; flips are still refused)
     const keep = mode === 1 ? b : a, gone = keep === a ? b : a;
     const px = mode === 2 ? (P[a * 3] + P[b * 3]) / 2 : P[keep * 3], py = mode === 2 ? (P[a * 3 + 1] + P[b * 3 + 1]) / 2 : P[keep * 3 + 1], pz = mode === 2 ? (P[a * 3 + 2] + P[b * 3 + 2]) / 2 : P[keep * 3 + 2];
     // no face may flip
@@ -179,7 +179,7 @@ function loadGlbParts(id, file, meta) {
   if (opt.parts) console.log(`  ${id} parts: ` + comps.map((C) => `${C.tris.length}t x[${C.lo[0].toFixed(2)},${C.hi[0].toFixed(2)}] y[${C.lo[1].toFixed(2)},${C.hi[1].toFixed(2)}] z[${C.lo[2].toFixed(2)},${C.hi[2].toFixed(2)}]`).join(' | '));
   if (meta.dropThin) comps = comps.filter((C) => !(C.hi[1] - C.lo[1] > meta.dropThin[0] && Math.max(C.hi[0] - C.lo[0], C.hi[2] - C.lo[2]) < meta.dropThin[1]));   // [taller than, thinner than] (unit model): stray spikes
   if (meta.keep) comps = comps.slice(0, meta.keep);
-  let groups = [{ name: id, comps, meta }];
+  let groups = [{ name: meta.name ?? id, comps, meta }];
   if (meta.split) {   // the biggest parts, left to right; every other fragment joins the nearest one
     const main = comps.slice(0, meta.split.length).sort((a, b) => (a.lo[0] + a.hi[0]) - (b.lo[0] + b.hi[0]));
     groups = main.map((C, i) => ({ name: meta.split[i].name, comps: [C], meta: { ...meta, split: null, ...meta.split[i] } }));
@@ -201,7 +201,7 @@ function loadGlbParts(id, file, meta) {
     let LP = Float64Array.from(lpos), LT = Int32Array.from(lidx); const want = g.meta.tris ?? 900;
     // drop degenerate welded triangles, then decimate
     LT = Int32Array.from(Array.from({ length: LT.length / 3 }, (_, t) => [LT[t * 3], LT[t * 3 + 1], LT[t * 3 + 2]]).filter(([a, b, d]) => a !== b && b !== d && a !== d).flat());
-    if (LT.length / 3 > want) { const d = decimate(LP, LT, want); LP = d.P; LT = d.T; }
+    if (LT.length / 3 > want) { let d = decimate(LP, LT, want); if (d.T.length / 3 > want * 1.15) d = decimate(d.P, d.T, want, false, true); LP = d.P; LT = d.T; }   // second pass may collapse open borders (cloth sheets, cracked shells)
     return { name: g.name, meta: g.meta, full: { pos: fpos, uv: fuv, idx: fidx }, low: { pos: Array.from(LP), idx: Array.from(LT) }, fullTris: fidx.length / 3, h: (hi[1] - lo[1]) * sc };
   });
 }
@@ -217,7 +217,7 @@ function bakeGlbs(dir, only) {
   const job = { pitch: META.pitch ?? 24, yaw: META.yaw ?? 65, sideScale: META.sideScale ?? 0.5, budget: Number(opt.texels ?? META.texels ?? 1.7e6), items: [] };
   for (const p of parts) {
     const base = path.join(TMP, p.name); fs.writeFileSync(base + '.in.json', JSON.stringify({ full: p.full, low: p.low }));
-    job.items.push({ id: p.name, in: base + '.in.json', tex: p.texFile, png: base + '.cell.png', out: base + '.out.json', px: p.meta.px ?? 2.2, lum: p.meta.lum ?? 104, gainMax: p.meta.gainMax ?? 3.4, emis: !!p.meta.emis, emisFrac: p.meta.emisFrac ?? 0.5 });
+    job.items.push({ id: p.name, in: base + '.in.json', tex: p.texFile, png: base + '.cell.png', out: base + '.out.json', px: p.meta.px ?? 2.2, lum: p.meta.lum ?? 90, sat: p.meta.sat ?? 1, gainMax: p.meta.gainMax ?? 3.4, emis: !!p.meta.emis, emisFrac: p.meta.emisFrac ?? 0.5 });
   }
   fs.writeFileSync(path.join(TMP, 'glb_job.json'), JSON.stringify(job));
   execFileSync('python3', ['-I', path.join(path.dirname(new URL(import.meta.url).pathname), 'world_glb_prep.py'), path.join(TMP, 'glb_job.json')], { stdio: 'inherit' });

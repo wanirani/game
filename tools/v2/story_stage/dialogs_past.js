@@ -31,7 +31,7 @@ export const DIALOGS_PAST = {
   ] }],
   'edmund.appears': [{ pages: [
     ['edmund', '채찍 소리가 나서 나와 봤더니.\n…솜씨가 낯익군, 젊은이.'],
-    ['edmund', '들어와라. 수프가 식는다.'],
+    ['edmund', '안으로 들어와라.\n밤길에 빈속은 못쓴다.'],
   ] }],
   'villager.stall': [
     { once: true, pages: [

@@ -94,7 +94,7 @@ export function eshville(era) {
   // ───────────── era dressing ─────────────
   if (now) {
     add('out', { t: 'prop', mesh: 'wreck', x: 440, z: 256, w: 150, solid: 68, solidZ: 26, solidH: 60, light: FIRE(460, 2.1) },
-      { t: 'prop', mesh: 'cart', x: 820, z: 252, h: 104, solid: 70, solidZ: 22 }, { t: 'prop', mesh: 'barrel', x: 1010, z: 262, h: 78, solid: 24 }, { t: 'prop', mesh: 'crate', x: 1070, z: 256, h: 62, solid: 30, solidZ: 18 },
+      { t: 'prop', mesh: 'cart', x: 820, z: 252, h: 104, solid: 70, solidZ: 22 }, { t: 'prop', mesh: 'goods', x: 1040, z: 250, h: 92, solid: 64, solidZ: 30, solidH: 70 },   // barrels, crates and sacks in one generated model (was a barrel and a crate)
       { t: 'prop', mesh: 'wreck', x: 1290, z: 258, w: 130, fire: false, solid: 60, solidZ: 24, solidH: 60 });
     anchors.push({ id: 'fire_wreck', kind: 'fire', x: 450, y: 20, z: 244, size: 1.2, light: true }, { id: 'smoke_wreck2', kind: 'smoke', x: 1290, y: 40, z: 250, size: 1 });
     fire('out', 'fire_h1a', 90, 70, 296, 40, 56); fire('out', 'fire_h1roof', 200, 210, 300, 190, 84, 520); fire('out', 'fire_ruin', 440, 96, 300, 120, 64, 380);
@@ -106,7 +106,7 @@ export function eshville(era) {
     anchors.push({ id: 'fire_sq', kind: 'fire', x: 4570, y: 20, z: 190, size: 1.1, light: true }, { id: 'red_moon', kind: 'glow_red', x: 3900, y: 900, z: 2600, size: 4 });
   } else {
     add('out', { t: 'prop', mesh: 'hay', x: 430, z: 262, h: 62, solid: 34, solidZ: 16 }, { t: 'prop', mesh: 'harvest', x: 330, z: 266, h: 46, solid: 30, solidZ: 12 },
-      { t: 'prop', mesh: 'cart', x: 820, z: 252, h: 104, solid: 70, solidZ: 22 }, { t: 'prop', mesh: 'sacks', x: 1010, z: 264, h: 36, solid: 26, solidZ: 12 }, { t: 'prop', mesh: 'barrel', x: 1070, z: 262, h: 78, solid: 24 },
+      { t: 'prop', mesh: 'cart', x: 820, z: 252, h: 104, solid: 70, solidZ: 22 }, { t: 'prop', mesh: 'goods', x: 1040, z: 250, h: 92, solid: 64, solidZ: 30, solidH: 70, flip: true },
       { t: 'prop', mesh: 'plaguepost', x: 1290, z: 258, h: 210, solid: 10, solidZ: 10 });
     add('street', { t: 'prop', mesh: 'stall', x: 2240, z: 258, h: 130, w: 140, solid: 72, solidZ: 23 }, { t: 'prop', mesh: 'harvest', x: 1960, z: 266, h: 46, solid: 30, solidZ: 12 }, { t: 'prop', mesh: 'hay', x: 3060, z: 262, h: 62, solid: 34, solidZ: 16 });
     add('east', { t: 'prop', mesh: 'plaguepost', x: 4560, z: 200, h: 220, solid: 10, solidZ: 10 }, { t: 'prop', mesh: 'stall', x: 3500, z: 836, h: 130, w: 140, solid: 72, solidZ: 23 }, { t: 'prop', mesh: 'stall', x: 4300, z: 836, h: 130, w: 140, solid: 72, solidZ: 23 },

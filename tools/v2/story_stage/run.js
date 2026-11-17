@@ -239,7 +239,6 @@ export function createStory(data, opts) {
       d.onChoice = (i) => {
         if (!cur || cur.token !== tok) return;
         const k = i === 1 ? 1 : 0;
-        state.flags['choice.last'] = k + 1;
         pushFrame(choice.frames[k]);
         resume(tok);
       };
@@ -270,7 +269,8 @@ export function createStory(data, opts) {
         if (s[1] == null) { call(api, 'prompt', null); break; }
         const p = TEXT.prompts && TEXT.prompts[s[1]];
         if (!p) { warn('prompt "' + s[1] + '" is not in TEXT.prompts'); break; }
-        call(api, 'prompt', p);
+        if (p.action) call(api, 'prompt', p); else callOpt(api, 'prompt', null);
+        if (p.tip) call(api, 'toast', p.tip, TOAST_INFO);
         break;
       }
       case 'give': give(s[1], s[2] == null ? 1 : s[2], api, false); break;
