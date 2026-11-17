@@ -160,14 +160,14 @@ function flyEnd(fx, s) { if (s.h0 >= 0) fx.ribbons.end(s.h0); if (s.h1 >= 0) fx.
 class Seq { constructor() { this.on = false; this.kind = 0; this.ph = 0; this.n = 0; this.t = 0.5; this.x = 0.5; this.y = 0.5; this.z = 0.5; this.tx = 0.5; this.ty = 0.5; this.tz = 0.5; this.dx = 0.5; this.dz = 0.5; this.pow = 0.5; this.a = 0.5; this.b = 0.5; this.gy = 0.5; this.h0 = -1; this.h1 = -1; this.h2 = -1; this.h3 = -1; this.i = 0; } }
 const STEP = [];
 export class Seqs {
-  constructor(max) { this.max = max; this.cap = max; this.list = []; for (let i = 0; i < max; i++) this.list.push(new Seq()); this.live = 0; this.chain = new Float32Array(max * 12); }
+  constructor(max) { this.max = max; this.cap = max; this.list = []; for (let i = 0; i < max; i++) this.list.push(new Seq()); this.live = 0; this.dt = 0.5; this.chain = new Float32Array(max * 12); }
   reset(cap) { this.cap = Math.min(this.max, cap); for (let i = 0; i < this.max; i++) this.list[i].on = false; this.live = 0; }
   get(kind, x, y, z, dx, dz, pow, tx, ty, tz) {
     for (let i = 0; i < this.cap; i++) { const s = this.list[i]; if (s.on) continue;
       s.on = true; s.kind = kind; s.ph = 0; s.n = 0; s.t = 0; s.x = x; s.y = y; s.z = z; s.gy = y; s.dx = dx; s.dz = dz; s.pow = pow; s.tx = tx; s.ty = ty; s.tz = tz; s.a = 0; s.b = 0; s.h0 = s.h1 = s.h2 = s.h3 = -1; s.i = i; return s; }
     return null;
   }
-  update(fx, dt) { let n = 0; for (let i = 0; i < this.cap; i++) { const s = this.list[i]; if (!s.on) continue; s.t += dt; if (STEP[s.kind](fx, s, dt)) s.on = false; else n++; } this.live = n; }
+  update(fx) { let n = 0; const dt = this.dt; for (let i = 0; i < this.cap; i++) { const s = this.list[i]; if (!s.on) continue; s.t += dt; if (STEP[s.kind](fx, s)) s.on = false; else n++; } this.live = n; }
 }
 const K = { BREATH: 15, FIREBOLT: 0, FIREPILLAR: 1, METEOR: 2, ICELANCE: 3, ICENOVA: 4, CHAIN: 5, STRIKE: 6, HOLYPILLAR: 7, HOLYWAVE: 8, BELL: 9, BLOODORB: 10, CLAWS: 11, ULT: 12, ASH: 13, COMBO: 14 };
 
@@ -257,7 +257,7 @@ function deathAsh(fx, x, y, z, dx, dz, pow) {
   scorch(fx, x, y, z, 50, 5, C.scorch, 0.9); fx.light(x, y + 50, z, 240, C.fireL, 0.7, 0.9, 0.3, 0);
   feel(fx, 0.05, 0, 0.1, dx, dz); fx.sfx('enemy.death.ash', x, y, z, 1);
 }
-STEP[K.ASH] = (fx, s, dt) => {
+STEP[K.ASH] = (fx, s) => { const dt = fx.seqs.dt;
   const P = fx.particles, k = s.t / 0.75;
   if (k < 1) { P.emit(S.ash, s.x, s.y, s.z, 0, 1, 0, 60 * dt * s.pow, s.y); P.emit(S.ashEmber, s.x, s.y, s.z, 0, 1, 0, 22 * dt * s.pow, s.y); P.emit(S.ashSmoke, s.x, s.y, s.z, 0, 1, 0, 9 * dt, s.y); }
   return s.t > 0.8;
@@ -281,7 +281,7 @@ function enemyBreath(fx, x, y, z, dx, dz, pow) {
   const s = fx.seqs.get(K.BREATH, x, y, z, dx, dz, pow, x, y, z); if (!s) return;
   teleSector(fx, x, y, z, dx, dz, 270, 0.4, 0.55, 0.5, C.danger); fx.sfx('enemy.breath.cast', x, y, z, 1);
 }
-STEP[K.BREATH] = (fx, s, dt) => {
+STEP[K.BREATH] = (fx, s) => { const dt = fx.seqs.dt;
   if (s.t < 0.55) return false;
   const x = s.x + s.dx * 22, y = s.y + 70, z = s.z + s.dz * 22;
   if (s.ph === 0) {
@@ -307,7 +307,7 @@ function fireBolt(fx, x, y, z, dx, dz, pow, tx, ty, tz) {
   const s = fx.seqs.get(K.FIREBOLT, x, y + 62, z, dx, dz, pow, tx, ty + 50, tz); if (!s) return; s.gy = ty;
   castFx(fx, FAM.fire, x, y, z, 46, 0.5); teleLine(fx, x, y, z, tx, tz, 9, 0.22, 0.35, C.fire); fx.sfx('magic.fire.cast', x, y, z, 1);
 }
-STEP[K.FIREBOLT] = (fx, s, dt) => {
+STEP[K.FIREBOLT] = (fx, s) => { const dt = fx.seqs.dt;
   if (s.ph === 0) { if (s.t < 0.22) return false; s.ph = 1; s.h0 = fx.ribbons.start(TRAIL.fire); s.h1 = fx.quads.billboard(Q.GLOW, s.x, s.y, s.z, 46, 4, C.fireG, 1, 1, 0.03); s.h2 = fx.light(s.x, s.y, s.z, 260, C.fireL, 1.1, 4, 0.25, 1); fx.sfx('magic.fire.fly', s.x, s.y, s.z, 1); }
   const hit = fly(fx, s, dt, 980);
   fx.particles.emit(S.flame, s.x, s.y, s.z, 0, 1, 0, 70 * dt, s.gy);
@@ -318,7 +318,7 @@ function firePillar(fx, x, y, z, dx, dz, pow, tx, ty, tz) {
   const s = fx.seqs.get(K.FIREPILLAR, x, y, z, dx, dz, pow, tx, ty, tz); if (!s) return;
   castFx(fx, FAM.fire, x, y, z, 52, 0.7); teleCircle(fx, tx, ty, tz, 74, 0.7, 0.15, C.fire); fx.sfx('magic.fire.cast', x, y, z, 1);
 }
-STEP[K.FIREPILLAR] = (fx, s, dt) => {
+STEP[K.FIREPILLAR] = (fx, s) => { const dt = fx.seqs.dt;
   const P = fx.particles;
   if (s.ph === 0) {
     if (s.t < 0.7) return false; s.ph = 1;
@@ -338,7 +338,7 @@ function meteor(fx, x, y, z, dx, dz, pow, tx, ty, tz) {
   fx.quads.ground(Q.SHADOW, tx, ty, tz, 110, 110, 0, 1.15, C.shadow, 0.25, 1, 0, 0, 0, 0, 0, 0.3);
   fx.sfx('magic.meteor.cast', x, y, z, 1);
 }
-STEP[K.METEOR] = (fx, s, dt) => {
+STEP[K.METEOR] = (fx, s) => { const dt = fx.seqs.dt;
   if (s.ph === 0) {
     if (s.t < 0.55) return false; s.ph = 1; s.a = Math.hypot(s.tx - s.x, s.ty - s.y, s.tz - s.z) / 0.55;
     s.h3 = fx.meshes.spawn(MESH.SPHERE, MODE.SOLID, s.x, s.y, s.z, 1, 0, 0, 0, 1, 0, 34, 30, 32, 3, C.rockA, C.rockB, 0, 0);
@@ -367,7 +367,7 @@ function iceLance(fx, x, y, z, dx, dz, pow, tx, ty, tz) {
   const s = fx.seqs.get(K.ICELANCE, x, y + 62, z, dx, dz, pow, tx, ty + 50, tz); if (!s) return; s.gy = ty;
   castFx(fx, FAM.ice, x, y, z, 46, 0.45); teleLine(fx, x, y, z, tx, tz, 7, 0.18, 0.25, C.ice); fx.sfx('magic.ice.cast', x, y, z, 1);
 }
-STEP[K.ICELANCE] = (fx, s, dt) => {
+STEP[K.ICELANCE] = (fx, s) => { const dt = fx.seqs.dt;
   if (s.ph === 0) {
     if (s.t < 0.18) return false; s.ph = 1;
     // 원뿔(꼭짓점이 앞): 국소 +z = −진행 방향
@@ -424,7 +424,7 @@ function thunderStrike(fx, x, y, z, dx, dz, pow, tx, ty, tz) {
   const s = fx.seqs.get(K.STRIKE, x, y, z, dx, dz, pow, tx, ty, tz); if (!s) return;
   castFx(fx, FAM.zap, x, y, z, 52, 0.6); teleCircle(fx, tx, ty, tz, 88, 0.6, 0.1, C.zap); fx.sfx('magic.thunder.charge', tx, ty, tz, 1);
 }
-STEP[K.STRIKE] = (fx, s, dt) => {
+STEP[K.STRIKE] = (fx, s) => { const dt = fx.seqs.dt;
   const P = fx.particles, x = s.tx, y = s.ty, z = s.tz;
   if (s.t < 0.6) { P.emit(S.crackle, x, y, z, 0, 1, 0, 26 * dt, y); return false; }
   fx.ribbons.bolt(TRAIL.boltBig, x + 60, y + 920, z - 40, x, y, z); fx.ribbons.bolt(TRAIL.bolt, x - 90, y + 900, z + 30, x, y, z); if (fx.tier === 'high') fx.ribbons.bolt(TRAIL.boltThin, x + 40, y + 420, z, x + 130, y + 20, z + 50);
@@ -441,7 +441,7 @@ function holyPillar(fx, x, y, z, dx, dz, pow, tx, ty, tz) {
   castFx(fx, FAM.holy, x, y, z, 52, 0.7); teleCircle(fx, tx, ty, tz, 84, 0.6, 0.1, C.holy); rune(fx, tx, ty, tz, 80, 1.6, C.holy, DECAL.HOLY, -1.2);
   fx.sfx('magic.holy.cast', x, y, z, 1);
 }
-STEP[K.HOLYPILLAR] = (fx, s, dt) => {
+STEP[K.HOLYPILLAR] = (fx, s) => { const dt = fx.seqs.dt;
   const P = fx.particles, x = s.tx, y = s.ty, z = s.tz;
   if (s.ph === 0) {
     if (s.t < 0.6) return false; s.ph = 1;
@@ -473,7 +473,7 @@ function bellChime(fx, x, y, z, dx, dz, pow) {
   fx.meshes.spawn(MESH.BELL, MODE.BELL, x, y + 150, z, 1, 0, 0, 0, 1, 0, 78, 98, 78, 1.35, C.bellA, C.bellB, 1, 19);
   rune(fx, x, y, z, 120, 1.5, C.holy, DECAL.BELL, 0.9); fx.sfx('magic.bell.cast', x, y, z, 1);
 }
-STEP[K.BELL] = (fx, s, dt) => {
+STEP[K.BELL] = (fx, s) => { const dt = fx.seqs.dt;
   const x = s.x, y = s.y, z = s.z, P = fx.particles;
   if (s.ph < 3 && s.t >= 0.12 + s.ph * 0.32) {
     const i = s.ph++, R = 270 + i * 70;
@@ -490,7 +490,7 @@ function bloodOrb(fx, x, y, z, dx, dz, pow, tx, ty, tz) {
   const s = fx.seqs.get(K.BLOODORB, x, y + 62, z, dx, dz, pow, tx, ty + 50, tz); if (!s) return; s.gy = ty;
   castFx(fx, FAM.blood, x, y, z, 52, 0.6); teleLine(fx, x, y, z, tx, tz, 11, 0.3, 0.5, C.blood); fx.sfx('magic.blood.cast', x, y, z, 1);
 }
-STEP[K.BLOODORB] = (fx, s, dt) => {
+STEP[K.BLOODORB] = (fx, s) => { const dt = fx.seqs.dt;
   const P = fx.particles;
   if (s.ph === 0) { if (s.t < 0.3) return false; s.ph = 1; s.h0 = fx.ribbons.start(TRAIL.blood); s.h1 = fx.quads.billboard(Q.GLOW, s.x, s.y, s.z, 58, 5, C.bloodG, 1, 1, 0.05); s.h2 = fx.light(s.x, s.y, s.z, 240, C.bloodL, 1, 5, 0.2, 1); fx.sfx('magic.blood.fly', s.x, s.y, s.z, 1); }
   const hit = fly(fx, s, dt, 560);
@@ -528,7 +528,7 @@ function ultBloodMoon(fx, x, y, z, dx, dz, pow) {
   if (fx.feelOn) { const F = fx.feel; F.slowMo(0.35, 0.45); F.zoomPunch(0.06, 0.4); F.vignette(0.35, 0, 0.02, 0.6, 0.6); F.darken(0.4); }
   fx.sfx('ult.cast', x, y, z, 1);
 }
-STEP[K.ULT] = (fx, s, dt) => {
+STEP[K.ULT] = (fx, s) => { const dt = fx.seqs.dt;
   const x = s.x, y = s.y, z = s.z, P = fx.particles;
   // 종 세 번
   if (s.ph < 3 && s.t >= 0.55 + s.ph * 0.38) {

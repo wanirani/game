@@ -13,7 +13,7 @@ const gl = cv.getContext('webgl2', { alpha: false, antialias: false, depth: true
 if (!gl) { statsEl.textContent = 'WebGL2 를 쓸 수 없습니다'; throw new Error('no webgl2'); }
 
 const sfxSeen = new Set();
-const fx = createFx(gl, { tier: qs.get('tier') || 'mid', post: qs.get('post') !== '0', onEvent: (name) => { sfxSeen.add(name); } });
+const fx = createFx(gl, { profile: true, tier: qs.get('tier') || 'mid', post: qs.get('post') !== '0', onEvent: (name) => { sfxSeen.add(name); } });
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 // ───────── 카메라 (src/v2/b/index.js _camera·_matrix 와 같은 식) ─────────
@@ -289,40 +289,42 @@ const api = window.__fx = {
   },
   /** 할당 검사: 난전을 warm 프레임 돌린 뒤 n 프레임 동안 JS 힙이 얼마나 느는지 (정밀 메모리 정보 + gc 가 켜진 크롬에서만 뜻이 있다) */
   alloc(tier, warm, n, mode) {
-    api.reset(tier); startDemo(mode === 'idle' ? '' : 'heavy'); resize();
-    if (mode === 'idle') { for (const p of PRESET_LIST) fire(p.name); }
+    api.reset(tier); startDemo(mode === 'idle' || mode === 'fxidle' ? '' : 'heavy'); resize();
+    if (mode === 'idle' || mode === 'fxidle') { demo.name = ''; for (const p of PRESET_LIST) fire(p.name); }
     for (let i = 0; i < warm; i++) frame(1 / 60);
-    if (mode === 'idle') { fx.clear(); for (const nm of ['fire.pillar', 'holy.bell', 'ice.nova']) fire(nm); }
+    if (mode === 'idle' || mode === 'fxidle') { fx.clear(); for (const nm of ['fire.pillar', 'holy.bell', 'ice.nova', 'fire.meteor', 'buff.shield']) fire(nm); for (let i = 0; i < 150; i++) frame(1 / 60); }   // 살아 있는 것: 그을음·균열·서리 문양 (새로 내는 것 없음)
     const mem = !!performance.memory; if (window.gc) window.gc();   // performance.memory 는 읽을 때마다 새로 재야 한다 (객체를 잡아 두면 옛 값)
     const a = mem ? performance.memory.usedJSHeapSize : 0, t0 = performance.now();
+    fx.profile = false;
     if (mode === 'control') { const keep = []; for (let i = 0; i < n; i++) { frame(1 / 60); keep.push(new Float64Array(16)); } api._keep = keep; }   // 대조: 프레임마다 일부러 128바이트 + 를 잡는다
-    else if (mode === 'fxonly') { for (let i = 0; i < n; i++) { fx.update(1 / 60); heavyStep(1 / 60); fx.draw(cam); } }
+    else if (mode === 'fxonly') { fx.dtIn = 1 / 60; for (let i = 0; i < n; i++) { fx.tick(); heavyStep(1 / 60); fx.draw(cam); } }
+    else if (mode === 'fxidle') { fx.dtIn = 1 / 60; for (let i = 0; i < n; i++) { fx.tick(); fx.draw(cam); } }
     else for (let i = 0; i < n; i++) frame(1 / 60);
     const ms = (performance.now() - t0) / n, b = mem ? performance.memory.usedJSHeapSize : 0;
-    demo.name = ''; return { mode, frames: n, ms, bytes: b - a, perFrame: (b - a) / n, hasMemory: !!mem, hasGc: !!window.gc };
+    fx.profile = true; demo.name = ''; return { mode, frames: n, ms, bytes: b - a, perFrame: (b - a) / n, hasMemory: !!mem, hasGc: !!window.gc };
   },
   /** 할당을 조각별로: 이름 붙은 조각을 n 번 돌린 앞뒤의 힙 차이 (어디서 새는지 찾는 용도) */
   probe(n) {
-    api.reset('mid'); startDemo('heavy'); resize(); for (let i = 0; i < 2400; i++) frame(1 / 60);
+    api.reset('mid'); startDemo('heavy'); resize(); for (let i = 0; i < 2400; i++) frame(1 / 60); fx.profile = false;
     const P = {
       'performance.now ×2': () => { const a = performance.now(); return performance.now() - a; },
       'feel.update': () => fx.feel.update(1 / 60),
-      'fx.update (난전 진행 없음)': () => fx.update(1 / 60),
-      'heavyStep + fx.update': () => { heavyStep(1 / 60); fx.update(1 / 60); },
+      'fx.tick (새 효과 없음)': () => { fx.dtIn = 1 / 60; fx.tick(); },
+      'heavyStep + fx.tick': () => { heavyStep(1 / 60); fx.dtIn = 1 / 60; fx.tick(); },
       'fx.draw': () => fx.draw(cam),
       'camera()': () => camera(),
       'drawScene': () => drawScene(),
       'post.begin+end': () => { fx.post.begin(cv.width, cv.height, null); fx.post.end(fx.feel.screen); },
-      'particles.draw': () => fx.particles.draw(fx.cam, 1, fx.protect, 0.4),
-      'quads.draw': () => fx.quads.draw(fx.cam, 1),
-      'ribbons.draw': () => fx.ribbons.draw(fx.cam, 1),
-      'meshes.draw': () => fx.meshes.draw(fx.cam, 1),
-      'lights.update': () => fx.lights.update(fx.time),
-      'seqs.update': () => fx.seqs.update(fx, 1 / 60),
+      'particles.draw': () => fx.particles.draw(fx.cam, fx.protect),
+      'quads.draw': () => fx.quads.draw(fx.cam),
+      'ribbons.draw': () => fx.ribbons.draw(fx.cam),
+      'meshes.draw': () => fx.meshes.draw(fx.cam),
+      'lights.update': () => fx.lights.update(),
+      'seqs.update': () => fx.seqs.update(fx),
     };
     const out = {};
     for (const k in P) { const f = P[k]; for (let i = 0; i < 300; i++) f(); if (window.gc) window.gc(); const a = performance.memory.usedJSHeapSize; for (let i = 0; i < n; i++) f(); out[k] = (performance.memory.usedJSHeapSize - a) / n; }
-    demo.name = ''; return out;
+    fx.profile = true; demo.name = ''; return out;
   },
   /** 접촉 시트: rows = [[이름, t1, t2, t3, 표적 번호?]]. 각 효과를 세 순간에 찍어 한 장으로. 돌려주는 값 = JPEG data URL */
   sheet(rows, tier, crop, title) {

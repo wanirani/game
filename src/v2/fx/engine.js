@@ -113,7 +113,7 @@ export class Particles {
     this.data = new Float32Array(maxCap * PF); this.u8 = new Uint8Array(this.data.buffer);
     this.death = new Float32Array(maxCap); this.area = new Float32Array(maxCap);
     this.head = 0; this.tail = 0; this.count = 0; this.dirtyA = 0; this.dirtyN = 0;
-    this.liveArea = 0; this.scale = 1; this.gov = 1; this.angle = 0; this.time = 0;
+    this.liveArea = 0; this.scale = 1; this.gov = 1; this.angle = 0; this.time = 0.5; this.gain = 0.5; this.protMin = 0.4; this._u = new Float32Array(4);
     this.spawned = 0; this.dropped = 0; this.drawn = 0; this.draws = 0;
     this.pr = program(gl, P_VS, P_FS, 'particles');
     this.vao = gl.createVertexArray(); gl.bindVertexArray(this.vao);
@@ -189,13 +189,12 @@ export class Particles {
     this.dirtyN += n; this.spawned += n;
     return n;
   }
-  update(time) {
-    this.time = time;
-    const cap = this.cap;
+  update() {
+    const cap = this.cap, time = this.time;
     while (this.count > 0 && this.death[this.tail] <= time) { this.liveArea -= this.area[this.tail]; this.tail = (this.tail + 1) % cap; this.count--; }
     if (this.count === 0) this.liveArea = 0;
   }
-  draw(cam, gain, protect, protMin) {
+  draw(cam, protect) {
     this.draws = 0; this.drawn = this.count;
     const gl = this.gl;
     if (this.dirtyN > 0) {
@@ -213,7 +212,8 @@ export class Particles {
     const u = this.pr.u;
     gl.useProgram(this.pr.p); gl.bindVertexArray(this.vao); gl.bindBuffer(gl.ARRAY_BUFFER, this.buf);
     gl.uniformMatrix4fv(u.uVP, false, cam.vp); gl.uniform3fv(u.uRight, cam.right); gl.uniform3fv(u.uUp, cam.up); gl.uniform3fv(u.uFwd, cam.fwd);
-    gl.uniform4f(u.uTG, this.time, gain, protMin, 0); gl.uniform4fv(u.uProt, protect);
+    const U = this._u; U[0] = this.time; U[1] = this.gain; U[2] = this.protMin; U[3] = 0;   // uniform4f 에 실수를 넘기면 숫자 상자가 생긴다 → 배열로
+    gl.uniform4fv(u.uTG, U); gl.uniform4fv(u.uProt, protect);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.tex.atlas);
     const n1 = Math.min(this.count, this.cap - this.tail);
     this._point(this.tail); gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, n1); this.draws++;
@@ -300,7 +300,7 @@ export class Quads {
   constructor(gl, maxCap, tex) {
     this.gl = gl; this.max = maxCap; this.cap = maxCap; this.tex = tex;
     this.data = new Float32Array(maxCap * QF); this.death = new Float32Array(maxCap); this.gen = new Uint16Array(maxCap);
-    this.hi = 0; this.cur = 0; this.time = 0; this.dirtyLo = maxCap; this.dirtyHi = -1; this.live = 0; this.draws = 0; this.areaNow = 0;
+    this.hi = 0; this.cur = 0; this.time = 0.5; this.gain = 0.5; this._u = new Float32Array(4); this._g = new Float32Array(1); this.dirtyLo = maxCap; this.dirtyHi = -1; this.live = 0; this.draws = 0; this.areaNow = 0;
     this.pr = program(gl, Q_VS, Q_FS, 'quads');
     this.vao = gl.createVertexArray(); gl.bindVertexArray(this.vao);
     this.corner = cornerBuffer(gl); gl.enableVertexAttribArray(7); gl.vertexAttribPointer(7, 2, gl.FLOAT, false, 0, 0);
@@ -348,8 +348,8 @@ export class Quads {
   _ok(h) { const i = h & 0xff; return h >= 0 && this.gen[i] === (h >> 8) && this.death[i] > this.time ? i : -1; }
   move(h, x, y, z) { const i = this._ok(h); if (i < 0) return; const o = i * QF; this.data[o] = x; this.data[o + 1] = y; this.data[o + 2] = z; this._dirty(i); }
   kill(h) { const i = this._ok(h); if (i < 0) return; this.death[i] = 0; this.data[i * QF + 7] = 0.0001; this._dirty(i); }
-  update(time) { this.time = time; let n = 0, hi = 0; for (let i = 0; i < this.hi; i++) if (this.death[i] > time) { n++; hi = i + 1; } this.live = n; this.hi = hi; }
-  draw(cam, gain) {
+  update() { const time = this.time; let n = 0, hi = 0; for (let i = 0; i < this.hi; i++) if (this.death[i] > time) { n++; hi = i + 1; } this.live = n; this.hi = hi; }
+  draw(cam) {
     this.draws = 0; const gl = this.gl;
     if (this.dirtyHi >= this.dirtyLo) {
       gl.bindBuffer(gl.ARRAY_BUFFER, this.buf);
@@ -360,7 +360,7 @@ export class Quads {
     const u = this.pr.u;
     gl.useProgram(this.pr.p); gl.bindVertexArray(this.vao);
     gl.uniformMatrix4fv(u.uVP, false, cam.vp); gl.uniform3fv(u.uRight, cam.right); gl.uniform3fv(u.uUp, cam.up);
-    gl.uniform4f(u.uTG, this.time, 0, 0, 0); gl.uniform1f(u.uGain, gain);
+    this._u[0] = this.time; this._g[0] = this.gain; gl.uniform4fv(u.uTG, this._u); gl.uniform1fv(u.uGain, this._g);
     gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.tex.noise);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.tex.decal);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.hi); this.draws = 1;
@@ -412,7 +412,7 @@ export class Ribbons {
     this.st = new Int16Array(maxR); this.cn = new Int16Array(maxR); this.on = new Uint8Array(maxR); this.ended = new Uint8Array(maxR);
     this.gen = new Uint16Array(maxR); this.spec = new Array(maxR).fill(null); this.ab = new Float32Array(maxR * 6); this.nextRe = new Float32Array(maxR); this.born = new Float32Array(maxR);
     this.maxVerts = maxR * (maxPts * 2 + 2);
-    this.verts = new Float32Array(this.maxVerts * RV); this.nv = 0; this.time = 0; this.live = 0; this.draws = 0;
+    this.verts = new Float32Array(this.maxVerts * RV); this.nv = 0; this.time = 0.5; this.gain = 0.5; this._u = new Float32Array(2); this.live = 0; this.draws = 0;
     this.pr = program(gl, R_VS, R_FS, 'ribbons');
     this.vao = gl.createVertexArray(); gl.bindVertexArray(this.vao);
     this.buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, this.buf); gl.bufferData(gl.ARRAY_BUFFER, this.verts.byteLength, gl.DYNAMIC_DRAW);
@@ -461,8 +461,8 @@ export class Ribbons {
     }
     this.st[r] = 0; this.cn[r] = N; this.nextRe[r] = this.time + s.regen;
   }
-  update(time) {
-    this.time = time; let live = 0; const N = this.N, P = this.pts;
+  update() {
+    const time = this.time; let live = 0; const N = this.N, P = this.pts;
     for (let r = 0; r < this.cap; r++) {
       if (!this.on[r]) continue; const s = this.spec[r];
       if (s.mode === 2) { if (time - this.born[r] >= s.life) { this.on[r] = 0; this.spec[r] = null; continue; } if (time >= this.nextRe[r]) this._jag(r); live++; continue; }
@@ -473,7 +473,7 @@ export class Ribbons {
     }
     this.live = live;
   }
-  draw(cam, gain) {
+  draw(cam) {
     this.draws = 0; if (!this.live) { this.nv = 0; return; }
     const gl = this.gl, N = this.N, P = this.pts, V = this.verts, t = this.time, ex = cam.eye[0], ey = cam.eye[1], ez = cam.eye[2];
     let nv = 0;
@@ -501,7 +501,7 @@ export class Ribbons {
     this.nv = nv; if (!nv) return;
     gl.useProgram(this.pr.p); gl.bindVertexArray(this.vao); gl.bindBuffer(gl.ARRAY_BUFFER, this.buf);
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, V, 0, nv * RV);
-    gl.uniformMatrix4fv(this.pr.u.uVP, false, cam.vp); gl.uniform2f(this.pr.u.uTG, t, gain);
+    gl.uniformMatrix4fv(this.pr.u.uVP, false, cam.vp); this._u[0] = t; this._u[1] = this.gain; gl.uniform2fv(this.pr.u.uTG, this._u);
     gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.tex.noise); gl.activeTexture(gl.TEXTURE0);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, nv); this.draws = 1;
   }
@@ -605,7 +605,7 @@ export class Meshes {
   constructor(gl, maxCap, tex) {
     this.gl = gl; this.max = maxCap; this.cap = maxCap; this.tex = tex;
     this.d = new Float32Array(maxCap * MF); this.death = new Float32Array(maxCap); this.gen = new Uint16Array(maxCap); this.mat = new Float32Array(16);
-    this.time = 0; this.live = 0; this.draws = 0; this.tris = 0; this.hi = 0;
+    this.time = 0.5; this.gain = 0.5; this._p = new Float32Array(4); this._t = new Float32Array(3); this.live = 0; this.draws = 0; this.tris = 0; this.hi = 0;
     const g = buildMeshes(); this.ranges = g.ranges; this.triTotal = g.data.length / 24;
     this.pr = program(gl, M_VS, M_FS, 'meshes');
     this.vao = gl.createVertexArray(); gl.bindVertexArray(this.vao);
@@ -641,8 +641,8 @@ export class Meshes {
   move(h, x, y, z) { const i = this._ok(h); if (i < 0) return; const o = i * MF; this.d[o + 12] = x; this.d[o + 13] = y; this.d[o + 14] = z; }
   setP1(h, p) { const i = this._ok(h); if (i >= 0) this.d[i * MF + 27] = p; }
   kill(h) { const i = this._ok(h); if (i >= 0) this.death[i] = 0; }
-  update(time) { this.time = time; let n = 0, hi = 0; for (let i = 0; i < this.hi; i++) if (this.death[i] > time) { n++; hi = i + 1; } this.live = n; this.hi = hi; }
-  draw(cam, gain) {
+  update() { const time = this.time; let n = 0, hi = 0; for (let i = 0; i < this.hi; i++) if (this.death[i] > time) { n++; hi = i + 1; } this.live = n; this.hi = hi; }
+  draw(cam) {
     this.draws = 0; this.tris = 0; if (!this.live) return;
     const gl = this.gl, u = this.pr.u, D = this.d, t = this.time;
     gl.useProgram(this.pr.p); gl.bindVertexArray(this.vao);
@@ -650,10 +650,10 @@ export class Meshes {
     gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.tex.noise); gl.activeTexture(gl.TEXTURE0);
     for (let i = 0; i < this.hi; i++) {
       if (this.death[i] <= t) continue; const o = i * MF, age = t - D[o + 24];
-      for (let q = 0; q < 16; q++) this.mat[q] = D[o + q];
-      gl.uniformMatrix4fv(u.uM, false, this.mat);
-      gl.uniform4f(u.uCA, D[o + 16], D[o + 17], D[o + 18], D[o + 19]); gl.uniform4f(u.uCB, D[o + 20], D[o + 21], D[o + 22], D[o + 23]);
-      gl.uniform4f(u.uPar, age / D[o + 25], age, D[o + 26], D[o + 27]); gl.uniform1i(u.uMode, D[o + 29]); gl.uniform3f(u.uTAG, t, D[o + 30], gain);
+      const Pp = this._p, Tt = this._t;   // 인스턴스 배열을 자리(오프셋)로 바로 올린다 — 실수 인자를 넘기지 않는다
+      gl.uniformMatrix4fv(u.uM, false, D, o, 16); gl.uniform4fv(u.uCA, D, o + 16, 4); gl.uniform4fv(u.uCB, D, o + 20, 4);
+      Pp[0] = age / D[o + 25]; Pp[1] = age; Pp[2] = D[o + 26]; Pp[3] = D[o + 27]; gl.uniform4fv(u.uPar, Pp);
+      Tt[0] = t; Tt[1] = D[o + 30]; Tt[2] = this.gain; gl.uniform3fv(u.uTAG, Tt); gl.uniform1i(u.uMode, D[o + 29] | 0);
       const rg = this.ranges[D[o + 28]];
       gl.drawArrays(gl.TRIANGLES, rg[0], rg[1]); this.draws++; this.tris += rg[1] / 3;
     }
@@ -686,7 +686,7 @@ export class Lights {
   constructor(max) {
     this.max = max; this.cap = max; this.pos = new Float32Array(MAX_LIGHTS * 4); this.col = new Float32Array(MAX_LIGHTS * 4); this.count = 0;
     this.s = new Float32Array(max * 12);   // x y z r · cr cg cb i · t0 life flicker curve
-    this.death = new Float32Array(max); this.gen = new Uint16Array(max); this.time = 0;
+    this.death = new Float32Array(max); this.gen = new Uint16Array(max); this.time = 0.5;
   }
   reset(cap) { this.cap = Math.min(this.max, cap); this.death.fill(0); this.count = 0; }
   /** 점광. col [r,g,b], inten 세기, life 초, flicker 0..1 (떨림), curve 0 = 스러짐 · 1 = 켜진 채(손잡이로 끈다) */
@@ -701,8 +701,8 @@ export class Lights {
   move(h, x, y, z) { const i = this._ok(h); if (i < 0) return; const o = i * 12; this.s[o] = x; this.s[o + 1] = y; this.s[o + 2] = z; }
   kill(h) { const i = this._ok(h); if (i >= 0) this.death[i] = 0; }
   /** 프레임마다: 살아 있는 빛을 pos/col 배열(장면 셰이더용)에 채운다 */
-  update(time) {
-    this.time = time; let n = 0; const S = this.s, P = this.pos, C = this.col;
+  update() {
+    const time = this.time; let n = 0; const S = this.s, P = this.pos, C = this.col;
     for (let i = 0; i < this.cap; i++) {
       if (this.death[i] <= time) continue; const o = i * 12, k = (time - S[o + 8]) / S[o + 9];
       let a = S[o + 7] * (S[o + 11] > 0.5 ? Math.min(1, k * 12) * Math.min(1, (1 - k) * 6) : (1 - k) * (1 - k));
