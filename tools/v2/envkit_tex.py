@@ -86,10 +86,11 @@ def blocks(rows, wmin, wmax, seed, n=N):
         while sum(ws) < n: ws.append(int(r.uniform(wmin, wmax)))
         ws[-1] -= sum(ws) - n
         if ws[-1] < wmin * 0.5 and len(ws) > 1: ws[-2] += ws.pop()
+        assert sum(ws) == n and min(ws) > 0
         off = int(r.uniform(0, wmax)); x = 0
         dx = np.zeros(n, np.float32); idr = np.zeros(n, np.int32)
         for w in ws:
-            seg = (xs[x:x + w] + off) % n
+            seg = (np.arange(x, x + w) + off) % n
             t = np.arange(w)
             dx[seg] = np.minimum(t, w - 1 - t); idr[seg] = k; k += 1; x += w
         ty = np.arange(h)

@@ -15,10 +15,11 @@
    "job_id": "084f2925-0b73-470f-9333-c02aea6249eb",
    "credits": 0.5,
    "kept": false,
-   "note": "얼굴은 더 친근하지만 팔이 몸에 가깝고 허리띠 자락이 넓다 → 예비"
+   "note": "얼굴은 더 친근하지만 팔이 몸에 가깝고 허리띠 자락이 넓다 → 예비",
+   "raw": "/tmp/claude-0/v2/char3d/raw/apose0.png (저장소 밖)"
   },
   {
-   "file": "assets/v2/char3d/src/kael3_apose_front.webp",
+   "file": "tools/v2/char3d_samples/kael3_apose_front.webp",
    "model": "gpt_image_2_5",
    "params": {
     "aspect_ratio": "3:4",
@@ -30,7 +31,8 @@
    "job_id": "f4366372-a55e-4989-865b-f5f484a94d7a",
    "credits": 0.5,
    "kept": true,
-   "note": "3D 의 원본 그림"
+   "note": "3D 의 원본 그림",
+   "raw": "/tmp/claude-0/v2/char3d/raw/apose1.png (저장소 밖)"
   },
   {
    "file": "/dev/shm 의 정지 모델 (저장소에는 다시 싼 assets/v2/char3d/kael.glb 만)",
@@ -47,7 +49,9 @@
    "job_id": "10b4591f-75a8-401e-ae0e-7652f746405d",
    "credits": 9,
    "kept": true,
-   "note": "삼각형 19,578 · 정점 13,018 · 텍스처 2048² JPEG 1.14 MB. 모델이 +X 를 보고 나온다(팔이 Z 축)"
+   "note": "삼각형 19,578 · 정점 13,018 · 텍스처 2048² JPEG 1.14 MB. 모델이 +X 를 보고 나온다(팔이 Z 축)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_125850_10b4591f-75a8-401e-ae0e-7652f746405d.glb",
+   "raw": "/tmp/claude-0/v2/char3d/raw/kael_tripo_raw.glb (저장소 밖)"
   },
   {
    "file": "버림",
@@ -61,7 +65,8 @@
    "job_id": "5185717b-fa4c-4d4f-8d6e-a0179f42831f",
    "credits": 8,
    "kept": false,
-   "note": "실패: 리깅 서비스는 모델이 +Z 를 본다고 가정한다. 옆으로 선 모델을 그대로 넣어 뼈가 엉뚱한 곳에 박혔다 (좌우 비대칭, 다리 뼈가 앞뒤로). → tools/v2/char3d_orient.mjs 로 돌려서 다시"
+   "note": "실패: 리깅 서비스는 모델이 +Z 를 본다고 가정한다. 옆으로 선 모델을 그대로 넣어 뼈가 엉뚱한 곳에 박혔다 (좌우 비대칭, 다리 뼈가 앞뒤로). → tools/v2/char3d_orient.mjs 로 돌려서 다시",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_130142_5185717b-fa4c-4d4f-8d6e-a0179f42831f.glb"
   },
   {
    "file": "assets/v2/char3d/kael.glb (메시·뼈대·달리기)",
@@ -76,7 +81,9 @@
    "job_id": "2c487ff6-32bb-4de2-9a49-601ca9b4136d",
    "credits": 8,
    "kept": true,
-   "note": "뼈 24개 (손가락 없음), 좌우 대칭, 달리기 0.5초 15키"
+   "note": "뼈 24개 (손가락 없음), 좌우 대칭, 달리기 0.5초 15키",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_130603_2c487ff6-32bb-4de2-9a49-601ca9b4136d.glb",
+   "raw": "/tmp/claude-0/v2/char3d/raw/kael_rigged_run.glb (저장소 밖)"
   },
   {
    "file": "assets/v2/char3d/kael.glb (베기 클립만 꺼내 합침)",
@@ -90,7 +97,9 @@
    "ref": "같음",
    "job_id": "318fdc3f-178c-4ae3-a0b6-fcaed770cb8c",
    "credits": 8,
-   "kept": true
+   "kept": true,
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_130755_318fdc3f-178c-4ae3-a0b6-fcaed770cb8c.glb",
+   "raw": "/tmp/claude-0/v2/char3d/raw/kael_rigged_slash.glb (저장소 밖)"
   },
   {
    "file": "assets/v2/char3d/kael.glb (쓰러짐 클립만 꺼내 합침)",
@@ -104,10 +113,12 @@
    "ref": "같음",
    "job_id": "2ffe269c-fd04-4fd4-945f-fe039b4eca68",
    "credits": 8,
-   "kept": true
+   "kept": true,
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_130756_2ffe269c-fd04-4fd4-945f-fe039b4eca68.glb",
+   "raw": "/tmp/claude-0/v2/char3d/raw/kael_rigged_knockdown.glb (저장소 밖)"
   },
   {
-   "file": "/tmp/claude-0/v2/char3d/src_skeleton_apose.jpg",
+   "file": "tools/v2/char3d_samples/skeleton_apose_front.webp",
    "model": "gpt_image_2_5",
    "params": {
     "aspect_ratio": "3:4",
@@ -119,10 +130,11 @@
    "job_id": "953f6ab9-e74a-4160-b2a3-ce8f9833fabd",
    "credits": 0.25,
    "kept": true,
-   "note": "클립 나눠 쓰기 시험용 두 번째 사람형"
+   "note": "클립 나눠 쓰기 시험용 두 번째 사람형",
+   "raw": "/tmp/claude-0/v2/char3d/raw/skel_apose.png (저장소 밖)"
   },
   {
-   "file": "/dev/shm (시험용; 저장소에 싣지 않음 — 다시 싼 크기 416 KB)",
+   "file": "tools/v2/char3d_samples/skeleton.glb (다시 싼 것 416 KB, 게임에는 싣지 않음)",
    "model": "tripo_h3_1_image_to_3d",
    "params": {
     "face_limit": 10000,
@@ -136,10 +148,12 @@
    "job_id": "10cb3492-fc5a-4435-b194-8db79acac098",
    "credits": 9,
    "kept": true,
-   "note": "삼각형 9,731 · 정점 8,801. 가는 뼈·갈비뼈가 무너지지 않았다"
+   "note": "삼각형 9,731 · 정점 8,801. 가는 뼈·갈비뼈가 무너지지 않았다",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_131732_10cb3492-fc5a-4435-b194-8db79acac098.glb",
+   "raw": "/tmp/claude-0/v2/char3d/raw/skeleton_tripo_raw.glb (저장소 밖)"
   },
   {
-   "file": "같음 (리깅만, 클립 없음)",
+   "file": "tools/v2/char3d_samples/skeleton.glb (다시 싼 것 416 KB, 게임에는 싣지 않음)",
    "model": "meshy_rigging",
    "params": {
     "height_meters": 1.75,
@@ -149,8 +163,11 @@
    "job_id": "a0573656-5212-4075-a1e5-3c0b4652d9d3",
    "credits": 5,
    "kept": true,
-   "note": "뼈 24개 · 카엘과 같은 이름 → 카엘에게 산 달리기·베기·쓰러짐 클립이 그대로 돈다 (/tmp/claude-0/v2/char3d/retarget_skeleton.png)"
+   "note": "뼈 24개 · 카엘과 같은 이름 → 카엘에게 산 달리기·베기·쓰러짐 클립이 그대로 돈다 (/tmp/claude-0/v2/char3d/retarget_skeleton.png)",
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_132250_a0573656-5212-4075-a1e5-3c0b4652d9d3.glb",
+   "raw": "/tmp/claude-0/v2/char3d/raw/skeleton_rigged.glb (저장소 밖)"
   }
  ],
- "credits_total": 56.25
+ "credits_total": 56.25,
+ "note": "크레딧 단위는 generate_3d/generate_image 의 get_cost 값. 버린 것 1건(8): 모델 방향을 돌리지 않고 리깅. 13:35 UTC balance 도구 응답: 6046.5 credits / ultra (지시서의 약 102 와 다름 — 총괄 확인 필요)."
 }
