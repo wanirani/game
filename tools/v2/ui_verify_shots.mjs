@@ -50,12 +50,30 @@ try {
       await page.waitForFunction(() => window.__ui?.ready && window.__ui.hud.ready, null, { timeout: 20000 });
       await sleep(500);
       const rects = await page.evaluate(() => [...document.querySelectorAll('#v2pad canvas.v2b')].map((c) => { const r = c.getBoundingClientRect(); return { id: c.dataset.id, x: r.x, y: r.y, w: r.width, h: r.height }; }));
-      for (const r of rects) await page.screenshot({ path: `${OUT}/icons/${dev}_${bg}_${r.id}.png`, clip: { x: Math.max(0, r.x), y: Math.max(0, r.y), width: r.w, height: r.h } });
+      for (const r of rects) {   // one button at a time, the others hidden, so a crop never shows a slice of its neighbour
+        await page.evaluate((id) => { for (const c of document.querySelectorAll('#v2pad canvas')) c.style.visibility = c.dataset.id === id ? 'visible' : 'hidden'; }, r.id);
+        await page.screenshot({ path: `${OUT}/icons/${dev}_${bg}_${r.id}.png`, clip: { x: Math.max(0, r.x), y: Math.max(0, r.y), width: r.w, height: r.h } });
+      }
+      await page.evaluate(() => { for (const c of document.querySelectorAll('#v2pad canvas')) c.style.visibility = 'visible'; });
       info.icons[dev] = rects.map((r) => [r.id, Math.round(r.w), Math.round(r.h)]);
       await page.screenshot({ path: `${OUT}/${dev}_staged_empty_${bg}.png` });
       await ctx.close();
     }
   }
+  if (want('glass')) {   // white and black backdrops: how much of the scene each button hides (computed by tools/v2/ui_verify_glass.py)
+    info.glass = {};
+    for (const dev of ['fold_open', 'phone2']) {
+      for (const bg of ['white', 'black']) {
+        const ctx = await browser.newContext(contextOptions(dev)), page = await ctx.newPage();
+        await page.goto(`http://localhost:${port}/tools/v2/ui_view.html?view=empty&bg=${bg}&dev=${dev}&freeze=1`);
+        await page.waitForFunction(() => window.__ui?.ready && window.__ui.hud.ready, null, { timeout: 20000 });
+        await sleep(500);
+        info.glass[dev] = await page.evaluate(() => { const m = window.__ui.hud.metrics().pad; return { dpr: devicePixelRatio, w: innerWidth, h: innerHeight, buttons: m.buttons.map((b) => ({ id: b.id, cx: b.cx, cy: b.cy, d: b.d })), stick: m.stick }; });
+        await page.screenshot({ path: `${OUT}/glass_${dev}_${bg}.png` });
+        await ctx.close();
+      }
+    }
+  }
 } finally { await browser.close(); srv.close(); }
-fs.writeFileSync(`${OUT}/shots.json`, JSON.stringify(info, null, 1));
+fs.writeFileSync(`${OUT}/${ONLY ? 'shots_' + [...ONLY].join('_') : 'shots'}.json`, JSON.stringify(info, null, 1));
 console.log(JSON.stringify(info));
