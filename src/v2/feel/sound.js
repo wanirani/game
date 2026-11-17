@@ -51,21 +51,26 @@ function makeIR(c, room, seed) {
 // AAC 파일은 앞뒤 채움 때문에 고리가 튄다 → 22.05 kHz 모노 버퍼를 수식으로 만든다 (한 종류 26–88 KB PCM, 처음 쓸 때 1–3 ms)
 const LOOP_SR = 22050, LOOP_LEN = { torch: 2.0, street: 4.0, fire: 1.2, ice: 1.2, lightning: 1.0, holy: 1.6, blood: 1.6 };
 const loopCache = new Map();
-function loopBuf(c, kind) {
+export const LOOP_KINDS = Object.freeze(Object.keys(LOOP_LEN));
+/** 고리 버퍼 (검사용으로도 내보낸다): kind = LOOP_KINDS */
+export function loopBuf(c, kind) {
   let b = loopCache.get(kind);
   if (b) return b;
   const len = LOOP_LEN[kind] || 1.2, n = Math.floor(LOOP_SR * len), rnd = lcg(kind.length * 7919 + kind.charCodeAt(0) * 104729), TAU = Math.PI * 2;
   b = c.createBuffer(1, n, LOOP_SR);
   const d = b.getChannelData(0), cyc = (k, i) => Math.sin(TAU * k * i / n);   // 고리 길이에 정수 번 들어가는 사인 → 이음매 없음
-  const noise = (k, pass = 2) => { let lp = 0; const o = new Float32Array(n); for (let p = 0; p < pass; p++) for (let i = 0; i < n; i++) { lp += (rnd() * 2 - 1 - lp) * k; o[i] = lp; } return o; };   // 2번 돌려 필터 상태를 고리에 맞춘다
+  const white = () => { const w = new Float32Array(n); for (let i = 0; i < n; i++) w[i] = rnd() * 2 - 1; return w; };
+  const lpf = (w, k) => { let lp = 0; const o = new Float32Array(n); for (let p = 0; p < 2; p++) for (let i = 0; i < n; i++) { lp += (w[i] - lp) * k; o[i] = lp; } return o; };   // 같은 잡음을 2번 돌린다 → 필터 상태가 고리 끝과 처음에서 이어진다 (이음매 딸깍 없음)
+  const noise = (k) => lpf(white(), k);
   const burst = (count, tau, g, hp) => { for (let j = 0; j < count; j++) { const at = Math.floor(rnd() * n), m = Math.floor(LOOP_SR * tau * 5), a = g * (0.4 + rnd() * 0.6); let prev = 0; for (let i = 0; i < m; i++) { const x = rnd() * 2 - 1, y = hp ? x - prev : x; prev = x; d[(at + i) % n] += y * a * Math.exp(-i / (LOOP_SR * tau)); } } };
   if (kind === 'torch') {
     const lo = noise(0.09), mid = noise(0.4);
-    for (let i = 0; i < n; i++) d[i] = lo[i] * 1.6 * (0.7 + 0.2 * cyc(3, i) + 0.1 * cyc(7, i)) + mid[i] * 0.12 * (0.6 + 0.4 * cyc(11, i));
+    for (let i = 0; i < n; i++) d[i] = lo[i] * 1.6 * (0.7 + 0.2 * cyc(3, i) + 0.1 * cyc(7, i)) + mid[i] * 0.2 * (0.6 + 0.4 * cyc(11, i));
     burst(16, 0.0025, 0.5, true); burst(5, 0.006, 0.35, false);
   } else if (kind === 'street') {
-    const lo = noise(0.035), air = noise(0.5);
-    for (let i = 0; i < n; i++) d[i] = lo[i] * 2.4 * (0.62 + 0.26 * cyc(1, i) + 0.12 * cyc(3, i)) + air[i] * 0.05 * (0.6 + 0.4 * cyc(2, i));
+    // 밤바람: 100–700 Hz 띠 잡음(같은 잡음의 두 저역 통과의 차 — 휴대폰 스피커에도 들리는 대역)이 천천히 부풀고, 위에 옅은 공기 소리
+    const w = white(), hi = lpf(w, 0.2), sub = lpf(w, 0.03), air = noise(0.5);
+    for (let i = 0; i < n; i++) d[i] = (hi[i] - sub[i]) * 1.6 * (0.6 + 0.28 * cyc(1, i) + 0.12 * cyc(3, i)) + sub[i] * 0.5 + air[i] * 0.06 * (0.6 + 0.4 * cyc(2, i));
   } else if (kind === 'fire') {
     const lo = noise(0.12), mid = noise(0.45);
     for (let i = 0; i < n; i++) d[i] = lo[i] * 1.5 * (0.7 + 0.3 * cyc(9, i)) + mid[i] * 0.22 * (0.6 + 0.4 * cyc(5, i));
@@ -83,7 +88,7 @@ function loopBuf(c, kind) {
     for (let i = 0; i < n; i++) { let v = 0; for (const [k, a, m] of [[940, 1, 2], [1408, 0.7, 3], [1880, 0.6, 5], [2368, 0.4, 4]]) v += a * cyc(k, i) * (0.6 + 0.4 * cyc(m, i)); d[i] = v * 0.14 + air[i] * 0.07; }
   } else {   // blood: 낮은 맥박 + 어두운 숨
     const lo = noise(0.06);
-    for (let i = 0; i < n; i++) { const beat = Math.pow(Math.max(0, cyc(2, i)), 6); d[i] = (cyc(176, i) * 0.5 + cyc(264, i) * 0.3 + cyc(88, i) * 0.4) * (0.35 + 0.65 * beat) * 0.3 + lo[i] * 1.2 * (0.5 + 0.5 * beat); }
+    for (let i = 0; i < n; i++) { const beat = Math.pow(Math.max(0, cyc(2, i)), 6); d[i] = (cyc(176, i) * 0.5 + cyc(264, i) * 0.3 + cyc(88, i) * 0.4 + cyc(352, i) * 0.2 + cyc(528, i) * 0.12) * (0.35 + 0.65 * beat) * 0.3 + lo[i] * 1.2 * (0.5 + 0.5 * beat); }
   }
   let pk = 0; for (let i = 0; i < n; i++) { const a = Math.abs(d[i]); if (a > pk) pk = a; }
   const k = pk > 0 ? 0.5 / pk : 1; for (let i = 0; i < n; i++) d[i] *= k;

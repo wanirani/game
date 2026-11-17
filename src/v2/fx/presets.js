@@ -16,7 +16,7 @@ const S = {
   cutF: E({ sprite: SPR.STREAK, spread: 0, speed: 2, stretch: 2900, size: 27, grow: 1.3, life: 0.2, c0: [4, 3.8, 3.4, 1], c1: [3, 0.8, 0.3, 0], pri: 1, min: 1 }),
   flashL: E({ sprite: SPR.GLOW, size: 46, grow: 1.6, life: 0.08, c0: [1.5, 1.4, 1.3, 0.6], c1: [1.2, 0.8, 0.4, 0], pri: 1, min: 1 }),
   flashH: E({ sprite: SPR.GLOW, size: 66, grow: 1.6, life: 0.11, c0: [1.6, 1.4, 1.2, 0.7], c1: [1.6, 0.7, 0.25, 0], pri: 1, min: 1 }),
-  flashF: E({ sprite: SPR.GLOW, size: 112, grow: 1.6, life: 0.18, c0: [1.8, 1.5, 1.2, 0.8], c1: [2, 0.5, 0.2, 0], pri: 1, min: 1 }),
+  flashF: E({ sprite: SPR.GLOW, size: 104, grow: 1.5, life: 0.16, c0: [1.7, 1.4, 1.1, 0.6], c1: [2, 0.5, 0.2, 0], pri: 1, min: 1 }),
   spark: E({ sprite: SPR.STREAK, stretch: 2.4, n: 9, spread: 0.7, speed: [260, 680], grav: 1100, drag: 1.4, life: [0.16, 0.36], size: [9, 15], grow: 0.5, c0: [3, 2.2, 1.1, 1], c1: [2, 0.5, 0.1, 0], cv: 0.3, floor: 2 }),
   star: E({ sprite: SPR.STAR, size: 72, grow: 1.5, life: 0.15, spin: [-3, 3], c0: [2.2, 2.2, 2.2, 0.9], c1: [1.8, 1.4, 0.7, 0], pri: 1, min: 1 }),
   starBig: E({ sprite: SPR.STAR, size: 124, grow: 1.5, life: 0.2, spin: [-2, 2], c0: [2.4, 2.3, 2, 0.9], c1: [2.4, 1.6, 0.5, 0], pri: 1, min: 1 }),
@@ -32,8 +32,8 @@ const S = {
   speedLine: E({ sprite: SPR.STREAK, stretch: 5, n: 6, spread: 0.1, speed: [520, 860], drag: 5, life: [0.14, 0.24], size: [8, 12], c0: [1.4, 1.9, 2.6, 0.75], c1: [0.5, 0.9, 1.8, 0], jit: 30 }),
   landDust: E({ sprite: SPR.DUST, add: 0, n: 10, shape: 2, rad: 14, speed: [90, 210], vy: [15, 60], drag: 4, life: [0.35, 0.62], size: [32, 52], grow: 2.1, c0: [0.66, 0.64, 0.71, 0.42], c1: [0.5, 0.5, 0.57, 0], fadeIn: 0.08 }),
   pebble: E({ sprite: SPR.SHARD, add: 0, n: 4, shape: 2, rad: 10, speed: [60, 170], vy: [150, 280], grav: 1400, life: [0.4, 0.62], size: [4, 7], spin: [-12, 12], c0: [0.52, 0.52, 0.58, 1], c1: [0.4, 0.4, 0.45, 1], floor: 2 }),
-  stepDust: E({ sprite: SPR.DUST, add: 0, n: 2, shape: 2, rad: 4, speed: [15, 45], vy: [10, 30], drag: 3, life: [0.25, 0.4], size: [14, 22], grow: 1.8, c0: [0.62, 0.6, 0.67, 0.28], c1: [0.5, 0.5, 0.57, 0], fadeIn: 0.15, min: 1 }),
-  jumpPuff: E({ sprite: SPR.DUST, add: 0, n: 5, shape: 2, rad: 8, speed: [50, 120], vy: [5, 30], drag: 4, life: [0.28, 0.45], size: [22, 34], grow: 1.9, c0: [0.64, 0.62, 0.7, 0.36], c1: [0.5, 0.5, 0.57, 0], fadeIn: 0.1 }),
+  stepDust: E({ sprite: SPR.DUST, add: 0, n: 3, shape: 2, rad: 4, speed: [20, 55], vy: [10, 34], drag: 3, life: [0.28, 0.45], size: [18, 28], grow: 1.9, c0: [0.7, 0.68, 0.75, 0.5], c1: [0.5, 0.5, 0.57, 0], fadeIn: 0.15, min: 1 }),
+  jumpPuff: E({ sprite: SPR.DUST, add: 0, n: 6, shape: 2, rad: 8, speed: [50, 130], vy: [5, 30], drag: 4, life: [0.3, 0.48], size: [24, 36], grow: 1.9, c0: [0.7, 0.68, 0.75, 0.5], c1: [0.5, 0.5, 0.57, 0], fadeIn: 0.1 }),
   // 적
   bone: E({ sprite: SPR.BONE, add: 0, n: 14, shape: 1, speed: [140, 380], vy: [200, 400], grav: 1500, drag: 0.3, life: [0.75, 1.15], size: [13, 22], spin: [-14, 14], c0: [0.95, 0.9, 0.8, 1], c1: [0.72, 0.68, 0.6, 1], cv: 0.25, floor: 2, pri: 1 }),
   boneDust: E({ sprite: SPR.SMOKE, add: 0, n: 6, shape: 1, speed: [30, 100], vy: [20, 70], drag: 2.5, life: [0.5, 0.85], size: [44, 68], grow: 1.8, c0: [0.8, 0.78, 0.86, 0.42], c1: [0.6, 0.6, 0.7, 0], fadeIn: 0.08 }),
@@ -103,12 +103,13 @@ const C = {
   scorch: [0.02, 0.015, 0.015, 0.75], bloodSplat: [0.22, 0.0, 0.02, 0.8], crackDk: [0.01, 0.01, 0.012, 0.85], dustDecal: [0.5, 0.48, 0.52, 0.22], shadow: [0, 0, 0, 0.5],
   fire: [1.6, 0.6, 0.12, 1], fireA: [3.2, 1.7, 0.45, 1], fireB: [1.7, 0.28, 0.03, 1], fireL: [1, 0.5, 0.18],
   ice: [0.5, 1.3, 1.9, 1], iceA: [1.8, 2.6, 3.2, 0.92], iceB: [0.25, 0.6, 0.95, 1], iceL: [0.4, 0.75, 1],
-  zap: [0.8, 0.9, 2.4, 1], zapA: [2.6, 2.8, 3.6, 1], zapB: [0.5, 0.5, 2.4, 1], zapL: [0.6, 0.7, 1],
+  zap: [1.0, 0.55, 2.3, 1], zapA: [2.6, 2.8, 3.6, 1], zapB: [0.5, 0.5, 2.4, 1], zapL: [0.6, 0.7, 1],
   holy: [1.8, 1.3, 0.45, 1], holyA: [3.4, 3, 1.9, 1], holyB: [2, 1.2, 0.3, 1], holyL: [1, 0.82, 0.45],
   blood: [1.7, 0.1, 0.14, 1], bloodA: [3, 0.4, 0.4, 1], bloodB: [0.9, 0, 0.05, 1], bloodL: [1, 0.12, 0.14],
   shadow2: [1.1, 0.3, 1.9, 1], shadowA: [2.4, 0.7, 3.2, 1], shadowB: [0.18, 0.02, 0.3, 1], shadowL: [0.6, 0.2, 1],
   rockA: [3, 1.2, 0.3, 1], rockB: [0.34, 0.2, 0.16, 1], bellA: [3.2, 2.6, 1.2, 0.9], bellB: [1.6, 0.9, 0.2, 0.9],
   fireG: [1.5, 0.6, 0.15, 0.85], bloodG: [1.4, 0.1, 0.14, 0.85],
+  pickGlow: [[1.2, 0.9, 0.3, 0.6], [0.3, 1.1, 0.4, 0.6], [0.3, 0.7, 1.3, 0.6]], ringBig: [1.5, 1.4, 1.3, 0.42], ringBigRed: [2, 0.25, 0.2, 0.5], ringBigGold: [2, 1.5, 0.5, 0.5],
   pickG: [2.2, 1.7, 0.5, 0.9], pickH: [0.6, 2.2, 0.8, 0.9], pickM: [0.6, 1.3, 2.4, 0.9],
 };
 const FAM = {
@@ -225,7 +226,7 @@ function hitFinisher(fx, x, y, z, dx, dz, pow) {
   cut(fx, S.cutF, x, y, z, ang); cut(fx, S.cutH, x, y, z, ang + 1.3);
   P.emit(S.starBig, x, y, z, 0, 1, 0, 1, 0); P.emit(S.flashF, x, y, z, 0, 1, 0, 1, 0);
   sparkDir(fx, S.spark, x, y, z, dx, dz, 0.4, 2.8 * pow); sparkDir(fx, S.chip, x, y, z, dx, dz, 0.4, 1.2 * pow); P.emit(S.puff, x, gy + 6, z, 0, 1, 0, 1.5, gy);
-  bRing(fx, x, y, z, 170, 0.34, C.ringW); gRing(fx, x, gy, z, 230, 0.5, C.ringW); gRing(fx, x, gy, z, 140, 0.4, C.ringGold);
+  bRing(fx, x, y, z, 150, 0.3, C.ringBig); gRing(fx, x, gy, z, 230, 0.5, C.ringBig); gRing(fx, x, gy, z, 140, 0.4, C.ringGold);
   crack(fx, x, gy, z, 120, 5, C.crackDk, 0); scorch(fx, x, gy, z, 90, 5, C.scorch, 0.4);
   fx.light(x, y, z, 460, C.warm, 1.6, 0.35, 0, 0);
   if (fx.feelOn) { const F = fx.feel; F.hitStop(0.133, true); F.slowMo(0.25, 0.3); F.zoomPunch(0.08, 0.12); F.flash(1, 0.96, 0.9, 0.45, 8); F.vignette(0.9, 0.3, 0.1, 0.3, 3); F.kick(dx, 0, dz, 12); fx.trauma(0.5, dx, 0, dz); }
@@ -263,7 +264,7 @@ function pickup(fx, x, y, z, dx, dz, pow) {
   const kind = pow >= 2.5 ? 2 : pow >= 1.5 ? 1 : 0, P = fx.particles;
   P.emit(kind === 2 ? S.sparkleM : kind === 1 ? S.sparkleH : S.sparkleG, x, y + 20, z, 0, 1, 0, 1, y);
   const col = kind === 2 ? C.pickM : kind === 1 ? C.pickH : C.pickG;
-  gRing(fx, x, y, z, 60, 0.35, col); fx.quads.billboard(Q.GLOW, x, y + 40, z, 70, 0.25, col, 0.5, 1.3, 0.02);
+  gRing(fx, x, y, z, 60, 0.35, col); fx.quads.billboard(Q.GLOW, x, y + 40, z, 44, 0.22, C.pickGlow[kind], 0.5, 1.2, 0.02);
   fx.light(x, y + 40, z, 190, kind === 2 ? C.iceL : kind === 1 ? C.holyL : C.warm, 0.7, 0.3, 0, 0);
   fx.sfx(kind === 2 ? 'pickup.mana' : kind === 1 ? 'pickup.heal' : 'pickup.coin', x, y, z, 1);
 }
@@ -495,7 +496,7 @@ STEP[K.CLAWS] = (fx, s) => {
 function ultBloodMoon(fx, x, y, z, dx, dz, pow) {
   const s = fx.seqs.get(K.ULT, x, y, z, dx, dz, pow, x, y, z); if (!s) return;
   rune(fx, x, y, z, 380, 3.3, C.blood, DECAL.BLOOD, 0.5); rune(fx, x, y, z, 210, 3.3, C.holy, DECAL.BELL, -0.8);
-  fx.meshes.spawn(MESH.BELL, MODE.BELL, x, y + 250, z, 1, 0, 0, 0, 1, 0, 170, 210, 170, 3.1, C.bellA, C.bloodA, 1, 11);
+  fx.meshes.spawn(MESH.BELL, MODE.BELL, x, y + 200, z, 1, 0, 0, 0, 1, 0, 104, 128, 104, 3.1, C.bellA, C.bellB, 1, 11);
   fx.particles.emit(S.ultGather, x, y + 80, z, 0, 1, 0, 1, y);
   fx.light(x, y + 120, z, 700, C.bloodL, 1.2, 3.2, 0.2, 1);
   if (fx.feelOn) { const F = fx.feel; F.slowMo(0.35, 0.45); F.zoomPunch(0.06, 0.4); F.vignette(0.35, 0, 0.02, 0.6, 0.6); F.darken(0.4); }
@@ -506,10 +507,10 @@ STEP[K.ULT] = (fx, s, dt) => {
   // 종 세 번
   if (s.ph < 3 && s.t >= 0.55 + s.ph * 0.38) {
     const i = s.ph++;
-    gRing(fx, x, y, z, 480 + i * 90, 0.9, i === 2 ? C.ringRed : C.ringGold); bRing(fx, x, y + 330, z, 230 + i * 50, 0.6, C.ringGold);
+    gRing(fx, x, y, z, 480 + i * 90, 0.9, i === 2 ? C.ringBigRed : C.ringBigGold); bRing(fx, x, y + 264, z, 150 + i * 40, 0.6, C.ringBigGold);
     P.emit(S.holyStar, x, y + 120, z, 0, 1, 0, 8, y);
     if (fx.feelOn) { fx.trauma(0.22, 0, 1, 0); fx.feel.zoomPunch(0.03); }
-    fx.sfx('magic.bell.toll', x, y + 330, z, 1);
+    fx.sfx('magic.bell.toll', x, y + 264, z, 1);
   }
   // 붉은 빛창 여덟 줄기
   if (s.ph >= 3 && s.n < 8 && s.t >= 1.75 + s.n * 0.085) {
@@ -526,7 +527,7 @@ STEP[K.ULT] = (fx, s, dt) => {
   if (s.ph === 3 && s.t >= 2.6) {
     s.ph = 4;
     slash(fx, x, y + 70, z, 1, 0, 0.9, 520, 0.45, C.holyA, C.bloodA, 0.3); slash(fx, x, y + 70, z, -1, 0, -0.9, 520, 0.45, C.bloodA, C.bloodB, 0.3);
-    gRing(fx, x, y, z, 700, 0.9, C.white); gRing(fx, x, y, z, 520, 0.75, C.ringRed); gRing(fx, x, y, z, 340, 0.6, C.ringGold); bRing(fx, x, y + 90, z, 420, 0.5, C.ringW);
+    gRing(fx, x, y, z, 700, 0.9, C.ringBig); gRing(fx, x, y, z, 520, 0.75, C.ringBigRed); gRing(fx, x, y, z, 340, 0.6, C.ringBigGold); bRing(fx, x, y + 90, z, 360, 0.45, C.ringBig);
     P.emit(S.ultSpark, x, y + 30, z, 0, 1, 0, 1, y); P.emit(S.emberRain, x, y, z, 0, 1, 0, 1, y); P.emit(S.flashF, x, y + 80, z, 0, 1, 0, 1, 0); P.emit(S.starBig, x, y + 80, z, 0, 1, 0, 1, 0);
     crack(fx, x, y, z, 300, 7, C.crackDk, 0); crack(fx, x, y, z, 280, 1.4, C.bloodA, 1);
     fx.light(x, y + 100, z, 1200, C.holyL, 2.4, 0.6, 0, 0);

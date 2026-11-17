@@ -89,19 +89,23 @@ export const HAPTIC = Object.freeze({
 
 // ───────────────────────────── 타격 조합 ─────────────────────────────
 const cache = new Map();
-const pick = (t, id, d) => (Object.hasOwn(t, id) ? t[id] : t[d]);
 const shift = (ls, dt, k = 1) => ls.map((l) => (dt || k !== 1 ? Object.freeze({ ...l, at: l.at + dt, g: l.g * k }) : l));
 /**
  * 타격 한 번의 느낌 — 표에서 조합해 캐시한다 (같은 조합은 같은 객체 → 타격마다 새 객체를 만들지 않는다).
  * @param {string} weapon WEAPON 키 · @param {string} material MATERIAL 키 · @param {string} strength 'L'|'M'|'H'|'F'
  * @param {number} flags FLAG 비트 합 (crit|kill|guard|parry|finisher)
- * @returns {{key, weapon, material, strength, flags, layers, dur, stop, shake, kick, zoom, zoomT, slow, duck, gain, haptic, spark, big}}
+ * @returns {{key, weapon, material, strength, flags, layers, stop, shake, kick, zoom, zoomT, slow, duck, gain, haptic, spark, big}}
  */
 export function hitFeel(weapon, material, strength, flags = 0) {
-  const key = `${weapon}|${material}|${strength}|${flags}`;
-  let r = cache.get(key);
+  // 캐시 열쇠는 정수 (문자열을 잇지 않는다 — 타격마다 할당 0). 모르는 이름은 한손검·살·M 으로
+  let wi = WEAPONS.indexOf(weapon), mi = MATERIALS.indexOf(material), si = STRENGTHS.indexOf(strength);
+  if (wi < 0) wi = 0; if (mi < 0) mi = 0; if (si < 0) si = 1;
+  const ck = (((wi * 16 + mi) * 4 + si) * 32) + (flags & 31);
+  let r = cache.get(ck);
   if (r) return r;
-  const W = pick(WEAPON, weapon, 'sword'), M = pick(MATERIAL, material, 'flesh'), S = pick(STRENGTH, strength, 'M'), si = STRENGTHS.indexOf(S.id);
+  weapon = WEAPONS[wi]; material = MATERIALS[mi];
+  const key = `${weapon}|${material}|${STRENGTHS[si]}|${flags & 31}`;
+  const W = WEAPON[weapon], M = MATERIAL[material], S = STRENGTH[STRENGTHS[si]];
   const only = flags & FLAG.parry ? MOD.parry : flags & FLAG.guard ? MOD.guard : null;
   let layers, stop = S.stop * W.stopK * M.stopK, shake = S.shake, kick = S.kick, zoom = S.zoom, zoomT = S.zoomT, slow = null, duck = S.duck, gain = S.gain, haptic = S.haptic, big = false;
   if (only) {
@@ -126,18 +130,20 @@ export function hitFeel(weapon, material, strength, flags = 0) {
   }
   layers.sort((a, b) => a.at - b.at);
   // 경직 상한: 보통 타격 0.2초 (무기·재질 배율과 치명타·처치를 다 더해도 — 길면 움직임이 무거워진다), 마무리 일격·받아치기만 0.25초
-  r = Object.freeze({ key, weapon, material, strength: S.id, flags, layers: Object.freeze(layers), stop: +Math.min(big ? STOP_MAX_BIG : STOP_MAX, stop).toFixed(3), shake: +Math.min(1, shake).toFixed(2), kick, zoom, zoomT, slow, duck, gain: +gain.toFixed(3), haptic, spark: M.spark, big });
-  cache.set(key, r);
+  r = Object.freeze({ key, weapon, material, strength: S.id, flags: flags & 31, layers: Object.freeze(layers), stop: +Math.min(big ? STOP_MAX_BIG : STOP_MAX, stop).toFixed(3), shake: +Math.min(1, shake).toFixed(2), kick, zoom, zoomT, slow, duck, gain: +gain.toFixed(3), haptic, spark: M.spark, big });
+  cache.set(ck, r);
   return r;
 }
 /** 휘두름(타격 전 바람 소리) — { layers, lead, gain } */
 export function swingFeel(weapon, strength) {
-  const key = `sw|${weapon}|${strength}`;
-  let r = cache.get(key);
+  let wi = WEAPONS.indexOf(weapon), si = STRENGTHS.indexOf(strength);
+  if (wi < 0) wi = 0; if (si < 0) si = 1;
+  const ck = -1 - (wi * 4 + si);
+  let r = cache.get(ck);
   if (r) return r;
-  const W = pick(WEAPON, weapon, 'sword'), S = pick(STRENGTH, strength, 'M');
-  r = Object.freeze({ key, layers: Object.freeze(W.whoosh[S.id]), lead: W.lead, gain: 0.72 + 0.04 * STRENGTHS.indexOf(S.id), duck: null, haptic: null, big: false });
-  cache.set(key, r);
+  const W = WEAPON[WEAPONS[wi]], S = STRENGTH[STRENGTHS[si]];
+  r = Object.freeze({ key: `sw|${WEAPONS[wi]}|${S.id}`, weapon: WEAPONS[wi], strength: S.id, layers: Object.freeze(W.whoosh[S.id]), lead: W.lead, gain: 0.72 + 0.04 * si, duck: null, haptic: null, big: false });
+  cache.set(ck, r);
   return r;
 }
 
@@ -196,7 +202,7 @@ export const EVENT = Object.freeze({
   // 세계
   'world.torch.light': ev('f3_enemy', [o('candle', 0, 0.8, 0.8), o('fire', 0.02, 0.3, 1.3, 1)], { gain: 0.6 }),
   'loop.torch': ev('f3_loop', [], { loop: 'torch', gain: 0.3, life: 3600, keep: true }),
-  'loop.street': ev('f3_loop', [], { loop: 'street', gain: 0.16, life: 3600, keep: true, flat: true }),
+  'loop.street': ev('f3_loop', [], { loop: 'street', gain: 0.1, life: 3600, keep: true, flat: true }),
   // 인터페이스 (작게, 공간 처리 없음)
   'ui.move': ev('f3_ui', [n('ui_tick', 0, 0.7)], { flat: true, gain: 0.5 }),
   'ui.tab': ev('f3_ui', [n('ui_tab', 0, 0.5)], { flat: true, gain: 0.55 }),
@@ -221,6 +227,10 @@ for (const b of BELLS) {
   X[`bell.${b}`] = ev('f3_bell', ls, { duck: [0.5, 2.6], haptic: 'chime', gain: 0.72 });
 }
 export const EVENTS = Object.freeze({ ...EVENT, ...X });
+/** 사건 이름 찾기 표 (문자열을 잇지 않게): MAGIC_EVENT[원소][단계] · BELL_EVENT[가락|'toll'] · MAGIC_LOOP[원소] */
+export const MAGIC_EVENT = Object.freeze(Object.fromEntries(ELEMENTS.map((el) => [el, Object.freeze({ charge: `magic.${el}.charge`, release: `magic.${el}.release`, impact: `magic.${el}.impact` })])));
+export const MAGIC_LOOP = Object.freeze(Object.fromEntries(ELEMENTS.map((el) => [el, `loop.magic.${el}`])));
+export const BELL_EVENT = Object.freeze({ ...Object.fromEntries(BELLS.map((b) => [b, `bell.${b}`])), toll: 'bell.toll' });
 export const EVENT_NAMES = Object.freeze(Object.keys(EVENTS));
 
 /** 발소리 속도 구간 (월드 단위/초) → 사건 이름. 걷기 < 150 ≤ 달리기 < 300 ≤ 전력 */

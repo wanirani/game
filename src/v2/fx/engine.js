@@ -290,7 +290,7 @@ void main() {
     add = m * (0.16 + 0.75 * smoothstep(0.5, 0.75, n2)); al = m * 0.3; body = c * 0.35;
   } else {
     float cell = floor(vA.w + 0.5); vec2 uv = (vec2(mod(cell, 2.0), floor(cell * 0.5)) + clamp(vP * 0.5 + 0.5, 0.01, 0.99)) * 0.5;
-    float t = texture(uDecal, uv).a * step(r, 1.4);
+    float t = texture(uDecal, uv).a * smoothstep(1.0, 0.95, r);
     if (vB.x > 0.5) add = t * 1.25; else { al = t * vCol.a; body = c; }
   }
   o = vec4((c * add * vCol.a * uGain + body * al) * env, al * env);

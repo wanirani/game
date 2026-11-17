@@ -43,7 +43,7 @@ export function compileEnv(S, { cull = true } = {}) {
     switch (P.t) {
       case 'floor': K.dressFloor(G, P, W); break;
       case 'pave': K.pave(G, P, W); break;
-      case 'block': if (P.mesh) PROPS[P.mesh](G, P.x + P.w / 2, y, P.z + P.d / 2, { w: P.w, d: P.d, h: P.h }); else K.dressBlock(G, P, W); break;
+      case 'block': if (P.mesh) { G.lift = true; PROPS[P.mesh](G, P.x + P.w / 2, y, P.z + P.d / 2, { w: P.w, d: P.d, h: P.h }); G.lift = false; } else K.dressBlock(G, P, W); break;
       case 'wall': K.dressWall(G, P, extra); for (const [F, h] of wallHang(P)) WALLPROPS[h.type](G, F, h); break;
       case 'roof': K.dressRoof(G, P); break;
       case 'stairs': K.dressStairs(G, P); break;
@@ -58,7 +58,7 @@ export function compileEnv(S, { cull = true } = {}) {
       case 'prop': case 'deco': {
         if (!P.mesh) break;
         const g = P.y ?? groundAt(W, P.x, P.z), fn = PROPS[P.mesh]; if (!fn) throw new Error('모르는 소품: ' + P.mesh);
-        fn(G, P.x, Number.isFinite(g) ? g : 0, P.z, P);
+        G.lift = true; fn(G, P.x, Number.isFinite(g) ? g : 0, P.z, P); G.lift = false;
         break;
       }
       case 'blocker': case 'light': case 'window': break;

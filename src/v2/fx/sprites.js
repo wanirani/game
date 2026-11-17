@@ -89,7 +89,7 @@ export function makeDecalAtlas() {
   const R = rng(31);
   const cell = (i, fn) => { g.save(); g.translate((i % 2) * S + S / 2, ((i / 2) | 0) * S + S / 2); g.beginPath(); g.rect(-S / 2 + 2, -S / 2 + 2, S - 4, S - 4); g.clip(); g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.lineCap = 'round'; g.lineJoin = 'round'; fn(); g.restore(); };
   const ring = (r, w) => { g.lineWidth = w; g.beginPath(); g.arc(0, 0, r, 0, 6.2832); g.stroke(); };
-  const glowPass = (fn) => { g.save(); g.globalAlpha = 0.45; g.filter = 'blur(4px)'; fn(2.6); g.restore(); fn(1); };
+  const glowPass = (fn) => { g.save(); g.globalAlpha = 0.22; g.filter = 'blur(3px)'; fn(2.2); g.restore(); fn(1); };
   const poly = (n, r, skip, rot = -Math.PI / 2) => { g.beginPath(); for (let i = 0; i <= n; i++) { const a = rot + (i * skip) * 6.2832 / n; const x = Math.cos(a) * r, y = Math.sin(a) * r; if (i) g.lineTo(x, y); else g.moveTo(x, y); } g.stroke(); };
   const ticks = (n, r0, r1, w, every = 0, r2 = r1) => { g.lineWidth = w; g.beginPath(); for (let i = 0; i < n; i++) { const a = i * 6.2832 / n, rr = every && i % every === 0 ? r2 : r1; g.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } g.stroke(); };
   const glyphs = (n, r, size) => { for (let i = 0; i < n; i++) { const a = i * 6.2832 / n; g.save(); g.rotate(a); g.translate(0, -r); g.lineWidth = 2.2; g.beginPath(); const k = 2 + ((R() * 3) | 0); let x = (R() - 0.5) * size, y = -size / 2; g.moveTo(x, y); for (let j = 0; j < k; j++) { x = (R() - 0.5) * size; y += size / k; g.lineTo(x, y); } g.stroke(); g.restore(); } };
@@ -125,7 +125,7 @@ export function makeDecalAtlas() {
   // 3 종 문양: 열두 눈금(시계) + 종 실루엣 + 울림 호
   cell(DECAL.BELL, () => glowPass((m) => {
     ring(120, 3 * m); ring(108, 1.2 * m); ticks(60, 109, 114, 1.2 * m, 5, 98); ring(74, 1.4 * m);
-    g.lineWidth = 2.4 * m; g.beginPath(); g.moveTo(-6, -40); g.bezierCurveTo(-26, -34, -22, 0, -40, 26); g.lineTo(40, 26); g.bezierCurveTo(22, 0, 26, -34, 6, -40); g.closePath(); if (m === 1) { g.globalAlpha = 0.55; g.fill(); g.globalAlpha = 1; } g.stroke();
+    g.lineWidth = 2.4 * m; g.beginPath(); g.moveTo(-6, -40); g.bezierCurveTo(-26, -34, -22, 0, -40, 26); g.lineTo(40, 26); g.bezierCurveTo(22, 0, 26, -34, 6, -40); g.closePath(); g.stroke();
     g.beginPath(); g.arc(0, -46, 7, 0, 6.2832); g.stroke(); g.beginPath(); g.arc(0, 36, 6, 0, 6.2832); g.fill();
     g.lineWidth = 1.8 * m; for (const s of [-1, 1]) { g.beginPath(); g.arc(0, 0, 56, s > 0 ? -0.5 : Math.PI - 0.5, s > 0 ? 0.5 : Math.PI + 0.5); g.stroke(); g.beginPath(); g.arc(0, 0, 66, s > 0 ? -0.35 : Math.PI - 0.35, s > 0 ? 0.35 : Math.PI + 0.35); g.stroke(); }
   }));

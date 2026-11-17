@@ -38,12 +38,14 @@ export class Geo {
     this.W = W; this.chunk = 'main'; this.out = new Map(); this.cull = cull; this.tris = 0; this.bounds = new Map();
     this.shade = null;   // (x,y,z,n) → 배율: 지금 짓는 덩어리에 거는 그늘 (처마 밑 · 벽 밑동 …)
     this.tintMul = null; // [r,g,b] 지금 짓는 덩어리의 색조 (집마다 다르게)
+    this.lift = false;   // true 면 구운 빛을 들어 올린다 (소품)
   }
   _wr(tex) { const k = this.chunk + '|' + tex; let w = this.out.get(k); if (!w) { w = new Writer(); w.chunk = this.chunk; w.tex = tex; this.out.set(k, w); } return w; }
   /** 꼭짓점 하나의 색 */
   _col(M, p, n, o) {
     if (o.emis) { const e = o.emis === true ? 1 : o.emis, t = o.tint ?? M.tint; return [t[0] * e, t[1] * e, t[2] * e]; }
     const c = lightAt(this.W, p[0] + n[0] * 2, p[1] + n[1] * 2, p[2] + n[2] * 2, n[0], n[1], n[2]);
+    if (this.lift) { c[0] = Math.min(1.6, 0.42 + 0.72 * c[0]); c[1] = Math.min(1.6, 0.42 + 0.72 * c[1]); c[2] = Math.min(1.6, 0.42 + 0.72 * c[2]); }   // 소품은 캐릭터와 같은 식으로 밝힌다 (B 의 그림판 색조와 같은 생각 — 어두운 길에서도 장애물이 읽히게)
     let k = o.k ?? 1;
     if (this.shade) k *= this.shade(p[0], p[1], p[2], n);
     if (o.shade) k *= o.shade(p[0], p[1], p[2], n);

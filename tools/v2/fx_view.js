@@ -75,7 +75,7 @@ void main() {
   vec3 c = alb * lit * sh;
   vec3 v = normalize(uEye - vW);
   if (uTint.a < 0.5) c += pow(1.0 - max(dot(n, v), 0.0), 3.0) * vec3(0.1, 0.15, 0.26);
-  c = mix(c, vec3(1.0), uFlash.x);
+  c = mix(c, vec3(0.92, 0.94, 1.0), uFlash.x * 0.85);
   c += vec3(3.0, 1.2, 0.3) * de * step(0.001, uFxDis.x);
   float f = clamp((length(uEye - vW) - 760.0) / 2540.0, 0.0, 1.0);
   o = vec4(mix(c, uFogC, f * (2.0 - f) * 0.85), 1.0);

@@ -19,8 +19,8 @@ const CROWD = [
   [-250, 40, 'melee', 1], [-170, -60, 'ranged', 1], [-110, 80, 'melee', 1], [-60, -30, 'melee', 1], [70, 60, 'ranged', -1], [120, -50, 'melee', -1],
   [180, 20, 'melee', -1], [240, 90, 'ranged', -1], [300, -40, 'melee', -1], [-200, 100, 'melee', 1], [20, 105, 'melee', -1], [350, 50, 'ranged', -1],
 ];
-/** 한 시험이 달리는 길: 거리 구간을 초당 300 으로 (영웅 달리기와 비슷한 속도), 깊이는 천천히 물결친다 */
-export const PATH = { x0: 300, v: 300, z0: 132, zAmp: 46, zHz: 0.31 };
+/** 한 시험이 달리는 길: 거리 구간을 초당 280 으로 (영웅 달리기와 비슷한 속도) 4초 가고 4초 되돌아온다 — 구덩이(x 1800) 앞에서 돈다. 깊이는 천천히 물결친다 */
+export const PATH = { x0: 280, v: 280, turn: 4, z0: 132, zAmp: 46, zHz: 0.31 };
 
 export class Rig {
   constructor(game) {
@@ -143,7 +143,7 @@ export class Rig {
   // ── 카메라: 거리 구간의 틀(STAGE.sections[0].cam)을 그대로, 따라가기 지연 없이 ──
   _camera(t, Wv, Hv) {
     const R = STAGE.sections[0].cam, P = PATH;
-    const hx = P.x0 + P.v * t, hz = P.z0 + P.zAmp * Math.sin(t * P.zHz * 6.283);
+    const tt = t % (P.turn * 2), hx = P.x0 + P.v * (tt < P.turn ? tt : P.turn * 2 - tt), hz = P.z0 + P.zAmp * Math.sin(t * P.zHz * 6.283);
     const yaw = R.yaw + 0.03, pitch = R.pitch, dist = R.dist;
     const tx = hx + (R.leadX ?? 0), tz = 130 + (hz - 130) * (R.zFollow ?? 1) + (R.leadZ ?? 0);
     const tall = Math.max(0, Hv - 540), lx = tx, ly = R.lookY + tall * (R.tallK ?? 0.4), lz = tz;

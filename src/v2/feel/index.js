@@ -13,7 +13,7 @@
 //  pos 는 {x, y, z} 를 가진 아무 객체 (적·탄 객체를 그대로 넘긴다 — 새 객체를 만들지 않는다). 없으면 화면 가운데.
 import { FeelSound } from './sound.js';
 import { feelHaptics } from './haptics.js';
-import { EVENTS, FLAG } from './table.js';
+import { EVENTS, FLAG, MAGIC_EVENT, BELL_EVENT } from './table.js';
 
 export * from './table.js';
 export { FeelSound, ROOMS, BUS, SYN, NEW_DIR } from './sound.js';
@@ -40,9 +40,9 @@ class Feel {
   /** 사건 이름으로 (EVENT_NAMES) → 레시피 | null */
   play(name, pos = null, vol = 1, pitch = 1) { const r = this.sound.play(name, pos, vol, pitch); if (r) this._hap(r.haptic); return r; }
   /** 마법: phase = 'charge' | 'release' | 'impact' */
-  magic(element, phase, pos) { return this.play(`magic.${element}.${phase}`, pos); }
+  magic(element, phase, pos) { const m = MAGIC_EVENT[element]; return m && m[phase] ? this.play(m[phase], pos) : null; }
   /** 종 가락: 'dawn' | 'dusk' | 'bloodmoon' | 'return' | 'still' · 깊은 종 = 'toll' */
-  bell(name) { return this.play(`bell.${name}`); }
+  bell(name) { const n = BELL_EVENT[name]; return n ? this.play(n) : null; }
   loopStart(name, pos = null, vol = 1) { return this.sound.loopStart(name, pos, vol); }
   loopMove(id, pos) { this.sound.loopMove(id, pos); }
   loopStop(id, fade) { this.sound.loopStop(id, fade); }

@@ -106,5 +106,6 @@ _yy, _xx = np.mgrid[0:512, 0:512]
 _rad = np.hypot(_xx - 256, _yy - 256)
 _lum = _r.max(-1)
 _al = np.clip((_lum - 0.22) / 0.2, 0, 1) * np.clip((176 - _rad) / 10, 0, 1)
-_al = ndi.gaussian_filter(ndi.binary_fill_holes(_al > 0.5).astype(np.float32), 1.2)
+_lab, _n = ndi.label(_al > 0.5); _big = 1 + int(np.argmax(ndi.sum(np.ones_like(_al), _lab, range(1, _n + 1))))   # 가장 큰 덩어리(종)만
+_al = ndi.gaussian_filter(ndi.binary_fill_holes(_lab == _big).astype(np.float32), 1.2)
 print('bell', save(ivory(np.dstack([_r, _al]), detail=1.4, edge=0.6, base=0.76), 'obj_bell'))

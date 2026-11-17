@@ -132,9 +132,13 @@ const setup = await page.evaluate(async ({ SR, phone, oldNames }) => {
     return { peak: +db(pk).toFixed(2), pre: +db(pre).toFixed(2), lufsM: +(mx > 0 ? -0.691 + 10 * Math.log10(mx) : -120).toFixed(1), len: +(last / SR).toFixed(3), clip, hf: +(sq > 0 ? 10 * Math.log10(hf / (sq * 2 + 1e-12) + 1e-9) : -90).toFixed(1), bal: +(sq > 0 ? lr / sq : 0).toFixed(2),
       duck: +db(duckMin).toFixed(1), starts: fsnd.starts, miss: fsnd.miss, layers: fsnd.layersPlayed, eng: { ...eng.stats }, L: wav ? b64(Lc) : null, R: wav ? b64(Rc) : null };
   };
-  return { old: v2.stats(), neu: bank.stats() };
+  // 고리 이음매: 끝→처음의 뜀이 버퍼 안의 이웃 샘플 차이(99.9 백분위)보다 크면 고리마다 딸깍 소리가 난다
+  const S = await import('/src/v2/feel/sound.js'), seams = {};
+  for (const k of S.LOOP_KINDS) { const d = S.loopBuf(dc, k).getChannelData(0), n = d.length, df = new Float32Array(n - 1); for (let i = 1; i < n; i++) df[i - 1] = Math.abs(d[i] - d[i - 1]); df.sort(); seams[k] = { seam: +Math.abs(d[0] - d[n - 1]).toFixed(4), p999: +df[Math.floor((n - 1) * 0.999)].toFixed(4), sec: +(n / 22050).toFixed(2) }; }
+  return { old: v2.stats(), neu: bank.stats(), seams };
 }, { SR, phone: has('phone'), oldNames: used.old });
 console.log('뱅크', JSON.stringify(setup));
+for (const [k, v] of Object.entries(setup.seams)) if (v.seam > v.p999 * 1.5 + 0.002) fails.push(`고리 이음매가 튄다: ${k} (뜀 ${v.seam}, 이웃 차 99.9% ${v.p999})`);
 if (setup.neu.loaded !== Object.keys(nix.sfx).length) fails.push(`새 샘플 ${Object.keys(nix.sfx).length}개 중 ${setup.neu.loaded}개만 풀림`);
 
 const f32 = (b) => { const u = Buffer.from(b, 'base64'); return new Float32Array(u.buffer, u.byteOffset, u.byteLength / 4); };
