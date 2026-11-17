@@ -239,7 +239,7 @@ export const WALLPROPS = {
   /** 내걸린 깃발: 가로 장대 + 천(제비꼬리 끝) + 금빛 띠 + 문양 */
   banner(G, F, s) {
     const u = s.u, y = s.y, w = s.w ?? 44, L = s.len ?? 120, c = s.c ?? [0.62, 0.12, 0.14], w0 = 7;
-    G.tube('wood', F.pt(u - w / 2 - 6, y + L, w0), F.pt(u + w / 2 + 6, y + L, w0), 2, 2, 5, { tint: [0.7, 0.55, 0.4], keep: true });
+    G.tube('timber', F.pt(u - w / 2 - 6, y + L, w0), F.pt(u + w / 2 + 6, y + L, w0), 2, 2, 5, { keep: true });
     for (const uu of [u - w / 2 - 3, u + w / 2 + 3]) G.tube('metal', F.pt(uu, y + L, 0), F.pt(uu, y + L, w0), 1.4, 1.4, 4, { vary: 0, k: 0.7, keep: true });
     const seg = 4, yy = (i) => y + L - (L - 16) * i / seg, ww = (i) => w0 + Math.sin(i * 1.4 + u) * 2.2;
     for (let i = 0; i < seg; i++) {

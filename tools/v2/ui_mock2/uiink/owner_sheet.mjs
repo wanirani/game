@@ -33,14 +33,16 @@ const body = `<h1><i>狩</i>먹과 달빛<small>2차 시안 · 그을린 반투�
 <p class="desc">버튼은 <b>배경이 비쳐 보이는 그을린 유리</b>이고, 그 위의 그림은 선 기호가 아니라 <b>동작을 하는 사냥꾼을 붓으로 그은 그림</b>입니다. 체력 막대 · 이름표 · 「장착」 버튼까지 붓 한 획으로 그렸습니다.<br>배경 흐림 효과는 쓰지 않았습니다 — 보이는 그대로 게임 화면에 그릴 수 있습니다. 그림은 전부 코드(붓 엔진)로 그린 것이라 유료 생성은 0장입니다.</p>
 <img src="${img('fold_open_play')}" width="2400"><p class="cap">폴드 펼침 · 전투 <small>공격(가장 큼) · 대시 · 점프 · 기술 2 · 궁극기(가득 참, 붉은 달) · 막기 · 교대 · 조준(켜짐) · 탑승(잠김) / 기술 하나는 재사용 대기 중(테가 차오름) / 보스 체력 · 피해 숫자 · 획득 알림 · 미니맵 · 임무</small></p>
 <div class="g2">
-<div><img src="${img('phone2_play')}" width="1188"><p class="cap">일반 휴대폰(가로) · 전투</p></div>
-<div><img class="crop" src="${img('fold_open_dialog')}"><p class="cap">폴드 펼침 · 대화 <small>붓 한 획 이름표 · 카엘 흉상</small></p></div>
-<div><img src="${img('fold_open_menu')}" width="1188"><p class="cap">폴드 펼침 · 장비 / 가방</p></div>
-<div><img src="${img('phone2_menu')}" width="1188"><p class="cap">일반 휴대폰 · 장비 / 가방</p><img src="${img('phone2_dialog')}" width="1188"><p class="cap">일반 휴대폰 · 대화</p></div>
-<div><img src="${img('icon_set')}" width="1188"><p class="cap">아이콘 묶음 <small>크게 본 그림과 실제 크기</small></p></div>
-<div><img src="${img('bg_strip')}" width="1188"><p class="cap">밝은 불빛 · 돌바닥 · 어두운 곳 위의 버튼 <small>흐림 효과 없이</small></p>
-<img class="zoom" src="${img('fold_open_play_press')}"><p class="cap">가까이 본 버튼 <small>공격을 누른 순간 · 궁극기 80% 충전</small></p>
-<img src="${img('fold_open_play_alley')}" width="1188"><p class="cap">폴드 펼침 · 골목(종 구간) 전투</p></div>
+<div><img src="${img('phone2_play')}" width="1188"><p class="cap">일반 휴대폰(가로) · 전투</p>
+<img src="${img('fold_open_menu')}" width="1188"><p class="cap">폴드 펼침 · 장비 / 가방 <small>유리판 · 탭 · 목록 · 물건 카드 · 버튼</small></p>
+<img src="${img('icon_set')}" width="1188"><p class="cap">아이콘 묶음 <small>크게 본 그림과 실제 크기</small></p></div>
+<div><img class="crop" src="${img('fold_open_dialog')}"><p class="cap">폴드 펼침 · 대화 <small>붓 한 획 이름표 · 카엘 흉상</small></p>
+<img src="${img('phone2_menu')}" width="1188"><p class="cap">일반 휴대폰 · 장비 / 가방</p>
+<img src="${img('phone2_dialog')}" width="1188"><p class="cap">일반 휴대폰 · 대화</p>
+<img src="${img('bg_strip')}" width="1188"><p class="cap">밝은 불빛 · 돌바닥 · 어두운 곳 위의 버튼 <small>흐림 효과 없이</small></p>
+<img class="zoom" src="${img('fold_open_play_press')}"><p class="cap">가까이 본 버튼 <small>공격을 누른 순간 · 궁극기 80% 충전 · 기술 재사용 대기</small></p></div>
+<div><img src="${img('fold_open_play_alley')}" width="1188"><p class="cap">폴드 펼침 · 골목(종 구간) 전투</p></div>
+<div><img src="${img('fold_open_play_street')}" width="1188"><p class="cap">폴드 펼침 · 거리 전투</p></div>
 </div>`;
 const f = `${tmp}/owner.html`;
 writeFileSync(f, `<!doctype html><html lang="ko"><meta charset="utf-8"><style>${css}</style><body>${body}</body></html>`);
