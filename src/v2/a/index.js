@@ -94,7 +94,7 @@ export default class V2ProtoA extends Scene {
     if (input.pressed('menu')) { this.paused = !this.paused; g.audio?.sfx?.('select'); }
     if (this.paused) {
       if (this._tap('resume') || input.pressed('confirm')) this.paused = false;
-      else if (this._tap('title') || input.pressed('map')) { if (g.registry.title) g.go('title', {}, { fade: true }); }
+      else if (this._tap('title') || input.pressed('map')) { if (g.registry.v2pick) g.go('v2pick', { index: 0 }, { fade: true }); else if (g.registry.title) g.go('title', {}, { fade: true }); /* 고르기 화면에서 왔으면 그리로 (verifyp0) */ }
       input.consume?.('attack'); input.consume?.('jump');
       this.updMs += this._now() - t0;
       return;

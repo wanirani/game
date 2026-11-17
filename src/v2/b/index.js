@@ -166,12 +166,13 @@ export default class V2ProtoB extends Scene {
   // ───────────────────────── 갱신 ─────────────────────────
   update(dt) {
     const t0 = performance.now();
-    if (input.pressed('menu') && this.game.registry.title) { this.game.go('title', {}, { fade: true }); return; }
+    if (input.pressed('menu') && this.game.registry.title) { if (this.game.registry.v2pick) this.game.go('v2pick', { index: 1 }, { fade: true }); else this.game.go('title', {}, { fade: true }); return; }   // 고르기 화면에서 왔으면 그리로 (verifyp0)
     if (!this.ready) return;
     const pt = input.pointer;   // 맨 아래 정보 줄을 누르면 겹치는 법(blit ↔ layer)을 바꾼다 — 기기에서 비교용
     if (pt.tapped && pt.y > this.game.viewH - 26 && Math.abs(pt.x - this.game.viewW / 2) < 230) { this.layer.forced = !this.layer.on; this._setLayer(!this.layer.on); this.perf.samples.length = 0; }
     const sim = this.sim;
     let mx = input.analogX || input.axisX, mz = -(input.analogY || input.axisY);
+    { const T = input._touchVec; if (input.mode === 'touch' && T && T.mag > 0.1) { mx = T.x; mz = -T.y; } }   // 터치 스틱은 8방향 구역에 붙이지 않고 360° 그대로 읽는다 (A 와 같은 읽기; verifyp0)
     const inp = { mx, mz, jump: input.buffered('jump', 0.12), jumpHeld: input.down('jump'), attack: input.pressed('attack'), dash: input.pressed('dash'), jumpUsed: false };
     if (sim.done) {
       this.doneT += dt;

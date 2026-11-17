@@ -187,12 +187,25 @@ export class TitleScene extends Scene {
       { id: 'account', label: '계정', sub: 'ACCOUNT' },
       { id: 'options', label: '설정', sub: 'OPTIONS' },
       { id: 'gallery', label: '회랑', sub: 'GALLERY' },   // [hook:gal] 회랑 (docs/specs/gallery.md §5.7 — 크레딧은 회랑의 극장 안으로)
+      { id: 'v2', label: '리빌드 시범', sub: 'REBUILD DEMO' },   // 리빌드(v2) 시범판 A·B 고르기 (docs/v2/P0_COMPARE.md; src/v2/chooser.js 는 고를 때 받는다)
     ];
     this.menu = new TapMenu(this.items.length, { index: index ?? (hasSave ? 1 : 0) });
   }
   openAccount() {
     const i = this.items.findIndex((it) => it.id === 'account');
     this.game.go('account', { backIndex: i >= 0 ? i : 0 });
+  }
+  /** 리빌드 시범판 고르기 화면: 첫 화면 묶음에 넣지 않으려고 고를 때 받아 등록한다 (장면 이름 'v2pick') */
+  openV2(backIndex) {
+    const g = this.game;
+    if (this.v2Loading) return;
+    if (g.registry.v2pick) { g.go('v2pick', { backIndex }); return; }
+    this.v2Loading = true;
+    import('../v2/chooser.js').then((m) => {
+      this.v2Loading = false;
+      if (!g.registry.v2pick) g.register('v2pick', m.default);
+      if (g.top === this) g.go('v2pick', { backIndex });
+    }).catch((e) => { this.v2Loading = false; console.error('[v2] chooser', e); g.toast('시범판을 불러오지 못했습니다', '#ff9a9a'); });
   }
   onResume() { applySettings(this.game); this.syncMotion(); this.buildMenu(this.menu.index); }
   /** '동작 줄이기'·'화면 번쩍임'을 다시 읽는다 (enter · 설정에서 돌아올 때). 번개 자체는 Ambience 가 매 프레임 설정을 본다 */
@@ -357,6 +370,7 @@ export class TitleScene extends Scene {
       case 'account': this.openAccount(); break;
       case 'options': g.push('options', {}); break;
       case 'gallery': g.go('gallery', { back: 'title', backIndex: Math.max(0, this.items.indexOf(it)) }); break;   // [hook:gal]
+      case 'v2': this.openV2(Math.max(0, this.items.indexOf(it))); break;
     }
   }
 
