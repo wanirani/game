@@ -1,8 +1,8 @@
 // 인터페이스 시안 캡처 + 크기·겹침 검사.
 //   node tools/v2/ui_mock/render.mjs [styles=fieldkit,glass,silver] [outDir=/tmp/claude-0/v2/uipilot] [devs=fold_open,phone2]
-// 스타일 × 기기 × 보기(전투·대화·가방)를 찍고, 눌리는 것의 최소 크기(44 CSS px)·겹침·화면 밖·엄지 거리를 measure.json 에 적는다.
+// 스타일 × 기기 × 보기(전투·종 구간·대화·가방, 사냥 수첩은 「가볍게」도)를 찍고, 눌리는 것의 최소 크기(44 CSS px)·겹침·화면 밖·엄지 거리를 measure.json 에 적는다.
 import { chromium } from 'playwright-core';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { start } from '../../serve.mjs';
 import { contextOptions } from '../../qa/lib/viewports.mjs';
 const styles = (process.argv[2] || 'fieldkit,glass,silver').split(',');
@@ -12,7 +12,9 @@ mkdirSync(out, { recursive: true });
 const port = 8100 + Math.floor(Math.random() * 800);
 const srv = await start(port);
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
-const report = {}; let bad = 0; const strings = new Set();
+// 일부 스타일만 다시 찍어도 다른 스타일의 기록이 지워지지 않게 앞선 결과에 덧쓴다
+const report = existsSync(`${out}/measure.json`) ? JSON.parse(readFileSync(`${out}/measure.json`, 'utf8')) : {}; let bad = 0;
+const strings = new Set(existsSync(`${out}/strings.txt`) ? readFileSync(`${out}/strings.txt`, 'utf8').split('\n').filter(Boolean) : []);
 for (const dev of devs) {
   const ctx = await browser.newContext(contextOptions(dev));
   const page = await ctx.newPage();
