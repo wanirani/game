@@ -18,7 +18,8 @@ for (const dev of devs) {
   const page = await ctx.newPage();
   const errs = [];
   page.on('pageerror', (e) => errs.push('[pageerror] ' + e.message));
-  page.on('console', (m) => { if (m.type() === 'error') errs.push('[console] ' + m.text()); });
+  page.on('console', (m) => { if (m.type() === 'error' && !/404/.test(m.text())) errs.push('[console] ' + m.text()); });
+  page.on('response', (r) => { if (r.status() >= 400 && !/favicon/.test(r.url())) errs.push(`[${r.status()}] ` + r.url()); });
   page.on('requestfailed', (r) => errs.push('[404] ' + r.url()));
   for (const st of styles) for (const [view, bg] of [['play', 'yard'], ['play', 'alley'], ['dialog', 'street'], ['menu', 'yard']]) {
     await page.goto(`http://localhost:${port}/tools/v2/ui_mock/${st}/index.html?view=${view}&bg=${bg}&shot=1`);

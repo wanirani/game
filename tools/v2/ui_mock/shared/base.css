@@ -24,6 +24,7 @@ img { display: block; }
 #bg { background-size: cover; background-position: center; }
 #hud, #dlg, #menu { position: absolute; inset: 0; }
 #hud > *, #dlg > *, #menu > * { position: absolute; }
+#acts { inset: 0; }
 #hud { pointer-events: none; } #hud button, #stick { pointer-events: auto; }
 
 /* 보기 전환 */
