@@ -1,0 +1,96 @@
+{
+ "_doc": "v2 시범(artpilot2, 2026-11-17) — 게임이 읽지 않는다. 카엘 새 방향 ① '길드의 사냥꾼' 측면 원화(Higgsfield keep-pose 편집, 부모 알파 IoU .80)를 kael_hunter 리그에 그대로 얹어 본 것. 빌드: python3 tools/puppet/build_rig.py tools/puppet/rigs/v2pilot/kael/kael_guild.json --out assets/v2/pilot/puppet/kael_guild (폴더가 한 단계 깊어 build_all.py 의 rigs/*/*.json 에 걸리지 않는다)",
+ "extends": "../../kael/kael_hunter",
+ "classId": "kael_guild",
+ "src": "v2pilot/kael_guild_side",
+ "_fixes": "리뷰 1회차에서 찾은 것 2가지만 고침 (v2 시범): ① 갈색 바지를 코트로 보고 넓적다리를 지움 → legs.pantsWarmMax null  ② 뼈 완갑이 부모 팔보다 왼쪽·넓음 → joints.elbow/wrist/hand 를 완갑 가운데 선으로, regions.farm 을 완갑+장갑 외곽으로",
+ "legs": {
+  "pantsWarmMax": null
+ },
+ "joints": {
+  "elbow": [
+   447,
+   1139
+  ],
+  "wrist": [
+   458,
+   1394
+  ],
+  "hand": [
+   463,
+   1505
+  ]
+ },
+ "regions": {
+  "farm": [
+   [
+    341,
+    978
+   ],
+   [
+    402,
+    1006
+   ],
+   [
+    474,
+    1094
+   ],
+   [
+    519,
+    1156
+   ],
+   [
+    527,
+    1272
+   ],
+   [
+    522,
+    1372
+   ],
+   [
+    547,
+    1428
+   ],
+   [
+    558,
+    1528
+   ],
+   [
+    541,
+    1594
+   ],
+   [
+    491,
+    1628
+   ],
+   [
+    436,
+    1617
+   ],
+   [
+    391,
+    1572
+   ],
+   [
+    374,
+    1494
+   ],
+   [
+    380,
+    1417
+   ],
+   [
+    358,
+    1361
+   ],
+   [
+    341,
+    1206
+   ],
+   [
+    336,
+    1072
+   ]
+  ]
+ }
+}

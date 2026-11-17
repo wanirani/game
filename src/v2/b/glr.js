@@ -112,7 +112,7 @@ export class GLR {
   }
   // ── 프레임 ──
   resize(w, h) { const cv = this.canvas; if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; } }
-  begin(vp, fog, clear) {
+  begin(vp, fog, clear, A = 1) {
     const gl = this.gl, cv = this.canvas;
     this.stats.draws = 0; this.stats.tris = 0; this.stats.uploads = 0;
     gl.viewport(0, 0, cv.width, cv.height);
@@ -122,7 +122,7 @@ export class GLR {
     gl.uniformMatrix4fv(this.u.vp, false, vp);
     gl.uniform3f(this.u.fog, fog.near, fog.far, fog.max);
     gl.uniform3f(this.u.fogCol, fog.color[0], fog.color[1], fog.color[2]);
-    gl.uniform1f(this.u.bias, vp[10]);   // 깊이 당김: 클립 z 는 뷰 깊이에 A(=vp 의 z 배율)를 곱한 값
+    gl.uniform1f(this.u.bias, A);   // 깊이 당김: 클립 z = A·(뷰 깊이) + B 이므로 d 만큼 당기려면 A·d 를 뺀다
     gl.activeTexture(gl.TEXTURE0);
   }
   _attribs() {

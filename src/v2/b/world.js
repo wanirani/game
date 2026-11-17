@@ -15,13 +15,12 @@ export const VERT_BYTES = 28;
 
 /** 재질 → 텍스처 키 · 타일 크기(월드 단위) · 색 */
 export const MATS = {
-  cobble: { tex: 'wet_stone', tile: 300, tint: [0.62, 0.66, 0.8] },
-  stone: { tex: 'castle_stone', tile: 256, tint: [0.9, 0.9, 0.96] },
-  facade: { tex: 'castle_stone', tile: 384, tint: [0.62, 0.6, 0.7] },
-  plaster: { tex: 'mossy_stone', tile: 420, tint: [0.6, 0.6, 0.66] },
-  wood: { tex: 'wood', tile: 128, tint: [1.05, 0.92, 0.8] },
-  dirt: { tex: 'dirt', tile: 340, tint: [0.95, 0.9, 0.88] },
-  roof: { tex: 'rotwood', tile: 300, tint: [0.75, 0.7, 0.8] },
+  cobble: { tex: 'flag', tile: 330, tint: [0.74, 0.76, 0.9] },
+  stone: { tex: 'block', tile: 256, tint: [0.88, 0.88, 0.98] },
+  facade: { tex: 'brick', tile: 300, tint: [0.8, 0.76, 0.86] },
+  plaster: { tex: 'brick', tile: 430, tint: [1.0, 0.84, 0.74] },
+  wood: { tex: 'wood', tile: 128, tint: [1.25, 1.05, 0.9] },
+  dirt: { tex: 'dirt', tile: 340, tint: [1.05, 0.98, 0.95] },
 };
 
 class MeshWriter {

@@ -62,7 +62,7 @@ export class StageBuilder {
   }
   /** 소품(그림 한 장 = 빌보드). o.block = [반폭 x, 반폭 z] 면 지나갈 수 없는 발 자리를 함께 만든다 */
   prop(kind, x, z, o = {}) {
-    const p = { kind, x, z, y: o.y ?? null, scale: o.scale ?? 1, flip: !!o.flip, light: o.light || null, glowY: o.glowY ?? 0 };
+    const p = { kind, x, z, y: o.y ?? null, scale: o.scale ?? 1, flip: !!o.flip, light: o.light || null, hideIn: o.hideIn || null, hideK: 0 };
     this.props.push(p);
     if (o.block) this.slabs.push(slab('block', x - o.block[0], x + o.block[0], z - o.block[1], z + o.block[1], WALL, 'none', { hidden: true }));
     return this;
@@ -216,11 +216,11 @@ export function buildSlice0() {
   b.wall(-400, 0, -330, 330, 430, 'brick');                                         // 왼쪽 끝
   // 뒤쪽 건물 (사이사이 틈으로 먼 배경이 보인다)
   b.wall(0, 318, 260, 330, 400, 'brick', { deco: 'house' });
-  b.wall(336, 700, 260, 330, 470, 'stone', { deco: 'house' });
+  b.wall(336, 700, 260, 330, 470, 'brick2', { deco: 'house' });
   b.wall(700, 1120, 260, 330, 380, 'brick', { deco: 'house' });
-  b.wall(1138, 1480, 260, 330, 450, 'stone', { deco: 'house' });
+  b.wall(1138, 1480, 260, 330, 450, 'brick2', { deco: 'house' });
   b.wall(1480, 1700, 260, 330, 360, 'brick', { deco: 'house' });
-  b.wall(1718, 1980, 260, 330, 440, 'stone', { deco: 'house' });
+  b.wall(1718, 1980, 260, 330, 440, 'brick2', { deco: 'house' });
   // 가림 확인용 기둥 2개 (뒤로도 앞으로도 지나간다) + 가로등
   b.prop('pillar', 430, 132, { block: [20, 13] });
   b.prop('pillar', 1890, 150, { block: [20, 13] });
@@ -237,22 +237,22 @@ export function buildSlice0() {
   b.block(1250, 1326, 84, 148, 58, 'wood', { tag: 'crate' });
   // ── 2. 모퉁이 + 3. 골목 (종): x 1980–2400 · z 330–1560, 중간에 계단 z 200 동안 +96 ──
   b.wall(2400, 2880, -330, 1500, 520, 'brick', { cutIn: ['yard'] });                // 거리 오른쪽 끝 = 골목 오른쪽 벽
-  b.wall(1560, 1980, 330, 1500, 500, 'stone', { cutIn: ['yard'] });                 // 골목 왼쪽 벽
+  b.wall(1560, 1980, 330, 1500, 500, 'brick2', { cutIn: ['yard'] });                 // 골목 왼쪽 벽
   b.floor(1980, 2400, 330, 560, 0, 'flag');
   b.stairs({ x0: 1980, x1: 2400, z0: 560, z1: 760, from: 0, to: U, steps: 8, axis: 'z', kind: 'floor', mat: 'flag' });
   b.floor(1980, 2400, 760, 1560, U, 'flag');
   b.prop('torch', 1984, 470, { y: 96, light: '#ff8a3a' }); b.prop('torch', 2396, 470, { y: 96, light: '#ff8a3a', flip: true });
-  b.prop('torch', 1984, 900, { y: U + 96, light: '#ff8a3a' }); b.prop('torch', 2396, 900, { y: U + 96, light: '#ff8a3a', flip: true });
-  b.prop('torch', 1984, 1300, { y: U + 96, light: '#ff8a3a' }); b.prop('torch', 2396, 1300, { y: U + 96, light: '#ff8a3a', flip: true });
+  b.prop('torch', 1984, 900, { y: U + 96, light: '#ff8a3a', hideIn: ['yard'] }); b.prop('torch', 2396, 900, { y: U + 96, light: '#ff8a3a', flip: true, hideIn: ['yard'] });
+  b.prop('torch', 1984, 1300, { y: U + 96, light: '#ff8a3a', hideIn: ['yard'] }); b.prop('torch', 2396, 1300, { y: U + 96, light: '#ff8a3a', flip: true, hideIn: ['yard'] });
   b.prop('barrel', 2022, 410, { block: [26, 14] }); b.prop('crateP', 2356, 520, { block: [30, 18] });
   b.prop('barrel', 2360, 880, { block: [26, 14] }); b.prop('crateP', 2026, 1090, { block: [30, 18] }); b.prop('barrel', 2362, 1250, { block: [26, 14] });
-  b.prop('banner', 2010, 1480, { y: U + 60 }); b.prop('banner', 2370, 1480, { y: U + 60 });
+  b.prop('banner', 2010, 1480, { y: U + 150, hideIn: ['yard'] }); b.prop('banner', 2370, 1480, { y: U + 150, hideIn: ['yard'] });
   // ── 4. 마당 900×600 ──
   b.floor(1740, 2640, 1560, 2160, U, 'cobble');
   b.floor(1560, 1740, 1500, 2230, U, 'kerb', { walk: false }); b.floor(2640, 2880, 1500, 2230, U, 'kerb', { walk: false });
   b.wall(1560, 2880, 2160, 2230, U + 400, 'brick', { deco: 'house' });              // 뒤 담
-  b.wall(1560, 1740, 1560, 2160, U + 300, 'stone');                                 // 왼 담
-  b.wall(2640, 2880, 1560, 2160, U + 300, 'stone');                                 // 오른 담
+  b.wall(1560, 1740, 1560, 2160, U + 300, 'brick2');                                 // 왼 담
+  b.wall(2640, 2880, 1560, 2160, U + 300, 'brick2');                                 // 오른 담
   b.wall(1740, 1980, 1500, 1560, U + 26, 'stone');                                  // 앞 담 (낮게 잘라 안이 보이게)
   b.wall(2400, 2640, 1500, 1560, U + 26, 'stone');
   b.prop('brazier', 1800, 2110, { block: [22, 14], light: '#ff7a2a' }); b.prop('brazier', 2580, 2110, { block: [22, 14], light: '#ff7a2a' });
