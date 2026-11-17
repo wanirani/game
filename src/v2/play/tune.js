@@ -10,6 +10,7 @@ export const TUNE = {
   strideRun: 222, strideWalk: 80,  // 한 걸음 주기에 나아가는 거리 (달리기 클립 0.8초 · 걷기 클립 1.17초의 실제 보폭 — 발이 미끄러지지 않게)
   jumpV: 720, gravity: 2300, jumpCut: 0.42, coyote: 0.09,
   landT: 0.12,
+  runBank: 1.1,                    // 달리며 돌 때 도는 쪽으로 기우는 정도 (도 ÷ (rad/초); 최대 11°. 0 = 끔)
   runLeanFix: 12,                  // 달리기 클립의 숙임을 이만큼(도) 세운다 (motion.js — 그림만 바뀐다)
   // ── 영웅: 구르기 (옛 대시 자리. 입력 이름은 그대로 dash) ──
   rollT: 0.46, rollDist: 150, rollIfr: 0.3, rollCd: 0.62, rollSweep: 0.26,   // 시간 · 거리 · 무적 · 다시 구르기까지 · 구른 뒤 훑기를 받아 주는 시간

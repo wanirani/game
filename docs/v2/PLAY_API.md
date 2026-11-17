@@ -18,7 +18,7 @@ const sim = new Sim(W, hooks);          // W = 세계(상자 목록) · hooks = 
 sim.update(dt, inp);                    // 틱마다 (§1 입력)
 driveHero(heroChar, sim.hero, dt, TUNE);                       // 영웅 상태 → heroChar.dx/dz + 클립
 for (const e of sim.enemies) if (!e.dead) driveActor(charOf(e), e, dt);   // 적 상태 → 방향 + 클립
-// 그리기: heroChar.place(h.x, h.y, h.z) · 적은 placeActor(ch, e) (박쥐처럼 숙여 나는 것까지 맞는 행렬; 그 밖에는 ch.place 와 같다)
+// 그리기: heroChar.place(h.x, h.y, h.z) · 적은 ch.place(e.x, e.y, e.z) (placeActor(ch, e) 도 같은 것). 박쥐의 숙임 · 유령의 기울임은 driveActor 가 골반 뼈에 넣는다
 ```
 
 - **규칙은 화면을 모른다.** 좌표는 x 오른쪽 · z 화면 안쪽 · y 위, 단위는 논리 px (1 m = `UNIT` 58).
@@ -79,6 +79,7 @@ for (const e of sim.enemies) if (!e.dead) driveActor(charOf(e), e, dt);   // 적
 `kindOf(kind)` 가 다른 이름까지 풀어 한 줄을 돌려준다(모르는 이름은 `skeleton_soldier`). `KINDS.melee === KINDS.skeleton_soldier`.
 
 - **판정은 보는 방향 기준 상자**다(영웅과 같다): `atk.box = { f0, f1, side, y0, y1 }`(앞으로 f0…f1, 옆 ±side) 또는 `atk.radius = { r, fwd }`(앞으로 fwd 떨어진 원). 예고 동안 `atk.track`(rad/초)로 영웅을 따라 돌다가 예고의 마지막 20 % 에서 방향이 굳는다 → 그때 옆으로 비키면 빗나간다.
+- **한 번에 둘까지**: 걷는 적은 둘까지만 동시에 공격한다(`sim.mayAttack`; 정예 · 보스는 예외, 나는 것은 따로 하나). 차례를 기다리는 적은 52 px 물러선 고리에서 옆으로 돈다 → 여럿이 한 점에 뭉치지 않는다.
 - **길 찾기**: `sim.steer(e, wx, wz, speed, dt)` — 가려는 쪽이 0.1초 넘게 막히면 옆으로 0.55–0.75초 돌아간다(벽 모서리와 소품 사이에 끼어 서 있던 문제, requests.md envkit 3 — `play_rules_test` 가 그 자리를 그대로 재현해 본다). 걷는 적은 낭떠러지로 가지 않는다.
 
 ## 4. 기술표와 조율값
@@ -179,7 +180,7 @@ registerKind('wolfman', {
 
 ## 9. 장면(ENGINE)이 해 주면 좋은 것
 
-`/tmp/claude-0/v2/requests.md` 의 "play (2차)" 절과 같다: ① 적은 `placeActor(ch, e)` 로 놓기(박쥐 숙임) ② `e.alpha` 로 유령 비침 ③ `hooks.guard` → 막기 소리 ④ `hero.lock` 표식 ⑤ `e.tele`/`tell` 예고 표시 ⑥ `step` 훅으로 발소리(지금은 장면이 96 px 마다 낸다 — 클립의 발과 어긋난다).
+`/tmp/claude-0/v2/requests.md` 의 "play (2차)" 절과 같다: ① (필요 없어짐 — 박쥐 숙임은 `driveActor` 가 뼈에 넣는다) ② 유령 비침: `driveActor` 가 `ch.opt.alpha = e.alpha` 를 적는다(`ch.opt` 가 있을 때 — 장면의 `Actor3D`). 장면이 스스로 `e.alpha` 를 읽어 테두리 빛까지 다루면 더 좋다 ③ `hooks.guard` → 막기 소리 ④ `hero.lock` 표식 ⑤ `e.tele`/`tell` 예고 표시 ⑥ `step` 훅으로 발소리(지금은 장면이 96 px 마다 낸다 — 클립의 발과 어긋난다).
 
 ## 상태
 

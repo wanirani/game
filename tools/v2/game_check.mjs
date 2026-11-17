@@ -22,6 +22,7 @@ const DEVICES = String(args.devices || 'fold_open,phone2').split(',');
 const SHOTS = String(args.shots || '/tmp/claude-0/v2/engine');
 const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const GL_ARGS = ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required', '--enable-precise-memory-info', '--js-flags=--expose-gc'];
+const ONLY = args.only ? String(args.only).split(',') : null, want = (k) => !ONLY || ONLY.includes(k);   // --only touch,troute,route,turn,interp,alloc,far,shots,ctx,cycle,v1,nogl
 const fails = [], report = { devices: {}, noWebgl: null };
 const fail = (m) => { fails.push(m); console.log('  FAIL ' + m); };
 const ok = (m) => console.log('  ok   ' + m);
@@ -138,7 +139,7 @@ for (const dev of DEVICES) {
 
     // ── 2) real touch: stick and buttons ──
     let T = null, pad = null;
-    if (contextOptions(dev).hasTouch) {
+    if (contextOptions(dev).hasTouch && (want('touch') || want('troute'))) {
       const cdp = await page.context().newCDPSession(page); T = new Touch(cdp, page);
       await page.evaluate(() => { window.__game._pageHidden = false; window.__bot.act = {}; });
       await ensureTouchMode(T, page); await page.waitForTimeout(300);
@@ -147,7 +148,7 @@ for (const dev of DEVICES) {
       const h0 = await page.evaluate(() => window.__v2.hero);
       await stickHold(T, page, 46, -46, 1100);
       const h1 = await page.evaluate(() => window.__v2.hero);
-      await page.evaluate(() => { for (const e of window.__v2.scene.sim.enemies) e.dead = true; });   // controls only
+      await page.evaluate(() => { const sim = window.__v2.scene.sim; for (const e of sim.enemies) if (!e.yard) e.dead = true; sim.hero.x = 900; sim.hero.z = 190; });   // controls only: clear the street (the yard group stays, or the area would count as cleared), stand in the open
       const until = (what, ms) => page.evaluate(async ([what, ms]) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { const h = window.__v2.hero; if (what === 'air' ? !h.onGround : h.anim === what) return true; await new Promise((r) => setTimeout(r, 8)); } return false; }, [what, ms]);
       const [, wa] = await Promise.all([pressButton(T, page, 'attack', 220), until('attack', 3000)]);
       await page.waitForTimeout(500);
@@ -164,7 +165,7 @@ for (const dev of DEVICES) {
     }
 
     // ── 3) real touch: the whole route in real time ──
-    if (T && !args.quick) {
+    if (T && !args.quick && want('troute')) {
       const vp = await page.evaluate(() => [innerWidth, innerHeight]);
       const x0 = Math.round(vp[0] * 0.2), y0 = Math.round(vp[1] * 0.68), RAD = 56, btn = pad.buttons, t0 = Date.now();
       let last = null, n = 0, atkAt = 0, seen = new Set(), shotsTaken = new Set(), deaths0 = await page.evaluate(() => window.__v2.scene.sim.deaths ?? 0);
@@ -191,9 +192,10 @@ for (const dev of DEVICES) {
     } else if (T) console.log('       (real-time touch route skipped: --quick)');
 
     // ── 4) the route fast-forwarded: frame numbers ──
+    if (want('route')) {
     await page.evaluate(() => { const v = window.__v2, B = window.__bot; window.__game._pageHidden = true; v.scene.sim.reset(); v.scene.cam.snap = true; v.scene.fx?.clear(); B.wp = 0; B.minHp = 100; B.t = 0; B.skipMap = {}; B.feel0 = v.scene.feelN; for (const k of Object.keys(B.max)) B.max[k] = 0; window.__game.input.setAutoSource(() => B.act); });
     let r = null; const t0 = Date.now();
-    for (let i = 0; i < 60 && Date.now() - t0 < 240000; i++) { r = await page.evaluate(() => window.__bot.run(300, 10)); if (r.sec === 'done') break; }
+    for (let i = 0; i < 60 && Date.now() - t0 < 240000; i++) { r = await page.evaluate(() => window.__bot.run(300, 10)); if (args.verbose) console.log('       ' + JSON.stringify({ sec: r.sec, x: r.x, z: r.z, hp: r.hp, left: r.left, deaths: r.deaths, wp: r.wp, skips: r.skips, feelN: r.feelN })); if (r.sec === 'done') break; }
     R.bot = r;
     if (r?.sec === 'done') ok(`fast-forward bot finished: ${(r.t / 60).toFixed(1)} s of ticks, hp left ${r.hp} (lowest ${r.minHp}), fell ${r.deaths} times, strikes ${r.feelN}`);
     else fail(`${dev}: fast-forward bot did not finish ${JSON.stringify(r)}`);
@@ -206,9 +208,11 @@ for (const dev of DEVICES) {
     if (F && F.strikes === 1 && F.table && Math.abs(F.stop - F.table.stop) < 0.02 && F.trauma <= F.table.shake + 0.02 && F.trauma > 0) ok(`one hit = one strike: recipe ${F.table.key} from the feel table, screen hit-stop ${F.stop.toFixed(3)} s (table ${F.table.stop}), shake ${F.trauma.toFixed(2)} (table ${F.table.shake}, applied once), sound events ${F.events.join(' ')}`);
     else fail(`${dev}: one-hit feel check ${JSON.stringify(F)}`);
     await shot(page, `${dev}_06_hit`);
+    }
 
     // ── 6) turning ──
-    const turn = await staged(page, `sim.reset(); sc.cam.snap = true; const B = window.__bot, ang = () => Math.atan2(sc.heroA.dz, sc.heroA.dx), out = {}; for (const e of sim.enemies) e.dead = true;
+    if (want('turn')) {
+    const turn = await staged(page, `sim.reset(); sc.cam.snap = true; const B = window.__bot, ang = () => Math.atan2(sc.heroA.dz, sc.heroA.dx), out = {}; for (const e of sim.enemies) if (!e.yard) e.dead = true;
       const run = (first, seq, n) => { sim.hero.x = 900; sim.hero.z = 190; B.act = first; for (let i = 0; i < 40; i++) g.tick(1 / 60); const a = [ang()]; for (let i = 0; i < n; i++) { B.act = seq(i); g.tick(1 / 60); a.push(ang()); } let mx = 0, flips = 0, sgn = 0, done = -1, tot = 0; for (let i = 1; i < a.length; i++) { let d = a[i] - a[i - 1]; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; tot += d; mx = Math.max(mx, Math.abs(d)); if (Math.abs(d) > 0.004 && Math.abs(tot) < 2.3) { const s = Math.sign(d); if (sgn && s !== sgn) flips++; sgn = s; } if (done < 0 && Math.abs(Math.abs(tot) - Math.PI) < 0.2) done = i; } return { maxStep: +mx.toFixed(3), flips, doneTick: done, total: +tot.toFixed(2) }; };
       out.reverse = run({ right: true }, () => ({ left: true }), 30);
       out.back = run({ left: true }, () => ({ right: true }), 30);
@@ -219,13 +223,17 @@ for (const dev of DEVICES) {
     const tOK = turn && turn.reverse.flips === 0 && turn.back.flips === 0 && turn.reverse.maxStep <= 15 / 60 + 0.01 && turn.reverse.doneTick > 6 && turn.reverse.doneTick <= 24 && turn.back.doneTick > 6 && turn.back.doneTick <= 24 && turn.jitter.flips === 0 && Math.abs(turn.jitter.total) > 2.2 && turn.attack.doneTick > 0 && turn.attack.doneTick <= 9;
     if (tOK) ok(`turning: a stick reversal turns the body in one direction, at most ${turn.reverse.maxStep} rad per tick, done in ${turn.reverse.doneTick} / ${turn.back.doneTick} ticks (no snap, no wobble); a stick that jumps between two back-diagonals every tick still turns one way (${turn.jitter.flips} direction changes on the way round); with an attack the body faces the hit box in ${turn.attack.doneTick} ticks`);
     else fail(`${dev}: turning ${JSON.stringify(turn)}`);
+    }
 
     // ── 7) interpolation, allocation, far characters ──
-    const ip = await staged(page, `sim.reset(); sc.cam.snap = true; for (const e of sim.enemies) e.dead = true; window.__bot.act = { right: true }; for (let i = 0; i < 50; i++) g.tick(1 / 60); const P = {}; const at = (a) => { g.alpha = a; g.render(); const h = sim.hero; return [sc.heroA.M[12], sc.eye0[0], h._px, h.x]; }; const a0 = at(0), a5 = at(0.5), a1 = at(1); window.__bot.act = {}; return { hero: [a0[0], a5[0], a1[0]], eye: [a0[1], a5[1], a1[1]], prev: a0[2], cur: a0[3] };`, 0);
+    if (want('interp')) {
+    const ip = await staged(page, `sim.reset(); sc.cam.snap = true; for (const e of sim.enemies) if (!e.yard) e.dead = true; sim.hero.x = 800; sim.hero.z = 190; window.__bot.act = { right: true }; for (let i = 0; i < 50; i++) g.tick(1 / 60); const P = {}; const at = (a) => { g.alpha = a; g.render(); const h = sim.hero; return [sc.heroA.M[12], sc.eye0[0], h._px, h.x]; }; const a0 = at(0), a5 = at(0.5), a1 = at(1); window.__bot.act = {}; return { hero: [a0[0], a5[0], a1[0]], eye: [a0[1], a5[1], a1[1]], prev: a0[2], cur: a0[3] };`, 0);
     R.interp = ip;
     const mid = (a) => Math.abs(a[1] - (a[0] + a[2]) / 2) < 0.02 && Math.abs(a[2] - a[0]) > 1;
     if (ip && mid(ip.hero) && mid(ip.eye) && Math.abs(ip.hero[0] - ip.prev) < 0.01 && Math.abs(ip.hero[2] - ip.cur) < 0.01) ok(`interpolation: between two ticks the hero is drawn at ${ip.hero.map((n) => n.toFixed(1)).join(' / ')} (alpha 0 / 0.5 / 1) and the camera follows (${ip.eye.map((n) => n.toFixed(1)).join(' / ')})`);
     else fail(`${dev}: interpolation ${JSON.stringify(ip)}`);
+    }
+    if (want('alloc')) {
     const al = await page.evaluate(async () => {
       const g = window.__game, v = window.__v2, sc = v.scene, B = window.__bot; g._pageHidden = true; sc.sim.reset(); sc.cam.snap = true; sc.fx?.clear(); B.wp = 0; B.t = 0; B.skipMap = {};
       const gc = () => { if (window.gc) { window.gc(); window.gc(); } }, mem = () => performance.memory.usedJSHeapSize;
@@ -243,13 +251,16 @@ for (const dev of DEVICES) {
     const idleB = Math.min(...al.idle), playB = Math.min(...al.play);
     if (al.gc && idleB <= 64 && playB <= 2048) ok(`allocation per frame (tick + draw, JS heap, after warm-up): standing ${al.idle.join(' / ')} bytes, a scripted fight in the yard ${al.play.join(' / ')} bytes`);
     else fail(`${dev}: allocation per frame too high or not measurable ${JSON.stringify(al)}`);
+    }
+    if (want('far')) {
     const far = await staged(page, `sim.reset(); sc.cam.snap = true; for (let i = 0; i < 5; i++) g.tick(1 / 60); g.render(); const far = sc.actors.filter((a) => !a.vis), t0 = far.map((a) => a.anim.t ?? a.anim.time ?? 0); for (let i = 0; i < 30; i++) { g.tick(1 / 60); g.render(); } const moved = far.filter((a, i) => (a.anim.t ?? a.anim.time ?? 0) !== t0[i] && !a.vis).length; return { actors: sc.actors.length, far: far.length, animatedWhileFar: moved, drawn: sc.c3.drawn, culled: sc.c3.culled };`, 0);
     R.far = far;
     if (far && far.far > 0 && far.animatedWhileFar === 0 && far.culled === far.far) ok(`far characters cost nothing: ${far.far} of ${far.actors} enemies are outside the view — not animated, not drawn (drawn ${far.drawn})`);
     else fail(`${dev}: far characters ${JSON.stringify(far)}`);
+    }
 
     // ── captures (first device) ──
-    if (dev === DEVICES[0]) {
+    if (dev === DEVICES[0] && want('shots')) {
       await staged(page, `sim.reset(); sc.cam.snap = true; sc.fx && sc.fx.clear(); const m = sim.enemies.find((e) => e.kind === 'ranged' || /mage/.test(e.kind)); if (m) { const h = sim.hero; h.x = m.x - 330; h.z = m.z; h.y = m.y; h.safe && (h.safe.x = h.x); m.active = true; for (let i = 0; i < 400 && !sim.shots.some((s) => !s.dead); i++) g.tick(1 / 60); for (let i = 0; i < 14; i++) g.tick(1 / 60); }`, 0);
       await shot(page, `${dev}_07_magic_shot`);
       await staged(page, `sim.reset(); sc.cam.snap = true; sc.fx && sc.fx.clear(); v.teleport('yard'); sim.hero.z = 1700; const B = window.__bot; B.wp = 99; B.skipMap = {}; for (let i = 0; i < 420; i++) { B.think(); g.tick(1 / 60); if (i % 6 === 0) g.render(); if (sc.actors.some((a) => a.dieAge > 0.25 && a.dieAge < 0.5 && a.vis)) break; }`, 0);
@@ -265,6 +276,7 @@ for (const dev of DEVICES) {
     console.log(`       GPU memory: textures ${nums.texMB} MB (world ${nums.worldTexMB} + characters ${nums.charTexMB} + effects ${nums.fxMB}) · vertex buffers ${nums.bufKB} KB · ${nums.assets.length} assets/v2 files loaded`);
 
     // ── 8) context loss ──
+    if (want('ctx')) {
     R.ctxLoss = await page.evaluate(async () => {
       const g = window.__game, v = window.__v2; g._pageHidden = false; window.__bot.act = {};
       const okLose = v.loseContext();
@@ -277,8 +289,10 @@ for (const dev of DEVICES) {
     if (R.ctxLoss.okLose && R.ctxLoss.lostMid && !R.ctxLoss.lostAfter && R.ctxLoss.restored >= 1 && R.ctxLoss.draws > 5 && R.ctxLoss.chars >= 1) ok(`context lost -> restored, drawing again (${JSON.stringify(R.ctxLoss)})`);
     else fail(`${dev}: context restore ${JSON.stringify(R.ctxLoss)}`);
     if (dev === DEVICES[0]) { await staged(page, '', 20); await shot(page, `${dev}_11_after_restore`); }
+    }
 
     // ── 9) leave and re-enter three times, then a v1 stage ──
+    if (want('cycle')) {
     R.cycle = await page.evaluate(async () => {
       const g = window.__game, wait = (ms) => new Promise((r) => setTimeout(r, ms)), out = []; g._pageHidden = false;
       const gc = () => { if (window.gc) { window.gc(); window.gc(); } };
@@ -298,6 +312,8 @@ for (const dev of DEVICES) {
     { const C = R.cycle, f = C.first, good = C.rounds.every((q) => q.away.top === 'title' && q.away.v2 === 'undefined' && !q.away.gl && q.away.dom === f.dom - 1 && q.back.tex === f.tex && q.back.buf === f.buf && q.back.canvases === f.canvases && q.back.dom === f.dom) && C.heapMB[1] - C.heapMB[0] < 12;
       if (good) ok(`left and re-entered three times: DOM canvases ${f.dom} -> ${f.dom - 1} -> ${f.dom} each time, same GPU bytes (textures ${(f.tex / 1048576).toFixed(1)} MB, buffers ${(f.buf / 1024) | 0} KB), JS heap ${C.heapMB[0]} -> ${C.heapMB[1]} MB`);
       else fail(`${dev}: leak after re-entering ${JSON.stringify(C)}`); }
+    }
+    if (want('v1')) {
     R.v1 = await page.evaluate(async () => {
       const g = window.__game, wait = (ms) => new Promise((r) => setTimeout(r, ms));
       g.go('title', {}, { fade: false }); await wait(400);
@@ -310,13 +326,14 @@ for (const dev of DEVICES) {
     if (R.v1.v2 === 'undefined' && R.v1.scenes.includes('stage') && R.v1.hp > 0 && R.v1.moved > 20) ok(`after leaving, the v1 stage runs: scenes ${R.v1.scenes.join('+')}, room ${R.v1.room}, player moved ${R.v1.moved}, hp ${R.v1.hp}`);
     else fail(`${dev}: v1 stage after leaving ${JSON.stringify(R.v1)}`);
     if (dev === DEVICES[0]) await shot(page, `${dev}_12_v1_stage_after`);
+    }
     R.errors = errs.slice(0, 20);
     if (errs.length) fail(`${dev}: ${errs.length} page errors — ${errs.slice(0, 3).join(' | ')}`); else ok('0 page errors');
   } catch (e) { fail(`${dev}: check script exception ${e.message}\n${(e.stack ?? '').split('\n').slice(1, 4).join('\n')}`); } finally { await browser.close(); }
 }
 
 // ── 10) no WebGL ──
-if (!args.quick) {
+if (!args.quick && want('nogl')) {
   console.log('\n[no WebGL]');
   const { browser, page, errs } = await open(DEVICES[0], ['--disable-gpu', '--disable-3d-apis']);
   try {

@@ -14,6 +14,7 @@ const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const RAD = Math.PI / 180;
 const NOINP = Object.freeze({ mx: 0, mz: 0 });
 const REFLECT = Object.freeze({ id: 'reflect', kind: 'shot', str: 'H', weapon: 'arrow', kb: [200, 0], hitstop: 0.06, mv: 2, hit: [0, 0] });
+const SAFE_OFF = [30, 0, -30, 0, 0, 30, 0, -30];
 const TELE = { street: [260, 130], pillar: [640, 60], platform: [760, 190], pit: [1740, 100], corner: [2150, 150], alley: [2190, 380], stairs: [2190, 660], garden: [2190, 1250], yard: [2190, 1600] };   // 시범 구간(시범판 B 와 같은 자리)
 
 export class Sim {
@@ -68,7 +69,7 @@ export class Sim {
   hitStop(sec) { this.stop = Math.max(this.stop, sec); }
   /** 숨은 것을 드러낸다 (메아리 · 등불 자리): 반지름 r 안의 유령이 t 초 동안 또렷해져 맞는다 */
   reveal(x, z, r, t = 2.5) { for (const e of this.enemies) if (!e.dead && e.def.fade != null && Math.hypot(e.x - x, e.z - z) < r) e.revealT = Math.max(e.revealT, t); }
-  byId(id) { for (const e of this.enemies) if (e.id === id) return e; return null; }
+  byId(id) { const E = this.enemies; for (let i = 0; i < E.length; i++) if (E[i].id === id) return E[i]; return null; }
   teleport(sec) {
     const s = this.W.sections?.find((q) => q.id === sec), P = this.W.tele?.[sec] ?? TELE[sec] ?? (s ? [(s.x0 + s.x1) / 2, (s.z0 + s.z1) / 2] : null);
     if (!P) return false;
@@ -86,12 +87,16 @@ export class Sim {
     }
     this.time += dt;
     this._hero(dt, inp);
-    for (const e of this.enemies) if (!e.dead) this._enemy(e, dt);
+    { const E = this.enemies; for (let i = 0; i < E.length; i++) if (!E[i].dead) this._enemy(E[i], dt); }
     this._separate(dt);
     this._shots(dt);
     const sec = this.w.section(this.hero.x, this.hero.z);
     if (sec && !this.done) this.section = sec.id;
-    if (!this.done && this.enemies.some((e) => e.yard) && this.enemies.every((e) => !e.yard || e.dead)) { this.done = true; this.section = 'done'; this.emit('done'); }
+    if (!this.done) {   // 마당의 적이 모두 쓰러졌는가
+      let yard = 0, left = 0; const E = this.enemies;
+      for (let i = 0; i < E.length; i++) if (E[i].yard) { yard++; if (!E[i].dead) left++; }
+      if (yard && !left) { this.done = true; this.section = 'done'; this.emit('done'); }
+    }
   }
   // ───────────────────────── 영웅 ─────────────────────────
   _hero(dt, inp) {
@@ -196,7 +201,7 @@ export class Sim {
       if (h.hp <= 0) this._die(h);
     } else if (h.onGround && h.dashT <= 0) {
       let ok = true;   // 안전한 자리 기억 (가장자리에서 조금 안쪽)
-      for (const [ox, oz] of [[30, 0], [-30, 0], [0, 30], [0, -30]]) { const g = w.ground(h.x + ox, h.z + oz, h.y + STEP_UP); if (!(g >= h.y - STEP_DOWN)) { ok = false; break; } }
+      for (let i = 0; i < 8; i += 2) { const g = w.ground(h.x + SAFE_OFF[i], h.z + SAFE_OFF[i + 1], h.y + STEP_UP); if (!(g >= h.y - STEP_DOWN)) { ok = false; break; } }
       if (ok) { h.safe.x = h.x; h.safe.z = h.z; h.safe.y = h.y; }
     }
     // 걸음 주기: 발소리와 달리기 클립이 같이 쓴다
@@ -242,19 +247,19 @@ export class Sim {
     this.emit('roll', ux, uz, h); this.hooks.sfx?.('dash'); this.hooks.spark?.(h.x, h.y + 6, h.z, 'dust');
   }
   /** 락온: 가까운 적에게 저절로 걸리고(앞쪽을 조금 더 친다), lockNext 로 다음 적. 손으로 바꾼 뒤 4초는 저절로 바뀌지 않는다 */
+  _lockOk(e, h, lim) { return !e.dead && e.state !== 'dead' && e.active && Math.abs(e.gy - h.y) < 170 && Math.hypot(e.x - h.x, e.z - h.z) < lim; }
+  _lockScore(e, h) { const ex = e.x - h.x, ez = e.z - h.z, d = Math.hypot(ex, ez) || 1; return d * (1.25 - 0.25 * ((ex * h.dirX + ez * h.dirZ) / d)); }
   _lock(h, next, dt) {
-    const T = TUNE; let cur = h.lock != null ? this.byId(h.lock) : null;
-    const ok = (e, lim) => !e.dead && e.state !== 'dead' && e.active && Math.abs(e.gy - h.y) < 170 && Math.hypot(e.x - h.x, e.z - h.z) < lim;
-    const score = (e) => { const ex = e.x - h.x, ez = e.z - h.z, d = Math.hypot(ex, ez) || 1; return d * (1.25 - 0.25 * ((ex * h.dirX + ez * h.dirZ) / d)); };
-    if (cur && !ok(cur, T.lockKeep)) cur = null;
+    const T = TUNE, E = this.enemies; let cur = h.lock != null ? this.byId(h.lock) : null;
+    if (cur && !this._lockOk(cur, h, T.lockKeep)) cur = null;
     if (next) {
-      const C = this.enemies.filter((e) => ok(e, T.lockKeep)).sort((a, b) => score(a) - score(b));
+      const C = E.filter((e) => this._lockOk(e, h, T.lockKeep)).sort((a, b) => this._lockScore(a, h) - this._lockScore(b, h));
       cur = C.length ? C[(C.indexOf(cur) + 1) % C.length] : null; h.lockHold = 4;
     } else if (cur && h.lockHold > 0) h.lockHold -= dt;
     else {
       let best = null, bs = 1e9;
-      for (const e of this.enemies) if (ok(e, T.lockRange)) { const s = score(e); if (s < bs) { bs = s; best = e; } }
-      if (best && (!cur || bs < score(cur) * 0.7)) cur = best;
+      for (let i = 0; i < E.length; i++) { const e = E[i]; if (this._lockOk(e, h, T.lockRange)) { const sc = this._lockScore(e, h); if (sc < bs) { bs = sc; best = e; } } }
+      if (best && (!cur || bs < this._lockScore(cur, h) * 0.7)) cur = best;
     }
     const id = cur ? cur.id : null;
     if (id !== h.lock) { h.lock = id; h.lockT = 0; this.emit('lock', id, cur); } else h.lockT += dt;
@@ -582,7 +587,8 @@ export class Sim {
   }
   _shots(dt) {
     const h = this.hero, W = this.W;
-    for (const s of this.shots) {
+    for (let si = 0; si < this.shots.length; si++) {
+      const s = this.shots[si];
       if (s.dead) continue;
       s.t += dt; s.life -= dt; s.x += s.vx * dt; s.y += (s.vy ?? 0) * dt; s.z += s.vz * dt;
       if (s.life <= 0) { s.dead = true; continue; }
@@ -604,6 +610,6 @@ export class Sim {
         if (b.solid && s.x > b.x0 && s.x < b.x1 && s.z > b.z0 && s.z < b.z1 && s.y > b.y0 && s.y < b.y1) { s.dead = true; this.hooks.spark?.(s.x, s.y, s.z, 'shot'); this.emit('shot', s, 'wall'); break; }
       }
     }
-    if (this.shots.length > 24 || this.shots.some((s) => s.dead)) this.shots = this.shots.filter((s) => !s.dead);
+    { const S = this.shots; let n = 0; for (let i = 0; i < S.length; i++) if (!S[i].dead) S[n++] = S[i]; S.length = n; }   // 사라진 탄을 그 자리에서 뺀다 (새 배열을 만들지 않는다)
   }
 }

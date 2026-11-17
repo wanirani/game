@@ -89,13 +89,16 @@ function pinLegs(rig) {   // 떠다니는 적: 다리 뼈를 쉬는 자세로 �
 }
 const _q = [0, 0, 0, 1], _a = [0, 0, 0, 1], _b = [0, 0, 0, 1], _c = [0, 0, 0, 1];
 /** 뼈 하나를 모델 공간의 옆 축(X)으로 deg 만큼 더 돌린다 (+ = 앞으로 숙임, − = 젖힘). 자세를 입힌 뒤에 부르고, 끝에 rig.pose() 를 한 번 부른다 */
-function pitchBone(rig, key, deg) {
+function pitchBone(rig, key, deg, axis = 0) {   // axis 0 = 옆 축(X: 숙임), 2 = 앞 축(Z: 옆으로 기울임 — + 는 오른쪽으로)
   const j = rig.key.get(key); if (j == null) return;
   const h = (deg * Math.PI) / 360, P = rig.parWR.subarray(j * 4, j * 4 + 4), R = rig.R.subarray(j * 4, j * 4 + 4);
-  _q[0] = Math.sin(h); _q[1] = 0; _q[2] = 0; _q[3] = Math.cos(h);
+  _q[0] = 0; _q[1] = 0; _q[2] = 0; _q[axis] = Math.sin(h); _q[3] = Math.cos(h);
   qmul(qconj(P, _a), _q, _b); qmul(_b, P, _c); qmul(_c, R, _a); qnorm(_a);   // R' = P⁻¹ · q · P · R
   R[0] = _a[0]; R[1] = _a[1]; R[2] = _a[2]; R[3] = _a[3];
 }
+const _o = { fade: 0.12, time: null, speed: 1, restart: false };
+/** Animator.play 에 줄 옵션 (틱마다 새 객체를 만들지 않게 하나를 돌려 쓴다) */
+const PO = (fade, time = null, speed = 1, restart = false) => { _o.fade = fade; _o.time = time; _o.speed = speed; _o.restart = restart; return _o; };
 const pick = (C, ...names) => { for (const n of names) if (n && C[n]) return n; return null; };
 
 /**
@@ -112,33 +115,39 @@ export function driveHero(ch, h, dt, T = TUNE) {
   else if (st === 'roll') turn(ch, S, h.roll?.dx ?? h.dirX, h.roll?.dz ?? h.dirZ, dt, 34, 32);
   else if (st === 'guard') turn(ch, S, h.dirX, h.dirZ, dt, 22, 18);
   else turn(ch, S, h.dirX, h.dirZ, dt, h.onGround ? 17 : 11, 15);
+  { const a1 = Math.atan2(ch.dz, ch.dx), w = dt > 0 ? wrapPi(a1 - (S.ang ?? a1)) / dt : 0; S.ang = a1; S.angV = (S.angV ?? 0) + (w - (S.angV ?? 0)) * Math.min(1, dt * 14); }   // 도는 빠르기 (rad/초, + = 왼쪽으로)
   // ── 클립 ──
-  if (S.wasDead && !h.dead) A.play('idle', { fade: 0, restart: true });   // 다시 시작: 누운 자세에서 섞이지 않고 바로 선다
+  if (S.wasDead && !h.dead) A.play('idle', PO(0, null, 1, true));   // 다시 시작: 누운 자세에서 섞이지 않고 바로 선다
   S.wasDead = !!h.dead;
   if (st === 'land' && S.prev !== 'land') S.landC = 0;
   if (S.landC != null) { S.landC += dt; if ((st !== 'land' && st !== 'idle') || S.landC > 0.3) S.landC = null; }
   S.prev = st;
-  if (h.dead) A.play(pick(C, 'knockdown', 'death'), { fade: 0.08, time: Math.min((h.deadT ?? h.animT) * 1.3, 2.45) });
-  else if (st === 'hurt') A.play(h.heavyHurt && C.hit_heavy ? 'hit_heavy' : 'hit_light', { fade: 0.04, time: 0.02 + h.animT * 1.3 });
-  else if (st === 'parry') A.play('parry', { fade: 0.03, time: 0.28 + (T.parryT - h.parryOk) * 1.5 });
-  else if (st === 'block') A.play('block_hit', { fade: 0.03, time: 0.03 + (T.blockT - h.blockT) * 1.3 });
-  else if (st === 'guard') A.play('block', { fade: 0.08 });
+  if (h.dead) A.play(pick(C, 'knockdown', 'death'), PO(0.08, Math.min((h.deadT ?? h.animT) * 1.3, 2.45)));
+  else if (st === 'hurt') A.play(h.heavyHurt && C.hit_heavy ? 'hit_heavy' : 'hit_light', PO(0.04, 0.02 + h.animT * 1.3));
+  else if (st === 'parry') A.play('parry', PO(0.03, 0.28 + (T.parryT - h.parryOk) * 1.5));
+  else if (st === 'block') A.play('block_hit', PO(0.03, 0.03 + (T.blockT - h.blockT) * 1.3));
+  else if (st === 'guard') A.play('block', PO(0.08));
   else if (st === 'attack' && h.move) {
     const mv = h.move, clip = C[mv.clip] ?? C.atk1;
     // 내려베기: 떨어지는 동안은 칼을 머리 위로 든 자세(0.13초)로 버티다가, 땅에 닿기 0.12초 전부터 내리쳐 닿는 순간 칼이 몸 앞을 지난다(0.25초) → 웅크려 받는다
-    if (mv.kind === 'plunge') A.play(clip.name, { fade: 0.05, time: h.plungeLand == null ? Math.min(0.13, 0.03 + h.moveT * 1.2) + 0.12 * (1 - clamp((h.plungeEta ?? 1) / 0.12, 0, 1)) : Math.min(clip.duration - 0.02, 0.25 + (h.moveT - h.plungeLand) * 1.5) });
-    else A.play(clip.name, { fade: 0.05, time: warpMove(clip, h.moveT, mv) });
+    if (mv.kind === 'plunge') A.play(clip.name, PO(0.05, h.plungeLand == null ? Math.min(0.13, 0.03 + h.moveT * 1.2) + 0.12 * (1 - clamp((h.plungeEta ?? 1) / 0.12, 0, 1)) : Math.min(clip.duration - 0.02, 0.25 + (h.moveT - h.plungeLand) * 1.5)));
+    else A.play(clip.name, PO(0.05, warpMove(clip, h.moveT, mv)));
   }
-  else if (st === 'roll') { const u = h.roll ? clamp(h.roll.t / h.roll.dur, 0, 1) : 0; A.play('roll', { fade: 0.05, time: 0.13 + u * 0.89 }); }
-  else if (st === 'jump') A.play('jump', { fade: 0.05, time: 0.1 + h.animT });
-  else if (st === 'fall') A.play('air', { fade: 0.14 });
-  else if (S.landC != null) A.play('land', { fade: 0.04, time: 0.04 + S.landC * 1.5 });
-  else if (st === 'run' || st === 'walk') { const c = C[st]; A.play(st, { fade: 0.14, time: ((h.gait + footOff(c)) % 1) * c.duration }); }
-  else A.play(h.lock != null && C.idle_combat ? 'idle_combat' : 'idle', { fade: 0.2 });
+  else if (st === 'roll') { const u = h.roll ? clamp(h.roll.t / h.roll.dur, 0, 1) : 0; A.play('roll', PO(0.05, 0.13 + u * 0.89)); }
+  else if (st === 'jump') A.play('jump', PO(0.05, 0.1 + h.animT));
+  else if (st === 'fall') A.play('air', PO(0.14));
+  else if (S.landC != null) A.play('land', PO(0.04, 0.04 + S.landC * 1.5));
+  else if (st === 'run' || st === 'walk') { const c = C[st]; A.play(st, PO(0.14, ((h.gait + footOff(c)) % 1) * c.duration)); }
+  else A.play(h.lock != null && C.idle_combat ? 'idle_combat' : 'idle', PO(0.2));
   A.update(dt);
   // 달릴 때 윗몸을 조금 세운다: 달리기 클립은 26° 숙어 있어 위에서 비스듬히 보는 카메라에 얼굴이 묻힌다 → 14° 쯤으로
   S.lean = (S.lean ?? 0) + ((st === 'run' && !h.dead ? 1 : 0) - (S.lean ?? 0)) * Math.min(1, dt * 9);
-  if (S.lean > 0.02) { pitchBone(ch.rig, 'spine', -(T.runLeanFix ?? 12) * 0.55 * S.lean); pitchBone(ch.rig, 'spine2', -(T.runLeanFix ?? 12) * 0.45 * S.lean); ch.rig.pose(); }
+  if (S.lean > 0.02) {
+    pitchBone(ch.rig, 'spine', -(T.runLeanFix ?? 12) * 0.55 * S.lean); pitchBone(ch.rig, 'spine2', -(T.runLeanFix ?? 12) * 0.45 * S.lean);
+    const bank = clamp(-(S.angV ?? 0) * (T.runBank ?? 1.1), -11, 11) * S.lean;   // 돌 때 도는 쪽으로 몸을 기울인다 (달리는 동안만)
+    if (Math.abs(bank) > 0.3) { pitchBone(ch.rig, 'hips', bank * 0.5, 2); pitchBone(ch.rig, 'spine', bank * 0.5, 2); }
+    ch.rig.pose();
+  }
 }
 
 /**
@@ -152,18 +161,18 @@ export function driveActor(ch, e, dt) {
     attach(ch.asset, true);
     turn(ch, S, e.dirX ?? e.facing ?? 1, e.dirZ ?? 0, dt, 12, 14);
     const want = e.state === 'dead' ? pick(C, 'death_back', 'death') : pick(C, e.clip, e.anim);
-    A.play(want ?? pick(C, 'idle') ?? Object.keys(C)[0], { fade: 0.15 });
+    A.play(want ?? pick(C, 'idle') ?? Object.keys(C)[0], PO(0.15));
     A.update(dt); return;
   }
   attach(ch.asset, D.lib !== false);
   const K = D.clips, atk = e.state === 'attack' && e.atk;
   if (e.state !== 'dead' && !e.dead) turn(ch, S, e.dirX, e.dirZ, dt, atk ? 24 : 13, 22);
-  let name = null, o = { fade: 0.14 };
-  if (e.state === 'dead' || e.dead) { name = pick(C, K.death, 'death'); if (name && !C[name].loop) o = { fade: 0.08, time: Math.min(Math.max(0, D.dieT - e.dying) * 1.25 + 0.02, C[name].duration - 0.02) }; }
-  else if (e.state === 'stagger') { name = pick(C, e.staggerSide < 0 ? K.stagger + '_r' : null, K.stagger, K.hurt); if (name && !C[name].loop) o = { fade: 0.06, time: Math.min(0.02 + e.animT * 1.15, C[name].duration - 0.02) }; }
-  else if (e.anim === 'hurt') { name = pick(C, K.hurt); if (name && !C[name].loop) o = { fade: 0.04, time: 0.02 + e.animT * 1.3 }; }
-  else if (atk) { name = pick(C, atk.clip); if (name) o = C[name].loop ? { fade: 0.08, speed: e.phase === 'strike' ? 1.7 : 1.2 } : { fade: 0.07, time: warpAttack(C[name], e.stateT, atk) }; }
-  else if (e.anim === 'walk') { name = pick(C, K.walk); if (name && D.stride && !D.floats && !D.fly) o = { fade: 0.16, time: ((e.gait + footOff(C[name])) % 1) * C[name].duration }; }
+  let name = null, o = PO(0.14);   // (PO 는 하나를 돌려 쓴다 — 마지막에 부른 값이 남는다)
+  if (e.state === 'dead' || e.dead) { name = pick(C, K.death, 'death'); if (name && !C[name].loop) o = PO(0.08, Math.min(Math.max(0, D.dieT - e.dying) * 1.25 + 0.02, C[name].duration - 0.02)); }
+  else if (e.state === 'stagger') { name = pick(C, e.staggerSide < 0 ? K.stagger + '_r' : null, K.stagger, K.hurt); if (name && !C[name].loop) o = PO(0.06, Math.min(0.02 + e.animT * 1.15, C[name].duration - 0.02)); }
+  else if (e.anim === 'hurt') { name = pick(C, K.hurt); if (name && !C[name].loop) o = PO(0.04, 0.02 + e.animT * 1.3); }
+  else if (atk) { name = pick(C, atk.clip); if (name) o = C[name].loop ? PO(0.08, null, e.phase === 'strike' ? 1.7 : 1.2) : PO(0.07, warpAttack(C[name], e.stateT, atk)); }
+  else if (e.anim === 'walk') { name = pick(C, K.walk); if (name && D.stride && !D.floats && !D.fly) o = PO(0.16, ((e.gait + footOff(C[name])) % 1) * C[name].duration); }
   if (!name) name = pick(C, K.idle, 'idle', 'run') ?? Object.keys(C)[0];
   A.play(name, o);
   if (!S.init) { S.init = true; if (!A.ext) A.t = (e.id * 0.37) % (C[name].duration || 1); }   // 떼로 나올 때 같은 박자로 움직이지 않게

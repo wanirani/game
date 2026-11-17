@@ -2,6 +2,7 @@
 //   node tools/v2/play_shot.mjs                 모든 묶음 → /tmp/claude-0/v2/play/<이름>.jpg
 //   node tools/v2/play_shot.mjs run turn        이름이 그 글자로 시작하는 묶음만
 //   node tools/v2/play_shot.mjs --page=fight    폴드 편 화면 크기로 한 장면 전체(단추 포함) → page_<demo>.png
+//   --owner   소유자용 한 장 → /tmp/claude-0/v2/owner_play.png
 //   --out=<폴더>  --list  --sheet="demo:cam:t0:t1:step:cols:cw:ch[:box][:who]" --name=이름 (그때그때 한 장)
 // 한 번에 브라우저 하나. 헤드리스 WebGL 은 소프트웨어 렌더링이라 느리다(프레임 시간은 기기와 무관).
 import { chromium } from 'playwright-core';
@@ -68,13 +69,23 @@ try {
     const f = path.join(outDir, `page_${pageDemo}.png`); await page.screenshot({ path: f }); console.log('wrote', f, JSON.stringify(await page.evaluate(() => window.__play.state())).slice(0, 600));
   } else {
     await page.evaluate(() => { document.getElementById('ui').style.display = 'none'; document.getElementById('info').style.display = 'none'; });
+    if (argv.includes('--owner')) {   // 소유자용 한 장: 카엘의 기술 여덟 + 적 여섯 + 무리 둘
+      const L = [
+        { demo: 'run8', t: 0.45, cam: 'close', label: '달리기' }, { demo: 'combo1', t: 0.6, cam: 'close', label: '연타 1' }, { demo: 'combo1', t: 1.42, cam: 'close', label: '연타 3 (넓게)' }, { demo: 'roll', t: 0.56, cam: 'close', label: '구르기 (짧은 무적)' },
+        { demo: 'roll', t: 5.62, cam: 'close', label: '구른 직후 훑기' }, { demo: 'jump', t: 2.5, cam: 'close', label: '점프 중 내려베기' }, { demo: 'guard', t: 1.24, cam: 'close', box: true, label: '튕겨내기' }, { demo: 'combo', t: 8.05, cam: 'high', box: true, label: '보는 방향대로 베기 (여덟 방향)' },
+        { demo: 'soldier', t: 1.62, cam: 'enemy', box: true, label: '해골 병사 — 내지르기 예고' }, { demo: 'mage', t: 1.5, cam: 'enemy', label: '해골 술사 — 탄' }, { demo: 'corpse', t: 2.8, cam: 'enemy', box: true, label: '역병 주검 — 덮치기 (막을 수 없다)' }, { demo: 'ghost', t: 1.9, cam: 'enemy', box: true, label: '무덤 유령 — 덮칠 때만 또렷하다' },
+        { demo: 'armor', t: 7.6, cam: 'enemy', box: true, label: '무덤지기 갑주 — 땅 찍기 예고' }, { demo: 'bat', t: 1.1, cam: 'enemy', box: true, label: '박쥐 떼 — 내리꽂기' }, { demo: 'crowd', t: 5.0, cam: 'high', box: true, label: '둘씩 번갈아 덤빈다' }, { demo: 'fight', t: 7.0, cam: 'game', box: true, label: '게임 카메라 높이' },
+      ];
+      const url = await page.evaluate((L) => window.__play.shots(L, { cols: 4, cw: 440, ch: 360 }), L);
+      const f = opt('owner', '') || '/tmp/claude-0/v2/owner_play.png'; fs.writeFileSync(f, Buffer.from(url.split(',')[1], 'base64')); console.log('wrote', f);
+    }
     const gal = opt('gallery', null);   // --gallery="idle:0,idle_combat:0.5,…" [--gcam=close] [--gdir=1,0] [--gname=이름]
     if (gal) {
       const list = gal.split(',').map((x) => { const [n, t] = x.split(':'); return [n, Number(t ?? 0)]; }), gd = opt('gdir', '1,0').split(',').map(Number);
       const url = await page.evaluate(([list, cam, dir]) => window.__play.gallery(list, { cam, dir, cols: Math.min(8, list.length), cw: 250, ch: 270 }), [list, opt('gcam', 'close'), gd]);
       const f = path.join(outDir, 'gallery_' + opt('gname', 'clips') + '.jpg'); fs.writeFileSync(f, Buffer.from(url.split(',')[1], 'base64')); console.log('wrote', f);
     }
-    for (const s of gal ? [] : SETS) {
+    for (const s of gal || argv.includes('--owner') ? [] : SETS) {
       if (want.length && !want.some((w) => s.n.startsWith(w))) continue;
       const t0 = Date.now();
       const url = await page.evaluate((s) => window.__play.sheet(s.demo, s.times, { cols: s.cols, cw: s.cw, ch: s.ch, cam: s.cam, box: s.box, who: s.who }), s);

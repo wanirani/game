@@ -28,7 +28,7 @@ function angel(x, y, z) {
   const sleeve = cap(ax, y, z, [15, 114, -13], [14, 96, -9], 6.5, 3);
   // wings: tall folded blades behind the shoulders, with feather rows
   const w1 = rot(ax, y, z, [25, 126, 15], -9, 22), w2 = rot(ax, y, z, [31, 156, 15], -30, 22);
-  const rows = 1.5 * Math.sin(y * 0.33 + ax * 0.12);
+  const rows = 0.9 * Math.sin(y * 0.27 + ax * 0.1);
   const wing = smin(ell(w1[0], w1[1], w1[2], [0, 0, 0], [14, 62, 6.5]), ell(w2[0], w2[1], w2[2], [0, 0, 0], [12, 30, 6.5]), 6) - rows * cl((ax - 10) / 12, 0, 1);
   const body = U(5, robe, hem, chest, neck, U(3, head, hair, tress), U(3.5, upper, fore, hand, sleeve));
   return Math.min(ped, smin(body, wing, 3));
@@ -74,7 +74,7 @@ function deadtree(x, y, z) {
  *           look: 'stone' | 'bark', h height, foot [rx, rz] collision half extents, footH }
  */
 export const SCULPTS = {
-  angel: { f: angel, box: [-60, 0, -34, 60, 196, 40], cell: 3.0, tris: 1400, tex: [224, 384], look: 'stone', h: 192, foot: [29, 23], footH: 150 },
-  gargoyle: { f: gargoyle, box: [-74, 0, -46, 74, 158, 44], cell: 2.8, tris: 1500, tex: [320, 352], look: 'stone', h: 152, foot: [29, 24], footH: 110 },
+  angel: { f: angel, box: [-62, 0, -34, 62, 216, 44], cell: 3.0, tris: 1400, tex: [224, 400], look: 'stone', h: 192, foot: [29, 23], footH: 150 },
+  gargoyle: { f: gargoyle, box: [-82, 0, -46, 82, 176, 50], cell: 2.8, tris: 1500, tex: [320, 352], look: 'stone', h: 152, foot: [29, 24], footH: 110 },
   deadtree: { f: deadtree, box: [-112, 0, -42, 116, 304, 42], cell: 3.4, tris: 1300, tex: [288, 384], look: 'bark', h: 300, foot: [20, 14], footH: 200 },
 };

@@ -162,6 +162,31 @@ export class Geo {
       else this.quad4(mat, p0, p1, q1, q0, nm, { ...o, keep: true, ns: [n0, n1, n1, n0], ua: ax, va: e1 });
     }
   }
+  /**
+   * 구운 소품의 삼각형 묶음 (src/v2/env/baked.js). V = [x,y,z, nx,ny,nz, u,v] × n (세계 좌표 · 바깥 법선 · 아틀라스 uv), I = 색인 (바깥에서 볼 때 반시계).
+   * 꼭짓점마다 그 자리의 빛을 굽고, 카메라가 못 보는 뒤쪽 삼각형은 버린다.
+   */
+  mesh(mat, V, I, o = {}) {
+    const M = KMATS[mat]; if (!M) throw new Error('모르는 재질: ' + mat);
+    const wr = this._wr(M.tex), nv = V.length / 8, C = new Float32Array(nv * 3), done = new Uint8Array(nv), oo = { vary: 0, ...o };
+    let b = this.bounds.get(this.chunk); if (!b) { b = [1e9, 1e9, 1e9, -1e9, -1e9, -1e9]; this.bounds.set(this.chunk, b); }
+    const cull = this.cull && !o.keep;
+    for (let t = 0; t < I.length; t += 3) {
+      const i0 = I[t], i1 = I[t + 1], i2 = I[t + 2], a = i0 * 8, c = i1 * 8, d = i2 * 8;
+      if (cull) {   // 면 법선이 뒤(+z)를 보면 버린다
+        const ux = V[c] - V[a], uy = V[c + 1] - V[a + 1], vx = V[d] - V[a], vy = V[d + 1] - V[a + 1], uz = V[c + 2] - V[a + 2], vz = V[d + 2] - V[a + 2];
+        const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx, l = Math.hypot(nx, ny, nz) || 1;
+        if (nz / l > 0.66) continue;
+      }
+      for (const i of [i0, i2, i1]) {   // 키트의 감기 규칙 (바깥에서 볼 때 시계)
+        const q = i * 8;
+        if (!done[i]) { const col = this._col(M, [V[q], V[q + 1], V[q + 2]], [V[q + 3], V[q + 4], V[q + 5]], oo); C[i * 3] = col[0]; C[i * 3 + 1] = col[1]; C[i * 3 + 2] = col[2]; done[i] = 1; }
+        wr.vert(V[q], V[q + 1], V[q + 2], V[q + 6], V[q + 7], C[i * 3], C[i * 3 + 1], C[i * 3 + 2], 255);
+        if (V[q] < b[0]) b[0] = V[q]; if (V[q + 1] < b[1]) b[1] = V[q + 1]; if (V[q + 2] < b[2]) b[2] = V[q + 2]; if (V[q] > b[3]) b[3] = V[q]; if (V[q + 1] > b[4]) b[4] = V[q + 1]; if (V[q + 2] > b[5]) b[5] = V[q + 2];
+      }
+      this.tris++;
+    }
+  }
   /** 굽기 끝: [{chunk, tex, data, count}] + 덩어리별 경계 상자 */
   done() {
     const meshes = []; for (const w of this.out.values()) if (w.n) meshes.push({ chunk: w.chunk, tex: w.tex, ...w.done() });
