@@ -4,3 +4,4 @@ export { UNIT } from './tune.js';
 export { MOVES, COMBO } from './moves.js';
 export { KINDS, AI, ATTACKS, kindOf, kindId, registerKind } from './enemies.js';
 export { flatArena, bindWorld } from './collide.js';
+export { driveHero, driveActor, placeActor, loadPlayClips, usePlayClips, playClipsReady, warpMove, warpAttack } from './motion.js';
