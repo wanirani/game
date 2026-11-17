@@ -72,11 +72,13 @@ for (const name of T.EVENT_NAMES) {
 // 공간·느린 화면·품질 비교 (같은 타격)
 const REF = [{ t: 0, c: 'hit', a: ['sword', 'bone', 'H', 0], pos: NEAR }];
 jobs.push({ id: 'space.near', grp: 'space', lines: REF, dur: 1.6 });
-jobs.push({ id: 'space.far(2.6x)', grp: 'space', lines: [{ ...REF[0], pos: FARP }], dur: 1.6 });
+jobs.push({ id: 'space.far(3.3x)', grp: 'space', lines: [{ ...REF[0], pos: FARP }], dur: 1.6 });
 jobs.push({ id: 'space.left', grp: 'space', lines: [{ ...REF[0], pos: { x: -420, y: 50, z: 30 } }], dur: 1.6 });
 jobs.push({ id: 'space.slowmo(0.25)', grp: 'space', lines: [{ t: 0, c: 'ts', a: [0.25] }, { t: 0.001, c: 'hit', a: ['sword', 'bone', 'H', 0], pos: NEAR }], dur: 1.8 });
 for (const room of ['street', 'alley', 'courtyard', 'hall']) jobs.push({ id: `room.${room}`, grp: 'space', room, lines: REF, dur: 2.6 });
 for (const q of ['low', 'medium', 'high']) jobs.push({ id: `quality.${q}`, grp: 'space', q, lines: [{ t: 0, c: 'hit', a: ['great', 'bone', 'F', T.FLAG.finisher | T.FLAG.kill], pos: NEAR }], dur: 2.6 });
+// 옛 샘플 뱅크가 없을 때 (?sfx=v1 · m4a 를 못 푸는 브라우저 · 아직 안 풀림): v1 합성음으로 대신 — 비지 않고 깨지지 않아야 한다
+for (const [id, line] of [['hit', { t: 0, c: 'hit', a: ['sword', 'bone', 'H', 0], pos: NEAR }], ['finisher', { t: 0, c: 'hit', a: ['great', 'armor', 'F', T.FLAG.finisher | T.FLAG.kill], pos: NEAR }], ['dash', { t: 0, c: 'play', a: ['move.dash'], pos: NEAR }], ['fire', { t: 0, c: 'play', a: ['magic.fire.impact'], pos: NEAR }]]) jobs.push({ id: `fallback.${id}`, grp: 'fallback', noOld: true, lines: [line], dur: 2.4 });
 // 같은 순간 3명 타격 (겹치기) · 덕킹 깊이
 jobs.push({ id: 'multi.3targets', grp: 'space', lines: [0, 1, 2].map((i) => ({ t: 0, c: 'hit', a: ['sword', ['bone', 'flesh', 'armor'][i], 'H', 0], pos: { x: -100 + i * 120, y: 50, z: 30 } })), dur: 1.8 });
 if (!has('no-demos')) for (const [k, d] of Object.entries(DEMOS)) jobs.push({ id: `demo.${k}`, grp: 'demo', room: d.room, lines: d.ev, dur: d.dur + 1.2, wav: true });
@@ -109,9 +111,9 @@ const setup = await page.evaluate(async ({ SR, phone, oldNames }) => {
   const kw = (x) => { const y = new Float32Array(x.length); let a1 = 0, a2 = 0, b1 = 0, b2 = 0, c1 = 0, c2 = 0, d1 = 0, d2 = 0; for (let i = 0; i < x.length; i++) { const v = x[i], s = 1.53512485958697 * v - 2.69169618940638 * a1 + 1.19839281085285 * a2 + 1.69065929318241 * b1 - 0.73248077421585 * b2; a2 = a1; a1 = v; b2 = b1; b1 = s; const o = s - 2 * c1 + c2 + 1.99004745483398 * d1 - 0.99007225036621 * d2; c2 = c1; c1 = s; d2 = d1; d1 = o; y[i] = o; } return y; };
   const db = (v) => (v > 1e-9 ? 20 * Math.log10(v) : -180);
   const b64 = (f32) => { const u8 = new Uint8Array(f32.buffer, f32.byteOffset, f32.byteLength); let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
-  window.__sc = async ({ lines, dur, q, room, wav, WARM, listener }) => {
+  window.__sc = async ({ lines, dur, q, room, wav, WARM, listener, noOld }) => {
     const oc = new OfflineAudioContext(4, Math.ceil(SR * (dur + WARM)), SR);
-    const eng = new A.Engine(oc); eng.setVolumes(0.6, 0.8); eng.v2 = v2; eng.v2Quality = q || 'high';
+    const eng = new A.Engine(oc); eng.setVolumes(0.6, 0.8); eng.v2 = noOld ? null : v2; eng.v2Quality = q || 'high';
     const sp = oc.createChannelSplitter(2), mg = oc.createChannelMerger(4); eng.master.connect(sp); sp.connect(mg, 0, 2); sp.connect(mg, 1, 3); mg.connect(oc.destination);   // 채널 2·3 = 마스터 컴프레서 앞
     const host = { eng, quality: q || 'high', sfx(n, o) { eng.feelCap = 10; eng.sfx(n, o); }, duck(a, t) { eng.duck(a, t); } };
     const fsnd = new F.FeelSound(host); fsnd.bank = bank; fsnd.bankP = Promise.resolve();
@@ -135,10 +137,32 @@ const setup = await page.evaluate(async ({ SR, phone, oldNames }) => {
   // 고리 이음매: 끝→처음의 뜀이 버퍼 안의 이웃 샘플 차이(99.9 백분위)보다 크면 고리마다 딸깍 소리가 난다
   const S = await import('/src/v2/feel/sound.js'), seams = {};
   for (const k of S.LOOP_KINDS) { const d = S.loopBuf(dc, k).getChannelData(0), n = d.length, df = new Float32Array(n - 1); for (let i = 1; i < n; i++) df[i - 1] = Math.abs(d[i] - d[i - 1]); df.sort(); seams[k] = { seam: +Math.abs(d[0] - d[n - 1]).toFixed(4), p999: +df[Math.floor((n - 1) * 0.999)].toFixed(4), sec: +(n / 22050).toFixed(2) }; }
-  return { old: v2.stats(), neu: bank.stats(), seams };
+  // 기능 시험 (오프라인 컨텍스트에서 시간을 멈춰 가며): 빼앗긴 배경 고리 다시 켜기 · 느린 화면에서 울리던 큰 소리의 필터가 내려갔다 올라오기 · 고리 이동 · release
+  const func = await (async () => {
+    const oc = new OfflineAudioContext(2, SR * 4, SR), eng = new A.Engine(oc); eng.v2 = v2;
+    const fsnd = new F.FeelSound({ eng, quality: 'high', sfx(n, o) { eng.feelCap = 10; eng.sfx(n, o); }, duck(a, t) { eng.duck(a, t); } }); fsnd.bank = bank; fsnd.bankP = Promise.resolve();
+    fsnd.setListener(0, 300, -700, 0, -0.33, 0.944, 800);
+    const out = {}, at = (t, fn) => oc.suspend(Math.round(t * SR / 128) * 128 / SR).then(() => { try { fn(); } catch (e) { out.error = String(e && e.message || e); } oc.resume(); });
+    let id = 0, mv = 0, fl = null;
+    at(0.1, () => { id = fsnd.loopStart('loop.street'); mv = fsnd.loopStart('loop.magic.fire', { x: -300, y: 40, z: 0 }); out.started = id > 0 && mv > 0 && fsnd.loops.length === 2; });
+    at(0.4, () => { const h = fsnd.loops.find((x) => x.id === id); eng.steal(h.x, oc.currentTime); out.panBefore = fsnd.loops.find((x) => x.id === mv).x.node.pan.value; fsnd.loopMove(mv, { x: 400, y: 40, z: 0 }); });
+    at(1.2, () => { fsnd.update(); const h = fsnd.loops.find((x) => x.id === id); out.restarted = !!h && !h.x.stolen && h.x.end > oc.currentTime + 10; out.panAfter = +fsnd.loops.find((x) => x.id === mv).x.node.pan.value.toFixed(2); });
+    at(1.4, () => { fsnd.hit('great', 'armor', 'F', 18, { x: 0, y: 40, z: 0 }); fl = fsnd.filters.find((x) => x.f); out.filterOpen = fl ? Math.round(fl.f.frequency.value) : 0; });
+    at(1.6, () => fsnd.setTimeScale(0.25));
+    at(2.0, () => { out.filterSlow = fl ? Math.round(fl.f.frequency.value) : 0; fsnd.setTimeScale(1); });
+    at(2.5, () => { out.filterBack = fl ? Math.round(fl.f.frequency.value) : 0; fsnd.loopStop(mv); out.afterStop = fsnd.loops.length; });
+    at(3.0, () => { fsnd.release(); out.released = fsnd.loops.length === 0 && eng.roomSpace === null; });
+    await oc.startRendering();
+    return out;
+  })();
+  return { old: v2.stats(), neu: bank.stats(), seams, func };
 }, { SR, phone: has('phone'), oldNames: used.old });
 console.log('뱅크', JSON.stringify(setup));
 for (const [k, v] of Object.entries(setup.seams)) if (v.seam > v.p999 * 1.5 + 0.002) fails.push(`고리 이음매가 튄다: ${k} (뜀 ${v.seam}, 이웃 차 99.9% ${v.p999})`);
+{ const f = setup.func, bad = [];
+  if (f.error) bad.push('오류 ' + f.error); if (!f.started) bad.push('고리 시작'); if (!f.restarted) bad.push('빼앗긴 배경 고리 다시 켜기'); if (!(f.panAfter > 0.2 && f.panBefore < 0)) bad.push(`고리 이동 팬 ${f.panBefore}→${f.panAfter}`);
+  if (!(f.filterOpen > 15000 && f.filterSlow < 2500 && f.filterBack > 12000)) bad.push(`느린 화면 필터 ${f.filterOpen}→${f.filterSlow}→${f.filterBack} Hz`); if (f.afterStop !== 1) bad.push('고리 정지'); if (!f.released) bad.push('release');
+  console.log('기능 시험', JSON.stringify(f)); for (const b of bad) fails.push('기능 시험 실패: ' + b); }
 if (setup.neu.loaded !== Object.keys(nix.sfx).length) fails.push(`새 샘플 ${Object.keys(nix.sfx).length}개 중 ${setup.neu.loaded}개만 풀림`);
 
 const f32 = (b) => { const u = Buffer.from(b, 'base64'); return new Float32Array(u.buffer, u.byteOffset, u.byteLength / 4); };
@@ -150,7 +174,7 @@ function writeWav(file, Lc, Rc) {
 }
 const rows = [], t0 = Date.now();
 for (const j of jobs) {
-  const r = await page.evaluate((a) => window.__sc(a), { lines: j.lines, dur: j.dur, q: j.q || 'high', room: j.room || 'street', wav: !!j.wav, WARM, listener: LISTENER });
+  const r = await page.evaluate((a) => window.__sc(a), { lines: j.lines, dur: j.dur, q: j.q || 'high', room: j.room || 'street', wav: !!j.wav, WARM, listener: LISTENER, noOld: !!j.noOld });
   if (j.wav) {
     const base = path.join(OUT, j.id.replace('.', '_')), wav = path.join('/dev/shm/soundfeel', j.id + '.wav');
     fs.mkdirSync('/dev/shm/soundfeel', { recursive: true }); writeWav(wav, f32(r.L), f32(r.R));
@@ -162,7 +186,7 @@ for (const j of jobs) {
   rows.push({ id: j.id, grp: j.grp, ...r });
   if (r.clip > 0 || r.peak >= -0.1) fails.push(`클리핑: ${j.id} 피크 ${r.peak} dBFS (${r.clip} 샘플)`);
   if (r.peak < -60) fails.push(`소리 없음: ${j.id} (피크 ${r.peak} dBFS)`);
-  if (r.miss > 0) fails.push(`샘플 없는 층: ${j.id} (${r.miss}개)`);
+  if (r.miss > 0 && !j.noOld) fails.push(`샘플 없는 층: ${j.id} (${r.miss}개)`);
   if (r.starts === 0) fails.push(`엔진이 재생하지 않음: ${j.id}`);
   if (r.pre > 0) warns.push(`리미터에 기댐: ${j.id} 마스터 앞 피크 +${r.pre} dBFS`);
 }
@@ -175,6 +199,19 @@ if (has('shot')) {
   await p2.goto(`http://localhost:${port}/tools/v2/sound_view.html`);
   await p2.click('#unlock'); await p2.waitForFunction(() => window.__sv && window.__sv.ready, null, { timeout: 60000 });
   await p2.screenshot({ path: path.join(OUT, 'view_idle.png') });
+  // 진동: 휴대폰(터치) 모드로 바꾸고 navigator.vibrate 를 가로채 무늬가 표대로 나가는지 본다
+  const vib = await p2.evaluate(async () => {
+    const { haptics } = await import('/src/core/haptics.js'), { feel, FLAG } = await import('/src/v2/feel/index.js');
+    const calls = [], orig = navigator.vibrate; navigator.vibrate = (v) => { calls.push(v); return true; };
+    const input = haptics.input, mode = input.mode; input.mode = 'touch';
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    feel.hit('sword', 'bone', 'L', 0, null); await wait(90); feel.hit('sword', 'bone', 'H', 0, null); await wait(140); feel.hit('great', 'bone', 'F', FLAG.finisher | FLAG.kill, null); await wait(300); feel.play('ui.ok'); feel.bell('toll'); await wait(300);
+    input.mode = mode; navigator.vibrate = orig; haptics.reset();
+    return calls;
+  });
+  console.log('진동 시험 (L · H · 마무리 · UI · 깊은 종)', JSON.stringify(vib));
+  if (JSON.stringify(vib) !== JSON.stringify([15, [32, 40, 80], [60, 50, 120]])) fails.push('진동 무늬가 표와 다름: ' + JSON.stringify(vib));
+  await p2.waitForTimeout(6500);   // 깊은 종이 다 울린 뒤에 시연을 찍는다
   await p2.click('[data-demo="combo"]'); await p2.waitForTimeout(2700);
   await p2.screenshot({ path: path.join(OUT, 'view_combo.png') });
   await p2.waitForTimeout(2500);

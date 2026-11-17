@@ -70,6 +70,7 @@ if (!args.has('--quick')) {
   const { ctx, page, errs } = await open('fold_open', '&tier=mid');
   await page.evaluate(() => { window.__fx.small = true; });
   report.presets = await page.evaluate(() => window.__fx.presets);   // 측정은 160×120 캔버스로 (개수·JS 시간은 해상도와 무관)
+  if (!args.has('--alloc')) {
   // ── 2. 프리셋별 비용 (세 단계) ──
   console.log('\n[프리셋별 비용 — fold_open; 입자 = 뿜은 수/동시에 산 최댓값, 덧칠 = 화면(960×726) 대비 배수의 최댓값]');
   for (const tier of ['low', 'mid', 'high']) {
@@ -85,13 +86,15 @@ if (!args.has('--quick')) {
     const h = await page.evaluate((tier) => window.__fx.heavy(tier, 15), tier); report.heavy[tier] = h;
     console.log(`  ${tier.padEnd(4)} 그리기(효과) 최대 ${h.draws.max} 평균 ${h.draws.avg} + 후처리 ${h.postPasses} + 장면 ${h.sceneDraws} · 입자 제출 최대 ${h.particles.max} (실제 산 것 최대 ${h.live.max} 평균 ${h.live.avg}) · 문양 ${h.quads.max} · 메시 ${h.meshes.max} (${h.meshTris.max}△) · 띠 ${h.ribbons.max} (${h.ribbonVerts.max}v) · 빛 ${h.lights.max} · 덧칠 최대 ${h.overdraw.max} 평균 ${h.overdraw.avg} 화면 · 밝기 최저 ${h.gainMin.toFixed(2)} · CPU(효과 JS) 평균 ${h.cpu.avg} p95 ${h.cpu.p95} 최대 ${h.cpu.max} ms`);
   }
+  }
   // ── 4. 할당 검사 ──
   console.log('\n[프레임당 할당 — performance.memory (정밀) · 미리 2400프레임 돌려 JIT 를 데운 뒤 1200프레임 동안 JS 힙 증가]');
-  for (const mode of ['idle', 'fxonly', 'page']) {
+  for (const mode of ['idle', 'fxonly', 'page', 'control']) {
     const a = await page.evaluate((mode) => window.__fx.alloc('mid', 2400, 1200, mode), mode); report.alloc[mode] = a;
     console.log(`  ${mode.padEnd(7)} ${a.bytes} 바이트 / ${a.frames} 프레임 = ${a.perFrame.toFixed(1)} 바이트/프레임 · 프레임당 ${a.ms.toFixed(3)} ms ${a.hasMemory && a.hasGc ? '' : '(메모리 정보 없음)'}`);
   }
-  if (report.alloc.idle.bytes > 2048) fail(`정상 상태(새 효과 없음)에서 할당이 있다: ${report.alloc.idle.bytes} 바이트`); else ok('정상 상태(새 효과 없음) 할당 0');
+  if (report.alloc.control.bytes < 100000) fail(`할당 측정이 믿을 수 없다: 일부러 잡은 대조군이 ${report.alloc.control.bytes} 바이트로 나왔다`); else ok(`대조군(프레임마다 Float64Array(16))은 ${report.alloc.control.bytes} 바이트로 잡힌다 → 측정이 살아 있다`);
+  if (Math.abs(report.alloc.idle.bytes) > 2048) fail(`정상 상태(새 효과 없음)에서 할당이 있다: ${report.alloc.idle.bytes} 바이트`); else ok('정상 상태(새 효과 없음) 할당 0');
   if (errs.length) fail(`측정 중 페이지 오류: ${errs.slice(0, 3).join(' | ')}`);
   await ctx.close();
 }
@@ -159,7 +162,8 @@ if (args.has('--doc') && report.cost.mid) {
   L.push('', `- 장면(시험 화면의 바닥·벽·인형)은 따로 ${report.heavy.mid.sceneDraws}회. 효과 JS 시간 = \`fx.update\` + \`fx.draw\` 안에서 잰 \`performance.now()\` 차이(헤드리스·다른 작업과 CPU 를 나눠 쓰는 기계에서 잰 값; GPU 시간은 들어 있지 않다).`);
   L.push('', '**프레임당 할당** (`performance.memory.usedJSHeapSize`, `--enable-precise-memory-info` · 시작 전에 `gc()`; 2,400프레임을 먼저 돌려 JIT 를 데운 뒤 1,200프레임 동안 힙이 는 양)', '', '| 경우 | 1,200프레임 동안 는 힙 | 프레임당 | 프레임당 JS 시간 (1,200프레임 평균) |', '|---|---|---|---|');
   const AN = { idle: '정상 상태: 살아 있는 효과만 돌고 새로 내지 않음 (시험 화면 프레임 전체)', fxonly: '난전: 효과 엔진만 (`fx.update` + 프리셋 호출 + `fx.draw`)', page: '난전: 시험 화면 프레임 전체 (장면 그리기 · 후처리 포함)' };
-  for (const m of ['idle', 'fxonly', 'page']) { const a = report.alloc[m]; L.push(`| ${AN[m]} | ${a.bytes} 바이트 | ${a.perFrame.toFixed(1)} 바이트 | ${a.ms.toFixed(3)} ms |`); }
+  AN.control = '대조: 같은 루프에서 프레임마다 `new Float64Array(16)` 하나를 일부러 잡음';
+  for (const m of ['idle', 'fxonly', 'page', 'control']) { const a = report.alloc[m]; L.push(`| ${AN[m]} | ${a.bytes} 바이트 | ${a.perFrame.toFixed(1)} 바이트 | ${a.ms.toFixed(3)} ms |`); }
   L.push('', '**메모리**', '');
   for (const v of ['fold_open', 'phone2']) { const r = report.views[v]; L.push(`- ${v} (캔버스 ${r.canvas.join('×')}): 효과 GPU 메모리 ${mb(r.gpuBytes)} MB = 텍스처 ${mb(r.texBytes)} (입자 512² + 문양 512² + 잡음 64², 밉맵 포함) + 후처리 버퍼 ${mb(r.postBytes)} (장면 색 + 깊이 + 번짐 단계) + 정점 버퍼 ${mb(r.gpuBytes - r.texBytes - r.postBytes)}`); }
   L.push('- 후처리 버퍼는 캔버스 크기에 비례한다: 폴드 실기 medium(1455×1100)이면 약 13 MB, high(2000×1512)면 약 25 MB. low 단계는 후처리를 꺼서 0.');

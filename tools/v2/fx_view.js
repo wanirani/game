@@ -293,11 +293,12 @@ const api = window.__fx = {
     if (mode === 'idle') { for (const p of PRESET_LIST) fire(p.name); }
     for (let i = 0; i < warm; i++) frame(1 / 60);
     if (mode === 'idle') { fx.clear(); for (const nm of ['fire.pillar', 'holy.bell', 'ice.nova']) fire(nm); }
-    const mem = performance.memory; if (window.gc) window.gc();
-    const a = mem ? mem.usedJSHeapSize : 0, t0 = performance.now();
-    if (mode === 'fxonly') { for (let i = 0; i < n; i++) { fx.update(1 / 60); heavyStep(1 / 60); fx.draw(cam); } }
+    const mem = !!performance.memory; if (window.gc) window.gc();   // performance.memory 는 읽을 때마다 새로 재야 한다 (객체를 잡아 두면 옛 값)
+    const a = mem ? performance.memory.usedJSHeapSize : 0, t0 = performance.now();
+    if (mode === 'control') { const keep = []; for (let i = 0; i < n; i++) { frame(1 / 60); keep.push(new Float64Array(16)); } api._keep = keep; }   // 대조: 프레임마다 일부러 128바이트 + 를 잡는다
+    else if (mode === 'fxonly') { for (let i = 0; i < n; i++) { fx.update(1 / 60); heavyStep(1 / 60); fx.draw(cam); } }
     else for (let i = 0; i < n; i++) frame(1 / 60);
-    const ms = (performance.now() - t0) / n, b = mem ? mem.usedJSHeapSize : 0;
+    const ms = (performance.now() - t0) / n, b = mem ? performance.memory.usedJSHeapSize : 0;
     demo.name = ''; return { mode, frames: n, ms, bytes: b - a, perFrame: (b - a) / n, hasMemory: !!mem, hasGc: !!window.gc };
   },
   /** 접촉 시트: rows = [[이름, t1, t2, t3, 표적 번호?]]. 각 효과를 세 순간에 찍어 한 장으로. 돌려주는 값 = JPEG data URL */
