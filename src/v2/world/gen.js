@@ -36,7 +36,7 @@ export function house(o) {
     ...(timber ? { storey, jetty: o.jetty ?? 12, mid: h > 300 ? storey + 104 : undefined } : st === 'stone' ? { quoins: r() < 0.6, courses: h > 240 ? [156] : [] } : { plinth: 26 }),
     ...(o.burnt ? { battlement: true, cornice: false, quoins: false } : {}), ...(o.kit ?? {}),
   };
-  const parts = [{ t: 'wall', x, z, w, d, h, y, mat: st === 'timber' || st === 'plaster' ? 'plaster' : 'facade', kit, chunk: o.chunk }];
+  const parts = [{ t: 'wall', x, z, w, d, h, y, mat: st === 'timber' || st === 'plaster' ? 'plaster' : 'facade', kit, chunk: o.chunk, ...(o.collideH ?? (o.burnt ? 800 : 0) ? { collideH: o.collideH ?? 800 } : {}) }];   // a roofless ruin can be lower than a jump (apex 112 + step 18): without this the hero hops into it and falls through
   if (o.roof !== false && !o.burnt) {
     const rk = { mat: o.roofMat, chimney: 'fieldstone', gable: st === 'stone' ? 'ashlar' : st === 'rubble' ? 'fieldstone' : undefined, chimneys: [{ u: Math.round(w * (0.18 + 0.64 * r())), t: 0.72, h: 30 + 10 * r() }], dormers: w > 400 && r() < 0.7 ? [{ u: Math.round(w * (0.3 + 0.4 * r())), lit: r() < lit ? 0.5 : 0 }] : [] };
     parts.push({ t: 'roof', x, z, w, d, y: y + h, h: o.roofH ?? Math.round(56 + 16 * r()), kit: { ...rk, ...(o.roofKit ?? {}) }, chunk: o.chunk });

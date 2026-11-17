@@ -69,7 +69,7 @@ export function createPad(game, opts = {}) {
   const mk = (cls) => { const c = document.createElement('canvas'); c.className = cls; c.style.cssText = 'position:absolute;left:0;top:0;will-change:transform,opacity;'; root.appendChild(c); return c; };
   const baseCv = mk('v2s-base'), knobCv = mk('v2s-knob');
   const S = { shown: false, want: true, modal: false, L: null, bounds: { l: 0, t: 0, r: 0, b: 0 }, textSize: 'normal', repaints: 0, layoutN: 0,
-    stick: { ptr: -1, ox: 0, oy: 0, x: 0, y: 0, live: false, dir: [false, false, false, false] }, lastAlive: 0 };
+    stick: { ptr: -1, ox: 0, oy: 0, x: 0, y: 0, live: false, dir: [false, false, false, false] }, lastAlive: 0, idle: 0 };
 
   function readBounds() {
     const r = game.canvasRect ?? { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
@@ -261,8 +261,10 @@ export function createPad(game, opts = {}) {
   window.addEventListener('pointerup', onUp, LO); window.addEventListener('pointercancel', onUp, LO);
   const onBlur = () => releaseAll(), onResize = () => { if (S.L) layout(); };
   window.addEventListener('blur', onBlur); window.addEventListener('resize', onResize);
-  // if the scene stops calling the HUD (another scene on top, a crash), the pad must not stay on screen
-  const watchdog = setInterval(() => { if (S.shown && performance.now() - S.lastAlive > 450) show(false); }, 250);
+  // if the scene stops calling the HUD (another scene on top, a crash), the pad must not stay on screen.
+  // Counted in timer ticks without a HUD call, not in wall time: one long frame (a hitch blocks the timer as well) or a
+  // slow stretch of frames must not hide the pad and drop a held stick or button.
+  const watchdog = setInterval(() => { if (S.shown && ++S.idle >= 4) show(false); }, 250);
 
   function show(v) {
     if (S.shown === v) return;
@@ -277,7 +279,7 @@ export function createPad(game, opts = {}) {
     layout,
     /** Called every tick by the HUD: visibility follows the input mode and the modal state; repaints only what changed. */
     tick(modal, pad) {
-      S.lastAlive = performance.now();
+      S.lastAlive = performance.now(); S.idle = 0;
       const mode = opts.forceShow ? 'touch' : (input.mode ?? 'touch');
       show(S.want && !modal && mode === 'touch');
       if (!S.shown) return;
@@ -286,7 +288,7 @@ export function createPad(game, opts = {}) {
       if (pad) this.setState(pad);
       paint();
     },
-    alive() { S.lastAlive = performance.now(); },
+    alive() { S.lastAlive = performance.now(); S.idle = 0; },
     /** partial: { skill: {mode, cd, disabled, label}, bell: {mode, charge, disabled}, roll: {...}, attack, jump, lock } */
     setState(p) {
       for (const id in p) {

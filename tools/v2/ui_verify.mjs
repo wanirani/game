@@ -39,7 +39,8 @@ function toucher(client) {
   return {
     async down(id, x, y) { pts.set(id, [x, y]); await send('touchStart'); },
     async move(id, x, y) { pts.set(id, [x, y]); await send('touchMove'); },
-    async up(id) { pts.delete(id); await send('touchEnd'); },
+    // CDP: touchEnd takes no points and lifts every finger; to lift one of several, send the remaining ones as a move
+    async up(id) { pts.delete(id); if (pts.size) await send('touchMove'); else await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); },
     async cancel() { pts.clear(); await client.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] }); },
   };
 }
@@ -72,6 +73,7 @@ for (const dev of DEVICES) {
     await page.evaluate(() => {
       window.__vl = []; const T = window.__game.input.touch;
       for (const k of ['set', 'tap', 'axis']) { const f = T[k].bind(T); T[k] = (...a) => { if (k !== 'axis' || a[0] || a[1]) window.__vl.push([k, ...a.map((v) => (typeof v === 'number' ? +v.toFixed(2) : v))]); return f(...a); }; }
+      window.__gap = { max: 0, n: 0, over450: 0, last: performance.now() }; (function raf() { const now = performance.now(), d = now - window.__gap.last; window.__gap.last = now; window.__gap.n++; if (d > window.__gap.max) window.__gap.max = d; if (d > 450) window.__gap.over450++; requestAnimationFrame(raf); })();
       window.__cvDown = 0; window.__game.canvas.addEventListener('pointerdown', () => { window.__cvDown++; });
       const proto = CanvasRenderingContext2D.prototype; window.__cnt = { sb: 0, fl: 0, cv: 0, gid: 0 };
       const d1 = Object.getOwnPropertyDescriptor(proto, 'shadowBlur'); Object.defineProperty(proto, 'shadowBlur', { get() { return d1.get.call(this); }, set(v) { if (v > 0) window.__cnt.sb++; d1.set.call(this, v); } });
@@ -116,6 +118,7 @@ for (const dev of DEVICES) {
       await T.up(1); await sleep(120);
       ok(!(await downs(page, ALL_ACTS)).some(Boolean), `${dev}: after ${id} slide-off + lift nothing stays down`);
       if (id === 'attack') R.slideOffKeepsPress = still;
+      ok(still, `${dev}: ${id} stays pressed while the finger slides off it (until it lifts)`);
       await logOf(page);
     }
     // slide from attack to jump: attack is cancelled, jump pressed
@@ -130,7 +133,8 @@ for (const dev of DEVICES) {
     const hx0 = await page.evaluate(() => window.__v2.hero.x);
     await T.down(1, sx, sy); for (let i = 1; i <= 6; i++) await T.move(1, sx + i * 12, sy); await sleep(150);
     let vec = await page.evaluate(() => { const v = window.__game.input.touchStick ?? window.__game.input._touchVec; return { x: v.x, y: v.y, mag: v.mag }; });
-    ok(vec.x > 0.6 && Math.abs(vec.y) < 0.3, `${dev}: stick right gives x>0.6 (${JSON.stringify(vec)})`);
+    R.rafGapInput = await page.evaluate(() => ({ maxMs: Math.round(window.__gap.max), frames: window.__gap.n, over450: window.__gap.over450 }));
+    ok(vec.x > 0.6 && Math.abs(vec.y) < 0.3, `${dev}: stick right gives x>0.6 (${JSON.stringify(vec)}, frame gaps ${JSON.stringify(R.rafGapInput)})`);
     await T.down(2, B.attack.cx, B.attack.cy); await sleep(120);
     await T.down(3, B.jump.cx, B.jump.cy); await sleep(150);
     d = await downs(page, ['attack', 'jump']);
