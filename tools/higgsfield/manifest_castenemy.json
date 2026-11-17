@@ -503,7 +503,21 @@
    "credits": 9,
    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_144532_5c57cb9d-51ef-491e-80b6-d20d16fdba09.glb",
    "kept": true
+  },
+  {
+   "id": "plague",
+   "file": "raw/img_plague2.png",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "2k",
+    "quality": "medium"
+   },
+   "ref": "style ref (same)",
+   "prompt": "plague ghoul v2: more monstrous — shroud hood, swollen belly, ribs, long arms, yellow-green eyes",
+   "job_id": "ab26d737-6944-4e68-ad98-7a430c38c68b",
+   "credits": 1
   }
  ],
- "total_credits": 189.5
+ "total_credits": 190.5
 }

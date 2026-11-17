@@ -70,6 +70,14 @@ const SKIP_FILE = /(^|\/)\.[^/]+$|(^|\/)(Thumbs\.db|desktop\.ini)$|\.(psd|psb|kr
 const SKIP_EXACT = new Set(['assets/lo/index.json']);
 // assets/audio/ 에서는 게임이 받는 형식만 (녹음 원본 wav·작업 파일은 옮기지 않는다)
 const AUDIO_OK = /^assets\/audio\/(?:.+\.(m4a|ogg|json)|.*LICENSE[^/]*\.txt)$/;
+// 3D 판(v2) 그림·모델·소리는 장면이 실제로 쓰는 것만 싣는다 (제작 중인 것까지 실으면 APK 예산 95 MB 를 넘는다).
+// 목록 = tools/deploy/v2_ship.txt (한 줄에 하나: 파일 경로, 또는 '/' 로 끝나는 폴더). 파일이 없으면 assets/v2 를 모두 싣는다.
+function loadV2Ship(root) {
+  try {
+    return fs.readFileSync(path.join(root, 'tools/deploy/v2_ship.txt'), 'utf8').split('\n').map((l) => l.replace(/#.*$/, '').trim()).filter(Boolean);
+  } catch { return null; }
+}
+const v2Held = (rel, ship) => !!ship && rel.startsWith('assets/v2/') && !ship.some((p) => (p.endsWith('/') ? rel.startsWith(p) : rel === p));
 // 첫 화면에 필요한 글꼴 (css/style.css 의 기본 글꼴 — bn-num 도 CSS — + ui.js 의 first) — 크기 보고용
 const FIRST_FONTS = ['noto-sans-kr.woff2', 'hahmlet.woff2', 'grenze-gotisch.woff2', 'cinzel.woff2', 'cinzel-decorative-900.woff2', 'bn-num.woff2'];
 
@@ -130,13 +138,17 @@ export async function buildWeb(o = {}) {
       if (!fs.existsSync(path.join(SRC, f))) { if (f === 'robots.txt') { warn('robots.txt 가 없습니다'); continue; } throw new BuildError(`필수 파일이 없습니다: ${f}`); }
       copy(f, path.join(SRC, f));
     }
+    const v2Ship = loadV2Ship(SRC);
+    report.v2Held = [];
     for (const d of COPY_DIRS) {
       for (const rel0 of walk(path.join(SRC, d))) {
         const rel = `${d}/${rel0}`;
         if (SKIP_EXACT.has(rel) || SKIP_FILE.test(rel) || (rel.startsWith('assets/audio/') && !AUDIO_OK.test(rel))) { if (!SKIP_EXACT.has(rel)) report.skipped.push(rel); continue; }
+        if (v2Held(rel, v2Ship)) { report.v2Held.push(rel); continue; }
         copy(rel, path.join(SRC, rel));
       }
     }
+    if (report.v2Held.length) log(opts, `· 3D 판(v2) 제작 중 파일 ${report.v2Held.length}개는 싣지 않았습니다 (tools/deploy/v2_ship.txt 에 없는 것)`);
     if (report.skipped.length) warn(`허용 폴더 안의 작업·숨김 파일 ${report.skipped.length}개는 옮기지 않았습니다: ${report.skipped.slice(0, 5).join(', ')}${report.skipped.length > 5 ? ' …' : ''}`);
     copy('src/boot-gate.js', path.join(SRC, 'src/boot-gate.js'));
     lap('copy', t);

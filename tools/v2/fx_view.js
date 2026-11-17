@@ -330,6 +330,8 @@ const api = window.__fx = {
       'fx.tick (새 효과 없음)': () => { fx.tick(); },
       'heavyStep + fx.tick': () => { heavyStep(1 / 60); fx.tick(); },
       'fx.draw': () => fx.draw(cam),
+      'draw: 카메라 복사': () => { const C = fx.cam; C.vp.set(cam.vp); C.eye.set(cam.eye); C.right.set(cam.right); C.up.set(cam.up); C.fwd.set(cam.fwd); },
+      'draw: GL 상태': () => { gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.enable(gl.DEPTH_TEST); gl.depthMask(false); gl.disable(gl.CULL_FACE); gl.bindVertexArray(null); gl.depthMask(true); gl.activeTexture(gl.TEXTURE0); },
       'camera()': () => camera(),
       'drawScene': () => drawScene(),
       'post.begin+end': () => { fx.post.begin(cv.width, cv.height, null); fx.post.end(fx.feel.screen); },

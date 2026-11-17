@@ -93,7 +93,7 @@ async function main() {
   const rig0 = new Rig(model), clips = buildClips(rig0, model.anims);
   clips.bind = { name: 'bind', duration: 1, loop: true, fn: () => {}, source: 'procedural' };
   // stand: 팔을 내리고 선 자세 (줄 세워 키를 비교하거나 대화 장면처럼 볼 때). 각도는 A 자세 기준
-  clips.stand = { name: 'stand', duration: 3, loop: true, source: 'procedural', fn: (t, P) => { const w = Math.sin((t / 3) * 6.2832); P.e('armL', 4, 0, -50 + w); P.e('armR', 4, 0, 50 - w); P.e('forearmL', -10, 0, 0); P.e('forearmR', -10, 0, 0); P.e('spine', 1 + 0.6 * w, 0, 0); } };
+  clips.stand = { name: 'stand', duration: 3, loop: true, source: 'procedural', fn: (t, P) => { const w = Math.sin((t / 3) * 6.2832); P.e('armL', 2, 0, -42 + w); P.e('armR', 2, 0, 42 - w); P.e('forearmL', -8, 0, 0); P.e('forearmR', -8, 0, 0); P.e('spine', 1 + 0.6 * w, 0, 0); } };
   model.anims.forEach((a, i) => { const c = clipFromAnim(rig0, a, { name: a.name, loop: true, inPlace: true }); c.source = 'library'; clips['lib' + i] = c; if (!clips[a.name]) clips[a.name] = c; });
   asset = { model, clips, url };
   if (q.get('clips')) {   // 다른 캐릭터의 클립을 빌려 온다 (뼈 이름으로 다시 맞춘다)

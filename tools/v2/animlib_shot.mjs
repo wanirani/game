@@ -73,6 +73,16 @@ if (mode === 'info') {
   }, { tiles: tiles.map((t) => ({ b64: t.buf.toString('base64'), label: t.label, sub: t.sub })), W, H, C });
   await sheet.locator('#c').screenshot({ path: out });
   console.log(`${out}: 클립 ${names.length}개 · 칸 ${tiles.length}`);
+} else if (mode === 'strip') {   // 클립 하나를 고르게 n 장 (자를 곳을 정할 때)
+  const W = Number(opt.cw ?? 150), H = Number(opt.ch ?? 190), n = Number(opt.n ?? 12);
+  const { page, meta } = await open(W, H);
+  const names = what.split(','), tiles = [];
+  for (const nm of names) { const c = meta.info.clips[nm]; if (!c) { errs.push('없는 클립 ' + nm); continue; } const t0 = Number(opt.t0 ?? 0), t1 = Number(opt.t1 ?? c.d);
+    for (let i = 0; i < n; i++) { const t = t0 + ((t1 - t0) * i) / (n - 1); await page.evaluate((o) => window.__al.draw(o), { clip: nm, fixed: t, yaw: Number(opt.yaw ?? 30), pitch: Number(opt.pitch ?? 24), zoom: opt.zoom ?? 'wide' }); tiles.push({ buf: await page.screenshot({ type: 'png' }), label: i === 0 ? nm : '', sub: t.toFixed(2) }); } }
+  const sheet = await browser.newPage({ viewport: { width: n * W, height: names.length * H }, deviceScaleFactor: 1 });
+  await sheet.setContent(`<body style="margin:0;background:#000"><canvas id="c" width="${n * W}" height="${names.length * H}"></canvas></body>`);
+  await sheet.evaluate(async ({ tiles, W, H, C }) => { const x = document.getElementById('c').getContext('2d'); for (let i = 0; i < tiles.length; i++) { const im = new Image(); im.src = 'data:image/png;base64,' + tiles[i].b64; await im.decode(); const cx = (i % C) * W, cy = Math.floor(i / C) * H; x.drawImage(im, cx, cy); x.font = '600 12px sans-serif'; x.fillStyle = '#ffe9b0'; x.fillText((tiles[i].label ? tiles[i].label + ' ' : '') + tiles[i].sub, cx + 4, cy + 13); } }, { tiles: tiles.map((t) => ({ b64: t.buf.toString('base64'), label: t.label, sub: t.sub })), W, H, C: n });
+  await sheet.locator('#c').screenshot({ path: out });
 } else if (mode === 'video') {
   const T = JSON.parse(what), fps = T.fps ?? 30, W = T.w ?? 540, H = T.h ?? 480;
   const { page, meta } = await open(W, H);

@@ -113,7 +113,7 @@ export class Particles {
     this.data = new Float32Array(maxCap * PF); this.u8 = new Uint8Array(this.data.buffer);
     this.death = new Float32Array(maxCap); this.area = new Float32Array(maxCap);
     this.head = 0; this.tail = 0; this.count = 0; this.dirtyA = 0; this.dirtyN = 0;
-    this.liveArea = 0; this.scale = 1; this.gov = 1; this.angle = 0; this.time = 0.5; this.gain = 0.5; this.protMin = 0.4; this._u = new Float32Array(4);
+    this.liveArea = 0; this.scale = 1; this.gov = 1; this.angle = 0; this.fr = new Float64Array([0, 1, 0.4, 0]); this._u = new Float32Array(4);   // fr = 프레임 값 [시간, 밝기, 가림 최소 알파, 효과 dt] — 엔진이 같은 배열을 나눠 쓴다 (객체 필드에 실수를 쓰지 않으려고)
     this.spawned = 0; this.dropped = 0; this.drawn = 0; this.draws = 0;
     this.pr = program(gl, P_VS, P_FS, 'particles');
     this.vao = gl.createVertexArray(); gl.bindVertexArray(this.vao);
@@ -123,6 +123,7 @@ export class Particles {
     this._point(0); gl.bindVertexArray(null);
     gl.useProgram(this.pr.p); gl.uniform1i(this.pr.u.uAtlas, 0);
   }
+  get time() { return this.fr[0]; }
   _point(first) {
     const gl = this.gl, o = first * PB;
     for (let i = 0; i < 5; i++) gl.vertexAttribPointer(i, 4, gl.FLOAT, false, PB, o + i * 16);
@@ -212,7 +213,7 @@ export class Particles {
     const u = this.pr.u;
     gl.useProgram(this.pr.p); gl.bindVertexArray(this.vao); gl.bindBuffer(gl.ARRAY_BUFFER, this.buf);
     gl.uniformMatrix4fv(u.uVP, false, cam.vp); gl.uniform3fv(u.uRight, cam.right); gl.uniform3fv(u.uUp, cam.up); gl.uniform3fv(u.uFwd, cam.fwd);
-    const U = this._u; U[0] = this.time; U[1] = this.gain; U[2] = this.protMin; U[3] = 0;   // uniform4f 에 실수를 넘기면 숫자 상자가 생긴다 → 배열로
+    const U = this._u, fr = this.fr; U[0] = fr[0]; U[1] = fr[1]; U[2] = fr[2]; U[3] = 0;   // uniform4f 에 실수를 넘기면 숫자 상자가 생긴다 → 배열로
     gl.uniform4fv(u.uTG, U); gl.uniform4fv(u.uProt, protect);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.tex.atlas);
     const n1 = Math.min(this.count, this.cap - this.tail);
@@ -300,7 +301,7 @@ export class Quads {
   constructor(gl, maxCap, tex) {
     this.gl = gl; this.max = maxCap; this.cap = maxCap; this.tex = tex;
     this.data = new Float32Array(maxCap * QF); this.death = new Float32Array(maxCap); this.gen = new Uint16Array(maxCap);
-    this.hi = 0; this.cur = 0; this.time = 0.5; this.gain = 0.5; this._u = new Float32Array(4); this._g = new Float32Array(1); this.dirtyLo = maxCap; this.dirtyHi = -1; this.live = 0; this.draws = 0; this.areaNow = 0;
+    this.hi = 0; this.cur = 0; this.fr = new Float64Array([0, 1, 0.4, 0]); this._u = new Float32Array(4); this._g = new Float32Array(1); this.dirtyLo = maxCap; this.dirtyHi = -1; this.live = 0; this.draws = 0; this.areaNow = 0;
     this.pr = program(gl, Q_VS, Q_FS, 'quads');
     this.vao = gl.createVertexArray(); gl.bindVertexArray(this.vao);
     this.corner = cornerBuffer(gl); gl.enableVertexAttribArray(7); gl.vertexAttribPointer(7, 2, gl.FLOAT, false, 0, 0);
@@ -309,6 +310,7 @@ export class Quads {
     gl.bindVertexArray(null);
     gl.useProgram(this.pr.p); gl.uniform1i(this.pr.u.uDecal, 0); gl.uniform1i(this.pr.u.uNoise, 1);
   }
+  get time() { return this.fr[0]; }
   reset(cap) { this.cap = Math.min(this.max, cap); this.death.fill(0); this.hi = 0; this.cur = 0; this.dirtyLo = this.max; this.dirtyHi = -1; }
   _slot() {
     const cap = this.cap, t = this.time; let best = -1, bd = 1e30;
@@ -360,7 +362,7 @@ export class Quads {
     const u = this.pr.u;
     gl.useProgram(this.pr.p); gl.bindVertexArray(this.vao);
     gl.uniformMatrix4fv(u.uVP, false, cam.vp); gl.uniform3fv(u.uRight, cam.right); gl.uniform3fv(u.uUp, cam.up);
-    this._u[0] = this.time; this._g[0] = this.gain; gl.uniform4fv(u.uTG, this._u); gl.uniform1fv(u.uGain, this._g);
+    this._u[0] = this.fr[0]; this._g[0] = this.fr[1]; gl.uniform4fv(u.uTG, this._u); gl.uniform1fv(u.uGain, this._g);
     gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.tex.noise);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.tex.decal);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.hi); this.draws = 1;
@@ -412,7 +414,7 @@ export class Ribbons {
     this.st = new Int16Array(maxR); this.cn = new Int16Array(maxR); this.on = new Uint8Array(maxR); this.ended = new Uint8Array(maxR);
     this.gen = new Uint16Array(maxR); this.spec = new Array(maxR).fill(null); this.ab = new Float32Array(maxR * 6); this.nextRe = new Float32Array(maxR); this.born = new Float32Array(maxR);
     this.maxVerts = maxR * (maxPts * 2 + 2);
-    this.verts = new Float32Array(this.maxVerts * RV); this.nv = 0; this.time = 0.5; this.gain = 0.5; this._u = new Float32Array(2); this.live = 0; this.draws = 0;
+    this.verts = new Float32Array(this.maxVerts * RV); this.nv = 0; this.fr = new Float64Array([0, 1, 0.4, 0]); this._u = new Float32Array(2); this.live = 0; this.draws = 0;
     this.pr = program(gl, R_VS, R_FS, 'ribbons');
     this.vao = gl.createVertexArray(); gl.bindVertexArray(this.vao);
     this.buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, this.buf); gl.bufferData(gl.ARRAY_BUFFER, this.verts.byteLength, gl.DYNAMIC_DRAW);
@@ -424,6 +426,7 @@ export class Ribbons {
     gl.bindVertexArray(null);
     gl.useProgram(this.pr.p); gl.uniform1i(this.pr.u.uNoise, 1);
   }
+  get time() { return this.fr[0]; }
   reset(cap) { this.cap = Math.min(this.maxR, cap); this.on.fill(0); this.cn.fill(0); this.spec.fill(null); }
   /** 띠를 시작한다 → 손잡이 (-1 = 풀이 참) */
   start(spec) {
@@ -501,7 +504,7 @@ export class Ribbons {
     this.nv = nv; if (!nv) return;
     gl.useProgram(this.pr.p); gl.bindVertexArray(this.vao); gl.bindBuffer(gl.ARRAY_BUFFER, this.buf);
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, V, 0, nv * RV);
-    gl.uniformMatrix4fv(this.pr.u.uVP, false, cam.vp); this._u[0] = t; this._u[1] = this.gain; gl.uniform2fv(this.pr.u.uTG, this._u);
+    gl.uniformMatrix4fv(this.pr.u.uVP, false, cam.vp); this._u[0] = t; this._u[1] = this.fr[1]; gl.uniform2fv(this.pr.u.uTG, this._u);
     gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.tex.noise); gl.activeTexture(gl.TEXTURE0);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, nv); this.draws = 1;
   }
@@ -605,7 +608,7 @@ export class Meshes {
   constructor(gl, maxCap, tex) {
     this.gl = gl; this.max = maxCap; this.cap = maxCap; this.tex = tex;
     this.d = new Float32Array(maxCap * MF); this.death = new Float32Array(maxCap); this.gen = new Uint16Array(maxCap); this.mat = new Float32Array(16);
-    this.time = 0.5; this.gain = 0.5; this._p = new Float32Array(4); this._t = new Float32Array(3); this.live = 0; this.draws = 0; this.tris = 0; this.hi = 0;
+    this.fr = new Float64Array([0, 1, 0.4, 0]); this._p = new Float32Array(4); this._t = new Float32Array(3); this.live = 0; this.draws = 0; this.tris = 0; this.hi = 0;
     const g = buildMeshes(); this.ranges = g.ranges; this.triTotal = g.data.length / 24;
     this.pr = program(gl, M_VS, M_FS, 'meshes');
     this.vao = gl.createVertexArray(); gl.bindVertexArray(this.vao);
@@ -616,6 +619,7 @@ export class Meshes {
     gl.bindVertexArray(null);
     gl.useProgram(this.pr.p); gl.uniform1i(this.pr.u.uNoise, 1);
   }
+  get time() { return this.fr[0]; }
   reset(cap) { this.cap = Math.min(this.max, cap); this.death.fill(0); this.hi = 0; }
   /**
    * 메시 하나. 기준틀: X = 앞(fx,fy,fz 단위 벡터), Y = 위(ux,uy,uz), Z = X×Y. 크기 (sx, sy, sz).
@@ -653,7 +657,7 @@ export class Meshes {
       const Pp = this._p, Tt = this._t;   // 인스턴스 배열을 자리(오프셋)로 바로 올린다 — 실수 인자를 넘기지 않는다
       gl.uniformMatrix4fv(u.uM, false, D, o, 16); gl.uniform4fv(u.uCA, D, o + 16, 4); gl.uniform4fv(u.uCB, D, o + 20, 4);
       Pp[0] = age / D[o + 25]; Pp[1] = age; Pp[2] = D[o + 26]; Pp[3] = D[o + 27]; gl.uniform4fv(u.uPar, Pp);
-      Tt[0] = t; Tt[1] = D[o + 30]; Tt[2] = this.gain; gl.uniform3fv(u.uTAG, Tt); gl.uniform1i(u.uMode, D[o + 29] | 0);
+      Tt[0] = t; Tt[1] = D[o + 30]; Tt[2] = this.fr[1]; gl.uniform3fv(u.uTAG, Tt); gl.uniform1i(u.uMode, D[o + 29] | 0);
       const rg = this.ranges[D[o + 28]];
       gl.drawArrays(gl.TRIANGLES, rg[0], rg[1]); this.draws++; this.tris += rg[1] / 3;
     }
@@ -686,8 +690,9 @@ export class Lights {
   constructor(max) {
     this.max = max; this.cap = max; this.pos = new Float32Array(MAX_LIGHTS * 4); this.col = new Float32Array(MAX_LIGHTS * 4); this.count = 0;
     this.s = new Float32Array(max * 12);   // x y z r · cr cg cb i · t0 life flicker curve
-    this.death = new Float32Array(max); this.gen = new Uint16Array(max); this.time = 0.5;
+    this.death = new Float32Array(max); this.gen = new Uint16Array(max); this.fr = new Float64Array(4);
   }
+  get time() { return this.fr[0]; }
   reset(cap) { this.cap = Math.min(this.max, cap); this.death.fill(0); this.count = 0; }
   /** 점광. col [r,g,b], inten 세기, life 초, flicker 0..1 (떨림), curve 0 = 스러짐 · 1 = 켜진 채(손잡이로 끈다) */
   add(x, y, z, radius, col, inten, life, flicker, curve) {

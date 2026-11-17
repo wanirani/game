@@ -111,7 +111,7 @@ const C = {
   rockA: [3, 1.2, 0.3, 1], rockB: [0.34, 0.2, 0.16, 1], bellA: [3.2, 2.6, 1.2, 0.9], bellB: [1.6, 0.9, 0.2, 0.9],
   fireG: [1.5, 0.6, 0.15, 0.85], bloodG: [1.4, 0.1, 0.14, 0.85],
   pickGlow: [[1.2, 0.9, 0.3, 0.6], [0.3, 1.1, 0.4, 0.6], [0.3, 0.7, 1.3, 0.6]], ringBig: [1.5, 1.4, 1.3, 0.42], ringBigRed: [2, 0.25, 0.2, 0.5], ringBigGold: [2, 1.5, 0.5, 0.5],
-  danger: [2.2, 0.32, 0.14, 1], shieldA: [1.2, 2.2, 3, 0.9], shieldB: [0.2, 0.6, 1.6, 0.9],
+  danger: [2.2, 0.32, 0.14, 1], shieldA: [0.9, 1.7, 2.4, 0.5], shieldB: [0.15, 0.45, 1.2, 0.5],
   pickG: [2.2, 1.7, 0.5, 0.9], pickH: [0.6, 2.2, 0.8, 0.9], pickM: [0.6, 1.3, 2.4, 0.9],
 };
 const FAM = {
@@ -160,7 +160,8 @@ function flyEnd(fx, s) { if (s.h0 >= 0) fx.ribbons.end(s.h0); if (s.h1 >= 0) fx.
 class Seq { constructor() { this.on = false; this.kind = 0; this.ph = 0; this.n = 0; this.t = 0.5; this.x = 0.5; this.y = 0.5; this.z = 0.5; this.tx = 0.5; this.ty = 0.5; this.tz = 0.5; this.dx = 0.5; this.dz = 0.5; this.pow = 0.5; this.a = 0.5; this.b = 0.5; this.gy = 0.5; this.h0 = -1; this.h1 = -1; this.h2 = -1; this.h3 = -1; this.i = 0; } }
 const STEP = [];
 export class Seqs {
-  constructor(max) { this.max = max; this.cap = max; this.list = []; for (let i = 0; i < max; i++) this.list.push(new Seq()); this.live = 0; this.dt = 0.5; this.chain = new Float32Array(max * 12); }
+  constructor(max) { this.max = max; this.cap = max; this.list = []; for (let i = 0; i < max; i++) this.list.push(new Seq()); this.live = 0; this.fr = new Float64Array(4); this.chain = new Float32Array(max * 12); }
+  get dt() { return this.fr[3]; }
   reset(cap) { this.cap = Math.min(this.max, cap); for (let i = 0; i < this.max; i++) this.list[i].on = false; this.live = 0; }
   get(kind, x, y, z, dx, dz, pow, tx, ty, tz) {
     for (let i = 0; i < this.cap; i++) { const s = this.list[i]; if (s.on) continue;

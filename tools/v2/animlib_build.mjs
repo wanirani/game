@@ -1,5 +1,5 @@
 // v2 animlib: 산 클립들을 게임이 싣는 공용 클립 묶음으로 만든다. docs/v2/ANIM_LIBRARY.md
-//   node tools/v2/animlib_build.mjs [--out=assets/v2/char3d/clips] [--only=이름,이름] [--report=파일.json] [--quiet]
+//   node tools/v2/animlib_build.mjs [--out=assets/v2/char3d/clips] [--only=이름,이름] [--report=파일.json] [--quiet] [--spec=다른 목록.mjs]
 // 읽는 것: tools/v2/animlib_spec.mjs (목록 · 가공 지시), 원본 GLB (저장소 밖 RAW_DIR / OWN_DIR), 기준 뼈대 assets/v2/char3d/kael.glb
 // 쓰는 것: <out>/<묶음>.glb (뼈대 + 스킨 + 애니메이션, 메시 없음) 와 <out>/index.json (클립마다 길이 · 순환 · 이벤트 · 권장 배속 · 뺀 이동)
 // 묶음 GLB 는 런타임 그대로(glb.js loadGLB → skel.js clipFromAnim) 읽힌다. 뷰어의 ?clips= 로도 열린다(그쪽은 이름 규칙에 맞는 세 개만 고른다).
@@ -8,10 +8,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeGLB } from './char3d_glbio.mjs';
 import * as C from './animlib_core.mjs';
-import { CLIPS, GROUPS, RAW_DIR, OWN_DIR } from './animlib_spec.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const opt = Object.fromEntries(process.argv.slice(2).filter((a) => a.startsWith('--')).map((a) => { const [k, v = '1'] = a.slice(2).split('='); return [k, v]; }));
+const { CLIPS, GROUPS, RAW_DIR, OWN_DIR } = await import(opt.spec ? path.resolve(opt.spec) : './animlib_spec.mjs');   // --spec=다른 목록 (살펴보기용)
 const OUT = path.resolve(root, opt.out ?? 'assets/v2/char3d/clips');
 const only = opt.only ? new Set(opt.only.split(',')) : null;
 const REF = C.loadRig(path.join(root, 'assets/v2/char3d/kael.glb'));
@@ -24,7 +24,8 @@ function events(F, c, J) {
   const ev = [], n = F.n, dt = F.dt, kind = c.kind ?? 'story', out = {};
   const vR = C.speedOf(J.tipR, n, dt), vL = C.speedOf(J.tipL, n, dt), v = new Float32Array(n);
   for (let k = 0; k < n; k++) v[k] = kind === 'cast' || c.hand === 'both' ? Math.max(vR[k], vL[k]) : c.hand === 'L' ? vL[k] : vR[k];
-  if (kind === 'attack' || kind === 'cast') {
+  if (c.man) { ev.push([r2(Math.max(0, c.man.strike[0] - 0.03)), 'swing'], [c.man.hit, 'hit']); out.strike = c.man.strike; out.tHit = c.man.hit; }
+  else if (kind === 'attack' || kind === 'cast') {
     const mx = Math.max(...v), pk = C.peaks(v, mx * 0.5, 5).sort((a, b) => v[b] - v[a]).slice(0, c.hits ?? 1).sort((a, b) => a - b);
     pk.forEach((k, i) => {
       let a = k, b = k; while (a > 0 && v[a - 1] > v[k] * 0.45) a--; while (b < n - 1 && v[b + 1] > v[k] * 0.45) b++;

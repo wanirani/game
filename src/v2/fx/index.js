@@ -41,19 +41,26 @@ class Fx {
     this.feel = new Feel();
     this.post = new Post(gl, 0);
     this.seqs = new Seqs(H.seqs);
-    this.time = 0.5; this.groundY = opts.groundY ?? 0; this.onEvent = opts.onEvent ?? null; this.lightPools = !!opts.lightPools;
+    this.fr = new Float64Array([0, 1, 0.4, 0]);                    // 프레임 값 [효과 시간, 밝기 조절, 가림 최소 알파, 효과 dt] — 모든 묶음이 이 배열을 같이 본다
+    for (const m of [this.particles, this.quads, this.ribbons, this.meshes, this.lights, this.seqs, this.post]) m.fr = this.fr;
+    this.groundY = opts.groundY ?? 0; this.onEvent = opts.onEvent ?? null; this.lightPools = !!opts.lightPools;
     this.postOn = opts.post !== false;
     this.feelOn = opts.feel !== false;                            // false 면 프리셋이 손맛(멈춤·흔들림·번쩍임)을 내지 않는다
-    this.protect = new Float32Array(16); this.protMin = 0.4;      // 가리면 안 되는 자리 4곳 (x,y,z,반지름)
+    this.protect = new Float32Array(16);                           // 가리면 안 되는 자리 4곳 (x,y,z,반지름); 옅어지는 한계는 fx.protMin (기본 0.4)
     this.chain = new Float32Array(12); this.chainN = 0;            // 연쇄 번개 표적 (최대 4)
     this.dtIn = 0.5; this.dt = 0.5; this.profile = !!opts.profile;   // profile: fx.stats 를 채우고 update/draw 의 JS 시간을 잰다 (숫자 상자가 생긴다 → 평소엔 끔)
     this.last = -1;                                                // 마지막 프리셋이 만든 '따라다닐 것'의 손잡이 (보호막)
-    this.gain = 0.5; this.gain = 1;                                                 // 밝기 조절기 (덧칠이 많으면 더하기 색을 낮춘다)
     this.cam = { vp: new Float32Array(16), eye: new Float32Array(3), right: new Float32Array([1, 0, 0]), up: new Float32Array([0, 1, 0]), fwd: new Float32Array([0, 0, 1]) };
     this.stats = { draws: 0, particles: 0, quads: 0, ribbons: 0, ribbonVerts: 0, meshes: 0, meshTris: 0, lights: 0, seqs: 0, coverage: 0, gain: 1, cpuUpdate: 0, cpuDraw: 0, spawned: 0, dropped: 0, sfx: 0, postPasses: 0 };
     this.sfxLog = new Array(8).fill(''); this.sfxN = 0;
     this.setTier(opts.tier ?? 'mid');
   }
+  /** 효과 시간(초). 타격 멈춤 중에는 0.3배로 흐른다 */
+  get time() { return this.fr[0]; }
+  /** 밝기 조절기 0.55–1 (덧칠이 많으면 더하기 색을 낮춘다) */
+  get gain() { return this.fr[1]; }
+  get protMin() { return this.fr[2]; }
+  set protMin(v) { this.fr[2] = v; }
   /** 품질 단계 바꾸기 ('low' | 'mid' | 'high'). 살아 있는 효과는 지운다. */
   setTier(name) {
     const T = TIERS[name] ?? TIERS.mid; this.tier = TIERS[name] ? name : 'mid'; this.T = T;
@@ -70,26 +77,23 @@ class Fx {
   /** update 와 같지만 실수를 주고받지 않는다: fx.dtIn = 실제 dt 를 넣고 부르면 fx.dt 에 놀이용 dt 가 들어온다 */
   tick() {
     const realDt = this.dtIn, prof = this.profile, t0 = prof ? performance.now() : 0;
-    const F = this.feel, P = this.particles, Qd = this.quads, R = this.ribbons, M = this.meshes, L = this.lights;
+    const F = this.feel, P = this.particles, Qd = this.quads, R = this.ribbons, M = this.meshes, L = this.lights, fr = this.fr;
     F.dtIn = realDt; F.step(); this.dt = F.dtOut;
-    const fdt = realDt * F.fxScale; this.time += fdt;
-    const t = this.time;
-    P.time = t; Qd.time = t; R.time = t; M.time = t; L.time = t;
+    const fdt = realDt * F.fxScale; fr[0] += fdt; fr[3] = fdt;
     P.update(); Qd.update(); R.update(); M.update();
-    this.seqs.dt = fdt; this.seqs.update(this);
+    this.seqs.update(this);
     L.update();
     // 밝기·개수 조절기: 살아 있는 입자의 덧칠 넓이가 화면의 soft 배를 넘으면 장식 입자를 줄이고 더하기 색을 낮춘다
     const cov = this.particles.liveArea / REF_AREA, T = this.T;
     const over = Math.min(1, Math.max(0, (cov - T.coverSoft) / (T.coverHard - T.coverSoft)));
-    this.particles.gov = 1 - over * 0.75; this.gain += ((1 - over * 0.45) - this.gain) * Math.min(1, realDt * 8); this.post.gain = this.gain;
+    this.particles.gov = 1 - over * 0.75; fr[1] += ((1 - over * 0.45) - fr[1]) * Math.min(1, realDt * 8);
     if (prof) { const S = this.stats; S.coverage = cov; S.gain = this.gain; S.seqs = this.seqs.live; S.lights = this.lights.count; S.spawned = this.particles.spawned; S.dropped = this.particles.dropped; S.cpuUpdate = performance.now() - t0; }   // 통계는 profile 일 때만 (평소 경로에는 숫자 쓰기도 없다)
   }
   /** 효과를 그린다 (불투명 장면·캐릭터 뒤에). cam = { vp: Float32Array(16) 열 우선 view·projection, eye, right, up, fwd: [x,y,z] } */
   draw(cam) {
-    const prof = this.profile, t0 = prof ? performance.now() : 0, gl = this.gl, C = this.cam, g = this.gain;
+    const prof = this.profile, t0 = prof ? performance.now() : 0, gl = this.gl, C = this.cam;
     C.vp.set(cam.vp); C.eye.set(cam.eye); C.right.set(cam.right); C.up.set(cam.up); C.fwd.set(cam.fwd);
     gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.enable(gl.DEPTH_TEST); gl.depthMask(false); gl.disable(gl.CULL_FACE);
-    this.quads.gain = g; this.meshes.gain = g; this.ribbons.gain = g; this.particles.gain = g; this.particles.protMin = this.protMin;
     this.quads.draw(C);
     this.meshes.draw(C);
     this.ribbons.draw(C);

@@ -180,7 +180,7 @@ if (args.has('--doc') && report.cost.mid) {
 }
 
 report.fails = fails;
-fs.writeFileSync(`${OUT}/fx_check.json`, JSON.stringify(report, null, 1));
+fs.writeFileSync(`${OUT}/${args.has('--quick') ? 'fx_check_quick' : 'fx_check'}.json`, JSON.stringify(report, null, 1));   // --quick 은 숫자가 없으니 따로 적는다
 srv.close();
 console.log(fails.length ? `\n실패 ${fails.length}건` : '\n모두 통과');
 process.exit(fails.length ? 1 : 0);

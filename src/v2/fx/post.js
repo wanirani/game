@@ -71,7 +71,7 @@ export class Post {
   /** levels: 번짐 단계 수 (0 = 후처리 끔, 2 = mid, 3 = high) */
   constructor(gl, levels) {
     this.gl = gl; this.levels = levels; this.enabled = levels > 0; this.w = 0; this.h = 0; this.target = null;
-    this.bloom = 1; this.threshold = 0.68; this.knee = 0.32; this.baseVig = 0.2; this.gain = 1;
+    this.bloom = 1; this.threshold = 0.68; this.knee = 0.32; this.baseVig = 0.2; this.fr = new Float64Array([0, 1, 0.4, 0]);
     this.scene = null; this.depth = null; this.sceneTex = null; this.lv = []; this.bytes = 0; this.passes = 0; this.active = false;
     this.pBright = program(gl, VS, FS_BRIGHT, 'post.bright'); this.pDown = program(gl, VS, FS_DOWN, 'post.down'); this.pUp = program(gl, VS, FS_UP, 'post.up');
     this.pComp = program(gl, VS, FS_COMP, 'post.comp'); this.pCompT = program(gl, VS, FS_COMP.replace('precision mediump float;', 'precision mediump float;\n#define TENT'), 'post.compT');
@@ -135,7 +135,7 @@ export class Post {
     const p = this.levels >= 3 ? this.pCompT : this.pComp;
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.target); gl.viewport(0, 0, this.bw, this.bh);
     gl.useProgram(p.p); gl.bindTexture(gl.TEXTURE_2D, this.sceneTex); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, L[0].tex); gl.activeTexture(gl.TEXTURE0);
-    V[0] = this.bloom * this.gain; V[1] = this.baseVig; V[2] = screen.desat; V[3] = screen.dark; gl.uniform4fv(p.u.uK, V); gl.uniform4fv(p.u.uFlash, F); gl.uniform4fv(p.u.uVig, Vg); V[0] = 1 / L[0].w; V[1] = 1 / L[0].h; V[2] = 0; V[3] = 0; gl.uniform4fv(p.u.uTP, V);
+    V[0] = this.bloom * this.fr[1]; V[1] = this.baseVig; V[2] = screen.desat; V[3] = screen.dark; gl.uniform4fv(p.u.uK, V); gl.uniform4fv(p.u.uFlash, F); gl.uniform4fv(p.u.uVig, Vg); V[0] = 1 / L[0].w; V[1] = 1 / L[0].h; V[2] = 0; V[3] = 0; gl.uniform4fv(p.u.uTP, V);
     gl.drawArrays(gl.TRIANGLES, 0, 3); this.passes++;
     gl.enable(gl.DEPTH_TEST); gl.depthMask(true); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.bindVertexArray(null);
   }

@@ -76,7 +76,7 @@ function advance(dt) {
   if (!api.hold && c.meta) info.textContent = `${api.title}\n${S.clip} · ${c.meta.src}(${c.meta.id}) · ${c.duration.toFixed(2)}초 × ${sp.toFixed(2)}배속 · ${c.loop ? '순환' : '한 번'} · t ${((c.loop ? A.t % c.duration : Math.min(A.t, c.duration))).toFixed(2)}\n이벤트 ${c.events.map((e) => e[1] + '@' + e[0]).join(' ') || '없음'}${c.meta.travel ? ' · 뺀 이동 ' + c.meta.travel.join(', ') + ' m' : ''}\n${c.meta.use}`;
 }
 // ── 캡처 도구용 ──
-api.draw = (o = {}) => { Object.assign(S, o); if (o.clip) ch.anim.play(o.clip, { fade: 0, restart: true, time: S.fixed ?? 0 }); advance(0); render(); render(); return true; };
+api.draw = (o = {}) => { Object.assign(S, o); S.flash = 0; if (o.clip) ch.anim.play(o.clip, { fade: 0, restart: true, time: S.fixed ?? 0 }); advance(0); render(); render(); return true; };
 api.play = (name, o = {}) => { S.clip = name; S.fixed = null; S.fade = o.fade ?? 0.12; if (o.speed != null) { S.speed = o.speed; S.useSpeed = false; } else { S.speed = 1; S.useSpeed = true; } if (o.restart !== false) { ch.anim.play(name, { fade: S.fade, restart: true, speed: 1 }); prevT = 0; } return !!asset.clips[name]; };
 api.tick = (dt) => { advance(dt); render(); return ch.anim.t; };
 
@@ -118,7 +118,7 @@ async function main() {
   api.play(S.clip);
   api.ready = true;
   let last = performance.now();
-  const loop = (now) => { const dt = Math.min(0.05, (now - last) / 1000); last = now; if (!api.hold) { if (S.auto) S.yaw += dt * 40; advance(dt); render(); } requestAnimationFrame(loop); };
+  const loop = (now) => { const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; if (!api.hold) { if (S.auto) S.yaw += dt * 40; advance(dt); render(); } requestAnimationFrame(loop); };
   requestAnimationFrame(loop);
 }
 main().catch((e) => { api.error = String(e?.message ?? e); info.textContent = '열지 못했습니다: ' + api.error; console.error(e); });
