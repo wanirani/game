@@ -45,7 +45,8 @@
    "prompt": "plague corpse 1697 villager A-pose front",
    "job_id": "4d3caf4f-a711-4b7e-86ac-f233fedce818",
    "credits": 1,
-   "kept": true
+   "kept": false,
+   "note": "첫 판 — 마을 사람처럼 보여 v2(ab26d737)로 다시 그림"
   },
   {
    "id": "ghost",
@@ -173,8 +174,9 @@
    "ref": "job 4d3caf4f",
    "job_id": "1370085e-e2fb-4375-854c-c8b2946bf65b",
    "credits": 9,
-   "kept": true,
-   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_142858_1370085e-e2fb-4375-854c-c8b2946bf65b.glb"
+   "kept": false,
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_142858_1370085e-e2fb-4375-854c-c8b2946bf65b.glb",
+   "note": "첫 판 모델 — v2 로 바꿈"
   },
   {
    "id": "ghost",
@@ -245,7 +247,9 @@
    "ref": "job ffeb3af3 (banshee A)",
    "job_id": "ac9debdf-4b43-4a87-b525-32010c732fb5",
    "credits": 9,
-   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_142959_ac9debdf-4b43-4a87-b525-32010c732fb5.glb"
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_142959_ac9debdf-4b43-4a87-b525-32010c732fb5.glb",
+   "kept": false,
+   "note": "보스 표준판 — 상세판(61a00ecb)과 비교한 뒤 버림"
   },
   {
    "id": "banshee",
@@ -262,7 +266,9 @@
    "ref": "job ffeb3af3 (banshee A)",
    "job_id": "61a00ecb-1260-46a8-a51c-34d7ee30a98a",
    "credits": 18,
-   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143002_61a00ecb-1260-46a8-a51c-34d7ee30a98a.glb"
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143002_61a00ecb-1260-46a8-a51c-34d7ee30a98a.glb",
+   "kept": true,
+   "note": "보스 상세판 — 실음"
   },
   {
    "id": "skeleton",
@@ -310,7 +316,8 @@
    "job_id": "bd8dbc1d-1418-4d33-ba7b-3c4be0a95c46",
    "credits": 8,
    "kept": true,
-   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143542_bd8dbc1d-1418-4d33-ba7b-3c4be0a95c46.glb"
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_143542_bd8dbc1d-1418-4d33-ba7b-3c4be0a95c46.glb",
+   "note": "첫 판의 리깅 — 모델은 버렸지만 여기 든 Mummy_Stagger_inplace 클립은 새 모델에 옮겨 계속 쓴다"
   },
   {
    "id": "ghost",
@@ -535,7 +542,38 @@
    "credits": 9,
    "kept": true,
    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_145544_50a16aa6-5c9b-43e4-9880-b74c07a4ab53.glb"
+  },
+  {
+   "id": "plague",
+   "file": "raw/plague2_rig_669.glb",
+   "model": "meshy_rigging",
+   "params": {
+    "height_meters": 1.76,
+    "enable_animation": true,
+    "animation_action_id": 669,
+    "animation": "Slow_Orc_Walk_inplace"
+   },
+   "ref": "plague2_oriented.glb media c51e39d5",
+   "job_id": "593880cf-eda5-41e3-8e7e-f4bcc5fb1b6a",
+   "credits": 8,
+   "kept": true,
+   "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3Geg4BBD4M8Me0fkcBculWJElI3/hf_20261117_150521_593880cf-eda5-41e3-8e7e-f4bcc5fb1b6a.glb"
+  },
+  {
+   "id": "banshee",
+   "file": "assets/v2/portraits/banshee_queen.webp",
+   "model": "gpt_image_2_5",
+   "params": {
+    "aspect_ratio": "3:4",
+    "resolution": "1k",
+    "quality": "medium"
+   },
+   "ref": "job ffeb3af3 (banshee A design)",
+   "prompt": "bust dialogue portrait of the same Banshee Queen, 3/4 view, green background",
+   "job_id": "b6625b0b-c258-4dfd-af90-501b282e2868",
+   "credits": 0.5,
+   "kept": true
   }
  ],
- "total_credits": 199.5
+ "total_credits": 208.0
 }

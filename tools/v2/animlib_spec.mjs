@@ -4,7 +4,7 @@
 //   n 이름 · g 묶음 · id 라이브러리 번호 · src 원본 파일(확장자 없이) · own: 시범 때 이미 산 것(/tmp/claude-0/v2/char3d/raw)
 //   loop · cut [시작초, 끝초] | {loop:[최소초, 최대초], from, to}(가장 잘 이어지는 순환 구간을 찾는다) | 없으면 죽은 프레임만 자동으로 뺀다
 //   rev 거꾸로 · mir 좌우 거울상 · xz 'loop'|'auto'|'keep' (골반 수평 이동) · y 'keep'|'zero'|'clamp'|'detrend' · fps 저장 키 간격 · speed 권장 재생 배속
-//   kind 'loco'|'attack'|'cast'|'react'|'story' (이벤트 찾는 방법) · hits 타격 수 · ev 손으로 적은 이벤트 [[초, 이름]] (자른 뒤의 시각)
+//   kind 'loco'|'attack'|'cast'|'react'|'pull'|'story' (이벤트 찾는 방법) · hits 타격 수 · ev 손으로 적은 이벤트 [[초, 이름]] (자른 뒤의 시각)
 //   man {strike:[t0,t1], hit:t} 타격 구간을 손으로 정함 (자동으로 찾은 것이 틀릴 때)
 //   use 쓰임 · why 고른 까닭 · rej 버린 후보
 export const RAW_DIR = '/tmp/claude-0/v2/animlib/raw', OWN_DIR = '/tmp/claude-0/v2/char3d/raw';
@@ -72,7 +72,7 @@ export const CLIPS = [
   { n: 'kneel_down', g: 'story', id: 365, src: '365_Kneel_on_One_Knee_and_Stand', cut: [0.1, 2.0], rev: true, xz: 'auto', fps: 24, kind: 'story', use: '한쪽 무릎 꿇기 (끝 자세에서 멈춰 유지 = 기도 · 비석 앞)', why: '일어서는 클립을 거꾸로 돌려 꿇는 동작을 얻는다', rej: 'Formal_Bow(41) 7.7초 · 허리 숙여 절, 기도 클립은 라이브러리에 없다' },
   { n: 'kneel_up', g: 'story', id: 365, src: '365_Kneel_on_One_Knee_and_Stand', cut: [0.1, 2.0], xz: 'auto', fps: 24, kind: 'story', use: '무릎 꿇은 데서 일어서기', why: '위와 같은 클립', rej: '—' },
   { n: 'pickup', g: 'story', id: 281, src: '281_Female_Bend_Over_Pick_Up_Inspect', cut: [0.1, 2.5], xz: 'keep', fps: 24, speed: 1.3, kind: 'story', ev: [[1.2, 'grab']], use: '줍기 — 허리 숙여 집어 듦', why: '줍는 대목이 2.4초로 가장 짧다 (뒤의 살펴보기는 잘라 냄)', rej: 'Male_Bend_Over_Pick_Up(276) 7초, Collect_Object(284) 5.8초 · 쪼그려 앉음, Pull_Radish(283) 뽑기' },
-  { n: 'pull_rope', g: 'story', id: 449, src: '449_Climb_Up_Rope', cut: { loop: [0.9, 1.7] }, loop: true, xz: 'loop', y: 'detrend', fps: 24, kind: 'story', use: '줄 당기기 — 종 줄 · 사슬 · 도르래 (두 손을 번갈아 머리 위에서 당김)', why: '밧줄 오르기에서 위로 올라가는 이동만 빼면 제자리에서 줄을 당기는 동작이 된다', rej: 'Pull_Radish(283) 땅에서 뽑기, Sumo_High_Pull(331) 역기 들기 — 레버 당기기 클립은 없다' },
+  { n: 'pull_rope', g: 'story', id: 449, src: '449_Climb_Up_Rope', cut: { loop: [0.9, 1.7] }, loop: true, xz: 'loop', y: 'detrend', fps: 24, kind: 'pull', use: '줄 당기기 — 종 줄 · 사슬 · 도르래 (두 손을 번갈아 머리 위에서 당김)', why: '밧줄 오르기에서 위로 올라가는 이동만 빼면 제자리에서 줄을 당기는 동작이 된다', rej: 'Pull_Radish(283) 땅에서 뽑기, Sumo_High_Pull(331) 역기 들기 — 레버 당기기 클립은 없다' },
   { n: 'push', g: 'story', id: 261, src: '261_Push_and_Walk_Forward', cut: { loop: [1.5, 2.0], from: 1.6, to: 6.6 }, loop: true, xz: 'loop', fps: 24, kind: 'loco', use: '밀기 — 무거운 것(관 · 돌 · 수레)을 밀며 걷기', why: '8초 가운데 걸음 한 주기만 순환으로 잘랐다', rej: 'Step_Forward_and_Push(259) · Push_Forward_and_Stop(260): 한 번 밀고 끝나 순환이 안 된다' },
   { n: 'open_door', g: 'story', id: 285, src: '285_open_door', cut: [0.05, 1.5], xz: 'keep', fps: 24, speed: 1.2, kind: 'story', ev: [[0.7, 'grab']], use: '문 열기 — 손잡이를 잡아 당김 (궤짝 · 걸쇠도)', why: '서서 오른손만 뻗는 가장 단순한 것', rej: 'open_door_1(286) 거의 안 움직임, _2(287) 9초 · 두 손 번쩍, _3(288) 10초 · 엿보기, _4(289) 어깨로 밀기' },
   { n: 'sit_down', g: 'story', id: 57, src: '57_Stand_to_Sit_Transition_M', cut: [2.15, 3.95], xz: 'auto', fps: 24, kind: 'story', use: '앉기 — 의자에 (끝 자세에서 멈춰 유지 = 식탁에 앉은 사람들)', why: '의자에 앉는 2.4초. 앉아 있는 순환을 따로 사지 않고 끝 자세를 붙든다', rej: 'Chair_Sit_Idle_M(33) 8.7초, Sit_Cross_Legged_on_Floor(363) 바닥에 책상다리, Walk_to_Sit(60) 걸어가 앉기' },

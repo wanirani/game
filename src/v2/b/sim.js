@@ -20,7 +20,7 @@ export class Sim {
     const W = this.W;
     this.time = 0; this.stop = 0; this.done = false; this.kills = 0; this.deaths = this.deaths ?? 0;
     this.hero = {
-      x: W.start.x, z: W.start.z, y: W.start.y, vx: 0, vz: 0, vy: 0, r: 14, h: 80, facing: 1, onGround: true, coyote: 0,
+      x: W.start.x, z: W.start.z, y: W.start.y, vx: 0, vz: 0, vy: 0, r: 14, h: 80, facing: 1, dirX: 1, dirZ: 0, onGround: true, coyote: 0,
       hp: TUNE.heroHp, ifr: 0, hurtT: 0, dead: false, deadT: 0, dashT: 0, dashCd: 0, dvx: 0, dvz: 0,
       move: null, moveT: 0, combo: 0, hitIds: null, assist: null, anim: 'idle', animT: 0, t: 0, cut: false, landT: 0,
       safe: { x: W.start.x, z: W.start.z, y: W.start.y }, flash: 0,
@@ -70,19 +70,19 @@ export class Sim {
     } else {
       // 대시
       if (inp.dash && h.dashCd <= 0) {
-        const dx = moving ? mx / m : h.facing, dz = moving ? mz / m : 0;
+        const dx = moving ? mx / m : h.dirX, dz = moving ? mz / m : h.dirZ;
         h.dashT = T.dashT; h.dashCd = T.dashCd; h.dvx = dx * T.dashV; h.dvz = dz * T.dashV * 0.82; h.ifr = Math.max(h.ifr, T.dashIfr);
-        h.move = null; if (Math.abs(dx) > 0.2) h.facing = sgn(dx); if (h.vy < 0) h.vy = 0;
+        h.move = null; this._face(h, dx, dz); if (h.vy < 0) h.vy = 0;
         this.hooks.sfx?.('dash'); this.hooks.spark?.(h.x, h.y + 6, h.z, 'dust');
       }
       // 공격 (3연타; 공중은 한 번)
       if (inp.attack && h.dashT <= 0) {
-        if (!h.move) this._startMove(h, h.onGround ? SWORD.ground[0] : SWORD.air[0], 0, mx);
-        else if (h.moveT >= h.move.cancel && h.onGround && h.combo < 2) this._startMove(h, SWORD.ground[h.combo + 1], h.combo + 1, mx);
+        if (!h.move) this._startMove(h, h.onGround ? SWORD.ground[0] : SWORD.air[0], 0, mx, mz);
+        else if (h.moveT >= h.move.cancel && h.onGround && h.combo < 2) this._startMove(h, SWORD.ground[h.combo + 1], h.combo + 1, mx, mz);
         else h.queued = 0.18;
       } else if (h.queued > 0) {
         h.queued -= dt;
-        if (h.move && h.moveT >= h.move.cancel && h.onGround && h.combo < 2) { this._startMove(h, SWORD.ground[h.combo + 1], h.combo + 1, mx); h.queued = 0; }
+        if (h.move && h.moveT >= h.move.cancel && h.onGround && h.combo < 2) { this._startMove(h, SWORD.ground[h.combo + 1], h.combo + 1, mx, mz); h.queued = 0; }
       }
       if (h.dashT > 0) {
         h.dashT -= dt; h.vx = h.dvx; h.vz = h.dvz;
@@ -91,17 +91,15 @@ export class Sim {
         const mv = h.move, t = h.moveT;
         const lunge = h.onGround ? (mv.lunge ?? 0) * 0.5 * Math.max(0, 1 - t / 0.12) : 0;
         const k = Math.min(1, 12 * dt);
-        h.vx += ((h.onGround ? h.facing * lunge + mx * 40 : mx * T.runX * 0.6) - h.vx) * k;
-        let vz = mz * T.runZ * 0.3;
-        if (h.assist && !h.assist.dead && t < 0.14) { const dz = h.assist.z - h.z; vz = Math.max(-300, Math.min(300, dz / Math.max(dt, 0.02))) * 0.5; }   // 깊이 맞춰 주기
-        h.vz += (vz - h.vz) * k;
+        h.vx += ((h.onGround ? h.dirX * lunge + mx * 40 : mx * T.runX * 0.6) - h.vx) * k;
+        h.vz += ((h.onGround ? h.dirZ * lunge * 0.8 + mz * 30 : mz * T.runZ * 0.6) - h.vz) * k;
         h.moveT += dt;
         if (t >= mv.hit[0] && t <= mv.hit[1]) this._heroHit(h, mv);
         if (h.moveT >= mv.dur) { h.move = null; h.combo = 0; }
       } else {
         const k = Math.min(1, (h.onGround ? T.accel : T.airAccel) * dt);
         h.vx += (mx * T.runX - h.vx) * k; h.vz += (mz * T.runZ - h.vz) * k;
-        if (Math.abs(mx) > 0.2) h.facing = sgn(mx);
+        if (moving) this._face(h, mx, mz);
       }
       // 점프 (공격은 회수 구간부터 끊을 수 있다)
       if (inp.jump && (h.onGround || h.coyote > 0) && h.dashT <= 0 && (!h.move || h.moveT >= h.move.cancel)) {
@@ -140,36 +138,47 @@ export class Sim {
       if (o.vy <= 0 && o.y <= g) { o.y = g; o.vy = 0; o.onGround = true; }
     }
   }
-  _startMove(h, mv, combo, mx) {
-    if (Math.abs(mx) > 0.2) h.facing = sgn(mx);
+  /** 보는 방향(360°)을 정한다. 좌우 값 facing 은 옛 코드(카메라 앞보기 · 납작한 영웅)용으로 함께 맞춘다 */
+  _face(h, dx, dz) {
+    const d = Math.hypot(dx, dz); if (d < 1e-4) return;
+    h.dirX = dx / d; h.dirZ = dz / d;
+    if (Math.abs(h.dirX) > 0.25) h.facing = sgn(h.dirX);
+  }
+  _startMove(h, mv, combo, mx, mz = 0) {
+    if (Math.hypot(mx, mz) > 0.2) this._face(h, mx, mz);   // 스틱을 민 쪽으로 벤다 (위 · 아래 = 화면 안쪽 · 바깥쪽도)
     h.move = mv; h.moveT = 0; h.combo = combo; h.hitIds = new Set(); h.queued = 0;
     if (!h.onGround && mv.airStall) h.vy *= mv.airStall;
-    // 앞쪽에서 깊이가 조금 어긋난 적을 찾아 둔다 (공격 첫 순간에 z 를 맞춰 준다)
+    // 보는 쪽에서 조금 비껴 선 적을 찾아 그쪽으로 몸을 돌린다 (조준 보정: 앞 170, 옆 assistZ 안)
     let best = null, bd = 1e9;
     for (const e of this.enemies) {
       if (e.dead || e.state === 'dead') continue;
-      const dx = (e.x - h.x) * h.facing, dz = Math.abs(e.z - h.z);
-      if (dx < -20 || dx > 170 || dz > TUNE.assistZ || Math.abs(e.y - h.y) > 70) continue;
-      const d = dx + dz * 2; if (d < bd) { bd = d; best = e; }
+      const ex = e.x - h.x, ez = e.z - h.z, f = ex * h.dirX + ez * h.dirZ, l = Math.abs(ez * h.dirX - ex * h.dirZ);
+      if (f < -20 || f > 170 || l > TUNE.assistZ || Math.abs(e.y - h.y) > 70) continue;
+      const d = f + l * 2; if (d < bd) { bd = d; best = e; }
     }
     h.assist = best;
+    if (best && Math.hypot(best.x - h.x, best.z - h.z) > 12) this._face(h, best.x - h.x, best.z - h.z);
     this.hooks.sfx?.(mv.sfx || 'slash');
   }
   _heroHit(h, mv) {
-    const b = mv.box, x0 = h.facing > 0 ? h.x + b.x : h.x - b.x - b.w, x1 = x0 + b.w, y0 = h.y - (b.y + b.h), y1 = h.y - b.y;
+    // 때리는 상자는 영웅이 보는 방향 기준이다: 앞으로 b.x … b.x+b.w, 옆으로 ±hitZ, 높이 b.y … b.y+b.h
+    const b = mv.box, f0 = b.x, f1 = b.x + b.w, y0 = h.y - (b.y + b.h), y1 = h.y - b.y, dx = h.dirX, dz = h.dirZ;
     for (const e of this.enemies) {
       if (e.dead || e.state === 'dead' || h.hitIds.has(e.id)) continue;
-      if (e.x + e.r < x0 || e.x - e.r > x1 || e.y > y1 || e.y + e.h < y0 || Math.abs(e.z - h.z) > TUNE.hitZ) continue;
+      const ex = e.x - h.x, ez = e.z - h.z, f = ex * dx + ez * dz, l = Math.abs(ez * dx - ex * dz);
+      if (f + e.r < f0 || f - e.r > f1 || l > TUNE.hitZ + e.r * 0.5 || e.y > y1 || e.y + e.h < y0) continue;
       h.hitIds.add(e.id);
       const dmg = Math.round(11 * mv.mv * rnd(0.9, 1.12));
-      e.hp -= dmg; e.flashT = 0.13; e.stun = 0.3; e.kx = h.facing * mv.kb[0] * 1.1; e.kz = (e.z - h.z) * 2; e.active = true;
+      e.hp -= dmg; e.flashT = 0.13; e.stun = 0.3; e.kx = dx * mv.kb[0] * 1.1; e.kz = dz * mv.kb[0] * 0.9; e.active = true;
       if (e.state === 'attack' || e.state === 'cast') { e.state = 'chase'; e.cd = Math.max(e.cd, 0.5); }
       this.stop = Math.max(this.stop, mv.hitstop * 1.25);
-      this.hooks.hit?.(e, dmg, mv, e.x - h.facing * 8, e.y + Math.min(e.h, y1 - e.y) * 0.62, e.z);
-      if (e.hp <= 0) { e.dead = false; e.state = 'dead'; e.dying = 0.55; e.kx *= 1.4; this.hooks.kill?.(e); }
+      this.hooks.hit?.(e, dmg, mv, e.x - dx * 8, e.y + Math.min(e.h, y1 - e.y) * 0.62, e.z - dz * 8);
+      if (e.hp <= 0) { e.dead = false; e.state = 'dead'; e.dying = 0.55; e.kx *= 1.4; e.kz *= 1.4; this.hooks.kill?.(e); }
     }
     for (const s of this.shots) {   // 탄도 벨 수 있다
-      if (s.dead || s.x < x0 - 8 || s.x > x1 + 8 || s.y < y0 - 10 || s.y > y1 + 10 || Math.abs(s.z - h.z) > TUNE.hitZ + 8) continue;
+      if (s.dead) continue;
+      const sx = s.x - h.x, sz = s.z - h.z, f = sx * dx + sz * dz, l = Math.abs(sz * dx - sx * dz);
+      if (f < f0 - 8 || f > f1 + 8 || l > TUNE.hitZ + 8 || s.y < y0 - 10 || s.y > y1 + 10) continue;
       s.dead = true; this.hooks.spark?.(s.x, s.y, s.z, 'shot'); this.hooks.sfx?.('parry');
     }
   }
@@ -188,8 +197,8 @@ export class Sim {
     const h = this.hero, W = this.W, T = TUNE[e.kind];
     e.t += dt; e.flashT = Math.max(0, e.flashT - dt); e.cd -= dt;
     if (e.state === 'dead') {   // 쓰러지는 중: 밀려나며 사라진다
-      e.dying -= dt; e.kx *= 1 - Math.min(1, 5 * dt);
-      this._emove(e, e.kx * dt, 0);
+      e.dying -= dt; e.kx *= 1 - Math.min(1, 5 * dt); e.kz *= 1 - Math.min(1, 5 * dt);
+      this._emove(e, e.kx * dt, e.kz * dt);
       if (e.dying <= 0) { e.dead = true; this.kills++; }
       this._anim(e, 'hurt', dt); return;
     }

@@ -89,8 +89,8 @@ const ATK1 = { strike: [0.45, 0.66], lead: 0.2, tail: 0.3 };   // 라이브러�
 const wrapPi = (a) => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
 
 /**
- * 시범판 B 의 영웅 상태(sim.js hero) → 방향 · 클립. 360° 로 움직이는 쪽을 본다.
- * 공격·피격 판정은 아직 좌우(facing)로만 나므로 공격하는 동안은 facing 쪽을 본다 (놀이 규칙을 방향 기반으로 바꾸면 이 줄만 고치면 된다).
+ * 시범판 B 의 영웅 상태(sim.js hero) → 방향 · 클립. 놀이 규칙이 정한 보는 방향(h.dirX, h.dirZ — 360°)을 따라 돈다:
+ * 달릴 때는 스틱을 민 쪽, 공격할 때는 베는 쪽(위 · 아래로도 그대로 벤다). 옛 상태(dirX 없음)면 속도 · facing 으로 어림한다.
  */
 export function driveHero(ch, h, dt, T = {}) {
   const sp = Math.hypot(h.vx, h.vz);
@@ -102,8 +102,9 @@ export function driveHero(ch, h, dt, T = {}) {
   const slide = ch.kbT > 0;
   let tx = ch.dx, tz = ch.dz, rate = 14;
   if (h.dead || h.hurtT > 0) { /* 그대로 */ }
-  else if (h.move) { tx = h.facing; tz = 0; rate = 34; }
+  else if (h.move) { if (h.dirX != null) { tx = h.dirX; tz = h.dirZ; } else { tx = h.facing; tz = 0; } rate = 34; }
   else if (h.dashT > 0) { const d = Math.hypot(h.dvx, h.dvz) || 1; tx = h.dvx / d; tz = h.dvz / d; rate = 40; }
+  else if (h.dirX != null && !slide && h.onGround) { tx = h.dirX; tz = h.dirZ; rate = 20; }   // 스틱 방향으로 바로 돈다 (속도가 0 을 지날 때 갈팡질팡하지 않게)
   else if (sp > 24 && !slide) { tx = h.vx / sp; tz = h.vz / sp; }
   const cur = Math.atan2(ch.dz, ch.dx), a = cur + wrapPi(Math.atan2(tz, tx) - cur) * (1 - Math.exp(-dt * rate));
   ch.dx = Math.cos(a); ch.dz = Math.sin(a);

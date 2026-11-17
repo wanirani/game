@@ -34,6 +34,10 @@ function events(F, c, J) {
     });
     out.tHit = pk.length ? pk[0] * dt : null;
   }
+  if (kind === 'pull') for (const hnd of ['handL', 'handR']) {   // 줄 당기기: 손이 가장 빠르게 내려오는 순간
+    let best = 1, bv = 0; for (let k = 1; k < n; k++) { const vy = (J[hnd][k * 3 + 1] - J[hnd][k * 3 - 2]) / dt; if (vy < bv) { bv = vy; best = k; } }
+    if (bv < -0.3) ev.push([r2(best * dt), 'pull']);
+  }
   if (kind === 'react') {   // 몸이 바닥에 닿는 순간
     let mn = 1e9; for (let k = 0; k < n; k++) mn = Math.min(mn, J.hips[k * 3 + 1]);
     if (mn < HIP * 0.5 && J.hips[1] > HIP * 0.7) for (let k = 1; k < n; k++) if (J.hips[k * 3 + 1] < mn + 0.06) { ev.push([r2(k * dt), 'body']); break; }
