@@ -86,27 +86,33 @@ def main():
         for vi, (x0, x1, y0, y1) in enumerate(I['boxes']):
             sc = I['it']['px'] * k * (1.0 if vi == 0 else job['sideScale']); sizes.append((int(math.ceil((x1 - x0) * sc)) + 2 * PADV, int(math.ceil((y1 - y0) * sc)) + 2 * PADV, sc))
         return sizes
+    def layout(sizes):
+        """front picture on the left; the two side pictures stacked to its right when they fit under each other, else next to each other"""
+        (wf, hf, _), (wl, hl, _), (wr, hr, _) = sizes
+        if hl + hr <= hf: return [(0, 0), (wf, 0), (wf, hl)], wf + max(wl, wr), hf
+        return [(0, 0), (wf, 0), (wf + wl, 0)], wf + wl + wr, max(hf, hl, hr)
     k = 1.0
-    for _ in range(40):
-        tot = sum((sum(s[0] for s in cell(I, k)) + 8) * (max(s[1] for s in cell(I, k)) + 8) for I in items)
+    for _ in range(60):
+        tot = 0
+        for I in items: _, W, H = layout(cell(I, k)); tot += (W + 8) * (H + 8)
         if tot <= job['budget']: break
-        k *= 0.98
+        k *= 0.985
     for I in items:
-        it = I['it']; sizes = cell(I, k); W = sum(s[0] for s in sizes); H = max(s[1] for s in sizes)
+        it = I['it']; sizes = cell(I, k); offs, W, H = layout(sizes)
         tex = np.asarray(Image.open(it['tex']).convert('RGB'), np.float32)
-        pic = np.zeros((H, W, 3), np.float32); mask = np.zeros((H, W), bool); xo = 0; offs = []
+        pic = np.zeros((H, W, 3), np.float32); mask = np.zeros((H, W), bool)
         for vi, R in enumerate(V):
-            w, h, sc = sizes[vi]; x0, x1, y0, y1 = I['boxes'][vi]
+            w, h, sc = sizes[vi]; x0, x1, y0, y1 = I['boxes'][vi]; xo, yo = offs[vi]
             img, hit = raster(I['fp'] @ R.T, I['fuv'], I['ft'], tex, x0 - PADV / sc, y1 + PADV / sc, sc * SS, w * SS, h * SS)
             cnt = hit.reshape(h, SS, w, SS).sum((1, 3)); col = (img * hit[..., None]).reshape(h, SS, w, SS, 3).sum((1, 3)) / np.maximum(1, cnt)[..., None]
-            pic[0:h, xo:xo + w] = col; mask[0:h, xo:xo + w] = cnt > 0; offs.append(xo); xo += w
+            pic[yo:yo + h, xo:xo + w] = col; mask[yo:yo + h, xo:xo + w] = cnt > 0
         raw = fill(pic, mask)
         # brightness: the generated sheets are dark; lift the median of the front picture to the wanted level (flames may clip)
         fw, fh = sizes[0][0], sizes[0][1]; fm = mask[0:fh, 0:fw]; lum = (raw[0:fh, 0:fw] @ np.array([0.3, 0.59, 0.11]))[fm]
         gain = float(np.clip(it.get('lum', 104) / max(1.0, np.median(lum)), 1.0, it.get('gainMax', 3.4))) if lum.size else 1.0
         g = raw * gain; hot = glow(raw)
         if it.get('emis'): g[hot] = np.maximum(g[hot], np.minimum(255, raw[hot] * max(gain, 1.25)))
-        out = 255 * (1 - np.exp(-g / 255 * 1.08)) / (1 - math.exp(-1.08 * 1.6)) if False else np.minimum(255, g)
+        out = np.minimum(255, g)
         Image.fromarray(np.clip(out + 0.5, 0, 255).astype(np.uint8)).save(it['png'])
         # low model: per-corner normals (smooth inside 52 degrees), a picture per triangle, vertices split per (picture, glow, normal)
         lp, lt = I['lp'], I['lt']; e1 = lp[lt[:, 1]] - lp[lt[:, 0]]; e2 = lp[lt[:, 2]] - lp[lt[:, 0]]; fn = np.cross(e1, e2); ar = np.linalg.norm(fn, axis=1); fnu = fn / np.maximum(1e-12, ar)[:, None]
@@ -117,7 +123,7 @@ def main():
         verts = {}; P = []; N = []; UV = []; E = []; T = []; cos_lim = math.cos(math.radians(52))
         for ti, tri in enumerate(lt):
             vi = int(pick[ti]); R = V[vi]; w, h, sc = sizes[vi]; x0, x1, y0, y1 = I['boxes'][vi]
-            Q = lp[tri] @ R.T; px = (Q[:, 0] - x0) * sc + PADV + offs[vi]; py = (y1 - Q[:, 1]) * sc + PADV
+            Q = lp[tri] @ R.T; px = (Q[:, 0] - x0) * sc + PADV + offs[vi][0]; py = (y1 - Q[:, 1]) * sc + PADV + offs[vi][1]
             em = 0
             if it.get('emis'):
                 bc = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1], [.5, .5, 0], [0, .5, .5], [.5, 0, .5], [1 / 3, 1 / 3, 1 / 3], [.6, .2, .2], [.2, .6, .2], [.2, .2, .6]])
@@ -135,7 +141,8 @@ def main():
                 out_i.append(j)
             T.append(out_i)
         r4 = lambda A: [round(float(x), 4) for x in np.asarray(A).reshape(-1)]
-        json.dump(dict(w=W, h=H, pos=r4(P), nrm=r4(N), uv=[round(float(x), 5) for x in np.asarray(UV).reshape(-1)], e=E, idx=[int(x) for x in np.asarray(T).reshape(-1)], gain=round(gain, 3), k=round(k, 3), glowTris=int(sum(1 for t in T if E[t[0]]))), open(it['out'], 'w'))
+        ga = [round(float(x), 1) for x in np.asarray(P)[np.asarray(E) > 0].mean(0)] if any(E) else None
+        json.dump(dict(w=W, h=H, glowAt=ga, pos=r4(P), nrm=r4(N), uv=[round(float(x), 5) for x in np.asarray(UV).reshape(-1)], e=E, idx=[int(x) for x in np.asarray(T).reshape(-1)], gain=round(gain, 3), k=round(k, 3), glowTris=int(sum(1 for t in T if E[t[0]]))), open(it['out'], 'w'))
         print(f"  prep {it['id']:12s} cell {W}x{H} (front {sizes[0][0]}x{sizes[0][1]} at {sizes[0][2]:.2f} px/unit) gain {gain:.2f} verts {len(P)} tris {len(T)}" + (f" glow tris {sum(1 for t in T if E[t[0]])}" if it.get('emis') else ''))
 
 

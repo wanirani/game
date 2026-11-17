@@ -1,8 +1,11 @@
 // WORLD lane: prop bake (docs/v2/ENV_KIT.md 11). Static prop models -> ONE geometry pack + ONE texture atlas.
-//   node tools/v2/world_props_bake.mjs [--glb <dir with <id>.glb (+ optional <id>.json {h, rotY, foot:[rx,rz], footH, light})>] [--only a,b] [--out assets/v2/props]
-// Sources:  (1) sculpts in tools/v2/world_sculpts.mjs (signed distance fields -> surface nets -> quadric decimation -> texture baked from the full-detail surface)
-//           (2) generated GLB models (image-to-3D). A GLB named like a sculpt replaces it.
-// Output:   assets/v2/props/props.bin  = 'BNP1' + u32 json length + json + payload (per prop: int16 pos, int8 normal, uint16 uv, uint16 index)
+//   node tools/v2/world_props_bake.mjs [--glb <dir>] [--only a,b] [--out assets/v2/props] [--texels 1.7e6] [--parts 1 (print connected parts)]
+// Sources:  (1) generated models (image-to-3D): tools/v2/world_src/props/<id>.glb + meta.json (default --glb dir; docs/v2/ENV_KIT.md 16).
+//               meta.props[id] = { h, rotY, foot:[rx,rz], footH, light, glow, px (texels per world unit), lum, tris, emis, split:[{name,…}], dropThin, skip }
+//           (2) sculpts in tools/v2/world_sculpts.mjs (signed distance fields -> surface nets -> quadric decimation -> texture baked from the
+//               full-detail surface). A generated model of the same name replaces the sculpt (today: all three).
+// Output:   assets/v2/props/props.bin  = 'BNP1' + u32 json length + json + payload (per prop: int16 pos, int8 normal + glow flag, uint16 uv, uint16 index)
+//           The default run reproduces the shipped files byte for byte.
 //           assets/v2/props/props_atlas.webp  (one texture for every baked prop -> a prop costs triangles, not a draw call)
 // Runtime:  src/v2/env/baked.js (bakedProp writes the triangles into the kit's chunk meshes).
 import { execFileSync } from 'node:child_process';
@@ -16,14 +19,6 @@ const argv = process.argv.slice(2), opt = {};
 for (let i = 0; i < argv.length; i++) if (argv[i].startsWith('--')) opt[argv[i].slice(2)] = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : '1';
 const OUT = opt.out ?? 'assets/v2/props', SRC = opt.glb ?? 'tools/v2/world_src/props', TMP = opt.tmp ?? '/tmp/claude-0/v2/world/bake', PITCH = 18 * Math.PI / 180, CP = Math.cos(PITCH), SP = Math.sin(PITCH);
 fs.mkdirSync(OUT, { recursive: true }); fs.mkdirSync(TMP, { recursive: true });
-/** heights (world px) and footprints for generated models, by id (tools: /tmp/claude-0/v2/world/gen_requests.json) */
-const GLB_META = {
-  angel: { h: 192, foot: [29, 23] }, gargoyle: { h: 152, foot: [29, 24] }, bell: { h: 190, foot: [60, 34] }, well: { h: 150, foot: [46, 34] }, cart: { h: 104, foot: [70, 24] },
-  tombs4: { h: 96, foot: [0, 0] }, cross: { h: 170, foot: [22, 16] }, mausoleum: { h: 250, foot: [90, 60] }, gate: { h: 240, foot: [0, 0] }, deadtree: { h: 300, foot: [20, 14] },
-  lanternpost: { h: 196, foot: [9, 9], light: { y: 150, r: 320, i: 1.6 } }, brazier: { h: 112, foot: [20, 14], light: { y: 90, r: 380, i: 1.8, c: [1, 0.55, 0.22] } }, coffin: { h: 46, foot: [50, 20] },
-  niche: { h: 170, foot: [70, 20] }, goods: { h: 96, foot: [56, 26] }, plaguepost: { h: 210, foot: [10, 10] }, stall: { h: 150, foot: [74, 30] }, wreck: { h: 130, foot: [80, 40] }, fountain: { h: 150, foot: [62, 50] },
-};
-
 // ───────── noise ─────────
 const h3 = (i, j, k) => { let n = (i * 374761393 + j * 668265263 + k * 1274126177) | 0; n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
 function vn3(x, y, z) {
@@ -179,6 +174,7 @@ function loadGlbParts(id, file, meta) {
   for (let t = 0; t < T0.length; t += 3) { const a = find(w[T0[t]]), b = find(w[T0[t + 1]]), d = find(w[T0[t + 2]]); par[b] = a; par[find(d)] = a; }
   const comp = new Map();   // root -> { tris: [triangle starts], lo, hi }
   for (let t = 0; t < T0.length; t += 3) { const r = find(w[T0[t]]); let C = comp.get(r); if (!C) { C = { tris: [], lo: [1e9, 1e9, 1e9], hi: [-1e9, -1e9, -1e9] }; comp.set(r, C); } C.tris.push(t); for (let e = 0; e < 3; e++) for (let k = 0; k < 3; k++) { const v = P0[T0[t + e] * 3 + k]; if (v < C.lo[k]) C.lo[k] = v; if (v > C.hi[k]) C.hi[k] = v; } }
+  if (meta.cut) for (const C of comp.values()) C.tris = C.tris.filter((t) => { const g = [0, 1, 2].map((k) => (P0[T0[t] * 3 + k] + P0[T0[t + 1] * 3 + k] + P0[T0[t + 2] * 3 + k]) / 3); return !meta.cut.some((b) => g[0] > b[0] && g[1] > b[1] && g[2] > b[2] && g[0] < b[3] && g[1] < b[4] && g[2] < b[5]); });   // boxes (unit model, game axes) whose triangles are thrown away: stray generator artefacts
   let comps = [...comp.values()].sort((a, b) => b.tris.length - a.tris.length);
   if (opt.parts) console.log(`  ${id} parts: ` + comps.map((C) => `${C.tris.length}t x[${C.lo[0].toFixed(2)},${C.hi[0].toFixed(2)}] y[${C.lo[1].toFixed(2)},${C.hi[1].toFixed(2)}] z[${C.lo[2].toFixed(2)},${C.hi[2].toFixed(2)}]`).join(' | '));
   if (meta.dropThin) comps = comps.filter((C) => !(C.hi[1] - C.lo[1] > meta.dropThin[0] && Math.max(C.hi[0] - C.lo[0], C.hi[2] - C.lo[2]) < meta.dropThin[1]));   // [taller than, thinner than] (unit model): stray spikes
@@ -229,7 +225,7 @@ function bakeGlbs(dir, only) {
     const o = JSON.parse(fs.readFileSync(path.join(TMP, p.name + '.out.json'), 'utf8')), m = p.meta;
     if (o.pos.length / 3 > 65535) throw new Error(p.name + ': too many vertices');
     console.log(`  glb ${p.name}: ${p.fullTris} -> ${o.idx.length / 3} tris, ${o.pos.length / 3} verts, h ${p.h.toFixed(0)}, cell ${o.w}x${o.h}`);
-    return { name: p.name, src: 'glb', P: Float32Array.from(o.pos), N: Float32Array.from(o.nrm), UV: Float32Array.from(o.uv), E: Uint8Array.from(o.e), T: Uint16Array.from(o.idx), tw: o.w, th: o.h, imgFile: path.join(TMP, p.name + '.cell.png'), h: m.h, foot: m.foot ?? [0, 0], footH: m.footH ?? p.h * 0.8, light: m.light ?? null, glow: m.glow ?? null, emis: !!m.emis };
+    return { name: p.name, src: 'glb', P: Float32Array.from(o.pos), N: Float32Array.from(o.nrm), UV: Float32Array.from(o.uv), E: Uint8Array.from(o.e), T: Uint16Array.from(o.idx), tw: o.w, th: o.h, imgFile: path.join(TMP, p.name + '.cell.png'), h: m.h, foot: m.foot ?? [0, 0], footH: m.footH ?? +(p.h * 0.8).toFixed(1), light: m.light ?? null, glow: m.glow ?? null, glowAt: o.glowAt ?? null, emis: !!m.emis };
   });
 }
 
@@ -238,11 +234,16 @@ const only = opt.only ? new Set(opt.only.split(',')) : null, items = new Map();
 const glbItems = fs.existsSync(path.join(SRC, 'meta.json')) ? bakeGlbs(SRC, only) : [], replaced = new Set(glbItems.map((g) => g.name));
 for (const [name, S] of Object.entries(SCULPTS)) if ((!only || only.has(name)) && !replaced.has(name) && !opt.nosculpt) items.set(name, bakeSculpt(name, S));   // a generated model of the same name replaces the sculpt
 for (const g of glbItems) items.set(g.name, g);
-// atlas: shelves, widest first
-const list = [...items.values()].sort((a, b) => b.th - a.th), PAD = 4, AW = Number(opt.atlas ?? 1024); let x = PAD, y = PAD, rowH = 0;
-for (const it of list) { if (x + it.tw + PAD > AW) { x = PAD; y += rowH + PAD; rowH = 0; } it.ax = x; it.ay = y; x += it.tw + PAD; rowH = Math.max(rowH, it.th); }
-let AH = 64; while (AH < y + rowH + PAD) AH *= 2;
-if (AH > 2048) throw new Error('atlas would be taller than 2048 - lower the cell sizes');
+// atlas: skyline packing, tallest first (the page is AW wide; its height is the next power of two)
+const list = [...items.values()].sort((a, b) => b.th - a.th || b.tw - a.tw || (a.name < b.name ? -1 : 1)), PAD = 4, AW = Number(opt.atlas ?? 2048), sky = new Int32Array(AW).fill(PAD);
+for (const it of list) {
+  const w = it.tw + PAD; let bx = -1, by = 1e9;
+  for (let x = PAD; x + w <= AW; x += 2) { let top = 0; for (let i = x; i < x + w; i++) if (sky[i] > top) top = sky[i]; if (top < by) { by = top; bx = x; } }
+  if (bx < 0) throw new Error(it.name + ': cell wider than the atlas');
+  it.ax = bx; it.ay = by; for (let i = bx; i < bx + w; i++) sky[i] = by + it.th + PAD;
+}
+let AH = 64; const need = Math.max(...sky); while (AH < need) AH *= 2;
+if (AH > Number(opt.maxh ?? 2048)) throw new Error(`atlas would be ${AW}x${AH} (needs ${need} rows) - lower meta.texels`);
 const jobs = list.map((it) => { let raw = null; if (it.rgb) { raw = path.join(TMP, it.name + '.rgb'); fs.writeFileSync(raw, it.rgb); } return { x: it.ax, y: it.ay, w: it.tw, h: it.th, raw, img: it.imgFile ?? null }; });
 const py = `
 import sys, json
@@ -265,10 +266,11 @@ for (const it of list) {
   const qp = new Int16Array(nv * 3), qn = new Int8Array(nv * 4), qu = new Uint16Array(nv * 2);
   for (let i = 0; i < nv; i++) {
     for (let k = 0; k < 3; k++) { qp[i * 3 + k] = Math.round(((it.P[i * 3 + k] - lo[k]) / Math.max(1e-6, hi[k] - lo[k])) * 65535 - 32768); qn[i * 4 + k] = Math.round(Math.max(-1, Math.min(1, it.N[i * 3 + k])) * 127); }
+    if (it.E?.[i]) qn[i * 4 + 3] = 127;   // glow flag: this vertex is not darkened by the baked light (lantern glass, coals, flames)
     const u = Math.max(0, Math.min(1, it.UV[i * 2])), v = Math.max(0, Math.min(1, it.UV[i * 2 + 1]));
     qu[i * 2] = Math.round(((it.ax + 1 + u * (it.tw - 2)) / AW) * 65535); qu[i * 2 + 1] = Math.round(((it.ay + 1 + v * (it.th - 2)) / AH) * 65535);
   }
-  head.props[it.name] = { src: it.src, nv, ni: it.T.length, tris: it.T.length / 3, lo: lo.map((v) => +v.toFixed(2)), hi: hi.map((v) => +v.toFixed(2)), h: +(hi[1] - lo[1]).toFixed(1), foot: it.foot, footH: it.footH, light: it.light, cell: [it.ax, it.ay, it.tw, it.th], pos: put(qp), nrm: put(qn), uv: put(qu), idx: put(it.T) };
+  head.props[it.name] = { src: it.src, nv, ni: it.T.length, tris: it.T.length / 3, lo: lo.map((v) => +v.toFixed(2)), hi: hi.map((v) => +v.toFixed(2)), h: +(hi[1] - lo[1]).toFixed(1), foot: it.foot, footH: it.footH, light: it.light, glow: it.glow ?? undefined, glowAt: it.glowAt ?? undefined, emis: it.emis || undefined, cell: [it.ax, it.ay, it.tw, it.th], pos: put(qp), nrm: put(qn), uv: put(qu), idx: put(it.T) };
 }
 const js = Buffer.from(JSON.stringify(head), 'utf8'), jpad = (4 - (js.length % 4)) % 4, hd = Buffer.alloc(8); hd.write('BNP1', 0, 'latin1'); hd.writeUInt32LE(js.length + jpad, 4);
 const bin = Buffer.concat([hd, js, Buffer.alloc(jpad, 0x20), ...chunks]);
