@@ -52,7 +52,8 @@ function installRef(id) {
     route: A ? [[380, 60], [1180, 52], [1440, 62], [1770, 62], [2190, 92], [2190, 420], [2190, 1500], [2190, 1660]]
       : [[330, 120], [560, 182], [790, 190], [1230, 190], [1300, 182], [1480, 182], [1520, 130], [1720, 190], [1990, 190], [2190, 190], [2190, 420], [2190, 960], [2190, 1500], [2190, 1720], [2190, 1860]],
     reach: A ? [22, 128] : [18, 94], stand: A ? 86 : 56,
-    neutral() { if (A) { for (const e of sc.play.enemies) if (e.group !== 'yard') { e.x = 1000; e.z = 60; e.awake = false; } } else for (const e of sc.sim.enemies) e.dead = true; },
+    // 조작만 볼 때: 길 위의 적을 치운다 (마당의 적은 남긴다 — 다 없애면 '끝' 이 된다)
+    neutral() { if (A) sc.play.enemies = sc.play.enemies.filter((e) => e.group === 'yard'); else for (const e of sc.sim.enemies) if (!e.yard) e.dead = true; },
     restart() { if (A) v.restart(); else { sc.sim.reset(); sc.cam.snap = true; } },
     place(x, z) { if (A) { sc.play.hero.place(x, z); sc._cam(1, true); } else { const h = sc.sim.hero; h.x = x; h.z = z; h.vx = h.vz = h.vy = 0; h.safe = { x, z, y: h.y }; sc.cam.snap = true; } },
     heroRaw() { return A ? sc.play.hero : sc.sim.hero; },
@@ -61,6 +62,7 @@ function installRef(id) {
     // 한 번 반복 = 3틱. 마지막 틱은 그리고(render) 읽어 내어(getImageData) 그 프레임을 끝까지 래스터하게 한 시간을 잰다
     iter() {
       window.__qaStep(2, false);
+      if (!A) sc.resK = 1;   // B 의 해상도 조절기는 3틱에 한 번 그리는 이 검사를 '느린 기기' 로 읽는다 → 같은 화소 수로 재려고 고정
       const now = g.__qaRealNow, t = now();
       window.__qaStep(1, true);
       try { g.ctx.getImageData(0, 0, 1, 1); } catch { /* */ }
@@ -210,6 +212,7 @@ for (const id of PROTOS) {
         await pad.axis(1, 0); let lost = 0, n = 0;
         for (; n < 120 && !lost; n++) { await stepN(page, 1); lost = 100 - (await hero(page)).hp; }
         await pad.axis(0, 0); await stepN(page, 90, true);
+        if (process.env.REF_DEBUG) console.log('   [debug] after pit', JSON.stringify(await page.evaluate(() => { const g = window.__game, i = g.input, T = i._touchVec, h = window.__ref.heroRaw(); return { T: [T.x, T.y, T.mag], ax: [i.axisX, i.axisY], mode: i.mode, an: [i.analogX, i.analogY], v: [h.vx, h.vz], st: h.state, down: ['left','right','up','down','jump','dash','attack'].filter((a) => i.down(a)) }; })), 'active touches', [...t.active.keys()]);
         const h = await hero(page); R.pit = { lost, hp: h.hp, x: Math.round(h.x), y: Math.round(h.y), z: Math.round(h.z), ticks: n };
         ok(lost > 0 && lost <= 20 && h.y === 0 && h.hp === 100 - lost, `구덩이: 체력 −${lost}, 가장자리 (${R.pit.x},${R.pit.z}) 에서 다시, 그 뒤 체력 ${h.hp}`); }
       // ── 3) 깊이 판정 훑기 ──
