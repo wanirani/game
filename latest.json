@@ -1,14 +1,14 @@
 {
  "versionName": "1.0.0",
- "versionCode": 461666,
- "sha256": "80301e5e4ef45a7e0f0c032ecf83e1a1ac8bf3491ae03d5d6aa99996f069b32f",
- "bytes": 96180506,
- "url": "downloads/BloodNocturne-1.0.0-461666.apk",
- "built": "2026-11-17T14:35:00Z",
+ "versionCode": 461696,
+ "sha256": "69aeb6b6aeb6e8c6188c84d55f4175ed148341a412fb63729a8892e700804f0d",
+ "bytes": 93798447,
+ "url": "downloads/BloodNocturne-1.0.0-461696.apk",
+ "built": "2026-11-17T15:00:00Z",
  "signingCertSha256": "efaee88b9ff54bf116c2aae40e358ec073d4a7729261b1b6ac2da5e7a24ed60f",
- "note": "v1 + 3D prototypes (title menu: \ub9ac\ube4c\ub4dc \uc2dc\ubc94; prototype B now has the 3D hero). v1-only build 438330 is kept alongside.",
+ "note": "v1 + 3D prototypes (title menu: \ub9ac\ube4c\ub4dc \uc2dc\ubc94 \u2192 \uc2dc\ubc94\ud310 B, \uafb8\ubbfc \ubc30\uacbd, \uc131\ub2a5 \uc9c4\ub2e8, \uc2dc\ubc94\ud310 A). v1-only build 438330 is kept alongside.",
  "web": {
-  "buildHash": "2839741366cd",
-  "version": "1.0.0+20261117T1423.b90cf377"
+  "buildHash": "ff2a91b712e9",
+  "version": "1.0.0+20261117T1457.dec16e95"
  }
 }
