@@ -17,7 +17,7 @@ export function roomOf(area, sectionId) {
   return ROOMS_OK[r] ? r : ROOM_ALT[r] ?? 'street';
 }
 /** file path (under assets/) of a world texture name that is not a v1 tile: kit file, or KIT_TEX[n].file (docs/v2/AREA_FORMAT.md 2) */
-export const kitTexPath = (n) => (KIT_TEX[n]?.file ? 'v2/' + KIT_TEX[n].file : 'v2/env/' + n + '.webp');
+export const kitTexPath = (n) => (KIT_TEX[n]?.file ? 'v2/' + KIT_TEX[n].file : ('v2/env/' + n + '.webp').replace('/env/../', '/'));   // '../props/props_atlas' -> v2/props/props_atlas.webp
 
 /** area fields -> the three stage fields the rules read (idempotent: the WORLD loader may already have done it) */
 function fillStage(def, stage) {

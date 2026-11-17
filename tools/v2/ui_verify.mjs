@@ -28,7 +28,7 @@ async function openGame(dev, q = 'scene=v2g&v2ui=1') {
   const ctx = await browser.newContext(contextOptions(dev)), page = await ctx.newPage(); page._errs = [];
   page.on('pageerror', (e) => page._errs.push('pageerror: ' + String(e.message).slice(0, 240)));
   page.on('console', (m) => { if (m.type() === 'error' || (m.type() === 'warning' && /v2ui|\[v2g\]|hud/i.test(m.text()))) page._errs.push(m.type() + ': ' + m.text().slice(0, 240)); });
-  await page.goto(`http://localhost:${port}/index.html?${q}`);
+  await page.goto(`http://localhost:${port}/index.html?${q}&nosw`);
   await page.waitForFunction(() => window.__v2 && (window.__v2.ready || window.__v2.error), null, { timeout: 90000 }).catch(() => page._errs.push('scene ready timeout'));
   const client = await ctx.newCDPSession(page);
   return { ctx, page, client };
@@ -86,8 +86,9 @@ for (const dev of DEVICES) {
     ok(m.hudKind === 'ui', `${dev}: scene runs the UI lane's HUD (hudKind ${m.hudKind})`);
     ok(m.mode === 'touch' && m.padShown, `${dev}: touch mode shows the v2 pad (mode ${m.mode}, shown ${m.padShown})`);
     ok(m.v2pads === 1, `${dev}: exactly one #v2pad (${m.v2pads})`);
-    const v1 = await page.evaluate(() => { const e = document.getElementById('tpad'); if (!e) return 'none'; const s = getComputedStyle(e); return s.display === 'none' || s.visibility === 'hidden' || Number(s.opacity) === 0 ? 'hidden' : `visible(display ${s.display}, opacity ${s.opacity})`; });
-    ok(v1 === 'hidden' || v1 === 'none', `${dev}: v1 pad is hidden (${v1})`);
+    // the v1 pad is a canvas layer whose only owner is game.syncPad (game.padShown); its DOM box stays in the page
+    const v1 = await page.evaluate(() => ({ padShown: window.__game.padShown, hidePad: window.__v2.scene.hidePad, showPad: window.__v2.scene.showPad }));
+    ok(v1.padShown === false && v1.hidePad === true, `${dev}: v1 pad is hidden (${JSON.stringify(v1)})`);
     const filt = await page.evaluate(() => [...document.querySelectorAll('#v2pad, #v2pad *')].map((e) => { const s = getComputedStyle(e); return [s.backdropFilter || s.webkitBackdropFilter || 'none', s.filter, s.boxShadow]; }).filter((a) => a[0] !== 'none' || a[1] !== 'none' || a[2] !== 'none'));
     ok(filt.length === 0, `${dev}: no backdrop-filter / filter / box-shadow on the pad layer (${JSON.stringify(filt.slice(0, 2))})`);
     R.geometry = geometry(`${dev}/normal`, m);

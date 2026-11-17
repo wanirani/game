@@ -26,8 +26,8 @@ export function makeCanvas(w, h) {
 /** One image for every icon. `img` stays null until it has decoded; draw calls before that do nothing. */
 export const atlas = { img: null, ready: false, failed: false, url: '', waiters: [] };
 export function loadAtlas(base) {
-  if (atlas.url) return;
-  atlas.url = base + 'atlas.webp';
+  if (atlas.url && !atlas.failed) return;   // one load for the whole session; a failed load is tried again by the next createHud
+  atlas.failed = false; atlas.url = base + 'atlas.webp';
   const im = new Image();
   im.decoding = 'async';
   im.onload = () => { atlas.img = im; atlas.ready = true; for (const f of atlas.waiters.splice(0)) { try { f(); } catch (e) { console.error(e); } } };

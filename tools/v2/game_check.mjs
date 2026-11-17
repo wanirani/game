@@ -193,14 +193,17 @@ for (const dev of DEVICES) {
       const h1 = await page.evaluate(() => window.__v2.hero);
       await page.evaluate(() => { const sim = window.__v2.scene.sim; for (const e of sim.enemies) if (!e.yard) e.dead = true; sim.hero.x = 900; sim.hero.z = 190; });   // controls only: clear the street (the yard group stays, or the area would count as cleared), stand in the open
       const until = (what, ms) => page.evaluate(async ([what, ms]) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { const h = window.__v2.hero; if (what === 'air' ? !h.onGround : h.anim === what) return true; await new Promise((r) => setTimeout(r, 8)); } return false; }, [what, ms]);
-      const [, wa] = await Promise.all([pressButton(T, page, 'attack', 220), until('attack', 3000)]);
-      await page.waitForTimeout(500);
-      const [, wj] = await Promise.all([pressButton(T, page, 'jump', 220), until('air', 3000)]);
-      await page.waitForTimeout(900);
+      const [, wa] = await Promise.all([pressButton(T, page, 'attack', 220), until('attack', 6000)]);
+      await page.waitForFunction(() => !window.__v2.scene.sim.hero.move, null, { timeout: 20000 }).catch(() => {});
+      await page.waitForTimeout(300);
+      const [, wj] = await Promise.all([pressButton(T, page, 'jump', 220), until('air', 6000)]);
+      await page.waitForTimeout(600);
       // roll = the roll button while the stick is pushed (without the stick the same button guards — PLAY_API 1)
-      const rolling = page.evaluate(async () => { const t0 = performance.now(); while (performance.now() - t0 < 3500) { const h = window.__v2.scene.sim.hero; if (h.dashT > 0 || h.anim === 'roll' || h.anim === 'dash') return true; await new Promise((r) => setTimeout(r, 8)); } return false; });
-      await stickHold(T, page, 50, 0, 250, { keep: true });
-      await pressButton(T, page, 'dash', 200); await page.waitForTimeout(300);
+      await page.waitForFunction(() => { const h = window.__v2.scene.sim.hero; return h.onGround && !h.move && !(h.landT > 0); }, null, { timeout: 20000 }).catch(() => {});   // a loaded machine plays slower than real time: wait for the jump to end
+      await page.waitForTimeout(300);
+      const rolling = page.evaluate(async () => { const t0 = performance.now(); while (performance.now() - t0 < 8000) { const h = window.__v2.scene.sim.hero; if (h.dashT > 0 || h.anim === 'roll' || h.anim === 'dash') return true; await new Promise((r) => setTimeout(r, 8)); } return false; });
+      await stickHold(T, page, 50, 0, 400, { keep: true });
+      await pressButton(T, page, 'dash', 260); await page.waitForTimeout(400);
       await T.upAll();
       const wd = await rolling;
       R.touch = { pad: ids, moved: [Math.round(h1.x - h0.x), Math.round(h1.z - h0.z)], face: h1.face.map((n) => +n.toFixed(2)), attack: wa, jump: wj, dash: wd };
