@@ -88,7 +88,7 @@ export default class V2Game extends Scene {
     this.inp = { mx: 0, mz: 0, jump: false, jumpHeld: false, attack: false, attackHeld: false, dash: false, guard: false, lockNext: false, jumpUsed: false };
     this.numbers = []; for (let i = 0; i < 16; i++) this.numbers.push({ on: false, x: 0, y: 0, z: 0, str: '', color: '#fff', t: 0, big: false });
     this.P12 = new Float32Array(12); this.tmpA = new Float32Array(3); this.tmpB = new Float32Array(3); this.tint = new Float32Array(3); this.pos = { x: 0, y: 0, z: 0 }; this.pr = { x: 0, y: 0, w: 0 };
-    this.visY = 0; this.visYP = 0; this.stride = 0; this._mv = null; this._rb = -1; this._swung = false; this._turnDir = 0; this._dashRb = -1; this._secId = ''; this._deaths = 0; this._ts = 1; this.doneT = 0; this._restored = 0;
+    this.visY = 0; this.visYP = 0; this.stride = 0; this._mv = null; this._rb = -1; this._swung = false; this._turnDir = 0; this._turnHold = 0; this._dashRb = -1; this._secId = ''; this._deaths = 0; this._ts = 1; this.doneT = 0; this._restored = 0;
     this.c3 = { draws: 0, tris: 0, drawn: 0, culled: 0 }; this.envStat = { chunks: 0, tris: 0, draws: 0 };
     this.layer = { hud: null, hctx: null, timer: 0, shown: true, cw: 0, ch: 0, iw: 0, ih: 0, force: true };
     this.fired = new Set();
@@ -510,8 +510,8 @@ export default class V2Game extends Scene {
   /**
    * Hero turning (ENGINE_API 2): the drive function decides where to look; the scene only shapes the way there.
    *  - turn rate limit: TURN_RUN rad/s while moving freely, TURN_ACT while a move / roll / hurt is on (the body must face where it acts)
-   *  - a turn of more than ~115 degrees commits to its direction until it is nearly done, so a stick that flips or
-   *    jitters around the opposite direction cannot make the body wobble back and forth
+   *  - a turn of more than ~115 degrees commits to its direction (kept 0.2 s after the goal last was that far), so a stick
+   *    that flips or jitters around the opposite direction cannot make the body wobble back and forth
    * a0 = facing angle before the drive ran this tick.
    */
   _turn(ha, h, a0, dt) {
@@ -519,9 +519,9 @@ export default class V2Game extends Scene {
     const act = !!h.move || h.dashT > 0 || h.hurtT > 0 || h.dead, max = (act ? TURN_ACT : TURN_RUN) * dt;
     // where the rules look (the real goal of this turn); without it, the drive's own step tells the direction
     const gx = h.dirX ?? ha.dx, gz = h.dirZ ?? ha.dz, rem = wrapPi(Math.atan2(gz, gx) - a0), big = Math.abs(rem) > 2.0;
-    if (this._turnDir !== 0 && (!big || Math.abs(rem) < 0.35)) this._turnDir = 0;
-    if (big && this._turnDir === 0 && Math.abs(d) > 1e-4) this._turnDir = d > 0 ? 1 : -1;
-    if (this._turnDir !== 0 && d * this._turnDir < 0) d = this._turnDir * Math.min(max, Math.PI * 2 - Math.abs(rem));   // keep going the committed way
+    if (big) { this._turnHold = 0.2; if (this._turnDir === 0 && Math.abs(d) > 1e-4) this._turnDir = d > 0 ? 1 : -1; }
+    else if (this._turnDir !== 0 && (this._turnHold -= dt) <= 0) this._turnDir = 0;
+    if (big && this._turnDir !== 0 && d * this._turnDir < 0) d = this._turnDir * max;   // the goal is still nearly behind: keep going the committed way
     if (d > max) d = max; else if (d < -max) d = -max;
     const a = a0 + d; ha.dx = Math.cos(a); ha.dz = Math.sin(a);
   }
