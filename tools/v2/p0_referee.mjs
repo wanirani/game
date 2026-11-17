@@ -95,14 +95,17 @@ function installRef(id) {
         if (Math.abs(dz) <= 14 && adx <= R.reach[1] && adx >= R.reach[0]) { out.atk = true; if ((h.facing > 0) !== (dx > 0)) { tx = h.x + Math.sign(dx) * 40; tz = h.z; } else { tx = h.x; tz = h.z; } }
         else { tx = tg.x - Math.sign(dx || 1) * R.stand; tz = tg.z; }
       } else {
-        let w = R.route[R.wp];
-        if (Math.hypot(w[0] - h.x, w[1] - h.z) < 40 && R.wp < R.route.length - 1) w = R.route[++R.wp];
+        // 길목: 가까이 왔거나, 싸우다가 이미 지나쳤으면(다음 길목이 이 길목보다 가까우면) 다음으로
+        const D = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]), here = [h.x, h.z];
+        while (R.wp < R.route.length - 1 && (D(R.route[R.wp], here) < 40 || D(here, R.route[R.wp + 1]) < D(R.route[R.wp], R.route[R.wp + 1]))) R.wp++;
+        const w = R.route[R.wp];
         tx = w[0]; tz = w[1];
       }
       const ex = tx - h.x, ez = tz - h.z, m = Math.hypot(ex, ez);
       if (m > 5) { out.ax = ex / m; out.az = ez / m; if (m < 30) { out.ax *= Math.max(0.45, m / 30); out.az *= Math.max(0.45, m / 30); } }
       if (R.it % 10 === 0) { if (!out.atk && m > 30 && Math.hypot(h.x - R.sx, h.z - R.sz) < 8) { R.esc = 14; R.escZ = -R.escZ; } R.sx = h.x; R.sz = h.z; }
-      if (R.esc > 0) { R.esc--; out.az = R.escZ; out.ax *= 0.5; out.jump = R.esc % 7 > 3; }
+      // 막혔으면 가려던 쪽의 옆(직각)으로 비켜 가며 뛴다 — 벽을 따라가다 가로등·통에 걸린 경우
+      if (R.esc > 0) { R.esc--; const px = -out.az || 0, pz = out.ax || 0, pm = Math.hypot(px, pz) || 1; out.ax = out.ax * 0.3 + (px / pm) * R.escZ; out.az = out.az * 0.3 + (pz / pm) * R.escZ; if (!px && !pz) out.az = R.escZ; out.jump = R.esc % 7 > 3; }
       return out;
     },
   });
