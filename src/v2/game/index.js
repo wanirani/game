@@ -17,6 +17,7 @@ import { createFx, PRESET_IDS, hurtFlash, dissolveK } from '../fx/index.js';
 import { TRAIL } from '../fx/presets.js';
 import { RB } from '../fx/engine.js';
 import { feel, FLAG } from '../feel/index.js';
+import { bindFxSound } from '../feel/fxbridge.js';
 import { GLR, SpriteBatch } from './glr.js';
 import { CharRenderer } from './charr.js';
 import { Cast } from './cast.js';
@@ -27,6 +28,7 @@ import { UI_LOADER } from './seams.js';
 import { elementOf, shotAttach, shotMove, shotDetach, shotImpact } from './magic.js';
 
 const FOCAL = 880, NEAR = 60, FAR = 24000, DIE_T = 0.9, HERO_MODEL = 'kael';
+const TURN_RUN = 15, TURN_ACT = 34;   // rad/s: a full reversal takes about 0.21 s running, 0.09 s when an attack needs the body to face its hit box
 const TEX_SRC = {
   flag: { src: 'tex/tex_mossy_stone', desat: 0.35 }, block: { src: 'tex/tex_castle_stone' }, brick: { src: 'tex/tex_wet_stone', desat: 0.8 },
   wood: { src: 'tex/tex_wood' }, dirt: { src: 'tex/tex_dirt' },
@@ -74,6 +76,7 @@ export default class V2Game extends Scene {
     this.story = typeof params?.story === 'function' ? params.story : null; this.ui = { dialog: null }; this.locked = false;
     this.area = null; this.W = null; this.sim = null; this.fx = null; this.cr = null; this.cast = null; this.hud = createBuiltinHud();
     this.heroA = null; this.actors = []; this.pool = new Map(); this._ERef = null;
+    this.bridge = bindFxSound(feel); this.feelN = 0; this.lastFeel = null; this._actE = null; this._simSteps = false;
     this.shotL = new Array(32).fill(null); this.shotN = 0;
     this.cam = { yaw: 0, pitch: 0.35, dist: 800, lookY: 60, leadX: 0, leadZ: 0, face: 1, tx: 0, ty: 0, tz: 0, px: 0, py: 300, pz: -700, snap: true, fx: 0, fy: -0.3, fz: 0.95, zf: null, ck: 0, tallK: 0.4, minX: -1e5, maxX: 1e5, lastCenter: null };
     this.camP = { px: 0, py: 300, pz: -700, fx: 0, fy: -0.3, fz: 0.95 };
@@ -85,7 +88,7 @@ export default class V2Game extends Scene {
     this.inp = { mx: 0, mz: 0, jump: false, jumpHeld: false, attack: false, attackHeld: false, dash: false, guard: false, lockNext: false, jumpUsed: false };
     this.numbers = []; for (let i = 0; i < 16; i++) this.numbers.push({ on: false, x: 0, y: 0, z: 0, str: '', color: '#fff', t: 0, big: false });
     this.P12 = new Float32Array(12); this.tmpA = new Float32Array(3); this.tmpB = new Float32Array(3); this.tint = new Float32Array(3); this.pos = { x: 0, y: 0, z: 0 }; this.pr = { x: 0, y: 0, w: 0 };
-    this.visY = 0; this.visYP = 0; this.stride = 0; this._mv = null; this._rb = -1; this._swung = false; this._dashRb = -1; this._secId = ''; this._deaths = 0; this._ts = 1; this.doneT = 0; this._restored = 0;
+    this.visY = 0; this.visYP = 0; this.stride = 0; this._mv = null; this._rb = -1; this._swung = false; this._turnDir = 0; this._dashRb = -1; this._secId = ''; this._deaths = 0; this._ts = 1; this.doneT = 0; this._restored = 0;
     this.c3 = { draws: 0, tris: 0, drawn: 0, culled: 0 }; this.envStat = { chunks: 0, tris: 0, draws: 0 };
     this.layer = { hud: null, hctx: null, timer: 0, shown: true, cw: 0, ch: 0, iw: 0, ih: 0, force: true };
     this.fired = new Set();
@@ -254,7 +257,7 @@ export default class V2Game extends Scene {
   }
   _makeFx() {
     const p = this.perf;
-    try { this.fx = createFx(this.glr.gl, { tier: p.tier, post: p.post, groundY: 0, lightPools: true, feel: false }); }
+    try { this.fx = createFx(this.glr.gl, { tier: p.tier, post: p.post, groundY: 0, lightPools: true, onEvent: this.bridge.onEvent }); }
     catch (e) { console.warn('[v2g] effects are off:', String(e?.message ?? e)); this.fx = null; }
     this._rb = -1; this._dashRb = -1; this._mv = null;
     for (let i = 0; i < this.shotN; i++) this.shotL[i]._rb = undefined;   // handles of a lost context are dead
@@ -265,11 +268,13 @@ export default class V2Game extends Scene {
     const glr = this.glr, gl = glr.gl, fx = this.fx, g = this.game, h = this.sim.hero;
     this._camera(1 / 60);
     if (fx) {
-      const P = PRESET_IDS, x = h.x + 60, y = h.y, z = h.z;
+      const P = PRESET_IDS, x = h.x + 60, y = h.y, z = h.z, ev = fx.onEvent;
+      fx.onEvent = null; fx.feelOn = false;   // warm-up is silent and must not leave a hit-stop or a flash behind
       for (const n of ['hit.slash.light', 'hit.slash.heavy', 'hit.crit', 'hit.finisher', 'hit.guard', 'swing.light', 'swing.heavy', 'move.dash', 'move.land', 'move.step', 'move.jump', 'enemy.hurt', 'enemy.death.bone', 'enemy.death.ash']) if (P[n] !== undefined) fx.playAt(P[n], x, y + 50, z, 1, 0, 1, x + 200, y, z);
       const el = elementOf(this.pos, null); shotImpact(fx, el, x, y + 50, z, y);
       const rb = fx.ribbons.start(TRAIL.blade); fx.ribbons.push(rb, x, y + 20, z, x, y + 80, z); fx.update(0.02); fx.ribbons.push(rb, x + 30, y + 20, z, x + 30, y + 80, z); fx.ribbons.end(rb);
       fx.feel.flash(1, 1, 1, 0.2); fx.update(0.03);
+      fx.onEvent = ev; fx.feelOn = true;
     }
     this._gl(g.viewW, g.viewH, 1, true);
     gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, PX);
@@ -301,63 +306,93 @@ export default class V2Game extends Scene {
     return out;
   }
   // ───────────────────────── rule hooks -> feel + effects ─────────────────────────
+  /**
+   * One-shot effect preset owned by the scene: picture + its sound event through the bridge, WITHOUT the preset's own
+   * screen feel (hit-stop, shake, zoom come from the feel table once — see hit()). silent = picture only.
+   * Without the effect engine (WebGL1) only the sound event is sent.
+   */
+  _fxp(name, x, y, z, dx, dz, pow, silent) {
+    const fx = this.fx, id = PRESET_IDS[name]; if (id === undefined) return;
+    if (!fx) { if (!silent) { try { this.bridge.onEvent(name, x, y, z, 1); } catch { /* no audio */ } } return; }
+    const ev = fx.onEvent; fx.feelOn = false; if (silent) fx.onEvent = null;
+    try { fx.playAt(id, x, y, z, dx, dz, pow, x + dx * 320, y, z + dz * 320); } catch { /* no audio */ }
+    fx.feelOn = true; fx.onEvent = ev;
+  }
+  /** one melee contact: effect + sound + haptics in ONE call (bridge.strike); the screen feel is applied once from the table recipe */
+  _strike(weapon, material, st, flags, x, y, z, dx, dz) {
+    const fx = this.fx; let r = null;
+    if (fx) fx.feelOn = false;
+    try { r = this.bridge.strike(fx, weapon, material, st, flags, x, y, z, dx, dz); } catch { r = null; }
+    if (fx) fx.feelOn = true;
+    const F = fx ? fx.feel : null;
+    if (F && r) {
+      F.hitStop(r.stop, !!r.big); fx.trauma(r.shake, dx, 0, dz); if (r.kick) F.kick(dx, 0, dz, r.kick);
+      if (r.zoom > 1) F.zoomPunch(r.zoom - 1, (r.zoomT ?? 0) * 0.5);
+      if (r.slow) F.slowMo(r.slow[1], r.slow[0]);
+      if (flags & FLAG.finisher) { F.flash(1, 0.92, 0.75, 0.42); F.vignette(1, 0.45, 0.1, 0.3); }
+    }
+    this.feelN++; this.lastFeel = r;
+    return r;
+  }
   _hooks() {
-    const sc = this, P = PRESET_IDS;
-    const play = (id, x, y, z, dx, dz, pow) => { if (sc.fx && id !== undefined) sc.fx.playAt(id, x, y, z, dx, dz, pow, x + dx * 320, y, z + dz * 320); };
+    const sc = this;
     const snd = (name, pos) => { try { return feel.play(name, pos); } catch { return null; } };
     const number = (x, y, z, str, color, big) => { const N = sc.numbers; let n = N[0]; for (let i = 0; i < N.length; i++) { if (!N[i].on) { n = N[i]; break; } if (N[i].t > n.t) n = N[i]; } n.on = true; n.x = x; n.y = y; n.z = z; n.str = str; n.color = color; n.t = 0; n.big = !!big; };
     return {
-      hit(e, dmg, mv, x, y, z) {
-        const h = sc.sim.hero, K = KINDS[e.kind], kill = e.hp <= 0;
-        const st = mv?.strength ?? (mv?.finisher || mv?.id === 'sw3' ? 'H' : 'M');
-        let flags = mv?.crit ? FLAG.crit : 0;
+      hit(e, dmg, mv, x, y, z, info) {
+        const h = sc.sim.hero, K = KINDS[e.kind], kill = e.hp <= 0, blocked = !!info?.blocked && !kill;
+        const st = mv?.strength ?? mv?.str ?? (mv?.finisher || mv?.id === 'sw3' ? 'H' : 'M');
+        let flags = (mv?.crit ? FLAG.crit : 0) | (blocked ? FLAG.guard : 0);
         if (kill) { flags |= FLAG.kill; let left = 0; const E = sc.sim.enemies; for (let i = 0; i < E.length; i++) if (E[i] !== e && !E[i].dead && E[i].state !== 'dead' && E[i].hp > 0 && (E[i].yard || !e.yard)) left++; if (e.yard && left === 0) flags |= FLAG.finisher; }
-        let r = null; try { r = feel.hit(mv?.weapon ?? 'sword', K?.material ?? 'bone', st, flags, e); } catch { r = null; }
-        const dx = h.dirX ?? h.facing ?? 1, dz = h.dirZ ?? 0, F = sc.fx?.feel;
-        if (F && r) {
-          F.hitStop(r.stop, !!r.big); sc.fx.trauma(r.shake, dx, 0, dz); if (r.kick) F.kick(dx, 0, dz, r.kick);
-          if (r.zoom > 1) F.zoomPunch(r.zoom - 1, (r.zoomT ?? 0) * 0.5);
-          if (r.slow) F.slowMo(r.slow[1], r.slow[0]);
-          if (flags & FLAG.finisher) { F.flash(1, 0.92, 0.75, 0.42); F.vignette(1, 0.45, 0.1, 0.3); }
-        }
-        play(flags & FLAG.finisher ? P['hit.finisher'] : flags & FLAG.crit ? P['hit.crit'] : st === 'H' || st === 'F' ? P['hit.slash.heavy'] : P['hit.slash.light'], x, y, z, dx, dz, 1);
-        play(P['enemy.hurt'], x, y, z, dx, dz, 1);
+        const dx = info?.dirX ?? h.dirX ?? h.facing ?? 1, dz = info?.dirZ ?? h.dirZ ?? 0;
+        const r = sc._strike(mv?.weapon ?? 'sword', info?.material ?? K?.material ?? 'bone', st, flags, x, y, z, dx, dz);
+        if (!blocked) sc._fxp('enemy.hurt', x, y, z, dx, dz, 1, true);
         if (e._a3) e._a3.hitAge = 0;
-        number(e.x, e.y + (e.h ?? 80) + 14, e.z, String(dmg), st === 'H' || st === 'F' ? '#ffd870' : '#ffffff', st === 'F' || !!(flags & FLAG.crit));
+        number(e.x, e.y + (e.h ?? 80) + 14, e.z, String(dmg), blocked ? '#9fb4d8' : st === 'H' || st === 'F' ? '#ffd870' : '#ffffff', st === 'F' || !!(flags & FLAG.crit));
         try { input.rumble?.(0.3, 0.5, 40); } catch { /* no pad */ }
+        return r;   // the rules may read r.stop (same table); the scene still owns the freeze
       },
       kill(e) {
         const K = KINDS[e.kind], h = sc.sim.hero, dx = h.dirX ?? h.facing ?? 1, dz = h.dirZ ?? 0, a = e._a3;
         if (a && a.dieAge < 0) a.dieAge = 0;
-        if ((K?.death ?? (K?.material === 'bone' ? 'bone' : 'ash')) === 'bone') play(P['enemy.death.bone'], e.x, e.y, e.z, dx, dz, 1);
-        play(P['enemy.death.ash'], e.x, e.y, e.z, dx, dz, 1);
+        const bone = (K?.death ?? (K?.material === 'bone' ? 'bone' : 'ash')) === 'bone';
+        if (bone) sc._fxp('enemy.death.bone', e.x, e.y, e.z, dx, dz, 1, true);   // the kill layer of the hit sound already carries the collapse
+        sc._fxp('enemy.death.ash', e.x, e.y, e.z, dx, dz, 1, true);
         sc.emit('enemy.kill', { enemy: e });
       },
       heroHurt(dmg, pit) {
         const h = sc.sim.hero, r = snd('hero.hurt', h), F = sc.fx?.feel;
         if (F) { F.hitStop(r?.stop ?? 0.07); F.addTrauma(r?.shake ?? 0.4); F.vignette(1, 0, 0.12, 0.5, 2.5); } else sc.game.vignette?.('#ff0020', 0.5, 2.5);
-        if (!pit) play(P['enemy.hurt'], h.x, h.y + 55, h.z, -(h.dirX ?? 1), -(h.dirZ ?? 0), 1.4);
+        if (!pit) sc._fxp('enemy.hurt', h.x, h.y + 55, h.z, -(h.dirX ?? 1), -(h.dirZ ?? 0), 1.4, true);
+        sc.feelN++;
       },
       sfx(name) {
         const h = sc.sim.hero, dx = h.dirX ?? h.facing ?? 1, dz = h.dirZ ?? 0;
-        if (name === 'dash') { snd('move.dash', h); play(P['move.dash'], h.x, h.y, h.z, dx, dz, 1); }
-        else if (name === 'jump') { snd('move.jump', h); play(P['move.jump'], h.x, h.y, h.z, dx, dz, 1); }
-        else if (name === 'land') { const hard = sc._fallV < -900; snd(hard ? 'move.land_heavy' : 'move.land', h); play(P['move.land'], h.x, h.y, h.z, dx, dz, hard ? 1.4 : 0.8); }
-        else if (name === 'swing') { try { feel.swing('blunt', 'M', null); } catch { /* no audio */ } }
-        else if (name === 'cast') snd('enemy.mage.chant', null);
-        else if (name === 'parry') { try { feel.parry('sword', h); } catch { /* no audio */ } play(P['hit.guard'], h.x + dx * 50, h.y + 55, h.z + dz * 50, dx, dz, 1.3); const F = sc.fx?.feel; if (F) { F.hitStop(0.07); F.addTrauma(0.14); } }
+        if (name === 'dash') sc._fxp('move.dash', h.x, h.y, h.z, dx, dz, 1, false);
+        else if (name === 'jump') sc._fxp('move.jump', h.x, h.y, h.z, dx, dz, 1, false);
+        else if (name === 'land') { const hard = sc._fallV < -900; sc._fxp('move.land', h.x, h.y, h.z, dx, dz, hard ? 1.4 : 0.8, hard); if (hard) { snd('move.land_heavy', h); sc.fx?.feel.addTrauma(0.08); } }
+        else if (name === 'swing') { try { feel.swing('blunt', 'M', sc._actE ?? null); } catch { /* no audio */ } sc._actE = null; }
+        else if (name === 'cast') { snd('enemy.mage.chant', sc._actE ?? null); sc._actE = null; }
+        else if (name === 'parry') sc._strike('sword', 'armor', 'H', FLAG.parry, h.x + dx * 46, h.y + 58, h.z + dz * 46, dx, dz);
+        else if (name === 'guard') sc._strike('sword', 'armor', 'M', FLAG.guard, h.x + dx * 40, h.y + 58, h.z + dz * 40, dx, dz);
         else if (name === 'die') { snd('hero.hurt', h); sc.emit('hero.dead', {}); }
-        else { const mv = h.move; try { feel.swing(mv?.weapon ?? 'sword', mv?.strength ?? (h.combo >= 2 ? 'H' : 'M'), h); } catch { /* no audio */ } }
+        else { const mv = h.move; try { feel.swing(mv?.weapon ?? 'sword', mv?.strength ?? mv?.str ?? (h.combo >= 2 ? 'H' : 'M'), h); } catch { /* no audio */ } }   // the picture (crescent) follows at the strike moment in _sync
       },
       spark(x, y, z, kind) {
         if (kind === 'shot') { const el = elementOf(sc.pos, null); if (sc.fx) { const gy = groundAt(sc.W, x, z, y + 20); shotImpact(sc.fx, el, x, y, z, Number.isFinite(gy) ? gy : y - 50); } sc.pos.x = x; sc.pos.y = y; sc.pos.z = z; try { feel.magic(el.sound, 'impact', sc.pos); } catch { /* no audio */ } }
-        else if (kind === 'hit') play(P['enemy.hurt'], x, y, z, 1, 0, 1);
+        else if (kind === 'hit' || kind === 'wisp') sc._fxp('enemy.hurt', x, y, z, 1, 0, kind === 'wisp' ? 0.6 : 1, true);
+        else if (kind === 'slam') { sc._fxp('move.land', x, y, z, 1, 0, 1.5, true); sc.fx?.feel.addTrauma(0.12); }
       },
       number(x, y, z, str, color) { number(x, y, z, str, color, false); },
       shake(px) { sc.fx?.feel.addTrauma(clamp(px / 40, 0, 0.6)); },
       done() { sc.doneT = 0; try { feel.bell('dawn'); } catch { /* no audio */ } sc.emit('area.clear', { area: sc.area?.id }); },
-      fx(name, x, y, z, dx = 1, dz = 0, pow = 1, tx = x + dx * 320, ty = y, tz = z + dz * 320) { const id = P[name]; if (sc.fx && id !== undefined) sc.fx.playAt(id, x, y, z, dx, dz, pow, tx, ty, tz); },
-      event(name, data) { sc.emit(name, data); },
+      // newer rule sets (docs/v2/PLAY_API.md 5) — optional calls
+      step(side, speed, who) { if (who !== sc.sim.hero) return; sc._simSteps = true; sc.bridge.speed = speed; sc._fxp('move.step', who.x, who.y, who.z, 1, 0, 1, false); },
+      enemySwing(e) { sc._actE = e; },
+      cast(e, phase) { if (phase === 'charge') { try { feel.magic(elementOf(sc.pos, KINDS[e.kind]?.element).sound, 'charge', e); } catch { /* no audio */ } } },
+      // a full effect preset by name (magic, shield, pickup ...): the preset brings its own sound events and screen feel
+      fx(name, x, y, z, dx = 1, dz = 0, pow = 1, tx = x + dx * 320, ty = y, tz = z + dz * 320) { const id = PRESET_IDS[name]; if (sc.fx && id !== undefined) sc.fx.playAt(id, x, y, z, dx, dz, pow, tx, ty, tz); },
+      event(name, a, b, c, d) { if (sc.story) sc.emit('play.' + name, [a, b, c, d]); },
       sound(name, pos) { snd(name, pos ?? null); },
     };
   }
@@ -416,7 +451,7 @@ export default class V2Game extends Scene {
     const TR = this.area.triggers;
     for (let i = 0; i < TR.length; i++) { const t = TR[i]; if (!this.fired.has(t.id) && h.x >= t.x0 && h.x < t.x1 && h.z >= t.z0 && h.z < t.z1) { this.fired.add(t.id); this.emit('trigger', { id: t.id, trigger: t }); } }
     // hero: animation, blade trail, dash trail, steps
-    if (pdt > 0) driveHero(ha, h, pdt, TUNE);
+    if (pdt > 0) { const a0 = Math.atan2(ha.dz, ha.dx); driveHero(ha, h, pdt, TUNE); this._turn(ha, h, a0, pdt); }
     this.visY = h.onGround && Math.abs(this.visY - h.y) < 40 && dt > 0 ? this.visY + (h.y - this.visY) * (1 - Math.exp(-dt * 28)) : h.y;   // stairs: do not pop
     if (pdt > 0) { this._tintAt(W, h.x, h.y + 50, h.z, 0, 1.6, ha.opt.tint); ha.opt.flash = Math.max(h.flash > 0 ? h.flash * 0.6 : 0, h.ifr > 0 && !h.dead && !(h.hurtT > 0) && !(h.dashT > 0) && Math.floor(h.t * 22) % 2 === 0 ? 0.3 : 0); }
     if (fx) {
@@ -428,7 +463,7 @@ export default class V2Game extends Scene {
       }
       if (mv && pdt > 0) {
         if (ha.weaponMatrix(ha.place(h.x, this.visY, h.z))) { const a = ha.weaponPoint(ha.grip.base ?? 20, this.tmpA), b = ha.weaponPoint(ha.grip.tip ?? 76, this.tmpB); fx.ribbons.push(this._rb, a[0], a[1], a[2], b[0], b[1], b[2]); }
-        if (!this._swung && (!mv.hit || h.moveT >= mv.hit[0])) { this._swung = true; const heavy = h.combo >= 2 || !!mv.finisher, id = heavy ? P['swing.heavy'] : P['swing.light']; if (id !== undefined) fx.playAt(id, h.x, h.y, h.z, h.dirX ?? ha.dx, h.dirZ ?? ha.dz, (h.combo & 1 ? -1 : 1) * (heavy ? 1.15 : 1), h.x, h.y, h.z); }
+        if (!this._swung && (!mv.hit || h.moveT >= mv.hit[0])) { this._swung = true; const heavy = h.combo >= 2 || !!mv.finisher; this._fxp(heavy ? 'swing.heavy' : 'swing.light', h.x, h.y, h.z, h.dirX ?? ha.dx, h.dirZ ?? ha.dz, (h.combo & 1 ? -1 : 1) * (heavy ? 1.15 : 1), true); }
       }
       if (h.dashT > 0 && !h.dead) { if (this._dashRb < 0) this._dashRb = fx.ribbons.start(DASH_TRAIL); if (pdt > 0) fx.ribbons.push(this._dashRb, h.x, h.y + 50, h.z, 0, 0, 0); }
       else if (this._dashRb >= 0) { fx.ribbons.end(this._dashRb); this._dashRb = -1; }
@@ -436,7 +471,7 @@ export default class V2Game extends Scene {
     }
     if (pdt > 0 && h.onGround && !h.dead && !h.move && !(h.dashT > 0) && !(h.hurtT > 0)) {
       const sp = Math.hypot(h.vx ?? 0, h.vz ?? 0);
-      if (sp > 60) { this.stride += sp * pdt; if (this.stride > 96) { this.stride = 0; try { feel.step(sp, h); } catch { /* no audio */ } if (fx && P['move.step'] !== undefined) fx.playAt(P['move.step'], h.x, h.y, h.z, ha.dx, ha.dz, 1, h.x, h.y, h.z); } } else this.stride = 60;
+      if (sp > 60 && !this._simSteps) { this.stride += sp * pdt; if (this.stride > 96) { this.stride = 0; this.bridge.speed = sp; this._fxp('move.step', h.x, h.y, h.z, ha.dx, ha.dz, 1, false); } } else this.stride = 60;
     }
     // enemies
     const E = sim.enemies, L = this.actors;
@@ -471,6 +506,24 @@ export default class V2Game extends Scene {
         if (pdt > 0) { const gy = groundAt(W, s.x, s.z, s.y + 20); shotMove(fx, s, elementOf(s, null), Number.isFinite(gy) ? gy : s.y - 50, pdt); }
       }
     }
+  }
+  /**
+   * Hero turning (ENGINE_API 2): the drive function decides where to look; the scene only shapes the way there.
+   *  - turn rate limit: TURN_RUN rad/s while moving freely, TURN_ACT while a move / roll / hurt is on (the body must face where it acts)
+   *  - a turn of more than ~115 degrees commits to its direction until it is nearly done, so a stick that flips or
+   *    jitters around the opposite direction cannot make the body wobble back and forth
+   * a0 = facing angle before the drive ran this tick.
+   */
+  _turn(ha, h, a0, dt) {
+    const a1 = Math.atan2(ha.dz, ha.dx); let d = wrapPi(a1 - a0);
+    const act = !!h.move || h.dashT > 0 || h.hurtT > 0 || h.dead, max = (act ? TURN_ACT : TURN_RUN) * dt;
+    // where the rules look (the real goal of this turn); without it, the drive's own step tells the direction
+    const gx = h.dirX ?? ha.dx, gz = h.dirZ ?? ha.dz, rem = wrapPi(Math.atan2(gz, gx) - a0), big = Math.abs(rem) > 2.0;
+    if (this._turnDir !== 0 && (!big || Math.abs(rem) < 0.35)) this._turnDir = 0;
+    if (big && this._turnDir === 0 && Math.abs(d) > 1e-4) this._turnDir = d > 0 ? 1 : -1;
+    if (this._turnDir !== 0 && d * this._turnDir < 0) d = this._turnDir * Math.min(max, Math.PI * 2 - Math.abs(rem));   // keep going the committed way
+    if (d > max) d = max; else if (d < -max) d = -max;
+    const a = a0 + d; ha.dx = Math.cos(a); ha.dz = Math.sin(a);
   }
   _state() {
     const s = this.state, g = this.game, sim = this.sim, W = this.W;

@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>블러드 녹턴 3D — 움직임 · 규칙 보기 (play)</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #10141c; color: #e8e0d0; font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
+  canvas { position: absolute; left: 0; top: 0; display: block; touch-action: none; }
+  #ov { pointer-events: none; }
+  #ui { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); display: flex; flex-wrap: wrap; gap: 5px; background: linear-gradient(transparent, rgba(8,10,16,.88) 35%); max-height: 46%; overflow-y: auto; }
+  #ui button { background: #262c3a; color: #e8e0d0; border: 1px solid #4a5268; border-radius: 6px; padding: 6px 9px; font: inherit; }
+  #ui button.on { background: #7a2430; border-color: #c0485a; }
+  #ui span { align-self: center; color: #8f96a8; padding: 0 4px; }
+  #info { position: absolute; left: 10px; top: 8px; right: 10px; color: #c8c0b0; font-size: 12px; white-space: pre-wrap; pointer-events: none; text-shadow: 0 1px 2px #000; }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas><canvas id="ov"></canvas>
+<div id="info">불러오는 중…</div>
+<div id="ui"></div>
+<script type="module">
+// play_view: PLAY 구역의 움직임 · 규칙을 장면 없이 보는 시험 화면 (docs/v2/PLAY_API.md §8).
+//   평평한 마당에서 진짜 규칙(Sim)을 돌리고, driveHero / driveActor 가 고른 방향 · 클립을 char3d 렌더러로 그린다.
+//   ?demo=이름 &cam=game|high|side|front|close &slow=1 &box=1(판정 보기) &hold=1(스스로 흐르지 않음 — play_shot.mjs 가 window.__play 로 민다)
+//   직접 조작(demo=free): 방향키/WASD 이동 · J 공격 · K 점프 · L 구르기(누르고 있으면 막기) · O 락온 바꾸기
+import { CharRenderer, boxModel } from '../../src/v2/char3d/render.js';
+import { loadCharAsset, Char3D } from '../../src/v2/char3d/hero3d.js';
+import { loadGLB } from '../../src/v2/char3d/glb.js';
+import { Sim, TUNE, KINDS, flatArena, driveHero, driveActor, placeActor, loadPlayClips, registerKind, UNIT } from '../../src/v2/play/index.js';
+
+const q = new URLSearchParams(location.search);
+const cv = document.getElementById('cv'), ov = document.getElementById('ov'), info = document.getElementById('info'), ui = document.getElementById('ui');
+const DIR = '../../assets/v2/char3d/';
+const CAMS = { game: { yaw: 0, pitch: 0.35, dist: 800, lookY: 60 }, high: { yaw: 0, pitch: 0.62, dist: 760, lookY: 50 }, close: { yaw: 0, pitch: 0.3, dist: 430, lookY: 62 }, side: { yaw: 1.5708, pitch: 0.12, dist: 520, lookY: 55 }, front: { yaw: 3.1416, pitch: 0.2, dist: 470, lookY: 58 }, top: { yaw: 0, pitch: 1.35, dist: 700, lookY: 0 } };
+const GRIPS = { w_rusty_sword: { pos: [0, 7, 3], rotX: -80, rotY: 0, rotZ: 0 }, w_crystal_staff: { pos: [0, 7, 3], rotX: 100, rotY: 0, rotZ: 0 }, w_grave_spade: { pos: [0, 9, 4], rotX: -80, rotY: 0, rotZ: 0 } };
+const S = { demo: q.get('demo') ?? 'run8', cam: q.get('cam') ?? 'game', slow: q.get('slow') === '1', box: q.get('box') === '1', pause: false, follow: true };
+const api = (window.__play = { ready: false, error: null, S, hold: q.get('hold') === '1' });
+let gl, R, sim, heroCh, floorGpu, blobGpu, shotGpu, time = 0, demo = null, seqT = 0;
+const assets = new Map(), weapons = new Map(), chars = new Map();
+const events = [];   // 최근 사건 (화면 글 · 검사용)
+
+// 허수아비: 맞기만 하는 해골 (공격 방향 · 판정을 볼 때)
+registerKind('dummy', { ...KINDS.skeleton_soldier, name: '허수아비', hp: 99999, attacks: [], sight: 9999 }, (s, e, dt, D) => { s.turnTo(e, s.hero.x - e.x, s.hero.z - e.z, 5, dt); s.setAnim(e, 'idle', dt); });
+
+// ── 시범 차림: seq = [[초, 누르고 있는 입력, 눌림 이름들…], …] ──
+const D8 = [[1, 0], [0.71, 0.71], [0, 1], [-0.71, 0.71], [-1, 0], [-0.71, -0.71], [0, -1], [0.71, -0.71]];
+const st = (mx, mz) => ({ mx, mz });
+const ring = (kind, n, r, extra = {}) => Array.from({ length: n }, (_, i) => ({ kind, x: Math.cos((i / n) * 6.2832) * r, z: Math.sin((i / n) * 6.2832) * r * 0.8, active: true, ...extra }));
+const DEMOS = {
+  free: { name: '직접 조작', spawns: [{ kind: 'skeleton_soldier', x: 260, z: 60 }, { kind: 'skeleton_mage', x: 380, z: -120 }, { kind: 'bat', x: -260, z: 120 }, { kind: 'bat', x: -300, z: 60 }], seq: null },
+  run8: { name: '달리기 여덟 방향', spawns: [], seq: D8.flatMap((d) => [[0.85, st(d[0], d[1])], [0.4, {}]]) },
+  turn: { name: '방향 꺾기', spawns: [], seq: [[0.9, st(1, 0)], [0.7, st(-1, 0)], [0.7, st(1, 0)], [0.6, st(0, 1)], [0.6, st(0, -1)], [0.5, st(0.7, 0.7)], [0.5, st(-0.7, -0.7)], [0.25, st(1, 0)], [0.25, st(-1, 0)], [0.25, st(1, 0)], [0.25, st(-1, 0)], [0.6, {}]] },
+  walk: { name: '걷기 · 서기', spawns: [], seq: [[1.6, st(0.4, 0)], [0.8, {}], [1.6, st(0, -0.4)], [0.8, {}], [1.4, st(-0.4, 0.2)], [1.2, {}]] },
+  combo: { name: '연타 3 (여덟 방향)', spawns: ring('dummy', 8, 150), dummy: true, seq: D8.flatMap((d) => [[0.12, st(d[0], d[1])], [0.3, st(d[0], d[1]), 'attack'], [0.32, {}, 'attack'], [0.34, {}, 'attack'], [0.95, {}], [0.45, st(-d[0], -d[1])]]) },
+  combo1: { name: '연타 3 (오른쪽 · 가까이)', spawns: [{ kind: 'dummy', x: 110, z: 0, active: true }], dummy: true, cam: 'close', seq: [[0.4, {}], [0.3, {}, 'attack'], [0.32, {}, 'attack'], [0.34, {}, 'attack'], [1.2, {}]] },
+  comboUp: { name: '연타 3 (위 · 아래)', spawns: [{ kind: 'dummy', x: 0, z: 120, active: true }, { kind: 'dummy', x: 0, z: -120, active: true }], dummy: true, cam: 'close', seq: [[0.3, st(0, 1)], [0.3, st(0, 1), 'attack'], [0.32, {}, 'attack'], [0.34, {}, 'attack'], [1.0, {}], [0.2, st(0, -1)], [0.3, st(0, -1), 'attack'], [0.32, {}, 'attack'], [0.34, {}, 'attack'], [1.0, {}]] },
+  roll: { name: '구르기 · 훑기', spawns: [{ kind: 'dummy', x: 250, z: 0, active: true }], dummy: true, seq: [[0.3, st(1, 0)], [0.5, st(1, 0), 'dash'], [0.5, {}], [0.2, st(0, 1)], [0.5, st(0, 1), 'dash'], [0.4, {}], [0.2, st(-1, 0)], [0.5, st(-1, 0), 'dash'], [0.4, {}], [0.2, st(0, -1)], [0.5, st(0, -1), 'dash'], [0.5, {}], [0.2, st(1, 0)], [0.4, st(1, 0), 'dash'], [0.12, st(1, 0), 'attack'], [1.0, {}]] },
+  jump: { name: '점프 · 내려베기', spawns: [{ kind: 'dummy', x: 200, z: 0, active: true }], dummy: true, seq: [[0.4, {}], [0.9, { jumpHeld: true }, 'jump'], [0.4, {}], [0.25, st(1, 0)], [0.3, { ...st(1, 0), jumpHeld: true }, 'jump'], [0.6, { ...st(1, 0), jumpHeld: true }, 'attack'], [0.9, {}], [0.3, st(-1, 0)], [0.25, { jumpHeld: true }, 'jump'], [0.7, {}, 'attack'], [0.8, {}]] },
+  guard: { name: '막기 · 튕겨내기', spawns: [{ kind: 'skeleton_soldier', x: 90, z: 0, active: true }], safe: true, auto: 'parry', seq: [[30, {}]] },
+  block: { name: '막고 버티기', spawns: [{ kind: 'skeleton_soldier', x: 90, z: 0, active: true }], safe: true, seq: [[30, { guard: true }]] },
+  hurt: { name: '맞기 · 쓰러짐', spawns: [{ kind: 'skeleton_soldier', x: 100, z: 0, active: true }, { kind: 'gravekeeper_armor', x: -150, z: 30, active: true }], hp: 30, seq: [[30, {}]] },
+  soldier: { name: '해골 병사', spawns: [{ kind: 'skeleton_soldier', x: 260, z: 40, active: true }, { kind: 'skeleton_soldier', x: -240, z: -60, active: true }], safe: true, seq: [[30, {}]] },
+  mage: { name: '해골 술사', spawns: [{ kind: 'skeleton_mage', x: 300, z: 30, active: true }], safe: true, seq: [[4, {}], [3, st(1, 0)], [30, {}]] },
+  corpse: { name: '역병 주검', spawns: [{ kind: 'plague_corpse', x: 250, z: 0, active: true }], safe: true, seq: [[30, {}]] },
+  ghost: { name: '무덤 유령', spawns: [{ kind: 'grave_ghost', x: 260, z: 40, active: true }], safe: true, seq: [[30, {}]] },
+  armor: { name: '무덤지기 갑주', spawns: [{ kind: 'gravekeeper_armor', x: 250, z: 0, active: true }], safe: true, seq: [[30, {}]] },
+  bat: { name: '박쥐 떼', spawns: ring('bat', 4, 240), safe: true, seq: [[30, {}]] },
+  fight: { name: '싸움 (자동)', spawns: [{ kind: 'skeleton_soldier', x: 260, z: 40 }, { kind: 'skeleton_soldier', x: 300, z: -80 }, { kind: 'skeleton_mage', x: 420, z: 0 }, { kind: 'plague_corpse', x: -280, z: 60 }, { kind: 'bat', x: -200, z: -150 }, { kind: 'bat', x: -240, z: -110 }], safe: true, auto: 'fight', seq: [[60, {}]] },
+  elite: { name: '갑주와 싸움 (자동)', spawns: [{ kind: 'gravekeeper_armor', x: 240, z: 0, active: true }, { kind: 'grave_ghost', x: -220, z: 80, active: true }], safe: true, auto: 'fight', seq: [[60, {}]] },
+};
+api.demos = Object.fromEntries(Object.entries(DEMOS).map(([k, d]) => [k, d.name]));
+
+// ── 입력 ──
+const keys = new Set(), pressed = new Set();
+addEventListener('keydown', (e) => { if (!keys.has(e.code)) pressed.add(e.code); keys.add(e.code); });
+addEventListener('keyup', (e) => keys.delete(e.code));
+function manualInput() {
+  const k = (...c) => c.some((x) => keys.has(x)), p = (...c) => c.some((x) => pressed.has(x));
+  const inp = { mx: (k('ArrowRight', 'KeyD') ? 1 : 0) - (k('ArrowLeft', 'KeyA') ? 1 : 0), mz: (k('ArrowUp', 'KeyW') ? 1 : 0) - (k('ArrowDown', 'KeyS') ? 1 : 0), attack: p('KeyJ'), jump: p('KeyK', 'Space'), jumpHeld: k('KeyK', 'Space'), dash: p('KeyL'), guard: k('KeyL'), lockNext: p('KeyO') };
+  pressed.clear(); return inp;
+}
+let segI = -1;
+function demoInput(dt) {
+  const d = demo; if (!d.seq) return manualInput();
+  let t = seqT, i = 0, total = 0; for (const s of d.seq) total += s[0];
+  t %= total; while (t >= d.seq[i][0]) { t -= d.seq[i][0]; i++; }
+  const seg = d.seq[i], inp = { mx: 0, mz: 0, ...seg[1] };
+  if (i !== segI) { segI = i; for (let k = 2; k < seg.length; k++) if (seg[k]) inp[seg[k]] = true; }
+  seqT += dt;
+  if (d.auto) autoPilot(inp, d.auto);
+  return inp;
+}
+/** 자동 조종: 'parry' = 적의 판정 직전에 막기를 든다 · 'fight' = 가까운 적에게 가서 치고, 예고가 보이면 구르거나 튕겨낸다 */
+const ap = { cd: 0, g: 0, was: false };
+function autoPilot(inp, mode) {
+  const h = sim.hero; let near = null, nd = 1e9, threat = null;
+  for (const e of sim.enemies) { if (e.dead || e.state === 'dead') continue; const d = Math.hypot(e.x - h.x, e.z - h.z); if (d < nd) { nd = d; near = e; } if (e.state === 'attack' && e.atk && !e.atk.shot && d < 260) { const left = e.atk.windup - e.stateT; if (left < 0.15 && left > -0.05) threat = e; } }
+  for (const s of sim.shots) if (!s.dead && !s.friendly && Math.hypot(s.x - h.x, s.z - h.z) < 60) threat = threat ?? s;
+  ap.cd -= 1 / 60;
+  if (mode === 'parry') { inp.guard = !!threat || ap.g > 0; if (threat) ap.g = 0.25; else ap.g -= 1 / 60; return; }
+  if (threat && threat.atk && (threat.atk.guard === 'break' || threat.atk.guard === 'chip')) { if (ap.cd <= 0) { const ex = h.x - threat.x, ez = h.z - threat.z, d = Math.hypot(ex, ez) || 1; inp.mx = -ez / d; inp.mz = ex / d; inp.dash = true; ap.cd = 0.8; } return; }
+  if (threat) { inp.mx = 0; inp.mz = 0; inp.guard = true; ap.g = 0.2; return; }
+  if (ap.g > 0) { ap.g -= 1 / 60; inp.guard = true; inp.mx = inp.mz = 0; return; }
+  if (!near) return;
+  const ex = near.x - h.x, ez = near.z - h.z;
+  if (nd > 120) { inp.mx = ex / nd; inp.mz = ez / nd; }
+  else if (ap.cd <= 0) { inp.attack = true; ap.cd = 0.3; }
+}
+
+// ── 그리기 ──
+const vp = new Float32Array(16), eye = [0, 0, 0], cam = { x: 0, y: 0, z: 0 };
+let Wv = 960, Hv = 540;
+function camMatrix(C) {
+  const cp = Math.cos(C.pitch), sp = Math.sin(C.pitch), fx = Math.sin(C.yaw) * cp, fy = -sp, fz = Math.cos(C.yaw) * cp;
+  const rl = Math.hypot(fz, fx) || 1, rx = fz / rl, rz = -fx / rl, ux = fy * rz, uy = fz * rx - fx * rz, uz = -fy * rx;
+  const px = cam.x - fx * C.dist, py = cam.y + C.lookY - fy * C.dist, pz = cam.z - fz * C.dist;
+  eye[0] = px; eye[1] = py; eye[2] = pz;
+  const F = 880, NEAR = 40, FAR = 9000, sx = F / (Wv / 2), sy = F / (Hv / 2), A = (FAR + NEAR) / (FAR - NEAR), B = (-2 * FAR * NEAR) / (FAR - NEAR);
+  const rd = -(rx * px + rz * pz), ud = -(ux * px + uy * py + uz * pz), fd = -(fx * px + fy * py + fz * pz), m = vp;
+  m[0] = sx * rx; m[4] = 0; m[8] = sx * rz; m[12] = sx * rd;
+  m[1] = sy * ux; m[5] = sy * uy; m[9] = sy * uz; m[13] = sy * ud;
+  m[2] = A * fx; m[6] = A * fy; m[10] = A * fz; m[14] = A * fd + B;
+  m[3] = fx; m[7] = fy; m[11] = fz; m[15] = fd;
+}
+function project(x, y, z) { const m = vp, w = m[3] * x + m[7] * y + m[11] * z + m[15]; if (w <= 1) return null; return [((m[0] * x + m[4] * y + m[8] * z + m[12]) / w * 0.5 + 0.5) * ov.width, (0.5 - (m[1] * x + m[5] * y + m[9] * z + m[13]) / w * 0.5) * ov.height]; }
+const IDM = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]), TM = new Float32Array(16);
+const flat = (x, y, z, sx, sy, sz) => { TM.fill(0); TM[0] = sx; TM[5] = sy; TM[10] = sz; TM[12] = x; TM[13] = y; TM[14] = z; TM[15] = 1; return TM; };
+function size(w, h) {
+  const dpr = api.hold ? 1 : Math.min(2, window.devicePixelRatio || 1), W = Math.round(w * dpr), H = Math.round(h * dpr);
+  for (const c of [cv, ov]) { if (c.width !== W || c.height !== H) { c.width = W; c.height = H; } c.style.width = w + 'px'; c.style.height = h + 'px'; }
+  Hv = 540; Wv = (540 * W) / H;
+}
+function shape(o, mv, col, fill) {   // 보는 방향 기준 판정 (상자 · 부채꼴 · 원)을 땅 위에 그린다
+  const g = ov.getContext('2d'), dx = o.dirX, dz = o.dirZ, y = (o.gy ?? o.y) + 2, P = [];
+  if (mv.box) { const b = mv.box; for (const [f, l] of [[b.f0, -b.side], [b.f1, -b.side], [b.f1, b.side], [b.f0, b.side]]) P.push([o.x + dx * f - dz * l, o.z + dz * f + dx * l]); }
+  else if (mv.arc) { const a = mv.arc, h = (a.deg / 2) * Math.PI / 180, a0 = Math.atan2(dz, dx); if (a.deg < 359) P.push([o.x, o.z]); for (let i = 0; i <= 24; i++) { const t = a0 - h + (2 * h * i) / 24; P.push([o.x + Math.cos(t) * a.r, o.z + Math.sin(t) * a.r]); } }
+  else if (mv.radius || mv.land) { const r = mv.radius ?? mv.land, cx = o.x + dx * r.fwd, cz = o.z + dz * r.fwd; for (let i = 0; i < 28; i++) { const t = (i / 28) * 6.2832; P.push([cx + Math.cos(t) * r.r, cz + Math.sin(t) * r.r]); } }
+  else return;
+  g.beginPath(); let n = 0; for (const p of P) { const s = project(p[0], y, p[1]); if (!s) continue; if (n++) g.lineTo(s[0], s[1]); else g.moveTo(s[0], s[1]); }
+  g.closePath(); g.strokeStyle = col; g.lineWidth = 2; g.stroke(); if (fill) { g.fillStyle = fill; g.fill(); }
+}
+function draw(label) {
+  const C = CAMS[S.cam] ?? CAMS.game, h = sim.hero;
+  if (S.follow) { cam.x = h.x; cam.z = h.z; cam.y = 0; }
+  camMatrix(C);
+  gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(0.13, 0.15, 0.2, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  R.begin({ vp, eye, fog: { near: 3000, far: 9000, max: 0, color: [0.13, 0.15, 0.2] }, sunDir: [-0.35, 0.8, -0.5], sun: [0.7, 0.68, 0.66], amb: [0.6, 0.62, 0.68] });
+  R.draw(floorGpu, null, IDM, { rim: [0, 0, 0, 0] });
+  const blob = (x, y, z, r, a) => R.draw(blobGpu, null, flat(x, y + 0.6, z, r, 1, r * 0.9), { alpha: a, rim: [0, 0, 0, 0], depthWrite: false });
+  blob(h.x, sim.w.ground(h.x, h.z, h.y + 30) || 0, h.z, 20, 0.4);
+  for (const e of sim.enemies) if (!e.dead) blob(e.x, e.gy ?? e.y, e.z, e.r * 1.15, 0.35 * (e.alpha ?? 1));
+  heroCh.draw(heroCh.place(h.x, h.y, h.z), { flash: h.flash > 0.5 ? 0.5 : 0, alpha: h.ifr > 0 && h.dashT <= 0 && !h.dead && Math.floor(time * 20) % 2 ? 0.55 : 1 });
+  for (const e of sim.enemies) { if (e.dead) continue; const ch = chars.get(e.id); if (!ch) continue; ch.draw(placeActor(ch, e), { alpha: Math.min(1, e.alpha ?? 1) * (e.state === 'dead' ? Math.max(0.05, e.dying / e.def.dieT) : 1), flash: e.flashT > 0 ? 0.7 : e.phase === 'windup' && e.tele > 0.6 ? 0.25 * Math.sin(time * 30) ** 2 : 0, tint: e.phase === 'windup' ? [1 + e.tele * 0.5, 1, 1] : [1, 1, 1] }); }
+  for (const s of sim.shots) if (!s.dead) R.draw(shotGpu, null, flat(s.x, s.y, s.z, s.r ?? 10, s.r ?? 10, s.r ?? 10), { add: true, tint: s.friendly ? [0.5, 0.8, 1.6] : [1.8, 0.4, 0.5], rim: [0, 0, 0, 0] });
+  R.end();
+  const g = ov.getContext('2d'); g.clearRect(0, 0, ov.width, ov.height);
+  if (S.box) {
+    if (h.move) { const on = h.moveT >= h.move.hit[0] && h.moveT <= h.move.hit[1]; shape(h, h.move, on ? '#ff5040' : '#ffd060', on ? 'rgba(255,80,64,0.25)' : null); if (h.move.land) shape(h, { land: h.move.land }, '#ffa040'); }
+    for (const e of sim.enemies) if (!e.dead && e.atk && !e.atk.shot) shape(e, e.atk, e.phase === 'strike' ? '#ff4060' : e.phase === 'windup' ? '#ffd060' : '#667', e.phase === 'strike' ? 'rgba(255,64,96,0.3)' : e.phase === 'windup' ? `rgba(255,208,96,${0.05 + 0.2 * e.tele})` : null);
+    const fp = project(h.x + h.dirX * 46, h.y + 3, h.z + h.dirZ * 46), f0 = project(h.x, h.y + 3, h.z); if (fp && f0) { g.strokeStyle = '#60e0ff'; g.lineWidth = 3; g.beginPath(); g.moveTo(f0[0], f0[1]); g.lineTo(fp[0], fp[1]); g.stroke(); }
+  }
+  const le = h.lock != null ? sim.byId(h.lock) : null;
+  if (le && !le.dead) shape({ x: le.x, z: le.z, y: le.gy ?? le.y, dirX: 1, dirZ: 0 }, { radius: { r: le.r + 10, fwd: 0 } }, '#ff3050');
+  if (label) { g.font = `${Math.round(ov.height * 0.062)}px system-ui, sans-serif`; g.fillStyle = '#000a'; g.fillRect(0, 0, ov.width, ov.height * 0.085); g.fillStyle = '#ffe8c0'; g.textBaseline = 'middle'; g.fillText(label, 6, ov.height * 0.045); }
+}
+function step(dt) {
+  const d = demo, h = sim.hero, inp = demoInput(dt);
+  if (d.safe) h.hp = Math.max(h.hp, h.hpMax * 0.6);
+  if (d.dummy) for (const e of sim.enemies) e.hp = e.hpMax;
+  sim.update(dt, inp);
+  if (sim.stop > 0) { time += dt; return; }
+  time += dt;
+  driveHero(heroCh, sim.hero, dt, TUNE);
+  for (const e of sim.enemies) { if (e.dead) continue; let ch = chars.get(e.id); if (!ch) { ch = makeChar(e); chars.set(e.id, ch); } driveActor(ch, e, dt); }
+  if (d.respawn !== false && d.seq && sim.enemies.length && sim.enemies.every((e) => e.dead)) for (const s of d.spawns) sim.addEnemy({ ...s, x: h.x + s.x, z: h.z + s.z });
+}
+function makeChar(e) {
+  const K = e.def, as = assets.get(K.model), w = K.weapon ? weapons.get(K.weapon) : null;
+  const ch = new Char3D(as, R, { gpu: as.gpu, weapon: !!w, weaponGpu: w, scale: UNIT * (K.height / Math.max(0.2, as.h)) * (K.scale ?? 1) });
+  if (K.weapon) ch.grip = { ...(K.grip ?? GRIPS[K.weapon] ?? ch.grip) };
+  return ch;
+}
+function setDemo(id) {
+  demo = DEMOS[id] ?? DEMOS.run8; S.demo = DEMOS[id] ? id : 'run8'; if (demo.cam && !q.get('cam')) S.cam = demo.cam;
+  events.length = 0; seqT = 0; segI = -1; time = 0; chars.clear(); ap.cd = 0; ap.g = 0;
+  const hooks = { event: (n, ...a) => { events.push([+time.toFixed(3), n, a[0]?.id ?? a[0]?.kind ?? (typeof a[0] === 'string' || typeof a[0] === 'number' ? a[0] : '')]); if (events.length > 400) events.shift(); } };
+  sim = new Sim(flatArena(1400, 1000, demo.spawns), hooks); api.sim = sim;
+  if (demo.hp) sim.hero.hp = demo.hp;
+  heroCh.dx = 1; heroCh.dz = 0; heroCh._pm = null; heroCh.anim.play('idle', { fade: 0, restart: true });
+  cam.x = 0; cam.z = 0;
+}
+function hud() {
+  const h = sim.hero, ev = events.slice(-6).map((e) => e[1] + (e[2] !== '' ? ':' + e[2] : '')).join(' · ');
+  info.textContent = `${demo.name} · t ${time.toFixed(2)} · 카엘 ${h.anim}${h.move ? '(' + h.move.id + ')' : ''} 클립 ${heroCh.anim.cur?.name ?? '-'} @${heroCh.anim.t.toFixed(2)} · 속도 ${Math.hypot(h.vx, h.vz).toFixed(0)} · hp ${h.hp} · 락온 ${h.lock ?? '없음'}\n` +
+    sim.enemies.filter((e) => !e.dead).slice(0, 6).map((e) => `${e.def.name} ${e.state}${e.phase ? '/' + e.phase : ''} ${chars.get(e.id)?.anim.cur?.name ?? ''} hp ${e.hp}`).join('  |  ') + `\n${ev}`;
+}
+
+// ── 검사 · 캡처용 ──
+function seed(n) { let s = n >>> 0; Math.random = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+/** 시범을 처음부터 t 초까지 1/60 으로 돌려 그린다 */
+api.run = (id, t, o = {}) => { Object.assign(S, o); seed(o.seed ?? 7); setDemo(id); const n = Math.round(t * 60); for (let i = 0; i < n; i++) step(1 / 60); draw(); hud(); return state(); };
+/** 붙임 그림: times 의 순간들을 칸으로 이어 붙인 그림(JPEG dataURL). o: { cols, cw, ch, cam, box } */
+api.sheet = (id, times, o = {}) => {
+  Object.assign(S, { cam: o.cam ?? DEMOS[id]?.cam ?? 'close', box: !!o.box }); seed(o.seed ?? 7); const qc = q.get('cam'); setDemo(id); if (o.cam) S.cam = o.cam; void qc;
+  const cols = o.cols ?? 8, cw = o.cw ?? 240, chh = o.ch ?? 250, rows = Math.ceil(times.length / cols);
+  size(cw, chh);
+  const sh = document.createElement('canvas'); sh.width = cols * cw; sh.height = rows * chh; const g = sh.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, sh.width, sh.height);
+  let t = 0; const out = [];
+  times.forEach((tt, k) => {
+    while (t < tt - 1e-6) { step(1 / 60); t += 1 / 60; }
+    const h = sim.hero; draw(`${tt.toFixed(2)} ${o.who ? (chars.get(sim.enemies[0]?.id)?.anim.cur?.name ?? '') + ' ' + (sim.enemies[0]?.phase ?? sim.enemies[0]?.state ?? '') : (heroCh.anim.cur?.name ?? '') + (h.move ? ' ' + h.move.id : '')}`);
+    g.drawImage(cv, (k % cols) * cw, Math.floor(k / cols) * chh); g.drawImage(ov, (k % cols) * cw, Math.floor(k / cols) * chh);
+    out.push(state());
+  });
+  api.lastStates = out;
+  return sh.toDataURL('image/jpeg', 0.86);
+};
+const state = () => { const h = sim.hero; return { t: +time.toFixed(3), hero: { x: +h.x.toFixed(1), z: +h.z.toFixed(1), y: +h.y.toFixed(1), anim: h.anim, move: h.move?.id ?? null, clip: heroCh.anim.cur?.name ?? null, dir: [+h.dirX.toFixed(2), +h.dirZ.toFixed(2)], body: [+heroCh.dx.toFixed(2), +heroCh.dz.toFixed(2)], hp: h.hp, lock: h.lock }, enemies: sim.enemies.filter((e) => !e.dead).map((e) => ({ id: e.id, kind: e.kid, state: e.state, phase: e.phase, clip: chars.get(e.id)?.anim.cur?.name ?? null, hp: e.hp })), events: events.slice(-12) }; };
+api.state = state;
+
+async function main() {
+  gl = cv.getContext('webgl2', { antialias: true, alpha: false, preserveDrawingBuffer: true }) || cv.getContext('webgl', { antialias: true, alpha: false, preserveDrawingBuffer: true });
+  if (!gl) throw new Error('WebGL 을 쓸 수 없습니다');
+  R = new CharRenderer(gl, { maxJoints: 32 });
+  const texCap = Number(q.get('tex') ?? 1024);
+  const heroAsset = await loadCharAsset(DIR + 'kael.glb');
+  await loadPlayClips(heroAsset);
+  heroCh = new Char3D(heroAsset, R, { maxTex: texCap });
+  const models = [...new Set(Object.values(KINDS).filter((K) => !K.boss).map((K) => K.model))], weps = [...new Set(Object.values(KINDS).map((K) => K.weapon).filter(Boolean))];
+  await Promise.all([...models.map(async (m) => { const as = await loadCharAsset(DIR + m + '.glb'); as.gpu = R.add(as.model, { maxTex: texCap }); const lo = Math.min(...as.model.prims.map((p) => { let v = 1e9; for (let i = 1; i < p.pos.length; i += 3) v = Math.min(v, p.pos[i]); return v; })), hi = Math.max(...as.model.prims.map((p) => { let v = -1e9; for (let i = 1; i < p.pos.length; i += 3) v = Math.max(v, p.pos[i]); return v; })); as.h = hi - lo; assets.set(m, as); }),
+    ...weps.map(async (w) => { weapons.set(w, R.add(await loadGLB(DIR + w + '.glb'), { maxTex: 512 })); })]);
+  const tiles = []; for (let i = -14; i < 14; i++) for (let k = -10; k < 10; k++) { const c = (i + k) & 1 ? 0.3 : 0.25; tiles.push({ min: [i * 100, -6, k * 100], max: [i * 100 + 100, 0, k * 100 + 100], color: [c, c * 1.05, c * 1.15] }); }
+  floorGpu = R.add(boxModel(tiles), { mip: false });
+  blobGpu = R.add(boxModel([{ min: [-1, -0.5, -1], max: [1, 0.5, 1], color: [0, 0, 0] }]), { mip: false });
+  shotGpu = R.add(boxModel([{ min: [-0.6, -0.6, -0.6], max: [0.6, 0.6, 0.6], color: [1, 1, 1] }, { min: [-1, -0.25, -0.25], max: [1, 0.25, 0.25], color: [1, 1, 1] }]), { mip: false });
+  setDemo(S.demo);
+  const btn = (label, fn, on) => { const b = document.createElement('button'); b.textContent = label; b.onclick = () => { fn(); sync(); }; b._on = on; ui.appendChild(b); return b; };
+  const sep = (t) => { const s = document.createElement('span'); s.textContent = t; ui.appendChild(s); };
+  const sync = () => { for (const b of ui.children) b.classList?.toggle('on', !!b._on?.()); };
+  sep('카엘'); for (const k of ['free', 'run8', 'turn', 'walk', 'combo', 'combo1', 'comboUp', 'roll', 'jump', 'guard', 'block', 'hurt']) btn(DEMOS[k].name, () => setDemo(k), () => S.demo === k);
+  sep('적'); for (const k of ['soldier', 'mage', 'corpse', 'ghost', 'armor', 'bat', 'fight', 'elite']) btn(DEMOS[k].name, () => setDemo(k), () => S.demo === k);
+  sep('보기'); for (const [k, n] of [['game', '게임 카메라'], ['high', '높이'], ['close', '가까이'], ['side', '옆'], ['front', '앞'], ['top', '위']]) btn(n, () => { S.cam = k; }, () => S.cam === k);
+  btn('판정 보기', () => { S.box = !S.box; }, () => S.box); btn('느리게', () => { S.slow = !S.slow; }, () => S.slow); btn('멈춤', () => { S.pause = !S.pause; }, () => S.pause);
+  sync();
+  api.ready = true;
+  let last = performance.now(), acc = 0;
+  const loop = (now) => {
+    const real = Math.min(0.1, (now - last) / 1000); last = now;
+    if (!api.hold) { size(innerWidth, innerHeight); if (!S.pause) { acc += real * (S.slow ? 0.25 : 1); let n = 0; while (acc >= 1 / 60 && n++ < 6) { step(1 / 60); acc -= 1 / 60; } if (n >= 6) acc = 0; } draw(); hud(); }
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+}
+main().catch((e) => { api.error = String(e?.stack ?? e?.message ?? e); info.textContent = '열지 못했습니다: ' + api.error; console.error(e); });
+</script>
+</body>
+</html>
