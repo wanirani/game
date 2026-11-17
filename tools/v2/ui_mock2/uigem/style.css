@@ -34,6 +34,7 @@ ul { list-style: none; } i { font-style: normal; display: block; } img { display
 .hide-hud #hud, .hide-hud #shade, .hide-ink .ink { visibility: hidden; }
 #views { position: absolute; left: 50%; bottom: calc(6px + var(--sb)); transform: translateX(-50%); display: flex; gap: 6px; z-index: 50; }
 #views button { height: 44px; min-width: 56px; padding: 0 12px; border-radius: 22px; background: rgba(0, 0, 0, .55); border: 1px solid rgba(255, 255, 255, .35); color: #fff; font-size: 13px; }
+.v-dialog #views { bottom: auto; top: calc(6px + var(--st)); }   /* 대화 상자를 가리지 않게 위로 */
 .shot #views { display: none; }
 
 /* ── 공통 재질 ───────────────────────────────────────────── */

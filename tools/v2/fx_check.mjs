@@ -3,6 +3,7 @@
 //   node tools/v2/fx_check.mjs --sheets     + 접촉 시트 (계열마다 한 장; 효과마다 세 순간)   → /tmp/claude-0/v2/fxcore/sheet_*.jpg
 //   node tools/v2/fx_check.mjs --video      + 시범 두 개(콤보 · 마법 순회) 영상              → /tmp/claude-0/v2/fxcore/fx_demos.mp4
 //   node tools/v2/fx_check.mjs --quick      부팅·프리셋 검사만
+//   node tools/v2/fx_check.mjs --doc        + docs/v2/FX.md 의 숫자 칸을 이번 측정으로 바꿔 쓴다
 // 헤드리스 Chromium 은 소프트웨어 렌더러(SwiftShader)다 → 프레임 시간은 기기 값이 아니다. 개수(그리기 호출·입자·삼각형·바이트)와
 // JS 쪽 CPU 시간(효과 엔진의 update+draw)만 옮겨 읽는다.
 import { chromium } from 'playwright-core';
@@ -67,7 +68,8 @@ for (const vp of ['fold_open', 'phone2']) {
 
 if (!args.has('--quick')) {
   const { ctx, page, errs } = await open('fold_open', '&tier=mid');
-  await page.evaluate(() => { window.__fx.small = true; });   // 측정은 160×120 캔버스로 (개수·JS 시간은 해상도와 무관)
+  await page.evaluate(() => { window.__fx.small = true; });
+  report.presets = await page.evaluate(() => window.__fx.presets);   // 측정은 160×120 캔버스로 (개수·JS 시간은 해상도와 무관)
   // ── 2. 프리셋별 비용 (세 단계) ──
   console.log('\n[프리셋별 비용 — fold_open; 입자 = 뿜은 수/동시에 산 최댓값, 덧칠 = 화면(960×726) 대비 배수의 최댓값]');
   for (const tier of ['low', 'mid', 'high']) {
@@ -78,16 +80,16 @@ if (!args.has('--quick')) {
     console.log(c.name.padEnd(20) + ['low', 'mid', 'high'].map((t) => { const x = report.cost[t][i]; return `| ${String(x.emitted).padStart(4)}/${String(x.peakParticles).padEnd(4)} ${String(x.peakDraws).padStart(2)}회 ${x.peakOverdraw.toFixed(2).padStart(5)}  문양${x.peakQuads} 메시${x.peakMeshes} 빛${x.peakLights}`.padEnd(34); }).join(''));
   });
   // ── 3. 난전 예산 ──
-  console.log('\n[난전 10초 — 적 12 · 초당 타격 6 · 마법 2.5/초(3개쯤 떠 있음) · 큰 마법 2.4초마다]');
+  console.log('\n[난전 15초 — 적 12 · 초당 타격 6 · 마법 2.5/초(3개쯤 떠 있음) · 큰 마법 2.4초마다]');
   for (const tier of ['low', 'mid', 'high']) {
-    const h = await page.evaluate((tier) => window.__fx.heavy(tier, 10), tier); report.heavy[tier] = h;
+    const h = await page.evaluate((tier) => window.__fx.heavy(tier, 15), tier); report.heavy[tier] = h;
     console.log(`  ${tier.padEnd(4)} 그리기(효과) 최대 ${h.draws.max} 평균 ${h.draws.avg} + 후처리 ${h.postPasses} + 장면 ${h.sceneDraws} · 입자 제출 최대 ${h.particles.max} (실제 산 것 최대 ${h.live.max} 평균 ${h.live.avg}) · 문양 ${h.quads.max} · 메시 ${h.meshes.max} (${h.meshTris.max}△) · 띠 ${h.ribbons.max} (${h.ribbonVerts.max}v) · 빛 ${h.lights.max} · 덧칠 최대 ${h.overdraw.max} 평균 ${h.overdraw.avg} 화면 · 밝기 최저 ${h.gainMin.toFixed(2)} · CPU(효과 JS) 평균 ${h.cpu.avg} p95 ${h.cpu.p95} 최대 ${h.cpu.max} ms`);
   }
   // ── 4. 할당 검사 ──
   console.log('\n[프레임당 할당 — performance.memory (정밀) · 미리 2400프레임 돌려 JIT 를 데운 뒤 1200프레임 동안 JS 힙 증가]');
   for (const mode of ['idle', 'fxonly', 'page']) {
     const a = await page.evaluate((mode) => window.__fx.alloc('mid', 2400, 1200, mode), mode); report.alloc[mode] = a;
-    console.log(`  ${mode.padEnd(7)} ${a.bytes} 바이트 / ${a.frames} 프레임 = ${a.perFrame.toFixed(1)} 바이트/프레임 ${a.hasMemory && a.hasGc ? '' : '(메모리 정보 없음)'}`);
+    console.log(`  ${mode.padEnd(7)} ${a.bytes} 바이트 / ${a.frames} 프레임 = ${a.perFrame.toFixed(1)} 바이트/프레임 · 프레임당 ${a.ms.toFixed(3)} ms ${a.hasMemory && a.hasGc ? '' : '(메모리 정보 없음)'}`);
   }
   if (report.alloc.idle.bytes > 2048) fail(`정상 상태(새 효과 없음)에서 할당이 있다: ${report.alloc.idle.bytes} 바이트`); else ok('정상 상태(새 효과 없음) 할당 0');
   if (errs.length) fail(`측정 중 페이지 오류: ${errs.slice(0, 3).join(' | ')}`);
@@ -100,7 +102,7 @@ if (args.has('--sheets')) {
   const { ctx, page } = await open('fold_open', '&tier=high');
   const SHEETS = [
     ['hits', '타격', 0.5, [['hit.slash.light', 0.04, 0.1, 0.2, null, 0.37, 0.62], ['hit.slash.heavy', 0.05, 0.16, 0.3, null, 0.37, 0.62], ['hit.blunt', 0.05, 0.16, 0.34, null, 0.37, 0.62], ['hit.pierce', 0.04, 0.12, 0.22, null, 0.37, 0.62], ['hit.crit', 0.05, 0.2, 0.36, null, 0.37, 0.62], ['hit.guard', 0.04, 0.12, 0.24, null, 0.37, 0.62], ['hit.finisher', 0.06, 0.3, 0.6, null, 0.37, 0.62], ['swing.light', 0.04, 0.08, 0.13, null, 0.3, 0.62], ['swing.heavy', 0.05, 0.11, 0.18, null, 0.3, 0.62]]],
-    ['move_enemy', '이동 · 적 · 줍기', 0.5, [['move.dash', 0.04, 0.12, 0.26, null, 0.27, 0.66], ['move.land', 0.04, 0.14, 0.3, null, 0.27, 0.66], ['move.step', 0.04, 0.12, 0.24, null, 0.27, 0.66], ['move.jump', 0.04, 0.12, 0.24, null, 0.27, 0.66], ['enemy.hurt', 0.03, 0.08, 0.16, null, 0.37, 0.62], ['enemy.death.bone', 0.08, 0.3, 0.7, null, 0.68, 0.6], ['enemy.death.ash', 0.15, 0.45, 0.85, null, 0.68, 0.6], ['pickup', 0.05, 0.18, 0.36, null, 0.5, 0.56]]],
+    ['move_enemy', '이동 · 적 · 줍기', 0.5, [['move.dash', 0.04, 0.12, 0.26, null, 0.27, 0.66], ['move.land', 0.04, 0.14, 0.3, null, 0.27, 0.66], ['move.step', 0.04, 0.12, 0.24, null, 0.27, 0.66], ['move.jump', 0.04, 0.12, 0.24, null, 0.27, 0.66], ['enemy.hurt', 0.03, 0.08, 0.16, null, 0.37, 0.62], ['enemy.death.bone', 0.08, 0.3, 0.7, null, 0.68, 0.6], ['enemy.death.ash', 0.15, 0.45, 0.85, null, 0.68, 0.6], ['pickup', 0.05, 0.18, 0.36, null, 0.5, 0.56], ['enemy.breath', 0.4, 0.75, 1.0, null, 0.55, 0.6], ['buff.shield', 0.1, 0.45, 0.85, null, 0.27, 0.62]]],
     ['fire', '불', 1, [['fire.bolt', 0.16, 0.42, 0.66], ['fire.pillar', 0.5, 0.84, 1.15], ['fire.meteor', 0.5, 0.98, 1.3]]],
     ['ice', '얼음', 1, [['ice.lance', 0.14, 0.32, 0.6], ['ice.nova', 0.35, 0.66, 1.1]]],
     ['lightning', '번개', 1, [['lightning.chain', 0.14, 0.24, 0.42], ['lightning.strike', 0.45, 0.66, 0.9, 4]]],
@@ -140,6 +142,30 @@ if (args.has('--video')) {
   fs.rmSync(dir, { recursive: true, force: true });
   console.log(`  ${mp4} (${n} 프레임, ${(n / 30).toFixed(1)}초, ${(fs.statSync(mp4).size / 1048576).toFixed(2)} MB)`);
   await ctx.close();
+}
+
+// ── 7. 문서의 숫자 칸 갱신 (docs/v2/FX.md 의 <!-- numbers:begin --> … <!-- numbers:end -->) ──
+if (args.has('--doc') && report.cost.mid) {
+  const P = report.presets, L = [];
+  const mb = (b) => (b / 1048576).toFixed(2);
+  L.push(`측정: ${report.date.slice(0, 16).replace('T', ' ')} UTC · 헤드리스 Chromium 1194 + SwiftShader(소프트웨어 렌더러) — **프레임 시간은 기기 값이 아니다.** 아래는 옮겨 읽을 수 있는 값(개수·바이트·JS 시간)만 적었다.`, '');
+  L.push('**프리셋 목록 (연결 계약)**', '', '| 이름 | 뜻 | 자리 | 소리 사건 | 손맛 호출 |', '|---|---|---|---|---|');
+  for (const p of P) L.push(`| \`${p.name}\` | ${p.ko} | ${p.args === 'hit' ? '맞은 점 + 방향' : p.args === 'aim' ? '쏘는 쪽 발밑 → 표적 발밑' : '발밑 (+방향)'} | ${p.sfx.map((x) => '`' + x + '`').join(' ')} | ${p.feel} |`);
+  L.push('', '**프리셋별 비용** (혼자 냈을 때의 최댓값. 덧칠 = 효과가 덮는 넓이 ÷ 폴드 화면 960×726; 겹쳐 그린 넓이의 합이라 1 을 넘을 수 있다)', '', '| 프리셋 | 뿜는 입자 low / mid / high | 동시에 산 입자 (mid) | 그리기 호출 (mid) | 덧칠 low / mid / high | 문양 · 메시 · 띠 · 빛 (mid) |', '|---|---|---|---|---|---|');
+  report.cost.mid.forEach((c, i) => { const lo = report.cost.low[i], hi = report.cost.high[i]; L.push(`| \`${c.name}\` | ${lo.emitted} / ${c.emitted} / ${hi.emitted} | ${c.peakParticles} | ${c.peakDraws} | ${lo.peakOverdraw.toFixed(2)} / ${c.peakOverdraw.toFixed(2)} / ${hi.peakOverdraw.toFixed(2)} | ${c.peakQuads} · ${c.peakMeshes} · ${c.peakRibbons} · ${c.peakLights} |`); });
+  L.push('', '**난전 한 프레임의 예산** (15초 = 900프레임, 사건은 실제 시간 기준: 적 12, 초당 타격 6회 + 휘두르기, 발걸음 초당 24, 마법 초당 2.5개(늘 3개쯤 떠 있음), 큰 마법 2.4초마다, 죽음 1.5초마다)', '', '| 단계 | 효과 그리기 호출 최대 (평균) | + 후처리 패스 | 입자: 제출 최대 / 실제 산 것 최대 (평균) / 상한 | 문양 최대 | 메시 최대 (삼각형) | 띠 최대 (정점) | 빛 최대 | 덧칠 최대 (평균) | 밝기 조절 최저 | 효과 JS 시간 평균 · p95 · 최대 (ms) |', '|---|---|---|---|---|---|---|---|---|---|---|');
+  const CAP = { low: 1024, mid: 2048, high: 4096 };
+  for (const t of ['low', 'mid', 'high']) { const h = report.heavy[t]; L.push(`| ${t} | ${h.draws.max} (${h.draws.avg.toFixed(1)}) | ${h.postPasses} | ${h.particles.max} / ${h.live.max} (${Math.round(h.live.avg)}) / ${CAP[t]} | ${h.quads.max} | ${h.meshes.max} (${h.meshTris.max}) | ${h.ribbons.max} (${h.ribbonVerts.max}) | ${h.lights.max} | ${h.overdraw.max.toFixed(2)} (${h.overdraw.avg.toFixed(2)}) | ${h.gainMin.toFixed(2)} | ${h.cpu.avg.toFixed(2)} · ${h.cpu.p95.toFixed(2)} · ${h.cpu.max.toFixed(2)} |`); }
+  L.push('', `- 장면(시험 화면의 바닥·벽·인형)은 따로 ${report.heavy.mid.sceneDraws}회. 효과 JS 시간 = \`fx.update\` + \`fx.draw\` 안에서 잰 \`performance.now()\` 차이(헤드리스·다른 작업과 CPU 를 나눠 쓰는 기계에서 잰 값; GPU 시간은 들어 있지 않다).`);
+  L.push('', '**프레임당 할당** (`performance.memory.usedJSHeapSize`, `--enable-precise-memory-info` · 시작 전에 `gc()`; 2,400프레임을 먼저 돌려 JIT 를 데운 뒤 1,200프레임 동안 힙이 는 양)', '', '| 경우 | 1,200프레임 동안 는 힙 | 프레임당 | 프레임당 JS 시간 (1,200프레임 평균) |', '|---|---|---|---|');
+  const AN = { idle: '정상 상태: 살아 있는 효과만 돌고 새로 내지 않음 (시험 화면 프레임 전체)', fxonly: '난전: 효과 엔진만 (`fx.update` + 프리셋 호출 + `fx.draw`)', page: '난전: 시험 화면 프레임 전체 (장면 그리기 · 후처리 포함)' };
+  for (const m of ['idle', 'fxonly', 'page']) { const a = report.alloc[m]; L.push(`| ${AN[m]} | ${a.bytes} 바이트 | ${a.perFrame.toFixed(1)} 바이트 | ${a.ms.toFixed(3)} ms |`); }
+  L.push('', '**메모리**', '');
+  for (const v of ['fold_open', 'phone2']) { const r = report.views[v]; L.push(`- ${v} (캔버스 ${r.canvas.join('×')}): 효과 GPU 메모리 ${mb(r.gpuBytes)} MB = 텍스처 ${mb(r.texBytes)} (입자 512² + 문양 512² + 잡음 64², 밉맵 포함) + 후처리 버퍼 ${mb(r.postBytes)} (장면 색 + 깊이 + 번짐 단계) + 정점 버퍼 ${mb(r.gpuBytes - r.texBytes - r.postBytes)}`); }
+  L.push('- 후처리 버퍼는 캔버스 크기에 비례한다: 폴드 실기 medium(1455×1100)이면 약 13 MB, high(2000×1512)면 약 25 MB. low 단계는 후처리를 꺼서 0.');
+  const f = 'docs/v2/FX.md'; let md = fs.readFileSync(f, 'utf8');
+  const i0 = md.indexOf('<!-- numbers:begin -->'), i1 = md.indexOf('<!-- numbers:end -->');
+  if (i0 >= 0 && i1 > i0) { md = md.slice(0, i0 + 22) + '\n' + L.join('\n') + '\n' + md.slice(i1); fs.writeFileSync(f, md); console.log('\ndocs/v2/FX.md 숫자 칸 갱신'); } else console.log('\ndocs/v2/FX.md 에 numbers 표시가 없다');
 }
 
 report.fails = fails;

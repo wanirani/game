@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """uigem 아이콘 재료 준비 — 게임이 이미 가진 그림을 「상아 조각」 색조로 바꾼다 (유료 생성 0).
-  · 카엘 3D 모델의 동작 렌더(/tmp/claude-0/v2/char3d/clips_*.png, 평평한 배경) → 칸별로 오려 배경을 지우고 상아색 부조 톤으로
+  · 카엘 3D 모델의 동작 렌더(forge/src/clips_*.png — char3d 파일럿이 찍은 것의 사본, 평평한 배경) → 칸별로 오려 배경을 지우고 상아색 부조 톤으로
   · v1 아이템 그림(assets/icons/*.png) → 같은 상아 톤
 결과는 /dev/shm/uigem/src/ 에 놓이고, forge.html 이 벡터 요소(베기 궤적·달·과녁 등)와 합쳐 최종 아이콘을 굽는다.
   python3 tools/v2/ui_mock2/uigem/forge/prep.py
@@ -11,6 +11,7 @@ from PIL import Image
 from scipy import ndimage as ndi
 
 OUT = '/dev/shm/uigem/src'
+SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src')   # 카엘 3D 동작 렌더 두 장의 사본 (원본: /tmp/claude-0/v2/char3d/clips_*.png, char3d 파일럿이 찍은 것)
 os.makedirs(OUT, exist_ok=True)
 BG = np.array([51, 55, 61], np.float32)
 
@@ -80,9 +81,9 @@ def cells(path, cols, rows, names, cw=300, ch=380, top=24):
         k2 = np.asarray(im, np.float32) / 255.0
         print(nm, save(ivory(k2, detail=1.7, edge=0.8, base=0.75), 'fig_' + nm))
 
-cells('/tmp/claude-0/v2/char3d/clips_procedural.png', 6, 2,
+cells(SRC + '/clips_procedural.png', 6, 2,
       ['idle', 'jump', 'fall', 'land', 'dash', 'hurt', 'a2prep', 'a2slash', 'a3prep', 'a3thrust', 'airprep', 'airslash'])
-cells('/tmp/claude-0/v2/char3d/clips_library.png', 4, 3,
+cells(SRC + '/clips_library.png', 4, 3,
       ['run0', 'run12', 'run24', 'runback', 'sl30', 'sl50', 'sl62', 'sl85'])
 
 for nm in ['sword_5', 'sword_3', 'whip_5', 'moneybag', 'sub_bible', 'u_grimoire', 'sub_stopwatch', 'scroll_protect', 'potion_hp', 'key', 'rift_lantern', 'm_fang', 'doc', 'sub_cross']:

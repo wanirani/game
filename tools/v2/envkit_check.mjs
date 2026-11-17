@@ -114,7 +114,7 @@ for (const dev of DEVICES) {
     R.numbers = await sample(page);
     const N = R.numbers;
     console.log(`  ${N.api} · ${N.renderer.slice(0, 50)} · GL 캔버스 ${N.canvas.join('×')} · ${N.mode} · 입체 영웅 ${N.hero3d ? '있음' : '없음'}`);
-    for (const [s, q] of Object.entries(N.sections)) console.log(`    ${s.padEnd(8)} 그리기 ${String(q.draws).padStart(2)} (정적 ${q.staticDraws}) · 삼각형 ${String(q.tris).padStart(5)} (정적 ${q.staticTris}, 영웅 ${q.heroTris}) · 덩어리 ${q.chunks}/3`);
+    for (const [s, q] of Object.entries(N.sections)) console.log(`    ${s.padEnd(8)} 그리기 ${String(q.draws).padStart(2)} (정적 ${q.staticDraws}) · 삼각형 ${String(q.tris).padStart(5)} (정적 ${q.staticTris}, 영웅 ${q.heroTris}) · 덩어리 ${q.chunks}/${Object.keys(N.env.perChunk).length}`);
     console.log(`    텍스처 ${N.texMB} MB (그중 키트 ${(N.env.kitTexBytes / 1048576).toFixed(1)} MB) + 영웅 모델 ${N.heroTexMB} MB · 정점 버퍼 ${N.bufKB} KB + 영웅 ${N.heroBufKB} KB · 컴파일 ${N.env.compileMs} ms · 불러오기 ${N.env.loadMs} ms`);
     for (const [s, q] of Object.entries(N.sections)) { if (q.tris > BUDGET.tris) fail(`${dev} ${s}: 삼각형 ${q.tris} > ${BUDGET.tris}`); if (q.draws > BUDGET.draws) fail(`${dev} ${s}: 그리기 호출 ${q.draws} > ${BUDGET.draws}`); }
     await page.evaluate(() => { const sc = window.__v2.scene; sc.sim.reset(); sc.cam.snap = true; });   // 숫자를 재느라 깨운 적을 제자리로 (처음부터 시작)

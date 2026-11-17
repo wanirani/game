@@ -371,7 +371,7 @@ export class Quads {
     for (let i = 0; i < this.hi; i++) {
       if (this.death[i] <= t) continue; const o = i * QF, k = (t - D[o + 3]) / D[o + 7], g = D[o + 16] + (D[o + 17] - D[o + 16]) * (1 - (1 - k) * (1 - k));
       const bb = D[o + 11] >= 31.5, ru = Math.hypot(D[o + 4], D[o + 6]) * g, rv = bb ? ru : Math.hypot(D[o + 8], D[o + 10]) * g;
-      area += 4 * ru * rv * (bb ? 1 : 0.4);
+      area += Math.min(696960, 4 * ru * rv * (bb ? 1 : 0.4));   // 한 장이 화면보다 클 수는 없다
     }
     return { n: this.live, area };
   }
@@ -662,7 +662,7 @@ export class Meshes {
   measure() {
     let area = 0; const D = this.d, t = this.time;
     for (let i = 0; i < this.hi; i++) { if (this.death[i] <= t) continue; const o = i * MF, sx = Math.hypot(D[o], D[o + 1], D[o + 2]), sy = Math.hypot(D[o + 4], D[o + 5], D[o + 6]), sz = Math.hypot(D[o + 8], D[o + 9], D[o + 10]);
-      const m = D[o + 28]; area += m === MESH.CRESCENT ? sx * sz * 0.9 : m === MESH.TUBE ? 2 * sx * sy : m === MESH.CONE ? sx * sz : 3.2 * sx * Math.max(sy, sz) * (m === MESH.SHARDS ? 0.5 : 1); }
+      const m = D[o + 28]; area += Math.min(696960, m === MESH.CRESCENT ? sx * sz * 0.9 : m === MESH.TUBE ? 2 * sx * sy : m === MESH.CONE ? sx * sz : 3.2 * sx * Math.max(sy, sz) * (m === MESH.SHARDS ? 0.5 : 1)); }
     return { n: this.live, area };
   }
   dispose() { const gl = this.gl; gl.deleteBuffer(this.buf); gl.deleteVertexArray(this.vao); gl.deleteProgram(this.pr.p); }

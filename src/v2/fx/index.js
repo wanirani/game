@@ -46,6 +46,7 @@ class Fx {
     this.feelOn = opts.feel !== false;                            // false 면 프리셋이 손맛(멈춤·흔들림·번쩍임)을 내지 않는다
     this.protect = new Float32Array(16); this.protMin = 0.4;      // 가리면 안 되는 자리 4곳 (x,y,z,반지름)
     this.chain = new Float32Array(12); this.chainN = 0;            // 연쇄 번개 표적 (최대 4)
+    this.last = -1;                                                // 마지막 프리셋이 만든 '따라다닐 것'의 손잡이 (보호막)
     this.gain = 1;                                                 // 밝기 조절기 (덧칠이 많으면 더하기 색을 낮춘다)
     this.cam = { vp: new Float32Array(16), eye: new Float32Array(3), right: new Float32Array([1, 0, 0]), up: new Float32Array([0, 1, 0]), fwd: new Float32Array([0, 0, 1]) };
     this.stats = { draws: 0, particles: 0, quads: 0, ribbons: 0, ribbonVerts: 0, meshes: 0, meshTris: 0, lights: 0, seqs: 0, coverage: 0, gain: 1, cpuUpdate: 0, cpuDraw: 0, spawned: 0, dropped: 0, sfx: 0, postPasses: 0 };

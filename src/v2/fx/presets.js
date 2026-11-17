@@ -41,6 +41,7 @@ const S = {
   ashEmber: E({ sprite: SPR.EMBER, shape: 3, rad: 24, h: [0, 105], speed: [50, 150], grav: -80, drag: 1, life: [0.5, 0.95], size: [5, 9], c0: [3, 1.3, 0.3, 1], c1: [1.8, 0.3, 0.05, 0] }),
   ashSmoke: E({ sprite: SPR.SMOKE, add: 0, shape: 3, rad: 18, h: [10, 90], speed: [25, 70], drag: 1, life: [0.8, 1.25], size: [42, 62], grow: 1.7, c0: [0.13, 0.11, 0.15, 0.42], c1: [0.2, 0.18, 0.24, 0], fadeIn: 0.15 }),
   hurt: E({ sprite: SPR.STREAK, stretch: 2, n: 4, spread: 0.8, speed: [200, 420], grav: 900, drag: 2, life: [0.12, 0.24], size: [7, 11], c0: [3, 2.8, 2.4, 1], c1: [1.6, 0.6, 0.2, 0] }),
+  breath: E({ sprite: SPR.FLAME, spread: 0.3, speed: [300, 560], vy: [0, 40], drag: 1.6, life: [0.3, 0.5], size: [30, 46], grow: 2.2, c0: [1.7, 0.75, 0.18, 0.55], c1: [0.9, 0.12, 0.02, 0] }),
   // 줍기
   sparkleG: E({ sprite: SPR.STAR, n: 10, shape: 3, rad: 18, h: [0, 30], speed: [90, 220], drag: 2, life: [0.4, 0.75], size: [10, 19], spin: [-4, 4], c0: [3.2, 2.5, 0.8, 1], c1: [2.2, 1.2, 0.2, 0] }),
   sparkleH: E({ sprite: SPR.STAR, n: 10, shape: 3, rad: 18, h: [0, 30], speed: [90, 220], drag: 2, life: [0.4, 0.75], size: [10, 19], spin: [-4, 4], c0: [1, 3.2, 1.2, 1], c1: [0.2, 2, 0.5, 0] }),
@@ -110,6 +111,7 @@ const C = {
   rockA: [3, 1.2, 0.3, 1], rockB: [0.34, 0.2, 0.16, 1], bellA: [3.2, 2.6, 1.2, 0.9], bellB: [1.6, 0.9, 0.2, 0.9],
   fireG: [1.5, 0.6, 0.15, 0.85], bloodG: [1.4, 0.1, 0.14, 0.85],
   pickGlow: [[1.2, 0.9, 0.3, 0.6], [0.3, 1.1, 0.4, 0.6], [0.3, 0.7, 1.3, 0.6]], ringBig: [1.5, 1.4, 1.3, 0.42], ringBigRed: [2, 0.25, 0.2, 0.5], ringBigGold: [2, 1.5, 0.5, 0.5],
+  danger: [2.2, 0.32, 0.14, 1], shieldA: [1.2, 2.2, 3, 0.9], shieldB: [0.2, 0.6, 1.6, 0.9],
   pickG: [2.2, 1.7, 0.5, 0.9], pickH: [0.6, 2.2, 0.8, 0.9], pickM: [0.6, 1.3, 2.4, 0.9],
 };
 const FAM = {
@@ -167,7 +169,7 @@ export class Seqs {
   }
   update(fx, dt) { let n = 0; for (let i = 0; i < this.cap; i++) { const s = this.list[i]; if (!s.on) continue; s.t += dt; if (STEP[s.kind](fx, s, dt)) s.on = false; else n++; } this.live = n; }
 }
-const K = { FIREBOLT: 0, FIREPILLAR: 1, METEOR: 2, ICELANCE: 3, ICENOVA: 4, CHAIN: 5, STRIKE: 6, HOLYPILLAR: 7, HOLYWAVE: 8, BELL: 9, BLOODORB: 10, CLAWS: 11, ULT: 12, ASH: 13, COMBO: 14 };
+const K = { BREATH: 15, FIREBOLT: 0, FIREPILLAR: 1, METEOR: 2, ICELANCE: 3, ICENOVA: 4, CHAIN: 5, STRIKE: 6, HOLYPILLAR: 7, HOLYWAVE: 8, BELL: 9, BLOODORB: 10, CLAWS: 11, ULT: 12, ASH: 13, COMBO: 14 };
 
 // ═════════════ 타격 ═════════════
 // 베인 선: 카메라 평면에서 ang 방향으로 누운 가는 빛줄기
@@ -268,6 +270,30 @@ function pickup(fx, x, y, z, dx, dz, pow) {
   fx.light(x, y + 40, z, 190, kind === 2 ? C.iceL : kind === 1 ? C.holyL : C.warm, 0.7, 0.3, 0, 0);
   fx.sfx(kind === 2 ? 'pickup.mana' : kind === 1 ? 'pickup.heal' : 'pickup.coin', x, y, z, 1);
 }
+
+// 보호막 (구 방패). 따라다니게 하려면 fx.last(메시 손잡이)를 받아 fx.meshes.move(h, x, y, z) 를 프레임마다 부른다
+function buffShield(fx, x, y, z, dx, dz, pow) {
+  fx.last = fx.meshes.spawn(MESH.SPHERE, MODE.SHIELD, x, y + 56, z, 1, 0, 0, 0, 1, 0, 54 * pow, 70 * pow, 54 * pow, 1.0, C.shieldA, C.shieldB, 1, 0);
+  gRing(fx, x, y, z, 80, 0.35, C.ringCyan); fx.light(x, y + 56, z, 260, C.iceL, 0.8, 0.9, 0, 0); fx.sfx('buff.shield', x, y, z, 1);
+}
+// 적의 화염 숨결: 부채꼴 예고(위험색) → 원뿔 불길. (x,y,z) = 적의 발밑, (dx,dz) = 뿜는 방향
+function enemyBreath(fx, x, y, z, dx, dz, pow) {
+  const s = fx.seqs.get(K.BREATH, x, y, z, dx, dz, pow, x, y, z); if (!s) return;
+  teleSector(fx, x, y, z, dx, dz, 270, 0.4, 0.55, 0.5, C.danger); fx.sfx('enemy.breath.cast', x, y, z, 1);
+}
+STEP[K.BREATH] = (fx, s, dt) => {
+  if (s.t < 0.55) return false;
+  const x = s.x + s.dx * 22, y = s.y + 70, z = s.z + s.dz * 22;
+  if (s.ph === 0) {
+    s.ph = 1;
+    fx.meshes.spawn(MESH.CONE, MODE.CONE, x, y, z, s.dz, 0, -s.dx, 0, 1, 0, 96, 60, 250, 0.6, C.fireA, C.fireB, 1, 0);
+    fx.quads.ground(Q.SCORCH, s.x + s.dx * 150, s.y, s.z + s.dz * 150, 120, 60, Math.atan2(s.dz, s.dx), 5, C.scorch, 0.8, 1, 0, rnd() * 9, 0, 0, 1.2, 0.05);
+    fx.light(s.x + s.dx * 130, y, s.z + s.dz * 130, 420, C.fireL, 1.4, 0.6, 0.3, 0);
+    feel(fx, 0, 0, 0.16, s.dx, s.dz); fx.sfx('enemy.breath.fire', x, y, z, 1);
+  }
+  const l = 1 / Math.hypot(s.dx, 0.06, s.dz); fx.particles.emit(S.breath, x, y, z, s.dx * l, -0.06 * l, s.dz * l, 70 * dt, s.y);
+  return s.t > 1.05;
+};
 
 // ═════════════ 마법 ═════════════
 // ── 불 ──
@@ -557,6 +583,8 @@ const DEF = [
   ['enemy.hurt', 'enemy', '피격 불티', enemyHurt, 'hit', ['enemy.hurt'], '— (번쩍임은 hurtFlash(age))'],
   ['enemy.death.bone', 'enemy', '뼈 흩어짐', deathBone, 'self', ['enemy.death.bone'], 'hitStop 0.05 · trauma 0.14'],
   ['enemy.death.ash', 'enemy', '재로 흩어짐', deathAsh, 'self', ['enemy.death.ash'], 'hitStop 0.05 · trauma 0.10 (분해는 dissolveK(age))'],
+  ['enemy.breath', 'enemy', '적 화염 숨결', enemyBreath, 'self', ['enemy.breath.cast', 'enemy.breath.fire'], 'trauma 0.16'],
+  ['buff.shield', 'enemy', '보호막', buffShield, 'self', ['buff.shield'], '—'],
   ['pickup', 'enemy', '줍기', pickup, 'self', ['pickup.coin', 'pickup.heal', 'pickup.mana'], '— (pow 1 금화 · 2 회복 · 3 마력)'],
   ['fire.bolt', 'fire', '화염탄', fireBolt, 'aim', ['magic.fire.cast', 'magic.fire.fly', 'magic.fire.hit'], 'hitStop 0.067 · kick 5 · trauma 0.2'],
   ['fire.pillar', 'fire', '불기둥', firePillar, 'aim', ['magic.fire.cast', 'magic.fire.pillar'], 'hitStop 0.05 · trauma 0.3'],

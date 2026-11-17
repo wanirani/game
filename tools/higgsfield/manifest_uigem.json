@@ -14,5 +14,5 @@
       "result": "실행되지 않음 — 권한 검사(자동 모드)가 유료 생성 호출을 거절했다. 다시 시도하지 않았다. 작업도 크레딧도 발생하지 않음"
     }
   ],
-  "note": "유료 생성 없음. 아이콘 20개는 게임이 이미 가진 그림으로 만들었다: 카엘 3D 모델의 동작 렌더(/tmp/claude-0/v2/char3d/clips_*.png)와 v1 아이템 그림(assets/icons)을 tools/v2/ui_mock2/uigem/forge/prep.py 가 상아 부조 톤으로 바꾸고, forge.mjs 가 벡터 요소(궤적·달·과녁·지도·종·말)와 합쳐 구웠다. 유리·테·무늬·판은 전부 코드(SVG/CSS)."
+  "note": "유료 생성 없음. 아이콘 20개는 게임이 이미 가진 그림으로 만들었다: 카엘 3D 모델의 동작 렌더(tools/v2/ui_mock2/uigem/forge/src/clips_*.png, char3d 파일럿이 찍은 것의 사본)와 v1 의 아이템·탈것·기술 그림(assets/icons, assets/painted/companions/mt_warhorse, assets/icons/skills/asc_sera_seventhbell.webp)을 tools/v2/ui_mock2/uigem/forge/prep.py 가 상아 부조 톤으로 바꾸고, forge.mjs 가 벡터 요소(궤적·달·과녁·지도·종·말)와 합쳐 구웠다. 유리·테·무늬·판은 전부 코드(SVG/CSS)."
 }

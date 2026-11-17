@@ -145,6 +145,7 @@ const hurt = (d, stop) => { d.hitT = fx.feel.t; d.stop = stop; };
 function fire(name, target) {
   const p = PRESET_LIST[ID[name]]; if (!p) return;
   const e = target || (p.args === 'aim' || name.startsWith('enemy.death') ? D[2] : D[1]);
+  if (name === 'enemy.breath') { const b = D[2]; fx.playAt(p.id, b.x, 0, b.z, -1, 0, 1, 0, 0, 0); return; }
   if (name === 'ult.bloodmoon') { fx.playAt(p.id, 150, 0, 60, 1, 0, 1, 0, 0, 0); return; }
   if (p.args === 'hit') { fx.playAt(p.id, e.x - 12, 62, e.z - 4, 1, 0, name === 'hit.guard' && (api.alt = !api.alt) ? 1.5 : 1, 0, 0, 0); hurt(e, name.includes('heavy') || name === 'hit.blunt' ? 0.1 : name === 'hit.finisher' ? 0.13 : 0.06); return; }
   if (name.startsWith('enemy.death')) { fx.playAt(p.id, e.x, 0, e.z, 1, 0, 1, 0, 0, 0); e.deadT = fx.feel.t; e.ash = name.endsWith('ash') ? 1 : 0; return; }
@@ -184,9 +185,9 @@ const DEMOS = {
 };
 const demo = { name: '', t: 0, i: 0 };
 function startDemo(name) { fx.clear(); for (const d of D) { d.deadT = -9; d.hitT = -9; d.off = 0; } demo.t = 0; demo.i = 0; H.t = 0; H.nh = H.ns = H.nm = H.nb = H.nd = H.nv = 0; H.k = 0; demo.name = name; showAll = name === 'heavy'; }
-function demoStep(gdt) {
+function demoStep(gdt, realDt) {
   if (!demo.name) return;
-  if (demo.name === 'heavy') { heavyStep(gdt); return; }
+  if (demo.name === 'heavy') { heavyStep(realDt); return; }   // 난전은 실제 시간으로 (타격 멈춤과 무관하게 적힌 빈도 그대로)
   const L = DEMOS[demo.name]; demo.t += gdt;
   while (demo.i < L.length && demo.t >= L[demo.i][0]) L[demo.i++][1]();
   if (demo.i >= L.length) demo.name = '';
@@ -210,7 +211,7 @@ function heavyStep(gdt) {
 let sceneDraws = 0, speed = 1;
 function frame(realDt, render = true) {
   const gdt = fx.update(realDt);
-  demoStep(gdt); swingStep(gdt);
+  demoStep(gdt, realDt); swingStep(gdt);
   fx.setProtect(0, hero.x + hero.off, 55, hero.z, 46);       // 읽기 규칙: 영웅 앞을 지나는 큰 입자는 옅게
   camera();
   if (!render) return;
@@ -293,11 +294,11 @@ const api = window.__fx = {
     for (let i = 0; i < warm; i++) frame(1 / 60);
     if (mode === 'idle') { fx.clear(); for (const nm of ['fire.pillar', 'holy.bell', 'ice.nova']) fire(nm); }
     const mem = performance.memory; if (window.gc) window.gc();
-    const a = mem ? mem.usedJSHeapSize : 0;
-    if (mode === 'fxonly') { for (let i = 0; i < n; i++) { const g = fx.update(1 / 60); heavyStep(g); fx.draw(cam); } }
+    const a = mem ? mem.usedJSHeapSize : 0, t0 = performance.now();
+    if (mode === 'fxonly') { for (let i = 0; i < n; i++) { fx.update(1 / 60); heavyStep(1 / 60); fx.draw(cam); } }
     else for (let i = 0; i < n; i++) frame(1 / 60);
-    const b = mem ? mem.usedJSHeapSize : 0;
-    demo.name = ''; return { mode, frames: n, bytes: b - a, perFrame: (b - a) / n, hasMemory: !!mem, hasGc: !!window.gc };
+    const ms = (performance.now() - t0) / n, b = mem ? mem.usedJSHeapSize : 0;
+    demo.name = ''; return { mode, frames: n, ms, bytes: b - a, perFrame: (b - a) / n, hasMemory: !!mem, hasGc: !!window.gc };
   },
   /** 접촉 시트: rows = [[이름, t1, t2, t3, 표적 번호?]]. 각 효과를 세 순간에 찍어 한 장으로. 돌려주는 값 = JPEG data URL */
   sheet(rows, tier, crop, title) {
