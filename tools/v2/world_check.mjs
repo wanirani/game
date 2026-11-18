@@ -62,13 +62,13 @@ console.log('[validate]');
 const ROUTES = {}, WORLDS = {};
 const stateKey = (id, st) => (st ? id + '@' + st : id);
 for (const id of LIST) for (const st of ['', ...(WITH_STATES ? STATES[id] ?? [] : [])]) {
-  const a = await AREAS[id](flagsOf(st)), W = compileEnv(a.stage), d = a.spawns.default, fat = reachGrid(W, d.x, d.z, 26), thin = reachGrid(W, d.x, d.z, 14);
+  const a = await AREAS[id](flagsOf(st)), W = compileEnv(a.stage), d = a.spawns.default, fat = reachGrid(W, d.x, d.z, 26, { onFoot: true }), thin = reachGrid(W, d.x, d.z, 14, { onFoot: true });
   WORLDS[stateKey(id, st)] = { a, W };
   ROUTES[stateKey(id, st)] = a.exits.map((x) => { const g = fat.anyIn(x.x0, x.x1, x.z0, x.z1) ? fat : thin, p = g.anyIn(x.x0 + (x.x1 - x.x0) * 0.3, x.x1, x.z0 + (x.z1 - x.z0) * 0.3, x.z1) ?? g.anyIn(x.x0, x.x1, x.z0, x.z1); return { id: x.id, wps: p ? g.path(p[0], p[1]) : null }; });
 }
 /** a route on this lane's reach grid from (fx, fz) to (tx, tz): the fat grid keeps the bot off corners, the thin one is the fallback */
 function plan(W, fx, fz, tx, tz) {
-  for (const R of [26, 14, 8]) { const g = reachGrid(W, fx, fz, R), p = g.reachable(tx, tz) ? [tx, tz] : g.near(tx, tz, 40); if (p) { const w = g.path(p[0], p[1], true); if (w) return w; } }
+  for (const R of [26, 14, 8]) { const g = reachGrid(W, fx, fz, R, { onFoot: true }), p = g.reachable(tx, tz) ? [tx, tz] : g.near(tx, tz, 40); if (p) { const w = g.path(p[0], p[1], true); if (w) return w; } }
   return null;
 }
 
@@ -100,7 +100,7 @@ const walk = (page, wps, start = null) => page.evaluate(([wps, start]) => {
   for (; t < 9000 && i < wps.length; t++) {
     const h = sc.sim.hero, dx = wps[i][0] - h.x, dz = wps[i][1] - h.z, dd = Math.hypot(dx, dz);
     if (dd < (i === wps.length - 1 ? 5 : 22)) { i++; continue; }
-    act = {}; if (dx > 3) act.right = true; else if (dx < -3) act.left = true; if (dz > 3) act.up = true; else if (dz < -3) act.down = true;
+    const dzn = stuck >= 2 ? 0.5 : 3; act = {}; if (dx > dzn) act.right = true; else if (dx < -dzn) act.left = true; if (dz > dzn) act.up = true; else if (dz < -dzn) act.down = true;   // (WORLD-3: a bot that has not moved for 12 ticks steers exactly - the 3-unit dead zone left it pressing against a corner)
     if (h.y < minY) minY = h.y;
     if (h.onGround && jump <= 0) {   // WORLD-2: a gap before a waypoint at this height, or a ledge higher than a step -> jump
       const gh = ground(h.x, h.z), ga = ground(h.x + dx / dd * 26, h.z + dz / dd * 26), gt = ground(wps[i][0], wps[i][1]);
@@ -208,7 +208,8 @@ for (const dev of DEVICES) {
         const J = jumpsPerFlight(a, w.jlog ?? []); w.jumpsPerFlight = J; A.walks[A.walks.length - 1].jumpsPerFlight = J;
         if (w.arrived) { ok(`bot ${what} (${w.ticks} ticks, ${w.jumps} jumps, planned ${w.plans}x, lowest y ${w.minY}, hurt ${w.hurt})`); console.log('      ' + jumpLine(J)); }
         if (J.stair) fail(`${dev} ${id}: "${what}" needed ${J.stair} jump(s) on stairs (a flight must be walked with the stick alone) — ${jumpLine(J)}`);
-        if (J.other.stuck) fail(`${dev} ${id}: "${what}" pressed jump ${J.other.stuck}x because the bot was stuck (not at a gap or a ledge) at ${JSON.stringify((w.jlog ?? []).filter((j) => j[3] === 'stuck').slice(0, 4))}`); else fail(`${dev} ${id}: bot did not finish "${what}" - ${w.noPath ? 'no path' : 'stopped'} at (${w.x}, ${w.z}, y ${w.y}) after ${w.ticks} ticks`);
+        if (J.other.stuck) fail(`${dev} ${id}: "${what}" pressed jump ${J.other.stuck}x because the bot was stuck (not at a gap or a ledge) at ${JSON.stringify((w.jlog ?? []).filter((j) => j[3] === 'stuck').slice(0, 4))}`);
+        if (!w.arrived) fail(`${dev} ${id}: bot did not finish "${what}" - ${w.noPath ? 'no path' : 'stopped'} at (${w.x}, ${w.z}, y ${w.y}) after ${w.ticks} ticks`);
         if (w.arrived && w.hurt > 0) fail(`${dev} ${id}: "${what}" hurt the hero by ${w.hurt} (a fall must never be a pit here)`);
       }
       if (id0.startsWith('belltower') && base0) {

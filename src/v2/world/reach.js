@@ -8,6 +8,8 @@ import { groundAt, STEP_UP, JUMP_UP } from '../b/world.js';
  * opt.hooks = W.hookPoints-like [{ x, z, y, to: [x, z] }]: once a cell within HOOK_R of a whip ring is reached, its landing spot is reached too.
  * Gaps: a hop over at most JUMP_GAP units of "no ground / lower ground" in a straight line onto ground not higher than JUMP_UP is a step too
  * (the hero jumps about 150 into the screen and 170 sideways; walls are never hopped).
+ * opt.onFoot (WORLD-3, for bots that must WALK the stairs): a move between a stair cell and a cell beside it higher or lower than STEP_UP is not taken
+ *   (two steps between two stair cells: the lattice is coarser than a tread) - routes then enter a flight at its foot or top instead of hopping onto its side.
  * -> { reachable(x,z), anyIn(x0,x1,z0,z1), near(x,z,r), blocked(x,z,r), path(x,z) -> [[x,z],...] | null, cells }
  */
 export const HOOK_R = 300, HOOK_RISE = 280, JUMP_GAP = 100;
@@ -19,6 +21,7 @@ export function reachGrid(W, sx, sz, R = 14, opt = {}) {
   const centre = (k) => [x0 + (k % nx + 0.5) * C, z0 + (Math.floor(k / nx) + 0.5) * C];
   const blockedAt = (cx, cz, g, r) => { for (const b of W.boxes) if (b.solid && !b.walk && cx + r > b.x0 && cx - r < b.x1 && cz + r > b.z0 && cz - r < b.z1 && b.y1 > g + STEP_UP && b.y0 < g + 60) return true; return false; };
   const ground = (k) => { if (Number.isNaN(gy[k])) { const [cx, cz] = centre(k); let g = groundAt(W, cx, cz); if (Number.isFinite(g) && blockedAt(cx, cz, g, R)) { g = -Infinity; blk[k] = 1; } gy[k] = g; } return gy[k]; };
+  const onFoot = !!opt.onFoot, stairAt = (k) => { const [cx, cz] = centre(k), g = ground(k); if (!Number.isFinite(g)) return false; for (const b of W.boxes) if (b.stair && b.walk && cx >= b.x0 && cx <= b.x1 && cz >= b.z0 && cz <= b.z1 && Math.abs(b.y1 - g) < 0.01) return true; return false; };   // (g comes from a Float32Array)
   let cells = 0; const q = [], hooks = (opt.hooks ?? []).filter((p) => p.to && !p.off).map((p) => ({ ...p, done: false })), nGap = Math.round(JUMP_GAP / C);
   const push = (m, k) => { if (m >= 0 && !seen[m] && Number.isFinite(ground(m))) { seen[m] = 1; par[m] = k; q.push(m); } };
   const wallAt = (m, g) => { const [cx, cz] = centre(m); return blockedAt(cx, cz, g, 4); };   // something solid stands in the way of a hop at this height
@@ -29,6 +32,7 @@ export function reachGrid(W, sx, sz, R = 14, opt = {}) {
       const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= nx || b >= nz) continue;
       const m = b * nx + a;
       const g2 = ground(m);
+      if (onFoot && Number.isFinite(g2) && (stairAt(k) || stairAt(m)) && Math.abs(g2 - g) > (stairAt(k) && stairAt(m) ? 2 * STEP_UP : STEP_UP)) continue;   // opt.onFoot: a flight is entered at its foot or its top, never hopped onto from the side
       if (Number.isFinite(g2) && g2 - g <= JUMP_UP) { if (!seen[m]) { seen[m] = 1; par[m] = k; q.push(m); } if (g2 >= g - STEP_UP) continue; }   // level or a step up/down: no need to look further
       else if (Number.isFinite(g2)) continue;                                                       // a ledge too high
       // hop: over cells with no ground or lower ground, onto the first cell at about this height
