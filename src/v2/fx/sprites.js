@@ -3,10 +3,15 @@
 //   · 바닥 문양 아틀라스 512² (2×2 칸, 칸 256px): 성스러운 마법진 · 피의 마법진 · 균열 · 종 문양.
 //   · 잡음 64² (반복, RGB 세 겹): 셰이더가 hash 를 계산하지 않고 이것을 읽는다.
 // 움직임은 전부 셰이더가 만든다 — 프레임마다 텍스처를 올리는 일은 없다.
+// FIRE-2 (docs/v2/FX.md 13): the particle atlas is 1024 x 1024 now. Its top-left quarter is the old 512 x 512 sheet (16 cells of 128 px, unchanged);
+// the rest holds the flame flipbook painted by flamebook.js: 16 looping FLAME frames (128 x 256 each, the lower half) and 8 WISP frames (the
+// top-right quarter). Those carry colour (heat) and alpha; SPR.FIRE / SPR.WISP particles play them (engine.js, the particle vertex shader).
+import { FLIP, paintFlame } from './flamebook.js';
 
 export const SPR = {
   GLOW: 0, CORE: 1, STREAK: 2, STAR: 3, SMOKE: 4, SHARD: 5, RING: 6, FLAME: 7,
   DROP: 8, BONE: 9, CRESCENT: 10, SNOW: 11, RUNE: 12, EMBER: 13, DUST: 14, FLAKE: 15,
+  FIRE: 16, WISP: 17,   // flame flipbook (a loop of 16 frames / 8 frames played once): E({ sprite: SPR.FIRE, aspect, fps })
 };
 export const DECAL = { HOLY: 0, BLOOD: 1, CRACK: 2, BELL: 3 };
 
@@ -22,7 +27,7 @@ function radial(g, cx, cy, r, stops) {
 }
 
 export function makeParticleAtlas() {
-  const S = 128, cv = canvas(S * 4, S * 4), g = cv.getContext('2d');
+  const S = 128, cv = canvas(S * 8, S * 8), g = cv.getContext('2d');
   const R = rng(7);
   const cell = (i, fn) => { g.save(); g.translate((i % 4) * S + S / 2, ((i / 4) | 0) * S + S / 2); g.beginPath(); g.rect(-S / 2 + 2, -S / 2 + 2, S - 4, S - 4); g.clip(); fn(); g.restore(); };
   // 0 부드러운 빛
@@ -81,6 +86,10 @@ export function makeParticleAtlas() {
   cell(SPR.DUST, () => { puff(22, 20, 34, 0.22); radial(g, 0, 4, 48, [[0, 0.34], [0.7, 0.16], [1, 0]]); });
   // 15 재 부스러기
   cell(SPR.FLAKE, () => { g.fillStyle = '#fff'; g.beginPath(); g.moveTo(-30, -6); g.lineTo(-6, -26); g.lineTo(22, -18); g.lineTo(34, 4); g.lineTo(8, 26); g.lineTo(-20, 18); g.closePath(); g.fill(); g.globalCompositeOperation = 'destination-out'; g.beginPath(); g.arc(6, -2, 7, 0, 6.2832); g.fill(); g.globalCompositeOperation = 'source-over'; });
+  // 16+ flame flipbook (flamebook.js): FLAME frames in the lower half (8 x 2), WISP frames in the top-right quarter (4 x 2)
+  const img = g.createImageData(FLIP.W, FLIP.H);
+  for (let i = 0; i < FLIP.FLAME; i++) { paintFlame(0, i, img.data); g.putImageData(img, (i % 8) * FLIP.W, S * 4 + ((i / 8) | 0) * FLIP.H); }
+  for (let i = 0; i < FLIP.WISP; i++) { paintFlame(1, i, img.data); g.putImageData(img, S * 4 + (i % 4) * FLIP.W, ((i / 4) | 0) * FLIP.H); }
   return cv;
 }
 

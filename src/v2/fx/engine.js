@@ -37,7 +37,7 @@ export function makeTextures(gl) {
   const T = { atlas: up(pa, false), decal: up(da, false), noise: null, bytes: 0 };
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
   T.noise = up(makeNoise(), true, 64, 64);
-  T.bytes = Math.round((512 * 512 * 4 * 2 + 64 * 64 * 4) * 1.34);
+  T.bytes = Math.round((pa.width * pa.height * 4 + 512 * 512 * 4 + 64 * 64 * 4) * 1.34);   // FIRE-2: the particle atlas is 1024 x 1024 (the flame flipbook)
   pa.width = pa.height = 1; da.width = da.height = 1;   // 원본 캔버스는 바로 돌려준다
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, prevPM); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, prevFlip);
   return T;
@@ -63,8 +63,11 @@ void main() {
   vec3 vel = aV.xyz * ex; vel.y -= aM.x * e;
   if (aF.w > 0.5) { float h = p.y - aF.y; if (h < 0.0) { p.y = aF.y - h * (aF.w > 1.5 ? 0.32 : 0.0); vel.y = 0.0; } }
   float size = mix(aS.x, aS.y, 1.0 - (1.0 - k) * (1.0 - k));
-  vec2 c = aCorner - 0.5; vec2 q;
-  if (aM.z > 0.0) {
+  vec2 c = aCorner - 0.5; vec2 q; float si = aM.w;
+  if (si > 15.5) {   // flame flipbook (16 = a loop of 16 frames, 17 = 8 frames once over the life): an upright quad standing on the particle, aM.z = height / width
+    float lean = 0.10 * sin(uTG.x * 1.7 + aP.x * 0.004) + 0.05 * sin(uTG.x * 4.3 + aP.x * 0.013) + 0.07 * sin(age * 8.0 + aS.z);   // wind: a slow gust all flames share + each flame's own sway
+    q = vec2(c.x + lean * aCorner.y * aM.z, aCorner.y * aM.z) * size;
+  } else if (aM.z > 0.0) {
     vec2 sv = vec2(dot(vel, uRight), dot(vel, uUp)); float sp = length(sv); vec2 ax = sp > 1.0 ? sv / sp : vec2(1.0, 0.0);
     q = ax * (c.x * size * (1.0 + aM.z * sp * 0.002)) + vec2(-ax.y, ax.x) * (c.y * size);
   } else {
@@ -85,8 +88,15 @@ void main() {
   }
   a *= mix(1.0, dim, smoothstep(10.0, 34.0, size));
   vAdd = aF.x; vCol = vec4(col.rgb * mix(1.0, uTG.y, aF.x), a);
-  float si = aM.w; vec2 cell = vec2(mod(si, 4.0), floor(si * 0.25));
-  vUV = (cell + vec2(aCorner.x, 1.0 - aCorner.y) * 0.9375 + 0.03125) * 0.25;
+  if (si > 15.5) {   // frame: aS.z (this particle's random angle) picks the first frame and whether it is mirrored; aS.w = frames per second
+    float rr = aS.z * 0.159155; float fr = si < 16.5 ? mod(floor(rr * 16.0) + floor(age * aS.w), 16.0) : 16.0 + min(floor(k * 8.0), 7.0);
+    float mx = fract(rr * 7.0) < 0.5 ? aCorner.x : 1.0 - aCorner.x;
+    vec2 org = fr < 15.5 ? vec2(mod(fr, 8.0) * 128.0, 512.0 + floor(fr * 0.125) * 256.0) : vec2(512.0 + mod(fr - 16.0, 4.0) * 128.0, floor((fr - 16.0) * 0.25) * 256.0);
+    vUV = (org + vec2(2.0 + mx * 124.0, 2.0 + (1.0 - aCorner.y) * 252.0)) * 0.0009765625;
+  } else {           // the 16 sprites keep their 128 px cells in the top-left quarter of the (now 1024 x 1024) atlas
+    vec2 cell = vec2(mod(si, 4.0), floor(si * 0.25));
+    vUV = (cell + vec2(aCorner.x, 1.0 - aCorner.y) * 0.9375 + 0.03125) * 0.125;
+  }
   gl_Position = uVP * vec4(p + uRight * q.x + uUp * q.y, 1.0);
 }`;
 const P_FS = `#version 300 es
@@ -99,11 +109,14 @@ export function E(o) {
   const s = {
     sprite: 0, add: 1, n: 1, shape: 0, spread: 0.5, speed: [0, 0], vy: [0, 0], life: [0.3, 0.3], size: [10, 10], grow: 1,
     grav: 0, drag: 0, stretch: 0, spin: [0, 0], rot: 1, c0: [1, 1, 1, 1], c1: [1, 1, 1, 0], cv: 0, jit: 0, rad: 0, h: [0, 0],
-    floor: 0, fadeIn: 0, pri: 0, useAngle: 0, rotJit: 0, min: 0, ...o,
+    floor: 0, fadeIn: 0, pri: 0, useAngle: 0, rotJit: 0, min: 0, aspect: 0, fps: 0, amb: 0, ...o,
   };
+  // FIRE-2, flame flipbook sprites (SPR.FIRE / SPR.WISP): aspect = quad height / width (travels in the stretch slot), fps = frames per second (in the spin slot);
+  // the quad stands on the particle (foot at its position), each particle starts at a random frame, half of them mirrored.
+  if (s.sprite > 15.5) { s.stretch = s.aspect || 1.5; s.spin = s.fps || 12; s.rot = 1; s.useAngle = 0; }
   const two = (v) => (Array.isArray(v) ? v : [v, v]);
   s.speed = two(s.speed); s.vy = two(s.vy); s.life = two(s.life); s.size = two(s.size); s.spin = two(s.spin); s.h = two(s.h);
-  s._area = ((s.size[0] + s.size[1]) * 0.5 * (1 + s.grow) * 0.5) ** 2;
+  s._area = s.amb ? 0 : ((s.size[0] + s.size[1]) * 0.5 * (1 + s.grow) * 0.5) ** 2 * (s.sprite > 15.5 ? s.stretch : 1);   // amb (ambient: anchor fires, candles): not counted by the fill governor
   return s;
 }
 
@@ -222,13 +235,14 @@ export class Particles {
   }
   /** 디버그용(프레임 밖): 지금 살아 있는 입자 수와 화면 덧칠 넓이(단위², 1단위≈1px) */
   measure() {
-    let n = 0, area = 0; const D = this.data, t = this.time;
+    let n = 0, area = 0, ambN = 0, ambArea = 0; const D = this.data, t = this.time;   // amb* = the ambient ones (anchor fires, candles: spec.amb)
     for (let j = 0; j < this.count; j++) {
       const i = (this.tail + j) % this.cap, o = i * PF, age = t - D[o + 3], k = age / D[o + 7];
       if (k < 0 || k >= 1) continue;
-      const sz = D[o + 8] + (D[o + 9] - D[o + 8]) * (1 - (1 - k) * (1 - k)); n++; area += sz * sz * (D[o + 14] > 0 ? 1.6 : 1);
+      const sz = D[o + 8] + (D[o + 9] - D[o + 8]) * (1 - (1 - k) * (1 - k)), a = sz * sz * (D[o + 15] > 15.5 ? D[o + 14] : D[o + 14] > 0 ? 1.6 : 1); n++; area += a;
+      if (this.area[i] === 0) { ambN++; ambArea += a; }
     }
-    return { n, area };
+    return { n, area, ambN, ambArea };
   }
   dispose() { const gl = this.gl; gl.deleteBuffer(this.buf); gl.deleteBuffer(this.corner); gl.deleteVertexArray(this.vao); gl.deleteProgram(this.pr.p); }
 }

@@ -286,7 +286,8 @@ Object.assign(PROPS, {
   },
   /** 촛불 무리 (쉼터) */
   candles(G, x, y, z, o = {}) {
-    for (let i = 0; i < (o.n ?? 5); i++) { const a = i * 2.4, r = 4 + 9 * hash(i, x), cx = x + Math.cos(a) * r, cz = z + Math.sin(a) * r * 0.6, ch = 8 + 14 * hash(x, i); G.lathe('white', cx, cz, [[3, y], [2.5, y + ch]], 5, { tint: [0.95, 0.9, 0.74], vary: 0, cap: true }); G.tri('white', [cx - 2.2, y + ch, cz - 1], [cx + 2.2, y + ch, cz - 1], [cx, y + ch + 9, cz - 1], [0, 0, -1], { emis: 1.6, tint: [1, 0.8, 0.4], fog: 0.4 }); }
+    for (let i = 0; i < (o.n ?? 5); i++) { const a = i * 2.4, r = 4 + 9 * hash(i, x), cx = x + Math.cos(a) * r, cz = z + Math.sin(a) * r * 0.6, ch = 8 + 14 * hash(x, i); G.lathe('white', cx, cz, [[3, y], [2.5, y + ch]], 5, { tint: [0.95, 0.9, 0.74], vary: 0, cap: true });
+      if (G.flames) G.tri('white', [cx - 1.7, y + ch, cz - 1], [cx + 1.7, y + ch, cz - 1], [cx, y + ch + 7, cz - 1], [0, 0, -1], { emis: 1.6, tint: [1, 0.8, 0.4], fog: 0.4 }); }   // FIRE-2: this small still flame is baked only for the test scene v2c (no particles there); the game burns a living flame on every wick (candleSpots below -> game/anchors.js)
     fx(G).glows.push({ x, y: y + 22, z: z - 6, r: 44, c: [1, 0.72, 0.36], flicker: true }); fx(G).pools.push({ x, y, z, r: 120, c: [1, 0.66, 0.3], a: 0.3, flicker: true });
   },
 });
@@ -309,11 +310,38 @@ export function flameSpots(parts) {
   }
   return out;
 }
+/**
+ * FIRE-2: where the wicks of every candle group (mesh 'candles') stand -> [{ x, y, z, ground, pts: Float32Array(n * 3) (offsets of each flame's foot) }].
+ * The same numbers as PROPS.candles above. The game (game/anchors.js) burns one small living flame per wick there; the world bakes none.
+ */
+export function candleSpots(parts) {
+  const out = [];
+  for (const P of parts) {
+    if (P.mesh !== 'candles' || (P.t !== 'deco' && P.t !== 'prop')) continue;
+    const n = P.n ?? 5, pts = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { const a = i * 2.4, r = 4 + 9 * hash(i, P.x); pts[i * 3] = Math.cos(a) * r; pts[i * 3 + 1] = 8 + 14 * hash(P.x, i) + 0.5; pts[i * 3 + 2] = Math.sin(a) * r * 0.6 - 1.5; }
+    out.push({ x: P.x, y: P.y ?? 0, z: P.z, ground: P.y == null, pts, part: P });
+  }
+  return out;
+}
+/** FIRE-2: a low heap of coals - a dull red glowing dome with bright pieces lying on it (the bowl of a brazier, under the particle fire) */
+export function coalHeap(G, x, y, z, r, hgt, seed = 1) {
+  G.lathe('coal', x, z, [[r, y], [r * 0.62, y + hgt * 0.72], [0, y + hgt]], 7, { tint: [0.95, 0.36, 0.14], emis: 0.5, fog: 0.5, vary: 0.35, keep: true });   // (21 triangles + 16 for the pieces: Eshville is close to its 35,000)
+  for (let i = 0; i < 8; i++) {
+    const a = i * 2.4 + seed, t = 0.1 + 0.8 * hash(i, x + seed), rr = r * t, ex = x + Math.cos(a) * rr, ez = z + Math.sin(a) * rr, ey = y + hgt * (1 - t * t) + 0.7, s = (1.8 + 2.6 * hash(x + seed, i)) * (r / 30), hot = hash(i + 3, seed);
+    G.poly('white', [[ex - s, ey, ez], [ex, ey + 0.3, ez - s * 0.7], [ex + s, ey, ez], [ex, ey - 0.3, ez + s * 0.7]], [0, 1, 0], { emis: 1.2 + 0.7 * hot, tint: [1, 0.4 + 0.42 * hot, 0.08 + 0.22 * hot], fog: 0.45, keep: true });
+  }
+}
 export const BAKED_EXTRA = {
-  brazier(G, x, y, z, o, s) { if (o.lit !== false) flames(G, x, y + 96 * s, z - 6 * s, 30 * s, 40 * s, 2, 5); },
+  // FIRE-2: a heap of glowing coals in the bowl (where the generated model had its plate of flame shards - BAKED_ARGS.brazier leaves that out); the still flame leaves are for v2c only
+  brazier(G, x, y, z, o, s) { if (o.lit === false) return; coalHeap(G, x, y + 90 * s, z, 33 * s, 9 * s, 5); flames(G, x, y + 96 * s, z - 6 * s, 30 * s, 40 * s, 2, 5); },
 };
 /** 구운 소품이 손으로 짠 것과 다른 인자를 받을 때 맞춰 준다 (o, 묶음의 정의) → o */
-export const BAKED_ARGS = {};
+export const BAKED_ARGS = {
+  // FIRE-2: the generated brazier has a flat plate of angular yellow "flame" shards standing in its bowl (17 triangles, model y 93..112 at z 22..26):
+  // left out when the prop is written (baked.js o.drop, the model's own units) - the pack and its bake stay as they are.
+  brazier: (o) => ({ ...o, drop: (x, y, z) => y > 92.5 && z > 21 && z < 27 && x > -16 && x < 1 }),
+};
 /**
  * FENCE (11-18): where the cemetery gate is drawn -> collision boxes (the same numbers as cemgate above): the two posts with their bases and caps
  * (44-46 square; the areas' own blockers were 38 x 36 inside them) and each railing leaf at the angle it is drawn (an open leaf was walked through).

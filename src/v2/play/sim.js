@@ -7,6 +7,7 @@ import { bindWorld, groundAtS, moveXZs, sectionOf, STEP_UP, STEP_DOWN } from './
 import { TUNE } from './tune.js';
 import { MOVES, COMBO } from './moves.js';
 import { AI, kindOf, kindId, rnd } from './enemies.js';
+import { initBreakables, tickPickups, breakHits, breakCircle, rollBreaks, seedBreak } from './breakables.js';   // BREAK: jars, crates, barrels and what drops out of them (docs/v2/PLAY_API.md 13)
 
 export { TUNE };
 const sgn = (v) => (v < 0 ? -1 : 1);
@@ -62,6 +63,7 @@ export class Sim {
     this.enemies = [];
     for (const s of W.spawns ?? []) this.addEnemy(s);
     this.shots = [];
+    initBreakables(this);   // BREAK: W.breakables -> this.breakables (+ their collision boxes) and the pickup pool this.pickups
     this.section = this.w.section(this.hero.x, this.hero.z)?.id ?? this.section ?? 'street';
   }
   /** 새 영웅 상태 (모든 칸을 여기서 만든다 — 칸 차림이 하나여야 한다: settle) */
@@ -75,7 +77,7 @@ export class Sim {
       move: null, moveT: 0, combo: 0, hitIds: new Set(), assist: null, queued: 0, swung: false, stepDist: 0, airAtk: false, plungeLand: null, plungeEta: 1,
       lock: null, lockT: 0, lockHold: 0, lockX: 0, lockY: 0, lockZ: 0, cutOn: 0,
       act: null, actT: 0, actDone: false, actP: null, charging: false, charge: 0, chargeFullT: 0, atkHold: 0, whipLv: 1, pullT: 0, pullX: 0, pullZ: 0, whipOn: 0, whipX: 0, whipY: 0, whipZ: 0,
-      reso: 0, resoMax: T.resoCells, callCd: 0, callCdMax: T.callCd, bellCd: 0, bellCdMax: T.bellCd, bellCharge: 0, bellDown: false, bellHoldT: 0, bellOk: true, knellId: null, hookId: null, skillMode: 'call', hookFX: 0, hookFY: 0, hookFZ: 0, hookTX: 0, hookTY: 0, hookTZ: 0, hookDur: 0.3,
+      coins: 0, reso: 0, resoMax: T.resoCells, callCd: 0, callCdMax: T.callCd, bellCd: 0, bellCdMax: T.bellCd, bellCharge: 0, bellDown: false, bellHoldT: 0, bellOk: true, knellId: null, hookId: null, skillMode: 'call', hookFX: 0, hookFY: 0, hookFZ: 0, hookTX: 0, hookTY: 0, hookTZ: 0, hookDur: 0.3,
       gait: 0, gaitMode: 'run', wasMoving: false, pushed: false, pivot: 0, pivotT: 0, pivotA: 0, pivotV: 0, pivotG: 0.86, lastStep: 'L', wishX: 1, wishZ: 0, mx: 0, mz: 0, m: 0, ux: 0, uz: 0,
       anim: 'idle', animT: 0, t: 0, cut: false, landT: 0, landV: 0,
       safe: { x: sx, z: sz, y: sy },
@@ -165,6 +167,7 @@ export class Sim {
     { const E = this.enemies; for (let i = 0; i < E.length; i++) if (!E[i].dead) this._enemy(E[i], dt); }
     this._separate(dt);
     this._shots(dt);
+    if (this.pickN > 0) tickPickups(this, dt);   // BREAK
     const sec = this._cs ? this.W.sectionAt(this.hero.x, this.hero.z) : sectionOf(this.W, this.hero);
     if (sec) { this.here = sec.id; if (!this.done || !this.freezeSection) this.section = sec.id; }   // here = 늘 영웅이 선 구역 · section 은 마당을 다 치우면 'done' 에 멈춘다(시범 구간의 옛 약속) — freezeSection = false 면 멈추지 않는다
     if (!this.done) {   // 마당의 적이 모두 쓰러졌는가
@@ -264,6 +267,7 @@ export class Sim {
       if (!h.onGround && !inp.jumpHeld && !h.cut && h.vy > T.jumpV * T.jumpCut && !h.move) { h.vy = T.jumpV * T.jumpCut; h.cut = true; }
     }
     if (!loco && h.pivot) h.pivot = 0;
+    if (this.brkLive > 0 && (h.dashT > 0 || h.sweepWin === T.rollSweep)) rollBreaks(this, h, dt);   // BREAK: clay in the roll's path breaks before the move (no speed is lost)
     this.qx = h.vx * dt; this.qz = h.vz * dt; this._mq(h);
     const wasAir = !h.onGround, vy0 = h.vy;
     this._fall(h, dt, h.act === 'hook' ? 0 : h.dashT > 0 ? 0.25 : h.move && h.move.kind === 'plunge' ? h.move.fallG : 1);
@@ -419,6 +423,9 @@ export class Sim {
     e.hp = 0; e.knelled = true; this.emit('knell', e, this.hero); this.hooks.fx?.('holy.pillar', this.hero.x, this.hero.y, this.hero.z, 1, 0, 1.3, e.x, e.gy, e.z);
     this._kill(e); return true;
   }
+  /** BREAK: seed of the drop generator (the scene seeds it per visit; tests fix it) · break everything whole in a circle (a skill that hurts in an area) */
+  seedDrops(seed) { seedBreak(this, seed); }
+  breakAt(x, z, r, by = 'area') { return this.brkLive > 0 ? breakCircle(this, x, z, r, -1e9, 1e9, by) : 0; }
   /** 부를 사냥꾼을 정한다 (null = 부를 수 없다). 첫 출시는 'sera'(등불) 하나 */
   setCaller(id) { this.caller = id; }
   /** 울림 눈금을 채운다 (칸 단위) */
@@ -578,6 +585,7 @@ export class Sim {
       if (!this._inShape(h, mv, s.x, s.z, 10, s.y - 12, s.y + 12)) continue;
       s.dead = true; this.hooks.spark?.(s.x, s.y, s.z, 'shot'); this.emit('shot', s, 'cut'); this.hooks.sfx?.('parry');
     }
+    if (this.brkLive > 0) breakHits(this, h, mv);   // BREAK: the same hit shape breaks jars, crates and barrels
   }
   _plungeImpact(h, mv) {
     const L = mv.land, cx = h.x + h.dirX * L.fwd, cz = h.z + h.dirZ * L.fwd;
@@ -586,6 +594,7 @@ export class Sim {
       if (hyp(e.x - cx, e.z - cz) > L.r + e.r || e.y > h.y + L.y1 || e.y + e.h < h.y + L.y0) continue;
       h.hitIds.add(e.id); this._hitEnemy(e, mv, h);
     }
+    if (this.brkLive > 0) breakCircle(this, cx, cz, L.r, h.y + L.y0, h.y + L.y1, mv.id);   // BREAK: the landing ring
     this.emit('shake', 6);
   }
   /** 적이 맞는다. src = 때린 쪽(영웅 또는 되돌아간 탄 — x,z 를 가진 것) */

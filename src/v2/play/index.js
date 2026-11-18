@@ -17,4 +17,5 @@ export { UNIT } from './tune.js';
 export { MOVES, COMBO, HERO_ANIMS } from './moves.js';
 export { KINDS, AI, ATTACKS, kindOf, kindId, registerKind, attackDef } from './enemies.js';
 export { flatArena, bindWorld } from './collide.js';
+export { BREAK_KINDS, DROP_TABLE, PICK, WHAT, seedBreak, breakOne, breakSilent, spawnPickup } from './breakables.js';   // BREAK (docs/v2/PLAY_API.md 13)
 export { driveHero, driveActor, placeActor, loadPlayClips, usePlayClips, playClipsReady, warpMove, warpAttack } from './motion.js';

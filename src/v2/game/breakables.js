@@ -106,7 +106,7 @@ export class Breakables {
       const q = P[k], s = this._alloc(); s.m = q.m; s.r = q.r;
       s.x = s.px = b.x + q.ox * cs - q.oz * sn; s.y = s.py = b.y + q.oy; s.z = s.pz = b.z + q.ox * sn + q.oz * cs; s.gy = b.y; s.restH = q.restH;
       const ox = q.out[0] * cs - q.out[1] * sn, oz = q.out[0] * sn + q.out[1] * cs, along = ox * dx + oz * dz, f = (0.4 + 0.6 * R()) * (along < -0.3 ? 0.55 : 1);
-      s.q[0] = 0; s.q[1] = Math.sin(rot / 2); s.q[2] = 0; s.q[3] = Math.cos(rot / 2);   // (our y turn: x' = x cos - z sin)
+      s.q[0] = 0; s.q[1] = -Math.sin(rot / 2); s.q[2] = 0; s.q[3] = Math.cos(rot / 2);   // (the kit's turn about y: x' = x cos - z sin)
       s.fx = q.flat[0]; s.fy = q.flat[1]; s.fz = q.flat[2]; s.lr = T[0]; s.lg = T[1]; s.lb = T[2]; s.al = 1; s.n = 0; s.t = 0;
       if (q.stay) { s.st = 1; s.vx = s.vy = s.vz = 0; s.wx = s.wy = s.wz = 0; s.restT = 2.4 + R() * 1.2; s.qt.set(s.q); }
       else {
@@ -169,13 +169,14 @@ export class Breakables {
       s.px = s.x; s.py = s.y; s.pz = s.z; s.t += pdt;
       if (s.st === 0) {
         s.vy -= G * pdt;
-        let nx = s.x + s.vx * pdt, nz = s.z + s.vz * pdt, g = s.gy; const y = s.y;
+        let nx = s.x + s.vx * pdt, nz = s.z + s.vz * pdt, g = -1e9; const y = s.y;
         for (let j = 0; j < B.length; j++) {   // one pass over the boxes: the floor under it and a wall in its way
           const b = B[j]; if (nx < b.x0 || nx > b.x1 || nz < b.z0 || nz > b.z1) continue;
           if (b.walk) { if (b.y1 <= y + 14 && b.y1 > g) g = b.y1; if (!(b.solid && b.y1 > y + 14)) continue; }
           else if (!b.solid || y >= b.y1 || y + 4 <= b.y0) continue;
           if (s.x < b.x0 || s.x > b.x1) { s.vx = -s.vx * 0.35; nx = s.x; } else { s.vz = -s.vz * 0.35; nz = s.z; }   // it came in from the side: off the wall it goes
         }
+        if (g < -1e8) g = s.gy;
         s.x = nx; s.z = nz; s.y += s.vy * pdt; s.gy = g;
         // spin
         const q = s.q, hx = s.wx * pdt * 0.5, hy = s.wy * pdt * 0.5, hz = s.wz * pdt * 0.5, qx = q[0], qy = q[1], qz = q[2], qw = q[3];
@@ -224,9 +225,9 @@ export class Breakables {
     }
   }
   /** additive light into the scene's glow batch: the glint of a coin's face, the glow of a heal piece and of a mote */
-  glows(b) {
+  glows(b, a) {
     const sc = this.sc, sim = sc.sim, P = sim.pickups; if (!P || !sim.pickN) return;
-    const g = sc.spr.glow, Rv = sc.camR, U = sc.camU, Q = sc.P12, pp = this.pp, a = sc.game.alpha ?? 1, t = this.time;
+    const g = sc.spr.glow, Rv = sc.camR, U = sc.camU, Q = sc.P12, pp = this.pp, t = this.time;
     for (let i = 0; i < P.length; i++) {
       const p = P[i]; if (!p.on || !this._shown(p)) continue;
       const o = i * 6, x = pp[o] + (pp[o + 3] - pp[o]) * a, y = pp[o + 1] + (pp[o + 4] - pp[o + 1]) * a + this._lift(p, t), z = pp[o + 2] + (pp[o + 5] - pp[o + 2]) * a;
@@ -259,41 +260,36 @@ export class Breakables {
     }
     glr.stats.draws += st.draws; glr.stats.tris += st.tris;
   }
-  /** pieces and pickups into the dynamic buffer: solid ones first, fading pieces last -> vertices */
+  /** pieces and pickups into the dynamic buffer: solid pieces, then pickups, then the fading pieces (drawn blended) -> vertices */
   _fill(a) {
-    const sc = this.sc, sim = sc.sim, f = this.df, u = this.du, S = this.sh; let v = 0; this.dfade = 0;
-    if (this.shN) {
-      for (let pass = 0; pass < 2; pass++) {
-        const v0 = v;
-        for (let i = 0; i < S.length; i++) {
-          const s = S[i]; if (!s.on || (s.al < 1) !== (pass === 1) || v + s.m.n > DYN_VERTS) continue;
-          v += writeDyn(s.m, f, u, v, s.R, 1, s.px + (s.x - s.px) * a, s.py + (s.y - s.py) * a, s.pz + (s.z - s.pz) * a, s.lr, s.lg, s.lb, s.al, 0);
-        }
-        if (pass === 1) this.dfade = v - v0;
-      }
-    }
+    const sc = this.sc, sim = sc.sim; let v = 0; this.dfade = 0;
+    if (this.shN) v = this._pieces(false, v, a);
     const P = sim ? sim.pickups : null;
     if (P && sim.pickN) {
-      const M = pickupModels(), pp = this.pp, R = this.Rm, t = this.time, T = this.tint, fade = this.dfade;
-      let ins = v - fade;   // pickups are solid: they go before the fading pieces (those are moved up when needed)
-      if (fade) { const n = this._pickVerts(P, M); if (v + n <= DYN_VERTS) { this.du.copyWithin((ins + n) * BRK_VERT, ins * BRK_VERT, v * BRK_VERT); v += n; } else return v; }
+      const M = pickupModels(), pp = this.pp, R = this.Rm, t = this.time, T = this.tint, f = this.df, u = this.du;
       for (let i = 0; i < P.length; i++) {
         const p = P[i]; if (!p.on || !this._shown(p)) continue;
-        const m = M[p.what]; if (ins + m.n > DYN_VERTS) break;
+        const m = M[p.what]; if (v + m.n > DYN_VERTS) break;
         const o = i * 6, x = pp[o] + (pp[o + 3] - pp[o]) * a, y = pp[o + 1] + (pp[o + 4] - pp[o + 1]) * a + this._lift(p, t), z = pp[o + 2] + (pp[o + 5] - pp[o + 2]) * a;
         const ang = p.what === 0 ? t * 7.5 + p.seq * 1.7 : p.what === 1 ? t * 2.4 + p.seq : t * 3.6 + p.seq, c = Math.cos(ang), s = Math.sin(ang);
-        if (p.what === 2) { const c2 = Math.cos(t * 2.1 + p.seq), s2 = Math.sin(t * 2.1 + p.seq); R[0] = c; R[1] = s * s2; R[2] = s * c2; R[3] = 0; R[4] = c2; R[5] = -s2; R[6] = -s; R[7] = c * s2; R[8] = c * c2; }   // turns on two axes
+        if (p.what === 2) { const c2 = Math.cos(t * 2.1 + p.seq), s2 = Math.sin(t * 2.1 + p.seq); R[0] = c; R[1] = s * s2; R[2] = s * c2; R[3] = 0; R[4] = c2; R[5] = -s2; R[6] = -s; R[7] = c * s2; R[8] = c * c2; }   // a mote turns on two axes
         else { R[0] = c; R[1] = 0; R[2] = s; R[3] = 0; R[4] = 1; R[5] = 0; R[6] = -s; R[7] = 0; R[8] = c; }
         sc._tintAt(sc.W, x, y, z, 0, 1.6, T);
         const k = p.what === 0 ? 1.12 : p.what === 1 ? 1.0 : 1.25, sz = (p.pull ? 0.86 : 1) * (p.what === 2 ? 1 + 0.12 * Math.sin(t * 6 + p.seq) : 1) * Math.min(1, 0.4 + p.t * 5);
-        const n = writeDyn(m, f, u, ins, R, sz, x, y, z, T[0] * k, T[1] * k, T[2] * k, 1, p.what === 0 ? 0.1 : 0.35);
-        ins += n; if (!fade) v += n;
+        v += writeDyn(m, f, u, v, R, sz, x, y, z, T[0] * k, T[1] * k, T[2] * k, 1, p.what === 0 ? 0.1 : 0.35);
       }
-      if (fade && ins < v - fade) { this.du.copyWithin(ins * BRK_VERT, (v - fade) * BRK_VERT, v * BRK_VERT); v = ins + fade; }   // some pickups were blinking: close the gap
     }
+    if (this.shN) { const v0 = v; v = this._pieces(true, v, a); this.dfade = v - v0; }
     this.dn = v;
     return v;
   }
-  _pickVerts(P, M) { let n = 0; for (let i = 0; i < P.length; i++) if (P[i].on && this._shown(P[i])) n += M[P[i].what].n; return n; }
+  _pieces(fading, v, a) {
+    const S = this.sh, f = this.df, u = this.du;
+    for (let i = 0; i < S.length; i++) {
+      const s = S[i]; if (!s.on || (s.al < 1) !== fading || v + s.m.n > DYN_VERTS) continue;
+      v += writeDyn(s.m, f, u, v, s.R, 1, s.px + (s.x - s.px) * a, s.py + (s.y - s.py) * a, s.pz + (s.z - s.pz) * a, s.lr, s.lg, s.lb, s.al, 0);
+    }
+    return v;
+  }
 }
 export { BREAK_KINDS };
