@@ -18,7 +18,9 @@ import { Touch, ensureTouchMode } from '../qa/lib/touch.mjs';
 import { installBot } from './game_bot.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => { if (v.startsWith('--')) a.push([v.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true]); return a; }, []));
-const OUT = String(args.out || '/tmp/claude-0/v2/chapter_audit'), DEV = String(args.device || 'fold_open'), RES = Number(args.res ?? 0.5), VERB = !!args.verbose;
+// --out is required since 2026-11-18: a run without --from clears the numbered saves and stills of its folder, and a bare call (or "--help") once wiped another run's saves.
+if (args.help || !args.out || args.out === true) { console.error('usage: node tools/v2/chapter_audit.mjs --out <dir> [--max-seconds 500] [--from last | <event id> | <save file>] [--to <event id>] [--shots 1] [--only <beat> --keep 1] [--device fold_open] [--res 0.5] [--budget 1]\n  --out is required: a run without --from CLEARS the numbered saves and stills in that folder.'); process.exit(2); }
+const OUT = String(args.out), DEV = String(args.device || 'fold_open'), RES = Number(args.res ?? 0.5), VERB = !!args.verbose;
 const MAXS = Number(args['max-seconds'] ?? 0), T0 = Date.now();
 const SHOTS = !!args.shots && String(args.shots) !== '0', FROM = args.from ? String(args.from) : null, TO = args.to ? String(args.to) : null, KB = Number(args.budget ?? 1);
 const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
