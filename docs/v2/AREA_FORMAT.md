@@ -5,6 +5,7 @@
 (The body is in English so that every lane can read it fast. Player-visible names are Korean.)
 
 ## 바뀐 것
+- 11-18 02:00 **WORLD-2** (§13 — new section, everything below is additive; no spawn, exit, section, group or actor of the five older areas was renamed or moved). `AREAS[id](flags)` builds an area **for the given story flags** (`AREA_FLAGS`, §13.1); new interact kind **`ring`** (whip ring, §13.2) → `stage.hookPoints`; new areas **`belltower_now` · `ossuary_now` · `ossuary_past`** (§13.3); `eshville_now` actor `hadwin`, `eshville_past` actor `elise` (`when: 'elise_found'`), Edmund's `when` may be `past_street_clear`; `graveyard_*`: the ossuary forecourt is a terrace 140 above the field behind a broken stair — trigger `grave.edmund`, actor `edmund`, whip ring `depths_ring`, `interact road_bell`; new fields `area.flags`, `area.entry`, `area.knells`, `enemies[].rise`, `stage.folds`; `ENEMY_KINDS` + `banshee_queen`; draw calls per chunk went down (ENV_KIT §18). Numbers in §13.5.
 - 11-18 00:50 **PROPS-VERIFY** (review by another lane, `docs/v2/ENV_KIT.md` §17). Nothing in the area shape changed. Collision boxes now match what is seen: cart `solid: 90, solidZ: 36`, `goods` `solidZ: 40`, brazier `solid: 30, solidZ: 24` (22 × 22 beside the church door, where the actors stand). The generated `lanternpost` now has its origin under the post (arm toward +x, toward −x when flipped): `LAMP` (eshville) and `LP` (graveyard) shift it by 20 so it stands where it did; **a new placement puts the POST at the part's x**. The pack's `h` is the height of the decimated model (cart 88, lanternpost 176.5, chapel 205.5, plaguepost 194.3): a part's `h` scales against that, and every generated model now starts at y = 0 (the lantern post floated 11 units).
 - 11-18 00:10 **PROPS** (generated models and painted surfaces, `docs/v2/ENV_KIT.md` §16). Nothing in the area shape changed. New for whoever places props: prop names `goods` (barrels + crates + sacks), `chapel` (small tomb chapel), and the four generated gravestones behind `mesh:'grave'` / `mesh:'tomb'` (kinds `round point broken cross`; `obelisk` and `ledger` stay code-built). A part may say **`code: true`** to get the code-built version of a prop even though the pack has a generated one of that name (used for lantern and plague posts where the hero can walk behind them: the generated posts are thicker and hid him). `lit: false` on a `lanternpost` now also darkens the generated lantern glass. Fires: the visible flames are still the static `mesh:'fire'` (new leaf shapes + ground embers); **`area.anchors` of kind `fire` / `embers` / `smoke` are unchanged** — the game scene should add particles there. Placements changed: the graveyard field's three dead trees stand outside the side walls (crowns over the battlements), one `chapel` in the north-west corner, coffins bigger (`h` 58–62), `eshville_*` outskirts got `goods` instead of barrel + crate / sacks + barrel, slice0 garden angels are `h` 178 and its well `h` 120. Hidden-hero cells are equal or lower than before in every area (§12 numbers updated in ENV_KIT §16).
 - 23:15 **WORLD-VERIFY** (review by another lane): `graveyard_*` inner gate wall is now a low wall with a railing (was 190 high and hid the hero behind it), the 1697 keeper's hut is lower (132 + roof 30, no chimney); burnt ruins made by `house()` always collide up to 800 (a 96-high ruin in `eshville_now` could be hopped into → the hero fell through the world); `stage.spawns[i]` now also carries `face` (§2). Numbers of the graveyard in §11 re-measured. Mismatches with ENGINE_API.md are listed in `/tmp/claude-0/v2/requests.md` (section WORLD-VERIFY) and in §12 below.
@@ -102,8 +103,12 @@ Exactly the format of `src/v2/env/stage_slice0_env.js` (docs/v2/ENV_KIT.md §4):
 | `graveyard_past` | 안개의 묘지 | past | `graveyard_now` | the same layout, tended: upright stones, three Valkrein stones (the fourth is not there yet), warm lanterns, the keeper (`actors keeper`, model `villager_m`) at his lit thatched hut — the hut is a roofless ruin tonight; plague corpses on the road; the nameless graves are `kind: 'grave'` here (carve) and `kind: 'sign'` tonight |
 | `slice0` | 시범 구간 | now | — | the old test route as an area object (v2c default, v2bench uses the prototype stage directly) |
 
-Section ids: eshville `outskirts street square church graveroad`; graveyard `road field`. Spawn names: eshville `default from_west from_graveyard from_belltower bell inn square`; graveyard `default from_eshville from_ossuary gate`.
-Exit targets named but not built: `belltower_*`, `stable_*`, `ossuary_*`. Place names use only glyphs the fonts have (font check passes; no name had to be changed).
+| `belltower_now` | 종탑 | now | — | the climb inside the bell tower: five floors, stairs and ledges at alternating ends, three broken floors to jump, the bats' roost, the bell chamber with the big bell, the rope and Elise (§13.3) |
+| `ossuary_now` | 배웅의 납골당 | now | `ossuary_past` | the same nine rooms under a hundred years of coffins and bones; the coffin corridor is walled up by coffins; the Banshee Queen in the last hall (§13.3) |
+| `ossuary_past` | 배웅의 납골당 | past | `ossuary_now` | a candle-lit chapel cave in use: candelabra, new coffins on trestles, the statue-or-crate choice at the gap, four empty bell posts (§13.3) |
+
+Section ids: eshville `outskirts street square church graveroad`; graveyard `road field`; belltower `stairs top`; ossuary `entry coffins wedge arena lamp riddle rest boss posts`. Spawn names: eshville `default from_west from_graveyard from_belltower bell inn square`; graveyard `default from_eshville from_ossuary gate`.
+Exit targets named but not built: `belltower_past`, `stable_*` (`belltower_now` and `ossuary_*` exist since WORLD-2). Place names use only glyphs the fonts have (font check passes; no name had to be changed).
 
 ## 9. What ENGINE has to do to load an area (short)
 
@@ -146,3 +151,95 @@ Tools: `node tools/v2/world_verify_node.mjs` (no browser: an independent walk fl
 - GL resources: enter / leave ×5 in `eshville_now`, `graveyard_now`, `slice0` — `__v2` gone and the GL canvas removed every time, texture and buffer bytes identical on every re-entry, 2 DOM canvases throughout.
 - Known gaps the format has (see requests.md): no way to unlock an exit, no `keepPosition` in ENGINE's `gotoArea`, `AREAS[id]()` takes no flags although §6 speaks of village states, `locked: 'not_built'` reads as a normal lock in ENGINE.
 
+## 13. WORLD-2 (2026-11-18): area states, whip rings, the bell tower and the ossuary
+
+Code `src/v2/world/{index,eshville,graveyard,belltower,ossuary,reach,folds}.js`, props `src/v2/env/props3.js`. Checks: `node tools/v2/world_validate.mjs` (every area in its base state **and in every flagged state**), `node tools/v2/world_check.mjs` (browser: + flagged states, the tower climb, the drop test), `node tools/v2/world_folds.mjs --check`.
+
+### 13.1 Area states — `AREAS[id](flags)`
+
+```js
+const area = await AREAS.graveyard_now({ bell_hung: true, ossuary_open: true });   // no argument or {} = the base state (nothing done yet)
+export const AREA_FLAGS   // { areaId: [flag, …] } — the story flags that change what the area is built from
+export function areaStates(id)   // [{}, {flag: true} for each flag, all flags together] — what validateAll() walks (wedge_stone and wedge_wood never together)
+export const stateName    // (flags) => 'base' | 'bell_hung+ossuary_open'
+area.flags                // the flags the area was built with (a copy)
+```
+
+Unknown flags are ignored, so the scene may pass its whole flag table. A state changes **stage parts, collision, lights, anchors, actors, enemies, exits' `locked`, interacts** — never a spawn name, an exit id or box, a section, or (in twins) the shared floor plan. To apply a flag the scene rebuilds the area (`AREAS[id](flags)` + `compileEnv`, about 0.1–0.3 s in node) and keeps the hero where he stands. Scene v2c: `?area=<id>&flags=a,b`.
+
+| area | flag | what it changes |
+|---|---|---|
+| `eshville_now` | `door_pulled` | the door of the house with the trapped villager stands open (the actor `trapped` already has `when: 'door_pulled'`) |
+| | `gate_open` | the cemetery gate is drawn open, its collision is gone, exit `to_graveyard` is not locked (`locked: null`; shut = `key_graveyard`) |
+| | `promise` | Elise is gone from the church front (she is up the tower, then lost in 1697) … |
+| | `elise_home` | … and back again (`promise` + `elise_home` = she stands there) |
+| | `bells_answered` | after the ending: every fire is out (no `fire` / `embers` anchors, no flame meshes, no fire lights — `smoke` anchors where the big fires were), cool moonlight and fog, no enemies (triggers keep their ids but wake nobody) |
+| `eshville_past` | `past_gate_open` | the cemetery gate of 1697 open, exit `to_graveyard` unlocked (shut = `past_gate`) |
+| | `past_street_clear` | nothing is built differently. **Passing this key at all** (true or false) makes Edmund's `when` `'past_street_clear'` instead of `'street_clear'`: the two meanings of `street_clear` (Marta tonight, Edmund in 1697) are then separate flags. A scene that never passes the key gets the old name, as before |
+| `graveyard_now` | `bell_hung` | the road bell has hung in front of the ossuary for a hundred years: **the broken stair is whole tonight** (a `stairs` part instead of the rubble heap), the post carries a rusted bell, `interact road_bell` (`bell.ring`) exists |
+| | `ossuary_open` | exit `to_ossuary` and `interact ossuary_door` are not locked |
+| | `carved_a` · `carved_b` | a nameless grave that was given a name in 1697: candles on it, and its ghost is gone from group `ghosts` |
+| `graveyard_past` | `bell_hung` | the post carries the new bronze bell, `interact road_bell` changes from `bell.hang` (label 「길종 걸기」) to `bell.ring` (「종 치기」). The stair stays broken in 1697 |
+| | `carved_a` · `carved_b` | candles on the carved grave |
+| `belltower_now` | `fell` | after the bell cracked: no Elise at the rope, no bats, no triggers |
+| `ossuary_past` | `wedge_stone` · `wedge_wood` | what was pushed into the gap (§13.3): the statue on its plinth, or the wooden crate — the gap is bridged |
+| | `knell_1` … `knell_4` | that bell post carries its knell (`area.knells[i].hung`) |
+| | `queen_fled` | the Banshee Queen is here (she fled across the bell; `active: true`), unless `queen_sent` |
+| | `queen_sent` | no boss |
+| | `elise_found` | the sleeping girl and `interact oss_elise` are gone |
+| `ossuary_now` | `wedge_stone` | the statue still stands in the gap — bridged tonight too (stone stays) |
+| | `wedge_wood` | a heap of rot at the bottom of the gap — **not** bridged (wood rots) |
+| | `knells_hung` | the four posts carry rusted knells |
+| | `queen_sent` | no boss, no `boss.enter` trigger |
+
+`when` flags on actors (the scene asks the story): `door_pulled` `street_clear` `square_clear` `sera_follows` `elise_found` `past_gate_open` `queen_sent` (+ `past_street_clear`, see above).
+
+### 13.2 Whip rings — interact kind `ring`
+
+```js
+{ id: 'depths_ring', kind: 'ring', x: 644, z: 1866, y: 140, h: 150, r: 300, label: '채찍 걸기', event: 'ring.hook', landing: { x: 600, y: 140, z: 1905 } }
+```
+
+- `x, z` = where the ring's post stands, `y` = the ground under the ring, `h` = height of the ring's centre above `y` (default 150), `r` = from how far the prompt may be offered (the rules' own range is `hookRange` 330), **`landing: {x, y, z}`** = where the hero's feet come down (validated: ground exists there at that height, nothing solid, a warning beyond 330 from the ring).
+- `finishArea` copies every ring into **`stage.hookPoints = [{ id, x, z, y, h, to: [x, z] }]`** — exactly what `src/v2/play/sim.js` reads as `W.hookPoints` (PLAY_API: `hero.hookId` = the ring in reach). Nothing else is needed from the scene; `interact` is only the hot spot for the prompt.
+- The prop is `mesh: 'whipring'` (`src/v2/env/props3.js`): a thick iron ring on a bracket with a pale bell-silver line of light, a glow sprite and a small light pool — readable at night in both eras. `mount: 'post'` (default) | `'wall'` | `'hang'` (`drop` = chain length), `lit: false` = dead ring, `c` = colour (`RING_GLOW`).
+- Placed where GDD 9.1 teaches and uses the hook (minute 58–68): **`graveyard_past` and `graveyard_now`, on the edge of the ossuary terrace above the broken stair**. Edmund hands over the road bell at its foot (trigger `grave.edmund` on the near side, box 480..720 × 1640..1700), the ring lifts the hero onto the terrace, the bell post stands at (500, 1940).
+- Reachability (`reach.js`): a ring within 300 of reachable ground makes its landing reachable; a crossing at a `bell.ring` interact carries the flood to the same x, z in the twin night and back (both nights are flooded together). The validator therefore accepts places that are only reached by the whip or through the other night.
+
+### 13.3 New areas
+
+**`belltower_now`** (GDD 9.1 minutes 15–20). 720 wide. Floor k (k = 0…4) is a slab from the ground up, 136 higher and 160 deeper into the screen than the one before, so the raised camera reads the whole climb and nothing in front is taller than what stands behind it; the bell chamber is floor 5 (y 680, z 880…1280).
+- way up: stone stair (right) → floor 1 (gap) → wooden stair (left) → floor 2 (the bats' roost under floor 3's edge) → ledge half a floor high (right) → floor 3 (gap) → wooden stair (left) → floor 4 (gap) → ledge (right) → the bell chamber. A floor edge is 136 high: it cannot be hopped (jump 112 + step 18), the stairs and ledges are the way.
+- **a fall lands on the floor below** — a gap is a notch whose ground is the lower floor, every x, z of the tower has ground at y ≥ 0, there is no pit (`world_check` drops the hero on a 60-unit lattice over the whole tower: 252 of 252 land on a floor, unhurt).
+- sections `stairs` (z < 880) · `top`; spawns `default` = `bottom` (360, 80) · `top` (360, 940); exit `to_eshville` → `eshville_now` spawn `from_belltower`; triggers `tower_roost` (`tower.roost`, wakes group `tower_roost`: 2 bats) and **`tower_top` (`tower.top`, wakes `tower_bats`: 5 bats, `yard`)**; actor **`elise`** at the rope (232, 1102), talk `elise.promise`; anchors: two brazier fires, a dust shaft, the red moon. The fall itself is the story's `gotoArea('eshville_past', 'from_belltower')`.
+- `eshville_now` exit `to_belltower` (spawn `bottom`) now has a target. `belltower_past` is not built (`eshville_past` still warns).
+
+**`ossuary_now` / `ossuary_past`** (GDD 4, 9.1 minutes 68–114) — one layout function, two nights; one hall 1000 wide going into the screen, rooms told apart by floor, low banks and dressing (no wall across: the camera rule).
+
+| section (label) | z | both nights | 1697 | tonight |
+|---|---|---|---|---|
+| `entry` (납골당 어귀) | 0–400 | exit `to_graveyard` (→ spawn `from_ossuary`), two mourner statues, bell `bell_entry` | candelabra | bone heaps, mist |
+| `coffins` (관의 복도) | 400–1000 | low banks left and right, skull niche walls, bell `bell_coffins` | new coffins on the banks, candles | **walled up by stacked coffins** (z 640–770): cross at `bell_entry`, walk through in 1697, cross back at `bell_coffins`; trigger `oss.coffins` (wakes `oss_hall`: 2 soldiers, `rise`) |
+| `wedge` (틈의 방) | 1000–1500 | the gap z 1200–1400 (a fall = the pit rule) | `interact oss_wedge` (kind `pull`, 「밀어 넣기」, event `oss.wedge`); the statue on its plinth (290, 1130) and the crate (910, 1130) stand ready | trigger `oss.gap` (**`once: false`**); the statue in the gap / a heap of rot |
+| `arena` (곡하는 방) | 1500–2100 | the altar | lit altar, a coffin on trestles | trigger `oss.arena` (wakes `oss_arena`: 3 ghosts + 2 mages, `yard`) |
+| `lamp` (등불대의 방) | 2100–2450 | the lantern stand (780, 2280) | | trigger `oss.lamp`; actor `sera` (`talk: 'sera.ossuary'`, `when: 'sera_follows'`) |
+| `riddle` (석관의 방) | 2450–2800 | three sarcophagi, bell `bell_riddle` | | `interact oss_riddle` (kind `sign`, event `oss.riddle`) |
+| `rest` (문 앞) | 2800–3000 | two waist-high fire posts and low rail walls = the door of the last hall | `interact past_rest` | **`interact boss_rest`** (kind `rest`) |
+| `boss` (맨 안) | 3000–3700 | flat 1000 × 700, wall piers only (nothing to stand behind), the arena bell `bell_arena` in the middle (600, 3350) | the queen when `queen_fled` | trigger `boss.enter` (wakes `boss`: `banshee_queen` at (600, 3600)) |
+| `posts` (종대의 회랑) | 3700–3900 | four knell posts (250 / 480 / 720 / 950, 3790), the sealed crypt door, two chandeliers | `interact knell_1…4` (kind `bell`, event `oss.knell`, `data: { post }`); actor `elise` (`when: 'queen_sent'`) + `interact oss_elise` | |
+
+- spawns (both nights, same x, z): `default` = `entry` (600, 110) · `wedge_far` (600, 1450) · `lamp` · `rest` · `boss` (600, 3120). Bells: every `kind: 'bell'` with `event: 'bell.ring'` is a crossing spot.
+- `area.knells = [{ post, x, z, y, h, hung }]` — the knell bells the whip strikes in the fight (for PLAY / the scene). `area.entry = ['wedge_far']` while nothing bridges the gap: spawn names that lie behind something shut in this state (the validator starts its flood from them too; `eshville_*` uses it for `from_graveyard` behind the shut gate).
+- music ids `ossuary_now` / `ossuary_past`; room tags `crypt` (hall rooms: `arena boss posts` = `hall`).
+
+### 13.4 Small additions
+
+- `enemies[i].rise: true` → `stage.spawns[i].rise` (PLAY: lies in the ground until the hero is near). `ENEMY_KINDS` has `banshee_queen` (prototype rules map it to `melee`).
+- A stage part may carry `state: '<flag>'`: it exists only in that story state of one night (the rebuilt stair) and is left out of the twin floor-plan comparison.
+- `stage.folds` (filled from `src/v2/world/folds.js`): which small materials of a chunk are drawn with a look-alike texture (ENV_KIT §18). `compileEnv` reads it; a stage without it compiles exactly as before.
+- Collision boxes from `compileEnv` all have the same keys in the same order (`uniformBoxes`, requests.md core-verify).
+- Prop names new in `props3.js`: `whipring roadbell footbridge towerface beam rope roost debris rubble stoneblock` (code-built) and, from the pack, `sarcophagus coffinstack bonepile skullwall candelabrum chandelier altar mourner cryptdoor stairs stall2 wreck2` (`stall` / `wreck` / `niche` use the generated `stall2` / `wreck2` / `skullwall` when the pack has them; `code: true` keeps the code-built one).
+
+### 13.5 Numbers (node + scene v2c, headless fold_open, final tree)
+
+@@NUMBERS@@
