@@ -312,7 +312,7 @@ UI:
 - 덧: 서서 대시를 톡 누른 뒤(막기 0.3초 유지) 그 안에 스틱을 밀면 단추를 뗐어도 구른다(`h.guardTap`). 의도라면 그대로, 아니면 `inp.guard` 일 때만 구르게.
 - 고침: 튕겨내기 직후 0.42초 안에 뛰면 공중에서도 튕겨내기 자세가 남았다 → `sim.js` 점프 줄에서 `parryOk` · `blockT` 를 지운다.
 
-## STORY-REVIEW — 2026-11-18 00:52 UTC (after reviewing tools/v2/story_stage against src/v2/world, read-only)
+## STORY-REVIEW — 2026-11-18 00:20 UTC (after reviewing tools/v2/story_stage against src/v2/world, read-only)
 
 Every talk key, trigger event, interact event, exit id and enemy group the story listens to exists in the four built areas, except the items below. `node tools/v2/story_check.mjs` verifies this on every run.
 
@@ -328,5 +328,8 @@ WORLD must add or change (the story already listens):
 ENGINE / integration must supply (all are "new" in DATA_FORMAT §5–6; in order of need):
 - events: `talk {id, talk}` · `interact {id, kind, event, data}` (also for spots locked `not_built` / `story:*`) · `group.clear {group}` (or `api.groupLeft`) · `section.enter {id}` (exists) · `bell.echo {}` · `boss.phase {boss, phase}`.
 - api: `unlockExit` / `lockExit` (first — until then the tower and the ossuary are entered through `exit.locked`, which the story now also accepts) · `bellCross` (must raise `area.enter` of the twin) · `hideActor` / `showActor` · `prompt` · `objective` · `camera` · `wait` · `music` · `candle` · `moon` · `ring` · `chronicle` · `save` · `end` · optional `onFlag` / `onItem` / `spawn` / `moveActor`.
-- loading a save: put the hero at `save.area` / `save.spawn` of the story object, then raise `area.enter` (DATA_FORMAT "바뀐 것" 00:50).
+- loading a save: put the hero at `save.area` / `save.spawn` of the story object, then raise `area.enter` (DATA_FORMAT "바뀐 것" 00:20).
 - sounds `bell.toll`, `bell.crack`; music ids in `TEXT.music`.
+- (same review, later) `eshville_now` actor `sera`: the story hides her while she stands at the lantern stand in the ossuary (`hideActor('sera', 'eshville_now')` on `oss.lamp`, shown again at the ending) — the scene must honour hide / show overrides over `when`.
+- `street_clear` is used by WORLD for Marta (1797) and Edmund (1697). It works (cleared at the fall, set again when group `st_p` falls) but one flag has two meanings; if WORLD can, give Edmund `when: 'past_street_clear'` and tell STORY — one line in `ev_past_street_clear`. Until the street of 1697 is cleared Edmund does not come to the tavern door; the door now says so (「큰길의 주검부터 쓰러뜨려야 열겠군」).
+- `belltower_now`: when it is built, `tower.crack` plays only two spoken lines there; the bats hitting the bell, the crack, the fall and the silver shooting star are camera shots `bell_crack` and `fall` (TEXT.shots) — the scene must show them.

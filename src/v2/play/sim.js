@@ -40,7 +40,7 @@ export class Sim {
       guard: false, guardT: 0, guardTap: 0, parryT: 0, parryCd: 0, parryOk: 0, blockT: 0,
       move: null, moveT: 0, combo: 0, hitIds: null, assist: null, queued: 0, swung: false, stepDist: 0, airAtk: false, plungeLand: null, plungeEta: 1,
       lock: null, lockT: 0, lockHold: 0, lockX: 0, lockY: 0, lockZ: 0,
-      gait: 0, gaitMode: 'run', wasMoving: false, pushed: false,
+      gait: 0, gaitMode: 'run', wasMoving: false, pushed: false, pivot: 0, pivotT: 0, pivotA: 0, wishX: 1, wishZ: 0,
       anim: 'idle', animT: 0, t: 0, cut: false, landT: 0, landV: 0,
       safe: { x: W.start.x, z: W.start.z, y: W.start.y },
     };
@@ -126,6 +126,8 @@ export class Sim {
     if (!moving) mx = mz = 0;
     const ux = moving ? mx / m : 0, uz = moving ? mz / m : 0;
     this._lock(h, pLock, dt);
+    let loco = false;
+    if (moving) { h.wishX = ux; h.wishZ = uz; }
     if (h.hurtT > 0) {   // 맞아서 밀리는 중: 조작 불가
       h.hurtT -= dt; h.vx *= 1 - Math.min(1, 6 * dt); h.vz *= 1 - Math.min(1, 6 * dt); h.guard = false; h.queued = 0;
     } else {
@@ -180,11 +182,7 @@ export class Sim {
         else if (h.moveT >= mv.dur || (moving && h.moveT >= mv.free && h.queued <= 0)) this._endMove(h);
       } else if (h.guard || h.blockT > 0 || h.parryOk > T.parryT - 0.16) {   // 버티는 자세: 제자리에서 멈춘다
         const k = Math.min(1, 14 * dt); h.vx -= h.vx * k; h.vz -= h.vz * k;
-      } else {
-        const k = Math.min(1, (h.onGround ? T.accel : T.airAccel) * dt);
-        h.vx += (mx * T.runX - h.vx) * k; h.vz += (mz * T.runZ - h.vz) * k;
-        if (moving) this._face(h, mx, mz);
-      }
+      } else { this._locomote(h, mx, mz, m, moving, ux, uz, dt); loco = true; }
       // 점프 (공격은 끊을 수 있는 시각부터)
       if (pJump && (h.onGround || h.coyote > 0) && h.dashT <= 0 && (!h.move || (h.move.kind !== 'plunge' && h.moveT >= h.move.cancel))) {
         h.vy = T.jumpV; h.onGround = false; h.coyote = 0; h.cut = false; h.move = null; h.combo = 0; h.guard = false; h.guardTap = 0; h.parryOk = 0; h.blockT = 0; h.airAtk = false; inp.jumpUsed = true;   // parryOk · blockT: a jump right after a parry must not keep the parry pose in the air
@@ -192,6 +190,7 @@ export class Sim {
       }
       if (!h.onGround && !inp.jumpHeld && !h.cut && h.vy > T.jumpV * T.jumpCut && !h.move) { h.vy = T.jumpV * T.jumpCut; h.cut = true; }
     }
+    if (!loco && h.pivot) h.pivot = 0;
     w.move(h, h.vx * dt, h.vz * dt);
     const wasAir = !h.onGround, vy0 = h.vy;
     this._fall(h, dt, h.dashT > 0 ? 0.25 : h.move && h.move.kind === 'plunge' ? h.move.fallG : 1);
@@ -217,7 +216,7 @@ export class Sim {
     const sp = Math.hypot(h.vx, h.vz), free = !h.move && h.dashT <= 0 && h.hurtT <= 0 && !h.guard && h.blockT <= 0, push = moving && free;
     if (push) h.gaitMode = m * T.runX < T.walkBelow + 20 ? 'walk' : 'run';
     h.pushed = push;   // 이 틱에 스틱으로 걷고 달리는 중인가 (그림이 "방금 놓았다"를 알아 멈춰 서는 동작을 튼다)
-    const gsp = push ? Math.max(sp, (h.gaitMode === 'walk' ? 40 : 96)) : sp, walking = h.onGround && free && (push || sp > 24);   // 스틱을 민 동안은 걸음이 멎지 않는다 (벽에 대고 달려도 다리는 돈다)
+    const gsp = push ? Math.max(sp, (h.gaitMode === 'walk' ? 40 : 96)) : sp, walking = h.onGround && free && !h.pivot && (push || sp > 24);   // 스틱을 민 동안은 걸음이 멎지 않는다 (벽에 대고 달려도 다리는 돈다)
     if (walking) {
       const g0 = h.gait, g1 = g0 + (gsp * dt) / (h.gaitMode === 'walk' ? T.strideWalk : T.strideRun);
       const gl = T.stepL?.[h.gaitMode] ?? 0.5;
@@ -225,7 +224,48 @@ export class Sim {
       h.gait = g1 % 1;
     }
     this._anim(h, h.hurtT > 0 ? 'hurt' : h.parryOk > 0 && !h.move && h.dashT <= 0 ? 'parry' : h.blockT > 0 && !h.move && h.dashT <= 0 ? 'block' : h.move ? 'attack' : h.dashT > 0 ? 'roll'
-      : !h.onGround ? (h.vy > 0 ? 'jump' : 'fall') : h.guard ? 'guard' : h.landT > 0 && !push ? 'land' : push || sp > 36 ? h.gaitMode : 'idle', dt);
+      : !h.onGround ? (h.vy > 0 ? 'jump' : 'fall') : h.guard ? 'guard' : h.landT > 0 && !push ? 'land' : h.pivot ? 'turn' : push || sp > 36 ? h.gaitMode : 'idle', dt);
+  }
+  /**
+   * 걷고 달리기. 속도는 늘 몸이 보는 쪽(dirX,dirZ)으로만 난다 — 스틱을 꺾어도 옆 · 뒤로 미끄러지지 않는다.
+   *   작은 꺾음: 몸이 스틱 쪽으로 돌고(turnRate) 속도가 그 몸을 따라간다 (달리던 채로 굽어 돈다)
+   *   큰 꺾음(pivotAt 넘게): 돌아서기 — 멈추며(brake) 제자리에서 돌고(pivotRate, 처음 정한 쪽으로 끝까지), pivotEnd 안으로 들어오면 새 쪽으로 박찬다
+   * 밀림 · 막기 뒤에 남은 옆 속도는 sideDamp 로 스러진다. 공중에서는 예전처럼 속도가 스틱을 따르고 몸만 천천히 돈다
+   */
+  _locomote(h, mx, mz, m, moving, ux, uz, dt) {
+    const T = TUNE;
+    if (!h.onGround) {
+      const k = Math.min(1, T.airAccel * dt);
+      h.vx += (mx * T.runX - h.vx) * k; h.vz += (mz * T.runZ - h.vz) * k; h.pivot = 0;
+      if (moving) { const cr = h.dirX * uz - h.dirZ * ux, ad = Math.atan2(Math.abs(cr), h.dirX * ux + h.dirZ * uz); this._rot(h, (cr < 0 ? -1 : 1) * Math.min(ad, T.turnRate * dt)); }
+      return;
+    }
+    const nx = h.vx / T.runX, nz = h.vz / T.runZ; let s = nx * h.dirX + nz * h.dirZ, lx = nx - s * h.dirX, lz = nz - s * h.dirZ;   // 몸이 보는 쪽 성분 s (1 = 가장 빠름) + 나머지
+    const lk = 1 - Math.min(1, T.sideDamp * dt); lx *= lk; lz *= lk; if (s < 0) s *= lk;
+    let want = 0;
+    if (moving) {
+      const cr = h.dirX * uz - h.dirZ * ux, sg = cr < 0 ? -1 : 1, ad = Math.atan2(Math.abs(cr), h.dirX * ux + h.dirZ * uz);   // 몸과 스틱 사이 각 (0…π) · 도는 쪽
+      if (!h.pivot && ad > T.pivotAt * RAD) { h.pivot = sg; h.pivotT = 0; h.pivotA = ad; this.emit('pivot', h, ad); }
+      if (h.pivot) {
+        h.pivotT += dt;
+        const rem = sg === h.pivot ? ad : ad > 2.2 ? Math.PI * 2 - ad : 0;   // 처음 정한 쪽으로 남은 각 (스틱이 정반대 근처에서 흔들려도 오락가락하지 않는다)
+        if (rem < T.pivotEnd * RAD) { h.pivot = 0; h.gait = 0.86; }          // 박차는 발부터 다시 디딘다
+        else this._rot(h, h.pivot * Math.min(rem, T.pivotRate * dt));
+      }
+      if (!h.pivot) {
+        this._rot(h, sg * Math.min(ad, Math.max(ad * (1 - Math.exp(-dt * T.turnEase)), 0.02), T.turnRate * dt));
+        const keep = T.turnKeep * RAD;
+        want = m * (ad <= keep ? 1 : 1 - (1 - T.turnSlow) * Math.min(1, (ad - keep) / (T.pivotAt * RAD - keep)));
+      }
+    } else h.pivot = 0;
+    s += (want - s) * Math.min(1, (h.pivot ? T.brake : T.accel) * dt);
+    h.vx = (h.dirX * s + lx) * T.runX; h.vz = (h.dirZ * s + lz) * T.runZ;
+  }
+  /** 영웅의 보는 방향을 a(rad)만큼 돌린다 (+ = dirZ 쪽으로) */
+  _rot(h, a) {
+    const c = Math.cos(a), sn = Math.sin(a), x = h.dirX * c - h.dirZ * sn, z = h.dirX * sn + h.dirZ * c, l = Math.sqrt(x * x + z * z) || 1;
+    h.dirX = x / l; h.dirZ = z / l;
+    if (Math.abs(h.dirX) > 0.25) h.facing = sgn(h.dirX);
   }
   _anim(o, a, dt) { if (o.anim !== a) { o.anim = a; o.animT = 0; } else o.animT += dt; }
   setAnim(o, a, dt) { this._anim(o, a, dt); }
