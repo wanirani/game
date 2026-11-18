@@ -611,7 +611,7 @@ No kit code changed. Area data only (`src/v2/world/{belltower,graveyard,ossuary,
 
 ## 20. SPEED-FIRE (2026-11-18) — no flame leaves in the game
 
-- `flames()` (`src/v2/env/props2.js`, used by `fire`, `wreck` and the brazier's `BAKED_EXTRA`) bakes nothing unless the build asks for it: `compileEnv(stage, { flames: true })`. Only the env-kit test scene v2c (`src/v2/env/index.js`, no particle engine) asks, and gets a smaller, cleaner fallback (width × 0.6, height × 0.75, at most 3 leaves). The game (v2g) and every tool build without them; embers on the ground, coal pieces, soot, burnt beams, glow sprites and light pools stay.
+- `flames()` (`src/v2/env/props2.js`, used by `fire`, `wreck` and the brazier's `BAKED_EXTRA`) bakes nothing unless the build asks for it: `compileEnv(stage, { flames: true })`. Only the env-kit test scene v2c (`src/v2/env/index.js`, no particle engine) asks, and gets a smaller, cleaner fallback (no big outer orange leaf - the two inner layers only, width × 0.45, height × 0.55, at most 3 leaves). The game (v2g) and every tool build without them; embers on the ground, coal pieces, soot, burnt beams, glow sprites and light pools stay.
 - `flameSpots(parts)` (same file) lists where a flame stands (fire deco, lit brazier, wreck with fire) with a fitting size (height ÷ 70) and width. `finishArea` (`src/v2/world/index.js`) gives an existing fire anchor there the flame's width (`w`) and adds the missing ones (all braziers: eshville both nights 3, slice0 4); `validateArea` errors if a flame spot has no fire anchor. Ossuary door bowls: anchor size 0.5 → 0.65.
 - Fold plan unchanged (`node tools/v2/world_folds.mjs --check` passes); the prop pack is untouched (flames were never in it).
 

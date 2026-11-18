@@ -37,12 +37,13 @@ function leaf(G, bx, by, bz, H, Wd, lean, ph, L) {
 /**
  * 불길 한 무더기: 너비 w · 높이 h · 바깥 잎 n 장 (가운데 · 속 겹은 거기에 맞춰 준다).
  * SPEED-FIRE: 본 게임(v2g)은 이 자리의 불을 효과 엔진의 입자 불(src/v2/game/anchors.js — 지역의 fire 닻)로 그린다 → 기본은 아무것도 굽지 않는다.
- * 입자가 없는 env-kit 시험 장면(v2c)만 compileEnv(…, { flames: true }) 로 작고 단정한 대체 불길(잎 3장까지, 0.6 · 0.75 배)을 굽는다.
+ * 입자가 없는 env-kit 시험 장면(v2c)만 compileEnv(…, { flames: true }) 로 작고 단정한 대체 불길(바깥 잎 없이 속 잎 두 겹, 잎 3장까지, 너비 0.45 · 높이 0.55 배)을 굽는다.
  */
 export function flames(G, x, y, z, w, h, n = 5, seed = 1) {
   if (!G.flames) return;
-  w *= 0.6; h *= 0.75; n = Math.min(n, 3);
+  w *= 0.45; h *= 0.55; n = Math.min(n, 3);
   LAYERS.forEach((L, li) => {
+    if (li === 0) return;   // (대체 불길: 크고 각진 바깥 주황 잎은 빼고 노란 속 잎 둘만)
     const m = Math.max(1, Math.round(Math.min(n, 6) * [1, 0.7, 0.45][li]));
     for (let i = 0; i < m; i++) {
       const t = m > 1 ? i / (m - 1) - 0.5 : 0, r1 = hash(i + seed * 3.1 + li * 7, x), r2 = hash(x + li, i + seed), r3 = hash(seed + i * 2.3, li + z);
