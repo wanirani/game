@@ -168,7 +168,10 @@ export function eshville(era, flags = {}) {
       from_belltower: { x: 3900, z: 1560, face: S, section: 'church' }, bell: { x: 4200, z: 1390, face: N, section: 'church' }, inn: { x: 1800, z: 250, face: S, section: 'street' }, square: { x: 3900, z: 250, face: N, section: 'square' },
     },
     exits: [
-      { id: 'to_graveyard', ...rect(4510, 1230, 160, 70), to: 'graveyard_' + era, spawn: 'from_eshville', label: '안개의 묘지', locked: gateOpen ? null : now ? 'key_graveyard' : 'past_gate' },
+      // lockAt = where the lock is felt: the shut leaves, 210 px in front of the exit box at the end of the lane. The scene raises exit.locked there too
+      // (the key turns in ev_gate_now / ev_gate_past). Without it nobody could get within the 36 px the scene asks for around the exit box, and the
+      // gate never opened in either night (CHAPTER-AUDIT blocker 1 and 2, 2026-11-18). The exit box itself stays the same in both nights (twin rule).
+      { id: 'to_graveyard', ...rect(4510, 1230, 160, 70), to: 'graveyard_' + era, spawn: 'from_eshville', label: '안개의 묘지', locked: gateOpen ? null : now ? 'key_graveyard' : 'past_gate', lockAt: gateOpen ? null : rect(4500, 985, 180, 35) },
       { id: 'to_belltower', ...rect(3852, 1578, 96, 44), to: 'belltower_' + era, spawn: 'bottom', label: '종탑', locked: 'story:belltower' },
       { id: 'to_west', ...rect(-60, 110, 50, 130), to: 'stable_' + era, spawn: 'from_eshville', label: '성문 밖', locked: 'not_built' },
     ],

@@ -932,7 +932,8 @@ export default class V2Game extends Scene {
     for (let i = 0; i < EX.length; i++) {
       const x = EX[i];
       if (x.locked) {   // a wall stands in the box (area.js): the hero pushing against it is told why, once per approach
-        const m = x._near ? 96 : 36, near = h.x >= x.x0 - m && h.x < x.x1 + m && h.z >= x.z0 - m && h.z < x.z1 + m;
+        const m = x._near ? 96 : 36, g = x.lockAt;   // lockAt (AREA_FORMAT 3): a shut gate that stands in front of its exit box - the lock is felt there as well
+        const near = (h.x >= x.x0 - m && h.x < x.x1 + m && h.z >= x.z0 - m && h.z < x.z1 + m) || (!!g && h.x >= g.x0 - m && h.x < g.x1 + m && h.z >= g.z0 - m && h.z < g.z1 + m);
         if (near && !x._near && !h.dead) this._lockedMsg(x);
         x._near = near;
         continue;
