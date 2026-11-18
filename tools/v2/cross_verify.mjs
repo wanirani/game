@@ -14,7 +14,8 @@ const Q = `${RES < 1 ? '&v2res=' + RES : ''}${TIER ? '&v2tier=' + TIER : ''}`;
 fs.mkdirSync(OUT, { recursive: true });
 const S = await serve(), { browser, page, errs } = await launch(DEV);
 const lines = [], fails = [];
-const say = (m) => { lines.push(m); console.log(m); }, fail = (m) => { fails.push(m); say('FAIL ' + m); }, ok = (m) => say('ok   ' + m);
+const LIVE = `${OUT}/${MODE}_${DEV}${TIER ? '_' + TIER : ''}_live.txt`;
+const say = (m) => { lines.push(m); console.log(m); try { fs.appendFileSync(LIVE, m + '\n'); } catch { /* log */ } }, fail = (m) => { fails.push(m); say('FAIL ' + m); }, ok = (m) => say('ok   ' + m);
 let rs = SEED >>> 0; const rnd = () => { rs = (Math.imul(rs, 1664525) + 1013904223) >>> 0; return rs / 4294967296; }, ri = (a, b) => a + Math.floor(rnd() * (b - a + 1));
 const st = () => page.evaluate(() => {
   const v = window.__v2, sc = v?.scene, cx = sc?.cx, h = sc?.sim?.hero;
@@ -110,9 +111,9 @@ try {
     const right = pads.L.filter((p) => p[0] > pads.w * 0.55).sort((a, b) => b[2] - a[2]);
     say(`info pad canvases ${pads.L.length}, right-hand buttons ${JSON.stringify(right.slice(0, 6))}`);
     const tap = async (i) => { const p = right[i % Math.max(1, right.length)]; if (p) await page.touchscreen.tap(p[0], p[1]); };
-    const mem = new Map(); let nOk = 0, nBad = 0;
+    const mem = new Map(), PART = String(A.part || 'cross,lost,leave').split(','); let nOk = 0, nBad = 0;
     const KINDS = ['plain', 'attack', 'hurt', 'air', 'roll', 'fall', 'again_gather', 'again_ring', 'again_passage', 'again_reveal', 'again_glow', 'tap_ring', 'tap_passage', 'tap_reveal', 'pause', 'dialog', 'jar', 'enemy', 'years', 'esc_ring', 'esc_reveal', 'move_ring'];
-    for (let i = 0; i < N; i++) {
+    for (let i = 0; i < (PART.includes('cross') ? N : 0); i++) {
       const kind = KINDS[i % KINDS.length], e0 = errs.length; let note = '';
       let s0 = await st();
       if (!s0 || !s0.ready || s0.dead || !done(s0)) { say(`info state before crossing ${i + 1} not clean (${JSON.stringify(s0)}): the page is opened again`); await open(i % 3 === 2 ? 'graveyard_now' : 'eshville_now'); s0 = await st(); }
@@ -163,7 +164,7 @@ try {
     for (const [k, m] of mem) say(`info GPU bytes in ${k}: tex ${m.tex} buf ${m.buf} over ${m.n} visits${m.var.length ? '; DIFFERENT at ' + m.var.join('; ') : ' (identical every visit)'}`);
     say(`break: ${nOk} clean, ${nBad} not clean of ${N}`);
     // the WebGL context is lost at five moments
-    for (const [ph, tt] of [['gather', 0], ['ring', 0.25], ['passage', 0.05], ['passage', 0.9], ['reveal', 0.35], ['glow', 0.2]]) {
+    for (const [ph, tt] of PART.includes('lost') ? (A.lost ? [['passage', 0.9], ['reveal', 0.35], ['glow', 0.2]] : [['gather', 0], ['ring', 0.25], ['passage', 0.05], ['passage', 0.9], ['reveal', 0.35], ['glow', 0.2]]) : []) {
       await open(); const e0 = errs.length; await cross(); const s1 = await until((q) => q.phase === ph && q.t >= tt, 2500);
       await page.evaluate(() => { const gl = window.__v2.scene.glr.gl; window.__lc = gl.getExtension('WEBGL_lose_context'); window.__lc.loseContext(); });
       await page.waitForTimeout(150); await steps(page, 20); await page.waitForTimeout(350); await steps(page, 12);
@@ -174,7 +175,7 @@ try {
       if (a && clean(a) && a.area === 'eshville_past' && lit > 60 && errs.length === e0) ok(line); else fail(line);
     }
     // leaving the scene at three moments and coming back
-    for (const [ph, tt] of [['gather', 0], ['passage', 0.4], ['reveal', 0.3]]) {
+    for (const [ph, tt] of PART.includes('leave') ? [['gather', 0], ['passage', 0.4], ['reveal', 0.3]] : []) {
       await open(); const e0 = errs.length; await cross(); const s1 = await until((q) => q.phase === ph && q.t >= tt, 2500);
       const left = await page.evaluate(async () => {
         const g = window.__game, sc = window.__v2.scene, cx = sc.cx; try { sc._leave(); } catch (e) { return { err: e.message }; }
