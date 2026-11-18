@@ -37,7 +37,7 @@ import { elementOf, shotAttach, shotMove, shotDetach, shotImpact } from './magic
 
 const FOCAL = 880, NEAR = 60, FAR = 24000, DIE_T = 0.9, HERO_MODEL = 'kael';
 const ANIM_MID2 = 900 * 900, ANIM_FAR2 = 1700 * 1700;   // squared distances (from the camera target) where enemy poses drop to 30 Hz / 15 Hz
-const TURN_RUN = 17.5, TURN_ACT = 34;   // rad/s: a full reversal takes about 0.18 s running (was 15 — follows TUNE.turnRate / pivotRate 17.4), 0.09 s when an attack needs the body to face its hit box
+const TURN_RUN = 17.5, TURN_ACT = 34;   // rad/초: 달리며 반대로 도는 데 약 0.18초(예전 15 — 규칙의 turnRate · pivotRate 17.4 를 따른다), 공격이 판정 쪽으로 몸을 돌릴 때 0.09초
 const TEX_SRC = {
   flag: { src: 'tex/tex_mossy_stone', desat: 0.35 }, block: { src: 'tex/tex_castle_stone' }, brick: { src: 'tex/tex_wet_stone', desat: 0.8 },
   wood: { src: 'tex/tex_wood' }, dirt: { src: 'tex/tex_dirt' },
@@ -896,7 +896,7 @@ export default class V2Game extends Scene {
     const c = this.cam, h = this.sim.hero, W = this.W;
     const sec = sectionAt(W, h.x, h.z) ?? this._sec ?? W.sections[0]; this._sec = sec;
     const R = sec.cam, snap = c.snap;
-    const k = snap ? 1 : 1 - Math.exp(-dt * 2.3), kt = snap ? 1 : 1 - Math.exp(-dt * 8.5), kf = snap ? 1 : 1 - Math.exp(-dt * 2);   // kt 5.5 → 8.5: 달리는 영웅(410 px/s) 뒤로 처지는 거리 75 → 48 px (예전 275 px/s 에서 50 px 와 같게) · kf 1.5 → 2: 앞쪽 여백이 방향을 조금 더 빨리 따른다
+    const k = snap ? 1 : 1 - Math.exp(-dt * 2.3), kt = snap ? 1 : 1 - Math.exp(-dt * 8.5), kf = snap ? 1 : 1 - Math.exp(-dt * 2);   // kt 5.5 → 8.5: 달리는 영웅(410 px/초) 뒤로 처지는 거리 75 → 48 px(예전 275 px/초 때의 50 px 와 같게; 화면에서 82 → 54 px, 흔들림 0.1 px/틱) · kf 1.5 → 2: 앞쪽 여백이 방향을 조금 더 빨리 따른다
     c.face += (clamp(h.dirX ?? h.facing ?? 1, -1, 1) - c.face) * kf;   // lead follows the facing continuously (no flip when the stick reverses)
     c.yaw += (R.yaw + (R.yawLead ?? 0.03) * c.face - c.yaw) * k;
     c.pitch += (R.pitch - c.pitch) * k; c.dist += (R.dist - c.dist) * k; c.lookY += (R.lookY - c.lookY) * k;
