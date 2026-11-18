@@ -180,5 +180,82 @@ console.log('6. 10,000 unmatched events');
   ok(!st.busy && g.warns.length === 0, 'no warnings, nothing started (' + g.warns.length + ' warnings)');
 }
 
+// ---- the whole release under stress: every route step doubled, and every scene cut off by a save / load ----
+const { ROUTE_A, ROUTE_B } = await import(pathToFileURL(path.resolve('tools/v2/story_route.mjs')).href);
+function fire(g, step) {
+  if (step[0] === 'ev') g.ev(step[1], step[2]);
+  else if (step[0] === 'talk') g.talk(step[1]);
+}
+function settle(g) {                      // answer everything that waits: pages, then a pending area change, until quiet
+  for (let i = 0; i < 400; i++) {
+    if (g.page) { g.next(); continue; }
+    if (g.pendingArea) { const a = g.pendingArea; g.pendingArea = null; g.enter(a); continue; }
+    break;
+  }
+}
+function playRoute(route, pick, mode) {
+  const g = game({ pick, holdArea: true });
+  let cuts = 0;
+  for (const step of route) {
+    if (step[0] !== 'ev' && step[0] !== 'talk') continue;
+    if (step[0] === 'ev' && step[1] === 'area.enter') { g.area = step[2].area; }
+    fire(g, step);
+    if (mode === 'double') { fire(g, step); fire(g, step); }
+    if (mode === 'cut' && g.st.busy && (g.page || g.pendingArea)) {
+      // the player quits in the middle of this scene; the game is loaded again from the story save
+      if (g.page && Math.random() < 0.5) g.next();
+      const sv = JSON.parse(JSON.stringify(g.st.save()));
+      g.page = null; g.pendingArea = null;
+      g.st.load(sv); cuts++;
+      g.enter(sv.area || g.area); settle(g);
+      fire(g, step);                      // and does the same thing again
+    }
+    settle(g);
+  }
+  return { g, cuts, done: g.st.flag('elise_home') && g.log.includes('end r1') && !g.st.busy, flags: Object.keys(g.st.save().flags).sort().join(' '), items: JSON.stringify(g.st.save().items), chron: g.st.save().chronicle.join(' ') };
+}
+console.log('7. every step of the release fired three times in a row (routes A and B, both choices)');
+for (const [name, route] of [['A', ROUTE_A], ['B', ROUTE_B]]) for (const pick of [0, 1]) {
+  const clean = playRoute(route, pick, 'clean'), dbl = playRoute(route, pick, 'double');
+  ok(clean.done, 'route ' + name + ' choice ' + pick + ': clean play reaches the ending');
+  ok(dbl.done && dbl.flags === clean.flags && dbl.items === clean.items && dbl.chron === clean.chron, 'route ' + name + ' choice ' + pick + ': tripled events end in the same state (' + (dbl.done ? 'ended' : 'NOT ended, area ' + dbl.g.area + ', running ' + dbl.g.st.running) + (dbl.flags === clean.flags ? '' : '; flags differ') + (dbl.items === clean.items ? '' : '; items ' + dbl.items + ' vs ' + clean.items) + ')');
+  ok(dbl.g.warns.length === clean.g.warns.length, 'no new warnings (' + dbl.g.warns.slice(0, 2).join(' | ') + ')');
+}
+console.log('8. every scene cut off by quitting (save → load → same action again), routes A and B');
+for (const [name, route] of [['A', ROUTE_A], ['B', ROUTE_B]]) for (const pick of [0, 1]) {
+  const clean = playRoute(route, pick, 'clean');
+  let bad = 0, cuts = 0, why = '';
+  for (let r = 0; r < 5; r++) { const c = playRoute(route, pick, 'cut'); cuts += c.cuts; if (!c.done || c.flags !== clean.flags || c.chron !== clean.chron) { bad++; why = (c.done ? 'ended' : 'NOT ended in ' + c.g.area + ' running ' + c.g.st.running) + (c.flags === clean.flags ? '' : ' flags differ') + (c.chron === clean.chron ? '' : ' chronicle differs'); } }
+  ok(bad === 0, 'route ' + name + ' choice ' + pick + ': 5 plays, ' + cuts + ' scenes cut off and replayed, all reach the same ending' + (bad ? ' — ' + bad + ' failed: ' + why : ''));
+}
+
+console.log('9. random events (fuzz)');
+{
+  const names = ['area.enter', 'trigger', 'interact', 'talk', 'group.clear', 'exit.locked', 'exit.missing', 'bell.echo', 'boss.phase', 'hero.dead', 'hero.respawn', 'section.enter', 'enemy.kill', 'exit'];
+  const vals = new Set(), talks = Object.keys(STORY.DIALOGS || STORY.dialogs || {});
+  for (const e of STORY.EVENTS || STORY.events || []) for (const k in (e.match || {})) vals.add(JSON.stringify([k, e.match[k]]));
+  const pool = [...vals].map((x) => JSON.parse(x));
+  let seed = 12345; const rnd = (n) => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
+  let threw = null, stuck = 0, n = 0;
+  for (let run = 0; run < 300 && !threw; run++) {
+    const g = game({ pick: rnd(2), holdArea: rnd(2) === 1 });
+    try {
+      for (let i = 0; i < 200; i++) {
+        const nm = names[rnd(names.length)], d = {};
+        for (let k = 0; k < 2; k++) { const [key, v] = pool[rnd(pool.length)]; if (key.indexOf('.') > 0) { const [a, b] = key.split('.'); d[a] = Object.assign(d[a] || {}, { [b]: v }); } else d[key] = v; }
+        if (nm === 'talk') d.talk = talks[rnd(talks.length)];
+        if (nm === 'area.enter' && typeof d.area === 'string') g.area = d.area;
+        g.ev(nm, d); n++;
+        const r = rnd(6);
+        if (r < 3) settle(g); else if (r === 3 && g.page) g.next(); else if (r === 4) { const sv = JSON.parse(JSON.stringify(g.st.save())); g.page = null; g.pendingArea = null; g.st.load(sv); }
+      }
+      settle(g);
+      if (g.st.busy) stuck++;
+    } catch (e) { threw = e; }
+  }
+  ok(!threw, n + ' random events in 300 games: no throw' + (threw ? ' — ' + (threw.stack || threw.message).split('\n').slice(0, 2).join(' ') : ''));
+  ok(stuck === 0, 'no game left with a sequence that never ends (' + stuck + ')');
+}
+
 console.log(fails ? 'FAILED: ' + fails : 'OK: all break tests passed');
 process.exit(fails ? 1 : 0);

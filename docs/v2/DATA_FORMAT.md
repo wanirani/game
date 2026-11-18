@@ -7,7 +7,7 @@
 - 23:30 first version: shapes, key names, step vocabulary, the api the runner needs, save shape.
 - 00:00 second version, after writing and playing the whole script: `ifAny` on variants and events; `bridge` / `waiting` on events (§4); the `prompt` step also shows the tip as a notice; the dialogue object carries `who`; listeners of one event are all tested before any of them starts (§4); `save` may be the last step of a `run` chain; new §12 (hooks STORY expects from areas that are not built) and §13 (status, check, numbers).
 
-- 00:50 review (STORY-REVIEW lane), see `/tmp/claude-0/v2/story/review_changes.md`:
+- 00:20 review (STORY-REVIEW lane), see `/tmp/claude-0/v2/story/review_changes.md`:
   - **A sequence ends at an area change.** `gotoArea` / `bellCross` is the last step; what happens on the other side is a second sequence on `area.enter` with a flag condition (`ev_return_first`, `ev_hung_now`, `ev_ending_home`). A save / load between the two can no longer lose the second half or leave the hero in a night the story does not know about.
   - **The scene restores the hero from the story save**: `save().area` / `.spawn` (§10) are where the hero stands when the game is loaded — not the scene's own idea of the current area. `ev_bell_lost` (`safety: true`) is the net for a save that still disagrees: tonight + fell + not crossed → the bell takes the hero back.
   - **The same sequence is never started twice at once** (runner): a second press of a bell / a person while their sequence runs or waits in the queue is dropped.
@@ -283,7 +283,7 @@ Flags the world may use in `when`: `door_pulled` · `street_clear` · `square_cl
 
 Sound names the script asks for: `bell.toll` (opening) · `bell.crack`. Music ids: `TEXT.music`. Camera shots: `TEXT.shots` (eight cuts of GDD 9.2).
 
-## 13. Status after the review (2026-11-18 00:50 UTC)
+## 13. Status after the review (2026-11-18 00:20 UTC)
 
 - `node tools/v2/story_check.mjs` → `OK: 0 errors, 0 warning(s)`; `node --expose-gc tools/v2/story_break.mjs` → all passed.
 - Numbers: 25 people · 78 dialogue sets (158 variants, 294 pages) · 86 sequences (29 wait for areas, 6 bridges, 1 safety net) · 11 items · 23 objectives · 13 chronicle entries · 43 flags · 24 tutorial prompts · 556 distinct Hangul syllables, 11 new to the fonts (`넜닭댓둡딨밧뵌샌앓칩켠`).

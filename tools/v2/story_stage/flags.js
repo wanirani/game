@@ -20,7 +20,7 @@ export const FLAGS = {
     read: ['alberto.church', 'chronicle:bell_cracked', 'chronicle:graveyard_key', 'chronicle:two_keepers', 'ev_bell_lost', 'ev_bell_now_before', 'ev_opening', 'ev_past_wake', 'ev_tower_bridge', 'ev_tower_crack', 'ev_tower_enter', 'ev_tower_locked', 'ev_tower_top', 'gate.now', 'hadwin.smithy.now', 'marta.inn.now', 'retry.line', 'rook.now', 'sera.square.now', 'trapped.freed'] },
   met_edmund: { means: '에드문트 일행의 식탁에 앉았다 (매듭을 받았다)',
     set: ['ev_table'],
-    read: ['chronicle:blank_notice', 'chronicle:cellar_wine', 'chronicle:empty_chair', 'ev_knot', 'ev_table', 'stones'] },
+    read: ['chronicle:blank_notice', 'chronicle:cellar_wine', 'chronicle:empty_chair', 'ev_knot', 'ev_smithy_past else', 'ev_table', 'stones'] },
   met_rook_past: { means: '그 밤의 로크와 말했다',
     set: ['rook.past'],
     read: ['rook.now'] },

@@ -34,6 +34,7 @@ export const OBJECTIVES = {
   climb_tower: { id: 'climb_tower', text: '종탑에 오른다' },
   guard_elise: { id: 'guard_elise', text: '엘리제를 지킨다' },
   find_key: { id: 'find_key', text: '묘지 문 열쇠를 구한다' },
+  meet_edmund: { id: 'meet_edmund', text: '주막의 사냥꾼을 만난다' },
   show_shard: { id: 'show_shard', text: '에드문트에게 조각을 보인다' },
   ring_big_bell: { id: 'ring_big_bell', text: '큰 종 앞에서 종을 친다' },
   to_smithy_now: { id: 'to_smithy_now', text: '대장간에 들른다' },

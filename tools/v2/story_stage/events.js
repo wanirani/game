@@ -168,7 +168,8 @@ export const EVENTS = [
     ['setFlag', 'pending_change'],
     ['prompt', 'entrust'],
     ['toast', '맡겼다 — 묘지 문 열쇠', 'info'],
-    ['if', ['has:valkrein_knot'], [['objective', 'ring_big_bell']]],
+    // what is still missing decides the next line under the section name
+    ['if', ['has:valkrein_knot'], [['objective', 'ring_big_bell']], [['if', ['met_edmund'], [['objective', 'show_shard']], [['objective', 'meet_edmund']]]]],
   ] },
   // the crossing tip comes at the bell, not at the smithy (section `church` holds the big bell)
   { id: 'ev_cross_tip', minute: '33-36', on: 'section.enter', match: { id: 'church' }, if: ['era:past', 'has:valkrein_knot', 'key_entrusted', '!crossed'], steps: [
@@ -475,6 +476,7 @@ export const EVENTS = [
     ['camera', 'ring_widen', 4],
     ['ring', 1],
     ['toast', '종소리가 장미 수녀원과 잠긴 수문까지 닿는다', 'info'],
+    ['camera', null],
     ['say', 'ending.town'],
     ['banner', 'clear', '달이 한 칸 기울었다', '종소리가 한 겹 더 멀리 닿는다'],
     ['prompt', 'letter'],
