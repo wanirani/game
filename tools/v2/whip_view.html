@@ -264,6 +264,7 @@ api.shot = (id, t, o = {}) => {
 };
 const state = () => { const h = sim.hero; return { t: +time.toFixed(3), anim: h.anim, move: h.move?.id ?? null, act: h.act ?? null, mode: whip.mode, s: whip.mode === 'swing' ? +whip.sw.s.toFixed(2) : null, ext: +whip.ext.toFixed(3), len: +whip.len.toFixed(1), tip: [+whip.tip.x.toFixed(1), +whip.tip.y.toFixed(1), +whip.tip.z.toFixed(1)], speed: +whip.tip.speed.toFixed(0), taut: +whip.taut.toFixed(2), ev: events.slice(-8), stats: { ...WR.stats }, fx: fx ? { ribbons: fx.ribbons.live, particles: fx.particles.drawn ?? 0 } : null }; };
 api.state = state;
+api.lost = () => !gl || gl.isContextLost();   // 찍는 쪽이 쓰기 전에 본다 (잃은 컨텍스트로 그린 그림은 텅 비어 있다)
 /** 화면 픽셀로 잰 끈 굵기: 같은 장면을 채찍 있이 · 없이 두 번 그려, 끈의 한 마디를 가로지르는 세로줄에서 달라진 픽셀 수 (최소 굵기 검사) */
 api.thickness = (frac = 0.55) => {
   const N = whip.nodes, n = whip.n, i = Math.round((n - 1) * frac) * 3;

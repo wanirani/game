@@ -208,6 +208,10 @@ export default class V2Game extends Scene {
       this.emit('interact', { id: d.id, kind: d.kind, event: d.event ?? null, data: d.data ?? null, locked: d.locked ?? null, spot: d });
       if (!this.story) {   // until the story is plugged in: name the spot, and remember what it would change
         if (d.event === 'door.pull') this.flags.add('door_pulled');
+        if (d.kind === 'rest' && !d.locked && this.sim?.heal) {   // a rest spot: full health, and the hero stands up here after a fall (PLAY-2: sim.heal / sim.respawnAt)
+          const got = this.sim.heal('full'); this.sim.respawnAt?.(d.x, d.z, d.y);
+          this._toast(got > 0 ? '촛불 곁에서 쉬었다 — 기운이 돌아왔다' : '촛불 곁에서 쉬었다', 'info');
+        } else
         this._toast(d.locked ? d.label + ' — 지금은 열리지 않는다' : d.label, d.locked ? 'warn' : 'info');
       }
     }
@@ -248,6 +252,7 @@ export default class V2Game extends Scene {
         scene: sc, get sim() { return sc.sim; }, lock(on) { sc.locked = !!on; }, teleport(id) { return globalThis.__v2?.teleport(id); },
         gotoArea(id, spawn, o) { return sc.gotoArea(id, spawn, o); }, fx(n, o) { sc.fx?.play(n, o); }, sound(n, pos) { try { feel.play(n, pos ?? null); } catch { /* no audio */ } }, setDialog(d) { sc.ui.dialog = d ?? null; },
         toast(t, kind) { sc._toast(t, kind); }, unlockExit(id, area) { return sc.unlockExit(id, area); }, lockExit(id, area, key) { return sc.lockExit(id, area, key); }, hideActor(id) { sc.hideActor(id); }, showActor(id) { sc.showActor(id); },
+        heal(n) { return sc.sim?.heal ? sc.sim.heal(n ?? 'full') : 0; }, restAt(x, z, y) { sc.sim?.respawnAt?.(x, z, y); },
         wakeGroup(g) { return sc.wakeGroup(g); }, groupLeft(g) { return sc.groupLeft(g); }, bellCross(o) { if (!sc.area?.twin || sc._go) return false; sc._go = { to: sc.area.twin, spawn: null, keep: true, night: true }; sc.fadeTo = 1; sc.locked = true; return true; },
       };
     }
@@ -787,7 +792,9 @@ export default class V2Game extends Scene {
       sk.disabled = !this._caps.skill; bl.disabled = !this._caps.bell;
       sk.mode = hh.skillMode === 'call' ? 'call' : 'hook'; sk.cd = hh.callCdMax > 0 ? clamp(hh.callCd / hh.callCdMax, 0, 1) : 0;
       bl.charge = hh.bellCharge > 0 ? hh.bellCharge : 0; bl.mode = hh.bellCharge > 0 || hh.knellId != null ? 'long' : 'short'; bl.cd = hh.bellCdMax > 0 ? clamp(hh.bellCd / hh.bellCdMax, 0, 1) : 0;
-      if (hh.reso !== undefined) { s.resonance.value = hh.reso; s.resonance.cells = clamp(hh.resoMax ?? 3, 3, 5); } }
+      if (hh.reso !== undefined) { s.resonance.value = hh.reso; s.resonance.cells = clamp(hh.resoMax ?? 3, 3, 5); }
+      if (pd.attack && hh.charge !== undefined) pd.attack.charge = hh.charge > 0 ? hh.charge : 0;                       // PLAY-2: the held attack charges the whip
+      if (pd.roll && hh.rollCd !== undefined && TUNE.rollCd > 0) pd.roll.cd = hh.rollCd > 0 ? clamp(hh.rollCd / TUNE.rollCd, 0, 1) : 0; }
   }
   // ───────────────────────── camera (section rigs, as in prototype B) ─────────────────────────
   _camera(dt) {

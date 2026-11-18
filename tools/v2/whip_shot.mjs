@@ -62,9 +62,14 @@ const port = 9900 + Math.floor(Math.random() * 90);
 await new Promise((r) => srv.listen(port, r));
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const errs = []; let code = 0;
+// 소프트웨어 WebGL 은 기계가 바쁘면 컨텍스트를 잃는다 — 그때 찍힌 그림은 텅 비어 있다. 쓰기 전에 확인하고, 잃었으면 그 시도를 버리고 새 페이지로 다시 한다(세 번까지).
+const LOST = 'WebGL context lost';
+const guard = async (page) => { if (await page.evaluate(() => !!window.__whip?.lost?.())) throw new Error(LOST); };
+for (let attempt = 1; attempt <= 3; attempt++) {
+const mark = errs.length; let page = null;
 try {
   const pageDemo = opt('page', '');   // --page=combo : 폴드 편 화면 크기로 살아 있는 화면 한 장(단추 포함) → page_<demo>.png
-  const page = await browser.newPage({ viewport: pageDemo ? { width: 800, height: 720 } : { width: 1000, height: 700 } });
+  page = await browser.newPage({ viewport: pageDemo ? { width: 800, height: 720 } : { width: 1000, height: 700 } });
   page.on('console', (m) => { if ((m.type() === 'error' || m.type() === 'warning') && !/GPU stall due to ReadPixels/.test(m.text())) errs.push(`[${m.type()}] ${m.text()}`); });
   page.on('pageerror', (e) => errs.push('[pageerror] ' + e.message));
   await page.goto(`http://localhost:${port}/tools/v2/whip_view.html?hold=${pageDemo ? 0 : 1}${pageDemo ? '&demo=' + pageDemo : ''}${argv.includes('--aa0') ? '&aa=0' : ''}`);   // --aa0 = 캔버스 안티에일리어싱 끔 (끈 가장자리가 스스로 부드러운지 볼 때)
@@ -73,11 +78,12 @@ try {
   if (err) { errs.push('[page error] ' + err); code = 1; }
   else if (pageDemo) {
     await page.waitForTimeout(Number(opt('wait', 2600)));
-    const f = path.join(outDir, `page_${pageDemo}.png`); await page.screenshot({ path: f }); console.log('wrote', f, JSON.stringify(await page.evaluate(() => window.__whip.state())).slice(0, 300));
+    await guard(page); const f = path.join(outDir, `page_${pageDemo}.png`); await page.screenshot({ path: f }); console.log('wrote', f, JSON.stringify(await page.evaluate(() => window.__whip.state())).slice(0, 300));
   }
   else if (opt('shot', '')) {   // --shot="demo:t:cam:w:h[:era[:reso[:dir]]]" --name=이름  (그때그때 한 장)
     const [d, t, cam, w, h, era, reso, dir] = opt('shot', '').split(':');
     const url = await page.evaluate(([d, t, o]) => window.__whip.shot(d, t, o), [d, Number(t), { cam: cam || 'close', w: Number(w) || 640, h: Number(h) || 480, era: era || 'now', reso: Number(reso ?? 0.3), dir: Number(dir ?? 0), tier: opt('tier', 'mid') }]);
+    await guard(page);
     const f = path.join(outDir, (opt('name', 'shot_' + d)) + '.png'); fs.writeFileSync(f, Buffer.from(url.split(',')[1], 'base64')); console.log('wrote', f, JSON.stringify(await page.evaluate(() => window.__whip.state())).slice(0, 400));
   }
   else if (argv.includes('--owner')) {
@@ -85,9 +91,9 @@ try {
     const shot = (d, t, o) => page.evaluate(([d, t, o]) => window.__whip.shot(d, t, { era: 'now', reso: 0.3, dir: 0, tier: 'mid', ...o }), [d, t, o]);
     const strip = (d, o) => page.evaluate(([d, o]) => window.__whip.strip(d, { era: 'now', dir: 0, tier: 'mid', slow: false, stop: true, box: false, label: false, ...o }), [d, o]);
     const strips = [];   // 한 줄 = { t 제목, parts: [그림 dataURL …] (옆으로 이어 붙인다) }
-    { const parts = []; for (const [t, lab] of [[0.6, '연타 1 — 뒤로 감았다가'], [0.7, '연타 1 — 맞는 순간'], [1.02, '연타 2 — 위에서 내리친다']]) parts.push(await shot('combo', t, { cam: 'game', w: 666, h: 360, label: lab })); strips.push({ t: '연타 3 — 게임 카메라 그대로의 크기 (영웅 키 약 76 px)', parts }); }
+    { const parts = []; for (const [t, lab] of [[0.6, '연타 1 — 뒤로 감았다가'], [0.7, '연타 1 — 맞는 순간'], [1.02, '연타 2 — 위에서 내리친다']]) parts.push(await shot('combo', t, { cam: 'game', w: 666, h: 360, label: lab })); strips.push({ t: '세 번 연타 — 게임 카메라 그대로의 크기 (영웅 키 약 76 px)', parts }); }
     { const parts = []; for (const [t, lab] of [[1.33, '연타 3 — 머리 위로 크게 돌려'], [1.45, '연타 3 — 넓게 후려친다'], [1.6, '연타 3 — 지나간 뒤']]) parts.push(await shot('combo', t, { cam: 'game', w: 666, h: 360, label: lab })); strips.push({ t: '', parts }); }
-    strips.push({ t: '연타 3 — 가까이, 두 틱(1/30초)마다 한 칸: 끈이 펴지며 끝이 휘어 감기고, 맞는 순간 번쩍임과 불티 고리', parts: [await strip('combo', { from: 0.6, count: 10, every: 2, cam: 'close', cols: 10, cw: 200, ch: 190 })] });
+    strips.push({ t: '연타 1 → 2 — 가까이, 두 틱(1/30초)마다 한 칸: 끈이 펴지며 맞는 순간 번쩍임과 불티 고리, 지나간 뒤에는 흘러내린다', parts: [await strip('combo', { from: 0.6, count: 10, every: 2, cam: 'close', cols: 10, cw: 200, ch: 190 })] });
     strips.push({ t: '모아 휘감기 → 끌어오기 (머리 위로 돌리며 모았다가 멀리 던져 감고 당긴다)', parts: [await strip('charge', { from: 1.25, count: 8, every: 5, cam: 'close', cols: 8, cw: 250, ch: 190 })] });
     strips.push({ t: '휘감아 문 당기기 (문은 시험 화면에서 흉내 낸 것 — 규칙에는 아직 문이 없다)', parts: [await strip('door', { from: 0.74, count: 8, every: 12, cam: 'close', cols: 8, cw: 250, ch: 190 })] });
     strips.push({ t: '솜씨: 빛나는 고리에 걸고 건너뛰기 — 걸리면 팽팽한 직선', parts: [await strip('hook', { from: 0.52, count: 8, every: 5, cam: 'game', cols: 8, cw: 250, ch: 200 })] });
@@ -100,7 +106,7 @@ try {
       { t: '멀리서 (키 70 px)도 끈이 보인다', demo: 'combo', at: 0.7, o: { cam: 'far', w: 420, h: 330 } },
       { t: '먼 종 치기', demo: 'far', at: 0.75, o: { cam: 'game', w: 420, h: 330 } },
     ]) singles.push({ t: sg.t, a: await shot(sg.demo, sg.at, sg.o) });
-    const weak = opt('weak', '아직 약한 곳: 이 그림은 모두 시험 화면이다 — 본 게임 장면에는 아직 꽂지 않았다. 손가락이 없어 손잡이가 손바닥에 붙어 보이고, 문 당기기 · 먼 종 치기는 규칙에 없어 흉내만 냈다. 기기 속도 · 소리는 확인 못 함.');
+    const weak = opt('weak', '아직 약한 곳: 이 그림은 모두 시험 화면이다 — 본 게임 장면에는 아직 꽂지 않았다. 손가락이 없어 손잡이가 손바닥에 붙어 보이고, 문 당기기 · 먼 종 치기는 규칙에 없어 흉내만 냈다. 맞아서 멈춘 순간 가까운 적에게는 끈이 거의 곧게 보인다. 기기 속도 · 소리는 확인 못 함.');
     const url = await page.evaluate(async ([strips, singles, weak]) => {
       const img = (u) => new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.src = u; });
       const W = 2000, pad = 14, th = 36; let y = 66; const lay = [];
@@ -115,6 +121,7 @@ try {
       g.fillStyle = '#f0b090'; g.font = '22px system-ui, sans-serif'; g.fillText(weak, pad, y - 28, W - pad * 2);
       return c.toDataURL('image/png');
     }, [strips, singles, weak]);
+    await guard(page);
     const f = opt('owner', '') || '/tmp/claude-0/v2/owner_whip.png'; fs.writeFileSync(f, Buffer.from(url.split(',')[1], 'base64')); console.log('wrote', f);
   } else {
     const stats = {};
@@ -123,6 +130,7 @@ try {
       const t0 = Date.now();
       const url = await page.evaluate(([d, o]) => window.__whip.strip(d, o), [s.demo, { era: 'now', dir: 0, tier: 'mid', slow: false, stop: true, box: false, ...s }]);
       const st = await page.evaluate(() => { const L = window.__whip.lastStates; return { ext: Math.max(...L.map((q) => q.ext)), speed: Math.max(...L.map((q) => q.speed)), modes: [...new Set(L.map((q) => q.mode))].join(','), ev: [...new Set(L.flatMap((q) => q.ev).filter((e) => e.startsWith('채찍')))].join(' '), stats: L[L.length - 1].stats, ribbons: Math.max(...L.map((q) => q.fx?.ribbons ?? 0)) }; });
+      await guard(page);
       const f = path.join(outDir, s.n + '.png'); fs.writeFileSync(f, Buffer.from(url.split(',')[1], 'base64'));
       stats[s.n] = st;
       console.log(`wrote ${f}  (${s.count} frames, ${((Date.now() - t0) / 1000).toFixed(1)} s)  modes ${st.modes} · max ext ${st.ext} · max tip speed ${st.speed} · tris ${st.stats.tris} draws ${st.stats.draws} · ${st.ev}`);
@@ -131,12 +139,18 @@ try {
       // 최소 굵기: 끈이 펴진 순간(연타 1 의 타격)에 끈 한가운데를 가로지르는 세로줄의 화면 굵기(px). 멀리 = 영웅 키 약 70 px
       for (const [cam, w, h] of [['far', 960, 540], ['game', 960, 540], ['far', 480, 270]]) {
         const th = await page.evaluate(([cam, w, h]) => { const a = window.__whip; a.shot('combo', 0.7, { cam, w, h, era: 'now', dir: 0 }); return [0.3, 0.55, 0.8].map((f) => a.thickness(f)); }, [cam, w, h]);
+        await guard(page);
         console.log(`lash thickness on screen, camera ${cam} ${w}x${h} (at 30 % · 55 % · 80 % of the lash): ${th.map((t) => (t ? `${t.changed} px (${t.strong} solid)` : 'off screen')).join(' · ')}`);
       }
     }
   }
   const pe = await page.evaluate(() => window.__whip?.errors ?? []); for (const e of pe) errs.push('[window error] ' + e);
-} catch (e) { errs.push('[exception] ' + e.message); code = 1; }
+} catch (e) {
+  if (e.message === LOST && attempt < 3) { errs.length = mark; console.log(`WebGL context lost (software GL on a busy machine) - attempt ${attempt} thrown away, trying again on a new page`); await page?.close().catch(() => {}); continue; }
+  errs.push('[exception] ' + e.message); code = 1;
+}
+break;
+}
 console.log(errs.length ? errs.slice(0, 12).join('\n') : 'NO ERRORS');
 console.log(`page errors: ${errs.filter((e) => /pageerror|page error|window error|exception/.test(e)).length}`);
 await browser.close(); srv.close();

@@ -297,8 +297,12 @@ export function driveHero(ch, h, dt, T = TUNE) {
   if (readyOn) layerBones(ch.rig, (ch.asset._readyPose ??= sampleClip(C.block, 0.42, new CPose())), READY_ARM, S.ready);
   // 달릴 때 윗몸을 조금 세운다: 달리기 클립은 26° 숙어 있어 위에서 비스듬히 보는 카메라에 얼굴이 묻힌다 → 골반–머리 선으로 19° 쯤
   S.lean = (S.lean ?? 0) + ((st === 'run' && !h.dead ? 1 : 0) - (S.lean ?? 0)) * Math.min(1, dt * 9);
-  if (S.lean > 0.02) {
-    PB.deg = -(T.runLeanFix ?? 12) * 0.55 * S.lean; pitchBoneS(ch.rig, 'spine', 0); PB.deg = -(T.runLeanFix ?? 12) * 0.45 * S.lean; pitchBoneS(ch.rig, 'spine2', 0);
+  // 돌아서며 버티는 자세(run_stop)는 이미 19° 뒤로 젖어 있다 → 그동안에는 위의 "세우기"를 얹지 않고 오히려 조금 앞으로 당긴다 (젖힌 채 넘어갈 듯 보이지 않게)
+  const brace = st === 'turn' && A.cur === C.run_stop && !T.legacyTurn ? 1 : 0;
+  S.brace = (S.brace ?? 0) + (brace - (S.brace ?? 0)) * Math.min(1, dt * (brace ? 30 : 12));
+  if (S.lean > 0.02 || S.brace > 0.02) {
+    const up = (T.pivotLean ?? 9) * S.brace - (T.runLeanFix ?? 12) * S.lean * (1 - S.brace);   // + = 앞으로 숙임
+    PB.deg = up * 0.55; pitchBoneS(ch.rig, 'spine', 0); PB.deg = up * 0.45; pitchBoneS(ch.rig, 'spine2', 0);
     const bank = clamp(-(S.angV ?? 0) * (T.runBank ?? 1.1), -11, 11) * S.lean;   // 돌 때 도는 쪽으로 몸을 기울인다 (달리는 동안만)
     if (Math.abs(bank) > 0.3) { PB.deg = bank * 0.5; pitchBoneS(ch.rig, 'hips', 2); pitchBoneS(ch.rig, 'spine', 2); }
   }
@@ -327,7 +331,7 @@ export function driveHero(ch, h, dt, T = TUNE) {
       legIK(ch.rig, S.ikSide, -ch.dz * ex + ch.dx * ez, S.ikY, ch.dx * ex + ch.dz * ez, w * w * (3 - 2 * w)); stepped = true;
     }
   } else S.ikMove = null;
-  const posed = S.lean > 0.02 || readyOn || stepped, looking = Math.abs(S.look) > 0.5;
+  const posed = S.lean > 0.02 || S.brace > 0.02 || readyOn || stepped, looking = Math.abs(S.look) > 0.5;
   if (looking) { PB.deg = S.look * 0.4; pitchBoneS(ch.rig, 'neck', 1); PB.deg = S.look * 0.45; pitchBoneS(ch.rig, 'head', 1); PB.deg = S.look * 0.15; pitchBoneS(ch.rig, 'spine2', 1); }
   if (posed || looking) ch.rig.pose();
 }
