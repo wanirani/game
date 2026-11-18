@@ -173,6 +173,23 @@ try {
 ok('moves carry strength (= str) for the scene', Object.values(MOVES).every((m) => m.strength === m.str && 'LMHF'.includes(m.strength)));
 
 // ── 12. 본 게임 장면이 쓰는 세계(환경 키트 compileEnv)에서도 끼이지 않는다 ──
+// ── 깨어남: 볼 때만 (거리 · 앞쪽 · 벽 너머는 못 본다), 지역이 달리 정할 수 있다 ──
+{ const wakes = (spawn, sec = 2, prep) => { const s = mk([spawn]); prep?.(s); run(s, sec, {}); return s.enemies[0].active; };
+  ok('wake: a sleeping soldier 360 px away does not notice the hero (sight 300)', wakes({ kind: 'melee', x: 360, z: 0 }) === false);
+  ok('wake: at 260 px in front of it, it does', wakes({ kind: 'melee', x: 260, z: 0 }) === true);
+  ok('wake: facing away it does not notice at 220 px, but does at 130 px', wakes({ kind: 'melee', x: 220, z: 0, face: [1, 0] }) === false && wakes({ kind: 'melee', x: 130, z: 0, face: [1, 0] }) === true);
+  ok('wake: not through a wall', wakes({ kind: 'melee', x: 200, z: 0 }, 2, (s) => s.W.boxes.push({ x0: 90, x1: 110, z0: -120, z1: 120, y0: 0, y1: 200, solid: true, walk: false })) === false);
+  ok('wake: the area can widen the sight (spawns[].sight 500)', wakes({ kind: 'melee', x: 420, z: 0, sight: 500 }) === true);
+  { const s = mk([{ kind: 'melee', x: 120, z: 0, wake: 'trigger' }]); run(s, 1.5, {}); const a0 = s.enemies[0].active; s.wake(s.enemies[0]); ok("wake: spawns[].wake = 'trigger' sleeps until the scene wakes it", a0 === false && s.enemies[0].active === true); }
+  { const s = mk([{ kind: 'melee', x: 250, z: 0 }, { kind: 'melee', x: 400, z: 60 }, { kind: 'melee', x: 400, z: -300 }]); run(s, 1.5, {}); ok('wake: a mate standing close to the one that woke wakes too; one farther off does not', s.enemies[0].active && s.enemies[1].active && !s.enemies[2].active, s.enemies.map((e) => e.active).join(' ')); }
+  { const s = mk([{ kind: 'melee', x: 380, z: 0, face: [1, 0] }]); s.enemies[0].cd = 99; run(s, 0.3, {}); const a0 = s.enemies[0].active; s._hitEnemy(s.enemies[0], MOVES.c1, s.hero); ok('wake: being hit wakes it', a0 === false && s.enemies[0].active === true); }
+}
+// ── 톡 눌러 뗀 구르기 단추 뒤에 스틱을 밀어도 구르지 않는다 ──
+{ const s = mk(); let rolls = 0; s.hooks.roll = () => { rolls++; };
+  run(s, 0.4, (i) => ({ mx: i >= 6 ? 1 : 0, mz: 0, dash: i === 0, guard: i < 3 }));
+  ok('tap the roll button standing, release, then push the stick within 0.3 s: no roll (walks off)', rolls === 0 && s.hero.dashT <= 0 && s.hero.x > 5, `rolls ${rolls} x ${s.hero.x.toFixed(0)}`);
+  const s2 = mk(); let r2 = 0; s2.hooks.roll = () => { r2++; }; run(s2, 0.4, (i) => ({ mx: i >= 6 ? 1 : 0, mz: 0, dash: i === 0, guard: true }));
+  ok('holding the button (guard) and pushing the stick still rolls', r2 === 1, `rolls ${r2}`); }
 try {
   const { compileEnv } = await import('../../src/v2/env/build.js'); const W = compileEnv((await import('../../src/v2/env/stage_slice0_env.js')).default);
   const s = new Sim(W, {}), h = s.hero; h.x = 1960; h.z = 244; h.y = s.w.ground(h.x, h.z); h.safe = { x: h.x, z: h.z, y: h.y }; h.hp = h.hpMax = 1e6;
@@ -180,9 +197,11 @@ try {
   run(s, 8, {}, () => { minD = Math.min(minD, Math.hypot(e.x - h.x, e.z - h.z)); });
   ok('env-kit world: wedge at the alley mouth is gone (enemy reaches the hero and attacks)', tells >= 1 && minD < 100, `closest ${minD.toFixed(0)} attacks ${tells}`);
   const s3 = new Sim(W, {}); s3.teleport('yard'); s3.hero.hp = s3.hero.hpMax = 1e6; let t3 = 0; s3.hooks.tell = () => { t3++; };
-  const since = new Map(); run(s3, 20, {}, (q, i) => { for (const e of q.enemies) if (e.active && !since.has(e.id)) since.set(e.id, i); });
+  run(s3, 1.5, {}); const woke0 = s3.enemies.filter((q) => q.active).length;   // standing at the yard entry: nobody is close enough to see him yet
+  const since = new Map(); run(s3, 20, (i, q) => { const hh = q.hero; if (q.enemies.some((e) => e.active)) return {}; let n = null, nd = 1e9; for (const e of q.enemies) if (e.yard && !e.dead) { const d = Math.hypot(e.x - hh.x, e.z - hh.z); if (d < nd) { nd = d; n = e; } } return n ? { mx: (n.x - hh.x) / nd, mz: (n.z - hh.z) / nd } : {}; }, (q, i) => { for (const e of q.enemies) if (e.active && !since.has(e.id)) since.set(e.id, i); });
   const act = s3.enemies.filter((q) => q.active), far = act.filter((q) => q.def.ai === 'melee' && 1200 - since.get(q.id) > 480 && Math.hypot(q.x - s3.hero.x, q.z - s3.hero.z) > 300).length;   // 깨어난 지 8초가 넘었는데도 멀리 있는 것 (막 깨어난 것은 세지 않는다)
-  ok('env-kit world: yard enemies wake, reach a standing hero and attack; no melee enemy left stuck far away', act.length >= 3 && t3 >= 5 && far === 0 && finite(s3), `active ${act.length} attacks ${t3} far ${far}`);
+  const asleepFar = s3.enemies.filter((q) => !q.active && Math.hypot(q.x - s3.hero.x, q.z - s3.hero.z) > 320).length;
+  ok('env-kit world: yard enemies that see the hero wake, reach him and attack; none left stuck far away; the ones out of sight stay asleep', woke0 === 0 && act.length >= 1 && t3 >= 3 && far === 0 && finite(s3), `woke while he stood at the entry ${woke0} · after walking up: active ${act.length} attacks ${t3} far ${far} · still asleep beyond 320 px ${asleepFar}`);
 } catch (err) { ok('env-kit world loads in node', false, String(err?.message ?? err).split('\n')[0]); }
 
 Math.random = realRandom;

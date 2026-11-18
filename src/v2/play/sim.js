@@ -60,7 +60,8 @@ export class Sim {
       side: id % 2 ? 1 : -1, detourT: 0, detX: 0, detZ: 0, stuckT: 0, orb: rnd(0, 6.28), orbW: (id % 2 ? 1 : -1) * rnd(1.1, 1.7), orbR: D.orbit ? rnd(D.orbit[0], D.orbit[1]) : 0,
     };
     e.sight = s.sight ?? D.sight; e.wakeBy = s.wake ?? null;
-    if (s.face) { const fl = Math.sqrt(s.face[0] * s.face[0] + s.face[1] * s.face[1]) || 1; e.dirX = s.face[0] / fl; e.dirZ = s.face[1] / fl; e.facing = e.dirX < 0 ? -1 : 1; }
+    { const fx = s.face ? s.face[0] : this.W.start.x - s.x, fz = s.face ? s.face[1] : this.W.start.z - s.z, fl = Math.sqrt(fx * fx + fz * fz);   // 보는 쪽: 지역이 정한 쪽, 없으면 영웅이 들어오는 쪽
+      if (fl > 1e-3) { e.dirX = fx / fl; e.dirZ = fz / fl; if (Math.abs(e.dirX) > 0.25) e.facing = e.dirX < 0 ? -1 : 1; } }
     if (D.fade != null) { e.solid = false; e.alpha = D.fade; }
     if (e.active) e.state = 'chase';
     else if ((s.rise ?? D.rise) && !D.fly && !D.floats) e.buried = true;   // 엎드려 누워 있다가 영웅이 다가오면 일어선다 (스테이지 spawns[].rise)

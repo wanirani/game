@@ -70,7 +70,7 @@ export function eshville(era) {
   // ───────────── props that stand in both eras (same spots) ─────────────
   add('street', LAMP(1760, 266), LAMP(2500, 266), LAMP(3130, 266), LAMP(2300, 8, { solid: 0 }),
     { t: 'fence', kind: 'iron', x0: 1860, z0: 5, x1: 2180, z1: 5, h: 44 }, { t: 'fence', kind: 'iron', x0: 2700, z0: 5, x1: 3020, z1: 5, h: 44 },
-    { t: 'prop', mesh: 'brazier', h: 112, solid: 20, x: 2700, z: 262, light: { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } },
+    { t: 'prop', mesh: 'brazier', h: 112, solid: 30, solidZ: 24, x: 2700, z: 262, light: { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } },
     { t: 'prop', mesh: 'barrel', x: 2420, z: 264, h: 78, solid: 24 });
   add('out', LAMP(640, 262, now ? { mesh: 'lanternpost', lit: false, light: null, h: 190 } : {}), LAMP(1380, 8, { solid: 0 }),
     { t: 'fence', kind: 'wood', x0: 80, z0: 6, x1: 420, z1: 6, h: 50 }, { t: 'fence', kind: 'wood', x0: 860, z0: 6, x1: 1240, z1: 6, h: 50 },
@@ -82,7 +82,7 @@ export function eshville(era) {
   add('east', { t: 'prop', mesh: 'bell', x: 4200, z: 1450, y: 84, h: 190, solid: 62, solidZ: 30 },
     { t: 'prop', mesh: 'angel', x: 3540, z: 1330, y: 84, h: 200 }, { t: 'prop', mesh: 'angel', x: 4260, z: 1330, y: 84, h: 200, flip: true },
     { t: 'prop', mesh: 'gargoyle', x: 3700, z: 1610, y: 84, h: 150 }, { t: 'prop', mesh: 'gargoyle', x: 4100, z: 1610, y: 84, h: 150, flip: true },
-    { t: 'prop', mesh: 'brazier', h: 112, solid: 20, x: 3810, y: 84, z: 1590, light: { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } }, { t: 'prop', mesh: 'brazier', h: 112, solid: 20, x: 3990, y: 84, z: 1590, light: { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } },
+    { t: 'prop', mesh: 'brazier', h: 112, solid: 22, solidZ: 22, x: 3810, y: 84, z: 1590, light: { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } }, { t: 'prop', mesh: 'brazier', h: 112, solid: 22, solidZ: 22, x: 3990, y: 84, z: 1590, light: { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } },
     { t: 'deco', mesh: 'candles', x: 3620, y: 84, z: 1600, light: { r: 200, i: 1.1, y: 20 } },
     LAMP(3700, 960), LAMP(4100, 960),
     { t: 'deco', mesh: 'deadtree', x: 3420, z: 1130, h: 280 }, { t: 'deco', mesh: 'deadtree', x: 4330, z: 1160, h: 250, flip: true },
@@ -94,19 +94,19 @@ export function eshville(era) {
   // ───────────── era dressing ─────────────
   if (now) {
     add('out', { t: 'prop', mesh: 'wreck', x: 440, z: 256, w: 150, solid: 68, solidZ: 26, solidH: 60, light: FIRE(460, 2.1) },
-      { t: 'prop', mesh: 'cart', x: 820, z: 252, h: 104, solid: 70, solidZ: 22 }, { t: 'prop', mesh: 'goods', x: 1040, z: 250, h: 92, solid: 64, solidZ: 30, solidH: 70 },   // barrels, crates and sacks in one generated model (was a barrel and a crate)
+      { t: 'prop', mesh: 'cart', x: 820, z: 252, h: 104, solid: 70, solidZ: 36 }, { t: 'prop', mesh: 'goods', x: 1040, z: 250, h: 92, solid: 64, solidZ: 40, solidH: 70 },   // barrels, crates and sacks in one generated model (was a barrel and a crate)
       { t: 'prop', mesh: 'wreck', x: 1290, z: 258, w: 130, fire: false, solid: 60, solidZ: 24, solidH: 60 });
     anchors.push({ id: 'fire_wreck', kind: 'fire', x: 450, y: 20, z: 244, size: 1.2, light: true }, { id: 'smoke_wreck2', kind: 'smoke', x: 1290, y: 40, z: 250, size: 1 });
     fire('out', 'fire_h1a', 90, 70, 296, 40, 56); fire('out', 'fire_h1roof', 200, 210, 300, 190, 84, 520); fire('out', 'fire_ruin', 440, 96, 300, 120, 64, 380);
     fire('out', 'fire_h3a', 1120, 72, 296, 40, 60); fire('out', 'fire_h3roof', 1300, 230, 300, 210, 90, 540);
     for (const [x, z] of [[230, 120], [760, 200], [1180, 60]]) anchors.push({ id: 'embers_' + x, kind: 'embers', x, y: 0, z, size: 1 });
     add('street', { t: 'prop', mesh: 'crate', x: 2150, z: 258, h: 62, solid: 30, solidZ: 18 }, { t: 'prop', mesh: 'sacks', x: 1960, z: 266, h: 34, solid: 26, solidZ: 12 }, { t: 'prop', mesh: 'hay', x: 3060, z: 262, h: 62, solid: 34, solidZ: 16 });
-    add('east', { t: 'prop', mesh: 'wreck', x: 4560, z: 200, w: 140, solid: 64, solidZ: 26, solidH: 60, light: FIRE(440, 2.0) }, { t: 'prop', mesh: 'cart', x: 3560, z: 830, h: 104, solid: 70, solidZ: 22 },
+    add('east', { t: 'prop', mesh: 'wreck', x: 4560, z: 200, w: 140, solid: 64, solidZ: 26, solidH: 60, light: FIRE(440, 2.0) }, { t: 'prop', mesh: 'cart', x: 3560, z: 830, h: 104, solid: 70, solidZ: 36 },
       { t: 'prop', mesh: 'barrel', x: 4080, z: 846, h: 78, solid: 24 }, { t: 'prop', mesh: 'sacks', x: 4340, z: 842, h: 36, solid: 26, solidZ: 12 });
     anchors.push({ id: 'fire_sq', kind: 'fire', x: 4570, y: 20, z: 190, size: 1.1, light: true }, { id: 'red_moon', kind: 'glow_red', x: 3900, y: 900, z: 2600, size: 4 });
   } else {
     add('out', { t: 'prop', mesh: 'hay', x: 430, z: 262, h: 62, solid: 34, solidZ: 16 }, { t: 'prop', mesh: 'harvest', x: 330, z: 266, h: 46, solid: 30, solidZ: 12 },
-      { t: 'prop', mesh: 'cart', x: 820, z: 252, h: 104, solid: 70, solidZ: 22 }, { t: 'prop', mesh: 'goods', x: 1040, z: 250, h: 92, solid: 64, solidZ: 30, solidH: 70, flip: true },
+      { t: 'prop', mesh: 'cart', x: 820, z: 252, h: 104, solid: 70, solidZ: 36 }, { t: 'prop', mesh: 'goods', x: 1040, z: 250, h: 92, solid: 64, solidZ: 40, solidH: 70, flip: true },
       { t: 'prop', mesh: 'plaguepost', x: 1290, z: 264, h: 200, solid: 10, solidZ: 10 });
     add('street', { t: 'prop', mesh: 'stall', x: 2240, z: 258, h: 130, w: 140, solid: 72, solidZ: 23 }, { t: 'prop', mesh: 'harvest', x: 1960, z: 266, h: 46, solid: 30, solidZ: 12 }, { t: 'prop', mesh: 'hay', x: 3060, z: 262, h: 62, solid: 34, solidZ: 16 });
     add('east', { t: 'prop', mesh: 'plaguepost', x: 4560, z: 200, h: 220, code: true, solid: 10, solidZ: 10 }, { t: 'prop', mesh: 'stall', x: 3500, z: 836, h: 130, w: 140, solid: 72, solidZ: 23 }, { t: 'prop', mesh: 'stall', x: 4300, z: 836, h: 130, w: 140, solid: 72, solidZ: 23 },

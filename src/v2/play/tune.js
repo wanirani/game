@@ -34,7 +34,7 @@ export const TUNE = {
   lockRange: 380, lockKeep: 470,   // 락온이 걸리는 거리 · 풀리는 거리
   lockAim: 230,                    // 스틱 없이 공격하면 이 거리 안의 락온 대상 쪽으로 돈다
   aimCone: 55,                     // 스틱을 민 채 공격하면 그 방향 ±도 안의 적으로 보정
-  lungeMax: 78,                    // 공격이 대상에게 닿도록 내딛는 최대 거리
+  lungeMax: 52,                    // 공격이 대상에게 닿도록 내딛는 최대 거리 (다리가 한 걸음으로 옮길 수 있는 만큼 — motion.js 가 그동안 다리를 달리기 걸음으로 덮는다)
   queueT: 0.25,                    // 먼저 누른 공격을 기억하는 시간
   // ── 영웅: 몸 ──
   heroHp: 100, hurtIfr: 0.95, hurtT: 0.26, pitDmg: 8, pitY: -170, deadT: 2.1,

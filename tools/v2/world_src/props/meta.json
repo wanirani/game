@@ -1,5 +1,5 @@
 {
- "about": "generated prop models -> prop pack (tools/v2/world_props_bake.mjs, docs/v2/ENV_KIT.md 16). h = world height (hero = 175), rotY = degrees (the generator's models face +x), foot = collision half sizes, px = texels per world unit before the fit to the atlas, lum = wanted median brightness of the front picture (0..255), tris = triangles after decimation, emis = glowing texels are flagged per vertex, sat = colour saturation kept (1 = as generated), name = prop name in the pack if different from the file, cut = boxes of stray triangles to throw away, skip + why = rejected models",
+ "about": "generated prop models -> prop pack (tools/v2/world_props_bake.mjs, docs/v2/ENV_KIT.md 16). h = world height (hero = 175), rotY = degrees (the generator's models face +x), foot = collision half sizes, px = texels per world unit before the fit to the atlas, lum = wanted median brightness of the front picture (0..255), tris = triangles after decimation, emis = glowing texels are flagged per vertex, sat = colour saturation kept (1 = as generated), name = prop name in the pack if different from the file, cut = boxes of stray triangles to throw away, skip + why = rejected models, origin 'base' = the prop's origin is under its base (lowest fifth) instead of the middle of its box (a post with an arm)",
  "pitch": 24,
  "yaw": 70,
  "sideScale": 0.38,
@@ -121,7 +121,8 @@
      0.36
     ]
    },
-   "sat": 0.7
+   "sat": 0.7,
+   "origin": "base"
   },
   "brazier": {
    "h": 112,

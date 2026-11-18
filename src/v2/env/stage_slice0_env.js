@@ -5,7 +5,7 @@
 import B0 from '../b/stage_slice0.js';
 
 const LAMP = { mesh: 'lamp', h: 196, solid: 9, solidZ: 9, light: { r: 330, i: 1.7, y: 170 } };
-const BRAZIER = { mesh: 'brazier', h: 112, solid: 20, light: { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } };
+const BRAZIER = { mesh: 'brazier', h: 112, solid: 30, solidZ: 24, light: { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } };
 const W2 = (u, y, o = {}) => ({ u, y, w: 42, h: 62, ...o });   // 보통 창
 
 export default {
@@ -66,7 +66,7 @@ export default {
     // 나무 상자 장애물 + 소품
     { t: 'block', x: 1392, z: 92, w: 74, d: 74, h: 64, mat: 'wood', mesh: 'crate' },
     { t: 'prop', mesh: 'barrel', x: 1500, z: 214, h: 78, solid: 24 },
-    { t: 'prop', mesh: 'cart', x: 250, z: 226, h: 104, solid: 70, solidZ: 22 },
+    { t: 'prop', mesh: 'cart', x: 250, z: 226, h: 104, solid: 70, solidZ: 36 },
     { t: 'prop', mesh: 'hay', x: 585, z: 236, h: 62, solid: 34, solidZ: 16 },
     { t: 'prop', mesh: 'well', x: 1255, z: 44, h: 120, solid: 46, solidZ: 30 },
     { t: 'prop', mesh: 'crate', x: 2060, z: 236, h: 62, solid: 30, solidZ: 18 },

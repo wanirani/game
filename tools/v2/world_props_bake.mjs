@@ -1,7 +1,7 @@
 // WORLD lane: prop bake (docs/v2/ENV_KIT.md 11). Static prop models -> ONE geometry pack + ONE texture atlas.
 //   node tools/v2/world_props_bake.mjs [--glb <dir>] [--only a,b] [--out assets/v2/props] [--texels 1.7e6] [--parts 1 (print connected parts)]
 // Sources:  (1) generated models (image-to-3D): tools/v2/world_src/props/<id>.glb + meta.json (default --glb dir; docs/v2/ENV_KIT.md 16).
-//               meta.props[id] = { h, rotY, foot:[rx,rz], footH, light, glow, px (texels per world unit), lum, tris, emis, split:[{name,…}], dropThin, skip }
+//               meta.props[id] = { h, rotY, foot:[rx,rz], footH, light, glow, px (texels per world unit), lum, tris, emis, split:[{name,…}], dropThin, skip, origin:'base' }
 //           (2) sculpts in tools/v2/world_sculpts.mjs (signed distance fields -> surface nets -> quadric decimation -> texture baked from the
 //               full-detail surface). A generated model of the same name replaces the sculpt (today: all three).
 // Output:   assets/v2/props/props.bin  = 'BNP1' + u32 json length + json + payload (per prop: int16 pos, int8 normal + glow flag, uint16 uv, uint16 index)
@@ -190,7 +190,12 @@ function loadGlbParts(id, file, meta) {
   return groups.map((g) => {
     const tris = g.comps.flatMap((C) => C.tris).sort((a, b) => a - b), lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
     for (const C of g.comps) for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], C.lo[k]); hi[k] = Math.max(hi[k], C.hi[k]); }
-    const sc = g.meta.split === null && g.meta.h !== meta.h ? g.meta.h / (hi[1] - lo[1]) : unit, cx = (lo[0] + hi[0]) / 2, cz = (lo[2] + hi[2]) / 2;
+    const sc = g.meta.split === null && g.meta.h !== meta.h ? g.meta.h / (hi[1] - lo[1]) : unit; let cx = (lo[0] + hi[0]) / 2, cz = (lo[2] + hi[2]) / 2;
+    if (g.meta.origin === 'base') {   // origin under the BASE (lowest fifth), not under the middle of the whole box: a lantern post's arm pulled the origin 19 units off the post, so the collision box stood beside it
+      const yb = lo[1] + (hi[1] - lo[1]) * 0.2, b = [1e9, -1e9, 1e9, -1e9];
+      for (const t of tris) for (let e = 0; e < 3; e++) { const v = T0[t + e]; if (P0[v * 3 + 1] > yb) continue; b[0] = Math.min(b[0], P0[v * 3]); b[1] = Math.max(b[1], P0[v * 3]); b[2] = Math.min(b[2], P0[v * 3 + 2]); b[3] = Math.max(b[3], P0[v * 3 + 2]); }
+      if (b[0] < b[1]) { cx = (b[0] + b[1]) / 2; cz = (b[2] + b[3]) / 2; }
+    }
     const used = new Map(), fpos = [], fuv = [], fidx = [], wused = new Map(), lpos = [], lidx = [];
     for (const t of tris) for (let e = 0; e < 3; e++) {
       const v = T0[t + e]; let j = used.get(v);

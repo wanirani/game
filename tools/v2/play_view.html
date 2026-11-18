@@ -57,6 +57,8 @@ const DEMOS = {
   walk: { name: '걷기 · 서기', spawns: [], seq: [[1.6, st(0.4, 0)], [0.8, {}], [1.6, st(0, -0.4)], [0.8, {}], [1.4, st(-0.4, 0.2)], [1.2, {}]] },
   combo: { name: '연타 3 (여덟 방향)', spawns: ring('dummy', 8, 150), dummy: true, seq: D8.flatMap((d) => [[0.12, st(d[0], d[1])], [0.3, st(d[0], d[1]), 'attack'], [0.32, {}, 'attack'], [0.34, {}, 'attack'], [0.95, {}], [0.45, st(-d[0], -d[1])]]) },
   combo1: { name: '연타 3 (오른쪽 · 가까이)', spawns: [{ kind: 'dummy', x: 110, z: 0, active: true }], dummy: true, cam: 'close', seq: [[0.4, {}], [0.3, {}, 'attack'], [0.32, {}, 'attack'], [0.34, {}, 'attack'], [1.2, {}]] },
+  lunge: { name: '내딛으며 베기 (먼 적)', spawns: [{ kind: 'dummy', x: 150, z: 0, active: true }], dummy: true, cam: 'close', seq: [[0.4, {}], [0.3, {}, 'attack'], [0.32, {}, 'attack'], [0.34, {}, 'attack'], [1.2, {}]] },
+  ready: { name: '준비 자세 (락온)', spawns: [{ kind: 'dummy', x: 150, z: 0, active: true }], dummy: true, cam: 'close', seq: [[1.6, {}], [0.4, {}, 'attack'], [1.2, {}]] },
   comboUp: { name: '연타 3 (위 · 아래)', spawns: [{ kind: 'dummy', x: 0, z: 120, active: true }, { kind: 'dummy', x: 0, z: -120, active: true }], dummy: true, cam: 'close', seq: [[0.3, st(0, 1)], [0.3, st(0, 1), 'attack'], [0.32, {}, 'attack'], [0.34, {}, 'attack'], [1.0, {}], [0.2, st(0, -1)], [0.3, st(0, -1), 'attack'], [0.32, {}, 'attack'], [0.34, {}, 'attack'], [1.0, {}]] },
   roll: { name: '구르기 · 훑기', spawns: [{ kind: 'dummy', x: 250, z: 0, active: true }], dummy: true, seq: [[0.3, st(1, 0)], [0.5, st(1, 0), 'dash'], [0.5, {}], [0.2, st(0, 1)], [0.5, st(0, 1), 'dash'], [0.4, {}], [0.2, st(-1, 0)], [0.5, st(-1, 0), 'dash'], [0.4, {}], [0.2, st(0, -1)], [0.5, st(0, -1), 'dash'], [0.5, {}], [0.2, st(1, 0)], [0.4, st(1, 0), 'dash'], [0.12, st(1, 0), 'attack'], [1.0, {}]] },
   jump: { name: '점프 · 내려베기', spawns: [{ kind: 'dummy', x: 200, z: 0, active: true }], dummy: true, seq: [[0.4, {}], [0.9, { jumpHeld: true }, 'jump'], [0.4, {}], [0.25, st(1, 0)], [0.3, { ...st(1, 0), jumpHeld: true }, 'jump'], [0.6, { ...st(1, 0), jumpHeld: true }, 'attack'], [0.9, {}], [0.3, st(-1, 0)], [0.25, { jumpHeld: true }, 'jump'], [0.7, {}, 'attack'], [0.8, {}]] },
@@ -268,7 +270,7 @@ async function main() {
   const btn = (label, fn, on) => { const b = document.createElement('button'); b.textContent = label; b.onclick = () => { fn(); sync(); }; b._on = on; ui.appendChild(b); return b; };
   const sep = (t) => { const s = document.createElement('span'); s.textContent = t; ui.appendChild(s); };
   const sync = () => { for (const b of ui.children) b.classList?.toggle('on', !!b._on?.()); };
-  sep('카엘'); for (const k of ['free', 'run8', 'turn', 'circle', 'walk', 'combo', 'combo1', 'comboUp', 'roll', 'jump', 'guard', 'block', 'hurt']) btn(DEMOS[k].name, () => setDemo(k), () => S.demo === k);
+  sep('카엘'); for (const k of ['free', 'run8', 'turn', 'circle', 'walk', 'ready', 'combo', 'combo1', 'lunge', 'comboUp', 'roll', 'jump', 'guard', 'block', 'hurt']) btn(DEMOS[k].name, () => setDemo(k), () => S.demo === k);
   sep('적'); for (const k of ['soldier', 'crowd', 'rise', 'mage', 'corpse', 'ghost', 'armor', 'bat', 'fight', 'elite']) btn(DEMOS[k].name, () => setDemo(k), () => S.demo === k);
   sep('보기'); for (const [k, n] of [['game', '게임 카메라'], ['high', '높이'], ['close', '가까이'], ['side', '옆'], ['front', '앞'], ['top', '위'], ['enemy', '적 가까이']]) btn(n, () => { S.cam = k; }, () => S.cam === k);
   btn('판정 보기', () => { S.box = !S.box; }, () => S.box); btn('느리게', () => { S.slow = !S.slow; }, () => S.slow); btn('멈춤', () => { S.pause = !S.pause; }, () => S.pause);

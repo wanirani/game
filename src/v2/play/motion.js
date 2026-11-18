@@ -128,7 +128,7 @@ function layerBones(rig, P, keys, w) {
     R[o] = _l2[0]; R[o + 1] = _l2[1]; R[o + 2] = _l2[2]; R[o + 3] = _l2[3];
   }
 }
-const READY_ARM = ['shoulderR', 'armR', 'forearmR', 'handR'];
+const READY_ARM = ['shoulderR', 'armR', 'forearmR', 'handR'], STEP_LEGS = ['uplegL', 'uplegR', 'legL', 'legR', 'footL', 'footR'], _legP = new CPose();
 
 /** 영웅 기술: 규칙 시간 t → 클립 시각. 클립의 strike 구간이 판정 구간 [h0,h1] 과 겹친다 */
 export function warpMove(clip, t, mv) {
@@ -237,10 +237,10 @@ export function driveHero(ch, h, dt, T = TUNE) {
   S.prev0 = st;
   A.update(dt);
   // 준비 자세(락온한 채 서 있을 때): idle_combat 은 칼끝이 등 뒤를 본다 → 칼 든 팔만 겨눔 자세(guard_walk 의 팔: 칼끝이 앞)로 덮는다. 공격이 시작되면 0.1초에 풀려 준비 동작이 그대로 나온다
-  const rdy = st === 'idle' && h.lock != null && !h.dead && A.cur === C.idle_combat && C.guard_walk && !T.legacyTurn ? 1 : 0;
+  const rdy = st === 'idle' && h.lock != null && !h.dead && A.cur === C.idle_combat && C.block && !T.legacyTurn ? 1 : 0;
   S.ready = (S.ready ?? 0) + (rdy - (S.ready ?? 0)) * Math.min(1, dt * (rdy ? 9 : 16));
   const readyOn = S.ready > 0.02;
-  if (readyOn) layerBones(ch.rig, (ch.asset._readyPose ??= sampleClip(C.guard_walk, 0.3, new CPose())), READY_ARM, S.ready);
+  if (readyOn) layerBones(ch.rig, (ch.asset._readyPose ??= sampleClip(C.block, 0.55, new CPose())), READY_ARM, S.ready);
   // 달릴 때 윗몸을 조금 세운다: 달리기 클립은 26° 숙어 있어 위에서 비스듬히 보는 카메라에 얼굴이 묻힌다 → 골반–머리 선으로 19° 쯤
   S.lean = (S.lean ?? 0) + ((st === 'run' && !h.dead ? 1 : 0) - (S.lean ?? 0)) * Math.min(1, dt * 9);
   if (S.lean > 0.02) {
@@ -256,7 +256,17 @@ export function driveHero(ch, h, dt, T = TUNE) {
     if (Math.abs(Math.atan2(l, f)) > 2.4) look = 0;   // 등 뒤의 적까지 목을 꺾어 보지는 않는다
   }
   S.look = (S.look ?? 0) + (look - (S.look ?? 0)) * Math.min(1, dt * 8);
-  const posed = S.lean > 0.02 || readyOn, looking = Math.abs(S.look) > 0.5;
+  // 내딛기: 공격이 몸을 앞으로 옮기는 동안(move.step) 다리만 달리기의 한 걸음으로 덮는다 — 클립은 제자리라 그대로 두면 디딘 발이 바닥을 미끄러진다
+  let stepped = false;
+  if (st === 'attack' && h.move && h.move.step && h.move.kind !== 'plunge' && (h.stepDist ?? 0) > 6 && C.run) {
+    const sp = h.move.step, u = (h.moveT - sp[0]) / (sp[1] - sp[0]);
+    if (u > -0.2 && u < 1.3) {
+      const w = Math.sin(Math.PI * clamp((u + 0.2) / 1.5, 0, 1)) * Math.min(1, h.stepDist / 24);
+      sampleClip(C.run, gaitTime(ch, C.run, (0.88 + clamp(u, 0, 1) * (h.stepDist / (T.strideRun ?? 222))) % 1), _legP);
+      layerBones(ch.rig, _legP, STEP_LEGS, w); stepped = true;
+    }
+  }
+  const posed = S.lean > 0.02 || readyOn || stepped, looking = Math.abs(S.look) > 0.5;
   if (looking) { pitchBone(ch.rig, 'neck', S.look * 0.4, 1); pitchBone(ch.rig, 'head', S.look * 0.45, 1); pitchBone(ch.rig, 'spine2', S.look * 0.15, 1); }
   if (posed || looking) ch.rig.pose();
 }
