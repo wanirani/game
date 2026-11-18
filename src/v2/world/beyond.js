@@ -33,7 +33,7 @@ export function beyondEshville(now, cold = false) {
     // the road west: a row of trees on either side, a hedge, a farm
     { mesh: 'treeline', x: -230, y: Y, z: 44, x1: -2300, z1: 20, n: 8, h: 330, hv: 0.3, wob: 26, kind, tint: tree, seed: 4 },
     { mesh: 'treeline', x: -210, y: Y, z: 262, x1: -2300, z1: 300, n: 7, h: 350, hv: 0.3, wob: 26, kind, tint: tree, seed: 9 },
-    { mesh: 'ridge', x: -180, y: Y, z: 236, x1: -1500, z1: 246, h: 44, amp: 0.25, seg: 90, depth: 18, tint: fir, seed: 2 },
+    { mesh: 'ridge', x: -180, y: Y, z: 222, x1: -1700, z1: 232, h: 46, amp: 0.25, seg: 90, depth: 18, tint: fir, seed: 2 }, { mesh: 'ridge', x: -180, y: Y, z: 78, x1: -1700, z1: 70, h: 40, amp: 0.3, seg: 90, depth: 16, tint: fir, seed: 8 },
     H(-640, 470, 250, 150, 86, 3), H(-1320, 560, 200, 130, 80, 5, { lit: lit * 0.6 }),
     // behind the house row: back gardens, a row of trees, far houses, firs
     { mesh: 'ridge', x: -100, y: Y, z: 468, x1: 3200, z1: 476, h: 46, amp: 0.3, seg: 110, depth: 20, tint: fir, seed: 6 },
@@ -58,8 +58,7 @@ export function beyondEshville(now, cold = false) {
     { t: 'deco', chunk: 'far', mesh: 'farwall', x: 4478, y: Y, z: 1500, x1: 4478, z1: 2500, h: 60, mat: 'fieldstone', piers: 250, k: 0.8, to: [4590, 2000] },
     { t: 'deco', chunk: 'far', mesh: 'farwall', x: 4702, y: Y, z: 1500, x1: 4702, z1: 2500, h: 60, mat: 'fieldstone', piers: 250, k: 0.8, to: [4590, 2000] },
   ];
-  const west = [86, 214].map((z) => ({ t: 'fence', chunk: 'out', kind: 'wood', x0: -820, z0: z, x1: -172, z1: z, y: Y, h: 50 }));   // the road out of the west gate runs on between fences
-  return [...out, ...east, ...west];
+  return [...out, ...east];   // (wooden fences along the west road were tried in the outskirts chunk: its 'wood' then no longer folded into the oak texture - one more texture loaded, +1.4 MB; the road runs between two hedges instead)
 }
 
 /** the Misty Graveyard: the cemetery goes on beyond its walls - more stones, bare trees, a far chapel, low hills */
