@@ -61,8 +61,9 @@ def fill(img, hit, passes=24):
         new = (~hit) & (n > 0); img[new] = acc[new] / n[new][:, None]; hit |= new; dist[new] = it + 1
     if not hit.all(): img[~hit] = img[hit].mean(0) if hit.any() else 90; dist[~hit] = passes
     # the low model is fatter than thin parts of the full one (a web between the cart shafts, fins on staves): what it shows there is this bleed.
-    # Keep the edge colour for 3 texels (mip levels), then fade to shadow - a pale smear read as paper, a dark one reads as the gap it is.
-    return img * (1.0 - 0.6 * np.clip((dist - 3.0) / 7.0, 0.0, 1.0))[..., None]
+    # Keep the edge colour for one texel, then fade quickly to shadow - a pale smear read as paper, a dark one reads as the gap it is
+    # (the side and top pictures are small: three texels of bleed there were a hand-wide pale band).
+    return img * (1.0 - 0.68 * np.clip((dist - 1.0) / 3.0, 0.0, 1.0))[..., None]
 
 
 def glow(c):

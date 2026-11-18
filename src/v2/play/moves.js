@@ -19,10 +19,13 @@ export const MOVES = Object.freeze({
     arc: { r: 132, deg: 300, y0: 0, y1: 130 }, step: [0.04, 0.24, 26], str: 'F', mv: 1.65, kbv: 250, stop: 0.09, sfx: 'slash_heavy' }),
   sweep: M({ id: 'sweep', kind: 'sweep', clip: 'launcher', strike: [0.55, 0.76], dur: 0.56, hit: [0.12, 0.27], cancel: 9, free: 0.42, lead: 0.2, tail: 0.5,
     arc: { r: 124, deg: 180, y0: 0, y1: 140 }, step: [0.0, 0.14, 36], str: 'H', mv: 1.35, kbv: 210, stop: 0.07 }),
+  // 길게 눌러 모았다 놓는 휘감기 (GDD §7): 멀리 뻗는 채찍. 작은 적은 끌어오고 큰 적에게는 끌려간다 (sim._hitEnemy). 피해 · 울림은 모은 정도(hero.whipLv 0.35…1)를 따른다
+  whip: M({ id: 'whip', kind: 'whip', clip: 'charged', strike: [0.93, 1.13], dur: 0.62, hit: [0.12, 0.26], cancel: 9, free: 0.5, lead: 0.1, tail: 0.55,
+    box: { f0: 10, f1: 250, side: 40, y0: 0, y1: 150 }, str: 'H', mv: 1.3, kbv: 40, stop: 0.07, weapon: 'whip', reso: 0.3, sfx: 'slash_heavy' }),
   plunge: M({ id: 'plunge', kind: 'plunge', clip: 'plunge', dur: 9, hit: [0.06, 9], cancel: 9, free: 9, recover: 0.3, fallV: -520, fallG: 2.1,
     box: { f0: -24, f1: 84, side: 46, y0: -50, y1: 110 }, land: { r: 92, fwd: 18, y0: -10, y1: 90 }, str: 'H', mv: 1.5, kbv: 200, stop: 0.08 }),
 });
 export const COMBO = Object.freeze([MOVES.c1, MOVES.c2, MOVES.c3]);
 
 /** 영웅 상태 이름 (hero.anim) */
-export const HERO_ANIMS = Object.freeze(['idle', 'walk', 'run', 'turn', 'jump', 'fall', 'land', 'roll', 'attack', 'guard', 'parry', 'block', 'hurt', 'death']);
+export const HERO_ANIMS = Object.freeze(['idle', 'walk', 'run', 'turn', 'jump', 'fall', 'land', 'roll', 'attack', 'guard', 'parry', 'block', 'hurt', 'death', 'charge', 'echo', 'ring', 'call', 'hook']);

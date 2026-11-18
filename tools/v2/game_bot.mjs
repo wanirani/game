@@ -7,19 +7,23 @@ export function installBot(ROUTE0) {
   const g = window.__game, v = window.__v2, input = g.input;
   const ROUTE = Array.isArray(ROUTE0) ? ROUTE0.map((p) => [p[0], p[1]]) : [[330, 120], [560, 182], [790, 190], [1230, 190], [1300, 182], [1480, 182], [1520, 130], [1720, 190], [1990, 190], [2190, 190], [2190, 420], [2190, 960], [2190, 1500], [2190, 1720], [2190, 1860]];   // default = the test route (slice0)
   const B = (window.__bot = { wp: 0, t: 0, ticks: 0, simT: -1, deaths: v.scene.sim.deaths ?? 0, act: {}, stuck: 0, lx: 0, lz: 0, side: 0, atk: 0, minHp: 100, jumpT: 0, dodge: 0, fs: 0, skipMap: {}, skips: 0, max: { draws: 0, tris: 0, charTris: 0, drawn: 0, culled: 0, stop: 0, shots: 0, dying: 0, lights: 0 }, feel0: 0 });
-  const target = (h, E, now) => { let tg = null, bd = 1e9; for (const e of E) { if (e.state === 'dead' || (B.skipMap[e.id] ?? 0) > now) continue; const d = Math.hypot(e.x - h.x, (e.z - h.z) * 1.5); if (Math.abs(e.y - h.y) > 110) continue; if (!(e.active ? d < 620 : d < 300)) continue; if (d < bd) { bd = d; tg = e; } } return tg; };
+  const target = (h, E, now) => { let tg = null, bd = 1e9; for (const e of E) { if (e.state === 'dead' || e.solid === false || (B.skipMap[e.id] ?? 0) > now) continue; const d = Math.hypot(e.x - h.x, (e.z - h.z) * 1.5); if (Math.abs(e.y - h.y) > 110) continue; if (!(e.active ? d < 620 : d < 300)) continue; if (d < bd) { bd = d; tg = e; } } return tg; };
   const waypoint = (h) => { let ni = B.wp, nd = 1e9; for (let i = B.wp; i < ROUTE.length; i++) { const d = Math.hypot(ROUTE[i][0] - h.x, ROUTE[i][1] - h.z); if (d < nd) { nd = d; ni = i; } } B.wp = ni; const w = ROUTE[B.wp]; if (Math.hypot(w[0] - h.x, w[1] - h.z) < 26 && B.wp < ROUTE.length - 1) B.wp++; return ROUTE[B.wp]; };
   input.setAutoSource(() => B.act);
+  // options for real areas (tools/v2/game_walk.mjs): giveUp = rule ticks on one target before walking on, hunt() = true while the way ahead is shut and the arena must be cleared
+  B.opt = { giveUp: 0, hunt: null }; B.kinds = {}; B.tgId = null; B.tgT = 0;
+  B.setRoute = (r) => { ROUTE.length = 0; for (const p of r) ROUTE.push([p[0], p[1]]); B.wp = 0; B.skipMap = {}; };
   // ── one brain for both input paths: decide() -> analog wishes { mx, mz, attack, dash(roll), guard, jump } ──
   //    tactics for the real rules: walk the route; guard an attack that is being wound up in front of the hero (the roll button
   //    held without the stick), roll away from what cannot be guarded or comes from behind, strike in the gaps
   const D = (B.d = { lx: 0, lz: 0, lt: 0, stuckT: 0, escT: 0, escS: 1, rollT: 0, fs: 0, o: { mx: 0, mz: 0, attack: false, dash: false, guard: false, jump: false } });
   B.pt = 0; B.now = () => B.pt / 60;   // the bot's clock = rule ticks (works fast-forwarded, stands still during hit-stop)
   B.decide = () => {
-    const sim = v.scene.sim, h = sim.hero, E = sim.enemies, now = B.now(), o = D.o;
-    o.mx = 0; o.mz = 0; o.attack = false; o.dash = false; o.guard = false; o.jump = false;
+    const o = D.o; o.mx = 0; o.mz = 0; o.attack = false; o.dash = false; o.guard = false; o.jump = false;
+    if (!v.ready || !v.scene.sim) return o;   // an area is loading
+    const sim = v.scene.sim, h = sim.hero, E = sim.enemies, now = B.now();
     B.minHp = Math.min(B.minHp, h.hp);
-    if (h.dead || sim.section === 'done') return o;
+    if (h.dead || (sim.section === 'done' && !B.opt.giveUp)) return o;   // test route: the arena is the end. Real areas (giveUp set): play goes on
     const hdx = h.dirX ?? h.facing ?? 1, hdz = h.dirZ ?? 0;
     // 1) something is about to hit: an enemy winding up within its reach, or a shot close by
     let th = null, td = 1e9, tx0 = 0, tz0 = 0, canGuard = true;
@@ -39,11 +43,15 @@ export function installBot(ROUTE0) {
       o.mx = -ux; o.mz = -uz; return o;                                                  // roll not ready: step back
     }
     // 2) fight the nearest enemy that has seen us (or stands in the way), else follow the route
-    const tg = target(h, v.enemies, B.t);
+    let tg = target(h, v.enemies, B.t);
+    if (tg && B.opt.giveUp > 0) {   // real areas: do not spend the night on one enemy that cannot be brought down (armoured front, ghosts)
+      if (tg.id !== B.tgId) { B.tgId = tg.id; B.tgT = B.t; } else if (B.t - B.tgT > B.opt.giveUp && !(tg.yard && B.opt.hunt && B.opt.hunt())) { B.skipMap[tg.id] = B.t + 2400; tg = target(h, v.enemies, B.t); B.tgId = tg ? tg.id : null; B.tgT = B.t; }
+    }
+    if (!tg && B.opt.hunt && B.opt.hunt()) { let bd = 1e9; for (const e of v.enemies) { if (!e.yard || e.state === 'dead') continue; const d = Math.hypot(e.x - h.x, e.z - h.z); if (d < bd) { bd = d; tg = e; } } }   // the gate is shut: clear the arena
     let tx = null, tz = 0, fight = false;
     if (tg) {
       fight = true; const dx = tg.x - h.x, dz = tg.z - h.z, d = Math.hypot(dx, dz);
-      if (d < 96 && Math.abs(dz) < 40) { o.mx = (dx / (d || 1)) * 0.55; o.mz = (dz / (d || 1)) * 0.55; o.attack = true; }   // in reach: face it (360 degrees) and strike
+      if (d < 96 && Math.abs(dz) < 40) { o.mx = (dx / (d || 1)) * 0.55; o.mz = (dz / (d || 1)) * 0.55; o.attack = true; B.kinds[tg.kind] = (B.kinds[tg.kind] ?? 0) + 1; }   // in reach: face it (360 degrees) and strike
       else { const side = h.x <= tg.x ? -1 : 1; tx = tg.x + side * 62; tz = tg.z; }
     } else { const w = waypoint(h); tx = w[0]; tz = w[1]; }
     if (tx !== null) { const dx = tx - h.x, dz = tz - h.z, d = Math.hypot(dx, dz); if (d > 6) { const k = d > 50 ? 1 : 0.6; o.mx = (dx / d) * k; o.mz = (dz / d) * k; } }
@@ -52,9 +60,9 @@ export function installBot(ROUTE0) {
     if (now < D.escT) { o.jump = D.escT - now > 0.25; o.mz = D.escS; o.mx *= 0.3; o.attack = false; }
     return o;
   };
-  const restart = () => { const d = v.scene.sim.deaths ?? 0; if (d !== B.deaths) { B.deaths = d; B.wp = 0; B.skipMap = {}; D.stuckT = 0; D.escT = 0; } };   // fell and started over: follow the route from its beginning again
+  const restart = () => { const d = v.scene.sim?.deaths ?? 0; if (d !== B.deaths) { B.deaths = d; B.wp = 0; B.skipMap = {}; D.stuckT = 0; D.escT = 0; } };   // fell and started over: follow the route from its beginning again
   /** true when the rules moved since the last call (false during hit-stop: keep the last decision) */
-  const ruleTick = () => { const st = v.scene.sim.time ?? 0; B.ticks++; if (st === B.simT) return false; B.simT = st; B.t++; B.pt++; restart(); return true; };
+  const ruleTick = () => { if (!v.ready || !v.scene.sim) { B.ticks++; return false; } const st = v.scene.sim.time ?? 0; B.ticks++; if (st === B.simT) return false; B.simT = st; B.t++; B.pt++; restart(); return true; };
   // digital path (keyboard-like actions through the input auto source)
   B.think = () => {
     if (!ruleTick()) return;
@@ -77,12 +85,12 @@ export function installBot(ROUTE0) {
     for (let i = 0; i < n; i++) {
       B.think(); g.tick(1 / 60); watch();
       if (renderEvery && i % renderEvery === 0) { g.alpha = 1; g.render(); watch(); }
-      if (v.section === 'done') break;
+      if (v.section === 'done' && !B.opt.giveUp) break;
     }
     g.alpha = 1; g.render();
     return B.status();
   };
-  B.status = () => { const h = v.hero; return { ticks: B.ticks, sec: v.section, x: Math.round(h.x), z: Math.round(h.z), y: Math.round(h.y), hp: h.hp, left: v.enemies.length, yard: v.enemies.filter((e) => e.yard).length, wp: B.wp, t: B.t, deaths: v.scene.sim.deaths ?? 0, minHp: B.minHp, max: B.max, skips: B.skips, feelN: v.scene.feelN - B.feel0, simT: +(v.scene.sim.time ?? 0).toFixed(1) }; };
+  B.status = () => { const h = v.hero; if (!h || !v.ready) return { loading: true, ticks: B.ticks, area: v.area }; return { area: v.area, kinds: B.kinds, ticks: B.ticks, sec: v.section, x: Math.round(h.x), z: Math.round(h.z), y: Math.round(h.y), hp: h.hp, left: v.enemies.length, yard: v.enemies.filter((e) => e.yard).length, wp: B.wp, t: B.t, deaths: v.scene.sim.deaths ?? 0, minHp: B.minHp, max: B.max, skips: B.skips, feelN: v.scene.feelN - B.feel0, simT: +(v.scene.sim.time ?? 0).toFixed(1) }; };
   // touch driver: the pilot's wishes go through the virtual pad's own pointer handlers (stick drag + button presses) every tick
   const fire = (type, id, x, y) => window.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: 'touch', isPrimary: id === 21, clientX: x, clientY: y, bubbles: true, cancelable: true, button: 0, buttons: type === 'pointerup' ? 0 : 1, width: 12, height: 12, pressure: type === 'pointerup' ? 0 : 0.5 }));
   const COOL = { attack: 5, dash: 24, jump: 12 }, FINGER = { attack: 11, dash: 12, jump: 13 };
@@ -105,7 +113,7 @@ export function installBot(ROUTE0) {
   B.touchEnd = () => { const S = B.ts; if (!S) return; for (const k of ['attack', 'dash', 'jump']) if (S.held[k] > 0 && S.btn[k]) fire('pointerup', FINGER[k], S.btn[k].cx, S.btn[k].cy); if (S.stick) fire('pointerup', 21, S.x0, S.y0); S.stick = false; };
   B.touchRun = (n, renderEvery) => {
     g._pageHidden = true;
-    for (let i = 0; i < n; i++) { B.touchStep(); g.tick(1 / 60); if (renderEvery && i % renderEvery === 0) { g.alpha = 1; g.render(); watch(); } if (v.section === 'done') break; }
+    for (let i = 0; i < n; i++) { B.touchStep(); g.tick(1 / 60); if (renderEvery && i % renderEvery === 0) { g.alpha = 1; g.render(); watch(); } if (v.section === 'done' && !B.opt.giveUp) break; }
     g.alpha = 1; g.render();
     const st = B.status(); st.presses = B.ts.presses; st.stickMoves = B.ts.moves; st.mode = input.mode; return st;
   };

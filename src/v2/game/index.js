@@ -618,7 +618,9 @@ export default class V2Game extends Scene {
     if ((sim.deaths ?? 0) !== this._deaths) { this._deaths = sim.deaths ?? 0; this.cam.snap = true; this.game.flash?.('#000', 0.7, 2.5); ha.dx = 1; ha.dz = 0; fx?.clear(); this._makeFxHandles(); this.emit('hero.respawn', {}); }
     if (h._px === undefined) { h._px = h.x; h._py = h.y; h._pz = h.z; this.visY = this.visYP = h.y; }
     // section -> room reverb + story
-    if (sim.section !== this._secId) { const from = this._secId; this._secId = sim.section; if (sim.section !== 'done') { try { feel.setRoom(roomOf(this.area, sim.section)); } catch { /* no audio */ } this.emit('section.enter', { id: sim.section, from }); } }
+    // real areas: the rules freeze their section at 'done' once the arena is cleared — the scene keeps reading the section under the hero's feet
+    const secNow = this.area.test ? sim.section : (sectionAt(W, h.x, h.z)?.id ?? this._secId);
+    if (secNow !== this._secId) { const from = this._secId; this._secId = secNow; if (secNow !== 'done') { try { feel.setRoom(roomOf(this.area, secNow)); } catch { /* no audio */ } this.emit('section.enter', { id: secNow, from }); } }
     const TR = this.area.triggers;
     for (let i = 0; i < TR.length; i++) {
       const t = TR[i], inside = h.x >= t.x0 && h.x < t.x1 && h.z >= t.z0 && h.z < t.z1;
@@ -746,7 +748,7 @@ export default class V2Game extends Scene {
     const s = this.state, g = this.game, sim = this.sim, W = this.W;
     s.viewW = g.viewW; s.viewH = g.viewH; s.safe = g.safe ?? s.safe; s.scale = g.scale; s.time = sim.time ?? 0; s.hero = sim.hero; s.heroHpMax = sim.hero.hpMax ?? TUNE.heroHp ?? 100;
     s.enemies = sim.enemies; s.done = !!sim.done && this.area.test; s.cleared = !!sim.done; s.doneT = this.doneT; s.dialog = this.ui.dialog; s.message = ''; s.message2 = '';
-    const id = sim.section === 'done' ? s.section.id || 'yard' : sim.section;
+    const cur = this.area.test ? sim.section : this._secId, id = cur === 'done' ? s.section.id || 'yard' : cur;
     if (id !== s.section.id) { s.section.id = id; let lab = ''; for (let i = 0; i < W.sections.length; i++) if (W.sections[i].id === id) lab = W.sections[i].label ?? ''; s.section.label = lab; }
     let left = 0, yard = 0, awake = 0; const E = sim.enemies;
     for (let i = 0; i < E.length; i++) { const e = E[i]; if (e.dead || e.state === 'dead') continue; left++; if (e.yard) yard++; if (e.active && !e.buried) awake++; }
@@ -1022,9 +1024,9 @@ export default class V2Game extends Scene {
       id: 'g', scene: sc,
       get ready() { return sc.ready; }, get error() { return sc.glError; },
       get hero() { const h = sc.sim?.hero; return h ? { x: h.x, y: h.y, z: h.z, hp: h.hp, facing: h.facing, dirX: h.dirX, dirZ: h.dirZ, onGround: h.onGround, anim: h.anim, dead: h.dead, face: [sc.heroA?.dx ?? 0, sc.heroA?.dz ?? 0], clip: sc.heroA?.anim.cur?.name ?? '' } : null; },
-      get enemies() { return (sc.sim?.enemies ?? []).filter((e) => !e.dead).map((e) => ({ id: e.id, kind: e.kind, x: e.x, y: e.y, z: e.z, hp: e.hp, yard: e.yard, state: e.state, active: e.active, model: KINDS[e.kind]?.model ?? null, clip: e._a3?.anim.cur?.name ?? null, drawn: !!e._a3?.vis })); },
+      get enemies() { return (sc.sim?.enemies ?? []).filter((e) => !e.dead).map((e) => ({ id: e.id, kind: e.kind, x: e.x, y: e.y, z: e.z, hp: e.hp, yard: e.yard, state: e.state, active: e.active, model: KINDS[e.kind]?.model ?? null, clip: e._a3?.anim.cur?.name ?? null, drawn: !!e._a3?.vis, group: e.group ?? null, solid: e.solid, alpha: e.alpha, tele: e.tele })); },
       get cam() { const c = sc.cam; return { x: c.px, y: c.py, z: c.pz, yaw: Math.atan2(c.fx, c.fz), pitch: -Math.asin(c.fy), dist: c.dist }; },
-      get section() { return sc.sim?.section ?? ''; }, get area() { return sc.area?.id ?? ''; },
+      get section() { return (sc.area?.test ? sc.sim?.section : sc._secId) ?? ''; }, get area() { return sc.area?.id ?? ''; },
       get people() { return sc.people.list.map((p) => ({ id: p.id, model: p.def.model, x: p.x, y: p.y, z: p.z, on: p.on, drawn: p.vis, clip: p.a3.anim.cur?.name ?? '', solid: p.solid })); },
       get prompt() { const t = sc.people.target; return t && sc.state.prompts.length ? { id: t.id, label: t.label, person: !!t.a3 } : null; },
       get exits() { return (sc.area?.exits ?? []).map((x) => ({ id: x.id, to: x.to, locked: x.locked ?? null, x0: x.x0, x1: x.x1, z0: x.z0, z1: x.z1 })); },

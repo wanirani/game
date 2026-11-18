@@ -36,6 +36,14 @@ export const TUNE = {
   aimCone: 55,                     // 스틱을 민 채 공격하면 그 방향 ±도 안의 적으로 보정
   lungeMax: 52,                    // 공격이 대상에게 닿도록 내딛는 최대 거리 (다리가 한 걸음으로 옮길 수 있는 만큼 — motion.js 가 그동안 다리를 달리기 걸음으로 덮는다)
   queueT: 0.25,                    // 먼저 누른 공격을 기억하는 시간
+  // ── 영웅: 도구 (GDD §7) ──
+  chargeHold: 0.3, chargeT: 0.55, chargeMin: 0.35, chargeKeep: 0.6,   // 공격을 이만큼 누르고 있으면 모으기 시작 · 다 모으는 시간 · 이보다 덜 모으면 그냥 푼다 · 다 모은 채 버티는 시간(지나면 저절로 나간다)
+  pullT: 0.2,                      // 휘감기에 끌려오고 · 끌려가는 시간
+  resoCells: 3, resoParry: 0.5,    // 울림 눈금 칸 수 · 튕겨낼 때 차는 양 (타격: L 0.08 · M 0.1 · H 0.16 · F 0.2 · 휘감기 0.18–0.45)
+  hookRange: 330, hookRise: 280, hookThrow: 0.16, hookSpeed: 760,      // 채찍 걸기: 고리가 이 거리 안 · 이 높이 차 안이면 · 던지는 시간 · 날아가는 빠르기
+  callCd: 6, callAt: 0.32, callT: 0.7, callR: 190, callDur: 5, callAim: 260,   // 부름(세라의 등불): 쉼 · 빛이 놓이는 때 · 동작 길이 · 빛의 반지름 · 머무는 시간 · 락온 대상이 이 거리 안이면 그 발밑에
+  bellTap: 0.3, bellCd: 2.2, echoAt: 0.2, echoT: 0.52, echoR: 260, echoReveal: 3.5,   // 종: 이보다 짧게 누르면 메아리 · 쉼 · 울리는 때 · 동작 길이 · 닿는 반지름 · 드러나 있는 시간
+  ringT: 0.8, knellRange: 200,     // 길게: bellTap 뒤 이만큼 더 누르면 다 찬다(= hooks.ringLong) · 무릎 꿇은 보스가 이 거리 안이면 조종
   // ── 영웅: 몸 ──
   heroHp: 100, hurtIfr: 0.95, hurtT: 0.26, pitDmg: 8, pitY: -170, deadT: 2.1,
   ownHitstop: true,                // 맞혔을 때 규칙이 스스로 멈춘다 (hooks.hit 이 { stop } 을 돌려주면 그 값을 쓴다)

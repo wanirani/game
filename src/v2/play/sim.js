@@ -32,7 +32,8 @@ export class Sim {
   }
   reset() {
     const W = this.W, T = TUNE;
-    this.time = 0; this._tick = 0; this.stop = 0; this.done = false; this.kills = 0; this._buf = { attack: false, dash: false, jump: false, lockNext: false }; this._nid = 0;
+    this.time = 0; this._tick = 0; this.stop = 0; this.done = false; this.kills = 0; this._buf = { attack: false, dash: false, jump: false, lockNext: false, skill: false, bell: false };
+    this.lights = []; this.hookPoints = (W.hookPoints ?? []).map((p, i) => ({ id: p.id ?? 'hook' + i, y: 0, ...p })); this.caller = this.caller ?? 'sera'; this._nid = 0;
     this.hero = {
       x: W.start.x, z: W.start.z, y: W.start.y, vx: 0, vz: 0, vy: 0, r: 14, h: 92, facing: 1, dirX: 1, dirZ: 0, onGround: true, coyote: 0,
       hp: T.heroHp, hpMax: T.heroHp, ifr: 0, hurtT: 0, dead: false, deadT: 0, flash: 0,
@@ -40,6 +41,8 @@ export class Sim {
       guard: false, guardT: 0, guardTap: 0, parryT: 0, parryCd: 0, parryOk: 0, blockT: 0,
       move: null, moveT: 0, combo: 0, hitIds: null, assist: null, queued: 0, swung: false, stepDist: 0, airAtk: false, plungeLand: null, plungeEta: 1,
       lock: null, lockT: 0, lockHold: 0, lockX: 0, lockY: 0, lockZ: 0,
+      act: null, actT: 0, actDone: false, actP: null, charging: false, charge: 0, chargeFullT: 0, atkHold: 0, whipLv: 1, pullT: 0, pullX: 0, pullZ: 0, whipOn: 0, whipX: 0, whipY: 0, whipZ: 0,
+      reso: 0, resoMax: T.resoCells, callCd: 0, callCdMax: T.callCd, bellCd: 0, bellCdMax: T.bellCd, bellCharge: 0, bellDown: false, bellHoldT: 0, bellOk: true, knellId: null, hookId: null, skillMode: 'call', hookFX: 0, hookFY: 0, hookFZ: 0, hookTX: 0, hookTY: 0, hookTZ: 0, hookDur: 0.3,
       gait: 0, gaitMode: 'run', wasMoving: false, pushed: false, pivot: 0, pivotT: 0, pivotA: 0, pivotV: 0, wishX: 1, wishZ: 0,
       anim: 'idle', animT: 0, t: 0, cut: false, landT: 0, landV: 0,
       safe: { x: W.start.x, z: W.start.z, y: W.start.y },
@@ -55,7 +58,7 @@ export class Sim {
     const e = {
       id, kind: s.kind, kid: kindId(s.kind), def: D, yard: !!s.yard, group: s.group, x: s.x, z: s.z, y: gy, gy, vx: 0, vz: 0, r: D.r, h: D.hpx,
       hp: D.hp, hpMax: D.hp, facing: -1, dirX: -1, dirZ: 0, state: 'idle', stateT: 0, phase: null, tele: 0, atk: null, cd: rnd(0.3, 1.2),
-      flashT: 0, stun: 0, stagger: 0, dying: 0, dead: false, active: !!s.active, solid: true, alpha: 1, hover: D.hover ?? 0, solidT: 0, revealT: 0,
+      flashT: 0, stun: 0, stagger: 0, dying: 0, dead: false, pullT: 0, pullX: 0, pullZ: 0, kneel: 0, knelled: false, bphase: 0, poiseHp: 0, poiseMax: 0, name: D.name, active: !!s.active, solid: true, alpha: 1, hover: D.hover ?? 0, solidT: 0, revealT: 0,
       anim: 'idle', animT: 0, t: rnd(0, 5), hitDone: false, swung: false, kx: 0, kz: 0, gait: rnd(0, 1), moved: 0,
       side: id % 2 ? 1 : -1, detourT: 0, detX: 0, detZ: 0, stuckT: 0, orb: rnd(0, 6.28), orbW: (id % 2 ? 1 : -1) * rnd(1.1, 1.7), orbR: D.orbit ? rnd(D.orbit[0], D.orbit[1]) : 0,
     };
@@ -99,11 +102,12 @@ export class Sim {
   update(dt, inp = NOINP) {
     if (this.stop > 0) {   // 경직 중에 누른 단추는 잃지 않고 기억해 둔다
       this.stop -= dt; const B = this._buf;
-      if (inp.attack) B.attack = true; if (inp.dash) B.dash = true; if (inp.jump) B.jump = true; if (inp.lockNext) B.lockNext = true;
+      if (inp.attack) B.attack = true; if (inp.dash) B.dash = true; if (inp.jump) B.jump = true; if (inp.lockNext) B.lockNext = true; if (inp.skill) B.skill = true; if (inp.bell) B.bell = true;
       return;
     }
     this.time += dt; this._tick = (this._tick + 1) | 0;
     this._hero(dt, inp);
+    if (this.lights.length) this._lights(dt);
     { const E = this.enemies; for (let i = 0; i < E.length; i++) if (!E[i].dead) this._enemy(E[i], dt); }
     this._separate(dt);
     this._shots(dt);
@@ -118,8 +122,9 @@ export class Sim {
   // ───────────────────────── 영웅 ─────────────────────────
   _hero(dt, inp) {
     const h = this.hero, T = TUNE, w = this.w, B = this._buf;
-    const pAttack = !!inp.attack || B.attack, pDash = !!inp.dash || B.dash, pJump = !!inp.jump || B.jump, pLock = !!inp.lockNext || B.lockNext;
-    B.attack = B.dash = B.jump = B.lockNext = false;
+    const pAttack = !!inp.attack || B.attack, pDash = !!inp.dash || B.dash, pJump = !!inp.jump || B.jump, pLock = !!inp.lockNext || B.lockNext, pSkill = !!inp.skill || B.skill, pBell = !!inp.bell || B.bell;
+    B.attack = B.dash = B.jump = B.lockNext = B.skill = B.bell = false;
+    h.callCd = Math.max(0, h.callCd - dt); h.bellCd = Math.max(0, h.bellCd - dt); h.whipOn = 0;
     h.t += dt; h.ifr = Math.max(0, h.ifr - dt); h.rollCd = Math.max(0, h.rollCd - dt); h.dashCd = h.rollCd; h.flash = Math.max(0, h.flash - dt * 5); h.landT = Math.max(0, h.landT - dt);
     h.parryT = Math.max(0, h.parryT - dt); h.parryCd = Math.max(0, h.parryCd - dt); h.parryOk = Math.max(0, h.parryOk - dt); h.blockT = Math.max(0, h.blockT - dt);
     h.sweepWin = Math.max(0, h.sweepWin - dt); h.guardTap = Math.max(0, h.guardTap - dt);
@@ -139,6 +144,7 @@ export class Sim {
     if (moving) { h.wishX = ux; h.wishZ = uz; }
     if (h.hurtT > 0) {   // 맞아서 밀리는 중: 조작 불가
       h.hurtT -= dt; h.vx *= 1 - Math.min(1, 6 * dt); h.vz *= 1 - Math.min(1, 6 * dt); h.guard = false; h.queued = 0;
+    } else if (this._tools(h, dt, inp, pSkill, pBell, pDash, moving, ux, uz)) { /* 도구(모아 휘감기 · 채찍 걸기 · 부름 · 종)가 이 틱의 영웅을 쥔다 */
     } else {
       const mv0 = h.move, pastHit = !mv0 || (mv0.kind === 'plunge' ? h.plungeLand != null : h.moveT >= mv0.hit[1]);
       // 구르기: 스틱을 민 채 dash, 또는 막는 중에 스틱을 민다. 공격은 판정이 끝난 뒤부터 구르기로 끊을 수 있다
@@ -183,6 +189,8 @@ export class Sim {
         } else {
           const st = mv.step, sv = st && t >= st[0] && t < st[1] ? h.stepDist / (st[1] - st[0]) : 0;
           h.vx = h.dirX * sv; h.vz = h.dirZ * sv * 0.85;
+          if (h.pullT > 0) { const q = Math.min(1, dt / h.pullT) / dt; h.vx = (h.pullX - h.x) * q; h.vz = (h.pullZ - h.z) * q; h.pullT -= dt; h.ifr = Math.max(h.ifr, 0.08); }   // 큰 적에게 끌려간다 (휘감기)
+          if (mv.kind === 'whip' && t >= mv.hit[0] - 0.05 && t <= mv.hit[1] + 0.1) { h.whipOn = 1; h.whipX = h.x + h.dirX * mv.box.f1; h.whipY = h.y + 60; h.whipZ = h.z + h.dirZ * mv.box.f1; }
         }
         h.moveT += dt;
         if (!h.swung && h.moveT >= mv.hit[0] - 0.085) { h.swung = true; this.emit('swing', h, mv); this.hooks.sfx?.(mv.sfx || 'slash'); }
@@ -202,7 +210,7 @@ export class Sim {
     if (!loco && h.pivot) h.pivot = 0;
     w.move(h, h.vx * dt, h.vz * dt);
     const wasAir = !h.onGround, vy0 = h.vy;
-    this._fall(h, dt, h.dashT > 0 ? 0.25 : h.move && h.move.kind === 'plunge' ? h.move.fallG : 1);
+    this._fall(h, dt, h.act === 'hook' ? 0 : h.dashT > 0 ? 0.25 : h.move && h.move.kind === 'plunge' ? h.move.fallG : 1);
     if (wasAir && h.onGround) {
       const heavy = vy0 < -900 || (h.move && h.move.kind === 'plunge');
       h.landT = T.landT; h.landV = -vy0; h.airAtk = false;
@@ -222,7 +230,7 @@ export class Sim {
     }
     // 걸음 주기: 발소리와 달리기 클립이 같이 쓴다
     // 걷기 / 달리기는 스틱을 민 정도로 정한다(속도가 0 을 지나는 반전 · 출발에서 걸음이 걷기 · 서기로 깜박이지 않게). 스틱을 놓으면 멈출 때까지 그 걸음 그대로
-    const sp = Math.hypot(h.vx, h.vz), free = !h.move && h.dashT <= 0 && h.hurtT <= 0 && !h.guard && h.blockT <= 0, push = moving && free;
+    const sp = Math.hypot(h.vx, h.vz), free = !h.move && h.dashT <= 0 && h.hurtT <= 0 && !h.guard && h.blockT <= 0 && !h.act && !h.charging, push = moving && free;
     if (push) h.gaitMode = m * T.runX < T.walkBelow + 20 ? 'walk' : 'run';
     h.pushed = push;   // 이 틱에 스틱으로 걷고 달리는 중인가 (그림이 "방금 놓았다"를 알아 멈춰 서는 동작을 튼다)
     const gsp = push ? Math.max(sp, (h.gaitMode === 'walk' ? 40 : 96)) : sp, walking = h.onGround && free && !h.pivot && (push || sp > 24);   // 스틱을 민 동안은 걸음이 멎지 않는다 (벽에 대고 달려도 다리는 돈다)
@@ -232,9 +240,132 @@ export class Sim {
       if (g1 >= 1) this.emit('step', 'R', sp, h); else if (g0 < gl && g1 >= gl) this.emit('step', 'L', sp, h);
       h.gait = g1 % 1;
     }
-    this._anim(h, h.hurtT > 0 ? 'hurt' : h.parryOk > 0 && !h.move && h.dashT <= 0 ? 'parry' : h.blockT > 0 && !h.move && h.dashT <= 0 ? 'block' : h.move ? 'attack' : h.dashT > 0 ? 'roll'
+    this._anim(h, h.hurtT > 0 ? 'hurt' : h.act ? h.act : h.charging ? 'charge' : h.parryOk > 0 && !h.move && h.dashT <= 0 ? 'parry' : h.blockT > 0 && !h.move && h.dashT <= 0 ? 'block' : h.move ? 'attack' : h.dashT > 0 ? 'roll'
       : !h.onGround ? (h.vy > 0 ? 'jump' : 'fall') : h.guard ? 'guard' : h.landT > 0 && !push ? 'land' : h.pivot ? 'turn' : push || sp > 36 ? h.gaitMode : 'idle', dt);
   }
+  // ───────────────────────── 도구: 모아 휘감기 · 솜씨(채찍 걸기 / 부름) · 종(메아리 / 길게) ─────────────────────────
+  /**
+   * 입력: attackHeld(길게 = 모아 휘감기) · skill(눌림 = 솜씨) · bell(눌림) + bellHeld(누르고 있음 — 장면이 주지 않으면 눌림 = 곧 메아리).
+   * 영웅에 적는 값(HUD 가 읽는다): charge(0…1) · reso / resoMax(울림 눈금) · callCd / callCdMax · bellCd / bellCdMax · bellCharge(0…1 길게 누르는 중) ·
+   *   skillMode('hook'｜'call') · hookId · bellOk(지금 종을 칠 수 있나) · knellId(조종을 받을 무릎 꿇은 보스 id｜null) · whipOn + whipX/Y/Z(채찍 끝 — 장면이 띠를 그린다)
+   * 돌려주는 값 true = 이 틱은 도구가 영웅을 쥔다 (걷기 · 공격 · 막기 건너뜀)
+   */
+  _tools(h, dt, inp, pSkill, pBell, pDash, moving, ux, uz) {
+    const T = TUNE, E = this.enemies, HP = this.hookPoints;
+    let hk = null, hd = T.hookRange * T.hookRange, kn = null;
+    for (let i = 0; i < HP.length; i++) { const p = HP[i]; if (p.off) continue; const dx = p.x - h.x, dz = p.z - h.z, d = dx * dx + dz * dz; if (d < hd && d > 1600 && Math.abs((p.y ?? 0) - h.y) < T.hookRise) { hd = d; hk = p; } }
+    for (let i = 0; i < E.length; i++) { const e = E[i]; if (e.kneel > 0 && !e.dead && e.state !== 'dead') { const dx = e.x - h.x, dz = e.z - h.z; if (dx * dx + dz * dz < T.knellRange * T.knellRange) kn = e; } }
+    h.hookId = hk ? hk.id : null; h.skillMode = hk ? 'hook' : 'call'; h.knellId = kn ? kn.id : null;
+    const freeNow = h.onGround && h.dashT <= 0 && (!h.move || (h.move.kind !== 'plunge' && h.moveT >= h.move.hit[1]));
+    h.bellOk = freeNow && h.bellCd <= 0 && !h.act && !h.charging;
+    h.atkHold = inp.attackHeld ? h.atkHold + dt : 0;
+    if (h.act) return this._act(h, dt, inp, kn);
+    if (h.charging) {   // 모으는 중: 제자리에서 스틱 쪽으로 돌 수 있다. 놓으면 휘감기, 구르기로 끊을 수 있다
+      if (pDash && moving) { h.charging = false; h.charge = 0; this.emit('charge', h, 'cancel', 0); return false; }
+      const k = Math.min(1, 14 * dt); h.vx -= h.vx * k; h.vz -= h.vz * k;
+      if (moving) { const cr = h.dirX * uz - h.dirZ * ux, ad = Math.atan2(Math.abs(cr), h.dirX * ux + h.dirZ * uz); this._rot(h, (cr < 0 ? -1 : 1) * Math.min(ad, T.turnRate * dt)); }
+      const c0 = h.charge; h.charge = Math.min(1, h.charge + dt / T.chargeT);
+      if (c0 < 1 && h.charge >= 1) this.emit('charge', h, 'full', 1);
+      if (h.charge >= 1) h.chargeFullT += dt;
+      if (!inp.attackHeld || h.chargeFullT > T.chargeKeep) {
+        const lv = h.charge; h.charging = false; h.charge = 0;
+        if (lv >= T.chargeMin) { h.whipLv = lv; this.emit('charge', h, 'release', lv); this._startMove(h, MOVES.whip, ux, uz, false); }
+        else this.emit('charge', h, 'cancel', lv);
+      }
+      return true;
+    }
+    // 종: 짧게 = 메아리, 길게 = 장면의 일(건넘) 또는 조종 — 길게 누르는 동안 영웅은 종 조각을 들고 선다
+    if (pBell && h.bellOk) { if (inp.bellHeld === undefined) { this._startAct(h, 'echo'); return true; } h.bellDown = true; h.bellHoldT = 0; }
+    if (h.bellDown) {
+      if (inp.bellHeld) { h.bellHoldT += dt; if (h.bellHoldT >= T.bellTap && freeNow) { h.bellDown = false; this._startAct(h, 'ring'); return true; } }
+      else { h.bellDown = false; if (h.bellOk) { this._startAct(h, 'echo'); return true; } }
+    }
+    // 솜씨: 빛나는 고리가 가까우면 채찍 걸기, 아니면 부름 (울림 한 칸)
+    if (pSkill) {
+      if (hk && freeNow) {
+        const tx = hk.to ? hk.to[0] : hk.x, tz = hk.to ? hk.to[1] : hk.z, g = this.w.ground(tx, tz, (hk.y ?? 0) + 400), d = Math.sqrt((tx - h.x) * (tx - h.x) + (tz - h.z) * (tz - h.z));
+        h.hookFX = h.x; h.hookFY = h.y; h.hookFZ = h.z; h.hookTX = tx; h.hookTZ = tz; h.hookTY = Number.isFinite(g) ? g : hk.y ?? h.y; h.hookDur = clamp(d / T.hookSpeed, 0.22, 0.55); h.actP = hk;
+        this._face(h, hk.x - h.x, hk.z - h.z); this._startAct(h, 'hook'); this.emit('hook', h, hk, 'throw'); this.hooks.sfx?.('slash'); return true;
+      }
+      if (!hk && freeNow && h.reso >= 1 && h.callCd <= 0 && this.caller) { h.reso -= 1; h.callCd = h.callCdMax = T.callCd; this._startAct(h, 'call'); this.emit('call', h, this.caller, 'start'); return true; }
+      this.emit('deny', h, 'skill', hk ? 'busy' : h.reso < 1 ? 'reso' : h.callCd > 0 ? 'cd' : 'busy');
+    }
+    // 공격을 길게: 연타의 판정이 끝난 뒤(또는 서서)부터 모으기 시작
+    if (inp.attackHeld && h.atkHold >= T.chargeHold && h.onGround && h.dashT <= 0 && !h.guard && h.sweepWin <= 0 && (!h.move || (h.move.kind === 'combo' && h.moveT >= h.move.cancel))) {
+      h.move = null; h.combo = 0; h.queued = 0; h.pivot = 0; h.charging = true; h.charge = 0; h.chargeFullT = 0; this.emit('charge', h, 'start', 0); return true;
+    }
+    return false;
+  }
+  _startAct(h, kind) { h.act = kind; h.actT = 0; h.actDone = false; h.move = null; h.combo = 0; h.queued = 0; h.guard = false; h.guardTap = 0; h.pivot = 0; h.bellCharge = 0; this.emit('act', h, kind); }
+  _act(h, dt, inp, kn) {
+    const T = TUNE, t0 = h.actT, t = (h.actT += dt), a = h.act;
+    if (a !== 'hook') { const k = Math.min(1, 14 * dt); h.vx -= h.vx * k; h.vz -= h.vz * k; }
+    if (a === 'echo') { if (t0 < T.echoAt && t >= T.echoAt) this._echo(h); if (t >= T.echoT) h.act = null; }
+    else if (a === 'call') { if (t0 < T.callAt && t >= T.callAt) this._call(h); if (t >= T.callT) h.act = null; }
+    else if (a === 'ring') {
+      h.bellCharge = Math.min(1, t / T.ringT);
+      if (!h.actDone && h.bellCharge >= 1) {   // 다 찼다: 무릎 꿇은 보스가 앞에 있으면 조종, 없으면 장면이 건넘을 정한다 (hooks.ringLong)
+        h.actDone = true; h.bellCd = h.bellCdMax = T.bellCd; h.actT = 0;
+        this.emit('ringLong', h, kn); this.hooks.sound?.('bell.toll', h); this.hooks.fx?.('holy.bell', h.x, h.y, h.z, h.dirX, h.dirZ, 1.4);
+        if (kn) this.knell(kn);
+      } else if (!h.actDone && !inp.bellHeld) this._startAct(h, 'echo');   // 다 차기 전에 놓으면 메아리
+      else if (h.actDone && h.actT >= 0.5) { h.act = null; h.bellCharge = 0; }
+    } else if (a === 'hook') {   // 던지기(hookThrow) → 걸림 → 고리 쪽으로 날아가 내려선다
+      h.vx = h.vz = 0; h.whipOn = 1; h.whipX = h.actP.x; h.whipY = (h.actP.y ?? 0) + (h.actP.h ?? 150); h.whipZ = h.actP.z;
+      if (t0 < T.hookThrow && t >= T.hookThrow) { this.emit('hook', h, h.actP, 'latch'); this.hooks.sfx?.('jump'); h.onGround = false; h.vy = 0; h.ifr = Math.max(h.ifr, h.hookDur); }
+      if (t >= T.hookThrow) {
+        const u = Math.min(1, (t - T.hookThrow) / h.hookDur), e = u * u * (3 - 2 * u), d = Math.sqrt((h.hookTX - h.hookFX) * (h.hookTX - h.hookFX) + (h.hookTZ - h.hookFZ) * (h.hookTZ - h.hookFZ));
+        h.x = h.hookFX + (h.hookTX - h.hookFX) * e; h.z = h.hookFZ + (h.hookTZ - h.hookFZ) * e; h.y = h.hookFY + (h.hookTY - h.hookFY) * e + Math.min(110, d * 0.3) * 4 * u * (1 - u); h.vy = 0; h.onGround = false;
+        if (u >= 1) { h.y = h.hookTY; h.onGround = true; h.act = null; h.landT = T.landT; h.safe.x = h.x; h.safe.z = h.z; h.safe.y = h.y; this.emit('hook', h, h.actP, 'land'); this.emit('land', 400, false, h); this.hooks.sfx?.('land'); this.hooks.spark?.(h.x, h.y + 3, h.z, 'dust'); }
+      }
+    } else h.act = null;
+    return true;
+  }
+  /** 메아리(짧은 종): 숨은 것을 드러내고, 주문 · 노래를 끊는다. 보스는 종류표의 onBell 이 답한다 */
+  _echo(h) {
+    const T = TUNE, r = T.echoR, E = this.enemies; h.bellCd = h.bellCdMax = T.bellCd;
+    this.reveal(h.x, h.z, r, T.echoReveal);
+    for (let i = 0; i < E.length; i++) {
+      const e = E[i]; if (e.dead || e.state === 'dead' || !e.active) continue;
+      const dx = e.x - h.x, dz = e.z - h.z; if (dx * dx + dz * dz > r * r) continue;
+      if (e.def.onBell) e.def.onBell(this, e, 'echo');
+      else if (e.state === 'attack' && e.atk && e.atk.kind === 'cast' && e.phase === 'windup') { this._cancelAttack(e, 1.2); e.stun = Math.max(e.stun, 0.45); this.emit('silence', e); }
+    }
+    this.emit('bell', h, 'echo', r); this.hooks.fx?.('holy.bell', h.x, h.y, h.z, h.dirX, h.dirZ, 1); this.emit('shake', 3);
+  }
+  /** 부름(세라의 등불): 빛의 동그라미를 놓는다 — 안의 유령은 드러나 굳고, 다른 적은 비틀거린다. 보스는 종류표의 onCall 이 답한다 */
+  _call(h) {
+    const T = TUNE, le = h.lock != null ? this.byId(h.lock) : null, near = le && (le.x - h.x) * (le.x - h.x) + (le.z - h.z) * (le.z - h.z) < T.callAim * T.callAim;
+    const L = { who: this.caller, x: near ? le.x : h.x + h.dirX * 80, z: near ? le.z : h.z + h.dirZ * 80, y: h.y, r: T.callR, t: T.callDur, dur: T.callDur }, E = this.enemies;
+    this.lights.push(L);
+    for (let i = 0; i < E.length; i++) {
+      const e = E[i]; if (e.dead || e.state === 'dead' || !e.active) continue;
+      const dx = e.x - L.x, dz = e.z - L.z; if (dx * dx + dz * dz > L.r * L.r) continue;
+      if (e.def.onCall) e.def.onCall(this, e, L);
+      else if (e.def.fade != null) { e.revealT = Math.max(e.revealT, L.dur); e.stun = Math.max(e.stun, 0.3); if (e.state === 'attack') this._cancelAttack(e, 1); }
+      else if (!e.def.poise) this.staggerEnemy(e, 0.9); else e.stun = Math.max(e.stun, 0.35);
+    }
+    this.emit('call', h, L.who, 'cast', L); this.hooks.fx?.('holy.wave', L.x, L.y, L.z, h.dirX, h.dirZ, 1.2);
+  }
+  _lights(dt) {
+    const Ls = this.lights, E = this.enemies; let n = 0;
+    for (let j = 0; j < Ls.length; j++) {
+      const L = Ls[j]; L.t -= dt;
+      for (let i = 0; i < E.length; i++) { const e = E[i]; if (e.dead || e.def.fade == null || e.state === 'dead') continue; const dx = e.x - L.x, dz = e.z - L.z; if (dx * dx + dz * dz < L.r * L.r) { e.revealT = Math.max(e.revealT, 0.3); e.stun = Math.max(e.stun, 0.12); } }   // 빛 안의 유령은 굳는다
+      if (L.t > 0) Ls[n++] = L; else this.emit('call', this.hero, L.who, 'end', L);
+    }
+    Ls.length = n;
+  }
+  /** 조종: 무릎 꿇은 보스를 보낸다 (길게 친 종이 다 찼을 때 규칙이 스스로 부른다 — 장면이 직접 불러도 된다) */
+  knell(e) {
+    if (!e || e.dead || e.state === 'dead' || !(e.kneel > 0)) return false;
+    e.hp = 0; e.knelled = true; this.emit('knell', e, this.hero); this.hooks.fx?.('holy.pillar', this.hero.x, this.hero.y, this.hero.z, 1, 0, 1.3, e.x, e.gy, e.z);
+    this._kill(e); return true;
+  }
+  /** 부를 사냥꾼을 정한다 (null = 부를 수 없다). 첫 출시는 'sera'(등불) 하나 */
+  setCaller(id) { this.caller = id; }
+  /** 울림 눈금을 채운다 (칸 단위) */
+  addReso(v) { const h = this.hero, a = Math.floor(h.reso + 1e-6); h.reso = clamp(h.reso + v, 0, h.resoMax); const b = Math.floor(h.reso + 1e-6); if (b !== a) this.emit('reso', h, b); }
   /**
    * 걷고 달리기. 속도는 늘 몸이 보는 쪽(dirX,dirZ)으로만 난다 — 스틱을 꺾어도 옆 · 뒤로 미끄러지지 않는다.
    *   작은 꺾음: 몸이 스틱 쪽으로 돌고(turnRate) 속도가 그 몸을 따라간다 (달리던 채로 굽어 돈다)
@@ -398,12 +529,15 @@ export class Sim {
     let ax = e.x - src.x, az = e.z - src.z; const ad = Math.hypot(ax, az);
     if (ad > 1) { ax /= ad; az /= ad; } else { ax = src.dirX ?? 1; az = src.dirZ ?? 0; }
     const front = -(ax * e.dirX + az * e.dirZ);   // 1 = 때린 쪽이 적의 정면에 있다
-    let dmg = Math.round(T.dmgBase * mv.mv * rnd(0.9, 1.12)), blocked = false;
+    const byHero = src === this.hero, whip = mv.kind === 'whip' && byHero;
+    let dmg = Math.round(T.dmgBase * mv.mv * rnd(0.9, 1.12) * (whip ? 0.7 + 0.6 * src.whipLv : 1)), blocked = false;
     if (D.armorFront && e.stagger <= 0 && front > Math.cos(D.armorFront.arc * RAD)) { blocked = true; dmg = Math.max(1, Math.round(dmg * D.armorFront.k)); }
     const back = front < -0.3;
     if (!blocked && (back || e.stagger > 0)) dmg = Math.round(dmg * 1.3);   // 등 뒤 · 비틀거리는 틈
+    if (D.kneelAt != null && e.hp - dmg <= D.kneelAt * D.hp && !e.knelled) dmg = Math.max(0, e.hp - Math.ceil(D.kneelAt * D.hp));   // 조종으로만 보낼 수 있는 것: 체력이 바닥에서 멈춘다 (무릎 꿇음은 행동 함수가 건다)
     e.hp -= dmg; e.flashT = 0.13; if (!e.active) this.wake(e);
     const kill = e.hp <= 0;
+    if (byHero) this.addReso((mv.reso ?? (mv.str === 'F' ? 0.2 : mv.str === 'H' ? 0.16 : mv.str === 'L' ? 0.08 : 0.1)) * (whip ? 0.6 + 0.9 * src.whipLv : 1) * (blocked ? 0.4 : 1));
     if (!blocked || kill) {
       const kb = mv.kb[0] * (1 - D.weight);
       e.kx = ax * kb * 1.1; e.kz = az * kb * 0.9;
@@ -417,6 +551,12 @@ export class Sim {
     const r = this.emit('hit', e, dmg, mv, hx, hy, hz, info);
     if (T.ownHitstop) this.stop = Math.max(this.stop, r && typeof r.stop === 'number' ? Math.min(0.3, r.stop) : mv.hitstop * (blocked ? 1.5 : 1.25));   // hooks.hit 이 { stop } 을 돌려주면(feel.hit 의 결과 그대로) 그 경직을 쓴다
     if (kill) this._kill(e);
+    else if (whip && !blocked) {   // 휘감기: 작은 적은 끌어오고 큰 적에게는 끌려간다
+      const small = D.weight < 0.5 && !D.boss && !D.elite;
+      if (small) { e.pullT = T.pullT; e.pullX = src.x + src.dirX * (src.r + e.r + 36); e.pullZ = src.z + src.dirZ * (src.r + e.r + 36); e.stun = Math.max(e.stun, 0.6); e.kx = e.kz = 0; if (e.state === 'attack' && !D.poise) this._cancelAttack(e, 0.6); }
+      else if (!src.pullT || src.pullT <= 0) { src.pullT = T.pullT; src.pullX = e.x - ax * (e.r + src.r + 44); src.pullZ = e.z - az * (e.r + src.r + 44); }
+      this.emit('pull', e, small ? 'in' : 'to', src);
+    }
     return true;
   }
   _kill(e) {
@@ -439,7 +579,7 @@ export class Sim {
     if (h.guard && facingIt) {
       const px = h.x + ax * 26, py = h.y + 62, pz = h.z + az * 26;
       if (h.parryT > 0 && (!atk || atk.parry !== false)) {   // 튕겨내기
-        h.parryOk = T.parryT; h.parryT = 0; h.ifr = Math.max(h.ifr, 0.3); h.blockT = 0; this._face(h, ax, az);
+        h.parryOk = T.parryT; h.parryT = 0; h.ifr = Math.max(h.ifr, 0.3); h.blockT = 0; this._face(h, ax, az); this.addReso(T.resoParry);   // 딱 맞춰 튕기면 종 조각이 운다
         if (src.e && !src.shot) this.staggerEnemy(src.e, atk?.staggerT ?? 1.2);
         this.stop = Math.max(this.stop, 0.1);
         this.emit('parry', px, py, pz, src); this.hooks.sfx?.('parry'); this.hooks.spark?.(px, py, pz, 'parry');
@@ -457,13 +597,14 @@ export class Sim {
       h.guard = false; h.guardTap = 0;   // 막을 수 없는 공격: 그대로 맞는다
     }
     const heavy = !!atk && (atk.str === 'H' || atk.str === 'F'), kb = (atk?.knock ?? 240);
+    h.act = null; h.charging = false; h.charge = 0; h.bellCharge = 0; h.bellDown = false; h.pullT = 0; if (!h.onGround && h.vy === 0) h.vy = -1;
     h.hp -= dmg; h.ifr = T.hurtIfr; h.hurtT = heavy ? T.hurtT * 1.5 : T.hurtT; h.vx = dirX * kb; h.vz = dirZ * kb * 0.67; h.move = null; h.combo = 0; h.dashT = 0; h.guard = false; h.guardTap = 0; h.flash = 1; h.plungeLand = null; h.heavyHurt = heavy;
     this.stop = Math.max(this.stop, 0.07);
     this.emit('heroHurt', dmg, false, src); this.hooks.number?.(h.x, h.y + 100, h.z, '-' + dmg, '#ff7060');
     if (h.hp <= 0) this._die(h);
     return 'hurt';
   }
-  _die(h) { h.hp = 0; h.dead = true; h.deadT = 0; h.move = null; h.guard = false; h.dashT = 0; this.emit('heroDie', h); this.hooks.sfx?.('die'); }
+  _die(h) { h.hp = 0; h.dead = true; h.deadT = 0; h.move = null; h.guard = false; h.dashT = 0; h.act = null; h.charging = false; h.charge = 0; this.emit('heroDie', h); this.hooks.sfx?.('die'); }
   /** 적을 비틀거리게 한다 (튕겨냄 · 종소리). 박쥐처럼 작은 것은 그대로 떨어진다 */
   staggerEnemy(e, t = 1.2) {
     if (e.dead || e.state === 'dead') return;
@@ -495,6 +636,7 @@ export class Sim {
       if (e.stateT >= (D.riseT ?? 1.25)) { e.state = 'chase'; e.stateT = 0; e.cd = Math.max(e.cd, 0.35); }
       this._place(e); this._anim(e, 'rise', dt); return;
     }
+    if (e.pullT > 0) { const k = Math.min(1, dt / e.pullT); this._emove(e, (e.pullX - e.x) * k, (e.pullZ - e.z) * k); e.pullT -= dt; e.kx = e.kz = 0; }   // 휘감겨 끌려온다
     if (e.kx || e.kz) {   // 맞고 밀림
       const k = 1 - Math.min(1, 7 * dt); e.kx *= k; e.kz *= k;
       if (Math.abs(e.kx) + Math.abs(e.kz) < 4) e.kx = e.kz = 0; else this._emove(e, e.kx * dt, e.kz * dt);
