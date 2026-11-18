@@ -22,6 +22,7 @@ export function reachGrid(W, sx, sz, R = 14, opt = {}) {
   const blockedAt = (cx, cz, g, r) => { for (const b of W.boxes) if (b.solid && !b.walk && cx + r > b.x0 && cx - r < b.x1 && cz + r > b.z0 && cz - r < b.z1 && b.y1 > g + STEP_UP && b.y0 < g + 60) return true; return false; };
   const ground = (k) => { if (Number.isNaN(gy[k])) { const [cx, cz] = centre(k); let g = groundAt(W, cx, cz); if (Number.isFinite(g) && blockedAt(cx, cz, g, R)) { g = -Infinity; blk[k] = 1; } gy[k] = g; } return gy[k]; };
   const onFoot = !!opt.onFoot, stairAt = (k) => { const [cx, cz] = centre(k), g = ground(k); if (!Number.isFinite(g)) return false; for (const b of W.boxes) if (b.stair && b.walk && cx >= b.x0 && cx <= b.x1 && cz >= b.z0 && cz <= b.z1 && Math.abs(b.y1 - g) < 0.01) return true; return false; };   // (g comes from a Float32Array)
+  const fits = (m, g) => { const [cx, cz] = centre(m); for (const b of W.boxes) if (b.solid && cx + 14 > b.x0 && cx - 14 < b.x1 && cz + 14 > b.z0 && cz - 14 < b.z1 && b.y1 > g + JUMP_UP && b.y0 < g + 80) return false; return true; };   // (only faces too high to jump: the bot jumps onto a ledge from right beside it)
   let cells = 0; const q = [], hooks = (opt.hooks ?? []).filter((p) => p.to && !p.off).map((p) => ({ ...p, done: false })), nGap = Math.round(JUMP_GAP / C);
   const push = (m, k) => { if (m >= 0 && !seen[m] && Number.isFinite(ground(m))) { seen[m] = 1; par[m] = k; q.push(m); } };
   const wallAt = (m, g) => { const [cx, cz] = centre(m); return blockedAt(cx, cz, g, 4); };   // something solid stands in the way of a hop at this height
@@ -32,8 +33,10 @@ export function reachGrid(W, sx, sz, R = 14, opt = {}) {
       const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= nx || b >= nz) continue;
       const m = b * nx + a;
       const g2 = ground(m);
-      if (onFoot && Number.isFinite(g2) && (stairAt(k) || stairAt(m)) && Math.abs(g2 - g) > (stairAt(k) && stairAt(m) ? 2 * STEP_UP : STEP_UP)) continue;   // opt.onFoot: a flight is entered at its foot or its top, never hopped onto from the side
-      if (Number.isFinite(g2) && g2 - g <= JUMP_UP) { if (!seen[m]) { seen[m] = 1; par[m] = k; q.push(m); } if (g2 >= g - STEP_UP) continue; }   // level or a step up/down: no need to look further
+      // opt.onFoot: the step itself is not taken when the hero (r 14) cannot stand centred there (a face higher than a jump is within his body), or when
+      // it goes onto / off a flight by its side (more than STEP_UP; two steps between two stair cells) - a hop over the cell is still looked for below
+      const walkOk = !onFoot || !Number.isFinite(g2) || (fits(m, g2) && !((stairAt(k) || stairAt(m)) && Math.abs(g2 - g) > (stairAt(k) && stairAt(m) ? 2 * STEP_UP : STEP_UP)));
+      if (Number.isFinite(g2) && g2 - g <= JUMP_UP) { if (walkOk && !seen[m]) { seen[m] = 1; par[m] = k; q.push(m); } if (g2 >= g - STEP_UP) continue; }   // level or a step up/down: no need to look further
       else if (Number.isFinite(g2)) continue;                                                       // a ledge too high
       // hop: over cells with no ground or lower ground, onto the first cell at about this height
       for (let s = 2; s <= nGap + 1; s++) {

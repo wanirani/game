@@ -5,6 +5,9 @@
 //   UI_LOADER     module exports createHud(game) -> { update(dt, state), draw(ctx, state), resize?(), release?(), modal?, hidePad? } (docs/v2/UI_API.md)
 //   UI_DEFAULT    true = the cut-glass interface (src/v2/ui) unless switched off: address option v2ui=0, localStorage 'bn.v2.ui' = '0',
 //                 or the pause menu row that switches between the new buttons and the old pad (remembered in 'bn.v2.ui').
+//   STORY_LOADER  module exports STORY (the tables) and createStory (the runner) — docs/v2/DATA_FORMAT.md. On for 「본 게임」; off with the address
+//                 option v2story=0, on the test route, and when the address names an area (area=...) without v2story=1 (tools and captures).
 export const WORLD_LOADER = () => import('../world/index.js');
 export const UI_LOADER = () => import('../ui/index.js');
 export const UI_DEFAULT = true;
+export const STORY_LOADER = () => import('../data/index.js');

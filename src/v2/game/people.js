@@ -59,7 +59,7 @@ export class People {
   byId(id) { for (const p of this.list) if (p.id === id) return p; return null; }
   /**
    * Once a rule tick: who is here (flags), who looks at the hero, which one prompt is offered.
-   * flag(name) -> bool (story flags; the scene has built-in ones until the story is plugged in), hidden = Set of actor ids forced away.
+   * flag(name) -> bool (story flags; the scene has built-in ones until the story is plugged in), hidden = Map actor id -> 'hide' | 'show' (story overrides of this area).
    */
   tick(sc, dt, hero, enemies, flag, hidden, busy) {
     const L = this.list, tickN = ++this.tickN;
@@ -69,7 +69,7 @@ export class People {
     this.calm = calm;
     let best = null, bd = 1e9, bestSpot = null;
     for (let i = 0; i < L.length; i++) {
-      const p = L[i], d = p.def, on = !(hidden && hidden.has(p.id)) && (!d.when || flag(d.when));
+      const p = L[i], d = p.def, ov = hidden ? hidden.get(p.id) : undefined, on = ov ? ov === 'show' : (!d.when || flag(d.when));   // a story override (hide / show) wins over `when`
       if (on !== p.on) { p.on = on; }
       if (p.box) p.box.solid = on && p.solid;
       if (!on) continue;

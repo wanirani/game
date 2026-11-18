@@ -109,7 +109,7 @@ const walk = (page, wps, start = null) => page.evaluate(([wps, start]) => {
       // a gap = a real drop 26 ahead while the next waypoint is at this height; a ledge = more than two stair steps up 18 ahead while the route goes up
       // (stairs rise 15 per 14: probing further, or with a lower threshold, made the bot hop up the stairs and arrive at a gap in the air)
       const sx = Math.abs(dx) > 3 ? Math.sign(dx) : 0, sz = Math.abs(dz) > 3 ? Math.sign(dz) : 0;
-      const gap = (ux, uz) => (ux || uz) && ground(h.x + ux * 26, h.z + uz * 26) < gh - 60 && gt >= gh - 30;
+      const gap = (ux, uz) => (ux || uz) && Math.abs(ux ? dx : dz) > 50 && ground(h.x + ux * 26, h.z + uz * 26) < gh - 60 && gt >= gh - 30;   // (WORLD-3: only towards a waypoint beyond the gap - a hop is 60 or more; the drop beside the top of a flight is not a gap to jump)
       const ledge = (ux, uz) => { if (!(ux || uz)) return false; const g2 = ground(h.x + ux * 18, h.z + uz * 18); return g2 > gh + 36 && g2 <= gh + 100 && gt > gh + 16; };
       const why = gap(0, sz) ? ['gap', 'z'] : ledge(0, sz) ? ['ledge', 'z'] : gap(sx, 0) ? ['gap', 'x'] : ledge(sx, 0) ? ['ledge', 'x'] : null;
       if (why) { jump = 20; jumps++; lock = why[1]; jlog.push([Math.round(h.x), Math.round(h.z), Math.round(h.y), why[0]]); }
@@ -207,7 +207,7 @@ for (const dev of DEVICES) {
         const { a, W } = WORLDS[id], P = (p) => (typeof p === 'string' ? [a.spawns[p].x, a.spawns[p].z] : p), w = await go(page, W, P(from), P(to)); A.walks.push({ what, ...w });
         const J = jumpsPerFlight(a, w.jlog ?? []); w.jumpsPerFlight = J; A.walks[A.walks.length - 1].jumpsPerFlight = J;
         if (w.arrived) { ok(`bot ${what} (${w.ticks} ticks, ${w.jumps} jumps, planned ${w.plans}x, lowest y ${w.minY}, hurt ${w.hurt})`); console.log('      ' + jumpLine(J)); }
-        if (J.stair) fail(`${dev} ${id}: "${what}" needed ${J.stair} jump(s) on stairs (a flight must be walked with the stick alone) — ${jumpLine(J)}`);
+        if (J.stair) fail(`${dev} ${id}: "${what}" needed ${J.stair} jump(s) on stairs (a flight must be walked with the stick alone) — ${jumpLine(J)} — every jump [x, z, y, why]: ${JSON.stringify(w.jlog)}`);
         if (J.other.stuck) fail(`${dev} ${id}: "${what}" pressed jump ${J.other.stuck}x because the bot was stuck (not at a gap or a ledge) at ${JSON.stringify((w.jlog ?? []).filter((j) => j[3] === 'stuck').slice(0, 4))}`);
         if (!w.arrived) fail(`${dev} ${id}: bot did not finish "${what}" - ${w.noPath ? 'no path' : 'stopped'} at (${w.x}, ${w.z}, y ${w.y}) after ${w.ticks} ticks`);
         if (w.arrived && w.hurt > 0) fail(`${dev} ${id}: "${what}" hurt the hero by ${w.hurt} (a fall must never be a pit here)`);

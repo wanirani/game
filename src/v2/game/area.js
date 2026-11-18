@@ -99,3 +99,18 @@ export async function hasArea(id) {
   if (!WORLD_LOADER) return id === TEST_AREA;
   try { return !!(await WORLD_LOADER()).AREAS?.[id]; } catch { return false; }
 }
+/** what the story host needs from the world module: which flags each area is built from (AREA_FLAGS) */
+export async function worldInfo() {
+  if (!WORLD_LOADER) return null;
+  try { const m = await WORLD_LOADER(); return { AREA_FLAGS: m.AREA_FLAGS ?? {} }; } catch { return null; }
+}
+/** where a bell crossing lands: the same x, z, or the nearest free reachable spot when something stands there in this night
+ *  (world module nearestFreeSpot, AREA_FORMAT 14). -> { x, z, y, moved } | null (no floor anywhere near: the crossing is refused) */
+export async function freeSpot(area, x, z) {
+  if (!WORLD_LOADER || !area?.def) return { x, z, y: null, moved: 0 };
+  try {
+    const m = await WORLD_LOADER(); if (typeof m.nearestFreeSpot !== 'function') return { x, z, y: null, moved: 0 };
+    const d = area.def, r = m.nearestFreeSpot({ stage: d.stage ?? d, spawns: d.spawns ?? {}, interact: Array.isArray(d.interact) ? d.interact : [] }, area.W, x, z);
+    return r ? { x: r.x, z: r.z, y: r.y, moved: r.moved } : null;
+  } catch (e) { console.warn('[v2g] free spot:', String(e?.message ?? e)); return { x, z, y: null, moved: 0 }; }
+}
