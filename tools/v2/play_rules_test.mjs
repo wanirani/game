@@ -163,7 +163,7 @@ try {
   run(s, 3, { guard: true }, () => { s.hero.hp = 100; s.hero.parryCd = 9; s.hero.parryT = 0; });
   const known = new Set(['dash', 'jump', 'land', 'swing', 'cast', 'parry', 'guard', 'die', 'slash', 'slash_heavy']);
   ok('legacy sfx names stay inside the set the scene knows; a block sends sfx guard + the guard hook', names(s).includes('guard') && sfx.includes('guard') && sfx.every((n) => known.has(n)), [...new Set(sfx)].join(' ')); }
-{ const bad = []; for (const k of Object.keys(KINDS)) for (const a of KINDS[k].attacks) if (![a.windup, a.strike, a.recover, a.dmg].every((v) => typeof v === 'number' && v >= 0) || !(a.box || a.radius || a.shot) || typeof a.clip !== 'string') bad.push(k + '.' + a.id);
+{ const bad = []; for (const k of Object.keys(KINDS)) for (const a of KINDS[k].attacks) if (![a.windup, a.strike, a.recover, a.dmg].every((v) => typeof v === 'number' && v >= 0) || !(a.box || a.radius || a.arc || a.shot || a.summon || a.pulse) || typeof a.clip !== 'string') bad.push(k + '.' + a.id);
   ok('every enemy attack line has numeric windup / strike / recover / dmg, a shape and a clip', bad.length === 0, bad.join(' ')); }
 { const s = mk([{ kind: 'melee', x: 420, z: 0, rise: true }, { kind: 'melee', x: -500, z: 0 }]); const e = s.enemies[0], o = s.enemies[1]; const seen = [];
   run(s, 0.3, {}); const lying = e.buried === true && e.anim === 'buried' && !e.active && o.anim === 'idle' && !o.buried;

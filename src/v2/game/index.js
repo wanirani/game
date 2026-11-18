@@ -388,7 +388,7 @@ export default class V2Game extends Scene {
   }
   /** put the hero at a named spawn of the area (docs/v2/AREA_FORMAT.md 3); a section id still works for the test route */
   _enterAt(spawn, keep) {
-    const sim = this.sim, h = sim.hero, sp = keep ?? (spawn ? this.area.spawns?.[spawn] ?? this.area.spawns?.default : null), ha = this.heroA;
+    const sim = this.sim, h = sim.hero, sp = keep ?? (spawn ? this.area.spawns?.[spawn] ?? null : null), ha = this.heroA;   // an unknown name: a section id of the test route (sim.teleport), else the default spawn the stage already used
     if (sp && Number.isFinite(sp.x) && Number.isFinite(sp.z)) {
       h.x = sp.x; h.z = sp.z; const gy = groundAt(this.W, h.x, h.z, sp.y != null ? sp.y + 40 : Infinity); if (Number.isFinite(gy)) h.y = gy;
       h.vx = 0; h.vz = 0; h.vy = 0; if (h.safe) { h.safe.x = h.x; h.safe.y = h.y; h.safe.z = h.z; }

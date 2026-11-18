@@ -25,6 +25,18 @@ const THRUST = A({ id: 'thrust', clip: 'thrust', range: [136, 226], chance: 0.6,
 const DIVE = A({ id: 'dive', clip: 'fly', range: 250, windup: 0.36, strike: 0.5, recover: 0.3, dmg: 5, lunge: 215, track: 12, staggerT: 1.0, cd: [2.0, 3.6], weapon: 'dagger', str: 'L', knock: 150,
   radius: { r: 24, fwd: 0, y0: -30, y1: 60 }, sound: 'enemy.bat.screech' });
 
+// ── 밴시 여왕 (GDD §4 ① · §9.1 104–114분) — 공격마다 예고(windup, 바닥 · 공중 표시) → 판정(strike) → 틈(recover). docs/v2/PLAY_API.md §7 ──
+//   mark = 예고 표시 모양(장면이 그린다): 판정 모양(box｜arc｜radius)이 있으면 그것, 탄 · 노래처럼 판정 모양이 없는 것은 mark 로 따로 준다. air: true = 공중에 뜨는 고리(비명 · 노래)
+const Q_WAIL = A({ id: 'wail', label: '울음 탄', kind: 'cast', clip: 'cast_channel', cut: [0.14, 0.34], range: 620, windup: 0.75, strike: 0.12, recover: 0.7, dmg: 10, track: 5, cd: [1.1, 1.7], weapon: 'arrow',
+  shot: { kind: 'wail', element: 'ice', speed: 235, r: 14, life: 3.2, y: 0.6, fan: 3, spread: 20 }, mark: { box: { f0: 30, f1: 430, side: 16 }, fan: 3, spread: 20 } });
+const Q_SWEEP = A({ id: 'sweep', label: '울음 물결', clip: 'cast_sweep', cut: [1.12, 1.4], range: 205, windup: 0.9, strike: 0.2, recover: 0.95, dmg: 16, track: 2.4, staggerT: 1, cd: [0.9, 1.5], weapon: 'great', str: 'H', knock: 300, fx: 'holy.wave',
+  arc: { r: 205, deg: 210, y0: -10, y1: 150 } });
+const Q_SCREAM = A({ id: 'scream', label: '비명', clip: 'scream', cut: [0.75, 1.15], range: 240, windup: 1.15, strike: 0.25, recover: 1.25, dmg: 14, track: 0, guard: 'break', parry: false, cd: [1.4, 2.2], weapon: 'blunt', str: 'F', knock: 360, shake: 12, stunHero: 0.8, fx: 'ice.nova', air: true, bell: true,
+  radius: { r: 235, fwd: 0, y0: -30, y1: 220 } });
+const Q_SUMMON = A({ id: 'summon', label: '유령 부르기', kind: 'cast', clip: 'cast_big', cut: [1.62, 1.95], range: 9999, windup: 1.3, strike: 0.12, recover: 0.8, dmg: 0, track: 0, cd: [1.5, 2.2], summon: { kind: 'grave_ghost', n: 2, r: 150 }, mark: { radius: { r: 46, fwd: 0 }, ring: 150 } });
+const Q_SONG = A({ id: 'song', label: '배웅가', kind: 'cast', clip: 'cast_channel', cut: [0.17, 1.0], range: 9999, windup: 1.0, strike: 4.0, recover: 1.1, dmg: 5, track: 0, guard: 'break', parry: false, cd: [2.2, 3], weapon: 'blunt', str: 'L', knock: 60, air: true, bell: true,
+  pulse: { every: 0.7, r: 330, reso: 0.2 }, mark: { radius: { r: 330, fwd: 0 } } });
+
 // stride = 걷기 클립 한 주기에 나아가는 거리(px). 디딘 발이 가장 덜 미끄러지는 값을 뼈대에서 재서 넣었다 (병사 11 % · 술사 31 % · 주검 52 % · 갑주 32 % — 주검의 어기적 걸음은 본래 발을 끄는 동작이다)
 const K = (o) => {
   const k = { weapon: null, r: 15, hp: 30, speed: 90, turn: 8, sight: 300, sightArc: 105, senseNear: 150, weight: 0, stun: 0.3, dieT: 1.3, standoff: 62, attacks: [], lib: true, ...o };
@@ -52,17 +64,21 @@ export const KINDS = {
   bat: K({ name: '박쥐', model: 'bat', height: 0.45, material: 'flesh', ai: 'bat', lib: false,
     hp: 8, r: 11, speed: 200, turn: 14, fly: true, hover: 96, pitch: 50, orbit: [130, 190], attacks: [DIVE], dieT: 0.7, sight: 360, sightArc: 180,
     clips: { idle: 'fly', walk: 'fly', hurt: 'fly', stagger: 'fly', death: 'fly' } }),
-  // 보스 자리: 모델과 숫자만 있다. 규칙(노래 · 유령 부르기 · 조종에 무릎 꿇기)은 AI.boss 를 채우면 된다 — docs/v2/PLAY_API.md §7
-  banshee_queen: K({ name: '밴시 여왕', model: 'banshee_queen', height: 2.7, material: 'cloth', ai: 'boss', boss: true,
-    hp: 600, r: 30, speed: 60, turn: 3, floats: true, hover: 23, weight: 1, stun: 0, poise: true, attacks: [], dieT: 2.4,
-    clips: { idle: 'float_idle', walk: 'float_idle', hurt: 'hit_light', stagger: 'stun', death: 'stun' } }),
+  // 보스: 밴시 여왕. 1막(체력 절반까지) 울음 탄 · 울음 물결 · 비명 → 절반에서 그 밤으로 달아난다(bossFlee — 장면이 쫓아 건넌 뒤 sim.bossReturn) → 2막 + 유령 부르기 · 배웅가.
+  // 비틀거림 눈금(poise)이 차면 2.6초 비틀거린다(그동안 1.3배). 체력이 kneelAt 에 닿으면 무릎 꿇고 조종(길게 친 종)을 기다린다 — 베어서는 끝나지 않는다. docs/v2/PLAY_API.md §7
+  banshee_queen: K({ name: '밴시 여왕', model: 'banshee_queen', height: 2.7, material: 'cloth', ai: 'boss', boss: true, element: 'ice',
+    hp: 600, r: 30, speed: 70, turn: 3.4, floats: true, hover: 23, weight: 1, stun: 0, poise: true, sight: 520, sightArc: 180, dieT: 2.4,
+    attacks: [Q_WAIL, Q_SWEEP, Q_SCREAM, Q_SUMMON, Q_SONG], keepNear: 150, keepFar: 196,
+    poiseMax: 100, poiseHit: 0.45, poiseParry: 40, poiseCall: 40, poiseBell: 12, staggerT: 2.6, phaseAt: 0.5, fleeAuto: 4, kneelAt: 0.04, kneelWait: 12, kneelHeal: 0.15, ghostMax: 2,
+    onBell: (sim, e) => sim.bossBell(e), onCall: (sim, e) => { sim.addPoise(e, e.def.poiseCall); },
+    clips: { idle: 'float_idle', walk: 'float_idle', hurt: 'hit_light', stagger: 'stun', kneel: 'stun', death: 'stun' } }),
 };
 const ALIAS = { melee: 'skeleton_soldier', soldier: 'skeleton_soldier', skeleton: 'skeleton_soldier', ranged: 'skeleton_mage', mage: 'skeleton_mage', corpse: 'plague_corpse', ghoul: 'plague_corpse',
   ghost: 'grave_ghost', armor: 'gravekeeper_armor', armour: 'gravekeeper_armor', boss: 'banshee_queen' };
 // 스테이지가 쓰는 옛 이름도 표에서 바로 찾을 수 있게 같은 줄을 가리킨다 (KINDS.melee.model …)
 for (const k in ALIAS) KINDS[k] = KINDS[ALIAS[k]];
 // 옛 장면 코드용: TUNE[kind] = { windup, reachZ } — 바닥 예고 표시가 이 값을 읽는다. 새 코드는 e.atk(box｜radius) · e.tele 를 읽는다 (PLAY_API §3)
-for (const k in KINDS) { const a0 = KINDS[k].attacks[0]; if (a0 && !a0.shot && !KINDS[k].fly) TUNE[k] = { windup: a0.windup, reachZ: a0.box ? a0.box.side : a0.radius.r * 0.5 }; }
+for (const k in KINDS) { const a0 = KINDS[k].attacks[0]; if (a0 && !a0.shot && !KINDS[k].fly) TUNE[k] = { windup: a0.windup, reachZ: a0.box ? a0.box.side : a0.radius ? a0.radius.r * 0.5 : 40 }; }
 /** 종류 이름(다른 이름 포함) → 종류 한 줄. 모르는 이름은 해골 병사 */
 export function kindOf(kind) { return KINDS[kind] ?? KINDS.skeleton_soldier; }
 /** 다른 이름을 푼 바른 이름 */
@@ -136,11 +152,36 @@ export const AI = {
     if (e.cd <= 0 && dist < D.attacks[0].range && sim.mayAttack(e, 1)) return sim.startAttack(e, D.attacks[0]);
     sim.setAnim(e, 'walk', dt);
   },
-  /** 보스 자리: 영웅을 보고 떠 있기만 한다. 밴시 여왕의 규칙은 여기에 쓴다 */
+  /** 밴시 여왕: 거리를 두고 떠다니며 고른다 — 가까우면 울음 물결 / 비명, 멀면 울음 탄, 2막에는 유령 부르기 · 배웅가. 무릎 꿇음 · 달아남도 여기서 */
   boss(sim, e, dt, D) {
-    const h = sim.hero;
-    sim.turnTo(e, h.x - e.x, h.z - e.z, D.turn, dt);
-    sim.setAnim(e, 'idle', dt);
+    const h = sim.hero, dx = h.x - e.x, dz = h.z - e.z, dist = Math.sqrt(dx * dx + dz * dz) || 1;
+    if (e.kneel > 0) {   // 무릎 꿇고 조종을 기다린다. 오래 두면 조금 회복해 다시 일어난다 (막히지 않게)
+      e.kneelT += dt; e.hover = Math.max(4, e.hover - 60 * dt); sim.setAnim(e, 'kneel', dt);
+      if (e.kneelT > D.kneelWait) { e.kneel = 0; e.hp = Math.round(D.hp * D.kneelHeal); e.cd = 1; e.state = 'chase'; sim.emit('kneel', e, 'rise'); }
+      return;
+    }
+    e.hover += (D.hover - e.hover) * Math.min(1, 4 * dt);
+    if (e.hp <= D.kneelAt * D.hp + 0.5) { if (e.state === 'attack') sim._cancelAttack(e, 1); e.kneel = 1; e.kneelT = 0; e.poiseHp = 0; e.staggerK = 0; e.solid = true; e.state = 'kneel'; sim.emit('kneel', e, 'down'); sim.setAnim(e, 'kneel', dt); return; }
+    if (e.bphase === 1 && e.hp <= D.hp * D.phaseAt && e.state !== 'attack') { e.bphase = 2; e.fled = true; e.fleeT = 0; e.solid = false; e.poiseHp = 0; e.staggerK = 0; e.cd = 1.2; e.sumCd = 0.5; e.songCd = 5; sim.emit('bossFlee', e); }
+    if (e.fled) {   // 그 밤으로 달아났다: 장면이 쫓아 건넌 뒤 sim.bossReturn(e) 를 부른다 (e.fleeHold 를 켜 두지 않으면 fleeAuto 초 뒤 스스로 돌아온다)
+      e.fleeT += dt; e.alpha = Math.max(0.12, e.alpha - 2.5 * dt); sim.setAnim(e, 'idle', dt);
+      if (!e.fleeHold && D.fleeAuto != null && e.fleeT > D.fleeAuto) sim.bossReturn(e);
+      return;
+    }
+    if (e.alpha < 1) e.alpha = Math.min(1, e.alpha + 2.5 * dt);
+    if (e.state === 'attack') return sim.runAttack(e, dt);
+    sim.turnTo(e, dx, dz, D.turn, dt);
+    e.sumCd = (e.sumCd ?? 3) - dt; e.songCd = (e.songCd ?? 6) - dt;
+    if (dist > D.keepFar) { sim.steer(e, dx / dist, dz / dist, D.speed, dt, true); sim.setAnim(e, 'walk', dt); }
+    else if (dist < D.keepNear - 40) { sim.steer(e, -dx / dist, -dz / dist, D.speed * 0.7, dt, true); sim.setAnim(e, 'walk', dt); }
+    else { sim.steer(e, (-dz / dist) * e.side, (dx / dist) * e.side, D.speed * 0.35, dt, true); sim.setAnim(e, 'idle', dt); }
+    if (e.cd > 0) return;
+    const two = e.bphase >= 2; let a = null;
+    if (two && e.sumCd <= 0 && sim.countKind('grave_ghost') < D.ghostMax) { a = Q_SUMMON; e.sumCd = 11; }
+    else if (two && e.songCd <= 0) { a = Q_SONG; e.songCd = 13; }
+    else if (dist < Q_SWEEP.range && (e.lastAtk === 'wail' || Math.random() < 0.75)) a = (e.lastAtk === 'sweep' || Math.random() < 0.38) && e.lastAtk !== 'scream' ? Q_SCREAM : Q_SWEEP;
+    else if (dist < Q_WAIL.range) a = Q_WAIL;
+    if (a) { e.lastAtk = a.id; sim.startAttack(e, a); if (two) e.cd -= 0.25; }
   },
 };
 
@@ -150,5 +191,5 @@ export function registerKind(id, def, ai) {
   if (ai) { AI[id] = ai; KINDS[id].ai = id; }
   return KINDS[id];
 }
-export const ATTACKS = Object.freeze({ SLASH, STAB, BOLT, GRAB, SWOOP, SLAM, THRUST, DIVE });
+export const ATTACKS = Object.freeze({ SLASH, STAB, BOLT, GRAB, SWOOP, SLAM, THRUST, DIVE, Q_WAIL, Q_SWEEP, Q_SCREAM, Q_SUMMON, Q_SONG });
 export { A as attackDef, rnd };

@@ -35,6 +35,8 @@ export function createBuiltinHud() {
     closeDialog() { dlg = null; },
     toast(t) { note = String(t ?? ''); noteT = 2.6; },
     banner() {}, callout() {},
+    /** QA: where the pause rows are (logical px) */
+    metrics() { return { pad: null, modal: pause ? 'pause' : dlg ? 'dialog' : null, pause: pause ? { rows: pause.map((r, i) => ({ x: PB.x, y: PB.y + i * PB.rh, w: PB.w, h: PB.rh, label: r[0] })) } : null, prompts: PR.p ? [{ action: PR.p.action, x: PR.x, y: PR.y, w: PR.w, h: PR.h }] : [] }; },
     update(dt, s) {
       if (noteT > 0) noteT -= dt;
       if (s.dialog !== dlgState) { dlgState = s.dialog; dlg = s.dialog ?? null; dlgT = 0; }

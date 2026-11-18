@@ -1,5 +1,5 @@
 // CORE-VERIFY: plays scene v2g with trusted touches (CDP) on the virtual pad, tick-stepped, and saves stills + numbers.
-//   node tools/v2/coreverify_play.mjs [--devices fold_open,phone2] [--out /tmp/claude-0/v2/coreverify] [--only walk,rev,atk,combo,roll,guard,parry,jump,plunge,bolt,die,spots,v2c]
+//   node tools/v2/coreverify_play.mjs [--oldpad 1 = fallback run on the v1 pad (v2ui=0)] [--devices fold_open,phone2] [--out /tmp/claude-0/v2/coreverify] [--only walk,rev,atk,combo,roll,guard,parry,jump,plunge,bolt,die,spots,v2c]
 // The page's own frame loop is paused (game._pageHidden) and the script steps game.tick(1/60) + game.render() itself,
 // so input timing is exact although the software renderer is slow. Touches are real touch events on the pad.
 import { chromium } from 'playwright-core';
@@ -56,7 +56,7 @@ async function run(dev) {
     page.on('pageerror', (e) => errs.push('[pageerror] ' + e.message + ' ' + (e.stack ?? '').split('\n').slice(1, 3).join(' | ')));
     page.on('console', (m) => { if (m.type() === 'error') errs.push('[console] ' + m.text().slice(0, 300)); });
     const open = async (scene) => {
-      await page.goto(`http://localhost:${port}/index.html?scene=${scene}`);
+      await page.goto(`http://localhost:${port}/index.html?scene=${scene}${scene === 'v2g' ? '&area=slice0&v2auto=0' + (args.oldpad ? '&v2ui=0' : '') : ''}`);   // v2g: the test route, fixed render size; --oldpad 1 = the fallback run on the v1 pad
       await page.waitForFunction(() => window.__v2 && (window.__v2.ready || window.__v2.error), null, { timeout: 90000 });
       return page.evaluate(install);
     };
@@ -78,7 +78,11 @@ async function run(dev) {
     // ───────── v2g ─────────
     const s0 = await open('v2g');
     await T.tap(Math.round(vp.width * 0.5), Math.round(vp.height * 0.3), 40); await step(4);
-    pad = await padLayout(page);
+    // the new pad (cut-glass interface, the default): button centres from scene.hud.metrics(); the v1 pad only with --oldpad 1
+    await page.waitForFunction((old) => old || window.__v2.stats.hud === 'ui', !!args.oldpad, { timeout: 10000 }).catch(() => {});
+    await step(2);
+    const np = await page.evaluate(() => { const m = window.__v2?.scene?.hud?.metrics?.(); if (!m?.pad?.buttons?.length) return null; const B = {}; for (const b of m.pad.buttons) B[b.id === 'roll' ? 'dash' : b.id] = { cx: b.cx, cy: b.cy, d: b.d }; return { source: 'v2 pad (scene.hud.metrics)', buttons: B }; });
+    pad = np ?? (await padLayout(page));
     D.pad = { source: pad.source, buttons: Object.keys(pad.buttons ?? {}) };
     const kinds = await ev(() => window.__cv.clear());
     D.mode = (await step(2)).mode; D.dummies = kinds;

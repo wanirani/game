@@ -86,7 +86,7 @@ const RUN = `(async (o) => {
 try {
   // ───────── v2g: numbers at each spot, allocation, fuzz, stuck ─────────
   if (want('stats') || want('alloc') || want('allocrt') || want('fuzz') || want('stuck')) {
-    const { ctx, page } = await open('scene=v2g');
+    const { ctx, page } = await open('scene=v2g&area=slice0&v2auto=0');
     const st = await page.evaluate(() => ({ ready: window.__v2?.ready, error: window.__v2?.error }));
     if (!st.ready) fail('v2g not ready: ' + JSON.stringify(st));
     await page.evaluate(installBot);
@@ -173,7 +173,7 @@ try {
 
   // ───────── leave and re-enter five times ─────────
   if (want('cycle')) {
-    const { ctx, page } = await open('scene=v2g');
+    const { ctx, page } = await open('scene=v2g&area=slice0&v2auto=0');
     const cy = await page.evaluate(async () => {
       const g = window.__game, wait = (ms) => new Promise((r) => setTimeout(r, ms)), out = [];
       const gc = () => { if (window.gc) { window.gc(); window.gc(); } };
@@ -204,7 +204,7 @@ try {
     R.perf = [];
     for (const [val, label] of V) {
       const n0 = errs.length;
-      const { ctx, page } = await open('scene=v2g', { init: `try { localStorage.setItem('bn.v2.perf', ${JSON.stringify(val)}); } catch (e) {}` });
+      const { ctx, page } = await open('scene=v2g&area=slice0&v2auto=0', { init: `try { localStorage.setItem('bn.v2.perf', ${JSON.stringify(val)}); } catch (e) {}` });
       const r = await page.evaluate(() => { const g = window.__game, v = window.__v2; if (!v?.ready) return { ready: false, error: v?.error ?? null }; g._pageHidden = true; for (let i = 0; i < 30; i++) g.tick(1 / 60); g.render(); const s = v.stats; return { ready: true, resK: s.resK, everyFrame: s.everyFrame, saved: s.perfSaved, tier: s.fx?.tier, post: s.fx?.post, canvas: s.gl.canvas, draws: s.gl.draws }; });
       r.label = label; r.errors = errs.length - n0; R.perf.push(r);
       if (label.startsWith('low')) await page.screenshot({ path: `${OUT}/${DEV}/perf_low.jpg`, type: 'jpeg', quality: 84, scale: 'css' });
@@ -215,7 +215,7 @@ try {
   }
   if (want('gl1')) {
     const n0 = errs.length;
-    const { ctx, page } = await open('scene=v2g&v2gl=1');
+    const { ctx, page } = await open('scene=v2g&area=slice0&v2auto=0&v2gl=1');
     const r = await page.evaluate(() => { const g = window.__game, v = window.__v2; if (!v?.ready) return { ready: false, error: String(v?.error ?? 'no __v2') }; g._pageHidden = true; const sim = v.scene.sim; v.teleport('yard'); let thrown = null; try { for (let i = 0; i < 240; i++) { g.tick(1 / 60); if (i % 10 === 0) g.render(); } g.render(); } catch (e) { thrown = String(e?.stack ?? e).slice(0, 400); } const s = v.stats; return { ready: true, api: s.gl.api, fx: s.fx, draws: s.gl.draws, tris: s.gl.tris, drawn: s.chars?.drawn, thrown }; });
     await page.screenshot({ path: `${OUT}/${DEV}/gl1_yard.jpg`, type: 'jpeg', quality: 84, scale: 'css' });
     r.errors = errs.slice(n0); R.gl1 = r;
@@ -225,7 +225,7 @@ try {
 
   // ───────── 120 Hz and uneven frame timing: drive the real frame loop with made-up timestamps ─────────
   if (want('hz')) {
-    const { ctx, page } = await open('scene=v2g', { init: `(() => { const real = window.requestAnimationFrame.bind(window); window.__raf = { q: [], manual: false }; window.requestAnimationFrame = (cb) => { if (window.__raf.manual) { window.__raf.q.push(cb); return 0; } return real(cb); }; })();` });
+    const { ctx, page } = await open('scene=v2g&area=slice0&v2auto=0', { init: `(() => { const real = window.requestAnimationFrame.bind(window); window.__raf = { q: [], manual: false }; window.requestAnimationFrame = (cb) => { if (window.__raf.manual) { window.__raf.q.push(cb); return 0; } return real(cb); }; })();` });
     await page.evaluate(installBot);
     const hz = await page.evaluate(async () => {
       const g = window.__game, v = window.__v2, sc = v.scene, sim = sc.sim, B = window.__fb, R = window.__raf, out = {};

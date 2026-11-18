@@ -9,7 +9,9 @@
 //   8 GL context loss -> restore
 //   9 leave and re-enter three times: no canvas / GL / heap growth; a v1 stage still runs afterwards
 //  10 without WebGL: a Korean notice only, no page error
-//  11 seams: story events and area reload; the UI lane's HUD through the opt-in switch (?v2ui=1) never stops the scene
+//  11 seams: story events and area reload
+//  12 fallback run (?v2ui=0): built-in HUD + old pad by real touch; the pause menu row switches between the old pad and the new buttons and is remembered
+//  (steps 2-3 drive the NEW pad — the default — with button centres from scene.hud.metrics(); real areas: tools/v2/game_walk.mjs)
 //   node tools/v2/game_check.mjs [--devices fold_open,phone2] [--json out.json] [--shots /tmp/claude-0/v2/engine] [--quick 1 = skip the no-WebGL pass] [--only touch,troute,route,turn,interp,alloc,far,shots,seams,ctx,cycle,v1,nogl,ui] [--verbose 1]
 // Headless Chromium draws WebGL with a software renderer: frame times here say nothing about a phone.
 import { chromium } from 'playwright-core';
@@ -41,10 +43,13 @@ async function open(device, extra = GL_ARGS, q = '') {
   const errs = [];
   page.on('console', (m) => { if (m.type() === 'error') errs.push('[console.error] ' + m.text()); });
   page.on('pageerror', (e) => errs.push('[pageerror] ' + e.message));
-  await page.goto(`http://localhost:${port}/index.html?scene=v2g${q}`);
+  await page.goto(`http://localhost:${port}/index.html?scene=v2g&area=slice0&v2auto=0${q}`);   // the test route (the default area is eshville_now: tools/v2/game_walk.mjs); fixed render size
   await page.waitForFunction(() => window.__v2?.id === 'g' && (window.__v2.ready || window.__v2.error), null, { timeout: 60000 }).catch(() => errs.push('ready timeout'));
   return { browser, page, errs };
 }
+/** the new pad (cut-glass interface, the default): button centres in CSS px from scene.hud.metrics(). null when the old pad is on (v2ui=0) */
+const v2pad = (page) => page.evaluate(() => { const m = window.__v2?.scene?.hud?.metrics?.(); if (!m?.pad?.buttons?.length) return null; const B = {}; for (const b of m.pad.buttons) B[b.id === 'roll' ? 'dash' : b.id] = { cx: b.cx, cy: b.cy, d: b.d, disabled: !!b.disabled }; return { v2: true, buttons: B, stick: m.pad.stick }; });
+const press = async (T, page, pad, id, ms) => { if (!pad.v2) return pressButton(T, page, id, ms); const b = pad.buttons[id]; await T.down(11, b.cx, b.cy); await page.waitForTimeout(ms); await T.up(11); await page.waitForTimeout(60); return b; };
 const shot = async (page, name) => { await page.waitForTimeout(120); await page.screenshot({ path: `${SHOTS}/${name}.png` }); };
 /** run JS in the page with the loop frozen (deterministic ticks), then draw one frame */
 const staged = (page, js, steps = 0) => page.evaluate(([js, steps]) => { const g = window.__game, v = window.__v2, sc = v.scene, sim = sc.sim; g._pageHidden = true; const r = (0, eval)(`(function(g,v,sc,sim){${js}})`)(g, v, sc, sim); for (let i = 0; i < steps; i++) g.tick(1 / 60); g.alpha = 1; g.render(); return r ?? null; }, [js, steps]);
@@ -63,7 +68,7 @@ for (const dev of DEVICES) {
     if (st0.heroModel === 'kael' && !no3d.length && S.chars.clips >= 40 && !S.chars.libError) ok(`cast is 3D: hero ${st0.heroModel} (${st0.heroTris} tris) + ${st0.enemies.length} enemies as ${S.chars.models.slice(1).join(', ')} with ${S.chars.weapons.join(', ')} · shared clip library ${S.chars.clips} clips`);
     else fail(`${dev}: cast not fully 3D ${JSON.stringify({ hero: st0.heroModel, no3d, clips: S.chars.clips, lib: S.chars.libError })}`);
     console.log('       models: ' + st0.kinds.map((k) => `${k.id} ${k.tris} tris/${k.joints} joints`).join(' · '));
-    const flatLeft = st0.atlasKeys.filter((k) => !['glow', 'blob', 'moss', 'puddle', 'stain'].includes(k));
+    const flatLeft = st0.atlasKeys.filter((k) => !['glow', 'blob', 'moss', 'puddle', 'stain', 'crack', 'scorch', 'ash', 'leaves', 'straw'].includes(k));
     if (!flatLeft.length) ok(`nothing flat is drawn: atlas holds only ground decals and glows (${st0.atlasKeys.join(' ')}); ${st0.flat.length} prop cards of the stage are dropped (${st0.flat.map((f) => f.img).join(', ')})`);
     else fail(`${dev}: flat pictures left in the atlas: ${flatLeft.join(' ')}`);
     if (S.mode === 'under' && st0.dom.length === 2) ok('WebGL canvas sits under the alpha game canvas (no full-screen copy, no HUD canvas)'); else console.log(`       note: layer mode "${S.mode}", canvases ${st0.dom.join(' + ')}`);
@@ -76,29 +81,31 @@ for (const dev of DEVICES) {
       const cdp = await page.context().newCDPSession(page); T = new Touch(cdp, page);
       await page.evaluate(() => { window.__game._pageHidden = false; window.__bot.act = {}; });
       await ensureTouchMode(T, page); await page.waitForTimeout(300);
-      pad = await padLayout(page);
-      const ids = Object.keys(pad.buttons ?? {});
+      await page.waitForFunction(() => window.__v2.stats.hud === 'ui', null, { timeout: 8000 }).catch(() => {});
+      pad = (await v2pad(page)) ?? (await padLayout(page));   // the new pad by default; the v1 pad only when the interface module failed
+      const ids = Object.keys(pad.buttons ?? {}), vp0 = await page.evaluate(() => [innerWidth, innerHeight]), AT = { at: [Math.round(vp0[0] * 0.2), Math.round(vp0[1] * 0.68)] };
+      R.pad = pad.v2 ? 'v2 (cut-glass)' : 'v1';
       const h0 = await page.evaluate(() => window.__v2.hero);
-      await stickHold(T, page, 46, -46, 1100);
+      await stickHold(T, page, 46, -46, 1100, AT);
       const h1 = await page.evaluate(() => window.__v2.hero);
       await page.evaluate(() => { const sim = window.__v2.scene.sim; for (const e of sim.enemies) if (!e.yard) e.dead = true; sim.hero.x = 900; sim.hero.z = 190; });   // controls only: clear the street (the yard group stays, or the area would count as cleared), stand in the open
       const until = (what, ms) => page.evaluate(async ([what, ms]) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { const h = window.__v2.hero; if (what === 'air' ? !h.onGround : h.anim === what) return true; await new Promise((r) => setTimeout(r, 8)); } return false; }, [what, ms]);
-      const [, wa] = await Promise.all([pressButton(T, page, 'attack', 220), until('attack', 6000)]);
+      const [, wa] = await Promise.all([press(T, page, pad, 'attack', 220), until('attack', 6000)]);
       await page.waitForFunction(() => !window.__v2.scene.sim.hero.move, null, { timeout: 20000 }).catch(() => {});
       await page.waitForTimeout(300);
-      const [, wj] = await Promise.all([pressButton(T, page, 'jump', 220), until('air', 6000)]);
+      const [, wj] = await Promise.all([press(T, page, pad, 'jump', 220), until('air', 6000)]);
       await page.waitForTimeout(600);
       // roll = the roll button while the stick is pushed (without the stick the same button guards — PLAY_API 1)
       await page.waitForFunction(() => { const h = window.__v2.scene.sim.hero; return h.onGround && !h.move && !(h.landT > 0); }, null, { timeout: 20000 }).catch(() => {});   // a loaded machine plays slower than real time: wait for the jump to end
       await page.waitForTimeout(300);
       const rolling = page.evaluate(async () => { const t0 = performance.now(); while (performance.now() - t0 < 8000) { const h = window.__v2.scene.sim.hero; if (h.dashT > 0 || h.anim === 'roll' || h.anim === 'dash') return true; await new Promise((r) => setTimeout(r, 8)); } return false; });
-      await stickHold(T, page, 50, 0, 400, { keep: true });
-      await pressButton(T, page, 'dash', 260); await page.waitForTimeout(400);
+      await stickHold(T, page, 50, 0, 400, { keep: true, ...AT });
+      await press(T, page, pad, 'dash', 260); await page.waitForTimeout(400);
       await T.upAll();
       const wd = await rolling;
       R.touch = { pad: ids, moved: [Math.round(h1.x - h0.x), Math.round(h1.z - h0.z)], face: h1.face.map((n) => +n.toFixed(2)), attack: wa, jump: wj, dash: wd };
       const T_OK = R.touch.moved[0] > 40 && R.touch.moved[1] > 25 && wa && wj && wd && ['attack', 'jump', 'dash'].every((b) => ids.includes(b));
-      if (T_OK) ok(`touch: stick right+up moved the hero ${R.touch.moved.join(',')} facing (${R.touch.face.join(',')}), attack / jump / roll buttons work (pad buttons: ${ids.join(' ')})`); else fail(`${dev}: touch controls ${JSON.stringify(R.touch)}`);
+      if (T_OK) ok(`touch (${R.pad} pad): stick right+up moved the hero ${R.touch.moved.join(',')} facing (${R.touch.face.join(',')}), attack / jump / roll buttons work (pad buttons: ${ids.join(' ')})`); else fail(`${dev}: touch controls ${JSON.stringify(R.touch)}`);
       await page.evaluate(() => { const v = window.__v2; v.scene.sim.reset(); v.scene.cam.snap = true; window.__bot.wp = 0; window.__bot.minHp = 100; window.__bot.feel0 = v.scene.feelN; });
     }
 
@@ -312,16 +319,51 @@ if (!args.quick && want('nogl')) {
 }
 // ── 11) the UI lane's HUD through the seam (opt-in): the scene must keep running whatever that module does ──
 if (want('ui')) {
-  console.log('\n[UI seam: ?v2ui=1]');
-  const { browser, page, errs } = await open(DEVICES[0], GL_ARGS, '&v2ui=1');
+  // the fallback run: the built-in HUD and the old (v1) pad still play, and the owner can switch between the two by touch (pause menu row, remembered)
+  console.log('\n[fallback: ?v2ui=0 — built-in HUD + old pad, and the way back by touch]');
+  const { browser, page, errs } = await open(DEVICES[0], GL_ARGS, '&v2ui=0');
   try {
-    await page.waitForTimeout(1500);
-    const r = await page.evaluate(() => { const g = window.__game, v = window.__v2; if (!v?.ready) return { ready: false, err: v?.error ?? null }; g._pageHidden = true; g.input.setAutoSource(() => ({ right: true })); for (let i = 0; i < 120; i++) { g.tick(1 / 60); if (i % 10 === 0) g.render(); } g.render(); g.input.setAutoSource(null); const s = v.stats; return { ready: true, hud: s.hud, x: Math.round(v.hero.x), draws: s.gl.draws, pad: !!document.getElementById('v2pad'), hidePad: !!v.scene.hidePad }; });
-    report.ui = { ...r, errors: errs.slice(0, 5) };
-    await page.screenshot({ path: `${SHOTS}/x_ui_seam.png` });
-    if (r.ready && r.x > 300 && r.draws > 5 && !errs.length) ok(`with v2ui=1 the scene runs with the "${r.hud}" HUD (${r.hud === 'ui' ? 'the UI lane module drew without an exception' : 'the UI module failed and the built-in HUD took over'}), hero walked to x ${r.x}, 0 page errors`);
-    else fail('UI seam: ' + JSON.stringify(report.ui));
-  } catch (e) { fail('UI seam: check script exception ' + e.message); } finally { await browser.close(); }
+    await page.waitForTimeout(1200);
+    const cdp = await page.context().newCDPSession(page), T = new Touch(cdp, page);
+    await ensureTouchMode(T, page); await page.waitForTimeout(300);
+    const s0 = await page.evaluate(() => { const v = window.__v2; if (!v?.ready) return { ready: false, err: v?.error ?? null }; return { ready: true, hud: v.stats.hud, hidePad: !!v.scene.hidePad, v2pad: !!document.getElementById('v2pad'), x: v.hero.x }; });
+    await page.evaluate(() => { const sim = window.__v2.scene.sim; for (const e of sim.enemies) if (!e.yard) e.dead = true; });
+    await stickHold(T, page, 46, 0, 1000);
+    const x1 = await page.evaluate(() => window.__v2.hero.x);
+    const swing = page.evaluate(async () => { const t0 = performance.now(); while (performance.now() - t0 < 6000) { if (window.__v2.hero.anim === 'attack') return true; await new Promise((r) => setTimeout(r, 8)); } return false; });
+    await pressButton(T, page, 'attack', 220); const wa = await swing;
+    const rowTap = async (pick) => { const q = await page.evaluate((pick) => { const g = window.__game, m = window.__v2.scene.hud.metrics().pause; if (!m) return null; const i = pick === 'extra' ? (m.ids ? m.ids.indexOf('extra') : 1) : 0, r = m.rows[i]; return r ? { x: g.canvasRect.x + (r.x + r.w / 2) * g.cssScale, y: g.canvasRect.y + (r.y + r.h / 2) * g.cssScale, n: m.rows.length } : null; }, pick); if (q) await T.tap(q.x, q.y, 70); return q; };
+    // old pad -> pause (the v1 pad's pause button) -> row 「새 단추로 바꾸기」
+    const pb = await page.evaluate(async () => { const tp = (await import('/src/core/touchpad.js')).touchpad; const b = tp.buttons().find((x) => x.id === 'pause'); return b ? { x: b.cx ?? b.x + b.w / 2, y: b.cy ?? b.y + b.h / 2 } : null; });
+    if (pb) await T.tap(pb.x, pb.y, 70); else await page.keyboard.press('Escape');
+    await page.waitForFunction(() => window.__v2?.scene?.hud?.modal === 'pause', null, { timeout: 8000 }).catch(() => {});
+    const m1 = await page.evaluate(() => window.__v2?.scene?.hud?.modal ?? null);
+    await page.waitForTimeout(350); const q1 = await rowTap('extra');
+    await page.waitForFunction(() => window.__v2?.stats?.hud === 'ui', null, { timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(600);
+    const s1 = await page.evaluate(() => ({ hud: window.__v2?.stats?.hud ?? null, saved: localStorage.getItem('bn.v2.ui'), hidePad: !!window.__v2?.scene?.hidePad, modal: window.__v2?.scene?.hud?.modal ?? null }));
+    await page.screenshot({ path: `${SHOTS}/x_ui_switched_new.png` });
+    // new buttons -> pause button of the new pad -> row 「옛 단추로 바꾸기」
+    const np = await v2pad(page); let s2 = null, m2 = null, q2 = null;
+    if (np?.buttons.pause) {
+      await T.tap(np.buttons.pause.cx, np.buttons.pause.cy, 70);
+      await page.waitForFunction(() => window.__v2.scene.hud.modal === 'pause', null, { timeout: 8000 }).catch(() => {});
+      m2 = await page.evaluate(() => ({ modal: window.__v2.scene.hud.modal, ids: window.__v2.scene.hud.metrics().pause?.ids ?? null }));
+      await page.screenshot({ path: `${SHOTS}/x_ui_pause_row.png` });
+      await page.waitForTimeout(350); q2 = await rowTap('extra');
+      await page.waitForFunction(() => window.__v2.stats.hud === 'builtin', null, { timeout: 8000 }).catch(() => {});
+      await page.waitForTimeout(400);
+      s2 = await page.evaluate(() => ({ hud: window.__v2.stats.hud, saved: localStorage.getItem('bn.v2.ui'), hidePad: !!window.__v2.scene.hidePad, showPad: !!window.__v2.scene.showPad }));
+    }
+    report.ui = { s0, moved: Math.round(x1 - (s0.x ?? 0)), attack: wa, m1, q1, s1, m2, q2, s2, errors: errs.slice(0, 5) };
+    await page.evaluate(() => localStorage.removeItem('bn.v2.ui'));
+    if (s0.ready && s0.hud === 'builtin' && !s0.hidePad && report.ui.moved > 40 && wa && !errs.length) ok(`v2ui=0: the scene plays with the built-in HUD and the old pad by real touch (stick moved the hero ${report.ui.moved} px, attack swings), 0 page errors`);
+    else fail('fallback run (v2ui=0): ' + JSON.stringify({ s0, moved: report.ui.moved, attack: wa, errors: report.ui.errors }));
+    if (m1 === 'pause' && s1.hud === 'ui' && s1.saved === '1' && s1.hidePad) ok('way back by touch: old pad -> pause -> 「새 단추로 바꾸기」 switches to the cut-glass interface while playing and remembers it (bn.v2.ui = 1)');
+    else fail('switch old pad -> new buttons: ' + JSON.stringify({ m1, q1, s1 }));
+    if (s2 && m2?.modal === 'pause' && s2.hud === 'builtin' && s2.saved === '0' && !s2.hidePad) ok(`and back: new pad -> 멈춤 -> 「옛 단추로 바꾸기」 (pause rows ${m2.ids?.join(' ')}) returns the old pad and remembers it (bn.v2.ui = 0)`);
+    else fail('switch new buttons -> old pad: ' + JSON.stringify({ m2, q2, s2 }));
+  } catch (e) { fail('fallback run: check script exception ' + e.message); } finally { await browser.close(); }
 }
 srv.close();
 report.fails = fails;

@@ -63,6 +63,7 @@ export class Sim {
       side: id % 2 ? 1 : -1, detourT: 0, detX: 0, detZ: 0, stuckT: 0, orb: rnd(0, 6.28), orbW: (id % 2 ? 1 : -1) * rnd(1.1, 1.7), orbR: D.orbit ? rnd(D.orbit[0], D.orbit[1]) : 0,
     };
     e.sight = s.sight ?? D.sight; e.wakeBy = s.wake ?? null;
+    if (D.boss) { e.bphase = s.phase ?? 1; e.poiseMax = D.poiseMax ?? 0; e.staggerK = 0; e.kneelT = 0; e.fled = false; e.fleeT = 0; e.fleeHold = false; e.lastAtk = null; }
     { const fx = s.face ? s.face[0] : this.W.start.x - s.x, fz = s.face ? s.face[1] : this.W.start.z - s.z, fl = Math.sqrt(fx * fx + fz * fz);   // 보는 쪽: 지역이 정한 쪽, 없으면 영웅이 들어오는 쪽
       if (fl > 1e-3) { e.dirX = fx / fl; e.dirZ = fz / fl; if (Math.abs(e.dirX) > 0.25) e.facing = e.dirX < 0 ? -1 : 1; } }
     if (D.fade != null) { e.solid = false; e.alpha = D.fade; }
@@ -537,6 +538,7 @@ export class Sim {
     if (D.kneelAt != null && e.hp - dmg <= D.kneelAt * D.hp && !e.knelled) dmg = Math.max(0, e.hp - Math.ceil(D.kneelAt * D.hp));   // 조종으로만 보낼 수 있는 것: 체력이 바닥에서 멈춘다 (무릎 꿇음은 행동 함수가 건다)
     e.hp -= dmg; e.flashT = 0.13; if (!e.active) this.wake(e);
     const kill = e.hp <= 0;
+    if (D.poiseMax) this.addPoise(e, dmg * (D.poiseHit ?? 0.4) * (whip ? 2.2 : mv.str === 'F' ? 1.5 : 1));
     if (byHero) this.addReso((mv.reso ?? (mv.str === 'F' ? 0.2 : mv.str === 'H' ? 0.16 : mv.str === 'L' ? 0.08 : 0.1)) * (whip ? 0.6 + 0.9 * src.whipLv : 1) * (blocked ? 0.4 : 1));
     if (!blocked || kill) {
       const kb = mv.kb[0] * (1 - D.weight);
@@ -561,7 +563,7 @@ export class Sim {
   }
   _kill(e) {
     e.state = 'dead'; e.dying = e.def.dieT; e.phase = null; e.atk = null; e.tele = 0; e.stagger = 0; e.stun = 0; e.kx *= 1.4; e.kz *= 1.4; e.solid = true;
-    this.emit('kill', e);
+    this.emit('kill', e); if (e.def.boss) this.emit('bossDown', e, !!e.knelled);
   }
   _cancelAttack(e, cd = 0.5) { e.state = 'chase'; e.stateT = 0; e.phase = null; e.atk = null; e.tele = 0; e.cd = Math.max(e.cd, cd); }
   /**
@@ -596,9 +598,10 @@ export class Sim {
       }
       h.guard = false; h.guardTap = 0;   // 막을 수 없는 공격: 그대로 맞는다
     }
-    const heavy = !!atk && (atk.str === 'H' || atk.str === 'F'), kb = (atk?.knock ?? 240);
+    const heavy = !!atk && (atk.str === 'H' || atk.str === 'F' || !!atk.stunHero), kb = (atk?.knock ?? 240);
     h.act = null; h.charging = false; h.charge = 0; h.bellCharge = 0; h.bellDown = false; h.pullT = 0; if (!h.onGround && h.vy === 0) h.vy = -1;
     h.hp -= dmg; h.ifr = T.hurtIfr; h.hurtT = heavy ? T.hurtT * 1.5 : T.hurtT; h.vx = dirX * kb; h.vz = dirZ * kb * 0.67; h.move = null; h.combo = 0; h.dashT = 0; h.guard = false; h.guardTap = 0; h.flash = 1; h.plungeLand = null; h.heavyHurt = heavy;
+    if (atk && atk.stunHero) h.hurtT = Math.max(h.hurtT, atk.stunHero);   // 비명에 귀를 막고 굳는다
     this.stop = Math.max(this.stop, 0.07);
     this.emit('heroHurt', dmg, false, src); this.hooks.number?.(h.x, h.y + 100, h.z, '-' + dmg, '#ff7060');
     if (h.hp <= 0) this._die(h);
@@ -606,13 +609,43 @@ export class Sim {
   }
   _die(h) { h.hp = 0; h.dead = true; h.deadT = 0; h.move = null; h.guard = false; h.dashT = 0; h.act = null; h.charging = false; h.charge = 0; this.emit('heroDie', h); this.hooks.sfx?.('die'); }
   /** 적을 비틀거리게 한다 (튕겨냄 · 종소리). 박쥐처럼 작은 것은 그대로 떨어진다 */
-  staggerEnemy(e, t = 1.2) {
+  staggerEnemy(e, t = 1.2, force = false) {
     if (e.dead || e.state === 'dead') return;
+    if (e.def.poiseMax && !force) { this.addPoise(e, e.def.poiseParry ?? 35); return; }   // 보스는 한 번에 비틀거리지 않는다 — 눈금이 찬다
     if (e.def.fly) { e.hp = 0; this._kill(e); return; }
     e.stagger = t; e.state = 'stagger'; e.stateT = 0; e.phase = null; e.atk = null; e.tele = 0; e.stun = 0; e.solid = true; e.staggerSide = e.side;
     e.kx = -e.dirX * 120 * (1 - e.def.weight); e.kz = -e.dirZ * 100 * (1 - e.def.weight);
     this.emit('stagger', e, t);
   }
+  // ───────────────────────── 보스 ─────────────────────────
+  /** 비틀거림 눈금을 채운다. 다 차면 크게 비틀거린다 (e.staggerK 0…1 — HUD 의 boss.stagger) */
+  addPoise(e, v) {
+    const D = e.def; if (!D.poiseMax || e.dead || e.state === 'dead' || e.stagger > 0 || e.kneel > 0 || e.fled) return;
+    e.poiseHp = Math.min(D.poiseMax, e.poiseHp + v); e.staggerK = e.poiseHp / D.poiseMax;
+    if (e.poiseHp >= D.poiseMax) { e.poiseHp = 0; this.staggerEnemy(e, D.staggerT ?? 2.4, true); this.emit('bossStagger', e); }
+  }
+  /** 종(메아리)이 보스에게 닿았다: 비명의 예고 · 배웅가를 끊고 곧 비틀거리게 한다. 그 밖에는 눈금이 조금 찬다 */
+  bossBell(e) {
+    const a = e.atk;
+    if (e.state === 'attack' && a && a.bell && (e.phase === 'windup' || a.pulse)) { this._cancelAttack(e, 1); this.emit('silence', e, a); this.addPoise(e, e.def.poiseMax); }
+    else this.addPoise(e, e.def.poiseBell ?? 10);
+  }
+  /** 달아났던 보스가 돌아온다 (장면이 그 밤에서 몰아낸 뒤 부른다). o.hp 를 주면 그 체력으로 */
+  bossReturn(e, o) {
+    if (!e || !e.fled || e.dead) return false;
+    e.fled = false; e.solid = true; e.cd = 1.0; if (o && o.hp != null) e.hp = o.hp; if (o && o.x != null) { e.x = o.x; e.z = o.z; }
+    this.emit('bossReturn', e); return true;
+  }
+  /** HUD 의 보스 막대가 읽는 값 (한 객체를 다시 쓴다). 보스가 없거나 아직 깨어나지 않았으면 null */
+  bossState() {
+    const E = this.enemies; let b = null;
+    for (let i = 0; i < E.length; i++) if (E[i].def.boss && !E[i].dead && E[i].active) { b = E[i]; break; }
+    if (!b) return null;
+    const o = (this._boss ??= { id: 0, name: '', hp: 0, hpMax: 1, stagger: 0, phase: 1, kneel: false, fled: false, staggered: false, sub: '' });
+    o.id = b.id; o.name = b.def.name; o.hp = Math.max(0, b.hp); o.hpMax = b.hpMax; o.stagger = b.kneel > 0 ? 1 : b.staggerK ?? 0; o.phase = b.bphase; o.kneel = b.kneel > 0; o.fled = !!b.fled; o.staggered = b.stagger > 0; o.sub = b.atk && b.atk.label ? b.atk.label : '';
+    return o;
+  }
+  countKind(kid) { const E = this.enemies; let n = 0; for (let i = 0; i < E.length; i++) if (!E[i].dead && E[i].state !== 'dead' && E[i].kid === kid) n++; return n; }
   // ───────────────────────── 적 ─────────────────────────
   _enemy(e, dt) {
     const h = this.hero, D = e.def;
@@ -727,10 +760,16 @@ export class Sim {
         if (!e.swung) { e.swung = true; this.emit('enemySwing', e, a); this.hooks.sfx?.(a.kind === 'cast' ? 'cast' : 'swing'); }
         if (a.shot) this._shoot(e, a);
         if (a.shake) this.emit('shake', a.shake);
+        if (a.fx) this.hooks.fx?.(a.fx, e.x, e.gy, e.z, e.dirX, e.dirZ, 1.2);
+        if (a.summon) { const S = a.summon; for (let i = 0; i < S.n; i++) { const an = e.t * 1.7 + (i * 6.2832) / S.n, g = this.addEnemy({ kind: S.kind, x: e.x + Math.cos(an) * S.r, z: e.z + Math.sin(an) * S.r * 0.8, active: true }); g.cd = 1.2 + i * 0.6; g.summoned = true; this.emit('summon', e, g); } }
+        e.pulseT = 0;
         if (a.radius && a.radius.fwd) this.hooks.spark?.(e.x + e.dirX * a.radius.fwd, e.gy + 4, e.z + e.dirZ * a.radius.fwd, 'slam');
       }
       if (a.lunge) this.steer(e, e.dirX, e.dirZ, a.lunge / a.strike, dt, true);
-      if (!e.hitDone && !a.shot && this._atkHits(e, a, h)) {
+      if (a.pulse) {   // 이어지는 노래: every 초마다 반지름 안의 영웅을 깎고 울림을 빼앗는다
+        e.pulseT -= dt;
+        if (e.pulseT <= 0) { e.pulseT += a.pulse.every; this.emit('pulse', e, a); const px = h.x - e.x, pz = h.z - e.z; if (!h.dead && px * px + pz * pz < a.pulse.r * a.pulse.r) { const r = this.hurtHero(a.dmg, e.dirX, e.dirZ, { e, atk: a }); if (r === 'hurt' && a.pulse.reso) this.addReso(-a.pulse.reso); } }
+      } else if (!e.hitDone && !a.shot && !a.summon && this._atkHits(e, a, h)) {
         const r = this.hurtHero(a.dmg, e.dirX, e.dirZ, { e, atk: a });
         if (r) e.hitDone = true;
         if (r === 'parry') return;   // 비틀거림으로 넘어갔다
@@ -749,11 +788,15 @@ export class Sim {
   }
   _shoot(e, a) {
     const S = a.shot, h = this.hero, sx = e.x + e.dirX * 22, sz = e.z + e.dirZ * 22, sy = e.y + e.h * S.y;
-    let dx = h.x - sx, dz = h.z - sz; const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d;
-    const tt = d / S.speed, vy = clamp((h.y + 48 - sy) / Math.max(0.2, tt), -120, 120);
-    const s = { x: sx, y: sy, z: sz, vx: dx * S.speed, vy, vz: dz * S.speed, life: S.life, dead: false, t: 0, dmg: a.dmg, kind: S.kind, element: S.element, r: S.r, owner: e.id, friendly: false };
-    this.shots.push(s);
-    this.emit('cast', e, 'release'); this.emit('shot', s, 'spawn');
+    let dx = h.x - sx, dz = h.z - sz; const d = Math.sqrt(dx * dx + dz * dz) || 1; dx /= d; dz /= d;
+    if (S.fan) { dx = e.dirX; dz = e.dirZ; }   // 부채로 쏘는 것은 예고가 가리킨 쪽(보는 쪽)으로 — 표시와 탄이 어긋나지 않게
+    const tt = d / S.speed, vy = clamp((h.y + 48 - sy) / Math.max(0.2, tt), -120, 120), n = S.fan ?? 1;
+    this.emit('cast', e, 'release');
+    for (let i = 0; i < n; i++) {
+      const an = n > 1 ? (i - (n - 1) / 2) * S.spread * RAD : 0, c = Math.cos(an), sn = Math.sin(an);
+      const s = { x: sx, y: sy, z: sz, vx: (dx * c - dz * sn) * S.speed, vy, vz: (dx * sn + dz * c) * S.speed, life: S.life, dead: false, t: 0, dmg: a.dmg, kind: S.kind, element: S.element, r: S.r, owner: e.id, friendly: false };
+      this.shots.push(s); this.emit('shot', s, 'spawn');
+    }
   }
   /**
    * 적 이동 + 간단한 돌아가기. (wx,wz) = 가고 싶은 방향(단위), speed = px/초. 한쪽이 막히면 옆으로 비켜 간다 —

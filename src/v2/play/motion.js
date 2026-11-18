@@ -220,6 +220,11 @@ export function driveHero(ch, h, dt, T = TUNE) {
     if (mv.kind === 'plunge') A.play(clip.name, PO(0.05, h.plungeLand == null ? Math.min(0.13, 0.03 + h.moveT * 1.2) + 0.12 * (1 - clamp((h.plungeEta ?? 1) / 0.12, 0, 1)) : Math.min(clip.duration - 0.02, 0.25 + (h.moveT - h.plungeLand) * 1.5)));
     else A.play(clip.name, PO(0.05, warpMove(clip, h.moveT, mv)));
   }
+  else if (st === 'charge') A.play(C.charged ? 'charged' : 'atk1', PO(0.08, 0.06 + Math.min(1, h.charge ?? 0) * 0.74 + (h.charge >= 1 ? 0.012 * Math.sin((h.t ?? 0) * 34) : 0)));   // 모으기: 칼을 뒤로 감아 올린 채 버틴다 (다 모이면 가늘게 떤다)
+  else if (st === 'echo') A.play('cast_raise', PO(0.06, 0.3 + (h.actT ?? 0) * 1.5));                                   // 메아리: 종 조각을 치켜든다 (울리는 때 = 클립의 0.6초)
+  else if (st === 'ring') A.play(C.cast_big ? 'cast_big' : 'cast_raise', PO(0.1, h.actDone ? Math.min(2.3, 1.7 + (h.actT ?? 0) * 1.1) : 0.4 + (h.bellCharge ?? 0) * 1.25));   // 길게: 웅크려 모았다가 다 차면 두 손을 하늘로
+  else if (st === 'call') A.play(C.point ? 'point' : 'cast_raise', PO(0.07, 0.2 + (h.actT ?? 0) * 1.5));               // 부름: 팔을 뻗어 자리를 가리킨다
+  else if (st === 'hook') { if ((h.actT ?? 0) < (T.hookThrow ?? 0.16)) A.play('thrust', PO(0.04, 0.3 + (h.actT ?? 0) * 2.2)); else A.play('air', PO(0.1)); }   // 채찍 걸기: 내지르고 → 날아간다
   else if (st === 'roll') { const u = h.roll ? clamp(h.roll.t / h.roll.dur, 0, 1) : 0; A.play('roll', PO(0.05, 0.13 + u * 0.89)); }
   else if (st === 'jump') A.play('jump', PO(0.05, 0.1 + h.animT));
   else if (st === 'fall') A.play('air', PO(0.14));
@@ -291,6 +296,7 @@ export function driveActor(ch, e, dt) {
   if (e.state !== 'dead' && !e.dead) turn(ch, S, e.dirX, e.dirZ, dt, atk ? 24 : 13, 22);
   let name = null, o = PO(0.14);   // (PO 는 하나를 돌려 쓴다 — 마지막에 부른 값이 남는다)
   if (e.state === 'dead' || e.dead) { name = pick(C, K.death, 'death'); if (name && !C[name].loop) o = PO(0.08, Math.min(Math.max(0, D.dieT - e.dying) * 1.25 + 0.02, C[name].duration - 0.02)); }
+  else if (e.kneel > 0) { name = pick(C, K.kneel, K.stagger, K.hurt); if (name && !C[name].loop) o = PO(0.3, Math.min(C[name].duration - 0.05, 1.15 + 0.18 * Math.sin((e.t ?? 0) * 1.4))); }   // 무릎 꿇음: 머리를 감싼 자세로 숨만 쉰다
   else if (e.anim === 'buried' || e.state === 'rise') { name = pick(C, K.rise, 'rise'); if (name) o = PO(e.anim === 'buried' ? 0 : 0.1, e.anim === 'buried' ? 0.02 : Math.min(0.02 + e.stateT * (C[name].duration / (D.riseT ?? 1.25)), C[name].duration - 0.02)); }
   else if (e.state === 'stagger') { name = pick(C, e.staggerSide < 0 ? K.stagger + '_r' : null, K.stagger, K.hurt); if (name && !C[name].loop) o = PO(0.06, Math.min(0.02 + e.animT * 1.15, C[name].duration - 0.02)); }
   else if (e.anim === 'hurt') { name = pick(C, K.hurt); if (name && !C[name].loop) o = PO(0.04, 0.02 + e.animT * 1.3); }
@@ -301,12 +307,12 @@ export function driveActor(ch, e, dt) {
   if (!S.init) { S.init = true; if (!A.ext) A.t = (e.id * 0.37) % (C[name].duration || 1); }   // 떼로 나올 때 같은 박자로 움직이지 않게
   A.update(dt);
   // 숙임: 나는 것(박쥐)은 몸을 앞으로 숙여 날고 내리꽂을 때 더 숙인다. 떠다니는 것은 움직이는 만큼 숙여 자락이 뒤로 흐른다. (골반 뼈를 돌린다 → 장면은 ch.place 그대로)
-  const strike = atk && e.phase === 'strike', want = D.pitch ? D.pitch + (strike ? 24 : 0) : D.floats ? (strike ? 20 : 12 * clamp((e.moved ?? 0) / (D.speed || 60), 0, 1)) : 0;
+  const strike = atk && e.phase === 'strike', want = D.pitch ? D.pitch + (strike ? 24 : 0) : D.floats ? (e.kneel > 0 ? 30 : strike ? (atk.pulse ? 6 : 20) : 12 * clamp((e.moved ?? 0) / (D.speed || 60), 0, 1)) : 0;
   S.pitch = (S.pitch ?? want) + (want - (S.pitch ?? want)) * Math.min(1, dt * 7);
   if (S.pitch > 0.5 && e.state !== 'dead') pitchBone(ch.rig, 'hips', S.pitch);
   if (D.floats) pinLegs(ch.rig); else if (S.pitch > 0.5 && e.state !== 'dead') ch.rig.pose();
   // 비침: 유령의 흐림 · 또렷함을 장면의 그리기 옵션에 바로 적는다 (장면이 e.alpha 를 스스로 읽으면 그 값이 이긴다 — 같은 값이다)
-  if (ch.opt && D.fade != null) ch.opt.alpha = e.state === 'dead' ? 1 : clamp(e.alpha ?? 1, 0.05, 1);
+  if (ch.opt && (D.fade != null || D.boss)) ch.opt.alpha = e.state === 'dead' ? 1 : clamp(e.alpha ?? 1, 0.05, 1);
 }
 
 /**
