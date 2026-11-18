@@ -16,7 +16,7 @@ const MUSIC = { village_burning: 's01', village_past: 'hub', graveyard_mist: 's0
 export const SHOTS = {
   moon_bell: { pitch: -0.2, dist: 1500, lookY: 420 }, bell_crack: { pitch: -0.3, dist: 900, lookY: 520, shake: 0.5 }, fall: { pitch: 0.9, dist: 1300, lookY: 40, shake: 0.6, flash: true },
   wake_past: { pitch: 0.1, dist: 480, lookY: 70 }, table: { pitch: 0.22, dist: 520, lookY: 80 }, knot: { pitch: 0.16, dist: 360, lookY: 86 },
-  years: { pitch: 0.5, dist: 1250, lookY: 120 }, banshee_song: { pitch: 0.12, dist: 1100, lookY: 220 }, two_keepers: { pitch: 0.2, dist: 560, lookY: 90 }, ring_widen: { pitch: 1.1, dist: 2400, lookY: 0 },
+  years: { pitch: 0.42, dist: 1040, lookY: 110 }, banshee_song: { pitch: 0.12, dist: 1100, lookY: 220 }, two_keepers: { pitch: 0.2, dist: 560, lookY: 90 }, ring_widen: { pitch: 1.1, dist: 2400, lookY: 0 },
 };
 
 /** the saved game, or null (nothing saved, another version, broken data) */

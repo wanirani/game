@@ -78,7 +78,7 @@ export default class V2Game extends Scene {
     this._use = false; this._ringTap = false; this._heroHid = false; this._occ = new Float32Array(0); this._occN = 0; this._caps = { skill: false, bell: false }; this._offT = 0; this._go = null; this.fadeA = 0; this.fadeTo = 0; this._flagFn = (n) => this.flag(n); this._useFn = () => { this._use = true; }; this._skyKey = ''; this._peopleN = 0;
     this.heroA = null; this.actors = []; this.pool = new Map(); this._ERef = null;
     // STORY HOOK (storyhost.js): the plugged-in story, what each night remembers (fallen enemies, fired triggers), the crossing in progress and its veil
-    this.host = null; this.nights = new Map(); this.xing = null; this.veil = '#000'; this._veilUnder = false; this._carry = null; this._armT = 0; this._quiet = false; this._lastArea = ''; this._refused = false;
+    this.host = null; this.nights = new Map(); this.xing = null; this.veil = '#000'; this._veilUnder = false; this._carry = null; this._armT = 0; this._holdT = 0; this._quiet = false; this._lastArea = ''; this._refused = false;
     this.bridge = bindFxSound(feel); this.feelN = 0; this.lastFeel = null; this._actE = null; this._simSteps = false;
     this.shotL = new Array(32).fill(null); this.shotN = 0;
     // the whip Vigilia (src/v2/whip, docs/v2/WHIP.md 7): simulated from the hero's hand every tick, drawn right after the characters
@@ -824,7 +824,12 @@ export default class V2Game extends Scene {
     const modal = this.hud.modal ?? null, host = this.host, locked = this.locked || modal === 'dialog' || (host !== null && host.locks());   // UI_API 2: 'pause' freezes the rules, 'dialog' locks the hero; STORY HOOK: a camera shot or a lockInput step of the story locks him too
     if (modal === 'pause') { this._state(); try { this.hud.update(dt, this.state); } catch (e) { this._hudFail(e); } this.updMs += performance.now() - t0; return; }
     if (locked) { mx = 0; mz = 0; }
-    if (host !== null) host.tick(dt);   // STORY HOOK: waits, camera shots, walking people, the rebuild after a changed area flag
+    if (host !== null) {   // STORY HOOK: waits, camera shots, walking people, the rebuild after a changed area flag
+      host.tick(dt);
+      // while the story holds the hero (a dialogue, a camera shot, the crossing) nothing may hurt him: the rules' own untouchable time is kept topped up
+      const hold = modal === 'dialog' || host.locks() || this.xing !== null, hh = sim.hero;
+      if (hold) { if (!hh.dead && hh.ifr < 0.4) hh.ifr = 0.4; this._holdT = 0.5; } else if (this._holdT > 0) this._holdT -= dt;
+    }
     if (!this.ready || !this.sim) return;   // (a story step may have started a journey)
     inp.mx = mx; inp.mz = mz; inp.jump = !locked && input.buffered('jump', 0.12); inp.jumpHeld = input.down('jump'); inp.jumpUsed = false;
     inp.attackHeld = input.down('attack'); inp.guard = !locked && (input.down('guard') || input.down('dash'));
@@ -907,7 +912,7 @@ export default class V2Game extends Scene {
     // hero: animation, the whip, dash trail, steps
     if (pdt > 0) { const a0 = Math.atan2(ha.dz, ha.dx); driveHero(ha, h, pdt, TUNE); this._turn(ha, h, a0, pdt); }
     this.visY = h.onGround && Math.abs(this.visY - h.y) < 40 && dt > 0 ? this.visY + (h.y - this.visY) * (1 - Math.exp(-dt * 28)) : h.y;   // stairs: do not pop
-    if (pdt > 0) { this._tintAt(W, h.x, h.y + 50, h.z, 0, 1.6, ha.opt.tint); ha.opt.flash = Math.max(h.flash > 0 ? h.flash * 0.6 : 0, h.ifr > 0 && !h.dead && !(h.hurtT > 0) && !(h.dashT > 0) && Math.floor(h.t * 22) % 2 === 0 ? 0.3 : 0); }
+    if (pdt > 0) { this._tintAt(W, h.x, h.y + 50, h.z, 0, 1.6, ha.opt.tint); ha.opt.flash = Math.max(h.flash > 0 ? h.flash * 0.6 : 0, h.ifr > 0 && !h.dead && !(h.hurtT > 0) && !(h.dashT > 0) && !(this._holdT > 0) && Math.floor(h.t * 22) % 2 === 0 ? 0.3 : 0); }
     // the whip: hand from the posed skeleton, rule state -> mode, one step with the play dt (0 in hit-stop: the lash freezes with the world)
     if (this.whip && ha.weaponMatrix(ha.place(h.x, this.visY, h.z))) {
       const wp = this.whip, H = this.whipHand, P = this.whipPull, pe = this.whipPullE; let pull = null;
