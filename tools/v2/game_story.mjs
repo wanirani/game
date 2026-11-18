@@ -188,7 +188,7 @@ try {
     await beat('촛불 앞에서 쉰다 (interact rest) → 저장', async () => { const r = await useSpot('rest'); const s = await st(); return r.ok ? { ok: s.saves > 0, why: 'no save was written' } : r; });
     await beat('큰 종을 살핀다 (interact bell.ring, 오늘 밤)', async () => useSpot('bell.ring'));
     await shot('first15_06_bell_now');
-    await beat('종탑 문 (exit to_belltower) → 종탑', async () => { const x = (await def('eshville_now')).exits.find((q) => q.id === 'to_belltower'), p = center(x); const w = await walk(p[0], p[1], { r: 30, budget: 3000, pred: (s) => s.area === 'belltower_now' }); const s = await play(600, { bot: false, pred: (q) => q.ready && q.area === 'belltower_now' }); await settle(); return { ok: s.area === 'belltower_now', why: 'still in ' + s.area + ' ' + (w.why ?? '') }; });
+    await beat('종탑 문 (exit to_belltower) → 종탑', async () => { const x = (await def('eshville_now')).exits.find((q) => q.id === 'to_belltower'), p = center(x); const w = await walk(p[0], p[1], { r: 30, budget: 3000, pred: (s) => s.area === 'belltower_now' }); await play(900, { bot: false, pred: (q) => q.ready && q.area === 'belltower_now' }); await settle(); const s = await st(); return { ok: s.area === 'belltower_now', why: 'still in ' + s.area + ' ' + (w.why ?? '') }; });   // (the area is read after the scene has settled: a status taken while the fade runs still names the old area)
     await beat('종탑을 오른다 (trigger tower.top)', async () => {
       const T = await def('belltower_now'), t = T.triggers.find((q) => q.event === 'tower.top'), p = center(t);
       let w = await walk(p[0], p[1], { r: 50, budget: 5400, pred: (s) => s.flags.includes('fell') || s.running === 'ev_tower_top' });
