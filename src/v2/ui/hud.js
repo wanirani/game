@@ -90,7 +90,11 @@ export function createCanvasHud(game, opts = {}) {
       ctx.globalAlpha = flip ? (1 - tn) * 0.9 : X.beat * 0.55; ctx.strokeStyle = past ? '#ffb9a4' : '#bcd6ff'; ctx.lineWidth = px(flip ? 2.6 : 1.8);
       ctx.beginPath(); ctx.arc(cx, gy, r * (flip ? 1.05 + tn * 1.4 : 1.04 + (1 - X.beat) * 0.45), 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
     }
-    ctx.save(); ctx.translate(cx, y0 + bd.h / 2); ctx.scale(pop * sx, pop); blit(ctx, bd, -bd.w / 2, -bd.h / 2); ctx.restore();
+    // the gem turns (squeezed about its upright axis); the name plate under it does not turn, it changes over
+    const gh = r * 2 + 10, gs = Math.min(bd.c.height, Math.ceil(gh * L.s));
+    ctx.save(); ctx.translate(cx, gy); ctx.scale(pop * sx, pop); ctx.drawImage(bd.c, 0, 0, bd.c.width, gs, -bd.w / 2, -(r + 6), bd.w, gs / L.s); ctx.restore();
+    if (flip) ctx.globalAlpha = Math.max(0, Math.min(1, tn >= 0.5 ? (tn - 0.5) * 2 : 1 - tn * 2));   // the old name fades out before the half turn, the new one in after it
+    ctx.drawImage(bd.c, 0, gs, bd.c.width, bd.c.height - gs, x0, y0 + gs / L.s, bd.w, bd.h - gs / L.s); ctx.globalAlpha = 1;
     if (flip) {   // six sparks thrown off the turning gem
       ctx.fillStyle = '#fff6d8'; ctx.globalAlpha = 1 - tn;
       for (let i = 0; i < 6; i++) { const a = i * TAU / 6 + 0.5, rr = r * (0.95 + tn * 1.7), q = px(2.6) * (1 - tn * 0.5), qx = cx + Math.cos(a) * rr, qy = gy + Math.sin(a) * rr; ctx.beginPath(); ctx.moveTo(qx, qy - q * 1.6); ctx.lineTo(qx + q, qy); ctx.lineTo(qx, qy + q * 1.6); ctx.lineTo(qx - q, qy); ctx.closePath(); ctx.fill(); }
@@ -415,7 +419,7 @@ export function createCanvasHud(game, opts = {}) {
     // 2) top left: night badge, candles on their ledge, resonance cells, moon cell, place name
     const x0 = sf.l + px(10), y0 = sf.t + px(8);
     const which = (s.night ?? s.area?.era) === 'past' ? 'past' : 'now';
-    const bd = bakeBadge(which); blit(ctx, bd, x0, y0);
+    const bd = bakeBadge(which); if (!s.cross) blit(ctx, bd, x0, y0);   // (CROSSING: drawCross draws the badge while a crossing runs)
     // candles: one row up to eight; more stand on two altar tiers (the back tier is drawn first, half a step aside)
     const max = T.max, per = max > 8 ? Math.ceil(max / 2) : max, two = max > per, step = px(25), ch = px(43);
     const cx0 = x0 + bd.w + px(14), baseY = y0 + px(50) + (two ? px(20) : 0);

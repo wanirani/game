@@ -9,9 +9,9 @@ export function graveyard(era = 'now', flags = {}) {
   const now = era === 'now', TY = 140, hung = !!flags.bell_hung, P = [], anchors = [], r = rnd(7741), add = (chunk, ...parts) => P.push(...inChunk(chunk, parts.flat()));
   const COLD = now ? [0.7, 0.85, 1] : [1, 0.74, 0.4], LP = (x, z, o = {}) => ({ t: 'prop', mesh: 'lanternpost', x: x + (o.flip ? 20 : -20), z, h: 180, solid: 9, solidZ: 9, light: { r: 300, i: 1.3, y: 120, c: COLD }, c: COLD, flicker: true, ...o });
   // ground
-  add('road', { t: 'floor', x: 490, z: 0, w: 220, d: 900, mat: 'dirt', kit: { mat: 'cobworn', rag: 34, strips: [{ x0: 0, x1: 46, mat: 'soil' }, { x0: 174, x1: 220, mat: 'soil' }] } },
-    { t: 'floor', x: 100, z: 0, w: 346, d: 900, mat: 'dirt', walk: false, kit: { mat: 'soil', rag: 40, strips: [{ x0: 120, x1: 346, z0: 200, z1: 520, mat: 'moss' }] } },
-    { t: 'floor', x: 754, z: 0, w: 346, d: 900, mat: 'dirt', walk: false, kit: { mat: 'soil', rag: 40, strips: [{ x0: 0, x1: 200, z0: 380, z1: 700, mat: 'moss' }] } },
+  add('road', { t: 'floor', x: 490, z: 0, w: 220, d: 900, mat: 'dirt', thick: 420, kit: { mat: 'cobworn', rag: 34, strips: [{ x0: 0, x1: 46, mat: 'soil' }, { x0: 174, x1: 220, mat: 'soil' }] } },
+    { t: 'floor', x: 100, z: 0, w: 346, d: 900, mat: 'dirt', walk: false, thick: 420, kit: { mat: 'soil', rag: 40, sides: true, strips: [{ x0: 120, x1: 346, z0: 200, z1: 520, mat: 'moss' }] } },
+    { t: 'floor', x: 754, z: 0, w: 346, d: 900, mat: 'dirt', walk: false, thick: 420, kit: { mat: 'soil', rag: 40, sides: true, strips: [{ x0: 0, x1: 200, z0: 380, z1: 700, mat: 'moss' }] } },
     { t: 'blocker', x: 100, z: -60, w: 1000, d: 60, y: -400, h: 1200 });
   // the field (z 900..1850) and, since WORLD-2, the ossuary forecourt on a terrace TY above it (z 1850..2100): the stone stair that led up is broken in both nights
   // (GDD 9.1 minute 58: "the broken stone path") - a whip ring on the terrace edge lifts the hero up; when the road bell has hung there for a hundred years the stair is whole again tonight
