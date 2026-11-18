@@ -128,7 +128,8 @@ export class StoryHost {
   _api() {
     const H = this, sc = this.sc;
     return {
-      scene: sc, get sim() { return sc.sim; },
+      // the runner prefers scene.hud.toast over api.toast (DATA_FORMAT 5): it gets a small face of the scene whose notice goes through the scene (so `seen` has it)
+      scene: { get area() { return sc.area; }, hud: { toast(text, o) { sc._toast(text, typeof o === 'string' ? o : o?.kind); } } }, get sim() { return sc.sim; },
       showDialog(d) {
         H.note('line', d.speaker || (d.who === 'sign' ? '(글씨)' : '(해설)'), d.text);
         if (d.choices) H.note('choice', d.choices.join(' / '));

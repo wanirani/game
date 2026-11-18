@@ -386,8 +386,8 @@ export function dressStairs(G, P, boxes) {
 export function stairCheeks(G, P, boxes) {
   const y = P.y ?? 0, K = P.kit ?? {}, T = 9, hRail = K.cheekH ?? 30;
   // FENCE (11-18): a cheek collides where it is drawn, end posts included (it had none: the hero walked through it onto the flight from the side,
-  // and on the flight it ran through his body). From the ground to its top post.
-  const box = (x0, x1, z0, z1) => boxes?.push({ x0, x1, z0, z1, y0: y, y1: y + P.h + hRail + 10, solid: true, walk: false, inv: true, kit: true, part: P });
+  // and on the flight it ran through his body). As tall as a low wall's collision: a jump over its 40-high top post landed inside it.
+  const box = (x0, x1, z0, z1) => boxes?.push({ x0, x1, z0, z1, y0: y, y1: y + P.h + 800, solid: true, walk: false, inv: true, kit: true, part: P });
   for (const s of K.cheeks ?? '') {
     if (P.dir === 'z+' && (s === 'L' || s === 'R')) {
       const xa = s === 'L' ? P.x : P.x + P.w - T, xb = xa + T, nx = s === 'L' ? 1 : -1, xf = s === 'L' ? xb : xa;
