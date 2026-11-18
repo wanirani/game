@@ -101,7 +101,7 @@ void main() {
 }`;
 const P_FS = `#version 300 es
 precision mediump float;
-in vec2 vUV; in vec4 vCol; in float vAdd; uniform sampler2D uAtlas; out vec4 o;
+in highp vec2 vUV; in vec4 vCol; in float vAdd; uniform sampler2D uAtlas; out vec4 o;   // highp (FIRE-2): the atlas is 1024 wide now - a 16-bit mediump coordinate would step by half a texel in its far half
 void main() { vec4 t = texture(uAtlas, vUV); o = vec4(t.rgb * vCol.rgb * vCol.a, t.a * vCol.a * (1.0 - vAdd)); }`;
 
 /** 방출 명세의 기본값을 채운다 (모듈을 읽을 때 한 번). 실행 중에는 명세를 새로 만들지 않는다. */

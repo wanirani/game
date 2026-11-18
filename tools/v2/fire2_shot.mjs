@@ -80,7 +80,7 @@ try {
       rows.push({ preset: nm, at: t, particles: r.particles, overdraw: r.over, draws: r.draws }); console.log(JSON.stringify(rows[rows.length - 1]));
     }
     // the cost of every preset alone (the test page's own measure: emitted, peak live particles, peak draw calls, peak overdraw), same seed
-    const cost = await page.evaluate((tier) => window.__fx.presets.map((p) => { let s = 4242; Math.random = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; const c = window.__fx.cost(p.name, tier); return [p.name, c.emitted, c.peakParticles, c.peakDraws, c.peakOverdraw, c.peakQuads, c.peakMeshes, c.peakLights].join(' '); }), TIER);
+    const cost = args.nocost ? [] : await page.evaluate((tier) => window.__fx.presets.map((p) => { let s = 4242; Math.random = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; const c = window.__fx.cost(p.name, tier); return [p.name, c.emitted, c.peakParticles, c.peakDraws, c.peakOverdraw, c.peakQuads, c.peakMeshes, c.peakLights].join(' '); }), TIER);
     fs.writeFileSync(`${OUT}/preset_cost.txt`, cost.join('\n') + '\n'); console.log('preset cost lines', cost.length);
     fs.writeFileSync(`${OUT}/presets.json`, JSON.stringify(rows, null, 1));
   } else if (args.stats) {
