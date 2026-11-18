@@ -4,6 +4,7 @@
 다른 구역은 **이 문서만 보고** 맞춘다. 바꾸면 "바뀐 것"에 한 줄.
 
 ## 바뀐 것
+- 11-18 17:20 **BREAK — 은화**: `HudState.coins`(정수; 없으면 0). 숫자가 바뀌면 왼쪽 상태 묶음 아래(알림이 뜨는 줄의 첫 칸)에 유리 조각 하나 — `pouch` 아이콘 + 숫자 — 가 0.07초에 미끄러져 들어와 숫자가 빠르게 올라가고 3.6초 머문 뒤 스러진다. 알림은 그 아래로 밀리므로 다른 HUD 조각을 덮지 않는다(fold_open · phone2 캡처로 확인). 게임을 시작할 때의 숫자(불러온 저장)는 뜨지 않는다. 일시정지 판에는 줄들 아래 가운데에 늘 보인다. `hud.metrics().hud.coins` = 떠 있을 때 `{x, y, w, h, a, n}`, `metrics().pause.coins`. 내장 HUD(`src/v2/game/hud.js`)는 체력 막대 오른쪽에 「은화 N」 한 줄(1 이상이거나 일시정지 중일 때).
 - 11-18 15:36 (INTEGRATE-VERIFY) `hud.release()` 가 첫 배치 전에 불려도(장면을 불러오는 중에 나갈 때) `#v2pad` 층과 캔버스 9개가 페이지에 남지 않는다: 패드의 `release()` 는 `releaseAll()` 이 던져도 층을 떼고, HUD 의 `release()` 는 조각마다 따로 감싸 부른다.
 - 11-18 13:40 (INTEGRATE-B2) **목표 한 줄** `state.objective`(문자열, 없거나 `''` 이면 그리지 않는다): 울림 눈금 아래에 금빛 작은 글씨와 마름모 표시로 그린다(`hud.js` `bakeObjective` — 글이 바뀔 때만 다시 굽는다, 화면 너비의 46% 를 넘으면 줄이고 자른다). 알림 줄은 그만큼 아래로 내려간다. 기본 HUD(`src/v2/game/hud.js`)도 구역 이름 아래에 같은 줄을 그린다. 이야기의 `objective` 단계가 채운다(ENGINE_API §12).
 - 11-18 03:05 (INTEGRATE-B1) 보스 막대: `state.boss.phase`(1｜2)를 주면 막대 오른쪽에 작은 마름모 둘을 그리고 지금 막까지 금빛으로 켠다(없으면 그리지 않는다). 장면이 주는 `boss` = `{ id, name, hp, hpMax, sub, stagger, phase, kneel, fled, staggered }`(규칙의 `sim.bossState()` 그대로; `sub` 는 예고 중인 공격 이름 · 무릎 꿇으면 「종을 길게 울려라」). 기본 HUD(`src/v2/game/hud.js`, v2ui=0)에도 같은 값으로 이름 · 막대 · 눈금 · 막 표시를 그린다.

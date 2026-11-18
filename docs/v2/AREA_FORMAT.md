@@ -5,6 +5,7 @@
 (The body is in English so that every lane can read it fast. Player-visible names are Korean.)
 
 ## 바뀐 것
+- 11-18 17:20 **BREAK** (owner: "항아리 같은것들은 쨍그랑 소리와 함께 깨지고 랜덤으로 아이템, 돈 등이 나오면"). New area field **`breakables: [{ kind, x, z, rot?, drop? }]`** (§15) - jars, pots, urns, crates and barrels the hero breaks. They are dynamic things (drawn and collided by the game, not stage parts), solid while whole. `finishArea` gives every area the field (`[]` when it has none); `validateArea` walks the area with all of them standing and checks each one (§15.2). Every area has them now: `eshville_*` 23, `graveyard_*` 17, `belltower_now` 8, `ossuary_*` 10. **Static props taken out where a breakable stands instead**: `eshville_*` barrel (2420, 264); `eshville_now` crate (2150, 258), sacks (1960, 266) and (4340, 842), barrel (4080, 846); `eshville_past` sacks (1960, 266) and (4180, 850) - the cloth sacks a reviewer read as untextured clay jars are real glazed jars now; `belltower_now` barrels (60, 60) and (80, z2+110), crates (660, z1+96), (650, z3+110) and (80, top+60 -> a breakable at top+120, outside trigger `tower_top`). No spawn, exit, section, trigger, actor or interact was renamed or moved. `folds.js` was regenerated (two chunks fold `wood` into `planks` now).
 - 11-18 14:00 **FENCE** (owner: "담장을 뚫는 버그"). Fences, railings, balustrades, stair cheeks, low walls and the cemetery gate now **collide where they are drawn** - the kit piece that draws them also pushes their collision (ENV_KIT §21). Nothing in the area shape changed (no part, spawn, exit, section or flag renamed or moved). What an area author must know: a `t:'fence'` part **is solid now** (it was drawn only: the hero stopped at the area edge 9 units behind the bars and the railing ran through his legs) - as tall as a low wall's collision (`collideH` 800 by default; a part may set its own `collideH`), so do not put a fence across a way the hero must walk; a slanted fence collides as a chain of boxes 8 long. Stair `cheeks`, a block's `balustrade` and the posts and leaves of `mesh:'cemgate'` collide too (an open gate's leaves narrow the gateway by about 14 a side: 132 free of the 160 between the old post blockers). A low wall (`style:'low'` / `rail` / `piers`) collides out to its pier caps and coping (8 beyond a face with piers, 3.5 with coping only). Check: `node tools/v2/world_fence_node.mjs` (every drawn piece, every area and geometry state, the rules' own moveXZ: the body circle r 14 may not reach into the drawn bars).
 - 11-18 02:55 **WORLD-2, final re-check** — nothing in the areas changed since 02:10; §13.5 now holds the numbers measured again on the final tree (every check of §10 / §13 exits 0; `story_check` 0 errors, 28 warnings "area is built now").
 - 11-18 02:00 **WORLD-2** (§13 — new section, everything below is additive; no spawn, exit, section, group or actor of the five older areas was renamed or moved). `AREAS[id](flags)` builds an area **for the given story flags** (`AREA_FLAGS`, §13.1); new interact kind **`ring`** (whip ring, §13.2) → `stage.hookPoints`; new areas **`belltower_now` · `ossuary_now` · `ossuary_past`** (§13.3); `eshville_now` actor `hadwin`, `eshville_past` actor `elise` (`when: 'elise_found'`), Edmund's `when` may be `past_street_clear`; `graveyard_*`: the ossuary forecourt is a terrace 140 above the field behind a broken stair — trigger `grave.edmund`, actor `edmund`, whip ring `depths_ring`, `interact road_bell`; new fields `area.flags`, `area.entry`, `area.knells`, `enemies[].rise`, `stage.folds`; `ENEMY_KINDS` + `banshee_queen`; draw calls per chunk went down (ENV_KIT §18). Numbers in §13.5.
@@ -301,3 +302,36 @@ The crate bridges the gap in 1697, but wood rots: tonight the gap is open again.
 
 ### 14.6 Other
 Collision added: the bone heap in `ossuary_now` at (440, 590). Bell posts of the ossuary are 136 high (were 160), candelabra of 1697 124 (were 170), the lantern stand 150 (was 190), the statue in the gap 136 (was 170), every coffin stack on the floor ≤ 104 with collision scaled to its size; the coffin wall is two low rows (110 / 96) inside the same blocker.
+
+## 15. BREAK (2026-11-18): `breakables` - things the hero breaks
+
+Code: rules `src/v2/play/breakables.js` (PLAY_API 13), meshes `src/v2/env/breakables.js`, scene `src/v2/game/breakables.js` (ENGINE_API 13). Placement check: `node tools/v2/world_validate.mjs` (the area walk now includes them). What stands where: `node tools/v2/break_dump.mjs <areaId>`.
+
+### 15.1 The field
+```js
+breakables: [ { kind: 'jar', x: 212, z: 266 }, { kind: 'barrel', x: 536, z: 262, rot: 0.3 }, { kind: 'crate', x: 2150, z: 250, drop: 'coin3' } ]
+```
+| key | meaning |
+|---|---|
+| `kind` | `jar` tall storage jar (r 17, 66 high) - `pot` round pot with two lugs (r 19, 40) - `urn` small lidded offering jar (r 11, 32) - `crate` nailed boards (r 27, 52) - `barrel` staves and three iron hoops (r 23, 70). r = half-size of the square collision box and radius of the hit circle (`BREAK_KINDS`) |
+| `x, z` | feet position on the ground; the height is the floor under it (pass `y` only where two floors lie over each other) |
+| `rot` | turn about y in radians (crates and barrels; clay ignores it so the gloss of the glaze faces the camera) |
+| `drop` | fixes what comes out: `'none'` - `'coin'` (count from the table) - `'coin3'` (that many, up to 8) - `'heal'` - `'reso'`. Absent = drawn from the kind's table (PLAY_API 13.3) |
+
+The index in the list is the thing's id (the scene remembers what is broken by `kind@x,z`). The list must not depend on story flags that can change while the hero stands in the area (none does).
+
+### 15.2 Placement rules (`validateArea` fails otherwise)
+- stands on level ground (the four corners of its footprint within 1.5 of its centre), not inside a wall or a prop, the hero can get to it, no two overlap;
+- clear of every exit box by its r + 30, outside every trigger box, r + 34 from a person's body, r + 40 from an interact hot spot, r + 60 from a spawn point, r + 50 from where an enemy starts;
+- **never in the way**: the area is flooded twice with the kit's own collision - once without the breakables, once with all of them whole - for the hero (body radius 14: nothing walkable may be cut off) and for a body of radius 40 (a way that was 80 wide must stay 80 wide; exits, triggers, hot spots and people that were reached with that margin must still be).
+- On Eshville's street the kerb begins at z 280: breakables stand in front of it (z + r <= 279).
+- Where a static jar, crate or barrel of the kit stood at such a spot it was taken out of the stage (list in the change line above). `goods` (one generated model of barrels, crates and sacks) and Rook's crate stay static.
+
+### 15.3 Where they stand
+| area | n | groups |
+|---|---|---|
+| `eshville_now` | 23 | outskirts: pot + jar by the first ruin, barrel + jar after the wreck, a jar between cart and goods, a crate before the street - street: barrel + jar + urn left of the inn, pot where the sacks lay, crate + jar at the house of the trapped villager, barrel + pot at the smithy side, a jar by the hay - square: jar + barrel in the north-west corner, barrel + crate + jar east of the church steps, a pot on the east wall - church terrace: two offering urns |
+| `eshville_past` | 23 | the same corners dressed for the harvest market: jars and a pot on the harvest road, two jars + urn where the "untextured" sacks stood, jar + pot + crate at the stalls of the square |
+| `graveyard_now` / `graveyard_past` | 17 | two urns on the road's edge - barrel, crate and jar at the keeper's hut - seven offering urns beside gravestones - a pot and a jar by the two coffins, a pot at the east wall - two urns on the ossuary terrace |
+| `belltower_now` | 8 | the store room at the foot (barrel, jar, pot) - a crate or a barrel on a landing of floors 1-3 - a crate and an urn in the keeper's corner of the bell chamber |
+| `ossuary_now` / `ossuary_past` | 10 | urns by the two mourners, at the altar, beside the three sarcophagi - a jar + urn and a pot against the walls of the lantern room. None in the gap room and none on the fight floor of the last hall |

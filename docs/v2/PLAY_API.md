@@ -3,6 +3,7 @@
 2026-11-18 (3차) · 담당 PLAY · 공개 면은 `src/v2/play/index.js` 하나 · 검사 `node tools/v2/play_rules_test.mjs` · `node tools/v2/play_motion_check.mjs` · `node tools/v2/play_alloc.mjs` · 보기 `tools/v2/play_view.html`
 
 **바뀐 것**
+- 2026-11-18 17:20 (BREAK · 주인: "항아리 같은것들은 쨍그랑 소리와 함께 깨지고 랜덤으로 아이템, 돈 등이 나오면") **더하기만 했다 — §13.** 새 파일 `src/v2/play/breakables.js`. 세계의 `W.breakables` → `sim.breakables[]`(멀쩡할 때는 단단한 상자) · `sim.pickups[]`(40칸 풀) · `sim.brkLive` · `sim.pickN`. 영웅의 모든 판정 모양(연타 1·2·3 · 훑기 · 모아 휘감기 · 내려베기와 그 착지 원)이 한 번에 깬다. **구르기는 도기(jar · pot · urn)만 깨고 속도를 잃지 않는다**(나무 상자 · 술통은 구르기를 막는다). 적 · 적의 탄은 깨지 못한다. 새 사건 `break` · `drop` · `pickup` · `pickupLand`, 새 영웅 칸 `hero.coins`, 새 함수 `sim.seedDrops(seed)` · `sim.breakAt(x, z, r, by)`. 내보내는 이름: `BREAK_KINDS` · `DROP_TABLE` · `PICK` · `WHAT` · `seedBreak` · `breakOne` · `breakSilent` · `spawnPickup`. `sim.js` 에 고친 자리는 여덟 줄(`BREAK` 로 찾는다). `play_rules_test` 113 → 145.
 - 2026-11-18 11:55 (SPEED-FIRE · 주인: "움직임이 느린 느낌") 숫자만 바뀌었다 — 이름 · 모양 · 규칙은 그대로. `tune.js`: 달리기 275 · 208 → **410 · 310** · accel 20 → 28 · airAccel 9 → 12 · turnRate/pivotRate 14.8 → **17.4**(한 프레임 17° 아래 — 툭 꺾이지 않는 한계) · turnEase 30 → 36 · brake 18 → 26 · walkBelow 120 → 150(1.25배만: 걷기 보폭이 짧아 더 올리면 종종걸음) · 구르기 0.46초/150/쉼 0.62 → **0.35초/175/0.48**(무적 0.3 → 0.26, 훑기 받기 0.26 → 0.24) · 점프 720/2300 → 822/3000(높이 113 그대로, 공중 0.62 → 0.53초) · landT 0.12 → 0.1 · 모으기 0.3/0.55 → 0.25/0.44 · 새 `stopSkidT` 0.25(미끄러져 서는 그림 길이, 예전 0.3 고정) · 새 `enemyPace` 1.2(적의 걷기 빠르기 배수 — `KINDS[k].speed` 는 곱한 값, 표의 숫자는 `speed0`; 예고 windup 은 그대로). `moves.js`: 규칙 시간(dur · hit · cancel · free · step · recover)을 모두 0.78배(1.28배 빠름), 클립 초(strike · lead · tail)는 그대로 → 같은 클립을 빨리 튼다(판정은 여전히 칼이 지나는 구간 위). 내려베기 fallV −520 → −600. 돌아서기 뒤 박차는 발 = 마지막으로 디딘 발의 반대(`hero.pivotG` · `hero.lastStep`; 예전엔 늘 오른발이라 발소리가 R R 로 겹칠 수 있었다). `motion.js`: 걷던 빠르기로 돌아서면 제자리걸음으로 도는 경계 150 고정 → `walkBelow + 30`(180). 시간표: `node tools/v2/speedfire_times.mjs`.
 - 2026-11-18 02:15 (PLAY2-VERIFY · 검증하며 고친 작은 것 셋) 내보내는 이름 · 모양은 그대로다.
   - **뗀 종 단추가 뒤늦게 울리던 것**: 종과 솜씨를 같은 틱에 누르거나 모으는 도중에 종을 눌렀다 떼면, 그 동작이 끝난 뒤(0.5–0.7초 뒤) 메아리가 저절로 나갔다 → 다른 도구 · 모으기가 영웅을 쥔 동안 종을 떼면 그 누름을 잊는다(`sim.js _tools`).
@@ -326,3 +327,42 @@ GDD §4 ① · §9.1(104–114분): "조종을 쳐 노래를 깨고, 그 밤으�
 | 움직임(`driveHero` · `driveActor` — 라이브러리 클립) | 동작 — `play_motion_check` 53/53, 붙임 그림 52묶음(`node tools/v2/play_shot.mjs` → `/tmp/claude-0/v2/play/`)으로 눈으로 봄 · 본 게임 장면(`v2g`)에서 오류 없이 돈다(`tools/v2/game_probe.mjs`) |
 | 모아 휘감기 · 솜씨(채찍 걸기 / 세라의 등불) · 종(메아리 / 길게 → 조종) · 보스 밴시 여왕 | 동작 (규칙 · 시험 화면). 장면에 꽂는 것 — 입력 `skill` · `bell` · `bellHeld`, 예고 표시, 빛, 고리, 보스 막대 — 은 장면 · UI 의 일(requests.md "PLAY-2") |
 | 약한 곳 | 반전의 버티는 자세가 여전히 크게 젖는다(클립 `run_stop`; 윗몸만 9° 세웠다) · 내딛을 때 앞발은 아직 미끄러진다(땅에 닿은 발 43 %) · 걷기의 발 미끄러짐 18 % · 모으는 자세가 밋밋하다 · 채찍 전용 동작이 없다(칼 휘두름 클립 + 띠) · 여왕의 손은 주먹(노래하는 손 못 함) · 무릎 꿇음은 숙인 채 떠 있는 자세 · 솜씨의 고르는 판 없음 · 틱마다 쓰레기가 0 은 아니다(§12) |
+
+## 13. 깨지는 것과 줍는 것 (BREAK, 2026-11-18) — `src/v2/play/breakables.js`
+
+(English, so every lane reads it fast.) Rules only: data with hit circles, no screen. Nothing is allocated per tick (the records, the 40 pool objects and one probe are made in `Sim.reset()`).
+
+### 13.1 Breakables
+- `W.breakables = [{ kind, x, z, rot?, drop?, y? }]` (AREA_FORMAT 15) -> `sim.breakables[i] = { id (= index), kind, mat ('clay'｜'wood'｜'barrel'), def (BREAK_KINDS row), x, y, z, r, h, rot, drop, broken, by, box }`. `box` is its collision box in `W.boxes` (`brk: id`; made by the scene's area loader so every box keeps one key layout, or pushed by the rules in tests): `solid` while whole -> the hero and the enemies walk around it; it is switched off in the tick the thing breaks.
+- `BREAK_KINDS`: `jar` r 17 h 66 - `pot` r 19 h 40 - `urn` r 11 h 32 (clay, `roll: true`) - `crate` r 27 h 52 - `barrel` r 23 h 70 (wood, `roll: false`).
+- **What breaks them - one hit, always**: every hero hit shape, tested exactly like an enemy (`_inShapeO` with the thing's x, z, r, y, h) from `Sim._heroHit`: `c1 c2 c3 sweep whip plunge`; the plunge's landing ring (`breakCircle`); and `sim.breakAt(x, z, r, by = 'area')` for a skill that hurts in an area (-> how many broke). The bell's echo and the hunter's call hurt nobody and break nothing.
+- **The roll**: while the hero rolls, clay whose box the body would touch in this tick's move breaks *before* the move (`rollBreaks`: the same square the walls stop, swept one step ahead, +2), so the roll is never clipped - measured: 180.2 px with and without three jars in the way. Crates and barrels are left whole and stop the roll at their side like any prop.
+- **Enemies never break them**: nothing in an enemy's attack, shot or body path calls this module (test: a soldier, an armour, a mage and a bat fight beside two jars and a crate for 14 s).
+- `breakOne(sim, b, by, dx, dz, silent)` is the one place a thing breaks; `breakSilent(sim, ids)` breaks without events or drops (the scene's memory of this visit). `sim.reset()` stands everything up again.
+
+### 13.2 Events (all also through `hooks.event(name, ...)`)
+| hook | arguments | when |
+|---|---|---|
+| `break` | `(b, by, dirX, dirZ)` | a thing broke. `b` = its record (kind, mat, x, y, z, r, h, rot), `by` = `'c1'｜'c2'｜'c3'｜'sweep'｜'whip'｜'plunge'｜'roll'｜'area'`, direction = from the hero to the thing (the roll: the roll's direction), unit length |
+| `drop` | `(what, n, b)` | right after `break`: `what` = `'none'｜'coin'｜'heal'｜'reso'`, `n` = how many pickups pop out (coins 1-5, heal and resonance 1, none 0) |
+| `pickup` | `(what, n, p)` | the hero took one (`p` = the pool object, already off) |
+| `pickupLand` | `(p, speed)` | a pickup touched the ground in its arc (the scene plays a coin's clink; not passed on to the story) |
+
+### 13.3 Drops - the table (`DROP_TABLE`, shares in percent)
+| kind | nothing | coins (count) | heal | resonance |
+|---|---|---|---|---|
+| `urn` | 46 | 34 (1-2) | 12 | 8 |
+| `pot` | 40 | 35 (1-3) | 15 | 10 |
+| `jar` | 38 | 36 (1-4) | 15 | 11 |
+| `crate` | 32 | 40 (2-5) | 17 | 11 |
+| `barrel` | 30 | 40 (2-5) | 18 | 12 |
+
+The count of coins is uniform in its range. Randomness is `mulberry32` on `sim.brkSeed` - **no `Math.random`**; the scene seeds it per visit (`sim.seedDrops(seed)`, address `?v2seed=N` fixes it), tests fix it. Measured over 10,000 seeded breaks per kind: every share within 0.7 points of the table.
+
+### 13.4 Pickups (`sim.pickups[]`, `PICK`)
+Pool object: `{ on, what (0 coin｜1 heal｜2 resonance), x, y, z, vx, vy, vz, gy (the floor it belongs to), t (age), rest, pull, n, seq }`.
+- pop out at 55 % of the thing's height, 70-165 px/s within about 70 degrees of the hit direction and 300-430 up; gravity 1500; bounce 0.42 (a `pickupLand` each time) until slower than 90, then `rest`.
+- **walls and floors**: the body (r 6) is moved by the rules' own `moveXZ` at the height of *its floor*, so a low wall or a fence stops it however high it flies; a move onto a spot with no floor within 20 below (an edge, a pit) is turned back. A pickup never rests under a floor, inside a wall or beyond an edge (tests: 300 coins thrown from jars along walls and in corners; coins thrown at a floor edge).
+- after 0.28 s, within `pullR` 118 of the hero (and within 90 of his height) it flies to his chest at up to 560 px/s (he runs 410); within `takeR` 24 it is taken: coin -> `hero.coins += 1`, heal -> `hero.hp = min(hpMax, hp + 12)`, resonance -> `addReso(0.34)` (never above `resoMax`).
+- **a heal piece at full health and a mote at full resonance are neither pulled nor taken** - they stay where they lie until needed or until they time out.
+- after `life` 12 s it is gone (the scene blinks it for the last 3 s).

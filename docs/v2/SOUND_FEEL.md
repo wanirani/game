@@ -379,3 +379,22 @@ feel.release();                       // 고리 정지 + 엔진의 방 울림을
 - **들어 보기용 `demo_*.m4a` 는 AAC 로 묶은 뒤 풀면 피크가 +0.9 ~ +1.7 dBFS** 다(엔진 출력은 −0.7). 재생기에 따라 시연 파일이 살짝 깨져 들릴 수 있다 — 게임 소리가 아니라 캡처 파일의 문제이니 귀로 판단할 때 감안할 것.
 - **발소리가 아주 작다**: `step.*` 은 −41 ~ −31 LUFS-M 로 약한 타격(−24.8)보다 7–17 dB 작다. 폴드 스피커에서 안 들릴 수 있다 — 먼저 들어 볼 목록(§10-1)에 넣을 것.
 - 날아가는 마법의 고리 소리(`loop.magic.*`)는 효과 엔진이 탄의 자리를 밖으로 내주지 않아 아직 붙일 수 없다. 적 정의에 `material` 이 없어 통합 초기에는 모든 적이 한 재질로 들린다.
+
+## 14. 깨지는 것의 소리 (BREAK, 2026-11-18)
+
+(English.) Events in `src/v2/feel/table.js` `EVENT` (made like the others: layers + recipe); samples synthesized by `python3 tools/v2/audio/build_break_audio.py` into `assets/v2/audio` (18 files, 128 KB, entries merged into `index.json` - the folder ships whole).
+
+| event | layers | recipe |
+|---|---|---|
+| `break.clay` | `n clay_crash` 0.92 - `o candle` 0.5 p 1.12 (q1) - `n clay_tinkle` at 0.09 s, random start (q1) - `n debris` at 0.13 s p 1.5 (q2) | bus `f3_enemy`, gain 1.15, haptic `breakL`, stop 0.03, shake 0.07 |
+| `break.clay.b` | `n clay_crash` p 1.08 - `o candle` p 0.9 (q1) - `n clay_tinkle` at 0.16 s p 1.12 | same |
+| `break.clay.c` | `n clay_crash` p 0.94 - `o hit_stone` p 1.3 (q1) - `n clay_tinkle` at 0.05 s p 0.9 (q1) - `n debris` at 0.2 s (q2) | same |
+| `break.crate` | `n wood_crack` - `o step_wood` p 0.8 - `s knock` (q1) - `n wood_clatter` at 0.07 s - `n debris` (q2) | gain 1.1, `breakL`, stop 0.035, shake 0.09 |
+| `break.barrel` | `n wood_crack` p 0.78 - `s thud` - `n wood_clatter` p 0.82 at 0.08 s - `n hoop_ring` at 0.05 s - `o clang` p 0.7 (q2) | gain 1.15, `breakL`, stop 0.04, shake 0.11 |
+| `pickup.clink` | `n coin_clink` | bus `f3_foley`, gain 0.7 |
+
+- **Why it says clay**: `clay_crash` (4 variants, 0.55-0.66 s) = the snap of the wall + a dry band-passed clack + **the hollow knock of the vessel** (380-570 Hz, 24 ms - a pane of glass has none) + a short bright ring of six inharmonic partials (base 1.0-1.4 kHz, 50 ms) + big pieces landing (0.85-2.5 kHz) + small shards raining down with bounces (1.6-5.2 kHz). Measured spectrum of the four files: 17-21 % in 300 Hz-1 kHz, 57-66 % in 1-3 kHz, 13-19 % in 3-8 kHz (a struck glass sample of the old pack: 100 % in 1-3 kHz, no body, 0.05 s).
+- **Never the same twice**: three layer sets (the scene never repeats one in a row) x 4 crash variants and 3 tinkle variants (the bank never repeats the last variant) x the scene's pitch 0.9-1.14 and level 0.9-1.1 x each layer's own +-4.5 % pitch, +-8 % level x a random start of the tinkle layer (0.08-0.14 s) x the kind's size (urn 1.2, pot 1.0, jar 0.9).
+- Wood: `wood_crack` (two cracks 20-40 ms apart, a 140-230 Hz knock, splinters), `wood_clatter` (6-9 boards landing: free-bar modes 260-880 Hz), `hoop_ring` (an iron hoop: partials of 690 / 820 Hz, three bounces, a wobble that speeds up as it settles).
+- Haptic `breakL`: pad weak motor 0.3 for 45 ms, phone 6 ms (the lightest enemy blow that vibrates a phone, `hitM`, is 8 ms).
+- Honest: all of it is synthesis by formula, judged by spectrum and envelope in this container - nobody has heard it on a phone speaker yet.
