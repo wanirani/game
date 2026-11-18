@@ -2,6 +2,7 @@
 // docs/v2/AREA_FORMAT.md. One layout function for both nights: 'now' = mist, ghosts, leaning and broken stones, the keeper's hut in ruins;
 // 'past' (1697) = a tended graveyard: upright stones, three Valkrein stones instead of four, warm lanterns, the keeper at his hut, plague corpses on the road.
 import { D, rnd, inChunk, rect, house } from './gen.js';
+import { beyondGraveyard } from './beyond.js';   // WORLD-LOOK: the cemetery beyond its walls (AREA_FORMAT 16)
 
 /** flags (docs/v2/AREA_FORMAT.md 13): bell_hung · ossuary_open · carved_a · carved_b */
 export function graveyard(era = 'now', flags = {}) {
@@ -74,6 +75,7 @@ export function graveyard(era = 'now', flags = {}) {
     ...['a', 'b'].filter((g) => flags['carved_' + g]).map((g) => ({ t: 'deco', mesh: 'candles', x: g === 'a' ? 300 : 900, z: 1540, n: 3, light: { r: 150, i: 0.8, y: 20 } })));
   if (now) { for (const [x, z] of [[300, 1200], [900, 1250], [600, 1520], [320, 1800], [880, 1820], [600, 1980]]) anchors.push({ id: `mist_${x}_${z}`, kind: 'mist', x, y: z > 1850 ? TY : 0, z, size: 2.4 }); anchors.push({ id: 'fog_field', kind: 'fog_bank', x: 600, y: 0, z: 1500, size: 8 }); }
   else anchors.push({ id: 'mist_low', kind: 'mist', x: 600, y: 0, z: 1500, size: 1.5 });
+  P.push(...beyondGraveyard(now));   // WORLD-LOOK: more graves, bare trees and low hills beyond the walls - nothing of it is reachable
   const S = [0, -1], N = [0, 1];
   const enemies = !now ? [[540, 380], [660, 300], [600, 640]].map(([x, z]) => ({ kind: 'plague_corpse', x, z, group: 'road' })) : [
     ...[[540, 380], [660, 300]].map(([x, z]) => ({ kind: 'skeleton_soldier', x, z, group: 'road' })), ...[[600, 520], [560, 660], [650, 720]].map(([x, z]) => ({ kind: 'bat', x, z, group: 'bats' })),
@@ -90,7 +92,7 @@ export function graveyard(era = 'now', flags = {}) {
       // WORLD-LOOK: the fog begins BEHIND the figures (near 380 put 44 % fog on the hero himself at the field camera's 830 px: figure and ground melted into one grey);
       // the characters get a cold moon key and a light edge on their dark side (light.key / light.rimK - src/v2/game/charr.js), the ground stays as dark as it was
       fog: now ? { color: [0.1, 0.135, 0.15], near: 900, far: 2500, max: 0.96 } : { color: [0.06, 0.085, 0.135], near: 900, far: 3200, max: 0.92 },
-      light: now ? { ambient: [0.25, 0.31, 0.37], moon: [0.42, 0.52, 0.6], moonDir: [-0.447, 0.745, -0.496], key: [0.34, 0.44, 0.6, 1.8], rimK: 1.9 } : { ambient: [0.28, 0.32, 0.45], moon: [0.46, 0.5, 0.7], moonDir: [-0.447, 0.745, -0.496], key: [0.3, 0.36, 0.52, 1.7], rimK: 1.8 },
+      light: now ? { ambient: [0.25, 0.31, 0.37], moon: [0.42, 0.52, 0.6], moonDir: [-0.447, 0.745, -0.496], key: [0.34, 0.44, 0.6, 1.8], rimK: 2.0 } : { ambient: [0.28, 0.32, 0.45], moon: [0.46, 0.5, 0.7], moonDir: [-0.447, 0.745, -0.496], key: [0.34, 0.4, 0.56, 1.8], rimK: 2.0 },
       sections: [
         { id: 'road', label: '묘지 가는 길', x0: 0, x1: 1200, z0: -100, z1: 900, cam: camV },
         { id: 'field', label: '안개의 묘지', x0: 0, x1: 1200, z0: 900, z1: 2300, cam: { yaw: 0, pitch: 26 * D, dist: 880, lookY: 30, leadX: 0, leadZ: 60, minX: 380, maxX: 820, zFollow: 1, tallK: 0.12 } },

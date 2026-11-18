@@ -50,7 +50,7 @@ try {
       for (const t of [0.1, 0.22, 0.32, 0.42]) { await until('ring', t); await shot('ring'); }
       const P = A.years ? [0.08, 0.6, 1.2, 1.8, 2.4, 2.92] : [0.08, 0.45, 0.8, 1.15];
       for (const t of P) { await until('passage', t); await shot('passage'); }
-      for (const t of [0.14, 0.3, 0.45, 0.6, 0.7]) { await until('reveal', t); await shot('reveal'); }
+      for (const t of [0.12, 0.28, 0.44, 0.6, 0.76, 0.86]) { await until("reveal", t); await shot("reveal"); }
       await until('glow', 0.1); await shot('land'); await until('glow', 0.4); await shot('glow'); await waitDone(); await steps(page, 50); await shot('after');
     }
   } else {

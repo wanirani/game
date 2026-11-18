@@ -4,7 +4,7 @@
 //   ring     the toll, the world slows, a ring of light runs outward over ground, walls and people (0.5 s; from the frame's depth)
 //   passage  the last picture of the night being left stays as a frozen copy and time runs over it while the twin loads
 //            (>= 1.2 s, 3 s with the year count for `years`); one full-screen pass, nothing of the world is drawn
-//   reveal   the new night opens as a ring from the bell: old picture outside, live night inside (0.75 s), then the second toll
+//   reveal   the new night opens as a ring from the bell: old picture outside, live night inside (0.9 s), then the second toll
 //   glow     the badge turns over, the controls come back, light settles on hero and bell
 //   dull     the refusal: a ring that gutters out after a metre or two, a grey puff, the dull toll - nothing changes
 // Picture: while gather / ring / reveal run, the scene is drawn into a copy of the frame (colour + depth texture) and one pass
@@ -17,14 +17,14 @@ import { feel } from '../feel/index.js';
 import { input } from '../../core/input.js';
 import { loadArea, freeSpot } from './area.js';
 
-export const CROSS_T = { gather: 0.1, ring: 0.5, dull: 0.5, pass: 1.2, years: 3.0, reveal: 0.75, glow: 1.1, back: 0.22, turn: 0.7 };
+export const CROSS_T = { gather: 0.1, ring: 0.5, dull: 0.5, pass: 1.2, years: 3.0, reveal: 0.9, glow: 1.1, back: 0.22, turn: 0.7 };
 const YEAR = { past: 1697, now: 1797 };
 const BUDGET = 9;          // ms of loading work per frame before the load lets a frame through (breath())
 const R_END = 6600;        // world units: a ring this wide has left every picture
 const GLOW_PAST = [1.0, 0.8, 0.5], GLOW_NOW = [0.7, 0.86, 1.0];
-/** radius of a ring k (0..1) of its time after it left the bell: about 18 m in the first four fifths (the part of the world the camera sees - the eye can
- *  follow it), then out past everything */
-const ringR = (k) => (k < 0.8 ? 1800 * Math.pow(k / 0.8, 1.35) : 1800 + (R_END - 1800) * ((k - 0.8) / 0.2) * ((k - 0.8) / 0.2));
+/** radius of a ring k (0..1) of its time after it left the bell: 9 m in the first four fifths (the part of the world the camera sees around the
+ *  bell - the eye can follow it there), then out past everything */
+const ringR = (k) => (k < 0.8 ? 900 * Math.pow(k / 0.8, 1.2) : 900 + (R_END - 900) * ((k - 0.8) / 0.2) * ((k - 0.8) / 0.2));
 
 const VS = `#version 300 es
 out vec2 vUV;
@@ -67,15 +67,15 @@ vec3 aged(vec2 uv) {
   float band = vn(vec2(uv.x * 1.7 + uv.y * 0.8 - sp, uv.y * 1.1 + 3.0)) * 0.65 + vn(vec2(uv.x * 4.3 - sp * 2.1, uv.y * 2.6 + 9.0)) * 0.35;
   float sh = smoothstep(0.38, 0.7, band);
   c *= 1.0 - sh * k3 * (0.34 + 0.2 * g);
-  c += (1.0 - sh) * k3 * 0.075 * (dir > 0.0 ? vec3(0.5, 0.68, 1.0) : vec3(1.0, 0.46, 0.3));
+  c += (1.0 - sh) * k3 * 0.07 * uTo * vec3(0.8, 0.84, 0.95);
 #ifndef LOW
   // streaks of cloud rush past (thicker towards the top), rain towards tonight, sparks towards 1697
   float cy = smoothstep(0.2, 1.0, uv.y);
   float cl = vn(vec2(uv.x * 2.4 - sp * 2.4, uv.y * 13.0 + 1.7)) * vn(vec2(uv.x * 1.1 - sp * 1.3, uv.y * 4.0 + 5.0));
-  c += cl * cl * (0.25 + cy) * k3 * 0.75 * (dir > 0.0 ? vec3(0.6, 0.72, 0.95) : vec3(0.95, 0.5, 0.36));
+  c += cl * cl * (0.25 + cy) * k3 * 0.7 * uTo * vec3(0.72, 0.74, 0.8);
   vec2 rp = vec2(uv.x * uBellS.z * 120.0 + uv.y * 14.0, uv.y * 1.5 + dir * t * 4.6);
   float rn = h21(vec2(floor(rp.x), 3.0)), ry = fract(rp.y + rn * 9.0);
-  c += step(0.88, rn) * smoothstep(0.0, 0.1, ry) * smoothstep(0.7, 0.15, ry) * k3 * (dir > 0.0 ? vec3(0.16, 0.2, 0.28) : vec3(0.34, 0.17, 0.07));
+  c += step(0.88, rn) * smoothstep(0.0, 0.1, ry) * smoothstep(0.7, 0.15, ry) * k3 * 0.26 * mix(uGlow, uTo, 0.5);
   // dust and ash: settle towards tonight, lift towards 1697 (two layers, the near one larger and faster)
   for (int i = 0; i < 2; i++) {
     float fi = float(i), n = 9.0 + fi * 8.0;
@@ -83,7 +83,7 @@ vec3 aged(vec2 uv) {
     vec2 cell = floor(gp), f = fract(gp) - 0.5;
     float rd = h21(cell + fi * 17.0), d = length(f - (vec2(rd, fract(rd * 7.3)) - 0.5) * 0.7);
     float speck = smoothstep(0.09 - fi * 0.03, 0.0, d) * step(0.5, fract(rd * 13.7));
-    c = mix(c, dir > 0.0 ? vec3(0.62, 0.66, 0.74) : vec3(1.0, 0.6, 0.3), speck * k3 * (0.6 - fi * 0.2));
+    c = mix(c, dir > 0.0 ? vec3(0.62, 0.66, 0.74) : uGlow, speck * k3 * (0.6 - fi * 0.2));
   }
   c += (h21(uv * 431.0 + fract(t * 7.3) * 61.0) - 0.5) * 0.08 * k3;   // grain
 #endif
@@ -128,7 +128,7 @@ void main() {
     c += gl * (rim * (1.5 + tw * 1.3) + halo + tail * 0.38 * (1.0 - uRing.w)) * uRing.y * fl;
   } else {
     c = mix(aged(vUV), c, smoothstep(wd, -wd, x));
-    c += uGlow * (rim * (1.8 + tw * 2.2) + halo * 0.8 + tail * 0.3) * uRing.y;
+    c += uGlow * (rim * (1.7 + tw * 2.2) + halo * 0.5 + tail * 0.16) * uRing.y;
   }
   o = vec4(c, 1.0);
 }`;

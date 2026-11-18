@@ -11,6 +11,7 @@ import * as K from './kit.js';
 import { PROPS, WALLPROPS } from './props.js';
 import { bakedDef, bakedProp } from './baked.js';
 import { BAKED_EXTRA, BAKED_ARGS, cemgateBoxes } from './props2.js';
+import './props4.js';                                     // WORLD-LOOK: what lies beyond an area's edge (apron, ridge, treeline, farhouse, farwall, gravefield) + wall dressing (boards, crack, ivy, drape)
 import { GEN_ALIAS } from './props3.js';                  // WORLD-2: whip ring, road bell, bridges, crypt furniture stand-ins + names of generated second tries   // WORLD 구역의 소품을 PROPS 에 더한다 + 구운 소품에 덧붙이는 것
 
 /** 구운 소품이 없을 때(묶음을 받기 전) 대신 세우는 손으로 짠 소품 */

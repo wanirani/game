@@ -4,6 +4,7 @@
 //   outskirts (x -60..1500) -> main street (1500..3300) -> square with the well (3300..4700, z 0..900)
 //   -> church front + bell tower door (z 900..1770)   and the graveyard road (x 4480..4700, z 900..1300)
 import { D, house, inChunk, rect } from './gen.js';
+import { beyondEshville } from './beyond.js';   // WORLD-LOOK: the land beyond the walls (AREA_FORMAT 16)
 
 const BLACK = [0.14, 0.13, 0.16], RED = [0.62, 0.12, 0.14], BLUE = [0.2, 0.26, 0.5];
 const FIRE = (r = 420, i = 2.0) => ({ r, i, y: 30, c: [1, 0.5, 0.2] });
@@ -143,6 +144,7 @@ export function eshville(era, flags = {}) {
   interact.push({ id: 'big_bell', kind: 'bell', x: 4200, z: 1408, y: 84, r: 80, label: '종 치기', event: 'bell.ring' }, { id: 'church_rest', kind: 'rest', x: 3640, z: 1570, y: 84, r: 70, label: '촛불', event: 'rest' },
     { id: 'well', kind: 'sign', x: 3900, z: 400, r: 70, label: '우물', event: 'sign.well' }, { id: 'rook_shop', kind: 'shop', x: 3440, z: 140, r: 70, label: '로크', event: 'shop.rook' });
 
+  P.push(...beyondEshville(now, out));   // WORLD-LOOK: fields, the west road, the churchyard behind the church, the lane to the graveyard - nothing of it is reachable
   if (out) for (const t of triggers) delete t.wake;   // the fires are out and the dead are gone: the triggers stay (same ids) but wake nobody
   const camH = { yaw: 12 * D, pitch: 20 * D, dist: 790, lookY: 64, leadX: 90, leadZ: 0, zFollow: 0.55 };
   const sections = [
