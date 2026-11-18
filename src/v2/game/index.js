@@ -18,7 +18,7 @@ import { KIT_TEX } from '../env/mats.js';
 import { Sim, TUNE, KINDS, driveHero, driveActor } from '../play/index.js';
 import { driveHero as PLACEHOLDER_DRIVE_HERO } from '../char3d/hero3d.js';
 import { createFx, PRESET_IDS, hurtFlash, dissolveK } from '../fx/index.js';
-import { TRAIL } from '../fx/presets.js';
+import { createWhip, WhipRenderer, whipFx, driveWhip } from '../whip/index.js';
 import { RB } from '../fx/engine.js';
 import { feel, FLAG } from '../feel/index.js';
 import { bindFxSound } from '../feel/fxbridge.js';
@@ -44,7 +44,7 @@ const TEX_SRC = {
 };
 const HIDE_BTNS = ['sub', 'skill1', 'skill2', 'ult', 'swap', 'mount', 'guard', 'lock', 'auto', 'maptog', 'bag'];   // v1 pad buttons with no meaning here (pause = leave, fullscreen stay)
 const DASH_TRAIL = RB({ mode: 1, life: 0.24, width: 58, col: [0.45, 0.8, 2.2, 0.5] });
-const WHIP_CORD = RB({ mode: 1, life: 0.07, width: 8, col: [1.7, 1.35, 0.8, 0.9] });
+const CRACK_K = { L: 0.7, M: 1, H: 1.3, F: 1.6 };   // strength of the lash's crack by the move's strength (docs/v2/WHIP.md 7-3)
 const SUN = [0.56, 0.56, 0.62], AMB = [0.76, 0.77, 0.84], RIM_HERO = [0.6, 0.7, 1, 0.5], RIM_WARN = [1.7, 0.35, 0.2, 0.85], RIM_ENEMY = [0.55, 0.65, 0.9, 0.35], RIM_PEOPLE = [0.6, 0.66, 0.85, 0.3], RIM_NONE = [0, 0, 0, 0];
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const hyp = (x, y, z = 0) => Math.sqrt(x * x + y * y + z * z);   // Math.hypot makes a temporary array per call in V8
@@ -72,6 +72,11 @@ export default class V2Game extends Scene {
     this.heroA = null; this.actors = []; this.pool = new Map(); this._ERef = null;
     this.bridge = bindFxSound(feel); this.feelN = 0; this.lastFeel = null; this._actE = null; this._simSteps = false;
     this.shotL = new Array(32).fill(null); this.shotN = 0;
+    // the whip Vigilia (src/v2/whip, docs/v2/WHIP.md 7): simulated from the hero's hand every tick, drawn right after the characters
+    this.whip = null; this.wr = null; this.whipLink = null; this._whipTier = ''; this._whipReset = true; this._whipVp = [0, 0];
+    this.whipHand = { x: 0, y: 0, z: 0, dx: 0, dy: 1, dz: 0, bx: 0, by: 0, bz: 0, br: 12, bh: 104, fx: 1, fz: 0, ground: 0 };
+    this.whipPullE = null; this.whipPull = { x: 0, y: 0, z: 0, r: 12 }; this.whipCrack = { x: 0, y: 0, z: 0, strength: 1 };
+    this._whipEv = (n, e) => { const L = this.whipLink; if (!L) return; if (n === 'ring') { const s = L.sound; L.sound = false; L.onEvent(n, e); L.sound = s; } else L.onEvent(n, e); };   // the bell's sound comes from the rules (holy.bell / bell.toll): only the picture of the whip's ring here
     this.cam = { yaw: 0, pitch: 0.35, dist: 800, lookY: 60, leadX: 0, leadZ: 0, face: 1, tx: 0, ty: 0, tz: 0, px: 0, py: 300, pz: -700, snap: true, fx: 0, fy: -0.3, fz: 0.95, zf: null, ck: 0, tallK: 0.4, minX: -1e5, maxX: 1e5, lastCenter: null };
     this.camP = { px: 0, py: 300, pz: -700, fx: 0, fy: -0.3, fz: 0.95 };
     this.vp = new Float32Array(16); this.eye = new Float32Array(3); this.eye0 = new Float32Array(3); this.camR = new Float32Array(3); this.camU = new Float32Array(3); this.camF = new Float32Array(3);
@@ -111,6 +116,7 @@ export default class V2Game extends Scene {
     try { feel.setTimeScale(1); feel.release(); } catch { /* no audio */ }
     try { const hd = this.hud; if (hd) (hd.release ?? hd.dispose)?.call(hd); } catch { /* ui lane */ }
     if (this.fx) { try { this.fx.dispose(); } catch { /* lost context */ } this.fx = null; }
+    if (this.wr) { try { this.wr.destroy(); } catch { /* lost context */ } this.wr = null; } this.whip = null; this.whipLink = null; this.whipPullE = null;
     if (this.cr) { this.cr.destroy(); this.cr = null; }
     if (this.glr) { this.glr.destroy(); this.glr = null; }
     for (const c of this._canvases ?? []) { c.width = 1; c.height = 1; }
@@ -398,14 +404,14 @@ export default class V2Game extends Scene {
     if (!this.cr) { this.cr = new CharRenderer(glr.gl, { maxJoints: 32 }); this.cast = new Cast(this.cr); this._restored = glr.restored; }
     // models: the hero, the enemy kinds this area spawns, the people who live here. What the new area does not use is freed first
     // (GPU memory stays bounded by one area). People get half-size textures: they stand in the background of a fight.
-    const eModels = [...new Set(kinds.map((k) => KINDS[k].model))], weapons = ['blade', ...new Set(kinds.map((k) => KINDS[k].weapon).filter(Boolean))];
+    const eModels = [...new Set(kinds.map((k) => KINDS[k].model))], sword = !glr.webgl2, weapons = [...(sword ? ['blade'] : []), ...new Set(kinds.map((k) => KINDS[k].weapon).filter(Boolean))];   // WebGL1 has no whip renderer: the box sword stays there
     const pModels = People.models(area).filter((m) => m !== HERO_MODEL && !eModels.includes(m));
     this._dropModels(new Set([HERO_MODEL, ...eModels, ...pModels]), new Set(weapons));
     await this.cast.load([{ model: HERO_MODEL, hero: true }, ...eModels.map((m) => ({ model: m }))], weapons, { texCap: this.perf.texCap, libWins: driveHero !== PLACEHOLDER_DRIVE_HERO });
     if (!this.glr) return;
     if (pModels.length) { try { await this.cast.load(pModels.map((m) => ({ model: m })), [], { texCap: Math.min(512, this.perf.texCap) }); } catch (e) { console.warn('[v2g] a person model failed to load (that person is not drawn):', String(e?.message ?? e)); } }
     if (!this.glr) return;
-    if (!this.heroA) this.heroA = this.cast.actor(HERO_MODEL, 'blade', {});
+    if (!this.heroA) this.heroA = this.cast.actor(HERO_MODEL, sword ? 'blade' : null, {});   // no sword: the hand (GRIPS.blade) holds the whip's handle
     // 4) effects
     if (!this.fx) this._makeFx();
     // 5) rules
@@ -444,9 +450,18 @@ export default class V2Game extends Scene {
     const p = this.perf;
     try { this.fx = createFx(this.glr.gl, { tier: p.tier, post: p.post, groundY: 0, lightPools: true, onEvent: this.bridge.onEvent }); }
     catch (e) { console.warn('[v2g] effects are off:', String(e?.message ?? e)); this.fx = null; }
-    this._rb = -1; this._dashRb = -1; this._mv = null;
+    this._dashRb = -1;
     for (let i = 0; i < this.shotN; i++) this.shotL[i]._rb = undefined;   // handles of a lost context are dead
     this.shotN = 0;
+    this._makeWhip();
+  }
+  /** the whip: chain (per performance tier), its own renderer (WebGL2 only) and the default wiring of its events to effects + feel */
+  _makeWhip() {
+    const glr = this.glr; if (!glr || !glr.webgl2) return;
+    this.whipLink = whipFx(this.fx, feel);
+    const tier = this.perf.tier;
+    if (!this.whip || this._whipTier !== tier) { this.whip = createWhip({ tier, onEvent: this._whipEv }); this._whipTier = tier; this._whipReset = true; }
+    if (!this.wr) { try { this.wr = new WhipRenderer(glr.gl); } catch (e) { console.warn('[v2g] the whip is not drawn:', String(e?.message ?? e)); this.wr = null; } }
   }
   /** draw every model, texture and effect once and block until the GPU has really done it (no hitch in the first fight) */
   _warm() {
@@ -455,9 +470,9 @@ export default class V2Game extends Scene {
     if (fx) {
       const P = PRESET_IDS, x = h.x + 60, y = h.y, z = h.z, ev = fx.onEvent;
       fx.onEvent = null; fx.feelOn = false;   // warm-up is silent and must not leave a hit-stop or a flash behind
-      for (const n of ['hit.slash.light', 'hit.slash.heavy', 'hit.crit', 'hit.finisher', 'hit.guard', 'swing.light', 'swing.heavy', 'move.dash', 'move.land', 'move.step', 'move.jump', 'enemy.hurt', 'enemy.death.bone', 'enemy.death.ash']) if (P[n] !== undefined) fx.playAt(P[n], x, y + 50, z, 1, 0, 1, x + 200, y, z);
+      for (const n of ['hit.slash.light', 'hit.slash.heavy', 'hit.crit', 'hit.finisher', 'hit.guard', 'move.dash', 'move.land', 'move.step', 'move.jump', 'enemy.hurt', 'enemy.death.bone', 'enemy.death.ash']) if (P[n] !== undefined) fx.playAt(P[n], x, y + 50, z, 1, 0, 1, x + 200, y, z);
       const el = elementOf(this.pos, null); shotImpact(fx, el, x, y + 50, z, y);
-      const rb = fx.ribbons.start(TRAIL.blade); fx.ribbons.push(rb, x, y + 20, z, x, y + 80, z); fx.update(0.02); fx.ribbons.push(rb, x + 30, y + 20, z, x + 30, y + 80, z); fx.ribbons.end(rb);
+      const rb = fx.ribbons.start(DASH_TRAIL); fx.ribbons.push(rb, x, y + 50, z, 0, 0, 0); fx.update(0.02); fx.ribbons.push(rb, x + 30, y + 50, z, 0, 0, 0); fx.ribbons.end(rb);
       fx.feel.flash(1, 1, 1, 0.2); fx.update(0.03);
       fx.onEvent = ev; fx.feelOn = true;
     }
@@ -551,7 +566,9 @@ export default class V2Game extends Scene {
         let flags = (mv?.crit ? FLAG.crit : 0) | (blocked ? FLAG.guard : 0);
         if (kill) { flags |= FLAG.kill; let left = 0; const E = sc.sim.enemies; for (let i = 0; i < E.length; i++) if (E[i] !== e && !E[i].dead && E[i].state !== 'dead' && E[i].hp > 0 && (E[i].yard || !e.yard)) left++; if (e.yard && left === 0) flags |= FLAG.finisher; }
         const dx = info?.dirX ?? h.dirX ?? h.facing ?? 1, dz = info?.dirZ ?? h.dirZ ?? 0;
-        const r = sc._strike(mv?.weapon ?? 'sword', info?.material ?? K?.material ?? 'bone', st, flags, x, y, z, dx, dz);
+        const wpn = mv?.weapon ?? 'whip';
+        if (sc.whip && wpn === 'whip') { const C = sc.whipCrack; C.x = x; C.y = y; C.z = z; C.strength = CRACK_K[st] ?? 1; sc.whip.set('crack', C); }   // the tip lands on the hit point in this tick; the hit-stop freezes it there
+        const r = sc._strike(wpn, info?.material ?? K?.material ?? 'bone', st, flags, x, y, z, dx, dz);
         if (!blocked) sc._fxp('enemy.hurt', x, y, z, dx, dz, 1, true);
         if (e._a3) e._a3.hitAge = 0;
         number(e.x, e.y + (e.h ?? 80) + 14, e.z, String(dmg), blocked ? '#9fb4d8' : st === 'H' || st === 'F' ? '#ffd870' : '#ffffff', st === 'F' || !!(flags & FLAG.crit));
@@ -579,10 +596,10 @@ export default class V2Game extends Scene {
         else if (name === 'land') { const hard = sc._fallV < -900; sc._fxp('move.land', h.x, h.y, h.z, dx, dz, hard ? 1.4 : 0.8, hard); if (hard) { snd('move.land_heavy', h); sc.fx?.feel.addTrauma(0.08); } }
         else if (name === 'swing') { try { feel.swing('blunt', 'M', sc._actE ?? null); } catch { /* no audio */ } sc._actE = null; }
         else if (name === 'cast') { snd('enemy.mage.chant', sc._actE ?? null); sc._actE = null; }
-        else if (name === 'parry') { sc._strike('sword', 'armor', 'H', FLAG.parry, h.x + dx * 46, h.y + 58, h.z + dz * 46, dx, dz); sc.hud.callout?.(h.x + dx * 30, h.y + 118, h.z + dz * 30, '튕겨냄', 'parry'); }
-        else if (name === 'guard') { sc._strike('sword', 'armor', 'M', FLAG.guard, h.x + dx * 40, h.y + 58, h.z + dz * 40, dx, dz); sc.hud.callout?.(h.x + dx * 30, h.y + 118, h.z + dz * 30, '막음', 'guard'); }
+        else if (name === 'parry') { sc._strike('whip', 'armor', 'H', FLAG.parry, h.x + dx * 46, h.y + 58, h.z + dz * 46, dx, dz); sc.hud.callout?.(h.x + dx * 30, h.y + 118, h.z + dz * 30, '튕겨냄', 'parry'); }
+        else if (name === 'guard') { sc._strike('whip', 'armor', 'M', FLAG.guard, h.x + dx * 40, h.y + 58, h.z + dz * 40, dx, dz); sc.hud.callout?.(h.x + dx * 30, h.y + 118, h.z + dz * 30, '막음', 'guard'); }
         else if (name === 'die') { snd('hero.hurt', h); sc.emit('hero.dead', {}); }
-        else { const mv = h.move; try { feel.swing(mv?.weapon ?? 'sword', mv?.strength ?? mv?.str ?? (h.combo >= 2 ? 'H' : 'M'), h); } catch { /* no audio */ } }   // the picture (crescent) follows at the strike moment in _sync
+        else { const mv = h.move; try { feel.swing(mv?.weapon ?? 'whip', mv?.strength ?? mv?.str ?? (h.combo >= 2 ? 'H' : 'M'), h); } catch { /* no audio */ } }   // the picture is the lash itself (_sync)
       },
       spark(x, y, z, kind) {
         if (kind === 'shot') { const el = elementOf(sc.pos, null); if (sc.fx) { const gy = groundAt(sc.W, x, z, y + 20); shotImpact(sc.fx, el, x, y, z, Number.isFinite(gy) ? gy : y - 50); } sc.pos.x = x; sc.pos.y = y; sc.pos.z = z; try { feel.magic(el.sound, 'impact', sc.pos); } catch { /* no audio */ } }
@@ -590,6 +607,7 @@ export default class V2Game extends Scene {
         else if (kind === 'slam') { sc._fxp('move.land', x, y, z, 1, 0, 1.5, true); sc.fx?.feel.addTrauma(0.12); }
       },
       number(x, y, z, str, color) { number(x, y, z, str, color, false); },
+      pull(e) { sc.whipPullE = e; },   // the charged whip caught something: the lash wraps it while it is pulled (WHIP.md 5)
       shake(px) { sc.fx?.feel.addTrauma(clamp(px / 40, 0, 0.6)); },
       done() { sc.doneT = 0; try { feel.bell('dawn'); } catch { /* no audio */ } sc.emit('area.clear', { area: sc.area?.id }); sc._autoOpen(); },
       // newer rule sets (docs/v2/PLAY_API.md 5) — optional calls
@@ -655,7 +673,7 @@ export default class V2Game extends Scene {
     try { feel.setListener(c.px, c.py, c.pz, c.fx, c.fy, c.fz, c.dist, (g.viewW / 2) / this.focal); feel.update(); } catch { /* no audio */ }
     this.updMs += performance.now() - t0;
   }
-  _makeFxHandles() { this._rb = -1; this._dashRb = -1; this._mv = null; this.shotN = 0; }
+  _makeFxHandles() { this._dashRb = -1; this.shotN = 0; this._whipReset = true; }
   _savePrev() {
     const sim = this.sim, h = sim.hero, c = this.cam, q = this.camP;
     h._px = h.x; h._py = h.y; h._pz = h.z; this.visYP = this.visY;
@@ -669,7 +687,7 @@ export default class V2Game extends Scene {
   _sync(pdt, dt) {
     const sim = this.sim, h = sim.hero, fx = this.fx, W = this.W, ha = this.heroA, P = PRESET_IDS;
     // respawn / reset
-    if ((sim.deaths ?? 0) !== this._deaths) { this._deaths = sim.deaths ?? 0; this.cam.snap = true; this.game.flash?.('#000', 0.7, 2.5); ha.dx = 1; ha.dz = 0; fx?.clear(); this._makeFxHandles(); this.emit('hero.respawn', {}); }
+    if ((sim.deaths ?? 0) !== this._deaths) { this._deaths = sim.deaths ?? 0; this.cam.snap = true; this.game.flash?.('#000', 0.7, 2.5); ha.dx = 1; ha.dz = 0; fx?.clear(); this._makeFxHandles(); this.emit('hero.respawn', {}); }   // (_makeFxHandles also asks the whip to start over)
     if (h._px === undefined) { h._px = h.x; h._py = h.y; h._pz = h.z; this.visY = this.visYP = h.y; }
     // section -> room reverb + story
     // real areas: the rules freeze their section at 'done' once the arena is cleared — the scene keeps reading the section under the hero's feet
@@ -699,28 +717,25 @@ export default class V2Game extends Scene {
       this._exitIn = x;
       this._travel(x);
     }
-    // hero: animation, blade trail, dash trail, steps
+    // hero: animation, the whip, dash trail, steps
     if (pdt > 0) { const a0 = Math.atan2(ha.dz, ha.dx); driveHero(ha, h, pdt, TUNE); this._turn(ha, h, a0, pdt); }
     this.visY = h.onGround && Math.abs(this.visY - h.y) < 40 && dt > 0 ? this.visY + (h.y - this.visY) * (1 - Math.exp(-dt * 28)) : h.y;   // stairs: do not pop
     if (pdt > 0) { this._tintAt(W, h.x, h.y + 50, h.z, 0, 1.6, ha.opt.tint); ha.opt.flash = Math.max(h.flash > 0 ? h.flash * 0.6 : 0, h.ifr > 0 && !h.dead && !(h.hurtT > 0) && !(h.dashT > 0) && Math.floor(h.t * 22) % 2 === 0 ? 0.3 : 0); }
+    // the whip: hand from the posed skeleton, rule state -> mode, one step with the play dt (0 in hit-stop: the lash freezes with the world)
+    if (this.whip && ha.weaponMatrix(ha.place(h.x, this.visY, h.z))) {
+      const wp = this.whip, H = this.whipHand, P = this.whipPull, pe = this.whipPullE; let pull = null;
+      wp.handFromMatrix(ha.WM, H);
+      H.bx = h.x; H.by = this.visY; H.bz = h.z; H.fx = h.dirX ?? ha.dx; H.fz = h.dirZ ?? ha.dz;
+      if (h.onGround) H.ground = h.y; else { const gy = groundAt(W, h.x, h.z, h.y + 30); H.ground = Number.isFinite(gy) ? gy : h.y; }
+      if (pe) { if (pe.pullT > 0 || h.pullT > 0) { P.x = pe.x; P.y = (pe.gy ?? pe.y) + (pe.h ?? 80) * 0.55; P.z = pe.z; P.r = Math.max(8, (pe.r ?? 15) * 0.55); pull = P; } else this.whipPullE = null; }
+      wp.resonance = h.resoMax ? h.reso / h.resoMax : 0;
+      if (this._whipReset) { this._whipReset = false; this.whipPullE = null; pull = null; wp.reset(H); }   // new area / respawn / new chain: hang from the hand, no speed
+      driveWhip(wp, h, TUNE, pull);
+      wp.update(pdt, H);
+    }
     if (fx) {
-      const mv = h.dead ? null : h.move ?? null;
-      if (mv !== this._mv) {
-        if (this._rb >= 0) { fx.ribbons.end(this._rb); this._rb = -1; }
-        this._mv = mv; this._swung = false;
-        if (mv) this._rb = fx.ribbons.start(h.combo >= 2 || mv.finisher ? TRAIL.bladeHeavy : TRAIL.blade);
-      }
-      if (mv && pdt > 0) {
-        if (ha.weaponMatrix(ha.place(h.x, this.visY, h.z))) { const a = ha.weaponPoint(ha.grip.base ?? 20, this.tmpA), b = ha.weaponPoint(ha.grip.tip ?? 76, this.tmpB); fx.ribbons.push(this._rb, a[0], a[1], a[2], b[0], b[1], b[2]); }
-        if (!this._swung && (!mv.hit || h.moveT >= mv.hit[0])) { this._swung = true; const heavy = h.combo >= 2 || !!mv.finisher; this._fxp(heavy ? 'swing.heavy' : 'swing.light', h.x, h.y, h.z, h.dirX ?? ha.dx, h.dirZ ?? ha.dz, (h.combo & 1 ? -1 : 1) * (heavy ? 1.15 : 1), true); }
-      }
       if (h.dashT > 0 && !h.dead) { if (this._dashRb < 0) this._dashRb = fx.ribbons.start(DASH_TRAIL); if (pdt > 0) fx.ribbons.push(this._dashRb, h.x, h.y + 50, h.z, 0, 0, 0); }
       else if (this._dashRb >= 0) { fx.ribbons.end(this._dashRb); this._dashRb = -1; }
-      if (h.whipOn > 0 && pdt > 0 && !h.dead) {   // PLAY: whip tip at whipX/Y/Z — a thin cord of light from the hand, redrawn every tick
-        const rb = fx.ribbons.start(WHIP_CORD), x0 = h.x + ha.dx * 18, y0 = h.y + 62, z0 = h.z + ha.dz * 18, wx = h.whipX - x0, wy = h.whipY - y0, wz = h.whipZ - z0;
-        for (let i = 0; i <= 6; i++) { const u = i / 6; fx.ribbons.push(rb, x0 + wx * u, y0 + wy * u - Math.sin(u * Math.PI) * 10, z0 + wz * u, 0, 0, 0); }
-        fx.ribbons.end(rb);
-      }
       fx.setProtect(0, h.x, h.y + 55, h.z, 46);
     }
     if (pdt > 0 && h.onGround && !h.dead && !h.move && !(h.dashT > 0) && !(h.hurtT > 0)) {
@@ -900,7 +915,7 @@ export default class V2Game extends Scene {
     }
     if (this.mode === 'layer') this._show(g.top === this);
     const glr = this.glr;
-    if (this._restored !== glr.restored) { this._restored = glr.restored; this.cr.restore(); try { this.fx?.dispose(); } catch { /* dead objects */ } this._makeFx(); this._warm(); }   // context came back
+    if (this._restored !== glr.restored) { this._restored = glr.restored; this.cr.restore(); try { this.fx?.dispose(); } catch { /* dead objects */ } this._makeFx(); try { this.wr?.restore(); } catch { /* still lost */ } this._warm(); }   // context came back
     if (this._lastDraw > 0 && !this.hud.modal && this.res.frame(t0 - this._lastDraw)) L.force = true;   // render size governor (res.js): measured on real frame intervals
     this._lastDraw = t0;
     this._place();
@@ -938,6 +953,12 @@ export default class V2Game extends Scene {
     this._chars(a, vp);
     if (warm) { const ha = this.heroA, Mx = ha.place(sim.hero.x, sim.hero.y, sim.hero.z); for (const as of this.cast.assets.values()) { ha.opt.dis = 0.3; cr.draw(as.gpu, null, Mx, ha.opt); } for (const wp of this.cast.weapons.values()) cr.draw(wp.gpu, null, Mx, ha.opt); ha.opt.dis = 0; ha.opt.alpha = 0.5; cr.draw(ha.gpu, ha.rig.jm, Mx, ha.opt); ha.opt.alpha = 1; }
     cr.end();
+    if (this.wr && this.whip) {   // the whip: one draw (+ one additive for the shard glow and the tip streak), lit like the hero
+      const wr = this.wr, o = this.heroA.opt, h = sim.hero, V = this._whipVp;
+      wr.tint[0] = o.tint[0]; wr.tint[1] = o.tint[1]; wr.tint[2] = o.tint[2]; wr.flash = o.flash; wr.alpha = o.alpha ?? 1;
+      this.env.lightPos = fx ? fx.lights.pos : null; this.env.lightCol = fx ? fx.lights.col : null; V[0] = w; V[1] = hgt; this.env.viewport = V;
+      wr.draw(this.whip, this.env, Math.abs(h.x - h._px) > 250 || Math.abs(h.z - h._pz) > 250 ? 1 : a);
+    }
     this.c3.draws = cr.stats.draws; this.c3.tris = cr.stats.tris;
     gl.useProgram(glr.prog); gl.bindBuffer(gl.ARRAY_BUFFER, glr.dyn.buf); glr._attribs();
     glr.drawDyn(this.sprTex, nSky + nDecal, nGlow, true);

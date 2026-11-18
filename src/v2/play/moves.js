@@ -8,7 +8,7 @@
 //   clip · lead · tail                 틀 클립 · 판정 전에 보여 줄 준비 동작(클립 초) · 판정 뒤 마무리(클립 초)
 //   strike   [클립 초, 클립 초]         칼이 몸 앞을 지나는 클립 구간 — 판정 구간(hit)에 겹쳐 튼다. 없으면 클립 자료의 strike (재는 법: node tools/v2/play_cliptrace.mjs <clip>)
 //   str      타격 세기 L·M·H·F (src/v2/feel/table.js) · mv 피해 배수 · kb 밀어내는 속도 · stop 경직(초)
-const M = (o) => Object.freeze({ kb: [o.kbv ?? 120, 0], hitstop: o.stop ?? 0.05, sfx: 'slash', weapon: 'sword', strength: o.str, ...o });   // strength = str (장면이 읽는 이름)
+const M = (o) => Object.freeze({ kb: [o.kbv ?? 120, 0], hitstop: o.stop ?? 0.05, sfx: 'slash', weapon: 'whip', strength: o.str, ...o });   // strength = str (장면이 읽는 이름) · weapon = 카엘의 무기는 채찍 비질리아 (장면이 소리 · 타격감 표의 무기로 쓴다)
 
 export const MOVES = Object.freeze({
   c1: M({ id: 'c1', kind: 'combo', n: 0, clip: 'atk1', dur: 0.44, hit: [0.13, 0.25], cancel: 0.26, free: 0.36, lead: 0.18, tail: 0.4,
