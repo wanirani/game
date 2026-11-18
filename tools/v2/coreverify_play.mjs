@@ -245,7 +245,7 @@ async function run(dev) {
     }
 
     if (want('bolt') && kinds.includes('ranged')) {
-      await home(); await ev(([x, z]) => window.__cv.put('ranged', x, z, true), [BASE[0] + 250, BASE[1]]);
+      await home(); await ev(([x, z]) => window.__cv.put('ranged', x, z, true), [BASE[0] + 170, BASE[1]]);   // (250 px east is inside the low wall the props lane put along the yard: x 2400-2444 — the bolt died in it)
       const n1 = await until('(sim) => sim.shots.some((s) => !s.dead)', 600); await step(8); await shot('bolt_fly');
       const hp0 = (await step(0)).hp;
       const n2 = await until(`(sim) => sim.hero.hp < ${hp0}`, 240); const s = await step(0); await shot('bolt_hit_0'); await step(2); await shot('bolt_hit_2'); await step(4); await shot('bolt_hit_6');
