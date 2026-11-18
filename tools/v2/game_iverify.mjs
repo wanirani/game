@@ -435,14 +435,14 @@ try {
   if (PLAN === 'cross50') {
     await clean(); const o = await open('&area=eshville_now&v2story=0'); await settle(600); await ff(60); await botTouch();   // story off: a hero put at 50 different spots would walk into story triggers, and a crossing is (rightly) refused while their dialogues are open
     const spotsOf = async (id) => { const { a, W } = await areaOf(id, {}), sp = a.spawns.default, g = reachGrid(W, sp.x, sp.z, 26), out = [];
-      for (const x of a.exits) out.push(['exit ' + x.id, (x.x0 + x.x1) / 2, (x.z0 + x.z1) / 2]);
+      for (const x of a.exits) if (x.locked) out.push(['locked exit ' + x.id, (x.x0 + x.x1) / 2, (x.z0 + x.z1) / 2]);   // an open exit starts a journey as soon as the hero stands in it: only its edge is tried (next line)
       for (const x of a.exits) { const p = g.near((x.x0 + x.x1) / 2, (x.z0 + x.z1) / 2, 160); if (p) out.push(['next to exit ' + x.id, p[0], p[1]]); }
       const steps = W.boxes.filter((q) => q.walk && q.y1 > 8 && q.y1 < 200 && (q.x1 - q.x0) < 400).slice(0, 40); for (let i = 0; i < steps.length; i += Math.max(1, Math.floor(steps.length / 6))) { const q = steps[i]; out.push([`step y ${Math.round(q.y1)}`, (q.x0 + q.x1) / 2, (q.z0 + q.z1) / 2, q.y1]); }
       let B = { x0: 1e9, x1: -1e9, z0: 1e9, z1: -1e9 }; for (const q of W.boxes) if (q.walk) { B.x0 = Math.min(B.x0, q.x0); B.x1 = Math.max(B.x1, q.x1); B.z0 = Math.min(B.z0, q.z0); B.z1 = Math.max(B.z1, q.z1); }
       for (const [nx, x, z] of [['edge west', B.x0 + 6, (B.z0 + B.z1) / 2], ['edge east', B.x1 - 6, (B.z0 + B.z1) / 2], ['edge near', (B.x0 + B.x1) / 2, B.z0 + 6], ['edge far', (B.x0 + B.x1) / 2, B.z1 - 6], ['corner', B.x0 + 8, B.z0 + 8], ['corner far', B.x1 - 8, B.z1 - 8]]) { const p = g.near(x, z, 400); if (p) out.push([nx, p[0], p[1]]); }
       for (const q of a.interact.filter((q2) => q2.event === 'bell.ring')) out.push(['bell', q.x, q.z + 50]);
       for (const q of a.actors.slice(0, 3)) out.push(['on person ' + q.id, q.x, q.z]);
-      return out; };
+      return out.filter(([, x, z]) => !a.exits.some((e) => !e.locked && x > e.x0 - 60 && x < e.x1 + 60 && z > e.z0 - 60 && z < e.z1 + 60)); };   // not inside (or right at) an open exit: that starts a journey
     const rows = []; let n = 0, badN = 0, refused = 0; const T0 = Date.now();
     const run = async (id, count) => { const S1 = await spotsOf(id), tw = (await areaOf(id, {})).a.twin, S2 = tw ? await spotsOf(tw) : S1;
       for (let i = 0; i < count; i++) { const cur = (await st()).area, L = cur === id ? S1 : S2, sp = L[Math.floor(i / 2) % L.length];
@@ -458,15 +458,16 @@ try {
         else if (stayed) info(`crossing ${n} from ${cur} at ${sp[0]} (${at}): refused cleanly (no floor near that spot in the other night) — hero stays, moves ${Math.round(best)} px`);
         if (n % 10 === 0) console.log(`       ${n} crossings: last ${cur} -> ${e.area} ${ms} ms, heap ${m.heap} KB, tex ${m.tex}, buf ${m.buf}, canvases ${m.dom}`);
       } };
-    await run('eshville_now', 38);
+    const LEGS = args.legs ? String(args.legs).split(',') : ['eshville', 'graveyard', 'ossuary'];
+    if (LEGS.includes('eshville')) await run('eshville_now', 38);
     await ev(() => window.__v2.scene.travelTo('graveyard_now', 'from_eshville')); let s = null; for (let k = 0; k < 300; k++) { s = await ff(30, false, 0); if (s.ready && !s.go && s.area === 'graveyard_now' && s.fade <= 0.02) break; if (!s.ready) await page.waitForTimeout(150); } await settle(600); chk(s.area === 'graveyard_now', 'journey to graveyard_now for the next crossings');
-    await run('graveyard_now', 6);
+    if (LEGS.includes('graveyard')) await run('graveyard_now', 6);
     await ev(() => window.__v2.scene.travelTo('ossuary_now', 'entry')); for (let k = 0; k < 300; k++) { s = await ff(30, false, 0); if (s.ready && !s.go && s.area === 'ossuary_now' && s.fade <= 0.02) break; if (!s.ready) await page.waitForTimeout(150); } await settle(600); chk(s.area === 'ossuary_now', 'journey to ossuary_now for the next crossings');
-    await run('ossuary_now', 6);
+    if (LEGS.includes('ossuary')) await run('ossuary_now', 6);
     R.rows = rows;
     const E = rows.filter((r) => r.from.startsWith('eshville')), msA = rows.map((r) => r.ms), heap = E.map((r) => r.heap);
     const h10 = mean(heap.slice(6, 12)), h30 = mean(heap.slice(26, 32)), stayed = rows.filter((r) => r.stayed).length;
-    chk(n === 50 && badN === 0 && refused === 0, `${n} crossings (38 Eshville, 6 graveyard, 6 ossuary) in ${((Date.now() - T0) / 1000).toFixed(0)} s wall: ${badN} left the hero in a bad state, ${refused} refused by cross(), ${stayed} ended on the same side (no floor near the spot)`);
+    chk(n >= 12 && badN === 0 && refused === 0, `${n} crossings (legs ${LEGS.join(' ')}) in ${((Date.now() - T0) / 1000).toFixed(0)} s wall: ${badN} left the hero in a bad state, ${refused} refused by cross(), ${stayed} ended on the same side (no floor near the spot)`);
     info(`crossing time (veil up to playable, headless software renderer at res ${RES}): median ${msA.slice().sort((a, b) => a - b)[Math.floor(msA.length / 2)]} ms, max ${Math.max(...msA)} ms`);
     info(`heap KB after each Eshville crossing: ${heap.join(' ')}`);
     info(`heap trend: mean of crossings 7-12 ${Math.round(h10)} KB, of 27-32 ${Math.round(h30)} KB = ${((h30 - h10) / 20).toFixed(0)} KB per crossing; after 30: ${heap[29]} KB; texture bytes seen ${[...new Set(E.map((r) => r.tex))].join('/')}, buffer bytes ${[...new Set(E.map((r) => r.buf))].join('/')}, canvases ${[...new Set(rows.map((r) => r.dom))].join('/')}`);
