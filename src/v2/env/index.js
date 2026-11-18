@@ -11,7 +11,7 @@ import { Sim } from '../b/sim.js';
 import { lightAt } from '../b/world.js';
 import { ASSET_ROOT } from '../../core/assets.js';
 import STAGE from './stage_slice0_env.js';
-import { compileEnv } from './build.js';
+import { compileEnv, uniformBoxes } from './build.js';
 import { KIT_TEX } from './mats.js';
 import { drawDecalSprites, DECAL_ALPHA } from './decals.js';
 import { AREAS, PROTO_KIND, ensureWorldAssets } from '../world/index.js';
@@ -70,6 +70,7 @@ export default class V2Env extends V2ProtoB {
     if (this.area) {   // 시범판 규칙은 "마당 적이 없으면 끝"이다 → 닿을 수 없는 먼 곳에 마당 적 하나를 세워 끝나지 않게 한다
       this.W.boxes.push({ x0: -9100, x1: -9000, z0: -9100, z1: -9000, y0: -10, y1: 0, solid: true, walk: true, inv: true });
       this.W.spawns.push({ kind: 'melee', x: -9050, z: -9050, y: 0, yard: true });
+      uniformBoxes(this.W);   // the box pushed by hand gets the shape of the others (one hidden class for groundAt / moveXZ)
     }
     this.sim = new Sim(this.W, this._hooks());
     if (this.area) { const sp = this.area.spawns[this.spawnName] ?? this.area.spawns.default, h = this.sim.hero; h.facing = sp.face[0] < 0 ? -1 : 1; h.dirX = sp.face[0]; h.dirZ = sp.face[1]; }

@@ -106,5 +106,16 @@ export function compileEnv(S, { cull = true, fold } = {}) {
   for (const m of out.meshes) { const c = per[m.chunk] ?? (per[m.chunk] = { tris: 0, bytes: 0, draws: 0 }); c.tris += m.count / 3; c.bytes += m.data.byteLength; c.draws++; }
   W.env = { meshes: out.meshes, bounds: out.bounds, fx: G.fx, decals: S.decals ?? [], stats: { tris: out.tris, bytes: out.meshes.reduce((a, m) => a + m.data.byteLength, 0), chunks: per, textures: [...new Set(out.meshes.map((m) => m.tex))], props: propTris, folds } };
   W.stats = { ...W.stats, bTris: W.stats.tris, tris: out.tris, boxes: W.boxes.length };
+  uniformBoxes(W);
+  return W;
+}
+/**
+ * Every collision box gets the same keys in the same order (requests.md, core-verify): the boxes came in five shapes, so groundAt / moveXZ read
+ * b.x0 ... on the slow generic path and made a number object per read. Call it again after pushing a box by hand.
+ */
+export function uniformBoxes(W) {
+  const B = W.boxes, keys = ['x0', 'x1', 'z0', 'z1', 'y0', 'y1', 'solid', 'walk', 'inv', 'stair', 'kit', 'part'];
+  for (let i = 0; i < B.length; i++) for (const k in B[i]) if (!keys.includes(k)) keys.push(k);
+  for (let i = 0; i < B.length; i++) { const b = B[i], o = {}; for (let j = 0; j < keys.length; j++) o[keys[j]] = b[keys[j]]; B[i] = o; }
   return W;
 }

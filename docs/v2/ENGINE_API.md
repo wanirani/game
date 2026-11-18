@@ -4,6 +4,7 @@
 이 문서는 다른 구역(PLAY · WORLD · UI · STORY)이 **이 문서만 보고** 맞출 수 있게 적는다. 바꾸면 아래 "바뀐 것"에 한 줄.
 
 ## 바뀐 것
+- 11-18 01:45 **셋째 판 보탬 (INTEGRATE-A 이어 하기)**: ① 지역은 이야기 깃발로 지어진다 — `scene.worldFlags` 를 `AREAS[id](flags)` 에 넘긴다. `scene.setWorldFlags({ gate_open: true })`(이야기 `api.setFlags`)는 지금 선 지역을 **그 자리에서 다시 짓는다**(짧게 어두워짐 · 같은 자리 · 쓰러진 적은 쓰러진 채 · 체력 그대로)(§3) ② 채찍 고리(`interact` kind `ring`)가 규칙의 `W.hookPoints` 로 들어간다 — 고리 곁에서 솜씨 단추(또는 알약 「채찍 걸기」) = 채찍 걸기(§3.1) ③ 쉬는 자리(kind `rest`)가 임시 규칙에서 체력을 채우고 다시 서는 자리가 된다(`sim.heal` · `sim.respawnAt`), `api.heal(n)` · `api.restAt(x, z, y)` ④ HUD 에 `pad.attack.charge` · `pad.roll.cd` ⑤ `tools/v2/p0_entry_check.mjs` 를 새 일시정지 흐름으로 고쳤다(멈춤 단추 → 일시정지 판 → 「나가기」, Esc → 판 → ↓ → Enter).
 - 11-18 01:00 **셋째 판 (INTEGRATE-A)**: ① 지역은 모두 `src/v2/world` 의 `AREAS` 에서 온다(`WORLD_LOADER` 켬). 「본 게임」 = `eshville_now`, 주소 `?area=<id>&spawn=<이름>`, 시범 구간은 `?area=slice0`(§3) ② 나가는 곳: 들어서면 어두워짐 → 불러오기 → 밝아짐. 잠긴 곳은 벽이고 다가서면 까닭을 한 번 말한다. `scene.unlockExit(id, area)` · `lockExit`(§3) ③ 사람(`actors`)이 입체 모델로 서 있고 가까이 가면 「말을 건다」 알약 → 사건 `talk`. 누르는 자리(`interact`) → 사건 `interact`(§3.1) ④ 불 · 불씨 · 연기 · 안개 자리(`anchors`)에 효과 엔진의 입자와 흔들리는 빛(§3.2) ⑤ 바닥 스티커 여덟 가지, 하늘 그림과 안개 색은 지역 · 밤마다(§3) ⑥ 새 인터페이스(`src/v2/ui`)가 기본값. ESC/START = 일시정지. 일시정지 줄 「옛 단추로 바꾸기 ↔ 새 단추로 바꾸기」(`localStorage['bn.v2.ui']`)(§4) ⑦ 솜씨 · 종 단추: 규칙이 아직 못 쓰면 흐리게 그리고 누르면 알림(§5) ⑧ 입체 화면의 해상도는 기기 픽셀 비율에서 정한다 + 등급별 상한 + 느리면 저절로 한 단계 낮춤(§7) ⑨ 지역을 옮기면 안 쓰는 캐릭터 모델을 GPU 에서 내린다 ⑩ 이야기 꽂는 자리가 늘었다(§6, §11).
 - 15:25 첫 판 (자리·이름을 먼저 정함).
 - 22:20 둘째 판: 장면이 실제로 돈다(검사 `node tools/v2/game_check.mjs`). 바뀐 것 — ① 타격은 소리 다리(`src/v2/feel/fxbridge.js`)의 `strike` 한 번으로 효과·소리·진동을 내고, 화면 연출값은 `feel/table.js` 의 값을 **한 번만** 건다(§1) ② `hooks.event` 는 `play.<이름>` 으로 이야기 쪽에 넘긴다(§2, §6) ③ 영웅 회전은 장면이 빠르기를 묶는다(§2 「돌기」) ④ 지역: `docs/v2/AREA_FORMAT.md` 의 `spawns · exits · triggers(wake) · rooms · era` 를 읽는다(§3) ⑤ HUD: `docs/v2/UI_API.md` 의 `hud.modal · resize · release` 를 따른다(§4) ⑥ `input.touchStick` 이 생겼다(§8).
@@ -108,6 +109,10 @@ src/v2/game/
 - `W` 는 `compileEnv` 결과 그대로다. 텍스처 이름 → 파일: v1 타일 5종 아니면 `KIT_TEX[n].file` 또는 `assets/v2/env/<n>.webp`(`'../props/props_atlas'` → `assets/v2/props/props_atlas.webp`).
 - **빛 · 안개 · 하늘은 지역과 밤마다**: 안개 `W.fog`, 하늘 맨 위 색 `W.sky.top`, 하늘 그림 `W.sky.img`(지역이 바뀌면 같은 캔버스 · 같은 텍스처에 다시 그린다 — 아래쪽은 그 지역 안개 색으로 녹인다), 캐릭터 색조는 `W.light`(구운 빛 + 점광)에서 틱마다.
 - **바닥 스티커 여덟 가지**(`moss puddle stain crack scorch ash leaves straw`): 환경 키트의 `drawDecalSprites` · `DECAL_ALPHA`(`src/v2/env/decals.js`)를 그대로 쓴다.
+- **지역의 상태(이야기 깃발)**: WORLD 의 지역은 깃발의 함수다(`AREAS[id](flags)`, AREA_FORMAT §13 · `AREA_FLAGS[id]`) — 닫힌 묘지 문 · 고쳐진 계단 · 누가 어디 서 있는가. 장면은 `scene.worldFlags`(장면이 살아 있는 동안 기억, 모든 지역에 같은 것을 넘긴다)를 쥔다.
+  - `scene.setWorldFlags(obj, { reload })`(이야기 `api.setFlags(obj)`; `setStory(fn, { flags })` 로 처음 값): 값이 바뀌면 **지금 선 지역을 그 상태로 다시 짓는다** — 0.28초 어두워짐 → 불러오기 → 밝아짐. 영웅은 같은 `x, z`, 쓰러진 적은 쓰러진 채(종류 + 태어난 자리로 맞춘다), 체력 · 울림 그대로, 마당이 정리돼 있었으면 정리된 채(종 가락 · `area.clear` 가 다시 나지 않는다). `reload: false` 면 값만 바꾼다(다음에 지역을 불러올 때 쓰인다). 시범 구간은 다시 짓지 않는다.
+  - `scene.flag(name)`(사람의 `when`)은 내장 깃발에 더해 `worldFlags` 도 본다(이야기 함수의 `flag` 가 꽂히면 그것만).
+  - **임시 규칙(이야기가 없을 때)**: 마당을 정리하면 열쇠로 잠긴 나가는 곳마다 「그 나가는 곳을 여는 깃발 하나」를 WORLD 의 상태 목록에서 찾아(`area.js flagsThatOpen` — `AREA_FLAGS[id]` 를 하나씩 켜 보고 `exit.locked` 가 풀리는 것) 켠다 → 에슈빌 광장을 정리하면 `gate_open` 상태로 다시 지어져 묘지 문짝이 실제로 열린다. 그런 깃발이 없으면 예전처럼 나가는 곳의 벽만 치운다.
 - 들어오는 자리: `spawns[name] = {x, z, face, y?}`. 이름이 없으면 `default`. `gotoArea(id, spawn, { keepPosition: true })` 는 지금 선 `x, z` 그대로 선다(쌍둥이 지역 — 종을 건널 때).
 - **나가는 곳** `exits[i]`: 영웅의 발이 상자에 들어서면 사건 `exit {id, to, spawn}` → 화면이 어두워지고(0.28초, 영웅 입력 잠금) → `gotoArea(to, spawn)` → 밝아진다(0.5초). `to` 가 `AREAS` 에 없으면 「<이름> — 아직 갈 수 없는 곳이다」 + 사건 `exit.missing`.
   - **잠긴 곳(`locked` 가 글자)은 벽이다**: `area.js` 가 상자 자리에 충돌 상자를 넣는다(`W.boxes[i].gate === exit.id`, `solid` 를 켜고 끈다). 영웅이 36 px 안으로 다가서면 한 번(96 px 밖으로 나갔다 오면 다시) 사건 `exit.locked {id, locked, exit}`, `locked === 'not_built'` 면 `exit.missing {id, to, exit}` + 알림.
@@ -123,6 +128,8 @@ src/v2/game/
 - `actors[i]` 마다 입체 모델 1벌(`assets/v2/char3d/<model>.glb`, 텍스처는 512² 까지), 공용 클립 묶음의 `story` 묶음으로 선다: `pose` → `idle｜talk2｜kneel_down(끝 자세)｜sit_idle｜lantern_look`(`work` 는 지금 `idle`, `cower` 는 `kneel_down`). 영웅이 250 px 안에 오면 몸을 돌려 본다(앉거나 무릎 꿇은 사람은 돌지 않는다). 말하는 동안 `talk1`. 화면 밖이면 자세도 그리기도 건너뛴다.
 - `solid`(기본 true)인 사람은 세계의 충돌 상자다(`W.boxes[i].actor === id`) — 영웅도 적도 규칙의 충돌로 비켜 간다. `when: '깃발'` 은 `scene.flag(name)` 이 참일 때만 서 있다. `tint` 는 색조에 곱한다. `scene.hideActor(id)` · `showActor(id)`.
 - **알약은 한 번에 하나**: 닿는 거리(사람 92 px + `r`, 자리는 그 `r`) 안의 가장 가까운 것. **깨어 있는 적이 560 px 안에 있으면 알약은 없다**(싸움을 막지 않는다). 대화 · 일시정지 · 넘어가는 중에도 없다. 글자는 사람 `label ?? '말을 건다'`, 자리는 그 `label`.
+- **채찍 고리**(`interact` kind `ring`, `landing {x, y, z}`): `area.js` 가 `W.hookPoints = stage.hookPoints` 로 규칙에 넘긴다(WORLD 가 `finishArea` 에서 만든다). 고리가 닿는 거리(330 px, 높이 차 280 px) 안이면 규칙이 `hero.hookId` 를 켜고 솜씨 단추가 채찍 걸기가 된다(`pad.skill.mode = 'hook'`) — 안개의 묘지에서 납골당 앞 단(140 px 위)으로 오르는 길이다. 알약 「채찍 걸기」를 눌러도 같은 일을 한다(닿지 않으면 「채찍이 닿지 않는다」).
+- **쉬는 자리**(kind `rest`): 이야기가 없을 때 체력을 모두 채우고(`sim.heal('full')`) 쓰러진 뒤 다시 서는 자리로 삼는다(`sim.respawnAt(x, z, y)`) + 알림. 이야기가 꽂히면 사건만 가고 `api.heal(n)` · `api.restAt(x, z, y)` 를 이야기가 부른다.
 - 쓰기: 터치로 알약을 누르거나 `confirm` 키. 사람 → 사건 `talk {id, talk, actor}`, 자리 → 사건 `interact {id, kind, event, data, locked, spot}`(잠긴 자리도 사건은 간다).
 - 이야기가 꽂히지 않았을 때: 사람은 저마다 한 줄(`people.js` 의 `LINES`)을 대화 창(초상 `assets/v2/portraits/<model>.webp`)으로 말하고, 자리는 이름을 알림으로 띄운다. 내장 깃발: `<구역 id 또는 묶음 이름>_clear`(그 구역에서 태어난 적 · 그 묶음이 모두 쓰러짐 — `street_clear` · `square_clear` …), `door.pull` 자리를 쓰면 `door_pulled`.
 
@@ -187,7 +194,7 @@ hud.padHideButtons           // (선택) 숨길 v1 패드 단추 id 배열 · hu
 
 - 꽂는 법: `game.go('v2g', { area, spawn, story })` 또는 `scene.setStory(fn, { flag })` — `flag(name)` 을 주면 사람의 `when` 이 그 함수에 묻는다(없으면 내장 깃발 §3.1). 없으면 장면이 임시 규칙으로 돈다(사람의 한 줄 · 잠김 알림 · 마당을 정리하면 열쇠 문이 열림 · 종 곁에서 길게 울리면 건넘).
 - 사건: `area.enter {area, era}` · `section.enter {id, from}` · `enemy.kill {enemy}` · `group.clear {group}` · `area.clear {area}` · `hero.dead {}` · `hero.respawn {}` · `trigger {id, event, data, trigger}` · `exit {id, to, spawn}` · `exit.locked {id, locked, exit}` · `exit.missing {id, to}` · **`talk {id, talk, actor}`** · **`interact {id, kind, event, data, locked, spot}`** · **`bell.echo {r}`** · **`bell.long {boss, spot, twin}`** · PLAY 의 모든 사건 `play.<name>`(`data` = `[a, b, c, d]`).
-- `api`: `{ scene, sim, lock(on), toast(text, kind), teleport(sectionId), gotoArea(id, spawn, {keepPosition}), fx(name, o), sound(name, pos), setDialog(obj｜null), unlockExit(id, area), lockExit(id, area, key), hideActor(id), showActor(id), wakeGroup(group), groupLeft(group), bellCross() }`. 그 밖에 `scene.hud`(`banner · toast · showDialog · callout …`) · `scene.area` · `scene.people`(`byId(id)` · `talking`) · `scene.flags`(내장 깃발 Set).
+- `api`: `{ scene, sim, lock(on), toast(text, kind), teleport(sectionId), setFlags(obj, {reload}), heal(n), restAt(x, z, y), gotoArea(id, spawn, {keepPosition}), fx(name, o), sound(name, pos), setDialog(obj｜null), unlockExit(id, area), lockExit(id, area, key), hideActor(id), showActor(id), wakeGroup(group), groupLeft(group), bellCross() }`. 그 밖에 `scene.hud`(`banner · toast · showDialog · callout …`) · `scene.area` · `scene.people`(`byId(id)` · `talking`) · `scene.flags`(내장 깃발 Set).
 - **아직 없는 `api`(DATA_FORMAT §6 이 바라는 것)**: `prompt · objective · camera · wait · music · candle · moon · ring · save · chronicle · end · spawn · moveActor · onFlag · onItem` — 이야기 실행기는 없는 것을 경고 한 줄로 건너뛴다. `boss.phase` 사건도 아직 없다(보스 규칙이 오면).
 - 이야기 함수가 예외를 던지면 콘솔에 남기고 놀이는 계속된다.
 
@@ -271,7 +278,7 @@ hud.padHideButtons           // (선택) 숨길 v1 패드 단추 id 배열 · hu
 
 - **이야기는 아직 꽂히지 않았다**(§11). 지금은 임시 규칙으로 돈다: 사람마다 한 줄, 마당을 정리하면 열쇠 문이 열림, 종 곁에서 길게 울리면 쌍둥이 지역으로 건넘, 잠긴 문 알림.
 - 음악(`area.music`)은 아직 틀지 않는다. 저장도 없다 — 쓰러지면 규칙(`Sim`)이 그 지역의 처음으로 되돌린다(적도 다시 선다; 연 문은 열린 채).
-- 쉬는 자리(`interact` kind `rest`)는 사건만 올린다(체력을 채우지 않는다 — 영웅 상태는 규칙의 것이라 장면이 쓰지 않는다. PLAY 에 `sim.heal` 을 부탁했다).
+- 쉬는 자리는 임시 규칙에서 체력을 채운다(§3.1). 보스(`sim.bossState()` → `state.boss`) · 세라의 빛(`sim.lights`) · 고리를 밝게 그리기 · 채찍 모형(`src/v2/whip`, docs/v2/WHIP.md §7 — 지금은 임시 칼 + 빛 줄)은 아직 붙이지 않았다.
 - 사람의 `pose: 'work'` 는 서 있는 자세다(맞는 클립이 없다). `cower` 는 무릎 꿇은 자세.
 - 영웅 칼은 아직 상자로 만든 임시 칼(`blade`)이다. 적 무기는 모델.
 - 캐릭터 모델이 무겁다(§7) — LOD 가 오면 `cast.js` 에서 거리로 바꿔 그린다.
@@ -279,12 +286,14 @@ hud.padHideButtons           // (선택) 숨길 v1 패드 단추 id 배열 · hu
 - 스테이지의 정적 불꽃 메시(`mesh:'fire'`)는 그대로 그려진다 — 그 위에 입자 불이 탄다. 납작해 보이는 잎 모양은 PROPS 구역에 알렸다.
 - WebGL1 만 되는 기기: 효과 엔진이 없어 세계 · 캐릭터 · 소리만 나온다(불 · 안개 입자도 없다).
 - 묘지처럼 카메라와 놀이터 사이에 키 큰 소품이 있는 곳에서는 소품이 카메라 가까운 면에 잘려 보일 수 있다(WORLD 의 배치).
-- `tools/v2/p0_entry_check.mjs` 는 「v1 패드의 일시정지 단추 / ESC = 바로 나가기」를 기대한다 — 이제 일시정지 판이 열리므로 그 두 줄은 실패한다(검사를 고쳐야 한다: requests.md).
+- `tools/v2/p0_entry_check.mjs` 는 새 일시정지 흐름으로 고쳤다(터치: 새 단추의 「멈춤」 → 일시정지 판 → 「나가기」 줄 / 키보드: Esc → 판 → Esc 로 이어 하기, 다시 Esc → ↓ 로 「나가기」 → Enter).
+- 지역을 깃발로 다시 지을 때(§3) 화면이 한 번 어두워졌다 밝아진다(0.3초 + 불러오기). 문짝만 바꿔 끼우는 길은 없다 — 정적 메시가 조각으로 구워져 있어서다.
 
 ## 11. 통합 B(이야기)가 꽂는 자리 — 요약
 
 1. `import { STORY, createStory } from '../data/index.js'; const st = createStory(STORY, { warn }); scene.setStory(st.story, { flag: (n) => st.flag(n) });` — `game.go('v2g', { story })` 로 넘겨도 된다. 꽂는 순간 임시 규칙(§10 첫 줄)은 모두 꺼진다.
 2. 받는 사건: §6 의 목록. 사람에게 말 걸기 = `talk {id, talk}`, 자리 = `interact {id, kind, event, data, locked}`, 묶음 정리 = `group.clear {group}`, 메아리 = `bell.echo`, 길게 = `bell.long {spot, twin}`, 잠긴 문 = `exit.locked` / `exit.missing`, 지역 = `area.enter {area, era}`.
-3. 부르는 것: 대사 `scene.hud.showDialog({speaker, portrait, side, text, choices, onDone, onChoice})`(초상은 `assets/v2/portraits/<id>.webp`), 알림 `api.toast(text, kind)`, 띠 `scene.hud.banner(kind, title, sub)`, 문 `api.unlockExit(id, area)` · `lockExit`, 사람 `api.hideActor(id)` · `showActor(id)`, 건넘 `api.bellCross()`(어두워짐 → 쌍둥이 지역 같은 자리 → 「오늘 밤이 달라졌다」), 입력 잠금 `api.lock(on)`, 묶음 깨우기 `api.wakeGroup(group)` · 남은 수 `api.groupLeft(group)`, 지역 `api.gotoArea(id, spawn)`.
-4. 말하는 동안 그 사람이 `talk1` 을 틀게 하려면 `scene.people.talking = scene.people.byId(id)`(대화 창이 닫히면 장면이 지운다). 장면이 `talk` 사건을 올릴 때는 이미 그렇게 해 둔다.
-5. 아직 없는 `api`(§6)는 통합 B 가 `src/v2/game/index.js` 의 `emit()` 안 `_sapi` 에 더한다 — HUD 쪽 자리는 `state.candles · resonance · moon · boss · prompts` 와 `hud.banner · toast` 가 이미 받는다.
+3. 깃발: 이야기의 깃발이 바뀔 때마다 `api.setFlags({ gate_open: true, … })`(지역을 짓는 깃발만 — `AREA_FLAGS`; 다른 이름을 넘겨도 해롭지 않다). 지금 선 지역이 그 깃발로 달라지면 그 자리에서 다시 지어진다.
+4. 부르는 것: 대사 `scene.hud.showDialog({speaker, portrait, side, text, choices, onDone, onChoice})`(초상은 `assets/v2/portraits/<id>.webp`), 알림 `api.toast(text, kind)`, 띠 `scene.hud.banner(kind, title, sub)`, 문 `api.unlockExit(id, area)` · `lockExit`, 사람 `api.hideActor(id)` · `showActor(id)`, 건넘 `api.bellCross()`(어두워짐 → 쌍둥이 지역 같은 자리 → 「오늘 밤이 달라졌다」), 입력 잠금 `api.lock(on)`, 묶음 깨우기 `api.wakeGroup(group)` · 남은 수 `api.groupLeft(group)`, 지역 `api.gotoArea(id, spawn)`.
+5. 말하는 동안 그 사람이 `talk1` 을 틀게 하려면 `scene.people.talking = scene.people.byId(id)`(대화 창이 닫히면 장면이 지운다). 장면이 `talk` 사건을 올릴 때는 이미 그렇게 해 둔다.
+6. 아직 없는 `api`(§6)는 통합 B 가 `src/v2/game/index.js` 의 `emit()` 안 `_sapi` 에 더한다 — HUD 쪽 자리는 `state.candles · resonance · moon · boss · prompts` 와 `hud.banner · toast` 가 이미 받는다.

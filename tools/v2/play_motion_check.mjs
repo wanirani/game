@@ -225,6 +225,13 @@ slideCase('walk speed reversal (half stick)', (i) => (i < 60 ? [0.38, 0] : [-0.3
   const n = seen.filter((c) => c === 'run_stop').length;
   for (let i = 0; i < 20; i++) { sim.update(DT, { mx: 0.4, mz: 0 }); driveHero(ch, sim.hero, DT, TUNE); } let slow = 0; for (let i = 0; i < 30; i++) { sim.update(DT, {}); driveHero(ch, sim.hero, DT, TUNE); if (ch.anim.cur?.name === 'run_stop') slow++; }
   ok('letting go of the stick at run speed: brakes with the skid clip (about 0.3 s), then stands; not after a walk', seen[0] === 'run_stop' && n >= 14 && n <= 20 && /^idle/.test(seen[seen.length - 1]) && slow === 0 && finiteRig(ch), `run_stop for ${n} ticks, then ${seen[seen.length - 1]} · after a walk ${slow}`); }
+{ // 돌아서며 버티는 자세: 미끄러지는 클립(run_stop)만으로도 뒤로 젖어 있다 — 달리기의 "세우기"가 겹치지 않고, 윗몸을 조금 앞으로 당긴다 (TUNE.pivotLean)
+  const brace = (pl) => { const T = { ...TUNE, pivotLean: pl }, sim = new Sim(flatArena(3000, 3000, []), {}), ch = mkChar('kael'); let worst = 0, n = 0;
+    for (let i = 0; i < 60; i++) { sim.update(DT, { mx: 1, mz: 0 }); driveHero(ch, sim.hero, DT, T); }
+    for (let i = 0; i < 20; i++) { sim.update(DT, { mx: -1, mz: 0 }); driveHero(ch, sim.hero, DT, T); if (ch.anim.cur?.name === 'run_stop') { const hd = ch.rig.boneWorld('head'), hp = ch.rig.boneWorld('hips'); worst = Math.min(worst, (Math.atan2(hd[14] - hp[14], hd[13] - hp[13]) * 180) / Math.PI); n++; } }
+    return [worst, n, finiteRig(ch)]; };
+  const [now, n, fin] = brace(TUNE.pivotLean), [clipOnly] = brace(0);
+  ok('reversal brace: the torso is pulled forward from the skid clip (leans back less than the clip alone, and less than 20°)', n >= 2 && fin && now > clipOnly + 3 && now > -20 && now < 2, `brace ticks ${n} · hips→head line ${now.toFixed(1)}° (clip alone ${clipOnly.toFixed(1)}°; − = back)`); }
 { const D = KINDS.bat, ch = mkChar(D.model), e = { def: D, kind: 'bat', id: 0, state: 'chase', anim: 'walk', animT: 0, dirX: 1, dirZ: 0, gait: 0, stateT: 0, moved: 100, alpha: 1 };
   for (let i = 0; i < 60; i++) driveActor(ch, e, DT);
   const W = ch.rig.boneWorld('hips'), up = [W[4], W[5], W[6]], l = Math.hypot(...up), tilt = (Math.atan2(up[2] / l, up[1] / l) * 180) / Math.PI;
