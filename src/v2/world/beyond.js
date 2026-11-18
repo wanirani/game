@@ -23,6 +23,7 @@ export function beyondEshville(now, cold = false) {
     { mesh: 'apron', x: -9000, y: Y, z: 0, w: 8840, d: 296, cell: 300, tile: 520, k: 0.72, skirt: 520, strips: [{ x0: 6400, x1: 8840, z0: 92, z1: 208, tint: [1.34, 1.26, 1.16], k: 0.95, cell: 240 }] },   // west: the road out of the gate (z 92..208)
     { mesh: 'apron', x: 4800, y: Y, z: 0, w: 5600, d: 296, cell: 300, tile: 520, k: 0.7, skirt: 520 },
     { mesh: 'apron', x: -160, y: Y, z: -60, w: 100, d: 60, k: 0.5, skirt: 520 }, { mesh: 'apron', x: 4700, y: Y, z: -60, w: 100, d: 60, k: 0.5, skirt: 520 },   // under the fronts of the two end walls
+    { mesh: 'apron', x: -60, y: Y, z: 0.6, w: 4760, d: 3, k: 0.5, skirt: 520 },   // the front of the ground under the floors' own 220-deep fronts: the square's camera looked under them (kept in this chunk: a deeper floor makes its chunk's box taller and the street, the outskirts and the square were then all drawn together)
     { mesh: 'apron', x: -12000, y: Y, z: 2896, w: 29000, d: 14000, cell: 3600, tile: 700, k: 0.66 },
     { mesh: 'apron', x: 6800, y: Y, z: 296, w: 10200, d: 2600, cell: 1300, tile: 700, k: 0.68 }, { mesh: 'apron', x: -12000, y: Y, z: 296, w: 10000, d: 2600, cell: 1300, tile: 700, k: 0.68 },
     // far out, a bank of land that rises just over the horizon: where the ground ends the picture goes on into the sky's own haze, not into a bare strip of its foot
@@ -51,11 +52,11 @@ export function beyondEshville(now, cold = false) {
     { mesh: 'gravefield', x: 4720, y: Y, z: 1640, w: 260, d: 700, n: 12, h: 70, tint: wall, seed: 5 },
     { mesh: 'treeline', x: 4440, y: Y, z: 1560, x1: 4430, z1: 2500, n: 5, h: 300, hv: 0.3, wob: 24, kind: 'bare', tint: tree, seed: 43 },
   ]);
-  // in the square's own chunk (its textures): the churchyard wall behind the church, the lane's low walls
+  // the churchyard wall behind the church and the lane's low walls: real masonry (the second and last texture of the far chunk)
   const east = [
-    { t: 'deco', chunk: 'east', mesh: 'farwall', x: 3100, y: Y, z: 1960, x1: 4900, z1: 1960, h: 150, mat: 'fieldstone', piers: 300, k: 0.8 },
-    { t: 'deco', chunk: 'east', mesh: 'farwall', x: 4478, y: Y, z: 1500, x1: 4478, z1: 2500, h: 60, mat: 'fieldstone', piers: 250, k: 0.8, to: [4590, 2000] },
-    { t: 'deco', chunk: 'east', mesh: 'farwall', x: 4702, y: Y, z: 1500, x1: 4702, z1: 2500, h: 60, mat: 'fieldstone', piers: 250, k: 0.8, to: [4590, 2000] },
+    { t: 'deco', chunk: 'far', mesh: 'farwall', x: 3100, y: Y, z: 1960, x1: 4900, z1: 1960, h: 150, mat: 'fieldstone', piers: 300, k: 0.8 },
+    { t: 'deco', chunk: 'far', mesh: 'farwall', x: 4478, y: Y, z: 1500, x1: 4478, z1: 2500, h: 60, mat: 'fieldstone', piers: 250, k: 0.8, to: [4590, 2000] },
+    { t: 'deco', chunk: 'far', mesh: 'farwall', x: 4702, y: Y, z: 1500, x1: 4702, z1: 2500, h: 60, mat: 'fieldstone', piers: 250, k: 0.8, to: [4590, 2000] },
   ];
   const west = [86, 214].map((z) => ({ t: 'fence', chunk: 'out', kind: 'wood', x0: -820, z0: z, x1: -172, z1: z, y: Y, h: 50 }));   // the road out of the west gate runs on between fences
   return [...out, ...east, ...west];
@@ -67,6 +68,7 @@ export function beyondGraveyard(now) {
   return far([
     { mesh: 'apron', x: -2600, y: Y, z: -60, w: 2610, d: 3180, cell: 330, tile: 520, k: 0.7, skirt: 420 }, { mesh: 'apron', x: 1190, y: Y, z: -60, w: 2610, d: 3180, cell: 330, tile: 520, k: 0.7, skirt: 420 },
     { mesh: 'apron', x: 0, y: Y, z: 2180, w: 1200, d: 940, cell: 300, tile: 520, k: 0.7 },
+    { mesh: 'apron', x: 10, y: Y, z: 0.6, w: 1180, d: 3, k: 0.5, skirt: 520 },   // the front of the ground under the road's and the gardens' own fronts
     { mesh: 'apron', x: -12000, y: Y, z: 3100, w: 25200, d: 14000, cell: 3600, tile: 700, k: 0.64 }, { mesh: 'apron', x: -12000, y: Y, z: -60, w: 9400, d: 3180, cell: 1600, tile: 700, k: 0.66, skirt: 420 }, { mesh: 'apron', x: 3800, y: Y, z: -60, w: 9400, d: 3180, cell: 1600, tile: 700, k: 0.66, skirt: 420 },
     // graves outside the walls, thinning out with the distance
     { mesh: 'gravefield', x: -520, y: Y, z: 120, w: 480, d: 760, n: 22, h: 80, tint: stone, seed: 2 }, { mesh: 'gravefield', x: 1240, y: Y, z: 120, w: 480, d: 760, n: 22, h: 80, tint: stone, seed: 5 },

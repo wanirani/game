@@ -14,7 +14,7 @@ export function belltower(era = 'now', flags = {}) {
   const zOf = (k) => (k ? Z1 + (k - 1) * ROW : 0), SC = (side, u, y) => ({ type: 'sconce', side, u, y, lr: 300, li: 1.5 });
   // ── floors: floor k is a slab from the ground up (a fall lands on the one in front); gaps are notches whose ground is the floor below ──
   const GAP = { 1: [300, 400], 3: [330, 430], 4: [270, 370] };
-  add('low', { t: 'floor', x: 0, z: 0, w: W, d: Z1, mat: 'stone', thick: 520, kit: { mat: 'flags', cell: 40, strips: [{ x0: 260, x1: 460, mat: 'slabs' }] } }, { t: 'blocker', x: -90, z: -60, w: W + 180, d: 60, y: -200, h: 2400 });
+  add('low', { t: 'floor', x: 0, z: 0, w: W, d: Z1, mat: 'stone', kit: { mat: 'flags', cell: 40, strips: [{ x0: 260, x1: 460, mat: 'slabs' }] } }, { t: 'blocker', x: -90, z: -60, w: W + 180, d: 60, y: -200, h: 2400 });
   for (let k = 1; k <= 4; k++) {
     const z = zOf(k), y = k * LV, g = GAP[k], chunk = k <= 2 ? 'low' : 'high', mat = k % 2 ? 'planks' : 'flags', kit = { mat, cell: 40 };
     if (!g) add(chunk, { t: 'floor', x: 0, z, w: W, d: ROW, y, thick: y, mat: 'stone', kit });
@@ -47,9 +47,11 @@ export function belltower(era = 'now', flags = {}) {
   const side = (x, face) => ({ t: 'wall', x, z: -60, w: 90, d: ZT + 400 + 60, h: TOP + 330, mat: 'facade', kit: { style: 'stone', cell: 70, faces: face, plinth: 0, quoins: false, cornice: false, courses: [LV * 2 + 60, LV * 4 + 60],
     windows: [[330, 250], [650, 470], [1010, 640], [1190, 640]].map(([u, y]) => ({ side: face, u: face === 'R' ? u : ZT + 460 - u, y, w: 34, h: 96, arch: 'point', rows: 1, cols: 1 })),
     hang: [SC(face, face === 'R' ? 150 : ZT + 460 - 210, 150), SC(face, face === 'R' ? 520 : ZT + 460 - 560, 150 + 2 * LV), SC(face, face === 'R' ? 800 : ZT + 460 - 840, 150 + 4 * LV), SC(face, face === 'R' ? 1120 : ZT + 460 - 1120, 150 + TOP)] } });
-  add('low', side(-90, 'R'), side(W, 'L'),
-    // WORLD-LOOK: the tower is cut open towards the camera; left and right of the cut the front wall of the church goes on (it was empty: the clear colour showed beside the side walls)
-    { t: 'deco', mesh: 'farwall', x: -900, y: -520, z: -60, x1: 0, z1: -60, h: TOP + 1100, mat: 'ashlar', piers: 300, k: 0.6, cell: 280 }, { t: 'deco', mesh: 'farwall', x: W, y: -520, z: -60, x1: W + 900, z1: -60, h: TOP + 1100, mat: 'ashlar', piers: 300, k: 0.6, cell: 280 });
+  add('low', side(-90, 'R'), side(W, 'L'));
+  // WORLD-LOOK: the tower is cut open towards the camera; left and right of the cut the front wall of the church goes on, and the ground's front goes deeper than the floor's own
+  // (it was empty: the clear colour showed beside the side walls and under the front). A chunk of its own with one texture: the tower's two chunks keep their boxes.
+  add('far', { t: 'deco', mesh: 'farwall', x: -900, y: -520, z: -60, x1: 0, z1: -60, h: TOP + 1100, mat: 'ashlar', piers: 300, k: 0.6, cell: 280 }, { t: 'deco', mesh: 'farwall', x: W, y: -520, z: -60, x1: W + 900, z1: -60, h: TOP + 1100, mat: 'ashlar', piers: 300, k: 0.6, cell: 280 },
+    { t: 'deco', mesh: 'apron', x: 0, y: -4, z: 0.6, w: W, d: 3, mat: 'ashlar', k: 0.5, skirt: 520 });
   add('high', { t: 'wall', x: -90, z: ZT + 400, w: W + 180, d: 90, y: 0, h: TOP + 330, mat: 'facade', kit: { style: 'stone', cell: 70, faces: 'F', plinth: 0, quoins: false, battlement: true, courses: [TOP + 150],
     windows: [200, 450, 700].map((u) => ({ u, y: TOP + 44, w: 96, h: 190, arch: 'point', rows: 5, cols: 1, lit: 0 })) } });
   // ── dressing ──
@@ -65,7 +67,7 @@ export function belltower(era = 'now', flags = {}) {
     // the bell chamber: the big bell in its oak frame against the back arches, the rope, braziers, the keeper's corner
     { t: 'prop', mesh: 'bell', x: 360, z: ZT + 300, y: TOP, h: 300, solid: 98, solidZ: 50, solidH: 240 },
     { t: 'deco', mesh: 'rope', x: 268, y: TOP + 34, z: ZT + 232, len: 262, r: 3.6 },                                                                       // the bell rope: from the top beam down to hand height, in front of the frame (Elise stands at it)
-    { t: 'prop', mesh: 'brazier', x: 70, z: ZT + 330, y: TOP, h: 112, solid: 42, solidZ: 34, solidH: 300, light: { r: 420, i: 1.9, y: 90, c: [1, 0.55, 0.22] } }, { t: 'prop', mesh: 'brazier', x: 650, z: ZT + 330, y: TOP, h: 112, solid: 42, solidZ: 34, solidH: 300, light: { r: 420, i: 1.9, y: 90, c: [1, 0.55, 0.22] } },
+    { t: 'prop', mesh: 'brazier', x: 70, z: ZT + 330, y: TOP, h: 112, solid: 40, solidZ: 30, solidH: 300, light: { r: 420, i: 1.9, y: 90, c: [1, 0.55, 0.22] } }, { t: 'prop', mesh: 'brazier', x: 650, z: ZT + 330, y: TOP, h: 112, solid: 40, solidZ: 30, solidH: 300, light: { r: 420, i: 1.9, y: 90, c: [1, 0.55, 0.22] } },
     { t: 'deco', mesh: 'candles', x: 600, y: TOP, z: ZT + 60, n: 5, light: { r: 200, i: 1.0, y: 20 } },
     { t: 'deco', mesh: 'beam', x: 0, y: TOP + 300, z: ZT + 300, len: W, r: 13 }, { t: 'deco', mesh: 'beam', x: 268, y: TOP + 296, z: ZT + 226, len: 80, r: 7, dz: true });   // the top beam and the short arm the rope runs over
   anchors.push({ id: 'brazier_l', kind: 'fire', x: 70, y: TOP + 96, z: ZT + 324, size: 0.5, light: true }, { id: 'brazier_r', kind: 'fire', x: 650, y: TOP + 96, z: ZT + 324, size: 0.5, light: true },

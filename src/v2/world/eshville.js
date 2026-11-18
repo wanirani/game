@@ -18,10 +18,10 @@ export function eshville(era, flags = {}) {
   const fire = (chunk, id, x, y, z, w, h, lr = 420) => { if (out) { if (w > 100) anchors.push({ id: id + '_smoke', kind: 'smoke', x, y, z, size: 1 }); return; } add(chunk, { t: 'deco', mesh: 'fire', x, y, z, w, h, n: Math.max(4, Math.round(w / 18)), light: FIRE(lr, 1.9) }); anchors.push({ id, kind: 'fire', x, y, z, size: +(h / 70).toFixed(2), light: true }); };
 
   // ───────────── ground ─────────────
-  add('out', { t: 'floor', x: -60, z: 0, w: 1560, d: 300, mat: 'dirt', thick: 520, kit: { mat: 'cobworn', cell: 44, rag: 44, strips: [{ z0: 0, z1: 56, mat: 'soil' }, { z0: 232, z1: 300, mat: 'soil' }] } });
-  add('street', { t: 'floor', x: 1500, z: 0, w: 1800, d: 300, mat: 'cobble', thick: 520, kit: { cell: 44, rag: 30, strips: [{ z0: 104, z1: 196, mat: 'cobworn' }, { z0: 0, z1: 16, mat: 'flags' }] } },
+  add('out', { t: 'floor', x: -60, z: 0, w: 1560, d: 300, mat: 'dirt', kit: { mat: 'cobworn', cell: 44, rag: 44, strips: [{ z0: 0, z1: 56, mat: 'soil' }, { z0: 232, z1: 300, mat: 'soil' }] } });
+  add('street', { t: 'floor', x: 1500, z: 0, w: 1800, d: 300, mat: 'cobble', kit: { cell: 44, rag: 30, strips: [{ z0: 104, z1: 196, mat: 'cobworn' }, { z0: 0, z1: 16, mat: 'flags' }] } },
     { t: 'pave', x: 1500, z: 280, w: 1800, d: 20, h: 7, kerb: 'F' });
-  add('east', { t: 'floor', x: 3300, z: 0, w: 1400, d: 900, mat: 'cobble', thick: 520, kit: { mat: 'cobble2', cell: 50, rag: 38, strips: [{ x0: 470, x1: 730, z0: 320, z1: 580, mat: 'flags' }, { x0: 520, x1: 680, z0: 580, z1: 900, mat: 'flags' }, { x0: 0, x1: 470, z0: 104, z1: 196, mat: 'cobworn' }, { x0: 1180, x1: 1400, z0: 560, z1: 900, mat: 'cobworn' }] } });
+  add('east', { t: 'floor', x: 3300, z: 0, w: 1400, d: 900, mat: 'cobble', kit: { mat: 'cobble2', cell: 50, rag: 38, strips: [{ x0: 470, x1: 730, z0: 320, z1: 580, mat: 'flags' }, { x0: 520, x1: 680, z0: 580, z1: 900, mat: 'flags' }, { x0: 0, x1: 470, z0: 104, z1: 196, mat: 'cobworn' }, { x0: 1180, x1: 1400, z0: 560, z1: 900, mat: 'cobworn' }] } });
   add('east', { t: 'floor', x: 3660, z: 900, w: 480, d: 200, mat: 'stone', kit: { mat: 'flags', rag: 26, strips: [{ x0: 0, x1: 110, mat: 'cobble2' }, { x0: 370, x1: 480, mat: 'cobble2' }] } },
     { t: 'stairs', x: 3660, z: 1100, w: 480, d: 150, h: 84, dir: 'z+', steps: 7, mat: 'stone', kit: { cheeks: 'LR' } },
     { t: 'floor', x: 3460, z: 1250, w: 880, d: 400, y: 84, thick: 330, mat: 'stone', kit: { mat: 'flags', rag: 30, strips: [{ z0: 0, z1: 60, mat: 'cobble2' }, { x0: 0, x1: 150, z0: 60, z1: 400, mat: 'cobble2' }, { x0: 730, x1: 880, z0: 60, z1: 400, mat: 'cobble2' }] } },
@@ -83,7 +83,7 @@ export function eshville(era, flags = {}) {
   // ───────────── props that stand in both eras (same spots) ─────────────
   add('street', LAMP(1760, 266), LAMP(2500, 266), LAMP(3130, 266), LAMP(2300, 8, { solid: 0 }),
     { t: 'fence', kind: 'iron', x0: 1860, z0: 5, x1: 2180, z1: 5, h: 44 }, { t: 'fence', kind: 'iron', x0: 2700, z0: 5, x1: 3020, z1: 5, h: 44 },
-    { t: 'prop', mesh: 'brazier', h: 112, solid: 42, solidZ: 34, solidH: 300, x: 2700, z: 262, light: { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } });   // WORLD-LOOK: the collision is as wide as the bowl (88) and taller than a jump - the hero stood inside the bowl beside a 30-wide box, or on it   // (BREAK: the barrel that stood at 2420, 264 is a breakable now - see breakables below)
+    { t: 'prop', mesh: 'brazier', h: 112, solid: 42, solidZ: 30, solidH: 300, x: 2700, z: 262, light: { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } });   // WORLD-LOOK: the collision is as wide as the bowl (88) and taller than a jump - the hero stood inside the bowl beside a 30-wide box, or on it   // (BREAK: the barrel that stood at 2420, 264 is a breakable now - see breakables below)
   add('out', LAMP(now ? 620 : 640, 262, now ? { mesh: 'lanternpost', lit: false, light: null, h: 190 } : {}), LAMP(1380, 8, { solid: 0 }),
     { t: 'fence', kind: 'wood', x0: 80, z0: 6, x1: 420, z1: 6, h: 50 }, { t: 'fence', kind: 'wood', x0: 860, z0: 6, x1: 1240, z1: 6, h: 50 },
     { t: 'prop', mesh: 'deadtree', x: 20, z: 258, h: 300, solid: 56, solidZ: 40, solidH: 240 });   // the footprint covers the root flare (162 x 149 at this size): the hero walked 65 units over the roots
