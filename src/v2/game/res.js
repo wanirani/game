@@ -12,7 +12,7 @@ const LEVELS = [1, 0.85, 0.72, 0.6];
 export class Res {
   /** perf = readPerf() result ({ tier, resK, hz, auto }) */
   constructor(perf) {
-    this.T = RES_TIERS[perf.tier] ?? RES_TIERS.mid; this.tier = RES_TIERS[perf.tier] ? perf.tier : 'mid'; this.resK = perf.resK ?? 1; this.auto = perf.auto !== false; this.aaOn = perf.aa !== false;
+    this.T = RES_TIERS[perf.tier] ?? RES_TIERS.mid; this.tier = RES_TIERS[perf.tier] ? perf.tier : 'mid'; this.perf = perf; this.resK = perf.resK ?? 1; this.auto = perf.auto !== false; this.aaOn = perf.aa !== false;
     this.budget = 1000 / (perf.hz > 30 ? Math.min(perf.hz, 120) : 60) * 1.25;
     this.level = 0; this.w = 2; this.h = 2; this.dpr = 1; this.cssW = 0; this.cssH = 0; this.devDpr = 0;
     this.winT = 0; this.winN = 0; this.winOver = 0; this.quiet = 0; this.wait = 12; this.cool = 0; this.sinceUp = 99; this.downs = 0; this.ups = 0;
@@ -20,8 +20,9 @@ export class Res {
   get aa() { return this.T.aa && this.aaOn; }
   /** pixel size for a CSS box; recomputed only when the box, the device ratio or the level changed */
   size(cssW, cssH, devDpr) {
-    if (cssW === this.cssW && cssH === this.cssH && devDpr === this.devDpr && this._lv === this.level) return this;
-    this.cssW = cssW; this.cssH = cssH; this.devDpr = devDpr; this._lv = this.level;
+    const rk = this.perf.resK ?? 1;   // read live: the saved factor may be changed while the scene runs (checks shrink the picture to measure JS only)
+    if (cssW === this.cssW && cssH === this.cssH && devDpr === this.devDpr && this._lv === this.level && rk === this.resK) return this;
+    this.cssW = cssW; this.cssH = cssH; this.devDpr = devDpr; this._lv = this.level; this.resK = rk;
     const T = this.T, d = Math.max(0.5, Math.min(devDpr || 1, T.dpr, Math.sqrt(T.px / Math.max(1, cssW * cssH)))) * this.resK * LEVELS[this.level];
     this.dpr = d; this.w = Math.max(2, Math.round(cssW * d)); this.h = Math.max(2, Math.round(cssH * d));
     return this;

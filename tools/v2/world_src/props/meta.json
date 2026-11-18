@@ -1,9 +1,9 @@
 {
- "about": "generated prop models -> prop pack (tools/v2/world_props_bake.mjs, docs/v2/ENV_KIT.md 16). h = world height (hero = 175), rotY = degrees (the generator's models face +x), foot = collision half sizes, px = texels per world unit before the fit to the atlas, lum = wanted median brightness of the front picture (0..255), tris = triangles after decimation, emis = glowing texels are flagged per vertex, sat = colour saturation kept (1 = as generated), name = prop name in the pack if different from the file, cut = boxes of stray triangles to throw away, skip + why = rejected models, origin 'base' = the prop's origin is under its base (lowest fifth) instead of the middle of its box (a post with an arm)",
+ "about": "generated prop models -> prop pack (tools/v2/world_props_bake.mjs, docs/v2/ENV_KIT.md 16). h = world height (hero = 175), rotY = degrees (the generator's models face +x), foot = collision half sizes, px = texels per world unit before the fit to the atlas, lum = wanted median brightness of the front picture (0..255), tris = triangles after decimation, emis = glowing texels are flagged per vertex, sat = colour saturation kept (1 = as generated), name = prop name in the pack if different from the file, cut = boxes of stray triangles to throw away, skip + why = rejected models, origin 'base' = the prop's origin is under its base (lowest fifth) instead of the middle of its box (a post with an arm) | WORLD-2 (ENV_KIT 18): 12 crypt and village models added, the atlas is 2048x2048 (texels 3.3e6)",
  "pitch": 24,
  "yaw": 70,
  "sideScale": 0.38,
- "texels": 1700000,
+ "texels": 3300000,
  "props": {
   "angel": {
    "h": 200,
@@ -34,7 +34,7 @@
     14
    ],
    "footH": 240,
-   "px": 1.25,
+   "px": 1.6,
    "lum": 62,
    "tris": 440,
    "sat": 0.9
@@ -89,7 +89,7 @@
     62,
     80
    ],
-   "px": 1.35,
+   "px": 1.7,
    "lum": 78,
    "tris": 600,
    "name": "chapel",
@@ -261,6 +261,173 @@
   "stall": {
    "skip": true,
    "why": "awning and goods melted into a crumpled box -> code-built stall stays"
+  },
+  "sarcophagus": {
+   "h": 96,
+   "foot": [
+    96,
+    44
+   ],
+   "px": 2.2,
+   "lum": 90,
+   "tris": 420,
+   "sat": 0.8
+  },
+  "coffinstack": {
+   "h": 150,
+   "foot": [
+    100,
+    56
+   ],
+   "px": 2.0,
+   "lum": 58,
+   "tris": 520,
+   "sat": 0.9
+  },
+  "bonepile": {
+   "h": 56,
+   "foot": [
+    66,
+    52
+   ],
+   "footH": 40,
+   "px": 2.2,
+   "lum": 96,
+   "tris": 360,
+   "sat": 0.8
+  },
+  "skullwall": {
+   "h": 170,
+   "foot": [
+    118,
+    26
+   ],
+   "px": 2.2,
+   "lum": 90,
+   "tris": 420,
+   "sat": 0.8
+  },
+  "candelabrum": {
+   "h": 170,
+   "foot": [
+    22,
+    22
+   ],
+   "px": 2.3,
+   "lum": 60,
+   "tris": 300,
+   "emis": true,
+   "light": {
+    "y": 160,
+    "r": 300,
+    "i": 1.4,
+    "c": [
+     1,
+     0.66,
+     0.3
+    ]
+   },
+   "glow": {
+    "r": 56,
+    "pool": 170,
+    "c": [
+     1,
+     0.74,
+     0.38
+    ],
+    "flicker": true
+   },
+   "sat": 0.9
+  },
+  "chandelier": {
+   "h": 150,
+   "foot": [
+    0,
+    0
+   ],
+   "px": 2.0,
+   "lum": 60,
+   "tris": 420,
+   "emis": true,
+   "glow": {
+    "r": 80,
+    "pool": 10,
+    "c": [
+     1,
+     0.74,
+     0.38
+    ],
+    "flicker": true
+   },
+   "sat": 0.9
+  },
+  "altar": {
+   "h": 104,
+   "foot": [
+    100,
+    40
+   ],
+   "px": 2.2,
+   "lum": 90,
+   "tris": 480,
+   "sat": 0.8
+  },
+  "mourner": {
+   "h": 210,
+   "foot": [
+    28,
+    26
+   ],
+   "px": 3.0,
+   "lum": 92,
+   "tris": 640,
+   "sat": 0.8
+  },
+  "cryptdoor": {
+   "h": 220,
+   "foot": [
+    86,
+    22
+   ],
+   "px": 2.2,
+   "lum": 80,
+   "tris": 420,
+   "sat": 0.85
+  },
+  "stairs": {
+   "h": 121,
+   "foot": [
+    0,
+    0
+   ],
+   "px": 2.0,
+   "lum": 62,
+   "tris": 300,
+   "sat": 0.9
+  },
+  "stall2": {
+   "h": 150,
+   "foot": [
+    86,
+    40
+   ],
+   "px": 2.2,
+   "lum": 70,
+   "tris": 520,
+   "sat": 0.9
+  },
+  "wreck2": {
+   "h": 76,
+   "foot": [
+    80,
+    48
+   ],
+   "footH": 56,
+   "px": 2.0,
+   "lum": 40,
+   "tris": 420,
+   "emis": true,
+   "sat": 1.0
   }
  },
  "topScale": 0.45

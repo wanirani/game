@@ -26,7 +26,7 @@ export function house(o) {
     const u = Math.round(w * (i + 0.5) / n2 + (r() - 0.5) * 12);
     wins.push(timber ? { u, y: fy, w: 40, h: 56, lit: L(), frame: 'timber' } : { u, y: fy, w: 42, h: 68, lit: L(), arch: f === 0 && st === 'stone' ? 'round' : undefined });
   }
-  if (o.burnt) for (const s of wins) if (r() < 0.3) s.lit = 0.95;   // fire inside
+  if (o.burnt) for (const s of wins) if (r() < 0.3) s.lit = o.cold ? 0 : 0.95;   // fire inside (o.cold: the fires are out - same random draws, dark windows)
   if (o.sign) hang.push({ type: 'sign', u: du ?? w / 2, y: 126, w: 78, h: 20, ...(typeof o.sign === 'object' ? o.sign : {}) });
   if (o.banner) hang.push({ type: 'banner', u: Math.round(w * 0.5 + (du != null && Math.abs(w * 0.5 - du) < 60 ? 90 : 0)), y: 62, len: 88, w: 34, c: o.banner });
   if (o.sconce) hang.push({ type: 'sconce', u: Math.round((du ?? w * 0.4) + 62), y: 118 });

@@ -8,12 +8,13 @@ import { D, house, inChunk, rect } from './gen.js';
 const BLACK = [0.14, 0.13, 0.16], RED = [0.62, 0.12, 0.14], BLUE = [0.2, 0.26, 0.5];
 const FIRE = (r = 420, i = 2.0) => ({ r, i, y: 30, c: [1, 0.5, 0.2] });
 
-export function eshville(era) {
-  const now = era === 'now', past = !now, P = [], anchors = [], enemies = [], actors = [], interact = [], triggers = [];
+/** flags (docs/v2/AREA_FORMAT.md 13): now - door_pulled · gate_open · promise · elise_home · bells_answered; past - past_gate_open · past_street_clear */
+export function eshville(era, flags = {}) {
+  const now = era === 'now', past = !now, out = now && !!flags.bells_answered, gateOpen = !!(now ? flags.gate_open : flags.past_gate_open), P = [], anchors = [], enemies = [], actors = [], interact = [], triggers = [];
   const add = (chunk, ...parts) => P.push(...inChunk(chunk, parts.flat()));
   // the generated lantern post has its origin under the post and its arm toward +x; x - 20 keeps the post where the first pack (origin under the middle of the model) showed it
   const LAMP = (x, z, o = {}) => (now ? { t: 'prop', mesh: 'lamp', h: 196, solid: 9, solidZ: 9, light: { r: 330, i: 1.6, y: 170 }, x, z, ...o } : { t: 'prop', mesh: 'lanternpost', h: 190, solid: 9, solidZ: 9, light: { r: 300, i: 1.5, y: 130, c: [1, 0.7, 0.36] }, flicker: true, code: !(z >= 264 && z <= 280), x: z >= 264 && z <= 280 ? x - 20 : x, z, ...o });   // generated lantern post against the house fronts; the thin code-built one where the hero can walk behind it (the thick post hid him: world_verify_node)
-  const fire = (chunk, id, x, y, z, w, h, lr = 420) => { add(chunk, { t: 'deco', mesh: 'fire', x, y, z, w, h, n: Math.max(4, Math.round(w / 18)), light: FIRE(lr, 1.9) }); anchors.push({ id, kind: 'fire', x, y, z, size: +(h / 70).toFixed(2), light: true }); };
+  const fire = (chunk, id, x, y, z, w, h, lr = 420) => { if (out) { if (w > 100) anchors.push({ id: id + '_smoke', kind: 'smoke', x, y, z, size: 1 }); return; } add(chunk, { t: 'deco', mesh: 'fire', x, y, z, w, h, n: Math.max(4, Math.round(w / 18)), light: FIRE(lr, 1.9) }); anchors.push({ id, kind: 'fire', x, y, z, size: +(h / 70).toFixed(2), light: true }); };
 
   // ───────────── ground ─────────────
   add('out', { t: 'floor', x: -60, z: 0, w: 1560, d: 300, mat: 'dirt', kit: { mat: 'cobworn', cell: 44, rag: 44, strips: [{ z0: 0, z1: 56, mat: 'soil' }, { z0: 232, z1: 300, mat: 'soil' }] } });
@@ -44,13 +45,13 @@ export function eshville(era) {
 
   // ───────────── houses (same footprints in both eras) ─────────────
   add('out',
-    house({ x: -60, z: 300, w: 420, h: now ? 210 : 190, style: 'rubble', seed: 11, burnt: now, lit: 0.5, roofMat: 'thatch', kit: { lower: 'fieldstone' } }),
-    house({ x: 360, z: 300, w: 160, h: now ? 96 : 150, style: now ? 'rubble' : 'plaster', seed: 12, burnt: now, door: false, lit: 0.6, roofMat: 'thatch', kit: now ? { lower: 'fieldstone', windows: [] } : {} }),
+    house({ x: -60, z: 300, w: 420, h: now ? 210 : 190, style: 'rubble', seed: 11, burnt: now, cold: out, lit: 0.5, roofMat: 'thatch', kit: { lower: 'fieldstone' } }),
+    house({ x: 360, z: 300, w: 160, h: now ? 96 : 150, style: now ? 'rubble' : 'plaster', seed: 12, burnt: now, cold: out, door: false, lit: 0.6, roofMat: 'thatch', kit: now ? { lower: 'fieldstone', windows: [] } : {} }),
     house({ x: 520, z: 300, w: 440, h: 300, style: 'timber', seed: 13, lit: now ? 0.12 : 0.6, roofMat: past ? 'thatch' : undefined, banner: past ? BLACK : null }),
-    house({ x: 960, z: 300, w: 540, h: now ? 230 : 240, style: 'stone', seed: 14, burnt: now, lit: 0.55, sconce: past }));
+    house({ x: 960, z: 300, w: 540, h: now ? 230 : 240, style: 'stone', seed: 14, burnt: now, cold: out, lit: 0.55, sconce: past }));
   add('street',
     house({ x: 1500, z: 300, w: 580, h: now ? 340 : 300, style: 'timber', seed: 21, base: 7, lit: 0.85, door: 300, sign: true, sconce: true, shop: true, roofMat: past ? 'thatch' : undefined }),   // inn (now) / small tavern (past)
-    house({ x: 2080, z: 300, w: 380, h: now ? 280 : 250, style: 'stone', seed: 22, base: 7, lit: now ? 0.15 : 0.5, door: 190, banner: past ? BLACK : BLUE }),                                  // the house with the trapped villager
+    house({ x: 2080, z: 300, w: 380, h: now ? 280 : 250, style: 'stone', seed: 22, base: 7, lit: now ? 0.15 : 0.5, door: 190, doorOpt: now && flags.door_pulled ? { open: true } : {}, banner: past ? BLACK : BLUE }),                                  // the house with the trapped villager
     house({ x: 2460, z: 300, w: 460, h: 250, style: 'rubble', seed: 23, base: 7, lit: 0.7, door: 120, shop: true, sign: { c: [0.3, 0.2, 0.16] }, roofKit: { chimneys: [{ u: 330, t: 0.7, w: 44, h: 60 }] }, kit: { lower: 'fieldstone' } }),   // smithy
     house({ x: 2920, z: 300, w: 380, h: now ? 320 : 280, style: past ? 'plaster' : 'timber', seed: 24, base: 7, lit: now ? 0.3 : 0.6, faces: 'FR', roofMat: past ? 'thatch' : undefined, kit: { jettySides: 'F' } }));
   add('east',
@@ -89,22 +90,24 @@ export function eshville(era) {
     { t: 'deco', mesh: 'deadtree', x: 3420, z: 1130, h: 280 }, { t: 'deco', mesh: 'deadtree', x: 4330, z: 1160, h: 250, flip: true },
     ...[[3380, 1060, 'point', 92], [3470, 1090, 'round', 80], [3560, 1050, 'cross', 96], [3500, 1190, 'obelisk', 120], [3380, 1200, 'broken', 80], [4240, 1070, 'round', 84], [4390, 1060, 'point', 90], [4250, 1200, 'ledger', 80], [4400, 1190, 'cross', 100]].map(([x, z, kind, h]) => ({ t: 'deco', mesh: 'grave', kind, x, z, h })),
     { t: 'deco', mesh: 'cross', x: 4320, z: 1090, h: 170 },
-    { t: 'deco', mesh: 'cemgate', x: 4590, z: 1010, w: 164, h: 200, open: 1.25 }, { t: 'blocker', x: 4472, z: 992, w: 38, d: 36 }, { t: 'blocker', x: 4670, z: 992, w: 38, d: 36 },
+    { t: 'deco', mesh: 'cemgate', x: 4590, z: 1010, w: 164, h: 200, open: gateOpen ? 1.25 : 0 }, { t: 'blocker', x: 4472, z: 992, w: 38, d: 36 }, { t: 'blocker', x: 4670, z: 992, w: 38, d: 36 },
+    ...(gateOpen ? [] : [{ t: 'blocker', x: 4508, z: 1000, w: 164, d: 20 }]),   // the shut leaves (story state): nothing walks through them
     { t: 'prop', mesh: 'lanternpost', x: 4510, z: 1180, h: 180, solid: 9, solidZ: 9, light: { r: 280, i: 1.3, y: 120, c: [0.75, 0.85, 1] }, c: [0.75, 0.85, 1], flip: true, code: true });   // thin code-built post: the lane runs on behind it
 
   // ───────────── era dressing ─────────────
   if (now) {
-    add('out', { t: 'prop', mesh: 'wreck', x: 440, z: 256, w: 150, solid: 68, solidZ: 26, solidH: 60, light: FIRE(460, 2.1) },
+    add('out', { t: 'prop', mesh: 'wreck', x: 440, z: 256, w: 150, solid: 68, solidZ: 26, solidH: 60, ...(out ? { fire: false } : { light: FIRE(460, 2.1) }) },
       { t: 'prop', mesh: 'cart', x: 820, z: 252, h: 104, solid: 90, solidZ: 36 }, { t: 'prop', mesh: 'goods', x: 1040, z: 250, h: 92, solid: 64, solidZ: 40, solidH: 70 },   // barrels, crates and sacks in one generated model (was a barrel and a crate)
       { t: 'prop', mesh: 'wreck', x: 1290, z: 258, w: 130, fire: false, solid: 60, solidZ: 24, solidH: 60 });
-    anchors.push({ id: 'fire_wreck', kind: 'fire', x: 450, y: 20, z: 244, size: 1.2, light: true }, { id: 'smoke_wreck2', kind: 'smoke', x: 1290, y: 40, z: 250, size: 1 });
+    anchors.push(out ? { id: 'smoke_wreck', kind: 'smoke', x: 450, y: 20, z: 244, size: 1 } : { id: 'fire_wreck', kind: 'fire', x: 450, y: 20, z: 244, size: 1.2, light: true }, { id: 'smoke_wreck2', kind: 'smoke', x: 1290, y: 40, z: 250, size: 1 });
     fire('out', 'fire_h1a', 90, 70, 296, 40, 56); fire('out', 'fire_h1roof', 200, 210, 300, 190, 84, 520); fire('out', 'fire_ruin', 440, 96, 300, 120, 64, 380);
     fire('out', 'fire_h3a', 1120, 72, 296, 40, 60); fire('out', 'fire_h3roof', 1300, 230, 300, 210, 90, 540);
-    for (const [x, z] of [[230, 120], [760, 200], [1180, 60]]) anchors.push({ id: 'embers_' + x, kind: 'embers', x, y: 0, z, size: 1 });
+    if (!out) for (const [x, z] of [[230, 120], [760, 200], [1180, 60]]) anchors.push({ id: 'embers_' + x, kind: 'embers', x, y: 0, z, size: 1 });
     add('street', { t: 'prop', mesh: 'crate', x: 2150, z: 258, h: 62, solid: 30, solidZ: 18 }, { t: 'prop', mesh: 'sacks', x: 1960, z: 266, h: 34, solid: 26, solidZ: 12 }, { t: 'prop', mesh: 'hay', x: 3060, z: 262, h: 62, solid: 34, solidZ: 16 });
-    add('east', { t: 'prop', mesh: 'wreck', x: 4560, z: 200, w: 140, solid: 64, solidZ: 26, solidH: 60, light: FIRE(440, 2.0) }, { t: 'prop', mesh: 'cart', x: 3560, z: 830, h: 104, solid: 90, solidZ: 36 },
+    add('east', { t: 'prop', mesh: 'wreck', x: 4560, z: 200, w: 140, solid: 64, solidZ: 26, solidH: 60, ...(out ? { fire: false } : { light: FIRE(440, 2.0) }) }, { t: 'prop', mesh: 'cart', x: 3560, z: 830, h: 104, solid: 90, solidZ: 36 },
       { t: 'prop', mesh: 'barrel', x: 4080, z: 846, h: 78, solid: 24 }, { t: 'prop', mesh: 'sacks', x: 4340, z: 842, h: 36, solid: 26, solidZ: 12 });
-    anchors.push({ id: 'fire_sq', kind: 'fire', x: 4570, y: 20, z: 190, size: 1.1, light: true }, { id: 'red_moon', kind: 'glow_red', x: 3900, y: 900, z: 2600, size: 4 });
+    if (!out) anchors.push({ id: 'fire_sq', kind: 'fire', x: 4570, y: 20, z: 190, size: 1.1, light: true });
+    anchors.push({ id: 'red_moon', kind: 'glow_red', x: 3900, y: 900, z: 2600, size: 4 });
   } else {
     add('out', { t: 'prop', mesh: 'hay', x: 430, z: 262, h: 62, solid: 34, solidZ: 16 }, { t: 'prop', mesh: 'harvest', x: 330, z: 266, h: 46, solid: 30, solidZ: 12 },
       { t: 'prop', mesh: 'cart', x: 820, z: 252, h: 104, solid: 90, solidZ: 36 }, { t: 'prop', mesh: 'goods', x: 1040, z: 250, h: 92, solid: 64, solidZ: 40, solidH: 70, flip: true },
@@ -123,15 +126,18 @@ export function eshville(era) {
   if (now) {
     for (const [k, x, z, g] of [['skeleton_soldier', 620, 150, 'out_a'], ['skeleton_soldier', 700, 90, 'out_a'], ['skeleton_soldier', 1150, 140, 'out_b'], ['skeleton_soldier', 1230, 200, 'out_b'], ['skeleton_soldier', 1310, 100, 'out_b'],
       ['skeleton_soldier', 1900, 150, 'st_a'], ['skeleton_soldier', 2010, 216, 'st_a'], ['skeleton_mage', 2130, 120, 'st_a'], ['skeleton_mage', 2770, 200, 'st_b'], ['skeleton_soldier', 2850, 110, 'st_b'], ['skeleton_soldier', 2930, 180, 'st_b'],
-      ['skeleton_mage', 3780, 640, 'sq'], ['skeleton_mage', 4060, 300, 'sq'], ['skeleton_soldier', 3700, 430, 'sq'], ['skeleton_soldier', 4010, 580, 'sq'], ['skeleton_soldier', 4160, 470, 'sq']]) enemies.push({ kind: k, x, z, group: g, yard: g === 'sq' });
+      ['skeleton_mage', 3780, 640, 'sq'], ['skeleton_mage', 4060, 300, 'sq'], ['skeleton_soldier', 3700, 430, 'sq'], ['skeleton_soldier', 4010, 580, 'sq'], ['skeleton_soldier', 4160, 470, 'sq']]) if (!out) enemies.push({ kind: k, x, z, group: g, yard: g === 'sq' });
     actors.push({ id: 'sera', model: 'sera', x: 4300, z: 770, face: E, talk: 'sera.square.now', pose: 'kneel', when: 'square_clear' }, { id: 'wounded', model: 'villager_m', x: 4350, z: 776, face: W, talk: 'wounded.square', pose: 'sit', when: 'square_clear', solid: false },
       { id: 'trapped', model: 'villager_f', x: 2270, z: 262, face: S, talk: 'trapped.freed', pose: 'cower', when: 'door_pulled' }, { id: 'marta', model: 'marta', x: 1820, z: 262, face: S, talk: 'marta.inn.now', pose: 'idle', when: 'street_clear' },
-      { id: 'alberto', model: 'alberto', x: 3840, z: 1540, face: S, talk: 'alberto.church', pose: 'talk' }, { id: 'elise', model: 'elise', x: 3950, z: 1572, face: S, talk: 'elise.promise', pose: 'idle' });
+      { id: 'alberto', model: 'alberto', x: 3840, z: 1540, face: S, talk: 'alberto.church', pose: 'talk' },
+      { id: 'hadwin', model: 'hadwin', x: 2640, z: 262, face: S, talk: 'hadwin.smithy.now', pose: 'idle' });   // the smith at his door (DATA_FORMAT 12: the grandson's drawer)
+    if (!flags.promise || flags.elise_home) actors.push({ id: 'elise', model: 'elise', x: 3950, z: 1572, face: S, talk: 'elise.promise', pose: 'idle' });   // gone after the promise (she is up the tower, then lost in 1697), back when she is home
     interact.push({ id: 'trapped_door', kind: 'pull', x: 2270, z: 278, r: 70, label: '문 당기기', event: 'door.pull' }, { id: 'inn_door', kind: 'door', x: 1800, z: 284, r: 54, label: '흑묘 여관', event: 'door.inn', locked: 'not_built' }, { id: 'smithy_door', kind: 'shop', x: 2580, z: 284, r: 54, label: '대장간', event: 'shop.smithy', locked: 'not_built' });
     triggers.push({ id: 'first_bell', ...rect(260, 0, 60, 300), event: 'bell.toll' }, { id: 'street_enter', ...rect(1500, 0, 60, 300), event: 'tutorial.guard', wake: 'st_a' }, { id: 'square_enter', ...rect(3300, 0, 60, 300), event: 'square.enter', wake: 'sq' }, { id: 'church_steps', ...rect(3660, 1100, 480, 60), event: 'church.arrive' });
   } else {
     for (const [x, z, g] of [[900, 150, 'out_p'], [980, 90, 'out_p'], [1070, 190, 'out_p'], [1800, 160, 'st_p'], [1890, 100, 'st_p'], [2620, 150, 'st_p'], [2700, 216, 'st_p'], [2790, 120, 'st_p'], [3760, 560, 'sq_p'], [4050, 330, 'sq_p'], [4150, 560, 'sq_p']]) enemies.push({ kind: 'plague_corpse', x, z, group: g, yard: g === 'sq_p' });
-    actors.push({ id: 'lotte', model: 'lotte', x: 3950, z: 1560, face: S, talk: 'lotte.fell', pose: 'idle' }, { id: 'edmund', model: 'edmund', x: 1800, z: 262, face: S, talk: 'edmund.tavern', pose: 'idle', when: 'street_clear' },
+    actors.push({ id: 'lotte', model: 'lotte', x: 3950, z: 1560, face: S, talk: 'lotte.fell', pose: 'idle' }, { id: 'edmund', model: 'edmund', x: 1800, z: 262, face: S, talk: 'edmund.tavern', pose: 'idle', when: 'past_street_clear' in flags ? 'past_street_clear' : 'street_clear' },   // street_clear has two meanings (tonight: Marta; 1697: Edmund). A caller that knows the new flag (passes the key, true or false) gets it; the old name keeps working
+      { id: 'elise', model: 'elise', x: 4290, z: 1420, face: S, talk: 'keepers.promise', pose: 'idle', when: 'elise_found' },   // near the big bell after the rescue (DATA_FORMAT 12)
       { id: 'hadwin1', model: 'hadwin1', x: 2640, z: 262, face: S, talk: 'hadwin1.smithy', pose: 'work' }, { id: 'stallkeeper', model: 'villager_f', x: 3500, z: 772, face: S, talk: 'villager.stall', pose: 'cower', tint: [1.05, 0.95, 0.85] }, { id: 'farmer', model: 'villager_m', x: 4300, z: 772, face: S, talk: 'villager.plague', pose: 'idle', tint: [1.05, 0.95, 0.85] });
     interact.push({ id: 'inn_door', kind: 'door', x: 1800, z: 284, r: 54, label: '작은 주막', event: 'door.tavern', locked: 'not_built' }, { id: 'smithy_door', kind: 'shop', x: 2580, z: 284, r: 54, label: '대장간', event: 'shop.smithy1', locked: 'not_built' });
     triggers.push({ id: 'past_street', ...rect(1500, 0, 60, 300), event: 'past.street', wake: 'st_p' }, { id: 'square_enter', ...rect(3300, 0, 60, 300), event: 'square.enter', wake: 'sq_p' }, { id: 'church_steps', ...rect(3660, 1100, 480, 60), event: 'church.arrive' });
@@ -139,6 +145,7 @@ export function eshville(era) {
   interact.push({ id: 'big_bell', kind: 'bell', x: 4200, z: 1408, y: 84, r: 80, label: '종 치기', event: 'bell.ring' }, { id: 'church_rest', kind: 'rest', x: 3640, z: 1570, y: 84, r: 70, label: '촛불', event: 'rest' },
     { id: 'well', kind: 'sign', x: 3900, z: 400, r: 70, label: '우물', event: 'sign.well' }, { id: 'rook_shop', kind: 'shop', x: 3440, z: 140, r: 70, label: '로크', event: 'shop.rook' });
 
+  if (out) for (const t of triggers) delete t.wake;   // the fires are out and the dead are gone: the triggers stay (same ids) but wake nobody
   const camH = { yaw: 12 * D, pitch: 20 * D, dist: 790, lookY: 64, leadX: 90, leadZ: 0, zFollow: 0.55 };
   const sections = [
     { id: 'outskirts', label: '마을 외곽', x0: -200, x1: 1500, z0: -100, z1: 400, cam: { ...camH, minX: 40 } },
@@ -153,8 +160,8 @@ export function eshville(era) {
     stage: {
       id: 'eshville_' + era, name: '에슈빌',
       sky: { img: 'bg/s01_village', crop: 0.66, span: 84 * D, bottom: -7 * D, top: now ? [0.1, 0.035, 0.045] : [0.03, 0.045, 0.08] },
-      fog: now ? { color: [0.15, 0.075, 0.075], near: 760, far: 3300, max: 0.94 } : { color: [0.06, 0.085, 0.135], near: 800, far: 3400, max: 0.93 },
-      light: now ? { ambient: [0.37, 0.28, 0.33], moon: [0.7, 0.38, 0.34], moonDir: [-0.447, 0.745, -0.496] } : { ambient: [0.27, 0.31, 0.45], moon: [0.42, 0.48, 0.68], moonDir: [-0.447, 0.745, -0.496] },
+      fog: out ? { color: [0.085, 0.09, 0.12], near: 800, far: 3400, max: 0.93 } : now ? { color: [0.15, 0.075, 0.075], near: 760, far: 3300, max: 0.94 } : { color: [0.06, 0.085, 0.135], near: 800, far: 3400, max: 0.93 },
+      light: out ? { ambient: [0.3, 0.3, 0.4], moon: [0.56, 0.46, 0.52], moonDir: [-0.447, 0.745, -0.496] } : now ? { ambient: [0.37, 0.28, 0.33], moon: [0.7, 0.38, 0.34], moonDir: [-0.447, 0.745, -0.496] } : { ambient: [0.27, 0.31, 0.45], moon: [0.42, 0.48, 0.68], moonDir: [-0.447, 0.745, -0.496] },
       sections, parts: P,
       decals: decals(now),
     },
@@ -163,11 +170,12 @@ export function eshville(era) {
       from_belltower: { x: 3900, z: 1560, face: S, section: 'church' }, bell: { x: 4200, z: 1390, face: N, section: 'church' }, inn: { x: 1800, z: 250, face: S, section: 'street' }, square: { x: 3900, z: 250, face: N, section: 'square' },
     },
     exits: [
-      { id: 'to_graveyard', ...rect(4510, 1230, 160, 70), to: 'graveyard_' + era, spawn: 'from_eshville', label: '안개의 묘지', locked: now ? 'key_graveyard' : 'past_gate' },
+      { id: 'to_graveyard', ...rect(4510, 1230, 160, 70), to: 'graveyard_' + era, spawn: 'from_eshville', label: '안개의 묘지', locked: gateOpen ? null : now ? 'key_graveyard' : 'past_gate' },
       { id: 'to_belltower', ...rect(3852, 1578, 96, 44), to: 'belltower_' + era, spawn: 'bottom', label: '종탑', locked: 'story:belltower' },
       { id: 'to_west', ...rect(-60, 110, 50, 130), to: 'stable_' + era, spawn: 'from_eshville', label: '성문 밖', locked: 'not_built' },
     ],
     actors, enemies, triggers, interact, anchors,
+    entry: gateOpen ? [] : ['from_graveyard'],   // behind the shut cemetery gate: reached only by coming in from the graveyard
   };
 }
 

@@ -293,6 +293,26 @@ api.shots = (list, o = {}) => {
   });
   return sh.toDataURL(o.type ?? 'image/png');
 };
+/** 소유자용 큰 그림: rows = [{ title, items: [{ demo, t, cam, box, label, legacy }] }] — 줄마다 제목 띠, 맨 위 head[] · 맨 아래 foot[] 글줄 */
+api.board = (rows, o = {}) => {
+  const cols = o.cols ?? 8, cw = o.cw ?? 250, chh = o.ch ?? 220, TH = 34, HL = 40, FL = 30, head = o.head ?? [], foot = o.foot ?? [];
+  const W0 = cols * cw, H0 = head.length * HL + 14 + rows.reduce((a, r) => a + TH + Math.ceil(r.items.length / cols) * chh, 0) + foot.length * FL + 16;
+  const sh = document.createElement('canvas'); sh.width = W0; sh.height = H0; const g = sh.getContext('2d'); g.fillStyle = '#0c0e14'; g.fillRect(0, 0, W0, H0);
+  let y = 8; g.textBaseline = 'middle';
+  head.forEach((t, i) => { g.font = `${i ? 22 : 30}px system-ui, sans-serif`; g.fillStyle = i ? '#b8c4d8' : '#ffe8c0'; g.fillText(t, 14, y + HL / 2); y += HL; }); y += 6;
+  for (const r of rows) {
+    g.fillStyle = '#1b2233'; g.fillRect(0, y, W0, TH); g.font = '21px system-ui, sans-serif'; g.fillStyle = '#ffd98a'; g.fillText(r.title, 12, y + TH / 2 + 1); y += TH;
+    r.items.forEach((it, k) => {
+      TUNE.legacyTurn = !!it.legacy; S.cam = it.cam ?? 'close'; S.box = !!it.box; seed(it.seed ?? 7); setDemo(it.demo); S.cam = it.cam ?? 'close'; size(cw, chh);
+      const n = Math.round(it.t * 60); for (let i = 0; i < n; i++) step(1 / 60);
+      draw(it.label ?? it.demo); const x = (k % cols) * cw, yy = y + Math.floor(k / cols) * chh; g.drawImage(cv, x, yy); g.drawImage(ov, x, yy); g.strokeStyle = '#0c0e14'; g.lineWidth = 2; g.strokeRect(x, yy, cw, chh);
+    });
+    y += Math.ceil(r.items.length / cols) * chh;
+  }
+  TUNE.legacyTurn = q.get('legacy') === '1'; y += 8;
+  foot.forEach((t) => { g.font = '20px system-ui, sans-serif'; g.fillStyle = '#ffb4a0'; g.fillText(t, 14, y + FL / 2); y += FL; });
+  return sh.toDataURL('image/png');
+};
 const state = () => { const h = sim.hero; return { t: +time.toFixed(3), hero: { x: +h.x.toFixed(1), z: +h.z.toFixed(1), y: +h.y.toFixed(1), anim: h.anim, move: h.move?.id ?? null, clip: heroCh.anim.cur?.name ?? null, dir: [+h.dirX.toFixed(2), +h.dirZ.toFixed(2)], body: [+heroCh.dx.toFixed(2), +heroCh.dz.toFixed(2)], hp: h.hp, lock: h.lock }, enemies: sim.enemies.filter((e) => !e.dead).map((e) => ({ id: e.id, kind: e.kid, state: e.state, phase: e.phase, clip: chars.get(e.id)?.anim.cur?.name ?? null, hp: e.hp })), events: events.slice(-12) }; };
 api.state = state;
 
