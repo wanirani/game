@@ -145,7 +145,7 @@ try {
     chk(mv.some((m) => !m.startsWith('act:') && m !== 'air' && m !== 'roll' && m !== 'guard'), `attack button x3: moves seen ${mv.join(' ') || 'none'}`);
     await shot(`touch_${DEV}_04_swing`, false);
     await idleRT(8000); p = seeMove(); await page.waitForTimeout(100); await T.tap(pad.jump.cx, pad.jump.cy, 90, 12); mv = await p; chk(mv.includes('air'), `jump button: ${mv.join(' ') || 'nothing seen'}`);
-    p = seeMove(); await page.waitForTimeout(100); await T.down(1, x0, y0); await T.move(1, x0 + 50, y0); await page.waitForTimeout(120); await T.tap(pad.roll.cx, pad.roll.cy, 70, 13); await page.waitForTimeout(300); await T.up(1); mv = await p; chk(mv.includes('roll'), `roll button with the stick held: ${mv.join(' ') || 'nothing seen'}`); await idleRT(8000);
+    p = seeMove(); await page.waitForTimeout(100); await T.down(1, x0, y0); await T.move(1, x0 + 50, y0); await page.waitForTimeout(700); await T.tap(pad.roll.cx, pad.roll.cy, 120, 13); await page.waitForTimeout(500); await T.up(1); mv = await p; chk(mv.includes('roll'), `roll button with the stick held: ${mv.join(' ') || 'nothing seen'}`); await idleRT(8000);
     // 3) pause -> old pad -> back to the new buttons
     await T.tap(pad.pause.cx, pad.pause.cy, 80); s = await waitReady((q) => q.modal === 'pause', 8000); await page.waitForTimeout(500); await shot(`touch_${DEV}_05_pause`, false);
     const rows = await ev(() => { const m = window.__v2.scene.hud.metrics().pause; return m ? { ids: m.ids ?? null, n: m.rows.length } : null; });
@@ -184,8 +184,11 @@ try {
     await rt(false); let dB = null, dT = 0; for (; dT < 2400; dT += 60) { dB = await ff(60, false, 20); if (dB.ready && !dB.dead && dB.deaths > d0.deaths && dB.fade <= 0.05) break; if (!dB.ready) await page.waitForTimeout(250); } await ff(30); dB = await st(); await shot(`touch_${DEV}_12_retry`); info(`retry came ${dT} rule ticks after the fall`); await rt(true);
     chk(dA.dead && dB && !dB.dead && dB.hp > 0, `fall (hp 0): dead ${dA.dead}; retry: stands again at (${dB?.x},${dB?.z}) hp ${dB?.hp}/${dB?.hpMax}, deaths ${d0.deaths} -> ${dB?.deaths}, area ${dB?.area}, objective kept "${dB?.obj}"`);
     // 6) leave by the pause menu, come back: continues from the save
+    const dl2 = await idleRT(30000); if (dl2) info(`after the retry a story line opened: closed by ${dl2} trusted taps`);
+    // walk a little first, so that "continue" is not trivially the spawn
+    await T.down(1, x0, y0); await page.waitForTimeout(40); for (let i = 1; i <= 4; i++) { await T.move(1, x0 + 14 * i, y0 + 3 * i); await page.waitForTimeout(20); } await page.waitForTimeout(1500); await T.up(1); await idleRT(20000); await page.waitForTimeout(400);
     const before = await st(); const pad2 = await padOf();
-    await T.tap(pad2.pause.cx, pad2.pause.cy, 80); await waitReady((q) => q.modal === 'pause', 8000); await page.waitForTimeout(450);
+    await T.tap(pad2.pause.cx, pad2.pause.cy, 80); const pm = await waitReady((q) => q.modal === 'pause', 8000); if (pm?.modal !== 'pause') fail(`the pause button did not open the menu (modal ${pm?.modal}, busy ${pm?.busy})`); await page.waitForTimeout(450);
     const lq = await rowTap('leave', 0); await page.waitForTimeout(2500);
     const top = await ev(() => { const g = window.__game, t = g.scenes[g.scenes.length - 1]; return { name: Object.keys(g.registry).find((k) => t instanceof g.registry[k]) ?? t?.constructor?.name ?? '?', save: (() => { try { const o = JSON.parse(localStorage.getItem('bn.v2.save')); return o ? { v: o.v, why: o.why, area: o.area, pos: o.pos, hp: o.hp } : null; } catch (e) { return 'broken'; } })() }; });
     await page.screenshot({ path: `${OUT}/touch_${DEV}_13_after_leave.png` });
@@ -193,6 +196,15 @@ try {
     const o2 = await open(''); await rt(true); await page.waitForTimeout(1500); const after = await st(); await shot(`touch_${DEV}_14_continued`, false);
     chk(o2.ready && after.area === before.area && Math.abs(after.x - before.x) < 12 && Math.abs(after.z - before.z) < 12 && after.obj === before.obj, `continue: ${after.area} (${after.x},${after.z}) hp ${after.hp}/${after.hpMax} objective "${after.obj}" — before leaving (${before.x},${before.z}) hp ${before.hp} "${before.obj}"`);
     R.counts = await ev(() => window.__iv.counts());
+    // 7) what is left of the 2D game on the old pad: its top-right buttons
+    await ev(() => window.__v2.scene.setUi(false)); await page.waitForTimeout(1200); await idleRT(10000);
+    const old = await ev(async () => { const tp = (await import('/src/core/touchpad.js')).touchpad; let L = []; try { L = tp.buttons({ all: true }); } catch { L = tp.buttons(); } return L.map((b) => ({ id: b.id, x: Math.round(b.cx ?? b.x + b.w / 2), y: Math.round(b.cy ?? b.y + b.h / 2) })); });
+    info('old pad buttons on screen: ' + old.map((b) => b.id).join(' '));
+    const topName = () => ev(() => { const g = window.__game, t = g.scenes[g.scenes.length - 1]; return Object.keys(g.registry).find((k) => t instanceof g.registry[k]) ?? t?.constructor?.name ?? '?'; });
+    R.oldTop = [];
+    for (const id of ['auto', 'maptog', 'bag']) { const b = old.find((q) => q.id === id); if (!b) { R.oldTop.push({ id, shown: false }); continue; } const e0 = errs.length; await T.tap(b.x, b.y, 90); await page.waitForTimeout(900); const tn = await topName(), q = await st().catch(() => null); R.oldTop.push({ id, shown: true, top: tn, modal: q?.modal ?? null, errs: errs.length - e0 }); await page.screenshot({ path: `${OUT}/touch_${DEV}_15_old_${id}.png` }); if (tn !== 'v2g') { fail(`old pad: the 2D game's 「${id}」 button opened scene ${tn} over the 3D game`); await page.keyboard.press('Escape'); await page.waitForTimeout(700); } }
+    info('2D top buttons on the old pad: ' + JSON.stringify(R.oldTop));
+    await ev(() => localStorage.removeItem('bn.v2.ui'));
   }
 
   // ───────────────────────────── cross: a real long press on the bell button, there and back ─────────────────────────────
@@ -246,6 +258,24 @@ try {
       if (round === 0) await shot(`ring2_${DEV}_round1`);
       if (r.thrown && r.after.y > 60) { ok(`the walk tool's own press threw the hook in round ${round + 1} with the area's enemies alive`); break; }
       if (round === 5) fail('the walk tool\'s press never threw the hook in 6 rounds with the enemies alive');
+    }
+  }
+
+  // roll: why a trusted tap on the roll button with the stick held shows no roll in real time
+  if (PLAN === 'roll') {
+    await clean(); const o = await open('&area=eshville_now&v2story=0'); await ev(() => { window.__iv.fellNear(1500); });
+    await ev(() => { const sc = window.__v2.scene, sim = sc.sim, up = sim.update, L = (window.__rl = { dash: [], ticks: 0, maxDash: 0, guard: 0 }); sim.update = function (dt, inp) { L.ticks++; if (inp.dash) L.dash.push([+inp.mx.toFixed(2), +inp.mz.toFixed(2), +(this.hero.rollCd).toFixed(2), +(this.hero.dashT).toFixed(2), this.hero.move?.id ?? null, +(this.hero.hurtT ?? 0).toFixed(2), !!sc.locked]); const r = up.call(this, dt, inp); if (this.hero.dashT > L.maxDash) L.maxDash = this.hero.dashT; if (this.hero.guard) L.guard++; return r; }; });
+    const pad = await padOf(), vp = await ev(() => [innerWidth, innerHeight]), x0 = Math.round(vp[0] * 0.2), y0 = Math.round(vp[1] * 0.68);
+    const reset = () => ev(() => { const L = window.__rl; L.dash = []; L.ticks = 0; L.maxDash = 0; L.guard = 0; const h = window.__v2.scene.sim.hero; h.rollCd = 0; });
+    const read = () => ev(() => ({ ...window.__rl, x: Math.round(window.__v2.scene.sim.hero.x) }));
+    await rt(true); await page.waitForTimeout(500);
+    for (const [name, stickMs, holdMs, stick] of [['A stick 700 ms then a 120 ms tap', 700, 120, true], ['B stick 700 ms then a 500 ms hold', 700, 500, true], ['C stick 1500 ms then a 40 ms tap', 1500, 40, true], ['D no stick, 120 ms tap (guard)', 0, 120, false]]) {
+      await reset(); const a = await read();
+      if (stick) { await T.down(1, x0, y0); await page.waitForTimeout(30); for (let i = 1; i <= 4; i++) { await T.move(1, x0 + 13 * i, y0); await page.waitForTimeout(16); } await page.waitForTimeout(stickMs); }
+      await T.down(13, pad.roll.cx, pad.roll.cy); await page.waitForTimeout(holdMs); await T.up(13); await page.waitForTimeout(900); if (stick) await T.up(1); await page.waitForTimeout(300);
+      const b = await read();
+      info(`${name}: rule ticks ${b.ticks}, ticks with a dash press ${b.dash.length} ${JSON.stringify(b.dash.slice(0, 3))}, longest dashT ${b.maxDash.toFixed(2)}, guard ticks ${b.guard}, hero x ${a.x} -> ${b.x}`);
+      if (stick) chk(b.maxDash > 0, `${name}: rolled ${b.maxDash > 0}`); else chk(b.guard > 0, `${name}: guarded ${b.guard > 0}`);
     }
   }
 
