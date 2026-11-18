@@ -481,6 +481,7 @@ need('graveyard_past', 'from_eshville', 'keeper carve_a carve_b edmund_grave hoo
 need('ossuary_now', 'entry', 'oss_coffins oss_hall oss_probe_1 oss_cross_1'); need('ossuary_past', 'entry', 'oss_wedge oss_cross_2'); need('ossuary_now', 'wedge_far', 'oss_gap oss_arena oss_arena_fight oss_lamp oss_riddle oss_riddle_echo oss_cross_3');
 need('ossuary_past', 'rest', 'knell_1 knell_2 knell_3 knell_4 oss_cross_4 boss_past boss_back elise_wake'); need('ossuary_now', 'rest', 'boss_rest boss_enter boss_1 boss_chase boss_die boss_2 boss_knell cross_to_elise');
 // ───────── run ─────────
+const SKIP = args.skip ? String(args.skip).split(',') : [];
 const ONLY = args.only ? String(args.only).split(',') : null, RB = resume ? Math.max(P.findIndex((b) => b.id === resume.beatId), -1) : -1;   // the beat we continue after is found by its id (the plan may have grown since the save was written)
 if (resume && !args.keep && !ONLY) {   // forget what the earlier run recorded after the save we continue from (those beats are played again)
   const idx = Object.fromEntries(P.map((b) => [b.id, b.n])), later = (id) => (idx[id] ?? -1) > RB;
@@ -496,7 +497,7 @@ try {
   ST.open = o;
   if (resume) await settle(3000);
   for (const b of P) {
-    if (ONLY ? !ONLY.includes(b.id) : (b.side || (resume && b.n <= RB))) continue;
+    if (ONLY ? !ONLY.includes(b.id) : (b.side || SKIP.includes(b.id) || (resume && b.n <= RB))) continue;
     BEAT = b.id; beatHelp = []; const t0 = Date.now(); let r;
     await ev(() => { window.__ca.lr.length = 0; }).catch(() => {});
     if (NEED[b.id]) { const s0 = await st().catch(() => null); if (s0 && s0.ready && s0.area !== NEED[b.id][0]) { const okGo = await ev(([a, sp]) => window.__v2.scene.travelTo(a, sp), NEED[b.id]).catch(() => false); help(`the hero is in ${s0.area} but this beat is played in ${NEED[b.id][0]} (an earlier beat did not get him there)`, `moved the hero to ${NEED[b.id][0]} / spawn ${NEED[b.id][1]} with scene.travelTo (${okGo})`); await waitArea(NEED[b.id][0], 3000).catch(() => {}); } }
