@@ -281,9 +281,9 @@ export function driveHero(ch, h, dt, T = TUNE) {
   else if (S.landC != null) A.play('land', PO(0.04, 0.04 + S.landC * 1.5));
   else if (S.stopC != null) A.play('run_stop', PO(0.07, 0.07 + S.stopC * 1.85 * (0.3 / skT)));   // 클립의 같은 0.55초를 skT 동안에
   else if (st === 'turn') {
-    // 돌아서기: 달리던 것은 뒤로 버티며 낮게 미끄러지는 자세(run_stop 0.09–0.3초)로 멈추고, 반쯤 돌면 박차는 달리기 자세로 넘어간다. 걷던 것은 제자리걸음으로 돈다
+    // 돌아서기: 달리던 것은 뒤로 버티며 낮게 미끄러지는 자세(run_stop 0.09–0.3초)로 멈추고, 반쯤 돌면 박차는 달리기 자세로 넘어간다. 걷던 것(walkBelow + 30 아래)은 제자리걸음으로 돈다
     const total = Math.max(0.08, ((h.pivotA ?? 3.1) - (T.pivotEnd ?? 45) * 0.01745) / (T.pivotRate ?? 14.8)), u = (h.pivotT ?? 0) / total;
-    if ((h.pivotV ?? 275) < 150 || !C.run_stop) { GT.g = (0.3 + (h.pivotT ?? 0) * 1.5) % 1; gaitPO(ch, C.walk); A.play('walk', POT(0.1)); }
+    if ((h.pivotV ?? 275) < (T.walkBelow ?? 120) + 30 || !C.run_stop) { GT.g = (0.3 + (h.pivotT ?? 0) * 1.5) % 1; gaitPO(ch, C.walk); A.play('walk', POT(0.1)); }
     else if (u < 0.55) { _oT.time = 0.09 + (h.pivotT ?? 0) * 1.7; A.play('run_stop', POT(0.05)); }
     else { GT.g = h.pivotG ?? 0.86; gaitPO(ch, C.run); A.play('run', POT(0.09)); }   // 규칙이 고른 박차는 발 (sim: 마지막 발의 반대)
   }
