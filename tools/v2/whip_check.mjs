@@ -1,7 +1,7 @@
 // WHIP lane check (node, no browser): node tools/v2/whip_check.mjs [--perf] [--trace=c1]
 // What it looks at, with the real hero skeleton and clips driving the hand (driveHero) and the rules' move table (MOVES) as it is now:
 //   1 every hero move: the lash is fully extended at its peak, the tip is inside the move's hit shape there, the tip is at its fastest inside the hit window,
-//     the lash never stretches, no node inside the hero's body, same shape in every facing, identical on a second run
+//     the lash never stretches (no segment over 105 % of its rest length, counted against the lash as it reels in), no node inside the hero's body, same shape in every facing, identical on a second run
 //   2 hit-stop (dt = 0) freezes the lash and it continues unchanged; slow motion (dt / 4) and a coarse tick (1/20) stay stable; teleport makes no speed
 //   3 wrap: catch, winding, pull, release. hook: catch, taut straight line, release. bell rings: event + shard held high. far strike: tip on the target
 //   4 rest: coiled by the hand and still. driveWhip: every rules state maps to a whip mode without error
@@ -74,7 +74,7 @@ function playMove(id, mv, o = {}) {
   if (real) { h.move = mv; h.combo = mv.n ?? 0; h.anim = 'attack'; h.hitIds = new Set(); h.stepDist = 0; h.swung = true; }
   if (plunge) { h.onGround = false; h.y = 190; h.plungeLand = null; h.plungeEta = 1; h.vy = -520; }
   const dur = plunge ? 0.75 : mv.dur, rec = [], hit0 = mv.hit[0], hit1 = plunge ? 9 : mv.hit[1];
-  let peak = null, best = { v: 0, t: 0 }, maxStretch = 0, body = 0, inWin = 0, nWin = 0, k = 0, bad = false;
+  let peak = null, best = { v: 0, t: 0 }, maxStretch = 0, body = 0, inWin = 0, nWin = 0, k = 0, bad = false, lastTip = null;
   for (let t = 0; t <= dur + 1e-9; t += dt, k++) {
     h.moveT = t;
     if (plunge) { if (h.plungeLand == null) { h.y = Math.max(0, 190 - 620 * Math.max(0, t - 0.04)); h.plungeEta = h.y / 620; if (h.y <= 0) { h.plungeLand = t; h.onGround = true; } } }
@@ -85,12 +85,13 @@ function playMove(id, mv, o = {}) {
     const L = local(whip, h), s = whip.sw.s, sh = whip.sw.shape;
     if (!finite(whip)) bad = true;
     maxStretch = Math.max(maxStretch, stretch(whip)); body += inBody(whip, h);
-    if (t > 0.05 && whip.tip.speed > best.v) best = { v: whip.tip.speed, t };
+    const tv = lastTip ? Math.hypot(whip.tip.x - lastTip[0], whip.tip.y - lastTip[1], whip.tip.z - lastTip[2]) / dt : 0; lastTip = [whip.tip.x, whip.tip.y, whip.tip.z];   // real travel of the tip (whip.tip.speed is capped for the physics)
+    if (t > 0.05 && tv > best.v) best = { v: tv, t };
     const inside = inShape(L, mv);
     if (t >= hit0 && t <= hit1 && s <= 1) { nWin++; if (inside) inWin++; }
     if (!peak && s >= sh.peak) peak = { t, ext: whip.ext, L, inside, len: whip.len, nodes: Float32Array.from(whip.nodes), speed: whip.tip.speed };
-    rec.push({ t, s, L, ext: whip.ext, v: whip.tip.speed, len: whip.len });
-    if (TRACE === id && !o.quiet) console.log(`   t ${t.toFixed(3)} s ${f2(s)}  tip f ${f1(L.f)} r ${f1(L.r)} y ${f1(L.y)}  v ${whip.tip.speed.toFixed(0)}  ext ${f2(whip.ext)} len ${f1(whip.len)} ${inside ? 'in' : '--'}`);
+    rec.push({ t, s, L, ext: whip.ext, v: tv, len: whip.len, st: stretch(whip) });
+    if (TRACE === id && !o.quiet) console.log(`   t ${t.toFixed(3)} s ${f2(s)}  tip f ${f1(L.f)} r ${f1(L.r)} y ${f1(L.y)}  v ${tv.toFixed(0)}  ext ${f2(whip.ext)} len ${f1(whip.len)} stretch ${f2(stretch(whip))} ${inside ? 'in' : '--'}`);
   }
   return { peak, best, maxStretch, body, inWin, nWin, events, bad, rec, whip, h, hit0, hit1: plunge ? (h.plungeLand ?? dur) + 0.1 : hit1 };
 }
@@ -142,7 +143,7 @@ for (const { id, mv, real } of table) {
   ok(`${tag}: tip inside the hit shape at the peak`, !!p && p.inside, p ? `tip f ${f1(p.L.f)} r ${f1(p.L.r)} y ${f1(p.L.y)} · ${shapeTxt(mv)}` : '');
   ok(`${tag}: tip fastest inside the hit window`, R.best.t >= R.hit0 - 0.02 && R.best.t <= R.hit1 + 0.02, `peak speed ${R.best.v.toFixed(0)} px/s at ${R.best.t.toFixed(3)} s · window ${mv.hit[0]}..${mv.kind === 'plunge' ? 'landing' : mv.hit[1]}`);
   ok(`${tag}: tip sweeps through the hit shape during the window`, R.nWin > 0 && R.inWin / R.nWin >= 0.4, `${R.inWin}/${R.nWin} window ticks inside`);
-  ok(`${tag}: no stretch, no node in the body, finite`, R.maxStretch <= 1.035 && R.body === 0 && !R.bad, `max segment ${f2(R.maxStretch * 100)} % of rest · nodes inside the body ${R.body}`);
+  ok(`${tag}: no stretch, no node in the body, finite`, R.maxStretch <= 1.05 && R.body === 0 && !R.bad, `max segment ${f2(R.maxStretch * 100)} % of rest · nodes inside the body ${R.body}`);
   const ev = R.events.filter((e) => e.n === 'crack' || e.n === 'ring');
   ok(`${tag}: one peak event inside the window`, ev.length === 1 && ev[0].t >= R.hit0 - 0.02 && ev[0].t <= R.hit1 + 0.02, ev.map((e) => `${e.n}:${e.kind}@${e.t.toFixed(3)}`).join(' ') || 'none');
 }

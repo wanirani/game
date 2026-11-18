@@ -24,7 +24,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const port = 8300 + Math.floor(Math.random() * 500), srv = await start(port);
 const browser = await chromium.launch({ executablePath: EXE, args: GL_ARGS });
 
-async function openGame(dev, q = 'scene=v2g&v2ui=1&area=slice0&v2auto=0') {   // the test route (the default area is eshville_now), fixed render size
+async function openGame(dev, q = 'scene=v2g&v2ui=1&area=slice0&v2auto=0&v2aa=0&v2res=0.5612') {   // the test route (the default area is eshville_now), fixed render size
   const ctx = await browser.newContext(contextOptions(dev)), page = await ctx.newPage(); page._errs = [];
   page.on('pageerror', (e) => page._errs.push('pageerror: ' + String(e.message).slice(0, 240)));
   page.on('console', (m) => { if (m.type() === 'error' || (m.type() === 'warning' && /v2ui|\[v2g\]|hud/i.test(m.text()))) page._errs.push(m.type() + ': ' + m.text().slice(0, 240)); });

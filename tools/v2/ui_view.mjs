@@ -13,7 +13,7 @@ if (Q.get('live')) await live(Q.get('live')); else await staged();
 async function live(sceneId) {
   const fr = document.getElementById('live'); fr.style.display = 'block';
   document.getElementById('screen').style.display = 'none'; document.getElementById('bg').style.display = 'none';
-  fr.src = `/index.html?scene=${encodeURIComponent(sceneId)}&area=slice0&v2ui=0&v2auto=0`;   // the scene's own interface off: this page plugs the module in itself (test route, fixed render size)
+  fr.src = `/index.html?scene=${encodeURIComponent(sceneId)}&area=slice0&v2ui=0&v2auto=0&v2aa=0&v2res=0.5612`;   // the scene's own interface off: this page plugs the module in itself (test route, fixed render size)
   await new Promise((r) => fr.addEventListener('load', r, { once: true }));
   const w = fr.contentWindow;
   for (let i = 0; i < 600 && !(w.__v2 && (w.__v2.ready || w.__v2.error)); i++) await new Promise((r) => setTimeout(r, 100));

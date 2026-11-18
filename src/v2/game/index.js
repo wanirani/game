@@ -927,7 +927,7 @@ export default class V2Game extends Scene {
     for (let k = 0; k < 3; k++) {
       const dx = h.x - ex, dy = h.y + (k === 0 ? 14 : k === 1 ? 56 : 98) - ey, dz = h.z - ez;
       for (let i = 0; i < B.length; i++) {
-        const b = B[i]; if (!b.solid || b.walk) continue;
+        const b = B[i]; if (!b.solid || b.walk || b.gate || b.actor) continue;   // walls and props only (not floors, not the scene's own gate / person boxes)
         let t0 = 0.02, t1 = 0.985;   // segment camera -> point, a little short of both ends
         if (dx > 1e-6 || dx < -1e-6) { let a = (b.x0 - ex) / dx, q = (b.x1 - ex) / dx; if (a > q) { const w = a; a = q; q = w; } if (a > t0) t0 = a; if (q < t1) t1 = q; } else if (ex < b.x0 || ex > b.x1) continue;
         if (t0 > t1) continue;

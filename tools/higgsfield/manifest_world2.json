@@ -1,0 +1,152 @@
+{
+ "batch": "world2",
+ "cap_credits": 200,
+ "total_credits": 6.0,
+ "note": "WORLD-2 lane, 2026-11-18. Design pictures gpt_image_2_5 1k medium (0.5 each), then image-to-3D tripo_h3_1_image_to_3d (9 each). Prompts: see /tmp/claude-0/v2/world2/gen_prompts.json (same wording as submitted).",
+ "jobs": [
+  {
+   "id": "img_sarcophagus",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "049035a9-3d26-4e8d-8fa5-788f7907b54b",
+   "aspect_ratio": "4:3",
+   "resolution": "1k",
+   "quality": "medium",
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world2/raw/sarcophagus.png",
+   "credits": 0.5
+  },
+  {
+   "id": "img_coffinstack",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "53369c29-a675-45b9-92d9-b959e0304856",
+   "aspect_ratio": "4:3",
+   "resolution": "1k",
+   "quality": "medium",
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world2/raw/coffinstack.png",
+   "credits": 0.5
+  },
+  {
+   "id": "img_bonepile",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "f9bd090e-03cf-4eab-9102-d5ee3e5bd51b",
+   "aspect_ratio": "4:3",
+   "resolution": "1k",
+   "quality": "medium",
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world2/raw/bonepile.png",
+   "credits": 0.5
+  },
+  {
+   "id": "img_skullwall",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "09761dd5-2ded-4f30-b30e-2b110cfd1de7",
+   "aspect_ratio": "4:3",
+   "resolution": "1k",
+   "quality": "medium",
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world2/raw/skullwall.png",
+   "credits": 0.5
+  },
+  {
+   "id": "img_candelabrum",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "ec8e3ed2-31f3-4125-b6db-319ff2ab7add",
+   "aspect_ratio": "3:4",
+   "resolution": "1k",
+   "quality": "medium",
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world2/raw/candelabrum.png",
+   "credits": 0.5
+  },
+  {
+   "id": "img_chandelier",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "9c16e8ed-deea-4559-99c3-aba58651d7f7",
+   "aspect_ratio": "1:1",
+   "resolution": "1k",
+   "quality": "medium",
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world2/raw/chandelier.png",
+   "credits": 0.5
+  },
+  {
+   "id": "img_altar",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "fde950a3-051e-4403-9ae8-ae2329dac6ac",
+   "aspect_ratio": "4:3",
+   "resolution": "1k",
+   "quality": "medium",
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world2/raw/altar.png",
+   "credits": 0.5
+  },
+  {
+   "id": "img_mourner",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "b0754ce0-f697-4a9b-96a8-110598abfa5a",
+   "aspect_ratio": "3:4",
+   "resolution": "1k",
+   "quality": "medium",
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world2/raw/mourner.png",
+   "credits": 0.5
+  },
+  {
+   "id": "img_cryptdoor",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "e49511ea-ab01-4926-bf64-9cafe67258a2",
+   "aspect_ratio": "3:4",
+   "resolution": "1k",
+   "quality": "medium",
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world2/raw/cryptdoor.png",
+   "credits": 0.5
+  },
+  {
+   "id": "img_stairs",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "fb63ad75-e591-450a-a431-15b0db9db933",
+   "aspect_ratio": "3:4",
+   "resolution": "1k",
+   "quality": "medium",
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world2/raw/stairs.png",
+   "credits": 0.5
+  },
+  {
+   "id": "img_stall2",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "9b13aa8d-d8bf-478c-8128-47b9cf45e263",
+   "aspect_ratio": "4:3",
+   "resolution": "1k",
+   "quality": "medium",
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world2/raw/stall2.png",
+   "credits": 0.5
+  },
+  {
+   "id": "img_wreck2",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "job_id": "eac4ab5d-8dcf-4568-a90f-f33ebdafca18",
+   "aspect_ratio": "4:3",
+   "resolution": "1k",
+   "quality": "medium",
+   "status": "submitted",
+   "file": "/tmp/claude-0/v2/world2/raw/wreck2.png",
+   "credits": 0.5
+  }
+ ]
+}

@@ -56,7 +56,7 @@ async function run(dev) {
     page.on('pageerror', (e) => errs.push('[pageerror] ' + e.message + ' ' + (e.stack ?? '').split('\n').slice(1, 3).join(' | ')));
     page.on('console', (m) => { if (m.type() === 'error') errs.push('[console] ' + m.text().slice(0, 300)); });
     const open = async (scene) => {
-      await page.goto(`http://localhost:${port}/index.html?scene=${scene}${scene === 'v2g' ? '&area=slice0&v2auto=0' + (args.oldpad ? '&v2ui=0' : '') : ''}`);   // v2g: the test route, fixed render size; --oldpad 1 = the fallback run on the v1 pad
+      await page.goto(`http://localhost:${port}/index.html?scene=${scene}${scene === 'v2g' ? '&area=slice0&v2auto=0&v2aa=0&v2res=0.5612' + (args.oldpad ? '&v2ui=0' : '') : ''}`);   // v2g: the test route, fixed render size; --oldpad 1 = the fallback run on the v1 pad
       await page.waitForFunction(() => window.__v2 && (window.__v2.ready || window.__v2.error), null, { timeout: 90000 });
       return page.evaluate(install);
     };

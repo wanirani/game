@@ -5,7 +5,7 @@ import { MOVES } from '../play/moves.js';
 import { shapeOf } from './shapes.js';
 
 export const WHIP_TIERS = { low: { n: 12, sub: 2, sides: 6 }, mid: { n: 16, sub: 3, sides: 8 }, high: { n: 20, sub: 4, sides: 10 } };
-const GRAV = -1400, MAXV = 3400, NS = 25, HANDLE_FWD = 11, BOW = 0.955;   // gravity px/s2, speed cap px/s, curve samples, grip -> lash root along the handle
+const GRAV = -1400, MAXV = 3400, NS = 25, HANDLE_FWD = 11, BOW = 0.945;   // gravity px/s2, speed cap px/s, curve samples, grip -> lash root along the handle
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 export class Whip {
@@ -153,7 +153,7 @@ export class Whip {
    * Lay the authored curve: from the lash root to the tip target, exactly len long.
    * Short of len -> the slack bulges toward (sx,sy,sz) and leaves the handle along its direction. Beyond len -> a straight lash that stops short.
    */
-  _curve(tx, ty, tz, sx, sy, sz) {
+  _curve(tx, ty, tz, sx, sy, sz, wave = 0) {
     const n = this.n, T = this.tgt, r = this.root, len = this.len;
     const cx = tx - r.x, cy = ty - r.y, cz = tz - r.z, c = Math.hypot(cx, cy, cz);
     if (c >= len * 0.992 || c < 1e-3) {
@@ -162,11 +162,19 @@ export class Whip {
       return;
     }
     const sl = Math.hypot(sx, sy, sz) || 1; sx /= sl; sy /= sl; sz /= sl;
-    const B = this._bz, L = this._bl, A = 0.55;
+    // where the lash leaves the root: along the handle; in a strike (wave > 0) it leans to the far side of the chord from the slack,
+    // so the extended lash is a shallow S caught mid-crack instead of a straight rod
+    let hx = r.dx, hy = r.dy, hz = r.dz;
+    if (wave > 0) {
+      const d = (sx * cx + sy * cy + sz * cz) / (c * c), px = sx - cx * d, py = sy - cy * d, pz = sz - cz * d;   // slack, across the chord
+      hx = hx * (1 - wave) * 0.6 - px * wave + (cx / c) * 0.5 * wave; hy = hy * (1 - wave) * 0.6 - py * wave + (cy / c) * 0.5 * wave; hz = hz * (1 - wave) * 0.6 - pz * wave + (cz / c) * 0.5 * wave;
+      const hl = Math.hypot(hx, hy, hz) || 1; hx /= hl; hy /= hl; hz /= hl;
+    }
+    const B = this._bz, L = this._bl, A = wave > 0 ? 0.55 + 0.45 * wave : 0.55;
     let lo = 0, hi = len * 3, k = 0, tot = 0;
     for (let it = 0; it < 11; it++) {
       k = it < 10 ? (lo + hi) * 0.5 : k;
-      const ax = r.x + r.dx * A * k, ay = r.y + r.dy * A * k, az = r.z + r.dz * A * k, bx = tx + sx * k, by = ty + sy * k, bz = tz + sz * k;
+      const ax = r.x + hx * A * k, ay = r.y + hy * A * k, az = r.z + hz * A * k, bx = tx + sx * k, by = ty + sy * k, bz = tz + sz * k;
       const m = it < 10 ? 13 : NS;
       let px = r.x, py = r.y, pz = r.z; tot = 0;
       if (it === 10) { B[0] = px; B[1] = py; B[2] = pz; L[0] = 0; }
@@ -209,7 +217,7 @@ export class Whip {
     }
     // slack direction: hero frame -> world
     const bf = K[4], br = K[5], by = K[6];
-    this._curve(W[0], W[1], W[2], this.fx * bf + this.fz * br, by, this.fz * bf - this.fx * br);
+    this._curve(W[0], W[1], W[2], this.fx * bf + this.fz * br, by, this.fz * bf - this.fx * br, e);
     const kick = this.kick;
     for (let i = 0; i < n; i++) { const q = i / (n - 1); wn[i] = w * (1 - kick * q * q * 0.85); }
     // events

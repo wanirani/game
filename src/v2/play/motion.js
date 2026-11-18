@@ -154,7 +154,7 @@ function pinLegs(rig) {   // 떠다니는 적: 다리 뼈를 쉬는 자세로 �
   for (const b of LEGS) { const j = rig.key.get(b); if (j != null) for (let c = 0; c < 4; c++) rig.R[j * 4 + c] = rig.restR[j * 4 + c]; }
   rig.pose();
 }
-const _q = [0, 0, 0, 1], _a = [0, 0, 0, 1], _b = [0, 0, 0, 1], _c = [0, 0, 0, 1], _p = [0, 0, 0, 1];
+const _q = [0, 0, 0, 1], _a = [0, 0, 0, 1], _b = [0, 0, 0, 1], _c = [0, 0, 0, 1], _p = [0, 0, 0, 1], _r = [0, 0, 0, 1];
 /** 노드의 지금 세계 회전(모델 공간)을 사원수로. 크기는 버린다 */
 function worldQuat(rig, n, o) {
   if (n < 0) { o[0] = o[1] = o[2] = 0; o[3] = 1; return o; }
@@ -173,10 +173,11 @@ function worldQuat(rig, n, o) {
  */
 function pitchBone(rig, key, deg, axis = 0) {
   const j = rig.key.get(key); if (j == null) return;
-  const h = (deg * Math.PI) / 360, P = worldQuat(rig, rig.parent[j], _p), R = rig.R.subarray(j * 4, j * 4 + 4);
+  const h = (deg * Math.PI) / 360, P = worldQuat(rig, rig.parent[j], _p), R = rig.R, o = j * 4;
   _q[0] = 0; _q[1] = 0; _q[2] = 0; _q[axis] = Math.sin(h); _q[3] = Math.cos(h);
-  qmul(qconj(P, _a), _q, _b); qmul(_b, P, _c); qmul(_c, R, _a); qnorm(_a);   // R' = P⁻¹ · q · P · R
-  R[0] = _a[0]; R[1] = _a[1]; R[2] = _a[2]; R[3] = _a[3];
+  _r[0] = R[o]; _r[1] = R[o + 1]; _r[2] = R[o + 2]; _r[3] = R[o + 3];   // (subarray 는 부를 때마다 보기 객체를 만든다 — 값만 옮겨 쓴다)
+  qmul(qconj(P, _a), _q, _b); qmul(_b, P, _c); qmul(_c, _r, _a); qnorm(_a);   // R' = P⁻¹ · q · P · R
+  R[o] = _a[0]; R[o + 1] = _a[1]; R[o + 2] = _a[2]; R[o + 3] = _a[3];
 }
 const _o = { fade: 0.12, time: null, speed: 1, restart: false };
 /** Animator.play 에 줄 옵션 (틱마다 새 객체를 만들지 않게 하나를 돌려 쓴다) */
@@ -221,7 +222,7 @@ export function driveHero(ch, h, dt, T = TUNE) {
     if (mv.kind === 'plunge') A.play(clip.name, PO(0.05, h.plungeLand == null ? Math.min(0.13, 0.03 + h.moveT * 1.2) + 0.12 * (1 - clamp((h.plungeEta ?? 1) / 0.12, 0, 1)) : Math.min(clip.duration - 0.02, 0.25 + (h.moveT - h.plungeLand) * 1.5)));
     else A.play(clip.name, PO(0.05, warpMove(clip, h.moveT, mv)));
   }
-  else if (st === 'charge') A.play(C.charged ? 'charged' : 'atk1', PO(0.08, 0.06 + Math.min(1, h.charge ?? 0) * 0.74 + (h.charge >= 1 ? 0.012 * Math.sin((h.t ?? 0) * 34) : 0)));   // 모으기: 칼을 뒤로 감아 올린 채 버틴다 (다 모이면 가늘게 떤다)
+  else if (st === 'charge') A.play(C.charged ? 'charged' : 'atk1', PO(0.1, 0.5 + Math.min(1, h.charge ?? 0) * 0.34 + (h.charge >= 1 ? 0.012 * Math.sin((h.t ?? 0) * 34) : 0)));   // 모으기: 칼을 뒤로 감아 올린 채 버틴다 (다 모이면 가늘게 떤다)
   else if (st === 'echo') A.play('cast_raise', PO(0.06, 0.3 + (h.actT ?? 0) * 1.5));                                   // 메아리: 종 조각을 치켜든다 (울리는 때 = 클립의 0.6초)
   else if (st === 'ring') A.play(C.cast_big ? 'cast_big' : 'cast_raise', PO(0.1, h.actDone ? Math.min(2.3, 1.7 + (h.actT ?? 0) * 1.1) : 0.4 + (h.bellCharge ?? 0) * 1.25));   // 길게: 웅크려 모았다가 다 차면 두 손을 하늘로
   else if (st === 'call') A.play(C.point ? 'point' : 'cast_raise', PO(0.07, 0.2 + (h.actT ?? 0) * 1.5));               // 부름: 팔을 뻗어 자리를 가리킨다
@@ -308,9 +309,11 @@ export function driveActor(ch, e, dt) {
   if (!S.init) { S.init = true; if (!A.ext) A.t = (e.id * 0.37) % (C[name].duration || 1); }   // 떼로 나올 때 같은 박자로 움직이지 않게
   A.update(dt);
   // 숙임: 나는 것(박쥐)은 몸을 앞으로 숙여 날고 내리꽂을 때 더 숙인다. 떠다니는 것은 움직이는 만큼 숙여 자락이 뒤로 흐른다. (골반 뼈를 돌린다 → 장면은 ch.place 그대로)
-  const strike = atk && e.phase === 'strike', want = D.pitch ? D.pitch + (strike ? 24 : 0) : D.floats ? (e.kneel > 0 ? 30 : strike ? (atk.pulse ? 6 : 20) : 12 * clamp((e.moved ?? 0) / (D.speed || 60), 0, 1)) : 0;
+  const strike = atk && e.phase === 'strike', want = D.pitch ? D.pitch + (strike ? 24 : 0) : D.floats ? (e.kneel > 0 ? 52 : strike ? (atk.pulse ? 6 : 20) : 12 * clamp((e.moved ?? 0) / (D.speed || 60), 0, 1)) : 0;
   S.pitch = (S.pitch ?? want) + (want - (S.pitch ?? want)) * Math.min(1, dt * 7);
   if (S.pitch > 0.5 && e.state !== 'dead') pitchBone(ch.rig, 'hips', S.pitch);
+  S.bow = (S.bow ?? 0) + ((e.kneel > 0 && e.state !== 'dead' ? 1 : 0) - (S.bow ?? 0)) * Math.min(1, dt * 5);   // 무릎 꿇음: 윗몸을 깊이 숙인다 (자락은 그대로 드리운 채)
+  if (S.bow > 0.02) { pitchBone(ch.rig, 'spine', 24 * S.bow); pitchBone(ch.rig, 'spine2', 20 * S.bow); pitchBone(ch.rig, 'neck', 12 * S.bow); }
   if (D.floats) pinLegs(ch.rig); else if (S.pitch > 0.5 && e.state !== 'dead') ch.rig.pose();
   // 비침: 유령의 흐림 · 또렷함을 장면의 그리기 옵션에 바로 적는다 (장면이 e.alpha 를 스스로 읽으면 그 값이 이긴다 — 같은 값이다)
   if (ch.opt && (D.fade != null || D.boss)) ch.opt.alpha = e.state === 'dead' ? 1 : clamp(e.alpha ?? 1, 0.05, 1);

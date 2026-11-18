@@ -19,8 +19,8 @@ const S = {
   dust: E({ sprite: SPR.SMOKE, add: 0, n: 2, spread: 0.9, speed: [20, 70], vy: [10, 40], drag: 2.5, life: [0.25, 0.45], size: [10, 16], grow: 1.8, c0: [0.5, 0.46, 0.42, 0.35], c1: [0.4, 0.38, 0.36, 0] }),
 };
 export const WHIP_TRAIL = {
-  lash: RB({ mode: 1, life: 0.12, width: 8, col: [1.9, 1.5, 0.95, 0.85] }),     // a thin warm streak behind the tip (a whip leaves a line, not a blade's sheet)
-  heavy: RB({ mode: 1, life: 0.19, width: 13, col: [2.6, 1.5, 0.6, 0.95] }),
+  lash: RB({ mode: 1, life: 0.13, width: 11, col: [1.9, 1.5, 0.95, 0.8] }),     // a thin warm streak behind the tip (a whip leaves a line, not a blade's sheet)
+  heavy: RB({ mode: 1, life: 0.2, width: 17, col: [2.6, 1.5, 0.6, 0.9] }),
   line: RB({ mode: 1, life: 0.16, width: 9, col: [0.8, 1.3, 2.2, 0.7] }),   // the throw toward a ring
 };
 const C = { warm: [1.0, 0.82, 0.5], cold: [0.6, 0.8, 1.0], gold: [1.0, 0.8, 0.4], ringW: [2.4, 2.1, 1.6, 0.9], ringG: [2.6, 2.0, 0.8, 0.9], ringB: [1.2, 1.8, 2.8, 0.8] };
@@ -29,7 +29,7 @@ const STR = { L: 0.7, M: 1, H: 1.3, F: 1.6 };
 export function whipFx(fx, feel, opts = {}) {
   const pos = { x: 0, y: 0, z: 0 };
   const L = {
-    fx, feel, rb: -1, light: -1, weapon: opts.weapon ?? 'whip', sound: opts.sound !== false, last: '', count: 0,
+    fx, feel, rb: -1, light: -1, px: 0, py: 0, pz: 0, has: false, weapon: opts.weapon ?? 'whip', sound: opts.sound !== false, last: '', count: 0,
     onEvent(name, e) {
       L.last = name; L.count++;
       const x = e.x, y = e.y, z = e.z, k = STR[e.strength] ?? 1, P = fx ? fx.particles : null;
@@ -68,11 +68,16 @@ export function whipFx(fx, feel, opts = {}) {
       if (on && L.rb < 0) L.rb = R.start(whip.mode === 'swing' ? (whip.sw.str === 'F' || whip.sw.str === 'H' ? WHIP_TRAIL.heavy : WHIP_TRAIL.lash) : WHIP_TRAIL.line);
       if (L.rb >= 0) {
         if (!on) { R.end(L.rb); L.rb = -1; }
-        else R.push(L.rb, t.x, t.y, t.z, 0, 0, 0);
+        else {   // two points a tick: the tip moves up to 55 px between ticks, the point between is taken on the arc around the hand
+          const r = whip.root, ax = L.px - r.x, ay = L.py - r.y, az = L.pz - r.z, bx = t.x - r.x, by = t.y - r.y, bz = t.z - r.z;
+          if (L.has) { let mx = ax + bx, my = ay + by, mz = az + bz; const ml = Math.hypot(mx, my, mz) || 1, rad = (Math.hypot(ax, ay, az) + Math.hypot(bx, by, bz)) * 0.5 / ml; R.push(L.rb, r.x + mx * rad, r.y + my * rad, r.z + mz * rad, 0, 0, 0); }
+          R.push(L.rb, t.x, t.y, t.z, 0, 0, 0);
+        }
       }
+      L.px = t.x; L.py = t.y; L.pz = t.z; L.has = true;
     },
     /** area change / respawn */
-    clear() { if (fx && L.rb >= 0) fx.ribbons.end(L.rb); L.rb = -1; },
+    clear() { if (fx && L.rb >= 0) fx.ribbons.end(L.rb); L.rb = -1; L.has = false; },
   };
   return L;
 }

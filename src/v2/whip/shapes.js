@@ -16,7 +16,11 @@ const K = (rows) => { const a = new Float32Array(rows.length * 8); rows.forEach(
 // with the full extension at phase pk (easy to read: wind-up, strike, follow-through) and S() squeezes them so that the extension falls at
 // PEAK, just inside the window. What was "the strike" plays in the last part of the wind-up, the follow-through fills the window.
 export const PEAK = 0.08;
-const S = (pk, rows) => K(rows.map((r) => { const s = r[0], q = s <= pk ? -1 + ((s + 1) * (1 + PEAK)) / (pk + 1) : s <= 1 ? PEAK + ((s - pk) * (0.62 - PEAK)) / (1 - pk) : 0.62 + (s - 1) * 1.38; return [q, ...r.slice(1)]; }));
+// The squeeze is eased so the tip keeps accelerating into the extension and slows after it (fastest as the window opens).
+const S = (pk, rows) => K(rows.map((r) => {
+  const s = r[0], q = s <= pk ? -1 + (1 + PEAK) * (1 - Math.pow(1 - (s + 1) / (pk + 1), 1.2)) : s <= 1 ? PEAK + (0.62 - PEAK) * Math.pow((s - pk) / (1 - pk), 1.2) : 0.62 + (s - 1) * 1.38;
+  return [q, ...r.slice(1)];
+}));
 
 export const WHIP_SHAPES = {
   // combo 1: flat cut from the right, across the front, to the left (clip atk1)
@@ -84,8 +88,9 @@ export const WHIP_SHAPES = {
   // launcher: straight up the middle (rules may add it later)
   launcher: { peak: PEAK, ev: 'crack', nominal: { dur: 0.52, hit: [0.14, 0.28], box: { f0: -10, f1: 104, side: 40, y0: 0, y1: 190 } }, keys: S(0.5, [
     [-1.0, -30, 24, 26, 0.35, -1, 0, -1],
-    [-0.4, -64, 20, 10, 0.6, -1, 0, 0.3],
-    [0.0, 30, 14, 8, 0.9, -1, 0, 0.3],
+    [-0.5, -58, 22, 14, 0.6, -1, 0, 0.3],
+    [-0.1, -66, 20, 9, 0.75, -1, 0, 0.3],
+    [0.2, 20, 14, 8, 0.9, -1, 0, 0.3],
     [0.5, 92, 0, 70, 1.0, -0.6, 0, -1],
     [0.8, 78, -4, 134, 0.95, -0.2, 0, -1],
     [1.0, 52, -6, 172, 0.6, 0.4, 0, -1],
