@@ -162,7 +162,7 @@ function installCa() {
   };
   A.group = (gr) => { const sim = v.scene.sim, h = sim.hero; let best = null, bd = 1e9, n = 0, hid = 0; for (const e of sim.enemies) { if (e.group !== gr || e.dead || e.state === 'dead') continue; n++; if (e.def?.fade != null && !e.solid) hid++; const d = Math.hypot(e.x - h.x, e.z - h.z); if (d < bd) { bd = d; best = [Math.round(e.x), Math.round(e.z), Math.round(e.hp), e.kind]; } } return { n, best, d: Math.round(bd), hid }; };
   A.trig = (event) => { const t = v.scene.area.triggers.find((q) => q.event === event); return t ? [(t.x0 + t.x1) / 2, (t.z0 + t.z1) / 2, t.id] : null; };
-  A.exit = (id) => { const x = v.exits.find((q) => q.id === id); return x ? { x: (x.x0 + x.x1) / 2, z: (x.z0 + x.z1) / 2, locked: x.locked ?? null, to: x.to } : null; };
+  A.exit = (id) => { const x = v.exits.find((q) => q.id === id), g = x && x.locked && x.lockAt ? x.lockAt : null; return x ? { x: g ? (g.x0 + g.x1) / 2 : (x.x0 + x.x1) / 2, z: g ? g.z0 - 6 : (x.z0 + x.z1) / 2, locked: x.locked ?? null, to: x.to, at: !!g } : null; };   // a shut gate in front of its exit box (lockAt, AREA_FORMAT 3): the hero walks up to the gate, not to the box behind it
   A.spot = (what, data) => {
     const P = v.scene.people;
     for (const p of P.list) if (p.id === what) return { id: p.id, x: p.x, y: p.y, z: p.z, r: p.r, person: true, on: !!p.on, talk: p.def.talk ?? null };

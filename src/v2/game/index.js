@@ -1380,7 +1380,7 @@ export default class V2Game extends Scene {
       get section() { return (sc.area?.test ? sc.sim?.section : sc._secId) ?? ''; }, get area() { return sc.area?.id ?? ''; },
       get people() { return sc.people.list.map((p) => ({ id: p.id, model: p.def.model, x: p.x, y: p.y, z: p.z, on: p.on, drawn: p.vis, clip: p.a3.anim.cur?.name ?? '', solid: p.solid })); },
       get prompt() { const t = sc.people.target; return t && sc.state.prompts.length ? { id: t.id, label: t.label, person: !!t.a3 } : null; },
-      get exits() { return (sc.area?.exits ?? []).map((x) => ({ id: x.id, to: x.to, locked: x.locked ?? null, x0: x.x0, x1: x.x1, z0: x.z0, z1: x.z1 })); },
+      get exits() { return (sc.area?.exits ?? []).map((x) => ({ id: x.id, to: x.to, locked: x.locked ?? null, x0: x.x0, x1: x.x1, z0: x.z0, z1: x.z1, lockAt: x.lockAt ?? null })); },
       use() { sc._use = true; },
       get stats() { return sc.stats(); },
       get shots() { return (sc.sim?.shots ?? []).filter((s) => !s.dead).map((s) => ({ x: s.x, y: s.y, z: s.z })); },
