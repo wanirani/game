@@ -21,7 +21,7 @@ export function graveyard(era = 'now', flags = {}) {
     { t: 'deco', mesh: 'towerface', x: 300, y: 0, z: 1850, w: 400, h: TY, mat: 'fieldstone', step: 1e6 }, { t: 'deco', mesh: 'towerface', x: 900, y: 0, z: 1850, w: 400, h: TY, mat: 'fieldstone', step: 1e6 },
     { t: 'deco', mesh: 'towerface', x: 600, y: 0, z: 1850, w: 200, h: TY, mat: 'ashlar', step: 1e6 },
     { t: 'blocker', x: 0, z: 1850, w: 100, d: 340, y: 0, h: 1200 }, { t: 'blocker', x: 1100, z: 1850, w: 100, d: 340, y: 0, h: 1200 });   // on the terrace the side walls stand only 110 above the feet: a jump would clear them
-  if (now && hung) add('field', { t: 'stairs', x: 540, z: 1740, w: 120, d: 110, h: TY, dir: 'z+', steps: 10, mat: 'stone', state: 'bell_hung', kit: { cheeks: 'LR' } });   // tonight, a hundred years after the bell was hung: the stair is whole
+  if (now && hung) add('field', { t: 'stairs', x: 540, z: 1658, w: 120, d: 192, h: TY, dir: 'z+', steps: 12, mat: 'stone', state: 'bell_hung', kit: { cheeks: 'LR' } });   // tonight, a hundred years after the bell was hung: the stair is whole (WORLD-3: 12 steps, rise 11.7 on treads of 16 - the stick alone climbs it; rise 14 on treads of 11 stopped the hero at the foot)
   else add('field', { t: 'prop', mesh: 'rubble', x: 600, z: 1800, w: 190, h: 78, solid: 84, solidZ: 46, solidH: 70 },                                               // the fallen stair: a heap of broken steps (solid, not climbable)
     { t: 'deco', mesh: 'footbridge', kind: 'slab', x: 600, y: TY - 12, z: 1838, w: 110, len: 22, th: 12 });                                                           // the top step still hangs on the edge
   // walls

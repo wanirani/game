@@ -7,6 +7,8 @@
 //      extra walks (WALKS): the climb of the bell tower from the door to the bell chamber (stairs, ledges, jumps over the broken floors - the bot
 //      jumps at a gap or a ledge and the route is planned again from where it stands after a fall), the ossuary end to end over the wedge;
 //      the tower drop test: the hero is dropped on a lattice over the whole tower and must always land on a floor (no pit, no damage).
+//   5. WORLD-3: every jump the bot makes is counted (also the one it presses when stuck) and printed per flight of stairs; a jump on a flight,
+//      or a stuck-jump anywhere, fails the run. Jumps at gaps and ledges are by design (the broken floors and the half-height ledges of the tower).
 //   node tools/v2/world_check.mjs [--devices fold_open,phone2] [--areas eshville_now,eshville_past,graveyard_now] [--shots 1] [--json out.json] [--states 0]
 // Headless Chromium renders with SwiftShader: frame times here say nothing about the device. Triangles, draw calls and memory are exact.
 import { chromium } from 'playwright-core';
@@ -94,7 +96,7 @@ const walk = (page, wps, start = null) => page.evaluate(([wps, start]) => {
   const ground = (x, z) => { let gy = -1e9; for (const b of sc.W.boxes) if (b.walk && x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1 && b.y1 > gy) gy = b.y1; return gy; };
   if (start !== 'stay') { sc.sim.reset(); sc.areaState.in = {}; if (start) { const h = sc.sim.hero, gy = ground(start[0], start[1]); h.x = start[0]; h.z = start[1]; h.y = gy + 1; h.vx = h.vz = h.vy = 0; h.onGround = false; h.safe = { x: h.x, z: h.z, y: gy }; } }
   sc.cam.snap = true;
-  const hp0 = sc.sim.hero.hp, trace = []; let i = 0, stuck = 0, lx = 0, lz = 0, jump = 0, t = 0, fell = false, jumps = 0, minY = 1e9, lock = null;
+  const hp0 = sc.sim.hero.hp, trace = []; let i = 0, stuck = 0, lx = 0, lz = 0, jump = 0, t = 0, fell = false, jumps = 0, minY = 1e9, lock = null; const jlog = [];   // WORLD-3: EVERY jump is counted and logged [x, z, y, why] - also the one pressed when stuck (it used to hide stairs the stick cannot climb)
   for (; t < 9000 && i < wps.length; t++) {
     const h = sc.sim.hero, dx = wps[i][0] - h.x, dz = wps[i][1] - h.z, dd = Math.hypot(dx, dz);
     if (dd < (i === wps.length - 1 ? 5 : 22)) { i++; continue; }
@@ -109,28 +111,43 @@ const walk = (page, wps, start = null) => page.evaluate(([wps, start]) => {
       const sx = Math.abs(dx) > 3 ? Math.sign(dx) : 0, sz = Math.abs(dz) > 3 ? Math.sign(dz) : 0;
       const gap = (ux, uz) => (ux || uz) && ground(h.x + ux * 26, h.z + uz * 26) < gh - 60 && gt >= gh - 30;
       const ledge = (ux, uz) => { if (!(ux || uz)) return false; const g2 = ground(h.x + ux * 18, h.z + uz * 18); return g2 > gh + 36 && g2 <= gh + 100 && gt > gh + 16; };
-      if (gap(0, sz) || ledge(0, sz)) { jump = 20; jumps++; lock = 'z'; } else if (gap(sx, 0) || ledge(sx, 0)) { jump = 20; jumps++; lock = 'x'; }
+      const why = gap(0, sz) ? ['gap', 'z'] : ledge(0, sz) ? ['ledge', 'z'] : gap(sx, 0) ? ['gap', 'x'] : ledge(sx, 0) ? ['ledge', 'x'] : null;
+      if (why) { jump = 20; jumps++; lock = why[1]; jlog.push([Math.round(h.x), Math.round(h.z), Math.round(h.y), why[0]]); }
     }
     if (jump > 0 && lock === 'z') { act.left = act.right = false; } else if (jump > 0 && lock === 'x') { act.up = act.down = false; }
-    if (t % 6 === 0) { const m = Math.hypot(h.x - lx, h.z - lz); lx = h.x; lz = h.z; stuck = m < 2 ? stuck + 1 : 0; if (stuck >= 4) { jump = 22; stuck = 0; lock = null; } if (stuck === 3 && h.onGround && ground(wps[i][0], wps[i][1]) > ground(h.x, h.z) + 60) { fell = true; break; } }
+    if (t % 6 === 0) { const m = Math.hypot(h.x - lx, h.z - lz); lx = h.x; lz = h.z; stuck = m < 2 ? stuck + 1 : 0; if (stuck >= 4) { jump = 22; stuck = 0; lock = null; jumps++; jlog.push([Math.round(h.x), Math.round(h.z), Math.round(h.y), 'stuck']); } if (stuck === 3 && h.onGround && ground(wps[i][0], wps[i][1]) > ground(h.x, h.z) + 60) { fell = true; break; } }
     if (jump > 0) { jump--; act.jump = jump > 6; }
     if (t % 4 === 0) { trace.push([t, Math.round(h.x), Math.round(h.z), Math.round(h.y), jump, lock, wps[i][0], wps[i][1]].join(' ')); if (trace.length > 400) trace.shift(); }
     g.tick(1 / 60);
   }
   act = {}; input.setAutoSource(null); for (let k = 0; k < 4; k++) g.tick(1 / 60);
-  const h = sc.sim.hero; return { arrived: i >= wps.length, fell, ticks: t, jumps, x: Math.round(h.x), z: Math.round(h.z), y: Math.round(h.y), minY: Math.round(minY), hp: h.hp, hurt: hp0 - h.hp, hits: v.areaInfo.hits.slice(), fired: v.areaInfo.fired.slice(), trace };
+  const h = sc.sim.hero; return { arrived: i >= wps.length, fell, ticks: t, jumps, x: Math.round(h.x), z: Math.round(h.z), y: Math.round(h.y), minY: Math.round(minY), hp: h.hp, hurt: hp0 - h.hp, hits: v.areaInfo.hits.slice(), fired: v.areaInfo.fired.slice(), trace, jlog };
 }, [wps, start]);
 /** walk from A to B, planning again from where the hero stands whenever he fell off the route (a missed jump) */
 async function go(page, W, from, to) {
-  let wps = plan(W, from[0], from[1], to[0], to[1]), start = from, ticks = 0, jumps = 0, plans = 0, w = null;
+  let wps = plan(W, from[0], from[1], to[0], to[1]), start = from, ticks = 0, jumps = 0, plans = 0, w = null; const jlog = [];
   for (; plans < 7 && wps; plans++) {
-    w = await walk(page, wps, start); ticks += w.ticks; jumps += w.jumps;
+    w = await walk(page, wps, start); ticks += w.ticks; jumps += w.jumps; jlog.push(...w.jlog);
     if (args.trace && !w.arrived) console.log(`      [trace] plan ${plans}: ${w.fell ? 'fell' : 'stopped'} at (${w.x}, ${w.z}, y ${w.y}) — t x z y jump lock -> waypoint\n        ` + w.trace.slice(-Number(args.trace)).join('\n        '));
     if (w.arrived) break;
     start = 'stay'; wps = plan(W, w.x, w.z, to[0], to[1]);
   }
-  return { ...(w ?? {}), arrived: !!w?.arrived, ticks, jumps, plans: plans + (w?.arrived ? 1 : 0), noPath: !wps && !w?.arrived };
+  return { ...(w ?? {}), arrived: !!w?.arrived, ticks, jumps, jlog, plans: plans + (w?.arrived ? 1 : 0), noPath: !wps && !w?.arrived };
 }
+/**
+ * WORLD-3: where the bot jumped. A jump made on a flight of stairs or within 34 of its foot belongs to that flight - and a flight must need none
+ * (tools/v2/world_stairs_node.mjs proves the same with the real rules; scene v2c runs the prototype rules, same STEP_UP 18 and hero r 14).
+ * -> { flights: [{ name, jumps }], stair: n, other: { gap, ledge, stuck } }
+ */
+function jumpsPerFlight(a, jlog) {
+  const F = a.stage.parts.filter((P) => P.t === 'stairs').map((P) => ({ name: `(${P.x},${P.z}) ${P.dir} y ${P.y ?? 0}→${(P.y ?? 0) + P.h}`, P, jumps: 0 })), other = { gap: 0, ledge: 0, stuck: 0 }; let stair = 0;
+  for (const [x, z, y, why] of jlog) {
+    const f = F.find(({ P }) => x > P.x - 34 && x < P.x + P.w + 34 && z > P.z - 34 && z < P.z + P.d + 34 && y > (P.y ?? 0) - 20 && y < (P.y ?? 0) + P.h - 4);
+    if (f) { f.jumps++; stair++; } else other[why]++;
+  }
+  return { flights: F.map(({ name, jumps }) => ({ name, jumps })), stair, other };
+}
+const jumpLine = (J) => `jumps per flight: ${J.flights.length ? J.flights.map((f) => `${f.name}: ${f.jumps}`).join(' · ') : 'no stairs here'} — elsewhere: gaps ${J.other.gap}, ledges ${J.other.ledge}, stuck ${J.other.stuck}`;
 /** the tower drop test: dropped anywhere over the tower the hero lands on a floor - never in a pit, never out of the world, never hurt */
 const dropTest = (page, x0, x1, z0, z1, step) => page.evaluate(([x0, x1, z0, z1, step]) => {
   const g = window.__game, sc = window.__v2.scene, bad = []; let n = 0; g._pageHidden = true; sc.sim.reset(); const h = sc.sim.hero, hp0 = h.hp;
@@ -184,10 +201,14 @@ for (const dev of DEVICES) {
         if (pre) { const w0 = await go(page, W, [d.x, d.z], pre); if (!w0.arrived) { fail(`${dev} ${id}: bot did not reach the whip ring on the way to exit ${r.id} - stopped at (${w0.x}, ${w0.z})`); continue; } }
         const w = await go(page, W, from, to); A.exits[r.id] = w;
         if (w.hits?.includes(r.id)) ok(`bot walked into exit ${r.id}${how} (${w.ticks} ticks, ${w.jumps} jumps, triggers ${w.fired.length})`); else fail(`${dev} ${id}: bot did not reach exit ${r.id} - stopped at (${w.x}, ${w.z}) after ${w.ticks} ticks`);
+        { const J = jumpsPerFlight(a, w.jlog ?? []); if (J.stair || J.other.stuck) fail(`${dev} ${id}: on the way to exit ${r.id} the bot had to jump ${J.stair}x on stairs and ${J.other.stuck}x because it was stuck — ${jumpLine(J)}`); }
       }
       for (const [wst, from, to, what] of (WALKS[id0] ?? []).filter((w) => w[0] === state)) {
         const { a, W } = WORLDS[id], P = (p) => (typeof p === 'string' ? [a.spawns[p].x, a.spawns[p].z] : p), w = await go(page, W, P(from), P(to)); A.walks.push({ what, ...w });
-        if (w.arrived) ok(`bot ${what} (${w.ticks} ticks, ${w.jumps} jumps, planned ${w.plans}x, lowest y ${w.minY}, hurt ${w.hurt})`); else fail(`${dev} ${id}: bot did not finish "${what}" - ${w.noPath ? 'no path' : 'stopped'} at (${w.x}, ${w.z}, y ${w.y}) after ${w.ticks} ticks`);
+        const J = jumpsPerFlight(a, w.jlog ?? []); w.jumpsPerFlight = J; A.walks[A.walks.length - 1].jumpsPerFlight = J;
+        if (w.arrived) { ok(`bot ${what} (${w.ticks} ticks, ${w.jumps} jumps, planned ${w.plans}x, lowest y ${w.minY}, hurt ${w.hurt})`); console.log('      ' + jumpLine(J)); }
+        if (J.stair) fail(`${dev} ${id}: "${what}" needed ${J.stair} jump(s) on stairs (a flight must be walked with the stick alone) — ${jumpLine(J)}`);
+        if (J.other.stuck) fail(`${dev} ${id}: "${what}" pressed jump ${J.other.stuck}x because the bot was stuck (not at a gap or a ledge) at ${JSON.stringify((w.jlog ?? []).filter((j) => j[3] === 'stuck').slice(0, 4))}`); else fail(`${dev} ${id}: bot did not finish "${what}" - ${w.noPath ? 'no path' : 'stopped'} at (${w.x}, ${w.z}, y ${w.y}) after ${w.ticks} ticks`);
         if (w.arrived && w.hurt > 0) fail(`${dev} ${id}: "${what}" hurt the hero by ${w.hurt} (a fall must never be a pit here)`);
       }
       if (id0.startsWith('belltower') && base0) {

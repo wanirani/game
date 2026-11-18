@@ -39,6 +39,8 @@ function install() {
     hero(x, z) { const sim = window.__v2.scene.sim, h = sim.hero; h.x = x; h.z = z; h.y = sim.w?.ground ? sim.w.ground(x, z) : h.y; h.vx = h.vz = h.vy = 0; h.onGround = true; h.move = null; h.dashT = 0; h.hurtT = 0; h.guard = false; h.hp = 100; h.dead = false; h.ifr = 0; h.safe = { x, z, y: h.y }; window.__v2.scene.cam.snap = true; },
     /** keep one enemy of the kind alive as a test dummy, everything else outside the yard is removed */
     clear() { const sim = window.__v2.scene.sim; C.dm = {}; for (const e of sim.enemies) { if (e.yard) continue; const k = e.def?.shot || e.kind === 'ranged' || /mage/.test(e.def?.model ?? '') ? 'ranged' : 'melee'; if (!C.dm[k]) { C.dm[k] = e; C.park(k); } else e.dead = true; } return Object.keys(C.dm); },
+    /** the yard's own enemies stay alive (the arena must not count as cleared) but are parked asleep at the start of the street: under the new waking rules they came for the hero at the test spot and hit him in the middle of an item */
+    quiet() { const sim = window.__v2.scene.sim; let i = 0; for (const e of sim.enemies) { if (!e.yard || e.dead || e.state === 'dead') continue; e.x = 300 + (i++ % 8) * 12; e.z = 96; e.y = e.gy = sim.w.ground(e.x, e.z); e.active = false; e.state = 'idle'; e.stateT = 0; e.atk = null; e.tele = 0; e.vx = e.vz = 0; e.hp = e.hpMax; } },
     park(k) { const e = C.dm[k]; if (!e) return; e.x = 330; e.z = 120; e.y = e.gy = window.__v2.scene.sim.w.ground(330, 120); e.active = false; e.state = 'idle'; e.stateT = 0; e.atk = null; e.tele = 0; e.hp = e.hpMax = 9999; e.vx = e.vz = 0; e.stun = 0; e.stagger = 0; },
     put(k, x, z, active) { const sim = window.__v2.scene.sim, e = C.dm[k]; if (!e) return null; e.x = x; e.z = z; e.gy = sim.w.ground(x, z); e.y = e.gy + (e.hover ?? 0); e.hp = e.hpMax = 9999; e.vx = e.vz = 0; e.stun = 0; e.stagger = 0; e.atk = null; e.tele = 0; e.cd = active ? 0.2 : 9; e.active = !!active; e.state = active ? 'chase' : 'idle'; e.stateT = 0; return e.id; },
     dmHp(k) { return C.dm[k]?.hp ?? -1; },
@@ -73,7 +75,7 @@ async function run(dev) {
     const btnUp = (id, f) => T.up(f ?? ({ attack: 11, jump: 12, dash: 13 })[id]);
     const press = async (id, ticks = 3) => { await btnDown(id); const s = await step(ticks); await btnUp(id); return s; };
     let BASE = [900, 190];
-    const home = async () => { await T.upAll(); await ev((b) => { window.__cv.hero(b[0], b[1]); window.__cv.park('melee'); window.__cv.park('ranged'); }, BASE); await step(14); };
+    const home = async () => { await T.upAll(); await ev((b) => { window.__cv.hero(b[0], b[1]); window.__cv.park('melee'); window.__cv.park('ranged'); window.__cv.quiet(); }, BASE); await step(14); };
 
     // ───────── v2g ─────────
     const s0 = await open('v2g');
@@ -182,6 +184,7 @@ async function run(dev) {
       const walls = {};
       for (const k of ['U', 'D', 'L']) {
         await home(); if (k === 'L') await ev(() => window.__cv.hero(140, 150)); await stick(k); let p = await step(90, false), q = await step(30, false);
+        for (let n = 0; n < 16 && Math.hypot(q.x - p.x, q.z - p.z) >= 3; n++) { p = q; q = await step(60, false); }   // keep walking until a wall really stops the hero (the yard is deeper than two seconds of walking)
         const blocked = Math.hypot(q.x - p.x, q.z - p.z) < 3; let worst = 0, bad = false;
         for (let i = 0; i < 6; i++) { await btnDown('dash'); await step(3, false); await btnUp('dash'); const s = await step(45, i === 5); worst = Math.max(worst, Math.hypot(s.x - q.x, s.z - q.z)); if (!Number.isFinite(s.x + s.y + s.z) || s.y < -60 || s.dead) bad = true; }
         await shot('rollwall_' + k); await stickUp(); const e = await step(10);

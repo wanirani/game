@@ -29,11 +29,19 @@ export function belltower(era = 'now', flags = {}) {
   add('high', { t: 'floor', x: 0, z: ZT, w: W, d: 400, y: TOP, thick: TOP, mat: 'stone', kit: { mat: 'planks', cell: 40, strips: [{ x0: 0, x1: 60, mat: 'flags' }, { x0: W - 60, x1: W, mat: 'flags' }, { z0: 340, z1: 400, mat: 'flags' }] } },
     { t: 'deco', mesh: 'towerface', x: W / 2, y: TOP - LV, z: ZT, w: W, h: LV, mat: 'ashlar', slit: [150, 570] });
   // ── the ways up ──
-  const stone = { cheeks: 'LR' }, wood = { mat: 'darkwood', tread: 'wood' };
-  add('low', { t: 'stairs', x: 520, z: Z1 - 124, w: 160, d: 124, h: LV, dir: 'z+', steps: 9, mat: 'stone', kit: stone },                                   // 0 -> 1 (right)
-    { t: 'stairs', x: 40, z: zOf(2) - 120, w: 140, d: 120, y: LV, h: LV, dir: 'z+', steps: 9, mat: 'stone', kit: wood },                                     // 1 -> 2 (left, wooden)
-    { t: 'block', x: 560, z: zOf(3) - 70, w: 120, d: 70, y: 2 * LV, h: LV / 2, kit: { mat: 'fieldstone', top: 'slabs' } });                                      // 2 -> 3 (right): a ledge half a floor high, then the floor edge
-  add('high', { t: 'stairs', x: 40, z: zOf(4) - 120, w: 140, d: 120, y: 3 * LV, h: LV, dir: 'z+', steps: 9, mat: 'stone', kit: wood },                       // 3 -> 4 (left, wooden)
+  // WORLD-3: every flight is climbed with the stick alone. The rules (src/v2/play/collide.js, sim.js): the hero is a square of half-width r 14 and walks
+  // up a step of at most STEP_UP 18 - but his body already touches the step AFTER the next one when a tread is shallower than r, and that one stands
+  // 2 x rise above his feet. So a flight needs rise <= 18 AND tread > 14 (the old flights: rise 15.1 on treads of 13.3-13.8 - he stopped at the foot).
+  // Now: 12 steps, rise 11.3, tread 16. The stone flight runs into the screen on the deep ground floor; the two wooden flights run sideways along the
+  // face of the next floor (a floor row is only 160 deep) up to a landing in the corner, from which the hero steps onto the floor above.
+  const stone = { cheeks: 'LR' }, wood = { mat: 'darkwood', tread: 'wood' }, NS = 12, TR = 16, FL = NS * TR, SW = 64, LAND = 60;
+  const flight = (k) => [   // floor k -> k + 1, along the back of floor k on the left: the landing in the corner, the flight rising towards it
+    { t: 'block', x: 0, z: zOf(k + 1) - SW, w: LAND, d: SW, y: k * LV, h: LV, kit: { mat: 'darkwood', top: 'planks' } },
+    { t: 'stairs', x: LAND, z: zOf(k + 1) - SW, w: FL, d: SW, y: k * LV, h: LV, dir: 'x-', steps: NS, mat: 'stone', kit: wood }];
+  add('low', { t: 'stairs', x: 520, z: Z1 - FL, w: 160, d: FL, h: LV, dir: 'z+', steps: NS, mat: 'stone', kit: stone },                                    // 0 -> 1 (right, stone)
+    flight(1),                                                                                                                                             // 1 -> 2 (left, wooden)
+    { t: 'block', x: 560, z: zOf(3) - 70, w: 120, d: 70, y: 2 * LV, h: LV / 2, kit: { mat: 'fieldstone', top: 'slabs' } });                                      // 2 -> 3 (right): a ledge half a floor high, then the floor edge (the stair that stood here is gone: a climb on purpose)
+  add('high', flight(3),                                                                                                                                   // 3 -> 4 (left, wooden)
     { t: 'block', x: 540, z: ZT - 70, w: 140, d: 70, y: 4 * LV, h: LV / 2, kit: { mat: 'fieldstone', top: 'slabs' } });                                          // 4 -> top (right)
   // ── the shell: side walls and the back wall of the belfry (open arches to the night) ──
   const side = (x, face) => ({ t: 'wall', x, z: -60, w: 90, d: ZT + 400 + 60, h: TOP + 330, mat: 'facade', kit: { style: 'stone', cell: 70, faces: face, plinth: 0, quoins: false, cornice: false, courses: [LV * 2 + 60, LV * 4 + 60],
@@ -43,7 +51,7 @@ export function belltower(era = 'now', flags = {}) {
   add('high', { t: 'wall', x: -90, z: ZT + 400, w: W + 180, d: 90, y: 0, h: TOP + 330, mat: 'facade', kit: { style: 'stone', cell: 70, faces: 'F', plinth: 0, quoins: false, battlement: true, courses: [TOP + 150],
     windows: [200, 450, 700].map((u) => ({ u, y: TOP + 44, w: 96, h: 190, arch: 'point', rows: 5, cols: 1, lit: 0 })) } });
   // ── dressing ──
-  add('low', { t: 'prop', mesh: 'goods', x: 150, z: 196, h: 88, solid: 60, solidZ: 36, solidH: 66 }, { t: 'prop', mesh: 'barrel', x: 646, z: 60, h: 78, solid: 24 },
+  add('low', { t: 'prop', mesh: 'goods', x: 150, z: 196, h: 88, solid: 60, solidZ: 36, solidH: 66 }, { t: 'prop', mesh: 'barrel', x: 60, z: 60, h: 78, solid: 24 },
     { t: 'prop', mesh: 'stairs', x: 250, z: 176, h: 90, rot: 0.5, solid: 40, solidZ: 36, solidH: 70 },                                                                                      // a spare wooden flight leaning by the wall
     { t: 'deco', mesh: 'candles', x: 330, z: 214, n: 4, light: { r: 200, i: 1.0, y: 20 } },
     { t: 'prop', mesh: 'crate', x: 660, z: zOf(1) + 96, y: LV, h: 58, solid: 28, solidZ: 18 }, { t: 'deco', mesh: 'candles', x: 120, y: LV, z: zOf(1) + 30, n: 3, light: { r: 180, i: 0.9, y: 20 } },
