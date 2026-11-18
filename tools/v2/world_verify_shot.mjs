@@ -32,7 +32,10 @@ for (const id of LIST) {
   // (the ossuary terrace) - the last stretch into those exits is pushed from there (scene v2c has no whip and opens no gate)
   const a = await AREAS[id](), W = compileEnv(a.stage), d = a.spawns.default, opt = { hooks: a.stage.hookPoints ?? [], seeds: (a.entry ?? []).map((n) => [a.spawns[n].x, a.spawns[n].z]) };
   const fat = reachGrid(W, d.x, d.z, 26, opt), thin = reachGrid(W, d.x, d.z, 14, opt);
-  const exits = a.exits.map((x) => { const g = fat.anyIn(x.x0, x.x1, x.z0, x.z1) ? fat : thin, p = g.anyIn(x.x0 + (x.x1 - x.x0) * 0.3, x.x1, x.z0 + (x.z1 - x.z0) * 0.3, x.z1) ?? g.anyIn(x.x0, x.x1, x.z0, x.z1), wps = p ? g.path(p[0], p[1]) : null; return { id: x.id, wps: wps ? wps.slice(-9) : null }; });
+  const exits = a.exits.map((x) => { const g = fat.anyIn(x.x0, x.x1, x.z0, x.z1) ? fat : thin, p = g.anyIn(x.x0 + (x.x1 - x.x0) * 0.3, x.x1, x.z0 + (x.z1 - x.z0) * 0.3, x.z1) ?? g.anyIn(x.x0, x.x1, x.z0, x.z1), wps0 = p ? g.path(p[0], p[1]) : null;
+    // WORLD-2: the stretch that is pushed starts after the last whip-ring link of the route (a leap of more than 130 units or 100 up): the stick cannot fly
+    let cut = 0; if (wps0) for (let i = 1; i < wps0.length; i++) if (Math.hypot(wps0[i][0] - wps0[i - 1][0], wps0[i][1] - wps0[i - 1][1]) > 130 || Math.abs(g.ground(wps0[i][0], wps0[i][1]) - g.ground(wps0[i - 1][0], wps0[i - 1][1])) > 100) cut = i;
+    const wps = wps0 ? wps0.slice(cut) : null; return { id: x.id, wps: wps ? wps.slice(-9) : null }; });
   let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const b of W.boxes) if (b.walk && !b.inv) { x0 = Math.min(x0, b.x0); x1 = Math.max(x1, b.x1); z0 = Math.min(z0, b.z0); z1 = Math.max(z1, b.z1); }
   const lattice = []; for (let x = x0 + 60; x < x1; x += 260) for (let z = z0 + 60; z < z1; z += 200) if (thin.reachable(x, z)) lattice.push([x, z]);
   PLAN[id] = { spawns: Object.entries(a.spawns).map(([n, s]) => ({ n, x: s.x, z: s.z, face: s.face })), exits, lattice };
