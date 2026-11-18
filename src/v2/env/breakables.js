@@ -264,7 +264,7 @@ function barrelPieces() {
       const k = ao(prof[j][1], 18), c = [k, k * 0.98, k * 0.95];
       for (let q = 0; q < sub; q++) {
         const a = at(j, q, 0), b = at(j, q + 1, 0), cc = at(j + 1, q + 1, 0), d = at(j + 1, q, 0); mb.quad(a.p, b.p, cc.p, d.p, a.n, b.n, cc.n, d.n, a.t, b.t, cc.t, d.t, c);
-        const a2 = at(j, q, th), b2 = at(j, q + 1, th), c2 = at(j + 1, q + 1, th), d2 = at(j + 1, q, th), ng = (n) => [-n[0], -n[1], -n[2]]; mb.quad(a2.p, b2.p, c2.p, d2.p, ng(a.n), ng(b.n), ng(cc.n), ng(d.n), a.t, b.t, cc.t, d.t, [0.6, 0.56, 0.52]);
+        const a2 = at(j, q, th), b2 = at(j, q + 1, th), c2 = at(j + 1, q + 1, th), d2 = at(j + 1, q, th), ng = (n) => [-n[0], -n[1], -n[2]]; mb.quad(a2.p, b2.p, c2.p, d2.p, ng(a.n), ng(b.n), ng(cc.n), ng(d.n), a.t, b.t, cc.t, d.t, [0.76, 0.72, 0.68]);
       }
       for (const q of [0, sub]) { const a = at(j, q, 0), d = at(j + 1, q, 0), a2 = at(j, q, th), d2 = at(j + 1, q, th), sg = q ? 1 : -1, ta = A0 + (q ? a1 : a0) * TAU, n = [-Math.sin(ta) * sg, 0, Math.cos(ta) * sg], fr = REG.raw; mb.quad(a.p, d.p, d2.p, a2.p, n, n, n, n, [fr[0], fr[3]], [fr[0], fr[1]], [fr[0] + 0.01, fr[1]], [fr[0] + 0.01, fr[3]], [1.1, 0.98, 0.84], n); }
     }
@@ -346,7 +346,7 @@ export function writeDyn(m, f, u, v0, R, s, tx, ty, tz, lr, lg, lb, al, glow) {
     const i3 = i * 3, x = P[i3], y = P[i3 + 1], z = P[i3 + 2], nx = Nn[i3], ny = Nn[i3 + 1], nz = Nn[i3 + 2];
     const wnx = r0 * nx + r1 * ny + r2 * nz, wny = r3 * nx + r4 * ny + r5 * nz, wnz = r6 * nx + r7 * ny + r8 * nz;
     let d = wnx * -0.28 + wny * 0.74 + wnz * -0.61; if (d < 0) d = d * -0.18;   // key light from above and from the camera's side; a little bounce from below
-    const k = 0.4 + 0.62 * d + g0, o = (v0 + i) * 7, c = (v0 + i) * BRK_VERT + 20;
+    const k = 0.74 + 0.34 * d + g0, o = (v0 + i) * 7, c = (v0 + i) * BRK_VERT + 20;
     f[o] = tx + (r0 * x + r1 * y + r2 * z) * s; f[o + 1] = ty + (r3 * x + r4 * y + r5 * z) * s; f[o + 2] = tz + (r6 * x + r7 * y + r8 * z) * s; f[o + 3] = T[i * 2]; f[o + 4] = T[i * 2 + 1];
     const cr = lr * k * C[i3], cg = lg * k * C[i3 + 1], cb = lb * k * C[i3 + 2];
     u[c] = cr <= 0 ? 0 : cr >= 2 ? 255 : (cr * 127.5 + 0.5) | 0; u[c + 1] = cg <= 0 ? 0 : cg >= 2 ? 255 : (cg * 127.5 + 0.5) | 0; u[c + 2] = cb <= 0 ? 0 : cb >= 2 ? 255 : (cb * 127.5 + 0.5) | 0; u[c + 3] = a8;

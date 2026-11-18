@@ -102,14 +102,17 @@ export class Breakables {
       if (this.whole.buf && glr && !glr.lost) { const gl = glr.gl; gl.bindBuffer(gl.ARRAY_BUFFER, this.whole.buf); gl.bufferSubData(gl.ARRAY_BUFFER, v0 * BRK_VERT, this.wu.subarray(v0 * BRK_VERT, (v0 + n) * BRK_VERT)); }
     }
     // pieces: each starts exactly where it sat in the whole thing and leaves along the hit, outward and up
-    const P = pieceModels(b.kind, b.id), rot = clay ? 0 : b.rot, cs = Math.cos(rot), sn = Math.sin(rot), T = sc._tintAt(sc.W, b.x, b.y + b.h * 0.5, b.z, 0, 1.6, this.tint), tn = this._tone(b);
+    const P = pieceModels(b.kind, b.id), rot = clay ? 0 : b.rot, cs = Math.cos(rot), sn = Math.sin(rot), T = this.tint, tn = this._tone(b);
     const roll = by === 'roll', heavy = by === 'c3' || by === 'plunge' || by === 'whip' || by === 'sweep', push = roll ? 170 : heavy ? 250 : 190;
     for (let k = 0; k < P.length; k++) {
       const q = P[k], s = this._alloc(); s.m = q.m; s.r = q.r;
       s.x = s.px = b.x + q.ox * cs - q.oz * sn; s.y = s.py = b.y + q.oy; s.z = s.pz = b.z + q.ox * sn + q.oz * cs; s.gy = b.y; s.restH = q.restH;
       const ox = q.out[0] * cs - q.out[1] * sn, oz = q.out[0] * sn + q.out[1] * cs, along = ox * dx + oz * dz, f = (0.4 + 0.6 * R()) * (along < -0.3 ? 0.55 : 1);
       s.q[0] = 0; s.q[1] = -Math.sin(rot / 2); s.q[2] = 0; s.q[3] = Math.cos(rot / 2);   // (the kit's turn about y: x' = x cos - z sin)
-      s.fx = q.flat[0]; s.fy = q.flat[1]; s.fz = q.flat[2]; s.lr = T[0] * tn; s.lg = T[1] * tn; s.lb = T[2] * tn; s.al = 1; s.n = 0; s.t = 0;
+      s.fx = q.flat[0]; s.fy = q.flat[1]; s.fz = q.flat[2]; s.al = 1; s.n = 0; s.t = 0;
+      // lit as the whole thing was on that side (the kit's own light at the piece, facing the way it faced), so nothing jumps in colour at the break
+      if (ox || oz) this._lightN(s.x, s.y, s.z, ox * 0.97, 0.25, oz * 0.97, T); else this._lightN(s.x, s.y, s.z, 0, 0.45, -0.89, T);
+      s.lr = T[0] * tn; s.lg = T[1] * tn; s.lb = T[2] * tn;
       if (q.stay) { s.st = 1; s.vx = s.vy = s.vz = 0; s.wx = s.wy = s.wz = 0; s.restT = 2.4 + R() * 1.2; s.qt.set(s.q); }
       else {
         s.st = 0; s.restT = 1.0 + R() * 1.5;
@@ -128,6 +131,18 @@ export class Breakables {
     if (PRESET_IDS['break.puff'] !== undefined) sc._fxp('break.puff', b.x, b.y, b.z, dx, dz, clay ? (b.kind === 'urn' ? 0.7 : 1) : b.mat === 'barrel' ? 3 : 2, true);
     else sc._fxp('move.land', b.x, b.y, b.z, dx, dz, 0.9, true);
     sc.feelN++;
+  }
+  /** the kit's baked prop light (b/world.js lightAt, lifted like env/geo.js) at a point with a normal, without making an array */
+  _lightN(x, y, z, nx, ny, nz, out) {
+    const W = this.sc.W, L = W.light, md = L.moonDir, nd = Math.max(0, nx * md[0] + ny * md[1] + nz * md[2]), PL = W.lights;
+    let r = L.ambient[0] + L.moon[0] * nd, g = L.ambient[1] + L.moon[1] * nd, b = L.ambient[2] + L.moon[2] * nd;
+    for (let i = 0; i < PL.length; i++) {
+      const p = PL[i], dx = p.x - x, dy = p.y - y, dz = p.z - z, d2 = dx * dx + dy * dy + dz * dz; if (d2 > p.r * p.r) continue;
+      const d = Math.sqrt(d2) || 1, k0 = 1 - d / p.r, lam = Math.max(0.12, (nx * dx + ny * dy + nz * dz) / d), k = k0 * k0 * lam * p.i;
+      r += p.c[0] * k; g += p.c[1] * k; b += p.c[2] * k;
+    }
+    out[0] = Math.min(1.6, 0.42 + 0.72 * r); out[1] = Math.min(1.6, 0.42 + 0.72 * g); out[2] = Math.min(1.6, 0.42 + 0.72 * b);
+    return out;
   }
   _clayName() { const R = this.rnd; let i = (R() * CLAY_EV.length) | 0; if (i === this.lastClay) i = (i + 1 + ((R() * (CLAY_EV.length - 1)) | 0)) % CLAY_EV.length; this.lastClay = i; return feel.has(CLAY_EV[i]) ? CLAY_EV[i] : CLAY_EV[0]; }
   _onPickup(what, n, p) {
@@ -236,7 +251,7 @@ export class Breakables {
       let rr, cr, cg, cb, al;
       if (p.what === 0) { const f = Math.abs(Math.cos(t * 7.5 + p.seq * 1.7)), k = f > 0.93 ? (f - 0.93) / 0.07 : 0; if (k <= 0) continue; rr = 7 + 15 * k; cr = 1.5; cg = 1.6; cb = 1.9; al = 0.85 * k; }
       else if (p.what === 1) { rr = 15 + 2 * Math.sin(t * 5 + p.seq); cr = 1.7; cg = 0.25; cb = 0.22; al = 0.42; }
-      else { rr = 19 + 4 * Math.sin(t * 6 + p.seq); cr = 0.75; cg = 1.25; cb = 1.9; al = 0.62; }
+      else { rr = 15 + 3 * Math.sin(t * 6 + p.seq); cr = 0.75; cg = 1.25; cb = 1.9; al = 0.5; }
       for (let j = 0; j < 4; j++) { const su = j === 0 || j === 3 ? -rr : rr, sv = j < 2 ? -rr : rr; Q[j * 3] = x + Rv[0] * su + U[0] * sv; Q[j * 3 + 1] = y + Rv[1] * su + U[1] * sv; Q[j * 3 + 2] = z + Rv[2] * su + U[2] * sv; }
       b.quad(Q, g.u0, g.v0, g.u1, g.v1, cr, cg, cb, al, 0, 0, 12, 0.5);
     }
