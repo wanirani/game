@@ -1,5 +1,5 @@
 // v2 whip - WebGL2 renderer: one program, one VAO, one dynamic vertex buffer. The whole whip (handle, braided lash, ferrules, bell shard)
-// is ONE draw call; the shard's glow is a second, tiny additive call (opts.glow = false turns it off). docs/v2/WHIP.md §3
+// is ONE draw call; the shard's glow and the streak behind the tip are a second, small additive call (opts.glow / opts.trail = false). docs/v2/WHIP.md §3
 // Rides on the scene's GL context: after draw() the caller re-binds its own program and buffers (VAO is left null, blending
 // (ONE, ONE_MINUS_SRC_ALPHA), depth test and depth write on, culling off).
 import { meshInfo, writeWhipMesh, WHIP_VERT } from './mesh.js';
@@ -11,7 +11,7 @@ uniform vec4 uLP[4]; uniform vec4 uLC[4];
 out vec3 vWP; out vec3 vA; out vec3 vB; out vec3 vT; out vec4 vP; out float vFog; out vec3 vLit;
 void main() {
   vec3 wp = aPos; vec3 A = aAux; vec3 B = vec3(0.0); float kind = aP.w; float rr = aP.z;
-  if (kind < 1.5) {
+  if (kind < 1.5 || kind > 6.5) {
     vec3 te = normalize(uEye - aPos);
     vec3 side = cross(aAux, te); float sl = length(side); side = sl > 0.0001 ? side / sl : uCamR;
     vec4 c0 = uVP * vec4(aPos, 1.0); vec4 c1 = uVP * vec4(aPos + uCamU, 1.0);
@@ -20,7 +20,7 @@ void main() {
     wp = aPos + side * (aP.y * rr);
     A = side; B = te;
   } else if (kind > 5.0) {
-    wp = aPos + (uCamR * aP.x + uCamU * aP.y) * aP.z;
+    wp = aPos + (uCamR * aP.x + uCamU * aP.y) * aP.z;   // glow quad
   }
   vec3 lit = vec3(0.0);
   for (int i = 0; i < 4; i++) {
@@ -37,10 +37,14 @@ const FS = `#version 300 es
 precision highp float;
 in vec3 vWP; in vec3 vA; in vec3 vB; in vec3 vT; in vec4 vP; in float vFog; in vec3 vLit;
 uniform vec3 uEye; uniform vec3 uSunDir; uniform vec3 uSun; uniform vec3 uAmb; uniform vec3 uFogCol;
-uniform vec4 uGlow; uniform vec4 uFx; uniform vec4 uTone;   // uFx: taut, time, flash, alpha   uTone: leather tint rgb, rim strength
+uniform vec4 uGlow; uniform vec4 uFx; uniform vec4 uTone; uniform vec4 uTrail;   // uFx: taut, time, flash, alpha   uTone: leather tint rgb, rim strength
 out vec4 o;
 void main() {
   float kind = vP.w;
+  if (kind > 6.5) {   // the streak behind the tip: soft across, hot in the middle, additive
+    float v = vP.y; float core = max(0.0, 1.0 - v * v); float a = core * core * vP.x;
+    o = vec4((uTrail.rgb * a + vec3(1.0, 0.96, 0.9) * (pow(core, 6.0) * vP.x * 0.6)) * (uTrail.a * uFx.w), 0.0); return;
+  }
   if (kind > 5.0) {
     float d = length(vP.xy); float a = pow(max(0.0, 1.0 - d), 2.4);
     float g = max(0.0, 1.0 - abs(vP.x) * 10.0) * max(0.0, 1.0 - abs(vP.y) * 1.15) + max(0.0, 1.0 - abs(vP.y) * 10.0) * max(0.0, 1.0 - abs(vP.x) * 1.15);
@@ -95,7 +99,7 @@ void main() {
   o = vec4(rgb * a, a);
 }`;
 
-const UNI = ['uVP', 'uEye', 'uCamR', 'uCamU', 'uView', 'uFog', 'uLP', 'uLC', 'uSunDir', 'uSun', 'uAmb', 'uFogCol', 'uGlow', 'uFx', 'uTone'];
+const UNI = ['uVP', 'uEye', 'uCamR', 'uCamU', 'uView', 'uFog', 'uLP', 'uLC', 'uSunDir', 'uSun', 'uAmb', 'uFogCol', 'uGlow', 'uFx', 'uTone', 'uTrail'];
 const ZERO16 = new Float32Array(16);
 
 export class WhipRenderer {
@@ -103,6 +107,7 @@ export class WhipRenderer {
   constructor(gl, opts = {}) {
     this.gl = gl; this.glow = opts.glow !== false; this.minPx = opts.minPx ?? 1.8; this.rim = opts.rim ?? 0.5; this.alpha = 1;
     this.tone = new Float32Array(opts.tone ?? [0.50, 0.30, 0.17]);
+    this.trail = opts.trail !== false; this.trailCol = new Float32Array(opts.trailCol ?? [1.5, 1.05, 0.5, 0.9]);   // streak colour rgb + strength
     this.stats = { draws: 0, tris: 0, bufBytes: 0, verts: 0 };
     this.info = null; this.vtx = null; this.tmp = null; this._r = new Float32Array(3); this._u = new Float32Array(3); this._key = '';
     this._init();
@@ -156,13 +161,15 @@ export class WhipRenderer {
     gl.uniform4fv(u.uLP, this._lp ?? ZERO16); gl.uniform4fv(u.uLC, this._lc ?? ZERO16);
     const gc = whip.glowCol; gl.uniform4f(u.uGlow, gc[0], gc[1], gc[2], whip.glow + whip.flash * 1.5);
     gl.uniform4f(u.uFx, whip.taut, whip.time, whip.flash, this.alpha);
-    gl.uniform4f(u.uTone, this.tone[0], this.tone[1], this.tone[2], this.rim);
+    gl.uniform4f(u.uTone, this.tone[0], this.tone[1], this.tone[2], this.rim); gl.uniform4fv(u.uTrail, this.trailCol);
     gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.CULL_FACE);
     gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     const I = this.info;
     gl.drawElements(gl.TRIANGLES, I.nMain, gl.UNSIGNED_SHORT, 0);
     this.stats.draws = 1; this.stats.tris = I.nMain / 3;
-    if (this.glow) { gl.depthMask(false); gl.drawElements(gl.TRIANGLES, I.nGlow, gl.UNSIGNED_SHORT, I.nMain * 2); gl.depthMask(true); this.stats.draws = 2; this.stats.tris += 2; }
+    // second, additive call: the shard's glow and (only while a streak is alive) the streak behind the tip
+    const tr = this.trail && whip.trailLive > 0.01, first = this.glow ? 0 : I.nGlow, count = (this.glow ? I.nGlow : 0) + (tr ? I.nTrail : 0);
+    if (count > 0) { gl.depthMask(false); gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, (I.nMain + first) * 2); gl.depthMask(true); this.stats.draws = 2; this.stats.tris += count / 3; }
     gl.bindVertexArray(null);
   }
   destroy() {

@@ -179,6 +179,39 @@ function pitchBone(rig, key, deg, axis = 0) {
   qmul(qconj(P, _a), _q, _b); qmul(_b, P, _c); qmul(_c, _r, _a); qnorm(_a);   // R' = P⁻¹ · q · P · R
   R[o] = _a[0]; R[o + 1] = _a[1]; R[o + 2] = _a[2]; R[o + 3] = _a[3];
 }
+/** 뼈 하나(번호 j)를 모델 공간의 회전 q 만큼 더 돌린다 (R' = P⁻¹ · q · P · R — P 는 부모의 지금 세계 회전). 부른 뒤 rig.pose() */
+function rotBone(rig, j, q) {
+  const P = worldQuat(rig, rig.parent[j], _p), R = rig.R, o = j * 4;
+  _r[0] = R[o]; _r[1] = R[o + 1]; _r[2] = R[o + 2]; _r[3] = R[o + 3];
+  qmul(qconj(P, _a), q, _b); qmul(_b, P, _c); qmul(_c, _r, _a); qnorm(_a);
+  R[o] = _a[0]; R[o + 1] = _a[1]; R[o + 2] = _a[2]; R[o + 3] = _a[3];
+}
+const _ikq = [0, 0, 0, 1];
+/**
+ * 다리 하나를 두 마디 IK 로 편다: 발목이 모델 공간의 (tx, ty, tz) 에 오도록 무릎 각을 맞추고 넓적다리를 돌린다. w = 섞는 비율(0…1; 목표를 지금 발목 자리와 섞는다).
+ * 닿지 않는 거리면 다리를 곧게 뻗어 그쪽을 향한다(발이 끌려온다). 자세를 입힌 뒤에 부른다 — 안에서 rig.pose() 를 두 번 부른다 (영웅의 내딛기에서만 쓴다)
+ */
+function legIK(rig, side, tx, ty, tz, w) {
+  const ju = rig.key.get('upleg' + side), jk = rig.key.get('leg' + side), jf = rig.key.get('foot' + side); if (ju == null || jk == null || jf == null) return;
+  const W = rig.world, hx = W[ju * 16 + 12], hy = W[ju * 16 + 13], hz = W[ju * 16 + 14], kx = W[jk * 16 + 12], ky = W[jk * 16 + 13], kz = W[jk * 16 + 14];
+  let ax = W[jf * 16 + 12], ay = W[jf * 16 + 13], az = W[jf * 16 + 14];
+  tx = ax + (tx - ax) * w; ty = ay + (ty - ay) * w; tz = az + (tz - az) * w;
+  const ux = hx - kx, uy = hy - ky, uz = hz - kz, vx = ax - kx, vy = ay - ky, vz = az - kz, l1 = hyp3(ux, uy, uz), l2 = hyp3(vx, vy, vz); if (l1 < 1e-4 || l2 < 1e-4) return;
+  const d = clamp(hyp3(tx - hx, ty - hy, tz - hz), 0.05, l1 + l2 - 0.003);
+  const th0 = Math.acos(clamp((ux * vx + uy * vy + uz * vz) / (l1 * l2), -1, 1)), th1 = Math.acos(clamp((l1 * l1 + l2 * l2 - d * d) / (2 * l1 * l2), -1, 1));
+  let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const nl = hyp3(nx, ny, nz);
+  if (nl > 1e-4) { nx /= nl; ny /= nl; nz /= nl; } else { nx = 1; ny = 0; nz = 0; }   // 곧게 편 다리: 무릎 축 = 옆 축
+  const hd = (th1 - th0) / 2, sn = Math.sin(hd);
+  _ikq[0] = nx * sn; _ikq[1] = ny * sn; _ikq[2] = nz * sn; _ikq[3] = Math.cos(hd);
+  rotBone(rig, jk, _ikq); rig.pose();
+  ax = W[jf * 16 + 12]; ay = W[jf * 16 + 13]; az = W[jf * 16 + 14];
+  // 넓적다리: (발목 − 골반 관절) 을 (목표 − 골반 관절) 쪽으로 돌린다 (가장 짧은 호)
+  let fx = ax - hx, fy = ay - hy, fz = az - hz, gx = tx - hx, gy = ty - hy, gz = tz - hz; const fl = hyp3(fx, fy, fz), gl = hyp3(gx, gy, gz); if (fl < 1e-4 || gl < 1e-4) return;
+  fx /= fl; fy /= fl; fz /= fl; gx /= gl; gy /= gl; gz /= gl;
+  const cx = fy * gz - fz * gy, cy = fz * gx - fx * gz, cz = fx * gy - fy * gx, dt = fx * gx + fy * gy + fz * gz;
+  _ikq[0] = cx; _ikq[1] = cy; _ikq[2] = cz; _ikq[3] = 1 + dt; qnorm(_ikq);
+  rotBone(rig, ju, _ikq); rig.pose();
+}
 const _o = { fade: 0.12, time: null, speed: 1, restart: false };
 /** Animator.play 에 줄 옵션 (틱마다 새 객체를 만들지 않게 하나를 돌려 쓴다) */
 const PO = (fade, time = null, speed = 1, restart = false) => { _o.fade = fade; _o.time = time; _o.speed = speed; _o.restart = restart; return _o; };
@@ -263,17 +296,23 @@ export function driveHero(ch, h, dt, T = TUNE) {
     if (Math.abs(Math.atan2(l, f)) > 2.4) look = 0;   // 등 뒤의 적까지 목을 꺾어 보지는 않는다
   }
   S.look = (S.look ?? 0) + (look - (S.look ?? 0)) * Math.min(1, dt * 8);
-  // 내딛기: 공격이 몸을 앞으로 옮기는 동안(move.step) 다리만 달리기의 한 걸음으로 덮는다 — 클립은 제자리라 그대로 두면 디딘 발이 바닥을 미끄러진다
+  // 내딛기: 공격이 몸을 앞으로 옮기는 동안(move.step) 뒷발을 땅에 박아 둔다 — 클립은 제자리라 그대로 두면 두 발이 몸과 함께 바닥을 미끄러진다.
+  // 뒷발(더 뒤에 있는 발)의 세계 자리를 내딛기 시작 때 적어 두고 두 마디 IK 로 그 자리에 붙든다 → 몸이 앞으로 나가며 뒷다리가 펴진다(찌르기의 밀어 주는 다리).
+  // 다리 길이보다 멀어지면 발이 끌려오고, 내딛기가 끝나면 0.1초에 걸쳐 클립의 발 자리로 돌아온다
   let stepped = false;
-  if (st === 'attack' && h.move && h.move.step && h.move.kind !== 'plunge' && (h.stepDist ?? 0) > 6 && C.run) {
-    const sp = h.move.step, u = (h.moveT - sp[0]) / (sp[1] - sp[0]);
-    if (u > -0.3 && u < 1.7) {
-      // 오른발이 막 디딘 때(걸음 주기 0)부터 나아간 거리만큼만 주기를 돌린다 → 디딘 발은 땅에 붙어 있고 몸이 그 위를 지나간다. 다 내딛으면 0.1초에 걸쳐 공격 클립의 발 자리로 돌아간다
-      const w = (u < 0 ? clamp((u + 0.3) / 0.3, 0, 1) : u > 1 ? 1 - clamp((u - 1) / 0.7, 0, 1) : 1) * Math.min(1, h.stepDist / 24);
-      sampleClip(C.run, gaitTime(ch, C.run, 0.02 + clamp(u, 0, 1) * (h.stepDist / (T.strideRun ?? 222))), _legP);
-      layerBones(ch.rig, _legP, STEP_LEGS, w * w * (3 - 2 * w)); stepped = true;
+  if (st === 'attack' && h.move && h.move.step && h.move.kind !== 'plunge' && (h.stepDist ?? 0) > 6 && !T.legacyTurn) {
+    const sp = h.move.step, u = (h.moveT - sp[0]) / (sp[1] - sp[0]), sc = ch.scale ?? 58, W = ch.rig.world;
+    if (S.ikMove !== h.move || h.moveT < S.ikT) {   // 새 공격: 뒷발을 고르고 그 자리를 적는다
+      const jl = ch.rig.key.get('footL'), jr = ch.rig.key.get('footR');
+      if (jl != null && jr != null) { const j = W[jl * 16 + 14] < W[jr * 16 + 14] ? jl : jr; S.ikSide = j === jl ? 'L' : 'R'; S.ikY = W[j * 16 + 13];
+        S.ikX = h.x + (ch.dx * W[j * 16 + 14] - ch.dz * W[j * 16 + 12]) * sc; S.ikZ = h.z + (ch.dz * W[j * 16 + 14] + ch.dx * W[j * 16 + 12]) * sc; S.ikMove = h.move; } else S.ikMove = null;
     }
-  }
+    S.ikT = h.moveT;
+    if (S.ikMove === h.move && u < 1.7) {
+      const w = u > 1 ? 1 - clamp((u - 1) / 0.7, 0, 1) : 1, ex = (S.ikX - h.x) / sc, ez = (S.ikZ - h.z) / sc;
+      legIK(ch.rig, S.ikSide, -ch.dz * ex + ch.dx * ez, S.ikY, ch.dx * ex + ch.dz * ez, w * w * (3 - 2 * w)); stepped = true;
+    }
+  } else S.ikMove = null;
   const posed = S.lean > 0.02 || readyOn || stepped, looking = Math.abs(S.look) > 0.5;
   if (looking) { pitchBone(ch.rig, 'neck', S.look * 0.4, 1); pitchBone(ch.rig, 'head', S.look * 0.45, 1); pitchBone(ch.rig, 'spine2', S.look * 0.15, 1); }
   if (posed || looking) ch.rig.pose();

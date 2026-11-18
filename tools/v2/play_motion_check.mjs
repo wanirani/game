@@ -68,18 +68,23 @@ for (const mv of [...COMBO, MOVES.sweep]) {
   let prev = null, best = { v: 0, t: 0 }, back = 9, t = 0; hold(); sim.update(DT, { attack: true }); driveHero(ch, h, DT, TUNE);
   while (h.move && t < 0.44) { const q = tip(ch); if (prev && t > 0.075) { const v = Math.hypot(q[0] - prev[0], q[1] - prev[1], q[2] - prev[2]) / DT; if (v > best.v) best = { v, t: h.moveT }; } if (t < 0.13) back = Math.min(back, q[2]); prev = q; hold(); sim.update(DT, {}); if (sim.stop > 0) { sim.stop = 0; } driveHero(ch, h, DT, TUNE); t += DT; }
   ok('attack from the ready stance: the blade is still drawn back in the wind-up and is fastest inside the hit window', back < 0.1 && best.t >= MOVES.c1.hit[0] - 0.035 && best.t <= MOVES.c1.hit[1] + 0.035, `tip farthest back ${back.toFixed(2)} m during the wind-up · peak ${best.v.toFixed(1)} m/s at ${best.t.toFixed(3)} s (window ${MOVES.c1.hit[0]}–${MOVES.c1.hit[1]})`); }
-// ── ①c 내딛기: 공격이 몸을 옮기는 동안 디딘 발(더 낮은 발)이 땅 위에서 몸보다 훨씬 덜 움직인다 ──
+// ── ①c 내딛기: 공격이 몸을 앞으로 옮기는 동안 다리가 한 걸음을 딛는다 — 땅에 닿아 있는 발이 몸과 함께 미끄러지지 않는다 ──
 { const meas = (legacy) => { const sim = new Sim(flatArena(900, 600, [{ kind: 'skeleton_soldier', x: 150, z: 0, active: true }]), {}), h = sim.hero, ch = mkChar('kael'), e = sim.enemies[0]; e.cd = 99;
     for (let i = 0; i < 30; i++) { e.cd = 99; e.x = 150; e.z = 0; sim.update(DT, {}); driveHero(ch, h, DT, TUNE); }
     sim.update(DT, { attack: true }); const sd = h.stepDist; if (legacy) h.stepDist = 0;   // legacy = no leg overlay (the overlay keys on stepDist) but the same slide
     const foot = (k) => { const W = ch.rig.boneWorld(k); return [h.x + (ch.dx * W[14] - ch.dz * W[12]) * UNIT, W[13], h.z + (ch.dz * W[14] + ch.dx * W[12]) * UNIT]; };   // model +Z = forward, +X = left → world
-    let pl = null, pr = null, sum = 0, n = 0, body = 0, x0 = h.x;
-    for (let i = 0; i < 12; i++) { driveHero(ch, h, DT, TUNE); const L = foot('footL'), R = foot('footR');
-      if (pl && h.moveT >= 0.03 && h.moveT <= 0.17) { const vl = Math.hypot(L[0] - pl[0], L[2] - pl[2]) / DT, vr = Math.hypot(R[0] - pr[0], R[2] - pr[2]) / DT; sum += (L[1] < R[1] ? vl : vr); n++; }
-      pl = L; pr = R; if (legacy) { h.stepDist = sd; } e.cd = 99; sim.update(DT, {}); if (legacy) h.stepDist = 0; }
-    body = (h.x - x0) / 0.15; return { slip: sum / Math.max(1, n), body, sd, n }; };
+    let pl = null, pr = null, sum = 0, n = 0, air = 0, tot = 0, x0 = h.x, floor = 9;
+    const rows = [];
+    for (let i = 0; i < 12; i++) { driveHero(ch, h, DT, TUNE); const L = foot('footL'), R = foot('footR'); floor = Math.min(floor, L[1], R[1]); rows.push([h.moveT, L, R]);
+      if (legacy) h.stepDist = sd; e.cd = 99; sim.update(DT, {}); if (legacy) h.stepDist = 0; }
+    for (let i = 1; i < rows.length; i++) { const [t, L, R] = rows[i], [, L0, R0] = rows[i - 1]; if (t < 0.03 || t > 0.175) continue; tot++;
+      const cl = L[1] < floor + 0.045 && L0[1] < floor + 0.045, cr = R[1] < floor + 0.045 && R0[1] < floor + 0.045;
+      if (!cl && !cr) { air++; continue; }
+      const vl = Math.hypot(L[0] - L0[0], L[2] - L0[2]) / DT, vr = Math.hypot(R[0] - R0[0], R[2] - R0[2]) / DT; sum += cl && cr ? Math.min(vl, vr) : cl ? vl : vr; n++; }
+    return { slip: n ? sum / n : 0, body: (h.x - x0) / 0.15, sd, n, air, tot }; };
   const a = meas(false), b = meas(true);
-  ok('attack lunge: the lower (planted) foot moves much less over the ground than the body while the body is carried forward', a.sd > 30 && a.slip < a.body * 0.6 && a.slip < b.slip * 0.7, `lunge ${a.sd.toFixed(0)} px at ${a.body.toFixed(0)} px/s · planted foot ${a.slip.toFixed(0)} px/s (${Math.round((a.slip / a.body) * 100)}% of body speed) · without the step overlay ${b.slip.toFixed(0)} px/s (${Math.round((b.slip / b.body) * 100)}%)`); }
+  ok('attack lunge: while the body is carried forward a foot on the ground slides at less than half the body speed (the legs take a step)', a.sd > 30 && a.slip < a.body * 0.5,
+    `lunge ${a.sd.toFixed(0)} px at ${a.body.toFixed(0)} px/s · foot on the ground ${a.slip.toFixed(0)} px/s (${Math.round((a.slip / a.body) * 100)}% of body speed; ${a.n} of ${a.tot} ticks with a foot down, ${a.air} with both lifted) · without the step overlay ${b.slip.toFixed(0)} px/s (${Math.round((b.slip / b.body) * 100)}%, ${b.n} of ${b.tot} ticks)`); }
 
 // ── ② 발 미끄러짐 ──
 function slip(mode, speedPx, stride) {
@@ -161,7 +166,7 @@ slideCase('walk speed reversal (half stick)', (i) => (i < 60 ? [0.38, 0] : [-0.3
 { // 도구 · 보스: 새 상태가 라이브러리 클립으로 돌고 NaN 이 없다
   const sim = new Sim(flatArena(700, 500, [{ kind: 'banshee_queen', x: 220, z: 0, active: true, phase: 2 }, { kind: 'grave_ghost', x: 140, z: 60, active: true }]), {}), hero = mkChar('kael'), chars = new Map(), usedH = new Set(), usedB = new Set(); let bad = 0;
   sim.hookPoints.push({ id: 'r', x: -260, y: 0, z: 0, to: [-320, 0] }); sim.hero.reso = 3;
-  const plan = (i) => (i < 60 ? { attack: i === 0, attackHeld: true } : i < 110 ? {} : i < 200 ? { bell: i === 110 } : i < 300 ? { skill: i === 200 } : i < 420 ? { mx: -1, mz: 0 } : i < 520 ? { skill: i === 420 } : i < 700 ? { bell: i === 520, bellHeld: true } : {});
+  const hh = sim.hero, plan = (i) => (i < 60 ? { attack: i === 0, attackHeld: true } : i < 110 ? {} : i < 200 ? { bell: i < 140 && hh.act !== 'echo' } : i < 300 ? { skill: i < 240 && hh.act !== 'call' } : i < 420 ? { mx: -1, mz: 0 } : i < 520 ? { skill: i < 460 && hh.act !== 'hook' } : i < 700 ? { bell: i === 520, bellHeld: true } : {});
   for (let i = 0; i < 1500; i++) { const boss = sim.enemies[0]; if (i < 430) { boss.cd = 99; boss.sumCd = 99; boss.songCd = 99; } if (i === 430) { boss.cd = 0.3; boss.sumCd = 0.3; boss.songCd = 4; } if (i === 1300) boss.hp = 30; sim.hero.hp = sim.hero.hpMax; sim.update(DT, plan(i)); if (sim.stop > 0) sim.stop = 0;
     driveHero(hero, sim.hero, DT, TUNE); if (!finiteRig(hero)) bad++; usedH.add(hero.anim.cur?.name);
     for (const e of sim.enemies) { if (e.dead) continue; let ch = chars.get(e.id); if (!ch) { ch = mkChar(e.def.model); chars.set(e.id, ch); } driveActor(ch, e, DT); if (!finiteRig(ch)) bad++; if (e.def.boss) usedB.add(ch.anim.cur?.name); } }

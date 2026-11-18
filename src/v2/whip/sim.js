@@ -4,6 +4,7 @@
 import { MOVES } from '../play/moves.js';
 import { shapeOf } from './shapes.js';
 
+export const TRAIL_N = 10;
 export const WHIP_TIERS = { low: { n: 12, sub: 2, sides: 6 }, mid: { n: 16, sub: 3, sides: 8 }, high: { n: 20, sub: 4, sides: 10 } };
 const GRAV = -1400, MAXV = 3400, NS = 25, HANDLE_FWD = 11, BOW = 0.945, SLACK = 0.78;   // gravity px/s2, speed cap px/s, curve samples, grip -> lash root along the handle
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -26,6 +27,8 @@ export class Whip {
     this._k = new Float32Array(8);             // one evaluated key: f r y w bf br by
     this._w = new Float32Array(9);             // scratch: world tip xyz, slack xyz, peak xyz
     this.tip = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, speed: 0 };
+    this.hist = new Float32Array(TRAIL_N * 4);   // tip path of the last ticks, newest first: x y z strength (the streak behind the tip - mesh.js draws it)
+    this.trailLive = 0; this.trailW = 1;
     this.root = { x: 0, y: 0, z: 0, dx: 0, dy: 1, dz: 0 };   // where the lash leaves the handle + handle direction
     this.grip = { x: 0, y: 0, z: 0 };
     this.pg = new Float32Array(6);            // grip + handle direction of the previous tick (display interpolation)
@@ -164,15 +167,14 @@ export class Whip {
       return;
     }
     const sl = Math.hypot(sx, sy, sz) || 1; sx /= sl; sy /= sl; sz /= sl;
-    // where the lash leaves the root: along the handle; in a strike (wave > 0) it leans to the far side of the chord from the slack,
-    // so the extended lash is a shallow S caught mid-crack instead of a straight rod
+    // where the lash leaves the root: along the handle; in a strike (wave > 0) along the chord, so the little slack that is left all
+    // goes to the outer part: straight from the hand, then hooking over onto the target - a lash caught mid-crack, not a rod
     let hx = r.dx, hy = r.dy, hz = r.dz;
     if (wave > 0) {
-      const d = (sx * cx + sy * cy + sz * cz) / (c * c), px = sx - cx * d, py = sy - cy * d, pz = sz - cz * d;   // slack, across the chord
-      hx = hx * (1 - wave) * 0.6 - px * wave + (cx / c) * 0.5 * wave; hy = hy * (1 - wave) * 0.6 - py * wave + (cy / c) * 0.5 * wave; hz = hz * (1 - wave) * 0.6 - pz * wave + (cz / c) * 0.5 * wave;
+      hx = hx * (1 - wave) + (cx / c) * wave; hy = hy * (1 - wave) + (cy / c) * wave; hz = hz * (1 - wave) + (cz / c) * wave;
       const hl = Math.hypot(hx, hy, hz) || 1; hx /= hl; hy /= hl; hz /= hl;
     }
-    const B = this._bz, L = this._bl, A = wave > 0 ? 0.55 + 0.45 * wave : 0.55;
+    const B = this._bz, L = this._bl, A = 0.55 - 0.3 * wave;
     let lo = 0, hi = len * 3, k = 0, tot = 0;
     for (let it = 0; it < 11; it++) {
       k = it < 10 ? (lo + hi) * 0.5 : k;
@@ -223,7 +225,7 @@ export class Whip {
     }
     // slack direction: hero frame -> world
     const bf = K[4], br = K[5], by = K[6];
-    this._curve(W[0], W[1], W[2], this.fx * bf + this.fz * br, by, this.fz * bf - this.fx * br, e);
+    this._curve(W[0], W[1], W[2], this.fx * bf + this.fz * br, by + 1.1 * e, this.fz * bf - this.fx * br, e);   // in the strike the hook rises (a bow in the ground plane is invisible from the game camera)
     const kick = this.kick;
     for (let i = 0; i < n; i++) { const q = i / (n - 1); wn[i] = w * (1 - kick * q * q * 0.85); }
     // events
@@ -324,6 +326,7 @@ export class Whip {
     const P = this.nodes, Q = this.prev, n = this.n;
     for (let i = 0; i < n; i++) { const o = i * 3; P[o] += dx; P[o + 1] += dy; P[o + 2] += dz; Q[o] += dx; Q[o + 1] += dy; Q[o + 2] += dz; }
     this.tg.sx += dx; this.tg.sy += dy; this.tg.sz += dz;
+    const H = this.hist; for (let i = 0; i < TRAIL_N * 4; i += 4) { H[i] += dx; H[i + 1] += dy; H[i + 2] += dz; }
   }
 
   /** drop the lash straight under the hand, at rest */
@@ -335,6 +338,8 @@ export class Whip {
     this.prev.set(P); this.vel.fill(0); this.len = this.L0; this.mode = 'rest'; this.restT = 9; this.ready = true;
     this._lx = hand.x; this._ly = hand.y; this._lz = hand.z; this.flash = 0; this.kick = 0; this.taut = 0; this.trail = 0;
     this._tipState(); this._keepGrip();
+    const H = this.hist; for (let i = 0; i < TRAIL_N * 4; i += 4) { H[i] = this.tip.x; H[i + 1] = this.tip.y; H[i + 2] = this.tip.z; H[i + 3] = 0; }
+    this.trailLive = 0;
   }
 
   _hand(hand) {
@@ -368,8 +373,16 @@ export class Whip {
     this.prev.set(this.nodes); this._keepGrip();
     this._hand(hand);
     const steps = Math.min(4, Math.max(1, Math.ceil(dt * 60 - 0.01))), h = dt / steps;
+    const ox = this.tip.x, oy = this.tip.y, oz = this.tip.z;
     for (let k = 0; k < steps; k++) this._step(h);
     this._tipState();
+    {   // the streak: where the tip was, and how hard it was moving (frozen with the world: no tick, no shift)
+      const H = this.hist, t = this.tip, sp = Math.hypot(t.x - ox, t.y - oy, t.z - oz) / dt;
+      H.copyWithin(4, 0, (TRAIL_N - 1) * 4);
+      H[0] = t.x; H[1] = t.y; H[2] = t.z; H[3] = this.trail > 0 ? clamp((sp - 260) / 1100, 0, 1) : 0;
+      let m = 0; for (let i = 3; i < TRAIL_N * 4; i += 4) if (H[i] > m) m = H[i];
+      this.trailLive = m; this.trailW = this.mode === 'swing' && (this.sw.str === 'F' || this.sw.str === 'H') ? 1.5 : 1;
+    }
     // slow values
     const d60 = dt * 60;
     this.flash *= Math.pow(0.78, d60); if (this.flash < 0.004) this.flash = 0;

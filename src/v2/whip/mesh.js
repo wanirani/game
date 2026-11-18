@@ -4,7 +4,10 @@
 //          The vertex shader turns it to the camera and widens it to the minimum on-screen thickness; the fragment shader shades it as a round braid.
 //   solid  (kind 2 grip leather, 3 bronze, 4 bell shard): pos = final position, aux = normal, u = along the handle axis, v = around 0..1
 //   glow   (kind 6): pos = centre, u v = corner -1..1, radius = half size (billboard, additive)
+//   streak (kind 7): the path of the tip over the last ticks, smoothed; pos = centre line, aux = tangent, u = strength, v = -1 | +1, radius (additive)
+import { TRAIL_N } from './sim.js';
 export const WHIP_VERT = 10;
+const TRAIL_SUB = 3, TRAIL_SEC = (TRAIL_N - 1) * TRAIL_SUB + 1;
 const SHARD_LEN = 11.5;
 
 // handle profile along its axis (px from the grip point; the lash leaves at +11): [s, radius, kind]
@@ -21,8 +24,8 @@ const SH_F = [[0, 1, 2], [0, 2, 3], [0, 3, 4], [0, 4, 1], [6, 2, 1], [5, 2, 6], 
 export function meshInfo(whip) {
   const sections = (whip.n - 1) * whip.sub + 1, sides = whip.sides, rings = HANDLE.length;
   const vLash = sections * 2, vHandle = rings * (sides + 1), vShard = SH_F.length * 3, vGlow = 4;
-  const verts = vLash + vHandle + vShard + vGlow;
-  const idx = new Uint16Array((sections - 1) * 6 + (rings - 1) * sides * 6 + vShard + 6);
+  const verts = vLash + vHandle + vShard + vGlow + TRAIL_SEC * 2;
+  const idx = new Uint16Array((sections - 1) * 6 + (rings - 1) * sides * 6 + vShard + 6 + (TRAIL_SEC - 1) * 6);
   let q = 0;
   for (let r = 0; r < rings - 1; r++) for (let s = 0; s < sides; s++) {   // handle first: the lash and shard cover its end
     const a = vLash + r * (sides + 1) + s, b = a + sides + 1;
@@ -32,7 +35,8 @@ export function meshInfo(whip) {
   for (let i = 0; i < vShard; i++) idx[q++] = vLash + vHandle + i;
   const nMain = q, g = vLash + vHandle + vShard;
   idx[q++] = g; idx[q++] = g + 1; idx[q++] = g + 2; idx[q++] = g; idx[q++] = g + 2; idx[q++] = g + 3;
-  return { verts, idx, nMain, nGlow: 6, sections, tris: nMain / 3 + 2, floats: verts * WHIP_VERT };
+  for (let i = 0; i < TRAIL_SEC - 1; i++) { const a = g + 4 + i * 2; idx[q++] = a; idx[q++] = a + 1; idx[q++] = a + 2; idx[q++] = a + 1; idx[q++] = a + 3; idx[q++] = a + 2; }
+  return { verts, idx, nMain, nGlow: 6, nTrail: (TRAIL_SEC - 1) * 6, sections, tris: nMain / 3 + 2, trisTrail: (TRAIL_SEC - 1) * 2, floats: verts * WHIP_VERT };
 }
 
 /**
@@ -111,6 +115,24 @@ export function writeWhipMesh(whip, vtx, alpha, tmp) {
   const cx = ox + tx * 5, cy = oy + ty * 5, cz = oz + tz * 5, size = 7 + 11 * Math.min(1.5, whip.glow) + 12 * whip.flash;
   for (let k = 0; k < 4; k++) {
     vtx[o] = cx; vtx[o + 1] = cy; vtx[o + 2] = cz; vtx[o + 3] = 0; vtx[o + 4] = 0; vtx[o + 5] = 0; vtx[o + 6] = k === 0 || k === 3 ? -1 : 1; vtx[o + 7] = k < 2 ? -1 : 1; vtx[o + 8] = size; vtx[o + 9] = 6; o += WHIP_VERT;
+  }
+  // the streak behind the tip: Catmull-Rom through the tip's last positions (the newest = the tip as drawn)
+  const H = whip.hist, w0 = 4.4 * whip.trailW;
+  for (let j = 0; j < TRAIL_SEC; j++) {
+    const i = Math.min(TRAIL_N - 2, (j / TRAIL_SUB) | 0), u = j / TRAIL_SUB - i;
+    const p0 = Math.max(0, i - 1) * 4, p1 = i * 4, p2 = (i + 1) * 4, p3 = Math.min(TRAIL_N - 1, i + 2) * 4;
+    const u2 = u * u, u3 = u2 * u;
+    const c0 = -0.5 * u3 + u2 - 0.5 * u, c1 = 1.5 * u3 - 2.5 * u2 + 1, c2 = -1.5 * u3 + 2 * u2 + 0.5 * u, c3 = 0.5 * u3 - 0.5 * u2;
+    const d0 = -1.5 * u2 + 2 * u - 0.5, d1 = 4.5 * u2 - 5 * u, d2 = -4.5 * u2 + 4 * u + 0.5, d3 = 1.5 * u2 - u;
+    const ax0 = p0 === 0 ? ox : H[p0], ay0 = p0 === 0 ? oy : H[p0 + 1], az0 = p0 === 0 ? oz : H[p0 + 2], ax1 = p1 === 0 ? ox : H[p1], ay1 = p1 === 0 ? oy : H[p1 + 1], az1 = p1 === 0 ? oz : H[p1 + 2];
+    const x = c0 * ax0 + c1 * ax1 + c2 * H[p2] + c3 * H[p3], y = c0 * ay0 + c1 * ay1 + c2 * H[p2 + 1] + c3 * H[p3 + 1], z = c0 * az0 + c1 * az1 + c2 * H[p2 + 2] + c3 * H[p3 + 2];
+    let kx = d0 * ax0 + d1 * ax1 + d2 * H[p2] + d3 * H[p3], ky = d0 * ay0 + d1 * ay1 + d2 * H[p2 + 1] + d3 * H[p3 + 1], kz = d0 * az0 + d1 * az1 + d2 * H[p2 + 2] + d3 * H[p3 + 2];
+    const kl = Math.hypot(kx, ky, kz); if (kl > 1e-5) { kx /= kl; ky /= kl; kz /= kl; } else { kx = tx; ky = ty; kz = tz; }
+    const q = j / (TRAIL_SEC - 1), str = (H[p1 + 3] + (H[p2 + 3] - H[p1 + 3]) * u) * Math.pow(1 - q, 1.3), rad = w0 * (1 - 0.8 * q);
+    for (let s = -1; s <= 1; s += 2) {
+      vtx[o] = x; vtx[o + 1] = y; vtx[o + 2] = z; vtx[o + 3] = kx; vtx[o + 4] = ky; vtx[o + 5] = kz; vtx[o + 6] = str; vtx[o + 7] = s; vtx[o + 8] = rad; vtx[o + 9] = 7;
+      o += WHIP_VERT;
+    }
   }
   return o / WHIP_VERT;
 }

@@ -6,9 +6,9 @@
 //   whipFx(fx, feel)     -> default wiring of whip events to effects, sound and vibration (optional)
 //   driveWhip(whip, hero, TUNE, pull)   hero state of the rules -> whip mode (call each tick before whip.update)
 //   WHIP_SHAPES          authored tip paths, one per hero move id
-export { createWhip, Whip, WHIP_TIERS } from './sim.js';
+export { createWhip, Whip, WHIP_TIERS, TRAIL_N } from './sim.js';
 export { WHIP_SHAPES, WHIP_ALIAS, shapeOf } from './shapes.js';
 export { meshInfo, writeWhipMesh, WHIP_VERT } from './mesh.js';
 export { WhipRenderer } from './render.js';
-export { whipFx, WHIP_TRAIL } from './fxlink.js';
+export { whipFx } from './fxlink.js';
 export { driveWhip } from './drive.js';
