@@ -159,7 +159,7 @@ function install(aim) {
     const r3 = (x) => (x == null ? null : Math.round(x * 1000) / 1000), st = v.stats || {};
     const pack = (F) => (!F ? null : F.hidden ? { hidden: true, n: F.n } : { px: Math.round(F.hpx * kc), pct: +(F.hpx / hh * 100).toFixed(1), lit: r3(F.litK), mean: r3(F.meanK), edge: r3(F.edge), edgeSide: F.edgeSide, lumLit: r3(F.lit), lumMean: r3(F.mean), lumDark: r3(F.dark), lumBg: r3(F.bg) });
     const R = { hero: pack(H), enemy: pack(E), enemyKind: en ? en.kind : null, enemyAt: ep ? ep.map(Math.round) : null, projPx: Math.round(hb.ph * kc), projPct: +(hb.ph / hh * 100).toFixed(1),
-      heroAt: [Math.round(h.x), Math.round(h.y), Math.round(h.z)], section: v.section, canvas: [w, hh], draws: st.gl?.draws ?? null, tris: st.gl?.tris ?? null, lost: gl.isContextLost() };
+      heroAt: [Math.round(h.x), Math.round(h.y), Math.round(h.z)], section: v.section, canvas: [w, hh], draws: st.gl?.draws ?? null, tris: st.gl?.tris ?? null, worldTris: st.world?.tris ?? null, worldDraws: st.world?.draws ?? null, lost: gl.isContextLost() };
     const Hh = R.hero;
     R.fail = [];
     if (!Hh || Hh.hidden) R.fail.push('hero not seen');
@@ -167,13 +167,14 @@ function install(aim) {
     if (en && ep) put(en, L.home[0], L.home[1], L.home[2], 1, 0);
     return R;
   };
+  L.cost = () => { const st = v.stats || {}; return { texMB: st.gl?.texMB ?? null, worldTexMB: +((st.world?.texBytes ?? 0) / 1048576).toFixed(1), charTexMB: +((st.chars?.texBytes ?? 0) / 1048576).toFixed(1), bufMB: +((st.gl?.bufBytes ?? 0) / 1048576).toFixed(1), loadMs: st.loadMs ?? null, lights: sc.W.lights.length, staticTris: sc.W.env?.stats?.tris ?? null }; };
   return { ready: v.ready, area: v.area, enemies: sim.enemies.length };
 }
 
 fs.mkdirSync(OUT, { recursive: true });
 const port = 8200 + Math.floor(Math.random() * 700), srv = await start(port);
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
-const errs = [], rows = []; let code = 0;
+const errs = [], rows = [], cost = {}; let code = 0;
 try {
   for (const area of AREAS) {
     const ctx = await browser.newContext(contextOptions(DEV)), page = await ctx.newPage();
@@ -189,6 +190,7 @@ try {
         await page.evaluate(async () => { const g = window.__game; g._pageHidden = true; for (let i = 0; i < 40; i++) { for (let k = 0; k < 6; k++) g.tick(1 / 60); g.render(); await new Promise((r) => setTimeout(r, 50)); if (!window.__v2.scene.xing && !window.__v2.scene._rebuilding) break; } });
       }
       await page.evaluate(install, AIM);
+      cost[area] = await page.evaluate(() => window.__L.cost());
       const spots = await page.evaluate(([named, n]) => window.__L.spots(named, n), [NAMED[area] ?? [], NSPOT]);
       // an added enemy's model arrives a moment later
       await page.evaluate(async () => { const L = window.__L, en = L.enemy(); for (let i = 0; i < 60 && en && !en._a3; i++) { L.tick(2); await new Promise((r) => setTimeout(r, 100)); } });
@@ -218,7 +220,10 @@ for (const r of rows) { const p = per[r.area] ?? (per[r.area] = { n: 0, fail: 0,
 const mn = (a) => (a.length ? Math.min(...a) : null), md = (a) => (a.length ? [...a].sort((x, y) => x - y)[a.length >> 1] : null);
 console.log('\nper area: stills · failing · hero lit/around min / median · size % min / median · edge min / median · enemy lit/around median');
 for (const [a, p] of Object.entries(per)) console.log(`  ${pad(a, 15)} ${padL(p.n, 3)} · ${padL(p.fail, 2)} · ${f2(mn(p.lit))} / ${f2(md(p.lit))} · ${f2(mn(p.pct))} / ${f2(md(p.pct))} · ${f2(mn(p.edge))} / ${f2(md(p.edge))} · ${f2(md(p.elit))}`);
-fs.writeFileSync(`${OUT}/look_read_${TAG}.json`, JSON.stringify({ tag: TAG, device: DEV, tier: TIER, aim: AIM, rows, per }, null, 1));
+console.log('\ncost per area (this run): draw calls max · triangles max (world part max) · textures MB (world part) · first load ms · static triangles of the area');
+for (const a of Object.keys(per)) { const R = rows.filter((r) => r.area === a), c = cost[a] ?? {}; c.drawsMax = Math.max(...R.map((r) => r.draws ?? 0)); c.trisMax = Math.max(...R.map((r) => r.tris ?? 0)); c.worldTrisMax = Math.max(...R.map((r) => r.worldTris ?? 0)); c.worldDrawsMax = Math.max(...R.map((r) => r.worldDraws ?? 0)); cost[a] = c;
+  console.log(`  ${pad(a, 15)} ${padL(c.drawsMax, 3)} (world ${c.worldDrawsMax}) · ${padL(c.trisMax, 7)} (${c.worldTrisMax}) · ${c.texMB} (${c.worldTexMB}) · ${c.loadMs} · ${c.staticTris}`); }
+fs.writeFileSync(`${OUT}/look_read_${TAG}.json`, JSON.stringify({ tag: TAG, device: DEV, tier: TIER, aim: AIM, rows, per, cost }, null, 1));
 fs.writeFileSync(`${OUT}/look_read_${TAG}.md`, lines.join('\n') + '\n');
 if (errs.length) { console.log('ERRORS:'); for (const e of errs.slice(0, 20)) console.log('  ' + e); if (errs.some((e) => e.startsWith('[pageerror]') || e.startsWith('[tool]'))) code = 1; }
 console.log(code ? 'FAIL' : 'OK');
