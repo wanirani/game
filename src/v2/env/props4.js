@@ -7,6 +7,7 @@
 //   { t: 'deco', mesh: 'treeline', x, z, x1, z1, y, n | gap, h, hv, wob, kind: 'fir' | 'bare' | 'round', tint, mat, seed }
 //   { t: 'deco', mesh: 'farhouse', x, z, w, d, h, rh, y, tint, roofTint, lit, mat, seed }                                x, z = the middle of its front
 //   { t: 'deco', mesh: 'farwall',  x, z, x1, z1, y, h, mat, tint, piers, to: [x, z] }                                    a plain long wall with a coping and piers
+//   { t: 'deco', mesh: 'gravefield', x, z, w, d, y, n, h, mat, tint, seed }                                            n small leaning stones and crosses scattered over a patch (x, z = its near left corner)
 import { hash, vnoise } from './geo.js';
 import { PROPS } from './props.js';
 
@@ -84,6 +85,23 @@ Object.assign(PROPS, {
       for (let i = 0; i < nw; i++) {
         const wx = x0 + w * (i + 0.5) / nw, on = (o.lit ?? 0) > hash(sd + i * 3.7, 5.1);
         G.quad(mat, [wx - 11, y + h * 0.42, z - 0.9], [22, 0, 0], [0, Math.min(34, h * 0.3), 0], [0, 0, -1], on ? { emis: o.emis ?? 1.9, tint: o.glow ?? [1, 0.6, 0.26], fog: 0.55 } : { tint: [0.1, 0.1, 0.13], vary: 0, k: 0.6 });
+      }
+    });
+  },
+  gravefield(G, x, y, z, o = {}) {
+    plain(G, () => {
+      const mat = o.mat ?? 'white', n = o.n ?? 12, sd = o.seed ?? 1, T = o.tint ?? [0.5, 0.52, 0.6];
+      for (let i = 0; i < n; i++) {
+        const px = x + o.w * hash(i * 1.37 + sd, 2.9), pz = z + o.d * hash(sd * 2.1, i * 3.1 + 1), h = (o.h ?? 70) * (0.6 + 0.6 * hash(i, sd + 8)), w = h * (0.34 + 0.12 * hash(sd, i)), lean = (hash(i + 2, sd * 5) - 0.5) * h * 0.24, q = { tint: T, vary: 0.25, k: o.k ?? 1, keep: true };
+        if (i % 4 === 3) {   // a cross: a shaft and a bar
+          G.quad4(mat, [px - w * 0.2, y, pz], [px + w * 0.2, y, pz], [px + w * 0.2 + lean, y + h * 1.25, pz], [px - w * 0.2 + lean, y + h * 1.25, pz], [0, 0, -1], q);
+          G.quad4(mat, [px - w * 0.75 + lean * 0.7, y + h * 0.8, pz - 1], [px + w * 0.75 + lean * 0.7, y + h * 0.8, pz - 1], [px + w * 0.75 + lean * 0.8, y + h, pz - 1], [px - w * 0.75 + lean * 0.8, y + h, pz - 1], [0, 0, -1], q);
+        } else {             // a slab with a pointed or a flat head, a side and a top so that it has a thickness from the game camera
+          const th = w * 0.36, a = [px - w / 2, y, pz], b = [px + w / 2, y, pz], c = [px + w / 2 + lean, y + h * 0.84, pz], d = [px - w / 2 + lean, y + h * 0.84, pz], t = [px + lean * 1.1, y + h, pz];
+          G.quad4(mat, a, b, c, d, [0, 0, -1], q); G.tri(mat, d, c, t, [0, 0, -1], q);
+          G.quad4(mat, [d[0], d[1], pz], [t[0], t[1], pz], [t[0], t[1], pz + th], [d[0], d[1], pz + th], [-0.5, 0.86, 0], { ...q, k: (o.k ?? 1) * 1.2 });
+          G.quad4(mat, [t[0], t[1], pz], [c[0], c[1], pz], [c[0], c[1], pz + th], [t[0], t[1], pz + th], [0.5, 0.86, 0], { ...q, k: (o.k ?? 1) * 1.1 });
+        }
       }
     });
   },
