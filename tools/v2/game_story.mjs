@@ -153,6 +153,8 @@ async function useSpot(what, { budget = 2400 } = {}) {   // walk to a person or 
   const w = await walk(t.x, t.z, { r: person ? 100 : 70, budget, pred: (s) => s.prompt === t.id });
   let got = null;
   for (let i = 0; i < 12 && !got; i++) { const s = await play(30, { bot: false }); if (s.prompt === t.id) got = await page.evaluate(() => window.__st.pill()); else if (i % 3 === 2) await walk(t.x, t.z, { r: person ? 70 : 40, budget: 300, pred: (q) => q.prompt === t.id }); }
+  // another spot is nearer from this side (the prompt goes to the nearest): come at it from the other sides
+  for (let k = 0; k < 8 && !got; k++) { const an = k * Math.PI / 4, px = t.x + Math.cos(an) * 62, pz = t.z + Math.sin(an) * 62; const w2 = await walk(px, pz, { r: 24, budget: 420, pred: (q) => q.prompt === t.id }); if (!w2.ok && !w2.s) continue; const s = await play(24, { bot: false }); if (s.prompt === t.id) got = await page.evaluate(() => window.__st.pill()); }
   if (!got) { const s = await st(); return { ok: false, why: `no prompt for "${what}" (hero ${JSON.stringify([s.x, s.z])}, spot ${[t.x, t.z]}, prompt on offer: ${s.prompt}, enemies awake near: ${s.left}, ${w.why ?? ''})` }; }
   await settle();
   return { ok: true };
