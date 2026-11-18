@@ -19,7 +19,7 @@ try {
   const page = await (await browser.newContext(contextOptions('fold_open'))).newPage();
   page.on('pageerror', (e) => errs.push('[pageerror] ' + e.message));
   page.on('response', (r) => { const u = r.url(), i = u.indexOf('/assets/v2/'); if (i >= 0) got.set(u.slice(i + 1).split('?')[0], r.status()); });
-  await page.goto(`http://localhost:${port}/index.html?scene=v2g&v2auto=0&v2res=0.4`);
+  await page.goto(`http://localhost:${port}/index.html?scene=v2g&v2story=0&v2auto=0&v2res=0.4`);
   await page.waitForFunction(() => window.__v2?.id === 'g' && (window.__v2.ready || window.__v2.error), null, { timeout: 90000 }).catch(() => errs.push('ready timeout'));
   const ids = args.areas ? String(args.areas).split(',') : await page.evaluate(async () => Object.keys((await import('/src/v2/world/index.js')).AREAS));
   for (const id of ids) {

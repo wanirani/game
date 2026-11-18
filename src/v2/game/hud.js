@@ -7,6 +7,7 @@ import { input } from '../../core/input.js';
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 // text options are built once (text() only reads them)
 const O_NAME = { size: 15, weight: 700, color: '#e8d8c0' }, O_SEC = { size: 15, weight: 600, color: '#e8c872' };
+const O_OBJ = { size: 14, weight: 700, color: '#fff2c8', ow: 3 };
 const O_DBG = { size: 11, weight: 500, align: 'center', color: 'rgba(220,210,200,0.62)', ow: 2 };
 const O_TIP = { size: 15, weight: 600, align: 'center', color: '#efe4cf' };
 const O_BIG = { size: 44, weight: 900, align: 'center', color: '#e8c872', family: FONT.title, ow: 5 };
@@ -106,6 +107,7 @@ export function createBuiltinHud() {
       const left = s.section.id === 'yard' && !s.done ? s.yardLeft : -1;
       if (left !== secLeft || s.section.label !== secLab) { secLeft = left; secLab = s.section.label; secStr = secLab + (left >= 0 ? ' · 남은 적 ' + left : ''); }   // the line is rebuilt only when it changes
       text(ctx, secStr, x + 52, y + bh + 22, O_SEC);
+      if (s.objective) text(ctx, s.objective, x + 52, y + bh + 42, O_OBJ);   // the story's objective line (ENGINE_API 8)
       // section name banner when entering
       if (banner > 0 && !s.done && !h.dead && s.section.label) {
         ctx.globalAlpha = clamp(Math.min((2.6 - banner) / 0.35, banner / 0.7), 0, 1);

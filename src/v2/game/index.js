@@ -313,11 +313,23 @@ export default class V2Game extends Scene {
   async gotoArea(id, spawn, opts) {
     if (!this.glr) return false;
     const h = this.sim?.hero, keep = opts?.keepPosition && h ? { x: h.x, z: h.z, face: [h.dirX ?? 1, h.dirZ ?? 0] } : null;
+    // STORY HOOK — the bell crossing: the twin is built first, behind the veil; when there is nowhere to stand over there nothing is released
+    let pre = null;
+    if (opts?.cross && keep) {
+      try { pre = await loadArea(id, this.worldFlags); const sp = pre.id === id ? await freeSpot(pre, keep.x, keep.z) : null; if (sp) { keep.x = sp.x; keep.z = sp.z; if (sp.y != null) keep.y = sp.y; keep.moved = sp.moved; } else pre = null; }
+      catch (e) { console.warn('[v2g] crossing: the twin did not build:', String(e?.message ?? e)); pre = null; }
+      if (!this.glr) return false;
+      if (!pre) { this._refused = true; return false; }
+    }
     let was = null;   // the same area rebuilt in another state (opts.same): who had fallen, the hero's health, whether the arena was done
     if (opts?.same && this.sim && id === this.area?.id) { was = { dead: new Set(), hp: h.hp, reso: h.reso, done: !!this.sim.done }; for (const e of this.sim.enemies) if (e.dead || e.state === 'dead') was.dead.add(e.kind + '@' + Math.round(e.homeX ?? e.x) + ',' + Math.round(e.homeZ ?? e.z)); }
+    // STORY HOOK — each night keeps its own state; with a story plugged in the hero's health travels with him
+    if (opts?.fresh) { this.nights.clear(); this._carry = null; }
+    else if (this.sim && this.area && !this.area.test && this.ready) { this._keepNight(); if (this.host && !was && h) this._carry = { hp: h.dead ? null : h.hp, reso: h.reso }; }
+    this._quiet = !!was;
     this.ready = false; this.state.loading = true;
     this._releaseArea();
-    try { await this._load(id, spawn, keep); } catch (e) { if (this.glr) { this.glError = String(e?.message ?? e); console.error('[v2g] area load failed', e); } }
+    try { await this._load(id, spawn, keep, pre); } catch (e) { if (this.glr) { this.glError = String(e?.message ?? e); console.error('[v2g] area load failed', e); } }
     if (was && this.ready && this.sim) {
       const sim = this.sim, hh = sim.hero;
       for (const e of sim.enemies) if (was.dead.has(e.kind + '@' + Math.round(e.homeX ?? e.x) + ',' + Math.round(e.homeZ ?? e.z))) { e.dead = true; e.hp = 0; e.active = false; }
@@ -369,10 +381,11 @@ export default class V2Game extends Scene {
     this.actors.length = 0;
     this.people.release(this); this.anchors.list.length = 0; this.state.prompts = this.people.none;
   }
-  async _load(areaId, spawn, keep) {
+  async _load(areaId, spawn, keep, pre) {
     const t0 = performance.now(), glr = this.glr, first = !this.tex;
-    const area = await loadArea(areaId, this.worldFlags), W = area.W, E = W.env;
+    const area = pre ?? await loadArea(areaId, this.worldFlags), W = area.W, E = W.env;
     if (!this.glr) return;
+    if (area.id !== this._lastArea) { this.hidden.clear(); this._lastArea = area.id; }   // hide / show overrides belong to one area (the story sets them again on area.enter)
     for (const x of area.exits) {   // exits: saved lock overrides, and the wall that stands in the box while it is locked
       const k = area.id + '/' + x.id; if (this.lockOv.has(k)) x.locked = this.lockOv.get(k);
       x._box = null; for (let i = 0; i < W.boxes.length; i++) if (W.boxes[i].gate === x.id) x._box = W.boxes[i];
@@ -457,6 +470,8 @@ export default class V2Game extends Scene {
       c.skill = !!(sim.caps?.skill ?? (hh.callCd !== undefined || hh.skillMode !== undefined || TUNE.callCd !== undefined));   // PLAY: skill = whip hook / call (hero.callCd, skillMode)
       c.bell = !!(sim.caps?.bell ?? (hh.bellCd !== undefined || TUNE.bellCd !== undefined)); }                                 //       bell = echo (tap) / long ring (hold), hero.bellCd, bellCharge
     this._deaths = this.sim.deaths ?? 0; this._secId = ''; this.cam.snap = true; this.doneT = 0; this.fired.clear();
+    this._applyNight();   // STORY HOOK: what this night remembers (the fallen stay fallen, fired triggers stay fired), candles and carried health
+    if (this.host) { this.applyCandles(); const c = this._carry, hh = this.sim.hero; this._carry = null; if (c) { if (c.hp > 0) hh.hp = Math.min(hh.hpMax, c.hp); if (c.reso !== undefined && hh.reso !== undefined) hh.reso = c.reso; } }
     this.state.area.id = area.id; this.state.area.name = area.name; this.state.area.era = area.era; this.state.night = area.era;
     // 6) warm everything behind the loading screen, then wait for the GPU
     for (const k of kinds) for (let i = this._poolOf(KINDS[k].model).length; i < Math.min(4, W.spawns.length); i++) { const a = this._newActor(k); if (a) this._free(a); }
@@ -464,7 +479,104 @@ export default class V2Game extends Scene {
     this._warm();
     this.loadMs = Math.round(performance.now() - t0);
     this.ready = true; this.state.loading = false; this.sampleN = 0;
-    this.emit('area.enter', { area: area.id, era: area.era });
+    const quiet = this._quiet; this._quiet = false;
+    if (!quiet) this.emit('area.enter', { area: area.id, era: area.era });   // (the same area rebuilt in another state is not a new arrival)
+  }
+  // ───────────────────────── STORY HOOKS: boot with the story and the save, nights, candles, the crossing (storyhost.js) ─────────────────────────
+  /** plug the story in (seams.js STORY_LOADER: on for 「본 게임」, off with v2story=0 and when the address names an area without v2story=1), continue from the save, load the first area */
+  async _boot(params) {
+    let area = params?.area ?? this.perf.area ?? DEFAULT_AREA, spawn = params?.spawn ?? this.perf.spawn ?? null, keep = null, at = null;
+    const named = !!(params?.area ?? this.perf.area);
+    if (STORY_LOADER && !this.story && this.perf.story !== false && (this.perf.story === true || !named)) {
+      try {
+        const [mod, info] = await Promise.all([STORY_LOADER(), worldInfo()]);
+        if (!this.glr) return;
+        const host = new StoryHost(this, mod, info);
+        this.host = host; this.story = host.story; this.storyFlag = (n) => host.flag(n);
+        const sv = params?.fresh ? null : readSave();
+        at = sv ? host.restore(sv) : null;
+        if (at && !named && !(await hasArea(at.area))) at = null;
+        if (sv && !at) host.reset();   // a save that cannot be used: new game
+        if (at && !named) { area = at.area; spawn = at.spawn; keep = at.pos; this.nightsIn(at.nights); this._carry = { hp: at.hp, reso: at.reso }; }
+        this.setWorldFlags(host.worldFlags(), { reload: false });
+      } catch (e) { console.warn('[v2g] the story did not load - playing without it:', String(e?.stack ?? e?.message ?? e)); this.host = null; this.story = null; this.storyFlag = null; }
+    }
+    if (!this.glr) return;
+    await this._load(area, spawn, keep);
+  }
+  _nightKey(e) { return e.kind + '@' + Math.round(e.homeX ?? e.x) + ',' + Math.round(e.homeZ ?? e.z); }
+  /** remember what happened in the area the hero is leaving */
+  _keepNight() {
+    const id = this.area.id, n = this.nights.get(id) ?? { dead: new Set(), done: false, fired: new Set() };
+    for (const e of this.sim.enemies) if (e.dead || e.state === 'dead') n.dead.add(this._nightKey(e));
+    if (this.sim.done) n.done = true;
+    for (const t of this.fired) n.fired.add(t);
+    this.nights.set(id, n);
+  }
+  _applyNight() {
+    const n = this.nights.get(this.area.id), sim = this.sim; if (!n || !sim || this.area.test) return;
+    for (const e of sim.enemies) if (n.dead.has(this._nightKey(e))) { e.dead = true; e.hp = 0; e.active = false; }
+    if (n.done) sim.done = true;
+    for (const t of n.fired) this.fired.add(t);
+  }
+  /** the nights' memory as plain data (the save) and back */
+  nightsOut() { if (this.sim && this.area && !this.area.test && this.ready) this._keepNight(); const o = {}; for (const [id, n] of this.nights) o[id] = { dead: [...n.dead], done: n.done, fired: [...n.fired] }; return o; }
+  nightsIn(o) {
+    this.nights.clear(); if (!o || typeof o !== 'object' || Array.isArray(o)) return;
+    const strs = (v) => new Set(Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []);
+    for (const id of Object.keys(o)) { const n = o[id]; if (n && typeof n === 'object') this.nights.set(id, { dead: strs(n.dead), done: !!n.done, fired: strs(n.fired) }); }
+  }
+  /** candles of the story (3 at the start, one more per `candle +1` step) -> the HUD's candle count and the hero's greatest health */
+  applyCandles() {
+    const H = this.host, sim = this.sim; if (!H || !sim) return;
+    const n = clamp(3 + (H.candleBonus | 0), 3, 16), hh = sim.hero, max = Math.round((TUNE.heroHp ?? 100) * n / 3), k = hh.hpMax > 0 ? hh.hp / hh.hpMax : 1;
+    this.state.candles.max = n; if (hh.hpMax !== max) { hh.hpMax = max; hh.hp = hh.dead ? hh.hp : Math.min(max, Math.max(1, Math.round(max * k))); }
+  }
+  /** the story sends the hero to another area (step gotoArea): fade, load, area.enter. -> false when a journey is already under way */
+  travelTo(id, spawn) { if (!this.glr || this._go || this.xing) return false; this._go = { to: id, spawn: spawn ?? null }; this.fadeTo = 1; this.locked = true; return true; }
+  /**
+   * The bell crossing (GDD 2.2, DATA_FORMAT bellCross): to the twin area, the same spot — or the nearest free one. The moment: the bell's light
+   * and toll (sound + vibration through the feel module), the world slows, a pale veil rises (warm towards 1697, cold towards tonight); the twin
+   * is built and warmed behind the veil; on the other side the veil thins under the night badge and the night banner.
+   * -> false = refused, nothing changed (no twin, on the test route, fallen, a journey under way, a dialogue or the pause menu open).
+   */
+  cross(o) {
+    const a = this.area, h = this.sim?.hero, to = (o && typeof o.to === 'string' && o.to) || a?.twin || null;
+    if (!this.ready || !a || a.test || !to || this._go || this.xing || !h || h.dead || this.hud.modal) return false;
+    this.xing = { to, years: !!o?.years, from: a.era }; this._refused = false;
+    this.locked = true; this.veil = a.era === 'past' ? '#dfe6f4' : '#ffe9c8'; this._veilUnder = false;
+    this._go = { to, spawn: null, keep: true, night: true, cross: true }; this.fadeTo = 1;   // update() starts the load when the veil is full (0.7 s)
+    const fx = this.fx, id = PRESET_IDS['holy.bell'];
+    if (fx) { if (id !== undefined) { try { fx.playAt(id, h.x, h.y, h.z, h.dirX ?? 1, h.dirZ ?? 0, 1.5, h.x, h.y, h.z); } catch { /* effect */ } } const F = fx.feel; F.slowMo(0.3, 0.8); F.zoomPunch(0.07, 0.6); F.flash(0.92, 0.95, 1, 0.5, 3); F.addTrauma(0.22); }
+    try { feel.play('bell.toll', h); } catch { /* no audio */ }
+    try { input.rumble?.(0.6, 0.9, 420); } catch { /* no pad */ }
+    return true;
+  }
+  /** the other side of a crossing (or the refusal: no floor near that spot in the other night - the bell rings dull and the hero stays, GDD 2.2) */
+  _crossed(go, ok) {
+    const x = this.xing; this.xing = null; this._veilUnder = true;
+    if (!ok) {
+      const t = this.host?.STORY.TEXT?.system?.dull ?? '종이 둔하게 울린다';
+      if (this._refused) { this._refused = false; this._toast(t, 'warn'); if (this.ready && this.area) this.emit('area.enter', { area: this.area.id, era: this.area.era, refused: true }); }   // a sequence waiting for the other side goes on here
+      return;
+    }
+    const h = this.sim.hero, fx = this.fx, era = this.area.era, T = this.host?.STORY.TEXT?.night ?? null, id = PRESET_IDS['holy.wave'] ?? PRESET_IDS['holy.bell'];
+    if (fx) { if (id !== undefined) { try { fx.playAt(id, h.x, h.y, h.z, h.dirX ?? 1, h.dirZ ?? 0, 1.2, h.x, h.y, h.z); } catch { /* effect */ } } fx.feel.zoomPunch(0.05, 0.5); fx.feel.addTrauma(0.12); }
+    try { feel.play('bell.toll', h, 0.6, era === 'past' ? 0.84 : 1.19); } catch { /* no audio */ }
+    try { input.rumble?.(0.3, 0.6, 260); } catch { /* no pad */ }
+    if (!(x && x.years) && this.hud.banner) { if (T && T[era]) { this.host.note('banner', T[era]); this.hud.banner('night', T[era]); } else this.hud.banner('night'); }   // a changed tonight gets the story's own banner
+  }
+  /** pause menu row 「처음부터 다시」: asked once more before anything is erased */
+  _askRestart() {
+    if (this.hudKind === 'ui' && this.hud.showDialog && !this.hud.modal) { this.hud.showDialog({ speaker: '', text: '지금까지의 기록을 지우고\n처음부터 다시 시작할까요?', choices: ['그만둔다', '처음부터'], onChoice: (i) => { if (i === 1) this.restart(); } }); return; }
+    if (this._armT > 0) { this._armT = 0; this.restart(); } else { this._armT = 6; this._toast('한 번 더 고르면 기록을 지우고 처음부터 시작한다', 'warn'); }
+  }
+  /** new game: the save and every memory of the scene are erased, the first area loads */
+  restart() {
+    if (!this.host || this._go || this.xing) return false;
+    clearSave(); this.host.reset(); this.nights.clear(); this.lockOv.clear(); this.hidden.clear(); this.flags.clear(); this.worldFlags = {}; this._carry = null; this._lastArea = '';
+    this._go = { to: DEFAULT_AREA, spawn: null, fresh: true }; this.fadeTo = 1; this.locked = true;
+    return true;
   }
   /** put the hero at a named spawn of the area (docs/v2/AREA_FORMAT.md 3); a section id still works for the test route */
   _enterAt(spawn, keep) {
@@ -683,7 +795,9 @@ export default class V2Game extends Scene {
         else if (name === 'ringLong') sc._ringLong(b ?? null);                     // long ring: b = the kneeling boss to be sent off, or null = the scene decides (crossing)
         else if (name === 'deny') sc._deny(b, c);                                  // a tool could not be used: say why
         else if (!sc.story && (name === 'kneel' || name === 'bossFlee' || name === 'bossReturn' || name === 'bossDown')) sc._bossNote(name, a, b);
-        if (sc.story) sc.emit('play.' + name, [a, b, c, d]);
+        if (sc.story) { sc.emit('play.' + name, [a, b, c, d]);
+          const ph = name === 'kneel' ? (b === 'down' ? 'kneel' : null) : name === 'bossFlee' ? 'flee' : name === 'bossReturn' ? 'driven' : name === 'bossDown' ? (b ? 'sent' : 'down') : null;   // STORY HOOK (DATA_FORMAT 6)
+          if (ph) sc.emit('boss.phase', { boss: a?.kind ?? null, phase: ph }); if (name === 'bossDown') sc.emit('boss.down', { boss: a, knelled: !!b }); }
       },
       sound(name, pos) { snd(name, pos ?? null); },
     };
@@ -692,16 +806,26 @@ export default class V2Game extends Scene {
   update(dt) {
     const t0 = performance.now(), g = this.game;
     if (this._offT > 0) this._offT -= dt;
-    if (this.fadeA !== this.fadeTo) this.fadeA = this.fadeTo > this.fadeA ? Math.min(this.fadeTo, this.fadeA + dt / 0.28) : Math.max(this.fadeTo, this.fadeA - dt / 0.5);   // area travel: to black, load, back
-    if (this._go && this.fadeA >= 1) { const go = this._go; this._go = null; this.gotoArea(go.to, go.spawn, go.keep ? { keepPosition: true, same: !!go.same } : null).then(() => { this.locked = false; this.fadeTo = 0; this._exitBusy = false; if (go.night) this.hud.banner?.('night'); }); return; }
+    if (this._armT > 0) this._armT -= dt;
+    if (this.fadeA !== this.fadeTo) { this.fadeA = this.fadeTo > this.fadeA ? Math.min(this.fadeTo, this.fadeA + dt / (this.xing ? 0.7 : 0.28)) : Math.max(this.fadeTo, this.fadeA - dt / (this._veilUnder ? 1.1 : 0.5)); if (this.fadeA <= 0 && !this.xing) { this.veil = '#000'; this._veilUnder = false; } }   // area travel: to black, load, back (a crossing: a pale veil, slower)
+    if (this._go && this.fadeA >= 1) {
+      const go = this._go; this._go = null;
+      this.gotoArea(go.to, go.spawn, go.keep || go.fresh ? { keepPosition: !!go.keep, same: !!go.same, cross: !!go.cross, fresh: !!go.fresh } : null).then((ok) => {
+        this.locked = false; this.fadeTo = 0; this._exitBusy = false;
+        if (go.cross) this._crossed(go, ok); else if (go.night) this.hud.banner?.('night');   // STORY HOOK: the far side of a crossing
+      });
+      return;
+    }
     if (input.pressed('menu') && g.registry.title && !this.hud.modal) { if (this.ready) this._pause(); else this._leave(); if (!this.hud.modal) return; }   // ESC / START: the pause menu (leaving is one of its rows)
     if (!this.ready || !this.glr || this.glr.lost) return;
     const sim = this.sim, inp = this.inp, fx = this.fx;
     let mx = input.analogX || input.axisX, mz = -(input.analogY || input.axisY);
     { const T = input.touchStick ?? input._touchVec; if (input.mode === 'touch' && T && T.mag > 0.1) { mx = T.x; mz = -T.y; } }   // touch stick: raw 360 degrees
-    const modal = this.hud.modal ?? null, locked = this.locked || modal === 'dialog';   // UI_API 2: 'pause' freezes the rules, 'dialog' locks the hero
+    const modal = this.hud.modal ?? null, host = this.host, locked = this.locked || modal === 'dialog' || (host !== null && host.locks());   // UI_API 2: 'pause' freezes the rules, 'dialog' locks the hero; STORY HOOK: a camera shot or a lockInput step of the story locks him too
     if (modal === 'pause') { this._state(); try { this.hud.update(dt, this.state); } catch (e) { this._hudFail(e); } this.updMs += performance.now() - t0; return; }
     if (locked) { mx = 0; mz = 0; }
+    if (host !== null) host.tick(dt);   // STORY HOOK: waits, camera shots, walking people, the rebuild after a changed area flag
+    if (!this.ready || !this.sim) return;   // (a story step may have started a journey)
     inp.mx = mx; inp.mz = mz; inp.jump = !locked && input.buffered('jump', 0.12); inp.jumpHeld = input.down('jump'); inp.jumpUsed = false;
     inp.attackHeld = input.down('attack'); inp.guard = !locked && (input.down('guard') || input.down('dash'));
     if (!locked) { if (input.pressed('attack')) inp.attack = true; if (input.pressed('dash')) inp.dash = true; if (input.pressed('lock')) inp.lockNext = true; }   // latched until a rule step consumes them (hit-stop)
@@ -895,6 +1019,7 @@ export default class V2Game extends Scene {
     // what the cut-glass HUD shows (docs/v2/UI_API.md 1): candles from health, enemies of the fight at hand, which pad buttons work
     { const hp = sim.hero.hp > 0 ? sim.hero.hp : 0, c = s.candles; c.lit = hp / (s.heroHpMax || 1) * c.max; }
     s.left = this.area.test ? 0 : awake;
+    { const H = this.host; if (H !== null) { s.objective = H.objective; if (H.pillOn && s.prompts === this.people.none) s.prompts = H.pills; } }   // STORY HOOK: the objective under the section name, the tutorial pill
     { const bs = sim.bossState ? sim.bossState() : null, B = this._bossS;   // the boss bar: name, health, stagger and act straight from the rules (PLAY_API 7)
       if (bs) { B.id = bs.id; B.name = bs.name; B.hp = bs.hp; B.hpMax = bs.hpMax; B.stagger = bs.stagger; B.phase = bs.phase; B.kneel = bs.kneel; B.fled = bs.fled; B.staggered = bs.staggered;
         B.sub = bs.kneel ? '종을 길게 울려라' : bs.fled ? '그 밤으로 달아났다' : bs.staggered ? '비틀거린다' : bs.sub || (bs.phase === 2 ? '둘째 막' : ''); s.boss = B; }
@@ -911,11 +1036,11 @@ export default class V2Game extends Scene {
   _camera(dt) {
     const c = this.cam, h = this.sim.hero, W = this.W;
     const sec = sectionAt(W, h.x, h.z) ?? this._sec ?? W.sections[0]; this._sec = sec;
-    const R = sec.cam, snap = c.snap;
+    const R = sec.cam, snap = c.snap, SH = this.host !== null ? this.host.shot : null;   // STORY HOOK: SH = a camera shot of the story (storyhost.js SHOTS) bends pitch, distance and height of the section rig
     const k = snap ? 1 : 1 - Math.exp(-dt * 2.3), kt = snap ? 1 : 1 - Math.exp(-dt * 8.5), kf = snap ? 1 : 1 - Math.exp(-dt * 2);   // kt 5.5 → 8.5: 달리는 영웅(410 px/초) 뒤로 처지는 거리 75 → 48 px(예전 275 px/초 때의 50 px 와 같게; 화면에서 82 → 54 px, 흔들림 0.1 px/틱) · kf 1.5 → 2: 앞쪽 여백이 방향을 조금 더 빨리 따른다
     c.face += (clamp(h.dirX ?? h.facing ?? 1, -1, 1) - c.face) * kf;   // lead follows the facing continuously (no flip when the stick reverses)
     c.yaw += (R.yaw + (R.yawLead ?? 0.03) * c.face - c.yaw) * k;
-    c.pitch += (R.pitch - c.pitch) * k; c.dist += (R.dist - c.dist) * k; c.lookY += (R.lookY - c.lookY) * k;
+    c.pitch += ((SH ? SH.pitch : R.pitch) - c.pitch) * k; c.dist += ((SH ? SH.dist : R.dist) - c.dist) * k; c.lookY += ((SH ? SH.lookY : R.lookY) - c.lookY) * k;
     c.leadX += ((R.leadX ?? 0) * c.face - c.leadX) * k; c.leadZ += ((R.leadZ ?? 0) - c.leadZ) * k;
     if (c.zf == null) c.zf = R.zFollow; c.zf += (R.zFollow - c.zf) * k;
     let tx = h.x + c.leadX, tz = 130 + (h.z - 130) * c.zf + c.leadZ;
@@ -976,6 +1101,7 @@ export default class V2Game extends Scene {
     const off = this.glError || !this.glr ? 1 : !this.ready ? 2 : this.glr.lost ? 3 : 0;
     if (off) {
       if (this.mode === 'layer') this._show(false);
+      if (off === 2 && this.xing && this.fadeA > 0.5) { ctx.fillStyle = this.veil; ctx.fillRect(0, 0, Wv, Hv); this._lastDraw = 0; return; }   // STORY HOOK: a crossing keeps its veil while the twin loads
       s.message = off === 1 ? 'WebGL 을 쓸 수 없어 게임을 열 수 없습니다' : off === 2 ? '불러오는 중…' : '화면을 되살리는 중…'; s.message2 = off === 1 ? String(this.glError || '') : '';
       try { this.hud.draw(ctx, s); } catch (e) { this._hudFail(e); } s.message = '';
       this._lastDraw = 0;
@@ -990,8 +1116,10 @@ export default class V2Game extends Scene {
     const a = this.everyFrame ? clamp(g.alpha ?? 1, 0, 1) : 1;
     this._gl(Wv, Hv, a, false);
     if (hctx !== ctx) { hctx.setTransform(1, 0, 0, 1, 0, 0); hctx.clearRect(0, 0, L.hud.width, L.hud.height); hctx.setTransform(g.scale, 0, 0, g.scale, 0, 0); }
+    const under = this._veilUnder && this.fadeA > 0.004;
+    if (under) { hctx.globalAlpha = this.fadeA; hctx.fillStyle = this.veil; hctx.fillRect(0, 0, Wv, Hv); hctx.globalAlpha = 1; }
     try { this.hud.draw(hctx, s); } catch (e) { this._hudFail(e); }
-    if (this.fadeA > 0.004) { hctx.globalAlpha = this.fadeA; hctx.fillStyle = '#000'; hctx.fillRect(0, 0, Wv, Hv); hctx.globalAlpha = 1; }
+    if (!under && this.fadeA > 0.004) { hctx.globalAlpha = this.fadeA; hctx.fillStyle = this.veil; hctx.fillRect(0, 0, Wv, Hv); hctx.globalAlpha = 1; }
     const ms = performance.now() - t0 + this.updMs; this.updMs = 0;
     this.samples[this.sampleN % 300] = ms; this.sampleN++;
   }

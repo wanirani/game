@@ -362,7 +362,7 @@ export function dressBlock(G, P, W, boxes) {
 export function balustrade(G, P, boxes) {
   const x0 = P.x, z1 = P.z + P.d, y1 = (P.y ?? 0) + P.h;
   // FENCE (11-18): the balustrade collides where its end posts and rails are drawn (it had none: the hero on the block stood in it); tall, so no jump lands in it
-  if (boxes) boxes.push({ x0: x0 - 7, x1: x0 + P.w + 7, z0: z1 - 11, z1: z1 + 1, y0: y1, y1: y1 + 800, solid: true, walk: false, inv: true, kit: true, part: P });
+  if (boxes) boxes.push({ x0: x0 - 7, x1: x0 + P.w + 7, z0: z1 - 12, z1: z1 + 2, y0: y1, y1: y1 + 800, solid: true, walk: false, inv: true, kit: true, part: P });
   const F = new Frame(x0, z1 - 5, 0, -1), h = 34;
   F.box(G, 'trimstone', 0, P.w, y1 + h - 6, y1 + h, -4, 4, { faces: 'FLRT', vary: 0.05 }); F.box(G, 'trimstone', 0, P.w, y1, y1 + 4, -3, 3, { faces: 'FLRT', vary: 0.05 });
   for (let u = 12; u < P.w - 6; u += 22) G.lathe('trimstone', x0 + u, z1 - 5, [[3.2, y1 + 4], [4.6, y1 + 11], [2.4, y1 + 20], [3.4, y1 + h - 6]], 6, { vary: 0 });

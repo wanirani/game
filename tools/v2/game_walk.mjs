@@ -55,7 +55,7 @@ for (const dev of DEVICES) {
   page.on('console', (m) => { if (m.type() === 'error') errs.push('[console.error] ' + m.text()); });
   page.on('pageerror', (e) => errs.push('[pageerror] ' + e.message));
   try {
-    await page.goto(`http://localhost:${port}/index.html?scene=v2g&v2auto=0${RES < 1 ? '&v2res=' + RES : ''}`);
+    await page.goto(`http://localhost:${port}/index.html?scene=v2g&v2story=0&v2auto=0${RES < 1 ? '&v2res=' + RES : ''}`);
     await page.waitForFunction(() => window.__v2?.id === 'g' && (window.__v2.ready || window.__v2.error), null, { timeout: 90000 }).catch(() => errs.push('ready timeout'));
     await page.waitForFunction(() => window.__v2?.stats?.hud === 'ui', null, { timeout: 15000 }).catch(() => {});
     const st0 = await page.evaluate(() => { const v = window.__v2; return v?.ready ? { area: v.area, hud: v.stats.hud, people: v.people.length, kinds: [...new Set(v.enemies.map((e) => e.kind))], res: v.stats.res, anchors: v.stats.anchors, exits: v.exits.map((x) => x.id + ':' + x.locked) } : { err: v?.error ?? 'not ready' }; });

@@ -21,7 +21,7 @@ export function createCanvasHud(game, opts = {}) {
 
   // ───── baked pieces (each: { c, w, h, key }) ─────
   const mkPiece = () => ({ c: null, w: 0, h: 0, key: '' });
-  const badge = { now: mkPiece(), past: mkPiece() }, shelves = {}, moonP = mkPiece(), bossP = mkPiece(), bossFill = mkPiece(), secP = mkPiece();
+  const badge = { now: mkPiece(), past: mkPiece() }, shelves = {}, moonP = mkPiece(), bossP = mkPiece(), bossFill = mkPiece(), secP = mkPiece(), objP = mkPiece();
   const bannerP = mkPiece(), bandP = mkPiece(), promptRow = mkPiece(), msgP = mkPiece(), msg2P = mkPiece(), dbgP = mkPiece(), resLabel = mkPiece();
   const nums = []; for (let i = 0; i < NUM_SLOTS; i++) nums.push({ c: null, w: 0, h: 0, str: null, color: null, big: false, ep: 0 });
   const calls = []; for (let i = 0; i < CALL_SLOTS; i++) calls.push({ c: null, w: 0, h: 0, on: false, t: 0, x: 0, y: 0, z: 0, kind: '', dur: 1 });
@@ -123,6 +123,14 @@ export function createCanvasHud(game, opts = {}) {
     const t = bakeText(str, L.s, { size: ft.size, weight: 600, fill: left > 0 ? '#ffd9de' : COL.silverDim, lw: 2.6, stroke: 'rgba(6,6,16,0.8)' }, secP.t);
     secP.t = t; secP.c = t.c; secP.w = t.w; secP.h = t.h;
     return secP;
+  }
+  /** the objective line under the resonance cells (state.objective, one short gold line; '' = none) */
+  function bakeObjective(text, maxW) {
+    if (!stale(objP, text, Math.round(maxW), 0)) return objP;
+    const ft = fitText(text, tsz(13), Math.max(px(60), maxW - 12), 700, FONTS.body, 0.8);
+    const t = bakeText(ft.str, L.s, { size: ft.size, weight: 700, fill: ['#fff2c8', COL.gold], lw: 2.8, stroke: 'rgba(8,6,16,0.86)' }, objP.t);
+    objP.t = t; objP.c = t.c; objP.w = t.w; objP.h = t.h;
+    return objP;
   }
   function bakeBanner() {
     const b = banner, big = b.kind === 'area' || b.kind === 'clear', night = b.kind === 'night', dead = b.kind === 'dead';
@@ -373,8 +381,16 @@ export function createCanvasHud(game, opts = {}) {
       const sp = bakeSection(s.section.label, s.left ?? (s.section.id === 'yard' && !s.done ? (s.yardLeft | 0) : 0), secMax); blit(ctx, sp, rx, gy - cellH / 2 - sp.h / 2);
     }
 
+    // 2b) the objective of the story (state.objective): one gold line under the cells, a small mark in front of it
+    let objH = 0;
+    if (s.objective) {
+      const op = bakeObjective(String(s.objective), vw * 0.46 - cx0), oy = gy + cellH / 2 + px(3);
+      ctx.fillStyle = COL.gold; ctx.beginPath(); ctx.moveTo(cx0 + px(4), oy + op.h / 2 - px(4)); ctx.lineTo(cx0 + px(8), oy + op.h / 2); ctx.lineTo(cx0 + px(4), oy + op.h / 2 + px(4)); ctx.lineTo(cx0, oy + op.h / 2); ctx.closePath(); ctx.fill();
+      blit(ctx, op, cx0 + px(11), oy); objH = op.h + px(4); T.objR = { x: cx0, y: oy, w: op.w + px(11), h: op.h };
+    } else T.objR = null;
+
     // 3) toasts under the status block
-    let ty = y0 + bd.h + px(52);
+    let ty = Math.max(y0 + bd.h + px(52), gy + cellH / 2 + px(3) + objH);
     for (let i = 0; i < TOAST_SLOTS; i++) {
       const o = toasts[i]; if (!o.on) continue;
       if (o.dirty || o.ep !== L.epoch) { bakeToast(o); o.dirty = false; o.ep = L.epoch; }

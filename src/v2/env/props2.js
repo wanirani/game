@@ -314,3 +314,18 @@ export const BAKED_EXTRA = {
 };
 /** 구운 소품이 손으로 짠 것과 다른 인자를 받을 때 맞춰 준다 (o, 묶음의 정의) → o */
 export const BAKED_ARGS = {};
+/**
+ * FENCE (11-18): where the cemetery gate is drawn -> collision boxes (the same numbers as cemgate above): the two posts with their bases and caps
+ * (44-46 square; the areas' own blockers were 38 x 36 inside them) and each railing leaf at the angle it is drawn (an open leaf was walked through).
+ * As tall as a low wall's collision. One box per leaf: a leaf stands at 0 (shut, along x) or at 81 degrees (open 1.25) in every area.
+ */
+export function cemgateBoxes(x, y, z, o = {}) {
+  const gap = o.w ?? 180, th = (o.open ?? 0.6) * 65 * Math.PI / 180, L = gap / 2 - 3, ct = Math.cos(th), st = Math.sin(th), Y = { y0: y, y1: y + 800, solid: true, walk: false, inv: true, kit: true }, out = [];
+  for (const sx of [-1, 1]) { const px = x + sx * (gap / 2 + 18); out.push({ x0: px - 23, x1: px + 23, z0: z - 23, z1: z + 23, ...Y }); }
+  for (const F of [new Frame(x - gap / 2, z, st, -ct), new Frame(x + gap / 2 - ct * L, z + st * L, -st, -ct)]) {
+    let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+    for (const u of [-3.6, L + 3.6]) for (const w of [-3.6, 3.6]) { const p = F.pt(u, 0, w); x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[2]); z1 = Math.max(z1, p[2]); }
+    out.push({ x0, x1, z0, z1, ...Y });
+  }
+  return out;
+}
