@@ -76,7 +76,7 @@ export function eshville(era, flags = {}) {
     { t: 'prop', mesh: 'barrel', x: 2420, z: 264, h: 78, solid: 24 });
   add('out', LAMP(now ? 620 : 640, 262, now ? { mesh: 'lanternpost', lit: false, light: null, h: 190 } : {}), LAMP(1380, 8, { solid: 0 }),
     { t: 'fence', kind: 'wood', x0: 80, z0: 6, x1: 420, z1: 6, h: 50 }, { t: 'fence', kind: 'wood', x0: 860, z0: 6, x1: 1240, z1: 6, h: 50 },
-    { t: 'prop', mesh: 'deadtree', x: 20, z: 258, h: 300, solid: 20, solidZ: 14 });
+    { t: 'prop', mesh: 'deadtree', x: 20, z: 258, h: 300, solid: 56, solidZ: 40, solidH: 240 });   // the footprint covers the root flare (162 x 149 at this size): the hero walked 65 units over the roots
   add('east', { t: 'prop', mesh: 'well', x: 3900, z: 450, h: 132, solid: 46, solidZ: 30 },
     LAMP(3520, 300), LAMP(4280, 300), LAMP(3440, 800), LAMP(4420, 660),
     { t: 'fence', kind: 'iron', x0: 3500, z0: 5, x1: 3820, z1: 5, h: 44 }, { t: 'fence', kind: 'iron', x0: 4100, z0: 5, x1: 4420, z1: 5, h: 44 },

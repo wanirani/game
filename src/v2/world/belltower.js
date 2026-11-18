@@ -54,10 +54,10 @@ export function belltower(era = 'now', flags = {}) {
     { t: 'prop', mesh: 'goods', x: 120, z: zOf(4) + 116, y: 4 * LV, h: 80, solid: 52, solidZ: 30, solidH: 60, flip: true },
     // the bell chamber: the big bell in its oak frame against the back arches, the rope, braziers, the keeper's corner
     { t: 'prop', mesh: 'bell', x: 360, z: ZT + 300, y: TOP, h: 300, solid: 98, solidZ: 50, solidH: 240 },
-    { t: 'deco', mesh: 'rope', x: 290, y: TOP + 6, z: ZT + 236, len: 150 },
+    { t: 'deco', mesh: 'rope', x: 268, y: TOP + 34, z: ZT + 232, len: 262, r: 3.6 },                                                                       // the bell rope: from the top beam down to hand height, in front of the frame (Elise stands at it)
     { t: 'prop', mesh: 'brazier', x: 70, z: ZT + 330, y: TOP, h: 112, solid: 22, solidZ: 22, light: { r: 420, i: 1.9, y: 90, c: [1, 0.55, 0.22] } }, { t: 'prop', mesh: 'brazier', x: 650, z: ZT + 330, y: TOP, h: 112, solid: 22, solidZ: 22, light: { r: 420, i: 1.9, y: 90, c: [1, 0.55, 0.22] } },
     { t: 'prop', mesh: 'crate', x: 80, z: ZT + 60, y: TOP, h: 58, solid: 28, solidZ: 18 }, { t: 'deco', mesh: 'candles', x: 600, y: TOP, z: ZT + 60, n: 5, light: { r: 200, i: 1.0, y: 20 } },
-    { t: 'deco', mesh: 'beam', x: 0, y: TOP + 300, z: ZT + 300, len: W, r: 13 });
+    { t: 'deco', mesh: 'beam', x: 0, y: TOP + 300, z: ZT + 300, len: W, r: 13 }, { t: 'deco', mesh: 'beam', x: 268, y: TOP + 296, z: ZT + 226, len: 80, r: 7, dz: true });   // the top beam and the short arm the rope runs over
   anchors.push({ id: 'brazier_l', kind: 'fire', x: 70, y: TOP + 96, z: ZT + 324, size: 0.5, light: true }, { id: 'brazier_r', kind: 'fire', x: 650, y: TOP + 96, z: ZT + 324, size: 0.5, light: true },
     { id: 'dust_shaft', kind: 'mist', x: 360, y: 2 * LV, z: zOf(2) + 60, size: 1.2 }, { id: 'red_moon', kind: 'glow_red', x: 360, y: TOP + 700, z: ZT + 1500, size: 4 });
   const N = [0, 1], S = [0, -1];
@@ -83,7 +83,7 @@ export function belltower(era = 'now', flags = {}) {
     },
     spawns: { default: { x: 360, z: 80, face: N, section: 'stairs' }, bottom: { x: 360, z: 80, face: N, section: 'stairs' }, top: { x: 360, z: ZT + 60, face: N, section: 'top' } },
     exits: [{ id: 'to_eshville', ...rect(290, 0, 140, 36), to: 'eshville_' + era, spawn: 'from_belltower', label: '성당 앞', locked: null }],
-    actors: fell ? [] : [{ id: 'elise', model: 'elise', x: 276, z: ZT + 226, face: S, talk: 'elise.promise', pose: 'idle' }],   // at the rope (DATA_FORMAT 12)
+    actors: fell ? [] : [{ id: 'elise', model: 'elise', x: 232, z: ZT + 222, face: S, talk: 'elise.promise', pose: 'idle' }],   // at the rope (DATA_FORMAT 12)
     enemies: bats,
     triggers: fell ? [] : [{ id: 'tower_roost', ...rect(0, zOf(2), W, 50), event: 'tower.roost', wake: 'tower_roost' }, { id: 'tower_top', ...rect(0, ZT + 20, W, 60), event: 'tower.top', wake: 'tower_bats' }],
     interact: [],

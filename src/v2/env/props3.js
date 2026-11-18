@@ -5,6 +5,7 @@
 import { Frame, hash } from './geo.js';
 import { PROPS } from './props.js';
 import { bakedDef, bakedProp } from './baked.js';
+import { BAKED_ARGS, BAKED_EXTRA } from './props2.js';
 
 const fx = (G) => G.fx ?? (G.fx = { glows: [], pools: [], shadows: [] });
 const shadow = (G, x, y, z, rx, rz = rx * 0.62, a = 0.5) => fx(G).shadows.push({ x, y, z, rx, rz, a });
@@ -108,8 +109,9 @@ Object.assign(PROPS, {
   rope(G, x, y, z, o = {}) {
     const L = o.len ?? 300;
     if (o.chain) { for (let yy = y; yy < y + L; yy += 12) G.tube('metal', [x + ((yy / 12) & 1 ? 1.6 : -1.6), yy, z], [x + ((yy / 12) & 1 ? -1.6 : 1.6), Math.min(y + L, yy + 12), z], 1.8, 1.8, 4, { tint: IRON, vary: 0, keep: true }); return; }
-    G.tube('cloth', [x + 3, y, z - 2], [x, y + L, z], 2.6, 2.6, 5, { tint: [0.95, 0.82, 0.6], keep: true, vary: 0.2 });
-    G.lathe('cloth', x + 3, z - 2, [[4.6, y - 14], [5.2, y - 6], [2.8, y + 2]], 6, { tint: [0.8, 0.3, 0.26], vary: 0.1 });   // the red grip at the end of the bell rope
+    const r = o.r ?? 2.6;
+    G.tube('cloth', [x + 3, y, z - 2], [x, y + L, z], r, r, 5, { tint: [0.95, 0.82, 0.6], keep: true, vary: 0.2 });
+    G.lathe('cloth', x + 3, z - 2, [[r * 1.8, y - 14], [r * 2, y - 6], [r * 1.1, y + 2]], 6, { tint: [0.8, 0.3, 0.26], vary: 0.1 });   // the red grip at the end of the bell rope
   },
   /** A hanging bat cluster under a beam (deco): dark folded shapes, a few red eye points. o.n */
   roost(G, x, y, z, o = {}) {
@@ -197,6 +199,17 @@ Object.assign(PROPS, {
     for (let i = 0; i < n; i++) G.box('wood', x - w, y, z - L / 2 + L * i / n, x + w, y + h * (i + 1) / n, z - L / 2 + L * (i + 1) / n, { faces: 'FLRT', vary: 0.3, tint: [0.8, 0.68, 0.6] });
   },
 });
+
+// The generated cart: the decimated model joins its two thin shafts into one flat wedge (ENV_KIT 17 "still weak"). The wedge's 13 triangles are left out
+// (model units: beyond x 27, under y 56) and two round shafts with an iron band are built in their place.
+BAKED_ARGS.cart = (o) => ({ ...o, drop: (mx, my) => mx > 27 && my < 56 });
+BAKED_EXTRA.cart = (G, x, y, z, o, s) => {
+  const fl = o.flip ? -1 : 1, c = Math.cos(o.rot ?? 0), sn = Math.sin(o.rot ?? 0), P = (mx, my, mz) => [x + c * mx * fl * s + sn * mz * s, y + my * s, z - sn * mx * fl * s + c * mz * s];
+  for (const mz of [-30, 31]) {
+    G.tube('timber', P(18, 47, mz), P(88, 33, mz), 3.3 * s, 2.5 * s, 5, { keep: true, vary: 0.25, tint: [0.78, 0.66, 0.56] });
+    G.tube('metal', P(79, 34.8, mz), P(83, 34, mz), 3.4 * s, 3.3 * s, 5, { keep: true, vary: 0, tint: IRON });
+  }
+};
 
 /** names of generated models that take over a code-built prop under another name when the pack has them (build.js FALLBACK goes the other way) */
 export const GEN_ALIAS = { stall: 'stall2', wreck: 'wreck2', niche: 'skullwall' };

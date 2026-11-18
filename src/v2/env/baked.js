@@ -44,7 +44,12 @@ export function bakedProp(G, name, x, y, z, o = {}) {
     W[q] = x + c * px + sn * pz; W[q + 1] = y + V[q + 1] * s; W[q + 2] = z - sn * px + c * pz;
     W[q + 3] = c * nx + sn * nz; W[q + 4] = V[q + 4]; W[q + 5] = -sn * nx + c * nz; W[q + 6] = V[q + 6]; W[q + 7] = V[q + 7];
   }
-  let J = I; if (fl < 0) { J = new Uint16Array(I.length); for (let t = 0; t < I.length; t += 3) { J[t] = I[t]; J[t + 1] = I[t + 2]; J[t + 2] = I[t + 1]; } }
+  let J = I;
+  if (o.drop) {   // o.drop(x, y, z) in the model's own units: triangles whose middle it accepts are left out (the cart's melted shafts - props3.js builds real ones)
+    const K = []; for (let t = 0; t < I.length; t += 3) { const p = I[t] * 8, q = I[t + 1] * 8, r = I[t + 2] * 8; if (!o.drop((V[p] + V[q] + V[r]) / 3, (V[p + 1] + V[q + 1] + V[r + 1]) / 3, (V[p + 2] + V[q + 2] + V[r + 2]) / 3)) K.push(I[t], I[t + 1], I[t + 2]); }
+    J = new Uint16Array(K);
+  }
+  if (fl < 0) { const S = J; J = new Uint16Array(S.length); for (let t = 0; t < S.length; t += 3) { J[t] = S[t]; J[t + 1] = S[t + 2]; J[t + 2] = S[t + 1]; } }
   const lit = o.lit !== false, gc = o.c ?? d.glow?.c ?? [1, 0.72, 0.36];
   G.mesh('props', W, J, { tint: o.tint, k: o.k ?? 1, E, emisK: lit ? 1.45 : 0.22, emisTint: lit && o.c ? [0.55 + 0.45 * o.c[0], 0.55 + 0.45 * o.c[1], 0.55 + 0.45 * o.c[2]] : null });
   if (lit && d.glow && d.glowAt) {   // glow sprite and light pool at the glowing part (the light itself is the part's `light`)
