@@ -34,7 +34,7 @@ Final answer = your report (plain text, English, short Korean summary for the ow
 `
 
 const BUILD = COMMON + `
-@@START_NOTE@@
+START NOTE: the main session builds a release from this tree until 19:52 UTC. Until then (look at date -u) change NO existing file anywhere in the repo, create nothing under assets/, start no headless browser and run no check that takes more than a few seconds; read, plan, and write NEW files only under src/v2/ or tools/v2/ (a new file that nothing imports yet is fine). After 19:52 UTC work normally; your time box counts from 19:52.
 YOUR LANE: WORLD-LOOK. Progress log: /tmp/claude-0/v2/look_progress.md. Captures: /tmp/claude-0/v2/look/. Time box: 120 minutes from start. Note the commit you start from (git rev-parse --short HEAD) — it is your "before".
 
 Deliver, in priority order:
