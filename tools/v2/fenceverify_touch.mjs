@@ -23,6 +23,7 @@ await import('../../src/v2/env/props2.js'); await import('../../src/v2/env/props
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => { if (v.startsWith('--')) a.push([v.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true]); return a; }, []));
 const DEV = String(args.dev || 'fold_open'), OUT = String(args.out || '/tmp/claude-0/v2/fenceverify'), AREAS_L = String(args.areas || 'eshville_now,graveyard_now').split(','), SHOTS = String(args.shots ?? '1') !== '0';
+const ONLY = args.only ? new RegExp(String(args.only)) : null, SHOT_RE = new RegExp(String(args.shotre || 'p90|knock|roll|jump|pass|end[we]$|_in$|cheek'));   // --only <regex>: run only the cases whose name matches; --shotre: which cases are captured (failures always)
 const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', GL_ARGS = ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'];
 const HR = 14, HH = 92, TOL = 0.5;
 fs.mkdirSync(OUT, { recursive: true });
@@ -135,7 +136,7 @@ try {
     // a per-frame recorder of the hero (x, y, z) in the page
     await page.evaluate(() => { const v = window.__v2; window.__fv = { on: false, log: [] }; const tick = () => { const R = window.__fv; if (R.on) { const h = v.hero; R.log.push([h.x, h.y, h.z]); } requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
     const R = out.areas[id] = { cases: [], errors: errs };
-    for (const [name, X, Z, wx, wz, mode, HOLD, pass] of casesFor(id)) {
+    for (const [name, X, Z, wx, wz, mode, HOLD, pass] of casesFor(id).filter((c) => !ONLY || ONLY.test(c[0]))) {
       // the start must be a spot the hero can reach in this area (reach grid as world_validate) - else the case is skipped (the far side of a front fence)
       if (!g.reachable(X, Z)) { R.cases.push({ name, skipped: 'start not reachable', from: [X, Z] }); console.log(`${DEV} ${id} ${name.padEnd(16)} skipped: (${X},${Z}) not reachable`); continue; }
       total++;
@@ -159,7 +160,7 @@ try {
       for (const [x, y, z] of rec.log) { const [q, k] = worstPen(PC, x, z, y); if (q > worst) { worst = q; wAt = [Math.round(x * 10) / 10, Math.round(y), Math.round(z * 10) / 10]; wKind = k ? `${k.kind}@${k.P.x ?? k.P.x0},${k.P.z ?? k.P.z0}` : null; } }
       const travel = rec.log.length ? Math.hypot(rec.end[0] - X, rec.end[2] - Z) : 0;
       let shot = null;
-      if (SHOTS && (worst > TOL || /p90|knock|roll|jump|pass|end[we]$|_in$|cheek/.test(name))) {
+      if (SHOTS && (worst > TOL || SHOT_RE.test(name))) {
         const vpw = vp[0], vph = vp[1], cw = Math.min(520, vpw), ch = Math.min(380, vph), cx = Math.max(0, Math.min(vpw - cw, Math.round((rec.p?.x ?? vpw / 2) - cw / 2))), cy = Math.max(0, Math.min(vph - ch, Math.round((rec.p?.y ?? vph / 2) - ch / 2)));
         shot = `${OUT}/${DEV}_${id}_${name}.png`; await page.screenshot({ path: shot, clip: { x: cx, y: cy, width: cw, height: ch } });
       }
@@ -185,6 +186,6 @@ try {
     R.errors = errs; await ctx.close();
   }
 } finally { await browser.close(); srv.close?.(); }
-fs.writeFileSync(`${OUT}/touch_${DEV}.json`, JSON.stringify(out, null, 1));
+fs.writeFileSync(`${OUT}/touch_${DEV}${args.tag ? '_' + args.tag : ''}.json`, JSON.stringify(out, null, 1));
 console.log(`\n${DEV}: ${total} cases, ${bad} FAIL (body overlap > ${TOL} with drawn bars, stuck, or a passage blocked); page errors ${Object.values(out.areas).map((a) => a.errors.length).join('/')}`);
 process.exit(bad ? 1 : 0);

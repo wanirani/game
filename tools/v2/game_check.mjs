@@ -164,7 +164,7 @@ for (const dev of DEVICES) {
       out.attack = run({ right: true }, (i) => (i === 0 ? { left: true, attack: true } : { left: true }), 14);
       B.act = {}; return out;`, 0);
     R.turn = turn;
-    const tOK = turn && turn.reverse.flips === 0 && turn.back.flips === 0 && turn.reverse.maxStep <= 15 / 60 + 0.01 && turn.reverse.doneTick > 6 && turn.reverse.doneTick <= 24 && turn.back.doneTick > 6 && turn.back.doneTick <= 24 && turn.jitter.flips === 0 && Math.abs(turn.jitter.total) > 2.2 && turn.attack.doneTick > 0 && turn.attack.doneTick <= 9;
+    const tOK = turn && turn.reverse.flips === 0 && turn.back.flips === 0 && turn.reverse.maxStep <= 17.5 / 60 + 0.01 &&   /* TURN_RUN of the scene: 15 -> 17.5 rad/s since SPEED-FIRE (11-18 11:55) */ turn.reverse.doneTick > 6 && turn.reverse.doneTick <= 24 && turn.back.doneTick > 6 && turn.back.doneTick <= 24 && turn.jitter.flips === 0 && Math.abs(turn.jitter.total) > 2.2 && turn.attack.doneTick > 0 && turn.attack.doneTick <= 9;
     if (tOK) ok(`turning: a stick reversal turns the body in one direction, at most ${turn.reverse.maxStep} rad per tick, done in ${turn.reverse.doneTick} / ${turn.back.doneTick} ticks (no snap, no wobble); a stick that jumps between two back-diagonals every tick still turns one way (${turn.jitter.flips} direction changes on the way round); with an attack the body faces the hit box in ${turn.attack.doneTick} ticks`);
     else fail(`${dev}: turning ${JSON.stringify(turn)}`);
     }
