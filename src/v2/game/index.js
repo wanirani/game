@@ -35,6 +35,7 @@ import { readPerf } from './perf.js';
 import { UI_LOADER, UI_DEFAULT, STORY_LOADER } from './seams.js';
 import { StoryHost, readSave, clearSave } from './storyhost.js';   // STORY HOOK: the story plug-in, the save, the crossing (docs/v2/ENGINE_API.md 8-10)
 import { elementOf, shotAttach, shotMove, shotDetach, shotImpact } from './magic.js';
+const SKY_CAP = 96;   // rows of the 512-row sky canvas above the painted picture: its top row melting into the area's sky.top (see _sky)
 
 const FOCAL = 880, NEAR = 60, FAR = 24000, DIE_T = 0.9, HERO_MODEL = 'kael';
 const ANIM_MID2 = 900 * 900, ANIM_FAR2 = 1700 * 1700;   // squared distances (from the camera target) where enemy poses drop to 30 Hz / 15 Hz
@@ -416,9 +417,17 @@ export default class V2Game extends Scene {
     if (newSky) {   // sky backdrop: the top of the painted background, melted into this area's fog colour at the bottom (one canvas, one texture, redrawn per area)
       const c = this._skyC ?? (this._skyC = mk(2048, 512)), x = c.getContext('2d'), im = imgs.__sky, f = W.fog.color, fr = Math.round(f[0] * 255), fg = Math.round(f[1] * 255), fb = Math.round(f[2] * 255);
       x.globalCompositeOperation = 'source-over'; x.clearRect(0, 0, 2048, 512);
-      if (im) x.drawImage(im, 0, 0, im.width, im.height * W.sky.crop, 0, 0, 2048, 512);
+      if (im) x.drawImage(im, 0, 0, im.width, im.height * W.sky.crop, 0, SKY_CAP, 2048, 512 - SKY_CAP);
       else { const g = x.createLinearGradient(0, 0, 0, 512); g.addColorStop(0, '#0a1018'); g.addColorStop(1, '#2a1a26'); x.fillStyle = g; x.fillRect(0, 0, 2048, 512); }
-      const g = x.createLinearGradient(0, 380, 0, 512); g.addColorStop(0, `rgba(${fr},${fg},${fb},0)`); g.addColorStop(1, `rgba(${fr},${fg},${fb},1)`); x.fillStyle = g; x.fillRect(0, 380, 2048, 132);
+      {   // the cap above the picture: its top row drawn upward and melted into sky.top (= the clear colour), so a camera that looks above the picture (the opening's moon shot) never sees an edge
+        const t = W.sky.top, tr = Math.round(t[0] * 255), tg = Math.round(t[1] * 255), tb = Math.round(t[2] * 255);
+        x.drawImage(c, 0, SKY_CAP, 2048, 1, 0, 0, 2048, SKY_CAP);
+        const gc = x.createLinearGradient(0, 0, 0, SKY_CAP); gc.addColorStop(0, `rgba(${tr},${tg},${tb},1)`); gc.addColorStop(0.08, `rgba(${tr},${tg},${tb},1)`); gc.addColorStop(1, `rgba(${tr},${tg},${tb},0)`); x.fillStyle = gc; x.fillRect(0, 0, 2048, SKY_CAP);
+        const d = x.getImageData(0, 6, 2048, SKY_CAP - 6), q = d.data; let sd = 0x2f6e2b1;   // one level of fixed noise: a dark, slow gradient shows bands on an OLED otherwise
+        for (let k = 0; k < q.length; k += 4) { sd = (Math.imul(sd, 1664525) + 1013904223) >>> 0; const n = ((sd >>> 24) % 3) - 1; q[k] = Math.max(0, q[k] + n); q[k + 1] = Math.max(0, q[k + 1] + n); q[k + 2] = Math.max(0, q[k + 2] + n); }
+        x.putImageData(d, 0, 6);
+      }
+      const fy = 512 - Math.round(132 * (512 - SKY_CAP) / 512), g = x.createLinearGradient(0, fy, 0, 512); g.addColorStop(0, `rgba(${fr},${fg},${fb},0)`); g.addColorStop(1, `rgba(${fr},${fg},${fb},1)`); x.fillStyle = g; x.fillRect(0, fy, 2048, 512 - fy);   // the same share of the picture as before the cap
       if (!this.skyTex) this.skyTex = glr.texture(() => c, {});
       else if (!glr.lost) { const gl = glr.gl; gl.bindTexture(gl.TEXTURE_2D, this.skyTex.tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c); }
       this._skyKey = skyKey;
@@ -1256,7 +1265,7 @@ export default class V2Game extends Scene {
     this.c3.drawn = drawn; this.c3.culled = culled;
   }
   _sky(b) {
-    const S = this.W.sky, e = this.eye, R = 9000, hw = R * Math.tan(S.span / 2), yb = e[1] + R * Math.tan(S.bottom), hh = hw * 2 * (940 * S.crop) / 2520, P = this.P12;
+    const S = this.W.sky, e = this.eye, R = 9000, hw = R * Math.tan(S.span / 2), yb = e[1] + R * Math.tan(S.bottom), hh = hw * 2 * (940 * S.crop) / 2520 * (512 / (512 - SKY_CAP)), P = this.P12;   // the picture keeps its size; the cap rows stand above it
     for (let i = -1; i <= 1; i++) {
       const x0 = e[0] + (i * 2 - 1) * hw, x1 = x0 + 2 * hw, z = e[2] + R;
       P[0] = x0; P[1] = yb; P[2] = z; P[3] = x1; P[4] = yb; P[5] = z; P[6] = x1; P[7] = yb + hh; P[8] = z; P[9] = x0; P[10] = yb + hh; P[11] = z;

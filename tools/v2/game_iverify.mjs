@@ -310,6 +310,16 @@ try {
     chk(lost && d1 > 60 && mv.length > 0, `before the loss the stick moved the hero ${d0} px; context lost -> restored (${JSON.stringify(g1)}); after it the stick moves him ${d1} px and the attack button swings (${mv.join(' ') || 'nothing'})`);
   }
 
+  // leak: which canvases stay in the page when the scene is left before its first area is ready
+  if (PLAN === 'leak') {
+    await clean(); const o = await open(''); await settle(1200);
+    const list = () => ev(() => [...document.querySelectorAll('canvas')].map((c) => `${c.id || '-'}.${c.className || '-'}<${c.parentElement?.id || c.parentElement?.tagName || '?'}>${c.width}x${c.height}`));
+    const top = () => ev(() => { const g = window.__game, t = g.scenes[g.scenes.length - 1]; return Object.keys(g.registry).find((k) => t instanceof g.registry[k]) ?? '?'; });
+    info('in play: ' + (await list()).join(' | '));
+    await rt(true); await ev(() => window.__v2.scene._leave()); await page.waitForTimeout(2500); info(`after a normal leave (top ${await top()}): ` + (await list()).join(' | '));
+    for (const ms of [60, 370, 900, 2500]) { const n0 = (await list()).length; await ev(() => window.__game.go('v2g', {}, { fade: false })); await page.waitForTimeout(ms); const st0 = await ev(() => ({ top: (() => { const g = window.__game, t = g.scenes[g.scenes.length - 1]; return t?.constructor?.name; })(), ready: !!window.__v2?.ready, hud: window.__v2?.scene?.hudKind ?? null })); await ev(() => { const g = window.__game, t = g.scenes[g.scenes.length - 1]; if (t._leave) t._leave(); else g.go(g.registry.v2pick ? 'v2pick' : 'title', {}, { fade: false }); }); await page.waitForTimeout(3000); const L = await list(); (L.length > n0 ? fail : ok)(`enter, leave after ${ms} ms (then: ${JSON.stringify(st0)}): canvases ${n0} -> ${L.length}, top ${await top()}${L.length > n0 ? ' — ' + L.slice(n0 > 3 ? 2 : 0).join(' | ').slice(0, 700) : ''}`); }
+  }
+
   // ───────────────────────────── kinds: every enemy kind of the real areas ─────────────────────────────
   if (PLAN === 'kinds') {
     const PL = [['eshville_now', ['skeleton_soldier', 'skeleton_mage']], ['eshville_past', ['plague_corpse']], ['graveyard_now', ['bat', 'gravekeeper_armor', 'grave_ghost']], ['ossuary_now', ['banshee_queen']]];
