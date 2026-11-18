@@ -23,8 +23,10 @@ import { candleSpots } from '../env/props2.js';
 const WARM = { body0: [1.3, 1.02, 0.8, 0.88], body1: [1.2, 0.55, 0.22, 0], core0: [1.9, 1.7, 1.3, 0.9], core1: [1.6, 0.9, 0.35, 0], tongue0: [1.55, 0.95, 0.5, 0.9], tongue1: [1.15, 0.3, 0.06, 0], heat0: [1.0, 0.4, 0.09, 0.15], heat1: [0.8, 0.22, 0.04, 0],
   spark0: [3.2, 1.65, 0.45, 1], spark1: [1.8, 0.3, 0.05, 0], ember0: [2.6, 1.0, 0.25, 1], ember1: [1.2, 0.15, 0.03, 0], smoke0: [0.3, 0.16, 0.09, 0.34], light: [1, 0.5, 0.17] };
 // under the cold light of the crypt tonight: the same fire with a blue-white heart and a paler body (the same sheet, other vertex colours)
-const COLD = { body0: [1.15, 1.15, 1.3, 0.9], body1: [0.9, 0.7, 0.6, 0], core0: [1.5, 1.9, 2.6, 0.92], core1: [1.0, 1.15, 1.5, 0], tongue0: [1.2, 1.0, 0.9, 0.88], tongue1: [0.8, 0.42, 0.3, 0], heat0: [0.5, 0.6, 0.9, 0.13], heat1: [0.3, 0.36, 0.6, 0],
-  spark0: [2.4, 2.3, 2.6, 1], spark1: [1.0, 0.7, 0.9, 0], ember0: [2.0, 1.6, 1.7, 1], ember1: [0.8, 0.4, 0.5, 0], smoke0: [0.14, 0.14, 0.17, 0.28], light: [0.75, 0.82, 1] };
+// WORLD-LOOK (fire leftover c): the sheet's own colour is orange at the rim, so near-white tints still read orange under the crypt's blue light. The cold set now takes the red out
+// and pushes the blue (rim: dim grey-blue, heart: blue-white) and its tongues fade to blue, not to red.
+const COLD = { body0: [0.42, 0.92, 2.0, 0.9], body1: [0.2, 0.5, 1.3, 0], core0: [1.0, 1.7, 2.0, 0.92], core1: [0.5, 1.0, 1.9, 0], tongue0: [0.36, 0.86, 2.0, 0.88], tongue1: [0.12, 0.34, 1.1, 0], heat0: [0.2, 0.42, 0.95, 0.13], heat1: [0.1, 0.24, 0.6, 0],
+  spark0: [1.5, 2.0, 2.0, 1], spark1: [0.4, 0.7, 1.3, 0], ember0: [1.1, 1.6, 2.0, 1], ember1: [0.3, 0.5, 1.0, 0], smoke0: [0.12, 0.13, 0.17, 0.28], light: [0.62, 0.8, 1] };
 const fireSet = (k, C) => ({
   k, bw: 66 * k, bh: 100 * k, light: C.light,
   BODY: E({ sprite: SPR.FIRE, aspect: 1.5, fps: [11, 15], shape: 3, rad: 3 * k, h: [0, 5 * k], speed: [10 * k, 22 * k], grav: -26 * k, life: [0.55, 0.72], size: [58 * k, 74 * k], grow: 1.12, c0: C.body0, c1: C.body1, add: 0.66, fadeIn: 0.2, pri: 1, amb: 1, min: 1 }),
