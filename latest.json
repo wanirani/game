@@ -1,14 +1,14 @@
 {
  "versionName": "1.0.0",
- "versionCode": 462406,
- "sha256": "3a32b29e20ca9e708f08779163cc9f8d3a1e883a517de2a35c2a8358c49bd494",
- "bytes": 93937065,
- "url": "downloads/BloodNocturne-1.0.0-462406.apk",
- "built": "2026-11-18T02:46:00Z",
+ "versionCode": 462868,
+ "sha256": "b08e92b4e2216189a8178f051dec0dfd9d70a93e0fac312c6c435ef543ef96b2",
+ "bytes": 93981949,
+ "url": "downloads/BloodNocturne-1.0.0-462868.apk",
+ "built": "2026-11-18T10:40:00Z",
  "signingCertSha256": "efaee88b9ff54bf116c2aae40e358ec073d4a7729261b1b6ac2da5e7a24ed60f",
- "note": "v1 + 3D edition in progress (title menu: 리빌드 시범 → 본 게임). Main game now opens the real areas (Eshville tonight / 1697, Misty Graveyard) with six enemy kinds, townspeople and dialogue, the cut-glass interface by default, sharper rendering, bell crossing between the two nights. v1 backgrounds/CG/portraits are the low-resolution copies in this build (asset tier lo); the v1-only build 438330 with originals is kept alongside.",
+ "note": "v1 + 3D edition in progress (title menu: 리빌드 시범 → 본 게임). Kael now fights with the whip Vigilia (no sword); boss Banshee Queen, bell tower and Ossuary of Farewell areas; tower stairs walkable. Story and save not connected yet. v1 bg/CG/portraits are low-resolution copies in this build (asset tier lo); v1-only build 438330 with originals is kept alongside.",
  "web": {
-  "buildHash": "010027c8cd7f",
-  "version": "1.0.0+20261118T0244.d4e67820"
+  "buildHash": "8a8b02f8377a",
+  "version": "1.0.0+20261118T1034.6dc7f306"
  }
 }
