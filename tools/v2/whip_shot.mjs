@@ -106,7 +106,7 @@ try {
       { t: '멀리서 (키 70 px)도 끈이 보인다', demo: 'combo', at: 0.7, o: { cam: 'far', w: 420, h: 330 } },
       { t: '먼 종 치기', demo: 'far', at: 0.75, o: { cam: 'game', w: 420, h: 330 } },
     ]) singles.push({ t: sg.t, a: await shot(sg.demo, sg.at, sg.o) });
-    const weak = opt('weak', '아직 약한 곳: 이 그림은 모두 시험 화면이다 — 본 게임 장면에는 아직 꽂지 않았다. 손가락이 없어 손잡이가 손바닥에 붙어 보이고, 문 당기기 · 먼 종 치기는 규칙에 없어 흉내만 냈다. 맞아서 멈춘 순간 가까운 적에게는 끈이 거의 곧게 보인다. 기기 속도 · 소리는 확인 못 함.');
+    const weak = opt('weak', '아직 약한 곳: 이 그림은 모두 시험 화면이다 — 본 게임 장면에는 아직 꽂지 않았다. 손가락이 없어 손잡이가 손바닥에 붙어 보이고, 문 당기기 · 먼 종 치기는 규칙에 없어 흉내만 냈다. 공격 동작이 아직 검을 든 동작이라 손이 몸 뒤에 남는 기술이 있다. 기기 속도 · 소리는 확인 못 함.');
     const url = await page.evaluate(async ([strips, singles, weak]) => {
       const img = (u) => new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.src = u; });
       const W = 2000, pad = 14, th = 36; let y = 66; const lay = [];

@@ -48,11 +48,11 @@ export function eshville(era, flags = {}) {
     house({ x: -60, z: 300, w: 420, h: now ? 210 : 190, style: 'rubble', seed: 11, burnt: now, cold: out, lit: 0.5, roofMat: 'thatch', kit: { lower: 'fieldstone' } }),
     house({ x: 360, z: 300, w: 160, h: now ? 96 : 150, style: now ? 'rubble' : 'plaster', seed: 12, burnt: now, cold: out, door: false, lit: 0.6, roofMat: 'thatch', kit: now ? { lower: 'fieldstone', windows: [] } : {} }),
     house({ x: 520, z: 300, w: 440, h: 300, style: 'timber', seed: 13, lit: now ? 0.12 : 0.6, roofMat: past ? 'thatch' : undefined, banner: past ? BLACK : null }),
-    house({ x: 960, z: 300, w: 540, h: now ? 230 : 240, style: 'stone', seed: 14, burnt: now, cold: out, lit: 0.55, sconce: past }));
+    house({ x: 960, z: 300, w: 540, h: now ? 230 : 240, style: 'stone', seed: 14, burnt: now, cold: out, lit: 0.55, sconce: past, roofMat: past ? 'thatch' : undefined }));   // 1697: every roof west of the square is thatch (one roof material per chunk = one draw call less)
   add('street',
     house({ x: 1500, z: 300, w: 580, h: now ? 340 : 300, style: 'timber', seed: 21, base: 7, lit: 0.85, door: 300, sign: true, sconce: true, shop: true, roofMat: past ? 'thatch' : undefined }),   // inn (now) / small tavern (past)
-    house({ x: 2080, z: 300, w: 380, h: now ? 280 : 250, style: 'stone', seed: 22, base: 7, lit: now ? 0.15 : 0.5, door: 190, doorOpt: now && flags.door_pulled ? { open: true } : {}, banner: past ? BLACK : BLUE }),                                  // the house with the trapped villager
-    house({ x: 2460, z: 300, w: 460, h: 250, style: 'rubble', seed: 23, base: 7, lit: 0.7, door: 120, shop: true, sign: { c: [0.3, 0.2, 0.16] }, roofKit: { chimneys: [{ u: 330, t: 0.7, w: 44, h: 60 }] }, kit: { lower: 'fieldstone' } }),   // smithy
+    house({ x: 2080, z: 300, w: 380, h: now ? 280 : 250, style: 'stone', seed: 22, base: 7, lit: now ? 0.15 : 0.5, door: 190, doorOpt: now && flags.door_pulled ? { open: true } : {}, banner: past ? BLACK : BLUE, roofMat: past ? 'thatch' : undefined }),                                  // the house with the trapped villager
+    house({ x: 2460, z: 300, w: 460, h: 250, style: 'rubble', seed: 23, base: 7, lit: 0.7, door: 120, shop: true, sign: { c: [0.3, 0.2, 0.16] }, roofMat: past ? 'thatch' : undefined, roofKit: { chimneys: [{ u: 330, t: 0.7, w: 44, h: 60 }] }, kit: { lower: 'fieldstone' } }),   // smithy
     house({ x: 2920, z: 300, w: 380, h: now ? 320 : 280, style: past ? 'plaster' : 'timber', seed: 24, base: 7, lit: now ? 0.3 : 0.6, faces: 'FR', roofMat: past ? 'thatch' : undefined, kit: { jettySides: 'F' } }));
   add('east',
     house({ x: 3300, z: 900, w: 360, h: 300, style: 'timber', seed: 31, lit: now ? 0.3 : 0.7, faces: 'FR', sconce: true, kit: { jettySides: 'F' } }),
@@ -112,10 +112,10 @@ export function eshville(era, flags = {}) {
     add('out', { t: 'prop', mesh: 'hay', x: 430, z: 262, h: 62, solid: 34, solidZ: 16 }, { t: 'prop', mesh: 'harvest', x: 330, z: 266, h: 46, solid: 30, solidZ: 12 },
       { t: 'prop', mesh: 'cart', x: 820, z: 252, h: 104, solid: 90, solidZ: 36 }, { t: 'prop', mesh: 'goods', x: 1040, z: 250, h: 92, solid: 64, solidZ: 40, solidH: 70, flip: true },
       { t: 'prop', mesh: 'plaguepost', x: 1290, z: 264, h: 200, solid: 10, solidZ: 10 });
-    add('street', { t: 'prop', mesh: 'stall', x: 2240, z: 258, h: 130, w: 140, solid: 72, solidZ: 23 }, { t: 'prop', mesh: 'harvest', x: 1960, z: 266, h: 46, solid: 30, solidZ: 12 }, { t: 'prop', mesh: 'hay', x: 3060, z: 262, h: 62, solid: 34, solidZ: 16 });
+    add('street', { t: 'prop', mesh: 'stall', x: 2240, z: 258, h: 130, w: 140, solid: 72, solidZ: 23 }, { t: 'prop', mesh: 'sacks', x: 1960, z: 266, h: 46, solid: 30, solidZ: 12 }, { t: 'prop', mesh: 'hay', x: 3060, z: 262, h: 62, solid: 34, solidZ: 16 });   // sacks, not a second harvest heap: the triangle budget (35,000 in the worst view)
     add('east', { t: 'prop', mesh: 'plaguepost', x: 4560, z: 200, h: 220, code: true, solid: 10, solidZ: 10 }, { t: 'prop', mesh: 'stall', x: 3500, z: 836, h: 130, w: 140, solid: 72, solidZ: 23 }, { t: 'prop', mesh: 'stall', x: 4300, z: 836, h: 130, w: 140, solid: 72, solidZ: 23 },
-      { t: 'prop', mesh: 'harvest', x: 4180, z: 850, h: 50, solid: 30, solidZ: 12 }, { t: 'prop', mesh: 'hay', x: 3624, z: 850, h: 62, solid: 34, solidZ: 16 }, { t: 'deco', mesh: 'candles', x: 3900, z: 400, light: { r: 180, i: 1.0, y: 20 } });
-    add('east', { t: 'deco', mesh: 'candles', x: 3760, y: 84, z: 1600, n: 7, light: { r: 200, i: 1.1, y: 20 } }, { t: 'deco', mesh: 'candles', x: 4040, y: 84, z: 1600, n: 7, light: { r: 200, i: 1.1, y: 20 } });
+      { t: 'prop', mesh: 'sacks', x: 4180, z: 850, h: 50, solid: 30, solidZ: 12 }, { t: 'prop', mesh: 'hay', x: 3624, z: 850, h: 62, solid: 34, solidZ: 16 }, { t: 'deco', mesh: 'candles', x: 3900, z: 400, light: { r: 180, i: 1.0, y: 20 } });
+    add('east', { t: 'deco', mesh: 'candles', x: 3760, y: 84, z: 1600, n: 5, light: { r: 200, i: 1.1, y: 20 } }, { t: 'deco', mesh: 'candles', x: 4040, y: 84, z: 1600, n: 5, light: { r: 200, i: 1.1, y: 20 } });
     for (const [x, z] of [[900, 150], [2600, 150], [3900, 600]]) anchors.push({ id: 'mist_' + x, kind: 'mist', x, y: 0, z, size: 2 });
   }
   anchors.push({ id: 'mist_gate', kind: 'mist', x: 4590, y: 0, z: 1150, size: 2 });

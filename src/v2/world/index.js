@@ -11,6 +11,7 @@ import { graveyard } from './graveyard.js';
 import { belltower } from './belltower.js';
 import { ossuary } from './ossuary.js';
 import { reachGrid } from './reach.js';
+import { AREA_FOLDS } from './folds.js';
 
 export const ENEMY_KINDS = ['melee', 'ranged', 'skeleton_soldier', 'skeleton_mage', 'plague_corpse', 'grave_ghost', 'gravekeeper_armor', 'bat', 'banshee_queen'];
 export const ACTOR_MODELS = ['alberto', 'edmund', 'elise', 'hadwin', 'hadwin1', 'lotte', 'marta', 'rook', 'sera', 'villager_f', 'villager_m', 'kael'];
@@ -32,6 +33,7 @@ export function finishArea(a) {
   st.start = { x: d.x, z: d.z };
   st.spawns = a.enemies.map((e) => ({ kind: e.kind, x: e.x, z: e.z, yard: !!e.yard, active: !!e.active, group: e.group ?? null, face: e.face ?? null, rise: !!e.rise }));   // rise: lies in the ground until the hero is near (PLAY_API)
   st.decals = st.decals ?? [];
+  if (st.folds == null) st.folds = AREA_FOLDS[a.id] ?? null;   // small materials drawn with a look-alike texture of their chunk (fewer draw calls; ENV_KIT 18)
   // whip rings -> the rules' hook points (src/v2/play/sim.js reads W.hookPoints: { id, x, z, y, h, to: [x, z] })
   st.hookPoints = a.interact.filter((it) => it.kind === 'ring' && it.landing).map((it) => ({ id: it.id, x: it.x, z: it.z, y: it.y ?? 0, h: it.h ?? 150, to: [it.landing.x, it.landing.z] }));
   a.camera = Object.fromEntries(st.sections.map((s) => [s.id, s.cam]));

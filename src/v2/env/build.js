@@ -6,6 +6,7 @@
 // 결과 = B 의 세계(W) + W.env { meshes:[{chunk,tex,data,count}], bounds, fx:{glows,pools,shadows}, decals, stats }.
 import { compileStage, groundAt, validateStage } from '../b/world.js';
 import { Geo, Frame } from './geo.js';
+import { foldPlan } from './mats.js';
 import * as K from './kit.js';
 import { PROPS, WALLPROPS } from './props.js';
 import { bakedDef, bakedProp } from './baked.js';
@@ -46,7 +47,12 @@ const chunkOf = (S, P) => {
 };
 const wallHang = (P) => { const FS = { F: new Frame(P.x, P.z, 0, -1), L: new Frame(P.x, P.z + P.d, -1, 0), R: new Frame(P.x + P.w, P.z, 1, 0) }; return (P.kit?.hang ?? []).map((h) => [FS[h.side ?? 'F'], { ...h, y: (P.y ?? 0) + h.y }]); };
 
-export function compileEnv(S, { cull = true } = {}) {
+/**
+ * fold: the plan of small materials drawn with a look-alike texture their chunk uses anyway (mats.js FOLDS; fewer draw calls). Default = S.folds
+ * ({ chunk: { texture: material } }, written by tools/v2/world_folds.mjs into src/v2/world/folds.js) or nothing; 'auto' (or S.folds === 'auto') = plan it
+ * here with a counting pass (as slow as a second compile: tools and checks only); false = never fold.
+ */
+export function compileEnv(S, { cull = true, fold } = {}) {
   const W = compileStage(toB(S));
   W.mesh = {};                                                           // B 의 납작한 메시는 쓰지 않는다
   W.sprites = W.sprites.filter((s) => s.kind === 'prop' && s.img !== '__mesh');   // 그림판으로 남긴 소품만
@@ -59,8 +65,8 @@ export function compileEnv(S, { cull = true } = {}) {
   }
   // 2) 올린 보도의 밟는 상자를 먼저 (소품·적의 발밑 높이, 바닥 그늘이 이것을 본다)
   for (const P of S.parts) if (P.t === 'pave') W.boxes.push({ x0: P.x, x1: P.x + P.w, z0: P.z, z1: P.z + P.d, y0: (P.y ?? 0) - 2, y1: (P.y ?? 0) + (P.h ?? 7), solid: true, walk: true, kit: true, part: P });
-  // 3) 기하
-  for (const P of S.parts) {
+  // 3) 기하 (WORLD-2: first a counting pass - nothing lit, nothing written - to plan which small materials fold into a texture their chunk uses anyway)
+  const emit = (G, extra, propTris) => { for (const P of S.parts) {
     G.chunk = chunkOf(S, P);
     const y = P.y ?? 0;
     switch (P.t) {
@@ -88,13 +94,17 @@ export function compileEnv(S, { cull = true } = {}) {
       case 'blocker': case 'light': case 'window': break;
       default: throw new Error('모르는 part: ' + P.t);
     }
-  }
+  } };
+  let folds = fold === false ? null : fold && typeof fold === 'object' ? fold : S.folds && typeof S.folds === 'object' ? S.folds : null;
+  if (fold === 'auto' || (fold !== false && S.folds === 'auto')) { const G0 = new Geo(W, { cull }); G0.cnt = new Map(); G0.fx = { glows: [], pools: [], shadows: [] }; emit(G0, [], {}); folds = foldPlan(G0.cnt); }
+  G.fold = folds;
+  emit(G, extra, propTris);
   W.boxes.push(...extra);
   for (const sp of W.spawns) { const g = groundAt(W, sp.x, sp.z); sp.y = Number.isFinite(g) ? g : 0; }
   W.start.y = groundAt(W, W.start.x, W.start.z);
   const out = G.done(), per = {};
   for (const m of out.meshes) { const c = per[m.chunk] ?? (per[m.chunk] = { tris: 0, bytes: 0, draws: 0 }); c.tris += m.count / 3; c.bytes += m.data.byteLength; c.draws++; }
-  W.env = { meshes: out.meshes, bounds: out.bounds, fx: G.fx, decals: S.decals ?? [], stats: { tris: out.tris, bytes: out.meshes.reduce((a, m) => a + m.data.byteLength, 0), chunks: per, textures: [...new Set(out.meshes.map((m) => m.tex))], props: propTris } };
+  W.env = { meshes: out.meshes, bounds: out.bounds, fx: G.fx, decals: S.decals ?? [], stats: { tris: out.tris, bytes: out.meshes.reduce((a, m) => a + m.data.byteLength, 0), chunks: per, textures: [...new Set(out.meshes.map((m) => m.tex))], props: propTris, folds } };
   W.stats = { ...W.stats, bTris: W.stats.tris, tris: out.tris, boxes: W.boxes.length };
   return W;
 }

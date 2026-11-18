@@ -309,7 +309,7 @@ export function createPad(game, opts = {}) {
     metrics() {
       return {
         k: S.L?.k, labelPx: S.L?.labelPx, bounds: { ...S.bounds }, shown: S.shown, repaints: S.repaints,
-        buttons: B.map((b) => ({ id: b.id, cx: b.cx, cy: b.cy, d: b.d, label: b.label, labelW: b.lw, labelRect: { x: b.cx - b.lw / 2, y: b.cy + b.d / 2 + S.L.labelPx * 0.12 - S.L.labelPx * 0.75, w: b.lw, h: S.L.labelPx * 1.5 }, down: b.down, cd: b.cd, disabled: b.disabled, icon: b.icon })),
+        buttons: B.map((b) => ({ id: b.id, cx: b.cx, cy: b.cy, d: b.d, label: b.label, labelW: b.lw, labelRect: { x: b.cx - b.lw / 2, y: b.cy + b.d / 2 + (S.L?.labelPx ?? 0) * 0.12 - (S.L?.labelPx ?? 0) * 0.75, w: b.lw, h: (S.L?.labelPx ?? 0) * 1.5 }, down: b.down, cd: b.cd, disabled: b.disabled, icon: b.icon })),
         stick: S.L ? { ...S.L.stick, live: S.stick.live } : null,
       };
     },

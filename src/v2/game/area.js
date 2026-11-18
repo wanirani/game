@@ -55,18 +55,20 @@ function addBoxes(W, def) {
     B.push({ x0: a.x - r, x1: a.x + r, z0: a.z - r, z1: a.z + r, y0: g - 20, y1: g + 110, solid: !a.when, walk: false, actor: a.id });
   }
 }
-export async function loadArea(id = DEFAULT_AREA) {
+/** flags = the story flags the area is built from (AREA_FORMAT 13: AREAS[id](flags) — a shut gate, a mended stair ...). */
+export async function loadArea(id = DEFAULT_AREA, flags = null) {
   let def = null, got = id;
   if (WORLD_LOADER) {
     try {
       const m = await WORLD_LOADER(); let f = m.AREAS?.[id];
       if (!f) { console.warn('[v2g] no area "' + id + '" in the world module, using the test route'); got = TEST_AREA; f = m.AREAS?.[TEST_AREA]; }
-      def = f ? await f() : null;
+      def = f ? await f(flags ? { ...flags } : {}) : null;
     } catch (e) { console.warn('[v2g] area "' + id + '" failed to load, using the test route:', String(e?.message ?? e)); def = null; }
   }
   if (!def) got = TEST_AREA;
   const stage = def ? fillStage(def, def.stage ?? def) : STAGE;
   const W = compileEnv(stage);
+  W.hookPoints = Array.isArray(stage.hookPoints) ? stage.hookPoints : [];   // whip rings (interact kind 'ring') -> the rules' hook points (Sim reads W.hookPoints)
   if (def) addBoxes(W, def);
   uniformBoxes(W);
   const flatProps = W.sprites.filter((s) => s.kind === 'prop').map((s) => ({ img: s.img, x: s.x, z: s.z }));
@@ -76,6 +78,21 @@ export async function loadArea(id = DEFAULT_AREA) {
     rooms: def?.rooms ?? null, room: typeof def?.room === 'string' ? def.room : null, music: def?.music ?? null,
     spawns: def?.spawns ?? {}, exits: arr(def?.exits), triggers: arr(def?.triggers), interact: arr(def?.interact), actors: arr(def?.actors), anchors: arr(def?.anchors), flatProps,
   };
+}
+/** which single story flag of this area opens that exit? -> { flag: true } | null. Used by the stand-in rule while no story is
+ *  plugged in (the arena is cleared -> the key-locked exit opens): the area is then rebuilt in the state the story would give it. */
+export async function flagsThatOpen(id, flags, exitId) {
+  if (!WORLD_LOADER) return null;
+  try {
+    const m = await WORLD_LOADER(), f = m.AREAS?.[id], names = m.AREA_FLAGS?.[id] ?? [];
+    if (!f) return null;
+    for (const n of names) {
+      if (flags?.[n]) continue;
+      const a = await f({ ...(flags ?? {}), [n]: true }), x = (a?.exits ?? []).find((q) => q.id === exitId);
+      if (x && !x.locked) return { [n]: true };
+    }
+  } catch (e) { console.warn('[v2g] area states of "' + id + '":', String(e?.message ?? e)); }
+  return null;
 }
 /** does the world module know this area? (exits to areas that are not built yet only show their label) */
 export async function hasArea(id) {

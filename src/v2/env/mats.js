@@ -51,3 +51,42 @@ export const KMATS = {
   coal: { tex: 'k_trim', reg: 'coal', tile: 40, tint: [1.7, 1.3, 1.0] },
   white: { tex: 'k_trim', reg: 'white', tile: 1e6, tint: [1, 1, 1] },
 };
+
+// ───────────── WORLD-2: folding small materials (fewer draw calls per chunk - docs/v2/ENV_KIT.md 18) ─────────────
+/** average colour of each texture as the scenes load it (0..1; a TRIM piece by its name): keeps the look when a material is drawn with another texture */
+export const TEX_AVG = {
+  wood: [0.238, 0.22, 0.219], dirt: [0.278, 0.258, 0.24], flag: [0.498, 0.471, 0.418], block: [0.386, 0.394, 0.393], brick: [0.237, 0.25, 0.262],
+  k_planks: [0.341, 0.282, 0.249], k_soil: [0.274, 0.24, 0.198], k_flag: [0.462, 0.455, 0.44], k_ashlar: [0.436, 0.438, 0.45], k_rubble: [0.442, 0.422, 0.395], k_cobworn: [0.307, 0.27, 0.225],
+  timber: [0.329, 0.235, 0.162],
+};
+/**
+ * [texture, the most triangles it may have in one chunk to be folded, look-alike materials in order of preference].
+ * When a chunk holds that texture with no more triangles than the limit, its faces are drawn with the first look-alike whose texture the chunk uses
+ * anyway (and which is not itself small): one draw call less for that chunk. Colour is kept by the ratio of the two textures' average colours.
+ */
+export const FOLDS = [
+  ['wood', 460, ['planks', 'timber']],
+  ['dirt', 120, ['soil', 'cobworn', 'slabs', 'flags', 'stone']],
+  ['flag', 130, ['flags', 'stone']],
+  ['k_ashlar', 90, ['stone', 'fieldstone']],
+  ['brick', 120, ['fieldstone', 'stone']],
+];
+/** counts = Map('chunk|texture' -> triangles) from a counting pass -> { chunk: { texture: look-alike material name } } */
+export function foldPlan(counts) {
+  const per = {}, plan = {};
+  for (const [k, n] of counts) { const i = k.indexOf('|'), c = k.slice(0, i); (per[c] ?? (per[c] = {}))[k.slice(i + 1)] = n; }
+  for (const c of Object.keys(per)) {
+    const T = per[c], small = new Set(FOLDS.filter(([t, max]) => T[t] > 0 && T[t] <= max).map(([t]) => t));
+    for (const [t, , subs] of FOLDS) {
+      if (!small.has(t)) continue;
+      const s = subs.find((m) => { const x = KMATS[m].tex; return x !== t && T[x] > 0 && !small.has(x); });
+      if (s) (plan[c] ?? (plan[c] = {}))[t] = s;
+    }
+  }
+  return plan;
+}
+/** the material M drawn with look-alike S: S's texture, tile and piece; M's tint (also a tint given per call) times the colour ratio */
+export function foldMat(M, S) {
+  const a = TEX_AVG[M.reg ?? M.tex], b = TEX_AVG[S.reg ?? S.tex], cl = (v) => Math.max(0.5, Math.min(1.9, v));
+  return { ...S, tint: M.tint, mul: a && b ? [cl(a[0] / b[0]), cl(a[1] / b[1]), cl(a[2] / b[2])] : [1, 1, 1] };
+}

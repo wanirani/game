@@ -3,7 +3,7 @@
 // 빛은 꼭짓점마다 굽는다(B 의 lightAt: 달빛 + 주변광 + 점광) × 그늘(ao) × 재질 색 × 얼룩 잡음. 실행 중 빛 계산 0.
 // 감기 규칙: 바깥에서 볼 때 du 가 오른쪽·dv 가 위 (B 와 같다: dv × du = 바깥 법선). 어긋나면 스스로 뒤집는다.
 import { VERT_BYTES, lightAt } from '../b/world.js';
-import { KMATS, TRIM } from './mats.js';
+import { KMATS, TRIM, foldMat } from './mats.js';
 
 class Writer {
   constructor() { this.cap = 2048; this.n = 0; this.buf = new ArrayBuffer(this.cap * VERT_BYTES); this.f = new Float32Array(this.buf); this.u = new Uint8Array(this.buf); }
@@ -39,6 +39,16 @@ export class Geo {
     this.shade = null;   // (x,y,z,n) → 배율: 지금 짓는 덩어리에 거는 그늘 (처마 밑 · 벽 밑동 …)
     this.tintMul = null; // [r,g,b] 지금 짓는 덩어리의 색조 (집마다 다르게)
     this.lift = false;   // true 면 구운 빛을 들어 올린다 (소품)
+    this.cnt = null;     // Map('chunk|tex' -> triangles): a counting pass (nothing is lit or written) - build.js uses it to plan the folds
+    this.fold = null;    // { chunk: { texture: look-alike material } } (mats.js foldPlan): small materials are drawn with a texture the chunk uses anyway
+    this._fm = new Map();
+  }
+  /** the material of a name, folded into its look-alike in this chunk when the plan says so */
+  _m(mat) {
+    const M = KMATS[mat]; if (!M) throw new Error('unknown material: ' + mat);
+    const f = this.fold && this.fold[this.chunk], s = f && f[M.tex]; if (!s) return M;
+    const k = s + '<' + mat; let X = this._fm.get(k); if (!X) { X = foldMat(M, KMATS[s]); this._fm.set(k, X); }
+    return X;
   }
   _wr(tex) { const k = this.chunk + '|' + tex; let w = this.out.get(k); if (!w) { w = new Writer(); w.chunk = this.chunk; w.tex = tex; this.out.set(k, w); } return w; }
   /** 꼭짓점 하나의 색 */
@@ -51,10 +61,12 @@ export class Geo {
     if (o.shade) k *= o.shade(p[0], p[1], p[2], n);
     if (p[1] < -1) k *= Math.max(0.1, 1 + p[1] / 170);                                   // 구덩이 속은 아래로 갈수록 어둡게 (B 와 같다)
     if (o.vary !== 0) { const a = o.vary ?? 0.16; k *= 1 - a * 0.5 + a * vnoise((p[0] + p[2] * 0.7) / 150 + 3.1, (p[1] + p[2] * 0.3) / 110 + 7.7); }
-    const t = o.tint ?? M.tint, tm = this.tintMul;
+    const t = o.tint ?? M.tint, tm = this.tintMul, mu = M.mul;
+    if (mu) { c[0] *= mu[0]; c[1] *= mu[1]; c[2] *= mu[2]; }   // a folded material: the colour ratio of the two textures
     return tm && !o.noTintMul ? [c[0] * k * t[0] * tm[0], c[1] * k * t[1] * tm[1], c[2] * k * t[2] * tm[2]] : [c[0] * k * t[0], c[1] * k * t[1], c[2] * k * t[2]];
   }
   _emit(M, P, UV, N, o, flip) {
+    if (this.cnt) { const k = this.chunk + '|' + M.tex, n = P.length === 3 ? 1 : 2; this.cnt.set(k, (this.cnt.get(k) ?? 0) + n); this.tris += n; return; }
     const wr = this._wr(M.tex), fog = o.fog != null ? Math.round(o.fog * 255) : o.emis ? 190 : 255, n1 = Array.isArray(N[0]) ? null : N;
     let b = this.bounds.get(this.chunk); if (!b) { b = [1e9, 1e9, 1e9, -1e9, -1e9, -1e9]; this.bounds.set(this.chunk, b); }
     const C = P.map((p, i) => this._col(M, p, n1 ?? N[i], o));
@@ -82,7 +94,7 @@ export class Geo {
   /** 평행사변형 한 장. p = 왼아래, du = 오른쪽, dv = 위 (바깥에서 볼 때). o.cell > 0 이면 그 크기로 쪼개 빛을 곱게 굽는다 */
   quad(mat, p, du, dv, n, o = {}) {
     if (this._hidden(n, p[1] + dv[1] * 0.5, o)) return;
-    const M = KMATS[mat]; if (!M) throw new Error('모르는 재질: ' + mat);
+    const M = this._m(mat);
     const flip = dot(cross(dv, du), n) < 0, ua = norm(du), va = norm(dv);
     const lu = Math.hypot(du[0], du[1], du[2]), lv = Math.hypot(dv[0], dv[1], dv[2]), cell = M.reg ? 0 : (o.cell ?? 0);
     const nu = cell ? Math.max(1, Math.ceil(lu / cell - 0.01)) : 1, nv = cell ? Math.max(1, Math.ceil(lv / cell - 0.01)) : 1;
@@ -95,14 +107,14 @@ export class Geo {
   /** 임의의 네 점 (a 왼아래 → b 오른아래 → c 오른위 → d 왼위). o.ns = 꼭짓점별 법선(둥근 면) */
   quad4(mat, a, b, c, d, n, o = {}) {
     if (this._hidden(n, (a[1] + c[1]) / 2, o)) return;
-    const M = KMATS[mat]; if (!M) throw new Error('모르는 재질: ' + mat);
+    const M = this._m(mat);
     const flip = dot(cross(sub(c, b), sub(b, a)), n) < 0, P = [a, b, c, d];
     const ua = o.ua ?? norm(sub(b, a)), va = o.va ?? norm(sub(d, a));
     this._emit(M, P, o.uv ?? this._uvs(M, P, ua, va, o), o.ns ?? n, o, flip);
   }
   tri(mat, a, b, c, n, o = {}) {
     if (this._hidden(n, (a[1] + b[1] + c[1]) / 3, o)) return;
-    const M = KMATS[mat]; if (!M) throw new Error('모르는 재질: ' + mat);
+    const M = this._m(mat);
     const flip = dot(cross(sub(c, b), sub(b, a)), n) < 0, P = [a, b, c];
     let ua = o.ua, va = o.va;
     if (!ua) { if (Math.abs(n[1]) > 0.7) { ua = [1, 0, 0]; va = [0, 0, 1]; } else { ua = norm([-n[2], 0, n[0]]); va = [0, 1, 0]; } }
@@ -126,7 +138,7 @@ export class Geo {
   }
   /** 회전체: prof = [[반지름, 높이], …] 아래→위. sides 각형. 뒤쪽 면은 만들지 않는다. o.cap = 맨 위를 덮는다, o.sq = z 방향 납작 비율 */
   lathe(mat, cx, cz, prof, sides = 8, o = {}) {
-    const T = (KMATS[mat].tile ?? 128), sq = o.sq ?? 1, a0 = o.a0 ?? Math.PI / sides;
+    const T = (this._m(mat).tile ?? 128), sq = o.sq ?? 1, a0 = o.a0 ?? Math.PI / sides;
     const pt = (r, y, a) => [cx + Math.cos(a) * r, y, cz + Math.sin(a) * r * sq];
     for (let i = 0; i < sides; i++) {
       const a = a0 + i * 2 * Math.PI / sides, b = a + 2 * Math.PI / sides, am = (a + b) / 2;
@@ -139,7 +151,7 @@ export class Geo {
         // 바깥에서 볼 때 오른쪽 = 각이 줄어드는 쪽
         const P = [pt(r0, y0, b), pt(r0, y0, a), pt(r1, y1, a), pt(r1, y1, b)];
         const rr = Math.max(r0, r1), u0 = (i + 1) * rr * 2 * Math.PI / sides / T, u1 = i * rr * 2 * Math.PI / sides / T;
-        const M = KMATS[mat], uv = M.reg ? null : [[u0, -y0 / T], [u1, -y0 / T], [u1, -y1 / T], [u0, -y1 / T]];
+        const M = this._m(mat), uv = M.reg ? null : [[u0, -y0 / T], [u1, -y0 / T], [u1, -y1 / T], [u0, -y1 / T]];
         const oo = { ...o, uv: uv ?? undefined, ns: o.flat ? undefined : [nB, nA, nA, nB], keep: true };
         if (r1 < 0.01) this.tri(mat, P[0], P[1], P[2], nm, { ...oo, uv: uv ? [uv[0], uv[1], uv[2]] : undefined, ns: o.flat ? undefined : [nB, nA, nm] });
         else if (r0 < 0.01) this.tri(mat, P[0], P[2], P[3], nm, { ...oo, uv: uv ? [uv[0], uv[2], uv[3]] : undefined, ns: o.flat ? undefined : [nm, nA, nB] });
@@ -167,7 +179,8 @@ export class Geo {
    * 꼭짓점마다 그 자리의 빛을 굽고, 카메라가 못 보는 뒤쪽 삼각형은 버린다. o.E[i] = 1 인 꼭짓점은 빛을 굽지 않고 밝기 o.emisK 로 둔다 (등불 유리 · 숯불).
    */
   mesh(mat, V, I, o = {}) {
-    const M = KMATS[mat]; if (!M) throw new Error('모르는 재질: ' + mat);
+    const M = this._m(mat);
+    if (this.cnt) { const k = this.chunk + '|' + M.tex; this.cnt.set(k, (this.cnt.get(k) ?? 0) + I.length / 3); return; }
     const wr = this._wr(M.tex), nv = V.length / 8, C = new Float32Array(nv * 3), done = new Uint8Array(nv), oo = { vary: 0, ...o };
     let b = this.bounds.get(this.chunk); if (!b) { b = [1e9, 1e9, 1e9, -1e9, -1e9, -1e9]; this.bounds.set(this.chunk, b); }
     const cull = this.cull && !o.keep, E = o.E ?? null, ek = o.emisK ?? 1.45, et = o.emisTint ?? [1, 1, 1];

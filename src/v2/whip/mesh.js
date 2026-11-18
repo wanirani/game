@@ -51,6 +51,11 @@ export function writeWhipMesh(whip, vtx, alpha, tmp) {
   let total = 0;
   for (let i = 1; i < n; i++) { const p = i * 3; total += Math.hypot(N[p] - N[p - 3], N[p + 1] - N[p - 2], N[p + 2] - N[p - 1]); }
   const sections = (n - 1) * sub + 1;
+  // crack ripple - drawn only (the simulation, the tip, the events and the checks never see it): for a moment after the crack a wave runs
+  // down the lash toward the tip, zero at the handle and at the tip. A lash frozen by a hit-stop then reads as a whip mid-crack, not a rod.
+  // It follows whip.flash (1 at the crack, fades in about 0.15 s, frozen while dt = 0), so it needs no state of its own.
+  const rip = whip.mode === 'swing' ? Math.min(1, whip.flash * 1.3) : 0;
+  const ripA = rip > 0.004 ? rip * Math.min(7, total * 0.07) : 0, ripK = 7.85, ripP = (1 - whip.flash) * 7, ripT = Math.max(1, total);
   let run = 0, lx = N[0], ly = N[1], lz = N[2], ttx = 0, tty = 1, ttz = 0;
   for (let j = 0; j < sections; j++) {
     const i = Math.min(n - 2, (j / sub) | 0), u = j / sub - i;
@@ -58,12 +63,19 @@ export function writeWhipMesh(whip, vtx, alpha, tmp) {
     const u2 = u * u, u3 = u2 * u;
     const c0 = -0.5 * u3 + u2 - 0.5 * u, c1 = 1.5 * u3 - 2.5 * u2 + 1, c2 = -1.5 * u3 + 2 * u2 + 0.5 * u, c3 = 0.5 * u3 - 0.5 * u2;
     const d0 = -1.5 * u2 + 2 * u - 0.5, d1 = 4.5 * u2 - 5 * u, d2 = -4.5 * u2 + 4 * u + 0.5, d3 = 1.5 * u2 - u;
-    const x = c0 * N[p0] + c1 * N[p1] + c2 * N[p2] + c3 * N[p3], y = c0 * N[p0 + 1] + c1 * N[p1 + 1] + c2 * N[p2 + 1] + c3 * N[p3 + 1], z = c0 * N[p0 + 2] + c1 * N[p1 + 2] + c2 * N[p2 + 2] + c3 * N[p3 + 2];
+    let x = c0 * N[p0] + c1 * N[p1] + c2 * N[p2] + c3 * N[p3], y = c0 * N[p0 + 1] + c1 * N[p1 + 1] + c2 * N[p2 + 1] + c3 * N[p3 + 1], z = c0 * N[p0 + 2] + c1 * N[p1 + 2] + c2 * N[p2 + 2] + c3 * N[p3 + 2];
     let tx = d0 * N[p0] + d1 * N[p1] + d2 * N[p2] + d3 * N[p3], ty = d0 * N[p0 + 1] + d1 * N[p1 + 1] + d2 * N[p2 + 1] + d3 * N[p3 + 1], tz = d0 * N[p0 + 2] + d1 * N[p1 + 2] + d2 * N[p2 + 2] + d3 * N[p3 + 2];
     const tl = Math.hypot(tx, ty, tz);
     if (tl > 1e-5) { tx /= tl; ty /= tl; tz /= tl; ttx = tx; tty = ty; ttz = tz; } else { tx = ttx; ty = tty; tz = ttz; }
-    run += Math.hypot(x - lx, y - ly, z - lz); lx = x; ly = y; lz = z;
+    run += Math.hypot(x - lx, y - ly, z - lz); lx = x; ly = y; lz = z;   // arc length (and with it the braid pattern) is measured before the ripple
     const q = j / (sections - 1), fromTip = Math.max(0, total - run);
+    if (ripA > 0) {
+      const nx = -ty * tx, ny = 1 - ty * ty, nz = -ty * tz;   // world up made square to the lash (not normalised: a lash that points up or down ripples less)
+      const env = Math.sin(3.1416 * q), ph = ripK * q - ripP, sn = Math.sin(ph), d = ripA * env * sn;
+      const dd = (ripA * (3.1416 * Math.cos(3.1416 * q) * sn + env * ripK * Math.cos(ph))) / ripT;
+      x += nx * d; y += ny * d; z += nz * d;
+      tx += nx * dd; ty += ny * dd; tz += nz * dd; const l2 = Math.hypot(tx, ty, tz) || 1; tx /= l2; ty /= l2; tz /= l2;
+    }
     const rad = 2.45 - 1.4 * Math.pow(q, 0.85) + 0.3 * Math.sin(Math.min(1, q * 5) * 3.1416);    // belly just past the handle, thin at the tip
     const metal = run < 3.2 ? 1 : fromTip < 4.5 ? 1 : fromTip < 6 ? (6 - fromTip) / 1.5 : run < 4.4 ? (4.4 - run) / 1.2 : 0;
     for (let s = -1; s <= 1; s += 2) {

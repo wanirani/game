@@ -25,7 +25,7 @@ import { bindFxSound } from '../feel/fxbridge.js';
 import { GLR, SpriteBatch } from './glr.js';
 import { CharRenderer } from './charr.js';
 import { Cast } from './cast.js';
-import { loadArea, hasArea, roomOf, kitTexPath, DEFAULT_AREA } from './area.js';
+import { loadArea, hasArea, flagsThatOpen, roomOf, kitTexPath, DEFAULT_AREA } from './area.js';
 import { drawDecalSprites as drawEnvDecals, DECAL_ALPHA } from '../env/decals.js';
 import { People, LINES } from './people.js';
 import { Anchors } from './anchors.js';
@@ -67,8 +67,8 @@ export default class V2Game extends Scene {
     try { globalThis.localStorage?.setItem('bn.v2.under', '1'); } catch { /* private mode */ }   // next launch boots with an alpha canvas
     this.story = typeof params?.story === 'function' ? params.story : null; this.ui = { dialog: null }; this.locked = false;
     this.area = null; this.W = null; this.sim = null; this.fx = null; this.cr = null; this.cast = null; this.hud = createBuiltinHud();
-    this.people = new People(); this.anchors = new Anchors(); this.flags = new Set(); this.hidden = new Set(); this.lockOv = new Map(); this.storyFlag = null;
-    this._use = false; this._heroHid = false; this._occ = new Float32Array(0); this._occN = 0; this._caps = { skill: false, bell: false }; this._offT = 0; this._go = null; this.fadeA = 0; this.fadeTo = 0; this._flagFn = (n) => this.flag(n); this._useFn = () => { this._use = true; }; this._skyKey = ''; this._peopleN = 0;
+    this.people = new People(); this.anchors = new Anchors(); this.flags = new Set(); this.hidden = new Set(); this.lockOv = new Map(); this.storyFlag = null; this.worldFlags = {};
+    this._use = false; this._ringTap = false; this._heroHid = false; this._occ = new Float32Array(0); this._occN = 0; this._caps = { skill: false, bell: false }; this._offT = 0; this._go = null; this.fadeA = 0; this.fadeTo = 0; this._flagFn = (n) => this.flag(n); this._useFn = () => { this._use = true; }; this._skyKey = ''; this._peopleN = 0;
     this.heroA = null; this.actors = []; this.pool = new Map(); this._ERef = null;
     this.bridge = bindFxSound(feel); this.feelN = 0; this.lastFeel = null; this._actE = null; this._simSteps = false;
     this.shotL = new Array(32).fill(null); this.shotN = 0;
@@ -125,7 +125,7 @@ export default class V2Game extends Scene {
     try { if (old && old !== this.hud) (old.release ?? old.dispose)?.call(old); } catch { /* already broken */ }
   }
   /** plug the story in: fn(name, data, api); opts.flag(name) answers the actors' `when` flags (otherwise the built-in ones) */
-  setStory(fn, opts) { this.story = typeof fn === 'function' ? fn : null; this.storyFlag = typeof opts?.flag === 'function' ? opts.flag : null; }
+  setStory(fn, opts) { this.story = typeof fn === 'function' ? fn : null; this.storyFlag = typeof opts?.flag === 'function' ? opts.flag : null; if (opts?.flags && typeof opts.flags === 'object') this.setWorldFlags(opts.flags, { reload: false }); }
   /** the cut-glass interface (src/v2/ui): replaces the built-in HUD and hides the v1 pad */
   _loadUi() {
     const g = this.game;
@@ -176,7 +176,7 @@ export default class V2Game extends Scene {
   /** story flag: the story's own answer when plugged in, otherwise the built-in ones ("<section or group>_clear", set by events) */
   flag(name) {
     if (this.storyFlag) { try { return !!this.storyFlag(name); } catch { return false; } }
-    if (this.flags.has(name)) return true;
+    if (this.flags.has(name) || this.worldFlags[name]) return true;
     const i = name.length - 6;
     if (i > 0 && name.indexOf('_clear') === i && this.sim) {
       const E = this.sim.enemies; let seen = false;
@@ -184,6 +184,18 @@ export default class V2Game extends Scene {
       return seen;
     }
     return false;
+  }
+  /**
+   * story flags the areas are built from (AREA_FORMAT 13: a shut gate, a mended stair, who stands where). Kept for the whole visit
+   * and handed to every AREAS[id](flags). When a flag changes, the area the hero stands in is rebuilt in place behind a short fade:
+   * same spot, the fallen stay fallen, health as it was. -> true when a rebuild was started.
+   */
+  setWorldFlags(obj, opts) {
+    let changed = false;
+    for (const k of Object.keys(obj ?? {})) { const v = !!obj[k]; if (!!this.worldFlags[k] !== v) { if (v) this.worldFlags[k] = true; else delete this.worldFlags[k]; changed = true; } }
+    if (!changed || opts?.reload === false || !this.ready || !this.area || this.area.test || this._go) return false;
+    this._go = { to: this.area.id, spawn: null, keep: true, same: true }; this.fadeTo = 1; this.locked = true;
+    return true;
   }
   /** open / close an exit (the story decides; overrides are kept for the whole visit of the scene). areaId defaults to this area. */
   unlockExit(id, areaId) { return this._setLock(id, areaId ?? this.area?.id, null); }
@@ -206,6 +218,7 @@ export default class V2Game extends Scene {
       if (!this.story) this._say({ speaker: t.name, portrait: t.portrait, side: 'left', text: LINES[t.id] ?? LINES[d.model] ?? '……' });
     } else {
       this.emit('interact', { id: d.id, kind: d.kind, event: d.event ?? null, data: d.data ?? null, locked: d.locked ?? null, spot: d });
+      if (d.kind === 'ring') { if (this._caps.skill && this.sim?.hero?.hookId != null) this._ringTap = true; else this._toast('채찍이 닿지 않는다', 'warn'); return; }   // a whip ring: the pill does what the skill button does here
       if (!this.story) {   // until the story is plugged in: name the spot, and remember what it would change
         if (d.event === 'door.pull') this.flags.add('door_pulled');
         if (d.kind === 'rest' && !d.locked && this.sim?.heal) {   // a rest spot: full health, and the hero stands up here after a fall (PLAY-2: sim.heal / sim.respawnAt)
@@ -252,7 +265,7 @@ export default class V2Game extends Scene {
         scene: sc, get sim() { return sc.sim; }, lock(on) { sc.locked = !!on; }, teleport(id) { return globalThis.__v2?.teleport(id); },
         gotoArea(id, spawn, o) { return sc.gotoArea(id, spawn, o); }, fx(n, o) { sc.fx?.play(n, o); }, sound(n, pos) { try { feel.play(n, pos ?? null); } catch { /* no audio */ } }, setDialog(d) { sc.ui.dialog = d ?? null; },
         toast(t, kind) { sc._toast(t, kind); }, unlockExit(id, area) { return sc.unlockExit(id, area); }, lockExit(id, area, key) { return sc.lockExit(id, area, key); }, hideActor(id) { sc.hideActor(id); }, showActor(id) { sc.showActor(id); },
-        heal(n) { return sc.sim?.heal ? sc.sim.heal(n ?? 'full') : 0; }, restAt(x, z, y) { sc.sim?.respawnAt?.(x, z, y); },
+        setFlags(obj, o) { return sc.setWorldFlags(obj, o); }, heal(n) { return sc.sim?.heal ? sc.sim.heal(n ?? 'full') : 0; }, restAt(x, z, y) { sc.sim?.respawnAt?.(x, z, y); },
         wakeGroup(g) { return sc.wakeGroup(g); }, groupLeft(g) { return sc.groupLeft(g); }, bellCross(o) { if (!sc.area?.twin || sc._go) return false; sc._go = { to: sc.area.twin, spawn: null, keep: true, night: true }; sc.fadeTo = 1; sc.locked = true; return true; },
       };
     }
@@ -264,9 +277,18 @@ export default class V2Game extends Scene {
   async gotoArea(id, spawn, opts) {
     if (!this.glr) return false;
     const h = this.sim?.hero, keep = opts?.keepPosition && h ? { x: h.x, z: h.z, face: [h.dirX ?? 1, h.dirZ ?? 0] } : null;
+    let was = null;   // the same area rebuilt in another state (opts.same): who had fallen, the hero's health, whether the arena was done
+    if (opts?.same && this.sim && id === this.area?.id) { was = { dead: new Set(), hp: h.hp, reso: h.reso, done: !!this.sim.done }; for (const e of this.sim.enemies) if (e.dead || e.state === 'dead') was.dead.add(e.kind + '@' + Math.round(e.homeX ?? e.x) + ',' + Math.round(e.homeZ ?? e.z)); }
     this.ready = false; this.state.loading = true;
     this._releaseArea();
     try { await this._load(id, spawn, keep); } catch (e) { if (this.glr) { this.glError = String(e?.message ?? e); console.error('[v2g] area load failed', e); } }
+    if (was && this.ready && this.sim) {
+      const sim = this.sim, hh = sim.hero;
+      for (const e of sim.enemies) if (was.dead.has(e.kind + '@' + Math.round(e.homeX ?? e.x) + ',' + Math.round(e.homeZ ?? e.z))) { e.dead = true; e.hp = 0; e.active = false; }
+      if (was.hp > 0 && !hh.dead) hh.hp = Math.min(hh.hpMax ?? was.hp, was.hp);
+      if (was.reso !== undefined && hh.reso !== undefined) hh.reso = was.reso;
+      if (was.done) sim.done = true;   // the arena stays cleared: no second bell, no second "area.clear"
+    }
     return this.ready;
   }
   // ───────────────────────── DOM layers ─────────────────────────
@@ -313,7 +335,7 @@ export default class V2Game extends Scene {
   }
   async _load(areaId, spawn, keep) {
     const t0 = performance.now(), glr = this.glr, first = !this.tex;
-    const area = await loadArea(areaId), W = area.W, E = W.env;
+    const area = await loadArea(areaId, this.worldFlags), W = area.W, E = W.env;
     if (!this.glr) return;
     for (const x of area.exits) {   // exits: saved lock overrides, and the wall that stands in the box while it is locked
       const k = area.id + '/' + x.id; if (this.lockOv.has(k)) x.locked = this.lockOv.get(k);
@@ -456,7 +478,12 @@ export default class V2Game extends Scene {
     for (const x of this.area?.exits ?? []) {
       if (!this._autoKey(x)) continue;
       const areaId = this.area.id;
-      hasArea(x.to).then((ok) => { if (!ok || !this.glr) return; this._setLock(x.id, areaId, null); if (this.area?.id === areaId) this._toast((x.label ? x.label + ' — ' : '') + '길이 열렸다', 'info'); });
+      hasArea(x.to).then((ok) => (ok ? flagsThatOpen(areaId, this.worldFlags, x.id) : undefined)).then((fl) => {
+        if (fl === undefined || !this.glr || this.area?.id !== areaId) return;
+        this._toast((x.label ? x.label + ' — ' : '') + '길이 열렸다', 'info');
+        if (fl) this.setWorldFlags(fl);          // the world has a state for it (the gate leaves swing open, the blocker goes): rebuild the area in that state
+        else this._setLock(x.id, areaId, null);  // no such state: only the wall in the exit box goes
+      });
     }
   }
   _newActor(kind) { const K = KINDS[kind]; if (!K) return null; const a = this.cast.actor(K.model, K.weapon, { height: K.height, grip: K.grip, scale: K.scale }); if (a) { a.kind = kind; a.e = null; } return a; }
@@ -585,7 +612,7 @@ export default class V2Game extends Scene {
     const t0 = performance.now(), g = this.game;
     if (this._offT > 0) this._offT -= dt;
     if (this.fadeA !== this.fadeTo) this.fadeA = this.fadeTo > this.fadeA ? Math.min(this.fadeTo, this.fadeA + dt / 0.28) : Math.max(this.fadeTo, this.fadeA - dt / 0.5);   // area travel: to black, load, back
-    if (this._go && this.fadeA >= 1) { const go = this._go; this._go = null; this.gotoArea(go.to, go.spawn, go.keep ? { keepPosition: true } : null).then(() => { this.locked = false; this.fadeTo = 0; this._exitBusy = false; if (go.night) this.hud.banner?.('night'); }); return; }
+    if (this._go && this.fadeA >= 1) { const go = this._go; this._go = null; this.gotoArea(go.to, go.spawn, go.keep ? { keepPosition: true, same: !!go.same } : null).then(() => { this.locked = false; this.fadeTo = 0; this._exitBusy = false; if (go.night) this.hud.banner?.('night'); }); return; }
     if (input.pressed('menu') && g.registry.title && !this.hud.modal) { if (this.ready) this._pause(); else this._leave(); if (!this.hud.modal) return; }   // ESC / START: the pause menu (leaving is one of its rows)
     if (!this.ready || !this.glr || this.glr.lost) return;
     const sim = this.sim, inp = this.inp, fx = this.fx;
@@ -601,6 +628,7 @@ export default class V2Game extends Scene {
     inp.skillHeld = !locked && input.down('skill1'); inp.bellHeld = !locked && input.down('ult');
     if (!locked) {
       if (input.pressed('skill1')) { if (this._caps.skill) inp.skill = true; else this._padOff('skill'); }
+      if (this._ringTap) { this._ringTap = false; inp.skill = true; }
       if (input.pressed('ult')) { if (this._caps.bell) inp.bell = true; else this._padOff('bell'); }
       if (this.people.target && (this._use || input.pressed('confirm'))) { inp.attack = false; this._useTarget(); }   // the prompt: a tap on it, or the confirm key
     }

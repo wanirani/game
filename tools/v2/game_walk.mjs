@@ -28,13 +28,18 @@ loadPropsNode();
 const { AREAS } = await import('../../src/v2/world/index.js');
 const { compileEnv } = await import('../../src/v2/env/build.js');
 const { reachGrid } = await import('../../src/v2/world/reach.js');
-async function routeTo(areaId, spawn, pick) {
-  const a = await AREAS[areaId](), W = compileEnv(a.stage), s = a.spawns[spawn] ?? a.spawns.default;
+async function routeTo(areaId, spawn, pick, flags) {
+  const a = await AREAS[areaId](flags ?? {}), W = compileEnv(a.stage), s = a.spawns[spawn] ?? a.spawns.default;
   for (const R of [26, 14]) { const g = reachGrid(W, s.x, s.z, R), p = pick(g, a); if (p) { const path = g.path(p[0], p[1]); if (path) return path; } }
   return null;
 }
-const R1 = await routeTo('eshville_now', 'default', (g, a) => { const x = a.exits.find((q) => q.id === 'to_graveyard'); return g.anyIn(x.x0 + 40, x.x1 - 40, x.z0 + 12, x.z1) ?? g.anyIn(x.x0, x.x1, x.z0, x.z1); });
-const R2 = await routeTo('graveyard_now', 'from_eshville', (g) => g.near(600, 1900, 50));
+// WORLD-2 (11-18 01:20): areas are built from story flags. The cemetery gate of Eshville is shut geometry until flag gate_open — with no
+// story plugged in the scene rebuilds the area in that state when the square arena is cleared, so the route is planned in the open state.
+// The mausoleum (ossuary forecourt) stands on a terrace above the field, reached by the whip ring `depths_ring`: the route ends under the
+// ring and the bot presses the skill button there (the rules throw the whip and land the hero on the terrace).
+const R1 = await routeTo('eshville_now', 'default', (g, a) => { const x = a.exits.find((q) => q.id === 'to_graveyard'); return g.anyIn(x.x0 + 40, x.x1 - 40, x.z0 + 12, x.z1) ?? g.anyIn(x.x0, x.x1, x.z0, x.z1); }, { gate_open: true });
+let RING = null;
+const R2 = await routeTo('graveyard_now', 'from_eshville', (g, a) => { RING = a.interact.find((q) => q.kind === 'ring' && q.landing) ?? null; return g.near(600, 1900, 50) ?? (RING ? g.near(RING.x, RING.z - 70, 150) : null); });
 if (!R1 || !R2) { console.log('FAIL no walkable route from the reach grid', !!R1, !!R2); process.exit(1); }
 console.log(`routes: eshville_now ${R1.length} waypoints (to ${R1[R1.length - 1].map(Math.round)}), graveyard_now ${R2.length} waypoints (to ${R2[R2.length - 1].map(Math.round)})`);
 
@@ -92,9 +97,9 @@ for (const dev of DEVICES) {
       const v = window.__v2, B = window.__bot; B.opt.giveUp = 1500; B.opt.hunt = () => { const x = v.exits.find((q) => q.id === 'to_graveyard'); return !!(x && x.locked); };
       B.seen = {}; B.touchSetup(x0, y0, 56, btn);
     }, [sx, sy, pad.buttons]);
-    const sections = [], cap = new Set(), t0 = Date.now(); let r = null, phase = 1, reached = false, lockedSeen = false, promptSeen = null;
+    const sections = [], cap = new Set(), t0 = Date.now(); let r = null, phase = 1, reached = false, lockedSeen = false, promptSeen = null, hooks = 0;
     for (let i = 0; i < 400 && Date.now() - t0 < 540000; i++) {
-      r = await page.evaluate(() => { const B = window.__bot, v = window.__v2, o = B.touchRun(180, 45); if (v.ready) { o.exit = v.exits.map((x) => x.id + ':' + (x.locked ?? 'open')).join(' '); o.prompt = v.prompt?.id ?? null; o.near = (v.scene.area.exits.find((x) => x.id === 'to_ossuary') ?? {})._near ?? false; } return o; });
+      r = await page.evaluate(() => { const B = window.__bot, v = window.__v2, o = B.touchRun(180, 45); if (v.ready) { o.hook = v.scene.sim.hero.hookId ?? null; o.flags = Object.keys(v.scene.worldFlags ?? {}).join('+'); o.exit = v.exits.map((x) => x.id + ':' + (x.locked ?? 'open')).join(' '); o.prompt = v.prompt?.id ?? null; o.near = (v.scene.area.exits.find((x) => x.id === 'to_ossuary') ?? {})._near ?? false; } return o; });
       if (r.loading) { await page.waitForTimeout(400); continue; }
       const tag = r.area + '/' + r.sec; if (!sections.includes(tag)) sections.push(tag);
       if (args.verbose) console.log('       ' + JSON.stringify({ a: r.area, sec: r.sec, x: r.x, z: r.z, hp: r.hp, left: r.left, deaths: r.deaths, wp: r.wp, kinds: r.kinds, exit: r.exit, skips: r.skips }));
@@ -103,12 +108,16 @@ for (const dev of DEVICES) {
       if (phase === 1 && r.area === 'graveyard_now') { phase = 2; await page.evaluate((route) => { const B = window.__bot; B.setRoute(route); B.opt.hunt = null; B.opt.giveUp = 900; }, R2); await shot(page, `walk_${dev}_10_graveyard`); }
       if (phase === 2 && r.near) { lockedSeen = true; }
       if (phase === 2 && r.z > 1850 && Math.abs(r.x - 600) < 90) { reached = true; break; }
+      if (phase === 2 && r.hook && RING && r.z <= 1850) {   // under the whip ring: a real touch on the skill button (it shows the hook while a ring is in reach)
+        pad = await v2pad(page); const b = pad?.buttons.skill;
+        if (b) { hooks++; await T.down(13, b.cx, b.cy); await page.waitForTimeout(140); await T.up(13); await page.waitForTimeout(300); await page.evaluate(() => { const g = window.__game; for (let i = 0; i < 90; i++) g.tick(1 / 60); g.alpha = 1; g.render(); }); }
+      }
     }
     await page.evaluate(() => window.__bot.touchEnd());
     await shot(page, `walk_${dev}_20_end`);
-    R.walk = { ...r, sections, reached, lockedSeen, promptSeen, wallSec: +((Date.now() - t0) / 1000).toFixed(1) };
+    R.walk = { ...r, sections, reached, lockedSeen, promptSeen, hooks, wallSec: +((Date.now() - t0) / 1000).toFixed(1) };
     const kinds = Object.keys(r?.kinds ?? {});
-    if (reached && phase === 2) ok(`walk through the new pad: eshville_now first spawn -> graveyard gate -> graveyard_now -> mausoleum at (${r.x}, ${r.z}); ${(r.ticks / 60).toFixed(0)} s of play, ${r.stickMoves} stick moves, presses attack ${r.presses.attack} · roll ${r.presses.dash} · guard ${r.presses.guard} · jump ${r.presses.jump}; fought ${kinds.map((k) => k + ' x' + r.kinds[k]).join(', ')}; fell ${r.deaths} times in the graveyard, hp ${r.hp}; sections ${sections.join(' > ')}`);
+    if (reached && phase === 2) ok(`walk through the new pad: eshville_now first spawn -> graveyard gate (opened by clearing the square: area state "${r.flags || 'base'}") -> graveyard_now -> whip ring (${hooks} skill press${hooks === 1 ? '' : 'es'}) -> mausoleum terrace at (${r.x}, ${r.z}); ${(r.ticks / 60).toFixed(0)} s of play, ${r.stickMoves} stick moves, presses attack ${r.presses.attack} · roll ${r.presses.dash} · guard ${r.presses.guard} · jump ${r.presses.jump}; fought ${kinds.map((k) => k + ' x' + r.kinds[k]).join(', ')}; fell ${r.deaths} times in the graveyard, hp ${r.hp}; sections ${sections.join(' > ')}`);
     else fail(`${dev}: the walk did not reach the mausoleum (phase ${phase}) ${JSON.stringify(R.walk)}`);
     if (reached) { if (lockedSeen) ok('the locked mausoleum door stopped the hero and said why (exit to_ossuary, once per approach)'); else console.log('       note: the hero stopped short of the locked mausoleum door (no notice needed yet)'); }
 
