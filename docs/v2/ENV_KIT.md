@@ -485,7 +485,7 @@ assets/v2/env/k_bone.webp                                                       
 
 묶음: `props.bin` 217,508 바이트 · `props_atlas.webp` 263,656 바이트(2048×1024 그대로). 실행 중 받는 파일 목록은 §16.6 그대로다(새 파일 없음).
 
-## 18. WORLD-2 (2026-11-18 01:00–02:30 UTC): crypt and tower props, whip ring, folding small materials, fewer draw calls
+## 18. WORLD-2 (2026-11-18 01:00–02:55 UTC): crypt and tower props, whip ring, folding small materials, fewer draw calls
 
 (English, like `AREA_FORMAT.md`, so every lane reads it fast. Areas, flags and hooks: `docs/v2/AREA_FORMAT.md` §13.)
 
@@ -544,26 +544,57 @@ Looked at next to the hero in both nights of Eshville (doors, fences, barrels, c
 
 `compileEnv` ends with `uniformBoxes(W)`: every box has the same keys in the same order (`x0 x1 z0 z1 y0 y1 solid walk inv stair kit part …`), so `groundAt` / `moveXZ` stay on the fast path in every scene, not only in v2g. Scene v2c calls it again after the one box it pushes by hand. (`src/v2/b/world.js` itself is frozen: the boxes are rebuilt after it.)
 
-### 18.6 Numbers per area, before → after (scene v2c, headless fold_open; "before" = §16.5 / §17)
+### 18.6 Numbers per area, before → after (scene v2c, headless fold_open; "before" = the table at the end of §17; "after" measured again 2026-11-18 02:47–02:55 UTC)
 
-@@NUMBERS@@
+| area | static triangles | worst view: static draws · frame draws | GL textures | hero fully hidden, cells (fold / phone) |
+|---|---|---|---|---|
+| `eshville_now` | 34,430 → **34,909** | 33 · 37 → **30 · 35** | 44.8 → **55.5 MB** (+10.7) | 313 / 318 → **243 / 248** |
+| `eshville_past` | 34,706 → **34,957** | 35 · 39 → **30 · 35** | 46.2 → **56.9 MB** (+10.7) | 421 / 423 → **363 / 371** |
+| `graveyard_now` | 21,588 → **22,774** | 19 · 23 → **15 · 20** | 42.1 → **48.8 MB** (+6.7) | 476 / 530 → **461 / 514** |
+| `graveyard_past` | 21,577 → **22,763** | 20 · 24 → **16 · 21** | 43.5 → **50.2 MB** (+6.7) | 590 / 653 → **575 / 637** |
+| `slice0` (test route) | 30,000 → **30,133** | 20 · 24 → **19 · 24** | 39.5 → **50.2 MB** (+10.7) | 270 / 330 → **280 / 338** (worse by ten) |
+| `belltower_now` (new) | **12,954** | **14 · 19** | **48.8 MB** | **3 / 3** of 1,090 |
+| `ossuary_now` (new) | **34,179** (34,723 with the statue and the four knells) | **25 · 30** | **48.8 MB** | **7 / 7** of 2,273 |
+| `ossuary_past` (new) | **26,895** (27,471 with every flag) | **25 · 30** | **48.8 MB** | **65 / 67** of 3,779 |
 
-### 18.7 Checks on the final tree
+- Frame draws are what `world_verify_shot` reports at its worst spot: static + 5 now (hero model 4 + 1), static + 4 in the older figures; `world_check` at its named spots reports static + 4 (Eshville 34). The static figure is the one this round changed.
+- Triangles: every area in every flagged state is at or under 35,000 (the most: `eshville_past` 34,957, `eshville_now` with `door_pulled` 34,915, `ossuary_now` with the statue and knells 34,723).
+- Textures: **+10.7 MB** where nothing else changed (the atlas 2048 × 1024 → 2048 × 2048 with mipmaps = +11.2 MB, minus the `wood` tile no longer loaded); **+6.7 MB** in the graveyard (`k_bone`, `k_slate`, `k_flag` and `wood` are off its list: the generated skull wall and the folds). The new areas load 48.8 MB (kit 28.1 MB). Eshville is 0.7 MB over the "about +10 MB" asked for (§18.9).
+- Chunk draws per area: §18.3. Per-area detail (chunks, lights, flagged states, what the bot walked): `AREA_FORMAT.md` §13.5.
 
-@@CHECKS@@
+### 18.7 Checks on the final tree (2026-11-18 02:46–02:55 UTC, one after the other, one headless browser at a time; logs `/tmp/claude-0/v2/world2/final3/`)
+
+| check | result |
+|---|---|
+| `node tools/v2/world_validate.mjs` | exit 0 — `ALL OK`: 42 states of 8 areas, errors 0 (warnings only for exits whose target is not built: `eshville_now` `to_west` → `stable_now`; `eshville_past` `to_belltower` → `belltower_past`, `to_west` → `stable_past`) |
+| `node tools/v2/world_folds.mjs --check` | exit 0 — `fold plan up to date` |
+| `node tools/v2/world_check.mjs` | exit 0 — `ALL OK`, 190 lines passed, 0 failed, page errors 0 on fold_open and phone2 (2 min 48 s) |
+| `node tools/v2/world_verify_node.mjs` | exit 0 — no cell outside a section, no sunk prop, no light under a floor; open edges only at the ossuary gap (by design) and the test route's old 40 cells |
+| `node tools/v2/world_verify_shot.mjs` | exit 0 — `ALL OK`: real touch from every spawn and into every exit, 8 areas × 2 devices, page errors 0 |
+| `node tools/v2/world_propsverify_node.mjs` | exit 0 |
+| `node tools/v2/envkit_check.mjs --base 1` | exit 0 — `모두 통과` (test route: static 30 draws at most on the bot's run) |
+| `node tools/v2/story_check.mjs` | exit 0 — `OK: 0 errors, 28 warning(s)`: 27 × "waits for `belltower_now` / `ossuary_now` / `ossuary_past`, which is built now — check its hooks and remove waiting" and `ev_ossuary_bridge: exit to_ossuary leads to a built area now — the bridge is no longer needed` (the flag lists in `src/v2/data/flags.js` were fixed by the main session at 02:42) |
+| `python3 tools/fonts/build_fonts.py --check` | exit 0 — `글꼴 검사 통과` |
+| `node tools/v2/world_props_bake.mjs --out … --tmp …` + `cmp` | exit 0 — `props.bin` (386,880 B) and `props_atlas.webp` (501,240 B) come out byte for byte (same sha256) from `tools/v2/world_src/` in 12 s |
+| `node tools/v2/game_probe.mjs` (scene v2g, INTEGRATE's) | exit 0 — only GL ReadPixels warnings |
+
+History of this round: the first full run (02:12–02:24) failed `world_check` with 3 lines on phone2 and `world_verify_shot` with 4 lines — both were mistakes in the check tools (a ring route kept from the first device; a pushed stretch that started below the ring), fixed in the tools, not in the areas — and `story_check` with 6 errors in the story's flag lists, fixed by the main session.
 
 ### 18.8 Files loaded at run time (`assets/v2/`) — for `tools/deploy/v2_ship.txt`
 
 ```
 assets/v2/props/props.bin (386,880 B)   assets/v2/props/props_atlas.webp (501,240 B)      every area, the test route
-assets/v2/env/k_ashlar.webp  k_flag.webp  k_rubble.webp  k_trim.webp                      every area
-assets/v2/env/k_cobble.webp  k_cobble2.webp  k_plaster.webp                               eshville (both nights)   [k_cobble, k_plaster also the test route]
-assets/v2/env/k_cobworn.webp  k_soil.webp  k_slate.webp                                   eshville, graveyard (both nights)   [k_slate also the test route]
+assets/v2/env/k_ashlar.webp  k_trim.webp                                                  every area, the test route
+assets/v2/env/k_rubble.webp                                                               every area (not the test route)
+assets/v2/env/k_flag.webp                                                                 eshville, belltower, ossuary, the test route (not the graveyard any more)
+assets/v2/env/k_cobble.webp  k_plaster.webp  k_slate.webp                                 eshville (both nights), the test route (k_slate: not the graveyard any more)
+assets/v2/env/k_cobble2.webp                                                              eshville (both nights)
+assets/v2/env/k_cobworn.webp  k_soil.webp                                                 eshville, graveyard (both nights)
 assets/v2/env/k_thatch.webp                                                               eshville_past, graveyard_past
 assets/v2/env/k_cellar.webp                                                               ossuary (both nights)        <- new on the list
 assets/v2/env/k_planks.webp                                                               belltower_now                <- new on the list
 ```
-Not loaded by any area: `k_bone.webp` (the graveyard's niches are the generated `skullwall` now). v1 files already shipped: skies `assets/bg/s01_village` (eshville, belltower, test route), `assets/bg/s02_graveyard` (graveyard, ossuary); tiles `assets/tex/tex_castle_stone` (`block`, every area), `tex_mossy_stone` (`flag`: graveyard, ossuary, test route), `tex_wood` (`wood`: ossuary_now, test route), `tex_wet_stone` · `tex_dirt` (test route only). Character models the areas place (`assets/v2/char3d/<id>.glb`): eshville_now `alberto elise hadwin marta rook sera villager_f villager_m` · eshville_past `edmund elise hadwin1 lotte rook villager_f villager_m` · graveyard_past `edmund villager_m` · belltower_now `elise` · ossuary_now `sera` · ossuary_past `elise`.
+(From the `textures:` lines of `node tools/v2/world_validate.mjs` on the final tree.) Not loaded by any area: `k_bone.webp` (the graveyard's niches are the generated `skullwall` now). `tools/deploy/v2_ship.txt` ships the two folders whole (`assets/v2/env/`, `assets/v2/props/`), so nothing has to be added there. v1 files already shipped: skies `assets/bg/s01_village` (eshville, belltower, test route), `assets/bg/s02_graveyard` (graveyard, ossuary); tiles `assets/tex/tex_castle_stone` (`block`, every area), `tex_mossy_stone` (`flag`: graveyard, ossuary, test route), `tex_wood` (`wood`: ossuary_now, test route), `tex_wet_stone` · `tex_dirt` (`brick` · `dirt`: test route only). Character models the areas place (`assets/v2/char3d/<id>.glb`): eshville_now `alberto elise hadwin marta rook sera villager_f villager_m` · eshville_past `edmund elise hadwin1 lotte rook villager_f villager_m` · graveyard_past `edmund villager_m` · belltower_now `elise` · ossuary_now `sera` · ossuary_past `elise`.
 
 ### 18.9 Still weak
 
@@ -572,4 +603,4 @@ Not loaded by any area: `k_bone.webp` (the graveyard's niches are the generated 
 - `belltower_past` is not built. The tower's wooden stairs and plank floors share one plank texture (the fold); the stone stair has no banister.
 - Ossuary: beyond the side walls the camera sees black (no rock ceiling or cave wall above the wall tops); the gap has no visible far wall below the floor line; tonight's rooms left of the hall centre repeat the same coffin-stack model (two sizes, mirrored).
 - The whip ring is tested only as data (reach grid, `stage.hookPoints`): scene v2c has no whip, the bot is set on the landing spot.
-- Texture memory is +10.7 MB per area against §17 (the atlas doubled from 2048 × 1024 to 2048 × 2048, mipmapped): slightly over "about +10 MB". A 2048 × 1536 atlas would need the models baked at about 0.87 of today's texel density.
+- Texture memory is +10.7 MB in Eshville and on the test route against §17 (the atlas doubled from 2048 × 1024 to 2048 × 2048, mipmapped), +6.7 MB in the graveyard: Eshville is slightly over "about +10 MB". A 2048 × 1536 atlas would need the models baked at about 0.87 of today's texel density.

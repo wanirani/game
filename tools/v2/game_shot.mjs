@@ -26,7 +26,7 @@ function install() {
     const H = sim.hooks, h0 = H.hit, e0 = H.event; H.hit = function (e, dmg, mv, x, y, z) { F.hitAt = F.n; F.hitP = [x, y, z]; F.hits = (F.hits || 0) + 1; return h0.apply(this, arguments); };
     H.event = function (name) { F.ev[name] = (F.ev[name] || 0) + 1; return e0.apply(this, arguments); };
   };
-  F.tick = (n = 1) => { for (let i = 0; i < n; i++) { F.hook(); const h = sc.sim?.hero; if (F.god && h && h.hp < (h.hpMax ?? 100) * 0.7) h.hp = h.hpMax ?? 100; g.tick(1 / 60); F.n++; } };
+  F.tick = (n = 1) => { for (let i = 0; i < n; i++) { F.hook(); const h = sc.sim?.hero; if (F.god && h && h.hp < (h.hpMax ?? 100) * 0.7) h.hp = h.hpMax ?? 100; g.tick(1 / 60); F.n++; if (F.n % 8 === 0) g.render(); } };   // (a drawn frame now and then: what is on screen decides which enemies are animated)
   F.until = (fn, max) => { for (let k = 0; k < max; k++) { F.tick(1); if (fn()) return k; } return -1; };
   F.frozen = () => !!sc.fx && sc.fx.feel.stop > 0;
   F.put = (x, z, dx = 1, dz = 0, y) => {
@@ -73,6 +73,7 @@ try {
   };
   const ev = (fn, arg) => page.evaluate(fn, arg);
   const CROP = [460, 330, 0, -30];
+  if (PLAN === 'ring' || PLAN === 'bell' || PLAN === 'facings' || PLAN === 'moves') await ev(() => { const F = window.__F, sc = window.__v2.scene; for (const e of sc.sim.enemies) { e.active = false; e.sight = 0; } F.tick(420); });   // let the area title fade first
   /** stand next to the nearest enemy on a side and strike until the hit-stop frame; -> pictures name_hit (frozen) */
   const strike = async (name, sx, sz, presses = 1, d = 84) => {
     const ok = await ev(([sx, sz, d]) => { const F = window.__F, sc = window.__v2.scene; F.hook(); const e = F.near((q) => !q.fled && q.kind !== 'bat'); if (!e) return 'no enemy'; F.tgt = e; e.active = true; F.face(e, d, sx, sz); F.tick(2); return e.kind; }, [sx, sz, d]);
@@ -198,6 +199,34 @@ try {
     console.log('tower:', JSON.stringify(t).slice(0, 3000));
     await ev(() => window.__F.tick(30));
     await shot('0_entry_full');
+    // the floors: walkable tops by height; stand on the bats' floor, fight them, then the top, then step off an edge and land below
+    const fl = await ev(() => { const sc = window.__v2.scene, m = {}; for (const b of sc.W.boxes) if (b.walk) m[Math.round(b.y1)] = (m[Math.round(b.y1)] || 0) + 1; return m; });
+    console.log('walkable tops by height:', JSON.stringify(fl));
+    const mid = await ev(() => { const F = window.__F, sc = window.__v2.scene, sim = sc.sim, h = sim.hero, bt = sim.enemies.find((e) => e.kind === 'bat'); F.put(bt.x, bt.z - 110, 0, 1, 272); F.tick(40); for (const e of sim.enemies) if (Math.abs(e.y - bt.y) < 60) { sim.wake?.(e); e.active = true; } F.tick(50); return { hero: [h.x, h.y, h.z], camY: Math.round(sc.cam.ty), sec: window.__v2.section, bats: sim.enemies.filter((e) => e.active).map((e) => [e.kind, Math.round(e.x), Math.round(e.y), Math.round(e.z), e.state, !!e._a3?.vis, e._a3?.anim.cur?.name ?? null]) }; });
+    console.log('mid floor:', JSON.stringify(mid));
+    await shot('1_mid_bats_full');
+    const fight = await ev(() => { const F = window.__F, sc = window.__v2.scene, sim = sc.sim, h = sim.hero; const n0 = F.hits || 0; let froze = -1; for (let i = 0; i < 600 && froze < 0; i++) { const e = F.near((q) => q.active && Math.abs(q.gy - h.y) < 80); if (!e) break; const dx = e.x - h.x, dz = e.z - h.z, d = Math.hypot(dx, dz) || 1; F.hold.mx = d > 70 ? dx / d : 0; F.hold.mz = d > 70 ? dz / d : 0; if (d < 110 && i % 7 === 0) F.once.attack = true; F.tick(1); if ((F.hits || 0) > n0 && F.frozen()) froze = i; } F.hold = {}; return { froze, hits: (F.hits || 0) - n0, hp: h.hp, kinds: sim.enemies.filter((e) => !e.dead && e.state !== 'dead').length }; });
+    console.log('bat fight:', JSON.stringify(fight));
+    await shot('2_bat_hit', CROP);
+    await shot('2_bat_hit_full');
+    const top = await ev(() => { const F = window.__F, sc = window.__v2.scene, h = sc.sim.hero, sp = sc.area.spawns.top; F.hold = {}; F.put(sp.x, sp.z, 0, 1, 680); F.tick(60); return { hero: [h.x, h.y, h.z], camY: Math.round(sc.cam.ty), sec: window.__v2.section }; });
+    console.log('top:', JSON.stringify(top));
+    await shot('3_top_full');
+    const fall = await ev(() => {
+      const F = window.__F, sc = window.__v2.scene, sim = sc.sim, h = sim.hero, W = sc.W; F.god = false;
+      const gAt = (x, z, top) => { let g = -Infinity; for (const b of W.boxes) { if (x < b.x0 || x > b.x1 || z < b.z0 || z > b.z1 || !b.walk) continue; if (b.y1 <= top && b.y1 > g) g = b.y1; } return g; };
+      const out = [];
+      for (const y0 of [272, 680]) {   // from each upper floor: the nearest spot whose ground is at least 120 lower (an edge / the stair well)
+        let best = null; for (let x = 60; x <= 660; x += 20) for (let z = 60; z <= 1300; z += 20) { const g = gAt(x, z, y0 + 40); if (g > y0 - 20 && g < y0 + 20) { for (const [ox, oz] of [[40, 0], [-40, 0], [0, 40], [0, -40]]) { const g2 = gAt(x + ox, z + oz, y0 + 40); if (!(g2 > y0 - 120) ) { best = best ?? { x, z, ox, oz, g2: Number.isFinite(g2) ? g2 : null }; } } } }
+        if (!best) { out.push({ from: y0, edge: null }); continue; }
+        F.put(best.x, best.z, best.ox / 40, best.oz / 40, y0); F.tick(10); const hp0 = h.hp, d0 = sim.deaths ?? 0; F.hold.mx = best.ox / 40; F.hold.mz = best.oz / 40; let air = 0, minY = h.y;
+        for (let i = 0; i < 400; i++) { F.tick(1); if (!h.onGround) air++; minY = Math.min(minY, h.y); if (air > 5 && h.onGround) break; } F.hold = {}; F.tick(40);
+        out.push({ from: y0, edge: best, airTicks: air, landedY: Math.round(h.y), minY: Math.round(minY), hp: [hp0, h.hp], deaths: (sim.deaths ?? 0) - d0, camY: Math.round(sc.cam.ty), onGround: h.onGround, hero: [Math.round(h.x), Math.round(h.z)] });
+      }
+      return out;
+    });
+    console.log('fall:', JSON.stringify(fall));
+    await shot('4_after_fall_full');
   }
   console.log('events:', JSON.stringify(await ev(() => window.__F.ev)));
 } catch (e) { errs.push('[exception] ' + e.message); code = 1; }

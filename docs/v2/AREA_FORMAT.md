@@ -240,6 +240,21 @@ Unknown flags are ignored, so the scene may pass its whole flag table. A state c
 - Collision boxes from `compileEnv` all have the same keys in the same order (`uniformBoxes`, requests.md core-verify).
 - Prop names new in `props3.js`: `whipring roadbell footbridge towerface beam rope roost debris rubble stoneblock` (code-built) and, from the pack, `sarcophagus coffinstack bonepile skullwall candelabrum chandelier altar mourner cryptdoor stairs stall2 wreck2` (`stall` / `wreck` / `niche` use the generated `stall2` / `wreck2` / `skullwall` when the pack has them; `code: true` keeps the code-built one).
 
-### 13.5 Numbers (node + scene v2c, headless fold_open, final tree)
+### 13.5 Numbers (node + scene v2c, headless fold_open, final tree — measured again 2026-11-18 02:47–02:55 UTC)
 
-@@NUMBERS@@
+| area | static triangles: base state · heaviest flagged state | chunks: triangles / static draws | worst view: static triangles · static draws · frame draws | lights | GL textures vs test route (50.2 MB) |
+|---|---|---|---|---|---|
+| `eshville_now` | 34,909 · 34,915 (`door_pulled`) | out 6,228 / 9 · street 7,111 / 10 · east 21,570 / 11 | 34,909 · **30** · 35 (the street by the inn: all three chunks) | 56 (45 with `bells_answered`) | 55.5 MB (+5.3) |
+| `eshville_past` | 34,957 · 34,957 | out 6,072 / 9 · street 7,101 / 10 · east 21,784 / 11 | 34,957 · **30** · 35 | 59 | 56.9 MB (+6.7) |
+| `graveyard_now` | 22,774 · 23,060 (all four flags) | road 7,322 / 7 · field 15,452 / 8 | 22,774 · 15 · 20 | 10 (13) | 48.8 MB (−1.4) |
+| `graveyard_past` | 22,763 · 22,935 | road 7,328 / 7 · field 15,435 / 9 | 22,763 · 16 · 21 | 11 (14) | 50.2 MB (+0) |
+| `belltower_now` | 12,954 · 12,954 | low 6,670 / 7 · high 6,284 / 7 | 12,954 · 14 · 19 | 14 | 48.8 MB (−1.4) |
+| `ossuary_now` | 34,179 · 34,723 (`wedge_stone` + `knells_hung` + `queen_sent`) | c1 10,428 / 6 · c2 8,122 / 6 · c3 7,149 / 6 · c4 8,480 / 7 | 34,179 · 25 · 30 (the gap room: all four chunks) | 15 | 48.8 MB (−1.4) |
+| `ossuary_past` | 26,895 · 27,471 (every flag) | c1 6,952 / 6 · c2 6,053 / 6 · c3 6,192 / 6 · c4 7,698 / 7 | 26,895 · 25 · 30 | 49 | 48.8 MB (−1.4) |
+| `slice0` (through `AREAS`) | 30,133 | street 11,385 / 9 · north 18,748 / 10 | 30,133 · 19 · 24 | 43 | 50.2 MB |
+
+- Budgets `world_check` enforces at every named spot: static ≤ 35,000 triangles, **static draws ≤ 30**, frame ≤ 40 draws, textures ≤ +8 MB over the test route. Frame draws include the hero model (19,638 triangles, 4 draws); `world_verify_shot` counts one more at its worst spot (35 in Eshville) than `world_check` at its named spots (34). "Worst view" = the worst over a lattice of standable spots (`world_verify_shot`, 17–59 spots per area), same on fold_open and phone2.
+- Before this round (§11 / ENV_KIT §17): `eshville_now` 34,430 triangles · 33 static / 37 frame draws; `eshville_past` 34,706 · 35 / 39; `graveyard_now` 21,588 · 23 frame; `graveyard_past` 21,577 · 24 frame; `slice0` 30,000 · 24 frame.
+- Hero fully hidden by the world (`world_verify_node`, fold_open / phone2, cells of 10 × 10): `eshville_now` 243 / 248 of 12,864 (was 313 / 318) · `eshville_past` 363 / 371 of 12,679 (was 421 / 423) · `graveyard_now` 461 / 514 of 4,929 (was 476 / 530) · `graveyard_past` 575 / 637 (was 590 / 653) · `belltower_now` 3 / 3 of 1,090 · `ossuary_now` 7 / 7 of 2,273 · `ossuary_past` 65 / 67 of 3,779 (behind the crate and the statue waiting at the gap, and the entry statues) · `slice0` 280 / 338 of 7,830 (was 270 / 330: **ten cells more**, behind the thicker generated props).
+- The bot (`world_check`, both devices, 190 lines passed, 0 failed): every exit of every area in its base state and in the flagged states `gate_open`, `bells_answered`, `past_gate_open`, `bell_hung` (+ `ossuary_open`), `fell`, `wedge_stone`, `wedge_wood`, `knells_hung` + `queen_sent`; the tower climb door → bell chamber in 1,030 ticks with 7 jumps, 252 of 252 drops land on a floor; the rebuilt stair tonight (653 ticks); the gap over the statue plinth (2 jumps) and over the crate (2 jumps). The whip ring is crossed by setting the bot on the landing spot (scene v2c has no whip).
+- Known notes from `world_verify_node` (exit 0): the gap's near edge in `ossuary_past` is an open edge by design (98 cells along z 1205: a fall is the pit rule, §13.3); props without collision on walkable ground: one bone heap in `ossuary_now` (440, 590, 44 high), in the tower a fallen beam, a debris heap and floor candles, and the ones §12 already lists.
