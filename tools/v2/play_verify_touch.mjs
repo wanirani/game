@@ -104,29 +104,29 @@ async function run(dev) {
     /** run k ticks one at a time, a frame every `every` ticks */
     const film = async (set, k, every, pre) => { const S = []; for (let i = 0; i < k; i++) { if (pre) await pre(i); const s = (await step(1, true))[0]; S.push(s); if (every && i % every === 0) await shot(set, i); } return S; };
 
-    if (want('turn')) {
-      const V = (D.turn = {});
+    if (want('turn') || want('circle')) {
+      const V = (D.turn = {}), CO = !want('turn');   // --only circle: the circles alone
       // reversals on four axes
-      for (const [a, b] of [['R', 'L'], ['U', 'D'], ['UR', 'DL'], ['UL', 'DR']]) {
+      for (const [a, b] of CO ? [] : [['R', 'L'], ['U', 'D'], ['UR', 'DL'], ['UL', 'DR']]) {
         await home(a); await stick(a); const pre = await step(45); await stick(b);
         const S = [pre[pre.length - 1], ...(await film(`rev_${a}_${b}`, 26, 2))]; await stickUp(); await step(12);
         const A = an(S), w = world(b), vm = Math.hypot(w[0] * 275, w[1] * 208); let t70 = -1; for (let i = 1; i < S.length; i++) { const vx = (S[i].x - S[i - 1].x) * 60, vz = (S[i].z - S[i - 1].z) * 60; if (vx * w[0] + vz * w[1] >= vm * 0.7) { t70 = i; break; } }
         V[`rev ${a}>${b}`] = { ...A, t70, clips: [...new Set(S.map((s) => s.clip))].join('>'), rows: undefined, seq: A.rows.map((r) => `${r.sp}/${r.d}`).join(' ') };
       }
       // 90-degree turns
-      for (const [a, b] of [['R', 'U'], ['U', 'L'], ['L', 'D'], ['D', 'R']]) { await home(a); await stick(a); const pre = await step(45); await stick(b); const S = [pre[pre.length - 1], ...(await step(26, true))]; await stickUp(); await step(10); const A = an(S); V[`turn90 ${a}>${b}`] = { ...A, rows: undefined, seq: A.rows.map((r) => `${r.sp}/${r.d}`).join(' ') }; }
+      for (const [a, b] of CO ? [] : [['R', 'U'], ['U', 'L'], ['L', 'D'], ['D', 'R']]) { await home(a); await stick(a); const pre = await step(45); await stick(b); const S = [pre[pre.length - 1], ...(await step(26, true))]; await stickUp(); await step(10); const A = an(S); V[`turn90 ${a}>${b}`] = { ...A, rows: undefined, seq: A.rows.map((r) => `${r.sp}/${r.d}`).join(' ') }; }
       // 12 rapid flips, 8 ticks each (0.13 s)
-      { await home(); await stick('R'); const pre = await step(30); const S = [pre[pre.length - 1]]; for (let i = 0; i < 12; i++) { await stick(i % 2 ? 'R' : 'L'); S.push(...(await film('flips', 8, i < 4 ? 2 : 0))); } await stickUp(); await step(12); V['flips 12 x 0.13 s'] = { ...an(S), rows: undefined, clips: [...new Set(S.map((s) => s.clip))].join('>') }; }
+      if (!CO) { await home(); await stick('R'); const pre = await step(30); const S = [pre[pre.length - 1]]; for (let i = 0; i < 12; i++) { await stick(i % 2 ? 'R' : 'L'); S.push(...(await film('flips', 8, i < 4 ? 2 : 0))); } await stickUp(); await step(12); V['flips 12 x 0.13 s'] = { ...an(S), rows: undefined, clips: [...new Set(S.map((s) => s.clip))].join('>') }; }
       // circles: slow (one lap in 2 s) and fast (one lap in 0.6 s), two laps each
-      for (const [nm, lap] of [['circle slow', 120], ['circle fast', 36]]) { await home(); await stick('R'); const pre = await step(30); const S = [pre[pre.length - 1], ...(await film(nm.replace(' ', '_'), lap * 2, nm === 'circle fast' ? 3 : 0, (i) => stick([Math.cos(i / lap * 2 * Math.PI), Math.sin(i / lap * 2 * Math.PI)])))]; await stickUp(); await step(12); const A = an(S); V[nm] = { ...A, rows: undefined, worst: A.rows.filter((r) => r.sp > 82 && r.d > 20).map((r) => `${r.sp}/${r.d}`).join(' ') }; }
+      for (const [nm, lap] of [['circle slow', 120], ['circle fast', 36]]) { await home('R'); await stick('R'); const pre = await step(30); const S = [pre[pre.length - 1], ...(await film(nm.replace(' ', '_'), lap * 2, nm === 'circle fast' ? 3 : 0, (i) => stick([Math.cos(i / lap * 2 * Math.PI), Math.sin(i / lap * 2 * Math.PI)])))]; await stickUp(); await step(12); const A = an(S); V[nm] = { ...A, rows: undefined, worst: A.rows.filter((r) => r.sp > 82 && r.d > 20).map((r) => `${r.sp}/${r.d}`).join(' ') }; }
       // turn while attacking: run right, flip the stick to the left and press attack on the same tick
-      for (const [a, b] of [['R', 'L'], ['U', 'D'], ['R', 'U'], ['L', 'DR']]) {
+      for (const [a, b] of CO ? [] : [['R', 'L'], ['U', 'D'], ['R', 'U'], ['L', 'DR']]) {
         await home(a); await stick(a); const pre = await step(40); await stick(b); await down('attack'); const S = [pre[pre.length - 1], ...(await film(`atkturn_${a}_${b}`, 30, 2, async (i) => { if (i === 3) await up('attack'); }))]; await stickUp(); await step(20);
         const w = world(b), hit = S.filter((s) => s.mv && s.mt >= 0.13 && s.mt <= 0.27), off = hit.length ? Math.max(...hit.map((s) => Math.abs(dAng(ang(s.fx, s.fz), ang(w[0], w[1]))) * DEG)) : -1, A = an(S);
         V[`attack + turn ${a}>${b}`] = { move: [...new Set(S.map((s) => s.mv).filter(Boolean))].join(','), bodyOffStickDuringHit: +off.toFixed(1), ruleOffStick: hit.length ? +(Math.abs(dAng(ang(hit[0].dx, hit[0].dz), ang(w[0], w[1]))) * DEG).toFixed(1) : -1, maxTurnPerTick: A.maxTurn, backTicks: A.backTicks, sideTicksWhileTurning: A.sideTicks, seq: A.rows.slice(0, 12).map((r) => `${r.sp}/${r.d}`).join(' ') };
       }
       // turn right after a roll
-      for (const [a, b] of [['R', 'L'], ['U', 'D'], ['R', 'D']]) {
+      for (const [a, b] of CO ? [] : [['R', 'L'], ['U', 'D'], ['R', 'D']]) {
         await home(a); await stick(a); await step(30); await down('roll'); await step(2); await up('roll'); const n0 = await until('(s)=>s.hero.dashT<=0.05', 40); await stick(b);
         const p0 = (await step(0, false)) ?? []; const first = await ev(() => window.__pv.samp()); const S = [first, ...(await film(`rollturn_${a}_${b}`, 26, 2))]; await stickUp(); await step(12);
         const A = an(S); V[`roll then turn ${a}>${b}`] = { ...A, rows: undefined, seq: A.rows.map((r) => `${r.sp}/${r.d}`).join(' '), rollTicks: n0, clips: [...new Set(S.map((s) => s.clip))].join('>') };
