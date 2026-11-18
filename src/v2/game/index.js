@@ -9,7 +9,11 @@
 import { Scene, STEP } from '../../core/game.js';
 import { input } from '../../core/input.js';
 import { assets, ASSET_ROOT } from '../../core/assets.js';
-import { groundAt, sectionAt } from '../b/world.js';
+import { sectionAt } from '../b/world.js';
+// the scene's own copy of B's groundAt (the same loop). B's function also runs while the stage is compiled, on boxes of mixed key
+// layouts, and stays on the engine's slow generic read afterwards (a number object per field read: about 10-20 KB a frame through the
+// shadows). This copy only ever sees the uniform boxes made by area.js uniformBoxes().
+function groundAt(W, x, z, yMax = Infinity) { let g = -Infinity; const B = W.boxes; for (let i = 0; i < B.length; i++) { const b = B[i]; if (x < b.x0 || x > b.x1 || z < b.z0 || z > b.z1 || !b.walk) continue; if (b.y1 <= yMax && b.y1 > g) g = b.y1; } return g; }
 import { KIT_TEX } from '../env/mats.js';
 import { Sim, TUNE, KINDS, driveHero, driveActor } from '../play/index.js';
 import { driveHero as PLACEHOLDER_DRIVE_HERO } from '../char3d/hero3d.js';

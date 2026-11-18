@@ -1,5 +1,5 @@
 // CORE-VERIFY: tries to break scene v2g and measures it (compare with v2c).
-//   node tools/v2/coreverify_break.mjs [--device fold_open] [--out /tmp/claude-0/v2/coreverify] [--only stats,alloc,allocc,cycle,perf,gl1,hz,fuzz,stuck]
+//   node tools/v2/coreverify_break.mjs [--device fold_open] [--out /tmp/claude-0/v2/coreverify] [--only stats,alloc,allocrt,allocc,cycle,perf,gl1,hz,fuzz,stuck]
 // alloc: sampling heap profiler (CDP) attributes allocated bytes to functions; heap growth over 60 s of fighting.
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
@@ -75,6 +75,7 @@ const RUN = `(async (o) => {
     if (o.fight) { B.fight(); if (n % 600 === 599 && alive() === 0) { kills += a0; sim.reset(); v.teleport(o.spot); a0 = alive(); } if (sim.hero.hp < 40 && !sim.hero.dead) sim.hero.hp = 100; } else B.cur = B.ACT[0];
     g.tick(1 / 60); g.alpha = 0.5; g.render();
     const m = mem(); if (m > last) up += m - last; last = m;
+    if (o.gap) await new Promise((r) => setTimeout(r, o.gap));   // real-time pacing: the engine gets time to optimize, as on a device
     if (performance.now() - t0 > o.maxMs) { n++; break; }
   }
   const m1 = mem(); gc(); const m2 = mem();
@@ -84,7 +85,7 @@ const RUN = `(async (o) => {
 
 try {
   // ───────── v2g: numbers at each spot, allocation, fuzz, stuck ─────────
-  if (want('stats') || want('alloc') || want('fuzz') || want('stuck')) {
+  if (want('stats') || want('alloc') || want('allocrt') || want('fuzz') || want('stuck')) {
     const { ctx, page } = await open('scene=v2g');
     const st = await page.evaluate(() => ({ ready: window.__v2?.ready, error: window.__v2?.error }));
     if (!st.ready) fail('v2g not ready: ' + JSON.stringify(st));
@@ -102,6 +103,12 @@ try {
       R.allocFight = fight; const f = fight.res;
       note(`v2g fighting in the yard, ${f.ticks} frames (${(f.ticks / 60).toFixed(0)} s of play, ${f.wallMs} ms wall): sampled ${Math.round(fight.total / f.ticks)} B/frame, heap rise ${f.risePerTick} B/frame, heap after GC ${(f.heapStart / 1048576).toFixed(1)} > ${(f.heapEndAfterGc / 1048576).toFixed(1)} MB (kept ${(f.retainedGrowth / 1024).toFixed(0)} KB), kills ${f.kills}, hero deaths ${f.deaths}`);
       for (const t of fight.top.slice(0, 10)) note(`   ${String(Math.round(t.bytes / f.ticks)).padStart(6)} B/frame  ${t.fn}   via ${t.via}`);
+    }
+    if (want('allocrt')) {   // the same fight paced in real time (about 60 frames a second) for 30 s
+      const rt = await profiled(page, RUN, { spot: 'yard', warm: 300, ticks: 1800, fight: true, tiny: true, gap: 12, maxMs: 40000 });
+      R.allocFightRealtime = rt; const f = rt.res;
+      note(`v2g fighting in the yard in real time, ${f.ticks} frames in ${f.wallMs} ms: sampled ${Math.round(rt.total / f.ticks)} B/frame, heap rise ${f.risePerTick} B/frame, kept ${(f.retainedGrowth / 1024).toFixed(0)} KB`);
+      for (const t of rt.top.slice(0, 8)) note(`   ${String(Math.round(t.bytes / f.ticks)).padStart(6)} B/frame  ${t.fn}   via ${t.via}`);
     }
     if (want('fuzz')) {
       const fz = await page.evaluate(async () => {
