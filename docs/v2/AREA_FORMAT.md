@@ -152,6 +152,8 @@ Tools: `node tools/v2/world_verify_node.mjs` (no browser: an independent walk fl
 - GL resources: enter / leave ×5 in `eshville_now`, `graveyard_now`, `slice0` — `__v2` gone and the GL canvas removed every time, texture and buffer bytes identical on every re-entry, 2 DOM canvases throughout.
 - Known gaps the format has (see requests.md): no way to unlock an exit, no `keepPosition` in ENGINE's `gotoArea`, `AREAS[id]()` takes no flags although §6 speaks of village states, `locked: 'not_built'` reads as a normal lock in ENGINE.
 
+> **Changed 2026-11-18 (WORLD-3, §14):** tower and graveyard stairs rebuilt (rise ≤ 18, tread > 14); `bell_arena` moved to the right wall (1082, 3250); knell posts at z 3872 (hot spots unchanged); `ossuary_past` + `wedge_wood` locks `bell_riddle` / `bell_arena` (`event: 'bell.locked'`); `nearestFreeSpot()`; `world_verify_node` fails over hidden-hero limits.
+
 ## 13. WORLD-2 (2026-11-18): area states, whip rings, the bell tower and the ossuary
 
 Code `src/v2/world/{index,eshville,graveyard,belltower,ossuary,reach,folds}.js`, props `src/v2/env/props3.js`. Checks: `node tools/v2/world_validate.mjs` (every area in its base state **and in every flagged state**), `node tools/v2/world_check.mjs` (browser: + flagged states, the tower climb, the drop test), `node tools/v2/world_folds.mjs --check`.
@@ -259,3 +261,42 @@ Unknown flags are ignored, so the scene may pass its whole flag table. A state c
 - Hero fully hidden by the world (`world_verify_node`, fold_open / phone2, cells of 10 × 10): `eshville_now` 243 / 248 of 12,864 (was 313 / 318) · `eshville_past` 363 / 371 of 12,679 (was 421 / 423) · `graveyard_now` 461 / 514 of 4,929 (was 476 / 530) · `graveyard_past` 575 / 637 (was 590 / 653) · `belltower_now` 3 / 3 of 1,090 · `ossuary_now` 7 / 7 of 2,273 · `ossuary_past` 65 / 67 of 3,779 (behind the crate and the statue waiting at the gap, and the entry statues) · `slice0` 280 / 338 of 7,830 (was 270 / 330: **ten cells more**, behind the thicker generated props).
 - The bot (`world_check`, both devices, 190 lines passed, 0 failed): every exit of every area in its base state and in the flagged states `gate_open`, `bells_answered`, `past_gate_open`, `bell_hung` (+ `ossuary_open`), `fell`, `wedge_stone`, `wedge_wood`, `knells_hung` + `queen_sent`; the tower climb door → bell chamber in 1,030 ticks with 7 jumps, 252 of 252 drops land on a floor; the rebuilt stair tonight (653 ticks); the gap over the statue plinth (2 jumps) and over the crate (2 jumps). The whip ring is crossed by setting the bot on the landing spot (scene v2c has no whip).
 - Known notes from `world_verify_node` (exit 0): the gap's near edge in `ossuary_past` is an open edge by design (98 cells along z 1205: a fall is the pit rule, §13.3); props without collision on walkable ground: one bone heap in `ossuary_now` (440, 590, 44 high), in the tower a fallen beam, a debris heap and floor candles, and the ones §12 already lists.
+
+## 14. WORLD-3 (2026-11-18): stairs the stick climbs, honest hidden-hero numbers, a hall that cannot trap, the crate state
+
+Answers the review WORLD2-VERIFY. Checks: `node tools/v2/world_stairs_node.mjs` (new), `node tools/v2/world_verify_node.mjs` (now fails over limits), `node tools/v2/world_spot_test.mjs` (new), `node tools/v2/world_check.mjs` (counts every jump).
+
+### 14.1 Stairs — the rule
+The rules (`src/v2/play/collide.js`, `sim.js`): the hero is a square of half-width **r 14**, he walks up a step of at most **STEP_UP 18** and down **STEP_DOWN 20**. His body already touches the step *after the next* when a tread is shallower than r, and that step stands 2 × rise above his feet. **A flight therefore needs rise ≤ 18 and tread > 14** (built with 16). The old tower flights (rise 15.1, tread 13.3–13.8) and the rebuilt graveyard stair (rise 14, tread 11) stopped him at the foot.
+- `belltower_now`: stone flight 0→1 `z+` at x 520..680, z 48..240; wooden flights 1→2 and 3→4 run **sideways** (`x-`, x 60..252, 64 wide) along the face of the next floor up to a corner landing (block x 0..60) from which the hero steps onto the floor above. All 12 steps, rise 11.3, tread 16. The half-height ledges 2→3 and 4→top and the three broken floors are still jumped (on purpose).
+- `graveyard_now` + `bell_hung`: the rebuilt stair is x 540..660, z 1658..1850 (12 steps, rise 11.7, tread 16).
+- `world_stairs_node` walks every flight of every area up and down with the stick alone under the real rules (centre line and 16 inside each edge) and fails when one stops him: 8 flights, 0 jumps. `world_check` logs every jump the bot makes (also the one pressed when stuck), prints jumps per flight and fails on a jump on a flight or a stuck-jump.
+
+### 14.2 Hidden hero — limits `world_verify_node` enforces
+Cells = the lane's reach grid on a 20-unit lattice, flooded from every spawn, entry spawn, whip landing and crossing bell, in every flagged state whose geometry differs; hidden = feet, chest and head rays all blocked (both facings), fold_open and phone2.
+| limit | value |
+|---|---|
+| ossuary section `boss` (the fight floor), both nights | 0 cells |
+| within 60 of any crossing bell (`kind: 'bell'`, `event: 'bell.ring'`), every area | 0 cells |
+| `ossuary_now` strip behind the coffin wall (x 410..770, z 790..930) | 0 cells |
+| every other section of the ossuary and the bell tower | under 3 % of its cells |
+| older areas, % of all cells (what they had; not brought down this round) | `eshville_now` 3 · `eshville_past` 4 · `graveyard_now` 11 · `graveyard_past` 14 · `slice0` 5 |
+
+Building rule that follows from the camera (pitch 26–28°): the ray to the hero's head clears a thing of height **100 + 0.49 × distance behind it**. Nothing the hero can stand right behind may be taller than 104; taller things stand against a wall with no standable ground behind them.
+
+Numbers (fold_open / phone2), before → after: `ossuary_now` base 178 / 194 of 5,694 (review; 268 / 294 of 6,261 with the bell seeds) → **18 / 19 of 6,399**; with `wedge_stone` 278 / 305 → **18 / 19 of 6,486**; `ossuary_past` 156 / 165 → **42 / 48 of 7,201**; section `boss` 58–63 → **0**; the strip behind the coffin wall 73–77 → **0**; `posts` 26–28 → 4; `belltower_now` 6 / 6 of 1,875. Not brought down: `graveyard_now` 216 / 236 of 2,428 (8.9 / 9.7 %), `graveyard_past` 270 / 306 (11.1 / 12.6 %), `eshville_now` 122 / 125 of 6,004, `eshville_past` 154 / 165 of 6,025, `slice0` 117 / 141 of 3,499.
+
+### 14.3 The last hall
+- Wall piers are 14 deep (were 40), the door fire posts 80 high (were 118), no candelabra on the floor in 1697 (low candle rows flush to the walls, more sconces), tonight's corner stacks 96 high and flush in the corners, bone heaps against the wall.
+- **`bell_arena` stands against the right wall at (1082, 3250)**, a low standing bell (104), hot spot (1052, 3222) — it stood in the middle of the fight floor at (600, 3350). Same id, kind, event.
+- **The four knell posts stand against the far wall (z 3872, were 3790)**; `area.knells[i].z` follows. Their hot spots `knell_1…4` stay at (x, 3760), r 110 (was 70). The bays between the corner statues and the outer posts are filled by a low bank.
+- `world_verify_node` (hall test, boss radius 30, hero r 14, 10-unit lattice over rest + boss + posts): **trap** — the boss is put on every 20-unit spot where it fits, hero cells within 44 of it are removed, and no piece of more than 6 cells may be cut off from the rest (a plain corner of two walls gives at most 5: cornered, not trapped); **orbit** — a ring of radius 150 round the boss is free at ≥ 70 % of boss spots on the fight floor (the flagstone field x 300..900, z 3100..3600). Result: trap pieces 0 in both nights; orbit 75 % tonight, 86 % in 1697 (over every spot of boss + posts where the boss fits, the reviewer's count: 42 % / 46 %, was 23 % — the walls alone cap that count near 50 %).
+
+### 14.4 The crate state (`ossuary_past` + `wedge_wood`)
+The crate bridges the gap in 1697, but wood rots: tonight the gap is open again. So that the hero cannot walk on and cross to tonight beyond the gap (skipping `oss.arena` and Sera's trigger), **while `wedge_wood` is set and `wedge_stone` is not, the bells beyond the gap in `ossuary_past` — `bell_riddle` and `bell_arena` — are built unlit and empty (`state: 'empty'`, no light) and their interact carries `event: 'bell.locked'`, `locked: 'wedge_stone'`** instead of `bell.ring`. Ids, kinds, positions and radii do not change. With `wedge_stone` (or nothing in the gap) they ring as before. `validateAll()` walks this state (`ossuary_past@wedge_wood`); the reach flood does not cross at a locked bell. `ossuary_now` is not changed by this (its bells always ring).
+
+### 14.5 `nearestFreeSpot(area, W, x, z, opt)` (exported from `src/v2/world/index.js`)
+`-> { x, z, y, moved, grid } | null` — the nearest spot that is clear of solids by `opt.r` (16) and reachable (flooded from every spawn, entry, whip landing and crossing bell of that state), looking up to `opt.max` (400) away, towards the camera first. For a bell crossing: call it with the twin area in the same flags and the hero's x, z; `moved > 0` means he would have landed inside something. Pass `opt.grid` from an earlier result to reuse the flood. `world_spot_test`: 655 spots, 9 of 111 crossings 1697 → tonight are moved (at most 30), 5 of 25 in the graveyard (at most 10).
+
+### 14.6 Other
+Collision added: the bone heap in `ossuary_now` at (440, 590). Bell posts of the ossuary are 136 high (were 160), candelabra of 1697 124 (were 170), the lantern stand 150 (was 190), the statue in the gap 136 (was 170), every coffin stack on the floor ≤ 104 with collision scaled to its size; the coffin wall is two low rows (110 / 96) inside the same blocker.
