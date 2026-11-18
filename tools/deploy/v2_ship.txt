@@ -18,3 +18,5 @@ assets/v2/char3d/clips/locomotion.glb
 assets/v2/char3d/clips/magic.glb
 assets/v2/char3d/clips/reactions.glb
 assets/v2/audio/               # 타격 소리 묶음 (index.json + m4a)
+assets/v2/char3d/              # 본 게임의 모든 입체 모델 (적 여섯 종 · 마을 사람 · 보스) 과 동작 묶음
+assets/v2/portraits/           # 대화 창 초상화
