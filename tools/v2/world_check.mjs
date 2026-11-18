@@ -66,7 +66,7 @@ for (const id of LIST) for (const st of ['', ...(WITH_STATES ? STATES[id] ?? [] 
 }
 /** a route on this lane's reach grid from (fx, fz) to (tx, tz): the fat grid keeps the bot off corners, the thin one is the fallback */
 function plan(W, fx, fz, tx, tz) {
-  for (const R of [26, 14, 8]) { const g = reachGrid(W, fx, fz, R), p = g.reachable(tx, tz) ? [tx, tz] : g.near(tx, tz, 40); if (p) { const w = g.path(p[0], p[1]); if (w) return w; } }
+  for (const R of [26, 14, 8]) { const g = reachGrid(W, fx, fz, R), p = g.reachable(tx, tz) ? [tx, tz] : g.near(tx, tz, 40); if (p) { const w = g.path(p[0], p[1], true); if (w) return w; } }
   return null;
 }
 
@@ -94,7 +94,7 @@ const walk = (page, wps, start = null) => page.evaluate(([wps, start]) => {
   const ground = (x, z) => { let gy = -1e9; for (const b of sc.W.boxes) if (b.walk && x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1 && b.y1 > gy) gy = b.y1; return gy; };
   if (start !== 'stay') { sc.sim.reset(); sc.areaState.in = {}; if (start) { const h = sc.sim.hero, gy = ground(start[0], start[1]); h.x = start[0]; h.z = start[1]; h.y = gy + 1; h.vx = h.vz = h.vy = 0; h.onGround = false; h.safe = { x: h.x, z: h.z, y: gy }; } }
   sc.cam.snap = true;
-  const hp0 = sc.sim.hero.hp; let i = 0, stuck = 0, lx = 0, lz = 0, jump = 0, t = 0, fell = false, jumps = 0, minY = 1e9;
+  const hp0 = sc.sim.hero.hp; let i = 0, stuck = 0, lx = 0, lz = 0, jump = 0, t = 0, fell = false, jumps = 0, minY = 1e9, lock = null;
   for (; t < 9000 && i < wps.length; t++) {
     const h = sc.sim.hero, dx = wps[i][0] - h.x, dz = wps[i][1] - h.z, dd = Math.hypot(dx, dz);
     if (dd < (i === wps.length - 1 ? 5 : 22)) { i++; continue; }
@@ -103,8 +103,12 @@ const walk = (page, wps, start = null) => page.evaluate(([wps, start]) => {
     if (h.onGround && jump <= 0) {   // WORLD-2: a gap before a waypoint at this height, or a ledge higher than a step -> jump
       const gh = ground(h.x, h.z), ga = ground(h.x + dx / dd * 26, h.z + dz / dd * 26), gt = ground(wps[i][0], wps[i][1]);
       if (gt > gh + 90) { fell = true; break; }   // the next waypoint is more than a jump above: the hero fell off the route -> plan again from here
-      if ((ga < gh - 30 && gt >= gh - 30) || (ga > gh + 16 && ga <= gh + 100)) { jump = 18; jumps++; }
+      // jump straight at the edge: along the axis on which the gap or the ledge lies (a diagonal run-up slides off the side of a ledge)
+      const need = (g2) => (g2 < gh - 30 && gt >= gh - 30) || (g2 > gh + 16 && g2 <= gh + 100);
+      const gz = Math.abs(dz) > 3 ? ground(h.x, h.z + Math.sign(dz) * 26) : gh, gx = Math.abs(dx) > 3 ? ground(h.x + Math.sign(dx) * 26, h.z) : gh;
+      if (need(gz)) { jump = 20; jumps++; lock = 'z'; } else if (need(gx)) { jump = 20; jumps++; lock = 'x'; } else if (need(ga)) { jump = 20; jumps++; lock = null; }
     }
+    if (jump > 0 && lock === 'z') { act.left = act.right = false; } else if (jump > 0 && lock === 'x') { act.up = act.down = false; }
     if (t % 6 === 0) { const m = Math.hypot(h.x - lx, h.z - lz); lx = h.x; lz = h.z; stuck = m < 2 ? stuck + 1 : 0; if (stuck >= 4) { jump = 22; stuck = 0; } if (stuck === 3 && h.onGround && ground(wps[i][0], wps[i][1]) > ground(h.x, h.z) + 60) { fell = true; break; } }
     if (jump > 0) { jump--; act.jump = jump > 6; }
     g.tick(1 / 60);
@@ -124,7 +128,7 @@ async function go(page, W, from, to) {
 }
 /** the tower drop test: dropped anywhere over the tower the hero lands on a floor - never in a pit, never out of the world, never hurt */
 const dropTest = (page, x0, x1, z0, z1, step) => page.evaluate(([x0, x1, z0, z1, step]) => {
-  const g = window.__game, sc = window.__v2.scene, h = sc.sim.hero, bad = []; let n = 0; g._pageHidden = true; sc.sim.reset(); const hp0 = h.hp;
+  const g = window.__game, sc = window.__v2.scene, bad = []; let n = 0; g._pageHidden = true; sc.sim.reset(); const h = sc.sim.hero, hp0 = h.hp;
   for (let x = x0; x <= x1; x += step) for (let z = z0; z <= z1; z += step) {
     h.x = x; h.z = z; h.y = 900; h.vx = h.vz = h.vy = 0; h.onGround = false; h.safe = { x: 360, z: 80, y: 0 }; let t = 0;
     for (; t < 400 && !h.onGround; t++) g.tick(1 / 60);

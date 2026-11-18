@@ -306,6 +306,10 @@ export function driveHero(ch, h, dt, T = TUNE) {
     const bank = clamp(-(S.angV ?? 0) * (T.runBank ?? 1.1), -11, 11) * S.lean;   // 돌 때 도는 쪽으로 몸을 기울인다 (달리는 동안만)
     if (Math.abs(bank) > 0.3) { PB.deg = bank * 0.5; pitchBoneS(ch.rig, 'hips', 2); pitchBoneS(ch.rig, 'spine', 2); }
   }
+  // 모으기: 모일수록 윗몸을 앞으로 웅크린다(용수철을 감듯이) — 놓으면 0.07초에 풀리며 휘두름이 그 힘을 받아 나간다 (TUNE.chargeCoil 도, 0 이면 끈다)
+  const coil = st === 'charge' && !h.dead ? Math.min(1, h.charge ?? 0) : 0;
+  S.coil = (S.coil ?? 0) + (coil - (S.coil ?? 0)) * Math.min(1, dt * 14);
+  if (S.coil > 0.02) { const cd = (T.chargeCoil ?? 12) * S.coil; PB.deg = cd * 0.6; pitchBoneS(ch.rig, 'spine', 0); PB.deg = cd * 0.4; pitchBoneS(ch.rig, 'spine2', 0); }
   // 락온한 적을 고개로 본다 (서 있거나 걷고 달릴 때만; 공격 · 구르기 중에는 몸이 이미 그쪽을 본다)
   let look = 0;
   if (h.lock != null && !h.dead && (st === 'idle' || st === 'run' || st === 'walk' || st === 'guard' || st === 'land')) {
@@ -331,7 +335,7 @@ export function driveHero(ch, h, dt, T = TUNE) {
       legIK(ch.rig, S.ikSide, -ch.dz * ex + ch.dx * ez, S.ikY, ch.dx * ex + ch.dz * ez, w * w * (3 - 2 * w)); stepped = true;
     }
   } else S.ikMove = null;
-  const posed = S.lean > 0.02 || S.brace > 0.02 || readyOn || stepped, looking = Math.abs(S.look) > 0.5;
+  const posed = S.lean > 0.02 || S.brace > 0.02 || S.coil > 0.02 || readyOn || stepped, looking = Math.abs(S.look) > 0.5;
   if (looking) { PB.deg = S.look * 0.4; pitchBoneS(ch.rig, 'neck', 1); PB.deg = S.look * 0.45; pitchBoneS(ch.rig, 'head', 1); PB.deg = S.look * 0.15; pitchBoneS(ch.rig, 'spine2', 1); }
   if (posed || looking) ch.rig.pose();
 }

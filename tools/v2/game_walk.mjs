@@ -102,7 +102,7 @@ for (const dev of DEVICES) {
       r = await page.evaluate(() => { const B = window.__bot, v = window.__v2, o = B.touchRun(180, 45); if (v.ready) { o.hook = v.scene.sim.hero.hookId ?? null; o.flags = Object.keys(v.scene.worldFlags ?? {}).join('+'); o.exit = v.exits.map((x) => x.id + ':' + (x.locked ?? 'open')).join(' '); o.prompt = v.prompt?.id ?? null; o.near = (v.scene.area.exits.find((x) => x.id === 'to_ossuary') ?? {})._near ?? false; } return o; });
       if (r.loading) { await page.waitForTimeout(400); continue; }
       const tag = r.area + '/' + r.sec; if (!sections.includes(tag)) sections.push(tag);
-      if (args.verbose) console.log('       ' + JSON.stringify({ a: r.area, sec: r.sec, x: r.x, z: r.z, hp: r.hp, left: r.left, deaths: r.deaths, wp: r.wp, kinds: r.kinds, exit: r.exit, skips: r.skips }));
+      if (args.verbose) console.log('       ' + JSON.stringify({ a: r.area, sec: r.sec, x: r.x, z: r.z, hp: r.hp, left: r.left, deaths: r.deaths, wp: r.wp, kinds: r.kinds, exit: r.exit, skips: r.skips, hook: r.hook, y: r.y, flags: r.flags }));
       if (r.prompt && !promptSeen) promptSeen = r.prompt;
       for (const k of Object.keys(r.kinds ?? {})) if (r.kinds[k] >= 2 && !cap.has(r.area + k)) { cap.add(r.area + k); if (dev === DEVICES[0]) await shot(page, `walk_${dev}_fight_${r.area}_${k}`); }
       if (phase === 1 && r.area === 'graveyard_now') { phase = 2; await page.evaluate((route) => { const B = window.__bot; B.setRoute(route); B.opt.hunt = null; B.opt.giveUp = 900; }, R2); await shot(page, `walk_${dev}_10_graveyard`); }
@@ -110,7 +110,18 @@ for (const dev of DEVICES) {
       if (phase === 2 && r.z > 1850 && Math.abs(r.x - 600) < 90) { reached = true; break; }
       if (phase === 2 && r.hook && RING && r.z <= 1850) {   // under the whip ring: a real touch on the skill button (it shows the hook while a ring is in reach)
         pad = await v2pad(page); const b = pad?.buttons.skill;
-        if (b) { hooks++; await T.down(13, b.cx, b.cy); await page.waitForTimeout(140); await T.up(13); await page.waitForTimeout(300); await page.evaluate(() => { const g = window.__game; for (let i = 0; i < 90; i++) g.tick(1 / 60); g.alpha = 1; g.render(); }); }
+        if (b) {   // pressed like the bot's other buttons: pointer events on the pad's own handlers, held over a few ticks (the page loop is stopped while the bot fast-forwards)
+          hooks++;
+          await page.evaluate(([cx, cy]) => {
+            const g = window.__game, fire = (type) => window.dispatchEvent(new PointerEvent(type, { pointerId: 14, pointerType: 'touch', isPrimary: false, clientX: cx, clientY: cy, bubbles: true, cancelable: true, button: 0, buttons: type === 'pointerup' ? 0 : 1, width: 12, height: 12, pressure: type === 'pointerup' ? 0 : 0.5 }));
+            g._pageHidden = true; g.alpha = 1; g.render(); fire('pointerdown');
+            for (let i = 0; i < 4; i++) g.tick(1 / 60);
+            fire('pointerup');
+            for (let i = 0; i < 100; i++) { g.tick(1 / 60); if (i % 25 === 0) { g.alpha = 1; g.render(); } }
+            g.alpha = 1; g.render();
+          }, [b.cx, b.cy]);
+          if (hooks === 1 && dev === DEVICES[0]) await shot(page, `walk_${dev}_15_hook`);
+        }
       }
     }
     await page.evaluate(() => window.__bot.touchEnd());

@@ -6,7 +6,8 @@
 //   -> floor 3 (gap) -> wooden stair (left) -> floor 4 (gap) -> two ledges (right) -> the bell chamber (y 550, z 880..1280): the big bell, the rope, Elise.
 import { D, inChunk, rect } from './gen.js';
 
-const W = 720, LV = 110, ROW = 160, Z1 = 240, TOP = 5 * LV, ZT = Z1 + 4 * ROW;   // ZT = 880: where the bell chamber begins
+const W = 720, LV = 136, ROW = 160,   // LV 136: a floor edge cannot be hopped straight up (jump apex 112 + step 18 = 130) - the way up is the stairs and the half-height ledges
+   Z1 = 240, TOP = 5 * LV, ZT = Z1 + 4 * ROW;   // ZT = 880: where the bell chamber begins
 /** flags: fell (after the bell cracked: no Elise at the rope, no bats) */
 export function belltower(era = 'now', flags = {}) {
   const P = [], anchors = [], add = (chunk, ...parts) => P.push(...inChunk(chunk, parts.flat())), fell = !!flags.fell;
@@ -29,11 +30,11 @@ export function belltower(era = 'now', flags = {}) {
     { t: 'deco', mesh: 'towerface', x: W / 2, y: TOP - LV, z: ZT, w: W, h: LV, mat: 'ashlar', slit: [150, 570] });
   // ── the ways up ──
   const stone = { cheeks: 'LR' }, wood = { mat: 'darkwood', tread: 'wood' };
-  add('low', { t: 'stairs', x: 520, z: Z1 - 110, w: 160, d: 110, h: LV, dir: 'z+', steps: 8, mat: 'stone', kit: stone },                                   // 0 -> 1 (right)
-    { t: 'stairs', x: 40, z: zOf(2) - 104, w: 140, d: 104, y: LV, h: LV, dir: 'z+', steps: 8, mat: 'stone', kit: wood },                                     // 1 -> 2 (left, wooden)
-    { t: 'block', x: 560, z: zOf(3) - 70, w: 120, d: 70, y: 2 * LV, h: 55, kit: { mat: 'fieldstone', top: 'slabs' } });                                      // 2 -> 3 (right): a ledge half a floor high, then the floor edge
-  add('high', { t: 'stairs', x: 40, z: zOf(4) - 104, w: 140, d: 104, y: 3 * LV, h: LV, dir: 'z+', steps: 8, mat: 'stone', kit: wood },                       // 3 -> 4 (left, wooden)
-    { t: 'block', x: 540, z: ZT - 70, w: 140, d: 70, y: 4 * LV, h: 55, kit: { mat: 'fieldstone', top: 'slabs' } });                                          // 4 -> top (right)
+  add('low', { t: 'stairs', x: 520, z: Z1 - 124, w: 160, d: 124, h: LV, dir: 'z+', steps: 9, mat: 'stone', kit: stone },                                   // 0 -> 1 (right)
+    { t: 'stairs', x: 40, z: zOf(2) - 120, w: 140, d: 120, y: LV, h: LV, dir: 'z+', steps: 9, mat: 'stone', kit: wood },                                     // 1 -> 2 (left, wooden)
+    { t: 'block', x: 560, z: zOf(3) - 70, w: 120, d: 70, y: 2 * LV, h: LV / 2, kit: { mat: 'fieldstone', top: 'slabs' } });                                      // 2 -> 3 (right): a ledge half a floor high, then the floor edge
+  add('high', { t: 'stairs', x: 40, z: zOf(4) - 120, w: 140, d: 120, y: 3 * LV, h: LV, dir: 'z+', steps: 9, mat: 'stone', kit: wood },                       // 3 -> 4 (left, wooden)
+    { t: 'block', x: 540, z: ZT - 70, w: 140, d: 70, y: 4 * LV, h: LV / 2, kit: { mat: 'fieldstone', top: 'slabs' } });                                          // 4 -> top (right)
   // ── the shell: side walls and the back wall of the belfry (open arches to the night) ──
   const side = (x, face) => ({ t: 'wall', x, z: -60, w: 90, d: ZT + 400 + 60, h: TOP + 330, mat: 'facade', kit: { style: 'stone', cell: 70, faces: face, plinth: 0, quoins: false, cornice: false, courses: [LV * 2 + 60, LV * 4 + 60],
     windows: [[330, 250], [650, 470], [1010, 640], [1190, 640]].map(([u, y]) => ({ side: face, u: face === 'R' ? u : ZT + 460 - u, y, w: 34, h: 96, arch: 'point', rows: 1, cols: 1 })),

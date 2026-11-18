@@ -46,6 +46,7 @@ export function reachGrid(W, sx, sz, R = 14, opt = {}) {
   const anyIn = (ax0, ax1, az0, az1) => { for (let x = ax0 + 4; x < ax1; x += 10) for (let z = az0 + 4; z < az1; z += 10) if (reachable(x, z)) return [x, z]; return null; };
   const near = (x, z, r) => { let best = null, bd = 1e9; for (let dx = -r; dx <= r; dx += 10) for (let dz = -r; dz <= r; dz += 10) { const d = Math.hypot(dx, dz); if (d <= r && d < bd && reachable(x + dx, z + dz)) { bd = d; best = [x + dx, z + dz]; } } return best; };
   const blocked = (x, z, r) => { const g = groundAt(W, x, z); return !Number.isFinite(g) || blockedAt(x, z, g, r); };
-  const path = (x, z) => { let k = cellOf(x, z); if (k < 0 || !seen[k]) return null; const out = []; for (; k >= 0; k = par[k]) out.push(centre(k)); out.reverse(); const thin = out.filter((_, i) => i % 2 === 0 || i === out.length - 1); thin.push([x, z]); return thin; };
+  /** full = every cell of the route (20 apart, axis-aligned steps: a bot that has to jump ledges needs them all); default = every second cell */
+  const path = (x, z, full = false) => { let k = cellOf(x, z); if (k < 0 || !seen[k]) return null; const out = []; for (; k >= 0; k = par[k]) out.push(centre(k)); out.reverse(); const thin = full ? out : out.filter((_, i) => i % 2 === 0 || i === out.length - 1); thin.push([x, z]); return thin; };
   return { reachable, anyIn, near, blocked, path, cells, ground: (x, z) => groundAt(W, x, z) };
 }
