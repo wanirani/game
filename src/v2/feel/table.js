@@ -233,7 +233,7 @@ export const EVENT = Object.freeze({
   'cross.rush': ev('f3_big', [n('cross_rush', 0, 0.75, 1, 0, { pv: 0, gv: 0 })], { gain: 0.85, flat: true }),
   'cross.rush.long': ev('f3_big', [n('cross_rush', 1.75, 0.75, 1, 0, { pv: 0, gv: 0 }), s('riser', 0, 0.4, 1, 0, { el: 'holy' })], { gain: 0.85, flat: true }),
   'cross.beat': ev('f3_bell', [n('cross_swell', 0, 0.8, 1, 0, { pv: 0.02, gv: 0.03 })], { gain: 0.9, flat: true, haptic: 'crossBeat' }),
-  'loop.cross': ev('f3_loop', [], { loop: 'holy', gain: 0.2, life: 16, flat: true }),
+  'loop.cross': ev('f3_loop', [], { loop: 'holy', gain: 0.2, life: 9, flat: true }),
   'cross.arrive.past': ev('f3_bell', [n('bell_toll', 0, 0.42, 0.84), n('cross_tail_past', 0.03, 0.62, 1, 0, { pv: 0 }), s('drop', 0, 0.35, 0.8)], { duck: [0.5, 2.4], haptic: 'crossArrive' }),
   'cross.arrive.now': ev('f3_bell', [n('bell_toll', 0, 0.42, 1.19), n('cross_tail_now', 0.03, 0.55, 1, 0, { pv: 0 }), s('shimmer', 0.08, 0.3, 1.4, 1)], { duck: [0.5, 2.4], haptic: 'crossArrive' }),
   'cross.dull': ev('f3_bell', [n('bell_dull', 0, 0.9, 1, 0, { pv: 0.02 }), s('thud', 0, 0.45, 0.8)], { haptic: 'dull' }),

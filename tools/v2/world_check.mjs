@@ -20,7 +20,8 @@ import { loadPropsNode } from './world_node.mjs';
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => { if (v.startsWith('--')) a.push([v.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true]); return a; }, []));
 const DEVICES = String(args.devices || 'fold_open,phone2').split(','), SHOTS = String(args.shots ?? '1') !== '0', OUT = '/tmp/claude-0/v2/world/shots';
 const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', GL_ARGS = ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'];
-const BUDGET = { tris: 35000, draws: 40, staticDraws: 30, texMB: 8 }, WITH_STATES = String(args.states ?? '1') !== '0';
+// WORLD-LOOK (2026-11-18): +8,000 triangles and +2 draws for the land beyond the walls (the 'far' chunk; ENV_KIT 23) - the budget was 35,000 / 40 / 30
+const BUDGET = { tris: 43000, draws: 42, staticDraws: 32, texMB: 8 }, WITH_STATES = String(args.states ?? '1') !== '0';
 const SPOTS = {
   eshville: [['1_outskirts', 330, 150], ['2_outskirts_b', 1160, 150], ['3_street_inn', 1840, 150], ['4_street_smithy', 2660, 150], ['5_square_south', 3900, 220], ['6_square_well', 3900, 640], ['7_church_steps', 3900, 1040], ['8_church_front', 3900, 1440], ['9_grave_road', 4590, 1090]],
   graveyard: [['1_road', 600, 300], ['2_road_b', 600, 700], ['3_gate', 600, 1010], ['4_field', 600, 1300], ['5_field_west', 380, 1540], ['6_mausoleum', 600, 1860]],

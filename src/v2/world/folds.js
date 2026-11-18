@@ -2,9 +2,6 @@
 // Per area and chunk: a texture with few triangles -> the look-alike material it is drawn with (src/v2/env/mats.js FOLDS, docs/v2/ENV_KIT.md 18).
 export const AREA_FOLDS = {
   "eshville_now": {
-    "out": {
-      "wood": "timber"
-    },
     "street": {
       "wood": "timber"
     },
@@ -13,9 +10,6 @@ export const AREA_FOLDS = {
     }
   },
   "eshville_past": {
-    "out": {
-      "wood": "timber"
-    },
     "street": {
       "wood": "timber"
     },
