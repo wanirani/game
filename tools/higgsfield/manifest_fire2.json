@@ -1,0 +1,8 @@
+{
+ "lane": "FIRE-2",
+ "date": "2026-11-18",
+ "credits_cap": 10,
+ "credits_used": 0,
+ "generations": [],
+ "note": "No paid generation was made. The flame flipbook (16 looping flame frames + 8 wisp frames, 128 x 256 each) is painted in code: src/v2/fx/flamebook.js; look at it with node tools/v2/fire2_sheet.mjs."
+}

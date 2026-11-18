@@ -4,6 +4,8 @@
 작성 2026-11-17. 소유자 의견("적과 모든 것들을 3D 로, 배경도 좀 더 디테일하게 — 사물이나 벽면 등도")에 대한 **배경 쪽 답**이다.
 숫자는 §5. 헤드리스 Chromium 은 소프트웨어 렌더러(SwiftShader)라 **프레임 시간은 실제 기기 값이 아니다** — 삼각형·그리기 호출·메모리만 믿을 수 있다.
 
+> **2026-11-18 17:00 UTC, FIRE-2 — §22**: candle groups bake no flame triangle in the game (a living flame per wick instead, `candleSpots`), the brazier's plate of angular flame shards is left out and a heap of glowing coals lies in its bowl, a brazier's fire is 50 wide. The fire itself: `docs/v2/FX.md` §13.
+>
 > **2026-11-18 14:00 UTC, FENCE 구역이 고친 것은 §21** (담장을 뚫는 버그): 울타리 · 쇠 난간 · 단상 난간 · 계단 옆 벽 · 낮은 담 · 묘지 문이 **그려진 자리에서** 영웅을 막는다 — 그리는 키트 조각이 충돌도 낸다. 낮은 담의 끝 면 기둥(담 길이만큼 긴 돌 띠)은 없어졌고 끝 기둥은 담 끝과 나란히, 계단 옆 벽의 끝 기둥은 계단 위에 선다.
 >
 > **2026-11-18 02:10 UTC(숫자 · 검사는 02:47–02:55 UTC 에 마지막 트리에서 다시 잼), WORLD-2 구역이 더한 것은 §18** (납골당 · 종탑 소품 12종을 생성 모델로, 채찍 고리 · 길종 종대, 작은 재질 접기로 그리기 호출 줄이기 — 에슈빌 33/35 → 30/30, 수레 손잡이 · 고목 발자국, 지역별 숫자 전 → 후). §17 "남은 것"의 수레 손잡이 · 고목 · 납골 벽감 · 가판대 줄은 이제 옛 얘기다(묘지 문은 그대로 남았다).
@@ -639,3 +641,10 @@ Check: `node tools/v2/world_fence_node.mjs` (no browser). Every fence-like piece
 - Left: buttresses and plinths of tall walls still stand 4.5-26 over their wall's box (not fences; the hero can walk into a buttress foot); lamp posts on the front edge with `solid: 0` (eshville (1380, 8) (2300, 8), slice0 (1010, 7) (2345, 7)) are walked through by design ("the front edge does not block the road").
 
 - FENCE-VERIFY (11-18): the open cemetery gate's leaves now stand at 90 degrees (`open: 1.385` in graveyard_now and eshville_now's gate_open state, was 1.25 = 81 degrees). At 81 degrees the leaf's collision box stuck out 14 past the post's inner face, a pocket an off-centre straight push (x 556 / 644, the graveyard camera turns the stick ~13 degrees) was held in at z 912; at 90 degrees the leaf is flush behind the post and the way between the posts is 154 wide. A new open gate should use 0 or 1.385.
+
+## 22. FIRE-2 (2026-11-18 16:10–17:10 UTC) — candles and braziers (the fire itself: `docs/v2/FX.md` §13)
+
+- **Candles** (`props2.js` `candles`): the flat flame triangle on each candle is baked only when the build asks for flames (`compileEnv(stage, { flames: true })` — the test scene v2c, which has no particles; there it is a little smaller, 3.4 x 7). The game bakes none: `candleSpots(parts)` (same file, the same wick numbers as `candles`) lists every group's wicks and `src/v2/game/anchors.js` burns one small living flame per wick plus a soft halo per group. -1 triangle per candle in the game. The code-built stand-ins of `props3.js` (`candle()`: candelabrum, chandelier, altar) keep their triangle — they are drawn only if the prop pack is missing; the pack's generated models have their flames modelled in.
+- **Brazier**: the generated model has a flat plate of angular yellow "flame" shards standing in its bowl (17 triangles, model y 93..112 at z 22..26). `BAKED_ARGS.brazier` leaves them out when the prop is written (`baked.js` `o.drop`); **the pack and its bake are untouched** (`world_props_bake.mjs` still reproduces the shipped files). `BAKED_EXTRA.brazier` puts `coalHeap()` in the bowl: a dull red glowing dome of the coal texture with eight bright pieces (37 triangles). Net +20 triangles per lit brazier.
+- `flameSpots`: a brazier's fire is 50 wide (was 30) — it fills the bowl (88 wide). Size 0.5 as before.
+- Fold plan unchanged (`world_folds --check`), `world_validate` ALL OK, `world_check` ALL OK, `envkit_check --base 1` all passed.
