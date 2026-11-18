@@ -137,7 +137,7 @@ export function ossuary(era = 'now', flags = {}) {
       id: 'ossuary_' + era, name: '배웅의 납골당',
       sky: { img: 'bg/s02_graveyard', crop: 0.66, span: 84 * D, bottom: -7 * D, top: now ? [0.012, 0.016, 0.022] : [0.03, 0.02, 0.016] },
       fog: now ? { color: [0.035, 0.05, 0.065], near: 500, far: 2200, max: 0.97 } : { color: [0.07, 0.045, 0.03], near: 700, far: 2800, max: 0.94 },
-      light: now ? { ambient: [0.25, 0.31, 0.38], moon: [0.3, 0.4, 0.5], moonDir: [-0.3, 0.9, -0.3] } : { ambient: [0.34, 0.28, 0.24], moon: [0.4, 0.33, 0.28], moonDir: [-0.3, 0.9, -0.3] },
+      light: now ? { ambient: [0.25, 0.31, 0.38], moon: [0.3, 0.4, 0.5], moonDir: [-0.3, 0.9, -0.3], key: [0.26, 0.34, 0.46, 1.6], rimK: 1.8 } : { ambient: [0.34, 0.28, 0.24], moon: [0.4, 0.33, 0.28], moonDir: [-0.3, 0.9, -0.3], key: [0.3, 0.26, 0.22, 1.5], rimK: 1.6 },   // key / rimK: WORLD-LOOK (charr.js)
       sections: SEC.map(([id, label, z0, z1]) => ({ id, label, x0: 0, x1: 1200, z0, z1, cam: cam(id === 'boss' || id === 'posts' ? { pitch: 28 * D, dist: 940, minX: 380, maxX: 820, leadZ: 40 } : id === 'coffins' ? { minX: 560, maxX: 640 } : {}) })),
       chunks: [{ id: 'c1', z1: 1000 }, { id: 'c2', z1: 2100 }, { id: 'c3', z1: 3000 }, { id: 'c4', z1: Infinity }],
       parts: P,

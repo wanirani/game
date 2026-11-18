@@ -646,15 +646,14 @@ const cxC = (dx) => (dx > 0 ? CX.cold : CX.warm);
 function crossGather(fx, x, y, z, dx, dz, pow) {   // the bell's light gathers while the other night answers
   const c = cxC(dx), by = y + pow * 100;
   fx.particles.emit(dx > 0 ? CX.gatherC : CX.gatherW, x, by, z, 0, 1, 0, 1, y);
-  fx.quads.billboard(Q.GLOW, x, by, z, 90, 0.5, c.soft, 0.4, 1.3, 0.06);
+  fx.quads.billboard(Q.GLOW, x, by, z, 56, 0.45, c.soft, 0.4, 1.25, 0.06);
   fx.light(x, by, z, 360, c.light, 0.9, 0.5, 0.2, 0);
 }
-function crossRing(fx, x, y, z, dx, dz, pow) {   // the toll: light bursts from the bell, rings run over the ground under the ring of the picture
+function crossRing(fx, x, y, z, dx, dz, pow) {   // the toll: light bursts from the bell (the ring itself is drawn by the crossing from the frame's depth: it runs over ground, walls and people)
   const c = cxC(dx), by = y + pow * 100;
-  gRing(fx, x, y, z, 520, 0.42, c.ring); gRing(fx, x, y, z, 980, 0.6, c.soft);
-  fx.quads.billboard(Q.GLOW, x, by, z, 210, 0.5, c.ring, 0.5, 1.7, 0.02); bRing(fx, x, by, z, 170, 0.36, c.ring);
+  fx.quads.billboard(Q.GLOW, x, by, z, 64, 0.26, c.soft, 0.7, 1.5, 0.02);
   fx.particles.emit(dx > 0 ? CX.starC : CX.starW, x, by - 30, z, 0, 1, 0, 1.4, y);
-  fx.light(x, by, z, 1100, c.light, 1.7, 0.6, 0, 0);
+  fx.light(x, by, z, 1100, c.light, 1.6, 0.6, 0, 0);
 }
 function crossLift(fx, x, y, z, dx) {   // motes and dust leave the ground around the hero as the ring passes
   fx.particles.emit(dx > 0 ? CX.liftC : CX.liftW, x, y + 4, z, 0, 1, 0, 1, y);
@@ -667,8 +666,8 @@ function crossDull(fx, x, y, z, dx, dz, pow) {   // the refusal: a grey puff at 
 }
 function crossOpen(fx, x, y, z, dx, dz, pow) {   // the other night opens at the bell
   const c = cxC(dx), by = y + pow * 100;
-  fx.quads.billboard(Q.GLOW, x, by, z, 170, 0.45, c.ring, 0.4, 1.6, 0.02);
-  fx.light(x, by, z, 800, c.light, 1.5, 0.55, 0, 0);
+  fx.particles.emit(dx > 0 ? CX.starC : CX.starW, x, by - 30, z, 0, 1, 0, 0.7, y);
+  fx.light(x, by, z, 560, c.light, 0.9, 0.6, 0, 0);
 }
 function crossSpark(fx, x, y, z, dx, dz, pow) {   // sparks where the opening ring runs over the ground (pow > 0 cold, < 0 warm)
   fx.particles.emit(pow > 0 ? CX.sparkC : CX.sparkW, x, y + 4, z, dx, 0.8, dz, 1, y);
@@ -676,7 +675,7 @@ function crossSpark(fx, x, y, z, dx, dz, pow) {   // sparks where the opening ri
 function crossArrive(fx, x, y, z, dx, dz, pow) {   // the second toll: light settles on the bell
   const c = cxC(dx), by = y + pow * 100;
   gRing(fx, x, y, z, 300, 0.8, c.ring); gRing(fx, x, y, z, 190, 1.0, c.soft);
-  fx.quads.billboard(Q.GLOW, x, by, z, 150, 0.9, c.soft, 0.7, 1.4, 0.05);
+  fx.quads.billboard(Q.GLOW, x, by, z, 70, 0.8, c.soft, 0.7, 1.3, 0.05);
   fx.particles.emit(dx > 0 ? CX.starC : CX.starW, x, by - 30, z, 0, 1, 0, 0.8, y);
   fx.light(x, by, z, 620, c.light, 1.3, 1.1, 0.15, 0);
 }

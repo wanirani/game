@@ -22,6 +22,9 @@ const YEAR = { past: 1697, now: 1797 };
 const BUDGET = 9;          // ms of loading work per frame before the load lets a frame through (breath())
 const R_END = 6600;        // world units: a ring this wide has left every picture
 const GLOW_PAST = [1.0, 0.8, 0.5], GLOW_NOW = [0.7, 0.86, 1.0];
+/** radius of a ring k (0..1) of its time after it left the bell: about 18 m in the first four fifths (the part of the world the camera sees - the eye can
+ *  follow it), then out past everything */
+const ringR = (k) => (k < 0.8 ? 1800 * Math.pow(k / 0.8, 1.35) : 1800 + (R_END - 1800) * ((k - 0.8) / 0.2) * ((k - 0.8) / 0.2));
 
 const VS = `#version 300 es
 out vec2 vUV;
@@ -34,12 +37,11 @@ uniform vec4 uBellS;    // the bell on the screen (uv, y up) · z width / height
 uniform vec4 uPulse;    // ages in seconds of the last three rings from the bell (< 0 = none) · w their brightness
 uniform vec3 uBase;     // colour that stands in when the frozen picture is gone (context lost)
 uniform vec3 uGlow;     // the bell's light
+uniform vec3 uTo;       // the tint of the night ahead (from its fog colour) · uFog below: that colour itself, dark
+uniform vec3 uFog;
 float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y); }
-vec3 gradeTo(vec3 c, float dir) {
-  float l = dot(c, vec3(0.3, 0.59, 0.11));
-  return dir > 0.0 ? vec3(l) * vec3(0.66, 0.84, 1.12) * 0.96 + vec3(0.0, 0.008, 0.024) : vec3(l) * vec3(1.42, 0.78, 0.56) + vec3(0.045, 0.0, 0.0);
-}
+vec3 gradeTo(vec3 c) { float l = dot(c, vec3(0.3, 0.59, 0.11)); return (vec3(l) * 0.8 + c * 0.2) * uTo + uFog * 0.16; }
 vec3 aged(vec2 uv) {
   float t = uT.x, g = uT.y, dir = uT.z;
   vec2 q = (uv - uBellS.xy) * vec2(uBellS.z, uBellS.w);
@@ -52,14 +54,14 @@ vec3 aged(vec2 uv) {
     if (a < 0.0) continue;
     float rr = 0.03 + a * (1.25 - a * 0.22), wd = 0.03 + a * 0.05, x = (r - rr) / wd, e = exp(-x * x) * exp(-a * 1.5);
     push += e * (x > 0.0 ? 1.0 : -0.6);
-    line += exp(-x * x * 9.0) * exp(-a * 1.7);
+    line += (exp(-x * x * 9.0) + 0.35 * exp(-x * x * 0.9)) * exp(-a * 1.5);
   }
   vec2 u2 = uv - qn / vec2(uBellS.z, uBellS.w) * push * 0.022;
   u2 += (vec2(vn(uv * 3.1 + vec2(t * 0.9, 0.0)), vn(uv * 3.1 + vec2(7.0, -t * 0.8))) - 0.5) * (0.004 + 0.012 * g);   // the picture breathes: it never stands still
   vec3 c = uT.w > 0.5 ? texture(uFrozen, clamp(u2, 0.001, 0.999)).rgb : uBase * (0.55 + 0.7 * vn(uv * 4.0 + t * 0.2));
   // the colour of one night drains into the other, as a tide running out from the bell
   float tide = smoothstep(-0.3, 0.3, g * 2.3 - r - 0.15 + (vn(uv * 5.0 + t * 0.35) - 0.5) * 0.35);
-  c = mix(c, gradeTo(c, dir), 0.35 + 0.6 * tide * min(1.0, g * 3.0 + 0.2));
+  c = mix(c, gradeTo(c), 0.35 + 0.6 * tide * min(1.0, g * 3.0 + 0.2));
   // shadows sweep across as if the moon raced over the sky - faster and faster
   float sp = t * (1.3 + t * 1.1) * dir, k3 = min(1.0, t * 2.5);
   float band = vn(vec2(uv.x * 1.7 + uv.y * 0.8 - sp, uv.y * 1.1 + 3.0)) * 0.65 + vn(vec2(uv.x * 4.3 - sp * 2.1, uv.y * 2.6 + 9.0)) * 0.35;
@@ -71,9 +73,9 @@ vec3 aged(vec2 uv) {
   float cy = smoothstep(0.2, 1.0, uv.y);
   float cl = vn(vec2(uv.x * 2.4 - sp * 2.4, uv.y * 13.0 + 1.7)) * vn(vec2(uv.x * 1.1 - sp * 1.3, uv.y * 4.0 + 5.0));
   c += cl * cl * (0.25 + cy) * k3 * 0.75 * (dir > 0.0 ? vec3(0.6, 0.72, 0.95) : vec3(0.95, 0.5, 0.36));
-  vec2 rp = vec2(uv.x * uBellS.z * 110.0 + uv.y * 16.0, uv.y * 2.4 + dir * t * 5.5);
+  vec2 rp = vec2(uv.x * uBellS.z * 120.0 + uv.y * 14.0, uv.y * 1.5 + dir * t * 4.6);
   float rn = h21(vec2(floor(rp.x), 3.0)), ry = fract(rp.y + rn * 9.0);
-  c += step(0.9, rn) * smoothstep(0.0, 0.08, ry) * smoothstep(0.42, 0.12, ry) * k3 * (dir > 0.0 ? vec3(0.2, 0.25, 0.34) : vec3(0.42, 0.2, 0.08));
+  c += step(0.88, rn) * smoothstep(0.0, 0.1, ry) * smoothstep(0.7, 0.15, ry) * k3 * (dir > 0.0 ? vec3(0.16, 0.2, 0.28) : vec3(0.34, 0.17, 0.07));
   // dust and ash: settle towards tonight, lift towards 1697 (two layers, the near one larger and faster)
   for (int i = 0; i < 2; i++) {
     float fi = float(i), n = 9.0 + fi * 8.0;
@@ -89,9 +91,9 @@ vec3 aged(vec2 uv) {
   vec2 e2 = min(uv, 1.0 - uv);
   float ed = min(e2.x * uBellS.z, e2.y);
   float er = smoothstep(0.0, 0.15, ed + (vn(uv * 8.0 + t * 0.5) - 0.5) * 0.16 - g * 0.06 + 0.035);
-  c *= mix(1.0, er, min(1.0, 0.25 + g * 1.2) * 0.92 * k3);
+  c = mix(c, uFog * 0.22, (1.0 - er) * min(1.0, 0.25 + g * 1.2) * 0.86 * k3);
   // the bell: its rings as light, and a glow that beats where it hangs
-  c += uGlow * (line * 0.5 + exp(-r * r * 70.0) * (0.16 + 0.12 * sin(t * 9.0))) * uPulse.w;
+  c += uGlow * (line * 0.62 + exp(-r * r * 90.0) * (0.14 + 0.1 * sin(t * 9.0))) * uPulse.w;
   return c;
 }`;
 const FS_HEAD = `#version 300 es
@@ -112,9 +114,9 @@ void main() {
   vec3 P = uEye + uF * w + uR * (n.x * w) + uU * (n.y * w);
   float d = distance(P, uBellW.xyz);
   vec2 sq = (vUV - uBellS.xy) * vec2(uBellS.z, 1.0);
-  if (z > 0.99999) d = 2300.0 + length(sq) * 2700.0;      // the sky has no place in the world: the ring reaches it last, from the bell's side
+  if (z > 0.99999) d = 1500.0 + length(sq) * 2600.0;      // the sky has no place in the world: the ring reaches it last, from the bell's side
   float R = uBellW.w, x = d - R, wd = 6.0 + R * 0.02;
-  float rim = exp(-x * x / (wd * wd)), halo = exp(-abs(x) / (wd * 8.0)) * 0.3;
+  float rim = exp(-x * x / (wd * wd)), halo = exp(-abs(x) / (wd * 8.0)) * 0.3, tail = x < 0.0 ? exp(x / (70.0 + R * 0.12)) : 0.0;
   vec2 dirS = normalize(sq + 1e-5) / vec2(uBellS.z, 1.0);
   vec3 c = texture(uScene, clamp(vUV - dirS * rim * 0.014 * uRing.y, 0.001, 0.999)).rgb;
   float tw = step(0.84, h21(floor(P.xz / 9.0) + floor(P.y / 9.0) * 3.1 + floor(uRing.z * 26.0)));
@@ -122,11 +124,11 @@ void main() {
     float fl = 1.0 - uRing.w * (0.45 + 0.55 * sin(uRing.z * 53.0) * sin(uRing.z * 31.0 + 1.3));
     vec3 gl = mix(uGlow, vec3(0.5, 0.52, 0.56), uRing.w);
     float behind = smoothstep(wd * 3.0, -wd * 3.0, x) * (1.0 - uRing.w);
-    c = mix(c, gradeTo(c, uT.z), behind * 0.35 * min(1.0, uRing.y));       // what the ring leaves behind has begun to turn
-    c += gl * (rim * (1.5 + tw * 1.3) + halo) * uRing.y * fl;
+    c = mix(c, gradeTo(c), behind * 0.35 * min(1.0, uRing.y));       // what the ring leaves behind has begun to turn
+    c += gl * (rim * (1.5 + tw * 1.3) + halo + tail * 0.38 * (1.0 - uRing.w)) * uRing.y * fl;
   } else {
     c = mix(aged(vUV), c, smoothstep(wd, -wd, x));
-    c += uGlow * (rim * (1.7 + tw * 2.2) + halo * 0.8) * uRing.y;
+    c += uGlow * (rim * (1.8 + tw * 2.2) + halo * 0.8 + tail * 0.3) * uRing.y;
   }
   o = vec4(c, 1.0);
 }`;
@@ -135,6 +137,7 @@ export class Crossing {
   constructor(sc) {
     this.sc = sc; this.on = false; this.phase = ''; this.t = 0; this.gen = 0;
     this.pre = undefined; this.spot = null; this.early = null; this.to = ''; this.dir = 1; this.years = false; this.minT = CROSS_T.pass;
+    this.tintTo = new Float32Array([1, 1, 1]); this.fogTo = new Float32Array([0.08, 0.08, 0.1]);
     this.bell = new Float32Array(3); this.bellH = 120; this.bellS = new Float32Array([0.5, 0.4, 1, 2.6]); this.R = 0; this.base = new Float32Array([0.1, 0.1, 0.14]);
     this.pulse = new Float32Array([-1, -1, -1, 1]); this.nextPulse = 0; this.beat = 0.4; this.pulseN = 0;
     this.hud = { on: false, k: 1, back: false, turn: 0, year: 0, from: 'now', to: 'past', beat: 0 };   // what the HUD reads (state.cross): k = how much of the controls is shown
@@ -196,6 +199,7 @@ export class Crossing {
     this.gen++; this.on = true; this.phase = 'gather'; this.t = 0; this.to = to; this.years = !!o?.years; this.dir = a.era === 'past' ? 1 : -1; this.minT = this.years ? CROSS_T.years : CROSS_T.pass;
     this.pre = undefined; this.spot = null; this.frozen = false; this.mode = 0; this.R = 60; this.sparkT = 0; this._holdRes = null; this.slicing = false;
     this.pulse[0] = this.pulse[1] = this.pulse[2] = -1; this.pulse[3] = 1; this.pulseN = 0;
+    { const T = this.tintTo, G = this.fogTo, c = this.dir > 0; T[0] = c ? 0.7 : 1.4; T[1] = c ? 0.88 : 0.8; T[2] = c ? 1.15 : 0.6; G[0] = c ? 0.06 : 0.12; G[1] = 0.08; G[2] = c ? 0.13 : 0.07; }
     sc.xing = { to, years: this.years, from: a.era }; sc._refused = false; sc.locked = true;
     // the bell: the nearest bell of the area within reach, otherwise the hand bell the hero carries
     this._findBell(h, 420);
@@ -265,7 +269,7 @@ export class Crossing {
         this.R = 60 + 95 * (1 - Math.exp(-this.t * 9)) + 10 * Math.sin(this.t * 21);
         if (this.pre === undefined || this.t < T.gather) break;
         if (this.pre === null) { this.phase = 'dull'; this.t = 0; this.log.refused = true; this.kTo = 1; H.back = false; this._play('cross.dull', 1); this._fx('cross.dull'); try { sc.fx?.feel.addTrauma(0.1); } catch { /* effect */ } break; }
-        this.phase = 'ring'; this.t = 0; this.log.toll = performance.now();
+        this.phase = 'ring'; this.t = 0; this.log.toll = performance.now(); this._tint(this.pre);
         { const fx = sc.fx, h = sc.sim?.hero; if (fx) { const F = fx.feel; F.slowMo(0.3, T.ring + 0.05); F.zoomPunch(0.07, 0.5); F.addTrauma(0.22); }
           this._fx('cross.ring'); if (h) this._fx('cross.lift', h.x, h.y, h.z);
           try { feel.play('bell.toll', h ?? null); } catch { /* no audio */ }
@@ -274,7 +278,7 @@ export class Crossing {
       }
       case 'ring': {
         const k = Math.min(1, this.t / T.ring);
-        this.R = 150 + R_END * Math.pow(k, 2.6);
+        this.R = 150 + ringR(k);
         if (k >= 1) this._depart();
         break;
       }
@@ -296,7 +300,7 @@ export class Crossing {
         const k = Math.min(1, this.t / T.reveal), P = this.pulse;
         for (let i = 0; i < 3; i++) if (P[i] >= 0) P[i] += dt;
         P[3] = 1 - k;
-        this.R = R_END * Math.pow(k, 2.4);
+        this.R = ringR(k);
         if ((this.sparkT -= dt) <= 0 && this.R < 1500) { this.sparkT = 0.05; this._ringSparks(); }
         if (k >= 1) this._land();
         break;
@@ -304,6 +308,12 @@ export class Crossing {
       case 'glow': if (this.t >= T.glow && H.k >= 1 && H.turn >= 1) this._end(); break;
       default: break;
     }
+  }
+  /** the colour the picture drains into: the fog of the night ahead as a tint (its brightness taken out, pulled half way to neutral) */
+  _tint(area) {
+    const f = area?.W?.fog?.color, T = this.tintTo, G = this.fogTo; if (!f) return;
+    const l = Math.max(0.02, 0.3 * f[0] + 0.59 * f[1] + 0.11 * f[2]);
+    for (let i = 0; i < 3; i++) { T[i] = Math.max(0.5, Math.min(1.7, 1 + (f[i] / l - 1) * 0.72)); G[i] = f[i]; }
   }
   /** the ring has left the picture: keep the last frame of this night, let the old night go and load the other one under it */
   _depart() {
@@ -412,6 +422,7 @@ export class Crossing {
     const gl = this.sc.glr.gl, V = this._v4;
     V[0] = t; V[1] = grade; V[2] = this.dir; V[3] = this.frozen ? 1 : 0; gl.uniform4fv(u.uT, V);
     gl.uniform4fv(u.uBellS, this.bellS); gl.uniform4fv(u.uPulse, this.pulse); gl.uniform3fv(u.uBase, this.base); gl.uniform3fv(u.uGlow, this.dir > 0 ? GLOW_NOW : GLOW_PAST);
+    gl.uniform3fv(u.uTo, this.tintTo); gl.uniform3fv(u.uFog, this.fogTo);
   }
   _done(gl) {
     gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, null); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, null); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, null);

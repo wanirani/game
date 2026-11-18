@@ -13,8 +13,8 @@
 //   - lit   = mean luma of the brighter half of the silhouette / mean luma of what is behind and around it (the frame WITHOUT the
 //             figure, over the silhouette grown by 28 % of its height; nothing below the feet)     aim >= 1.6
 //   - mean  = mean luma of the whole silhouette / the same background
-//   - edge  = the 3 px band inside the outline on the figure's darker side / the brighter of (the body 6..14 px further in, the
-//             background 2..8 px outside)      aim >= 1.15 (a visible light edge)
+//   - edge  = the 3 px band inside the outline on the figure's darker side / the body 6..14 px further in      aim >= 1.15 (a visible
+//             light edge on the dark side);  edgeOut = the same band / the background 2..8 px outside the outline (in the JSON)
 //   luma = Rec.709 on the display values (what the screen shows), 0..1.
 // Prints one JSON line per still and a table; writes <out>/look_read_<tag>.json and .md. One browser, one page per area.
 import { chromium } from 'playwright-core';
@@ -137,12 +137,12 @@ function install(aim) {
         for (let q = 2; q <= 8; q++) { const xx = x0 + e - dir * q; if (xx < 0 || xx >= w) continue; Sd.out += lumAt(N, (row + xx) * 4); Sd.on++; }
       }
     }
-    let edge = null, edgeSide = null;
+    let edge = null, edgeOut = null, edgeSide = null;
     if (side[0].in > 40 && side[1].in > 40) {
       const d = side[0].inn / side[0].in <= side[1].inn / side[1].in ? 0 : 1, Sd = side[d];
-      edge = (Sd.band / Sd.bn) / Math.max(1e-4, Math.max(Sd.inn / Sd.in, Sd.on ? Sd.out / Sd.on : 0)); edgeSide = d ? 'right' : 'left';
+      edge = (Sd.band / Sd.bn) / Math.max(1e-4, Sd.inn / Sd.in); edgeOut = Sd.on ? (Sd.band / Sd.bn) / Math.max(1e-4, Sd.out / Sd.on) : null; edgeSide = d ? 'right' : 'left';
     }
-    return { n, hidden: false, box: [x0 + mx0, y0 + my0, x0 + mx1, y0 + my1], hpx: fh, mean, lit, dark, bg, litK: bg > 0 ? lit / bg : 0, meanK: bg > 0 ? mean / bg : 0, edge, edgeSide, mask: { M, x0, y0, bw, bh } };
+    return { n, hidden: false, box: [x0 + mx0, y0 + my0, x0 + mx1, y0 + my1], hpx: fh, mean, lit, dark, bg, litK: bg > 0 ? lit / bg : 0, meanK: bg > 0 ? mean / bg : 0, edge, edgeOut, edgeSide, mask: { M, x0, y0, bw, bh } };
   };
   const boxOf = (o, hgt, w, h) => {
     const a = sc.project(o.x, o.y, o.z, {}), b = sc.project(o.x, o.y + hgt, o.z, {}), kx = w / g.viewW, ky = h / g.viewH;
@@ -163,7 +163,7 @@ function install(aim) {
     const E = O2 ? figure(N, O2, w, hh, boxOf(en, en.h ?? 104, w, hh).box, null) : null;
     const H = figure(N, O1, w, hh, hb.box, E && !E.hidden ? E.mask : null);
     const r3 = (x) => (x == null ? null : Math.round(x * 1000) / 1000), st = v.stats || {};
-    const pack = (F) => (!F ? null : F.hidden ? { hidden: true, n: F.n } : { px: Math.round(F.hpx * kc), pct: +(F.hpx / hh * 100).toFixed(1), lit: r3(F.litK), mean: r3(F.meanK), edge: r3(F.edge), edgeSide: F.edgeSide, lumLit: r3(F.lit), lumMean: r3(F.mean), lumDark: r3(F.dark), lumBg: r3(F.bg) });
+    const pack = (F) => (!F ? null : F.hidden ? { hidden: true, n: F.n } : { px: Math.round(F.hpx * kc), pct: +(F.hpx / hh * 100).toFixed(1), lit: r3(F.litK), mean: r3(F.meanK), edge: r3(F.edge), edgeOut: r3(F.edgeOut), edgeSide: F.edgeSide, lumLit: r3(F.lit), lumMean: r3(F.mean), lumDark: r3(F.dark), lumBg: r3(F.bg) });
     const R = { hero: pack(H), enemy: pack(E), enemyKind: en ? en.kind : null, enemyAt: ep ? ep.map(Math.round) : null, projPx: Math.round(hb.ph * kc), projPct: +(hb.ph / hh * 100).toFixed(1),
       heroAt: [Math.round(h.x), Math.round(h.y), Math.round(h.z)], section: v.section, canvas: [w, hh], draws: st.gl?.draws ?? null, tris: st.gl?.tris ?? null, worldTris: st.world?.tris ?? null, worldDraws: st.world?.draws ?? null, lost: gl.isContextLost() };
     const Hh = R.hero;

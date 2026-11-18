@@ -159,7 +159,7 @@ export function eshville(era, flags = {}) {
       id: 'eshville_' + era, name: '에슈빌',
       sky: { img: 'bg/s01_village', crop: 0.66, span: 84 * D, bottom: -7 * D, top: now ? [0.1, 0.035, 0.045] : [0.03, 0.045, 0.08] },
       fog: out ? { color: [0.085, 0.09, 0.12], near: 800, far: 3400, max: 0.93 } : now ? { color: [0.15, 0.075, 0.075], near: 760, far: 3300, max: 0.94 } : { color: [0.06, 0.085, 0.135], near: 800, far: 3400, max: 0.93 },
-      light: out ? { ambient: [0.3, 0.3, 0.4], moon: [0.56, 0.46, 0.52], moonDir: [-0.447, 0.745, -0.496] } : now ? { ambient: [0.37, 0.28, 0.33], moon: [0.7, 0.38, 0.34], moonDir: [-0.447, 0.745, -0.496] } : { ambient: [0.27, 0.31, 0.45], moon: [0.42, 0.48, 0.68], moonDir: [-0.447, 0.745, -0.496] },
+      light: out ? { ambient: [0.3, 0.3, 0.4], moon: [0.56, 0.46, 0.52], moonDir: [-0.447, 0.745, -0.496], key: [0.22, 0.22, 0.3, 1.5], rimK: 1.6 } : now ? { ambient: [0.37, 0.28, 0.33], moon: [0.7, 0.38, 0.34], moonDir: [-0.447, 0.745, -0.496], key: [0.24, 0.2, 0.22, 1.5], rimK: 1.6 } : { ambient: [0.27, 0.31, 0.45], moon: [0.42, 0.48, 0.68], moonDir: [-0.447, 0.745, -0.496], key: [0.24, 0.28, 0.42, 1.5], rimK: 1.6 },   // key / rimK: WORLD-LOOK - a moon key and a cold light edge on the characters' dark side (charr.js)
       sections, parts: P,
       decals: decals(now),
     },
