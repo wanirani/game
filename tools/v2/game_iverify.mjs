@@ -88,7 +88,7 @@ let T = null;
 const ev = (fn, a) => page.evaluate(fn, a);
 const st = () => ev(() => window.__iv.st());
 const shot = async (name, draw = true) => { if (draw) await ev(() => window.__iv?.draw()).catch(() => {}); await page.waitForTimeout(120); await page.screenshot({ path: `${OUT}/${name}.png` }); return name; };
-async function clean(set) { await page.goto(base + '/robots.txt'); await ev((s) => { localStorage.clear(); for (const k of Object.keys(s ?? {})) localStorage.setItem(k, s[k]); }, set ?? null); }
+async function clean(set) { const n = errs.length; await page.goto(base + '/robots.txt'); await ev((s) => { localStorage.clear(); for (const k of Object.keys(s ?? {})) localStorage.setItem(k, s[k]); }, set ?? null); await page.waitForTimeout(60); errs.length = n; }   // the helper page's own favicon 404 is not the game's
 async function open(q = '', { wait = 90000, bot = true } = {}) {
   const t0 = Date.now();
   await page.goto(`${base}/index.html?scene=v2g&v2auto=0${RES < 1 ? '&v2res=' + RES : ''}${q}`);
@@ -206,6 +206,41 @@ try {
       await ev(() => window.__iv.fellNear(900)); await page.waitForTimeout(800);
     }
     R.audioAll = [...new Set(reqs.map((q) => q[1]))];
+  }
+
+  // ───────────────────────────── ring: the whip ring of the graveyard by a real press on the skill button ─────────────────────────────
+  if (PLAN === 'ring') {
+    await clean(); const o = await open('&area=graveyard_now&v2story=0'); chk(o.ready, `graveyard_now opens (${o.ms} ms)`);
+    const at = args.at ? String(args.at).split(',').map(Number) : [704, 1793];
+    await ev(([x, z]) => { window.__iv.put(x, z); window.__iv.fellNear(1200); }, at); await ff(90);
+    const q0 = await ev(() => { const v = window.__v2, h = v.scene.sim.hero, m = v.scene.hud.metrics(); return { hookId: h.hookId ?? null, act: h.act ?? null, onGround: h.onGround, x: Math.round(h.x), y: Math.round(h.y), z: Math.round(h.z), buttons: m.pad.buttons.map((b) => ({ id: b.id, cx: Math.round(b.cx), cy: Math.round(b.cy), d: Math.round(b.d), disabled: !!b.disabled, shown: b.shown ?? null, icon: b.icon ?? null })), vw: innerWidth, vh: innerHeight, caps: v.scene.state.pad ?? null, points: (v.scene.W.hookPoints ?? []).map((p) => [p.id, p.x, p.y, p.z]) }; });
+    info('before the press: ' + JSON.stringify(q0));
+    await rt(true); await page.waitForTimeout(500); await shot(`ring_${DEV}_0_under_the_ring`, false);
+    const sk = q0.buttons.find((b) => b.id === 'skill'); let seen = [];
+    if (!sk) fail('no skill button in the pad'); else {
+      for (let k = 0; k < 4 && !seen.includes('hook'); k++) { const p = ev(async () => { const t = performance.now(), s = new Set(); while (performance.now() - t < 2500) { const h = window.__v2.scene.sim.hero; if (h.act) s.add(h.act); await new Promise((r) => setTimeout(r, 6)); } return [...s]; }); await page.waitForTimeout(80); await T.tap(sk.cx, sk.cy, 110, 14); seen = seen.concat(await p); if (k === 0) await shot(`ring_${DEV}_1_after_press`, false); }
+      await page.waitForTimeout(1500); const e = await st(); await shot(`ring_${DEV}_2_end`, false);
+      chk(seen.includes('hook') && e.y > 60, `trusted press on the skill button under the ring (${q0.hookId}): acts seen ${[...new Set(seen)].join(' ') || 'none'}; hero ends at (${e.x},${e.y},${e.z}) — pad button ${JSON.stringify(sk)}`);
+    }
+  }
+
+  // ring2: the same spot with the area's enemies alive, pressed the way tools/v2/game_walk.mjs presses (pad handlers, 4 ticks down, every 12 ticks) after 180 ticks of the bot
+  if (PLAN === 'ring2') {
+    await clean(); const o = await open('&area=graveyard_now&v2story=0'); await botTouch();
+    await ev(([x, z]) => { window.__iv.put(x, z); }, [704, 1793]);
+    for (let round = 0; round < 6; round++) {
+      const r = await ev(() => { const B = window.__bot, v = window.__v2, g = window.__game, I = window.__iv; B.setRoute([[704, 1796]]); B.touchRun(180, 45); const h = v.scene.sim.hero, sk = v.scene.hud.metrics().pad.buttons.find((b) => b.id === 'skill');
+        const snap = () => ({ act: h.act ?? null, move: h.move?.id ?? null, guard: !!h.guard, hurtT: +(h.hurtT ?? 0).toFixed(2), onGround: !!h.onGround, hookId: h.hookId ?? null, x: Math.round(h.x), y: Math.round(h.y), z: Math.round(h.z), hp: Math.round(h.hp), stun: +(h.stun ?? 0).toFixed(2), roll: +(h.rollT ?? 0).toFixed(2), caps: JSON.stringify(v.scene.state.pad?.skill ?? null), awake: v.enemies.filter((e) => e.active).map((e) => e.kind + '@' + Math.round(Math.hypot(e.x - h.x, e.z - h.z))).join(' '), ts: !!B.ts, down: B.ts ? JSON.stringify(B.ts.down ?? B.ts.held ?? null) : null });
+        const before = snap(); const fire = (type) => window.dispatchEvent(new PointerEvent(type, { pointerId: 14, pointerType: 'touch', isPrimary: false, clientX: sk.cx, clientY: sk.cy, bubbles: true, cancelable: true, button: 0, buttons: type === 'pointerup' ? 0 : 1, width: 12, height: 12, pressure: type === 'pointerup' ? 0 : 0.5 }));
+        g._pageHidden = true; let thrown = false; const acts = new Set(), log = [];
+        for (let i = 0; i < 150 && !thrown; i += 12) { if (h.hookId == null) { log.push('hookId null'); break; } fire('pointerdown'); for (let k = 0; k < 4; k++) g.tick(1 / 60); fire('pointerup'); for (let k = 0; k < 8; k++) { g.tick(1 / 60); if (h.act) acts.add(h.act); if (h.move?.id) acts.add('move:' + h.move.id); if (h.act === 'hook') thrown = true; } }
+        for (let i = 0; i < 120 && (h.act === 'hook' || !h.onGround); i++) g.tick(1 / 60); for (let i = 0; i < 12; i++) g.tick(1 / 60); I.draw();
+        return { before, thrown, acts: [...acts], log, after: snap() }; });
+      info(`round ${round + 1}: thrown ${r.thrown}; acts ${r.acts.join(' ') || 'none'}; before ${JSON.stringify(r.before)}; after ${JSON.stringify(r.after)} ${r.log.join(' ')}`);
+      if (round === 0) await shot(`ring2_${DEV}_round1`);
+      if (r.thrown && r.after.y > 60) { ok(`the walk tool's own press threw the hook in round ${round + 1} with the area's enemies alive`); break; }
+      if (round === 5) fail('the walk tool\'s press never threw the hook in 6 rounds with the enemies alive');
+    }
   }
 
   // ───────────────────────────── kinds: every enemy kind of the real areas ─────────────────────────────

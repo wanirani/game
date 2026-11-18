@@ -130,6 +130,8 @@ for (const dev of DEVICES) {
             g.alpha = 1; g.render();
           }, [b.cx, b.cy]);
           if (hooks === 1 && dev === DEVICES[0]) await shot(page, `walk_${dev}_15_hook`);
+          // INTEGRATE-VERIFY: 12 presses without a throw = say why and stop (this used to burn the whole 72,000-tick budget silently)
+          if (hooks >= 12) { const dg = await page.evaluate(() => { const v = window.__v2, h = v.scene.sim.hero, B = window.__bot; return { act: h.act ?? null, move: h.move?.id ?? null, moveT: +(h.moveT ?? 0).toFixed(2), dashT: +(h.dashT ?? 0).toFixed(2), charging: !!h.charging, bellDown: !!h.bellDown, hurtT: +(h.hurtT ?? 0).toFixed(2), onGround: !!h.onGround, hookId: h.hookId ?? null, y: Math.round(h.y), hp: Math.round(h.hp), pad: JSON.stringify(v.scene.state.pad?.skill ?? null), locked: !!v.scene.locked, modal: v.scene.hud.modal ?? null, near: v.enemies.filter((e) => Math.hypot(e.x - h.x, e.z - h.z) < 260).map((e) => `${e.kind}@${Math.round(Math.hypot(e.x - h.x, e.z - h.z))}:${e.state}`).join(' '), botDown: JSON.stringify(B.ts?.down ?? null) }; }); const y1 = dg.y; if (y1 < 60) { r.hookDiag = dg; console.log('       hook not thrown after 12 presses: ' + JSON.stringify(dg)); await shot(page, `walk_${dev}_15_hook_refused`); break; } }
         }
       }
     }
