@@ -33,45 +33,48 @@ function samp(N, x, y) {
 }
 const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
-/** heat 0..1 of the looping flame at (u -1..1, v 0 = foot .. 1 = top), phase p 0..1 */
-function flameHeat(u, v, p) {
-  const sway = samp(NA, u * 0.3 + 0.21, v * 0.75 - p) - 0.5;                // slow sideways bend, stronger higher up
-  const x = u + sway * (0.1 + 1.05 * v);
-  const n = 0.62 * samp(NB, x * 0.42 + 0.5, v * 0.85 - p * 2) + 0.38 * samp(NC, x * 0.8 + 0.13, v * 1.6 - p * 3);
-  const foot = Math.min(1, 0.55 + v * 5);                                    // the foot is rounded, not a flat bar
-  const hw = 0.8 * Math.pow(1 - v, 0.62) * foot + 0.03;
-  const d = 1 - Math.abs(x) / hw;
-  if (d < -0.6) return 0;
-  return 1.3 * d - 0.14 + (n - 0.5) * (0.75 + 2.3 * v) - 0.5 * v * v;
-}
-/** heat of the detached tongue at age a 0..1 */
-function wispHeat(u, v, a) {
-  const cx = 0.3 * Math.sin(v * 4.2 + 1.1 + a * 2.4) * (0.25 + v) + 0.16 * Math.sin(v * 9.5 + a * 5.0);
-  const th = (0.36 * Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, (v - 0.04) / 0.92))), 0.75) + 0.01) * (1 - 0.55 * a);
-  const d = 1 - Math.abs(u - cx) / th;
-  if (d < -1) return 0;
-  const n = 0.6 * samp(NB, u * 0.4 + 0.7, v * 0.9 - a * 1.4) + 0.4 * samp(NC, u * 0.85 + 0.4, v * 1.7 - a * 2.2);
-  return 1.25 * d - 0.1 + (n - 0.5) * (0.7 + 2.6 * a + 0.8 * v) - 0.62 * a * a;
-}
 /**
  * paints one frame into out (Uint8ClampedArray, FLIP.W * FLIP.H * 4, straight alpha, row 0 = top of the flame).
- * kind 0 = FLAME frame i of 16 (loop), 1 = WISP frame i of 8 (once)
+ * kind 0 = FLAME frame i of 16 (loop), 1 = WISP frame i of 8 (once). Everything that depends on the row only is worked out once per row and
+ * only the span the flame can reach is visited (the 24 frames take about 60 ms in all).
  */
 export function paintFlame(kind, i, out) {
   tables();
   const W = FLIP.W, H = FLIP.H, p = kind ? i / (FLIP.WISP - 1) : i / FLIP.FLAME;
+  out.fill(0);
   for (let y = 0; y < H; y++) {
     const v = 1 - (y + 0.5) / H, edge = sstep(0, 0.07, v) * sstep(0, 0.05, 1 - v);   // soft foot and top: the quad's edge never shows
-    for (let x = 0; x < W; x++) {
-      const u = ((x + 0.5) / W) * 2 - 1, o = (y * W + x) * 4;
-      let h = kind ? wispHeat(u, v, p) : flameHeat(u, v, p);
-      const side = sstep(0, 0.14, 1 - Math.abs(u));
-      if (h <= 0 || side <= 0) { out[o] = out[o + 1] = out[o + 2] = out[o + 3] = 0; continue; }
-      h = Math.min(1, h);
-      const a = sstep(0, 0.42, h) * edge * side, c = sstep(0.3, 1, h);          // density / how far towards the core colour
-      // heat colour: deep orange rim -> orange -> yellow -> pale yellow-white
-      const g = 0.2 + 0.5 * sstep(0.05, 0.6, h) + 0.27 * c, b = 0.03 + 0.2 * sstep(0.35, 0.8, h) + 0.5 * c * c;
-      out[o] = 255; out[o + 1] = 255 * g; out[o + 2] = 255 * b; out[o + 3] = 255 * a * (0.5 + 0.5 * sstep(0, 0.5, h));
+    let c0, hw, reach;   // centre line, half width, how far from the centre anything can burn (in u)
+    let swK = 0, nK, bias, tK;
+    if (!kind) {         // FLAME: wide at the rounded foot, tapering; the noise climbs (2 and 3 whole periods per loop) and tears the top
+      const foot = Math.min(1, 0.35 + v * 6.5);
+      hw = 0.78 * Math.pow(1 - v, 0.7) * foot + 0.03; c0 = 0; swK = 0.12 + 1.15 * v; reach = hw * 1.9 + swK * 0.5;
+      nK = 0.9 + 3.0 * v; bias = -0.1 - 0.35 * v; tK = 1.02 - 0.5 * v;
+    } else {             // WISP: a detached tongue - fuller low, long and thin at the tip, bending; with age it thins and breaks into pieces
+      const bend = samp(NA, v * 0.5 + 0.4, p * 0.6 + 0.2) - 0.5, w = Math.sin(Math.PI * Math.min(1, Math.max(0, (v - 0.03) / 0.94)));
+      c0 = bend * 0.9 * (0.3 + v) + 0.12 * Math.sin(v * 7.0 + p * 4.0);
+      hw = (0.55 * Math.pow(w, 0.8) * (0.55 + 0.45 * (1 - v)) + 0.01) * (1 - 0.4 * p); reach = hw * 2.2;
+      nK = 1.3 + 3.2 * p + 1.0 * v; bias = -0.12 - 0.75 * p * p - 0.15 * v; tK = 0.8;
+    }
+    const xa = Math.max(0, Math.floor(((c0 - reach + 1) / 2) * W)), xb = Math.min(W - 1, Math.ceil(((c0 + reach + 1) / 2) * W));
+    for (let x = xa; x <= xb; x++) {
+      const u = ((x + 0.5) / W) * 2 - 1;
+      let d, n;
+      if (!kind) {
+        const xx = u + (samp(NA, u * 0.3 + 0.21, v * 0.75 - p) - 0.5) * swK;   // slow sideways bend, stronger higher up
+        d = 1 - Math.abs(xx) / hw; if (d < -0.9) continue;
+        n = 0.6 * samp(NB, xx * 0.42 + 0.5, v * 0.85 - p * 2) + 0.4 * samp(NC, xx * 0.8 + 0.13, v * 1.6 - p * 3);
+      } else {
+        d = 1 - Math.abs(u - c0) / hw; if (d < -1.2) continue;
+        n = 0.6 * samp(NB, u * 0.4 + 0.7, v * 0.9 - p * 1.4) + 0.4 * samp(NC, u * 0.85 + 0.4, v * 1.7 - p * 2.2);
+      }
+      const h = (kind ? 1.1 : 1.15) * d + bias + (n - 0.5) * nK, side = sstep(0, 0.14, 1 - Math.abs(u));
+      if (h <= 0 || side <= 0) continue;
+      const o = (y * W + x) * 4, a = sstep(0, 0.34, h) * edge * side;          // density
+      const t = Math.min(1, h * tK);                                           // colour heat: cooler towards the tips
+      // heat colour: deep red-orange rim -> orange -> yellow -> pale yellow-white core
+      const g = 0.16 + 0.42 * sstep(0.1, 0.55, t) + 0.38 * sstep(0.5, 1, t), b = 0.02 + 0.14 * sstep(0.4, 0.75, t) + 0.6 * sstep(0.72, 1, t);
+      out[o] = 255; out[o + 1] = 255 * g; out[o + 2] = 255 * b; out[o + 3] = 255 * a * (0.45 + 0.55 * sstep(0, 0.6, h));
     }
   }
 }
