@@ -22,6 +22,7 @@ const SPOTS = [
   { n: 'ossuary_now', area: 'ossuary_now', hx: 600, hz: 2880, f: [450, 110, 2980], crop: [560, 400], label: '오늘 밤 납골당 — 문 앞 불그릇' },
   { n: 'tower_brazier', area: 'belltower_now', hx: 180, hz: 1140, f: [70, 790, 1204], crop: [520, 400], label: '종탑 — 화로' },
   { n: 'past_brazier', area: 'eshville_past', hx: 2640, hz: 180, f: [2700, 100, 262], crop: [460, 380], label: '1697 에쉬빌 — 화로' },
+  { n: 'slice0_brazier', area: 'slice0', hx: 1730, hz: 1540, f: [1790, 100, 1624], crop: [460, 380], label: '시범 구간 — 화로' },
   { n: 'past_lamp', area: 'eshville_past', hx: 1700, hz: 200, f: [1760, 150, 266], crop: [460, 380], label: '1697 에쉬빌 — 등불' },
 ].filter((s) => !ONLY || ONLY.includes(s.n));
 const port = 8200 + Math.floor(Math.random() * 700), srv = await start(port);
