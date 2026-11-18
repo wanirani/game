@@ -148,13 +148,14 @@ try {
       const r = await evs(), dr = r.ev.filter((e) => e.n === 'drop' && e.what === 'coin').reduce((s, e) => s + e.k, 0), pk = r.ev.filter((e) => e.n === 'pickup' && e.what === 'coin'), pkN = pk.reduce((s, e) => s + e.k, 0), left = await page.evaluate(() => window.__v2.scene.sim.pickups.filter((p) => p.on).length);
       ok(`coins: dropped ${dr}, picked ${pkN}, the count went up by exactly what the events say (HUD state and hero agree)`, r.st.coins - c0 === pkN && r.st.stateCoins === r.st.coins && r.st.heroCoins === r.st.coins && dr >= 5 && pkN + left === dr, `count ${c0} -> ${r.st.coins} · still lying ${left} · youngest coin taken at age ${Math.min(...pk.map((e) => e.age), 9)} s (never before 0.28)`);
       ok(`no coin is taken before its pop is seen (age >= 0.28 s)`, pk.length > 0 && pk.every((e) => e.age >= 0.28), pk.map((e) => e.age).join(' ')); }
-    // T9: a heal piece at full health stays; taken once he is hurt (+12, never above the maximum)
-    { await setup([{ kind: 'pot', x: X0 + 50, z: Z0, drop: 'heal' }], X0, Z0); await sleep(page, 120); await stick(1, 0, 110); await sleep(page, 30); await tap('attack'); await sleep(page, 900); await stick(1, 0, 420); await stick(-1, 0, 300); await sleep(page, 700);
-      const r = await evs(), lying = await page.evaluate(() => window.__v2.scene.sim.pickups.filter((p) => p.on).map((p) => ({ what: p.what, rest: p.rest, pull: p.pull, d: +Math.hypot(p.x - window.__v2.scene.sim.hero.x, p.z - window.__v2.scene.sim.hero.z).toFixed(0) })));
-      ok(`a heal piece at full health is not taken and not pulled: it stays on the ground`, r.ev.filter((e) => e.n === 'pickup').length === 0 && lying.length === 1 && lying[0].what === 1 && !lying[0].pull, JSON.stringify({ lying, hp: r.st.hp, hpMax: r.st.hpMax }));
-      await page.evaluate(() => { const h = window.__v2.scene.sim.hero; h.hp = h.hpMax - 5; window.__bv.ev.length = 0; }); await sleep(page, 200); const d0 = lying[0]?.d ?? 0; if (d0 > 100) { await stick(1, 0, 300); } await sleep(page, 900);
+    // T9: a heal piece at full health is taken all the same and turns to silver (+2 coins) - nothing that drops refuses to be picked up (the owner,
+    //     2026-11-18: "안 먹어져 = 버그"); a hurt hero is healed by the next one (+12, never above the maximum)
+    { await setup([{ kind: 'pot', x: X0 + 50, z: Z0, drop: 'heal' }], X0, Z0); await sleep(page, 120); const c0 = (await evs()).st.coins; await stick(1, 0, 110); await sleep(page, 30); await tap('attack'); await sleep(page, 900); await stick(1, 0, 420); await stick(-1, 0, 300); await sleep(page, 700);
+      const r = await evs(), lying = await page.evaluate(() => window.__v2.scene.sim.pickups.filter((p) => p.on).length), pk = r.ev.filter((e) => e.n === 'pickup');
+      ok(`a heal piece at full health is taken all the same and turns to silver (+2 coins)`, lying === 0 && pk.length === 1 && pk[0].what === 'coin' && pk[0].k === 2 && r.st.coins === c0 + 2 && r.st.hp === r.st.hpMax, JSON.stringify({ lying, pk, coins: [c0, r.st.coins], hp: r.st.hp, hpMax: r.st.hpMax }));
+      await setup([{ kind: 'pot', x: X0 + 50, z: Z0, drop: 'heal' }], X0, Z0); await page.evaluate(() => { const h = window.__v2.scene.sim.hero; h.hp = h.hpMax - 5; window.__bv.ev.length = 0; }); await sleep(page, 120); await stick(1, 0, 110); await sleep(page, 30); await tap('attack'); await sleep(page, 900); await stick(1, 0, 420); await stick(-1, 0, 300); await sleep(page, 700);
       const r2 = await evs();
-      ok(`hurt by 5: the heal piece comes to him and fills him to the maximum, not above`, r2.ev.filter((e) => e.n === 'pickup' && e.what === 'heal').length === 1 && r2.st.hp === r2.st.hpMax, `hp ${r2.st.hp}/${r2.st.hpMax}`); }
+      ok(`hurt by 5: the next heal piece fills him to the maximum, not above (and gives no silver)`, r2.ev.filter((e) => e.n === 'pickup' && e.what === 'heal').length === 1 && r2.st.hp === r2.st.hpMax && r2.st.coins === c0 + 2, `hp ${r2.st.hp}/${r2.st.hpMax} coins ${r2.st.coins}`); }
     await page.screenshot({ path: `${OUT}/touch_${DEV}_end.png` });
     await ctx.close();
   }
