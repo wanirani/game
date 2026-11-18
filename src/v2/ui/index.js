@@ -35,7 +35,9 @@ export function createHud(game, opts = {}) {
       if (s.dialog !== undefined) dialog.sync(s.dialog);
       if (pause.open) pause.update(dt, s); else if (dialog.open) dialog.update(dt, s);
       canvas.update(dt, s);
-      pad?.tick(pause.open || dialog.open || !!s.message || !!s.loading, s.pad);
+      const cross = s.cross ?? null;   // CROSSING: while the bell crossing runs the pad stays in place, faded out and deaf (it does not pop off for the load)
+      pad?.setBack(!!(cross && cross.back));
+      pad?.tick(pause.open || dialog.open || !!s.message || (!!s.loading && !cross), s.pad);
       perf.upd += performance.now() - t0; perf.updN++;
     },
     draw(ctx, s) {

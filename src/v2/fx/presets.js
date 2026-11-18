@@ -620,3 +620,73 @@ function breakPuff(fx, x, y, z, dx, dz, pow) {
   P.emit(wood ? BK.woodFleck : BK.clayCrumb, x, y + (wood ? 30 : 22), z, dx, 0.6, dz, k, y);
 }
 { const p = { id: PRESET_LIST.length, name: 'break.puff', group: 'enemy', ko: '깨진 먼지', fn: breakPuff, args: 'self', sfx: [], feel: '— (pow 1 clay · 2 crate · 3 barrel)' }; PRESET_LIST.push(p); PRESET_IDS[p.name] = p.id; PRESETS[p.name] = p; }
+
+// ───────────── CROSSING lane presets (the bell crossing — src/v2/game/crossing.js, docs/v2/FX.md 14). Keep this block last; it only adds. ─────────────
+// (x, y, z) = the foot of the bell (cross.lift / cross.glow: the hero's feet · cross.spark: a point on the opening ring, (dx, dz) pointing outward).
+// dx > 0 = towards tonight (cold light), dx < 0 = towards 1697 (warm light). pow = height of the bell above its foot / 100 where it matters.
+// No sound and no screen feel of their own: the crossing plays cross.* from the feel table and drives slow motion, zoom and shake itself.
+const CX = {
+  warm: { ring: [2.3, 1.6, 0.5, 0.9], soft: [1.6, 1.0, 0.35, 0.55], light: [1, 0.8, 0.45], grey: [0.62, 0.62, 0.68, 0.5] },
+  cold: { ring: [0.8, 1.5, 2.3, 0.9], soft: [0.5, 0.95, 1.6, 0.55], light: [0.6, 0.8, 1], grey: [0.62, 0.62, 0.68, 0.5] },
+  gatherW: E({ sprite: SPR.CORE, n: 12, shape: 4, rad: 120, life: [0.22, 0.4], size: [5, 9], c0: [3.2, 2.4, 0.9, 0], c1: [3.4, 2.8, 1.4, 1] }),
+  gatherC: E({ sprite: SPR.CORE, n: 12, shape: 4, rad: 120, life: [0.22, 0.4], size: [5, 9], c0: [1.2, 2.2, 3.2, 0], c1: [1.8, 2.8, 3.4, 1] }),
+  liftW: E({ sprite: SPR.CORE, n: 34, shape: 2, rad: 300, speed: [4, 30], vy: [70, 260], grav: -160, drag: 0.9, life: [0.7, 1.3], size: [4, 9], c0: [3.2, 2.4, 0.9, 0.95], c1: [2.2, 1.1, 0.3, 0], fadeIn: 0.08 }),
+  liftC: E({ sprite: SPR.CORE, n: 34, shape: 2, rad: 300, speed: [4, 30], vy: [70, 260], grav: -160, drag: 0.9, life: [0.7, 1.3], size: [4, 9], c0: [1.4, 2.4, 3.3, 0.95], c1: [0.5, 1.2, 2.4, 0], fadeIn: 0.08 }),
+  dust: E({ sprite: SPR.DUST, add: 0, n: 22, shape: 2, rad: 260, speed: [6, 40], vy: [30, 120], drag: 1.6, life: [0.6, 1.1], size: [16, 34], grow: 1.6, c0: [0.7, 0.68, 0.74, 0.3], c1: [0.55, 0.54, 0.6, 0], fadeIn: 0.12 }),
+  starW: E({ sprite: SPR.STAR, n: 9, shape: 3, rad: 46, h: [0, 60], speed: [30, 130], drag: 1.4, life: [0.4, 0.8], size: [14, 30], spin: [-3, 3], c0: [2.6, 2.1, 1.0, 0.95], c1: [2.2, 1.3, 0.4, 0] }),
+  starC: E({ sprite: SPR.STAR, n: 9, shape: 3, rad: 46, h: [0, 60], speed: [30, 130], drag: 1.4, life: [0.4, 0.8], size: [14, 30], spin: [-3, 3], c0: [1.4, 2.2, 2.8, 0.95], c1: [0.6, 1.3, 2.4, 0] }),
+  sparkW: E({ sprite: SPR.STREAK, stretch: 2.6, n: 5, spread: 0.9, speed: [120, 420], vy: [120, 380], grav: 900, drag: 1.2, life: [0.22, 0.5], size: [7, 13], grow: 0.5, c0: [3.4, 2.6, 1.0, 1], c1: [2.4, 0.9, 0.2, 0], floor: 2 }),
+  sparkC: E({ sprite: SPR.STREAK, stretch: 2.6, n: 5, spread: 0.9, speed: [120, 420], vy: [120, 380], grav: 900, drag: 1.2, life: [0.22, 0.5], size: [7, 13], grow: 0.5, c0: [1.6, 2.6, 3.4, 1], c1: [0.4, 1.0, 2.6, 0], floor: 2 }),
+  puff: E({ sprite: SPR.SMOKE, add: 0, n: 9, shape: 1, speed: [30, 110], vy: [10, 70], drag: 2.4, life: [0.6, 1.1], size: [46, 80], grow: 1.9, c0: [0.5, 0.5, 0.55, 0.5], c1: [0.4, 0.4, 0.46, 0], fadeIn: 0.08 }),
+  flake: E({ sprite: SPR.FLAKE, add: 0, n: 10, shape: 1, speed: [40, 150], vy: [20, 120], grav: 500, drag: 1.2, life: [0.5, 0.9], size: [4, 8], spin: [-8, 8], c0: [0.6, 0.6, 0.66, 0.9], c1: [0.4, 0.4, 0.46, 0], floor: 2 }),
+  settleW: E({ sprite: SPR.CORE, n: 16, shape: 3, rad: 54, h: [0, 120], speed: [10, 50], vy: [30, 110], grav: -50, drag: 1.2, life: [0.6, 1.2], size: [4, 8], c0: [3.2, 2.4, 0.9, 0.9], c1: [2.2, 1.1, 0.3, 0], fadeIn: 0.1 }),
+  settleC: E({ sprite: SPR.CORE, n: 16, shape: 3, rad: 54, h: [0, 120], speed: [10, 50], vy: [30, 110], grav: -50, drag: 1.2, life: [0.6, 1.2], size: [4, 8], c0: [1.4, 2.4, 3.3, 0.9], c1: [0.5, 1.2, 2.4, 0], fadeIn: 0.1 }),
+};
+const cxC = (dx) => (dx > 0 ? CX.cold : CX.warm);
+function crossGather(fx, x, y, z, dx, dz, pow) {   // the bell's light gathers while the other night answers
+  const c = cxC(dx), by = y + pow * 100;
+  fx.particles.emit(dx > 0 ? CX.gatherC : CX.gatherW, x, by, z, 0, 1, 0, 1, y);
+  fx.quads.billboard(Q.GLOW, x, by, z, 90, 0.5, c.soft, 0.4, 1.3, 0.06);
+  fx.light(x, by, z, 360, c.light, 0.9, 0.5, 0.2, 0);
+}
+function crossRing(fx, x, y, z, dx, dz, pow) {   // the toll: light bursts from the bell, rings run over the ground under the ring of the picture
+  const c = cxC(dx), by = y + pow * 100;
+  gRing(fx, x, y, z, 520, 0.42, c.ring); gRing(fx, x, y, z, 980, 0.6, c.soft);
+  fx.quads.billboard(Q.GLOW, x, by, z, 210, 0.5, c.ring, 0.5, 1.7, 0.02); bRing(fx, x, by, z, 170, 0.36, c.ring);
+  fx.particles.emit(dx > 0 ? CX.starC : CX.starW, x, by - 30, z, 0, 1, 0, 1.4, y);
+  fx.light(x, by, z, 1100, c.light, 1.7, 0.6, 0, 0);
+}
+function crossLift(fx, x, y, z, dx) {   // motes and dust leave the ground around the hero as the ring passes
+  fx.particles.emit(dx > 0 ? CX.liftC : CX.liftW, x, y + 4, z, 0, 1, 0, 1, y);
+  if (fx.tier !== 'low') fx.particles.emit(CX.dust, x, y + 6, z, 0, 1, 0, 1, y);
+}
+function crossDull(fx, x, y, z, dx, dz, pow) {   // the refusal: a grey puff at the bell, ash falling, one short dim ring on the ground
+  const by = y + pow * 100;
+  fx.particles.emit(CX.puff, x, by - 10, z, 0, 1, 0, 1, y); fx.particles.emit(CX.flake, x, by, z, 0, 1, 0, 1, y);
+  gRing(fx, x, y, z, 170, 0.45, CX.warm.grey);
+}
+function crossOpen(fx, x, y, z, dx, dz, pow) {   // the other night opens at the bell
+  const c = cxC(dx), by = y + pow * 100;
+  fx.quads.billboard(Q.GLOW, x, by, z, 170, 0.45, c.ring, 0.4, 1.6, 0.02);
+  fx.light(x, by, z, 800, c.light, 1.5, 0.55, 0, 0);
+}
+function crossSpark(fx, x, y, z, dx, dz, pow) {   // sparks where the opening ring runs over the ground (pow > 0 cold, < 0 warm)
+  fx.particles.emit(pow > 0 ? CX.sparkC : CX.sparkW, x, y + 4, z, dx, 0.8, dz, 1, y);
+}
+function crossArrive(fx, x, y, z, dx, dz, pow) {   // the second toll: light settles on the bell
+  const c = cxC(dx), by = y + pow * 100;
+  gRing(fx, x, y, z, 300, 0.8, c.ring); gRing(fx, x, y, z, 190, 1.0, c.soft);
+  fx.quads.billboard(Q.GLOW, x, by, z, 150, 0.9, c.soft, 0.7, 1.4, 0.05);
+  fx.particles.emit(dx > 0 ? CX.starC : CX.starW, x, by - 30, z, 0, 1, 0, 0.8, y);
+  fx.light(x, by, z, 620, c.light, 1.3, 1.1, 0.15, 0);
+}
+function crossGlow(fx, x, y, z, dx) {   // ... and on the hero
+  const c = cxC(dx);
+  fx.quads.ground(Q.GLOW, x, y, z, 130, 130, 0, 0.95, c.soft, 0.6, 1.25, 0, 0, 1, 0, 0, 0.05);
+  fx.particles.emit(dx > 0 ? CX.settleC : CX.settleW, x, y + 6, z, 0, 1, 0, 1, y);
+  fx.light(x, y + 62, z, 300, c.light, 1.4, 1.0, 0.1, 0);
+}
+for (const [name, ko, fn] of [['cross.gather', '건넘 · 종빛이 모인다', crossGather], ['cross.ring', '건넘 · 종빛 고리', crossRing], ['cross.lift', '건넘 · 떠오르는 티끌', crossLift], ['cross.dull', '건넘 · 둔한 종', crossDull],
+  ['cross.open', '건넘 · 그 밤이 열린다', crossOpen], ['cross.spark', '건넘 · 고리 불티', crossSpark], ['cross.arrive', '건넘 · 둘째 종', crossArrive], ['cross.glow', '건넘 · 남은 빛', crossGlow]]) {
+  const p = { id: PRESET_LIST.length, name, group: 'holy', ko, fn, args: 'self', sfx: [], feel: '— (the crossing drives sound and feel: src/v2/game/crossing.js)' }; PRESET_LIST.push(p); PRESET_IDS[p.name] = p.id; PRESETS[p.name] = p;
+}

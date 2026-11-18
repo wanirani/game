@@ -104,7 +104,7 @@ export function createPad(game, opts = {}) {
     S.stick.ox = L.stick.cx; S.stick.oy = L.stick.cy; S.stick.x = 0; S.stick.y = 0;
     // opacity goes on each small canvas, not on the full-screen root (a group opacity would cost a screen-sized surface)
     S.op = clamp(Number(st.touchOpacity ?? 0.95) + 0.05, 0.4, 1);
-    for (const b of B) b.cv.style.opacity = String(S.op);
+    for (const b of B) b.cv.style.opacity = S.back ? '0' : String(S.op);
     baseCv.style.opacity = ''; moveStick();
     S.layoutN++;
     paint();
@@ -112,12 +112,12 @@ export function createPad(game, opts = {}) {
   function place(b) { b.cv.style.transform = `translate3d(${(b.cx - b.cw / 2).toFixed(1)}px,${(b.cy - b.d / 2 - b.pad).toFixed(1)}px,0) scale(${b.down ? 0.94 : 1})`; }
   function moveStick() {
     const st = S.stick, L = S.L, bw = L.stick.r * 2 + 16, kw = L.stick.r * 0.92 + 12;
-    const tr = st.live ? 'none' : 'transform 120ms ease-out';   // the knob eases home, but follows the finger without lag
+    const tr = st.live ? 'opacity 240ms ease-out' : 'transform 120ms ease-out, opacity 240ms ease-out';   // the knob eases home, but follows the finger without lag (opacity: the controls stepping back for a bell crossing)
     if (knobCv.style.transition !== tr) { knobCv.style.transition = tr; baseCv.style.transition = tr; }
     baseCv.style.transform = `translate3d(${(st.ox - bw / 2).toFixed(1)}px,${(st.oy - bw / 2).toFixed(1)}px,0)`;
     knobCv.style.transform = `translate3d(${(st.ox + st.x - kw / 2).toFixed(1)}px,${(st.oy + st.y - kw / 2).toFixed(1)}px,0)`;
-    const o = String((st.live ? 1 : 0.66) * (S.op ?? 1));
-    if (baseCv.style.opacity !== o) { baseCv.style.opacity = o; knobCv.style.opacity = String((st.live ? 1 : 0.8) * (S.op ?? 1)); }
+    const bk = S.back ? 0 : 1, o = String((st.live ? 1 : 0.66) * (S.op ?? 1) * bk);
+    if (baseCv.style.opacity !== o) { baseCv.style.opacity = o; knobCv.style.opacity = String((st.live ? 1 : 0.8) * (S.op ?? 1) * bk); }
   }
 
   function drawStickBase(ctx, w, R, s) {
@@ -227,7 +227,7 @@ export function createPad(game, opts = {}) {
   }
   function releaseAll() { for (const b of B) press(b, false, -1, true); stickEnd(); paint(); }
 
-  const usable = (e) => S.shown && !opts.isModal?.() && (e.pointerType !== 'mouse' || opts.mouse) && !opts.claims?.(e);
+  const usable = (e) => S.shown && !S.back && !opts.isModal?.() && (e.pointerType !== 'mouse' || opts.mouse) && !opts.claims?.(e);
   const claim = (e) => { e.stopPropagation(); if (e.cancelable) e.preventDefault(); };
   function onDown(e) {
     if (!usable(e)) return;
@@ -305,10 +305,19 @@ export function createPad(game, opts = {}) {
       }
     },
     setWanted(v) { S.want = !!v; },
+    /** CROSSING (state.cross.back, src/v2/game/crossing.js): the controls step back - the buttons and the stick fade out and take no new touch - and come
+     *  back. Held buttons are let go; a finger that already holds the stick keeps it, so the hero walks on when the controls return. */
+    setBack(v) {
+      v = !!v; if (!!S.back === v) return; S.back = v;
+      if (!S.L) return;
+      if (v) { for (const b of B) press(b, false, -1, true); paint(); }
+      for (const b of B) { b.cv.style.transition = 'opacity 240ms ease-out'; b.cv.style.opacity = v ? '0' : String(S.op); }
+      moveStick();
+    },
     /** QA: geometry in CSS px. */
     metrics() {
       return {
-        k: S.L?.k, labelPx: S.L?.labelPx, bounds: { ...S.bounds }, shown: S.shown, repaints: S.repaints,
+        k: S.L?.k, labelPx: S.L?.labelPx, bounds: { ...S.bounds }, shown: S.shown, back: !!S.back, repaints: S.repaints,
         buttons: B.map((b) => ({ id: b.id, cx: b.cx, cy: b.cy, d: b.d, label: b.label, labelW: b.lw, labelRect: { x: b.cx - b.lw / 2, y: b.cy + b.d / 2 + (S.L?.labelPx ?? 0) * 0.12 - (S.L?.labelPx ?? 0) * 0.75, w: b.lw, h: (S.L?.labelPx ?? 0) * 1.5 }, down: b.down, cd: b.cd, disabled: b.disabled, icon: b.icon })),
         stick: S.L ? { ...S.L.stick, live: S.stick.live } : null,
       };

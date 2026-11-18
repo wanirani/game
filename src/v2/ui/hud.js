@@ -67,6 +67,44 @@ export function createCanvasHud(game, opts = {}) {
     plate(c, label, w / 2, r * 2 + 6 + ts * 0.5, ts, { rim: which === 'past' ? 'rgba(255,120,140,0.7)' : undefined, color: which === 'past' ? '#ffd9de' : COL.silver });
     return p;
   }
+  // CROSSING: the year that runs in the corner of the night badge - ten digits baked once, so nothing is laid out or allocated while it counts
+  const yearP = mkPiece();
+  function bakeYear() {
+    if (!stale(yearP, 1)) return yearP;
+    const ts = tsz(15, L.tmin + 3), dw = Math.ceil(measure('0', ts, 800)) + 2, h = Math.ceil(ts * 1.5);
+    const c = ctxOf(yearP, dw * 10 + 4, h);
+    c.font = `800 ${ts}px ${FONTS.body}`; c.textBaseline = 'middle'; c.textAlign = 'center'; c.lineWidth = 3.5; c.strokeStyle = 'rgba(4,4,12,0.9)'; c.lineJoin = 'round'; c.fillStyle = '#fff2d2';
+    for (let i = 0; i < 10; i++) { const x = 2 + dw * i + dw / 2, d = String.fromCharCode(48 + i); c.strokeText(d, x, h / 2 + 1); c.fillText(d, x, h / 2 + 1); }
+    c.textBaseline = 'alphabetic'; c.textAlign = 'left';
+    yearP.dw = dw;
+    return yearP;
+  }
+  /** CROSSING (state.cross, written by src/v2/game/crossing.js): everything but the night badge steps back (k 1 -> 0) and returns; the badge beats with the
+   *  bell's rings, shows the year running in its corner (the long form) and turns over to the other night with a small ceremony (turn 0 -> 1). */
+  function drawCross(ctx, s) {
+    const X = s.cross, sf = s.safe ?? ZERO, x0 = sf.l + px(10), y0 = sf.t + px(8), r = px(27);
+    if (X.k > 0.004 && X.k < 0.996) { ctx.globalCompositeOperation = 'destination-in'; ctx.globalAlpha = X.k; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, s.viewW, s.viewH); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }
+    const tn = X.turn, flip = tn > 0 && tn < 1, past = (tn >= 0.5 ? X.to : X.from) === 'past', bd = bakeBadge(past ? 'past' : 'now');
+    const cx = x0 + bd.w / 2, gy = y0 + r + 6, pop = 1 + 0.06 * X.beat + (flip ? 0.2 * Math.sin(tn * Math.PI) : 0), sx = flip ? Math.max(0.05, Math.abs(Math.cos(tn * Math.PI))) : 1;
+    if (flip || X.beat > 0.01) {   // light around the gem: a thin ring on every beat of the passage, a wide one when it turns
+      ctx.globalAlpha = flip ? (1 - tn) * 0.9 : X.beat * 0.55; ctx.strokeStyle = past ? '#ffb9a4' : '#bcd6ff'; ctx.lineWidth = px(flip ? 2.6 : 1.8);
+      ctx.beginPath(); ctx.arc(cx, gy, r * (flip ? 1.05 + tn * 1.4 : 1.04 + (1 - X.beat) * 0.45), 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    ctx.save(); ctx.translate(cx, y0 + bd.h / 2); ctx.scale(pop * sx, pop); blit(ctx, bd, -bd.w / 2, -bd.h / 2); ctx.restore();
+    if (flip) {   // six sparks thrown off the turning gem
+      ctx.fillStyle = '#fff6d8'; ctx.globalAlpha = 1 - tn;
+      for (let i = 0; i < 6; i++) { const a = i * TAU / 6 + 0.5, rr = r * (0.95 + tn * 1.7), q = px(2.6) * (1 - tn * 0.5), qx = cx + Math.cos(a) * rr, qy = gy + Math.sin(a) * rr; ctx.beginPath(); ctx.moveTo(qx, qy - q * 1.6); ctx.lineTo(qx + q, qy); ctx.lineTo(qx, qy + q * 1.6); ctx.lineTo(qx - q, qy); ctx.closePath(); ctx.fill(); }
+      ctx.globalAlpha = 1;
+    }
+    if (X.year > 0 && tn < 1) {   // the year, on a small dark chip at the gem's lower right
+      const yp = bakeYear(), dw = yp.dw, y = X.year | 0, bx = cx + r * 0.42, by = gy + r * 0.3;
+      ctx.globalAlpha = 1 - tn;
+      ctx.fillStyle = 'rgba(6,6,16,0.78)'; ctx.fillRect(bx - 3, by + yp.h * 0.1, dw * 4 + 6, yp.h * 0.8);
+      ctx.fillStyle = past ? 'rgba(255,120,140,0.7)' : 'rgba(170,200,255,0.7)'; ctx.fillRect(bx - 3, by + yp.h * 0.9 - 1, dw * 4 + 6, 1);
+      for (let i = 0; i < 4; i++) { const d = i === 0 ? ((y / 1000) | 0) % 10 : i === 1 ? ((y / 100) | 0) % 10 : i === 2 ? ((y / 10) | 0) % 10 : y % 10; ctx.drawImage(yp.c, (2 + dw * d) * L.s, 0, dw * L.s, yp.c.height, bx + dw * i, by, dw, yp.h); }
+      ctx.globalAlpha = 1;
+    }
+  }
   // the altar ledge the candles stand on
   function bakeShelf(n, step) {
     const shelf = shelves[n] ?? (shelves[n] = mkPiece());
@@ -321,6 +359,7 @@ export function createCanvasHud(game, opts = {}) {
     }
     const mode = opts.forceMode ?? input?.mode ?? 'touch';
     taps.n = 0; T.availW = vw - sf.l - sf.r;
+    if (s.cross && s.cross.k <= 0.004) { if (atlas.ready) drawCross(ctx, s); return; }   // CROSSING: only the night badge is left on the picture
     // 1) world-anchored: enemy bars, lock ring, numbers, callouts, prompts
     const E = s.enemies; let target = null;
     if (E) for (let i = 0; i < E.length; i++) {
@@ -449,6 +488,7 @@ export function createCanvasHud(game, opts = {}) {
       if ((T.dbgN = (T.dbgN ?? 0) - 1) <= 0) { T.dbgN = 30; const t = bakeText(String(s.debugLine()), L.s, { size: 11, weight: 500, fill: 'rgba(225,228,245,0.7)', lw: 2 }, dbgP.t); dbgP.t = t; dbgP.c = t.c; dbgP.w = t.w; dbgP.h = t.h; }
       blit(ctx, dbgP, vw / 2 - dbgP.w / 2, vh - sf.b - dbgP.h + 2);
     }
+    if (s.cross && atlas.ready) drawCross(ctx, s);   // CROSSING: the rest fades by cross.k, the badge stays and turns over
   }
   function candle(ctx, i, cx, baseY, ch, litN, hurtK) {
     const f = clamp(litN - i, 0, 1);
@@ -491,7 +531,7 @@ export function createCanvasHud(game, opts = {}) {
     promptRects() { const o = []; for (let k = 0; k < taps.n; k++) o.push({ action: taps.ref[k]?.action, x: taps.rect[k * 4], y: taps.rect[k * 4 + 1], w: taps.rect[k * 4 + 2], h: taps.rect[k * 4 + 3] }); return o; },
     layout: L, px, tsz,
     info() { return { scale: L.s, hs: L.hs, textSize: L.textSize, epoch: L.epoch, banner: banner.on ? banner.kind : null, toasts: toasts.filter((q) => q.on).length, lit: T.lit, max: T.max, coins: T.coinR && T.coinR.a > 0 ? { ...T.coinR } : null }; },
-    release() { for (const p of [badge.now, badge.past, ...Object.values(shelves), moonP, bossP, bossFill, bannerP, bandP, promptRow, msgP, msg2P, dbgP, ...nums, ...calls, ...toasts, ...wprompts]) if (p.c) { p.c.width = 1; p.c.height = 1; p.c = null; } icons.clear(); },
+    release() { for (const p of [badge.now, badge.past, yearP, ...Object.values(shelves), moonP, bossP, bossFill, bannerP, bandP, promptRow, msgP, msg2P, dbgP, ...nums, ...calls, ...toasts, ...wprompts]) if (p.c) { p.c.width = 1; p.c.height = 1; p.c = null; } icons.clear(); },
   };
 }
 const ZERO = { l: 0, t: 0, r: 0, b: 0 };

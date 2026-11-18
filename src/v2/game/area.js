@@ -58,8 +58,10 @@ function addBoxes(W, def) {
   const BK = Array.isArray(def.breakables) ? def.breakables : [];
   for (let i = 0; i < BK.length; i++) B.push({ x0: BK[i].x - 1, x1: BK[i].x + 1, z0: BK[i].z - 1, z1: BK[i].z + 1, y0: 0, y1: 1, solid: true, walk: false, brk: i });
 }
-/** flags = the story flags the area is built from (AREA_FORMAT 13: AREAS[id](flags) — a shut gate, a mended stair ...). */
-export async function loadArea(id = DEFAULT_AREA, flags = null) {
+/** flags = the story flags the area is built from (AREA_FORMAT 13: AREAS[id](flags) — a shut gate, a mended stair ...).
+ *  breath (CROSSING): an optional `() => Promise` awaited between the steps (definition | compile | boxes), so that a twin built while the
+ *  game runs is spread over several frames instead of one long block. */
+export async function loadArea(id = DEFAULT_AREA, flags = null, breath = null) {
   let def = null, got = id;
   if (WORLD_LOADER) {
     try {
@@ -70,7 +72,9 @@ export async function loadArea(id = DEFAULT_AREA, flags = null) {
   }
   if (!def) got = TEST_AREA;
   const stage = def ? fillStage(def, def.stage ?? def) : STAGE;
+  if (breath) await breath();
   const W = compileEnv(stage);
+  if (breath) await breath();
   W.hookPoints = Array.isArray(stage.hookPoints) ? stage.hookPoints : [];   // whip rings (interact kind 'ring') -> the rules' hook points (Sim reads W.hookPoints)
   W.breakables = Array.isArray(def?.breakables) ? def.breakables : [];   // BREAK: what the hero can break here (AREA_FORMAT 15) -> the rules (Sim reads W.breakables)
   if (def) addBoxes(W, def);

@@ -134,10 +134,10 @@ void main() {
 export class Crossing {
   constructor(sc) {
     this.sc = sc; this.on = false; this.phase = ''; this.t = 0; this.gen = 0;
-    this.pre = undefined; this.spot = null; this.to = ''; this.dir = 1; this.years = false; this.minT = CROSS_T.pass;
-    this.bell = new Float32Array(3); this.bellS = new Float32Array([0.5, 0.4, 1, 2.6]); this.R = 0; this.base = new Float32Array([0.1, 0.1, 0.14]);
+    this.pre = undefined; this.spot = null; this.early = null; this.to = ''; this.dir = 1; this.years = false; this.minT = CROSS_T.pass;
+    this.bell = new Float32Array(3); this.bellH = 120; this.bellS = new Float32Array([0.5, 0.4, 1, 2.6]); this.R = 0; this.base = new Float32Array([0.1, 0.1, 0.14]);
     this.pulse = new Float32Array([-1, -1, -1, 1]); this.nextPulse = 0; this.beat = 0.4; this.pulseN = 0;
-    this.hud = { on: false, k: 1, turn: 0, year: 0, from: 'now', to: 'past', beat: 0 };   // what the HUD reads (state.cross): k = how much of the controls is shown
+    this.hud = { on: false, k: 1, back: false, turn: 0, year: 0, from: 'now', to: 'past', beat: 0 };   // what the HUD reads (state.cross): k = how much of the controls is shown
     this.kTo = 1; this.turnOn = false; this.padHid = false;
     // GL (made in begin(), gone after the crossing; the two programs stay until the scene is left)
     this.pPass = null; this.pWorld = null; this.vao = null; this.glGen = -1;
@@ -155,7 +155,7 @@ export class Crossing {
 
   // ───────────────────────── GL objects ─────────────────────────
   /** compile the two programs behind a loading screen (called after an area has loaded): the first crossing does not pay for them */
-  prepare() { if (this.usable) { try { this._programs(); } catch (e) { console.warn('[v2g] crossing shaders:', String(e?.message ?? e)); } } }
+  prepare() { this.early = null; if (this.usable) { try { this._programs(); } catch (e) { console.warn('[v2g] crossing shaders:', String(e?.message ?? e)); } } }
   _programs() {
     const glr = this.sc.glr, gl = glr.gl;
     if (this.glGen !== glr.restored) { this.glGen = glr.restored; this.pPass = this.pWorld = this.vao = null; this._dropTex(false); }   // objects of a lost context are dead
@@ -198,29 +198,43 @@ export class Crossing {
     this.pulse[0] = this.pulse[1] = this.pulse[2] = -1; this.pulse[3] = 1; this.pulseN = 0;
     sc.xing = { to, years: this.years, from: a.era }; sc._refused = false; sc.locked = true;
     // the bell: the nearest bell of the area within reach, otherwise the hand bell the hero carries
-    { const S = sc.people.spots, B = this.bell; let best = 420 * 420; B[0] = h.x; B[1] = h.y + 78; B[2] = h.z;
-      for (let i = 0; i < S.length; i++) { const q = S[i]; if (q.def.kind !== 'bell') continue; const dx = q.x - h.x, dz = q.z - h.z, d2 = dx * dx + dz * dz; if (d2 < best) { best = d2; B[0] = q.x; B[1] = q.y + 120; B[2] = q.z; } } }
-    H.on = true; H.turn = 0; H.year = this.years ? YEAR[a.era] : 0; H.from = a.era; H.to = a.era === 'past' ? 'now' : 'past'; H.beat = 0; this.kTo = 0; this.turnOn = false; sc.state.cross = H;
+    this._findBell(h, 420);
+    H.on = true; H.turn = 0; H.year = this.years ? YEAR[a.era] : 0; H.from = a.era; H.to = a.era === 'past' ? 'now' : 'past'; H.beat = 0; H.back = true; this.kTo = 0; this.turnOn = false; sc.state.cross = H;
     if (sc.hudKind !== 'ui' && sc.showPad) { sc.showPad = false; this.padHid = true; }   // the old pad steps back too
     L.begin = performance.now(); L.answer = L.toll = L.freeze = L.loaded = L.reveal = L.land = L.end = 0; L.refused = false; L.frames = 0; L.gap = 0; L.last = 0; L.yields = 0; L.n++;
     try { this._programs(); } catch (e) { console.warn('[v2g] crossing shaders:', String(e?.message ?? e)); }
     this._play('cross.gather', 1);
-    this._fx('cross.gather', 1);
-    const gen = this.gen, x = h.x, z = h.z;
-    this._build(to, x, z).then((v) => { if (this.gen === gen && this.on) { this.pre = v; this.log.answer = performance.now(); } });
+    this._fx('cross.gather');
+    const gen = this.gen, E = this.early, near = E && E.to === to && E.flags === this._sig() && performance.now() - E.at < 20000 && (E.x - h.x) * (E.x - h.x) + (E.z - h.z) * (E.z - h.z) < 60 * 60;
+    this.early = null;   // (the twin built while the hero wound up the long ring, when he still stands where he stood)
+    (near ? E.job : this._build(to, h.x, h.z)).then((r) => { if (this.gen === gen && this.on) { this.pre = r.pre; this.spot = r.spot; this.log.answer = performance.now(); } });
     return true;
   }
-  /** the twin night, built in steps (its definition | the compile | the free spot), each in a task of its own. -> area | null (nowhere to stand: refused) */
+  /** the area flags the twin is built from, as one string (made when a crossing or its early build starts - not per frame) */
+  _sig() { return Object.keys(this.sc.worldFlags ?? {}).sort().join('+'); }
+  /** the hero has begun the long ring in front of a bell: build the other night now, so that its answer is there when the bell sounds */
+  prebuild() {
+    const sc = this.sc, a = sc.area, h = sc.sim?.hero;
+    if (this.on || !this.usable || !sc.ready || !a || a.test || !a.twin || !h || sc._go || sc.xing) return;
+    const S = sc.people.spots; let near = false;
+    for (let i = 0; i < S.length; i++) { const q = S[i]; if (q.def.kind !== 'bell') continue; const dx = q.x - h.x, dz = q.z - h.z; if (dx * dx + dz * dz < (q.r + 60) * (q.r + 60)) near = true; }
+    if (!near) return;
+    const E = this.early;
+    if (E && E.to === a.twin && E.flags === this._sig() && performance.now() - E.at < 20000 && (E.x - h.x) * (E.x - h.x) + (E.z - h.z) * (E.z - h.z) < 60 * 60) return;
+    this.early = { to: a.twin, flags: this._sig(), x: h.x, z: h.z, at: performance.now(), job: this._build(a.twin, h.x, h.z) };
+  }
+  /** the twin night, built in steps (its definition | the compile | the free spot), each in a task of its own.
+   *  -> { pre: area | null (nowhere to stand over there: refused), spot } */
   async _build(to, x, z) {
-    const sc = this.sc; let pre = null;
+    const sc = this.sc; let pre = null, spot = null;
     try {
       await this._yield();
       pre = await loadArea(to, sc.worldFlags, () => this._yield());
       await this._yield();
-      const sp = pre.id === to ? await freeSpot(pre, x, z) : null;
-      if (sp) this.spot = sp; else pre = null;
+      spot = pre.id === to ? await freeSpot(pre, x, z) : null;
+      if (!spot) pre = null;
     } catch (e) { console.warn('[v2g] crossing: the twin did not build:', String(e?.message ?? e)); pre = null; }
-    return pre;
+    return { pre, spot };
   }
   _yield() { return new Promise((res) => { let done = false; const go = () => { if (done) return; done = true; this._t0 = performance.now(); res(); }; this.log.yields++; requestAnimationFrame(go); setTimeout(go, 50); }); }
   /** between two steps of the load: lets a frame through when this frame's share of loading time is used up (a crossing only) */
@@ -228,8 +242,15 @@ export class Crossing {
   /** the load is done: wait until the passage has had its time (1.2 s, 3 s for `years`) */
   hold() { if (this.phase !== 'passage') return null; this.log.loaded = performance.now(); this.slicing = false; if (this.t >= this.minT) return null; return new Promise((res) => { this._holdRes = res; }); }
 
+  /** the bell this crossing rings: the nearest bell of the area within reach (its foot + 1.2 m), otherwise the hand bell the hero carries */
+  _findBell(h, reach) {
+    const S = this.sc.people.spots, B = this.bell; let best = reach * reach;
+    B[0] = h.x; B[1] = h.y; B[2] = h.z; this.bellH = 78;
+    for (let i = 0; i < S.length; i++) { const q = S[i]; if (q.def.kind !== 'bell') continue; const dx = q.x - h.x, dz = q.z - h.z, d2 = dx * dx + dz * dz; if (d2 < best) { best = d2; B[0] = q.x; B[1] = q.y; B[2] = q.z; this.bellH = 120; } }
+  }
   _play(name, vol, pitch) { try { if (feel.has(name)) feel.play(name, null, vol ?? 1, pitch ?? 1); } catch { /* no audio */ } }
-  _fx(name, pow, x, y, z) { const fx = this.sc.fx, id = PRESET_IDS[name], B = this.bell; if (!fx || id === undefined) return; const px = x ?? B[0], py = y ?? B[1], pz = z ?? B[2]; try { fx.playAt(id, px, py, pz, this.dir, 0, pow, px, py, pz); } catch { /* effect */ } }
+  /** an effect of the crossing at the foot of the bell (or at x, y, z); the presets read the direction of the crossing from dx and the bell's height from pow */
+  _fx(name, x, y, z) { const fx = this.sc.fx, id = PRESET_IDS[name], B = this.bell; if (!fx || id === undefined) return; const px = x ?? B[0], py = y ?? B[1], pz = z ?? B[2]; try { fx.playAt(id, px, py, pz, this.dir, 0, this.bellH / 100, px, py, pz); } catch { /* effect */ } }
 
   /** every tick of the scene, before anything else */
   tick(dt) {
@@ -243,10 +264,10 @@ export class Crossing {
       case 'gather': {
         this.R = 60 + 95 * (1 - Math.exp(-this.t * 9)) + 10 * Math.sin(this.t * 21);
         if (this.pre === undefined || this.t < T.gather) break;
-        if (this.pre === null) { this.phase = 'dull'; this.t = 0; this.log.refused = true; this._play('cross.dull', 1); this._fx('cross.dull', 1); try { sc.fx?.feel.addTrauma(0.1); } catch { /* effect */ } break; }
+        if (this.pre === null) { this.phase = 'dull'; this.t = 0; this.log.refused = true; this.kTo = 1; H.back = false; this._play('cross.dull', 1); this._fx('cross.dull'); try { sc.fx?.feel.addTrauma(0.1); } catch { /* effect */ } break; }
         this.phase = 'ring'; this.t = 0; this.log.toll = performance.now();
         { const fx = sc.fx, h = sc.sim?.hero; if (fx) { const F = fx.feel; F.slowMo(0.3, T.ring + 0.05); F.zoomPunch(0.07, 0.5); F.addTrauma(0.22); }
-          this._fx('cross.ring', 1); if (h) this._fx('cross.lift', 1, h.x, h.y, h.z);
+          this._fx('cross.ring'); if (h) this._fx('cross.lift', h.x, h.y, h.z);
           try { feel.play('bell.toll', h ?? null); } catch { /* no audio */ }
           try { input.rumble?.(0.6, 0.9, 420); } catch { /* no pad */ } }
         break;
@@ -288,7 +309,7 @@ export class Crossing {
   _depart() {
     const sc = this.sc, g = sc.game, P = this._p, B = this.bell, S = this.bellS, to = this.to, L = this.log;
     // where the bell is on the screen (the rings of the passage start there), how flat they lie, the colour to fall back on
-    sc.project(B[0], B[1], B[2], P);
+    sc.project(B[0], B[1] + this.bellH, B[2], P);
     if (P.w > 1) { S[0] = Math.max(-0.3, Math.min(1.3, P.x / g.viewW)); S[1] = Math.max(-0.3, Math.min(1.3, 1 - P.y / g.viewH)); } else { S[0] = 0.5; S[1] = 0.42; }
     S[2] = g.viewW / g.viewH; S[3] = 1 / Math.max(0.3, Math.min(1, -sc.camF[1] + 0.05));
     { const f = sc.W?.fog?.color; if (f) { this.base[0] = f[0]; this.base[1] = f[1]; this.base[2] = f[2]; } }
@@ -310,29 +331,27 @@ export class Crossing {
   arrived(ok) {
     const sc = this.sc;
     if (!ok || !sc.ready || !sc.sim) { this._end(); return; }   // the load failed: the scene shows its own error
-    const h = sc.sim.hero, S = sc.people.spots, B = this.bell; let best = 620 * 620;
-    B[0] = h.x; B[1] = h.y + 78; B[2] = h.z;
-    for (let i = 0; i < S.length; i++) { const q = S[i]; if (q.def.kind !== 'bell') continue; const dx = q.x - h.x, dz = q.z - h.z, d2 = dx * dx + dz * dz; if (d2 < best) { best = d2; B[0] = q.x; B[1] = q.y + 120; B[2] = q.z; } }
+    this._findBell(sc.sim.hero, 620);
     this.phase = 'reveal'; this.t = 0; this.R = 0; this.mode = 0; this.sparkT = 0; this.log.reveal = performance.now();
     sc.locked = true;
-    this._fx('cross.open', 1);
+    this._fx('cross.open');
   }
   /** sparks where the opening ring runs over the ground around the bell (drawn in the live night: they show inside the ring) */
   _ringSparks() {
     const sc = this.sc, fx = sc.fx, id = PRESET_IDS['cross.spark'], B = this.bell, h = sc.sim?.hero; if (!fx || id === undefined || !h) return;
     const R = Math.max(30, this.R - 24), a0 = Math.random() * 6.283;
-    for (let i = 0; i < 3; i++) { const a = a0 + i * 2.094, x = B[0] + Math.cos(a) * R, z = B[2] + Math.sin(a) * R; try { fx.playAt(id, x, h.y + 6, z, Math.cos(a), Math.sin(a), 1, x, h.y, z); } catch { /* effect */ } }
+    for (let i = 0; i < 3; i++) { const a = a0 + i * 2.094, x = B[0] + Math.cos(a) * R, z = B[2] + Math.sin(a) * R; try { fx.playAt(id, x, h.y, z, Math.cos(a), Math.sin(a), this.dir, x, h.y, z); } catch { /* effect */ } }
   }
   /** the ring has left the screen: the second toll, the badge turns over, the banner, the controls come back, the after-glow */
   _land() {
     const sc = this.sc, x = sc.xing, era = sc.area.era, h = sc.sim.hero, T = sc.host?.STORY.TEXT?.night ?? null, fx = sc.fx;
     this.phase = 'glow'; this.t = 0; this.mode = 0; this.log.land = performance.now();
-    sc.xing = null; sc.locked = false; this.kTo = 1; this.turnOn = true; this.hud.year = this.years ? YEAR[era] : 0;
+    sc.xing = null; sc.locked = false; this.kTo = 1; this.hud.back = false; this.turnOn = true; this.hud.year = this.years ? YEAR[era] : 0;
     if (this.loopId) { try { feel.loopStop(this.loopId, 0.1); } catch { /* no audio */ } this.loopId = 0; }
     try { feel.play(era === 'past' ? 'cross.arrive.past' : 'cross.arrive.now', h); } catch { /* no audio */ }
     try { input.rumble?.(0.3, 0.6, 260); } catch { /* no pad */ }
     if (fx) { fx.feel.zoomPunch(0.05, 0.5); fx.feel.addTrauma(0.12); }
-    this._fx('cross.arrive', 1); this._fx('cross.glow', 1, h.x, h.y, h.z);
+    this._fx('cross.arrive'); this._fx('cross.glow', h.x, h.y, h.z);
     if (this.padHid) { sc.showPad = true; this.padHid = false; }
     if (!(x && x.years) && sc.hud.banner) { if (T && T[era]) { sc.host.note('banner', T[era]); sc.hud.banner('night', T[era]); } else sc.hud.banner('night'); }   // a changed tonight gets the story's own banner
     this._dropTex(true);   // the copies of the frame are not needed any more
@@ -345,7 +364,7 @@ export class Crossing {
     if (this.loopId) { try { feel.loopStop(this.loopId, 0.1); } catch { /* no audio */ } this.loopId = 0; }
     if (this.padHid) { sc.showPad = true; this.padHid = false; }
     if (sc.xing) { sc.xing = null; sc.locked = false; }
-    H.on = false; H.k = 1; H.turn = 0; H.year = 0; H.beat = 0; this.kTo = 1; this.turnOn = false; if (sc.state) sc.state.cross = null;
+    H.on = false; H.k = 1; H.back = false; H.turn = 0; H.year = 0; H.beat = 0; this.kTo = 1; this.turnOn = false; if (sc.state) sc.state.cross = null;
     this._dropTex(true);
   }
 
@@ -378,11 +397,11 @@ export class Crossing {
     gl.uniform3fv(u.uEye, e); V3[0] = R[0] / sx; V3[1] = R[1] / sx; V3[2] = R[2] / sx; gl.uniform3fv(u.uR, V3);
     V3[0] = U[0] / sy; V3[1] = U[1] / sy; V3[2] = U[2] / sy; gl.uniform3fv(u.uU, V3); gl.uniform3fv(u.uF, F);
     V2[0] = A; V2[1] = m[14] - A * m[15]; gl.uniform2fv(u.uAB, V2);
-    V[0] = B[0]; V[1] = B[1]; V[2] = B[2]; V[3] = this.R; gl.uniform4fv(u.uBellW, V);
+    V[0] = B[0]; V[1] = B[1] + this.bellH; V[2] = B[2]; V[3] = this.R; gl.uniform4fv(u.uBellW, V);
     const reveal = ph === 'reveal', dull = ph === 'dull';
     V[0] = reveal ? 1 : 0; V[1] = dull ? Math.max(0, 1 - this.t / CROSS_T.dull) * 0.85 : ph === 'gather' ? 0.55 + 0.25 * Math.min(1, this.t * 6) : 1; V[2] = this.t; V[3] = dull ? 1 : 0; gl.uniform4fv(u.uRing, V);
     if (!reveal) {   // the ring over the old night: where the bell is on the screen now (the sky needs it)
-      const P = this._p, S = this.bellS; sc.project(B[0], B[1], B[2], P);
+      const P = this._p, S = this.bellS; sc.project(B[0], B[1] + this.bellH, B[2], P);
       if (P.w > 1) { S[0] = P.x / g.viewW; S[1] = 1 - P.y / g.viewH; } S[2] = g.viewW / g.viewH;
     }
     this._aged(u, reveal ? this.minT + this.t : 0, reveal ? 1 : 0);

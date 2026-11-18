@@ -86,6 +86,8 @@ export const HAPTIC = Object.freeze({
   cast: { pad: [0.1, 0.45, 70], phone: 10 }, magicHit: { pad: [0.7, 0.6, 180], phone: [24, 20, 36] }, zap: { pad: [0.2, 0.9, 90], phone: [8, 12, 8, 12, 16] },
   chime: { pad: [0, 0.3, 50], phone: 8 }, toll: { pad: [0.9, 0.35, 480], phone: [60, 50, 120] }, ui: { pad: [0, 0, 0], phone: 0 },
   breakL: { pad: [0.05, 0.3, 45], phone: 6 },   // BREAK: a jar, crate or barrel breaking — lighter than the lightest blow that lands on an enemy (hitM: 8 ms)
+  // CROSSING (the bell crossing): one heartbeat of the passage, the second toll on the far side, the dull toll of a refusal
+  crossBeat: { pad: [0.22, 0.1, 60], phone: 8 }, crossArrive: { pad: [0.8, 0.5, 320], phone: [40, 40, 90] }, dull: { pad: [0.3, 0.05, 80], phone: [14, 40, 10] },
 });
 
 // ───────────────────────────── 타격 조합 ─────────────────────────────
@@ -222,6 +224,19 @@ export const EVENT = Object.freeze({
   'pickup.clink': ev('f3_foley', [n('coin_clink', 0, 0.5, 1, 0, { pv: 0.1 })], { gain: 0.7 }),   // a dropped coin touching the ground
   // 종 (가락은 BELL — sound.js 가 층으로 푼다)
   'bell.toll': ev('f3_bell', [n('bell_toll', 0, 0.68), s('drop', 0, 0.5, 0.9), o('bell', 0.004, 0.35, 0.5, 1)], { duck: [0.5, 2.4], haptic: 'toll', shake: 0.3, stop: 0, zoom: 1.04, zoomT: 1.2 }),
+  // 건넘 (CROSSING — docs/v2/SOUND_FEEL.md 15): the staged bell crossing (src/v2/game/crossing.js). Its first toll is 'bell.toll' above.
+  // gather = the bell's light gathers · rush = the rising rush under the passage, cut at its top where the second toll lands (rush.long: the last 1.25 s of the
+  // three-second form) · beat = one heartbeat ring of the passage (the scene lowers the level and raises the pitch a little per beat) · loop.cross = the bed
+  // under the passage, stopped by the second toll · arrive.past / arrive.now = the second toll with its tail (warm and low towards 1697, cold and glassy
+  // towards tonight) · dull = the refused crossing. None of them sits in the world (flat): the whole picture is the bell.
+  'cross.gather': ev('f3_bell', [s('shimmer', 0, 0.5, 1.25), s('wisp', 0, 0.45, 1.2, 1)], { gain: 0.7, flat: true }),
+  'cross.rush': ev('f3_big', [n('cross_rush', 0, 0.75, 1, 0, { pv: 0, gv: 0 })], { gain: 0.85, flat: true }),
+  'cross.rush.long': ev('f3_big', [n('cross_rush', 1.75, 0.75, 1, 0, { pv: 0, gv: 0 }), s('riser', 0, 0.4, 1, 0, { el: 'holy' })], { gain: 0.85, flat: true }),
+  'cross.beat': ev('f3_bell', [n('cross_swell', 0, 0.8, 1, 0, { pv: 0.02, gv: 0.03 })], { gain: 0.9, flat: true, haptic: 'crossBeat' }),
+  'loop.cross': ev('f3_loop', [], { loop: 'holy', gain: 0.2, life: 16, flat: true }),
+  'cross.arrive.past': ev('f3_bell', [n('bell_toll', 0, 0.42, 0.84), n('cross_tail_past', 0.03, 0.62, 1, 0, { pv: 0 }), s('drop', 0, 0.35, 0.8)], { duck: [0.5, 2.4], haptic: 'crossArrive' }),
+  'cross.arrive.now': ev('f3_bell', [n('bell_toll', 0, 0.42, 1.19), n('cross_tail_now', 0.03, 0.55, 1, 0, { pv: 0 }), s('shimmer', 0.08, 0.3, 1.4, 1)], { duck: [0.5, 2.4], haptic: 'crossArrive' }),
+  'cross.dull': ev('f3_bell', [n('bell_dull', 0, 0.9, 1, 0, { pv: 0.02 }), s('thud', 0, 0.45, 0.8)], { haptic: 'dull' }),
 });
 // 마법·종 가락·고리도 사건 이름으로 부를 수 있게 펼친다: magic.<원소>.<charge|release|impact>, loop.magic.<원소>, bell.<가락>
 const X = {};
