@@ -173,7 +173,7 @@ function installCa() {
   /** hold the bell button until the long ring has rung (a sequence, a crossing, a notice) or n ticks */
   A.bell = (n) => { const sc = v.scene, b = btn('bell'); if (!b) return { err: 'no bell button' }; if (B.ts) B.touchEnd(); A.relJump(); g._pageHidden = true; const seen0 = H.seen.length, lr0 = A.raised.length; let i = 0, rang = false;
     fire('pointerdown', 15, b.cx, b.cy); for (; i < n; i++) { g.tick(1 / 60); A.ticks++; A.after(); if (i % 30 === 0) A.draw(); if (H.st.busy || sc.hud.modal || sc.xing || H.seen.length > seen0 || A.raised.slice(lr0).some((q) => q.key.startsWith('bell.long'))) { rang = true; break; } } fire('pointerup', 15, b.cx, b.cy); g.tick(1 / 60); A.ticks++; A.after(); A.draw();
-    return { i, rang, act: sc.sim.hero.act ?? null, charge: sc.sim.hero.bellCharge ?? 0, disabled: !!b.disabled, raised: A.raised.slice(lr0).map((q) => q.key + (q.hits.length ? '>' + q.hits.join('+') : '')) }; };
+    return { i, rang, act: sc.sim?.hero?.act ?? null, charge: sc.sim?.hero?.bellCharge ?? 0, disabled: !!b.disabled, raised: A.raised.slice(lr0).map((q) => q.key + (q.hits.length ? '>' + q.hits.join('+') : '')) }; };
   /** a short press of the bell button (echo) */
   A.echo = () => { const sc = v.scene, b = btn('bell'); if (!b) return { err: 'no bell button' }; if (B.ts) B.touchEnd(); A.relJump(); const lr0 = A.raised.length; fire('pointerdown', 15, b.cx, b.cy); for (let i = 0; i < 5; i++) { g.tick(1 / 60); A.ticks++; A.after(); } fire('pointerup', 15, b.cx, b.cy); for (let i = 0; i < 40; i++) { g.tick(1 / 60); A.ticks++; A.after(); } A.draw(); return { disabled: !!b.disabled, raised: A.raised.slice(lr0).map((q) => q.key + (q.hits.length ? '>' + q.hits.join('+') : '')) }; };
   /** a press of the skill button (the whip hook when a ring is in reach) */
@@ -412,7 +412,7 @@ trigBeat('edmund_grave', '묘지 깊은 곳: 에드문트와 다시 (길종을 �
 add('hook_past', '채찍 걸기 → 건너편 종대 (그 밤)', async () => { const r = await hookUp('graveyard_past'); const s = await st(); note(`after the hook landing the prompt on offer is "${s.prompt}" (hero ${s.x},${s.z},y${s.y})`); if (!r.ok) { ST.num.lostWay.push({ beat: 'hook_past', why: r.why }); await putNear(600, 1905, r.why, 'put the hero on the terrace before the ossuary door'); return { ok: true }; } return r; });
 crossBeat('hang_bell', '빈 종대에 길종을 건다 (「종」 길게) → 백 년 → 오늘 밤', 'road_bell', 'graveyard_now', { budget: 1800, shot: 'hang_cross' });
 spotBeat('ossuary_door_now_2', '납골당 문 (오늘 밤, 길종을 건 뒤) → 열린다', 'ossuary_door', { budget: 1800 });
-add('enter_ossuary', '납골당으로 (exit to_ossuary)', async () => pushExit('to_ossuary', { to: 'ossuary_now', budget: 2400 }));
+add('enter_ossuary', '납골당으로 (exit to_ossuary)', async () => { const s = await st(); if (s.area === 'ossuary_now') { note('already inside the ossuary: the door opened under the hero and took him in'); return { ok: true }; } return pushExit('to_ossuary', { to: 'ossuary_now', budget: 2400 }); });
 trigBeat('oss_coffins', '관의 복도', 'oss.coffins', { budget: 3600 });
 groupBeat('oss_hall', '복도의 해골 (group oss_hall)', 'oss_hall', { budget: 3000 });
 add('oss_probe_1', '오늘 밤 관의 복도는 막혀 있는가 (걸어서 끝까지 가 본다)', async () => { const far = await ev(() => window.__ca.plan(600, 960, 60)); note(`tonight, a walking route from the hero to the far end of the coffin corridor (600,960): ${far ? 'EXISTS (' + far + ' way points) — the corridor is not shut tonight' : 'none (shut, as designed)'}`); return { ok: true }; });
@@ -471,7 +471,7 @@ const NEED = {};
 const need = (area, spawn, ids) => { for (const id of ids.split(' ')) NEED[id] = [area, spawn]; };
 need('graveyard_now', 'from_eshville', 'bats elite elite_fight echo_hint echo_first ghosts grave_now_a grave_now_b stones hook_now ossuary_door_now_1 ossuary_exit_now back_to_eshville');
 need('eshville_now', 'from_graveyard', 'cross_to_past'); need('eshville_past', 'bell', 'gate_past to_graveyard_past ending_bell');
-need('graveyard_past', 'from_eshville', 'keeper carve_a carve_b edmund_grave hook_past hang_bell'); need('graveyard_now', 'from_ossuary', 'ossuary_door_now_2 enter_ossuary');
+need('graveyard_past', 'from_eshville', 'keeper carve_a carve_b edmund_grave hook_past hang_bell'); need('graveyard_now', 'from_ossuary', 'ossuary_door_now_2');
 need('ossuary_now', 'entry', 'oss_coffins oss_hall oss_probe_1 oss_cross_1'); need('ossuary_past', 'entry', 'oss_wedge oss_cross_2'); need('ossuary_now', 'wedge_far', 'oss_gap oss_arena oss_arena_fight oss_lamp oss_riddle oss_riddle_echo oss_cross_3');
 need('ossuary_past', 'rest', 'knell_1 knell_2 knell_3 knell_4 oss_cross_4 boss_past boss_back elise_wake'); need('ossuary_now', 'rest', 'boss_rest boss_enter boss_1 boss_chase boss_die boss_2 boss_knell cross_to_elise');
 // ───────── run ─────────

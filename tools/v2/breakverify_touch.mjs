@@ -237,15 +237,19 @@ try {
     ok(`sound: ${snd.br.length} breaks -> ${snd.snd.length} break sound events, each named for its material`, snd.snd.length === snd.br.length && wrong === 0 && snd.br.length >= 200, JSON.stringify(names) + ` · wrong ${wrong}`);
     ok(`sound: never the same name and pitch (within 2 %) more than twice running; the same clay set never twice running`, maxRun <= 2 && maxName === 1, `longest run of one name+pitch ${maxRun} · longest run of one clay set ${maxName} · pitch ${Math.min(...pit)}..${Math.max(...pit)} · started in the audio engine ${started}/${snd.snd.length}`);
     res.snd = { names, started, n: snd.snd.length };
-    // allocation per frame: idle, then with pieces flying and pickups on the ground
-    await page.evaluate((to) => window.__v2.scene.travelTo(to, 'default'), 'graveyard_now'); await waitReady(); await page.evaluate(() => window.__v2.scene.travelTo('eshville_now', 'default')); await waitReady(); await page.evaluate(() => { window.__bv.hooks(); window.__bv.quiet(true); });
+    res.cycles = cycles; res.base = base; await ctx.close();
+  }
+  // ───────────────────────── alloc: bytes per frame, idle against pieces flying and coins lying ─────────────────────────
+  if (PART === 'alloc') {
+    const { ctx, page } = await open('eshville_now', '&v2res=0.5');
+    await page.evaluate(() => { const g = window.__game; g._pageHidden = true; window.__bv.quiet(true); for (let i = 0; i < 60; i++) g.tick(1 / 60); g.render(); });
     const al = await page.evaluate(() => { const sc = window.__v2.scene, g = window.__game, sim = sc.sim, L = sim.breakables, M = performance.memory; if (!M || !window.gc) return null;
       const run = (n) => { for (let i = 0; i < 60; i++) { g.tick(1 / 60); g.render(); } gc(); gc(); const a = M.usedJSHeapSize; for (let i = 0; i < n; i++) { g.tick(1 / 60); g.render(); } const b = M.usedJSHeapSize; return Math.round((b - a) / n); };
       const idle = [run(240), run(240)]; for (let i = 0; i < 6; i++) { L[i].drop = 'coin5'; sim.breakAt(L[i].x, L[i].z, 2, 'c1'); } sim.hero.x += 0; const hx = sim.hero.x; for (let i = 0; i < 3; i++) { g.tick(1 / 60); g.render(); }
       const sh0 = sc.brk.shN, pk0 = sim.pickN; const busy = [run(100)]; const sh1 = sc.brk.shN, pk1 = sim.pickN; for (let i = 6; i < 12; i++) { L[i].drop = 'coin5'; sim.breakAt(L[i].x, L[i].z, 2, 'c1'); } for (let i = 0; i < 3; i++) { g.tick(1 / 60); g.render(); } busy.push(run(100));
       return { idle, busy, sh0, pk0, sh1, pk1 }; });
     if (al) ok(`allocation per frame with pieces flying and coins lying is no higher than standing idle (+1 KB tolerance)`, Math.min(...al.busy) <= Math.max(...al.idle) + 1024, `idle ${al.idle.join(' / ')} B per frame · busy ${al.busy.join(' / ')} B per frame (pieces ${al.sh0} -> ${al.sh1}, pickups ${al.pk0} -> ${al.pk1})`); else note('no precise heap numbers in this browser');
-    res.cycles = cycles; res.alloc = al; res.base = base; await ctx.close();
+    res.alloc = al; await ctx.close();
   }
   // ───────────────────────── strip: frames of a break at the game camera, both nights ─────────────────────────
   if (PART === 'strip') {
