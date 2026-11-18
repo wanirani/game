@@ -598,6 +598,19 @@ function transcript(r, title) {
 fs.writeFileSync(path.join(OUT, 'transcript.txt'), transcript(A, '블러드 녹턴 3D 판 — 첫 출시 대본 (길 A: 설계대로. 종탑·납골당은 지어진 것으로 보고 사건을 넣었다)'));
 fs.writeFileSync(path.join(OUT, 'transcript_bridge.txt'), transcript(B, '블러드 녹턴 3D 판 — 첫 출시 대본 (길 B: 지금 지어진 곳만. 빈 곳은 글로 잇는다. 고르기는 둘째 갈래)'));
 
+// what each camera shot shows, for the owner script only (the game shows it, it is not text on the screen)
+const SHOT_KO = {
+  moon_bell: '카메라가 불타는 지붕에서 붉은 달과 종탑으로 천천히 오른다',
+  bell_crack: '박쥐 떼가 한 덩어리로 종을 들이받는다. 밝은 금이 종을 가로지른다',
+  fall: '발밑이 꺼지고, 카엘과 엘리제가 금에서 새는 빛 속으로 떨어진다. 산 위로 은빛 별똥 하나',
+  wake_past: '촛불빛의 종탑 아래. 로테가 쓰러진 카엘을 내려다본다',
+  table: '주막의 식탁. 수프 세 그릇과 빈 의자 하나, 맞은편에 에드문트',
+  knot: '채찍 끝에 종 조각을 묶는 손',
+  years: '같은 자리에서 백 년이 3초에 흐른다',
+  banshee_song: '종대 넷 뒤로 여왕이 떠오른다. 노래가 안개 속에 고리로 번진다',
+  two_keepers: '종 줄을 사이에 두고 선 로테와 엘리제',
+  ring_widen: '골짜기 지도로 물러난다. 종소리 동그라미가 한 겹 넓어지고 수녀원과 수문이 보인다',
+};
 function ownerScript() {
   const L = [];
   L.push('# 블러드 녹턴 3D 판 — 첫 출시 대본 (소유자용)', '',
@@ -630,6 +643,7 @@ function ownerScript() {
       case 'goto': L.push('', `〔${(TEXT.areas[x.a] || {}).name || x.a} — ${x.a.endsWith('_past') ? TEXT.night.past : TEXT.night.now}〕  `); break;
       case 'candle': if (x.a > 0) L.push('〔촛불이 한 자루 늘었다〕  '); break;
       case 'moon': L.push('〔달이 한 칸 기운다〕  '); break;
+      case 'camera': if (x.a && SHOT_KO[x.a]) L.push(`(장면: ${SHOT_KO[x.a]})  `); break;
       case 'sound': if (x.a === 'bell.toll') L.push('〔소리: 종이 울린다〕  '); else if (x.a === 'bell.crack') L.push('〔소리: 종에 금이 간다〕  '); break;
       case 'end': L.push('', '**— 첫 출시의 끝 —**', ''); break;
       default: break;

@@ -1,0 +1,60 @@
+export const meta = {
+  name: 'v2-p1-play2',
+  description: 'P1 play round 2: remove the direction-reversal slide and other motion awkwardness, add the skill button, bell ring and charged strike rules, boss Banshee Queen, cut per-frame garbage in the rules; then adversarial verify',
+  phases: [
+    { title: 'Build', detail: 'PLAY-2 lane: motion fixes, new moves, boss' },
+    { title: 'Verify', detail: 'adversarial check by touch, numbers, owner sheet' },
+  ],
+}
+
+const COMMON = `
+You are one lane of a multi-lane build of the 3D edition of a Korean action game (HTML5 Canvas + WebGL, ES modules, no bundler in dev). Repo: /home/user/game. Work directly in that tree. Other lanes work there at the same time and run headless browser checks while you work: INTEGRATE (src/v2/game/, src/v2/ui/ — plugging real areas, townspeople and the new interface into scene v2g; it imports your rules only through src/v2/play/index.js, whose export names and shapes must not change — add, do not rename), PROPS (src/v2/world/, src/v2/env/), STORY (tools/v2/story_stage/).
+
+YOUR FOLDERS: src/v2/play/, tools/v2/play_*.{mjs,html}, docs/v2/PLAY_API.md. Do not edit anything else under src/. What you need from another lane goes into /tmp/claude-0/v2/requests.md as a dated section.
+
+READ FIRST: docs/v2/P1_CONTRACT.md (rules — binding), docs/v2/README.md §2 (owner decisions), docs/v2/PLAY_API.md (your own lane's reference from round 1), docs/v2/GDD.md §2 (the bell), §6 (the hunters who can be called), §7 (combat and tools: read every line — it defines the move set, the skill button, the bell in combat), §9.1 (when each thing is taught) and the boss entry for the Banshee Queen (search 밴시), docs/v2/ANIM_LIBRARY.md (the shared clips, their events and strike windows), docs/v2/CAST_R1_ENEMIES.md (the boss model banshee_queen.glb and its own clips), docs/v2/ENGINE_API.md §2 (hooks the scene gives you), docs/v2/UI_API.md (pad buttons and their input names: attack, jump, dash+guard, skill1, ult, lock), and in /tmp/claude-0/v2/requests.md (also saved as docs/v2/REQUESTS_SNAPSHOT.md) the sections "core-verify" (garbage per frame by function — your share) and "core-verify → PLAY" (the reversal slide, with numbers).
+
+The owner (non-developer, plays on a Galaxy Z Fold unfolded, touch) played the prototype and said, in Korean: "회전할 때 어색, 위나 아래를 보고 있을 때 칼을 휘두르면 왼쪽 오른쪽 등 옆면으로 휘두르는 모습을 보이는 듯 캐릭터의 움직임 모션이 어색함". The facing part is fixed. What the last verifier still measured: on a stick reversal the body needs 15 ticks (0.25 s) to turn but the velocity flips in 3 ticks and reaches 171 px/s the new way at tick 6 when the body has turned only 86 degrees, so for 6–8 ticks the hero moves sideways or backwards (cause: TUNE.accel = 16). Also noted: the combat idle holds the blade pointing backwards; attack lunges slide the feet (the clip is in place while the rule moves the body up to 78 px); walk foot slip about 28 %; after a tap on the roll button, pushing the stick within 0.3 s rolls although the button is released; the yard group wakes and walks to a hero 250–400 px away. The owner also wants: "3d지만 타격감(효과, 음향 등) 최고로 살려줘, 마법 등도 3d로 화려하게 … 경쾌한 움직임이 느껴지게".
+
+Hard rules (contract §4): no git commit/push/checkout/reset/stash/clean (the main session and an autosave script commit every few minutes — whatever is in the tree gets committed, so never leave it broken; the game scene loads your index.js at any moment). Never read, print or touch tools/android/*.keystore or keystore.properties. Never pkill/killall; close only what you launched; one headless browser at a time (4 cores shared with three other lanes, software-rendered WebGL — frame times there say nothing about the device). If a check fails inside a file another lane owns, wait two minutes and run it again before you report it. Never run tools/fonts/build_fonts.py without --check; every Korean string you add under src/ must pass python3 tools/fonts/build_fonts.py --check. Scripts that import playwright-core must live under /home/user/game/tools/.
+Paid generation (Higgsfield MCP tools, find with ToolSearch) only if a motion cannot be made from the 71 library clips by retiming, blending or pose offsets: animation clips as in docs/v2/ANIM_LIBRARY.md, credit cap 56, recorded in tools/higgsfield/manifest_play.json, never naming a game, studio or brand. If a paid call is refused by the permission system, do not retry: write the exact call to /tmp/claude-0/v2/play/gen_requests.json and continue without it.
+Keep a progress log (path below), one line per step with UTC time (date -u). Your run may be cut off at any moment: small complete steps.
+Final answer = your report (plain text, English, short Korean summary for the owner at the end): what you built, check results exactly as they came out, known problems, what the next lane must know (new input names, new events, new hero/enemy fields), files changed, credits used.
+`
+
+const PLAY2 = COMMON + `
+YOUR LANE: PLAY-2. Progress log: /tmp/claude-0/v2/play2_progress.md. Captures: /tmp/claude-0/v2/play2/. Time box: 120 minutes from start (stop adding 20 minutes before the end and finish the checks).
+
+Deliver, in priority order:
+1. Turning that looks right. On a reversal or a sharp turn the hero must never travel in a direction the body is not facing: brake, pivot, then push off (use the stop/turn clips of the library, or pose blending if none fits), quick enough to stay crisp (the whole reversal about 0.25–0.3 s; small direction changes stay instant and smooth). Write the measure into tools/v2/play_motion_check.mjs: while speed is above 30 % of run speed, the angle between velocity and body facing stays under 35 degrees, in reversals on four axes, 90-degree turns, quick left-right flips and circles; feet do not slide more than 15 % of body speed in run and 20 % in walk. Look at frame strips (every 2nd tick) of each case from the game camera, not only numbers.
+2. The rest of the awkwardness list: a ready stance that reads as a guard (blade forward) without breaking the attack start poses; attack lunges that carry the body with the feet (step timing from the clip events, or shorten the rule's slide to what the clip shows); the roll-after-release case decided and fixed (a released button must not roll); enemies waking only when they should (sight or trigger, not through walls or from 400 px away unless the area says so).
+3. The missing moves of GDD §7 on the rules side, each with its input name from the pad, hooks/events for effects, sound and HUD, and a line in PLAY_API.md: the hold-attack (charged) strike; the skill button (input skill1 — what GDD §7 calls it and both of its modes if it has two); the bell in combat (input ult — the short ring and whatever GDD §7 gives it; the long ring that crosses the nights belongs to the game scene: expose only what the scene needs to know, such as when ringing is allowed). Each must be visible in tools/v2/play_view.html with the 3D hero, use library clips, and have rule tests. State for the HUD: cooldowns, charge, the resonance gauge if GDD §7 has one (fields on the hero; the scene copies them to the HUD).
+4. Boss: the Banshee Queen (banshee_queen.glb and its clips) as GDD describes her for the first release: phases, each attack with a readable wind-up, a ground or air warning shape, a strike and a recovery that can be punished, the scream, what the bell or parry does to her, stagger and the opening it gives, her death. Data plus AI in src/v2/play/ like the other kinds (KINDS.banshee_queen, boss: true, fields the HUD boss bar needs: name, hp, hpMax, stagger, phase). Test page demo, rule tests for every attack's timing and hit shape, a bot that beats her and one that loses.
+5. Your share of the per-frame garbage ("core-verify" section): the rules and drive functions must allocate nothing per tick in steady play (measure in node with a counting allocator trick or --trace-gc deltas over 100,000 ticks; report bytes per tick before and after).
+6. Checks on the final tree, reported exactly: node tools/v2/play_rules_test.mjs, node tools/v2/play_motion_check.mjs, node tools/v2/play_shot.mjs, node tools/v2/game_probe.mjs (scene v2g still opens and fights with 0 page errors — read-only use of the engine tool), python3 tools/fonts/build_fonts.py --check.
+7. docs/v2/PLAY_API.md updated (change list at the top). Owner picture /tmp/claude-0/v2/owner_play2.png (about 2000 px wide, Korean captions, honest): frame strips of a reversal before and after, the ready stance before and after, each new move, the boss's attacks with their warnings, and one line on what is still weak.
+Judge motion as the owner would on the strips: stiff, floaty, sliding, snapping, or a blade passing through the body is a defect even when the numbers pass.
+`
+
+phase('Build')
+const built = await agent(PLAY2, { label: 'PLAY-2', phase: 'Build' })
+
+phase('Verify')
+const VERIFY = COMMON + `
+YOUR LANE: PLAY2-VERIFY — adversarially verify the PLAY-2 lane's work. You may fix what you find in src/v2/play/, tools/v2/play_*, docs/v2/PLAY_API.md (small, safe fixes; anything large goes in the report). No paid generation. Progress log: /tmp/claude-0/v2/play2verify_progress.md. Captures: /tmp/claude-0/v2/play2verify/. Time box: 55 minutes.
+
+The PLAY-2 lane's report (null means the lane died — read /tmp/claude-0/v2/play2_progress.md and the tree instead):
+${String(built).slice(0, 16000)}
+
+Do not trust the report. Do:
+1. Run every check the lane lists and report exact results.
+2. Measure turning yourself, with your own script and trusted touch events on the real pad in scene v2g (index.html?scene=v2g — the interface may be the new cut-glass pad by now: read button centres from window.__v2.scene.hud.metrics() if present, else the old pad) on fold_open and phone2: reversals on four axes, 90-degree turns, 12 rapid flips, slow circles, fast circles, turn while attacking, turn right after a roll. Per tick: angle between velocity and facing, speed, foot slip. Then LOOK at frame strips from the game camera: does any frame show the hero moving sideways or backwards, snapping, or a foot skating?
+3. Every move by touch in v2g: combo, charged strike, roll, guard, parry at five timings, jump attack, skill button in each mode, bell ring, lock-on switching; each in eight directions where direction matters. A released button must do nothing afterwards. Try to break state: every pair of moves pressed on the same tick, moves during hurt, during death, at the edge of a platform, against walls, in the air.
+4. The boss in the test page and (if the game scene can spawn her — ask it through its documented debug api, do not edit the scene) in v2g: every attack's wind-up long enough to react to at 60 Hz (say the tick counts), the warning shape matches the hit shape (overlay), no attack hits outside its warning, no attack is unavoidable, stagger and phases reachable, both bots give the expected result over 20 seeded fights each, no NaN, no stuck state in 30,000 fuzzed ticks.
+5. Garbage: bytes per tick of the rules and the drive functions in node over 100,000 ticks of a fuzzed fight, and in the browser with node tools/v2/coreverify_break.mjs --only alloc (the play-owned functions' share).
+6. Compatibility: src/v2/play/index.js export names and shapes against docs/v2/PLAY_API.md and against what src/v2/game/ reads (read-only): list anything the scene reads that changed meaning.
+7. Owner sheet check: open /tmp/claude-0/v2/owner_play2.png and compare with what you saw; redo it if it flatters (keep the lane's version next to it).
+Final report: verdict (PASS / PASS-WITH-FIXES / FAIL) with reasons, defects fixed, defects left, numbers, what the game scene must wire (input names, events, HUD fields), credits, and a 3–4 sentence Korean summary for the owner.
+`
+const verdict = await agent(VERIFY, { label: 'PLAY2-VERIFY', phase: 'Verify' })
+return { play2: built, verdict }

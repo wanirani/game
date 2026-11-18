@@ -13,13 +13,21 @@ export const DIALOGS_DUNGEON = {
     ['elise', '박쥐가 종을 자꾸 들이받아요!\n줄을 놓으면 종이 멎어요!'],
     ['kael', '줄만 잡고 있어라.\n박쥐는 내가 맡는다.'],
   ] }],
-  'tower.crack': [{ pages: [
-    ['narrator', '박쥐 떼가 한 덩어리로\n종을 들이받는다.'],
-    ['elise', '종이…! 아저씨, 소리가 이상해요!'],
-    ['narrator', '금 사이로 종소리가 샌다.\n발밑이 꺼진다.'],
-    ['kael', '엘리제, 손!'],
-    ['narrator', '산 위로 은빛 별똥 하나가 떨어진다.'],
-  ] }],
+  'tower.crack': [
+    // in the tower the camera shows it (shots bell_crack, fall): two spoken lines only
+    { if: ['area:belltower_now'], pages: [
+      ['elise', '종이…! 아저씨, 소리가 이상해요!'],
+      ['kael', '엘리제, 손!'],
+    ] },
+    // while the tower is not built the scene is told (bridge)
+    { pages: [
+      ['narrator', '박쥐 떼가 한 덩어리로\n종을 들이받는다.'],
+      ['elise', '종이…! 아저씨, 소리가 이상해요!'],
+      ['narrator', '금 사이로 종소리가 샌다.\n발밑이 꺼진다.'],
+      ['kael', '엘리제, 손!'],
+      ['narrator', '산 위로 은빛 별똥 하나가 떨어진다.'],
+    ] },
+  ],
 
   // ───────── 68–82 납골당 앞 절반 ─────────
   'oss.enter': [{ pages: [
