@@ -265,11 +265,11 @@ try {
   run(s, 8, {}, () => { minD = Math.min(minD, Math.hypot(e.x - h.x, e.z - h.z)); });
   ok('env-kit world: wedge at the alley mouth is gone (enemy reaches the hero and attacks)', tells >= 1 && minD < 100, `closest ${minD.toFixed(0)} attacks ${tells}`);
   const s3 = new Sim(W, {}); s3.teleport('yard'); s3.hero.hp = s3.hero.hpMax = 1e6; let t3 = 0; s3.hooks.tell = () => { t3++; };
-  run(s3, 1.5, {}); const woke0 = s3.enemies.filter((q) => q.active).length;   // standing at the yard entry: nobody is close enough to see him yet
+  run(s3, 1.5, {}); const woke0 = s3.enemies.filter((q) => q.active).length;   // standing at the yard entry: nobody is close enough to see him yet - except a sleeper who happens to look his way (since 2026-11-18 sleepers face ±70° off the entry, each his own way)
   const since = new Map(); run(s3, 20, (i, q) => { const hh = q.hero; if (q.enemies.some((e) => e.active)) return {}; let n = null, nd = 1e9; for (const e of q.enemies) if (e.yard && !e.dead) { const d = Math.hypot(e.x - hh.x, e.z - hh.z); if (d < nd) { nd = d; n = e; } } return n ? { mx: (n.x - hh.x) / nd, mz: (n.z - hh.z) / nd } : {}; }, (q, i) => { for (const e of q.enemies) if (e.active && !since.has(e.id)) since.set(e.id, i); });
   const act = s3.enemies.filter((q) => q.active), far = act.filter((q) => q.def.ai === 'melee' && 1200 - since.get(q.id) > 480 && Math.hypot(q.x - s3.hero.x, q.z - s3.hero.z) > 300).length;   // 깨어난 지 8초가 넘었는데도 멀리 있는 것 (막 깨어난 것은 세지 않는다)
   const asleepFar = s3.enemies.filter((q) => !q.active && Math.hypot(q.x - s3.hero.x, q.z - s3.hero.z) > 320).length;
-  ok('env-kit world: yard enemies that see the hero wake, reach him and attack; none left stuck far away; the ones out of sight stay asleep', woke0 === 0 && act.length >= 1 && t3 >= 3 && far === 0 && finite(s3), `woke while he stood at the entry ${woke0} · after walking up: active ${act.length} attacks ${t3} far ${far} · still asleep beyond 320 px ${asleepFar}`);
+  ok('env-kit world: yard enemies that see the hero wake, reach him and attack; none left stuck far away; the ones out of sight stay asleep', woke0 <= 1 && act.length >= 1 && t3 >= 3 && far === 0 && finite(s3), `woke while he stood at the entry ${woke0} · after walking up: active ${act.length} attacks ${t3} far ${far} · still asleep beyond 320 px ${asleepFar}`);
 } catch (err) { ok('env-kit world loads in node', false, String(err?.message ?? err).split('\n')[0]); }
 
 // ── BREAK: breakables and pickups (src/v2/play/breakables.js — docs/v2/PLAY_API.md 13) ──
@@ -320,15 +320,16 @@ try {
     W.breakables = [{ kind: 'barrel', x: 90, z: 0, drop: 'coin5' }, { kind: 'jar', x: 100, z: 80, drop: 'coin5' }]; const s = new Sim(W, {}); s.seedDrops(5); s.hero.x = -400; breakOne(s, s.breakables[0], 'c1', 1, 0, false); breakOne(s, s.breakables[1], 'c1', 1, 0.2, false);
     let off = 0; for (let t = 0; t < 200; t++) { s.update(DT, {}); for (const p of s.pickups) if (p.on && (p.x > 120.01 || p.y < -0.001)) off++; }
     ok('coins thrown toward a floor edge turn back: none leaves the floor', off === 0 && s.pickN === 10 && s.pickups.filter((p) => p.on).every((p) => p.rest)); }
-  // picking up: coins count, heal and resonance never above the maximum, a heal piece at full health waits
+  // picking up: coins count, heal and resonance never above the maximum, a piece the hero has no use for turns to silver (it is never refused)
   { const s = mkB([]); spawnPickup(s, 0, 60, 30, 0, 0, 200, 0, 0); spawnPickup(s, 0, 80, 30, 10, 0, 200, 0, 0); let ev = []; s.hooks.pickup = (w, n) => ev.push(w + n);
     run(s, 0.2, {}); const early = s.hero.coins; run(s, 1.5, {}); ok('coins near the hero are drawn to him and picked up on touch (not before they have popped), hero.coins counts', early === 0 && s.hero.coins === 2 && ev.join() === 'coin1,coin1' && s.pickN === 0, `coins ${s.hero.coins}`); }
   { const s = mkB([]); spawnPickup(s, 0, 300, 30, 0, 0, 200, 0, 0); run(s, 2, {}); const far = s.pickups.find((p) => p.on); ok('a coin 300 away stays where it fell until the hero comes', !!far && far.rest && Math.abs(far.x - 300) < 1 && s.hero.coins === 0); run(s, 1.2, { mx: 1, mz: 0 }); ok('... and is taken when he runs past', s.hero.coins === 1); }
   { const s = mkB([]); s.hero.hp = s.hero.hpMax - 5; spawnPickup(s, 1, 40, 30, 0, 0, 200, 0, 0); run(s, 1.5, {}); ok('heal: never above the maximum', s.hero.hp === s.hero.hpMax && s.pickN === 0, `hp ${s.hero.hp}`);
-    spawnPickup(s, 1, 30, 30, 0, 0, 200, 0, 0); run(s, 3, {}); const p = s.pickups.find((q) => q.on); ok('heal at full health: the piece stays on the ground, untouched even with the hero standing on it', !!p && p.rest && s.hero.hp === s.hero.hpMax && (s.hero.x = p.x, s.hero.z = p.z, run(s, 1, {}), p.on));
-    s.hero.hp = 40; run(s, 0.6, {}); ok('... and is taken as soon as it is needed (+' + PICK.heal + ')', !p.on && s.hero.hp === 40 + PICK.heal, `hp ${s.hero.hp}`); }
+    const ev = []; s.hooks.pickup = (w, n) => ev.push(w + n); const c0 = s.hero.coins || 0;
+    spawnPickup(s, 1, 30, 30, 0, 0, 200, 0, 0); run(s, 3, {}); ok('heal at full health: the piece is drawn in and taken all the same and turns to silver (+' + PICK.spare + ' coins, event pickup coin)', s.pickN === 0 && s.hero.hp === s.hero.hpMax && (s.hero.coins || 0) === c0 + PICK.spare && ev.join() === 'coin' + PICK.spare, `coins ${s.hero.coins} ev ${ev.join()} live ${s.pickN}`);
+    s.hero.hp = 40; ev.length = 0; spawnPickup(s, 1, 30, 30, 0, 0, 200, 0, 0); run(s, 1.5, {}); ok('... and a hurt hero is healed by it (+' + PICK.heal + ', no silver)', s.pickN === 0 && s.hero.hp === 40 + PICK.heal && (s.hero.coins || 0) === c0 + PICK.spare && ev.join() === 'heal1', `hp ${s.hero.hp} ev ${ev.join()}`); }
   { const s = mkB([]); s.hero.reso = s.hero.resoMax - 0.1; spawnPickup(s, 2, 30, 30, 0, 0, 200, 0, 0); run(s, 1.5, {}); ok('resonance: never above the maximum', Math.abs(s.hero.reso - s.hero.resoMax) < 1e-9 && s.pickN === 0, `reso ${s.hero.reso}`);
-    spawnPickup(s, 2, 30, 30, 0, 0, 200, 0, 0); run(s, 2, {}); ok('a mote at full resonance waits too', s.pickN === 1); }
+    const c0 = s.hero.coins || 0; spawnPickup(s, 2, 30, 30, 0, 0, 200, 0, 0); run(s, 2, {}); ok('a mote at full resonance is taken too and turns to silver', s.pickN === 0 && (s.hero.coins || 0) === c0 + PICK.spare && Math.abs(s.hero.reso - s.hero.resoMax) < 1e-9, `coins ${s.hero.coins} live ${s.pickN}`); }
   { const s = mkB([]); spawnPickup(s, 0, 400, 30, 0, 0, 200, 0, 0); run(s, PICK.life - 0.5, {}); const on = s.pickN; run(s, 1, {}); ok(`a pickup vanishes after ${PICK.life} s`, on === 1 && s.pickN === 0); }
   { const s = mkB([{ kind: 'jar', x: 60, z: 0, drop: 'coin3' }]); run(s, 0.3, { attack: true }); const n1 = s.pickN; s.reset(); ok('sim.reset(): everything stands again, the pool is empty', n1 === 3 && s.brkLive === 1 && !s.breakables[0].broken && s.breakables[0].box.solid && s.pickN === 0); }
 }

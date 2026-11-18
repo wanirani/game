@@ -5,7 +5,9 @@
 //   (the jar breaks before the body reaches it: the roll loses no speed). Crates and barrels need a hit and stop a roll. Enemies never break them.
 //   On break: event break(b, by, dirX, dirZ) -> a drop drawn from the kind's table with the sim's own seedable generator (no Math.random here)
 //   -> event drop(what, n, b) -> n pickups pop out in an arc, bounce, settle, are pulled to the hero when he is near, are taken on touch
-//   -> event pickup(what, n, p). Coins count on hero.coins; heal and resonance use hero.hp / hero.reso and are never taken while that is full.
+//   -> event pickup(what, n, p). Coins count on hero.coins; heal and resonance fill hero.hp / hero.reso. A piece the hero has no use for (full
+//      health, full resonance) is pulled and taken like any other and turns to silver (PICK.spare coins, event pickup('coin', spare, p)):
+//      nothing that drops may refuse to be picked up (the owner, 2026-11-18: a piece that will not be taken reads as a bug).
 //   Nothing is allocated per tick: the pool objects, the probe and the breakable records are made once (initBreakables).
 import { STEP_UP } from './collide.js';
 
@@ -40,6 +42,7 @@ export const PICK = Object.freeze({
   takeR: 24,         // touch
   heal: 12,          // health of one heal piece (a candle is 20 at three candles)
   reso: 0.34,        // resonance of one mote (cells)
+  spare: 2,          // silver for a heal piece taken at full health or a mote taken at full resonance
   r: 6,              // body of a pickup against walls
 });
 
@@ -105,8 +108,6 @@ export function spawnPickup(S, what, x, y, z, vx, vy, vz, gy) {
   p.on = true; p.what = what; p.x = x; p.y = y; p.z = z; p.vx = vx; p.vy = vy; p.vz = vz; p.gy = gy; p.t = 0; p.rest = false; p.pull = false; p.n = 1; p.seq = ++S.pickSeq;
   return p;
 }
-/** does the hero want it now? (a heal piece at full health and a mote at full resonance stay where they are) */
-function wants(h, what) { return what === 0 || (what === 1 ? h.hp < h.hpMax - 1e-6 : h.reso < h.resoMax - 1e-6); }
 /** pickups: arc, bounce, settle, pull, touch, time out. Called from Sim.update() while any is live. */
 export function tickPickups(S, dt) {
   const P = S.pickups, h = S.hero, pr = S.brkProbe, K = PICK; let live = 0;
@@ -115,7 +116,7 @@ export function tickPickups(S, dt) {
     p.t += dt;
     if (p.t >= K.life) { p.on = false; continue; }
     live++;
-    const hx = h.x - p.x, hz = h.z - p.z, d2 = hx * hx + hz * hz, near = !h.dead && p.t >= K.takeAfter && Math.abs(h.y - p.gy) < 90 && wants(h, p.what);
+    const hx = h.x - p.x, hz = h.z - p.z, d2 = hx * hx + hz * hz, near = !h.dead && p.t >= K.takeAfter && Math.abs(h.y - p.gy) < 90;
     if (near && d2 < K.takeR * K.takeR && p.y - h.y < 110) { take(S, p); live--; continue; }
     p.pull = near && d2 < K.pullR * K.pullR;
     let mx, mz;
@@ -148,10 +149,12 @@ export function tickPickups(S, dt) {
 }
 function take(S, p) {
   const h = S.hero; p.on = false;
-  if (p.what === 0) h.coins = (h.coins || 0) + p.n;
-  else if (p.what === 1) h.hp = Math.min(h.hpMax, h.hp + PICK.heal);
+  let what = p.what, n = p.n;
+  if ((what === 1 && !(h.hp < h.hpMax - 1e-6)) || (what === 2 && !(h.reso < h.resoMax - 1e-6))) { what = 0; n = PICK.spare; }   // no use for it: it turns to silver in his hand
+  if (what === 0) h.coins = (h.coins || 0) + n;
+  else if (what === 1) h.hp = Math.min(h.hpMax, h.hp + PICK.heal);
   else if (S.addReso) S.addReso(PICK.reso); else h.reso = Math.min(h.resoMax, h.reso + PICK.reso);
-  S.emit('pickup', WHAT[p.what], p.n, p);
+  S.emit('pickup', WHAT[what], n, p);
 }
 /** the hero's hit shape (box or arc of the move, as for enemies) against every whole breakable. Called from Sim._heroHit. */
 export function breakHits(S, h, mv) {

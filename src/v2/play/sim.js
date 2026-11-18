@@ -118,7 +118,11 @@ export class Sim {
     };
     e.sight = s.sight ?? D.sight; e.wakeBy = s.wake ?? null;
     if (D.boss) { e.bphase = s.phase ?? 1; e.poiseMax = D.poiseMax ?? 0; }
-    { const fx = s.face ? s.face[0] : this.W.start.x - s.x, fz = s.face ? s.face[1] : this.W.start.z - s.z, fl = Math.sqrt(fx * fx + fz * fz);   // 보는 쪽: 지역이 정한 쪽, 없으면 영웅이 들어오는 쪽
+    { let fx = s.face ? s.face[0] : this.W.start.x - s.x, fz = s.face ? s.face[1] : this.W.start.z - s.z;   // 보는 쪽: 지역이 정한 쪽, 없으면 영웅이 들어오는 쪽에서 자리마다 다르게 튼 쪽
+      // 자리마다 ±70° (자리 좌표로 정한다 - 난수 흐름은 건드리지 않는다). 모두가 들어오는 쪽만 보고 서 있으면 줄 세운 것처럼 보였다(소유자, 2026-11-18).
+      // 앞쪽 시야가 ±105° 라 들어오는 쪽은 여전히 누구에게나 보인다. 보스와 지역이 방향을 정한 적은 그대로.
+      if (!s.face && !D.boss) { let k = Math.sin(s.x * 12.9898 + s.z * 78.233) * 43758.5453; k -= Math.floor(k); const a = (k * 2 - 1) * 1.22, c = Math.cos(a), sn = Math.sin(a), tx = fx * c - fz * sn; fz = fx * sn + fz * c; fx = tx; }
+      const fl = Math.sqrt(fx * fx + fz * fz);
       if (fl > 1e-3) { e.dirX = fx / fl; e.dirZ = fz / fl; if (Math.abs(e.dirX) > 0.25) e.facing = e.dirX < 0 ? -1 : 1; } }
     if (D.fade != null) { e.solid = false; e.alpha = D.fade; }
     if (e.active) e.state = 'chase';

@@ -37,6 +37,7 @@ import { StoryHost, readSave, clearSave } from './storyhost.js';   // STORY HOOK
 import { elementOf, shotAttach, shotMove, shotDetach, shotImpact } from './magic.js';
 import { Breakables } from './breakables.js';   // BREAK: jars, crates, barrels, their pieces and what drops out of them (docs/v2/ENGINE_API.md 13)
 import { Crossing } from './crossing.js';   // CROSSING: the bell crossing as a staged moment — ring, passage, reveal (docs/v2/ENGINE_API.md 12.3)
+const WAKE_NEAR = 200;   // px: a sleeping enemy this close (in sight, on his level) sets off its group's wake trigger (see _sync)
 const SKY_CAP = 96;   // rows of the 512-row sky canvas above the painted picture: its top row melting into the area's sky.top (see _sky)
 
 const FOCAL = 880, NEAR = 60, FAR = 24000, DIE_T = 0.9, HERO_MODEL = 'kael';
@@ -966,6 +967,22 @@ export default class V2Game extends Scene {
       this.fired.add(t.id);
       if (t.wake) this.wakeGroup(t.wake);
       this.emit('trigger', { id: t.id, event: t.event ?? null, data: t.data ?? null, trigger: t });
+    }
+    // A sleeping enemy the hero comes close to (in sight, on his level) wakes with its group, from whichever side he came: he may have arrived behind the
+    // trigger's line (a bell crossing, a save, another way in), or come back to an arena whose trigger went off on an earlier visit. If the group's wake
+    // trigger has not gone off yet, it goes off now - the same event as stepping into its box, so the story sees one order of things. Before this the
+    // three corpses of the 1697 square stood like statues beside a hero who came down from the church (the owner, 2026-11-18). Tested every sixth tick;
+    // groups that sleep on purpose (spawns[].wake = 'trigger') and have no trigger left stay asleep.
+    if ((this._wakeN = ((this._wakeN | 0) + 1) % 6) === 0 && !h.dead) {
+      const E = sim.enemies;
+      for (let j = 0; j < E.length; j++) {
+        const e = E[j]; if (e.active || e.dead || e.state === 'dead') continue;
+        const dx = e.x - h.x, dz = e.z - h.z;
+        if (dx * dx + dz * dz >= WAKE_NEAR * WAKE_NEAR || Math.abs(h.y - e.gy) >= 130 || (sim.clearLine && !sim.clearLine(e.x, e.z, h.x, h.z, e.gy + 56))) continue;
+        let t = null; if (e.group != null) for (let i = 0; i < TR.length; i++) if (TR[i].wake === e.group) { t = TR[i]; break; }
+        if (t && !this.fired.has(t.id)) { this.fired.add(t.id); this.wakeGroup(t.wake); this.emit('trigger', { id: t.id, event: t.event ?? null, data: t.data ?? null, trigger: t, near: true }); }
+        else if (e.yard && e.wakeBy !== 'trigger') { if (e.group != null) this.wakeGroup(e.group); else if (sim.wake) sim.wake(e); }   // (an enemy outside an arena wakes by sight in the rules)
+      }
     }
     const EX = this.area.exits;
     for (let i = 0; i < EX.length; i++) {

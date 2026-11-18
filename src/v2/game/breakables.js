@@ -255,7 +255,7 @@ export class Breakables {
       let rr, cr, cg, cb, al;
       if (p.what === 0) { const f = Math.abs(Math.cos(t * 7.5 + p.seq * 1.7)), k = f > 0.93 ? (f - 0.93) / 0.07 : 0; if (k <= 0) continue; rr = 7 + 15 * k; cr = 1.5; cg = 1.6; cb = 1.9; al = 0.85 * k; }
       else if (p.what === 1) { rr = 15 + 2 * Math.sin(t * 5 + p.seq); cr = 1.7; cg = 0.25; cb = 0.22; al = 0.42; }
-      else { rr = 15 + 3 * Math.sin(t * 6 + p.seq); cr = 0.75; cg = 1.25; cb = 1.9; al = 0.5; }
+      else { rr = 19 + 3 * Math.sin(t * 6 + p.seq); cr = 0.45; cg = 0.95; cb = 1.9; al = 0.55; }
       for (let j = 0; j < 4; j++) { const su = j === 0 || j === 3 ? -rr : rr, sv = j < 2 ? -rr : rr; Q[j * 3] = x + Rv[0] * su + U[0] * sv; Q[j * 3 + 1] = y + Rv[1] * su + U[1] * sv; Q[j * 3 + 2] = z + Rv[2] * su + U[2] * sv; }
       b.quad(Q, g.u0, g.v0, g.u1, g.v1, cr, cg, cb, al, 0, 0, 12, 0.5);
     }
@@ -293,10 +293,10 @@ export class Breakables {
         const m = M[p.what]; if (v + m.n > DYN_VERTS) break;
         const o = i * 6, x = pp[o] + (pp[o + 3] - pp[o]) * a, y = pp[o + 1] + (pp[o + 4] - pp[o + 1]) * a + this._lift(p, t), z = pp[o + 2] + (pp[o + 5] - pp[o + 2]) * a;
         const ang = p.what === 0 ? t * 7.5 + p.seq * 1.7 : p.what === 1 ? t * 2.4 + p.seq : t * 3.6 + p.seq, c = Math.cos(ang), s = Math.sin(ang);
-        if (p.what === 2) { const c2 = Math.cos(t * 2.1 + p.seq), s2 = Math.sin(t * 2.1 + p.seq); R[0] = c; R[1] = s * s2; R[2] = s * c2; R[3] = 0; R[4] = c2; R[5] = -s2; R[6] = -s; R[7] = c * s2; R[8] = c * c2; }   // a mote turns on two axes
+        if (p.what === 2) { const ct = 0.956, st = 0.292; R[0] = c * ct; R[1] = -c * st; R[2] = s; R[3] = st; R[4] = ct; R[5] = 0; R[6] = -s * ct; R[7] = s * st; R[8] = c; }   // a mote stands upright, leaning 17 degrees, and turns about the vertical (it tumbled on two axes and read as a flat square)
         else { R[0] = c; R[1] = 0; R[2] = s; R[3] = 0; R[4] = 1; R[5] = 0; R[6] = -s; R[7] = 0; R[8] = c; }
         sc._tintAt(sc.W, x, y, z, 0, 1.6, T);
-        const k = p.what === 0 ? 0.95 : p.what === 1 ? 1.0 : 1.25, sz = (p.pull ? 0.86 : 1) * (p.what === 2 ? 1 + 0.12 * Math.sin(t * 6 + p.seq) : 1) * Math.min(1, 0.4 + p.t * 5);
+        const k = p.what === 0 ? 0.95 : 1.0, sz = (p.pull ? 0.86 : 1) * (p.what === 2 ? 1 + 0.12 * Math.sin(t * 6 + p.seq) : 1) * Math.min(1, 0.4 + p.t * 5);
         v += writeDyn(m, f, u, v, R, sz, x, y, z, T[0] * k, T[1] * k, T[2] * k, 1, p.what === 0 ? 0.06 : 0.35);
       }
     }

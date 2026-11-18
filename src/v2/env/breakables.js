@@ -313,7 +313,9 @@ function gemModel(n, r, up, down, col, col2) {
 }
 let PK = null;
 /** [coin, heal piece, resonance mote] models */
-export function pickupModels() { return PK ?? (PK = [coinModel(), gemModel(6, 5.6, 10.5, 6.5, [1.5, 0.2, 0.22], [1.15, 0.1, 0.16]), gemModel(4, 5.2, 7.4, 7.4, [1.2, 1.5, 1.9], [0.86, 1.2, 1.8])]); }
+// the mote is a tall six-sided shard of the bell's blue (the same crystal as the resonance cells of the HUD). Until 2026-11-18 it was a small pale
+// octahedron tumbling on two axes: seen from the game camera it read as a flat white square lying on the floor (the owner's screenshot).
+export function pickupModels() { return PK ?? (PK = [coinModel(), gemModel(6, 5.6, 10.5, 6.5, [1.5, 0.2, 0.22], [1.15, 0.1, 0.16]), gemModel(6, 4.6, 15, 6.5, [0.5, 0.95, 1.9], [0.28, 0.6, 1.5])]); }
 
 // ───────────────────────── writing vertices ─────────────────────────
 const q2 = (k) => (k <= 0 ? 0 : k >= 2 ? 255 : (k * 127.5 + 0.5) | 0);

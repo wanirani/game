@@ -35,8 +35,8 @@ async function areaOf(id, flags) { const k = id + '|' + Object.keys(flags ?? {})
 // people = the solid townspeople standing in the area right now ([x, z, y] from the page): the scene gives each a collision box the world's own grid does not know
 async function pathTo(id, flags, x, z, tx, tz, tr = 60, people = []) {
   const { W } = await areaOf(id, flags);
-  const far = people.filter(([px, pz]) => Math.hypot(px - x, pz - z) > 64);   // someone the hero already stands next to does not close the start
-  const W2 = far.length ? { ...W, boxes: [...W.boxes, ...far.map(([px, pz, py]) => ({ x0: px - 18, x1: px + 18, z0: pz - 18, z1: pz + 18, y0: py - 20, y1: py + 110, solid: true, walk: false }))] } : W;
+  const far = people.filter(([px, pz, , ph = 18]) => Math.hypot(px - x, pz - z) > ph + 46);   // someone (or something) the hero already stands next to does not close the start
+  const W2 = far.length ? { ...W, boxes: [...W.boxes, ...far.map(([px, pz, py, ph = 18]) => ({ x0: px - ph, x1: px + ph, z0: pz - ph, z1: pz + ph, y0: py - 20, y1: py + 110, solid: true, walk: false }))] } : W;
   for (const Wq of W2 === W ? [W] : [W2, W]) for (const R of [26, 14]) { const g = reachGrid(Wq, x, z, R), p = g.near(tx, tz, tr) ?? g.near(tx, tz, tr * 2.5); if (p) { const path = g.path(p[0], p[1]); if (path && path.length) return path; } }
   return null;
 }
@@ -91,7 +91,10 @@ const fmt = (e) => (e[0] === 'line' ? `    ${e[1]}: ${String(e[2]).replace(/\n/g
 async function drain(label) { const add = await page.evaluate((f) => (window.__v2?.scene?.host ? window.__st.seen(f) : []), seenAt); seenAt += add.length; if (label) SEEN.push('── ' + label); for (const e of add) SEEN.push(fmt(e)); if (VERB) for (const e of add) console.log('      ' + fmt(e)); return add; }
 const st = () => page.evaluate(() => window.__st.status(0));
 const flagsNow = () => page.evaluate(() => ({ ...(window.__v2.scene.worldFlags ?? {}) }));
-const peopleNow = () => page.evaluate(() => window.__v2.people.filter((p) => p.on && p.solid).map((p) => [Math.round(p.x), Math.round(p.z), Math.round(p.y)]));
+// what stands in the way besides the stage: solid people, and the jars, crates and barrels that are still whole (the path goes round them - the bot
+// does not break things, and on 2026-11-18 it wedged itself between a crate and a jar on the high street for a whole run). Each entry [x, z, y, half width].
+const peopleNow = () => page.evaluate(() => [...window.__v2.people.filter((p) => p.on && p.solid).map((p) => [Math.round(p.x), Math.round(p.z), Math.round(p.y), 18]),
+  ...(window.__v2.scene.sim?.breakables ?? []).filter((b) => !b.broken).map((b) => [Math.round(b.x), Math.round(b.z), Math.round(b.y), Math.round(b.r + 4)])]);
 async function open(q = '') {
   await page.goto(`http://localhost:${port}/index.html?scene=v2g&v2auto=0${RES < 1 ? '&v2res=' + RES : ''}${q}`);
   await page.waitForFunction(() => window.__v2?.id === 'g' && (window.__v2.ready || window.__v2.error), null, { timeout: 90000 }).catch(() => errs.push('ready timeout'));
