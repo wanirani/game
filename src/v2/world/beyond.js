@@ -12,7 +12,7 @@ const far = (parts) => parts.map((p) => ({ t: 'deco', chunk: 'far', mat: 'soil',
 /** Eshville: fields and back gardens behind the house row, the road out of the west gate, the churchyard behind the church, the lane to the graveyard */
 export function beyondEshville(now, cold = false) {
   const warm = now && !cold, Y = -4;
-  const tree = now ? C(0.085, 0.07, 0.075) : C(0.1, 0.11, 0.09), fir = now ? C(0.06, 0.07, 0.075) : C(0.055, 0.085, 0.085), wall = now ? C(0.2, 0.17, 0.18) : C(0.24, 0.23, 0.25), roof = now ? C(0.1, 0.09, 0.1) : C(0.16, 0.13, 0.1);
+  const tree = now ? C(0.13, 0.1, 0.1) : C(0.14, 0.15, 0.12), fir = now ? C(0.11, 0.11, 0.115) : C(0.09, 0.13, 0.13), wall = now ? C(0.2, 0.17, 0.18) : C(0.24, 0.23, 0.25), roof = now ? C(0.1, 0.09, 0.1) : C(0.16, 0.13, 0.1);
   const kind = now ? 'bare' : 'round', lit = now ? 0.3 : 0.75, glow = warm ? [1, 0.42, 0.16] : [1, 0.62, 0.3];
   const H = (x, z, w, h, rh, seed, o = {}) => ({ mesh: 'farhouse', x, y: Y, z, w, d: 130, h, rh, tint: wall, roofTint: roof, lit, glow, emis: 5, seed, ...o });
   const out = far([

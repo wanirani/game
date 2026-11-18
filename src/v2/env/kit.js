@@ -193,7 +193,8 @@ export function dressWall(G, P, boxes) {
   }
   if (K.battlement) for (const side of K.faces ?? 'FLR') {
     const [F, len] = FS[side], n = Math.max(2, Math.round(len / 46));
-    for (let i = 0; i < n; i++) if (i % 2 === 0) F.box(G, lower, len * i / n, len * (i + 1) / n, y1, y1 + 24, -16, 6, { faces: 'FLRT', top: 'trimstone', vary: 0.1 });
+    const gaps = side === 'F' ? K.merlonGaps ?? [] : [];   // [[u0, u1], ...] along the front: no merlon stands there (burnt away under a wall-top fire - FIRE leftovers: their bright tops showed through the flames as hard-edged slivers)
+    for (let i = 0; i < n; i++) if (i % 2 === 0 && !gaps.some(([a, b]) => len * i / n < b && len * (i + 1) / n > a)) F.box(G, lower, len * i / n, len * (i + 1) / n, y1, y1 + 24, -16, 6, { faces: 'FLRT', top: 'trimstone', vary: 0.1 });
   }
   if (K.rail) for (const side of K.rail) { const [F, len] = FS[side]; railing(G, F, 4, len - 4, y1 + (K.coping ? 6 : 0), K.railH ?? 38, -(side === 'F' ? P.d : P.w) / 2); }
   // 낮은 담의 기둥. FENCE (11-18): a pier goes through the wall's thickness, so it is drawn only on the faces the wall runs along (on the short end

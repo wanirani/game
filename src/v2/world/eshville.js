@@ -46,10 +46,10 @@ export function eshville(era, flags = {}) {
 
   // ───────────── houses (same footprints in both eras) ─────────────
   add('out',
-    house({ x: -60, z: 300, w: 420, h: now ? 210 : 190, style: 'rubble', seed: 11, burnt: now, cold: out, lit: 0.5, roofMat: 'thatch', kit: { lower: 'fieldstone' } }),
-    house({ x: 360, z: 300, w: 160, h: now ? 96 : 150, style: now ? 'rubble' : 'plaster', seed: 12, burnt: now, cold: out, door: false, lit: 0.6, roofMat: 'thatch', kit: now ? { lower: 'fieldstone', windows: [] } : {} }),
+    house({ x: -60, z: 300, w: 420, h: now ? 210 : 190, style: 'rubble', seed: 11, burnt: now, cold: out, lit: 0.5, roofMat: 'thatch', kit: { lower: 'fieldstone', merlonGaps: [[149, 371]] } }),   // merlonGaps: no merlons under the wall-top fire (fire_h1roof, x 105..295)
+    house({ x: 360, z: 300, w: 160, h: now ? 96 : 150, style: now ? 'rubble' : 'plaster', seed: 12, burnt: now, cold: out, door: false, lit: 0.6, roofMat: 'thatch', kit: now ? { lower: 'fieldstone', windows: [], merlonGaps: [[0, 160]] } : {} }),
     house({ x: 520, z: 300, w: 440, h: 300, style: 'timber', seed: 13, lit: now ? 0.12 : 0.6, roofMat: past ? 'thatch' : undefined, banner: past ? BLACK : null }),
-    house({ x: 960, z: 300, w: 540, h: now ? 230 : 240, style: 'stone', seed: 14, burnt: now, cold: out, lit: 0.55, sconce: past, roofMat: past ? 'thatch' : undefined }));   // 1697: every roof west of the square is thatch (one roof material per chunk = one draw call less)
+    house({ x: 960, z: 300, w: 540, h: now ? 230 : 240, style: 'stone', seed: 14, burnt: now, cold: out, lit: 0.55, sconce: past, roofMat: past ? 'thatch' : undefined, kit: now ? { merlonGaps: [[219, 461]] } : {} }));   // 1697: every roof west of the square is thatch (one roof material per chunk = one draw call less)
   add('street',
     house({ x: 1500, z: 300, w: 580, h: now ? 340 : 300, style: 'timber', seed: 21, base: 7, lit: 0.85, door: 300, sign: true, sconce: true, shop: true, roofMat: past ? 'thatch' : undefined }),   // inn (now) / small tavern (past)
     house({ x: 2080, z: 300, w: 380, h: now ? 280 : 250, style: 'stone', seed: 22, base: 7, lit: now ? 0.15 : 0.5, door: 190, doorOpt: now && flags.door_pulled ? { open: true } : {}, banner: past ? BLACK : BLUE, roofMat: past ? 'thatch' : undefined }),                                  // the house with the trapped villager

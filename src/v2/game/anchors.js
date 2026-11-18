@@ -29,15 +29,17 @@ const fireSet = (k, C) => ({
   k, bw: 66 * k, bh: 100 * k, light: C.light,
   BODY: E({ sprite: SPR.FIRE, aspect: 1.5, fps: [11, 15], shape: 3, rad: 3 * k, h: [0, 5 * k], speed: [10 * k, 22 * k], grav: -26 * k, life: [0.55, 0.72], size: [58 * k, 74 * k], grow: 1.12, c0: C.body0, c1: C.body1, add: 0.66, fadeIn: 0.2, pri: 1, amb: 1, min: 1 }),
   CORE: E({ sprite: SPR.FIRE, aspect: 1.15, fps: [14, 18], shape: 3, rad: 2 * k, h: [0, 3 * k], speed: [8 * k, 16 * k], life: [0.28, 0.38], size: [34 * k, 44 * k], grow: 1.1, c0: C.core0, c1: C.core1, fadeIn: 0.25, pri: 1, amb: 1, min: 1 }),
-  TONGUE: E({ sprite: SPR.WISP, aspect: 1.75, shape: 3, rad: 4 * k, h: [30 * k, 56 * k], speed: [50 * k, 92 * k], drag: 0.8, grav: -110 * k, life: [0.42, 0.62], size: [40 * k, 54 * k], grow: 0.85, c0: C.tongue0, c1: C.tongue1, add: 0.88, fadeIn: 0.14, pri: 1, amb: 1, min: 1 }),
-  HEAT: E({ sprite: SPR.GLOW, shape: 3, rad: 4 * k, h: [22 * k, 34 * k], speed: [4, 10], life: [0.5, 0.7], size: [96 * k, 118 * k], grow: 1.15, c0: C.heat0, c1: C.heat1, fadeIn: 0.3, amb: 1, min: 1 }),
+  TONGUE: E({ sprite: SPR.WISP, aspect: 1.75, shape: 3, rad: 4 * k, h: [30 * k, 56 * k], speed: [42 * k, 72 * k], drag: 0.8, grav: -76 * k, life: [0.4, 0.56], size: [36 * k, 48 * k], grow: 0.85, c0: C.tongue0, c1: C.tongue1, add: 0.88, fadeIn: 0.14, pri: 1, amb: 1, min: 1 }),
+  HEAT: E({ sprite: SPR.GLOW, shape: 3, rad: 4 * k, h: [22 * k, 34 * k], speed: [4, 10], life: [0.5, 0.7], size: [84 * k, 104 * k], grow: 1.15, c0: C.heat0, c1: C.heat1, fadeIn: 0.3, amb: 1, min: 1 }),
   SPARK: E({ sprite: SPR.EMBER, shape: 0, spread: 0.42, speed: [90 * k, 210 * k], drag: 0.6, grav: -30, life: [0.5, 1.3], size: [2.6, 4.6], stretch: 2.2, c0: C.spark0, c1: C.spark1, jit: 7 * k, amb: 1, min: 1 }),
   EMBER: E({ sprite: SPR.EMBER, shape: 0, spread: 0.7, speed: [26 * k, 60 * k], drag: 0.35, grav: -12, life: [1.3, 2.5], size: [2.2, 3.6], spin: [-2, 2], c0: C.ember0, c1: C.ember1, jit: 9 * k, fadeIn: 0.1, amb: 1, min: 1 }),
   SMOKE: E({ sprite: SPR.SMOKE, add: 0, shape: 0, spread: 0.3, speed: [26 * k, 46 * k], drag: 0.3, grav: -14, life: [1.7, 2.6], size: [42 * k, 58 * k], grow: 2.3, c0: C.smoke0, c1: [0.15, 0.14, 0.14, 0], jit: 8 * k, fadeIn: 0.3, amb: 1, min: 1 }),
 });
 const SETS = new Map();   // built when an area is built, never in a frame
 const setOf = (k, cold) => { const key = (cold ? 'c' : 'w') + k.toFixed(2); let s = SETS.get(key); if (!s) SETS.set(key, s = fireSet(+k.toFixed(2), cold ? COLD : WARM)); return s; };
-const kOf = (size) => Math.max(0.4, size < 0.7 ? 0.7 + (size - 0.5) * 0.8 : size < 1 ? 1.0 + (size - 0.8) * 1.1 : 1.3 + (size - 1.05) * 1.35);   // three classes: bowl, house fire, blaze
+// WORLD-LOOK (fire leftover d): the blaze class was 1.3 + (size - 1.05) x 1.35 (a wall-top fire k 1.5 - 1.62): its tongues reached the top of the screen in the outskirts
+// roof view and the fires covered 2.34 phone screens (phone2, mid). Now k 1.35 - 1.41, shorter and slower tongues, a smaller heat glow, 2.35 body quads per slot (was 2.6).
+const kOf = (size) => Math.max(0.4, size < 0.7 ? 0.7 + (size - 0.5) * 0.8 : size < 1 ? 1.0 + (size - 0.8) * 1.1 : 1.24 + (size - 1.05) * 0.7);   // three classes: bowl, house fire, blaze
 const SPARK = E({ sprite: SPR.EMBER, shape: 3, rad: 9, h: [9, 30], speed: [72, 170], drag: 0.55, grav: -36, life: [0.5, 1.25], size: [2.6, 4.6], stretch: 2.2, c0: [3.2, 1.65, 0.45, 1], c1: [1.8, 0.3, 0.05, 0], jit: 4.5 });   // embers anchors (as before)
 const COLUMN = E({ sprite: SPR.SMOKE, add: 0, shape: 3, rad: 22, h: [0, 20], speed: [40, 80], drag: 0.2, grav: -10, life: [2.4, 4], size: [56, 90], grow: 2.6, c0: [0.085, 0.075, 0.08, 0.36], c1: [0.15, 0.14, 0.15, 0], fadeIn: 0.2 });
 const MIST = E({ sprite: SPR.SMOKE, add: 0, shape: 3, rad: 190, h: [6, 30], speed: [2, 8], life: [4, 7], size: [150, 230], grow: 1.5, c0: [0.3, 0.36, 0.4, 0.085], c1: [0.3, 0.36, 0.4, 0], fadeIn: 0.4 });
@@ -63,7 +65,7 @@ export class Anchors {
         const F = setOf(kOf(size), cold), w = a.w ?? 50 * size, slots = Math.max(1, Math.round(w / (0.42 * F.bw)));
         o.y += 2; o.z -= 10; o.set = F; o.w = w; o.span = Math.max(0, w - 0.3 * F.bw); o.rad = 160 + w * 0.5 + F.bh;
         // live quads wanted per layer -> emission per second (life = the middle of the layer's range)
-        o.rate = new Float32Array([Math.max(3, 2.6 * slots) / 0.63, Math.max(2, 1.7 * slots) / 0.33, Math.max(1.6, 1.3 * slots) / 0.57, Math.min(2.4, 0.9 + 0.35 * slots) / 0.6, 3 + 4.5 * slots, F.k >= 1 ? 1.2 + 2 * slots : 0, 1 + 0.45 * slots]);
+        o.rate = new Float32Array([Math.max(3, 2.35 * slots) / 0.63, Math.max(2, 1.7 * slots) / 0.33, Math.max(1.6, 1.3 * slots) / 0.57, Math.min(2.4, 0.9 + 0.35 * slots) / 0.6, 3 + 4.5 * slots, F.k >= 1 ? 1.2 + 2 * slots : 0, 1 + 0.45 * slots]);
         o.acc = new Float32Array(7); o.seq = new Uint32Array(7); for (let j = 0; j < 7; j++) { o.acc[j] = frac(a.x * 0.013 + j * 0.37); o.seq[j] = (a.x * 7 + j * 13) >>> 0; }
       }
       this.list.push(o);
