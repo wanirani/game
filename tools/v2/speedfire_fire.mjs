@@ -45,10 +45,10 @@ let page = null, cur = '';
 const open = async (area, tier) => {
   const key = area + ':' + tier; if (cur === key) return; cur = key;
   if (page) await page.context().close();
-  const ctx = await browser.newContext(contextOptions('fold_open')); page = await ctx.newPage();
+  const ctx = await browser.newContext({ ...contextOptions('fold_open'), serviceWorkers: 'block' }); page = await ctx.newPage();   // (a service worker would answer the module requests and skip the --before routes)
   page.on('pageerror', (e) => errs.push('[pageerror] ' + e.message));
   if (BEFORE) for (const f of BEFORE_FILES) await page.route('**/' + f, (r) => r.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', body: OLD[f] }));   // --before <commit>: the fire files as they were then
-  await page.goto(`http://localhost:${port}/index.html?scene=v2g&area=${area}&v2auto=0&v2tier=${tier}`);
+  await page.goto(`http://localhost:${port}/index.html?scene=v2g&area=${area}&v2auto=0&v2tier=${tier}&nosw`);
   await page.waitForFunction(() => window.__v2 && (window.__v2.ready || window.__v2.error), null, { timeout: 120000 }).catch(() => {});
   const ok = await page.evaluate(() => !!window.__v2?.ready); if (!ok) throw new Error('scene not ready: ' + area);
   await page.evaluate(install); await page.evaluate((n) => { window.__TICKS = n; }, Number(args.ticks ?? 330));   // 지역 이름 띠가 사라질 때까지
