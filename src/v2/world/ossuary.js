@@ -32,6 +32,9 @@ export function ossuary(era = 'now', flags = {}) {
   const sideWalls = (chunk, z, d, butt, sc, B = { h: 230, d: 22, w: 44 }) => add(chunk,
     { t: 'wall', x: 0, z, w: 100, d, h: HW, mat: 'facade', kit: { style: 'rubble', lower: 'fieldstone', cell: 70, faces: 'R', cornice: true, buttress: butt.map((u) => ({ side: 'R', u, ...B })), hang: SCN('R', sc, d) } },
     { t: 'wall', x: X1, z, w: 100, d, h: HW, mat: 'facade', kit: { style: 'rubble', lower: 'fieldstone', cell: 70, faces: 'L', cornice: true, buttress: butt.map((u) => ({ side: 'L', u: d - u, ...B })), hang: SCN('L', sc, d) } });
+  // rock beyond the wall tops (drawn only): without it the raised camera looked over the side walls into black
+  const rock = (chunk, z, d) => add(chunk, { t: 'floor', x: -260, z, w: 262, d, y: HW - 2, walk: false, mat: 'stone', kit: { mat: 'cellar', cell: 220 } }, { t: 'floor', x: X1 + 98, z, w: 262, d, y: HW - 2, walk: false, mat: 'stone', kit: { mat: 'cellar', cell: 220 } });
+  rock('c1', -60, 1060); rock('c2', 1000, 1100); rock('c3', 2100, 900); rock('c4', 3000, 990);
   sideWalls('c1', -60, 1060, [460, 1060], [250, 760]); sideWalls('c2', 1000, 1100, [500, 1100], [120, 800]); sideWalls('c3', 2100, 900, [350, 700], [180, 540]); sideWalls('c4', 3000, 990, [150, 350, 550, 750], [250, 650], { h: 292, d: 40, w: 64 });   // the last hall: four wall piers a side instead of free-standing pillars (nothing the hero or the queen can be hidden behind)
   add('c4', { t: 'wall', x: 0, z: 3900, w: 1200, d: 90, h: HW + 60, mat: 'facade', kit: { style: 'stone', cell: 60, faces: 'F', plinth: 34, quoins: false, courses: [250], buttress: [{ u: 330, h: 300, d: 26, w: 40 }, { u: 870, h: 300, d: 26, w: 40 }] } });
   // the coffin corridor: low banks left and right (same walls both nights: candles and new coffins on them in 1697, a hundred years of coffins tonight)

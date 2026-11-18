@@ -63,12 +63,12 @@ export function createPad(game, opts = {}) {
     cv.className = 'v2b'; cv.dataset.id = def.id;
     cv.style.cssText = 'position:absolute;left:0;top:0;will-change:transform;transform-origin:50% 42%;transition:transform 70ms ease-out;';
     root.appendChild(cv);
-    return { id: def.id, def, sent: '', cv, ctx: cv.getContext('2d'), cx: 0, cy: 0, d: 0, pad: 0, cw: 0, ch: 0, lw: 0, down: false, ptr: -1, t0: 0, cd: 0, charge: 0, disabled: false, icon: def.icon, label: def.label, dirty: true };
+    return { id: def.id, def, sent: '', cv, ctx: cv.getContext('2d'), cx: 0, cy: 0, d: 0, pad: 0, cw: 0, ch: 0, lw: 0, down: false, ptr: -1, t0: 0, n0: 0, cd: 0, charge: 0, disabled: false, icon: def.icon, label: def.label, dirty: true };
   });
   const byId = Object.fromEntries(B.map((b) => [b.id, b]));
   const mk = (cls) => { const c = document.createElement('canvas'); c.className = cls; c.style.cssText = 'position:absolute;left:0;top:0;will-change:transform,opacity;'; root.appendChild(c); return c; };
   const baseCv = mk('v2s-base'), knobCv = mk('v2s-knob');
-  const S = { shown: false, want: true, modal: false, L: null, bounds: { l: 0, t: 0, r: 0, b: 0 }, textSize: 'normal', repaints: 0, layoutN: 0,
+  const S = { tickN: 0, shown: false, want: true, modal: false, L: null, bounds: { l: 0, t: 0, r: 0, b: 0 }, textSize: 'normal', repaints: 0, layoutN: 0,
     stick: { ptr: -1, ox: 0, oy: 0, x: 0, y: 0, live: false, dir: [false, false, false, false] }, lastAlive: 0, idle: 0 };
 
   function readBounds() {
@@ -190,13 +190,13 @@ export function createPad(game, opts = {}) {
     b.down = on; b.ptr = on ? ptr : -1; b.dirty = true; place(b);
     if (b.disabled) { if (on) { try { opts.onDisabledPress?.(b.id); } catch (e) { console.error(e); } } return; }   // a button that cannot be used yet still answers: the scene says why
     if (on) {
-      b.t0 = performance.now(); b.sent = acts(b);
+      b.t0 = performance.now(); b.n0 = S.tickN; b.sent = acts(b);
       if (b.sent) input.touch.set(b.sent, true);
       try { opts.onPress?.(b.id); } catch (e) { console.error(e); }
     } else {
       if (b.sent) {
         input.touch.set(b.sent, false);
-        if (!cancel && performance.now() - b.t0 < 34) input.touch.tap(b.sent);   // a very short tap still reaches one game step
+        if (!cancel && (performance.now() - b.t0 < 34 || S.tickN === b.n0)) input.touch.tap(b.sent);   // a very short tap, or one that began and ended between two game steps (a frame hitch), still reaches one game step
       }
       b.sent = '';
       if (b.id === 'pause' && !cancel) { try { opts.onPause?.(); } catch (e) { console.error(e); } }
@@ -279,7 +279,7 @@ export function createPad(game, opts = {}) {
     layout,
     /** Called every tick by the HUD: visibility follows the input mode and the modal state; repaints only what changed. */
     tick(modal, pad) {
-      S.lastAlive = performance.now(); S.idle = 0;
+      S.lastAlive = performance.now(); S.idle = 0; S.tickN++;
       const mode = opts.forceShow ? 'touch' : (input.mode ?? 'touch');
       show(S.want && !modal && mode === 'touch');
       if (!S.shown) return;

@@ -25,12 +25,16 @@ export const AREA_FOLDS = {
   },
   "graveyard_now": {
     "field": {
-      "wood": "timber"
+      "wood": "timber",
+      "k_flag": "slabs",
+      "k_slate": "stone"
     }
   },
   "graveyard_past": {
     "field": {
-      "wood": "timber"
+      "wood": "timber",
+      "k_flag": "slabs",
+      "k_slate": "stone"
     }
   },
   "belltower_now": {
@@ -46,6 +50,9 @@ export const AREA_FOLDS = {
     }
   },
   "ossuary_now": {
+    "c1": {
+      "k_flag": "slabs"
+    },
     "c2": {
       "dirt": "flags",
       "flag": "flags",
@@ -60,6 +67,9 @@ export const AREA_FOLDS = {
     }
   },
   "ossuary_past": {
+    "c1": {
+      "k_flag": "slabs"
+    },
     "c2": {
       "wood": "timber",
       "flag": "flags",

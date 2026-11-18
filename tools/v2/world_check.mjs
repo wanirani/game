@@ -104,9 +104,12 @@ const walk = (page, wps, start = null) => page.evaluate(([wps, start]) => {
       const gh = ground(h.x, h.z), ga = ground(h.x + dx / dd * 26, h.z + dz / dd * 26), gt = ground(wps[i][0], wps[i][1]);
       if (gt > gh + 90) { fell = true; break; }   // the next waypoint is more than a jump above: the hero fell off the route -> plan again from here
       // jump straight at the edge: along the axis on which the gap or the ledge lies (a diagonal run-up slides off the side of a ledge)
-      const need = (g2) => (g2 < gh - 30 && gt >= gh - 30) || (g2 > gh + 16 && g2 <= gh + 100 && gt > gh + 16);   // a ledge only when the route goes up it (a low wall beside the way is not a ledge to take)
-      const gz = Math.abs(dz) > 3 ? ground(h.x, h.z + Math.sign(dz) * 26) : gh, gx = Math.abs(dx) > 3 ? ground(h.x + Math.sign(dx) * 26, h.z) : gh;
-      if (need(gz)) { jump = 20; jumps++; lock = 'z'; } else if (need(gx)) { jump = 20; jumps++; lock = 'x'; } else if (need(ga)) { jump = 20; jumps++; lock = null; }
+      // a gap = a real drop 26 ahead while the next waypoint is at this height; a ledge = more than two stair steps up 18 ahead while the route goes up
+      // (stairs rise 15 per 14: probing further, or with a lower threshold, made the bot hop up the stairs and arrive at a gap in the air)
+      const sx = Math.abs(dx) > 3 ? Math.sign(dx) : 0, sz = Math.abs(dz) > 3 ? Math.sign(dz) : 0;
+      const gap = (ux, uz) => (ux || uz) && ground(h.x + ux * 26, h.z + uz * 26) < gh - 60 && gt >= gh - 30;
+      const ledge = (ux, uz) => { if (!(ux || uz)) return false; const g2 = ground(h.x + ux * 18, h.z + uz * 18); return g2 > gh + 36 && g2 <= gh + 100 && gt > gh + 16; };
+      if (gap(0, sz) || ledge(0, sz)) { jump = 20; jumps++; lock = 'z'; } else if (gap(sx, 0) || ledge(sx, 0)) { jump = 20; jumps++; lock = 'x'; }
     }
     if (jump > 0 && lock === 'z') { act.left = act.right = false; } else if (jump > 0 && lock === 'x') { act.up = act.down = false; }
     if (t % 6 === 0) { const m = Math.hypot(h.x - lx, h.z - lz); lx = h.x; lz = h.z; stuck = m < 2 ? stuck + 1 : 0; if (stuck >= 4) { jump = 22; stuck = 0; lock = null; } if (stuck === 3 && h.onGround && ground(wps[i][0], wps[i][1]) > ground(h.x, h.z) + 60) { fell = true; break; } }

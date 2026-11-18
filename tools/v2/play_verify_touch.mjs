@@ -92,10 +92,13 @@ async function run(dev) {
     const stick = async (d, mag = 52) => { const [dx, dy] = typeof d === 'string' ? DIRS[d] : d, l = Math.hypot(dx, dy) || 1; if (!T.active.has(21)) { await T.down(21, SX, SY); await T.move(21, SX + dx / l * mag * 0.5, SY + dy / l * mag * 0.5); } await T.move(21, SX + dx / l * mag, SY + dy / l * mag); };
     const stickUp = () => T.up(21);
     const kinds = await ev(() => window.__pv.clear());
-    // a flat open spot
-    const pick = await ev(() => { const w = window.__v2.scene.sim.w, out = []; for (const [x, z] of [[900, 190], [470, 110], [1130, 140], [1260, 120], [1420, 150], [2190, 900], [2190, 1250]]) { const g0 = w.ground(x, z); let flat = Number.isFinite(g0); for (let a = 0; a < 8 && flat; a++) for (const r of [60, 120, 180]) if (w.ground(x + Math.cos(a * Math.PI / 4) * r, z + Math.sin(a * Math.PI / 4) * r) !== g0) flat = false; out.push([x, z, flat]); } return out; });
-    const BASE = (pick.find((q) => q[2]) ?? pick[0]).slice(0, 2); D.base = BASE; note(`test spot ${BASE} · dummies ${kinds.join(' ')}`);
-    const home = async () => { await T.upAll(); await ev((b) => { window.__pv.hero(b[0], b[1]); window.__pv.park('melee'); window.__pv.park('ranged'); const s = window.__v2.scene.sim; s.shots.length = 0; s.lights.length = 0; }, BASE); await step(16); };
+    // the widest open spot: collision-probed in 16 directions (walls, props, steps), the yard left out; yard enemies only wake when hit
+    const spot = await ev(() => { const sc = window.__v2.scene, sim = sc.sim, W = sim.W; for (const e of sim.enemies) if (e.yard) e.wakeBy = 'trigger';
+      const free = (x, z, R) => { const g0 = sim.w.ground(x, z); if (!Number.isFinite(g0)) return 0; let min = R; for (let a = 0; a < 16 && min > 0; a++) { const p = { x, z, y: g0, r: 14, h: 92, def: null }; let d = 0; for (let q = 0; q < R; q += 20) { const x0 = p.x, z0 = p.z; sim.qx = Math.cos(a * Math.PI / 8) * 20; sim.qz = Math.sin(a * Math.PI / 8) * 20; sim._mq(p); if (Math.hypot(p.x - x0, p.z - z0) < 19 || sim.w.ground(p.x, p.z) !== g0) break; d += 20; } if (d < min) min = d; } return min; };
+      let best = [0, 0, -1, '']; for (const S of W.sections ?? []) { if (S.id === 'yard') continue; for (let x = S.x0 + 40; x < S.x1 - 40; x += 50) for (let z = S.z0 + 40; z < S.z1 - 40; z += 50) { const f = free(x, z, 420); if (f > best[2]) best = [x, z, f, S.id]; } } return best; });
+    const BASE = spot.slice(0, 2), FREE = spot[2]; D.base = spot; note(`test spot ${BASE} in section ${spot[3]}: ${FREE} px free in 16 directions · dummies ${kinds.join(' ')}`);
+    /** home(k): start so far back from the centre that a run in direction k has the whole free width */
+    const home = async (k) => { await T.upAll(); const w = k ? world(k) : [0, 0], off = k ? Math.max(0, FREE - 50) : 0; await ev((b) => { window.__pv.hero(b[0], b[1]); window.__pv.park('melee'); window.__pv.park('ranged'); const s = window.__v2.scene.sim; s.shots.length = 0; s.lights.length = 0; }, [BASE[0] - w[0] * off, BASE[1] - w[1] * off]); await step(16); };
     const frames = {};   // name → [{ file, cx, cy, n }]
     const shot = async (set, n) => { if (!args.strips && dev !== 'fold_open') return; const [cx, cy] = await ev(() => window.__pv.css()); const file = `${dir}/f_${set}_${String(n).padStart(3, '0')}.jpg`; await page.screenshot({ path: file, type: 'jpeg', quality: 82, scale: 'css' }); (frames[set] ??= []).push({ file, cx, cy, n }); };
     /** run k ticks one at a time, a frame every `every` ticks */
@@ -105,35 +108,35 @@ async function run(dev) {
       const V = (D.turn = {});
       // reversals on four axes
       for (const [a, b] of [['R', 'L'], ['U', 'D'], ['UR', 'DL'], ['UL', 'DR']]) {
-        await home(); await stick(a); const pre = await step(45); await stick(b);
+        await home(a); await stick(a); const pre = await step(45); await stick(b);
         const S = [pre[pre.length - 1], ...(await film(`rev_${a}_${b}`, 26, 2))]; await stickUp(); await step(12);
         const A = an(S), w = world(b), vm = Math.hypot(w[0] * 275, w[1] * 208); let t70 = -1; for (let i = 1; i < S.length; i++) { const vx = (S[i].x - S[i - 1].x) * 60, vz = (S[i].z - S[i - 1].z) * 60; if (vx * w[0] + vz * w[1] >= vm * 0.7) { t70 = i; break; } }
         V[`rev ${a}>${b}`] = { ...A, t70, clips: [...new Set(S.map((s) => s.clip))].join('>'), rows: undefined, seq: A.rows.map((r) => `${r.sp}/${r.d}`).join(' ') };
       }
       // 90-degree turns
-      for (const [a, b] of [['R', 'U'], ['U', 'L'], ['L', 'D'], ['D', 'R']]) { await home(); await stick(a); const pre = await step(45); await stick(b); const S = [pre[pre.length - 1], ...(await step(26, true))]; await stickUp(); await step(10); const A = an(S); V[`turn90 ${a}>${b}`] = { ...A, rows: undefined }; }
+      for (const [a, b] of [['R', 'U'], ['U', 'L'], ['L', 'D'], ['D', 'R']]) { await home(a); await stick(a); const pre = await step(45); await stick(b); const S = [pre[pre.length - 1], ...(await step(26, true))]; await stickUp(); await step(10); const A = an(S); V[`turn90 ${a}>${b}`] = { ...A, rows: undefined, seq: A.rows.map((r) => `${r.sp}/${r.d}`).join(' ') }; }
       // 12 rapid flips, 8 ticks each (0.13 s)
       { await home(); await stick('R'); const pre = await step(30); const S = [pre[pre.length - 1]]; for (let i = 0; i < 12; i++) { await stick(i % 2 ? 'R' : 'L'); S.push(...(await film('flips', 8, i < 4 ? 2 : 0))); } await stickUp(); await step(12); V['flips 12 x 0.13 s'] = { ...an(S), rows: undefined, clips: [...new Set(S.map((s) => s.clip))].join('>') }; }
       // circles: slow (one lap in 2 s) and fast (one lap in 0.6 s), two laps each
-      for (const [nm, lap] of [['circle slow', 120], ['circle fast', 36]]) { await home(); await stick('R'); const pre = await step(30); const S = [pre[pre.length - 1], ...(await film(nm.replace(' ', '_'), lap * 2, nm === 'circle fast' ? 3 : 0, (i) => stick([Math.cos(i / lap * 2 * Math.PI), Math.sin(i / lap * 2 * Math.PI)])))]; await stickUp(); await step(12); V[nm] = { ...an(S), rows: undefined }; }
+      for (const [nm, lap] of [['circle slow', 120], ['circle fast', 36]]) { await home(); await stick('R'); const pre = await step(30); const S = [pre[pre.length - 1], ...(await film(nm.replace(' ', '_'), lap * 2, nm === 'circle fast' ? 3 : 0, (i) => stick([Math.cos(i / lap * 2 * Math.PI), Math.sin(i / lap * 2 * Math.PI)])))]; await stickUp(); await step(12); const A = an(S); V[nm] = { ...A, rows: undefined, worst: A.rows.filter((r) => r.sp > 82 && r.d > 20).map((r) => `${r.sp}/${r.d}`).join(' ') }; }
       // turn while attacking: run right, flip the stick to the left and press attack on the same tick
       for (const [a, b] of [['R', 'L'], ['U', 'D'], ['R', 'U'], ['L', 'DR']]) {
-        await home(); await stick(a); const pre = await step(40); await stick(b); await down('attack'); const S = [pre[pre.length - 1], ...(await film(`atkturn_${a}_${b}`, 30, 2, async (i) => { if (i === 3) await up('attack'); }))]; await stickUp(); await step(20);
+        await home(a); await stick(a); const pre = await step(40); await stick(b); await down('attack'); const S = [pre[pre.length - 1], ...(await film(`atkturn_${a}_${b}`, 30, 2, async (i) => { if (i === 3) await up('attack'); }))]; await stickUp(); await step(20);
         const w = world(b), hit = S.filter((s) => s.mv && s.mt >= 0.13 && s.mt <= 0.27), off = hit.length ? Math.max(...hit.map((s) => Math.abs(dAng(ang(s.fx, s.fz), ang(w[0], w[1]))) * DEG)) : -1, A = an(S);
-        V[`attack + turn ${a}>${b}`] = { move: [...new Set(S.map((s) => s.mv).filter(Boolean))].join(','), bodyOffStickDuringHit: +off.toFixed(1), ruleOffStick: hit.length ? +(Math.abs(dAng(ang(hit[0].dx, hit[0].dz), ang(w[0], w[1]))) * DEG).toFixed(1) : -1, maxTurnPerTick: A.maxTurn, backTicks: A.backTicks, sideTicks: A.sideTicks };
+        V[`attack + turn ${a}>${b}`] = { move: [...new Set(S.map((s) => s.mv).filter(Boolean))].join(','), bodyOffStickDuringHit: +off.toFixed(1), ruleOffStick: hit.length ? +(Math.abs(dAng(ang(hit[0].dx, hit[0].dz), ang(w[0], w[1]))) * DEG).toFixed(1) : -1, maxTurnPerTick: A.maxTurn, backTicks: A.backTicks, sideTicksWhileTurning: A.sideTicks, seq: A.rows.slice(0, 12).map((r) => `${r.sp}/${r.d}`).join(' ') };
       }
       // turn right after a roll
       for (const [a, b] of [['R', 'L'], ['U', 'D'], ['R', 'D']]) {
-        await home(); await stick(a); await step(30); await down('roll'); await step(2); await up('roll'); const n0 = await until('(s)=>s.hero.dashT<=0.05', 40); await stick(b);
+        await home(a); await stick(a); await step(30); await down('roll'); await step(2); await up('roll'); const n0 = await until('(s)=>s.hero.dashT<=0.05', 40); await stick(b);
         const p0 = (await step(0, false)) ?? []; const first = await ev(() => window.__pv.samp()); const S = [first, ...(await film(`rollturn_${a}_${b}`, 26, 2))]; await stickUp(); await step(12);
-        V[`roll then turn ${a}>${b}`] = { ...an(S), rows: undefined, rollTicks: n0, clips: [...new Set(S.map((s) => s.clip))].join('>') };
+        const A = an(S); V[`roll then turn ${a}>${b}`] = { ...A, rows: undefined, seq: A.rows.map((r) => `${r.sp}/${r.d}`).join(' '), rollTicks: n0, clips: [...new Set(S.map((s) => s.clip))].join('>') };
       }
-      for (const [k, v] of Object.entries(V)) { const bad = (v.backTicks > 0 || v.sideTicks > 0 || (v.maxAng ?? 0) > 35); (bad ? fail : ok)(`${dev} ${k}: ` + JSON.stringify(v)); }
+      for (const [k, v] of Object.entries(V)) { const bad = (v.backTicks > 0 || v.sideTicks > 0 || (v.maxAng ?? 0) > 35 || (v.bodyOffStickDuringHit ?? 0) > 25 || (v.sideTicksWhileTurning ?? 0) > 3); (bad ? fail : ok)(`${dev} ${k}: ` + JSON.stringify(v)); }
     }
 
     if (want('slip')) {
       const F = (D.slip = {});
-      for (const [nm, d, mag] of [['run R', 'R', 52], ['run U', 'U', 52], ['run UR', 'UR', 52], ['walk R', 'R', 20]]) { await home(); await stick(d, mag); await step(30); const S = await step(72, true, true); await stickUp(); await step(10); F[nm] = { ...slip(S), gait: S[40].mode, anim: S[40].anim, clip: S[40].clip, feet: !!S[40].fl }; }
+      for (const [nm, d, mag] of [['run R', 'R', 52], ['run U', 'U', 52], ['run UR', 'UR', 52], ['walk R', 'R', 20]]) { await home(d); await stick(d, mag); await step(30); const S = await step(72, true, true); await stickUp(); await step(10); F[nm] = { ...slip(S), gait: S[40].mode, anim: S[40].anim, clip: S[40].clip, feet: !!S[40].fl }; }
       ok(`${dev} foot slip (planted foot speed / body speed): ` + Object.entries(F).map(([k, v]) => `${k} ${v.pct}% (${v.slipPx}/${v.body} px/s, ${v.contacts} contact samples, ${v.clip})`).join(' · '));
       for (const [k, v] of Object.entries(F)) if (v.pct > (k.startsWith('walk') ? 25 : 20) || v.pct < 0) fail(`${dev} foot slip ${k}: ${JSON.stringify(v)}`);
     }

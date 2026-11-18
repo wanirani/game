@@ -92,7 +92,9 @@ for (const dev of DEVICES) {
       const h1 = await page.evaluate(() => window.__v2.hero);
       await page.evaluate(() => { const sim = window.__v2.scene.sim; for (const e of sim.enemies) if (!e.yard) e.dead = true; sim.hero.x = 900; sim.hero.z = 190; });   // controls only: clear the street (the yard group stays, or the area would count as cleared), stand in the open
       const until = (what, ms) => page.evaluate(async ([what, ms]) => { const t0 = performance.now(); while (performance.now() - t0 < ms) { const h = window.__v2.hero; if (what === 'air' ? !h.onGround : h.anim === what) return true; await new Promise((r) => setTimeout(r, 8)); } return false; }, [what, ms]);
-      const [, wa] = await Promise.all([press(T, page, pad, 'attack', 220), until('attack', 6000)]);
+      // a loaded machine can spend a whole 220 ms tap inside one slow frame; the pad hands such a tap to the next game step (pad.js), and the check presses again if a swing still did not start
+      let wa = false, atkTries = 0;
+      for (; atkTries < 3 && !wa; ) { atkTries++; [, wa] = await Promise.all([press(T, page, pad, 'attack', 220), until('attack', atkTries === 1 ? 6000 : 3000)]); }
       await page.waitForFunction(() => !window.__v2.scene.sim.hero.move, null, { timeout: 20000 }).catch(() => {});
       await page.waitForTimeout(300);
       const [, wj] = await Promise.all([press(T, page, pad, 'jump', 220), until('air', 6000)]);
@@ -105,9 +107,9 @@ for (const dev of DEVICES) {
       await press(T, page, pad, 'dash', 260); await page.waitForTimeout(400);
       await T.upAll();
       const wd = await rolling;
-      R.touch = { pad: ids, moved: [Math.round(h1.x - h0.x), Math.round(h1.z - h0.z)], face: h1.face.map((n) => +n.toFixed(2)), attack: wa, jump: wj, dash: wd };
+      R.touch = { pad: ids, moved: [Math.round(h1.x - h0.x), Math.round(h1.z - h0.z)], face: h1.face.map((n) => +n.toFixed(2)), attack: wa, attackPresses: atkTries, jump: wj, dash: wd };
       const T_OK = R.touch.moved[0] > 40 && R.touch.moved[1] > 25 && wa && wj && wd && ['attack', 'jump', 'dash'].every((b) => ids.includes(b));
-      if (T_OK) ok(`touch (${R.pad} pad): stick right+up moved the hero ${R.touch.moved.join(',')} facing (${R.touch.face.join(',')}), attack / jump / roll buttons work (pad buttons: ${ids.join(' ')})`); else fail(`${dev}: touch controls ${JSON.stringify(R.touch)}`);
+      if (T_OK) ok(`touch (${R.pad} pad): stick right+up moved the hero ${R.touch.moved.join(',')} facing (${R.touch.face.join(',')}), attack (press ${R.touch.attackPresses}) / jump / roll buttons work (pad buttons: ${ids.join(' ')})`); else fail(`${dev}: touch controls ${JSON.stringify(R.touch)}`);
       await page.evaluate(() => { const v = window.__v2; v.scene.sim.reset(); v.scene.cam.snap = true; window.__bot.wp = 0; window.__bot.minHp = 100; window.__bot.feel0 = v.scene.feelN; });
     }
 

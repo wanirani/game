@@ -56,7 +56,7 @@ export const KMATS = {
 /** average colour of each texture as the scenes load it (0..1; a TRIM piece by its name): keeps the look when a material is drawn with another texture */
 export const TEX_AVG = {
   wood: [0.238, 0.22, 0.219], dirt: [0.278, 0.258, 0.24], flag: [0.498, 0.471, 0.418], block: [0.386, 0.394, 0.393], brick: [0.237, 0.25, 0.262],
-  k_planks: [0.341, 0.282, 0.249], k_soil: [0.274, 0.24, 0.198], k_flag: [0.462, 0.455, 0.44], k_ashlar: [0.436, 0.438, 0.45], k_rubble: [0.442, 0.422, 0.395], k_cobworn: [0.307, 0.27, 0.225],
+  k_planks: [0.341, 0.282, 0.249], k_soil: [0.274, 0.24, 0.198], k_flag: [0.462, 0.455, 0.44], k_ashlar: [0.436, 0.438, 0.45], k_rubble: [0.442, 0.422, 0.395], k_cobworn: [0.307, 0.27, 0.225], k_slate: [0.3, 0.331, 0.395],
   timber: [0.329, 0.235, 0.162],
 };
 /**
@@ -70,6 +70,8 @@ export const FOLDS = [
   ['flag', 130, ['flags', 'stone']],
   ['k_ashlar', 90, ['stone', 'fieldstone']],
   ['brick', 120, ['fieldstone', 'stone']],
+  ['k_flag', 100, ['slabs', 'stone']],          // a short strip of flagstones beside mossy slabs
+  ['k_slate', 12, ['stone', 'fieldstone']],     // a sliver of slate (a prop's little roof): a whole house roof stays slate
 ];
 /** counts = Map('chunk|texture' -> triangles) from a counting pass -> { chunk: { texture: look-alike material name } } */
 export function foldPlan(counts) {
