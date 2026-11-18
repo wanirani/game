@@ -318,7 +318,8 @@ export function createPad(game, opts = {}) {
       window.removeEventListener('pointerdown', onDown, LO); window.removeEventListener('pointermove', onMove, LO);
       window.removeEventListener('pointerup', onUp, LO); window.removeEventListener('pointercancel', onUp, LO);
       window.removeEventListener('blur', onBlur); window.removeEventListener('resize', onResize);
-      releaseAll(); root.remove();
+      try { releaseAll(); } catch { /* released before the first layout (the scene was left while loading): nothing was pressed or painted */ }
+      root.remove();   // always: a throw above used to leave #v2pad and its nine canvases in the page (INTEGRATE-VERIFY)
       for (const b of B) { b.cv.width = 1; b.cv.height = 1; }
       baseCv.width = baseCv.height = knobCv.width = knobCv.height = 1;
     },

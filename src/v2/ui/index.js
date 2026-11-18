@@ -62,7 +62,7 @@ export function createHud(game, opts = {}) {
     release() {
       if (released) return; released = true;
       window.removeEventListener('pointerdown', onDown, true);
-      pad?.release(); dialog.release(); pause.release(); canvas.release();
+      for (const part of [pad, dialog, pause, canvas]) { try { part?.release(); } catch (e) { console.warn('[v2ui] release', e); } }   // one part failing must not keep the others (INTEGRATE-VERIFY)
     },
   };
   hud.dispose = hud.release;
