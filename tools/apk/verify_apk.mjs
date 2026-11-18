@@ -20,6 +20,13 @@
 //          __BN_IME, 진동·패드 진동 브리지, 서비스 워커 꺼짐, 세이브 유지, 뒤로 버튼, 계정 서버 흐름(가입·로그인)이 프록시로, 스테이지·허브,
 //          채색 아틀라스(줄였으면 원본과 비교).
 // 실패 항목이 있으면 종료 코드 1.
+//
+// --profile 3d (앱 분리, 2026-11-18 — 3D 앱 「블러드 녹턴 3D」 com.bloodnocturne.game3d, tools/apk/build_apk.sh APP_VARIANT=3d 가 부른다;
+//   apk.json app.variant 가 3d 면 저절로, 기본 APK dist/BloodNocturne3D.apk · 웹 dist/web3d). 플랫폼 검사(내용물·서명 정보·MIME·네이티브 소스·
+//   /api 프록시 자바·안전 영역·브리지·서비스 워커·외부 요청·코드 파일 404)는 그대로 두고, 2D 게임 검사(타이틀·스테이지·허브·계정·채색 아틀라스) 대신:
+//   패키지·이름·액티비티 (aapt2 dump badging), 2D 판 그림 없음, 3D 고르기 화면(v2pick)으로 부팅, 뒤로 버튼(고르기 화면) → 종료 확인,
+//   Esc 로 2D 타이틀에 가지 않음, 「본 게임」 → v2g 입체 영웅, v2g 에서 나가면 고르기 화면, 실제 지역마다 열림(src/v2/world AREAS),
+//   다른 고르기 줄(v2b · v2c · v2bench · v2a), CSP 적용 상태로 v2g, 페이지 오류 0, 모든 요청 4xx 0. WebGL 은 소프트웨어 렌더러(swiftshader).
 import { chromium } from 'playwright-core';
 import { execFileSync, spawn } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -32,10 +39,12 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const argv = process.argv.slice(2);
 const opt = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : null; };
-const VALUE_OPTS = ['--out', '--web'];
-const apkPath = path.resolve(argv.find((a, i) => !a.startsWith('--') && !VALUE_OPTS.includes(argv[i - 1])) || path.join(ROOT, 'dist/BloodNocturne.apk'));
+const VALUE_OPTS = ['--out', '--web', '--profile'];
+const PROFILE_ARG = opt('--profile');   // 2d | 3d (없으면 apk.json app.variant)
+if (PROFILE_ARG && !['2d', '3d'].includes(PROFILE_ARG)) { console.error('--profile 은 2d 또는 3d'); process.exit(2); }
+const apkPath = path.resolve(argv.find((a, i) => !a.startsWith('--') && !VALUE_OPTS.includes(argv[i - 1])) || path.join(ROOT, PROFILE_ARG === '3d' ? 'dist/BloodNocturne3D.apk' : 'dist/BloodNocturne.apk'));
 const outDir = path.resolve(opt('--out') || path.join(os.tmpdir(), 'bn-apk-verify'));
-const webDir = path.resolve(opt('--web') || process.env.WEB_DIR || path.join(ROOT, 'dist/web'));
+let webDir = path.resolve(opt('--web') || process.env.WEB_DIR || path.join(ROOT, PROFILE_ARG === '3d' ? 'dist/web3d' : 'dist/web'));
 const keep = argv.includes('--keep');
 const skipJava = argv.includes('--skip-java');
 const HOST = 'appassets.androidplatform.net';
@@ -67,6 +76,9 @@ try { CFG = JSON.parse(fs.readFileSync(path.join(tmp, 'assets/app/apk.json'), 'u
 check('assets/app/apk.json (앱 설정)', CFG && typeof CFG === 'object', CFG ? `assets=${CFG.assets}, api=${CFG.api?.origin}, 빠진 원본 ${CFG.dropped ?? 0}개${CFG.modified ? `, 줄인 파일 ${CFG.modified.length}개` : ''}` : '없음/형식 오류');
 CFG ||= {};
 const LITE = String(CFG.assets || 'full').startsWith('lo');
+const P3D = PROFILE_ARG ? PROFILE_ARG === '3d' : CFG.app?.variant === '3d';   // 3D 앱 검사 (머리말 --profile 3d)
+if (P3D && !opt('--web') && !process.env.WEB_DIR) webDir = path.join(ROOT, 'dist/web3d');
+if (P3D) console.log('  검사 묶음: 3D 앱 (--profile 3d)');
 check('계정 서버 주소 형식 (https://호스트)', /^https:\/\/[a-z0-9.-]+(:\d+)?$/.test(CFG.api?.origin || ''), CFG.api?.origin);
 const originTxt = fs.readFileSync(path.join(ROOT, 'tools/apk/api_origin.txt'), 'utf8').split('\n').map((s) => s.trim()).find((s) => s && !s.startsWith('#'));
 check('apk.json 의 서버 = tools/apk/api_origin.txt (또는 API_ORIGIN)', CFG.api?.origin === originTxt?.replace(/\/+$/, '').toLowerCase() || !!process.env.API_ORIGIN, `${CFG.api?.origin} / ${originTxt}`);
@@ -371,7 +383,8 @@ async function handle(route) {
 
 // ── 5. 브라우저 (안드로이드 WebView 흉내: 모바일·터치·가로) ──────────────
 const START = `${ORIGIN}/index.html${LITE ? '?lo=1' : ''}`; // MainActivity.startUrl
-const browser = await chromium.launch({ executablePath: fs.existsSync(CHROME) ? CHROME : undefined, args: ['--autoplay-policy=no-user-gesture-required'] });
+const GL_ARGS = ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'];   // 3D 앱: WebGL (소프트웨어 렌더러)
+const browser = await chromium.launch({ executablePath: fs.existsSync(CHROME) ? CHROME : undefined, args: [...(P3D ? GL_ARGS : []), '--autoplay-policy=no-user-gesture-required'] });
 const bridgeStub = ({ insets, ime }) => {
   window.__bnCalls = [];
   window.__bnStash = {};
@@ -451,7 +464,9 @@ async function cspCheck() {
 }
 
 let failed = false;
-try {
+if (P3D) {
+  try { await run3d(); } catch (e) { check('검증 실행', false, e.stack?.split('\n').slice(0, 3).join(' | ') || e.message); }
+} else try {
   await cspCheck();
   section('부팅 · 브리지 (휴대폰 915×412)');
   const phone = await newCtx({ viewport: { width: 915, height: 412 }, serviceWorkers: 'allow' });
@@ -768,6 +783,7 @@ const lo404 = uniqMissing.filter((p) => LO_RE.test(p));
 check('배경·CG·초상화 404 없음', lo404.length === 0, lo404.slice(0, 6).join(', '));
 const audio404 = uniqMissing.filter((p) => /^assets\/audio\//.test(p));
 check('소리(assets/audio) 404 없음', audio404.length === 0, audio404.slice(0, 6).join(', '));
+if (P3D) check('3D 앱: 모든 요청 4xx 없음', uniqMissing.length === 0, uniqMissing.slice(0, 8).join(', '));
 fs.writeFileSync(path.join(outDir, 'apk_verify_report.json'), JSON.stringify({ apk: apkPath, config: CFG, results, missing: uniqMissing, external: uniqExternal, loServed: [...new Set(loServed)], api: apiLog }, null, 1));
 if (!keep) fs.rmSync(tmp, { recursive: true, force: true });
 failed = results.some((r) => !r.ok);

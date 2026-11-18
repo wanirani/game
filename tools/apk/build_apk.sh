@@ -51,7 +51,18 @@
 #    ANDROID_HOME   SDK 위치 (기본 /root/android-sdk)     BUILD_TOOLS  (기본 34.0.0)
 #    KEYSTORE       키스토어 경로                          KEYSTORE_PROPS  비밀번호 파일 경로
 #    VERSION_NAME / VERSION_CODE
-#    WEB_DIR        웹 배포 빌드 폴더 (기본 dist/web)
+#    WEB_DIR        웹 배포 빌드 폴더 (기본 dist/web, APP_VARIANT=3d 면 dist/web3d)
+#
+#  앱 분리 (2026-11-18): 같은 안드로이드 소스·같은 서명 키로 두 앱을 만든다. 아무 변수도 주지 않으면 예전과 똑같이 2D 앱.
+#    APP_VARIANT    (비움) 2D 앱 「블러드 녹턴」 com.bloodnocturne.game → dist/BloodNocturne.apk (웹: node tools/deploy/build_web.mjs --target v1)
+#                   3d     3D 앱 「블러드 녹턴 3D」 com.bloodnocturne.game3d → dist/BloodNocturne3D.apk (+ .sha256.txt), 작업 폴더 dist/apk-build-3d,
+#                          웹 dist/web3d (node tools/deploy/build_web.mjs --target 3d), 런처 아이콘에 '3D' 표식, 새 버전 확인 downloads/latest3d.json · /apk3d,
+#                          검증 verify_apk.mjs --profile 3d (3D 장면 점검)
+#    APP_ID         안드로이드 패키지 (변형 기본값을 덮어쓴다). 기본 패키지가 아니면 aapt2 link --rename-manifest-package 로 바꾼다
+#                   (자바 패키지·R 클래스는 com.bloodnocturne.game 그대로: --custom-package; 액티비티 이름은 aapt2 가 원래 패키지로 완전한 이름을 만든다)
+#    APP_LABEL      런처 이름 (값을 주면 res/values 를 고치지 않고 작업 폴더의 덮어쓰기 리소스로: app_name · exit_message · update_message)
+#    APK_NAME       결과 파일 이름 (확장자 없이, 기본 BloodNocturne · 3d 는 BloodNocturne3D) → dist/<APK_NAME>.apk · dist/<APK_NAME>.apk.sha256.txt
+#    ICON_MARK      런처 아이콘 표식 글자 (3d 기본 '3D', 비우면 표식 없음 — tools/apk/make_icons.py --mark)
 #    APK_BUDGET_MB  APK 크기 예산 (기본 95)                APK_ASSETS  auto(기본) | full | lo | lo+td (단계 강제)
 #    APK_IMAGE_BUDGET_MB  그림 단계 기준 (기본 70, 소리 제외)  APK_MUSIC  auto(기본) | all | none (녹음 음악)
 #    API_ORIGIN     계정 서버 주소 (기본: tools/apk/api_origin.txt)
@@ -73,14 +84,33 @@ MIN_SDK=24
 TARGET_SDK=34
 APP_DIR="$ROOT/android/app/src/main"
 OUT="$ROOT/dist"
-B="$OUT/apk-build"
-APK="$OUT/BloodNocturne.apk"
+# ── 앱 변형 (머리말 '앱 분리'). 아무것도 주지 않으면 예전 그대로 (2D 앱) ──
+BASE_ID="com.bloodnocturne.game"     # AndroidManifest.xml 의 package = 자바 패키지
+APP_VARIANT="${APP_VARIANT:-}"
+case "$APP_VARIANT" in
+  ""|2d)
+    APP_ID="${APP_ID:-$BASE_ID}"; APK_NAME="${APK_NAME:-BloodNocturne}"; DEF_WEB="$ROOT/dist/web"; ICON_MARK="${ICON_MARK:-}"
+    UPDATE_LATEST=""; UPDATE_APK=""; VERIFY_PROFILE="2d"
+    EXIT_MSG=""; UPDATE_MSG=""; B="$OUT/apk-build" ;;
+  3d)
+    APP_ID="${APP_ID:-com.bloodnocturne.game3d}"; APP_LABEL="${APP_LABEL:-블러드 녹턴 3D}"; APK_NAME="${APK_NAME:-BloodNocturne3D}"
+    DEF_WEB="$ROOT/dist/web3d"; ICON_MARK="${ICON_MARK-3D}"
+    UPDATE_LATEST="downloads/latest3d.json"; UPDATE_APK="/apk3d"; VERIFY_PROFILE="3d"
+    EXIT_MSG="블러드 녹턴 3D를 종료할까요?"
+    UPDATE_MSG="블러드 녹턴 3D %1\$s 버전을 받을 수 있습니다.\n브라우저에서 내려받아 설치하면 지금 세이브는 그대로 이어집니다."
+    B="$OUT/apk-build-3d" ;;
+  *) printf '오류: APP_VARIANT 는 비우거나 3d 입니다: %s\n' "$APP_VARIANT" >&2; exit 1 ;;
+esac
+APP_LABEL="${APP_LABEL:-}"
+[[ "$APP_ID" =~ ^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$ ]] || { printf '오류: APP_ID 형식이 틀렸습니다: %s\n' "$APP_ID" >&2; exit 1; }
+[[ "$APK_NAME" =~ ^[A-Za-z0-9._-]+$ ]] || { printf '오류: APK_NAME 형식이 틀렸습니다: %s\n' "$APK_NAME" >&2; exit 1; }
+APK="$OUT/$APK_NAME.apk"
 KS="${KEYSTORE:-$ROOT/tools/android/release.keystore}"
 KS_PROPS="${KEYSTORE_PROPS:-$ROOT/tools/android/keystore.properties}"
 # 배포 인증서 지문 (공개 값). RELEASE_CERT_FILE 로 바꿀 수 있다
 CERT_FILE="${RELEASE_CERT_FILE:-$ROOT/tools/apk/release_cert.sha256}"
 # APK 에 넣을 웹 게임 파일: 웹 배포 빌드 결과 (sw.js · downloads/ · _redirects 는 pack_web.py 가 뺀다)
-WEB_DIR="${WEB_DIR:-$ROOT/dist/web}"
+WEB_DIR="${WEB_DIR:-$DEF_WEB}"
 BUDGET_MB="${APK_BUDGET_MB:-95}"
 IMAGE_BUDGET_MB="${APK_IMAGE_BUDGET_MB:-70}"
 ASSET_STAGE="${APK_ASSETS:-auto}"
@@ -109,7 +139,11 @@ done
 run_verify() {
   [[ -f "$APK" ]] || die "$APK 가 없습니다. 먼저 빌드하세요."
   say "헤드리스 부팅 검증 (APK assets/www 를 https://appassets.androidplatform.net 로 에뮬레이션)"
-  node "$ROOT/tools/apk/verify_apk.mjs" "$APK"
+  if [[ "$VERIFY_PROFILE" == "3d" ]]; then
+    node "$ROOT/tools/apk/verify_apk.mjs" "$APK" --profile 3d --web "$WEB_DIR"
+  else
+    node "$ROOT/tools/apk/verify_apk.mjs" "$APK"
+  fi
 }
 if [[ "$MODE" == "verify" ]]; then run_verify; exit 0; fi
 
@@ -238,6 +272,8 @@ say "웹 파일 꾸리기: $(sed -n 's/.*"version":"\([^"]*\)".*/\1/p' "$WEB_DIR
 PACK_ARGS=(--web "$WEB_DIR" --out "$B/assets" --budget-mb "$BUDGET_MB" --image-budget-mb "$IMAGE_BUDGET_MB" --assets "$ASSET_STAGE" --music "$MUSIC_MODE"
   --origin-file "$ROOT/tools/apk/api_origin.txt" --cloud-js "$ROOT/src/core/cloud.js" --report "$B/pack_report.json")
 [[ -n "${API_ORIGIN:-}" ]] && PACK_ARGS+=(--origin "$API_ORIGIN")
+[[ -n "$APP_VARIANT" && "$APP_VARIANT" != "2d" ]] && PACK_ARGS+=(--app-variant "$APP_VARIANT" --app-id "$APP_ID")
+[[ -n "$UPDATE_LATEST" ]] && PACK_ARGS+=(--update-latest "$UPDATE_LATEST" --update-apk "$UPDATE_APK")
 python3 "$ROOT/tools/apk/pack_web.py" "${PACK_ARGS[@]}" || die "웹 파일 꾸리기 실패 (tools/apk/pack_web.py)"
 [[ -f "$B/assets/www/index.html" && -f "$B/assets/app/apk.json" ]] || die "index.html / apk.json 이 없습니다"
 STAGE_USED="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["assets"])' "$B/assets/app/apk.json")"
@@ -247,13 +283,39 @@ WWW_SIZE="$(du -sh "$B/assets/www" | cut -f1)"
 say "  → 파일 ${WWW_COUNT}개, ${WWW_SIZE} (에셋 단계 ${STAGE_USED})"
 
 # ─── 5. 런처 아이콘 생성 (assets/ui/icon-512.png) ───────────────────────────
-say "런처 아이콘 생성"
-python3 "$ROOT/tools/apk/make_icons.py" "$ROOT/assets/ui/icon-512.png" "$B/res-gen" >/dev/null
+say "런처 아이콘 생성${ICON_MARK:+ (표식 $ICON_MARK)}"
+ICON_ARGS=(); [[ -n "$ICON_MARK" ]] && ICON_ARGS=(--mark "$ICON_MARK")
+python3 "$ROOT/tools/apk/make_icons.py" "$ROOT/assets/ui/icon-512.png" "$B/res-gen" "${ICON_ARGS[@]}" >/dev/null
+
+# ─── 5b. 앱 변형 리소스 (APP_LABEL 이 있을 때만): res/ 는 고치지 않고 작업 폴더에 덮어쓰기 리소스를 만든다 ───
+OVERLAY_ARGS=()
+if [[ -n "$APP_LABEL" ]]; then
+  mkdir -p "$B/res-variant/values"
+  BN_LABEL="$APP_LABEL" BN_EXIT="$EXIT_MSG" BN_UPD="$UPDATE_MSG" python3 - "$B/res-variant/values/strings.xml" <<'PYEOF'
+import os, sys
+from xml.sax.saxutils import escape
+def q(s):  # aapt2 문자열: XML 이스케이프 + 작은따옴표·큰따옴표 백슬래시 (\n · %1$s 는 그대로)
+    return escape(s).replace("'", "\\'").replace('"', '\\"')
+rows = [('app_name', os.environ['BN_LABEL'])]
+if os.environ.get('BN_EXIT'): rows.append(('exit_message', os.environ['BN_EXIT']))
+if os.environ.get('BN_UPD'): rows.append(('update_message', os.environ['BN_UPD']))
+with open(sys.argv[1], 'w', encoding='utf-8') as f:
+    f.write('<?xml version="1.0" encoding="utf-8"?>\n<!-- tools/apk/build_apk.sh 가 만든 앱 변형 덮어쓰기 (APP_LABEL) -->\n<resources>\n')
+    for k, v in rows: f.write(f'    <string name="{k}">{q(v)}</string>\n')
+    f.write('</resources>\n')
+PYEOF
+  OVERLAY_ARGS=(-R "$B/compiled/res-variant.zip")
+fi
+RENAME_ARGS=()
+if [[ "$APP_ID" != "$BASE_ID" ]]; then
+  RENAME_ARGS=(--rename-manifest-package "$APP_ID" --custom-package "$BASE_ID")
+fi
 
 # ─── 6. 리소스 컴파일 · 링크 (aapt2) ─────────────────────────────────────────
 say "aapt2 compile/link"
 "$BT/aapt2" compile --dir "$APP_DIR/res" -o "$B/compiled/res-main.zip"
 "$BT/aapt2" compile --dir "$B/res-gen" -o "$B/compiled/res-icons.zip"
+[[ -n "$APP_LABEL" ]] && "$BT/aapt2" compile --dir "$B/res-variant" -o "$B/compiled/res-variant.zip"
 NC_ARGS=(); for e in "${NO_COMPRESS[@]}"; do NC_ARGS+=(-0 "$e"); done
 "$BT/aapt2" link -o "$B/base.apk" \
   -I "$ANDROID_JAR" \
@@ -262,8 +324,8 @@ NC_ARGS=(); for e in "${NO_COMPRESS[@]}"; do NC_ARGS+=(-0 "$e"); done
   --version-code "$VC" --version-name "$VN" \
   --java "$B/gen" \
   -A "$B/assets" \
-  "${NC_ARGS[@]}" \
-  "$B/compiled/res-main.zip" "$B/compiled/res-icons.zip"
+  "${NC_ARGS[@]}" "${RENAME_ARGS[@]}" \
+  "$B/compiled/res-main.zip" "$B/compiled/res-icons.zip" "${OVERLAY_ARGS[@]}"
 
 # ─── 7. 자바 컴파일 · DEX (javac + d8) ───────────────────────────────────────
 say "javac + d8"
@@ -298,10 +360,20 @@ grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" "$B/apksigner
 grep -q "Verified using v3 scheme (APK Signature Scheme v3): true" "$B/apksigner-verify.txt" || die "v3 서명 없음"
 "$BT/zipalign" -c -p 4 "$CAND" || die "zipalign 검사 실패"
 "$BT/aapt2" dump badging "$CAND" >"$B/badging.txt" 2>&1 || { cat "$B/badging.txt"; die "aapt2 dump badging 실패"; }
-grep -q "package: name='com.bloodnocturne.game' versionCode='$VC' versionName='$VN'" "$B/badging.txt" || die "패키지/버전 정보 불일치"
+grep -q "package: name='$APP_ID' versionCode='$VC' versionName='$VN'" "$B/badging.txt" || die "패키지/버전 정보 불일치 (기대: $APP_ID $VC $VN)"
 grep -q "sdkVersion:'$MIN_SDK'" "$B/badging.txt" || die "minSdk 불일치"
 grep -q "targetSdkVersion:'$TARGET_SDK'" "$B/badging.txt" || die "targetSdk 불일치"
 grep -q "launchable-activity: name='com.bloodnocturne.game.MainActivity'" "$B/badging.txt" || die "런처 액티비티 없음"
+if [[ -n "$APP_LABEL" ]]; then
+  grep -qF "application-label:'$APP_LABEL'" "$B/badging.txt" || die "런처 이름이 '$APP_LABEL' 이 아닙니다"
+fi
+if [[ "$APP_ID" != "$BASE_ID" ]]; then
+  # 패키지를 바꾼 APK: 매니페스트의 클래스 이름이 원래 자바 패키지로 완전한 이름이어야 한다 (상대 이름이면 새 패키지에서 찾다가 실행이 안 된다)
+  "$BT/aapt2" dump xmltree --file AndroidManifest.xml "$CAND" >"$B/manifest-tree.txt" 2>&1 || die "aapt2 dump xmltree 실패"
+  grep -q 'A: http://schemas.android.com/apk/res/android:name(0x01010003)="com.bloodnocturne.game.MainActivity"' "$B/manifest-tree.txt" \
+    || { grep -n 'MainActivity' "$B/manifest-tree.txt" | head -3; die "패키지를 바꾼 매니페스트의 액티비티 이름이 com.bloodnocturne.game.MainActivity 가 아닙니다"; }
+  grep -q "package=\"$APP_ID\"" "$B/manifest-tree.txt" || die "매니페스트 package 가 $APP_ID 가 아닙니다"
+fi
 # 권한: INTERNET, VIBRATE 만 (platform WP-9 acceptance 1)
 sed -n "s/^uses-permission: name='\([^']*\)'.*/\1/p" "$B/badging.txt" | LC_ALL=C sort -u >"$B/perms.txt"
 while read -r perm; do
@@ -345,12 +417,12 @@ SHA="$(sha256sum "$APK" | cut -d' ' -f1)"
 echo
 say "완료: $APK"
 echo "    크기        $SIZE_H ($SIZE_B bytes, 예산 ${BUDGET_MB} MB)"
-echo "    패키지      com.bloodnocturne.game  $VN (versionCode $VC)"
+echo "    패키지      $APP_ID  $VN (versionCode $VC)${APP_LABEL:+ · 이름 $APP_LABEL}"
 echo "    게임 파일   ${WWW_COUNT}개 (${WWW_SIZE}, 압축 전) · 에셋 단계 ${STAGE_USED}"
 echo "    계정 API    /api/* → ${API_USED}"
 echo "    SHA-256     $SHA"
 echo "    서명 인증서 SHA-256  $CERT"
-printf '%s\n' "$APK $SIZE_B $SHA" >"$OUT/BloodNocturne.apk.sha256.txt"
+printf '%s\n' "$APK $SIZE_B $SHA" >"$OUT/$APK_NAME.apk.sha256.txt"
 if [[ -z "$WANT_CERT" ]]; then
   (umask 022; {
     echo "# 블러드 녹턴 릴리스 서명 인증서 SHA-256 지문 (공개 값 — 비밀이 아니다). build_apk.sh 가 이 값과 대조한다 (docs/RELEASE.md)"

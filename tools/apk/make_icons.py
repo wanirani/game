@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """안드로이드 런처 아이콘 생성: assets/ui/icon-512.png → res/mipmap-*/
 
-사용법: python3 tools/apk/make_icons.py <icon-512.png> <출력 res 디렉터리>
+사용법: python3 tools/apk/make_icons.py <icon-512.png> <출력 res 디렉터리> [--mark 3D]
+
+  --mark TEXT   그림 왼쪽 아래에 작은 금테 표식(예: 3D)을 구워 넣는다 — 3D 앱 「블러드 녹턴 3D」(build_apk.sh APP_VARIANT=3d).
+                표식은 둥근 아이콘·적응형 아이콘의 안전 원(그림 반지름 0.75 안)에 들어가게 놓는다. 글꼴: assets/fonts/cinzel.woff2
+                (fontTools + brotli), 없으면 DejaVu Sans Bold.
 
 만드는 것 (밀도별 mdpi~xxxhdpi):
   ic_launcher.png             구형 런처용: 금테 둥근 사각형 밖을 투명 처리
@@ -50,14 +54,65 @@ def radial_fade(size, inner, outer):
     return m
 
 
+def mark_font(px):
+    """표식 글꼴: Cinzel (woff2 → ttf, 굵게) → DejaVu Sans Bold → PIL 기본"""
+    from PIL import ImageFont
+    try:
+        import io
+        from fontTools.ttLib import TTFont
+        root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
+        f = TTFont(os.path.join(root, 'assets/fonts/cinzel.woff2'))
+        f.flavor = None
+        buf = io.BytesIO()
+        f.save(buf)
+        buf.seek(0)
+        font = ImageFont.truetype(buf, px)
+        try:
+            font.set_variation_by_axes([800])
+        except Exception:
+            pass
+        return font
+    except Exception:
+        pass
+    for p in ('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',):
+        if os.path.isfile(p):
+            return ImageFont.truetype(p, px)
+    return ImageFont.load_default()
+
+
+def bake_mark(icon, label):
+    """512×512 그림에 작은 표식: 어두운 알약 + 금테 + 금색 글자. 가운데 (182,368), 92×52 — 모서리가 중심에서 그림 반지름 0.75 안"""
+    cx, cy, w, h = 182, 368, 92, 52
+    big = Image.new('RGBA', (512 * SS, 512 * SS), (0, 0, 0, 0))
+    d = ImageDraw.Draw(big)
+    box = [(cx - w / 2) * SS, (cy - h / 2) * SS, (cx + w / 2) * SS, (cy + h / 2) * SS]
+    d.rounded_rectangle(box, radius=(h / 2) * SS, fill=BG + (235,), outline=GOLD + (255,), width=4 * SS)
+    font = mark_font(34 * SS)
+    tb = d.textbbox((0, 0), label, font=font)
+    tw, th = tb[2] - tb[0], tb[3] - tb[1]
+    d.text((cx * SS - tw / 2 - tb[0], cy * SS - th / 2 - tb[1]), label, font=font, fill=GOLD + (255,))
+    return Image.alpha_composite(icon, big.resize((512, 512), Image.LANCZOS))
+
+
 def main():
-    if len(sys.argv) != 3:
+    args = sys.argv[1:]
+    mark = None
+    if '--mark' in args:
+        i = args.index('--mark')
+        if i + 1 >= len(args):
+            print(__doc__)
+            sys.exit(2)
+        mark = args[i + 1]
+        del args[i:i + 2]
+    if len(args) != 2:
         print(__doc__)
         sys.exit(2)
-    src, out = sys.argv[1], sys.argv[2]
+    src, out = args
     icon = Image.open(src).convert('RGBA')
     if icon.size != (512, 512):
         icon = icon.resize((512, 512), Image.LANCZOS)
+    if mark:
+        icon = bake_mark(icon, mark)
 
     # 1) 구형 아이콘: 금테(바깥 경계 inset 2px, 반지름 ~64px) 밖을 투명하게
     legacy = icon.copy()
