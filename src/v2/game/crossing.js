@@ -153,7 +153,7 @@ export class Crossing {
     this.texA = null; this.texB = null; this.depth = null; this.fboA = null; this.fboB = null; this.w = 0; this.h = 0; this.fw = 0; this.fh = 0; this.frozen = false; this.bytes = 0;
     this.mode = 0;            // what the next scene draw is for: 0 compose to the screen · 1 the frozen copy · 2 nothing (warm-up while loading)
     this._v4 = new Float32Array(4); this._v3 = new Float32Array(3); this._v2 = new Float32Array(2); this._p = { x: 0, y: 0, w: 0 };
-    this.loopId = 0; this.sparkT = 0; this._holdRes = null; this._t0 = 0; this.slicing = false;
+    this.loopId = 0; this.sparkT = 0; this._holdRes = null; this._t0 = 0; this.slicing = false; this.prof = new Float64Array(12);
     // what a tool can read afterwards (performance.now() stamps of the last crossing, frames drawn and the longest gap between two of them during the passage)
     this.log = { begin: 0, answer: 0, toll: 0, freeze: 0, loaded: 0, reveal: 0, land: 0, end: 0, refused: false, frames: 0, gap: 0, last: 0, yields: 0, n: 0 };
   }
@@ -248,7 +248,9 @@ export class Crossing {
   }
   _yield() { return new Promise((res) => { let done = false; const go = () => { if (done) return; done = true; this._t0 = performance.now(); res(); }; this.log.yields++; requestAnimationFrame(go); setTimeout(go, 50); }); }
   /** between two steps of the load: lets a frame through when this frame's share of loading time is used up (a crossing only) */
-  breath() { if (!this.slicing || performance.now() - this._t0 < BUDGET) return null; return this._yield(); }
+  breath(step) { if (!this.slicing) return null; const now = performance.now(); if (step) this.prof[step] = now; if (now - this._t0 < BUDGET) return null; return this._yield(); }
+  /** a step of the load is reached (what a tool reads afterwards: scene.cx.prof - ms stamps; 1 textures 2 sky 3 meshes 4-6 models 7 effects 8 rules 9 people, pools 10 first warm-up 11 second) */
+  mark(step) { if (this.slicing) this.prof[step] = performance.now(); }
   /** the load is done: wait until the passage has had its time (1.2 s, 3 s for `years`) */
   hold() { if (this.phase !== 'passage') return null; this.log.loaded = performance.now(); this.slicing = false; if (this.t >= this.minT) return null; return new Promise((res) => { this._holdRes = res; }); }
 
@@ -335,7 +337,7 @@ export class Crossing {
     try { sc._ts = 1; feel.setTimeScale(1); } catch { /* no audio */ }
     try { this.loopId = feel.loopStart('loop.cross', null, 1); } catch { this.loopId = 0; }
     this._play(this.years ? 'cross.rush.long' : 'cross.rush', 1);
-    this.slicing = true; this._t0 = performance.now();
+    this.slicing = true; this._t0 = performance.now(); this.prof.fill(0); this.prof[0] = this._t0;
     const go = { to, spawn: null, keep: true, night: true, cross: true }, gen = this.gen;
     sc.gotoArea(to, null, { keepPosition: true, cross: true, pre: this.pre, spot: this.spot }).then((ok) => {
       if (this.gen !== gen || !sc.glr) return;

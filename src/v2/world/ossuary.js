@@ -20,7 +20,7 @@ export function ossuary(era = 'now', flags = {}) {
   const add = (chunk, ...parts) => P.push(...inChunk(chunk, parts.flat()));
   const stone = !!flags.wedge_stone, woodW = !!flags.wedge_wood && !stone, WARM = [1, 0.66, 0.3], COLD = [0.55, 0.78, 1];
   // ───────────── floors (same in both nights) ─────────────
-  const FL = (z, d, strips = [], mat = 'cellar') => ({ t: 'floor', x: X0, z, w: X1 - X0, d, mat: 'stone', kit: { mat, cell: 44, rag: 26, strips } });
+  const FL = (z, d, strips = [], mat = 'cellar') => ({ t: 'floor', x: X0, z, w: X1 - X0, d, mat: 'stone', thick: 520, kit: { mat, cell: 44, rag: 26, strips } });   // thick 520 (WORLD-LOOK): the camera at the door looked under a 220-deep front
   add('c1', FL(0, 400, [{ x0: 380, x1: 620, mat: 'flags' }]), FL(400, 600, [{ x0: 280, x1: 720, mat: 'slabs' }]), { t: 'blocker', x: 0, z: -60, w: 1200, d: 60, y: -300, h: 1500 });
   add('c2', FL(1000, 200, [{ x0: 380, x1: 620, mat: 'flags' }]), FL(1400, 100, [{ x0: 380, x1: 620, mat: 'flags' }]),
     { t: 'floor', x: X0, z: 1200, w: X1 - X0, d: 200, y: -240, walk: false, mat: 'stone', kit: { mat: 'slabs', cell: 60 } },   // the bottom of the gap (drawn only: a fall is the pit rule - 8 damage and back to the last safe ground)
@@ -33,8 +33,10 @@ export function ossuary(era = 'now', flags = {}) {
     { t: 'wall', x: 0, z, w: 100, d, h: HW, mat: 'facade', kit: { style: 'rubble', lower: 'fieldstone', cell: 70, faces: 'R', cornice: true, buttress: butt.map((u) => ({ side: 'R', u, ...B })), hang: SCN('R', sc, d) } },
     { t: 'wall', x: X1, z, w: 100, d, h: HW, mat: 'facade', kit: { style: 'rubble', lower: 'fieldstone', cell: 70, faces: 'L', cornice: true, buttress: butt.map((u) => ({ side: 'L', u: d - u, ...B })), hang: SCN('L', sc, d) } });
   // rock beyond the wall tops (drawn only): without it the raised camera looked over the side walls into black
-  const rock = (chunk, z, d) => add(chunk, { t: 'floor', x: -260, z, w: 262, d, y: HW - 2, walk: false, mat: 'stone', kit: { mat: 'cellar', cell: 220 } }, { t: 'floor', x: X1 + 98, z, w: 262, d, y: HW - 2, walk: false, mat: 'stone', kit: { mat: 'cellar', cell: 220 } });
+  const rock = (chunk, z, d) => add(chunk, { t: 'floor', x: -2400, z, w: 2402, d, y: HW - 2, walk: false, mat: 'stone', kit: { mat: 'cellar', cell: 420 } }, { t: 'floor', x: X1 + 98, z, w: 2402, d, y: HW - 2, walk: false, mat: 'stone', kit: { mat: 'cellar', cell: 420 } });   // WORLD-LOOK: 2,400 wide (was 262: beyond it the picture was black)
   rock('c1', -60, 1060); rock('c2', 1000, 1100); rock('c3', 2100, 900); rock('c4', 3000, 990);
+  // WORLD-LOOK: the rock the hall is cut into, left and right of the open front (it was empty there: the clear colour beside the side walls)
+  add('c1', { t: 'deco', mesh: 'farwall', x: -1100, y: -520, z: -60, x1: X0, z1: -60, h: HW + 1200, mat: 'fieldstone', piers: 1e6, k: 0.5, cell: 300 }, { t: 'deco', mesh: 'farwall', x: X1, y: -520, z: -60, x1: X1 + 1200, z1: -60, h: HW + 1200, mat: 'fieldstone', piers: 1e6, k: 0.5, cell: 300 });
   sideWalls('c1', -60, 1060, [460, 1060], [250, 760]); sideWalls('c2', 1000, 1100, [500, 1100], [120, 800]); sideWalls('c3', 2100, 900, [350, 700], [180, 540]); sideWalls('c4', 3000, 990, [150, 350, 550, 750], past ? [100, 250, 450, 650, 850] : [250, 650], { h: 292, d: 14, w: 84 });   // the last hall: four flat wall piers a side. WORLD-3: 14 deep instead of 40 - the hero (r 14) stood hidden in the bay behind a 40-deep pier, and pier + heap made nooks
   add('c4', { t: 'wall', x: 0, z: 3900, w: 1200, d: 90, h: HW + 60, mat: 'facade', kit: { style: 'stone', cell: 60, faces: 'F', plinth: 34, quoins: false, courses: [250], buttress: [{ u: 330, h: 300, d: 26, w: 40 }, { u: 870, h: 300, d: 26, w: 40 }] } });
   // the coffin corridor: low banks left and right (same walls both nights: candles and new coffins on them in 1697, a hundred years of coffins tonight)

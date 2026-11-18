@@ -22,6 +22,7 @@ export function beyondEshville(now, cold = false) {
       { x0: 800, x1: 2300, z0: 1100, z1: 1700, tint: [1.1, 1.04, 0.94], k: 0.66 }, { x0: 6480, x1: 6700, z0: 1204, z1: 2600, tint: [1.25, 1.2, 1.15], k: 0.8, cell: 200 } ] },   // the last strip: the lane running on to the graveyard
     { mesh: 'apron', x: -9000, y: Y, z: 0, w: 8840, d: 296, cell: 300, tile: 520, k: 0.72, skirt: 520, strips: [{ x0: 6400, x1: 8840, z0: 92, z1: 208, tint: [1.34, 1.26, 1.16], k: 0.95, cell: 240 }] },   // west: the road out of the gate (z 92..208)
     { mesh: 'apron', x: 4800, y: Y, z: 0, w: 5600, d: 296, cell: 300, tile: 520, k: 0.7, skirt: 520 },
+    { mesh: 'apron', x: -160, y: Y, z: -60, w: 100, d: 60, k: 0.5, skirt: 520 }, { mesh: 'apron', x: 4700, y: Y, z: -60, w: 100, d: 60, k: 0.5, skirt: 520 },   // under the fronts of the two end walls
     { mesh: 'apron', x: -12000, y: Y, z: 2896, w: 29000, d: 14000, cell: 3600, tile: 700, k: 0.66 },
     { mesh: 'apron', x: 6800, y: Y, z: 296, w: 10200, d: 2600, cell: 1300, tile: 700, k: 0.68 }, { mesh: 'apron', x: -12000, y: Y, z: 296, w: 10000, d: 2600, cell: 1300, tile: 700, k: 0.68 },
     // far out, a bank of land that rises just over the horizon: where the ground ends the picture goes on into the sky's own haze, not into a bare strip of its foot

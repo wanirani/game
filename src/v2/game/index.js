@@ -420,7 +420,7 @@ export default class V2Game extends Scene {
       if (im) x.drawImage(im, 0, 0, c.width, c.height); else { x.fillStyle = '#6a6a72'; x.fillRect(0, 0, c.width, c.height); }
       if (T?.desat) { x.globalCompositeOperation = 'saturation'; x.globalAlpha = T.desat; x.fillStyle = '#808080'; x.fillRect(0, 0, 512, 512); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; }
       this.tex[n] = glr.texture(() => c, { repeat: T ? true : KIT_TEX[n]?.repeat ?? true, mip: true });
-      await this.cx.breath(); if (!this.glr) return;   // CROSSING: a load under the passage lets a frame through between its steps (crossing.js breath: nothing happens on any other load)
+      await this.cx.breath(1); if (!this.glr) return;   // CROSSING: a load under the passage lets a frame through between its steps (crossing.js breath: nothing happens on any other load)
     }
     if (newSky) {   // sky backdrop: the top of the painted background, melted into this area's fog colour at the bottom (one canvas, one texture, redrawn per area)
       const c = this._skyC ?? (this._skyC = mk(2048, 512)), x = c.getContext('2d'), im = imgs.__sky, f = W.fog.color, fr = Math.round(f[0] * 255), fg = Math.round(f[1] * 255), fb = Math.round(f[2] * 255);
@@ -439,7 +439,7 @@ export default class V2Game extends Scene {
       if (!this.skyTex) this.skyTex = glr.texture(() => c, {});
       else if (!glr.lost) { const gl = glr.gl; gl.bindTexture(gl.TEXTURE_2D, this.skyTex.tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c); }
       this._skyKey = skyKey;
-      await this.cx.breath(); if (!this.glr) return;
+      await this.cx.breath(2); if (!this.glr) return;
     }
     if (first) {
       {   // small atlas for ground decals (all eight kinds of the env kit) and lamp glows (no prop cards)
@@ -458,7 +458,7 @@ export default class V2Game extends Scene {
     this.envMeshes = E.meshes.map((m) => ({ chunk: m.chunk, mesh: glr.mesh(m.data, m.count), tex: this.tex[m.tex], tris: m.count / 3, on: true })).filter((m) => m.tex);
     this.envChunks = [...E.bounds.entries()].map(([id, b]) => ({ id, b, on: true }));
     for (const m of this.envMeshes) m.c = this.envChunks.find((q) => q.id === m.chunk) ?? null;
-    await this.cx.breath(); if (!this.glr) return;
+    await this.cx.breath(3); if (!this.glr) return;
     for (const d of E.decals) { this._tintAt(W, d.x, (d.y ?? 0) + 4, d.z, 1, 1.8, this.tint); d._c = [this.tint[0], this.tint[1], this.tint[2]]; }
     // 3) characters: the hero + only the kinds this area spawns
     const kinds = [...new Set(W.spawns.map((s) => s.kind))].filter((k) => KINDS[k]);
@@ -471,21 +471,24 @@ export default class V2Game extends Scene {
     const eModels = [...new Set(kinds.map((k) => KINDS[k].model))], sword = !glr.webgl2, weapons = [...(sword ? ['blade'] : []), ...new Set(kinds.map((k) => KINDS[k].weapon).filter(Boolean))];   // WebGL1 has no whip renderer: the box sword stays there
     const pModels = People.models(area).filter((m) => m !== HERO_MODEL && !eModels.includes(m));
     this._dropModels(new Set([HERO_MODEL, ...eModels, ...pModels]), new Set(weapons));
+    this.cx.mark(4);
     await this.cast.load([{ model: HERO_MODEL, hero: true }, ...eModels.map((m) => ({ model: m }))], weapons, { texCap: this.perf.texCap, libWins: driveHero !== PLACEHOLDER_DRIVE_HERO });
     if (!this.glr) return;
+    this.cx.mark(5);
     if (pModels.length) { try { await this.cast.load(pModels.map((m) => ({ model: m })), [], { texCap: Math.min(512, this.perf.texCap) }); } catch (e) { console.warn('[v2g] a person model failed to load (that person is not drawn):', String(e?.message ?? e)); } }
     if (!this.glr) return;
+    this.cx.mark(6);
     if (!this.heroA) this.heroA = this.cast.actor(HERO_MODEL, sword ? 'blade' : null, {});   // no sword: the hand (GRIPS.blade) holds the whip's handle
     // 4) effects
     if (!this.fx) this._makeFx();
-    await this.cx.breath(); if (!this.glr) return;
+    await this.cx.breath(7); if (!this.glr) return;
     // 5) rules
     this.area = area; this.W = W; this.env.fog = W.fog;
     { const d = W.light.moonDir, l = hyp(d[0], d[1], d[2]) || 1; this.env.sunDir[0] = d[0] / l; this.env.sunDir[1] = d[1] / l; this.env.sunDir[2] = d[2] / l; }
     this.env.key = W.light.key ?? null; this.env.rimK = W.light.rimK ?? 1;   // WORLD-LOOK (light values only): the area's moon key and rim strength on characters (stage.light.key [r, g, b, darkSideRim] / .rimK; charr.js)
     this.sim = new Sim(W, this.brk.hook(this._hooks()));
     this._enterAt(spawn, keep);
-    await this.cx.breath(); if (!this.glr) return;
+    await this.cx.breath(8); if (!this.glr) return;
     this.brk.enter(area, this._quiet);   // BREAK: what was broken in this visit stays broken; the whole ones are baked into one buffer
     this.people.build(this, area, groundAt); this.anchors.build(area, this.perf.tier, (x, z) => groundAt(this.W, x, z)); this._peopleN = 19;
     { const B = W.boxes; let n = 0; for (let i = 0; i < B.length; i++) { const b = B[i]; if (b.solid && !b.walk && !b.gate && !b.actor && b.brk === undefined) n++; }   // what can hide the hero: walls and props (not floors, not the scene's own gate / person boxes)
@@ -499,12 +502,12 @@ export default class V2Game extends Scene {
     this.state.area.id = area.id; this.state.area.name = area.name; this.state.area.era = area.era; this.state.night = area.era;
     // 6) warm everything behind the loading screen, then wait for the GPU
     for (const k of kinds) for (let i = this._poolOf(KINDS[k].model).length; i < Math.min(4, W.spawns.length); i++) { const a = this._newActor(k); if (a) this._free(a); }
-    await this.cx.breath(); if (!this.glr) return;
+    await this.cx.breath(9); if (!this.glr) return;
     this._tick0();
     this._warm(1);
-    await this.cx.breath(); if (!this.glr) return;
+    await this.cx.breath(10); if (!this.glr) return;
     this._warm(2);
-    await this.cx.hold(); if (!this.glr) return;   // CROSSING: the passage has its time (1.2 s; 3 s for the long form) even when the load was quicker
+    this.cx.mark(11); await this.cx.hold(); if (!this.glr) return;   // CROSSING: the passage has its time (1.2 s; 3 s for the long form) even when the load was quicker
     this.loadMs = Math.round(performance.now() - t0);
     this.ready = true; this.state.loading = false; this.sampleN = 0;
     const quiet = this._quiet; this._quiet = false;
