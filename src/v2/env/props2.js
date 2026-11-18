@@ -297,15 +297,15 @@ Object.assign(PROPS, {
  */
 /**
  * 불길이 서는 자리(입자 불 닻이 있어야 할 곳): 지역 부품 → [{ x, y, z, size, w }]. 위의 fire · wreck · brazier 와 같은 자리 셈 (world/index.js 가 빠진 닻을 채우고 검사한다)
- * size = 불 높이 ÷ 70 (anchors.js 의 크기 단위), w = 불길 너비
+ * size = 불 높이 ÷ 70 (anchors.js 의 크기 단위), w = 불길 너비 · ground = 부품에 y 가 없다(굽기는 그 자리 바닥에 세운다) → y 는 바닥에서 잰 높이, 장면이 바닥을 더한다 (SPEED-FIRE-VERIFY: 시범 구간의 화로는 높이 96 의 단 위에 서 있다)
  */
 export function flameSpots(parts) {
   const out = [];
   for (const P of parts) {
-    const y = P.y ?? 0;
-    if (P.t === 'deco' && P.mesh === 'fire') out.push({ x: P.x, y, z: P.z, size: +((P.h ?? 78) / 70).toFixed(2), w: P.w ?? 56, part: P });
-    else if (P.mesh === 'brazier' && P.lit !== false) { const s = (P.h ?? 112) / 112; out.push({ x: P.x, y: y + 96 * s, z: P.z - 6 * s, size: +(0.5 * s).toFixed(2), w: Math.round(30 * s), part: P }); }
-    else if (P.mesh === 'wreck' && P.fire !== false) { const s = (P.w ?? 170) / 170; out.push({ x: P.x + 10 * s, y: y + 16 * s, z: P.z - 12 * s, size: +(64 * s / 70 * 1.3).toFixed(2), w: Math.round(70 * s), part: P }); }
+    const y = P.y ?? 0, ground = P.y == null;
+    if (P.t === 'deco' && P.mesh === 'fire') out.push({ x: P.x, y, z: P.z, size: +((P.h ?? 78) / 70).toFixed(2), w: P.w ?? 56, ground, part: P });
+    else if (P.mesh === 'brazier' && P.lit !== false) { const s = (P.h ?? 112) / 112; out.push({ x: P.x, y: y + 96 * s, z: P.z - 6 * s, size: +(0.5 * s).toFixed(2), w: Math.round(30 * s), ground, part: P }); }
+    else if (P.mesh === 'wreck' && P.fire !== false) { const s = (P.w ?? 170) / 170; out.push({ x: P.x + 10 * s, y: y + 16 * s, z: P.z - 12 * s, size: +(64 * s / 70 * 1.3).toFixed(2), w: Math.round(70 * s), ground, part: P }); }
   }
   return out;
 }

@@ -33,12 +33,13 @@ const RANGE2 = 2100 * 2100;
 
 export class Anchors {
   constructor() { this.list = []; this.lightMax = 2; this.fireK = 1; this.live = 0; this.lit = 0; this._round = 1; }
-  build(area, tier) {
+  build(area, tier, gAt = null) {   // gAt(x, z) = floor height there: an anchor with ground: true stands on the floor (world/index.js finishArea - a brazier on a raised terrace)
     this.list.length = 0;
     for (const a of area.anchors) {
+      const gy = a.ground && gAt ? gAt(a.x, a.z) : 0, y0 = (a.y ?? 0) + (Number.isFinite(gy) ? gy : 0);
       const size = a.size ?? 1, set = size < 0.6 ? FIRE_S : size < 1.05 ? FIRE_M : FIRE_L, w = a.w ?? 50 * size, pts = a.kind === 'fire' ? Math.max(1, Math.min(4, Math.round(w / (58 * set.k)))) : 1;
       const fire = a.kind === 'fire';   // a fire burns a little in front of what it sits on (the camera looks along +z) so the wall top does not swallow the base of the tongues
-      this.list.push({ kind: a.kind, x: a.x, y: (a.y ?? 0) + (fire ? 4 : 0), z: a.z - (fire ? 10 : 0), size, rs: Math.pow(size, 0.6), set, pts, step: pts > 1 ? (w * 0.78) / (pts - 1) : 0, per: (1 + 0.25 * (pts - 1)) / pts, light: !!a.light && a.kind === 'fire', h: -1, vis: false, d2: 0, _pick: 0 });
+      this.list.push({ kind: a.kind, x: a.x, y: y0 + (fire ? 4 : 0), z: a.z - (fire ? 10 : 0), size, rs: Math.pow(size, 0.6), set, pts, step: pts > 1 ? (w * 0.78) / (pts - 1) : 0, per: (1 + 0.25 * (pts - 1)) / pts, light: !!a.light && a.kind === 'fire', h: -1, vis: false, d2: 0, _pick: 0 });
     }
     this.lightMax = tier === 'high' ? 3 : tier === 'low' ? 1 : 2;
     this.fireK = tier === 'low' ? 0.7 : 1;   // tongues and core are priority particles (not thinned by the fill governor, but scaled at least 0.6) - on the low tier take them back to its 0.42 scale

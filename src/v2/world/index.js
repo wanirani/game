@@ -45,7 +45,7 @@ export function finishArea(a) {
   for (const f of flameSpots(st.parts)) {
     const an = a.anchors.find((q) => q.kind === 'fire' && Math.hypot(q.x - f.x, q.z - f.z) < 60 && Math.abs((q.y ?? 0) - f.y) < 70);
     if (an) { if (an.w == null) an.w = f.w; }
-    else a.anchors.push({ id: `fire_${f.part.mesh}_${Math.round(f.x)}_${Math.round(f.z)}`, kind: 'fire', x: f.x, y: f.y, z: f.z, size: f.size, w: f.w, light: true });
+    else a.anchors.push({ id: `fire_${f.part.mesh}_${Math.round(f.x)}_${Math.round(f.z)}`, kind: 'fire', x: f.x, y: f.y, z: f.z, size: f.size, w: f.w, light: true, ...(f.ground ? { ground: true } : {}) });   // ground: y is above the floor there (the part has no y) - the scene adds the floor height
   }
   return a;
 }

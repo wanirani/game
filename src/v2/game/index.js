@@ -434,7 +434,7 @@ export default class V2Game extends Scene {
     { const d = W.light.moonDir, l = hyp(d[0], d[1], d[2]) || 1; this.env.sunDir[0] = d[0] / l; this.env.sunDir[1] = d[1] / l; this.env.sunDir[2] = d[2] / l; }
     this.sim = new Sim(W, this._hooks());
     this._enterAt(spawn, keep);
-    this.people.build(this, area, groundAt); this.anchors.build(area, this.perf.tier); this._peopleN = 19;
+    this.people.build(this, area, groundAt); this.anchors.build(area, this.perf.tier, (x, z) => groundAt(this.W, x, z)); this._peopleN = 19;
     { const B = W.boxes; let n = 0; for (let i = 0; i < B.length; i++) { const b = B[i]; if (b.solid && !b.walk && !b.gate && !b.actor) n++; }   // what can hide the hero: walls and props (not floors, not the scene's own gate / person boxes)
       const O = (this._occ = new Float32Array(n * 6)); n = 0; for (let i = 0; i < B.length; i++) { const b = B[i]; if (!b.solid || b.walk || b.gate || b.actor) continue; O[n] = b.x0; O[n + 1] = b.x1; O[n + 2] = b.y0; O[n + 3] = b.y1; O[n + 4] = b.z0; O[n + 5] = b.z1; n += 6; } this._occN = n; }
     { const c = this._caps, sim = this.sim, hh = sim.hero;   // what the rules can do today (PLAY lane lands skill and bell later): the pad shows the rest as not usable yet
