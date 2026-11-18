@@ -1,16 +1,16 @@
 {
  "versionName": "1.0.0",
- "versionCode": 462996,
- "sha256": "e7b0e25dd1d60c1629bc8ef0e1e3831122d41717f807fbc327316057ed5cdb6d",
- "bytes": 25911775,
- "url": "downloads/BloodNocturne3D-1.0.0-462996.apk",
- "built": "2026-11-18T12:53:00Z",
+ "versionCode": 463178,
+ "sha256": "205b81bd7bfdee60f673e3b034b4686ee07675f804213d9c444943f70f859f91",
+ "bytes": 25919967,
+ "url": "downloads/BloodNocturne3D-1.0.0-463178.apk",
+ "built": "2026-11-18T15:44:00Z",
  "signingCertSha256": "efaee88b9ff54bf116c2aae40e358ec073d4a7729261b1b6ac2da5e7a24ed60f",
  "appId": "com.bloodnocturne.game3d",
  "label": "블러드 녹턴 3D",
- "note": "3D edition as its own app (installs next to the 2D app). Faster movement (run x1.5, roll and attacks x1.3, tighter camera), particle fire instead of the flat flames, whip, boss, bell tower and ossuary. Story and save are not connected yet.",
+ "note": "3D app update. The story and the save are connected: the main game runs the opening, Eshville tonight, the church and the promise, the bell tower, the night of 1697, the first bell crossing and the changed night; leaving saves by itself and coming back continues there. Fences, railings, low walls, stair sides and the cemetery gate now stop the hero where they are drawn. Broken saves open safely; the sky edge in the opening is gone. The 2D app is unchanged (462996).",
  "web": {
-  "buildHash": "d2fa5b034839",
-  "version": "1.0.0+20261118T1250.923583c2"
+  "buildHash": "1465648c023b",
+  "version": "1.0.0+20261118T1542.ce77123b"
  }
 }
