@@ -334,7 +334,8 @@ try {
     const { nearestFreeSpot } = await import('../../src/v2/world/index.js');
     const b = (await def('eshville_now')).interact.find((q) => q.event === 'bell.ring');
     const inside = () => page.evaluate(() => { const sc = window.__v2.scene, h = sc.sim.hero; let hit = null; for (const q of sc.W.boxes) if (q.solid && !q.walk && h.x > q.x0 + 2 && h.x < q.x1 - 2 && h.z > q.z0 + 2 && h.z < q.z1 - 2 && h.y + 50 > q.y0 && h.y + 10 < q.y1) hit = [q.x0, q.x1, q.z0, q.z1, q.y0, q.y1]; return { hit, onGround: !!h.onGround, y: Math.round(h.y), act: h.act ?? null, move: !!h.move, hurtT: h.hurtT ?? 0, locked: sc.locked, xing: !!sc.xing, fade: +sc.fadeA.toFixed(2), hp: Math.round(h.hp) }; });
-    const canMove = async () => { const a = await st(); await page.evaluate(() => { const B = window.__bot, h = window.__v2.scene.sim.hero; B.setRoute([[h.x - 200, h.z + 30], [h.x - 400, h.z + 30]]); }); const c = await play(60, { bot: true, chunk: 60 }); return Math.hypot(c.x - a.x, c.z - a.z) > 20; };
+    // can the hero walk away afterwards? Tried towards four sides (a wall or a prop may stand on one of them); true when any side lets him go 20 px
+    const canMove = async () => { let best = 0; for (const [dx, dz] of [[-1, 0.15], [0, -1], [1, 0.15], [0, 1]]) { const a = await st(); await page.evaluate(([ux, uz]) => { const B = window.__bot, h = window.__v2.scene.sim.hero; B.setRoute([[h.x + ux * 200, h.z + uz * 200], [h.x + ux * 400, h.z + uz * 400]]); }, [dx, dz]); const c = await play(50, { bot: true, chunk: 50 }); best = Math.max(best, Math.hypot(c.x - a.x, c.z - a.z)); if (best > 20) break; } return best > 20; };
     const edge = async (name, before, expectStart = true) => {
       await put(b.x - 40, b.z + 60); await play(40, { bot: false });
       const hp0 = (await st()).hp, area0 = (await st()).area; let pre = null;
