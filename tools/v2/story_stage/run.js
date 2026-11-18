@@ -384,7 +384,9 @@ export function createStory(data, opts) {
       const rec = list[i];
       if (rec.once && doneSet.has(rec.id)) continue;
       if (!matches(rec, d) || !holds(rec.all, rec.any)) continue;
-      if (rec.once && ((cur && cur.rec === rec) || queued(rec))) continue;
+      // the same sequence is never started twice at once: a second press while it runs or waits in the queue is dropped
+      // (a double tap on a bell would otherwise cross and cross straight back)
+      if ((cur && cur.rec === rec) || queued(rec)) continue;
       hits[hitTop++] = rec;
     }
     const n = hitTop - base;
@@ -411,7 +413,11 @@ export function createStory(data, opts) {
     // a sequence listening to this talk wins over the plain dialogue
     if (byName.has('talk') && dispatch('talk', d || { talk: key }, api)) return true;
     if (!dialogs.has(key)) { warn('dialogue "' + key + '" does not exist'); return false; }
-    const rec = { id: 'talk:' + key, on: null, match: [], all: null, any: null, once: false, steps: [['say', key]], minute: null };
+    const tid = 'talk:' + key;
+    // the same person pressed again while their lines are open or waiting: once is enough
+    if (cur && cur.rec.id === tid) return true;
+    for (let i = 0; i < queue.length; i++) if (queue[i].rec.id === tid) return true;
+    const rec = { id: tid, on: null, match: [], all: null, any: null, once: false, steps: [['say', key]], minute: null };
     if (cur) queue.push({ rec, api, force: true }); else begin(rec, api);
     return true;
   }
