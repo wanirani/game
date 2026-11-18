@@ -21,7 +21,7 @@ export const CROSS_T = { gather: 0.1, ring: 0.5, dull: 0.5, pass: 1.2, years: 3.
 const YEAR = { past: 1697, now: 1797 };
 const BUDGET = 9;          // ms of loading work per frame before the load lets a frame through (breath())
 const R_END = 6600;        // world units: a ring this wide has left every picture
-const GLOW_PAST = [1.0, 0.8, 0.5], GLOW_NOW = [0.7, 0.86, 1.0];
+const GLOW_PAST = [1.0, 0.8, 0.5], GLOW_NOW = [0.7, 0.86, 1.0], DRAW2 = [0x8ce0, 0x8ce1];   // (COLOR_ATTACHMENT0, 1)
 /** radius of a ring k (0..1) of its time after it left the bell: `near` units in the first four fifths (the part of the world the camera sees
  *  around the bell - the eye can follow it there), then out past everything */
 const ringR = (k, near) => (k < 0.8 ? near * k / 0.8 : near + (R_END - near) * ((k - 0.8) / 0.2) * ((k - 0.8) / 0.2));
@@ -29,71 +29,89 @@ const ringR = (k, near) => (k < 0.8 ? near * k / 0.8 : near + (R_END - near) * (
 const VS = `#version 300 es
 out vec2 vUV;
 void main() { vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2)); vUV = p; gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }`;
-// what time does to the frozen picture. Shared by the passage (the whole screen) and the reveal (outside the ring).
-const FS_AGED = `
-uniform sampler2D uFrozen;
-uniform vec4 uT;        // x seconds of the passage · y how far the change has come 0..1 · z +1 towards tonight, -1 towards 1697 · w 1 = a frozen picture exists
+// What time does to the frozen picture — in two steps, so that a full-size pixel costs next to nothing (the passage must stay fluid on slow GPUs):
+//   FS_FIELD  a quarter-size "time field" drawn every frame into two small textures:
+//             field  R how far the colour has drained · G shadow · B push along the bell's radius (0.5 = none) · A how far the edge is eaten
+//             light  what is added: cloud streaks, rain / sparks, dust, the glow where the bell hangs
+//   aged()    full size: three texture reads (field, light, the frozen picture pushed by the field), the grade, the bell's rings as thin lines, grain
+const FS_NOISE = `
+float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y); }`;
+const FS_FIELD = (low) => `#version 300 es
+precision highp float;${low ? '\n#define LOW' : ''}
+in vec2 vUV; layout(location = 0) out vec4 o0; layout(location = 1) out vec4 o1;
+uniform vec4 uT;        // x seconds of the passage · y how far the change has come 0..1 · z +1 towards tonight, -1 towards 1697
 uniform vec4 uBellS;    // the bell on the screen (uv, y up) · z width / height · w how flat a ring on the ground lies (1 / sin pitch)
 uniform vec4 uPulse;    // ages in seconds of the last three rings from the bell (< 0 = none) · w their brightness
-uniform vec3 uBase;     // colour that stands in when the frozen picture is gone (context lost)
 uniform vec3 uGlow;     // the bell's light
-uniform vec3 uTo;       // the tint of the night ahead (from its fog colour) · uFog below: that colour itself, dark
-uniform vec3 uFog;
-float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
-float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y); }
-vec3 gradeTo(vec3 c) { float l = dot(c, vec3(0.3, 0.59, 0.11)); return (vec3(l) * 0.8 + c * 0.2) * uTo + uFog * 0.16; }
-vec3 aged(vec2 uv) {
+uniform vec3 uTo;       // the tint of the night ahead
+${FS_NOISE}
+void main() {
+  vec2 uv = vUV;
   float t = uT.x, g = uT.y, dir = uT.z;
   vec2 q = (uv - uBellS.xy) * vec2(uBellS.z, uBellS.w);
-  float r = length(q);
-  vec2 qn = q / max(r, 1e-4);
-  // rings from the bell: each pushes the picture outward as it passes and leaves a thin bright line
-  float push = 0.0, line = 0.0;
-  for (int i = 0; i < 3; i++) {
+  float r = length(q), push = 0.0;
+  for (int i = 0; i < 3; i++) {   // each ring from the bell pushes the picture outward as it passes
     float a = uPulse[i];
     if (a < 0.0) continue;
-    float rr = 0.03 + a * (1.25 - a * 0.22), wd = 0.03 + a * 0.05, x = (r - rr) / wd, e = exp(-x * x) * exp(-a * 1.5);
-    push += e * (x > 0.0 ? 1.0 : -0.6);
-    line += (exp(-x * x * 9.0) + 0.35 * exp(-x * x * 0.9)) * exp(-a * 1.5);
+    float rr = 0.03 + a * (1.25 - a * 0.22), wd = 0.03 + a * 0.05, x = (r - rr) / wd;
+    push += exp(-x * x) * exp(-a * 1.5) * (x > 0.0 ? 1.0 : -0.6);
   }
-  vec2 u2 = uv - qn / vec2(uBellS.z, uBellS.w) * push * 0.022;
-  u2 += (vec2(vn(uv * 3.1 + vec2(t * 0.9, 0.0)), vn(uv * 3.1 + vec2(7.0, -t * 0.8))) - 0.5) * (0.004 + 0.012 * g);   // the picture breathes: it never stands still
-  vec3 c = uT.w > 0.5 ? texture(uFrozen, clamp(u2, 0.001, 0.999)).rgb : uBase * (0.55 + 0.7 * vn(uv * 4.0 + t * 0.2));
+  float off = push * 0.022 + (vn(uv * 3.1 + vec2(t * 0.9, 0.0)) - 0.5) * (0.006 + 0.016 * g);   // ... and it breathes: the picture never stands still
   // the colour of one night drains into the other, as a tide running out from the bell
-  float tide = smoothstep(-0.3, 0.3, g * 2.3 - r - 0.15 + (vn(uv * 5.0 + t * 0.35) - 0.5) * 0.35);
-  c = mix(c, gradeTo(c), 0.35 + 0.6 * tide * min(1.0, g * 3.0 + 0.2));
+  float tide = smoothstep(-0.3, 0.3, g * 2.3 - r - 0.15 + (vn(uv * 5.0 + t * 0.35) - 0.5) * 0.35) * min(1.0, g * 3.0 + 0.2);
   // shadows sweep across as if the moon raced over the sky - faster and faster
   float sp = t * (1.3 + t * 1.1) * dir, k3 = min(1.0, t * 2.5);
   float band = vn(vec2(uv.x * 1.7 + uv.y * 0.8 - sp, uv.y * 1.1 + 3.0)) * 0.65 + vn(vec2(uv.x * 4.3 - sp * 2.1, uv.y * 2.6 + 9.0)) * 0.35;
   float sh = smoothstep(0.38, 0.7, band);
-  c *= 1.0 - sh * k3 * (0.26 + 0.2 * g);
-  c += (1.0 - sh) * k3 * 0.07 * uTo * vec3(0.8, 0.84, 0.95);
+  vec3 add = (1.0 - sh) * k3 * 0.07 * uTo * vec3(0.8, 0.84, 0.95);
 #ifndef LOW
-  // streaks of cloud rush past (thicker towards the top), rain towards tonight, sparks towards 1697
+  // streaks of cloud rush past (thicker towards the top); rain towards tonight, sparks towards 1697; dust settles / lifts
   float cy = smoothstep(0.2, 1.0, uv.y);
   float cl = vn(vec2(uv.x * 2.4 - sp * 2.4, uv.y * 13.0 + 1.7)) * vn(vec2(uv.x * 1.1 - sp * 1.3, uv.y * 4.0 + 5.0));
-  c += cl * cl * (0.25 + cy) * k3 * 0.7 * uTo * vec3(0.72, 0.74, 0.8);
-  vec2 rp = vec2(uv.x * uBellS.z * 120.0 + uv.y * 14.0, uv.y * 1.5 + dir * t * 4.6);
-  float rn = h21(vec2(floor(rp.x), 3.0)), ry = fract(rp.y + rn * 9.0);
-  c += step(0.88, rn) * smoothstep(0.0, 0.1, ry) * smoothstep(0.7, 0.15, ry) * k3 * 0.26 * mix(uGlow, uTo, 0.5);
-  // dust and ash: settle towards tonight, lift towards 1697 (two layers, the near one larger and faster)
+  add += cl * cl * (0.25 + cy) * k3 * 0.7 * uTo * vec3(0.72, 0.74, 0.8);
+  vec2 rp = vec2(uv.x * uBellS.z * 64.0 + uv.y * 8.0, uv.y * 1.5 + dir * t * 4.6);
+  float rn = h21(vec2(floor(rp.x), 3.0)), ry = fract(rp.y + rn * 9.0), rx = abs(fract(rp.x) - 0.5);
+  add += step(0.86, rn) * smoothstep(0.5, 0.1, rx) * smoothstep(0.0, 0.1, ry) * smoothstep(0.7, 0.15, ry) * k3 * 0.3 * mix(uGlow, uTo, 0.5);
   for (int i = 0; i < 2; i++) {
-    float fi = float(i), n = 9.0 + fi * 8.0;
+    float fi = float(i), n = 8.0 + fi * 6.0;
     vec2 gp = vec2(uv.x * uBellS.z, uv.y) * n; gp.y += dir * t * (1.5 - fi * 0.6) * n * 0.16; gp.x += sin(t * 1.3 + fi * 2.0) * 0.3;
     vec2 cell = floor(gp), f = fract(gp) - 0.5;
-    float rd = h21(cell + fi * 17.0), d = length(f - (vec2(rd, fract(rd * 7.3)) - 0.5) * 0.7);
-    float speck = smoothstep(0.09 - fi * 0.03, 0.0, d) * step(0.5, fract(rd * 13.7));
-    c = mix(c, dir > 0.0 ? vec3(0.62, 0.66, 0.74) : uGlow, speck * k3 * (0.6 - fi * 0.2));
+    float rd = h21(cell + fi * 17.0), d = length(f - (vec2(rd, fract(rd * 7.3)) - 0.5) * 0.6);
+    add += (dir > 0.0 ? vec3(0.5, 0.54, 0.62) : uGlow) * smoothstep(0.16 - fi * 0.04, 0.0, d) * step(0.5, fract(rd * 13.7)) * k3 * (0.5 - fi * 0.15);
   }
-  c += (h21(uv * 431.0 + fract(t * 7.3) * 61.0) - 0.5) * 0.08 * k3;   // grain
 #endif
   // the edges erode: the frame is eaten inward by a ragged front
   vec2 e2 = min(uv, 1.0 - uv);
-  float ed = min(e2.x * uBellS.z, e2.y);
-  float er = smoothstep(0.0, 0.15, ed + (vn(uv * 8.0 + t * 0.5) - 0.5) * 0.16 - g * 0.06 + 0.035);
-  c = mix(c, uFog * 0.22, (1.0 - er) * min(1.0, 0.25 + g * 1.2) * 0.86 * k3);
-  // the bell: its rings as light, and a glow that beats where it hangs
-  c += uGlow * (line * 0.62 + exp(-r * r * 90.0) * (0.14 + 0.1 * sin(t * 9.0))) * uPulse.w;
+  float er = smoothstep(0.0, 0.15, min(e2.x * uBellS.z, e2.y) + (vn(uv * 8.0 + t * 0.5) - 0.5) * 0.16 - g * 0.06 + 0.035);
+  add += uGlow * exp(-r * r * 90.0) * (0.14 + 0.1 * sin(t * 9.0)) * uPulse.w;
+  o0 = vec4(tide, 1.0 - sh * k3 * (0.26 + 0.2 * g), clamp(0.5 + off * 12.0, 0.0, 1.0), (1.0 - er) * min(1.0, 0.25 + g * 1.2) * 0.86 * k3);
+  o1 = vec4(add, 1.0);
+}`;
+const FS_AGED = `
+uniform sampler2D uFrozen; uniform sampler2D uField; uniform sampler2D uLight;
+uniform vec4 uT;        // x seconds of the passage · w 1 = a frozen picture exists
+uniform vec4 uBellS;    // the bell on the screen (uv, y up) · z width / height · w how flat a ring on the ground lies
+uniform vec3 uPR; uniform vec3 uPW; uniform vec3 uPF;   // the three rings from the bell: radius, 1 / width, brightness
+uniform vec3 uBase;     // colour that stands in when the frozen picture is gone (context lost)
+uniform vec3 uGlow;     // the bell's light
+uniform vec3 uTo;       // the tint of the night ahead (from its fog colour) · uFog: that colour itself, dark
+uniform vec3 uFog;
+float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+vec3 gradeTo(vec3 c) { float l = dot(c, vec3(0.3, 0.59, 0.11)); return (vec3(l) * 0.8 + c * 0.2) * uTo + uFog * 0.16; }
+vec3 aged(vec2 uv) {
+  vec4 f = texture(uField, uv);
+  vec2 q = (uv - uBellS.xy) * vec2(uBellS.z, uBellS.w);
+  float r = length(q);
+  vec2 u2 = uv - q / (max(r, 1e-4) * vec2(uBellS.z, uBellS.w)) * ((f.b - 0.5) / 12.0);
+  vec3 c = uT.w > 0.5 ? texture(uFrozen, clamp(u2, 0.001, 0.999)).rgb : uBase * (0.5 + 0.9 * f.g);
+  c = mix(c, gradeTo(c), 0.35 + 0.6 * f.r);
+  c = mix(c * f.g, uFog * 0.22, f.a) + texture(uLight, uv).rgb;
+  vec3 x = (vec3(r) - uPR) * uPW, e = 1.0 / (1.0 + x * x * 9.0);
+  c += uGlow * dot(e * e, uPF) * 0.6;
+#ifndef LOW
+  c += (h21(uv * 431.0 + fract(uT.x * 7.3) * 61.0) - 0.5) * 0.07 * min(1.0, uT.x * 2.5);   // grain
+#endif
   return c;
 }`;
 const FS_HEAD = `#version 300 es
@@ -149,11 +167,14 @@ export class Crossing {
     this.hud = { on: false, k: 1, back: false, turn: 0, year: 0, from: 'now', to: 'past', beat: 0 };   // what the HUD reads (state.cross): k = how much of the controls is shown
     this.kTo = 1; this.turnOn = false; this.padHid = false;
     // GL (made in begin(), gone after the crossing; the two programs stay until the scene is left)
-    this.pPass = null; this.pWorld = null; this.vao = null; this.glGen = -1;
+    this.pPass = null; this.pWorld = null; this.pField = null; this.vao = null; this.glGen = -1;
+    this.texF = null; this.texL = null; this.fboF = null; this.qw = 0; this.qh = 0;   // the quarter-size time field and its light
     this.texA = null; this.texB = null; this.depth = null; this.fboA = null; this.fboB = null; this.w = 0; this.h = 0; this.fw = 0; this.fh = 0; this.frozen = false; this.bytes = 0;
     this.mode = 0;            // what the next scene draw is for: 0 compose to the screen · 1 the frozen copy · 2 nothing (warm-up while loading)
     this._v4 = new Float32Array(4); this._v3 = new Float32Array(3); this._v2 = new Float32Array(2); this._p = { x: 0, y: 0, w: 0 };
+    this._pr = new Float32Array(3); this._pw = new Float32Array(3); this._pf = new Float32Array(3);
     this.loopId = 0; this.sparkT = 0; this._holdRes = null; this._t0 = 0; this.slicing = false; this.prof = new Float64Array(12);
+    this._yq = []; this._ch = new MessageChannel(); this._ch.port1.onmessage = () => { const r = this._yq.shift(); if (r) { this._t0 = performance.now(); r(); } };
     // what a tool can read afterwards (performance.now() stamps of the last crossing, frames drawn and the longest gap between two of them during the passage)
     this.log = { begin: 0, answer: 0, toll: 0, freeze: 0, loaded: 0, reveal: 0, land: 0, end: 0, refused: false, frames: 0, gap: 0, last: 0, yields: 0, n: 0 };
   }
@@ -167,12 +188,12 @@ export class Crossing {
   prepare() { this.early = null; if (this.usable) { try { this._programs(); } catch (e) { console.warn('[v2g] crossing shaders:', String(e?.message ?? e)); } } }
   _programs() {
     const glr = this.sc.glr, gl = glr.gl;
-    if (this.glGen !== glr.restored) { this.glGen = glr.restored; this.pPass = this.pWorld = this.vao = null; this._dropTex(false); }   // objects of a lost context are dead
+    if (this.glGen !== glr.restored) { this.glGen = glr.restored; this.pPass = this.pWorld = this.pField = this.vao = null; this._dropTex(false); }   // objects of a lost context are dead
     if (this.pPass) return true;
     const low = this.sc.perf.tier === 'low';
-    this.pPass = program(gl, VS, FS_PASS(low), 'cross.pass'); this.pWorld = program(gl, VS, FS_WORLD(low), 'cross.world');
+    this.pPass = program(gl, VS, FS_PASS(low), 'cross.pass'); this.pWorld = program(gl, VS, FS_WORLD(low), 'cross.world'); this.pField = program(gl, VS, FS_FIELD(low), 'cross.field');
     this.vao = gl.createVertexArray();
-    for (const p of [this.pPass, this.pWorld]) { gl.useProgram(p.p); if (p.u.uScene) gl.uniform1i(p.u.uScene, 0); if (p.u.uDepth) gl.uniform1i(p.u.uDepth, 1); gl.uniform1i(p.u.uFrozen, 2); }
+    for (const p of [this.pPass, this.pWorld]) { gl.useProgram(p.p); if (p.u.uScene) gl.uniform1i(p.u.uScene, 0); if (p.u.uDepth) gl.uniform1i(p.u.uDepth, 1); gl.uniform1i(p.u.uFrozen, 2); gl.uniform1i(p.u.uField, 3); gl.uniform1i(p.u.uLight, 4); }
     return true;
   }
   _tex(w, h, depth) {
@@ -191,11 +212,17 @@ export class Crossing {
     gl.activeTexture(gl.TEXTURE0);
     this.w = w; this.h = h; this.texB = this._tex(w, h, false); this.depth = this._tex(w, h, true); this.fboB = this._fbo(this.texB, this.depth);
     if (!this.texA) { this.fw = w; this.fh = h; this.texA = this._tex(w, h, false); this.fboA = this._fbo(this.texA, this.depth); }
+    if (!this.texF) {
+      const qw = (this.qw = Math.max(2, Math.ceil(w / 4))), qh = (this.qh = Math.max(2, Math.ceil(h / 4)));
+      this.texF = this._tex(qw, qh, false); this.texL = this._tex(qw, qh, false); this.fboF = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, this.fboF);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.texF, 0); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, this.texL, 0);
+      gl.drawBuffers(DRAW2);
+    }
     gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.bindTexture(gl.TEXTURE_2D, null);
   }
   _dropTex(del) {
-    if (del && this.sc.glr && !this.sc.glr.lost) { const gl = this.sc.glr.gl; for (const f of [this.fboA, this.fboB]) if (f) gl.deleteFramebuffer(f); for (const t of [this.texA, this.texB, this.depth]) if (t) gl.deleteTexture(t); }
-    this.texA = this.texB = this.depth = this.fboA = this.fboB = null; this.w = this.h = this.fw = this.fh = 0; this.frozen = false; this.bytes = 0;
+    if (del && this.sc.glr && !this.sc.glr.lost) { const gl = this.sc.glr.gl; for (const f of [this.fboA, this.fboB, this.fboF]) if (f) gl.deleteFramebuffer(f); for (const t of [this.texA, this.texB, this.depth, this.texF, this.texL]) if (t) gl.deleteTexture(t); }
+    this.texA = this.texB = this.depth = this.fboA = this.fboB = this.texF = this.texL = this.fboF = null; this.w = this.h = this.fw = this.fh = this.qw = this.qh = 0; this.frozen = false; this.bytes = 0;
   }
 
   // ───────────────────────── the moment ─────────────────────────
@@ -246,7 +273,9 @@ export class Crossing {
     } catch (e) { console.warn('[v2g] crossing: the twin did not build:', String(e?.message ?? e)); pre = null; }
     return { pre, spot };
   }
-  _yield() { return new Promise((res) => { let done = false; const go = () => { if (done) return; done = true; this._t0 = performance.now(); res(); }; this.log.yields++; requestAnimationFrame(go); setTimeout(go, 50); }); }
+  /** end this task: the browser may draw a frame (when one is due) before the work goes on. A message task, not a timer and not the next frame:
+   *  the work resumes at once when no frame is due, and it does not stall in a tab that draws no frames. */
+  _yield() { this.log.yields++; return new Promise((res) => { this._yq.push(res); this._ch.port2.postMessage(0); }); }
   /** between two steps of the load: lets a frame through when this frame's share of loading time is used up (a crossing only) */
   breath(step) { if (!this.slicing) return null; const now = performance.now(); if (step) this.prof[step] = now; if (now - this._t0 < BUDGET) return null; return this._yield(); }
   /** a step of the load is reached (what a tool reads afterwards: scene.cx.prof - ms stamps; 1 textures 2 sky 3 meshes 4-6 models 7 effects 8 rules 9 people, pools 10 first warm-up 11 second) */
@@ -404,11 +433,11 @@ export class Crossing {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     if (mode === 1) { this.frozen = true; this.fw = w; this.fh = h; return; }
     if (mode === 2) return;
-    const p = this.pWorld, u = p.u, V = this._v4, V3 = this._v3, V2 = this._v2, B = this.bell, m = sc.vp, g = sc.game, ph = this.phase;
+    const p = this.pWorld, u = p.u, V = this._v4, V3 = this._v3, V2 = this._v2, B = this.bell, m = sc.vp, g = sc.game, ph = this.phase, reveal = ph === 'reveal', dull = ph === 'dull';
+    if (reveal) { this._field(gl, this.minT + this.t, 1); gl.bindFramebuffer(gl.FRAMEBUFFER, null); }
     gl.viewport(0, 0, w, h);
     gl.bindVertexArray(this.vao); gl.disable(gl.DEPTH_TEST); gl.depthMask(false); gl.disable(gl.CULL_FACE); gl.disable(gl.BLEND);
     gl.useProgram(p.p);
-    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, this.frozen ? this.texA : this.texB);
     gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.depth);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.texB);
     const sx = sc.focal / (g.viewW / 2), sy = sc.focal / (g.viewH / 2), e = sc.eye, R = sc.camR, U = sc.camU, F = sc.camF, A = sc.A;
@@ -416,24 +445,38 @@ export class Crossing {
     V3[0] = U[0] / sy; V3[1] = U[1] / sy; V3[2] = U[2] / sy; gl.uniform3fv(u.uU, V3); gl.uniform3fv(u.uF, F);
     V2[0] = A; V2[1] = m[14] - A * m[15]; gl.uniform2fv(u.uAB, V2);
     V[0] = B[0]; V[1] = B[1] + this.bellH; V[2] = B[2]; V[3] = this.R; gl.uniform4fv(u.uBellW, V);
-    const reveal = ph === 'reveal', dull = ph === 'dull';
     V[0] = reveal ? 1 : 0; V[1] = dull ? Math.max(0, 1 - this.t / CROSS_T.dull) * 0.85 : ph === 'gather' ? 0.55 + 0.25 * Math.min(1, this.t * 6) : 1; V[2] = this.t; V[3] = dull ? 1 : 0; gl.uniform4fv(u.uRing, V);
     if (!reveal) {   // the ring over the old night: where the bell is on the screen now (the sky needs it)
       const P = this._p, S = this.bellS; sc.project(B[0], B[1] + this.bellH, B[2], P);
       if (P.w > 1) { S[0] = P.x / g.viewW; S[1] = 1 - P.y / g.viewH; } S[2] = g.viewW / g.viewH;
     }
-    this._aged(u, reveal ? this.minT + this.t : 0, reveal ? 1 : 0);
+    this._aged(u, reveal ? this.minT + this.t : 0);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     this._done(gl);
   }
-  _aged(u, t, grade) {
-    const gl = this.sc.glr.gl, V = this._v4;
-    V[0] = t; V[1] = grade; V[2] = this.dir; V[3] = this.frozen ? 1 : 0; gl.uniform4fv(u.uT, V);
-    gl.uniform4fv(u.uBellS, this.bellS); gl.uniform4fv(u.uPulse, this.pulse); gl.uniform3fv(u.uBase, this.base); gl.uniform3fv(u.uGlow, this.dir > 0 ? GLOW_NOW : GLOW_PAST);
+  /** the uniforms of aged() for the program in use (the field must have been drawn for this frame: _field) */
+  _aged(u, t) {
+    const gl = this.sc.glr.gl, V = this._v4, P = this.pulse, R = this._pr, W = this._pw, F = this._pf;
+    V[0] = t; V[1] = 0; V[2] = this.dir; V[3] = this.frozen ? 1 : 0; gl.uniform4fv(u.uT, V);
+    for (let i = 0; i < 3; i++) { const a = P[i]; if (a < 0) { R[i] = 9; W[i] = 1; F[i] = 0; } else { R[i] = 0.03 + a * (1.25 - a * 0.22); W[i] = 1 / (0.03 + a * 0.05); F[i] = Math.exp(-a * 1.5) * P[3]; } }
+    gl.uniform3fv(u.uPR, R); gl.uniform3fv(u.uPW, W); gl.uniform3fv(u.uPF, F);
+    gl.uniform4fv(u.uBellS, this.bellS); gl.uniform3fv(u.uBase, this.base); gl.uniform3fv(u.uGlow, this.dir > 0 ? GLOW_NOW : GLOW_PAST);
     gl.uniform3fv(u.uTo, this.tintTo); gl.uniform3fv(u.uFog, this.fogTo);
+    gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, this.texL); gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, this.texF);
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, this.frozen ? this.texA : null); gl.activeTexture(gl.TEXTURE0);
+  }
+  /** this frame's quarter-size time field (t = seconds of the passage, grade = how far the change has come). Leaves the vertex array bound. */
+  _field(gl, t, grade) {
+    const p = this.pField, u = p.u, V = this._v4;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fboF); gl.viewport(0, 0, this.qw, this.qh);
+    gl.bindVertexArray(this.vao); gl.disable(gl.DEPTH_TEST); gl.depthMask(false); gl.disable(gl.CULL_FACE); gl.disable(gl.BLEND);
+    gl.useProgram(p.p);
+    V[0] = t; V[1] = grade; V[2] = this.dir; V[3] = 0; gl.uniform4fv(u.uT, V);
+    gl.uniform4fv(u.uBellS, this.bellS); gl.uniform4fv(u.uPulse, this.pulse); gl.uniform3fv(u.uGlow, this.dir > 0 ? GLOW_NOW : GLOW_PAST); gl.uniform3fv(u.uTo, this.tintTo);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
   _done(gl) {
-    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, null); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, null); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, null);
+    for (let i = 4; i >= 0; i--) { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, null); }
     gl.enable(gl.DEPTH_TEST); gl.depthMask(true); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.bindVertexArray(null);
   }
   /** the scene is loading (scene.render): the frozen picture with time running over it, and the badge. -> false when nothing could be drawn */
@@ -447,10 +490,11 @@ export class Crossing {
       if (this.glGen !== glr.restored) { try { this._programs(); } catch { /* still lost */ } }
       if (this.pPass) {
         const p = this.pPass, w = glr.canvas.width, h = glr.canvas.height, k = Math.min(1, this.t / this.minT);
+        if (!this.texF) this._alloc(w, h);   // (after a lost context: the field is made again; the picture of the old night is gone and uBase stands in)
+        this._field(gl, this.t, k * k * (3 - 2 * k));
         gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, w, h);
-        gl.bindVertexArray(this.vao); gl.disable(gl.DEPTH_TEST); gl.depthMask(false); gl.disable(gl.CULL_FACE); gl.disable(gl.BLEND);
-        gl.useProgram(p.p); gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, this.frozen ? this.texA : null);
-        this._aged(p.u, this.t, k * k * (3 - 2 * k));
+        gl.useProgram(p.p);
+        this._aged(p.u, this.t);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
         this._done(gl);
       }
@@ -460,13 +504,15 @@ export class Crossing {
     return true;
   }
   /** the GL context was lost: every object of this module is dead (the picture of the old night with them) */
-  lost() { this.pPass = this.pWorld = this.vao = null; this._dropTex(false); this.glGen = -1; }
+  lost() { this.pPass = this.pWorld = this.pField = this.vao = null; this._dropTex(false); this.glGen = -1; }
   /** the scene is being left */
   release() {
     const sc = this.sc; this.gen++;
     if (this.on) this._end();
-    if (sc.glr && !sc.glr.lost) { const gl = sc.glr.gl; try { for (const p of [this.pPass, this.pWorld]) if (p) gl.deleteProgram(p.p); if (this.vao) gl.deleteVertexArray(this.vao); } catch { /* lost */ } }
-    this.pPass = this.pWorld = this.vao = null;
+    if (sc.glr && !sc.glr.lost) { const gl = sc.glr.gl; try { for (const p of [this.pPass, this.pWorld, this.pField]) if (p) gl.deleteProgram(p.p); if (this.vao) gl.deleteVertexArray(this.vao); } catch { /* lost */ } }
+    this.pPass = this.pWorld = this.pField = this.vao = null;
+    try { this._ch.port1.onmessage = null; this._ch.port1.close(); this._ch.port2.close(); } catch { /* no channel */ }
+    for (const r of this._yq.splice(0)) r();
   }
   info() { const L = this.log; return { on: this.on, phase: this.phase, t: +this.t.toFixed(3), bytes: this.bytes, frozen: this.frozen, size: [this.w, this.h], programs: !!this.pPass, log: { ...L } }; }
 }

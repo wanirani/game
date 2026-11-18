@@ -472,11 +472,18 @@ export default class V2Game extends Scene {
     const pModels = People.models(area).filter((m) => m !== HERO_MODEL && !eModels.includes(m));
     this._dropModels(new Set([HERO_MODEL, ...eModels, ...pModels]), new Set(weapons));
     this.cx.mark(4);
-    await this.cast.load([{ model: HERO_MODEL, hero: true }, ...eModels.map((m) => ({ model: m }))], weapons, { texCap: this.perf.texCap, libWins: driveHero !== PLACEHOLDER_DRIVE_HERO });
-    if (!this.glr) return;
-    this.cx.mark(5);
-    if (pModels.length) { try { await this.cast.load(pModels.map((m) => ({ model: m })), [], { texCap: Math.min(512, this.perf.texCap) }); } catch (e) { console.warn('[v2g] a person model failed to load (that person is not drawn):', String(e?.message ?? e)); } }
-    if (!this.glr) return;
+    const cMods = [{ model: HERO_MODEL, hero: true }, ...eModels.map((m) => ({ model: m }))], cOpt = { texCap: this.perf.texCap, libWins: driveHero !== PLACEHOLDER_DRIVE_HERO }, pOpt = { texCap: Math.min(512, this.perf.texCap) };
+    if (this.cx.slicing) {   // CROSSING: under the passage the models arrive one by one (each one's upload is a block of its own, with a frame let through in between)
+      for (const m of cMods) { await this.cast.load([m], [], cOpt); if (!this.glr) return; await this.cx.breath(4); if (!this.glr) return; }
+      for (const w of weapons) { await this.cast.load([], [w], cOpt); if (!this.glr) return; await this.cx.breath(4); if (!this.glr) return; }
+      this.cx.mark(5);
+      for (const m of pModels) { try { await this.cast.load([{ model: m }], [], pOpt); } catch (e) { console.warn('[v2g] a person model failed to load (that person is not drawn):', String(e?.message ?? e)); } if (!this.glr) return; await this.cx.breath(5); if (!this.glr) return; }
+    } else {
+      await this.cast.load(cMods, weapons, cOpt);
+      if (!this.glr) return;
+      if (pModels.length) { try { await this.cast.load(pModels.map((m) => ({ model: m })), [], pOpt); } catch (e) { console.warn('[v2g] a person model failed to load (that person is not drawn):', String(e?.message ?? e)); } }
+      if (!this.glr) return;
+    }
     this.cx.mark(6);
     if (!this.heroA) this.heroA = this.cast.actor(HERO_MODEL, sword ? 'blade' : null, {});   // no sword: the hand (GRIPS.blade) holds the whip's handle
     // 4) effects
@@ -504,8 +511,9 @@ export default class V2Game extends Scene {
     for (const k of kinds) for (let i = this._poolOf(KINDS[k].model).length; i < Math.min(4, W.spawns.length); i++) { const a = this._newActor(k); if (a) this._free(a); }
     await this.cx.breath(9); if (!this.glr) return;
     this._tick0();
-    this._warm(1);
-    await this.cx.breath(10); if (!this.glr) return;
+    // CROSSING: under the passage the warm-up frame is drawn in four bands (scissor), one per slice: every pixel of it is still drawn once, but no slice
+    // costs a whole frame of the new night; the second, clean frame is left to the reveal (its first frame is that frame)
+    for (let b = 0, n = this.cx.slicing ? 4 : 1; b < n; b++) { this._warm(1, b, n); await this.cx.breath(10); if (!this.glr) return; }
     this._warm(2);
     this.cx.mark(11); await this.cx.hold(); if (!this.glr) return;   // CROSSING: the passage has its time (1.2 s; 3 s for the long form) even when the load was quicker
     this.loadMs = Math.round(performance.now() - t0);
@@ -661,9 +669,15 @@ export default class V2Game extends Scene {
     if (!this.wr) { try { this.wr = new WhipRenderer(glr.gl); } catch (e) { console.warn('[v2g] the whip is not drawn:', String(e?.message ?? e)); this.wr = null; } }
   }
   /** draw every model, texture and effect once and block until the GPU has really done it (no hitch in the first fight) */
-  _warm(part = 0) {   // part 1 / 2 = its two halves on their own (CROSSING: a frame of the passage is drawn between them); 0 = both
+  _warm(part = 0, band = 0, bands = 1) {   // part 1 / 2 = its two halves on their own; 0 = both. CROSSING: band of bands = the first half drawn in horizontal bands, one per call
     const glr = this.glr, gl = glr.gl, fx = this.fx, g = this.game, h = this.sim.hero;
-    if (part === 2) { if (fx) { fx.clear(); this._gl(g.viewW, g.viewH, 1, false); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, PX); } return; }
+    if (part === 2) { if (fx) { fx.clear(); if (!this.cx.slicing) { this._gl(g.viewW, g.viewH, 1, false); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, PX); } } return; }
+    if (bands > 1 && band > 0) {
+      const H = glr.canvas.height, y0 = Math.floor(H * band / bands), y1 = Math.floor(H * (band + 1) / bands);
+      gl.enable(gl.SCISSOR_TEST); gl.scissor(0, y0, glr.canvas.width, y1 - y0);
+      try { this._gl(g.viewW, g.viewH, 1, true); gl.readPixels(0, y0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, PX); } finally { gl.disable(gl.SCISSOR_TEST); }
+      return;
+    }
     this._camera(1 / 60);
     if (fx) {
       const P = PRESET_IDS, x = h.x + 60, y = h.y, z = h.z, ev = fx.onEvent;
@@ -674,8 +688,8 @@ export default class V2Game extends Scene {
       fx.feel.flash(1, 1, 1, 0.2); fx.update(0.03);
       fx.onEvent = ev; fx.feelOn = true;
     }
-    this._gl(g.viewW, g.viewH, 1, true);
-    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, PX);
+    if (bands > 1) { gl.enable(gl.SCISSOR_TEST); gl.scissor(0, 0, glr.canvas.width, Math.floor(glr.canvas.height / bands)); }
+    try { this._gl(g.viewW, g.viewH, 1, true); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, PX); } finally { if (bands > 1) gl.disable(gl.SCISSOR_TEST); }
     if (part !== 1 && fx) { fx.clear(); this._gl(g.viewW, g.viewH, 1, false); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, PX); }
   }
   // ───────────────────────── characters ─────────────────────────

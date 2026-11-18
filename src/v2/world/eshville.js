@@ -126,7 +126,7 @@ export function eshville(era, flags = {}) {
     add('street', { t: 'prop', mesh: 'stall', x: 2240, z: 258, h: 130, w: 140, solid: 72, solidZ: 23 }, { t: 'prop', mesh: 'hay', x: 3060, z: 262, h: 62, solid: 34, solidZ: 16 });   // (BREAK: the sacks at 1960 that read as untextured jars are real clay jars now - breakables below)
     add('east', { t: 'prop', mesh: 'plaguepost', x: 4560, z: 200, h: 220, code: true, solid: 10, solidZ: 10 }, { t: 'prop', mesh: 'stall', x: 3500, z: 836, h: 130, w: 140, solid: 72, solidZ: 23 }, { t: 'prop', mesh: 'stall', x: 4300, z: 836, h: 130, w: 140, solid: 72, solidZ: 23 },
       { t: 'prop', mesh: 'hay', x: 3624, z: 850, h: 62, solid: 34, solidZ: 16 }, { t: 'deco', mesh: 'candles', x: 3900, z: 400, light: { r: 180, i: 1.0, y: 20 } });
-    add('east', { t: 'deco', mesh: 'candles', x: 3760, y: 84, z: 1600, n: 5, light: { r: 200, i: 1.1, y: 20 } }, { t: 'deco', mesh: 'candles', x: 4040, y: 84, z: 1600, n: 5, light: { r: 200, i: 1.1, y: 20 } },
+    add('east', { t: 'deco', mesh: 'candles', x: 3832, y: 84, z: 1612, n: 5, light: { r: 200, i: 1.1, y: 20 } }, { t: 'deco', mesh: 'candles', x: 3968, y: 84, z: 1612, n: 5, light: { r: 200, i: 1.1, y: 20 } },   // at the door's jambs (they stood at 3760 / 4040, where the braziers' legs are now)
       ...[3550, 3670, 4130, 4250].map((x) => ({ t: 'deco', mesh: 'candles', x, y: 84, z: 1616, n: 4, light: { r: 170, i: 0.9, y: 20 } })));   // WORLD-LOOK: under each nave window (1697: the church is in use)
     for (const [x, z] of [[900, 150], [2600, 150], [3900, 600]]) anchors.push({ id: 'mist_' + x, kind: 'mist', x, y: 0, z, size: 2 });
   }

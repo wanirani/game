@@ -144,11 +144,11 @@ Object.assign(WALLPROPS, {
     }
   },
   ivy(G, F, s) {
-    const w = s.w ?? 120, h = s.h ?? 180, sd = s.seed ?? 1, n = s.n ?? Math.max(8, Math.round(w * h / 1700));
+    const w = s.w ?? 120, h = s.h ?? 180, sd = s.seed ?? 1, n = s.n ?? Math.max(10, Math.round(w * h / 1000));
     for (let i = 0; i < n; i++) {
-      const t = hash(i * 1.3 + sd, 4.1), yy = s.y + h * t * t, sp = w * 0.5 * (1 - 0.72 * t * t), uu = s.u + (hash(sd * 2.2, i * 1.9) - 0.5) * 2 * sp, r = (11 + 15 * hash(i, sd + 3)) * (1 - 0.35 * t), a0 = hash(i + sd, 8.8) * 6.28, pr = 1.2 + 2.6 * hash(i, sd), pts = [];
+      const t = hash(i * 1.3 + sd, 4.1), yy = s.y + h * t * t, sp = w * 0.5 * (1 - 0.72 * t * t), uu = s.u + (hash(sd * 2.2, i * 1.9) - 0.5) * 2 * sp, r = (7 + 10 * hash(i, sd + 3)) * (1 - 0.35 * t), a0 = hash(i + sd, 8.8) * 6.28, pr = 1.2 + 2.6 * hash(i, sd), pts = [];
       for (let k = 0; k < 5; k++) { const a = a0 + k * 1.2566, rr = r * (0.62 + 0.38 * hash(i * 5 + k, sd)); pts.push(F.pt(uu + Math.cos(a) * rr, yy + Math.sin(a) * rr * 0.9, pr)); }
-      G.poly('white', pts, F.n, { tint: [0.13 + 0.08 * hash(i, 1.1), 0.24 + 0.12 * hash(sd, i * 2.7), 0.12], vary: 0.3, k: 0.8 + 0.4 * hash(i + 4, sd) });
+      G.poly('white', pts, F.n, { tint: [0.07 + 0.05 * hash(i, 1.1), 0.12 + 0.08 * hash(sd, i * 2.7), 0.07], vary: 0.3, k: 0.8 + 0.5 * hash(i + 4, sd) });   // dark, small leaves: a mass of ivy, not green tiles
     }
   },
   drape(G, F, s) {
