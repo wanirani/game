@@ -4,6 +4,7 @@
 이 문서는 다른 구역(PLAY · WORLD · UI · STORY)이 **이 문서만 보고** 맞출 수 있게 적는다. 바꾸면 아래 "바뀐 것"에 한 줄.
 
 ## 바뀐 것
+- 11-18 11:55 **SPEED-FIRE** — `TURN_RUN` 15 → 17.5 rad/s (규칙의 turnRate/pivotRate 17.4 를 따른다) · 카메라가 영웅을 따라붙는 빠르기 kt 5.5 → 8.5 (달리기 410 px/s 에서 처지는 거리 48 px — 예전 275 px/s 의 50 px 와 같다) · 앞쪽 여백 kf 1.5 → 2. 불: 효과 닻(`src/v2/game/anchors.js`)의 fire 가 이제 **유일한 불길**이다(세계는 불 잎을 굽지 않는다 — ENV_KIT §20): 크기 세 갈래(화로 · 집 불 · 담 위/잔해 불), 넓은 불(닻의 `w`)은 너비를 따라 최대 네 점에서, 혀 · 속은 효과 governor 가 솎지 않는 우선 입자(낮은 단계는 0.7배), 빛 반지름 300×size → 200+180×size.
 - 11-18 03:10 **넷째 판 (INTEGRATE-B1) — 채찍 · 보스 · 새 지역**
   - **채찍 비질리아가 장면에 들어왔다**(`src/v2/whip/`, `docs/v2/WHIP.md` §7 그대로). 영웅은 검을 들지 않는다(WebGL2: `cast.actor('kael', null)` · 불러오는 무기 목록에 `blade` 없음. WebGL1 에는 채찍 그리기가 없어 상자 검이 남는다). 틱마다 `_sync` 에서 손(뼈대의 `weaponMatrix`) → `driveWhip(whip, hero, TUNE, pull)` → `whip.update(pdt, hand)`(`pdt` = 놀이 dt, 타격 멈춤 중 0 → 끈이 세계와 함께 언다). 그리기는 `_gl` 의 `cr.end()` 바로 뒤 `wr.draw(whip, env, a)`(`env.viewport` = 실제 그리기 크기, `env.lightPos/lightCol` = 효과 점광). 장면의 칸: `scene.whip` · `scene.wr` · `scene.whipLink` · `scene.whipHand` · `scene.whipPullE`.
   - 훅: `hit` → 무기 `'whip'` 일 때 `whip.set('crack', { x, y, z, strength })` 뒤에 `_strike('whip', …)`(끝이 맞은 점에 닿은 채 멈춘다 — 검사에서 0–0.1 px) · `pull(e)` → 휘감긴 적을 `driveWhip` 의 `pull` 로 · `sfx('slash')` → `feel.swing('whip', …)` · 막기 / 튕겨내기도 무기 `'whip'`. 규칙의 기술표(`src/v2/play/moves.js` 의 `M()`)는 이제 모든 기술에 `weapon: 'whip'` 을 준다. 채찍의 종 울림 사건(`ring`)은 그림만 쓰고 소리는 규칙(`holy.bell` · `bell.toll`)에 맡긴다.
