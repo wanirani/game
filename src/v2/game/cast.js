@@ -13,7 +13,7 @@ import { loadAnimLib } from './animlib.js';
 import { drawOpts } from './charr.js';
 
 export const CHAR_DIR = ASSET_ROOT + 'v2/char3d/';
-export const LIB_GROUPS = ['locomotion', 'combat', 'reactions', 'magic', 'enemy'];
+export const LIB_GROUPS = ['locomotion', 'combat', 'reactions', 'magic', 'enemy', 'story'];   // story = the townspeople's poses (talk, kneel, sit ...)
 /** hero's sword (hand-bone space, cm; +Y = towards the tip) — the pilot blade until a modelled one exists */
 const BLADE = [
   { min: [-1.6, -9, -1.6], max: [1.6, 9, 1.6], color: [0.32, 0.2, 0.12] },

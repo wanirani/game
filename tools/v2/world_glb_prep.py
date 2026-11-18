@@ -47,8 +47,8 @@ def raster(Q, UV, T, tex, x0, y1, sc, w, h):
 
 def fill(img, hit, passes=24):
     """bleed colour into the empty texels (mip levels and edges sample them)"""
-    img = img.copy(); hit = hit.copy()
-    for _ in range(passes):
+    img = img.copy(); hit = hit.copy(); dist = np.zeros(hit.shape, np.float32)
+    for it in range(passes):
         if hit.all(): break
         acc = np.zeros_like(img); n = np.zeros(hit.shape, np.float32)
         for dy, dx in ((0, 1), (0, -1), (1, 0), (-1, 0)):
@@ -58,9 +58,11 @@ def fill(img, hit, passes=24):
             if dx == 1: s[:, 0] = 0; k[:, 0] = 0
             if dx == -1: s[:, -1] = 0; k[:, -1] = 0
             acc += s; n += k
-        new = (~hit) & (n > 0); img[new] = acc[new] / n[new][:, None]; hit |= new
-    if not hit.all(): img[~hit] = img[hit].mean(0) if hit.any() else 90
-    return img
+        new = (~hit) & (n > 0); img[new] = acc[new] / n[new][:, None]; hit |= new; dist[new] = it + 1
+    if not hit.all(): img[~hit] = img[hit].mean(0) if hit.any() else 90; dist[~hit] = passes
+    # the low model is fatter than thin parts of the full one (a web between the cart shafts, fins on staves): what it shows there is this bleed.
+    # Keep the edge colour for 3 texels (mip levels), then fade to shadow - a pale smear read as paper, a dark one reads as the gap it is.
+    return img * (1.0 - 0.6 * np.clip((dist - 3.0) / 7.0, 0.0, 1.0))[..., None]
 
 
 def glow(c):

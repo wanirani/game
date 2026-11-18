@@ -26,6 +26,10 @@ import { GLR, SpriteBatch } from './glr.js';
 import { CharRenderer } from './charr.js';
 import { Cast } from './cast.js';
 import { loadArea, hasArea, roomOf, kitTexPath, DEFAULT_AREA } from './area.js';
+import { drawDecalSprites as drawEnvDecals, DECAL_ALPHA } from '../env/decals.js';
+import { People, LINES } from './people.js';
+import { Anchors } from './anchors.js';
+import { Res } from './res.js';
 import { createBuiltinHud } from './hud.js';
 import { readPerf } from './perf.js';
 import { UI_LOADER, UI_DEFAULT } from './seams.js';
@@ -40,29 +44,11 @@ const TEX_SRC = {
 };
 const HIDE_BTNS = ['sub', 'skill1', 'skill2', 'ult', 'swap', 'mount', 'guard', 'lock', 'auto', 'maptog', 'bag'];   // v1 pad buttons with no meaning here (pause = leave, fullscreen stay)
 const DASH_TRAIL = RB({ mode: 1, life: 0.24, width: 58, col: [0.45, 0.8, 2.2, 0.5] });
-const SUN = [0.56, 0.56, 0.62], AMB = [0.76, 0.77, 0.84], RIM_HERO = [0.6, 0.7, 1, 0.5], RIM_WARN = [1.7, 0.35, 0.2, 0.85], RIM_ENEMY = [0.55, 0.65, 0.9, 0.35];
+const SUN = [0.56, 0.56, 0.62], AMB = [0.76, 0.77, 0.84], RIM_HERO = [0.6, 0.7, 1, 0.5], RIM_WARN = [1.7, 0.35, 0.2, 0.85], RIM_ENEMY = [0.55, 0.65, 0.9, 0.35], RIM_PEOPLE = [0.6, 0.66, 0.85, 0.3];
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const hyp = (x, y, z = 0) => Math.sqrt(x * x + y * y + z * z);   // Math.hypot makes a temporary array per call in V8
 const wrapPi = (a) => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
 const PX = new Uint8Array(4);
-
-/** stain decals drawn once into the small atlas (same pictures as the v2c scene) */
-function drawDecalSprites(x, ox, oy) {
-  const R = (seed) => { let s = seed; return () => ((s = (s * 16807) % 2147483647) / 2147483647); };
-  const blob = (cx, cy, n, r0, col, seed, a0 = 0.5) => {
-    const r = R(seed);
-    for (let i = 0; i < n; i++) {
-      const a = r() * 6.283, d = Math.sqrt(r()) * 40, px = cx + Math.cos(a) * d, py = cy + Math.sin(a) * d * 0.9, rr = r0 * (0.5 + r());
-      const g = x.createRadialGradient(px, py, 0, px, py, rr); g.addColorStop(0, col.replace('A', String(a0 * (0.5 + 0.5 * r())))); g.addColorStop(1, col.replace('A', '0'));
-      x.fillStyle = g; x.fillRect(px - rr, py - rr, rr * 2, rr * 2);
-    }
-  };
-  x.save(); x.beginPath(); x.rect(ox, oy, 128, 128); x.clip(); blob(ox + 64, oy + 64, 60, 20, 'rgba(96,128,70,A)', 7, 0.55); blob(ox + 64, oy + 64, 80, 5, 'rgba(150,180,96,A)', 9, 0.6); x.restore();
-  x.save(); x.beginPath(); x.rect(ox + 132, oy, 128, 128); x.clip();
-  blob(ox + 196, oy + 64, 26, 30, 'rgba(10,14,26,A)', 11, 0.9); blob(ox + 190, oy + 58, 10, 16, 'rgba(110,130,190,A)', 13, 0.35);
-  x.globalAlpha = 0.5; x.fillStyle = '#dfe6ff'; x.beginPath(); x.ellipse(ox + 180, oy + 52, 14, 2.2, -0.2, 0, 7); x.fill(); x.beginPath(); x.ellipse(ox + 206, oy + 70, 9, 1.6, -0.2, 0, 7); x.fill(); x.restore();
-  x.save(); x.beginPath(); x.rect(ox + 264, oy, 128, 128); x.clip(); blob(ox + 328, oy + 64, 40, 26, 'rgba(0,0,0,A)', 17, 0.4); x.restore();
-  return { moss: [ox, oy], puddle: [ox + 132, oy], stain: [ox + 264, oy] };
-}
 
 export default class V2Game extends Scene {
   constructor(game) {
@@ -75,11 +61,13 @@ export default class V2Game extends Scene {
   // ───────────────────────── enter / exit ─────────────────────────
   enter(params) {
     const g = this.game;
-    this.perf = readPerf(); this.everyFrame = this.perf.everyFrame;
+    this.perf = readPerf(); this.everyFrame = this.perf.everyFrame; this.res = new Res(this.perf); this._lastDraw = 0;
     this.mode = g.canvasAlpha ? 'under' : 'layer';
     try { globalThis.localStorage?.setItem('bn.v2.under', '1'); } catch { /* private mode */ }   // next launch boots with an alpha canvas
     this.story = typeof params?.story === 'function' ? params.story : null; this.ui = { dialog: null }; this.locked = false;
     this.area = null; this.W = null; this.sim = null; this.fx = null; this.cr = null; this.cast = null; this.hud = createBuiltinHud();
+    this.people = new People(); this.anchors = new Anchors(); this.flags = new Set(); this.hidden = new Set(); this.lockOv = new Map(); this.storyFlag = null;
+    this._use = false; this._caps = { skill: false, bell: false }; this._offT = 0; this._go = null; this.fadeA = 0; this.fadeTo = 0; this._flagFn = (n) => this.flag(n); this._useFn = () => { this._use = true; }; this._skyKey = ''; this._peopleN = 0;
     this.heroA = null; this.actors = []; this.pool = new Map(); this._ERef = null;
     this.bridge = bindFxSound(feel); this.feelN = 0; this.lastFeel = null; this._actE = null; this._simSteps = false;
     this.shotL = new Array(32).fill(null); this.shotN = 0;
@@ -90,7 +78,8 @@ export default class V2Game extends Scene {
     this.env = { vp: this.vp, eye: this.eye, fog: null, sunDir: new Float32Array(3), sun: SUN, amb: AMB };
     this.A = 1; this.focal = FOCAL;
     this.samples = new Float32Array(300); this.sampleN = 0; this.sorted = new Float32Array(300); this.updMs = 0;
-    this.inp = { mx: 0, mz: 0, jump: false, jumpHeld: false, attack: false, attackHeld: false, dash: false, guard: false, lockNext: false, jumpUsed: false };
+    this.inp = { mx: 0, mz: 0, jump: false, jumpHeld: false, attack: false, attackHeld: false, dash: false, guard: false, lockNext: false, jumpUsed: false, skill: false, skillHeld: false, bell: false, bellHeld: false };
+    this.people.prompt.onTap = this._useFn; this._talkT = 0;
     this.numbers = []; for (let i = 0; i < 16; i++) this.numbers.push({ on: false, x: 0, y: 0, z: 0, str: '', color: '#fff', t: 0, big: false });
     this.P12 = new Float32Array(12); this.tmpA = new Float32Array(3); this.tmpB = new Float32Array(3); this.tint = new Float32Array(3); this.pos = { x: 0, y: 0, z: 0 }; this.pr = { x: 0, y: 0, w: 0 };
     this.visY = 0; this.visYP = 0; this.stride = 0; this._mv = null; this._rb = -1; this._swung = false; this._turnDir = 0; this._turnHold = 0; this.tickN = 0; this._dashRb = -1; this._secId = ''; this._deaths = 0; this._ts = 1; this.doneT = 0; this._restored = 0;
@@ -103,20 +92,16 @@ export default class V2Game extends Scene {
       area: { id: '', name: '', era: 'now' }, night: 'now', section: { id: '', label: '' }, enemies: [], enemiesLeft: 0, yardLeft: 0, numbers: this.numbers, numberN: 0,
       project: (x, y, z, out) => sc.project(x, y, z, out), done: false, doneT: 0, loading: true, message: '', message2: '', debug: this.perf.debug,
       debugLine: () => sc._debugLine(), stats: () => sc.stats(), dialog: null,
+      candles: { lit: 5, max: 5 }, left: 0, prompts: this.people.none,
+      pad: { skill: { mode: 'hook', cd: 0, disabled: true }, bell: { mode: 'short', charge: 0, disabled: true }, roll: { cd: 0, disabled: false }, attack: { disabled: false }, jump: { disabled: false }, lock: { disabled: false } },
     };
-    try { this.glr = new GLR({ forceGL1: /[?&]v2gl=1(&|$)/.test(globalThis.location?.search ?? '') }); } catch (e) { this.glError = String(e?.message ?? e); console.warn('[v2g]', this.glError); }
+    try { this.glr = new GLR({ forceGL1: /[?&]v2gl=1(&|$)/.test(globalThis.location?.search ?? ''), antialias: this.res.aa }); } catch (e) { this.glError = String(e?.message ?? e); console.warn('[v2g]', this.glError); }
     if (this.glr) {
       this._attach();
-      this._load(params?.area ?? DEFAULT_AREA, params?.spawn ?? null).catch((e) => { if (!this.glr) return; this.glError = String(e?.message ?? e); console.error('[v2g] load failed', e); });   // (left the scene while loading: nothing to report)
+      this._load(params?.area ?? this.perf.area ?? DEFAULT_AREA, params?.spawn ?? this.perf.spawn ?? null).catch((e) => { if (!this.glr) return; this.glError = String(e?.message ?? e); console.error('[v2g] load failed', e); });   // (left the scene while loading: nothing to report)
     }
     this.hudKind = 'builtin';
-    if (UI_LOADER && (this.perf.ui ?? UI_DEFAULT)) UI_LOADER().then((m) => {
-      if (!this.glr || g.top !== this || typeof m.createHud !== 'function') return;
-      const h = m.createHud(g); if (!h) return;
-      this.hud = h; this.hudKind = 'ui';
-      if (h.padHideButtons) this.padHideButtons = h.padHideButtons;
-      if (h.hidePad) { this.showPad = false; this.hidePad = true; }
-    }).catch((e) => this._hudFail(e));
+    if (UI_LOADER && (this.perf.ui ?? UI_DEFAULT)) this._loadUi();
     try { feel.preload(); } catch { /* no audio yet */ }
     this._api();
   }
@@ -128,6 +113,7 @@ export default class V2Game extends Scene {
     if (this.cr) { this.cr.destroy(); this.cr = null; }
     if (this.glr) { this.glr.destroy(); this.glr = null; }
     for (const c of this._canvases ?? []) { c.width = 1; c.height = 1; }
+    this.people?.release(null); this._skyC = null; this.skyTex = null; this.tex = null;
     this._canvases = null; this.ready = false; this.actors.length = 0; this.pool.clear(); this.heroA = null; this.cast = null; this.sim = null; this.W = null;
     if (globalThis.__v2?.scene === this) delete globalThis.__v2;
   }
@@ -137,42 +123,131 @@ export default class V2Game extends Scene {
     const old = this.hud; this.hud = createBuiltinHud(); this.hudKind = 'builtin'; this.showPad = true; this.hidePad = false; this.padHideButtons = HIDE_BTNS;
     try { if (old && old !== this.hud) (old.release ?? old.dispose)?.call(old); } catch { /* already broken */ }
   }
-  setStory(fn) { this.story = typeof fn === 'function' ? fn : null; }
+  /** plug the story in: fn(name, data, api); opts.flag(name) answers the actors' `when` flags (otherwise the built-in ones) */
+  setStory(fn, opts) { this.story = typeof fn === 'function' ? fn : null; this.storyFlag = typeof opts?.flag === 'function' ? opts.flag : null; }
+  /** the cut-glass interface (src/v2/ui): replaces the built-in HUD and hides the v1 pad */
+  _loadUi() {
+    const g = this.game;
+    return UI_LOADER().then((m) => {
+      if (!this.glr || g.top !== this || typeof m.createHud !== 'function') return;
+      const h = m.createHud(g, { onPause: () => this._pause(), onDisabledPress: (id) => this._padOff(id) }); if (!h) return;
+      const old = this.hud; this.hud = h; this.hudKind = 'ui';
+      try { if (old && old !== h) (old.release ?? old.dispose)?.call(old); } catch { /* built-in */ }
+      if (h.padHideButtons) this.padHideButtons = h.padHideButtons;
+      if (h.hidePad) { this.showPad = false; this.hidePad = true; }
+    }).catch((e) => this._hudFail(e));
+  }
+  /** switch between the new buttons and the old pad while playing (pause menu row). Remembered in localStorage 'bn.v2.ui'. */
+  setUi(on) {
+    try { globalThis.localStorage?.setItem('bn.v2.ui', on ? '1' : '0'); } catch { /* private mode */ }
+    if (on) { if (this.hudKind !== 'ui' && UI_LOADER) this._loadUi(); return; }
+    if (this.hudKind !== 'ui') return;
+    const old = this.hud; this.hud = createBuiltinHud(); this.hudKind = 'builtin'; this.showPad = true; this.hidePad = false; this.padHideButtons = HIDE_BTNS;
+    try { (old.release ?? old.dispose)?.call(old); } catch { /* ui lane */ }
+  }
+  _leave() { const g = this.game; if (g.registry.v2pick) g.go('v2pick', {}, { fade: true }); else g.go('title', {}, { fade: true }); }
+  /** ESC / START / the pause button: the pause menu (resume, settings, new buttons <-> old pad, leave) */
+  _pause() {
+    const ui = this.hudKind === 'ui';
+    if (!this.hud.openPause) { this._leave(); return; }
+    this.hud.openPause({ onLeave: () => this._leave(), extra: [{ icon: 'next', label: ui ? '옛 단추로 바꾸기' : '새 단추로 바꾸기', onPick: () => this.setUi(!ui) }] });
+  }
+  /** a short notice through the HUD (the v1 toast only when the HUD has none) */
+  _toast(t, kind) { const h = this.hud; if (h.toast) h.toast(t, kind ? { kind } : undefined); else this.game.toast?.(t); }
+  /** a pad button the rules cannot use yet was pressed: say so (at most once every 1.5 s) */
+  _padOff(id) {
+    if (this._offT > 0) return; this._offT = 1.5;
+    this._toast(id === 'bell' ? '종은 아직 울릴 수 없다' : id === 'skill' ? '솜씨는 아직 배우지 못했다' : '지금은 쓸 수 없다', 'info');
+  }
+  /** story flag: the story's own answer when plugged in, otherwise the built-in ones ("<section or group>_clear", set by events) */
+  flag(name) {
+    if (this.storyFlag) { try { return !!this.storyFlag(name); } catch { return false; } }
+    if (this.flags.has(name)) return true;
+    const i = name.length - 6;
+    if (i > 0 && name.indexOf('_clear') === i && this.sim) {
+      const E = this.sim.enemies; let seen = false;
+      for (let k = 0; k < E.length; k++) { const e = E[k], hit = e._sec !== undefined && (name.startsWith(e._sec) && e._sec.length === i || (e.group && name.startsWith(e.group) && e.group.length === i)); if (!hit) continue; seen = true; if (!e.dead && e.state !== 'dead') return false; }
+      return seen;
+    }
+    return false;
+  }
+  /** open / close an exit (the story decides; overrides are kept for the whole visit of the scene). areaId defaults to this area. */
+  unlockExit(id, areaId) { return this._setLock(id, areaId ?? this.area?.id, null); }
+  lockExit(id, areaId, key = 'story') { return this._setLock(id, areaId ?? this.area?.id, key); }
+  _setLock(id, areaId, v) {
+    this.lockOv.set(areaId + '/' + id, v);
+    if (this.area?.id !== areaId) return false;
+    for (const x of this.area.exits) if (x.id === id) { x.locked = v; if (x._box) x._box.solid = !!v; x._near = false; return true; }
+    return false;
+  }
+  hideActor(id) { this.hidden.add(id); }
+  showActor(id) { this.hidden.delete(id); }
+  /** the hero uses what the prompt offers: a person (event talk) or a spot (event interact) */
+  _useTarget() {
+    const t = this.people.target; if (!t) return;
+    const d = t.def;
+    if (t.a3) {
+      this.people.talking = t;
+      this.emit('talk', { id: t.id, talk: d.talk ?? null, actor: d });
+      if (!this.story) this._say({ speaker: t.name, portrait: t.portrait, side: 'left', text: LINES[t.id] ?? LINES[d.model] ?? '……' });
+    } else {
+      this.emit('interact', { id: d.id, kind: d.kind, event: d.event ?? null, data: d.data ?? null, locked: d.locked ?? null, spot: d });
+      if (!this.story) {   // until the story is plugged in: name the spot, and remember what it would change
+        if (d.event === 'door.pull') this.flags.add('door_pulled');
+        this._toast(d.locked ? d.label + ' — 지금은 열리지 않는다' : d.label, d.locked ? 'warn' : 'info');
+      }
+    }
+  }
+  /** one dialogue box through the HUD (UI lane's box, or the built-in one) */
+  _say(d) { const h = this.hud; if (h.showDialog) h.showDialog(d); else this.ui.dialog = d; }
   /** wake every enemy of a spawn group (area triggers `wake`, or the story) */
   wakeGroup(group) {
     const SP = this.W?.spawns ?? [], E = this.sim?.enemies ?? []; let n = 0;
-    for (let i = 0; i < E.length; i++) { const e = E[i], g = e.group ?? (E.length === SP.length ? SP[i].group : null); if (g !== group || e.dead || e.state === 'dead') continue; e.active = true; if (e.state === 'idle') { e.state = 'chase'; e.stateT = 0; } n++; }
+    for (let i = 0; i < E.length; i++) { const e = E[i], g = e.group ?? (E.length === SP.length ? SP[i].group : null); if (g !== group || e.dead || e.state === 'dead') continue; if (this.sim.wake && !e.active) this.sim.wake(e); e.active = true; if (e.state === 'idle') { e.state = 'chase'; e.stateT = 0; } n++; }
     return n;
   }
-  /** the hero stepped into an open exit: go there if that area exists, otherwise only name it */
+  /** the hero stepped into an open exit: fade to black, load the target area at the named spawn, fade back in. A target that is not built says so. */
   _travel(x) {
     this._exitBusy = true;
     hasArea(x.to).then((ok) => {
       if (!this.glr) return;
-      if (!ok) { this._exitBusy = false; if (x.label) this.game.toast?.(x.label); this.emit('exit.missing', { id: x.id, to: x.to }); return; }
+      if (!ok) { this._exitBusy = false; this._toast((x.label ? x.label + ' — ' : '') + '아직 갈 수 없는 곳이다', 'warn'); this.emit('exit.missing', { id: x.id, to: x.to }); return; }
       this.emit('exit', { id: x.id, to: x.to, spawn: x.spawn ?? null });
-      this.game.flash?.('#000', 0.9, 2.2);
-      return this.gotoArea(x.to, x.spawn ?? null);
+      this._go = { to: x.to, spawn: x.spawn ?? null }; this.fadeTo = 1; this.locked = true;   // update() starts the load when the picture is black
     }).catch((e) => { this._exitBusy = false; console.error('[v2g] travel failed', e); });
   }
+  /** a locked exit is a wall; the hero pushing against it is told why (once per approach). 'not_built' = the target does not exist yet */
+  _lockedMsg(x) {
+    const nb = x.locked === 'not_built', lab = x.label ? x.label + ' — ' : '';
+    if (nb) this.emit('exit.missing', { id: x.id, to: x.to, exit: x }); else this.emit('exit.locked', { id: x.id, locked: x.locked, exit: x });
+    if (nb) this._toast(lab + '아직 갈 수 없는 곳이다', 'warn');
+    else if (!this.story) this._toast(lab + (this._autoKey(x) ? '잠겨 있다. 이곳의 적을 모두 쓰러뜨리면 열린다' : '지금은 열리지 않는다'), 'warn');
+  }
+  /** without a story: an exit locked by a key opens when the area's arena is cleared (the story lane replaces this rule) */
+  _autoKey(x) { return !this.story && typeof x.locked === 'string' && x.locked !== 'not_built' && x.locked.indexOf('story:') !== 0; }
   /** story / event seam: the scene calls story(name, data, api) on triggers */
   emit(name, data) {
     if (!this.story) return;
     if (!this._sapi) {
       const sc = this;
       this._sapi = {
-        scene: sc, get sim() { return sc.sim; }, lock(on) { sc.locked = !!on; }, toast(t) { sc.game.toast?.(t); }, teleport(id) { return globalThis.__v2?.teleport(id); },
-        gotoArea(id, spawn) { return sc.gotoArea(id, spawn); }, fx(n, o) { sc.fx?.play(n, o); }, sound(n, pos) { try { feel.play(n, pos ?? null); } catch { /* no audio */ } }, setDialog(d) { sc.ui.dialog = d ?? null; },
+        scene: sc, get sim() { return sc.sim; }, lock(on) { sc.locked = !!on; }, teleport(id) { return globalThis.__v2?.teleport(id); },
+        gotoArea(id, spawn, o) { return sc.gotoArea(id, spawn, o); }, fx(n, o) { sc.fx?.play(n, o); }, sound(n, pos) { try { feel.play(n, pos ?? null); } catch { /* no audio */ } }, setDialog(d) { sc.ui.dialog = d ?? null; },
+        toast(t, kind) { sc._toast(t, kind); }, unlockExit(id, area) { return sc.unlockExit(id, area); }, lockExit(id, area, key) { return sc.lockExit(id, area, key); }, hideActor(id) { sc.hideActor(id); }, showActor(id) { sc.showActor(id); },
+        wakeGroup(g) { return sc.wakeGroup(g); }, groupLeft(g) { return sc.groupLeft(g); }, bellCross(o) { return sc.area?.twin ? sc.gotoArea(sc.area.twin, null, { keepPosition: true }) : Promise.resolve(false); },
       };
     }
     try { this.story(name, data, this._sapi); } catch (e) { console.error('[v2g] story handler failed:', name, e); }
   }
-  /** leave this area for another one (black fade by the caller is optional; resources of the old area are released) */
-  async gotoArea(id, spawn) {
+  /** living enemies of a spawn group */
+  groupLeft(group) { const E = this.sim?.enemies ?? []; let n = 0; for (let i = 0; i < E.length; i++) if (E[i].group === group && !E[i].dead && E[i].state !== 'dead') n++; return n; }
+  /** leave this area for another one (resources of the old area are released). opts.keepPosition: stand at the same x, z (twin areas — the bell crossing) */
+  async gotoArea(id, spawn, opts) {
     if (!this.glr) return false;
+    const h = this.sim?.hero, keep = opts?.keepPosition && h ? { x: h.x, z: h.z, face: [h.dirX ?? 1, h.dirZ ?? 0] } : null;
     this.ready = false; this.state.loading = true;
     this._releaseArea();
-    try { await this._load(id, spawn); } catch (e) { if (this.glr) { this.glError = String(e?.message ?? e); console.error('[v2g] area load failed', e); } }
+    try { await this._load(id, spawn, keep); } catch (e) { if (this.glr) { this.glError = String(e?.message ?? e); console.error('[v2g] area load failed', e); } }
     return this.ready;
   }
   // ───────────────────────── DOM layers ─────────────────────────
@@ -215,11 +290,17 @@ export default class V2Game extends Scene {
     this.envMeshes = null; this.sim = null; this._ERef = null; this.shotN = 0;
     for (const a of this.actors) this._free(a);
     this.actors.length = 0;
+    this.people.release(this); this.anchors.list.length = 0; this.state.prompts = this.people.none;
   }
-  async _load(areaId, spawn) {
+  async _load(areaId, spawn, keep) {
     const t0 = performance.now(), glr = this.glr, first = !this.tex;
     const area = await loadArea(areaId), W = area.W, E = W.env;
     if (!this.glr) return;
+    for (const x of area.exits) {   // exits: saved lock overrides, and the wall that stands in the box while it is locked
+      const k = area.id + '/' + x.id; if (this.lockOv.has(k)) x.locked = this.lockOv.get(k);
+      x._box = null; for (let i = 0; i < W.boxes.length; i++) if (W.boxes[i].gate === x.id) x._box = W.boxes[i];
+      if (x._box) x._box.solid = !!x.locked; x._near = false;
+    }
     const cvs = this._canvases ?? (this._canvases = []);
     const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; cvs.push(c); return c; };
     this.urls = this.urls ?? new Set();
@@ -230,7 +311,8 @@ export default class V2Game extends Scene {
       if (TEX_SRC[n]) jobs.push(assets.load(TEX_SRC[n].src).then((im) => { imgs[n] = im && im.width > 1 ? im : null; }, () => { imgs[n] = null; }));
       else jobs.push(new Promise((res) => { const im = new Image(); im.onload = () => { imgs[n] = im; res(); }; im.onerror = () => { imgs[n] = null; console.warn('[v2g] texture failed to load:', n); res(); }; im.src = ASSET_ROOT + kitTexPath(n); this.urls.add('assets/' + kitTexPath(n)); }));
     }
-    if (first) jobs.push(assets.load(W.sky.img).then((im) => { imgs.__sky = im && im.width > 1 ? im : null; }, () => { imgs.__sky = null; }));
+    const skyKey = W.sky.img + '|' + W.sky.crop + '|' + W.fog.color.join(','), newSky = skyKey !== this._skyKey;   // sky picture and its fog colour belong to the area and its night
+    if (newSky) jobs.push(assets.load(W.sky.img).then((im) => { imgs.__sky = im && im.width > 1 ? im : null; }, () => { imgs.__sky = null; }));
     await Promise.all(jobs);
     if (!this.glr) return;
     this.tex = this.tex ?? {};
@@ -240,22 +322,25 @@ export default class V2Game extends Scene {
       if (T?.desat) { x.globalCompositeOperation = 'saturation'; x.globalAlpha = T.desat; x.fillStyle = '#808080'; x.fillRect(0, 0, 512, 512); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; }
       this.tex[n] = glr.texture(() => c, { repeat: T ? true : KIT_TEX[n]?.repeat ?? true, mip: true });
     }
+    if (newSky) {   // sky backdrop: the top of the painted background, melted into this area's fog colour at the bottom (one canvas, one texture, redrawn per area)
+      const c = this._skyC ?? (this._skyC = mk(2048, 512)), x = c.getContext('2d'), im = imgs.__sky, f = W.fog.color, fr = Math.round(f[0] * 255), fg = Math.round(f[1] * 255), fb = Math.round(f[2] * 255);
+      x.globalCompositeOperation = 'source-over'; x.clearRect(0, 0, 2048, 512);
+      if (im) x.drawImage(im, 0, 0, im.width, im.height * W.sky.crop, 0, 0, 2048, 512);
+      else { const g = x.createLinearGradient(0, 0, 0, 512); g.addColorStop(0, '#0a1018'); g.addColorStop(1, '#2a1a26'); x.fillStyle = g; x.fillRect(0, 0, 2048, 512); }
+      const g = x.createLinearGradient(0, 380, 0, 512); g.addColorStop(0, `rgba(${fr},${fg},${fb},0)`); g.addColorStop(1, `rgba(${fr},${fg},${fb},1)`); x.fillStyle = g; x.fillRect(0, 380, 2048, 132);
+      if (!this.skyTex) this.skyTex = glr.texture(() => c, {});
+      else if (!glr.lost) { const gl = glr.gl; gl.bindTexture(gl.TEXTURE_2D, this.skyTex.tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c); }
+      this._skyKey = skyKey;
+    }
     if (first) {
-      {   // sky backdrop: the top of the painted background, melted into the fog colour at the bottom
-        const c = mk(2048, 512), x = c.getContext('2d'), im = imgs.__sky;
-        if (im) x.drawImage(im, 0, 0, im.width, im.height * W.sky.crop, 0, 0, 2048, 512);
-        else { const g = x.createLinearGradient(0, 0, 0, 512); g.addColorStop(0, '#0a1018'); g.addColorStop(1, '#2a1a26'); x.fillStyle = g; x.fillRect(0, 0, 2048, 512); }
-        const g = x.createLinearGradient(0, 380, 0, 512); g.addColorStop(0, 'rgba(18,24,34,0)'); g.addColorStop(1, 'rgba(18,24,34,1)'); x.fillStyle = g; x.fillRect(0, 380, 2048, 132);
-        this.skyTex = glr.texture(() => c, {});
-      }
-      {   // small atlas for ground decals and lamp glows (no prop cards)
-        const c = mk(1024, 256), x = c.getContext('2d'), R = (this.spr = {});
-        const put = (name, px, w, h, draw) => { x.save(); x.translate(px, 2); draw(x); x.restore(); R[name] = { u0: (px + 0.5) / 1024, v0: 2.5 / 256, u1: (px + w - 0.5) / 1024, v1: (2 + h - 0.5) / 256 }; };
+      {   // small atlas for ground decals (all eight kinds of the env kit) and lamp glows (no prop cards)
+        const c = mk(1024, 512), x = c.getContext('2d'), R = (this.spr = {});
+        const put = (name, px, w, h, draw) => { x.save(); x.translate(px, 2); draw(x); x.restore(); R[name] = { u0: (px + 0.5) / 1024, v0: 2.5 / 512, u1: (px + w - 0.5) / 1024, v1: (2 + h - 0.5) / 512 }; };
         const radial = (stops) => (q) => { const g = q.createRadialGradient(64, 64, 0, 64, 64, 64); for (const [o, col] of stops) g.addColorStop(o, col); q.fillStyle = g; q.fillRect(0, 0, 128, 128); };
         put('glow', 2, 128, 128, radial([[0, 'rgba(255,255,255,1)'], [0.25, 'rgba(255,255,255,0.55)'], [0.6, 'rgba(255,255,255,0.14)'], [1, 'rgba(255,255,255,0)']]));
         put('blob', 134, 128, 128, radial([[0, 'rgba(0,0,0,0.62)'], [0.55, 'rgba(0,0,0,0.4)'], [1, 'rgba(0,0,0,0)']]));
-        const d = drawDecalSprites(x, 266, 2), uv = ([px, py]) => ({ u0: (px + 1) / 1024, v0: (py + 1) / 256, u1: (px + 127) / 1024, v1: (py + 127) / 256 });
-        R.moss = uv(d.moss); R.puddle = uv(d.puddle); R.stain = uv(d.stain);
+        const d = drawEnvDecals(x, 270, 2);
+        for (const k of Object.keys(d)) R[k] = { u0: (d[k][0] + 1) / 1024, v0: (d[k][1] + 1) / 512, u1: (d[k][0] + 127) / 1024, v1: (d[k][1] + 127) / 512 };
         this.sprTex = glr.texture(() => c, {});
       }
       this.batch = new SpriteBatch(glr);
@@ -270,16 +355,27 @@ export default class V2Game extends Scene {
     const missing = [...new Set(W.spawns.map((s) => s.kind))].filter((k) => !KINDS[k]);
     if (missing.length) console.warn('[v2g] spawn kinds without a KINDS entry are not drawn:', missing.join(', '));
     if (!this.cr) { this.cr = new CharRenderer(glr.gl, { maxJoints: 32 }); this.cast = new Cast(this.cr); this._restored = glr.restored; }
-    await this.cast.load([{ model: HERO_MODEL, hero: true }, ...kinds.map((k) => ({ model: KINDS[k].model }))], ['blade', ...kinds.map((k) => KINDS[k].weapon)], { texCap: this.perf.texCap, libWins: driveHero !== PLACEHOLDER_DRIVE_HERO });
+    // models: the hero, the enemy kinds this area spawns, the people who live here. What the new area does not use is freed first
+    // (GPU memory stays bounded by one area). People get half-size textures: they stand in the background of a fight.
+    const eModels = [...new Set(kinds.map((k) => KINDS[k].model))], weapons = ['blade', ...new Set(kinds.map((k) => KINDS[k].weapon).filter(Boolean))];
+    const pModels = People.models(area).filter((m) => m !== HERO_MODEL && !eModels.includes(m));
+    this._dropModels(new Set([HERO_MODEL, ...eModels, ...pModels]), new Set(weapons));
+    await this.cast.load([{ model: HERO_MODEL, hero: true }, ...eModels.map((m) => ({ model: m }))], weapons, { texCap: this.perf.texCap, libWins: driveHero !== PLACEHOLDER_DRIVE_HERO });
+    if (!this.glr) return;
+    if (pModels.length) { try { await this.cast.load(pModels.map((m) => ({ model: m })), [], { texCap: Math.min(512, this.perf.texCap) }); } catch (e) { console.warn('[v2g] a person model failed to load (that person is not drawn):', String(e?.message ?? e)); } }
     if (!this.glr) return;
     if (!this.heroA) this.heroA = this.cast.actor(HERO_MODEL, 'blade', {});
     // 4) effects
     if (!this.fx) this._makeFx();
     // 5) rules
     this.area = area; this.W = W; this.env.fog = W.fog;
-    { const d = W.light.moonDir, l = Math.hypot(d[0], d[1], d[2]) || 1; this.env.sunDir[0] = d[0] / l; this.env.sunDir[1] = d[1] / l; this.env.sunDir[2] = d[2] / l; }
+    { const d = W.light.moonDir, l = hyp(d[0], d[1], d[2]) || 1; this.env.sunDir[0] = d[0] / l; this.env.sunDir[1] = d[1] / l; this.env.sunDir[2] = d[2] / l; }
     this.sim = new Sim(W, this._hooks());
-    this._enterAt(spawn);
+    this._enterAt(spawn, keep);
+    this.people.build(this, area, groundAt); this.anchors.build(area, this.perf.tier); this._peopleN = 19;
+    { const c = this._caps, sim = this.sim, hh = sim.hero;   // what the rules can do today (PLAY lane lands skill and bell later): the pad shows the rest as not usable yet
+      c.skill = !!(sim.caps?.skill ?? (typeof sim.skill === 'function' || typeof sim.useSkill === 'function' || hh.skillCd !== undefined || hh.skillT !== undefined || TUNE.skillCd !== undefined));
+      c.bell = !!(sim.caps?.bell ?? (typeof sim.ring === 'function' || typeof sim.bell === 'function' || typeof sim.echo === 'function' || hh.bellT !== undefined || hh.ringT !== undefined || TUNE.bellCd !== undefined || TUNE.echoR !== undefined)); }
     this._deaths = this.sim.deaths ?? 0; this._secId = ''; this.cam.snap = true; this.doneT = 0; this.fired.clear();
     this.state.area.id = area.id; this.state.area.name = area.name; this.state.area.era = area.era; this.state.night = area.era;
     // 6) warm everything behind the loading screen, then wait for the GPU
@@ -288,16 +384,17 @@ export default class V2Game extends Scene {
     this._warm();
     this.loadMs = Math.round(performance.now() - t0);
     this.ready = true; this.state.loading = false; this.sampleN = 0;
-    this.emit('area.enter', { area: area.id });
+    this.emit('area.enter', { area: area.id, era: area.era });
   }
   /** put the hero at a named spawn of the area (docs/v2/AREA_FORMAT.md 3); a section id still works for the test route */
-  _enterAt(spawn) {
-    const sim = this.sim, h = sim.hero, sp = spawn ? this.area.spawns?.[spawn] : null, ha = this.heroA;
+  _enterAt(spawn, keep) {
+    const sim = this.sim, h = sim.hero, sp = keep ?? (spawn ? this.area.spawns?.[spawn] ?? this.area.spawns?.default : null), ha = this.heroA;
     if (sp && Number.isFinite(sp.x) && Number.isFinite(sp.z)) {
       h.x = sp.x; h.z = sp.z; const gy = groundAt(this.W, h.x, h.z, sp.y != null ? sp.y + 40 : Infinity); if (Number.isFinite(gy)) h.y = gy;
       h.vx = 0; h.vz = 0; h.vy = 0; if (h.safe) { h.safe.x = h.x; h.safe.y = h.y; h.safe.z = h.z; }
-      if (Array.isArray(sp.face)) { const l = Math.hypot(sp.face[0], sp.face[1]) || 1; h.dirX = sp.face[0] / l; h.dirZ = sp.face[1] / l; if (h.facing !== undefined) h.facing = h.dirX < 0 ? -1 : 1; if (ha) { ha.dx = h.dirX; ha.dz = h.dirZ; } }
+      if (Array.isArray(sp.face)) { const l = hyp(sp.face[0], sp.face[1]) || 1; h.dirX = sp.face[0] / l; h.dirZ = sp.face[1] / l; if (h.facing !== undefined) h.facing = h.dirX < 0 ? -1 : 1; if (ha) { ha.dx = h.dirX; ha.dz = h.dirZ; } }
     } else if (spawn && sim.teleport) sim.teleport(spawn);
+    if (!sp && ha && h.dirX !== undefined) { ha.dx = h.dirX; ha.dz = h.dirZ ?? 0; }
     this._exitIn = null; this._exitBusy = false;
   }
   _makeFx() {
@@ -327,12 +424,26 @@ export default class V2Game extends Scene {
   }
   // ───────────────────────── characters ─────────────────────────
   _poolOf(model) { let p = this.pool.get(model); if (!p) { p = []; this.pool.set(model, p); } return p; }
+  /** free the character and weapon models the next area does not use (their pooled actors go with them) */
+  _dropModels(models, weapons) {
+    const cast = this.cast, cr = this.cr; if (!cast || !cr) return;
+    for (const [id, a] of [...cast.assets]) if (!models.has(id)) { cr.remove(a.gpu); cast.assets.delete(id); this.pool.delete(id); }
+    for (const [id, w] of [...cast.weapons]) if (!weapons.has(id)) { cr.remove(w.gpu); cast.weapons.delete(id); }
+  }
+  /** the arena of this area is cleared and no story is plugged in: exits locked by a key open (the story lane owns this later) */
+  _autoOpen() {
+    for (const x of this.area?.exits ?? []) {
+      if (!this._autoKey(x)) continue;
+      const areaId = this.area.id;
+      hasArea(x.to).then((ok) => { if (!ok || !this.glr) return; this._setLock(x.id, areaId, null); if (this.area?.id === areaId) this._toast((x.label ? x.label + ' — ' : '') + '길이 열렸다', 'info'); });
+    }
+  }
   _newActor(kind) { const K = KINDS[kind]; if (!K) return null; const a = this.cast.actor(K.model, K.weapon, { height: K.height, grip: K.grip, scale: K.scale }); if (a) { a.kind = kind; a.e = null; } return a; }
   _take(e) {
     const K = KINDS[e.kind]; if (!K) return null;
     const p = this._poolOf(K.model); let a = p.length ? p.pop() : this._newActor(e.kind); if (!a) return null;
     a.kind = e.kind; a.e = e; a.hitAge = 9; a.dieAge = -1; a.dieHold = 0; a.accDt = 0; a.vis = true; a.kbT = 0; a.wasDead = false; a.seed = Math.random() * 7;
-    const fx = e.dirX ?? e.facing ?? -1, fz = e.dirZ ?? 0, l = Math.hypot(fx, fz) || 1; a.dx = fx / l; a.dz = fz / l;
+    const fx = e.dirX ?? e.facing ?? -1, fz = e.dirZ ?? 0, l = hyp(fx, fz) || 1; a.dx = fx / l; a.dz = fz / l;
     a.anim.play(a.asset.clips.idle ? 'idle' : Object.keys(a.asset.clips)[0], { fade: 0, restart: true }); a.anim.update(0);
     e._a3 = a; this.actors.push(a);
     return a;
@@ -405,6 +516,7 @@ export default class V2Game extends Scene {
         const bone = (K?.death ?? (K?.material === 'bone' ? 'bone' : 'ash')) === 'bone';
         if (bone) sc._fxp('enemy.death.bone', e.x, e.y, e.z, dx, dz, 1, true);   // the kill layer of the hit sound already carries the collapse
         sc.emit('enemy.kill', { enemy: e });
+        if (e.group && sc.groupLeft(e.group) === 0) sc.emit('group.clear', { group: e.group });
       },
       heroHurt(dmg, pit) {
         const h = sc.sim.hero, r = snd('hero.hurt', h), F = sc.fx?.feel;
@@ -419,8 +531,8 @@ export default class V2Game extends Scene {
         else if (name === 'land') { const hard = sc._fallV < -900; sc._fxp('move.land', h.x, h.y, h.z, dx, dz, hard ? 1.4 : 0.8, hard); if (hard) { snd('move.land_heavy', h); sc.fx?.feel.addTrauma(0.08); } }
         else if (name === 'swing') { try { feel.swing('blunt', 'M', sc._actE ?? null); } catch { /* no audio */ } sc._actE = null; }
         else if (name === 'cast') { snd('enemy.mage.chant', sc._actE ?? null); sc._actE = null; }
-        else if (name === 'parry') sc._strike('sword', 'armor', 'H', FLAG.parry, h.x + dx * 46, h.y + 58, h.z + dz * 46, dx, dz);
-        else if (name === 'guard') sc._strike('sword', 'armor', 'M', FLAG.guard, h.x + dx * 40, h.y + 58, h.z + dz * 40, dx, dz);
+        else if (name === 'parry') { sc._strike('sword', 'armor', 'H', FLAG.parry, h.x + dx * 46, h.y + 58, h.z + dz * 46, dx, dz); sc.hud.callout?.(h.x + dx * 30, h.y + 118, h.z + dz * 30, '튕겨냄', 'parry'); }
+        else if (name === 'guard') { sc._strike('sword', 'armor', 'M', FLAG.guard, h.x + dx * 40, h.y + 58, h.z + dz * 40, dx, dz); sc.hud.callout?.(h.x + dx * 30, h.y + 118, h.z + dz * 30, '막음', 'guard'); }
         else if (name === 'die') { snd('hero.hurt', h); sc.emit('hero.dead', {}); }
         else { const mv = h.move; try { feel.swing(mv?.weapon ?? 'sword', mv?.strength ?? mv?.str ?? (h.combo >= 2 ? 'H' : 'M'), h); } catch { /* no audio */ } }   // the picture (crescent) follows at the strike moment in _sync
       },
@@ -431,7 +543,7 @@ export default class V2Game extends Scene {
       },
       number(x, y, z, str, color) { number(x, y, z, str, color, false); },
       shake(px) { sc.fx?.feel.addTrauma(clamp(px / 40, 0, 0.6)); },
-      done() { sc.doneT = 0; try { feel.bell('dawn'); } catch { /* no audio */ } sc.emit('area.clear', { area: sc.area?.id }); },
+      done() { sc.doneT = 0; try { feel.bell('dawn'); } catch { /* no audio */ } sc.emit('area.clear', { area: sc.area?.id }); sc._autoOpen(); },
       // newer rule sets (docs/v2/PLAY_API.md 5) — optional calls
       step(side, speed, who) { if (who !== sc.sim.hero) return; sc._simSteps = true; sc.bridge.speed = speed; sc._fxp('move.step', who.x, who.y, who.z, 1, 0, 1, false); },
       enemySwing(e) { sc._actE = e; },
@@ -445,7 +557,10 @@ export default class V2Game extends Scene {
   // ───────────────────────── tick ─────────────────────────
   update(dt) {
     const t0 = performance.now(), g = this.game;
-    if (input.pressed('menu') && g.registry.title) { if (g.registry.v2pick) g.go('v2pick', {}, { fade: true }); else g.go('title', {}, { fade: true }); return; }
+    if (this._offT > 0) this._offT -= dt;
+    if (this.fadeA !== this.fadeTo) this.fadeA = this.fadeTo > this.fadeA ? Math.min(this.fadeTo, this.fadeA + dt / 0.28) : Math.max(this.fadeTo, this.fadeA - dt / 0.5);   // area travel: to black, load, back
+    if (this._go && this.fadeA >= 1) { const go = this._go; this._go = null; this.gotoArea(go.to, go.spawn).then(() => { this.locked = false; this.fadeTo = 0; this._exitBusy = false; }); return; }
+    if (input.pressed('menu') && g.registry.title && !this.hud.modal) { if (this.ready) this._pause(); else this._leave(); if (!this.hud.modal) return; }   // ESC / START: the pause menu (leaving is one of its rows)
     if (!this.ready || !this.glr || this.glr.lost) return;
     const sim = this.sim, inp = this.inp, fx = this.fx;
     let mx = input.analogX || input.axisX, mz = -(input.analogY || input.axisY);
@@ -456,9 +571,17 @@ export default class V2Game extends Scene {
     inp.mx = mx; inp.mz = mz; inp.jump = !locked && input.buffered('jump', 0.12); inp.jumpHeld = input.down('jump'); inp.jumpUsed = false;
     inp.attackHeld = input.down('attack'); inp.guard = !locked && (input.down('guard') || input.down('dash'));
     if (!locked) { if (input.pressed('attack')) inp.attack = true; if (input.pressed('dash')) inp.dash = true; if (input.pressed('lock')) inp.lockNext = true; }   // latched until a rule step consumes them (hit-stop)
+    // skill (skill1) and bell (ult): handed to the rules that read them; while the rules cannot use them the pad shows them as not usable and a press says so
+    inp.skillHeld = !locked && input.down('skill1'); inp.bellHeld = !locked && input.down('ult');
+    if (!locked) {
+      if (input.pressed('skill1')) { if (this._caps.skill) inp.skill = true; else this._padOff('skill'); }
+      if (input.pressed('ult')) { if (this._caps.bell) inp.bell = true; else this._padOff('bell'); }
+      if (this.people.target && (this._use || input.pressed('confirm'))) { inp.attack = false; this._useTarget(); }   // the prompt: a tap on it, or the confirm key
+    }
+    this._use = false;
     if (sim.done) {
       this.doneT += dt;
-      if (!this.area.fromWorld && this.doneT > 1.2 && (inp.attack || input.pressed('confirm') || input.pointer.tapped)) { sim.reset(); this.cam.snap = true; fx?.clear(); this._makeFxHandles(); for (const n of this.numbers) n.on = false; inp.attack = false; g.flash?.('#000', 0.6, 3); this.emit('hero.respawn', {}); return; }
+      if (this.area.test && this.doneT > 1.2 && (inp.attack || input.pressed('confirm') || input.pointer.tapped)) { sim.reset(); this.cam.snap = true; fx?.clear(); this._makeFxHandles(); for (const n of this.numbers) n.on = false; inp.attack = false; g.flash?.('#000', 0.6, 3); this.emit('hero.respawn', {}); return; }
     }
     this._savePrev();
     const pdt = fx ? fx.update(dt) : dt;
@@ -467,7 +590,7 @@ export default class V2Game extends Scene {
       this._fallV = sim.hero.vy ?? 0;
       sim.update(pdt, inp);
       if (inp.jumpUsed) input.consume('jump');
-      inp.attack = false; inp.dash = false; inp.lockNext = false;
+      inp.attack = false; inp.dash = false; inp.lockNext = false; inp.skill = false; inp.bell = false;
       if (sim.stop > 0) sim.stop = 0;   // hit-stop is owned by the feel table (ENGINE_API 1)
     }
     this._sync(pdt, dt);
@@ -507,11 +630,18 @@ export default class V2Game extends Scene {
     }
     const EX = this.area.exits;
     for (let i = 0; i < EX.length; i++) {
-      const x = EX[i], inside = h.x >= x.x0 && h.x < x.x1 && h.z >= x.z0 && h.z < x.z1;
+      const x = EX[i];
+      if (x.locked) {   // a wall stands in the box (area.js): the hero pushing against it is told why, once per approach
+        const m = x._near ? 96 : 36, near = h.x >= x.x0 - m && h.x < x.x1 + m && h.z >= x.z0 - m && h.z < x.z1 + m;
+        if (near && !x._near && !h.dead) this._lockedMsg(x);
+        x._near = near;
+        continue;
+      }
+      const inside = h.x >= x.x0 && h.x < x.x1 && h.z >= x.z0 && h.z < x.z1;
       if (!inside) { if (this._exitIn === x) this._exitIn = null; continue; }
       if (this._exitIn === x || this._exitBusy || h.dead) continue;
       this._exitIn = x;
-      if (x.locked) this.emit('exit.locked', { id: x.id, locked: x.locked, exit: x }); else this._travel(x);
+      this._travel(x);
     }
     // hero: animation, blade trail, dash trail, steps
     if (pdt > 0) { const a0 = Math.atan2(ha.dz, ha.dx); driveHero(ha, h, pdt, TUNE); this._turn(ha, h, a0, pdt); }
@@ -533,12 +663,17 @@ export default class V2Game extends Scene {
       fx.setProtect(0, h.x, h.y + 55, h.z, 46);
     }
     if (pdt > 0 && h.onGround && !h.dead && !h.move && !(h.dashT > 0) && !(h.hurtT > 0)) {
-      const sp = Math.hypot(h.vx ?? 0, h.vz ?? 0);
+      const sp = hyp(h.vx ?? 0, h.vz ?? 0);
       if (sp > 60 && !this._simSteps) { this.stride += sp * pdt; if (this.stride > 96) { this.stride = 0; this.bridge.speed = sp; this._fxp('move.step', h.x, h.y, h.z, ha.dx, ha.dz, 1, false); } } else this.stride = 60;
     }
+    h._gy = groundAt(W, h.x, h.z, h.y + 20);
     // enemies
     const E = sim.enemies, L = this.actors;
-    if (E !== this._ERef) { for (let i = L.length - 1; i >= 0; i--) { this._free(L[i]); } L.length = 0; this._ERef = E; }
+    if (E !== this._ERef) {
+      for (let i = L.length - 1; i >= 0; i--) { this._free(L[i]); } L.length = 0; this._ERef = E;
+      const SP = W.spawns;   // home section + group of every enemy (built-in "<name>_clear" flags, event group.clear)
+      for (let i = 0; i < E.length; i++) { const e = E[i], sp = E.length === SP.length ? SP[i] : null, sec = sectionAt(W, sp ? sp.x : e.x, sp ? sp.z : e.z); e._sec = sec ? sec.id : ''; if (e.group === undefined && sp) e.group = sp.group ?? null; }
+    }
     for (let i = 0; i < E.length; i++) { const e = E[i]; if (!e._a3 && !e.dead && e.state !== 'dead') this._take(e); }
     const fdt = fx ? dt * fx.feel.fxScale : dt, cam = this.cam, tickN = pdt > 0 ? ++this.tickN : this.tickN;
     for (let i = L.length - 1; i >= 0; i--) {
@@ -565,11 +700,12 @@ export default class V2Game extends Scene {
         driveActor(a, e, adt);
         if (e.dirX === undefined) {   // rules without a 360 degree facing: look at the hero while awake (characters face where they act)
           let tx = e.facing ?? ox, tz = 0;
-          if (e.active && e.state !== 'dead' && !h.dead) { const d = Math.hypot(h.x - e.x, h.z - e.z); if (d > 8) { tx = (h.x - e.x) / d; tz = (h.z - e.z) / d; } }
+          if (e.active && e.state !== 'dead' && !h.dead) { const d = hyp(h.x - e.x, h.z - e.z); if (d > 8) { tx = (h.x - e.x) / d; tz = (h.z - e.z) / d; } }
           const cur = Math.atan2(oz, ox), ang = cur + wrapPi(Math.atan2(tz, tx) - cur) * (1 - Math.exp(-adt * 10)); a.dx = Math.cos(ang); a.dz = Math.sin(ang);
         }
       }
       this._tintAt(W, e.x, e.y + 50, e.z, 0, 1.6, a.opt.tint);
+      e._gy = e.gy !== undefined ? e.gy : groundAt(W, e.x, e.z, e.y - (e.hover ?? 0) + 20);   // ground under it, once per pose (shadow and warnings read it every drawn frame)
     }
     // shots: 3D magic that follows the rule's projectile
     const S = sim.shots;
@@ -581,6 +717,12 @@ export default class V2Game extends Scene {
         if (pdt > 0) { const gy = groundAt(W, s.x, s.z, s.y + 20); shotMove(fx, s, elementOf(s, null), Number.isFinite(gy) ? gy : s.y - 50, pdt); }
       }
     }
+    // people and usable spots: who is here, who looks at the hero, the one prompt on offer (none while a fight is near)
+    const modal = this.hud.modal ?? null;
+    this.state.prompts = this.people.tick(this, pdt > 0 ? pdt : 0, h, E, this._flagFn, this.hidden, this.locked || !!modal || h.dead || !!this._go);
+    if (this.people.talking) { if (modal === 'dialog' || this.ui.dialog) this._talkT = 0; else if ((this._talkT += dt) > 0.5) this.people.talking = null; }
+    // fires, embers, smoke, mist of the area (effects engine), culled off screen
+    if (fx) this.anchors.tick(this, fx, fdt, this.vp, cam.tx, cam.tz);
   }
   /**
    * Hero turning (ENGINE_API 2): the drive function decides where to look; the scene only shapes the way there.
@@ -603,12 +745,16 @@ export default class V2Game extends Scene {
   _state() {
     const s = this.state, g = this.game, sim = this.sim, W = this.W;
     s.viewW = g.viewW; s.viewH = g.viewH; s.safe = g.safe ?? s.safe; s.scale = g.scale; s.time = sim.time ?? 0; s.hero = sim.hero; s.heroHpMax = sim.hero.hpMax ?? TUNE.heroHp ?? 100;
-    s.enemies = sim.enemies; s.done = !!sim.done && !this.area.fromWorld; s.cleared = !!sim.done; s.doneT = this.doneT; s.dialog = this.ui.dialog; s.message = ''; s.message2 = '';
+    s.enemies = sim.enemies; s.done = !!sim.done && this.area.test; s.cleared = !!sim.done; s.doneT = this.doneT; s.dialog = this.ui.dialog; s.message = ''; s.message2 = '';
     const id = sim.section === 'done' ? s.section.id || 'yard' : sim.section;
     if (id !== s.section.id) { s.section.id = id; let lab = ''; for (let i = 0; i < W.sections.length; i++) if (W.sections[i].id === id) lab = W.sections[i].label ?? ''; s.section.label = lab; }
-    let left = 0, yard = 0; const E = sim.enemies;
-    for (let i = 0; i < E.length; i++) { const e = E[i]; if (e.dead || e.state === 'dead') continue; left++; if (e.yard) yard++; }
+    let left = 0, yard = 0, awake = 0; const E = sim.enemies;
+    for (let i = 0; i < E.length; i++) { const e = E[i]; if (e.dead || e.state === 'dead') continue; left++; if (e.yard) yard++; if (e.active && !e.buried) awake++; }
     s.enemiesLeft = left; s.yardLeft = yard;
+    // what the cut-glass HUD shows (docs/v2/UI_API.md 1): candles from health, enemies of the fight at hand, which pad buttons work
+    { const hp = sim.hero.hp > 0 ? sim.hero.hp : 0, c = s.candles; c.lit = hp / (s.heroHpMax || 1) * c.max; }
+    s.left = this.area.test ? 0 : awake;
+    s.pad.skill.disabled = !this._caps.skill; s.pad.bell.disabled = !this._caps.bell;
   }
   // ───────────────────────── camera (section rigs, as in prototype B) ─────────────────────────
   _camera(dt) {
@@ -636,7 +782,7 @@ export default class V2Game extends Scene {
     px = clamp(px, c.minX, c.maxX);
     const kp = snap ? 1 : 1 - Math.exp(-dt * 14);
     c.px += (px - c.px) * kp; c.py += (py - c.py) * kp; c.pz += (pz - c.pz) * kp;
-    const fx = lx - c.px, fy = ly - c.py, fz = lz - c.pz, fl = Math.hypot(fx, fy, fz) || 1;
+    const fx = lx - c.px, fy = ly - c.py, fz = lz - c.pz, fl = hyp(fx, fy, fz) || 1;
     c.fx = fx / fl; c.fy = fy / fl; c.fz = fz / fl;
     if (snap) { const q = this.camP; q.px = c.px; q.py = c.py; q.pz = c.pz; q.fx = c.fx; q.fy = c.fy; q.fz = c.fz; }
     c.snap = false;
@@ -644,8 +790,8 @@ export default class V2Game extends Scene {
   /** view-projection for a moment `a` (0..1) between the last two ticks */
   _matrix(Wv, Hv, a) {
     const c = this.cam, q = this.camP, m = this.vp, e0 = this.eye0, e = this.eye, R = this.camR, U = this.camU, Fw = this.camF;
-    let fx = q.fx + (c.fx - q.fx) * a, fy = q.fy + (c.fy - q.fy) * a, fz = q.fz + (c.fz - q.fz) * a; const fl = Math.hypot(fx, fy, fz) || 1; fx /= fl; fy /= fl; fz /= fl;
-    const rl = Math.hypot(fz, fx) || 1, rx = fz / rl, rz = -fx / rl;          // r = up x f
+    let fx = q.fx + (c.fx - q.fx) * a, fy = q.fy + (c.fy - q.fy) * a, fz = q.fz + (c.fz - q.fz) * a; const fl = hyp(fx, fy, fz) || 1; fx /= fl; fy /= fl; fz /= fl;
+    const rl = hyp(fz, fx) || 1, rx = fz / rl, rz = -fx / rl;          // r = up x f
     const ux = fy * rz, uy = fz * rx - fx * rz, uz = -fy * rx;                  // u = f x r
     R[0] = rx; R[1] = 0; R[2] = rz; U[0] = ux; U[1] = uy; U[2] = uz; Fw[0] = fx; Fw[1] = fy; Fw[2] = fz;
     e0[0] = q.px + (c.px - q.px) * a; e0[1] = q.py + (c.py - q.py) * a; e0[2] = q.pz + (c.pz - q.pz) * a;
@@ -681,23 +827,27 @@ export default class V2Game extends Scene {
       if (this.mode === 'layer') this._show(false);
       s.message = off === 1 ? 'WebGL 을 쓸 수 없어 게임을 열 수 없습니다' : off === 2 ? '불러오는 중…' : '화면을 되살리는 중…'; s.message2 = off === 1 ? String(this.glError || '') : '';
       try { this.hud.draw(ctx, s); } catch (e) { this._hudFail(e); } s.message = '';
+      this._lastDraw = 0;
       return;
     }
     if (this.mode === 'layer') this._show(g.top === this);
     const glr = this.glr;
     if (this._restored !== glr.restored) { this._restored = glr.restored; this.cr.restore(); try { this.fx?.dispose(); } catch { /* dead objects */ } this._makeFx(); this._warm(); }   // context came back
+    if (this._lastDraw > 0 && !this.hud.modal && this.res.frame(t0 - this._lastDraw)) L.force = true;   // render size governor (res.js): measured on real frame intervals
+    this._lastDraw = t0;
     this._place();
     const a = this.everyFrame ? clamp(g.alpha ?? 1, 0, 1) : 1;
     this._gl(Wv, Hv, a, false);
     if (hctx !== ctx) { hctx.setTransform(1, 0, 0, 1, 0, 0); hctx.clearRect(0, 0, L.hud.width, L.hud.height); hctx.setTransform(g.scale, 0, 0, g.scale, 0, 0); }
     try { this.hud.draw(hctx, s); } catch (e) { this._hudFail(e); }
+    if (this.fadeA > 0.004) { hctx.globalAlpha = this.fadeA; hctx.fillStyle = '#000'; hctx.fillRect(0, 0, Wv, Hv); hctx.globalAlpha = 1; }
     const ms = performance.now() - t0 + this.updMs; this.updMs = 0;
     this.samples[this.sampleN % 300] = ms; this.sampleN++;
   }
   /** one WebGL frame. a = interpolation between the last two ticks. warm = also draw every loaded model once */
   _gl(Wv, Hv, a, warm) {
-    const g = this.game, glr = this.glr, gl = glr.gl, W = this.W, fx = this.fx, cr = this.cr, sim = this.sim, b = this.batch, k = this.perf.resK;
-    const w = Math.max(2, Math.round(g.canvas.width * k)), hgt = Math.max(2, Math.round(g.canvas.height * k));
+    const g = this.game, glr = this.glr, gl = glr.gl, W = this.W, fx = this.fx, cr = this.cr, sim = this.sim, b = this.batch;
+    const CR = g.canvasRect, rs = this.res.size(CR ? CR.w : g.canvas.width, CR ? CR.h : g.canvas.height, globalThis.devicePixelRatio || 1), w = rs.w, hgt = rs.h;   // the 3D picture has its own pixel size (device pixel ratio with a cap per tier)
     glr.resize(w, hgt);
     const vp = this._matrix(Wv, Hv, a);
     this._cull(vp);
@@ -753,15 +903,21 @@ export default class V2Game extends Scene {
     // hero (no afterimage copies: the dash is a ribbon)
     { const snap = Math.abs(h.x - h._px) > 250 || Math.abs(h.z - h._pz) > 250, k = snap ? 1 : a; const y = this.visYP + (this.visY - this.visYP) * k;
       ha.opt.rim = RIM_HERO; ha.draw(cr, ha.place(h._px + (h.x - h._px) * k, snap ? h.y : y, h._pz + (h.z - h._pz) * k)); drawn++; }
-    for (let i = 0; i < L.length; i++) {
-      const ac = L[i], e = ac.e, k = e._px === undefined || Math.abs(e.x - e._px) > 250 ? 1 : a;
-      const x = e._px === undefined ? e.x : e._px + (e.x - e._px) * k, y = e._py === undefined ? e.y : e._py + (e.y - e._py) * k, z = e._pz === undefined ? e.z : e._pz + (e.z - e._pz) * k;
-      ac.vis = this._seen(m, x, y, z, ac.height);
-      if (!ac.vis) { culled++; continue; }
-      const o = ac.opt; o.flash = hurtFlash(ac.hitAge) * 0.85; o.dis = ac.dieAge > ac.dieHold ? dissolveK(ac.dieAge - ac.dieHold, DIE_T) : 0; o.seed = ac.seed;
-      o.alpha = e.alpha !== undefined && ac.dieAge < 0 ? clamp(e.alpha, 0.12, 1) : 1;   // ghosts fade in and out by the rules
-      o.rim = e.state === 'attack' || e.state === 'cast' || e.tele > 0 ? RIM_WARN : RIM_ENEMY;
-      ac.draw(cr, ac.place(x, y + (KINDS[ac.kind]?.float ?? 0), z)); drawn++;
+    // opaque bodies first, then the townspeople, then what is see-through (ghosts do not write depth: they must come last)
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = 0; i < L.length; i++) {
+        const ac = L[i], e = ac.e, thin = e.alpha !== undefined && e.alpha < 0.995 && ac.dieAge < 0;
+        if (thin !== (pass === 1)) continue;
+        const k = e._px === undefined || Math.abs(e.x - e._px) > 250 ? 1 : a;
+        const x = e._px === undefined ? e.x : e._px + (e.x - e._px) * k, y = e._py === undefined ? e.y : e._py + (e.y - e._py) * k, z = e._pz === undefined ? e.z : e._pz + (e.z - e._pz) * k;
+        ac.vis = this._seen(m, x, y, z, ac.height);
+        if (!ac.vis) { culled++; continue; }
+        const o = ac.opt; o.flash = hurtFlash(ac.hitAge) * 0.85; o.dis = ac.dieAge > ac.dieHold ? dissolveK(ac.dieAge - ac.dieHold, DIE_T) : 0; o.seed = ac.seed;
+        o.alpha = thin ? clamp(e.alpha, 0.12, 1) : 1;   // ghosts fade in and out by the rules
+        o.rim = e.state === 'attack' || e.state === 'cast' || e.tele > 0 ? RIM_WARN : RIM_ENEMY;
+        ac.draw(cr, ac.place(x, y + (KINDS[ac.kind]?.float ?? 0), z)); drawn++;
+      }
+      if (pass === 0) { this.people.draw(this, cr, m, RIM_PEOPLE); drawn += this.people.drawn; culled += this.people.culled; }
     }
     this.c3.drawn = drawn; this.c3.culled = culled;
   }
@@ -774,8 +930,8 @@ export default class V2Game extends Scene {
     }
   }
   _flat(x, y, z, rx, rz) { const P = this.P12; P[0] = x - rx; P[1] = y; P[2] = z - rz; P[3] = x + rx; P[4] = y; P[5] = z - rz; P[6] = x + rx; P[7] = y; P[8] = z + rz; P[9] = x - rx; P[10] = y; P[11] = z + rz; return P; }
-  _shadow(b, x, z, y, rx, al) {
-    const gy = groundAt(this.W, x, z, y + 20); if (!Number.isFinite(gy)) return;
+  _shadow(b, x, z, y, rx, al, gy = groundAt(this.W, x, z, y + 20)) {
+    if (!Number.isFinite(gy)) return;
     const k = clamp(1 - (y - gy) / 260, 0.35, 1), r = rx * (0.7 + 0.3 * k), bl = this.spr.blob;
     b.quad(this._flat(x, gy + 0.9, z, r, r * 0.62), bl.u0, bl.v0, bl.u1, bl.v1, 0, 0, 0, al * k, 1, 0, 4, 1);
   }
@@ -786,7 +942,7 @@ export default class V2Game extends Scene {
     for (let i = 0; i < D.length; i++) {
       const d = D[i]; if (Math.abs(d.x - tx) > 1500 || d.z - tz < -700 || d.z - tz > 2600) continue;
       const uv = S[d.k]; if (!uv) continue;
-      const l = d._c, al = d.a ?? (d.k === 'stain' ? 0.5 : d.k === 'moss' ? 0.55 : 0.85);
+      const l = d._c, al = d.a ?? DECAL_ALPHA[d.k] ?? 0.7;
       b.quad(this._flat(d.x, (d.y ?? 0) + 0.6, d.z, d.rx, d.rz), uv.u0, uv.v0, uv.u1, uv.v1, l[0], l[1], l[2], al, 1, 0, 3, 1);
     }
     const PL = E.fx.pools;
@@ -798,13 +954,13 @@ export default class V2Game extends Scene {
     const SH = E.fx.shadows;
     for (let i = 0; i < SH.length; i++) { const s = SH[i]; if (Math.abs(s.x - tx) > 1500 || s.z - tz < -700 || s.z - tz > 2600) continue; b.quad(this._flat(s.x, s.y + 0.9, s.z, s.rx, s.rz), bl.u0, bl.v0, bl.u1, bl.v1, 0, 0, 0, s.a, 1, 0, 4, 1); }
     const h = sim.hero, hx = h._px + (h.x - h._px) * a, hz = h._pz + (h.z - h._pz) * a;
-    { const gy = groundAt(W, hx, hz, h.y + 20), r = 150; if (Number.isFinite(gy)) b.quad(this._flat(hx, gy + 0.5, hz, r, r * 0.7), g.u0, g.v0, g.u1, g.v1, 0.55, 0.62, 0.9, 0.16, 0, 0, 4, 1); }   // faint light under the hero: reads position and depth on dark ground
-    this._shadow(b, hx, hz, h.y, 30, 0.95);
+    { const gy = h._gy ?? groundAt(W, hx, hz, h.y + 20), r = 150; if (Number.isFinite(gy)) b.quad(this._flat(hx, gy + 0.5, hz, r, r * 0.7), g.u0, g.v0, g.u1, g.v1, 0.55, 0.62, 0.9, 0.16, 0, 0, 4, 1); }   // faint light under the hero: reads position and depth on dark ground
+    this._shadow(b, hx, hz, h.y, 30, 0.95, h._gy);
     const L = this.actors;
     for (let i = 0; i < L.length; i++) {
       const ac = L[i], e = ac.e; if (!ac.vis) continue;
       const ex = e._px === undefined ? e.x : e._px + (e.x - e._px) * a, ez = e._pz === undefined ? e.z : e._pz + (e.z - e._pz) * a;
-      this._shadow(b, ex, ez, e.y - (e.hover ?? 0), 26, 0.9 * (ac.dieAge > ac.dieHold ? clamp(1 - (ac.dieAge - ac.dieHold) / DIE_T, 0, 1) : 1) * (e.alpha ?? 1));
+      this._shadow(b, ex, ez, e.y - (e.hover ?? 0), 26, 0.9 * (ac.dieAge > ac.dieHold ? clamp(1 - (ac.dieAge - ac.dieHold) / DIE_T, 0, 1) : 1) * (e.alpha ?? 1), e._gy);
       // where the attack will land. Newer rules give e.tele (0..1) and the attack's reach; the prototype rules give a wind-up time
       let k = 0, reach = 46, rad = 0, wide = 30;
       const A = e.atk;
@@ -812,9 +968,12 @@ export default class V2Game extends Scene {
       else { const T = TUNE[e.kind]; if (e.state === 'attack' && T && T.windup && e.stateT < T.windup + 0.08) { k = clamp(e.stateT / T.windup, 0.02, 1); wide = T.reachZ ?? 30; } }
       if (k > 0) {
         const cx = ex + ac.dx * reach, cz = ez + ac.dz * reach, rr = rad > 0 ? rad * (0.7 + 0.5 * k) : 34 + 26 * k;
-        b.quad(this._flat(cx, e.y - (e.hover ?? 0) + 0.6, cz, rr, rad > 0 ? rr * 0.9 : Math.max(rr * 0.6, wide * 0.9)), g.u0, g.v0, g.u1, g.v1, 1.5, 0.25, 0.12, 0.2 + 0.5 * k, 0, 0, 5, 1);
+        const brk = A && A.guard === 'break';   // cannot be guarded: violet instead of red
+        b.quad(this._flat(cx, (e._gy ?? e.y - (e.hover ?? 0)) + 0.6, cz, rr, rad > 0 ? rr * 0.9 : Math.max(rr * 0.6, wide * 0.9)), g.u0, g.v0, g.u1, g.v1, brk ? 1.25 : 1.5, brk ? 0.2 : 0.25, brk ? 1.35 : 0.12, 0.2 + 0.5 * k, 0, 0, 5, 1);
       }
     }
+    const PP = this.people.list;
+    for (let i = 0; i < PP.length; i++) { const p = PP[i]; if (p.on && p.vis) this._shadow(b, p.x, p.z, p.y, 26, 0.9, p.y); }
     const SS = sim.shots;
     for (let i = 0; i < SS.length; i++) { const s = SS[i]; if (!s.dead) this._shadow(b, s._px === undefined ? s.x : s._px + (s.x - s._px) * a, s._pz === undefined ? s.z : s._pz + (s.z - s._pz) * a, s.y, 15, 0.7); }
   }
@@ -846,6 +1005,7 @@ export default class V2Game extends Scene {
       world: { tris: Math.round(this.envStat.tris), draws: this.envStat.draws, chunks: this.envStat.chunks, texBytes: G?.stats.texBytes ?? 0, flatPropsDropped: this.area?.flatProps.length ?? 0 },
       chars: cr ? { draws: this.c3.draws, tris: Math.round(this.c3.tris), drawn: this.c3.drawn, culled: this.c3.culled, texBytes: cr.stats.texBytes, bufBytes: cr.stats.bufBytes, models: cast ? [...cast.assets.keys()] : [], weapons: cast ? [...cast.weapons.keys()] : [], clips: cast?.lib ? Object.keys(cast.lib.clips).length : 0, libError: cast?.libError ?? null, actors: this.actors.length, heroClip: this.heroA?.anim.cur?.name ?? '' } : null,
       fx: fx ? { tier: fx.tier, post: fx.postOn, bytes: fx.gpuBytes, particles: fx.particles.drawn ?? 0, lights: fx.lights.count } : null,
+      res: this.res.info(), area: this.area?.id ?? '', people: { n: this.people.list.length, drawn: this.people.drawn ?? 0, spots: this.people.spots.length }, anchors: { n: this.anchors.list.length, live: this.anchors.live, lit: this.anchors.lit },
       mode: this.mode, hud: this.hudKind, resK: this.perf.resK, everyFrame: this.everyFrame, perfSaved: this.perf.saved, loadMs: this.loadMs ?? 0,
       canvases: (this._canvases?.length ?? 0) + (G ? 1 : 0) + (this.layer.hud ? 1 : 0), assets: this.assetList(),
     };
@@ -854,7 +1014,7 @@ export default class V2Game extends Scene {
   assetList() { const out = [...(this.urls ?? [])]; for (const u of this.cast?.urls ?? []) out.push(String(u).replace(/^.*?assets\//, 'assets/')); return [...new Set(out)].sort(); }
   _debugLine() {
     const st = this.stats(), g = this.game;
-    return `v2g · ${st.gl.api} · ${st.mode} · ${Math.round(st.resK * 100)}% · ${g.fps | 0}fps · ${st.frameMs.p50.toFixed(1)}/${st.frameMs.p95.toFixed(1)}ms · ${st.gl.draws}dc ${st.gl.tris}tri · ${st.gl.texMB}MB · ${st.chars.drawn}+${st.chars.culled}`;
+    return `v2g · ${st.gl.api} · ${st.mode} · ${st.res.w}x${st.res.h}${st.res.level ? '(-' + st.res.level + ')' : ''} · ${g.fps | 0}fps · ${st.frameMs.p50.toFixed(1)}/${st.frameMs.p95.toFixed(1)}ms · ${st.gl.draws}dc ${st.gl.tris}tri · ${st.gl.texMB}MB · ${st.chars.drawn}+${st.chars.culled}`;
   }
   _api() {
     const sc = this;
@@ -865,6 +1025,10 @@ export default class V2Game extends Scene {
       get enemies() { return (sc.sim?.enemies ?? []).filter((e) => !e.dead).map((e) => ({ id: e.id, kind: e.kind, x: e.x, y: e.y, z: e.z, hp: e.hp, yard: e.yard, state: e.state, active: e.active, model: KINDS[e.kind]?.model ?? null, clip: e._a3?.anim.cur?.name ?? null, drawn: !!e._a3?.vis })); },
       get cam() { const c = sc.cam; return { x: c.px, y: c.py, z: c.pz, yaw: Math.atan2(c.fx, c.fz), pitch: -Math.asin(c.fy), dist: c.dist }; },
       get section() { return sc.sim?.section ?? ''; }, get area() { return sc.area?.id ?? ''; },
+      get people() { return sc.people.list.map((p) => ({ id: p.id, model: p.def.model, x: p.x, y: p.y, z: p.z, on: p.on, drawn: p.vis, clip: p.a3.anim.cur?.name ?? '', solid: p.solid })); },
+      get prompt() { const t = sc.people.target; return t && sc.state.prompts.length ? { id: t.id, label: t.label, person: !!t.a3 } : null; },
+      get exits() { return (sc.area?.exits ?? []).map((x) => ({ id: x.id, to: x.to, locked: x.locked ?? null, x0: x.x0, x1: x.x1, z0: x.z0, z1: x.z1 })); },
+      use() { sc._use = true; },
       get stats() { return sc.stats(); },
       get shots() { return (sc.sim?.shots ?? []).filter((s) => !s.dead).map((s) => ({ x: s.x, y: s.y, z: s.z })); },
       teleport(sec) { const ok = sc.sim?.teleport?.(sec) ?? false; sc.cam.snap = true; return ok; },

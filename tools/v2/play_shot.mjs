@@ -64,7 +64,7 @@ try {
   const page = await (await browser.newContext({ viewport: pageDemo ? { width: 884, height: 1104 } : { width: 400, height: 300 }, deviceScaleFactor: 1 })).newPage();
   page.on('console', (m) => { if ((m.type() === 'error' || m.type() === 'warning') && !/GPU stall due to ReadPixels/.test(m.text())) errs.push(`[${m.type()}] ${m.text()}`); });   // (소프트웨어 렌더링의 읽기 경고는 뺀다)
   page.on('pageerror', (e) => errs.push('[pageerror] ' + e.message));
-  await page.goto(`http://localhost:${port}/tools/v2/play_view.html?hold=${pageDemo ? 0 : 1}${pageDemo ? '&demo=' + pageDemo + '&box=1' : ''}`);
+  await page.goto(`http://localhost:${port}/tools/v2/play_view.html?hold=${pageDemo ? 0 : 1}${pageDemo ? '&demo=' + pageDemo + '&box=1' : ''}${argv.includes('--legacy') ? '&legacy=1' : ''}`);   // --legacy = 1차의 돌기 방식(비교용)
   try { await page.waitForFunction(() => window.__play?.ready || window.__play?.error, null, { timeout: 90000 }); } catch { errs.push('timeout waiting for ready'); }
   const err0 = await page.evaluate(() => window.__play?.error ?? null);
   if (err0) { errs.push('page error: ' + err0); code = 1; }

@@ -61,10 +61,10 @@ const place = (page, x, z, ticks = 40, distK = 1) => page.evaluate(([x, z, ticks
   const v = window.__v2, sc = v.scene, h = sc.sim.hero;
   h.x = x; h.z = z; h.y = 300; h.vx = h.vz = h.vy = 0; h.onGround = false; h.safe = { x, z, y: 0 }; sc.cam.snap = true; if (sc.areaState) sc.areaState.in = {};
   window.__qaStep(ticks - 1, false);
-  const R = sc._sec?.cam, keep = R ? [R.dist, R.lookY] : null;
-  if (R && distK !== 1) { R.dist *= distK; R.lookY = R.lookY * 0.6 + 40; sc.cam.snap = true; window.__qaStep(1, false); sc.cam.snap = true; }
+  const R = sc._sec?.cam, keep = R ? [R.dist, R.lookY, R.tallK] : null;
+  if (R && distK !== 1) { R.dist *= distK; R.lookY = 78; R.tallK = 0.04; sc.cam.snap = true; window.__qaStep(1, false); sc.cam.snap = true; }   // closer, aimed at the hero's chest
   window.__qaStep(1, true);
-  if (R && distK !== 1) { R.dist = keep[0]; R.lookY = keep[1]; }
+  if (R && distK !== 1) { R.dist = keep[0]; R.lookY = keep[1]; if (keep[2] === undefined) delete R.tallK; else R.tallK = keep[2]; sc.cam.snap = true; }
   const st = v.stats;
   return { x: Math.round(h.x), z: Math.round(h.z), y: Math.round(h.y), draws: st.gl.draws, staticTris: st.env?.visibleStaticTris ?? 0, texMB: +(st.gl.texBytes / 1048576).toFixed(1) };
 }, [x, z, ticks, distK]);

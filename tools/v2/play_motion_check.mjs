@@ -86,7 +86,7 @@ if (process.argv.includes('--stride')) {
 if (process.argv.includes('--stride')) for (const m of ['run', 'walk']) { const c = lib[m]; console.log(`  ${m}: distance-matched stride of the clip ${c._gwStride ? (c._gwStride * UNIT).toFixed(1) + ' px' : '(no table)'} · TUNE ${m === 'run' ? TUNE.strideRun : TUNE.strideWalk}`); }
 for (const [mode, sp, stride] of [['run', 275, TUNE.strideRun], ['run', 208, TUNE.strideRun], ['walk', 96, TUNE.strideWalk]]) {
   const r = slip(mode, sp, stride);
-  ok(`${mode} at ${sp} px/s: planted foot slides less than 25% of body speed`, r.n >= 8 && r.slip < r.v * (mode === 'walk' ? 0.3 : 0.25), `slip ${r.slip.toFixed(2)} m/s vs body ${r.v.toFixed(2)} m/s (${Math.round((r.slip / r.v) * 100)}%) · sideways ${r.lat.toFixed(2)} · contact samples ${r.n}`);
+  ok(`${mode} at ${sp} px/s: planted foot slides less than ${mode === 'walk' ? 20 : 15}% of body speed`, r.n >= 8 && r.slip < r.v * (mode === 'walk' ? 0.2 : 0.15), `slip ${r.slip.toFixed(2)} m/s vs body ${r.v.toFixed(2)} m/s (${Math.round((r.slip / r.v) * 100)}%) · sideways ${r.lat.toFixed(2)} · contact samples ${r.n}`);
 }
 
 // ── ③ 스틱 반전 ──
@@ -102,6 +102,34 @@ for (const [name, from, to] of [['right → left', [1, 0], [-1, 0]], ['up → do
   }
   ok(`reverse ${name}: turns one way only, eased, done quickly`, flips === 0 && done > 0 && done * DT <= 0.35 && maxStep < 0.3, `direction flips ${flips} · done in ${(done * DT).toFixed(2)} s · biggest step ${((maxStep * 180) / Math.PI).toFixed(0)}°/frame`);
 }
+// ── ③b 속도와 몸: 달리는 동안(가장 빠른 속도의 30 % 넘게) 속도 방향과 몸이 보는 방향이 35° 넘게 벌어지지 않는가 (옆 · 뒤로 미끄러지지 않는다) ──
+// 몸 = 그림의 방향(ch.dx, ch.dz) — 본 게임 장면이 거는 회전 묶음(TURN_RUN 15 rad/초)도 같이 흉내 낸다. 속도 = 규칙의 vx, vz
+function slideCase(name, stick, ticks, o = {}) {
+  const sim = new Sim(flatArena(4000, 4000, []), {}), ch = mkChar('kael'), h = sim.hero; let worst = 0, worstAt = -1, back = 0, flipT = -1, flipDone = -1, minSp = 1e9, bad = 0;
+  for (let i = 0; i < ticks; i++) {
+    const st = stick(i), a0 = Math.atan2(ch.dz, ch.dx); sim.update(DT, { mx: st[0], mz: st[1] }); driveHero(ch, h, DT, TUNE);
+    { let d = Math.atan2(ch.dz, ch.dx) - a0; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; const mx = 15 * DT; if (Math.abs(d) > mx) { const a = a0 + Math.sign(d) * mx; ch.dx = Math.cos(a); ch.dz = Math.sin(a); } }   // the scene's cap
+    if (!finiteRig(ch)) bad++;
+    if (i < (o.from ?? 30)) continue;
+    const sp = Math.hypot(h.vx, h.vz), n = Math.hypot(h.vx / TUNE.runX, h.vz / TUNE.runZ);
+    if (o.rev != null && i >= o.rev) { if (flipT < 0) flipT = i; minSp = Math.min(minSp, sp); const along = (h.vx * st[0] + h.vz * st[1]) / (Math.hypot(st[0], st[1]) || 1); if (flipDone < 0 && along > 0.7 * Math.hypot(st[0] * TUNE.runX, st[1] * TUNE.runZ)) flipDone = i; }
+    if (n > 0.3) { const ang = Math.acos(Math.max(-1, Math.min(1, (h.vx * ch.dx + h.vz * ch.dz) / sp))) * 57.2958; if (ang > worst) { worst = ang; worstAt = i; } if (ang > 90) back++; }
+  }
+  const t = flipDone >= 0 ? (flipDone - flipT + 1) * DT : -1;
+  ok(`${name}: velocity stays within 35° of the body while moving (never sideways / backwards)`, worst < 35 && back === 0 && bad === 0 && (o.rev == null || (t > 0 && t <= (o.maxT ?? 0.32))),
+    `worst ${worst.toFixed(1)}° at tick ${worstAt} · backwards ticks ${back}` + (o.rev != null ? ` · reversal: 70% speed the new way after ${t.toFixed(2)} s · slowest ${minSp.toFixed(0)} px/s` : ''));
+  return { worst, t };
+}
+const D8 = (k) => [Math.cos((k * Math.PI) / 4), Math.sin((k * Math.PI) / 4)];
+for (const [nm, a, b] of [['x axis (right → left)', 0, 4], ['z axis (in → out)', 2, 6], ['diagonal (↗ → ↙)', 1, 5], ['diagonal (↖ → ↘)', 3, 7]]) slideCase('reversal on ' + nm, (i) => D8(i < 60 ? a : b), 110, { rev: 60 });
+for (const [nm, a, b] of [['right → in', 0, 2], ['in → left', 2, 4], ['left → out', 4, 6], ['out → right-in diagonal (135°)', 6, 1]]) slideCase('sharp turn ' + nm, (i) => D8(i < 60 ? a : b), 110, { rev: 60 });
+slideCase('quick left-right flips every 0.13 s', (i) => D8(Math.floor(i / 8) % 2 ? 4 : 0), 240);
+slideCase('quick left-right flips every 0.25 s', (i) => D8(Math.floor(i / 15) % 2 ? 4 : 0), 240);
+slideCase('in-out flips every 0.2 s', (i) => D8(Math.floor(i / 12) % 2 ? 6 : 2), 240);
+slideCase('circle, 3.6 rad/s', (i) => [Math.cos(i * 0.06), Math.sin(i * 0.06)], 300);
+slideCase('tight circle, 9 rad/s', (i) => [Math.cos(i * 0.15), Math.sin(i * 0.15)], 300);
+slideCase('stick sweep back and forth across 200°', (i) => { const a = 1.75 * Math.sin(i * 0.11); return [Math.cos(a), Math.sin(a)]; }, 300);
+slideCase('walk speed reversal (half stick)', (i) => (i < 60 ? [0.38, 0] : [-0.38, 0]), 130, { rev: 60, maxT: 0.4 });
 { // 방향이 한 프레임씩 번갈아 흔들려도(±179°) 몸이 떨지 않는다
   const sim = new Sim(flatArena(900, 600, []), {}), ch = mkChar('kael'); let flips = 0, last = 0, prev = Math.atan2(ch.dz, ch.dx);
   for (let i = 0; i < 30; i++) { const s = i % 2 ? 0.02 : -0.02; sim.update(DT, { mx: -1, mz: s }); driveHero(ch, sim.hero, DT, TUNE); const a = Math.atan2(ch.dz, ch.dx); let d = a - prev; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; if (Math.abs(d) > 0.02) { if (last && Math.sign(d) !== last) flips++; last = Math.sign(d); } prev = a; }

@@ -95,7 +95,7 @@ function gaitWarp(ch, clip) {
   const lowL = Math.min(...yl) + 0.035, lowR = Math.min(...yr) + 0.035, inc = []; let sum = 0, n = 0;
   for (let i = 0; i < N; i++) {
     const cl = yl[i] < lowL && yl[i + 1] < lowL, cr = yr[i] < lowR && yr[i + 1] < lowR;
-    const d = cl && cr ? (zl[i] - zl[i + 1] + zr[i] - zr[i + 1]) / 2 : cl ? zl[i] - zl[i + 1] : cr ? zr[i] - zr[i + 1] : -1;
+    const d = cl && cr ? (zl[i] > zr[i] ? zl[i] - zl[i + 1] : zr[i] - zr[i + 1]) : cl ? zl[i] - zl[i + 1] : cr ? zr[i] - zr[i + 1] : -1;
     inc.push(d); if (d > 0) { sum += d; n++; }
   }
   if (n < N * 0.3) return null;
@@ -195,6 +195,7 @@ export function driveHero(ch, h, dt, T = TUNE) {
   else if (st === 'attack' || st === 'parry' || st === 'block') turn(ch, S, h.dirX, h.dirZ, dt, 42, 40);
   else if (st === 'roll') turn(ch, S, h.roll?.dx ?? h.dirX, h.roll?.dz ?? h.dirZ, dt, 34, 32);
   else if (st === 'guard') turn(ch, S, h.dirX, h.dirZ, dt, 22, 18);
+  else if (T.legacyTurn) turn(ch, S, h.dirX, h.dirZ, dt, h.onGround ? 22 : 12, 15);
   else turn(ch, S, h.dirX, h.dirZ, dt, 90, 40);   // 걷고 달리고 돌아설 때: 규칙이 몸의 방향을 이미 빠르기를 묶어 돌린다(sim._locomote) — 그림은 그대로 따른다 (속도와 몸이 어긋나지 않게)
   { const a1 = Math.atan2(ch.dz, ch.dx), w = dt > 0 ? wrapPi(a1 - (S.ang ?? a1)) / dt : 0; S.ang = a1; S.angV = (S.angV ?? 0) + (w - (S.angV ?? 0)) * Math.min(1, dt * 14); }   // 도는 빠르기 (rad/초, + = 왼쪽으로)
   // ── 클립 ──
@@ -236,7 +237,7 @@ export function driveHero(ch, h, dt, T = TUNE) {
   S.prev0 = st;
   A.update(dt);
   // 준비 자세(락온한 채 서 있을 때): idle_combat 은 칼끝이 등 뒤를 본다 → 칼 든 팔만 겨눔 자세(guard_walk 의 팔: 칼끝이 앞)로 덮는다. 공격이 시작되면 0.1초에 풀려 준비 동작이 그대로 나온다
-  const rdy = st === 'idle' && h.lock != null && !h.dead && A.cur === C.idle_combat && C.guard_walk ? 1 : 0;
+  const rdy = st === 'idle' && h.lock != null && !h.dead && A.cur === C.idle_combat && C.guard_walk && !T.legacyTurn ? 1 : 0;
   S.ready = (S.ready ?? 0) + (rdy - (S.ready ?? 0)) * Math.min(1, dt * (rdy ? 9 : 16));
   const readyOn = S.ready > 0.02;
   if (readyOn) layerBones(ch.rig, (ch.asset._readyPose ??= sampleClip(C.guard_walk, 0.3, new CPose())), READY_ARM, S.ready);

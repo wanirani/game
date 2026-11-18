@@ -20,7 +20,9 @@ ok('legacy kinds map: melee→skeleton_soldier, ranged→skeleton_mage', KINDS.m
 
 // ── 2. 이동 · 방향 ──
 { const s = mk(); run(s, 0.6, { mx: 0, mz: 1 }); const z06 = s.hero.z; run(s, 1.2, { mx: 0, mz: 1 }); ok('move up: dir = (0,1), z grows', s.hero.dirZ > 0.99 && z06 > 60 && s.hero.anim === 'run', `z ${z06.toFixed(0)} anim ${s.hero.anim}`);
-  run(s, 0.05, { mx: 0, mz: -1 }); ok('stick reverse: rule dir flips at once', s.hero.dirZ < -0.99);
+  let backT = 0, vmin = 9e9; run(s, 0.05, { mx: 0, mz: -1 }); const d005 = s.hero.dirZ, a005 = s.hero.anim;
+  run(s, 0.3, { mx: 0, mz: -1 }, (q) => { const h = q.hero, sp = Math.hypot(h.vx, h.vz); vmin = Math.min(vmin, sp); if (sp > 60 && h.vx * h.dirX + h.vz * h.dirZ < 0) backT++; });
+  ok('stick reverse: the body pivots (anim turn), never moves backwards, faces the new way within 0.35 s', a005 === 'turn' && d005 > -0.99 && s.hero.dirZ < -0.99 && backT === 0 && s.hero.vz < -150 && names(s).includes('pivot'), `dirZ after 0.05 s ${d005.toFixed(2)} · after 0.35 s ${s.hero.dirZ.toFixed(2)} · vz ${s.hero.vz.toFixed(0)} · slowest ${vmin.toFixed(0)}`);
   const steps = s.log.filter((l) => l[0] === 'step'); ok('footsteps alternate L/R while running', steps.length >= 2 && steps.every((l, i) => i === 0 || l[1] !== steps[i - 1][1]), steps.map((l) => l[1]).join('')); }
 { const s = mk(); run(s, 1.0, { mx: 0.35, mz: 0 }); ok('half stick = walk gait', s.hero.anim === 'walk' && s.hero.gaitMode === 'walk', `anim ${s.hero.anim} v ${s.hero.vx.toFixed(0)}`); }
 { const s = mk(); let top = 0, sawJump = false, sawFall = false; run(s, 1.2, (i) => ({ mx: 0, mz: 0, jump: i === 0, jumpHeld: true }), (q) => { top = Math.max(top, q.hero.y); sawJump ||= q.hero.anim === 'jump'; sawFall ||= q.hero.anim === 'fall'; });
@@ -143,7 +145,7 @@ try {
 
 // ── 11. 이어 하기(2차)에서 더한 것 ──
 { const s = mk(); const seen = new Set(); run(s, 1.0, { mx: 1, mz: 0 }); run(s, 0.5, { mx: -1, mz: 0 }, (q) => seen.add(q.hero.anim)); run(s, 0.5, { mx: 0.2, mz: 0.98 }, (q) => seen.add(q.hero.anim));
-  ok('stick reversal keeps the run state (no idle / walk flicker while speed passes zero)', seen.size === 1 && seen.has('run'), [...seen].join(' ')); }
+  ok('stick reversal goes turn → run (no idle / walk flicker while speed passes zero)', seen.has('run') && [...seen].every((a) => a === 'run' || a === 'turn'), [...seen].join(' ')); }
 { const s = mk(); s.hero.x = 500; run(s, 0.6, { mx: 1, mz: 0 }); const g0 = s.hero.gait; let moved = 0; run(s, 0.5, { mx: 1, mz: 0 }, (q) => { moved += Math.abs(q.hero.gait - g0) > 0.01 ? 1 : 0; });
   ok('running into a wall: legs keep cycling (gait advances), state stays run', moved > 5 && s.hero.anim === 'run' && s.hero.x <= 520 - s.hero.r + 0.01, `x ${s.hero.x.toFixed(1)}`); }
 { const s = mk([{ kind: 'dummy0', x: 60, z: 0, active: true }]); s.enemies[0].def = { ...s.enemies[0].def, attacks: [] }; let eta = [], land = -1;

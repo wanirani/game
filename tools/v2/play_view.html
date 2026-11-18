@@ -36,6 +36,7 @@ const DIR = '../../assets/v2/char3d/';
 const CAMS = { game: { yaw: 0, pitch: 0.35, dist: 800, lookY: 60 }, high: { yaw: 0, pitch: 0.62, dist: 760, lookY: 50 }, close: { yaw: 0, pitch: 0.3, dist: 300, lookY: 58 }, side: { yaw: 1.5708, pitch: 0.12, dist: 330, lookY: 55 }, front: { yaw: 3.1416, pitch: 0.2, dist: 320, lookY: 58 }, top: { yaw: 0, pitch: 1.35, dist: 700, lookY: 0 }, closehigh: { yaw: 0, pitch: 0.66, dist: 300, lookY: 58 }, enemy: { yaw: 0, pitch: 0.3, dist: 400, lookY: 58, focus: true }, enemyside: { yaw: 1.5708, pitch: 0.15, dist: 400, lookY: 58, focus: true } };
 const GRIPS = { w_rusty_sword: { pos: [0, 7, 3], rotX: -80, rotY: 0, rotZ: 0 }, w_crystal_staff: { pos: [0, 7, 3], rotX: 100, rotY: 0, rotZ: 0 }, w_grave_spade: { pos: [0, 9, 4], rotX: -80, rotY: 0, rotZ: 0 } };
 const S = { demo: q.get('demo') ?? 'run8', cam: q.get('cam') ?? 'game', slow: q.get('slow') === '1', box: q.get('box') === '1', pause: false, follow: true };
+if (q.get('legacy') === '1') TUNE.legacyTurn = true;   // 비교용: 1차의 돌기 방식
 const api = (window.__play = { ready: false, error: null, S, hold: q.get('hold') === '1' });
 let gl, R, sim, heroCh, floorGpu, blobGpu, shotGpu, time = 0, demo = null, seqT = 0;
 const assets = new Map(), weapons = new Map(), chars = new Map();

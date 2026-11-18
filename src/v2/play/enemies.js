@@ -27,7 +27,7 @@ const DIVE = A({ id: 'dive', clip: 'fly', range: 250, windup: 0.36, strike: 0.5,
 
 // stride = 걷기 클립 한 주기에 나아가는 거리(px). 디딘 발이 가장 덜 미끄러지는 값을 뼈대에서 재서 넣었다 (병사 11 % · 술사 31 % · 주검 52 % · 갑주 32 % — 주검의 어기적 걸음은 본래 발을 끄는 동작이다)
 const K = (o) => {
-  const k = { weapon: null, r: 15, hp: 30, speed: 90, turn: 8, sight: 440, weight: 0, stun: 0.3, dieT: 1.3, standoff: 62, attacks: [], lib: true, ...o };
+  const k = { weapon: null, r: 15, hp: 30, speed: 90, turn: 8, sight: 300, sightArc: 105, senseNear: 150, weight: 0, stun: 0.3, dieT: 1.3, standoff: 62, attacks: [], lib: true, ...o };
   k.hpx = Math.round(k.height * UNIT * 0.94);   // 맞는 상자 높이 (px)
   return k;
 };
@@ -38,7 +38,7 @@ export const KINDS = {
     hp: 34, speed: 104, stride: 78, attacks: [SLASH, STAB], wakeSound: 'enemy.skel.rattle',
     clips: { idle: 'idle_combat', walk: 'walk', hurt: 'hit_light', stagger: 'stagger', death: 'death_back' } }),
   skeleton_mage: K({ name: '해골 술사', model: 'skeleton_mage', weapon: 'w_crystal_staff', grip: { pos: [0, 7, 3], rotX: 100, rotY: 0, rotZ: 0 }, height: 1.85, material: 'bone', ai: 'ranged',
-    hp: 26, speed: 78, stride: 86, sight: 540, near: 190, far: 350, attacks: [BOLT], wakeSound: 'enemy.skel.rattle',
+    hp: 26, speed: 78, stride: 86, sight: 400, near: 190, far: 350, attacks: [BOLT], wakeSound: 'enemy.skel.rattle',
     clips: { idle: 'idle', walk: 'walk', hurt: 'hit_light', stagger: 'stagger', death: 'death_back' } }),
   plague_corpse: K({ name: '역병 주검', model: 'plague_corpse', height: 1.76, material: 'flesh', ai: 'melee',
     hp: 82, speed: 46, stride: 40, turn: 3.2, weight: 0.5, stun: 0.14, poise: true, standoff: 96, attacks: [GRAB], dieT: 1.7,
@@ -50,7 +50,7 @@ export const KINDS = {
     hp: 170, r: 24, speed: 58, stride: 86, turn: 2.4, weight: 0.85, stun: 0.12, poise: true, standoff: 92, armorFront: { arc: 80, k: 0.15 }, attacks: [SLAM, THRUST], dieT: 2.0, steps: true,
     clips: { idle: 'idle_combat', walk: 'brute_walk', hurt: 'block_hit', stagger: 'stagger', death: 'knockdown' } }),
   bat: K({ name: '박쥐', model: 'bat', height: 0.45, material: 'flesh', ai: 'bat', lib: false,
-    hp: 8, r: 11, speed: 200, turn: 14, fly: true, hover: 96, pitch: 50, orbit: [130, 190], attacks: [DIVE], dieT: 0.7, sight: 520,
+    hp: 8, r: 11, speed: 200, turn: 14, fly: true, hover: 96, pitch: 50, orbit: [130, 190], attacks: [DIVE], dieT: 0.7, sight: 360, sightArc: 180,
     clips: { idle: 'fly', walk: 'fly', hurt: 'fly', stagger: 'fly', death: 'fly' } }),
   // 보스 자리: 모델과 숫자만 있다. 규칙(노래 · 유령 부르기 · 조종에 무릎 꿇기)은 AI.boss 를 채우면 된다 — docs/v2/PLAY_API.md §7
   banshee_queen: K({ name: '밴시 여왕', model: 'banshee_queen', height: 2.7, material: 'cloth', ai: 'boss', boss: true,
@@ -100,7 +100,7 @@ export const AI = {
     sim.turnTo(e, dx, dz, D.turn, dt);
     const close = dist < D.near * 0.6;   // 코앞에서는 쏘지 않고 먼저 물러선다 (1초 넘게 쫓기면 그냥 쏜다)
     e.fleeT = close ? (e.fleeT ?? 0) + dt : 0;
-    if (e.cd <= 0 && dist < D.sight + 60 && (!close || e.fleeT > 1)) { e.fleeT = 0; return sim.startAttack(e, D.attacks[0]); }
+    if (e.cd <= 0 && dist < 600 && (!close || e.fleeT > 1)) { e.fleeT = 0; return sim.startAttack(e, D.attacks[0]); }
     if (dist < D.near) { sim.steer(e, -dx / dist, -dz / dist, D.speed * (close ? 1.5 : 1.1), dt, true); sim.setAnim(e, 'walk', dt); }
     else if (dist > D.far) { sim.steer(e, dx / dist, dz / dist, D.speed, dt); sim.setAnim(e, 'walk', dt); }
     else sim.setAnim(e, 'idle', dt);

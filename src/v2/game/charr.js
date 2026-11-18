@@ -137,12 +137,20 @@ export class CharRenderer {
     this.models.push(m); this._upload(m);
     return m;
   }
+  /** free one GPU model (the scene drops the models an area does not use when it moves on) */
+  remove(m) {
+    const gl = this.gl, i = this.models.indexOf(m); if (i < 0) return;
+    this.models.splice(i, 1);
+    try { for (const p of m.prims) { if (p.vbo) gl.deleteBuffer(p.vbo); if (p.ibo) gl.deleteBuffer(p.ibo); p.vbo = p.ibo = null; } for (const t of m.tex) if (t) gl.deleteTexture(t); } catch { /* context already gone */ }
+    this.stats.bufBytes -= m.bufB ?? 0; this.stats.texBytes -= m.texB ?? 0; m.tex = [];
+    for (const c of m.srcs) if (c && 'width' in c) { try { c.width = 1; c.height = 1; } catch { /* ImageBitmap */ } }
+  }
   _upload(m) {
-    const gl = this.gl;
+    const gl = this.gl; m.bufB = 0; m.texB = 0;
     for (const p of m.prims) {
       p.vbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, p.vbo); gl.bufferData(gl.ARRAY_BUFFER, p.data, gl.STATIC_DRAW);
       p.ibo = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, p.ibo); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, p.idx, gl.STATIC_DRAW);
-      this.stats.bufBytes += p.data.byteLength + p.idx.byteLength;
+      this.stats.bufBytes += p.data.byteLength + p.idx.byteLength; m.bufB += p.data.byteLength + p.idx.byteLength;
     }
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
     const pm = gl.getParameter(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL), fy = gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL);
@@ -155,7 +163,7 @@ export class CharRenderer {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, mip ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR);
       if (mip) gl.generateMipmap(gl.TEXTURE_2D);
-      this.stats.texBytes += Math.round(w * h * 4 * (mip ? 1.34 : 1));
+      { const tb = Math.round(w * h * 4 * (mip ? 1.34 : 1)); this.stats.texBytes += tb; m.texB += tb; }
       return t;
     });
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, pm); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, fy);

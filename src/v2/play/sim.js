@@ -32,7 +32,7 @@ export class Sim {
   }
   reset() {
     const W = this.W, T = TUNE;
-    this.time = 0; this.stop = 0; this.done = false; this.kills = 0; this._buf = { attack: false, dash: false, jump: false, lockNext: false }; this._nid = 0;
+    this.time = 0; this._tick = 0; this.stop = 0; this.done = false; this.kills = 0; this._buf = { attack: false, dash: false, jump: false, lockNext: false }; this._nid = 0;
     this.hero = {
       x: W.start.x, z: W.start.z, y: W.start.y, vx: 0, vz: 0, vy: 0, r: 14, h: 92, facing: 1, dirX: 1, dirZ: 0, onGround: true, coyote: 0,
       hp: T.heroHp, hpMax: T.heroHp, ifr: 0, hurtT: 0, dead: false, deadT: 0, flash: 0,
@@ -59,6 +59,8 @@ export class Sim {
       anim: 'idle', animT: 0, t: rnd(0, 5), hitDone: false, swung: false, kx: 0, kz: 0, gait: rnd(0, 1), moved: 0,
       side: id % 2 ? 1 : -1, detourT: 0, detX: 0, detZ: 0, stuckT: 0, orb: rnd(0, 6.28), orbW: (id % 2 ? 1 : -1) * rnd(1.1, 1.7), orbR: D.orbit ? rnd(D.orbit[0], D.orbit[1]) : 0,
     };
+    e.sight = s.sight ?? D.sight; e.wakeBy = s.wake ?? null;
+    if (s.face) { const fl = Math.sqrt(s.face[0] * s.face[0] + s.face[1] * s.face[1]) || 1; e.dirX = s.face[0] / fl; e.dirZ = s.face[1] / fl; e.facing = e.dirX < 0 ? -1 : 1; }
     if (D.fade != null) { e.solid = false; e.alpha = D.fade; }
     if (e.active) e.state = 'chase';
     else if ((s.rise ?? D.rise) && !D.fly && !D.floats) e.buried = true;   // 엎드려 누워 있다가 영웅이 다가오면 일어선다 (스테이지 spawns[].rise)
@@ -72,6 +74,12 @@ export class Sim {
     e.active = true; e.stateT = 0;
     if (e.buried) { e.buried = false; e.state = 'rise'; } else if (e.state === 'idle') e.state = 'chase';   // 누워 있던 것은 먼저 일어선다
     this.emit('wake', e); if (e.def.wakeSound) this.hooks.sound?.(e.def.wakeSound, e);
+    const E = this.enemies;   // 곁에 있는 한패(같은 group, 또는 group 이 없으면 220 px 안)는 같이 알아챈다 — 벽 너머는 아니다
+    for (let i = 0; i < E.length; i++) {
+      const o = E[i]; if (o === e || o.dead || o.active || o.wakeBy === 'trigger' || o.yard !== e.yard) continue;
+      const dx = o.x - e.x, dz = o.z - e.z, lim = e.group != null && o.group === e.group ? 420 : 220;
+      if (dx * dx + dz * dz < lim * lim && (e.group != null ? o.group === e.group : o.group == null) && this.clearLine(e.x, e.z, o.x, o.z, e.gy + 56)) this.wake(o);
+    }
   }
   /** 효과 · 소리 쪽이 정한 경직을 넣는다 (초) */
   hitStop(sec) { this.stop = Math.max(this.stop, sec); }
@@ -93,7 +101,7 @@ export class Sim {
       if (inp.attack) B.attack = true; if (inp.dash) B.dash = true; if (inp.jump) B.jump = true; if (inp.lockNext) B.lockNext = true;
       return;
     }
-    this.time += dt;
+    this.time += dt; this._tick = (this._tick + 1) | 0;
     this._hero(dt, inp);
     { const E = this.enemies; for (let i = 0; i < E.length; i++) if (!E[i].dead) this._enemy(E[i], dt); }
     this._separate(dt);
@@ -133,7 +141,7 @@ export class Sim {
     } else {
       const mv0 = h.move, pastHit = !mv0 || (mv0.kind === 'plunge' ? h.plungeLand != null : h.moveT >= mv0.hit[1]);
       // 구르기: 스틱을 민 채 dash, 또는 막는 중에 스틱을 민다. 공격은 판정이 끝난 뒤부터 구르기로 끊을 수 있다
-      const wantRoll = (pDash && moving) || (h.guard && moving && (inp.guard || h.guardTap > 0));
+      const wantRoll = (pDash && moving) || (h.guard && moving && !!inp.guard);   // 막는 중에 구르려면 단추를 누르고 있어야 한다 (톡 눌러 뗀 뒤 스틱을 밀면 구르지 않고 걷는다)
       if (wantRoll && h.rollCd <= 0 && h.dashT <= 0 && pastHit) this._startRoll(h, ux, uz);
       else if (pDash && !moving && h.onGround) h.guardTap = T.guardTap;   // 제자리에서 누름 = 막기 (짧게 누르면 튕겨내기 시도)
       // 막기
@@ -234,6 +242,12 @@ export class Sim {
    */
   _locomote(h, mx, mz, m, moving, ux, uz, dt) {
     const T = TUNE;
+    if (T.legacyTurn) {   // (비교용: 1차의 방식 — 속도는 스틱을 바로 따르고 방향은 그 자리에서 바뀐다. tools/v2/play_view.html?legacy=1)
+      const k = Math.min(1, (h.onGround ? 16 : T.airAccel) * dt);
+      h.vx += (mx * T.runX - h.vx) * k; h.vz += (mz * T.runZ - h.vz) * k; h.pivot = 0;
+      if (moving) this._face(h, mx, mz);
+      return;
+    }
     if (!h.onGround) {
       const k = Math.min(1, T.airAccel * dt);
       h.vx += (mx * T.runX - h.vx) * k; h.vz += (mz * T.runZ - h.vz) * k; h.pivot = 0;
@@ -472,7 +486,7 @@ export class Sim {
     }
     const dx = h.x - e.x, dz = h.z - e.z, dist = Math.hypot(dx, dz);
     if (!e.active) {
-      if (dist < (e.buried ? Math.min(D.sight, D.riseAt ?? 230) : D.sight) && !h.dead && (!e.yard || this.section === 'yard' || this.section === 'done') && Math.abs(h.y - e.gy) < 130) this.wake(e);
+      if (!h.dead && e.wakeBy !== 'trigger' && (!e.yard || this.section === 'yard' || this.section === 'done') && Math.abs(h.y - e.gy) < 130 && this._sees(e, h, dist, D)) this.wake(e);
       if (!e.active) { this._place(e); this._anim(e, e.buried ? 'buried' : 'idle', dt); return; }
     }
     if (e.state === 'rise') {   // 땅에서 일어서는 중 (맞을 수는 있다)
@@ -495,6 +509,32 @@ export class Sim {
     (AI[D.ai] ?? AI.melee)(this, e, dt, D);
     this._fade(e, D, dt);
     this._place(e);
+  }
+  /**
+   * 잠든 적이 영웅을 알아채는가: 앞쪽(±sightArc) 은 sight 거리까지 보고, 등 뒤 · 옆은 near 거리 안에서만 느낀다. 벽(단단한 상자) 너머는 보지 못한다.
+   * 지역이 달리 정할 수 있다: spawns[].sight(거리) · spawns[].wake = 'trigger'(사건 · 맞았을 때만 깬다) · spawns[].face([dx,dz] 보는 쪽)
+   */
+  _sees(e, h, dist, D) {
+    const sight = e.buried ? Math.min(e.sight, D.riseAt ?? 230) : e.sight;
+    if (dist > sight) return false;
+    if (dist > (D.senseNear ?? 150) && !e.buried && (h.x - e.x) * e.dirX + (h.z - e.z) * e.dirZ < dist * Math.cos((D.sightArc ?? 105) * RAD)) return false;
+    if (((this._tick + e.id) & 3) !== 0) return false;   // 벽 검사는 네 틱에 한 번
+    return this.clearLine(e.x, e.z, h.x, h.z, e.gy + 56);
+  }
+  /** (x0,z0) → (x1,z1) 사이에 높이 y 를 가리는 단단한 상자가 없는가 */
+  clearLine(x0, z0, x1, z1, y) {
+    const B = this.W.boxes; if (!B) return true;
+    const dx = x1 - x0, dz = z1 - z0;
+    for (let i = 0; i < B.length; i++) {
+      const b = B[i]; if (!b.solid || b.y1 <= y || b.y0 >= y) continue;
+      let t0 = 0, t1 = 1;
+      if (dx > -1e-9 && dx < 1e-9) { if (x0 <= b.x0 || x0 >= b.x1) continue; }
+      else { let a = (b.x0 - x0) / dx, c = (b.x1 - x0) / dx; if (a > c) { const q = a; a = c; c = q; } if (a > t0) t0 = a; if (c < t1) t1 = c; if (t0 >= t1) continue; }
+      if (dz > -1e-9 && dz < 1e-9) { if (z0 <= b.z0 || z0 >= b.z1) continue; }
+      else { let a = (b.z0 - z0) / dz, c = (b.z1 - z0) / dz; if (a > c) { const q = a; a = c; c = q; } if (a > t0) t0 = a; if (c < t1) t1 = c; if (t0 >= t1) continue; }
+      return false;
+    }
+    return true;
   }
   _fade(e, D, dt) {
     if (D.fade == null) return;
