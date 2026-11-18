@@ -1,3 +1,4 @@
+// 다음 주말(페이블) 첫 작업으로 남겨 둔 지시. 울타리 부분은 fence.workflow.js 로 먼저 돌린다 — 이 스크립트를 돌릴 때는 1번(울타리)이 끝났는지 먼저 확인할 것.
 export const meta = {
   name: 'v2-fence-breakables',
   description: 'Fix walking through fences and railings in every area, and add breakable jars, crates and barrels that shatter with sound and drop coins, healing and resonance; then adversarial verify',
