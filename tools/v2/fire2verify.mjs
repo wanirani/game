@@ -49,7 +49,7 @@ function install() {
     put(x, z, fl, dx, dz) { const h = sc.sim.hero;
       h.x = x; h.z = z; h.y = fl; h.vx = h.vz = h.vy = 0; h.onGround = true; const l = Math.hypot(dx, dz) || 1; h.dirX = dx / l; h.dirZ = dz / l; sc.heroA.dx = h.dirX; sc.heroA.dz = h.dirZ;
       if (h.safe) { h.safe.x = h.x; h.safe.y = h.y; h.safe.z = h.z; } h._px = h.x; h._py = h.y; h._pz = h.z; sc.visY = sc.visYP = h.y; sc.cam.snap = true; },
-    clearEnemies() { for (const e of sc.sim.enemies) { if (e._fv) continue; e._fv = [e.x, e.z, e.y, e.active]; e.active = false; e.x += 9000; } },
+    clearEnemies() { for (const e of sc.sim.enemies) { e.active = false; if (e.x < 50000) e.x += 90000; } },
     enemy(x, z, fl) { const e = sc.sim.enemies.find((q) => !q.dead && q.state !== 'dead'); if (!e) return null; e.x = x; e.z = z; e.y = fl; e.vx = e.vz = 0; e.active = false; return e.kind ?? e.type ?? 'enemy'; },
     /** a standing place near the spot: the first offset with floor under it and nothing solid in it. offs = [[dx, dz], ...] */
     stand(s, offs) { const top = s.kind === 'fire' ? s.y + 20 : s.y + 40;
