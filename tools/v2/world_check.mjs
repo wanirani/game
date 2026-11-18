@@ -99,8 +99,9 @@ const walk = (page, wps, start = null) => page.evaluate(([wps, start]) => {
   const hp0 = sc.sim.hero.hp, trace = []; let i = 0, stuck = 0, lx = 0, lz = 0, jump = 0, t = 0, fell = false, jumps = 0, minY = 1e9, lock = null; const jlog = [];   // WORLD-3: EVERY jump is counted and logged [x, z, y, why] - also the one pressed when stuck (it used to hide stairs the stick cannot climb)
   for (; t < 9000 && i < wps.length; t++) {
     const h = sc.sim.hero, dx = wps[i][0] - h.x, dz = wps[i][1] - h.z, dd = Math.hypot(dx, dz);
-    if (dd < (i === wps.length - 1 ? 5 : 22)) { i++; continue; }
-    const dzn = stuck >= 2 ? 0.5 : 3; act = {}; if (dx > dzn) act.right = true; else if (dx < -dzn) act.left = true; if (dz > dzn) act.up = true; else if (dz < -dzn) act.down = true;   // (WORLD-3: a bot that has not moved for 12 ticks steers exactly - the 3-unit dead zone left it pressing against a corner)
+    const exact = Math.abs(ground(wps[i][0], wps[i][1]) - ground(h.x, h.z)) > 1;   // WORLD-3: on a flight (the next cell stands higher or lower) the bot walks the route cell by cell - with the loose 22 it cut the corner at a flight's top and walked into the floor face beside it
+    if (dd < (i === wps.length - 1 ? 5 : exact ? 9 : 22)) { i++; continue; }
+    const dzn = stuck >= 2 || exact ? 0.5 : 3; act = {}; if (dx > dzn) act.right = true; else if (dx < -dzn) act.left = true; if (dz > dzn) act.up = true; else if (dz < -dzn) act.down = true;   // (WORLD-3: a bot that has not moved for 12 ticks steers exactly - the 3-unit dead zone left it pressing against a corner)
     if (h.y < minY) minY = h.y;
     if (h.onGround && jump <= 0) {   // WORLD-2: a gap before a waypoint at this height, or a ledge higher than a step -> jump
       const gh = ground(h.x, h.z), ga = ground(h.x + dx / dd * 26, h.z + dz / dd * 26), gt = ground(wps[i][0], wps[i][1]);
@@ -115,7 +116,7 @@ const walk = (page, wps, start = null) => page.evaluate(([wps, start]) => {
       if (why) { jump = 20; jumps++; lock = why[1]; jlog.push([Math.round(h.x), Math.round(h.z), Math.round(h.y), why[0]]); }
     }
     if (jump > 0 && lock === 'z') { act.left = act.right = false; } else if (jump > 0 && lock === 'x') { act.up = act.down = false; }
-    if (t % 6 === 0) { const m = Math.hypot(h.x - lx, h.z - lz); lx = h.x; lz = h.z; stuck = m < 2 ? stuck + 1 : 0; if (stuck >= 4) { jump = 22; stuck = 0; lock = null; jumps++; jlog.push([Math.round(h.x), Math.round(h.z), Math.round(h.y), 'stuck']); } if (stuck === 3 && h.onGround && ground(wps[i][0], wps[i][1]) > ground(h.x, h.z) + 60) { fell = true; break; } }
+    if (t % 6 === 0) { const m = Math.hypot(h.x - lx, h.z - lz); lx = h.x; lz = h.z; stuck = m < 2 ? stuck + 1 : 0; if (stuck >= 4) { jump = 22; stuck = 0; lock = null; jumps++; jlog.push([Math.round(h.x), Math.round(h.z), Math.round(h.y), 'stuck', wps[i][0], wps[i][1]]); } if (stuck === 3 && h.onGround && ground(wps[i][0], wps[i][1]) > ground(h.x, h.z) + 60) { fell = true; break; } }
     if (jump > 0) { jump--; act.jump = jump > 6; }
     if (t % 4 === 0) { trace.push([t, Math.round(h.x), Math.round(h.z), Math.round(h.y), jump, lock, wps[i][0], wps[i][1]].join(' ')); if (trace.length > 400) trace.shift(); }
     g.tick(1 / 60);
