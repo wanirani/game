@@ -85,6 +85,26 @@ APK 예산(95 MB) 때문에 3D 판을 따로 앱으로 낸다. 같은 안드로�
 설치된 앱의 새 버전 알림: 2D 앱은 예전처럼 계정 서버 사이트의 `downloads/latest.json` · `/apk`, 3D 앱은 `downloads/latest3d.json` · `/apk3d` (`tools/apk/pack_web.py --update-*` → `apk.json update`, `MainActivity`). 웹사이트에 3D 앱 내려받기를 올리는 일(`latest3d.json` · `/apk3d` 리디렉트)은 아직 하지 않았다 — 그때까지 3D 앱의 확인은 404 로 조용히 건너뛴다.
 옛 통합 APK(2D + 3D, 462868 까지)를 깐 기기: 새 2D APK 가 같은 패키지의 업데이트로 깔리고(3D 판은 빠진다), 3D 앱은 옆에 새로 깔린다. 통합 앱 안의 3D 세이브는 3D 앱으로 옮겨지지 않는다(소유자 결정: 옮길 것 없음).
 
+### 4.2 3D 앱만 내기 — 스크립트로 (2026-11-18, APK 9–11 에서 쓴 순서)
+
+1. **깨끗한 나무**: 일하던 갈래가 모두 끝나고(또는 저장소를 건드리지 않게 묶어 두고 — 아래 「멈춤 파일」) 커밋 · 푸시가 끝난 상태.
+2. **점검 묶음** `bash tools/v2/release/pre_chain.sh <결과 폴더>` — 노드 검사 10 · 이야기 계획 5(boot · first15 · saves · edges · cross30) · 건넘 가장자리 · 깨지는 것 · smoke · p0 · world_check · game_check · 1장 봇(깨끗한 저장 → `CH_TO`, 기본 `ev_elite_down`). 약 50분. `<폴더>/steps.txt` 의 모든 줄이 `exit=0`, `first15 beats-not-run=0 OK`, `chapter … helps=0 … OK` 여야 한다(읽는 법은 스크립트 머리말).
+3. **바깥 변경 확인** `git diff --name-only <지난 3D 출시 커밋> HEAD -- . ':!src/v2' ':!assets/v2' ':!tools/v2' ':!docs' ':!tools/higgsfield'` 가 비어 있으면 3D 앱만(§4.1 「바뀐 앱만」). `tools/higgsfield/manifest_*.json` 은 기록 파일이라 어떤 빌드도 읽지 않는다.
+4. **자동 저장을 멈추고**(빌드 동안 HEAD 가 움직이면 안 된다 — versionCode 와 빌드 표시가 HEAD 의 커밋에서 나온다) `bash tools/v2/release/rel_3d.sh <기록 폴더>` → check-key · `build_web --target 3d` · target_check · `APP_VARIANT=3d build_apk --verify`(84건) · `dist_boot_check --scenes v2g` · probe(크기 · sha256 · build-info). 약 10분. 끝나면 자동 저장을 다시 켠다.
+5. **apk 브랜치에 내기** (강제 푸시 금지, 2D 쌍 · `latest.json` · 438330 은 그대로 둔다):
+   ```bash
+   rm -rf /dev/shm/apkpub && mkdir /dev/shm/apkpub && cd /dev/shm/apkpub && git init -q && git remote add origin <저장소 원격 주소>
+   git fetch -q --depth 1 origin apk && git checkout -q -b apk FETCH_HEAD
+   git rm -q BloodNocturne3D-1.0.0-<옛 versionCode>.apk BloodNocturne3D-1.0.0-<옛 versionCode>.apk.sha256.txt
+   cp <저장소>/dist/BloodNocturne3D.apk BloodNocturne3D-1.0.0-<새 versionCode>.apk   # + .apk.sha256.txt (sha256sum 출력 한 줄)
+   # latest3d.json: versionCode · sha256 · bytes · url(downloads/…) · built · note · web.buildHash · web.version 을 새 값으로
+   git add -A && git -c user.name="Claude" -c user.email="noreply@anthropic.com" commit -q -m "3D 앱 <새 versionCode>" && git push origin apk:apk
+   git fetch -q --depth 1 origin apk && git cat-file -p FETCH_HEAD:BloodNocturne3D-1.0.0-<새 versionCode>.apk | sha256sum   # probe.log 의 값과 같아야 한다
+   ```
+6. `docs/HANDOFF.md` 에 「APK n」 줄(커밋 · versionCode · 바이트 · SHA-256 · 웹 빌드 · 주소 · apk 브랜치 머리), 소유자에게 주소.
+
+**멈춤 파일** — 점검과 빌드 사이에 다음 갈래를 미리 띄울 때: `/tmp/claude-0/v2/RELEASE_FREEZE` 를 만들고, 갈래 지시문에 「이 파일이 있는 동안 저장소의 어떤 파일도 바꾸거나 만들지 말 것(읽기 · 노드 도구 · 브라우저 한 개로 있는 도구 돌리기 · 저장소 밖 초안만)」을 넣는다. 내고 나면 파일을 지운다. 처리 장치가 4개라 브라우저는 통틀어 둘까지(점검 묶음 하나 + 갈래 하나).
+
 ## 5. 서명 키
 
 APK 는 한 번 배포한 키로만 업데이트할 수 있다. 다른 키로 서명한 APK 는 설치된 앱 위에 설치되지 않는다.
