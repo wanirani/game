@@ -298,6 +298,18 @@ try {
       (tn === 'v2g' && errs.length === e0 ? info : fail)(`2D button ${id} tapped at (${b.x},${b.y}): top scene ${tn}, modal ${q?.modal ?? null}, hero (${h0.x},${h0.z}) -> (${q?.x},${q?.z}) act ${q?.act ?? null} move ${q?.move ?? null}, auto ${JSON.stringify(auto)}, new errors ${errs.length - e0}`); if (tn !== 'v2g') { await page.keyboard.press('Escape'); await page.waitForTimeout(800); } }
   }
 
+  // ctxmove: after the GL context came back, do real touches still move and swing the hero?
+  if (PLAN === 'ctxmove') {
+    await clean(); const o = await open('&area=eshville_now&v2story=0'); await ev(() => window.__iv.fellNear(900)); await rt(true); await page.waitForTimeout(600);
+    const vp = await ev(() => [innerWidth, innerHeight]), x0 = Math.round(vp[0] * 0.2), y0 = Math.round(vp[1] * 0.68), pad = await padOf();
+    const drag = async () => { const a = await st(); await T.down(1, x0, y0); await page.waitForTimeout(40); for (let i = 1; i <= 4; i++) { await T.move(1, x0 + 14 * i, y0); await page.waitForTimeout(20); } await page.waitForTimeout(1500); await T.up(1); const b = await st(); return b.x - a.x; };
+    const d0 = await drag(); const lost = await ev(() => window.__v2.loseContext()); await page.waitForTimeout(3000);
+    const g1 = await ev(() => { const s = window.__v2.stats; return { draws: s.gl.draws, lost: s.gl.lost, restored: s.gl.restored }; });
+    const d1 = await drag(); const p = ev(async () => { const t = performance.now(), s = new Set(); while (performance.now() - t < 2500) { const h = window.__v2.scene.sim.hero; if (h.move?.id) s.add(h.move.id); await new Promise((r) => setTimeout(r, 6)); } return [...s]; }); await page.waitForTimeout(100); for (let k = 0; k < 3; k++) { await T.tap(pad.attack.cx, pad.attack.cy, 90, 11); await page.waitForTimeout(240); } const mv = await p;
+    await shot(`ctxmove_${DEV}_after`, false);
+    chk(lost && d1 > 60 && mv.length > 0, `before the loss the stick moved the hero ${d0} px; context lost -> restored (${JSON.stringify(g1)}); after it the stick moves him ${d1} px and the attack button swings (${mv.join(' ') || 'nothing'})`);
+  }
+
   // ───────────────────────────── kinds: every enemy kind of the real areas ─────────────────────────────
   if (PLAN === 'kinds') {
     const PL = [['eshville_now', ['skeleton_soldier', 'skeleton_mage']], ['eshville_past', ['plague_corpse']], ['graveyard_now', ['bat', 'gravekeeper_armor', 'grave_ghost']], ['ossuary_now', ['banshee_queen']]];
