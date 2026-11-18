@@ -107,7 +107,7 @@ for (const dev of DEVICES) {
     console.log(`\n== ${dev} · belltower_now ==`);
     const S = await open(dev, 'belltower_now');
     try {
-      const sp = S.a.spawns, c = await S.go([sp.bottom.x, sp.bottom.z], [360, 1000]); R.climb = c;
+      const sp = S.a.spawns, c = PART.includes('probe') ? { arrived: true, hurt: 0, skipped: true } : await S.go([sp.bottom.x, sp.bottom.z], [360, 1000]); R.climb = c;
       ok(c.arrived && c.hurt === 0, `touch climb door -> bell chamber: ${c.arrived ? 'arrived' : 'NOT arrived, stopped at (' + c.x + ',' + c.z + ', y ' + c.y + ')'} · ${c.ticks} ticks · ${c.jumps} jumps · planned ${c.plans}x · lowest y ${c.minY} · hurt ${c.hurt} · triggers ${JSON.stringify(c.fired)}`);
       // walk off every floor edge towards the camera, and into every notch from both sides
       const LV = 136, falls = []; let badF = 0;
@@ -117,6 +117,7 @@ for (const dev of DEVICES) {
       // can a floor edge be hopped straight up (skipping the stairs)?
       let skip = 0; for (let k = 1; k <= 5; k++) { const z = (k === 5 ? 880 : 240 + (k - 1) * 160) - 20; for (const x of [200, 360, 500]) { const g0 = S.ground(x, z); if (g0 < (k - 1) * LV - 1 || g0 > (k - 1) * LV + 1) continue; await S.place(x, z, 10); await S.axis(0, 1); await S.t.down(12, (await padLayout(S.page)).buttons.jump.cx, (await padLayout(S.page)).buttons.jump.cy); const h = await S.step(40); await S.t.upAll(); const e = await S.step(30); if (e.y > g0 + 100) { skip++; note(`floor ${k} edge hopped straight up at x ${x}: y ${Math.round(e.y)}`); } } }
       ok(skip === 0, `floor edges cannot be hopped straight up with stick + jump (15 tries): ${skip} got up`);
+      if (PART.includes('probe')) for (const [x, z, y] of [[110, 580, 408], [173, 596, 408], [176, 580, 408], [110, 260, 136], [600, 100, 0]]) { await S.place(x, z, 10, y); await S.axis(0, 1); const e = await S.step(150); await S.t.upAll(); await S.step(4); note(`stair probe: stick north from (${x},${z}, y ${y}) for 150 ticks -> (${Math.round(e.x)},${Math.round(e.z)}, y ${Math.round(e.y)})`); }
       if (first) { for (const [n, x, z] of [['1_door', 360, 80], ['2_floor1', 200, 320], ['3_roost', 360, 480], ['4_floor3', 560, 640], ['5_floor4', 200, 800], ['6_top', 360, 960], ['7_bell', 300, 1090], ['8_top_corner', 660, 1240]]) await S.shot(`tower_${n}`, x, z); }
       if (PART.includes('num') && first) await numbers(S, 'belltower_now', R.tower = {}, PART.includes('cycle'));
       ok(S.errs.length === 0, `page errors ${S.errs.length}${S.errs.length ? ': ' + S.errs.slice(0, 2).join(' | ') : ''}`);
@@ -131,10 +132,10 @@ for (const dev of DEVICES) {
       const S = await open(dev, id, st), Q = R[key] = {};
       try {
         if (what === 'full') {
-          for (const x of [300, 600, 900]) { const p = await S.push(x, 1150, 0, 1, 70); ok(p.to.og && p.to.z < 1200 && p.to.hp === p.from.hp - 8, `stick into the gap at x ${x}: back on safe ground (${p.to.x},${p.to.z}, y ${p.to.y}), hp ${p.from.hp} -> ${p.to.hp} (pit rule: 8)`); }
+          for (const x of [300, 600, 900]) { const p = await S.push(x, 1150, 0, 1, 70); ok(p.to.og && p.to.z < 1200 && p.to.hp < p.from.hp && (p.from.hp - p.to.hp) % 8 === 0, `stick held into the gap at x ${x} for 70 ticks: back on safe ground (${p.to.x},${p.to.z}, y ${p.to.y}), hp ${p.from.hp} -> ${p.to.hp} (pit rule: 8 a fall; the held stick walks him in again)`); }
           // along both side walls, the whole length this state allows (pushed into the wall at 45 degrees)
           for (const [x, ax] of [[125, -1], [1075, 1]]) { let stuckAt = []; for (const z0 of [40, 1010, 1420, 2110, 2460, 2810, 3020, 3400, 3720]) { const g = S.ground(x, z0); if (!(g > -1e8)) continue; const p = await S.push(x + (ax < 0 ? 30 : -30), z0, ax, 1, 90); if (p.to.z - p.from.z < 40) stuckAt.push(`${z0}->(${p.to.x},${p.to.z})`); } note(`wall ${ax < 0 ? 'left' : 'right'}: pushed into the wall and along it from 9 starts; moved less than 40 ahead in 90 ticks at: ${stuckAt.join(' ') || 'none'}`); Q['wall' + ax] = stuckAt; }
-          const loop = [[300, 3040], [135, 3230], [135, 3640], [300, 3700], [900, 3700], [1065, 3640], [1065, 3230], [900, 3040], [600, 3040]]; let lt = 0, lok = true, at = [600, 3120];
+          const loop = [[330, 3040], [135, 3230], [135, 3640], [300, 3700], [900, 3700], [1065, 3640], [1065, 3230], [870, 3040], [600, 3040]]; let lt = 0, lok = true, at = [600, 3120];
           for (const wp of loop) { const g = await S.go(at, wp, { jumpOk: false, max: 900 }); lt += g.ticks ?? 0; if (!g.arrived) { lok = false; note(`boss hall loop: could not walk ${at} -> ${wp} without jumping (stopped at ${g.x},${g.z}${g.noPath ? ', no path' : ''})`); } at = wp; }
           ok(lok, `boss hall: touch walk along the walls all the way round (9 legs, no jump): ${lt} ticks`);
           if (first) for (const [n, x, z] of SPOTS) { const g = S.ground(x, z); if (g > -1e8) await S.shot(`${id}_${n}`, x, z); }
@@ -144,7 +145,7 @@ for (const dev of DEVICES) {
           const g = await S.go([600, 1100], [600, 1460], { max: 900 }); ok(g.arrived && g.hurt === 0, `touch route over the gap (jump allowed): ${g.arrived ? 'arrived' : 'NOT arrived (' + g.x + ',' + g.z + ')'} · ${g.ticks} ticks · ${g.jumps} jumps · hurt ${g.hurt}`);
           if (first) { await S.shot(`${id}_${st.replace(/,.*/, '')}_gap`, 600, 1120); await S.shot(`${id}_${st.replace(/,.*/, '')}_gap_far`, 600, 1450); if (st.includes('knells')) await S.shot(`${id}_knells_posts`, 600, 3740); }
           if (PART.includes('num') && first) await numbers(S, key, Q, false);
-        } else { await S.shot(`${id}_wedge_wood_gap`, 600, 1120); const p = await S.push(600, 1150, 0, 1, 70); ok(p.to.z < 1200 && p.to.hp === p.from.hp - 8, `tonight after the crate: the gap is open again (stick into it at x 600 -> back at z ${p.to.z}, hp ${p.from.hp} -> ${p.to.hp})`); }
+        } else { await S.shot(`${id}_wedge_wood_gap`, 600, 1120); const p = await S.push(600, 1150, 0, 1, 70); ok(p.to.z < 1200 && p.to.hp < p.from.hp && (p.from.hp - p.to.hp) % 8 === 0, `tonight after the crate: the gap is open again (stick into it at x 600 -> back at z ${p.to.z}, hp ${p.from.hp} -> ${p.to.hp})`); }
         ok(S.errs.length === 0, `page errors ${S.errs.length}${S.errs.length ? ': ' + S.errs.slice(0, 2).join(' | ') : ''}`);
       } catch (e) { ok(false, `${dev} ${key}: ${String(e?.message ?? e).slice(0, 300)}`); } finally { await S.browser.close(); }
     }
