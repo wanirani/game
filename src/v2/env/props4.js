@@ -2,7 +2,7 @@
 // far houses and a churchyard wall. Static geometry like everything else (baked light, fogged by distance), built to be cheap: big
 // cells, a handful of triangles per tree or house, ONE material for a whole backdrop (o.mat - a texture the area loads anyway), so a
 // backdrop chunk costs one draw call. Nothing here collides (stage parts of type 'deco'); none of it is reachable.
-//   { t: 'deco', mesh: 'apron',    x, z, w, d, y, mat, cell, tint, k, strips: [{ x0, x1, z0, z1, mat, tint, k }] }      x, z = the near left corner
+//   { t: 'deco', mesh: 'apron',    x, z, w, d, y, mat, cell, tint, k, skirt, strips: [{ x0, x1, z0, z1, mat, tint, k }] }   x, z = the near left corner; skirt = height of a dark front face
 //   { t: 'deco', mesh: 'ridge',    x, z, x1, z1, y, h, amp, seg, depth, to: [x, z], tint, k, mat, seed }               a line on the ground -> a slope up to a ragged crest
 //   { t: 'deco', mesh: 'treeline', x, z, x1, z1, y, n | gap, h, hv, wob, kind: 'fir' | 'bare' | 'round', tint, mat, seed }
 //   { t: 'deco', mesh: 'farhouse', x, z, w, d, h, rh, y, tint, roofTint, lit, mat, seed }                                x, z = the middle of its front
@@ -47,6 +47,7 @@ Object.assign(PROPS, {
     plain(G, () => {
       const cell = o.cell ?? 320, mat = o.mat ?? 'soil';
       G.quad(mat, [x, y, z], [o.w, 0, 0], [0, 0, o.d], [0, 1, 0], { cell, vary: o.vary ?? 0.34, k: o.k ?? 0.8, tint: o.tint, tile: o.tile });
+      if (o.skirt) G.quad(mat, [x, y - o.skirt, z], [o.w, 0, 0], [0, o.skirt, 0], [0, 0, -1], { cell: 500, k: 0.3, vary: 0.2, tint: o.tint, tile: o.tile });   // the front of the land where it ends towards the camera (like the dark front of a floor slab)
       for (const s of o.strips ?? []) G.quad(s.mat ?? mat, [x + s.x0, y + 0.7, z + s.z0], [s.x1 - s.x0, 0, 0], [0, 0, s.z1 - s.z0], [0, 1, 0], { cell: s.cell ?? cell, vary: s.vary ?? 0.3, k: s.k ?? o.k ?? 0.8, tint: s.tint, tile: s.tile ?? o.tile });
     });
   },

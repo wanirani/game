@@ -20,8 +20,8 @@ export function beyondEshville(now, cold = false) {
     { mesh: 'apron', x: -2000, y: Y, z: 296, w: 8800, d: 2600, cell: 330, tile: 520, k: 0.72, strips: [
       { x0: 300, x1: 1500, z0: 380, z1: 900, tint: [0.8, 0.84, 0.8], k: 0.62 }, { x0: 2500, x1: 3900, z0: 300, z1: 800, tint: [1.12, 1.06, 0.96], k: 0.7 }, { x0: 4300, x1: 5100, z0: 900, z1: 1700, tint: [0.84, 0.88, 0.84], k: 0.62 },
       { x0: 800, x1: 2300, z0: 1100, z1: 1700, tint: [1.1, 1.04, 0.94], k: 0.66 }, { x0: 6480, x1: 6700, z0: 1204, z1: 2600, tint: [1.25, 1.2, 1.15], k: 0.8, cell: 200 } ] },   // the last strip: the lane running on to the graveyard
-    { mesh: 'apron', x: -9000, y: Y, z: -420, w: 8840, d: 716, cell: 360, tile: 520, k: 0.72, strips: [{ x0: 6400, x1: 8840, z0: 512, z1: 628, tint: [1.3, 1.24, 1.16], k: 0.86, cell: 240 }] },   // west: the road out of the gate (z 92..208)
-    { mesh: 'apron', x: 4800, y: Y, z: -420, w: 5600, d: 716, cell: 400, tile: 520, k: 0.7 },
+    { mesh: 'apron', x: -9000, y: Y, z: 0, w: 8840, d: 296, cell: 300, tile: 520, k: 0.72, skirt: 220, strips: [{ x0: 6400, x1: 8840, z0: 92, z1: 208, tint: [1.3, 1.24, 1.16], k: 0.86, cell: 240 }] },   // west: the road out of the gate (z 92..208)
+    { mesh: 'apron', x: 4800, y: Y, z: 0, w: 5600, d: 296, cell: 300, tile: 520, k: 0.7, skirt: 220 },
     { mesh: 'apron', x: -12000, y: Y, z: 2896, w: 29000, d: 14000, cell: 3600, tile: 700, k: 0.66 },
     { mesh: 'apron', x: 6800, y: Y, z: 296, w: 10200, d: 2600, cell: 1300, tile: 700, k: 0.68 }, { mesh: 'apron', x: -12000, y: Y, z: 296, w: 10000, d: 2600, cell: 1300, tile: 700, k: 0.68 },
     // the road west: a row of trees on either side, a hedge, a farm
@@ -59,9 +59,9 @@ export function beyondEshville(now, cold = false) {
 export function beyondGraveyard(now) {
   const Y = -4, stone = now ? C(0.17, 0.2, 0.23) : C(0.2, 0.22, 0.28), tree = now ? C(0.07, 0.085, 0.1) : C(0.08, 0.09, 0.12), hill = now ? C(0.1, 0.125, 0.14) : C(0.09, 0.105, 0.15), lit = now ? 0 : 0.6;
   return far([
-    { mesh: 'apron', x: -2600, y: Y, z: -80, w: 2610, d: 3200, cell: 330, tile: 520, k: 0.7 }, { mesh: 'apron', x: 1190, y: Y, z: -80, w: 2610, d: 3200, cell: 330, tile: 520, k: 0.7 },
+    { mesh: 'apron', x: -2600, y: Y, z: -60, w: 2610, d: 3180, cell: 330, tile: 520, k: 0.7, skirt: 220 }, { mesh: 'apron', x: 1190, y: Y, z: -60, w: 2610, d: 3180, cell: 330, tile: 520, k: 0.7, skirt: 220 },
     { mesh: 'apron', x: 0, y: Y, z: 2180, w: 1200, d: 940, cell: 300, tile: 520, k: 0.7 },
-    { mesh: 'apron', x: -12000, y: Y, z: 3100, w: 25200, d: 14000, cell: 3600, tile: 700, k: 0.64 }, { mesh: 'apron', x: -12000, y: Y, z: -80, w: 9400, d: 3200, cell: 1600, tile: 700, k: 0.66 }, { mesh: 'apron', x: 3800, y: Y, z: -80, w: 9400, d: 3200, cell: 1600, tile: 700, k: 0.66 },
+    { mesh: 'apron', x: -12000, y: Y, z: 3100, w: 25200, d: 14000, cell: 3600, tile: 700, k: 0.64 }, { mesh: 'apron', x: -12000, y: Y, z: -60, w: 9400, d: 3180, cell: 1600, tile: 700, k: 0.66, skirt: 220 }, { mesh: 'apron', x: 3800, y: Y, z: -60, w: 9400, d: 3180, cell: 1600, tile: 700, k: 0.66, skirt: 220 },
     // graves outside the walls, thinning out with the distance
     { mesh: 'gravefield', x: -520, y: Y, z: 120, w: 480, d: 760, n: 22, h: 80, tint: stone, seed: 2 }, { mesh: 'gravefield', x: 1240, y: Y, z: 120, w: 480, d: 760, n: 22, h: 80, tint: stone, seed: 5 },
     { mesh: 'gravefield', x: -620, y: Y, z: 960, w: 580, d: 1200, n: 30, h: 84, tint: stone, seed: 7 }, { mesh: 'gravefield', x: 1240, y: Y, z: 960, w: 580, d: 1200, n: 30, h: 84, tint: stone, seed: 11 },

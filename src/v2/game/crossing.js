@@ -22,9 +22,9 @@ const YEAR = { past: 1697, now: 1797 };
 const BUDGET = 9;          // ms of loading work per frame before the load lets a frame through (breath())
 const R_END = 6600;        // world units: a ring this wide has left every picture
 const GLOW_PAST = [1.0, 0.8, 0.5], GLOW_NOW = [0.7, 0.86, 1.0];
-/** radius of a ring k (0..1) of its time after it left the bell: 9 m in the first four fifths (the part of the world the camera sees around the
- *  bell - the eye can follow it there), then out past everything */
-const ringR = (k) => (k < 0.8 ? 900 * Math.pow(k / 0.8, 1.2) : 900 + (R_END - 900) * ((k - 0.8) / 0.2) * ((k - 0.8) / 0.2));
+/** radius of a ring k (0..1) of its time after it left the bell: `near` units in the first four fifths (the part of the world the camera sees
+ *  around the bell - the eye can follow it there), then out past everything */
+const ringR = (k, near) => (k < 0.8 ? near * k / 0.8 : near + (R_END - near) * ((k - 0.8) / 0.2) * ((k - 0.8) / 0.2));
 
 const VS = `#version 300 es
 out vec2 vUV;
@@ -66,7 +66,7 @@ vec3 aged(vec2 uv) {
   float sp = t * (1.3 + t * 1.1) * dir, k3 = min(1.0, t * 2.5);
   float band = vn(vec2(uv.x * 1.7 + uv.y * 0.8 - sp, uv.y * 1.1 + 3.0)) * 0.65 + vn(vec2(uv.x * 4.3 - sp * 2.1, uv.y * 2.6 + 9.0)) * 0.35;
   float sh = smoothstep(0.38, 0.7, band);
-  c *= 1.0 - sh * k3 * (0.34 + 0.2 * g);
+  c *= 1.0 - sh * k3 * (0.26 + 0.2 * g);
   c += (1.0 - sh) * k3 * 0.07 * uTo * vec3(0.8, 0.84, 0.95);
 #ifndef LOW
   // streaks of cloud rush past (thicker towards the top), rain towards tonight, sparks towards 1697
@@ -114,22 +114,28 @@ void main() {
   vec3 P = uEye + uF * w + uR * (n.x * w) + uU * (n.y * w);
   float d = distance(P, uBellW.xyz);
   vec2 sq = (vUV - uBellS.xy) * vec2(uBellS.z, 1.0);
-  if (z > 0.99999) d = 1500.0 + length(sq) * 2600.0;      // the sky has no place in the world: the ring reaches it last, from the bell's side
-  float R = uBellW.w, x = d - R, wd = 6.0 + R * 0.02;
-  float rim = exp(-x * x / (wd * wd)), halo = exp(-abs(x) / (wd * 8.0)) * 0.3, tail = x < 0.0 ? exp(x / (70.0 + R * 0.12)) : 0.0;
+  bool sky = z > 0.99999;
+  if (sky) d = 1500.0 + length(sq) * 2600.0;      // the sky has no place in the world: the ring reaches it last, from the bell's side
+  float fw = sky ? 30.0 : min(fwidth(d), 30.0);
+  float R = uBellW.w, x = d - R, wd = 6.0 + R * 0.02, wl = clamp(fw * 3.5, 2.5, wd);   // a line a few pixels wide on any surface (a wall the ring only grazes does not flood)
+  float rim = exp(-x * x / (wl * wl)), halo = exp(-abs(x) / (wd * 6.0)) * 0.22, tail = x < 0.0 ? exp(x / (40.0 + R * 0.06)) : 0.0;
+  float x2 = x + 230.0, x3 = x + 460.0;           // two fainter rings follow the first, as from a bell
+  float echo = (R > 230.0 ? exp(-x2 * x2 / (wl * wl)) * 0.5 : 0.0) + (R > 460.0 ? exp(-x3 * x3 / (wl * wl)) * 0.28 : 0.0);
   vec2 dirS = normalize(sq + 1e-5) / vec2(uBellS.z, 1.0);
-  vec3 c = texture(uScene, clamp(vUV - dirS * rim * 0.014 * uRing.y, 0.001, 0.999)).rgb;
+  vec3 c = texture(uScene, clamp(vUV - dirS * rim * 0.012 * uRing.y, 0.001, 0.999)).rgb;
   float tw = step(0.84, h21(floor(P.xz / 9.0) + floor(P.y / 9.0) * 3.1 + floor(uRing.z * 26.0)));
+  vec3 add;
   if (uRing.x < 0.5) {
     float fl = 1.0 - uRing.w * (0.45 + 0.55 * sin(uRing.z * 53.0) * sin(uRing.z * 31.0 + 1.3));
     vec3 gl = mix(uGlow, vec3(0.5, 0.52, 0.56), uRing.w);
     float behind = smoothstep(wd * 3.0, -wd * 3.0, x) * (1.0 - uRing.w);
     c = mix(c, gradeTo(c), behind * 0.35 * min(1.0, uRing.y));       // what the ring leaves behind has begun to turn
-    c += gl * (rim * (1.5 + tw * 1.3) + halo + tail * 0.38 * (1.0 - uRing.w)) * uRing.y * fl;
+    add = gl * (rim * (1.0 + tw * 0.9) + (echo + tail * 0.16) * (1.0 - uRing.w) + halo) * uRing.y * fl;
   } else {
-    c = mix(aged(vUV), c, smoothstep(wd, -wd, x));
-    c += uGlow * (rim * (1.7 + tw * 2.2) + halo * 0.5 + tail * 0.16) * uRing.y;
+    c = mix(aged(vUV), c, smoothstep(wl, -wl, x));
+    add = uGlow * (rim * (1.15 + tw * 1.3) + echo * 0.8 + halo * 0.6 + tail * 0.14) * uRing.y;
   }
+  c += min(add, vec3(1.1)) * (1.0 - 0.5 * clamp(c, 0.0, 1.0));       // light on stone, never a flat white
   o = vec4(c, 1.0);
 }`;
 
@@ -278,7 +284,7 @@ export class Crossing {
       }
       case 'ring': {
         const k = Math.min(1, this.t / T.ring);
-        this.R = 150 + ringR(k);
+        this.R = 150 + ringR(k, 620);
         if (k >= 1) this._depart();
         break;
       }
@@ -300,7 +306,7 @@ export class Crossing {
         const k = Math.min(1, this.t / T.reveal), P = this.pulse;
         for (let i = 0; i < 3; i++) if (P[i] >= 0) P[i] += dt;
         P[3] = 1 - k;
-        this.R = ringR(k);
+        this.R = ringR(k, 720);
         if ((this.sparkT -= dt) <= 0 && this.R < 1500) { this.sparkT = 0.05; this._ringSparks(); }
         if (k >= 1) this._land();
         break;
