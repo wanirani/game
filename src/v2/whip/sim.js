@@ -36,6 +36,7 @@ export class Whip {
     this.tg = { x: 0, y: 0, z: 0, r: 14, phase: 'throw', t: 0, throwT: 0.13, caught: false, since: 0, sx: 0, sy: 0, sz: 0, kind: 'hook', pull: false };
     this.fx = 1; this.fz = 0; this.bx = 0; this.by = 0; this.bz = 0; this.br = 12; this.bh = 104; this.hasBody = false;
     this.time = 0; this.flash = 0; this.kick = 0; this.taut = 0; this.ext = 0; this.trail = 0; this.spin = 0; this.resonance = 0; this.glow = 0; this.pulse = 0; this.dragT = 0;
+    this.spinA = 0; this.spinLv = 0;
     this.ready = false; this._lx = 0; this._ly = 0; this._lz = 0;
   }
 
@@ -62,11 +63,20 @@ export class Whip {
       this._emit('crack', p && p.x != null ? p.x : t.x, p && p.y != null ? p.y : t.y, p && p.z != null ? p.z : t.z, -dx, -dy, -dz, 'hit');
       return;
     }
+    if (mode === 'spin') {   // charging: the lash circles over the head, faster as the charge fills (p.level 0..1)
+      if (this.mode === 'wrap' || this.mode === 'hook') this._leaveLine();
+      if (this.mode !== 'spin') { this.mode = 'spin'; this.spinA = Math.atan2(this.tip.z - this.bz, this.tip.x - this.bx); }
+      this.spinLv = p && p.level != null ? clamp(p.level, 0, 1) : 0.5;
+      return;
+    }
     if (mode === 'ring') { this._swing('ring_' + ((p && p.kind) || 'short'), p); return; }
     if (mode === 'swing') { this._swing(p.move, p); return; }
     if (mode === 'wrap' || mode === 'hook') {
       const g = this.tg, fresh = this.mode !== mode || (p.phase === 'throw' && (g.phase !== 'throw' || (p.t != null && p.t < g.t - 1e-4)));
-      if (fresh) { g.caught = false; g.since = 0; g.t = 0; g.sx = this.tip.x; g.sy = this.tip.y; g.sz = this.tip.z; g.pull = false; this.mode = mode; g.kind = mode; this._emit(mode + '.throw', this.tip.x, this.tip.y, this.tip.z, 0, 0, 0, ''); }
+      if (fresh) {
+        g.caught = p.phase !== 'throw' && p.phase != null; g.since = 0; g.t = 0; g.sx = this.tip.x; g.sy = this.tip.y; g.sz = this.tip.z; g.pull = false; this.mode = mode; g.kind = mode;
+        if (g.caught) { this.flash = 0.8; this._emit(mode + '.catch', p.x, p.y, p.z, 0, 0, 0, ''); } else this._emit(mode + '.throw', this.tip.x, this.tip.y, this.tip.z, 0, 0, 0, '');
+      }
       g.x = p.x; g.y = p.y; g.z = p.z; if (p.r != null) g.r = p.r; if (p.throwT != null) g.throwT = p.throwT;
       if (p.t != null) g.t = p.t; g.ext = p.t != null;
       if (p.phase === 'pull' && !g.pull) { g.pull = true; g.since = 0; this._emit('wrap.pull', g.x, g.y, g.z, 0, 0, 0, ''); }
@@ -186,7 +196,9 @@ export class Whip {
     const K = this._key(sh.keys, s); this._toWorld(sh, K[0], K[1], K[2], 0);
     const w = K[3], lim = sh.len, lo = (lim ? lim[0] : 0.7) * this.L0, hi = (lim ? lim[1] : 1.5) * this.L0;
     const chord = Math.hypot(W[0] - r.x, W[1] - r.y, W[2] - r.z);
-    this.lenWant = clamp(Math.max(Math.min(pk, this.L0 * 1.5), chord * (1 + 0.08 * (1 - w))), lo, hi);
+    // lash length for this move: what the peak needs. Long throws (far, hold-attack) pay the lash out as the tip flies
+    const near = Math.min(pk, this.L0 * 1.5);
+    this.lenWant = clamp(pk > near ? Math.max(near, chord * (1 + 0.08 * (1 - w))) : pk, lo, hi);
     // slack direction: hero frame -> world
     const bf = K[4], br = K[5], by = K[6];
     this._curve(W[0], W[1], W[2], this.fx * bf + this.fz * br, by, this.fz * bf - this.fx * br);
@@ -216,6 +228,17 @@ export class Whip {
       T[o] = r.x + ax * rc * Math.sin(a) + sx * side; T[o + 1] = r.y - rc + rc * Math.cos(a) - 1.5; T[o + 2] = r.z + az * rc * Math.sin(a) + sz * side;
       wn[i] = wBase;
     }
+  }
+
+  _aimSpin(h) {
+    const n = this.n, wn = this.wn, lv = this.spinLv, R = 58 + 14 * lv;
+    this.spinA -= (8.5 + 9 * lv) * h;
+    const c = Math.cos(this.spinA), s = Math.sin(this.spinA), cy = this.by + this.bh + 30 + 6 * Math.sin(this.spinA * 0.5);
+    this.lenWant = this.L0;
+    // slack trails the rotation and hangs a little outward
+    this._curve(this.bx + c * R, cy, this.bz + s * R, -s * 1 + c * 0.4, 0.25, c * 1 + s * 0.4);
+    for (let i = 0; i < n; i++) wn[i] = 0.8;
+    this.trail = lv > 0.45 ? 1 : 0;
   }
 
   _aimLine(h) {
@@ -341,8 +364,8 @@ export class Whip {
   _step(h) {
     const n = this.n, P = this.nodes, V = this.vel, T = this.tgt, wn = this.wn, S = this._s, r = this.root;
     this.time += h;
-    if (this.mode === 'swing') this._aimSwing(); else if (this.mode === 'rest') this._aimRest(h); else this._aimLine(h);
-    this.len += (this.lenWant - this.len) * (1 - Math.exp(-h * 30));
+    if (this.mode === 'swing') this._aimSwing(); else if (this.mode === 'rest') this._aimRest(h); else if (this.mode === 'spin') this._aimSpin(h); else this._aimLine(h);
+    if (this.lenWant > this.len) this.len = this.lenWant; else this.len += (this.lenWant - this.len) * (1 - Math.exp(-h * 30));   // pays out at once, reels in smoothly
     const seg = this.len / (n - 1), h60 = h * 60, resting = this.mode === 'rest';
     const damp = Math.pow(resting ? 0.95 : 0.985, h60), gy = this._gy + 1.2;
     S.set(P);

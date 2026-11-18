@@ -15,6 +15,7 @@ const LIB = { clips: null, promise: null, failed: false };
 const LEGS = ['uplegL', 'uplegR', 'legL', 'legR', 'footL', 'footR', 'toeL', 'toeR'];
 const wrapPi = (a) => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const hyp = (x, z) => Math.sqrt(x * x + z * z), hyp3 = (x, y, z) => Math.sqrt(x * x + y * y + z * z);   // (Math.hypot 은 부를 때마다 임시 배열을 만든다)
 /** 사원수 정규화 (Math.hypot 은 부를 때마다 임시 배열을 만든다 — requests.md core-verify) */
 const qnorm = (a) => { const l = Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2] + a[3] * a[3]) || 1; a[0] /= l; a[1] /= l; a[2] /= l; a[3] /= l; return a; };
 
@@ -158,7 +159,7 @@ const _q = [0, 0, 0, 1], _a = [0, 0, 0, 1], _b = [0, 0, 0, 1], _c = [0, 0, 0, 1]
 function worldQuat(rig, n, o) {
   if (n < 0) { o[0] = o[1] = o[2] = 0; o[3] = 1; return o; }
   const W = rig.world, k = n * 16;
-  const sx = 1 / (Math.hypot(W[k], W[k + 1], W[k + 2]) || 1), sy = 1 / (Math.hypot(W[k + 4], W[k + 5], W[k + 6]) || 1), sz = 1 / (Math.hypot(W[k + 8], W[k + 9], W[k + 10]) || 1);
+  const sx = 1 / (hyp3(W[k], W[k + 1], W[k + 2]) || 1), sy = 1 / (hyp3(W[k + 4], W[k + 5], W[k + 6]) || 1), sz = 1 / (hyp3(W[k + 8], W[k + 9], W[k + 10]) || 1);
   const m00 = W[k] * sx, m10 = W[k + 1] * sx, m20 = W[k + 2] * sx, m01 = W[k + 4] * sy, m11 = W[k + 5] * sy, m21 = W[k + 6] * sy, m02 = W[k + 8] * sz, m12 = W[k + 9] * sz, m22 = W[k + 10] * sz, t = m00 + m11 + m22;
   if (t > 0) { const r = Math.sqrt(t + 1) * 2; o[3] = r / 4; o[0] = (m21 - m12) / r; o[1] = (m02 - m20) / r; o[2] = (m10 - m01) / r; }
   else if (m00 > m11 && m00 > m22) { const r = Math.sqrt(1 + m00 - m11 - m22) * 2; o[3] = (m21 - m12) / r; o[0] = r / 4; o[1] = (m01 + m10) / r; o[2] = (m02 + m20) / r; }
@@ -204,7 +205,7 @@ export function driveHero(ch, h, dt, T = TUNE) {
   if (st === 'land' && S.prev !== 'land') S.landC = 0;
   if (S.landC != null) { S.landC += dt; if ((st !== 'land' && st !== 'idle') || S.landC > 0.3) S.landC = null; }
   // 달리다 스틱을 놓으면: 뒤로 버티며 미끄러져 서는 동작 (run_stop 의 앞 0.55초를 0.3초에). 다시 밀거나 다른 동작이 오면 바로 끊긴다
-  const sp = Math.hypot(h.vx, h.vz), ground = h.onGround && !h.move && h.dashT <= 0 && (st === 'run' || st === 'walk' || st === 'idle');
+  const sp = hyp(h.vx, h.vz), ground = h.onGround && !h.move && h.dashT <= 0 && (st === 'run' || st === 'walk' || st === 'idle');
   if (S.wasPush && !h.pushed && ground && sp > (T.stopSkidAbove ?? 190) && C.run_stop) S.stopC = 0;
   if (S.stopC != null) { S.stopC += dt; if (h.pushed || !ground || S.stopC > 0.3) S.stopC = null; }
   S.wasPush = !!h.pushed;

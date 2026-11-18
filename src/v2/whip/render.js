@@ -149,8 +149,9 @@ export class WhipRenderer {
     const f = env.fog; if (f) { gl.uniform3f(u.uFog, f.near, f.far, f.max); gl.uniform3fv(u.uFogCol, f.color); } else { gl.uniform3f(u.uFog, 1e9, 2e9, 0); gl.uniform3f(u.uFogCol, 0, 0, 0); }
     const d = env.sunDir, dl = Math.hypot(d[0], d[1], d[2]) || 1;
     gl.uniform3f(u.uSunDir, d[0] / dl, d[1] / dl, d[2] / dl); gl.uniform3fv(u.uSun, env.sun); gl.uniform3fv(u.uAmb, env.amb);
-    gl.uniform4fv(u.uLP, env.lightPos ? (env.lightPos.length > 16 ? env.lightPos.subarray(0, 16) : env.lightPos) : ZERO16);
-    gl.uniform4fv(u.uLC, env.lightCol ? (env.lightCol.length > 16 ? env.lightCol.subarray(0, 16) : env.lightCol) : ZERO16);
+    if (env.lightPos !== this._lpS) { this._lpS = env.lightPos; this._lp = env.lightPos ? (env.lightPos.length > 16 ? env.lightPos.subarray(0, 16) : env.lightPos) : ZERO16; }   // views are made once per source array
+    if (env.lightCol !== this._lcS) { this._lcS = env.lightCol; this._lc = env.lightCol ? (env.lightCol.length > 16 ? env.lightCol.subarray(0, 16) : env.lightCol) : ZERO16; }
+    gl.uniform4fv(u.uLP, this._lp ?? ZERO16); gl.uniform4fv(u.uLC, this._lc ?? ZERO16);
     const gc = whip.glowCol; gl.uniform4f(u.uGlow, gc[0], gc[1], gc[2], whip.glow + whip.flash * 1.5);
     gl.uniform4f(u.uFx, whip.taut, whip.time, whip.flash, this.alpha);
     gl.uniform4f(u.uTone, this.tone[0], this.tone[1], this.tone[2], this.rim);

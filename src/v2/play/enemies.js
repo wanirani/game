@@ -8,6 +8,7 @@
 import { UNIT, TUNE } from './tune.js';
 
 const rnd = (a, b) => a + Math.random() * (b - a);
+const hyp = (x, z) => Math.sqrt(x * x + z * z);
 const A = (o) => Object.freeze({ guard: 'block', parry: true, staggerT: 1.25, track: 6, cd: [0.8, 1.4], weapon: 'sword', str: 'M', knock: 240, ...o });
 
 const SLASH = A({ id: 'slash', clip: 'atk2_fore', cut: [0.28, 0.46], range: 86, windup: 0.46, strike: 0.14, recover: 0.42, dmg: 10, lunge: 22, box: { f0: -6, f1: 100, side: 38, y0: 0, y1: 112 } });
@@ -97,7 +98,7 @@ function pickAttack(sim, e, D, dist) {
 export const AI = {
   /** 다가가서 친다 (해골 병사 · 역병 주검 · 갑주). 깊이를 맞추지 않고 어느 방향에서든 영웅을 보고 친다 */
   melee(sim, e, dt, D) {
-    const h = sim.hero, dx = h.x - e.x, dz = h.z - e.z, dist = Math.hypot(dx, dz) || 1;
+    const h = sim.hero, dx = h.x - e.x, dz = h.z - e.z, dist = hyp(dx, dz) || 1;
     if (e.state === 'attack') return sim.runAttack(e, dt);
     sim.turnTo(e, dx, dz, D.turn, dt);
     const aligned = (dx * e.dirX + dz * e.dirZ) / dist > 0.7;
@@ -111,7 +112,7 @@ export const AI = {
   },
   /** 거리를 두고 쏜다 (해골 술사) */
   ranged(sim, e, dt, D) {
-    const h = sim.hero, dx = h.x - e.x, dz = h.z - e.z, dist = Math.hypot(dx, dz) || 1;
+    const h = sim.hero, dx = h.x - e.x, dz = h.z - e.z, dist = hyp(dx, dz) || 1;
     if (e.state === 'attack') return sim.runAttack(e, dt);
     sim.turnTo(e, dx, dz, D.turn, dt);
     const close = dist < D.near * 0.6;   // 코앞에서는 쏘지 않고 먼저 물러선다 (1초 넘게 쫓기면 그냥 쏜다)
@@ -123,7 +124,7 @@ export const AI = {
   },
   /** 흐린 채 맴돌다가 또렷해지며 덮친다. 덮친 뒤 잠깐만 맞는다 (무덤 유령) */
   ghost(sim, e, dt, D) {
-    const h = sim.hero, dx = h.x - e.x, dz = h.z - e.z, dist = Math.hypot(dx, dz) || 1;
+    const h = sim.hero, dx = h.x - e.x, dz = h.z - e.z, dist = hyp(dx, dz) || 1;
     if (e.state === 'attack') {
       const a = e.atk; if (e.stateT > a.windup * 0.45) e.solidT = Math.max(e.solidT, D.solidAfter);
       return sim.runAttack(e, dt);
@@ -138,7 +139,7 @@ export const AI = {
   },
   /** 영웅 둘레를 맴돌다 한 마리씩 내리꽂는다 (박쥐) */
   bat(sim, e, dt, D) {
-    const h = sim.hero, dx = h.x - e.x, dz = h.z - e.z, dist = Math.hypot(dx, dz) || 1;
+    const h = sim.hero, dx = h.x - e.x, dz = h.z - e.z, dist = hyp(dx, dz) || 1;
     if (e.state === 'attack') {
       const a = e.atk, u = (e.stateT - a.windup) / a.strike;
       e.hover = e.stateT < a.windup ? D.hover + 18 * (e.stateT / a.windup) : u < 1 ? D.hover + 18 - (D.hover - 30) * Math.sin(Math.PI * Math.min(1, u)) : D.hover;
@@ -146,7 +147,7 @@ export const AI = {
     }
     e.hover = D.hover + 9 * Math.sin(e.t * 3.1 + e.id * 1.7);
     e.orb += e.orbW * dt;
-    const tx = h.x + Math.cos(e.orb) * e.orbR - e.x, tz = h.z + Math.sin(e.orb) * e.orbR * 0.8 - e.z, td = Math.hypot(tx, tz) || 1;
+    const tx = h.x + Math.cos(e.orb) * e.orbR - e.x, tz = h.z + Math.sin(e.orb) * e.orbR * 0.8 - e.z, td = hyp(tx, tz) || 1;
     sim.steer(e, tx / td, tz / td, Math.min(D.speed, td * 4), dt, true);
     sim.turnTo(e, td > 20 ? tx : dx, td > 20 ? tz : dz, D.turn, dt);
     if (e.cd <= 0 && dist < D.attacks[0].range && sim.mayAttack(e, 1)) return sim.startAttack(e, D.attacks[0]);

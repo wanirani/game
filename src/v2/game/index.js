@@ -44,6 +44,7 @@ const TEX_SRC = {
 };
 const HIDE_BTNS = ['sub', 'skill1', 'skill2', 'ult', 'swap', 'mount', 'guard', 'lock', 'auto', 'maptog', 'bag'];   // v1 pad buttons with no meaning here (pause = leave, fullscreen stay)
 const DASH_TRAIL = RB({ mode: 1, life: 0.24, width: 58, col: [0.45, 0.8, 2.2, 0.5] });
+const WHIP_CORD = RB({ mode: 1, life: 0.07, width: 8, col: [1.7, 1.35, 0.8, 0.9] });
 const SUN = [0.56, 0.56, 0.62], AMB = [0.76, 0.77, 0.84], RIM_HERO = [0.6, 0.7, 1, 0.5], RIM_WARN = [1.7, 0.35, 0.2, 0.85], RIM_ENEMY = [0.55, 0.65, 0.9, 0.35], RIM_PEOPLE = [0.6, 0.66, 0.85, 0.3];
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const hyp = (x, y, z = 0) => Math.sqrt(x * x + y * y + z * z);   // Math.hypot makes a temporary array per call in V8
@@ -92,8 +93,8 @@ export default class V2Game extends Scene {
       area: { id: '', name: '', era: 'now' }, night: 'now', section: { id: '', label: '' }, enemies: [], enemiesLeft: 0, yardLeft: 0, numbers: this.numbers, numberN: 0,
       project: (x, y, z, out) => sc.project(x, y, z, out), done: false, doneT: 0, loading: true, message: '', message2: '', debug: this.perf.debug,
       debugLine: () => sc._debugLine(), stats: () => sc.stats(), dialog: null,
-      candles: { lit: 5, max: 5 }, left: 0, prompts: this.people.none,
-      pad: { skill: { mode: 'hook', cd: 0, disabled: true }, bell: { mode: 'short', charge: 0, disabled: true }, roll: { cd: 0, disabled: false }, attack: { disabled: false }, jump: { disabled: false }, lock: { disabled: false } },
+      candles: { lit: 5, max: 5 }, resonance: { value: 0, cells: 3 }, left: 0, prompts: this.people.none,
+      pad: { skill: { mode: 'hook', cd: 0, disabled: true }, bell: { mode: 'short', charge: 0, cd: 0, disabled: true }, roll: { cd: 0, disabled: false }, attack: { disabled: false }, jump: { disabled: false }, lock: { disabled: false } },
     };
     try { this.glr = new GLR({ forceGL1: /[?&]v2gl=1(&|$)/.test(globalThis.location?.search ?? ''), antialias: this.res.aa }); } catch (e) { this.glError = String(e?.message ?? e); console.warn('[v2g]', this.glError); }
     if (this.glr) {
@@ -158,6 +159,19 @@ export default class V2Game extends Scene {
   _padOff(id) {
     if (this._offT > 0) return; this._offT = 1.5;
     this._toast(id === 'bell' ? '종은 아직 울릴 수 없다' : id === 'skill' ? '솜씨는 아직 배우지 못했다' : '지금은 쓸 수 없다', 'info');
+  }
+  /** the rules refused the skill or the bell (PLAY: event deny): one short notice */
+  _deny(what, why) {
+    if (this._offT > 0 || why === 'busy') return; this._offT = 1.5;
+    this._toast(why === 'reso' ? '울림이 모자라다' : why === 'cd' ? '아직 쓸 수 없다' : '지금은 쓸 수 없다', 'info');
+  }
+  /** the bell was rung long. Next to a bell of the area (interact kind bell) this is the crossing to the twin area — the same spot in the other night */
+  _ringLong(boss) {
+    const h = this.sim.hero, S = this.people.spots; let spot = null;
+    for (let i = 0; i < S.length; i++) { const q = S[i]; if (q.def.kind !== 'bell') continue; const dx = q.x - h.x, dz = q.z - h.z; if (dx * dx + dz * dz < (q.r + 60) * (q.r + 60)) spot = q; }
+    this.emit('bell.long', { boss, spot: spot ? spot.id : null, twin: this.area.twin ?? null });
+    if (this.story || boss || !spot || !this.area.twin || this._go) return;   // the story decides when it is plugged in (api.bellCross)
+    this._go = { to: this.area.twin, spawn: null, keep: true, night: true }; this.fadeTo = 1; this.locked = true;
   }
   /** story flag: the story's own answer when plugged in, otherwise the built-in ones ("<section or group>_clear", set by events) */
   flag(name) {
@@ -234,7 +248,7 @@ export default class V2Game extends Scene {
         scene: sc, get sim() { return sc.sim; }, lock(on) { sc.locked = !!on; }, teleport(id) { return globalThis.__v2?.teleport(id); },
         gotoArea(id, spawn, o) { return sc.gotoArea(id, spawn, o); }, fx(n, o) { sc.fx?.play(n, o); }, sound(n, pos) { try { feel.play(n, pos ?? null); } catch { /* no audio */ } }, setDialog(d) { sc.ui.dialog = d ?? null; },
         toast(t, kind) { sc._toast(t, kind); }, unlockExit(id, area) { return sc.unlockExit(id, area); }, lockExit(id, area, key) { return sc.lockExit(id, area, key); }, hideActor(id) { sc.hideActor(id); }, showActor(id) { sc.showActor(id); },
-        wakeGroup(g) { return sc.wakeGroup(g); }, groupLeft(g) { return sc.groupLeft(g); }, bellCross(o) { return sc.area?.twin ? sc.gotoArea(sc.area.twin, null, { keepPosition: true }) : Promise.resolve(false); },
+        wakeGroup(g) { return sc.wakeGroup(g); }, groupLeft(g) { return sc.groupLeft(g); }, bellCross(o) { if (!sc.area?.twin || sc._go) return false; sc._go = { to: sc.area.twin, spawn: null, keep: true, night: true }; sc.fadeTo = 1; sc.locked = true; return true; },
       };
     }
     try { this.story(name, data, this._sapi); } catch (e) { console.error('[v2g] story handler failed:', name, e); }
@@ -374,8 +388,8 @@ export default class V2Game extends Scene {
     this._enterAt(spawn, keep);
     this.people.build(this, area, groundAt); this.anchors.build(area, this.perf.tier); this._peopleN = 19;
     { const c = this._caps, sim = this.sim, hh = sim.hero;   // what the rules can do today (PLAY lane lands skill and bell later): the pad shows the rest as not usable yet
-      c.skill = !!(sim.caps?.skill ?? (typeof sim.skill === 'function' || typeof sim.useSkill === 'function' || hh.skillCd !== undefined || hh.skillT !== undefined || TUNE.skillCd !== undefined));
-      c.bell = !!(sim.caps?.bell ?? (typeof sim.ring === 'function' || typeof sim.bell === 'function' || typeof sim.echo === 'function' || hh.bellT !== undefined || hh.ringT !== undefined || TUNE.bellCd !== undefined || TUNE.echoR !== undefined)); }
+      c.skill = !!(sim.caps?.skill ?? (hh.callCd !== undefined || hh.skillMode !== undefined || TUNE.callCd !== undefined));   // PLAY: skill = whip hook / call (hero.callCd, skillMode)
+      c.bell = !!(sim.caps?.bell ?? (hh.bellCd !== undefined || TUNE.bellCd !== undefined)); }                                 //       bell = echo (tap) / long ring (hold), hero.bellCd, bellCharge
     this._deaths = this.sim.deaths ?? 0; this._secId = ''; this.cam.snap = true; this.doneT = 0; this.fired.clear();
     this.state.area.id = area.id; this.state.area.name = area.name; this.state.area.era = area.era; this.state.night = area.era;
     // 6) warm everything behind the loading screen, then wait for the GPU
@@ -550,7 +564,12 @@ export default class V2Game extends Scene {
       cast(e, phase) { if (phase === 'charge') { try { feel.magic(elementOf(sc.pos, KINDS[e.kind]?.element).sound, 'charge', e); } catch { /* no audio */ } } },
       // a full effect preset by name (magic, shield, pickup ...): the preset brings its own sound events and screen feel
       fx(name, x, y, z, dx = 1, dz = 0, pow = 1, tx = x + dx * 320, ty = y, tz = z + dz * 320) { const id = PRESET_IDS[name]; if (sc.fx && id !== undefined) sc.fx.playAt(id, x, y, z, dx, dz, pow, tx, ty, tz); },
-      event(name, a, b, c, d) { if (sc.story) sc.emit('play.' + name, [a, b, c, d]); },
+      event(name, a, b, c, d) {
+        if (name === 'bell') sc.emit('bell.echo', { r: c });                       // short ring (echo)
+        else if (name === 'ringLong') sc._ringLong(b ?? null);                     // long ring: b = the kneeling boss to be sent off, or null = the scene decides (crossing)
+        else if (name === 'deny') sc._deny(b, c);                                  // a tool could not be used: say why
+        if (sc.story) sc.emit('play.' + name, [a, b, c, d]);
+      },
       sound(name, pos) { snd(name, pos ?? null); },
     };
   }
@@ -559,7 +578,7 @@ export default class V2Game extends Scene {
     const t0 = performance.now(), g = this.game;
     if (this._offT > 0) this._offT -= dt;
     if (this.fadeA !== this.fadeTo) this.fadeA = this.fadeTo > this.fadeA ? Math.min(this.fadeTo, this.fadeA + dt / 0.28) : Math.max(this.fadeTo, this.fadeA - dt / 0.5);   // area travel: to black, load, back
-    if (this._go && this.fadeA >= 1) { const go = this._go; this._go = null; this.gotoArea(go.to, go.spawn).then(() => { this.locked = false; this.fadeTo = 0; this._exitBusy = false; }); return; }
+    if (this._go && this.fadeA >= 1) { const go = this._go; this._go = null; this.gotoArea(go.to, go.spawn, go.keep ? { keepPosition: true } : null).then(() => { this.locked = false; this.fadeTo = 0; this._exitBusy = false; if (go.night) this.hud.banner?.('night'); }); return; }
     if (input.pressed('menu') && g.registry.title && !this.hud.modal) { if (this.ready) this._pause(); else this._leave(); if (!this.hud.modal) return; }   // ESC / START: the pause menu (leaving is one of its rows)
     if (!this.ready || !this.glr || this.glr.lost) return;
     const sim = this.sim, inp = this.inp, fx = this.fx;
@@ -662,6 +681,11 @@ export default class V2Game extends Scene {
       }
       if (h.dashT > 0 && !h.dead) { if (this._dashRb < 0) this._dashRb = fx.ribbons.start(DASH_TRAIL); if (pdt > 0) fx.ribbons.push(this._dashRb, h.x, h.y + 50, h.z, 0, 0, 0); }
       else if (this._dashRb >= 0) { fx.ribbons.end(this._dashRb); this._dashRb = -1; }
+      if (h.whipOn > 0 && pdt > 0 && !h.dead) {   // PLAY: whip tip at whipX/Y/Z — a thin cord of light from the hand, redrawn every tick
+        const rb = fx.ribbons.start(WHIP_CORD), x0 = h.x + ha.dx * 18, y0 = h.y + 62, z0 = h.z + ha.dz * 18, wx = h.whipX - x0, wy = h.whipY - y0, wz = h.whipZ - z0;
+        for (let i = 0; i <= 6; i++) { const u = i / 6; fx.ribbons.push(rb, x0 + wx * u, y0 + wy * u - Math.sin(u * Math.PI) * 10, z0 + wz * u, 0, 0, 0); }
+        fx.ribbons.end(rb);
+      }
       fx.setProtect(0, h.x, h.y + 55, h.z, 46);
     }
     if (pdt > 0 && h.onGround && !h.dead && !h.move && !(h.dashT > 0) && !(h.hurtT > 0)) {
@@ -756,7 +780,11 @@ export default class V2Game extends Scene {
     // what the cut-glass HUD shows (docs/v2/UI_API.md 1): candles from health, enemies of the fight at hand, which pad buttons work
     { const hp = sim.hero.hp > 0 ? sim.hero.hp : 0, c = s.candles; c.lit = hp / (s.heroHpMax || 1) * c.max; }
     s.left = this.area.test ? 0 : awake;
-    s.pad.skill.disabled = !this._caps.skill; s.pad.bell.disabled = !this._caps.bell;
+    { const hh = sim.hero, pd = s.pad, sk = pd.skill, bl = pd.bell;
+      sk.disabled = !this._caps.skill; bl.disabled = !this._caps.bell;
+      sk.mode = hh.skillMode === 'call' ? 'call' : 'hook'; sk.cd = hh.callCdMax > 0 ? clamp(hh.callCd / hh.callCdMax, 0, 1) : 0;
+      bl.charge = hh.bellCharge > 0 ? hh.bellCharge : 0; bl.mode = hh.bellCharge > 0 || hh.knellId != null ? 'long' : 'short'; bl.cd = hh.bellCdMax > 0 ? clamp(hh.bellCd / hh.bellCdMax, 0, 1) : 0;
+      if (hh.reso !== undefined) { s.resonance.value = hh.reso; s.resonance.cells = clamp(hh.resoMax ?? 3, 3, 5); } }
   }
   // ───────────────────────── camera (section rigs, as in prototype B) ─────────────────────────
   _camera(dt) {

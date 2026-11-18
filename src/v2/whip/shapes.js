@@ -64,6 +64,18 @@ export const WHIP_SHAPES = {
     [1.4, -8, -20, 150, 0.15, 1, 0, -0.4],
     [2.0, -40, 0, 40, 0.0, 0, 0, -1],
   ]) },
+  // hold-attack (rules id 'whip'): the long lash thrown straight ahead to the far end of its hit box; what it catches is then wound and pulled (mode 'wrap')
+  whip: { peak: 0.6, ev: 'crack', len: [0.7, 2.9], nominal: { dur: 0.62, hit: [0.12, 0.26], box: { f0: 10, f1: 250, side: 40, y0: 0, y1: 150 } }, keys: K([
+    [-1.0, -40, 30, 150, 0.5, -1, 0.3, 0.3],
+    [-0.5, -72, 22, 122, 0.7, -1, 0.3, 0.4],
+    [-0.1, -52, 12, 92, 0.85, -1, 0.2, 0.6],
+    [0.25, 92, 4, 98, 0.95, -1, 0, 0.8],
+    [0.6, 240, 0, 62, 1.0, -1, 0, 0.6],
+    [0.8, 238, -2, 56, 1.0, -1, 0, 0.4],
+    [1.0, 222, -4, 44, 0.8, -1, 0, 0.2],
+    [1.5, 120, -8, 8, 0.2, -1, 0, 0],
+    [2.0, 40, -6, 4, 0.0, 0, 0, -1],
+  ]) },
   // launcher: straight up the middle (rules may add it later)
   launcher: { peak: 0.5, ev: 'crack', nominal: { dur: 0.52, hit: [0.14, 0.28], box: { f0: -10, f1: 104, side: 40, y0: 0, y1: 190 } }, keys: K([
     [-1.0, -30, 24, 26, 0.35, -1, 0, -1],
@@ -143,7 +155,7 @@ export const WHIP_SHAPES = {
 /** move ids the rules may use for the same shape */
 export const WHIP_ALIAS = {
   atk1: 'c1', atk2: 'c2', atk3: 'c3', combo1: 'c1', combo2: 'c2', combo3: 'c3', roll_sweep: 'sweep', uppercut: 'launcher', launch: 'launcher',
-  charged: 'charge', heavy: 'charge', bell_far: 'far', farbell: 'far', far_bell: 'far', bell: 'ring_short', bell_short: 'ring_short', bell_long: 'ring_long', ring: 'ring_short',
+  charged: 'charge', heavy: 'charge', wrap: 'whip', lash: 'whip', bell_far: 'far', farbell: 'far', far_bell: 'far', bell: 'ring_short', bell_short: 'ring_short', bell_long: 'ring_long', ring: 'ring_short',
 };
 
 export function shapeOf(id) { return WHIP_SHAPES[id] ?? WHIP_SHAPES[WHIP_ALIAS[id]] ?? WHIP_SHAPES.c1; }

@@ -11,6 +11,7 @@ import { AI, kindOf, kindId, rnd } from './enemies.js';
 export { TUNE };
 const sgn = (v) => (v < 0 ? -1 : 1);
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const hyp = (x, z) => Math.sqrt(x * x + z * z);   // Math.hypot 은 부를 때마다 임시 배열을 만든다 (requests.md core-verify) — 규칙은 틱마다 수십 번 부른다
 const RAD = Math.PI / 180;
 const NOINP = Object.freeze({ mx: 0, mz: 0 });
 const REFLECT = Object.freeze({ id: 'reflect', kind: 'shot', str: 'H', weapon: 'arrow', kb: [200, 0], hitstop: 0.06, mv: 2, hit: [0, 0] });
@@ -89,7 +90,7 @@ export class Sim {
   /** 효과 · 소리 쪽이 정한 경직을 넣는다 (초) */
   hitStop(sec) { this.stop = Math.max(this.stop, sec); }
   /** 숨은 것을 드러낸다 (메아리 · 등불 자리): 반지름 r 안의 유령이 t 초 동안 또렷해져 맞는다 */
-  reveal(x, z, r, t = 2.5) { for (const e of this.enemies) if (!e.dead && e.def.fade != null && Math.hypot(e.x - x, e.z - z) < r) e.revealT = Math.max(e.revealT, t); }
+  reveal(x, z, r, t = 2.5) { for (const e of this.enemies) if (!e.dead && e.def.fade != null && hyp(e.x - x, e.z - z) < r) e.revealT = Math.max(e.revealT, t); }
   byId(id) { const E = this.enemies; for (let i = 0; i < E.length; i++) if (E[i].id === id) return E[i]; return null; }
   teleport(sec) {
     const s = this.W.sections?.find((q) => q.id === sec), P = this.W.tele?.[sec] ?? TELE[sec] ?? (s ? [(s.x0 + s.x1) / 2, (s.z0 + s.z1) / 2] : null);
@@ -135,7 +136,7 @@ export class Sim {
       if (h.deadT > T.deadT) { this.deaths++; this.reset(); return; }
       this._anim(h, 'death', dt); return;
     }
-    let mx = inp.mx || 0, mz = inp.mz || 0; const m0 = Math.hypot(mx, mz);
+    let mx = inp.mx || 0, mz = inp.mz || 0; const m0 = hyp(mx, mz);
     if (m0 > 1) { mx /= m0; mz /= m0; }
     const m = Math.min(1, m0), moving = m > 0.15;
     if (!moving) mx = mz = 0;
@@ -231,7 +232,7 @@ export class Sim {
     }
     // 걸음 주기: 발소리와 달리기 클립이 같이 쓴다
     // 걷기 / 달리기는 스틱을 민 정도로 정한다(속도가 0 을 지나는 반전 · 출발에서 걸음이 걷기 · 서기로 깜박이지 않게). 스틱을 놓으면 멈출 때까지 그 걸음 그대로
-    const sp = Math.hypot(h.vx, h.vz), free = !h.move && h.dashT <= 0 && h.hurtT <= 0 && !h.guard && h.blockT <= 0 && !h.act && !h.charging, push = moving && free;
+    const sp = hyp(h.vx, h.vz), free = !h.move && h.dashT <= 0 && h.hurtT <= 0 && !h.guard && h.blockT <= 0 && !h.act && !h.charging, push = moving && free;
     if (push) h.gaitMode = m * T.runX < T.walkBelow + 20 ? 'walk' : 'run';
     h.pushed = push;   // 이 틱에 스틱으로 걷고 달리는 중인가 (그림이 "방금 놓았다"를 알아 멈춰 서는 동작을 튼다)
     const gsp = push ? Math.max(sp, (h.gaitMode === 'walk' ? 40 : 96)) : sp, walking = h.onGround && free && !h.pivot && (push || sp > 24);   // 스틱을 민 동안은 걸음이 멎지 않는다 (벽에 대고 달려도 다리는 돈다)
@@ -429,7 +430,7 @@ export class Sim {
   }
   /** 보는 방향(360°)을 정한다. 좌우 값 facing 은 옛 코드용으로 함께 맞춘다 */
   _face(h, dx, dz) {
-    const d = Math.hypot(dx, dz); if (d < 1e-4) return;
+    const d = hyp(dx, dz); if (d < 1e-4) return;
     h.dirX = dx / d; h.dirZ = dz / d;
     if (Math.abs(h.dirX) > 0.25) h.facing = sgn(h.dirX);
   }
@@ -443,8 +444,8 @@ export class Sim {
     this.emit('roll', ux, uz, h); this.hooks.sfx?.('dash'); this.hooks.spark?.(h.x, h.y + 6, h.z, 'dust');
   }
   /** 락온: 가까운 적에게 저절로 걸리고(앞쪽을 조금 더 친다), lockNext 로 다음 적. 손으로 바꾼 뒤 4초는 저절로 바뀌지 않는다 */
-  _lockOk(e, h, lim) { return !e.dead && e.state !== 'dead' && e.active && Math.abs(e.gy - h.y) < 170 && Math.hypot(e.x - h.x, e.z - h.z) < lim; }
-  _lockScore(e, h) { const ex = e.x - h.x, ez = e.z - h.z, d = Math.hypot(ex, ez) || 1; return d * (1.25 - 0.25 * ((ex * h.dirX + ez * h.dirZ) / d)); }
+  _lockOk(e, h, lim) { return !e.dead && e.state !== 'dead' && e.active && Math.abs(e.gy - h.y) < 170 && hyp(e.x - h.x, e.z - h.z) < lim; }
+  _lockScore(e, h) { const ex = e.x - h.x, ez = e.z - h.z, d = hyp(ex, ez) || 1; return d * (1.25 - 0.25 * ((ex * h.dirX + ez * h.dirZ) / d)); }
   _lock(h, next, dt) {
     const T = TUNE, E = this.enemies; let cur = h.lock != null ? this.byId(h.lock) : null;
     if (cur && !this._lockOk(cur, h, T.lockKeep)) cur = null;
@@ -466,7 +467,7 @@ export class Sim {
     const T = TUNE, lim = stick ? T.aimCone : 80;
     const fit = (e, cone, far) => {
       if (e.dead || e.state === 'dead' || !e.solid || e.y - h.y > 135 || h.y - e.y > 80) return -1;
-      const ex = e.x - h.x, ez = e.z - h.z, d = Math.hypot(ex, ez); if (d > far) return -1; if (d < 1) return 0;
+      const ex = e.x - h.x, ez = e.z - h.z, d = hyp(ex, ez); if (d > far) return -1; if (d < 1) return 0;
       const a = Math.acos(clamp((ex * fx + ez * fz) / d, -1, 1)) / RAD;
       return a > cone ? -1 : d + a * 1.5;
     };
@@ -483,7 +484,7 @@ export class Sim {
     const tgt = this._aimTarget(h, fx, fz, stick);
     let sd = mv.step ? mv.step[2] : 0;
     if (tgt) {
-      const ex = tgt.x - h.x, ez = tgt.z - h.z, d = Math.hypot(ex, ez);
+      const ex = tgt.x - h.x, ez = tgt.z - h.z, d = hyp(ex, ez);
       if (d > 12) { fx = ex / d; fz = ez / d; }
       const reach = mv.box ? mv.box.f1 : mv.arc ? mv.arc.r : 90;
       sd = clamp(d - tgt.r - reach * 0.62, 0, TUNE.lungeMax);   // 대상이 판정 한가운데 오도록 내딛는다 (붙어 있으면 내딛지 않는다)
@@ -497,7 +498,7 @@ export class Sim {
   _inShape(o, mv, x, z, r, y0, y1) {
     const ex = x - o.x, ez = z - o.z, f = ex * o.dirX + ez * o.dirZ, l = Math.abs(ez * o.dirX - ex * o.dirZ);
     if (mv.box) { const b = mv.box; return !(f + r < b.f0 || f - r > b.f1 || l > b.side + r * 0.5 || y0 > o.y + b.y1 || y1 < o.y + b.y0); }
-    const a = mv.arc, d = Math.hypot(ex, ez);
+    const a = mv.arc, d = hyp(ex, ez);
     if (d - r > a.r || y0 > o.y + a.y1 || y1 < o.y + a.y0) return false;
     return d < r + 10 || Math.atan2(l, f) / RAD <= a.deg / 2;
   }
@@ -518,7 +519,7 @@ export class Sim {
     const L = mv.land, cx = h.x + h.dirX * L.fwd, cz = h.z + h.dirZ * L.fwd;
     for (const e of this.enemies) {
       if (e.dead || e.state === 'dead' || e.buried || h.hitIds.has(e.id)) continue;
-      if (Math.hypot(e.x - cx, e.z - cz) > L.r + e.r || e.y > h.y + L.y1 || e.y + e.h < h.y + L.y0) continue;
+      if (hyp(e.x - cx, e.z - cz) > L.r + e.r || e.y > h.y + L.y1 || e.y + e.h < h.y + L.y0) continue;
       h.hitIds.add(e.id); this._hitEnemy(e, mv, h);
     }
     this.emit('shake', 6);
@@ -527,7 +528,7 @@ export class Sim {
   _hitEnemy(e, mv, src) {
     const D = e.def, T = TUNE;
     if (!e.solid) { this.hooks.spark?.(e.x, e.y + e.h * 0.6, e.z, 'wisp'); this.emit('whiff', e, mv); return false; }   // 흐린 유령은 베이지 않는다
-    let ax = e.x - src.x, az = e.z - src.z; const ad = Math.hypot(ax, az);
+    let ax = e.x - src.x, az = e.z - src.z; const ad = hyp(ax, az);
     if (ad > 1) { ax /= ad; az /= ad; } else { ax = src.dirX ?? 1; az = src.dirZ ?? 0; }
     const front = -(ax * e.dirX + az * e.dirZ);   // 1 = 때린 쪽이 적의 정면에 있다
     const byHero = src === this.hero, whip = mv.kind === 'whip' && byHero;
@@ -576,7 +577,7 @@ export class Sim {
     if (h.ifr > 0) { if (h.dashT > 0 && !h.dodged) { h.dodged = true; this.emit('dodge', h, src); } return false; }
     h.dodged = false;
     let ax = -dirX, az = -dirZ;   // 영웅에서 때린 쪽으로
-    if (from) { const d = Math.hypot(from.x - h.x, from.z - h.z); if (d > 1) { ax = (from.x - h.x) / d; az = (from.z - h.z) / d; } }
+    if (from) { const d = hyp(from.x - h.x, from.z - h.z); if (d > 1) { ax = (from.x - h.x) / d; az = (from.z - h.z) / d; } }
     const facingIt = ax * h.dirX + az * h.dirZ > Math.cos(T.guardArc * RAD);
     if (h.guard && facingIt) {
       const px = h.x + ax * 26, py = h.y + 62, pz = h.z + az * 26;
@@ -659,7 +660,7 @@ export class Sim {
       if (e.dying <= 0) { e.dead = true; this.kills++; }
       this._anim(e, 'death', dt); return;
     }
-    const dx = h.x - e.x, dz = h.z - e.z, dist = Math.hypot(dx, dz);
+    const dx = h.x - e.x, dz = h.z - e.z, dist = hyp(dx, dz);
     if (!e.active) {
       if (!h.dead && e.wakeBy !== 'trigger' && (!e.yard || this.section === 'yard' || this.section === 'done') && Math.abs(h.y - e.gy) < 130 && this._sees(e, h, dist, D)) this.wake(e);
       if (!e.active) { this._place(e); this._anim(e, e.buried ? 'buried' : 'idle', dt); return; }
@@ -727,7 +728,7 @@ export class Sim {
   }
   /** 보는 방향을 (dx,dz) 쪽으로 rate(rad/초)만큼 돌린다 */
   turnTo(e, dx, dz, rate, dt) {
-    const d = Math.hypot(dx, dz); if (d < 1e-4) return;
+    const d = hyp(dx, dz); if (d < 1e-4) return;
     const cur = Math.atan2(e.dirZ, e.dirX); let da = Math.atan2(dz, dx) - cur;
     while (da > Math.PI) da -= Math.PI * 2; while (da < -Math.PI) da += Math.PI * 2;
     const a = cur + clamp(da, -rate * dt, rate * dt);
@@ -782,7 +783,7 @@ export class Sim {
     if (h.dead) return false;
     if (a.radius) {
       const R = a.radius, cx = e.x + e.dirX * R.fwd, cz = e.z + e.dirZ * R.fwd;
-      return Math.hypot(h.x - cx, h.z - cz) <= R.r + h.r && h.y <= e.y + R.y1 && h.y + h.h >= e.y + R.y0;
+      return hyp(h.x - cx, h.z - cz) <= R.r + h.r && h.y <= e.y + R.y1 && h.y + h.h >= e.y + R.y0;
     }
     return this._inShape(e, a, h.x, h.z, h.r, h.y, h.y + h.h);
   }
@@ -809,12 +810,12 @@ export class Sim {
       if (e.detourT < 0.3) {   // 바로 가는 길이 뚫렸으면 돌아가기를 그만둔다
         const p = { x: e.x, z: e.z, y: e.y, r: e.r, h: e.h, def: e.def };
         this._emove(p, wx * 14, wz * 14 * 0.8);
-        if (Math.hypot(p.x - e.x, p.z - e.z) > 10) { e.detourT = 0; ux = wx; uz = wz; }
+        if (hyp(p.x - e.x, p.z - e.z) > 10) { e.detourT = 0; ux = wx; uz = wz; }
       }
     }
     const dx = ux * speed * dt, dz = uz * speed * dt * 0.8, x0 = e.x, z0 = e.z;
     this._emove(e, dx, dz);
-    const want = Math.hypot(dx, dz), got = Math.hypot(e.x - x0, e.z - z0);
+    const want = hyp(dx, dz), got = hyp(e.x - x0, e.z - z0);
     e.moved = got / Math.max(dt, 1e-4);
     if (want > 1e-3 && got < want * 0.4) {
       e.stuckT += dt;
@@ -823,7 +824,7 @@ export class Sim {
         for (const [cx, cz] of C) {
           const p = { x: e.x, z: e.z, y: e.y, r: e.r, h: e.h, def: e.def };
           this._emove(p, cx * 28, cz * 28 * 0.8);
-          const d = Math.hypot(p.x - e.x, p.z - e.z);
+          const d = hyp(p.x - e.x, p.z - e.z);
           if (!best || d > best.d + 4) best = { d, cx, cz };
         }
         if (best && best.d > 6) { e.detX = best.cx * 0.92 + wx * 0.08; e.detZ = best.cz * 0.92 + wz * 0.08; e.detourT = 0.55 + rnd(0, 0.2); e.stuckT = 0; if (best.cx !== C[0][0] || best.cz !== C[0][1]) e.side = -e.side; }
@@ -875,14 +876,14 @@ export class Sim {
       if (s.life <= 0) { s.dead = true; continue; }
       if (s.friendly) {   // 튕겨 돌려보낸 탄: 적이 맞는다
         for (const e of this.enemies) {
-          if (e.dead || e.state === 'dead' || Math.hypot(s.x - e.x, s.z - e.z) > e.r + s.r || s.y < e.y - 8 || s.y > e.y + e.h + 8) continue;
+          if (e.dead || e.state === 'dead' || hyp(s.x - e.x, s.z - e.z) > e.r + s.r || s.y < e.y - 8 || s.y > e.y + e.h + 8) continue;
           s.dead = true; this.hooks.spark?.(s.x, s.y, s.z, 'shot'); this._hitEnemy(e, REFLECT, { x: s.x - s.vx, z: s.z - s.vz }); break;
         }
-      } else if (!h.dead && Math.hypot(s.x - h.x, s.z - h.z) < h.r + (s.r ?? 8) - 4 && s.y > h.y - 6 && s.y < h.y + h.h + 4) {
-        const d = Math.hypot(s.vx, s.vz) || 1, r = this.hurtHero(s.dmg, s.vx / d, s.vz / d, { shot: s, e: this.byId(s.owner) });
+      } else if (!h.dead && hyp(s.x - h.x, s.z - h.z) < h.r + (s.r ?? 8) - 4 && s.y > h.y - 6 && s.y < h.y + h.h + 4) {
+        const d = hyp(s.vx, s.vz) || 1, r = this.hurtHero(s.dmg, s.vx / d, s.vz / d, { shot: s, e: this.byId(s.owner) });
         if (r === 'parry') {   // 쏜 적에게 되돌려 보낸다
           const o = this.byId(s.owner), sp = d * 1.7; let bx = -s.vx / d, bz = -s.vz / d;
-          if (o && !o.dead) { const od = Math.hypot(o.x - s.x, o.z - s.z) || 1; bx = (o.x - s.x) / od; bz = (o.z - s.z) / od; s.vy = (o.y + o.h * 0.6 - s.y) / (od / sp); }
+          if (o && !o.dead) { const od = hyp(o.x - s.x, o.z - s.z) || 1; bx = (o.x - s.x) / od; bz = (o.z - s.z) / od; s.vy = (o.y + o.h * 0.6 - s.y) / (od / sp); }
           s.vx = bx * sp; s.vz = bz * sp; s.friendly = true; s.life = 2.5; this.emit('shot', s, 'reflect');
         } else if (r) { s.dead = true; this.hooks.spark?.(s.x, s.y, s.z, 'shot'); this.emit('shot', s, r === 'guard' ? 'block' : 'hit'); continue; }
       }
