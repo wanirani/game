@@ -61,6 +61,8 @@ APK 예산(95 MB) 때문에 3D 판을 따로 앱으로 낸다. 같은 안드로�
 4. `TMPDIR=/dev/shm node tools/deploy/build_web.mjs --target v1` → `node tools/deploy/target_check.mjs --dir dist/web` (타이틀 여덟 줄)
 5. `TMPDIR=/dev/shm tools/apk/build_apk.sh --verify` — 2D 검사 그대로 (hi 단계는 80건, lo 단계면 lo 사본 대체 검사가 하나 더해져 81건)
 
+**바뀐 앱만 다시 낸다** (2026-11-18): 지난 출시 커밋 뒤로 2D 쪽에 바뀐 파일이 없으면 3D 앱만 1–3 으로 만들어 내고 2D 앱은 그대로 둔다(같은 내용을 번호만 올려 다시 내면 2D 앱에 빈 업데이트가 뜬다). 확인: `git diff --name-only <지난 출시 커밋> HEAD -- . ':!src/v2' ':!assets/v2' ':!tools/v2' ':!docs'` 가 비어 있을 것(`tools/deploy` · `tools/apk` · `android` 가 바뀌었으면 둘 다 다시 낸다). 이때 apk 브랜치에서는 3D 한 벌과 `latest3d.json` 만 바꾼다.
+
 두 APK 는 서로 다른 이름이라 어느 순서로 만들어도 둘 다 `dist/` 에 남는다. `dist/web` 은 마지막에 만든 웹 빌드다 — 웹사이트를 배포할 때는 §3 처럼 대상 없이(`all`) 다시 빌드한다.
 (`all` 빌드는 2D·3D 를 함께 싣는 예전 웹사이트 그대로이고, 2D 앱 APK 와 웹 빌드가 달라 `downloads/` 에 APK 를 넣지 않는다 — APK 는 아래 apk 브랜치로 낸다.)
 

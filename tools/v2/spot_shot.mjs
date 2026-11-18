@@ -1,7 +1,7 @@
 // Main-session look check: stills of chosen spots in the real scene (v2g, ?area=<id>, no story).
 // The hero is put at each spot facing a direction, the scene runs a moment so the camera settles, and a still is saved.
 //   node tools/v2/spot_shot.mjs --area graveyard_now --spots "gate_s:600,860,0,1;gate_n:600,1010,0,-1" [--device fold_open] [--out /tmp/claude-0/v2/main/spots]
-//        [--flags gate_open,promise] [--tier mid] [--quiet 1 = enemies are put to sleep far away] [--frames 3 = stills 0.2 s apart per spot]
+//        [--flags gate_open,promise] [--tier mid] [--frames 3 = stills 0.2 s apart per spot]   (the hero's health is kept full while it runs)
 // One browser, one page. Every picture is checked for a lost WebGL context before it is written. Prints one JSON line per picture.
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
@@ -10,7 +10,7 @@ import { contextOptions } from '../qa/lib/viewports.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => { if (v.startsWith('--')) a.push([v.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true]); return a; }, []));
 const DEV = String(args.device || 'fold_open'), OUT = String(args.out || '/tmp/claude-0/v2/main/spots'), AREA = String(args.area || 'eshville_now');
-const TIER = String(args.tier || 'mid'), QUIET = String(args.quiet ?? '1') !== '0', FRAMES = Math.max(1, Number(args.frames ?? 1));
+const TIER = String(args.tier || 'mid'), FRAMES = Math.max(1, Number(args.frames ?? 1));
 const FLAGS = args.flags && args.flags !== true ? String(args.flags).split(',').filter(Boolean) : [];
 const SPOTS = String(args.spots || '').split(';').filter(Boolean).map((s, i) => {
   const [name, rest] = s.includes(':') ? s.split(':') : ['s' + i, s]; const [x, z, dx = 1, dz = 0] = rest.split(',').map(Number);
@@ -22,11 +22,11 @@ const port = 8200 + Math.floor(Math.random() * 700), srv = await start(port);
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
 const errs = []; let code = 0;
 
-function install(flags, quiet) {
+function install(flags) {
   const v = window.__v2, sc = v.scene, g = window.__game; g._pageHidden = true;
   const F = (window.__F = { n: 0 });
   if (flags.length && typeof sc.setWorldFlags === 'function') { const o = { ...(sc.worldFlags || {}) }; for (const f of flags) o[f] = true; sc.setWorldFlags(o); }
-  F.tick = (n = 1) => { for (let i = 0; i < n; i++) { const h = sc.sim?.hero; if (h) h.hp = h.hpMax ?? h.hp; if (quiet && sc.sim) for (const e of sc.sim.enemies) { if (!e.dead && e.awake !== undefined) e.awake = false; } g.tick(1 / 60); F.n++; if (F.n % 6 === 0) g.render(); } g.render(); };
+  F.tick = (n = 1) => { for (let i = 0; i < n; i++) { const h = sc.sim?.hero; if (h) h.hp = h.hpMax ?? h.hp; g.tick(1 / 60); F.n++; if (F.n % 6 === 0) g.render(); } g.render(); };
   F.put = (x, z, dx = 1, dz = 0) => {
     const sim = sc.sim, h = sim.hero, B = sc.W.boxes; let gy = -Infinity;
     for (const b of B) { if (x < b.x0 || x > b.x1 || z < b.z0 || z > b.z1 || !b.walk) continue; if (b.y1 > gy && b.y1 < 2000) gy = b.y1; }
@@ -34,7 +34,7 @@ function install(flags, quiet) {
     const l = Math.hypot(dx, dz) || 1; h.dirX = dx / l; h.dirZ = dz / l; if (h.wishX !== undefined) { h.wishX = 0; h.wishZ = 0; } if (sc.heroA) { sc.heroA.dx = h.dirX; sc.heroA.dz = h.dirZ; }
     if (h.safe) { h.safe.x = h.x; h.safe.y = h.y; h.safe.z = h.z; } h._px = h.x; h._py = h.y; h._pz = h.z; sc.visY = sc.visYP = h.y; if (sc.cam) sc.cam.snap = true; sc._whipReset = true;
   };
-  F.info = () => { const h = sc.sim.hero; return { hero: [Math.round(h.x), Math.round(h.y), Math.round(h.z)], area: v.area, tier: sc.perf?.tier, lost: sc.glr.gl.isContextLost(), draws: v.stats?.draws ?? null, tris: v.stats?.tris ?? null }; };
+  F.info = () => { const h = sc.sim.hero, st = v.stats || {}; return { hero: [Math.round(h.x), Math.round(h.y), Math.round(h.z)], area: v.area, tier: sc.perf?.tier, lost: sc.glr.gl.isContextLost(), draws: st.gl?.draws ?? null, tris: st.gl?.tris ?? null, particles: st.fx?.particles ?? null }; };
   return { ready: v.ready, area: v.area };
 }
 
@@ -46,8 +46,7 @@ try {
   await page.waitForFunction(() => window.__v2 && (window.__v2.ready || window.__v2.error), null, { timeout: 180000 }).catch(() => {});
   const st = await page.evaluate(() => ({ ready: window.__v2?.ready, error: String(window.__v2?.error ?? '') }));
   if (!st.ready) throw new Error('scene not ready: ' + st.error);
-  await page.evaluate(([f, q]) => (0, eval)('(' + window.__spotInstall + ')')(f, q), [FLAGS, QUIET]).catch(() => null);
-  await page.evaluate(`window.__spotInstall = ${install.toString()}; (${install.toString()})(${JSON.stringify(FLAGS)}, ${QUIET})`);
+  await page.evaluate(install, FLAGS);
   if (FLAGS.length) await page.evaluate(async () => { for (let i = 0; i < 40; i++) { window.__F.tick(6); await new Promise((r) => setTimeout(r, 50)); if (!window.__v2.scene.xing && !window.__v2.scene._rebuilding) break; } });
   for (const s of SPOTS) {
     await page.evaluate(([x, z, dx, dz]) => { const F = window.__F; F.put(x, z, dx, dz); F.tick(50); }, [s.x, s.z, s.dx, s.dz]);
