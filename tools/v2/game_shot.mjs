@@ -63,7 +63,7 @@ try {
   const vp = page.viewportSize();
   /** save a picture: full frame, or a crop of w x h CSS px around the hero (or the point `at` = 'tip' | 'hand') */
   const shot = async (name, crop, at) => {
-    const i = await page.evaluate(() => { window.__game.render(); return window.__F.info(); });
+    const i = await page.evaluate(() => { window.__game.alpha = 1; window.__game.render(); return window.__F.info(); });   // alpha 1: the picture is the tick the numbers describe (a real frame lies between two ticks)
     if (i.lost) { errs.push('[context lost] ' + name); code = 1; return i; }
     const f = `${OUT}/${PLAN}_${DEV}_${name}.png`; let clip;
     if (crop) { const c = (at === 'tip' ? i.tipCss : at === 'hand' ? i.handCss : i.heroCss) ?? i.heroCss ?? [vp.width / 2, vp.height / 2]; const w = Math.min(crop[0], vp.width), h = Math.min(crop[1], vp.height); clip = { x: Math.max(0, Math.min(vp.width - w, c[0] - w / 2 + (crop[2] ?? 0))), y: Math.max(0, Math.min(vp.height - h, c[1] - h / 2 + (crop[3] ?? 0))), width: w, height: h }; }
@@ -139,6 +139,16 @@ try {
     await ev(() => { const F = window.__F, h = window.__v2.scene.sim.hero; F.hold.mx = 1; F.once.dash = true; F.tick(1); F.until(() => !(h.dashT > 0), 60); F.once.attack = true; F.until(() => h.move && h.moveT >= h.move.hit[0] + 0.02, 30); F.hold = {}; });
     await shot('sweep_after_roll', CROP);
     await ev(() => window.__F.tick(60));
+  }
+  if (PLAN === 'dbg') {   // numbers behind one picture: the third hit facing away from the camera
+    await ev(() => { const F = window.__F, sc = window.__v2.scene; for (const e of sc.sim.enemies) { e.active = false; e.sight = 0; e.x += 6000; } F.tick(60); const h = sc.sim.hero; F.put(h.x, h.z, 0, 1, h.y); F.tick(25); });
+    for (const id of ['c1', 'c2', 'c3']) {
+      const r = await ev((id) => { const F = window.__F, sc = window.__v2.scene, h = sc.sim.hero, w = sc.whip; let k = -1; for (let i = 0; i < 90 && k < 0; i++) { if (i % 8 === 0) F.once.attack = true; F.tick(1); if (h.move && h.move.id === id && h.moveT >= h.move.hit[0] + 0.02) k = i; }
+        const N = []; for (let i = 0; i < w.n; i++) N.push([Math.round(w.nodes[i * 3] - h.x), Math.round(w.nodes[i * 3 + 1] - h.y), Math.round(w.nodes[i * 3 + 2] - h.z)]);
+        const H = sc.whipHand; return { id, k, dir: [+h.dirX.toFixed(2), +h.dirZ.toFixed(2)], face: [+sc.heroA.dx.toFixed(2), +sc.heroA.dz.toFixed(2)], hand: [Math.round(H.x - h.x), Math.round(H.y - h.y), Math.round(H.z - h.z)], handDir: [+H.dx.toFixed(2), +H.dy.toFixed(2), +H.dz.toFixed(2)], tip: [Math.round(w.tip.x - h.x), Math.round(w.tip.y - h.y), Math.round(w.tip.z - h.z)], nodes: N, cam: [Math.round(sc.cam.px - h.x), Math.round(sc.cam.py - h.y), Math.round(sc.cam.pz - h.z)] }; }, id);
+      console.log(JSON.stringify(r));
+      await shot(`${id}_away`, CROP);
+    }
   }
   if (PLAN === 'ring') {
     const r = await ev(() => { const F = window.__F, sc = window.__v2.scene, sim = sc.sim, h = sim.hero, P = (sim.hookPoints ?? sc.W.hookPoints ?? [])[0]; if (!P) return null; for (const e of sim.enemies) { e.active = false; e.x += 6000; } F.put(P.x - 40, P.z - 150, 0, 1, P.y - 200); F.tick(30); return { P: { id: P.id, x: P.x, y: P.y, z: P.z, h: P.h, to: P.to }, hookId: h.hookId, hero: [h.x, h.y, h.z] }; });

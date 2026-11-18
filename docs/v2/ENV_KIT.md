@@ -4,7 +4,7 @@
 작성 2026-11-17. 소유자 의견("적과 모든 것들을 3D 로, 배경도 좀 더 디테일하게 — 사물이나 벽면 등도")에 대한 **배경 쪽 답**이다.
 숫자는 §5. 헤드리스 Chromium 은 소프트웨어 렌더러(SwiftShader)라 **프레임 시간은 실제 기기 값이 아니다** — 삼각형·그리기 호출·메모리만 믿을 수 있다.
 
-> **2026-11-18 02:10 UTC, WORLD-2 구역이 더한 것은 §18** (납골당 · 종탑 소품 12종을 생성 모델로, 채찍 고리 · 길종 종대, 작은 재질 접기로 그리기 호출 줄이기 — 에슈빌 33/35 → 30/30, 수레 손잡이 · 고목 발자국, 지역별 숫자 전 → 후). §17 "남은 것"의 수레 손잡이 · 고목 · 납골 벽감 · 가판대 줄은 이제 옛 얘기다(묘지 문은 그대로 남았다).
+> **2026-11-18 02:10 UTC(숫자 · 검사는 02:47–02:55 UTC 에 마지막 트리에서 다시 잼), WORLD-2 구역이 더한 것은 §18** (납골당 · 종탑 소품 12종을 생성 모델로, 채찍 고리 · 길종 종대, 작은 재질 접기로 그리기 호출 줄이기 — 에슈빌 33/35 → 30/30, 수레 손잡이 · 고목 발자국, 지역별 숫자 전 → 후). §17 "남은 것"의 수레 손잡이 · 고목 · 납골 벽감 · 가판대 줄은 이제 옛 얘기다(묘지 문은 그대로 남았다).
 >
 > **2026-11-18 00:55 UTC, 검수(propsverify)는 §17** — §16 의 숫자는 다시 재도 같았다. 고친 것: 떠 있던 등불 기둥 · 기둥 옆에 서 있던 충돌 상자 · 수레 손잡이 사이의 밝은 번짐 · 영웅이 몸 반쯤 들어가던 수레 · 묶음 · 화로의 충돌 상자. 묶음 파일의 크기와 숫자는 §17 끝의 값이 지금 값이다(§16.2 의 217,532 · 272,418 바이트는 고치기 전)
 >
@@ -601,6 +601,6 @@ assets/v2/env/k_planks.webp                                                     
 - The cemetery gate (code-built), the static leaf flames, the chapel and the dead tree up close.
 - Eshville has under 100 triangles left under the 35,000 limit (34,909 / 34,957; 34,915 with `door_pulled`): any new prop there must pay for itself.
 - `belltower_past` is not built. The tower's wooden stairs and plank floors share one plank texture (the fold); the stone stair has no banister.
-- Ossuary: beyond the side walls the camera sees black (no rock ceiling or cave wall above the wall tops); the gap has no visible far wall below the floor line; tonight's rooms left of the hall centre repeat the same coffin-stack model (two sizes, mirrored).
+- Ossuary: beyond the side wall tops there is only a flat rock shelf (drawn, 262 wide, no cave ceiling: further out it is black, outside the camera's usual view); the gap shows a plain dark wall below the floor line; tonight's rooms left of the hall centre repeat the same coffin-stack model (two sizes, mirrored).
 - The whip ring is tested only as data (reach grid, `stage.hookPoints`): scene v2c has no whip, the bot is set on the landing spot.
 - Texture memory is +10.7 MB in Eshville and on the test route against §17 (the atlas doubled from 2048 × 1024 to 2048 × 2048, mipmapped), +6.7 MB in the graveyard: Eshville is slightly over "about +10 MB". A 2048 × 1536 atlas would need the models baked at about 0.87 of today's texel density.
