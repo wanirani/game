@@ -251,6 +251,22 @@ try {
     if (al) ok(`allocation per frame with pieces flying and coins lying is no higher than standing idle (+1 KB tolerance)`, Math.min(...al.busy) <= Math.max(...al.idle) + 1024, `idle ${al.idle.join(' / ')} B per frame · busy ${al.busy.join(' / ')} B per frame (pieces ${al.sh0} -> ${al.sh1}, pickups ${al.pk0} -> ${al.pk1})`); else note('no precise heap numbers in this browser');
     res.alloc = al; await ctx.close();
   }
+  // ───────────────────────── combo: c2 / c3 / plunge on every kind through the scene's own input latch (60 ticks a second, no touch) ─────────────────────────
+  if (PART === 'combo') {
+    const { ctx, page } = await open('eshville_now', '&v2res=0.4');
+    const r = await page.evaluate(() => { const sc = window.__v2.scene, g = window.__game, sim = sc.sim, bv = window.__bv; g._pageHidden = true; bv.quiet(true); const X0 = 4060, Z0 = 640, out = {};
+      const tick = (n) => { for (let i = 0; i < n; i++) g.tick(1 / 60); };
+      for (const kind of ['jar', 'pot', 'urn', 'crate', 'barrel']) { out[kind] = {};
+        for (const want of ['c2', 'c3']) { const ids = bv.stand([{ kind, x: X0, z: Z0 }]), b = sim.breakables[ids[0]]; bv.hero(X0 - b.r - 14 - 10 - (want === 'c3' ? 46 : 22), Z0, 0); bv.face(1, 0); tick(2); bv.ev.length = 0; b.broken = true; b.box.solid = false; sim.brkLive = 0;   // (he steps 20 + 22 forward in c1 and c2 while the thing is put away: he starts that much further back)
+          let got = false; for (let i = 0; i < 240 && !got; i++) { sc.inp.attack = true; g.tick(1 / 60); got = sim.hero.move?.id === want; }
+          b.broken = false; b.box.solid = true; sim.brkLive = 1; tick(50); out[kind][want] = bv.ev.filter((e) => e.n === 'break').map((e) => e.by).join(',') || (got ? 'no break' : 'move never started'); }
+        { const ids = bv.stand([{ kind, x: X0, z: Z0 }]), b = sim.breakables[ids[0]], h = sim.hero; bv.hero(X0 - b.r - 14 - 30, Z0, 0); bv.face(1, 0); tick(2); bv.ev.length = 0; h.vy = 640; h.onGround = false; h.y += 4; tick(9); const air = !h.onGround; sc.inp.attack = true; tick(100); out[kind].plunge = bv.ev.filter((e) => e.n === 'break').map((e) => e.by).join(',') || (air ? 'no break' : 'not in the air'); }
+        { const ids = bv.stand([{ kind, x: X0, z: Z0 }]), b = sim.breakables[ids[0]], h = sim.hero; bv.hero(X0 - b.r - 14 - 60, Z0, 0); bv.face(1, 0); tick(2); bv.ev.length = 0; h.vy = 640; h.onGround = false; h.y += 4; tick(9); h.dirX = 0; h.dirZ = -1; sc.inp.attack = true; tick(100); out[kind].ring = bv.ev.filter((e) => e.n === 'break').map((e) => e.by).join(',') || 'no break'; }   // (facing away: only the landing ring can reach it)
+      } return out; });
+    const bad = []; for (const [k, o] of Object.entries(r)) for (const m of ['c2', 'c3', 'plunge']) if (o[m] !== m) bad.push(`${k} ${m}: ${o[m]}`);
+    ok(`c2, c3 and the plunge break every kind (rules driven through the scene's input latch at 60 ticks a second)`, bad.length === 0, Object.entries(r).map(([k, o]) => `${k}: c2=${o.c2} c3=${o.c3} plunge=${o.plunge} ring=${o.ring}`).join(' · '));
+    res.combo = r; await ctx.close();
+  }
   // ───────────────────────── strip: frames of a break at the game camera, both nights ─────────────────────────
   if (PART === 'strip') {
     for (const [area, picks] of [['eshville_now', ['jar', 'crate', 'barrel']], ['eshville_past', ['jar', 'crate', 'barrel']]]) {
@@ -258,13 +274,13 @@ try {
       for (const kind of picks) {
         const info = await page.evaluate((kind) => { const sc = window.__v2.scene, g = window.__game, sim = sc.sim, bv = window.__bv; g._pageHidden = true; bv.quiet(true); const L = sim.breakables;
           const b = L.find((q) => q.kind === kind && !q.broken && q.z < 400) ?? L.find((q) => q.kind === kind && !q.broken); if (!b) return null; b.drop = kind === 'jar' ? 'coin4' : kind === 'crate' ? 'heal' : 'reso';
-          bv.hero(b.x - b.r - 14 - 30, b.z - 46, b.y); const h = sim.hero; h.dirX = 0.8; h.dirZ = 0.6; h.facing = 1; h.hp = h.hpMax - 30; h.reso = 0; for (let i = 0; i < 50; i++) g.tick(1 / 60); g.render();
+          bv.hero(b.x - 150, b.z - 70, b.y); const h = sim.hero; bv.face(0.9, 0.42); h.reso = 0; for (let i = 0; i < 50; i++) g.tick(1 / 60); g.render();
           const p = window.__v2.project(b.x, b.y + 30, b.z); return { id: b.id, x: b.x, z: b.z, y: b.y, p, vw: innerWidth, vh: innerHeight }; }, kind);
         if (!info) { note(`${area}: no whole ${kind} to capture`); continue; }
         const cw = Math.min(460, info.vw), ch = Math.min(340, info.vh), cx = Math.max(0, Math.min(info.vw - cw, Math.round(info.p.x - cw / 2))), cy = Math.max(0, Math.min(info.vh - ch, Math.round(info.p.y - ch * 0.6)));
         const shot = (n) => page.screenshot({ path: `${OUT}/strip_${DEV}_${area}_${kind}_${n}.png`, clip: { x: cx, y: cy, width: cw, height: ch } });
         await shot('00');
-        await page.evaluate((id) => { const sc = window.__v2.scene, g = window.__game, sim = sc.sim, b = sim.breakables[id]; sim.hero.x = b.x - 400; sim.breakAt(b.x - 30, b.z - 20, 40, 'c1'); g.tick(1 / 60); g.render(); }, info.id);   // (the hero steps back so the drops lie to be seen)
+        await page.evaluate((id) => { const sc = window.__v2.scene, g = window.__game, sim = sc.sim, b = sim.breakables[id]; sim.breakAt(b.x - 10, b.z - 6, 1, 'c1'); g.tick(1 / 60); g.render(); }, info.id);   // (the hero stands 165 away: what drops lies to be seen)
         const steps = [[1, '01'], [2, '03'], [3, '06'], [4, '10'], [8, '18'], [12, '30'], [30, '60'], [60, '120'], [60, '180'], [45, '225']];
         for (const [n, tag] of steps) { await page.evaluate((n) => { const g = window.__game; for (let i = 0; i < n; i++) g.tick(1 / 60); g.render(); }, n); await shot(tag); }
       }
