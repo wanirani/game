@@ -110,8 +110,8 @@ async function play(ticks, { bot = true, until = null, pred = null, chunk = 240 
   let s = null, left = ticks, idleLoads = 0;
   while (left > 0) {
     s = await page.evaluate(([n, b, u]) => window.__st.run(n, b, u), [Math.min(chunk, left), bot, until]);
+    if (!s.ready) { await page.waitForTimeout(350); if (++idleLoads > 120) break; continue; }   // an area is loading: the budget is game time, not waiting
     left -= Math.max(1, s.i);
-    if (!s.ready) { await page.waitForTimeout(350); if (++idleLoads > 120) break; continue; }
     if (until && (await page.evaluate((u) => window.__st.u[u](), until))) break;
     if (pred && pred(s)) break;
   }
@@ -270,6 +270,37 @@ try {
     s = await play(600, { bot: false, pred: (q) => q.go || !q.ready, chunk: 20 }); await page.evaluate(() => { window.__st.choice = 0; }); const okArea = await toArea('eshville_now', 3000); const fin = await snap(), sv = await saved();
     if (okArea && fin.flags === '' && fin.done <= 1) ok(`「처음부터 다시」 after the confirmation: flags cleared, the opening plays again (done ${fin.done}, save ${JSON.stringify(sv)})`); else fail('restart: ' + JSON.stringify({ fin, sv }));
     await drain('start over');
+  }
+  if (PLAN === 'shots') {   // stills for the owner sheet: the story is driven by its own events (the walking is not what is shown), every picture is the game's own frame
+    const dlgShot = async (name, pages = 0) => { let s = await play(1500, { bot: false, pred: (q) => q.modal === 'dialog', chunk: 6 }); if (s.modal !== 'dialog') { notes.push('no dialogue for ' + name); return false; }
+      for (let k = 0; k < pages; k++) { await page.evaluate(() => { const S = window.__st, sc = window.__v2.scene, g = window.__game; for (let i = 0; i < 70; i++) g.tick(1 / 60); const c = S.toClient(sc.state.viewW / 2, sc.state.viewH * 0.3); S.fire('pointerdown', 31, c[0], c[1]); S.fire('pointerup', 31, c[0], c[1]); for (let i = 0; i < 4; i++) g.tick(1 / 60); }); }
+      await page.evaluate(() => { for (let i = 0; i < 110; i++) window.__game.tick(1 / 60); window.__st.draw(); }); await shot(name); return true; };
+    await settle(3000);
+    const A = await def('eshville_now'), t = A.triggers.find((q) => q.event === 'church.arrive');
+    await put((t.x0 + t.x1) / 2, (t.z0 + t.z1) / 2); await dlgShot('owner_dialog_alberto', 1); await settle(3000); await drain('church');
+    const bN = A.interact.find((q) => q.event === 'bell.ring');
+    await page.evaluate(() => window.__v2.scene.travelTo('belltower_now', 'bottom')); await toArea('belltower_now'); await emit('trigger', { id: 'top', event: 'tower.top' }); await settle(); await page.evaluate(() => window.__st.fell('tower_bats')); await toArea('eshville_past', 6000); await drain('tower and fall');
+    await emit('group.clear', { group: 'st_p' }); await settle();
+    const P = await def('eshville_past'), ed = P.actors.find((q) => q.id === 'edmund'), hw = P.actors.find((q) => q.id === 'hadwin1'), bP = P.interact.find((q) => q.event === 'bell.ring');
+    await put(ed.x - 10, ed.z - 70); await play(40, { bot: false }); await emit('talk', { id: 'edmund', talk: 'edmund.tavern' }); await dlgShot('owner_dialog_edmund', 2); await settle(4000);
+    await emit('talk', { id: 'edmund', talk: 'edmund.tavern' }); await settle(4000);
+    await put(hw.x - 10, hw.z - 70); await play(40, { bot: false }); await emit('talk', { id: 'hadwin1', talk: 'hadwin1.smithy' }); await dlgShot('owner_entrust', 1); await settle(4000); await drain('table, knot, key');
+    // the same spot in the two nights, the crossing between them
+    await put(bP.x - 150, bP.z + 120); await play(120, { bot: false }); await settle(); await shot('owner_past_spot');
+    await put(bP.x, bP.z + 40); await play(30, { bot: false }); await emit('interact', { id: bP.id, kind: 'bell', event: 'bell.ring' });
+    let s = await play(2400, { bot: false, pred: (q) => q.xing, chunk: 4 });
+    if (s.xing) { await page.evaluate(() => { for (let i = 0; i < 16; i++) window.__game.tick(1 / 60); window.__st.draw(); }); await shot('owner_cross_moment_a'); await page.evaluate(() => { for (let i = 0; i < 14; i++) window.__game.tick(1 / 60); window.__st.draw(); }); await shot('owner_cross_moment_b'); } else notes.push('the crossing did not start: ' + JSON.stringify(s));
+    s = await play(3600, { bot: false, pred: (q) => q.ready && q.area === 'eshville_now' && !q.xing, chunk: 30 });
+    await page.evaluate(() => { for (let i = 0; i < 12; i++) window.__game.tick(1 / 60); window.__st.draw(); }); await shot('owner_cross_arrive');
+    await dlgShot('owner_return_line', 0); await settle(4000); await drain('first crossing');
+    await put(bN.x - 150, bN.z + 120); await play(160, { bot: false }); await settle(); await shot('owner_now_spot');
+    // the change carried across: the grandson's drawer tonight
+    const hn = (await def('eshville_now')).actors.find((q) => q.id === 'hadwin');
+    await put(hn.x - 10, hn.z - 70); await play(60, { bot: false }); s = await st();
+    if (s.prompt === 'hadwin') { await page.evaluate(() => window.__st.pill()); } else { notes.push('no prompt at hadwin (prompt ' + s.prompt + ', enemies ' + s.left + ') — the talk was raised by the tool'); await emit('talk', { id: 'hadwin', talk: 'hadwin.smithy.now' }); }
+    await dlgShot('owner_drawer', 1); await settle(4000); await drain('the grandson tonight');
+    await shot('owner_after_drawer');
+    notes.push('end state: ' + JSON.stringify(await snap()));
   }
   if (PLAN === 'cross30' || PLAN === 'edges') await settle(3000);
   const mem = () => page.evaluate(() => { try { window.gc?.(); } catch { /* no gc */ } const s = window.__v2.stats; return { tex: s.gl.texBytes, buf: s.gl.bufBytes, canvases: s.canvases, dom: document.querySelectorAll('canvas').length, heap: Math.round((performance.memory?.usedJSHeapSize ?? 0) / 1024), models: s.chars.models.length, area: s.area, people: s.people.n }; });

@@ -20,21 +20,22 @@ const FENCES = { iron: { x0: 1860, x1: 2180, z: 5, hw: 3.6 }, wood: { x0: 80, x1
 const pen = (f, x, z) => { const e = f.box ? 0 : f.hw, dx = Math.max(f.x0 - e - x, 0, x - f.x1 - e), dz = Math.max(f.z - f.hw - z, 0, z - f.z - f.hw); return +(14 - Math.hypot(dx, dz)).toFixed(1); };
 // [name, fence, start x, start z, stick dx, stick dy (screen: +y = down = towards the camera = -z)]
 const PUSH = [
-  ['iron_in', 'iron', 2020, 70, 0, 1], ['iron_in_left', 'iron', 1980, 70, -0.7, 0.7], ['iron_in_right', 'iron', 2060, 70, 0.7, 0.7],
-  ['iron_end_w', 'iron', 1810, 30, 1, 0.25], ['iron_end_e', 'iron', 2230, 30, -1, 0.25],
-  ['wood_in', 'wood', 250, 70, 0, 1], ['wood_in_left', 'wood', 210, 70, -0.7, 0.7], ['wood_in_right', 'wood', 290, 70, 0.7, 0.7],
-  ['wood_end_w', 'wood', 40, 30, 1, 0.25], ['wood_end_e', 'wood', 470, 30, -1, 0.25],
+  ['iron_in', 'iron', 2020, 70, 0, 1, 1200], ['iron_in_left', 'iron', 2060, 60, -0.7, 0.7, 450], ['iron_in_right', 'iron', 1980, 60, 0.7, 0.7, 450],
+  ['iron_end_w', 'iron', 1800, 16, 1, 0.15, 900], ['iron_end_e', 'iron', 2240, 16, -1, 0.15, 900],
+  ['wood_in', 'wood', 250, 70, 0, 1, 1200], ['wood_in_left', 'wood', 290, 60, -0.7, 0.7, 450], ['wood_in_right', 'wood', 210, 60, 0.7, 0.7, 450],
+  ['wood_end_w', 'wood', 20, 16, 1, 0.15, 900], ['wood_end_e', 'wood', 480, 16, -1, 0.15, 900],
   // the church front: the low wall with piers and railing left of the stair (its pier fin stood 11-14 over the side the hero walks along), and the stair's left cheek
-  ['lowwall_side', 'lowwall', 3720, 1050, -1, 0], ['cheek_up', 'cheek', 3720, 1080, -0.45, -1],
+  ['lowwall_side', 'lowwall', 3720, 1050, -1, 0, 900], ['cheek_up', 'cheek', 3720, 1080, -0.45, -1, 1200],
 ];
 // the pier fin / cap (before) reached x 3671 / 3674 along z 985..1257; the cheek's band is x 3658..3671 (both drawn from x 3660 on)
-FENCES.lowwall = { x0: 3658, x1: MODE === 'before' ? 3674 : 3668, z: 1120, hw: 135, box: true };   // after: no fin, the side piers' caps reach 3668 FENCES.cheek = { x0: 3658, x1: 3671, z: 1175, hw: 77, box: true };
+FENCES.lowwall = { x0: 3658, x1: MODE === 'before' ? 3674 : 3668, z: 1120, hw: 135, box: true };   // after: no fin, the side piers' caps reach 3668
+FENCES.cheek = { x0: 3658, x1: 3671, z: 1175, hw: 77, box: true };
 
 const port = 8200 + Math.floor(Math.random() * 700), srv = await start(port);
 const browser = await chromium.launch({ executablePath: EXE, args: GL_ARGS });
 const out = { mode: MODE, dev: DEV, pushes: [] };
 try {
-  const ctx = await browser.newContext(contextOptions(DEV)), page = await ctx.newPage();
+  const ctx = await browser.newContext({ ...contextOptions(DEV), serviceWorkers: 'block' }), page = await ctx.newPage();   // (a service worker would answer the module requests past page.route)
   if (MODE === 'before') for (const f of ['build.js', 'kit.js', 'props2.js']) {
     const body = execFileSync('git', ['show', '66ab4ef:src/v2/env/' + f], { encoding: 'utf8' });
     await page.route('**/src/v2/env/' + f + '*', (r) => r.fulfill({ status: 200, contentType: 'text/javascript', body }));
@@ -45,13 +46,13 @@ try {
   const cdp = await ctx.newCDPSession(page), T = new Touch(cdp, page);
   await ensureTouchMode(T, page); await page.waitForTimeout(300);
   const vp = await page.evaluate(() => [innerWidth, innerHeight]), sx = Math.round(vp[0] * 0.2), sy = Math.round(vp[1] * 0.62);
-  for (const [name, fk, X, Z, dx, dy] of PUSH) {
+  for (const [name, fk, X, Z, dx, dy, HOLD] of PUSH) {
     await page.evaluate(([x, z]) => { const sc = window.__v2.scene, h = sc.sim.hero; for (const e of sc.sim.enemies ?? []) { e.active = false; } h.x = x; h.z = z; h._px = x; h._pz = z; h.vx = 0; h.vz = 0; h.ifr = 999; sc.cam.snap = true; }, [X, Z]);
     await page.waitForTimeout(500);
     await T.down(21, sx, sy); await page.waitForTimeout(40);
     for (let i = 1; i <= 5; i++) { await T.move(21, Math.round(sx + dx * 11 * i), Math.round(sy + dy * 11 * i)); await page.waitForTimeout(25); }
     let worst = -14, samples = 0; const t0 = Date.now();
-    while (Date.now() - t0 < 1600) { const h = await page.evaluate(() => ({ x: window.__v2.hero.x, z: window.__v2.hero.z })); worst = Math.max(worst, pen(FENCES[fk], h.x, h.z)); samples++; await page.waitForTimeout(60); }
+    while (Date.now() - t0 < HOLD) { const h = await page.evaluate(() => ({ x: window.__v2.hero.x, z: window.__v2.hero.z })); worst = Math.max(worst, pen(FENCES[fk], h.x, h.z)); samples++; await page.waitForTimeout(60); }
     const h = await page.evaluate(() => { const v = window.__v2, h = v.hero, p = v.project(h.x, h.y + 46, h.z); return { x: h.x, z: h.z, y: h.y, p }; });
     const vpw = vp[0], vph = vp[1], cw = Math.min(560, vpw), ch = Math.min(420, vph), cx = Math.max(0, Math.min(vpw - cw, Math.round((h.p?.x ?? vpw / 2) - cw / 2))), cy = Math.max(0, Math.min(vph - ch, Math.round((h.p?.y ?? vph / 2) - ch / 2)));
     const file = `${OUT}/${MODE}_${name}.png`;
