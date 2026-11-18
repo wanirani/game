@@ -14,8 +14,8 @@ const HANDLE = [
   [5.5, 2.1, 3], [6.2, 3.3, 3], [7.0, 3.3, 3], [7.7, 2.2, 3], [9.4, 1.9, 3], [11.0, 1.55, 3],
 ];
 // bell shard, local frame (t along the lash end, a, b across): an uneven sliver broken off a bronze bell
-const SH_V = [[0, 0, 0], [4.0, 3.0, 0.7], [5.4, 0.5, 1.5], [4.7, -2.7, 0.4], [4.3, 0.2, -1.3], [SHARD_LEN, 0.9, 0.1]];
-const SH_F = [[0, 1, 2], [0, 2, 3], [0, 3, 4], [0, 4, 1], [5, 2, 1], [5, 3, 2], [5, 4, 3], [5, 1, 4]];
+const SH_V = [[0, 0, 0], [3.4, 3.3, 0.8], [5.8, 0.9, 1.6], [4.3, -2.4, 0.5], [4.9, 0.3, -1.2], [SHARD_LEN, -1.3, 0.3], [8.3, 2.7, 0.5]];   // 5 = the long point, 6 = the broken shoulder
+const SH_F = [[0, 1, 2], [0, 2, 3], [0, 3, 4], [0, 4, 1], [6, 2, 1], [5, 2, 6], [5, 6, 4], [6, 1, 4], [5, 3, 2], [5, 4, 3]];
 
 /** sizes and the static index list for a whip (tier decides). main = lash + handle + shard, then the glow quad */
 export function meshInfo(whip) {

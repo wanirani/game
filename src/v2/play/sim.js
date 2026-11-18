@@ -3,7 +3,7 @@
 //   영웅 = 연타 3 (셋째는 넓게) · 점프 중 내려베기 · 구르기(짧은 무적) · 구른 직후 훑기 · 막기 / 튕겨내기 · 부드러운 락온
 //   적   = 종류표(enemies.js)의 자료와 행동. 공격은 예고(windup) → 판정(strike) → 틈(recover), 판정은 보는 방향 기준 상자
 //   사건 = hooks 로 내보낸다 (발소리 · 휘두름 · 닿음 · 튕겨냄 · 착지 · 구르기 …). 모든 사건은 hooks.event(name, …) 로도 한 번씩 간다
-import { bindWorld, groundAtS, moveXZs, STEP_UP, STEP_DOWN } from './collide.js';
+import { bindWorld, groundAtS, moveXZs, sectionOf, STEP_UP, STEP_DOWN } from './collide.js';
 import { TUNE } from './tune.js';
 import { MOVES, COMBO } from './moves.js';
 import { AI, kindOf, kindId, rnd } from './enemies.js';
@@ -37,7 +37,7 @@ export class Sim {
   constructor(W, hooks = {}) {
     this.W = W; this.hooks = hooks; this.w = bindWorld(W); this.deaths = 0;
     this.qx = 0.5; this.qz = 0.5; this.qy = 0.5; this.g = 0.5; this.ex = 0.5; this.ez = 0.5; this._sx = 0.5; this._sz = 0.5; this._sv = 0.5; this._tx = 0.5; this._tz = 0.5; this._tr = 0.5; this._hx = 0.5; this._hz = 0.5; this._sc = 0.5;   // 숫자를 주고받는 칸 (인자 · 반환값으로 실수를 넘기면 상자가 생긴다 — collide.js groundAtS)
-    this._cg = typeof W.groundAt === 'function'; this._cm = typeof W.moveXZ === 'function';
+    this._cg = typeof W.groundAt === 'function'; this._cm = typeof W.moveXZ === 'function'; this._cs = typeof W.sectionAt === 'function'; this._ra = 0.5;
     this.reset();
   }
   /** 땅 높이: this.qx, this.qz 아래 · this.qy 이하에서 가장 높은 걷는 면 → this.g */
@@ -137,7 +137,7 @@ export class Sim {
     { const E = this.enemies; for (let i = 0; i < E.length; i++) if (!E[i].dead) this._enemy(E[i], dt); }
     this._separate(dt);
     this._shots(dt);
-    const sec = this.w.section(this.hero.x, this.hero.z);
+    const sec = this._cs ? this.W.sectionAt(this.hero.x, this.hero.z) : sectionOf(this.W, this.hero);
     if (sec && !this.done) this.section = sec.id;
     if (!this.done) {   // 마당의 적이 모두 쓰러졌는가
       let yard = 0, left = 0; const E = this.enemies;
@@ -290,7 +290,7 @@ export class Sim {
     if (h.charging) {   // 모으는 중: 제자리에서 스틱 쪽으로 돌 수 있다. 놓으면 휘감기, 구르기로 끊을 수 있다
       if (pDash && moving) { h.charging = false; h.charge = 0; this.emit('charge', h, 'cancel', 0); return false; }
       const k = Math.min(1, 14 * dt); h.vx -= h.vx * k; h.vz -= h.vz * k;
-      if (moving) { const cr = h.dirX * uz - h.dirZ * ux, ad = Math.atan2(Math.abs(cr), h.dirX * ux + h.dirZ * uz); this._rot(h, (cr < 0 ? -1 : 1) * Math.min(ad, T.turnRate * dt)); }
+      if (moving) { const cr = h.dirX * uz - h.dirZ * ux, ad = Math.atan2(Math.abs(cr), h.dirX * ux + h.dirZ * uz); this._ra = (cr < 0 ? -1 : 1) * Math.min(ad, T.turnRate * dt); this._rotS(h); }
       const c0 = h.charge; h.charge = Math.min(1, h.charge + dt / T.chargeT);
       if (c0 < 1 && h.charge >= 1) this.emit('charge', h, 'full', 1);
       if (h.charge >= 1) h.chargeFullT += dt;
@@ -410,7 +410,7 @@ export class Sim {
     if (!h.onGround) {
       const k = Math.min(1, T.airAccel * dt);
       h.vx += (mx * T.runX - h.vx) * k; h.vz += (mz * T.runZ - h.vz) * k; h.pivot = 0;
-      if (moving) { const cr = h.dirX * uz - h.dirZ * ux, ad = Math.atan2(Math.abs(cr), h.dirX * ux + h.dirZ * uz); this._rot(h, (cr < 0 ? -1 : 1) * Math.min(ad, T.turnRate * dt)); }
+      if (moving) { const cr = h.dirX * uz - h.dirZ * ux, ad = Math.atan2(Math.abs(cr), h.dirX * ux + h.dirZ * uz); this._ra = (cr < 0 ? -1 : 1) * Math.min(ad, T.turnRate * dt); this._rotS(h); }
       return;
     }
     const nx = h.vx / T.runX, nz = h.vz / T.runZ; let s = nx * h.dirX + nz * h.dirZ, lx = nx - s * h.dirX, lz = nz - s * h.dirZ;   // 몸이 보는 쪽 성분 s (1 = 가장 빠름) + 나머지
@@ -423,10 +423,10 @@ export class Sim {
         h.pivotT += dt;
         const rem = sg === h.pivot ? ad : ad > 2.2 ? Math.PI * 2 - ad : 0;   // 처음 정한 쪽으로 남은 각 (스틱이 정반대 근처에서 흔들려도 오락가락하지 않는다)
         if (rem < T.pivotEnd * RAD) { h.pivot = 0; h.gait = 0.86; }          // 박차는 발부터 다시 디딘다
-        else this._rot(h, h.pivot * Math.min(rem, T.pivotRate * dt));
+        else { this._ra = h.pivot * Math.min(rem, T.pivotRate * dt); this._rotS(h); }
       }
       if (!h.pivot) {
-        this._rot(h, sg * Math.min(ad, Math.max(ad * (1 - Math.exp(-dt * T.turnEase)), 0.02), T.turnRate * dt));
+        this._ra = sg * Math.min(ad, Math.max(ad * (1 - Math.exp(-dt * T.turnEase)), 0.02), T.turnRate * dt); this._rotS(h);
         const keep = T.turnKeep * RAD;
         want = m * (ad <= keep ? 1 : 1 - (1 - T.turnSlow) * Math.min(1, (ad - keep) / (T.pivotAt * RAD - keep)));
       }
@@ -435,8 +435,9 @@ export class Sim {
     h.vx = (h.dirX * s + lx) * T.runX; h.vz = (h.dirZ * s + lz) * T.runZ;
   }
   /** 영웅의 보는 방향을 a(rad)만큼 돌린다 (+ = dirZ 쪽으로) */
-  _rot(h, a) {
-    const c = Math.cos(a), sn = Math.sin(a), x = h.dirX * c - h.dirZ * sn, z = h.dirX * sn + h.dirZ * c, l = Math.sqrt(x * x + z * z) || 1;
+  _rot(h, a) { this._ra = a; this._rotS(h); }
+  _rotS(h) {
+    const a = this._ra, c = Math.cos(a), sn = Math.sin(a), x = h.dirX * c - h.dirZ * sn, z = h.dirX * sn + h.dirZ * c, l = Math.sqrt(x * x + z * z) || 1;
     h.dirX = x / l; h.dirZ = z / l;
     if (Math.abs(h.dirX) > 0.25) h.facing = sgn(h.dirX);
   }

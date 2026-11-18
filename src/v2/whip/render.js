@@ -46,7 +46,7 @@ void main() {
     float g = max(0.0, 1.0 - abs(vP.x) * 10.0) * max(0.0, 1.0 - abs(vP.y) * 1.15) + max(0.0, 1.0 - abs(vP.y) * 10.0) * max(0.0, 1.0 - abs(vP.x) * 1.15);
     o = vec4(uGlow.rgb * ((a * 0.9 + g * 0.55) * uGlow.a * uFx.w), 0.0); return;
   }
-  vec3 V = normalize(uEye - vWP); vec3 n; vec3 base; float spec; float sh; float edge = 1.0; vec3 emis = vec3(0.0); float rimK = uTone.a;
+  vec3 V = normalize(uEye - vWP); vec3 n; vec3 base; float spec; float sh; float edge = 1.0; vec3 emis = vec3(0.0); float rimK = uTone.a; float hard = 0.0;
   if (kind < 1.5) {
     float v = vP.y; float av = abs(v);
     float w = max(fwidth(v) * 1.3, 0.02); edge = 1.0 - smoothstep(1.0 - w, 1.0, av);
@@ -60,7 +60,8 @@ void main() {
     float bump = strand * (0.45 + 0.55 * seam);
     float mt = clamp(kind, 0.0, 1.0);
     n = normalize(n + T * ((ch - 0.5) * 0.8 * (1.0 - mt)));
-    vec3 leather = mix(uTone.rgb * 0.34, uTone.rgb, bump);
+    float lay = 0.5 + 0.5 * sin((ch - 0.5) * 3.1416 + 1.5708);     // each strand is rounded: bright on its crown
+    vec3 leather = mix(uTone.rgb * 0.26, uTone.rgb * (0.78 + 0.32 * lay), bump) * (0.5 + 0.5 * hgt);   // darker toward the silhouette: reads round
     float wire = step(0.5, fract(vP.x * 0.9));                   // metal parts: fine wire binding
     vec3 metal = mix(vec3(0.42, 0.40, 0.38), vec3(0.80, 0.77, 0.70), wire);
     base = mix(leather, metal, mt); spec = mix(0.35, 1.5, mt); sh = mix(16.0, 54.0, mt);
@@ -73,16 +74,17 @@ void main() {
     if (kind < 2.5) {
       float st = fract(vP.x * 0.42 + vP.y);                      // wrapped grip
       float wrapb = smoothstep(0.0, 0.16, st) * (1.0 - smoothstep(0.8, 1.0, st));
-      base = mix(vec3(0.07, 0.03, 0.025), vec3(0.33, 0.13, 0.085), wrapb); spec = 0.3; sh = 18.0;
+      base = mix(vec3(0.06, 0.025, 0.02), vec3(0.30, 0.11, 0.07), wrapb); spec = 0.35; sh = 18.0;
     } else if (kind < 3.5) {
-      base = vec3(0.70, 0.52, 0.24); spec = 1.5; sh = 46.0;       // bronze guard, pommel, ferrule
+      base = vec3(0.56, 0.40, 0.17); spec = 1.9; sh = 40.0; hard = 1.0;       // bronze guard, pommel, ferrule
     } else {
-      base = vec3(0.62, 0.50, 0.30); spec = 2.6; sh = 80.0; rimK *= 2.0;   // the bell shard
+      float fac = fract(vP.x * 0.37 + 0.2);                      // every facet a slightly different bronze (old cast metal, a green tinge in places)
+      base = mix(vec3(0.50, 0.36, 0.15), vec3(0.34, 0.37, 0.24), step(0.62, fac) * 0.7) * (0.8 + 0.5 * fac); spec = 3.2; sh = 90.0; rimK *= 2.0; hard = 1.0;   // the bell shard
       float fr = pow(1.0 - max(dot(n, V), 0.0), 2.0);
       emis = uGlow.rgb * (uGlow.a * (0.35 + 0.9 * fr)) + vec3(1.0, 0.95, 0.8) * uFx.z;
     }
   }
-  float nd = dot(n, uSunDir); float wrap = clamp(nd * 0.6 + 0.4, 0.0, 1.0);
+  float nd = dot(n, uSunDir); float wrap = clamp(nd * mix(0.6, 0.8, hard) + mix(0.4, 0.2, hard), 0.0, 1.0);   // metal falls off harder than leather
   vec3 H = normalize(uSunDir + V); float s = pow(max(dot(n, H), 0.0), sh) * spec;
   float rim = pow(1.0 - max(dot(n, V), 0.0), 2.4) * clamp(n.y * 0.5 + 0.8, 0.0, 1.0);
   vec3 light = uAmb + uSun * wrap + vLit;

@@ -59,6 +59,13 @@ export function sectionAt(W, x, z) {
   for (const s of S) if (x >= s.x0 && x < s.x1 && z >= s.z0 && z < s.z1) return s;
   return null;
 }
+/** e(x, z 를 가진 것)가 서 있는 구역 (숫자 인자를 넘기지 않는 판) */
+export function sectionOf(W, e) {
+  const S = W.sections; if (!S) return null;
+  const x = e.x, z = e.z;
+  for (let i = 0; i < S.length; i++) { const s = S[i]; if (x >= s.x0 && x < s.x1 && z >= s.z0 && z < s.z1) return s; }
+  return null;
+}
 /** 세계 하나에 묶은 세 함수. W 가 자기 함수를 갖고 있으면 그것을 쓴다 */
 export function bindWorld(W) {
   return {
