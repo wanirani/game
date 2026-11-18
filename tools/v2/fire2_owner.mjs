@@ -37,7 +37,7 @@ h2 { font-size: 27px; margin: 26px 0 10px; color: #e8c98a; border-bottom: 2px so
 <div class="grid">${SPOTS.map(([n, cap]) => pair(n, 478, cap)).join('')}</div>
 
 <h2>2. 담 위의 큰불이 움직이는 모습 — 0.1초 간격 여섯 장</h2>
-<div class="grid">${[0, 1, 2, 3, 4, 5].map((k) => `<div style="width:314px">${img(`strip/strip_esh_roof_${k}.png`, 314)}</div>`).join('')}</div>
+<div class="grid">${[0, 1, 2, 3, 4, 5].map((k) => `<div style="width:312px">${img(`strip/strip_esh_roof_${k}.png`, 312)}</div>`).join('')}</div>
 <div class="cap">불길 그림 16장(타오르는 불) + 8장(떨어져 나가는 불꼬리)을 불 조각마다 다른 장부터 돌려 가며 겹칩니다. 밑동은 희고 노랗게, 끝은 짙은 주황으로, 위로 불티와 검은 연기가 오릅니다.</div>
 
 <h2>3. 가까이 — 촛불과 화로</h2>
