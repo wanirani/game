@@ -68,7 +68,7 @@ export default class V2Game extends Scene {
     this.story = typeof params?.story === 'function' ? params.story : null; this.ui = { dialog: null }; this.locked = false;
     this.area = null; this.W = null; this.sim = null; this.fx = null; this.cr = null; this.cast = null; this.hud = createBuiltinHud();
     this.people = new People(); this.anchors = new Anchors(); this.flags = new Set(); this.hidden = new Set(); this.lockOv = new Map(); this.storyFlag = null;
-    this._use = false; this._heroHid = false; this._caps = { skill: false, bell: false }; this._offT = 0; this._go = null; this.fadeA = 0; this.fadeTo = 0; this._flagFn = (n) => this.flag(n); this._useFn = () => { this._use = true; }; this._skyKey = ''; this._peopleN = 0;
+    this._use = false; this._heroHid = false; this._occ = new Float32Array(0); this._occN = 0; this._caps = { skill: false, bell: false }; this._offT = 0; this._go = null; this.fadeA = 0; this.fadeTo = 0; this._flagFn = (n) => this.flag(n); this._useFn = () => { this._use = true; }; this._skyKey = ''; this._peopleN = 0;
     this.heroA = null; this.actors = []; this.pool = new Map(); this._ERef = null;
     this.bridge = bindFxSound(feel); this.feelN = 0; this.lastFeel = null; this._actE = null; this._simSteps = false;
     this.shotL = new Array(32).fill(null); this.shotN = 0;
@@ -387,6 +387,8 @@ export default class V2Game extends Scene {
     this.sim = new Sim(W, this._hooks());
     this._enterAt(spawn, keep);
     this.people.build(this, area, groundAt); this.anchors.build(area, this.perf.tier); this._peopleN = 19;
+    { const B = W.boxes; let n = 0; for (let i = 0; i < B.length; i++) { const b = B[i]; if (b.solid && !b.walk && !b.gate && !b.actor) n++; }   // what can hide the hero: walls and props (not floors, not the scene's own gate / person boxes)
+      const O = (this._occ = new Float32Array(n * 6)); n = 0; for (let i = 0; i < B.length; i++) { const b = B[i]; if (!b.solid || b.walk || b.gate || b.actor) continue; O[n] = b.x0; O[n + 1] = b.x1; O[n + 2] = b.y0; O[n + 3] = b.y1; O[n + 4] = b.z0; O[n + 5] = b.z1; n += 6; } this._occN = n; }
     { const c = this._caps, sim = this.sim, hh = sim.hero;   // what the rules can do today (PLAY lane lands skill and bell later): the pad shows the rest as not usable yet
       c.skill = !!(sim.caps?.skill ?? (hh.callCd !== undefined || hh.skillMode !== undefined || TUNE.callCd !== undefined));   // PLAY: skill = whip hook / call (hero.callCd, skillMode)
       c.bell = !!(sim.caps?.bell ?? (hh.bellCd !== undefined || TUNE.bellCd !== undefined)); }                                 //       bell = echo (tap) / long ring (hold), hero.bellCd, bellCharge
@@ -921,20 +923,19 @@ export default class V2Game extends Scene {
     }
     this.envStat.chunks = on;
   }
-  /** is most of the hero (two of feet, chest, head) hidden from the camera by a solid wall or prop box of the world? once per tick, no allocation */
+  /** is most of the hero (two of feet, chest, head) hidden from the camera by a wall or prop box of the world? Once per tick.
+   *  The boxes are a flat number array made at load (this._occ: x0 x1 y0 y1 z0 z1 per box) — plain arithmetic, nothing allocated. */
   _hidden(h) {
-    const B = this.W.boxes, c = this.cam, ex = c.px, ey = c.py, ez = c.pz; let hid = 0;
+    const O = this._occ, n = this._occN, c = this.cam, ex = c.px, ey = c.py, ez = c.pz, top = h.y + 30; let hid = 0;
     for (let k = 0; k < 3; k++) {
       const dx = h.x - ex, dy = h.y + (k === 0 ? 14 : k === 1 ? 56 : 98) - ey, dz = h.z - ez;
-      for (let i = 0; i < B.length; i++) {
-        const b = B[i]; if (!b.solid || b.walk || b.gate || b.actor) continue;   // walls and props only (not floors, not the scene's own gate / person boxes)
-        let t0 = 0.02, t1 = 0.985;   // segment camera -> point, a little short of both ends
-        if (dx > 1e-6 || dx < -1e-6) { let a = (b.x0 - ex) / dx, q = (b.x1 - ex) / dx; if (a > q) { const w = a; a = q; q = w; } if (a > t0) t0 = a; if (q < t1) t1 = q; } else if (ex < b.x0 || ex > b.x1) continue;
-        if (t0 > t1) continue;
-        if (dy > 1e-6 || dy < -1e-6) { let a = (b.y0 - ey) / dy, q = (b.y1 - ey) / dy; if (a > q) { const w = a; a = q; q = w; } if (a > t0) t0 = a; if (q < t1) t1 = q; } else if (ey < b.y0 || ey > b.y1) continue;
-        if (t0 > t1) continue;
-        if (dz > 1e-6 || dz < -1e-6) { let a = (b.z0 - ez) / dz, q = (b.z1 - ez) / dz; if (a > q) { const w = a; a = q; q = w; } if (a > t0) t0 = a; if (q < t1) t1 = q; } else if (ez < b.z0 || ez > b.z1) continue;
-        if (t0 > t1) continue;
+      const ix = dx > 1e-6 || dx < -1e-6 ? 1 / dx : 0, iy = dy > 1e-6 || dy < -1e-6 ? 1 / dy : 0, iz = dz > 1e-6 || dz < -1e-6 ? 1 / dz : 0;
+      for (let i = 0; i < n; i += 6) {
+        if (O[i + 3] < top) continue;   // lower than the hero's knees: hides nothing
+        let t0 = 0.02, t1 = 0.985, a = 0, q = 0;   // the segment camera -> point, a little short of both ends
+        if (ix !== 0) { a = (O[i] - ex) * ix; q = (O[i + 1] - ex) * ix; if (a > q) { const w = a; a = q; q = w; } if (a > t0) t0 = a; if (q < t1) t1 = q; if (t0 > t1) continue; } else if (ex < O[i] || ex > O[i + 1]) continue;
+        if (iy !== 0) { a = (O[i + 2] - ey) * iy; q = (O[i + 3] - ey) * iy; if (a > q) { const w = a; a = q; q = w; } if (a > t0) t0 = a; if (q < t1) t1 = q; if (t0 > t1) continue; } else if (ey < O[i + 2] || ey > O[i + 3]) continue;
+        if (iz !== 0) { a = (O[i + 4] - ez) * iz; q = (O[i + 5] - ez) * iz; if (a > q) { const w = a; a = q; q = w; } if (a > t0) t0 = a; if (q < t1) t1 = q; if (t0 > t1) continue; } else if (ez < O[i + 4] || ez > O[i + 5]) continue;
         hid++; break;
       }
     }

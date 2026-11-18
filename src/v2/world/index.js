@@ -12,7 +12,7 @@ import { reachGrid } from './reach.js';
 
 export const ENEMY_KINDS = ['melee', 'ranged', 'skeleton_soldier', 'skeleton_mage', 'plague_corpse', 'grave_ghost', 'gravekeeper_armor', 'bat'];
 export const ACTOR_MODELS = ['alberto', 'edmund', 'elise', 'hadwin', 'hadwin1', 'lotte', 'marta', 'rook', 'sera', 'villager_f', 'villager_m', 'kael'];
-export const INTERACT_KINDS = ['bell', 'door', 'sign', 'chest', 'lever', 'grave', 'rest', 'shop', 'pull'];
+export const INTERACT_KINDS = ['bell', 'door', 'sign', 'chest', 'lever', 'grave', 'rest', 'shop', 'pull', 'ring'];   // ring = a whip ring (AREA_FORMAT 13): { x, z, y (ground under the ring), h (ring height above y), landing: {x, y, z} }
 export const ANCHOR_KINDS = ['fire', 'embers', 'smoke', 'mist', 'candle', 'glow_red', 'fog_bank', 'leaves'];
 export const ROOMS = ['street', 'alley', 'courtyard', 'hall', 'crypt', 'tower', 'field'];
 export const DEFAULT_AREA = 'eshville_now';
@@ -30,6 +30,8 @@ export function finishArea(a) {
   st.start = { x: d.x, z: d.z };
   st.spawns = a.enemies.map((e) => ({ kind: e.kind, x: e.x, z: e.z, yard: !!e.yard, active: !!e.active, group: e.group ?? null, face: e.face ?? null }));
   st.decals = st.decals ?? [];
+  // whip rings -> the rules' hook points (src/v2/play/sim.js reads W.hookPoints: { id, x, z, y, h, to: [x, z] })
+  st.hookPoints = a.interact.filter((it) => it.kind === 'ring' && it.landing).map((it) => ({ id: it.id, x: it.x, z: it.z, y: it.y ?? 0, h: it.h ?? 150, to: [it.landing.x, it.landing.z] }));
   a.camera = Object.fromEntries(st.sections.map((s) => [s.id, s.cam]));
   a.anchors = a.anchors ?? [];
   return a;
@@ -39,14 +41,34 @@ const slice0 = () => finishArea({
   stage: { ...SLICE0 }, spawns: { default: { x: SLICE0.start.x, z: SLICE0.start.z, face: [1, 0], section: 'street' } }, exits: [], actors: [],
   enemies: SLICE0.spawns.map((s) => ({ kind: s.kind, x: s.x, z: s.z, yard: !!s.yard, group: s.yard ? 'yard' : 'route' })), triggers: [], interact: [], anchors: [],
 });
-const make = (f) => async () => { await ensureWorldAssets(); return finishArea(f()); };
+const make = (f) => async (flags = {}) => { await ensureWorldAssets(); const a = finishArea(f(flags ?? {})); a.flags = { ...(flags ?? {}) }; return a; };
+/** AREAS[id](flags) builds the area for the given story flags (docs/v2/AREA_FORMAT.md 13). No argument = the base state (nothing done yet). */
 export const AREAS = {
-  eshville_now: make(() => eshville('now')),
-  eshville_past: make(() => eshville('past')),
-  graveyard_now: make(() => graveyard('now')),
-  graveyard_past: make(() => graveyard('past')),
+  eshville_now: make((f) => eshville('now', f)),
+  eshville_past: make((f) => eshville('past', f)),
+  graveyard_now: make((f) => graveyard('now', f)),
+  graveyard_past: make((f) => graveyard('past', f)),
   slice0: make(slice0),
 };
+/** story flags that change what an area is built from (AREA_FORMAT 13). validateAll() checks the base state and every one of these states. */
+export const AREA_FLAGS = {
+  eshville_now: ['door_pulled', 'gate_open', 'promise', 'elise_home', 'bells_answered'],
+  eshville_past: ['past_gate_open', 'past_street_clear'],
+  graveyard_now: ['bell_hung', 'ossuary_open', 'carved_a', 'carved_b'],
+  graveyard_past: ['bell_hung', 'carved_a', 'carved_b'],
+  belltower_now: ['fell'],
+  ossuary_now: ['wedge_stone', 'wedge_wood', 'knells_hung', 'queen_sent'],
+  ossuary_past: ['wedge_stone', 'wedge_wood', 'knell_1', 'knell_2', 'knell_3', 'knell_4', 'queen_sent'],
+  slice0: [],
+};
+/** the states validateAll() walks: base, each flag alone, and all of them together (wedge_stone and wedge_wood never together) */
+export function areaStates(id) {
+  const F = AREA_FLAGS[id] ?? [], out = [{}];
+  for (const f of F) out.push({ [f]: true });
+  if (F.length > 1) out.push(Object.fromEntries(F.filter((f) => f !== 'wedge_wood').map((f) => [f, true])));
+  return out;
+}
+export const stateName = (flags) => Object.keys(flags ?? {}).filter((k) => flags[k]).join('+') || 'base';
 
 const unit = (v) => Array.isArray(v) && v.length === 2 && Math.abs(Math.hypot(v[0], v[1]) - 1) < 0.02;
 /** -> { errors, warnings, stats }. twin = the loaded twin area (optional; validateAll passes it) */
@@ -64,7 +86,23 @@ export function validateArea(a, twin = null) {
   try { const r = validateEnv(ground); for (const e of r.errors) E('stage: ' + e); W = compileEnv(a.stage); } catch (e) { E('compile failed: ' + String(e?.message ?? e)); }
   if (!W || !a.spawns.default) return { errors, warnings, stats: {} };
   if (W.sprites.some((s) => s.kind === 'prop')) E('flat prop cards left: ' + W.sprites.filter((s) => s.kind === 'prop').map((s) => s.img).join(', '));
-  const d = a.spawns.default, G = reachGrid(W, d.x, d.z), ids = new Set(), secIds = new Set(a.stage.sections.map((s) => s.id));
+  W.hookPoints = a.stage.hookPoints ?? [];
+  const d = a.spawns.default, ids = new Set(), secIds = new Set(a.stage.sections.map((s) => s.id));
+  // reach = walking + jumping + whip rings + crossing at a bell to the other night and back (the hero keeps x, z): both nights are flooded together until nothing new is found
+  let G = reachGrid(W, d.x, d.z, 14, { hooks: W.hookPoints });
+  if (twin && twin.twin === a.id) {
+    let W2 = null; try { W2 = compileEnv(twin.stage); W2.hookPoints = twin.stage.hookPoints ?? []; } catch { W2 = null; }
+    if (W2) {
+      const bells = (ar) => ar.interact.filter((it) => it.kind === 'bell' && it.event !== 'bell.hang'), seedsA = [], seedsB = [], td = twin.spawns.default;
+      for (let pass = 0, grew = true; pass < 6 && grew; pass++) {
+        grew = false;
+        const GB = reachGrid(W2, td.x, td.z, 14, { hooks: W2.hookPoints, seeds: seedsB });
+        for (const b of bells(twin)) { const at = GB.near(b.x, b.z, b.r); if (at && !seedsA.some((p) => p[0] === at[0] && p[1] === at[1]) && !G.reachable(at[0], at[1]) && !G.blocked(at[0], at[1], 14)) { seedsA.push(at); grew = true; } }
+        if (grew) G = reachGrid(W, d.x, d.z, 14, { hooks: W.hookPoints, seeds: seedsA });
+        for (const b of bells(a)) { const at = G.near(b.x, b.z, b.r); if (at && !seedsB.some((p) => p[0] === at[0] && p[1] === at[1])) { seedsB.push(at); grew = true; } }
+      }
+    }
+  }
   const uniq = (id, what) => { if (!id) E(what + ' without id'); else if (ids.has(what + ':' + id)) E(`duplicate ${what} id: ${id}`); ids.add(what + ':' + id); };
   if (!G.reachable(d.x, d.z)) E('default spawn is not on standable ground');
   for (const s of a.stage.sections) { if (!s.cam) E(`section ${s.id}: no camera rig`); if (!s.label) Wn(`section ${s.id}: no label`); if (!G.anyIn(s.x0, s.x1, s.z0, s.z1)) E(`section ${s.id}: no reachable ground`); }
@@ -105,6 +143,11 @@ export function validateArea(a, twin = null) {
     if (!INTERACT_KINDS.includes(it.kind)) E(`interact ${it.id}: unknown kind ${it.kind}`);
     if (!(it.r > 0)) E(`interact ${it.id}: needs a radius`); else if (!G.near(it.x, it.z, it.r)) E(`interact ${it.id} (${it.x},${it.z}): no reachable ground within r ${it.r}`);
     if (!it.label) Wn(`interact ${it.id}: no label`);
+    if (it.kind === 'ring') {
+      const L = it.landing;
+      if (!L || !Number.isFinite(L.x) || !Number.isFinite(L.z)) E(`ring ${it.id}: needs landing {x, y, z}`);
+      else { const g = G.ground(L.x, L.z); if (!Number.isFinite(g)) E(`ring ${it.id}: landing (${L.x},${L.z}) has no ground`); else if (Math.abs(g - (L.y ?? g)) > 1) E(`ring ${it.id}: landing y ${L.y} but the ground there is ${g}`); if (G.blocked(L.x, L.z, 14)) E(`ring ${it.id}: landing is inside a wall or a prop`); if (Math.hypot(L.x - it.x, L.z - it.z) > 330) Wn(`ring ${it.id}: landing is ${Math.round(Math.hypot(L.x - it.x, L.z - it.z))} from the ring (rules: hookRange 330)`); }
+    }
   }
   for (const an of a.anchors ?? []) if (!ANCHOR_KINDS.includes(an.kind)) E(`anchor ${an.id}: unknown kind ${an.kind}`);
   for (const s of Object.keys(a.rooms ?? {})) if (!secIds.has(s)) Wn(`rooms.${s}: no such section`);
@@ -125,13 +168,13 @@ export function validateArea(a, twin = null) {
   const st = W.env.stats;
   return { errors, warnings, stats: { parts: a.stage.parts.length, boxes: W.boxes.length, lights: W.lights.length, tris: st.tris, chunks: st.chunks, bytes: st.bytes, textures: st.textures, reachCells: G.cells, enemies: a.enemies.length, actors: a.actors.length, exits: a.exits.length, triggers: a.triggers.length, interact: a.interact.length, anchors: (a.anchors ?? []).length, decals: a.stage.decals.length } };
 }
-/** every area, each with its twin loaded */
+/** every area in its base state and in every flagged state (AREA_FLAGS), each with its twin in the same state. Keys: id (base) and id@flag+flag */
 export async function validateAll() {
   const out = {};
-  for (const id of Object.keys(AREAS)) {
-    const a = await AREAS[id](), twin = a.twin && AREAS[a.twin] ? await AREAS[a.twin]() : null, r = validateArea(a, twin);
-    for (const x of a.exits) if (AREAS[x.to]) { const t = await AREAS[x.to](); if (!t.spawns[x.spawn]) r.errors.push(`exit ${x.id}: ${x.to} has no spawn ${x.spawn}`); }
-    out[id] = r;
+  for (const id of Object.keys(AREAS)) for (const flags of areaStates(id)) {
+    const a = await AREAS[id](flags), twin = a.twin && AREAS[a.twin] ? await AREAS[a.twin](flags) : null, r = validateArea(a, twin);
+    for (const x of a.exits) if (AREAS[x.to]) { const t = await AREAS[x.to](flags); if (!t.spawns[x.spawn]) r.errors.push(`exit ${x.id}: ${x.to} has no spawn ${x.spawn}`); }
+    out[stateName(flags) === 'base' ? id : id + '@' + stateName(flags)] = r;
   }
   return out;
 }

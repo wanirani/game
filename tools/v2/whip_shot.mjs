@@ -123,8 +123,11 @@ try {
       console.log(`wrote ${f}  (${s.count} frames, ${((Date.now() - t0) / 1000).toFixed(1)} s)  modes ${st.modes} · max ext ${st.ext} · max tip speed ${st.speed} · tris ${st.stats.tris} draws ${st.stats.draws} · ${st.ev}`);
     }
     if (!want.length) {
-      // 최소 굵기: 멀리(영웅 키 70 px) · 게임 카메라에서 끈 한가운데의 화면 굵기(px)
-      for (const cam of ['far', 'game']) { const th = await page.evaluate(([cam]) => { const a = window.__whip; a.shot('rest', 0.6, { cam, w: 960, h: 540, era: 'now' }); a.S.cam = cam; return a.thickness(); }, [cam]); console.log(`thickness at camera ${cam}: ${JSON.stringify(th)}`); }
+      // 최소 굵기: 끈이 펴진 순간(연타 1 의 타격)에 끈 한가운데를 가로지르는 세로줄의 화면 굵기(px). 멀리 = 영웅 키 약 70 px
+      for (const [cam, w, h] of [['far', 960, 540], ['game', 960, 540], ['far', 480, 270]]) {
+        const th = await page.evaluate(([cam, w, h]) => { const a = window.__whip; a.shot('combo', 0.7, { cam, w, h, era: 'now', dir: 0 }); return [0.3, 0.55, 0.8].map((f) => a.thickness(f)); }, [cam, w, h]);
+        console.log(`lash thickness on screen, camera ${cam} ${w}x${h} (at 30 % · 55 % · 80 % of the lash): ${th.map((t) => (t ? `${t.changed} px (${t.strong} solid)` : 'off screen')).join(' · ')}`);
+      }
     }
   }
   const pe = await page.evaluate(() => window.__whip?.errors ?? []); for (const e of pe) errs.push('[window error] ' + e);

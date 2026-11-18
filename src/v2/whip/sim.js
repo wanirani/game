@@ -111,7 +111,7 @@ export class Whip {
     const sw = this.sw, t = sw.t, sh = sw.shape;
     if (t < sw.hit0) return -1 + t / Math.max(1e-3, sw.hit0);
     if (sh.hold != null && sw.hit1 > 5) {   // window open until landing (plunge)
-      const a = Math.min(sh.hold, ((t - sw.hit0) / 0.14) * sh.hold);
+      const a = Math.min(sh.hold, ((t - sw.hit0) / 0.1) * sh.hold);
       if (sw.landT < 0) return a;
       const b = sh.hold + ((t - sw.landT) / 0.1) * (1 - sh.hold);
       return b <= 1 ? Math.max(a, b) : Math.min(2, 1 + (t - sw.landT - 0.1) / 0.3);
@@ -208,11 +208,12 @@ export class Whip {
     let chord = Math.hypot(W[0] - r.x, W[1] - r.y, W[2] - r.z);
     // lash length for this move: what the peak needs. Long throws (far, hold-attack) pay the lash out as the tip flies
     // (BOW: even fully extended the lash keeps a slight bow, laid toward the key's slack direction - a dead straight lash reads as a stick)
-    const pkL = pk / BOW, near = Math.min(pkL, this.L0 * 1.5);
-    this.lenWant = clamp(pkL > near ? Math.max(near, (chord / BOW) * (1 + 0.08 * (1 - w))) : pkL, lo, hi);
+    const pkL = pk / BOW, long = pkL > this.L0 * 1.5, near = long ? this.L0 * 1.1 : pkL;
     // away from the strike the tip never goes farther than SLACK of the lash from the hand: there is always a loop of slack to
     // curve (a lash drawn out straight in a wind-up reads as a pole)
-    if (!(pkL > near)) { const maxc = Math.max(this.len, this.lenWant) * SLACK; if (chord > maxc) { const k0 = maxc / chord; W[0] = r.x + (W[0] - r.x) * k0; W[1] = r.y + (W[1] - r.y) * k0; W[2] = r.z + (W[2] - r.z) * k0; chord = maxc; } }
+    const em0 = clamp((w - 0.75) / 0.17, 0, 1);
+    if (!long || em0 <= 0) { const maxc = near * SLACK; if (chord > maxc) { const k0 = maxc / chord; W[0] = r.x + (W[0] - r.x) * k0; W[1] = r.y + (W[1] - r.y) * k0; W[2] = r.z + (W[2] - r.z) * k0; chord = maxc; } }
+    this.lenWant = clamp(long ? Math.max(near, (chord / BOW) * (1 + 0.08 * (1 - w))) : pkL, lo, hi);
     // held hard (w >= 0.9) = the strike: the lash is laid out straight, full length, along the direction of the key
     const em = clamp((w - 0.75) / 0.17, 0, 1), e = em * em * (3 - 2 * em);
     if (e > 0 && chord > 1e-3) {

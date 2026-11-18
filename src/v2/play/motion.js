@@ -247,7 +247,7 @@ export function driveHero(ch, h, dt, T = TUNE) {
   const rdy = st === 'idle' && h.lock != null && !h.dead && A.cur === C.idle_combat && C.block && !T.legacyTurn ? 1 : 0;
   S.ready = (S.ready ?? 0) + (rdy - (S.ready ?? 0)) * Math.min(1, dt * (rdy ? 9 : 16));
   const readyOn = S.ready > 0.02;
-  if (readyOn) layerBones(ch.rig, (ch.asset._readyPose ??= sampleClip(C.block, 0.55, new CPose())), READY_ARM, S.ready);
+  if (readyOn) layerBones(ch.rig, (ch.asset._readyPose ??= sampleClip(C.block, 0.42, new CPose())), READY_ARM, S.ready);
   // 달릴 때 윗몸을 조금 세운다: 달리기 클립은 26° 숙어 있어 위에서 비스듬히 보는 카메라에 얼굴이 묻힌다 → 골반–머리 선으로 19° 쯤
   S.lean = (S.lean ?? 0) + ((st === 'run' && !h.dead ? 1 : 0) - (S.lean ?? 0)) * Math.min(1, dt * 9);
   if (S.lean > 0.02) {
@@ -267,10 +267,11 @@ export function driveHero(ch, h, dt, T = TUNE) {
   let stepped = false;
   if (st === 'attack' && h.move && h.move.step && h.move.kind !== 'plunge' && (h.stepDist ?? 0) > 6 && C.run) {
     const sp = h.move.step, u = (h.moveT - sp[0]) / (sp[1] - sp[0]);
-    if (u > -0.2 && u < 1.3) {
-      const w = Math.sin(Math.PI * clamp((u + 0.2) / 1.5, 0, 1)) * Math.min(1, h.stepDist / 24);
-      sampleClip(C.run, gaitTime(ch, C.run, (0.88 + clamp(u, 0, 1) * (h.stepDist / (T.strideRun ?? 222))) % 1), _legP);
-      layerBones(ch.rig, _legP, STEP_LEGS, w); stepped = true;
+    if (u > -0.3 && u < 1.7) {
+      // 오른발이 막 디딘 때(걸음 주기 0)부터 나아간 거리만큼만 주기를 돌린다 → 디딘 발은 땅에 붙어 있고 몸이 그 위를 지나간다. 다 내딛으면 0.1초에 걸쳐 공격 클립의 발 자리로 돌아간다
+      const w = (u < 0 ? clamp((u + 0.3) / 0.3, 0, 1) : u > 1 ? 1 - clamp((u - 1) / 0.7, 0, 1) : 1) * Math.min(1, h.stepDist / 24);
+      sampleClip(C.run, gaitTime(ch, C.run, 0.02 + clamp(u, 0, 1) * (h.stepDist / (T.strideRun ?? 222))), _legP);
+      layerBones(ch.rig, _legP, STEP_LEGS, w * w * (3 - 2 * w)); stepped = true;
     }
   }
   const posed = S.lean > 0.02 || readyOn || stepped, looking = Math.abs(S.look) > 0.5;

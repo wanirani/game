@@ -97,18 +97,18 @@ export const WHIP_SHAPES = {
     [1.4, -20, -6, 168, 0.15, 1, 0, 0],
     [2.0, -46, 0, 50, 0.0, 0, 0, -1],
   ]) },
-  // plunge: over the head while still rising, then held straight down ahead of the fall; the landing drives it along the ground.
-  // The window stays open until the hero lands, so the phase is driven by set('swing', { landT }) - see sim.js
-  plunge: { peak: 0.5, ev: 'crack', hold: 0.5, keys: K([
-    [-1.0, -24, 20, 150, 0.5, -1, 0, 0.5],
-    [-0.3, 6, 14, 176, 0.75, -1, 0, 0.6],
-    [0.0, 40, 8, 150, 0.9, -1, 0, 0.8],
-    [0.25, 66, 2, 60, 0.97, -0.6, 0, 1],
-    [0.5, 58, 0, -34, 1.0, -1, 0, 0.4],
-    [0.75, 74, 0, 2, 0.95, -1, 0, 0.6],
-    [1.0, 86, -4, 3, 0.7, -1, 0, 0.8],
-    [1.4, 52, -8, 3, 0.12, -1, 0, 0.5],
-    [2.0, 20, -6, 3, 0.0, 0, 0, -1],
+  // plunge: the rules can land the hit as soon as the fall starts, so the lash is snapped straight down ahead of the hero at once and
+  // held there (extended, tip leading the fall); the landing drives it forward along the ground.
+  // The window stays open until the hero lands, so the phase is driven by set('swing', { landT }) - see sim.js _phase
+  plunge: { peak: PEAK, ev: 'crack', hold: 0.3, keys: K([
+    [-1.0, 4, 20, 64, 0.5, -1, 0, 0.5],
+    [-0.45, 34, 12, 112, 0.8, -1, 0, 0.6],
+    [PEAK, 58, 0, -34, 1.0, -1, 0, 0.5],
+    [0.3, 60, 0, -36, 1.0, -1, 0, 0.5],
+    [0.65, 76, 0, 2, 0.95, -1, 0, 0.6],
+    [1.0, 88, -4, 3, 0.7, -1, 0, 0.8],
+    [1.4, 56, -8, 3, 0.12, -1, 0, 0.5],
+    [2.0, 24, -6, 3, 0.0, 0, 0, -1],
   ]) },
   // charged strike: one slow circle over the head while charging, then a long overhead slam into the ground ahead
   charge: { peak: PEAK, ev: 'crack', len: [0.9, 1.5], nominal: { dur: 0.95, hit: [0.52, 0.68], box: { f0: -10, f1: 152, side: 42, y0: 0, y1: 150 } }, keys: S(0.55, [

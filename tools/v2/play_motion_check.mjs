@@ -59,6 +59,28 @@ for (const mv of [...COMBO, MOVES.sweep]) {
   }
 }
 
+// ── ①b 준비 자세(락온한 채 서 있기): 칼끝이 앞을 본다 · 그 자세에서 시작한 공격도 준비 동작(칼을 뒤로 당김)과 판정이 그대로다 ──
+{ const sim = new Sim(flatArena(900, 600, [{ kind: 'skeleton_soldier', x: 150, z: 0, active: true }]), {}), h = sim.hero, ch = mkChar('kael'), e = sim.enemies[0];
+  const hold = () => { e.cd = 99; e.x = 150; e.z = 0; e.hp = e.hpMax; e.state = 'chase'; };
+  for (let i = 0; i < 70; i++) { hold(); sim.update(DT, {}); driveHero(ch, h, DT, TUNE); }
+  const p = tip(ch), az = (Math.atan2(p[0], p[2]) * 180) / Math.PI;
+  ok('ready stance (locked on, standing): the blade points forward, held in front of the body', ch.anim.cur?.name === 'idle_combat' && h.lock === e.id && p[2] > 0.45 && Math.abs(az) < 50 && p[1] > 0.6, `clip ${ch.anim.cur?.name} · tip ${p[2].toFixed(2)} m in front, azimuth ${az.toFixed(0)}°, height ${p[1].toFixed(2)} m (the clip alone: 0.8 m behind, azimuth −176°)`);
+  let prev = null, best = { v: 0, t: 0 }, back = 9, t = 0; hold(); sim.update(DT, { attack: true }); driveHero(ch, h, DT, TUNE);
+  while (h.move && t < 0.44) { const q = tip(ch); if (prev && t > 0.075) { const v = Math.hypot(q[0] - prev[0], q[1] - prev[1], q[2] - prev[2]) / DT; if (v > best.v) best = { v, t: h.moveT }; } if (t < 0.13) back = Math.min(back, q[2]); prev = q; hold(); sim.update(DT, {}); if (sim.stop > 0) { sim.stop = 0; } driveHero(ch, h, DT, TUNE); t += DT; }
+  ok('attack from the ready stance: the blade is still drawn back in the wind-up and is fastest inside the hit window', back < 0.1 && best.t >= MOVES.c1.hit[0] - 0.035 && best.t <= MOVES.c1.hit[1] + 0.035, `tip farthest back ${back.toFixed(2)} m during the wind-up · peak ${best.v.toFixed(1)} m/s at ${best.t.toFixed(3)} s (window ${MOVES.c1.hit[0]}–${MOVES.c1.hit[1]})`); }
+// ── ①c 내딛기: 공격이 몸을 옮기는 동안 디딘 발(더 낮은 발)이 땅 위에서 몸보다 훨씬 덜 움직인다 ──
+{ const meas = (legacy) => { const sim = new Sim(flatArena(900, 600, [{ kind: 'skeleton_soldier', x: 150, z: 0, active: true }]), {}), h = sim.hero, ch = mkChar('kael'), e = sim.enemies[0]; e.cd = 99;
+    for (let i = 0; i < 30; i++) { e.cd = 99; e.x = 150; e.z = 0; sim.update(DT, {}); driveHero(ch, h, DT, TUNE); }
+    sim.update(DT, { attack: true }); const sd = h.stepDist; if (legacy) h.stepDist = 0;   // legacy = no leg overlay (the overlay keys on stepDist) but the same slide
+    const foot = (k) => { const W = ch.rig.boneWorld(k); return [h.x + (ch.dx * W[14] - ch.dz * W[12]) * UNIT, W[13], h.z + (ch.dz * W[14] + ch.dx * W[12]) * UNIT]; };   // model +Z = forward, +X = left → world
+    let pl = null, pr = null, sum = 0, n = 0, body = 0, x0 = h.x;
+    for (let i = 0; i < 12; i++) { driveHero(ch, h, DT, TUNE); const L = foot('footL'), R = foot('footR');
+      if (pl && h.moveT >= 0.03 && h.moveT <= 0.17) { const vl = Math.hypot(L[0] - pl[0], L[2] - pl[2]) / DT, vr = Math.hypot(R[0] - pr[0], R[2] - pr[2]) / DT; sum += (L[1] < R[1] ? vl : vr); n++; }
+      pl = L; pr = R; if (legacy) { h.stepDist = sd; } e.cd = 99; sim.update(DT, {}); if (legacy) h.stepDist = 0; }
+    body = (h.x - x0) / 0.15; return { slip: sum / Math.max(1, n), body, sd, n }; };
+  const a = meas(false), b = meas(true);
+  ok('attack lunge: the lower (planted) foot moves much less over the ground than the body while the body is carried forward', a.sd > 30 && a.slip < a.body * 0.6 && a.slip < b.slip * 0.7, `lunge ${a.sd.toFixed(0)} px at ${a.body.toFixed(0)} px/s · planted foot ${a.slip.toFixed(0)} px/s (${Math.round((a.slip / a.body) * 100)}% of body speed) · without the step overlay ${b.slip.toFixed(0)} px/s (${Math.round((b.slip / b.body) * 100)}%)`); }
+
 // ── ② 발 미끄러짐 ──
 function slip(mode, speedPx, stride) {
   const ch = mkChar('kael'), clip = ch.asset.clips[mode], h = { anim: mode, gait: 0, dirX: 0, dirZ: 1, onGround: true, vx: 0, vz: speedPx, lock: null };
@@ -136,6 +158,15 @@ slideCase('walk speed reversal (half stick)', (i) => (i < 60 ? [0.38, 0] : [-0.3
   ok('jittery reverse input (±1°) does not make the body wobble', flips === 0, `flips ${flips}`); }
 
 // ── ④ 전체를 함께 돌려 NaN · 클립 이름 ──
+{ // 도구 · 보스: 새 상태가 라이브러리 클립으로 돌고 NaN 이 없다
+  const sim = new Sim(flatArena(700, 500, [{ kind: 'banshee_queen', x: 220, z: 0, active: true, phase: 2 }, { kind: 'grave_ghost', x: 140, z: 60, active: true }]), {}), hero = mkChar('kael'), chars = new Map(), usedH = new Set(), usedB = new Set(); let bad = 0;
+  sim.hookPoints.push({ id: 'r', x: -260, y: 0, z: 0, to: [-320, 0] }); sim.hero.reso = 3;
+  const plan = (i) => (i < 60 ? { attack: i === 0, attackHeld: true } : i < 110 ? {} : i < 200 ? { bell: i === 110 } : i < 300 ? { skill: i === 200 } : i < 420 ? { mx: -1, mz: 0 } : i < 520 ? { skill: i === 420 } : i < 700 ? { bell: i === 520, bellHeld: true } : {});
+  for (let i = 0; i < 1500; i++) { const boss = sim.enemies[0]; if (i < 430) { boss.cd = 99; boss.sumCd = 99; boss.songCd = 99; } if (i === 430) { boss.cd = 0.3; boss.sumCd = 0.3; boss.songCd = 4; } if (i === 1300) boss.hp = 30; sim.hero.hp = sim.hero.hpMax; sim.update(DT, plan(i)); if (sim.stop > 0) sim.stop = 0;
+    driveHero(hero, sim.hero, DT, TUNE); if (!finiteRig(hero)) bad++; usedH.add(hero.anim.cur?.name);
+    for (const e of sim.enemies) { if (e.dead) continue; let ch = chars.get(e.id); if (!ch) { ch = mkChar(e.def.model); chars.set(e.id, ch); } driveActor(ch, e, DT); if (!finiteRig(ch)) bad++; if (e.def.boss) usedB.add(ch.anim.cur?.name); } }
+  const needH = ['charged', 'cast_raise', 'point', 'thrust', 'cast_big'], needB = ['float_idle', 'stun'];
+  ok('tools + boss driven for 25 s with no NaN; hero used ' + needH.join(' ') + '; the queen used her clips', bad === 0 && needH.every((n) => usedH.has(n)) && needB.every((n) => usedB.has(n)) && [...usedB].some((n) => /scream|cast_/.test(n)), `bad ${bad} · hero: ${[...usedH].join(' ')} · queen: ${[...usedB].join(' ')}`); }
 { const kinds = ['skeleton_soldier', 'skeleton_mage', 'plague_corpse', 'grave_ghost', 'gravekeeper_armor', 'bat'];
   const sim = new Sim(flatArena(520, 360, kinds.map((kind, i) => ({ kind, x: 160 + (i % 3) * 90, z: -120 + i * 50, active: true }))), {}), hero = mkChar('kael'), chars = new Map(), used = {};
   for (const e of sim.enemies) chars.set(e.id, mkChar(e.def.model));
@@ -152,7 +183,7 @@ slideCase('walk speed reversal (half stick)', (i) => (i < 60 ? [0.38, 0] : [-0.3
   for (const k of ['hero', ...kinds]) console.log(`  clips used by ${k}: ${[...(used[k] ?? [])].join(' ')}`);
   const heroNeed = ['idle_combat', 'run', 'roll', 'atk1', 'atk2', 'atk3', 'launcher', 'plunge', 'jump', 'air', 'block'];
   ok('hero used library clips: ' + heroNeed.join(' '), heroNeed.every((n) => used.hero.has(n)), 'missing ' + heroNeed.filter((n) => !used.hero.has(n)).join(','));
-  for (const k of kinds) {
+  for (const k of [...kinds, 'banshee_queen']) {
     const D = KINDS[k], ch = mkChar(D.model), e = { def: D, kind: k, id: 0, state: 'chase', anim: 'idle', animT: 0, dirX: 1, dirZ: 0, gait: 0, stateT: 0 }; driveActor(ch, e, DT);
     const names = [...Object.values(D.clips), ...D.attacks.map((a) => a.clip)], miss = names.filter((n) => !ch.asset.clips[n]);
     ok(`${k}: every clip named in KINDS exists on the model/library`, miss.length === 0, miss.length ? 'missing ' + miss.join(',') : names.length + ' names');

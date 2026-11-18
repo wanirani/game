@@ -30,7 +30,7 @@ const DIVE = A({ id: 'dive', clip: 'fly', range: 250, windup: 0.36, strike: 0.5,
 //   mark = 예고 표시 모양(장면이 그린다): 판정 모양(box｜arc｜radius)이 있으면 그것, 탄 · 노래처럼 판정 모양이 없는 것은 mark 로 따로 준다. air: true = 공중에 뜨는 고리(비명 · 노래)
 const Q_WAIL = A({ id: 'wail', label: '울음 탄', kind: 'cast', clip: 'cast_channel', cut: [0.14, 0.34], range: 620, windup: 0.75, strike: 0.12, recover: 0.7, dmg: 10, track: 5, cd: [1.1, 1.7], weapon: 'arrow',
   shot: { kind: 'wail', element: 'ice', speed: 235, r: 14, life: 3.2, y: 0.6, fan: 3, spread: 20 }, mark: { box: { f0: 30, f1: 430, side: 16 }, fan: 3, spread: 20 } });
-const Q_SWEEP = A({ id: 'sweep', label: '울음 물결', clip: 'cast_sweep', cut: [1.12, 1.4], range: 205, windup: 0.9, strike: 0.2, recover: 0.95, dmg: 16, track: 2.4, staggerT: 1, cd: [0.9, 1.5], weapon: 'great', str: 'H', knock: 300, fx: 'holy.wave',
+const Q_SWEEP = A({ id: 'sweep', label: '울음 물결', clip: 'cast_sweep', cut: [1.05, 1.32], range: 205, windup: 0.9, strike: 0.2, recover: 0.95, dmg: 16, track: 2.4, staggerT: 1, cd: [0.9, 1.5], weapon: 'great', str: 'H', knock: 300, fx: 'holy.wave',
   arc: { r: 205, deg: 210, y0: -10, y1: 150 } });
 const Q_SCREAM = A({ id: 'scream', label: '비명', clip: 'scream', cut: [0.75, 1.15], range: 240, windup: 1.15, strike: 0.25, recover: 1.25, dmg: 14, track: 0, guard: 'break', parry: false, cd: [1.4, 2.2], weapon: 'blunt', str: 'F', knock: 360, shake: 12, stunHero: 0.8, fx: 'ice.nova', air: true, bell: true,
   radius: { r: 235, fwd: 0, y0: -30, y1: 220 } });

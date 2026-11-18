@@ -659,7 +659,7 @@ export class Sim {
   addPoise(e, v) {
     const D = e.def; if (!D.poiseMax || e.dead || e.state === 'dead' || e.stagger > 0 || e.kneel > 0 || e.fled) return;
     e.poiseHp = Math.min(D.poiseMax, e.poiseHp + v); e.staggerK = e.poiseHp / D.poiseMax;
-    if (e.poiseHp >= D.poiseMax) { e.poiseHp = 0; this.staggerEnemy(e, D.staggerT ?? 2.4, true); this.emit('bossStagger', e); }
+    if (e.poiseHp >= D.poiseMax) { e.poiseHp = 0; e.staggerK = 0; this.staggerEnemy(e, D.staggerT ?? 2.4, true); this.emit('bossStagger', e); }
   }
   /** 종(메아리)이 보스에게 닿았다: 비명의 예고 · 배웅가를 끊고 곧 비틀거리게 한다. 그 밖에는 눈금이 조금 찬다 */
   bossBell(e) {
@@ -673,13 +673,13 @@ export class Sim {
     e.fled = false; e.solid = true; e.cd = 1.0; if (o && o.hp != null) e.hp = o.hp; if (o && o.x != null) { e.x = o.x; e.z = o.z; }
     this.emit('bossReturn', e); return true;
   }
-  /** HUD 의 보스 막대가 읽는 값 (한 객체를 다시 쓴다). 보스가 없거나 아직 깨어나지 않았으면 null */
+  /** HUD 의 보스 막대가 읽는 값 (한 객체를 다시 쓴다). 보스가 없거나 아직 깨어나지 않았으면 null. stagger 0…1 = 비틀거림 눈금 (비틀거리는 동안 · 무릎 꿇은 동안은 1) */
   bossState() {
     const E = this.enemies; let b = null;
     for (let i = 0; i < E.length; i++) if (E[i].def.boss && !E[i].dead && E[i].active) { b = E[i]; break; }
     if (!b) return null;
     const o = (this._boss ??= { id: 0, name: '', hp: 0, hpMax: 1, stagger: 0, phase: 1, kneel: false, fled: false, staggered: false, sub: '' });
-    o.id = b.id; o.name = b.def.name; o.hp = Math.max(0, b.hp); o.hpMax = b.hpMax; o.stagger = b.kneel > 0 ? 1 : b.staggerK ?? 0; o.phase = b.bphase; o.kneel = b.kneel > 0; o.fled = !!b.fled; o.staggered = b.stagger > 0; o.sub = b.atk && b.atk.label ? b.atk.label : '';
+    o.id = b.id; o.name = b.def.name; o.hp = Math.max(0, b.hp); o.hpMax = b.hpMax; o.stagger = b.kneel > 0 || b.stagger > 0 ? 1 : b.staggerK; o.phase = b.bphase; o.kneel = b.kneel > 0; o.fled = !!b.fled; o.staggered = b.stagger > 0; o.sub = b.atk && b.atk.label ? b.atk.label : '';
     return o;
   }
   countKind(kid) { const E = this.enemies; let n = 0; for (let i = 0; i < E.length; i++) if (!E[i].dead && E[i].state !== 'dead' && E[i].kid === kid) n++; return n; }
