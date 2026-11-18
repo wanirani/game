@@ -30,6 +30,7 @@ run story_edges   node tools/v2/game_story.mjs --plan edges   --out "$L/story"
 run story_cross30 node tools/v2/game_story.mjs --plan cross30 --out "$L/story"
 run cross_edge    node tools/v2/cross_edge.mjs --out "$L/cross_edge"
 run break_check   node tools/v2/break_check.mjs
+run owner_fix     node tools/v2/owner_fix_check.mjs --out "$L/ownerfix"   # the owner's reports of 2026-11-18: pieces at a full gauge, sleepers facing and waking
 run smoke         node tools/smoke.mjs
 run p0_entry      node tools/v2/p0_entry_check.mjs
 run world_check   node tools/v2/world_check.mjs
