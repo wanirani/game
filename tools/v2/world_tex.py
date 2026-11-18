@@ -5,7 +5,9 @@
  Two kinds of source:
    * procedural (periodic noise, wrapped cell noise) - organic cobbles, setts, worn muddy cobbles, rubble wall, thatch
    * derived from the game's own painted v1 tiles (assets/tex/*.webp, already seamless): bones, bark, wet cellar stone, planks, grave soil
- Paid image generation was refused for this lane, so nothing here is generated art. --from is the path for painted squares later.
+   * generated squares (tools/v2/world_src/tex/<name>.webp, 1024 px; docs/v2/ENV_KIT.md 16): made to tile (make_tile) and graded to the night palette
+     (to_night). Today: k_ashlar k_plaster k_slate k_flag k_rubble. --proc k_rubble gives the procedural version back. --out <dir> writes elsewhere.
+ The default run rewrites every texture it owns; the files in assets/v2/env/ are byte for byte what it writes.
 """
 import sys, os, argparse
 import numpy as np
@@ -147,24 +149,74 @@ def tex_bone(): return np.clip(grade(v1('tex_bone'), (0.86, 0.84, 0.8), 0.7, 1.1
 def tex_bark(): return np.clip(grade(v1('tex_rotwood'), (1.5, 1.38, 1.3), 0.6, 0.85, 8), 0, 255).astype(np.uint8)
 
 
-def make_tile(path):
-    """a painted square that does not quite tile -> tiling: blend with its half-offset copy near the edges, flatten slow brightness drift"""
-    a = np.array(Image.open(path).convert('RGB').resize((N, N), Image.LANCZOS)).astype(np.float32)
-    low = np.array(Image.fromarray(a.astype(np.uint8)).filter(ImageFilter.GaussianBlur(N / 6))).astype(np.float32)
-    a = np.clip(a - low + low.mean((0, 1), keepdims=True), 0, 255)
-    b = np.roll(a, (N // 2, N // 2), (0, 1))
-    yy, xx = np.mgrid[0:N, 0:N] / N
-    d = np.minimum(np.minimum(xx, 1 - xx), np.minimum(yy, 1 - yy))   # distance to the tile edge
-    w = sm(0.04, 0.2, d + (fbm(beta=2.0, seed=5) - 0.5) * 0.08)[:, :, None]
-    return np.clip(a * w + b * (1 - w), 0, 255).astype(np.uint8)
+def seam_ratio(a):
+    """how visible would the wrap seam be: (difference across the seam) / (difference between neighbouring pixels inside), per axis (x, y)"""
+    return (np.abs(a[:, 0] - a[:, -1]).mean() / max(1e-6, np.abs(a[:, 1:] - a[:, :-1]).mean()), np.abs(a[0] - a[-1]).mean() / max(1e-6, np.abs(a[1:] - a[:-1]).mean()))
+
+
+def make_tile(path, n=N):
+    """a generated / painted square -> a tiling one, WITHOUT ghosting structured patterns (courses, slates, slabs):
+       1. flatten the slow brightness drift (a tile with a bright corner shows its repeat at once)
+       2. per axis: if the square already nearly tiles (seam ratio <= 1.35: the generator was asked for a tileable picture) only the small step across
+          the seam is spread over a band (offset correction: no second copy is mixed in, so no double edges);
+          else the edge band is cross-faded with the half-offset copy along a noisy line, then the same correction."""
+    a = np.array(Image.open(path).convert('RGB').resize((n, n), Image.LANCZOS)).astype(np.float32)
+    low = np.array(Image.fromarray(a.astype(np.uint8)).filter(ImageFilter.GaussianBlur(n / 5))).astype(np.float32)
+    a = a - low + low.mean((0, 1), keepdims=True)
+    rx, ry = seam_ratio(a)
+    yy, xx = np.mgrid[0:n, 0:n] / n; nz = (fbm(beta=2.0, seed=5) - 0.5) * 0.08
+    if rx > 1.35:
+        b = np.roll(a, n // 2, 1); w = sm(0.03, 0.16, np.minimum(xx, 1 - xx) + nz)[:, :, None]; a = a * w + b * (1 - w)
+    if ry > 1.35:
+        b = np.roll(a, n // 2, 0); w = sm(0.03, 0.16, np.minimum(yy, 1 - yy) + nz.T)[:, :, None]; a = a * w + b * (1 - w)
+    m = n // 16; ramp = (1 - (np.arange(m) + 0.5) / m) ** 2 * 0.5   # 0.5 at the seam -> 0
+    d = a[:, 0] - a[:, -1]; d = np.array(Image.fromarray(np.clip(d[:, None, :] + 128, 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(3))).astype(np.float32)[:, 0, :] - 128   # the step, smoothed along the seam (keeps grain)
+    for i in range(m): a[:, i] -= d * ramp[i]; a[:, n - 1 - i] += d * ramp[i]
+    d = a[0] - a[-1]; d = np.array(Image.fromarray(np.clip(d[None, :, :] + 128, 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(3))).astype(np.float32)[0] - 128
+    for i in range(m): a[i] -= d * ramp[i]; a[n - 1 - i] += d * ramp[i]
+    return np.clip(a, 0, 255).astype(np.uint8), (rx, ry), seam_ratio(a)
+
+
+def to_night(a, ref, hue=0.75, contrast=1.0, sat=1.0, calm=0.0):
+    """colour and brightness of a generated square matched to the texture it replaces (ref = that texture's mean r, g, b): the material tints and the
+       baked night light were tuned for those means, so walls keep their brightness (pale plaster and ashlar would glow) and both eras keep their mood.
+       hue = how far the mean colour moves to ref (1 = exactly), contrast / sat = local contrast and saturation kept, calm = limit on outliers."""
+    a = a.astype(np.float32); mean = a.mean((0, 1)); g = a.mean(2, keepdims=True); a = g + (a - g) * sat
+    ref = np.array(ref, np.float32); lum = lambda c: 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]
+    own = mean * (lum(ref) / max(1.0, lum(mean)))                       # own hue at the reference brightness
+    target = own + (ref - own) * hue
+    k = lum(ref) / max(1.0, lum(mean))                                  # darker texture: its contrast shrinks with it
+    d = (a - a.mean((0, 1))) * contrast * min(1.0, k * 1.15)
+    if calm:   # one-off marks (a chipped patch, one pale slate) show the repeat as a grid of dots: squeeze what sticks out more than calm x sigma
+        sg = d.std() * calm; d = np.tanh(d / (2 * sg)) * 2 * sg
+    return np.clip(d + target, 0, 255).astype(np.uint8)
+
+
+# generated squares (image model, 1024 px) kept as tools/v2/world_src/tex/<name>.webp -> tiled, graded to the night palette. ref = mean colour of the texture replaced.
+SRC = 'tools/v2/world_src/tex'
+GEN = {
+    'k_ashlar': dict(ref=(110, 112, 120), hue=0.8, contrast=1.05, sat=0.8),
+    'k_plaster': dict(ref=(186, 172, 145), hue=0.7, contrast=1.3, sat=0.9, calm=1.1),
+    'k_slate': dict(ref=(76, 84, 105), hue=0.7, contrast=1.1, sat=0.9, calm=1.4),
+    'k_flag': dict(ref=(118, 116, 116), hue=0.75, contrast=1.0, sat=0.75),
+    'k_rubble': dict(ref=(112, 108, 104), hue=0.7, contrast=0.95, sat=0.7),
+}
+
+
+def tex_gen(name):
+    t, before, after = make_tile(os.path.join(SRC, name + '.webp'))
+    print(f'  {name}: seam ratio x {before[0]:.2f} y {before[1]:.2f} -> {after[0]:.2f} {after[1]:.2f}')
+    return to_night(t, **GEN[name])
 
 
 TEX = {'k_cobble': tex_cobble, 'k_cobble2': tex_cobble2, 'k_cobworn': tex_cobworn, 'k_rubble': tex_rubble, 'k_thatch': tex_thatch, 'k_soil': tex_soil,
        'k_cellar': tex_cellar, 'k_planks': tex_planks, 'k_bone': tex_bone}
+PROC = dict(TEX)                                                  # the procedural versions stay callable: --proc k_rubble
+for _k in GEN: TEX[_k] = (lambda k: (lambda: tex_gen(k)))(_k)     # default: a generated square replaces the procedural texture of the same name
 
 
 def save(name, arr):
-    im = Image.fromarray(arr); q = 84; p = os.path.join(OUT, name + '.webp')
+    im = Image.fromarray(arr); q = 84; os.makedirs(OUT, exist_ok=True); p = os.path.join(OUT, name + '.webp')
     while True:
         im.save(p, 'WEBP', quality=q, method=6)
         if os.path.getsize(p) <= 160 * 1024 or q <= 40: break
@@ -174,10 +226,12 @@ def save(name, arr):
 
 
 if __name__ == '__main__':
-    ap = argparse.ArgumentParser(); ap.add_argument('--only'); ap.add_argument('--sheet'); ap.add_argument('--from', dest='src'); ap.add_argument('--name')
+    ap = argparse.ArgumentParser(); ap.add_argument('--only'); ap.add_argument('--sheet'); ap.add_argument('--from', dest='src'); ap.add_argument('--name'); ap.add_argument('--out'); ap.add_argument('--proc', default='')
     A = ap.parse_args(); ims = {}
+    if A.out: OUT = A.out
+    for k in [x for x in A.proc.split(',') if x]: TEX[k] = PROC[k]
     if A.src:
-        ims[A.name] = save(A.name, make_tile(A.src))
+        t = make_tile(A.src)[0]; ims[A.name] = save(A.name, to_night(t, **GEN[A.name]) if A.name in GEN else t)
     else:
         for k, f in TEX.items():
             if A.only and k not in A.only.split(','): continue

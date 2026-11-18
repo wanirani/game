@@ -20,6 +20,7 @@ export const SETS = {
     ['stall', 'eshville_past', 2135, 205], ['plaguepost', 'eshville_past', 1215, 210], ['past_lantern', 'eshville_past', 700, 210],
     ['s0_angel', 'slice0', 2120, 1160], ['s0_fountain', 'slice0', 1960, 1230], ['s0_gargoyle', 'slice0', 2080, 2080], ['s0_cart', 'slice0', 340, 180],
   ],
+  tex: [['t_plaster', 'eshville_past', 1840, 150], ['t_ashlar', 'eshville_now', 3900, 1440], ['t_slate', 'eshville_now', 2400, 180], ['t_flag', 'slice0', 2190, 1250], ['t_rubble', 'graveyard_now', 600, 300], ['t_rubble2', 'eshville_now', 4590, 1090]],
   wide: [
     ['w_esh_now_1', 'eshville_now', 330, 150], ['w_esh_now_2', 'eshville_now', 3900, 640], ['w_esh_now_3', 'eshville_now', 3900, 1440],
     ['w_esh_past_1', 'eshville_past', 1840, 150], ['w_esh_past_2', 'eshville_past', 3900, 640], ['w_esh_past_3', 'eshville_past', 4590, 1090],

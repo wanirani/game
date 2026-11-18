@@ -286,6 +286,14 @@ for (const [id, p] of Object.entries(TEXT.prompts || {})) {
   if (p.action && (!p.label || width(p.label) > 6)) err(`TEXT.prompts.${id}: label missing or wider than 6`);
   if (!used.prompts.has(id)) err(`TEXT.prompts.${id}: no sequence shows it`);
 }
+{
+  const chapterTitles = new Map(Object.values(TEXT.chapters || {}).map((c) => [c.title, c.sub]));
+  const seenCh = new Set();
+  const scan = (steps) => { for (const st of steps || []) { if (st[0] === 'banner' && (st[1] === 'area' || st[1] === 'clear')) { seenCh.add(st[2]); if (!chapterTitles.has(st[2])) err(`banner "${st[2]}" is not in TEXT.chapters`); else if (chapterTitles.get(st[2]) !== st[3]) err(`banner "${st[2]}": sub differs from TEXT.chapters`); } if (st[0] === 'if') { scan(st[2]); scan(st[3]); } } };
+  for (const ev of EVENTS) scan(ev.steps);
+  for (const t of chapterTitles.keys()) if (!seenCh.has(t)) err(`TEXT.chapters "${t}" is shown by no sequence`);
+  for (const ev of EVENTS) for (const st of ev.steps || []) if (st[0] === 'banner' && st[1] === 'dead' && (st[2] !== TEXT.death.title || st[3] !== TEXT.death.sub)) err(`${ev.id}: dead banner differs from TEXT.death`);
+}
 const BUTTONS = ['공격', '점프', '구르기', '솜씨', '종', '다음 적'];
 for (const [id, p] of Object.entries(TEXT.prompts || {})) for (const m of (p.tip || '').matchAll(/「([^」]+)」/g)) if (!BUTTONS.includes(m[1])) err(`TEXT.prompts.${id}: 「${m[1]}」 is not a button name (${BUTTONS.join(' ')})`);
 
@@ -408,12 +416,14 @@ function play(route, policy, label, deferred) {
   const runWarn = [];
   const ended = new Set(), began = new Set(), flagsSeen = new Set(), itemsSeen = new Set(), variantsSeen = new Set(), dialogsSeen = new Set();
   let minute = null, curEv = null, choiceN = 0, st = null, area = null, endId = null, saves = 0, prompt = null, lastSave = null;
-  const evMinute = (id) => { const e = id && evById.get(id); return e && minuteSet.has(e.minute) ? e.minute : null; };
+  // a scene that starts by itself when an area opens belongs to its own row of the minute table, wherever the route stands
+  const evMinute = (id) => { const e = id && evById.get(id); return e && e.on === 'area.enter' && minuteSet.has(e.minute) ? e.minute : null; };
   const out = (kind, a, b) => { if (!curEv && (kind === 'unlock' || kind === 'actor' || kind === 'lock')) return; rec.push({ m: evMinute(curEv) || minute, kind, a, b, ev: curEv }); };
   const mk = () => createStory(S, {
     warn: (m) => runWarn.push(m),
     log: (m) => { const [w, id] = m.split(' '); if (w === 'begin') { began.add(id); curEv = id; } else { ended.add(id); curEv = null; } },
   });
+  const talked = new Set();
   const later = [];           // deferred mode: callbacks wait here and are delivered one at a time, like a real screen
   let openDialogs = 0, maxLater = 0, midSaveOk = 0;
   const defer = (fn) => { if (deferred) { later.push(fn); if (later.length > maxLater) maxLater = later.length; } else fn(); };
@@ -449,8 +459,18 @@ function play(route, policy, label, deferred) {
     try {
       if (k === 'm') minute = a;
       else if (k === 'note') out('note', a);
-      else if (k === 'ev') { if (a === 'area.enter' && b && b.area) area = b.area; st.story(a, b, api); }
-      else if (k === 'talk') { const before = rec.length; st.story('talk', { id: null, talk: a }, api); if (rec.length === before && DIALOGS[a]) runWarn.push(`talk ${a}: nothing was shown`); }
+      else if (k === 'ev') {
+        if (a === 'area.enter' && b && b.area) area = b.area;
+        // stage directions for the owner script, from the labels the world gives its hot spots
+        const ar = world.areas[area];
+        if (a === 'interact' && b && ar) { const it = (ar.interact || []).find((x) => x.id === b.id); if (it && it.label) out('note', `「${it.label}」 자리에서`); }
+        if (a === 'exit.locked' && b && ar) { const ex = (ar.exits || []).find((x) => x.id === b.id); if (ex && ex.label) out('note', `「${ex.label}」로 가는 문 앞`); }
+        st.story(a, b, api);
+      }
+      else if (k === 'talk') {
+        const first = (DIALOGS[a] || []).flatMap((v) => v.pages || []).map((pg) => pg[0]).find((w) => w !== 'kael' && w !== 'narrator' && w !== 'sign');
+        if (first && PEOPLE[first]) { out('note', talked.has(a) ? `${PEOPLE[first].name}에게 다시 말을 건다` : `${PEOPLE[first].name}에게 말을 건다`); talked.add(a); }
+        const before = rec.length; st.story('talk', { id: null, talk: a }, api); if (rec.length === before && DIALOGS[a]) runWarn.push(`talk ${a}: nothing was shown`); }
       else if (k === 'save') {
         const snap = JSON.stringify(st.save());
         const st2 = mk(); st2.load(JSON.parse(snap));
@@ -597,7 +617,7 @@ function ownerScript() {
     }
     const t = (s) => String(s).replace(/\n/g, ' ');
     switch (x.kind) {
-      case 'note': L.push('', `(${x.a})`, ''); break;
+      case 'note': L.push('', `(${x.a})  `); break;
       case 'say': L.push(x.a.startsWith('(') ? `*${t(x.b)}*  ` : `**${x.a}** ${t(x.b)}  `); break;
       case 'choice': L.push(`〔고르기: ${x.a} — 이 대본은 「${x.b}」〕  `); break;
       case 'banner': L.push('', `〔큰 띠〕 **${x.b}**  `); break;

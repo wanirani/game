@@ -119,6 +119,8 @@ export function createStory(data, opts) {
   // ---------- calling the game ----------
   function find(api, name) {
     if (!api) return null;
+    // the v2 notice is the HUD's (UI_API section 9.7); ENGINE's own api.toast is the old shell toast and comes second
+    if (name === 'toast' && api.scene && api.scene.hud && typeof api.scene.hud.toast === 'function') return api.scene.hud;
     if (typeof api[name] === 'function') return api;
     const sc = api.scene;
     if (sc) {
@@ -242,7 +244,13 @@ export function createStory(data, opts) {
     } else d.onDone = waiter(tok);
     const o = find(api, 'showDialog');
     if (o) { try { o.showDialog(d); } catch (e) { warn('api.showDialog threw: ' + (e && e.message)); resume(tok); } }
-    else if (api && typeof api.setDialog === 'function') api.setDialog(d);
+    else if (api && typeof api.setDialog === 'function') {
+      // state path (scene.ui.dialog): clear the object when the page is dismissed so that the next page counts as new
+      const done = d.onDone, pick = d.onChoice;
+      if (done) d.onDone = () => { api.setDialog(null); done(); };
+      if (pick) d.onChoice = (i) => { api.setDialog(null); pick(i); };
+      api.setDialog(d);
+    }
     else { warn('api.showDialog is missing — dialogue skipped'); if (choice) d.onChoice(0); else resume(tok); }
   }
 

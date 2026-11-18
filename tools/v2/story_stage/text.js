@@ -11,7 +11,7 @@ export const TEXT = {
     ch1: { title: '1장 — 백 년 전의 식탁', sub: '그 밤의 사람들' },
     ch2: { title: '2장 — 안개의 묘지', sub: '열쇠와 이름과 길종' },
     ch3: { title: '3장 — 배웅하는 노래', sub: '배웅의 납골당' },
-    end: { title: '첫째 밤이 저문다', sub: '종소리가 닿는 곳이 한 겹 넓어졌다' },
+    end: { title: '달이 한 칸 기울었다', sub: '종소리가 한 겹 더 멀리 닿는다' },
   },
 
   // place names and one-line subtitles. Built areas already carry `name` (WORLD); the subtitle is ours.
@@ -46,7 +46,7 @@ export const TEXT = {
   // system lines: {name} / {title} are filled by the runner
   system: {
     got: '얻었다 — {name}',
-    chronicle: '연대기에 적혔다 — {title}',
+    chronicle: '연대기 — {title}',
     entrusted: '맡겼다 — 묘지 문 열쇠',
     carved: '새겼다 — {name}',
     hung: '걸었다 — 길종',
@@ -57,7 +57,7 @@ export const TEXT = {
   // tutorial prompts: prompt step → api.prompt({action, label}) + the tip as a small notice.
   // action = an input action of the touch pad (UI_API section 3) or null (no pill, tip only). Button names as on the screen.
   prompts: {
-    move: { action: null, label: '', tip: '화면 왼쪽을 누른 채 밀면 움직인다' },
+    move: { action: null, label: '이동', tip: '화면 왼쪽을 누른 채 밀면 움직인다' },
     attack: { action: 'attack', label: '공격', tip: '「공격」 — 채찍. 세 번 이으면 넓게 친다' },
     lock: { action: 'lock', label: '다음 적', tip: '가까운 적은 저절로 겨눈다. 「다음 적」으로 바꾼다' },
     roll: { action: 'dash', label: '구르기', tip: '밀면서 「구르기」 — 구르는 동안은 맞지 않는다' },
@@ -65,7 +65,7 @@ export const TEXT = {
     coil: { action: 'attack', label: '휘감기', tip: '「공격」을 길게 — 휘감아 당긴다' },
     jump: { action: 'jump', label: '점프', tip: '「점프」 — 턱은 저절로 잡고 오른다' },
     rest: { action: 'confirm', label: '쉰다', tip: '촛불 앞에서 쉬면 촛불이 모두 다시 켜진다' },
-    mark: { action: null, label: '', tip: '종 무늬가 있는 것은 그 밤에 바꿀 수 있다' },
+    mark: { action: null, label: '종 무늬', tip: '종 무늬가 있는 것은 그 밤에 바꿀 수 있다' },
     entrust: { action: 'confirm', label: '맡긴다', tip: '그 밤에 맡긴 것은 오늘 밤에 남는다' },
     cross: { action: 'ult', label: '건넘', tip: '종 앞에서 「종」을 길게 — 다른 밤으로 건넌다' },
     wide: { action: 'attack', label: '공격', tip: '셋째 공격은 넓다. 떼를 한 번에 친다' },
@@ -75,7 +75,7 @@ export const TEXT = {
     hook: { action: 'skill1', label: '채찍 걸기', tip: '빛나는 고리 가까이에서 「솜씨」 — 채찍 걸기' },
     hang: { action: 'confirm', label: '건다', tip: '빈 종대에 길종을 건다' },
     roomcross: { action: 'ult', label: '건넘', tip: '방 안의 종 앞에서도 건널 수 있다' },
-    aging: { action: null, label: '', tip: '돌과 은은 남는다. 쇠는 녹슬고 나무는 삭는다' },
+    aging: { action: null, label: '묵는 표', tip: '돌과 은은 남는다. 쇠는 녹슬고 나무는 삭는다' },
     call: { action: 'skill1', label: '세라', tip: '등불대 가까이에서 「솜씨」 — 세라를 부른다' },
     knellpost: { action: 'attack', label: '공격', tip: '조종을 채찍으로 치면 노래가 깨진다' },
     chase: { action: 'ult', label: '건넘', tip: '싸움터 한가운데 종에서 쫓아 건넌다' },

@@ -7,7 +7,7 @@ export const CHRONICLE = {
     unlock: ['fell'], show: ['fell'] },
   fourth_moon: { id: 'fourth_moon', order: 2, kind: 'line', title: '넷째 붉은 달',
     body: '1697년 붉은 달 밤, 에드문트 발크레인이 수녀 일곱과 총잡이 울프람을 데리고 성에 올랐다. 백작은 쓰러졌다. 일행은 돌아오지 못했다.',
-    unlock: ['met_edmund'], show: ['fell'] },
+    unlock: ['crossed'], show: ['crossed'] },
   graveyard_key: { id: 'graveyard_key', order: 3, kind: 'blank', title: '묘지 문 열쇠',
     body: '묘지 문의 열쇠는 그 밤 뒤로 본 사람이 없다.',
     past: '그 밤 — 하드윈 1세에게 묘지 문 열쇠를 맡겼다.',
