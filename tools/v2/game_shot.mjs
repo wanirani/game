@@ -159,13 +159,14 @@ try {
         if (v.area !== from) { await sc.gotoArea(from, null); F.tick(10); }
         const x0 = sc.area.exits.find((q) => q.id === exit); if (!x0) return { from, exit, error: 'no such exit', exits: sc.area.exits.map((q) => q.id) };
         const before = x0.locked ?? null, fl = before ? await A.flagsThatOpen(from, sc.worldFlags, exit) : {};
-        if (before && !fl) return { from, exit, locked: before, error: 'no area flag opens it' };
-        if (before) { sc.setWorldFlags(fl); await wait(() => v.ready && !sc._go && sc.fadeA < 0.05, 400); }
+        let how = before ? 'area flag' : 'open';
+        if (before && !fl) { sc.unlockExit(exit); how = 'scene.unlockExit (no area flag opens it: the lock is the story\'s)'; }
+        else if (before) { sc.setWorldFlags(fl); await wait(() => v.ready && !sc._go && sc.fadeA < 0.05, 400); }
         const x = sc.area.exits.find((q) => q.id === exit), h = sc.sim.hero;
         for (const e of sc.sim.enemies) { e.active = false; e.sight = 0; }
         h.x = (x.x0 + x.x1) / 2; h.z = (x.z0 + x.z1) / 2; { let gy = -Infinity; for (const b of sc.W.boxes) { if (h.x < b.x0 || h.x > b.x1 || h.z < b.z0 || h.z > b.z1 || !b.walk) continue; if (b.y1 > gy) gy = b.y1; } if (Number.isFinite(gy)) h.y = gy; } sc.cam.snap = true;
         const k = await wait(() => v.ready && v.area !== from && !sc._go && sc.fadeA < 0.05, 600);
-        return { from, exit, lockedBefore: before, flag: fl, lockedAfter: x.locked ?? null, to: x.to, arrived: v.area, waited: k, hero: [Math.round(sc.sim.hero.x), Math.round(sc.sim.hero.y), Math.round(sc.sim.hero.z)], kinds: [...new Set(sc.sim.enemies.map((e) => e.kind))], models: v.stats.chars.models, flags: { ...sc.worldFlags } };
+        return { from, exit, how, lockedBefore: before, flag: fl, lockedAfter: x.locked ?? null, to: x.to, arrived: v.area, waited: k, hero: [Math.round(sc.sim.hero.x), Math.round(sc.sim.hero.y), Math.round(sc.sim.hero.z)], kinds: [...new Set(sc.sim.enemies.map((e) => e.kind))], models: v.stats.chars.models, flags: { ...sc.worldFlags } };
       }, [from, exit]);
       console.log('exit:', JSON.stringify(r));
       await ev(() => window.__F.tick(60));
