@@ -165,7 +165,7 @@ try {
         bv.quiet(true); const L = sim.breakables, W = sc.W, H = sim.hooks, keep = { break: H.break, drop: H.drop, pickup: H.pickup, pickupLand: H.pickupLand, event: H.event }; H.break = H.drop = H.pickup = H.pickupLand = H.event = null;
         const seeds = Object.values(sc.area.spawns).map((s) => [s.x, s.z]), sp = sc.area.spawns.default;
         const G1 = reachGrid(W, sp.x, sp.z, 14, { seeds, hooks: W.hookPoints ?? sc.area.stage?.hookPoints ?? [] });   // every breakable standing
-        const out = { n: L.length, coins: 0, rest: 0, bad: [], notRest: 0, far: 0, inWhole: 0, lostCells: 0, maxD: 0 };
+        const out = { n: L.length, coins: 0, rest: 0, bad: [], notRest: 0, far: 0, inWhole: 0, lostCells: 0, maxD: 0, tight: 0, pulled: 0, pullFar: 0 };
         // 1) with every one standing: can the hero get next to each (to hit it)? is anything walkable cut off?
         const solid0 = L.map((b) => b.box.solid); for (const b of L) b.box.solid = false; const G0 = reachGrid(W, sp.x, sp.z, 14, { seeds, hooks: W.hookPoints ?? sc.area.stage?.hookPoints ?? [] }); L.forEach((b, i) => { b.box.solid = solid0[i]; });
         let lost = []; for (const q of W.boxes) if (q.walk && q.brk === undefined) for (let x = q.x0 + 10; x < q.x1; x += 20) for (let z = q.z0 + 10; z < q.z1; z += 20) if (G0.reachable(x, z) && !G1.reachable(x, z) && !L.some((b) => Math.abs(b.x - x) < b.r + 34 && Math.abs(b.z - z) < b.r + 34)) lost.push([x, z]);
@@ -184,11 +184,21 @@ try {
               sim.qx = p.x; sim.qz = p.z; sim.qy = p.gy + 12; sim._gq(); const gnd = sim.g, w = inSolid(p.x, p.z, p.gy, 0), d = Math.hypot(p.x - b.x, p.z - b.z); if (d > out.maxD) out.maxD = d;
               const reach = G0.near(p.x, p.z, 24) || G1.near(p.x, p.z, 24), why = !(Number.isFinite(gnd) && gnd > -1e8) ? 'no floor under it' : Math.abs(gnd - p.gy) > 1 || Math.abs(p.y - p.gy) > 1 ? 'not on its floor (y ' + p.y.toFixed(1) + ' floor ' + gnd.toFixed(1) + ' gy ' + p.gy.toFixed(1) + ')' : w ? (w.brk !== undefined ? 'inside a whole breakable' : 'inside a solid box') : !reach ? 'the hero cannot get within 24 of it' : null;
               if (w && w.brk !== undefined) out.inWhole++;
-              if (why && !(w && w.brk !== undefined)) { if (out.bad.length < 12) out.bad.push({ from: b.kind + '@' + b.x + ',' + b.z, dir: a * 45, at: [Math.round(p.x), Math.round(p.z), Math.round(p.y)], why }); out.far++; } }
+              let got = null;
+              if (why === 'the hero cannot get within 24 of it') {   // can he still take it? he stands on the reachable spots around it (nearest first): is it pulled out to him?
+                out.tight++; const C = []; for (let ox = -120; ox <= 120; ox += 20) for (let oz = -120; oz <= 120; oz += 20) { const cx = p.x + ox, cz = p.z + oz, dd = Math.hypot(ox, oz); if (dd < 116 && G0.reachable(cx, cz)) C.push([dd, cx, cz]); } C.sort((u, v2) => u[0] - v2[0]);
+                const keepP = sim.pickups.map((q) => q.on), sv = { x: p.x, y: p.y, z: p.z, vx: p.vx, vy: p.vy, vz: p.vz, gy: p.gy, t: p.t, rest: p.rest, pull: p.pull }, h0 = { x: h.x, z: h.z, y: h.y, dead: h.dead };
+                for (const q of sim.pickups) if (q !== p) q.on = false;
+                for (let c = 0; c < Math.min(14, C.length) && !got; c++) { Object.assign(p, sv); p.on = true; h.x = C[c][1]; h.z = C[c][2]; sim.qx = h.x; sim.qz = h.z; sim.qy = p.gy + 60; sim._gq(); h.y = sim.g; h.dead = false; if (Math.abs(h.y - p.gy) >= 90) continue;
+                  for (let k = 0; k < 200 && p.on; k++) { p.t = Math.min(p.t, 5); tickPickups(sim, 1 / 60); } if (!p.on) got = [Math.round(C[c][0]), C[c][1], C[c][2]]; }
+                Object.assign(p, sv); p.on = true; sim.pickups.forEach((q, qi) => { q.on = keepP[qi]; }); h.x = h0.x; h.z = h0.z; h.y = h0.y; h.dead = h0.dead; sim.pickN = sim.pickups.filter((q) => q.on).length;
+                if (got) { out.pulled++; if (got[0] > out.pullFar) out.pullFar = got[0]; }
+              }
+              if (why && !got && !(w && w.brk !== undefined)) { if (out.bad.length < 12) out.bad.push({ from: b.kind + '@' + b.x + ',' + b.z, dir: a * 45, at: [Math.round(p.x), Math.round(p.z), Math.round(p.y)], why }); out.far++; } }
             b.broken = true; b.box.solid = false; }
           b.drop = drop0; b.broken = false; b.box.solid = true; sim.brkLive = L.filter((q) => !q.broken).length; }
         for (const p of sim.pickups) p.on = false; sim.pickN = 0; Object.assign(H, keep); out.maxD = Math.round(out.maxD); return out; });
-      ok(`${id}: ${r.n} breakables x 8 directions x 3 seeds: ${r.coins} coins, ${r.rest} at rest · resting badly ${r.far} · still moving after 4.3 s ${r.notRest} · inside another whole breakable ${r.inWhole} · farthest from its jar ${r.maxD} px · walkable spots cut off by standing things ${r.lostCells} · things the hero cannot get next to ${r.unhittable.length}`, r.far === 0 && r.notRest === 0 && r.lostCells === 0 && r.unhittable.length === 0, r.bad.length ? JSON.stringify(r.bad.slice(0, 5)) : r.lostAt?.length ? JSON.stringify(r.lostAt) : '');
+      ok(`${id}: ${r.n} breakables x 8 directions x 3 seeds: ${r.coins} coins, ${r.rest} at rest · lying where he cannot step (within 24) ${r.tight}, of those pulled out to him from a spot he can stand on ${r.pulled} (from up to ${r.pullFar} px) · LOST or badly resting ${r.far} · still moving after 4.3 s ${r.notRest} · inside another whole breakable ${r.inWhole} · farthest from its jar ${r.maxD} px · walkable spots cut off by standing things ${r.lostCells} · things the hero cannot get next to ${r.unhittable.length}`, r.far === 0 && r.notRest === 0 && r.unhittable.length === 0, (r.bad.length ? JSON.stringify(r.bad.slice(0, 6)) : '') + (r.lostAt?.length ? ' cut off: ' + JSON.stringify(r.lostAt) : ''));
       if (r.inWhole) note(`${id}: ${r.inWhole} coins came to rest inside the box of another whole breakable (they come out when it breaks or are pulled out within 118 px)`);
       res[id] = r; await ctx.close();
     }
