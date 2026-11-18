@@ -73,7 +73,7 @@ export default class V2Game extends Scene {
     try { globalThis.localStorage?.setItem('bn.v2.under', '1'); } catch { /* private mode */ }   // next launch boots with an alpha canvas
     this.story = typeof params?.story === 'function' ? params.story : null; this.ui = { dialog: null }; this.locked = false;
     this.area = null; this.W = null; this.sim = null; this.fx = null; this.cr = null; this.cast = null; this.hud = createBuiltinHud();
-    this.people = new People(); this.anchors = new Anchors(); this.flags = new Set(); this.hidden = new Set(); this.lockOv = new Map(); this.storyFlag = null; this.worldFlags = {};
+    this.people = new People(); this.anchors = new Anchors(); this.flags = new Set(); this.hidden = new Map(); this.lockOv = new Map(); this.storyFlag = null; this.worldFlags = {};
     this._use = false; this._ringTap = false; this._heroHid = false; this._occ = new Float32Array(0); this._occN = 0; this._caps = { skill: false, bell: false }; this._offT = 0; this._go = null; this.fadeA = 0; this.fadeTo = 0; this._flagFn = (n) => this.flag(n); this._useFn = () => { this._use = true; }; this._skyKey = ''; this._peopleN = 0;
     this.heroA = null; this.actors = []; this.pool = new Map(); this._ERef = null;
     this.bridge = bindFxSound(feel); this.feelN = 0; this.lastFeel = null; this._actE = null; this._simSteps = false;
@@ -226,8 +226,8 @@ export default class V2Game extends Scene {
     for (const x of this.area.exits) if (x.id === id) { x.locked = v; if (x._box) x._box.solid = !!v; x._near = false; return true; }
     return false;
   }
-  hideActor(id) { this.hidden.add(id); }
-  showActor(id) { this.hidden.delete(id); }
+  hideActor(id) { this.hidden.set(id, 'hide'); }   // story override, read by People.tick (people.js: Map actor id -> 'hide' | 'show')
+  showActor(id) { this.hidden.set(id, 'show'); }
   /** the hero uses what the prompt offers: a person (event talk) or a spot (event interact) */
   _useTarget() {
     const t = this.people.target; if (!t) return;
