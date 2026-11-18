@@ -145,7 +145,8 @@ try {
     chk(mv.some((m) => !m.startsWith('act:') && m !== 'air' && m !== 'roll' && m !== 'guard'), `attack button x3: moves seen ${mv.join(' ') || 'none'}`);
     await shot(`touch_${DEV}_04_swing`, false);
     await idleRT(8000); p = seeMove(); await page.waitForTimeout(100); await T.tap(pad.jump.cx, pad.jump.cy, 90, 12); mv = await p; chk(mv.includes('air'), `jump button: ${mv.join(' ') || 'nothing seen'}`);
-    p = seeMove(); await page.waitForTimeout(100); await T.down(1, x0, y0); await T.move(1, x0 + 50, y0); await page.waitForTimeout(700); await T.tap(pad.roll.cx, pad.roll.cy, 120, 13); await page.waitForTimeout(500); await T.up(1); mv = await p; chk(mv.includes('roll'), `roll button with the stick held: ${mv.join(' ') || 'nothing seen'}`); await idleRT(8000);
+    await ev(() => { const sim = window.__v2.scene.sim, up = sim.update, L = (window.__rl = { maxDash: 0 }); sim.update = function (dt, inp) { const r = up.call(this, dt, inp); if (this.hero.dashT > L.maxDash) L.maxDash = this.hero.dashT; return r; }; });
+    p = seeMove(); await page.waitForTimeout(100); await T.down(1, x0, y0); await T.move(1, x0 + 50, y0); await page.waitForTimeout(700); await T.tap(pad.roll.cx, pad.roll.cy, 120, 13); await page.waitForTimeout(500); await T.up(1); mv = await p; const rl = await ev(() => window.__rl?.maxDash ?? -1); chk(rl > 0, `roll button with the stick held: rolled (longest roll time ${rl.toFixed(2)} s; seen between frames: ${mv.join(' ') || 'nothing'})`); await idleRT(8000);
     // 3) pause -> old pad -> back to the new buttons
     await T.tap(pad.pause.cx, pad.pause.cy, 80); s = await waitReady((q) => q.modal === 'pause', 8000); await page.waitForTimeout(500); await shot(`touch_${DEV}_05_pause`, false);
     const rows = await ev(() => { const m = window.__v2.scene.hud.metrics().pause; return m ? { ids: m.ids ?? null, n: m.rows.length } : null; });
@@ -193,7 +194,8 @@ try {
     const top = await ev(() => { const g = window.__game, t = g.scenes[g.scenes.length - 1]; return { name: Object.keys(g.registry).find((k) => t instanceof g.registry[k]) ?? t?.constructor?.name ?? '?', save: (() => { try { const o = JSON.parse(localStorage.getItem('bn.v2.save')); return o ? { v: o.v, why: o.why, area: o.area, pos: o.pos, hp: o.hp } : null; } catch (e) { return 'broken'; } })() }; });
     await page.screenshot({ path: `${OUT}/touch_${DEV}_13_after_leave.png` });
     chk(top.save && top.save.why === 'leave', `pause -> 「나가기」 (rows ${lq?.ids?.join(' ')}): top scene now ${top.name}; save written ${JSON.stringify(top.save)}`);
-    const o2 = await open(''); await rt(true); await page.waitForTimeout(1500); const after = await st(); await shot(`touch_${DEV}_14_continued`, false);
+    const o2 = await open(''); const after = o2; await rt(true); await page.waitForTimeout(1500); const later = await st(); await shot(`touch_${DEV}_14_continued`, false);
+    if (later.hp < after.hp) info(`1.5 s after continuing the hero had already been hit (hp ${after.hp} -> ${later.hp}): enemies next to the saved spot act at once`);
     chk(o2.ready && after.area === before.area && Math.abs(after.x - before.x) < 12 && Math.abs(after.z - before.z) < 12 && after.obj === before.obj, `continue: ${after.area} (${after.x},${after.z}) hp ${after.hp}/${after.hpMax} objective "${after.obj}" — before leaving (${before.x},${before.z}) hp ${before.hp} "${before.obj}"`);
     R.counts = await ev(() => window.__iv.counts());
     // 7) what is left of the 2D game on the old pad: its top-right buttons
@@ -277,6 +279,23 @@ try {
       info(`${name}: rule ticks ${b.ticks}, ticks with a dash press ${b.dash.length} ${JSON.stringify(b.dash.slice(0, 3))}, longest dashT ${b.maxDash.toFixed(2)}, guard ticks ${b.guard}, hero x ${a.x} -> ${b.x}`);
       if (stick) chk(b.maxDash > 0, `${name}: rolled ${b.maxDash > 0}`); else chk(b.guard > 0, `${name}: guarded ${b.guard > 0}`);
     }
+  }
+
+  // oldpad: the fallback pad (v2ui=0) — are the whip skill and the bell there, and what do the 2D game's top buttons do
+  if (PLAN === 'oldpad') {
+    await clean(); const o = await open('&area=graveyard_now&v2story=0&v2ui=0'); chk(o.ready && o.hud === 'builtin', `graveyard_now on the old pad opens (hud ${o.hud})`);
+    await ev(() => { window.__iv.put(704, 1793); window.__iv.fellNear(1500); }); await ff(60); await rt(true); await page.waitForTimeout(900);
+    const L = async () => ev(async () => { const tp = (await import('/src/core/touchpad.js')).touchpad, g = window.__game, cv = document.getElementById('screen').getBoundingClientRect(); let occ = []; try { occ = tp.occupiedRects(); } catch { occ = []; } return { shown: tp.buttons().map((b) => ({ id: b.id, x: Math.round(b.cx ?? b.x + b.w / 2), y: Math.round(b.cy ?? b.y + b.h / 2) })), occ: occ.map((r) => ({ id: r.id ?? '?', x: Math.round(cv.x + (r.x + r.w / 2) * cv.width / g.viewW), y: Math.round(cv.y + (r.y + r.h / 2) * cv.height / g.viewH) })) }; });
+    let B = await L(); info('old pad: buttons shown ' + B.shown.map((b) => b.id).join(' ') + ' | occupied rects ' + B.occ.map((b) => b.id).join(' '));
+    await page.screenshot({ path: `${OUT}/oldpad_${DEV}_0_under_ring.png` });
+    const see = (ms = 2600) => ev(async (m) => { const t = performance.now(), s = new Set(); while (performance.now() - t < m) { const h = window.__v2.scene.sim.hero; if (h.act) s.add(h.act); await new Promise((r) => setTimeout(r, 6)); } return [...s]; }, ms);
+    const sk = B.shown.find((b) => b.id === 'skill1'), ul = B.shown.find((b) => b.id === 'ult');
+    if (!sk) fail('old pad: no skill button (skill1) — the whip ring cannot be used'); else { const p = see(); await page.waitForTimeout(80); await T.tap(sk.x, sk.y, 140, 14); const a = await p; await page.waitForTimeout(1500); const e = await st(); chk(a.includes('hook') && e.y > 60, `old pad: a trusted press on skill1 under the ring -> acts ${a.join(' ') || 'none'}, hero at (${e.x},${e.y},${e.z})`); await page.screenshot({ path: `${OUT}/oldpad_${DEV}_1_hooked.png` }); }
+    if (!ul) fail('old pad: no bell button (ult) — the bell cannot be rung'); else { const p = see(); await page.waitForTimeout(80); await T.tap(ul.x, ul.y, 120, 15); const a = await p; chk(a.includes('echo') || a.includes('ring'), `old pad: a trusted tap on ult -> acts ${a.join(' ') || 'none'}`); const p2 = see(4500); await page.waitForTimeout(600); await T.down(15, ul.x, ul.y); await page.waitForTimeout(2600); await T.up(15); const a2 = await p2; chk(a2.includes('ring'), `old pad: holding ult 2.6 s -> acts ${a2.join(' ') || 'none'} (long ring)`); await page.screenshot({ path: `${OUT}/oldpad_${DEV}_2_bell.png` }); }
+    const topName = () => ev(() => { const g = window.__game, t = g.scenes[g.scenes.length - 1]; return Object.keys(g.registry).find((k) => t instanceof g.registry[k]) ?? t?.constructor?.name ?? '?'; });
+    for (const id of ['auto', 'maptog', 'bag']) { const b = B.occ.find((q) => q.id === id) ?? B.shown.find((q) => q.id === id); if (!b) { info(`2D button ${id}: not on screen`); continue; } const e0 = errs.length, h0 = await st(); await T.tap(b.x, b.y, 90); await page.waitForTimeout(1500); const tn = await topName(), q = await st().catch(() => null); const auto = await ev(() => { const g = window.__game; return { autoOn: !!(g.auto?.on ?? g.autoOn ?? g.input?.autoOn), src: JSON.stringify(g.input?.sources?.auto ?? {}) }; }).catch(() => null);
+      await page.screenshot({ path: `${OUT}/oldpad_${DEV}_3_${id}.png` });
+      (tn === 'v2g' && errs.length === e0 ? info : fail)(`2D button ${id} tapped at (${b.x},${b.y}): top scene ${tn}, modal ${q?.modal ?? null}, hero (${h0.x},${h0.z}) -> (${q?.x},${q?.z}) act ${q?.act ?? null} move ${q?.move ?? null}, auto ${JSON.stringify(auto)}, new errors ${errs.length - e0}`); if (tn !== 'v2g') { await page.keyboard.press('Escape'); await page.waitForTimeout(800); } }
   }
 
   // ───────────────────────────── kinds: every enemy kind of the real areas ─────────────────────────────

@@ -43,7 +43,7 @@ const TEX_SRC = {
   flag: { src: 'tex/tex_mossy_stone', desat: 0.35 }, block: { src: 'tex/tex_castle_stone' }, brick: { src: 'tex/tex_wet_stone', desat: 0.8 },
   wood: { src: 'tex/tex_wood' }, dirt: { src: 'tex/tex_dirt' },
 };
-const HIDE_BTNS = ['sub', 'skill1', 'skill2', 'ult', 'swap', 'mount', 'guard', 'lock', 'auto', 'maptog', 'bag'];   // v1 pad buttons with no meaning here (pause = leave, fullscreen stay)
+const HIDE_BTNS = ['sub', 'skill2', 'swap', 'mount', 'guard', 'lock', 'auto', 'maptog', 'bag'];   // v1 pad buttons with no meaning here (pause = leave, fullscreen stay). skill1 = the whip skill and ult = the bell stay: without them the old pad cannot ring the bell or use a whip ring (INTEGRATE-VERIFY)
 const DASH_TRAIL = RB({ mode: 1, life: 0.24, width: 58, col: [0.45, 0.8, 2.2, 0.5] });
 const WARN_COL = [1.5, 0.3, 0.14, 0.5], WARN_BREAK = [1.2, 0.24, 1.4, 0.5], WARN_AIR = [1.5, 0.6, 1.7, 0.7];   // attack warnings on the ground: red = can be guarded, violet = cannot; the ring in the air of a scream
 const CRACK_K = { L: 0.7, M: 1, H: 1.3, F: 1.6 };   // strength of the lash's crack by the move's strength (docs/v2/WHIP.md 7-3)
