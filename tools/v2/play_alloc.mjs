@@ -23,7 +23,7 @@ if (typeof globalThis.gc !== 'function') {   // parent: run the measuring child 
 const v8 = await import('node:v8');
 const young = () => { let n = 0; for (const sp of v8.getHeapSpaceStatistics()) if (sp.space_name === 'new_space' || sp.space_name === 'new_large_object_space') n += sp.space_used_size; return n; };
 const opt = (k, d) => { const a = process.argv.find((x) => x.startsWith('--' + k + '=')); return a ? a.slice(k.length + 3) : d; };
-const N = Number(opt('ticks', 100000)), entry = opt('entry', path.join(root, 'src/v2/play/index.js'));
+const PROFILE = process.argv.includes('--profile'), N = Number(opt('ticks', 100000)), entry = opt('entry', path.join(root, 'src/v2/play/index.js'));
 const P = await import(pathToFileURL(path.resolve(entry)).href);
 const { Sim, TUNE, KINDS, flatArena, driveHero, driveActor, usePlayClips, UNIT } = P;
 const { readGLB } = await import('./char3d_glbio.mjs');
@@ -58,7 +58,7 @@ function pilot(sim, i, mode) {   // no allocation in here
   if (i % 150 === 0) { inp.dash = true; inp.mx = 1; }
   if (i % 400 === 0) inp.bell = true;
 }
-function scenario(name, spawns, mode, drive) {
+async function scenario(name, spawns, mode, drive) {
   const sim = new Sim(flatArena(700, 500, spawns), {}), hero = mkChar('kael'), chars = new Map(); let bad = 0;
   const one = (i) => {
     pilot(sim, i, mode); sim.update(DT, inp);
@@ -69,6 +69,17 @@ function scenario(name, spawns, mode, drive) {
   };
   for (let i = 0; i < 6000; i++) one(i);   // warm up: optimise the code, build the lazy tables
   globalThis.gc(); globalThis.gc();
+  if (PROFILE) {   // --profile: where the bytes come from (sampling heap profiler, by function)
+    const { Session } = await import('node:inspector/promises'), ses = new Session(); ses.connect();
+    await ses.post('HeapProfiler.startSampling', { samplingInterval: 256, includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true });
+    for (let i = 6000; i < 6000 + 30000; i++) one(i);
+    const { profile } = await ses.post('HeapProfiler.stopSampling'), by = new Map();
+    const walk = (n) => { const k = `${n.callFrame.functionName || '(anonymous)'}  ${path.basename(n.callFrame.url || '')}:${n.callFrame.lineNumber + 1}`; if (n.selfSize) by.set(k, (by.get(k) ?? 0) + n.selfSize); for (const c of n.children ?? []) walk(c); };
+    walk(profile.head);
+    console.log(`-- ${name}: top allocators (bytes/tick over 30000 ticks)`);
+    for (const [k, v] of [...by].sort((a, b) => b[1] - a[1]).slice(0, 14)) console.log(`   ${(v / 30000).toFixed(1).padStart(8)}  ${k}`);
+    ses.disconnect(); return 0;
+  }
   console.log('@@S ' + name);
   const h0 = young(), t0 = performance.now();
   for (let i = 6000; i < 6000 + N; i++) one(i);
@@ -78,9 +89,9 @@ function scenario(name, spawns, mode, drive) {
 }
 const SIX = ['skeleton_soldier', 'skeleton_mage', 'plague_corpse', 'grave_ghost', 'gravekeeper_armor', 'bat'].map((kind, i) => ({ kind, x: 160 + (i % 3) * 90, z: -120 + i * 50, active: true }));
 console.log('entry', path.relative(root, path.resolve(entry)));
-scenario('rules: fight, six kinds', SIX, 'fight', false);
-scenario('rules: six kinds, hero only guards', SIX, 'calm', false);
-scenario('rules: run / reversals, no enemies', [], 'run', false);
-if (KINDS.banshee_queen?.attacks?.length) scenario('rules: boss', [{ kind: 'banshee_queen', x: 240, z: 0, active: true }], 'fight', false);
-scenario('rules + drive: fight, six kinds', SIX, 'fight', true);
-scenario('rules + drive: run, no enemies', [], 'run', true);
+await scenario('rules: fight, six kinds', SIX, 'fight', false);
+await scenario('rules: six kinds, hero only guards', SIX, 'calm', false);
+await scenario('rules: run / reversals, no enemies', [], 'run', false);
+if (KINDS.banshee_queen?.attacks?.length) await scenario('rules: boss', [{ kind: 'banshee_queen', x: 240, z: 0, active: true }], 'fight', false);
+await scenario('rules + drive: fight, six kinds', SIX, 'fight', true);
+await scenario('rules + drive: run, no enemies', [], 'run', true);

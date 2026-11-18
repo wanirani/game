@@ -4,6 +4,7 @@
 다른 구역은 **이 문서만 보고** 맞춘다. 바꾸면 "바뀐 것"에 한 줄.
 
 ## 바뀐 것
+- 11-18 00:50 (INTEGRATE-A · 장면 쪽에서 붙이며 고친 작은 것) ① 이 인터페이스가 이제 `v2g` 의 **기본값**이다(`src/v2/game/seams.js` `UI_DEFAULT = true`; `?v2ui=0` · `localStorage['bn.v2.ui'] = '0'` 이면 내장 HUD + v1 패드). ② `createHud(game, opts)` 에 **`opts.onDisabledPress(id)`**: 못 쓰는(`disabled`) 단추를 누르면 동작은 보내지 않되 이 함수를 부른다 — 장면이 「아직 쓸 수 없다」는 알림을 띄운다(`pad.js`). ③ **`hud.openPause({ extra: [{ icon, label, onPick }] })`**: 「설정」과 「나가기」 사이에 줄을 두 개까지 더한다(장면은 「옛 단추로 바꾸기」 한 줄을 넣는다). `extra` 가 없으면 예전과 같은 세 줄이다. `hud.metrics().pause.ids` = 줄 이름(`resume settings extra leave`)(`dialog.js`). ④ 터치의 멈춤 단추는 장면이 준 `opts.onPause` 를 부른다(장면이 같은 줄 차림으로 연다). 실제 장면 검사는 `?scene=v2g&v2ui=1&area=slice0&v2auto=0` 로 연다(`tools/v2/ui_verify.mjs`), `ui_view.html?live=v2g` 는 장면의 인터페이스를 끄고(`v2ui=0`) 이 페이지가 모듈을 꽂는다.
 - 23:10 (검증 구역) 긴 글 맞추기: 보스 이름 · 지역 이름 띠 · 물건 알림 · 구역 이름 · 대화 이름표 · 갈래 글은 자리에 맞게 줄이고, 그래도 넘치면 끝을 `..` 로 자른다(`draw.js` 의 `fitText`). 아래 단추 안내 줄은 스틱과 단추 사이 너비를 넘으면 작게 그린다. 단추 층의 감시 시계는 흐른 시간이 아니라 "HUD 가 불리지 않은 타이머 횟수(4번 = 1초)"로 센다 — 긴 프레임 한 번에 누르고 있던 스틱 · 단추가 풀리던 문제를 고쳤다. 아이콘 묶음을 받지 못했으면 다음 `createHud` 가 다시 받는다. 실제 장면 검사: `node tools/v2/ui_verify.mjs`(주소 `?scene=v2g&v2ui=1`), 붙이는 정확한 고침: `/tmp/claude-0/v2/uiverify/adopt.patch.md`.
 - 22:04 첫 판 (이름·모양을 먼저 정함. 구현 상태는 §9).
 - 22:45 터치에서 단추 안내 알약을 누를 수 있다(§1 `prompts`). 왼손잡이 배치. 물건 알림 기본 아이콘(주머니). v1 모듈을 import 하지 않는다(§8).

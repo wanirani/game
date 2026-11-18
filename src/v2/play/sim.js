@@ -34,13 +34,14 @@ export class Sim {
   reset() {
     const W = this.W, T = TUNE;
     this.time = 0; this._tick = 0; this.stop = 0; this.done = false; this.kills = 0; this._buf = { attack: false, dash: false, jump: false, lockNext: false, skill: false, bell: false };
+    this._src = this._src ?? { e: null, atk: null, shot: null }; this._probe = this._probe ?? { x: 0, z: 0, y: 0, r: 0, h: 0, def: null };
     this.lights = []; this.hookPoints = (W.hookPoints ?? []).map((p, i) => ({ id: p.id ?? 'hook' + i, y: 0, ...p })); this.caller = this.caller ?? 'sera'; this._nid = 0;
     this.hero = {
       x: W.start.x, z: W.start.z, y: W.start.y, vx: 0, vz: 0, vy: 0, r: 14, h: 92, facing: 1, dirX: 1, dirZ: 0, onGround: true, coyote: 0,
       hp: T.heroHp, hpMax: T.heroHp, ifr: 0, hurtT: 0, dead: false, deadT: 0, flash: 0,
-      dashT: 0, rollCd: 0, dashCd: 0, dvx: 0, dvz: 0, roll: null, sweepWin: 0, sweepQ: false,
+      dashT: 0, rollCd: 0, dashCd: 0, dvx: 0, dvz: 0, roll: { t: 0, dur: T.rollT, dx: 1, dz: 0, v0: 0 }, sweepWin: 0, sweepQ: false, dodged: false, heavyHurt: false,
       guard: false, guardT: 0, guardTap: 0, parryT: 0, parryCd: 0, parryOk: 0, blockT: 0,
-      move: null, moveT: 0, combo: 0, hitIds: null, assist: null, queued: 0, swung: false, stepDist: 0, airAtk: false, plungeLand: null, plungeEta: 1,
+      move: null, moveT: 0, combo: 0, hitIds: new Set(), assist: null, queued: 0, swung: false, stepDist: 0, airAtk: false, plungeLand: null, plungeEta: 1,
       lock: null, lockT: 0, lockHold: 0, lockX: 0, lockY: 0, lockZ: 0,
       act: null, actT: 0, actDone: false, actP: null, charging: false, charge: 0, chargeFullT: 0, atkHold: 0, whipLv: 1, pullT: 0, pullX: 0, pullZ: 0, whipOn: 0, whipX: 0, whipY: 0, whipZ: 0,
       reso: 0, resoMax: T.resoCells, callCd: 0, callCdMax: T.callCd, bellCd: 0, bellCdMax: T.bellCd, bellCharge: 0, bellDown: false, bellHoldT: 0, bellOk: true, knellId: null, hookId: null, skillMode: 'call', hookFX: 0, hookFY: 0, hookFZ: 0, hookTX: 0, hookTY: 0, hookTZ: 0, hookDur: 0.3,
@@ -59,12 +60,14 @@ export class Sim {
     const e = {
       id, kind: s.kind, kid: kindId(s.kind), def: D, yard: !!s.yard, group: s.group, x: s.x, z: s.z, y: gy, gy, vx: 0, vz: 0, r: D.r, h: D.hpx,
       hp: D.hp, hpMax: D.hp, facing: -1, dirX: -1, dirZ: 0, state: 'idle', stateT: 0, phase: null, tele: 0, atk: null, cd: rnd(0.3, 1.2),
-      flashT: 0, stun: 0, stagger: 0, dying: 0, dead: false, pullT: 0, pullX: 0, pullZ: 0, kneel: 0, knelled: false, bphase: 0, poiseHp: 0, poiseMax: 0, name: D.name, active: !!s.active, solid: true, alpha: 1, hover: D.hover ?? 0, solidT: 0, revealT: 0,
+      flashT: 0, stun: 0, stagger: 0, dying: 0, dead: false, pullT: 0, pullX: 0, pullZ: 0, kneel: 0, knelled: false, bphase: 0, poiseHp: 0, poiseMax: 0, name: D.name,
+      // (모든 칸을 여기서 한 번에 만든다: 적마다 칸 차림이 같아야 엔진이 숫자를 상자에 담지 않고 읽는다 — 틱마다 쓰레기를 만들지 않는 조건. 새 칸을 더할 때도 여기에)
+      buried: false, sight: D.sight, wakeBy: null, staggerSide: 1, staggerK: 0, kneelT: 0, fled: false, fleeT: 0, fleeHold: false, lastAtk: null, sumCd: 3, songCd: 6, pulseT: 0, summoned: false, active: !!s.active, solid: true, alpha: 1, hover: D.hover ?? 0, solidT: 0, revealT: 0,
       anim: 'idle', animT: 0, t: rnd(0, 5), hitDone: false, swung: false, kx: 0, kz: 0, gait: rnd(0, 1), moved: 0,
       side: id % 2 ? 1 : -1, detourT: 0, detX: 0, detZ: 0, stuckT: 0, orb: rnd(0, 6.28), orbW: (id % 2 ? 1 : -1) * rnd(1.1, 1.7), orbR: D.orbit ? rnd(D.orbit[0], D.orbit[1]) : 0,
     };
     e.sight = s.sight ?? D.sight; e.wakeBy = s.wake ?? null;
-    if (D.boss) { e.bphase = s.phase ?? 1; e.poiseMax = D.poiseMax ?? 0; e.staggerK = 0; e.kneelT = 0; e.fled = false; e.fleeT = 0; e.fleeHold = false; e.lastAtk = null; }
+    if (D.boss) { e.bphase = s.phase ?? 1; e.poiseMax = D.poiseMax ?? 0; }
     { const fx = s.face ? s.face[0] : this.W.start.x - s.x, fz = s.face ? s.face[1] : this.W.start.z - s.z, fl = Math.sqrt(fx * fx + fz * fz);   // 보는 쪽: 지역이 정한 쪽, 없으면 영웅이 들어오는 쪽
       if (fl > 1e-3) { e.dirX = fx / fl; e.dirZ = fz / fl; if (Math.abs(e.dirX) > 0.25) e.facing = e.dirX < 0 ? -1 : 1; } }
     if (D.fade != null) { e.solid = false; e.alpha = D.fade; }
@@ -437,7 +440,7 @@ export class Sim {
   _endMove(h) { h.move = null; h.combo = 0; h.plungeLand = null; }
   _startRoll(h, ux, uz) {
     const T = TUNE;
-    h.roll = { t: 0, dur: T.rollT, dx: ux, dz: uz, v0: T.rollDist / (T.rollT * 0.675) };
+    { const R = h.roll; R.t = 0; R.dur = T.rollT; R.dx = ux; R.dz = uz; R.v0 = T.rollDist / (T.rollT * 0.675); }   // (한 객체를 다시 쓴다)
     h.dashT = T.rollT; h.rollCd = T.rollCd; h.dvx = ux * h.roll.v0; h.dvz = uz * h.roll.v0 * 0.82; h.ifr = Math.max(h.ifr, T.rollIfr);
     h.move = null; h.combo = 0; h.queued = 0; h.guard = false; h.guardTap = 0; h.parryOk = 0; h.blockT = 0; h.sweepQ = false; h.plungeLand = null;
     this._face(h, ux, uz); if (h.vy < 0) h.vy = 0;
@@ -490,7 +493,7 @@ export class Sim {
       sd = clamp(d - tgt.r - reach * 0.62, 0, TUNE.lungeMax);   // 대상이 판정 한가운데 오도록 내딛는다 (붙어 있으면 내딛지 않는다)
     }
     this._face(h, fx, fz);
-    h.move = mv; h.moveT = 0; h.combo = mv.n ?? 0; h.hitIds = new Set(); h.queued = 0; h.swung = false; h.assist = tgt; h.stepDist = sd; h.sweepWin = 0; h.parryOk = 0; h.blockT = 0; h.plungeLand = null;
+    h.move = mv; h.moveT = 0; h.combo = mv.n ?? 0; h.hitIds.clear(); h.queued = 0; h.swung = false; h.assist = tgt; h.stepDist = sd; h.sweepWin = 0; h.parryOk = 0; h.blockT = 0; h.plungeLand = null;
     if (mv.kind === 'plunge') { h.airAtk = true; h.vy = Math.min(h.vy, mv.fallV); h.vx *= 0.4; h.vz *= 0.4; h.cut = true; }
     this.emit('attack', h, mv);
   }
@@ -769,9 +772,10 @@ export class Sim {
       if (a.lunge) this.steer(e, e.dirX, e.dirZ, a.lunge / a.strike, dt, true);
       if (a.pulse) {   // 이어지는 노래: every 초마다 반지름 안의 영웅을 깎고 울림을 빼앗는다
         e.pulseT -= dt;
-        if (e.pulseT <= 0) { e.pulseT += a.pulse.every; this.emit('pulse', e, a); const px = h.x - e.x, pz = h.z - e.z; if (!h.dead && px * px + pz * pz < a.pulse.r * a.pulse.r) { const r = this.hurtHero(a.dmg, e.dirX, e.dirZ, { e, atk: a }); if (r === 'hurt' && a.pulse.reso) this.addReso(-a.pulse.reso); } }
+        if (e.pulseT <= 0) { e.pulseT += a.pulse.every; this.emit('pulse', e, a); const px = h.x - e.x, pz = h.z - e.z; if (!h.dead && px * px + pz * pz < a.pulse.r * a.pulse.r) { const SR = this._src; SR.e = e; SR.atk = a; SR.shot = null; const r = this.hurtHero(a.dmg, e.dirX, e.dirZ, SR); if (r === 'hurt' && a.pulse.reso) this.addReso(-a.pulse.reso); } }
       } else if (!e.hitDone && !a.shot && !a.summon && this._atkHits(e, a, h)) {
-        const r = this.hurtHero(a.dmg, e.dirX, e.dirZ, { e, atk: a });
+        const SR = this._src; SR.e = e; SR.atk = a; SR.shot = null;
+        const r = this.hurtHero(a.dmg, e.dirX, e.dirZ, SR);
         if (r) e.hitDone = true;
         if (r === 'parry') return;   // 비틀거림으로 넘어갔다
       }
@@ -808,7 +812,7 @@ export class Sim {
     if (e.detourT > 0 && !straight) {
       e.detourT -= dt; ux = e.detX; uz = e.detZ;
       if (e.detourT < 0.3) {   // 바로 가는 길이 뚫렸으면 돌아가기를 그만둔다
-        const p = { x: e.x, z: e.z, y: e.y, r: e.r, h: e.h, def: e.def };
+        const p = this._probe; p.x = e.x; p.z = e.z; p.y = e.y; p.r = e.r; p.h = e.h; p.def = e.def;
         this._emove(p, wx * 14, wz * 14 * 0.8);
         if (hyp(p.x - e.x, p.z - e.z) > 10) { e.detourT = 0; ux = wx; uz = wz; }
       }
@@ -820,14 +824,15 @@ export class Sim {
     if (want > 1e-3 && got < want * 0.4) {
       e.stuckT += dt;
       if (!straight && e.stuckT > 0.1) {
-        const C = e.side > 0 ? [[-wz, wx], [wz, -wx]] : [[wz, -wx], [-wz, wx]]; let best = null;
-        for (const [cx, cz] of C) {
-          const p = { x: e.x, z: e.z, y: e.y, r: e.r, h: e.h, def: e.def };
+        const s0 = e.side > 0 ? 1 : -1, p = this._probe; let bd = -1, bk = 0;   // 두 옆쪽(먼저 e.side 쪽)을 28 px 씩 짚어 보고 더 트인 쪽으로
+        for (let k = 0; k < 2; k++) {
+          const q = k === 0 ? s0 : -s0, cx = -wz * q, cz = wx * q;
+          p.x = e.x; p.z = e.z; p.y = e.y; p.r = e.r; p.h = e.h; p.def = e.def;
           this._emove(p, cx * 28, cz * 28 * 0.8);
           const d = hyp(p.x - e.x, p.z - e.z);
-          if (!best || d > best.d + 4) best = { d, cx, cz };
+          if (bd < 0 || d > bd + 4) { bd = d; bk = k; }
         }
-        if (best && best.d > 6) { e.detX = best.cx * 0.92 + wx * 0.08; e.detZ = best.cz * 0.92 + wz * 0.08; e.detourT = 0.55 + rnd(0, 0.2); e.stuckT = 0; if (best.cx !== C[0][0] || best.cz !== C[0][1]) e.side = -e.side; }
+        if (bd > 6) { const q = bk === 0 ? s0 : -s0; e.detX = -wz * q * 0.92 + wx * 0.08; e.detZ = wx * q * 0.92 + wz * 0.08; e.detourT = 0.55 + rnd(0, 0.2); e.stuckT = 0; if (bk !== 0) e.side = -e.side; }
         else { e.side = -e.side; e.stuckT = 0; }
       }
     } else e.stuckT = 0;
@@ -880,7 +885,7 @@ export class Sim {
           s.dead = true; this.hooks.spark?.(s.x, s.y, s.z, 'shot'); this._hitEnemy(e, REFLECT, { x: s.x - s.vx, z: s.z - s.vz }); break;
         }
       } else if (!h.dead && hyp(s.x - h.x, s.z - h.z) < h.r + (s.r ?? 8) - 4 && s.y > h.y - 6 && s.y < h.y + h.h + 4) {
-        const d = hyp(s.vx, s.vz) || 1, r = this.hurtHero(s.dmg, s.vx / d, s.vz / d, { shot: s, e: this.byId(s.owner) });
+        const d = hyp(s.vx, s.vz) || 1, SR = this._src; SR.shot = s; SR.e = this.byId(s.owner); SR.atk = null; const r = this.hurtHero(s.dmg, s.vx / d, s.vz / d, SR);
         if (r === 'parry') {   // 쏜 적에게 되돌려 보낸다
           const o = this.byId(s.owner), sp = d * 1.7; let bx = -s.vx / d, bz = -s.vz / d;
           if (o && !o.dead) { const od = hyp(o.x - s.x, o.z - s.z) || 1; bx = (o.x - s.x) / od; bz = (o.z - s.z) / od; s.vy = (o.y + o.h * 0.6 - s.y) / (od / sp); }

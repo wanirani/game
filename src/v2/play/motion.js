@@ -181,7 +181,7 @@ function pitchBone(rig, key, deg, axis = 0) {
 const _o = { fade: 0.12, time: null, speed: 1, restart: false };
 /** Animator.play 에 줄 옵션 (틱마다 새 객체를 만들지 않게 하나를 돌려 쓴다) */
 const PO = (fade, time = null, speed = 1, restart = false) => { _o.fade = fade; _o.time = time; _o.speed = speed; _o.restart = restart; return _o; };
-const pick = (C, ...names) => { for (const n of names) if (n && C[n]) return n; return null; };
+const pick = (C, a, b, c, d) => (a && C[a] ? a : b && C[b] ? b : c && C[c] ? c : d && C[d] ? d : null);   // (나머지 인자 배열을 만들지 않는다)
 
 /**
  * 영웅 상태(sim.hero) → 방향 · 클립. ch = Char3D. 장면은 이 뒤에 ch.place(h.x, h.y, h.z) 로 놓고 그리면 된다.
@@ -194,7 +194,7 @@ export function driveHero(ch, h, dt, T = TUNE) {
   // ── 방향 ──
   if (h.dead || st === 'hurt') { /* 그대로 둔다: 맞고 밀리는 쪽으로 돌지 않는다 */ }
   else if (st === 'attack' || st === 'parry' || st === 'block') turn(ch, S, h.dirX, h.dirZ, dt, 42, 40);
-  else if (st === 'roll') turn(ch, S, h.roll?.dx ?? h.dirX, h.roll?.dz ?? h.dirZ, dt, 34, 32);
+  else if (st === 'roll') turn(ch, S, h.roll ? h.roll.dx : h.dirX, h.roll ? h.roll.dz : h.dirZ, dt, 34, 32);
   else if (st === 'guard') turn(ch, S, h.dirX, h.dirZ, dt, 22, 18);
   else if (T.legacyTurn) turn(ch, S, h.dirX, h.dirZ, dt, h.onGround ? 22 : 12, 15);
   else turn(ch, S, h.dirX, h.dirZ, dt, 90, 40);   // 걷고 달리고 돌아설 때: 규칙이 몸의 방향을 이미 빠르기를 묶어 돌린다(sim._locomote) — 그림은 그대로 따른다 (속도와 몸이 어긋나지 않게)
@@ -299,7 +299,7 @@ export function driveActor(ch, e, dt) {
   if (e.state === 'dead' || e.dead) { name = pick(C, K.death, 'death'); if (name && !C[name].loop) o = PO(0.08, Math.min(Math.max(0, D.dieT - e.dying) * 1.25 + 0.02, C[name].duration - 0.02)); }
   else if (e.kneel > 0) { name = pick(C, K.kneel, K.stagger, K.hurt); if (name && !C[name].loop) o = PO(0.3, Math.min(C[name].duration - 0.05, 1.15 + 0.18 * Math.sin((e.t ?? 0) * 1.4))); }   // 무릎 꿇음: 머리를 감싼 자세로 숨만 쉰다
   else if (e.anim === 'buried' || e.state === 'rise') { name = pick(C, K.rise, 'rise'); if (name) o = PO(e.anim === 'buried' ? 0 : 0.1, e.anim === 'buried' ? 0.02 : Math.min(0.02 + e.stateT * (C[name].duration / (D.riseT ?? 1.25)), C[name].duration - 0.02)); }
-  else if (e.state === 'stagger') { name = pick(C, e.staggerSide < 0 ? K.stagger + '_r' : null, K.stagger, K.hurt); if (name && !C[name].loop) o = PO(0.06, Math.min(0.02 + e.animT * 1.15, C[name].duration - 0.02)); }
+  else if (e.state === 'stagger') { name = pick(C, e.staggerSide < 0 ? (K._staggerR ??= K.stagger + '_r') : null, K.stagger, K.hurt); if (name && !C[name].loop) o = PO(0.06, Math.min(0.02 + e.animT * 1.15, C[name].duration - 0.02)); }
   else if (e.anim === 'hurt') { name = pick(C, K.hurt); if (name && !C[name].loop) o = PO(0.04, 0.02 + e.animT * 1.3); }
   else if (atk) { name = pick(C, atk.clip); if (name) o = C[name].loop ? PO(0.08, null, e.phase === 'strike' ? 1.7 : 1.2) : PO(0.07, warpAttack(C[name], e.stateT, atk)); }
   else if (e.anim === 'walk') { name = pick(C, K.walk); if (name && D.stride && !D.floats && !D.fly) o = PO(0.16, ((e.gait + footOff(C[name])) % 1) * C[name].duration); }   // (적의 걸음은 stride 를 뼈대에서 재서 맞춰 두었다 — 표를 쓰지 않는다)

@@ -195,10 +195,17 @@ export class Whip {
     const pk = Math.hypot(W[6] - r.x, W[7] - r.y, W[8] - r.z);
     const K = this._key(sh.keys, s); this._toWorld(sh, K[0], K[1], K[2], 0);
     const w = K[3], lim = sh.len, lo = (lim ? lim[0] : 0.7) * this.L0, hi = (lim ? lim[1] : 1.5) * this.L0;
-    const chord = Math.hypot(W[0] - r.x, W[1] - r.y, W[2] - r.z);
+    let chord = Math.hypot(W[0] - r.x, W[1] - r.y, W[2] - r.z);
     // lash length for this move: what the peak needs. Long throws (far, hold-attack) pay the lash out as the tip flies
     const near = Math.min(pk, this.L0 * 1.5);
     this.lenWant = clamp(pk > near ? Math.max(near, chord * (1 + 0.08 * (1 - w))) : pk, lo, hi);
+    // held hard (w >= 0.9) = the strike: the lash is laid out straight, full length, along the direction of the key
+    const em = clamp((w - 0.75) / 0.17, 0, 1), e = em * em * (3 - 2 * em);
+    if (e > 0 && chord > 1e-3) {
+      if (e > 0.5) this.len = this.lenWant;
+      const k = 1 + (this.lenWant / chord - 1) * e;
+      W[0] = r.x + (W[0] - r.x) * k; W[1] = r.y + (W[1] - r.y) * k; W[2] = r.z + (W[2] - r.z) * k; chord *= k;
+    }
     // slack direction: hero frame -> world
     const bf = K[4], br = K[5], by = K[6];
     this._curve(W[0], W[1], W[2], this.fx * bf + this.fz * br, by, this.fz * bf - this.fx * br);
@@ -365,7 +372,8 @@ export class Whip {
     const n = this.n, P = this.nodes, V = this.vel, T = this.tgt, wn = this.wn, S = this._s, r = this.root;
     this.time += h;
     if (this.mode === 'swing') this._aimSwing(); else if (this.mode === 'rest') this._aimRest(h); else if (this.mode === 'spin') this._aimSpin(h); else this._aimLine(h);
-    if (this.lenWant > this.len) this.len = this.lenWant; else this.len += (this.lenWant - this.len) * (1 - Math.exp(-h * 30));   // pays out at once, reels in smoothly
+    // pays out at once; reels in smoothly at rest, tightly while a move drives the lash (so it is straight at the peak)
+    if (this.lenWant > this.len) this.len = this.lenWant; else this.len += (this.lenWant - this.len) * (1 - Math.exp(-h * (this.mode === 'swing' && this.sw.s > -0.45 && this.sw.s < 1.05 ? 150 : 30)));
     const seg = this.len / (n - 1), h60 = h * 60, resting = this.mode === 'rest';
     const damp = Math.pow(resting ? 0.95 : 0.985, h60), gy = this._gy + 1.2;
     S.set(P);
@@ -401,10 +409,14 @@ export class Whip {
           }
         }
       }
-      for (let i = 1; i < n; i++) {   // last word: the lash never stretches (follow the leader from the hand)
+      for (let pass = 0; pass < 3; pass++) for (let i = 1; i < n; i++) {   // last word: the lash never stretches (follow the leader from the hand)
         const a = (i - 1) * 3, b = i * 3, dx = P[b] - P[a], dy = P[b + 1] - P[a + 1], dz = P[b + 2] - P[a + 2], d = Math.hypot(dx, dy, dz), m = seg * 1.02;
         if (d > m) { const k = m / d; P[b] = P[a] + dx * k; P[b + 1] = P[a + 1] + dy * k; P[b + 2] = P[a + 2] + dz * k; }
         if (P[b + 1] < gy) P[b + 1] = gy;
+        if (body && i > 2 && P[b + 1] > y0 && P[b + 1] < y1) {   // and never ends inside the hero
+          const ex = P[b] - bx, ez = P[b + 2] - bz, d2 = ex * ex + ez * ez;
+          if (d2 < br * br && d2 > 1e-4) { const k = br / Math.sqrt(d2); P[b] = bx + ex * k; P[b + 2] = bz + ez * k; }
+        }
       }
     }
     const ih = 1 / h;

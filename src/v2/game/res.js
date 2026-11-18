@@ -12,12 +12,12 @@ const LEVELS = [1, 0.85, 0.72, 0.6];
 export class Res {
   /** perf = readPerf() result ({ tier, resK, hz, auto }) */
   constructor(perf) {
-    this.T = RES_TIERS[perf.tier] ?? RES_TIERS.mid; this.tier = RES_TIERS[perf.tier] ? perf.tier : 'mid'; this.resK = perf.resK ?? 1; this.auto = perf.auto !== false;
+    this.T = RES_TIERS[perf.tier] ?? RES_TIERS.mid; this.tier = RES_TIERS[perf.tier] ? perf.tier : 'mid'; this.resK = perf.resK ?? 1; this.auto = perf.auto !== false; this.aaOn = perf.aa !== false;
     this.budget = 1000 / (perf.hz > 30 ? Math.min(perf.hz, 120) : 60) * 1.25;
     this.level = 0; this.w = 2; this.h = 2; this.dpr = 1; this.cssW = 0; this.cssH = 0; this.devDpr = 0;
     this.winT = 0; this.winN = 0; this.winOver = 0; this.quiet = 0; this.wait = 12; this.cool = 0; this.sinceUp = 99; this.downs = 0; this.ups = 0;
   }
-  get aa() { return this.T.aa; }
+  get aa() { return this.T.aa && this.aaOn; }
   /** pixel size for a CSS box; recomputed only when the box, the device ratio or the level changed */
   size(cssW, cssH, devDpr) {
     if (cssW === this.cssW && cssH === this.cssH && devDpr === this.devDpr && this._lv === this.level) return this;
@@ -47,5 +47,5 @@ export class Res {
     if (this.level > 0 && this.quiet >= this.wait) { this.level--; this.ups++; this.quiet = 0; this.sinceUp = 0; this.cool = 2; return true; }
     return false;
   }
-  info() { return { tier: this.tier, aa: this.T.aa, dpr: +this.dpr.toFixed(3), w: this.w, h: this.h, px: this.w * this.h, level: this.level, scale: LEVELS[this.level], auto: this.auto, budgetMs: +this.budget.toFixed(1), downs: this.downs, ups: this.ups, waitS: this.wait }; }
+  info() { return { tier: this.tier, aa: this.aa, dpr: +this.dpr.toFixed(3), w: this.w, h: this.h, px: this.w * this.h, level: this.level, scale: LEVELS[this.level], auto: this.auto, budgetMs: +this.budget.toFixed(1), downs: this.downs, ups: this.ups, waitS: this.wait }; }
 }
