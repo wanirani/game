@@ -1,16 +1,16 @@
 {
  "versionName": "1.0.0",
- "versionCode": 463178,
- "sha256": "205b81bd7bfdee60f673e3b034b4686ee07675f804213d9c444943f70f859f91",
- "bytes": 25919967,
- "url": "downloads/BloodNocturne3D-1.0.0-463178.apk",
- "built": "2026-11-18T15:44:00Z",
+ "versionCode": 463407,
+ "sha256": "025a2efe0ea1da6326d2039b1d153bc25818fc4c159fc60f30d3d515e8a8ee7a",
+ "bytes": 26081320,
+ "url": "downloads/BloodNocturne3D-1.0.0-463407.apk",
+ "built": "2026-11-18T19:29:00Z",
  "signingCertSha256": "efaee88b9ff54bf116c2aae40e358ec073d4a7729261b1b6ac2da5e7a24ed60f",
  "appId": "com.bloodnocturne.game3d",
  "label": "블러드 녹턴 3D",
- "note": "3D app update. The story and the save are connected: the main game runs the opening, Eshville tonight, the church and the promise, the bell tower, the night of 1697, the first bell crossing and the changed night; leaving saves by itself and coming back continues there. Fences, railings, low walls, stair sides and the cemetery gate now stop the hero where they are drawn. Broken saves open safely; the sky edge in the opening is gone. The 2D app is unchanged (462996).",
+ "note": "3D app update. Fire is redone: one continuous blaze on burning walls, roofs and wrecks instead of rows of separate flames, braziers burn over glowing coals, floor candles carry small living flames. Jars, pots, urns, crates and barrels stand in every area and break in one hit (clay also when rolled through) with 3D pieces and their own sounds; they drop silver coins, healing and resonance, and the coin count shows on screen and is kept in the save. Fixed: the cemetery gate did not open in either night even with the key, which stopped the story after the first return to tonight; it opens now. The 2D app is unchanged (462996).",
  "web": {
-  "buildHash": "1465648c023b",
-  "version": "1.0.0+20261118T1542.ce77123b"
+  "buildHash": "e08af7284bdf",
+  "version": "1.0.0+20261118T1927.917a92e1"
  }
 }
