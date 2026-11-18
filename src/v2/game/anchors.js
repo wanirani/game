@@ -8,13 +8,24 @@
 import { E } from '../fx/engine.js';
 import { SPR } from '../fx/sprites.js';
 
-const FLAME = E({ sprite: SPR.FLAME, shape: 3, rad: 13, h: [0, 8], speed: [55, 120], drag: 0.9, grav: -70, life: [0.4, 0.75], size: [30, 46], grow: 0.35, spin: [-1.4, 1.4], c0: [1.9, 0.85, 0.2, 0.62], c1: [0.95, 0.13, 0.02, 0], jit: 3, rot: 0 });
-const CORE = E({ sprite: SPR.FLAME, shape: 3, rad: 6, h: [0, 4], speed: [40, 80], drag: 0.9, grav: -50, life: [0.3, 0.5], size: [20, 30], grow: 0.4, c0: [2.6, 1.9, 0.8, 0.7], c1: [1.6, 0.5, 0.06, 0], rot: 0 });
-const SPARK = E({ sprite: SPR.EMBER, shape: 3, rad: 14, h: [10, 40], speed: [70, 210], drag: 0.5, grav: -30, life: [0.8, 1.9], size: [3, 6], c0: [3.2, 1.6, 0.4, 1], c1: [1.6, 0.25, 0.04, 0], jit: 6 });
+// SPEED-FIRE: the fire is drawn only by these particles (the world bakes no flame leaves any more - env/props2.js flames).
+// One fire = tapered tongues (flame sprite, upright, shrinking as they rise and speeding up - buoyancy) + a white-yellow core at the
+// base + a soft hot glow that hides where the tongues start + spark streaks + a little smoke above. Sizes come in three classes
+// (a brazier / bowl, a house fire, a wall-top or wreck blaze); a wide fire (w) burns from up to 4 points along its width.
+const fireSet = (k) => ({
+  k,
+  TONGUE: E({ sprite: SPR.FLAME, shape: 3, rad: 9 * k, h: [0, 6 * k], speed: [34 * k, 70 * k], drag: 1.1, grav: -190 * k, life: [0.3, 0.52], size: [24 * k, 36 * k], grow: 0.22, spin: [-0.3, 0.3], rot: 0, c0: [2.05, 0.8, 0.17, 0.78], c1: [1.05, 0.16, 0.03, 0], jit: 3 * k, fadeIn: 0.07 }),
+  CORE: E({ sprite: SPR.FLAME, shape: 3, rad: 5 * k, h: [0, 3 * k], speed: [18 * k, 36 * k], drag: 1, grav: -70 * k, life: [0.2, 0.32], size: [17 * k, 25 * k], grow: 0.55, spin: [-0.2, 0.2], rot: 0, c0: [2.9, 2.1, 0.95, 0.88], c1: [2.0, 0.75, 0.14, 0], fadeIn: 0.05 }),
+  HEAT: E({ sprite: SPR.GLOW, shape: 3, rad: 6 * k, h: [6 * k, 12 * k], speed: [6, 14], life: [0.26, 0.42], size: [54 * k, 72 * k], grow: 1.1, c0: [1.15, 0.42, 0.09, 0.2], c1: [0.8, 0.2, 0.04, 0], fadeIn: 0.15 }),
+  SPARK: E({ sprite: SPR.EMBER, shape: 3, rad: 10 * k, h: [10 * k, 34 * k], speed: [80 * k, 190 * k], drag: 0.55, grav: -36, life: [0.5, 1.25], size: [2.6, 4.6], stretch: 2.2, c0: [3.2, 1.65, 0.45, 1], c1: [1.8, 0.3, 0.05, 0], jit: 5 * k }),
+  SMOKE: E({ sprite: SPR.SMOKE, add: 0, shape: 3, rad: 12 * k, h: [56 * k, 80 * k], speed: [20 * k, 40 * k], drag: 0.3, grav: -18, life: [1.4, 2.4], size: [30 * k, 48 * k], grow: 2.2, c0: [0.09, 0.075, 0.075, 0.22], c1: [0.15, 0.14, 0.14, 0], fadeIn: 0.3 }),
+});
+const FIRE_S = fireSet(0.55), FIRE_M = fireSet(0.9), FIRE_L = fireSet(1.25);
+const SPARK = FIRE_M.SPARK;   // embers anchors: the same spark streaks
 const SMOKE = E({ sprite: SPR.SMOKE, add: 0, shape: 3, rad: 16, h: [40, 70], speed: [34, 70], drag: 0.25, grav: -14, life: [1.6, 2.8], size: [40, 66], grow: 2.3, c0: [0.1, 0.085, 0.085, 0.3], c1: [0.17, 0.15, 0.15, 0], fadeIn: 0.25 });
 const COLUMN = E({ sprite: SPR.SMOKE, add: 0, shape: 3, rad: 22, h: [0, 20], speed: [40, 80], drag: 0.2, grav: -10, life: [2.4, 4], size: [56, 90], grow: 2.6, c0: [0.085, 0.075, 0.08, 0.36], c1: [0.15, 0.14, 0.15, 0], fadeIn: 0.2 });
 const MIST = E({ sprite: SPR.SMOKE, add: 0, shape: 3, rad: 190, h: [6, 30], speed: [2, 8], life: [4, 7], size: [150, 230], grow: 1.5, c0: [0.3, 0.36, 0.4, 0.085], c1: [0.3, 0.36, 0.4, 0], fadeIn: 0.4 });
-const CANDLE = E({ sprite: SPR.FLAME, shape: 3, rad: 1, h: [0, 1], speed: [8, 16], life: [0.3, 0.5], size: [9, 13], grow: 0.5, c0: [2.4, 1.5, 0.5, 0.8], c1: [1.4, 0.4, 0.05, 0], rot: 0 });
+const CANDLE = E({ sprite: SPR.FLAME, shape: 3, rad: 1, h: [0, 1], speed: [10, 18], grav: -30, life: [0.24, 0.4], size: [8, 12], grow: 0.35, c0: [2.6, 1.7, 0.6, 0.85], c1: [1.5, 0.45, 0.06, 0], rot: 0 });
 const MOTE = E({ sprite: SPR.EMBER, shape: 3, rad: 60, h: [0, 80], speed: [10, 34], life: [1.6, 3], size: [4, 7], c0: [2.6, 0.3, 0.2, 0.9], c1: [1.2, 0.05, 0.05, 0], fadeIn: 0.3 });
 const LEAF = E({ sprite: SPR.FLAKE, add: 0, shape: 3, rad: 150, h: [150, 260], speed: [-60, -30], vy: [0, 0], drag: 0.2, life: [3, 4.6], size: [7, 12], spin: [-3, 3], c0: [0.42, 0.3, 0.14, 0.9], c1: [0.3, 0.2, 0.1, 0], fadeIn: 0.15, floor: 1 });
 const FIRE_COL = [1, 0.5, 0.17];
@@ -24,7 +35,10 @@ export class Anchors {
   constructor() { this.list = []; this.lightMax = 2; this.live = 0; this.lit = 0; this._round = 1; }
   build(area, tier) {
     this.list.length = 0;
-    for (const a of area.anchors) this.list.push({ kind: a.kind, x: a.x, y: a.y ?? 0, z: a.z, size: a.size ?? 1, light: !!a.light && a.kind === 'fire', h: -1, vis: false, d2: 0, _pick: 0 });
+    for (const a of area.anchors) {
+      const size = a.size ?? 1, set = size < 0.7 ? FIRE_S : size < 1.05 ? FIRE_M : FIRE_L, w = a.w ?? 50 * size, pts = a.kind === 'fire' ? Math.max(1, Math.min(4, Math.round(w / (58 * set.k)))) : 1;
+      this.list.push({ kind: a.kind, x: a.x, y: a.y ?? 0, z: a.z, size, set, pts, step: pts > 1 ? (w * 0.78) / (pts - 1) : 0, per: (1 + 0.25 * (pts - 1)) / pts, light: !!a.light && a.kind === 'fire', h: -1, vis: false, d2: 0, _pick: 0 });
+    }
     this.lightMax = tier === 'high' ? 3 : tier === 'low' ? 1 : 2;
   }
   /** once per tick. dt = effect time step, m = view-projection, (cx, cz) = where the camera looks */
@@ -37,7 +51,11 @@ export class Anchors {
       if (!a.vis || dt <= 0) continue;
       live++;
       const s = a.size, k = dt * (a.d2 > 1200 * 1200 ? 0.55 : 1);   // far fires burn with fewer particles
-      if (a.kind === 'fire') { P.emit(FLAME, a.x, a.y, a.z, 0, 1, 0, 26 * s * k, a.y); P.emit(CORE, a.x, a.y, a.z, 0, 1, 0, 12 * s * k, a.y); P.emit(SPARK, a.x, a.y, a.z, 0, 1, 0, 7 * s * k, a.y); P.emit(SMOKE, a.x, a.y, a.z, 0, 1, 0, 3.2 * s * k, a.y); }
+      if (a.kind === 'fire') {   // per point along the fire's width: tongues, core, heat; sparks and smoke once for the whole fire
+        const F = a.set, q = s * k * a.per, x0 = a.x - (a.step * (a.pts - 1)) / 2;
+        for (let j = 0; j < a.pts; j++) { const px = x0 + a.step * j; P.emit(F.TONGUE, px, a.y, a.z, 0, 1, 0, 30 * q, a.y); P.emit(F.CORE, px, a.y, a.z, 0, 1, 0, 14 * q, a.y); P.emit(F.HEAT, px, a.y, a.z, 0, 1, 0, 6 * q, a.y); }
+        P.emit(F.SPARK, a.x, a.y, a.z, 0, 1, 0, 6 * s * k, a.y); P.emit(F.SMOKE, a.x, a.y, a.z, 0, 1, 0, 2.6 * s * k, a.y);
+      }
       else if (a.kind === 'embers') P.emit(SPARK, a.x, a.y, a.z, 0, 1, 0, 9 * s * k, a.y);
       else if (a.kind === 'smoke') P.emit(COLUMN, a.x, a.y, a.z, 0, 1, 0, 4 * s * k, a.y);
       else if (a.kind === 'mist' || a.kind === 'fog_bank') P.emit(MIST, a.x, a.y, a.z, 0, 1, 0, (a.kind === 'fog_bank' ? 2.2 : 1.1) * s * k, a.y);
@@ -52,7 +70,7 @@ export class Anchors {
       for (let i = 0; i < L.length; i++) { const a = L[i]; if (!a.light || !a.vis || a._pick === this._round) continue; if (!best || a.d2 < best.d2) best = a; }
       if (!best) break;
       best._pick = this._round; lit++;
-      if (fx.lights._ok(best.h) < 0) best.h = fx.lights.add(best.x, best.y + 46 * best.size, best.z, 300 * best.size, FIRE_COL, 1.05, 1e7, 0.4, 1);
+      if (fx.lights._ok(best.h) < 0) best.h = fx.lights.add(best.x, best.y + 40 * best.size, best.z, 200 + 180 * best.size, FIRE_COL, 1.1, 1e7, 0.45, 1);   // (was 300 × size: a brazier's light reached only 150 px)
     }
     for (let i = 0; i < L.length; i++) { const a = L[i]; if (a.h >= 0 && a._pick !== this._round) { fx.lights.kill(a.h); a.h = -1; } }
     this._round++;

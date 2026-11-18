@@ -13,6 +13,7 @@ import { ossuary } from './ossuary.js';
 import { reachGrid } from './reach.js';
 export { nearestFreeSpot } from './reach.js';   // WORLD-3: nearestFreeSpot(area, W, x, z) -> { x, z, y, moved } - where a crossing that would land inside something puts the hero (AREA_FORMAT 14)
 import { AREA_FOLDS } from './folds.js';
+import { flameSpots } from '../env/props2.js';
 
 export const ENEMY_KINDS = ['melee', 'ranged', 'skeleton_soldier', 'skeleton_mage', 'plague_corpse', 'grave_ghost', 'gravekeeper_armor', 'bat', 'banshee_queen'];
 export const ACTOR_MODELS = ['alberto', 'edmund', 'elise', 'hadwin', 'hadwin1', 'lotte', 'marta', 'rook', 'sera', 'villager_f', 'villager_m', 'kael'];
@@ -39,6 +40,13 @@ export function finishArea(a) {
   st.hookPoints = a.interact.filter((it) => it.kind === 'ring' && it.landing).map((it) => ({ id: it.id, x: it.x, z: it.z, y: it.y ?? 0, h: it.h ?? 150, to: [it.landing.x, it.landing.z] }));
   a.camera = Object.fromEntries(st.sections.map((s) => [s.id, s.cam]));
   a.anchors = a.anchors ?? [];
+  // SPEED-FIRE: the game draws no flame geometry (env/props2.js flames) - every place a flame stands needs a particle fire anchor.
+  // An anchor already there gets the flame's width; a missing one (braziers) is added with the size of what burns there.
+  for (const f of flameSpots(st.parts)) {
+    const an = a.anchors.find((q) => q.kind === 'fire' && Math.hypot(q.x - f.x, q.z - f.z) < 60 && Math.abs((q.y ?? 0) - f.y) < 70);
+    if (an) { if (an.w == null) an.w = f.w; }
+    else a.anchors.push({ id: `fire_${f.part.mesh}_${Math.round(f.x)}_${Math.round(f.z)}`, kind: 'fire', x: f.x, y: f.y, z: f.z, size: f.size, w: f.w, light: true });
+  }
   return a;
 }
 const slice0 = () => finishArea({
@@ -160,6 +168,7 @@ export function validateArea(a, twin = null) {
     }
   }
   for (const an of a.anchors ?? []) if (!ANCHOR_KINDS.includes(an.kind)) E(`anchor ${an.id}: unknown kind ${an.kind}`);
+  for (const f of flameSpots(a.stage.parts)) if (!(a.anchors ?? []).some((q) => q.kind === 'fire' && Math.hypot(q.x - f.x, q.z - f.z) < 60 && Math.abs((q.y ?? 0) - f.y) < 70)) E(`${f.part.mesh} at (${f.x}, ${f.z}): a flame stands here but no fire anchor draws it (the game bakes no flame geometry)`);
   for (const s of Object.keys(a.rooms ?? {})) if (!secIds.has(s)) Wn(`rooms.${s}: no such section`);
   if (a.twin) {
     if (!AREAS[a.twin]) Wn(`twin ${a.twin} is not built yet`);

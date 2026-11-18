@@ -66,7 +66,7 @@ export default class V2Env extends V2ProtoB {
     let stage = STAGE;
     if (this.areaId && AREAS[this.areaId]) { try { this.area = await AREAS[this.areaId](this.areaFlags); stage = protoStage(this.area, this.spawnName, this.peace); } catch (e) { console.warn('[v2c] area failed, using the test route:', e); this.area = null; } }
     if (!this.glr && !this.glError) return;
-    this.W = compileEnv(stage);                    // B 가 텍스처·소품을 받기 전에 세계를 바꿔 끼운다
+    this.W = compileEnv(stage, { flames: true });  // B 가 텍스처·소품을 받기 전에 세계를 바꿔 끼운다 (flames: 이 장면에는 입자 불이 없어 작은 불길 잎을 대신 굽는다)
     if (this.area) {   // 시범판 규칙은 "마당 적이 없으면 끝"이다 → 닿을 수 없는 먼 곳에 마당 적 하나를 세워 끝나지 않게 한다
       this.W.boxes.push({ x0: -9100, x1: -9000, z0: -9100, z1: -9000, y0: -10, y1: 0, solid: true, walk: true, inv: true });
       this.W.spawns.push({ kind: 'melee', x: -9050, z: -9050, y: 0, yard: true });

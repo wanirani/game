@@ -52,11 +52,11 @@ const wallHang = (P) => { const FS = { F: new Frame(P.x, P.z, 0, -1), L: new Fra
  * ({ chunk: { texture: material } }, written by tools/v2/world_folds.mjs into src/v2/world/folds.js) or nothing; 'auto' (or S.folds === 'auto') = plan it
  * here with a counting pass (as slow as a second compile: tools and checks only); false = never fold.
  */
-export function compileEnv(S, { cull = true, fold } = {}) {
+export function compileEnv(S, { cull = true, fold, flames = false } = {}) {   // flames: 불길 잎을 굽는다 (입자 불이 없는 v2c 만 — props2.js flames)
   const W = compileStage(toB(S));
   W.mesh = {};                                                           // B 의 납작한 메시는 쓰지 않는다
   W.sprites = W.sprites.filter((s) => s.kind === 'prop' && s.img !== '__mesh');   // 그림판으로 남긴 소품만
-  const G = new Geo(W, { cull }); G.fx = { glows: [], pools: [], shadows: [] };
+  const G = new Geo(W, { cull }); G.fx = { glows: [], pools: [], shadows: [] }; G.flames = !!flames;
   const extra = [], propTris = {};
   // 1) 굽기 전에 빛을 모은다: 불 켜진 창 · 벽등
   for (const P of S.parts) {
@@ -96,7 +96,7 @@ export function compileEnv(S, { cull = true, fold } = {}) {
     }
   } };
   let folds = fold === false ? null : fold && typeof fold === 'object' ? fold : S.folds && typeof S.folds === 'object' ? S.folds : null;
-  if (fold === 'auto' || (fold !== false && S.folds === 'auto')) { const G0 = new Geo(W, { cull }); G0.cnt = new Map(); G0.fx = { glows: [], pools: [], shadows: [] }; emit(G0, [], {}); folds = foldPlan(G0.cnt); }
+  if (fold === 'auto' || (fold !== false && S.folds === 'auto')) { const G0 = new Geo(W, { cull }); G0.cnt = new Map(); G0.fx = { glows: [], pools: [], shadows: [] }; G0.flames = !!flames; emit(G0, [], {}); folds = foldPlan(G0.cnt); }
   G.fold = folds;
   emit(G, extra, propTris);
   W.boxes.push(...extra);

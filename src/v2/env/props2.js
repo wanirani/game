@@ -34,8 +34,14 @@ function leaf(G, bx, by, bz, H, Wd, lean, ph, L) {
     }
   }
 }
-/** 불길 한 무더기: 너비 w · 높이 h · 바깥 잎 n 장 (가운데 · 속 겹은 거기에 맞춰 준다) */
+/**
+ * 불길 한 무더기: 너비 w · 높이 h · 바깥 잎 n 장 (가운데 · 속 겹은 거기에 맞춰 준다).
+ * SPEED-FIRE: 본 게임(v2g)은 이 자리의 불을 효과 엔진의 입자 불(src/v2/game/anchors.js — 지역의 fire 닻)로 그린다 → 기본은 아무것도 굽지 않는다.
+ * 입자가 없는 env-kit 시험 장면(v2c)만 compileEnv(…, { flames: true }) 로 작고 단정한 대체 불길(잎 3장까지, 0.6 · 0.75 배)을 굽는다.
+ */
 export function flames(G, x, y, z, w, h, n = 5, seed = 1) {
+  if (!G.flames) return;
+  w *= 0.6; h *= 0.75; n = Math.min(n, 3);
   LAYERS.forEach((L, li) => {
     const m = Math.max(1, Math.round(Math.min(n, 6) * [1, 0.7, 0.45][li]));
     for (let i = 0; i < m; i++) {
@@ -288,6 +294,20 @@ Object.assign(PROPS, {
  * 구운 소품(생성 모델)에 덧붙이는 것. build.js 가 bakedProp 뒤에 부른다: (G, x, y, z, o, s) — s = 크기 배율.
  * 모델의 그림에 든 불빛(숯 · 등불 유리)은 꼭짓점 깃발로 밝게 남고, 여기서는 불길 · 잉걸불 · 빛 번짐을 더한다.
  */
+/**
+ * 불길이 서는 자리(입자 불 닻이 있어야 할 곳): 지역 부품 → [{ x, y, z, size, w }]. 위의 fire · wreck · brazier 와 같은 자리 셈 (world/index.js 가 빠진 닻을 채우고 검사한다)
+ * size = 불 높이 ÷ 70 (anchors.js 의 크기 단위), w = 불길 너비
+ */
+export function flameSpots(parts) {
+  const out = [];
+  for (const P of parts) {
+    const y = P.y ?? 0;
+    if (P.t === 'deco' && P.mesh === 'fire') out.push({ x: P.x, y, z: P.z, size: +((P.h ?? 78) / 70).toFixed(2), w: P.w ?? 56, part: P });
+    else if (P.mesh === 'brazier' && P.lit !== false) { const s = (P.h ?? 112) / 112; out.push({ x: P.x, y: y + 96 * s, z: P.z - 6 * s, size: +(0.5 * s).toFixed(2), w: Math.round(30 * s), part: P }); }
+    else if (P.mesh === 'wreck' && P.fire !== false) { const s = (P.w ?? 170) / 170; out.push({ x: P.x + 10 * s, y: y + 16 * s, z: P.z - 12 * s, size: +(64 * s / 70 * 1.3).toFixed(2), w: Math.round(70 * s), part: P }); }
+  }
+  return out;
+}
 export const BAKED_EXTRA = {
   brazier(G, x, y, z, o, s) { if (o.lit !== false) flames(G, x, y + 96 * s, z - 6 * s, 30 * s, 40 * s, 2, 5); },
 };

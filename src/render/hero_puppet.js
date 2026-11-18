@@ -13,6 +13,7 @@ import { CHARACTERS } from '../data/characters.js';
 import { NPCS } from '../data/npcs.js';
 import { TOWN_NPCS } from '../data/town.js';
 import { PUPPETS } from './puppet_manifest.js';
+import { APP_3D } from '../core/build_target.js';   // 3D 앱에는 2D 영웅 퍼펫이 시범판 A·B 의 카엘 기본 직업뿐 — 미리 받기를 하지 않는다
 import { ASCENSIONS } from '../data/ascensions.js';   // 초월·비전: 원화는 2차 것을 쓴다 (classes_t3 §2.7)
 import { G, sh, ra, fillGrad, ribbonPath, WS, drawWeapon, drawWing, glow, drawHalo, weaponReach } from './hero_parts.js';
 import { drawSkinned, spring, stateOf, meshOverride } from './puppet_mesh.js';
@@ -158,7 +159,7 @@ export function preloadPuppet(charId, classId, asc = null) {
 const SIB = new Set();
 function preloadSiblings(cid) {
   if (cid === NPC_CID) return;   // NPC 묶음은 형제 미리 받기 없음 (스테이지에 NPC 한 명만 있어도 나머지 7명을 받게 된다)
-  if (SIB.has(cid) || typeof window === 'undefined') return;
+  if (SIB.has(cid) || typeof window === 'undefined' || APP_3D) return;
   SIB.add(cid);
   const ids = Object.keys(PUPPETS[cid] || {});
   let i = 0;
@@ -167,7 +168,7 @@ function preloadSiblings(cid) {
   idle(next);
 }
 // 부팅 직후 각 영웅의 기본 직업(rig + lo/hi ≈60KB)을 미리 받아, 첫 스테이지에서 벡터→퍼펫 전환이 보이지 않게 한다
-if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+if (typeof window !== 'undefined' && typeof document !== 'undefined' && !APP_3D) {
   setTimeout(() => { for (const cid in PUPPETS) { const root = CHARACTERS[cid]?.rootClass; if (root && PUPPETS[cid][root]) entry(cid, root); } }, 400);
 }
 

@@ -45,7 +45,7 @@ const open = async (area, tier) => {
   await page.goto(`http://localhost:${port}/index.html?scene=v2g&area=${area}&v2auto=0&v2tier=${tier}`);
   await page.waitForFunction(() => window.__v2 && (window.__v2.ready || window.__v2.error), null, { timeout: 120000 }).catch(() => {});
   const ok = await page.evaluate(() => !!window.__v2?.ready); if (!ok) throw new Error('scene not ready: ' + area);
-  await page.evaluate(install);
+  await page.evaluate(install); await page.evaluate((n) => { window.__TICKS = n; }, Number(args.ticks ?? 330));   // 지역 이름 띠가 사라질 때까지
 };
 try {
   if (args.stats) {   // 지역마다 effect tier 별 숫자: 불 자리 둘레 세 곳 평균이 아니라 대표 자리 하나
@@ -60,7 +60,7 @@ try {
   } else for (const s of SPOTS) {
     await open(s.area, TIER);
     let fy = s.f[1];
-    const i = await page.evaluate(([s]) => { window.__S.put(s.hx, s.hz, s.f[0] - s.hx, s.f[2] - s.hz); window.__S.tick(150); return window.__S.shot(s.f[0], s.f[1], s.f[2]); }, [s]);
+    const i = await page.evaluate(([s]) => { window.__S.put(s.hx, s.hz, s.f[0] - s.hx, s.f[2] - s.hz); window.__S.tick(Number(window.__TICKS ?? 150)); return window.__S.shot(s.f[0], s.f[1], s.f[2]); }, [s]);
     const vp = page.viewportSize(), w = Math.min(s.crop[0], vp.width), h = Math.min(s.crop[1], vp.height);
     const clip = { x: Math.max(0, Math.min(vp.width - w, i.css[0] - w / 2)), y: Math.max(0, Math.min(vp.height - h, i.css[1] - h * 0.55)), width: w, height: h };
     const f = `${OUT}/${s.n}.png`; await page.screenshot({ path: f, clip }); await page.screenshot({ path: `${OUT}/${s.n}_full.jpg`, type: 'jpeg', quality: 70 });

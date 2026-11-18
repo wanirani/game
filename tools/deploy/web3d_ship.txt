@@ -22,15 +22,9 @@ assets/tex/tex_dirt.webp
 assets/tex/tex_mossy_stone.webp
 assets/tex/tex_wet_stone.webp
 assets/tex/tex_wood.webp
-assets/puppets/turn16.json       # 2D 영웅 퍼펫 목록 — hero_puppet.js 가 모듈을 읽을 때 일곱 영웅 기본 직업 rig.json 과 함께 받는다 (그림은 받지 않음)
-assets/puppets/kael/kael_hunter/rig.json
-assets/puppets/sera/sera_exorcist/rig.json
-assets/puppets/victor/victor_gunslinger/rig.json
-assets/puppets/bran/bran_knight/rig.json
-assets/puppets/lia/lia_assassin/rig.json
-assets/puppets/azel/azel_dhampir/rig.json
-assets/puppets/isolde/isolde_lancer/rig.json
-assets/puppets/_shared/          # 망토 질감 (v2g)
+assets/puppets/turn16.json       # 2D 영웅 퍼펫 16방향 목록 (hero_puppet.js 가 모듈을 읽을 때 받는다)
+assets/puppets/kael/kael_hunter/ # 시범판 A·B 의 2D 카엘 (preloadPuppet('kael','kael_hunter')) — 3D 앱은 다른 영웅·직업을 미리 받지 않는다 (hero_puppet.js APP_3D)
+assets/puppets/_shared/          # 망토 질감 (hero_puppet.js capeTex)
 assets/painted/enemies/skeleton/ # 시범판 A·B · 꾸민 배경의 2D 적 (rig.json + atlas.webp)
 assets/painted/enemies/skeleton_mage/
 assets/painted/enemies/bat/
