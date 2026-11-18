@@ -11,6 +11,8 @@
 | 웹 게시 폴더 | `dist/web` | `node tools/deploy/build_web.mjs` |
 | Netlify 업로드 묶음 | `dist/deploy` (`web/` + 계정 API 함수 + 고정된 `package.json`·`package-lock.json` + `netlify.toml`) | 위와 같은 명령 |
 | 안드로이드 APK | `dist/BloodNocturne.apk` (+ `dist/BloodNocturne.apk.sha256.txt`) | `tools/apk/build_apk.sh --verify` |
+| 2D 앱 웹 빌드 · 3D 앱 웹 빌드 (앱 분리, §4.1) | `dist/web` (`--target v1`) · `dist/web3d` (`--target 3d`) + `dist/ship-<대상>.txt` | `node tools/deploy/build_web.mjs --target v1` · `--target 3d` |
+| 3D 앱 APK 「블러드 녹턴 3D」 | `dist/BloodNocturne3D.apk` (+ `.sha256.txt`) | `APP_VARIANT=3d tools/apk/build_apk.sh --verify` |
 | 배포 인증서 지문 (공개) | `tools/apk/release_cert.sha256` | 첫 배포 때 `build_apk.sh` 가 적는다 — git 에 올린다 |
 
 `dist/` 는 git 에 올리지 않는다.
@@ -41,6 +43,45 @@
 5. §3 의 2–3 으로 올린다. 설치된 앱은 `downloads/latest.json` 의 `versionCode` 로 새 버전을 알린다.
 
 `versionCode` 는 마지막 커밋 시각으로 정해지므로 **커밋한 뒤** 빌드한다(같은 커밋이면 같은 번호 → 업데이트로 보이지 않는다).
+
+### 4.1 앱 분리 (2D · 3D, 2026-11-18 결정)
+
+APK 예산(95 MB) 때문에 3D 판을 따로 앱으로 낸다. 같은 안드로이드 소스, **같은 서명 키**, 패키지만 다르다 → 두 앱이 나란히 설치되고 저장 공간도 따로다(옮길 세이브 없음).
+
+| 앱 | 패키지 · 이름 | 웹 빌드 | APK |
+|---|---|---|---|
+| 2D 앱 | `com.bloodnocturne.game` 「블러드 녹턴」 (3D 파일·「리빌드 시범」 줄 없음, 원본 그림 hi 단계) | `node tools/deploy/build_web.mjs --target v1` → `dist/web` | `tools/apk/build_apk.sh --verify` → `dist/BloodNocturne.apk` |
+| 3D 앱 | `com.bloodnocturne.game3d` 「블러드 녹턴 3D」 (첫 화면 3D 고르기, 아이콘에 '3D' 표식) | `node tools/deploy/build_web.mjs --target 3d` → `dist/web3d` | `APP_VARIANT=3d tools/apk/build_apk.sh --verify` → `dist/BloodNocturne3D.apk` |
+
+순서 (커밋한 뒤, 한 번에 하나씩 — 브라우저 검사가 무겁다. 임시 파일은 `TMPDIR=/dev/shm`):
+
+1. `tools/apk/build_apk.sh --check-key`
+2. `TMPDIR=/dev/shm node tools/deploy/build_web.mjs --target 3d` → `node tools/deploy/target_check.mjs --dir dist/web3d --scenes v2b,v2c,v2bench,v2a` (3D 장면이 빠진 파일을 달라고 하면 4xx 경로 목록이 나온다 → `tools/deploy/web3d_ship.txt`(2D 폴더의 파일) 또는 `tools/deploy/v2_ship.txt`(assets/v2)에 더한다)
+3. `TMPDIR=/dev/shm APP_VARIANT=3d tools/apk/build_apk.sh --verify` — 검증은 `verify_apk.mjs --profile 3d` (고르기 화면 부팅 · 뒤로 = 종료 확인 · 「본 게임」 · 지역마다 · 4xx 0)
+4. `TMPDIR=/dev/shm node tools/deploy/build_web.mjs --target v1` → `node tools/deploy/target_check.mjs --dir dist/web` (타이틀 여덟 줄)
+5. `TMPDIR=/dev/shm tools/apk/build_apk.sh --verify` — 2D 검사 그대로 (hi 단계는 80건, lo 단계면 lo 사본 대체 검사가 하나 더해져 81건)
+
+두 APK 는 서로 다른 이름이라 어느 순서로 만들어도 둘 다 `dist/` 에 남는다. `dist/web` 은 마지막에 만든 웹 빌드다 — 웹사이트를 배포할 때는 §3 처럼 대상 없이(`all`) 다시 빌드한다.
+(`all` 빌드는 2D·3D 를 함께 싣는 예전 웹사이트 그대로이고, 2D 앱 APK 와 웹 빌드가 달라 `downloads/` 에 APK 를 넣지 않는다 — APK 는 아래 apk 브랜치로 낸다.)
+
+**apk 브랜치에 내기** (지금까지처럼 파일을 브랜치 맨 위에 둔다; 이 문서 작성 때는 올리지 않았다):
+
+- `BloodNocturne-<versionName>-<versionCode>.apk` + `.apk.sha256.txt` (2D 앱 — 지금까지와 같은 이름)
+- `BloodNocturne3D-<versionName>-<versionCode>.apk` + `.apk.sha256.txt` (3D 앱)
+- `latest.json` = 2D 앱 (지금 모양 그대로, 아래 `appId` 만 더함) + 두 앱 목록 `apps`; `latest3d.json` = 3D 앱 (같은 모양 — 3D 앱의 새 버전 확인이 읽는 이름, `apk.json update.latest`):
+
+```json
+// latest.json
+{ "versionName": "1.0.0", "versionCode": 462930, "sha256": "…", "bytes": 93085075, "url": "downloads/BloodNocturne-1.0.0-462930.apk",
+  "built": "…Z", "signingCertSha256": "efaee88b…d60f", "appId": "com.bloodnocturne.game", "note": "…", "web": { "buildHash": "…", "version": "…" },
+  "apps": { "2d": "latest.json", "3d": "latest3d.json" } }
+// latest3d.json
+{ "versionName": "1.0.0", "versionCode": 462930, "sha256": "…", "bytes": 25911775, "url": "downloads/BloodNocturne3D-1.0.0-462930.apk",
+  "built": "…Z", "signingCertSha256": "efaee88b…d60f", "appId": "com.bloodnocturne.game3d", "label": "블러드 녹턴 3D", "note": "…", "web": { "buildHash": "…", "version": "…" } }
+```
+
+설치된 앱의 새 버전 알림: 2D 앱은 예전처럼 계정 서버 사이트의 `downloads/latest.json` · `/apk`, 3D 앱은 `downloads/latest3d.json` · `/apk3d` (`tools/apk/pack_web.py --update-*` → `apk.json update`, `MainActivity`). 웹사이트에 3D 앱 내려받기를 올리는 일(`latest3d.json` · `/apk3d` 리디렉트)은 아직 하지 않았다 — 그때까지 3D 앱의 확인은 404 로 조용히 건너뛴다.
+옛 통합 APK(2D + 3D, 462868 까지)를 깐 기기: 새 2D APK 가 같은 패키지의 업데이트로 깔리고(3D 판은 빠진다), 3D 앱은 옆에 새로 깔린다. 통합 앱 안의 3D 세이브는 3D 앱으로 옮겨지지 않는다(소유자 결정: 옮길 것 없음).
 
 ## 5. 서명 키
 
@@ -92,6 +133,10 @@ node tools/deploy/test_sw.mjs                   # 서비스 워커
 node tools/qa/platform_load.mjs --dist          # 게시 폴더 부팅·크기
 tools/apk/build_apk.sh --check-key              # 서명 키 = 배포 인증서 (빌드 없음)
 tools/apk/build_apk.sh --verify                 # APK 빌드 + 검증
+node tools/deploy/build_web.mjs --target v1     # 2D 앱 웹 빌드 (dist/web, 3D 파일 없음)  — §4.1
+node tools/deploy/build_web.mjs --target 3d     # 3D 앱 웹 빌드 (dist/web3d)
+node tools/deploy/target_check.mjs --dir dist/web3d --scenes v2b,v2c,v2bench,v2a   # 3D 앱 웹 빌드 브라우저 점검 (4xx 경로 목록)
+APP_VARIANT=3d tools/apk/build_apk.sh --verify  # 3D 앱 APK + 검증 (verify_apk --profile 3d)
 npm run test:api && npm run test:client         # 계정 서버
 node tools/deploy/smoke_deployed.mjs https://<사이트>   # 배포 뒤
 ```

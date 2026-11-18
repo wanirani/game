@@ -14,8 +14,8 @@ import { SPR } from '../fx/sprites.js';
 // (a brazier / bowl, a house fire, a wall-top or wreck blaze); a wide fire (w) burns from up to 4 points along its width.
 const fireSet = (k) => ({
   k,
-  TONGUE: E({ sprite: SPR.FLAME, shape: 3, rad: 10 * k, h: [0, 8 * k], speed: [40 * k, 78 * k], drag: 1.1, grav: -170 * k, life: [0.38, 0.62], size: [34 * k, 50 * k], grow: 0.26, spin: [-0.35, 0.35], rot: 0, c0: [2.05, 0.8, 0.17, 0.6], c1: [1.05, 0.16, 0.03, 0], jit: 4 * k, fadeIn: 0.07 }),
-  CORE: E({ sprite: SPR.FLAME, shape: 3, rad: 6 * k, h: [0, 4 * k], speed: [20 * k, 40 * k], drag: 1, grav: -80 * k, life: [0.22, 0.34], size: [20 * k, 30 * k], grow: 0.55, spin: [-0.2, 0.2], rot: 0, c0: [2.9, 2.1, 0.95, 0.88], c1: [2.0, 0.75, 0.14, 0], fadeIn: 0.05 }),
+  TONGUE: E({ sprite: SPR.FLAME, shape: 3, rad: 10 * k, h: [0, 8 * k], speed: [40 * k, 78 * k], drag: 1.1, grav: -170 * k, life: [0.38, 0.62], size: [34 * k, 50 * k], grow: 0.26, spin: [-0.35, 0.35], rot: 0, c0: [2.05, 0.8, 0.17, 0.6], c1: [1.05, 0.16, 0.03, 0], jit: 4 * k, fadeIn: 0.07, pri: 1 }),   // pri: the fill governor (big mist puffs) must not thin the flame itself
+  CORE: E({ sprite: SPR.FLAME, shape: 3, rad: 6 * k, h: [0, 4 * k], speed: [20 * k, 40 * k], drag: 1, grav: -80 * k, life: [0.22, 0.34], size: [20 * k, 30 * k], grow: 0.55, spin: [-0.2, 0.2], rot: 0, c0: [2.9, 2.1, 0.95, 0.88], c1: [2.0, 0.75, 0.14, 0], fadeIn: 0.05, pri: 1 }),
   HEAT: E({ sprite: SPR.GLOW, shape: 3, rad: 6 * k, h: [6 * k, 12 * k], speed: [6, 14], life: [0.26, 0.42], size: [54 * k, 72 * k], grow: 1.1, c0: [1.15, 0.42, 0.09, 0.2], c1: [0.8, 0.2, 0.04, 0], fadeIn: 0.15 }),
   SPARK: E({ sprite: SPR.EMBER, shape: 3, rad: 10 * k, h: [10 * k, 34 * k], speed: [80 * k, 190 * k], drag: 0.55, grav: -36, life: [0.5, 1.25], size: [2.6, 4.6], stretch: 2.2, c0: [3.2, 1.65, 0.45, 1], c1: [1.8, 0.3, 0.05, 0], jit: 5 * k }),
   SMOKE: E({ sprite: SPR.SMOKE, add: 0, shape: 3, rad: 12 * k, h: [56 * k, 80 * k], speed: [20 * k, 40 * k], drag: 0.3, grav: -18, life: [1.4, 2.4], size: [30 * k, 48 * k], grow: 2.2, c0: [0.09, 0.075, 0.075, 0.22], c1: [0.15, 0.14, 0.14, 0], fadeIn: 0.3 }),
