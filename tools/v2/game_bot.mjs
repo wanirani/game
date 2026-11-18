@@ -11,7 +11,7 @@ export function installBot(ROUTE0) {
   const waypoint = (h) => { let ni = B.wp, nd = 1e9; for (let i = B.wp; i < ROUTE.length; i++) { const d = Math.hypot(ROUTE[i][0] - h.x, ROUTE[i][1] - h.z); if (d < nd) { nd = d; ni = i; } } B.wp = ni; const w = ROUTE[B.wp]; if (Math.hypot(w[0] - h.x, w[1] - h.z) < 26 && B.wp < ROUTE.length - 1) B.wp++; return ROUTE[B.wp]; };
   input.setAutoSource(() => B.act);
   // options for real areas (tools/v2/game_walk.mjs): giveUp = rule ticks on one target before walking on, hunt() = true while the way ahead is shut and the arena must be cleared
-  B.opt = { giveUp: 0, hunt: null }; B.kinds = {}; B.tgId = null; B.tgT = 0;
+  B.opt = { giveUp: 0, hunt: null }; B.kinds = {}; B.tgId = null; B.tgT = 0; B.hunting = false; B.hb = null;
   B.setRoute = (r) => { ROUTE.length = 0; for (const p of r) ROUTE.push([p[0], p[1]]); B.wp = 0; B.skipMap = {}; };
   // ── one brain for both input paths: decide() -> analog wishes { mx, mz, attack, dash(roll), guard, jump } ──
   //    tactics for the real rules: walk the route; guard an attack that is being wound up in front of the hero (the roll button
@@ -47,13 +47,20 @@ export function installBot(ROUTE0) {
     if (tg && B.opt.giveUp > 0) {   // real areas: do not spend the night on one enemy that cannot be brought down (armoured front, ghosts)
       if (tg.id !== B.tgId) { B.tgId = tg.id; B.tgT = B.t; } else if (B.t - B.tgT > B.opt.giveUp && !(tg.yard && B.opt.hunt && B.opt.hunt())) { B.skipMap[tg.id] = B.t + 2400; tg = target(h, v.enemies, B.t); B.tgId = tg ? tg.id : null; B.tgT = B.t; }
     }
-    if (!tg && B.opt.hunt && B.opt.hunt()) { let bd = 1e9; for (const e of v.enemies) { if (!e.yard || e.state === 'dead') continue; const d = Math.hypot(e.x - h.x, e.z - h.z); if (d < bd) { bd = d; tg = e; } } }   // the gate is shut: clear the arena
+    // the gate at the end of the route is shut: go back along the route until what is left of the arena is found, then come back
+    let back = null;
+    if (!tg && B.opt.hunt && B.opt.hunt() && (B.hunting || B.wp >= ROUTE.length - 2)) {
+      B.hunting = true; let bd = 1e9, far = null;
+      for (const e of v.enemies) { if (!e.yard || e.state === 'dead') continue; const d = Math.hypot(e.x - h.x, e.z - h.z); if (d < bd) { bd = d; far = e; } }
+      if (far && bd < 520) tg = far;
+      else if (far) { if (B.hb == null) B.hb = ROUTE.length - 1; const w = ROUTE[B.hb]; if (Math.hypot(w[0] - h.x, w[1] - h.z) < 34 && B.hb > 0) B.hb--; back = ROUTE[B.hb]; }
+    } else if (B.hunting && !(B.opt.hunt && B.opt.hunt())) { B.hunting = false; B.hb = null; let ni = 0, nd = 1e9; for (let i = 0; i < ROUTE.length; i++) { const d = Math.hypot(ROUTE[i][0] - h.x, ROUTE[i][1] - h.z); if (d < nd) { nd = d; ni = i; } } B.wp = ni; }
     let tx = null, tz = 0, fight = false;
     if (tg) {
       fight = true; const dx = tg.x - h.x, dz = tg.z - h.z, d = Math.hypot(dx, dz);
       if (d < 96 && Math.abs(dz) < 40) { o.mx = (dx / (d || 1)) * 0.55; o.mz = (dz / (d || 1)) * 0.55; o.attack = true; B.kinds[tg.kind] = (B.kinds[tg.kind] ?? 0) + 1; }   // in reach: face it (360 degrees) and strike
       else { const side = h.x <= tg.x ? -1 : 1; tx = tg.x + side * 62; tz = tg.z; }
-    } else { const w = waypoint(h); tx = w[0]; tz = w[1]; }
+    } else { const w = back ?? waypoint(h); tx = w[0]; tz = w[1]; }
     if (tx !== null) { const dx = tx - h.x, dz = tz - h.z, d = Math.hypot(dx, dz); if (d > 6) { const k = d > 50 ? 1 : 0.6; o.mx = (dx / d) * k; o.mz = (dz / d) * k; } }
     if (now - D.lt >= 0.25) { const moved = Math.hypot(h.x - D.lx, h.z - D.lz); D.lx = h.x; D.lz = h.z; D.lt = now; if ((o.mx || o.mz) && !o.attack && moved < 6) D.stuckT += 0.25; else D.stuckT = Math.max(0, D.stuckT - 0.25); }
     if (D.stuckT >= 0.75) { if (fight && ++D.fs >= 3) { B.skipMap[tg.id] = B.t + 420; D.fs = 0; B.skips++; } D.stuckT = 0; D.escT = now + 0.5; D.escS = h.z > 150 && h.z < 260 ? -1 : 1; if (fight && Math.random() < 0.5) D.escS = -D.escS; }
@@ -115,6 +122,9 @@ export function installBot(ROUTE0) {
     g._pageHidden = true;
     for (let i = 0; i < n; i++) { B.touchStep(); g.tick(1 / 60); if (renderEvery && i % renderEvery === 0) { g.alpha = 1; g.render(); watch(); } if (v.section === 'done' && !B.opt.giveUp) break; }
     g.alpha = 1; g.render();
+    // lift every finger between calls: the new pad lets go of touches by itself when the HUD has not been drawn for about a second
+    // (its watchdog), which happens between two calls of a slow headless run — the next call presses again
+    B.touchEnd(); B.ts.held.attack = 0; B.ts.held.dash = 0; B.ts.held.jump = 0;
     const st = B.status(); st.presses = B.ts.presses; st.stickMoves = B.ts.moves; st.mode = input.mode; return st;
   };
   B.stop = () => { B.act = {}; input.setAutoSource(null); };

@@ -5,7 +5,7 @@ import { D, rnd, inChunk, rect, house } from './gen.js';
 
 export function graveyard(era = 'now') {
   const now = era === 'now', P = [], anchors = [], r = rnd(7741), add = (chunk, ...parts) => P.push(...inChunk(chunk, parts.flat()));
-  const COLD = now ? [0.7, 0.85, 1] : [1, 0.74, 0.4], LP = (x, z, o = {}) => ({ t: 'prop', mesh: 'lanternpost', x, z, h: 180, solid: 9, solidZ: 9, light: { r: 300, i: 1.3, y: 120, c: COLD }, c: COLD, flicker: true, ...o });
+  const COLD = now ? [0.7, 0.85, 1] : [1, 0.74, 0.4], LP = (x, z, o = {}) => ({ t: 'prop', mesh: 'lanternpost', x: x + (o.flip ? 20 : -20), z, h: 180, solid: 9, solidZ: 9, light: { r: 300, i: 1.3, y: 120, c: COLD }, c: COLD, flicker: true, ...o });
   // ground
   add('road', { t: 'floor', x: 490, z: 0, w: 220, d: 900, mat: 'dirt', kit: { mat: 'cobworn', rag: 34, strips: [{ x0: 0, x1: 46, mat: 'soil' }, { x0: 174, x1: 220, mat: 'soil' }] } },
     { t: 'floor', x: 100, z: 0, w: 346, d: 900, mat: 'dirt', walk: false, kit: { mat: 'soil', rag: 40, strips: [{ x0: 120, x1: 346, z0: 200, z1: 520, mat: 'moss' }] } },
@@ -31,7 +31,7 @@ export function graveyard(era = 'now') {
     add('road', { t: 'deco', mesh: 'grave', kind: KINDS[(i + side * 3) % KINDS.length], x: Math.round(x), z: Math.round(z), h: Math.round(70 + r() * 40) });
   }
   add('road', { t: 'deco', mesh: 'deadtree', x: 250, z: 420, h: 300 }, { t: 'deco', mesh: 'deadtree', x: 960, z: 640, h: 280, flip: true }, { t: 'deco', mesh: 'deadtree', x: 180, z: 800, h: 240, flip: true }, { t: 'deco', mesh: 'cross', x: 900, z: 300, h: 170 }, { t: 'deco', mesh: 'angel', x: 330, z: 640, h: 200 },
-    LP(516, 300, { code: true }), LP(684, 620, { flip: true, code: true }));   // the thin code-built post on the road: the generated lantern is as big as the hero's chest and hung between the camera and the walking lane
+    LP(516, 300), LP(684, 620, { flip: true }));
   if (now) for (const [x, z] of [[600, 250], [600, 560], [600, 820]]) anchors.push({ id: 'mist_road_' + z, kind: 'mist', x, y: 0, z, size: 2 });
   // the keeper's hut behind the inner gate wall (same footprint both nights: lit and thatched in 1697, a roofless ruin tonight)
   add('field', house({ x: 770, z: 1000, w: 260, h: now ? 120 : 132, d: 70, style: 'rubble', seed: 91, burnt: now, lit: 1, door: 200, roofMat: 'thatch', roofH: 30, roofKit: { chimneys: [] }, kit: { lower: 'fieldstone', plinth: 20 } }));   // kept low (ridge 162, no chimney): at 170 + 50 the hut hid the hero in a 375-deep patch of the field behind it

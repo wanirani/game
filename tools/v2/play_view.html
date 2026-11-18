@@ -28,6 +28,7 @@
 import { CharRenderer, boxModel } from '../../src/v2/char3d/render.js';
 import { loadCharAsset, Char3D } from '../../src/v2/char3d/hero3d.js';
 import { loadGLB } from '../../src/v2/char3d/glb.js';
+import { bossBot } from './play_bot.mjs';
 import { Sim, TUNE, KINDS, flatArena, driveHero, driveActor, placeActor, loadPlayClips, registerKind, UNIT } from '../../src/v2/play/index.js';
 
 const q = new URLSearchParams(location.search);
@@ -43,6 +44,7 @@ const assets = new Map(), weapons = new Map(), chars = new Map();
 const events = [];   // 최근 사건 (화면 글 · 검사용)
 
 // 허수아비: 맞기만 하는 해골 (공격 방향 · 판정을 볼 때)
+registerKind('dummyBig', { ...KINDS.gravekeeper_armor, name: '큰 허수아비', hp: 99999, attacks: [], sight: 9999, armorFront: null }, (s, e, dt, D) => { s.turnTo(e, s.hero.x - e.x, s.hero.z - e.z, 2, dt); s.setAnim(e, 'idle', dt); });
 registerKind('dummy', { ...KINDS.skeleton_soldier, name: '허수아비', hp: 99999, attacks: [], sight: 9999 }, (s, e, dt, D) => { s.turnTo(e, s.hero.x - e.x, s.hero.z - e.z, 5, dt); s.setAnim(e, 'idle', dt); });
 
 // ── 시범 차림: seq = [[초, 누르고 있는 입력, 눌림 이름들…], …] ──
@@ -59,6 +61,16 @@ const DEMOS = {
   combo1: { name: '연타 3 (오른쪽 · 가까이)', spawns: [{ kind: 'dummy', x: 110, z: 0, active: true }], dummy: true, cam: 'close', seq: [[0.4, {}], [0.3, {}, 'attack'], [0.32, {}, 'attack'], [0.34, {}, 'attack'], [1.2, {}]] },
   lunge: { name: '내딛으며 베기 (먼 적)', spawns: [{ kind: 'dummy', x: 150, z: 0, active: true }], dummy: true, cam: 'close', seq: [[0.4, {}], [0.3, {}, 'attack'], [0.32, {}, 'attack'], [0.34, {}, 'attack'], [1.2, {}]] },
   ready: { name: '준비 자세 (락온)', spawns: [{ kind: 'dummy', x: 150, z: 0, active: true }], dummy: true, cam: 'close', seq: [[1.6, {}], [0.4, {}, 'attack'], [1.2, {}]] },
+  charge: { name: '모아 휘감기 (작은 적을 끌어온다)', spawns: [{ kind: 'dummy', x: 215, z: 0, active: true }], dummy: true, cam: 'close', seq: [[0.4, {}], [1.05, { attackHeld: true }, 'attack'], [1.3, {}]] },
+  chargeBig: { name: '모아 휘감기 (큰 적에게 끌려간다)', spawns: [{ kind: 'dummyBig', x: 235, z: 0, active: true }], dummy: true, cam: 'close', seq: [[0.4, {}], [1.05, { attackHeld: true }, 'attack'], [1.3, {}]] },
+  hook: { name: '솜씨: 채찍 걸기', spawns: [], hooks: [{ id: 'ring1', x: 250, y: 0, z: 40, h: 170, to: [300, 50] }], cam: 'game', seq: [[0.5, {}], [1.3, {}, 'skill'], [0.6, {}]] },
+  call: { name: '솜씨: 세라의 등불 (부름)', spawns: [{ kind: 'grave_ghost', x: 170, z: 40, active: true }, { kind: 'grave_ghost', x: 150, z: -70, active: true }], safe: true, reso: 3, cam: 'game', seq: [[0.9, {}], [1.2, {}, 'skill'], [0.3, {}, 'attack'], [0.3, {}, 'attack'], [0.4, {}, 'attack'], [1.5, {}]] },
+  echo: { name: '종: 메아리 (짧게)', spawns: [{ kind: 'grave_ghost', x: 150, z: 30, active: true }, { kind: 'skeleton_mage', x: 210, z: -60, active: true }], safe: true, cam: 'game', seq: [[1.35, {}], [1.2, {}, 'bell'], [2.0, {}]] },
+  knell: { name: '종: 조종 (길게 · 무릎 꿇은 보스)', spawns: [{ kind: 'banshee_queen', x: 170, z: 0, active: true }], bossHp: 30, safe: true, cam: 'game', seq: [[0.6, {}], [1.5, { bellHeld: true }, 'bell'], [3.0, {}]] },
+  boss: { name: '밴시 여왕 (자동 · 이긴다)', spawns: [{ kind: 'banshee_queen', x: 280, z: 0, active: true }], auto: 'boss', respawn: false, cam: 'game', seq: [[90, {}]] },
+  bossTell: { name: '밴시 여왕 1막 (예고 보기)', spawns: [{ kind: 'banshee_queen', x: 170, z: 0, active: true }], safe: true, bossKeep: true, cam: 'game', seq: [[60, {}]] },
+  bossFar: { name: '밴시 여왕 울음 탄', spawns: [{ kind: 'banshee_queen', x: 330, z: 0, active: true }], safe: true, bossKeep: true, pin: true, cam: 'game', seq: [[60, {}]] },
+  boss2: { name: '밴시 여왕 2막 (유령 부르기 · 배웅가)', spawns: [{ kind: 'banshee_queen', x: 240, z: 0, active: true, phase: 2 }], safe: true, bossKeep: true, respawn: false, cam: 'game', seq: [[60, {}]] },
   comboUp: { name: '연타 3 (위 · 아래)', spawns: [{ kind: 'dummy', x: 0, z: 120, active: true }, { kind: 'dummy', x: 0, z: -120, active: true }], dummy: true, cam: 'close', seq: [[0.3, st(0, 1)], [0.3, st(0, 1), 'attack'], [0.32, {}, 'attack'], [0.34, {}, 'attack'], [1.0, {}], [0.2, st(0, -1)], [0.3, st(0, -1), 'attack'], [0.32, {}, 'attack'], [0.34, {}, 'attack'], [1.0, {}]] },
   roll: { name: '구르기 · 훑기', spawns: [{ kind: 'dummy', x: 250, z: 0, active: true }], dummy: true, seq: [[0.3, st(1, 0)], [0.5, st(1, 0), 'dash'], [0.5, {}], [0.2, st(0, 1)], [0.5, st(0, 1), 'dash'], [0.4, {}], [0.2, st(-1, 0)], [0.5, st(-1, 0), 'dash'], [0.4, {}], [0.2, st(0, -1)], [0.5, st(0, -1), 'dash'], [0.5, {}], [0.2, st(1, 0)], [0.4, st(1, 0), 'dash'], [0.12, st(1, 0), 'attack'], [1.0, {}]] },
   jump: { name: '점프 · 내려베기', spawns: [{ kind: 'dummy', x: 200, z: 0, active: true }], dummy: true, seq: [[0.4, {}], [0.9, { jumpHeld: true }, 'jump'], [0.4, {}], [0.25, st(1, 0)], [0.3, { ...st(1, 0), jumpHeld: true }, 'jump'], [0.6, { ...st(1, 0), jumpHeld: true }, 'attack'], [0.9, {}], [0.3, st(-1, 0)], [0.25, { jumpHeld: true }, 'jump'], [0.7, {}, 'attack'], [0.8, {}]] },
@@ -84,7 +96,7 @@ addEventListener('keydown', (e) => { if (!keys.has(e.code)) pressed.add(e.code);
 addEventListener('keyup', (e) => keys.delete(e.code));
 function manualInput() {
   const k = (...c) => c.some((x) => keys.has(x)), p = (...c) => c.some((x) => pressed.has(x));
-  const inp = { mx: (k('ArrowRight', 'KeyD') ? 1 : 0) - (k('ArrowLeft', 'KeyA') ? 1 : 0), mz: (k('ArrowUp', 'KeyW') ? 1 : 0) - (k('ArrowDown', 'KeyS') ? 1 : 0), attack: p('KeyJ'), jump: p('KeyK', 'Space'), jumpHeld: k('KeyK', 'Space'), dash: p('KeyL'), guard: k('KeyL'), lockNext: p('KeyO') };
+  const inp = { mx: (k('ArrowRight', 'KeyD') ? 1 : 0) - (k('ArrowLeft', 'KeyA') ? 1 : 0), mz: (k('ArrowUp', 'KeyW') ? 1 : 0) - (k('ArrowDown', 'KeyS') ? 1 : 0), attack: p('KeyJ'), jump: p('KeyK', 'Space'), jumpHeld: k('KeyK', 'Space'), dash: p('KeyL'), guard: k('KeyL'), lockNext: p('KeyO'), attackHeld: k('KeyJ'), skill: p('KeyI'), bell: p('KeyU'), bellHeld: k('KeyU') };
   pressed.clear(); return inp;
 }
 let segI = -1;
@@ -95,7 +107,7 @@ function demoInput(dt) {
   const seg = d.seq[i], inp = { mx: 0, mz: 0, ...seg[1] };
   if (i !== segI) { segI = i; for (let k = 2; k < seg.length; k++) if (seg[k]) inp[seg[k]] = true; }
   seqT += dt;
-  if (d.auto) autoPilot(inp, d.auto);
+  if (d.auto === 'boss') bossBot(sim, inp, ap); else if (d.auto) autoPilot(inp, d.auto);
   return inp;
 }
 /** 자동 조종: 'parry' = 적의 판정 직전에 막기를 든다 · 'fight' = 가까운 적에게 가서 치고, 예고가 보이면 구르거나 튕겨낸다 */
@@ -165,8 +177,27 @@ function draw(label) {
   const g = ov.getContext('2d'); g.clearRect(0, 0, ov.width, ov.height);
   if (S.box) {
     if (h.move) { const on = h.moveT >= h.move.hit[0] && h.moveT <= h.move.hit[1]; shape(h, h.move, on ? '#ff5040' : '#ffd060', on ? 'rgba(255,80,64,0.25)' : null); if (h.move.land) shape(h, { land: h.move.land }, '#ffa040'); }
-    for (const e of sim.enemies) if (!e.dead && e.atk && !e.atk.shot) shape(e, e.atk, e.phase === 'strike' ? '#ff4060' : e.phase === 'windup' ? '#ffd060' : '#667', e.phase === 'strike' ? 'rgba(255,64,96,0.3)' : e.phase === 'windup' ? `rgba(255,208,96,${0.05 + 0.2 * e.tele})` : null);
+    for (const e of sim.enemies) if (!e.dead && e.atk && !e.atk.shot && !e.atk.air) shape(e, e.atk, e.phase === 'strike' ? '#ff4060' : e.phase === 'windup' ? '#ffd060' : '#667', e.phase === 'strike' ? 'rgba(255,64,96,0.3)' : e.phase === 'windup' ? `rgba(255,208,96,${0.05 + 0.2 * e.tele})` : null);
     const fp = project(h.x + h.dirX * 46, h.y + 3, h.z + h.dirZ * 46), f0 = project(h.x, h.y + 3, h.z); if (fp && f0) { g.strokeStyle = '#60e0ff'; g.lineWidth = 3; g.beginPath(); g.moveTo(f0[0], f0[1]); g.lineTo(fp[0], fp[1]); g.stroke(); }
+  }
+  // 도구 · 보스: 채찍 띠, 빛나는 고리, 등불의 빛, 종의 울림, 예고 표시(탄 · 노래 · 공중 고리), 눈금
+  { const line = (a, b, col, w) => { if (a && b) { g.strokeStyle = col; g.lineWidth = w; g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); } };
+    const ring = (x, y, z, r, col, w = 2, fill = null) => { g.beginPath(); let n = 0; for (let i = 0; i <= 32; i++) { const t = (i / 32) * 6.2832, s = project(x + Math.cos(t) * r, y, z + Math.sin(t) * r); if (!s) continue; if (n++) g.lineTo(s[0], s[1]); else g.moveTo(s[0], s[1]); } g.strokeStyle = col; g.lineWidth = w; g.stroke(); if (fill) { g.fillStyle = fill; g.fill(); } };
+    for (const p of sim.hookPoints) { ring(p.x, (p.y ?? 0) + (p.h ?? 150), p.z, 16, p.id === h.hookId ? '#ffe070' : '#8a7a40', 3); line(project(p.x, p.y ?? 0, p.z), project(p.x, (p.y ?? 0) + (p.h ?? 150) - 16, p.z), '#5a5030', 1); }
+    if (h.whipOn) line(project(h.x + h.dirX * 16, h.y + 66, h.z + h.dirZ * 16), project(h.whipX, h.whipY, h.whipZ), '#ffd9a0', 3);
+    for (const L of sim.lights) ring(L.x, L.y + 2, L.z, L.r, `rgba(255,236,170,${0.35 + 0.5 * (L.t / L.dur)})`, 3, `rgba(255,230,150,${0.1 + 0.12 * (L.t / L.dur)})`);
+    if (h.anim === 'echo' && h.actT > TUNE.echoAt) { const u = (h.actT - TUNE.echoAt) / (TUNE.echoT - TUNE.echoAt); ring(h.x, h.y + 4, h.z, TUNE.echoR * u, `rgba(160,220,255,${1 - u})`, 4); }
+    if (h.anim === 'ring') ring(h.x, h.y + 4, h.z, 40 + 160 * (h.actDone ? 1 : h.bellCharge), h.actDone ? '#fff2b0' : 'rgba(255,220,140,0.8)', h.actDone ? 6 : 3);
+    for (const e of sim.enemies) {
+      if (e.dead || !e.atk || e.phase === 'recover') continue; const a = e.atk, col = a.guard === 'break' ? '#ff5aa0' : '#ffd060', k = e.phase === 'strike' ? 1 : e.tele;
+      if (a.air && (a.radius || a.pulse)) { const r = a.radius?.r ?? a.pulse.r; ring(e.x, e.y + e.h * 0.55, e.z, r * (a.pulse && e.phase === 'strike' ? ((e.stateT - a.windup) % a.pulse.every) / a.pulse.every : 0.25 + 0.75 * k), col, 3); ring(e.x, e.gy + 2, e.z, r, col, 2, `rgba(255,90,160,${0.05 + 0.16 * k})`); }
+      if (a.mark?.box) { const n = a.mark.fan ?? 1; for (let i = 0; i < n; i++) { const an = (i - (n - 1) / 2) * (a.mark.spread ?? 0) * 0.01745, c = Math.cos(an), sn = Math.sin(an); shape({ x: e.x, z: e.z, y: e.gy, dirX: e.dirX * c - e.dirZ * sn, dirZ: e.dirX * sn + e.dirZ * c }, { box: a.mark.box }, col, `rgba(255,208,96,${0.05 + 0.2 * k})`); } }
+      if (a.mark?.ring && a.summon) for (let i = 0; i < a.summon.n; i++) { const an = e.t * 1.7 + (i * 6.2832) / a.summon.n; ring(e.x + Math.cos(an) * a.summon.r, e.gy + 2, e.z + Math.sin(an) * a.summon.r * 0.8, 40, '#7fe0d0', 2, `rgba(127,224,208,${0.1 + 0.3 * k})`); }
+    }
+    const fs = Math.max(11, Math.round(ov.height * 0.045)); g.font = `${fs}px system-ui, sans-serif`; g.textBaseline = 'alphabetic';
+    const b = sim.bossState(), y0 = ov.height - 8;
+    g.fillStyle = '#000a'; g.fillRect(0, y0 - fs - 6, ov.width, fs + 14); g.fillStyle = '#cfe8ff';
+    g.fillText(`울림 ${h.reso.toFixed(1)}/${h.resoMax}` + (h.charging ? ` · 모음 ${Math.round(h.charge * 100)}%` : '') + (h.callCd > 0 ? ` · 부름 쉼 ${h.callCd.toFixed(1)}` : '') + (h.bellCd > 0 ? ` · 종 쉼 ${h.bellCd.toFixed(1)}` : '') + (h.bellCharge > 0 ? ` · 종 ${Math.round(h.bellCharge * 100)}%` : '') + (b ? ` · ${b.name} ${Math.round(b.hp)}/${b.hpMax} ${b.phase}막 비틀 ${Math.round(b.stagger * 100)}%${b.kneel ? ' 무릎' : b.fled ? ' 달아남' : b.staggered ? ' 비틀거림' : ''}${b.sub ? ' [' + b.sub + ']' : ''}` : ''), 6, y0 - 2);
   }
   const le = h.lock != null ? sim.byId(h.lock) : null;
   if (le && !le.dead) shape({ x: le.x, z: le.z, y: le.gy ?? le.y, dirX: 1, dirZ: 0 }, { radius: { r: le.r + 10, fwd: 0 } }, '#ff3050');
@@ -176,6 +207,7 @@ function step(dt) {
   const d = demo, h = sim.hero, inp = demoInput(dt);
   if (d.safe) h.hp = Math.max(h.hp, h.hpMax * 0.6);
   if (d.dummy) for (const e of sim.enemies) e.hp = e.hpMax;
+  if (d.bossKeep) for (const e of sim.enemies) if (e.def.boss) { e.hp = Math.max(e.hp, e.hpMax * (e.bphase >= 2 ? 0.3 : 0.7)); if (d.pin) { e.x = d.spawns[0].x; e.z = d.spawns[0].z; } }
   sim.update(dt, inp);
   if (sim.stop > 0) { time += dt; return; }
   time += dt;
@@ -195,6 +227,9 @@ function setDemo(id) {
   const hooks = { event: (n, ...a) => { events.push([+time.toFixed(3), n, a[0]?.id ?? a[0]?.kind ?? (typeof a[0] === 'string' || typeof a[0] === 'number' ? a[0] : '')]); if (events.length > 400) events.shift(); } };
   sim = new Sim(flatArena(1400, 1000, demo.spawns), hooks); api.sim = sim;
   if (demo.hp) sim.hero.hp = demo.hp;
+  if (demo.hooks) for (const p of demo.hooks) sim.hookPoints.push({ ...p });
+  if (demo.reso) sim.hero.reso = demo.reso;
+  if (demo.bossHp) for (const e of sim.enemies) if (e.def.boss) e.hp = demo.bossHp;
   heroCh.dx = 1; heroCh.dz = 0; heroCh._pm = null; heroCh.anim.play('idle', { fade: 0, restart: true });
   cam.x = 0; cam.z = 0;
 }
@@ -259,7 +294,7 @@ async function main() {
   const heroAsset = await loadCharAsset(DIR + 'kael.glb');
   await loadPlayClips(heroAsset);
   heroCh = new Char3D(heroAsset, R, { maxTex: texCap });
-  const models = [...new Set(Object.values(KINDS).filter((K) => !K.boss).map((K) => K.model))], weps = [...new Set(Object.values(KINDS).map((K) => K.weapon).filter(Boolean))];
+  const models = [...new Set(Object.values(KINDS).map((K) => K.model))], weps = [...new Set(Object.values(KINDS).map((K) => K.weapon).filter(Boolean))];
   await Promise.all([...models.map(async (m) => { const as = await loadCharAsset(DIR + m + '.glb'); as.gpu = R.add(as.model, { maxTex: texCap }); const lo = Math.min(...as.model.prims.map((p) => { let v = 1e9; for (let i = 1; i < p.pos.length; i += 3) v = Math.min(v, p.pos[i]); return v; })), hi = Math.max(...as.model.prims.map((p) => { let v = -1e9; for (let i = 1; i < p.pos.length; i += 3) v = Math.max(v, p.pos[i]); return v; })); as.h = hi - lo; assets.set(m, as); }),
     ...weps.map(async (w) => { weapons.set(w, R.add(await loadGLB(DIR + w + '.glb'), { maxTex: 512 })); })]);
   const tiles = []; for (let i = -14; i < 14; i++) for (let k = -10; k < 10; k++) { const c = (i + k) & 1 ? 0.3 : 0.25; tiles.push({ min: [i * 100, -6, k * 100], max: [i * 100 + 100, 0, k * 100 + 100], color: [c, c * 1.05, c * 1.15] }); }
@@ -270,8 +305,8 @@ async function main() {
   const btn = (label, fn, on) => { const b = document.createElement('button'); b.textContent = label; b.onclick = () => { fn(); sync(); }; b._on = on; ui.appendChild(b); return b; };
   const sep = (t) => { const s = document.createElement('span'); s.textContent = t; ui.appendChild(s); };
   const sync = () => { for (const b of ui.children) b.classList?.toggle('on', !!b._on?.()); };
-  sep('카엘'); for (const k of ['free', 'run8', 'turn', 'circle', 'walk', 'ready', 'combo', 'combo1', 'lunge', 'comboUp', 'roll', 'jump', 'guard', 'block', 'hurt']) btn(DEMOS[k].name, () => setDemo(k), () => S.demo === k);
-  sep('적'); for (const k of ['soldier', 'crowd', 'rise', 'mage', 'corpse', 'ghost', 'armor', 'bat', 'fight', 'elite']) btn(DEMOS[k].name, () => setDemo(k), () => S.demo === k);
+  sep('카엘'); for (const k of ['free', 'run8', 'turn', 'circle', 'walk', 'ready', 'charge', 'chargeBig', 'hook', 'call', 'echo', 'knell', 'combo', 'combo1', 'lunge', 'comboUp', 'roll', 'jump', 'guard', 'block', 'hurt']) btn(DEMOS[k].name, () => setDemo(k), () => S.demo === k);
+  sep('적'); for (const k of ['soldier', 'crowd', 'rise', 'mage', 'corpse', 'ghost', 'armor', 'bat', 'fight', 'elite', 'boss', 'bossTell', 'bossFar', 'boss2']) btn(DEMOS[k].name, () => setDemo(k), () => S.demo === k);
   sep('보기'); for (const [k, n] of [['game', '게임 카메라'], ['high', '높이'], ['close', '가까이'], ['side', '옆'], ['front', '앞'], ['top', '위'], ['enemy', '적 가까이']]) btn(n, () => { S.cam = k; }, () => S.cam === k);
   btn('판정 보기', () => { S.box = !S.box; }, () => S.box); btn('느리게', () => { S.slow = !S.slow; }, () => S.slow); btn('멈춤', () => { S.pause = !S.pause; }, () => S.pause);
   sync();

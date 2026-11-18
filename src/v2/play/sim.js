@@ -254,7 +254,7 @@ export class Sim {
   _tools(h, dt, inp, pSkill, pBell, pDash, moving, ux, uz) {
     const T = TUNE, E = this.enemies, HP = this.hookPoints;
     let hk = null, hd = T.hookRange * T.hookRange, kn = null;
-    for (let i = 0; i < HP.length; i++) { const p = HP[i]; if (p.off) continue; const dx = p.x - h.x, dz = p.z - h.z, d = dx * dx + dz * dz; if (d < hd && d > 1600 && Math.abs((p.y ?? 0) - h.y) < T.hookRise) { hd = d; hk = p; } }
+    for (let i = 0; i < HP.length; i++) { const p = HP[i]; if (p.off) continue; const dx = p.x - h.x, dz = p.z - h.z, d = dx * dx + dz * dz, lx = (p.to ? p.to[0] : p.x) - h.x, lz = (p.to ? p.to[1] : p.z) - h.z; if (d < hd && lx * lx + lz * lz > 1600 && Math.abs((p.y ?? 0) - h.y) < T.hookRise) { hd = d; hk = p; } }   // 이미 그 고리의 내릴 자리에 서 있으면 걸지 않는다
     for (let i = 0; i < E.length; i++) { const e = E[i]; if (e.kneel > 0 && !e.dead && e.state !== 'dead') { const dx = e.x - h.x, dz = e.z - h.z; if (dx * dx + dz * dz < T.knellRange * T.knellRange) kn = e; } }
     h.hookId = hk ? hk.id : null; h.skillMode = hk ? 'hook' : 'call'; h.knellId = kn ? kn.id : null;
     const freeNow = h.onGround && h.dashT <= 0 && (!h.move || (h.move.kind !== 'plunge' && h.moveT >= h.move.hit[1]));
@@ -276,7 +276,7 @@ export class Sim {
       return true;
     }
     // 종: 짧게 = 메아리, 길게 = 장면의 일(건넘) 또는 조종 — 길게 누르는 동안 영웅은 종 조각을 들고 선다
-    if (pBell && h.bellOk) { if (inp.bellHeld === undefined) { this._startAct(h, 'echo'); return true; } h.bellDown = true; h.bellHoldT = 0; }
+    if (pBell && h.bellOk && !h.bellDown) { if (inp.bellHeld === undefined) { this._startAct(h, 'echo'); return true; } h.bellDown = true; h.bellHoldT = 0; }
     if (h.bellDown) {
       if (inp.bellHeld) { h.bellHoldT += dt; if (h.bellHoldT >= T.bellTap && freeNow) { h.bellDown = false; this._startAct(h, 'ring'); return true; } }
       else { h.bellDown = false; if (h.bellOk) { this._startAct(h, 'echo'); return true; } }
@@ -553,7 +553,7 @@ export class Sim {
     const r = this.emit('hit', e, dmg, mv, hx, hy, hz, info);
     if (T.ownHitstop) this.stop = Math.max(this.stop, r && typeof r.stop === 'number' ? Math.min(0.3, r.stop) : mv.hitstop * (blocked ? 1.5 : 1.25));   // hooks.hit 이 { stop } 을 돌려주면(feel.hit 의 결과 그대로) 그 경직을 쓴다
     if (kill) this._kill(e);
-    else if (whip && !blocked) {   // 휘감기: 작은 적은 끌어오고 큰 적에게는 끌려간다
+    else if (whip) {   // 휘감기 (갑주의 앞면이 막아도 채찍은 감긴다): 작은 적은 끌어오고 큰 적에게는 끌려간다
       const small = D.weight < 0.5 && !D.boss && !D.elite;
       if (small) { e.pullT = T.pullT; e.pullX = src.x + src.dirX * (src.r + e.r + 36); e.pullZ = src.z + src.dirZ * (src.r + e.r + 36); e.stun = Math.max(e.stun, 0.6); e.kx = e.kz = 0; if (e.state === 'attack' && !D.poise) this._cancelAttack(e, 0.6); }
       else if (!src.pullT || src.pullT <= 0) { src.pullT = T.pullT; src.pullX = e.x - ax * (e.r + src.r + 44); src.pullZ = e.z - az * (e.r + src.r + 44); }

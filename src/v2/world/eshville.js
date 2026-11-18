@@ -11,7 +11,8 @@ const FIRE = (r = 420, i = 2.0) => ({ r, i, y: 30, c: [1, 0.5, 0.2] });
 export function eshville(era) {
   const now = era === 'now', past = !now, P = [], anchors = [], enemies = [], actors = [], interact = [], triggers = [];
   const add = (chunk, ...parts) => P.push(...inChunk(chunk, parts.flat()));
-  const LAMP = (x, z, o = {}) => (now ? { t: 'prop', mesh: 'lamp', h: 196, solid: 9, solidZ: 9, light: { r: 330, i: 1.6, y: 170 }, x, z, ...o } : { t: 'prop', mesh: 'lanternpost', h: 190, solid: 9, solidZ: 9, light: { r: 300, i: 1.5, y: 130, c: [1, 0.7, 0.36] }, flicker: true, code: !(z >= 264 && z <= 280), x, z, ...o });   // generated lantern post against the house fronts; the thin code-built one where the hero can walk behind it (the thick post hid him: world_verify_node)
+  // the generated lantern post has its origin under the post and its arm toward +x; x - 20 keeps the post where the first pack (origin under the middle of the model) showed it
+  const LAMP = (x, z, o = {}) => (now ? { t: 'prop', mesh: 'lamp', h: 196, solid: 9, solidZ: 9, light: { r: 330, i: 1.6, y: 170 }, x, z, ...o } : { t: 'prop', mesh: 'lanternpost', h: 190, solid: 9, solidZ: 9, light: { r: 300, i: 1.5, y: 130, c: [1, 0.7, 0.36] }, flicker: true, code: !(z >= 264 && z <= 280), x: z >= 264 && z <= 280 ? x - 20 : x, z, ...o });   // generated lantern post against the house fronts; the thin code-built one where the hero can walk behind it (the thick post hid him: world_verify_node)
   const fire = (chunk, id, x, y, z, w, h, lr = 420) => { add(chunk, { t: 'deco', mesh: 'fire', x, y, z, w, h, n: Math.max(4, Math.round(w / 18)), light: FIRE(lr, 1.9) }); anchors.push({ id, kind: 'fire', x, y, z, size: +(h / 70).toFixed(2), light: true }); };
 
   // ───────────── ground ─────────────
@@ -72,7 +73,7 @@ export function eshville(era) {
     { t: 'fence', kind: 'iron', x0: 1860, z0: 5, x1: 2180, z1: 5, h: 44 }, { t: 'fence', kind: 'iron', x0: 2700, z0: 5, x1: 3020, z1: 5, h: 44 },
     { t: 'prop', mesh: 'brazier', h: 112, solid: 30, solidZ: 24, x: 2700, z: 262, light: { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } },
     { t: 'prop', mesh: 'barrel', x: 2420, z: 264, h: 78, solid: 24 });
-  add('out', LAMP(640, 262, now ? { mesh: 'lanternpost', lit: false, light: null, h: 190 } : {}), LAMP(1380, 8, { solid: 0 }),
+  add('out', LAMP(now ? 620 : 640, 262, now ? { mesh: 'lanternpost', lit: false, light: null, h: 190 } : {}), LAMP(1380, 8, { solid: 0 }),
     { t: 'fence', kind: 'wood', x0: 80, z0: 6, x1: 420, z1: 6, h: 50 }, { t: 'fence', kind: 'wood', x0: 860, z0: 6, x1: 1240, z1: 6, h: 50 },
     { t: 'prop', mesh: 'deadtree', x: 20, z: 258, h: 300, solid: 20, solidZ: 14 });
   add('east', { t: 'prop', mesh: 'well', x: 3900, z: 450, h: 132, solid: 46, solidZ: 30 },
@@ -94,19 +95,19 @@ export function eshville(era) {
   // ───────────── era dressing ─────────────
   if (now) {
     add('out', { t: 'prop', mesh: 'wreck', x: 440, z: 256, w: 150, solid: 68, solidZ: 26, solidH: 60, light: FIRE(460, 2.1) },
-      { t: 'prop', mesh: 'cart', x: 820, z: 252, h: 104, solid: 70, solidZ: 36 }, { t: 'prop', mesh: 'goods', x: 1040, z: 250, h: 92, solid: 64, solidZ: 40, solidH: 70 },   // barrels, crates and sacks in one generated model (was a barrel and a crate)
+      { t: 'prop', mesh: 'cart', x: 820, z: 252, h: 104, solid: 90, solidZ: 36 }, { t: 'prop', mesh: 'goods', x: 1040, z: 250, h: 92, solid: 64, solidZ: 40, solidH: 70 },   // barrels, crates and sacks in one generated model (was a barrel and a crate)
       { t: 'prop', mesh: 'wreck', x: 1290, z: 258, w: 130, fire: false, solid: 60, solidZ: 24, solidH: 60 });
     anchors.push({ id: 'fire_wreck', kind: 'fire', x: 450, y: 20, z: 244, size: 1.2, light: true }, { id: 'smoke_wreck2', kind: 'smoke', x: 1290, y: 40, z: 250, size: 1 });
     fire('out', 'fire_h1a', 90, 70, 296, 40, 56); fire('out', 'fire_h1roof', 200, 210, 300, 190, 84, 520); fire('out', 'fire_ruin', 440, 96, 300, 120, 64, 380);
     fire('out', 'fire_h3a', 1120, 72, 296, 40, 60); fire('out', 'fire_h3roof', 1300, 230, 300, 210, 90, 540);
     for (const [x, z] of [[230, 120], [760, 200], [1180, 60]]) anchors.push({ id: 'embers_' + x, kind: 'embers', x, y: 0, z, size: 1 });
     add('street', { t: 'prop', mesh: 'crate', x: 2150, z: 258, h: 62, solid: 30, solidZ: 18 }, { t: 'prop', mesh: 'sacks', x: 1960, z: 266, h: 34, solid: 26, solidZ: 12 }, { t: 'prop', mesh: 'hay', x: 3060, z: 262, h: 62, solid: 34, solidZ: 16 });
-    add('east', { t: 'prop', mesh: 'wreck', x: 4560, z: 200, w: 140, solid: 64, solidZ: 26, solidH: 60, light: FIRE(440, 2.0) }, { t: 'prop', mesh: 'cart', x: 3560, z: 830, h: 104, solid: 70, solidZ: 36 },
+    add('east', { t: 'prop', mesh: 'wreck', x: 4560, z: 200, w: 140, solid: 64, solidZ: 26, solidH: 60, light: FIRE(440, 2.0) }, { t: 'prop', mesh: 'cart', x: 3560, z: 830, h: 104, solid: 90, solidZ: 36 },
       { t: 'prop', mesh: 'barrel', x: 4080, z: 846, h: 78, solid: 24 }, { t: 'prop', mesh: 'sacks', x: 4340, z: 842, h: 36, solid: 26, solidZ: 12 });
     anchors.push({ id: 'fire_sq', kind: 'fire', x: 4570, y: 20, z: 190, size: 1.1, light: true }, { id: 'red_moon', kind: 'glow_red', x: 3900, y: 900, z: 2600, size: 4 });
   } else {
     add('out', { t: 'prop', mesh: 'hay', x: 430, z: 262, h: 62, solid: 34, solidZ: 16 }, { t: 'prop', mesh: 'harvest', x: 330, z: 266, h: 46, solid: 30, solidZ: 12 },
-      { t: 'prop', mesh: 'cart', x: 820, z: 252, h: 104, solid: 70, solidZ: 36 }, { t: 'prop', mesh: 'goods', x: 1040, z: 250, h: 92, solid: 64, solidZ: 40, solidH: 70, flip: true },
+      { t: 'prop', mesh: 'cart', x: 820, z: 252, h: 104, solid: 90, solidZ: 36 }, { t: 'prop', mesh: 'goods', x: 1040, z: 250, h: 92, solid: 64, solidZ: 40, solidH: 70, flip: true },
       { t: 'prop', mesh: 'plaguepost', x: 1290, z: 264, h: 200, solid: 10, solidZ: 10 });
     add('street', { t: 'prop', mesh: 'stall', x: 2240, z: 258, h: 130, w: 140, solid: 72, solidZ: 23 }, { t: 'prop', mesh: 'harvest', x: 1960, z: 266, h: 46, solid: 30, solidZ: 12 }, { t: 'prop', mesh: 'hay', x: 3060, z: 262, h: 62, solid: 34, solidZ: 16 });
     add('east', { t: 'prop', mesh: 'plaguepost', x: 4560, z: 200, h: 220, code: true, solid: 10, solidZ: 10 }, { t: 'prop', mesh: 'stall', x: 3500, z: 836, h: 130, w: 140, solid: 72, solidZ: 23 }, { t: 'prop', mesh: 'stall', x: 4300, z: 836, h: 130, w: 140, solid: 72, solidZ: 23 },

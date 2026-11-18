@@ -66,7 +66,7 @@ export default {
     // 나무 상자 장애물 + 소품
     { t: 'block', x: 1392, z: 92, w: 74, d: 74, h: 64, mat: 'wood', mesh: 'crate' },
     { t: 'prop', mesh: 'barrel', x: 1500, z: 214, h: 78, solid: 24 },
-    { t: 'prop', mesh: 'cart', x: 250, z: 226, h: 104, solid: 70, solidZ: 36 },
+    { t: 'prop', mesh: 'cart', x: 250, z: 226, h: 104, solid: 90, solidZ: 36 },
     { t: 'prop', mesh: 'hay', x: 585, z: 236, h: 62, solid: 34, solidZ: 16 },
     { t: 'prop', mesh: 'well', x: 1255, z: 44, h: 120, solid: 46, solidZ: 30 },
     { t: 'prop', mesh: 'crate', x: 2060, z: 236, h: 62, solid: 30, solidZ: 18 },

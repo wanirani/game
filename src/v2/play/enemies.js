@@ -67,7 +67,7 @@ export const KINDS = {
   // 보스: 밴시 여왕. 1막(체력 절반까지) 울음 탄 · 울음 물결 · 비명 → 절반에서 그 밤으로 달아난다(bossFlee — 장면이 쫓아 건넌 뒤 sim.bossReturn) → 2막 + 유령 부르기 · 배웅가.
   // 비틀거림 눈금(poise)이 차면 2.6초 비틀거린다(그동안 1.3배). 체력이 kneelAt 에 닿으면 무릎 꿇고 조종(길게 친 종)을 기다린다 — 베어서는 끝나지 않는다. docs/v2/PLAY_API.md §7
   banshee_queen: K({ name: '밴시 여왕', model: 'banshee_queen', height: 2.7, material: 'cloth', ai: 'boss', boss: true, element: 'ice',
-    hp: 600, r: 30, speed: 70, turn: 3.4, floats: true, hover: 23, weight: 1, stun: 0, poise: true, sight: 520, sightArc: 180, dieT: 2.4,
+    hp: 900, r: 30, speed: 70, turn: 3.4, floats: true, hover: 23, weight: 1, stun: 0, poise: true, sight: 520, sightArc: 180, dieT: 2.4,
     attacks: [Q_WAIL, Q_SWEEP, Q_SCREAM, Q_SUMMON, Q_SONG], keepNear: 150, keepFar: 196,
     poiseMax: 100, poiseHit: 0.45, poiseParry: 40, poiseCall: 40, poiseBell: 12, staggerT: 2.6, phaseAt: 0.5, fleeAuto: 4, kneelAt: 0.04, kneelWait: 12, kneelHeal: 0.15, ghostMax: 2,
     onBell: (sim, e) => sim.bossBell(e), onCall: (sim, e) => { sim.addPoise(e, e.def.poiseCall); },

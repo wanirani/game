@@ -113,7 +113,7 @@ for (const kind of ['skeleton_soldier', 'skeleton_mage', 'plague_corpse', 'grave
   run(s, 14, (i, q) => ({ attack: i % 8 === 0 }), (q) => { if (q.hero.dead) q.hero.hp = 50; q.hero.hp = Math.max(q.hero.hp, 20); });
   ok('bats: flock orbits and can be cut down', kills >= 3 && finite(s), `kills ${kills}/5`); }
 { // 보스 자리
-  const s = mk([{ kind: 'banshee_queen', x: 200, z: 0, active: true }]); run(s, 1, {}); ok('boss slot: spawns, idles, faces hero', s.enemies[0].def.boss === true && s.enemies[0].dirX < -0.9 && s.enemies[0].hp === 600); }
+  const s = mk([{ kind: 'banshee_queen', x: 200, z: 0, active: true }]); run(s, 1, {}); const bs = s.bossState(); ok('boss: spawns, faces the hero, sim.bossState() gives the HUD bar { name, hp, hpMax, stagger, phase }', s.enemies[0].def.boss === true && s.enemies[0].dirX < -0.9 && bs && bs.name === KINDS.banshee_queen.name && bs.hp === bs.hpMax && bs.hpMax === KINDS.banshee_queen.hp && bs.stagger === 0 && bs.phase === 1, JSON.stringify(bs)); }
 
 // ── 8. 옛 스테이지(시범판 B)에서: melee/ranged 가 그대로 돌고, 끼이지 않는다 ──
 try {
@@ -190,6 +190,65 @@ ok('moves carry strength (= str) for the scene', Object.values(MOVES).every((m) 
   ok('tap the roll button standing, release, then push the stick within 0.3 s: no roll (walks off)', rolls === 0 && s.hero.dashT <= 0 && s.hero.x > 5, `rolls ${rolls} x ${s.hero.x.toFixed(0)}`);
   const s2 = mk(); let r2 = 0; s2.hooks.roll = () => { r2++; }; run(s2, 0.4, (i) => ({ mx: i >= 6 ? 1 : 0, mz: 0, dash: i === 0, guard: true }));
   ok('holding the button (guard) and pushing the stick still rolls', r2 === 1, `rolls ${r2}`); }
+// ── 도구: 모아 휘감기 · 솜씨(채찍 걸기 / 부름) · 종(메아리 / 길게 = 조종) · 울림 눈금 ──
+{ const s = mk([{ kind: 'melee', x: 215, z: 0, active: true }]); s.enemies[0].cd = 99; s.enemies[0].hp = s.enemies[0].hpMax = 999; const ids = []; s.hooks.attack = (h, mv) => ids.push(mv.id); let maxC = 0, sawCharge = false;
+  run(s, 1.2, (i) => ({ attack: i === 0, attackHeld: i < 62 }), (q) => { maxC = Math.max(maxC, q.hero.charge); sawCharge ||= q.hero.anim === 'charge'; });
+  run(s, 0.8, {}); const e = s.enemies[0], d = Math.hypot(e.x - s.hero.x, e.z - s.hero.z);
+  ok('hold attack: c1, then charges (hero.charge → 1), release = whip; a small enemy 215 px away is hit and pulled in front of the hero', ids.join('>') === 'c1>whip' && sawCharge && maxC >= 0.99 && names(s).includes('pull') && d < 80 && e.hp < 999, `moves ${ids.join('>')} · charge ${maxC.toFixed(2)} · enemy now ${d.toFixed(0)} px away`);
+  ok('whip fills the resonance gauge more than a normal hit', s.hero.reso > 0.3 && s.hero.reso < 1, `reso ${s.hero.reso.toFixed(2)}`); }
+{ const s = mk([{ kind: 'armor', x: 235, z: 0, active: true }]); s.enemies[0].cd = 99; const x0 = s.hero.x;
+  run(s, 1.2, (i) => ({ attack: i === 0, attackHeld: i < 62 })); run(s, 0.6, {}); const e = s.enemies[0];
+  ok('whip on a big enemy pulls the hero to it instead', s.hero.x - x0 > 60 && Math.hypot(e.x - s.hero.x, e.z - s.hero.z) < 100 && s.log.some((l) => l[0] === 'pull' && l[2] === 'to'), `hero moved ${(s.hero.x - x0).toFixed(0)} px · gap ${Math.hypot(e.x - s.hero.x, e.z - s.hero.z).toFixed(0)}`); }
+{ const s = mk(); let c = 0; s.hooks.attack = () => c++; run(s, 0.5, (i) => ({ attack: i === 0, attackHeld: i < 8 })); ok('a normal tap (held 0.13 s) does not charge', c === 1 && !s.hero.charging && s.hero.charge === 0); }
+{ const s = mk(); s.hookPoints.push({ id: 'r1', x: 250, y: 0, z: 40, to: [300, 50] }); s.update(DT, {}); const m0 = s.hero.skillMode; let top = 0;
+  run(s, 1.0, (i) => ({ skill: i === 0 }), (q) => { top = Math.max(top, q.hero.y); });
+  ok('skill near a glowing ring = whip hook: mode hook, flies in an arc, lands on the far spot', m0 === 'hook' && s.hero.hookId === null && top > 40 && Math.abs(s.hero.x - 300) < 2 && Math.abs(s.hero.z - 50) < 2 && s.hero.onGround && ['throw', 'latch', 'land'].every((p) => s.log.some((l) => l[0] === 'hook' && l[3] === p)), `mode ${m0} · top ${top.toFixed(0)} · at ${s.hero.x.toFixed(0)},${s.hero.z.toFixed(0)}`); }
+{ const s = mk([{ kind: 'ghost', x: 120, z: 30, active: true }, { kind: 'melee', x: 130, z: -40, active: true }]); for (const e of s.enemies) e.cd = 99;
+  s.update(DT, { skill: true }); const denied = s.log.some((l) => l[0] === 'deny') && !s.hero.act;
+  s.hero.reso = 2; run(s, 1.0, (i) => ({ skill: i === 0 })); const g = s.enemies[0], m = s.enemies[1];
+  ok('skill with no ring = call (Sera lantern): needs one resonance cell, lays a light, ghost inside is revealed and held, soldier staggers, cooldown runs', denied && s.hero.reso === 1 && s.lights.length === 1 && g.solid && g.stun > 0 && m.state === 'stagger' && s.hero.callCd > 4 && s.hero.skillMode === 'call', `denied first ${denied} · reso ${s.hero.reso} · lights ${s.lights.length} · ghost solid ${g.solid} · soldier ${m.state} · cd ${s.hero.callCd.toFixed(1)}`);
+  run(s, 5.2, {}, () => { s.hero.hp = 100; }); ok('the light ends after callDur', s.lights.length === 0); }
+{ const s = mk([{ kind: 'ghost', x: 150, z: 30, active: true }, { kind: 'mage', x: 210, z: -60, active: true }]); const gh = s.enemies[0], mg = s.enemies[1]; gh.cd = 99; mg.cd = 0;
+  run(s, 0.5, {}); const casting = mg.state === 'attack' && mg.phase === 'windup';
+  run(s, 0.4, (i) => ({ bell: i === 0 }));
+  ok('bell tap = echo: reveals the ghost, cuts the mage cast, cooldown starts', casting && gh.solid && gh.revealT > 2 && mg.state !== 'attack' && s.shots.length === 0 && s.hero.bellCd > 1.5 && s.log.some((l) => l[0] === 'bell') && s.log.some((l) => l[0] === 'silence'), `casting ${casting} · ghost solid ${gh.solid} · mage ${mg.state} · cd ${s.hero.bellCd.toFixed(1)}`);
+  const s2 = mk(); s2.update(DT, { bell: true, bellHeld: true }); run(s2, 0.2, { bellHeld: true }); const a02 = s2.hero.act; run(s2, 0.2, { bellHeld: false });
+  ok('with bellHeld given: a press released before 0.3 s is the echo', a02 === null && s2.hero.act === 'echo');
+  const s3 = mk(); let long = 0; s3.hooks.ringLong = (h, kn) => { long++; }; s3.update(DT, { bell: true, bellHeld: true }); run(s3, 1.3, { bellHeld: true });
+  ok('held: hero.bellCharge fills, hooks.ringLong fires once (no kneeling boss → the scene decides the crossing)', long === 1 && s3.hero.bellOk === false, `ringLong ${long}`); }
+// ── 보스: 밴시 여왕 ──
+{ const Q = KINDS.banshee_queen, by = Object.fromEntries(Q.attacks.map((a) => [a.id, a]));
+  ok('boss data: KINDS.banshee_queen is a boss with five attacks, each with wind-up ≥ 0.75 s, a warning shape and a punishable recovery ≥ 0.7 s', Q.boss && ['wail', 'sweep', 'scream', 'summon', 'song'].every((k) => by[k] && by[k].windup >= 0.75 && by[k].recover >= 0.7 && (by[k].arc || by[k].radius || by[k].mark)), Q.attacks.map((a) => `${a.id} ${a.windup}/${a.strike}/${a.recover}`).join(' · '));
+  const boss = (o = {}) => { const s = mk([{ kind: 'banshee_queen', x: o.x ?? 150, z: 0, active: true, phase: o.phase }]); const e = s.enemies[0]; e.cd = 99; s.hero.hp = s.hero.hpMax = 1e5; return [s, e]; };
+  const firstHurt = (s, e, a, inpf) => { let t = -1, i = 0; s.hooks.heroHurt = () => { if (t < 0) { t = e.stateT; s.stunSeen = s.hero.hurtT; } }; s.startAttack(e, a); while (e.state === 'attack' && i++ < 900) s.update(DT, inpf ? inpf(i) : {}); return t; };
+  { const [s, e] = boss(); const t = firstHurt(s, e, by.sweep); ok('sweep: hits a hero standing in the arc only inside the strike window', t >= by.sweep.windup - 1e-6 && t <= by.sweep.windup + by.sweep.strike + DT, `hurt at ${t.toFixed(3)} · window ${by.sweep.windup}–${(by.sweep.windup + by.sweep.strike).toFixed(2)}`); }
+  { const [s, e] = boss({ x: 150 }); s.hero.x = 320; s.hero.z = 0; e.dirX = -1; e.dirZ = 0; const a = { ...by.sweep, track: 0 }; const t = firstHurt(s, e, a); ok('sweep: a hero behind her is not hit (arc 210°)', t < 0); }
+  { const [s, e] = boss(); let res = null; s.startAttack(e, by.sweep); for (let i = 0; i < 200 && e.state === 'attack'; i++) s.update(DT, { guard: e.stateT > by.sweep.windup - 0.1 }); ok('sweep can be parried: no stagger at once, the stagger gauge fills by poiseParry', s.log.some((l) => l[0] === 'parry') && e.stagger === 0 && Math.abs(e.poiseHp - Q.poiseParry) < 1e-6, `poise ${e.poiseHp}`); }
+  { const [s, e] = boss(); const t = firstHurt(s, e, by.scream, () => ({ guard: true })); ok('scream: radius hit at the end of the 1.15 s wind-up, cannot be guarded, stuns the hero', t >= by.scream.windup - 1e-6 && t <= by.scream.windup + by.scream.strike + DT && s.stunSeen >= 0.8, `hurt at ${t.toFixed(3)} · stunned ${s.stunSeen?.toFixed(2)} s`); }
+  { const [s, e] = boss(); let hurt = 0; s.hooks.heroHurt = () => hurt++; s.startAttack(e, by.scream); for (let i = 0; i < 400 && e.state === 'attack'; i++) s.update(DT, { mx: -1, mz: 0, dash: Math.abs(e.stateT - (by.scream.windup - 0.1)) < DT / 2 }); ok('scream: rolling through the strike dodges it', hurt === 0 && s.log.some((l) => l[0] === 'dodge' || l[0] === 'roll')); }
+  { const [s, e] = boss(); let hurt = 0; s.hooks.heroHurt = () => hurt++; s.startAttack(e, by.scream); run(s, 0.5, {}); run(s, 0.4, (i) => ({ bell: i === 0 }));
+    ok('scream: the bell (echo) during the wind-up cuts it and staggers her; hits in the opening do 1.3×', hurt === 0 && e.state === 'stagger' && e.stagger > 2 && s.log.some((l) => l[0] === 'bossStagger'), `state ${e.state} · stagger ${e.stagger.toFixed(1)} s`); }
+  { const [s, e] = boss({ x: 330 }); s.startAttack(e, by.wail); let n0 = -1; for (let i = 0; i < 200 && e.state === 'attack'; i++) { s.update(DT, {}); if (n0 < 0 && s.shots.length) n0 = e.stateT; }
+    ok('wail: three shots leave at the end of the wind-up, along the warned lanes', n0 >= by.wail.windup - 1e-6 && n0 <= by.wail.windup + 2 * DT && s.log.filter((l) => l[0] === 'shot' && l[2] === 'spawn').length === 3, `first shot at ${n0.toFixed(3)}`); }
+  { const [s, e] = boss({ phase: 2 }); s.startAttack(e, by.summon); run(s, by.summon.windup + 0.2, {}); ok('summon (phase 2): two ghosts appear at the marked spots after the wind-up', s.countKind('grave_ghost') === 2 && s.log.filter((l) => l[0] === 'summon').length === 2); }
+  { const [s, e] = boss({ phase: 2 }); s.hero.reso = 2; let hurts = []; s.hooks.heroHurt = () => hurts.push(e.stateT); s.startAttack(e, by.song); run(s, by.song.windup + 1.6, {});
+    const okPulse = hurts.length >= 2 && hurts[0] >= by.song.windup - 1e-6 && s.hero.reso < 2;
+    run(s, 1.2, () => ({ bell: true })); 
+    ok('song (phase 2): pulses hurt and drain resonance every 0.7 s; the bell breaks it and staggers her', okPulse && e.stagger > 0 && s.log.some((l) => l[0] === 'silence'), `pulses ${hurts.length} first at ${hurts[0]?.toFixed(2)} · reso ${s.hero.reso.toFixed(2)} · then ${e.state}`); }
+  { const [s, e] = boss(); e.cd = 0.2; e.hp = Q.hp * 0.5 + 5; let fled = 0, back = 0; s.hooks.bossFlee = () => fled++; s.hooks.bossReturn = () => back++; s._hitEnemy(e, MOVES.c3, s.hero); const hpF = e.hp; run(s, 0.3, {}); const f = e.fled, solid = e.solid; s._hitEnemy(e, MOVES.c3, s.hero);
+    const st0 = s.bossState(); run(s, Q.fleeAuto + 0.5, {});
+    ok('phase: at half health she flees (bossFlee, untouchable, bossState.fled), comes back by herself after fleeAuto (or sim.bossReturn) in phase 2', fled === 1 && f && !solid && e.hp === hpF && st0.fled && st0.phase === 2 && back === 1 && !e.fled && e.solid && e.bphase === 2, `fled ${fled} · back ${back} · phase ${e.bphase}`); }
+  { const [s, e] = boss({ phase: 2 }); e.hp = 60; for (let i = 0; i < 12; i++) s._hitEnemy(e, MOVES.c3, s.hero); run(s, 0.2, {}); const kneel = e.kneel > 0, hp = e.hp, st = s.bossState();
+    for (let i = 0; i < 5; i++) s._hitEnemy(e, MOVES.c3, s.hero);
+    s.hero.x = e.x - 120; s.hero.z = e.z; s.update(DT, { bell: true, bellHeld: true }); const kid = s.hero.knellId; run(s, 1.3, { bellHeld: true });
+    ok('death: hits cannot finish her — she kneels at 4 % (bossState.kneel, hero.knellId); the long bell (knell) sends her (bossDown, knelled)', kneel && hp === Math.ceil(Q.hp * Q.kneelAt) && e.hp <= 0 && st.kneel && kid === e.id && e.state === 'dead' && e.knelled && s.log.some((l) => l[0] === 'knell') && s.log.some((l) => l[0] === 'bossDown'), `kneel ${kneel} hp ${hp} → ${e.hp} · ${e.state}`); }
+  { const [s, e] = boss({ phase: 2 }); e.hp = Math.ceil(Q.hp * Q.kneelAt); run(s, Q.kneelWait + 0.5, {}); ok('left alone on her knees for kneelWait she gets up again with some health (no dead end)', e.kneel === 0 && e.hp === Math.round(Q.hp * Q.kneelHeal)); }
+  const { bossBot, naiveBot } = await import('./play_bot.mjs');
+  const fight = (bot, sd) => { seed = sd; const s = mk([{ kind: 'banshee_queen', x: 260, z: 0, active: true }]); const inp = {}, st = {}; let t = 0, end = null; while (t < 420 && !end) { bot(s, inp, st); s.update(DT, inp); t += DT; if (s.hero.dead || s.deaths > 0) end = 'lost'; else if (s.enemies[0].dead) end = 'won'; } return { end, t, hp: s.hero.hp, knelled: s.enemies[0].knelled, ok: finite(s), ev: new Set(names(s)) }; };
+  const w = [11, 22, 33].map((sd) => fight(bossBot, sd)), l = [11, 22].map((sd) => fight(naiveBot, sd));
+  ok('a bot that reads the tells (bell on scream/song, parry, roll, light for ghosts, long bell on the kneeling queen) beats her — three seeds', w.every((r) => r.end === 'won' && r.knelled && r.ok && r.ev.has('bossFlee') && r.ev.has('knell')), w.map((r) => `${r.end} in ${r.t.toFixed(0)} s hp ${r.hp}`).join(' · '));
+  ok('a bot that only walks up and mashes attack loses', l.every((r) => r.end === 'lost'), l.map((r) => `${r.end} in ${r.t.toFixed(0)} s`).join(' · '));
+  seed = 777; }
 try {
   const { compileEnv } = await import('../../src/v2/env/build.js'); const W = compileEnv((await import('../../src/v2/env/stage_slice0_env.js')).default);
   const s = new Sim(W, {}), h = s.hero; h.x = 1960; h.z = 244; h.y = s.w.ground(h.x, h.z); h.safe = { x: h.x, z: h.z, y: h.y }; h.hp = h.hpMax = 1e6;

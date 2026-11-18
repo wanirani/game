@@ -132,7 +132,8 @@ for (const dev of DEVICES) {
       await page.waitForTimeout(1500);
       dlg = await page.evaluate(() => { const sc = window.__v2.scene; return { modal: sc.hud.modal, talking: sc.people.talking?.id ?? null, clip: sc.people.byId('rook').a3.anim.cur?.name, d: sc.hud.metrics().dialog }; });
       await shot(page, `walk_${dev}_31_dialog`);
-      await T.tap(vp[0] * 0.5, vp[1] * 0.4, 60); await page.waitForTimeout(500); await T.tap(vp[0] * 0.5, vp[1] * 0.4, 60); await page.waitForTimeout(700);
+      await T.tap(vp[0] * 0.5, vp[1] * 0.12, 60);   // anywhere on the screen (away from the prompt chip) closes a one-page dialogue
+      await page.waitForFunction(() => !window.__v2.scene.hud.modal, null, { timeout: 8000 }).catch(() => {});
       dlg.after = await page.evaluate(() => window.__v2.scene.hud.modal);
     }
     R.people = { ...ppl, dlg };
