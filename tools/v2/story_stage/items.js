@@ -13,7 +13,7 @@ export const ITEMS = {
   key_rust: { id: 'key_rust', name: '녹슨 쇳덩이', kind: 'keepsake',
     desc: '열쇠였던 것. 쇠는 백 년을 버티지 못한다.' },
   order_slip: { id: 'order_slip', name: '빈칸 주문서', kind: 'keepsake',
-    desc: '하드윈 1세의 주문서. 받을 이는 「채찍 든 길손」, 이름 칸은 빈칸.' },
+    desc: '받을 이 「채찍 든 길손」. 백 년 비어 있던 이름 칸에 「카엘」.' },
   lotte_bread: { id: 'lotte_bread', name: '로테의 빵', kind: 'food',
     desc: '딱딱한 호밀빵. 로테가 손에 쥐여 주었다.' },
   chisel: { id: 'chisel', name: '묘지기의 끌', kind: 'tool',

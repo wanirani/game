@@ -183,7 +183,7 @@ export const DIALOGS_NOW = {
     { once: true, pages: [
       ['sign', '틸. 1697년. 한나의 동생.'],
       ['til', '나 틸이야! 누나, 나 틸이래!'],
-      ['hanna', '응, 틸. 이제 같이 가자.'],
+      ['hanna', '응, 틸. 길손 가는 것만 보고 가자.'],
     ], then: [['setFlag', 'saw_names'], ['if', ['carved_a'], [['chronicle', 'nameless_graves']]]] },
     { pages: [['sign', '틸. 1697년. 한나의 동생.']] },
   ],
@@ -199,7 +199,11 @@ export const DIALOGS_NOW = {
       ['narrator', '그 아래 한 줄이 끌로 깎여 있다.'],
       ['kael', '고조할아버지. 다녀가겠습니다.\n…이 줄은 누가 깎았습니까.'],
     ], then: [['setFlag', 'saw_stones']] },
-    { if: ['met_edmund'], once: true, pages: [
+    { if: ['bell_hung'], once: true, pages: [
+      ['sign', '에드문트 발크레인.\n1697년, 넷째 붉은 달.'],
+      ['kael', '(식기 전에, 라고 하셨지.)'],
+    ] },
+    { if: ['met_edmund', '!bell_hung'], once: true, pages: [
       ['sign', '에드문트 발크레인.\n1697년, 넷째 붉은 달.'],
       ['kael', '(수프가 식는다고 하셨지.)'],
     ] },

@@ -71,7 +71,7 @@ export const FLAGS = {
     read: ['chronicle:nameless_graves'] },
   bell_hung: { means: '납골당 앞 빈 종대에 길종을 걸었다 (건다)',
     set: ['ev_hang_bell'],
-    read: ['chronicle:road_bell', 'door.ossuary.now', 'door.ossuary.past', 'edmund.tavern', 'ev_edmund_grave', 'ev_hang_bell', 'ev_hung_now', 'ev_ossuary_door_past', 'ev_ossuary_exit_past', 'keeper.graveyard'] },
+    read: ['chronicle:road_bell', 'door.ossuary.now', 'door.ossuary.past', 'edmund.tavern', 'ev_edmund_grave', 'ev_hang_bell', 'ev_hung_now', 'ev_ossuary_door_past', 'ev_ossuary_exit_past', 'keeper.graveyard', 'stones'] },
   ossuary_open: { means: '납골당 문이 열렸다',
     set: ['door.ossuary.now'],
     read: ['chronicle:banshee', 'chronicle:four_knells', 'door.ossuary.now', 'ev_ossuary_bridge', 'ev_ossuary_exit_now'] },
