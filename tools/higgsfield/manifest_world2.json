@@ -2,7 +2,7 @@
  "batch": "world2",
  "cap_credits": 200,
  "total_credits": 114.0,
- "note": "WORLD-2 lane, 2026-11-18. Design pictures gpt_image_2_5 1k medium (0.5 each), then image-to-3D tripo_h3_1_image_to_3d (9 each). Prompts: see /tmp/claude-0/v2/world2/gen_prompts.json (same wording as submitted).",
+ "note": "WORLD-2 lane, 2026-11-18. Design pictures gpt_image_2_5 1k medium (0.5 each), then image-to-3D tripo_h3_1_image_to_3d (9 each). All 24 jobs completed (statuses re-read from the service at 01:55 UTC after the container restart); all 12 models were looked at from four sides (/tmp/claude-0/v2/world2/glb_sheet_0.jpg, _1.jpg), none rejected. The file with the prompt wording (/tmp/claude-0/v2/world2/gen_prompts.json) did not survive the restart: the prompts can be read from the service by job_id. No game, studio, brand or artist was named. No job was submitted after the restart (86 credits of the cap left unused).",
  "jobs": [
   {
    "id": "img_sarcophagus",
@@ -162,8 +162,10 @@
    "texture_alignment": "original_image",
    "media_role": "image_references",
    "credits": 9,
-   "status": "submitted",
-   "file": "/tmp/claude-0/v2/world2/raw/sarcophagus.glb"
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world2/raw/sarcophagus.glb",
+   "packed_source": "tools/v2/world_src/props/sarcophagus.glb",
+   "used": "baked into assets/v2/props/props.bin as prop sarcophagus"
   },
   {
    "id": "3d_coffinstack",
@@ -179,8 +181,10 @@
    "texture_alignment": "original_image",
    "media_role": "image_references",
    "credits": 9,
-   "status": "submitted",
-   "file": "/tmp/claude-0/v2/world2/raw/coffinstack.glb"
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world2/raw/coffinstack.glb",
+   "packed_source": "tools/v2/world_src/props/coffinstack.glb",
+   "used": "baked into assets/v2/props/props.bin as prop coffinstack"
   },
   {
    "id": "3d_bonepile",
@@ -196,8 +200,10 @@
    "texture_alignment": "original_image",
    "media_role": "image_references",
    "credits": 9,
-   "status": "submitted",
-   "file": "/tmp/claude-0/v2/world2/raw/bonepile.glb"
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world2/raw/bonepile.glb",
+   "packed_source": "tools/v2/world_src/props/bonepile.glb",
+   "used": "baked into assets/v2/props/props.bin as prop bonepile"
   },
   {
    "id": "3d_skullwall",
@@ -213,8 +219,10 @@
    "texture_alignment": "original_image",
    "media_role": "image_references",
    "credits": 9,
-   "status": "submitted",
-   "file": "/tmp/claude-0/v2/world2/raw/skullwall.glb"
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world2/raw/skullwall.glb",
+   "packed_source": "tools/v2/world_src/props/skullwall.glb",
+   "used": "baked into assets/v2/props/props.bin as prop skullwall"
   },
   {
    "id": "3d_candelabrum",
@@ -230,8 +238,10 @@
    "texture_alignment": "original_image",
    "media_role": "image_references",
    "credits": 9,
-   "status": "submitted",
-   "file": "/tmp/claude-0/v2/world2/raw/candelabrum.glb"
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world2/raw/candelabrum.glb",
+   "packed_source": "tools/v2/world_src/props/candelabrum.glb",
+   "used": "baked into assets/v2/props/props.bin as prop candelabrum"
   },
   {
    "id": "3d_chandelier",
@@ -247,8 +257,10 @@
    "texture_alignment": "original_image",
    "media_role": "image_references",
    "credits": 9,
-   "status": "submitted",
-   "file": "/tmp/claude-0/v2/world2/raw/chandelier.glb"
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world2/raw/chandelier.glb",
+   "packed_source": "tools/v2/world_src/props/chandelier.glb",
+   "used": "baked into assets/v2/props/props.bin as prop chandelier"
   },
   {
    "id": "3d_altar",
@@ -264,8 +276,10 @@
    "texture_alignment": "original_image",
    "media_role": "image_references",
    "credits": 9,
-   "status": "submitted",
-   "file": "/tmp/claude-0/v2/world2/raw/altar.glb"
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world2/raw/altar.glb",
+   "packed_source": "tools/v2/world_src/props/altar.glb",
+   "used": "baked into assets/v2/props/props.bin as prop altar"
   },
   {
    "id": "3d_mourner",
@@ -281,8 +295,10 @@
    "texture_alignment": "original_image",
    "media_role": "image_references",
    "credits": 9,
-   "status": "submitted",
-   "file": "/tmp/claude-0/v2/world2/raw/mourner.glb"
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world2/raw/mourner.glb",
+   "packed_source": "tools/v2/world_src/props/mourner.glb",
+   "used": "baked into assets/v2/props/props.bin as prop mourner"
   },
   {
    "id": "3d_cryptdoor",
@@ -298,8 +314,10 @@
    "texture_alignment": "original_image",
    "media_role": "image_references",
    "credits": 9,
-   "status": "submitted",
-   "file": "/tmp/claude-0/v2/world2/raw/cryptdoor.glb"
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world2/raw/cryptdoor.glb",
+   "packed_source": "tools/v2/world_src/props/cryptdoor.glb",
+   "used": "baked into assets/v2/props/props.bin as prop cryptdoor"
   },
   {
    "id": "3d_stairs",
@@ -315,8 +333,10 @@
    "texture_alignment": "original_image",
    "media_role": "image_references",
    "credits": 9,
-   "status": "submitted",
-   "file": "/tmp/claude-0/v2/world2/raw/stairs.glb"
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world2/raw/stairs.glb",
+   "packed_source": "tools/v2/world_src/props/stairs.glb",
+   "used": "baked into assets/v2/props/props.bin as prop stairs"
   },
   {
    "id": "3d_stall2",
@@ -332,8 +352,10 @@
    "texture_alignment": "original_image",
    "media_role": "image_references",
    "credits": 9,
-   "status": "submitted",
-   "file": "/tmp/claude-0/v2/world2/raw/stall2.glb"
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world2/raw/stall2.glb",
+   "packed_source": "tools/v2/world_src/props/stall2.glb",
+   "used": "baked into assets/v2/props/props.bin as prop stall2"
   },
   {
    "id": "3d_wreck2",
@@ -349,8 +371,10 @@
    "texture_alignment": "original_image",
    "media_role": "image_references",
    "credits": 9,
-   "status": "submitted",
-   "file": "/tmp/claude-0/v2/world2/raw/wreck2.glb"
+   "status": "completed",
+   "file": "/tmp/claude-0/v2/world2/raw/wreck2.glb",
+   "packed_source": "tools/v2/world_src/props/wreck2.glb",
+   "used": "baked into assets/v2/props/props.bin as prop wreck2"
   }
  ]
 }

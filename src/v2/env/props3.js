@@ -201,13 +201,12 @@ Object.assign(PROPS, {
 });
 
 // The generated cart: the decimated model joins its two thin shafts into one flat wedge (ENV_KIT 17 "still weak"). The wedge's 13 triangles are left out
-// (model units: beyond x 27, under y 56) and two round shafts with an iron band are built in their place.
+// (model units: beyond x 27, under y 56) and two tapered shafts are built in their place.
 BAKED_ARGS.cart = (o) => ({ ...o, drop: (mx, my) => mx > 27 && my < 56 });
 BAKED_EXTRA.cart = (G, x, y, z, o, s) => {
   const fl = o.flip ? -1 : 1, c = Math.cos(o.rot ?? 0), sn = Math.sin(o.rot ?? 0), P = (mx, my, mz) => [x + c * mx * fl * s + sn * mz * s, y + my * s, z - sn * mx * fl * s + c * mz * s];
   for (const mz of [-30, 31]) {
-    G.tube('timber', P(18, 47, mz), P(88, 33, mz), 3.3 * s, 2.5 * s, 5, { keep: true, vary: 0.25, tint: [0.78, 0.66, 0.56] });
-    G.tube('metal', P(79, 34.8, mz), P(83, 34, mz), 3.4 * s, 3.3 * s, 5, { keep: true, vary: 0, tint: IRON });
+    G.tube('timber', P(18, 47, mz), P(88, 33, mz), 3.3 * s, 2.5 * s, 4, { keep: true, vary: 0.25, tint: [0.78, 0.66, 0.56] });   // 4 sides: the two shafts cost about what the wedge did (Eshville has under 100 triangles to spare)
   }
 };
 

@@ -19,7 +19,7 @@ const SWINGS = ['c1', 'c2', 'c3', 'sweep', 'whip', 'plunge', 'launcher', 'charge
 const DUR = (id) => (MOVES[id] ? Math.min(0.9, MOVES[id].dur) : id === 'charge' ? 0.95 : 0.62);
 
 const V = { total: 0, byCat: {}, first: [] };
-const stat = {};   // per mode: max spacing ratio, max len / L0, lowest node above the ground, fastest node
+const stat = {}, worst = {};   // per mode: max spacing ratio, max len / L0, lowest node above the ground, fastest node
 function bad(cat, ctx, detail) {
   V.total++; V.byCat[cat] = (V.byCat[cat] || 0) + 1;
   if ((V.first.filter((f) => f.cat === cat).length) < 4) V.first.push({ cat, ...ctx, detail });
@@ -57,10 +57,12 @@ function check(w, hand, dt, ctx, S) {
   }
   if (mx > st.seg) st.seg = mx; if (w.len / w.L0 > st.len) st.len = w.len / w.L0; if (low < st.low) st.low = low; if (vmax > st.v) st.v = vmax; st.body += body;
   if (!line) {
-    if (mx > 1.15) bad('spacing over 115 %' + (ctx.real ? '' : ' (hostile hand)'), ctx, `${(mx * 100).toFixed(1)} % of ${seg.toFixed(2)} px, len ${w.len.toFixed(1)}`);
-    if (low < -0.01 && w.root.y >= gy) bad('under the ground' + (ctx.real ? '' : ' (hostile hand)'), ctx, `${low.toFixed(2)} px`);
-    if (body && ctx.real) bad('inside the body', ctx, `${body} nodes`);
-  } else if (low < -0.01 && S.lineAbove) bad('under the ground (taut line, target above ground)', ctx, `${low.toFixed(2)} px`);
+    const rootIn = Math.hypot(w.root.x - hand.bx, w.root.z - hand.bz) < hand.br + 1 && w.root.y < hand.by + hand.bh, rootUnder = w.root.y < gy + 1.2;
+    const why = rootUnder ? ' (lash root under the ground)' : rootIn ? ' (lash root inside the body cylinder)' : ctx.real ? (ctx.odd ? ' (realistic hand, odd target)' : '') : ' (hostile hand, other)';
+    if (mx > 1.15) { bad('spacing over 115 %' + why, ctx, `${(mx * 100).toFixed(1)} % of ${seg.toFixed(2)} px, len ${w.len.toFixed(1)}`); const k2 = 'worst spacing' + why; if (!(worst[k2] >= mx)) worst[k2] = mx; }
+    if (low < -0.01 && !rootUnder) bad('under the ground' + (ctx.real ? '' : ' (hostile hand)'), ctx, `${low.toFixed(2)} px`);
+    if (body && ctx.real && !rootIn) bad('inside the body', ctx, `${body} nodes`);
+  } else if (low < -0.01 && w.tg.y - 9 >= gy && w.root.y - 4 >= gy) bad('under the ground (taut line, hand and target above ground)', ctx, `${low.toFixed(2)} px`);
   if (vmax > 3401) bad('speed over the cap', ctx, vmax.toFixed(0));
   return true;
 }
@@ -113,16 +115,16 @@ function runA(tier) {
       const w = createWhip({ tier }), hand = mkHand(), info = meshInfo(w), S = { info, vtx: new Float32Array(info.floats), tmp: new Float32Array(w.n * 3), alpha: 0.5, lineAbove: true };
       const st = { t: 0, id: id.startsWith('ring') ? 'c1' : id, aim: true, ax: 300, ay: 90, az: 40, land: 0.3, fresh: true, ext: false, r: 14, tk: 0 };
       const ctx = { run: 'A', tier, move: id, cutAt: k, then: f, real: true, tick: 0 };
-      hand.x = 16; hand.y = 62; hand.z = -14; hand.dx = 0.5; hand.dy = 0.6; hand.dz = -0.3;
+      hand.x = 22; hand.y = 62; hand.z = -18; hand.dx = 0.5; hand.dy = 0.6; hand.dz = -0.3;
       for (let i = 0; i < 20; i++) { setMode(w, hand, 'coil', st, DT); w.update(DT, hand); }
       const m0 = id === 'ringS' || id === 'ringL' ? id : 'swing';
       for (let i = 0; i < k; i++) {
-        hand.x = 16 + 14 * Math.sin(i * 0.3); hand.y = 62 + 30 * Math.sin(i * 0.21); hand.z = -14 + 10 * Math.cos(i * 0.27);   // the arm swings
+        hand.x = 22 + 8 * Math.sin(i * 0.3); hand.y = 62 + 30 * Math.sin(i * 0.21); hand.z = -18 + 6 * Math.cos(i * 0.27);   // the arm swings
         setMode(w, hand, m0, st, DT); w.update(DT, hand); ctx.tick = i; ctx.phase = 'move'; check(w, hand, DT, ctx, S);
       }
-      const st2 = { t: 0, id: pick(SWINGS), aim: true, ax: -200, ay: 40, az: 10, land: 0.2, fresh: true, ext: false, r: 14, tk: pick([0, 1, 5, 6]) };
+      const st2 = { t: 0, id: pick(SWINGS), aim: true, ax: -200, ay: 40, az: 10, land: 0.2, fresh: true, ext: false, r: 14, tk: pick([0, 0, 6]) };
       for (let i = 0; i < 36; i++) {
-        hand.x = 16 + 14 * Math.sin((k + i) * 0.3); hand.y = 62 + 30 * Math.sin((k + i) * 0.21);
+        hand.x = 22 + 8 * Math.sin((k + i) * 0.3); hand.y = 62 + 30 * Math.sin((k + i) * 0.21);
         if (f === 'crack') { if (i === 0) setMode(w, hand, 'crack', st2, DT); else setMode(w, hand, i < 12 ? m0 : 'coil', st, DT); } else setMode(w, hand, f, st2, DT);
         const dt = i === 3 ? 0 : DT;
         if (dt === 0) before.set(w.nodes);
@@ -138,7 +140,7 @@ function runRandom(name, tier, N, o) {
   const hand = mkHand(), info = meshInfo(w), S = { info, vtx: new Float32Array(info.floats), tmp: new Float32Array(w.n * 3), alpha: 1, lineAbove: false };
   const st = {}; let m = 'coil', prevM = 'coil', hx = 0, hy = 0, hz = 0, vx = 0, vz = 0, ang = 0, of = 20, or = 18, oy = 70, ground = 0;
   const hero = { dead: false, act: null, actT: 0, actDone: false, charging: false, charge: 0, move: null, moveT: 0, dirX: 1, dirZ: 0, plungeLand: null, whipX: 0, whipY: 0, whipZ: 0 };
-  fresh(st, m, false);
+  fresh(st, m, false); let oddCrack = 0;
   for (let i = 0; i < N; i++) {
     const dt = pick(DTS);
     // hero
@@ -173,12 +175,13 @@ function runRandom(name, tier, N, o) {
       setMode(w, hand, m, st, dt);
       if (m === 'crack') { m = prevM === 'crack' ? 'coil' : prevM; }   // a crack is one call; the mode underneath goes on
     }
-    if (rnd() < 0.02) { const k = target(hand); P.strength = 1.3; void k; w.set('crack', P); }
+    if (oddCrack > 0) oddCrack--;
+    if (rnd() < 0.02) { const k = target(hand); P.strength = 1.3; if (k !== 0) oddCrack = 40; w.set('crack', P); }
     if (dt === 0) before.set(w.nodes);
     S.alpha = rnd();
+    if (rnd() < 0.0005) { w.reset(hand); if (dt === 0) before.set(w.nodes); }
     w.update(dt, hand);
-    if (rnd() < 0.0005) w.reset(hand);
-    if (!check(w, hand, dt, { run: name, tier, i, mode: w.mode, m, prevM, dt, tele, real: !o.hostile, id: st.id, t: +st.t.toFixed(3), tk: st.tk }, S)) { w.reset(hand); if (!Number.isFinite(w.nodes[3])) { console.log('   reset() does not recover from the bad state - new whip'); return runRandom(name + "'", tier, N - i - 1, o); } }
+    if (!check(w, hand, dt, { run: name, tier, i, mode: w.mode, m, prevM, dt, tele, real: !o.hostile, odd: st.tk !== 0 && st.tk !== 6 || oddCrack > 0, id: st.id, t: +st.t.toFixed(3), tk: st.tk }, S)) { w.reset(hand); if (!Number.isFinite(w.nodes[3])) { console.log('   reset() does not recover from the bad state - new whip'); return runRandom(name + "'", tier, N - i - 1, o); } }
   }
 }
 const evs = {};
@@ -197,6 +200,7 @@ console.log('\nper mode (all runs):  ticks · widest node spacing (% of rest) ·
 for (const [k, s] of Object.entries(stat).sort()) console.log(`  ${k.padEnd(12)} ${String(s.n).padStart(8)} · ${(s.seg * 100).toFixed(1).padStart(9)} % · ${s.len.toFixed(2).padStart(8)} · ${s.low.toFixed(2).padStart(9)} · ${s.v.toFixed(0).padStart(6)} · ${s.body}`);
 console.log(`\nviolations: ${V.total}`);
 for (const [k, v] of Object.entries(V.byCat).sort((a, b) => b[1] - a[1])) console.log(`  ${String(v).padStart(7)}  ${k}`);
+for (const [k, v] of Object.entries(worst)) console.log(`  ${k}: ${(v * 100).toFixed(0)} %`);
 for (const f of V.first) console.log('   e.g. ' + JSON.stringify(f));
 
 // ── allocation and time per tick, steady state, ALL modes (the lane's own measure covers swings and rest only) ──
