@@ -170,9 +170,10 @@ function step(dt) {
   const d = demo, h = sim.hero, inp = demoInput(dt);
   for (const e of sim.enemies) e.hp = e.hpMax;
   TUNE.ownHitstop = S.stop;
+  const frozen = sim.stop > 0;   // 타격 멈춤이 이미 걸려 있던 틱만 얼린다 (멈춤이 시작되는 틱 = 맞은 틱은 그림까지 한 번 돈다 — 본 게임 장면과 같은 순서)
   sim.update(dt, inp);
   time += dt;
-  if (sim.stop > 0) { whip.update(0, hand); if (fx && S.fxOn) { fx.dtIn = dt; fx.tick(); } link.update(whip); return; }   // 타격 멈춤: 세계와 함께 채찍도 멈춘다
+  if (frozen && sim.stop > 0) { whip.update(0, hand); if (fx && S.fxOn) { fx.dtIn = dt; fx.tick(); } link.update(whip); return; }   // 타격 멈춤: 세계와 함께 채찍도 멈춘다
   driveHero(heroCh, h, dt, TUNE);
   for (const e of sim.enemies) { if (e.dead) continue; let ch = chars.get(e.id); if (!ch) { ch = new Char3D(dummyAsset, R, { gpu: dummyAsset.gpu, weapon: false, scale: UNIT * (e.def.height / Math.max(0.2, dummyAsset.h)) }); chars.set(e.id, ch); } driveActor(ch, e, dt); }
   if (d.door) doorPose();

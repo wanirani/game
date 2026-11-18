@@ -3,7 +3,7 @@
 2026-11-18 · 담당 WHIP · 공개 면은 `src/v2/whip/index.js` 하나 · 검사 `node tools/v2/whip_check.mjs` · 보기 `tools/v2/whip_view.html` · 찍기 `node tools/v2/whip_shot.mjs` · 소유자 그림 `/tmp/claude-0/v2/owner_whip.png`
 
 **바뀐 것**
-- 01:20 끝 판. 첫 판과 달라진 것: ① 규칙 상태 → 채찍 모드는 `driveWhip(whip, hero, TUNE, pull)` 한 줄이 한다(§5) ② 끝 뒤의 궤적 띠는 효과 엔진의 띠가 아니라 **채찍 자기 메시의 일부**다(틱 사이를 매끄럽게 잇기 위해) — `whipFx().update()` 는 할 일이 없어졌다 ③ `whip.writeMesh` 대신 `writeWhipMesh(whip, vtx, alpha, tmp)` ④ 모드 `spin`(모으는 동안 머리 위로 돌린다) 추가 ⑤ 그리기에 `wr.tint` · `wr.flash` · `wr.alpha` ⑥ **끈이 다 펴지는 때는 판정 구간이 열리는 순간**이다(규칙이 구간 첫 틱에 맞히기 때문 — §6)
+- 01:40 끝 판. 첫 판과 달라진 것: ① 규칙 상태 → 채찍 모드는 `driveWhip(whip, hero, TUNE, pull)` 한 줄이 한다(§5) ② 끝 뒤의 궤적 띠는 효과 엔진의 띠가 아니라 **채찍 자기 메시의 일부**다(틱 사이를 매끄럽게 잇기 위해) — `whipFx().update()` 는 할 일이 없어졌다 ③ `whip.writeMesh` 대신 `writeWhipMesh(whip, vtx, alpha, tmp)` ④ 모드 `spin`(모으는 동안 머리 위로 돌린다) 추가 ⑤ 그리기에 `wr.tint` · `wr.flash` · `wr.alpha` ⑥ **끈이 다 펴지는 때는 판정 구간이 열리는 순간**이다(규칙이 구간 첫 틱에 맞히기 때문 — §6) ⑦ `set('crack')` 을 받으면 끝이 맞은 점에 가서 머문다
 - 00:45 첫 판 (규약만)
 
 ## 0. 한눈에
@@ -62,7 +62,7 @@ wr.draw(whip, env, alpha);                                        // 그리기 �
 | `stow` | — | 손이 바쁠 때: `hand` 로 허리 자리를 주면 거기에 더 작게 사려 건다 |
 | `swing` | `{ move, t, dirX, dirZ, hit?, dur?, landT?, x?, y?, z? }` | 기술 하나. `move` = 규칙의 id(`c1 c2 c3 sweep whip plunge`) 또는 채찍만 아는 모양(`launcher charge far`), `t` = `hero.moveT`. `hit` · `dur` 를 주면 그 박자를, 없으면 `MOVES[id]` 를, 그것도 없으면 모양표의 어림값을 쓴다. `landT` = `hero.plungeLand`(내려치기). `x y z` = 겨눌 점(`far`) |
 | `spin` | `{ level }` | 모으는 동안: 손 위에서 올가미처럼 돌린다(`level` 0..1 이 찰수록 빠르고 크게) |
-| `crack` | `{ x, y, z, strength }` | 맞은 순간 한 번(`hooks.hit` 에서). 끝이 튕기고 `crack/hit` 사건이 난다. 같은 휘두름의 헛침 소리(`crack/air`)는 나지 않는다 |
+| `crack` | `{ x, y, z, strength }` | 맞은 순간 한 번(`hooks.hit` 에서, 그 틱의 `whip.update` 앞에). **끝이 맞은 점으로 가서 잠깐 머문다**(끈 길이를 그 거리에 맞춰 곧게 — 적이 판정 모양 안 어디에 서 있든 끈이 적에게 닿아 멈춘다. 타격 멈춤이 그 모습으로 언다) → 구간의 0.3 뒤에 놓고 흘러간다. `crack/hit` 사건이 나고, 같은 휘두름의 헛침(`crack/air`)은 나지 않는다 |
 | `wrap` | `{ x, y, z, r, phase: 'throw'｜'hold'｜'pull', t?, throwT? }` | 휘감기. `throw` = 끝이 날아간다(0.13초) → 감김 `wrap.catch` → 대상(반지름 `r`, 세로축)을 1.6바퀴 감고 팽팽한 직선. `pull` = 당긴다(`wrap.pull`; 대상이 다가오면 끈이 줄어든다). 처음부터 `hold/pull` 로 부르면 던짐 없이 바로 감긴다(휘감기 기술이 맞은 뒤) |
 | `hook` | `{ x, y, z, phase: 'throw'｜'release', t?, throwT? }` | 걸기. 끝이 고리로 날아가 `throwT` 뒤에 걸린다 → `hook.catch` → 팽팽한 직선(걸린 직후 떨림, 작은 반짝임이 줄을 타고 흐른다). 다른 모드로 바꾸거나 `release` 면 풀려 돌아온다 |
 | `ring` | `{ kind: 'short'｜'long', t, hit?, dur? }` | 종 조각을 울린다. 짧게 = 손목으로 튕겨 든 손 위로 세운다 · 길게 = 모으는 동안 몸 둘레로 감아 올리다가 다 차면 머리 위로 한 바퀴 → `ring` 사건(창의 한가운데) |
@@ -87,7 +87,7 @@ wr.draw(whip, env, alpha);                                        // 그리기 �
 | name | 언제 | `whipFx(fx, feel)` 가 하는 일 |
 |---|---|---|
 | `swing` | 끈이 풀려 나가기 시작 | (기본은 아무것도 — 휘두름 소리는 규칙의 `swing` 훅에서 `feel.swing('whip', …)`. `whipFx(fx, feel, { swingSound: true })` 면 여기서 낸다) |
-| `crack` | `kind:'air'` 끈이 다 펴진 순간(헛쳐도) · `kind:'hit'` 맞은 순간 | 끝에 번쩍임 + 불티 고리(끈 방향 가로로 퍼진다) + 빛 고리 + 짧은 점광. 헛침일 때만 소리 `whip_crack` · 진동 `tap` (맞은 소리는 장면의 `bridge.strike(…, 'whip', …)` 가 낸다) |
+| `crack` | `kind:'air'` 헛쳤을 때: 끈이 다 펴지고 한두 틱 뒤(구간의 0.28 지점 — 그 사이에 맞으면 나지 않는다) · `kind:'hit'` 맞은 순간 | 끝에 번쩍임 + 불티 고리(끈 방향 가로로 퍼진다) + 빛 고리 + 짧은 점광. 헛침일 때만 소리 `whip_crack` · 진동 `tap` (맞은 소리는 장면의 `bridge.strike(…, 'whip', …)` 가 낸다) |
 | `wrap.throw` · `wrap.catch` · `wrap.pull` | 던짐 · 감김 · 당기기 시작 | 감김: 찬 불티 + 고리 + `feel.hit('whip', 'bone', 'L')` · 당김: 약한 흔들림 + `feel.swing('whip', 'H')` |
 | `hook.throw` · `hook.catch` · `hook.release` | 던짐 · 걸림 · 풀림 | 걸림: 찬 불티 + 고리 + `feel.hit('whip', 'armor', 'L')` |
 | `ring` | 종 조각이 울림 (`kind: 'short'｜'long'`) | 금빛 고리(길게는 둘) + 떠오르는 금빛 티 + 점광 + `feel.bell('still'｜'toll')` — 규칙이 이미 `bell.toll` 을 내면 `whipFx(fx, feel, { sound: false })` |
@@ -113,6 +113,7 @@ wr.draw(whip, env, alpha);                                        // 그리기 �
 
 끝 궤적은 영웅 기준 `(앞, 오른쪽, 위)` px 의 열쇠 자리들이다. 열쇠마다 "얼마나 세게 그 모양을 잡는가"(0 = 물리에 맡김 … 1 = 그대로)와 "남는 끈이 불룩해지는 쪽"이 있다.
 
+- 장면의 틱 순서(`sim.update(pdt)` → 훅 → `_sync(pdt)`)에서는 맞은 틱에도 채찍이 한 번 돈 뒤에 멈춘다 — 그래서 멈춘 그림은 "끈이 적에게 닿은 모습"이다. 훅을 다른 틱으로 미루면 이 그림이 깨진다.
 - **규칙은 판정 구간의 첫 틱에 맞힌다.** 그래서 끈은 **구간이 열릴 때 다 펴져 대상에 닿고**(구간의 8 % 지점), 감았다 내뻗는 것은 그 앞의 준비 시간에, 지나간 뒤의 흐름은 구간 안에서 일어난다. 끝이 가장 빠른 때는 구간이 열리는 바로 그 틱 앞뒤다(검사 허용 ±0.02초).
 - 다 펴졌을 때도 끈은 곧은 막대가 아니다: 길이의 5.5 % 를 남겨(펴진 정도 0.945) 손에서 곧게 나가다가 **끝이 위에서 휘어 감기며** 대상에 닿는다. 준비 동작에서는 끝이 손에서 끈 길이의 78 % 넘게 멀어지지 않는다(늘 휘어 있다).
 - 끈 길이는 기술마다 "다 펴진 끝이 판정 모양 안의 그 점에 닿도록" 손의 자리에 맞춰 정한다(검사에서 잰 값: 연타 1 81 px · 연타 2 100 px · 연타 3 142 px · 훑기 92 px · 휘감기 223 px · 내려치기 144 px). 기본 길이의 0.7–1.5배 안이고, 끈 무늬는 끝에서부터 재므로 길이가 바뀌어도 무늬가 늘어나지 않고 손잡이 쪽에서 풀려 나온다.
@@ -202,6 +203,6 @@ wr.draw(whip, env, alpha);                                        // 그리기 �
 
 | 무엇 | 상태 |
 |---|---|
-| 계산(사슬 · 모드 여덟) · 기술 모양 11 · 그리기 · 사건 · 규칙 상태 잇기 | 동작 — `whip_check` 81/81 |
+| 계산(사슬 · 모드 여덟) · 기술 모양 11 · 그리기 · 사건 · 규칙 상태 잇기 | 동작 — `whip_check` 82/82 |
 | 시험 화면 · 붙임 그림 | 동작 — `whip_shot` 페이지 오류 0 |
 | 본 게임 장면(v2g)에 꽂기 | **아직 아니다** — §7 대로 장면 구역이 한다 (`/tmp/claude-0/v2/requests.md` 의 WHIP 절) |

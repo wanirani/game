@@ -170,6 +170,20 @@ for (const { id, mv, real } of table) {
   for (const tier of ['low', 'high']) { const R = playMove('c3', MOVES.c3, { tier, quiet: true }); ok(`tier ${tier} (${WHIP_TIERS[tier].n} nodes), c3: extended, in shape, no stretch`, R.peak && R.peak.ext >= 0.93 && R.peak.inside && R.maxStretch <= 1.035 && !R.bad, `ext ${f2(R.peak.ext)} · max segment ${f2(R.maxStretch * 100)} %`); }
 }
 
+// ── a hit nearer than the authored end: the tip stays on the hit point, lash straight to it ──
+{
+  const mv = MOVES.c1, h = mkHero(0), ch = mkChar(), hand = mkHand(), whip = createWhip({});
+  pose(ch, h, hand, whip, DT); for (let i = 0; i < 50; i++) { driveWhip(whip, h, TUNE, null); pose(ch, h, hand, whip, DT); whip.update(DT, hand); }
+  h.move = mv; h.combo = 0; h.anim = 'attack'; h.hitIds = new Set(); h.stepDist = 0; h.swung = true;
+  const hit = { x: 72, y: 58, z: 8, strength: 1 }; let d = -1, ext = 0, done = false, later = 0;
+  for (let t = 0; t <= mv.dur; t += DT) {
+    h.moveT = t; pose(ch, h, hand, whip, DT); driveWhip(whip, h, TUNE, null);
+    if (!done && t >= mv.hit[0]) { whip.set('crack', hit); done = true; whip.update(DT, hand); d = Math.hypot(whip.tip.x - hit.x, whip.tip.y - hit.y, whip.tip.z - hit.z); ext = whip.ext; for (let j = 0; j < 6; j++) whip.update(0, hand); continue; }
+    whip.update(DT, hand); if (t > mv.hit[1]) later = Math.max(later, Math.hypot(whip.tip.x - hit.x, whip.tip.y - hit.y, whip.tip.z - hit.z));
+  }
+  ok('c1 with a hit at 72 px (nearer than the authored end): on the hit tick the tip is on the hit point, lash taken in and extended; it lets go afterwards', d >= 0 && d < 4 && ext >= 0.93 && later > 25 && finite(whip), `tip ${f2(d)} px from the hit point · ext ${f2(ext)} · lash ${f1(whip.len)} px after · follow-through leaves by ${f1(later)} px`);
+}
+
 // ── 2. teleport · rest ──
 {
   const h = mkHero(0), ch = mkChar(), hand = mkHand(), whip = createWhip({});

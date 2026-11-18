@@ -3,6 +3,7 @@
 //   node tools/v2/whip_shot.mjs combo hook      이름이 그 글자로 시작하는 묶음만
 //   --shot="demo:t:cam:w:h[:era[:reso[:dir]]]" --name=이름   한 장만
 //   --owner    소유자용 한 장 → /tmp/claude-0/v2/owner_whip.png
+//   --page=combo [--wait=2600]   살아 있는 화면(단추 포함)을 폴드 편 크기로 한 장
 //   --thick    붙임 그림 없이 화면 굵기만 잰다
 //   --list  --out=<폴더>
 // 한 번에 브라우저 하나. 헤드리스 WebGL 은 소프트웨어 렌더링이라 느리다 (프레임 시간은 기기와 무관).
@@ -62,13 +63,18 @@ await new Promise((r) => srv.listen(port, r));
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const errs = []; let code = 0;
 try {
-  const page = await browser.newPage({ viewport: { width: 1000, height: 700 } });
+  const pageDemo = opt('page', '');   // --page=combo : 폴드 편 화면 크기로 살아 있는 화면 한 장(단추 포함) → page_<demo>.png
+  const page = await browser.newPage({ viewport: pageDemo ? { width: 800, height: 720 } : { width: 1000, height: 700 } });
   page.on('console', (m) => { if ((m.type() === 'error' || m.type() === 'warning') && !/GPU stall due to ReadPixels/.test(m.text())) errs.push(`[${m.type()}] ${m.text()}`); });
   page.on('pageerror', (e) => errs.push('[pageerror] ' + e.message));
-  await page.goto(`http://localhost:${port}/tools/v2/whip_view.html?hold=1${argv.includes('--aa0') ? '&aa=0' : ''}`);   // --aa0 = 캔버스 안티에일리어싱 끔 (끈 가장자리가 스스로 부드러운지 볼 때)
+  await page.goto(`http://localhost:${port}/tools/v2/whip_view.html?hold=${pageDemo ? 0 : 1}${pageDemo ? '&demo=' + pageDemo : ''}${argv.includes('--aa0') ? '&aa=0' : ''}`);   // --aa0 = 캔버스 안티에일리어싱 끔 (끈 가장자리가 스스로 부드러운지 볼 때)
   try { await page.waitForFunction(() => window.__whip?.ready || window.__whip?.error, null, { timeout: 90000 }); } catch { errs.push('timeout waiting for ready'); }
   const err = await page.evaluate(() => window.__whip?.error);
   if (err) { errs.push('[page error] ' + err); code = 1; }
+  else if (pageDemo) {
+    await page.waitForTimeout(Number(opt('wait', 2600)));
+    const f = path.join(outDir, `page_${pageDemo}.png`); await page.screenshot({ path: f }); console.log('wrote', f, JSON.stringify(await page.evaluate(() => window.__whip.state())).slice(0, 300));
+  }
   else if (opt('shot', '')) {   // --shot="demo:t:cam:w:h[:era[:reso[:dir]]]" --name=이름  (그때그때 한 장)
     const [d, t, cam, w, h, era, reso, dir] = opt('shot', '').split(':');
     const url = await page.evaluate(([d, t, o]) => window.__whip.shot(d, t, o), [d, Number(t), { cam: cam || 'close', w: Number(w) || 640, h: Number(h) || 480, era: era || 'now', reso: Number(reso ?? 0.3), dir: Number(dir ?? 0), tier: opt('tier', 'mid') }]);

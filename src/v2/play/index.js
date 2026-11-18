@@ -4,6 +4,8 @@
 //                 + sim.addEnemy(spawn) · sim.byId(id) · sim.hitStop(초) · sim.reveal(x, z, r, 초) · sim.staggerEnemy(e, 초) · sim.hurtHero(…)
 //                 inp = { mx, mz(-1..1, + = 화면 안쪽), jump(눌림), jumpHeld, attack(눌림), attackHeld, dash(눌림 = 구르기), guard(누르고 있음), lockNext(눌림) }
 //                 영웅 · 적은 x · y · z, 보는 방향 dirX · dirZ(단위 벡터, 360°), anim · animT, hp 를 가진다. 영웅의 락온 대상 = hero.lock (적 id 또는 null)
+//                 3차(2026-11-18): inp 에 attackHeld(길게 = 모아 휘감기) · skill(솜씨) · bell + bellHeld(종). 영웅의 dirX · dirZ 는 몸이 보는 방향이고 규칙이 돌린다(속도는 늘 그쪽으로).
+//                 + sim.bossState() · sim.heal(n) · sim.respawnAt(x, z) · sim.here · sim.freezeSection · sim.caps · sim.setCaller(id) · sim.hookPoints · sim.lights · sim.knell(e) · sim.bossReturn(e)
 //  TUNE · MOVES   조율값 · 카엘의 기술표
 //  KINDS          적 · 보스 종류표: kind → { model(assets/v2/char3d/<model>.glb), weapon(소품 모델 id 또는 null), height(m), material(타격 재질 — src/v2/feel/table.js), name, grip?, … }
 //                 스테이지의 옛 이름 'melee' · 'ranged' 도 같은 줄을 가리킨다. kindOf(kind) · registerKind(id, def, ai)

@@ -1,5 +1,5 @@
 // PLAY: bytes allocated per tick by the rules (Sim.update) and by the drive functions (driveHero / driveActor), in steady play.
-//   node tools/v2/play_alloc.mjs [--ticks=100000] [--entry=<path to another play/index.js>]
+//   node tools/v2/play_alloc.mjs [--ticks=100000] [--entry=<path to another play/index.js>] [--only=<part of a scenario name>] [--profile]
 // Method ("counting allocator"): the young generation is made so large that no garbage collection runs during a measured stretch, so the growth of
 // the young space over the stretch is exactly what the code allocated (the parent counts --trace-gc lines to prove no collection ran). The script restarts itself with --expose-gc --max-semi-space-size.
 // Scenarios: fight (hero bot + six kinds kept alive, 100,000 ticks) · run (stick circles and reversals, no enemies) · boss (the queen, hero bot).
@@ -58,7 +58,9 @@ function pilot(sim, i, mode) {   // no allocation in here
   if (i % 150 === 0) { inp.dash = true; inp.mx = 1; }
   if (i % 400 === 0) inp.bell = true;
 }
+const ONLY = opt('only', '');   // --only=<part of a scenario name>
 async function scenario(name, spawns, mode, drive) {
+  if (ONLY && !name.includes(ONLY)) return 0;
   const sim = new Sim(flatArena(700, 500, spawns), {}), hero = mkChar('kael'), chars = new Map(); let bad = 0;
   const one = (i) => {
     pilot(sim, i, mode); sim.update(DT, inp);

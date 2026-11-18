@@ -135,6 +135,12 @@ Object.assign(PROPS, {
     }
     shadow(G, x, y, z, w * 0.6, w * 0.34, 0.45);
   },
+  /** A plain dressed stone block (a plinth, a stepping stone wedged into a gap). o.w, o.d, o.h; the block rises from y to y + h */
+  stoneblock(G, x, y, z, o = {}) {
+    const w = o.w ?? 120, d = o.d ?? 120, h = o.h ?? 60;
+    G.box('ashlar', x - w / 2, y, z - d / 2, x + w / 2, y + h - 8, z + d / 2, { faces: 'FLR', cell: 44, vary: 0.3 });
+    G.box('trimstone', x - w / 2 - 2, y + h - 8, z - d / 2 - 2, x + w / 2 + 2, y + h, z + d / 2 + 2, { faces: 'FLRT', vary: 0.2, top: 'slabs' });
+  },
   // ───────────── stand-ins for the generated crypt furniture (used only while the pack has no model of that name) ─────────────
   sarcophagus(G, x, y, z, o = {}) {
     const h = o.h ?? 70, s = h / 70, w = 74 * s, d = 30 * s;

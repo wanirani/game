@@ -9,16 +9,17 @@ import SLICE0 from '../env/stage_slice0_env.js';
 import { eshville } from './eshville.js';
 import { graveyard } from './graveyard.js';
 import { belltower } from './belltower.js';
+import { ossuary } from './ossuary.js';
 import { reachGrid } from './reach.js';
 
-export const ENEMY_KINDS = ['melee', 'ranged', 'skeleton_soldier', 'skeleton_mage', 'plague_corpse', 'grave_ghost', 'gravekeeper_armor', 'bat'];
+export const ENEMY_KINDS = ['melee', 'ranged', 'skeleton_soldier', 'skeleton_mage', 'plague_corpse', 'grave_ghost', 'gravekeeper_armor', 'bat', 'banshee_queen'];
 export const ACTOR_MODELS = ['alberto', 'edmund', 'elise', 'hadwin', 'hadwin1', 'lotte', 'marta', 'rook', 'sera', 'villager_f', 'villager_m', 'kael'];
 export const INTERACT_KINDS = ['bell', 'door', 'sign', 'chest', 'lever', 'grave', 'rest', 'shop', 'pull', 'ring'];   // ring = a whip ring (AREA_FORMAT 13): { x, z, y (ground under the ring), h (ring height above y), landing: {x, y, z} }
 export const ANCHOR_KINDS = ['fire', 'embers', 'smoke', 'mist', 'candle', 'glow_red', 'fog_bank', 'leaves'];
 export const ROOMS = ['street', 'alley', 'courtyard', 'hall', 'crypt', 'tower', 'field'];
 export const DEFAULT_AREA = 'eshville_now';
 /** kinds of the prototype rules (scene v2c walks areas with them) */
-export const PROTO_KIND = { melee: 'melee', ranged: 'ranged', skeleton_soldier: 'melee', skeleton_mage: 'ranged', plague_corpse: 'melee', grave_ghost: 'ranged', gravekeeper_armor: 'melee', bat: 'melee' };
+export const PROTO_KIND = { melee: 'melee', ranged: 'ranged', skeleton_soldier: 'melee', skeleton_mage: 'ranged', plague_corpse: 'melee', grave_ghost: 'ranged', gravekeeper_armor: 'melee', bat: 'melee', banshee_queen: 'melee' };
 
 /** the baked prop pack must be in memory before compileEnv (statues, gargoyles, trees are baked meshes) */
 export async function ensureWorldAssets() {
@@ -29,7 +30,7 @@ export async function ensureWorldAssets() {
 export function finishArea(a) {
   const st = a.stage, d = a.spawns.default;
   st.start = { x: d.x, z: d.z };
-  st.spawns = a.enemies.map((e) => ({ kind: e.kind, x: e.x, z: e.z, yard: !!e.yard, active: !!e.active, group: e.group ?? null, face: e.face ?? null }));
+  st.spawns = a.enemies.map((e) => ({ kind: e.kind, x: e.x, z: e.z, yard: !!e.yard, active: !!e.active, group: e.group ?? null, face: e.face ?? null, rise: !!e.rise }));   // rise: lies in the ground until the hero is near (PLAY_API)
   st.decals = st.decals ?? [];
   // whip rings -> the rules' hook points (src/v2/play/sim.js reads W.hookPoints: { id, x, z, y, h, to: [x, z] })
   st.hookPoints = a.interact.filter((it) => it.kind === 'ring' && it.landing).map((it) => ({ id: it.id, x: it.x, z: it.z, y: it.y ?? 0, h: it.h ?? 150, to: [it.landing.x, it.landing.z] }));
@@ -50,6 +51,8 @@ export const AREAS = {
   graveyard_now: make((f) => graveyard('now', f)),
   graveyard_past: make((f) => graveyard('past', f)),
   belltower_now: make((f) => belltower('now', f)),
+  ossuary_now: make((f) => ossuary('now', f)),
+  ossuary_past: make((f) => ossuary('past', f)),
   slice0: make(slice0),
 };
 /** story flags that change what an area is built from (AREA_FORMAT 13). validateAll() checks the base state and every one of these states. */
@@ -60,7 +63,7 @@ export const AREA_FLAGS = {
   graveyard_past: ['bell_hung', 'carved_a', 'carved_b'],
   belltower_now: ['fell'],
   ossuary_now: ['wedge_stone', 'wedge_wood', 'knells_hung', 'queen_sent'],
-  ossuary_past: ['wedge_stone', 'wedge_wood', 'knell_1', 'knell_2', 'knell_3', 'knell_4', 'queen_sent'],
+  ossuary_past: ['wedge_stone', 'wedge_wood', 'knell_1', 'knell_2', 'knell_3', 'knell_4', 'queen_fled', 'queen_sent', 'elise_found'],
   slice0: [],
 };
 /** the states validateAll() walks: base, each flag alone, and all of them together (wedge_stone and wedge_wood never together) */
@@ -97,7 +100,7 @@ export function validateArea(a, twin = null) {
   if (twin && twin.twin === a.id) {
     let W2 = null; try { W2 = compileEnv(twin.stage); W2.hookPoints = twin.stage.hookPoints ?? []; } catch { W2 = null; }
     if (W2) {
-      const bells = (ar) => ar.interact.filter((it) => it.kind === 'bell' && it.event !== 'bell.hang'), seedsA = [], seedsB = [], td = twin.spawns.default;
+      const bells = (ar) => ar.interact.filter((it) => it.kind === 'bell' && it.event === 'bell.ring'), seedsA = [], seedsB = [], td = twin.spawns.default;
       for (let pass = 0, grew = true; pass < 6 && grew; pass++) {
         grew = false;
         const GB = reachGrid(W2, td.x, td.z, 14, { hooks: W2.hookPoints, seeds: seedsB });

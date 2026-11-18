@@ -1,0 +1,139 @@
+// WORLD-2: the Ossuary of Farewell under the graveyard (GDD 4 dungeon 1, 9.1 minutes 68-114) - "the same room seen twice". docs/v2/AREA_FORMAT.md 13.
+// One layout function for both nights: floors, walls, pillars, the gap, the bell posts, the altar, the statue and the sarcophagus are the SAME numbers.
+//   'past' (1697): a candle-lit chapel cave in use - candelabra, chandeliers, a few new coffins on trestles, warm light.
+//   'now'  (1797): the same rooms under a hundred years of coffins and bones - stacks against every wall, bone heaps, cold light, mist; the coffin
+//                  corridor is walled up by coffins (cross at the room bell, walk through in 1697, cross back).
+// One long hall into the screen (the camera rule: nothing tall between the camera and the hero): rooms are told apart by low banks, floor and dressing.
+//   entry 0..400 · coffins 400..1000 · wedge 1000..1500 (the gap 1200..1400) · arena 1500..2100 · lamp 2100..2450 · riddle 2450..2800 · rest 2800..3000
+//   · boss 3000..3700 (flat, 1000 x 700, pillars only at the far sides) · posts 3700..3900 (the four knell posts in a row before the sealed door)
+// Section ids and labels are the story's (src/v2/data/text.js TEXT.sections.ossuary).
+import { D, inChunk, rect } from './gen.js';
+
+const X0 = 100, X1 = 1100, HW = 300;
+const KP = [[250, 3790], [480, 3790], [720, 3790], [950, 3790]];   // the four knell posts (post 1..4, left to right)
+/**
+ * flags (docs/v2/AREA_FORMAT.md 13): wedge_stone · wedge_wood (what was pushed into the gap in 1697) · knell_1..4 (1697) / knells_hung (tonight) ·
+ * queen_fled (1697: the queen is here) · queen_sent (no boss) · elise_found (the sleeping girl is gone) · sera_follows is an actor `when`
+ */
+export function ossuary(era = 'now', flags = {}) {
+  const now = era === 'now', past = !now, P = [], anchors = [], enemies = [], actors = [], interact = [], triggers = [];
+  const add = (chunk, ...parts) => P.push(...inChunk(chunk, parts.flat()));
+  const stone = !!flags.wedge_stone, woodW = !!flags.wedge_wood && !stone, WARM = [1, 0.66, 0.3], COLD = [0.55, 0.78, 1];
+  // ───────────── floors (same in both nights) ─────────────
+  const FL = (z, d, strips = [], mat = 'cellar') => ({ t: 'floor', x: X0, z, w: X1 - X0, d, mat: 'stone', kit: { mat, cell: 44, rag: 26, strips } });
+  add('c1', FL(0, 400, [{ x0: 380, x1: 620, mat: 'flags' }]), FL(400, 600, [{ x0: 280, x1: 720, mat: 'slabs' }]), { t: 'blocker', x: 0, z: -60, w: 1200, d: 60, y: -300, h: 1500 });
+  add('c2', FL(1000, 200, [{ x0: 380, x1: 620, mat: 'flags' }]), FL(1400, 100, [{ x0: 380, x1: 620, mat: 'flags' }]),
+    { t: 'floor', x: X0, z: 1200, w: X1 - X0, d: 200, y: -240, walk: false, mat: 'stone', kit: { mat: 'slabs', cell: 60 } },   // the bottom of the gap (drawn only: a fall is the pit rule - 8 damage and back to the last safe ground)
+    FL(1500, 600, [{ x0: 300, x1: 700, z0: 80, z1: 520, mat: 'flags' }]));
+  add('c3', FL(2100, 350, [{ x0: 380, x1: 620, mat: 'flags' }]), FL(2450, 350, [{ x0: 300, x1: 700, z0: 60, z1: 300, mat: 'flags' }]), FL(2800, 200, [{ x0: 340, x1: 660, mat: 'slabs' }]));
+  add('c4', FL(3000, 700, [{ x0: 200, x1: 800, z0: 100, z1: 600, mat: 'flags' }, { x0: 420, x1: 580, z0: 0, z1: 100, mat: 'slabs' }]), FL(3700, 200, [], 'flags'));
+  // ───────────── walls (same in both nights) ─────────────
+  const SCN = (side, us, len) => (past ? us.map((u) => ({ type: 'sconce', side, u: side === 'R' ? u : len - u, y: 140, lr: 300, li: 1.4 })) : []);
+  const sideWalls = (chunk, z, d, butt, sc) => add(chunk,
+    { t: 'wall', x: 0, z, w: 100, d, h: HW, mat: 'facade', kit: { style: 'rubble', lower: 'fieldstone', cell: 70, faces: 'R', cornice: true, buttress: butt.map((u) => ({ side: 'R', u, h: 230, d: 22, w: 44 })), hang: SCN('R', sc, d) } },
+    { t: 'wall', x: X1, z, w: 100, d, h: HW, mat: 'facade', kit: { style: 'rubble', lower: 'fieldstone', cell: 70, faces: 'L', cornice: true, buttress: butt.map((u) => ({ side: 'L', u: d - u, h: 230, d: 22, w: 44 })), hang: SCN('L', sc, d) } });
+  sideWalls('c1', -60, 1060, [460, 1060], [250, 760]); sideWalls('c2', 1000, 1100, [500, 1100], [120, 800]); sideWalls('c3', 2100, 900, [350, 700], [180, 540]); sideWalls('c4', 3000, 990, [350, 700], [150, 520]);
+  add('c4', { t: 'wall', x: 0, z: 3900, w: 1200, d: 90, h: HW + 60, mat: 'facade', kit: { style: 'stone', cell: 60, faces: 'F', plinth: 34, quoins: false, courses: [250], buttress: [{ u: 330, h: 300, d: 26, w: 40 }, { u: 870, h: 300, d: 26, w: 40 }] } });
+  // the coffin corridor: low banks left and right (same walls both nights: candles and new coffins on them in 1697, a hundred years of coffins tonight)
+  add('c1', { t: 'wall', x: X0, z: 400, w: 280, d: 600, h: 56, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'FR', coping: true } },
+    { t: 'wall', x: 820, z: 400, w: 280, d: 600, h: 56, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'FL', coping: true } });
+  // the door of the last hall: two tall pillars with fire bowls and low walls to the sides (a wall across would hide the hall)
+  add('c3', { t: 'wall', x: X0, z: 2970, w: 320, d: 30, h: 56, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'F', coping: true, rail: 'F', piers: 106 } },
+    { t: 'wall', x: 780, z: 2970, w: 320, d: 30, h: 56, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'F', coping: true, rail: 'F', piers: 106 } },
+    { t: 'pillar', x: 450, z: 2985, r: 28, h: 250 }, { t: 'pillar', x: 750, z: 2985, r: 28, h: 250 });
+  add('c4', ...[[170, 3300], [1030, 3300], [170, 3600], [1030, 3600]].map(([x, z]) => ({ t: 'pillar', x, z, r: 34, h: 320 })));
+  // ───────────── things that stand in both nights at the same spots ─────────────
+  const bell = (chunk, id, x, z, h = 160) => { add(chunk, { t: 'prop', mesh: 'roadbell', x, z, h, solid: 14, solidZ: 12, solidH: h * 0.85, state: now ? 'rusty' : 'hung', old: now, light: { r: 190, i: 0.8, y: h * 0.7, c: now ? [0.6, 0.86, 0.9] : [1, 0.82, 0.5] } }); interact.push({ id, kind: 'bell', x: x + 26, z: z - 28, r: 76, label: '종 치기', event: 'bell.ring' }); };
+  bell('c1', 'bell_entry', 880, 300); bell('c1', 'bell_coffins', 760, 950); bell('c3', 'bell_riddle', 890, 2570); bell('c4', 'bell_arena', 600, 3350, 150);   // three room bells and the bell in the middle of the last hall
+  add('c1', { t: 'prop', mesh: 'mourner', x: 190, z: 350, h: 200, solid: 28, solidZ: 24 }, { t: 'prop', mesh: 'mourner', x: 1010, z: 350, h: 200, solid: 28, solidZ: 24, flip: true },
+    { t: 'deco', mesh: 'skullwall', x: 240, y: 62, z: 984, h: 150 }, { t: 'deco', mesh: 'skullwall', x: 960, y: 62, z: 984, h: 150, flip: true },
+    { t: 'deco', mesh: 'cryptdoor', x: X0 + 4, z: 190, h: 200, rot: -Math.PI / 2 }, { t: 'deco', mesh: 'cryptdoor', x: X1 - 4, z: 150, h: 200, rot: Math.PI / 2 });
+  add('c2', { t: 'prop', mesh: 'altar', x: 600, z: 2040, h: 104, solid: 100, solidZ: 40, solidH: 90, lit: past, light: past ? { r: 260, i: 1.2, y: 120, c: WARM } : null },
+    { t: 'deco', mesh: 'cryptdoor', x: X0 + 4, z: 1760, h: 200, rot: -Math.PI / 2 }, { t: 'deco', mesh: 'cryptdoor', x: X1 - 4, z: 1820, h: 200, rot: Math.PI / 2 });
+  add('c3', { t: 'prop', mesh: 'sarcophagus', x: 600, z: 2660, h: 100, solid: 100, solidZ: 46, solidH: 90 },
+    { t: 'prop', mesh: 'sarcophagus', x: 190, z: 2620, h: 92, rot: Math.PI / 2, solid: 44, solidZ: 96, solidH: 84 }, { t: 'prop', mesh: 'sarcophagus', x: 1010, z: 2620, h: 92, rot: -Math.PI / 2, solid: 44, solidZ: 96, solidH: 84 },
+    { t: 'prop', mesh: 'candelabrum', x: 780, z: 2280, h: 190, solid: 22, solidZ: 22, lit: true, light: { r: 360, i: 1.5, y: 180, c: now ? [0.9, 0.8, 0.6] : WARM } },   // the lantern stand (Sera stands here tonight)
+    { t: 'block', x: 730, z: 2240, w: 100, d: 80, h: 10, kit: { mat: 'ashlar', top: 'flags' } });
+  add('c4', { t: 'prop', mesh: 'cryptdoor', x: 600, z: 3884, h: 250, solid: 96, solidZ: 16 }, { t: 'deco', mesh: 'skullwall', x: 300, z: 3880, h: 170 }, { t: 'deco', mesh: 'skullwall', x: 900, z: 3880, h: 170, flip: true },
+    { t: 'prop', mesh: 'mourner', x: 130, z: 3860, h: 210, solid: 28, solidZ: 24 }, { t: 'prop', mesh: 'mourner', x: 1070, z: 3860, h: 210, solid: 28, solidZ: 24, flip: true },
+    ...KP.map(([x, z], i) => ({ t: 'prop', mesh: 'roadbell', x, z, h: 168, solid: 14, solidZ: 12, solidH: 140, state: (now ? flags.knells_hung : flags['knell_' + (i + 1)]) ? (now ? 'rusty' : 'hung') : 'empty', old: now })));
+  // ───────────── the gap: a stone statue or a wooden crate pushed in, in 1697 (GDD 2.3: stone stays, wood rots) ─────────────
+  if (stone) add('c2', { t: 'prop', mesh: 'stoneblock', x: 600, z: 1300, y: -200, w: 170, d: 180, h: 200, solid: 85, solidZ: 90, solidH: 200, walk: true },     // the statue's plinth fills the gap: step across beside the figure
+    { t: 'prop', mesh: 'mourner', x: 600, z: 1300, y: 0, h: 170, solid: 24, solidZ: 20 });
+  else add('c2', { t: 'prop', mesh: 'stoneblock', x: 290, z: 1130, w: 84, d: 70, h: 30, solid: 42, solidZ: 35, solidH: 130 }, { t: 'deco', mesh: 'mourner', x: 290, y: 30, z: 1130, h: 170 });
+  if (past) add('c2', woodW ? { t: 'prop', mesh: 'crate', x: 600, z: 1300, y: -200, w: 170, d: 180, h: 200, solid: 85, solidZ: 90, solidH: 200, walk: true, tint: [1.2, 0.98, 0.78] }
+    : { t: 'prop', mesh: 'crate', x: 910, z: 1130, w: 120, d: 100, h: 104, solid: 60, solidZ: 50, solidH: 104 });
+  else add('c2', woodW ? { t: 'deco', mesh: 'debris', x: 600, y: -240, z: 1300, w: 170 } : { t: 'deco', mesh: 'debris', x: 910, y: 0, z: 1130, w: 110 });   // a hundred years later the crate is a heap of rot (in the gap if it was pushed in)
+  if (past) interact.push({ id: 'oss_wedge', kind: 'pull', x: 600, z: 1150, r: 120, label: '밀어 넣기', event: 'oss.wedge' });
+  else triggers.push({ id: 'oss_gap', ...rect(300, 1110, 600, 70), event: 'oss.gap', once: false });
+  // ───────────── the two nights ─────────────
+  const cand = (chunk, x, z, o = {}) => add(chunk, { t: 'prop', mesh: 'candelabrum', x, z, h: 170, solid: 20, solidZ: 20, light: { r: 320, i: 1.5, y: 160, c: WARM }, ...o });
+  if (past) {   // a chapel in use
+    for (const [c, x, z] of [['c1', 150, 120], ['c1', 1050, 120], ['c2', 150, 1060], ['c2', 1050, 1060], ['c2', 150, 1560], ['c2', 1050, 1560], ['c2', 360, 2050], ['c2', 840, 2050], ['c3', 150, 2160], ['c3', 1050, 2400], ['c3', 150, 2840], ['c3', 1050, 2840], ['c4', 150, 3060], ['c4', 1050, 3060], ['c4', 150, 3850 - 400], ['c4', 1050, 3450]]) cand(c, x, z);
+    add('c1', { t: 'deco', mesh: 'coffin', x: 240, y: 62, z: 560, h: 60 }, { t: 'deco', mesh: 'coffin', x: 250, y: 62, z: 760, h: 60, flip: true }, { t: 'deco', mesh: 'coffin', x: 950, y: 62, z: 640, h: 60 },
+      { t: 'deco', mesh: 'candles', x: 330, y: 62, z: 470, n: 5, light: { r: 200, i: 1.0, y: 20 } }, { t: 'deco', mesh: 'candles', x: 870, y: 62, z: 820, n: 5, light: { r: 200, i: 1.0, y: 20 } }, { t: 'deco', mesh: 'candles', x: 340, y: 62, z: 900, n: 4, light: { r: 200, i: 1.0, y: 20 } });
+    add('c2', { t: 'deco', mesh: 'chandelier', x: 600, y: 330, z: 1840, h: 150, light: { r: 520, i: 1.6, y: 20, c: WARM } }, { t: 'prop', mesh: 'coffin', x: 240, z: 1900, h: 62, solid: 58, solidZ: 22, solidH: 46 });
+    add('c4', { t: 'deco', mesh: 'chandelier', x: 320, y: 340, z: 3420, h: 150, light: { r: 560, i: 1.6, y: 20, c: WARM } }, { t: 'deco', mesh: 'chandelier', x: 880, y: 340, z: 3420, h: 150, light: { r: 560, i: 1.6, y: 20, c: WARM } },
+      { t: 'deco', mesh: 'candles', x: 520, z: 3850, n: 6, light: { r: 220, i: 1.1, y: 20 } }, { t: 'deco', mesh: 'candles', x: 690, z: 3850, n: 6, light: { r: 220, i: 1.1, y: 20 } });
+    add('c3', { t: 'deco', mesh: 'candles', x: 340, z: 2900, n: 6, light: { r: 220, i: 1.1, y: 20 } }, { t: 'deco', mesh: 'candles', x: 560, z: 2600, n: 3, light: { r: 180, i: 0.9, y: 20 } });
+    anchors.push({ id: 'mist_low', kind: 'mist', x: 600, y: 0, z: 3300, size: 1.2 });
+  } else {      // a hundred years of coffins and bones
+    const ST = (chunk, x, z, o = {}) => add(chunk, { t: 'prop', mesh: 'coffinstack', x, z, h: 150, solid: 96, solidZ: 54, solidH: 130, ...o }), BP = (chunk, x, z, h = 56, o = {}) => add(chunk, { t: o.deco ? 'deco' : 'prop', mesh: 'bonepile', x, z, h, ...(o.deco ? {} : { solid: h * 1.1, solidZ: h * 0.8, solidH: h * 0.7 }), ...o });
+    // the corridor is walled up: three stacks across the walk + stacks on both banks
+    ST('c1', 490, 700); ST('c1', 690, 690, { flip: true }); ST('c1', 590, 742, { h: 170 }); add('c1', { t: 'blocker', x: 380, z: 640, w: 440, d: 130, h: 800 });
+    for (const [x, z, f] of [[230, 520, 0], [260, 720, 1], [220, 900, 0], [960, 500, 1], [950, 680, 0], [970, 860, 1]]) add('c1', { t: 'deco', mesh: 'coffinstack', x, y: 62, z, h: 140, flip: !!f });
+    BP('c1', 170, 240); BP('c1', 1020, 250, 50); BP('c1', 440, 590, 44, { deco: true }); BP('c1', 760, 830, 44, { deco: true });
+    ST('c2', 190, 1050, { h: 130 }); ST('c2', 1010, 1460, { h: 130, flip: true }); BP('c2', 170, 1460); BP('c2', 1030, 1040, 50);
+    ST('c2', 190, 1640); ST('c2', 1010, 1960, { flip: true }); ST('c2', 200, 2040, { h: 130 }); BP('c2', 1020, 1600, 60); BP('c2', 180, 1820, 52); BP('c2', 860, 2060, 46); BP('c2', 370, 2070, 40, { deco: true });
+    ST('c3', 190, 2180); ST('c3', 1010, 2420, { flip: true }); BP('c3', 1020, 2180, 54); BP('c3', 180, 2420, 48); BP('c3', 1010, 2860, 56); ST('c3', 200, 2880, { h: 130 });
+    ST('c4', 190, 3080, { h: 140 }); ST('c4', 1010, 3080, { h: 140, flip: true }); BP('c4', 160, 3450, 52); BP('c4', 1040, 3450, 52); BP('c4', 420, 3860, 44, { deco: true }); BP('c4', 790, 3860, 44, { deco: true });
+    add('c1', { t: 'light', x: 600, y: 150, z: 200, r: 420, c: COLD, i: 0.7 }, { t: 'light', x: 600, y: 140, z: 860, r: 380, c: COLD, i: 0.6 });
+    add('c2', { t: 'light', x: 600, y: 160, z: 1300, r: 460, c: COLD, i: 0.7 }, { t: 'light', x: 600, y: 180, z: 1800, r: 560, c: COLD, i: 0.75 });
+    add('c3', { t: 'light', x: 400, y: 150, z: 2640, r: 420, c: COLD, i: 0.7 }, { t: 'deco', mesh: 'candles', x: 340, z: 2900, n: 6, light: { r: 220, i: 1.1, y: 20 } });
+    add('c4', { t: 'light', x: 600, y: 220, z: 3350, r: 700, c: COLD, i: 0.8 }, { t: 'light', x: 600, y: 160, z: 3780, r: 420, c: [0.7, 0.6, 1], i: 0.8 });
+    for (const [x, z, s] of [[600, 500, 2], [600, 1300, 2.4], [600, 1800, 2.4], [600, 2600, 2], [600, 3350, 3]]) anchors.push({ id: 'mist_' + z, kind: 'mist', x, y: 0, z, size: s });
+    anchors.push({ id: 'gap_fog', kind: 'fog_bank', x: 600, y: -120, z: 1300, size: 4 });
+  }
+  anchors.push({ id: 'door_fire_l', kind: 'fire', x: 450, y: 252, z: 2980, size: 0.5, light: true }, { id: 'door_fire_r', kind: 'fire', x: 750, y: 252, z: 2980, size: 0.5, light: true });
+  add('c3', { t: 'deco', mesh: 'fire', x: 450, y: 250, z: 2978, w: 34, h: 44, n: 3, embers: false, light: { r: 420, i: 1.5, y: 20, c: now ? [0.7, 0.8, 1] : [1, 0.5, 0.2] } }, { t: 'deco', mesh: 'fire', x: 750, y: 250, z: 2978, w: 34, h: 44, n: 3, embers: false, light: { r: 420, i: 1.5, y: 20, c: now ? [0.7, 0.8, 1] : [1, 0.5, 0.2] } });
+  // ───────────── people, enemies, hot spots ─────────────
+  const N = [0, 1], S = [0, -1];
+  if (now) {
+    enemies.push(...[[520, 520], [690, 560]].map(([x, z]) => ({ kind: 'skeleton_soldier', x, z, group: 'oss_hall', rise: true })),
+      ...[[350, 1800], [850, 1800], [600, 1930]].map(([x, z]) => ({ kind: 'grave_ghost', x, z, group: 'oss_arena', yard: true })), ...[[300, 1650], [900, 1650]].map(([x, z]) => ({ kind: 'skeleton_mage', x, z, group: 'oss_arena', yard: true })));
+    if (!flags.queen_sent) enemies.push({ kind: 'banshee_queen', x: 600, z: 3600, group: 'boss', yard: true, face: S });
+    actors.push({ id: 'sera', model: 'sera', x: 716, z: 2296, face: S, talk: 'sera.ossuary', pose: 'lantern', when: 'sera_follows' });
+    triggers.push({ id: 'oss_coffins', ...rect(380, 500, 440, 60), event: 'oss.coffins', wake: 'oss_hall' }, { id: 'oss_arena', ...rect(X0, 1510, 1000, 50), event: 'oss.arena', wake: 'oss_arena' },
+      { id: 'oss_lamp', ...rect(X0, 2110, 1000, 50), event: 'oss.lamp' }, ...(flags.queen_sent ? [] : [{ id: 'boss_enter', ...rect(478, 3010, 244, 60), event: 'boss.enter', wake: 'boss' }]));
+    interact.push({ id: 'oss_riddle', kind: 'sign', x: 600, z: 2600, r: 80, label: '닳은 석관', event: 'oss.riddle' }, { id: 'boss_rest', kind: 'rest', x: 340, z: 2890, r: 70, label: '촛불', event: 'rest' });
+  } else {
+    if (flags.queen_fled && !flags.queen_sent) enemies.push({ kind: 'banshee_queen', x: 600, z: 3600, group: 'boss', yard: true, active: true, face: S });
+    interact.push(...KP.map(([x, z], i) => ({ id: 'knell_' + (i + 1), kind: 'bell', x, z: z - 30, r: 70, label: '조종 걸기', event: 'oss.knell', data: { post: i + 1 } })), { id: 'past_rest', kind: 'rest', x: 340, z: 2890, r: 70, label: '촛불', event: 'rest' });
+    if (!flags.elise_found) { actors.push({ id: 'elise', model: 'elise', x: 600, z: 3836, face: S, talk: 'elise.wake', pose: 'sit', when: 'queen_sent', solid: false }); interact.push({ id: 'oss_elise', kind: 'sign', x: 600, z: 3810, r: 80, label: '엘리제', event: 'oss.elise' }); }
+  }
+  const cam = (o = {}) => ({ yaw: 0, pitch: 26 * D, dist: 860, lookY: 34, leadX: 0, leadZ: 70, minX: 420, maxX: 780, zFollow: 1, tallK: 0.12, ...o });
+  const SEC = [['entry', '납골당 어귀', -100, 400], ['coffins', '관의 복도', 400, 1000], ['wedge', '틈의 방', 1000, 1500], ['arena', '곡하는 방', 1500, 2100], ['lamp', '등불대의 방', 2100, 2450], ['riddle', '석관의 방', 2450, 2800], ['rest', '문 앞', 2800, 3000], ['boss', '맨 안', 3000, 3700], ['posts', '종대의 회랑', 3700, 4000]];
+  return {
+    id: 'ossuary_' + era, name: '배웅의 납골당', era, twin: 'ossuary_' + (now ? 'past' : 'now'),
+    room: 'crypt', rooms: { boss: 'hall', posts: 'hall', arena: 'hall' }, music: 'ossuary_' + era,
+    stage: {
+      id: 'ossuary_' + era, name: '배웅의 납골당',
+      sky: { img: 'bg/s02_graveyard', crop: 0.66, span: 84 * D, bottom: -7 * D, top: now ? [0.012, 0.016, 0.022] : [0.03, 0.02, 0.016] },
+      fog: now ? { color: [0.035, 0.05, 0.065], near: 500, far: 2200, max: 0.97 } : { color: [0.07, 0.045, 0.03], near: 700, far: 2800, max: 0.94 },
+      light: now ? { ambient: [0.25, 0.31, 0.38], moon: [0.3, 0.4, 0.5], moonDir: [-0.3, 0.9, -0.3] } : { ambient: [0.34, 0.28, 0.24], moon: [0.4, 0.33, 0.28], moonDir: [-0.3, 0.9, -0.3] },
+      sections: SEC.map(([id, label, z0, z1]) => ({ id, label, x0: 0, x1: 1200, z0, z1, cam: cam(id === 'boss' || id === 'posts' ? { pitch: 28 * D, dist: 940, minX: 380, maxX: 820, leadZ: 40 } : id === 'coffins' ? { minX: 560, maxX: 640 } : {}) })),
+      chunks: [{ id: 'c1', z1: 1000 }, { id: 'c2', z1: 2100 }, { id: 'c3', z1: 3000 }, { id: 'c4', z1: Infinity }],
+      parts: P,
+      decals: [[600, 200, 'stain', 120, 70], [600, 800, 'crack', 80, 50], [420, 1100, 'puddle', 60, 36], [600, 1700, 'stain', 160, 100], [800, 1900, 'crack', 80, 50], [500, 2300, 'puddle', 54, 30], [600, 2740, 'stain', 110, 60], [600, 3200, 'crack', 110, 70], [400, 3500, 'stain', 150, 90], [800, 3560, 'puddle', 60, 40],
+        ...(now ? [[300, 300, 'moss', 90, 50], [900, 1560, 'moss', 90, 60], [300, 2500, 'ash', 80, 50], [900, 3100, 'moss', 100, 60], [600, 3760, 'ash', 120, 50]] : [[600, 500, 'straw', 70, 40], [600, 3760, 'straw', 110, 40]])].map(([x, z, k, rx, rz]) => ({ k, x, z, rx, rz })),
+    },
+    spawns: {
+      default: { x: 600, z: 110, face: N, section: 'entry' }, entry: { x: 600, z: 110, face: N, section: 'entry' }, wedge_far: { x: 600, z: 1450, face: N, section: 'wedge' },
+      lamp: { x: 600, z: 2200, face: N, section: 'lamp' }, rest: { x: 600, z: 2880, face: N, section: 'rest' }, boss: { x: 600, z: 3120, face: N, section: 'boss' },
+    },
+    exits: [{ id: 'to_graveyard', ...rect(520, 0, 160, 40), to: 'graveyard_' + era, spawn: 'from_ossuary', label: '안개의 묘지', locked: null }],
+    actors, enemies, triggers, interact, anchors,
+    knells: KP.map(([x, z], i) => ({ post: i + 1, x, z, y: 0, h: 120, hung: !!(now ? flags.knells_hung : flags['knell_' + (i + 1)]) })),   // the knell bells the whip strikes in the fight (PLAY / ENGINE)
+    entry: stone || (past && woodW) ? [] : ['wedge_far'],   // nothing in the gap yet (or only rot tonight): what lies beyond is reached by crossing at a bell further in, or not at all in this state
+  };
+}
