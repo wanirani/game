@@ -4,6 +4,8 @@
 작성 2026-11-17. 소유자 의견("적과 모든 것들을 3D 로, 배경도 좀 더 디테일하게 — 사물이나 벽면 등도")에 대한 **배경 쪽 답**이다.
 숫자는 §5. 헤드리스 Chromium 은 소프트웨어 렌더러(SwiftShader)라 **프레임 시간은 실제 기기 값이 아니다** — 삼각형·그리기 호출·메모리만 믿을 수 있다.
 
+> **2026-11-18 21:40 UTC, WORLD-LOOK — §23**: new file `src/v2/env/props4.js` — what lies beyond an area's edge (`apron ridge treeline farhouse farwall gravefield`: cheap static pieces, one material per backdrop) and wall dressing for a wall's `hang` list (`boards crack ivy drape`); `kit.merlonGaps` (no merlons under a wall-top fire); a brazier's collision is its bowl. Numbers and rules: `AREA_FORMAT.md` §16.
+>
 > **2026-11-18 17:00 UTC, FIRE-2 — §22**: candle groups bake no flame triangle in the game (a living flame per wick instead, `candleSpots`), the brazier's plate of angular flame shards is left out and a heap of glowing coals lies in its bowl, a brazier's fire is 50 wide. The fire itself: `docs/v2/FX.md` §13.
 >
 > **2026-11-18 14:00 UTC, FENCE 구역이 고친 것은 §21** (담장을 뚫는 버그): 울타리 · 쇠 난간 · 단상 난간 · 계단 옆 벽 · 낮은 담 · 묘지 문이 **그려진 자리에서** 영웅을 막는다 — 그리는 키트 조각이 충돌도 낸다. 낮은 담의 끝 면 기둥(담 길이만큼 긴 돌 띠)은 없어졌고 끝 기둥은 담 끝과 나란히, 계단 옆 벽의 끝 기둥은 계단 위에 선다.
@@ -648,3 +650,26 @@ Check: `node tools/v2/world_fence_node.mjs` (no browser). Every fence-like piece
 - **Brazier**: the generated model has a flat plate of angular yellow "flame" shards standing in its bowl (17 triangles, model y 93..112 at z 22..26). `BAKED_ARGS.brazier` leaves them out when the prop is written (`baked.js` `o.drop`); **the pack and its bake are untouched** (`world_props_bake.mjs` still reproduces the shipped files). `BAKED_EXTRA.brazier` puts `coalHeap()` in the bowl: a dull red glowing dome of the coal texture with eight bright pieces (37 triangles). Net +20 triangles per lit brazier.
 - `flameSpots`: a brazier's fire is 50 wide (was 30) — it fills the bowl (88 wide). Size 0.5 as before.
 - Fold plan unchanged (`world_folds --check`), `world_validate` ALL OK, `world_check` ALL OK, `envkit_check --base 1` all passed.
+
+## 23. WORLD-LOOK (2026-11-18 19:52–21:45 UTC) — beyond the edge, wall dressing, braziers, fire leftovers
+
+Owner: "배경도 좀 더 디테일하게 … 사물이나 벽면 등도"; the last verifier: the camera sees past the world at Eshville's west gate, an empty fog-coloured area beyond the church in the big-bell shot, the church differs only in tint between the nights, the hero stands in a brazier's bowl. Measures and numbers: `AREA_FORMAT.md` §16 (`tools/v2/look_read.mjs`, `tools/v2/look_edge.mjs`).
+
+**`src/v2/env/props4.js`** (imported by `build.js`; stage parts `t: 'deco'`, no collision). Backdrops are not lifted like props and take one material for everything (`mat`: a texture the area loads anyway), so a backdrop chunk is one draw call:
+
+| `mesh` | what | triangles |
+|---|---|---|
+| `apron` `{ x, z, w, d, y, mat, cell, tile, k, tint, skirt, strips: [{ x0, x1, z0, z1, tint, k }] }` | ground beyond the edge (x, z = near left corner; `cell` 300 near, 1,300-3,600 far out; `skirt` = a dark front face where the land ends towards the camera; `strips` = fields, a road) | 2 per cell |
+| `ridge` `{ x, z, x1, z1, h, amp, seg, depth, to, tint }` | a slope up to a ragged crest along a line: a hedge (h 40-46), hills (h 260-300), the far bank that rises just over the horizon (h 900-980 at 16,000) | 2 per segment |
+| `treeline` `{ x, z, x1, z1, n, h, hv, wob, kind: 'fir' / 'bare' / 'round', tint }` | a row of trees: two-tier conifers, bare trees (trunk + 3-4 boughs), trees in leaf | about 21 / 24 / 31 each |
+| `farhouse` `{ x, z, w, d, h, rh, tint, roofTint, lit, glow, emis }` | body, gable roof, chimney, windows (lit ones glow) | about 16 |
+| `farwall` `{ x, z, x1, z1, h, mat, piers, k, cell, to }` | a long plain wall with coping and piers (the churchyard wall, the lane's low walls, the wall beside the tower's cut, the rock beside the ossuary's) | about 60 |
+| `gravefield` `{ x, z, w, d, n, h, tint }` | n small leaning slabs and crosses with a thickness | 4-6 each |
+
+Wall dressing (a wall part's `kit.hang`, like `sign` / `banner` / `sconce`): `boards { u, y, w, h, n }` (planks nailed across an opening), `crack { u, y, len, seed, lean }`, `ivy { u, y, w, h, seed }` (a mass of small dark leaves climbing from the foot), `drape { u, y, w, sag, c }` (a cloth swag between two hooks). Used on Eshville's church: tonight boarded dark nave windows, cracks, ivy; in 1697 every window lit, swags, feast banners, wall lanterns, candle groups under the nave windows.
+
+**`kit.js`**: `kit.merlonGaps: [[u0, u1], …]` on a wall with `battlement` - no merlon stands there (the three burning houses of `eshville_now`: the merlons' bright tops showed through the wall-top fires as hard-edged slivers). **Braziers**: the area part's `solid` / `solidZ` should be the bowl (h 112: 84 x 48-60; h 96: 72 x 64) and `solidH: 300` (a 90-high box could be jumped on; a 44-wide one let the hero stand inside the bowl). slice0's four braziers were left as they are (test route).
+
+**Fire leftovers** (`src/v2/game/anchors.js`, the effects engine untouched): (a) merlons - above; (d) the blaze class of `kOf` is `1.24 + (size - 1.05) x 0.7` (was `1.3 + … x 1.35`: a wall-top fire k 1.5-1.62 -> 1.34-1.41), TONGUE speed 42-72k (was 50-92k), grav -76k (-110k), life 0.4-0.56 (0.42-0.62), size 36-48k (40-54k), HEAT size 84-104k (96-118k), 2.35 body quads per slot (2.6): tongues end about two hero heights above the wall; `fire2verify --mode look --devices phone2 --tiers mid`, eshville_now: fire-only overdraw of the two worst views 1.98 / 2.03 -> 1.64 / 1.48 screens, all effects 2.19 / 2.34 -> 2.14 / 1.79 (the rest is smoke, which varied 0.2-0.5 between runs). (c) NOT done - a blue tint was tried on the cold set and taken back: the flame sheet's own colour is orange at the rim, a tint turns it green-brown; it needs a hue term in the particle shader or a pale sheet (`src/v2/fx`). (b) NOT done (living flames on candelabra / chandeliers / the altar: the pack marks their flame vertices - `baked.js` `E` - so `candleSpots` could cluster them; the candle emission must be halved first).
+
+Checks on the final tree: see the WORLD-LOOK report (`world_validate` ALL OK, `world_folds --check` up to date and identical to the plan before, `world_verify_node` ALL OK, `world_fence_node` 112 pieces 0 fail, `world_check` ALL OK with budgets 43,000 / 32 / 42).

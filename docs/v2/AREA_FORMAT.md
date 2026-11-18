@@ -5,6 +5,7 @@
 (The body is in English so that every lane can read it fast. Player-visible names are Korean.)
 
 ## 바뀐 것
+- 11-18 21:40 **WORLD-LOOK** (owner: the hero hard to read in the graveyard, empty space beyond the world, flat spots). Nothing was renamed or removed; the data diff against the tree before (every area state: spawns, exits, enemies, triggers, interacts, breakables, sections, cameras) shows only: actor `trapped` (eshville_now) stands at **(2344, 262)** beside her door (was 2270, on the pull spot), and the two brazier fire anchors by the tower door follow their braziers. New, all additive: **`stage.light.key: [r, g, b, darkSideRim]` and `stage.light.rimK`** - the area's moon key and light-edge strength on characters (`src/v2/game/charr.js` `uKey` / `uRimK`; absent = as before; set in every area but slice0); graveyard fog starts behind the figures (`near` 380 -> 900 tonight, 800 -> 900 in 1697). **§16 (new): the land beyond the walls** - `src/v2/world/beyond.js` adds `deco` parts in a chunk **`far`** (one or two textures the area loads anyway; no collision, nothing reachable; same pieces in both nights): ground running into the fog, the road out of Eshville's west gate between hedges and trees, far houses, the churchyard wall, graves and firs behind the church, the lane running on to the graveyard, graves, bare trees and hills round the cemetery; the bell tower and the ossuary get the wall / rock that goes on beside their cut-open front. Kit pieces `apron ridge treeline farhouse farwall gravefield` and wall dressing `boards crack ivy drape` (`hang` types): ENV_KIT §23. Braziers: collision as wide as the bowl and 300 high (not jumpable) - `eshville_*` (2700, 262) 84 x 48, the tower-door pair moved to (3778 / 4022, 1558) in front of the buttresses (h 96, 72 x 64), `belltower_now` 80 x 60. **Rule learned the hard way: a solid box must stay clear of an enemy's start by more than the validator's 14** - a box 2 px from the plague corpse at (2700, 216) passed `validateArea` and stopped the chapter bot in 1697 (the corpse's own body is wider); keep 20+. Budgets of `world_check`: static 43,000 triangles / 32 static draws / 42 frame draws (was 35,000 / 30 / 40). Tools: `node tools/v2/look_read.mjs` (hero size and contrast per still), `node tools/v2/look_edge.mjs` (empty picture below the horizon at every standable edge + the story's camera shots). Numbers: §16.
 - 11-18 17:20 **BREAK** (owner: "항아리 같은것들은 쨍그랑 소리와 함께 깨지고 랜덤으로 아이템, 돈 등이 나오면"). New area field **`breakables: [{ kind, x, z, rot?, drop? }]`** (§15) - jars, pots, urns, crates and barrels the hero breaks. They are dynamic things (drawn and collided by the game, not stage parts), solid while whole. `finishArea` gives every area the field (`[]` when it has none); `validateArea` walks the area with all of them standing and checks each one (§15.2). Every area has them now: `eshville_*` 23, `graveyard_*` 17, `belltower_now` 8, `ossuary_*` 10. **Static props taken out where a breakable stands instead**: `eshville_*` barrel (2420, 264); `eshville_now` crate (2150, 258), sacks (1960, 266) and (4340, 842), barrel (4080, 846); `eshville_past` sacks (1960, 266) and (4180, 850) - the cloth sacks a reviewer read as untextured clay jars are real glazed jars now; `belltower_now` barrels (60, 60) and (80, z2+110), crates (660, z1+96), (650, z3+110) and (80, top+60 -> a breakable at top+120, outside trigger `tower_top`). No spawn, exit, section, trigger, actor or interact was renamed or moved. `folds.js` was regenerated (two chunks fold `wood` into `planks` now).
 - 11-18 14:00 **FENCE** (owner: "담장을 뚫는 버그"). Fences, railings, balustrades, stair cheeks, low walls and the cemetery gate now **collide where they are drawn** - the kit piece that draws them also pushes their collision (ENV_KIT §21). Nothing in the area shape changed (no part, spawn, exit, section or flag renamed or moved). What an area author must know: a `t:'fence'` part **is solid now** (it was drawn only: the hero stopped at the area edge 9 units behind the bars and the railing ran through his legs) - as tall as a low wall's collision (`collideH` 800 by default; a part may set its own `collideH`), so do not put a fence across a way the hero must walk; a slanted fence collides as a chain of boxes 8 long. Stair `cheeks`, a block's `balustrade` and the posts and leaves of `mesh:'cemgate'` collide too (an open gate's leaves narrow the gateway by about 14 a side: 132 free of the 160 between the old post blockers). A low wall (`style:'low'` / `rail` / `piers`) collides out to its pier caps and coping (8 beyond a face with piers, 3.5 with coping only). Check: `node tools/v2/world_fence_node.mjs` (every drawn piece, every area and geometry state, the rules' own moveXZ: the body circle r 14 may not reach into the drawn bars).
 - 11-18 02:55 **WORLD-2, final re-check** — nothing in the areas changed since 02:10; §13.5 now holds the numbers measured again on the final tree (every check of §10 / §13 exits 0; `story_check` 0 errors, 28 warnings "area is built now").
@@ -335,3 +336,48 @@ The index in the list is the thing's id (the scene remembers what is broken by `
 | `graveyard_now` / `graveyard_past` | 17 | two urns on the road's edge - barrel, crate and jar at the keeper's hut - seven offering urns beside gravestones - a pot and a jar by the two coffins, a pot at the east wall - two urns on the ossuary terrace |
 | `belltower_now` | 8 | the store room at the foot (barrel, jar, pot) - a crate or a barrel on a landing of floors 1-3 - a crate and an urn in the keeper's corner of the bell chamber |
 | `ossuary_now` / `ossuary_past` | 10 | urns by the two mourners, at the altar, beside the three sarcophagi - a jar + urn and a pot against the walls of the lantern room. None in the gap room and none on the fight floor of the last hall |
+
+## 16. WORLD-LOOK (2026-11-18): the hero reads, the land goes on beyond the walls
+
+Code `src/v2/world/beyond.js` (what lies beyond each area), `src/v2/env/props4.js` (the pieces, ENV_KIT §23), light values in each area's `stage.light` / `stage.fog`. Tools (scene v2g, fold_open, tier mid, one browser): `node tools/v2/look_read.mjs [--areas ..] [--tag ..] [--root <snapshot>]` and `node tools/v2/look_edge.mjs [--areas ..] [--step 200] [--root <snapshot>]`.
+
+### 16.1 The hero reads at a glance
+`look_read` puts the hero on 8-11 spots per area with one enemy three metres (178 px) beside him, reads the 3D picture back three times (whole, without the hero, without the enemy: the difference is the exact silhouette) and reports: height on screen, luma of the brighter half of the figure / luma of what is behind and around it (aim 1.6), the 3 px band inside the outline on the darker side / the body next to it (aim 1.15).
+
+| area | hero lit / around, min · median: before -> after | light edge, median | stills failing an aim |
+|---|---|---|---|
+| `graveyard_now` | 1.47 · 1.73 -> **1.72 · 2.00** | 1.14 -> 1.54 | 8 -> 2 of 10 |
+| `graveyard_past` | 1.36 · 1.80 -> **1.55 · 2.06** | 1.44 -> 1.49 | 6 -> 2 of 10 |
+| `eshville_now` | 1.36 · 2.03 -> 1.69 · 2.23 | 1.10 -> 1.10 | 9 -> 6 of 11 |
+| `eshville_past` | 1.32 · 2.06 -> 1.36 · 2.21 | 1.08 -> 1.13 | 9 -> 7 of 11 |
+| `belltower_now` | 1.53 · 2.42 -> 1.75 · 2.62 | 1.26 -> 1.30 | 3 -> 3 of 8 |
+| `ossuary_now` | 1.57 · 1.91 -> 1.78 · 2.06 | 1.29 -> 1.21 | 3 -> 1 of 9 |
+| `ossuary_past` | 1.50 · 1.90 -> 1.67 · 2.17 | 1.20 -> 1.29 | 5 -> 2 of 9 |
+
+Size: 14.3-25.7 % of the screen height at every fighting spot (aim 11 %; no rig was changed). What was done: the graveyard's fog began at 380 px while the field camera stands 830 px from the hero - 44 % of the figure was fog; it begins at 900 now. Characters get the area's moon key (`light.key`, added to the lit side only) and a stronger light edge on the side away from the moon (`light.rimK`, 4th value of `key`); ground and walls are lit exactly as before. Still under the aim: the edge in Eshville (the rim is thin at Fold size), the hero in front of lit church windows and braziers (1.36-1.44: a bright wall behind him).
+
+### 16.2 No empty space beyond the world
+`look_edge` puts the hero on every standable spot of a lattice over each walk box (edges included; both facings) and at the places of the story's camera shots, draws one frame without the sky picture on magenta and counts the pixels below the horizon line where nothing of the world is drawn.
+
+| area | views with >= 0.3 % empty: before -> after (of all) | worst view | story shots |
+|---|---|---|---|
+| `eshville_now` | 243 -> 15 of 276 | 65.2 % -> 2.9 % | opening moon shot 6.4 -> 0 · bell shot 22.3 -> 0 |
+| `eshville_past` | 242 -> 15 of 274 | 63.5 % -> 2.9 % | bell shot 22.7 -> 0 · two keepers 8.9 -> 0 · ending pull-up 46.5 -> 0 |
+| `graveyard_now` / `_past` | 50 / 98 -> **0 / 0** of 126 | 14.8 / 34.3 % -> 0 | 0 |
+| `belltower_now` | 34 -> 24 of 176 | 41.9 % -> 2.0 % | 0 |
+| `ossuary_now` / `_past` | 96 / 88 -> 24 / 48 of 284 / 298 | 41.9 / 40.9 % -> 1.2 / 2.4 % | 0 |
+| `slice0` (test route, not touched) | 158 of 198 | 56.1 % | - |
+
+Rules for a new area: (1) everything beyond the edge goes into chunk `far` with one material the area loads (`beyond.js` `far()`), never into a play chunk - a play chunk's box must not grow (a deeper floor front or a far wall made the street, the outskirts and the square all draw together: +22 draws in one view); (2) the front of the ground under the floors' own 220-deep fronts is an `apron` strip with `skirt: 520` in `far`; (3) a boundary wall's end that the camera can see needs its `F` face (`faces: 'FR'`); (4) no `wood` fences out there (they stop the chunk's `wood` -> oak fold: one more texture).
+
+### 16.3 Cost (scene v2g, fold_open, mid; worst of the `look_read` spots; before -> after)
+| area | frame draws | world draws | world triangles in view | static triangles (area) | textures MB (world part) |
+|---|---|---|---|---|---|
+| `eshville_now` | 42 -> 44 | 21 -> 23 | 28,009 -> 32,376 | 33,553 -> 37,912 | 80.2 (43.5) -> 80.2 (43.5) |
+| `eshville_past` | 35 -> 37 | 21 -> 23 | 28,370 -> 33,020 | 34,442 -> 39,148 | 72.1 (44.9) -> 72.1 (44.9) |
+| `graveyard_now` | 34 -> 35 | 15 -> 16 | 22,705 -> 25,916 | 22,705 -> 25,916 | 70.8 (38.2) -> same |
+| `graveyard_past` | 26 -> 27 | 16 -> 17 | 22,694 -> 25,905 | 22,694 -> 25,905 | 60.1 (39.5) -> same |
+| `belltower_now` | 26 -> 28 | 14 -> 15 | 12,671 -> 12,729 | 12,671 -> 12,729 | 52 (36.8) -> same |
+| `ossuary_now` / `_past` | 40 / 32 -> 41 / 33 | 25 -> 26 | 34,263 / 26,444 -> 34,391 / 26,572 | 34,263 / 26,444 -> 34,391 / 26,572 | 77.5 / 52 -> same |
+
+In every measured view: at most +2 draws and +4,650 world triangles; no texture was added (the fold plan `folds.js` is byte for byte the one before). First load 2.1-4.6 s before, 2.9-4.9 s after on the same loaded machine (no change beyond its noise).
