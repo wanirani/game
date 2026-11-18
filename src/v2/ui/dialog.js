@@ -175,10 +175,10 @@ export function createDialog(env) {   // env: { game, input, hud (canvas HUD: la
 const ROWS = [['resume', '이어 하기'], ['settings', '설정'], ['leave', '나가기']];
 export function createPause(env) {
   const L = env.hud.layout, px = env.hud.px, tsz = env.hud.tsz;
-  const M = { open: false, sel: 0, t: 0, key: -1, o: null, x: 0, y: 0, rowY: [0, 0, 0], rowH: 0 };
+  const M = { open: false, sel: 0, t: 0, key: -1, o: null, x: 0, y: 0, rowY: [0, 0, 0], rowH: 0, rows: ROWS };   // rows = the three fixed rows + opts.extra rows ([icon, label, {onPick}]) before 'leave'
   const panel = { c: null, w: 0, h: 0 };
   function bake() {
-    const ts = tsz(17, L.tmin + 4), rowH = Math.max(px(46), 46 / L.css, ts * 2.5), w = Math.max(px(300), measure(ROWS[0][1], ts, 700) + px(170)), titleH = px(74), h = titleH + rowH * 3 + px(34);
+    const ts = tsz(17, L.tmin + 4), rowH = Math.max(px(46), 46 / L.css, ts * 2.5), R = M.rows, n = R.length, titleH = px(74), h = titleH + rowH * n + px(34); let w = px(300); for (let i = 0; i < n; i++) w = Math.max(w, measure(R[i][1], ts, 700) + px(170));
     const cw = Math.ceil((w + 24) * L.s), ch = Math.ceil((h + 24) * L.s);
     if (!panel.c) panel.c = makeCanvas(cw, ch); else if (panel.c.width !== cw || panel.c.height !== ch) { panel.c.width = cw; panel.c.height = ch; }
     panel.w = w + 24; panel.h = h + 24;
@@ -189,40 +189,46 @@ export function createPause(env) {
     const title = bakeText(M.o?.title ?? '잠시 멈춤', L.s, { size: tsz(24, L.tmin + 7), family: FONTS.title, weight: 800, fill: ['#ffffff', '#cdd5f3'], lw: 3.5, stroke: 'rgba(6,6,18,0.86)' });
     c.drawImage(title.c, 12 + w / 2 - title.w / 2, 12 + px(10), title.w, title.h);
     sprite(c, 'orn_div', 12 + w / 2, 12 + px(10) + title.h * 0.92, w * 0.62, w * 0.62 * 64 / 480);
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < n; i++) {
       const y = 12 + titleH + i * rowH, sel = i === M.sel, rx = 12 + px(20), rw = w - px(40);
       glassPanel(c, rx, y + 3, rw, rowH - 7, { cut: px(8), shadow: false, dense: sel ? 0.5 : 0.1, accent: sel ? 'gold' : null });
       if (sel) { chamfer(c, rx, y + 3, rw, rowH - 7, px(8)); c.lineWidth = 1.8; c.strokeStyle = COL.gold; c.stroke(); }
-      sprite(c, ROWS[i][0], rx + rowH * 0.55, y + rowH / 2, rowH * 0.66, rowH * 0.66);
+      sprite(c, R[i][0], rx + rowH * 0.55, y + rowH / 2, rowH * 0.66, rowH * 0.66);
       c.font = `700 ${ts}px ${FONTS.body}`; c.textAlign = 'left'; c.textBaseline = 'middle'; c.lineJoin = 'round'; c.lineWidth = 2.6; c.strokeStyle = 'rgba(4,4,12,0.75)';
-      c.strokeText(ROWS[i][1], rx + rowH * 1.1, y + rowH / 2 + 1); c.fillStyle = sel ? '#fff3d4' : COL.silver; c.fillText(ROWS[i][1], rx + rowH * 1.1, y + rowH / 2 + 1);
+      c.strokeText(R[i][1], rx + rowH * 1.1, y + rowH / 2 + 1); c.fillStyle = sel ? '#fff3d4' : COL.silver; c.fillText(R[i][1], rx + rowH * 1.1, y + rowH / 2 + 1);
       c.textBaseline = 'alphabetic'; M.rowY[i] = 12 + titleH + i * rowH;
     }
     M.rowH = rowH; M.key = L.epoch * 8 + M.sel;
   }
   function pick(i) {
-    const o = M.o ?? {}, g = env.game; M.open = false;
+    const o = M.o ?? {}, g = env.game, row = M.rows[i] ?? ROWS[0], id = row[0]; M.open = false;
     try {
-      if (i === 0) o.onResume?.();
-      else if (i === 1) { if (o.onSettings) o.onSettings(); else if (g.registry?.options && g.push) g.push('options'); }
+      if (row[2]) row[2].onPick?.();   // an extra row of the caller (opts.extra)
+      else if (id === 'resume') o.onResume?.();
+      else if (id === 'settings') { if (o.onSettings) o.onSettings(); else if (g.registry?.options && g.push) g.push('options'); }
       else if (o.onLeave) o.onLeave(); else if (g.registry?.v2pick) g.go('v2pick', {}, { fade: true }); else if (g.registry?.title) g.go('title', {}, { fade: true });
     } catch (e) { console.error('[v2ui] pause callback', e); }
   }
   onAtlas(() => { M.key = -1; });
   return {
     get open() { return M.open; },
-    show(o) { M.o = o ?? null; M.open = true; M.sel = 0; M.t = 0; M.key = -1; },
+    show(o) {
+      M.o = o ?? null; M.open = true; M.sel = 0; M.t = 0; M.key = -1;
+      const ex = Array.isArray(o?.extra) ? o.extra.slice(0, 2).filter((x) => x && x.label) : [];
+      M.rows = ex.length ? [ROWS[0], ROWS[1], ...ex.map((x) => [x.icon ?? 'next', String(x.label), x]), ROWS[2]] : ROWS;
+    },
     close() { if (M.open) pick(0); },
     tap(x, y) {
       if (!M.open) return;
       const lx = x - M.x, ly = y - M.y;
-      for (let i = 0; i < 3; i++) if (lx >= 12 && lx <= panel.w - 12 && ly >= M.rowY[i] && ly < M.rowY[i] + M.rowH) { M.sel = i; pick(i); return; }
+      for (let i = 0; i < M.rows.length; i++) if (lx >= 12 && lx <= panel.w - 12 && ly >= M.rowY[i] && ly < M.rowY[i] + M.rowH) { M.sel = i; pick(i); return; }
     },
     update(dt, s) {
       if (!M.open) return;
       M.t += dt;
       const inp = env.input; if (!inp?.pressed || M.t < 0.12) return;
-      if (inp.pressed('up')) M.sel = (M.sel + 2) % 3; else if (inp.pressed('down')) M.sel = (M.sel + 1) % 3;
+      const n = M.rows.length;
+      if (inp.pressed('up')) M.sel = (M.sel + n - 1) % n; else if (inp.pressed('down')) M.sel = (M.sel + 1) % n;
       else if (inp.pressed('confirm') || inp.pressed('attack')) pick(M.sel);
       else if (inp.pressed('cancel') || inp.pressed('menu')) pick(0);
     },
@@ -234,7 +240,7 @@ export function createPause(env) {
       M.x = s.viewW / 2 - panel.w / 2; M.y = s.viewH / 2 - panel.h / 2;
       ctx.globalAlpha = a; ctx.drawImage(panel.c, M.x, M.y + (1 - a) * px(10), panel.w, panel.h); ctx.globalAlpha = 1;
     },
-    info() { return M.open ? { sel: M.sel, rows: M.rowY.map((y) => ({ x: M.x + 12, y: M.y + y, w: panel.w - 24, h: M.rowH })) } : null; },
+    info() { return M.open ? { sel: M.sel, ids: M.rows.map((r) => (r[2] ? 'extra' : r[0])), rows: M.rowY.slice(0, M.rows.length).map((y) => ({ x: M.x + 12, y: M.y + y, w: panel.w - 24, h: M.rowH })) } : null; },
     release() { if (panel.c) { panel.c.width = 1; panel.c.height = 1; panel.c = null; } },
   };
 }

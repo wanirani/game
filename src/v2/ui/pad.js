@@ -188,7 +188,7 @@ export function createPad(game, opts = {}) {
   function press(b, on, ptr, cancel) {
     if (b.down === on) return;
     b.down = on; b.ptr = on ? ptr : -1; b.dirty = true; place(b);
-    if (b.disabled) return;
+    if (b.disabled) { if (on) { try { opts.onDisabledPress?.(b.id); } catch (e) { console.error(e); } } return; }   // a button that cannot be used yet still answers: the scene says why
     if (on) {
       b.t0 = performance.now(); b.sent = acts(b);
       if (b.sent) input.touch.set(b.sent, true);

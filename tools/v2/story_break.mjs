@@ -5,7 +5,7 @@ import path from 'node:path';
 
 const args = process.argv.slice(2);
 const di = args.indexOf('--dir');
-const dir = path.resolve(di >= 0 ? args[di + 1] : 'tools/v2/story_stage');
+const dir = path.resolve(di >= 0 ? args[di + 1] : 'src/v2/data');
 const { STORY, createStory } = await import(pathToFileURL(path.join(dir, 'index.js')).href);
 
 let fails = 0;

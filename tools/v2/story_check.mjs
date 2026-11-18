@@ -17,7 +17,7 @@ import { MINUTES, ROUTE_A, ROUTE_B, NOISE } from './story_route.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const argv = process.argv.slice(2);
 const argOf = (n, d) => { const i = argv.indexOf(n); return i >= 0 && argv[i + 1] ? argv[i + 1] : d; };
-const DIR = path.resolve(ROOT, argOf('--dir', 'tools/v2/story_stage'));
+const DIR = path.resolve(ROOT, argOf('--dir', 'src/v2/data'));
 const OUT = argOf('--out', '/tmp/claude-0/v2/story');
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -614,7 +614,7 @@ const SHOT_KO = {
 function ownerScript() {
   const L = [];
   L.push('# 블러드 녹턴 3D 판 — 첫 출시 대본 (소유자용)', '',
-    '이 글은 `node tools/v2/story_check.mjs` 가 실제 자료(`tools/v2/story_stage/`)를 처음부터 끝까지 돌려서 뽑은 것입니다. 손으로 따로 쓴 글이 아니므로 게임에 나오는 글과 한 글자도 다르지 않습니다.',
+    '이 글은 `node tools/v2/story_check.mjs` 가 실제 자료(`src/v2/data/`)를 처음부터 끝까지 돌려서 뽑은 것입니다. 손으로 따로 쓴 글이 아니므로 게임에 나오는 글과 한 글자도 다르지 않습니다.',
     '', '- **두 밤**: 1797년 = 오늘 밤, 1697년 = 그 밤.', '- **읽는 법**: 굵은 이름 = 말하는 사람, *기울인 글* = 해설·글씨, `〔 〕` = 화면에 뜨는 알림·목표·단추 안내, (괄호) = 장면 설명(게임에는 글로 나오지 않음).',
     '- 카엘의 괄호 대사는 혼잣말입니다.', '- 종탑 안과 배웅의 납골당은 아직 지어지지 않았습니다. 대본은 다 썼고, 지어지면 그대로 붙습니다.', '');
   L.push('## 고르는 곳 두 군데', '',
@@ -658,7 +658,7 @@ function ownerScript() {
   L.push('', '## 덧붙임 4 — 연대기 (첫 출시가 끝났을 때)', '', '| 제목 | 적힌 글 | 그 밤에 한 일 → 오늘 밤에 달라진 것 |', '|---|---|---|');
   for (const c of chron) L.push(`| ${c.title}${c.kind === 'blank' && !c.filled ? ' (빈칸으로 남음)' : ''} | ${c.body} | ${c.filled && c.past ? c.past + ' → ' + c.now : c.kind === 'blank' ? '—' : ''} |`);
   L.push('', '## 덧붙임 5 — 목표 글 (구역 이름 아래 한 줄)', '', Object.values(OBJECTIVES).map((o) => o.text).join(' · '), '');
-  L.push('## 덧붙임 6 — 쓰러졌을 때', '', `큰 띠 「${TEXT.death.title}」 — ${TEXT.death.sub}. 다시 일어설 때 처음 두 번만 종지기나 신부가 한마디 합니다(위 대본의 해당 자리 참고). 그 뒤로는 말없이 일어섭니다.`, '');
+  L.push('## 덧붙임 6 — 쓰러졌을 때', '', `큰 띠 「${TEXT.death.title}」 — ${TEXT.death.sub}. 다시 일어설 때 처음 두 번만 한마디가 나옵니다 — 신부를 만나기 전에는 카엘의 혼잣말, 그 뒤로는 종지기나 신부의 말입니다(위 대본의 해당 자리 참고). 그 뒤로는 말없이 일어섭니다.`, '');
   return L.join('\n');
 }
 fs.writeFileSync(path.join(OUT, 'script_owner.md'), ownerScript());

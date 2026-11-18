@@ -44,6 +44,17 @@ function uniformBoxes(W) {
   for (let i = 0; i < B.length; i++) for (const k of Object.keys(B[i])) if (!keys.includes(k)) keys.push(k);
   for (let i = 0; i < B.length; i++) { const b = B[i], o = {}; for (let j = 0; j < keys.length; j++) o[keys[j]] = b[keys[j]]; B[i] = o; }
 }
+/** collision the area asks for beyond the stage: a wall in every exit box (solid while the exit is locked — the gate prop has no
+ *  collision of its own, AREA_FORMAT 3) and a small box under every solid person. The scene finds them again by b.gate / b.actor. */
+function addBoxes(W, def) {
+  const B = W.boxes, ground = (x, z) => { let g = -Infinity; for (let i = 0; i < B.length; i++) { const b = B[i]; if (x < b.x0 || x > b.x1 || z < b.z0 || z > b.z1 || !b.walk) continue; if (b.y1 > g) g = b.y1; } return Number.isFinite(g) ? g : 0; };
+  for (const x of Array.isArray(def.exits) ? def.exits : []) B.push({ x0: x.x0, x1: x.x1, z0: x.z0, z1: x.z1, y0: -400, y1: 2400, solid: !!x.locked, walk: false, gate: x.id });
+  for (const a of Array.isArray(def.actors) ? def.actors : []) {
+    if (a.solid === false) continue;
+    const r = Math.max(12, a.r ?? 16), g = a.y ?? ground(a.x, a.z);
+    B.push({ x0: a.x - r, x1: a.x + r, z0: a.z - r, z1: a.z + r, y0: g - 20, y1: g + 110, solid: !a.when, walk: false, actor: a.id });
+  }
+}
 export async function loadArea(id = DEFAULT_AREA) {
   let def = null, got = id;
   if (WORLD_LOADER) {
@@ -56,6 +67,7 @@ export async function loadArea(id = DEFAULT_AREA) {
   if (!def) got = TEST_AREA;
   const stage = def ? fillStage(def, def.stage ?? def) : STAGE;
   const W = compileEnv(stage);
+  if (def) addBoxes(W, def);
   uniformBoxes(W);
   const flatProps = W.sprites.filter((s) => s.kind === 'prop').map((s) => ({ img: s.img, x: s.x, z: s.z }));
   const arr = (v) => (Array.isArray(v) ? v : []);

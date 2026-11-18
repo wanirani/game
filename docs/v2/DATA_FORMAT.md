@@ -262,6 +262,8 @@ Every flag used anywhere must be declared; `set` / `read` list sequence ids, tal
 
 ## 11. Moving the staged folder into the game (main session)
 
+**Done 2026-11-18 00:35 UTC**: the folder now lives at `src/v2/data/` (the tools default to it; `tools/v2/story_stage/` no longer exists) and the fonts were rebuilt. The steps below are kept as a record.
+
 1. `git mv tools/v2/story_stage src/v2/data` (the folder has no imports to the outside).
 2. `python3 tools/fonts/build_fonts.py` (rebuild — the story brings new Hangul; the list and count are printed by `node tools/v2/story_check.mjs`, section "fonts"), then `--check`.
 3. `node tools/v2/story_check.mjs --dir src/v2/data` must still exit 0.
