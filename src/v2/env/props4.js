@@ -135,7 +135,7 @@ Object.assign(WALLPROPS, {
   },
   crack(G, F, s) {
     const len = s.len ?? 160, n = Math.max(3, Math.round(len / 26)), sd = s.seed ?? 1, q = { tint: [0.05, 0.05, 0.065], vary: 0, k: 1 };
-    let u = s.u, y = s.y, wd = 3.4;
+    let u = s.u, y = s.y, wd = 2.2;   // LOOK-VERIFY: half-width at the foot 2.2 (was 3.4: at the church door the crack read as a black ribbon laid on the wall)
     for (let i = 0; i < n; i++) {
       const nu = u + (hash(i + sd, s.u) - 0.5) * 30 + (s.lean ?? 0) * len / n, ny = y + len / n * (0.7 + 0.6 * hash(sd, i + 2)), nw = wd * 0.8;
       G.quad4('white', F.pt(u - wd, y, 0.7), F.pt(u + wd, y, 0.7), F.pt(nu + nw, ny, 0.7), F.pt(nu - nw, ny, 0.7), F.n, q);
