@@ -79,7 +79,7 @@ export function parseArgs(argv = process.argv.slice(2)) {
   }
   return a;
 }
-const VALUE_FLAGS = new Set(['out', 'dir', 'apk', 'from', 'port', 'root', 'base', 'net', 'max-lazy', 'version', 'only', 'origin']);
+const VALUE_FLAGS = new Set(['out', 'dir', 'apk', 'from', 'port', 'root', 'base', 'net', 'max-lazy', 'version', 'only', 'origin', 'target']);
 
 // ── netlify.toml 의 [[headers]] / [[redirects]] 읽기 (serve_dist 와 smoke 가 같은 규칙을 쓴다) ──
 /** 아주 작은 TOML 부분 해석기: [[headers]] for/values, [[redirects]] from/to/status/force, [build]·[functions] 키. */

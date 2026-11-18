@@ -4,7 +4,17 @@
 //   node tools/deploy/build_web.mjs                 # dist/web (+ dist/deploy 업로드 묶음) 만들기, 점검·크기 보고
 //   node tools/deploy/build_web.mjs --selftest-deny # 허용 폴더에 가짜 키스토어를 넣은 트리로 빌드 → 반드시 실패해야 통과 (exit 0)
 // 선택:
-//   --out <dir>            출력 폴더 (기본 dist/web, dist/ 아래만)
+//   --out <dir>            출력 폴더 (기본 dist/web, --target 3d 면 dist/web3d; dist/ 아래만)
+//   --target all|v1|3d     빌드 대상 (앱 분리, 2026-11-18). 기본 all = 예전 그대로 (2D + 3D 판(v2_ship.txt) 함께, build-info.js 도 예전과 같다).
+//                          v1  2D 앱 「블러드 녹턴」(com.bloodnocturne.game): assets/v2/ 는 하나도 싣지 않는다 (v2_ship.txt 와 상관없이).
+//                              build-info.js 에 target:'v1' → 타이틀의 「리빌드 시범」 줄을 숨긴다 (src/core/build_target.js).
+//                          3d  3D 앱 「블러드 녹턴 3D」(com.bloodnocturne.game3d, 기본 출력 dist/web3d): assets/ 는 tools/deploy/web3d_ship.txt 에
+//                              적힌 것 + assets/v2/(v2_ship.txt) 만. build-info.js 에 target:'3d' → 첫 장면 v2pick (2D 타이틀·계정 화면 없음).
+//                              index.html·manifest.webmanifest 의 이름을 「블러드 녹턴 3D」로, music/index.json 은 실은 곡만으로 다시 쓴다.
+//                              2D 전용 점검은 건너뛴다: assets/lo 변형(make_variants — lo/ 를 싣지 않는다), 맵 검사(validate_maps — 2D 스테이지),
+//                              Netlify 업로드 묶음(웹사이트는 all 로 배포), downloads/ APK (3D 웹 빌드는 APK 용 — --apk 로만).
+//                              글꼴 검사·공개 금지·헤더 규칙·크기 예산은 그대로.
+//                          대상마다 싣는 파일 보고: <보고서>.ship (파일 수·MB, 폴더별) — 콘솔에도 표로.
 //   --no-bundle            src/ 를 모듈 그대로 복사하고 <link rel=modulepreload> 로 모든 모듈을 미리 받게 한다 (번들러 문제 시 대체 경로)
 //   --no-minify            번들을 줄이지 않는다
 //   --max-lazy <n>         lazy 조각 수 상한 (기본 7 → main 포함 8개, 아티팩트 제한과 같게)
@@ -78,6 +88,23 @@ function loadV2Ship(root) {
   } catch { return null; }
 }
 const v2Held = (rel, ship) => !!ship && rel.startsWith('assets/v2/') && !ship.some((p) => (p.endsWith('/') ? rel.startsWith(p) : rel === p));
+// 빌드 대상 (--target). all = 예전 그대로
+export const TARGETS = ['all', 'v1', '3d'];
+// 3D 앱(--target 3d)이 assets/ 에서 싣는 것 (assets/v2/ 는 v2_ship.txt) — 목록 = tools/deploy/web3d_ship.txt (같은 형식). 파일이 없으면 빌드 실패.
+function loadWeb3dShip(root) {
+  let t;
+  try { t = fs.readFileSync(path.join(root, 'tools/deploy/web3d_ship.txt'), 'utf8'); } catch { throw new BuildError('tools/deploy/web3d_ship.txt 가 없습니다 (--target 3d 가 싣는 assets/ 목록)'); }
+  return t.split('\n').map((l) => l.replace(/#.*$/, '').trim()).filter(Boolean);
+}
+const shipHas = (rel, ship) => ship.some((p) => (p.endsWith('/') ? rel.startsWith(p) : rel === p));
+/** 대상이 이 assets/ 파일을 싣지 않는가 (v2 는 v2Held 가 따로 본다). all 은 늘 싣는다 */
+function targetHeld(rel, target, ship3d) {
+  if (target === 'v1') return rel.startsWith('assets/v2/');
+  if (target === '3d') return rel.startsWith('assets/') && !rel.startsWith('assets/v2/') && !shipHas(rel, ship3d);
+  return false;
+}
+// 3D 앱의 이름 (index.html <title>·application-name, manifest.webmanifest) — android 쪽 이름은 tools/apk/build_apk.sh APP_LABEL
+export const APP3D_NAME = '블러드 녹턴 3D';
 // 첫 화면에 필요한 글꼴 (css/style.css 의 기본 글꼴 — bn-num 도 CSS — + ui.js 의 first) — 크기 보고용
 const FIRST_FONTS = ['noto-sans-kr.woff2', 'hahmlet.woff2', 'grenze-gotisch.woff2', 'cinzel.woff2', 'cinzel-decorative-900.woff2', 'bn-num.woff2'];
 
@@ -94,8 +121,18 @@ export async function buildWeb(o = {}) {
   const opts = {
     src: ROOT, out: path.join(ROOT, 'dist/web'), bundle: true, minify: true, maxLazy: 7,
     fontsCheck: true, allowFontGaps: false, validate: true, apk: undefined, allowStaleApk: false, deployBundle: true, strict: false, quiet: false, sizes: true, variants: true, restamp: false,
+    target: 'all',
     ...Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)),
   };
+  if (!TARGETS.includes(opts.target)) throw new BuildError(`--target 은 ${TARGETS.join(' | ')} 중 하나입니다: ${opts.target}`);
+  if (opts.target === '3d') {
+    // 3D 앱 빌드: 2D 전용 점검·묶음은 건너뛴다 (머리말 --target 참고). 명시한 값(o.*)은 그대로 따른다
+    if (o.out === undefined) opts.out = path.join(ROOT, 'dist/web3d');
+    if (o.variants === undefined) opts.variants = false;
+    if (o.validate === undefined) opts.validate = false;
+    if (o.deployBundle === undefined) opts.deployBundle = false;
+    if (o.apk === undefined) opts.apk = false;
+  }
   const SRC = path.resolve(opts.src);
   const OUT = path.resolve(opts.out);
   assertInsideDist(OUT);
@@ -139,13 +176,44 @@ export async function buildWeb(o = {}) {
       copy(f, path.join(SRC, f));
     }
     const v2Ship = loadV2Ship(SRC);
+    const ship3d = opts.target === '3d' ? loadWeb3dShip(SRC) : null;
+    report.target = opts.target;
     report.v2Held = [];
+    const held = { files: 0, bytes: 0 };   // 대상(--target)이 싣지 않은 assets/ 파일 (v1: assets/v2 전부, 3d: web3d_ship.txt 밖)
     for (const d of COPY_DIRS) {
       for (const rel0 of walk(path.join(SRC, d))) {
         const rel = `${d}/${rel0}`;
         if (SKIP_EXACT.has(rel) || SKIP_FILE.test(rel) || (rel.startsWith('assets/audio/') && !AUDIO_OK.test(rel))) { if (!SKIP_EXACT.has(rel)) report.skipped.push(rel); continue; }
+        if (targetHeld(rel, opts.target, ship3d)) { held.files++; held.bytes += fs.statSync(path.join(SRC, rel)).size; continue; }
         if (v2Held(rel, v2Ship)) { report.v2Held.push(rel); continue; }
         copy(rel, path.join(SRC, rel));
+      }
+    }
+    if (opts.target !== 'all') {
+      report.targetHeld = held;
+      log(opts, `· 빌드 대상 ${opts.target}: assets/ 파일 ${held.files}개 (${fmtMB(held.bytes)}) 는 싣지 않았습니다 (${opts.target === 'v1' ? 'assets/v2 — 3D 판은 3D 앱에' : 'tools/deploy/web3d_ship.txt 밖 — 2D 판 그림·음악'})`);
+    }
+    if (opts.target === '3d') {
+      // 목록에 적었는데 없는 파일 (오타·옮긴 파일): 장면이 404 를 받기 전에 여기서 막는다
+      const missing = ship3d.filter((p) => !p.endsWith('/') && !files.has(p));
+      if (missing.length) throw new BuildError(`tools/deploy/web3d_ship.txt 에 적힌 파일이 없습니다: ${missing.join(', ')}`);
+      // 웹 앱 매니페스트: 이름 「블러드 녹턴 3D」, 2D 화면 캡처(screenshots)와 싣지 않은 아이콘은 뺀다
+      const wm = JSON.parse(fs.readFileSync(path.join(OUT, 'manifest.webmanifest'), 'utf8'));
+      wm.name = APP3D_NAME; wm.short_name = APP3D_NAME;
+      wm.description = '블러드 녹턴의 3D 판 — 에슈빌의 밤을 앞뒤좌우로 누비는 3D 액션 어드벤처 (만드는 중).';
+      wm.icons = (wm.icons || []).filter((it) => files.has(String(it?.src || '').split(/[?#]/)[0].replace(/^\.?\//, '')));
+      delete wm.screenshots;
+      write('manifest.webmanifest', JSON.stringify(wm, null, 2) + '\n');
+      // 녹음 음악 목록은 실은 곡만 (목록에 있고 파일이 없으면 audio.js 가 404 를 받는다 — 빠진 곡은 합성 음원)
+      const mi = 'assets/audio/music/index.json';
+      if (files.has(mi)) {
+        const m = JSON.parse(fs.readFileSync(path.join(OUT, mi), 'utf8'));
+        const tracks = Object.fromEntries(Object.entries(m.tracks || {}).filter(([, t]) => t?.file && files.has(`assets/audio/music/${t.file}`)));
+        const alias = Object.fromEntries(Object.entries(m.alias || {}).filter(([, b]) => tracks[b]));
+        const out = { ...m, alias, tracks, totalBytes: Object.values(tracks).reduce((s, t) => s + (t.bytes || 0), 0) };
+        write(mi, JSON.stringify(out, null, 1) + '\n');
+        report.music3d = Object.keys(tracks);
+        log(opts, `· 3D 앱 녹음 음악 ${Object.keys(tracks).length}곡 (${Object.keys(tracks).join(', ')}) — 목록에 없는 곡은 합성 음원`);
       }
     }
     if (report.v2Held.length) log(opts, `· 3D 판(v2) 제작 중 파일 ${report.v2Held.length}개는 싣지 않았습니다 (tools/deploy/v2_ship.txt 에 없는 것)`);
@@ -209,6 +277,16 @@ export async function buildWeb(o = {}) {
       html = html.replace(re, (...m) => { n++; return fn(...m); });
       if (n !== 1) throw new BuildError(`index.html: ${what} 를 ${n}번 찾았습니다 (1번이어야 함) — index.html 구조가 바뀌었으면 build_web.mjs 를 맞춰 주세요`);
     };
+    if (opts.target === '3d') {
+      // 3D 앱의 이름 (창 제목·홈 화면 이름). 2D 문구(설명·og)는 3D 소개로
+      once(/<title>[^<]*<\/title>/, () => `<title>${APP3D_NAME}</title>`, '<title>');
+      once(/<meta name="apple-mobile-web-app-title" content="[^"]*">/, () => `<meta name="apple-mobile-web-app-title" content="${APP3D_NAME}">`, 'apple-mobile-web-app-title');
+      once(/<meta name="application-name" content="[^"]*">/, () => `<meta name="application-name" content="${APP3D_NAME}">`, 'application-name');
+      once(/<meta property="og:title" content="[^"]*">/, () => `<meta property="og:title" content="${APP3D_NAME}">`, 'og:title');
+      const d3 = '블러드 녹턴의 3D 판 — 에슈빌의 밤을 앞뒤좌우로 누비는 3D 액션 어드벤처 (만드는 중)';
+      once(/<meta name="description" content="[^"]*">/, () => `<meta name="description" content="${d3}">`, 'description');
+      once(/<meta property="og:description" content="[^"]*">/, () => `<meta property="og:description" content="${d3}">`, 'og:description');
+    }
     once(/<link rel="stylesheet" href="css\/style\.css">/, () => `<link rel="stylesheet" href="css/style.css?v=${fileHash8('css/style.css')}">`, 'css/style.css');
     if (files.has('css/touchpad.css')) once(/<link rel="stylesheet" href="css\/touchpad\.css">/, () => `<link rel="stylesheet" href="css/touchpad.css?v=${fileHash8('css/touchpad.css')}">`, 'css/touchpad.css');
     // 글꼴 preload: CSS 로 쓰는 글꼴은 CSS 와 같은 주소로 (다르면 두 번 받는다), JS(FontFace) 로 쓰는 글꼴은 그대로
@@ -257,6 +335,7 @@ export async function buildWeb(o = {}) {
     const info = {
       version, hash: buildHash, built: builtAt, modules: moduleCount, bundle: !!opts.bundle,
       lo: loKeys.length ? loKeys : null,
+      ...(opts.target !== 'all' ? { target: opts.target } : {}),   // src/core/build_target.js (all 이면 넣지 않는다 — 예전 build-info.js 와 같게)
     };
     const infoJs = `/* 배포 빌드 정보 — tools/deploy/build_web.mjs 가 만든다 (CSP script-src 'self' 라 인라인이 아닌 파일). 부팅 관문(src/boot-gate.js)·assets.js 가 읽는다 */\nwindow.__BN_BUILD = ${JSON.stringify(info)};\n`;
     write('build-info.js', infoJs);
@@ -710,9 +789,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const rep = await buildWeb({
       out: a.out ? path.resolve(ROOT, a.out) : undefined,
       bundle: !a['no-bundle'], minify: !a['no-minify'], maxLazy: a['max-lazy'] ? Number(a['max-lazy']) : 7,
-      allowFontGaps: !!a['allow-font-gaps'], validate: !a['skip-validate'],
-      apk: a['no-apk'] ? false : a.apk || undefined, deployBundle: !a['no-deploy-bundle'], strict: !!a.strict, quiet: !!a.quiet,
-      restamp: !!a.restamp, allowStaleApk: !!a['allow-stale-apk'],
+      allowFontGaps: !!a['allow-font-gaps'], validate: a['skip-validate'] ? false : undefined,
+      apk: a['no-apk'] ? false : a.apk || undefined, deployBundle: a['no-deploy-bundle'] ? false : undefined, strict: !!a.strict, quiet: !!a.quiet,
+      restamp: !!a.restamp, allowStaleApk: !!a['allow-stale-apk'], target: a.target === true ? 'missing' : a.target || undefined,
     });
     const rp = path.resolve(rep.out ? path.join(ROOT, rep.out) : path.join(ROOT, 'dist/web')) === path.join(ROOT, 'dist/web') ? path.join(ROOT, 'dist/build_web_report.json') : path.join(ROOT, rep.out + '-report.json');
     fs.writeFileSync(rp, JSON.stringify(rep, null, 1) + '\n');
