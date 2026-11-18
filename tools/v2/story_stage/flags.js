@@ -81,7 +81,7 @@ export const FLAGS = {
   sera_lamp: { means: '등불대의 세라를 부를 수 있다',
     set: ['sera.ossuary'],
     read: ['retry.boss'] },
-  wedge_stone: { means: '그 밤, 틈에 돌 석상을 밀어 두었다',
+  wedge_stone: { means: '그 밤, 틈에 석상을 밀어 두었다',
     set: ['oss.wedge'],
     read: ['ev_oss_wedge', 'oss.gap', 'oss.wedge'] },
   wedge_wood: { means: '그 밤, 틈에 나무 상자를 밀어 두었다 (백 년 뒤 부스러기)',
