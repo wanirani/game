@@ -4,6 +4,7 @@
 이 문서는 다른 구역(PLAY · WORLD · UI · STORY)이 **이 문서만 보고** 맞출 수 있게 적는다. 바꾸면 아래 "바뀐 것"에 한 줄.
 
 ## 바뀐 것
+- 11-18 13:40 **다섯째 판 (INTEGRATE-B2) — 이야기 · 저장 · 건넘**: 「본 게임」은 이제 진짜 이야기(`src/v2/data`)로 돈다(`seams.js` `STORY_LOADER`, 끄기 `?v2story=0`; 주소에 `area=` 가 있으면 `v2story=1` 을 줘야 켜진다 — 검사 도구들은 그대로 이야기 없이 돈다). 새 파일 `src/v2/game/storyhost.js`(DATA_FORMAT §5 의 api 전부 · 저장 `bn.v2.save`), 장면의 고리는 `index.js` 에서 `STORY HOOK` 으로 찾는다. 자세한 것은 **§12**. §6 의 「아직 없는 api」 줄과 §11 의 6번은 옛 이야기다.
 - 11-18 11:55 **SPEED-FIRE** — `TURN_RUN` 15 → 17.5 rad/s (규칙의 turnRate/pivotRate 17.4 를 따른다) · 카메라가 영웅을 따라붙는 빠르기 kt 5.5 → 8.5 (달리기 410 px/s 에서 처지는 거리 48 px — 예전 275 px/s 의 50 px 와 같다) · 앞쪽 여백 kf 1.5 → 2. 불: 효과 닻(`src/v2/game/anchors.js`)의 fire 가 이제 **유일한 불길**이다(세계는 불 잎을 굽지 않는다 — ENV_KIT §20): 크기 세 갈래(화로 · 집 불 · 담 위/잔해 불), 넓은 불(닻의 `w`)은 너비를 따라 최대 네 점에서, 혀 · 속은 효과 governor 가 솎지 않는 우선 입자(낮은 단계는 0.7배), 빛 반지름 300×size → 200+180×size.
 - 11-18 03:10 **넷째 판 (INTEGRATE-B1) — 채찍 · 보스 · 새 지역**
   - **채찍 비질리아가 장면에 들어왔다**(`src/v2/whip/`, `docs/v2/WHIP.md` §7 그대로). 영웅은 검을 들지 않는다(WebGL2: `cast.actor('kael', null)` · 불러오는 무기 목록에 `blade` 없음. WebGL1 에는 채찍 그리기가 없어 상자 검이 남는다). 틱마다 `_sync` 에서 손(뼈대의 `weaponMatrix`) → `driveWhip(whip, hero, TUNE, pull)` → `whip.update(pdt, hand)`(`pdt` = 놀이 dt, 타격 멈춤 중 0 → 끈이 세계와 함께 언다). 그리기는 `_gl` 의 `cr.end()` 바로 뒤 `wr.draw(whip, env, a)`(`env.viewport` = 실제 그리기 크기, `env.lightPos/lightCol` = 효과 점광). 장면의 칸: `scene.whip` · `scene.wr` · `scene.whipLink` · `scene.whipHand` · `scene.whipPullE`.
@@ -312,3 +313,32 @@ hud.padHideButtons           // (선택) 숨길 v1 패드 단추 id 배열 · hu
 4. 부르는 것: 대사 `scene.hud.showDialog({speaker, portrait, side, text, choices, onDone, onChoice})`(초상은 `assets/v2/portraits/<id>.webp`), 알림 `api.toast(text, kind)`, 띠 `scene.hud.banner(kind, title, sub)`, 문 `api.unlockExit(id, area)` · `lockExit`, 사람 `api.hideActor(id)` · `showActor(id)`, 건넘 `api.bellCross()`(어두워짐 → 쌍둥이 지역 같은 자리 → 「오늘 밤이 달라졌다」), 입력 잠금 `api.lock(on)`, 묶음 깨우기 `api.wakeGroup(group)` · 남은 수 `api.groupLeft(group)`, 지역 `api.gotoArea(id, spawn)`.
 5. 말하는 동안 그 사람이 `talk1` 을 틀게 하려면 `scene.people.talking = scene.people.byId(id)`(대화 창이 닫히면 장면이 지운다). 장면이 `talk` 사건을 올릴 때는 이미 그렇게 해 둔다.
 6. 아직 없는 `api`(§6)는 통합 B 가 `src/v2/game/index.js` 의 `emit()` 안 `_sapi` 에 더한다 — HUD 쪽 자리는 `state.candles · resonance · moon · boss · prompts` 와 `hud.banner · toast` 가 이미 받는다.
+
+## 12. 이야기 · 저장 · 건넘 (다섯째 판, INTEGRATE-B2)
+
+코드: `src/v2/game/storyhost.js`(이야기 주인 `StoryHost` · 저장 읽고 쓰기) + `src/v2/game/index.js` 의 `STORY HOOK` 표시 자리. 검사: `node tools/v2/game_story.mjs --plan boot|first15|saves|cross30|edges`.
+
+### 12.1 이야기 꽂기
+- `seams.js` `STORY_LOADER = () => import('../data/index.js')`. 장면은 들어올 때 `_boot()` 에서 이야기와 `AREA_FLAGS` 를 받아 `StoryHost` 를 만들고(`scene.host`), `scene.story = host.story`, 사람의 `when` 은 `host.flag(name)` 에 묻는다. 이야기를 못 받으면 경고 한 줄 뒤 이야기 없이 돈다(임시 규칙 §10).
+- **켜지는 때**: 주소에 `area=` 가 없을 때(= 「본 게임」), 또는 `v2story=1`. `v2story=0` 이면 꺼진다. `game.go('v2g', { story })` 로 다른 이야기 함수를 주면 그것을 쓴다(주인 없음). `game.go('v2g', { fresh: true })` = 저장을 읽지 않고 새로.
+- `host.api` = DATA_FORMAT §5 의 함수 전부: `showDialog`(HUD 대화 창, 닫히면 다음 쪽) · `banner` · `toast` · `lock`(주인의 잠금 — 장면의 여행 잠금과 따로) · `gotoArea`(`scene.travelTo`) · `bellCross`(`scene.cross`) · `sound`(feel 사건 이름이 있을 때만) · `fx` · `music`(v1 곡으로 잇는 표 `MUSIC`) · `wakeGroup` · `groupLeft` · `unlockExit` · `lockExit` · `hideActor` · `showActor`(`scene.setActor(id, area, v)`) · `prompt`(아래 가운데 알약 하나, 20초) · `objective`(`state.objective`) · `onFlag`(지역을 짓는 깃발이면 장면에 넘김) · `onItem` · `moveActor`(초당 130 으로 걸어간다) · `camera`(`SHOTS` 표: 구역 카메라의 기울기 · 거리 · 높이를 그 값으로, 그동안 입력 잠금) · `wait` · `candle` · `moon`(`state.moon`) · `ring` · `chronicle`(알림 한 줄) · `save` · `end`(띠 → 6초 뒤 저장하고 나감). `spawn` 은 규칙에 없어 경고만 한다.
+- **깃발 → 지역**: `FLAGS` 에서 `world: true` 인 것과 `AREA_FLAGS` 에 있으면서 이야기가 선언한 이름만 `scene.worldFlags` 로 넘긴다(이야기에 없는 `past_street_clear` 는 넘기지 않는다 → 그 밤의 에드문트는 `street_clear` 로 선다). 지금 선 지역을 짓는 깃발이 바뀌면 이야기 장면이 끝난 뒤(`st.busy` 가 아니고 대화가 닫힌 뒤) 그 자리에서 다시 짓는다(`scene.rebuildArea()` — 다시 지은 것은 `area.enter` 를 올리지 않는다).
+- **올리는 사건**(§6 에 더해): `interact` 는 잠긴 자리도, 종 앞에서 「종」을 길게 누른 것도(`ring: true`) 올린다 · `boss.phase {boss, phase: 'kneel'｜'flee'｜'driven'｜'sent'｜'down'}`(규칙의 kneel · bossFlee · bossReturn · bossDown 에서) · `boss.down {boss, knelled}`.
+- **임시 줄이 물러나는 법**: 사람의 `talk` 열쇠가 이야기에 있으면(`host.hasTalk`) 진짜 대사, 없으면 그 사람의 임시 한 줄(`people.js` `LINES`). 누르는 자리 · 잠긴 문은 듣는 장면이 하나도 없을 때만(`host.hears(name, data)`) 장면이 이름표 알림을 띄운다.
+- `host.seen` = 플레이어가 본 것의 차례(`['banner'｜'line'｜'notice'｜'objective'｜'prompt'｜'choice'｜'goto'｜'cross'｜'end', a, b]`, 4000개까지) — 검사 도구가 읽는다. `host.warnings` = 실행기의 경고.
+
+### 12.2 저장 (`localStorage['bn.v2.save']`)
+- 모양: `{ v: 1, t, why, story: storyObj.save(), area, era, spawn, pos: {x, z, y, face}｜null, hp｜null, reso, nights: { <areaId>: { dead: [...], done, fired: [...] } } }`.
+- **쓰는 때**: 이야기의 `save` 단계(`why: 'story'`), 장면을 떠날 때(`exit()` — 일시정지의 「나가기」 포함, `why: 'leave'`), 화면이 가려질 때(`visibilitychange`, `why: 'hidden'`). 시험 길(`slice0`)과 끝난 뒤에는 쓰지 않는다. 이야기 장면이 도는 중이면 `story` 는 그 장면이 시작되기 전 모습이다(DATA_FORMAT §10).
+- **읽는 때**: 들어올 때. 깨졌거나 판이 다르거나 이야기 상태에 지역이 없으면 버리고 새 게임. 영웅은 **이야기의 지역**에 선다: 저장의 `area` 가 이야기의 지역과 같으면 `pos` 자리, 다르면(지역을 옮기던 중에 끊김) 이야기의 `spawn`. 체력 · 울림 · 밤마다의 기억도 돌아온다.
+- **처음부터**: 일시정지 판의 「처음부터 다시」 → 확인(새 인터페이스: 「그만둔다 / 처음부터」 고르기, 기본은 그만둔다; 옛 HUD: 6초 안에 한 번 더 고르기) → `scene.restart()` 가 저장 · 이야기 · 밤의 기억 · 문 · 깃발을 지우고 첫 지역을 연다.
+- 촛불: 이야기의 촛불 수(처음 3, `candle +1` 마다 하나) = `state.candles.max`, 영웅의 최대 체력 = `TUNE.heroHp × 촛불 / 3`(`scene.applyCandles()`). `candle 0` = 가득 + 눌린 쉼터가 다시 일어서는 자리.
+
+### 12.3 건넘 (`scene.cross(opts)` — 이야기의 `bellCross`)
+- 되는 때: 쌍둥이 지역이 있고(`area.twin` 또는 `opts.to`), 영웅이 살아 있고, 여행 · 건넘 중이 아니고, 대화 · 일시정지가 닫혀 있을 때. 아니면 `false`(아무것도 바뀌지 않는다; 이야기 쪽은 「종이 둔하게 울린다」).
+- 차례: ① 그 순간 — 종의 빛(`holy.bell`) · 종소리와 떨림(`feel.play('bell.toll')`) · 느린 시간 0.8초 · 화면 당김, 옅은 장막이 0.7초 동안 오른다(1697 쪽은 따뜻한 빛, 오늘 밤 쪽은 찬 빛). ② 장막 뒤에서 쌍둥이를 먼저 짓고(`loadArea`), 같은 `x, z` 에 설 수 없으면 `nearestFreeSpot` 자리로 옮긴다. 가까이에 바닥이 없으면 **아무것도 버리지 않고** 거절한다(둔한 종 알림 + 기다리던 이야기 장면을 풀어 주는 `area.enter {refused: true}`). ③ 옛 지역을 버리고 새 지역을 데운다(`_warm`). ④ 건너편: 장막이 1.1초 동안 HUD **아래에서** 걷힌다 — 밤 표시가 먼저 바뀌어 보이고, 밤 띠(「1697 · 그 밤」/「1797 · 오늘 밤」; `years: true` 면 이야기의 「오늘 밤이 달라졌다」), 두 번째 종소리와 빛.
+- **밤마다의 기억** `scene.nights`: 지역을 떠날 때 쓰러진 적(`kind@집 자리`) · 마당 끝남 · 울린 트리거를 적어 두고, 다시 오면 되살린다(같은 지역을 다시 지을 때와 같다). 이야기가 꽂혀 있으면 체력 · 울림은 영웅과 함께 건넌다. 저장에 들어간다(§12.2).
+- 그 밤에 바꾼 것이 오늘 밤에 보이는 길: 이야기 깃발 → `scene.worldFlags` → 쌍둥이를 그 깃발로 짓는다(`AREAS[id](flags)`).
+- 이야기 없이: 예전처럼 종 곁에서 길게 울리면 어두워졌다가 쌍둥이의 같은 자리(이제 `nearestFreeSpot` 을 거치지 않는 옛 길 그대로).
+- 새 장면 함수: `travelTo(id, spawn)` · `cross(opts)` · `rebuildArea()` · `setActor(id, area, 'hide'｜'show')` · `nightsOut()` / `nightsIn(obj)` · `applyCandles()` · `restart()`. 새 상태: `state.objective`(구역 이름 아래 금빛 한 줄 — UI_API), `scene.xing`(건너는 중), `scene.veil`(장막 색).
+

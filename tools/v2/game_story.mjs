@@ -32,9 +32,11 @@ const { compileEnv } = await import('../../src/v2/env/build.js');
 const { reachGrid } = await import('../../src/v2/world/reach.js');
 const built = new Map();
 async function areaOf(id, flags) { const k = id + '|' + Object.keys(flags ?? {}).filter((f) => flags[f]).sort().join('+'); let o = built.get(k); if (!o) { const a = await AREAS[id](flags ?? {}); o = { a, W: compileEnv(a.stage) }; built.set(k, o); } return o; }
-async function pathTo(id, flags, x, z, tx, tz, tr = 60) {
+// people = the solid townspeople standing in the area right now ([x, z, y] from the page): the scene gives each a collision box the world's own grid does not know
+async function pathTo(id, flags, x, z, tx, tz, tr = 60, people = []) {
   const { W } = await areaOf(id, flags);
-  for (const R of [26, 14]) { const g = reachGrid(W, x, z, R), p = g.near(tx, tz, tr) ?? g.near(tx, tz, tr * 2.5); if (p) { const path = g.path(p[0], p[1]); if (path && path.length) return path; } }
+  const W2 = people.length ? { ...W, boxes: [...W.boxes, ...people.map(([px, pz, py]) => ({ x0: px - 18, x1: px + 18, z0: pz - 18, z1: pz + 18, y0: py - 20, y1: py + 110, solid: true, walk: false }))] } : W;
+  for (const R of [26, 14]) { const g = reachGrid(W2, x, z, R), p = g.near(tx, tz, tr) ?? g.near(tx, tz, tr * 2.5); if (p) { const path = g.path(p[0], p[1]); if (path && path.length) return path; } }
   return null;
 }
 
@@ -88,6 +90,7 @@ const fmt = (e) => (e[0] === 'line' ? `    ${e[1]}: ${String(e[2]).replace(/\n/g
 async function drain(label) { const add = await page.evaluate((f) => (window.__v2?.scene?.host ? window.__st.seen(f) : []), seenAt); seenAt += add.length; if (label) SEEN.push('── ' + label); for (const e of add) SEEN.push(fmt(e)); if (VERB) for (const e of add) console.log('      ' + fmt(e)); return add; }
 const st = () => page.evaluate(() => window.__st.status(0));
 const flagsNow = () => page.evaluate(() => ({ ...(window.__v2.scene.worldFlags ?? {}) }));
+const peopleNow = () => page.evaluate(() => window.__v2.people.filter((p) => p.on && p.solid).map((p) => [Math.round(p.x), Math.round(p.z), Math.round(p.y)]));
 async function open(q = '') {
   await page.goto(`http://localhost:${port}/index.html?scene=v2g&v2auto=0${RES < 1 ? '&v2res=' + RES : ''}${q}`);
   await page.waitForFunction(() => window.__v2?.id === 'g' && (window.__v2.ready || window.__v2.error), null, { timeout: 90000 }).catch(() => errs.push('ready timeout'));
@@ -121,7 +124,7 @@ async function walk(tx, tz, { r = 70, budget = 3600, pred = null, label = '' } =
   for (let used = 0; used < budget;) {
     if (!s.ready) { await page.waitForTimeout(350); s = await st(); used += 20; continue; }
     if (Math.hypot(s.x - tx, s.z - tz) < r || (pred && pred(s))) return { ok: true, s };
-    if (!last || replan-- <= 0) { const path = await pathTo(s.area, await flagsNow(), s.x, s.z, tx, tz, r * 0.7); if (path) { await page.evaluate((p) => window.__bot.setRoute(p), path); last = path; replan = 6; } else if (!last) return { ok: false, s, why: 'no route on the reach grid' }; }
+    if (!last || replan-- <= 0) { const path = await pathTo(s.area, await flagsNow(), s.x, s.z, tx, tz, r * 0.7, await peopleNow()); if (path) { await page.evaluate((p) => window.__bot.setRoute(p), path); last = path; replan = 6; } else if (!last) return { ok: false, s, why: 'no route on the reach grid' }; }
     s = await page.evaluate(([n]) => window.__st.run(n, true, null), [200]); used += Math.max(1, s.i);
   }
   return { ok: Math.hypot(s.x - tx, s.z - tz) < r || !!(pred && pred(s)), s, why: 'budget of ' + budget + ' ticks used' + (label ? ' (' + label + ')' : '') };
@@ -132,7 +135,7 @@ async function clear(group, { budget = 3000 } = {}) {
   for (let used = 0; used < budget;) {
     const g = await page.evaluate((gr) => { const sim = window.__v2.scene.sim, h = sim.hero; let best = null, bd = 1e9, n = 0; for (const e of sim.enemies) { if (e.group !== gr || e.dead || e.state === 'dead') continue; n++; const d = Math.hypot(e.x - h.x, e.z - h.z); if (d < bd) { bd = d; best = [Math.round(e.x), Math.round(e.z)]; } } return { n, best, d: Math.round(bd) }; }, group);
     if (!g.n) return { ok: true, s };
-    if (g.d > 240) { const path = await pathTo(s.area, await flagsNow(), s.x, s.z, g.best[0], g.best[1], 120); if (path) await page.evaluate((p) => window.__bot.setRoute(p), path); }
+    if (g.d > 240) { const path = await pathTo(s.area, await flagsNow(), s.x, s.z, g.best[0], g.best[1], 120, await peopleNow()); if (path) await page.evaluate((p) => window.__bot.setRoute(p), path); }
     s = await page.evaluate(([n]) => window.__st.run(n, true, null), [200]); used += Math.max(1, s.i);
     if (!s.ready) { await page.waitForTimeout(350); s = await st(); }
   }
@@ -145,10 +148,11 @@ const def = async (id) => (await areaOf(id, await flagsNow())).a;
 async function useSpot(what, { budget = 2400 } = {}) {   // walk to a person or a spot, tap its pill
   const s0 = await st(), a = await def(s0.area), t = a.actors.find((q) => q.id === what) ?? a.interact.find((q) => q.id === what || q.event === what);
   if (!t) return { ok: false, why: 'no "' + what + '" in ' + s0.area };
-  const w = await walk(t.x, t.z, { r: 70, budget, pred: (s) => s.prompt === t.id });
+  const person = !!a.actors.find((q) => q.id === what);
+  const w = await walk(t.x, t.z, { r: person ? 100 : 70, budget, pred: (s) => s.prompt === t.id });
   let got = null;
-  for (let i = 0; i < 12 && !got; i++) { const s = await play(30, { bot: false }); if (s.prompt === t.id) got = await page.evaluate(() => window.__st.pill()); else if (i % 3 === 2) await walk(t.x, t.z, { r: 40, budget: 300, pred: (q) => q.prompt === t.id }); }
-  if (!got) return { ok: false, why: `no prompt for "${what}" (hero ${JSON.stringify([w.s.x, w.s.z])}, spot ${[t.x, t.z]}, ${w.why ?? ''})` };
+  for (let i = 0; i < 12 && !got; i++) { const s = await play(30, { bot: false }); if (s.prompt === t.id) got = await page.evaluate(() => window.__st.pill()); else if (i % 3 === 2) await walk(t.x, t.z, { r: person ? 70 : 40, budget: 300, pred: (q) => q.prompt === t.id }); }
+  if (!got) { const s = await st(); return { ok: false, why: `no prompt for "${what}" (hero ${JSON.stringify([s.x, s.z])}, spot ${[t.x, t.z]}, prompt on offer: ${s.prompt}, enemies awake near: ${s.left}, ${w.why ?? ''})` }; }
   await settle();
   return { ok: true };
 }
@@ -215,6 +219,118 @@ try {
     await shot('first15_15_drawer');
     const end = await page.evaluate(() => { const sc = window.__v2.scene, s = sc.host.st.state; return { flags: Object.keys(s.flags), items: s.items, done: s.done.length, objective: sc.host.objective, chronicle: s.chronicle, worldFlags: Object.keys(sc.worldFlags), saves: sc.host.saves, warnings: sc.host.warnings.slice(0, 20), deaths: sc.sim.deaths ?? 0, exits: window.__v2.exits.map((x) => x.id + ':' + (x.locked ?? 'open')) }; });
     notes.push('end state: ' + JSON.stringify(end));
+  }
+  // ───────── helpers of the three stress plans: events straight into the story (the walking is not what is tested there) ─────────
+  const emit = (name, data) => page.evaluate(([n, d]) => { window.__v2.scene.emit(n, d); }, [name, data]);
+  const put = (x, z) => page.evaluate(([px, pz]) => { const sc = window.__v2.scene; let g = -1e9; for (const b of sc.W.boxes) if (b.walk && px >= b.x0 && px <= b.x1 && pz >= b.z0 && pz <= b.z1 && b.y1 > g) g = b.y1; return window.__st.put(px, pz, g > -1e8 ? g : null); }, [x, z]);
+  const snap = () => page.evaluate(() => { const sc = window.__v2.scene, h = sc.sim.hero, s = sc.host.st.state; return { area: window.__v2.area, era: sc.state.night, x: Math.round(h.x), z: Math.round(h.z), hp: Math.round(h.hp), hpMax: h.hpMax, flags: Object.keys(s.flags).sort().join(' '), items: Object.keys(s.items).sort().join(' '), done: s.done.length, objective: sc.host.objective, dead: sc.sim.enemies.filter((e) => e.dead || e.state === 'dead').length, exits: window.__v2.exits.map((x) => x.id + ':' + (x.locked ?? 'open')).join(' '), people: window.__v2.people.filter((p) => p.on).map((p) => p.id).sort().join(' '), candles: sc.state.candles.max, chronicle: s.chronicle.length }; });
+  const saved = () => page.evaluate(() => { try { const o = JSON.parse(localStorage.getItem('bn.v2.save')); return o ? { v: o.v, why: o.why, area: o.area, sArea: o.story?.area, pos: o.pos, hp: o.hp, flags: Object.keys(o.story?.flags ?? {}).length, nights: Object.keys(o.nights ?? {}).join(' ') } : null; } catch (e) { return { broken: String(e) }; } });
+  const toArea = async (id, max = 3600) => { const s = await play(max, { bot: false, pred: (q) => q.ready && q.area === id && !q.go && !q.xing, chunk: 60 }); await settle(3000); return (await st()).area === id; };
+  if (PLAN === 'saves') {
+    const same = (a, b, keys) => keys.filter((k) => (k === 'x' || k === 'z' ? Math.abs(a[k] - b[k]) > 6 : a[k] !== b[k]));
+    const KEYS = ['area', 'era', 'x', 'z', 'hp', 'hpMax', 'flags', 'items', 'done', 'objective', 'dead', 'exits', 'people', 'candles', 'chronicle'];
+    const reloadCheck = async (name, how, expect) => {
+      const before = await snap();
+      if (how === 'leave') await page.evaluate(() => { const sc = window.__v2.scene; sc.exit(); });   // what the pause menu's 「나가기」 ends in (scene.exit writes the save)
+      else if (how === 'hidden') await page.evaluate(() => { Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' }); document.dispatchEvent(new Event('visibilitychange')); });
+      const sv = await saved();
+      const o = await open(); await settle(3000);
+      const after = await snap(), diff = same(before, after, expect ?? KEYS);
+      await drain(`${name}: after the reload`);
+      if (o.story && !diff.length) ok(`${name}: ${how} -> reload -> continues (${after.area} ${after.x},${after.z} hp ${after.hp}/${after.hpMax}, ${after.done} sequences done, objective "${after.objective}", ${after.dead} fallen stay fallen; save ${JSON.stringify(sv)})`);
+      else fail(`${name}: differs after the reload in ${diff.join(', ')}: before ${JSON.stringify(before)} after ${JSON.stringify(after)} save ${JSON.stringify(sv)}`);
+      return after;
+    };
+    // 1) cut off in the middle of the opening (a dialogue is open): the opening replays from its start
+    await play(400, { bot: false, until: 'busy', chunk: 30 });
+    { const s = await st(); await page.evaluate(() => window.__v2.scene.exit()); const sv = await saved(); const o = await open(); const s2 = await play(900, { bot: false, pred: (q) => q.modal === 'dialog', chunk: 30 }); const add = await drain('1 cut in the opening: after the reload'); const again = add.some((e) => e[0] === 'banner');
+      if (o.story && again && s2.area === 'eshville_now') ok(`1 cut off in the opening (running ${s.running}): reload -> the opening plays again from its banner (save ${JSON.stringify(sv)})`); else fail(`1 opening after reload: ${JSON.stringify({ o, again, s2, sv })}`); }
+    await settle(3000);
+    // 2) after the first fight, somewhere on the road: leave -> same spot, the fallen stay fallen
+    { const A = await def('eshville_now'), t = A.triggers.find((q) => q.event === 'bell.toll'); await walk((t.x0 + t.x1) / 2, (t.z0 + t.z1) / 2, { r: 60, budget: 2400 }); await settle(); await clear('out_a', { budget: 1800 }); await settle(); await play(90, { bot: false }); }
+    await reloadCheck('2 on the road after the first fight', 'leave');
+    // 3) the church: the promise, then the rest spot (the story's own save step), reload WITHOUT leaving
+    { const A = await def('eshville_now'), t = A.triggers.find((q) => q.event === 'church.arrive'), r = A.interact.find((q) => q.event === 'rest'); await put((t.x0 + t.x1) / 2, (t.z0 + t.z1) / 2); await settle(3000); await put(r.x, r.z + 30); await play(40, { bot: false }); await emit('interact', { id: r.id, kind: r.kind, event: r.event }); await settle(); }
+    await reloadCheck('3 after the promise and the rest (story save step)', 'none');
+    // 4) the tower -> the fall -> 1697: screen hidden (visibilitychange) in that night
+    { await page.evaluate(() => window.__v2.scene.travelTo('belltower_now', 'bottom')); await toArea('belltower_now'); await emit('trigger', { id: 'top', event: 'tower.top' }); await settle(); await page.evaluate(() => window.__st.fell('tower_bats')); await toArea('eshville_past', 6000); }
+    await reloadCheck('4 that night after the fall', 'hidden');
+    // 5) the table, the knot, the key, the bell: the first crossing; its far side saves by itself
+    { await emit('group.clear', { group: 'st_p' }); await settle(); await emit('talk', { id: 'edmund', talk: 'edmund.tavern' }); await settle(4000); await emit('talk', { id: 'edmund', talk: 'edmund.tavern' }); await settle(4000); await emit('talk', { id: 'hadwin1', talk: 'hadwin1.smithy' }); await settle(4000);
+      const b = (await def('eshville_past')).interact.find((q) => q.event === 'bell.ring'); await put(b.x, b.z + 40); await play(30, { bot: false }); await emit('interact', { id: b.id, kind: 'bell', event: 'bell.ring' }); await toArea('eshville_now', 6000); }
+    await reloadCheck('5 tonight after the first crossing (the far side saves by itself)', 'none');
+    // broken data in storage: a new game, no error
+    await page.evaluate(() => localStorage.setItem('bn.v2.save', '{"v":1,"story":{"area":"nowhere_zz","flags":"x"},"pos":{"x":"a"}}')); let o = await open(); let s = await settle(2400);
+    if (o.story && s.area === 'eshville_now') ok('a save that names an unknown area: ignored, new game'); else fail('unknown-area save: ' + JSON.stringify({ o, s }));
+    await page.evaluate(() => localStorage.setItem('bn.v2.save', '{not json')); o = await open(); s = await settle(2400);
+    if (o.story && s.area === 'eshville_now') ok('a save that is not JSON: ignored, new game'); else fail('broken save: ' + JSON.stringify({ o, s }));
+    // start over from the pause menu (the confirmation's second choice)
+    await page.evaluate(() => { const sc = window.__v2.scene; sc.host.st.state.flags.promise = true; sc._askRestart(); window.__st.choice = 1; });
+    s = await play(600, { bot: false, pred: (q) => q.go || !q.ready, chunk: 20 }); await page.evaluate(() => { window.__st.choice = 0; }); const okArea = await toArea('eshville_now', 3000); const fin = await snap(), sv = await saved();
+    if (okArea && fin.flags === '' && fin.done <= 1) ok(`「처음부터 다시」 after the confirmation: flags cleared, the opening plays again (done ${fin.done}, save ${JSON.stringify(sv)})`); else fail('restart: ' + JSON.stringify({ fin, sv }));
+    await drain('start over');
+  }
+  if (PLAN === 'cross30' || PLAN === 'edges') await settle(3000);
+  const mem = () => page.evaluate(() => { try { window.gc?.(); } catch { /* no gc */ } const s = window.__v2.stats; return { tex: s.gl.texBytes, buf: s.gl.bufBytes, canvases: s.canvases, dom: document.querySelectorAll('canvas').length, heap: Math.round((performance.memory?.usedJSHeapSize ?? 0) / 1024), models: s.chars.models.length, area: s.area, people: s.people.n }; });
+  const crossOnce = async (opts) => { const r = await page.evaluate((o) => window.__v2.scene.cross(o), opts ?? null); if (!r) return { started: false, s: await st() }; const s = await play(3600, { bot: false, pred: (q) => q.ready && !q.xing && !q.go, chunk: 30 }); await play(90, { bot: false, chunk: 30 }); return { started: true, s: await st() }; };
+  if (PLAN === 'cross30') {
+    const b = (await def('eshville_now')).interact.find((q) => q.event === 'bell.ring'); await put(b.x, b.z + 50); await play(30, { bot: false });
+    const rows = [], t0 = Date.now(); let bad = 0;
+    for (let i = 0; i < 30; i++) {
+      const want = i % 2 === 0 ? 'eshville_past' : 'eshville_now', r = await crossOnce(null);
+      if (!r.started || r.s.area !== want || r.s.dead) { bad++; fail(`crossing ${i + 1}: ${JSON.stringify(r)}`); if (bad > 2) break; }
+      const m = await mem(); rows.push(m);
+      if (i === 0) await shot('cross30_first_arrival');
+      if (VERB || i % 5 === 4) console.log(`       crossing ${i + 1}: ${m.area} tex ${m.tex} buf ${m.buf} canvases ${m.canvases}/${m.dom} heap ${m.heap} KB`);
+    }
+    const by = (k, era) => rows.filter((_, i) => (i % 2 === 0) === (era === 'past')).map((r) => r[k]);
+    const stable = (a) => a.length > 2 && a.slice(1).every((v) => v === a[1]);
+    const texP = by('tex', 'past'), texN = by('tex', 'now'), bufP = by('buf', 'past'), bufN = by('buf', 'now'), cv = rows.map((r) => r.canvases), dom = rows.map((r) => r.dom), heap = rows.map((r) => r.heap);
+    notes.push(`30 crossings in ${((Date.now() - t0) / 1000).toFixed(0)} s wall: texture bytes that night ${[...new Set(texP)].join('/')}, tonight ${[...new Set(texN)].join('/')}; buffer bytes that night ${[...new Set(bufP)].join('/')}, tonight ${[...new Set(bufN)].join('/')}; scene canvases ${[...new Set(cv)].join('/')}, canvases in the page ${[...new Set(dom)].join('/')}; heap KB after each: ${heap.join(' ')}`);
+    if (rows.length === 30 && !bad) ok('30 crossings in a row, every one arrived in the twin area'); 
+    if (stable(texP) && stable(texN) && stable(bufP) && stable(bufN)) ok(`GPU bytes stable from the 2nd visit of each night on (tex ${texP[1]} / ${texN[1]}, buf ${bufP[1]} / ${bufN[1]})`); else fail(`GPU bytes change between visits: tex past ${[...new Set(texP)]} now ${[...new Set(texN)]} buf past ${[...new Set(bufP)]} now ${[...new Set(bufN)]}`);
+    if (new Set(cv.slice(2)).size === 1 && new Set(dom.slice(2)).size === 1) ok(`canvases stable (${cv[cv.length - 1]} of the scene, ${dom[dom.length - 1]} in the page)`); else fail(`canvases grow: scene ${cv.join(' ')} page ${dom.join(' ')}`);
+    const h1 = heap.slice(8, 14).reduce((a, v) => a + v, 0) / 6, h2 = heap.slice(24, 30).reduce((a, v) => a + v, 0) / 6;
+    notes.push(`heap trend: mean of crossings 9-14 ${Math.round(h1)} KB, of 25-30 ${Math.round(h2)} KB = ${((h2 - h1) / 16).toFixed(0)} KB per crossing`);
+    console.log('  info ' + notes[notes.length - 1]);
+  }
+  if (PLAN === 'edges') {
+    const { nearestFreeSpot } = await import('../../src/v2/world/index.js');
+    const b = (await def('eshville_now')).interact.find((q) => q.event === 'bell.ring');
+    const inside = () => page.evaluate(() => { const sc = window.__v2.scene, h = sc.sim.hero; let hit = null; for (const q of sc.W.boxes) if (q.solid && !q.walk && h.x > q.x0 + 2 && h.x < q.x1 - 2 && h.z > q.z0 + 2 && h.z < q.z1 - 2 && h.y + 50 > q.y0 && h.y + 10 < q.y1) hit = [q.x0, q.x1, q.z0, q.z1, q.y0, q.y1]; return { hit, onGround: !!h.onGround, y: Math.round(h.y), act: h.act ?? null, move: !!h.move, hurtT: h.hurtT ?? 0, locked: sc.locked, xing: !!sc.xing, fade: +sc.fadeA.toFixed(2), hp: Math.round(h.hp) }; });
+    const canMove = async () => { const a = await st(); await page.evaluate(() => { const B = window.__bot, h = window.__v2.scene.sim.hero; B.setRoute([[h.x - 200, h.z + 30], [h.x - 400, h.z + 30]]); }); const c = await play(60, { bot: true, chunk: 60 }); return Math.hypot(c.x - a.x, c.z - a.z) > 20; };
+    const edge = async (name, before, expectStart = true) => {
+      await put(b.x - 40, b.z + 60); await play(40, { bot: false });
+      const hp0 = (await st()).hp, area0 = (await st()).area; let pre = null;
+      try { pre = await before(); } catch (e) { pre = { err: String(e).slice(0, 120) }; }
+      const state0 = await inside(), r = await crossOnce(null); await play(60, { bot: false, chunk: 30 }); const a = await inside(), s = await st(), mv = s.dead ? false : await canMove();
+      const arrived = r.started && s.area !== area0;
+      const clean = !a.hit && !a.xing && !a.locked && a.fade < 0.05 && a.onGround && mv && !s.dead;
+      const line = `${name}: before ${JSON.stringify({ act: state0.act, move: state0.move, onGround: state0.onGround, hurtT: +(+state0.hurtT).toFixed(2), y: state0.y, pre })} -> ${r.started ? (arrived ? 'crossed to ' + s.area : 'started but stayed in ' + s.area) : 'refused'}; after: on the ground ${a.onGround}, inside a solid ${a.hit ? JSON.stringify(a.hit) : 'no'}, hp ${hp0} -> ${a.hp}, input free ${!a.locked}, veil ${a.fade}, hero moves ${mv}`;
+      notes.push(line);
+      if (clean && r.started === expectStart && (!expectStart || arrived)) ok(line); else fail(line);
+    };
+    await edge('while attacking (third hit of the combo)', () => page.evaluate(() => { const st2 = window.__st, bt = window.__v2.scene.hud.metrics().pad.buttons.find((q) => q.id === 'attack'); for (let k = 0; k < 3; k++) { st2.fire('pointerdown', 11, bt.cx, bt.cy); for (let i = 0; i < 4; i++) window.__game.tick(1 / 60); st2.fire('pointerup', 11, bt.cx, bt.cy); for (let i = 0; i < 10; i++) window.__game.tick(1 / 60); } return window.__v2.scene.sim.hero.move?.id ?? null; }));
+    await edge('while hurt (struck a moment before)', () => page.evaluate(() => { const sim = window.__v2.scene.sim; sim.hurtHero(9, 1, 0, {}); window.__game.tick(1 / 60); return { hurtT: sim.hero.hurtT, hp: sim.hero.hp }; }));
+    await edge('in the air (jumped a moment before)', () => page.evaluate(() => { const st2 = window.__st, bt = window.__v2.scene.hud.metrics().pad.buttons.find((q) => q.id === 'jump'); st2.fire('pointerdown', 13, bt.cx, bt.cy); for (let i = 0; i < 9; i++) window.__game.tick(1 / 60); st2.fire('pointerup', 13, bt.cx, bt.cy); const h = window.__v2.scene.sim.hero; return { onGround: h.onGround, vy: Math.round(h.vy ?? 0) }; }));
+    // next to walls: a spot of this night where something stands in the other night (the world's own search), and one pressed against a wall here
+    { const cur = (await st()).area, twin = cur === 'eshville_now' ? 'eshville_past' : 'eshville_now', fl = await flagsNow(), T = await areaOf(twin, fl), C = await areaOf(cur, fl); let spot = null;
+      const g = reachGrid(C.W, C.a.spawns.default.x, C.a.spawns.default.z, 26);
+      for (let x = 300; x < 4200 && !spot; x += 37) for (let z = 60; z < 1700 && !spot; z += 31) { if (!g.near(x, z, 14)) continue; const r = nearestFreeSpot({ stage: T.a.stage, spawns: T.a.spawns, interact: T.a.interact }, T.W, x, z); if (r && r.moved > 30) spot = { x, z, to: [Math.round(r.x), Math.round(r.z)], moved: Math.round(r.moved) }; }
+      if (!spot) notes.push('next to walls: no spot found where the other night has something standing (searched the reach grid)');
+      else await (async () => { const bx = b.x, bz = b.z; b.x = spot.x + 40; b.z = spot.z - 60; await edge(`where the other night has something standing (${cur} ${spot.x},${spot.z} -> nearest free ${spot.to}, ${spot.moved} px away)`, async () => spot); b.x = bx; b.z = bz; })(); }
+    await edge('pressed against a wall (walking into the church wall while the bell rings)', async () => { const s = await st(); await page.evaluate(() => { const B = window.__bot, h = window.__v2.scene.sim.hero; B.setRoute([[h.x, h.z + 400], [h.x, h.z + 800]]); }); const c = await play(90, { bot: true, chunk: 90 }); return { from: [s.x, s.z], pushedTo: [c.x, c.z] }; });
+    // during a dialogue: refused, nothing changes, the dialogue goes on
+    { await put(b.x - 40, b.z + 60); await play(30, { bot: false }); const area0 = (await st()).area;
+      await page.evaluate(() => { const sc = window.__v2.scene; sc.hud.showDialog({ speaker: '', text: '…', onDone() { window.__dlgDone = true; } }); window.__game.tick(1 / 60); });
+      const r = await page.evaluate(() => { const sc = window.__v2.scene; return { modal: sc.hud.modal, crossed: sc.cross(null), xing: !!sc.xing, go: !!sc._go, locked: sc.locked }; });
+      const s = await settle(1200), done = await page.evaluate(() => !!window.__dlgDone);
+      const line = `during a dialogue: cross() -> ${r.crossed} (modal ${r.modal}); nothing started (crossing ${r.xing}, journey ${r.go}, input lock ${r.locked}); the dialogue then closed normally: ${done}; still in ${s.area}`;
+      notes.push(line); if (r.crossed === false && !r.xing && !r.go && !r.locked && done && s.area === area0) ok(line); else fail(line); }
+    // a fallen hero cannot cross
+    { const r = await page.evaluate(() => { const sc = window.__v2.scene, h = sc.sim.hero; const hp = h.hp; h.dead = true; const c = sc.cross(null); h.dead = false; h.hp = hp; return c; }); const line = `fallen hero: cross() -> ${r}`; notes.push(line); if (r === false) ok(line); else fail(line); }
+    // twice at once: the second is refused
+    { const r = await page.evaluate(() => { const sc = window.__v2.scene; return [sc.cross(null), sc.cross(null)]; }); await play(3600, { bot: false, pred: (q) => q.ready && !q.xing && !q.go, chunk: 30 }); const line = `two presses at once: ${JSON.stringify(r)} (one crossing)`; notes.push(line); if (r[0] === true && r[1] === false) ok(line); else fail(line); }
   }
 } catch (e) { fail('tool error: ' + String(e?.stack ?? e)); }
 await drain(null).catch(() => {});

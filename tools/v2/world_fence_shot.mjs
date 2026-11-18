@@ -17,14 +17,18 @@ const GL_ARGS = ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignor
 fs.mkdirSync(OUT, { recursive: true });
 // the drawn bars (kit railing / woodFence): iron posts' caps 3.6 across, wooden posts 3.5
 const FENCES = { iron: { x0: 1860, x1: 2180, z: 5, hw: 3.6 }, wood: { x0: 80, x1: 420, z: 6, hw: 3.5 } };
-const pen = (f, x, z) => { const dx = Math.max(f.x0 - f.hw - x, 0, x - f.x1 - f.hw), dz = Math.max(f.z - f.hw - z, 0, z - f.z - f.hw); return +(14 - Math.hypot(dx, dz)).toFixed(1); };
+const pen = (f, x, z) => { const e = f.box ? 0 : f.hw, dx = Math.max(f.x0 - e - x, 0, x - f.x1 - e), dz = Math.max(f.z - f.hw - z, 0, z - f.z - f.hw); return +(14 - Math.hypot(dx, dz)).toFixed(1); };
 // [name, fence, start x, start z, stick dx, stick dy (screen: +y = down = towards the camera = -z)]
 const PUSH = [
   ['iron_in', 'iron', 2020, 70, 0, 1], ['iron_in_left', 'iron', 1980, 70, -0.7, 0.7], ['iron_in_right', 'iron', 2060, 70, 0.7, 0.7],
   ['iron_end_w', 'iron', 1810, 30, 1, 0.25], ['iron_end_e', 'iron', 2230, 30, -1, 0.25],
   ['wood_in', 'wood', 250, 70, 0, 1], ['wood_in_left', 'wood', 210, 70, -0.7, 0.7], ['wood_in_right', 'wood', 290, 70, 0.7, 0.7],
   ['wood_end_w', 'wood', 40, 30, 1, 0.25], ['wood_end_e', 'wood', 470, 30, -1, 0.25],
+  // the church front: the low wall with piers and railing left of the stair (its pier fin stood 11-14 over the side the hero walks along), and the stair's left cheek
+  ['lowwall_side', 'lowwall', 3720, 1050, -1, 0], ['cheek_up', 'cheek', 3720, 1080, -0.45, -1],
 ];
+// the pier fin / cap (before) reached x 3671 / 3674 along z 985..1257; the cheek's band is x 3658..3671 (both drawn from x 3660 on)
+FENCES.lowwall = { x0: 3658, x1: MODE === 'before' ? 3674 : 3668, z: 1120, hw: 135, box: true };   // after: no fin, the side piers' caps reach 3668 FENCES.cheek = { x0: 3658, x1: 3671, z: 1175, hw: 77, box: true };
 
 const port = 8200 + Math.floor(Math.random() * 700), srv = await start(port);
 const browser = await chromium.launch({ executablePath: EXE, args: GL_ARGS });

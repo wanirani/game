@@ -391,17 +391,17 @@ export function stairCheeks(G, P, boxes) {
   for (const s of K.cheeks ?? '') {
     if (P.dir === 'z+' && (s === 'L' || s === 'R')) {
       const xa = s === 'L' ? P.x : P.x + P.w - T, xb = xa + T, nx = s === 'L' ? 1 : -1, xf = s === 'L' ? xb : xa;
-      box(xa - 2, xb + 2, P.z - 12, P.z + P.d + 12);
+      box(xa - 2, xb + 2, P.z - 2, P.z + P.d + 2);
       G.quad4('stone', [xf, y, P.z], [xf, y + P.h, P.z + P.d], [xf, y + P.h + hRail, P.z + P.d], [xf, y + hRail, P.z], [nx, 0, 0], { k: 0.9 });
       G.quad4('trimstone', [xa - 1, y + hRail, P.z], [xb + 1, y + hRail, P.z], [xb + 1, y + P.h + hRail, P.z + P.d], [xa - 1, y + P.h + hRail, P.z + P.d], [0, 0.9, -0.43], { vary: 0.05 });
-      G.box('stone', xa - 2, y, P.z - 12, xb + 2, y + hRail + 10, P.z + 2, { faces: 'FLRT', top: 'trimstone' });
-      G.box('stone', xa - 2, y + P.h, P.z + P.d - 2, xb + 2, y + P.h + hRail + 10, P.z + P.d + 12, { faces: 'FLRT', top: 'trimstone' });
+      G.box('stone', xa - 2, y, P.z - 2, xb + 2, y + hRail + 10, P.z + 12, { faces: 'FLRT', top: 'trimstone' });   // FENCE: the end posts stand on the flight (they stood 12 out in front of the foot and onto the landing)
+      G.box('stone', xa - 2, y + P.h, P.z + P.d - 12, xb + 2, y + P.h + hRail + 10, P.z + P.d + 2, { faces: 'FLRT', top: 'trimstone' });
     } else if (P.dir === 'x+' && s === 'K') {
       const za = P.z + P.d, zb = za + T;
-      box(P.x - 12, P.x + P.w, za - 2, zb);
+      box(P.x - 2, P.x + P.w, za - 2, zb);
       G.quad4('stone', [P.x, y, za], [P.x + P.w, y + P.h, za], [P.x + P.w, y + P.h + hRail, za], [P.x, y + hRail, za], [0, 0, -1], { k: 0.9 });
       G.quad4('trimstone', [P.x, y + hRail, za - 1], [P.x + P.w, y + P.h + hRail, za - 1], [P.x + P.w, y + P.h + hRail, zb], [P.x, y + hRail, zb], [-0.5, 0.86, 0], { vary: 0.05 });
-      G.box('stone', P.x - 12, y, za - 2, P.x + 2, y + hRail + 10, zb, { faces: 'FLRT', top: 'trimstone' });
+      G.box('stone', P.x - 2, y, za - 2, P.x + 12, y + hRail + 10, zb, { faces: 'FLRT', top: 'trimstone' });
     }
   }
 }
