@@ -9,7 +9,7 @@
 //   { t: 'deco', mesh: 'farwall',  x, z, x1, z1, y, h, mat, tint, piers, to: [x, z] }                                    a plain long wall with a coping and piers
 //   { t: 'deco', mesh: 'gravefield', x, z, w, d, y, n, h, mat, tint, seed }                                            n small leaning stones and crosses scattered over a patch (x, z = its near left corner)
 import { hash, vnoise } from './geo.js';
-import { PROPS } from './props.js';
+import { PROPS, WALLPROPS } from './props.js';
 
 /** backdrops are not lifted like props (they are scenery, not obstacles) and take no shade or tint of the piece built before them */
 const plain = (G, f) => { const l = G.lift, s = G.shade, t = G.tintMul; G.lift = false; G.shade = null; G.tintMul = null; try { f(); } finally { G.lift = l; G.shade = s; G.tintMul = t; } };
@@ -115,5 +115,48 @@ Object.assign(PROPS, {
       const np = Math.max(1, Math.round(len / (o.piers ?? 260)));
       for (let i = 0; i <= np; i++) { const u = len * i / np; G.quad4(mat, P(u - 13, y, 7), P(u + 13, y, 7), P(u + 13, y + h + 16, 7), P(u - 13, y + h + 16, 7), N, { ...q, k: (o.k ?? 1) * 1.08 }); G.quad4(mat, P(u - 13, y + h + 16, 7), P(u + 13, y + h + 16, 7), P(u + 13, y + h + 16, -th), P(u - 13, y + h + 16, -th), [0, 1, 0], { ...q, k: (o.k ?? 1) * 1.15 }); }
     });
+  },
+});
+
+// Wall dressing (a wall part's kit.hang list, like sign / banner / sconce): what a hundred years do to a front, and what a feast hangs on it.
+//   { type: 'boards', u, y, w, h, n }        planks nailed across a window or a door (u = its middle, y = its foot)
+//   { type: 'crack',  u, y, len, seed }      a crack running up the face from (u, y)
+//   { type: 'ivy',    u, y, w, h, seed }     ivy climbing from the foot of the wall (u = middle of the patch, y = its foot)
+//   { type: 'drape',  u, y, w, sag, c }      a cloth swag hung between two hooks (u = middle, y = height of the hooks)
+Object.assign(WALLPROPS, {
+  boards(G, F, s) {
+    const n = s.n ?? 3, w = s.w ?? 60, h = s.h ?? 90;
+    for (let i = 0; i < n; i++) {
+      const yy = s.y + h * (i + 0.5) / n + (hash(i, s.u) - 0.5) * h * 0.16, sl = (hash(s.u, i + 3) - 0.5) * 0.34 * w, th = 6.5 + 2 * hash(i + 7, s.u), u0 = s.u - w / 2 - 7, u1 = s.u + w / 2 + 7, q = { tint: [0.74 + 0.2 * hash(i, 5), 0.62, 0.5], vary: 0.2, k: 0.9 };
+      G.quad4('timber', F.pt(u0, yy - th - sl / 2, 3.4), F.pt(u1, yy - th + sl / 2, 3.4), F.pt(u1, yy + th + sl / 2, 3.4), F.pt(u0, yy + th - sl / 2, 3.4), F.n, q);
+      G.quad4('timber', F.pt(u0, yy + th - sl / 2, 3.4), F.pt(u1, yy + th + sl / 2, 3.4), F.pt(u1, yy + th + sl / 2, 0), F.pt(u0, yy + th - sl / 2, 0), [0, 1, 0], { ...q, k: 1.1 });
+    }
+  },
+  crack(G, F, s) {
+    const len = s.len ?? 160, n = Math.max(3, Math.round(len / 26)), sd = s.seed ?? 1, q = { tint: [0.05, 0.05, 0.065], vary: 0, k: 1 };
+    let u = s.u, y = s.y, wd = 3.4;
+    for (let i = 0; i < n; i++) {
+      const nu = u + (hash(i + sd, s.u) - 0.5) * 30 + (s.lean ?? 0) * len / n, ny = y + len / n * (0.7 + 0.6 * hash(sd, i + 2)), nw = wd * 0.8;
+      G.quad4('white', F.pt(u - wd, y, 0.7), F.pt(u + wd, y, 0.7), F.pt(nu + nw, ny, 0.7), F.pt(nu - nw, ny, 0.7), F.n, q);
+      if (i % 2 === 1) { const bu = u + (hash(i, sd + 9) > 0.5 ? 1 : -1) * (16 + 14 * hash(sd, i)), by = y + 16 + 10 * hash(i, sd); G.tri('white', F.pt(u - 1.6, y, 0.7), F.pt(u + 1.6, y + 3, 0.7), F.pt(bu, by, 0.7), F.n, q); }
+      u = nu; y = ny; wd = nw;
+    }
+  },
+  ivy(G, F, s) {
+    const w = s.w ?? 120, h = s.h ?? 180, sd = s.seed ?? 1, n = s.n ?? Math.max(8, Math.round(w * h / 1700));
+    for (let i = 0; i < n; i++) {
+      const t = hash(i * 1.3 + sd, 4.1), yy = s.y + h * t * t, sp = w * 0.5 * (1 - 0.72 * t * t), uu = s.u + (hash(sd * 2.2, i * 1.9) - 0.5) * 2 * sp, r = (11 + 15 * hash(i, sd + 3)) * (1 - 0.35 * t), a0 = hash(i + sd, 8.8) * 6.28, pr = 1.2 + 2.6 * hash(i, sd), pts = [];
+      for (let k = 0; k < 5; k++) { const a = a0 + k * 1.2566, rr = r * (0.62 + 0.38 * hash(i * 5 + k, sd)); pts.push(F.pt(uu + Math.cos(a) * rr, yy + Math.sin(a) * rr * 0.9, pr)); }
+      G.poly('white', pts, F.n, { tint: [0.13 + 0.08 * hash(i, 1.1), 0.24 + 0.12 * hash(sd, i * 2.7), 0.12], vary: 0.3, k: 0.8 + 0.4 * hash(i + 4, sd) });
+    }
+  },
+  drape(G, F, s) {
+    const w = s.w ?? 200, sag = s.sag ?? 34, c = s.c ?? [0.9, 0.86, 0.74], n = 8, dp = s.drop ?? 26, w0 = 5;
+    const yt = (t) => s.y - sag * 4 * t * (1 - t);
+    for (let i = 0; i < n; i++) {
+      const a = i / n, b = (i + 1) / n, ua = s.u - w / 2 + w * a, ub = s.u - w / 2 + w * b, k = 0.86 + 0.24 * Math.sin(i * 1.9 + s.u);
+      G.quad4('cloth', F.pt(ua, yt(a) - dp, w0 + Math.sin(i * 1.7) * 1.6), F.pt(ub, yt(b) - dp, w0 + Math.sin(i * 1.7 + 1.7) * 1.6), F.pt(ub, yt(b), w0), F.pt(ua, yt(a), w0), F.n, { tint: c, vary: 0.14, k });
+    }
+    for (const e of [-1, 1]) { const ue = s.u + e * w / 2; G.quad4('cloth', F.pt(ue - 7, s.y - dp - 46, w0 + 1), F.pt(ue + 7, s.y - dp - 46, w0 + 1), F.pt(ue + 9, s.y + 4, w0 + 1), F.pt(ue - 9, s.y + 4, w0 + 1), F.n, { tint: c, vary: 0.12, k: 0.9 }); G.tube('metal', F.pt(ue, s.y + 4, 0), F.pt(ue, s.y + 4, w0 + 2), 1.5, 1.5, 4, { vary: 0, k: 0.7, keep: true }); }
   },
 });

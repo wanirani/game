@@ -21,6 +21,12 @@ import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import { start } from '../serve.mjs';
 import { contextOptions } from '../qa/lib/viewports.mjs';
+import http from 'node:http';
+import path from 'node:path';
+
+// --root <dir>: serve another copy of the game (a snapshot taken before a change: its own src/ and index.html, everything else linked) instead of this tree
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.ogg': 'audio/ogg', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.glb': 'model/gltf-binary', '.bin': 'application/octet-stream', '.m4a': 'audio/mp4', '.mp4': 'video/mp4', '.txt': 'text/plain; charset=utf-8' };
+const serveRoot = (root, p) => new Promise((r) => { const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url.split('?')[0]); if (u === '/') u = '/index.html'; const f = path.join(root, u); if (!f.startsWith(root)) { res.writeHead(403); res.end(); return; } fs.readFile(f, (err, data) => { if (err) { res.writeHead(404); res.end('not found'); return; } res.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-cache' }); res.end(data); }); }); srv.listen(p, () => r(srv)); });
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => { if (v.startsWith('--')) a.push([v.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true]); return a; }, []));
 const DEV = String(args.device || 'fold_open'), OUT = String(args.out || '/tmp/claude-0/v2/look/read'), TAG = String(args.tag || 'run'), TIER = String(args.tier || 'mid');
@@ -172,7 +178,7 @@ function install(aim) {
 }
 
 fs.mkdirSync(OUT, { recursive: true });
-const port = 8200 + Math.floor(Math.random() * 700), srv = await start(port);
+const port = 8200 + Math.floor(Math.random() * 700), srv = args.root && args.root !== true ? await serveRoot(path.resolve(String(args.root)), port) : await start(port);
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
 const errs = [], rows = [], cost = {}; let code = 0;
 try {
