@@ -391,6 +391,10 @@ export function createCanvasHud(game, opts = {}) {
       if (T.bossShown > k) ctx.drawImage(bossFill.c, 0, bp.barH * S, fw * T.bossShown * S, fh * S, fx, fy, fw * T.bossShown, fh);
       if (k > 0) ctx.drawImage(bossFill.c, 0, 0, fw * k * S, fh * S, fx, fy, fw * k, fh);
       if (b.stagger > 0) { ctx.fillStyle = COL.gold; ctx.fillRect(fx, fy + fh + 2.5, fw * clamp(b.stagger, 0, 1), px(2.2)); }
+      if (b.phase) {   // acts of the fight: two small diamonds right of the bar, lit up to the act the boss is in (state.boss.phase 1｜2)
+        const ps = px(4.2), py = fy + fh * 0.5;
+        for (let i = 0; i < 2; i++) { const cx = fx + fw + px(10) + i * px(11); ctx.beginPath(); ctx.moveTo(cx, py - ps); ctx.lineTo(cx + ps, py); ctx.lineTo(cx, py + ps); ctx.lineTo(cx - ps, py); ctx.closePath(); ctx.fillStyle = i < b.phase ? COL.gold : 'rgba(10,8,20,0.7)'; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.stroke(); }
+      }
     }
     // 5) bottom centre: button prompts
     bakePrompts(s, mode);

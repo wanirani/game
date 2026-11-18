@@ -87,6 +87,13 @@ export function createBuiltinHud() {
         ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(P.x - w / 2 - 1, P.y - 1, w + 2, hg + 2);
         ctx.fillStyle = '#e04a3a'; ctx.fillRect(P.x - w / 2, P.y, w * clamp(e.hp / e.hpMax, 0, 1), hg);
       }
+      if (s.boss) {   // boss: name (+ what it is doing), health, stagger line, act marks — the fallback of the cut-glass bar
+        const b = s.boss, bw = Math.min(360, Wv * 0.44), bx = Wv / 2 - bw / 2, by = (sf?.t ?? 0) + 34;
+        text(ctx, b.name, Wv / 2, by - 12, O_TIP); if (b.sub) text(ctx, b.sub, Wv / 2, by + 26, O_DBG);
+        ctx.fillStyle = 'rgba(8,4,12,0.74)'; ctx.fillRect(bx, by, bw, 9); ctx.fillStyle = '#e2364e'; ctx.fillRect(bx + 1, by + 1, (bw - 2) * clamp(b.hp / (b.hpMax || 1), 0, 1), 7);
+        if (b.stagger > 0) { ctx.fillStyle = '#ffd870'; ctx.fillRect(bx + 1, by + 11, (bw - 2) * clamp(b.stagger, 0, 1), 2); }
+        for (let i = 0; i < 2; i++) { ctx.fillStyle = i < (b.phase ?? 1) ? '#ffd870' : 'rgba(10,8,20,0.7)'; ctx.fillRect(bx + bw + 8 + i * 11, by + 1, 7, 7); }
+      }
       // hero health
       const x = 18 + sf.l, y = 16 + sf.t, bw = 230, bh = 16, k = clamp(h.hp / s.heroHpMax, 0, 1);
       ctx.fillStyle = 'rgba(8,4,10,0.6)'; ctx.fillRect(x - 3, y - 3, bw + 6, bh + 6);
