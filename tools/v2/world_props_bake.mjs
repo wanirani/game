@@ -262,6 +262,9 @@ const head = { v: 1, atlas: { w: AW, h: AH, file: 'props_atlas.webp' }, props: {
 const put = (ta) => { const b = Buffer.from(ta.buffer, ta.byteOffset, ta.byteLength), padN = (4 - (b.length % 4)) % 4; chunks.push(b, Buffer.alloc(padN)); const o = off; off += b.length + padN; return o; };
 for (const it of list) {
   const nv = it.P.length / 3, lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
+  // decimation can eat the lowest ring of a generated model (the lantern post lost its 11-unit base block): the runtime scales by h = hi.y - lo.y and
+  // stands the prop at y + V.y * s, so the low model itself must start at y = 0 or the prop floats
+  if (it.src === 'glb') { let y0 = 1e9; for (let i = 0; i < nv; i++) y0 = Math.min(y0, it.P[i * 3 + 1]); if (y0 > 0.05) { for (let i = 0; i < nv; i++) it.P[i * 3 + 1] -= y0; if (it.glowAt) it.glowAt = [it.glowAt[0], +(it.glowAt[1] - y0).toFixed(2), it.glowAt[2]]; console.log(`  ${it.name}: lowest point was y ${y0.toFixed(1)} after decimation -> moved down to 0`); } }
   for (let i = 0; i < nv; i++) for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], it.P[i * 3 + k]); hi[k] = Math.max(hi[k], it.P[i * 3 + k]); }
   const qp = new Int16Array(nv * 3), qn = new Int8Array(nv * 4), qu = new Uint16Array(nv * 2);
   for (let i = 0; i < nv; i++) {

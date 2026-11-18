@@ -32,10 +32,10 @@ void main() {
 
 export class GLR {
   /** 실패하면 예외 (WebGL 없음). forceGL1: WebGL1 경로 시험용 (?v2gl=1) */
-  constructor({ forceGL1 = false } = {}) {
+  constructor({ forceGL1 = false, antialias = false } = {}) {
     const cv = document.createElement('canvas');
     cv.width = 16; cv.height = 16;
-    const opts = { alpha: false, antialias: false, depth: true, stencil: false, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: 'high-performance', desynchronized: false };
+    const opts = { alpha: false, antialias: !!antialias, depth: true, stencil: false, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: 'high-performance', desynchronized: false };
     let gl = null, v2 = false;
     if (!forceGL1) { try { gl = cv.getContext('webgl2', opts); v2 = !!gl; } catch { gl = null; } }
     if (!gl) { try { gl = cv.getContext('webgl', opts) || cv.getContext('experimental-webgl', opts); } catch { gl = null; } }

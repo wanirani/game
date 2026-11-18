@@ -464,7 +464,7 @@ function play(route, policy, label, deferred) {
         // stage directions for the owner script, from the labels the world gives its hot spots
         const ar = world.areas[area];
         if (a === 'interact' && b && ar) { const it = (ar.interact || []).find((x) => x.id === b.id); if (it && it.label) out('note', `「${it.label}」 자리에서`); }
-        if (a === 'exit.locked' && b && ar) { const ex = (ar.exits || []).find((x) => x.id === b.id); if (ex && ex.label) out('note', `「${ex.label}」로 가는 문 앞`); }
+        if (a === 'exit.locked' && b && ar) { const ex = (ar.exits || []).find((x) => x.id === b.id); if (ex && ex.label) out('note', `「${ex.label}」${((w) => { const c = w.charCodeAt(w.length - 1) - 0xAC00; if (c < 0 || c > 11171) return '로'; const j = c % 28; return j === 0 || j === 8 ? '로' : '으로'; })(ex.label)} 가는 문 앞`); }
         st.story(a, b, api);
       }
       else if (k === 'talk') {

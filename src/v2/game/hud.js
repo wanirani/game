@@ -2,6 +2,7 @@
 // The scene calls exactly: hud.update(dt, state) per tick and hud.draw(ctx, state) per drawn frame.
 // ctx is in logical px (state.viewW x state.viewH) on a transparent canvas above the 3D picture. Do not clear it.
 import { text, FONT } from '../../core/ui.js';
+import { input } from '../../core/input.js';
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 // text options are built once (text() only reads them)
@@ -15,12 +16,40 @@ const O_BANNER = { size: 30, weight: 800, align: 'center', color: '#f0e2c4', fam
 const O_MSG = { size: 22, weight: 700, align: 'center', color: '#e8d8c0' }, O_MSG2 = { size: 14, align: 'center', color: '#b8a890' };
 const O_NUM = { size: 24, weight: 900, align: 'center', color: '#fff', family: FONT.num, ow: 4 };
 const P = { x: 0, y: 0, w: 0 };
+const O_ROW = { size: 19, weight: 700, align: 'center', color: '#efe4cf' }, O_ROWS = { size: 19, weight: 800, align: 'center', color: '#ffe9b0' };
+const O_PR = { size: 16, weight: 700, align: 'center', color: '#fff3d4', ow: 4 }, O_WHO = { size: 17, weight: 800, color: '#e8c872' }, O_SAY = { size: 17, weight: 500, color: '#f2ead8' };
 
 export function createBuiltinHud() {
   let secId = '', banner = 0, hpShown = 1, dbg = '', dbgN = 0, secLeft = -2, secLab = '', secStr = '';
+  // the small things the scene needs from any HUD (docs/v2/ENGINE_API.md 4): a pause panel, one dialogue box, one prompt, short notices
+  let pause = null, psel = 0, pt = 0, dlg = null, dlgT = 0, dlgState = null, note = '', noteT = 0, prT = 0;
+  const PR = { x: 0, y: 0, w: 0, h: 0, p: null }, PB = { x: 0, y: 0, w: 300, rh: 50 };
+  const closeDlg = () => { const d = dlg; dlg = null; try { d?.onDone?.(); } catch (e) { console.error('[v2g] dialogue callback', e); } };
   return {
     builtin: true,
+    get modal() { return pause ? 'pause' : dlg ? 'dialog' : null; },
+    /** rows: resume, the caller's extra rows ({label, onPick}), leave */
+    openPause(o) { pause = [['이어 하기', o?.onResume ?? null], ...(o?.extra ?? []).map((x) => [String(x.label), x.onPick ?? null]), ['나가기', o?.onLeave ?? null]]; psel = 0; pt = 0; },
+    closePause() { pause = null; },
+    showDialog(d) { dlg = d ?? null; dlgT = 0; },
+    closeDialog() { dlg = null; },
+    toast(t) { note = String(t ?? ''); noteT = 2.6; },
+    banner() {}, callout() {},
     update(dt, s) {
+      if (noteT > 0) noteT -= dt;
+      if (s.dialog !== dlgState) { dlgState = s.dialog; dlg = s.dialog ?? null; dlgT = 0; }
+      if (pause) {
+        pt += dt; if (pt < 0.15) return;
+        const n = pause.length; let pick = -1;
+        if (input.pressed('up')) psel = (psel + n - 1) % n; else if (input.pressed('down')) psel = (psel + 1) % n;
+        else if (input.pressed('confirm') || input.pressed('attack')) pick = psel; else if (input.pressed('cancel') || input.pressed('menu')) pick = 0;
+        if (input.pointer.tapped) { const q = input.pointer; for (let i = 0; i < n; i++) if (q.x >= PB.x && q.x <= PB.x + PB.w && q.y >= PB.y + i * PB.rh && q.y < PB.y + (i + 1) * PB.rh) pick = i; }
+        if (pick >= 0) { const f = pause[pick][1]; pause = null; try { f?.(); } catch (e) { console.error('[v2g] pause callback', e); } }
+        return;
+      }
+      if (dlg) { dlgT += dt; if (dlgT > 0.25 && (input.pressed('confirm') || input.pressed('attack') || input.pressed('jump') || input.pointer.tapped)) closeDlg(); }
+      else if (PR.p && input.pointer.tapped) { const q = input.pointer; if (q.x >= PR.x - 12 && q.x <= PR.x + PR.w + 12 && q.y >= PR.y - 12 && q.y <= PR.y + PR.h + 12) { try { PR.p.onTap?.(PR.p); } catch (e) { console.error(e); } } }
+      prT += dt;
       if (s.section.id !== secId) { secId = s.section.id; banner = 2.6; }
       banner = Math.max(0, banner - dt);
       const k = clamp(s.hero.hp / s.heroHpMax, 0, 1);
@@ -86,6 +115,32 @@ export function createBuiltinHud() {
         if (s.doneT > 1.2) text(ctx, '공격 버튼을 누르면 처음부터 다시 시작합니다', Wv / 2, Hv * 0.34 + 100, O_SUB);
         ctx.globalAlpha = 1;
       } else if (h.dead) text(ctx, '쓰러졌습니다…', Wv / 2, Hv * 0.42, O_DEAD);
+      // one prompt (person / usable spot): a labelled chip above it; a tap on it uses it
+      PR.p = null;
+      const pr = s.prompts && s.prompts.length && !dlg && !pause ? s.prompts[0] : null;
+      if (pr && pr.x != null) {
+        s.project(pr.x, pr.y ?? 0, pr.z ?? 0, P);
+        if (P.w > 1) {
+          const w = 30 + pr.label.length * 17, hh = 34, x0 = clamp(P.x - w / 2, sf.l + 4, Wv - sf.r - w - 4), y0 = P.y - hh - 6 + Math.sin(prT * 3) * 2;
+          ctx.fillStyle = 'rgba(10,8,16,0.72)'; ctx.fillRect(x0, y0, w, hh); ctx.strokeStyle = 'rgba(232,200,114,0.85)'; ctx.lineWidth = 1.5; ctx.strokeRect(x0 + 0.5, y0 + 0.5, w - 1, hh - 1);
+          text(ctx, pr.label, x0 + w / 2, y0 + 23, O_PR);
+          PR.p = pr; PR.x = x0; PR.y = y0; PR.w = w; PR.h = hh;
+        }
+      }
+      if (noteT > 0 && note) { ctx.globalAlpha = clamp(noteT / 0.4, 0, 1); ctx.fillStyle = 'rgba(8,6,12,0.66)'; ctx.fillRect(Wv / 2 - 260, Hv * 0.27 + sf.t - 24, 520, 36); text(ctx, note, Wv / 2, Hv * 0.27 + sf.t, O_TIP); ctx.globalAlpha = 1; }
+      if (dlg) {
+        const w = Math.min(Wv - sf.l - sf.r - 40, 700), x0 = (Wv - w) / 2, hh = 112, y0 = Hv - sf.b - hh - 16;
+        ctx.fillStyle = 'rgba(8,6,14,0.84)'; ctx.fillRect(x0, y0, w, hh); ctx.strokeStyle = 'rgba(232,200,114,0.8)'; ctx.lineWidth = 1.5; ctx.strokeRect(x0 + 0.5, y0 + 0.5, w - 1, hh - 1);
+        if (dlg.speaker) text(ctx, dlg.speaker, x0 + 20, y0 + 30, O_WHO);
+        const lines = String(dlg.text ?? '').split('\n'); for (let i = 0; i < lines.length && i < 3; i++) text(ctx, lines[i], x0 + 20, y0 + (dlg.speaker ? 58 : 36) + i * 24, O_SAY);
+      }
+      if (pause) {
+        const n = pause.length; PB.w = 320; PB.rh = 52; PB.x = Wv / 2 - PB.w / 2; PB.y = Hv / 2 - (n * PB.rh) / 2 + 14;
+        ctx.fillStyle = 'rgba(4,5,12,0.6)'; ctx.fillRect(0, 0, Wv, Hv);
+        ctx.fillStyle = 'rgba(14,10,20,0.92)'; ctx.fillRect(PB.x - 16, PB.y - 60, PB.w + 32, n * PB.rh + 76); ctx.strokeStyle = 'rgba(232,200,114,0.8)'; ctx.lineWidth = 1.5; ctx.strokeRect(PB.x - 15.5, PB.y - 59.5, PB.w + 31, n * PB.rh + 75);
+        text(ctx, '잠시 멈춤', Wv / 2, PB.y - 22, O_BANNER);
+        for (let i = 0; i < n; i++) { if (i === psel) { ctx.fillStyle = 'rgba(232,200,114,0.16)'; ctx.fillRect(PB.x, PB.y + i * PB.rh + 3, PB.w, PB.rh - 6); } text(ctx, pause[i][0], Wv / 2, PB.y + i * PB.rh + 33, i === psel ? O_ROWS : O_ROW); }
+      }
       if (s.debug) {   // development line (address option v2dbg=1); the string is rebuilt twice a second
         if (dbgN-- <= 0) { dbgN = 30; dbg = s.debugLine(); }
         text(ctx, dbg, Wv / 2, Hv - 8 - sf.b, O_DBG);
