@@ -78,7 +78,7 @@ export default class V2Game extends Scene {
     this._use = false; this._ringTap = false; this._heroHid = false; this._occ = new Float32Array(0); this._occN = 0; this._caps = { skill: false, bell: false }; this._offT = 0; this._go = null; this.fadeA = 0; this.fadeTo = 0; this._flagFn = (n) => this.flag(n); this._useFn = () => { this._use = true; }; this._skyKey = ''; this._peopleN = 0;
     this.heroA = null; this.actors = []; this.pool = new Map(); this._ERef = null;
     // STORY HOOK (storyhost.js): the plugged-in story, what each night remembers (fallen enemies, fired triggers), the crossing in progress and its veil
-    this.host = null; this.nights = new Map(); this.xing = null; this.veil = '#000'; this._veilUnder = false; this._carry = null; this._armT = 0; this._holdT = 0; this._quiet = false; this._lastArea = ''; this._refused = false; this._reraise = false;
+    this.host = null; this.nights = new Map(); this.xing = null; this.veil = '#000'; this._veilUnder = false; this._carry = null; this._armT = 0; this._holdT = 0; this._quiet = false; this._lastArea = ''; this._refused = false; this._reraise = false; this._hostErr = false;
     this.bridge = bindFxSound(feel); this.feelN = 0; this.lastFeel = null; this._actE = null; this._simSteps = false;
     this.shotL = new Array(32).fill(null); this.shotN = 0;
     // the whip Vigilia (src/v2/whip, docs/v2/WHIP.md 7): simulated from the hero's hand every tick, drawn right after the characters
@@ -822,7 +822,7 @@ export default class V2Game extends Scene {
       const go = this._go; this._go = null;
       this.gotoArea(go.to, go.spawn, go.keep || go.fresh ? { keepPosition: !!go.keep, same: !!go.same, cross: !!go.cross, fresh: !!go.fresh } : null).then((ok) => {
         this.locked = false; this.fadeTo = 0; this._exitBusy = false;
-        if (go.cross) this._crossed(go, ok); else if (go.night) this.hud.banner?.('night');   // STORY HOOK: the far side of a crossing
+        if (go.cross) { try { this._crossed(go, ok); } catch (e) { this.xing = null; console.error('[v2g] crossing: the far side failed', e); } } else if (go.night) this.hud.banner?.('night');   // STORY HOOK: the far side of a crossing
       });
       return;
     }
@@ -835,7 +835,7 @@ export default class V2Game extends Scene {
     if (modal === 'pause') { this._state(); try { this.hud.update(dt, this.state); } catch (e) { this._hudFail(e); } this.updMs += performance.now() - t0; return; }
     if (locked) { mx = 0; mz = 0; }
     if (host !== null) {   // STORY HOOK: waits, camera shots, walking people, the rebuild after a changed area flag
-      host.tick(dt);
+      try { host.tick(dt); } catch (e) { if (!this._hostErr) { this._hostErr = true; console.error('[v2g] story host failed in its tick (play goes on):', e); } }
       // while the story holds the hero (a dialogue, a camera shot, the crossing) nothing may hurt him: the rules' own untouchable time is kept topped up
       const hold = modal === 'dialog' || host.locks() || this.xing !== null, hh = sim.hero;
       if (hold) { if (!hh.dead && hh.ifr < 0.4) hh.ifr = 0.4; this._holdT = 0.5; } else if (this._holdT > 0) this._holdT -= dt;

@@ -136,7 +136,7 @@ export class StoryHost {
       showDialog(d) {
         H.note('line', d.speaker || (d.who === 'sign' ? '(글씨)' : '(해설)'), d.text);
         if (d.choices) H.note('choice', d.choices.join(' / '));
-        if (d.choices && !sc.hud.showDialog?.length && sc.hudKind !== 'ui') { const pick = d.onChoice; d = { ...d, choices: undefined, onDone: () => pick?.(0) }; }   // the built-in box has no choice: the first one
+        if (d.choices && sc.hudKind !== 'ui') { const pick = d.onChoice; d = { ...d, choices: undefined, onDone: () => pick?.(0) }; }   // the built-in box (old pad, v2ui=0) cannot ask: it takes the first choice
         sc._say(d);
       },
       setDialog(d) { sc.ui.dialog = d ?? null; },
