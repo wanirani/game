@@ -22,12 +22,12 @@ import { candleSpots } from '../env/props2.js';
 // k = the fire's scale (a bowl 0.7, a house fire about 1.05, a wall-top / roof / wreck blaze 1.3 - 1.6): a body quad is about 66k wide and 100k tall.
 const WARM = { body0: [1.3, 1.02, 0.8, 0.88], body1: [1.2, 0.55, 0.22, 0], core0: [1.9, 1.7, 1.3, 0.9], core1: [1.6, 0.9, 0.35, 0], tongue0: [1.55, 0.95, 0.5, 0.9], tongue1: [1.15, 0.3, 0.06, 0], heat0: [1.0, 0.4, 0.09, 0.15], heat1: [0.8, 0.22, 0.04, 0],
   spark0: [3.2, 1.65, 0.45, 1], spark1: [1.8, 0.3, 0.05, 0], ember0: [2.6, 1.0, 0.25, 1], ember1: [1.2, 0.15, 0.03, 0], smoke0: [0.3, 0.16, 0.09, 0.34], light: [1, 0.5, 0.17] };
-// under the cold light of the crypt tonight: a paler fire with a blue-white core (the same sheet, other vertex colours)
-const COLD = { body0: [0.8, 1.0, 1.45, 0.85], body1: [0.55, 0.6, 1.0, 0], core0: [1.25, 1.6, 2.3, 0.9], core1: [0.8, 1.0, 1.6, 0], tongue0: [0.85, 0.95, 1.3, 0.85], tongue1: [0.5, 0.45, 0.8, 0], heat0: [0.35, 0.5, 0.9, 0.13], heat1: [0.2, 0.3, 0.6, 0],
-  spark0: [1.8, 2.2, 3.2, 1], spark1: [0.5, 0.7, 1.6, 0], ember0: [1.4, 1.7, 2.6, 1], ember1: [0.3, 0.4, 1.0, 0], smoke0: [0.08, 0.09, 0.12, 0.26], light: [0.6, 0.74, 1] };
+// under the cold light of the crypt tonight: the same fire with a blue-white heart and a paler body (the same sheet, other vertex colours)
+const COLD = { body0: [1.15, 1.15, 1.3, 0.9], body1: [0.9, 0.7, 0.6, 0], core0: [1.5, 1.9, 2.6, 0.92], core1: [1.0, 1.15, 1.5, 0], tongue0: [1.2, 1.0, 0.9, 0.88], tongue1: [0.8, 0.42, 0.3, 0], heat0: [0.5, 0.6, 0.9, 0.13], heat1: [0.3, 0.36, 0.6, 0],
+  spark0: [2.4, 2.3, 2.6, 1], spark1: [1.0, 0.7, 0.9, 0], ember0: [2.0, 1.6, 1.7, 1], ember1: [0.8, 0.4, 0.5, 0], smoke0: [0.14, 0.14, 0.17, 0.28], light: [0.75, 0.82, 1] };
 const fireSet = (k, C) => ({
   k, bw: 66 * k, bh: 100 * k, light: C.light,
-  BODY: E({ sprite: SPR.FIRE, aspect: 1.5, fps: [11, 15], shape: 3, rad: 3 * k, h: [0, 5 * k], speed: [10 * k, 22 * k], grav: -26 * k, life: [0.55, 0.72], size: [58 * k, 74 * k], grow: 1.12, c0: C.body0, c1: C.body1, add: 0.72, fadeIn: 0.2, pri: 1, amb: 1, min: 1 }),
+  BODY: E({ sprite: SPR.FIRE, aspect: 1.5, fps: [11, 15], shape: 3, rad: 3 * k, h: [0, 5 * k], speed: [10 * k, 22 * k], grav: -26 * k, life: [0.55, 0.72], size: [58 * k, 74 * k], grow: 1.12, c0: C.body0, c1: C.body1, add: 0.66, fadeIn: 0.2, pri: 1, amb: 1, min: 1 }),
   CORE: E({ sprite: SPR.FIRE, aspect: 1.15, fps: [14, 18], shape: 3, rad: 2 * k, h: [0, 3 * k], speed: [8 * k, 16 * k], life: [0.28, 0.38], size: [34 * k, 44 * k], grow: 1.1, c0: C.core0, c1: C.core1, fadeIn: 0.25, pri: 1, amb: 1, min: 1 }),
   TONGUE: E({ sprite: SPR.WISP, aspect: 1.75, shape: 3, rad: 4 * k, h: [30 * k, 56 * k], speed: [50 * k, 92 * k], drag: 0.8, grav: -110 * k, life: [0.42, 0.62], size: [40 * k, 54 * k], grow: 0.85, c0: C.tongue0, c1: C.tongue1, add: 0.88, fadeIn: 0.14, pri: 1, amb: 1, min: 1 }),
   HEAT: E({ sprite: SPR.GLOW, shape: 3, rad: 4 * k, h: [22 * k, 34 * k], speed: [4, 10], life: [0.5, 0.7], size: [96 * k, 118 * k], grow: 1.15, c0: C.heat0, c1: C.heat1, fadeIn: 0.3, amb: 1, min: 1 }),
@@ -41,19 +41,19 @@ const kOf = (size) => Math.max(0.4, size < 0.7 ? 0.7 + (size - 0.5) * 0.8 : size
 const SPARK = E({ sprite: SPR.EMBER, shape: 3, rad: 9, h: [9, 30], speed: [72, 170], drag: 0.55, grav: -36, life: [0.5, 1.25], size: [2.6, 4.6], stretch: 2.2, c0: [3.2, 1.65, 0.45, 1], c1: [1.8, 0.3, 0.05, 0], jit: 4.5 });   // embers anchors (as before)
 const COLUMN = E({ sprite: SPR.SMOKE, add: 0, shape: 3, rad: 22, h: [0, 20], speed: [40, 80], drag: 0.2, grav: -10, life: [2.4, 4], size: [56, 90], grow: 2.6, c0: [0.085, 0.075, 0.08, 0.36], c1: [0.15, 0.14, 0.15, 0], fadeIn: 0.2 });
 const MIST = E({ sprite: SPR.SMOKE, add: 0, shape: 3, rad: 190, h: [6, 30], speed: [2, 8], life: [4, 7], size: [150, 230], grow: 1.5, c0: [0.3, 0.36, 0.4, 0.085], c1: [0.3, 0.36, 0.4, 0], fadeIn: 0.4 });
-// a candle: the flame flipbook, small and slow, two quads alive per wick (born on a beat, cross-fading) + a soft halo per group
-const CANDLE = E({ sprite: SPR.FIRE, aspect: 2.2, fps: [7, 10], life: [0.52, 0.52], size: [5.4, 6.4], c0: [1.6, 1.35, 1.0, 0.95], c1: [1.5, 1.15, 0.75, 0.55], fadeIn: 0.3, pri: 1, amb: 1, min: 1 });
-const HALO = E({ sprite: SPR.GLOW, life: [0.7, 0.7], size: [30, 36], c0: [1.0, 0.6, 0.24, 0.13], c1: [1.0, 0.55, 0.2, 0.07], fadeIn: 0.35, amb: 1, min: 1 });
+// a candle: the flame flipbook, small and slow, two quads alive per wick (a new one every 0.65 s, cross-fading: few particles, a steady flame) + a soft halo per group
+const CANDLE = E({ sprite: SPR.FIRE, aspect: 2.2, fps: [7, 10], life: [1.3, 1.3], size: [5.4, 6.4], c0: [1.6, 1.35, 1.0, 0.95], c1: [1.5, 1.15, 0.75, 0.55], fadeIn: 0.3, pri: 1, amb: 1, min: 1 });
+const HALO = E({ sprite: SPR.GLOW, life: [1.3, 1.3], size: [30, 36], c0: [1.0, 0.6, 0.24, 0.13], c1: [1.0, 0.55, 0.2, 0.07], fadeIn: 0.35, amb: 1, min: 1 });
 const MOTE = E({ sprite: SPR.EMBER, shape: 3, rad: 60, h: [0, 80], speed: [10, 34], life: [1.6, 3], size: [4, 7], c0: [2.6, 0.3, 0.2, 0.9], c1: [1.2, 0.05, 0.05, 0], fadeIn: 0.3 });
 const LEAF = E({ sprite: SPR.FLAKE, add: 0, shape: 3, rad: 150, h: [150, 260], speed: [-60, -30], vy: [0, 0], drag: 0.2, life: [3, 4.6], size: [7, 12], spin: [-3, 3], c0: [0.42, 0.3, 0.14, 0.9], c1: [0.3, 0.2, 0.1, 0], fadeIn: 0.15, floor: 1 });
-const RANGE2 = 2100 * 2100, GOLD = 0.6180339887, CANDLE_BEAT = 0.26, WIND = 0.2;   // WIND: sparks, embers and smoke lean this much towards +x
+const RANGE2 = 2100 * 2100, GOLD = 0.6180339887, CANDLE_BEAT = 0.65, CANDLE_RANGE2 = 1300 * 1300, WIND = 0.2;   // WIND: sparks, embers and smoke lean this much towards +x
 const frac = (v) => v - Math.floor(v);
 
 export class Anchors {
   constructor() { this.list = []; this.lightMax = 2; this.fireK = 1; this.softK = 1; this.live = 0; this.lit = 0; this._round = 1; }
   build(area, tier, gAt = null) {   // gAt(x, z) = floor height there: an anchor with ground: true stands on the floor (world/index.js finishArea - a brazier on a raised terrace)
     this.list.length = 0;
-    const parts = area.stage?.parts ?? [];
+    const parts = (area.def?.stage ?? area.stage)?.parts ?? [];   // the game's area object keeps the world's area as .def (game/area.js loadArea)
     for (const a of area.anchors) {
       const gy = a.ground && gAt ? gAt(a.x, a.z) : 0, y0 = (a.y ?? 0) + (Number.isFinite(gy) ? gy : 0);
       const size = a.size ?? 1, fire = a.kind === 'fire', o = { kind: a.kind, x: a.x, y: y0, z: a.z, size, light: !!a.light && fire, h: -1, vis: false, d2: 0, _pick: 0, rad: 160 };
@@ -97,7 +97,7 @@ export class Anchors {
         A[5] += R[5] * ks; for (let n = 0; A[5] >= 1 && n < 2; n++) { A[5] -= 1; P.emit(F.EMBER, x0 + frac(++Q[5] * GOLD) * sp, y + F.bh * 0.5, z, WIND * 1.6, 0.95, 0, 0, y); }
         A[6] += R[6] * ks; for (let n = 0; A[6] >= 1 && n < 2; n++) { A[6] -= 1; P.emit(F.SMOKE, x0 + frac(++Q[6] * GOLD) * sp, y + F.bh * 1.15, z + 6, WIND, 0.98, 0, 0, y); }
       }
-      else if (a.kind === 'candles') {   // round robin: every wick gets a new flame quad each beat, the wicks one after the other; the halo twice a beat
+      else if (a.kind === 'candles') { if (a.d2 > CANDLE_RANGE2) continue;   // round robin: every wick gets a new flame quad each beat, the wicks one after the other; the halo twice a beat
         a.t += dt * a.n / CANDLE_BEAT;
         for (let n = 0; a.t >= 1 && n < 4; n++) {
           a.t -= 1; const j = a.i * 3, T = a.pts; P.emit(CANDLE, a.x + T[j], a.y + T[j + 1], a.z + T[j + 2], 0, 1, 0, 0, a.y);

@@ -74,7 +74,8 @@ export class StoryHost {
     this.objective = this.st.objectiveText?.() ?? ''; this.moon = s.moon; this.candleBonus = Math.max(0, (s.candles | 0) - 3);
     const same = o.area === s.area && o.pos && Number.isFinite(o.pos.x) && Number.isFinite(o.pos.z);   // otherwise the save was cut in the middle of an area change: the story's area and spawn decide
     return { area: s.area, spawn: s.spawn ?? null, pos: same ? { x: o.pos.x, z: o.pos.z, y: Number.isFinite(o.pos.y) ? o.pos.y : undefined, face: Array.isArray(o.pos.face) ? o.pos.face : undefined } : null,
-      hp: Number.isFinite(o.hp) && o.hp > 0 ? o.hp : null, reso: Number.isFinite(o.reso) ? o.reso : 0, nights: o.nights && typeof o.nights === 'object' ? o.nights : null };
+      hp: Number.isFinite(o.hp) && o.hp > 0 ? o.hp : null, reso: Number.isFinite(o.reso) ? o.reso : 0, nights: o.nights && typeof o.nights === 'object' ? o.nights : null,
+      coins: Number.isFinite(o.coins) && o.coins > 0 ? Math.floor(o.coins) : 0, broken: same && Array.isArray(o.broken) ? o.broken : null };   // BREAK: the coin count (an old save without it reads 0) and what was broken in the saved area
   }
   /** new game: forget everything (the scene clears its own memory and the stored save) */
   reset() { try { this.st.reset(); } catch (e) { console.error('[v2g] story reset failed', e); } this.objective = ''; this.pillOn = false; this.waits.length = 0; this.moves.length = 0; this.shot = null; this.shotT = 0; this.shotDone = null; this.shotLock = false; this.inputLock = false; this.dirty = false; this.ended = null; this.moon = null; this.candleBonus = 0; this.lastSave = null; }
@@ -82,7 +83,7 @@ export class StoryHost {
   /** the save object for the state as it is (storyObj = st.save(): the copy from before a running sequence) */
   compose(storyObj) {
     const sc = this.sc, h = sc.sim?.hero, a = sc.area;
-    const o = { v: SAVE_V, t: Date.now(), story: storyObj, area: a?.id ?? storyObj.area ?? null, era: a?.era ?? storyObj.era ?? 'now', spawn: storyObj.spawn ?? null, pos: null, hp: null, reso: 0, nights: sc.nightsOut?.() ?? {} };
+    const o = { v: SAVE_V, t: Date.now(), story: storyObj, area: a?.id ?? storyObj.area ?? null, era: a?.era ?? storyObj.era ?? 'now', spawn: storyObj.spawn ?? null, pos: null, hp: null, reso: 0, nights: sc.nightsOut?.() ?? {}, coins: sc.brk?.coins ?? 0, broken: sc.brk && sc.ready && a && !a.test && sc.brk.brokenArea === a.id ? sc.brk.brokenOut() : [] };   // BREAK: coins + the breakables broken in this area (they stand again on a new arrival)
     if (h && sc.ready && a && !a.test) {
       const ok = h.onGround && !h.dead, p = ok ? h : h.safe ?? h;
       if (Number.isFinite(p.x) && Number.isFinite(p.z)) o.pos = { x: Math.round(p.x), z: Math.round(p.z), y: Math.round(p.y ?? 0), face: [h.dirX ?? 1, h.dirZ ?? 0] };

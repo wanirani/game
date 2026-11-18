@@ -35,6 +35,7 @@ import { readPerf } from './perf.js';
 import { UI_LOADER, UI_DEFAULT, STORY_LOADER } from './seams.js';
 import { StoryHost, readSave, clearSave } from './storyhost.js';   // STORY HOOK: the story plug-in, the save, the crossing (docs/v2/ENGINE_API.md 8-10)
 import { elementOf, shotAttach, shotMove, shotDetach, shotImpact } from './magic.js';
+import { Breakables } from './breakables.js';   // BREAK: jars, crates, barrels, their pieces and what drops out of them (docs/v2/ENGINE_API.md 13)
 const SKY_CAP = 96;   // rows of the 512-row sky canvas above the painted picture: its top row melting into the area's sky.top (see _sky)
 
 const FOCAL = 880, NEAR = 60, FAR = 24000, DIE_T = 0.9, HERO_MODEL = 'kael';
@@ -75,6 +76,7 @@ export default class V2Game extends Scene {
     try { globalThis.localStorage?.setItem('bn.v2.under', '1'); } catch { /* private mode */ }   // next launch boots with an alpha canvas
     this.story = typeof params?.story === 'function' ? params.story : null; this.ui = { dialog: null }; this.locked = false;
     this.area = null; this.W = null; this.sim = null; this.fx = null; this.cr = null; this.cast = null; this.hud = createBuiltinHud();
+    this.brk = new Breakables(this); this._graceT = 0;   // BREAK: breakables + the coin count; _graceT = untouchable seconds after a save is restored
     this.people = new People(); this.anchors = new Anchors(); this.flags = new Set(); this.hidden = new Map(); this.lockOv = new Map(); this.storyFlag = null; this.worldFlags = {};
     this._use = false; this._ringTap = false; this._heroHid = false; this._occ = new Float32Array(0); this._occN = 0; this._caps = { skill: false, bell: false }; this._offT = 0; this._go = null; this.fadeA = 0; this.fadeTo = 0; this._flagFn = (n) => this.flag(n); this._useFn = () => { this._use = true; }; this._skyKey = ''; this._peopleN = 0;
     this.heroA = null; this.actors = []; this.pool = new Map(); this._ERef = null;
@@ -109,7 +111,7 @@ export default class V2Game extends Scene {
       area: { id: '', name: '', era: 'now' }, night: 'now', section: { id: '', label: '' }, enemies: [], enemiesLeft: 0, yardLeft: 0, numbers: this.numbers, numberN: 0,
       project: (x, y, z, out) => sc.project(x, y, z, out), done: false, doneT: 0, loading: true, message: '', message2: '', debug: this.perf.debug,
       debugLine: () => sc._debugLine(), stats: () => sc.stats(), dialog: null,
-      candles: { lit: 5, max: 5 }, resonance: { value: 0, cells: 3 }, left: 0, prompts: this.people.none, boss: null, objective: '',
+      candles: { lit: 5, max: 5 }, resonance: { value: 0, cells: 3 }, left: 0, prompts: this.people.none, boss: null, objective: '', coins: 0,
       pad: { skill: { mode: 'hook', cd: 0, disabled: true }, bell: { mode: 'short', charge: 0, cd: 0, disabled: true }, roll: { cd: 0, disabled: false }, attack: { disabled: false }, jump: { disabled: false }, lock: { disabled: false } },
     };
     try { this.glr = new GLR({ forceGL1: /[?&]v2gl=1(&|$)/.test(globalThis.location?.search ?? ''), antialias: this.res.aa }); } catch (e) { this.glError = String(e?.message ?? e); console.warn('[v2g]', this.glError); }
@@ -378,7 +380,7 @@ export default class V2Game extends Scene {
     const glr = this.glr, gl = glr.gl;
     if (this.fx) this.fx.clear();
     for (const m of this.envMeshes ?? []) { if (m.mesh.buf) { gl.deleteBuffer(m.mesh.buf); glr.stats.bufBytes -= m.mesh.data.byteLength; } const i = glr.meshList.indexOf(m.mesh); if (i >= 0) glr.meshList.splice(i, 1); }
-    this.envMeshes = null; this.sim = null; this._ERef = null; this.shotN = 0;
+    this.envMeshes = null; this.sim = null; this._ERef = null; this.shotN = 0; this.brk.release();
     for (const a of this.actors) this._free(a);
     this.actors.length = 0;
     this.people.release(this); this.anchors.list.length = 0; this.state.prompts = this.people.none;
@@ -471,11 +473,12 @@ export default class V2Game extends Scene {
     // 5) rules
     this.area = area; this.W = W; this.env.fog = W.fog;
     { const d = W.light.moonDir, l = hyp(d[0], d[1], d[2]) || 1; this.env.sunDir[0] = d[0] / l; this.env.sunDir[1] = d[1] / l; this.env.sunDir[2] = d[2] / l; }
-    this.sim = new Sim(W, this._hooks());
+    this.sim = new Sim(W, this.brk.hook(this._hooks()));
     this._enterAt(spawn, keep);
+    this.brk.enter(area, this._quiet);   // BREAK: what was broken in this visit stays broken; the whole ones are baked into one buffer
     this.people.build(this, area, groundAt); this.anchors.build(area, this.perf.tier, (x, z) => groundAt(this.W, x, z)); this._peopleN = 19;
-    { const B = W.boxes; let n = 0; for (let i = 0; i < B.length; i++) { const b = B[i]; if (b.solid && !b.walk && !b.gate && !b.actor) n++; }   // what can hide the hero: walls and props (not floors, not the scene's own gate / person boxes)
-      const O = (this._occ = new Float32Array(n * 6)); n = 0; for (let i = 0; i < B.length; i++) { const b = B[i]; if (!b.solid || b.walk || b.gate || b.actor) continue; O[n] = b.x0; O[n + 1] = b.x1; O[n + 2] = b.y0; O[n + 3] = b.y1; O[n + 4] = b.z0; O[n + 5] = b.z1; n += 6; } this._occN = n; }
+    { const B = W.boxes; let n = 0; for (let i = 0; i < B.length; i++) { const b = B[i]; if (b.solid && !b.walk && !b.gate && !b.actor && b.brk === undefined) n++; }   // what can hide the hero: walls and props (not floors, not the scene's own gate / person boxes)
+      const O = (this._occ = new Float32Array(n * 6)); n = 0; for (let i = 0; i < B.length; i++) { const b = B[i]; if (!b.solid || b.walk || b.gate || b.actor || b.brk !== undefined) continue; O[n] = b.x0; O[n + 1] = b.x1; O[n + 2] = b.y0; O[n + 3] = b.y1; O[n + 4] = b.z0; O[n + 5] = b.z1; n += 6; } this._occN = n; }
     { const c = this._caps, sim = this.sim, hh = sim.hero;   // what the rules can do today (PLAY lane lands skill and bell later): the pad shows the rest as not usable yet
       c.skill = !!(sim.caps?.skill ?? (hh.callCd !== undefined || hh.skillMode !== undefined || TUNE.callCd !== undefined));   // PLAY: skill = whip hook / call (hero.callCd, skillMode)
       c.bell = !!(sim.caps?.bell ?? (hh.bellCd !== undefined || TUNE.bellCd !== undefined)); }                                 //       bell = echo (tap) / long ring (hold), hero.bellCd, bellCharge
@@ -508,7 +511,8 @@ export default class V2Game extends Scene {
         at = sv ? host.restore(sv) : null;
         if (at && !named && (at.area === TEST_AREA || !(await hasArea(at.area)))) at = null;   // the test route is never a saved place (it does not save: the player would be shut in it)
         if (sv && !at) host.reset();   // a save that cannot be used: new game
-        if (at && !named) { area = at.area; spawn = at.spawn; keep = at.pos; this.nightsIn(at.nights); this._carry = { hp: at.hp, reso: at.reso }; this._reraise = true; }
+        if (at && !named) { area = at.area; spawn = at.spawn; keep = at.pos; this.nightsIn(at.nights); this._carry = { hp: at.hp, reso: at.reso }; this._reraise = true;
+          this.brk.restore(at.area, at.broken, at.coins); this._graceT = 2; }   // BREAK: coins and what was broken where the save was made; two untouchable seconds for the hero (an enemy beside the saved spot used to hit at once)
         this.setWorldFlags(host.worldFlags(), { reload: false });
       } catch (e) { console.warn('[v2g] the story did not load - playing without it:', String(e?.stack ?? e?.message ?? e)); this.host = null; this.story = null; this.storyFlag = null; }
     }
@@ -593,7 +597,7 @@ export default class V2Game extends Scene {
   /** new game: the save and every memory of the scene are erased, the first area loads */
   restart() {
     if (!this.host || this._go || this.xing) return false;
-    clearSave(); this.host.reset(); this.nights.clear(); this.lockOv.clear(); this.hidden.clear(); this.flags.clear(); this.worldFlags = {}; this._carry = null; this._lastArea = '';
+    clearSave(); this.host.reset(); this.nights.clear(); this.lockOv.clear(); this.hidden.clear(); this.flags.clear(); this.worldFlags = {}; this._carry = null; this._lastArea = ''; this.brk.reset();
     this._go = { to: DEFAULT_AREA, spawn: null, fresh: true }; this.fadeTo = 1; this.locked = true;
     return true;
   }
@@ -601,7 +605,7 @@ export default class V2Game extends Scene {
   _spotOk(p) {
     if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.z)) return false;
     const W = this.W, gy = groundAt(W, p.x, p.z, Number.isFinite(p.y) ? p.y + 40 : Infinity); if (!Number.isFinite(gy)) return false;
-    const B = W.boxes; for (let i = 0; i < B.length; i++) { const b = B[i]; if (b.solid && !b.walk && !b.gate && !b.actor && p.x > b.x0 + 2 && p.x < b.x1 - 2 && p.z > b.z0 + 2 && p.z < b.z1 - 2 && gy + 50 > b.y0 && gy + 10 < b.y1) return false; }
+    const B = W.boxes; for (let i = 0; i < B.length; i++) { const b = B[i]; if (b.solid && !b.walk && !b.gate && !b.actor && b.brk === undefined && p.x > b.x0 + 2 && p.x < b.x1 - 2 && p.z > b.z0 + 2 && p.z < b.z1 - 2 && gy + 50 > b.y0 && gy + 10 < b.y1) return false; }
     return true;
   }
   /** put the hero at a named spawn of the area (docs/v2/AREA_FORMAT.md 3); a section id still works for the test route */
@@ -856,6 +860,8 @@ export default class V2Game extends Scene {
       // while the story holds the hero (a dialogue, a camera shot, the crossing) nothing may hurt him: the rules' own untouchable time is kept topped up
       const hold = modal === 'dialog' || host.locks() || this.xing !== null, hh = sim.hero;
       if (hold) { if (!hh.dead && hh.ifr < 0.4) hh.ifr = 0.4; this._holdT = 0.5; } else if (this._holdT > 0) this._holdT -= dt;
+      // a restored save: two seconds of the rules' untouchable time, without the blink, ended by his first attack (INTEGRATE-VERIFY found an enemy beside the saved spot hitting at once)
+      if (this._graceT > 0) { this._graceT -= dt; if (hh.dead || hh.move || hh.charging) this._graceT = 0; else { if (hh.ifr < 0.15) hh.ifr = 0.15; if (this._holdT < 0.1) this._holdT = 0.1; } }
     }
     if (!this.ready || !this.sim) return;   // (a story step may have started a journey)
     inp.mx = mx; inp.mz = mz; inp.jump = !locked && input.buffered('jump', 0.12); inp.jumpHeld = input.down('jump'); inp.jumpUsed = false;
@@ -884,6 +890,7 @@ export default class V2Game extends Scene {
       inp.attack = false; inp.dash = false; inp.lockNext = false; inp.skill = false; inp.bell = false;
       if (sim.stop > 0) sim.stop = 0;   // hit-stop is owned by the feel table (ENGINE_API 1)
     }
+    this.brk.tick(pdt);   // BREAK: pieces fly, pickups are followed, the coin count goes to the HUD state
     this._sync(pdt, dt);
     this._camera(dt);
     for (let i = 0; i < this.numbers.length; i++) { const n = this.numbers[i]; if (n.on && (n.t += dt) >= 0.8) n.on = false; }
@@ -1166,7 +1173,7 @@ export default class V2Game extends Scene {
     b.reset();
     this._sky(b); const nSky = b.n;
     this._decals(b, a); const nDecal = b.n - nSky;
-    this._glows(b); const nGlow = b.n - nSky - nDecal;
+    this._glows(b); this.brk.glows(b, a); const nGlow = b.n - nSky - nDecal;
     if (fx) fx.post.begin(w, hgt);
     glr.begin(vp, W.fog, W.sky.top, this.A);
     glr.uploadDyn(b.n);
@@ -1174,6 +1181,7 @@ export default class V2Game extends Scene {
     const M = this.envMeshes; let tris = 0, draws = 0;
     for (let i = 0; i < M.length; i++) { const m = M[i]; if (m.c && !m.c.on) continue; glr.drawMesh(m.mesh, m.tex); tris += m.tris; draws++; }
     this.envStat.tris = tris; this.envStat.draws = draws;
+    this.brk.draw(glr, a);   // BREAK: the whole breakables (one draw), their pieces and the pickups (one draw, one more while pieces fade)
     gl.bindBuffer(gl.ARRAY_BUFFER, glr.dyn.buf); glr._attribs();
     glr.drawDyn(this.sprTex, nSky, nDecal, true);
     // characters
@@ -1319,6 +1327,7 @@ export default class V2Game extends Scene {
     for (let i = 0; i < PP.length; i++) { const p = PP[i]; if (p.on && p.vis) this._shadow(b, p.x, p.z, p.y, 26, 0.9, p.y); }
     const SS = sim.shots;
     for (let i = 0; i < SS.length; i++) { const s = SS[i]; if (!s.dead) this._shadow(b, s._px === undefined ? s.x : s._px + (s.x - s._px) * a, s._pz === undefined ? s.z : s._pz + (s.z - s._pz) * a, s.y, 15, 0.7); }
+    this.brk.shadows(b, a);   // BREAK: contact shadows of the whole things and of what lies waiting to be picked up
   }
   /** lamp halos (camera facing, additive); without effects (WebGL1) the shots are drawn here too */
   _glows(b) {
@@ -1348,7 +1357,7 @@ export default class V2Game extends Scene {
       world: { tris: Math.round(this.envStat.tris), draws: this.envStat.draws, chunks: this.envStat.chunks, texBytes: G?.stats.texBytes ?? 0, flatPropsDropped: this.area?.flatProps.length ?? 0 },
       chars: cr ? { draws: this.c3.draws, tris: Math.round(this.c3.tris), drawn: this.c3.drawn, culled: this.c3.culled, texBytes: cr.stats.texBytes, bufBytes: cr.stats.bufBytes, models: cast ? [...cast.assets.keys()] : [], weapons: cast ? [...cast.weapons.keys()] : [], clips: cast?.lib ? Object.keys(cast.lib.clips).length : 0, libError: cast?.libError ?? null, actors: this.actors.length, heroClip: this.heroA?.anim.cur?.name ?? '' } : null,
       fx: fx ? { tier: fx.tier, post: fx.postOn, bytes: fx.gpuBytes, particles: fx.particles.drawn ?? 0, lights: fx.lights.count } : null,
-      res: this.res.info(), area: this.area?.id ?? '', people: { n: this.people.list.length, drawn: this.people.drawn ?? 0, spots: this.people.spots.length }, anchors: { n: this.anchors.list.length, live: this.anchors.live, lit: this.anchors.lit },
+      breakables: { ...this.brk.stat, peak: this.brk.shPeak, coins: this.brk.coins }, res: this.res.info(), area: this.area?.id ?? '', people: { n: this.people.list.length, drawn: this.people.drawn ?? 0, spots: this.people.spots.length }, anchors: { n: this.anchors.list.length, live: this.anchors.live, lit: this.anchors.lit },
       mode: this.mode, hud: this.hudKind, resK: this.perf.resK, everyFrame: this.everyFrame, perfSaved: this.perf.saved, loadMs: this.loadMs ?? 0,
       canvases: (this._canvases?.length ?? 0) + (G ? 1 : 0) + (this.layer.hud ? 1 : 0), assets: this.assetList(),
     };
