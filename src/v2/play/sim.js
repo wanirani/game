@@ -73,7 +73,7 @@ export class Sim {
       dashT: 0, rollCd: 0, dashCd: 0, dvx: 0, dvz: 0, roll: { t: 0, dur: T.rollT, dx: 1, dz: 0, v0: 0 }, sweepWin: 0, sweepQ: false, dodged: false, heavyHurt: false,
       guard: false, guardT: 0, guardTap: 0, parryT: 0, parryCd: 0, parryOk: 0, blockT: 0,
       move: null, moveT: 0, combo: 0, hitIds: new Set(), assist: null, queued: 0, swung: false, stepDist: 0, airAtk: false, plungeLand: null, plungeEta: 1,
-      lock: null, lockT: 0, lockHold: 0, lockX: 0, lockY: 0, lockZ: 0,
+      lock: null, lockT: 0, lockHold: 0, lockX: 0, lockY: 0, lockZ: 0, cutOn: 0,
       act: null, actT: 0, actDone: false, actP: null, charging: false, charge: 0, chargeFullT: 0, atkHold: 0, whipLv: 1, pullT: 0, pullX: 0, pullZ: 0, whipOn: 0, whipX: 0, whipY: 0, whipZ: 0,
       reso: 0, resoMax: T.resoCells, callCd: 0, callCdMax: T.callCd, bellCd: 0, bellCdMax: T.bellCd, bellCharge: 0, bellDown: false, bellHoldT: 0, bellOk: true, knellId: null, hookId: null, skillMode: 'call', hookFX: 0, hookFY: 0, hookFZ: 0, hookTX: 0, hookTY: 0, hookTZ: 0, hookDur: 0.3,
       gait: 0, gaitMode: 'run', wasMoving: false, pushed: false, pivot: 0, pivotT: 0, pivotA: 0, pivotV: 0, wishX: 1, wishZ: 0, mx: 0, mz: 0, m: 0, ux: 0, uz: 0,
@@ -178,7 +178,7 @@ export class Sim {
     const h = this.hero, T = TUNE, w = this.w, B = this._buf;
     const pAttack = !!inp.attack || B.attack, pDash = !!inp.dash || B.dash, pJump = !!inp.jump || B.jump, pLock = !!inp.lockNext || B.lockNext, pSkill = !!inp.skill || B.skill, pBell = !!inp.bell || B.bell;
     B.attack = B.dash = B.jump = B.lockNext = B.skill = B.bell = false;
-    h.callCd = Math.max(0, h.callCd - dt); h.bellCd = Math.max(0, h.bellCd - dt); h.whipOn = 0;
+    h.callCd = Math.max(0, h.callCd - dt); h.bellCd = Math.max(0, h.bellCd - dt); h.whipOn = 0; h.cutOn = 0;
     h.t += dt; h.ifr = Math.max(0, h.ifr - dt); h.rollCd = Math.max(0, h.rollCd - dt); h.dashCd = h.rollCd; h.flash = Math.max(0, h.flash - dt * 5); h.landT = Math.max(0, h.landT - dt);
     h.parryT = Math.max(0, h.parryT - dt); h.parryCd = Math.max(0, h.parryCd - dt); h.parryOk = Math.max(0, h.parryOk - dt); h.blockT = Math.max(0, h.blockT - dt);
     h.sweepWin = Math.max(0, h.sweepWin - dt); h.guardTap = Math.max(0, h.guardTap - dt);
@@ -248,6 +248,7 @@ export class Sim {
           if (mv.kind === 'whip' && t >= mv.hit[0] - 0.05 && t <= mv.hit[1] + 0.1) { h.whipOn = 1; h.whipX = h.x + h.dirX * mv.box.f1; h.whipY = h.y + 60; h.whipZ = h.z + h.dirZ * mv.box.f1; }
         }
         h.moveT += dt;
+        if (h.moveT >= mv.hit[0] - 0.04 && (mv.kind === 'plunge' ? h.plungeLand == null : h.moveT <= mv.hit[1] + 0.05)) h.cutOn = 1;   // the blade is cutting now (the scene draws its trail only then — not while the body turns into the cut or winds up)
         if (!h.swung && h.moveT >= mv.hit[0] - 0.085) { h.swung = true; this.emit('swing', h, mv); this.hooks.sfx?.(mv.sfx || 'slash'); }
         if (t >= mv.hit[0] && t <= mv.hit[1] && h.plungeLand == null) this._heroHit(h, mv);
         if (mv.kind === 'plunge') { if (h.plungeLand != null && h.moveT >= h.plungeLand + mv.recover) this._endMove(h); }

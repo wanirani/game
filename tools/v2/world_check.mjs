@@ -171,18 +171,18 @@ for (const dev of DEVICES) {
       if (base != null && any) { const d = +(any.texMB - base).toFixed(1); console.log(`    textures ${any.texMB} MB (test route ${base} MB, ${d >= 0 ? '+' : ''}${d} MB)`); if (d > BUDGET.texMB) fail(`${dev} ${id}: textures +${d} MB over the test route > ${BUDGET.texMB}`); }
       for (const r of ROUTES[id]) {
         const { a, W } = WORLDS[id], d = a.spawns.default, X = a.exits.find((x) => x.id === r.id);
-        let from = [d.x, d.z], how = '', pre = null;
+        let from = [d.x, d.z], how = '', pre = null, to = null;   // (nothing is kept on r: the same routes are walked again on the next device)
         if (!r.wps) {   // not reachable on foot from the default spawn in this state: (a) it lies behind something shut -> walk in from the spawn behind it; (b) a whip ring leads there
           const inBox = (g) => g.anyIn(X.x0, X.x1, X.z0, X.z1);
-          for (const n of a.entry ?? []) { const s = a.spawns[n], g = s && reachGrid(W, s.x, s.z, 14), p = g && inBox(g); if (p) { from = [s.x, s.z]; r.to = p; how = ` from spawn ${n} (it lies behind what is shut in this state)`; break; } }
-          if (!r.to) for (const h of a.stage.hookPoints ?? []) {
+          for (const n of a.entry ?? []) { const s = a.spawns[n], g = s && reachGrid(W, s.x, s.z, 14), p = g && inBox(g); if (p) { from = [s.x, s.z]; to = p; how = ` from spawn ${n} (it lies behind what is shut in this state)`; break; } }
+          if (!to) for (const h of a.stage.hookPoints ?? []) {
             const g0 = reachGrid(W, d.x, d.z, 14), base = g0.near(h.x, h.z, 280), g1 = reachGrid(W, h.to[0], h.to[1], 14), p = inBox(g1);
-            if (base && p) { pre = base; from = [h.to[0], h.to[1]]; r.to = p; how = ` by way of whip ring ${h.id} (walked to (${base[0]}, ${base[1]}) under the ring, then set on its landing spot: the prototype rules of scene v2c have no whip)`; break; }
+            if (base && p) { pre = base; from = [h.to[0], h.to[1]]; to = p; how = ` by way of whip ring ${h.id} (walked to (${base[0]}, ${base[1]}) under the ring, then set on its landing spot: the prototype rules of scene v2c have no whip)`; break; }
           }
-          if (!r.to) { fail(`${dev} ${id}: no path to exit ${r.id}`); continue; }
-        } else r.to = r.wps[r.wps.length - 1];
+          if (!to) { fail(`${dev} ${id}: no path to exit ${r.id}`); continue; }
+        } else to = r.wps[r.wps.length - 1];
         if (pre) { const w0 = await go(page, W, [d.x, d.z], pre); if (!w0.arrived) { fail(`${dev} ${id}: bot did not reach the whip ring on the way to exit ${r.id} - stopped at (${w0.x}, ${w0.z})`); continue; } }
-        const w = await go(page, W, from, r.to); A.exits[r.id] = w;
+        const w = await go(page, W, from, to); A.exits[r.id] = w;
         if (w.hits?.includes(r.id)) ok(`bot walked into exit ${r.id}${how} (${w.ticks} ticks, ${w.jumps} jumps, triggers ${w.fired.length})`); else fail(`${dev} ${id}: bot did not reach exit ${r.id} - stopped at (${w.x}, ${w.z}) after ${w.ticks} ticks`);
       }
       for (const [wst, from, to, what] of (WALKS[id0] ?? []).filter((w) => w[0] === state)) {

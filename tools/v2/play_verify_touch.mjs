@@ -31,8 +31,8 @@ function install() {
       if (feet) { o.fl = P.foot('footL'); o.fr = P.foot('footR'); }
       return o;
     },
-    step(n, each, feet) { const out = []; for (let i = 0; i < n; i++) { g.tick(1 / 60); P.n++; if (each) g.render(); out.push(P.samp(feet)); } if (!each) g.render(); return out; },
-    until(src, n) { const fn = (0, eval)(src), sim = sc.sim; for (let i = 0; i < n; i++) { g.tick(1 / 60); P.n++; if (fn(sim)) { g.render(); return i + 1; } } g.render(); return -1; },
+    step(n, each, feet) { const out = []; for (let i = 0; i < n; i++) { P.n++; g.tick(1 / 60); if (each) g.render(); out.push(P.samp(feet)); } if (!each) g.render(); return out; },
+    until(src, n) { const fn = (0, eval)(src), sim = sc.sim; for (let i = 0; i < n; i++) { P.n++; g.tick(1 / 60); if (fn(sim)) { g.render(); return i + 1; } } g.render(); return -1; },
     css() { const h = sc.sim.hero, p = window.__v2.project(h.x, h.y + 50, h.z), r = g.canvas.getBoundingClientRect(); return [r.left + p.x / g.viewW * r.width, r.top + p.y / g.viewH * r.height]; },
     hero(x, z) { const sim = sc.sim, h = sim.hero; h.x = x; h.z = z; h.y = sim.w.ground(x, z); h.vx = h.vz = h.vy = 0; h.onGround = true; h.move = null; h.dashT = 0; h.hurtT = 0; h.guard = false; h.hp = h.hpMax; h.dead = false; h.ifr = 0; h.act = null; h.charging = false; h.bellDown = false; h.bellCd = 0; h.callCd = 0; h.rollCd = 0; h.pivot = 0; h.dirX = 1; h.dirZ = 0; h.safe.x = x; h.safe.z = z; h.safe.y = h.y; sc.cam.snap = true; },
     clear() { const sim = sc.sim; P.dm = {}; for (const e of sim.enemies) { if (e.yard) continue; const k = e.def?.attacks?.[0]?.shot || /mage/.test(e.def?.model ?? '') ? 'ranged' : 'melee'; if (!P.dm[k]) { P.dm[k] = e; P.park(k); } else e.dead = true; } return Object.keys(P.dm); },
@@ -160,7 +160,7 @@ async function run(dev) {
           const q = await quiet(`combo ${k}`); if (ids !== 'c1,c2,c3' || C[k].bodyOff > 25 || C[k].bodyOff < 0) fail(`${dev} combo ${k}: ${JSON.stringify(C[k])}`);
         } M.combo = C; ok(`${dev} combo x3 in eight directions (moves · body off the stick direction while the hit is open, deg): ` + Object.entries(C).map(([k, v]) => `${k} ${v.moves} ${v.bodyOff}`).join(' · ')); }
       // charged strike in eight directions
-      { const C = {}; for (const k of Object.keys(DIRS)) { await home(); const n0 = await now(); await stick(k); await step(2); await stickUp(); await step(8); await down('attack'); const S = await step(70); await up('attack'); const S2 = await step(40); const E = (await evs(n0)).filter((e) => e[1] === 'charge' || e[1] === 'attack').map((e) => e[1] + ':' + e[2]).join(' '); const w = world(k), hit = S2.filter((s) => s.mv === 'whip' && s.mt >= 0.12 && s.mt <= 0.26);
+      { const C = {}; for (const k of Object.keys(DIRS)) { await home(); const n0 = await now(); await stick(k); await step(14); await down('attack'); const S = await step(70); await up('attack'); const S2 = await step(40); await stickUp(); const E = (await evs(n0)).filter((e) => e[1] === 'charge' || e[1] === 'attack').map((e) => e[1] + ':' + e[2]).join(' '); const w = world(k), hit = S2.filter((s) => s.mv === 'whip' && s.mt >= 0.12 && s.mt <= 0.26);
           C[k] = { ev: E, peak: Math.max(...S.map((s) => s.charge)), bodyOff: hit.length ? +Math.max(...hit.map((s) => Math.abs(dAng(ang(s.fx, s.fz), ang(w[0], w[1]))) * DEG)).toFixed(1) : -1, clip: [...new Set(S.concat(S2).map((s) => s.clip))].join('>') }; await quiet(`charge ${k}`); if (!/charge:.*release/.test(E) || !/attack:whip/.test(E) || C[k].bodyOff > 25) fail(`${dev} charged strike ${k}: ${JSON.stringify(C[k])}`); }
         M.charge = C; ok(`${dev} charged strike (hold attack 70 ticks, release) in eight directions: ` + Object.entries(C).map(([k, v]) => `${k} off ${v.bodyOff}`).join(' · ') + ` · events ${C.R.ev} · clips ${C.R.clip}`); }
       // roll in eight directions
@@ -200,9 +200,11 @@ async function run(dev) {
         B[`${st} ${c.join('+')}`] = [...new Set(S.map((s) => s.anim))].join('>'); if (!rest(e)) fail(`${dev} ${st} + ${c.join('+')}: not at rest afterwards: ${JSON.stringify(e)}`);
       }
       ok(`${dev} button pairs on the same tick (stand / run / air): ` + Object.entries(B).map(([k, v]) => `${k} → ${v}`).join(' · '));
-      // during hurt and death: the melee dummy hits him while every button is mashed
-      { await home(); await ev((b) => { window.__pv.put('melee', b[0] + 60, b[1], true); window.__v2.scene.sim.hero.hp = 12; }, BASE); let died = false, hurt = false; for (let i = 0; i < 60 && !died; i++) { const b = ['attack', 'roll', 'jump', 'skill', 'bell'][i % 5]; await down(b); const S = await step(4); await up(b); if (S.some((s) => s.hurtT > 0)) hurt = true; if (S.some((s) => s.dead)) died = true; }
-        for (let i = 0; i < 12; i++) { const b = ['attack', 'roll', 'jump', 'skill', 'bell'][i % 5]; await down(b); await step(6); await up(b); } await T.upAll(); const S = await step(150); const e = S[S.length - 1]; B.death = { hurt, died, endAnim: e.anim, hp: e.hp, dead: e.dead }; (died && !e.dead && e.hp > 0 ? ok : fail)(`${dev} buttons mashed through hurt and death: hurt ${hurt} · died ${died} · afterwards ${e.anim} hp ${e.hp}`); await ev(() => window.__pv.clear()); }
+      // during hurt and during death: he is hit (sim.hurtHero) while the buttons are mashed
+      { await home(); const mash = async (n) => { for (let i = 0; i < n; i++) { const b = ['attack', 'roll', 'jump', 'skill', 'bell', 'lock'][i % 6]; await down(b); await step(3); await up(b); } };
+        await down('attack'); await down('bell'); await step(2); await ev(() => { window.__v2.scene.sim.hurtHero(7, -1, 0, {}); }); const h1 = (await step(2))[1]; await mash(8); await T.upAll(); const a1 = (await step(60))[59];
+        await ev(() => { const s = window.__v2.scene.sim; s.hero.ifr = 0; s.hurtHero(500, -1, 0, {}); }); const d1 = (await step(2))[1]; await mash(40); await T.upAll(); const S = await step(200); const e = S[S.length - 1];
+        B.hurtDeath = { hurtAnim: h1.anim, afterHurt: a1.anim, deadAnim: d1.anim, dead: d1.dead, end: e.anim, hp: e.hp, endDead: e.dead }; (h1.hurtT > 0 && d1.dead && !e.dead && e.hp > 0 && rest(e) ? ok : fail)(`${dev} buttons mashed through hurt and through death: hurt → ${h1.anim} then ${a1.anim} · death → ${d1.anim} · afterwards ${e.anim} hp ${e.hp} dead ${e.dead}`); await ev(() => window.__pv.clear()); }
     }
 
     if (want('boss')) {
@@ -222,7 +224,23 @@ async function run(dev) {
   } catch (e) { fail(`${dev}: script stopped: ${String(e?.stack ?? e).split('\n').slice(0, 3).join(' | ')}`); D.errors = errs.slice(0, 12); if (errs.length) note('page errors: ' + errs.slice(0, 4).join(' ‖ ')); }
   finally { await browser.close(); }
 }
-try { for (const d of DEVICES) await run(d); } finally { srv.close(); }
+async function bossArea(dev) {
+  const dir = `${OUT}/${dev}`; fs.mkdirSync(dir, { recursive: true }); const browser = await chromium.launch({ executablePath: EXE, args: GL_ARGS }), errs = [];
+  try {
+    const page = await (await browser.newContext(contextOptions(dev))).newPage(); page.on('pageerror', (e) => errs.push('[pageerror] ' + e.message)); page.on('console', (m) => { if (m.type() === 'error') errs.push('[console] ' + m.text().slice(0, 200)); });
+    await page.goto(`http://localhost:${port}/index.html?scene=v2g&area=ossuary_now&v2auto=0&v2aa=0&v2res=0.5612`);
+    await page.waitForFunction(() => window.__v2 && (window.__v2.ready || window.__v2.error), null, { timeout: 120000 });
+    const r = await page.evaluate(() => { const g = window.__game; g._pageHidden = true; const sc = window.__v2.scene, sim = sc.sim, e = sim.enemies.find((q) => q.def.boss); if (!e) return { none: true, kinds: [...new Set(sim.enemies.map((q) => q.kind))] };
+      const h = sim.hero, gx = e.x - 210, gz = e.z, gy = sim.w.ground(gx, gz); h.x = gx; h.z = gz; if (Number.isFinite(gy)) h.y = gy; h.vx = h.vz = h.vy = 0; h.onGround = true; h.safe.x = h.x; h.safe.z = h.z; h.safe.y = h.y; sc.cam.snap = true; sim.wake(e); e.cd = 0.3;
+      const tells = []; const H = sim.hooks, old = H.event; H.event = function (n, a, b) { if (n === 'tell') tells.push(b?.id); return old ? old.apply(this, arguments) : undefined; };
+      for (let i = 0; i < 150; i++) g.tick(1 / 60); g.render(); const v = window.__v2.enemies.find((q) => q.id === e.id), bs = sim.bossState();
+      return { ground: gy, active: e.active, state: e.state, drawn: v?.drawn, clip: v?.clip, tells, bossState: bs ? { ...bs } : null, hudBoss: sc.state?.boss ? JSON.parse(JSON.stringify(sc.state.boss)) : null, heroHp: h.hp, yard: e.yard, here: sim.here, section: sim.section }; });
+    await page.screenshot({ path: `${dir}/bossarea.jpg`, type: 'jpeg', quality: 84, scale: 'css' });
+    R.devices[dev] ??= {}; R.devices[dev].bossArea = r;
+    (r.drawn && !errs.length ? ok : fail)(`${dev} boss in her own area (ossuary_now, woken with sim.wake, hero 210 px in front): ${JSON.stringify(r)} · page errors ${errs.length}${errs.length ? ' ' + errs.slice(0, 2).join(' ‖ ') : ''}`);
+  } catch (e) { fail(`${dev} boss area: ${String(e?.stack ?? e).split('\n').slice(0, 2).join(' | ')}`); } finally { await browser.close(); }
+}
+try { for (const d of DEVICES) { if (!ONLY || ONLY.some((k) => k !== 'bossarea')) await run(d); if (want('bossarea')) await bossArea(d); } } finally { srv.close(); }
 fs.writeFileSync(`${OUT}/touch_result.json`, JSON.stringify(R, null, 1));
 console.log(`\n${fails.length ? fails.length + ' FAILED:\n  ' + fails.join('\n  ') : 'ALL OK'}`);
 process.exitCode = fails.length ? 1 : 0;
