@@ -14,11 +14,11 @@ export const HOOK_R = 300, HOOK_RISE = 280, JUMP_GAP = 100;
 export function reachGrid(W, sx, sz, R = 14, opt = {}) {
   const C = 20; let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
   for (const b of W.boxes) if (b.walk) { x0 = Math.min(x0, b.x0); x1 = Math.max(x1, b.x1); z0 = Math.min(z0, b.z0); z1 = Math.max(z1, b.z1); }
-  const nx = Math.ceil((x1 - x0) / C), nz = Math.ceil((z1 - z0) / C), gy = new Float32Array(nx * nz).fill(NaN), seen = new Uint8Array(nx * nz), par = new Int32Array(nx * nz).fill(-1);
+  const nx = Math.ceil((x1 - x0) / C), nz = Math.ceil((z1 - z0) / C), gy = new Float32Array(nx * nz).fill(NaN), seen = new Uint8Array(nx * nz), par = new Int32Array(nx * nz).fill(-1), blk = new Uint8Array(nx * nz);   // blk: there is ground but something solid stands within R (not a gap: never hopped over)
   const cellOf = (x, z) => { const i = Math.floor((x - x0) / C), j = Math.floor((z - z0) / C); return i < 0 || j < 0 || i >= nx || j >= nz ? -1 : j * nx + i; };
   const centre = (k) => [x0 + (k % nx + 0.5) * C, z0 + (Math.floor(k / nx) + 0.5) * C];
   const blockedAt = (cx, cz, g, r) => { for (const b of W.boxes) if (b.solid && !b.walk && cx + r > b.x0 && cx - r < b.x1 && cz + r > b.z0 && cz - r < b.z1 && b.y1 > g + STEP_UP && b.y0 < g + 60) return true; return false; };
-  const ground = (k) => { if (Number.isNaN(gy[k])) { const [cx, cz] = centre(k); let g = groundAt(W, cx, cz); if (Number.isFinite(g) && blockedAt(cx, cz, g, R)) g = -Infinity; gy[k] = g; } return gy[k]; };
+  const ground = (k) => { if (Number.isNaN(gy[k])) { const [cx, cz] = centre(k); let g = groundAt(W, cx, cz); if (Number.isFinite(g) && blockedAt(cx, cz, g, R)) { g = -Infinity; blk[k] = 1; } gy[k] = g; } return gy[k]; };
   let cells = 0; const q = [], hooks = (opt.hooks ?? []).filter((p) => p.to && !p.off).map((p) => ({ ...p, done: false })), nGap = Math.round(JUMP_GAP / C);
   const push = (m, k) => { if (m >= 0 && !seen[m] && Number.isFinite(ground(m))) { seen[m] = 1; par[m] = k; q.push(m); } };
   const wallAt = (m, g) => { const [cx, cz] = centre(m); return blockedAt(cx, cz, g, 4); };   // something solid stands in the way of a hop at this height
@@ -34,7 +34,7 @@ export function reachGrid(W, sx, sz, R = 14, opt = {}) {
       // hop: over cells with no ground or lower ground, onto the first cell at about this height
       for (let s = 2; s <= nGap + 1; s++) {
         const a2 = i + di * s, b2 = j + dj * s; if (a2 < 0 || b2 < 0 || a2 >= nx || b2 >= nz) break;
-        const mid = (j + dj * (s - 1)) * nx + i + di * (s - 1); if (wallAt(mid, g)) break;
+        const mid = (j + dj * (s - 1)) * nx + i + di * (s - 1); ground(mid); if (blk[mid] || wallAt(mid, g)) break;   // a hop crosses a gap, never the cells beside a wall or a post
         const m2 = b2 * nx + a2, g3 = ground(m2);
         if (Number.isFinite(g3) && g3 - g <= STEP_UP && g3 >= g - JUMP_UP) { if (!seen[m2]) { seen[m2] = 1; par[m2] = k; q.push(m2); } break; }
         if (Number.isFinite(g3) && g3 > g + STEP_UP) break;

@@ -104,12 +104,12 @@ const walk = (page, wps, start = null) => page.evaluate(([wps, start]) => {
       const gh = ground(h.x, h.z), ga = ground(h.x + dx / dd * 26, h.z + dz / dd * 26), gt = ground(wps[i][0], wps[i][1]);
       if (gt > gh + 90) { fell = true; break; }   // the next waypoint is more than a jump above: the hero fell off the route -> plan again from here
       // jump straight at the edge: along the axis on which the gap or the ledge lies (a diagonal run-up slides off the side of a ledge)
-      const need = (g2) => (g2 < gh - 30 && gt >= gh - 30) || (g2 > gh + 16 && g2 <= gh + 100);
+      const need = (g2) => (g2 < gh - 30 && gt >= gh - 30) || (g2 > gh + 16 && g2 <= gh + 100 && gt > gh + 16);   // a ledge only when the route goes up it (a low wall beside the way is not a ledge to take)
       const gz = Math.abs(dz) > 3 ? ground(h.x, h.z + Math.sign(dz) * 26) : gh, gx = Math.abs(dx) > 3 ? ground(h.x + Math.sign(dx) * 26, h.z) : gh;
       if (need(gz)) { jump = 20; jumps++; lock = 'z'; } else if (need(gx)) { jump = 20; jumps++; lock = 'x'; } else if (need(ga)) { jump = 20; jumps++; lock = null; }
     }
     if (jump > 0 && lock === 'z') { act.left = act.right = false; } else if (jump > 0 && lock === 'x') { act.up = act.down = false; }
-    if (t % 6 === 0) { const m = Math.hypot(h.x - lx, h.z - lz); lx = h.x; lz = h.z; stuck = m < 2 ? stuck + 1 : 0; if (stuck >= 4) { jump = 22; stuck = 0; } if (stuck === 3 && h.onGround && ground(wps[i][0], wps[i][1]) > ground(h.x, h.z) + 60) { fell = true; break; } }
+    if (t % 6 === 0) { const m = Math.hypot(h.x - lx, h.z - lz); lx = h.x; lz = h.z; stuck = m < 2 ? stuck + 1 : 0; if (stuck >= 4) { jump = 22; stuck = 0; lock = null; } if (stuck === 3 && h.onGround && ground(wps[i][0], wps[i][1]) > ground(h.x, h.z) + 60) { fell = true; break; } }
     if (jump > 0) { jump--; act.jump = jump > 6; }
     g.tick(1 / 60);
   }
@@ -165,9 +165,20 @@ for (const dev of DEVICES) {
       const any = Object.values(A.spots)[0]; A.texMB = any?.texMB; A.kitTexMB = any?.kitTexMB;
       if (base != null && any) { const d = +(any.texMB - base).toFixed(1); console.log(`    textures ${any.texMB} MB (test route ${base} MB, ${d >= 0 ? '+' : ''}${d} MB)`); if (d > BUDGET.texMB) fail(`${dev} ${id}: textures +${d} MB over the test route > ${BUDGET.texMB}`); }
       for (const r of ROUTES[id]) {
-        if (!r.wps) { fail(`${dev} ${id}: no path to exit ${r.id}`); continue; }
-        const w = await walk(page, r.wps); A.exits[r.id] = w;
-        if (w.hits.includes(r.id)) ok(`bot walked into exit ${r.id} (${w.ticks} ticks, ${r.wps.length} waypoints, triggers ${w.fired.length})`); else fail(`${dev} ${id}: bot did not reach exit ${r.id} - stopped at (${w.x}, ${w.z}) after ${w.ticks} ticks`);
+        const { a, W } = WORLDS[id], d = a.spawns.default, X = a.exits.find((x) => x.id === r.id);
+        let from = [d.x, d.z], how = '', pre = null;
+        if (!r.wps) {   // not reachable on foot from the default spawn in this state: (a) it lies behind something shut -> walk in from the spawn behind it; (b) a whip ring leads there
+          const inBox = (g) => g.anyIn(X.x0, X.x1, X.z0, X.z1);
+          for (const n of a.entry ?? []) { const s = a.spawns[n], g = s && reachGrid(W, s.x, s.z, 14), p = g && inBox(g); if (p) { from = [s.x, s.z]; r.to = p; how = ` from spawn ${n} (it lies behind what is shut in this state)`; break; } }
+          if (!r.to) for (const h of a.stage.hookPoints ?? []) {
+            const g0 = reachGrid(W, d.x, d.z, 14), base = g0.near(h.x, h.z, 280), g1 = reachGrid(W, h.to[0], h.to[1], 14), p = inBox(g1);
+            if (base && p) { pre = base; from = [h.to[0], h.to[1]]; r.to = p; how = ` by way of whip ring ${h.id} (walked to (${base[0]}, ${base[1]}) under the ring, then set on its landing spot: the prototype rules of scene v2c have no whip)`; break; }
+          }
+          if (!r.to) { fail(`${dev} ${id}: no path to exit ${r.id}`); continue; }
+        } else r.to = r.wps[r.wps.length - 1];
+        if (pre) { const w0 = await go(page, W, [d.x, d.z], pre); if (!w0.arrived) { fail(`${dev} ${id}: bot did not reach the whip ring on the way to exit ${r.id} - stopped at (${w0.x}, ${w0.z})`); continue; } }
+        const w = await go(page, W, from, r.to); A.exits[r.id] = w;
+        if (w.hits?.includes(r.id)) ok(`bot walked into exit ${r.id}${how} (${w.ticks} ticks, ${w.jumps} jumps, triggers ${w.fired.length})`); else fail(`${dev} ${id}: bot did not reach exit ${r.id} - stopped at (${w.x}, ${w.z}) after ${w.ticks} ticks`);
       }
       for (const [wst, from, to, what] of (WALKS[id0] ?? []).filter((w) => w[0] === state)) {
         const { a, W } = WORLDS[id], P = (p) => (typeof p === 'string' ? [a.spawns[p].x, a.spawns[p].z] : p), w = await go(page, W, P(from), P(to)); A.walks.push({ what, ...w });
