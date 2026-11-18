@@ -17,7 +17,7 @@ const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => {
 const OUT = String(args.out || '/tmp/claude-0/v2/fire2/now'), TIER = String(args.tier || 'mid'), ONLY = args.only ? String(args.only).split(',') : null, DPR = args.dpr ? Number(args.dpr) : null;
 fs.mkdirSync(OUT, { recursive: true });
 const BEFORE = args.before ? String(args.before) : null;
-const BEFORE_FILES = ['src/v2/game/anchors.js', 'src/v2/env/props2.js', 'src/v2/env/props3.js', 'src/v2/fx/engine.js', 'src/v2/fx/sprites.js', 'src/v2/fx/presets.js', 'src/v2/fx/index.js'];
+const BEFORE_FILES = ['src/v2/game/anchors.js', 'src/v2/env/props2.js', 'src/v2/env/props3.js', 'src/v2/fx/engine.js', 'src/v2/fx/sprites.js'];   // the files FIRE-2 changed (presets.js and index.js are as they were)
 const OLD = BEFORE ? Object.fromEntries(BEFORE_FILES.map((f) => [f, execFileSync('git', ['show', BEFORE + ':' + f], { encoding: 'utf8', maxBuffer: 1 << 26 })])) : {};
 const SPOTS = [
   { n: 'esh_roof', area: 'eshville_now', hx: 300, hz: 150, f: [200, 250, 300], crop: [620, 420], label: 'outskirts: roof and wall-top blaze' },

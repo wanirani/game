@@ -154,6 +154,8 @@ function build(kind, v) {
   return mb.done();
 }
 const VARIANTS = { jar: 3, pot: 3, urn: 2, crate: 1, barrel: 1 };
+/** how dark each kind is drawn against the atlas (the atlas is painted light; these bring the wood down to the kit's own barrels and crates, the glaze to an old brown) */
+export const KIND_TONE = { jar: 0.8, pot: 0.8, urn: 0.86, crate: 0.68, barrel: 0.74 };
 const WHOLE = new Map();
 /** the whole model of a kind (variant picked from the entry's index) */
 export function wholeModel(kind, i = 0) { const v = i % (VARIANTS[kind] ?? 1), k = kind + v; let m = WHOLE.get(k); if (!m) { m = build(kind, v); WHOLE.set(k, m); } return m; }
@@ -193,7 +195,7 @@ function clayShard(prof, look, top, i0, i1, j0, j1, rnd, sides = 12) {
     const a = at(G[j][i], 0), b = at(G[j][i + 1], 0), c = at(G[j + 1][i + 1], 0), d = at(G[j + 1][i], 0), k = ao(a.y, 14), col = [tone[0] * k, tone[1] * k, tone[2] * k];
     mb.quad(a.p, b.p, c.p, d.p, a.n, b.n, c.n, d.n, a.t, b.t, c.t, d.t, col);
     const a2 = at(G[j][i], th), b2 = at(G[j][i + 1], th), c2 = at(G[j + 1][i + 1], th), d2 = at(G[j + 1][i], th), u0 = i / (G[0].length - 1), u1 = (i + 1) / (G[0].length - 1), v0 = j / (G.length - 1), v1 = (j + 1) / (G.length - 1);
-    mb.quad(a2.p, b2.p, c2.p, d2.p, neg(a.n), neg(b.n), neg(c.n), neg(d.n), rt(u0, 1 - v0), rt(u1, 1 - v0), rt(u1, 1 - v1), rt(u0, 1 - v1), [0.86, 0.82, 0.8]);
+    mb.quad(a2.p, b2.p, c2.p, d2.p, neg(a.n), neg(b.n), neg(c.n), neg(d.n), rt(u0, 1 - v0), rt(u1, 1 - v0), rt(u1, 1 - v1), rt(u0, 1 - v1), [1.14, 1.07, 1.0]);
   }
   const R = G.length - 1, C = G[0].length - 1;
   for (let i = 0; i < C; i++) edge.push([G[0][i], G[0][i + 1], [0, -1, 0]]);
@@ -203,7 +205,7 @@ function clayShard(prof, look, top, i0, i1, j0, j1, rnd, sides = 12) {
   let cx = 0, cy = 0, cz = 0, cn = 0; for (const row of G) for (const g of row) { const q = at(g, 0).p; cx += q[0]; cy += q[1]; cz += q[2]; cn++; } cx /= cn; cy /= cn; cz /= cn;
   for (const [g0, g1] of edge) {
     const a = at(g0, 0), b = at(g1, 0), a2 = at(g0, th), b2 = at(g1, th), mx = (a.p[0] + b.p[0]) / 2 - cx, my = (a.p[1] + b.p[1]) / 2 - cy, mz = (a.p[2] + b.p[2]) / 2 - cz, l = Math.hypot(mx, my, mz) || 1, n = [mx / l, my / l, mz / l];
-    mb.quad(a.p, b.p, b2.p, a2.p, n, n, n, n, rt(0.1, 0.1), rt(0.9, 0.1), rt(0.9, 0.3), rt(0.1, 0.3), [1.12, 1.06, 1.0], n);
+    mb.quad(a.p, b.p, b2.p, a2.p, n, n, n, n, rt(0.1, 0.1), rt(0.9, 0.1), rt(0.9, 0.3), rt(0.1, 0.3), [1.3, 1.2, 1.1], n);
   }
   const mid = at([(i0 + i1) / 2, (j0 + j1) / 2], 0);
   return piece(mb, mid.n, 2.2);
@@ -291,12 +293,12 @@ export function pieceModels(kind, i = 0) {
 
 // ───────────────────────── pickups ─────────────────────────
 function coinModel() {
-  const mb = new MB(), r = 7.2, t = 0.9, sides = 14, cn = REG.coin, ed = REG.edge, cu = (cn[0] + cn[2]) / 2, cv = (cn[1] + cn[3]) / 2, ru = (cn[2] - cn[0]) / 2, rv = (cn[3] - cn[1]) / 2, c = [1.08, 1.1, 1.16];
+  const mb = new MB(), r = 7.4, t = 1.3, sides = 14, cn = REG.coin, ed = REG.edge, cu = (cn[0] + cn[2]) / 2, cv = (cn[1] + cn[3]) / 2, ru = (cn[2] - cn[0]) / 2, rv = (cn[3] - cn[1]) / 2, c = [0.96, 0.98, 1.04];
   for (let i = 0; i < sides; i++) {   // stands on its edge: the faces look along +-z, it spins about y
     const a0 = (i / sides) * TAU, a1 = ((i + 1) / sides) * TAU, x0 = Math.cos(a0) * r, y0 = Math.sin(a0) * r, x1 = Math.cos(a1) * r, y1 = Math.sin(a1) * r;
     for (const s of [-1, 1]) { const n = [0, 0, s]; mb.tri([0, 0, s * t], [x0, y0, s * t], [x1, y1, s * t], n, n, n, [cu, cv], [cu + Math.cos(a0) * ru * s, cv - Math.sin(a0) * rv], [cu + Math.cos(a1) * ru * s, cv - Math.sin(a1) * rv], c, n); }
     const n0 = [Math.cos(a0), Math.sin(a0), 0], n1 = [Math.cos(a1), Math.sin(a1), 0], u0 = ed[0] + (ed[2] - ed[0]) * (i / sides), u1 = ed[0] + (ed[2] - ed[0]) * ((i + 1) / sides);
-    mb.quad([x0, y0, -t], [x1, y1, -t], [x1, y1, t], [x0, y0, t], n0, n1, n1, n0, [u0, ed[3]], [u1, ed[3]], [u1, ed[1]], [u0, ed[1]], [0.86, 0.88, 0.94]);
+    mb.quad([x0, y0, -t], [x1, y1, -t], [x1, y1, t], [x0, y0, t], n0, n1, n1, n0, [u0, ed[3]], [u1, ed[3]], [u1, ed[1]], [u0, ed[1]], [0.8, 0.82, 0.9]);
   }
   return mb.done();
 }
@@ -344,7 +346,7 @@ export function writeDyn(m, f, u, v0, R, s, tx, ty, tz, lr, lg, lb, al, glow) {
     const i3 = i * 3, x = P[i3], y = P[i3 + 1], z = P[i3 + 2], nx = Nn[i3], ny = Nn[i3 + 1], nz = Nn[i3 + 2];
     const wnx = r0 * nx + r1 * ny + r2 * nz, wny = r3 * nx + r4 * ny + r5 * nz, wnz = r6 * nx + r7 * ny + r8 * nz;
     let d = wnx * -0.28 + wny * 0.74 + wnz * -0.61; if (d < 0) d = d * -0.18;   // key light from above and from the camera's side; a little bounce from below
-    const k = 0.5 + 0.62 * d + g0, o = (v0 + i) * 7, c = (v0 + i) * BRK_VERT + 20;
+    const k = 0.4 + 0.62 * d + g0, o = (v0 + i) * 7, c = (v0 + i) * BRK_VERT + 20;
     f[o] = tx + (r0 * x + r1 * y + r2 * z) * s; f[o + 1] = ty + (r3 * x + r4 * y + r5 * z) * s; f[o + 2] = tz + (r6 * x + r7 * y + r8 * z) * s; f[o + 3] = T[i * 2]; f[o + 4] = T[i * 2 + 1];
     const cr = lr * k * C[i3], cg = lg * k * C[i3 + 1], cb = lb * k * C[i3 + 2];
     u[c] = cr <= 0 ? 0 : cr >= 2 ? 255 : (cr * 127.5 + 0.5) | 0; u[c + 1] = cg <= 0 ? 0 : cg >= 2 ? 255 : (cg * 127.5 + 0.5) | 0; u[c + 2] = cb <= 0 ? 0 : cb >= 2 ? 255 : (cb * 127.5 + 0.5) | 0; u[c + 3] = a8;
@@ -408,13 +410,14 @@ export function paintBreakAtlas(x) {
     for (let k = 1; k < 5; k++) { x.globalAlpha = 0.8; x.fillStyle = '#170d06'; x.fillRect(0, k * 22.4 - 1, 112, 2); x.globalAlpha = 0.25; x.fillStyle = '#ffe9c4'; x.fillRect(0, k * 22.4 + 1, 112, 1.2); } x.globalAlpha = 1; x.restore();
     x.globalAlpha = 0.55; x.strokeStyle = '#120a05'; x.lineWidth = 5; x.beginPath(); x.arc(56, 56, 51, 0, TAU); x.stroke(); x.globalAlpha = 1; nail(56, 20, 2); nail(56, 92, 2);
   });
-  clip(368, 304, 112, 112, () => {   // a silver coin: rim, a ring of beads, a bell
-    x.fillStyle = '#5a5f6c'; x.fillRect(0, 0, 112, 112);
-    const g = x.createRadialGradient(44, 40, 4, 56, 56, 56); g.addColorStop(0, '#f6f8ff'); g.addColorStop(0.55, '#b9bfce'); g.addColorStop(1, '#7c8292'); x.fillStyle = g; x.beginPath(); x.arc(56, 56, 55, 0, TAU); x.fill();
-    x.strokeStyle = '#eef1fa'; x.lineWidth = 5; x.beginPath(); x.arc(56, 56, 50, 0, TAU); x.stroke(); x.strokeStyle = '#6a7080'; x.lineWidth = 2; x.beginPath(); x.arc(56, 56, 46.5, 0, TAU); x.stroke();
-    for (let i = 0; i < 24; i++) { const a = (i / 24) * TAU; x.fillStyle = '#e9edf8'; x.beginPath(); x.arc(56 + Math.cos(a) * 40.5, 56 + Math.sin(a) * 40.5, 2.1, 0, TAU); x.fill(); }
-    x.fillStyle = '#737a8c'; x.beginPath(); x.moveTo(56, 26); x.bezierCurveTo(72, 28, 74, 52, 80, 70); x.lineTo(32, 70); x.bezierCurveTo(38, 52, 40, 28, 56, 26); x.fill(); x.beginPath(); x.arc(56, 76, 6, 0, TAU); x.fill(); x.fillRect(53, 20, 6, 8);
-    x.fillStyle = '#f2f5ff'; x.globalAlpha = 0.8; x.beginPath(); x.moveTo(54, 29); x.bezierCurveTo(44, 34, 43, 52, 37, 67); x.lineTo(43, 67); x.bezierCurveTo(47, 52, 47, 36, 56, 30); x.fill(); x.globalAlpha = 1;
+  clip(368, 304, 112, 112, () => {   // a silver coin: a raised rim, a ring of beads, a bell struck in the middle (dark field: the relief has to read at 14 px)
+    x.fillStyle = '#4a4f5c'; x.fillRect(0, 0, 112, 112);
+    const g = x.createRadialGradient(42, 38, 4, 56, 56, 56); g.addColorStop(0, '#aeb5c6'); g.addColorStop(0.6, '#7d8496'); g.addColorStop(1, '#565c6c'); x.fillStyle = g; x.beginPath(); x.arc(56, 56, 55, 0, TAU); x.fill();
+    x.strokeStyle = '#f4f6ff'; x.lineWidth = 7; x.beginPath(); x.arc(56, 56, 50, 0, TAU); x.stroke(); x.strokeStyle = '#3c4150'; x.lineWidth = 2.4; x.beginPath(); x.arc(56, 56, 45.4, 0, TAU); x.stroke();
+    for (let i = 0; i < 20; i++) { const a = (i / 20) * TAU; x.fillStyle = '#e4e8f4'; x.beginPath(); x.arc(56 + Math.cos(a) * 39, 56 + Math.sin(a) * 39, 2.6, 0, TAU); x.fill(); }
+    const bell = () => { x.beginPath(); x.moveTo(56, 24); x.bezierCurveTo(74, 26, 75, 52, 82, 70); x.lineTo(30, 70); x.bezierCurveTo(37, 52, 38, 26, 56, 24); x.fill(); x.beginPath(); x.arc(56, 77, 6.5, 0, TAU); x.fill(); x.fillRect(52.5, 17, 7, 9); };
+    x.save(); x.translate(1.6, 2.2); x.fillStyle = '#2c303c'; bell(); x.restore(); x.fillStyle = '#eef1fb'; bell();
+    x.fillStyle = '#8f96a8'; x.beginPath(); x.moveTo(60, 30); x.bezierCurveTo(69, 34, 70, 52, 75, 66); x.lineTo(66, 66); x.bezierCurveTo(64, 52, 64, 38, 60, 30); x.fill();
   });
   clip(256, 416, 256, 16, () => { x.fillStyle = '#aab0c0'; x.fillRect(0, 0, 256, 16); for (let u = 0; u < 256; u += 4) { x.fillStyle = '#5e6474'; x.fillRect(u, 0, 1.6, 16); x.fillStyle = '#f0f3fc'; x.fillRect(u + 2, 0, 1, 16); } });   // reeded edge
   clip(256, 432, 80, 80, () => { x.fillStyle = '#e9e9ee'; x.fillRect(0, 0, 80, 80); for (let i = 0; i < 26; i++) { x.globalAlpha = rr(0.1, 0.4); x.fillStyle = R() < 0.5 ? '#fff' : '#9a9aae'; x.beginPath(); const u = rr(0, 80), v = rr(0, 80); x.moveTo(u, v); x.lineTo(u + rr(-22, 22), v + rr(8, 30)); x.lineTo(u + rr(-6, 6), v + rr(10, 36)); x.fill(); } x.globalAlpha = 1; });   // facets of a cut stone

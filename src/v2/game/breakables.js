@@ -7,7 +7,7 @@
 //                  a puff of dust (effect preset break.puff)
 //   memory         what is broken stays broken while the hero stays in the area (rebuild, save and load); a new arrival finds everything whole
 // Nothing is allocated per tick or per frame.
-import { wholeModel, pieceModels, pickupModels, bakeWhole, writeDyn, paintBreakAtlas, BRK_VERT } from '../env/breakables.js';
+import { wholeModel, pieceModels, pickupModels, bakeWhole, writeDyn, paintBreakAtlas, BRK_VERT, KIND_TONE } from '../env/breakables.js';
 import { BREAK_KINDS, breakSilent, seedBreak, PICK } from '../play/index.js';
 import { feel } from '../feel/index.js';
 import { PRESET_IDS } from '../fx/index.js';
@@ -76,13 +76,15 @@ export class Breakables {
     if (!nv) return;
     const ab = new ArrayBuffer(nv * BRK_VERT), f = new Float32Array(ab), u = new Uint8Array(ab); let v = 0;
     for (let i = 0; i < L.length; i++) {
-      const b = L[i], m = wholeModel(b.kind, b.id), tone = 0.94 + 0.12 * (((b.id * 2654435761) >>> 0) / 4294967296);
+      const b = L[i], m = wholeModel(b.kind, b.id), tone = this._tone(b);
       bakeWhole(m, area.W, b.x, b.y, b.z, b.mat === 'clay' ? 0 : b.rot, f, u, v, [tone, tone, tone]);
       this.ranges.push(v, m.n); v += m.n;
       if (b.broken) this._fold(f, i); else { this.live++; this.wholeTris += m.n / 3; }
     }
     this.wf = f; this.wu = u; this.whole = glr.mesh(ab, nv);
   }
+  /** how dark this one is drawn: the kind's tone and a little of its own (no two jars of a group quite alike) */
+  _tone(b) { return (KIND_TONE[b.kind] ?? 0.8) * (0.93 + 0.14 * (((Math.imul(b.id + 1, 2654435761)) >>> 0) / 4294967296)); }
   _fold(f, i) { const v0 = this.ranges[i * 2], n = this.ranges[i * 2 + 1]; for (let k = v0; k < v0 + n; k++) { f[k * 7] = 0; f[k * 7 + 1] = -9999; f[k * 7 + 2] = 0; } }
   /** the area's buffer goes when the area goes */
   release() {
@@ -100,19 +102,19 @@ export class Breakables {
       if (this.whole.buf && glr && !glr.lost) { const gl = glr.gl; gl.bindBuffer(gl.ARRAY_BUFFER, this.whole.buf); gl.bufferSubData(gl.ARRAY_BUFFER, v0 * BRK_VERT, this.wu.subarray(v0 * BRK_VERT, (v0 + n) * BRK_VERT)); }
     }
     // pieces: each starts exactly where it sat in the whole thing and leaves along the hit, outward and up
-    const P = pieceModels(b.kind, b.id), rot = clay ? 0 : b.rot, cs = Math.cos(rot), sn = Math.sin(rot), T = sc._tintAt(sc.W, b.x, b.y + b.h * 0.5, b.z, 0, 1.6, this.tint);
-    const roll = by === 'roll', heavy = by === 'c3' || by === 'plunge' || by === 'whip' || by === 'sweep', push = roll ? 190 : heavy ? 300 : 230;
+    const P = pieceModels(b.kind, b.id), rot = clay ? 0 : b.rot, cs = Math.cos(rot), sn = Math.sin(rot), T = sc._tintAt(sc.W, b.x, b.y + b.h * 0.5, b.z, 0, 1.6, this.tint), tn = this._tone(b);
+    const roll = by === 'roll', heavy = by === 'c3' || by === 'plunge' || by === 'whip' || by === 'sweep', push = roll ? 170 : heavy ? 250 : 190;
     for (let k = 0; k < P.length; k++) {
       const q = P[k], s = this._alloc(); s.m = q.m; s.r = q.r;
       s.x = s.px = b.x + q.ox * cs - q.oz * sn; s.y = s.py = b.y + q.oy; s.z = s.pz = b.z + q.ox * sn + q.oz * cs; s.gy = b.y; s.restH = q.restH;
       const ox = q.out[0] * cs - q.out[1] * sn, oz = q.out[0] * sn + q.out[1] * cs, along = ox * dx + oz * dz, f = (0.4 + 0.6 * R()) * (along < -0.3 ? 0.55 : 1);
       s.q[0] = 0; s.q[1] = -Math.sin(rot / 2); s.q[2] = 0; s.q[3] = Math.cos(rot / 2);   // (the kit's turn about y: x' = x cos - z sin)
-      s.fx = q.flat[0]; s.fy = q.flat[1]; s.fz = q.flat[2]; s.lr = T[0]; s.lg = T[1]; s.lb = T[2]; s.al = 1; s.n = 0; s.t = 0;
+      s.fx = q.flat[0]; s.fy = q.flat[1]; s.fz = q.flat[2]; s.lr = T[0] * tn; s.lg = T[1] * tn; s.lb = T[2] * tn; s.al = 1; s.n = 0; s.t = 0;
       if (q.stay) { s.st = 1; s.vx = s.vy = s.vz = 0; s.wx = s.wy = s.wz = 0; s.restT = 2.4 + R() * 1.2; s.qt.set(s.q); }
       else {
         s.st = 0; s.restT = 1.0 + R() * 1.5;
-        s.vx = ox * (40 + 130 * R()) + dx * push * f + (R() - 0.5) * 70; s.vz = oz * (40 + 130 * R()) + dz * push * f + (R() - 0.5) * 70;
-        s.vy = 120 + 230 * R() + (q.oy / (b.h || 1)) * 130 + (heavy ? 60 : 0);
+        s.vx = ox * (30 + 100 * R()) + dx * push * f + (R() - 0.5) * 60; s.vz = oz * (30 + 100 * R()) + dz * push * f + (R() - 0.5) * 60;
+        s.vy = 90 + 170 * R() + (q.oy / (b.h || 1)) * 100 + (heavy ? 50 : 0);
         const w = (q.hoop ? 3 : 6) + R() * (q.hoop ? 5 : 11), ax = R() - 0.5, ay = (R() - 0.5) * 0.6, az = R() - 0.5, l = Math.sqrt(ax * ax + ay * ay + az * az) || 1;
         s.wx = ax / l * w; s.wy = ay / l * w; s.wz = az / l * w;
       }
@@ -275,8 +277,8 @@ export class Breakables {
         if (p.what === 2) { const c2 = Math.cos(t * 2.1 + p.seq), s2 = Math.sin(t * 2.1 + p.seq); R[0] = c; R[1] = s * s2; R[2] = s * c2; R[3] = 0; R[4] = c2; R[5] = -s2; R[6] = -s; R[7] = c * s2; R[8] = c * c2; }   // a mote turns on two axes
         else { R[0] = c; R[1] = 0; R[2] = s; R[3] = 0; R[4] = 1; R[5] = 0; R[6] = -s; R[7] = 0; R[8] = c; }
         sc._tintAt(sc.W, x, y, z, 0, 1.6, T);
-        const k = p.what === 0 ? 1.12 : p.what === 1 ? 1.0 : 1.25, sz = (p.pull ? 0.86 : 1) * (p.what === 2 ? 1 + 0.12 * Math.sin(t * 6 + p.seq) : 1) * Math.min(1, 0.4 + p.t * 5);
-        v += writeDyn(m, f, u, v, R, sz, x, y, z, T[0] * k, T[1] * k, T[2] * k, 1, p.what === 0 ? 0.1 : 0.35);
+        const k = p.what === 0 ? 0.95 : p.what === 1 ? 1.0 : 1.25, sz = (p.pull ? 0.86 : 1) * (p.what === 2 ? 1 + 0.12 * Math.sin(t * 6 + p.seq) : 1) * Math.min(1, 0.4 + p.t * 5);
+        v += writeDyn(m, f, u, v, R, sz, x, y, z, T[0] * k, T[1] * k, T[2] * k, 1, p.what === 0 ? 0.06 : 0.35);
       }
     }
     if (this.shN) { const v0 = v; v = this._pieces(true, v, a); this.dfade = v - v0; }
