@@ -19,7 +19,7 @@ import { loadArea, freeSpot } from './area.js';
 
 export const CROSS_T = { gather: 0.1, ring: 0.5, dull: 0.5, pass: 1.2, years: 3.0, reveal: 0.9, glow: 1.1, back: 0.22, turn: 0.7 };
 const YEAR = { past: 1697, now: 1797 };
-const BUDGET = 9;          // ms of loading work per frame before the load lets a frame through (breath())
+const BUDGET = 22;         // ms of loading work in one go before the load lets a frame through (breath()): short enough for 40 frames a second, long enough that drawing those frames does not double the load on a slow GPU
 const R_END = 6600;        // world units: a ring this wide has left every picture
 const GLOW_PAST = new Float32Array([1.0, 0.8, 0.5]), GLOW_NOW = new Float32Array([0.7, 0.86, 1.0]), DRAW2 = [0x8ce0, 0x8ce1];   // (COLOR_ATTACHMENT0, 1)
 /** radius of a ring k (0..1) of its time after it left the bell: `near` units in the first four fifths (the part of the world the camera sees
