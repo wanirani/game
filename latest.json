@@ -1,14 +1,19 @@
 {
  "versionName": "1.0.0",
- "versionCode": 462868,
- "sha256": "b08e92b4e2216189a8178f051dec0dfd9d70a93e0fac312c6c435ef543ef96b2",
- "bytes": 93981949,
- "url": "downloads/BloodNocturne-1.0.0-462868.apk",
- "built": "2026-11-18T10:40:00Z",
+ "versionCode": 462996,
+ "sha256": "18463ab6a2a4270d7a1cd5aab79ae6e139c2f7493b2d2e8a01e5c0c35e37d6b0",
+ "bytes": 93085075,
+ "url": "downloads/BloodNocturne-1.0.0-462996.apk",
+ "built": "2026-11-18T12:56:00Z",
  "signingCertSha256": "efaee88b9ff54bf116c2aae40e358ec073d4a7729261b1b6ac2da5e7a24ed60f",
- "note": "v1 + 3D edition in progress (title menu: 리빌드 시범 → 본 게임). Kael now fights with the whip Vigilia (no sword); boss Banshee Queen, bell tower and Ossuary of Farewell areas; tower stairs walkable. Story and save not connected yet. v1 bg/CG/portraits are low-resolution copies in this build (asset tier lo); v1-only build 438330 with originals is kept alongside.",
+ "appId": "com.bloodnocturne.game",
+ "note": "2D app only (the 3D edition is now its own app, BloodNocturne3D). Original 2D pictures again (asset tier hi). Installs over earlier builds of com.bloodnocturne.game; the old 'rebuild demo' row is gone. v1-only build 438330 is kept alongside.",
  "web": {
-  "buildHash": "8a8b02f8377a",
-  "version": "1.0.0+20261118T1034.6dc7f306"
+  "buildHash": "81485d78cdfe",
+  "version": "1.0.0+20261118T1255.923583c2"
+ },
+ "apps": {
+  "2d": "latest.json",
+  "3d": "latest3d.json"
  }
 }
