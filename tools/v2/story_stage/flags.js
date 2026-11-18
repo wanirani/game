@@ -11,7 +11,7 @@ export const FLAGS = {
     read: ['area:eshville_now/trapped', 'ev_street_knock'] },
   street_clear: { means: '지금 있는 밤의 큰길이 안전하다 (떨어질 때 지워지고, 그 밤의 큰길을 치우면 다시 선다)', world: true,
     set: ['ev_past_street_clear', 'ev_square_clear', 'ev_street_clear_now', 'ev_tower_crack'],
-    read: ['area:eshville_now/marta', 'area:eshville_past/edmund'] },
+    read: ['area:eshville_now/marta', 'area:eshville_past/edmund', 'door.inn'] },
   square_clear: { means: '오늘 밤 광장의 해골을 모두 쓰러뜨렸다', world: true,
     set: ['ev_square_clear'],
     read: ['area:eshville_now/sera', 'area:eshville_now/wounded', 'ev_square_enter_now'] },

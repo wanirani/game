@@ -80,6 +80,7 @@ const VILLAGE_NOW = [
 const PAST_VILLAGE = [
   ['m', '20-26'],
   ['note', '촛불빛의 1697년. 종탑 아래에서 눈을 뜬다.'],
+  I('inn_door', 'door', 'door.tavern'),
   ['talk', 'lotte.fell'],
   BELL(),
   LOCKED('to_graveyard', 'past_gate'),

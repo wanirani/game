@@ -78,6 +78,11 @@ export const DIALOGS_NOW = {
     { pages: [['narrator', '우물. 두레박 줄이 타서 끊겼다.']] },
   ],
   'door.inn': [
+    // Edmund comes to the door only when the street is safe (actor `when: street_clear`): say so at the door
+    { if: ['era:past', '!street_clear'], pages: [
+      ['narrator', '작은 주막. 안에서 문을 걸어 잠갔다.'],
+      ['kael', '(큰길의 주검부터 쓰러뜨려야 열겠군.)'],
+    ] },
     { if: ['era:past'], pages: [['narrator', '작은 주막. 문틈으로\n수프 냄새가 샌다.']] },
     { if: ['elise_home'], pages: [['narrator', '흑묘 여관. 안에서 웃음소리가 샌다.']] },
     { pages: [['narrator', '흑묘 여관. 안에서 문을 걸어 잠갔다.']] },
