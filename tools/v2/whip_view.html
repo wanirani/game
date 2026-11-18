@@ -175,6 +175,7 @@ function step(dt) {
   if (sim.stop > 0) { whip.update(0, hand); if (fx && S.fxOn) { fx.dtIn = dt; fx.tick(); } link.update(whip); return; }   // 타격 멈춤: 세계와 함께 채찍도 멈춘다
   driveHero(heroCh, h, dt, TUNE);
   for (const e of sim.enemies) { if (e.dead) continue; let ch = chars.get(e.id); if (!ch) { ch = new Char3D(dummyAsset, R, { gpu: dummyAsset.gpu, weapon: false, scale: UNIT * (e.def.height / Math.max(0.2, dummyAsset.h)) }); chars.set(e.id, ch); } driveActor(ch, e, dt); }
+  if (d.door) doorPose();
   heroHand();
   whip.resonance = S.reso + (h.resoMax ? (h.reso / h.resoMax) * 0.7 : 0);
   // 채찍의 모드: 규칙 상태 그대로 (driveWhip). 휘감긴 것이 끌려오는 동안은 'wrap'
@@ -196,16 +197,17 @@ function step(dt) {
   link.update(whip);
 }
 // 문 당기기: 규칙에 문이 없어 여기서 흉내 낸다 — 던짐 → 감김 → 버팀 → 당김(문이 열린다) → 풀림
+function doorPose() {   // 내지르고, 당길 때 몸을 젖힌다 (driveHero 뒤에 자세만 덮어쓴다)
+  const t = seqT, A = heroCh.anim;
+  if (t >= 0.7 && t < 1.05) { A.play('thrust', { fade: 0.05, time: 0.3 + (t - 0.7) * 2.2 }); A.update(0); }
+  else if (t >= 1.5 && t < 2.6) { A.play('guard', { fade: 0.2 }); A.update(1 / 60); }
+}
 function doorScript(dt) {
-  const t = seqT, h = sim.hero;
-  const hx = door.x + Math.cos(door.a + door.open) * 46 - Math.sin(door.a + door.open) * 5, hz = door.z + Math.sin(door.a + door.open) * 46 + Math.cos(door.a + door.open) * 5;
-  door.hx = hx; door.hz = hz;
-  if (t < 0.7) driveWhip(whip, h, TUNE, null);
-  else if (t < 3.3) {
-    WRP.x = hx; WRP.y = door.hy; WRP.z = hz; WRP.r = 4.5; WRP.t = t - 0.7; WRP.throwT = 0.17; WRP.phase = t < 1.5 ? 'throw' : 'pull'; whip.set('wrap', WRP);
-    if (t > 1.5) door.open = -1.25 * Math.min(1, (t - 1.5) / 0.9) ** 0.7 * (S.dir >= 0 ? 1 : 1);
-    const A = heroCh.anim; if (t < 1.0) A.play('thrust', { fade: 0.05, time: 0.3 + (t - 0.7) * 2.2 }); else if (t > 1.5 && t < 2.5) A.play('hurt', { fade: 0.15, time: 0.05 });   // 내지르고, 당길 때 몸을 젖힌다 (흉내)
-  } else driveWhip(whip, h, TUNE, null);
+  const t = seqT, h = sim.hero, a = door.a + door.open;
+  door.hx = door.x + Math.cos(a) * 46 - Math.sin(a) * 7; door.hz = door.z + Math.sin(a) * 46 + Math.cos(a) * 7;
+  if (t < 0.7 || t >= 3.3) { driveWhip(whip, h, TUNE, null); return; }
+  WRP.x = door.hx; WRP.y = door.hy; WRP.z = door.hz; WRP.r = 4.5; WRP.t = t - 0.7; WRP.throwT = 0.17; WRP.phase = t < 1.5 ? 'throw' : 'pull'; whip.set('wrap', WRP);
+  if (t > 1.5) door.open = 1.15 * Math.min(1, (t - 1.5) / 0.9) ** 0.7;
 }
 function setDemo(id) {
   demo = DEMOS[id] ?? DEMOS.combo; S.demo = DEMOS[id] ? id : 'combo';
@@ -219,7 +221,7 @@ function setDemo(id) {
   sim = new Sim(flatArena(1400, 1000, spawns), hooks); api.sim = sim;
   const h = sim.hero, [fxx, fzz] = rot(1, 0); h.dirX = fxx; h.dirZ = fzz;
   if (demo.hooks) for (const p of demo.hooks) { const [x, z] = rot(p.x, p.z), to = rot(p.to[0], p.to[1]); sim.hookPoints.push({ ...p, x, z, to }); }
-  door.on = !!demo.door; if (door.on) { const [x, z] = rot(190, -30); door.x = x; door.z = z; door.a = (S.dir * Math.PI) / 4 + 1.5708; door.open = 0; }
+  door.on = !!demo.door; if (door.on) { const [x, z] = rot(215, -40); door.x = x; door.z = z; door.a = (S.dir * Math.PI) / 4 + 2.2; door.open = 0; }   // 문 앞면이 영웅과 카메라 쪽을 비스듬히 본다
   bell.on = !!demo.bell; if (bell.on) { const [x, z] = rot(300, -40); bell.x = x; bell.z = z; bell.swing = 0; }
   heroCh.dx = fxx; heroCh.dz = fzz; heroCh._pm = null; heroCh.anim.play('idle', { fade: 0, restart: true }); heroCh.anim.update(0);
   if (!whip || whip.tier !== S.tier) whip = createWhip({ tier: S.tier, onEvent: (n, e) => { events.push('채찍:' + n + (e.kind ? '/' + e.kind : '')); if (events.length > 60) events.shift(); api.lastEv = n; if (n === 'crack' && bell.on && Math.hypot(e.x - bell.x, e.z - bell.z) < 40) bell.swing = 0.5; link.onEvent(n, e); } });

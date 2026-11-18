@@ -74,7 +74,7 @@ export const WHIP_SHAPES = {
     [2.0, -40, 0, 40, 0.0, 0, 0, -1],
   ]) },
   // hold-attack (rules id 'whip'): the long lash thrown straight ahead to the far end of its hit box; what it catches is then wound and pulled (mode 'wrap')
-  whip: { peak: PEAK, ev: 'crack', len: [0.7, 2.9], nominal: { dur: 0.62, hit: [0.12, 0.26], box: { f0: 10, f1: 250, side: 40, y0: 0, y1: 150 } }, keys: S(0.6, [
+  whip: { peak: PEAK, ev: 'crack', trail: false, len: [0.7, 2.9], nominal: { dur: 0.62, hit: [0.12, 0.26], box: { f0: 10, f1: 250, side: 40, y0: 0, y1: 150 } }, keys: S(0.6, [
     [-1.0, -40, 30, 150, 0.5, -1, 0.3, 0.3],
     [-0.5, -72, 22, 122, 0.7, -1, 0.3, 0.4],
     [-0.1, -52, 12, 92, 0.85, -1, 0.2, 0.6],
@@ -126,7 +126,7 @@ export const WHIP_SHAPES = {
     [2.0, 30, -8, 3, 0.0, 0, 0, -1],
   ]) },
   // far bell strike: thrown at a distant point (frame 'aim': f = fraction of the way from the chest to the target)
-  far: { peak: PEAK, ev: 'crack', frame: 'aim', len: [0.6, 4.2], nominal: { dur: 0.6, hit: [0.2, 0.34], reach: 380 }, keys: S(0.6, [
+  far: { peak: PEAK, ev: 'crack', frame: 'aim', trail: false, len: [0.6, 4.2], nominal: { dur: 0.6, hit: [0.2, 0.34], reach: 380 }, keys: S(0.6, [
     [-1.0, -0.1, 24, -30, 0.4, -1, 0, -1],
     [-0.5, -0.32, 34, 40, 0.65, -1, 0.3, 0.6],
     [-0.1, -0.2, 26, 78, 0.8, -1, 0.3, 0.6],
@@ -137,28 +137,33 @@ export const WHIP_SHAPES = {
     [1.5, 0.4, -10, -44, 0.25, -1, 0, 0],
     [2.0, 0.1, -8, -66, 0.0, 0, 0, -1],
   ]) },
-  // bell, short: a wrist flick that snaps the shard up in front of the face
-  ring_short: { peak: 0.5, ev: 'ring', kind: 'short', nominal: { dur: 0.5, hit: [0.16, 0.27] }, keys: K([
-    [-1.0, 0, 26, 26, 0.35, -1, 0, -1],
-    [-0.4, -26, 30, 40, 0.6, -1, 0, -0.4],
-    [0.0, 30, 22, 70, 0.9, -1, 0.3, -0.6],
-    [0.5, 54, 2, 164, 1.0, 1, 0, -0.3],
-    [1.0, 46, -4, 158, 0.9, 1, 0, -0.5],
-    [1.4, 40, -4, 110, 0.3, 1, 0, -1],
-    [2.0, 20, 0, 20, 0.0, 0, 0, -1],
+  // bell, short (rules act 'echo'): a wrist flick that snaps the shard up over the raised hand. Offsets from the hand ('hand' frame)
+  ring_short: { peak: 0.5, ev: 'ring', kind: 'short', frame: 'hand', trail: false, nominal: { dur: 0.52, hit: [0.13, 0.27] }, keys: K([
+    [-1.0, 10, 20, -30, 0.35, -1, 0, -1],
+    [-0.45, -30, 22, -8, 0.6, -1, 0, -0.4],
+    [0.0, 34, 10, 26, 0.85, -1, 0.3, -0.6],
+    [0.5, 12, 0, 76, 0.9, -1, 0.4, -0.2],
+    [1.0, -4, -6, 70, 0.8, 1, 0, -0.4],
+    [1.4, 16, -8, 30, 0.3, 1, 0, -1],
+    [2.0, 14, 4, -30, 0.0, 0, 0, -1],
   ]) },
-  // bell, long: one slow halo over the head, then the shard is lifted high and held while it rings
-  ring_long: { peak: 0.5, ev: 'ring', kind: 'long', nominal: { dur: 1.5, hit: [0.72, 1.1] }, keys: K([
-    [-1.0, 0, 26, 26, 0.35, -1, 0, -1],
-    [-0.8, -50, 40, 120, 0.6, 0, 1, 0.2],
-    [-0.6, -44, -64, 168, 0.75, 1, 0.5, 0.2],
-    [-0.4, 60, -50, 178, 0.75, 0.5, -1, 0.2],
-    [-0.2, 56, 60, 180, 0.75, -1, -0.5, 0.2],
-    [0.0, -30, 44, 186, 0.9, -0.5, 1, 0.3],
-    [0.5, 14, 0, 196, 1.0, -1, 0, -0.2],
-    [1.0, 16, 0, 192, 0.95, -1, 0, -0.2],
-    [1.5, 30, 6, 120, 0.3, -1, 0, -1],
-    [2.0, 20, 8, 20, 0.0, 0, 0, -1],
+  // bell, long (rules act 'ring'): while the hold fills the lash swirls up around the gathered hands; when it is full the shard is swung
+  // in one slow halo over the raised hands while it rings
+  ring_long: { peak: 0.5, ev: 'ring', kind: 'long', frame: 'hand', nominal: { dur: 1.5, hit: [0.61, 0.99] }, keys: K([
+    [-1.0, 20, 20, -30, 0.35, -1, 0, -1],
+    [-0.83, 40, -15, -12, 0.6, -0.4, 1, 0.2],
+    [-0.66, 5, -46, -2, 0.7, 1, 0.3, 0.2],
+    [-0.5, -42, -10, 6, 0.75, 0.3, -1, 0.2],
+    [-0.33, -12, 46, 14, 0.75, -1, -0.3, 0.2],
+    [-0.16, 46, 20, 22, 0.75, -0.4, 1, 0.2],
+    [0.0, 20, -52, 32, 0.8, 1, 0.3, 0.2],
+    [0.25, -58, -26, 48, 0.85, 0.4, -1, 0.1],
+    [0.5, -20, 62, 54, 0.85, -1, -0.3, 0.1],
+    [0.75, 58, 30, 56, 0.85, -0.4, 1, 0.1],
+    [1.0, 40, -52, 54, 0.85, 1, 0.5, 0.1],
+    [1.3, -50, -30, 46, 0.7, 0.5, -1, 0.1],
+    [1.6, -30, 46, 24, 0.4, -1, -0.5, -0.3],
+    [2.0, 20, 20, -24, 0.0, 0, 0, -1],
   ]) },
 };
 

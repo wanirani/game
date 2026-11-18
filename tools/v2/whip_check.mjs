@@ -214,12 +214,12 @@ for (const { id, mv, real } of table) {
   ok('bell short (act echo): rings when the rules echo (echoAt), shard lifted above the head', ringAt >= 0 && Math.abs(ringAt - TUNE.echoAt) < 0.035 && top > 125, `ring at ${f2(ringAt)} s (echoAt ${TUNE.echoAt}) · shard up to ${f1(top)} px`);
   ev.length = 0; h.act = 'ring'; h.anim = 'ring'; h.actDone = false; ringAt = -1; top = 0; let tt = 0;
   step(Math.round((TUNE.ringT + 0.5) / DT), (i) => { tt = i * DT; if (tt >= TUNE.ringT && !h.actDone) { h.actDone = true; } h.actT = h.actDone ? tt - TUNE.ringT : tt; h.bellCharge = Math.min(1, tt / TUNE.ringT); driveWhip(whip, h, TUNE, null); if (ringAt < 0 && ev.includes('ring:long')) ringAt = tt; top = Math.max(top, whip.tip.y); });
-  ok('bell long (act ring): rings when the hold is full (ringT), shard held high', ringAt >= 0 && Math.abs(ringAt - TUNE.ringT) < 0.25 && top > 160 && whip.pulse > 0.05, `ring at ${f2(ringAt)} s (ringT ${TUNE.ringT}) · shard up to ${f1(top)} px`);
+  ok('bell long (act ring): rings when the hold is full (ringT), shard held high', ringAt >= 0 && Math.abs(ringAt - TUNE.ringT) < 0.06 && top > 130 && whip.pulse > 0.05, `ring at ${f2(ringAt)} s (ringT ${TUNE.ringT}) · shard up to ${f1(top)} px`);
   h.act = null; h.anim = 'idle'; h.actDone = false;
 
   // charging (spin) -> state mapping, then the far strike at a target
   h.charging = true; h.anim = 'charge'; let stMax = 0; step(40, (i) => { h.charge = Math.min(1, i / 33); driveWhip(whip, h, TUNE, null); stMax = Math.max(stMax, stretch(whip)); });
-  ok('charging: the lash circles over the head', whip.mode === 'spin' && whip.tip.y > 110 && stMax <= 1.035 && finite(whip), `tip height ${f1(whip.tip.y)} · max segment ${f2(stMax * 100)} %`);
+  ok('charging: the lash circles over the hand, curved (not a spoke)', whip.mode === 'spin' && whip.tip.y > hand.y + 12 && whip.ext < 0.9 && whip.ext > 0.55 && stMax <= 1.035 && finite(whip), `tip ${f1(whip.tip.y - hand.y)} px above the hand · ext ${f2(whip.ext)} · max segment ${f2(stMax * 100)} %`);
   h.charging = false; h.anim = 'idle';
   const T2 = { x: 300, y: 150, z: -90 }; ev.length = 0; let pk = null; const sh = shapeOf('far'), nm = sh.nominal;
   step(Math.round(nm.dur / DT), (i) => { whip.set('swing', { move: 'far', t: i * DT, dirX: 1, dirZ: 0, ...T2 }); });

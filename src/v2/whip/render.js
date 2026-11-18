@@ -67,8 +67,8 @@ void main() {
     base = mix(leather, metal, mt); spec = mix(0.35, 1.5, mt); sh = mix(16.0, 54.0, mt);
     float tip = exp(-vP.x * 0.06);
     emis = vec3(1.0, 0.93, 0.78) * (uFx.z * tip * 1.6) + uGlow.rgb * (uGlow.a * tip * 0.25);
-    float sm = pow(0.5 + 0.5 * sin(vP.x * 0.085 - uFx.y * 27.0), 12.0);
-    emis += vec3(0.75, 0.88, 1.0) * (uFx.x * (0.10 + 0.9 * sm));   // taut: a glint runs down the line
+    float sm = pow(0.5 + 0.5 * sin(vP.x * 0.05 - uFx.y * 30.0), 40.0);
+    emis += vec3(0.75, 0.88, 1.0) * (uFx.x * (0.035 + 0.6 * sm));   // taut: small glints run down the line
   } else {
     n = normalize(vA); if (dot(n, V) < 0.0) n = -n;
     if (kind < 2.5) {

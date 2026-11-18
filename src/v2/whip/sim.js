@@ -5,7 +5,7 @@ import { MOVES } from '../play/moves.js';
 import { shapeOf } from './shapes.js';
 
 export const WHIP_TIERS = { low: { n: 12, sub: 2, sides: 6 }, mid: { n: 16, sub: 3, sides: 8 }, high: { n: 20, sub: 4, sides: 10 } };
-const GRAV = -1400, MAXV = 3400, NS = 25, HANDLE_FWD = 11, BOW = 0.945;   // gravity px/s2, speed cap px/s, curve samples, grip -> lash root along the handle
+const GRAV = -1400, MAXV = 3400, NS = 25, HANDLE_FWD = 11, BOW = 0.945, SLACK = 0.78;   // gravity px/s2, speed cap px/s, curve samples, grip -> lash root along the handle
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 export class Whip {
@@ -144,6 +144,8 @@ export class Whip {
       if (sw.hasT) { tx = sw.tx; ty = sw.ty; tz = sw.tz; } else { const d = (sh.nominal && sh.nominal.reach ? sh.nominal.reach : 300) * 0.8; tx = cx + this.fx * d; ty = cy; tz = cz + this.fz * d; }
       const dx = tx - cx, dz = tz - cz, hl = Math.hypot(dx, dz) || 1, rx = dz / hl, rz = -dx / hl;
       W[o] = cx + dx * f + rx * r; W[o + 1] = cy + (ty - cy) * f + y; W[o + 2] = cz + dz * f + rz * r;
+    } else if (sh.frame === 'hand') {   // offsets from the lash root, hero axes (poses that must follow whatever the arm does)
+      const R = this.root; W[o] = R.x + this.fx * f + this.fz * r; W[o + 1] = R.y + y; W[o + 2] = R.z + this.fz * f - this.fx * r;
     } else {
       W[o] = this.bx + this.fx * f + this.fz * r; W[o + 1] = this.by + y; W[o + 2] = this.bz + this.fz * f - this.fx * r;
     }
@@ -208,6 +210,9 @@ export class Whip {
     // (BOW: even fully extended the lash keeps a slight bow, laid toward the key's slack direction - a dead straight lash reads as a stick)
     const pkL = pk / BOW, near = Math.min(pkL, this.L0 * 1.5);
     this.lenWant = clamp(pkL > near ? Math.max(near, (chord / BOW) * (1 + 0.08 * (1 - w))) : pkL, lo, hi);
+    // away from the strike the tip never goes farther than SLACK of the lash from the hand: there is always a loop of slack to
+    // curve (a lash drawn out straight in a wind-up reads as a pole)
+    if (!(pkL > near)) { const maxc = Math.max(this.len, this.lenWant) * SLACK; if (chord > maxc) { const k0 = maxc / chord; W[0] = r.x + (W[0] - r.x) * k0; W[1] = r.y + (W[1] - r.y) * k0; W[2] = r.z + (W[2] - r.z) * k0; chord = maxc; } }
     // held hard (w >= 0.9) = the strike: the lash is laid out straight, full length, along the direction of the key
     const em = clamp((w - 0.75) / 0.17, 0, 1), e = em * em * (3 - 2 * em);
     if (e > 0 && chord > 1e-3) {
@@ -227,7 +232,7 @@ export class Whip {
       if (sh.ev === 'ring') { this.pulse = 1; this._emit('ring', W[0], W[1], W[2], 0, 1, 0, sh.kind); } else if (!sw.hitCrack) { this.flash = Math.max(this.flash, 0.7); this._emit('crack', W[0], W[1], W[2], t.vx / sp, t.vy / sp, t.vz / sp, 'air'); }
     }
     sw.ps = s;
-    this.trail = s > -0.35 && s < 1.25 ? 1 : 0;
+    this.trail = sh.trail !== false && s > -0.35 && s < 1.25 ? 1 : 0;
   }
 
   _aimRest(h) {
@@ -247,12 +252,12 @@ export class Whip {
   }
 
   _aimSpin(h) {
-    const n = this.n, wn = this.wn, lv = this.spinLv, R = 58 + 14 * lv;
+    const n = this.n, wn = this.wn, lv = this.spinLv, r = this.root, R = 56 + 12 * lv;
     this.spinA -= (8.5 + 9 * lv) * h;
-    const c = Math.cos(this.spinA), s = Math.sin(this.spinA), cy = this.by + this.bh + 30 + 6 * Math.sin(this.spinA * 0.5);
+    const c = Math.cos(this.spinA), s = Math.sin(this.spinA);
     this.lenWant = this.L0;
-    // slack trails the rotation and hangs a little outward
-    this._curve(this.bx + c * R, cy, this.bz + s * R, -s * 1 + c * 0.4, 0.25, c * 1 + s * 0.4);
+    // the tip rides a circle over the hand; the slack trails the rotation, so the lash is a curved arc (a lasso), never a spoke
+    this._curve(r.x + c * R, r.y + 30 + 5 * Math.sin(this.spinA * 0.5), r.z + s * R, -s * 1.0 - c * 0.25, 0.1, c * 1.0 - s * 0.25);
     for (let i = 0; i < n; i++) wn[i] = 0.8;
     this.trail = lv > 0.45 ? 1 : 0;
   }

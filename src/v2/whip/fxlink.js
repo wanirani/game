@@ -65,7 +65,7 @@ export function whipFx(fx, feel, opts = {}) {
       if (!fx) return;
       const R = fx.ribbons, t = whip.tip;
       const on = whip.trail > 0 && t.speed > 420;
-      if (on && L.rb < 0) L.rb = R.start(whip.mode === 'swing' ? (whip.sw.str === 'F' || whip.sw.str === 'H' ? WHIP_TRAIL.heavy : WHIP_TRAIL.lash) : WHIP_TRAIL.line);
+      if (on && L.rb < 0) L.rb = R.start(whip.mode === 'swing' ? (whip.sw.str === 'F' || whip.sw.str === 'H' ? WHIP_TRAIL.heavy : WHIP_TRAIL.lash) : whip.mode === 'spin' ? WHIP_TRAIL.lash : WHIP_TRAIL.line);
       if (L.rb >= 0) {
         if (!on) { R.end(L.rb); L.rb = -1; }
         else {   // two points a tick: the tip moves up to 55 px between ticks, the point between is taken on the arc around the hand

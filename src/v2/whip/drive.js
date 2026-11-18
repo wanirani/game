@@ -14,7 +14,10 @@ export function driveWhip(whip, h, T, pull) {
   const a = h.act;
   if (a === 'hook') { P.x = h.whipX; P.y = h.whipY; P.z = h.whipZ; P.phase = 'throw'; P.t = h.actT; P.throwT = (T && T.hookThrow) || 0.16; whip.set('hook', P); return; }
   if (a === 'echo') { const at = (T && T.echoAt) || 0.2; HIT[0] = Math.max(0.02, at - 0.07); HIT[1] = at + 0.07; P.hit = HIT; P.dur = (T && T.echoT) || 0.52; P.kind = 'short'; P.t = h.actT; whip.set('ring', P); return; }
-  if (a === 'ring') { const rt = (T && T.ringT) || 0.8; HIT[0] = rt - 0.08; HIT[1] = rt + 0.3; P.hit = HIT; P.dur = rt + 0.5; P.kind = 'long'; P.t = h.actDone ? rt + h.actT : Math.min(h.actT, rt - 0.001); whip.set('ring', P); return; }
+  if (a === 'ring') {   // long bell: the halo (and the ring event at its middle) waits for the hold to be full
+    const rt = (T && T.ringT) || 0.8; HIT[0] = rt - 0.19; HIT[1] = rt + 0.19; P.hit = HIT; P.dur = rt + 0.5; P.kind = 'long';
+    P.t = h.actDone ? rt + h.actT : Math.min(h.actT, rt - 0.2); whip.set('ring', P); return;
+  }
   if (h.charging) { P.level = h.charge ?? 0.5; whip.set('spin', P); return; }
   const mv = h.move;
   if (mv) { P.move = mv.id; P.t = h.moveT; P.hit = mv.hit; P.dur = mv.dur; P.landT = h.plungeLand ?? null; whip.set('swing', P); return; }

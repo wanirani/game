@@ -26,6 +26,7 @@ const DEVICES = String(args.devices || 'fold_open,phone2').split(',');
 const SHOTS = String(args.shots || '/tmp/claude-0/v2/engine');
 const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const GL_ARGS = ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required', '--enable-precise-memory-info', '--js-flags=--expose-gc'];
+const FULL = !!args.fullres;
 const ONLY = args.only ? String(args.only).split(',') : null, want = (k) => !ONLY || ONLY.includes(k);   // --only touch,troute,route,turn,interp,alloc,far,shots,ctx,cycle,v1,nogl
 const fails = [], report = { devices: {}, noWebgl: null };
 const fail = (m) => { fails.push(m); console.log('  FAIL ' + m); };
@@ -43,7 +44,8 @@ async function open(device, extra = GL_ARGS, q = '') {
   const errs = [];
   page.on('console', (m) => { if (m.type() === 'error') errs.push('[console.error] ' + m.text()); });
   page.on('pageerror', (e) => errs.push('[pageerror] ' + e.message));
-  await page.goto(`http://localhost:${port}/index.html?scene=v2g&area=slice0&v2auto=0${q}`);   // the test route (the default area is eshville_now: tools/v2/game_walk.mjs); fixed render size
+  await page.goto(`http://localhost:${port}/index.html?scene=v2g&area=slice0&v2auto=0${FULL ? '' : '&v2aa=0&v2res=0.5612'}${q}`);   // the test route (the default area is eshville_now: tools/v2/game_walk.mjs); fixed render size.
+  // By default the 3D picture is rendered at the old size (CSS size, no antialiasing): 2.4 MP with MSAA on the software renderer makes the run three times longer. --fullres 1 = the real default size.
   await page.waitForFunction(() => window.__v2?.id === 'g' && (window.__v2.ready || window.__v2.error), null, { timeout: 60000 }).catch(() => errs.push('ready timeout'));
   return { browser, page, errs };
 }
