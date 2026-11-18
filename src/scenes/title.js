@@ -33,6 +33,7 @@ import { text, wrap, FONT, taps, bloodText, textFloor } from '../core/ui.js';
 import { drawHints, drawGlyph, glyphWidth, promptMode } from '../core/prompts.js';
 import { clamp, ease, lerp, fmt, rand, TAU } from '../core/math.js';
 import { hudSafe } from '../render/hud_layout.js';
+import { BUILD_TARGET } from '../core/build_target.js';
 import { CHARACTERS, CHAR_ORDER } from '../data/characters.js';
 import * as ACHM from '../core/ach_meta.js';
 // 아케이드 장면(arcade.js → 보스·아이템·퀘스트 데이터)은 정적으로 싣지 않는다: endArcade 는 front/common.js 의 것 (R1-REQ-229)
@@ -189,6 +190,8 @@ export class TitleScene extends Scene {
       { id: 'gallery', label: '회랑', sub: 'GALLERY' },   // [hook:gal] 회랑 (docs/specs/gallery.md §5.7 — 크레딧은 회랑의 극장 안으로)
       { id: 'v2', label: '리빌드 시범', sub: 'REBUILD DEMO' },   // 리빌드(v2) 시범판 A·B 고르기 (docs/v2/P0_COMPARE.md; src/v2/chooser.js 는 고를 때 받는다)
     ];
+    // 2D 앱(build_target 'v1'): 3D 판은 따로 앱 「블러드 녹턴 3D」 — 이 빌드에는 3D 파일이 없으므로 「리빌드 시범」 줄을 숨긴다 (마지막 줄이라 다른 줄 번호는 그대로)
+    if (BUILD_TARGET === 'v1') this.items = this.items.filter((it) => it.id !== 'v2');
     this.menu = new TapMenu(this.items.length, { index: index ?? (hasSave ? 1 : 0) });
   }
   openAccount() {

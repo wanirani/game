@@ -5,6 +5,7 @@
 // 바로 열기: index.html?scene=v2a · v2b · v2c · v2bench
 import { Scene } from '../core/game.js';
 import { input } from '../core/input.js';
+import { APP_3D } from '../core/build_target.js';
 
 const LOADERS = {
   v2a: () => import('../v2/a/index.js'),
@@ -28,7 +29,7 @@ function lazyScene(id, load) {
     }
     update(dt) {
       this.t += dt;
-      if (this.err && (input.pressed('cancel') || input.pressed('confirm') || input.pointer.tapped) && this.game.registry.title) this.game.go('title', {}, { fade: false });
+      if (this.err && (input.pressed('cancel') || input.pressed('confirm') || input.pointer.tapped) && this.game.registry.title) this.game.go(APP_3D && this.game.registry.v2pick ? 'v2pick' : 'title', {}, { fade: false });   // 3D 앱은 고르기 화면이 처음 화면
     }
     render(ctx) {
       const g = this.game, W = g.viewW, H = 540;

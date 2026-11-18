@@ -252,10 +252,11 @@ export function driveHero(ch, h, dt, T = TUNE) {
   S.wasDead = !!h.dead;
   if (st === 'land' && S.prev !== 'land') S.landC = 0;
   if (S.landC != null) { S.landC += dt; if ((st !== 'land' && st !== 'idle') || S.landC > 0.3) S.landC = null; }
-  // 달리다 스틱을 놓으면: 뒤로 버티며 미끄러져 서는 동작 (run_stop 의 앞 0.55초를 0.3초에). 다시 밀거나 다른 동작이 오면 바로 끊긴다
+  // 달리다 스틱을 놓으면: 뒤로 버티며 미끄러져 서는 동작 (run_stop 의 앞 0.55초를 TUNE.stopSkidT 초에). 다시 밀거나 다른 동작이 오면 바로 끊긴다
   const sp = hyp(h.vx, h.vz), ground = h.onGround && !h.move && h.dashT <= 0 && (st === 'run' || st === 'walk' || st === 'idle');
   if (S.wasPush && !h.pushed && ground && sp > (T.stopSkidAbove ?? 190) && C.run_stop) S.stopC = 0;
-  if (S.stopC != null) { S.stopC += dt; if (h.pushed || !ground || S.stopC > 0.3) S.stopC = null; }
+  const skT = T.stopSkidT ?? 0.3;   // 미끄러져 서는 길이 (그림만)
+  if (S.stopC != null) { S.stopC += dt; if (h.pushed || !ground || S.stopC > skT) S.stopC = null; }
   S.wasPush = !!h.pushed;
   S.prev = st;
   if (h.dead) A.play(pick(C, 'knockdown', 'death'), PO(0.08, Math.min((h.deadT ?? h.animT) * 1.3, 2.45)));
@@ -278,13 +279,13 @@ export function driveHero(ch, h, dt, T = TUNE) {
   else if (st === 'jump') A.play('jump', PO(0.05, 0.1 + h.animT));
   else if (st === 'fall') A.play('air', PO(0.14));
   else if (S.landC != null) A.play('land', PO(0.04, 0.04 + S.landC * 1.5));
-  else if (S.stopC != null) A.play('run_stop', PO(0.07, 0.07 + S.stopC * 1.85));
+  else if (S.stopC != null) A.play('run_stop', PO(0.07, 0.07 + S.stopC * 1.85 * (0.3 / skT)));   // 클립의 같은 0.55초를 skT 동안에
   else if (st === 'turn') {
     // 돌아서기: 달리던 것은 뒤로 버티며 낮게 미끄러지는 자세(run_stop 0.09–0.3초)로 멈추고, 반쯤 돌면 박차는 달리기 자세로 넘어간다. 걷던 것은 제자리걸음으로 돈다
     const total = Math.max(0.08, ((h.pivotA ?? 3.1) - (T.pivotEnd ?? 45) * 0.01745) / (T.pivotRate ?? 14.8)), u = (h.pivotT ?? 0) / total;
     if ((h.pivotV ?? 275) < 150 || !C.run_stop) { GT.g = (0.3 + (h.pivotT ?? 0) * 1.5) % 1; gaitPO(ch, C.walk); A.play('walk', POT(0.1)); }
     else if (u < 0.55) { _oT.time = 0.09 + (h.pivotT ?? 0) * 1.7; A.play('run_stop', POT(0.05)); }
-    else { GT.g = 0.86; gaitPO(ch, C.run); A.play('run', POT(0.09)); }
+    else { GT.g = h.pivotG ?? 0.86; gaitPO(ch, C.run); A.play('run', POT(0.09)); }   // 규칙이 고른 박차는 발 (sim: 마지막 발의 반대)
   }
   else if (st === 'run' || st === 'walk') { GT.g = h.gait; gaitPO(ch, C[st]); A.play(st, POT(S.prev0 === 'turn' ? 0.06 : 0.14)); }
   else A.play(h.lock != null && C.idle_combat ? 'idle_combat' : 'idle', PO(0.2));

@@ -76,7 +76,7 @@ export class Sim {
       lock: null, lockT: 0, lockHold: 0, lockX: 0, lockY: 0, lockZ: 0, cutOn: 0,
       act: null, actT: 0, actDone: false, actP: null, charging: false, charge: 0, chargeFullT: 0, atkHold: 0, whipLv: 1, pullT: 0, pullX: 0, pullZ: 0, whipOn: 0, whipX: 0, whipY: 0, whipZ: 0,
       reso: 0, resoMax: T.resoCells, callCd: 0, callCdMax: T.callCd, bellCd: 0, bellCdMax: T.bellCd, bellCharge: 0, bellDown: false, bellHoldT: 0, bellOk: true, knellId: null, hookId: null, skillMode: 'call', hookFX: 0, hookFY: 0, hookFZ: 0, hookTX: 0, hookTY: 0, hookTZ: 0, hookDur: 0.3,
-      gait: 0, gaitMode: 'run', wasMoving: false, pushed: false, pivot: 0, pivotT: 0, pivotA: 0, pivotV: 0, wishX: 1, wishZ: 0, mx: 0, mz: 0, m: 0, ux: 0, uz: 0,
+      gait: 0, gaitMode: 'run', wasMoving: false, pushed: false, pivot: 0, pivotT: 0, pivotA: 0, pivotV: 0, pivotG: 0.86, lastStep: 'L', wishX: 1, wishZ: 0, mx: 0, mz: 0, m: 0, ux: 0, uz: 0,
       anim: 'idle', animT: 0, t: 0, cut: false, landT: 0, landV: 0,
       safe: { x: sx, z: sz, y: sy },
     };
@@ -293,7 +293,7 @@ export class Sim {
     if (walking) {
       const g0 = h.gait, g1 = g0 + (gsp * dt) / (h.gaitMode === 'walk' ? T.strideWalk : T.strideRun);
       const gl = T.stepL?.[h.gaitMode] ?? 0.5;
-      if (g1 >= 1) this.emit('step', 'R', sp, h); else if (g0 < gl && g1 >= gl) this.emit('step', 'L', sp, h);
+      if (g1 >= 1) { h.lastStep = 'R'; this.emit('step', 'R', sp, h); } else if (g0 < gl && g1 >= gl) { h.lastStep = 'L'; this.emit('step', 'L', sp, h); }
       h.gait = g1 % 1;
     }
     this._anim(h, h.hurtT > 0 ? 'hurt' : h.act ? h.act : h.charging ? 'charge' : h.parryOk > 0 && !h.move && h.dashT <= 0 ? 'parry' : h.blockT > 0 && !h.move && h.dashT <= 0 ? 'block' : h.move ? 'attack' : h.dashT > 0 ? 'roll'
@@ -448,11 +448,11 @@ export class Sim {
     let want = 0;
     if (moving) {
       const cr = h.dirX * uz - h.dirZ * ux, sg = cr < 0 ? -1 : 1, ad = Math.atan2(Math.abs(cr), h.dirX * ux + h.dirZ * uz);   // 몸과 스틱 사이 각 (0…π) · 도는 쪽
-      if (!h.pivot && ad > T.pivotAt * RAD) { h.pivot = sg; h.pivotT = 0; h.pivotA = ad; h.pivotV = Math.sqrt(h.vx * h.vx + h.vz * h.vz); this.emit('pivot', h, ad); }
+      if (!h.pivot && ad > T.pivotAt * RAD) { h.pivot = sg; h.pivotT = 0; h.pivotA = ad; h.pivotV = Math.sqrt(h.vx * h.vx + h.vz * h.vz); h.pivotG = h.lastStep === 'R' ? (T.stepL?.run ?? 0.5) - 0.14 : 0.86; this.emit('pivot', h, ad); }   // pivotG: 박차는 발 = 마지막으로 디딘 발의 반대 (발소리가 R R 로 겹치지 않게)
       if (h.pivot) {
         h.pivotT += dt;
         const rem = sg === h.pivot ? ad : ad > 2.2 ? Math.PI * 2 - ad : 0;   // 처음 정한 쪽으로 남은 각 (스틱이 정반대 근처에서 흔들려도 오락가락하지 않는다)
-        if (rem < T.pivotEnd * RAD) { h.pivot = 0; h.gait = 0.86; }          // 박차는 발부터 다시 디딘다
+        if (rem < T.pivotEnd * RAD) { h.pivot = 0; h.gait = h.pivotG; }      // 박차는 발부터 다시 디딘다
         else { this._ra = h.pivot * Math.min(rem, T.pivotRate * dt); this._rotS(h); }
       }
       if (!h.pivot) {

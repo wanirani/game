@@ -430,6 +430,7 @@ export async function buildWeb(o = {}) {
     denyCheck(OUT, report);
     headerLint(SRC, OUT, report);
     if (opts.sizes) sizeReport(OUT, report, { html, chunkFiles: opts.bundle ? [chunkFiles[0]] : chunkFiles, cssFonts, opts, warn });
+    report.ship = shipReport(OUT, opts);
 
     // ── 7. Netlify 업로드 묶음 ──
     if (opts.deployBundle) {
@@ -555,6 +556,38 @@ function pwaOnlyFiles(OUT, html, all) {
   for (const r of all) if (/\.(m?js|css)$/.test(r) && r !== 'sw.js' && !isDeployOnly(r)) texts.push(fs.readFileSync(path.join(OUT, r), 'utf8'));   // sw.js 는 APK 에 없다
   const blob = texts.join('\n');
   return cand.filter((r) => !linked.has(r) && !APK_MUST_KEEP.has(r) && !blob.includes(r.split('/').pop())).sort();
+}
+
+/** 싣는 파일 보고 (대상마다): 폴더별 파일 수·바이트. assets/ 는 두 단계, assets/v2·assets/audio 는 세 단계까지 (downloads/ 는 따로) */
+function shipReport(OUT, opts) {
+  const byDir = {};
+  let files = 0, bytes = 0;
+  for (const rel of walk(OUT)) {
+    const b = fs.statSync(path.join(OUT, rel)).size;
+    const parts = rel.split('/');
+    const depth = /^assets\/(v2|audio)\//.test(rel) ? 3 : rel.startsWith('assets/') ? 2 : 1;
+    const key = parts.length > depth ? parts.slice(0, depth).join('/') : parts.length > 1 ? parts.slice(0, -1).join('/') : '(root)';
+    const e = (byDir[key] ||= { files: 0, bytes: 0 });
+    e.files++; e.bytes += b;
+    if (!isDeployOnly(rel)) { files++; bytes += b; }
+  }
+  const sorted = Object.fromEntries(Object.entries(byDir).sort((a, b) => b[1].bytes - a[1].bytes));
+  log(opts, `· 싣는 파일 (대상 ${opts.target}): ${files}개, ${fmtMB(bytes)} (downloads/·_redirects 제외)`);
+  for (const [k, v] of Object.entries(sorted)) log(opts, `        ${k.padEnd(28)} ${String(v.files).padStart(5)}개 ${fmtMB(v.bytes).padStart(10)}`);
+  return { target: opts.target, files, bytes, byDir: sorted };
+}
+
+/** 싣는 파일 보고를 글로 (dist/ship-<대상>.txt) */
+export function shipText(rep) {
+  const s = rep.ship;
+  if (!s) return '';
+  const L = [`# build_web.mjs --target ${s.target} → ${rep.out} (${rep.version}, bn-${rep.buildHash})`, `# 파일 ${s.files}개, ${(s.bytes / MB).toFixed(2)} MB (downloads/·_redirects 제외)`];
+  if (rep.targetHeld) L.push(`# 싣지 않은 assets/ 파일 ${rep.targetHeld.files}개, ${(rep.targetHeld.bytes / MB).toFixed(2)} MB`);
+  if (rep.sizes?.apk) L.push(`# APK 어림: 단계 ${rep.sizes.apk.stage}, ${(rep.sizes.apk.total / MB).toFixed(2)} MB (그림 ${(rep.sizes.apk.image[rep.sizes.apk.stage === 'lo+td' ? 'lo' : rep.sizes.apk.stage] / MB).toFixed(2)} MB + 소리 ${(rep.sizes.apk.audio / MB).toFixed(2)} MB)`);
+  if (rep.music3d) L.push(`# 녹음 음악: ${rep.music3d.join(', ')}`);
+  L.push('', 'folder                          files          MB');
+  for (const [k, v] of Object.entries(s.byDir)) L.push(`${k.padEnd(30)} ${String(v.files).padStart(6)} ${(v.bytes / MB).toFixed(2).padStart(11)}`);
+  return L.join('\n') + '\n';
 }
 
 function loKeysOf(OUT) {
@@ -795,6 +828,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     });
     const rp = path.resolve(rep.out ? path.join(ROOT, rep.out) : path.join(ROOT, 'dist/web')) === path.join(ROOT, 'dist/web') ? path.join(ROOT, 'dist/build_web_report.json') : path.join(ROOT, rep.out + '-report.json');
     fs.writeFileSync(rp, JSON.stringify(rep, null, 1) + '\n');
+    if (rep.target && rep.target !== 'all') fs.writeFileSync(path.join(ROOT, `dist/ship-${rep.target}.txt`), shipText(rep));   // 대상별 싣는 파일 보고
     console.log(`빌드 완료: ${rep.out} (${rep.version}, bn-${rep.buildHash}) — 경고 ${rep.warnings.length}개, ${(rep.timings.total / 1000).toFixed(1)}초. 보고: ${path.relative(ROOT, rp)}`);
     process.exit(0);
   } catch (e) {

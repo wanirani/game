@@ -152,7 +152,7 @@ try {
   run(s, 1.4, (i) => ({ mx: 0, mz: 0, jump: i === 0, jumpHeld: true, attack: i === 14 }), (q, i) => { if (q.hero.move?.kind === 'plunge' && !q.hero.onGround) eta.push(q.hero.plungeEta); if (land < 0 && q.hero.plungeLand != null) land = i; });
   ok('plunge: time-to-ground estimate falls to ~0 at landing', eta.length > 4 && eta[eta.length - 1] < 0.035 && eta[0] > eta[eta.length - 1] && land > 0, `eta ${eta[0]?.toFixed(2)} → ${eta[eta.length - 1]?.toFixed(3)} · landed frame ${land}`); }
 { const s = mk([{ kind: 'ranged', x: 60, z: 0, active: true }]); const e = s.enemies[0]; e.cd = 0; let casts = 0; const d0 = Math.hypot(e.x - s.hero.x, e.z - s.hero.z);
-  run(s, 0.4, {}, (q) => { if (q.enemies[0].state === 'attack') casts++; s.hero.hp = 100; });
+  run(s, 0.4 * 78 / KINDS.ranged.speed, {}, (q) => { if (q.enemies[0].state === 'attack') casts++; s.hero.hp = 100; });
   ok('mage at point-blank backs away first instead of casting', casts === 0 && Math.hypot(e.x - s.hero.x, e.z - s.hero.z) > d0 + 20, `dist ${d0.toFixed(0)} → ${Math.hypot(e.x - s.hero.x, e.z - s.hero.z).toFixed(0)}`);
   run(s, 6, {}, (q) => { if (q.enemies[0].state === 'attack') casts++; s.hero.hp = 100; });
   ok('… and casts once it has room', casts > 0); }

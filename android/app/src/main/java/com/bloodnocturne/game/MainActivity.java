@@ -87,11 +87,13 @@ public class MainActivity extends Activity {
     private static final String PREFS = "bn_app";
     private static final long UPDATE_EVERY_MS = 12L * 3600 * 1000;
 
-    /** 뒤로 버튼을 눌렀을 때 게임 상태를 묻는 스크립트: 'exit' 이면 종료 확인, 'esc' 면 Escape 전달 */
+    /** 뒤로 버튼을 눌렀을 때 게임 상태를 묻는 스크립트: 'exit' 이면 종료 확인, 'esc' 면 Escape 전달.
+     *  exitOnBack: 앱의 첫 화면이 타이틀이 아닌 경우 (3D 앱 「블러드 녹턴 3D」의 고르기 화면 v2pick — src/v2/chooser.js) */
     private static final String BACK_PROBE_JS =
             "(function(){try{var g=window.__game;if(!g||!g.scenes||!g.scenes.length)return 'exit';"
             + "var t=g.scenes[g.scenes.length-1];"
             + "if(g.scenes.length===1&&t&&t.name==='title'&&t.mode!=='menu')return 'exit';"
+            + "if(g.scenes.length===1&&t&&t.exitOnBack===true)return 'exit';"
             + "return 'esc';}catch(e){return 'exit';}})()";
 
     /** 게임 입력(src/core/input.js)은 window 의 keydown/keyup 의 e.code 를 읽는다. 한 프레임 이상 눌린 상태를 유지한다 */
@@ -117,6 +119,10 @@ public class MainActivity extends Activity {
     private String apiOrigin;
     private boolean lite;
     private String startUrl = AssetServer.START_URL;
+    private static final String UPDATE_LATEST = "downloads/latest.json";
+    private static final String UPDATE_APK = "/apk";
+    private String updateLatest = UPDATE_LATEST;
+    private String updateApk = UPDATE_APK;
     private AlertDialog exitDialog;
     private AlertDialog updateDialog;
     private boolean backPending;
@@ -182,6 +188,12 @@ public class MainActivity extends Activity {
         JSONObject a = c.optJSONObject("api");
         apiOrigin = a == null ? null : ApiProxy.parseOrigin(a.optString("origin", ""), false);
         lite = c.optString("assets", "full").startsWith("lo");
+        // 새 버전 확인 주소 (앱마다: 3D 앱은 downloads/latest3d.json · /apk3d — tools/apk/pack_web.py --update-*). 없으면 2D 앱 기본값
+        JSONObject u = c.optJSONObject("update");
+        updateLatest = u == null ? UPDATE_LATEST : u.optString("latest", UPDATE_LATEST);
+        updateApk = u == null ? UPDATE_APK : u.optString("apk", UPDATE_APK);
+        if (!updateLatest.matches("[A-Za-z0-9_./-]+") || updateLatest.contains("..")) updateLatest = UPDATE_LATEST;
+        if (!updateApk.matches("/[A-Za-z0-9_./-]*") || updateApk.contains("..")) updateApk = UPDATE_APK;
         startUrl = AssetServer.START_URL + (lite ? "?lo=1" : ""); // assets.js: lo/ 변형만 쓴다 (원본은 APK 에 없음)
     }
 
@@ -739,7 +751,7 @@ public class MainActivity extends Activity {
         final SharedPreferences p = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         final long now = System.currentTimeMillis();
         if (now - p.getLong("updCheckAt", 0) < UPDATE_EVERY_MS) return;
-        final String url = apiOrigin + "/downloads/latest.json";
+        final String url = apiOrigin + "/" + updateLatest;
         final long mine = versionCode();
         Thread th = new Thread(() -> {
             HttpURLConnection c = null;
@@ -789,7 +801,7 @@ public class MainActivity extends Activity {
         updateDialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                 .setTitle(R.string.update_title)
                 .setMessage(getString(R.string.update_message, vn.isEmpty() ? "?" : vn))
-                .setPositiveButton(R.string.update_get, (d, which) -> openBrowser(apiOrigin + "/apk"))
+                .setPositiveButton(R.string.update_get, (d, which) -> openBrowser(apiOrigin + updateApk))
                 .setNegativeButton(R.string.update_later, null)
                 .setNeutralButton(R.string.update_skip, (d, which) -> p.edit().putLong("updSkip", vc).apply())
                 .setOnDismissListener(d -> {

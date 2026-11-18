@@ -1,0 +1,26 @@
+# 3D 앱 「블러드 녹턴 3D」(node tools/deploy/build_web.mjs --target 3d → dist/web3d) 가 assets/ 에서 싣는 파일 목록.
+# assets/v2/ 는 여기가 아니라 tools/deploy/v2_ship.txt 가 정한다. 여기 없는 assets/ 파일(2D 판 그림·채색·음악 …)은 싣지 않는다.
+# 한 줄에 하나: 파일 경로, 또는 '/' 로 끝나는 폴더 (v2_ship.txt 와 같은 형식). 적힌 파일이 없으면 빌드 실패.
+# 검사: node tools/v2/dist_boot_check.mjs --dir dist/web3d --scenes v2g,v2b,v2c,v2bench  ·  node tools/deploy/target_check.mjs --dir dist/web3d
+#       (3D 장면이 여기 없는 파일을 달라고 하면 4xx 로 실패한다)
+
+assets/fonts/                    # 글꼴 (CSS · FontFace — 3D 장면도 같은 글꼴로 글자를 쓴다)
+assets/ui/favicon-32.png         # 탭 아이콘 (index.html)
+assets/ui/icon-180.png           # index.html apple-touch-icon · manifest
+assets/ui/icon-192.png           # index.html · manifest
+assets/ui/icon-512.png           # manifest · APK 필수 파일 (build_apk.sh 가 확인)
+assets/ui/icon-maskable-512.png  # manifest (APK 에는 PWA 전용이라 빠진다)
+assets/bg/title.webp             # 3D 고르기 화면(v2pick) 뒤 그림 (흐리게)
+assets/bg/s01_village.webp       # 3D 지역 하늘 (eshville · belltower · slice0 의 sky.img)
+assets/audio/LICENSE-CREDITS.txt # 소리 저작권 표시
+assets/audio/sfx/                # 효과음 샘플 (audio.js 가 처음 소리를 낼 때 목록 전체를 받는다)
+assets/audio/sfx_v2/             # 효과음 v2 묶음 (기본 소리 — audio.js 가 목록 전체를 받는다)
+assets/audio/music/index.json    # 녹음 음악 목록 (build_web 이 아래 실은 곡만으로 다시 쓴다)
+assets/audio/music/s01.m4a       # 3D 이야기 음악 (src/v2/game/storyhost.js MUSIC: village_burning)
+assets/audio/music/hub.m4a       #   village_past
+assets/audio/music/s02.m4a       #   graveyard_mist
+assets/audio/music/inn.m4a       #   table_warm
+assets/audio/music/s03.m4a       #   ossuary_now
+assets/audio/music/church.m4a    #   ossuary_past
+assets/audio/music/boss.m4a      #   boss_banshee
+assets/audio/music/ending.m4a    #   dawn_bell

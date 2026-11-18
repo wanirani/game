@@ -42,6 +42,7 @@ const Q_SONG = A({ id: 'song', label: '배웅가', kind: 'cast', clip: 'cast_cha
 const K = (o) => {
   const k = { weapon: null, r: 15, hp: 30, speed: 90, turn: 8, sight: 300, sightArc: 105, senseNear: 150, weight: 0, stun: 0.3, dieT: 1.3, standoff: 62, attacks: [], lib: true, ...o };
   k.hpx = Math.round(k.height * UNIT * 0.94);   // 맞는 상자 높이 (px)
+  k.speed0 = k.speed; k.speed = Math.round(k.speed * (TUNE.enemyPace ?? 1));   // 걷기 · 다가오기 빠르기 × TUNE.enemyPace (표의 숫자는 예전 그대로 speed0 에 남긴다; 걸음 클립은 stride 로 거리에 맞춰 돈다)
   return k;
 };
 

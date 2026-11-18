@@ -11,6 +11,7 @@ import { fontsReady } from './core/ui.js';
 import { initPlatform } from './core/platform.js';
 import { telemetry } from './core/telemetry.js';
 import { TitleScene } from './scenes/title.js';
+import { APP_3D } from './core/build_target.js';
 
 const BOOT = typeof window !== 'undefined' ? window.__BN_BOOT : null;
 // 동료 디버그 매개변수 (companions §8): ?scene=hub&cmp=all&ch=8 처럼 쓰면 임시 세이브를 만들어 적용한다
@@ -48,9 +49,11 @@ async function boot() {
   BOOT?.step?.('main');
   const canvas = document.getElementById('screen');
   const params = new URLSearchParams(location.search);
-  const start = params.get('scene');
+  const asked = params.get('scene');
+  // 3D 앱(build_target '3d'): 주소에 장면이 없으면 3D 고르기 화면(v2pick)으로 시작한다 — 진짜 부팅이라 디버그 칸으로 돌리지 않는다
+  const start = asked || (APP_3D ? 'v2pick' : null);
   const direct = !!start && start !== 'title'; // ?scene=stage 등: 나머지 장면이 올 때까지 기다린다
-  if (direct) saves.markDebugBoot(); // 디버그 부팅: 메타(업적·기록·해금)는 진짜 칸·클라우드 대신 디버그 칸에만 (core/save.js)
+  if (direct && asked) saves.markDebugBoot(); // 디버그 부팅: 메타(업적·기록·해금)는 진짜 칸·클라우드 대신 디버그 칸에만 (core/save.js)
   game.settings = saves.loadSettings();
   game.meta = saves.loadMeta();
   game.audio = audio; game.assets = assets; game.saves = saves;
@@ -90,6 +93,11 @@ async function boot() {
   try { await fontsReady; } catch { /* 글꼴 실패 무시 */ }
   BOOT?.step?.('fonts');
   if (direct && !(await restP)) throw game._lazy?.err ?? new Error('장면을 불러오지 못했습니다');
+  if (APP_3D) {
+    // 3D 앱: 고르기 화면은 첫 장면이라 지금 받아 등록한다 (2D 앱은 타이틀이 고를 때 받는다). 뒤 그림 bg/title 은 기다리지 않는다
+    if (!game.registry.v2pick) game.register('v2pick', (await import('./v2/chooser.js')).default);
+    Promise.resolve(assets.preload(['bg/title'])).catch(() => null);
+  }
   if (!direct || !game.registry[start]) {
     await Promise.race([bg ?? Promise.resolve(assets.preload(['bg/title'])).catch(() => null), new Promise((r) => setTimeout(r, TITLE_BG_WAIT))]);
   }
@@ -123,9 +131,10 @@ async function boot() {
   // 영웅 초상화는 나머지 장면 뒤에 받는다 (부팅과 대역폭을 다투지 않고 페이지 load 를 늦추지 않게)
   const later = () => assets.preload(['portraits/kael', 'portraits/sera', 'portraits/victor', 'portraits/bran', 'portraits/lia', 'portraits/azel', 'portraits/isolde']);
   const afterLoad = new Promise((r) => (document.readyState === 'complete' ? r() : window.addEventListener('load', () => r(), { once: true })));
-  Promise.all([afterLoad, game.whenScenes()]).then(() => setTimeout(later, 0));
+  // (3D 앱에는 2D 초상화·각성 감독이 없다: 미리 받지 않는다)
+  if (!APP_3D) Promise.all([afterLoad, game.whenScenes()]).then(() => setTimeout(later, 0));
   // 각성 감독(lazy 조각)도 한가할 때 미리 받는다 (FIX-ENGINE 요청 #386: loadAwakenDirectors 는 멱등, 스테이지 입장 때도 받는다)
-  game.whenScenes().then((ok) => { if (ok) idle(() => import('./game/awaken.js').then((m) => m.loadAwakenDirectors?.()).catch(() => null)); });
+  if (!APP_3D) game.whenScenes().then((ok) => { if (ok) idle(() => import('./game/awaken.js').then((m) => m.loadAwakenDirectors?.()).catch(() => null)); });
   BOOT?.done?.();
   if (!BOOT) document.getElementById('boot')?.remove();
 }

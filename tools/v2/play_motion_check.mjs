@@ -77,11 +77,12 @@ for (const mv of [...COMBO, MOVES.sweep]) {
     const rows = [];
     for (let i = 0; i < 12; i++) { driveHero(ch, h, DT, TUNE); const L = foot('footL'), R = foot('footR'); floor = Math.min(floor, L[1], R[1]); rows.push([h.moveT, L, R]);
       if (legacy) h.stepDist = sd; e.cd = 99; sim.update(DT, {}); if (legacy) h.stepDist = 0; }
-    for (let i = 1; i < rows.length; i++) { const [t, L, R] = rows[i], [, L0, R0] = rows[i - 1]; if (t < 0.03 || t > 0.175) continue; tot++;
+    const S0 = MOVES.c1.step[0], S1 = MOVES.c1.step[1];   // 내딛는 구간 (예전 0.02–0.17초 → 고정 0.03–0.175 · 0.15 로 쟀다; 이제 기술표를 따른다)
+    for (let i = 1; i < rows.length; i++) { const [t, L, R] = rows[i], [, L0, R0] = rows[i - 1]; if (t < S0 + 0.01 || t > S1 + 0.005) continue; tot++;
       const cl = L[1] < floor + 0.045 && L0[1] < floor + 0.045, cr = R[1] < floor + 0.045 && R0[1] < floor + 0.045;
       if (!cl && !cr) { air++; continue; }
       const vl = Math.hypot(L[0] - L0[0], L[2] - L0[2]) / DT, vr = Math.hypot(R[0] - R0[0], R[2] - R0[2]) / DT; sum += cl && cr ? Math.min(vl, vr) : cl ? vl : vr; n++; }
-    return { slip: n ? sum / n : 0, body: (h.x - x0) / 0.15, sd, n, air, tot }; };
+    return { slip: n ? sum / n : 0, body: (h.x - x0) / (S1 - S0), sd, n, air, tot }; };
   const a = meas(false), b = meas(true);
   ok('attack lunge: while the body is carried forward a foot on the ground slides at less than half the body speed (the legs take a step)', a.sd > 30 && a.slip < a.body * 0.5,
     `lunge ${a.sd.toFixed(0)} px at ${a.body.toFixed(0)} px/s · foot on the ground ${a.slip.toFixed(0)} px/s (${Math.round((a.slip / a.body) * 100)}% of body speed; ${a.n} of ${a.tot} ticks with a foot down, ${a.air} with both lifted) · without the step overlay ${b.slip.toFixed(0)} px/s (${Math.round((b.slip / b.body) * 100)}%, ${b.n} of ${b.tot} ticks)`); }
@@ -105,13 +106,13 @@ function slip(mode, speedPx, stride) {
   return { slip: n ? sum / n : 9, lat: n ? lat / n : 9, n, v };
 }
 if (process.argv.includes('--stride')) {
-  for (const [mode, sp] of [['run', 275], ['run', 208], ['walk', 96]]) {
+  for (const [mode, sp] of [['run', TUNE.runX], ['run', TUNE.runZ], ['walk', 96]]) {
     let best = null; for (let s = 40; s <= 320; s += 5) { const r = slip(mode, sp, s); if (!best || r.slip < best.slip) best = { s, ...r }; }
     console.log(`  best stride for ${mode} at ${sp} px/s: ${best.s} px (slip ${best.slip.toFixed(2)} m/s over ${best.n} contact samples)`);
   }
 }
 if (process.argv.includes('--stride')) for (const m of ['run', 'walk']) { const c = lib[m]; console.log(`  ${m}: distance-matched stride of the clip ${c._gwStride ? (c._gwStride * UNIT).toFixed(1) + ' px' : '(no table)'} · TUNE ${m === 'run' ? TUNE.strideRun : TUNE.strideWalk}`); }
-for (const [mode, sp, stride] of [['run', 275, TUNE.strideRun], ['run', 208, TUNE.strideRun], ['walk', 96, TUNE.strideWalk]]) {
+for (const [mode, sp, stride] of [['run', TUNE.runX, TUNE.strideRun], ['run', TUNE.runZ, TUNE.strideRun], ['walk', 96, TUNE.strideWalk]]) {   // (가장 빠른 달리기 좌우 · 앞뒤 — TUNE 을 따른다)
   const r = slip(mode, sp, stride);
   ok(`${mode} at ${sp} px/s: planted foot slides less than ${mode === 'walk' ? 20 : 15}% of body speed`, r.n >= 8 && r.slip < r.v * (mode === 'walk' ? 0.2 : 0.15), `slip ${r.slip.toFixed(2)} m/s vs body ${r.v.toFixed(2)} m/s (${Math.round((r.slip / r.v) * 100)}%) · sideways ${r.lat.toFixed(2)} · contact samples ${r.n}`);
 }
@@ -130,12 +131,12 @@ for (const [name, from, to] of [['right → left', [1, 0], [-1, 0]], ['up → do
   ok(`reverse ${name}: turns one way only, eased, done quickly`, flips === 0 && done > 0 && done * DT <= 0.35 && maxStep < 0.3, `direction flips ${flips} · done in ${(done * DT).toFixed(2)} s · biggest step ${((maxStep * 180) / Math.PI).toFixed(0)}°/frame`);
 }
 // ── ③b 속도와 몸: 달리는 동안(가장 빠른 속도의 30 % 넘게) 속도 방향과 몸이 보는 방향이 35° 넘게 벌어지지 않는가 (옆 · 뒤로 미끄러지지 않는다) ──
-// 몸 = 그림의 방향(ch.dx, ch.dz) — 본 게임 장면이 거는 회전 묶음(TURN_RUN 15 rad/초)도 같이 흉내 낸다. 속도 = 규칙의 vx, vz
+// 몸 = 그림의 방향(ch.dx, ch.dz) — 본 게임 장면이 거는 회전 묶음(TURN_RUN 17.5 rad/초)도 같이 흉내 낸다. 속도 = 규칙의 vx, vz
 function slideCase(name, stick, ticks, o = {}) {
   const sim = new Sim(flatArena(4000, 4000, []), {}), ch = mkChar('kael'), h = sim.hero; let worst = 0, worstAt = -1, back = 0, flipT = -1, flipDone = -1, minSp = 1e9, bad = 0;
   for (let i = 0; i < ticks; i++) {
     const st = stick(i), a0 = Math.atan2(ch.dz, ch.dx); sim.update(DT, { mx: st[0], mz: st[1] }); driveHero(ch, h, DT, TUNE);
-    { let d = Math.atan2(ch.dz, ch.dx) - a0; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; const mx = 15 * DT; if (Math.abs(d) > mx) { const a = a0 + Math.sign(d) * mx; ch.dx = Math.cos(a); ch.dz = Math.sin(a); } }   // the scene's cap
+    { let d = Math.atan2(ch.dz, ch.dx) - a0; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; const mx = 17.5 * DT; if (Math.abs(d) > mx) { const a = a0 + Math.sign(d) * mx; ch.dx = Math.cos(a); ch.dz = Math.sin(a); } }   // the scene's cap
     if (!finiteRig(ch)) bad++;
     if (i < (o.from ?? 30)) continue;
     const sp = Math.hypot(h.vx, h.vz), n = Math.hypot(h.vx / TUNE.runX, h.vz / TUNE.runZ);

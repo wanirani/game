@@ -12,6 +12,7 @@ import { text, FONT } from '../core/ui.js';
 import { drawHints } from '../core/prompts.js';
 import { hudSafe } from '../render/hud_layout.js';
 import { TapMenu, frame, ornament, GOLD, BONE, DIM } from '../scenes/front/common.js';
+import { APP_3D } from '../core/build_target.js';
 
 export const ROWS = [
   { id: 'v2g', label: '본 게임', tag: '만드는 중', desc: '에슈빌 오늘 밤에서 시작 · 새 단추 · 아직 만드는 중' },   // opens area eshville_now (the old test route: index.html?scene=v2g&area=slice0)
@@ -23,26 +24,30 @@ export const ROWS = [
 ];
 export const HEAD_NOTE = '같은 구간을 여러 방식으로 만든 시범입니다. 골라서 해 보세요.';
 const CARDS = ROWS.filter((r) => r.desc).length;
+// 3D 앱(build_target '3d'): 이 화면이 앱의 첫 화면이라 「돌아가기」 줄이 없다 (갈 2D 타이틀이 없다). 안드로이드 뒤로 버튼은
+// 2D 앱의 타이틀처럼 종료 확인 (exitOnBack → MainActivity BACK_PROBE_JS), 키보드 Esc · 패드 B 는 아무것도 하지 않는다
+const SHOWN = APP_3D ? ROWS.filter((r) => r.id !== 'back') : ROWS;
+const HAS_BACK = SHOWN.some((r) => r.id === 'back');
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 let lastBack = null;   // 타이틀에서 열 때 받은 줄 번호 — 시범판에서 돌아올 때는 안 넘어오므로 기억해 둔다
 let lastPick = null;   // 마지막으로 고른 줄 id — 시범판에서 돌아오면 그 줄에 선다
 
 export default class V2Chooser extends Scene {
-  constructor(game) { super(game); this.uiScale = true; this.hidePad = true; this.menu = new TapMenu(ROWS.length, { index: 0 }); this.backIndex = null; }
+  constructor(game) { super(game); this.uiScale = true; this.hidePad = true; this.menu = new TapMenu(SHOWN.length, { index: 0 }); this.backIndex = null; this.exitOnBack = APP_3D; }
   enter(params) {
     const fromTitle = params?.backIndex != null;
     if (fromTitle) { lastBack = params.backIndex; lastPick = null; }
     this.backIndex = lastBack;
-    const i = lastPick ? ROWS.findIndex((r) => r.id === lastPick) : 0;
-    this.menu = new TapMenu(ROWS.length, { index: i >= 0 ? i : 0 });
+    const i = lastPick ? SHOWN.findIndex((r) => r.id === lastPick) : 0;
+    this.menu = new TapMenu(SHOWN.length, { index: i >= 0 ? i : 0 });
   }
   update(dt) {
     this.t += dt;
     const r = this.menu.update(dt);
     if (this.menu.moved) audio.sfx('menu_move');
-    if (r === 'cancel') this.pick(ROWS[ROWS.length - 1]);
-    else if (r === 'confirm') this.pick(ROWS[this.menu.index]);
+    if (r === 'cancel') { if (HAS_BACK) this.pick(ROWS[ROWS.length - 1]); }
+    else if (r === 'confirm') this.pick(SHOWN[this.menu.index]);
   }
   pick(row) {
     const g = this.game;
@@ -60,9 +65,9 @@ export default class V2Chooser extends Scene {
     // 높이 나누기: 넉넉하면 머리말(제목 + 꾸밈 + 안내 글)을 다 쓰고, 좁으면 제목 한 줄만 두고 줄 높이를 줄인다
     const availH = H - st - sb, tight = availH < 520, hintH = input.mode === 'touch' ? 0 : 30;
     const w = Math.min(640, W - sl - sr - 48), x = sl + (W - sl - sr - w) / 2;
-    const headH = tight ? 36 : 96, backH = tight ? 44 : 52, gap = tight ? 5 : 10;
-    const cardH = clamp(Math.floor((availH - hintH - headH - backH - gap * CARDS - 8) / CARDS), 46, 88);
-    const total = headH + cardH * CARDS + backH + gap * CARDS;
+    const headH = tight ? 36 : 96, backH = HAS_BACK ? (tight ? 44 : 52) : 0, gap = tight ? 5 : 10, gaps = HAS_BACK ? CARDS : CARDS - 1;
+    const cardH = clamp(Math.floor((availH - hintH - headH - backH - gap * gaps - 8) / CARDS), 46, 88);
+    const total = headH + cardH * CARDS + backH + gap * gaps;
     let y = st + Math.max(6, (availH - hintH - total) / 2);
     this.layout = { tight, cardH, backH, headH, total, top: y, availH };
     text(ctx, '리빌드 시범', W / 2, y + (tight ? 26 : 36), { size: tight ? 24 : 32, align: 'center', weight: 800, family: FONT.title, color: GOLD, ow: 5, maxWidth: w });
@@ -72,7 +77,7 @@ export default class V2Chooser extends Scene {
     }
     y += headH;
     this.menu.clearHits();
-    ROWS.forEach((row, i) => {
+    SHOWN.forEach((row, i) => {
       const h = row.desc ? cardH : backH, sel = this.menu.index === i;
       const r = { x, y, w, h };
       this.menu.hit(i, r);
@@ -85,6 +90,6 @@ export default class V2Chooser extends Scene {
       } else text(ctx, row.label, r.x + r.w / 2, r.y + h / 2 + 7, { size: 19, weight: 700, align: 'center', color: sel ? '#fff0d0' : DIM, ow: 3 });
       y += h + gap;
     });
-    if (hintH) drawHints(ctx, [[['confirm'], '고르기'], [['cancel'], '돌아가기']], W / 2, H - sb - 12, { align: 'center', size: 14, color: '#c8b8a0' });
+    if (hintH) drawHints(ctx, HAS_BACK ? [[['confirm'], '고르기'], [['cancel'], '돌아가기']] : [[['confirm'], '고르기']], W / 2, H - sb - 12, { align: 'center', size: 14, color: '#c8b8a0' });
   }
 }

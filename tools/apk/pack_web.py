@@ -409,6 +409,11 @@ def main():
     ap.add_argument('--origin', default=os.environ.get('API_ORIGIN') or None)
     ap.add_argument('--cloud-js', default=str(ROOT / 'src/core/cloud.js'))
     ap.add_argument('--report', default=None)
+    # 앱 분리 (2026-11-18): 3D 앱 「블러드 녹턴 3D」 — build_apk.sh APP_VARIANT=3d 가 넘긴다. 주지 않으면 apk.json 은 예전과 같다
+    ap.add_argument('--app-variant', default=None, help='apk.json app.variant (예: 3d)')
+    ap.add_argument('--app-id', default=None, help='apk.json app.id (안드로이드 패키지 이름)')
+    ap.add_argument('--update-latest', default=None, help='새 버전 확인 파일 (계정 서버 사이트 기준, 기본 downloads/latest.json — MainActivity)')
+    ap.add_argument('--update-apk', default=None, help='새 버전 받기 주소 (기본 /apk)')
     args = ap.parse_args()
 
     web = Path(args.web).resolve()
@@ -534,6 +539,12 @@ def main():
         cfg['modified'] = sorted(set(modified))
     if mode == 'lo+td':
         cfg['td'] = {'scale': TD_SCALE, 'floorManifest': TD_FLOOR_MANIFEST, 'floorRig': TD_FLOOR_RIG}
+    if args.app_variant or args.app_id:
+        cfg['app'] = {k: v for k, v in (('variant', args.app_variant), ('id', args.app_id)) if v}
+    if args.update_latest or args.update_apk:
+        if args.update_latest and not re.fullmatch(r'[A-Za-z0-9_./-]+', args.update_latest) or args.update_apk and not re.fullmatch(r'/[A-Za-z0-9_./-]*', args.update_apk):
+            die(f'--update-latest / --update-apk 형식이 틀렸습니다: {args.update_latest!r} {args.update_apk!r}')
+        cfg['update'] = {k: v for k, v in (('latest', args.update_latest), ('apk', args.update_apk)) if v}
     (out / 'app').mkdir(parents=True, exist_ok=True)
     (out / 'app/apk.json').write_text(json.dumps(cfg, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
     say(f'  계정 서버 {origin} ({origin_from}){" · 별칭 " + ", ".join(aliases) if aliases else ""}')
