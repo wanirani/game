@@ -25,7 +25,7 @@ import { bindFxSound } from '../feel/fxbridge.js';
 import { GLR, SpriteBatch } from './glr.js';
 import { CharRenderer } from './charr.js';
 import { Cast } from './cast.js';
-import { loadArea, hasArea, flagsThatOpen, roomOf, kitTexPath, DEFAULT_AREA, worldInfo, freeSpot } from './area.js';
+import { loadArea, hasArea, flagsThatOpen, roomOf, kitTexPath, DEFAULT_AREA, TEST_AREA, worldInfo, freeSpot } from './area.js';
 import { drawDecalSprites as drawEnvDecals, DECAL_ALPHA } from '../env/decals.js';
 import { People, LINES } from './people.js';
 import { Anchors } from './anchors.js';
@@ -497,7 +497,7 @@ export default class V2Game extends Scene {
         this.host = host; this.story = host.story; this.storyFlag = (n) => host.flag(n);
         const sv = params?.fresh ? null : readSave();
         at = sv ? host.restore(sv) : null;
-        if (at && !named && !(await hasArea(at.area))) at = null;
+        if (at && !named && (at.area === TEST_AREA || !(await hasArea(at.area)))) at = null;   // the test route is never a saved place (it does not save: the player would be shut in it)
         if (sv && !at) host.reset();   // a save that cannot be used: new game
         if (at && !named) { area = at.area; spawn = at.spawn; keep = at.pos; this.nightsIn(at.nights); this._carry = { hp: at.hp, reso: at.reso }; this._reraise = true; }
         this.setWorldFlags(host.worldFlags(), { reload: false });
@@ -588,8 +588,16 @@ export default class V2Game extends Scene {
     this._go = { to: DEFAULT_AREA, spawn: null, fresh: true }; this.fadeTo = 1; this.locked = true;
     return true;
   }
+  /** can the hero stand at p {x, z, y}? (a floor under it, no solid box around his body) */
+  _spotOk(p) {
+    if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.z)) return false;
+    const W = this.W, gy = groundAt(W, p.x, p.z, Number.isFinite(p.y) ? p.y + 40 : Infinity); if (!Number.isFinite(gy)) return false;
+    const B = W.boxes; for (let i = 0; i < B.length; i++) { const b = B[i]; if (b.solid && !b.walk && !b.gate && !b.actor && p.x > b.x0 + 2 && p.x < b.x1 - 2 && p.z > b.z0 + 2 && p.z < b.z1 - 2 && gy + 50 > b.y0 && gy + 10 < b.y1) return false; }
+    return true;
+  }
   /** put the hero at a named spawn of the area (docs/v2/AREA_FORMAT.md 3); a section id still works for the test route */
   _enterAt(spawn, keep) {
+    if (keep && !this._spotOk(keep)) { console.warn('[v2g] the kept position has no floor or is inside a wall - the spawn is used instead'); keep = null; }   // a broken save, or the area changed since it was written (INTEGRATE-VERIFY)
     const sim = this.sim, h = sim.hero, sp = keep ?? (spawn ? this.area.spawns?.[spawn] ?? null : null), ha = this.heroA;   // an unknown name: a section id of the test route (sim.teleport), else the default spawn the stage already used
     if (sp && Number.isFinite(sp.x) && Number.isFinite(sp.z)) {
       h.x = sp.x; h.z = sp.z; const gy = groundAt(this.W, h.x, h.z, sp.y != null ? sp.y + 40 : Infinity); if (Number.isFinite(gy)) h.y = gy;

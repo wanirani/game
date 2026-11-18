@@ -97,7 +97,7 @@ export async function flagsThatOpen(id, flags, exitId) {
 /** does the world module know this area? (exits to areas that are not built yet only show their label) */
 export async function hasArea(id) {
   if (!WORLD_LOADER) return id === TEST_AREA;
-  try { return !!(await WORLD_LOADER()).AREAS?.[id]; } catch { return false; }
+  try { const A = (await WORLD_LOADER()).AREAS; return typeof id === 'string' && !!A && Object.prototype.hasOwnProperty.call(A, id) && typeof A[id] === 'function'; } catch { return false; }   // own entries only: a tampered save naming "__proto__" is not an area (INTEGRATE-VERIFY)
 }
 /** what the story host needs from the world module: which flags each area is built from (AREA_FLAGS) */
 export async function worldInfo() {

@@ -338,12 +338,15 @@ try {
       ['nights with wrong shapes', mut((c) => { c.nights = { eshville_now: { dead: 'x', done: 'y' }, zz: null, eshville_past: [] }; })], ['area of the test route', mut((c) => { c.area = 'slice0'; c.story.area = 'slice0'; })], ['area __proto__', mut((c) => { c.area = '__proto__'; c.story.area = '__proto__'; })],
       ['story area graveyard, save area eshville', mut((c) => { c.story.area = 'graveyard_now'; c.story.spawn = 'zzz'; })],
     ];
-    R.saves = [];
+    R.saves = []; const ONLYC = args.cases ? String(args.cases).split('|') : null;
     for (const [name, data] of CASES) {
+      if (ONLYC && !ONLYC.some((q) => name.includes(q))) continue;
       const e0 = errs.length; await page.goto(base + '/robots.txt'); await ev((d) => localStorage.setItem('bn.v2.save', d), data);
       o = await open('', { wait: 60000 }); let line = `${name}: `;
       if (!o.ready) { fail(line + 'did not open: ' + o.err); R.saves.push({ name, ready: false }); continue; }
       const s1 = await settle(900), t1 = s1.time; const s2 = await ff(90), bad = await ev(() => window.__iv.sane()), ins = await ev(() => window.__iv.inside());
+      const s3 = await ff(600, false, 0);   // ten more seconds: a hero put somewhere he cannot stand falls, is hurt by the pit rule, or dies
+      if (s3.y < -40 || s3.deaths > 0 || s2.y < -40) bad.push(`hero not on a floor after loading (y ${s2.y} -> ${s3.y}, falls ${s3.deaths}, hp ${s2.hp} -> ${s3.hp})`);
       const good2 = s2.ready && !s2.err && s2.hp > 0 && s2.hp <= s2.hpMax && s2.hpMax > 0 && s2.time > t1 && !bad.length && !ins && errs.length === e0 && Object.keys(AREAS).includes(s2.area);
       line += `${s2.area} (${s2.x},${s2.y},${s2.z}) hp ${s2.hp}/${s2.hpMax}, rules run ${s2.time > t1}, objective "${s2.obj}", new page errors ${errs.length - e0}${bad.length ? ', BAD ' + bad.join(',') : ''}${ins ? ', INSIDE A SOLID ' + ins : ''}`;
       R.saves.push({ name, area: s2.area, x: s2.x, z: s2.z, hp: s2.hp, hpMax: s2.hpMax, bad, ins, errs: errs.slice(e0, e0 + 3) });
