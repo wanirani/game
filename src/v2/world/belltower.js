@@ -65,7 +65,7 @@ export function belltower(era = 'now', flags = {}) {
     // the bell chamber: the big bell in its oak frame against the back arches, the rope, braziers, the keeper's corner
     { t: 'prop', mesh: 'bell', x: 360, z: ZT + 300, y: TOP, h: 300, solid: 98, solidZ: 50, solidH: 240 },
     { t: 'deco', mesh: 'rope', x: 268, y: TOP + 34, z: ZT + 232, len: 262, r: 3.6 },                                                                       // the bell rope: from the top beam down to hand height, in front of the frame (Elise stands at it)
-    { t: 'prop', mesh: 'brazier', x: 70, z: ZT + 330, y: TOP, h: 112, solid: 22, solidZ: 22, light: { r: 420, i: 1.9, y: 90, c: [1, 0.55, 0.22] } }, { t: 'prop', mesh: 'brazier', x: 650, z: ZT + 330, y: TOP, h: 112, solid: 22, solidZ: 22, light: { r: 420, i: 1.9, y: 90, c: [1, 0.55, 0.22] } },
+    { t: 'prop', mesh: 'brazier', x: 70, z: ZT + 330, y: TOP, h: 112, solid: 42, solidZ: 34, solidH: 300, light: { r: 420, i: 1.9, y: 90, c: [1, 0.55, 0.22] } }, { t: 'prop', mesh: 'brazier', x: 650, z: ZT + 330, y: TOP, h: 112, solid: 42, solidZ: 34, solidH: 300, light: { r: 420, i: 1.9, y: 90, c: [1, 0.55, 0.22] } },
     { t: 'deco', mesh: 'candles', x: 600, y: TOP, z: ZT + 60, n: 5, light: { r: 200, i: 1.0, y: 20 } },
     { t: 'deco', mesh: 'beam', x: 0, y: TOP + 300, z: ZT + 300, len: W, r: 13 }, { t: 'deco', mesh: 'beam', x: 268, y: TOP + 296, z: ZT + 226, len: 80, r: 7, dz: true });   // the top beam and the short arm the rope runs over
   anchors.push({ id: 'brazier_l', kind: 'fire', x: 70, y: TOP + 96, z: ZT + 324, size: 0.5, light: true }, { id: 'brazier_r', kind: 'fire', x: 650, y: TOP + 96, z: ZT + 324, size: 0.5, light: true },

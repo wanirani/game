@@ -66,18 +66,20 @@ try {
           if (!sc.xing && sc.ready && !sc._go && (tLive || now - t0 > 400)) { tEnd = now; break; }
         }
         // the old veil kept thinning after the hero was free: wait it out so the next crossing starts clean
-        let w = 0; while (w++ < 240 && ((sc.fadeA ?? 0) > 0.01 || sc.cx?.on)) await raf();
+        let w = 0; while (w++ < 240 && ((sc.fadeA ?? 0) > 0.01 || sc.cx?.on || performance.now() - tEnd < 900)) await raf();
         const F = cm.frames.filter((t) => t >= tGone && t <= tLive); let gap = 0; for (let k = 1; k < F.length; k++) gap = Math.max(gap, F[k] - F[k - 1]);
         if (F.length) { gap = Math.max(gap, F[0] - tGone, tLive - F[F.length - 1]); } else gap = tLive - tGone;
         const all = cm.frames.filter((t) => t >= t0 && t <= tEnd); let gapAll = 0; for (let k = 1; k < all.length; k++) gapAll = Math.max(gapAll, all[k] - all[k - 1]);
         const LT = cm.long.filter(([s, d]) => s + d >= t0 && s <= tEnd), ltLoad = cm.long.filter(([s, d]) => s + d >= tGone && s <= tLive);
         const log = sc.cx ? { ...sc.cx.log } : null;
+        const fpsIn = (a, b) => (b > a ? +(cm.frames.filter((t) => t >= a && t <= b).length / ((b - a) / 1000)).toFixed(1) : 0);
+        const fps = log ? { ring: fpsIn(log.begin, log.freeze), load: fpsIn(log.freeze, log.loaded), hold: fpsIn(log.loaded, log.reveal), reveal: fpsIn(log.reveal, log.land), after: fpsIn(log.land, log.land + 800) } : { veilUp: fpsIn(t0, tGone), load: fpsIn(tGone, tLive), veilDown: fpsIn(tLive, tLive + 800) };
         return { ok: true, from, to: v.area, total: tEnd - t0, toGone: tGone - t0, load: tLive - tGone, frames: F.length, fps: F.length / Math.max(0.001, (tLive - tGone) / 1000), gap, gapAll, long: LT.length ? Math.max(...LT.map((q) => q[1])) : 0, longLoad: ltLoad.length ? Math.max(...ltLoad.map((q) => q[1])) : 0, longN: LT.length,
-          loadMs: v.stats.loadMs, heap: Math.round((performance.memory?.usedJSHeapSize ?? 0) / 1024), cxBytes: sc.cx?.bytes ?? 0,
+          fpsBy: fps, loadMs: v.stats.loadMs, heap: Math.round((performance.memory?.usedJSHeapSize ?? 0) / 1024), cxBytes: sc.cx?.bytes ?? 0,
           phases: log ? { answer: Math.round(log.answer - log.begin), toll: Math.round(log.toll - log.begin), freeze: Math.round(log.freeze - log.begin), loaded: Math.round(log.loaded - log.begin), reveal: Math.round(log.reveal - log.begin), land: Math.round(log.land - log.begin), passFrames: log.frames, passGap: Math.round(log.gap), yields: log.yields, steps: Array.from(sc.cx.prof ?? []).map((t, i, A) => (i && t ? Math.round(t - (A.slice(0, i).reverse().find((q) => q > 0) ?? t)) : 0)).join(' ') } : null };
       }, YEARS);
       r.area = id; r.i = i; rows.push(r);
-      console.log(`    #${i + 1} ${r.from} -> ${r.to ?? '?'}: total ${(r.total / 1000).toFixed(2)} s, load ${Math.round(r.load)} ms (engine ${r.loadMs} ms), frames ${r.frames} (${r.fps?.toFixed(0)}/s), longest gap ${Math.round(r.gap)} ms, longest task ${Math.round(r.longLoad)} ms${r.phases ? ' | ' + JSON.stringify(r.phases) : ''}`);
+      console.log(`    #${i + 1} ${r.from} -> ${r.to ?? '?'}: total ${(r.total / 1000).toFixed(2)} s, load ${Math.round(r.load)} ms (engine ${r.loadMs} ms), frames ${r.frames} (${r.fps?.toFixed(0)}/s), longest gap ${Math.round(r.gap)} ms, longest task ${Math.round(r.longLoad)} ms${r.phases ? ' | ' + JSON.stringify(r.phases) : ''} | fps ${JSON.stringify(r.fpsBy)}`);
       await page.waitForTimeout(500);
     }
   }

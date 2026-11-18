@@ -20,7 +20,7 @@ export function ossuary(era = 'now', flags = {}) {
   const add = (chunk, ...parts) => P.push(...inChunk(chunk, parts.flat()));
   const stone = !!flags.wedge_stone, woodW = !!flags.wedge_wood && !stone, WARM = [1, 0.66, 0.3], COLD = [0.55, 0.78, 1];
   // ───────────── floors (same in both nights) ─────────────
-  const FL = (z, d, strips = [], mat = 'cellar') => ({ t: 'floor', x: X0, z, w: X1 - X0, d, mat: 'stone', thick: 520, kit: { mat, cell: 44, rag: 26, strips } });   // thick 520 (WORLD-LOOK): the camera at the door looked under a 220-deep front
+  const FL = (z, d, strips = [], mat = 'cellar') => ({ t: 'floor', x: X0, z, w: X1 - X0, d, mat: 'stone', ...(z <= 0 ? { thick: 520 } : {}), kit: { mat, cell: 44, rag: 26, strips } });   // the first room's front is 520 deep (WORLD-LOOK): the camera at the door looked under a 220-deep front
   add('c1', FL(0, 400, [{ x0: 380, x1: 620, mat: 'flags' }]), FL(400, 600, [{ x0: 280, x1: 720, mat: 'slabs' }]), { t: 'blocker', x: 0, z: -60, w: 1200, d: 60, y: -300, h: 1500 });
   add('c2', FL(1000, 200, [{ x0: 380, x1: 620, mat: 'flags' }]), FL(1400, 100, [{ x0: 380, x1: 620, mat: 'flags' }]),
     { t: 'floor', x: X0, z: 1200, w: X1 - X0, d: 200, y: -240, walk: false, mat: 'stone', kit: { mat: 'slabs', cell: 60 } },   // the bottom of the gap (drawn only: a fall is the pit rule - 8 damage and back to the last safe ground)

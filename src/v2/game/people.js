@@ -22,6 +22,7 @@ export const LINES = {
 const PORTRAITS = { alberto: 1, edmund: 1, elise: 1, hadwin: 1, hadwin1: 1, lotte: 1, marta: 1, rook: 1, sera: 1 };
 const wrapPi = (a) => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
 
+const SIDE = [48, 0, -48, 0, 0, -48, 48, -40, -48, -40, 96, 0, -96, 0, 0, -96];   // WORLD-LOOK: where a person steps to when the hero stands on her place (x, z offsets, nearest first)
 export class People {
   constructor() {
     this.list = []; this.spots = []; this.target = null; this.talking = null; this.calm = true; this.tickN = 0;
@@ -43,7 +44,7 @@ export class People {
       let box = null; for (let i = 0; i < W.boxes.length; i++) if (W.boxes[i].actor === d.id) box = W.boxes[i];
       this.list.push({
         def: d, id: d.id, a3, x: d.x, y: Number.isFinite(gy) ? gy : d.y ?? 0, z: d.z, hx: a3.dx, hz: a3.dz, pose, clip, r: d.r ?? 16, solid: d.solid !== false, box,
-        on: true, vis: false, turns: !!TURNS[pose], name: d.name ?? NAMES[d.id] ?? NAMES[d.model] ?? '', label: d.label ?? '말을 건다', talkT: 0, acc: 0,
+        on: true, fresh: true, vis: false, turns: !!TURNS[pose], name: d.name ?? NAMES[d.id] ?? NAMES[d.model] ?? '', label: d.label ?? '말을 건다', talkT: 0, acc: 0,
         portrait: PORTRAITS[d.model] ? d.model : null,
       });
     }
@@ -61,6 +62,23 @@ export class People {
    * Once a rule tick: who is here (flags), who looks at the hero, which one prompt is offered.
    * flag(name) -> bool (story flags; the scene has built-in ones until the story is plugged in), hidden = Map actor id -> 'hide' | 'show' (story overrides of this area).
    */
+  /**
+   * WORLD-LOOK: where a person stands when shown. Her own place (the area's x, z) - unless the hero stands there (the woman freed from her house
+   * appeared on the spot where he pulled her door): then the nearest free place beside it. Her collision box goes with her.
+   */
+  _stand(sc, p, hero) {
+    const R = p.r + 14 + 6, B = sc.W?.boxes ?? [], L = this.list;
+    const clash = (x, z) => Math.abs(hero.x - x) < R && Math.abs(hero.z - z) < R;
+    const free = (x, z) => {
+      if (clash(x, z) || !sc._spotOk({ x, z, y: p.y })) return false;
+      for (let i = 0; i < B.length; i++) { const b = B[i]; if (b !== p.box && b.solid && !b.walk && x + p.r > b.x0 && x - p.r < b.x1 && z + p.r > b.z0 && z - p.r < b.z1 && p.y + 60 > b.y0 && p.y + 6 < b.y1) return false; }
+      for (let i = 0; i < L.length; i++) { const q = L[i]; if (q !== p && q.on && Math.abs(q.x - x) < q.r + p.r + 4 && Math.abs(q.z - z) < q.r + p.r + 4) return false; }
+      return true;
+    };
+    p.x = p.def.x; p.z = p.def.z;
+    if (clash(p.x, p.z)) for (let i = 0; i < SIDE.length; i += 2) { const x = p.def.x + SIDE[i], z = p.def.z + SIDE[i + 1]; if (free(x, z)) { p.x = x; p.z = z; break; } }
+    if (p.box) { p.box.x0 = p.x - p.r; p.box.x1 = p.x + p.r; p.box.z0 = p.z - p.r; p.box.z1 = p.z + p.r; }
+  }
   tick(sc, dt, hero, enemies, flag, hidden, busy) {
     const L = this.list, tickN = ++this.tickN;
     // is a fight going on near the hero?
@@ -70,7 +88,7 @@ export class People {
     let best = null, bd = 1e9, bestSpot = null;
     for (let i = 0; i < L.length; i++) {
       const p = L[i], d = p.def, ov = hidden ? hidden.get(p.id) : undefined, on = ov ? ov === 'show' : (!d.when || flag(d.when));   // a story override (hide / show) wins over `when`
-      if (on !== p.on) { p.on = on; }
+      if (on !== p.on || p.fresh) { const came = on && (!p.on || p.fresh); p.on = on; p.fresh = false; if (came) this._stand(sc, p, hero); }   // WORLD-LOOK: where a person stands when shown
       if (p.box) p.box.solid = on && p.solid;
       if (!on) continue;
       const dx = hero.x - p.x, dz = hero.z - p.z, dist = Math.sqrt(dx * dx + dz * dz), a3 = p.a3;

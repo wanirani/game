@@ -59,21 +59,31 @@ export function eshville(era, flags = {}) {
     house({ x: 3300, z: 900, w: 360, h: 300, style: 'timber', seed: 31, lit: now ? 0.3 : 0.7, faces: 'FR', sconce: true, kit: { jettySides: 'F' } }),
     house({ x: 4140, z: 900, w: 340, h: 320, style: 'stone', seed: 32, lit: now ? 0.25 : 0.6, faces: 'FLR', banner: past ? BLACK : RED }));
   // ───────────── church + bell tower ─────────────
-  const NAVE = (x, seed) => ({ t: 'wall', x, z: 1650, w: 300, d: 120, y: 84, h: 400, mat: 'facade', kit: { style: 'stone', cell: 56, faces: 'F', plinth: 34, courses: [330], quoins: true, tint: [0.98, 0.98, 1.04],
-    windows: [{ u: 90, y: 100, w: 54, h: 200, arch: 'point', lit: seed ? 0.8 : 0.6, rows: 4 }, { u: 210, y: 100, w: 54, h: 200, arch: 'point', lit: seed ? 0.55 : 0.85, rows: 4 }],
-    buttress: [{ u: 16, h: 300, d: 24, w: 34 }, { u: 150, h: 300, d: 24, w: 34 }, { u: 284, h: 300, d: 24, w: 34 }], hang: past ? [{ type: 'banner', u: 150, y: 150, len: 120, w: 40, c: BLACK }] : [] } });
+  // WORLD-LOOK: the church front is the same building in both nights, and more than its tint differs. 1697: whole and in use - every window lit, cloth swags
+  // over the windows and the door, feast banners, wall lanterns, candles along the foot of the naves. Tonight: the nave windows dark and boarded up, cracks
+  // running up the tower and the naves, ivy over the buttresses; only the tower window and the door lanterns still burn (Alberto keeps the door).
+  const CREAM = [0.95, 0.88, 0.7], WINE = [0.5, 0.1, 0.12];
+  const NAVE = (x, seed) => ({ t: 'wall', x, z: 1650, w: 300, d: 120, y: 84, h: 400, mat: 'facade', kit: { style: 'stone', cell: 56, faces: 'F', plinth: 34, courses: [330], quoins: true, tint: past ? [1.0, 0.99, 1.02] : [0.9, 0.9, 0.97],
+    windows: [{ u: 90, y: 100, w: 54, h: 200, arch: 'point', lit: past ? 0.95 : 0, rows: 4 }, { u: 210, y: 100, w: 54, h: 200, arch: 'point', lit: past ? 0.9 : seed ? 0.22 : 0, rows: 4 }],
+    buttress: [{ u: 16, h: 300, d: 24, w: 34 }, { u: 150, h: 300, d: 24, w: 34 }, { u: 284, h: 300, d: 24, w: 34 }],
+    hang: past ? [{ type: 'drape', u: 90, y: 326, w: 104, sag: 20, c: CREAM }, { type: 'drape', u: 210, y: 326, w: 104, sag: 20, c: seed ? WINE : CREAM }, { type: 'sconce', u: 50, y: 66 }, { type: 'sconce', u: 250, y: 66 }]
+      : seed ? [{ type: 'boards', u: 90, y: 112, w: 54, h: 150, n: 4 }, { type: 'crack', u: 236, y: 300, len: 96, seed: 7 }, { type: 'ivy', u: 262, y: 0, w: 120, h: 300, seed: 4 }, { type: 'ivy', u: 120, y: 0, w: 70, h: 120, seed: 9 }]
+        : [{ type: 'boards', u: 90, y: 112, w: 54, h: 150, n: 4 }, { type: 'boards', u: 210, y: 112, w: 54, h: 150, n: 3 }, { type: 'crack', u: 60, y: 300, len: 96, seed: 3, lean: 0.06 }, { type: 'ivy', u: 36, y: 0, w: 110, h: 280, seed: 2 }, { type: 'ivy', u: 186, y: 0, w: 80, h: 150, seed: 6 }] } });
   add('east', NAVE(3460, 0), NAVE(4040, 1),
     { t: 'roof', x: 3460, z: 1650, w: 300, d: 120, y: 484, h: 96, kit: { gable: 'ashlar' } }, { t: 'roof', x: 4040, z: 1650, w: 300, d: 120, y: 484, h: 96, kit: { gable: 'ashlar' } },
     { t: 'wall', x: 3760, z: 1622, w: 280, d: 148, y: 84, h: 700, mat: 'facade', kit: { style: 'stone', cell: 60, faces: 'FLR', plinth: 40, courses: [250, 470, 640], quoins: true, battlement: true, tint: [1.0, 1.0, 1.05],
       doors: [{ u: 140, w: 96, h: 160, arch: 'point' }],
-      windows: [{ u: 140, y: 290, w: 64, h: 130, arch: 'point', lit: 0.75, rows: 3, cols: 2 }, { u: 86, y: 510, w: 46, h: 100, arch: 'point', rows: 1, cols: 1 }, { u: 194, y: 510, w: 46, h: 100, arch: 'point', rows: 1, cols: 1 }],
-      buttress: [{ u: 18, h: 420, d: 26, w: 36 }, { u: 262, h: 420, d: 26, w: 36 }], hang: [{ type: 'sconce', u: 62, y: 150 }, { type: 'sconce', u: 218, y: 150 }] } },
+      windows: [{ u: 140, y: 290, w: 64, h: 130, arch: 'point', lit: past ? 0.95 : 0.55, rows: 3, cols: 2 }, { u: 86, y: 510, w: 46, h: 100, arch: 'point', rows: 1, cols: 1, lit: past ? 0.6 : 0 }, { u: 194, y: 510, w: 46, h: 100, arch: 'point', rows: 1, cols: 1, lit: past ? 0.6 : 0 }],
+      buttress: [{ u: 18, h: 420, d: 26, w: 36 }, { u: 262, h: 420, d: 26, w: 36 }],
+      hang: [{ type: 'sconce', u: 62, y: 150 }, { type: 'sconce', u: 218, y: 150 },
+        ...(past ? [{ type: 'drape', u: 140, y: 262, w: 190, sag: 30, c: CREAM }, { type: 'banner', u: 66, y: 196, len: 150, w: 34, c: WINE }, { type: 'banner', u: 214, y: 196, len: 150, w: 34, c: WINE }]
+          : [{ type: 'crack', u: 206, y: 176, len: 330, seed: 5, lean: -0.05 }, { type: 'crack', u: 70, y: 430, len: 190, seed: 8, lean: 0.08 }, { type: 'ivy', u: 238, y: 0, w: 70, h: 230, seed: 11 }, { type: 'ivy', u: 46, y: 0, w: 60, h: 130, seed: 13 }])] } },
     { t: 'roof', x: 3760, z: 1622, w: 280, d: 148, y: 784, h: 170, kit: { gable: 'ashlar' } });
 
   // ───────────── props that stand in both eras (same spots) ─────────────
   add('street', LAMP(1760, 266), LAMP(2500, 266), LAMP(3130, 266), LAMP(2300, 8, { solid: 0 }),
     { t: 'fence', kind: 'iron', x0: 1860, z0: 5, x1: 2180, z1: 5, h: 44 }, { t: 'fence', kind: 'iron', x0: 2700, z0: 5, x1: 3020, z1: 5, h: 44 },
-    { t: 'prop', mesh: 'brazier', h: 112, solid: 30, solidZ: 24, x: 2700, z: 262, light: { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } });   // (BREAK: the barrel that stood at 2420, 264 is a breakable now - see breakables below)
+    { t: 'prop', mesh: 'brazier', h: 112, solid: 42, solidZ: 34, solidH: 300, x: 2700, z: 262, light: { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } });   // WORLD-LOOK: the collision is as wide as the bowl (88) and taller than a jump - the hero stood inside the bowl beside a 30-wide box, or on it   // (BREAK: the barrel that stood at 2420, 264 is a breakable now - see breakables below)
   add('out', LAMP(now ? 620 : 640, 262, now ? { mesh: 'lanternpost', lit: false, light: null, h: 190 } : {}), LAMP(1380, 8, { solid: 0 }),
     { t: 'fence', kind: 'wood', x0: 80, z0: 6, x1: 420, z1: 6, h: 50 }, { t: 'fence', kind: 'wood', x0: 860, z0: 6, x1: 1240, z1: 6, h: 50 },
     { t: 'prop', mesh: 'deadtree', x: 20, z: 258, h: 300, solid: 56, solidZ: 40, solidH: 240 });   // the footprint covers the root flare (162 x 149 at this size): the hero walked 65 units over the roots
@@ -84,7 +94,9 @@ export function eshville(era, flags = {}) {
   add('east', { t: 'prop', mesh: 'bell', x: 4200, z: 1450, y: 84, h: 190, solid: 62, solidZ: 30 },
     { t: 'prop', mesh: 'angel', x: 3540, z: 1330, y: 84, h: 200 }, { t: 'prop', mesh: 'angel', x: 4260, z: 1330, y: 84, h: 200, flip: true },
     { t: 'prop', mesh: 'gargoyle', x: 3700, z: 1610, y: 84, h: 150 }, { t: 'prop', mesh: 'gargoyle', x: 4100, z: 1610, y: 84, h: 150, flip: true },
-    { t: 'prop', mesh: 'brazier', h: 112, solid: 22, solidZ: 22, x: 3810, y: 84, z: 1590, light: { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } }, { t: 'prop', mesh: 'brazier', h: 112, solid: 22, solidZ: 22, x: 3990, y: 84, z: 1590, light: { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } },
+    // WORLD-LOOK: the two braziers by the tower door stand in front of the tower's buttresses now (x 3778 / 4022, a little smaller: h 96, bowl 76 wide) with a collision as wide
+    // as the bowl and taller than a jump: at (3810 / 3990, 1590) their bowls reached over the door's edge, their 22-wide boxes let the hero stand inside the bowl, and Alberto and Elise stood in the rim
+    { t: 'prop', mesh: 'brazier', h: 96, solid: 36, solidZ: 32, solidH: 300, x: 3778, y: 84, z: 1558, light: { r: 380, i: 1.8, y: 78, c: [1, 0.55, 0.22] } }, { t: 'prop', mesh: 'brazier', h: 96, solid: 36, solidZ: 32, solidH: 300, x: 4022, y: 84, z: 1558, light: { r: 380, i: 1.8, y: 78, c: [1, 0.55, 0.22] } },
     { t: 'deco', mesh: 'candles', x: 3620, y: 84, z: 1600, light: { r: 200, i: 1.1, y: 20 } },
     LAMP(3700, 960), LAMP(4100, 960),
     { t: 'deco', mesh: 'deadtree', x: 3420, z: 1130, h: 280 }, { t: 'deco', mesh: 'deadtree', x: 4330, z: 1160, h: 250, flip: true },
@@ -114,7 +126,8 @@ export function eshville(era, flags = {}) {
     add('street', { t: 'prop', mesh: 'stall', x: 2240, z: 258, h: 130, w: 140, solid: 72, solidZ: 23 }, { t: 'prop', mesh: 'hay', x: 3060, z: 262, h: 62, solid: 34, solidZ: 16 });   // (BREAK: the sacks at 1960 that read as untextured jars are real clay jars now - breakables below)
     add('east', { t: 'prop', mesh: 'plaguepost', x: 4560, z: 200, h: 220, code: true, solid: 10, solidZ: 10 }, { t: 'prop', mesh: 'stall', x: 3500, z: 836, h: 130, w: 140, solid: 72, solidZ: 23 }, { t: 'prop', mesh: 'stall', x: 4300, z: 836, h: 130, w: 140, solid: 72, solidZ: 23 },
       { t: 'prop', mesh: 'hay', x: 3624, z: 850, h: 62, solid: 34, solidZ: 16 }, { t: 'deco', mesh: 'candles', x: 3900, z: 400, light: { r: 180, i: 1.0, y: 20 } });
-    add('east', { t: 'deco', mesh: 'candles', x: 3760, y: 84, z: 1600, n: 5, light: { r: 200, i: 1.1, y: 20 } }, { t: 'deco', mesh: 'candles', x: 4040, y: 84, z: 1600, n: 5, light: { r: 200, i: 1.1, y: 20 } });
+    add('east', { t: 'deco', mesh: 'candles', x: 3760, y: 84, z: 1600, n: 5, light: { r: 200, i: 1.1, y: 20 } }, { t: 'deco', mesh: 'candles', x: 4040, y: 84, z: 1600, n: 5, light: { r: 200, i: 1.1, y: 20 } },
+      ...[3550, 3670, 4130, 4250].map((x) => ({ t: 'deco', mesh: 'candles', x, y: 84, z: 1616, n: 4, light: { r: 170, i: 0.9, y: 20 } })));   // WORLD-LOOK: under each nave window (1697: the church is in use)
     for (const [x, z] of [[900, 150], [2600, 150], [3900, 600]]) anchors.push({ id: 'mist_' + x, kind: 'mist', x, y: 0, z, size: 2 });
   }
   anchors.push({ id: 'mist_gate', kind: 'mist', x: 4590, y: 0, z: 1150, size: 2 });
@@ -127,7 +140,7 @@ export function eshville(era, flags = {}) {
       ['skeleton_soldier', 1900, 150, 'st_a'], ['skeleton_soldier', 2010, 216, 'st_a'], ['skeleton_mage', 2130, 120, 'st_a'], ['skeleton_mage', 2770, 200, 'st_b'], ['skeleton_soldier', 2850, 110, 'st_b'], ['skeleton_soldier', 2930, 180, 'st_b'],
       ['skeleton_mage', 3780, 640, 'sq'], ['skeleton_mage', 4060, 300, 'sq'], ['skeleton_soldier', 3700, 430, 'sq'], ['skeleton_soldier', 4010, 580, 'sq'], ['skeleton_soldier', 4160, 470, 'sq']]) if (!out) enemies.push({ kind: k, x, z, group: g, yard: g === 'sq' });
     actors.push({ id: 'sera', model: 'sera', x: 4300, z: 770, face: E, talk: 'sera.square.now', pose: 'kneel', when: 'square_clear' }, { id: 'wounded', model: 'villager_m', x: 4350, z: 776, face: W, talk: 'wounded.square', pose: 'sit', when: 'square_clear', solid: false },
-      { id: 'trapped', model: 'villager_f', x: 2270, z: 262, face: S, talk: 'trapped.freed', pose: 'cower', when: 'door_pulled' }, { id: 'marta', model: 'marta', x: 1820, z: 262, face: S, talk: 'marta.inn.now', pose: 'idle', when: 'street_clear' },
+      { id: 'trapped', model: 'villager_f', x: 2344, z: 262, face: S, talk: 'trapped.freed', pose: 'cower', when: 'door_pulled' },   // WORLD-LOOK: beside her door (x 2270), not on the spot where the hero pulls it (people.js also moves a person who would appear inside the hero) { id: 'marta', model: 'marta', x: 1820, z: 262, face: S, talk: 'marta.inn.now', pose: 'idle', when: 'street_clear' },
       { id: 'alberto', model: 'alberto', x: 3840, z: 1540, face: S, talk: 'alberto.church', pose: 'talk' },
       { id: 'hadwin', model: 'hadwin', x: 2640, z: 262, face: S, talk: 'hadwin.smithy.now', pose: 'idle' });   // the smith at his door (DATA_FORMAT 12: the grandson's drawer)
     if (!flags.promise || flags.elise_home) actors.push({ id: 'elise', model: 'elise', x: 3950, z: 1572, face: S, talk: 'elise.promise', pose: 'idle' });   // gone after the promise (she is up the tower, then lost in 1697), back when she is home
