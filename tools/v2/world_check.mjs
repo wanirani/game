@@ -94,7 +94,7 @@ const walk = (page, wps, start = null) => page.evaluate(([wps, start]) => {
   const ground = (x, z) => { let gy = -1e9; for (const b of sc.W.boxes) if (b.walk && x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1 && b.y1 > gy) gy = b.y1; return gy; };
   if (start !== 'stay') { sc.sim.reset(); sc.areaState.in = {}; if (start) { const h = sc.sim.hero, gy = ground(start[0], start[1]); h.x = start[0]; h.z = start[1]; h.y = gy + 1; h.vx = h.vz = h.vy = 0; h.onGround = false; h.safe = { x: h.x, z: h.z, y: gy }; } }
   sc.cam.snap = true;
-  const hp0 = sc.sim.hero.hp; let i = 0, stuck = 0, lx = 0, lz = 0, jump = 0, t = 0, fell = false, jumps = 0, minY = 1e9, lock = null;
+  const hp0 = sc.sim.hero.hp, trace = []; let i = 0, stuck = 0, lx = 0, lz = 0, jump = 0, t = 0, fell = false, jumps = 0, minY = 1e9, lock = null;
   for (; t < 9000 && i < wps.length; t++) {
     const h = sc.sim.hero, dx = wps[i][0] - h.x, dz = wps[i][1] - h.z, dd = Math.hypot(dx, dz);
     if (dd < (i === wps.length - 1 ? 5 : 22)) { i++; continue; }
@@ -111,16 +111,18 @@ const walk = (page, wps, start = null) => page.evaluate(([wps, start]) => {
     if (jump > 0 && lock === 'z') { act.left = act.right = false; } else if (jump > 0 && lock === 'x') { act.up = act.down = false; }
     if (t % 6 === 0) { const m = Math.hypot(h.x - lx, h.z - lz); lx = h.x; lz = h.z; stuck = m < 2 ? stuck + 1 : 0; if (stuck >= 4) { jump = 22; stuck = 0; lock = null; } if (stuck === 3 && h.onGround && ground(wps[i][0], wps[i][1]) > ground(h.x, h.z) + 60) { fell = true; break; } }
     if (jump > 0) { jump--; act.jump = jump > 6; }
+    if (t % 4 === 0) { trace.push([t, Math.round(h.x), Math.round(h.z), Math.round(h.y), jump, lock, wps[i][0], wps[i][1]].join(' ')); if (trace.length > 400) trace.shift(); }
     g.tick(1 / 60);
   }
   act = {}; input.setAutoSource(null); for (let k = 0; k < 4; k++) g.tick(1 / 60);
-  const h = sc.sim.hero; return { arrived: i >= wps.length, fell, ticks: t, jumps, x: Math.round(h.x), z: Math.round(h.z), y: Math.round(h.y), minY: Math.round(minY), hp: h.hp, hurt: hp0 - h.hp, hits: v.areaInfo.hits.slice(), fired: v.areaInfo.fired.slice() };
+  const h = sc.sim.hero; return { arrived: i >= wps.length, fell, ticks: t, jumps, x: Math.round(h.x), z: Math.round(h.z), y: Math.round(h.y), minY: Math.round(minY), hp: h.hp, hurt: hp0 - h.hp, hits: v.areaInfo.hits.slice(), fired: v.areaInfo.fired.slice(), trace };
 }, [wps, start]);
 /** walk from A to B, planning again from where the hero stands whenever he fell off the route (a missed jump) */
 async function go(page, W, from, to) {
   let wps = plan(W, from[0], from[1], to[0], to[1]), start = from, ticks = 0, jumps = 0, plans = 0, w = null;
   for (; plans < 7 && wps; plans++) {
     w = await walk(page, wps, start); ticks += w.ticks; jumps += w.jumps;
+    if (args.trace && !w.arrived) console.log(`      [trace] plan ${plans}: ${w.fell ? 'fell' : 'stopped'} at (${w.x}, ${w.z}, y ${w.y}) — t x z y jump lock -> waypoint\n        ` + w.trace.slice(-Number(args.trace)).join('\n        '));
     if (w.arrived) break;
     start = 'stay'; wps = plan(W, w.x, w.z, to[0], to[1]);
   }
