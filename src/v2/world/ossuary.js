@@ -150,6 +150,14 @@ export function ossuary(era = 'now', flags = {}) {
     },
     exits: [{ id: 'to_graveyard', ...rect(520, 0, 160, 40), to: 'graveyard_' + era, spawn: 'from_ossuary', label: '안개의 묘지', locked: null }],
     actors, enemies, triggers, interact, anchors,
+    // BREAK (AREA_FORMAT 15): offering urns by the mourners, at the altar and beside the sarcophagi, a jar and a pot against the walls (never on the fight floor of the last hall)
+    breakables: [
+      { kind: 'urn', x: 248, z: 356 }, { kind: 'urn', x: 952, z: 356 },
+      { kind: 'urn', x: 468, z: 2012 }, { kind: 'urn', x: 732, z: 2012 },
+      { kind: 'jar', x: 140, z: 2330 }, { kind: 'urn', x: 178, z: 2356 },
+      { kind: 'urn', x: 262, z: 2560 }, { kind: 'urn', x: 262, z: 2690 }, { kind: 'urn', x: 938, z: 2690 },
+      { kind: 'pot', x: 1052, z: 2290 },
+    ],
     knells: KP.map(([x, z], i) => ({ post: i + 1, x, z, y: 0, h: 120, hung: !!(now ? flags.knells_hung : flags['knell_' + (i + 1)]) })),   // the knell bells the whip strikes in the fight (PLAY / ENGINE)
     entry: stone || (past && woodW) ? [] : ['wedge_far'],   // nothing in the gap yet (or only rot tonight): what lies beyond is reached by crossing at a bell further in, or not at all in this state
   };

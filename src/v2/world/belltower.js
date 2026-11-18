@@ -51,21 +51,20 @@ export function belltower(era = 'now', flags = {}) {
   add('high', { t: 'wall', x: -90, z: ZT + 400, w: W + 180, d: 90, y: 0, h: TOP + 330, mat: 'facade', kit: { style: 'stone', cell: 70, faces: 'F', plinth: 0, quoins: false, battlement: true, courses: [TOP + 150],
     windows: [200, 450, 700].map((u) => ({ u, y: TOP + 44, w: 96, h: 190, arch: 'point', rows: 5, cols: 1, lit: 0 })) } });
   // ── dressing ──
-  add('low', { t: 'prop', mesh: 'goods', x: 150, z: 196, h: 88, solid: 60, solidZ: 36, solidH: 66 }, { t: 'prop', mesh: 'barrel', x: 60, z: 60, h: 78, solid: 24 },
+  add('low', { t: 'prop', mesh: 'goods', x: 150, z: 196, h: 88, solid: 60, solidZ: 36, solidH: 66 },   // (BREAK: the loose barrels and crates of the tower are breakables now - see breakables below)
     { t: 'prop', mesh: 'stairs', x: 250, z: 176, h: 90, rot: 0.5, solid: 40, solidZ: 36, solidH: 70 },                                                                                      // a spare wooden flight leaning by the wall
     { t: 'deco', mesh: 'candles', x: 330, z: 214, n: 4, light: { r: 200, i: 1.0, y: 20 } },
-    { t: 'prop', mesh: 'crate', x: 660, z: zOf(1) + 96, y: LV, h: 58, solid: 28, solidZ: 18 }, { t: 'deco', mesh: 'candles', x: 120, y: LV, z: zOf(1) + 30, n: 3, light: { r: 180, i: 0.9, y: 20 } },
+    { t: 'deco', mesh: 'candles', x: 120, y: LV, z: zOf(1) + 30, n: 3, light: { r: 180, i: 0.9, y: 20 } },
     // the bats' roost: a beam along the face under floor 3 (against the wall: it hides nothing) with the bats hanging from it
-    { t: 'deco', mesh: 'beam', x: 0, y: 3 * LV - 34, z: zOf(3) - 9, len: 540, r: 8 }, { t: 'deco', mesh: 'roost', x: 250, y: 3 * LV - 42, z: zOf(3) - 12, n: 7 }, { t: 'deco', mesh: 'roost', x: 440, y: 3 * LV - 42, z: zOf(3) - 12, n: 5 },
-    { t: 'prop', mesh: 'barrel', x: 80, z: zOf(2) + 110, y: 2 * LV, h: 78, solid: 24 });
+    { t: 'deco', mesh: 'beam', x: 0, y: 3 * LV - 34, z: zOf(3) - 9, len: 540, r: 8 }, { t: 'deco', mesh: 'roost', x: 250, y: 3 * LV - 42, z: zOf(3) - 12, n: 7 }, { t: 'deco', mesh: 'roost', x: 440, y: 3 * LV - 42, z: zOf(3) - 12, n: 5 });
   add('high', { t: 'deco', mesh: 'beam', x: 0, y: TOP - 34, z: ZT - 9, len: 520, r: 8 }, { t: 'deco', mesh: 'roost', x: 300, y: TOP - 42, z: ZT - 12, n: 6 },
-    { t: 'prop', mesh: 'crate', x: 650, z: zOf(3) + 110, y: 3 * LV, h: 58, solid: 28, solidZ: 18 }, { t: 'deco', mesh: 'candles', x: 600, y: 3 * LV, z: zOf(3) + 30, n: 3, light: { r: 180, i: 0.9, y: 20 } },
+    { t: 'deco', mesh: 'candles', x: 600, y: 3 * LV, z: zOf(3) + 30, n: 3, light: { r: 180, i: 0.9, y: 20 } },
     { t: 'prop', mesh: 'goods', x: 120, z: zOf(4) + 116, y: 4 * LV, h: 80, solid: 52, solidZ: 30, solidH: 60, flip: true },
     // the bell chamber: the big bell in its oak frame against the back arches, the rope, braziers, the keeper's corner
     { t: 'prop', mesh: 'bell', x: 360, z: ZT + 300, y: TOP, h: 300, solid: 98, solidZ: 50, solidH: 240 },
     { t: 'deco', mesh: 'rope', x: 268, y: TOP + 34, z: ZT + 232, len: 262, r: 3.6 },                                                                       // the bell rope: from the top beam down to hand height, in front of the frame (Elise stands at it)
     { t: 'prop', mesh: 'brazier', x: 70, z: ZT + 330, y: TOP, h: 112, solid: 22, solidZ: 22, light: { r: 420, i: 1.9, y: 90, c: [1, 0.55, 0.22] } }, { t: 'prop', mesh: 'brazier', x: 650, z: ZT + 330, y: TOP, h: 112, solid: 22, solidZ: 22, light: { r: 420, i: 1.9, y: 90, c: [1, 0.55, 0.22] } },
-    { t: 'prop', mesh: 'crate', x: 80, z: ZT + 60, y: TOP, h: 58, solid: 28, solidZ: 18 }, { t: 'deco', mesh: 'candles', x: 600, y: TOP, z: ZT + 60, n: 5, light: { r: 200, i: 1.0, y: 20 } },
+    { t: 'deco', mesh: 'candles', x: 600, y: TOP, z: ZT + 60, n: 5, light: { r: 200, i: 1.0, y: 20 } },
     { t: 'deco', mesh: 'beam', x: 0, y: TOP + 300, z: ZT + 300, len: W, r: 13 }, { t: 'deco', mesh: 'beam', x: 268, y: TOP + 296, z: ZT + 226, len: 80, r: 7, dz: true });   // the top beam and the short arm the rope runs over
   anchors.push({ id: 'brazier_l', kind: 'fire', x: 70, y: TOP + 96, z: ZT + 324, size: 0.5, light: true }, { id: 'brazier_r', kind: 'fire', x: 650, y: TOP + 96, z: ZT + 324, size: 0.5, light: true },
     { id: 'dust_shaft', kind: 'mist', x: 360, y: 2 * LV, z: zOf(2) + 60, size: 1.2 }, { id: 'red_moon', kind: 'glow_red', x: 360, y: TOP + 700, z: ZT + 1500, size: 4 });
@@ -97,5 +96,11 @@ export function belltower(era = 'now', flags = {}) {
     triggers: fell ? [] : [{ id: 'tower_roost', ...rect(0, zOf(2), W, 50), event: 'tower.roost', wake: 'tower_roost' }, { id: 'tower_top', ...rect(0, ZT + 20, W, 60), event: 'tower.top', wake: 'tower_bats' }],
     interact: [],
     anchors,
+    // BREAK (AREA_FORMAT 15): the store room at the foot (a barrel, a jar, a pot), one crate or barrel on a landing of each floor, the keeper's corner by the bell
+    breakables: [
+      { kind: 'barrel', x: 60, z: 60 }, { kind: 'jar', x: 106, z: 50 }, { kind: 'pot', x: 58, z: 112 },
+      { kind: 'crate', x: 660, z: zOf(1) + 96, rot: 0.1 }, { kind: 'barrel', x: 80, z: zOf(2) + 110 }, { kind: 'crate', x: 650, z: zOf(3) + 110, rot: -0.15 },
+      { kind: 'crate', x: 80, z: ZT + 120, rot: 0.2 }, { kind: 'urn', x: 112, z: ZT + 372 },
+    ],
   };
 }

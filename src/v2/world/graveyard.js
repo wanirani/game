@@ -115,5 +115,13 @@ export function graveyard(era = 'now', flags = {}) {
       ...(!now && !hung ? [{ id: 'road_bell', kind: 'bell', x: 500, z: 1915, y: TY, r: 70, label: '길종 걸기', event: 'bell.hang' }] : now && !hung ? [] : [{ id: 'road_bell', kind: 'bell', x: 500, z: 1915, y: TY, r: 70, label: '종 치기', event: 'bell.ring' }]),
     ],
     anchors,
+    // BREAK (AREA_FORMAT 15): offering urns beside the stones, a few jars by the coffins, a barrel and a crate at the keeper's hut, two urns on the road's edge
+    breakables: [
+      { kind: 'urn', x: 512, z: 590 }, { kind: 'urn', x: 688, z: 820 },
+      { kind: 'barrel', x: 740, z: 1048, rot: 0.2 }, { kind: 'crate', x: 980, z: 1102, rot: -0.1 }, { kind: 'jar', x: 916, z: 1100 },
+      { kind: 'urn', x: 224, z: 1096 }, { kind: 'urn', x: 341, z: 1104 }, { kind: 'urn', x: 742, z: 1229 }, { kind: 'urn', x: 228, z: 1362 }, { kind: 'urn', x: 870, z: 1364 }, { kind: 'urn', x: 982, z: 1624 }, { kind: 'urn', x: 256, z: 1765 },
+      { kind: 'pot', x: 378, z: 1296 }, { kind: 'jar', x: 850, z: 1722 }, { kind: 'pot', x: 1040, z: 1740 },
+      { kind: 'urn', x: 876, z: 1884 }, { kind: 'urn', x: 322, z: 1890 },
+    ],
   };
 }
