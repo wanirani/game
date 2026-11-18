@@ -508,7 +508,7 @@ Design pictures `gpt_image_2_5` (1k, medium), models `tripo_h3_1_image_to_3d`; e
 | `stall2` | 519 | **takes over the code-built `stall`** (Eshville 1697, three) |
 | `wreck2` | 420 | **takes over the code-built `wreck`** (Eshville tonight, three) |
 
-`GEN_ALIAS` in `props3.js` (`stall → stall2`, `wreck → wreck2`, `niche → skullwall`): a part that says `mesh: 'stall'` gets the generated model when the pack has it, the code-built one otherwise or with `code: true`. The pack: **30 props, `props.bin` 386,880 B, atlas 2048 × 2048 (`props_atlas.webp` 501,240 B, `texels` 3.3e6)** — it was 18 props on 1024 × 2048. `node tools/v2/world_props_bake.mjs` reproduces both files byte for byte from `tools/v2/world_src/` (checked on the final tree, §18.7).
+`GEN_ALIAS` in `props3.js` (`stall → stall2`, `wreck → wreck2`, `niche → skullwall`): a part that says `mesh: 'stall'` gets the generated model when the pack has it, the code-built one otherwise or with `code: true`. The pack: **30 props, `props.bin` 386,880 B, atlas 2048 × 2048 (`props_atlas.webp` 501,240 B, `texels` 3.3e6)** — it was 18 props on 2048 × 1024 (217,508 B + 263,656 B). `node tools/v2/world_props_bake.mjs` reproduces both files byte for byte from `tools/v2/world_src/` (checked on the final tree, §18.7).
 
 ### 18.2 Code-built props (`src/v2/env/props3.js`) — shapes that must be exact or change with the story
 
@@ -572,4 +572,4 @@ Not loaded by any area: `k_bone.webp` (the graveyard's niches are the generated 
 - `belltower_past` is not built. The tower's wooden stairs and plank floors share one plank texture (the fold); the stone stair has no banister.
 - Ossuary: beyond the side walls the camera sees black (no rock ceiling or cave wall above the wall tops); the gap has no visible far wall below the floor line; tonight's rooms left of the hall centre repeat the same coffin-stack model (two sizes, mirrored).
 - The whip ring is tested only as data (reach grid, `stage.hookPoints`): scene v2c has no whip, the bot is set on the landing spot.
-- Texture memory is +10.7 MB per area against §17 (the atlas doubled to 2048 × 2048): slightly over "about +10 MB".
+- Texture memory is +10.7 MB per area against §17 (the atlas doubled from 2048 × 1024 to 2048 × 2048, mipmapped): slightly over "about +10 MB". A 2048 × 1536 atlas would need the models baked at about 0.87 of today's texel density.
