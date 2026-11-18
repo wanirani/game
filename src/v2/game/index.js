@@ -19,7 +19,7 @@ import { Sim, TUNE, KINDS, driveHero, driveActor } from '../play/index.js';
 import { driveHero as PLACEHOLDER_DRIVE_HERO } from '../char3d/hero3d.js';
 import { createFx, PRESET_IDS, hurtFlash, dissolveK } from '../fx/index.js';
 import { createWhip, WhipRenderer, whipFx, driveWhip } from '../whip/index.js';
-import { RB } from '../fx/engine.js';
+import { RB, Q } from '../fx/engine.js';
 import { feel, FLAG } from '../feel/index.js';
 import { bindFxSound } from '../feel/fxbridge.js';
 import { GLR, SpriteBatch } from './glr.js';
@@ -44,6 +44,7 @@ const TEX_SRC = {
 };
 const HIDE_BTNS = ['sub', 'skill1', 'skill2', 'ult', 'swap', 'mount', 'guard', 'lock', 'auto', 'maptog', 'bag'];   // v1 pad buttons with no meaning here (pause = leave, fullscreen stay)
 const DASH_TRAIL = RB({ mode: 1, life: 0.24, width: 58, col: [0.45, 0.8, 2.2, 0.5] });
+const WARN_COL = [1.5, 0.3, 0.14, 0.5], WARN_BREAK = [1.2, 0.24, 1.4, 0.5], WARN_AIR = [1.5, 0.6, 1.7, 0.7];   // attack warnings on the ground: red = can be guarded, violet = cannot; the ring in the air of a scream
 const CRACK_K = { L: 0.7, M: 1, H: 1.3, F: 1.6 };   // strength of the lash's crack by the move's strength (docs/v2/WHIP.md 7-3)
 const SUN = [0.56, 0.56, 0.62], AMB = [0.76, 0.77, 0.84], RIM_HERO = [0.6, 0.7, 1, 0.5], RIM_WARN = [1.7, 0.35, 0.2, 0.85], RIM_ENEMY = [0.55, 0.65, 0.9, 0.35], RIM_PEOPLE = [0.6, 0.66, 0.85, 0.3], RIM_NONE = [0, 0, 0, 0];
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -92,13 +93,14 @@ export default class V2Game extends Scene {
     this.c3 = { draws: 0, tris: 0, drawn: 0, culled: 0 }; this.envStat = { chunks: 0, tris: 0, draws: 0 };
     this.layer = { hud: null, hctx: null, timer: 0, shown: true, cw: 0, ch: 0, iw: 0, ih: 0, force: true };
     this.fired = new Set();
+    this._bossS = { id: 0, name: '', hp: 0, hpMax: 1, sub: '', stagger: 0, phase: 1, kneel: false, fled: false, staggered: false }; this._modelJobs = new Set();
     const sc = this;
     this.state = {
       viewW: g.viewW, viewH: g.viewH, safe: g.safe ?? { l: 0, t: 0, r: 0, b: 0 }, scale: g.scale, time: 0, hero: null, heroHpMax: TUNE.heroHp ?? 100,
       area: { id: '', name: '', era: 'now' }, night: 'now', section: { id: '', label: '' }, enemies: [], enemiesLeft: 0, yardLeft: 0, numbers: this.numbers, numberN: 0,
       project: (x, y, z, out) => sc.project(x, y, z, out), done: false, doneT: 0, loading: true, message: '', message2: '', debug: this.perf.debug,
       debugLine: () => sc._debugLine(), stats: () => sc.stats(), dialog: null,
-      candles: { lit: 5, max: 5 }, resonance: { value: 0, cells: 3 }, left: 0, prompts: this.people.none,
+      candles: { lit: 5, max: 5 }, resonance: { value: 0, cells: 3 }, left: 0, prompts: this.people.none, boss: null,
       pad: { skill: { mode: 'hook', cd: 0, disabled: true }, bell: { mode: 'short', charge: 0, cd: 0, disabled: true }, roll: { cd: 0, disabled: false }, attack: { disabled: false }, jump: { disabled: false }, lock: { disabled: false } },
     };
     try { this.glr = new GLR({ forceGL1: /[?&]v2gl=1(&|$)/.test(globalThis.location?.search ?? ''), antialias: this.res.aa }); } catch (e) { this.glError = String(e?.message ?? e); console.warn('[v2g]', this.glError); }
@@ -178,6 +180,13 @@ export default class V2Game extends Scene {
     this.emit('bell.long', { boss, spot: spot ? spot.id : null, twin: this.area.twin ?? null });
     if (this.story || boss || !spot || !this.area.twin || this._go) return;   // the story decides when it is plugged in (api.bellCross)
     this._go = { to: this.area.twin, spawn: null, keep: true, night: true }; this.fadeTo = 1; this.locked = true;
+  }
+  /** the boss fight without a story plugged in: say what happened in one line (the story lane replaces these with its own events) */
+  _bossNote(name, e, b) {
+    if (name === 'kneel') { if (b === 'down') this._toast('여왕이 무릎을 꿇었다 — 곁에서 종을 길게 울려라', 'info'); }
+    else if (name === 'bossFlee') this._toast('여왕이 그 밤으로 달아났다', 'warn');
+    else if (name === 'bossReturn') this._toast('여왕이 돌아왔다', 'warn');
+    else if (name === 'bossDown') { if (b) this._toast('조종이 울렸다 — 여왕이 잠들었다', 'info'); this.emit('boss.down', { boss: e, knelled: !!b }); }
   }
   /** story flag: the story's own answer when plugged in, otherwise the built-in ones ("<section or group>_clear", set by events) */
   flag(name) {
@@ -399,6 +408,7 @@ export default class V2Game extends Scene {
     for (const d of E.decals) { this._tintAt(W, d.x, (d.y ?? 0) + 4, d.z, 1, 1.8, this.tint); d._c = [this.tint[0], this.tint[1], this.tint[2]]; }
     // 3) characters: the hero + only the kinds this area spawns
     const kinds = [...new Set(W.spawns.map((s) => s.kind))].filter((k) => KINDS[k]);
+    for (const k of [...kinds]) for (const at of KINDS[k].attacks ?? []) if (at.summon && KINDS[at.summon.kind] && !kinds.includes(at.summon.kind)) kinds.push(at.summon.kind);   // what a boss calls in (the queen's grave ghosts) is loaded with the area
     const missing = [...new Set(W.spawns.map((s) => s.kind))].filter((k) => !KINDS[k]);
     if (missing.length) console.warn('[v2g] spawn kinds without a KINDS entry are not drawn:', missing.join(', '));
     if (!this.cr) { this.cr = new CharRenderer(glr.gl, { maxJoints: 32 }); this.cast = new Cast(this.cr); this._restored = glr.restored; }
@@ -504,7 +514,13 @@ export default class V2Game extends Scene {
   _newActor(kind) { const K = KINDS[kind]; if (!K) return null; const a = this.cast.actor(K.model, K.weapon, { height: K.height, grip: K.grip, scale: K.scale }); if (a) { a.kind = kind; a.e = null; } return a; }
   _take(e) {
     const K = KINDS[e.kind]; if (!K) return null;
-    const p = this._poolOf(K.model); let a = p.length ? p.pop() : this._newActor(e.kind); if (!a) return null;
+    const p = this._poolOf(K.model); let a = p.length ? p.pop() : this._newActor(e.kind);
+    if (!a) {   // a kind the area did not list (added by the rules or the story while playing): load its model once, the enemy is drawn when it has arrived
+      const cast = this.cast, J = this._modelJobs;
+      if (cast && !cast.assets.has(K.model) && !J.has(K.model)) { J.add(K.model); cast.load([{ model: K.model }], K.weapon ? [K.weapon] : [], { texCap: this.perf.texCap }).catch((er) => console.warn('[v2g] model failed to load:', K.model, String(er?.message ?? er))).then(() => { J.delete(K.model); if (!cast.assets.has(K.model)) J.add(K.model); }); }
+      return null;
+    }
+    if (!a.warnH) a.warnH = new Int32Array(8); a.warnN = 0; a.warnAtk = null;
     a.kind = e.kind; a.e = e; a.hitAge = 9; a.dieAge = -1; a.dieHold = 0; a.accDt = 0; a.vis = true; a.kbT = 0; a.wasDead = false; a.seed = Math.random() * 7;
     const fx = e.dirX ?? e.facing ?? -1, fz = e.dirZ ?? 0, l = hyp(fx, fz) || 1; a.dx = fx / l; a.dz = fz / l;
     a.anim.play(a.asset.clips.idle ? 'idle' : Object.keys(a.asset.clips)[0], { fade: 0, restart: true }); a.anim.update(0);
@@ -513,7 +529,32 @@ export default class V2Game extends Scene {
   }
   /** an enemy starts to die: its death clip plays for the kind's own time (e.dying), the last DIE_T seconds dissolve to ash */
   _dying(a, e) { a.dieAge = 0; a.dieHold = Math.max(0, (e.dying > 0 ? e.dying : DIE_T) - DIE_T); }
-  _free(a) { if (a.e && a.e._a3 === a) a.e._a3 = null; a.e = null; this._poolOf(a.asset.id).push(a); }
+  _free(a) { if (a.warnN && this.fx) { for (let i = 0; i < a.warnN; i++) this.fx.quads.kill(a.warnH[i]); } a.warnN = 0; a.warnAtk = null; if (a.e && a.e._a3 === a) a.e._a3 = null; a.e = null; this._poolOf(a.asset.id).push(a); }
+  /**
+   * Where a wound-up attack will land, for the shapes the plain disc cannot show (PLAY_API 7): a fan (atk.arc), lanes of shots
+   * (atk.mark.box x fan), circles away from the body (atk.mark.radius + ring: where the called ghosts rise), the ring in the air
+   * of a scream (atk.air). Laid once when the wind-up starts as ground marks of the effects engine that fill up until the strike;
+   * taken away when the wind-up ends or is broken. A song (atk.pulse) keeps its circle for as long as it is sung.
+   */
+  _warn(a, e, fx) {
+    const A = e.atk, on = !!A && !e.dead && e.state !== 'dead' && (e.tele > 0 || (!!A.pulse && e.state === 'attack' && a.warnAtk === A));
+    if (!on) { if (a.warnN) { for (let i = 0; i < a.warnN; i++) fx.quads.kill(a.warnH[i]); a.warnN = 0; } a.warnAtk = null; return; }
+    if (a.warnAtk === A) return;
+    a.warnAtk = A;
+    const M = A.mark ?? null; if (!A.arc && !M && !A.air) return;
+    const Qd = fx.quads, H = a.warnH, gy = e._gy ?? e.gy ?? e.y, dx = e.dirX ?? a.dx, dz = e.dirZ ?? a.dz, yaw = Math.atan2(dz, dx);
+    const T = Math.max(0.15, (A.windup ?? 0.8) * (1 - clamp(e.tele, 0, 1))), life = T + 0.14 + (A.pulse ? A.strike ?? 0 : 0), col = A.guard === 'break' ? WARN_BREAK : WARN_COL;
+    let n = 0;
+    if (A.arc) H[n++] = Qd.ground(Q.SECTOR, e.x, gy, e.z, A.arc.r, A.arc.r, yaw, life, col, 1, 1, T, 0, 1, 0, A.arc.deg * 0.5 * Math.PI / 180, 0.06);
+    if (M && M.box) { const fan = M.fan ?? 1, sp = (M.spread ?? 0) * Math.PI / 180, f0 = M.box.f0, f1 = M.box.f1;
+      for (let i = 0; i < fan && n < 6; i++) { const an = yaw + (i - (fan - 1) / 2) * sp, cx = Math.cos(an), cz = Math.sin(an), m = (f0 + f1) * 0.5; H[n++] = Qd.ground(Q.LINE, e.x + cx * m, gy, e.z + cz * m, (f1 - f0) * 0.5, Math.max(14, M.box.side * 1.5), an, life, col, 1, 1, T, 0, 1, 0, 0, 0.06); } }
+    if (M && M.radius) {
+      if (M.ring) { const k = A.summon ? A.summon.n : 2, t1 = (e.t ?? 0) + T; for (let i = 0; i < k && n < 7; i++) { const an = t1 * 1.7 + i * 6.2832 / k; H[n++] = Qd.ground(Q.CIRCLE, e.x + Math.cos(an) * M.ring, gy, e.z + Math.sin(an) * M.ring * 0.8, M.radius.r, M.radius.r, 0, life, col, 1, 1, T, 0, 1, 0, 0, 0.08); } }
+      else H[n++] = Qd.ground(Q.CIRCLE, e.x + dx * (M.radius.fwd ?? 0), gy, e.z + dz * (M.radius.fwd ?? 0), M.radius.r, M.radius.r, 0, life, col, 1, 1, T, 0, 1, 0, 0, 0.08);
+    }
+    if (A.air && n < 8) { const r = A.radius?.r ?? M?.radius?.r ?? 200; H[n++] = Qd.ground(Q.RING, e.x, gy + 78, e.z, r, r, 0, life, WARN_AIR, 0.12, 1, 0, 0, 1, 0, 0, 0.06); }
+    a.warnN = n;
+  }
   /** baked light of the stage at a point -> out[0..2] (same formula as world.js lightAt without a normal; allocation-free) */
   _tintAt(W, x, y, z, k0, max, out) {
     const L = W.light; let r = L.ambient[0] + L.moon[0] * 0.55, g = L.ambient[1] + L.moon[1] * 0.55, b = L.ambient[2] + L.moon[2] * 0.55;
@@ -620,6 +661,7 @@ export default class V2Game extends Scene {
         if (name === 'bell') sc.emit('bell.echo', { r: c });                       // short ring (echo)
         else if (name === 'ringLong') sc._ringLong(b ?? null);                     // long ring: b = the kneeling boss to be sent off, or null = the scene decides (crossing)
         else if (name === 'deny') sc._deny(b, c);                                  // a tool could not be used: say why
+        else if (!sc.story && (name === 'kneel' || name === 'bossFlee' || name === 'bossReturn' || name === 'bossDown')) sc._bossNote(name, a, b);
         if (sc.story) sc.emit('play.' + name, [a, b, c, d]);
       },
       sound(name, pos) { snd(name, pos ?? null); },
@@ -756,6 +798,7 @@ export default class V2Game extends Scene {
     for (let i = L.length - 1; i >= 0; i--) {
       const a = L[i], e = a.e;
       a.hitAge += fdt;
+      if (fx && (e.tele > 0 || a.warnAtk)) this._warn(a, e, fx);
       if (a.dieAge < 0 && (e.state === 'dead' || e.dead)) { this._dying(a, e); if (e.dead) a.dieAge = a.dieHold + DIE_T; }
       if (a.dieAge >= 0) {
         const before = a.dieAge; a.dieAge += fdt;
@@ -831,6 +874,10 @@ export default class V2Game extends Scene {
     // what the cut-glass HUD shows (docs/v2/UI_API.md 1): candles from health, enemies of the fight at hand, which pad buttons work
     { const hp = sim.hero.hp > 0 ? sim.hero.hp : 0, c = s.candles; c.lit = hp / (s.heroHpMax || 1) * c.max; }
     s.left = this.area.test ? 0 : awake;
+    { const bs = sim.bossState ? sim.bossState() : null, B = this._bossS;   // the boss bar: name, health, stagger and act straight from the rules (PLAY_API 7)
+      if (bs) { B.id = bs.id; B.name = bs.name; B.hp = bs.hp; B.hpMax = bs.hpMax; B.stagger = bs.stagger; B.phase = bs.phase; B.kneel = bs.kneel; B.fled = bs.fled; B.staggered = bs.staggered;
+        B.sub = bs.kneel ? '종을 길게 울려라' : bs.fled ? '그 밤으로 달아났다' : bs.staggered ? '비틀거린다' : bs.sub || (bs.phase === 2 ? '둘째 막' : ''); s.boss = B; }
+      else s.boss = null; }
     { const hh = sim.hero, pd = s.pad, sk = pd.skill, bl = pd.bell;
       sk.disabled = !this._caps.skill; bl.disabled = !this._caps.bell;
       sk.mode = hh.skillMode === 'call' ? 'call' : 'hook'; sk.cd = hh.callCdMax > 0 ? clamp(hh.callCd / hh.callCdMax, 0, 1) : 0;
@@ -1078,7 +1125,7 @@ export default class V2Game extends Scene {
       // where the attack will land. Newer rules give e.tele (0..1) and the attack's reach; the prototype rules give a wind-up time
       let k = 0, reach = 46, rad = 0, wide = 30;
       const A = e.atk;
-      if (e.tele !== undefined) { if (e.tele > 0 && e.state !== 'dead' && A && !A.shot) { k = clamp(e.tele, 0.02, 1); if (A.box) { reach = (A.box.f0 + A.box.f1) * 0.5; rad = Math.max((A.box.f1 - A.box.f0) * 0.5, A.box.side); } else if (A.radius) { reach = A.radius.fwd; rad = A.radius.r; } } }
+      if (e.tele !== undefined) { if (e.tele > 0 && e.state !== 'dead' && A && !A.shot && !(this.fx && (A.arc || A.mark))) { k = clamp(e.tele, 0.02, 1); if (A.box) { reach = (A.box.f0 + A.box.f1) * 0.5; rad = Math.max((A.box.f1 - A.box.f0) * 0.5, A.box.side); } else if (A.radius) { reach = A.radius.fwd; rad = A.radius.r; } } }
       else { const T = TUNE[e.kind]; if (e.state === 'attack' && T && T.windup && e.stateT < T.windup + 0.08) { k = clamp(e.stateT / T.windup, 0.02, 1); wide = T.reachZ ?? 30; } }
       if (k > 0) {
         const cx = ex + ac.dx * reach, cz = ez + ac.dz * reach, rr = rad > 0 ? rad * (0.7 + 0.5 * k) : 34 + 26 * k;
