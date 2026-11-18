@@ -289,7 +289,7 @@ Object.assign(PROPS, {
  * 모델의 그림에 든 불빛(숯 · 등불 유리)은 꼭짓점 깃발로 밝게 남고, 여기서는 불길 · 잉걸불 · 빛 번짐을 더한다.
  */
 export const BAKED_EXTRA = {
-  brazier(G, x, y, z, o, s) { if (o.lit !== false) flames(G, x, y + 96 * s, z - 6 * s, 34 * s, 40 * s, 3, 5); },
+  brazier(G, x, y, z, o, s) { if (o.lit !== false) flames(G, x, y + 96 * s, z - 6 * s, 30 * s, 40 * s, 2, 5); },
 };
 /** 구운 소품이 손으로 짠 것과 다른 인자를 받을 때 맞춰 준다 (o, 묶음의 정의) → o */
 export const BAKED_ARGS = {};
