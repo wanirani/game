@@ -271,7 +271,7 @@ for (const dev of DEVICES) {
     R.cycle = await page.evaluate(async () => {
       const g = window.__game, wait = (ms) => new Promise((r) => setTimeout(r, ms)), out = []; g._pageHidden = false;
       const gc = () => { if (window.gc) { window.gc(); window.gc(); } };
-      const snap = () => { const s = window.__v2.stats; return { tex: s.gl.texBytes, buf: s.gl.bufBytes, canvases: s.canvases, dom: document.querySelectorAll('canvas').length }; };
+      const snap = () => { const s = window.__v2.stats; return { tex: s.gl.texBytes, buf: s.gl.bufBytes, canvases: s.canvases, dom: document.querySelectorAll('canvas').length, pad: document.querySelectorAll('#v2pad canvas').length }; };   // pad = the canvases of the new touch layer (they leave with the scene)
       const first = snap(); gc(); const heap0 = performance.memory.usedJSHeapSize;
       for (let i = 0; i < 3; i++) {
         g.go('title', {}, { fade: false }); await wait(500);
@@ -284,8 +284,8 @@ for (const dev of DEVICES) {
       gc(); const heap1 = performance.memory.usedJSHeapSize;
       return { first, rounds: out, heapMB: [+(heap0 / 1048576).toFixed(1), +(heap1 / 1048576).toFixed(1)] };
     });
-    { const C = R.cycle, f = C.first, good = C.rounds.every((q) => q.away.top === 'title' && q.away.v2 === 'undefined' && !q.away.gl && q.away.dom === f.dom - 1 && q.back.tex === f.tex && q.back.buf === f.buf && q.back.canvases === f.canvases && q.back.dom === f.dom) && C.heapMB[1] - C.heapMB[0] < 12;
-      if (good) ok(`left and re-entered three times: DOM canvases ${f.dom} -> ${f.dom - 1} -> ${f.dom} each time, same GPU bytes (textures ${(f.tex / 1048576).toFixed(1)} MB, buffers ${(f.buf / 1024) | 0} KB), JS heap ${C.heapMB[0]} -> ${C.heapMB[1]} MB`);
+    { const C = R.cycle, f = C.first, good = C.rounds.every((q) => q.away.top === 'title' && q.away.v2 === 'undefined' && !q.away.gl && q.away.dom === f.dom - 1 - (f.pad ?? 0) && q.back.tex === f.tex && q.back.buf === f.buf && q.back.canvases === f.canvases && q.back.dom === f.dom) && C.heapMB[1] - C.heapMB[0] < 12;
+      if (good) ok(`left and re-entered three times: DOM canvases ${f.dom} -> ${f.dom - 1 - (f.pad ?? 0)} -> ${f.dom} each time (the WebGL canvas and the ${f.pad ?? 0} canvases of the touch layer leave with the scene), same GPU bytes (textures ${(f.tex / 1048576).toFixed(1)} MB, buffers ${(f.buf / 1024) | 0} KB), JS heap ${C.heapMB[0]} -> ${C.heapMB[1]} MB`);
       else fail(`${dev}: leak after re-entering ${JSON.stringify(C)}`); }
     }
     if (want('v1')) {
