@@ -39,12 +39,10 @@ export const AREA_FOLDS = {
   },
   "belltower_now": {
     "low": {
-      "wood": "planks",
       "dirt": "flags",
       "flag": "flags"
     },
     "high": {
-      "wood": "planks",
       "dirt": "flags",
       "flag": "flags"
     }

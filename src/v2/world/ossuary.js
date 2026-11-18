@@ -43,15 +43,17 @@ export function ossuary(era = 'now', flags = {}) {
   // the door of the last hall: two tall pillars with fire bowls and low walls to the sides (a wall across would hide the hall)
   add('c3', { t: 'wall', x: X0, z: 2970, w: 320, d: 30, h: 56, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'F', coping: true, rail: 'F', piers: 106 } },
     { t: 'wall', x: 780, z: 2970, w: 320, d: 30, h: 56, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'F', coping: true, rail: 'F', piers: 106 } },
-    { t: 'pillar', x: 450, z: 2985, r: 26, h: 96 }, { t: 'pillar', x: 750, z: 2985, r: 26, h: 96 });   // waist-high fire posts (WORLD-3: 96, was 118 - seven cells of the fight floor behind each were hidden; nothing on or at the fight floor is taller than 104)
+    { t: 'pillar', x: 450, z: 2985, r: 26, h: 80 }, { t: 'pillar', x: 750, z: 2985, r: 26, h: 80 },
+    // WORLD-3: the bays between the corner statues and the outer knell posts are filled by a low bank (78 wide, they shut the hero in with the boss at the mouth)
+    { t: 'wall', x: 158, z: 3846, w: 78, d: 54, h: 44, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'FLR', coping: true } }, { t: 'wall', x: 964, z: 3846, w: 78, d: 54, h: 44, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'FLR', coping: true } });   // waist-high fire posts (WORLD-3: 80, was 118 - seven cells of the fight floor behind each were hidden; nothing on or at the fight floor is taller than 104)
   // ───────────── things that stand in both nights at the same spots ─────────────
   const mute = past && woodW;   // WORLD-3 (AREA_FORMAT 14): the crate bridges the gap in 1697, but wood rots - the bells beyond it stay unlit and locked until the statue stands there
-  const bell = (chunk, id, x, z, h = 160, ox = 26, far = false) => {
+  const bell = (chunk, id, x, z, h = 136, ox = 26, far = false) => {   // WORLD-3: 136 high (was 160: the strip hidden behind a post reached 140 into the next room)
     const off = far && mute;
     add(chunk, { t: 'prop', mesh: 'roadbell', x, z, h, solid: 14, solidZ: 12, solidH: h * 0.85, state: off ? 'empty' : now ? 'rusty' : 'hung', old: now || off, light: off ? null : { r: 190, i: 0.8, y: h * 0.7, c: now ? [0.6, 0.86, 0.9] : [1, 0.82, 0.5] } });
     interact.push({ id, kind: 'bell', x: x + ox, z: z - 28, r: 76, label: '종 치기', event: off ? 'bell.locked' : 'bell.ring', ...(off ? { locked: 'wedge_stone' } : {}) });
   };
-  bell('c1', 'bell_entry', 880, 300); bell('c1', 'bell_coffins', 760, 950); bell('c3', 'bell_riddle', 890, 2570, 160, 26, true); bell('c4', 'bell_arena', 1082, 3250, 104, -30, true);   // three room bells and the arena bell. WORLD-3: the arena bell stands against the right wall of the last hall (it stood in the middle of the fight floor at (600, 3350)): a low standing bell between two piers, nothing behind it
+  bell('c1', 'bell_entry', 880, 300); bell('c1', 'bell_coffins', 760, 950); bell('c3', 'bell_riddle', 890, 2570, 136, 26, true); bell('c4', 'bell_arena', 1082, 3250, 104, -30, true);   // three room bells and the arena bell. WORLD-3: the arena bell stands against the right wall of the last hall (it stood in the middle of the fight floor at (600, 3350)): a low standing bell between two piers, nothing behind it
   add('c1', { t: 'prop', mesh: 'mourner', x: 190, z: 350, h: 200, solid: 28, solidZ: 24 }, { t: 'prop', mesh: 'mourner', x: 1010, z: 350, h: 200, solid: 28, solidZ: 24, flip: true },
     { t: 'deco', mesh: 'skullwall', x: X0 + 8, z: 520, h: 170, rot: -Math.PI / 2 }, { t: 'deco', mesh: 'skullwall', x: X1 - 8, z: 780, h: 170, rot: Math.PI / 2 },   // skull niches set into the side walls above the banks (at the banks' far end they hid the hero in the room behind: 260 cells)
     { t: 'deco', mesh: 'cryptdoor', x: X0 + 4, z: 190, h: 200, rot: -Math.PI / 2 }, { t: 'deco', mesh: 'cryptdoor', x: X1 - 4, z: 150, h: 200, rot: Math.PI / 2 });
@@ -70,7 +72,7 @@ export function ossuary(era = 'now', flags = {}) {
     { t: 'deco', mesh: 'rope', x, y: 236 + 112, z: 3744, len: 190, chain: true });
   // ───────────── the gap: a stone statue or a wooden crate pushed in, in 1697 (GDD 2.3: stone stays, wood rots) ─────────────
   if (stone) add('c2', { t: 'prop', mesh: 'stoneblock', x: 600, z: 1300, y: -200, w: 170, d: 180, h: 200, solid: 85, solidZ: 90, solidH: 200, walk: true },     // the statue's plinth fills the gap: step across beside the figure
-    { t: 'prop', mesh: 'mourner', x: 600, z: 1300, y: 0, h: 170, solid: 24, solidZ: 20 });
+    { t: 'prop', mesh: 'mourner', x: 600, z: 1300, y: 0, h: 136, solid: 24, solidZ: 20 });
   else add('c2', { t: 'prop', mesh: 'stoneblock', x: 290, z: 1130, w: 84, d: 70, h: 30, solid: 42, solidZ: 35, solidH: 130 }, { t: 'deco', mesh: 'mourner', x: 290, y: 30, z: 1130, h: 170 });
   if (past) add('c2', woodW ? { t: 'prop', mesh: 'crate', x: 600, z: 1300, y: -200, w: 170, d: 180, h: 200, solid: 85, solidZ: 90, solidH: 200, walk: true, tint: [1.2, 0.98, 0.78] }
     : { t: 'prop', mesh: 'crate', x: 910, z: 1130, w: 120, d: 100, h: 104, solid: 60, solidZ: 50, solidH: 104 });
@@ -96,12 +98,12 @@ export function ossuary(era = 'now', flags = {}) {
     // the corridor is walled up: three stacks across the walk + stacks on both banks
     for (const [x, z, h, f] of [[450, 712, 110, 0], [600, 716, 110, 1], [750, 712, 110, 0], [525, 668, 96, 1], [675, 668, 96, 0]]) add('c1', { t: 'deco', mesh: 'coffinstack', x, z, h, flip: !!f });   // two low rows (WORLD-3: three stacks 150-170 high hid 73-80 cells right behind the wall, where a crossing at the corridor bell lands)
     add('c1', { t: 'blocker', x: 380, z: 640, w: 440, d: 130, h: 800 });
-    for (const [x, z, f] of [[230, 520, 0], [260, 720, 1], [220, 900, 0], [960, 500, 1], [950, 680, 0], [970, 860, 1]]) add('c1', { t: 'deco', mesh: 'coffinstack', x, y: 62, z, h: 140, flip: !!f });
+    for (const [x, z, f, hh] of [[230, 520, 0], [260, 700, 1], [215, 850, 0, 100], [960, 500, 1], [950, 670, 0], [970, 830, 1, 100]]) add('c1', { t: 'deco', mesh: 'coffinstack', x, y: 62, z, h: hh ?? 140, flip: !!f });   // the last one on each bank is low and stands back from the bank's end (it hid the hero in the next room)
     BP('c1', 170, 240); BP('c1', 1020, 250, 50); BP('c1', 440, 590, 44); BP('c1', 760, 830, 44, { deco: true });
     ST('c2', 190, 1050, { h: 130 }); ST('c2', 1010, 1460, { h: 130, flip: true }); BP('c2', 170, 1460); BP('c2', 1030, 1040, 50);
     ST('c2', 190, 1640); ST('c2', 1010, 1960, { flip: true }); ST('c2', 200, 2040, { h: 130 }); BP('c2', 1020, 1600, 60); BP('c2', 180, 1820, 52); BP('c2', 860, 2060, 46); BP('c2', 370, 2070, 40, { deco: true });
     ST('c3', 190, 2180); ST('c3', 1010, 2420, { flip: true }); BP('c3', 1020, 2180, 54); BP('c3', 180, 2420, 48); BP('c3', 1010, 2860, 56); ST('c3', 200, 2880, { h: 130 });
-    ST('c4', 162, 3035, { h: 96 }); ST('c4', 1038, 3035, { h: 96, flip: true }); BP('c4', 158, 3450, 52); BP('c4', 1042, 3450, 52);   // flush in the corners and against the walls (no slot behind, nothing over 104) BP('c4', 420, 3860, 44, { deco: true }); BP('c4', 790, 3860, 44, { deco: true });
+    ST('c4', 162, 3035, { h: 96 }); ST('c4', 1038, 3035, { h: 96, flip: true }); BP('c4', 146, 3450, 40); BP('c4', 1054, 3450, 40);   // flush in the corners and against the walls (no slot behind, nothing over 104) BP('c4', 420, 3860, 44, { deco: true }); BP('c4', 790, 3860, 44, { deco: true });
     add('c1', { t: 'light', x: 600, y: 150, z: 200, r: 420, c: COLD, i: 0.7 }, { t: 'light', x: 600, y: 140, z: 860, r: 380, c: COLD, i: 0.6 });
     add('c2', { t: 'light', x: 600, y: 160, z: 1300, r: 460, c: COLD, i: 0.7 }, { t: 'light', x: 600, y: 180, z: 1800, r: 560, c: COLD, i: 0.75 });
     add('c3', { t: 'light', x: 400, y: 150, z: 2640, r: 420, c: COLD, i: 0.7 }, { t: 'deco', mesh: 'candles', x: 340, z: 2900, n: 6, light: { r: 220, i: 1.1, y: 20 } });
@@ -109,8 +111,8 @@ export function ossuary(era = 'now', flags = {}) {
     for (const [x, z, s] of [[600, 500, 2], [600, 1300, 2.4], [600, 1800, 2.4], [600, 2600, 2], [600, 3350, 3]]) anchors.push({ id: 'mist_' + z, kind: 'mist', x, y: 0, z, size: s });
     anchors.push({ id: 'gap_fog', kind: 'fog_bank', x: 600, y: -120, z: 1300, size: 4 });
   }
-  anchors.push({ id: 'door_fire_l', kind: 'fire', x: 450, y: 98, z: 2980, size: 0.5, light: true }, { id: 'door_fire_r', kind: 'fire', x: 750, y: 98, z: 2980, size: 0.5, light: true });
-  add('c3', { t: 'deco', mesh: 'fire', x: 450, y: 96, z: 2978, w: 34, h: 44, n: 3, embers: false, light: { r: 420, i: 1.5, y: 20, c: now ? [0.7, 0.8, 1] : [1, 0.5, 0.2] } }, { t: 'deco', mesh: 'fire', x: 750, y: 96, z: 2978, w: 34, h: 44, n: 3, embers: false, light: { r: 420, i: 1.5, y: 20, c: now ? [0.7, 0.8, 1] : [1, 0.5, 0.2] } });
+  anchors.push({ id: 'door_fire_l', kind: 'fire', x: 450, y: 82, z: 2980, size: 0.5, light: true }, { id: 'door_fire_r', kind: 'fire', x: 750, y: 82, z: 2980, size: 0.5, light: true });
+  add('c3', { t: 'deco', mesh: 'fire', x: 450, y: 80, z: 2978, w: 34, h: 44, n: 3, embers: false, light: { r: 420, i: 1.5, y: 20, c: now ? [0.7, 0.8, 1] : [1, 0.5, 0.2] } }, { t: 'deco', mesh: 'fire', x: 750, y: 80, z: 2978, w: 34, h: 44, n: 3, embers: false, light: { r: 420, i: 1.5, y: 20, c: now ? [0.7, 0.8, 1] : [1, 0.5, 0.2] } });
   // ───────────── people, enemies, hot spots ─────────────
   const N = [0, 1], S = [0, -1];
   if (now) {

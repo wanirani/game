@@ -50,3 +50,25 @@ export function reachGrid(W, sx, sz, R = 14, opt = {}) {
   const path = (x, z, full = false) => { let k = cellOf(x, z); if (k < 0 || !seen[k]) return null; const out = []; for (; k >= 0; k = par[k]) out.push(centre(k)); out.reverse(); const thin = full ? out : out.filter((_, i) => i % 2 === 0 || i === out.length - 1); thin.push([x, z]); return thin; };
   return { reachable, anyIn, near, blocked, path, cells, ground: (x, z) => groundAt(W, x, z) };
 }
+
+/**
+ * WORLD-3: the nearest free, reachable spot for a point of an area in a given state - for a bell crossing (the hero keeps x, z and may land inside a
+ * coffin stack or a bone heap of the other night), a whip landing, a respawn.
+ *   area = a loaded area (await AREAS[id](flags)), W = compileEnv(area.stage) (the scene's own world), (x, z) = where the hero would stand.
+ *   opt.r = clearance to solid things (default 16: hero r 14 + 2), opt.max = how far to look (default 400), opt.grid = a grid from an earlier call (reuse it:
+ *   building one floods the whole area, 5-40 ms).
+ * "Reachable" = flooded from every spawn, entry spawn, whip landing and crossing bell of this state (walk + jump), so the spot is never a sealed pocket.
+ * -> { x, z, y, moved (distance from the asked point, 0 = it was free), grid } | null (nothing free within opt.max)
+ */
+export function nearestFreeSpot(area, W, x, z, opt = {}) {
+  const R = opt.r ?? 16, max = opt.max ?? 400, hooks = area.stage.hookPoints ?? [];
+  const seeds = [...Object.values(area.spawns).map((p) => [p.x, p.z]), ...hooks.filter((h) => h.to).map((h) => h.to), ...area.interact.filter((it) => it.kind === 'bell' && it.event === 'bell.ring').map((it) => [it.x, it.z])];
+  const g = opt.grid ?? reachGrid(W, 0, 0, 14, { noStart: true, seeds, hooks });
+  const free = (px, pz) => g.reachable(px, pz) && !g.blocked(px, pz, R);
+  if (free(x, z)) return { x, z, y: groundAt(W, x, z), moved: 0, grid: g };
+  for (let d = 10; d <= max; d += 10) {
+    const n = Math.max(8, Math.round(d * 0.7));
+    for (let k = 0; k < n; k++) { const t = (k / n) * Math.PI * 2, px = Math.round(x + Math.sin(t) * d), pz = Math.round(z - Math.cos(t) * d); if (free(px, pz)) return { x: px, z: pz, y: groundAt(W, px, pz), moved: Math.round(Math.hypot(px - x, pz - z)), grid: g }; }   // k = 0 looks towards the camera first (lower z): the hero lands in front of the thing, not behind it
+  }
+  return null;
+}

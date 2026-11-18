@@ -11,6 +11,7 @@ import { graveyard } from './graveyard.js';
 import { belltower } from './belltower.js';
 import { ossuary } from './ossuary.js';
 import { reachGrid } from './reach.js';
+export { nearestFreeSpot } from './reach.js';   // WORLD-3: nearestFreeSpot(area, W, x, z) -> { x, z, y, moved } - where a crossing that would land inside something puts the hero (AREA_FORMAT 14)
 import { AREA_FOLDS } from './folds.js';
 
 export const ENEMY_KINDS = ['melee', 'ranged', 'skeleton_soldier', 'skeleton_mage', 'plague_corpse', 'grave_ghost', 'gravekeeper_armor', 'bat', 'banshee_queen'];
