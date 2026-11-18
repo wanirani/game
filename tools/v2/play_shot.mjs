@@ -34,7 +34,7 @@ const SETS = [
   { n: 'charge_big', demo: 'chargeBig', times: range(0.5, 1.9, 0.1), cam: 'close', cols: 8, cw: 240, ch: 230, box: true },
   { n: 'hook_game', demo: 'hook', times: range(0.4, 1.3, 0.0667), cam: 'game', cols: 7, cw: 300, ch: 230, box: true },
   { n: 'call_game', demo: 'call', times: range(0.8, 3.2, 0.2), cam: 'game', cols: 7, cw: 300, ch: 230, box: true },
-  { n: 'echo_game', demo: 'echo', times: range(1.2, 2.6, 0.1), cam: 'game', cols: 8, cw: 300, ch: 230, box: true },
+  { n: 'echo_game', demo: 'echo', times: range(0.6, 2.0, 0.1), cam: 'game', cols: 8, cw: 300, ch: 230, box: true },
   { n: 'knell_game', demo: 'knell', times: range(0.4, 4.4, 0.25), cam: 'game', cols: 9, cw: 280, ch: 230, box: true },
   { n: 'boss_wail', demo: 'bossFar', times: range(0.3, 3.9, 0.15), cam: 'game', cols: 9, cw: 280, ch: 220, box: true, who: true },
   { n: 'boss_sweep', demo: 'bossSweep', times: range(0.7, 3.3, 0.1), cam: 'enemy', cols: 9, cw: 260, ch: 230, box: true, who: true },
@@ -108,8 +108,8 @@ try {
     if (argv.includes('--owner2')) {   // 2차 소유자용 한 장: 돌기 전 · 후, 준비 자세, 새 기술, 보스의 공격과 예고
       const T8 = [0.9, 0.9333, 0.9667, 1.0, 1.0333, 1.0667, 1.1, 1.1333], sec = (t) => (t - 0.9).toFixed(2) + '초';
       const rows = [
-        { title: '① 달리다 반대로 꺾기 — 고치기 전: 몸은 아직 오른쪽을 보는데 발밑(파란 선 = 몸이 보는 쪽)은 벌써 왼쪽으로 밀려간다 (0.1초쯤 옆 · 뒤로 미끄러짐)', items: T8.map((t) => ({ demo: 'turn', t, cam: 'close', box: true, legacy: true, label: '전 · 꺾은 뒤 ' + sec(t) })) },
-        { title: '① 고친 뒤: 멈추고(0.07초) → 제자리에서 돌아서고 → 새 쪽으로 박찬다. 속도는 늘 몸이 보는 쪽으로만 난다 (돌아서는 데 0.21초, 다시 달리기까지 0.22초)', items: T8.map((t) => ({ demo: 'turn', t, cam: 'close', box: true, label: '후 · 꺾은 뒤 ' + sec(t) })) },
+        { title: '① 달리다 반대로 꺾기 — 고치기 전: 꺾자마자 왼쪽으로 밀려가는데(파란 선 = 가는 쪽) 몸은 0.2초에 걸쳐 천천히 돈다 → 그동안 옆 · 뒤로 미끄러져 보였다', items: T8.map((t) => ({ demo: 'turn', t, cam: 'close', box: true, legacy: true, label: '전 · 꺾은 뒤 ' + sec(t) })) },
+        { title: '① 고친 뒤: 멈추고 → 제자리에서 돌아서고 → 새 쪽으로 박찬다. 파란 선(가는 쪽)과 몸이 늘 같은 쪽이다 (돌아서는 데 0.21초, 다시 달리기까지 0.22초)', items: T8.map((t) => ({ demo: 'turn', t, cam: 'close', box: true, label: '후 · 꺾은 뒤 ' + sec(t) })) },
         { title: '② 준비 자세 · 내딛으며 베기 · 길게 눌러 모아 휘감기', items: [
           { demo: 'ready', t: 1.3, cam: 'close', legacy: true, label: '준비 자세 전: 칼끝이 등 뒤' }, { demo: 'ready', t: 1.3, cam: 'close', label: '후: 칼을 앞으로 겨눈다' },
           { demo: 'lunge', t: 0.58, cam: 'close', box: true, legacy: true, label: '내딛기 전: 선 채로 미끄러짐' }, { demo: 'lunge', t: 0.58, cam: 'close', box: true, label: '후: 뒷발을 디딘 채 뻗는다' },
@@ -118,7 +118,7 @@ try {
         { title: '③ 솜씨 단추(빛나는 고리 = 채찍 걸기 / 없으면 세라의 등불) · 종 단추(짧게 = 메아리 / 길게 = 조종)', items: [
           { demo: 'hook', t: 0.6, cam: 'game', box: true, label: '채찍 걸기: 고리에 던진다' }, { demo: 'hook', t: 0.87, cam: 'game', box: true, label: '고리 쪽으로 날아 건넌다' },
           { demo: 'call', t: 1.25, cam: 'game', box: true, label: '부름: 울림 한 칸을 쓴다' }, { demo: 'call', t: 2.4, cam: 'game', box: true, label: '빛 안의 유령이 굳어 베인다' },
-          { demo: 'echo', t: 1.62, cam: 'game', box: true, label: '메아리: 종이 울린다' }, { demo: 'echo', t: 2.1, cam: 'game', box: true, label: '숨은 유령이 드러나고 주문이 끊긴다' },
+          { demo: 'echo', t: 1.22, cam: 'game', box: true, label: '메아리: 종이 울려 퍼진다' }, { demo: 'echo', t: 1.6, cam: 'game', box: true, label: '숨은 유령이 드러나고 주문이 끊긴다' },
           { demo: 'knell', t: 1.5, cam: 'game', box: true, label: '종을 길게: 차오른다' }, { demo: 'knell', t: 2.05, cam: 'game', box: true, label: '무릎 꿇은 여왕을 보낸다 (조종)' } ] },
         { title: '④ 보스 밴시 여왕 — 공격마다 예고(노랑 = 막을 수 있다, 분홍 = 막을 수 없다) → 판정(빨강) → 틈', items: [
           { demo: 'bossFar', t: 1.15, cam: 'game', box: true, label: '울음 탄: 길 셋이 먼저 보인다' }, { demo: 'bossFar', t: 1.75, cam: 'game', box: true, label: '그 길로 탄 셋' },
@@ -132,7 +132,7 @@ try {
           { demo: 'knell', t: 1.0, cam: 'enemy', box: true, label: '무릎 꿇음: 머리를 감싸고 숙인다' }, { demo: 'knell', t: 2.6, cam: 'enemy', label: '조종 뒤 스러진다' } ] },
       ];
       const head = ['블러드 녹턴 3D — 움직임 2차: 돌기 · 준비 자세 · 새 기술 · 보스 밴시 여왕 (시험 화면 tools/v2/play_view.html, 평평한 마당)', '효과 · 소리 · 단추 그림은 본 게임 장면이 입힌다. 여기의 선과 원은 규칙이 정한 모양(예고 · 판정 · 채찍 · 빛)을 그대로 그린 것이다.'];
-      const foot = ['아직 약한 곳: 반전 때 멈추는 자세가 과하게 뒤로 젖는다 · 모으는 자세가 밋밋하다 · 채찍 전용 동작이 없어 칼 휘두름 클립에 띠만 그렸다 · 여왕의 무릎 꿇음은 숙인 채 떠 있는 자세다 · 폴드에서 손으로 해 본 값이 아니다(반전 빠르기 · 보스 체력 900 · 예고 길이는 기기에서 다듬어야 한다).'];
+      const foot = ['아직 약한 곳: 반전 때 멈추는 자세가 과하게 뒤로 젖는다 · 모으는 자세가 밋밋하다 · 채찍 전용 동작이 없어 칼 휘두름 동작에 띠만 그렸다 · 여왕의 무릎 꿇음은 숙인 채 떠 있는 자세다.', '폴드에서 손으로 해 본 값이 아니다 — 반전 빠르기 · 보스 체력(900) · 예고 길이는 기기에서 다듬어야 한다. 본 게임 장면에는 솜씨 · 종 단추까지 이어졌고, 보스 막대 · 예고 그림(부채꼴 · 공중 고리) · 등불의 빛 · 빛나는 고리는 아직 꽂는 중이다.'];
       const url = await page.evaluate(([rows, head, foot]) => window.__play.board(rows, { cols: 8, cw: 250, ch: 220, head, foot }), [rows, head, foot]);
       const f = opt('owner2', '') || '/tmp/claude-0/v2/owner_play2.png'; fs.writeFileSync(f, Buffer.from(url.split(',')[1], 'base64')); console.log('wrote', f);
     }

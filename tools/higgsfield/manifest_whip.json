@@ -1,0 +1,8 @@
+{
+  "lane": "whip",
+  "date": "2026-11-18",
+  "cap_credits": 30,
+  "credits_used": 0,
+  "calls": [],
+  "note": "No paid generation was run. The whip handle (wrapped grip, bronze guard, pommel, ferrule) and the bell shard are built in code (src/v2/whip/mesh.js) so that the whole whip stays one draw call with no asset to load."
+}

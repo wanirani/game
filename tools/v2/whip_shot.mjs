@@ -61,7 +61,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1000, height: 700 } });
   page.on('console', (m) => { if ((m.type() === 'error' || m.type() === 'warning') && !/GPU stall due to ReadPixels/.test(m.text())) errs.push(`[${m.type()}] ${m.text()}`); });
   page.on('pageerror', (e) => errs.push('[pageerror] ' + e.message));
-  await page.goto(`http://localhost:${port}/tools/v2/whip_view.html?hold=1`);
+  await page.goto(`http://localhost:${port}/tools/v2/whip_view.html?hold=1${argv.includes('--aa0') ? '&aa=0' : ''}`);   // --aa0 = 캔버스 안티에일리어싱 끔 (끈 가장자리가 스스로 부드러운지 볼 때)
   try { await page.waitForFunction(() => window.__whip?.ready || window.__whip?.error, null, { timeout: 90000 }); } catch { errs.push('timeout waiting for ready'); }
   const err = await page.evaluate(() => window.__whip?.error);
   if (err) { errs.push('[page error] ' + err); code = 1; }

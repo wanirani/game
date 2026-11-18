@@ -176,6 +176,10 @@ for (const { id, mv, real } of table) {
   for (let i = 0; i < 150; i++) { driveWhip(whip, h, TUNE, null); pose(ch, h, hand, whip, DT); whip.update(DT, hand); }
   let far = 0; for (let i = 0; i < whip.n; i++) far = Math.max(far, Math.hypot(whip.nodes[i * 3] - hand.x, whip.nodes[i * 3 + 1] - hand.y, whip.nodes[i * 3 + 2] - hand.z));
   ok('rest: coiled by the hand, still, clear of the body', far < 36 && whip.tip.speed < 25 && inBody(whip, h) === 0, `farthest node ${f1(far)} px from the hand · tip speed ${f1(whip.tip.speed)} px/s · tip height ${f1(whip.tip.y)}`);
+  for (let i = 0; i < 90; i++) { whip.set('stow'); pose(ch, h, hand, whip, DT); whip.update(DT, hand); }
+  let farS = 0; for (let i = 0; i < whip.n; i++) farS = Math.max(farS, Math.hypot(whip.nodes[i * 3] - hand.x, whip.nodes[i * 3 + 1] - hand.y, whip.nodes[i * 3 + 2] - hand.z));
+  ok('stow: a tighter coil at the anchor it is given', farS < 30 && whip.tip.speed < 25 && finite(whip), `farthest node ${f1(farS)} px · tip speed ${f1(whip.tip.speed)} px/s`);
+  for (let i = 0; i < 60; i++) { driveWhip(whip, h, TUNE, null); pose(ch, h, hand, whip, DT); whip.update(DT, hand); }
   h.x += 3000; h.z += 400; driveWhip(whip, h, TUNE, null); pose(ch, h, hand, whip, DT); whip.update(DT, hand);
   let vmax = 0, dmax = 0; for (let i = 0; i < whip.n; i++) { vmax = Math.max(vmax, Math.hypot(whip.vel[i * 3], whip.vel[i * 3 + 1], whip.vel[i * 3 + 2])); dmax = Math.max(dmax, Math.hypot(whip.nodes[i * 3] - hand.x, whip.nodes[i * 3 + 1] - hand.y, whip.nodes[i * 3 + 2] - hand.z)); }
   ok('teleport (3000 px in one tick): the lash comes along, no speed spike', vmax < 150 && dmax < 40 && finite(whip), `fastest node ${f1(vmax)} px/s · farthest ${f1(dmax)} px`);
