@@ -171,9 +171,13 @@ function installCa() {
   };
   A.pill = () => { const sc = v.scene; A.draw(); const P = sc.hud.metrics?.().prompts ?? []; const p = P.find((q) => q.action === 'confirm'); if (!p || !v.prompt) return null; const id = v.prompt.id; const c = toClient(p.x + p.w / 2, p.y + p.h / 2); fire('pointerdown', 32, c[0], c[1]); fire('pointerup', 32, c[0], c[1]); A.pills++; g.tick(1 / 60); A.ticks++; A.after(); g.tick(1 / 60); A.ticks++; A.after(); return id; };
   /** hold the bell button until the long ring has rung (a sequence, a crossing, a notice) or n ticks */
-  A.bell = (n) => { const sc = v.scene, b = btn('bell'); if (!b) return { err: 'no bell button' }; if (B.ts) B.touchEnd(); A.relJump(); g._pageHidden = true; const seen0 = H.seen.length, lr0 = A.raised.length; let i = 0, rang = false;
-    fire('pointerdown', 15, b.cx, b.cy); for (; i < n; i++) { g.tick(1 / 60); A.ticks++; A.after(); if (i % 30 === 0) A.draw(); if (H.st.busy || sc.hud.modal || sc.xing || H.seen.length > seen0 || A.raised.slice(lr0).some((q) => q.key.startsWith('bell.long'))) { rang = true; break; } } fire('pointerup', 15, b.cx, b.cy); g.tick(1 / 60); A.ticks++; A.after(); A.draw();
-    return { i, rang, act: sc.sim?.hero?.act ?? null, charge: sc.sim?.hero?.bellCharge ?? 0, disabled: !!b.disabled, raised: A.raised.slice(lr0).map((q) => q.key + (q.hits.length ? '>' + q.hits.join('+') : '')) }; };
+  A.bell = (n) => { const sc = v.scene, b = btn('bell'); if (!b) return { err: 'no bell button' }; if (B.ts) B.touchEnd(); A.relJump(); g._pageHidden = true; const seen0 = H.seen.length, lr0 = A.raised.length; let i = 0, rang = false, waited = 0, again = 0; const ae = A.autoEcho, h0 = sc.sim?.hero; A.autoEcho = false;
+    while (h0 && waited < 240 && (!h0.bellOk || h0.bellCd > 0) && !sc.hud.modal && !H.st.busy) { A.step(true); waited++; }   // the bell rests after an echo / the hero is in a move: wait as a player would (the bot keeps guarding)
+    if (B.ts) B.touchEnd(); A.relJump(); A.autoEcho = ae;
+    fire('pointerdown', 15, b.cx, b.cy); for (; i < n; i++) { g.tick(1 / 60); A.ticks++; A.after(); if (i % 30 === 0) A.draw();
+      if (i > 0 && i % 50 === 0 && h0 && !(h0.bellCharge > 0) && h0.act !== 'ring' && again < 3) { fire('pointerup', 15, b.cx, b.cy); for (let k = 0; k < 24; k++) { g.tick(1 / 60); A.ticks++; A.after(); } fire('pointerdown', 15, b.cx, b.cy); again++; }   /* the hold did not start (struck, or pressed too early): press again */
+      if (H.st.busy || sc.hud.modal || sc.xing || H.seen.length > seen0 || A.raised.slice(lr0).some((q) => q.key.startsWith('bell.long'))) { rang = true; break; } } fire('pointerup', 15, b.cx, b.cy); g.tick(1 / 60); A.ticks++; A.after(); A.draw();
+    return { i, rang, waited, again, act: sc.sim?.hero?.act ?? null, charge: sc.sim?.hero?.bellCharge ?? 0, disabled: !!b.disabled, raised: A.raised.slice(lr0).map((q) => q.key + (q.hits.length ? '>' + q.hits.join('+') : '')) }; };
   /** a short press of the bell button (echo) */
   A.echo = () => { const sc = v.scene, b = btn('bell'); if (!b) return { err: 'no bell button' }; if (B.ts) B.touchEnd(); A.relJump(); const lr0 = A.raised.length; fire('pointerdown', 15, b.cx, b.cy); for (let i = 0; i < 5; i++) { g.tick(1 / 60); A.ticks++; A.after(); } fire('pointerup', 15, b.cx, b.cy); for (let i = 0; i < 40; i++) { g.tick(1 / 60); A.ticks++; A.after(); } A.draw(); return { disabled: !!b.disabled, raised: A.raised.slice(lr0).map((q) => q.key + (q.hits.length ? '>' + q.hits.join('+') : '')) }; };
   /** a press of the skill button (the whip hook when a ring is in reach) */
@@ -427,7 +431,7 @@ spotBeat('oss_riddle', '닳은 석관 (누구의 관인가)', 'oss_riddle', { bu
 add('oss_riddle_echo', '석관 앞에서 「종」을 짧게 (메아리로 읽는다)', async () => { let r = null; for (let i = 0; i < 4; i++) { r = await ev(() => window.__ca.echo()); if (r.raised?.some((q) => q.includes('ev_oss_riddle_echo'))) break; await play(150, { bot: true }); } const s = await settle(); return { ok: s.flags.includes('riddle_done'), why: 'riddle_done not set: ' + JSON.stringify(r) }; });
 crossBeat('oss_cross_3', '석관의 방 종에서 그 밤으로 → 조종 넷을 받는다', 'bell_riddle', 'ossuary_past');
 for (const k of [1, 2, 3, 4]) add('knell_' + k, `종대 ${k} 에 조종을 건다`, async () => { let r = await useSpot('knell_' + k, { budget: 4800 }); let s = await st(); if (!s.flags.includes('knell_' + k)) { note(`knell_${k}: the pill did not hang it (${r.why ?? 'pressed'}) — trying the long ring`); r = await ring('knell_' + k, { budget: 900 }); s = await st(); } if (!s.flags.includes('knell_' + k)) { ST.num.lostWay.push({ beat: 'knell_' + k, why: r.why }); s = await emitHelp('interact', { id: 'knell_' + k, kind: 'bell', event: 'oss.knell', data: { post: k }, locked: null }, r.why ?? 'no prompt'); } return { ok: s.flags.includes('knell_' + k), why: `knell_${k} not set (knell bells in the bag: ${s.items.knell_bell ?? 0})` }; });
-crossBeat('oss_cross_4', '보스 방의 종에서 오늘 밤으로 (백 년)', 'bell_arena', 'ossuary_now', { after: async () => { const s = await st(); note(`arrived tonight inside the boss room at (${s.x},${s.z}); boss ${JSON.stringify(s.boss)}; enemies awake ${s.awake}; ev_boss_intro done: ${ST.rows.ev_boss_intro ? 'yes' : 'no'}`); } });
+crossBeat('oss_cross_4', '석관의 방 종으로 돌아가 오늘 밤으로 (백 년) — 보스 방의 종으로 건너면 여왕의 방 안, 문턱 뒤에 선다(첫 판의 기록)', String(args.back || 'bell_riddle'), 'ossuary_now', { after: async () => { const s = await st(); note(`arrived tonight inside the boss room at (${s.x},${s.z}); boss ${JSON.stringify(s.boss)}; enemies awake ${s.awake}; ev_boss_intro done: ${ST.rows.ev_boss_intro ? 'yes' : 'no'}`); } });
 spotBeat('boss_rest', '보스 방 앞 쉼터: 로테의 빵', 'boss_rest', { budget: 4800 });
 trigBeat('boss_enter', '맨 안: 밴시 여왕 (노래)', 'boss.enter', { budget: 3600 });
 const bossFight = async (label, until, { budget = 9000, maxDeaths = 2 } = {}) => {
@@ -466,6 +470,8 @@ add('elise_wake', '잠든 엘리제를 깨운다 (interact oss.elise)', async ()
 crossBeat('ending_bell', '두 종지기의 약속 뒤, 큰 종을 길게 → 오늘 밤', 'big_bell', 'eshville_now', { shot: 'ending_cross' });
 add('after_end', '맺음 뒤 (6초 뒤 저장하고 장면을 떠난다)', async () => { let s = null; try { s = await play(600, { bot: false, pred: (q) => !q.scene, chunk: 60 }); } catch (e) { return { ok: true, left: true, why: 'the scene was left: ' + String(e).slice(0, 120) }; } const sv = await ev(() => { try { const o = JSON.parse(localStorage.getItem('bn.v2.save')); return o ? { why: o.why, area: o.area, done: o.story?.done?.length } : null; } catch { return null; } }).catch(() => null); note(`after the end: scene active ${s?.scene}; ended flag ${s?.ended}; stored save ${JSON.stringify(sv)}`); return { ok: true }; });
 
+// side beats (only with --only): the past door of the ossuary after the road bell hangs
+P.push({ n: P.length, id: 'side_past_door', side: true, label: '곁가지: 길종을 건 뒤 그 밤의 납골당 문을 눌러 본다', fn: async () => { let r = await ring('road_bell', { budget: 2400 }); const a = await waitArea('graveyard_past', 6000); if (!a.ok) return { ok: false, why: 'could not cross at the road bell: ' + (r.why ?? a.why) }; ST.num.crossings++; const d = await useSpot('ossuary_door', { budget: 1500 }); const s = await st(); note(`past door after the bell hangs: ${d.ok ? 'pressed' : d.why}; last events ${s.lr.slice(-6).join(' ')}`); r = await ring('road_bell', { budget: 2400 }); const b = await waitArea('graveyard_now', 6000); if (b.ok) ST.num.crossings++; return { ok: d.ok, why: d.why }; } });
 // the area each beat is played in: when an earlier beat failed and the hero is elsewhere, he is moved there by script (logged help) so the audit goes on
 const NEED = {};
 const need = (area, spawn, ids) => { for (const id of ids.split(' ')) NEED[id] = [area, spawn]; };
@@ -475,8 +481,9 @@ need('graveyard_past', 'from_eshville', 'keeper carve_a carve_b edmund_grave hoo
 need('ossuary_now', 'entry', 'oss_coffins oss_hall oss_probe_1 oss_cross_1'); need('ossuary_past', 'entry', 'oss_wedge oss_cross_2'); need('ossuary_now', 'wedge_far', 'oss_gap oss_arena oss_arena_fight oss_lamp oss_riddle oss_riddle_echo oss_cross_3');
 need('ossuary_past', 'rest', 'knell_1 knell_2 knell_3 knell_4 oss_cross_4 boss_past boss_back elise_wake'); need('ossuary_now', 'rest', 'boss_rest boss_enter boss_1 boss_chase boss_die boss_2 boss_knell cross_to_elise');
 // ───────── run ─────────
-if (resume) {   // forget what the earlier run recorded after the save we continue from (those beats are played again)
-  const idx = Object.fromEntries(P.map((b) => [b.id, b.n])), later = (id) => (idx[id] ?? -1) > resume.beat;
+const ONLY = args.only ? String(args.only).split(',') : null, RB = resume ? Math.max(P.findIndex((b) => b.id === resume.beatId), -1) : -1;   // the beat we continue after is found by its id (the plan may have grown since the save was written)
+if (resume && !args.keep && !ONLY) {   // forget what the earlier run recorded after the save we continue from (those beats are played again)
+  const idx = Object.fromEntries(P.map((b) => [b.id, b.n])), later = (id) => (idx[id] ?? -1) > RB;
   ST.beats = ST.beats.filter((b) => !later(b.id)); ST.helps = ST.helps.filter((h) => !later(h.beat)); ST.num.lostWay = ST.num.lostWay.filter((h) => !later(h.beat)); ST.num.fights = ST.num.fights.filter((h) => !later(h.beat));
   for (const k of Object.keys(ST.rows)) if (later(ST.rows[k].beat)) delete ST.rows[k];
   for (const f of fs.readdirSync(SAVES)) { if (!/^\d{3}_/.test(f)) continue; if (Number(f.slice(0, 3)) > saveN) fs.rmSync(`${SAVES}/${f}`); }
@@ -489,7 +496,7 @@ try {
   ST.open = o;
   if (resume) await settle(3000);
   for (const b of P) {
-    if (resume && b.n <= resume.beat) continue;
+    if (ONLY ? !ONLY.includes(b.id) : (b.side || (resume && b.n <= RB))) continue;
     BEAT = b.id; beatHelp = []; const t0 = Date.now(); let r;
     await ev(() => { window.__ca.lr.length = 0; }).catch(() => {});
     if (NEED[b.id]) { const s0 = await st().catch(() => null); if (s0 && s0.ready && s0.area !== NEED[b.id][0]) { const okGo = await ev(([a, sp]) => window.__v2.scene.travelTo(a, sp), NEED[b.id]).catch(() => false); help(`the hero is in ${s0.area} but this beat is played in ${NEED[b.id][0]} (an earlier beat did not get him there)`, `moved the hero to ${NEED[b.id][0]} / spawn ${NEED[b.id][1]} with scene.travelTo (${okGo})`); await waitArea(NEED[b.id][0], 3000).catch(() => {}); } }
