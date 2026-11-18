@@ -136,8 +136,13 @@ async function run(dev) {
 
     if (want('slip')) {
       const F = (D.slip = {});
-      for (const [nm, d, mag] of [['run R', 'R', 52], ['run U', 'U', 52], ['run UR', 'UR', 52], ['walk R', 'R', 20]]) { await home(d); await stick(d, mag); await step(30); const S = await step(72, true, true); await stickUp(); await step(10); F[nm] = { ...slip(S), gait: S[40].mode, anim: S[40].anim, clip: S[40].clip, feet: !!S[40].fl }; }
-      ok(`${dev} foot slip (planted foot speed / body speed): ` + Object.entries(F).map(([k, v]) => `${k} ${v.pct}% (${v.slipPx}/${v.body} px/s, ${v.contacts} contact samples, ${v.clip})`).join(' · '));
+      for (const [nm, d, mag] of [['run R', 'R', 52], ['run U', 'U', 52], ['run UR', 'UR', 52], ['walk R', 'R', 20]]) { await home();
+        // a straight lane at least 420 px long in this direction (collision-probed), wherever the area has one
+        const lane = await ev((w) => { const sim = window.__v2.scene.sim, W = sim.W; for (const e of sim.enemies) if (e.yard) e.wakeBy = 'trigger'; let best = [0, 0, -1];
+          for (const S of W.sections ?? []) { if (S.id === 'yard') continue; for (let x = S.x0 + 30; x < S.x1 - 30; x += 40) for (let z = S.z0 + 30; z < S.z1 - 30; z += 40) { const g0 = sim.w.ground(x, z); if (!Number.isFinite(g0)) continue; const p = { x, z, y: g0, r: 14, h: 92, def: null }; let d = 0; for (let q = 0; q < 460; q += 20) { const x0 = p.x, z0 = p.z; sim.qx = w[0] * 20; sim.qz = w[1] * 20; sim._mq(p); if (Math.hypot(p.x - x0, p.z - z0) < 19.5 || sim.w.ground(p.x, p.z) !== g0) break; d += 20; } if (d > best[2]) best = [x, z, d]; } }
+          window.__pv.hero(best[0] + w[0] * 16, best[1] + w[1] * 16); return best; }, world(d)); await step(10);
+        await stick(d, mag); await step(30); const S = await step(72, true, true); const lane_ = lane[2]; await stickUp(); await step(10); F[nm] = { ...slip(S), lane: lane_, gait: S[40].mode, anim: S[40].anim, clip: S[40].clip, feet: !!S[40].fl }; }
+      ok(`${dev} foot slip (planted foot speed / body speed): ` + Object.entries(F).map(([k, v]) => `${k} ${v.pct}% (${v.slipPx}/${v.body} px/s, ${v.contacts} contact samples, ${v.clip}, lane ${v.lane} px)`).join(' · '));
       for (const [k, v] of Object.entries(F)) if (v.pct > (k.startsWith('walk') ? 25 : 20) || v.pct < 0) fail(`${dev} foot slip ${k}: ${JSON.stringify(v)}`);
     }
 

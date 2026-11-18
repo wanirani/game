@@ -24,11 +24,14 @@ loadPropsNode();
 const { AREAS } = await import('../../src/v2/world/index.js');
 const { compileEnv } = await import('../../src/v2/env/build.js');
 const { reachGrid } = await import('../../src/v2/world/reach.js');
-const LIST = String(args.areas || 'eshville_now,eshville_past,graveyard_now,graveyard_past,slice0').split(',');
+const LIST = String(args.areas || 'eshville_now,eshville_past,graveyard_now,graveyard_past,slice0,belltower_now,ossuary_now,ossuary_past').split(',');   // WORLD-2: + the tower and the ossuary
 const CYCLE = String(args.cycle ?? 'eshville_now').split(',');
 const PLAN = {};
 for (const id of LIST) {
-  const a = await AREAS[id](), W = compileEnv(a.stage), d = a.spawns.default, fat = reachGrid(W, d.x, d.z, 26), thin = reachGrid(W, d.x, d.z, 14);
+  // WORLD-2: the flood also starts behind what is shut in the base state (area.entry: the cemetery gate) and at the landing of every whip ring
+  // (the ossuary terrace) - the last stretch into those exits is pushed from there (scene v2c has no whip and opens no gate)
+  const a = await AREAS[id](), W = compileEnv(a.stage), d = a.spawns.default, opt = { hooks: a.stage.hookPoints ?? [], seeds: (a.entry ?? []).map((n) => [a.spawns[n].x, a.spawns[n].z]) };
+  const fat = reachGrid(W, d.x, d.z, 26, opt), thin = reachGrid(W, d.x, d.z, 14, opt);
   const exits = a.exits.map((x) => { const g = fat.anyIn(x.x0, x.x1, x.z0, x.z1) ? fat : thin, p = g.anyIn(x.x0 + (x.x1 - x.x0) * 0.3, x.x1, x.z0 + (x.z1 - x.z0) * 0.3, x.z1) ?? g.anyIn(x.x0, x.x1, x.z0, x.z1), wps = p ? g.path(p[0], p[1]) : null; return { id: x.id, wps: wps ? wps.slice(-9) : null }; });
   let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const b of W.boxes) if (b.walk && !b.inv) { x0 = Math.min(x0, b.x0); x1 = Math.max(x1, b.x1); z0 = Math.min(z0, b.z0); z1 = Math.max(z1, b.z1); }
   const lattice = []; for (let x = x0 + 60; x < x1; x += 260) for (let z = z0 + 60; z < z1; z += 200) if (thin.reachable(x, z)) lattice.push([x, z]);
@@ -39,7 +42,9 @@ const ok = (c, m) => { console.log(`${c ? '  ok  ' : '  FAIL'} ${m}`); if (!c) f
 const stepN = (page, n, render = false) => page.evaluate(([n, r]) => window.__qaStep(n, r), [n, render]);
 const place = (page, x, z, ticks = 40) => page.evaluate(([x, z, ticks]) => {
   const v = window.__v2, sc = v.scene, h = sc.sim.hero;
-  h.x = x; h.z = z; h.y = 300; h.vx = h.vz = h.vy = 0; h.onGround = false; h.safe = { x, z, y: 0 }; sc.cam.snap = true; sc.areaState.in = {};
+  let gy = -1e9; for (const b of sc.W.boxes) if (b.walk && x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1 && b.y1 > gy) gy = b.y1;   // WORLD-2: on the ground of the spot (y 300 is inside the tower's upper floors)
+  if (gy < -1e8) gy = 299;
+  h.x = x; h.z = z; h.y = gy + 1; h.vx = h.vz = h.vy = 0; h.onGround = false; h.safe = { x, z, y: gy }; sc.cam.snap = true; sc.areaState.in = {};
   window.__qaStep(ticks - 1, false); window.__qaStep(1, true); const st = v.stats;
   return { x: Math.round(h.x), z: Math.round(h.z), y: Math.round(h.y), draws: st.gl.draws, tris: st.gl.tris, staticTris: st.env?.visibleStaticTris ?? 0, staticDraws: st.env?.staticDraws ?? 0, chunks: st.env?.visibleChunks ?? 0, sec: v.section };
 }, [x, z, ticks]);
