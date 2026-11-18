@@ -81,6 +81,7 @@ try {
     for (let p = 0; p < presses; p++) {
       const k = await ev(() => { const F = window.__F, sc = window.__v2.scene, n0 = F.hitAt; F.once.attack = true; const k = F.until(() => F.hitAt > n0 && F.frozen(), 70); return k; });
       await shot(`${name}_${p + 1}${k < 0 ? '_nohit' : ''}`, CROP);
+      if (p === 0 && name === 'hit_right' && k >= 0) await shot('fight_full');   // the whole screen on a hit-stop frame: the fight with the interface around it
       await ev(() => { const F = window.__F, e = F.tgt; if (e && e.hp < e.hpMax * 0.5 && !e.dead && e.state !== 'dead') e.hp = e.hpMax; F.until(() => !F.frozen(), 30); F.tick(6); });
     }
     await ev(() => { window.__F.tick(50); });
