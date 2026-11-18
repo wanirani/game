@@ -209,6 +209,29 @@ const tomlCsp = /Content-Security-Policy\s*=\s*"([^"]*script-src[^"]*)"/.exec(fs
 check('head_inject: CSP meta 가 조각 스크립트 뒤에 있음 (그 뒤 스크립트는 \'self\' 파일만)', !!metaCsp && injectRaw.indexOf(metaCsp[0]) > injectRaw.lastIndexOf('</script>') && /script-src 'self'(;|$)/.test(metaCsp[1]));
 check('head_inject: CSP = 웹 CSP (netlify.toml, frame-ancestors 제외)', !!metaCsp && !!tomlCsp && cspOf(metaCsp[1]) === cspOf(tomlCsp[1]), metaCsp ? '' : 'meta 없음');
 
+// ── 2b. 3D 앱 (--profile 3d): 패키지·이름·첫 장면 설정, 2D 판 그림 없음 ──
+if (P3D) {
+  section('3D 앱 (패키지 · 내용물)');
+  check('apk.json: app.variant 3d · app.id com.bloodnocturne.game3d', CFG.app?.variant === '3d' && CFG.app?.id === 'com.bloodnocturne.game3d', JSON.stringify(CFG.app || null));
+  check('apk.json: 새 버전 확인은 3D 앱 것 (downloads/latest3d.json · /apk3d)', CFG.update?.latest === 'downloads/latest3d.json' && CFG.update?.apk === '/apk3d', JSON.stringify(CFG.update || null));
+  let bi3 = null;
+  try { bi3 = JSON.parse(/window\.__BN_BUILD\s*=\s*(\{.*\})\s*;/s.exec(fs.readFileSync(path.join(WWW, 'build-info.js'), 'utf8'))[1]); } catch { bi3 = null; }
+  check('웹 빌드 대상 3d (build-info.js target — 첫 장면 v2pick)', bi3?.target === '3d', `target=${bi3?.target}`);
+  const twoD = files.filter((f) => /^assets\/(lo|cg|portraits)\//.test(f));
+  const pup = files.filter((f) => f.startsWith('assets/puppets/') && !/^assets\/puppets\/(kael\/kael_hunter\/|_shared\/|turn16\.json$)/.test(f));
+  check('2D 판 그림 없음 (assets/lo · cg · portraits, 카엘 기본 직업 밖의 퍼펫)', twoD.length === 0 && pup.length === 0, `${twoD.length + pup.length}개${twoD.length + pup.length ? ': ' + [...twoD, ...pup].slice(0, 4).join(', ') : ''}`);
+  const glb = files.filter((f) => /^assets\/v2\/.+\.glb$/.test(f)).length;
+  check('3D 판 파일이 있음 (assets/v2 입체 모델)', glb > 0 && files.includes('assets/v2/char3d/kael.glb'), `glb ${glb}개`);
+  check('MainActivity BACK_PROBE_JS: exitOnBack 장면(3D 고르기 화면)이면 종료 확인', /exitOnBack===true\)return 'exit'/.test(BACK_PROBE_JS || ''));
+  const aapt2 = path.join(process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT || '/root/android-sdk', 'build-tools', process.env.BUILD_TOOLS || '34.0.0', 'aapt2');
+  if (fs.existsSync(aapt2)) {
+    let badging = '';
+    try { badging = execFileSync(aapt2, ['dump', 'badging', apkPath], { encoding: 'utf8', maxBuffer: 16 << 20 }); } catch (e) { badging = String(e.stdout || ''); }
+    const pkg = /package: name='([^']+)'/.exec(badging)?.[1], label = /application-label:'([^']*)'/.exec(badging)?.[1], act = /launchable-activity: name='([^']+)'/.exec(badging)?.[1];
+    check('패키지 com.bloodnocturne.game3d · 이름 「블러드 녹턴 3D」 · 액티비티 com.bloodnocturne.game.MainActivity (aapt2 dump badging)', pkg === 'com.bloodnocturne.game3d' && label === '블러드 녹턴 3D' && act === 'com.bloodnocturne.game.MainActivity', `${pkg} · ${label} · ${act}`);
+  } else check('aapt2 dump badging (패키지·이름)', false, `${aapt2} 없음`);
+}
+
 // ── 3. 로컬 API 서버 + 자바 프록시 검사 ───────────────────────────────
 section('/api 프록시');
 async function startApiServer() {
@@ -461,6 +484,199 @@ async function cspCheck() {
   check('CSP 위반 없음 (조각 스크립트·번들·글꼴·그림·/api)', v.length === 0, v.slice(0, 5).join(' | '));
   check('CSP 페이지 오류 없음', errs.length === 0, errs.slice(0, 5).join(' | '));
   await ctx.close();
+}
+
+/** 3D 앱 (--profile 3d) 브라우저 검사: 고르기 화면 부팅 · 브리지 · 뒤로 · 「본 게임」 · 지역 · 다른 줄 · 안전 영역 · CSP */
+async function run3d() {
+  const v2wait = (page, ms = 90000) => page.waitForFunction(() => window.__v2?.id === 'g' && (window.__v2.ready || window.__v2.error) && !!window.__v2.hero, null, { timeout: ms }).then(() => true, () => false);
+  const stack = (page) => page.evaluate(() => window.__game?.scenes.map((x) => x.name).join('>'));
+  // CSP (bypass 없이): 고르기 화면 → v2g
+  {
+    section('CSP (bypass 없이) — 3D');
+    const ctx = await browser.newContext({ deviceScaleFactor: 2.625, isMobile: true, hasTouch: true, userAgent: UA, viewport: { width: 915, height: 412 } });
+    await ctx.addInitScript(bridgeStub, { insets: null, ime: { bottom: 0 } });
+    await ctx.addInitScript(() => {
+      window.__cspViolations = [];
+      document.addEventListener('securitypolicyviolation', (e) => window.__cspViolations.push(`${e.violatedDirective} ${e.blockedURI || ''}`.trim()));
+    });
+    await ctx.route('**/*', handle);
+    const page = await ctx.newPage();
+    const errs = [];
+    page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message));
+    page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|net::ERR_INTERNET_DISCONNECTED/.test(m.text())) errs.push('CONSOLE ' + m.text().slice(0, 300)); });
+    const until = async (expr, ms) => { const t0 = Date.now(); for (;;) { let v = false; try { v = await page.evaluate(expr); } catch { /* 이동 중 */ } if (v || Date.now() - t0 > ms) return !!v; await page.waitForTimeout(150); } };
+    await page.goto(START, { timeout: 60000, waitUntil: 'load' });
+    const pick = await until("window.__game?.top?.name === 'v2pick'", 45000);
+    const csp = await page.evaluate("(document.querySelector('meta[http-equiv=\"Content-Security-Policy\"]') || {}).content || ''");
+    await page.waitForTimeout(800);
+    const v0 = await page.evaluate('window.__cspViolations');
+    await page.goto(`${ORIGIN}/index.html?scene=v2g&v2res=0.5`, { timeout: 60000, waitUntil: 'load' });
+    const g = await until("window.__v2?.id === 'g' && !!(window.__v2.ready || window.__v2.error) && !!window.__v2.hero", 90000);
+    await page.waitForTimeout(2500);
+    const v = [...v0, ...(await page.evaluate('window.__cspViolations'))];
+    check('CSP 적용 상태로 고르기 화면 → 본 게임(v2g) 부팅', pick && g && /script-src 'self'/.test(csp), `v2pick=${pick} v2g=${g}`);
+    check('CSP 위반 없음 (조각 스크립트·번들·글꼴·입체 모델·질감)', v.length === 0, v.slice(0, 5).join(' | '));
+    check('CSP 페이지 오류 없음', errs.length === 0, errs.slice(0, 5).join(' | '));
+    await ctx.close();
+  }
+
+  section('부팅 · 브리지 (휴대폰 915×412) — 3D 고르기 화면');
+  const phone = await newCtx({ viewport: { width: 915, height: 412 }, serviceWorkers: 'allow' });
+  const t0 = Date.now();
+  const page = await openPage(phone, START, 'chooser');
+  const bootMs = Date.now() - t0;
+  await page.waitForFunction(() => window.__game?.top?.name === 'v2pick', null, { timeout: 30000 }).catch(() => {});
+  await page.waitForTimeout(2000);
+  const st = await page.evaluate(() => ({
+    stack: window.__game?.scenes.map((x) => x.name).join('>'),
+    rows: window.__game?.top?.menu?.count,
+    exitOnBack: window.__game?.top?.exitOnBack,
+    app: window.__BN_APP,
+    cls: document.documentElement.className,
+    touch: !!window.__game?.input?.touchMode || document.body.classList.contains('touch'),
+    origin: location.origin,
+    secure: window.isSecureContext,
+    fs: (window.__game?.input?.pad?.buttons?.({ all: true }) || []).map((b) => b.id),
+    legacyTouch: !!document.getElementById('touch'),
+    title: document.title,
+  }));
+  check('3D 고르기 화면(v2pick)까지 부팅 — 2D 타이틀을 거치지 않음', st.stack === 'v2pick', `${bootMs}ms, 장면 ${st.stack}, 창 제목 ${st.title}`);
+  check('고르기 화면 줄 다섯 (「돌아가기」 없음) · exitOnBack', st.rows === 5 && st.exitOnBack === true, `줄 ${st.rows}, exitOnBack ${st.exitOnBack}`);
+  check('가상 https 출처 · 보안 컨텍스트', st.origin === ORIGIN && st.secure, st.origin);
+  check('앱 전용 조각 (__BN_APP, bn-android, 에셋 단계, 프록시)', st.app?.platform === 'android' && /bn-android/.test(st.cls) && st.app?.assets === (CFG.assets || 'full') && st.app?.apiProxy === !!CFG.api?.origin && st.app?.apiBase === (CFG.api?.origin ? '/api' : null), JSON.stringify(st.app));
+  check('전체화면 ⛶ 버튼 없음 (앱은 이미 전체화면)', !st.fs.includes('fullscreen') && !st.legacyTouch, `패드 버튼: ${st.fs.join(',') || '(없음)'}`);
+  check('터치 모드 활성', st.touch);
+  const cs = await canvasStats(page);
+  check('캔버스에 그림이 그려짐 (고르기 화면)', cs.litPct > 3 && cs.colors > 12, `${cs.w}x${cs.h}, 밝은 픽셀 ${cs.litPct}%, 색 ${cs.colors}`);
+  await page.screenshot({ path: path.join(outDir, 'apk3d_chooser_phone.png') });
+  const sw = await page.evaluate(async () => {
+    if (!navigator.serviceWorker) return 'none';
+    let err = null;
+    try { await navigator.serviceWorker.register('sw.js'); } catch (e) { err = String(e.message || e); }
+    const regs = await navigator.serviceWorker.getRegistrations();
+    return { regs: regs.length, err };
+  });
+  check('서비스 워커 비활성 (파일 제공을 가로채지 않음)', sw === 'none' || (sw.regs === 0 && sw.err), JSON.stringify(sw));
+  const vib = await page.evaluate(() => { navigator.vibrate(30); navigator.vibrate([10, 20, 30]); return window.__bnCalls.filter((c) => c[0] === 'vibrate').map((c) => c[1]); });
+  check('navigator.vibrate → BNAndroid.vibrate', vib.length === 2 && vib[0] === '30' && vib[1] === '[10,20,30]', JSON.stringify(vib));
+  const ime = await page.evaluate((js) => {
+    let ev = 0;
+    window.addEventListener('bn-ime', () => { ev++; }, { once: true });
+    const first = window.__BN_IME ? { ...window.__BN_IME } : null;
+    (0, eval)(js.replace('%s', JSON.stringify({ bottom: 180.5 })));
+    return { first, now: window.__BN_IME, ev };
+  }, IME_JS);
+  check('__BN_IME: 부팅 값 + IME_JS 로 갱신 · bn-ime 이벤트', ime.first?.bottom === 0 && ime.now?.bottom === 180.5 && ime.ev === 1, JSON.stringify(ime));
+  await page.evaluate((js) => (0, eval)(js.replace('%s', '{"bottom":0}')), IME_JS);
+  await page.evaluate(() => {
+    const pad = { id: 'Xbox Wireless Controller (STANDARD GAMEPAD Vendor: 045e Product: 0b13)', index: 0, connected: true, mapping: 'standard', timestamp: performance.now(), axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 })) };
+    window.__vpad = pad;
+    Navigator.prototype.getGamepads = function () { return [pad, null, null, null]; };
+    const e = new Event('gamepadconnected'); Object.defineProperty(e, 'gamepad', { value: pad }); window.dispatchEvent(e);
+  });
+  for (let i = 0; i < 3; i++) {
+    await page.evaluate(() => { const b = window.__vpad.buttons[12]; b.pressed = true; b.value = 1; window.__vpad.timestamp = performance.now(); });
+    await frames(page, 4);
+    await page.evaluate(() => { const b = window.__vpad.buttons[12]; b.pressed = false; b.value = 0; window.__vpad.timestamp = performance.now(); });
+    await frames(page, 4);
+    if ((await page.evaluate(() => window.__game?.input?.mode)) === 'pad') break;
+  }
+  const rum = await page.evaluate(() => {
+    const before = window.__bnCalls.filter((c) => c[0] === 'rumble').length;
+    window.__game?.input?.rumble?.(0.9, 0.6, 150);
+    return { mode: window.__game?.input?.mode, calls: window.__bnCalls.filter((c) => c[0] === 'rumble').slice(before) };
+  });
+  check('패드 진동 → BNAndroid.rumble(strong, weak, ms)', rum.mode === 'pad' && rum.calls.some((c) => c[3] === 150 && c[1] > 0 && c[2] > 0), JSON.stringify(rum));
+  await page.evaluate(() => { Navigator.prototype.getGamepads = function () { return [null, null, null, null]; }; const e = new Event('gamepaddisconnected'); Object.defineProperty(e, 'gamepad', { value: window.__vpad }); window.dispatchEvent(e); });
+  await page.evaluate(() => localStorage.setItem('__bn_verify', 'ok'));
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => window.__game && window.__game.scenes.length > 0, null, { timeout: 45000 });
+  check('새로고침 후 localStorage 유지', (await page.evaluate(() => localStorage.getItem('__bn_verify'))) === 'ok');
+  await page.evaluate(() => localStorage.removeItem('__bn_verify'));
+  await page.waitForFunction(() => window.__game?.top?.name === 'v2pick', null, { timeout: 30000 }).catch(() => {});
+  await page.waitForTimeout(800);
+  // 뒤로 버튼: 고르기 화면 = 앱의 첫 화면 → 종료 확인 (2D 앱의 타이틀과 같다). Esc 는 아무것도 하지 않는다 (2D 타이틀 없음)
+  const probe1 = await page.evaluate(BACK_PROBE_JS);
+  check('뒤로 버튼(고르기 화면) → 종료 확인', probe1 === 'exit', `probe=${probe1}`);
+  await page.evaluate(ESCAPE_JS);
+  await page.waitForTimeout(900);
+  const s1 = await stack(page);
+  check('Escape 를 보내도 고르기 화면 그대로 (2D 타이틀로 가지 않음)', s1 === 'v2pick', s1);
+  check('계정 서버 요청 없음 (계정 화면 없음 · 로그인한 적 없음)', apiLog.length === 0, `/api ${apiLog.length}건`);
+  // 「본 게임」 = 첫 줄 → v2g
+  await page.evaluate(() => { window.__game.top.menu.index = 0; });
+  await page.keyboard.down('Enter'); await page.waitForTimeout(100); await page.keyboard.up('Enter');
+  const g1 = await v2wait(page);
+  await page.waitForTimeout(2500);
+  const gi = await page.evaluate(() => ({ top: window.__game?.top?.name, id: window.__v2?.id, hero: !!window.__v2?.hero, err: window.__v2?.error ? String(window.__v2.error?.message || window.__v2.error) : null, enemies: (window.__v2?.enemies || []).length }));
+  check('「본 게임」 → v2g, 입체 영웅', g1 && gi.top === 'v2g' && gi.hero && !gi.err, JSON.stringify(gi));
+  const gc = await page.screenshot({ path: path.join(outDir, 'apk3d_v2g_phone.png') });
+  check('본 게임 화면에 그림이 있음 (WebGL, 화면 캡처)', gc.length >= 150_000, `${(gc.length / 1024).toFixed(0)} KB`);
+  const probe2 = await page.evaluate(BACK_PROBE_JS);
+  check('뒤로 버튼(본 게임) → Escape 전달 (일시정지 메뉴)', probe2 === 'esc', `probe=${probe2}`);
+  await page.evaluate(ESCAPE_JS);
+  await page.waitForTimeout(1200);
+  const pz = await page.evaluate(() => ({ top: window.__game?.top?.name, modal: window.__game?.top?.hud?.modal ?? null }));
+  check('Escape → 본 게임 일시정지 메뉴 (나가기 줄이 있는 메뉴)', pz.top === 'v2g' && pz.modal === 'pause', JSON.stringify(pz));
+  await page.evaluate(() => window.__game.top._leave());   // 일시정지 메뉴의 '나가기' 줄이 부르는 것 (src/v2/game/index.js _pause → onLeave)
+  await page.waitForFunction(() => window.__game?.top?.name === 'v2pick' && window.__game.scenes.length === 1, null, { timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(800);
+  const s2 = await stack(page);
+  const probe3 = await page.evaluate(BACK_PROBE_JS);
+  check('본 게임에서 나가면 고르기 화면 → 뒤로 = 종료 확인', s2 === 'v2pick' && probe3 === 'exit', `장면 ${s2}, probe=${probe3}`);
+  check('고르기 화면 · 본 게임 페이지 오류 없음', page.__errs.length === 0, page.__errs.slice(0, 5).join(' | '));
+  const extHosts = [...new Set(external.map((u) => new URL(u).host))];
+  check('외부 요청 없음 (오프라인 기기와 같은 조건)', extHosts.length === 0, extHosts.join(', ') || '없음');
+  await phone.close();
+
+  // 안전 영역: 844×390 + __BN_INSETS={l:47,r:47,t:0,b:21}
+  section('안전 영역 (844×390, 컷아웃 47 · 제스처 21) — 고르기 화면');
+  const INS = { l: 47, r: 47, t: 0, b: 21 };
+  const nctx = await newCtx({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 3 }, { insets: INS });
+  const np = await openPage(nctx, START, 'insets');
+  await np.waitForFunction(() => window.__game?.top?.name === 'v2pick', null, { timeout: 30000 }).catch(() => {});
+  await np.waitForTimeout(1500);
+  const rect = () => np.evaluate(() => { const r = document.getElementById('screen').getBoundingClientRect(); return { x: r.x, y: r.y, r: r.right, b: r.bottom, w: r.width, h: r.height, vars: getComputedStyle(document.documentElement).getPropertyValue('--bn-safe-l').trim() + '/' + getComputedStyle(document.documentElement).getPropertyValue('--bn-safe-r').trim(), ins: window.__BN_INSETS, fs: (window.__game?.input?.pad?.buttons?.({ all: true }) || []).map((b) => b.id) }; });
+  const r1 = await rect();
+  const inside = (r, i, W, H) => r.x >= i.l - 0.5 && r.y >= i.t - 0.5 && r.r <= W - i.r + 0.5 && r.b <= H - i.b + 0.5 && r.w > 200;
+  check('캔버스가 안전 영역 안 (브리지 값)', inside(r1, INS, 844, 390) && r1.ins?.l === 47, JSON.stringify(r1));
+  const lay = await np.evaluate(() => { const t = window.__game.top, H = window.__game.uiH || window.__game.viewH; return { top: t.layout?.top, total: t.layout?.total, H }; });
+  check('고르기 화면 줄이 화면 안 (844×390)', lay.top >= 0 && lay.top + lay.total <= lay.H + 0.5, JSON.stringify(lay));
+  await np.screenshot({ path: path.join(outDir, 'apk3d_insets_844x390.png') });
+  const INS2 = { l: 0, r: 60, t: 0, b: 0 };
+  await np.evaluate((js) => (0, eval)(js), INSETS_JS.replace('%s', JSON.stringify(INS2)));
+  await frames(np, 4); await np.waitForTimeout(300);
+  const r2 = await rect();
+  check("INSETS_JS 로 바뀐 값 + 'bn-insets' → 다시 배치", inside(r2, INS2, 844, 390) && r2.r <= 844 - 60 + 0.5 && Math.abs(r2.x - r1.x) > 1 && /60px$/.test(r2.vars), JSON.stringify(r2));
+  check('안전 영역 페이지 오류 없음', np.__errs.length === 0, np.__errs.slice(0, 5).join(' | '));
+  await nctx.close();
+
+  // 실제 지역마다 (src/v2/world/index.js AREAS) — 폴드를 편 화면, 절반 해상도 (소프트웨어 WebGL)
+  section('3D 지역 (index.html?scene=v2g&area=…)');
+  const wsrc = fs.readFileSync(path.join(ROOT, 'src/v2/world/index.js'), 'utf8');
+  const areaIds = [...((/export const AREAS = \{([\s\S]*?)\n\};/.exec(wsrc)?.[1]) || '').matchAll(/^\s+(\w+):\s*make\(/gm)].map((m) => m[1]);
+  check('지역 목록 (src/v2/world AREAS)', areaIds.length >= 5, areaIds.join(', '));
+  const fold = await newCtx({ viewport: { width: 1000, height: 756 }, deviceScaleFactor: 2 });
+  for (const id of areaIds) {
+    const ap = await openPage(fold, `${ORIGIN}/index.html?scene=v2g&area=${id}&v2auto=0&v2res=0.5`, `area ${id}`);
+    const okA = await v2wait(ap);
+    await ap.waitForTimeout(2000);
+    const a = await ap.evaluate(() => ({ hero: !!window.__v2?.hero, err: window.__v2?.error ? String(window.__v2.error?.message || window.__v2.error) : null, enemies: (window.__v2?.enemies || []).length }));
+    if (id === areaIds[0]) await ap.screenshot({ path: path.join(outDir, `apk3d_area_${id}.png`) });
+    check(`지역 ${id}: 열림 · 입체 영웅 · 페이지 오류 없음`, okA && a.hero && !a.err && ap.__errs.length === 0, `적 ${a.enemies}${a.err ? ' · 오류 ' + a.err : ''}${ap.__errs.length ? ' · ' + ap.__errs.slice(0, 2).join(' | ') : ''}`);
+    await ap.close();
+  }
+  // 고르기 화면의 다른 줄 (시범판 B · 꾸민 배경 · 성능 진단 · 시범판 A)
+  section('고르기 화면의 다른 줄');
+  for (const id of ['v2b', 'v2c', 'v2bench', 'v2a']) {
+    const sp = await openPage(fold, `${ORIGIN}/index.html?scene=${id}`, id);
+    const okS = await sp.waitForFunction(() => { const n = window.__game?.top?.constructor?.name || ''; return n && n !== 'V2Pending'; }, null, { timeout: 60000 }).then(() => true, () => false);
+    await sp.waitForTimeout(3000);
+    const top = await sp.evaluate(() => window.__game?.top?.constructor?.name);
+    check(`${id}: 열림 · 페이지 오류 없음`, okS && sp.__errs.length === 0, `${top}${sp.__errs.length ? ' · ' + sp.__errs.slice(0, 2).join(' | ') : ''}`);
+    await sp.close();
+  }
+  await fold.close();
 }
 
 let failed = false;
