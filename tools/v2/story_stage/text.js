@@ -23,7 +23,7 @@ export const TEXT = {
     belltower_now: { name: '종탑', sub: '박쥐 떼가 종을 노린다' },
     belltower_past: { name: '종탑', sub: '금 없는 종' },
     ossuary_now: { name: '배웅의 납골당', sub: '백 년 치 관이 쌓인 굴' },
-    ossuary_past: { name: '배웅의 납골당', sub: '촛불 켠 예배굴' },
+    ossuary_past: { name: '배웅의 납골당', sub: '촛불 켠 예배실' },
   },
   // section labels for the areas WORLD has not built yet (ids are the ones STORY expects — DATA_FORMAT section 12)
   sections: {
@@ -41,7 +41,7 @@ export const TEXT = {
   },
 
   // death and retry (banner kind 'dead'); the spoken retry lines are DIALOGS['retry.*']
-  death: { title: '촛불이 꺼졌다', sub: '종이 울린다. 다시 일어선다', retry: '화면을 누르면 촛불 앞에서 다시 일어난다' },
+  death: { title: '촛불이 꺼졌다', sub: '종이 울린다. 다시 일어선다', retry: '화면을 누르면 촛불 앞에서 다시 일어선다' },
 
   // system lines: {name} / {title} are filled by the runner
   system: {

@@ -581,6 +581,7 @@ function transcript(r, title) {
       case 'cross': L.push(`  ⇄ 종을 울려 건넌다 → ${x.a}${x.b ? ' (백 년이 흐르는 3초)' : ''}`); break;
       case 'camera': L.push(`  〔카메라〕 ${x.a}`); break;
       case 'music': L.push(`  〔음악〕 ${x.a}`); break;
+      case 'sound': L.push(`  〔소리〕 ${x.a === 'bell.toll' ? '종이 울린다' : x.a === 'bell.crack' ? '종에 금이 간다' : x.a}`); break;
       case 'unlock': L.push(`  〔열림〕 ${x.a}`); break;
       case 'actor': L.push(`  〔인물〕 ${x.a} ${x.b}`); break;
       case 'wake': L.push(`  〔적〕 ${x.a}`); break;
@@ -629,6 +630,7 @@ function ownerScript() {
       case 'goto': L.push('', `〔${(TEXT.areas[x.a] || {}).name || x.a} — ${x.a.endsWith('_past') ? TEXT.night.past : TEXT.night.now}〕  `); break;
       case 'candle': if (x.a > 0) L.push('〔촛불이 한 자루 늘었다〕  '); break;
       case 'moon': L.push('〔달이 한 칸 기운다〕  '); break;
+      case 'sound': if (x.a === 'bell.toll') L.push('〔소리: 종이 울린다〕  '); else if (x.a === 'bell.crack') L.push('〔소리: 종에 금이 간다〕  '); break;
       case 'end': L.push('', '**— 첫 출시의 끝 —**', ''); break;
       default: break;
     }

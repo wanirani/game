@@ -13,7 +13,7 @@
   - **The same sequence is never started twice at once** (runner): a second press of a bell / a person while their sequence runs or waits in the queue is dropped.
   - New event field `safety: true` (a net for cut-off saves; the check does not ask for it to be reached). New listener `section.enter {id: 'church'}` (the crossing tip appears at the bell). New hooks: `group.clear {group: 'out_a'}`, `exit.locked {id: 'to_belltower'}`, `exit.locked {id: 'to_ossuary'}` in both nights, trigger `grave.edmund` (§12).
   - Out-of-place events are ignored: tower sequences need `promise`, boss beats need `area:ossuary_now` / `area:ossuary_past`, the road bell needs `area:graveyard_past`.
-  - Break tests: `node --expose-gc tools/v2/story_break.mjs` (unknown events, wrong order, double presses, save mid-sequence, choice under load, 10,000 unmatched events).
+  - Break tests: `node --expose-gc tools/v2/story_break.mjs` (unknown events, wrong order, double presses, save mid-sequence, choice under load, 10,000 unmatched events, the whole release with every step tripled, every scene cut off by save → load, 60,000 random events).
 
 ## 0. At a glance
 
@@ -286,7 +286,7 @@ Sound names the script asks for: `bell.toll` (opening) · `bell.crack`. Music id
 ## 13. Status after the review (2026-11-18 00:20 UTC)
 
 - `node tools/v2/story_check.mjs` → `OK: 0 errors, 0 warning(s)`; `node --expose-gc tools/v2/story_break.mjs` → all passed.
-- Numbers: 25 people · 78 dialogue sets (158 variants, 294 pages) · 86 sequences (29 wait for areas, 6 bridges, 1 safety net) · 11 items · 23 objectives · 13 chronicle entries · 43 flags · 24 tutorial prompts · 556 distinct Hangul syllables, 11 new to the fonts (`넜닭댓둡딨밧뵌샌앓칩켠`).
+- Numbers: 25 people · 78 dialogue sets (158 variants, 293 pages) · 86 sequences (29 wait for areas, 6 bridges, 1 safety net) · 11 items · 24 objectives · 13 chronicle entries · 43 flags · 24 tutorial prompts · 556 distinct Hangul syllables, 11 new to the fonts (`넜닭댓둡딨밧뵌샌앓칩켠`).
 - The numbers in the older status below are from before the review.
 
 ## 13b. Status before the review (2026-11-18 00:00 UTC)

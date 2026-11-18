@@ -343,6 +343,7 @@ export const EVENTS = [
   // ═════════ 82–100 납골당 뒤 절반 ═════════
   { id: 'ev_oss_sera', minute: '82-100', waiting: 'ossuary_now', on: 'trigger', match: { event: 'oss.lamp' }, steps: [
     ['say', 'sera.ossuary'],
+    ['hideActor', 'sera', 'eshville_now'],       // she is here now, not in the square
   ] },
   { id: 'ev_oss_riddle', minute: '82-100', waiting: 'ossuary_now', on: 'interact', match: { event: 'oss.riddle' }, once: false, steps: [
     ['say', 'oss.riddle'],
@@ -465,6 +466,7 @@ export const EVENTS = [
     ['camera', null],
     ['hideActor', 'elise', 'eshville_past'],
     ['showActor', 'elise', 'eshville_now'],
+    ['showActor', 'sera', 'eshville_now'],
     ['setFlag', 'elise_home'],
     ['music', 'dawn_bell'],
     ['say', 'ending.bell'],

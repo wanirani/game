@@ -106,7 +106,7 @@ export const DIALOGS_DUNGEON = {
     ['banshee_queen', '…그 밤이 좋았단다. 넷째 발크레인이\n아직 살아 있던 밤.'],
   ] }],
   'boss.past': [{ pages: [
-    ['narrator', '그 밤의 예배굴. 제단 아래\n엘리제가 잠들어 있다.'],
+    ['narrator', '그 밤의 예배실. 제단 아래\n엘리제가 잠들어 있다.'],
     ['kael', '엘리제! 조금만 기다려라.'],
   ] }],
   'boss.driven': [{ pages: [
@@ -118,8 +118,7 @@ export const DIALOGS_DUNGEON = {
     ['kael', '잘 가십시오.\n이번 배웅은 제가 합니다.'],
   ] }],
   'lia.warn': [{ pages: [
-    ['lia', '발크레인.'],
-    ['lia', '그 늙은 신부를 조심해.'],
+    ['lia', '발크레인.\n그 늙은 신부를 조심해.'],
     ['kael', '누구냐.'],
     ['narrator', '대답은 없다. 까마귀 깃털 하나가\n발치에 떨어진다.'],
   ] }],

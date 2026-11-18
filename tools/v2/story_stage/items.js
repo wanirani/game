@@ -13,7 +13,7 @@ export const ITEMS = {
   key_rust: { id: 'key_rust', name: '녹슨 쇳덩이', kind: 'keepsake',
     desc: '열쇠였던 것. 쇠는 백 년을 버티지 못한다.' },
   order_slip: { id: 'order_slip', name: '빈칸 주문서', kind: 'keepsake',
-    desc: '하드윈 1세의 주문서. 이름 칸이 백 년 동안 비어 있었다.' },
+    desc: '하드윈 1세의 주문서. 받을 이는 「채찍 든 길손」, 이름 칸은 빈칸.' },
   lotte_bread: { id: 'lotte_bread', name: '로테의 빵', kind: 'food',
     desc: '딱딱한 호밀빵. 로테가 손에 쥐여 주었다.' },
   chisel: { id: 'chisel', name: '묘지기의 끌', kind: 'tool',
@@ -29,7 +29,7 @@ export const ITEMS = {
 // one short line under the section name (16 characters or fewer)
 export const OBJECTIVES = {
   follow_bell: { id: 'follow_bell', text: '종소리를 따라간다' },
-  to_square: { id: 'to_square', text: '큰길을 지나 광장으로' },
+  to_square: { id: 'to_square', text: '큰길을 지나 광장으로 간다' },
   to_church: { id: 'to_church', text: '성당으로 간다' },
   climb_tower: { id: 'climb_tower', text: '종탑에 오른다' },
   guard_elise: { id: 'guard_elise', text: '엘리제를 지킨다' },
