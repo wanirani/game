@@ -105,7 +105,7 @@ function casesFor(id) {
     C.push(...facePushes('fieldL_n', 300, 960, 0, 1, 1, 0, true));
     C.push(...facePushes('fieldR_n', 900, 960, 0, 1, 1, 0, true));
     C.push(...facePushes('fieldL_s', 300, 900, 0, -1, 1, 0, false));
-    C.push(['gate_pass', 600, 840, 0, 1, 'pass', 1400, { axis: 'z', beyond: 1000 }], ['gate_pass_l', 556, 840, 0, 1, 'pass', 1400, { axis: 'z', beyond: 1000 }], ['gate_pass_r', 644, 840, 0, 1, 'pass', 1400, { axis: 'z', beyond: 1000 }]);
+    C.push(['gate_pass', 600, 840, 0, 1, 'pass', 2000, { axis: 'z', beyond: 1000 }], ['gate_pass_l', 556, 840, 0, 1, 'pass', 2000, { axis: 'z', beyond: 1000 }], ['gate_pass_r', 644, 840, 0, 1, 'pass', 2000, { axis: 'z', beyond: 1000 }]);
     C.push(['gate_back', 600, 1040, 0, -1, 'pass', 2000, { axis: '-z', beyond: 880 }]);
     C.push(['gateleafL_in', 600, 940, -1, 0, 'push', 700], ['gateleafR_in', 600, 940, 1, 0, 'push', 700], ['gateleafL_30', 600, 900, -0.87, 0.5, 'push', 700], ['gateleafR_30', 600, 900, 0.87, 0.5, 'push', 700]);
     C.push(['gatepostL_s', 520, 860, -0.2, 1, 'push', 700], ['gatepostR_s', 680, 860, 0.2, 1, 'push', 700], ['gatepostL_n', 500, 1010, 0, -1, 'push', 700], ['gatepostR_n', 700, 1010, 0, -1, 'push', 700]);
@@ -134,13 +134,13 @@ try {
     const vp = await page.evaluate(() => [innerWidth, innerHeight]), sx = Math.round(vp[0] * 0.2), sy = Math.round(vp[1] * 0.66);
     const pad = await page.evaluate(() => { const m = window.__v2?.scene?.hud?.metrics?.(); const B = {}; for (const b of m?.pad?.buttons ?? []) B[b.id] = { cx: b.cx, cy: b.cy }; return B; });
     // a per-frame recorder of the hero (x, y, z) in the page
-    await page.evaluate(() => { const v = window.__v2; window.__fv = { on: false, log: [] }; const tick = () => { const R = window.__fv; if (R.on) { const h = v.hero; R.log.push([h.x, h.y, h.z]); } requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
+    await page.evaluate((far) => { window.__fvFar = far; }, !!args.far); await page.evaluate(() => { const v = window.__v2; window.__fv = { on: false, log: [] }; const tick = () => { const R = window.__fv; if (R.on) { const h = v.hero; R.log.push([h.x, h.y, h.z]); } requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
     const R = out.areas[id] = { cases: [], errors: errs };
     for (const [name, X, Z, wx, wz, mode, HOLD, pass] of casesFor(id).filter((c) => !ONLY || ONLY.test(c[0]))) {
       // the start must be a spot the hero can reach in this area (reach grid as world_validate) - else the case is skipped (the far side of a front fence)
       if (!g.reachable(X, Z)) { R.cases.push({ name, skipped: 'start not reachable', from: [X, Z] }); console.log(`${DEV} ${id} ${name.padEnd(16)} skipped: (${X},${Z}) not reachable`); continue; }
       total++;
-      await page.evaluate(([x, z]) => { const sc = window.__v2.scene, h = sc.sim.hero; for (const e of sc.sim.enemies ?? []) e.active = false; h.x = x; h.z = z; h._px = x; h._pz = z; h.vx = 0; h.vz = 0; h.hp = Math.max(h.hp, 80); h.ifr = 0; h.hurtT = 0; sc.cam.snap = true; window.__fv.log = []; }, [X, Z]);
+      await page.evaluate(([x, z]) => { const sc = window.__v2.scene, h = sc.sim.hero; for (const e of sc.sim.enemies ?? []) { e.active = false; if (window.__fvFar) { e.x = -4000; e.z = -4000; } } h.x = x; h.z = z; h._px = x; h._pz = z; h.vx = 0; h.vz = 0; h.hp = Math.max(h.hp, 80); h.ifr = 0; h.hurtT = 0; sc.cam.snap = true; window.__fv.log = []; }, [X, Z]);
       await page.waitForTimeout(260);
       await page.evaluate(() => { window.__fv.log = []; window.__fv.on = true; });
       const len = Math.hypot(wx, wz), ux = wx / len, uz = wz / len, R0 = 56;   // stick: screen right = +x, screen up = +z
