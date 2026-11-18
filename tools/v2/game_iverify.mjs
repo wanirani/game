@@ -70,7 +70,7 @@ function installIv() {
   };
   I.inside = () => { const s = v.scene, h = s.sim.hero; for (const q of s.W.boxes) if (q.solid && !q.walk && h.x > q.x0 + 2 && h.x < q.x1 - 2 && h.z > q.z0 + 2 && h.z < q.z1 - 2 && h.y + 50 > q.y0 && h.y + 10 < q.y1) return [q.x0, q.x1, q.z0, q.z1, q.y0, q.y1]; return null; };
   I.ground = (x, z) => { const s = v.scene; let gy = -1e9; for (const b of s.W.boxes) if (b.walk && x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1 && b.y1 > gy) gy = b.y1; return gy > -1e8 ? gy : null; };
-  I.put = (x, z, y) => { const s = v.scene, h = s.sim.hero; h.x = x; h.z = z; const gy = y ?? I.ground(x, z); if (gy != null) h.y = gy; h.vx = 0; h.vz = 0; h.vy = 0; if (h.safe) { h.safe.x = x; h.safe.z = z; h.safe.y = h.y; } s.cam.snap = true; g.tick(1 / 60); return [Math.round(h.x), Math.round(h.y), Math.round(h.z)]; };
+  I.put = (x, z, y) => { const s = v.scene; if (!s.sim) return null; const h = s.sim.hero; h.x = x; h.z = z; const gy = y ?? I.ground(x, z); if (gy != null) h.y = gy; h.vx = 0; h.vz = 0; h.vy = 0; if (h.safe) { h.safe.x = x; h.safe.z = z; h.safe.y = h.y; } s.cam.snap = true; g.tick(1 / 60); return [Math.round(h.x), Math.round(h.y), Math.round(h.z)]; };
   I.fellNear = (r) => { const sim = v.scene.sim, h = sim.hero; let n = 0; for (const e of sim.enemies) if (!e.dead && e.state !== 'dead' && Math.hypot(e.x - h.x, e.z - h.z) < r) { e.hp = 0; sim._kill(e); n++; } return n; };
   I.mem = () => { try { window.gc?.(); } catch { /* no gc */ } const s = v.stats; return { tex: s.gl.texBytes, buf: s.gl.bufBytes, canvases: s.canvases, dom: document.querySelectorAll('canvas').length, heap: Math.round((performance.memory?.usedJSHeapSize ?? 0) / 1024), models: s.chars.models.length, area: s.area }; };
   I.gl = () => { const s = v.stats; return { draws: s.gl.draws, tris: s.gl.tris, world: s.world?.tris ?? null, chars: s.chars?.tris ?? null, drawn: s.chars?.drawn ?? null, texMB: s.gl.texMB, bufMB: +(s.gl.bufBytes / 1048576).toFixed(1), res: s.res, loadMs: s.loadMs, hud: s.hud, canvas: s.gl.canvas ?? null, models: s.chars.models.length, fx: s.fx?.particles ?? s.fx?.live ?? null }; };
@@ -433,7 +433,7 @@ try {
 
   // ───────────────────────────── cross50: fifty crossings where it should be hard ─────────────────────────────
   if (PLAN === 'cross50') {
-    await clean(); const o = await open(''); await settle(3000); await ff(60); await botTouch();
+    await clean(); const o = await open('&area=eshville_now&v2story=0'); await settle(600); await ff(60); await botTouch();   // story off: a hero put at 50 different spots would walk into story triggers, and a crossing is (rightly) refused while their dialogues are open
     const spotsOf = async (id) => { const { a, W } = await areaOf(id, {}), sp = a.spawns.default, g = reachGrid(W, sp.x, sp.z, 26), out = [];
       for (const x of a.exits) out.push(['exit ' + x.id, (x.x0 + x.x1) / 2, (x.z0 + x.z1) / 2]);
       for (const x of a.exits) { const p = g.near((x.x0 + x.x1) / 2, (x.z0 + x.z1) / 2, 160); if (p) out.push(['next to exit ' + x.id, p[0], p[1]]); }
@@ -447,8 +447,8 @@ try {
     const run = async (id, count) => { const S1 = await spotsOf(id), tw = (await areaOf(id, {})).a.twin, S2 = tw ? await spotsOf(tw) : S1;
       for (let i = 0; i < count; i++) { const cur = (await st()).area, L = cur === id ? S1 : S2, sp = L[Math.floor(i / 2) % L.length];
         const at = await ev(([x, z, y]) => window.__iv.put(x, z, y ?? null), [sp[1], sp[2], sp[3] ?? null]); await ff(8, false, 0);
-        const t0 = Date.now(), c = await ev(() => window.__v2.scene.cross(null)); if (!c) { refused++; fail(`crossing ${n + 1} at ${cur} ${sp[0]} (${at}): cross() refused — ${JSON.stringify(await st())}`); n++; continue; }
-        let s = null; for (let k = 0; k < 400; k++) { s = await ff(30, false, 0); if (s.ready && !s.xing && !s.go) break; if (!s.ready) await page.waitForTimeout(120); } const ms = Date.now() - t0; await ff(40, false, 0);
+        const t0 = Date.now(), c = await ev(() => window.__v2.scene.cross(null)); if (!c) { refused++; const q = await st(); if (refused <= 4) fail(`crossing ${n + 1} at ${cur} ${sp[0]} (${at}): cross() refused — modal ${q.modal}, busy ${q.busy}, journey ${q.go}, crossing ${q.xing}, ready ${q.ready}, dead ${q.dead}`); n++; continue; }
+        let s = null; for (let k = 0; k < 400; k++) { s = await ff(30, false, 0); if (s.ready && !s.xing && !s.go) break; if (!s.ready) await page.waitForTimeout(120); } const ms = Date.now() - t0; await ff(100, false, 0);
         const bad = await ev(() => window.__iv.sane()), ins = await ev(() => window.__iv.inside()), e = await st();
         // can the hero walk away?
         let best = 0; for (const [dx, dz] of [[-1, 0.15], [0, -1], [1, 0.15], [0, 1]]) { await ev(([ux, uz]) => { const h = window.__v2.scene.sim.hero; window.__bot.setRoute([[h.x + ux * 200, h.z + uz * 200], [h.x + ux * 400, h.z + uz * 400]]); }, [dx, dz]); const a0 = await st(), b0 = await ff(45, true, 0); best = Math.max(best, Math.hypot(b0.x - a0.x, b0.z - a0.z)); if (best > 20) break; }
@@ -459,9 +459,9 @@ try {
         if (n % 10 === 0) console.log(`       ${n} crossings: last ${cur} -> ${e.area} ${ms} ms, heap ${m.heap} KB, tex ${m.tex}, buf ${m.buf}, canvases ${m.dom}`);
       } };
     await run('eshville_now', 38);
-    await ev(() => window.__v2.scene.travelTo('graveyard_now', 'from_eshville')); let s = null; for (let k = 0; k < 300; k++) { s = await ff(30, false, 0); if (s.ready && !s.go && s.area === 'graveyard_now') break; if (!s.ready) await page.waitForTimeout(150); } await settle(1200); chk(s.area === 'graveyard_now', 'journey to graveyard_now for the next crossings');
+    await ev(() => window.__v2.scene.travelTo('graveyard_now', 'from_eshville')); let s = null; for (let k = 0; k < 300; k++) { s = await ff(30, false, 0); if (s.ready && !s.go && s.area === 'graveyard_now' && s.fade <= 0.02) break; if (!s.ready) await page.waitForTimeout(150); } await settle(600); chk(s.area === 'graveyard_now', 'journey to graveyard_now for the next crossings');
     await run('graveyard_now', 6);
-    await ev(() => window.__v2.scene.travelTo('ossuary_now', 'entry')); for (let k = 0; k < 300; k++) { s = await ff(30, false, 0); if (s.ready && !s.go && s.area === 'ossuary_now') break; if (!s.ready) await page.waitForTimeout(150); } await settle(1200); chk(s.area === 'ossuary_now', 'journey to ossuary_now for the next crossings');
+    await ev(() => window.__v2.scene.travelTo('ossuary_now', 'entry')); for (let k = 0; k < 300; k++) { s = await ff(30, false, 0); if (s.ready && !s.go && s.area === 'ossuary_now' && s.fade <= 0.02) break; if (!s.ready) await page.waitForTimeout(150); } await settle(600); chk(s.area === 'ossuary_now', 'journey to ossuary_now for the next crossings');
     await run('ossuary_now', 6);
     R.rows = rows;
     const E = rows.filter((r) => r.from.startsWith('eshville')), msA = rows.map((r) => r.ms), heap = E.map((r) => r.heap);
