@@ -19,8 +19,8 @@ const S = {
   dust: E({ sprite: SPR.SMOKE, add: 0, n: 2, spread: 0.9, speed: [20, 70], vy: [10, 40], drag: 2.5, life: [0.25, 0.45], size: [10, 16], grow: 1.8, c0: [0.5, 0.46, 0.42, 0.35], c1: [0.4, 0.38, 0.36, 0] }),
 };
 export const WHIP_TRAIL = {
-  lash: RB({ mode: 0, life: 0.13, col: [1.5, 1.25, 0.85, 0.8] }),        // warm, short: the last third of the lash sweeping
-  heavy: RB({ mode: 0, life: 0.2, col: [2.3, 1.4, 0.6, 0.95] }),
+  lash: RB({ mode: 1, life: 0.12, width: 8, col: [1.9, 1.5, 0.95, 0.85] }),     // a thin warm streak behind the tip (a whip leaves a line, not a blade's sheet)
+  heavy: RB({ mode: 1, life: 0.19, width: 13, col: [2.6, 1.5, 0.6, 0.95] }),
   line: RB({ mode: 1, life: 0.16, width: 9, col: [0.8, 1.3, 2.2, 0.7] }),   // the throw toward a ring
 };
 const C = { warm: [1.0, 0.82, 0.5], cold: [0.6, 0.8, 1.0], gold: [1.0, 0.8, 0.4], ringW: [2.4, 2.1, 1.6, 0.9], ringG: [2.6, 2.0, 0.8, 0.9], ringB: [1.2, 1.8, 2.8, 0.8] };
@@ -63,12 +63,12 @@ export function whipFx(fx, feel, opts = {}) {
     /** every frame (after whip.update): trail ribbon + a small light riding the shard when it glows */
     update(whip) {
       if (!fx) return;
-      const R = fx.ribbons, N = whip.nodes, n = whip.n, t = whip.tip;
+      const R = fx.ribbons, t = whip.tip;
       const on = whip.trail > 0 && t.speed > 420;
       if (on && L.rb < 0) L.rb = R.start(whip.mode === 'swing' ? (whip.sw.str === 'F' || whip.sw.str === 'H' ? WHIP_TRAIL.heavy : WHIP_TRAIL.lash) : WHIP_TRAIL.line);
       if (L.rb >= 0) {
         if (!on) { R.end(L.rb); L.rb = -1; }
-        else { const a = ((n * 0.62) | 0) * 3; R.push(L.rb, N[a], N[a + 1], N[a + 2], t.x, t.y, t.z); }
+        else R.push(L.rb, t.x, t.y, t.z, 0, 0, 0);
       }
     },
     /** area change / respawn */

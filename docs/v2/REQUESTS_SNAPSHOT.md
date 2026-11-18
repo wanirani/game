@@ -333,3 +333,30 @@ ENGINE / integration must supply (all are "new" in DATA_FORMAT §5–6; in order
 - (same review, later) `eshville_now` actor `sera`: the story hides her while she stands at the lantern stand in the ossuary (`hideActor('sera', 'eshville_now')` on `oss.lamp`, shown again at the ending) — the scene must honour hide / show overrides over `when`.
 - `street_clear` is used by WORLD for Marta (1797) and Edmund (1697). It works (cleared at the fall, set again when group `st_p` falls) but one flag has two meanings; if WORLD can, give Edmund `when: 'past_street_clear'` and tell STORY — one line in `ev_past_street_clear`. Until the street of 1697 is cleared Edmund does not come to the tavern door; the door now says so (「큰길의 주검부터 쓰러뜨려야 열겠군」).
 - `belltower_now`: when it is built, `tower.crack` plays only two spoken lines there; the bats hitting the bell, the crack, the fall and the silver shooting star are camera shots `bell_crack` and `fall` (TEXT.shots) — the scene must show them.
+
+## INTEGRATE-A (2026-11-18 00:55 UTC) — what the scene (v2g) needs from other lanes after turning real areas + the new interface on (docs/v2/ENGINE_API.md third version)
+
+To the main session
+- **`tools/v2/p0_entry_check.mjs` must change** (not my file): it expects (a) a tap on the v1 pad's pause button and (b) the ESC key to leave v2g at once. v2g now opens the pause menu on both (UI_ADOPT_PATCH §2; the v1 pad is hidden by default). The check should press pause, then the row 「나가기」 (`scene.hud.metrics().pause.rows` + `.ids`), or open with `v2ui=0` and still pick the row of the built-in pause panel. Row order of the chooser is unchanged (no new row: the test route is `?scene=v2g&area=slice0`).
+- Ship list (`tools/deploy/v2_ship.txt`): see the list in my report (props pack, env textures of the real areas, every character model of the four areas, clip group `story.glb`, interface atlas, portraits).
+- `tools/qa/lib/touch.mjs` `padLayout / pressButton` only know the v1 pad. Checks that drive v2g should read `window.__v2.scene.hud.metrics().pad.buttons` (id `roll` = the old `dash`). `tools/v2/game_bot.mjs` lifts every finger between calls because the new pad drops touches by itself when the HUD has not been drawn for about a second (its watchdog) — a slow headless run hits that between two `page.evaluate` calls.
+
+To PLAY
+- `sim.section` freezes at `'done'` once the `yard` enemies of an area are dead (sim.js `if (sec && !this.done) this.section = sec.id`). In real areas play goes on after the arena: the scene now reads the section under the hero itself (only the test route uses `sim.section`). Please keep `sim.done` but let `section` follow the hero when the stage is not the test route — or tell me to keep my copy.
+- Rest spots (`interact` kind `rest`) cannot heal: the hero state is yours. Please add `sim.heal(n | 'full')` (and `sim.respawnAt(x, z)` for a rest point after death).
+- I detect your tools by fields: skill = `hero.callCd !== undefined`, bell = `hero.bellCd !== undefined` (or `sim.caps = { skill, bell }` if you prefer to say it). Inputs: `inp.skill`, `inp.skillHeld`, `inp.bell`, `inp.bellHeld`. Events I take: `bell` -> story `bell.echo`, `ringLong` -> story `bell.long` (and, with no story plugged in, the crossing to the twin area when a bell spot is near), `deny` -> a short notice. `hero.whipOn / whipX/Y/Z` is drawn as a thin cord of light from the hand (7 ribbon nodes per tick) — tell me if you want a different picture.
+- After a hero death in a real area the rules restart the whole area (all enemies stand again). With rest points this should become "back to the last rest spot, the dead stay dead until the area is re-entered" — your call.
+
+To WORLD / PROPS
+- The static flame meshes (`mesh:'fire'`, the leaf shapes on the outskirts ruins and in the church braziers) read as flat yellow-orange polygons next to the particle fire that now burns on every `fire` anchor. Suggest: keep only the ember bed / logs as mesh and let the anchor do the flames, or shrink the leaves to a third.
+- Graveyard road (`graveyard_*`, section `road`): lantern posts and an angel stand between the camera and the road; in the capture `/tmp/claude-0/v2/integA/owner/bat.png` they fill the lower corners, and near the gate a statue is cut by the camera's near plane (`walk_fold_open_fight_graveyard_now_gravekeeper_armor.png`, bottom centre). The scene now shows the hero as a faint silhouette when two of three rays camera -> hero hit a collision box, which hides the worst of "hero behind the gate post", but the foreground props are still big.
+- Draw calls: the street by the inn is 48 with the cast (static 34), the square fight 49 (numbers in ENGINE_API §7). Fewer materials per chunk would help more than anything the scene can do.
+- `pose: 'work'` (Hadwin I) and `'cower'` have no matching clip in the library (`story` group): they stand idle / kneel. A hammering loop and a crouch-with-arms-over-head would fit.
+- Exits: the scene makes a locked exit solid itself (a box per exit, `W.boxes[i].gate`), and treats `locked: 'not_built'` as a missing target. `gotoArea(id, spawn, { keepPosition: true })` exists now.
+
+To char3d / CAST (frozen folders)
+- LOD models are still the biggest item for the Fold: 80–90 % of the triangles are characters (square with the arena awake: 241,618 triangles, 212,797 of them characters). Even a 40 % version of the two skeletons and the villagers would halve the frame.
+- `src/v2/char3d/skel.js qnorm` still uses `Math.hypot` (core-verify request) — the scene's own tick/draw code no longer does.
+
+To STORY / INTEGRATE-B
+- Plug-in points and the event/api list: ENGINE_API §6 and §11. While no story is plugged in the scene runs stand-in rules (one neutral line per person in `src/v2/game/people.js` LINES, key-locked exits open when the area's arena is cleared, a long ring next to a bell spot crosses to the twin area). All of them switch off the moment `scene.setStory(fn, { flag })` is called.

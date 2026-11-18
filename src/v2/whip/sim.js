@@ -5,7 +5,7 @@ import { MOVES } from '../play/moves.js';
 import { shapeOf } from './shapes.js';
 
 export const WHIP_TIERS = { low: { n: 12, sub: 2, sides: 6 }, mid: { n: 16, sub: 3, sides: 8 }, high: { n: 20, sub: 4, sides: 10 } };
-const GRAV = -1400, MAXV = 2800, NS = 25, HANDLE_FWD = 11;   // gravity px/s2, speed cap px/s, curve samples, grip -> lash root along the handle
+const GRAV = -1400, MAXV = 3400, NS = 25, HANDLE_FWD = 11, BOW = 0.955;   // gravity px/s2, speed cap px/s, curve samples, grip -> lash root along the handle
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 export class Whip {
@@ -156,7 +156,7 @@ export class Whip {
   _curve(tx, ty, tz, sx, sy, sz) {
     const n = this.n, T = this.tgt, r = this.root, len = this.len;
     const cx = tx - r.x, cy = ty - r.y, cz = tz - r.z, c = Math.hypot(cx, cy, cz);
-    if (c >= len * 0.985 || c < 1e-3) {
+    if (c >= len * 0.992 || c < 1e-3) {
       const k = c < 1e-3 ? 0 : Math.min(len, c) / c;
       for (let i = 0; i < n; i++) { const u = (i / (n - 1)) * k, o = i * 3; T[o] = r.x + cx * u; T[o + 1] = r.y + cy * u; T[o + 2] = r.z + cz * u; }
       return;
@@ -197,13 +197,14 @@ export class Whip {
     const w = K[3], lim = sh.len, lo = (lim ? lim[0] : 0.7) * this.L0, hi = (lim ? lim[1] : 1.5) * this.L0;
     let chord = Math.hypot(W[0] - r.x, W[1] - r.y, W[2] - r.z);
     // lash length for this move: what the peak needs. Long throws (far, hold-attack) pay the lash out as the tip flies
-    const near = Math.min(pk, this.L0 * 1.5);
-    this.lenWant = clamp(pk > near ? Math.max(near, chord * (1 + 0.08 * (1 - w))) : pk, lo, hi);
+    // (BOW: even fully extended the lash keeps a slight bow, laid toward the key's slack direction - a dead straight lash reads as a stick)
+    const pkL = pk / BOW, near = Math.min(pkL, this.L0 * 1.5);
+    this.lenWant = clamp(pkL > near ? Math.max(near, (chord / BOW) * (1 + 0.08 * (1 - w))) : pkL, lo, hi);
     // held hard (w >= 0.9) = the strike: the lash is laid out straight, full length, along the direction of the key
     const em = clamp((w - 0.75) / 0.17, 0, 1), e = em * em * (3 - 2 * em);
     if (e > 0 && chord > 1e-3) {
       if (e > 0.5) this.len = this.lenWant;
-      const k = 1 + (this.lenWant / chord - 1) * e;
+      const k = 1 + ((this.lenWant * BOW) / chord - 1) * e;
       W[0] = r.x + (W[0] - r.x) * k; W[1] = r.y + (W[1] - r.y) * k; W[2] = r.z + (W[2] - r.z) * k; chord *= k;
     }
     // slack direction: hero frame -> world

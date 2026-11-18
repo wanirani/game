@@ -1,6 +1,7 @@
 // WHIP: 시험 화면(tools/v2/whip_view.html)을 헤드리스로 띄워 기술마다 붙임 그림(두 틱마다 한 칸)을 찍는다.
 //   node tools/v2/whip_shot.mjs                 모든 묶음 → /tmp/claude-0/v2/whip/<이름>.png  (게임 카메라 + 가까이)
 //   node tools/v2/whip_shot.mjs combo hook      이름이 그 글자로 시작하는 묶음만
+//   --shot="demo:t:cam:w:h[:era[:reso[:dir]]]" --name=이름   한 장만
 //   --owner    소유자용 한 장 → /tmp/claude-0/v2/owner_whip.png
 //   --list  --out=<폴더>
 // 한 번에 브라우저 하나. 헤드리스 WebGL 은 소프트웨어 렌더링이라 느리다 (프레임 시간은 기기와 무관).
@@ -64,6 +65,11 @@ try {
   try { await page.waitForFunction(() => window.__whip?.ready || window.__whip?.error, null, { timeout: 90000 }); } catch { errs.push('timeout waiting for ready'); }
   const err = await page.evaluate(() => window.__whip?.error);
   if (err) { errs.push('[page error] ' + err); code = 1; }
+  else if (opt('shot', '')) {   // --shot="demo:t:cam:w:h[:era[:reso[:dir]]]" --name=이름  (그때그때 한 장)
+    const [d, t, cam, w, h, era, reso, dir] = opt('shot', '').split(':');
+    const url = await page.evaluate(([d, t, o]) => window.__whip.shot(d, t, o), [d, Number(t), { cam: cam || 'close', w: Number(w) || 640, h: Number(h) || 480, era: era || 'now', reso: Number(reso ?? 0.3), dir: Number(dir ?? 0), tier: opt('tier', 'mid') }]);
+    const f = path.join(outDir, (opt('name', 'shot_' + d)) + '.png'); fs.writeFileSync(f, Buffer.from(url.split(',')[1], 'base64')); console.log('wrote', f, JSON.stringify(await page.evaluate(() => window.__whip.state())).slice(0, 400));
+  }
   else if (argv.includes('--owner')) {
     // 소유자용 한 장: 칸마다 한국어 설명. 솔직하게 — 아직 약한 곳도 한 줄
     const rows = [

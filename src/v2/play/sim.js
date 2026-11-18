@@ -36,7 +36,7 @@ export class Sim {
    */
   constructor(W, hooks = {}) {
     this.W = W; this.hooks = hooks; this.w = bindWorld(W); this.deaths = 0;
-    this.qx = 0.5; this.qz = 0.5; this.qy = 0.5; this.g = 0.5; this.ex = 0.5; this.ez = 0.5; this._sx = 0.5; this._sz = 0.5; this._sv = 0.5;   // 숫자를 주고받는 칸 (인자 · 반환값으로 실수를 넘기면 상자가 생긴다 — collide.js groundAtS)
+    this.qx = 0.5; this.qz = 0.5; this.qy = 0.5; this.g = 0.5; this.ex = 0.5; this.ez = 0.5; this._sx = 0.5; this._sz = 0.5; this._sv = 0.5; this._tx = 0.5; this._tz = 0.5; this._tr = 0.5; this._hx = 0.5; this._hz = 0.5; this._sc = 0.5;   // 숫자를 주고받는 칸 (인자 · 반환값으로 실수를 넘기면 상자가 생긴다 — collide.js groundAtS)
     this._cg = typeof W.groundAt === 'function'; this._cm = typeof W.moveXZ === 'function';
     this.reset();
   }
@@ -64,7 +64,7 @@ export class Sim {
       lock: null, lockT: 0, lockHold: 0, lockX: 0, lockY: 0, lockZ: 0,
       act: null, actT: 0, actDone: false, actP: null, charging: false, charge: 0, chargeFullT: 0, atkHold: 0, whipLv: 1, pullT: 0, pullX: 0, pullZ: 0, whipOn: 0, whipX: 0, whipY: 0, whipZ: 0,
       reso: 0, resoMax: T.resoCells, callCd: 0, callCdMax: T.callCd, bellCd: 0, bellCdMax: T.bellCd, bellCharge: 0, bellDown: false, bellHoldT: 0, bellOk: true, knellId: null, hookId: null, skillMode: 'call', hookFX: 0, hookFY: 0, hookFZ: 0, hookTX: 0, hookTY: 0, hookTZ: 0, hookDur: 0.3,
-      gait: 0, gaitMode: 'run', wasMoving: false, pushed: false, pivot: 0, pivotT: 0, pivotA: 0, pivotV: 0, wishX: 1, wishZ: 0,
+      gait: 0, gaitMode: 'run', wasMoving: false, pushed: false, pivot: 0, pivotT: 0, pivotA: 0, pivotV: 0, wishX: 1, wishZ: 0, mx: 0, mz: 0, m: 0, ux: 0, uz: 0,
       anim: 'idle', animT: 0, t: 0, cut: false, landT: 0, landV: 0,
       safe: { x: W.start.x, z: W.start.z, y: W.start.y },
     };
@@ -165,12 +165,13 @@ export class Sim {
     const m = Math.min(1, m0), moving = m > 0.15;
     if (!moving) mx = mz = 0;
     const ux = moving ? mx / m : 0, uz = moving ? mz / m : 0;
+    h.mx = mx; h.mz = mz; h.m = m; h.ux = ux; h.uz = uz;   // 이 틱의 스틱 (아래 함수들은 숫자를 인자로 받지 않고 여기서 읽는다 — 실수 인자는 상자를 만든다)
     this._lock(h, pLock, dt);
     let loco = false;
     if (moving) { h.wishX = ux; h.wishZ = uz; }
     if (h.hurtT > 0) {   // 맞아서 밀리는 중: 조작 불가
       h.hurtT -= dt; h.vx *= 1 - Math.min(1, 6 * dt); h.vz *= 1 - Math.min(1, 6 * dt); h.guard = false; h.queued = 0;
-    } else if (this._tools(h, dt, inp, pSkill, pBell, pDash, moving, ux, uz)) { /* 도구(모아 휘감기 · 채찍 걸기 · 부름 · 종)가 이 틱의 영웅을 쥔다 */
+    } else if (this._tools(h, dt, inp, pSkill, pBell, pDash, moving)) { /* 도구(모아 휘감기 · 채찍 걸기 · 부름 · 종)가 이 틱의 영웅을 쥔다 */
     } else {
       const mv0 = h.move, pastHit = !mv0 || (mv0.kind === 'plunge' ? h.plungeLand != null : h.moveT >= mv0.hit[1]);
       // 구르기: 스틱을 민 채 dash, 또는 막는 중에 스틱을 민다. 공격은 판정이 끝난 뒤부터 구르기로 끊을 수 있다
@@ -225,7 +226,7 @@ export class Sim {
         else if (h.moveT >= mv.dur || (moving && h.moveT >= mv.free && h.queued <= 0)) this._endMove(h);
       } else if (h.guard || h.blockT > 0 || h.parryOk > T.parryT - 0.16) {   // 버티는 자세: 제자리에서 멈춘다
         const k = Math.min(1, 14 * dt); h.vx -= h.vx * k; h.vz -= h.vz * k;
-      } else { this._locomote(h, mx, mz, m, moving, ux, uz, dt); loco = true; }
+      } else { this._locomote(h, moving, dt); loco = true; }
       // 점프 (공격은 끊을 수 있는 시각부터)
       if (pJump && (h.onGround || h.coyote > 0) && h.dashT <= 0 && (!h.move || (h.move.kind !== 'plunge' && h.moveT >= h.move.cancel))) {
         h.vy = T.jumpV; h.onGround = false; h.coyote = 0; h.cut = false; h.move = null; h.combo = 0; h.guard = false; h.guardTap = 0; h.parryOk = 0; h.blockT = 0; h.airAtk = false; inp.jumpUsed = true;   // parryOk · blockT: a jump right after a parry must not keep the parry pose in the air
@@ -276,8 +277,8 @@ export class Sim {
    *   skillMode('hook'｜'call') · hookId · bellOk(지금 종을 칠 수 있나) · knellId(조종을 받을 무릎 꿇은 보스 id｜null) · whipOn + whipX/Y/Z(채찍 끝 — 장면이 띠를 그린다)
    * 돌려주는 값 true = 이 틱은 도구가 영웅을 쥔다 (걷기 · 공격 · 막기 건너뜀)
    */
-  _tools(h, dt, inp, pSkill, pBell, pDash, moving, ux, uz) {
-    const T = TUNE, E = this.enemies, HP = this.hookPoints;
+  _tools(h, dt, inp, pSkill, pBell, pDash, moving) {
+    const T = TUNE, E = this.enemies, HP = this.hookPoints, ux = h.ux, uz = h.uz;
     let hk = null, hd = T.hookRange * T.hookRange, kn = null;
     for (let i = 0; i < HP.length; i++) { const p = HP[i]; if (p.off) continue; const dx = p.x - h.x, dz = p.z - h.z, d = dx * dx + dz * dz, lx = (p.to ? p.to[0] : p.x) - h.x, lz = (p.to ? p.to[1] : p.z) - h.z; if (d < hd && lx * lx + lz * lz > 1600 && Math.abs((p.y ?? 0) - h.y) < T.hookRise) { hd = d; hk = p; } }   // 이미 그 고리의 내릴 자리에 서 있으면 걸지 않는다
     for (let i = 0; i < E.length; i++) { const e = E[i]; if (e.kneel > 0 && !e.dead && e.state !== 'dead') { const dx = e.x - h.x, dz = e.z - h.z; if (dx * dx + dz * dz < T.knellRange * T.knellRange) kn = e; } }
@@ -398,8 +399,8 @@ export class Sim {
    *   큰 꺾음(pivotAt 넘게): 돌아서기 — 멈추며(brake) 제자리에서 돌고(pivotRate, 처음 정한 쪽으로 끝까지), pivotEnd 안으로 들어오면 새 쪽으로 박찬다
    * 밀림 · 막기 뒤에 남은 옆 속도는 sideDamp 로 스러진다. 공중에서는 예전처럼 속도가 스틱을 따르고 몸만 천천히 돈다
    */
-  _locomote(h, mx, mz, m, moving, ux, uz, dt) {
-    const T = TUNE;
+  _locomote(h, moving, dt) {
+    const T = TUNE, mx = h.mx, mz = h.mz, m = h.m, ux = h.ux, uz = h.uz;
     if (T.legacyTurn) {   // (비교용: 1차의 방식 — 속도는 스틱을 바로 따르고 방향은 그 자리에서 바뀐다. tools/v2/play_view.html?legacy=1)
       const k = Math.min(1, (h.onGround ? 16 : T.airAccel) * dt);
       h.vx += (mx * T.runX - h.vx) * k; h.vz += (mz * T.runZ - h.vz) * k; h.pivot = 0;
@@ -468,8 +469,8 @@ export class Sim {
     this.emit('roll', ux, uz, h); this.hooks.sfx?.('dash'); this.hooks.spark?.(h.x, h.y + 6, h.z, 'dust');
   }
   /** 락온: 가까운 적에게 저절로 걸리고(앞쪽을 조금 더 친다), lockNext 로 다음 적. 손으로 바꾼 뒤 4초는 저절로 바뀌지 않는다 */
-  _lockOk(e, h, lim) { return !e.dead && e.state !== 'dead' && e.active && Math.abs(e.gy - h.y) < 170 && hyp(e.x - h.x, e.z - h.z) < lim; }
-  _lockScore(e, h) { const ex = e.x - h.x, ez = e.z - h.z, d = hyp(ex, ez) || 1; return d * (1.25 - 0.25 * ((ex * h.dirX + ez * h.dirZ) / d)); }
+  _lockOk(e, h, lim) { const dx = e.x - h.x, dz = e.z - h.z; return !e.dead && e.state !== 'dead' && e.active && Math.abs(e.gy - h.y) < 170 && dx * dx + dz * dz < lim * lim; }
+  _lockScore(e, h) { const ex = e.x - h.x, ez = e.z - h.z, d = Math.sqrt(ex * ex + ez * ez) || 1; return (this._sc = d * (1.25 - 0.25 * ((ex * h.dirX + ez * h.dirZ) / d))); }   // (틱마다 부르는 쪽은 돌려준 값 대신 this._sc 를 읽는다)
   _lock(h, next, dt) {
     const T = TUNE, E = this.enemies; let cur = h.lock != null ? this.byId(h.lock) : null;
     if (cur && !this._lockOk(cur, h, T.lockKeep)) cur = null;
@@ -478,9 +479,9 @@ export class Sim {
       cur = C.length ? C[(C.indexOf(cur) + 1) % C.length] : null; h.lockHold = 4;
     } else if (cur && h.lockHold > 0) h.lockHold -= dt;
     else {
-      let best = null, bs = 1e9;
-      for (let i = 0; i < E.length; i++) { const e = E[i]; if (this._lockOk(e, h, T.lockRange)) { const sc = this._lockScore(e, h); if (sc < bs) { bs = sc; best = e; } } }
-      if (best && (!cur || bs < this._lockScore(cur, h) * 0.7)) cur = best;
+      let best = null, bs = 1e30;
+      for (let i = 0; i < E.length; i++) { const e = E[i]; if (this._lockOk(e, h, T.lockRange)) { this._lockScore(e, h); const sc = this._sc; if (sc < bs) { bs = sc; best = e; } } }
+      if (best) { let cs = 1e30; if (cur) { this._lockScore(cur, h); cs = this._sc; } if (!cur || bs < cs * 0.7) cur = best; }
     }
     const id = cur ? cur.id : null;
     if (id !== h.lock) { h.lock = id; h.lockT = 0; this.emit('lock', id, cur); } else h.lockT += dt;
@@ -519,6 +520,14 @@ export class Sim {
     this.emit('attack', h, mv);
   }
   /** 보는 방향 기준 판정: 상자(box) 또는 부채꼴(arc) 안에 (x,z,반지름 r, 높이 y0…y1)이 드는가 */
+  /** 같은 판정 — 대상(t: x, z, r, y, h 를 가진 것)을 객체로 받는다 (틱마다 부르는 길: 숫자 인자를 넘기지 않는다) */
+  _inShapeO(o, mv, t) {
+    const ex = t.x - o.x, ez = t.z - o.z, f = ex * o.dirX + ez * o.dirZ, l = Math.abs(ez * o.dirX - ex * o.dirZ), r = t.r, y0 = t.y, y1 = t.y + t.h;
+    if (mv.box) { const b = mv.box; return !(f + r < b.f0 || f - r > b.f1 || l > b.side + r * 0.5 || y0 > o.y + b.y1 || y1 < o.y + b.y0); }
+    const a = mv.arc, d = Math.sqrt(ex * ex + ez * ez);
+    if (d - r > a.r || y0 > o.y + a.y1 || y1 < o.y + a.y0) return false;
+    return d < r + 10 || Math.atan2(l, f) / RAD <= a.deg / 2;
+  }
   _inShape(o, mv, x, z, r, y0, y1) {
     const ex = x - o.x, ez = z - o.z, f = ex * o.dirX + ez * o.dirZ, l = Math.abs(ez * o.dirX - ex * o.dirZ);
     if (mv.box) { const b = mv.box; return !(f + r < b.f0 || f - r > b.f1 || l > b.side + r * 0.5 || y0 > o.y + b.y1 || y1 < o.y + b.y0); }
@@ -529,7 +538,7 @@ export class Sim {
   _heroHit(h, mv) {
     for (const e of this.enemies) {
       if (e.dead || e.state === 'dead' || e.buried || h.hitIds.has(e.id)) continue;
-      if (!this._inShape(h, mv, e.x, e.z, e.r, e.y, e.y + e.h)) continue;
+      if (!this._inShapeO(h, mv, e)) continue;
       h.hitIds.add(e.id);
       this._hitEnemy(e, mv, h);
     }
@@ -595,8 +604,10 @@ export class Sim {
    * 영웅이 맞는다. src: { e(때린 적), atk(공격 한 줄), shot(탄) }. 돌려주는 값: false(무적 — 빗나감) | 'parry' | 'guard' | 'hurt'
    * 옛 호출(hurtHero(dmg, dirX, dirZ))도 그대로 된다.
    */
-  hurtHero(dmg, dirX, dirZ = 0, src = {}) {
-    const h = this.hero, T = TUNE, atk = src.atk, from = src.shot ?? src.e;
+  hurtHero(dmg, dirX, dirZ = 0, src = {}) { this._hx = dirX; this._hz = dirZ; return this._hurt(dmg, src); }
+  /** 같은 것 — 때린 방향을 this._hx, this._hz 로 받는다 (규칙 안에서 틱마다 부르는 길) */
+  _hurt(dmg, src) {
+    const h = this.hero, T = TUNE, atk = src.atk, from = src.shot ?? src.e, dirX = this._hx, dirZ = this._hz;
     if (h.dead) return false;
     if (h.ifr > 0) { if (h.dashT > 0 && !h.dodged) { h.dodged = true; this.emit('dodge', h, src); } return false; }
     h.dodged = false;
@@ -751,11 +762,12 @@ export class Sim {
     if (Math.abs(e.dirX) > 0.25) e.facing = sgn(e.dirX);
   }
   /** 보는 방향을 (dx,dz) 쪽으로 rate(rad/초)만큼 돌린다 */
-  turnTo(e, dx, dz, rate, dt) {
-    const d = hyp(dx, dz); if (d < 1e-4) return;
+  turnTo(e, dx, dz, rate, dt) { this._tx = dx; this._tz = dz; this._tr = rate; this._turnS(e, dt); }
+  _turnS(e, dt) {
+    const dx = this._tx, dz = this._tz, lim = this._tr * dt; if (dx * dx + dz * dz < 1e-8) return;
     const cur = Math.atan2(e.dirZ, e.dirX); let da = Math.atan2(dz, dx) - cur;
     while (da > Math.PI) da -= Math.PI * 2; while (da < -Math.PI) da += Math.PI * 2;
-    const a = cur + clamp(da, -rate * dt, rate * dt);
+    const a = cur + (da > lim ? lim : da < -lim ? -lim : da);
     e.dirX = Math.cos(a); e.dirZ = Math.sin(a);
   }
   /** 영웅 쪽으로 종류의 빠르기(def.turn)만큼 돈다 — turnTo(e, hero − e, D.turn, dt) 와 같다 (숫자 인자를 넘기지 않는 판) */
@@ -794,7 +806,7 @@ export class Sim {
     const a = e.atk, t = e.stateT, h = this.hero, w0 = a.windup, s0 = w0 + a.strike, end = s0 + a.recover;
     if (t < w0) {
       e.phase = 'windup'; e.tele = t / w0;
-      if (a.track && t < w0 * 0.8) this.turnTo(e, h.x - e.x, h.z - e.z, a.track, dt);
+      if (a.track && t < w0 * 0.8) { this._tx = h.x - e.x; this._tz = h.z - e.z; this._tr = a.track; this._turnS(e, dt); }
       if (!e.swung && t >= w0 - 0.12) { e.swung = true; this.emit('enemySwing', e, a); this.hooks.sfx?.(a.kind === 'cast' ? 'cast' : 'swing'); }
     } else if (t < s0) {
       if (e.phase !== 'strike') {
@@ -807,13 +819,13 @@ export class Sim {
         e.pulseT = 0;
         if (a.radius && a.radius.fwd) this.hooks.spark?.(e.x + e.dirX * a.radius.fwd, e.gy + 4, e.z + e.dirZ * a.radius.fwd, 'slam');
       }
-      if (a.lunge) this.steer(e, e.dirX, e.dirZ, a.lunge / a.strike, dt, true);
+      if (a.lunge) { this._sx = e.dirX; this._sz = e.dirZ; this._sv = a.lunge / a.strike; this._steer(e, dt, true); }
       if (a.pulse) {   // 이어지는 노래: every 초마다 반지름 안의 영웅을 깎고 울림을 빼앗는다
         e.pulseT -= dt;
-        if (e.pulseT <= 0) { e.pulseT += a.pulse.every; this.emit('pulse', e, a); const px = h.x - e.x, pz = h.z - e.z; if (!h.dead && px * px + pz * pz < a.pulse.r * a.pulse.r) { const SR = this._src; SR.e = e; SR.atk = a; SR.shot = null; const r = this.hurtHero(a.dmg, e.dirX, e.dirZ, SR); if (r === 'hurt' && a.pulse.reso) this.addReso(-a.pulse.reso); } }
+        if (e.pulseT <= 0) { e.pulseT += a.pulse.every; this.emit('pulse', e, a); const px = h.x - e.x, pz = h.z - e.z; if (!h.dead && px * px + pz * pz < a.pulse.r * a.pulse.r) { const SR = this._src; SR.e = e; SR.atk = a; SR.shot = null; this._hx = e.dirX; this._hz = e.dirZ; const r = this._hurt(a.dmg, SR); if (r === 'hurt' && a.pulse.reso) this.addReso(-a.pulse.reso); } }
       } else if (!e.hitDone && !a.shot && !a.summon && this._atkHits(e, a, h)) {
         const SR = this._src; SR.e = e; SR.atk = a; SR.shot = null;
-        const r = this.hurtHero(a.dmg, e.dirX, e.dirZ, SR);
+        this._hx = e.dirX; this._hz = e.dirZ; const r = this._hurt(a.dmg, SR);
         if (r) e.hitDone = true;
         if (r === 'parry') return;   // 비틀거림으로 넘어갔다
       }
@@ -827,7 +839,7 @@ export class Sim {
       const R = a.radius, cx = e.x + e.dirX * R.fwd, cz = e.z + e.dirZ * R.fwd;
       return hyp(h.x - cx, h.z - cz) <= R.r + h.r && h.y <= e.y + R.y1 && h.y + h.h >= e.y + R.y0;
     }
-    return this._inShape(e, a, h.x, h.z, h.r, h.y, h.y + h.h);
+    return this._inShapeO(e, a, h);
   }
   _shoot(e, a) {
     const S = a.shot, h = this.hero, sx = e.x + e.dirX * 22, sz = e.z + e.dirZ * 22, sy = e.y + e.h * S.y;
@@ -926,7 +938,7 @@ export class Sim {
           s.dead = true; this.hooks.spark?.(s.x, s.y, s.z, 'shot'); this._hitEnemy(e, REFLECT, { x: s.x - s.vx, z: s.z - s.vz }); break;
         }
       } else if (!h.dead && hyp(s.x - h.x, s.z - h.z) < h.r + (s.r ?? 8) - 4 && s.y > h.y - 6 && s.y < h.y + h.h + 4) {
-        const d = hyp(s.vx, s.vz) || 1, SR = this._src; SR.shot = s; SR.e = this.byId(s.owner); SR.atk = null; const r = this.hurtHero(s.dmg, s.vx / d, s.vz / d, SR);
+        const d = hyp(s.vx, s.vz) || 1, SR = this._src; SR.shot = s; SR.e = this.byId(s.owner); SR.atk = null; this._hx = s.vx / d; this._hz = s.vz / d; const r = this._hurt(s.dmg, SR);
         if (r === 'parry') {   // 쏜 적에게 되돌려 보낸다
           const o = this.byId(s.owner), sp = d * 1.7; let bx = -s.vx / d, bz = -s.vz / d;
           if (o && !o.dead) { const od = hyp(o.x - s.x, o.z - s.z) || 1; bx = (o.x - s.x) / od; bz = (o.z - s.z) / od; s.vy = (o.y + o.h * 0.6 - s.y) / (od / sp); }
