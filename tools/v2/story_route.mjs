@@ -187,7 +187,7 @@ const ENDING = [
   ['note', '큰 종 앞에서 「종」을 길게. 엘리제와 함께 오늘 밤으로.'],
   BELL(),
   ['save'],
-  ['note', '— 첫 출시의 끝. 그 뒤 마을을 돌아보면 —'],
+  ['note', '끝난 뒤 마을을 돌아보면'],
   ['talk', 'elise.promise'],
   ['talk', 'elise.promise'],
   ['talk', 'alberto.church'],

@@ -6,7 +6,7 @@
    * procedural (periodic noise, wrapped cell noise) - organic cobbles, setts, worn muddy cobbles, rubble wall, thatch
    * derived from the game's own painted v1 tiles (assets/tex/*.webp, already seamless): bones, bark, wet cellar stone, planks, grave soil
    * generated squares (tools/v2/world_src/tex/<name>.webp, 1024 px; docs/v2/ENV_KIT.md 16): made to tile (make_tile) and graded to the night palette
-     (to_night). Today: k_ashlar k_plaster k_slate k_flag k_rubble. --proc k_rubble gives the procedural version back. --out <dir> writes elsewhere.
+     (to_night). Today: k_ashlar k_plaster k_slate k_flag k_rubble k_thatch. --proc k_rubble gives the procedural version back. --out <dir> writes elsewhere.
  The default run rewrites every texture it owns; the files in assets/v2/env/ are byte for byte what it writes.
 """
 import sys, os, argparse
@@ -200,7 +200,9 @@ GEN = {
     'k_slate': dict(ref=(76, 84, 105), hue=0.7, contrast=1.1, sat=0.9, calm=1.4),
     'k_flag': dict(ref=(118, 116, 116), hue=0.75, contrast=1.0, sat=0.75),
     'k_rubble': dict(ref=(112, 108, 104), hue=0.7, contrast=0.95, sat=0.7),
+    'k_thatch': dict(ref=(112, 98, 64), hue=0.7, contrast=1.0, sat=0.9),
 }
+# tried in game and NOT taken (the procedural / v1-derived texture is as good): k_cobble k_cobworn k_soil. Not tried (no area uses them yet): k_cellar k_planks k_cobble2 (its fan pattern does not repeat vertically).
 
 
 def tex_gen(name):

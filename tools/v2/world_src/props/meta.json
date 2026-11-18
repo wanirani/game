@@ -3,7 +3,7 @@
  "pitch": 24,
  "yaw": 70,
  "sideScale": 0.38,
- "texels": 1600000,
+ "texels": 1700000,
  "props": {
   "angel": {
    "h": 200,
@@ -104,7 +104,7 @@
     9
    ],
    "px": 2.3,
-   "lum": 62,
+   "lum": 54,
    "tris": 160,
    "emis": true,
    "light": {
@@ -121,7 +121,7 @@
      0.36
     ]
    },
-   "sat": 0.8
+   "sat": 0.7
   },
   "brazier": {
    "h": 112,
@@ -261,5 +261,6 @@
    "skip": true,
    "why": "awning and goods melted into a crumpled box -> code-built stall stays"
   }
- }
+ },
+ "topScale": 0.45
 }

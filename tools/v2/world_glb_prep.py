@@ -3,7 +3,7 @@
    python3 -I tools/v2/world_glb_prep.py <job.json>
  The game camera only ever sees a prop from the front (13..29 degrees down) and a little from the sides. So instead of the model's own
  UV sheet (most of it spent on faces the camera never sees) the cell holds three orthographic pictures of the FULL-detail model:
-   front (24 deg down) | left side | right side (65 deg yaw, half scale)
+   front (24 deg down) | left side | right side (70 deg yaw, smaller scale) | top (straight down, smaller scale)
  and every triangle of the decimated model takes its texels from the picture it faces. Result: about 3x the texels on what is seen.
  job = { pitch, yaw, sideScale, budget (texels for all items), items: [{ id, in, tex, png, out, px, lum, sat, gainMax, emis, emisFrac }] }
  in  = { full: { pos, uv, idx }, low: { pos, idx } }   (game axes, world units, feet at y = 0; winding: cross(b-a, c-a) = outward)
@@ -70,7 +70,8 @@ def glow(c):
 
 
 def main():
-    job = json.load(open(sys.argv[1])); V = [view(0, job['pitch']), view(-job['yaw'], job['pitch']), view(job['yaw'], job['pitch'])]
+    job = json.load(open(sys.argv[1])); V = [view(0, job['pitch']), view(-job['yaw'], job['pitch']), view(job['yaw'], job['pitch']), np.array([[1.0, 0, 0], [0, 0, 1.0], [0, 1.0, 0]])]   # front | left | right | top (straight down)
+    SCALE = [1.0, job['sideScale'], job['sideScale'], job.get('topScale', 0.45)]
     items = []
     for it in job['items']:
         D = json.load(open(it['in'])); F = D['full']; L = D['low']
@@ -84,13 +85,15 @@ def main():
     def cell(I, k):
         sizes = []
         for vi, (x0, x1, y0, y1) in enumerate(I['boxes']):
-            sc = I['it']['px'] * k * (1.0 if vi == 0 else job['sideScale']); sizes.append((int(math.ceil((x1 - x0) * sc)) + 2 * PADV, int(math.ceil((y1 - y0) * sc)) + 2 * PADV, sc))
+            sc = I['it']['px'] * k * SCALE[vi]; sizes.append((int(math.ceil((x1 - x0) * sc)) + 2 * PADV, int(math.ceil((y1 - y0) * sc)) + 2 * PADV, sc))
         return sizes
     def layout(sizes):
         """front picture on the left; the two side pictures stacked to its right when they fit under each other, else next to each other"""
-        (wf, hf, _), (wl, hl, _), (wr, hr, _) = sizes
-        if hl + hr <= hf: return [(0, 0), (wf, 0), (wf, hl)], wf + max(wl, wr), hf
-        return [(0, 0), (wf, 0), (wf + wl, 0)], wf + wl + wr, max(hf, hl, hr)
+        (wf, hf, _), (wl, hl, _), (wr, hr, _), (wt, ht, _) = sizes
+        if hl + hr + ht <= hf: return [(0, 0), (wf, 0), (wf, hl), (wf, hl + hr)], wf + max(wl, wr, wt), hf
+        if hl + hr <= hf and ht <= hf: return [(0, 0), (wf, 0), (wf, hl), (wf + max(wl, wr), 0)], wf + max(wl, wr) + wt, hf
+        if max(hl, hr) + ht <= hf: return [(0, 0), (wf, 0), (wf + wl, 0), (wf, max(hl, hr))], wf + max(wl + wr, wt), hf
+        return [(0, 0), (wf, 0), (wf + wl, 0), (wf + wl + wr, 0)], wf + wl + wr + wt, max(hf, hl, hr, ht)
     k = 1.0
     for _ in range(60):
         tot = 0
@@ -123,7 +126,7 @@ def main():
         inc = [[] for _ in range(len(lp))]
         for ti, tri in enumerate(lt):
             for v in tri: inc[v].append(ti)
-        score = np.stack([fnu @ V[0][2] + 0.22, fnu @ V[1][2], fnu @ V[2][2]], 1); pick = score.argmax(1); pick[score.max(1) < 0] = 0
+        score = np.stack([fnu @ V[0][2] + 0.22, fnu @ V[1][2], fnu @ V[2][2], fnu @ V[3][2] - 0.25], 1); pick = score.argmax(1); pick[score.max(1) < 0] = 0
         verts = {}; P = []; N = []; UV = []; E = []; T = []; cos_lim = math.cos(math.radians(52))
         for ti, tri in enumerate(lt):
             vi = int(pick[ti]); R = V[vi]; w, h, sc = sizes[vi]; x0, x1, y0, y1 = I['boxes'][vi]

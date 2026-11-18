@@ -304,10 +304,13 @@ OUT = {
 }
 
 if __name__ == '__main__':
-    ap = argparse.ArgumentParser(); ap.add_argument('--out', default='assets/v2/env'); ap.add_argument('--preview', default='')
+    ap = argparse.ArgumentParser(); ap.add_argument('--out', default='assets/v2/env'); ap.add_argument('--preview', default=''); ap.add_argument('--legacy', action='store_true')
     a = ap.parse_args(); os.makedirs(a.out, exist_ok=True)
     tiles = []
+    # PROPS lane (ENV_KIT.md 16): k_ashlar k_plaster k_slate k_flag k_cobble are now written by tools/v2/world_tex.py (generated squares / re-made cobbles).
+    # This tool only writes k_trim by default; --legacy writes the old procedural versions of the others too (use --out to keep them out of assets/).
     for name, (fn, q) in OUT.items():
+        if name != 'k_trim' and not a.legacy: continue
         img = Image.fromarray(fn())
         p = os.path.join(a.out, name + '.webp'); img.save(p, 'WEBP', quality=q, method=6)
         kb = os.path.getsize(p) / 1024
