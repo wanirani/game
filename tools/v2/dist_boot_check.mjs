@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // 배포 빌드(dist/web)에서 3D 판 장면이 실제로 열리는지 본다 — APK 를 내기 전 마지막 확인.
-//   node tools/v2/dist_boot_check.mjs [--dir dist/web] [--scenes v2b,v2c,v2bench] [--shots <폴더>]
+//   node tools/v2/dist_boot_check.mjs [--dir dist/web | dist/web3d] [--scenes v2b,v2c,v2bench] [--shots <폴더>]   (3D 앱 빌드: --dir dist/web3d)
 //  장면마다: 페이지 오류 0 · 400 이상 응답 0 (tools/deploy/v2_ship.txt 에서 빠진 파일을 달라고 하면 여기서 잡힌다) ·
 //           장면이 떠 있음 · (v2b/v2c) window.__v2 와 입체 카엘 모델 요청 · 캔버스에 그림이 있음
 import { chromium } from 'playwright-core';
@@ -10,7 +10,10 @@ import path from 'node:path';
 
 const argv = process.argv.slice(2);
 const arg = (k, d) => (argv.includes(k) ? argv[argv.indexOf(k) + 1] : d);
-const DIR = path.resolve(arg('--dir', 'dist/web'));
+// 앱 분리(2026-11-18): dist/web 이 2D 앱 빌드(build_web --target v1, 3D 파일 없음)면 --dir 을 주지 않았을 때 3D 앱 빌드 dist/web3d 를 본다
+const v1Web = () => { try { return /"target":"v1"/.test(fs.readFileSync(path.resolve('dist/web/build-info.js'), 'utf8')); } catch { return false; } };
+const DIR = path.resolve(arg('--dir', v1Web() && fs.existsSync(path.resolve('dist/web3d/index.html')) ? 'dist/web3d' : 'dist/web'));
+if (!argv.includes('--dir') && DIR.endsWith('web3d')) console.log('dist/web 은 2D 앱 빌드(--target v1)라 3D 앱 빌드 dist/web3d 를 봅니다');
 const SCENES = arg('--scenes', 'v2b,v2c,v2bench').split(',').filter(Boolean);
 const SHOTS = arg('--shots', null);
 if (SHOTS) fs.mkdirSync(SHOTS, { recursive: true });

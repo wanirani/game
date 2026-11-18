@@ -114,3 +114,10 @@ node tools/deploy/build_artifact.mjs --check    # 한도 검사 (파일 ≤ 511�
 - 첫 화면 경로가 brotli 약 1.7 MB (JS 1.17 MB + 글꼴 0.46 MB) 라 느린 4G 9초·빠른 4G 2.5초 예산을 넘는다(측정 약 11.5초·2.7초, 하네스의
   새 창 시작 약 1초 포함). 모듈 폭포는 없어졌고(요청 2개), 남은 것은 바이트다. 식별자 줄이기(맹글링)는 brotli 기준 2 % 뿐이라 넣지 않았다.
   더 줄이려면 앱 쪽에서 보스·벡터 괴물 그림·각성 연출·스토리 데이터를 동적 import 로 나눠야 한다 (요청 기록: /tmp/claude-0/plan/requests.jsonl).
+
+## 앱 분리 (2D · 3D, 2026-11-18)
+
+`build_web.mjs --target all|v1|3d` — 기본 `all` 은 예전 그대로(웹사이트: 2D + 3D). `v1` = 2D 앱(`dist/web`, assets/v2 없음, 타이틀 「리빌드 시범」 줄 숨김),
+`3d` = 3D 앱(`dist/web3d`, assets/ 는 `web3d_ship.txt` + assets/v2 는 `v2_ship.txt`, 첫 화면 3D 고르기). 대상별 싣는 파일 보고 `dist/ship-<대상>.txt`.
+브라우저 점검 `node tools/deploy/target_check.mjs --dir dist/web3d --scenes v2b,v2c,v2bench,v2a` (4xx 경로 목록) · `--dir dist/web` (v1 타이틀 여덟 줄).
+APK 는 `docs/RELEASE.md` §4.1.
