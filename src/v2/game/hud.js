@@ -21,7 +21,7 @@ const O_ROW = { size: 19, weight: 700, align: 'center', color: '#efe4cf' }, O_RO
 const O_PR = { size: 16, weight: 700, align: 'center', color: '#fff3d4', ow: 4 }, O_WHO = { size: 17, weight: 800, color: '#e8c872' }, O_SAY = { size: 17, weight: 500, color: '#f2ead8' };
 
 export function createBuiltinHud() {
-  let secId = '', banner = 0, hpShown = 1, dbg = '', dbgN = 0, secLeft = -2, secLab = '', secStr = '';
+  let secId = '', banner = 0, hpShown = 1, dbg = '', dbgN = 0, secLeft = -2, secLab = '', secStr = '', coinN = -1, coinStr = '';
   // the small things the scene needs from any HUD (docs/v2/ENGINE_API.md 4): a pause panel, one dialogue box, one prompt, short notices
   let pause = null, psel = 0, pt = 0, dlg = null, dlgT = 0, dlgState = null, note = '', noteT = 0, prT = 0;
   const PR = { x: 0, y: 0, w: 0, h: 0, p: null }, PB = { x: 0, y: 0, w: 300, rh: 50 };
@@ -108,6 +108,7 @@ export function createBuiltinHud() {
       if (left !== secLeft || s.section.label !== secLab) { secLeft = left; secLab = s.section.label; secStr = secLab + (left >= 0 ? ' · 남은 적 ' + left : ''); }   // the line is rebuilt only when it changes
       text(ctx, secStr, x + 52, y + bh + 22, O_SEC);
       if (s.objective) text(ctx, s.objective, x + 52, y + bh + 42, O_OBJ);   // the story's objective line (ENGINE_API 8)
+      { const n = s.coins | 0; if (n !== coinN) { coinN = n; coinStr = '은화 ' + n; } if (n > 0 || pause) text(ctx, coinStr, x + bw + 16, y + bh - 1, O_SEC); }   // BREAK: a plain coin count right of the health bar (always while paused)
       // section name banner when entering
       if (banner > 0 && !s.done && !h.dead && s.section.label) {
         ctx.globalAlpha = clamp(Math.min((2.6 - banner) / 0.35, banner / 0.7), 0, 1);

@@ -169,6 +169,21 @@ export function createCanvasHud(game, opts = {}) {
     c.fillStyle = o.kind === 'item' ? '#fff2d2' : '#ffffff'; c.fillText(text, ix + ih / 2 + px(8), iy + 1);
     c.textBaseline = 'alphabetic';
   }
+  // coins (state.coins — BREAK lane): a small glass chip with the pouch and the count, under the status block where the toasts start. It slides in when
+  // the count changes, counts up quickly, stays a few seconds and fades (the pause panel always shows the count: dialog.js).
+  const coinP = mkPiece(), CN = { last: -1, shown: 0, t: 99, a: 0 };
+  function bakeCoins(n) {
+    if (!stale(coinP, n)) return coinP;
+    const ts = tsz(14.5, L.tmin + 2.5), str = String(n), ih = px(23), tw = measure(str, ts, 700), w = tw + ih + px(27), h = px(30);
+    const c = ctxOf(coinP, w + 6, h + 8);
+    glassPanel(c, 3, 3, w, h, { cut: px(7), dense: 0.75, accent: 'gold' });
+    const ix = 3 + px(9) + ih / 2, iy = 3 + h / 2;
+    sprite(c, 'pouch', ix, iy, ih, ih);
+    c.font = `700 ${ts}px ${FONTS.body}`; c.textBaseline = 'middle'; c.textAlign = 'left'; c.lineWidth = 3; c.strokeStyle = 'rgba(4,4,12,0.85)'; c.lineJoin = 'round';
+    c.strokeText(str, ix + ih / 2 + px(6), iy + 1); c.fillStyle = '#fff2d2'; c.fillText(str, ix + ih / 2 + px(6), iy + 1);
+    c.textBaseline = 'alphabetic';
+    return coinP;
+  }
   // one prompt chip: [key cap | action icon] label
   function promptW(p, ts) { return measure(p.label ?? '', ts, 600) + px(18) + px(26); }
   function drawPrompt(c, p, x, y, ts, mode) {
@@ -268,6 +283,10 @@ export function createCanvasHud(game, opts = {}) {
     T.hurt = Math.max(0, T.hurt - dt);
     for (let i = 0; i < 16; i++) if (smoke[i] > 0) smoke[i] = Math.max(0, smoke[i] - dt);
     const rv = s.resonance ? s.resonance.value : 0; T.res += (rv - T.res) * Math.min(1, dt * 8);
+    { const n = s.coins | 0;   // the purse: no pop for the count the game starts with; a change shows the chip and the number runs up to it
+      if (CN.last < 0) { CN.last = n; CN.shown = n; } else if (n !== CN.last) { if (n < CN.shown) CN.shown = n; CN.last = n; CN.t = 0; }
+      if (CN.shown < n) CN.shown = Math.min(n, CN.shown + Math.max(dt * 24, (n - CN.shown) * dt * 9));
+      CN.t += dt; const want = CN.t < 3.6 ? 1 : 0; CN.a += (want - CN.a) * Math.min(1, dt * (want ? 14 : 2.6)); if (CN.a < 0.004) CN.a = 0; }
     const b = s.boss;
     if (b) { const k = clamp(b.hp / (b.hpMax || 1), 0, 1); if (T.bossId !== b.name) { T.bossId = b.name; T.bossShown = k; } T.bossShown = k > T.bossShown ? k : T.bossShown + (k - T.bossShown) * Math.min(1, dt * 2.2); } else T.bossId = '';
     const lk = hero.lock ?? null; if (lk !== T.lockId) { T.lockId = lk; T.lockPulse = 0.28; } T.lockPulse = Math.max(0, T.lockPulse - dt);
@@ -391,6 +410,11 @@ export function createCanvasHud(game, opts = {}) {
 
     // 3) toasts under the status block
     let ty = Math.max(y0 + bd.h + px(52), gy + cellH / 2 + px(3) + objH);
+    if (CN.a > 0) {   // the coin chip takes the first place of the toast column (toasts move down under it: nothing is ever covered)
+      const cp = bakeCoins(Math.floor(CN.shown + 1e-6)), k = Math.min(1, CN.a), cx = x0 - 3 - (1 - k) * px(26);
+      ctx.globalAlpha = k; blit(ctx, cp, cx, ty); ctx.globalAlpha = 1; T.coinR = T.coinR ?? { x: 0, y: 0, w: 0, h: 0, a: 0, n: 0 }; T.coinR.x = cx; T.coinR.y = ty; T.coinR.w = cp.w; T.coinR.h = cp.h; T.coinR.a = k; T.coinR.n = Math.floor(CN.shown + 1e-6);
+      ty += cp.h + px(2);
+    } else if (T.coinR) T.coinR.a = 0;
     for (let i = 0; i < TOAST_SLOTS; i++) {
       const o = toasts[i]; if (!o.on) continue;
       if (o.dirty || o.ep !== L.epoch) { bakeToast(o); o.dirty = false; o.ep = L.epoch; }
@@ -466,7 +490,7 @@ export function createCanvasHud(game, opts = {}) {
     },
     promptRects() { const o = []; for (let k = 0; k < taps.n; k++) o.push({ action: taps.ref[k]?.action, x: taps.rect[k * 4], y: taps.rect[k * 4 + 1], w: taps.rect[k * 4 + 2], h: taps.rect[k * 4 + 3] }); return o; },
     layout: L, px, tsz,
-    info() { return { scale: L.s, hs: L.hs, textSize: L.textSize, epoch: L.epoch, banner: banner.on ? banner.kind : null, toasts: toasts.filter((q) => q.on).length, lit: T.lit, max: T.max }; },
+    info() { return { scale: L.s, hs: L.hs, textSize: L.textSize, epoch: L.epoch, banner: banner.on ? banner.kind : null, toasts: toasts.filter((q) => q.on).length, lit: T.lit, max: T.max, coins: T.coinR && T.coinR.a > 0 ? { ...T.coinR } : null }; },
     release() { for (const p of [badge.now, badge.past, ...Object.values(shelves), moonP, bossP, bossFill, bannerP, bandP, promptRow, msgP, msg2P, dbgP, ...nums, ...calls, ...toasts, ...wprompts]) if (p.c) { p.c.width = 1; p.c.height = 1; p.c = null; } icons.clear(); },
   };
 }

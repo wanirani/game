@@ -238,9 +238,19 @@ export function createPause(env) {
       const a = clamp(M.t / 0.16, 0, 1);
       ctx.globalAlpha = a * 0.58; ctx.fillStyle = '#04050c'; ctx.fillRect(0, 0, s.viewW, s.viewH);
       M.x = s.viewW / 2 - panel.w / 2; M.y = s.viewH / 2 - panel.h / 2;
-      ctx.globalAlpha = a; ctx.drawImage(panel.c, M.x, M.y + (1 - a) * px(10), panel.w, panel.h); ctx.globalAlpha = 1;
+      ctx.globalAlpha = a; ctx.drawImage(panel.c, M.x, M.y + (1 - a) * px(10), panel.w, panel.h);
+      {   // the purse (state.coins — BREAK lane): always shown here, in the strip under the rows
+        const n = s.coins | 0, ts = tsz(15, L.tmin + 3), ih = px(24), cy = M.y + (1 - a) * px(10) + panel.h - 12 - px(17);
+        if (M.coinN !== n) { M.coinN = n; M.coinS = String(n); }
+        ctx.font = `700 ${ts}px ${FONTS.body}`; const tw = ctx.measureText(M.coinS).width, cx = M.x + panel.w / 2 - (ih + px(6) + tw) / 2;
+        sprite(ctx, 'pouch', cx + ih / 2, cy, ih, ih);
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(4,4,12,0.85)'; ctx.strokeText(M.coinS, cx + ih + px(6), cy + 1);
+        ctx.fillStyle = '#fff2d2'; ctx.fillText(M.coinS, cx + ih + px(6), cy + 1); ctx.textBaseline = 'alphabetic';
+        M.coinR = { x: cx, y: cy - ih / 2, w: ih + px(6) + tw, h: ih };
+      }
+      ctx.globalAlpha = 1;
     },
-    info() { return M.open ? { sel: M.sel, ids: M.rows.map((r) => (r[2] ? 'extra' : r[0])), rows: M.rowY.slice(0, M.rows.length).map((y) => ({ x: M.x + 12, y: M.y + y, w: panel.w - 24, h: M.rowH })) } : null; },
+    info() { return M.open ? { sel: M.sel, coins: M.coinR ? { ...M.coinR, n: M.coinN } : null, ids: M.rows.map((r) => (r[2] ? 'extra' : r[0])), rows: M.rowY.slice(0, M.rows.length).map((y) => ({ x: M.x + 12, y: M.y + y, w: panel.w - 24, h: M.rowH })) } : null; },
     release() { if (panel.c) { panel.c.width = 1; panel.c.height = 1; panel.c = null; } },
   };
 }
