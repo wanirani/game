@@ -100,26 +100,26 @@ export const AI = {
   melee(sim, e, dt, D) {
     const h = sim.hero, dx = h.x - e.x, dz = h.z - e.z, dist = hyp(dx, dz) || 1;
     if (e.state === 'attack') return sim.runAttack(e, dt);
-    sim.turnTo(e, dx, dz, D.turn, dt);
+    sim.faceHero(e, dt);
     const aligned = (dx * e.dirX + dz * e.dirZ) / dist > 0.7;
     if (e.cd <= 0 && aligned && Math.abs(h.y - e.y) < 70 && sim.mayAttack(e)) { const a = pickAttack(sim, e, D, dist); if (a) return sim.startAttack(e, a); }
     // 차례를 기다리는 동안(방금 쳤거나, 다른 둘이 치는 중)은 한 발 물러서 둘러싼다 — 여럿이 한 점에 뭉쳐 서지 않게
     const wait = !D.poise && (e.cd > 0.45 || !sim.mayAttack(e)), st = D.standoff + (wait ? D.ring ?? 52 : 0);
-    if (dist > st + 8) { sim.steer(e, dx / dist, dz / dist, D.speed, dt); sim.setAnim(e, 'walk', dt); }
-    else if (dist < st - 26) { sim.steer(e, -dx / dist, -dz / dist, D.speed * 0.6, dt, true); sim.setAnim(e, 'walk', dt); }
-    else if (wait) { sim.steer(e, (-dz / dist) * e.side, (dx / dist) * e.side, D.speed * 0.38, dt, true); sim.setAnim(e, 'walk', dt); }   // 기다리는 동안 옆으로 돈다
+    if (dist > st + 8) { sim.steerHero(e, 1, 0, 1, dt, false); sim.setAnim(e, 'walk', dt); }
+    else if (dist < st - 26) { sim.steerHero(e, -1, 0, 0.6, dt, true); sim.setAnim(e, 'walk', dt); }
+    else if (wait) { sim.steerHero(e, 0, e.side, 0.38, dt, true); sim.setAnim(e, 'walk', dt); }   // 기다리는 동안 옆으로 돈다
     else sim.setAnim(e, 'idle', dt);
   },
   /** 거리를 두고 쏜다 (해골 술사) */
   ranged(sim, e, dt, D) {
     const h = sim.hero, dx = h.x - e.x, dz = h.z - e.z, dist = hyp(dx, dz) || 1;
     if (e.state === 'attack') return sim.runAttack(e, dt);
-    sim.turnTo(e, dx, dz, D.turn, dt);
+    sim.faceHero(e, dt);
     const close = dist < D.near * 0.6;   // 코앞에서는 쏘지 않고 먼저 물러선다 (1초 넘게 쫓기면 그냥 쏜다)
     e.fleeT = close ? (e.fleeT ?? 0) + dt : 0;
     if (e.cd <= 0 && dist < 600 && (!close || e.fleeT > 1)) { e.fleeT = 0; return sim.startAttack(e, D.attacks[0]); }
-    if (dist < D.near) { sim.steer(e, -dx / dist, -dz / dist, D.speed * (close ? 1.5 : 1.1), dt, true); sim.setAnim(e, 'walk', dt); }
-    else if (dist > D.far) { sim.steer(e, dx / dist, dz / dist, D.speed, dt); sim.setAnim(e, 'walk', dt); }
+    if (dist < D.near) { if (close) sim.steerHero(e, -1, 0, 1.5, dt, true); else sim.steerHero(e, -1, 0, 1.1, dt, true); sim.setAnim(e, 'walk', dt); }
+    else if (dist > D.far) { sim.steerHero(e, 1, 0, 1, dt, false); sim.setAnim(e, 'walk', dt); }
     else sim.setAnim(e, 'idle', dt);
   },
   /** 흐린 채 맴돌다가 또렷해지며 덮친다. 덮친 뒤 잠깐만 맞는다 (무덤 유령) */
@@ -129,12 +129,12 @@ export const AI = {
       const a = e.atk; if (e.stateT > a.windup * 0.45) e.solidT = Math.max(e.solidT, D.solidAfter);
       return sim.runAttack(e, dt);
     }
-    sim.turnTo(e, dx, dz, D.turn, dt);
+    sim.faceHero(e, dt);
     if (e.cd <= 0 && dist < D.attacks[0].range && e.solidT <= 0 && sim.mayAttack(e)) return sim.startAttack(e, D.attacks[0]);
     const st = D.standoff;
-    if (dist > st + 30) sim.steer(e, dx / dist, dz / dist, D.speed, dt);
-    else if (dist < st - 30 || e.solidT > 0) sim.steer(e, -dx / dist, -dz / dist, D.speed * 0.7, dt, true);
-    else sim.steer(e, (-dz / dist) * e.side, (dx / dist) * e.side, D.speed * 0.6, dt, true);
+    if (dist > st + 30) sim.steerHero(e, 1, 0, 1, dt, false);
+    else if (dist < st - 30 || e.solidT > 0) sim.steerHero(e, -1, 0, 0.7, dt, true);
+    else sim.steerHero(e, 0, e.side, 0.6, dt, true);
     sim.setAnim(e, 'walk', dt);
   },
   /** 영웅 둘레를 맴돌다 한 마리씩 내리꽂는다 (박쥐) */
@@ -171,11 +171,11 @@ export const AI = {
     }
     if (e.alpha < 1) e.alpha = Math.min(1, e.alpha + 2.5 * dt);
     if (e.state === 'attack') return sim.runAttack(e, dt);
-    sim.turnTo(e, dx, dz, D.turn, dt);
-    e.sumCd = (e.sumCd ?? 3) - dt; e.songCd = (e.songCd ?? 6) - dt;
-    if (dist > D.keepFar) { sim.steer(e, dx / dist, dz / dist, D.speed, dt, true); sim.setAnim(e, 'walk', dt); }
-    else if (dist < D.keepNear - 40) { sim.steer(e, -dx / dist, -dz / dist, D.speed * 0.7, dt, true); sim.setAnim(e, 'walk', dt); }
-    else { sim.steer(e, (-dz / dist) * e.side, (dx / dist) * e.side, D.speed * 0.35, dt, true); sim.setAnim(e, 'idle', dt); }
+    sim.faceHero(e, dt);
+    e.sumCd -= dt; e.songCd -= dt;
+    if (dist > D.keepFar) { sim.steerHero(e, 1, 0, 1, dt, true); sim.setAnim(e, 'walk', dt); }
+    else if (dist < D.keepNear - 40) { sim.steerHero(e, -1, 0, 0.7, dt, true); sim.setAnim(e, 'walk', dt); }
+    else { sim.steerHero(e, 0, e.side, 0.35, dt, true); sim.setAnim(e, 'idle', dt); }
     if (e.cd > 0) return;
     const two = e.bphase >= 2; let a = null;
     if (two && e.sumCd <= 0 && sim.countKind('grave_ghost') < D.ghostMax) { a = Q_SUMMON; e.sumCd = 11; }

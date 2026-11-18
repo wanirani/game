@@ -3,7 +3,7 @@
 //   영웅 = 연타 3 (셋째는 넓게) · 점프 중 내려베기 · 구르기(짧은 무적) · 구른 직후 훑기 · 막기 / 튕겨내기 · 부드러운 락온
 //   적   = 종류표(enemies.js)의 자료와 행동. 공격은 예고(windup) → 판정(strike) → 틈(recover), 판정은 보는 방향 기준 상자
 //   사건 = hooks 로 내보낸다 (발소리 · 휘두름 · 닿음 · 튕겨냄 · 착지 · 구르기 …). 모든 사건은 hooks.event(name, …) 로도 한 번씩 간다
-import { bindWorld, STEP_UP, STEP_DOWN } from './collide.js';
+import { bindWorld, groundAtS, moveXZs, STEP_UP, STEP_DOWN } from './collide.js';
 import { TUNE } from './tune.js';
 import { MOVES, COMBO } from './moves.js';
 import { AI, kindOf, kindId, rnd } from './enemies.js';
@@ -34,7 +34,16 @@ export class Sim {
    *   옛 이름: hit(e,dmg,mv,x,y,z,info) kill(e) heroHurt(dmg,pit) shake(px) sfx(name) spark(x,y,z,kind) number(x,y,z,text,color) done()
    *   새 이름: step swing attack parry guard guardUp land roll jump tell enemySwing cast shot lock wake whiff stagger + event(name, …)
    */
-  constructor(W, hooks = {}) { this.W = W; this.hooks = hooks; this.w = bindWorld(W); this.deaths = 0; this.reset(); }
+  constructor(W, hooks = {}) {
+    this.W = W; this.hooks = hooks; this.w = bindWorld(W); this.deaths = 0;
+    this.qx = 0.5; this.qz = 0.5; this.qy = 0.5; this.g = 0.5; this.ex = 0.5; this.ez = 0.5; this._sx = 0.5; this._sz = 0.5; this._sv = 0.5;   // 숫자를 주고받는 칸 (인자 · 반환값으로 실수를 넘기면 상자가 생긴다 — collide.js groundAtS)
+    this._cg = typeof W.groundAt === 'function'; this._cm = typeof W.moveXZ === 'function';
+    this.reset();
+  }
+  /** 땅 높이: this.qx, this.qz 아래 · this.qy 이하에서 가장 높은 걷는 면 → this.g */
+  _gq() { if (this._cg) this.g = this.W.groundAt(this.qx, this.qz, this.qy); else groundAtS(this.W, this); }
+  /** e 를 (this.qx, this.qz) 만큼 옮긴다 (벽에 막힌다) */
+  _mq(e) { if (this._cm) this.W.moveXZ(e, this.qx, this.qz); else moveXZs(this.W, e, this); }
   emit(name, a, b, c, d, e, f, g) {
     const H = this.hooks, fn = H[name]; let r;
     if (fn) r = fn.call(H, a, b, c, d, e, f, g);
@@ -225,7 +234,7 @@ export class Sim {
       if (!h.onGround && !inp.jumpHeld && !h.cut && h.vy > T.jumpV * T.jumpCut && !h.move) { h.vy = T.jumpV * T.jumpCut; h.cut = true; }
     }
     if (!loco && h.pivot) h.pivot = 0;
-    w.move(h, h.vx * dt, h.vz * dt);
+    this.qx = h.vx * dt; this.qz = h.vz * dt; this._mq(h);
     const wasAir = !h.onGround, vy0 = h.vy;
     this._fall(h, dt, h.act === 'hook' ? 0 : h.dashT > 0 ? 0.25 : h.move && h.move.kind === 'plunge' ? h.move.fallG : 1);
     if (wasAir && h.onGround) {
@@ -242,7 +251,7 @@ export class Sim {
       if (h.hp <= 0) this._die(h);
     } else if (h.onGround && h.dashT <= 0) {
       let ok = true;   // 안전한 자리 기억 (가장자리에서 조금 안쪽)
-      for (let i = 0; i < 8; i += 2) { const g = w.ground(h.x + SAFE_OFF[i], h.z + SAFE_OFF[i + 1], h.y + STEP_UP); if (!(g >= h.y - STEP_DOWN)) { ok = false; break; } }
+      for (let i = 0; i < 8; i += 2) { this.qx = h.x + SAFE_OFF[i]; this.qz = h.z + SAFE_OFF[i + 1]; this.qy = h.y + STEP_UP; this._gq(); if (!(this.g >= h.y - STEP_DOWN)) { ok = false; break; } }
       if (ok) { h.safe.x = h.x; h.safe.z = h.z; h.safe.y = h.y; }
     }
     // 걸음 주기: 발소리와 달리기 클립이 같이 쓴다
@@ -433,7 +442,7 @@ export class Sim {
   _anim(o, a, dt) { if (o.anim !== a) { o.anim = a; o.animT = 0; } else o.animT += dt; }
   setAnim(o, a, dt) { this._anim(o, a, dt); }
   _fall(o, dt, gk = 1) {
-    const g = this.w.ground(o.x, o.z, o.y + STEP_UP);
+    this.qx = o.x; this.qz = o.z; this.qy = o.y + STEP_UP; this._gq(); const g = this.g;
     if (o.onGround) {
       if (g >= o.y - STEP_DOWN) o.y = g; else { o.onGround = false; o.coyote = TUNE.coyote; o.vy = 0; }
     } else {
@@ -688,7 +697,7 @@ export class Sim {
     if (e.pullT > 0) { const k = Math.min(1, dt / e.pullT); this._emove(e, (e.pullX - e.x) * k, (e.pullZ - e.z) * k); e.pullT -= dt; e.kx = e.kz = 0; }   // 휘감겨 끌려온다
     if (e.kx || e.kz) {   // 맞고 밀림
       const k = 1 - Math.min(1, 7 * dt); e.kx *= k; e.kz *= k;
-      if (Math.abs(e.kx) + Math.abs(e.kz) < 4) e.kx = e.kz = 0; else this._emove(e, e.kx * dt, e.kz * dt);
+      if (Math.abs(e.kx) + Math.abs(e.kz) < 4) e.kx = e.kz = 0; else { this.ex = e.kx * dt; this.ez = e.kz * dt; this._emq(e); }
     }
     if (e.stagger > 0) {   // 튕겨져 비틀거림: 이 동안은 어디서 쳐도 다 들어간다
       e.stagger -= dt; e.solid = true;
@@ -737,7 +746,7 @@ export class Sim {
   }
   _place(e) {
     const D = e.def;
-    if (D.fly || D.floats) { const g = this.w.ground(e.x, e.z, e.gy + 200); if (Number.isFinite(g)) e.gy += (g - e.gy) * 0.2; e.y = e.gy + e.hover; }
+    if (D.fly || D.floats) { this.qx = e.x; this.qz = e.z; this.qy = e.gy + 200; this._gq(); const g = this.g; if (g > -1e9) e.gy += (g - e.gy) * 0.2; e.y = e.gy + e.hover; }
     else e.gy = e.y;
     if (Math.abs(e.dirX) > 0.25) e.facing = sgn(e.dirX);
   }
@@ -748,6 +757,23 @@ export class Sim {
     while (da > Math.PI) da -= Math.PI * 2; while (da < -Math.PI) da += Math.PI * 2;
     const a = cur + clamp(da, -rate * dt, rate * dt);
     e.dirX = Math.cos(a); e.dirZ = Math.sin(a);
+  }
+  /** 영웅 쪽으로 종류의 빠르기(def.turn)만큼 돈다 — turnTo(e, hero − e, D.turn, dt) 와 같다 (숫자 인자를 넘기지 않는 판) */
+  faceHero(e, dt) {
+    const h = this.hero, dx = h.x - e.x, dz = h.z - e.z; if (dx * dx + dz * dz < 1e-8) return;
+    const cur = Math.atan2(e.dirZ, e.dirX), lim = e.def.turn * dt; let da = Math.atan2(dz, dx) - cur;
+    while (da > Math.PI) da -= Math.PI * 2; while (da < -Math.PI) da += Math.PI * 2;
+    const a = cur + (da > lim ? lim : da < -lim ? -lim : da);
+    e.dirX = Math.cos(a); e.dirZ = Math.sin(a);
+  }
+  /**
+   * 영웅을 기준으로 걷는다: f = 영웅 쪽(+1) · 반대쪽(−1), s = 옆(±1 — e.side), k = 종류 빠르기의 몇 배. steer(e, …방향…, D.speed × k, dt, straight) 와 같다
+   * (방향 · 빠르기를 숫자 인자로 넘기지 않아 상자가 생기지 않는다; f, s, k 는 상수로 준다)
+   */
+  steerHero(e, f, s, k, dt, straight) {
+    const h = this.hero, dx = h.x - e.x, dz = h.z - e.z, d = Math.sqrt(dx * dx + dz * dz) || 1;
+    this._sx = (dx / d) * f - (dz / d) * s; this._sz = (dz / d) * f + (dx / d) * s; this._sv = e.def.speed * k;
+    return this._steer(e, dt, straight);
   }
   /** 한 번에 덤비는 수를 묶는다: 같은 부류(걷는 것 / 나는 것)에서 공격 중인 적이 max 보다 적을 때만 */
   mayAttack(e, max = 2) {
@@ -819,18 +845,19 @@ export class Sim {
    * 적 이동 + 간단한 돌아가기. (wx,wz) = 가고 싶은 방향(단위), speed = px/초. 한쪽이 막히면 옆으로 비켜 간다 —
    * 벽 모서리와 소품 사이에 끼어 영원히 서 있던 문제(requests.md envkit 3)의 답. straight = 돌아가기 없이(물러서기 · 내딛기)
    */
-  steer(e, wx, wz, speed, dt, straight = false) {
-    let ux = wx, uz = wz;
+  steer(e, wx, wz, speed, dt, straight = false) { this._sx = wx; this._sz = wz; this._sv = speed; return this._steer(e, dt, straight); }
+  _steer(e, dt, straight) {
+    const wx = this._sx, wz = this._sz, speed = this._sv; let ux = wx, uz = wz;
     if (e.detourT > 0 && !straight) {
       e.detourT -= dt; ux = e.detX; uz = e.detZ;
       if (e.detourT < 0.3) {   // 바로 가는 길이 뚫렸으면 돌아가기를 그만둔다
         const p = this._probe; p.x = e.x; p.z = e.z; p.y = e.y; p.r = e.r; p.h = e.h; p.def = e.def;
-        this._emove(p, wx * 14, wz * 14 * 0.8);
+        this.ex = wx * 14; this.ez = wz * 14 * 0.8; this._emq(p);
         if (hyp(p.x - e.x, p.z - e.z) > 10) { e.detourT = 0; ux = wx; uz = wz; }
       }
     }
     const dx = ux * speed * dt, dz = uz * speed * dt * 0.8, x0 = e.x, z0 = e.z;
-    this._emove(e, dx, dz);
+    this.ex = dx; this.ez = dz; this._emq(e);
     const want = hyp(dx, dz), got = hyp(e.x - x0, e.z - z0);
     e.moved = got / Math.max(dt, 1e-4);
     if (want > 1e-3 && got < want * 0.4) {
@@ -840,7 +867,7 @@ export class Sim {
         for (let k = 0; k < 2; k++) {
           const q = k === 0 ? s0 : -s0, cx = -wz * q, cz = wx * q;
           p.x = e.x; p.z = e.z; p.y = e.y; p.r = e.r; p.h = e.h; p.def = e.def;
-          this._emove(p, cx * 28, cz * 28 * 0.8);
+          this.ex = cx * 28; this.ez = cz * 28 * 0.8; this._emq(p);
           const d = hyp(p.x - e.x, p.z - e.z);
           if (bd < 0 || d > bd + 4) { bd = d; bk = k; }
         }
@@ -857,14 +884,16 @@ export class Sim {
     return got;
   }
   /** 적 이동: 벽 + (걷는 적은) 낭떠러지로는 가지 않는다 */
-  _emove(e, dx, dz) {
-    const w = this.w, D = e.def, air = D && (D.fly || D.floats);
+  _emove(e, dx, dz) { this.ex = dx; this.ez = dz; this._emq(e); }
+  /** 같은 것 — 옮길 거리를 this.ex, this.ez 로 받는다 (틱마다 부르는 길은 이쪽: 숫자 상자를 만들지 않는다) */
+  _emq(e) {
+    const D = e.def, air = D && (D.fly || D.floats); let dx = this.ex, dz = this.ez;
     if (!air) {
-      if (dx) { const g = w.ground(e.x + dx + sgn(dx) * 14, e.z, e.y + STEP_UP); if (!(g >= e.y - STEP_DOWN)) dx = 0; }
-      if (dz) { const g = w.ground(e.x, e.z + dz + sgn(dz) * 14, e.y + STEP_UP); if (!(g >= e.y - STEP_DOWN)) dz = 0; }
+      if (dx !== 0) { this.qx = e.x + dx + (dx < 0 ? -14 : 14); this.qz = e.z; this.qy = e.y + STEP_UP; this._gq(); if (!(this.g >= e.y - STEP_DOWN)) dx = 0; }
+      if (dz !== 0) { this.qx = e.x; this.qz = e.z + dz + (dz < 0 ? -14 : 14); this.qy = e.y + STEP_UP; this._gq(); if (!(this.g >= e.y - STEP_DOWN)) dz = 0; }
     }
-    w.move(e, dx, dz);
-    if (!air) { const g = w.ground(e.x, e.z, e.y + STEP_UP); if (Number.isFinite(g)) e.y = g; }
+    this.qx = dx; this.qz = dz; this._mq(e);
+    if (!air) { this.qx = e.x; this.qz = e.z; this.qy = e.y + STEP_UP; this._gq(); if (this.g > -1e9) e.y = this.g; }
   }
   _separate(dt) {
     const E = this.enemies, h = this.hero;
@@ -875,12 +904,12 @@ export class Sim {
         const dx = b.x - a.x, dz = b.z - a.z, d2 = dx * dx + dz * dz, R = a.r + b.r + 18;
         if (d2 > R * R || d2 < 1e-4) continue;
         const d = Math.sqrt(d2), p = (R - d) * 5 * dt, wa = 1 - a.def.weight * 0.8, wb = 1 - b.def.weight * 0.8;
-        this._emove(a, (-dx / d) * p * wa, (-dz / d) * p * wa); this._emove(b, (dx / d) * p * wb, (dz / d) * p * wb);
+        this.ex = (-dx / d) * p * wa; this.ez = (-dz / d) * p * wa; this._emq(a); this.ex = (dx / d) * p * wb; this.ez = (dz / d) * p * wb; this._emq(b);
       }
       // 영웅과 겹치지 않게 (구르는 동안은 지나갈 수 있다 — 갑주의 등 뒤로 돌아가는 길)
       if (!h.dead && h.dashT <= 0 && h.onGround && !a.def.fly && a.solid && Math.abs(a.y - h.y) < 40) {
         const dx = h.x - a.x, dz = h.z - a.z, d2 = dx * dx + dz * dz, R = a.r + h.r + 10;   // 몸이 겹쳐 보이지 않을 만큼
-        if (d2 < R * R && d2 > 1e-4) { const d = Math.sqrt(d2), p = Math.min(R - d, 240 * dt); this.w.move(h, (dx / d) * p * 0.7, (dz / d) * p * 0.7); this._emove(a, (-dx / d) * p * 0.3 * (1 - a.def.weight), (-dz / d) * p * 0.3 * (1 - a.def.weight)); }
+        if (d2 < R * R && d2 > 1e-4) { const d = Math.sqrt(d2), p = Math.min(R - d, 240 * dt); this.qx = (dx / d) * p * 0.7; this.qz = (dz / d) * p * 0.7; this._mq(h); this.ex = (-dx / d) * p * 0.3 * (1 - a.def.weight); this.ez = (-dz / d) * p * 0.3 * (1 - a.def.weight); this._emq(a); }
       }
     }
   }

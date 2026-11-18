@@ -108,7 +108,7 @@ export function writeWhipMesh(whip, vtx, alpha, tmp) {
     vtx[o] = x2; vtx[o + 1] = y2; vtx[o + 2] = z2; vtx[o + 3] = nx; vtx[o + 4] = ny; vtx[o + 5] = nz; vtx[o + 6] = f; vtx[o + 7] = 0; vtx[o + 8] = 0; vtx[o + 9] = 4; o += WHIP_VERT;
   }
   // glow around the shard
-  const cx = ox + tx * 5, cy = oy + ty * 5, cz = oz + tz * 5, size = 8 + 13 * Math.min(1.5, whip.glow) + 26 * whip.flash;
+  const cx = ox + tx * 5, cy = oy + ty * 5, cz = oz + tz * 5, size = 7 + 11 * Math.min(1.5, whip.glow) + 12 * whip.flash;
   for (let k = 0; k < 4; k++) {
     vtx[o] = cx; vtx[o + 1] = cy; vtx[o + 2] = cz; vtx[o + 3] = 0; vtx[o + 4] = 0; vtx[o + 5] = 0; vtx[o + 6] = k === 0 || k === 3 ? -1 : 1; vtx[o + 7] = k < 2 ? -1 : 1; vtx[o + 8] = size; vtx[o + 9] = 6; o += WHIP_VERT;
   }

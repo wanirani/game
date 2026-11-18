@@ -307,7 +307,7 @@ async function main() {
     if (!api.hold) {
       size(innerWidth, innerHeight);
       if (!S.pause) { acc += real; let n = 0; while (acc >= 1 / 60 && n++ < 6) { step((1 / 60) * (S.slow ? 0.25 : 1)); acc -= 1 / 60; } if (n >= 6) acc = 0; }
-      draw('', S.pause ? 1 : Math.min(1, acc * 60)); hud();
+      draw('', 1); hud();   // the hero is drawn at tick positions here, so the lash is too (alpha 1)
     }
     requestAnimationFrame(loop);
   };

@@ -14,9 +14,23 @@ export function groundAt(W, x, z, yMax = Infinity) {
   }
   return g;
 }
-export function moveXZ(W, e, dx, dz) {
-  // (숫자는 모두 실수로만 다룬다 — Math.min / Math.max 와 정수 초깃값을 고리 안에서 섞으면 엔진이 고리 변수를 상자에 담아 부를 때마다 32 바이트를 만든다: tools/v2/play_alloc.mjs)
-  const B = W.boxes, r = +e.r, y = +e.y, top = y + (e.h === undefined ? 80 : +e.h), feet = y + STEP_UP;
+/**
+ * 인자 · 반환값으로 숫자를 넘기지 않는 판 (놀이 규칙이 틱마다 부르는 길): 엔진은 실수를 함수 인자 · 반환값으로 넘길 때마다 16 바이트짜리 상자를 만든다.
+ * S(= Sim)의 칸으로 주고받으면 만들지 않는다.  groundAtS: S.qx, S.qz, S.qy(이 높이 이하) → S.g   ·   moveXZs: e 를 (S.qx, S.qz) 만큼 옮긴다
+ */
+export function groundAtS(W, S) {
+  const x = S.qx, z = S.qz, yMax = S.qy, B = W.boxes; let g = -Infinity;
+  for (let i = 0; i < B.length; i++) {
+    const b = B[i];
+    if (x < b.x0 || x > b.x1 || z < b.z0 || z > b.z1 || !b.walk) continue;
+    if (b.y1 <= yMax && b.y1 > g) g = b.y1;
+  }
+  S.g = g;
+}
+const MV = { qx: 0.5, qz: 0.5 };
+export function moveXZ(W, e, dx, dz) { MV.qx = dx; MV.qz = dz; moveXZs(W, e, MV); }
+export function moveXZs(W, e, S) {
+  const dx = S.qx, dz = S.qz, B = W.boxes, r = +e.r, y = +e.y, top = y + (e.h === undefined ? 80 : +e.h), feet = y + STEP_UP;
   if (dx !== 0) {
     const x0 = +e.x, z = +e.z; let nx = x0 + dx;
     for (let i = 0; i < B.length; i++) {

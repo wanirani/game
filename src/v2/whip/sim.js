@@ -32,7 +32,7 @@ export class Whip {
     this.glowCol = new Float32Array([1.0, 0.84, 0.48]);
     this.ev = { x: 0, y: 0, z: 0, dx: 0, dy: 0, dz: 0, strength: 'M', move: '', kind: '' };
     this.mode = 'rest'; this.style = 'coil'; this.restT = 9;
-    this.sw = { id: '', shape: null, t: 0, hit0: 0.13, hit1: 0.25, dur: 0.44, s: -1, ps: -1, landT: -1, hasT: false, tx: 0, ty: 0, tz: 0, str: 'M', started: false };
+    this.sw = { id: '', shape: null, hitCrack: false, t: 0, hit0: 0.13, hit1: 0.25, dur: 0.44, s: -1, ps: -1, landT: -1, hasT: false, tx: 0, ty: 0, tz: 0, str: 'M', started: false };
     this.tg = { x: 0, y: 0, z: 0, r: 14, phase: 'throw', t: 0, throwT: 0.13, caught: false, since: 0, sx: 0, sy: 0, sz: 0, kind: 'hook', pull: false };
     this.fx = 1; this.fz = 0; this.bx = 0; this.by = 0; this.bz = 0; this.br = 12; this.bh = 104; this.hasBody = false;
     this.time = 0; this.flash = 0; this.kick = 0; this.taut = 0; this.ext = 0; this.trail = 0; this.spin = 0; this.resonance = 0; this.glow = 0; this.pulse = 0; this.dragT = 0;
@@ -56,7 +56,7 @@ export class Whip {
   /** mode: rest | stow | swing | crack | wrap | hook | ring. See docs/v2/WHIP.md §2 */
   set(mode, p) {
     if (mode === 'crack') {
-      this.flash = 1; this.kick = 1;
+      this.flash = 1; this.kick = 1; this.sw.hitCrack = true;   // a hit voices the crack: the same swing does not crack in the air as well
       const n = this.n, V = this.vel, k = 260 * (p && p.strength != null ? +p.strength || 1 : 1), r = this.root, t = this.tip;
       let dx = r.x - t.x, dy = r.y - t.y, dz = r.z - t.z; const l = Math.hypot(dx, dy, dz) || 1; dx /= l; dy /= l; dz /= l;
       for (let i = (n * 0.6) | 0; i < n; i++) { const o = i * 3, q = i / (n - 1); V[o] += dx * k * q; V[o + 1] += (dy * k + 160) * q; V[o + 2] += dz * k * q; }
@@ -95,7 +95,7 @@ export class Whip {
     if (this.mode !== 'swing' || id !== sw.id || t < sw.t - 1e-4) {
       if (this.mode === 'wrap' || this.mode === 'hook') this._leaveLine();
       const sh = shapeOf(id), mv = MOVES[id], nm = sh.nominal;
-      sw.id = id; sw.shape = sh; sw.ps = -1.001; sw.started = false; this.mode = 'swing';
+      sw.id = id; sw.shape = sh; sw.ps = -1.001; sw.started = false; sw.hitCrack = false; this.mode = 'swing';
       const hit = (p && p.hit) || (mv && mv.hit) || (nm && nm.hit);
       sw.hit0 = hit ? hit[0] : 0.13; sw.hit1 = hit ? hit[1] : 0.25;
       sw.dur = (p && p.dur) || (mv && mv.dur) || (nm && nm.dur) || 0.44;
@@ -215,7 +215,7 @@ export class Whip {
     if (!sw.started && s >= -0.5) { sw.started = true; this._emit('swing', r.x, r.y, r.z, this.fx, 0, this.fz, ''); }
     if (sw.ps < sh.peak && s >= sh.peak) {
       const t = this.tip, sp = t.speed || 1;
-      if (sh.ev === 'ring') { this.pulse = 1; this._emit('ring', W[0], W[1], W[2], 0, 1, 0, sh.kind); } else { this.flash = Math.max(this.flash, 0.7); this._emit('crack', W[0], W[1], W[2], t.vx / sp, t.vy / sp, t.vz / sp, 'air'); }
+      if (sh.ev === 'ring') { this.pulse = 1; this._emit('ring', W[0], W[1], W[2], 0, 1, 0, sh.kind); } else if (!sw.hitCrack) { this.flash = Math.max(this.flash, 0.7); this._emit('crack', W[0], W[1], W[2], t.vx / sp, t.vy / sp, t.vz / sp, 'air'); }
     }
     sw.ps = s;
     this.trail = s > -0.35 && s < 1.25 ? 1 : 0;

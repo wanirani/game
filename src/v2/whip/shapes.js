@@ -12,10 +12,15 @@
 // nominal = timing and hit shape used only when the rules table (src/v2/play/moves.js) has no move of that id.
 
 const K = (rows) => { const a = new Float32Array(rows.length * 8); rows.forEach((r, i) => a.set(r, i * 8)); return a; };
+// The rules land a hit on the first tick of the hit window, so the lash has to ARRIVE as the window opens: the keys below are written
+// with the full extension at phase pk (easy to read: wind-up, strike, follow-through) and S() squeezes them so that the extension falls at
+// PEAK, just inside the window. What was "the strike" plays in the last part of the wind-up, the follow-through fills the window.
+export const PEAK = 0.08;
+const S = (pk, rows) => K(rows.map((r) => { const s = r[0], q = s <= pk ? -1 + ((s + 1) * (1 + PEAK)) / (pk + 1) : s <= 1 ? PEAK + ((s - pk) * (0.62 - PEAK)) / (1 - pk) : 0.62 + (s - 1) * 1.38; return [q, ...r.slice(1)]; }));
 
 export const WHIP_SHAPES = {
   // combo 1: flat cut from the right, across the front, to the left (clip atk1)
-  c1: { peak: 0.6, ev: 'crack', keys: K([
+  c1: { peak: PEAK, ev: 'crack', keys: S(0.6, [
     [-1.0, -34, 30, 36, 0.35, -1, 0, -1],
     [-0.55, -66, 48, 74, 0.6, -1, 0.3, 0.6],
     [-0.12, -44, 86, 66, 0.75, -1, 0.4, 0.5],
@@ -28,7 +33,7 @@ export const WHIP_SHAPES = {
     [2.0, -4, -34, 5, 0.0, 0, 0, -1],
   ]) },
   // combo 2: backhand from high left, down across the front, to the low right (clip atk2)
-  c2: { peak: 0.5, ev: 'crack', keys: K([
+  c2: { peak: PEAK, ev: 'crack', keys: S(0.5, [
     [-1.0, 22, -50, 48, 0.35, -1, 0, -1],
     [-0.55, -30, -70, 96, 0.6, -1, -0.3, 0.8],
     [-0.12, -20, -86, 122, 0.75, -1, -0.4, 0.8],
@@ -40,7 +45,7 @@ export const WHIP_SHAPES = {
     [2.0, -14, 34, 4, 0.0, 0, 0, -1],
   ]) },
   // combo 3: the wide one. Up and over the head, then a full low circle from the left, through the front, to the right (clip atk3)
-  c3: { peak: 0.5, ev: 'crack', keys: K([
+  c3: { peak: PEAK, ev: 'crack', keys: S(0.5, [
     [-1.0, -10, 40, 22, 0.35, -1, 0, -1],
     [-0.6, -50, 12, 122, 0.6, -1, 0, 0.5],
     [-0.25, -22, -60, 166, 0.75, -0.5, 1, 0.5],
@@ -53,7 +58,7 @@ export const WHIP_SHAPES = {
     [2.0, -30, -18, 5, 0.0, 0, 0, -1],
   ]) },
   // sweep after a roll: scrape the ground from the low right and rip upward through the front (clip launcher)
-  sweep: { peak: 0.6, ev: 'crack', keys: K([
+  sweep: { peak: PEAK, ev: 'crack', keys: S(0.6, [
     [-1.0, -30, 30, 30, 0.35, -1, 0, -1],
     [-0.4, -62, 52, 16, 0.6, -1, 0.3, 0.2],
     [0.0, 10, 86, 12, 0.9, -1, 0.5, 0.2],
@@ -65,7 +70,7 @@ export const WHIP_SHAPES = {
     [2.0, -40, 0, 40, 0.0, 0, 0, -1],
   ]) },
   // hold-attack (rules id 'whip'): the long lash thrown straight ahead to the far end of its hit box; what it catches is then wound and pulled (mode 'wrap')
-  whip: { peak: 0.6, ev: 'crack', len: [0.7, 2.9], nominal: { dur: 0.62, hit: [0.12, 0.26], box: { f0: 10, f1: 250, side: 40, y0: 0, y1: 150 } }, keys: K([
+  whip: { peak: PEAK, ev: 'crack', len: [0.7, 2.9], nominal: { dur: 0.62, hit: [0.12, 0.26], box: { f0: 10, f1: 250, side: 40, y0: 0, y1: 150 } }, keys: S(0.6, [
     [-1.0, -40, 30, 150, 0.5, -1, 0.3, 0.3],
     [-0.5, -72, 22, 122, 0.7, -1, 0.3, 0.4],
     [-0.1, -52, 12, 92, 0.85, -1, 0.2, 0.6],
@@ -77,7 +82,7 @@ export const WHIP_SHAPES = {
     [2.0, 40, -6, 4, 0.0, 0, 0, -1],
   ]) },
   // launcher: straight up the middle (rules may add it later)
-  launcher: { peak: 0.5, ev: 'crack', nominal: { dur: 0.52, hit: [0.14, 0.28], box: { f0: -10, f1: 104, side: 40, y0: 0, y1: 190 } }, keys: K([
+  launcher: { peak: PEAK, ev: 'crack', nominal: { dur: 0.52, hit: [0.14, 0.28], box: { f0: -10, f1: 104, side: 40, y0: 0, y1: 190 } }, keys: S(0.5, [
     [-1.0, -30, 24, 26, 0.35, -1, 0, -1],
     [-0.4, -64, 20, 10, 0.6, -1, 0, 0.3],
     [0.0, 30, 14, 8, 0.9, -1, 0, 0.3],
@@ -101,7 +106,7 @@ export const WHIP_SHAPES = {
     [2.0, 20, -6, 3, 0.0, 0, 0, -1],
   ]) },
   // charged strike: one slow circle over the head while charging, then a long overhead slam into the ground ahead
-  charge: { peak: 0.55, ev: 'crack', len: [0.9, 1.5], nominal: { dur: 0.95, hit: [0.52, 0.68], box: { f0: -10, f1: 152, side: 42, y0: 0, y1: 150 } }, keys: K([
+  charge: { peak: PEAK, ev: 'crack', len: [0.9, 1.5], nominal: { dur: 0.95, hit: [0.52, 0.68], box: { f0: -10, f1: 152, side: 42, y0: 0, y1: 150 } }, keys: S(0.55, [
     [-1.0, -30, 30, 30, 0.35, -1, 0, -1],
     [-0.8, -70, 30, 120, 0.6, 0, 1, 0.3],
     [-0.6, -30, -76, 164, 0.7, 1, 0.5, 0.2],
@@ -116,7 +121,7 @@ export const WHIP_SHAPES = {
     [2.0, 30, -8, 3, 0.0, 0, 0, -1],
   ]) },
   // far bell strike: thrown at a distant point (frame 'aim': f = fraction of the way from the chest to the target)
-  far: { peak: 0.6, ev: 'crack', frame: 'aim', len: [0.6, 4.2], nominal: { dur: 0.6, hit: [0.2, 0.34], reach: 380 }, keys: K([
+  far: { peak: PEAK, ev: 'crack', frame: 'aim', len: [0.6, 4.2], nominal: { dur: 0.6, hit: [0.2, 0.34], reach: 380 }, keys: S(0.6, [
     [-1.0, -0.1, 24, -30, 0.4, -1, 0, -1],
     [-0.5, -0.32, 34, 40, 0.65, -1, 0.3, 0.6],
     [-0.1, -0.2, 26, 78, 0.8, -1, 0.3, 0.6],

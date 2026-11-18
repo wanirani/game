@@ -14,7 +14,7 @@ import { hudSafe } from '../render/hud_layout.js';
 import { TapMenu, frame, ornament, GOLD, BONE, DIM } from '../scenes/front/common.js';
 
 export const ROWS = [
-  { id: 'v2g', label: '본 게임', tag: '만드는 중', desc: '적까지 모두 입체 · 타격 효과와 소리 · 아직 만드는 중' },
+  { id: 'v2g', label: '본 게임', tag: '만드는 중', desc: '에슈빌 오늘 밤에서 시작 · 새 단추 · 아직 만드는 중' },   // opens area eshville_now (the old test route: index.html?scene=v2g&area=slice0)
   { id: 'v2b', label: '시범판 B', tag: '고른 방식', desc: '길·건물·영웅을 입체로 세운 화면 (카메라가 돈다)' },
   { id: 'v2c', label: '꾸민 배경', tag: '새 배경', desc: '시범판 B 에 창·문·지붕·소품까지 입체로 지은 화면' },
   { id: 'v2bench', label: '성능 진단', tag: '약 1분', desc: '이 기기에서 왜 끊기는지 재서 표로 보여 줍니다' },
