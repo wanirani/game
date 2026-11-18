@@ -80,6 +80,7 @@ final class AssetServer {
         MIME.put("wav", "audio/wav");
         MIME.put("m4a", "audio/mp4");
         MIME.put("glb", "model/gltf-binary");   // v2 (3D 판) 캐릭터 모델 — fetch 로 받아 ArrayBuffer 로 읽는다
+        MIME.put("bin", "application/octet-stream");   // v2 구운 소품 묶음 (assets/v2/props/props.bin) — fetch 로 받아 ArrayBuffer 로 읽는다
         MIME.put("aac", "audio/aac");
         MIME.put("flac", "audio/flac");
         MIME.put("mp4", "video/mp4");
