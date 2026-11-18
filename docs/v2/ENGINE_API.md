@@ -325,12 +325,15 @@ hud.padHideButtons           // (선택) 숨길 v1 패드 단추 id 배열 · hu
 - **깃발 → 지역**: `FLAGS` 에서 `world: true` 인 것과 `AREA_FLAGS` 에 있으면서 이야기가 선언한 이름만 `scene.worldFlags` 로 넘긴다(이야기에 없는 `past_street_clear` 는 넘기지 않는다 → 그 밤의 에드문트는 `street_clear` 로 선다). 지금 선 지역을 짓는 깃발이 바뀌면 이야기 장면이 끝난 뒤(`st.busy` 가 아니고 대화가 닫힌 뒤) 그 자리에서 다시 짓는다(`scene.rebuildArea()` — 다시 지은 것은 `area.enter` 를 올리지 않는다).
 - **올리는 사건**(§6 에 더해): `interact` 는 잠긴 자리도, 종 앞에서 「종」을 길게 누른 것도(`ring: true`) 올린다 · `boss.phase {boss, phase: 'kneel'｜'flee'｜'driven'｜'sent'｜'down'}`(규칙의 kneel · bossFlee · bossReturn · bossDown 에서) · `boss.down {boss, knelled}`.
 - **임시 줄이 물러나는 법**: 사람의 `talk` 열쇠가 이야기에 있으면(`host.hasTalk`) 진짜 대사, 없으면 그 사람의 임시 한 줄(`people.js` `LINES`). 누르는 자리 · 잠긴 문은 듣는 장면이 하나도 없을 때만(`host.hears(name, data)`) 장면이 이름표 알림을 띄운다.
+- **이야기가 영웅을 붙드는 동안**(대화 창 · 카메라 컷 · 건넘) 영웅은 다치지 않는다: 장면이 규칙의 무적 시간(`hero.ifr`)을 0.4초로 채워 둔다(깜빡임은 끈다). 적은 멈추지 않는다 — 다가와 휘두를 수는 있다.
+- 지역마다의 곡: `area.music`(`village_burning · village_past · graveyard_mist · ossuary_now · ossuary_past`)을 들어설 때 v1 곡으로 튼다(`storyhost.js` `MUSIC` 표; 빌드에 없는 곡은 `audio.music` 이 건너뛴다). 장면을 떠나면 멈춘다.
 - `host.seen` = 플레이어가 본 것의 차례(`['banner'｜'line'｜'notice'｜'objective'｜'prompt'｜'choice'｜'goto'｜'cross'｜'end', a, b]`, 4000개까지) — 검사 도구가 읽는다. `host.warnings` = 실행기의 경고.
 
 ### 12.2 저장 (`localStorage['bn.v2.save']`)
-- 모양: `{ v: 1, t, why, story: storyObj.save(), area, era, spawn, pos: {x, z, y, face}｜null, hp｜null, reso, nights: { <areaId>: { dead: [...], done, fired: [...] } } }`.
+- 모양: `{ v: 1, t, why, story: storyObj.save(), area, era, spawn, pos: {x, z, y, face}｜null, hp｜null, reso, nights: { <areaId>: { dead: [...], done } } }`.
 - **쓰는 때**: 이야기의 `save` 단계(`why: 'story'`), 장면을 떠날 때(`exit()` — 일시정지의 「나가기」 포함, `why: 'leave'`), 화면이 가려질 때(`visibilitychange`, `why: 'hidden'`). 시험 길(`slice0`)과 끝난 뒤에는 쓰지 않는다. 이야기 장면이 도는 중이면 `story` 는 그 장면이 시작되기 전 모습이다(DATA_FORMAT §10).
 - **읽는 때**: 들어올 때. 깨졌거나 판이 다르거나 이야기 상태에 지역이 없으면 버리고 새 게임. 영웅은 **이야기의 지역**에 선다: 저장의 `area` 가 이야기의 지역과 같으면 `pos` 자리, 다르면(지역을 옮기던 중에 끊김) 이야기의 `spawn`. 체력 · 울림 · 밤마다의 기억도 돌아온다.
+- **끊긴 장면이 다시 나오게**: 이야기 장면이 도는 중에 저장되면 그 장면은 불러온 뒤 처음부터 다시 나와야 한다. 그래서 ① 울린 트리거는 저장하지 않는다(불러오면 다시 울린다 — 끝난 장면은 실행기가 무시), ② 불러온 첫 지역에서 이미 다 쓰러진 묶음은 `group.clear {group, again: true}` 를, 쓰러진 보스는 `boss.phase {phase: 'sent', again: true}` 를 한 번 다시 올린다(`_raiseCleared`).
 - **처음부터**: 일시정지 판의 「처음부터 다시」 → 확인(새 인터페이스: 「그만둔다 / 처음부터」 고르기, 기본은 그만둔다; 옛 HUD: 6초 안에 한 번 더 고르기) → `scene.restart()` 가 저장 · 이야기 · 밤의 기억 · 문 · 깃발을 지우고 첫 지역을 연다.
 - 촛불: 이야기의 촛불 수(처음 3, `candle +1` 마다 하나) = `state.candles.max`, 영웅의 최대 체력 = `TUNE.heroHp × 촛불 / 3`(`scene.applyCandles()`). `candle 0` = 가득 + 눌린 쉼터가 다시 일어서는 자리.
 

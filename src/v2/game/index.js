@@ -78,7 +78,7 @@ export default class V2Game extends Scene {
     this._use = false; this._ringTap = false; this._heroHid = false; this._occ = new Float32Array(0); this._occN = 0; this._caps = { skill: false, bell: false }; this._offT = 0; this._go = null; this.fadeA = 0; this.fadeTo = 0; this._flagFn = (n) => this.flag(n); this._useFn = () => { this._use = true; }; this._skyKey = ''; this._peopleN = 0;
     this.heroA = null; this.actors = []; this.pool = new Map(); this._ERef = null;
     // STORY HOOK (storyhost.js): the plugged-in story, what each night remembers (fallen enemies, fired triggers), the crossing in progress and its veil
-    this.host = null; this.nights = new Map(); this.xing = null; this.veil = '#000'; this._veilUnder = false; this._carry = null; this._armT = 0; this._holdT = 0; this._quiet = false; this._lastArea = ''; this._refused = false;
+    this.host = null; this.nights = new Map(); this.xing = null; this.veil = '#000'; this._veilUnder = false; this._carry = null; this._armT = 0; this._holdT = 0; this._quiet = false; this._lastArea = ''; this._refused = false; this._reraise = false;
     this.bridge = bindFxSound(feel); this.feelN = 0; this.lastFeel = null; this._actE = null; this._simSteps = false;
     this.shotL = new Array(32).fill(null); this.shotN = 0;
     // the whip Vigilia (src/v2/whip, docs/v2/WHIP.md 7): simulated from the hero's hand every tick, drawn right after the characters
@@ -330,6 +330,7 @@ export default class V2Game extends Scene {
     this.ready = false; this.state.loading = true;
     this._releaseArea();
     try { await this._load(id, spawn, keep, pre); } catch (e) { if (this.glr) { this.glError = String(e?.message ?? e); console.error('[v2g] area load failed', e); } }
+    this._quiet = false;
     if (was && this.ready && this.sim) {
       const sim = this.sim, hh = sim.hero;
       for (const e of sim.enemies) if (was.dead.has(e.kind + '@' + Math.round(e.homeX ?? e.x) + ',' + Math.round(e.homeZ ?? e.z))) { e.dead = true; e.hp = 0; e.active = false; }
@@ -481,6 +482,7 @@ export default class V2Game extends Scene {
     this.ready = true; this.state.loading = false; this.sampleN = 0;
     const quiet = this._quiet; this._quiet = false;
     if (!quiet) this.emit('area.enter', { area: area.id, era: area.era });   // (the same area rebuilt in another state is not a new arrival)
+    if (this._reraise) { this._reraise = false; this._raiseCleared(); }   // STORY HOOK: first load of a saved game
   }
   // ───────────────────────── STORY HOOKS: boot with the story and the save, nights, candles, the crossing (storyhost.js) ─────────────────────────
   /** plug the story in (seams.js STORY_LOADER: on for 「본 게임」, off with v2story=0 and when the address names an area without v2story=1), continue from the save, load the first area */
@@ -497,12 +499,20 @@ export default class V2Game extends Scene {
         at = sv ? host.restore(sv) : null;
         if (at && !named && !(await hasArea(at.area))) at = null;
         if (sv && !at) host.reset();   // a save that cannot be used: new game
-        if (at && !named) { area = at.area; spawn = at.spawn; keep = at.pos; this.nightsIn(at.nights); this._carry = { hp: at.hp, reso: at.reso }; }
+        if (at && !named) { area = at.area; spawn = at.spawn; keep = at.pos; this.nightsIn(at.nights); this._carry = { hp: at.hp, reso: at.reso }; this._reraise = true; }
         this.setWorldFlags(host.worldFlags(), { reload: false });
       } catch (e) { console.warn('[v2g] the story did not load - playing without it:', String(e?.stack ?? e?.message ?? e)); this.host = null; this.story = null; this.storyFlag = null; }
     }
     if (!this.glr) return;
     await this._load(area, spawn, keep);
+  }
+  /** after loading a save: a fight that was already won raises its end again (group.clear; a boss that was sent off), so that a story scene the save
+   *  cut off can play again from its start (DATA_FORMAT 10) — sequences that had finished ignore it. Triggers fire again by themselves (not saved). */
+  _raiseCleared() {
+    const E = this.sim?.enemies ?? [], G = new Map();
+    for (let i = 0; i < E.length; i++) { const e = E[i]; if (!e.group) continue; G.set(e.group, (G.get(e.group) ?? false) || (!e.dead && e.state !== 'dead')); }
+    for (const [g, alive] of G) if (!alive) this.emit('group.clear', { group: g, again: true });
+    for (let i = 0; i < E.length; i++) { const e = E[i]; if (e.def?.boss && (e.dead || e.state === 'dead')) this.emit('boss.phase', { boss: e.kind, phase: 'sent', again: true }); }
   }
   _nightKey(e) { return e.kind + '@' + Math.round(e.homeX ?? e.x) + ',' + Math.round(e.homeZ ?? e.z); }
   /** remember what happened in the area the hero is leaving */
@@ -520,11 +530,11 @@ export default class V2Game extends Scene {
     for (const t of n.fired) this.fired.add(t);
   }
   /** the nights' memory as plain data (the save) and back */
-  nightsOut() { if (this.sim && this.area && !this.area.test && this.ready) this._keepNight(); const o = {}; for (const [id, n] of this.nights) o[id] = { dead: [...n.dead], done: n.done, fired: [...n.fired] }; return o; }
+  nightsOut() { if (this.sim && this.area && !this.area.test && this.ready) this._keepNight(); const o = {}; for (const [id, n] of this.nights) o[id] = { dead: [...n.dead], done: n.done }; return o; }   // (fired triggers are not saved: after a load they fire again, so a cut-off scene can replay)
   nightsIn(o) {
     this.nights.clear(); if (!o || typeof o !== 'object' || Array.isArray(o)) return;
     const strs = (v) => new Set(Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []);
-    for (const id of Object.keys(o)) { const n = o[id]; if (n && typeof n === 'object') this.nights.set(id, { dead: strs(n.dead), done: !!n.done, fired: strs(n.fired) }); }
+    for (const id of Object.keys(o)) { const n = o[id]; if (n && typeof n === 'object') this.nights.set(id, { dead: strs(n.dead), done: !!n.done, fired: new Set() }); }
   }
   /** candles of the story (3 at the start, one more per `candle +1` step) -> the HUD's candle count and the hero's greatest health */
   applyCandles() {

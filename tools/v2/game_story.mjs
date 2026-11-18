@@ -275,18 +275,20 @@ try {
   }
   if (PLAN === 'shots') {   // stills for the owner sheet: the story is driven by its own events (the walking is not what is shown), every picture is the game's own frame
     const dlgShot = async (name, pages = 0) => { let s = await play(1500, { bot: false, pred: (q) => q.modal === 'dialog', chunk: 6 }); if (s.modal !== 'dialog') { notes.push('no dialogue for ' + name); return false; }
-      for (let k = 0; k < pages; k++) { await page.evaluate(() => { const S = window.__st, sc = window.__v2.scene, g = window.__game; for (let i = 0; i < 70; i++) g.tick(1 / 60); const c = S.toClient(sc.state.viewW / 2, sc.state.viewH * 0.3); S.fire('pointerdown', 31, c[0], c[1]); S.fire('pointerup', 31, c[0], c[1]); for (let i = 0; i < 4; i++) g.tick(1 / 60); }); }
+      for (let k = 0; k < pages; k++) { await page.evaluate(() => { const S = window.__st, sc = window.__v2.scene, g = window.__game; for (let i = 0; i < 110; i++) g.tick(1 / 60); const c = S.toClient(sc.state.viewW / 2, sc.state.viewH * 0.3); S.fire('pointerdown', 31, c[0], c[1]); S.fire('pointerup', 31, c[0], c[1]); for (let i = 0; i < 4; i++) g.tick(1 / 60); }); }
       await page.evaluate(() => { for (let i = 0; i < 110; i++) window.__game.tick(1 / 60); window.__st.draw(); }); await shot(name); return true; };
     await settle(3000);
+    const fellAll = async () => { const n = await page.evaluate(() => { const sim = window.__v2.scene.sim; let k = 0; for (const e of sim.enemies) if (!e.dead && e.state !== 'dead') { e.hp = 0; sim._kill(e); k++; } return k; }); await settle(4000); return n; };
+    notes.push('shots: the tool felled every enemy of each area first (' + (await fellAll()) + ' in eshville_now) and put the hero at each spot — these stills are staged, the story steps are the real ones');
     const A = await def('eshville_now'), t = A.triggers.find((q) => q.event === 'church.arrive');
-    await put((t.x0 + t.x1) / 2, (t.z0 + t.z1) / 2); await dlgShot('owner_dialog_alberto', 1); await settle(3000); await drain('church');
+    await put((t.x0 + t.x1) / 2, (t.z0 + t.z1) / 2); await dlgShot('owner_dialog_alberto', 0); await dlgShot('owner_dialog_elise', 5); await settle(3000); await drain('church');
     const bN = A.interact.find((q) => q.event === 'bell.ring');
     await page.evaluate(() => window.__v2.scene.travelTo('belltower_now', 'bottom')); await toArea('belltower_now'); await emit('trigger', { id: 'top', event: 'tower.top' }); await settle(); await page.evaluate(() => window.__st.fell('tower_bats')); await toArea('eshville_past', 6000); await drain('tower and fall');
-    await emit('group.clear', { group: 'st_p' }); await settle();
+    await fellAll();
     const P = await def('eshville_past'), ed = P.actors.find((q) => q.id === 'edmund'), hw = P.actors.find((q) => q.id === 'hadwin1'), bP = P.interact.find((q) => q.event === 'bell.ring');
-    await put(ed.x - 10, ed.z - 70); await play(40, { bot: false }); await emit('talk', { id: 'edmund', talk: 'edmund.tavern' }); await dlgShot('owner_dialog_edmund', 2); await settle(4000);
+    await put(ed.x - 10, ed.z - 70); await play(40, { bot: false }); await emit('talk', { id: 'edmund', talk: 'edmund.tavern' }); await dlgShot('owner_dialog_edmund', 1); await settle(4000);
     await emit('talk', { id: 'edmund', talk: 'edmund.tavern' }); await settle(4000);
-    await put(hw.x - 10, hw.z - 70); await play(40, { bot: false }); await emit('talk', { id: 'hadwin1', talk: 'hadwin1.smithy' }); await dlgShot('owner_entrust', 1); await settle(4000); await drain('table, knot, key');
+    await put(hw.x - 10, hw.z - 70); await play(40, { bot: false }); await emit('talk', { id: 'hadwin1', talk: 'hadwin1.smithy' }); await dlgShot('owner_entrust', 5); await settle(4000); await drain('table, knot, key');
     // the same spot in the two nights, the crossing between them
     await put(bP.x - 150, bP.z + 120); await play(120, { bot: false }); await settle(); await shot('owner_past_spot');
     await put(bP.x, bP.z + 40); await play(30, { bot: false }); await emit('interact', { id: bP.id, kind: 'bell', event: 'bell.ring' });
