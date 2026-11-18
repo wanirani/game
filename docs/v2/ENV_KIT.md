@@ -4,6 +4,8 @@
 작성 2026-11-17. 소유자 의견("적과 모든 것들을 3D 로, 배경도 좀 더 디테일하게 — 사물이나 벽면 등도")에 대한 **배경 쪽 답**이다.
 숫자는 §5. 헤드리스 Chromium 은 소프트웨어 렌더러(SwiftShader)라 **프레임 시간은 실제 기기 값이 아니다** — 삼각형·그리기 호출·메모리만 믿을 수 있다.
 
+> **2026-11-18 02:10 UTC, WORLD-2 구역이 더한 것은 §18** (납골당 · 종탑 소품 12종을 생성 모델로, 채찍 고리 · 길종 종대, 작은 재질 접기로 그리기 호출 줄이기 — 에슈빌 33/35 → 30/30, 수레 손잡이 · 고목 발자국, 지역별 숫자 전 → 후). §17 "남은 것"의 수레 손잡이 · 고목 · 납골 벽감 · 가판대 줄은 이제 옛 얘기다(묘지 문은 그대로 남았다).
+>
 > **2026-11-18 00:55 UTC, 검수(propsverify)는 §17** — §16 의 숫자는 다시 재도 같았다. 고친 것: 떠 있던 등불 기둥 · 기둥 옆에 서 있던 충돌 상자 · 수레 손잡이 사이의 밝은 번짐 · 영웅이 몸 반쯤 들어가던 수레 · 묶음 · 화로의 충돌 상자. 묶음 파일의 크기와 숫자는 §17 끝의 값이 지금 값이다(§16.2 의 217,532 · 272,418 바이트는 고치기 전)
 >
 > **2026-11-18 00:10 UTC, PROPS 구역이 더한 것은 §16** (생성 모델 소품 18종 · 그린 표면 6장 · 잎 모양 불길 · 지역별 숫자 전 → 후). §11 의 "빚은 소품 3종"과 §12 의 "코드 텍스처 그대로다", §15 의 "남은 것" 첫 두 줄은 이제 옛 얘기다 — 빚은 천사상 · 가고일 · 고목은 생성 모델이 대신한다(빚는 도구 `world_sculpts.mjs` 는 남아 있지만 묶음에 들어가지 않는다).
@@ -482,3 +484,92 @@ assets/v2/env/k_bone.webp                                                       
 | 시범 구간 | 30,000 → **30,000** | 30,000 · 24 → **30,000 · 24** | 39.5 → **39.5 MB** | 270 / 332 → **270 / 330** |
 
 묶음: `props.bin` 217,508 바이트 · `props_atlas.webp` 263,656 바이트(2048×1024 그대로). 실행 중 받는 파일 목록은 §16.6 그대로다(새 파일 없음).
+
+## 18. WORLD-2 (2026-11-18 01:00–02:30 UTC): crypt and tower props, whip ring, folding small materials, fewer draw calls
+
+(English, like `AREA_FORMAT.md`, so every lane reads it fast. Areas, flags and hooks: `docs/v2/AREA_FORMAT.md` §13.)
+
+### 18.1 Twelve more generated models (design picture → image-to-3D → the pipeline of §16, unchanged)
+
+Design pictures `gpt_image_2_5` (1k, medium), models `tripo_h3_1_image_to_3d`; every model was looked at from four sides before it was packed (`/tmp/claude-0/v2/world2/glb_sheet_0.jpg`, `_1.jpg`): none melted — the pictures asked for **thick, simple forms**. Sources: `tools/v2/world_src/props/<name>.glb` (27 files with the 15 older ones) + `meta.json`. Jobs and credits: `tools/higgsfield/manifest_world2.json` (24 jobs, 114 credits).
+
+| prop | triangles in the pack | where |
+|---|---|---|
+| `sarcophagus` | 420 | ossuary: the riddle room (three) |
+| `coffinstack` | 519 | ossuary tonight: the wall across the corridor, stacks on the banks and along the walls (19) |
+| `bonepile` | 360 | ossuary tonight (17) |
+| `skullwall` | 420 | ossuary (set into the side walls, beside the sealed door); **takes over the code-built `niche`** everywhere (graveyard) |
+| `candelabrum` | 300 | ossuary 1697 (16, lit), the lantern stand in both nights |
+| `chandelier` | 467 | ossuary: two over the bell-post corridor (lit in 1697, dead iron tonight) |
+| `altar` | 480 | ossuary: the wailing room |
+| `mourner` | 639 | ossuary: entry (two), beside the sealed door (two), **the statue of the gap** |
+| `cryptdoor` | 420 | ossuary: the sealed door at the end, blind doors in the side walls |
+| `stairs` | 299 | bell tower: a spare wooden flight on the ground floor |
+| `stall2` | 519 | **takes over the code-built `stall`** (Eshville 1697, three) |
+| `wreck2` | 420 | **takes over the code-built `wreck`** (Eshville tonight, three) |
+
+`GEN_ALIAS` in `props3.js` (`stall → stall2`, `wreck → wreck2`, `niche → skullwall`): a part that says `mesh: 'stall'` gets the generated model when the pack has it, the code-built one otherwise or with `code: true`. The pack: **30 props, `props.bin` 386,880 B, atlas 2048 × 2048 (`props_atlas.webp` 501,240 B, `texels` 3.3e6)** — it was 18 props on 1024 × 2048. `node tools/v2/world_props_bake.mjs` reproduces both files byte for byte from `tools/v2/world_src/` (checked on the final tree, §18.7).
+
+### 18.2 Code-built props (`src/v2/env/props3.js`) — shapes that must be exact or change with the story
+
+`whipring` (iron ring on a post / wall bracket / chain with a pale line of light, a glow and a light pool — AREA_FORMAT §13.2) · `roadbell` (stone-footed oak post with an arm: `state: 'empty' | 'hung' | 'rusty'`) · `footbridge` (`kind: 'planks' | 'slab'`) · `towerface` (dressed wall under a floor edge: coping, joist ends, arrow slits) · `beam` · `rope` (`chain: true`, `r`) · `roost` (bats hanging under a beam) · `debris` (what a crate is after a hundred years) · `rubble` (the fallen stair) · `stoneblock`. Plain stand-ins of the twelve generated props are in the same file: they are used only when the pack is missing.
+
+### 18.3 Folding small materials — one draw call less for every texture a chunk barely uses
+
+A chunk costs one draw call per texture. Many chunks used a texture for a few hundred triangles only (the old `wood` tile for doors, fences, barrels; `dirt` for one heap; `flag` for two floor strips).
+- `src/v2/env/mats.js`: **`FOLDS`** = `[texture, the most triangles it may have in a chunk, look-alike materials in order]` — `wood` (≤ 460) → `planks` or the `timber` piece of `k_trim`; `dirt` (≤ 120) → `soil cobworn slabs flags stone`; `flag` (≤ 130) → `flags stone`; `k_ashlar` (≤ 90) → `stone fieldstone`; `brick` (≤ 120) → `fieldstone stone`. A fold happens only into a texture the chunk uses anyway and that is not itself small. `foldMat` keeps the colour: the tint is multiplied by the ratio of the two textures' average colours (`TEX_AVG`, measured from the files).
+- `Geo._m(mat)` resolves a material through the plan of the chunk being written (`G.fold`); `compileEnv(S, { fold })` takes the plan from **`S.folds`** (`{ chunk: { texture: material } }`), `'auto'` = plan it on the spot with a counting pass (as slow as a second compile: tools only), `false` = never. **A stage without `folds` compiles exactly as before** (the test route loaded directly by v2bench / v2c is untouched).
+- `node tools/v2/world_folds.mjs` plans every area and writes **`src/v2/world/folds.js`** (generated; `finishArea` puts `AREA_FOLDS[id]` on the stage, so the game never pays for the counting pass). **Run it after changing an area or `FOLDS`**; `--check` exits 1 when the stored plan is stale.
+
+| area | static draws per chunk, before → after | what folded |
+|---|---|---|
+| `eshville_now` | out 10 · street 11 · east 12 → **9 · 10 · 11** | `wood` → `timber` in all three |
+| `eshville_past` | out 11 · street 12 · east 12 → **9 · 10 · 11** | `wood` → `timber`; + every roof west of the square is thatch in 1697 (one roof texture per chunk) |
+| `graveyard_now` / `_past` | road 7 · field 11 / 12 → **7 · 10 / 11** | `wood` → `timber` (field) |
+| `belltower_now` | low 10 · high 10 → **7 · 7** | `wood` → `planks`, `dirt` → `flags`, `flag` → `flags` |
+| `ossuary_now` / `_past` | c1 7 · c2 9 · c3 8 · c4 8 → **7 · 6 · 6 · 7** | `flag` → `flags`, `k_ashlar` → `stone`, `dirt` → `flags` |
+| `slice0` (through `AREAS`) | street 10 · north 10 → **9 · 10** | `wood` → `timber` (street) |
+
+Looked at next to the hero in both nights of Eshville (doors, fences, barrels, crates, signs): no visible loss; a `timber` piece does not tile, so small boards show a part of one oak picture instead of a repeating plank tile. **Finer chunk culling was not used**: both scenes cull whole chunks against the frustum (+ fog distance); the worst view (the street by the inn) really has all three chunks in view, and cutting `east` in two would add a chunk with its own ten textures to the square views.
+
+### 18.4 The weak list of §17, item by item
+
+- **Cart shafts** (a flat wedge after decimation): `bakedProp` takes `o.drop(x, y, z)` (model units) and leaves those triangles out; `BAKED_ARGS.cart` drops the wedge (13 triangles beyond x 27, under y 56) and `BAKED_EXTRA.cart` builds two tapered shafts in their place. The pack is unchanged.
+- **Dead tree footprint**: the one tree the hero can walk up to (west end of Eshville) has a footprint over its root flare (56 × 40 half sizes, was 20 × 14).
+- **Niche wall, market stall, burnt wreck**: generated second tries with thick forms, used everywhere (§18.1).
+- **Cemetery gate: still code-built** (no second try was generated: thin bars melt, and the gate needs open / shut states). Still the plainest thing next to the generated props.
+- Chapel and dead tree up close, the static leaf flames: unchanged.
+
+### 18.5 Collision boxes with one shape (requests.md, core-verify)
+
+`compileEnv` ends with `uniformBoxes(W)`: every box has the same keys in the same order (`x0 x1 z0 z1 y0 y1 solid walk inv stair kit part …`), so `groundAt` / `moveXZ` stay on the fast path in every scene, not only in v2g. Scene v2c calls it again after the one box it pushes by hand. (`src/v2/b/world.js` itself is frozen: the boxes are rebuilt after it.)
+
+### 18.6 Numbers per area, before → after (scene v2c, headless fold_open; "before" = §16.5 / §17)
+
+@@NUMBERS@@
+
+### 18.7 Checks on the final tree
+
+@@CHECKS@@
+
+### 18.8 Files loaded at run time (`assets/v2/`) — for `tools/deploy/v2_ship.txt`
+
+```
+assets/v2/props/props.bin (386,880 B)   assets/v2/props/props_atlas.webp (501,240 B)      every area, the test route
+assets/v2/env/k_ashlar.webp  k_flag.webp  k_rubble.webp  k_trim.webp                      every area
+assets/v2/env/k_cobble.webp  k_cobble2.webp  k_plaster.webp                               eshville (both nights)   [k_cobble, k_plaster also the test route]
+assets/v2/env/k_cobworn.webp  k_soil.webp  k_slate.webp                                   eshville, graveyard (both nights)   [k_slate also the test route]
+assets/v2/env/k_thatch.webp                                                               eshville_past, graveyard_past
+assets/v2/env/k_cellar.webp                                                               ossuary (both nights)        <- new on the list
+assets/v2/env/k_planks.webp                                                               belltower_now                <- new on the list
+```
+Not loaded by any area: `k_bone.webp` (the graveyard's niches are the generated `skullwall` now). v1 files already shipped: skies `assets/bg/s01_village` (eshville, belltower, test route), `assets/bg/s02_graveyard` (graveyard, ossuary); tiles `assets/tex/tex_castle_stone` (`block`, every area), `tex_mossy_stone` (`flag`: graveyard, ossuary, test route), `tex_wood` (`wood`: ossuary_now, test route), `tex_wet_stone` · `tex_dirt` (test route only). Character models the areas place (`assets/v2/char3d/<id>.glb`): eshville_now `alberto elise hadwin marta rook sera villager_f villager_m` · eshville_past `edmund elise hadwin1 lotte rook villager_f villager_m` · graveyard_past `edmund villager_m` · belltower_now `elise` · ossuary_now `sera` · ossuary_past `elise`.
+
+### 18.9 Still weak
+
+- The cemetery gate (code-built), the static leaf flames, the chapel and the dead tree up close.
+- Eshville has under 100 triangles left under the 35,000 limit (34,909 / 34,957; 34,915 with `door_pulled`): any new prop there must pay for itself.
+- `belltower_past` is not built. The tower's wooden stairs and plank floors share one plank texture (the fold); the stone stair has no banister.
+- Ossuary: beyond the side walls the camera sees black (no rock ceiling or cave wall above the wall tops); the gap has no visible far wall below the floor line; tonight's rooms left of the hall centre repeat the same coffin-stack model (two sizes, mirrored).
+- The whip ring is tested only as data (reach grid, `stage.hookPoints`): scene v2c has no whip, the bot is set on the landing spot.
+- Texture memory is +10.7 MB per area against §17 (the atlas doubled to 2048 × 2048): slightly over "about +10 MB".

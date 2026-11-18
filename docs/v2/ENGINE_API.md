@@ -271,7 +271,8 @@ hud.padHideButtons           // (선택) 숨길 v1 패드 단추 id 배열 · hu
 - `stats.assets` = 이 장면이 실제로 받은 `assets/v2/` 파일 목록(배포 목록용). 인터페이스 그림(`assets/v2/ui/gem/atlas.webp`)과 초상(`assets/v2/portraits/<id>.webp`)은 UI 모듈이 받아서 이 목록에 없다.
 - 검사:
   - `node tools/v2/game_check.mjs [--devices fold_open,phone2] [--quick 1] [--only …]` — 시범 구간(`area=slice0`)에서 장면 전체. 터치 단계는 **새 단추**를 누른다(자리는 `scene.hud.metrics().pad.buttons`). 마지막 단계는 `v2ui=0`(내장 HUD + 옛 단추)과 일시정지 줄로 오가는 길.
-  - `node tools/v2/game_walk.mjs [--devices fold_open,phone2] [--verbose 1]` — 실제 지역: 에슈빌 첫 자리 → 광장 정리 → 묘지 문 → 안개의 묘지 → 납골당 문 앞까지 새 단추로 걷고 싸운다 + 사람 알약 · 대화.
+  - `node tools/v2/game_walk.mjs [--devices fold_open,phone2] [--verbose 1]` — 실제 지역: 에슈빌 첫 자리 → 광장 정리(지역이 `gate_open` 상태로 다시 지어진다) → 묘지 문 → 안개의 묘지 → 채찍 고리 곁에서 솜씨 단추 → 납골당 앞 단(잠긴 문 알림)까지 새 단추로 걷고 싸운다 + 사람 알약 · 대화.
+  - `node tools/v2/game_assets.mjs` — 모든 지역을 한 번씩 열고 사람마다 대화 창을 띄워, 장면이 실제로 받은 `assets/v2/` 파일을 모두 적는다(배포 목록 `tools/deploy/v2_ship.txt` 용; 404 는 따로).
   - `node tools/v2/game_spots.mjs [--areas …]` — 자리마다 그리기 호출 · 삼각형 · 메모리. `node tools/v2/game_owner.mjs` — 소유자 그림용 연출 캡처. `node tools/v2/game_probe.mjs` — 빨리 열어 보기. `tools/v2/game_bot.mjs` — 검사들이 같이 쓰는 봇.
 
 ## 10. 아직 안 된 것 · 알아 둘 것

@@ -3,6 +3,7 @@
 2026-11-18 · 담당 WHIP · 공개 면은 `src/v2/whip/index.js` 하나 · 검사 `node tools/v2/whip_check.mjs` · 보기 `tools/v2/whip_view.html` · 찍기 `node tools/v2/whip_shot.mjs` · 소유자 그림 `/tmp/claude-0/v2/owner_whip.png`
 
 **바뀐 것**
+- 02:40 검증(WHIP-VERIFY): 본 게임 장면(v2g)에 **장면을 고치지 않고 바깥에서 꽂아** §7 이 그대로 통하는지 확인했다(`node tools/v2/whip_plug_probe.mjs` — 빠진 것 0 · GL 오류 0 · 22번 맞힘 모두 끝이 맞은 점에서 0 px). 고친 것 둘(`sim.js`): ① **내려치기가 맞는 순간 끝이 맞은 점에서 46–54 px 떠 있던 것** — 맞은 점까지는 기술의 길이 한계를 넘어(기본 길이의 2.1배까지) 풀려 나가게 했다(지금 0–2 px) ② 걸기 · 휘감기가 **걸리는 바로 그 틱**에 길이 · 땅 · 몸 제약이 빠지던 것(한 틱). 문서에 더한 것: §7-4 의 발밑 땅 높이 · §7-5 의 `env.viewport` · §8 의 "늘어나지 않는다"의 예외. 새 검사 `tools/v2/whip_fuzz.mjs`(마구 흔들기 219만 틱) · `tools/v2/whip_reach.mjs`(진짜 규칙으로 박자 · 닿음)
 - 01:45 이어 하기(컨테이너가 다시 켜진 뒤): 남아 있던 것을 그대로 다시 검사했다(`whip_check` 82/82 · `whip_shot` 붙임 그림 33장 페이지 오류 0). 더한 것 둘 — ① **맞는 순간의 물결**: 딱 소리가 난 뒤 0.15초쯤 끈을 따라 물결이 끝 쪽으로 흐른다(그리기에서만 — §3). 타격 멈춤으로 언 끈이 곧은 막대로 보이던 것을 고쳤다 ② `whip_shot` 이 **WebGL 컨텍스트를 잃었는지 쓰기 전에 확인**하고 새 페이지로 다시 찍는다(바쁜 기계의 소프트웨어 WebGL 이 컨텍스트를 잃어 소유자 그림이 한 번 텅 빈 채 나왔다). 규약(§1–§7)은 바뀌지 않았다
 - 01:40 끝 판. 첫 판과 달라진 것: ① 규칙 상태 → 채찍 모드는 `driveWhip(whip, hero, TUNE, pull)` 한 줄이 한다(§5) ② 끝 뒤의 궤적 띠는 효과 엔진의 띠가 아니라 **채찍 자기 메시의 일부**다(틱 사이를 매끄럽게 잇기 위해) — `whipFx().update()` 는 할 일이 없어졌다 ③ `whip.writeMesh` 대신 `writeWhipMesh(whip, vtx, alpha, tmp)` ④ 모드 `spin`(모으는 동안 머리 위로 돌린다) 추가 ⑤ 그리기에 `wr.tint` · `wr.flash` · `wr.alpha` ⑥ **끈이 다 펴지는 때는 판정 구간이 열리는 순간**이다(규칙이 구간 첫 틱에 맞히기 때문 — §6) ⑦ `set('crack')` 을 받으면 끝이 맞은 점에 가서 머문다
 - 00:45 첫 판 (규약만)
@@ -152,7 +153,7 @@ wr.draw(whip, env, alpha);                                        // 그리기 �
    if (ha.weaponMatrix(ha.place(h.x, this.visY, h.z))) {
      const H = this.whipHand, P = this.whipPull, pe = this.whipPullE; let pull = null;
      this.whip.handFromMatrix(ha.WM, H);
-     H.bx = h.x; H.by = this.visY; H.bz = h.z; H.fx = h.dirX; H.fz = h.dirZ; H.ground = /* 발밑 땅 높이 */;
+     H.bx = h.x; H.by = this.visY; H.bz = h.z; H.fx = h.dirX; H.fz = h.dirZ; H.ground = h.onGround ? h.y : gy;   // gy = 장면의 groundAt(this.W, h.x, h.z, h.y + 30) (유한하지 않으면 h.y) — 공중에서는 발밑 바닥, 땅 위에서는 h.y 그대로
      if (pe) { if (pe.pullT > 0 || h.pullT > 0) { P.x = pe.x; P.y = (pe.gy ?? pe.y) + pe.h * 0.55; P.z = pe.z; P.r = Math.max(8, pe.r * 0.55); pull = P; } else this.whipPullE = null; }
      this.whip.resonance = h.resoMax ? h.reso / h.resoMax : 0;
      driveWhip(this.whip, h, TUNE, pull);
@@ -163,6 +164,7 @@ wr.draw(whip, env, alpha);                                        // 그리기 �
    ```js
    if (this.wr) { const wr = this.wr, o = this.heroA.opt; wr.tint[0] = o.tint[0]; wr.tint[1] = o.tint[1]; wr.tint[2] = o.tint[2]; wr.flash = o.flash; wr.alpha = o.alpha ?? 1;
      this.env.lightPos = fx ? fx.lights.pos : null; this.env.lightCol = fx ? fx.lights.col : null;
+     this.env.viewport = this._whipVp ?? (this._whipVp = [0, 0]); this._whipVp[0] = Wv; this._whipVp[1] = Hv;   // _gl(Wv, Hv, …) 의 그리기 크기 — 장면은 줄인 해상도로 그리므로 꼭 준다(최소 굵기 px 를 이것으로 잰다)
      wr.draw(this.whip, this.env, a); }                                   // a = 영웅을 그릴 때 쓴 보간값 (순간 이동한 프레임은 1)
    ```
 6. **지우는 것**: 칼 궤적 띠(`this._rb` · `TRAIL.blade`/`bladeHeavy`), 베기 초승달(`swing.light` · `swing.heavy` 프리셋 — 검의 그림이다), `h.whipOn` 의 빛줄(`WHIP_CORD`). 구르기 띠(`DASH_TRAIL`)는 그대로.
@@ -186,8 +188,11 @@ wr.draw(whip, env, alpha);                                        // 그리기 �
 - 할당: **틱당 0.001 바이트 · 틱+메시 0.001 바이트**(10만 번, 가비지 수거 뒤 힙 차이) — 정상 상태에서 0.
 - 화면 굵기(끈이 펴진 순간, 끈의 30 % · 55 % · 80 % 지점을 가로지르는 세로줄에서 달라진 픽셀 — 효과 · 궤적 · 빛무리를 끄고 잰다): 게임 카메라(영웅 키 약 114 px) 6 · 4 · 3 px · 멀리(키 약 70 px) 4 · 3 · 3 px · 그 절반 해상도(키 약 35 px) 3 · 2 · 2 px (마지막 실행. 실행마다 ±1 px 흔들린다). 한 픽셀짜리 선으로 꺼지는 곳이 없다.
 - 끈은 늘어나지 않는다: 어느 마디 사이도 제 길이의 102 % 를 넘지 않는다(끈이 감겨 들어오는 동안은 줄어드는 길이 기준으로 105 % 까지).
+  - 예외(`whip_fuzz` 로 잰 값): 손잡이 가까운 두 마디는 몸 원통을 피하지 않으므로, 그 둘이 몸 안에 있고 셋째 마디가 밖으로 밀려날 때 그 한 칸이 잠깐 115 % 를 넘는다(실제 팔 자리에서 135만 틱 가운데 81틱, 가장 큰 값 214 %). 끈 무늬는 호 길이로 재므로 눈에 띄지 않는다. 손이 땅 밑에 있거나(쓰러진 자세에서 손잡이 끝이 땅 아래) 맞은 점이 영웅 뒤 · 몸 안일 때도 같은 일이 난다. 팽팽한 직선(걸기 · 휘감기)은 땅과 몸을 보지 않는다(대상이 영웅 발밑보다 낮을 수 있어서).
+  - 어떤 입력에도 NaN 은 나오지 않았다(219만 틱: 수천 px 순간 이동 · dt 0, 1/240, 1/30, 0.25 · 틱마다 모드 바꾸기 · 대상이 영웅 뒤 / 몸 안 / 거리 0 · 손 방향 0 벡터).
 
 **한계 · 아는 문제**
+- 규칙은 판정 구간 첫 틱에 모양 안의 적을 **모두** 맞힌다. 그래서 셋째 타(300° 부채꼴)에서 옆 · 뒤에 선 적이 맞으면 끝이 그 틱에 165–214 px 를 건너뛰어 그 적에게 붙는다(타격 멈춤이 그 모습으로 언다). 모아 휘감기에서 가까운 적(75 px)이 맞을 때도 다 펴진 끝이 176 px 되돌아와 감긴다. 여러 적이 한 틱에 맞으면 마지막 `set('crack')` 의 점에 붙는다.
 - 부딪치는 것은 **땅(발밑 높이 하나)과 영웅 자신의 몸(원통)** 뿐이다. 벽 · 소품 · 적의 몸은 지나간다. 구르거나 웅크린 자세에서는 원통이 몸과 정확히 맞지 않는다.
 - 휘감는 축은 세로뿐이다(서 있는 적 · 기둥 · 문고리). 가로대에 감기는 그림은 없다.
 - 공격 클립은 검을 든 동작이라, 맞는 순간 손이 몸 뒤쪽에 남아 있는 기술이 있다(끈이 몸 앞을 가로지른다 — 뚫지는 않는다). 손가락이 없어 손잡이가 손바닥에 붙어 보인다.
