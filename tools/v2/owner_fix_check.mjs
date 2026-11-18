@@ -1,6 +1,7 @@
 // Main-session check of the owner's three reports of 2026-11-18 (scene v2g, ?area=<id>, no story, Fold size, one browser):
 //   1 + 3  "항아리를 깼는데 안 먹어져": a heal piece at full health and a mote at full resonance are taken and turn to silver; the mote reads as a crystal
 //   2      "다 한 방향을 보고 있는 이유가 있어?": sleepers face their own ways, and an arena group wakes when the hero comes close from any side
+//   also   three taps on the attack button chain the three hits, through the pad's own pointer handlers in game time
 //   node tools/v2/owner_fix_check.mjs [--out /tmp/claude-0/v2/main/ownerfix] [--device fold_open] [--tier mid]
 // The hero is put on spots by the tool (this is a check of rules and scene glue, not of touch - tools/v2/breakverify_touch.mjs --part touch does the
 // honest-touch version of the pickup). Stills: <out>/square_asleep.png, square_awake.png, mote.png, heal.png. Exit 1 on any failed line or page error.
@@ -106,6 +107,20 @@ try {
   await page.screenshot({ path: `${OUT}/pieces.png` });
   for (let k = 0; k < 3; k++) { await page.evaluate(() => window.__F.tick(9)); await page.screenshot({ path: `${OUT}/pieces_${k}.png` }); }
   ok('no WebGL context lost', !(await page.evaluate(() => window.__F.lost())));
+
+  // ── the combo through the pad's own pointer handlers, in game time (the real-time touch test cannot tell on this slow machine: it taps every
+  //    quarter second while the game crawls at a few frames a second) ──
+  console.log('[three taps on the attack button]');
+  const combo = await page.evaluate(() => {
+    const sc = window.__v2.scene, F = window.__F, h = sc.sim.hero, bt = sc.hud.metrics().pad.buttons.find((q) => q.id === 'attack');
+    const fire = (type, id, x, y) => window.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: 'touch', isPrimary: false, clientX: x, clientY: y, bubbles: true, cancelable: true, button: 0, buttons: type === 'pointerup' ? 0 : 1, width: 12, height: 12, pressure: type === 'pointerup' ? 0 : 0.5 }));
+    const seen = [], note = () => { const id = h.move?.id ?? null; if (id && seen[seen.length - 1] !== id) seen.push(id); };
+    const tap = (gap) => { fire('pointerdown', 21, bt.cx, bt.cy); F.tick(3); note(); fire('pointerup', 21, bt.cx, bt.cy); for (let i = 0; i < gap; i++) { F.tick(1); note(); } };
+    const out = {};
+    for (const gap of [8, 12, 16]) { F.put(360, 80, 1, 0); F.tick(40); seen.length = 0; tap(gap); tap(gap); tap(gap); for (let i = 0; i < 70; i++) { F.tick(1); note(); } out['every ' + (gap + 3) + ' ticks'] = seen.join(' > '); }
+    return out;
+  });
+  ok('three taps chain the first, second and third hit (taps 11, 15 and 19 ticks apart)', Object.values(combo).every((q) => q.startsWith('c1 > c2 > c3')), JSON.stringify(combo));
   await ctx.close();
 } catch (e) { errs.push('[tool] ' + (e?.stack ?? e)); }
 await browser.close(); srv.close?.();
