@@ -25,14 +25,15 @@ import { bindFxSound } from '../feel/fxbridge.js';
 import { GLR, SpriteBatch } from './glr.js';
 import { CharRenderer } from './charr.js';
 import { Cast } from './cast.js';
-import { loadArea, hasArea, flagsThatOpen, roomOf, kitTexPath, DEFAULT_AREA } from './area.js';
+import { loadArea, hasArea, flagsThatOpen, roomOf, kitTexPath, DEFAULT_AREA, worldInfo, freeSpot } from './area.js';
 import { drawDecalSprites as drawEnvDecals, DECAL_ALPHA } from '../env/decals.js';
 import { People, LINES } from './people.js';
 import { Anchors } from './anchors.js';
 import { Res } from './res.js';
 import { createBuiltinHud } from './hud.js';
 import { readPerf } from './perf.js';
-import { UI_LOADER, UI_DEFAULT } from './seams.js';
+import { UI_LOADER, UI_DEFAULT, STORY_LOADER } from './seams.js';
+import { StoryHost, readSave, clearSave } from './storyhost.js';   // STORY HOOK: the story plug-in, the save, the crossing (docs/v2/ENGINE_API.md 8-10)
 import { elementOf, shotAttach, shotMove, shotDetach, shotImpact } from './magic.js';
 
 const FOCAL = 880, NEAR = 60, FAR = 24000, DIE_T = 0.9, HERO_MODEL = 'kael';
@@ -76,6 +77,8 @@ export default class V2Game extends Scene {
     this.people = new People(); this.anchors = new Anchors(); this.flags = new Set(); this.hidden = new Map(); this.lockOv = new Map(); this.storyFlag = null; this.worldFlags = {};
     this._use = false; this._ringTap = false; this._heroHid = false; this._occ = new Float32Array(0); this._occN = 0; this._caps = { skill: false, bell: false }; this._offT = 0; this._go = null; this.fadeA = 0; this.fadeTo = 0; this._flagFn = (n) => this.flag(n); this._useFn = () => { this._use = true; }; this._skyKey = ''; this._peopleN = 0;
     this.heroA = null; this.actors = []; this.pool = new Map(); this._ERef = null;
+    // STORY HOOK (storyhost.js): the plugged-in story, what each night remembers (fallen enemies, fired triggers), the crossing in progress and its veil
+    this.host = null; this.nights = new Map(); this.xing = null; this.veil = '#000'; this._veilUnder = false; this._carry = null; this._armT = 0; this._quiet = false; this._lastArea = ''; this._refused = false;
     this.bridge = bindFxSound(feel); this.feelN = 0; this.lastFeel = null; this._actE = null; this._simSteps = false;
     this.shotL = new Array(32).fill(null); this.shotN = 0;
     // the whip Vigilia (src/v2/whip, docs/v2/WHIP.md 7): simulated from the hero's hand every tick, drawn right after the characters
@@ -105,13 +108,13 @@ export default class V2Game extends Scene {
       area: { id: '', name: '', era: 'now' }, night: 'now', section: { id: '', label: '' }, enemies: [], enemiesLeft: 0, yardLeft: 0, numbers: this.numbers, numberN: 0,
       project: (x, y, z, out) => sc.project(x, y, z, out), done: false, doneT: 0, loading: true, message: '', message2: '', debug: this.perf.debug,
       debugLine: () => sc._debugLine(), stats: () => sc.stats(), dialog: null,
-      candles: { lit: 5, max: 5 }, resonance: { value: 0, cells: 3 }, left: 0, prompts: this.people.none, boss: null,
+      candles: { lit: 5, max: 5 }, resonance: { value: 0, cells: 3 }, left: 0, prompts: this.people.none, boss: null, objective: '',
       pad: { skill: { mode: 'hook', cd: 0, disabled: true }, bell: { mode: 'short', charge: 0, cd: 0, disabled: true }, roll: { cd: 0, disabled: false }, attack: { disabled: false }, jump: { disabled: false }, lock: { disabled: false } },
     };
     try { this.glr = new GLR({ forceGL1: /[?&]v2gl=1(&|$)/.test(globalThis.location?.search ?? ''), antialias: this.res.aa }); } catch (e) { this.glError = String(e?.message ?? e); console.warn('[v2g]', this.glError); }
     if (this.glr) {
       this._attach();
-      this._load(params?.area ?? this.perf.area ?? DEFAULT_AREA, params?.spawn ?? this.perf.spawn ?? null).catch((e) => { if (!this.glr) return; this.glError = String(e?.message ?? e); console.error('[v2g] load failed', e); });   // (left the scene while loading: nothing to report)
+      this._boot(params).catch((e) => { if (!this.glr) return; this.glError = String(e?.message ?? e); console.error('[v2g] load failed', e); });   // (left the scene while loading: nothing to report)
     }
     this.hudKind = 'builtin';
     if (UI_LOADER && (this.perf.ui ?? UI_DEFAULT)) this._loadUi();
@@ -119,6 +122,7 @@ export default class V2Game extends Scene {
     this._api();
   }
   exit() {
+    if (this.host) { try { this.host.saveNow('leave'); this.host.release(); } catch (e) { console.error('[v2g] save on leaving failed', e); } }   // STORY HOOK
     this._detach();
     try { feel.setTimeScale(1); feel.release(); } catch { /* no audio */ }
     try { const hd = this.hud; if (hd) (hd.release ?? hd.dispose)?.call(hd); } catch { /* ui lane */ }
@@ -129,6 +133,7 @@ export default class V2Game extends Scene {
     for (const c of this._canvases ?? []) { c.width = 1; c.height = 1; }
     this.people?.release(null); this._skyC = null; this.skyTex = null; this.tex = null;
     this._canvases = null; this.ready = false; this.actors.length = 0; this.pool.clear(); this.heroA = null; this.cast = null; this.sim = null; this.W = null;
+    this.host = null; this.xing = null;
     if (globalThis.__v2?.scene === this) delete globalThis.__v2;
   }
   /** the plugged-in HUD threw (or did not load): say so once and carry on with the built-in one — play never stops for the interface */
@@ -164,10 +169,12 @@ export default class V2Game extends Scene {
   _pause() {
     const ui = this.hudKind === 'ui';
     if (!this.hud.openPause) { this._leave(); return; }
-    this.hud.openPause({ onLeave: () => this._leave(), extra: [{ icon: 'next', label: ui ? '옛 단추로 바꾸기' : '새 단추로 바꾸기', onPick: () => this.setUi(!ui) }] });
+    const extra = [{ icon: 'next', label: ui ? '옛 단추로 바꾸기' : '새 단추로 바꾸기', onPick: () => this.setUi(!ui) }];
+    if (this.host) extra.push({ icon: 'next', label: '처음부터 다시', onPick: () => this._askRestart() });   // STORY HOOK
+    this.hud.openPause({ onLeave: () => this._leave(), extra });
   }
   /** a short notice through the HUD (the v1 toast only when the HUD has none) */
-  _toast(t, kind) { const h = this.hud; if (h.toast) h.toast(t, kind ? { kind } : undefined); else this.game.toast?.(t); }
+  _toast(t, kind) { const h = this.hud; if (this.host) this.host.note('notice', t); if (h.toast) h.toast(t, kind ? { kind } : undefined); else this.game.toast?.(t); }
   /** a pad button the rules cannot use yet was pressed: say so (at most once every 1.5 s) */
   _padOff(id) {
     if (this._offT > 0) return; this._offT = 1.5;
@@ -183,6 +190,7 @@ export default class V2Game extends Scene {
     const h = this.sim.hero, S = this.people.spots; let spot = null;
     for (let i = 0; i < S.length; i++) { const q = S[i]; if (q.def.kind !== 'bell') continue; const dx = q.x - h.x, dz = q.z - h.z; if (dx * dx + dz * dz < (q.r + 60) * (q.r + 60)) spot = q; }
     this.emit('bell.long', { boss, spot: spot ? spot.id : null, twin: this.area.twin ?? null });
+    if (this.story && spot && !boss) { const d = spot.def; this.emit('interact', { id: d.id, kind: d.kind, event: d.event ?? null, data: d.data ?? null, locked: d.locked ?? null, spot: d, ring: true }); }   // STORY HOOK (DATA_FORMAT 6)
     if (this.story || boss || !spot || !this.area.twin || this._go) return;   // the story decides when it is plugged in (api.bellCross)
     this._go = { to: this.area.twin, spawn: null, keep: true, night: true }; this.fadeTo = 1; this.locked = true;
   }
@@ -213,7 +221,12 @@ export default class V2Game extends Scene {
   setWorldFlags(obj, opts) {
     let changed = false;
     for (const k of Object.keys(obj ?? {})) { const v = !!obj[k]; if (!!this.worldFlags[k] !== v) { if (v) this.worldFlags[k] = true; else delete this.worldFlags[k]; changed = true; } }
-    if (!changed || opts?.reload === false || !this.ready || !this.area || this.area.test || this._go) return false;
+    if (!changed || opts?.reload === false) return false;
+    return this.rebuildArea();
+  }
+  /** rebuild the area the hero stands in from the area flags as they are now (behind a short fade) */
+  rebuildArea() {
+    if (!this.ready || !this.area || this.area.test || this._go || this.xing) return false;
     this._go = { to: this.area.id, spawn: null, keep: true, same: true }; this.fadeTo = 1; this.locked = true;
     return true;
   }
@@ -228,19 +241,22 @@ export default class V2Game extends Scene {
   }
   hideActor(id) { this.hidden.set(id, 'hide'); }   // story override, read by People.tick (people.js: Map actor id -> 'hide' | 'show')
   showActor(id) { this.hidden.set(id, 'show'); }
+  /** STORY HOOK: hide / show a person of an area (another area than this one: ignored — the runner calls again on its area.enter) */
+  setActor(id, areaId, v) { if (!areaId || areaId === this.area?.id) this.hidden.set(id, v === 'show' ? 'show' : 'hide'); }
   /** the hero uses what the prompt offers: a person (event talk) or a spot (event interact) */
   _useTarget() {
     const t = this.people.target; if (!t) return;
     const d = t.def;
     if (t.a3) {
       this.people.talking = t;
-      this.emit('talk', { id: t.id, talk: d.talk ?? null, actor: d });
-      if (!this.story) this._say({ speaker: t.name, portrait: t.portrait, side: 'left', text: LINES[t.id] ?? LINES[d.model] ?? '……' });
+      const real = this.host ? this.host.hasTalk(d.talk) : !!this.story;   // STORY HOOK: the real talk key when the story has one, otherwise the person's neutral line
+      if (real || !this.host) this.emit('talk', { id: t.id, talk: d.talk ?? null, actor: d });
+      if (!real) this._say({ speaker: t.name, portrait: t.portrait, side: 'left', text: LINES[t.id] ?? LINES[d.model] ?? '……' });
     } else {
       this.emit('interact', { id: d.id, kind: d.kind, event: d.event ?? null, data: d.data ?? null, locked: d.locked ?? null, spot: d });
       if (d.kind === 'ring') { if (this._caps.skill && this.sim?.hero?.hookId != null) this._ringTap = true; else this._toast('채찍이 닿지 않는다', 'warn'); return; }   // a whip ring: the pill does what the skill button does here
-      if (!this.story) {   // until the story is plugged in: name the spot, and remember what it would change
-        if (d.event === 'door.pull') this.flags.add('door_pulled');
+      if (!this.story || (this.host && !this.host.hears('interact', d))) {   // no story, or no sequence listens to this spot: name the spot, and remember what it would change
+        if (d.event === 'door.pull' && !this.story) this.flags.add('door_pulled');
         if (d.kind === 'rest' && !d.locked && this.sim?.heal) {   // a rest spot: full health, and the hero stands up here after a fall (PLAY-2: sim.heal / sim.respawnAt)
           const got = this.sim.heal('full'); this.sim.respawnAt?.(d.x, d.z, d.y);
           this._toast(got > 0 ? '촛불 곁에서 쉬었다 — 기운이 돌아왔다' : '촛불 곁에서 쉬었다', 'info');
@@ -272,7 +288,7 @@ export default class V2Game extends Scene {
     const nb = x.locked === 'not_built', lab = x.label ? x.label + ' — ' : '';
     if (nb) this.emit('exit.missing', { id: x.id, to: x.to, exit: x }); else this.emit('exit.locked', { id: x.id, locked: x.locked, exit: x });
     if (nb) this._toast(lab + '아직 갈 수 없는 곳이다', 'warn');
-    else if (!this.story) this._toast(lab + (this._autoKey(x) ? '잠겨 있다. 이곳의 적을 모두 쓰러뜨리면 열린다' : '지금은 열리지 않는다'), 'warn');
+    else if (!this.story || (this.host && !this.host.hears('exit.locked', x))) this._toast(lab + (this._autoKey(x) ? '잠겨 있다. 이곳의 적을 모두 쓰러뜨리면 열린다' : '지금은 열리지 않는다'), 'warn');
   }
   /** without a story: an exit locked by a key opens when the area's arena is cleared (the story lane replaces this rule) */
   _autoKey(x) { return !this.story && typeof x.locked === 'string' && x.locked !== 'not_built' && x.locked.indexOf('story:') !== 0; }

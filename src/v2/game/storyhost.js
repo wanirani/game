@@ -37,7 +37,7 @@ export class StoryHost {
     this.st = mod.createStory(mod.STORY, { warn: (m) => { this.warnings.push(m); console.warn('[story]', m); } });
     this.objective = ''; this.pill = { action: 'confirm', label: '', icon: undefined }; this.pillOn = false; this.pillT = 0; this.pills = [this.pill];
     this.waits = []; this.moves = []; this.shot = null; this.shotT = 0; this.shotDone = null; this.shotLock = false;
-    this.dirty = false; this.saves = 0; this.lastSave = null; this.ended = null; this.moon = null; this.ringN = 0; this.musicId = null; this.candleBonus = 0;
+    this.inputLock = false; this.dirty = false; this.saves = 0; this.lastSave = null; this.ended = null; this.moon = null; this.ringN = 0; this.musicId = null; this.candleBonus = 0;
     const F = mod.STORY.FLAGS ?? {}; this.world = new Set();
     for (const k of Object.keys(F)) if (F[k] && F[k].world) this.world.add(k);
     for (const a of Object.keys(this.areaFlags)) for (const n of this.areaFlags[a]) if (F[n]) this.world.add(n);   // a name the story does not declare (past_street_clear) is not passed: the area then keeps its older condition
@@ -47,6 +47,8 @@ export class StoryHost {
     try { globalThis.document?.addEventListener('visibilitychange', this._onHide); } catch { /* no DOM */ }
   }
   release() { try { globalThis.document?.removeEventListener('visibilitychange', this._onHide); } catch { /* no DOM */ } this.waits.length = 0; this.moves.length = 0; }
+  /** is the hero's input held by the story (a camera shot, a lockInput step)? */
+  locks() { return this.shotLock || this.inputLock; }
   note(kind, a, b) { const S = this.seen; if (S.length < 4000) S.push([kind, a ?? '', b ?? '']); }
   flag(name) { return this.st.flag(name); }
   /** every world flag as the story has it now -> the scene's area flags (no rebuild here) */
@@ -72,7 +74,7 @@ export class StoryHost {
       hp: Number.isFinite(o.hp) && o.hp > 0 ? o.hp : null, reso: Number.isFinite(o.reso) ? o.reso : 0, nights: o.nights && typeof o.nights === 'object' ? o.nights : null };
   }
   /** new game: forget everything (the scene clears its own memory and the stored save) */
-  reset() { try { this.st.reset(); } catch (e) { console.error('[v2g] story reset failed', e); } this.objective = ''; this.pillOn = false; this.waits.length = 0; this.moves.length = 0; this.shot = null; this.shotT = 0; this.shotDone = null; this.shotLock = false; this.dirty = false; this.ended = null; this.moon = null; this.candleBonus = 0; this.lastSave = null; }
+  reset() { try { this.st.reset(); } catch (e) { console.error('[v2g] story reset failed', e); } this.objective = ''; this.pillOn = false; this.waits.length = 0; this.moves.length = 0; this.shot = null; this.shotT = 0; this.shotDone = null; this.shotLock = false; this.inputLock = false; this.dirty = false; this.ended = null; this.moon = null; this.candleBonus = 0; this.lastSave = null; }
   // ───────── save ─────────
   /** the save object for the state as it is (storyObj = st.save(): the copy from before a running sequence) */
   compose(storyObj) {
@@ -111,7 +113,7 @@ export class StoryHost {
     }
   }
   _place(p, x, z) { const b = p.box; if (b) { const r = (b.x1 - b.x0) / 2; b.x0 = x - r; b.x1 = x + r; b.z0 = z - r; b.z1 = z + r; } p.x = x; p.z = z; }
-  _shotEnd() { const d = this.shotDone; this.shotDone = null; this.shotT = 0; if (this.shotLock) { this.shotLock = false; this.sc.locked = false; } if (d) { try { d(); } catch (e) { console.error('[v2g] story camera', e); } } }
+  _shotEnd() { const d = this.shotDone; this.shotDone = null; this.shotT = 0; this.shotLock = false; if (d) { try { d(); } catch (e) { console.error('[v2g] story camera', e); } } }
   /** where a step points: a spawn name, an interact or actor id, or [x, z] */
   _spot(at) {
     const a = this.sc.area; if (!a) return null;
@@ -136,7 +138,7 @@ export class StoryHost {
       setDialog(d) { sc.ui.dialog = d ?? null; },
       banner(kind, title, sub) { H.note('banner', title ?? kind, sub); if (sc.hud.banner && sc.hudKind === 'ui') sc.hud.banner(kind, title, sub); else if (title) sc._toast(sub ? title + ' — ' + sub : title, 'info'); },
       toast(text, o) { sc._toast(text, typeof o === 'string' ? o : o?.kind); },   // (the scene writes every notice into `seen`)
-      lock(on) { sc.locked = !!on; },
+      lock(on) { H.inputLock = !!on; },
       gotoArea(id, spawn) { H.note('goto', id, spawn); if (!sc.travelTo(id, spawn ?? null)) throw new Error('area change refused: ' + id); },
       bellCross(o) { if (!sc.cross(o ?? null)) { sc._toast(H.STORY.TEXT?.system?.dull ?? '', 'warn'); throw new Error('crossing refused'); } H.note('cross', sc.xing?.to ?? ''); },
       sound(name, pos) { try { if (feel.has(name)) feel.play(name, pos && typeof pos === 'object' ? pos : null); } catch { /* no audio */ } },
@@ -160,7 +162,7 @@ export class StoryHost {
         if (H.shot && H.shotDone) H._shotEnd();
         H.shot = shot && SHOTS[shot] ? SHOTS[shot] : null;
         if (!H.shot || !(seconds > 0)) { done?.(); return; }
-        H.shotT = seconds; H.shotDone = done ?? null; if (!sc.locked) { sc.locked = true; H.shotLock = true; }
+        H.shotT = seconds; H.shotDone = done ?? null; H.shotLock = true;
         if (H.shot.shake) sc.fx?.feel.addTrauma(H.shot.shake); if (H.shot.flash) sc.fx?.feel.flash(1, 1, 1, 0.5);
       },
       wait(seconds, done) { if (!(seconds > 0)) { done?.(); return; } H.waits.push({ t: seconds, fn: done }); },

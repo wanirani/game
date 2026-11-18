@@ -196,18 +196,40 @@ export function dressWall(G, P, boxes) {
     for (let i = 0; i < n; i++) if (i % 2 === 0) F.box(G, lower, len * i / n, len * (i + 1) / n, y1, y1 + 24, -16, 6, { faces: 'FLRT', top: 'trimstone', vary: 0.1 });
   }
   if (K.rail) for (const side of K.rail) { const [F, len] = FS[side]; railing(G, F, 4, len - 4, y1 + (K.coping ? 6 : 0), K.railH ?? 38, -(side === 'F' ? P.d : P.w) / 2); }
-  if (K.piers) for (const side of K.faces ?? 'FLR') {   // 낮은 담의 기둥
-    const [F, len] = FS[side], n = Math.max(1, Math.round(len / K.piers));
-    for (let i = 0; i <= n; i++) { const u = len * i / n; const th = side === 'F' ? P.d : P.w; F.box(G, 'stone', u - 11, u + 11, y0, y1 + 16, -th - 4, 5, { faces: 'FLRT', top: 'trimstone' }); F.box(G, 'trimstone', u - 14, u + 14, y1 + 16, y1 + 22, -th - 7, 8, { faces: 'FLRT', vary: 0 }); }
+  // 낮은 담의 기둥. FENCE (11-18): a pier goes through the wall's thickness, so it is drawn only on the faces the wall runs along (on the short end
+  // face of a deep wall it was a fin as long as the wall, 11 out over the side the hero walks along); the end piers stand flush with the wall's ends
+  const sides = [...(K.faces ?? 'FLR')], runs = (s) => FS[s][1] >= (s === 'F' ? P.d : P.w), pierSides = sides.some(runs) ? sides.filter(runs) : sides;
+  if (K.piers) for (const side of pierSides) {
+    const [F, len] = FS[side], n = Math.max(1, Math.round(len / K.piers)), th = side === 'F' ? P.d : P.w;
+    for (let i = 0; i <= n; i++) { const u = len * i / n; F.box(G, 'stone', Math.max(0, u - 11), Math.min(len, u + 11), y0, y1 + 16, -th - 4, 5, { faces: 'FLRT', top: 'trimstone' }); F.box(G, 'trimstone', Math.max(-3, u - 14), Math.min(len + 3, u + 14), y1 + 16, y1 + 22, -th - 7, 8, { faces: 'FLRT', vary: 0 }); }
   }
   G.tintMul = null;
+  // FENCE: a low wall holds the hero where its piers, pier caps and coping are drawn, not at its plain box (the body circle went 5-14 into them)
+  if (boxes && (style === 'low' || K.piers || K.rail)) {
+    let ex0 = P.x, ex1 = P.x + P.w, ez0 = P.z, ez1 = P.z + P.d;
+    const env = (F, u0, u1, w0, w1) => { for (const [u, w] of [[u0, w0], [u1, w0], [u0, w1], [u1, w1]]) { const p = F.pt(u, 0, w); ex0 = Math.min(ex0, p[0]); ex1 = Math.max(ex1, p[0]); ez0 = Math.min(ez0, p[2]); ez1 = Math.max(ez1, p[2]); } };
+    if (K.coping) { ex0 -= 3; ex1 += 3; ez0 -= 3; ez1 += 3; for (const side of sides) env(FS[side][0], -3, FS[side][1] + 3, -3, 3.5); }
+    if (K.piers) for (const side of pierSides) env(FS[side][0], -3, FS[side][1] + 3, -(side === 'F' ? P.d : P.w) - 7, 8);
+    if (ex0 < P.x || ex1 > P.x + P.w || ez0 < P.z || ez1 > P.z + P.d) boxes.push({ x0: ex0, x1: ex1, z0: ez0, z1: ez1, y0, y1: Math.max(y0 + (P.collideH ?? 0), y1 + (K.piers ? 22 : 6)), solid: true, walk: false, inv: true, kit: true, part: P });
+  }
 }
 
 /** 스테이지 줄 t:'fence' 한 줄 (x0,z0 → x1,z1, y, h, kind 'iron'｜'wood', face): 쇠 난간 또는 나무 울타리 */
-export function fenceAt(G, P) {
+export function fenceAt(G, P, boxes) {
   const y = P.y ?? 0, dx = P.x1 - P.x0, dz = P.z1 - P.z0, len = Math.hypot(dx, dz), nx = P.face?.[0] ?? dz / len, nz = P.face?.[1] ?? -dx / len, F = new Frame(P.x0, P.z0, nx, nz);
   const sgn = (F.ux * dx + F.uz * dz) >= 0 ? 1 : -1, F2 = sgn > 0 ? F : new Frame(P.x1, P.z1, nx, nz);
   (P.kind === 'wood' ? woodFence : railing)(G, F2, 0, len, y, P.h ?? 44, 0);
+  // FENCE (11-18): the fence itself collides where its posts and caps are drawn (half-width 3.6 iron / 3.5 wood, the end posts beyond the ends).
+  // It was drawn only: the hero stopped at the area's edge 9 units behind it and the bars ran through his legs. As tall as a low wall's collision
+  // (collideH 800), so no jump lands inside it. A slanted fence gets a chain of boxes 8 long.
+  if (boxes) {
+    const hw = P.kind === 'wood' ? 3.5 : 3.6, n = Math.abs(F2.ux) < 1e-6 || Math.abs(F2.uz) < 1e-6 ? 1 : Math.ceil(len / 8);
+    for (let i = 0; i < n; i++) {
+      let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+      for (const u of [len * i / n - (i ? 0 : hw), len * (i + 1) / n + (i === n - 1 ? hw : 0)]) for (const w of [-hw, hw]) { const p = F2.pt(u, y, w); x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[2]); z1 = Math.max(z1, p[2]); }
+      boxes.push({ x0, x1, z0, z1, y0: y - 2, y1: y + (P.collideH ?? 800), solid: true, walk: false, inv: true, kit: true, part: P });
+    }
+  }
 }
 /** 쇠 난간: 기둥 + 위아래 가로대 + 창살 (끝이 뾰족하다) */
 export function railing(G, F, u0, u1, y, h, w = 0, o = {}) {
@@ -326,7 +348,7 @@ export function pave(G, P, W) {
 }
 
 /** 돌 단상 (B 의 block): 몸통 + 밑단 + 윗 갓돌 + (뒤쪽) 난간동자 */
-export function dressBlock(G, P, W) {
+export function dressBlock(G, P, W, boxes) {
   const y0 = P.y ?? 0, y1 = y0 + P.h, x0 = P.x, x1 = P.x + P.w, z0 = P.z, z1 = P.z + P.d, K = P.kit ?? {};
   G.shade = (x, y) => 0.6 + 0.4 * sm(0, 40, y - y0);
   G.box(K.mat ?? 'ashlar', x0, y0, z0, x1, y1 - 7, z1, { faces: 'FLR', cell: 40 });
@@ -334,11 +356,13 @@ export function dressBlock(G, P, W) {
   G.shade = null;
   G.box('trimstone', x0 - 3.5, y1 - 7, z0 - 3.5, x1 + 3.5, y1, z1, { faces: 'FLR', vary: 0.1, cell: 80 });
   dressFloor(G, { x: x0 - 3.5, z: z0 - 3.5, w: P.w + 7, d: P.d + 3.5, y: y1, walk: false, kit: { mat: K.top ?? 'flags', cell: 40 } }, W);
-  if (K.balustrade) balustrade(G, P);
+  if (K.balustrade) balustrade(G, P, boxes);
 }
 /** 단상의 뒤 가장자리 난간 (dressBlock 의 kit.balustrade) */
-export function balustrade(G, P) {
+export function balustrade(G, P, boxes) {
   const x0 = P.x, z1 = P.z + P.d, y1 = (P.y ?? 0) + P.h;
+  // FENCE (11-18): the balustrade collides where its end posts and rails are drawn (it had none: the hero on the block stood in it); tall, so no jump lands in it
+  if (boxes) boxes.push({ x0: x0 - 7, x1: x0 + P.w + 7, z0: z1 - 11, z1: z1 + 1, y0: y1, y1: y1 + 800, solid: true, walk: false, inv: true, kit: true, part: P });
   const F = new Frame(x0, z1 - 5, 0, -1), h = 34;
   F.box(G, 'trimstone', 0, P.w, y1 + h - 6, y1 + h, -4, 4, { faces: 'FLRT', vary: 0.05 }); F.box(G, 'trimstone', 0, P.w, y1, y1 + 4, -3, 3, { faces: 'FLRT', vary: 0.05 });
   for (let u = 12; u < P.w - 6; u += 22) G.lathe('trimstone', x0 + u, z1 - 5, [[3.2, y1 + 4], [4.6, y1 + 11], [2.4, y1 + 20], [3.4, y1 + h - 6]], 6, { vary: 0 });
@@ -346,7 +370,7 @@ export function balustrade(G, P) {
 }
 
 /** 계단 (B 의 stairs): 칸마다 디딤판(밝은 돌)·챌판 + 옆 벽(cheeks: 'L','R','K' — 계단 진행 방향 기준이 아니라 세계 기준 변) */
-export function dressStairs(G, P) {
+export function dressStairs(G, P, boxes) {
   const n = P.steps ?? Math.max(2, Math.round(P.h / 12)), y = P.y ?? 0, K = P.kit ?? {};
   for (let i = 0; i < n; i++) {
     const a = i / n, c = (i + 1) / n, hh = P.h * c, lo = y + P.h * a;
@@ -356,20 +380,25 @@ export function dressStairs(G, P) {
     G.box(K.mat ?? 'stone', x0, P.dir[0] === 'x' ? y : lo, z0, x1, y + hh - 3, z1, { faces: (P.dir.endsWith('+') ? run : P.dir[0] === 'x' ? 'R' : '') + sideF, k: 0.82, cell: 70 });   // kit.mat / kit.tread: a wooden flight (darkwood + wood)
     G.box(K.tread ?? 'trimstone', x0 - (P.dir === 'x+' ? 1.5 : 0), y + hh - 3, z0 - (P.dir === 'z+' ? 1.5 : 0), x1, y + hh, z1, { faces: 'FLRT', cell: 70, vary: 0.12, shade: (px, py, pz, nn) => (nn[1] > 0.5 ? 0.86 + 0.14 * sm(0, 14, P.dir === 'z+' ? z1 - pz : P.dir === 'x+' ? x1 - px : 9) : 1) });
   }
-  stairCheeks(G, P);
+  stairCheeks(G, P, boxes);
 }
 /** 계단의 옆 벽 (dressStairs 의 kit.cheeks): 계단을 따라 비스듬히 오르는 낮은 담 + 갓돌 + 끝 기둥 */
-export function stairCheeks(G, P) {
+export function stairCheeks(G, P, boxes) {
   const y = P.y ?? 0, K = P.kit ?? {}, T = 9, hRail = K.cheekH ?? 30;
+  // FENCE (11-18): a cheek collides where it is drawn, end posts included (it had none: the hero walked through it onto the flight from the side,
+  // and on the flight it ran through his body). From the ground to its top post.
+  const box = (x0, x1, z0, z1) => boxes?.push({ x0, x1, z0, z1, y0: y, y1: y + P.h + hRail + 10, solid: true, walk: false, inv: true, kit: true, part: P });
   for (const s of K.cheeks ?? '') {
     if (P.dir === 'z+' && (s === 'L' || s === 'R')) {
       const xa = s === 'L' ? P.x : P.x + P.w - T, xb = xa + T, nx = s === 'L' ? 1 : -1, xf = s === 'L' ? xb : xa;
+      box(xa - 2, xb + 2, P.z - 12, P.z + P.d + 12);
       G.quad4('stone', [xf, y, P.z], [xf, y + P.h, P.z + P.d], [xf, y + P.h + hRail, P.z + P.d], [xf, y + hRail, P.z], [nx, 0, 0], { k: 0.9 });
       G.quad4('trimstone', [xa - 1, y + hRail, P.z], [xb + 1, y + hRail, P.z], [xb + 1, y + P.h + hRail, P.z + P.d], [xa - 1, y + P.h + hRail, P.z + P.d], [0, 0.9, -0.43], { vary: 0.05 });
       G.box('stone', xa - 2, y, P.z - 12, xb + 2, y + hRail + 10, P.z + 2, { faces: 'FLRT', top: 'trimstone' });
       G.box('stone', xa - 2, y + P.h, P.z + P.d - 2, xb + 2, y + P.h + hRail + 10, P.z + P.d + 12, { faces: 'FLRT', top: 'trimstone' });
     } else if (P.dir === 'x+' && s === 'K') {
       const za = P.z + P.d, zb = za + T;
+      box(P.x - 12, P.x + P.w, za - 2, zb);
       G.quad4('stone', [P.x, y, za], [P.x + P.w, y + P.h, za], [P.x + P.w, y + P.h + hRail, za], [P.x, y + hRail, za], [0, 0, -1], { k: 0.9 });
       G.quad4('trimstone', [P.x, y + hRail, za - 1], [P.x + P.w, y + P.h + hRail, za - 1], [P.x + P.w, y + P.h + hRail, zb], [P.x, y + hRail, zb], [-0.5, 0.86, 0], { vary: 0.05 });
       G.box('stone', P.x - 12, y, za - 2, P.x + 2, y + hRail + 10, zb, { faces: 'FLRT', top: 'trimstone' });

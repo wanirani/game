@@ -74,7 +74,7 @@ export const EVENTS = [
     ['objective', 'climb_tower'],
   ] },
   // the bread before the boss door comes first so that it plays before the candles are relit
-  { id: 'ev_boss_rest', minute: '100-104', waiting: 'ossuary_now', on: 'interact', match: { event: 'rest', id: 'boss_rest' }, if: ['has:lotte_bread'], steps: [
+  { id: 'ev_boss_rest', minute: '100-104', on: 'interact', match: { event: 'rest', id: 'boss_rest' }, if: ['has:lotte_bread'], steps: [
     ['say', 'oss.rest'],
     ['take', 'lotte_bread'],
   ] },
@@ -89,18 +89,18 @@ export const EVENTS = [
   ] },
 
   // ═════════ 15–20 종탑 ═════════
-  { id: 'ev_tower_enter', minute: '15-20', waiting: 'belltower_now', on: 'area.enter', match: { area: 'belltower_now' }, if: ['promise', '!fell'], steps: [
+  { id: 'ev_tower_enter', minute: '15-20', on: 'area.enter', match: { area: 'belltower_now' }, if: ['promise', '!fell'], steps: [
     ['say', 'tower.enter'],
     ['prompt', 'jump'],
     ['objective', 'climb_tower'],
   ] },
-  { id: 'ev_tower_top', minute: '15-20', waiting: 'belltower_now', on: 'trigger', match: { event: 'tower.top' }, if: ['promise', '!fell'], steps: [
+  { id: 'ev_tower_top', minute: '15-20', on: 'trigger', match: { event: 'tower.top' }, if: ['promise', '!fell'], steps: [
     ['prompt', null],
     ['say', 'tower.top'],
     ['wakeGroup', 'tower_bats'],
     ['objective', 'guard_elise'],
   ] },
-  { id: 'ev_tower_crack', minute: '15-20', waiting: 'belltower_now', on: 'group.clear', match: { group: 'tower_bats' }, if: ['promise', '!fell'], steps: [
+  { id: 'ev_tower_crack', minute: '15-20', on: 'group.clear', match: { group: 'tower_bats' }, if: ['promise', '!fell'], steps: [
     ['camera', 'bell_crack', 2],
     ['sound', 'bell.crack'],
     ['say', 'tower.crack'],
@@ -285,13 +285,13 @@ export const EVENTS = [
   ] },
 
   // ═════════ 58–68 묘지 깊은 곳 ═════════
-  { id: 'ev_edmund_grave', minute: '58-68', waiting: 'hook:graveyard_past/trigger grave.edmund', on: 'trigger', match: { event: 'grave.edmund' }, if: ['area:graveyard_past', '!bell_hung', '!has:road_bell'], steps: [
+  { id: 'ev_edmund_grave', minute: '58-68', on: 'trigger', match: { event: 'grave.edmund' }, if: ['area:graveyard_past', '!bell_hung', '!has:road_bell'], steps: [
     ['say', 'grave.edmund'],
     ['give', 'road_bell'],
     ['objective', 'hang_bell'],
     ['prompt', 'hook'],
   ] },
-  { id: 'ev_hang_bell', minute: '58-68', waiting: 'hook:graveyard_past/interact road_bell', on: 'interact', match: { event: 'bell.hang' }, if: ['area:graveyard_past', '!bell_hung'], steps: [
+  { id: 'ev_hang_bell', minute: '58-68', on: 'interact', match: { event: 'bell.hang' }, if: ['area:graveyard_past', '!bell_hung'], steps: [
     ['if', ['!has:road_bell'], [['run', 'ev_edmund_grave']]],
     ['prompt', null],
     ['take', 'road_bell'],
@@ -314,67 +314,67 @@ export const EVENTS = [
   ] },
 
   // ═════════ 68–82 납골당 앞 절반 ═════════
-  { id: 'ev_oss_enter', minute: '68-82', waiting: 'ossuary_now', on: 'area.enter', match: { area: 'ossuary_now' }, steps: [
+  { id: 'ev_oss_enter', minute: '68-82', on: 'area.enter', match: { area: 'ossuary_now' }, steps: [
     ['banner', 'area', '3장 — 배웅하는 노래', '배웅의 납골당'],
     ['music', 'ossuary_now'],
     ['say', 'oss.enter'],
     ['objective', 'follow_song'],
   ] },
-  { id: 'ev_oss_coffins', minute: '68-82', waiting: 'ossuary_now', on: 'trigger', match: { event: 'oss.coffins' }, steps: [
+  { id: 'ev_oss_coffins', minute: '68-82', on: 'trigger', match: { event: 'oss.coffins' }, steps: [
     ['say', 'oss.coffins'],
     ['prompt', 'roomcross'],
   ] },
-  { id: 'ev_oss_past_first', minute: '68-82', waiting: 'ossuary_past', on: 'area.enter', match: { area: 'ossuary_past' }, if: ['!queen_fled'], steps: [
+  { id: 'ev_oss_past_first', minute: '68-82', on: 'area.enter', match: { area: 'ossuary_past' }, if: ['!queen_fled'], steps: [
     ['prompt', null],
     ['music', 'ossuary_past'],
     ['say', 'oss.past.first'],
   ] },
-  { id: 'ev_oss_wedge', minute: '68-82', waiting: 'ossuary_past', on: 'interact', match: { event: 'oss.wedge' }, once: false, steps: [
+  { id: 'ev_oss_wedge', minute: '68-82', on: 'interact', match: { event: 'oss.wedge' }, once: false, steps: [
     ['if', ['!wedge_stone'], [['prompt', 'aging']]],
     ['say', 'oss.wedge'],
   ] },
-  { id: 'ev_oss_gap', minute: '68-82', waiting: 'ossuary_now', on: 'trigger', match: { event: 'oss.gap' }, once: false, steps: [
+  { id: 'ev_oss_gap', minute: '68-82', on: 'trigger', match: { event: 'oss.gap' }, once: false, steps: [
     ['say', 'oss.gap'],
   ] },
-  { id: 'ev_oss_arena', minute: '68-82', waiting: 'ossuary_now', on: 'trigger', match: { event: 'oss.arena' }, steps: [
+  { id: 'ev_oss_arena', minute: '68-82', on: 'trigger', match: { event: 'oss.arena' }, steps: [
     ['wakeGroup', 'oss_arena'],
   ] },
 
   // ═════════ 82–100 납골당 뒤 절반 ═════════
-  { id: 'ev_oss_sera', minute: '82-100', waiting: 'ossuary_now', on: 'trigger', match: { event: 'oss.lamp' }, steps: [
+  { id: 'ev_oss_sera', minute: '82-100', on: 'trigger', match: { event: 'oss.lamp' }, steps: [
     ['say', 'sera.ossuary'],
     ['hideActor', 'sera', 'eshville_now'],       // she is here now, not in the square
   ] },
-  { id: 'ev_oss_riddle', minute: '82-100', waiting: 'ossuary_now', on: 'interact', match: { event: 'oss.riddle' }, once: false, steps: [
+  { id: 'ev_oss_riddle', minute: '82-100', on: 'interact', match: { event: 'oss.riddle' }, once: false, steps: [
     ['say', 'oss.riddle'],
   ] },
-  { id: 'ev_oss_riddle_echo', minute: '82-100', waiting: 'ossuary_now', on: 'bell.echo', if: ['area:ossuary_now', 'at_riddle', '!riddle_done'], steps: [
+  { id: 'ev_oss_riddle_echo', minute: '82-100', on: 'bell.echo', if: ['area:ossuary_now', 'at_riddle', '!riddle_done'], steps: [
     ['prompt', null],
     ['say', 'oss.riddle.echo'],
     ['setFlag', 'riddle_done'],
     ['objective', 'hang_knells'],
   ] },
-  { id: 'ev_knell_take', minute: '82-100', waiting: 'ossuary_past', on: 'area.enter', match: { area: 'ossuary_past' }, if: ['riddle_done', '!knells_hung', '!has:knell_bell', '!knell_1', '!knell_2', '!knell_3', '!knell_4'], steps: [
+  { id: 'ev_knell_take', minute: '82-100', on: 'area.enter', match: { area: 'ossuary_past' }, if: ['riddle_done', '!knells_hung', '!has:knell_bell', '!knell_1', '!knell_2', '!knell_3', '!knell_4'], steps: [
     ['say', 'oss.knell.take'],
     ['give', 'knell_bell', 4],
   ] },
-  { id: 'ev_knell_1', minute: '82-100', waiting: 'ossuary_past', on: 'interact', match: { event: 'oss.knell', 'data.post': 1 }, if: ['has:knell_bell', '!knell_1'], steps: [
+  { id: 'ev_knell_1', minute: '82-100', on: 'interact', match: { event: 'oss.knell', 'data.post': 1 }, if: ['has:knell_bell', '!knell_1'], steps: [
     ['take', 'knell_bell'], ['setFlag', 'knell_1'], ['toast', '걸었다 — 조종', 'info'],
     ['if', ['knell_1', 'knell_2', 'knell_3', 'knell_4'], [['run', 'ev_knells_done']]],
   ] },
-  { id: 'ev_knell_2', minute: '82-100', waiting: 'ossuary_past', on: 'interact', match: { event: 'oss.knell', 'data.post': 2 }, if: ['has:knell_bell', '!knell_2'], steps: [
+  { id: 'ev_knell_2', minute: '82-100', on: 'interact', match: { event: 'oss.knell', 'data.post': 2 }, if: ['has:knell_bell', '!knell_2'], steps: [
     ['take', 'knell_bell'], ['setFlag', 'knell_2'], ['toast', '걸었다 — 조종', 'info'],
     ['if', ['knell_1', 'knell_2', 'knell_3', 'knell_4'], [['run', 'ev_knells_done']]],
   ] },
-  { id: 'ev_knell_3', minute: '82-100', waiting: 'ossuary_past', on: 'interact', match: { event: 'oss.knell', 'data.post': 3 }, if: ['has:knell_bell', '!knell_3'], steps: [
+  { id: 'ev_knell_3', minute: '82-100', on: 'interact', match: { event: 'oss.knell', 'data.post': 3 }, if: ['has:knell_bell', '!knell_3'], steps: [
     ['take', 'knell_bell'], ['setFlag', 'knell_3'], ['toast', '걸었다 — 조종', 'info'],
     ['if', ['knell_1', 'knell_2', 'knell_3', 'knell_4'], [['run', 'ev_knells_done']]],
   ] },
-  { id: 'ev_knell_4', minute: '82-100', waiting: 'ossuary_past', on: 'interact', match: { event: 'oss.knell', 'data.post': 4 }, if: ['has:knell_bell', '!knell_4'], steps: [
+  { id: 'ev_knell_4', minute: '82-100', on: 'interact', match: { event: 'oss.knell', 'data.post': 4 }, if: ['has:knell_bell', '!knell_4'], steps: [
     ['take', 'knell_bell'], ['setFlag', 'knell_4'], ['toast', '걸었다 — 조종', 'info'],
     ['if', ['knell_1', 'knell_2', 'knell_3', 'knell_4'], [['run', 'ev_knells_done']]],
   ] },
-  { id: 'ev_knells_done', minute: '82-100', waiting: 'ossuary_past', steps: [
+  { id: 'ev_knells_done', minute: '82-100', steps: [
     ['say', 'oss.knells.done'],
     ['setFlag', 'knells_hung'],
     ['setFlag', 'pending_change'],
@@ -382,7 +382,7 @@ export const EVENTS = [
   ] },
 
   // ═════════ 104–114 납골당 맨 안 — 밴시 여왕 ═════════
-  { id: 'ev_boss_intro', minute: '104-114', waiting: 'ossuary_now', on: 'trigger', match: { event: 'boss.enter' }, if: ['area:ossuary_now', '!queen_sent'], steps: [
+  { id: 'ev_boss_intro', minute: '104-114', on: 'trigger', match: { event: 'boss.enter' }, if: ['area:ossuary_now', '!queen_sent'], steps: [
     ['camera', 'banshee_song', 3],
     ['music', 'boss_banshee'],
     ['say', 'boss.intro'],
@@ -390,26 +390,26 @@ export const EVENTS = [
     ['if', ['knells_hung'], [['prompt', 'knellpost']]],
     ['objective', 'face_queen'],
   ] },
-  { id: 'ev_boss_flee', minute: '104-114', waiting: 'ossuary_now', on: 'boss.phase', match: { phase: 'flee' }, if: ['area:ossuary_now'], steps: [
+  { id: 'ev_boss_flee', minute: '104-114', on: 'boss.phase', match: { phase: 'flee' }, if: ['area:ossuary_now'], steps: [
     ['say', 'boss.flee'],
     ['setFlag', 'queen_fled'],
     ['prompt', 'chase'],
     ['objective', 'chase_queen'],
   ] },
-  { id: 'ev_boss_past', minute: '104-114', waiting: 'ossuary_past', on: 'area.enter', match: { area: 'ossuary_past' }, if: ['queen_fled', '!queen_driven'], steps: [
+  { id: 'ev_boss_past', minute: '104-114', on: 'area.enter', match: { area: 'ossuary_past' }, if: ['queen_fled', '!queen_driven'], steps: [
     ['prompt', null],
     ['say', 'boss.past'],
   ] },
-  { id: 'ev_boss_driven', minute: '104-114', waiting: 'ossuary_past', on: 'boss.phase', match: { phase: 'driven' }, if: ['area:ossuary_past'], steps: [
+  { id: 'ev_boss_driven', minute: '104-114', on: 'boss.phase', match: { phase: 'driven' }, if: ['area:ossuary_past'], steps: [
     ['say', 'boss.driven'],
     ['setFlag', 'queen_driven'],
     ['prompt', 'chaseback'],
     ['objective', 'send_queen'],
   ] },
-  { id: 'ev_boss_kneel', minute: '104-114', waiting: 'ossuary_now', on: 'boss.phase', match: { phase: 'kneel' }, if: ['area:ossuary_now'], steps: [
+  { id: 'ev_boss_kneel', minute: '104-114', on: 'boss.phase', match: { phase: 'kneel' }, if: ['area:ossuary_now'], steps: [
     ['prompt', 'knell'],
   ] },
-  { id: 'ev_boss_sent', minute: '104-114', waiting: 'ossuary_now', on: 'boss.phase', match: { phase: 'sent' }, if: ['area:ossuary_now', '!queen_sent'], steps: [
+  { id: 'ev_boss_sent', minute: '104-114', on: 'boss.phase', match: { phase: 'sent' }, if: ['area:ossuary_now', '!queen_sent'], steps: [
     ['prompt', null],
     ['music', 'quiet'],
     ['say', 'boss.sent'],
@@ -422,7 +422,7 @@ export const EVENTS = [
     ['objective', 'wake_elise'],
     ['save'],
   ] },
-  { id: 'ev_elise_wake', minute: '104-114', waiting: 'ossuary_past', on: 'interact', match: { event: 'oss.elise' }, if: ['queen_sent', '!elise_found'], steps: [
+  { id: 'ev_elise_wake', minute: '104-114', on: 'interact', match: { event: 'oss.elise' }, if: ['queen_sent', '!elise_found'], steps: [
     ['say', 'elise.wake'],
     ['setFlag', 'elise_found'],
     ['objective', 'to_lotte'],
@@ -491,7 +491,7 @@ export const EVENTS = [
   { id: 'ev_dead', minute: 'any', on: 'hero.dead', once: false, steps: [
     ['banner', 'dead', '촛불이 꺼졌다', '종이 울린다. 다시 일어선다'],
   ] },
-  { id: 'ev_retry_boss', minute: 'any', waiting: 'ossuary_now', on: 'hero.respawn', if: ['done:ev_boss_intro', '!queen_sent'], steps: [
+  { id: 'ev_retry_boss', minute: 'any', on: 'hero.respawn', if: ['done:ev_boss_intro', '!queen_sent'], steps: [
     ['say', 'retry.boss'],
   ] },
   { id: 'ev_retry_1', minute: 'any', on: 'hero.respawn', ifAny: ['!done:ev_boss_intro', 'queen_sent'], steps: [

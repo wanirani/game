@@ -10,7 +10,7 @@ import { foldPlan } from './mats.js';
 import * as K from './kit.js';
 import { PROPS, WALLPROPS } from './props.js';
 import { bakedDef, bakedProp } from './baked.js';
-import { BAKED_EXTRA, BAKED_ARGS } from './props2.js';
+import { BAKED_EXTRA, BAKED_ARGS, cemgateBoxes } from './props2.js';
 import { GEN_ALIAS } from './props3.js';                  // WORLD-2: whip ring, road bell, bridges, crypt furniture stand-ins + names of generated second tries   // WORLD 구역의 소품을 PROPS 에 더한다 + 구운 소품에 덧붙이는 것
 
 /** 구운 소품이 없을 때(묶음을 받기 전) 대신 세우는 손으로 짠 소품 */
@@ -72,17 +72,18 @@ export function compileEnv(S, { cull = true, fold, flames = false } = {}) {   //
     switch (P.t) {
       case 'floor': K.dressFloor(G, P, W); break;
       case 'pave': K.pave(G, P, W); break;
-      case 'block': if (P.mesh) { G.lift = true; PROPS[P.mesh](G, P.x + P.w / 2, y, P.z + P.d / 2, { w: P.w, d: P.d, h: P.h }); G.lift = false; } else K.dressBlock(G, P, W); break;
+      case 'block': if (P.mesh) { G.lift = true; PROPS[P.mesh](G, P.x + P.w / 2, y, P.z + P.d / 2, { w: P.w, d: P.d, h: P.h }); G.lift = false; } else K.dressBlock(G, P, W, extra); break;
       case 'wall': K.dressWall(G, P, extra); for (const [F, h] of wallHang(P)) WALLPROPS[h.type](G, F, h); break;
       case 'roof': K.dressRoof(G, P); break;
-      case 'stairs': K.dressStairs(G, P); break;
+      case 'stairs': K.dressStairs(G, P, extra); break;
       case 'pillar': K.dressPillar(G, P); break;
       case 'arch': K.arch(G, P); break;
-      case 'fence': K.fenceAt(G, P); break;
+      case 'fence': K.fenceAt(G, P, extra); break;   // FENCE: fences, balustrades, stair cheeks and low walls push the collision of what they draw into extra
       case 'prop': case 'deco': {
         if (!P.mesh) break;
         const g = P.y ?? groundAt(W, P.x, P.z), fn = propFn(P.mesh, P.code); if (!fn) throw new Error('모르는 소품: ' + P.mesh);
         const t0 = G.tris; G.lift = true; fn(G, P.x, Number.isFinite(g) ? g : 0, P.z, P); G.lift = false;
+        if (P.mesh === 'cemgate') extra.push(...cemgateBoxes(P.x, Number.isFinite(g) ? g : 0, P.z, P).map((b) => ({ ...b, part: P })));   // FENCE: the gate posts and leaves collide where they are drawn
         const pm = propTris[P.mesh] ?? (propTris[P.mesh] = [0, 0]); pm[0]++; pm[1] += G.tris - t0;   // 소품별 [개수, 삼각형] (검사 · 문서의 숫자)
         break;
       }
