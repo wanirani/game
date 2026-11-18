@@ -72,8 +72,7 @@ export function eshville(era, flags = {}) {
   // ───────────── props that stand in both eras (same spots) ─────────────
   add('street', LAMP(1760, 266), LAMP(2500, 266), LAMP(3130, 266), LAMP(2300, 8, { solid: 0 }),
     { t: 'fence', kind: 'iron', x0: 1860, z0: 5, x1: 2180, z1: 5, h: 44 }, { t: 'fence', kind: 'iron', x0: 2700, z0: 5, x1: 3020, z1: 5, h: 44 },
-    { t: 'prop', mesh: 'brazier', h: 112, solid: 30, solidZ: 24, x: 2700, z: 262, light: { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } },
-    { t: 'prop', mesh: 'barrel', x: 2420, z: 264, h: 78, solid: 24 });
+    { t: 'prop', mesh: 'brazier', h: 112, solid: 30, solidZ: 24, x: 2700, z: 262, light: { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } });   // (BREAK: the barrel that stood at 2420, 264 is a breakable now - see breakables below)
   add('out', LAMP(now ? 620 : 640, 262, now ? { mesh: 'lanternpost', lit: false, light: null, h: 190 } : {}), LAMP(1380, 8, { solid: 0 }),
     { t: 'fence', kind: 'wood', x0: 80, z0: 6, x1: 420, z1: 6, h: 50 }, { t: 'fence', kind: 'wood', x0: 860, z0: 6, x1: 1240, z1: 6, h: 50 },
     { t: 'prop', mesh: 'deadtree', x: 20, z: 258, h: 300, solid: 56, solidZ: 40, solidH: 240 });   // the footprint covers the root flare (162 x 149 at this size): the hero walked 65 units over the roots
@@ -103,18 +102,17 @@ export function eshville(era, flags = {}) {
     fire('out', 'fire_h1a', 90, 70, 296, 40, 56); fire('out', 'fire_h1roof', 200, 210, 300, 190, 84, 520); fire('out', 'fire_ruin', 440, 96, 300, 120, 64, 380);
     fire('out', 'fire_h3a', 1120, 72, 296, 40, 60); fire('out', 'fire_h3roof', 1300, 230, 300, 210, 90, 540);
     if (!out) for (const [x, z] of [[230, 120], [760, 200], [1180, 60]]) anchors.push({ id: 'embers_' + x, kind: 'embers', x, y: 0, z, size: 1 });
-    add('street', { t: 'prop', mesh: 'crate', x: 2150, z: 258, h: 62, solid: 30, solidZ: 18 }, { t: 'prop', mesh: 'sacks', x: 1960, z: 266, h: 34, solid: 26, solidZ: 12 }, { t: 'prop', mesh: 'hay', x: 3060, z: 262, h: 62, solid: 34, solidZ: 16 });
-    add('east', { t: 'prop', mesh: 'wreck', x: 4560, z: 200, w: 140, solid: 64, solidZ: 26, solidH: 60, ...(out ? { fire: false } : { light: FIRE(440, 2.0) }) }, { t: 'prop', mesh: 'cart', x: 3560, z: 830, h: 104, solid: 90, solidZ: 36 },
-      { t: 'prop', mesh: 'barrel', x: 4080, z: 846, h: 78, solid: 24 }, { t: 'prop', mesh: 'sacks', x: 4340, z: 842, h: 36, solid: 26, solidZ: 12 });
+    add('street', { t: 'prop', mesh: 'hay', x: 3060, z: 262, h: 62, solid: 34, solidZ: 16 });   // (BREAK: the crate at 2150 and the sacks at 1960 are breakables now)
+    add('east', { t: 'prop', mesh: 'wreck', x: 4560, z: 200, w: 140, solid: 64, solidZ: 26, solidH: 60, ...(out ? { fire: false } : { light: FIRE(440, 2.0) }) }, { t: 'prop', mesh: 'cart', x: 3560, z: 830, h: 104, solid: 90, solidZ: 36 });   // (BREAK: the barrel at 4080, 846 and the sacks at 4340, 842 are breakables now)
     if (!out) anchors.push({ id: 'fire_sq', kind: 'fire', x: 4570, y: 20, z: 190, size: 1.1, light: true });
     anchors.push({ id: 'red_moon', kind: 'glow_red', x: 3900, y: 900, z: 2600, size: 4 });
   } else {
     add('out', { t: 'prop', mesh: 'hay', x: 430, z: 262, h: 62, solid: 34, solidZ: 16 }, { t: 'prop', mesh: 'harvest', x: 330, z: 266, h: 46, solid: 30, solidZ: 12 },
       { t: 'prop', mesh: 'cart', x: 820, z: 252, h: 104, solid: 90, solidZ: 36 }, { t: 'prop', mesh: 'goods', x: 1040, z: 250, h: 92, solid: 64, solidZ: 40, solidH: 70, flip: true },
       { t: 'prop', mesh: 'plaguepost', x: 1290, z: 264, h: 200, solid: 10, solidZ: 10 });
-    add('street', { t: 'prop', mesh: 'stall', x: 2240, z: 258, h: 130, w: 140, solid: 72, solidZ: 23 }, { t: 'prop', mesh: 'sacks', x: 1960, z: 266, h: 46, solid: 30, solidZ: 12 }, { t: 'prop', mesh: 'hay', x: 3060, z: 262, h: 62, solid: 34, solidZ: 16 });   // sacks, not a second harvest heap: the triangle budget (35,000 in the worst view)
+    add('street', { t: 'prop', mesh: 'stall', x: 2240, z: 258, h: 130, w: 140, solid: 72, solidZ: 23 }, { t: 'prop', mesh: 'hay', x: 3060, z: 262, h: 62, solid: 34, solidZ: 16 });   // (BREAK: the sacks at 1960 that read as untextured jars are real clay jars now - breakables below)
     add('east', { t: 'prop', mesh: 'plaguepost', x: 4560, z: 200, h: 220, code: true, solid: 10, solidZ: 10 }, { t: 'prop', mesh: 'stall', x: 3500, z: 836, h: 130, w: 140, solid: 72, solidZ: 23 }, { t: 'prop', mesh: 'stall', x: 4300, z: 836, h: 130, w: 140, solid: 72, solidZ: 23 },
-      { t: 'prop', mesh: 'sacks', x: 4180, z: 850, h: 50, solid: 30, solidZ: 12 }, { t: 'prop', mesh: 'hay', x: 3624, z: 850, h: 62, solid: 34, solidZ: 16 }, { t: 'deco', mesh: 'candles', x: 3900, z: 400, light: { r: 180, i: 1.0, y: 20 } });
+      { t: 'prop', mesh: 'hay', x: 3624, z: 850, h: 62, solid: 34, solidZ: 16 }, { t: 'deco', mesh: 'candles', x: 3900, z: 400, light: { r: 180, i: 1.0, y: 20 } });
     add('east', { t: 'deco', mesh: 'candles', x: 3760, y: 84, z: 1600, n: 5, light: { r: 200, i: 1.1, y: 20 } }, { t: 'deco', mesh: 'candles', x: 4040, y: 84, z: 1600, n: 5, light: { r: 200, i: 1.1, y: 20 } });
     for (const [x, z] of [[900, 150], [2600, 150], [3900, 600]]) anchors.push({ id: 'mist_' + x, kind: 'mist', x, y: 0, z, size: 2 });
   }
@@ -175,8 +173,30 @@ export function eshville(era, flags = {}) {
       { id: 'to_west', ...rect(-60, 110, 50, 130), to: 'stable_' + era, spawn: 'from_eshville', label: '성문 밖', locked: 'not_built' },
     ],
     actors, enemies, triggers, interact, anchors,
+    breakables: breakables(now),   // BREAK: jars, pots, crates and barrels the hero can break (AREA_FORMAT 15) - dynamic things, not stage parts
     entry: gateOpen ? [] : ['from_graveyard'],   // behind the shut cemetery gate: reached only by coming in from the graveyard
   };
+}
+
+/**
+ * BREAK: what can be broken (AREA_FORMAT 15), in small groups beside the way: tonight what the fire left by the wrecks, the inn and the smithy;
+ * in 1697 the harvest market's jars and barrels by the stalls. Never in the way, at a door, beside a person, a bell, an exit or where an enemy starts.
+ * On the street the kerb starts at z 280: everything stands in front of it.
+ */
+function breakables(now) {
+  const B = [], put = (kind, x, z, o) => B.push({ kind, x, z, ...(o ?? {}) });
+  if (now) {
+    put('pot', 172, 270); put('jar', 212, 266); put('barrel', 536, 262, { rot: 0.3 }); put('jar', 585, 266); put('jar', 940, 268); put('crate', 1392, 262, { rot: 0.12 });   // outskirts
+    put('barrel', 1632, 254); put('jar', 1676, 260); put('urn', 1706, 246); put('crate', 2150, 250, { rot: -0.08 }); put('jar', 2198, 260); put('barrel', 2420, 254); put('pot', 2462, 258); put('pot', 1938, 258); put('jar', 2992, 260);   // street: inn front, the house, the smithy side
+    put('jar', 3340, 846); put('barrel', 3390, 852, { rot: 0.5 }); put('barrel', 4168, 856); put('crate', 4222, 858, { rot: 0.2 }); put('jar', 4268, 866); put('pot', 4664, 470);   // the square: corners of its north wall, the east wall
+    put('urn', 3478, 1420); put('urn', 4322, 1420);   // offering urns on the church terrace
+  } else {
+    put('jar', 212, 266); put('pot', 250, 270); put('barrel', 536, 262, { rot: 0.3 }); put('jar', 585, 266); put('jar', 940, 268); put('crate', 1392, 262, { rot: 0.12 });   // outskirts: the harvest road
+    put('barrel', 1632, 254); put('jar', 1676, 260); put('jar', 1946, 260); put('pot', 1986, 258); put('urn', 1966, 226); put('barrel', 2420, 254); put('pot', 2376, 258); put('jar', 2992, 260); put('pot', 2954, 258);   // street: the tavern side, the jars that were sacks, the smithy side
+    put('jar', 3340, 846); put('barrel', 3390, 852, { rot: 0.5 }); put('jar', 4160, 858); put('pot', 4200, 862); put('crate', 4400, 856, { rot: 0.2 }); put('pot', 4664, 470);   // the square: the market stalls' wares
+    put('urn', 3478, 1420); put('urn', 4322, 1500);
+  }
+  return B;
 }
 
 /** ground decals: the same puddles and moss in both eras; scorch, ash and embers tonight; straw and leaves that night */

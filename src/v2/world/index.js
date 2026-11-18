@@ -107,7 +107,8 @@ export function validateArea(a, twin = null) {
   W.hookPoints = a.stage.hookPoints ?? [];
   // BREAK: breakables are solid while whole, so the whole walk is validated with every one of them standing (G0 = the same walk without them)
   const BRK = Array.isArray(a.breakables) ? a.breakables : [], brkBox = (Wx, b) => { const K = BREAK_KINDS[b.kind]; if (!K || !Number.isFinite(b.x) || !Number.isFinite(b.z)) return; let g = -Infinity; for (const q of Wx.boxes) if (q.walk && b.x >= q.x0 && b.x <= q.x1 && b.z >= q.z0 && b.z <= q.z1 && q.y1 > g) g = q.y1; if (Number.isFinite(g)) Wx.boxes.push({ x0: b.x - K.r, x1: b.x + K.r, z0: b.z - K.r, z1: b.z + K.r, y0: g - 20, y1: g + K.h, solid: true, walk: false, brk: true }); };
-  const G0 = BRK.length ? reachGrid(W, a.spawns.default.x, a.spawns.default.z, 14, { hooks: W.hookPoints, seeds: (a.entry ?? []).map((n) => a.spawns[n]).filter(Boolean).map((s) => [s.x, s.z]) }) : null;
+  const brkSeeds = (a.entry ?? []).map((n) => a.spawns[n]).filter(Boolean).map((s) => [s.x, s.z]), brkFlood = (R) => reachGrid(W, a.spawns.default.x, a.spawns.default.z, R, { hooks: W.hookPoints, seeds: brkSeeds });
+  const G0 = BRK.length ? brkFlood(14) : null, GW0 = BRK.length ? brkFlood(40) : null;   // GW0: where a body of radius 40 gets (= ways at least 80 wide)
   for (const b of BRK) brkBox(W, b);
   const d = a.spawns.default, ids = new Set(), secIds = new Set(a.stage.sections.map((s) => s.id));
   // reach = walking + jumping + whip rings + crossing at a bell to the other night and back (the hero keeps x, z): both nights are flooded together until nothing new is found
@@ -205,11 +206,21 @@ export function validateArea(a, twin = null) {
     for (const it of a.interact) if (Math.hypot(b.x - it.x, b.z - it.z) < K.r + 40) E(at + `: too near interact ${it.id}`);
     for (const [n, sp] of Object.entries(a.spawns)) if (Math.hypot(b.x - sp.x, b.z - sp.z) < K.r + 60) E(at + `: too near spawn ${n}`);
     a.enemies.forEach((e, j) => { if (Math.hypot(b.x - e.x, b.z - e.z) < K.r + 50) E(at + `: too near enemies[${j}] ${e.kind}`); });
-    // not in a narrow way: on each axis at least one side leaves 64 of clear ground (measured on the walk without the breakables)
-    const free = (dx, dz) => { let s = 0; for (; s <= 72; s += 8) if (G0.blocked(b.x + dx * (K.r + 15 + s), b.z + dz * (K.r + 15 + s), 14)) break; return s; };
-    if (Math.max(free(-1, 0), free(1, 0)) < 64 || Math.max(free(0, -1), free(0, 1)) < 64) E(at + ': stands in a narrow part of the way');
   });
-  if (G0) { let lost = 0, where = null; for (const q of W.boxes) if (q.walk && !q.brk) for (let x = q.x0 + 10; x < q.x1; x += 40) for (let z = q.z0 + 10; z < q.z1; z += 40) if (G0.reachable(x, z) && !G.reachable(x, z) && !BRK.some((b) => { const K = BREAK_KINDS[b.kind]; return K && Math.abs(b.x - x) < K.r + 36 && Math.abs(b.z - z) < K.r + 36; })) { lost++; where = where ?? [x, z]; } if (lost) E(`breakables cut off ${lost} spots of walkable ground (first at ${where})`); }
+  if (G0) {   // nothing walkable is cut off, and no way that was wide (80) becomes narrow: both floods are compared spot by spot, away from the things themselves
+    const GW1 = brkFlood(40), nearB = (x, z, m) => BRK.some((b) => { const K = BREAK_KINDS[b.kind]; return K && Math.abs(b.x - x) < K.r + m && Math.abs(b.z - z) < K.r + m; });
+    let lost = 0, where = null, tight = 0, tw = null;
+    for (const q of W.boxes) if (q.walk && !q.brk) for (let x = q.x0 + 10; x < q.x1; x += 40) for (let z = q.z0 + 10; z < q.z1; z += 40) {
+      if (G0.reachable(x, z) && !G.reachable(x, z) && !nearB(x, z, 36)) { lost++; where = where ?? [x, z]; }
+      if (GW0.reachable(x, z) && !GW1.reachable(x, z) && !nearB(x, z, 84)) { tight++; tw = tw ?? [x, z]; }
+    }
+    if (lost) E(`breakables cut off ${lost} spots of walkable ground (first at ${where})`);
+    if (tight) E(`breakables stand in the way: ${tight} spots that were reached with 40 to spare on each side are not any more (first at ${tw})`);
+    for (const x of a.exits) if (GW0.anyIn(x.x0, x.x1, x.z0, x.z1) && !GW1.anyIn(x.x0, x.x1, x.z0, x.z1)) E(`breakables narrow the way to exit ${x.id}`);
+    for (const t of a.triggers) if (GW0.anyIn(t.x0, t.x1, t.z0, t.z1) && !GW1.anyIn(t.x0, t.x1, t.z0, t.z1)) E(`breakables narrow the way to trigger ${t.id}`);
+    for (const it of a.interact) if (GW0.near(it.x, it.z, it.r) && !GW1.near(it.x, it.z, it.r)) E(`breakables narrow the way to interact ${it.id}`);
+    for (const p of a.actors) if (GW0.near(p.x, p.z, (p.r ?? 16) + 80) && !GW1.near(p.x, p.z, (p.r ?? 16) + 80)) E(`breakables narrow the way to actor ${p.id}`);
+  }
   const st = W.env.stats;
   return { errors, warnings, stats: { breakables: BRK.length, parts: a.stage.parts.length, boxes: W.boxes.length, lights: W.lights.length, tris: st.tris, chunks: st.chunks, bytes: st.bytes, textures: st.textures, reachCells: G.cells, enemies: a.enemies.length, actors: a.actors.length, exits: a.exits.length, triggers: a.triggers.length, interact: a.interact.length, anchors: (a.anchors ?? []).length, decals: a.stage.decals.length } };
 }
