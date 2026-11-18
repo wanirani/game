@@ -26,6 +26,7 @@ Final answer = your report (plain text, English, short Korean summary for the ow
 `
 
 const BUILD = COMMON + `
+START NOTE: a release check of the main session is running on this tree until 16:10 UTC. Until then (look at date -u) change no existing file under src/, assets/ or tools/ and start no headless browser; read, plan, and write NEW files only (a new file that nothing imports yet is fine). After 16:10 UTC work normally.
 YOUR LANE: FIRE-2. Progress log: /tmp/claude-0/v2/fire2_progress.md. Captures: /tmp/claude-0/v2/fire2/. Time box: 90 minutes from start.
 
 Deliver, in priority order:
