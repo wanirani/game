@@ -4,6 +4,8 @@
 소유자 지시(헌장 §2 마지막 줄): "3D 지만 타격감(효과, 음향 등) 최고로, 마법도 3D 로 화려하게, 최적화로 느리지 않고 경쾌하게".
 이 문서는 그 가운데 **그림 절반**(효과 엔진 + 효과 모음 + 화면·카메라 손맛)이다. 소리는 여기서 **사건 이름만** 내보내고 소리 담당이 받아 만든다.
 
+> **2026-11-18 FIRE-2 — §13**: the particle atlas is 1024 x 1024 (the old 16 cells + a flame flipbook painted in code), `SPR.FIRE` / `SPR.WISP` flipbook quads, `amb` specs (not counted by the fill governor), the layered anchor fire and living candles of the game. §0 "입자 16칸" and §2 "512²" are the old sheet, still there as the atlas's top-left quarter.
+
 ## 0. 한눈에
 
 - **WebGL2 용 작은 효과 엔진**(라이브러리 없음, 6파일 약 1,900줄 · 153 KB)과 **한 번 부르면 되는 효과 32종**이다. 게임(`src/v2/b/`)에는 아직 꽂지 않았다 — 혼자 도는 모듈 + 시험 화면이고, 꽂는 법은 §3 에 적었다.
@@ -481,3 +483,57 @@ this.vfx?.dispose(); feel.release();                      // 방을 옮길 때�
 남은 위험(고치지 않음): 폴드 실기에서 한 번도 돌리지 않았다(채움 비용 · 후처리 비용은 기기에서만 안다) · 게임에 꽂혀 있지 않다 · 진짜 캐릭터 위에서 본 적이 없다 · §9 의 14–17.
 
 검수 도구: `node tools/v2/fx_verify.mjs [state|tiers|ctx|alloc|bridge]`, `node tools/v2/fx_sound_link.mjs`, `node tools/v2/fx_owner.mjs [sheet|video]`(소유자용 한 장 · 영상).
+
+## 13. FIRE-2 (2026-11-18 16:10–17:10 UTC): flame flipbook, layered anchor fire, living candles
+
+Owner, on the fire of `eshville_now`: "불은 딱 봐도 허접하지?". The particle fire of SPEED-FIRE drew every tongue as one teardrop sprite: a wide wall-top fire read as a row of separate droplets. Numbers below: headless Chromium + SwiftShader, fold_open — counts and areas only, not frame times.
+
+### 13.1 The flipbook (`src/v2/fx/flamebook.js`, painted in code — no generated image, 0 credits)
+
+- `paintFlame(kind, i, out)` writes one 128 x 256 frame (straight RGBA): kind 0 **FLAME**, 16 frames, a loop (a tuft wide at its rounded foot, licking and tearing at the top; three octaves of tileable noise climb 2 and 3 whole periods per loop, so frame 15 runs into frame 0), kind 1 **WISP**, 8 frames played once over a particle's life (a detached tongue that bends, thins and breaks into pieces). RGB is a heat colour (deep red-orange rim -> orange -> yellow -> pale yellow-white core, cooler towards the tips), A the density with soft edges on all four sides. Pure pixels, no canvas calls: `node tools/v2/fire2_sheet.mjs` writes the sheet as a PNG (no browser). Painting all 24 frames: about 55 ms warm, 160 ms the first time (node), once when the effect engine is made.
+- **The particle atlas is 1024 x 1024 now** (`sprites.js makeParticleAtlas`): its top-left quarter is the old 512 x 512 sheet (16 cells of 128 px, untouched), the lower half holds the 16 FLAME frames (8 x 2), the top-right quarter the 8 WISP frames (4 x 2). GPU memory of the atlas with mips 1.40 -> 5.59 MB (+4.2 MB, `fx.gpuBytes` counts it).
+
+### 13.2 Engine pieces changed on purpose (shared with the hit and magic effects)
+
+- `SPR.FIRE` (16) and `SPR.WISP` (17): `E({ sprite: SPR.FIRE, aspect: 1.5, fps: [11, 15] })`. For these the particle vertex shader builds an **upright quad standing on the particle** (foot at its position, `aspect` = height / width, carried in the stretch slot), picks the frame by age (FIRE: first frame and mirroring from the particle's random angle, then `fps` frames per second, looping; WISP: the 8 frames over the life) and **shears the quad with the wind** (a slow gust all flames share + each flame's own sway, more at the top). No per-frame CPU work, no new uniform, no new draw call; the fragment shader is the same one texture read.
+- The 16 old sprites read exactly the same texels (cell scale 0.25 of 512 px -> 0.125 of 1024 px). The fragment shader's texture coordinate is `highp` now (a 16-bit mediump coordinate would step by half a texel in the far half of a 1024 px atlas on some phones; no difference on desktop).
+- `amb: 1` on a spec (ambient: anchor fires, candles): its particles **do not count in the fill governor** (§7-2) — a fight next to a blaze keeps its hit effects at full strength (the old fire did count, with about 0.1 screen per big fire). `fx.particles.measure()` also returns `ambN` / `ambArea`, and counts a flipbook quad with its real height.
+- Proof that hits and magic are unchanged: `node tools/v2/fire2_shot.mjs --presets 1` (effects test page, seeded `Math.random`, mid tier) with and without `--before 5faee16` (the APK 9 tree): the captures of `hit.slash.heavy`, `hit.finisher`, `fire.pillar`, `ice.nova`, `enemy.breath` are **byte-identical** (0 differing pixels) and the cost line of all 33 presets (emitted, peak live particles, peak draw calls, peak overdraw) is identical.
+
+### 13.3 The anchor fire (`src/v2/game/anchors.js`)
+
+| layer | sprite | what it does | live per fire, planned (crypt bowl ... roof blaze, high tier) |
+|---|---|---|---|
+| BODY | FIRE flipbook, 66k x 100k, semi-additive (0.66) | tufts standing on the burning thing along its whole width, overlapping by more than half: one continuous sheet | 3 ... 13 |
+| CORE | FIRE flipbook, small, nearly white, short | the hot foot | 2 ... 8.5 |
+| TONGUE | WISP flipbook | detached tongues that rise, speed up and break apart | 1.6 ... 6.5 |
+| HEAT | soft glow | warm haze over the foot (on the wall behind) | 1.2 ... 2.4 |
+| SPARK / EMBER | ember sprite (streaks / slow dots) | shoot up, lean with the wind, die | 7 ... 44 |
+| SMOKE | smoke sprite, alpha | dark puffs above the tongues, lit warm at birth | 3 ... 7 |
+
+- k = the fire's scale from the anchor's size: bowl 0.7 (brazier) – 0.82 (crypt door bowl), house fire 1.0 – 1.12, blaze 1.3 – 1.62 (roof, wall top, wreck). The width (`w`, from `flameSpots`) sets how many body quads burn side by side.
+- **Emission on a beat**: an accumulator per layer and fire, one quad per whole count, placed by a golden-ratio walk along the width. The number of live quads is steady (a small bowl no longer flickers unevenly) and the big overlapping quads are exactly as many as planned. Tier: flame layers x 0.62 / 0.85 / 1, soft layers (heat, sparks, embers, smoke) x 0.4 / 0.75 / 1 and x the fill governor. Far (> 1200 from where the camera looks) x 0.55; off screen or beyond 2100: nothing is emitted. Nothing is allocated in `tick` (typed arrays made in `build`).
+- A fire whose stage part gives a cold (blue) light — the door bowls of `ossuary_now` — burns with a blue-white heart and a paler body (other vertex colours on the same sheet) and lights the characters with that colour.
+- Candles: `candleSpots(parts)` (`env/props2.js`) lists the wicks of every `candles` group; one small flipbook flame per wick (two quads alive, a new one every 0.65 s, cross-fading) and a soft halo per group, within 1300 of the camera's target and on screen.
+
+### 13.4 Numbers (the worst of eight looks per spot; live particles / of them fire / fire overdraw = quad area of the fire ÷ the 960 x 726 screen)
+
+| spot | low | mid | high |
+|---|---|---|---|
+| outskirts: roof + wall-top + ruin + wreck + door fire in one view (`esh_roof`) | 106 / 99 / 0.82 | 164 / 150 / 1.17 | 229 / 209 / 1.59 |
+| main street brazier | 44 / 44 / 0.13 | 72 / 72 / 0.20 | 82 / 82 / 0.25 |
+| 1697 ossuary door: two bowls + the candle groups in view | 195 / 191 / 0.18 | 204 / 199 / 0.22 | 216 / 210 / 0.26 |
+| ossuary tonight: two bowls + one candle group (the rest is mist) | 42 / 33 / 0.10 | 51 / 36 / 0.10 | 63 / 46 / 0.15 |
+
+- Mid tier, one look, the other spots: burning wreck 184 live / 1.24 screens, bell tower brazier 73 / 0.18, 1697 brazier 69 / 0.19, test slice brazier 58 / 0.17. Before (APK 9): `esh_roof` 127 live / 0.24 screens for all effects, brazier 30 / 0.02.
+- **Draw calls: no change.** The fire is in the one particle batch (1 draw; 2 when its ring buffer wraps). Frame totals at mid before = after: 15, 15, 28, 17, 17, 21, 29, 24 for the eight spots.
+- The particle ring holds everything emitted within the longest life (smoke 2.6 s, mist 7 s): 300–770 instances at these spots (low tier cap 1,024).
+
+### 13.5 Weak (honest)
+
+- The flipbook is procedural: clean, but without the character of painted flames. Smoke is nearly invisible against the night sky (it shows in front of lit walls). The big blaze is tall (tongues reach about three hero heights over the wall); the size was judged in headless captures only.
+- The pale fire of `ossuary_now` keeps an orange fringe (vertex colours can only multiply the sheet's heat colours); the mist there holds the brightness governor at 0.6–0.7, which dims that fire too (as before).
+- Candelabra, chandeliers and the altar are generated models with their flames modelled in; only the floor candle groups (`candles`) have living flames. No soft-particle depth fade: a flame quad that meets geometry is cut straight.
+- Frame time and fill cost on the Fold were not measured (a big blaze view covers 0.8 / 1.2 / 1.6 screens of blended quads at low / mid / high).
+
+Tools: `node tools/v2/fire2_shot.mjs` (spots, `--before <commit>`, `--stats 1`, `--strip <spot>`, `--presets 1`), `node tools/v2/fire2_sheet.mjs` (the sheet as PNG), `node tools/v2/fire2_owner.mjs` (owner sheet).
