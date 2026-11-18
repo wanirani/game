@@ -470,3 +470,39 @@ To PLAY:
 - To INTEGRATE: `node tools/v2/whip_plug_probe.mjs` attaches the whip to the live v2g hero through `window.__v2.scene` without editing the scene (wraps `_sync`, `_gl`, `cr.end`, `sim.hooks.hit/pull`): nothing missing from docs/v2/WHIP.md section 7, 0 GL errors, tip on the hit point (0 px) on every hit, +2 draw calls, 358–412 triangles, 15,872 GPU bytes (mid). Two lines were added to the doc: `hand.ground` (the scene's `groundAt`) and `env.viewport = [Wv, Hv]` (the scene renders at reduced size). The probe file is the working example of every step.
 - To PLAY: every move in `moves.js` has a whip shape (c1 c2 c3 sweep whip plunge); only `whip` has `weapon: 'whip'`, the rest still default to `'sword'` (the hit sound follows it). c3 hits enemies beside / behind on the first window tick: the tip snaps 165–214 px to them in that tick (docs/v2/WHIP.md section 8).
 - New tools: `tools/v2/whip_fuzz.mjs` (2.19 M fuzzed ticks, exit 1 lists corner cases), `tools/v2/whip_reach.mjs` (timing and reach through the real rules), `tools/v2/whip_plug_probe.mjs`. Nothing for `tools/deploy/v2_ship.txt` (no assets; `src/v2/whip/*.js` ships with the code once the scene imports it).
+
+## PLAY2-VERIFY (2026-11-18 02:20 UTC) — to ENGINE / INTEGRATE (scene v2g)
+
+Found while driving v2g with real touches on the new pad (tools/v2/play_verify_touch.mjs, strips in /tmp/claude-0/v2/play2verify/):
+
+1. **Blade ribbon is drawn while the body turns into a cut** (src/v2/game/index.js ~line 711: the ribbon starts on the tick the move starts and is pushed every tick). On an attack with the stick flipped (run right, attack left / run up, attack down) the body whips 180 degrees in 6 ticks and the ribbon paints that turn as a wide flat sweep at ground level for ticks 2–6, before the real cut (ticks 8–16). This is what still reads as "swinging to the side". Fix on the scene side: push ribbon points only while `sim.hero.cutOn === 1` (new field, 0｜1: from 0.04 s before the hit window to 0.05 s after it; for the plunge until landing), end the ribbon when it drops to 0.
+2. **Boss is not drawn when spawned in an area that did not list her** (`sim.addEnemy({ kind: 'banshee_queen' })` in slice0: `__v2.enemies[..].drawn === false`, clip null — the model is not loaded). Fine if she only ever appears through the area's `enemies` list; otherwise `_take(e)` needs to load a missing model.
+3. **`state.boss` is still null** while `sim.bossState()` returns the bar values (`{ id, name, hp, hpMax, stagger, phase, kneel, fled, staggered, sub }`): one line in `_state()`.
+4. Warning shapes: nothing is drawn yet for `e.atk.arc` / `e.atk.radius` (+ `air`) / `e.atk.mark` (`box` + `fan` + `spread`, `ring`). The rules only hit inside these shapes (checked on a grid: tools/v2/play_verify_fuzz.mjs). `Q_WAIL.mark.box.f1` is now 775 (the shot flies that far; it was 430).
+5. `sim.update(dt, inp)` is still called with the same `inp` object every tick — good. `inp.bellHeld` must stay a boolean (undefined means "tap = echo at once").
+
+## WORLD-2, final re-check (2026-11-18 03:00 UTC) — to INTEGRATE · STORY · main session
+Nothing under `src/v2/world/`, `src/v2/env/` or `assets/v2/` changed since 02:10 UTC. Every WORLD check was run again on the tree as it is, one at a time (logs `/tmp/claude-0/v2/world2/final3/`): `world_validate` 0 (42 states of 8 areas), `world_folds --check` 0, `world_check` 0 (190 lines, both devices), `world_verify_node` 0, `world_verify_shot` 0, `world_propsverify_node` 0, `envkit_check --base 1` 0, `story_check` 0 (0 errors, 28 warnings), fonts `--check` 0, the bake reproduces `props.bin` / `props_atlas.webp` byte for byte, `game_probe` 0.
+1. Item 1 of the 02:05 section is closed (flag lists fixed by the main session at 02:42). Still open for STORY: the 27 sequences that say "waiting" for `belltower_now` / `ossuary_now` / `ossuary_past` and `ev_ossuary_bridge` (item 2), `past_street_clear` (item 3), the talk keys / events WORLD chose (item 4).
+2. Correction to item 10: the ossuary's worst view is 25 static draws (not 26); Eshville 30 / 30, graveyard 15 / 16, tower 14, test route 19.
+3. Run-time file list corrected in ENV_KIT §18.8: the graveyard no longer loads `k_flag` / `k_slate` / `k_bone`. `tools/deploy/v2_ship.txt` ships `assets/v2/env/` and `assets/v2/props/` whole, so nothing to add.
+4. Not built, by name: `belltower_past`, `stable_now`, `stable_past` (three validator warnings, exits stay `locked: 'not_built'`).
+5. To STORY: `ev_edmund_grave` (`waiting: 'hook:graveyard_past/trigger grave.edmund'`) and `ev_hang_bell` (`waiting: 'hook:graveyard_past/interact road_bell'`) — both hooks exist in `graveyard_past` since 01:18 UTC: trigger `edmund_grave` with `event: 'grave.edmund'` (box 480..720 × 1640..1700) and `interact road_bell` (kind `bell`, `event: 'bell.hang'` until `bell_hung`, then `bell.ring`). `story_check` does not warn about `hook:` waits, so these two will not show up in its list: their "waiting" can go too.
+
+## INTEGRATE-B1 (2026-11-18 03:10 UTC) — the whip, the boss and the new areas are in the scene (docs/v2/ENGINE_API.md fourth version)
+
+To WHIP (`src/v2/whip/`, not edited by this lane)
+- Plugged in exactly as WHIP.md section 7 says; nothing was missing. In v2g: tip on the hit point 0–0.1 px on every hit-stop frame (4 facings, street fight and boss), handle root 11 px from the grip point in every capture, 0 GL / page errors.
+- Defect to look at (captures `/tmp/claude-0/v2/integB1/street_fold_open_hit_right_1.png`, `street_fold_open_hit_toward_2.png`, sheet `sheet_street_hits.png`): on hit frames the tip streak (the trail of the last 10 tip positions) shows a **sharp corner** where the tip snapped to the hit point in the hit tick, and the hit-stop holds that kinked streak for 3–5 frames. A smoothed last segment (or fading the streak while `whip.flash` is on) would hide it.
+- A drawn frame lies between two ticks: the hero's pose is the newest tick, the lash is sampled at `alpha`. In the third hit the tip moves 165–214 px in one tick, so on a frame with a small alpha the lash is visibly behind the arm (seen in a capture drawn at alpha 0; captures are now drawn at alpha 1). Only a note — the handle itself stays in the hand.
+- Bat hits: the hit point is inside the hero's body when a bat dives on him; the lash folds back onto the hero (known limit in WHIP.md section 8).
+
+To PLAY
+- `src/v2/play/moves.js` `M()`: `weapon: 'sword'` -> `'whip'` (the one word you named; allowed for this lane). `play_rules_test` 113 passed, `play_motion_check` 53 passed after it.
+- Boss in v2g: `state.boss` is `sim.bossState()` copied per tick; the warning shapes are drawn from `atk.arc`, `atk.mark.box/fan/spread`, `atk.mark.radius/ring`, `atk.air`, `atk.guard`. The summon circles are laid at `(e.t + remaining wind-up) * 1.7 + i * 2π / n` — the same formula as `sim.js` line ~849; if that formula changes, tell the scene (or expose the spots on `e`).
+
+To STORY
+- New event `boss.down { boss, knelled }`; `kneel`, `bossFlee`, `bossReturn`, `bossDown` still arrive as `play.<name>`. Without a story the scene shows one notice line for each; with a story plugged in it shows none.
+
+To the main session
+- No new asset files are loaded by this lane's code (the whip is code). Areas now reachable by address: `ossuary_now`, `ossuary_past`, `belltower_now` — their files are in the list printed by `node tools/v2/game_assets.mjs` (see the lane report).
