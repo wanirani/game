@@ -88,9 +88,17 @@ for (const vp of ['fold_open', 'phone2']) {
         ok(gst.ready && !gst.err, `본 게임 줄을 눌러 v2g 가 열림 (${JSON.stringify(gst)})`);
         await page.waitForTimeout(1500);
         if (SHOTS) await page.screenshot({ path: `${SHOTS}/v2g_${vp}.png` });
-        const pg = await pauseBtn();
+        // 본 게임은 새 인터페이스(세공한 유리)가 기본값이다 (11-18 통합 A): 새 단추 층의 「멈춤」 단추 → 일시정지 판 → 「나가기」 줄. 옛 단추로 돌고 있으면 v1 패드의 일시정지 단추가 같은 판을 연다
+        const hudKind = await page.evaluate(() => window.__v2.stats?.hud ?? null);
+        const pg = (await page.evaluate(() => { const b = window.__v2.scene?.hud?.metrics?.()?.pad?.buttons?.find((x) => x.id === 'pause'); return b ? { x: b.cx, y: b.cy } : null; })) ?? (await pauseBtn());
         await page.touchscreen.tap(pg.x, pg.y);
-        await chooserBack('본 게임 → 일시정지 단추', 0);
+        await page.waitForFunction(() => window.__v2?.scene?.hud?.modal === 'pause', null, { timeout: 8000 });
+        await page.waitForTimeout(500);
+        if (SHOTS) await page.screenshot({ path: `${SHOTS}/v2g_pause_${vp}.png` });
+        const lv = await page.evaluate(() => { const g = window.__game, m = window.__v2.scene.hud.metrics().pause, ids = m.ids ?? m.rows.map((r) => r.label), r = m.rows[m.rows.length - 1]; return { x: g.canvasRect.x + (r.x + r.w / 2) * g.cssScale, y: g.canvasRect.y + (r.y + r.h / 2) * g.cssScale, ids, paused: window.__v2.scene.hud.modal }; });
+        ok(lv.paused === 'pause' && lv.ids.length >= 3 && lv.ids[lv.ids.length - 1] === 'leave', `본 게임: 「멈춤」 단추 → 일시정지 판이 열림 (인터페이스 ${hudKind}, 줄: ${lv.ids.join(' ')})`);
+        await page.touchscreen.tap(lv.x, lv.y);
+        await chooserBack('본 게임 → 멈춤 단추 → 일시정지 판의 「나가기」', 0);
         // 시범판 A (다섯째 줄)
         const a = await cssOf(page, C.rects[4]);
         await page.touchscreen.tap(a.x, a.y);
@@ -156,10 +164,20 @@ for (const vp of ['fold_open', 'phone2']) {
     ok(await page.evaluate(() => !!window.__v2.ready), 'Enter → Enter 로 본 게임(v2g)이 열림 (첫 줄)');
     await page.waitForTimeout(1500);
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/v2g_desk.png` });
-    await key('Escape', 400);
+    // 본 게임: Esc = 일시정지 판 (나가기는 그 안의 마지막 줄). Esc 를 한 번 더 누르면 이어 하기
+    await key('Escape', 500);
+    await page.waitForFunction(() => window.__v2?.scene?.hud?.modal === 'pause', null, { timeout: 8000 });
+    const pm = await page.evaluate(() => { const m = window.__v2.scene.hud.metrics().pause; return { ids: m.ids ?? m.rows.map((r) => r.label), sel: m.sel ?? 0 }; });
+    await key('Escape', 500);
+    const resumed = await page.evaluate(() => window.__v2?.scene?.hud?.modal ?? null);
+    ok(pm.ids[pm.ids.length - 1] === 'leave' && resumed === null, `본 게임에서 Esc → 일시정지 판 (줄: ${pm.ids.join(' ')}), Esc 한 번 더 → 이어 하기`);
+    await key('Escape', 500);
+    await page.waitForFunction(() => window.__v2?.scene?.hud?.modal === 'pause', null, { timeout: 8000 });
+    for (let i = 0; i < pm.ids.length - 1; i++) await key('ArrowDown', 160);
+    await key('Enter', 400);
     await page.waitForFunction(() => window.__game.top?.constructor?.name === 'V2Chooser' && typeof window.__v2 === 'undefined', null, { timeout: 8000 });
     let idx = await page.evaluate(() => window.__game.top.menu.index);
-    ok(idx === 0, `본 게임에서 Esc → 고르기 화면 (본 게임 줄이 골라져 있음: ${idx})`);
+    ok(idx === 0, `본 게임에서 Esc → 일시정지 판 → ↓ 로 「나가기」 → Enter → 고르기 화면 (본 게임 줄이 골라져 있음: ${idx})`);
     await page.waitForTimeout(900);
     await key('ArrowDown'); await key('Enter');
     await page.waitForFunction(() => window.__v2?.id === 'b' && (window.__v2.ready || window.__v2.error), null, { timeout: 30000 });
