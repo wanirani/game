@@ -42,11 +42,14 @@ export class StoryHost {
     for (const k of Object.keys(F)) if (F[k] && F[k].world) this.world.add(k);
     for (const a of Object.keys(this.areaFlags)) for (const n of this.areaFlags[a]) if (F[n]) this.world.add(n);   // a name the story does not declare (past_street_clear) is not passed: the area then keeps its older condition
     this.api = this._api();
-    this.story = (name, data) => { try { this.st.story(name, data, this.api); } catch (e) { console.error('[v2g] story failed on', name, e); } };
+    this.story = (name, data) => {
+      if (name === 'area.enter') { const id = this.sc.area?.music; if (id && MUSIC[id] && id !== this.musicId) this.api.music(id); }   // each night has its own tune (GDD 2.4 rule 1); a track the build does not ship is skipped by the audio module
+      try { this.st.story(name, data, this.api); } catch (e) { console.error('[v2g] story failed on', name, e); }
+    };
     this._onHide = () => { if (globalThis.document?.visibilityState === 'hidden') this.saveNow('hidden'); };
     try { globalThis.document?.addEventListener('visibilitychange', this._onHide); } catch { /* no DOM */ }
   }
-  release() { try { globalThis.document?.removeEventListener('visibilitychange', this._onHide); } catch { /* no DOM */ } this.waits.length = 0; this.moves.length = 0; }
+  release() { try { globalThis.document?.removeEventListener('visibilitychange', this._onHide); } catch { /* no DOM */ } this.waits.length = 0; this.moves.length = 0; if (this.musicId) { try { audio.stopMusic?.(0.6); } catch { /* no audio */ } this.musicId = null; } }
   /** is the hero's input held by the story (a camera shot, a lockInput step)? */
   locks() { return this.shotLock || this.inputLock; }
   note(kind, a, b) { const S = this.seen; if (S.length < 4000) S.push([kind, a ?? '', b ?? '']); }

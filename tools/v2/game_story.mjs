@@ -35,8 +35,9 @@ async function areaOf(id, flags) { const k = id + '|' + Object.keys(flags ?? {})
 // people = the solid townspeople standing in the area right now ([x, z, y] from the page): the scene gives each a collision box the world's own grid does not know
 async function pathTo(id, flags, x, z, tx, tz, tr = 60, people = []) {
   const { W } = await areaOf(id, flags);
-  const W2 = people.length ? { ...W, boxes: [...W.boxes, ...people.map(([px, pz, py]) => ({ x0: px - 18, x1: px + 18, z0: pz - 18, z1: pz + 18, y0: py - 20, y1: py + 110, solid: true, walk: false }))] } : W;
-  for (const R of [26, 14]) { const g = reachGrid(W2, x, z, R), p = g.near(tx, tz, tr) ?? g.near(tx, tz, tr * 2.5); if (p) { const path = g.path(p[0], p[1]); if (path && path.length) return path; } }
+  const far = people.filter(([px, pz]) => Math.hypot(px - x, pz - z) > 64);   // someone the hero already stands next to does not close the start
+  const W2 = far.length ? { ...W, boxes: [...W.boxes, ...far.map(([px, pz, py]) => ({ x0: px - 18, x1: px + 18, z0: pz - 18, z1: pz + 18, y0: py - 20, y1: py + 110, solid: true, walk: false }))] } : W;
+  for (const Wq of W2 === W ? [W] : [W2, W]) for (const R of [26, 14]) { const g = reachGrid(Wq, x, z, R), p = g.near(tx, tz, tr) ?? g.near(tx, tz, tr * 2.5); if (p) { const path = g.path(p[0], p[1]); if (path && path.length) return path; } }
   return null;
 }
 
@@ -215,7 +216,7 @@ try {
       await settle(3000); s = await st();
       return { ok: s.area === 'eshville_now' && s.flags.includes('crossed'), why: JSON.stringify(s) }; });
     await shot('first15_14_tonight_changed');
-    await beat('오늘 밤의 대장간: 손자의 서랍 (interact shop.smithy)', async () => useSpot('shop.smithy', { budget: 4200 }));
+    await beat('오늘 밤의 대장간: 손자 하드윈의 서랍 (talk hadwin.smithy.now)', async () => useSpot('hadwin', { budget: 4800 }));
     await shot('first15_15_drawer');
     const end = await page.evaluate(() => { const sc = window.__v2.scene, s = sc.host.st.state; return { flags: Object.keys(s.flags), items: s.items, done: s.done.length, objective: sc.host.objective, chronicle: s.chronicle, worldFlags: Object.keys(sc.worldFlags), saves: sc.host.saves, warnings: sc.host.warnings.slice(0, 20), deaths: sc.sim.deaths ?? 0, exits: window.__v2.exits.map((x) => x.id + ':' + (x.locked ?? 'open')) }; });
     notes.push('end state: ' + JSON.stringify(end));
