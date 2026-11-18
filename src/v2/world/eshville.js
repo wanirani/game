@@ -83,7 +83,7 @@ export function eshville(era, flags = {}) {
   // ───────────── props that stand in both eras (same spots) ─────────────
   add('street', LAMP(1760, 266), LAMP(2500, 266), LAMP(3130, 266), LAMP(2300, 8, { solid: 0 }),
     { t: 'fence', kind: 'iron', x0: 1860, z0: 5, x1: 2180, z1: 5, h: 44 }, { t: 'fence', kind: 'iron', x0: 2700, z0: 5, x1: 3020, z1: 5, h: 44 },
-    { t: 'prop', mesh: 'brazier', h: 112, solid: 42, solidZ: 30, solidH: 300, x: 2700, z: 262, light: { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } });   // WORLD-LOOK: the collision is as wide as the bowl (88) and taller than a jump - the hero stood inside the bowl beside a 30-wide box, or on it   // (BREAK: the barrel that stood at 2420, 264 is a breakable now - see breakables below)
+    { t: 'prop', mesh: 'brazier', h: 112, solid: 42, solidZ: 24, solidH: 300, x: 2700, z: 262, light: { r: 380, i: 1.8, y: 90, c: [1, 0.55, 0.22] } });   // WORLD-LOOK: the collision is as wide as the bowl (88) and taller than a jump - the hero stood inside the bowl beside a 30-wide box, or on it   // (BREAK: the barrel that stood at 2420, 264 is a breakable now - see breakables below)
   add('out', LAMP(now ? 620 : 640, 262, now ? { mesh: 'lanternpost', lit: false, light: null, h: 190 } : {}), LAMP(1380, 8, { solid: 0 }),
     { t: 'fence', kind: 'wood', x0: 80, z0: 6, x1: 420, z1: 6, h: 50 }, { t: 'fence', kind: 'wood', x0: 860, z0: 6, x1: 1240, z1: 6, h: 50 },
     { t: 'prop', mesh: 'deadtree', x: 20, z: 258, h: 300, solid: 56, solidZ: 40, solidH: 240 });   // the footprint covers the root flare (162 x 149 at this size): the hero walked 65 units over the roots
