@@ -151,6 +151,27 @@ try {
       await shot(`${id}_away`, CROP);
     }
   }
+  if (PLAN === 'exits') {   // the new areas through their exits: find the area flag that opens the exit, set it (the area is rebuilt), walk in
+    for (const [from, exit] of String(args.exits || 'eshville_now:to_belltower,graveyard_now:to_ossuary').split(',').map((q) => q.split(':'))) {
+      const r = await page.evaluate(async ([from, exit]) => {
+        const v = window.__v2, sc = v.scene, g = window.__game, F = window.__F, A = await import('/src/v2/game/area.js');
+        const wait = async (fn, max) => { for (let i = 0; i < max; i++) { F.tick(4); await new Promise((r) => setTimeout(r, 15)); if (fn()) return i; } return -1; };
+        if (v.area !== from) { await sc.gotoArea(from, null); F.tick(10); }
+        const x0 = sc.area.exits.find((q) => q.id === exit); if (!x0) return { from, exit, error: 'no such exit', exits: sc.area.exits.map((q) => q.id) };
+        const before = x0.locked ?? null, fl = before ? await A.flagsThatOpen(from, sc.worldFlags, exit) : {};
+        if (before && !fl) return { from, exit, locked: before, error: 'no area flag opens it' };
+        if (before) { sc.setWorldFlags(fl); await wait(() => v.ready && !sc._go && sc.fadeA < 0.05, 400); }
+        const x = sc.area.exits.find((q) => q.id === exit), h = sc.sim.hero;
+        for (const e of sc.sim.enemies) { e.active = false; e.sight = 0; }
+        h.x = (x.x0 + x.x1) / 2; h.z = (x.z0 + x.z1) / 2; { let gy = -Infinity; for (const b of sc.W.boxes) { if (h.x < b.x0 || h.x > b.x1 || h.z < b.z0 || h.z > b.z1 || !b.walk) continue; if (b.y1 > gy) gy = b.y1; } if (Number.isFinite(gy)) h.y = gy; } sc.cam.snap = true;
+        const k = await wait(() => v.ready && v.area !== from && !sc._go && sc.fadeA < 0.05, 600);
+        return { from, exit, lockedBefore: before, flag: fl, lockedAfter: x.locked ?? null, to: x.to, arrived: v.area, waited: k, hero: [Math.round(sc.sim.hero.x), Math.round(sc.sim.hero.y), Math.round(sc.sim.hero.z)], kinds: [...new Set(sc.sim.enemies.map((e) => e.kind))], models: v.stats.chars.models, flags: { ...sc.worldFlags } };
+      }, [from, exit]);
+      console.log('exit:', JSON.stringify(r));
+      await ev(() => window.__F.tick(60));
+      await shot(`${from}_${exit}_arrived_full`);
+    }
+  }
   if (PLAN === 'ring') {
     const r = await ev(() => { const F = window.__F, sc = window.__v2.scene, sim = sc.sim, h = sim.hero, P = (sim.hookPoints ?? sc.W.hookPoints ?? [])[0]; if (!P) return null; for (const e of sim.enemies) { e.active = false; e.x += 6000; } F.put(P.x - 40, P.z - 150, 0, 1, P.y - 200); F.tick(30); return { P: { id: P.id, x: P.x, y: P.y, z: P.z, h: P.h, to: P.to }, hookId: h.hookId, hero: [h.x, h.y, h.z] }; });
     console.log('ring:', JSON.stringify(r));
