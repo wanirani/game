@@ -51,7 +51,7 @@ export function belltower(era = 'now', flags = {}) {
   // WORLD-LOOK: the tower is cut open towards the camera; left and right of the cut the front wall of the church goes on, and the ground's front goes deeper than the floor's own
   // (it was empty: the clear colour showed beside the side walls and under the front). A chunk of its own with one texture: the tower's two chunks keep their boxes.
   add('far', { t: 'deco', mesh: 'farwall', x: -900, y: -520, z: -60, x1: 0, z1: -60, h: TOP + 1100, mat: 'ashlar', piers: 300, k: 1.3, cell: 280 }, { t: 'deco', mesh: 'farwall', x: W, y: -520, z: -60, x1: W + 900, z1: -60, h: TOP + 1100, mat: 'ashlar', piers: 300, k: 1.3, cell: 280 },
-    { t: 'deco', mesh: 'apron', x: 0, y: -4, z: 0.6, w: W, d: 3, mat: 'ashlar', k: 0.5, skirt: 520 });
+    { t: 'deco', mesh: 'apron', x: -90, y: -4, z: 0.6, w: W + 180, d: 3, mat: 'ashlar', k: 0.5, skirt: 520 });
   add('high', { t: 'wall', x: -90, z: ZT + 400, w: W + 180, d: 90, y: 0, h: TOP + 330, mat: 'facade', kit: { style: 'stone', cell: 70, faces: 'F', plinth: 0, quoins: false, battlement: true, courses: [TOP + 150],
     windows: [200, 450, 700].map((u) => ({ u, y: TOP + 44, w: 96, h: 190, arch: 'point', rows: 5, cols: 1, lit: 0 })) } });
   // ── dressing ──

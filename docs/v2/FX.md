@@ -537,3 +537,12 @@ Owner, on the fire of `eshville_now`: "불은 딱 봐도 허접하지?". The par
 - Frame time and fill cost on the Fold were not measured (a big blaze view covers 0.8 / 1.2 / 1.6 screens of blended quads at low / mid / high).
 
 Tools: `node tools/v2/fire2_shot.mjs` (spots, `--before <commit>`, `--stats 1`, `--strip <spot>`, `--presets 1`), `node tools/v2/fire2_sheet.mjs` (the sheet as PNG), `node tools/v2/fire2_owner.mjs` (owner sheet).
+
+## 14. CROSSING (2026-11-18 19:52–21:50 UTC): the bell crossing as a staged moment
+
+- Code: `src/v2/game/crossing.js` (three programs of its own, built with `program()` of the engine; `post.js` and `index.js` of the effects are unchanged). Hit, magic and fire presets are untouched: `presets.js` only gained one block at its end.
+- The ring and the reveal are one full-screen pass over a copy of the frame (colour + a DEPTH_COMPONENT24 texture; with the post pass on, the composite goes into the copy and the depth is blitted next to it). The world position of every pixel comes from its depth (eye, right / up / forward and the two depth constants as uniforms); `d = distance(P, bell)`. The line is a few pixels wide on any surface (`fwidth(d)`), two fainter rings follow 2.3 m and 4.6 m behind, light is added with `c += min(add, 1.1) * (1 - 0.5 c)` so a wall never turns flat white. Sky pixels (depth 1) take a distance from the bell's place on the screen and are reached last.
+- The passage: a quarter-size time field (two RGBA8 targets: drain / shadow / radial push / erosion, and the light to add) drawn every frame, then one full-size pass with three texture reads. The grade target is the fog colour of the night ahead (`uTo`, `uFog`), not a fixed warm / cold pair: Eshville tonight is red, its 1697 is blue. Low tier (`#define LOW`): no cloud streaks, rain, dust or grain.
+- New presets (group holy, no sound and no screen feel of their own): `cross.gather` · `cross.ring` · `cross.lift` · `cross.dull` · `cross.open` · `cross.spark` · `cross.arrive` · `cross.glow`. `dx > 0` = towards tonight (cold light), `< 0` = towards 1697 (warm); `pow` = height of the bell above its foot / 100.
+- Honest: the frame copy has no multisampling, so edges are rougher during the ring (0.5 s) and the reveal (0.9 s). Nothing was seen on a phone. On the software GPU of the test machine one passage frame costs 25-45 ms at render size 0.5.
+

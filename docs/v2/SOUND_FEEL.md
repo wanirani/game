@@ -398,3 +398,11 @@ feel.release();                       // 고리 정지 + 엔진의 방 울림을
 - Wood: `wood_crack` (two cracks 20-40 ms apart, a 140-230 Hz knock, splinters), `wood_clatter` (6-9 boards landing: free-bar modes 260-880 Hz), `hoop_ring` (an iron hoop: partials of 690 / 820 Hz, three bounces, a wobble that speeds up as it settles).
 - Haptic `breakL`: pad weak motor 0.3 for 45 ms, phone 6 ms (the lightest enemy blow that vibrates a phone, `hitM`, is 8 ms).
 - Honest: all of it is synthesis by formula, judged by spectrum and envelope in this container - nobody has heard it on a phone speaker yet.
+
+## 15. 건넘의 소리와 진동 (CROSSING, 2026-11-18)
+
+- Events (table.js, all `flat`): `cross.gather` (the bell's light gathers: shimmer + wisp) → first toll `bell.toll` (as before) → `cross.rush` under the passage (1.25 s climbing, cut at its top; `cross.rush.long` starts it 1.75 s into the three-second form) + the bed `loop.cross` (loop kind `holy`, stopped by the second toll with a 0.1 s fade) + one `cross.beat` per ring of the passage (first at 0 s, then 0.40 / 0.47 / 0.54 … s apart; level −6 % and pitch +3 % per beat) → second toll with its tail: `cross.arrive.past` (toll at 0.84 + `cross_tail_past`: warm, low) or `cross.arrive.now` (toll at 1.19 + `cross_tail_now`: cold, glassy). The refusal: `cross.dull`.
+- Haptics: `crossBeat` (pad 0.22 / 0.1 for 60 ms, phone 8 ms), `crossArrive` (pad 0.8 / 0.5 for 320 ms, phone 40-40-90), `dull` (pad 0.3 / 0.05 for 80 ms, phone 14-40-10).
+- New samples (`python3 tools/v2/audio/build_cross_audio.py`, synthesis by formula, 66.9 KB together): `cross_rush_1` 12.6 KB · `cross_swell_1` 5.8 KB · `cross_tail_past_1` 18.4 KB (lazy) · `cross_tail_now_1` 23.4 KB (lazy) · `bell_dull_1` 6.7 KB.
+- Honest: judged by level and envelope only - nobody has heard them, in this container or on a phone. While the rules run slowed (the ring), sounds are low-passed and pitched down by the existing time-scale rule; the passage sets the time scale back to 1.
+
