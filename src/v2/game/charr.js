@@ -45,6 +45,7 @@ precision mediump float;
 uniform sampler2D uTex; uniform sampler2D uNoise;
 uniform vec3 uFogCol; uniform vec3 uSunDir; uniform vec3 uSun; uniform vec3 uAmb; uniform vec3 uTint;
 uniform vec3 uEye; uniform vec4 uRim; uniform vec4 uFx;   // uFx: flash, alpha, additive(1)/normal(0), solid mix
+uniform vec4 uKey; uniform float uRimK;                   // WORLD-LOOK: the area's moon key on characters (rgb; a = how much stronger the light edge is on the side away from the moon) and its rim strength
 uniform vec4 uDis;                                        // dissolve 0..1, edge width, noise scale, seed
 varying vec2 vUV; varying vec3 vN; varying float vFog; varying vec3 vWP; varying vec3 vLit;
 void main() {
@@ -57,10 +58,10 @@ void main() {
     edge = 1.0 - smoothstep(th, th + uDis.y, nz);
   }
   vec3 n = normalize(vN);
-  float wrap = clamp(dot(n, uSunDir) * 0.62 + 0.38, 0.0, 1.0);
+  float nl = dot(n, uSunDir), wrap = clamp(nl * 0.62 + 0.38, 0.0, 1.0), kd = max(nl, 0.0);
   vec3 v = normalize(uEye - vWP);
   float rim = pow(1.0 - clamp(dot(n, v), 0.0, 1.0), 2.6) * clamp(n.y * 0.5 + 0.75, 0.0, 1.0);
-  vec3 rgb = t.rgb * (uTint * (uAmb + uSun * wrap) + vLit) + uRim.rgb * rim * uRim.a;
+  vec3 rgb = t.rgb * (uTint * (uAmb + uSun * wrap) + vLit + uKey.rgb * (kd * kd)) + uRim.rgb * (rim * uRim.a * uRimK * (1.0 + uKey.a * clamp(0.25 - nl, 0.0, 1.0)));   // key and rim: the figure is lit, the ground around it stays dark (0, 0, 0, 0 and 1 = as before)
   rgb = mix(rgb, vec3(1.0), uFx.x);
   rgb = mix(rgb, uTint, uFx.w);
   rgb = mix(rgb, uFogCol, vFog);
@@ -69,8 +70,8 @@ void main() {
   gl_FragColor = vec4(rgb * a, a * (1.0 - uFx.z));
 }`;
 
-const UNI = ['uVP', 'uM', 'uJ', 'uFog', 'uTex', 'uNoise', 'uFogCol', 'uSunDir', 'uSun', 'uAmb', 'uTint', 'uEye', 'uRim', 'uFx', 'uDis', 'uLP', 'uLC'];
-const WHITE3 = [1, 1, 1], RIM0 = [0.55, 0.65, 0.9, 0.35], ZERO16 = new Float32Array(NL * 4);
+const UNI = ['uVP', 'uM', 'uJ', 'uFog', 'uTex', 'uNoise', 'uFogCol', 'uSunDir', 'uSun', 'uAmb', 'uTint', 'uEye', 'uRim', 'uFx', 'uDis', 'uLP', 'uLC', 'uKey', 'uRimK'];
+const WHITE3 = [1, 1, 1], RIM0 = [0.55, 0.65, 0.9, 0.35], ZERO16 = new Float32Array(NL * 4), KEY0 = new Float32Array(4);
 /** Reusable draw options (callers keep one and mutate it). */
 export const drawOpts = () => ({ tint: [1, 1, 1], flash: 0, alpha: 1, add: false, solid: 0, rim: [0.55, 0.65, 0.9, 0.35], dis: 0, seed: 0, cull: 1 });
 
@@ -180,6 +181,7 @@ export class CharRenderer {
     gl.uniform3fv(u.uFogCol, env.fog.color);
     gl.uniform3fv(u.uSunDir, env.sunDir); gl.uniform3fv(u.uSun, env.sun); gl.uniform3fv(u.uAmb, env.amb);
     gl.uniform3fv(u.uEye, env.eye);
+    gl.uniform4fv(u.uKey, env.key ?? KEY0); gl.uniform1f(u.uRimK, env.rimK ?? 1);   // env.key [r, g, b, a] / env.rimK: the area's character light (stage.light.key / .rimK), absent = as before
     if (lp !== this._lp) { this._lp = lp; this._lpv = lp ? lp.subarray(0, NL * 4) : ZERO16; this._lcv = lc ? lc.subarray(0, NL * 4) : ZERO16; }   // views are made once per light list, not per frame
     gl.uniform4fv(u.uLP, this._lpv); gl.uniform4fv(u.uLC, this._lcv);
     gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, noiseTex ?? this.white); gl.activeTexture(gl.TEXTURE0);

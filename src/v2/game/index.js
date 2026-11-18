@@ -36,6 +36,7 @@ import { UI_LOADER, UI_DEFAULT, STORY_LOADER } from './seams.js';
 import { StoryHost, readSave, clearSave } from './storyhost.js';   // STORY HOOK: the story plug-in, the save, the crossing (docs/v2/ENGINE_API.md 8-10)
 import { elementOf, shotAttach, shotMove, shotDetach, shotImpact } from './magic.js';
 import { Breakables } from './breakables.js';   // BREAK: jars, crates, barrels, their pieces and what drops out of them (docs/v2/ENGINE_API.md 13)
+import { Crossing } from './crossing.js';   // CROSSING: the bell crossing as a staged moment — ring, passage, reveal (docs/v2/ENGINE_API.md 12.3)
 const SKY_CAP = 96;   // rows of the 512-row sky canvas above the painted picture: its top row melting into the area's sky.top (see _sky)
 
 const FOCAL = 880, NEAR = 60, FAR = 24000, DIE_T = 0.9, HERO_MODEL = 'kael';
@@ -82,6 +83,7 @@ export default class V2Game extends Scene {
     this.heroA = null; this.actors = []; this.pool = new Map(); this._ERef = null;
     // STORY HOOK (storyhost.js): the plugged-in story, what each night remembers (fallen enemies, fired triggers), the crossing in progress and its veil
     this.host = null; this.nights = new Map(); this.xing = null; this.veil = '#000'; this._veilUnder = false; this._carry = null; this._armT = 0; this._holdT = 0; this._quiet = false; this._lastArea = ''; this._refused = false; this._reraise = false; this._hostErr = false;
+    this.cx = new Crossing(this);   // CROSSING: the staged bell crossing (crossing.js); state.cross is what the HUD reads while it runs
     this.bridge = bindFxSound(feel); this.feelN = 0; this.lastFeel = null; this._actE = null; this._simSteps = false;
     this.shotL = new Array(32).fill(null); this.shotN = 0;
     // the whip Vigilia (src/v2/whip, docs/v2/WHIP.md 7): simulated from the hero's hand every tick, drawn right after the characters
@@ -111,7 +113,7 @@ export default class V2Game extends Scene {
       area: { id: '', name: '', era: 'now' }, night: 'now', section: { id: '', label: '' }, enemies: [], enemiesLeft: 0, yardLeft: 0, numbers: this.numbers, numberN: 0,
       project: (x, y, z, out) => sc.project(x, y, z, out), done: false, doneT: 0, loading: true, message: '', message2: '', debug: this.perf.debug,
       debugLine: () => sc._debugLine(), stats: () => sc.stats(), dialog: null,
-      candles: { lit: 5, max: 5 }, resonance: { value: 0, cells: 3 }, left: 0, prompts: this.people.none, boss: null, objective: '', coins: 0,
+      candles: { lit: 5, max: 5 }, resonance: { value: 0, cells: 3 }, left: 0, prompts: this.people.none, boss: null, objective: '', coins: 0, cross: null,
       pad: { skill: { mode: 'hook', cd: 0, disabled: true }, bell: { mode: 'short', charge: 0, cd: 0, disabled: true }, roll: { cd: 0, disabled: false }, attack: { disabled: false }, jump: { disabled: false }, lock: { disabled: false } },
     };
     try { this.glr = new GLR({ forceGL1: /[?&]v2gl=1(&|$)/.test(globalThis.location?.search ?? ''), antialias: this.res.aa }); } catch (e) { this.glError = String(e?.message ?? e); console.warn('[v2g]', this.glError); }
@@ -126,6 +128,7 @@ export default class V2Game extends Scene {
   }
   exit() {
     if (this.host) { try { this.host.saveNow('leave'); this.host.release(); } catch (e) { console.error('[v2g] save on leaving failed', e); } }   // STORY HOOK
+    try { this.cx?.release(); } catch { /* lost context */ }   // CROSSING: a crossing under way leaves nothing behind (frame copies, programs, the passage's sound loop)
     this._detach();
     try { feel.setTimeScale(1); feel.release(); } catch { /* no audio */ }
     try { const hd = this.hud; if (hd) (hd.release ?? hd.dispose)?.call(hd); } catch { /* ui lane */ }
@@ -319,7 +322,9 @@ export default class V2Game extends Scene {
     // STORY HOOK — the bell crossing: the twin is built first, behind the veil; when there is nowhere to stand over there nothing is released
     let pre = null;
     if (opts?.cross && keep) {
-      try { pre = await loadArea(id, this.worldFlags); const sp = pre.id === id ? await freeSpot(pre, keep.x, keep.z) : null; if (sp) { keep.x = sp.x; keep.z = sp.z; if (sp.y != null) keep.y = sp.y; keep.moved = sp.moved; } else pre = null; }
+      // CROSSING: the staged crossing built the twin while the bell's light gathered (opts.pre, with the free spot it found then - used when the spot
+      // under the hero's feet at this moment has none); without it (WebGL1) the twin is built here as before
+      try { pre = opts.pre ?? await loadArea(id, this.worldFlags); const sp = (pre.id === id ? await freeSpot(pre, keep.x, keep.z) : null) ?? (opts.pre ? opts.spot ?? null : null); if (sp) { keep.x = sp.x; keep.z = sp.z; if (sp.y != null) keep.y = sp.y; keep.moved = sp.moved; } else pre = null; }
       catch (e) { console.warn('[v2g] crossing: the twin did not build:', String(e?.message ?? e)); pre = null; }
       if (!this.glr) return false;
       if (!pre) { this._refused = true; return false; }
@@ -415,6 +420,7 @@ export default class V2Game extends Scene {
       if (im) x.drawImage(im, 0, 0, c.width, c.height); else { x.fillStyle = '#6a6a72'; x.fillRect(0, 0, c.width, c.height); }
       if (T?.desat) { x.globalCompositeOperation = 'saturation'; x.globalAlpha = T.desat; x.fillStyle = '#808080'; x.fillRect(0, 0, 512, 512); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; }
       this.tex[n] = glr.texture(() => c, { repeat: T ? true : KIT_TEX[n]?.repeat ?? true, mip: true });
+      await this.cx.breath(); if (!this.glr) return;   // CROSSING: a load under the passage lets a frame through between its steps (crossing.js breath: nothing happens on any other load)
     }
     if (newSky) {   // sky backdrop: the top of the painted background, melted into this area's fog colour at the bottom (one canvas, one texture, redrawn per area)
       const c = this._skyC ?? (this._skyC = mk(2048, 512)), x = c.getContext('2d'), im = imgs.__sky, f = W.fog.color, fr = Math.round(f[0] * 255), fg = Math.round(f[1] * 255), fb = Math.round(f[2] * 255);
@@ -433,6 +439,7 @@ export default class V2Game extends Scene {
       if (!this.skyTex) this.skyTex = glr.texture(() => c, {});
       else if (!glr.lost) { const gl = glr.gl; gl.bindTexture(gl.TEXTURE_2D, this.skyTex.tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c); }
       this._skyKey = skyKey;
+      await this.cx.breath(); if (!this.glr) return;
     }
     if (first) {
       {   // small atlas for ground decals (all eight kinds of the env kit) and lamp glows (no prop cards)
@@ -451,6 +458,7 @@ export default class V2Game extends Scene {
     this.envMeshes = E.meshes.map((m) => ({ chunk: m.chunk, mesh: glr.mesh(m.data, m.count), tex: this.tex[m.tex], tris: m.count / 3, on: true })).filter((m) => m.tex);
     this.envChunks = [...E.bounds.entries()].map(([id, b]) => ({ id, b, on: true }));
     for (const m of this.envMeshes) m.c = this.envChunks.find((q) => q.id === m.chunk) ?? null;
+    await this.cx.breath(); if (!this.glr) return;
     for (const d of E.decals) { this._tintAt(W, d.x, (d.y ?? 0) + 4, d.z, 1, 1.8, this.tint); d._c = [this.tint[0], this.tint[1], this.tint[2]]; }
     // 3) characters: the hero + only the kinds this area spawns
     const kinds = [...new Set(W.spawns.map((s) => s.kind))].filter((k) => KINDS[k]);
@@ -470,11 +478,14 @@ export default class V2Game extends Scene {
     if (!this.heroA) this.heroA = this.cast.actor(HERO_MODEL, sword ? 'blade' : null, {});   // no sword: the hand (GRIPS.blade) holds the whip's handle
     // 4) effects
     if (!this.fx) this._makeFx();
+    await this.cx.breath(); if (!this.glr) return;
     // 5) rules
     this.area = area; this.W = W; this.env.fog = W.fog;
     { const d = W.light.moonDir, l = hyp(d[0], d[1], d[2]) || 1; this.env.sunDir[0] = d[0] / l; this.env.sunDir[1] = d[1] / l; this.env.sunDir[2] = d[2] / l; }
+    this.env.key = W.light.key ?? null; this.env.rimK = W.light.rimK ?? 1;   // WORLD-LOOK (light values only): the area's moon key and rim strength on characters (stage.light.key [r, g, b, darkSideRim] / .rimK; charr.js)
     this.sim = new Sim(W, this.brk.hook(this._hooks()));
     this._enterAt(spawn, keep);
+    await this.cx.breath(); if (!this.glr) return;
     this.brk.enter(area, this._quiet);   // BREAK: what was broken in this visit stays broken; the whole ones are baked into one buffer
     this.people.build(this, area, groundAt); this.anchors.build(area, this.perf.tier, (x, z) => groundAt(this.W, x, z)); this._peopleN = 19;
     { const B = W.boxes; let n = 0; for (let i = 0; i < B.length; i++) { const b = B[i]; if (b.solid && !b.walk && !b.gate && !b.actor && b.brk === undefined) n++; }   // what can hide the hero: walls and props (not floors, not the scene's own gate / person boxes)
@@ -488,13 +499,18 @@ export default class V2Game extends Scene {
     this.state.area.id = area.id; this.state.area.name = area.name; this.state.area.era = area.era; this.state.night = area.era;
     // 6) warm everything behind the loading screen, then wait for the GPU
     for (const k of kinds) for (let i = this._poolOf(KINDS[k].model).length; i < Math.min(4, W.spawns.length); i++) { const a = this._newActor(k); if (a) this._free(a); }
+    await this.cx.breath(); if (!this.glr) return;
     this._tick0();
-    this._warm();
+    this._warm(1);
+    await this.cx.breath(); if (!this.glr) return;
+    this._warm(2);
+    await this.cx.hold(); if (!this.glr) return;   // CROSSING: the passage has its time (1.2 s; 3 s for the long form) even when the load was quicker
     this.loadMs = Math.round(performance.now() - t0);
     this.ready = true; this.state.loading = false; this.sampleN = 0;
     const quiet = this._quiet; this._quiet = false;
     if (!quiet) this.emit('area.enter', { area: area.id, era: area.era });   // (the same area rebuilt in another state is not a new arrival)
     if (this._reraise) { this._reraise = false; this._raiseCleared(); }   // STORY HOOK: first load of a saved game
+    this.cx.prepare();   // CROSSING: its two shader programs are compiled behind the first loading screen
   }
   // ───────────────────────── STORY HOOKS: boot with the story and the save, nights, candles, the crossing (storyhost.js) ─────────────────────────
   /** plug the story in (seams.js STORY_LOADER: on for 「본 게임」, off with v2story=0 and when the address names an area without v2story=1), continue from the save, load the first area */
@@ -566,6 +582,7 @@ export default class V2Game extends Scene {
   cross(o) {
     const a = this.area, h = this.sim?.hero, to = (o && typeof o.to === 'string' && o.to) || a?.twin || null;
     if (!this.ready || !a || a.test || !to || this._go || this.xing || !h || h.dead || this.hud.modal) return false;
+    if (this.cx.usable) return this.cx.begin(o, to);   // CROSSING: gather -> ring -> passage -> reveal (crossing.js). What follows is the old pale veil, kept for WebGL1
     this.xing = { to, years: !!o?.years, from: a.era }; this._refused = false;
     this.locked = true; this.veil = a.era === 'past' ? '#dfe6f4' : '#ffe9c8'; this._veilUnder = false;
     this._go = { to, spawn: null, keep: true, night: true, cross: true }; this.fadeTo = 1;   // update() starts the load when the veil is full (0.7 s)
@@ -577,8 +594,11 @@ export default class V2Game extends Scene {
   }
   /** the other side of a crossing (or the refusal: no floor near that spot in the other night - the bell rings dull and the hero stays, GDD 2.2) */
   _crossed(go, ok) {
-    const x = this.xing; this.xing = null; this._veilUnder = true;
+    const staged = !go || this.cx.on;   // CROSSING: the staged moment owns the far side (the reveal, the second toll, the banner) and the picture of the refusal
+    if (staged && ok) { this.cx.arrived(true); return; }
+    const x = this.xing; this.xing = null; if (!staged) this._veilUnder = true;
     if (!ok) {
+      if (this.cx.on) this.cx.arrived(false);   // (the twin failed after the passage had begun: the staged moment ends here)
       const t = this.host?.STORY.TEXT?.system?.dull ?? '종이 둔하게 울린다';
       if (this._refused) { this._refused = false; this._toast(t, 'warn'); if (this.ready && this.area) this.emit('area.enter', { area: this.area.id, era: this.area.era, refused: true }); }   // a sequence waiting for the other side goes on here
       return;
@@ -638,8 +658,9 @@ export default class V2Game extends Scene {
     if (!this.wr) { try { this.wr = new WhipRenderer(glr.gl); } catch (e) { console.warn('[v2g] the whip is not drawn:', String(e?.message ?? e)); this.wr = null; } }
   }
   /** draw every model, texture and effect once and block until the GPU has really done it (no hitch in the first fight) */
-  _warm() {
+  _warm(part = 0) {   // part 1 / 2 = its two halves on their own (CROSSING: a frame of the passage is drawn between them); 0 = both
     const glr = this.glr, gl = glr.gl, fx = this.fx, g = this.game, h = this.sim.hero;
+    if (part === 2) { if (fx) { fx.clear(); this._gl(g.viewW, g.viewH, 1, false); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, PX); } return; }
     this._camera(1 / 60);
     if (fx) {
       const P = PRESET_IDS, x = h.x + 60, y = h.y, z = h.z, ev = fx.onEvent;
@@ -652,7 +673,7 @@ export default class V2Game extends Scene {
     }
     this._gl(g.viewW, g.viewH, 1, true);
     gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, PX);
-    if (fx) { fx.clear(); this._gl(g.viewW, g.viewH, 1, false); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, PX); }
+    if (part !== 1 && fx) { fx.clear(); this._gl(g.viewW, g.viewH, 1, false); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, PX); }
   }
   // ───────────────────────── characters ─────────────────────────
   _poolOf(model) { let p = this.pool.get(model); if (!p) { p = []; this.pool.set(model, p); } return p; }
@@ -825,6 +846,7 @@ export default class V2Game extends Scene {
         if (name === 'bell') sc.emit('bell.echo', { r: c });                       // short ring (echo)
         else if (name === 'ringLong') sc._ringLong(b ?? null);                     // long ring: b = the kneeling boss to be sent off, or null = the scene decides (crossing)
         else if (name === 'deny') sc._deny(b, c);                                  // a tool could not be used: say why
+        else if (name === 'act') { if (b === 'ring' && a === sc.sim?.hero) sc.cx.prebuild(); }   // CROSSING: the long ring is being wound up in front of a bell - the other night is built now, so its answer is there when the bell sounds
         else if (!sc.story && (name === 'kneel' || name === 'bossFlee' || name === 'bossReturn' || name === 'bossDown')) sc._bossNote(name, a, b);
         if (sc.story) { sc.emit('play.' + name, [a, b, c, d]);
           const ph = name === 'kneel' ? (b === 'down' ? 'kneel' : null) : name === 'bossFlee' ? 'flee' : name === 'bossReturn' ? 'driven' : name === 'bossDown' ? (b ? 'sent' : 'down') : null;   // STORY HOOK (DATA_FORMAT 6)
@@ -838,6 +860,7 @@ export default class V2Game extends Scene {
     const t0 = performance.now(), g = this.game;
     if (this._offT > 0) this._offT -= dt;
     if (this._armT > 0) this._armT -= dt;
+    if (this.cx.on) this.cx.tick(dt);   // CROSSING: gather -> ring -> passage (starts the load) -> reveal -> glow (crossing.js)
     if (this.fadeA !== this.fadeTo) { this.fadeA = this.fadeTo > this.fadeA ? Math.min(this.fadeTo, this.fadeA + dt / (this.xing ? 0.7 : 0.28)) : Math.max(this.fadeTo, this.fadeA - dt / (this._veilUnder ? 1.1 : 0.5)); if (this.fadeA <= 0 && !this.xing) { this.veil = '#000'; this._veilUnder = false; } }   // area travel: to black, load, back (a crossing: a pale veil, slower)
     if (this._go && this.fadeA >= 1) {
       const go = this._go; this._go = null;
@@ -847,7 +870,7 @@ export default class V2Game extends Scene {
       });
       return;
     }
-    if (input.pressed('menu') && g.registry.title && !this.hud.modal) { if (this.ready) this._pause(); else this._leave(); if (!this.hud.modal) return; }   // ESC / START: the pause menu (leaving is one of its rows)
+    if (input.pressed('menu') && g.registry.title && !this.hud.modal && !(this.ready && this.xing)) { if (this.ready) this._pause(); else this._leave(); if (!this.hud.modal) return; }   // ESC / START: the pause menu (leaving is one of its rows)
     if (!this.ready || !this.glr || this.glr.lost) return;
     const sim = this.sim, inp = this.inp, fx = this.fx;
     let mx = input.analogX || input.axisX, mz = -(input.analogY || input.axisY);
@@ -1140,8 +1163,9 @@ export default class V2Game extends Scene {
     s.viewW = Wv; s.viewH = Hv; s.safe = g.safe ?? s.safe;
     const off = this.glError || !this.glr ? 1 : !this.ready ? 2 : this.glr.lost ? 3 : 0;
     if (off) {
+      if (off === 2 && this.cx.on && this.cx.phase === 'passage') { this.cx.passage(ctx, hctx); this._lastDraw = 0; return; }   // CROSSING: the frozen picture of the night being left, with time running over it, while the twin loads
       if (this.mode === 'layer') this._show(false);
-      if (off === 2 && this.xing && this.fadeA > 0.5) { ctx.fillStyle = this.veil; ctx.fillRect(0, 0, Wv, Hv); this._lastDraw = 0; return; }   // STORY HOOK: a crossing keeps its veil while the twin loads
+      if (off === 2 && this.xing && this.fadeA > 0.5) { ctx.fillStyle = this.veil; ctx.fillRect(0, 0, Wv, Hv); this._lastDraw = 0; return; }   // STORY HOOK: (WebGL1 only) a crossing keeps its veil while the twin loads
       s.message = off === 1 ? 'WebGL 을 쓸 수 없어 게임을 열 수 없습니다' : off === 2 ? '불러오는 중…' : '화면을 되살리는 중…'; s.message2 = off === 1 ? String(this.glError || '') : '';
       try { this.hud.draw(ctx, s); } catch (e) { this._hudFail(e); } s.message = '';
       this._lastDraw = 0;
@@ -1149,7 +1173,7 @@ export default class V2Game extends Scene {
     }
     if (this.mode === 'layer') this._show(g.top === this);
     const glr = this.glr;
-    if (this._restored !== glr.restored) { this._restored = glr.restored; this.cr.restore(); try { this.fx?.dispose(); } catch { /* dead objects */ } this._makeFx(); try { this.wr?.restore(); } catch { /* still lost */ } this._warm(); }   // context came back
+    if (this._restored !== glr.restored) { this._restored = glr.restored; this.cx.lost(); this.cr.restore(); try { this.fx?.dispose(); } catch { /* dead objects */ } this._makeFx(); try { this.wr?.restore(); } catch { /* still lost */ } this._warm(); }   // context came back
     if (this._lastDraw > 0 && !this.hud.modal && this.res.frame(t0 - this._lastDraw)) L.force = true;   // render size governor (res.js): measured on real frame intervals
     this._lastDraw = t0;
     this._place();
@@ -1175,7 +1199,8 @@ export default class V2Game extends Scene {
     this._sky(b); const nSky = b.n;
     this._decals(b, a); const nDecal = b.n - nSky;
     this._glows(b); this.brk.glows(b, a); const nGlow = b.n - nSky - nDecal;
-    if (fx) fx.post.begin(w, hgt);
+    const cxT = this.cx.on ? this.cx.target(w, hgt) : null;   // CROSSING: while the ring runs over the old night / the new night opens, the frame goes into a copy (colour + depth) first
+    if (fx) fx.post.begin(w, hgt, cxT); else if (cxT) gl.bindFramebuffer(gl.FRAMEBUFFER, cxT);
     glr.begin(vp, W.fog, W.sky.top, this.A);
     glr.uploadDyn(b.n);
     glr.drawDyn(this.skyTex, 0, nSky, false);
@@ -1202,6 +1227,7 @@ export default class V2Game extends Scene {
     glr.drawDyn(this.sprTex, nSky + nDecal, nGlow, true);
     glr.stats.draws += cr.stats.draws; glr.stats.tris += cr.stats.tris;
     if (fx) { fx.draw(this.fxCam); fx.post.end(fx.feel.screen); }
+    if (cxT) this.cx.compose(w, hgt);   // CROSSING: one pass composes the screen from the copy (crossing.js)
   }
   /** visible chunks only (bounding box against the view frustum) */
   _cull(m) {
@@ -1359,7 +1385,7 @@ export default class V2Game extends Scene {
       chars: cr ? { draws: this.c3.draws, tris: Math.round(this.c3.tris), drawn: this.c3.drawn, culled: this.c3.culled, texBytes: cr.stats.texBytes, bufBytes: cr.stats.bufBytes, models: cast ? [...cast.assets.keys()] : [], weapons: cast ? [...cast.weapons.keys()] : [], clips: cast?.lib ? Object.keys(cast.lib.clips).length : 0, libError: cast?.libError ?? null, actors: this.actors.length, heroClip: this.heroA?.anim.cur?.name ?? '' } : null,
       fx: fx ? { tier: fx.tier, post: fx.postOn, bytes: fx.gpuBytes, particles: fx.particles.drawn ?? 0, lights: fx.lights.count } : null,
       breakables: { ...this.brk.stat, peak: this.brk.shPeak, coins: this.brk.coins }, res: this.res.info(), area: this.area?.id ?? '', people: { n: this.people.list.length, drawn: this.people.drawn ?? 0, spots: this.people.spots.length }, anchors: { n: this.anchors.list.length, live: this.anchors.live, lit: this.anchors.lit },
-      mode: this.mode, hud: this.hudKind, resK: this.perf.resK, everyFrame: this.everyFrame, perfSaved: this.perf.saved, loadMs: this.loadMs ?? 0,
+      mode: this.mode, hud: this.hudKind, resK: this.perf.resK, everyFrame: this.everyFrame, perfSaved: this.perf.saved, loadMs: this.loadMs ?? 0, cross: this.cx ? this.cx.info() : null,
       canvases: (this._canvases?.length ?? 0) + (G ? 1 : 0) + (this.layer.hud ? 1 : 0), assets: this.assetList(),
     };
   }

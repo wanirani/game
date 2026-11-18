@@ -87,8 +87,10 @@ export function graveyard(era = 'now', flags = {}) {
     stage: {
       id: 'graveyard_' + era, name: '안개의 묘지',
       sky: { img: 'bg/s02_graveyard', crop: 0.66, span: 84 * D, bottom: -7 * D, top: [0.04, 0.06, 0.075] },
-      fog: now ? { color: [0.1, 0.135, 0.15], near: 380, far: 2300, max: 0.965 } : { color: [0.06, 0.085, 0.135], near: 800, far: 3200, max: 0.92 },
-      light: now ? { ambient: [0.27, 0.33, 0.38], moon: [0.42, 0.52, 0.6], moonDir: [-0.447, 0.745, -0.496] } : { ambient: [0.28, 0.32, 0.45], moon: [0.46, 0.5, 0.7], moonDir: [-0.447, 0.745, -0.496] },
+      // WORLD-LOOK: the fog begins BEHIND the figures (near 380 put 44 % fog on the hero himself at the field camera's 830 px: figure and ground melted into one grey);
+      // the characters get a cold moon key and a light edge on their dark side (light.key / light.rimK - src/v2/game/charr.js), the ground stays as dark as it was
+      fog: now ? { color: [0.1, 0.135, 0.15], near: 900, far: 2500, max: 0.96 } : { color: [0.06, 0.085, 0.135], near: 900, far: 3200, max: 0.92 },
+      light: now ? { ambient: [0.25, 0.31, 0.37], moon: [0.42, 0.52, 0.6], moonDir: [-0.447, 0.745, -0.496], key: [0.34, 0.44, 0.6, 1.3], rimK: 1.7 } : { ambient: [0.28, 0.32, 0.45], moon: [0.46, 0.5, 0.7], moonDir: [-0.447, 0.745, -0.496], key: [0.3, 0.36, 0.52, 1.2], rimK: 1.6 },
       sections: [
         { id: 'road', label: '묘지 가는 길', x0: 0, x1: 1200, z0: -100, z1: 900, cam: camV },
         { id: 'field', label: '안개의 묘지', x0: 0, x1: 1200, z0: 900, z1: 2300, cam: { yaw: 0, pitch: 26 * D, dist: 880, lookY: 30, leadX: 0, leadZ: 60, minX: 380, maxX: 820, zFollow: 1, tallK: 0.12 } },
