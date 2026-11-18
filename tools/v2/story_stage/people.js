@@ -8,7 +8,7 @@ export const PEOPLE = {
     voice: '비석·쪽지·공고에 적힌 글. 따옴표 없이 적힌 그대로.' },
 
   kael: { id: 'kael', name: '카엘', title: '발크레인 가문의 사냥꾼', eras: ['now', 'past'], model: 'kael', portrait: null, side: 'right',
-    voice: '말이 짧고 곧다. 어른과 처음 보는 이에게는 합쇼체(~습니다, ~십시오). 아이에게는 낮은 반말(~다, ~자). 적과 혼잣말은 짧은 평서(~군, ~다). 혼잣말은 괄호 안에.' },
+    voice: '말이 짧고 곧다. 어른과 처음 보는 이에게는 합쇼체(~습니다, ~십시오). 아이에게는 낮은 반말(~다, ~자). 적과 혼잣말은 짧은 평서(~군, ~다). 혼잣말은 괄호 안에. 떠나보내는 이에게는 다시 합쇼체.' },
 
   alberto: { id: 'alberto', name: '알베르토 신부', title: '에슈빌 성당의 사제', eras: ['now'], model: 'alberto', portrait: 'alberto', side: 'left',
     voice: '하게체(~하게, ~일세, ~다네, ~나?). 느리고 따뜻하다. 카엘을 「자네」라 부른다. 버릇말 「허허」.' },

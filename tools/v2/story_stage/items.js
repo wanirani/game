@@ -23,7 +23,7 @@ export const ITEMS = {
   knell_bell: { id: 'knell_bell', name: '조종', kind: 'key',
     desc: '떠나는 이를 보내는 작은 종. 납골당의 빈 종대에 건다.' },
   crow_feather: { id: 'crow_feather', name: '까마귀 깃털', kind: 'keepsake',
-    desc: '납골당 문간에 떨어져 있었다. 누가 두고 갔을까.' },
+    desc: '납골당 맨 안에서 발치에 떨어졌다. 누구의 것일까.' },
 };
 
 // one short line under the section name (16 characters or fewer)
@@ -34,6 +34,7 @@ export const OBJECTIVES = {
   climb_tower: { id: 'climb_tower', text: '종탑에 오른다' },
   guard_elise: { id: 'guard_elise', text: '엘리제를 지킨다' },
   find_key: { id: 'find_key', text: '묘지 문 열쇠를 구한다' },
+  show_shard: { id: 'show_shard', text: '에드문트에게 조각을 보인다' },
   ring_big_bell: { id: 'ring_big_bell', text: '큰 종 앞에서 종을 친다' },
   to_smithy_now: { id: 'to_smithy_now', text: '대장간에 들른다' },
   open_gate: { id: 'open_gate', text: '묘지 문을 연다' },

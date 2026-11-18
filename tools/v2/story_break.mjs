@@ -86,8 +86,8 @@ console.log('3. the same event twice');
   g.T('church.arrive'); g.T('church.arrive'); g.drain();
   ok(g.pages.filter((p) => p.includes('카엘 발크레인입니다')).length === 1, 'trigger twice while the scene is open: plays once');
   g.talk('alberto.church'); g.talk('alberto.church'); g.talk('alberto.church');
-  const n = g.drain();
-  ok(n === 1, 'talk pressed three times while the box is open: one page, not three (got ' + n + ')');
+  g.drain();
+  ok(g.pages.filter((p) => p.includes('아이는 벌써')).length === 1 && !g.pages.some((p) => p.includes('두려워 말게')), 'talk pressed three times while the box is open: the lines play once, the next variant is not used up');
   // the bell pressed twice during the crossing must not cross back
   const h = game({ holdArea: true });
   h.area = 'eshville_now'; h.st.load({ flags: { fell: true, crossed: true, promise: true, key_entrusted: true, met_edmund: true }, items: { valkrein_knot: 1 }, area: 'eshville_now', era: 'now', done: ['ev_opening', 'ev_past_wake', 'ev_bell_first', 'ev_return_first'] });

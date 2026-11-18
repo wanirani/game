@@ -3,6 +3,9 @@
 
 export const DIALOGS_DUNGEON = {
   // ───────── 15–20 종탑 ─────────
+  'tower.door': [{ pages: [
+    ['kael', '(종탑 문. 종소리는 저 위에서 난다.)'],
+  ] }],
   'tower.enter': [{ pages: [
     ['elise', '아저씨, 위예요! 여기예요!'],
   ] }],
@@ -30,12 +33,12 @@ export const DIALOGS_DUNGEON = {
     ['kael', '(같은 방이다. 백 년 전의.)'],
   ] }],
   'oss.wedge': [
-    { if: ['wedge_stone'], pages: [['narrator', '돌 석상이 틈에 서 있다.']] },
+    { if: ['wedge_stone'], pages: [['narrator', '석상이 틈에 서 있다.']] },
     { pages: [
       ['narrator', '바닥이 갈라진 틈 앞에\n작은 종 무늬가 있다.'],
       ['kael', '(무엇을 밀어 둘까.)'],
     ], choice: { options: [
-      { label: '돌 석상', pages: [['narrator', '돌 석상을 틈에 밀어 둔다.']],
+      { label: '석상', pages: [['narrator', '석상을 틈에 밀어 둔다.']],
         then: [['setFlag', 'wedge_stone'], ['clearFlag', 'wedge_wood'], ['setFlag', 'pending_change']] },
       { label: '나무 상자', pages: [['narrator', '나무 상자를 틈에 밀어 둔다.']],
         then: [['setFlag', 'wedge_wood'], ['setFlag', 'pending_change']] },
@@ -64,7 +67,7 @@ export const DIALOGS_DUNGEON = {
     { pages: [['sera', '부르면 달려갈게요.\n빛이 함께하기를.']] },
   ],
   'oss.riddle': [
-    { if: ['riddle_done'], pages: [['sign', '곡하는 이 마그다.\n떠나는 이를 노래로 배웅했다.']] },
+    { if: ['riddle_done'], pages: [['sign', '곡하는 이 프리다.\n떠나는 이를 노래로 배웅했다.']] },
     { pages: [
       ['narrator', '석관 셋. 글씨가 닳아\n읽을 수 없다.'],
       ['kael', '(그 밤에는 읽을 수 있었겠지.)'],
@@ -72,9 +75,13 @@ export const DIALOGS_DUNGEON = {
   ],
   'oss.riddle.echo': [{ pages: [
     ['narrator', '메아리 창에 그 밤의\n석관이 비친다.'],
-    ['sign', '곡하는 이 마그다.\n떠나는 이를 노래로 배웅했다.'],
+    ['sign', '곡하는 이 프리다.\n떠나는 이를 노래로 배웅했다.'],
     ['kael', '(배웅하던 사람. 노래의 주인이군.)'],
-    ['narrator', '석관 곁에 작은 종 넷이 놓여 있다.\n조종이다.'],
+    ['narrator', '그 밤의 석관 곁에 작은 종 넷이\n놓여 있다. 조종이다.'],
+  ] }],
+  // the knells are picked up that night (what is left in the past must come from the past — GDD 2.4 rule 3)
+  'oss.knell.take': [{ pages: [
+    ['narrator', '석관 곁의 조종 넷을 챙긴다.'],
   ] }],
   'oss.knells.done': [{ pages: [
     ['kael', '(넷 다 걸었다.\n백 년 뒤에 울릴 종이다.)'],
@@ -96,7 +103,7 @@ export const DIALOGS_DUNGEON = {
     ['kael', '그건 배웅이 아니다. 붙드는 거지.'],
   ] }],
   'boss.flee': [{ pages: [
-    ['banshee_queen', '…그 밤이 좋았단다.\n다들 살아 있던 밤.'],
+    ['banshee_queen', '…그 밤이 좋았단다. 넷째 발크레인이\n아직 살아 있던 밤.'],
   ] }],
   'boss.past': [{ pages: [
     ['narrator', '그 밤의 예배굴. 제단 아래\n엘리제가 잠들어 있다.'],
@@ -108,7 +115,7 @@ export const DIALOGS_DUNGEON = {
   'boss.sent': [{ pages: [
     ['banshee_queen', '…이번 발크레인은 배웅이 아니라\n마중이구나.'],
     ['banshee_queen', '…잘 가라는 말, 나도\n듣고 싶었단다.'],
-    ['kael', '잘 가라. 배웅은 내가 하지.'],
+    ['kael', '잘 가십시오.\n이번 배웅은 제가 합니다.'],
   ] }],
   'lia.warn': [{ pages: [
     ['lia', '발크레인.'],
@@ -130,6 +137,9 @@ export const DIALOGS_DUNGEON = {
     ['lotte', '있잖아, 내가 치면 네가 답해.\n약속!'],
     ['elise', '약속!', 'joy'],
     ['lotte', '아저씨도요. 길을 모르겠으면\n종으로 물어요. 종으로 답할게요.'],
+  ] }],
+  // at the bell, just before the last crossing home
+  'ending.bread': [{ pages: [
     ['lotte', '참, 빵은 맛있었어요?'],
     ['kael', '…달았다.'],
     ['lotte', '거짓말. 그거 딱딱하기만 한데.'],
@@ -144,8 +154,7 @@ export const DIALOGS_DUNGEON = {
     ['elise', '이모! 저 백 년 전에 다녀왔어요!\n로테 언니도 만났어요!', 'joy'],
     ['marta', '하하, 그래그래. 수프부터 먹어.\n사냥꾼 양반도 앉아!'],
     ['alberto', '…로테? 방금 로테라고 했나.'],
-    ['alberto', '…….'],
     ['alberto', '…아닐세. 오래된 이름이라서.'],
-    ['narrator', '여관 창가에 까마귀 깃털 하나가\n놓여 있다.'],
+    ['narrator', '여관 창가에도 까마귀 깃털 하나가\n놓여 있다.'],
   ] }],
 };

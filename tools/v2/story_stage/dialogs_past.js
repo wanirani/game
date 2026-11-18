@@ -9,9 +9,7 @@ export const DIALOGS_PAST = {
     ['lotte', '에슈빌이죠. 저는 로테예요.\n여기 종지기고요.'],
     ['lotte', '여자애는 박쥐들이\n납골 언덕으로 물고 갔어요.'],
     ['kael', '납골 언덕. 어느 쪽이지.'],
-    ['lotte', '묘지 맨 안쪽이요. 근데 밤엔\n묘지 문을 잠가요.'],
-    ['lotte', '열쇠는 대장간 아저씨한테 있어요.\n있잖아요, 큰길은 조심해요!'],
-    ['kael', '(종에 금이 없다. …언제지, 여기는.)'],
+    ['lotte', '묘지 맨 안쪽이요. 밤엔 문을 잠가요.\n열쇠는 대장간 아저씨한테 있어요.'],
   ] }],
   'lotte.fell': [
     { if: ['elise_home'], pages: [['lotte', '엘리제한테 전해 줘요.\n내일도 칠 거라고요. 약속!']] },
@@ -24,7 +22,7 @@ export const DIALOGS_PAST = {
     { if: ['has:valkrein_knot'], pages: [
       ['lotte', '그 매듭, 에드문트 아저씨 솜씨죠?\n있잖아요, 그분 수프는 맛없어요.'],
     ] },
-    { pages: [['lotte', '대장간은 큰길에 있어요.\n주막은 바로 그 옆이고요.']] },
+    { pages: [['lotte', '대장간은 큰길에 있어요. 주막 옆이요.\n있잖아요, 큰길은 조심해요!']] },
   ],
   'past.street': [{ pages: [
     ['kael', '(해골이 아니다. 갓 묻힌 주검이군.)'],
@@ -43,7 +41,7 @@ export const DIALOGS_PAST = {
   'villager.plague': [
     { once: true, pages: [
       ['farmer', '검은 깃발 보이지?\n저 집은 다 앓아누웠구먼.'],
-      ['farmer', '붉은 달만 뜨면 이 모양이라니까.'],
+      ['farmer', '붉은 달이 뜨더니 이 모양이라니까.'],
     ] },
     { pages: [['farmer', '올해 밭은 다 틀렸구먼.']] },
   ],
@@ -59,21 +57,24 @@ export const DIALOGS_PAST = {
     ['narrator', '작은 주막. 식탁에 수프 세 그릇,\n그리고 빈 의자 하나.'],
     ['edmund', '앉아라. 수프가 식는다.'],
     ['wolfram', '어이 대장, 길에서 또\n사람을 주워 왔네.'],
-    ['agnes', '울프람 씨. 손님께 빵부터\n건네십시오.'],
-    ['edmund', '에드문트 발크레인이다.\n동이 트면 성에 오른다.'],
+    ['edmund', '에드문트 발크레인이다.\n달이 지기 전에 성에 오른다.'],
     ['kael', '(…고조할아버지.)'],
     ['kael', '카엘입니다. 저는 백 년 뒤—'],
-    ['narrator', '종이 울린다.\n말이 종소리에 묻힌다.'],
+  ] }],
+  // the bell covers the word (a sound step sits between the two sets — heard, not told)
+  'table.bell': [{ pages: [
     ['edmund', '…방금 뭐라고 했나?\n종이 울려서.'],
     ['kael', '…아닙니다. 길손입니다.'],
+  ] }],
+  // second talk at the table: the knot and the blank notice
+  'table.knot': [{ pages: [
+    ['edmund', '그 손에 쥔 건 뭐지.'],
+    ['kael', '종 조각입니다.\n떨어질 때 쥐고 있었습니다.'],
+    ['edmund', '채찍 이리 다오. 끝에 묶어 주지.\n발크레인 매듭이다. 안 풀린다.'],
     ['wolfram', '길손이 채찍은 대장이랑 똑같이 쓰네.\n수상한데, 공고라도 붙일까?'],
     ['sign', '사람 찾음. 채찍 쓰는 길손.\n사례금 ( )'],
     ['edmund', '칸은 비워 둬라.\n돌아와서 채우지.', 'smile'],
     ['agnes', '돌아와서, 입니다. 꼭 그리하십시오.'],
-    ['edmund', '그 손에 쥔 건 뭐지.'],
-    ['kael', '종 조각입니다.\n떨어질 때 쥐고 있었습니다.'],
-    ['edmund', '채찍 이리 다오. 끝에 묶어 주지.\n발크레인 매듭이다. 안 풀린다.'],
-    ['edmund', '큰 종 앞에서 울려 봐라.\n종은 종끼리 답하는 법이지.'],
   ] }],
   'edmund.tavern': [
     { if: ['bell_hung'], pages: [['edmund', '수프는 아직 따뜻하다, 젊은이.\n너도 식기 전에 돌아와라.', 'smile']] },
@@ -82,13 +83,12 @@ export const DIALOGS_PAST = {
     { pages: [['edmund', '열쇠는 하드윈에게 물어라.\n대장간은 바로 옆이다.']] },
   ],
   'smithy.entrust': [{ pages: [
-    ['hadwin1', '묘지 문 열쇠? 허, 그건 못 내주오.\n묘지기와 나, 둘만 쥐는 열쇠구려.'],
+    ['hadwin1', '묘지 문 열쇠? 허, 그건 못 내주오.\n묘지기와 나, 둘만 쥐는 열쇠라오.'],
     ['kael', '하나 더 벼려 주십시오.'],
-    ['hadwin1', '벼릴 수야 있소. 헌데 날이 새야\n끝나오. 쇠도 식어야 하오.'],
+    ['hadwin1', '벼릴 수야 있소. 헌데 날이 새야\n끝나오. 식히는 데도 한참이오.'],
     ['kael', '(날이 새면 늦는다.\n…백 년이면 넉넉하겠지.)'],
     ['kael', '맡겨 두겠습니다.\n쓸 사람은 백 년 뒤에 옵니다.'],
-    ['hadwin1', '허, 농도 잘하시는구려.\n좋소, 선불이오.'],
-    ['hadwin1', '쇠로 하겠소, 은으로 하겠소?'],
+    ['hadwin1', '허, 농도 잘하시는구려. 좋소, 선불이오.\n쇠로 하겠소, 은으로 하겠소?'],
   ], choice: { options: [
     { label: '은 열쇠', pages: [['hadwin1', '은이라. 값은 나가도\n녹은 안 스오.']], then: [['setFlag', 'key_order_silver']] },
     { label: '쇠 열쇠', pages: [['hadwin1', '쇠가 튼튼하긴 하오.\n녹만 안 슬면 말이오.']], then: [['setFlag', 'key_order_iron']] },
@@ -98,7 +98,7 @@ export const DIALOGS_PAST = {
     ['kael', '비워 두십시오.'],
   ] }],
   'hadwin1.smithy': [
-    { if: ['crossed'], pages: [['hadwin1', '허, 또 오셨구려. 열쇠는 아직이오.\n쇠가 식어야 하오.']] },
+    { if: ['crossed'], pages: [['hadwin1', '허, 또 오셨구려. 열쇠는 아직이오.\n식으려면 멀었소.']] },
     { pages: [['hadwin1', '허, 걱정 마시오. 벼려 두겠소.\n백 년이든 이백 년이든.']] },
   ],
 
@@ -123,13 +123,22 @@ export const DIALOGS_PAST = {
       then: [['unlockExit', 'to_graveyard', 'eshville_past'], ['setFlag', 'past_gate_open']] },
     { pages: [['kael', '(잠겼다. 열쇠는 대장간에\n있다고 했지.)']] },
   ],
-  'keeper.greets': [{ pages: [
-    ['keeper', '이 밤에 손님이 다 오시네요.\n문은 잠가 뒀는데, 용케 여셨지요.'],
-    ['kael', '이름 없는 무덤 둘을 찾습니다.'],
-    ['keeper', '오늘 묻은 남매 말씀이지요.\n석수가 역병이 무서워 달아났답니다.'],
-    ['keeper', '이름은 제 장부에 있습니다.\n누나 한나, 동생 틸.'],
-    ['keeper', '끌은 여기 있습니다. 저는 손이 떨려\n새기지를 못한답니다.'],
-  ] }],
+  'keeper.greets': [
+    { if: ['saw_ghosts'], pages: [
+      ['keeper', '이 밤에 손님이 다 오시네요.\n문은 잠가 뒀는데, 용케 여셨지요.'],
+      ['kael', '이름 없는 무덤 둘을 찾습니다.'],
+      ['keeper', '오늘 묻은 남매 말씀이지요.\n석수가 역병이 무서워 달아났답니다.'],
+      ['keeper', '이름은 제 장부에 있습니다.\n누나 한나, 동생 틸.'],
+      ['keeper', '끌은 여기 있습니다. 저는 손이 떨려\n새기지를 못한답니다.'],
+    ] },
+    // the hero came here before seeing the ghosts tonight: he cannot ask for graves he does not know
+    { pages: [
+      ['keeper', '이 밤에 손님이 다 오시네요.\n문은 잠가 뒀는데, 용케 여셨지요.'],
+      ['keeper', '오늘 묻은 남매의 비석이 비어 있습니다.\n석수가 역병이 무서워 달아났답니다.'],
+      ['keeper', '이름은 제 장부에 있습니다.\n누나 한나, 동생 틸.'],
+      ['keeper', '끌은 여기 있습니다. 저는 손이 떨려\n새기지를 못한답니다.'],
+    ] },
+  ],
   'keeper.graveyard': [
     { if: ['!names_known'], pages: [['keeper', '밤길이 어둡지요, 손님.']] },
     { ifAny: ['!carved_a', '!carved_b'], pages: [
@@ -165,7 +174,6 @@ export const DIALOGS_PAST = {
     { pages: [['narrator', '납골당 앞에서 돌길이 끊긴다.\n건너편에 빈 종대가 서 있다.']] },
   ],
   'grave.edmund': [{ pages: [
-    ['narrator', '납골당 앞에서 돌길이 끊긴다.\n건너편에 빈 종대가 서 있다.'],
     ['edmund', '또 보는군, 젊은이.'],
     ['edmund', '성에 오르기 전에 인사드리러 왔지.\n비석이 셋. 넷째 자리는 내 몫이고.'],
     ['kael', '…….'],

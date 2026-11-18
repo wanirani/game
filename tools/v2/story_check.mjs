@@ -522,7 +522,8 @@ for (const [x, y] of [[A, AD], [B, BD]]) {
 }
 // reach: every sequence, flag, item, dialogue is met in A or B
 const endedAll = new Set([...A.ended, ...B.ended]);
-for (const ev of EVENTS) if (!endedAll.has(ev.id) && ![...refs.run.keys()].includes(ev.id)) err(`${ev.id}: never finished in play A or B (unreachable sequence?)`);
+// `safety: true` = a net for a broken or cut-off save; a normal play never reaches it (tools/v2/story_break.mjs plays it)
+for (const ev of EVENTS) if (!ev.safety && !endedAll.has(ev.id) && ![...refs.run.keys()].includes(ev.id)) err(`${ev.id}: never finished in play A or B (unreachable sequence?)`);
 for (const [id] of refs.run) { const done = A.st.isDone(id) || B.st.isDone(id) || evById.get(id).once === false; if (!done) err(`${id}: run target never finished`); }
 for (const name of Object.keys(FLAGS)) if (!FLAGS[name].reserved && !A.flagsSeen.has(name) && !B.flagsSeen.has(name)) err(`FLAGS.${name}: never set in play A or B`);
 for (const id of Object.keys(ITEMS)) if (!A.itemsSeen.has(id) && !B.itemsSeen.has(id)) err(`ITEMS.${id}: never given in play A or B`);

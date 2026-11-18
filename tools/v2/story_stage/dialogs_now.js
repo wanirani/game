@@ -47,7 +47,7 @@ export const DIALOGS_NOW = {
     { if: ['!fell'], pages: [['sera', '붕대가 모자라네요. 그래도 괜찮아요.\n빛이 함께하기를.']] },
     { if: ['!elise_home'], once: true, pages: [
       ['sera', '종에 금이 갔다고 들었어요.\n엘리제는요?'],
-      ['kael', '납골 언덕에 있습니다.\n찾으러 갑니다.'],
+      ['kael', '납골 언덕으로 끌려갔습니다.\n찾으러 갑니다.'],
       ['sera', '이분을 옮기고 따라갈게요.\n등불이 쓸모 있을 거예요.', 'resolve'],
     ], then: [['setFlag', 'sera_follows']] },
     { if: ['!elise_home', 'sera_follows'], pages: [['sera', '먼저 가세요. 곧 따라갈게요.']] },
@@ -87,20 +87,22 @@ export const DIALOGS_NOW = {
   'church.meet': [{ pages: [
     ['alberto', '종소리를 듣고 왔나.\n…그 채찍, 발크레인이로군.'],
     ['kael', '카엘 발크레인입니다.\n종은 누가 칩니까.'],
-    ['elise', '저요! 엘리제예요.\n신부님 대신 제가 쳐요.'],
-    ['alberto', '이 아이가 에슈빌의 종지기일세.\n종이 멎으면 마을도 멎는다네.'],
+    ['elise', '저요! 엘리제예요.\n제가 에슈빌의 종지기예요!'],
     ['elise', '종탑에 박쥐가 잔뜩이에요.\n그래도 줄은 제가 잡아야 해요!'],
-    ['kael', '먼저 올라가라. 곧 따라가마.'],
+    ['kael', '줄은 네가 잡아라.\n너는 내가 지키마.'],
     ['elise', '정말요? 그럼 약속!', 'joy'],
     ['kael', '…약속.'],
-    ['alberto', '두려워 말게. 촛불은 작아도,\n밤을 이긴 적이 여러 번 있다네.'],
   ] }],
   'alberto.church': [
     { if: ['!promise'], pages: [['alberto', '어서 오게. 종이 자네를 불렀네.']] },
-    { if: ['!fell'], pages: [['alberto', '아이는 종탑으로 올라갔네.\n문은 성당 옆에 있다네.']] },
+    { if: ['!fell'], once: true, pages: [
+      ['alberto', '아이는 벌써 종탑으로 올라갔네.\n문은 성당 옆에 있다네.'],
+      ['alberto', '종이 멎으면 마을도 멎는다네.\n저 아이를 부탁하네.'],
+    ] },
+    { if: ['!fell'], pages: [['alberto', '두려워 말게. 촛불은 작아도,\n밤을 이긴 적이 여러 번 있다네.']] },
     { if: ['!got_key'], pages: [['alberto', '대장간에는 들렀나?\n하드윈이 기다린다네.']] },
     { if: ['!elise_home'], pages: [['alberto', '연대기의 빈칸은 자네 몫일세.\n촛불을 잊지 말게.']] },
-    { pages: [['alberto', '허허. 자네 얼굴을 보니\n오래된 밤이 생각나는군.']] },
+    { pages: [['alberto', '허허. 종소리가 맑아졌군.\n자네 덕일세.']] },
   ],
   'elise.promise': [
     { if: ['!promise'], pages: [['elise', '종은 제가 지켜요!']] },
@@ -118,7 +120,7 @@ export const DIALOGS_NOW = {
   // ───────── 33–36 오늘 밤으로 ─────────
   'return.first': [{ pages: [
     ['alberto', '자네, 방금 어디서 나왔나.\n종이 혼자 울더군.'],
-    ['kael', '백 년 전입니다. 엘리제도\n거기 있습니다. 살아 있습니다.'],
+    ['kael', '백 년 전입니다. 엘리제도\n거기 있습니다. 데려오겠습니다.'],
     ['alberto', '백 년 전이라…. 믿네.\n종이 그리 울었으니.'],
     ['alberto', '이 연대기에는 빈칸이 많다네.\n자네가 채워 주게.'],
     ['alberto', '대장간에 가 보게. 하드윈이\n아까부터 서랍을 뒤지고 있다네.'],
@@ -127,20 +129,17 @@ export const DIALOGS_NOW = {
     { if: ['!fell'], pages: [['hadwin', '…불부터 끄시오.\n벼릴 건 그다음이오.']] },
     { if: ['key_entrusted', '!got_key', 'key_order_silver'], pages: [
       ['hadwin', '…당신이오? 채찍 든 길손이.'],
-      ['hadwin', '할아버지 때부터 내려온 건데,\n이름 칸이 비어 있소.'],
-      ['hadwin', '선불이랍디다.'],
+      ['hadwin', '할아버지 때부터 내려온 건데,\n이름 칸이 비어 있소. 선불이랍디다.'],
       ['narrator', '서랍에서 낡은 은 열쇠와\n누렇게 바랜 주문서가 나온다.'],
       ['kael', '이름 칸에는 카엘이라고\n적어 주십시오.'],
       ['hadwin', '…적었소. 백 년 만에 닫는 장부요.'],
     ], then: [['give', 'key_silver'], ['give', 'order_slip'], ['setFlag', 'got_key'], ['chronicle', 'graveyard_key'], ['objective', 'open_gate']] },
     { if: ['key_entrusted', '!got_key', 'key_order_iron'], pages: [
       ['hadwin', '…당신이오? 채찍 든 길손이.'],
-      ['hadwin', '할아버지 때부터 내려온 건데,\n이름 칸이 비어 있소.'],
-      ['hadwin', '선불이랍디다.'],
+      ['hadwin', '할아버지 때부터 내려온 건데,\n이름 칸이 비어 있소. 선불이랍디다.'],
       ['narrator', '서랍에서 붉게 녹슨 쇳덩이가 나온다.\n열쇠였던 것이다.'],
       ['hadwin', '…쇠는 백 년을 못 버티오.\n헌데 밑에 하나가 더 있소.'],
       ['sign', '혹시 몰라 은으로 하나 더 벼려 둠.\n값은 받았음. — 하드윈'],
-      ['kael', '(혹시 몰라서, 라. …빚을 졌군.)'],
       ['kael', '이름 칸에는 카엘이라고\n적어 주십시오.'],
       ['hadwin', '…적었소. 백 년 만에 닫는 장부요.'],
     ], then: [['give', 'key_rust'], ['give', 'key_silver'], ['give', 'order_slip'], ['setFlag', 'got_key'], ['chronicle', 'graveyard_key'], ['objective', 'open_gate']] },
@@ -227,11 +226,13 @@ export const DIALOGS_NOW = {
     { if: ['era:past', '!elise_found'], pages: [['lotte', '아저씨! 종 쳤어요, 들려요?\n일어나요!']] },
     { if: ['elise_found'], pages: [['elise', '아저씨, 제가 종 칠게요.\n다시 가요!']] },
     { if: ['fell'], pages: [['alberto', '종은 내가 치고 있네.\n천천히, 다시 가게.']] },
+    { if: ['!promise'], pages: [['kael', '(종소리가 멎지 않았다. 다시 간다.)']] },
     { pages: [['alberto', '촛불은 다시 켜면 되네.\n일어서게.']] },
   ],
   'retry.again': [
     { if: ['era:past', '!elise_found'], pages: [['lotte', '있잖아요, 서두르지 마요.\n밤은 길어요.']] },
     { if: ['elise_found'], pages: [['elise', '괜찮아요. 종은 안 멎어요!']] },
+    { if: ['!promise'], pages: [['kael', '(서두르지 마라. 밤은 길다.)']] },
     { pages: [['alberto', '허허, 서두를 것 없네.\n밤은 아직 길다네.']] },
   ],
   'retry.boss': [

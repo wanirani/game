@@ -7,6 +7,14 @@
 - 23:30 first version: shapes, key names, step vocabulary, the api the runner needs, save shape.
 - 00:00 second version, after writing and playing the whole script: `ifAny` on variants and events; `bridge` / `waiting` on events (§4); the `prompt` step also shows the tip as a notice; the dialogue object carries `who`; listeners of one event are all tested before any of them starts (§4); `save` may be the last step of a `run` chain; new §12 (hooks STORY expects from areas that are not built) and §13 (status, check, numbers).
 
+- 00:50 review (STORY-REVIEW lane), see `/tmp/claude-0/v2/story/review_changes.md`:
+  - **A sequence ends at an area change.** `gotoArea` / `bellCross` is the last step; what happens on the other side is a second sequence on `area.enter` with a flag condition (`ev_return_first`, `ev_hung_now`, `ev_ending_home`). A save / load between the two can no longer lose the second half or leave the hero in a night the story does not know about.
+  - **The scene restores the hero from the story save**: `save().area` / `.spawn` (§10) are where the hero stands when the game is loaded — not the scene's own idea of the current area. `ev_bell_lost` (`safety: true`) is the net for a save that still disagrees: tonight + fell + not crossed → the bell takes the hero back.
+  - **The same sequence is never started twice at once** (runner): a second press of a bell / a person while their sequence runs or waits in the queue is dropped.
+  - New event field `safety: true` (a net for cut-off saves; the check does not ask for it to be reached). New listener `section.enter {id: 'church'}` (the crossing tip appears at the bell). New hooks: `group.clear {group: 'out_a'}`, `exit.locked {id: 'to_belltower'}`, `exit.locked {id: 'to_ossuary'}` in both nights, trigger `grave.edmund` (§12).
+  - Out-of-place events are ignored: tower sequences need `promise`, boss beats need `area:ossuary_now` / `area:ossuary_past`, the road bell needs `area:graveyard_past`.
+  - Break tests: `node --expose-gc tools/v2/story_break.mjs` (unknown events, wrong order, double presses, save mid-sequence, choice under load, 10,000 unmatched events).
+
 ## 0. At a glance
 
 ```
@@ -265,7 +273,7 @@ Everything below is already written and played by the check (route A simulates t
 |---|---|---|
 | `eshville_now` | **actor `hadwin`** at the smithy with `talk: 'hadwin.smithy.now'` (today only `interact smithy_door`, event `shop.smithy`, locked `not_built` — `ev_smithy_now` listens to it as a bridge; ENGINE must raise `interact` for it even though it is "not built") | grandson's drawer, 33–36 |
 | `eshville_past` | **actor `elise`** near the big bell (the story shows her with `showActor('elise', 'eshville_past')` after the rescue; give her `when: 'elise_found'` or start hidden). `interact inn_door` (event `door.tavern`) and the actor `edmund` (talk `edmund.tavern`) already exist — the table scene starts from talking to him | 26–33, 114–118 |
-| `graveyard_past` | **`interact { id: 'road_bell', kind: 'bell', event: 'bell.hang' }`** on the far side of the broken stone path in front of the ossuary (a whip ring to cross). After it is hung the same spot is a bell in both eras: `event: 'bell.ring'` (in `graveyard_now` always). Until then `ev_ossuary_door_past` starts the scene from `interact ossuary_door` | 58–68 |
+| `graveyard_past` | **trigger `{ event: 'grave.edmund' }`** on the near side of the broken stone path (Edmund stands there: actor `edmund`, `when: 'past_gate_open'`; he hands over the road bell and the whip-ring tip appears) and **`interact { id: 'road_bell', kind: 'bell', event: 'bell.hang' }`** on the far side of the broken stone path in front of the ossuary (a whip ring to cross). After it is hung the same spot is a bell in both eras: `event: 'bell.ring'` (in `graveyard_now` always). Until then `ev_ossuary_door_past` starts the scene from `interact ossuary_door` | 58–68 |
 | `belltower_now` | spawn `bottom`; trigger `{ event: 'tower.top', wake: 'tower_bats' }` at the bell; enemy group `tower_bats` (bats); actor `elise` at the rope. The fall is `gotoArea('eshville_past', 'from_belltower')` | 15–20 |
 | `belltower_past` | optional. Today the two keepers' promise plays in `eshville_past` at spawn `bell` (`ev_keepers`); when the tower exists change its `match.area` and the `gotoArea` of `ev_elise_wake` | 114–118 |
 | `ossuary_now` | spawn `entry`; triggers `oss.coffins` · `oss.gap` (**`once: false`**) · `oss.arena` (`wake: 'oss_arena'`) · `oss.lamp` · `boss.enter`; interact `oss.riddle` (kind `sign`), `rest` with **id `boss_rest`**, three room bells and the arena bell (kind `bell`, event `bell.ring`); actor `sera` (`talk: 'sera.ossuary'`, `when: 'sera_follows'`); the boss raises `boss.phase` | 68–114 |
@@ -275,7 +283,13 @@ Flags the world may use in `when`: `door_pulled` · `street_clear` · `square_cl
 
 Sound names the script asks for: `bell.toll` (opening) · `bell.crack`. Music ids: `TEXT.music`. Camera shots: `TEXT.shots` (eight cuts of GDD 9.2).
 
-## 13. Status (2026-11-18 00:00 UTC)
+## 13. Status after the review (2026-11-18 00:50 UTC)
+
+- `node tools/v2/story_check.mjs` → `OK: 0 errors, 0 warning(s)`; `node --expose-gc tools/v2/story_break.mjs` → all passed.
+- Numbers: 25 people · 78 dialogue sets (158 variants, 294 pages) · 86 sequences (29 wait for areas, 6 bridges, 1 safety net) · 11 items · 23 objectives · 13 chronicle entries · 43 flags · 24 tutorial prompts · 556 distinct Hangul syllables, 11 new to the fonts (`넜닭댓둡딨밧뵌샌앓칩켠`).
+- The numbers in the older status below are from before the review.
+
+## 13b. Status before the review (2026-11-18 00:00 UTC)
 
 - `node tools/v2/story_check.mjs` → exit 0. It checks: the folder rules (imports, no browser / Node API), every table against this document, people ↔ model and portrait files, talk keys ↔ area actors, sequence hooks ↔ triggers / interact / exits / enemy groups of the built areas (imported read-only), flags (declared, set, read, lists in sync), items (given before taken), no orphan dialogue, no unreachable sequence, the page rule (2 lines × 30), years and names written one way, button names in tutorial text, the Hangul the fonts lack, and four plays of the whole first release against a fake api: route A (as designed), route B (only built areas, through the bridges, the other branch of both choices), and both again with every callback answered later (dialogue, camera, area change). Save → load → continue is exercised three times per play.
 - Outputs: `/tmp/claude-0/v2/story/transcript.txt` (route A) · `transcript_bridge.txt` (route B) · `script_owner.md` · `font_new_chars.txt` · `report.json`.
