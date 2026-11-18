@@ -96,7 +96,8 @@ function loadWeb3dShip(root) {
   try { t = fs.readFileSync(path.join(root, 'tools/deploy/web3d_ship.txt'), 'utf8'); } catch { throw new BuildError('tools/deploy/web3d_ship.txt 가 없습니다 (--target 3d 가 싣는 assets/ 목록)'); }
   return t.split('\n').map((l) => l.replace(/#.*$/, '').trim()).filter(Boolean);
 }
-const shipHas = (rel, ship) => ship.some((p) => (p.endsWith('/') ? rel.startsWith(p) : rel === p));
+const globRe = (p) => new RegExp('^' + p.split('*').map((x) => x.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('[^/]*') + '$');
+const shipHas = (rel, ship) => ship.some((p) => (p.endsWith('/') ? rel.startsWith(p) : p.includes('*') ? globRe(p).test(rel) : rel === p));
 /** 대상이 이 assets/ 파일을 싣지 않는가 (v2 는 v2Held 가 따로 본다). all 은 늘 싣는다 */
 function targetHeld(rel, target, ship3d) {
   if (target === 'v1') return rel.startsWith('assets/v2/');
@@ -195,7 +196,7 @@ export async function buildWeb(o = {}) {
     }
     if (opts.target === '3d') {
       // 목록에 적었는데 없는 파일 (오타·옮긴 파일): 장면이 404 를 받기 전에 여기서 막는다
-      const missing = ship3d.filter((p) => !p.endsWith('/') && !files.has(p));
+      const missing = ship3d.filter((p) => !p.endsWith('/') && !p.includes('*') && !files.has(p));
       if (missing.length) throw new BuildError(`tools/deploy/web3d_ship.txt 에 적힌 파일이 없습니다: ${missing.join(', ')}`);
       // 웹 앱 매니페스트: 이름 「블러드 녹턴 3D」, 2D 화면 캡처(screenshots)와 싣지 않은 아이콘은 뺀다
       const wm = JSON.parse(fs.readFileSync(path.join(OUT, 'manifest.webmanifest'), 'utf8'));

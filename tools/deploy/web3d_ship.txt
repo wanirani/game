@@ -1,6 +1,7 @@
 # 3D 앱 「블러드 녹턴 3D」(node tools/deploy/build_web.mjs --target 3d → dist/web3d) 가 assets/ 에서 싣는 파일 목록.
 # assets/v2/ 는 여기가 아니라 tools/deploy/v2_ship.txt 가 정한다. 여기 없는 assets/ 파일(2D 판 그림·채색·음악 …)은 싣지 않는다.
-# 한 줄에 하나: 파일 경로, 또는 '/' 로 끝나는 폴더 (v2_ship.txt 와 같은 형식). 적힌 파일이 없으면 빌드 실패.
+# 한 줄에 하나: 파일 경로, '/' 로 끝나는 폴더, 또는 파일 이름에 '*' (한 폴더 안, 예: assets/icons/skills/ui_*.webp).
+# 적힌 파일(별표 없는 것)이 없으면 빌드 실패.
 # 검사: node tools/v2/dist_boot_check.mjs --dir dist/web3d --scenes v2g,v2b,v2c,v2bench  ·  node tools/deploy/target_check.mjs --dir dist/web3d
 #       (3D 장면이 여기 없는 파일을 달라고 하면 4xx 로 실패한다)
 
@@ -12,6 +13,44 @@ assets/ui/icon-512.png           # manifest · APK 필수 파일 (build_apk.sh �
 assets/ui/icon-maskable-512.png  # manifest (APK 에는 PWA 전용이라 빠진다)
 assets/bg/title.webp             # 3D 고르기 화면(v2pick) 뒤 그림 (흐리게)
 assets/bg/s01_village.webp       # 3D 지역 하늘 (eshville · belltower · slice0 의 sky.img)
+assets/bg/s02_graveyard.webp     # 3D 지역 하늘 (graveyard 의 sky.img)
+assets/ui/hud/                   # 가상 패드 테 그림 (src/render/hud.js — 3D 장면의 옛 패드 · 터치 기기)
+assets/icons/skills/ui_*.webp    # 가상 패드 단추 아이콘 (hud.js UI_ICONS)
+assets/icons/skills/48/ui_*.webp #   작은 단추용 48 px
+assets/tex/tex_castle_stone.webp # 3D 바닥·벽 질감 (src/v2 — slice0 · 시범판 · 지역의 tex/)
+assets/tex/tex_dirt.webp
+assets/tex/tex_mossy_stone.webp
+assets/tex/tex_wet_stone.webp
+assets/tex/tex_wood.webp
+assets/puppets/turn16.json       # 2D 영웅 퍼펫 목록 — hero_puppet.js 가 모듈을 읽을 때 일곱 영웅 기본 직업 rig.json 과 함께 받는다 (그림은 받지 않음)
+assets/puppets/kael/kael_hunter/rig.json
+assets/puppets/sera/sera_exorcist/rig.json
+assets/puppets/victor/victor_gunslinger/rig.json
+assets/puppets/bran/bran_knight/rig.json
+assets/puppets/lia/lia_assassin/rig.json
+assets/puppets/azel/azel_dhampir/rig.json
+assets/puppets/isolde/isolde_lancer/rig.json
+assets/puppets/_shared/          # 망토 질감 (v2g)
+assets/painted/enemies/skeleton/ # 시범판 A·B · 꾸민 배경의 2D 적 (rig.json + atlas.webp)
+assets/painted/enemies/skeleton_mage/
+assets/painted/enemies/bat/
+assets/props/deco_gate_banner.png      # 시범판 A·B 의 2D 소품 (src/v2/b · src/v2/a)
+assets/props/deco_gate_brazier.png
+assets/props/deco_gate_portcullis.png
+assets/props/deco_grave_deadtree.png
+assets/props/deco_grave_tomb1.png
+assets/props/deco_grave_tomb2.png
+assets/props/deco_village_cart.png
+assets/props/deco_village_fence.png
+assets/props/deco_village_haybale.png
+assets/props/deco_village_lamppost.png
+assets/props/deco_village_well.png
+assets/props/prop_barrel.png
+assets/props/prop_crate.png
+assets/props/prop_gargoyle.png
+assets/props/prop_pillar.png
+assets/props/prop_statue.png
+assets/props/prop_torch.png
 assets/audio/LICENSE-CREDITS.txt # 소리 저작권 표시
 assets/audio/sfx/                # 효과음 샘플 (audio.js 가 처음 소리를 낼 때 목록 전체를 받는다)
 assets/audio/sfx_v2/             # 효과음 v2 묶음 (기본 소리 — audio.js 가 목록 전체를 받는다)
