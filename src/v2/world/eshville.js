@@ -90,7 +90,7 @@ export function eshville(era, flags = {}) {
     { t: 'deco', mesh: 'deadtree', x: 3420, z: 1130, h: 280 }, { t: 'deco', mesh: 'deadtree', x: 4330, z: 1160, h: 250, flip: true },
     ...[[3380, 1060, 'point', 92], [3470, 1090, 'round', 80], [3560, 1050, 'cross', 96], [3500, 1190, 'obelisk', 120], [3380, 1200, 'broken', 80], [4240, 1070, 'round', 84], [4390, 1060, 'point', 90], [4250, 1200, 'ledger', 80], [4400, 1190, 'cross', 100]].map(([x, z, kind, h]) => ({ t: 'deco', mesh: 'grave', kind, x, z, h })),
     { t: 'deco', mesh: 'cross', x: 4320, z: 1090, h: 170 },
-    { t: 'deco', mesh: 'cemgate', x: 4590, z: 1010, w: 164, h: 200, open: gateOpen ? 1.25 : 0 }, { t: 'blocker', x: 4472, z: 992, w: 38, d: 36 }, { t: 'blocker', x: 4670, z: 992, w: 38, d: 36 },
+    { t: 'deco', mesh: 'cemgate', x: 4590, z: 1010, w: 164, h: 200, open: gateOpen ? 1.385 : 0 }, { t: 'blocker', x: 4472, z: 992, w: 38, d: 36 }, { t: 'blocker', x: 4670, z: 992, w: 38, d: 36 },
     ...(gateOpen ? [] : [{ t: 'blocker', x: 4508, z: 1000, w: 164, d: 20 }]),   // the shut leaves (story state): nothing walks through them
     { t: 'prop', mesh: 'lanternpost', x: 4510, z: 1180, h: 180, solid: 9, solidZ: 9, light: { r: 280, i: 1.3, y: 120, c: [0.75, 0.85, 1] }, c: [0.75, 0.85, 1], flip: true, code: true });   // thin code-built post: the lane runs on behind it
 

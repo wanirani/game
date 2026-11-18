@@ -317,7 +317,8 @@ export const BAKED_ARGS = {};
 /**
  * FENCE (11-18): where the cemetery gate is drawn -> collision boxes (the same numbers as cemgate above): the two posts with their bases and caps
  * (44-46 square; the areas' own blockers were 38 x 36 inside them) and each railing leaf at the angle it is drawn (an open leaf was walked through).
- * As tall as a low wall's collision. One box per leaf: a leaf stands at 0 (shut, along x) or at 81 degrees (open 1.25) in every area.
+ * As tall as a low wall's collision. One box per leaf: a leaf stands at 0 (shut, along x) or at 90 degrees (open 1.385, FENCE-VERIFY: flush behind the post; at 81 degrees the box stuck out
+ * 14 past the post's inner face, a pocket an off-centre push snagged in) in every area.
  */
 export function cemgateBoxes(x, y, z, o = {}) {
   const gap = o.w ?? 180, th = (o.open ?? 0.6) * 65 * Math.PI / 180, L = gap / 2 - 3, ct = Math.cos(th), st = Math.sin(th), Y = { y0: y, y1: y + 800, solid: true, walk: false, inv: true, kit: true }, out = [];

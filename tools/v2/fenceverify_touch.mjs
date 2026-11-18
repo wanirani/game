@@ -106,7 +106,7 @@ function casesFor(id) {
     C.push(...facePushes('fieldR_n', 900, 960, 0, 1, 1, 0, true));
     C.push(...facePushes('fieldL_s', 300, 900, 0, -1, 1, 0, false));
     C.push(['gate_pass', 600, 840, 0, 1, 'pass', 1400, { axis: 'z', beyond: 1000 }], ['gate_pass_l', 556, 840, 0, 1, 'pass', 1400, { axis: 'z', beyond: 1000 }], ['gate_pass_r', 644, 840, 0, 1, 'pass', 1400, { axis: 'z', beyond: 1000 }]);
-    C.push(['gate_back', 600, 1040, 0, -1, 'pass', 1400, { axis: '-z', beyond: 860 }]);
+    C.push(['gate_back', 600, 1040, 0, -1, 'pass', 2000, { axis: '-z', beyond: 880 }]);
     C.push(['gateleafL_in', 600, 940, -1, 0, 'push', 700], ['gateleafR_in', 600, 940, 1, 0, 'push', 700], ['gateleafL_30', 600, 900, -0.87, 0.5, 'push', 700], ['gateleafR_30', 600, 900, 0.87, 0.5, 'push', 700]);
     C.push(['gatepostL_s', 520, 860, -0.2, 1, 'push', 700], ['gatepostR_s', 680, 860, 0.2, 1, 'push', 700], ['gatepostL_n', 500, 1010, 0, -1, 'push', 700], ['gatepostR_n', 700, 1010, 0, -1, 'push', 700]);
     C.push(['road_pass', 600, 200, 0, 1, 'pass', 1900, { axis: 'z', beyond: 820 }]);
