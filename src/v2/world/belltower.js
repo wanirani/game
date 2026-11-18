@@ -44,8 +44,8 @@ export function belltower(era = 'now', flags = {}) {
     windows: [200, 450, 700].map((u) => ({ u, y: TOP + 44, w: 96, h: 190, arch: 'point', rows: 5, cols: 1, lit: 0 })) } });
   // ── dressing ──
   add('low', { t: 'prop', mesh: 'goods', x: 150, z: 196, h: 88, solid: 60, solidZ: 36, solidH: 66 }, { t: 'prop', mesh: 'barrel', x: 646, z: 60, h: 78, solid: 24 },
-    { t: 'deco', mesh: 'stairs', x: 300, y: 0, z: 150, h: 90, rot: 0.5 },                                                                                      // a spare wooden flight leaning by the wall
-    { t: 'deco', mesh: 'candles', x: 250, z: 200, n: 4, light: { r: 200, i: 1.0, y: 20 } },
+    { t: 'prop', mesh: 'stairs', x: 250, z: 176, h: 90, rot: 0.5, solid: 40, solidZ: 36, solidH: 70 },                                                                                      // a spare wooden flight leaning by the wall
+    { t: 'deco', mesh: 'candles', x: 330, z: 214, n: 4, light: { r: 200, i: 1.0, y: 20 } },
     { t: 'prop', mesh: 'crate', x: 660, z: zOf(1) + 96, y: LV, h: 58, solid: 28, solidZ: 18 }, { t: 'deco', mesh: 'candles', x: 120, y: LV, z: zOf(1) + 30, n: 3, light: { r: 180, i: 0.9, y: 20 } },
     // the bats' roost: a beam along the face under floor 3 (against the wall: it hides nothing) with the bats hanging from it
     { t: 'deco', mesh: 'beam', x: 0, y: 3 * LV - 34, z: zOf(3) - 9, len: 540, r: 8 }, { t: 'deco', mesh: 'roost', x: 250, y: 3 * LV - 42, z: zOf(3) - 12, n: 7 }, { t: 'deco', mesh: 'roost', x: 440, y: 3 * LV - 42, z: zOf(3) - 12, n: 5 },

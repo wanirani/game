@@ -257,7 +257,7 @@ export class Sim {
       } else { this._locomote(h, moving, dt); loco = true; }
       // 점프 (공격은 끊을 수 있는 시각부터)
       if (pJump && (h.onGround || h.coyote > 0) && h.dashT <= 0 && (!h.move || (h.move.kind !== 'plunge' && h.moveT >= h.move.cancel))) {
-        h.vy = T.jumpV; h.onGround = false; h.coyote = 0; h.cut = false; h.move = null; h.combo = 0; h.guard = false; h.guardTap = 0; h.parryOk = 0; h.blockT = 0; h.airAtk = false; inp.jumpUsed = true;   // parryOk · blockT: a jump right after a parry must not keep the parry pose in the air
+        h.vy = T.jumpV; h.onGround = false; h.coyote = 0; h.cut = false; h.move = null; h.combo = 0; h.guard = false; h.guardTap = 0; h.parryOk = 0; h.blockT = 0; h.airAtk = false; if (inp !== NOINP) inp.jumpUsed = true;   // parryOk · blockT: a jump right after a parry must not keep the parry pose in the air
         this.emit('jump', h); this.hooks.sfx?.('jump'); this.hooks.spark?.(h.x, h.y + 4, h.z, 'dust');
       }
       if (!h.onGround && !inp.jumpHeld && !h.cut && h.vy > T.jumpV * T.jumpCut && !h.move) { h.vy = T.jumpV * T.jumpCut; h.cut = true; }
@@ -314,6 +314,7 @@ export class Sim {
     const freeNow = h.onGround && h.dashT <= 0 && (!h.move || (h.move.kind !== 'plunge' && h.moveT >= h.move.hit[1]));
     h.bellOk = freeNow && h.bellCd <= 0 && !h.act && !h.charging;
     h.atkHold = inp.attackHeld ? h.atkHold + dt : 0;
+    if (h.bellDown && !inp.bellHeld && (h.act || h.charging)) h.bellDown = false;   // released while another tool / the charge holds the hero: forget the press (it must not ring later on its own)
     if (h.act) return this._act(h, dt, inp, kn);
     if (h.charging) {   // 모으는 중: 제자리에서 스틱 쪽으로 돌 수 있다. 놓으면 휘감기, 구르기로 끊을 수 있다
       if (pDash && moving) { h.charging = false; h.charge = 0; this.emit('charge', h, 'cancel', 0); return false; }

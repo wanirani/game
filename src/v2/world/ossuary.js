@@ -45,7 +45,7 @@ export function ossuary(era = 'now', flags = {}) {
   const bell = (chunk, id, x, z, h = 160) => { add(chunk, { t: 'prop', mesh: 'roadbell', x, z, h, solid: 14, solidZ: 12, solidH: h * 0.85, state: now ? 'rusty' : 'hung', old: now, light: { r: 190, i: 0.8, y: h * 0.7, c: now ? [0.6, 0.86, 0.9] : [1, 0.82, 0.5] } }); interact.push({ id, kind: 'bell', x: x + 26, z: z - 28, r: 76, label: '종 치기', event: 'bell.ring' }); };
   bell('c1', 'bell_entry', 880, 300); bell('c1', 'bell_coffins', 760, 950); bell('c3', 'bell_riddle', 890, 2570); bell('c4', 'bell_arena', 600, 3350, 150);   // three room bells and the bell in the middle of the last hall
   add('c1', { t: 'prop', mesh: 'mourner', x: 190, z: 350, h: 200, solid: 28, solidZ: 24 }, { t: 'prop', mesh: 'mourner', x: 1010, z: 350, h: 200, solid: 28, solidZ: 24, flip: true },
-    { t: 'deco', mesh: 'skullwall', x: 240, y: 62, z: 984, h: 150 }, { t: 'deco', mesh: 'skullwall', x: 960, y: 62, z: 984, h: 150, flip: true },
+    { t: 'deco', mesh: 'skullwall', x: X0 + 8, z: 520, h: 170, rot: -Math.PI / 2 }, { t: 'deco', mesh: 'skullwall', x: X1 - 8, z: 780, h: 170, rot: Math.PI / 2 },   // skull niches set into the side walls above the banks (at the banks' far end they hid the hero in the room behind: 260 cells)
     { t: 'deco', mesh: 'cryptdoor', x: X0 + 4, z: 190, h: 200, rot: -Math.PI / 2 }, { t: 'deco', mesh: 'cryptdoor', x: X1 - 4, z: 150, h: 200, rot: Math.PI / 2 });
   add('c2', { t: 'prop', mesh: 'altar', x: 600, z: 2040, h: 104, solid: 100, solidZ: 40, solidH: 90, lit: past, light: past ? { r: 260, i: 1.2, y: 120, c: WARM } : null },
     { t: 'deco', mesh: 'cryptdoor', x: X0 + 4, z: 1760, h: 200, rot: -Math.PI / 2 }, { t: 'deco', mesh: 'cryptdoor', x: X1 - 4, z: 1820, h: 200, rot: Math.PI / 2 });

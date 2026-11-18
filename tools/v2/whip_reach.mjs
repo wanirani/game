@@ -38,7 +38,7 @@ function run(o) {
   const mv = MOVES[o.id], ca = Math.cos(o.a), sa = Math.sin(o.a), plunge = mv.kind === 'plunge';
   const spawns = o.enemy ? [{ kind: 'dummy', x: 700 + ca * o.enemy.f + sa * o.enemy.r, z: 500 + sa * o.enemy.f - ca * o.enemy.r, active: true }] : [];
   const hits = []; let whip = null;
-  const hooks = { hit: (e, dmg, m, x, y, z) => { hits.push({ k: tick, x, y, z, e, tipBefore: [whip.tip.x, whip.tip.y, whip.tip.z], extBefore: whip.ext }); whip.set('crack', { x, y, z, strength: { L: 0.7, M: 1, H: 1.3, F: 1.6 }[m.str] ?? 1 }); } };
+  const hooks = { hit: (e, dmg, m, x, y, z) => { hits.push({ k: tick, x, y, z, e, ex: e.x, ez: e.z, tipBefore: [whip.tip.x, whip.tip.y, whip.tip.z], extBefore: whip.ext }); whip.set('crack', { x, y, z, strength: { L: 0.7, M: 1, H: 1.3, F: 1.6 }[m.str] ?? 1 }); } };
   const sim = new Sim(flatArena(1400, 1000, spawns), hooks), h = sim.hero, ch = mkChar();
   const hand = { x: 0, y: 0, z: 0, dx: 0, dy: 1, dz: 0, bx: 0, by: 0, bz: 0, br: 12, bh: 104, fx: 1, fz: 0, ground: 0 };
   const evs = []; whip = createWhip({ onEvent: (n, e) => evs.push({ n, kind: e.kind, k: tick }) });
@@ -105,7 +105,7 @@ for (const id of ids) {
       const q = R.rec.find((x) => x.k === H.k && !x.frozen) ?? R.rec.find((x) => x.k >= H.k && !x.frozen);
       if (!q) { agg.miss++; continue; }
       const e = H.e; agg.er = e.r; agg.n++;
-      agg.tipHit.push(Math.hypot(q.tip[0] - H.x, q.tip[1] - H.y, q.tip[2] - H.z)); agg.tipAxis.push(Math.hypot(q.tip[0] - e.x, q.tip[2] - e.z)); agg.ext.push(q.ext);
+      agg.tipHit.push(Math.hypot(q.tip[0] - H.x, q.tip[1] - H.y, q.tip[2] - H.z)); agg.tipAxis.push(Math.hypot(q.tip[0] - H.ex, q.tip[2] - H.ez)); agg.ext.push(q.ext);
       agg.jump.push(Math.hypot(q.tip[0] - H.tipBefore[0], q.tip[1] - H.tipBefore[1], q.tip[2] - H.tipBefore[2])); agg.tHit.push(q.t);
       const bx = H.tipBefore[0] - R.h.x, bz = H.tipBefore[2] - R.h.z; agg.fBefore.push(bx * R.h.dirX + bz * R.h.dirZ);
     }

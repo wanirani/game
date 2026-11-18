@@ -230,11 +230,13 @@ export class Whip {
       const q = clamp(1 - (s - sw.hs - 0.3) / 0.3, 0, 1);
       if (q <= 0) sw.hasHit = false;
       else {
-        const dh = Math.hypot(sw.hx - r.x, sw.hy - r.y, sw.hz - r.z);
-        if (dh > 8 && dh < hi * BOW * 1.02) {
+        // (the lash pays out a little past the move's own limit to land on what it hit: a plunge hits from high above - without this the
+        // freeze frame showed the tip some 50 px off the hit point and it snapped on later, when the fall had brought the hand near enough)
+        const dh = Math.hypot(sw.hx - r.x, sw.hy - r.y, sw.hz - r.z), hiH = Math.max(hi, this.L0 * 2.1);
+        if (dh > 8 && dh < hiH * BOW * 1.02) {
           W[0] += (sw.hx - W[0]) * q; W[1] += (sw.hy - W[1]) * q; W[2] += (sw.hz - W[2]) * q;
           chord = Math.hypot(W[0] - r.x, W[1] - r.y, W[2] - r.z);
-          if (q > 0.5) { this.lenWant = clamp(chord / BOW, lo * 0.6, hi); this.len = this.lenWant; this._pin = q; }
+          if (q > 0.5) { this.lenWant = clamp(chord / BOW, lo * 0.6, hiH); this.len = this.lenWant; this._pin = q; }
         }
       }
     }
@@ -418,6 +420,7 @@ export class Whip {
   _step(h) {
     const n = this.n, P = this.nodes, V = this.vel, T = this.tgt, wn = this.wn, S = this._s, r = this.root;
     this.time += h;
+    const wasCaught = this.tg.caught;   // the tick the throw arrives is still a throw: it keeps its constraints (length, ground, body) and the taut line starts on the next
     if (this.mode === 'swing') this._aimSwing(); else if (this.mode === 'rest') this._aimRest(h); else if (this.mode === 'spin') this._aimSpin(h); else this._aimLine(h);
     // pays out at once; reels in smoothly at rest, tightly while a move drives the lash (so it is straight at the peak)
     if (this.lenWant > this.len) this.len = this.lenWant; else this.len += (this.lenWant - this.len) * (1 - Math.exp(-h * (this.mode === 'swing' && this.sw.s > -0.45 && this.sw.s < 1.05 ? 150 : 30)));
@@ -432,7 +435,7 @@ export class Whip {
       x += (T[o] - x) * w; y += (T[o + 1] - y) * w; z += (T[o + 2] - z) * w;
       P[o] = x; P[o + 1] = y; P[o + 2] = z;
     }
-    const line = (this.mode === 'hook' || this.mode === 'wrap') && this.tg.caught;
+    const line = (this.mode === 'hook' || this.mode === 'wrap') && this.tg.caught && wasCaught;
     if (!line) {
       const bx = this.bx, bz = this.bz, br = this.br, y0 = this.by + 2, y1 = this.by + this.bh * 0.95, body = this.hasBody;
       for (let it = 0; it < 5; it++) {
