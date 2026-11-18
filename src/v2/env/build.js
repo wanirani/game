@@ -78,12 +78,7 @@ export function compileEnv(S, { cull = true, fold, flames = false } = {}) {   //
       case 'stairs': K.dressStairs(G, P); break;
       case 'pillar': K.dressPillar(G, P); break;
       case 'arch': K.arch(G, P); break;
-      case 'fence': {
-        const dx = P.x1 - P.x0, dz = P.z1 - P.z0, len = Math.hypot(dx, dz), nx = P.face?.[0] ?? dz / len, nz = P.face?.[1] ?? -dx / len, F = new Frame(P.x0, P.z0, nx, nz);
-        const sgn = (F.ux * dx + F.uz * dz) >= 0 ? 1 : -1, F2 = sgn > 0 ? F : new Frame(P.x1, P.z1, nx, nz);
-        (P.kind === 'wood' ? K.woodFence : K.railing)(G, F2, 0, len, y, P.h ?? 44, 0);
-        break;
-      }
+      case 'fence': K.fenceAt(G, P); break;
       case 'prop': case 'deco': {
         if (!P.mesh) break;
         const g = P.y ?? groundAt(W, P.x, P.z), fn = propFn(P.mesh, P.code); if (!fn) throw new Error('모르는 소품: ' + P.mesh);

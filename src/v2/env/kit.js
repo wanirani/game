@@ -203,6 +203,12 @@ export function dressWall(G, P, boxes) {
   G.tintMul = null;
 }
 
+/** 스테이지 줄 t:'fence' 한 줄 (x0,z0 → x1,z1, y, h, kind 'iron'｜'wood', face): 쇠 난간 또는 나무 울타리 */
+export function fenceAt(G, P) {
+  const y = P.y ?? 0, dx = P.x1 - P.x0, dz = P.z1 - P.z0, len = Math.hypot(dx, dz), nx = P.face?.[0] ?? dz / len, nz = P.face?.[1] ?? -dx / len, F = new Frame(P.x0, P.z0, nx, nz);
+  const sgn = (F.ux * dx + F.uz * dz) >= 0 ? 1 : -1, F2 = sgn > 0 ? F : new Frame(P.x1, P.z1, nx, nz);
+  (P.kind === 'wood' ? woodFence : railing)(G, F2, 0, len, y, P.h ?? 44, 0);
+}
 /** 쇠 난간: 기둥 + 위아래 가로대 + 창살 (끝이 뾰족하다) */
 export function railing(G, F, u0, u1, y, h, w = 0, o = {}) {
   const M = { k: o.k ?? 0.9, vary: 0 }, n = Math.max(1, Math.round((u1 - u0) / 64));
@@ -328,12 +334,15 @@ export function dressBlock(G, P, W) {
   G.shade = null;
   G.box('trimstone', x0 - 3.5, y1 - 7, z0 - 3.5, x1 + 3.5, y1, z1, { faces: 'FLR', vary: 0.1, cell: 80 });
   dressFloor(G, { x: x0 - 3.5, z: z0 - 3.5, w: P.w + 7, d: P.d + 3.5, y: y1, walk: false, kit: { mat: K.top ?? 'flags', cell: 40 } }, W);
-  if (K.balustrade) {   // 뒤 가장자리 난간
-    const F = new Frame(x0, z1 - 5, 0, -1), h = 34;
-    F.box(G, 'trimstone', 0, P.w, y1 + h - 6, y1 + h, -4, 4, { faces: 'FLRT', vary: 0.05 }); F.box(G, 'trimstone', 0, P.w, y1, y1 + 4, -3, 3, { faces: 'FLRT', vary: 0.05 });
-    for (let u = 12; u < P.w - 6; u += 22) G.lathe('trimstone', x0 + u, z1 - 5, [[3.2, y1 + 4], [4.6, y1 + 11], [2.4, y1 + 20], [3.4, y1 + h - 6]], 6, { vary: 0 });
-    for (const u of [0, P.w]) { G.box('stone', x0 + u - 7, y1, z1 - 11, x0 + u + 7, y1 + h + 6, z1 + 1, { faces: 'FLRT', top: 'trimstone' }); G.lathe('trimstone', x0 + u, z1 - 5, [[6, y1 + h + 6], [7, y1 + h + 11], [0, y1 + h + 20]], 6, { vary: 0 }); }
-  }
+  if (K.balustrade) balustrade(G, P);
+}
+/** 단상의 뒤 가장자리 난간 (dressBlock 의 kit.balustrade) */
+export function balustrade(G, P) {
+  const x0 = P.x, z1 = P.z + P.d, y1 = (P.y ?? 0) + P.h;
+  const F = new Frame(x0, z1 - 5, 0, -1), h = 34;
+  F.box(G, 'trimstone', 0, P.w, y1 + h - 6, y1 + h, -4, 4, { faces: 'FLRT', vary: 0.05 }); F.box(G, 'trimstone', 0, P.w, y1, y1 + 4, -3, 3, { faces: 'FLRT', vary: 0.05 });
+  for (let u = 12; u < P.w - 6; u += 22) G.lathe('trimstone', x0 + u, z1 - 5, [[3.2, y1 + 4], [4.6, y1 + 11], [2.4, y1 + 20], [3.4, y1 + h - 6]], 6, { vary: 0 });
+  for (const u of [0, P.w]) { G.box('stone', x0 + u - 7, y1, z1 - 11, x0 + u + 7, y1 + h + 6, z1 + 1, { faces: 'FLRT', top: 'trimstone' }); G.lathe('trimstone', x0 + u, z1 - 5, [[6, y1 + h + 6], [7, y1 + h + 11], [0, y1 + h + 20]], 6, { vary: 0 }); }
 }
 
 /** 계단 (B 의 stairs): 칸마다 디딤판(밝은 돌)·챌판 + 옆 벽(cheeks: 'L','R','K' — 계단 진행 방향 기준이 아니라 세계 기준 변) */
@@ -347,7 +356,11 @@ export function dressStairs(G, P) {
     G.box(K.mat ?? 'stone', x0, P.dir[0] === 'x' ? y : lo, z0, x1, y + hh - 3, z1, { faces: (P.dir.endsWith('+') ? run : P.dir[0] === 'x' ? 'R' : '') + sideF, k: 0.82, cell: 70 });   // kit.mat / kit.tread: a wooden flight (darkwood + wood)
     G.box(K.tread ?? 'trimstone', x0 - (P.dir === 'x+' ? 1.5 : 0), y + hh - 3, z0 - (P.dir === 'z+' ? 1.5 : 0), x1, y + hh, z1, { faces: 'FLRT', cell: 70, vary: 0.12, shade: (px, py, pz, nn) => (nn[1] > 0.5 ? 0.86 + 0.14 * sm(0, 14, P.dir === 'z+' ? z1 - pz : P.dir === 'x+' ? x1 - px : 9) : 1) });
   }
-  const T = 9, hRail = K.cheekH ?? 30;   // 옆 벽: 계단을 따라 비스듬히 오르는 낮은 담 + 갓돌 + 끝 기둥
+  stairCheeks(G, P);
+}
+/** 계단의 옆 벽 (dressStairs 의 kit.cheeks): 계단을 따라 비스듬히 오르는 낮은 담 + 갓돌 + 끝 기둥 */
+export function stairCheeks(G, P) {
+  const y = P.y ?? 0, K = P.kit ?? {}, T = 9, hRail = K.cheekH ?? 30;
   for (const s of K.cheeks ?? '') {
     if (P.dir === 'z+' && (s === 'L' || s === 'R')) {
       const xa = s === 'L' ? P.x : P.x + P.w - T, xb = xa + T, nx = s === 'L' ? 1 : -1, xf = s === 'L' ? xb : xa;
