@@ -36,7 +36,7 @@ try {
   const crossNow = (o) => page.evaluate((opts) => window.__v2.scene.cross(opts), o);
   const waitDone = async () => { for (let i = 0; i < 400; i++) { const s = await state(); if (s.ready && !s.xing && !s.on && s.fade <= 0.01) return; if (!s.ready) await page.waitForTimeout(100); await steps(page, 6); } };
   if (A.back) { await crossNow(null); await waitDone(); await standAtBell(page, A.bell ? String(A.bell) : null); await steps(page, 30); }
-  if (A.refuse) await page.evaluate(() => { const sc = window.__v2.scene; if (sc.cx) { const b = sc.cx._build; sc.cx._build = async function () { await this._yield(); sc.cx._build = b; return null; }; } });
+  if (A.refuse) await page.evaluate(() => { const sc = window.__v2.scene; if (sc.cx) { const b = sc.cx._build; sc.cx._build = async function () { await this._yield(); sc.cx._build = b; return { pre: null, spot: null }; }; } });
   await steps(page, 20);
   await shot('before');
   const ok = await crossNow(A.years ? { years: true } : null);
