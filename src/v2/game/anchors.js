@@ -32,7 +32,7 @@ const FIRE_COL = [1, 0.5, 0.17];
 const RANGE2 = 2100 * 2100;
 
 export class Anchors {
-  constructor() { this.list = []; this.lightMax = 2; this.live = 0; this.lit = 0; this._round = 1; }
+  constructor() { this.list = []; this.lightMax = 2; this.fireK = 1; this.live = 0; this.lit = 0; this._round = 1; }
   build(area, tier) {
     this.list.length = 0;
     for (const a of area.anchors) {
@@ -41,6 +41,7 @@ export class Anchors {
       this.list.push({ kind: a.kind, x: a.x, y: (a.y ?? 0) + (fire ? 4 : 0), z: a.z - (fire ? 10 : 0), size, rs: Math.pow(size, 0.6), set, pts, step: pts > 1 ? (w * 0.78) / (pts - 1) : 0, per: (1 + 0.25 * (pts - 1)) / pts, light: !!a.light && a.kind === 'fire', h: -1, vis: false, d2: 0, _pick: 0 });
     }
     this.lightMax = tier === 'high' ? 3 : tier === 'low' ? 1 : 2;
+    this.fireK = tier === 'low' ? 0.7 : 1;   // tongues and core are priority particles (not thinned by the fill governor, but scaled at least 0.6) - on the low tier take them back to its 0.42 scale
   }
   /** once per tick. dt = effect time step, m = view-projection, (cx, cz) = where the camera looks */
   tick(sc, fx, dt, m, cx, cz) {
@@ -53,7 +54,7 @@ export class Anchors {
       live++;
       const s = a.size, k = dt * (a.d2 > 1200 * 1200 ? 0.55 : 1);   // far fires burn with fewer particles
       if (a.kind === 'fire') {   // per point along the fire's width: tongues, core, heat; sparks and smoke once for the whole fire
-        const F = a.set, r = a.rs * k, q = r * a.per, x0 = a.x - (a.step * (a.pts - 1)) / 2;   // rates follow size^0.6: a small bowl still needs a dozen tongues to read as fire
+        const F = a.set, r = a.rs * k, q = r * a.per * this.fireK, x0 = a.x - (a.step * (a.pts - 1)) / 2;   // rates follow size^0.6: a small bowl still needs a dozen tongues to read as fire
         for (let j = 0; j < a.pts; j++) { const px = x0 + a.step * j; P.emit(F.TONGUE, px, a.y, a.z, 0, 1, 0, 42 * q, a.y); P.emit(F.CORE, px, a.y, a.z, 0, 1, 0, 16 * q, a.y); P.emit(F.HEAT, px, a.y, a.z, 0, 1, 0, 6 * q, a.y); }
         P.emit(F.SPARK, a.x, a.y, a.z, 0, 1, 0, 5 * r, a.y); P.emit(F.SMOKE, a.x, a.y, a.z, 0, 1, 0, 2.2 * r, a.y);
       }
