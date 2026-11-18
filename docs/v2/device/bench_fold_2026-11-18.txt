@@ -1,0 +1,22 @@
+[BN v2bench 1] 2026-11-18T11:00:25.461Z
+UA Mozilla/5.0 (Linux; Android 17; SM-F971N Build/CP2A.260605.016; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/157.0.8103.38 Mobile Safari/537.36 BloodNocturneApp/1.0.0
+GL webgl2 | Adreno (TM) 840 | maxTex 8192 | lost 0 restored 0
+SCR dpr 2.625 | win 932x704 | css 932x704 | canvas 1398x1056 | view 960x725 | tier medium(auto) | fpsCap 60 | saver 0
+DEV mem 8GB | cores 8 | touch 5 | refresh 8.33ms (120Hz) | fastest5% 8.2ms | calib p50 8.3 p95 8.4 max 8.5
+CHR 3d ok | first-use world 22.3ms card 105.1ms 3d 7.3ms | warmed 6ms | after-resize 18.9ms | load 222ms
+AUD running music title (recorded) | touchEv 0 | sec 4/1
+# present res chars pace | raf p50 p95 max slow% | draw p50 p95 max uneven% fps | js p50 p95 max | up blit glsync | heapMB/s gc gcStall long | px tris dc
+1 blit 1 card cap60 | 8.3 8.4 8.5 0.0 | 16.7 16.8 16.8 0.0 60 | 3.2 4.2 5.3 | 2.9 0.1 13.5 | 0 0 0 0 | 1398x1056 8810 18
+2 layer 1 card cap60 | 8.3 8.4 8.5 0.0 | 16.7 16.8 16.8 0.0 60 | 3 3.8 5.7 | 2.6 0 13.5 | 0 0 0 0 | 1398x1056 8810 18
+3 layer 1 card every | 8.3 8.4 8.5 0.0 | 8.3 8.4 8.5 0.0 120 | 2.4 2.9 4.1 | 2.1 0 9.5 | 0 0 0 0 | 1398x1056 8810 18
+4* layer 1 3d every | 8.3 8.4 8.5 0.0 | 8.3 8.4 8.5 0.0 120 | 1.1 1.4 2.6 | 0 0 7.5 | 0 0 0 0 | 1398x1056 264078 34
+5 layer 0.75 3d every | 8.3 8.4 8.4 0.0 | 8.3 8.4 8.4 0.0 120 | 1 1.4 5.7 | 0 0 5.8 | 0 0 0 0 | 1049x792 264078 34
+6 layer 0.5 3d every | 8.3 8.4 8.5 0.0 | 8.3 8.4 8.5 0.0 120 | 1 1.4 1.8 | 0 0 4.9 | 0 0 0 0 | 699x528 264078 34
+7 blit 1 3d every | 8.3 8.4 8.5 0.0 | 8.3 8.4 8.5 0.0 120 | 1.1 1.4 2.5 | 0 0.1 7.7 | 0 0 0 0 | 1398x1056 264078 34
+8 layer 1 3d cap60 | 8.3 8.4 8.5 0.0 | 16.7 16.8 16.8 0.0 60 | 1.1 1.5 1.9 | 0 0 7.6 | 0 0 0 0 | 1398x1056 264078 34
+9 blit 1 3d cap60 | 8.3 8.4 8.5 0.0 | 16.7 16.7 16.8 0.0 60 | 0.8 1.1 2.5 | 0 0.1 7.1 | 0 0 0 0 | 1398x1056 264078 34
+10 layer 1 none every | 8.3 8.4 8.5 0.0 | 8.3 8.4 8.5 0.0 120 | 0.4 0.7 1.1 | 0 0 2.9 | 0 0 0 0 | 1398x1056 8756 8
+11 blit 1 none every | 8.3 8.4 8.5 0.0 | 8.3 8.4 8.5 0.0 120 | 0.5 0.8 1.3 | 0 0.1 5.2 | 0 0 0 0 | 1398x1056 8756 8
+12 layer 0.5 none every | 8.3 8.4 8.5 0.0 | 8.3 8.4 8.5 0.0 120 | 0.5 0.8 1.3 | 0 0 2.3 | 0 0 0 0 | 699x528 8756 8
+13 layer 1 3d every+mute | 8.3 8.4 16.6 0.3 | 8.3 8.4 16.6 0.3 120 | 1.1 1.6 11.6 | 0 0 7.4 | 0 0 0 0 | 1398x1056 264078 34
+BEST layer 1 every (3d) fps 120 uneven 0.0%
