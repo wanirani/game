@@ -5,10 +5,14 @@ import { chromium } from 'playwright-core';
 import fs from 'node:fs';
 import { start } from '../serve.mjs';
 import { contextOptions } from '../qa/lib/viewports.mjs';
+import { execFileSync } from 'node:child_process';
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => { if (v.startsWith('--')) a.push([v.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true]); return a; }, []));
 const OUT = String(args.out || '/tmp/claude-0/v2/speedfire/fire'), TIER = String(args.tier || 'mid'), ONLY = args.only ? String(args.only).split(',') : null;
 fs.mkdirSync(OUT, { recursive: true });
+// --before <commit>: serve the fire code of that commit (anchors · static flames · area anchors) through page routes — the rest is today's tree
+const BEFORE = args.before ? String(args.before) : null, BEFORE_FILES = ['src/v2/game/anchors.js', 'src/v2/env/props2.js', 'src/v2/env/build.js', 'src/v2/world/index.js'];
+const OLD = BEFORE ? Object.fromEntries(BEFORE_FILES.map((f) => [f, execFileSync('git', ['show', BEFORE + ':' + f], { encoding: 'utf8', maxBuffer: 1 << 26 })])) : {};
 // 자리: 영웅을 (hx, hz) 에 세우고 (dx, dz) 쪽을 보게 → 불(fx, fy, fz) 둘레를 자른다
 const SPOTS = [
   { n: 'esh_roof', area: 'eshville_now', hx: 300, hz: 150, f: [200, 250, 300], crop: [620, 420], label: '에쉬빌 — 지붕 · 담 위의 불' },
@@ -42,6 +46,7 @@ const open = async (area, tier) => {
   if (page) await page.context().close();
   const ctx = await browser.newContext(contextOptions('fold_open')); page = await ctx.newPage();
   page.on('pageerror', (e) => errs.push('[pageerror] ' + e.message));
+  if (BEFORE) for (const f of BEFORE_FILES) await page.route('**/' + f, (r) => r.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', body: OLD[f] }));   // --before <commit>: the fire files as they were then
   await page.goto(`http://localhost:${port}/index.html?scene=v2g&area=${area}&v2auto=0&v2tier=${tier}`);
   await page.waitForFunction(() => window.__v2 && (window.__v2.ready || window.__v2.error), null, { timeout: 120000 }).catch(() => {});
   const ok = await page.evaluate(() => !!window.__v2?.ready); if (!ok) throw new Error('scene not ready: ' + area);

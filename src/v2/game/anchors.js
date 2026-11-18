@@ -14,7 +14,7 @@ import { SPR } from '../fx/sprites.js';
 // (a brazier / bowl, a house fire, a wall-top or wreck blaze); a wide fire (w) burns from up to 4 points along its width.
 const fireSet = (k) => ({
   k,
-  TONGUE: E({ sprite: SPR.FLAME, shape: 3, rad: 10 * k, h: [0, 8 * k], speed: [40 * k, 78 * k], drag: 1.1, grav: -170 * k, life: [0.38, 0.62], size: [30 * k, 46 * k], grow: 0.28, spin: [-0.3, 0.3], rot: 0, c0: [2.05, 0.8, 0.17, 0.78], c1: [1.05, 0.16, 0.03, 0], jit: 3 * k, fadeIn: 0.07 }),
+  TONGUE: E({ sprite: SPR.FLAME, shape: 3, rad: 10 * k, h: [0, 8 * k], speed: [40 * k, 78 * k], drag: 1.1, grav: -170 * k, life: [0.38, 0.62], size: [34 * k, 50 * k], grow: 0.26, spin: [-0.35, 0.35], rot: 0, c0: [2.05, 0.8, 0.17, 0.6], c1: [1.05, 0.16, 0.03, 0], jit: 4 * k, fadeIn: 0.07 }),
   CORE: E({ sprite: SPR.FLAME, shape: 3, rad: 6 * k, h: [0, 4 * k], speed: [20 * k, 40 * k], drag: 1, grav: -80 * k, life: [0.22, 0.34], size: [20 * k, 30 * k], grow: 0.55, spin: [-0.2, 0.2], rot: 0, c0: [2.9, 2.1, 0.95, 0.88], c1: [2.0, 0.75, 0.14, 0], fadeIn: 0.05 }),
   HEAT: E({ sprite: SPR.GLOW, shape: 3, rad: 6 * k, h: [6 * k, 12 * k], speed: [6, 14], life: [0.26, 0.42], size: [54 * k, 72 * k], grow: 1.1, c0: [1.15, 0.42, 0.09, 0.2], c1: [0.8, 0.2, 0.04, 0], fadeIn: 0.15 }),
   SPARK: E({ sprite: SPR.EMBER, shape: 3, rad: 10 * k, h: [10 * k, 34 * k], speed: [80 * k, 190 * k], drag: 0.55, grav: -36, life: [0.5, 1.25], size: [2.6, 4.6], stretch: 2.2, c0: [3.2, 1.65, 0.45, 1], c1: [1.8, 0.3, 0.05, 0], jit: 5 * k }),
@@ -36,7 +36,7 @@ export class Anchors {
   build(area, tier) {
     this.list.length = 0;
     for (const a of area.anchors) {
-      const size = a.size ?? 1, set = size < 0.7 ? FIRE_S : size < 1.05 ? FIRE_M : FIRE_L, w = a.w ?? 50 * size, pts = a.kind === 'fire' ? Math.max(1, Math.min(4, Math.round(w / (58 * set.k)))) : 1;
+      const size = a.size ?? 1, set = size < 0.6 ? FIRE_S : size < 1.05 ? FIRE_M : FIRE_L, w = a.w ?? 50 * size, pts = a.kind === 'fire' ? Math.max(1, Math.min(4, Math.round(w / (58 * set.k)))) : 1;
       const fire = a.kind === 'fire';   // a fire burns a little in front of what it sits on (the camera looks along +z) so the wall top does not swallow the base of the tongues
       this.list.push({ kind: a.kind, x: a.x, y: (a.y ?? 0) + (fire ? 4 : 0), z: a.z - (fire ? 10 : 0), size, rs: Math.pow(size, 0.6), set, pts, step: pts > 1 ? (w * 0.78) / (pts - 1) : 0, per: (1 + 0.25 * (pts - 1)) / pts, light: !!a.light && a.kind === 'fire', h: -1, vis: false, d2: 0, _pick: 0 });
     }
@@ -54,7 +54,7 @@ export class Anchors {
       const s = a.size, k = dt * (a.d2 > 1200 * 1200 ? 0.55 : 1);   // far fires burn with fewer particles
       if (a.kind === 'fire') {   // per point along the fire's width: tongues, core, heat; sparks and smoke once for the whole fire
         const F = a.set, r = a.rs * k, q = r * a.per, x0 = a.x - (a.step * (a.pts - 1)) / 2;   // rates follow size^0.6: a small bowl still needs a dozen tongues to read as fire
-        for (let j = 0; j < a.pts; j++) { const px = x0 + a.step * j; P.emit(F.TONGUE, px, a.y, a.z, 0, 1, 0, 40 * q, a.y); P.emit(F.CORE, px, a.y, a.z, 0, 1, 0, 16 * q, a.y); P.emit(F.HEAT, px, a.y, a.z, 0, 1, 0, 6 * q, a.y); }
+        for (let j = 0; j < a.pts; j++) { const px = x0 + a.step * j; P.emit(F.TONGUE, px, a.y, a.z, 0, 1, 0, 42 * q, a.y); P.emit(F.CORE, px, a.y, a.z, 0, 1, 0, 16 * q, a.y); P.emit(F.HEAT, px, a.y, a.z, 0, 1, 0, 6 * q, a.y); }
         P.emit(F.SPARK, a.x, a.y, a.z, 0, 1, 0, 5 * r, a.y); P.emit(F.SMOKE, a.x, a.y, a.z, 0, 1, 0, 2.2 * r, a.y);
       }
       else if (a.kind === 'embers') P.emit(SPARK, a.x, a.y, a.z, 0, 1, 0, 9 * s * k, a.y);
