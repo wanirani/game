@@ -144,6 +144,7 @@ for (const dev of DEVICES) {
     // ── 3) people: prompt, tap, dialogue; no prompt during a fight ──
     const ppl = await page.evaluate(async () => {
       const v = window.__v2, sc = v.scene, g = window.__game; g._pageHidden = true;
+      sc.nights?.clear();   // INTEGRATE-B2: each night remembers its fallen; this step needs the square's enemies standing again
       await sc.gotoArea('eshville_now', 'square'); sc.fadeTo = 0; sc.fadeA = 0; sc.locked = false;
       const sim = sc.sim, h = sim.hero, out = {}; const run = (n) => { for (let i = 0; i < n; i++) g.tick(1 / 60); g.alpha = 1; g.render(); };
       const p = sc.people.byId('rook'); h.x = p.x - 70; h.z = p.z + 10; sc.cam.snap = true;
