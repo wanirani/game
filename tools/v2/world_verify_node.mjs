@@ -4,11 +4,21 @@
 //   2. lights under the floor, props floating / sunk
 //   3. camera rays (section rig, both facings, fold_open and phone2) from the eye to the hero's feet / chest / head
 //      against the static meshes (front faces) -> cells where the hero is fully hidden
-//   node tools/v2/world_verify_node.mjs [--areas a,b] [--json out.json]
+//   WORLD-3 (2026-11-18): part 3 is honest now - every standable cell (the lane's reach grid on a 20-unit lattice, as tools/v2/world_v2verify_node.mjs),
+//      flooded from EVERY spawn, entry spawn, whip-ring landing and bell spot, in EVERY flagged state whose geometry differs from the base state;
+//      hidden cells are printed per area, state and section and the run FAILS over these limits (docs/v2/AREA_FORMAT.md 14):
+//        a. ossuary section `boss` (the fight floor), both nights: 0 hidden cells
+//        b. within 60 units of any crossing bell (interact kind bell, event bell.ring) in any area: 0
+//        c. the strip behind the coffin wall at the corridor bell (ossuary_now, x 410..770, z 790..930): 0
+//        d. every other section of the ossuary and the bell tower: under 3 % of its cells
+//        e. the older areas keep what they had (no worse): LIMIT_AREA below, % of all cells of the area
+//   4. the last hall cannot trap and leaves room to roll round the boss (hallTest below)
+//   node tools/v2/world_verify_node.mjs [--areas a,b] [--json out.json]   exit 1 over a limit
 import fs from 'node:fs';
 import { loadPropsNode } from './world_node.mjs';
 loadPropsNode();
-const { AREAS } = await import('../../src/v2/world/index.js');
+const { AREAS, areaStates, stateName } = await import('../../src/v2/world/index.js');
+const { reachGrid } = await import('../../src/v2/world/reach.js');
 const { compileEnv } = await import('../../src/v2/env/build.js');
 const { groundAt, moveXZ, sectionAt, STEP_UP, JUMP_UP } = await import('../../src/v2/b/world.js');
 
@@ -93,6 +103,55 @@ function eye(R, hx, hy, hz, face, viewH) {   // the prototype's _camera with sna
   return [px, py, pz];
 }
 
+// ---- WORLD-3 limits (docs/v2/AREA_FORMAT.md 14)
+const STRICT = ['ossuary', 'belltower'];                                     // per-section limits (a-d)
+const LIMIT_AREA = { eshville_now: 3, eshville_past: 4, graveyard_now: 11, graveyard_past: 14, slice0: 5 };   // e: % of all cells, what these areas had before this round (no worse)
+const ZONES = { ossuary_now: [{ name: 'the strip behind the coffin wall (x 410..770, z 790..930)', x0: 410, x1: 770, z0: 790, z1: 930, max: 0 }] };
+const overs = [], over = (m) => { if (!overs.includes(m)) overs.push(m); };
+/**
+ * The last hall of the ossuary (sections rest + boss + posts, z 2800..3900) against a boss of radius QR 30, hero r 14, on a 10-unit lattice.
+ *  trap:  the boss is put on every 20-unit spot where it fits; hero cells within QR + r of it are taken away; what is left must stay ONE piece.
+ *         A piece cut off = cells the hero can stand in but cannot leave by walking while the boss stands there. A plain corner of two walls gives
+ *         at most 5 such cells (the hero is cornered, he rolls out); more than TRAP_MAX 6 cells in one piece is a nook or a slot -> FAIL.
+ *  orbit: a ring of radius 150 (one roll) round the boss, 48 points, all standable. Counted (a) on the fight floor = the flagstone field
+ *         x 300..900, z 3100..3600 where the fight is laid out -> must be >= 70 %, and (b) on every spot of boss + posts where the boss fits
+ *         (the reviewer's count; the walls alone cap it near 50 %) -> printed only.
+ */
+async function hallTest(id) {
+  const QR = 30, TRAP_MAX = 6, res = [], sts = id === 'ossuary_now' ? [{}, { knells_hung: true }, { wedge_stone: true, knells_hung: true, queen_sent: true }] : [{}, { queen_fled: true }, { wedge_stone: true, knell_1: true, knell_2: true, knell_3: true, knell_4: true, queen_fled: true }];
+  for (const fl of sts) {
+    const a = await AREAS[id](fl), W = compileEnv(a.stage), st = stateName(fl);
+    const solids = W.boxes.filter((b) => b.solid && !b.walk && b.z1 > 2760 && b.z0 < 3940 && b.y1 > STEP_UP && b.y0 < 60);
+    const free = (x, z, r) => x - r >= 100 && x + r <= 1100 && z - r >= 2800 && z + r <= 3900 && !solids.some((b) => x + r > b.x0 && x - r < b.x1 && z + r > b.z0 && z - r < b.z1);
+    const NX = 100, NZ = 110, cell = new Uint8Array(NX * NZ), X = (i) => 105 + i * 10, Z = (j) => 2805 + j * 10; let nFree = 0;
+    for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) if (free(X(i), Z(j), HR)) { cell[j * NX + i] = 1; nFree++; }
+    let worst = { n: 0 }, traps = 0; const comp = new Int32Array(NX * NZ), q = new Int32Array(NX * NZ);
+    for (let bx = 130; bx <= 1070; bx += 20) for (let bz = 3030; bz <= 3870; bz += 20) {
+      if (!free(bx, bz, QR)) continue;
+      comp.fill(0); let nc = 0, big = 0; const sizes = [0], first = [null];
+      const blocked = (k) => { const i = k % NX, j = (k - i) / NX; return (X(i) - bx) ** 2 + (Z(j) - bz) ** 2 < (QR + HR) ** 2; };
+      // only cells near the boss can be cut off: flood the neighbourhood (within 260) and treat cells on its rim as joined to the rest of the hall
+      const i0 = Math.max(0, Math.floor((bx - 260 - 105) / 10)), i1 = Math.min(NX - 1, Math.ceil((bx + 260 - 105) / 10)), j0 = Math.max(0, Math.floor((bz - 260 - 2805) / 10)), j1 = Math.min(NZ - 1, Math.ceil((bz + 260 - 2805) / 10));
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+        const k0 = j * NX + i; if (!cell[k0] || comp[k0] || blocked(k0)) continue;
+        nc++; let h = 0, t = 0, rim = false; q[t++] = k0; comp[k0] = nc;
+        while (h < t) { const k = q[h++], ci = k % NX, cj = (k - ci) / NX; if (ci === i0 || ci === i1 || cj === j0 || cj === j1) rim = true;
+          for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const a2 = ci + di, b2 = cj + dj; if (a2 < i0 || a2 > i1 || b2 < j0 || b2 > j1) continue; const m = b2 * NX + a2; if (cell[m] && !comp[m] && !blocked(m)) { comp[m] = nc; q[t++] = m; } } }
+        if (!rim && t > TRAP_MAX) { traps++; if (t > worst.n) worst = { n: t, bx, bz, x: X(k0 % NX), z: Z((k0 - k0 % NX) / NX) }; }
+      }
+    }
+    const ring = (inFloor) => { let n = 0, okN = 0; for (let bx = 140; bx <= 1060; bx += 20) for (let bz = 3040; bz <= 3860; bz += 20) { if (inFloor && !(bx >= 300 && bx <= 900 && bz >= 3100 && bz <= 3600)) continue; if (!free(bx, bz, QR)) continue; n++; let ok = true; for (let k = 0; k < 48 && ok; k++) { const t = k / 48 * Math.PI * 2; ok = free(bx + Math.cos(t) * 150, bz + Math.sin(t) * 150, HR); } if (ok) okN++; } return [okN, n, Math.round(okN / Math.max(1, n) * 100)]; };
+    const rf = ring(true), ra = ring(false), bell = a.interact.find((it) => it.id === 'bell_arena');
+    const inner = solids.filter((b) => b.x0 >= 300 - 1 && b.x1 <= 900 + 1 && b.z0 >= 3100 - 1 && b.z1 <= 3600 + 1);
+    const line = `trap pieces over ${TRAP_MAX} cells: ${traps}${traps ? ` (worst ${worst.n} cells at (${worst.x}, ${worst.z}) with the boss at (${worst.bx}, ${worst.bz}))` : ''} · roll orbit 150 free at ${rf[0]} of ${rf[1]} boss spots on the fight floor (${rf[2]} %) · on every spot of the hall ${ra[0]} of ${ra[1]} (${ra[2]} %) · solid things on the fight floor: ${inner.length} · bell_arena at (${bell?.x}, ${bell?.z})`;
+    res.push({ state: st, traps, worst, orbitFloor: rf, orbitAll: ra, line });
+    if (traps) over(`${id}@${st}: the last hall has ${traps} boss spots that shut the hero in (worst: ${worst.n} cells at (${worst.x}, ${worst.z}), boss at (${worst.bx}, ${worst.bz}))`);
+    if (rf[2] < 70) over(`${id}@${st}: roll orbit free at ${rf[2]} % of boss spots on the fight floor — limit 70 %`);
+    if (inner.length) over(`${id}@${st}: ${inner.length} solid thing(s) stand on the fight floor`);
+  }
+  return res;
+}
+
 for (const id of LIST) {
   const a = await AREAS[id](), W = compileEnv(a.stage), d = a.spawns.default, r = out[id] = {};
   const F = flood(W, d.x, d.z);
@@ -117,23 +176,36 @@ for (const id of LIST) {
   // 2. lights under the floor / far above
   r.lightsUnder = W.lights.filter((l) => { const g = groundAt(W, l.x, l.z); return Number.isFinite(g) && l.y < g + 4; }).map((l) => `(${Math.round(l.x)},${Math.round(l.y)},${Math.round(l.z)}) ground ${groundAt(W, l.x, l.z)}`);
   r.lights = W.lights.length;
-  // 3. camera occlusion
-  const TG = triGrid(W); r.tris = TG.T.length; r.occ = {};
-  for (const [dev, viewH] of [['fold_open', 726], ['phone2', 540]]) {
-    const hid = [], part = []; let n = 0;
-    for (const c of F.cells) {
-      if ((Math.round(c[0] / C) + Math.round(c[1] / C)) % 2) continue;   // every other cell (20-unit checker)
-      const sec = sectionAt(W, c[0], c[1]); if (!sec?.cam) continue; n++;
-      let worst = 0, tex = null;
-      for (const face of [1, -1]) {
-        const o = eye(sec.cam, c[0], c[2], c[1], face, viewH); let k = 0;
-        for (const hy of [6, 52, 100]) { const t = blockedRay(TG, o, [c[0], c[2] + hy, c[1]]); if (t) { k++; tex = t; } }
-        worst = Math.max(worst, k);
+  // 3. camera occlusion: every state whose geometry differs, every standable cell, seeded from every spawn / entry / ring landing / bell
+  r.occ = {}; const seenGeo = new Set();
+  for (const flags of areaStates(id)) {
+    const st = stateName(flags), a2 = st === 'base' ? a : await AREAS[id](flags), W2 = st === 'base' ? W : compileEnv(a2.stage);
+    const geo = W2.env.meshes.map((m) => m.count + ':' + m.tex).join('|') + '#' + W2.boxes.map((b) => [b.x0, b.x1, b.z0, b.z1, b.y0, b.y1, +b.solid, +b.walk].join(',')).join('|');
+    if (seenGeo.has(geo)) continue; seenGeo.add(geo);
+    const bells = a2.interact.filter((it) => it.kind === 'bell' && it.event === 'bell.ring');
+    const seeds = [...Object.values(a2.spawns).map((p) => [p.x, p.z]), ...(a2.stage.hookPoints ?? []).filter((h) => h.to).map((h) => h.to), ...bells.map((b) => [b.x, b.z])];
+    const g = reachGrid(W2, 0, 0, 14, { noStart: true, seeds, hooks: a2.stage.hookPoints ?? [] }), TG = triGrid(W2); if (st === 'base') r.tris = TG.T.length;
+    let bx0 = 1e9, bx1 = -1e9, bz0 = 1e9, bz1 = -1e9; for (const b of W2.boxes) if (b.walk) { bx0 = Math.min(bx0, b.x0); bx1 = Math.max(bx1, b.x1); bz0 = Math.min(bz0, b.z0); bz1 = Math.max(bz1, b.z1); }
+    const cells = []; for (let x = bx0 + 10; x < bx1; x += 20) for (let z = bz0 + 10; z < bz1; z += 20) if (g.reachable(x, z)) cells.push([x, z, groundAt(W2, x, z)]);
+    const R = r.occ[st] = {};
+    for (const [dev, viewH] of [['fold_open', 726], ['phone2', 540]]) {
+      const hid = [], bySec = {}; let n = 0, part = 0;
+      for (const c of cells) {
+        const sec = sectionAt(W2, c[0], c[1]); if (!sec?.cam) continue; n++; const S = bySec[sec.id] ??= { tested: 0, hidden: 0 }; S.tested++;
+        let worst = 0, tex = null;
+        for (const face of [1, -1]) { const o = eye(sec.cam, c[0], c[2], c[1], face, viewH); let k = 0; for (const hy of [6, 52, 100]) { const t = blockedRay(TG, o, [c[0], c[2] + hy, c[1]]); if (t) { k++; tex = t; } } worst = Math.max(worst, k); }
+        if (worst === 3) { hid.push([c[0], c[1], tex, sec.id]); S.hidden++; } else if (worst === 2) part++;
       }
-      if (worst === 3) hid.push([c[0], c[1], tex]); else if (worst === 2) part.push([c[0], c[1]]);
+      const nearBell = hid.filter((h) => bells.some((b) => Math.hypot(h[0] - b.x, h[1] - b.z) <= 60)), zones = (ZONES[id] ?? []).map((q) => ({ ...q, n: hid.filter((h) => h[0] >= q.x0 && h[0] <= q.x1 && h[1] >= q.z0 && h[1] <= q.z1).length }));
+      R[dev] = { tested: n, hidden: hid.length, twoOfThree: part, bySec, nearBell: nearBell.length, zones, clusters: cluster(hid, 30).slice(0, 12).map((q) => ({ ...q, tex: [...new Set(hid.filter((h) => h[0] >= q.x0 && h[0] <= q.x1 && h[1] >= q.z0 && h[1] <= q.z1).map((h) => h[2]))].join(',') })) };
+      const tag = `${id}@${st} ${dev}`, pct = (v, t) => (t ? v / t * 100 : 0);
+      if (STRICT.includes(id.split('_')[0])) { for (const [sid, S] of Object.entries(bySec)) { if (id.startsWith('ossuary') && sid === 'boss') { if (S.hidden) over(`${tag}: ${S.hidden} hidden cells on the fight floor (section boss) — limit 0`); } else if (pct(S.hidden, S.tested) >= 3) over(`${tag}: section ${sid} ${S.hidden} of ${S.tested} hidden (${pct(S.hidden, S.tested).toFixed(1)} %) — limit under 3 %`); } }
+      else if (pct(hid.length, n) > (LIMIT_AREA[id] ?? 3)) over(`${tag}: ${hid.length} of ${n} hidden (${pct(hid.length, n).toFixed(1)} %) — limit ${LIMIT_AREA[id] ?? 3} % for this area`);
+      if (nearBell.length) over(`${tag}: ${nearBell.length} hidden cells within 60 of a crossing bell: ${nearBell.slice(0, 5).map((h) => `(${h[0]},${h[1]})`).join(' ')}`);
+      for (const q of zones) if (q.n > q.max) over(`${tag}: ${q.n} hidden cells in ${q.name} — limit ${q.max}`);
     }
-    r.occ[dev] = { tested: n, hidden: hid.length, twoOfThree: part.length, clusters: cluster(hid, 30).slice(0, 14).map((q) => ({ ...q, tex: [...new Set(hid.filter((h) => h[0] >= q.x0 && h[0] <= q.x1 && h[1] >= q.z0 && h[1] <= q.z1).map((h) => h[2]))].join(',') })) };
   }
+  if (id.startsWith('ossuary')) r.hall = await hallTest(id);
   r.sky = a.stage.sky; r.fog = a.stage.fog; r.light = a.stage.light;
   const fmt = (c) => `x ${Math.round(c.x0)}..${Math.round(c.x1)} z ${Math.round(c.z0)}..${Math.round(c.z1)} (${c.n})${c.tex ? ' [' + c.tex + ']' : ''}`;
   console.log(`[${id}] flood cells ${r.cells} · static tris ${r.tris} · lights ${r.lights}`);
@@ -143,6 +215,9 @@ for (const id of LIST) {
   console.log(`  floating: ${r.floating.join('; ') || 'none'}`);
   console.log(`  sunk: ${r.sunk.join('; ') || 'none'}`);
   console.log(`  lights under the floor: ${r.lightsUnder.join('; ') || 'none'}`);
-  for (const dev of Object.keys(r.occ)) { const o = r.occ[dev]; console.log(`  hero fully hidden @${dev}: ${o.hidden} of ${o.tested} cells (2 of 3 rays: ${o.twoOfThree})${o.clusters.length ? ' — ' + o.clusters.map(fmt).join(' | ') : ''}`); }
+  for (const [st, R] of Object.entries(r.occ)) for (const dev of Object.keys(R)) { const o = R[dev]; console.log(`  hero fully hidden @${st} ${dev}: ${o.hidden} of ${o.tested} cells (${(o.hidden / Math.max(1, o.tested) * 100).toFixed(1)} %; 2 of 3 rays: ${o.twoOfThree}; within 60 of a crossing bell: ${o.nearBell}) — ${Object.entries(o.bySec).map(([k, v]) => `${k} ${v.hidden}/${v.tested}`).join(' · ')}${o.clusters.length ? '\n      ' + o.clusters.map(fmt).join(' | ') : ''}`); }
+  if (r.hall) for (const h of r.hall) console.log(`  last hall @${h.state}: ${h.line}`);
 }
 if (args.json) fs.writeFileSync(String(args.json), JSON.stringify(out, null, 1));
+console.log(overs.length ? `\nFAIL (${overs.length} over the limits)\n` + overs.map((m) => ' - ' + m).join('\n') : '\nALL OK (hidden-hero limits, the last hall)');
+process.exit(overs.length ? 1 : 0);
