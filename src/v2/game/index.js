@@ -192,7 +192,7 @@ export default class V2Game extends Scene {
     this.emit('bell.long', { boss, spot: spot ? spot.id : null, twin: this.area.twin ?? null });
     if (this.story && spot && !boss) { const d = spot.def; this.emit('interact', { id: d.id, kind: d.kind, event: d.event ?? null, data: d.data ?? null, locked: d.locked ?? null, spot: d, ring: true }); }   // STORY HOOK (DATA_FORMAT 6)
     if (this.story || boss || !spot || !this.area.twin || this._go) return;   // the story decides when it is plugged in (api.bellCross)
-    this._go = { to: this.area.twin, spawn: null, keep: true, night: true }; this.fadeTo = 1; this.locked = true;
+    this.cross(null);   // without a story the long ring next to a bell is the same crossing the story uses (veil, toll, the nearest free spot over there, a clean refusal) - it used to be a plain dark fade onto the very same x, z, even into something solid (INTEGRATE-VERIFY)
   }
   /** the boss fight without a story plugged in: say what happened in one line (the story lane replaces these with its own events) */
   _bossNote(name, e, b) {

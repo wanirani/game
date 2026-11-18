@@ -213,7 +213,7 @@ try {
   if (PLAN === 'cross') {
     await clean(); const o = await open('&area=eshville_now&v2story=0'); chk(o.ready && !o.story, `eshville_now without the story opens (${o.ms} ms)`);
     const A = (await areaOf('eshville_now', {})).a, b = A.interact.find((q) => q.event === 'bell.ring');
-    await ev(([x, z]) => { window.__iv.put(x, z + 50); window.__iv.fellNear(900); }, [b.x, b.z]); await ff(60); await rt(true); await page.waitForTimeout(600);
+    await ev(([x, z]) => { window.__iv.put(x, z + 120); window.__iv.fellNear(900); }, [b.x, b.z]); await ff(60); await rt(true); await page.waitForTimeout(600);
     for (const leg of ['there', 'back']) {
       const s0 = await st(), pad = await padOf(), ev0 = await ev(() => window.__iv.ev.length), snd0 = await ev(() => window.__ivOnce.snd.length), r0 = reqs.length, t0 = Date.now();
       await shot(`cross_${DEV}_${leg}_0_before`, false);
@@ -388,7 +388,7 @@ try {
       const same = f.glCss && f.hudCss && Math.abs(f.glCss[2] - f.hudCss[2]) <= 2 && Math.abs(f.glCss[3] - f.hudCss[3]) <= 2 && Math.abs(f.glCss[0] - f.hudCss[0]) <= 2;
       chk(b2.ready && !bad.length && errs.length === e1 && !f.padOut.length && f.n > 0 && same && f.res[0] > 0, `fight, ${name} ${w}x${h}: 3D canvas ${f.glCss?.join(',')} vs HUD canvas ${f.hudCss?.join(',')} (CSS), render ${f.res[0]}x${f.res[1]}, logical view ${f.view.join('x')}, pad buttons ${f.n} (outside the screen: ${f.padOut.join(' ') || 'none'}), hero moved ${Math.round(Math.hypot(b2.x - a.x, b2.z - a.z))} px in 3 s, new errors ${errs.length - e1}${bad.length ? ' BAD ' + bad.join(',') : ''}`);
     }
-    const b = A.interact.find((q) => q.event === 'bell.ring'); await ev(([x, z]) => { window.__iv.put(x, z + 50); window.__iv.fellNear(900); }, [b.x, b.z]); await ff(40);
+    const b = A.interact.find((q) => q.event === 'bell.ring'); await ev(([x, z]) => { window.__iv.put(x, z + 120); window.__iv.fellNear(900); }, [b.x, b.z]); await ff(40);
     const c = await ev(() => window.__v2.scene.cross(null)); await ff(25, false, 5); await page.setViewportSize({ width: vp0.height, height: vp0.width }); await rt(true); await page.waitForTimeout(700); await page.setViewportSize({ width: 600, height: 340 }); await page.waitForTimeout(700); await page.setViewportSize({ width: vp0.width, height: vp0.height });
     const s2 = await waitReady((q) => q.ready && !q.xing && !q.go, 60000); await page.waitForTimeout(1500); await rt(false); await ff(60); const f2 = await fit(), e2 = await st(), bad2 = await ev(() => window.__iv.sane()); await shot(`resize_${DEV}_after_crossing`);
     chk(c && e2.area === 'eshville_past' && !e2.locked && !bad2.length && !f2.padOut.length, `rotate + shrink + restore during a crossing: arrived in ${e2.area}, input free ${!e2.locked}, veil ${e2.fade}, render ${f2.res[0]}x${f2.res[1]}, 3D canvas ${f2.glCss?.join(',')} vs HUD ${f2.hudCss?.join(',')}${bad2.length ? ' BAD ' + bad2.join(',') : ''}`);
