@@ -41,7 +41,7 @@ function install() {
     spots(cmax) {   // every fire anchor + candle group the scene really has
       const out = []; let nc = 0;
       sc.anchors.list.forEach((a, i) => {
-        if (a.kind === 'fire') out.push({ i, kind: 'fire', x: a.x, y: a.y, z: a.z, w: a.w ?? 50 * a.size, k: a.set?.k ?? a.size, bh: a.set?.bh ?? 100 * a.size, cold: a.set ? a.set.light[2] > a.set.light[0] : false, light: a.light });
+        if (a.kind === 'fire') out.push({ i, kind: 'fire', x: a.x, y: a.y, z: a.z, w: a.w ?? 50 * a.size, k: a.set?.k ?? a.size, bh: a.set?.bh ?? 100 * a.size, cold: a.set?.light ? a.set.light[2] > a.set.light[0] : false, light: a.light });
         else if (a.kind === 'candles' && nc++ < cmax) out.push({ i, kind: 'candles', x: a.x, y: a.y, z: a.z, w: 30, k: 0, bh: 30, n: a.n });
       });
       return out;
