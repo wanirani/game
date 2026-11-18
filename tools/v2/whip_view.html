@@ -136,7 +136,7 @@ function shape(o, mv, col, fill) {
 function draw(label, alpha = 1) {
   const C = CAMS[S.cam] ?? CAMS.game, h = sim.hero, E = ERAS[S.era] ?? ERAS.now;
   if (C.hand) { cam.x = hand.x * 0.6 + whip.tip.x * 0.4; cam.y = hand.y * 0.6 + whip.tip.y * 0.4; cam.z = hand.z * 0.6 + whip.tip.z * 0.4; }
-  else { cam.x = h.x; cam.z = h.z; cam.y = Math.max(0, h.y) * 0.75; if (demo.door) cam.x += rot(70, 0)[0]; }
+  else { cam.x = h.x; cam.z = h.z; cam.y = Math.max(0, h.y) * 0.75; if (demo.door || demo.bell) { const [ox, oz] = rot(demo.bell ? 140 : 70, 0); cam.x += ox; cam.z += oz; } }
   camMatrix(C);
   gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(E.bg[0], E.bg[1], E.bg[2], 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   env.fog.color = E.bg; env.sunDir = E.sunDir; env.sun = E.sun; env.amb = E.amb; env.viewport[0] = cv.width; env.viewport[1] = cv.height;

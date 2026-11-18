@@ -125,6 +125,16 @@ Object.assign(PROPS, {
     for (let i = 0; i < 7; i++) { const a = hash(i, x) * 3.1, l = w * (0.3 + 0.3 * hash(x, i)), cx = x + (hash(i + 5, z) - 0.5) * w * 0.7, cz = z + (hash(z, i) - 0.5) * w * 0.4, dx = Math.cos(a) * l / 2, dz = Math.sin(a) * l / 4; G.tube('wood', [cx - dx, y + 2 + 5 * hash(i, 9), cz - dz], [cx + dx, y + 3 + 9 * hash(9, i), cz + dz], 3.4, 2.6, 4, { tint: [0.5, 0.42, 0.38], vary: 0.3, keep: true }); }
     G.lathe('dirt', x, z, [[w * 0.5, y], [w * 0.3, y + 5], [0, y + 8]], 8, { tint: [0.55, 0.48, 0.42], sq: 0.55, vary: 0.3 });
   },
+  /** Heap of broken stone steps and blocks (the fallen stair). o.w, o.h */
+  rubble(G, x, y, z, o = {}) {
+    const w = o.w ?? 140, h = o.h ?? 60;
+    G.lathe('fieldstone', x, z, [[w * 0.52, y], [w * 0.4, y + h * 0.35], [w * 0.2, y + h * 0.75], [0, y + h * 0.9]], 9, { sq: 0.6, vary: 0.4, k: 0.8 });
+    for (let i = 0; i < 9; i++) {
+      const a = i * 2.4 + hash(i, x), rr = w * (0.1 + 0.34 * hash(x, i)), bx = x + Math.cos(a) * rr, bz = z + Math.sin(a) * rr * 0.5 - 6, t = 1 - rr / (w * 0.5), by = y + h * 0.75 * t, bw = 12 + 16 * hash(i + 3, z), bh = 7 + 9 * hash(z, i);
+      G.box(i % 3 ? 'trimstone' : 'stone', bx - bw, by, bz - bw * 0.5, bx + bw, by + bh, bz + bw * 0.5, { faces: 'FLRT', vary: 0.3, k: 0.8 + 0.3 * hash(i, 7) });
+    }
+    shadow(G, x, y, z, w * 0.6, w * 0.34, 0.45);
+  },
   // ───────────── stand-ins for the generated crypt furniture (used only while the pack has no model of that name) ─────────────
   sarcophagus(G, x, y, z, o = {}) {
     const h = o.h ?? 70, s = h / 70, w = 74 * s, d = 30 * s;

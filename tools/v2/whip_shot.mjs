@@ -72,42 +72,37 @@ try {
   }
   else if (argv.includes('--owner')) {
     // 소유자용 한 장: 칸마다 한국어 설명. 솔직하게 — 아직 약한 곳도 한 줄
-    const rows = [
-      { t: '연타 3 — 게임 카메라 (두 틱마다 한 칸)', demo: 'combo', o: { from: 0.5, count: 30, cam: 'game', cols: 10, cw: 200, ch: 150, label: false } },
-      { t: '연타 3 — 가까이: 끈이 펴지는 순간과 맞는 순간의 번쩍임', demo: 'combo', o: { from: 0.56, count: 10, every: 3, cam: 'close', cols: 10, cw: 200, ch: 190, label: false } },
-      { t: '모아 휘감기 → 끌어오기', demo: 'charge', o: { from: 1.3, count: 10, every: 3, cam: 'game', cols: 10, cw: 200, ch: 130, label: false } },
-      { t: '휘감아 문 당기기 (문은 시험 화면에서 흉내 낸 것)', demo: 'door', o: { from: 0.72, count: 10, every: 10, cam: 'game', cols: 10, cw: 200, ch: 150, label: false } },
-      { t: '솜씨: 빛나는 고리에 걸고 건너뛰기 — 걸리면 팽팽한 직선', demo: 'hook', o: { from: 0.5, count: 10, every: 4, cam: 'game', cols: 10, cw: 200, ch: 170, label: false } },
-      { t: '종 — 짧게(메아리) 다섯 칸 · 길게 다섯 칸: 종 조각을 치켜들어 울린다', demo: 'echo', o: { from: 0.62, count: 5, every: 5, cam: 'close', cols: 5, cw: 200, ch: 220, label: false }, second: { demo: 'knell', o: { from: 0.9, count: 5, every: 13, cam: 'close', cols: 5, cw: 200, ch: 220, label: false } } },
-    ];
-    const strips = [];
-    for (const r of rows) {
-      const a = await page.evaluate(([d, o]) => window.__whip.strip(d, o), [r.demo, r.o]);
-      const b = r.second ? await page.evaluate(([d, o]) => window.__whip.strip(d, o), [r.second.demo, r.second.o]) : null;
-      strips.push({ t: r.t, a, b });
-    }
+    const shot = (d, t, o) => page.evaluate(([d, t, o]) => window.__whip.shot(d, t, { era: 'now', reso: 0.3, dir: 0, tier: 'mid', ...o }), [d, t, o]);
+    const strip = (d, o) => page.evaluate(([d, o]) => window.__whip.strip(d, { era: 'now', dir: 0, tier: 'mid', slow: false, stop: true, box: false, label: false, ...o }), [d, o]);
+    const strips = [];   // 한 줄 = { t 제목, parts: [그림 dataURL …] (옆으로 이어 붙인다) }
+    { const parts = []; for (const [t, lab] of [[0.6, '연타 1 — 뒤로 감았다가'], [0.7, '연타 1 — 맞는 순간'], [1.02, '연타 2 — 위에서 내리친다']]) parts.push(await shot('combo', t, { cam: 'game', w: 666, h: 360, label: lab })); strips.push({ t: '연타 3 — 게임 카메라 그대로의 크기 (영웅 키 약 76 px)', parts }); }
+    { const parts = []; for (const [t, lab] of [[1.33, '연타 3 — 머리 위로 크게 돌려'], [1.45, '연타 3 — 넓게 후려친다'], [1.6, '연타 3 — 지나간 뒤']]) parts.push(await shot('combo', t, { cam: 'game', w: 666, h: 360, label: lab })); strips.push({ t: '', parts }); }
+    strips.push({ t: '연타 3 — 가까이, 두 틱(1/30초)마다 한 칸: 끈이 펴지며 끝이 휘어 감기고, 맞는 순간 번쩍임과 불티 고리', parts: [await strip('combo', { from: 0.6, count: 10, every: 2, cam: 'close', cols: 10, cw: 200, ch: 190 })] });
+    strips.push({ t: '모아 휘감기 → 끌어오기 (머리 위로 돌리며 모았다가 멀리 던져 감고 당긴다)', parts: [await strip('charge', { from: 1.2, count: 8, every: 5, cam: 'game', cols: 8, cw: 250, ch: 150 })] });
+    strips.push({ t: '휘감아 문 당기기 (문은 시험 화면에서 흉내 낸 것 — 규칙에는 아직 문이 없다)', parts: [await strip('door', { from: 0.74, count: 8, every: 12, cam: 'close', cols: 8, cw: 250, ch: 190 })] });
+    strips.push({ t: '솜씨: 빛나는 고리에 걸고 건너뛰기 — 걸리면 팽팽한 직선', parts: [await strip('hook', { from: 0.52, count: 8, every: 5, cam: 'game', cols: 8, cw: 250, ch: 200 })] });
+    strips.push({ t: '종 — 짧게(메아리) 네 칸 · 길게 네 칸: 종 조각을 치켜들어 울린다', parts: [await strip('echo', { from: 0.66, count: 4, every: 6, cam: 'game', cols: 4, cw: 250, ch: 230 }), await strip('knell', { from: 1.0, count: 4, every: 16, cam: 'game', cols: 4, cw: 250, ch: 230 })] });
     const singles = [];
-    for (const s of [
-      { t: '손잡이 · 땋은 끈 · 종 조각 (가까이)', demo: 'rest', at: 0.6, o: { cam: 'macro', w: 500, h: 330, reso: 1 } },
+    for (const sg of [
+      { t: '손잡이 · 땋은 끈 · 종 조각 (울림이 차면 밝아진다)', demo: 'rest', at: 0.6, o: { cam: 'macro', w: 500, h: 330, reso: 0.55 } },
       { t: '쉬는 모습: 손에 사려 쥔다', demo: 'rest', at: 0.9, o: { cam: 'close', w: 330, h: 330 } },
-      { t: '그 밤(붉은 달)의 빛에서', demo: 'combo', at: 1.34, o: { cam: 'close', era: 'past', w: 330, h: 330 } },
-      { t: '멀리서 (영웅 키 70 px): 끈이 가는 선으로 꺼지지 않는다', demo: 'combo', at: 1.34, o: { cam: 'far', w: 420, h: 330 } },
-      { t: '먼 종 치기', demo: 'far', at: 0.72, o: { cam: 'game', w: 420, h: 330 } },
-    ]) singles.push({ t: s.t, a: await page.evaluate(([d, t, o]) => window.__whip.shot(d, t, { era: 'now', reso: 0.3, ...o }), [s.demo, s.at, s.o]), w: s.o.w });
+      { t: '그 밤(붉은 달)의 빛에서', demo: 'combo', at: 1.02, o: { cam: 'close', era: 'past', w: 330, h: 330 } },
+      { t: '멀리서 (키 70 px)도 끈이 보인다', demo: 'combo', at: 0.7, o: { cam: 'far', w: 420, h: 330 } },
+      { t: '먼 종 치기', demo: 'far', at: 0.75, o: { cam: 'game', w: 420, h: 330 } },
+    ]) singles.push({ t: sg.t, a: await shot(sg.demo, sg.at, sg.o) });
     const weak = opt('weak', '아직 약한 곳: 손에 손가락이 없어 손잡이가 손바닥에 붙어 보이고, 문 당기기와 올려치기·내려찍기는 규칙에 없어 시험 화면에서만 흉내 냈습니다. 실제 기기에서의 속도는 재지 못했습니다.');
     const url = await page.evaluate(async ([strips, singles, weak]) => {
       const img = (u) => new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.src = u; });
-      const W = 2000, pad = 14, th = 34; let y = 64; const lay = [];
-      for (const s of strips) { const a = await img(s.a), b = s.b ? await img(s.b) : null; lay.push({ s, a, b, y }); y += th + a.height + pad; }
-      const sy = y; let sh = 0; const sing = []; for (const s of singles) { const a = await img(s.a); sing.push({ s, a }); sh = Math.max(sh, a.height); }
-      y += th + sh + pad + 48;
+      const W = 2000, pad = 14, th = 36; let y = 66; const lay = [];
+      for (const s of strips) { const ims = []; for (const u of s.parts) ims.push(await img(u)); const hh = Math.max(...ims.map((i) => i.height)), top = s.t ? th : 2; lay.push({ s, ims, y, top }); y += top + hh + 4; }
+      y += 8; const sy = y; let sh = 0; const sing = []; for (const s of singles) { const a = await img(s.a); sing.push({ s, a }); sh = Math.max(sh, a.height); }
+      y += th + sh + pad + 50;
       const c = document.createElement('canvas'); c.width = W; c.height = y; const g = c.getContext('2d');
       g.fillStyle = '#0b0d13'; g.fillRect(0, 0, W, y);
-      g.fillStyle = '#ffe2b0'; g.font = 'bold 34px system-ui, sans-serif'; g.textBaseline = 'middle'; g.fillText('채찍 비질리아 — 3D 채찍 (끝에 종 조각)', pad, 34);
-      g.font = '24px system-ui, sans-serif';
-      for (const L of lay) { g.fillStyle = '#d8cfc0'; g.fillText(L.s.t, pad, L.y + th / 2); g.drawImage(L.a, 0, L.y + th); if (L.b) g.drawImage(L.b, L.a.width, L.y + th); }
-      let x = 0; for (const q of sing) { g.fillStyle = '#d8cfc0'; g.font = '19px system-ui, sans-serif'; g.fillText(q.s.t, x + 6, sy + th / 2); g.drawImage(q.a, x, sy + th); x += q.a.width; }
-      g.fillStyle = '#f0b090'; g.font = '22px system-ui, sans-serif'; g.fillText(weak, pad, y - 26, W - pad * 2);
+      g.fillStyle = '#ffe2b0'; g.font = 'bold 34px system-ui, sans-serif'; g.textBaseline = 'middle'; g.fillText('채찍 비질리아 — 코드로 만든 3D 채찍 (땋은 가죽 끈, 끝에 종 조각)', pad, 34);
+      for (const L of lay) { if (L.s.t) { g.fillStyle = '#d8cfc0'; g.font = '24px system-ui, sans-serif'; g.fillText(L.s.t, pad, L.y + th / 2); } let x = 0; for (const im of L.ims) { g.drawImage(im, x, L.y + L.top); x += im.width + (L.ims.length > 2 ? 1 : 0); } }
+      let x = 0; for (const q of sing) { g.fillStyle = '#d8cfc0'; g.font = '19px system-ui, sans-serif'; g.fillText(q.s.t, x + 6, sy + th / 2, q.a.width - 10); g.drawImage(q.a, x, sy + th); x += q.a.width; }
+      g.fillStyle = '#f0b090'; g.font = '22px system-ui, sans-serif'; g.fillText(weak, pad, y - 28, W - pad * 2);
       return c.toDataURL('image/png');
     }, [strips, singles, weak]);
     const f = opt('owner', '') || '/tmp/claude-0/v2/owner_whip.png'; fs.writeFileSync(f, Buffer.from(url.split(',')[1], 'base64')); console.log('wrote', f);

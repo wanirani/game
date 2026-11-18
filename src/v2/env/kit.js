@@ -83,9 +83,15 @@ export function doorAt(G, F, s, w0, yb, wallMat, boxes) {
   G.quad(wallMat, F.pt(u1, y0, w0), F.vec(0, 0, -d), [0, yS - y0, 0], F.vec(-1, 0, 0), dk);
   G.quad('stone', F.pt(u0, y0, w0), F.vec(u1 - u0, 0, 0), F.vec(0, 0, -d), [0, 1, 0], { k: 0.75, vary: 0 });
   const wp = w0 - d;
+  if (s.open) {   // pulled open (story state): a dark doorway and the leaf swung out on its left hinge
+    F.face(G, 'stone', u0, u1, y0, y1, wp, { k: 0.2, vary: 0, tint: s.glow ?? [0.5, 0.45, 0.5] });
+    F.box(G, 'darkwood', u0 - 2.5, u0 + 2.5, y0, yS - 2, w0 - 3, w0 + s.w * 0.86, { faces: 'FLRT', k: 0.95, vary: 0.25, tint: s.tint });
+    for (const fy of [0.16, 0.5, 0.82]) F.box(G, 'metal', u0 - 3.6, u0 + 3.6, y0 + (yS - y0) * fy - 2.6, y0 + (yS - y0) * fy + 2.6, w0 + 2, w0 + s.w * 0.7, { faces: 'LRT', k: 0.85, vary: 0 });
+  } else {
   F.face(G, 'darkwood', u0, u1, y0, y1, wp, { k: 0.95, vary: 0.25, tint: s.tint });
   for (const fy of [0.16, 0.5, 0.82]) F.box(G, 'metal', u0 + 1, u0 + (u1 - u0) * 0.78, y0 + (yS - y0) * fy - 2.6, y0 + (yS - y0) * fy + 2.6, wp, wp + 1.4, { faces: 'FT', k: 0.85, vary: 0 });
   F.box(G, 'metal', u1 - 13, u1 - 7, y0 + s.h * 0.4, y0 + s.h * 0.4 + 9, wp, wp + 2.6, { faces: 'FLRT', k: 1.1, vary: 0 });
+  }
   if (rise) { spandrels(G, F, wallMat, s.u, hw, yS, rise, s.arch, w0, {}); archBand(G, F, 'trimstone', s.u, hw, yS, rise, s.arch, w0 + 0.8, 9); }
   else F.box(G, 'trimstone', u0 - 12, u1 + 12, y1, y1 + 11, w0, w0 + 4.5, { faces: 'FLRT', vary: 0 });
   F.box(G, 'trimstone', u0 - 9, u0, yb, yS, w0, w0 + 4, { faces: 'FLRT', vary: 0 }); F.box(G, 'trimstone', u1, u1 + 9, yb, yS, w0, w0 + 4, { faces: 'FLRT', vary: 0 });

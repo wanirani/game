@@ -81,7 +81,7 @@ export function validateArea(a, twin = null) {
   if (!a.spawns.default) E('spawns.default missing');
   if (a.room && !ROOMS.includes(a.room)) Wn('unknown room tag: ' + a.room);
   for (const [s, r] of Object.entries(a.rooms ?? {})) if (!ROOMS.includes(r)) Wn(`rooms.${s}: unknown tag ${r}`);
-  const ground = { ...a.stage, spawns: a.stage.spawns.filter((s) => s.kind !== 'bat').map((s) => ({ ...s, kind: PROTO_KIND[s.kind] ?? s.kind })) };
+  const ground = { ...a.stage, spawns: [] };   // the prototype's own flood knows no whip rings, bells or hops: enemies are checked below against this lane's reach grid (same rule: standable + reachable)
   let W = null;
   try { const r = validateEnv(ground); for (const e of r.errors) E('stage: ' + e); W = compileEnv(a.stage); } catch (e) { E('compile failed: ' + String(e?.message ?? e)); }
   if (!W || !a.spawns.default) return { errors, warnings, stats: {} };
@@ -89,7 +89,9 @@ export function validateArea(a, twin = null) {
   W.hookPoints = a.stage.hookPoints ?? [];
   const d = a.spawns.default, ids = new Set(), secIds = new Set(a.stage.sections.map((s) => s.id));
   // reach = walking + jumping + whip rings + crossing at a bell to the other night and back (the hero keeps x, z): both nights are flooded together until nothing new is found
-  let G = reachGrid(W, d.x, d.z, 14, { hooks: W.hookPoints });
+  // a.entry = spawn names behind something shut in this state (a closed gate): the hero can only stand there after coming in through that spawn, so they start the flood too
+  const entry = (a.entry ?? []).map((n) => a.spawns[n]).filter(Boolean).map((s) => [s.x, s.z]);
+  let G = reachGrid(W, d.x, d.z, 14, { hooks: W.hookPoints, seeds: entry });
   if (twin && twin.twin === a.id) {
     let W2 = null; try { W2 = compileEnv(twin.stage); W2.hookPoints = twin.stage.hookPoints ?? []; } catch { W2 = null; }
     if (W2) {
@@ -98,7 +100,7 @@ export function validateArea(a, twin = null) {
         grew = false;
         const GB = reachGrid(W2, td.x, td.z, 14, { hooks: W2.hookPoints, seeds: seedsB });
         for (const b of bells(twin)) { const at = GB.near(b.x, b.z, b.r); if (at && !seedsA.some((p) => p[0] === at[0] && p[1] === at[1]) && !G.reachable(at[0], at[1]) && !G.blocked(at[0], at[1], 14)) { seedsA.push(at); grew = true; } }
-        if (grew) G = reachGrid(W, d.x, d.z, 14, { hooks: W.hookPoints, seeds: seedsA });
+        if (grew) G = reachGrid(W, d.x, d.z, 14, { hooks: W.hookPoints, seeds: [...entry, ...seedsA] });
         for (const b of bells(a)) { const at = G.near(b.x, b.z, b.r); if (at && !seedsB.some((p) => p[0] === at[0] && p[1] === at[1])) { seedsB.push(at); grew = true; } }
       }
     }
@@ -161,7 +163,7 @@ export function validateArea(a, twin = null) {
       else for (const n of Object.keys(a.spawns)) if (a.spawns[n].x !== twin.spawns[n].x || a.spawns[n].z !== twin.spawns[n].z) E(`twin: spawn ${n} stands elsewhere`);
       if (!same(a.exits.map((x) => [x.id, x.x0, x.x1, x.z0, x.z1]), twin.exits.map((x) => [x.id, x.x0, x.x1, x.z0, x.z1]))) E('twin: exits differ');
       if (!same(a.stage.sections.map((s) => [s.id, s.x0, s.x1, s.z0, s.z1]), twin.stage.sections.map((s) => [s.id, s.x0, s.x1, s.z0, s.z1]))) E('twin: sections differ');
-      const fp = (st) => st.parts.filter((p) => ['floor', 'wall', 'stairs', 'pave', 'block'].includes(p.t)).map((p) => [p.t, p.x, p.z, p.w, p.d, p.y ?? 0]);
+      const fp = (st) => st.parts.filter((p) => ['floor', 'wall', 'stairs', 'pave', 'block'].includes(p.t) && !p.state).map((p) => [p.t, p.x, p.z, p.w, p.d, p.y ?? 0]);   // a part with state: '<flag>' exists only in that story state of one night (a rebuilt stair): not part of the shared footprint
       if (!same(fp(a.stage), fp(twin.stage))) E('twin: floors / building footprints differ');
     }
   }

@@ -9,12 +9,14 @@ import { Geo, Frame } from './geo.js';
 import * as K from './kit.js';
 import { PROPS, WALLPROPS } from './props.js';
 import { bakedDef, bakedProp } from './baked.js';
-import { BAKED_EXTRA, BAKED_ARGS } from './props2.js';   // WORLD 구역의 소품을 PROPS 에 더한다 + 구운 소품에 덧붙이는 것
+import { BAKED_EXTRA, BAKED_ARGS } from './props2.js';
+import { GEN_ALIAS } from './props3.js';                  // WORLD-2: whip ring, road bell, bridges, crypt furniture stand-ins + names of generated second tries   // WORLD 구역의 소품을 PROPS 에 더한다 + 구운 소품에 덧붙이는 것
 
 /** 구운 소품이 없을 때(묶음을 받기 전) 대신 세우는 손으로 짠 소품 */
 const FALLBACK = { angel: 'statue', gargoyle: 'statue', deadtree: 'tree', tomb_a: 'tomb', tomb_b: 'tomb', tomb_c: 'tomb', tomb_d: 'tomb', goods: 'barrel', chapel: 'mausoleum' };
 /** 이름이 묶음에 있으면 구운 소품(+ 덧붙임), 없으면 손으로 짠 소품. part 에 code:true 면 묶음에 있어도 손으로 짠 것을 쓴다 */
-const propFn = (name, code) => {
+const propFn = (name0, code) => {
+  const name = !code && GEN_ALIAS[name0] && bakedDef(GEN_ALIAS[name0]) ? GEN_ALIAS[name0] : name0;   // a generated second try (stall2, wreck2, skullwall) takes over when the pack has it
   const d = code ? null : bakedDef(name);
   if (!d) return PROPS[name] ?? PROPS[FALLBACK[name]];
   return (G, x, y, z, o) => { const oo = BAKED_ARGS[name] ? BAKED_ARGS[name](o, d) : o; bakedProp(G, name, x, y, z, oo); BAKED_EXTRA[name]?.(G, x, y, z, oo, (oo.h ?? d.h) / d.h); };
@@ -23,7 +25,7 @@ const propFn = (name, code) => {
 const KIT_ONLY = new Set(['pave', 'arch', 'fence', 'deco']);
 const bPart = (P) => {
   if (P.t !== 'prop' || !P.mesh) return P;
-  const d = P.code ? null : bakedDef(P.mesh), o = { ...P, img: '__mesh' };
+  const d = P.code ? null : bakedDef(GEN_ALIAS[P.mesh] && bakedDef(GEN_ALIAS[P.mesh]) ? GEN_ALIAS[P.mesh] : P.mesh), o = { ...P, img: '__mesh' };
   if (d) {   // 구운 소품: 충돌 발자국과 빛을 묶음에서 채운다 (part 에 적은 값이 이긴다)
     const h = P.h ?? BAKED_ARGS[P.mesh]?.(P, d).h ?? d.h, s = h / d.h;
     if (o.h == null) o.h = h;

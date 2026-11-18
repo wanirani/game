@@ -56,7 +56,7 @@ export class Whip {
     this.onEvent(name, e);
   }
 
-  /** mode: rest | stow | swing | crack | wrap | hook | ring. See docs/v2/WHIP.md §2 */
+  /** mode: rest | stow | swing | crack | wrap | hook | ring. See docs/v2/WHIP.md section 2 */
   set(mode, p) {
     if (mode === 'crack') {
       this.flash = 1; this.kick = 1; this.sw.hitCrack = true;   // a hit voices the crack: the same swing does not crack in the air as well
@@ -199,7 +199,7 @@ export class Whip {
     }
   }
 
-  // ── per mode targets (fills tgt + wn, sets lenWant) ──
+  // -- per mode targets (fills tgt + wn, sets lenWant) --
   _aimSwing() {
     const sw = this.sw, sh = sw.shape, W = this._w, r = this.root, n = this.n, wn = this.wn;
     const s = this._phase(); sw.s = s;

@@ -38,6 +38,8 @@ export class Sim {
     this.W = W; this.hooks = hooks; this.w = bindWorld(W); this.deaths = 0;
     this.qx = 0.5; this.qz = 0.5; this.qy = 0.5; this.g = 0.5; this.ex = 0.5; this.ez = 0.5; this._sx = 0.5; this._sz = 0.5; this._sv = 0.5; this._tx = 0.5; this._tz = 0.5; this._tr = 0.5; this._hx = 0.5; this._hz = 0.5; this._sc = 0.5;   // 숫자를 주고받는 칸 (인자 · 반환값으로 실수를 넘기면 상자가 생긴다 — collide.js groundAtS)
     this._cg = typeof W.groundAt === 'function'; this._cm = typeof W.moveXZ === 'function'; this._cs = typeof W.sectionAt === 'function'; this._ra = 0.5;
+    this.freezeSection = true; this.rest = null; this.here = null;
+    this.caps = { charge: true, skill: true, bell: true, boss: true, heal: true, rest: true };   // 장면이 무엇을 쓸 수 있는지 묻는 자리
     this.reset();
   }
   /** 땅 높이: this.qx, this.qz 아래 · this.qy 이하에서 가장 높은 걷는 면 → this.g */
@@ -55,8 +57,18 @@ export class Sim {
     this.time = 0; this._tick = 0; this.stop = 0; this.done = false; this.kills = 0; this._buf = { attack: false, dash: false, jump: false, lockNext: false, skill: false, bell: false };
     this._src = this._src ?? { e: null, atk: null, shot: null }; this._probe = this._probe ?? { x: 0, z: 0, y: 0, r: 0, h: 0, def: null };
     this.lights = []; this.hookPoints = (W.hookPoints ?? []).map((p, i) => ({ id: p.id ?? 'hook' + i, y: 0, ...p })); this.caller = this.caller ?? 'sera'; this._nid = 0;
-    this.hero = {
-      x: W.start.x, z: W.start.z, y: W.start.y, vx: 0, vz: 0, vy: 0, r: 14, h: 92, facing: 1, dirX: 1, dirZ: 0, onGround: true, coyote: 0,
+    this.hero = this._newHero(W.start.x, W.start.y, W.start.z);
+    settle(this._probe);
+    this.enemies = [];
+    for (const s of W.spawns ?? []) this.addEnemy(s);
+    this.shots = [];
+    this.section = this.w.section(this.hero.x, this.hero.z)?.id ?? this.section ?? 'street';
+  }
+  /** 새 영웅 상태 (모든 칸을 여기서 만든다 — 칸 차림이 하나여야 한다: settle) */
+  _newHero(sx, sy, sz) {
+    const T = TUNE;
+    const h = {
+      x: sx, z: sz, y: sy, vx: 0, vz: 0, vy: 0, r: 14, h: 92, facing: 1, dirX: 1, dirZ: 0, onGround: true, coyote: 0,
       hp: T.heroHp, hpMax: T.heroHp, ifr: 0, hurtT: 0, dead: false, deadT: 0, flash: 0,
       dashT: 0, rollCd: 0, dashCd: 0, dvx: 0, dvz: 0, roll: { t: 0, dur: T.rollT, dx: 1, dz: 0, v0: 0 }, sweepWin: 0, sweepQ: false, dodged: false, heavyHurt: false,
       guard: false, guardT: 0, guardTap: 0, parryT: 0, parryCd: 0, parryOk: 0, blockT: 0,
@@ -66,13 +78,29 @@ export class Sim {
       reso: 0, resoMax: T.resoCells, callCd: 0, callCdMax: T.callCd, bellCd: 0, bellCdMax: T.bellCd, bellCharge: 0, bellDown: false, bellHoldT: 0, bellOk: true, knellId: null, hookId: null, skillMode: 'call', hookFX: 0, hookFY: 0, hookFZ: 0, hookTX: 0, hookTY: 0, hookTZ: 0, hookDur: 0.3,
       gait: 0, gaitMode: 'run', wasMoving: false, pushed: false, pivot: 0, pivotT: 0, pivotA: 0, pivotV: 0, wishX: 1, wishZ: 0, mx: 0, mz: 0, m: 0, ux: 0, uz: 0,
       anim: 'idle', animT: 0, t: 0, cut: false, landT: 0, landV: 0,
-      safe: { x: W.start.x, z: W.start.z, y: W.start.y },
+      safe: { x: sx, z: sz, y: sy },
     };
-    settle(this.hero); settle(this.hero.roll); settle(this.hero.safe); settle(this._probe);
-    this.enemies = [];
-    for (const s of W.spawns ?? []) this.addEnemy(s);
-    this.shots = [];
-    this.section = this.w.section(this.hero.x, this.hero.z)?.id ?? this.section ?? 'street';
+    settle(h); settle(h.roll); settle(h.safe);
+    return h;
+  }
+  /** 체력을 채운다 (쉼터 · 물건). n = 숫자 또는 'full'. 돌려주는 값 = 실제로 찬 양 */
+  heal(n = 'full') { const h = this.hero; if (h.dead) return 0; const b = h.hp; h.hp = n === 'full' ? h.hpMax : Math.min(h.hpMax, h.hp + n); this.emit('heal', h, h.hp - b); return h.hp - b; }
+  /**
+   * 쉼터를 정한다: 영웅이 쓰러지면 지역을 처음부터 다시 하지 않고 이 자리에서 일어난다 (쓰러진 적은 그대로 쓰러져 있고, 살아 있는 적은 제자리로 돌아가 다시 잠든다. 보스는 처음부터).
+   * respawnAt(null) 이면 예전처럼 처음부터 다시 (sim.reset).
+   */
+  respawnAt(x, z, y) { if (x == null) { this.rest = null; return; } this.qx = x; this.qz = z; this.qy = (y ?? 1e9); this._gq(); this.rest = { x, z, y: this.g > -1e9 ? this.g : y ?? 0 }; }
+  _revive() {
+    const R = this.rest, old = this.hero, h = this._newHero(R.x, R.y, R.z); h.reso = 0; h.resoMax = old.resoMax; h.hpMax = old.hpMax; h.hp = h.hpMax; h.ifr = 1.2;
+    this.hero = h; this.shots.length = 0; this.lights.length = 0; this.stop = 0;
+    for (const e of this.enemies) {
+      if (e.dead || e.state === 'dead') continue;
+      e.state = 'idle'; e.active = false; e.atk = null; e.phase = null; e.tele = 0; e.stagger = 0; e.stun = 0; e.kx = e.kz = 0; e.pullT = 0; e.cd = 0.6; e.x = e.homeX; e.z = e.homeZ; e.detourT = 0;
+      if (e.def.boss) { e.hp = e.hpMax; e.bphase = 1; e.kneel = 0; e.fled = false; e.solid = true; e.alpha = 1; e.poiseHp = 0; e.staggerK = 0; }
+      if (e.def.fade != null) { e.solid = false; e.alpha = e.def.fade; }
+      if (!e.def.fly && !e.def.floats) { this.qx = e.x; this.qz = e.z; this.qy = e.y + 400; this._gq(); if (this.g > -1e9) e.y = e.gy = this.g; }
+    }
+    this.emit('respawn', h, R);
   }
   /** 적 하나를 더한다 (스테이지 spawns 한 줄과 같은 모양: {kind, x, z, y?, yard?, active?}). 돌려주는 값 = 적 */
   addEnemy(s) {
@@ -82,7 +110,7 @@ export class Sim {
       hp: D.hp, hpMax: D.hp, facing: -1, dirX: -1, dirZ: 0, state: 'idle', stateT: 0, phase: null, tele: 0, atk: null, cd: rnd(0.3, 1.2),
       flashT: 0, stun: 0, stagger: 0, dying: 0, dead: false, pullT: 0, pullX: 0, pullZ: 0, kneel: 0, knelled: false, bphase: 0, poiseHp: 0, poiseMax: 0, name: D.name,
       // (모든 칸을 여기서 한 번에 만든다: 적마다 칸 차림이 같아야 엔진이 숫자를 상자에 담지 않고 읽는다 — 틱마다 쓰레기를 만들지 않는 조건. 새 칸을 더할 때도 여기에)
-      buried: false, sight: D.sight, wakeBy: null, staggerSide: 1, staggerK: 0, kneelT: 0, fled: false, fleeT: 0, fleeHold: false, lastAtk: null, sumCd: 3, songCd: 6, pulseT: 0, summoned: false, active: !!s.active, solid: true, alpha: 1, hover: D.hover ?? 0, solidT: 0, revealT: 0,
+      homeX: s.x, homeZ: s.z, buried: false, sight: D.sight, wakeBy: null, staggerSide: 1, staggerK: 0, kneelT: 0, fled: false, fleeT: 0, fleeHold: false, lastAtk: null, sumCd: 3, songCd: 6, pulseT: 0, summoned: false, active: !!s.active, solid: true, alpha: 1, hover: D.hover ?? 0, solidT: 0, revealT: 0,
       anim: 'idle', animT: 0, t: rnd(0, 5), hitDone: false, swung: false, kx: 0, kz: 0, gait: rnd(0, 1), moved: 0,
       side: id % 2 ? 1 : -1, detourT: 0, detX: 0, detZ: 0, stuckT: 0, orb: rnd(0, 6.28), orbW: (id % 2 ? 1 : -1) * rnd(1.1, 1.7), orbR: D.orbit ? rnd(D.orbit[0], D.orbit[1]) : 0,
     };
@@ -138,11 +166,11 @@ export class Sim {
     this._separate(dt);
     this._shots(dt);
     const sec = this._cs ? this.W.sectionAt(this.hero.x, this.hero.z) : sectionOf(this.W, this.hero);
-    if (sec && !this.done) this.section = sec.id;
+    if (sec) { this.here = sec.id; if (!this.done || !this.freezeSection) this.section = sec.id; }   // here = 늘 영웅이 선 구역 · section 은 마당을 다 치우면 'done' 에 멈춘다(시범 구간의 옛 약속) — freezeSection = false 면 멈추지 않는다
     if (!this.done) {   // 마당의 적이 모두 쓰러졌는가
       let yard = 0, left = 0; const E = this.enemies;
       for (let i = 0; i < E.length; i++) if (E[i].yard) { yard++; if (!E[i].dead) left++; }
-      if (yard && !left) { this.done = true; this.section = 'done'; this.emit('done'); }
+      if (yard && !left) { this.done = true; if (this.freezeSection) this.section = 'done'; this.emit('done'); }
     }
   }
   // ───────────────────────── 영웅 ─────────────────────────
@@ -157,7 +185,7 @@ export class Sim {
     if (h.dead) {
       h.deadT += dt; h.vx *= 0.9; h.vz *= 0.9;
       this._fall(h, dt);
-      if (h.deadT > T.deadT) { this.deaths++; this.reset(); return; }
+      if (h.deadT > T.deadT) { this.deaths++; if (this.rest) this._revive(); else this.reset(); return; }
       this._anim(h, 'death', dt); return;
     }
     let mx = inp.mx || 0, mz = inp.mz || 0; const m0 = hyp(mx, mz);
@@ -698,7 +726,7 @@ export class Sim {
     }
     const dx = h.x - e.x, dz = h.z - e.z, dist = hyp(dx, dz);
     if (!e.active) {
-      if (!h.dead && e.wakeBy !== 'trigger' && (!e.yard || this.section === 'yard' || this.section === 'done') && Math.abs(h.y - e.gy) < 130 && this._sees(e, h, dist, D)) this.wake(e);
+      if (!h.dead && e.wakeBy !== 'trigger' && (!e.yard || this.section === 'yard' || this.section === 'done' || this.here === 'yard') && Math.abs(h.y - e.gy) < 130 && this._sees(e, h, dist, D)) this.wake(e);
       if (!e.active) { this._place(e); this._anim(e, e.buried ? 'buried' : 'idle', dt); return; }
     }
     if (e.state === 'rise') {   // 땅에서 일어서는 중 (맞을 수는 있다)

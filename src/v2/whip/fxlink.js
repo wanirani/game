@@ -1,4 +1,4 @@
-// v2 whip - default wiring of the whip's events to the effects engine (src/v2/fx) and the feel table (src/v2/feel). docs/v2/WHIP.md §4
+// v2 whip - default wiring of the whip's events to the effects engine (src/v2/fx) and the feel table (src/v2/feel). docs/v2/WHIP.md section 4
 //   const link = whipFx(fx, feel);                   // fx and feel may be null (no effects on WebGL1, no sound)
 //   const whip = createWhip({ onEvent: link.onEvent });
 // The scene may ignore this file and handle onEvent itself.

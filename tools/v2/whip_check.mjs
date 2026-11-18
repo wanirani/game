@@ -108,15 +108,18 @@ if (PERF) {
   }
   const P1 = { move: '', t: 0, dirX: 1, dirZ: 0 }, R1 = { style: 'coil' };
   const tick = (i) => { const s = seq[i % 360]; if (s.id) { P1.move = s.id; P1.t = s.t; whip.set('swing', P1); } else whip.set('rest', R1); whip.update(DT, s); };
-  for (let i = 0; i < 20000; i++) tick(i);
-  gc?.(); const h0 = process.memoryUsage().heapUsed, t0 = performance.now();
-  for (let i = 0; i < N; i++) tick(i);
-  const t1 = performance.now(); gc?.(); const h1 = process.memoryUsage().heapUsed;
+  // the same two loops are run first to warm up (the optimiser's own code objects land on the heap the first time a loop gets hot), then measured
   const info = meshInfo(whip), vtx = new Float32Array(info.floats), tmp = new Float32Array(whip.n * 3);
-  for (let i = 0; i < 20000; i++) writeWhipMesh(whip, vtx, 0.5, tmp);
+  const runTicks = (n) => { for (let i = 0; i < n; i++) tick(i); };
+  const runFrames = (n) => { for (let i = 0; i < n; i++) { tick(i); writeWhipMesh(whip, vtx, (i % 7) / 7, tmp); } };
+  runTicks(N); runFrames(N); runTicks(N); runFrames(N);
+  process.memoryUsage(); performance.now(); gc?.();   // (the first call of these allocates their own tables once)
+  gc?.(); gc?.(); const h0 = process.memoryUsage().heapUsed, t0 = performance.now();
+  runTicks(N);
+  const t1 = performance.now(); gc?.(); gc?.(); const h1 = process.memoryUsage().heapUsed;
   gc?.(); const h2 = process.memoryUsage().heapUsed, t2 = performance.now();
-  for (let i = 0; i < N; i++) { tick(i); writeWhipMesh(whip, vtx, (i % 7) / 7, tmp); }
-  const t3 = performance.now(); gc?.(); const h3 = process.memoryUsage().heapUsed;
+  runFrames(N);
+  const t3 = performance.now(); gc?.(); gc?.(); const h3 = process.memoryUsage().heapUsed;
   const perTick = ((t1 - t0) / N) * 1000, perFrame = ((t3 - t2) / N) * 1000 - perTick, bTick = (h1 - h0) / N, bFrame = (h3 - h2) / N;
   console.log(`numbers (mid tier, ${whip.n} nodes, node ${process.version}, ${gc ? 'gc exposed' : 'NO gc - bytes are not reliable'}):`);
   console.log(`  cpu per tick   ${perTick.toFixed(2)} us   (${N} ticks: swings c1 c2 c3 sweep + rest)`);

@@ -190,6 +190,15 @@ ok('moves carry strength (= str) for the scene', Object.values(MOVES).every((m) 
   ok('tap the roll button standing, release, then push the stick within 0.3 s: no roll (walks off)', rolls === 0 && s.hero.dashT <= 0 && s.hero.x > 5, `rolls ${rolls} x ${s.hero.x.toFixed(0)}`);
   const s2 = mk(); let r2 = 0; s2.hooks.roll = () => { r2++; }; run(s2, 0.4, (i) => ({ mx: i >= 6 ? 1 : 0, mz: 0, dash: i === 0, guard: true }));
   ok('holding the button (guard) and pushing the stick still rolls', r2 === 1, `rolls ${r2}`); }
+// ── 쉼터: 체력 채우기 · 쓰러지면 쉼터에서 일어난다 · 구역 따라가기 ──
+{ const s = mk([{ kind: 'melee', x: 200, z: 0, active: true }, { kind: 'melee', x: 260, z: 60, active: true }]); const [a, b] = s.enemies; a.cd = b.cd = 99;
+  s.hero.hp = 40; const got = s.heal(25), got2 = s.heal('full');
+  ok('sim.heal(n | full) fills the hero (event heal)', got === 25 && got2 === 35 && s.hero.hp === s.hero.hpMax && s.log.some((l) => l[0] === 'heal'));
+  s.respawnAt(-200, 40); s._kill(a); run(s, 1.5, {}); s.hero.hp = 1; s.hurtHero(50, -1, 0, { e: b }); run(s, TUNE.deadT + 0.3, {});
+  ok('with a rest spot (sim.respawnAt) a dead hero stands up there with full health; the dead stay dead, the living go back to sleep at their posts', s.deaths === 1 && !s.hero.dead && s.hero.hp === s.hero.hpMax && Math.abs(s.hero.x + 200) < 30 && a.dead && !b.dead && !b.active && Math.abs(b.x - 260) < 1 && s.log.some((l) => l[0] === 'respawn'), `hero ${s.hero.x.toFixed(0)},${s.hero.z.toFixed(0)} hp ${s.hero.hp} · a dead ${a.dead} · b active ${b.active} at ${b.x.toFixed(0)}`);
+  const s2 = mk([{ kind: 'melee', x: 200, z: 0, active: true }]); s2.hero.hp = 1; s2.hurtHero(50, -1, 0, {}); run(s2, TUNE.deadT + 0.3, {}); ok('without a rest spot the area restarts as before (sim.reset)', s2.deaths === 1 && s2.enemies.length === 1 && s2.enemies[0].hp === s2.enemies[0].hpMax && !s2.hero.dead);
+  const s3 = mk([{ kind: 'melee', x: 100, z: 0, active: true, yard: true }]); s3._kill(s3.enemies[0]); run(s3, 2, {}); const frozen = s3.section; s3.freezeSection = false; run(s3, 0.1, {});
+  ok("sim.section stops at 'done' after the yard is cleared (test route); sim.here always follows the hero; freezeSection = false lets section follow too", s3.done && frozen === 'done' && s3.here === 'arena' && s3.section === 'arena' && s3.caps.skill && s3.caps.bell, `section ${frozen} → ${s3.section} · here ${s3.here}`); }
 // ── 도구: 모아 휘감기 · 솜씨(채찍 걸기 / 부름) · 종(메아리 / 길게 = 조종) · 울림 눈금 ──
 { const s = mk([{ kind: 'melee', x: 215, z: 0, active: true }]); s.enemies[0].cd = 99; s.enemies[0].hp = s.enemies[0].hpMax = 999; const ids = []; s.hooks.attack = (h, mv) => ids.push(mv.id); let maxC = 0, sawCharge = false;
   run(s, 1.2, (i) => ({ attack: i === 0, attackHeld: i < 62 }), (q) => { maxC = Math.max(maxC, q.hero.charge); sawCharge ||= q.hero.anim === 'charge'; });

@@ -17,7 +17,7 @@ const P = await import(process.env.PLAY_ENTRY || '../../src/v2/play/index.js');
 const { Sim, TUNE, KINDS, MOVES, COMBO, flatArena, driveHero, driveActor, usePlayClips, UNIT } = P;
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const DIR = path.join(root, 'assets/v2/char3d');
-let pass = 0, fail = 0; const fails = [];
+let pass = 0, fail = 0; const fails = [], realRandom = Math.random;
 const ok = (name, cond, extra = '') => { if (cond) pass++; else { fail++; fails.push(name + (extra ? ' — ' + extra : '')); } console.log((cond ? 'PASS ' : 'FAIL ') + name + (extra ? '  (' + extra + ')' : '')); };
 const DT = 1 / 60, ID = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 
@@ -163,15 +163,25 @@ slideCase('walk speed reversal (half stick)', (i) => (i < 60 ? [0.38, 0] : [-0.3
   ok('jittery reverse input (±1°) does not make the body wobble', flips === 0, `flips ${flips}`); }
 
 // ── ④ 전체를 함께 돌려 NaN · 클립 이름 ──
-{ // 도구 · 보스: 새 상태가 라이브러리 클립으로 돌고 NaN 이 없다
-  const sim = new Sim(flatArena(700, 500, [{ kind: 'banshee_queen', x: 220, z: 0, active: true, phase: 2 }, { kind: 'grave_ghost', x: 140, z: 60, active: true }]), {}), hero = mkChar('kael'), chars = new Map(), usedH = new Set(), usedB = new Set(); let bad = 0;
+{ // 도구 · 보스: 새 상태가 라이브러리 클립으로 돌고 NaN 이 없다 (차례대로: 모아 휘감기 → 메아리 → 부름 → 채찍 걸기 → 길게 친 종, 그 뒤 여왕이 싸우다 무릎 꿇는다)
+  { let sd = 4242; Math.random = () => { sd = (sd * 1664525 + 1013904223) >>> 0; return sd / 4294967296; }; }
+  const sim = new Sim(flatArena(700, 500, [{ kind: 'banshee_queen', x: 220, z: 0, active: true, phase: 2 }, { kind: 'grave_ghost', x: 140, z: 60, active: true }]), {}), hero = mkChar('kael'), chars = new Map(), usedH = new Set(), usedB = new Set(); let bad = 0, stage = 0, st0 = 0, freeAt = -1;
   sim.hookPoints.push({ id: 'r', x: -260, y: 0, z: 0, to: [-320, 0] }); sim.hero.reso = 3;
-  const hh = sim.hero, plan = (i) => (i < 60 ? { attack: i === 0, attackHeld: true } : i < 110 ? {} : i < 200 ? { bell: i < 140 && hh.act !== 'echo' } : i < 300 ? { skill: i < 240 && hh.act !== 'call' } : i < 420 ? { mx: -1, mz: 0 } : i < 520 ? { skill: i < 460 && hh.act !== 'hook' } : i < 700 ? { bell: i === 520, bellHeld: true } : {});
-  for (let i = 0; i < 1500; i++) { const boss = sim.enemies[0]; if (i < 430) { boss.cd = 99; boss.sumCd = 99; boss.songCd = 99; } if (i === 430) { boss.cd = 0.3; boss.sumCd = 0.3; boss.songCd = 4; } if (i === 1300) boss.hp = 30; sim.hero.hp = sim.hero.hpMax; sim.update(DT, plan(i)); if (sim.stop > 0) sim.stop = 0;
+  const plan = (i) => { const hh = sim.hero, t = i - st0, next = () => { stage++; st0 = i; };
+    if (stage === 0) { if (t >= 100) next(); return { attack: t === 0, attackHeld: t < 60 }; }
+    if (stage === 1) { if (hh.act === 'echo') next(); return { bell: true }; }
+    if (stage === 2) { if (hh.act === 'call') next(); return hh.act ? {} : { skill: true }; }
+    if (stage === 3) { if (hh.act === 'hook') next(); if (hh.act) return {}; const dx = -260 - hh.x, dz = -hh.z, d = Math.hypot(dx, dz); return d > 180 ? { mx: dx / d, mz: dz / d } : { skill: true }; }
+    if (stage === 4) { if (hh.act === 'ring') next(); return hh.act ? {} : { bell: true, bellHeld: true }; }
+    if (stage === 5) { if (t > 90) { next(); freeAt = i; } return { bellHeld: true }; }
+    return {}; };
+  for (let i = 0; i < 2400 && !(freeAt > 0 && i > freeAt + 900); i++) { const boss = sim.enemies[0]; if (stage < 6) { boss.cd = 99; boss.sumCd = 99; boss.songCd = 99; } else if (i === freeAt + 1) { boss.cd = 0.3; boss.sumCd = 0.3; boss.songCd = 4; } else if (i === freeAt + 700) boss.hp = 30;
+    sim.hero.hp = sim.hero.hpMax; sim.update(DT, plan(i)); if (sim.stop > 0) sim.stop = 0;
     driveHero(hero, sim.hero, DT, TUNE); if (!finiteRig(hero)) bad++; usedH.add(hero.anim.cur?.name);
     for (const e of sim.enemies) { if (e.dead) continue; let ch = chars.get(e.id); if (!ch) { ch = mkChar(e.def.model); chars.set(e.id, ch); } driveActor(ch, e, DT); if (!finiteRig(ch)) bad++; if (e.def.boss) usedB.add(ch.anim.cur?.name); } }
+  Math.random = realRandom;
   const needH = ['charged', 'cast_raise', 'point', 'thrust', 'cast_big'], needB = ['float_idle', 'stun'];
-  ok('tools + boss driven for 25 s with no NaN; hero used ' + needH.join(' ') + '; the queen used her clips', bad === 0 && needH.every((n) => usedH.has(n)) && needB.every((n) => usedB.has(n)) && [...usedB].some((n) => /scream|cast_/.test(n)), `bad ${bad} · hero: ${[...usedH].join(' ')} · queen: ${[...usedB].join(' ')}`); }
+  ok('tools + boss driven with no NaN; hero used ' + needH.join(' ') + '; the queen used her clips', bad === 0 && stage === 6 && needH.every((n) => usedH.has(n)) && needB.every((n) => usedB.has(n)) && [...usedB].some((n) => /scream|cast_/.test(n)), `bad ${bad} · stages done ${stage}/6 · hero: ${[...usedH].join(' ')} · queen: ${[...usedB].join(' ')}`); }
 { const kinds = ['skeleton_soldier', 'skeleton_mage', 'plague_corpse', 'grave_ghost', 'gravekeeper_armor', 'bat'];
   const sim = new Sim(flatArena(520, 360, kinds.map((kind, i) => ({ kind, x: 160 + (i % 3) * 90, z: -120 + i * 50, active: true }))), {}), hero = mkChar('kael'), chars = new Map(), used = {};
   for (const e of sim.enemies) chars.set(e.id, mkChar(e.def.model));

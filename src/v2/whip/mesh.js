@@ -1,4 +1,4 @@
-// v2 whip - the mesh, rebuilt every frame from the nodes into caller-owned arrays (no allocation). docs/v2/WHIP.md §3
+// v2 whip - the mesh, rebuilt every frame from the nodes into caller-owned arrays (no allocation). docs/v2/WHIP.md section 3
 // One vertex = 10 floats: pos xyz | aux xyz | u, v, radius, kind
 //   lash   (kind 0..1 = leather..metal): pos = centre line, aux = tangent, u = arc length from the tip (px), v = -1 | +1 across, radius = half width.
 //          The vertex shader turns it to the camera and widens it to the minimum on-screen thickness; the fragment shader shades it as a round braid.

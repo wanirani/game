@@ -1,4 +1,4 @@
-// v2 whip - hero state (src/v2/play rules) -> whip mode, once per tick before whip.update. docs/v2/WHIP.md §5
+// v2 whip - hero state (src/v2/play rules) -> whip mode, once per tick before whip.update. docs/v2/WHIP.md section 5
 // Reads only: act, actT, actDone, charging, charge, move, moveT, dirX, dirZ, plungeLand, whipX/Y/Z, dead. Allocates nothing.
 const P = { move: '', t: 0, dirX: 1, dirZ: 0, hit: null, dur: 0, landT: null, x: null, y: 0, z: 0, r: 14, phase: '', kind: '', style: 'coil', throwT: 0.16, level: 0 };
 const HIT = [0, 0];

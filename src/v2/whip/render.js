@@ -1,5 +1,5 @@
 // v2 whip - WebGL2 renderer: one program, one VAO, one dynamic vertex buffer. The whole whip (handle, braided lash, ferrules, bell shard)
-// is ONE draw call; the shard's glow and the streak behind the tip are a second, small additive call (opts.glow / opts.trail = false). docs/v2/WHIP.md §3
+// is ONE draw call; the shard's glow and the streak behind the tip are a second, small additive call (opts.glow / opts.trail = false). docs/v2/WHIP.md section 3
 // Rides on the scene's GL context: after draw() the caller re-binds its own program and buffers (VAO is left null, blending
 // (ONE, ONE_MINUS_SRC_ALPHA), depth test and depth write on, culling off).
 import { meshInfo, writeWhipMesh, WHIP_VERT } from './mesh.js';
@@ -37,7 +37,7 @@ const FS = `#version 300 es
 precision highp float;
 in vec3 vWP; in vec3 vA; in vec3 vB; in vec3 vT; in vec4 vP; in float vFog; in vec3 vLit;
 uniform vec3 uEye; uniform vec3 uSunDir; uniform vec3 uSun; uniform vec3 uAmb; uniform vec3 uFogCol;
-uniform vec4 uGlow; uniform vec4 uFx; uniform vec4 uTone; uniform vec4 uTrail;   // uFx: taut, time, flash, alpha   uTone: leather tint rgb, rim strength
+uniform vec4 uGlow; uniform vec4 uFx; uniform vec4 uTone; uniform vec4 uTrail; uniform vec3 uTint; uniform float uFlash;   // uFx: taut, time, flash, alpha   uTone: leather tint rgb, rim strength
 out vec4 o;
 void main() {
   float kind = vP.w;
@@ -92,14 +92,15 @@ void main() {
   vec3 H = normalize(uSunDir + V); float s = pow(max(dot(n, H), 0.0), sh) * spec;
   float rim = pow(1.0 - max(dot(n, V), 0.0), 2.4) * clamp(n.y * 0.5 + 0.8, 0.0, 1.0);
   vec3 light = uAmb + uSun * wrap + vLit;
-  vec3 rgb = base * light + (uSun + vLit * 0.8 + uAmb * 0.4) * s + vec3(0.62, 0.72, 0.95) * (rim * rimK) + emis;
+  vec3 rgb = (base * light + (uSun + vLit * 0.8 + uAmb * 0.4) * s + vec3(0.62, 0.72, 0.95) * (rim * rimK)) * uTint + emis;
+  rgb = mix(rgb, vec3(1.0), uFlash);
   rgb = mix(rgb, uFogCol, vFog * (1.0 - min(1.0, dot(emis, vec3(0.5)))));
   float a = edge * uFx.w;
   if (a < 0.015) discard;
   o = vec4(rgb * a, a);
 }`;
 
-const UNI = ['uVP', 'uEye', 'uCamR', 'uCamU', 'uView', 'uFog', 'uLP', 'uLC', 'uSunDir', 'uSun', 'uAmb', 'uFogCol', 'uGlow', 'uFx', 'uTone', 'uTrail'];
+const UNI = ['uVP', 'uEye', 'uCamR', 'uCamU', 'uView', 'uFog', 'uLP', 'uLC', 'uSunDir', 'uSun', 'uAmb', 'uFogCol', 'uGlow', 'uFx', 'uTone', 'uTrail', 'uTint', 'uFlash'];
 const ZERO16 = new Float32Array(16);
 
 export class WhipRenderer {
@@ -107,6 +108,7 @@ export class WhipRenderer {
   constructor(gl, opts = {}) {
     this.gl = gl; this.glow = opts.glow !== false; this.minPx = opts.minPx ?? 1.8; this.rim = opts.rim ?? 0.5; this.alpha = 1;
     this.tone = new Float32Array(opts.tone ?? [0.50, 0.30, 0.17]);
+    this.tint = new Float32Array([1, 1, 1]); this.flash = 0;   // per frame, like a character's draw options: area light tint, hurt flash 0..1 (and this.alpha)
     this.trail = opts.trail !== false; this.trailCol = new Float32Array(opts.trailCol ?? [1.5, 1.05, 0.5, 0.9]);   // streak colour rgb + strength
     this.stats = { draws: 0, tris: 0, bufBytes: 0, verts: 0 };
     this.info = null; this.vtx = null; this.tmp = null; this._r = new Float32Array(3); this._u = new Float32Array(3); this._key = '';
@@ -161,7 +163,7 @@ export class WhipRenderer {
     gl.uniform4fv(u.uLP, this._lp ?? ZERO16); gl.uniform4fv(u.uLC, this._lc ?? ZERO16);
     const gc = whip.glowCol; gl.uniform4f(u.uGlow, gc[0], gc[1], gc[2], whip.glow + whip.flash * 1.5);
     gl.uniform4f(u.uFx, whip.taut, whip.time, whip.flash, this.alpha);
-    gl.uniform4f(u.uTone, this.tone[0], this.tone[1], this.tone[2], this.rim); gl.uniform4fv(u.uTrail, this.trailCol);
+    gl.uniform4f(u.uTone, this.tone[0], this.tone[1], this.tone[2], this.rim); gl.uniform4fv(u.uTrail, this.trailCol); gl.uniform3fv(u.uTint, this.tint); gl.uniform1f(u.uFlash, this.flash);
     gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.CULL_FACE);
     gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     const I = this.info;
