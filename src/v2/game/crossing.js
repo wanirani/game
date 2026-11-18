@@ -78,7 +78,7 @@ void main() {
     vec2 gp = vec2(uv.x * uBellS.z, uv.y) * n; gp.y += dir * t * (1.5 - fi * 0.6) * n * 0.16; gp.x += sin(t * 1.3 + fi * 2.0) * 0.3;
     vec2 cell = floor(gp), f = fract(gp) - 0.5;
     float rd = h21(cell + fi * 17.0), d = length(f - (vec2(rd, fract(rd * 7.3)) - 0.5) * 0.6);
-    add += (dir > 0.0 ? vec3(0.5, 0.54, 0.62) : uGlow) * smoothstep(0.16 - fi * 0.04, 0.0, d) * step(0.5, fract(rd * 13.7)) * k3 * (0.5 - fi * 0.15);
+    add += (dir > 0.0 ? vec3(0.5, 0.54, 0.62) : uGlow) * smoothstep(0.12 - fi * 0.03, 0.0, d) * step(0.5, fract(rd * 13.7)) * k3 * (0.4 - fi * 0.12);
   }
 #endif
   // the edges erode: the frame is eaten inward by a ragged front
@@ -170,6 +170,7 @@ export class Crossing {
     this.pPass = null; this.pWorld = null; this.pField = null; this.vao = null; this.glGen = -1;
     this.texF = null; this.texL = null; this.fboF = null; this.qw = 0; this.qh = 0;   // the quarter-size time field and its light
     this.texA = null; this.texB = null; this.depth = null; this.fboA = null; this.fboB = null; this.w = 0; this.h = 0; this.fw = 0; this.fh = 0; this.frozen = false; this.bytes = 0;
+    this.tk = 0; this.shotTk = -9;   // ticks of this crossing · the tick the frame copy was last filled by a drawn frame
     this.mode = 0;            // what the next scene draw is for: 0 compose to the screen · 1 the frozen copy · 2 nothing (warm-up while loading)
     this._v4 = new Float32Array(4); this._v3 = new Float32Array(3); this._v2 = new Float32Array(2); this._p = { x: 0, y: 0, w: 0 };
     this._pr = new Float32Array(3); this._pw = new Float32Array(3); this._pf = new Float32Array(3);
@@ -230,7 +231,7 @@ export class Crossing {
   begin(o, to) {
     const sc = this.sc, a = sc.area, h = sc.sim.hero, H = this.hud, L = this.log;
     this.gen++; this.on = true; this.phase = 'gather'; this.t = 0; this.to = to; this.years = !!o?.years; this.dir = a.era === 'past' ? 1 : -1; this.minT = this.years ? CROSS_T.years : CROSS_T.pass;
-    this.pre = undefined; this.spot = null; this.frozen = false; this.mode = 0; this.R = 60; this.sparkT = 0; this._holdRes = null; this.slicing = false;
+    this.pre = undefined; this.spot = null; this.frozen = false; this.mode = 0; this.R = 60; this.sparkT = 0; this._holdRes = null; this.slicing = false; this.tk = 0; this.shotTk = -9;
     this.pulse[0] = this.pulse[1] = this.pulse[2] = -1; this.pulse[3] = 1; this.pulseN = 0;
     { const T = this.tintTo, G = this.fogTo, c = this.dir > 0; T[0] = c ? 0.7 : 1.4; T[1] = c ? 0.88 : 0.8; T[2] = c ? 1.15 : 0.6; G[0] = c ? 0.06 : 0.12; G[1] = 0.08; G[2] = c ? 0.13 : 0.07; }
     sc.xing = { to, years: this.years, from: a.era }; sc._refused = false; sc.locked = true;
@@ -297,7 +298,7 @@ export class Crossing {
   tick(dt) {
     if (!this.on) return;
     const sc = this.sc, H = this.hud, T = CROSS_T;
-    this.t += dt;
+    this.t += dt; this.tk++;
     if (H.k !== this.kTo) H.k = this.kTo > H.k ? Math.min(this.kTo, H.k + dt / 0.3) : Math.max(this.kTo, H.k - dt / T.back);
     if (H.beat > 0) H.beat = Math.max(0, H.beat - dt * 3);
     if (this.turnOn && H.turn < 1) H.turn = Math.min(1, H.turn + dt / T.turn);
@@ -360,7 +361,11 @@ export class Crossing {
     if (P.w > 1) { S[0] = Math.max(-0.3, Math.min(1.3, P.x / g.viewW)); S[1] = Math.max(-0.3, Math.min(1.3, 1 - P.y / g.viewH)); } else { S[0] = 0.5; S[1] = 0.42; }
     S[2] = g.viewW / g.viewH; S[3] = 1 / Math.max(0.3, Math.min(1, -sc.camF[1] + 0.05));
     { const f = sc.W?.fog?.color; if (f) { this.base[0] = f[0]; this.base[1] = f[1]; this.base[2] = f[2]; } }
-    try { if (this.usable && this.pPass) { this.mode = 1; sc._gl(g.viewW, g.viewH, 1, false); } } catch (e) { console.warn('[v2g] crossing: the last picture was not kept:', String(e?.message ?? e)); }
+    // the last picture of this night: the frame the ring was just composed from (the two copies change places - nothing is drawn again);
+    // only when no frame was drawn in the last two ticks (a tool running ticks without frames) the scene is drawn once more for it
+    if (this.texB && this.tk - this.shotTk <= 2 && this.usable) {
+      const t = this.texA, f = this.fboA; this.texA = this.texB; this.fboA = this.fboB; this.texB = t; this.fboB = f; this.fw = this.w; this.fh = this.h; this.frozen = true;
+    } else { try { if (this.usable && this.pPass) { this.mode = 1; sc._gl(g.viewW, g.viewH, 1, false); } } catch (e) { console.warn('[v2g] crossing: the last picture was not kept:', String(e?.message ?? e)); } }
     this.mode = 2;
     this.phase = 'passage'; this.t = 0; this.nextPulse = 0; this.beat = 0.4; this.pulseN = 0; L.freeze = performance.now(); L.last = 0;
     try { sc._ts = 1; feel.setTimeScale(1); } catch { /* no audio */ }
@@ -433,6 +438,7 @@ export class Crossing {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     if (mode === 1) { this.frozen = true; this.fw = w; this.fh = h; return; }
     if (mode === 2) return;
+    this.shotTk = this.tk;
     const p = this.pWorld, u = p.u, V = this._v4, V3 = this._v3, V2 = this._v2, B = this.bell, m = sc.vp, g = sc.game, ph = this.phase, reveal = ph === 'reveal', dull = ph === 'dull';
     if (reveal) { this._field(gl, this.minT + this.t, 1); gl.bindFramebuffer(gl.FRAMEBUFFER, null); }
     gl.viewport(0, 0, w, h);
