@@ -83,6 +83,7 @@ if (process.argv.includes('--stride')) {
     console.log(`  best stride for ${mode} at ${sp} px/s: ${best.s} px (slip ${best.slip.toFixed(2)} m/s over ${best.n} contact samples)`);
   }
 }
+if (process.argv.includes('--stride')) for (const m of ['run', 'walk']) { const c = lib[m]; console.log(`  ${m}: distance-matched stride of the clip ${c._gwStride ? (c._gwStride * UNIT).toFixed(1) + ' px' : '(no table)'} · TUNE ${m === 'run' ? TUNE.strideRun : TUNE.strideWalk}`); }
 for (const [mode, sp, stride] of [['run', 275, TUNE.strideRun], ['run', 208, TUNE.strideRun], ['walk', 96, TUNE.strideWalk]]) {
   const r = slip(mode, sp, stride);
   ok(`${mode} at ${sp} px/s: planted foot slides less than 25% of body speed`, r.n >= 8 && r.slip < r.v * (mode === 'walk' ? 0.3 : 0.25), `slip ${r.slip.toFixed(2)} m/s vs body ${r.v.toFixed(2)} m/s (${Math.round((r.slip / r.v) * 100)}%) · sideways ${r.lat.toFixed(2)} · contact samples ${r.n}`);
