@@ -85,6 +85,7 @@ export const HAPTIC = Object.freeze({
   dash: { pad: [0, 0.2, 35], phone: 0 }, land: { pad: [0.15, 0.1, 40], phone: 0 }, landHeavy: { pad: [0.45, 0.2, 100], phone: 14 },
   cast: { pad: [0.1, 0.45, 70], phone: 10 }, magicHit: { pad: [0.7, 0.6, 180], phone: [24, 20, 36] }, zap: { pad: [0.2, 0.9, 90], phone: [8, 12, 8, 12, 16] },
   chime: { pad: [0, 0.3, 50], phone: 8 }, toll: { pad: [0.9, 0.35, 480], phone: [60, 50, 120] }, ui: { pad: [0, 0, 0], phone: 0 },
+  breakL: { pad: [0.05, 0.3, 45], phone: 6 },   // BREAK: a jar, crate or barrel breaking — lighter than the lightest blow that lands on an enemy (hitM: 8 ms)
 });
 
 // ───────────────────────────── 타격 조합 ─────────────────────────────
@@ -210,6 +211,15 @@ export const EVENT = Object.freeze({
   'ui.close': ev('f3_ui', [n('ui_close', 0, 0.5)], { flat: true, gain: 0.55 }),
   'ui.ok': ev('f3_ui', [n('ui_ok', 0, 0.5)], { flat: true, gain: 0.6 }),
   'ui.deny': ev('f3_ui', [n('ui_deny', 0, 0.55)], { flat: true, gain: 0.6 }),
+  // 깨지는 것들 (BREAK — docs/v2/SOUND_FEEL.md 14). The clay crash has three layer sets; the scene picks one per break (never the same twice in a row) and
+  // varies pitch and level itself (feel.play(name, pos, vol, pitch)) on top of each layer's own pv / gv / sv and the bank's rotation of variants.
+  // stop / shake = what the scene applies (lighter than an L blow on an enemy: 0.045 / 0.10). A roll through a jar takes no stop at all.
+  'break.clay': ev('f3_enemy', [n('clay_crash', 0, 0.92), o('candle', 0.003, 0.5, 1.12, 1), n('clay_tinkle', 0.09, 0.45, 1.0, 1, { sv: 0.1 }), n('debris', 0.13, 0.2, 1.5, 2)], { gain: 1.15, haptic: 'breakL', stop: 0.03, shake: 0.07 }),
+  'break.clay.b': ev('f3_enemy', [n('clay_crash', 0, 0.86, 1.08), o('candle', 0, 0.42, 0.9, 1), n('clay_tinkle', 0.16, 0.52, 1.12, 0, { sv: 0.14 })], { gain: 1.15, haptic: 'breakL', stop: 0.03, shake: 0.07 }),
+  'break.clay.c': ev('f3_enemy', [n('clay_crash', 0, 0.95, 0.94), o('hit_stone', 0.002, 0.3, 1.3, 1), n('clay_tinkle', 0.05, 0.36, 0.9, 1, { sv: 0.08 }), n('debris', 0.2, 0.18, 1.7, 2)], { gain: 1.15, haptic: 'breakL', stop: 0.03, shake: 0.07 }),
+  'break.crate': ev('f3_enemy', [n('wood_crack', 0, 0.95), o('step_wood', 0.004, 1.5, 0.8), s('knock', 0, 0.4, 0.8, 1), n('wood_clatter', 0.07, 0.6, 1, 0, { sv: 0.05 }), n('debris', 0.1, 0.16, 1.2, 2)], { gain: 1.1, haptic: 'breakL', stop: 0.035, shake: 0.09 }),
+  'break.barrel': ev('f3_enemy', [n('wood_crack', 0, 0.9, 0.78), s('thud', 0, 0.55, 0.8), n('wood_clatter', 0.08, 0.6, 0.82, 0, { sv: 0.05 }), n('hoop_ring', 0.05, 0.5, 1, 0, { pv: 0.08 }), o('clang', 0.03, 0.22, 0.7, 2)], { gain: 1.15, haptic: 'breakL', stop: 0.04, shake: 0.11 }),
+  'pickup.clink': ev('f3_foley', [n('coin_clink', 0, 0.5, 1, 0, { pv: 0.1 })], { gain: 0.7 }),   // a dropped coin touching the ground
   // 종 (가락은 BELL — sound.js 가 층으로 푼다)
   'bell.toll': ev('f3_bell', [n('bell_toll', 0, 0.68), s('drop', 0, 0.5, 0.9), o('bell', 0.004, 0.35, 0.5, 1)], { duck: [0.5, 2.4], haptic: 'toll', shake: 0.3, stop: 0, zoom: 1.04, zoomT: 1.2 }),
 });

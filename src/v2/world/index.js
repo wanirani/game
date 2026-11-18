@@ -14,6 +14,7 @@ import { reachGrid } from './reach.js';
 export { nearestFreeSpot } from './reach.js';   // WORLD-3: nearestFreeSpot(area, W, x, z) -> { x, z, y, moved } - where a crossing that would land inside something puts the hero (AREA_FORMAT 14)
 import { AREA_FOLDS } from './folds.js';
 import { flameSpots } from '../env/props2.js';
+import { BREAK_KINDS } from '../play/breakables.js';   // BREAK: kinds and sizes of what the hero can break (AREA_FORMAT 15)
 
 export const ENEMY_KINDS = ['melee', 'ranged', 'skeleton_soldier', 'skeleton_mage', 'plague_corpse', 'grave_ghost', 'gravekeeper_armor', 'bat', 'banshee_queen'];
 export const ACTOR_MODELS = ['alberto', 'edmund', 'elise', 'hadwin', 'hadwin1', 'lotte', 'marta', 'rook', 'sera', 'villager_f', 'villager_m', 'kael'];
@@ -40,6 +41,7 @@ export function finishArea(a) {
   st.hookPoints = a.interact.filter((it) => it.kind === 'ring' && it.landing).map((it) => ({ id: it.id, x: it.x, z: it.z, y: it.y ?? 0, h: it.h ?? 150, to: [it.landing.x, it.landing.z] }));
   a.camera = Object.fromEntries(st.sections.map((s) => [s.id, s.cam]));
   a.anchors = a.anchors ?? [];
+  a.breakables = a.breakables ?? [];   // BREAK: [{ kind, x, z, rot?, drop? }] - dynamic things, not stage parts (AREA_FORMAT 15)
   // SPEED-FIRE: the game draws no flame geometry (env/props2.js flames) - every place a flame stands needs a particle fire anchor.
   // An anchor already there gets the flame's width; a missing one (braziers) is added with the size of what burns there.
   for (const f of flameSpots(st.parts)) {
@@ -103,13 +105,17 @@ export function validateArea(a, twin = null) {
   if (!W || !a.spawns.default) return { errors, warnings, stats: {} };
   if (W.sprites.some((s) => s.kind === 'prop')) E('flat prop cards left: ' + W.sprites.filter((s) => s.kind === 'prop').map((s) => s.img).join(', '));
   W.hookPoints = a.stage.hookPoints ?? [];
+  // BREAK: breakables are solid while whole, so the whole walk is validated with every one of them standing (G0 = the same walk without them)
+  const BRK = Array.isArray(a.breakables) ? a.breakables : [], brkBox = (Wx, b) => { const K = BREAK_KINDS[b.kind]; if (!K || !Number.isFinite(b.x) || !Number.isFinite(b.z)) return; let g = -Infinity; for (const q of Wx.boxes) if (q.walk && b.x >= q.x0 && b.x <= q.x1 && b.z >= q.z0 && b.z <= q.z1 && q.y1 > g) g = q.y1; if (Number.isFinite(g)) Wx.boxes.push({ x0: b.x - K.r, x1: b.x + K.r, z0: b.z - K.r, z1: b.z + K.r, y0: g - 20, y1: g + K.h, solid: true, walk: false, brk: true }); };
+  const G0 = BRK.length ? reachGrid(W, a.spawns.default.x, a.spawns.default.z, 14, { hooks: W.hookPoints, seeds: (a.entry ?? []).map((n) => a.spawns[n]).filter(Boolean).map((s) => [s.x, s.z]) }) : null;
+  for (const b of BRK) brkBox(W, b);
   const d = a.spawns.default, ids = new Set(), secIds = new Set(a.stage.sections.map((s) => s.id));
   // reach = walking + jumping + whip rings + crossing at a bell to the other night and back (the hero keeps x, z): both nights are flooded together until nothing new is found
   // a.entry = spawn names behind something shut in this state (a closed gate): the hero can only stand there after coming in through that spawn, so they start the flood too
   const entry = (a.entry ?? []).map((n) => a.spawns[n]).filter(Boolean).map((s) => [s.x, s.z]);
   let G = reachGrid(W, d.x, d.z, 14, { hooks: W.hookPoints, seeds: entry });
   if (twin && twin.twin === a.id) {
-    let W2 = null; try { W2 = compileEnv(twin.stage); W2.hookPoints = twin.stage.hookPoints ?? []; } catch { W2 = null; }
+    let W2 = null; try { W2 = compileEnv(twin.stage); W2.hookPoints = twin.stage.hookPoints ?? []; for (const b of twin.breakables ?? []) brkBox(W2, b); } catch { W2 = null; }
     if (W2) {
       const bells = (ar) => ar.interact.filter((it) => it.kind === 'bell' && it.event === 'bell.ring'), seedsA = [], seedsB = [], td = twin.spawns.default;
       for (let pass = 0, grew = true; pass < 6 && grew; pass++) {
@@ -184,8 +190,28 @@ export function validateArea(a, twin = null) {
       if (!same(fp(a.stage), fp(twin.stage))) E('twin: floors / building footprints differ');
     }
   }
+  // BREAK: a breakable stands on flat reachable ground beside the way, never in it: clear of exits, triggers, people, hot spots, spawns and enemies
+  BRK.forEach((b, i) => {
+    const K = BREAK_KINDS[b.kind], at = `breakables[${i}] ${b.kind} (${b.x},${b.z})`; if (!K) { E(`breakables[${i}]: unknown kind ${b.kind}`); return; }
+    const g = G.ground(b.x, b.z); if (!Number.isFinite(g)) { E(at + ': no ground'); return; }
+    for (const [dx, dz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) if (Math.abs(G.ground(b.x + dx * K.r * 0.8, b.z + dz * K.r * 0.8) - g) > 1.5) { E(at + ': the ground under it is not level (it would float or sink)'); break; }
+    for (const q of W.boxes) if (!q.brk && q.solid && !q.walk && b.x + K.r - 1 > q.x0 && b.x - K.r + 1 < q.x1 && b.z + K.r - 1 > q.z0 && b.z - K.r + 1 < q.z1 && q.y1 > g + 4 && q.y0 < g + K.h) { E(at + ': stands inside a wall or a prop'); break; }
+    if (!G.near(b.x, b.z, K.r + 40)) E(at + ': the hero cannot get to it');
+    BRK.forEach((c, j) => { const K2 = BREAK_KINDS[c.kind]; if (j > i && K2 && Math.abs(b.x - c.x) < K.r + K2.r - 1 && Math.abs(b.z - c.z) < K.r + K2.r - 1) E(at + `: overlaps breakables[${j}]`); });
+    const m = K.r + 30;
+    for (const x of a.exits) if (b.x + m > x.x0 && b.x - m < x.x1 && b.z + m > x.z0 && b.z - m < x.z1) E(at + `: blocks exit ${x.id}`);
+    for (const t of a.triggers) if (b.x + K.r > t.x0 && b.x - K.r < t.x1 && b.z + K.r > t.z0 && b.z - K.r < t.z1) E(at + `: stands in trigger ${t.id}`);
+    for (const p of a.actors) if (Math.hypot(b.x - p.x, b.z - p.z) < K.r + (p.r ?? 16) + 34) E(at + `: too near actor ${p.id}`);
+    for (const it of a.interact) if (Math.hypot(b.x - it.x, b.z - it.z) < K.r + 40) E(at + `: too near interact ${it.id}`);
+    for (const [n, sp] of Object.entries(a.spawns)) if (Math.hypot(b.x - sp.x, b.z - sp.z) < K.r + 60) E(at + `: too near spawn ${n}`);
+    a.enemies.forEach((e, j) => { if (Math.hypot(b.x - e.x, b.z - e.z) < K.r + 50) E(at + `: too near enemies[${j}] ${e.kind}`); });
+    // not in a narrow way: on each axis at least one side leaves 64 of clear ground (measured on the walk without the breakables)
+    const free = (dx, dz) => { let s = 0; for (; s <= 72; s += 8) if (G0.blocked(b.x + dx * (K.r + 15 + s), b.z + dz * (K.r + 15 + s), 14)) break; return s; };
+    if (Math.max(free(-1, 0), free(1, 0)) < 64 || Math.max(free(0, -1), free(0, 1)) < 64) E(at + ': stands in a narrow part of the way');
+  });
+  if (G0) { let lost = 0, where = null; for (const q of W.boxes) if (q.walk && !q.brk) for (let x = q.x0 + 10; x < q.x1; x += 40) for (let z = q.z0 + 10; z < q.z1; z += 40) if (G0.reachable(x, z) && !G.reachable(x, z) && !BRK.some((b) => { const K = BREAK_KINDS[b.kind]; return K && Math.abs(b.x - x) < K.r + 36 && Math.abs(b.z - z) < K.r + 36; })) { lost++; where = where ?? [x, z]; } if (lost) E(`breakables cut off ${lost} spots of walkable ground (first at ${where})`); }
   const st = W.env.stats;
-  return { errors, warnings, stats: { parts: a.stage.parts.length, boxes: W.boxes.length, lights: W.lights.length, tris: st.tris, chunks: st.chunks, bytes: st.bytes, textures: st.textures, reachCells: G.cells, enemies: a.enemies.length, actors: a.actors.length, exits: a.exits.length, triggers: a.triggers.length, interact: a.interact.length, anchors: (a.anchors ?? []).length, decals: a.stage.decals.length } };
+  return { errors, warnings, stats: { breakables: BRK.length, parts: a.stage.parts.length, boxes: W.boxes.length, lights: W.lights.length, tris: st.tris, chunks: st.chunks, bytes: st.bytes, textures: st.textures, reachCells: G.cells, enemies: a.enemies.length, actors: a.actors.length, exits: a.exits.length, triggers: a.triggers.length, interact: a.interact.length, anchors: (a.anchors ?? []).length, decals: a.stage.decals.length } };
 }
 /** every area in its base state and in every flagged state (AREA_FLAGS), each with its twin in the same state. Keys: id (base) and id@flag+flag */
 export async function validateAll() {

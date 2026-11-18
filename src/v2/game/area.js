@@ -54,6 +54,9 @@ function addBoxes(W, def) {
     const r = Math.max(12, a.r ?? 16), g = a.y ?? ground(a.x, a.z);
     B.push({ x0: a.x - r, x1: a.x + r, z0: a.z - r, z1: a.z + r, y0: g - 20, y1: g + 110, solid: !a.when, walk: false, actor: a.id });
   }
+  // BREAK: one box per breakable (b.brk = its index). The rules size it and switch it off when the thing breaks (src/v2/play/breakables.js initBreakables)
+  const BK = Array.isArray(def.breakables) ? def.breakables : [];
+  for (let i = 0; i < BK.length; i++) B.push({ x0: BK[i].x - 1, x1: BK[i].x + 1, z0: BK[i].z - 1, z1: BK[i].z + 1, y0: 0, y1: 1, solid: true, walk: false, brk: i });
 }
 /** flags = the story flags the area is built from (AREA_FORMAT 13: AREAS[id](flags) — a shut gate, a mended stair ...). */
 export async function loadArea(id = DEFAULT_AREA, flags = null) {
@@ -69,6 +72,7 @@ export async function loadArea(id = DEFAULT_AREA, flags = null) {
   const stage = def ? fillStage(def, def.stage ?? def) : STAGE;
   const W = compileEnv(stage);
   W.hookPoints = Array.isArray(stage.hookPoints) ? stage.hookPoints : [];   // whip rings (interact kind 'ring') -> the rules' hook points (Sim reads W.hookPoints)
+  W.breakables = Array.isArray(def?.breakables) ? def.breakables : [];   // BREAK: what the hero can break here (AREA_FORMAT 15) -> the rules (Sim reads W.breakables)
   if (def) addBoxes(W, def);
   uniformBoxes(W);
   const flatProps = W.sprites.filter((s) => s.kind === 'prop').map((s) => ({ img: s.img, x: s.x, z: s.z }));

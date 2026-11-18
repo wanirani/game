@@ -65,17 +65,17 @@ def clay_crash(name, f0, dur=0.66):
     # the hollow knock of the vessel: a short low "tok" that drops a little, with its second mode
     tb = tt(0.14)
     fb = 380 + 190 * r.random()
-    place(y, 1.5 * np.sin(TAU * (fb * tb - 0.8 * fb * tb * tb)) * np.exp(-tb / 0.03) + 0.7 * np.sin(TAU * fb * 2.3 * tb) * np.exp(-tb / 0.017)
-          + 0.5 * bp(r.standard_normal(len(tb)), 250, 900) * np.exp(-tb / 0.03), 0.001)
+    place(y, 0.95 * np.sin(TAU * (fb * tb - 0.8 * fb * tb * tb)) * np.exp(-tb / 0.024) + 0.5 * np.sin(TAU * fb * 2.3 * tb) * np.exp(-tb / 0.015)
+          + 0.4 * bp(r.standard_normal(len(tb)), 250, 900) * np.exp(-tb / 0.025), 0.001)
     # the bright ring of the glazed wall, short
     tr = tt(0.2)
     ring = np.zeros(len(tr))
     for k, ratio in enumerate([1.0, 1.31, 1.83, 2.41, 3.17, 4.3]):
         ring += (0.9 / (1 + 0.5 * k)) * np.sin(TAU * f0 * ratio * (1 + 0.01 * (r.random() - 0.5)) * tr + r.random() * TAU) * np.exp(-tr / (0.05 / (1 + 0.4 * k)))
-    place(y, 0.75 * ring, 0.002)
+    place(y, 1.0 * ring, 0.002)
     # big pieces first, then the small ones raining down
     scatter(r, y, 0.03, 0.2, 6, 850, 2500, 1.0)
-    scatter(r, y, 0.1, dur - 0.14, 10 + int(r.integers(0, 5)), 1600, 5200, 0.62)
+    scatter(r, y, 0.1, dur - 0.14, 10 + int(r.integers(0, 5)), 1600, 5200, 0.85)
     t = tt(dur)
     y[:len(t)] += 0.14 * bp(r.standard_normal(len(t)), 1500, 6000) * np.exp(-t / 0.11) * np.minimum(1, t / 0.003)
     return y

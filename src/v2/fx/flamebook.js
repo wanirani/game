@@ -51,10 +51,10 @@ export function paintFlame(kind, i, out) {
       hw = 0.78 * Math.pow(1 - v, 0.7) * foot + 0.03; c0 = 0; swK = 0.12 + 1.15 * v; reach = hw * 1.9 + swK * 0.5;
       nK = 0.9 + 3.0 * v; bias = -0.1 - 0.35 * v; tK = 1.02 - 0.5 * v;
     } else {             // WISP: a detached tongue - fuller low, long and thin at the tip, bending; with age it thins and breaks into pieces
-      const bend = samp(NA, v * 0.5 + 0.4, p * 0.6 + 0.2) - 0.5, w = Math.sin(Math.PI * Math.min(1, Math.max(0, (v - 0.03) / 0.94)));
+      const bend = samp(NA, v * 0.5 + 0.4, p * 0.3 + 0.2) - 0.5, w = Math.sin(Math.PI * Math.min(1, Math.max(0, (v - 0.03) / 0.94)));
       c0 = bend * 0.9 * (0.3 + v) + 0.12 * Math.sin(v * 7.0 + p * 4.0);
-      hw = (0.55 * Math.pow(w, 0.8) * (0.55 + 0.45 * (1 - v)) + 0.01) * (1 - 0.4 * p); reach = hw * 2.2;
-      nK = 1.3 + 3.2 * p + 1.0 * v; bias = -0.12 - 0.75 * p * p - 0.15 * v; tK = 0.8;
+      hw = (0.6 * Math.pow(w, 0.8) * (0.55 + 0.45 * (1 - v)) + 0.01) * (1 - 0.28 * p); reach = hw * 2.2;
+      nK = 1.3 + 3.0 * p + 1.0 * v; bias = -0.1 - 0.6 * p * p - 0.15 * v; tK = 0.8;
     }
     const xa = Math.max(0, Math.floor(((c0 - reach + 1) / 2) * W)), xb = Math.min(W - 1, Math.ceil(((c0 + reach + 1) / 2) * W));
     for (let x = xa; x <= xb; x++) {

@@ -19,9 +19,9 @@ import { candleSpots } from '../env/props2.js';
 // Everything is emitted on a fixed beat per fire (an accumulator per layer, positions from a golden-ratio walk along the width): the number of
 // live quads is steady, so a small bowl burns evenly, and the big overlapping quads are exactly as many as planned. All fire particles are
 // `amb` (ambient): they do not count in the fill governor, so a fight next to a blaze keeps its hit effects at full strength.
-// k = the fire's scale (a bowl 0.6, a house fire about 1.1, a wall-top / roof / wreck blaze 1.6 - 2): a body quad is about 66k wide and 100k tall.
+// k = the fire's scale (a bowl 0.7, a house fire about 1.05, a wall-top / roof / wreck blaze 1.3 - 1.6): a body quad is about 66k wide and 100k tall.
 const WARM = { body0: [1.3, 1.02, 0.8, 0.88], body1: [1.2, 0.55, 0.22, 0], core0: [1.9, 1.7, 1.3, 0.9], core1: [1.6, 0.9, 0.35, 0], tongue0: [1.55, 0.95, 0.5, 0.9], tongue1: [1.15, 0.3, 0.06, 0], heat0: [1.0, 0.4, 0.09, 0.15], heat1: [0.8, 0.22, 0.04, 0],
-  spark0: [3.2, 1.65, 0.45, 1], spark1: [1.8, 0.3, 0.05, 0], ember0: [2.6, 1.0, 0.25, 1], ember1: [1.2, 0.15, 0.03, 0], smoke0: [0.15, 0.09, 0.065, 0.3], light: [1, 0.5, 0.17] };
+  spark0: [3.2, 1.65, 0.45, 1], spark1: [1.8, 0.3, 0.05, 0], ember0: [2.6, 1.0, 0.25, 1], ember1: [1.2, 0.15, 0.03, 0], smoke0: [0.3, 0.16, 0.09, 0.34], light: [1, 0.5, 0.17] };
 // under the cold light of the crypt tonight: a paler fire with a blue-white core (the same sheet, other vertex colours)
 const COLD = { body0: [0.8, 1.0, 1.45, 0.85], body1: [0.55, 0.6, 1.0, 0], core0: [1.25, 1.6, 2.3, 0.9], core1: [0.8, 1.0, 1.6, 0], tongue0: [0.85, 0.95, 1.3, 0.85], tongue1: [0.5, 0.45, 0.8, 0], heat0: [0.35, 0.5, 0.9, 0.13], heat1: [0.2, 0.3, 0.6, 0],
   spark0: [1.8, 2.2, 3.2, 1], spark1: [0.5, 0.7, 1.6, 0], ember0: [1.4, 1.7, 2.6, 1], ember1: [0.3, 0.4, 1.0, 0], smoke0: [0.08, 0.09, 0.12, 0.26], light: [0.6, 0.74, 1] };
@@ -29,7 +29,7 @@ const fireSet = (k, C) => ({
   k, bw: 66 * k, bh: 100 * k, light: C.light,
   BODY: E({ sprite: SPR.FIRE, aspect: 1.5, fps: [11, 15], shape: 3, rad: 3 * k, h: [0, 5 * k], speed: [10 * k, 22 * k], grav: -26 * k, life: [0.55, 0.72], size: [58 * k, 74 * k], grow: 1.12, c0: C.body0, c1: C.body1, add: 0.72, fadeIn: 0.2, pri: 1, amb: 1, min: 1 }),
   CORE: E({ sprite: SPR.FIRE, aspect: 1.15, fps: [14, 18], shape: 3, rad: 2 * k, h: [0, 3 * k], speed: [8 * k, 16 * k], life: [0.28, 0.38], size: [34 * k, 44 * k], grow: 1.1, c0: C.core0, c1: C.core1, fadeIn: 0.25, pri: 1, amb: 1, min: 1 }),
-  TONGUE: E({ sprite: SPR.WISP, aspect: 2.3, shape: 3, rad: 4 * k, h: [34 * k, 62 * k], speed: [64 * k, 112 * k], drag: 0.8, grav: -150 * k, life: [0.46, 0.68], size: [32 * k, 44 * k], grow: 0.8, c0: C.tongue0, c1: C.tongue1, add: 0.88, fadeIn: 0.14, pri: 1, amb: 1, min: 1 }),
+  TONGUE: E({ sprite: SPR.WISP, aspect: 1.75, shape: 3, rad: 4 * k, h: [30 * k, 56 * k], speed: [50 * k, 92 * k], drag: 0.8, grav: -110 * k, life: [0.42, 0.62], size: [40 * k, 54 * k], grow: 0.85, c0: C.tongue0, c1: C.tongue1, add: 0.88, fadeIn: 0.14, pri: 1, amb: 1, min: 1 }),
   HEAT: E({ sprite: SPR.GLOW, shape: 3, rad: 4 * k, h: [22 * k, 34 * k], speed: [4, 10], life: [0.5, 0.7], size: [96 * k, 118 * k], grow: 1.15, c0: C.heat0, c1: C.heat1, fadeIn: 0.3, amb: 1, min: 1 }),
   SPARK: E({ sprite: SPR.EMBER, shape: 0, spread: 0.42, speed: [90 * k, 210 * k], drag: 0.6, grav: -30, life: [0.5, 1.3], size: [2.6, 4.6], stretch: 2.2, c0: C.spark0, c1: C.spark1, jit: 7 * k, amb: 1, min: 1 }),
   EMBER: E({ sprite: SPR.EMBER, shape: 0, spread: 0.7, speed: [26 * k, 60 * k], drag: 0.35, grav: -12, life: [1.3, 2.5], size: [2.2, 3.6], spin: [-2, 2], c0: C.ember0, c1: C.ember1, jit: 9 * k, fadeIn: 0.1, amb: 1, min: 1 }),
@@ -37,7 +37,7 @@ const fireSet = (k, C) => ({
 });
 const SETS = new Map();   // built when an area is built, never in a frame
 const setOf = (k, cold) => { const key = (cold ? 'c' : 'w') + k.toFixed(2); let s = SETS.get(key); if (!s) SETS.set(key, s = fireSet(+k.toFixed(2), cold ? COLD : WARM)); return s; };
-const kOf = (size) => (size < 0.7 ? 0.6 + (size - 0.5) * 1.2 : size < 1 ? 1.05 + (size - 0.8) * 1.4 : 1.55 + (size - 1.05) * 1.7);   // three classes: bowl, house fire, blaze
+const kOf = (size) => Math.max(0.4, size < 0.7 ? 0.7 + (size - 0.5) * 0.8 : size < 1 ? 1.0 + (size - 0.8) * 1.1 : 1.3 + (size - 1.05) * 1.35);   // three classes: bowl, house fire, blaze
 const SPARK = E({ sprite: SPR.EMBER, shape: 3, rad: 9, h: [9, 30], speed: [72, 170], drag: 0.55, grav: -36, life: [0.5, 1.25], size: [2.6, 4.6], stretch: 2.2, c0: [3.2, 1.65, 0.45, 1], c1: [1.8, 0.3, 0.05, 0], jit: 4.5 });   // embers anchors (as before)
 const COLUMN = E({ sprite: SPR.SMOKE, add: 0, shape: 3, rad: 22, h: [0, 20], speed: [40, 80], drag: 0.2, grav: -10, life: [2.4, 4], size: [56, 90], grow: 2.6, c0: [0.085, 0.075, 0.08, 0.36], c1: [0.15, 0.14, 0.15, 0], fadeIn: 0.2 });
 const MIST = E({ sprite: SPR.SMOKE, add: 0, shape: 3, rad: 190, h: [6, 30], speed: [2, 8], life: [4, 7], size: [150, 230], grow: 1.5, c0: [0.3, 0.36, 0.4, 0.085], c1: [0.3, 0.36, 0.4, 0], fadeIn: 0.4 });

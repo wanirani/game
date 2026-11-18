@@ -604,3 +604,19 @@ const DEF = [
 export const PRESET_LIST = DEF.map((d, id) => ({ id, name: d[0], group: d[1], ko: d[2], fn: d[3], args: d[4], sfx: d[5], feel: d[6] }));
 export const PRESET_IDS = Object.fromEntries(PRESET_LIST.map((p) => [p.name, p.id]));
 export const PRESETS = Object.fromEntries(PRESET_LIST.map((p) => [p.name, p]));
+
+// ───────────── BREAK lane presets (breakables — src/v2/game/breakables.js). Keep this block last; it only adds. ─────────────
+// break.puff = the dust of something that just broke, in its own colour, with a spray of crumbs along the hit.
+// pow < 1.5 fired clay (0.7 = a small urn) · 2 = a crate · 3 = a barrel. No sound and no screen feel of its own (the scene plays break.* from the feel table).
+const BK = {
+  clayDust: E({ sprite: SPR.DUST, add: 0, n: 7, shape: 2, rad: 10, speed: [40, 130], vy: [20, 80], drag: 3.2, life: [0.4, 0.75], size: [30, 52], grow: 2.0, c0: [0.8, 0.56, 0.42, 0.5], c1: [0.6, 0.48, 0.42, 0], fadeIn: 0.08 }),
+  clayCrumb: E({ sprite: SPR.SHARD, add: 0, n: 9, spread: 1.0, speed: [90, 280], vy: [120, 300], grav: 1500, drag: 0.4, life: [0.45, 0.8], size: [3, 6], spin: [-14, 14], c0: [0.82, 0.52, 0.34, 1], c1: [0.6, 0.4, 0.28, 1], cv: 0.25, floor: 2 }),
+  woodDust: E({ sprite: SPR.DUST, add: 0, n: 8, shape: 2, rad: 16, speed: [50, 150], vy: [20, 80], drag: 3.2, life: [0.4, 0.8], size: [34, 58], grow: 2.0, c0: [0.72, 0.62, 0.48, 0.44], c1: [0.56, 0.5, 0.44, 0], fadeIn: 0.08 }),
+  woodFleck: E({ sprite: SPR.SHARD, add: 0, n: 10, spread: 1.0, speed: [100, 300], vy: [130, 320], grav: 1500, drag: 0.4, life: [0.45, 0.85], size: [3, 7], spin: [-16, 16], c0: [0.86, 0.66, 0.4, 1], c1: [0.6, 0.46, 0.3, 1], cv: 0.25, floor: 2 }),
+};
+function breakPuff(fx, x, y, z, dx, dz, pow) {
+  const P = fx.particles, wood = pow >= 1.5, k = wood ? (pow >= 2.5 ? 1.3 : 1) : pow;
+  P.emit(wood ? BK.woodDust : BK.clayDust, x, y + (wood ? 26 : 18), z, 0, 1, 0, k, y);
+  P.emit(wood ? BK.woodFleck : BK.clayCrumb, x, y + (wood ? 30 : 22), z, dx, 0.6, dz, k, y);
+}
+{ const p = { id: PRESET_LIST.length, name: 'break.puff', group: 'enemy', ko: '깨진 먼지', fn: breakPuff, args: 'self', sfx: [], feel: '— (pow 1 clay · 2 crate · 3 barrel)' }; PRESET_LIST.push(p); PRESET_IDS[p.name] = p.id; PRESETS[p.name] = p; }

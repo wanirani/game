@@ -305,7 +305,7 @@ export function flameSpots(parts) {
   for (const P of parts) {
     const y = P.y ?? 0, ground = P.y == null;
     if (P.t === 'deco' && P.mesh === 'fire') out.push({ x: P.x, y, z: P.z, size: +((P.h ?? 78) / 70).toFixed(2), w: P.w ?? 56, ground, part: P });
-    else if (P.mesh === 'brazier' && P.lit !== false) { const s = (P.h ?? 112) / 112; out.push({ x: P.x, y: y + 96 * s, z: P.z - 6 * s, size: +(0.5 * s).toFixed(2), w: Math.round(30 * s), ground, part: P }); }
+    else if (P.mesh === 'brazier' && P.lit !== false) { const s = (P.h ?? 112) / 112; out.push({ x: P.x, y: y + 96 * s, z: P.z - 6 * s, size: +(0.5 * s).toFixed(2), w: Math.round(50 * s), ground, part: P }); }   // w 50 (FIRE-2, was 30): the fire fills the bowl (88 wide)
     else if (P.mesh === 'wreck' && P.fire !== false) { const s = (P.w ?? 170) / 170; out.push({ x: P.x + 10 * s, y: y + 16 * s, z: P.z - 12 * s, size: +(64 * s / 70 * 1.3).toFixed(2), w: Math.round(70 * s), ground, part: P }); }
   }
   return out;
