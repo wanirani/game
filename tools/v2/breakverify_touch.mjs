@@ -48,7 +48,7 @@ const INSTALL = () => {
     sc.brk._bake(sc.area, L, sc.glr); return ids; };
   bv.open = (cands, R) => { for (const [x, z] of cands) { const g0 = bv.ground(x, z, 0); let good = Number.isFinite(g0) && g0 > -1e8; for (let a = 0; good && a < 16; a++) for (const r of [R * 0.5, R]) { const px = x + Math.cos(a * Math.PI / 8) * r, pz = z + Math.sin(a * Math.PI / 8) * r; if (!sc._spotOk({ x: px, z: pz, y: g0 }) || Math.abs(bv.ground(px, pz, g0) - g0) > 0.5) { good = false; break; } }
       if (good) { for (const b of sc.W.boxes) if (b.solid && !b.walk && b.brk === undefined && x + R > b.x0 && x - R < b.x1 && z + R > b.z0 && z - R < b.z1 && b.y1 > g0 + 4 && b.y0 < g0 + 90) { good = false; break; } } if (good) return [x, z, g0]; } return null; };
-  bv.state = () => { const sim = sc.sim, h = sim.hero; return { x: +h.x.toFixed(1), z: +h.z.toFixed(1), y: +h.y.toFixed(1), move: h.move ? h.move.id : null, moveT: h.moveT, dashT: h.dashT, hp: h.hp, hpMax: h.hpMax, reso: h.reso, coins: sc.brk.coins, stateCoins: sc.state.coins, heroCoins: h.coins, charging: !!h.charging, onGround: h.onGround, live: sim.brkLive, pickN: sim.pickN, shN: sc.brk.shN }; };
+  bv.state = () => { const sim = sc.sim, h = sim.hero; return { fx: +h.dirX.toFixed(2), fz: +h.dirZ.toFixed(2), x: +h.x.toFixed(1), z: +h.z.toFixed(1), y: +h.y.toFixed(1), move: h.move ? h.move.id : null, moveT: h.moveT, dashT: h.dashT, hp: h.hp, hpMax: h.hpMax, reso: h.reso, coins: sc.brk.coins, stateCoins: sc.state.coins, heroCoins: h.coins, charging: !!h.charging, onGround: h.onGround, live: sim.brkLive, pickN: sim.pickN, shN: sc.brk.shN }; };
   const loop = () => { if (bv.on) { const h = sc.sim.hero; bv.log.push([+h.x.toFixed(2), +h.z.toFixed(2), +h.y.toFixed(1), h.dashT > 0 ? 1 : 0, +Math.hypot(h.vx, h.vz).toFixed(1)]); } requestAnimationFrame(loop); }; requestAnimationFrame(loop);
   return true;
 };
@@ -66,7 +66,7 @@ const sleep = (page, ms) => page.waitForTimeout(ms);
 try {
   // ───────────────────────── touch ─────────────────────────
   if (PART === 'touch') {
-    const { ctx, page } = await open('eshville_now', '&v2res=0.6');
+    const { ctx, page } = await open('eshville_now', '&v2res=0.4');
     const cdp = await ctx.newCDPSession(page), T = new Touch(cdp, page);
     await ensureTouchMode(T, page); await sleep(page, 300);
     const vp = await page.evaluate(() => [innerWidth, innerHeight]), sx = Math.round(vp[0] * 0.2), sy = Math.round(vp[1] * 0.66), R0 = 56;
@@ -84,11 +84,11 @@ try {
     console.log(`[${DEV}] c1 by a trusted tap from eight directions`);
     const t1 = {}; let t1bad = [];
     for (const kind of QUICK ? ['jar', 'crate'] : KINDS) { t1[kind] = [];
-      for (let a = 0; a < 8; a++) { const ux = Math.cos(a * Math.PI / 4), uz = Math.sin(a * Math.PI / 4), D = KR[kind] + 14 + 26;
+      for (let a = 0; a < 8; a++) { const ux = Math.cos(a * Math.PI / 4), uz = Math.sin(a * Math.PI / 4), D = (KR[kind] + 14) * (a % 2 ? Math.SQRT2 : 1) + 30;
         await setup([{ kind, x: X0, z: Z0 }], X0 - ux * D, Z0 - uz * D); await sleep(page, 120);
-        await stick(ux, uz, 130); await sleep(page, 40); await tap('attack'); await sleep(page, 430);
+        await stick(ux, uz, 30); await sleep(page, 40); await tap('attack'); await sleep(page, 430);
         const r = await evs(), br = r.ev.filter((e) => e.n === 'break'); const inside = Math.max(Math.abs(r.st.x - X0), Math.abs(r.st.z - Z0)) < KR[kind] + 14 - 1.5 && !br.length;
-        t1[kind].push(br.length === 1 ? br[0].by : br.length ? 'x' + br.length : '-'); if (br.length !== 1 || br[0].by !== 'c1' || inside) t1bad.push(`${kind}@${a * 45}:${JSON.stringify(br)}${inside ? ' INSIDE' : ''}`);
+        t1[kind].push(br.length === 1 ? br[0].by : br.length ? 'x' + br.length : '-'); if (br.length !== 1 || br[0].by !== 'c1' || inside) t1bad.push(`${kind}@${a * 45}:${JSON.stringify(br)}${inside ? ' INSIDE' : ''} hero ${r.st.x - X0},${r.st.z - Z0} facing ${r.st.fx},${r.st.fz}`);
       } }
     ok(`c1 breaks every kind from all eight directions, exactly one break event each`, t1bad.length === 0, Object.entries(t1).map(([k, l]) => `${k} ${l.join(' ')}`).join(' · ') + (t1bad.length ? ' BAD ' + t1bad.slice(0, 4).join(' | ') : ''));
     // T2: the other attacks
@@ -97,9 +97,9 @@ try {
     const show = () => page.evaluate(() => { const sim = window.__v2.scene.sim; let n = 0; for (const q of sim.breakables) if (q.__hid) { q.__hid = false; q.broken = false; q.box.solid = true; n++; } sim.brkLive = n; });
     const waitMove = async (id, ms) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await page.evaluate((id) => window.__v2.scene.sim.hero.move?.id === id, id)) return true; await sleep(page, 12); } return false; };
     const t2 = {}, t2bad = [];
-    for (const kind of QUICK ? ['jar', 'crate'] : KINDS) { t2[kind] = {};
+    for (const kind of QUICK ? ['jar', 'barrel'] : KINDS) { t2[kind] = {};
       for (const atk of ['c2', 'c3', 'whip', 'sweep', 'plunge']) { t2[kind][atk] = [];
-        for (const a of (atk === 'c2' || atk === 'c3') ? [0] : [0, 3]) { const ux = Math.cos(a * Math.PI / 4), uz = Math.sin(a * Math.PI / 4);
+        for (const a of (QUICK || atk === 'c2' || atk === 'c3') ? [0] : [0, 3]) { const ux = Math.cos(a * Math.PI / 4), uz = Math.sin(a * Math.PI / 4);
           const D = KR[kind] + 14 + (atk === 'sweep' ? 175 + 34 : atk === 'whip' ? 70 : atk === 'plunge' ? 44 : 26);
           await setup([{ kind, x: X0, z: Z0 }], X0 - ux * D, Z0 - uz * D); await sleep(page, 120);
           let how = '';
