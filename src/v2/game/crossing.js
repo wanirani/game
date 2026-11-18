@@ -21,7 +21,7 @@ export const CROSS_T = { gather: 0.1, ring: 0.5, dull: 0.5, pass: 1.2, years: 3.
 const YEAR = { past: 1697, now: 1797 };
 const BUDGET = 9;          // ms of loading work per frame before the load lets a frame through (breath())
 const R_END = 6600;        // world units: a ring this wide has left every picture
-const GLOW_PAST = [1.0, 0.8, 0.5], GLOW_NOW = [0.7, 0.86, 1.0], DRAW2 = [0x8ce0, 0x8ce1];   // (COLOR_ATTACHMENT0, 1)
+const GLOW_PAST = new Float32Array([1.0, 0.8, 0.5]), GLOW_NOW = new Float32Array([0.7, 0.86, 1.0]), DRAW2 = [0x8ce0, 0x8ce1];   // (COLOR_ATTACHMENT0, 1)
 /** radius of a ring k (0..1) of its time after it left the bell: `near` units in the first four fifths (the part of the world the camera sees
  *  around the bell - the eye can follow it there), then out past everything */
 const ringR = (k, near) => (k < 0.8 ? near * k / 0.8 : near + (R_END - near) * ((k - 0.8) / 0.2) * ((k - 0.8) / 0.2));
