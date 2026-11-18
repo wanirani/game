@@ -25,4 +25,4 @@ export const MOVES = Object.freeze({
 export const COMBO = Object.freeze([MOVES.c1, MOVES.c2, MOVES.c3]);
 
 /** 영웅 상태 이름 (hero.anim) */
-export const HERO_ANIMS = Object.freeze(['idle', 'walk', 'run', 'jump', 'fall', 'land', 'roll', 'attack', 'guard', 'parry', 'block', 'hurt', 'death']);
+export const HERO_ANIMS = Object.freeze(['idle', 'walk', 'run', 'turn', 'jump', 'fall', 'land', 'roll', 'attack', 'guard', 'parry', 'block', 'hurt', 'death']);

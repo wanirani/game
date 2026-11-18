@@ -4,7 +4,7 @@
 //   · 달리기 · 걷기 클립의 시각은 규칙의 걸음 주기(gait)에서 온다 → 발 디딤과 땅 위 속도가 맞는다(발이 미끄러지지 않는다)
 //   · 공격 클립은 "칼이 빠르게 지나가는 구간(strike)"이 규칙의 판정 구간(hit)과 겹치게 시간을 접는다
 //   · 클립은 공용 라이브러리(assets/v2/char3d/clips/)를 처음 불릴 때 스스로 받아 붙인다. 받기 전에는 시범판의 클립으로 돈다
-import { Rig, clipFromAnim, qmul, qconj, qnorm } from '../char3d/skel.js';
+import { Rig, clipFromAnim, qmul, qconj, sampleClip, applyPose, CPose } from '../char3d/skel.js';
 import { driveHero as driveHeroProto } from '../char3d/hero3d.js';
 import { loadAnimLib } from './animlib.js';
 import { TUNE } from './tune.js';
@@ -15,6 +15,8 @@ const LIB = { clips: null, promise: null, failed: false };
 const LEGS = ['uplegL', 'uplegR', 'legL', 'legR', 'footL', 'footR', 'toeL', 'toeR'];
 const wrapPi = (a) => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+/** 사원수 정규화 (Math.hypot 은 부를 때마다 임시 배열을 만든다 — requests.md core-verify) */
+const qnorm = (a) => { const l = Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2] + a[3] * a[3]) || 1; a[0] /= l; a[1] /= l; a[2] /= l; a[3] /= l; return a; };
 
 const indexUrlOf = (asset) => String(asset?.url ?? 'assets/v2/char3d/kael.glb').replace(/[^/]*$/, 'clips/index.json');
 /** 이미 받아 둔 클립 묶음을 쓴다 (node 검사 · 장면이 먼저 받았을 때) */
@@ -78,6 +80,56 @@ function footOff(clip) {
   const ev = clip.events?.find((e) => e[1] === 'footR');
   return (clip._offR = ev ? ev[0] / clip.duration : 0);
 }
+/**
+ * 걸음 맞추기 표: 규칙의 걸음 주기 g(0…1, 나아간 거리에 비례)를 클립의 주기 비율로 바꾼다. 디딘 발이 뒤로 가는 빠르기가 클립 안에서 고르지 않아
+ * (걷기 클립은 디딘 동안에도 27 % 쯤 흔들린다) 그대로 틀면 발이 땅에서 밀린다 → 디딘 발이 뒤로 간 거리가 g 에 비례하도록 클립 시각을 고른다.
+ * 클립마다 한 번(처음 쓸 때) 뼈대에 자세를 입혀 재고, 그 뒤로는 표만 읽는다. 표가 없으면(발 뼈 없음) g 그대로.
+ */
+const GW_N = 48, _gwP = new CPose();
+function gaitWarp(ch, clip) {
+  if (clip._gw !== undefined) return clip._gw;
+  clip._gw = null;
+  const rig = ch.rig, jl = rig.key.get('footL'), jr = rig.key.get('footR'); if (jl == null || jr == null || !clip.loop) return null;
+  const N = GW_N, off = footOff(clip), W = rig.world, zl = [], yl = [], zr = [], yr = [];
+  for (let i = 0; i <= N; i++) { sampleClip(clip, ((off + i / N) % 1) * clip.duration, _gwP); applyPose(rig, _gwP); zl.push(W[jl * 16 + 14]); yl.push(W[jl * 16 + 13]); zr.push(W[jr * 16 + 14]); yr.push(W[jr * 16 + 13]); }
+  const lowL = Math.min(...yl) + 0.035, lowR = Math.min(...yr) + 0.035, inc = []; let sum = 0, n = 0;
+  for (let i = 0; i < N; i++) {
+    const cl = yl[i] < lowL && yl[i + 1] < lowL, cr = yr[i] < lowR && yr[i + 1] < lowR;
+    const d = cl && cr ? (zl[i] - zl[i + 1] + zr[i] - zr[i + 1]) / 2 : cl ? zl[i] - zl[i + 1] : cr ? zr[i] - zr[i + 1] : -1;
+    inc.push(d); if (d > 0) { sum += d; n++; }
+  }
+  if (n < N * 0.3) return null;
+  const mean = sum / n; let tot = 0;
+  for (let i = 0; i < N; i++) { inc[i] = inc[i] > 0 ? clamp(inc[i], mean * 0.5, mean * 1.9) : mean; tot += inc[i]; }   // 둘 다 뜬 구간은 평균 빠르기로 · 너무 급한 곳은 눌러 둔다(동작이 덜컹거리지 않게)
+  const tb = new Float32Array(N + 1); let acc = 0, k = 1;
+  for (let i = 0; i < N && k < N; i++) { const a0 = acc; acc += inc[i] / tot; while (k < N && k / N <= acc) { tb[k] = (i + (k / N - a0) / (acc - a0)) / N; k++; } }
+  tb[N] = 1; clip._gw = tb; clip._gwStride = tot;
+  return tb;
+}
+/** 걸음 주기 g → 그 클립의 시각 (g 0 = 오른발이 닿는 때) */
+function gaitTime(ch, clip, g) {
+  const tb = gaitWarp(ch, clip); let p = g;
+  if (tb) { const x = g * GW_N, i = Math.min(GW_N - 1, x | 0); p = tb[i] + (tb[i + 1] - tb[i]) * (x - i); }
+  return ((p + footOff(clip)) % 1) * clip.duration;
+}
+/**
+ * 뼈 몇 개만 다른 자세(P)로 덮는다 (w = 섞는 비율). 자세를 입힌 뒤에 부르고 끝에 rig.pose() 를 부른다 — 준비 자세의 칼 든 팔처럼 "몸은 그대로, 팔만" 바꿀 때
+ */
+const _l1 = [0, 0, 0, 1], _l2 = [0, 0, 0, 1], _l3 = [0, 0, 0, 1], _l4 = [0, 0, 0, 1];
+function layerBones(rig, P, keys, w) {
+  const R = rig.R, PW = rig.parWR, RR = rig.restR;
+  for (let i = 0; i < keys.length; i++) {
+    const j = rig.key.get(keys[i]), d = P.rot.get(keys[i]); if (j == null || !d || !d.set) continue;
+    const o = j * 4;
+    _l1[0] = PW[o]; _l1[1] = PW[o + 1]; _l1[2] = PW[o + 2]; _l1[3] = PW[o + 3]; _l4[0] = RR[o]; _l4[1] = RR[o + 1]; _l4[2] = RR[o + 2]; _l4[3] = RR[o + 3];
+    qmul(qconj(_l1, _l2), d, _l3); qmul(_l3, _l1, _l2); qmul(_l2, _l4, _l3); qnorm(_l3);   // applyPose 와 같은 식: P⁻¹ · d · P · rest
+    const sg = R[o] * _l3[0] + R[o + 1] * _l3[1] + R[o + 2] * _l3[2] + R[o + 3] * _l3[3] < 0 ? -w : w;
+    _l2[0] = R[o] * (1 - w) + _l3[0] * sg; _l2[1] = R[o + 1] * (1 - w) + _l3[1] * sg; _l2[2] = R[o + 2] * (1 - w) + _l3[2] * sg; _l2[3] = R[o + 3] * (1 - w) + _l3[3] * sg; qnorm(_l2);
+    R[o] = _l2[0]; R[o + 1] = _l2[1]; R[o + 2] = _l2[2]; R[o + 3] = _l2[3];
+  }
+}
+const READY_ARM = ['shoulderR', 'armR', 'forearmR', 'handR'];
+
 /** 영웅 기술: 규칙 시간 t → 클립 시각. 클립의 strike 구간이 판정 구간 [h0,h1] 과 겹친다 */
 export function warpMove(clip, t, mv) {
   const S = mv.strike ?? clip.meta?.strike; if (!S) return (t / mv.dur) * clip.duration;
@@ -143,7 +195,7 @@ export function driveHero(ch, h, dt, T = TUNE) {
   else if (st === 'attack' || st === 'parry' || st === 'block') turn(ch, S, h.dirX, h.dirZ, dt, 42, 40);
   else if (st === 'roll') turn(ch, S, h.roll?.dx ?? h.dirX, h.roll?.dz ?? h.dirZ, dt, 34, 32);
   else if (st === 'guard') turn(ch, S, h.dirX, h.dirZ, dt, 22, 18);
-  else turn(ch, S, h.dirX, h.dirZ, dt, h.onGround ? 22 : 12, 17);
+  else turn(ch, S, h.dirX, h.dirZ, dt, 90, 40);   // 걷고 달리고 돌아설 때: 규칙이 몸의 방향을 이미 빠르기를 묶어 돌린다(sim._locomote) — 그림은 그대로 따른다 (속도와 몸이 어긋나지 않게)
   { const a1 = Math.atan2(ch.dz, ch.dx), w = dt > 0 ? wrapPi(a1 - (S.ang ?? a1)) / dt : 0; S.ang = a1; S.angV = (S.angV ?? 0) + (w - (S.angV ?? 0)) * Math.min(1, dt * 14); }   // 도는 빠르기 (rad/초, + = 왼쪽으로)
   // ── 클립 ──
   if (S.wasDead && !h.dead) A.play('idle', PO(0, null, 1, true));   // 다시 시작: 누운 자세에서 섞이지 않고 바로 선다
@@ -172,9 +224,22 @@ export function driveHero(ch, h, dt, T = TUNE) {
   else if (st === 'fall') A.play('air', PO(0.14));
   else if (S.landC != null) A.play('land', PO(0.04, 0.04 + S.landC * 1.5));
   else if (S.stopC != null) A.play('run_stop', PO(0.07, 0.07 + S.stopC * 1.85));
-  else if (st === 'run' || st === 'walk') { const c = C[st]; A.play(st, PO(0.14, ((h.gait + footOff(c)) % 1) * c.duration)); }
+  else if (st === 'turn') {
+    // 돌아서기: 달리던 것은 뒤로 버티며 낮게 미끄러지는 자세(run_stop 0.09–0.3초)로 멈추고, 반쯤 돌면 박차는 달리기 자세로 넘어간다. 걷던 것은 제자리걸음으로 돈다
+    const total = Math.max(0.08, ((h.pivotA ?? 3.1) - (T.pivotEnd ?? 45) * 0.01745) / (T.pivotRate ?? 14.8)), u = (h.pivotT ?? 0) / total;
+    if ((h.pivotV ?? 275) < 150 || !C.run_stop) { const c = C.walk; A.play('walk', PO(0.1, gaitTime(ch, c, (0.3 + (h.pivotT ?? 0) * 1.5) % 1))); }
+    else if (u < 0.55) A.play('run_stop', PO(0.05, 0.09 + (h.pivotT ?? 0) * 1.7));
+    else A.play('run', PO(0.09, gaitTime(ch, C.run, 0.86)));
+  }
+  else if (st === 'run' || st === 'walk') { const c = C[st]; A.play(st, PO(S.prev0 === 'turn' ? 0.06 : 0.14, gaitTime(ch, c, h.gait))); }
   else A.play(h.lock != null && C.idle_combat ? 'idle_combat' : 'idle', PO(0.2));
+  S.prev0 = st;
   A.update(dt);
+  // 준비 자세(락온한 채 서 있을 때): idle_combat 은 칼끝이 등 뒤를 본다 → 칼 든 팔만 겨눔 자세(guard_walk 의 팔: 칼끝이 앞)로 덮는다. 공격이 시작되면 0.1초에 풀려 준비 동작이 그대로 나온다
+  const rdy = st === 'idle' && h.lock != null && !h.dead && A.cur === C.idle_combat && C.guard_walk ? 1 : 0;
+  S.ready = (S.ready ?? 0) + (rdy - (S.ready ?? 0)) * Math.min(1, dt * (rdy ? 9 : 16));
+  const readyOn = S.ready > 0.02;
+  if (readyOn) layerBones(ch.rig, (ch.asset._readyPose ??= sampleClip(C.guard_walk, 0.3, new CPose())), READY_ARM, S.ready);
   // 달릴 때 윗몸을 조금 세운다: 달리기 클립은 26° 숙어 있어 위에서 비스듬히 보는 카메라에 얼굴이 묻힌다 → 골반–머리 선으로 19° 쯤
   S.lean = (S.lean ?? 0) + ((st === 'run' && !h.dead ? 1 : 0) - (S.lean ?? 0)) * Math.min(1, dt * 9);
   if (S.lean > 0.02) {
@@ -190,7 +255,7 @@ export function driveHero(ch, h, dt, T = TUNE) {
     if (Math.abs(Math.atan2(l, f)) > 2.4) look = 0;   // 등 뒤의 적까지 목을 꺾어 보지는 않는다
   }
   S.look = (S.look ?? 0) + (look - (S.look ?? 0)) * Math.min(1, dt * 8);
-  const posed = S.lean > 0.02, looking = Math.abs(S.look) > 0.5;
+  const posed = S.lean > 0.02 || readyOn, looking = Math.abs(S.look) > 0.5;
   if (looking) { pitchBone(ch.rig, 'neck', S.look * 0.4, 1); pitchBone(ch.rig, 'head', S.look * 0.45, 1); pitchBone(ch.rig, 'spine2', S.look * 0.15, 1); }
   if (posed || looking) ch.rig.pose();
 }
@@ -219,7 +284,7 @@ export function driveActor(ch, e, dt) {
   else if (e.state === 'stagger') { name = pick(C, e.staggerSide < 0 ? K.stagger + '_r' : null, K.stagger, K.hurt); if (name && !C[name].loop) o = PO(0.06, Math.min(0.02 + e.animT * 1.15, C[name].duration - 0.02)); }
   else if (e.anim === 'hurt') { name = pick(C, K.hurt); if (name && !C[name].loop) o = PO(0.04, 0.02 + e.animT * 1.3); }
   else if (atk) { name = pick(C, atk.clip); if (name) o = C[name].loop ? PO(0.08, null, e.phase === 'strike' ? 1.7 : 1.2) : PO(0.07, warpAttack(C[name], e.stateT, atk)); }
-  else if (e.anim === 'walk') { name = pick(C, K.walk); if (name && D.stride && !D.floats && !D.fly) o = PO(0.16, ((e.gait + footOff(C[name])) % 1) * C[name].duration); }
+  else if (e.anim === 'walk') { name = pick(C, K.walk); if (name && D.stride && !D.floats && !D.fly) o = PO(0.16, ((e.gait + footOff(C[name])) % 1) * C[name].duration); }   // (적의 걸음은 stride 를 뼈대에서 재서 맞춰 두었다 — 표를 쓰지 않는다)
   if (!name) name = pick(C, K.idle, 'idle', 'run') ?? Object.keys(C)[0];
   A.play(name, o);
   if (!S.init) { S.init = true; if (!A.ext) A.t = (e.id * 0.37) % (C[name].duration || 1); }   // 떼로 나올 때 같은 박자로 움직이지 않게

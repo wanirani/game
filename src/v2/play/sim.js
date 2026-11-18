@@ -40,7 +40,7 @@ export class Sim {
       guard: false, guardT: 0, guardTap: 0, parryT: 0, parryCd: 0, parryOk: 0, blockT: 0,
       move: null, moveT: 0, combo: 0, hitIds: null, assist: null, queued: 0, swung: false, stepDist: 0, airAtk: false, plungeLand: null, plungeEta: 1,
       lock: null, lockT: 0, lockHold: 0, lockX: 0, lockY: 0, lockZ: 0,
-      gait: 0, gaitMode: 'run', wasMoving: false, pushed: false, pivot: 0, pivotT: 0, pivotA: 0, wishX: 1, wishZ: 0,
+      gait: 0, gaitMode: 'run', wasMoving: false, pushed: false, pivot: 0, pivotT: 0, pivotA: 0, pivotV: 0, wishX: 1, wishZ: 0,
       anim: 'idle', animT: 0, t: 0, cut: false, landT: 0, landV: 0,
       safe: { x: W.start.x, z: W.start.z, y: W.start.y },
     };
@@ -245,7 +245,7 @@ export class Sim {
     let want = 0;
     if (moving) {
       const cr = h.dirX * uz - h.dirZ * ux, sg = cr < 0 ? -1 : 1, ad = Math.atan2(Math.abs(cr), h.dirX * ux + h.dirZ * uz);   // 몸과 스틱 사이 각 (0…π) · 도는 쪽
-      if (!h.pivot && ad > T.pivotAt * RAD) { h.pivot = sg; h.pivotT = 0; h.pivotA = ad; this.emit('pivot', h, ad); }
+      if (!h.pivot && ad > T.pivotAt * RAD) { h.pivot = sg; h.pivotT = 0; h.pivotA = ad; h.pivotV = Math.sqrt(h.vx * h.vx + h.vz * h.vz); this.emit('pivot', h, ad); }
       if (h.pivot) {
         h.pivotT += dt;
         const rem = sg === h.pivot ? ad : ad > 2.2 ? Math.PI * 2 - ad : 0;   // 처음 정한 쪽으로 남은 각 (스틱이 정반대 근처에서 흔들려도 오락가락하지 않는다)
