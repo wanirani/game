@@ -251,6 +251,21 @@ try {
     if (al) ok(`allocation per frame with pieces flying and coins lying is no higher than standing idle (+1 KB tolerance)`, Math.min(...al.busy) <= Math.max(...al.idle) + 1024, `idle ${al.idle.join(' / ')} B per frame · busy ${al.busy.join(' / ')} B per frame (pieces ${al.sh0} -> ${al.sh1}, pickups ${al.pk0} -> ${al.pk1})`); else note('no precise heap numbers in this browser');
     res.alloc = al; await ctx.close();
   }
+  // ───────────────────────── cross: the bell crossing to the twin night and back (everything stands again, coins kept, the hero never inside a whole thing) ─────────────────────────
+  if (PART === 'cross') {
+    const { ctx, page } = await open('eshville_now', '&v2res=0.4');
+    const waitReady = async () => { for (let i = 0; i < 600; i++) { if (await page.evaluate(() => { const g = window.__game; g._pageHidden = true; g.tick(1 / 60); g.render(); const sc = window.__v2.scene; return sc.ready && !sc._go && !sc.xing && sc.fadeA <= 0.01; })) return true; await page.waitForTimeout(25); } return false; };
+    const snap = () => page.evaluate(() => { const sc = window.__v2.scene, sim = sc.sim, h = sim.hero, sp = sc.area.spawns.default, L = sim.breakables; const inside = L.filter((b) => !b.broken && Math.abs(h.x - b.x) < b.r + h.r - 0.5 && Math.abs(h.z - b.z) < b.r + h.r - 0.5 && Math.abs(h.y - b.y) < 80).map((b) => b.kind + '@' + b.x + ',' + b.z);
+      return { area: sc.area.id, n: L.length, broken: L.filter((b) => b.broken).map((b) => b.kind + '@' + b.x + ',' + b.z), coins: sc.brk.coins, state: sc.state.coins, pos: [Math.round(h.x), Math.round(h.z), Math.round(h.y)], atSpawn: Math.hypot(h.x - sp.x, h.z - sp.z) < 5, inside, drawn: sc.brk.live, live: sim.brkLive }; });
+    const a = await page.evaluate(() => { const sc = window.__v2.scene, g = window.__game, sim = sc.sim; g._pageHidden = true; window.__bv.quiet(true); const L = sim.breakables; for (const i of [0, 1, 2]) { L[i].drop = 'none'; sim.breakAt(L[i].x, L[i].z, 2, 'c1'); } for (let i = 0; i < 20; i++) g.tick(1 / 60);
+      sc.brk._onPickup('coin', 6, sim.hero); const b = L[1]; window.__bv.hero(b.x, b.z - 2, b.y); for (let i = 0; i < 3; i++) g.tick(1 / 60); let r; try { r = sc.cross(); } catch (e) { r = 'threw ' + e.message; } return { at: [b.x, b.z], kind: b.kind, broken: L.filter((q) => q.broken).length, coins: sc.brk.coins, cross: r, twin: sc.area.twin ?? null }; });
+    await waitReady(); const b = await snap();
+    ok(`bell crossing eshville_now -> its twin: every thing stands again except one that would stand on the hero, the coins cross with him, he is where he stood (not at the spawn, not inside a whole thing)`, a.cross === true && b.area !== 'eshville_now' && b.coins === 6 && b.state === 6 && !b.atSpawn && b.inside.length === 0 && b.broken.length <= 1 && b.drawn === b.live && Math.abs(b.pos[0] - a.at[0]) < 6, JSON.stringify({ before: a, after: b }));
+    const c0 = await page.evaluate(() => { const sc = window.__v2.scene, g = window.__game, sim = sc.sim; window.__bv.hooks(); window.__bv.quiet(true); const L = sim.breakables, w = L.filter((q) => !q.broken).slice(0, 4); for (const q of w) { q.drop = 'none'; sim.breakAt(q.x, q.z, 2, 'c1'); } for (let i = 0; i < 20; i++) g.tick(1 / 60); const t = w[3]; window.__bv.hero(t.x + 1, t.z, t.y); for (let i = 0; i < 3; i++) g.tick(1 / 60); let r; try { r = sc.cross(); } catch (e) { r = 'threw ' + e.message; } return { cross: r, at: [t.x, t.z], kind: t.kind, broken: L.filter((q) => q.broken).length }; });
+    await waitReady(); const c = await snap();
+    ok(`and back: the first night is whole again (what he broke there before the crossing stands again), coins kept, the hero not inside a whole thing`, c0.cross === true && c.area === 'eshville_now' && c.coins === 6 && c.inside.length === 0 && c.broken.length <= 1 && !c.atSpawn, JSON.stringify({ before: c0, after: c }));
+    res.cross = { a, b, c0, c }; await ctx.close();
+  }
   // ───────────────────────── combo: c2 / c3 / plunge on every kind through the scene's own input latch (60 ticks a second, no touch) ─────────────────────────
   if (PART === 'combo') {
     const { ctx, page } = await open('eshville_now', '&v2res=0.4');
