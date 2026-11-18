@@ -64,7 +64,7 @@ const DEMOS = {
   combo: { name: '연타 3 (셋째는 넓게)', spawns: [{ kind: 'dummy', x: 104, z: 0 }], seq: [[0.5, {}], [0.3, {}, 'attack'], [0.32, {}, 'attack'], [0.34, {}, 'attack'], [1.4, {}]] },
   sweep: { name: '구른 뒤 훑기', spawns: [{ kind: 'dummy', x: 262, z: 0 }], seq: [[0.4, {}], [0.4, st(1, 0), 'dash'], [0.12, st(1, 0), 'attack'], [1.3, {}]] },
   plunge: { name: '점프 중 내려치기', spawns: [{ kind: 'dummy', x: 120, z: 0 }], seq: [[0.4, {}], [0.22, { ...st(1, 0), jumpHeld: true }, 'jump'], [0.7, { jumpHeld: true }, 'attack'], [1.1, {}]] },
-  charge: { name: '모아 휘감기 → 끌어오기', spawns: [{ kind: 'dummy', x: 215, z: 0 }], seq: [[0.4, {}], [1.05, { attackHeld: true }, 'attack'], [1.6, {}]] },
+  charge: { name: '모아 휘감기 → 끌어오기', camOff: 105, spawns: [{ kind: 'dummy', x: 215, z: 0 }], seq: [[0.4, {}], [1.05, { attackHeld: true }, 'attack'], [1.6, {}]] },
   door: { name: '휘감아 문 당기기', spawns: [], door: true, seq: [[4.2, {}]] },
   hook: { name: '솜씨: 고리에 걸기', spawns: [], hooks: [{ id: 'ring1', x: 250, y: 0, z: 40, h: 170, to: [300, 50] }], seq: [[0.5, {}], [1.3, {}, 'skill'], [1.0, {}]] },
   echo: { name: '종 짧게 (메아리)', spawns: [], seq: [[0.6, {}], [1.0, {}, 'bell'], [1.2, {}]] },
@@ -136,7 +136,7 @@ function shape(o, mv, col, fill) {
 function draw(label, alpha = 1) {
   const C = CAMS[S.cam] ?? CAMS.game, h = sim.hero, E = ERAS[S.era] ?? ERAS.now;
   if (C.hand) { cam.x = hand.x * 0.6 + whip.tip.x * 0.4; cam.y = hand.y * 0.6 + whip.tip.y * 0.4; cam.z = hand.z * 0.6 + whip.tip.z * 0.4; }
-  else { cam.x = h.x; cam.z = h.z; cam.y = Math.max(0, h.y) * 0.75; if (demo.door || demo.bell) { const [ox, oz] = rot(demo.bell ? 140 : 70, 0); cam.x += ox; cam.z += oz; } }
+  else { cam.x = h.x; cam.z = h.z; cam.y = Math.max(0, h.y) * 0.75; const off = demo.camOff ?? (demo.bell ? 140 : demo.door ? 70 : 0); if (off) { const [ox, oz] = rot(off, 0); cam.x += ox; cam.z += oz; } }
   camMatrix(C);
   gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(E.bg[0], E.bg[1], E.bg[2], 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   env.fog.color = E.bg; env.sunDir = E.sunDir; env.sun = E.sun; env.amb = E.amb; env.viewport[0] = cv.width; env.viewport[1] = cv.height;
@@ -267,7 +267,8 @@ api.state = state;
 api.thickness = (frac = 0.55) => {
   const N = whip.nodes, n = whip.n, i = Math.round((n - 1) * frac) * 3;
   const read = () => { const p = project(N[i], N[i + 1], N[i + 2]); if (!p) return null; const px = new Uint8Array(4 * 25), x = Math.round(p[0]), y = Math.round(cv.height - p[1]); gl.readPixels(x, y - 12, 1, 25, gl.RGBA, gl.UNSIGNED_BYTE, px); return px; };
-  const fxWas = S.fxOn; S.fxOn = false; WR.alpha = 0; draw(''); const a = read(); WR.alpha = 1; draw(''); const b = read(); S.fxOn = fxWas;
+  const fxWas = S.fxOn, tr = WR.trail, gw = WR.glow; S.fxOn = false; WR.trail = false; WR.glow = false;   // the lash alone: no effects, no streak, no glow
+  WR.alpha = 0; draw(''); const a = read(); WR.alpha = 1; draw(''); const b = read(); S.fxOn = fxWas; WR.trail = tr; WR.glow = gw;
   if (!a || !b) return null;
   let c = 0, solid = 0; for (let k = 0; k < 25; k++) { const d = Math.abs(a[k * 4] - b[k * 4]) + Math.abs(a[k * 4 + 1] - b[k * 4 + 1]) + Math.abs(a[k * 4 + 2] - b[k * 4 + 2]); if (d > 24) c++; if (d > 90) solid++; }
   return { changed: c, strong: solid };

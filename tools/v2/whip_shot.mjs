@@ -3,6 +3,7 @@
 //   node tools/v2/whip_shot.mjs combo hook      이름이 그 글자로 시작하는 묶음만
 //   --shot="demo:t:cam:w:h[:era[:reso[:dir]]]" --name=이름   한 장만
 //   --owner    소유자용 한 장 → /tmp/claude-0/v2/owner_whip.png
+//   --thick    붙임 그림 없이 화면 굵기만 잰다
 //   --list  --out=<폴더>
 // 한 번에 브라우저 하나. 헤드리스 WebGL 은 소프트웨어 렌더링이라 느리다 (프레임 시간은 기기와 무관).
 import { chromium } from 'playwright-core';
@@ -39,7 +40,10 @@ const SETS = [
   { n: 'knell_game', demo: 'knell', from: 0.55, count: 40, every: 3, cam: 'game', cols: 10, cw: 190, ch: 200 },
   { n: 'knell_close', demo: 'knell', from: 0.55, count: 40, every: 3, cam: 'close', cols: 8, cw: 240, ch: 270 },
   { n: 'far_game', demo: 'far', from: 0.45, count: 30, cam: 'game', cols: 10, cw: 280, ch: 200 },
+  { n: 'far_close', demo: 'far', from: 0.45, count: 24, cam: 'close', cols: 8, cw: 300, ch: 250 },
+  { n: 'launcher_game', demo: 'launcher', from: 0.45, count: 24, cam: 'game', cols: 12, cw: 200, ch: 190 },
   { n: 'launcher_close', demo: 'launcher', from: 0.45, count: 24, cam: 'close', cols: 8, cw: 240, ch: 270 },
+  { n: 'slam_game', demo: 'slam', from: 1.1, count: 36, cam: 'game', cols: 12, cw: 200, ch: 190 },
   { n: 'slam_close', demo: 'slam', from: 1.1, count: 36, cam: 'close', cols: 9, cw: 260, ch: 250 },
   { n: 'rest_game', demo: 'rest', from: 0.2, count: 36, every: 8, cam: 'game', cols: 12, cw: 190, ch: 170 },
   { n: 'rest_close', demo: 'rest', from: 0.2, count: 32, every: 9, cam: 'close', cols: 8, cw: 230, ch: 240 },
@@ -78,7 +82,7 @@ try {
     { const parts = []; for (const [t, lab] of [[0.6, '연타 1 — 뒤로 감았다가'], [0.7, '연타 1 — 맞는 순간'], [1.02, '연타 2 — 위에서 내리친다']]) parts.push(await shot('combo', t, { cam: 'game', w: 666, h: 360, label: lab })); strips.push({ t: '연타 3 — 게임 카메라 그대로의 크기 (영웅 키 약 76 px)', parts }); }
     { const parts = []; for (const [t, lab] of [[1.33, '연타 3 — 머리 위로 크게 돌려'], [1.45, '연타 3 — 넓게 후려친다'], [1.6, '연타 3 — 지나간 뒤']]) parts.push(await shot('combo', t, { cam: 'game', w: 666, h: 360, label: lab })); strips.push({ t: '', parts }); }
     strips.push({ t: '연타 3 — 가까이, 두 틱(1/30초)마다 한 칸: 끈이 펴지며 끝이 휘어 감기고, 맞는 순간 번쩍임과 불티 고리', parts: [await strip('combo', { from: 0.6, count: 10, every: 2, cam: 'close', cols: 10, cw: 200, ch: 190 })] });
-    strips.push({ t: '모아 휘감기 → 끌어오기 (머리 위로 돌리며 모았다가 멀리 던져 감고 당긴다)', parts: [await strip('charge', { from: 1.2, count: 8, every: 5, cam: 'game', cols: 8, cw: 250, ch: 150 })] });
+    strips.push({ t: '모아 휘감기 → 끌어오기 (머리 위로 돌리며 모았다가 멀리 던져 감고 당긴다)', parts: [await strip('charge', { from: 1.25, count: 8, every: 5, cam: 'close', cols: 8, cw: 250, ch: 190 })] });
     strips.push({ t: '휘감아 문 당기기 (문은 시험 화면에서 흉내 낸 것 — 규칙에는 아직 문이 없다)', parts: [await strip('door', { from: 0.74, count: 8, every: 12, cam: 'close', cols: 8, cw: 250, ch: 190 })] });
     strips.push({ t: '솜씨: 빛나는 고리에 걸고 건너뛰기 — 걸리면 팽팽한 직선', parts: [await strip('hook', { from: 0.52, count: 8, every: 5, cam: 'game', cols: 8, cw: 250, ch: 200 })] });
     strips.push({ t: '종 — 짧게(메아리) 네 칸 · 길게 네 칸: 종 조각을 치켜들어 울린다', parts: [await strip('echo', { from: 0.66, count: 4, every: 6, cam: 'game', cols: 4, cw: 250, ch: 230 }), await strip('knell', { from: 1.0, count: 4, every: 16, cam: 'game', cols: 4, cw: 250, ch: 230 })] });
@@ -90,7 +94,7 @@ try {
       { t: '멀리서 (키 70 px)도 끈이 보인다', demo: 'combo', at: 0.7, o: { cam: 'far', w: 420, h: 330 } },
       { t: '먼 종 치기', demo: 'far', at: 0.75, o: { cam: 'game', w: 420, h: 330 } },
     ]) singles.push({ t: sg.t, a: await shot(sg.demo, sg.at, sg.o) });
-    const weak = opt('weak', '아직 약한 곳: 손에 손가락이 없어 손잡이가 손바닥에 붙어 보이고, 문 당기기와 올려치기·내려찍기는 규칙에 없어 시험 화면에서만 흉내 냈습니다. 실제 기기에서의 속도는 재지 못했습니다.');
+    const weak = opt('weak', '아직 약한 곳: 이 그림은 모두 시험 화면이다 — 본 게임 장면에는 아직 꽂지 않았다. 손가락이 없어 손잡이가 손바닥에 붙어 보이고, 문 당기기 · 먼 종 치기는 규칙에 없어 흉내만 냈다. 기기 속도 · 소리는 확인 못 함.');
     const url = await page.evaluate(async ([strips, singles, weak]) => {
       const img = (u) => new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.src = u; });
       const W = 2000, pad = 14, th = 36; let y = 66; const lay = [];
@@ -109,7 +113,7 @@ try {
   } else {
     const stats = {};
     for (const s of SETS) {
-      if (want.length && !want.some((w) => s.n.startsWith(w))) continue;
+      if (argv.includes('--thick') || (want.length && !want.some((w) => s.n.startsWith(w)))) continue;   // --thick = 굵기만 잰다
       const t0 = Date.now();
       const url = await page.evaluate(([d, o]) => window.__whip.strip(d, o), [s.demo, { era: 'now', dir: 0, tier: 'mid', slow: false, stop: true, box: false, ...s }]);
       const st = await page.evaluate(() => { const L = window.__whip.lastStates; return { ext: Math.max(...L.map((q) => q.ext)), speed: Math.max(...L.map((q) => q.speed)), modes: [...new Set(L.map((q) => q.mode))].join(','), ev: [...new Set(L.flatMap((q) => q.ev).filter((e) => e.startsWith('채찍')))].join(' '), stats: L[L.length - 1].stats, ribbons: Math.max(...L.map((q) => q.fx?.ribbons ?? 0)) }; });
@@ -117,7 +121,7 @@ try {
       stats[s.n] = st;
       console.log(`wrote ${f}  (${s.count} frames, ${((Date.now() - t0) / 1000).toFixed(1)} s)  modes ${st.modes} · max ext ${st.ext} · max tip speed ${st.speed} · tris ${st.stats.tris} draws ${st.stats.draws} · ${st.ev}`);
     }
-    if (!want.length) {
+    if (!want.length || argv.includes('--thick')) {
       // 최소 굵기: 끈이 펴진 순간(연타 1 의 타격)에 끈 한가운데를 가로지르는 세로줄의 화면 굵기(px). 멀리 = 영웅 키 약 70 px
       for (const [cam, w, h] of [['far', 960, 540], ['game', 960, 540], ['far', 480, 270]]) {
         const th = await page.evaluate(([cam, w, h]) => { const a = window.__whip; a.shot('combo', 0.7, { cam, w, h, era: 'now', dir: 0 }); return [0.3, 0.55, 0.8].map((f) => a.thickness(f)); }, [cam, w, h]);

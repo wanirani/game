@@ -22,7 +22,7 @@ export function graveyard(era = 'now', flags = {}) {
     { t: 'deco', mesh: 'towerface', x: 600, y: 0, z: 1850, w: 200, h: TY, mat: 'ashlar', step: 1e6 },
     { t: 'blocker', x: 0, z: 1850, w: 100, d: 340, y: 0, h: 1200 }, { t: 'blocker', x: 1100, z: 1850, w: 100, d: 340, y: 0, h: 1200 });   // on the terrace the side walls stand only 110 above the feet: a jump would clear them
   if (now && hung) add('field', { t: 'stairs', x: 540, z: 1740, w: 120, d: 110, h: TY, dir: 'z+', steps: 10, mat: 'stone', state: 'bell_hung', kit: { cheeks: 'LR' } });   // tonight, a hundred years after the bell was hung: the stair is whole
-  else add('field', { t: 'prop', mesh: 'rubble', x: 600, z: 1806, w: 150, h: 64, solid: 70, solidZ: 40, solidH: 60 },                                               // the fallen stair: a heap of broken steps (solid, not climbable)
+  else add('field', { t: 'prop', mesh: 'rubble', x: 600, z: 1800, w: 190, h: 78, solid: 84, solidZ: 46, solidH: 70 },                                               // the fallen stair: a heap of broken steps (solid, not climbable)
     { t: 'deco', mesh: 'footbridge', kind: 'slab', x: 600, y: TY - 12, z: 1838, w: 110, len: 22, th: 12 });                                                           // the top step still hangs on the edge
   // walls
   add('road', { t: 'wall', x: 0, z: -60, w: 100, d: 960, h: 240, mat: 'facade', kit: { style: 'rubble', lower: 'fieldstone', faces: 'R', battlement: true, buttress: [200, 500, 800].map((u) => ({ side: 'R', u, h: 190, d: 20 })) } },
@@ -69,7 +69,7 @@ export function graveyard(era = 'now', flags = {}) {
     { t: 'deco', mesh: 'candles', x: 520, z: 1000, light: { r: 180, i: 1.0, y: 20 } },
     // WORLD-2: the road-bell post in front of the ossuary (empty until the bell is hung in 1697; a rusted bell tonight once it was) and the whip ring on the terrace edge
     { t: 'prop', mesh: 'roadbell', x: 500, z: 1940, h: 176, solid: 16, solidZ: 14, solidH: 150, state: hung ? (now ? 'rusty' : 'hung') : 'empty', old: now, light: hung ? { r: 170, i: 0.7, y: 120, c: now ? [0.6, 0.86, 0.9] : [1, 0.82, 0.5] } : null },
-    { t: 'prop', mesh: 'whipring', x: 668, z: 1868, h: 150, solid: 12, solidZ: 12, solidH: 170, light: { r: 150, i: 0.6, y: 150, c: [0.62, 0.86, 1] } },
+    { t: 'prop', mesh: 'whipring', x: 644, z: 1866, h: 150, solid: 12, solidZ: 12, solidH: 170, light: { r: 150, i: 0.6, y: 150, c: [0.62, 0.86, 1] } },
     ...['a', 'b'].filter((g) => flags['carved_' + g]).map((g) => ({ t: 'deco', mesh: 'candles', x: g === 'a' ? 300 : 900, z: 1540, n: 3, light: { r: 150, i: 0.8, y: 20 } })));
   if (now) { for (const [x, z] of [[300, 1200], [900, 1250], [600, 1520], [320, 1800], [880, 1820], [600, 1980]]) anchors.push({ id: `mist_${x}_${z}`, kind: 'mist', x, y: z > 1850 ? TY : 0, z, size: 2.4 }); anchors.push({ id: 'fog_field', kind: 'fog_bank', x: 600, y: 0, z: 1500, size: 8 }); }
   else anchors.push({ id: 'mist_low', kind: 'mist', x: 600, y: 0, z: 1500, size: 1.5 });
@@ -110,7 +110,7 @@ export function graveyard(era = 'now', flags = {}) {
       ...['a', 'b'].map((g, i) => (now ? { id: 'nameless_' + g, kind: 'sign', x: i ? 900 : 300, z: 1560, r: 70, label: '이름 없는 무덤', event: 'grave.nameless', data: { grave: g } } : { id: 'nameless_' + g, kind: 'grave', x: i ? 900 : 300, z: 1560, r: 70, label: '이름 새기기', event: 'grave.carve', data: { grave: g } })),
       { id: 'gate_rest', kind: 'rest', x: 540, z: 1010, r: 60, label: '촛불', event: 'rest' }, { id: 'ossuary_door', kind: 'door', x: 600, z: 1950, y: TY, r: 60, label: '배웅의 납골당', event: 'door.ossuary', locked: flags.ossuary_open ? null : 'story:ossuary' },
       // WORLD-2 (GDD 9.1 minute 58-68): the whip ring over the broken stair and the road-bell post beyond it
-      { id: 'depths_ring', kind: 'ring', x: 668, z: 1868, y: TY, h: 150, r: 300, label: '채찍 걸기', event: 'ring.hook', landing: { x: 600, y: TY, z: 1905 } },
+      { id: 'depths_ring', kind: 'ring', x: 644, z: 1866, y: TY, h: 150, r: 300, label: '채찍 걸기', event: 'ring.hook', landing: { x: 600, y: TY, z: 1905 } },
       ...(!now && !hung ? [{ id: 'road_bell', kind: 'bell', x: 500, z: 1915, y: TY, r: 70, label: '길종 걸기', event: 'bell.hang' }] : now && !hung ? [] : [{ id: 'road_bell', kind: 'bell', x: 500, z: 1915, y: TY, r: 70, label: '종 치기', event: 'bell.ring' }]),
     ],
     anchors,

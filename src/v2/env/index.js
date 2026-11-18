@@ -30,6 +30,7 @@ export default class V2Env extends V2ProtoB {
     // 주소 옵션: ?area=<id> (src/v2/world 의 지역을 시범판 규칙으로 걷는다) · &spawn=<들머리> · &peace=1 (적 없음) · &areanav=0 (나가는 곳에 닿아도 넘어가지 않는다)
     let Q = null; try { Q = new URLSearchParams(globalThis.location?.search ?? ''); } catch { Q = null; }
     this.areaId = params?.area ?? Q?.get('area') ?? null; this.spawnName = params?.spawn ?? Q?.get('spawn') ?? 'default'; this.peace = Q?.get('peace') === '1'; this.areaNav = Q?.get('areanav') !== '0';
+    this.areaFlags = Object.fromEntries(String(params?.flags ?? Q?.get('flags') ?? '').split(',').filter(Boolean).map((f) => [f, true]));   // &flags=bell_hung,gate_open: the area's story state (docs/v2/AREA_FORMAT.md 13)
     this.area = null; this.areaState = { in: {}, hits: [], fired: [], near: null, msg: '', msgT: 0, going: false };
     this.envQ = q === '0' ? 0 : 1; this.envMeshes = null; this.envStat = { chunks: 0, tris: 0, texBytes: 0, loadMs: 0, compileMs: 0 };
     super.enter(params);
@@ -63,7 +64,7 @@ export default class V2Env extends V2ProtoB {
     const t0 = performance.now();
     await ensureWorldAssets();                     // 구운 소품 묶음 (석상·가고일·고목) — 못 받으면 저폴리 소품이 대신 선다
     let stage = STAGE;
-    if (this.areaId && AREAS[this.areaId]) { try { this.area = await AREAS[this.areaId](); stage = protoStage(this.area, this.spawnName, this.peace); } catch (e) { console.warn('[v2c] area failed, using the test route:', e); this.area = null; } }
+    if (this.areaId && AREAS[this.areaId]) { try { this.area = await AREAS[this.areaId](this.areaFlags); stage = protoStage(this.area, this.spawnName, this.peace); } catch (e) { console.warn('[v2c] area failed, using the test route:', e); this.area = null; } }
     if (!this.glr && !this.glError) return;
     this.W = compileEnv(stage);                    // B 가 텍스처·소품을 받기 전에 세계를 바꿔 끼운다
     if (this.area) {   // 시범판 규칙은 "마당 적이 없으면 끝"이다 → 닿을 수 없는 먼 곳에 마당 적 하나를 세워 끝나지 않게 한다

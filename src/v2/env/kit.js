@@ -344,8 +344,8 @@ export function dressStairs(G, P) {
     let x0 = P.x, x1 = P.x + P.w, z0 = P.z, z1 = P.z + P.d;
     if (P.dir === 'x+') { x0 = P.x + P.w * a; x1 = P.x + P.w * c; } else if (P.dir === 'x-') { x0 = P.x + P.w * (1 - c); x1 = P.x + P.w * (1 - a); } else if (P.dir === 'z+') { z0 = P.z + P.d * a; z1 = P.z + P.d * c; } else { z0 = P.z + P.d * (1 - c); z1 = P.z + P.d * (1 - a); }
     const run = P.dir[0] === 'x' ? 'L' : 'F', sideF = P.dir[0] === 'x' ? 'F' : 'LR';
-    G.box('stone', x0, P.dir[0] === 'x' ? y : lo, z0, x1, y + hh - 3, z1, { faces: (P.dir.endsWith('+') ? run : P.dir[0] === 'x' ? 'R' : '') + sideF, k: 0.82, cell: 70 });
-    G.box('trimstone', x0 - (P.dir === 'x+' ? 1.5 : 0), y + hh - 3, z0 - (P.dir === 'z+' ? 1.5 : 0), x1, y + hh, z1, { faces: 'FLRT', cell: 70, vary: 0.12, shade: (px, py, pz, nn) => (nn[1] > 0.5 ? 0.86 + 0.14 * sm(0, 14, P.dir === 'z+' ? z1 - pz : P.dir === 'x+' ? x1 - px : 9) : 1) });
+    G.box(K.mat ?? 'stone', x0, P.dir[0] === 'x' ? y : lo, z0, x1, y + hh - 3, z1, { faces: (P.dir.endsWith('+') ? run : P.dir[0] === 'x' ? 'R' : '') + sideF, k: 0.82, cell: 70 });   // kit.mat / kit.tread: a wooden flight (darkwood + wood)
+    G.box(K.tread ?? 'trimstone', x0 - (P.dir === 'x+' ? 1.5 : 0), y + hh - 3, z0 - (P.dir === 'z+' ? 1.5 : 0), x1, y + hh, z1, { faces: 'FLRT', cell: 70, vary: 0.12, shade: (px, py, pz, nn) => (nn[1] > 0.5 ? 0.86 + 0.14 * sm(0, 14, P.dir === 'z+' ? z1 - pz : P.dir === 'x+' ? x1 - px : 9) : 1) });
   }
   const T = 9, hRail = K.cheekH ?? 30;   // 옆 벽: 계단을 따라 비스듬히 오르는 낮은 담 + 갓돌 + 끝 기둥
   for (const s of K.cheeks ?? '') {

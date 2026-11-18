@@ -8,6 +8,7 @@ import { sectionAt } from '../b/world.js';
 import SLICE0 from '../env/stage_slice0_env.js';
 import { eshville } from './eshville.js';
 import { graveyard } from './graveyard.js';
+import { belltower } from './belltower.js';
 import { reachGrid } from './reach.js';
 
 export const ENEMY_KINDS = ['melee', 'ranged', 'skeleton_soldier', 'skeleton_mage', 'plague_corpse', 'grave_ghost', 'gravekeeper_armor', 'bat'];
@@ -48,6 +49,7 @@ export const AREAS = {
   eshville_past: make((f) => eshville('past', f)),
   graveyard_now: make((f) => graveyard('now', f)),
   graveyard_past: make((f) => graveyard('past', f)),
+  belltower_now: make((f) => belltower('now', f)),
   slice0: make(slice0),
 };
 /** story flags that change what an area is built from (AREA_FORMAT 13). validateAll() checks the base state and every one of these states. */
@@ -83,7 +85,7 @@ export function validateArea(a, twin = null) {
   for (const [s, r] of Object.entries(a.rooms ?? {})) if (!ROOMS.includes(r)) Wn(`rooms.${s}: unknown tag ${r}`);
   const ground = { ...a.stage, spawns: [] };   // the prototype's own flood knows no whip rings, bells or hops: enemies are checked below against this lane's reach grid (same rule: standable + reachable)
   let W = null;
-  try { const r = validateEnv(ground); for (const e of r.errors) E('stage: ' + e); W = compileEnv(a.stage); } catch (e) { E('compile failed: ' + String(e?.message ?? e)); }
+  try { const r = validateEnv(ground); for (const e of r.errors) if (!e.includes('닿을 수 있는 바닥')) E('stage: ' + e); /* the prototype's flood knows no hops, rings or bells: sections are checked below with this lane's reach grid */ W = compileEnv(a.stage); } catch (e) { E('compile failed: ' + String(e?.message ?? e)); }
   if (!W || !a.spawns.default) return { errors, warnings, stats: {} };
   if (W.sprites.some((s) => s.kind === 'prop')) E('flat prop cards left: ' + W.sprites.filter((s) => s.kind === 'prop').map((s) => s.img).join(', '));
   W.hookPoints = a.stage.hookPoints ?? [];
