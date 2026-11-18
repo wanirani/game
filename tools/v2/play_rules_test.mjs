@@ -272,6 +272,67 @@ try {
   ok('env-kit world: yard enemies that see the hero wake, reach him and attack; none left stuck far away; the ones out of sight stay asleep', woke0 === 0 && act.length >= 1 && t3 >= 3 && far === 0 && finite(s3), `woke while he stood at the entry ${woke0} · after walking up: active ${act.length} attacks ${t3} far ${far} · still asleep beyond 320 px ${asleepFar}`);
 } catch (err) { ok('env-kit world loads in node', false, String(err?.message ?? err).split('\n')[0]); }
 
+// ── BREAK: breakables and pickups (src/v2/play/breakables.js — docs/v2/PLAY_API.md 13) ──
+{
+  const { BREAK_KINDS, DROP_TABLE, PICK, breakOne, spawnPickup } = await import(process.env.PLAY_ENTRY || '../../src/v2/play/index.js');
+  const mkB = (brk, spawns = [], hooks = {}) => { const W = flatArena(520, 360, spawns); W.breakables = brk; const log = []; const sim = new Sim(W, { event: (n, ...a) => log.push([n, ...a]), ...hooks }); sim.log = log; sim.seedDrops(1234); return sim; };
+  const breaks = (sim) => sim.log.filter((l) => l[0] === 'break').map((l) => l[1].kind + ':' + l[2]);
+  ok('breakables: W.breakables -> records with a solid box each, a pickup pool', (() => { const s = mkB([{ kind: 'jar', x: 80, z: 0 }, { kind: 'crate', x: 0, z: 120 }, { kind: 'nope', x: 5, z: 5 }]); return s.breakables.length === 2 && s.brkLive === 2 && s.breakables.every((b) => b.box.solid && !b.box.walk && b.y === 0) && s.pickups.length === PICK.pool && s.hero.coins === 0; })());
+  // every attack breaks (one hit), the event names the move
+  { const s = mkB([{ kind: 'jar', x: 70, z: 0, drop: 'none' }]); run(s, 0.3, { attack: true }); ok('combo 1 breaks a jar in one hit (event break by c1)', breaks(s).join() === 'jar:c1' && !s.breakables[0].box.solid && s.brkLive === 0, breaks(s).join()); }
+  { const s = mkB([{ kind: 'crate', x: 86, z: 0, drop: 'none' }, { kind: 'barrel', x: 150, z: 0, drop: 'none' }]); run(s, 1.6, (i) => ({ attack: i === 0 || i === 16 || i === 34 }));
+    const mv = s.log.filter((l) => l[0] === 'attack').map((l) => l[2].id); ok('combo 1-2-3: the crate breaks on the first hit, the barrel behind it by a later step', mv.join('>') === 'c1>c2>c3' && breaks(s)[0] === 'crate:c1' && breaks(s).length === 2, mv.join('>') + ' · ' + breaks(s).join()); }
+  { const s = mkB([{ kind: 'pot', x: 0, z: -100, drop: 'none' }, { kind: 'urn', x: 40, z: 100, drop: 'none' }]); run(s, 1.6, (i) => ({ attack: i === 0 || i === 16 || i === 34 })); ok('the third (wide) step breaks what stands beside and behind', breaks(s).filter((b) => b.endsWith(':c3')).length === 2, breaks(s).join()); }
+  { const s = mkB([{ kind: 'jar', x: 230, z: 0, drop: 'none' }]); run(s, 0.14, { mx: 1, mz: 0 }); run(s, 0.02, { mx: 1, mz: 0, dash: true }); run(s, 0.8, (i) => ({ mx: 1, mz: 0, attack: i === 14 }));
+    ok('the sweep after a roll breaks', breaks(s).join() === 'jar:sweep' || breaks(s).join() === 'jar:roll', breaks(s).join()); }
+  { const s = mkB([{ kind: 'barrel', x: 215, z: 0, drop: 'none' }, { kind: 'jar', x: 150, z: 10, drop: 'none' }]); run(s, 1.2, (i) => ({ attack: i === 0, attackHeld: i < 62 })); ok('the charged whip breaks everything along its reach', breaks(s).includes('barrel:whip') && breaks(s).length === 2, breaks(s).join()); }
+  { const s = mkB([{ kind: 'crate', x: 60, z: 0, drop: 'none' }, { kind: 'urn', x: -60, z: 40, drop: 'none' }]); run(s, 1.2, (i) => ({ jump: i === 0, jumpHeld: i < 12, attack: i === 14 })); ok('the plunge breaks (its blade or its landing ring)', breaks(s).length === 2 && breaks(s).every((b) => b.endsWith(':plunge')), breaks(s).join()); }
+  { const s = mkB([{ kind: 'jar', x: 150, z: 0, drop: 'none' }]); ok('sim.breakAt(x, z, r): a skill that hurts in an area breaks what is whole in the circle', s.breakAt(120, 0, 40, 'area') === 1 && breaks(s).join() === 'jar:area' && s.breakAt(120, 0, 40) === 0); }
+  // the roll: clay breaks and no speed is lost; wood stops the roll and stays whole
+  { const free = mkB([]); run(free, 0.02, { mx: 1, mz: 0, dash: true }); run(free, 0.5, { mx: 0, mz: 0 }); const d0 = free.hero.x;
+    const s = mkB([{ kind: 'jar', x: 60, z: 0, drop: 'none' }, { kind: 'pot', x: 104, z: 6, drop: 'none' }, { kind: 'urn', x: 140, z: -8, drop: 'none' }]); run(s, 0.02, { mx: 1, mz: 0, dash: true }); run(s, 0.5, { mx: 0, mz: 0 });
+    ok('roll through a row of three clay things: all break (by roll) and the roll covers the same distance as on open ground', breaks(s).join() === 'jar:roll,pot:roll,urn:roll' && Math.abs(s.hero.x - d0) < 0.01, `open ${d0.toFixed(1)} · through jars ${s.hero.x.toFixed(1)} · ${breaks(s).join()}`); }
+  for (const k of ['crate', 'barrel']) { const s = mkB([{ kind: k, x: 70, z: 0, drop: 'none' }]); run(s, 0.02, { mx: 1, mz: 0, dash: true }); run(s, 0.5, { mx: 0, mz: 0 }); const K = BREAK_KINDS[k];
+    ok(`roll into a ${k}: it stays whole and stops the roll at its side`, breaks(s).length === 0 && !s.breakables[0].broken && s.hero.x <= 70 - K.r - s.hero.r + 0.01 && s.hero.x > 20, `hero x ${s.hero.x.toFixed(1)}`); }
+  { const s = mkB([{ kind: 'jar', x: 60, z: 0, drop: 'none' }]); run(s, 1.0, { mx: 1, mz: 0 }); ok('walking or running into a jar does not break it (it is solid)', breaks(s).length === 0 && s.hero.x <= 60 - 17 - 14 + 0.01, `hero x ${s.hero.x.toFixed(1)}`); }
+  // enemies never break them
+  { const s = mkB([{ kind: 'jar', x: 40, z: 0, drop: 'none' }, { kind: 'pot', x: -44, z: 0, drop: 'none' }, { kind: 'crate', x: 0, z: 60, drop: 'none' }], [{ kind: 'melee', x: 95, z: 0, active: true }, { kind: 'gravekeeper_armor', x: 0, z: -110, active: true }, { kind: 'ranged', x: -300, z: 0, active: true }, { kind: 'bat', x: 100, z: 100, active: true }]);
+    s.hero.hp = s.hero.hpMax = 1e6; let sw = 0, shots = 0; s.hooks.enemySwing = () => sw++; s.hooks.shot = (q, w) => { if (w === 'spawn') shots++; };
+    run(s, 14, {}); ok('enemies swinging, slamming, shooting and diving beside jars and a crate for 14 s break nothing', sw >= 6 && shots >= 2 && breaks(s).length === 0 && s.brkLive === 3 && finite(s), `swings ${sw} shots ${shots}`); }
+  // the drop table: shares over 10,000 seeded breaks per kind
+  for (const k of Object.keys(DROP_TABLE)) {
+    const s = mkB([{ kind: k, x: 200, z: 0 }]), b = s.breakables[0], T = DROP_TABLE[k], n = { none: 0, coin: 0, heal: 0, reso: 0 }; let cmin = 99, cmax = 0, csum = 0; s.seedDrops(20261118);
+    s.hooks.drop = (what, cnt) => { n[what]++; if (what === 'coin') { cmin = Math.min(cmin, cnt); cmax = Math.max(cmax, cnt); csum += cnt; } };
+    for (let i = 0; i < 10000; i++) { b.broken = false; s.brkLive = 1; breakOne(s, b, 'c1', 1, 0, false); for (const p of s.pickups) p.on = false; s.pickN = 0; }
+    const sh = [n.none, n.coin, n.heal, n.reso].map((v) => v / 100), okS = sh.every((v, i) => Math.abs(v - T.share[i]) < 1.5);
+    ok(`drop table ${k}: shares over 10,000 seeded breaks within 1.5 points of [${T.share.join(', ')}] %, coins ${T.coins[0]}-${T.coins[1]}`, okS && cmin === T.coins[0] && cmax === T.coins[1], `none ${sh[0].toFixed(1)} coin ${sh[1].toFixed(1)} heal ${sh[2].toFixed(1)} reso ${sh[3].toFixed(1)} · coins ${cmin}-${cmax} (mean ${(csum / n.coin).toFixed(2)})`); }
+  { const seq = (seed) => { const s = mkB([{ kind: 'barrel', x: 200, z: 0 }]), b = s.breakables[0], out = []; s.seedDrops(seed); s.hooks.drop = (w, c) => out.push(w + c); for (let i = 0; i < 40; i++) { b.broken = false; s.brkLive = 1; breakOne(s, b, 'c1', 1, 0, false); } return out.join(','); };
+    ok('the drop generator is seeded: the same seed gives the same drops, another seed gives others', seq(7) === seq(7) && seq(7) !== seq(8)); }
+  { const s = mkB([{ kind: 'jar', x: 70, z: 0, drop: 'coin4' }, { kind: 'pot', x: 70, z: 60, drop: 'heal' }, { kind: 'urn', x: 70, z: -50, drop: 'reso' }]); s.breakAt(70, 0, 80); ok('a fixed drop of the area entry (coin4 / heal / reso) is what comes out', s.pickN === 6 && s.pickups.filter((p) => p.on && p.what === 0).length === 4 && s.pickups.filter((p) => p.on && p.what === 1).length === 1 && s.pickups.filter((p) => p.on && p.what === 2).length === 1); }
+  // pickups: never under the floor, never inside a wall, never off the floor's edge
+  { const spots = []; for (let i = 0; i < 60; i++) { const a = i * 0.7, edge = i % 3; spots.push({ kind: 'jar', x: edge === 0 ? 500 - (i % 5) * 2 : edge === 1 ? -500 + (i % 7) : Math.cos(a) * 300, z: edge === 0 ? Math.sin(a) * 320 : edge === 1 ? 340 - (i % 4) * 3 : -340 + (i % 6), drop: 'coin5' }); }
+    const s = mkB(spots); s.hero.x = 0; s.hero.z = 0; let bad = 0, low = 0, seen = 0;
+    for (let k = 0; k < 6; k++) { for (let j = k * 10; j < k * 10 + 10; j++) breakOne(s, s.breakables[j], 'c1', Math.cos(j * 2.4), Math.sin(j * 2.4), false);
+      for (let t = 0; t < 150; t++) { s.update(DT, {}); for (const p of s.pickups) { if (!p.on) continue; seen++; if (!(p.y >= -0.001)) low++; if (!(Math.abs(p.x) <= 520 - PICK.r + 0.01 && Math.abs(p.z) <= 360 - PICK.r + 0.01) || !Number.isFinite(p.x + p.y + p.z)) bad++; } } }
+    const rest = s.pickups.filter((p) => p.on && Math.hypot(p.x, p.z) > PICK.pullR + 30), settled = rest.every((p) => p.rest && p.y === 0);
+    ok('300 coins thrown from jars along the walls and in the corners: none under the floor, none inside a wall, all come to rest on the floor', seen > 5000 && bad === 0 && low === 0 && settled, `samples ${seen} inside walls ${bad} under the floor ${low} at rest ${rest.length}`); }
+  { const W = flatArena(520, 360); W.boxes[0] = { x0: -520, x1: 120, z0: -360, z1: 360, y0: -40, y1: 0, solid: false, walk: true };   // the floor ends at x 120: beyond it a pit
+    W.breakables = [{ kind: 'barrel', x: 90, z: 0, drop: 'coin5' }, { kind: 'jar', x: 100, z: 80, drop: 'coin5' }]; const s = new Sim(W, {}); s.seedDrops(5); s.hero.x = -400; breakOne(s, s.breakables[0], 'c1', 1, 0, false); breakOne(s, s.breakables[1], 'c1', 1, 0.2, false);
+    let off = 0; for (let t = 0; t < 200; t++) { s.update(DT, {}); for (const p of s.pickups) if (p.on && (p.x > 120.01 || p.y < -0.001)) off++; }
+    ok('coins thrown toward a floor edge turn back: none leaves the floor', off === 0 && s.pickN === 10 && s.pickups.filter((p) => p.on).every((p) => p.rest)); }
+  // picking up: coins count, heal and resonance never above the maximum, a heal piece at full health waits
+  { const s = mkB([]); spawnPickup(s, 0, 60, 30, 0, 0, 200, 0, 0); spawnPickup(s, 0, 80, 30, 10, 0, 200, 0, 0); let ev = []; s.hooks.pickup = (w, n) => ev.push(w + n);
+    run(s, 0.2, {}); const early = s.hero.coins; run(s, 1.5, {}); ok('coins near the hero are drawn to him and picked up on touch (not before they have popped), hero.coins counts', early === 0 && s.hero.coins === 2 && ev.join() === 'coin1,coin1' && s.pickN === 0, `coins ${s.hero.coins}`); }
+  { const s = mkB([]); spawnPickup(s, 0, 300, 30, 0, 0, 200, 0, 0); run(s, 2, {}); const far = s.pickups.find((p) => p.on); ok('a coin 300 away stays where it fell until the hero comes', !!far && far.rest && Math.abs(far.x - 300) < 1 && s.hero.coins === 0); run(s, 1.2, { mx: 1, mz: 0 }); ok('... and is taken when he runs past', s.hero.coins === 1); }
+  { const s = mkB([]); s.hero.hp = s.hero.hpMax - 5; spawnPickup(s, 1, 40, 30, 0, 0, 200, 0, 0); run(s, 1.5, {}); ok('heal: never above the maximum', s.hero.hp === s.hero.hpMax && s.pickN === 0, `hp ${s.hero.hp}`);
+    spawnPickup(s, 1, 30, 30, 0, 0, 200, 0, 0); run(s, 3, {}); const p = s.pickups.find((q) => q.on); ok('heal at full health: the piece stays on the ground, untouched even with the hero standing on it', !!p && p.rest && s.hero.hp === s.hero.hpMax && (s.hero.x = p.x, s.hero.z = p.z, run(s, 1, {}), p.on));
+    s.hero.hp = 40; run(s, 0.6, {}); ok('... and is taken as soon as it is needed (+' + PICK.heal + ')', !p.on && s.hero.hp === 40 + PICK.heal, `hp ${s.hero.hp}`); }
+  { const s = mkB([]); s.hero.reso = s.hero.resoMax - 0.1; spawnPickup(s, 2, 30, 30, 0, 0, 200, 0, 0); run(s, 1.5, {}); ok('resonance: never above the maximum', Math.abs(s.hero.reso - s.hero.resoMax) < 1e-9 && s.pickN === 0, `reso ${s.hero.reso}`);
+    spawnPickup(s, 2, 30, 30, 0, 0, 200, 0, 0); run(s, 2, {}); ok('a mote at full resonance waits too', s.pickN === 1); }
+  { const s = mkB([]); spawnPickup(s, 0, 400, 30, 0, 0, 200, 0, 0); run(s, PICK.life - 0.5, {}); const on = s.pickN; run(s, 1, {}); ok(`a pickup vanishes after ${PICK.life} s`, on === 1 && s.pickN === 0); }
+  { const s = mkB([{ kind: 'jar', x: 60, z: 0, drop: 'coin3' }]); run(s, 0.3, { attack: true }); const n1 = s.pickN; s.reset(); ok('sim.reset(): everything stands again, the pool is empty', n1 === 3 && s.brkLive === 1 && !s.breakables[0].broken && s.breakables[0].box.solid && s.pickN === 0); }
+}
+
 Math.random = realRandom;
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) { console.log('FAILED:\n  ' + fails.join('\n  ')); process.exit(1); }

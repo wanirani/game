@@ -20,7 +20,7 @@ const lcg = (s) => () => ((s.v = (Math.imul(s.v, 1664525) + 1013904223) >>> 0) /
 export class Breakables {
   constructor(sc) {
     this.sc = sc; this.coins = 0; this.broken = new Set(); this.brokenArea = ''; this.keepNext = false; this.visits = 0;
-    this.canvas = null; this.tex = null; this.whole = null; this.wf = null; this.wu = null; this.ranges = []; this.live = 0; this.wholeTris = 0;
+    this.L0 = null; this.canvas = null; this.tex = null; this.whole = null; this.wf = null; this.wu = null; this.ranges = []; this.live = 0; this.wholeTris = 0;
     this.dab = new ArrayBuffer(DYN_VERTS * BRK_VERT); this.df = new Float32Array(this.dab); this.du = new Uint8Array(this.dab); this.dbuf = null; this.dgen = -1; this.dn = 0; this.dfade = 0;
     this.sh = []; for (let i = 0; i < MAX_SH; i++) this.sh.push({ on: false, m: null, x: 0.5, y: 0.5, z: 0.5, px: 0.5, py: 0.5, pz: 0.5, vx: 0.5, vy: 0.5, vz: 0.5, wx: 0.5, wy: 0.5, wz: 0.5, q: new Float32Array(4), qt: new Float32Array(4), R: new Float32Array(9), fx: 0.5, fy: 0.5, fz: 0.5, restH: 0.5, st: 0, t: 0.5, restT: 0.5, n: 0, gy: 0.5, lr: 0.5, lg: 0.5, lb: 0.5, al: 0.5, seq: 0, r: 0.5 });
     this.shN = 0; this.shSeq = 0; this.shPeak = 0;
@@ -61,6 +61,7 @@ export class Breakables {
       else if (Math.abs(h.x - b.x) < m && Math.abs(h.z - b.z) < m && Math.abs(h.y - b.y) < 90) { ids.push(b.id); this.broken.add(k); }
     }
     if (ids.length) breakSilent(sim, ids);
+    this.L0 = sim.breakables;
     for (let i = 0; i < this.sh.length; i++) this.sh[i].on = false; this.shN = 0; this.pseq.fill(0);
     this._bake(area, L, glr);
     sc.state.coins = this.coins; h.coins = this.coins;
@@ -171,6 +172,9 @@ export class Breakables {
   tick(pdt) {
     const sc = this.sc, sim = sc.sim; if (!sim) return;
     sc.state.coins = this.coins; sim.hero.coins = this.coins;
+    if (sim.breakables !== this.L0) {   // the rules started the area over (the hero fell with no rest spot): the same visit, so what he broke stays broken
+      this.L0 = sim.breakables; const L = sim.breakables, ids = []; for (let i = 0; i < L.length; i++) if (this.broken.has(this.key(L[i]))) ids.push(L[i].id); if (ids.length) breakSilent(sim, ids);
+    }
     const P = sim.pickups, pp = this.pp, ps = this.pseq;
     if (P) for (let i = 0; i < P.length; i++) {
       const p = P[i], o = i * 6; if (!p.on) { ps[i] = 0; continue; }

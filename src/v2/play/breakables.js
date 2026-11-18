@@ -127,6 +127,8 @@ export function tickPickups(S, dt) {
     else { p.vy -= K.grav * dt; mx = p.vx * dt; mz = p.vz * dt; p.y += p.vy * dt; }
     // walls: the body is tested at the ground it belongs to (a low wall stops it whatever its height in the air); floor edges turn it back
     pr.x = p.x; pr.z = p.z; pr.y = p.gy; S.qx = mx; S.qz = mz; S._mq(pr);
+    if (Math.abs(pr.x - p.x) > Math.abs(mx) + 1e-6) pr.x = p.x;   // (born inside a solid box and thrown out of its far side - possibly into a wall: it stays on that axis instead)
+    if (Math.abs(pr.z - p.z) > Math.abs(mz) + 1e-6) pr.z = p.z;
     S.qx = pr.x; S.qz = pr.z; S.qy = p.gy + STEP_UP; S._gq();
     if (!(S.g >= p.gy - 20)) { pr.x = p.x; pr.z = p.z; p.vx = -p.vx * 0.4; p.vz = -p.vz * 0.4; }   // no floor there (an edge, a pit): it stays on its floor
     else {
