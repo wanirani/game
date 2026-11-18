@@ -45,7 +45,7 @@ const TEX_SRC = {
 const HIDE_BTNS = ['sub', 'skill1', 'skill2', 'ult', 'swap', 'mount', 'guard', 'lock', 'auto', 'maptog', 'bag'];   // v1 pad buttons with no meaning here (pause = leave, fullscreen stay)
 const DASH_TRAIL = RB({ mode: 1, life: 0.24, width: 58, col: [0.45, 0.8, 2.2, 0.5] });
 const WHIP_CORD = RB({ mode: 1, life: 0.07, width: 8, col: [1.7, 1.35, 0.8, 0.9] });
-const SUN = [0.56, 0.56, 0.62], AMB = [0.76, 0.77, 0.84], RIM_HERO = [0.6, 0.7, 1, 0.5], RIM_WARN = [1.7, 0.35, 0.2, 0.85], RIM_ENEMY = [0.55, 0.65, 0.9, 0.35], RIM_PEOPLE = [0.6, 0.66, 0.85, 0.3];
+const SUN = [0.56, 0.56, 0.62], AMB = [0.76, 0.77, 0.84], RIM_HERO = [0.6, 0.7, 1, 0.5], RIM_WARN = [1.7, 0.35, 0.2, 0.85], RIM_ENEMY = [0.55, 0.65, 0.9, 0.35], RIM_PEOPLE = [0.6, 0.66, 0.85, 0.3], RIM_NONE = [0, 0, 0, 0];
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const hyp = (x, y, z = 0) => Math.sqrt(x * x + y * y + z * z);   // Math.hypot makes a temporary array per call in V8
 const wrapPi = (a) => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
@@ -68,7 +68,7 @@ export default class V2Game extends Scene {
     this.story = typeof params?.story === 'function' ? params.story : null; this.ui = { dialog: null }; this.locked = false;
     this.area = null; this.W = null; this.sim = null; this.fx = null; this.cr = null; this.cast = null; this.hud = createBuiltinHud();
     this.people = new People(); this.anchors = new Anchors(); this.flags = new Set(); this.hidden = new Set(); this.lockOv = new Map(); this.storyFlag = null;
-    this._use = false; this._caps = { skill: false, bell: false }; this._offT = 0; this._go = null; this.fadeA = 0; this.fadeTo = 0; this._flagFn = (n) => this.flag(n); this._useFn = () => { this._use = true; }; this._skyKey = ''; this._peopleN = 0;
+    this._use = false; this._heroHid = false; this._caps = { skill: false, bell: false }; this._offT = 0; this._go = null; this.fadeA = 0; this.fadeTo = 0; this._flagFn = (n) => this.flag(n); this._useFn = () => { this._use = true; }; this._skyKey = ''; this._peopleN = 0;
     this.heroA = null; this.actors = []; this.pool = new Map(); this._ERef = null;
     this.bridge = bindFxSound(feel); this.feelN = 0; this.lastFeel = null; this._actE = null; this._simSteps = false;
     this.shotL = new Array(32).fill(null); this.shotN = 0;
@@ -693,6 +693,7 @@ export default class V2Game extends Scene {
       if (sp > 60 && !this._simSteps) { this.stride += sp * pdt; if (this.stride > 96) { this.stride = 0; this.bridge.speed = sp; this._fxp('move.step', h.x, h.y, h.z, ha.dx, ha.dz, 1, false); } } else this.stride = 60;
     }
     h._gy = groundAt(W, h.x, h.z, h.y + 20);
+    if (pdt > 0) this._heroHid = this.perf.tier !== 'low' && this._hidden(h);
     // enemies
     const E = sim.enemies, L = this.actors;
     if (E !== this._ERef) {
@@ -920,6 +921,25 @@ export default class V2Game extends Scene {
     }
     this.envStat.chunks = on;
   }
+  /** is most of the hero (two of feet, chest, head) hidden from the camera by a solid wall or prop box of the world? once per tick, no allocation */
+  _hidden(h) {
+    const B = this.W.boxes, c = this.cam, ex = c.px, ey = c.py, ez = c.pz; let hid = 0;
+    for (let k = 0; k < 3; k++) {
+      const dx = h.x - ex, dy = h.y + (k === 0 ? 14 : k === 1 ? 56 : 98) - ey, dz = h.z - ez;
+      for (let i = 0; i < B.length; i++) {
+        const b = B[i]; if (!b.solid || b.walk) continue;
+        let t0 = 0.02, t1 = 0.985;   // segment camera -> point, a little short of both ends
+        if (dx > 1e-6 || dx < -1e-6) { let a = (b.x0 - ex) / dx, q = (b.x1 - ex) / dx; if (a > q) { const w = a; a = q; q = w; } if (a > t0) t0 = a; if (q < t1) t1 = q; } else if (ex < b.x0 || ex > b.x1) continue;
+        if (t0 > t1) continue;
+        if (dy > 1e-6 || dy < -1e-6) { let a = (b.y0 - ey) / dy, q = (b.y1 - ey) / dy; if (a > q) { const w = a; a = q; q = w; } if (a > t0) t0 = a; if (q < t1) t1 = q; } else if (ey < b.y0 || ey > b.y1) continue;
+        if (t0 > t1) continue;
+        if (dz > 1e-6 || dz < -1e-6) { let a = (b.z0 - ez) / dz, q = (b.z1 - ez) / dz; if (a > q) { const w = a; a = q; q = w; } if (a > t0) t0 = a; if (q < t1) t1 = q; } else if (ez < b.z0 || ez > b.z1) continue;
+        if (t0 > t1) continue;
+        hid++; break;
+      }
+    }
+    return hid >= 2;
+  }
   /** is a character at (x,y,z) with height hgt inside the view (with a margin)? */
   _seen(m, x, y, z, hgt) {
     const cw = m[3] * x + m[7] * y + m[11] * z + m[15]; if (cw < 30 || cw > (this.W.fog.far ?? 3300)) return false;
@@ -932,7 +952,14 @@ export default class V2Game extends Scene {
     const sim = this.sim, h = sim.hero, cr = this.cr, ha = this.heroA, L = this.actors; let drawn = 0, culled = 0;
     // hero (no afterimage copies: the dash is a ribbon)
     { const snap = Math.abs(h.x - h._px) > 250 || Math.abs(h.z - h._pz) > 250, k = snap ? 1 : a; const y = this.visYP + (this.visY - this.visYP) * k;
-      ha.opt.rim = RIM_HERO; ha.draw(cr, ha.place(h._px + (h.x - h._px) * k, snap ? h.y : y, h._pz + (h.z - h._pz) * k)); drawn++; }
+      const HM = ha.place(h._px + (h.x - h._px) * k, snap ? h.y : y, h._pz + (h.z - h._pz) * k);
+      if (this._heroHid) {   // the hero behind a wall, a gate post or a tall grave: the hidden part shows through as a faint cool silhouette (only on such frames: _hidden())
+        const gl = this.glr.gl, o = ha.opt, t0 = o.tint[0], t1 = o.tint[1], t2 = o.tint[2], fl = o.flash;   // (reversed depth test against the world only: drawn before the hero's own body)
+        gl.depthFunc(gl.GREATER); o.solid = 1; o.alpha = 0.34; o.flash = 0; o.tint[0] = 0.36; o.tint[1] = 0.56; o.tint[2] = 1; o.rim = RIM_NONE;
+        cr.draw(ha.gpu, ha.rig.jm, HM, o);
+        gl.depthFunc(gl.LEQUAL); o.solid = 0; o.alpha = 1; o.flash = fl; o.tint[0] = t0; o.tint[1] = t1; o.tint[2] = t2;
+      }
+      ha.opt.rim = RIM_HERO; ha.draw(cr, HM); drawn++; }
     // opaque bodies first, then the townspeople, then what is see-through (ghosts do not write depth: they must come last)
     for (let pass = 0; pass < 2; pass++) {
       for (let i = 0; i < L.length; i++) {

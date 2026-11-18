@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>블러드 녹턴 3D — 채찍 비질리아 보기 (whip)</title>
+<link rel="icon" href="data:,">
+<style>
+  html, body { margin: 0; height: 100%; background: #0c0f16; color: #e8e0d0; font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
+  canvas { position: absolute; left: 0; top: 0; display: block; touch-action: none; }
+  #ov { pointer-events: none; }
+  #ui { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); display: flex; flex-wrap: wrap; gap: 5px; background: linear-gradient(transparent, rgba(8,10,16,.88) 35%); max-height: 46%; overflow-y: auto; }
+  #ui button { background: #262c3a; color: #e8e0d0; border: 1px solid #4a5268; border-radius: 6px; padding: 6px 9px; font: inherit; }
+  #ui button.on { background: #7a2430; border-color: #c0485a; }
+  #ui span { align-self: center; color: #8f96a8; padding: 0 4px; }
+  #info { position: absolute; left: 10px; top: 8px; right: 10px; color: #c8c0b0; font-size: 12px; white-space: pre-wrap; pointer-events: none; text-shadow: 0 1px 2px #000; }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas><canvas id="ov"></canvas>
+<div id="info">불러오는 중…</div>
+<div id="ui"></div>
+<script type="module">
+// whip_view: 채찍 비질리아를 장면 없이 보는 시험 화면 (docs/v2/WHIP.md).
+//   평평한 마당에서 진짜 규칙(Sim)과 입체 카엘(driveHero)을 돌리고, 오른손 뼈에 채찍을 붙여 기술마다 본다.
+//   ?demo=이름 &dir=0..7(여덟 방향) &cam=game|far|close|macro|side|top &era=now|past &tier=low|mid|high &slow=1 &stop=0(타격 멈춤 끔) &fx=0 &hold=1(whip_shot.mjs 가 window.__whip 로 민다)
+import { CharRenderer, boxModel } from '../../src/v2/char3d/render.js';
+import { loadCharAsset, Char3D } from '../../src/v2/char3d/hero3d.js';
+import { Sim, TUNE, MOVES, KINDS, flatArena, driveHero, driveActor, placeActor, loadPlayClips, registerKind, UNIT } from '../../src/v2/play/index.js';
+import { createFx } from '../../src/v2/fx/index.js';
+import { createWhip, WhipRenderer, whipFx, driveWhip, shapeOf } from '../../src/v2/whip/index.js';
+
+const q = new URLSearchParams(location.search);
+const cv = document.getElementById('cv'), ov = document.getElementById('ov'), info = document.getElementById('info'), ui = document.getElementById('ui');
+const DIR = '../../assets/v2/char3d/';
+const CAMS = {
+  game: { yaw: 0, pitch: 0.35, dist: 800, lookY: 60 },      // 게임 카메라: 영웅 키 약 114 px (높이 540 기준)
+  far: { yaw: 0, pitch: 0.4, dist: 1280, lookY: 50 },       // 멀리: 영웅 키 약 70 px
+  close: { yaw: 0, pitch: 0.28, dist: 330, lookY: 62 },
+  macro: { yaw: 0.5, pitch: 0.2, dist: 120, lookY: 0, hand: true },   // 손잡이 · 끈 · 종 조각 가까이
+  side: { yaw: 1.5708, pitch: 0.12, dist: 360, lookY: 58 },
+  top: { yaw: 0, pitch: 1.35, dist: 560, lookY: 0 },
+};
+const ERAS = {
+  now: { name: '오늘 밤', bg: [0.07, 0.09, 0.14], sunDir: [-0.35, 0.8, -0.5], sun: [0.5, 0.58, 0.82], amb: [0.36, 0.4, 0.52], floor: [0.19, 0.21, 0.27] },
+  past: { name: '그 밤 (붉은 달)', bg: [0.13, 0.06, 0.07], sunDir: [0.4, 0.75, -0.45], sun: [0.95, 0.52, 0.42], amb: [0.46, 0.33, 0.33], floor: [0.27, 0.19, 0.19] },
+};
+const S = { demo: q.get('demo') ?? 'combo', dir: Number(q.get('dir') ?? 0), cam: q.get('cam') ?? 'game', era: q.get('era') ?? 'now', tier: q.get('tier') ?? 'mid', slow: q.get('slow') === '1', stop: q.get('stop') !== '0', fxOn: q.get('fx') !== '0', pause: false, reso: Number(q.get('reso') ?? 0.3), box: q.get('box') === '1' };
+const api = (window.__whip = { ready: false, error: null, S, hold: q.get('hold') === '1', errors: [] });
+addEventListener('error', (e) => api.errors.push(String(e.message)));
+let gl, R, WR, fx, link, whip, sim, heroCh, demo = null, time = 0, seqT = 0, segI = -1, stopT = 0;
+let floorGpu = {}, blobGpu, ringGpu, doorFrameGpu, doorGpu, bellGpu, dummyAsset, bigAsset;
+const chars = new Map(), events = [];
+const hand = { x: 0, y: 0, z: 0, dx: 0, dy: 1, dz: 0, bx: 0, by: 0, bz: 0, br: 12, bh: 104, fx: 1, fz: 0, ground: 0 };
+const pullObj = { x: 0, y: 0, z: 0, r: 12 }; let pullE = null, pullKeep = 0;
+const door = { x: 0, z: 0, a: 0, open: 0, hx: 0, hy: 62, hz: 0, on: false }, bell = { x: 0, y: 150, z: 0, on: false, swing: 0 };
+const local = { t: -1, id: '', nd: 0 };   // 규칙에 아직 없는 기술을 볼 때: 영웅은 비슷한 기술을 쓰고 채찍만 다른 모양으로
+
+registerKind('dummy', { ...KINDS.skeleton_soldier, name: '허수아비', hp: 99999, attacks: [], sight: 9999 }, (s, e, dt) => { s.turnTo(e, s.hero.x - e.x, s.hero.z - e.z, 5, dt); s.setAnim(e, 'idle', dt); });
+
+// ── 시범: seq = [[초, 누르고 있는 입력, 눌림 이름…], …]. 자리 · 방향은 dir(여덟 방향)만큼 돌려 놓는다 ──
+const st = (mx, mz) => ({ mx, mz });
+const DEMOS = {
+  combo: { name: '연타 3 (셋째는 넓게)', spawns: [{ kind: 'dummy', x: 104, z: 0 }], seq: [[0.5, {}], [0.3, {}, 'attack'], [0.32, {}, 'attack'], [0.34, {}, 'attack'], [1.4, {}]] },
+  sweep: { name: '구른 뒤 훑기', spawns: [{ kind: 'dummy', x: 262, z: 0 }], seq: [[0.4, {}], [0.4, st(1, 0), 'dash'], [0.12, st(1, 0), 'attack'], [1.3, {}]] },
+  plunge: { name: '점프 중 내려치기', spawns: [{ kind: 'dummy', x: 120, z: 0 }], seq: [[0.4, {}], [0.22, { ...st(1, 0), jumpHeld: true }, 'jump'], [0.7, { jumpHeld: true }, 'attack'], [1.1, {}]] },
+  charge: { name: '모아 휘감기 → 끌어오기', spawns: [{ kind: 'dummy', x: 215, z: 0 }], seq: [[0.4, {}], [1.05, { attackHeld: true }, 'attack'], [1.6, {}]] },
+  door: { name: '휘감아 문 당기기', spawns: [], door: true, seq: [[4.2, {}]] },
+  hook: { name: '솜씨: 고리에 걸기', spawns: [], hooks: [{ id: 'ring1', x: 250, y: 0, z: 40, h: 170, to: [300, 50] }], seq: [[0.5, {}], [1.3, {}, 'skill'], [1.0, {}]] },
+  echo: { name: '종 짧게 (메아리)', spawns: [], seq: [[0.6, {}], [1.0, {}, 'bell'], [1.2, {}]] },
+  knell: { name: '종 길게', spawns: [], seq: [[0.6, {}], [1.7, { bellHeld: true }, 'bell'], [1.6, {}]] },
+  far: { name: '먼 종 치기', spawns: [], bell: true, as: 'far', seq: [[0.5, {}], [0.3, {}, 'attack'], [1.6, {}]] },
+  launcher: { name: '올려치기 (규칙에 아직 없음)', spawns: [{ kind: 'dummy', x: 100, z: 0 }], as: 'launcher', seq: [[0.5, {}], [0.3, {}, 'attack'], [1.4, {}]] },
+  slam: { name: '모아 내려찍기 (규칙에 아직 없음)', spawns: [{ kind: 'dummy', x: 140, z: 0 }], as: 'charge', seq: [[0.5, {}], [0.3, {}, 'attack'], [0.32, {}, 'attack'], [0.34, {}, 'attack'], [1.6, {}]], asOn: 'c3' },
+  rest: { name: '쉬는 모습 · 달리기', spawns: [], seq: [[1.2, {}], [1.0, st(1, 0)], [0.5, {}], [0.9, st(-1, 0)], [0.6, st(0, 1)], [0.6, st(0.7, -0.7)], [1.4, {}]] },
+  free: { name: '직접 조작', spawns: [{ kind: 'dummy', x: 200, z: 40 }], hooks: [{ id: 'ring1', x: -260, y: 0, z: 80, h: 170, to: [-320, 90] }], seq: null },
+};
+api.demos = Object.fromEntries(Object.entries(DEMOS).map(([k, d]) => [k, d.name]));
+const rot = (x, z) => { const a = (S.dir * Math.PI) / 4, c = Math.cos(a), s = Math.sin(a); return [x * c - z * s, x * s + z * c]; };
+
+// ── 입력 ──
+const keys = new Set(), pressed = new Set();
+addEventListener('keydown', (e) => { if (!keys.has(e.code)) pressed.add(e.code); keys.add(e.code); });
+addEventListener('keyup', (e) => keys.delete(e.code));
+function manualInput() {
+  const k = (...c) => c.some((x) => keys.has(x)), p = (...c) => c.some((x) => pressed.has(x));
+  const inp = { mx: (k('ArrowRight', 'KeyD') ? 1 : 0) - (k('ArrowLeft', 'KeyA') ? 1 : 0), mz: (k('ArrowUp', 'KeyW') ? 1 : 0) - (k('ArrowDown', 'KeyS') ? 1 : 0), attack: p('KeyJ'), jump: p('KeyK', 'Space'), jumpHeld: k('KeyK', 'Space'), dash: p('KeyL'), guard: k('KeyL'), lockNext: p('KeyO'), attackHeld: k('KeyJ'), skill: p('KeyI'), bell: p('KeyU'), bellHeld: k('KeyU') };
+  pressed.clear(); return inp;
+}
+function demoInput(dt) {
+  const d = demo; if (!d.seq) return manualInput();
+  let t = seqT, i = 0, total = 0; for (const s of d.seq) total += s[0];
+  if (t >= total) { setDemo(S.demo); t = 0; }
+  while (t >= d.seq[i][0]) { t -= d.seq[i][0]; i++; }
+  const seg = d.seq[i], inp = { mx: 0, mz: 0, ...seg[1] };
+  if (inp.mx || inp.mz) { const [x, z] = rot(inp.mx, inp.mz); inp.mx = x; inp.mz = z; }
+  if (i !== segI) { segI = i; for (let k = 2; k < seg.length; k++) if (seg[k]) inp[seg[k]] = true; }
+  seqT += dt;
+  return inp;
+}
+
+// ── 그리기 ──
+const vp = new Float32Array(16), eye = new Float32Array(3), cam = { x: 0, y: 0, z: 0 }, camR = new Float32Array(3), camU = new Float32Array(3), camF = new Float32Array(3);
+const env = { vp, eye, fog: { near: 3000, far: 9000, max: 0, color: [0, 0, 0] }, sunDir: [0, 1, 0], sun: [1, 1, 1], amb: [0.5, 0.5, 0.5], viewport: [960, 540], lightPos: null, lightCol: null };
+const fcam = { vp, eye, right: camR, up: camU, fwd: camF };
+let Wv = 960, Hv = 540;
+function camMatrix(C) {
+  const cp = Math.cos(C.pitch), sp = Math.sin(C.pitch), fx = Math.sin(C.yaw) * cp, fy = -sp, fz = Math.cos(C.yaw) * cp;
+  const rl = Math.hypot(fz, fx) || 1, rx = fz / rl, rz = -fx / rl, ux = fy * rz, uy = fz * rx - fx * rz, uz = -fy * rx;
+  const px = cam.x - fx * C.dist, py = cam.y + C.lookY - fy * C.dist, pz = cam.z - fz * C.dist;
+  eye[0] = px; eye[1] = py; eye[2] = pz; camR[0] = rx; camR[1] = 0; camR[2] = rz; camU[0] = ux; camU[1] = uy; camU[2] = uz; camF[0] = fx; camF[1] = fy; camF[2] = fz;
+  const F = 880, NEAR = C.dist < 200 ? 8 : 40, FAR = 9000, sx = F / (Wv / 2), sy = F / (Hv / 2), A = (FAR + NEAR) / (FAR - NEAR), B = (-2 * FAR * NEAR) / (FAR - NEAR);
+  const rd = -(rx * px + rz * pz), ud = -(ux * px + uy * py + uz * pz), fd = -(fx * px + fy * py + fz * pz), m = vp;
+  m[0] = sx * rx; m[4] = 0; m[8] = sx * rz; m[12] = sx * rd;
+  m[1] = sy * ux; m[5] = sy * uy; m[9] = sy * uz; m[13] = sy * ud;
+  m[2] = A * fx; m[6] = A * fy; m[10] = A * fz; m[14] = A * fd + B;
+  m[3] = fx; m[7] = fy; m[11] = fz; m[15] = fd;
+}
+function project(x, y, z) { const m = vp, w = m[3] * x + m[7] * y + m[11] * z + m[15]; if (w <= 1) return null; return [((m[0] * x + m[4] * y + m[8] * z + m[12]) / w * 0.5 + 0.5) * ov.width, (0.5 - (m[1] * x + m[5] * y + m[9] * z + m[13]) / w * 0.5) * ov.height]; }
+const IDM = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]), TM = new Float32Array(16);
+const flat = (x, y, z, sx, sy, sz) => { TM.fill(0); TM[0] = sx; TM[5] = sy; TM[10] = sz; TM[12] = x; TM[13] = y; TM[14] = z; TM[15] = 1; return TM; };
+const yawAt = (x, y, z, a) => { const c = Math.cos(a), s = Math.sin(a); TM.fill(0); TM[0] = c; TM[2] = s; TM[5] = 1; TM[8] = -s; TM[10] = c; TM[12] = x; TM[13] = y; TM[14] = z; TM[15] = 1; return TM; };
+function size(w, h, dprIn) {
+  const dpr = dprIn ?? (api.hold ? 1 : Math.min(2, window.devicePixelRatio || 1)), W = Math.round(w * dpr), H = Math.round(h * dpr);
+  for (const c of [cv, ov]) { if (c.width !== W || c.height !== H) { c.width = W; c.height = H; } c.style.width = w + 'px'; c.style.height = h + 'px'; }
+  Hv = 540; Wv = (540 * W) / H;
+}
+function shape(o, mv, col, fill) {
+  const g = ov.getContext('2d'), dx = o.dirX, dz = o.dirZ, y = o.y + 2, P = [];
+  if (mv.box) { const b = mv.box; for (const [f, l] of [[b.f0, -b.side], [b.f1, -b.side], [b.f1, b.side], [b.f0, b.side]]) P.push([o.x + dx * f - dz * l, o.z + dz * f + dx * l]); }
+  else if (mv.arc) { const a = mv.arc, hh = (a.deg / 2) * Math.PI / 180, a0 = Math.atan2(dz, dx); if (a.deg < 359) P.push([o.x, o.z]); for (let i = 0; i <= 24; i++) { const t = a0 - hh + (2 * hh * i) / 24; P.push([o.x + Math.cos(t) * a.r, o.z + Math.sin(t) * a.r]); } }
+  else return;
+  g.beginPath(); let n = 0; for (const p of P) { const s = project(p[0], y, p[1]); if (!s) continue; if (n++) g.lineTo(s[0], s[1]); else g.moveTo(s[0], s[1]); }
+  g.closePath(); g.strokeStyle = col; g.lineWidth = 2; g.stroke(); if (fill) { g.fillStyle = fill; g.fill(); }
+}
+function draw(label, alpha = 1) {
+  const C = CAMS[S.cam] ?? CAMS.game, h = sim.hero, E = ERAS[S.era] ?? ERAS.now;
+  if (C.hand) { cam.x = hand.x * 0.6 + whip.tip.x * 0.4; cam.y = hand.y * 0.6 + whip.tip.y * 0.4; cam.z = hand.z * 0.6 + whip.tip.z * 0.4; }
+  else { cam.x = h.x; cam.z = h.z; cam.y = Math.max(0, h.y) * 0.75; if (demo.door) cam.x += rot(70, 0)[0]; }
+  camMatrix(C);
+  gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(E.bg[0], E.bg[1], E.bg[2], 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  env.fog.color = E.bg; env.sunDir = E.sunDir; env.sun = E.sun; env.amb = E.amb; env.viewport[0] = cv.width; env.viewport[1] = cv.height;
+  env.lightPos = fx ? fx.lights.pos : null; env.lightCol = fx ? fx.lights.col : null;
+  R.begin(env);
+  R.draw(floorGpu[S.era] ?? floorGpu.now, null, IDM, { rim: [0, 0, 0, 0] });
+  const blob = (x, y, z, r, a) => R.draw(blobGpu, null, flat(x, y + 0.6, z, r, 1, r * 0.9), { alpha: a, rim: [0, 0, 0, 0], depthWrite: false });
+  blob(h.x, sim.w.ground(h.x, h.z, h.y + 30) || 0, h.z, 20, 0.4);
+  for (const e of sim.enemies) if (!e.dead) blob(e.x, e.gy ?? e.y, e.z, e.r * 1.15, 0.35);
+  for (const p of sim.hookPoints) R.draw(ringGpu, null, flat(p.x, p.y ?? 0, p.z, 1, (p.h ?? 150) / 150, 1), { tint: p.id === h.hookId || h.act === 'hook' ? [1.5, 1.3, 0.7] : [1, 1, 1], rim: [1, 0.85, 0.4, 0.6] });
+  if (door.on) { R.draw(doorFrameGpu, null, yawAt(door.x, 0, door.z, door.a), {}); R.draw(doorGpu, null, yawAt(door.x - Math.sin(door.a) * 0 + Math.cos(door.a) * 0, 0, door.z, door.a + door.open), {}); }
+  if (bell.on) R.draw(bellGpu, null, yawAt(bell.x, 0, bell.z, 0.3 + bell.swing), { rim: [1, 0.8, 0.4, 0.5] });
+  heroCh.draw(heroCh.place(h.x, h.y, h.z), {});
+  for (const e of sim.enemies) { if (e.dead) continue; const ch = chars.get(e.id); if (ch) ch.draw(placeActor(ch, e), { flash: e.flashT > 0 ? 0.7 : 0 }); }
+  R.end();
+  WR.draw(whip, env, alpha);
+  if (fx && S.fxOn) fx.draw(fcam);
+  const g = ov.getContext('2d'); g.clearRect(0, 0, ov.width, ov.height);
+  if (S.box && h.move) { const on = h.moveT >= h.move.hit[0] && h.moveT <= h.move.hit[1]; shape(h, h.move, on ? '#ff5040' : '#ffd060', on ? 'rgba(255,80,64,0.18)' : null); }
+  if (label) { const fs = Math.max(11, Math.round(ov.height * 0.062)); g.font = `${fs}px system-ui, sans-serif`; g.fillStyle = '#000a'; g.fillRect(0, 0, ov.width, fs * 1.4); g.fillStyle = '#ffe8c0'; g.textBaseline = 'middle'; g.fillText(label, 6, fs * 0.72); }
+}
+
+// ── 한 틱 ──
+function heroHand() {
+  const h = sim.hero, W = heroCh.weaponMatrix(heroCh.place(h.x, h.y, h.z));
+  whip.handFromMatrix(W, hand);
+  hand.bx = h.x; hand.by = h.y; hand.bz = h.z; hand.fx = h.dirX; hand.fz = h.dirZ; hand.ground = sim.w.ground(h.x, h.z, h.y + 30) || 0;
+}
+const SWP = { move: '', t: 0, dirX: 1, dirZ: 0, x: null, y: 0, z: 0 }, WRP = { x: 0, y: 0, z: 0, r: 5, phase: 'throw', t: 0, throwT: 0.16 };
+function step(dt) {
+  const d = demo, h = sim.hero, inp = demoInput(dt);
+  for (const e of sim.enemies) e.hp = e.hpMax;
+  TUNE.ownHitstop = S.stop;
+  sim.update(dt, inp);
+  time += dt;
+  if (sim.stop > 0) { whip.update(0, hand); if (fx && S.fxOn) { fx.dtIn = dt; fx.tick(); } link.update(whip); return; }   // 타격 멈춤: 세계와 함께 채찍도 멈춘다
+  driveHero(heroCh, h, dt, TUNE);
+  for (const e of sim.enemies) { if (e.dead) continue; let ch = chars.get(e.id); if (!ch) { ch = new Char3D(dummyAsset, R, { gpu: dummyAsset.gpu, weapon: false, scale: UNIT * (e.def.height / Math.max(0.2, dummyAsset.h)) }); chars.set(e.id, ch); } driveActor(ch, e, dt); }
+  heroHand();
+  whip.resonance = S.reso + (h.resoMax ? (h.reso / h.resoMax) * 0.7 : 0);
+  // 채찍의 모드: 규칙 상태 그대로 (driveWhip). 휘감긴 것이 끌려오는 동안은 'wrap'
+  let pull = null;
+  if (pullE && (pullE.pullT > 0 || h.pullT > 0)) pullKeep = 0.16; else if (pullKeep > 0) pullKeep -= dt; else pullE = null;
+  if (pullE) { pullObj.x = pullE.x; pullObj.y = (pullE.gy ?? pullE.y) + (pullE.h ?? 100) * 0.55; pullObj.z = pullE.z; pullObj.r = Math.max(8, pullE.r * 0.55); pull = pullObj; }
+  if (d.door) doorScript(dt);
+  else if (d.as && (h.move || local.t >= 0)) {   // 규칙에 없는 모양: 영웅의 기술이 시작될 때 채찍만 그 모양으로
+    const want = !d.asOn || (h.move && h.move.id === d.asOn);
+    if (h.move && want && local.t < 0) { local.t = 0; local.nd = shapeOf(d.as).nominal?.dur ?? h.move.dur; }
+    if (local.t >= 0) {
+      SWP.move = d.as; SWP.t = local.t; SWP.dirX = h.dirX; SWP.dirZ = h.dirZ; SWP.x = bell.on ? bell.x : null; SWP.y = bell.y - 18; SWP.z = bell.z; whip.set('swing', SWP);
+      local.t += dt; if (local.t > local.nd) local.t = -1;
+    } else driveWhip(whip, h, TUNE, pull);
+  } else driveWhip(whip, h, TUNE, pull);
+  whip.update(dt, hand);
+  if (bell.on) bell.swing *= 0.97;
+  if (fx && S.fxOn) { fx.dtIn = dt; fx.tick(); }
+  link.update(whip);
+}
+// 문 당기기: 규칙에 문이 없어 여기서 흉내 낸다 — 던짐 → 감김 → 버팀 → 당김(문이 열린다) → 풀림
+function doorScript(dt) {
+  const t = seqT, h = sim.hero;
+  const hx = door.x + Math.cos(door.a + door.open) * 46 - Math.sin(door.a + door.open) * 5, hz = door.z + Math.sin(door.a + door.open) * 46 + Math.cos(door.a + door.open) * 5;
+  door.hx = hx; door.hz = hz;
+  if (t < 0.7) driveWhip(whip, h, TUNE, null);
+  else if (t < 3.3) {
+    WRP.x = hx; WRP.y = door.hy; WRP.z = hz; WRP.r = 4.5; WRP.t = t - 0.7; WRP.throwT = 0.17; WRP.phase = t < 1.5 ? 'throw' : 'pull'; whip.set('wrap', WRP);
+    if (t > 1.5) door.open = -1.25 * Math.min(1, (t - 1.5) / 0.9) ** 0.7 * (S.dir >= 0 ? 1 : 1);
+    const A = heroCh.anim; if (t < 1.0) A.play('thrust', { fade: 0.05, time: 0.3 + (t - 0.7) * 2.2 }); else if (t > 1.5 && t < 2.5) A.play('hurt', { fade: 0.15, time: 0.05 });   // 내지르고, 당길 때 몸을 젖힌다 (흉내)
+  } else driveWhip(whip, h, TUNE, null);
+}
+function setDemo(id) {
+  demo = DEMOS[id] ?? DEMOS.combo; S.demo = DEMOS[id] ? id : 'combo';
+  events.length = 0; seqT = 0; segI = -1; time = 0; chars.clear(); pullE = null; pullKeep = 0; local.t = -1;
+  const hooks = {
+    hit: (e, dmg, mv, x, y, z) => { whip.set('crack', { x, y, z, strength: { L: 0.7, M: 1, H: 1.3, F: 1.6 }[mv.str] ?? 1 }); },
+    pull: (e) => { pullE = e; },
+    event: (n) => { if (n !== 'step') { events.push(n); if (events.length > 60) events.shift(); } },
+  };
+  const spawns = demo.spawns.map((s) => { const [x, z] = rot(s.x, s.z); return { ...s, x, z, active: true }; });
+  sim = new Sim(flatArena(1400, 1000, spawns), hooks); api.sim = sim;
+  const h = sim.hero, [fxx, fzz] = rot(1, 0); h.dirX = fxx; h.dirZ = fzz;
+  if (demo.hooks) for (const p of demo.hooks) { const [x, z] = rot(p.x, p.z), to = rot(p.to[0], p.to[1]); sim.hookPoints.push({ ...p, x, z, to }); }
+  door.on = !!demo.door; if (door.on) { const [x, z] = rot(190, -30); door.x = x; door.z = z; door.a = (S.dir * Math.PI) / 4 + 1.5708; door.open = 0; }
+  bell.on = !!demo.bell; if (bell.on) { const [x, z] = rot(300, -40); bell.x = x; bell.z = z; bell.swing = 0; }
+  heroCh.dx = fxx; heroCh.dz = fzz; heroCh._pm = null; heroCh.anim.play('idle', { fade: 0, restart: true }); heroCh.anim.update(0);
+  if (!whip || whip.tier !== S.tier) whip = createWhip({ tier: S.tier, onEvent: (n, e) => { events.push('채찍:' + n + (e.kind ? '/' + e.kind : '')); if (events.length > 60) events.shift(); api.lastEv = n; if (n === 'crack' && bell.on && Math.hypot(e.x - bell.x, e.z - bell.z) < 40) bell.swing = 0.5; link.onEvent(n, e); } });
+  api.whip = whip; if (fx) fx.clear(); link.clear();
+  heroHand(); whip.reset(hand); whip.set('rest', { style: 'coil' });
+  for (let i = 0; i < 40; i++) { whip.update(1 / 60, hand); }
+}
+function hud() {
+  const h = sim.hero, ev = events.slice(-7).join(' · '), st = WR.stats;
+  info.textContent = `${demo.name} · 방향 ${S.dir * 45}° · ${ERAS[S.era].name} · t ${time.toFixed(2)} · 카엘 ${h.anim}${h.move ? '(' + h.move.id + ')' : ''} · 채찍 ${whip.mode}${whip.mode === 'swing' ? ' ' + whip.sw.id + ' s ' + whip.sw.s.toFixed(2) : ''} · 끝 속도 ${whip.tip.speed.toFixed(0)} · 펴짐 ${whip.ext.toFixed(2)} · 길이 ${whip.len.toFixed(0)}\n마디 ${whip.n} · 삼각형 ${st.tris} · 그리기 ${st.draws}번 · 버퍼 ${st.bufBytes} B\n${ev}`;
+}
+
+// ── 검사 · 캡처용 ──
+function seed(n) { let s = n >>> 0; Math.random = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+const apply = (o) => { for (const k of ['dir', 'cam', 'era', 'tier', 'slow', 'stop', 'fxOn', 'reso', 'box']) if (o[k] !== undefined) S[k] = o[k]; };
+/** 붙임 그림: from 초부터 every 틱마다 count 칸. o: { dir, cam, era, tier, slow, stop, cw, ch, cols, label } → PNG dataURL */
+api.strip = (id, o = {}) => {
+  apply(o); seed(o.seed ?? 7); setDemo(id);
+  const cols = o.cols ?? o.count ?? 10, count = o.count ?? 10, cw = o.cw ?? 240, chh = o.ch ?? 250, rows = Math.ceil(count / cols), dt = (1 / 60) * (S.slow ? 0.25 : 1), every = o.every ?? 2;
+  size(cw, chh, 1);
+  const sh = document.createElement('canvas'); sh.width = cols * cw; sh.height = rows * chh; const g = sh.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, sh.width, sh.height);
+  const n0 = Math.round((o.from ?? 0) / dt); for (let i = 0; i < n0; i++) step(dt);
+  const states = [];
+  for (let k = 0; k < count; k++) {
+    if (k) for (let i = 0; i < every; i++) step(dt);
+    const h = sim.hero; draw(o.label === false ? '' : `${time.toFixed(2)} ${h.move ? h.move.id : h.act ?? h.anim}`);
+    g.drawImage(cv, (k % cols) * cw, Math.floor(k / cols) * chh); g.drawImage(ov, (k % cols) * cw, Math.floor(k / cols) * chh);
+    states.push(state());
+  }
+  api.lastStates = states;
+  return sh.toDataURL('image/png');
+};
+/** 한 장: 시범을 t 초까지 돌린 순간. o: { w, h, dpr, … } */
+api.shot = (id, t, o = {}) => {
+  apply(o); seed(o.seed ?? 7); setDemo(id); size(o.w ?? 480, o.h ?? 400, o.dpr ?? 1);
+  const dt = (1 / 60) * (S.slow ? 0.25 : 1), n = Math.round(t / dt); for (let i = 0; i < n; i++) step(dt);
+  draw(o.label ?? ''); const c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height; const g = c.getContext('2d'); g.drawImage(cv, 0, 0); g.drawImage(ov, 0, 0);
+  return c.toDataURL('image/png');
+};
+const state = () => { const h = sim.hero; return { t: +time.toFixed(3), anim: h.anim, move: h.move?.id ?? null, act: h.act ?? null, mode: whip.mode, s: whip.mode === 'swing' ? +whip.sw.s.toFixed(2) : null, ext: +whip.ext.toFixed(3), len: +whip.len.toFixed(1), tip: [+whip.tip.x.toFixed(1), +whip.tip.y.toFixed(1), +whip.tip.z.toFixed(1)], speed: +whip.tip.speed.toFixed(0), taut: +whip.taut.toFixed(2), ev: events.slice(-8), stats: { ...WR.stats }, fx: fx ? { ribbons: fx.ribbons.live, particles: fx.particles.drawn ?? 0 } : null }; };
+api.state = state;
+/** 화면 픽셀로 잰 끈 굵기: 끈의 가운데 마디 근처에서 세로로 훑어 배경이 아닌 픽셀 수 (최소 굵기 검사) */
+api.thickness = () => {
+  const N = whip.nodes, n = whip.n, i = ((n * 0.7) | 0) * 3, p = project(N[i], N[i + 1], N[i + 2]); if (!p) return null;
+  const px = new Uint8Array(4 * 1 * 21), x = Math.round(p[0]), y = Math.round(cv.height - p[1]); gl.readPixels(x, y - 10, 1, 21, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  const E = ERAS[S.era].bg; let c = 0; for (let k = 0; k < 21; k++) { const d = Math.abs(px[k * 4] / 255 - E[0]) + Math.abs(px[k * 4 + 1] / 255 - E[1]) + Math.abs(px[k * 4 + 2] / 255 - E[2]); if (d > 0.12) c++; }
+  return { at: [x, y], lit: c };
+};
+
+async function main() {
+  gl = cv.getContext('webgl2', { antialias: q.get('aa') !== '0', alpha: false, preserveDrawingBuffer: true });
+  if (!gl) throw new Error('WebGL2 를 쓸 수 없습니다');
+  R = new CharRenderer(gl, { maxJoints: 32 });
+  WR = new WhipRenderer(gl, {});
+  fx = createFx(gl, { tier: 'mid', post: false, feel: false, onEvent: () => {} });
+  link = whipFx(fx, null);
+  const texCap = Number(q.get('tex') ?? 1024);
+  const heroAsset = await loadCharAsset(DIR + 'kael.glb');
+  await loadPlayClips(heroAsset);
+  heroCh = new Char3D(heroAsset, R, { maxTex: texCap, weapon: false });
+  const load = async (m) => { const as = await loadCharAsset(DIR + m + '.glb'); await loadPlayClips(as); as.gpu = R.add(as.model, { maxTex: texCap }); let lo = 1e9, hi = -1e9; for (const p of as.model.prims) for (let i = 1; i < p.pos.length; i += 3) { lo = Math.min(lo, p.pos[i]); hi = Math.max(hi, p.pos[i]); } as.h = hi - lo; return as; };
+  dummyAsset = await load(KINDS.skeleton_soldier.model);
+  for (const [k, E] of Object.entries(ERAS)) { const tiles = []; for (let i = -14; i < 14; i++) for (let j = -10; j < 10; j++) { const c = (i + j) & 1 ? 1.12 : 0.92; tiles.push({ min: [i * 100, -6, j * 100], max: [i * 100 + 100, 0, j * 100 + 100], color: E.floor.map((v) => v * c) }); } floorGpu[k] = R.add(boxModel(tiles), { mip: false }); }
+  blobGpu = R.add(boxModel([{ min: [-1, -0.5, -1], max: [1, 0.5, 1], color: [0, 0, 0] }]), { mip: false });
+  { const parts = [{ min: [-3.5, 0, -3.5], max: [3.5, 132, 3.5], color: [0.3, 0.28, 0.27] }, { min: [-6, 0, -6], max: [6, 6, 6], color: [0.24, 0.22, 0.22] }]; for (let i = 0; i < 12; i++) { const a = (i / 12) * 6.2832, x = Math.cos(a) * 15, y = 150 + Math.sin(a) * 15; parts.push({ min: [x - 3.4, y - 3.4, -2], max: [x + 3.4, y + 3.4, 2], color: [1.0, 0.8, 0.32] }); } ringGpu = R.add(boxModel(parts), { mip: false }); }
+  doorFrameGpu = R.add(boxModel([{ min: [-6, 0, -7], max: [0, 128, 7], color: [0.26, 0.24, 0.25] }, { min: [58, 0, -7], max: [64, 128, 7], color: [0.26, 0.24, 0.25] }, { min: [-6, 128, -7], max: [64, 138, 7], color: [0.3, 0.28, 0.28] }]), { mip: false });
+  doorGpu = R.add(boxModel([{ min: [0, 2, -2.5], max: [58, 126, 2.5], color: [0.36, 0.22, 0.13] }, { min: [4, 20, -3.2], max: [54, 26, 3.2], color: [0.2, 0.19, 0.2] }, { min: [4, 96, -3.2], max: [54, 102, 3.2], color: [0.2, 0.19, 0.2] }, { min: [44, 56, 2.5], max: [48, 68, 7.5], color: [0.8, 0.66, 0.3] }, { min: [41, 58, 5], max: [51, 66, 7.5], color: [0.8, 0.66, 0.3] }]), { mip: false });
+  bellGpu = R.add(boxModel([{ min: [-3, 0, -3], max: [3, 178, 3], color: [0.26, 0.22, 0.2] }, { min: [-3, 172, -3], max: [3, 178, 26], color: [0.26, 0.22, 0.2] }, { min: [-1, 150, 19], max: [1, 172, 21], color: [0.5, 0.45, 0.3] }, { min: [-7, 142, 13], max: [7, 152, 27], color: [0.85, 0.66, 0.28] }, { min: [-10, 126, 10], max: [10, 142, 30], color: [0.8, 0.6, 0.24] }, { min: [-12, 120, 8], max: [12, 126, 32], color: [0.9, 0.72, 0.3] }]), { mip: false });
+  setDemo(S.demo);
+  const btn = (label, fn, on) => { const b = document.createElement('button'); b.textContent = label; b.onclick = () => { fn(); sync(); }; b._on = on; ui.appendChild(b); return b; };
+  const sep = (t) => { const s = document.createElement('span'); s.textContent = t; ui.appendChild(s); };
+  const sync = () => { for (const b of ui.children) b.classList?.toggle('on', !!b._on?.()); };
+  sep('기술'); for (const k of Object.keys(DEMOS)) btn(DEMOS[k].name, () => setDemo(k), () => S.demo === k);
+  sep('방향'); ['→', '↘', '↓', '↙', '←', '↖', '↑', '↗'].forEach((n, i) => btn(n, () => { S.dir = i; setDemo(S.demo); }, () => S.dir === i));
+  sep('보기'); for (const [k, n] of [['game', '게임 카메라'], ['far', '멀리 (키 70)'], ['close', '가까이'], ['macro', '손잡이 · 종 조각'], ['side', '옆'], ['top', '위']]) btn(n, () => { S.cam = k; }, () => S.cam === k);
+  sep('밤'); for (const [k, E] of Object.entries(ERAS)) btn(E.name, () => { S.era = k; }, () => S.era === k);
+  sep('품질'); for (const [k, n] of [['low', '낮음'], ['mid', '보통'], ['high', '높음']]) btn(n, () => { S.tier = k; setDemo(S.demo); }, () => S.tier === k);
+  sep('시간'); btn('느리게 (1/4)', () => { S.slow = !S.slow; }, () => S.slow); btn('타격 멈춤', () => { S.stop = !S.stop; }, () => S.stop); btn('멈춤', () => { S.pause = !S.pause; }, () => S.pause);
+  btn('효과', () => { S.fxOn = !S.fxOn; }, () => S.fxOn); btn('판정 보기', () => { S.box = !S.box; }, () => S.box); btn('울림 가득', () => { S.reso = S.reso > 0.5 ? 0 : 1; }, () => S.reso > 0.5);
+  sync();
+  api.ready = true;
+  let last = performance.now(), acc = 0;
+  const loop = (now) => {
+    const real = Math.min(0.1, (now - last) / 1000); last = now;
+    if (!api.hold) {
+      size(innerWidth, innerHeight);
+      if (!S.pause) { acc += real; let n = 0; while (acc >= 1 / 60 && n++ < 6) { step((1 / 60) * (S.slow ? 0.25 : 1)); acc -= 1 / 60; } if (n >= 6) acc = 0; }
+      draw('', S.pause ? 1 : Math.min(1, acc * 60)); hud();
+    }
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+}
+main().catch((e) => { api.error = String(e?.stack ?? e?.message ?? e); info.textContent = '열지 못했습니다: ' + api.error; console.error(e); });
+</script>
+</body>
+</html>

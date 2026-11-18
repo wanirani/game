@@ -15,25 +15,26 @@ export function groundAt(W, x, z, yMax = Infinity) {
   return g;
 }
 export function moveXZ(W, e, dx, dz) {
-  const B = W.boxes, r = e.r, top = e.y + (e.h ?? 80), feet = e.y + STEP_UP;
-  if (dx) {
-    let nx = e.x + dx;
+  // (숫자는 모두 실수로만 다룬다 — Math.min / Math.max 와 정수 초깃값을 고리 안에서 섞으면 엔진이 고리 변수를 상자에 담아 부를 때마다 32 바이트를 만든다: tools/v2/play_alloc.mjs)
+  const B = W.boxes, r = +e.r, y = +e.y, top = y + (e.h === undefined ? 80 : +e.h), feet = y + STEP_UP;
+  if (dx !== 0) {
+    const x0 = +e.x, z = +e.z; let nx = x0 + dx;
     for (let i = 0; i < B.length; i++) {
       const b = B[i];
-      if (!b.solid || b.y1 <= feet || b.y0 >= top || e.z + r <= b.z0 || e.z - r >= b.z1) continue;
+      if (!b.solid || b.y1 <= feet || b.y0 >= top || z + r <= b.z0 || z - r >= b.z1) continue;
       if (nx + r > b.x0 && nx - r < b.x1) {
-        if (dx > 0 && e.x <= b.x0 + r) nx = Math.min(nx, b.x0 - r); else if (dx < 0 && e.x >= b.x1 - r) nx = Math.max(nx, b.x1 + r);
+        if (dx > 0 && x0 <= b.x0 + r) { const lim = b.x0 - r; if (lim < nx) nx = lim; } else if (dx < 0 && x0 >= b.x1 - r) { const lim = b.x1 + r; if (lim > nx) nx = lim; }
       }
     }
     e.x = nx;
   }
-  if (dz) {
-    let nz = e.z + dz;
+  if (dz !== 0) {
+    const z0 = +e.z, x = +e.x; let nz = z0 + dz;
     for (let i = 0; i < B.length; i++) {
       const b = B[i];
-      if (!b.solid || b.y1 <= feet || b.y0 >= top || e.x + r <= b.x0 || e.x - r >= b.x1) continue;
+      if (!b.solid || b.y1 <= feet || b.y0 >= top || x + r <= b.x0 || x - r >= b.x1) continue;
       if (nz + r > b.z0 && nz - r < b.z1) {
-        if (dz > 0 && e.z <= b.z0 + r) nz = Math.min(nz, b.z0 - r); else if (dz < 0 && e.z >= b.z1 - r) nz = Math.max(nz, b.z1 + r);
+        if (dz > 0 && z0 <= b.z0 + r) { const lim = b.z0 - r; if (lim < nz) nz = lim; } else if (dz < 0 && z0 >= b.z1 - r) { const lim = b.z1 + r; if (lim > nz) nz = lim; }
       }
     }
     e.z = nz;

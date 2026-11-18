@@ -7,7 +7,7 @@
 // The scene raises the events (talk / interact); until the story lane is plugged in, each person has one neutral line (LINES).
 const POSE = { idle: 'idle', talk: 'talk2', kneel: 'kneel_down', sit: 'sit_idle', lantern: 'lantern_look', work: 'idle', cower: 'kneel_down' };
 const TURNS = { idle: 1, talk: 1, lantern: 1, work: 1 };   // poses that may turn to look at the hero (kneeling / sitting people only turn the head by staying put)
-const NEAR = 250, REACH = 92, CALM2 = 560 * 560;
+const NEAR = 250, REACH = 92, CALM2 = 560 * 560, FADE0 = 1500, NEAR2 = FADE0 * FADE0, FAR2 = 1700 * 1700;
 /** Korean display names by actor id, then by model id */
 export const NAMES = {
   alberto: '알베르토 신부', elise: '엘리제', lotte: '로테', sera: '세라', marta: '마르타', hadwin: '하드윈', hadwin1: '하드윈 1세', edmund: '에드문트',
@@ -102,11 +102,13 @@ export class People {
     const L = this.list; let drawn = 0, culled = 0;
     for (let i = 0; i < L.length; i++) {
       const p = L[i]; if (!p.on) { p.vis = false; continue; }
-      const a3 = p.a3; p.vis = sc._seen(m, p.x, p.y, p.z, a3.height);
+      // far from where the camera looks a person is a few fogged pixels at the full triangle cost: not drawn beyond FAR, faded in over the last 200 units
+      const cdx = p.x - sc.cam.tx, cdz = p.z - sc.cam.tz, cd2 = cdx * cdx + cdz * cdz, a3 = p.a3;
+      p.vis = cd2 < FAR2 && sc._seen(m, p.x, p.y, p.z, a3.height);
       if (!p.vis) { culled++; continue; }
       const o = a3.opt; sc._tintAt(sc.W, p.x, p.y + 50, p.z, 0, 1.6, o.tint);
       if (a3.tintK) { o.tint[0] *= a3.tintK[0]; o.tint[1] *= a3.tintK[1]; o.tint[2] *= a3.tintK[2]; }
-      o.rim = rim; o.flash = 0; o.dis = 0; o.alpha = 1;
+      o.rim = rim; o.flash = 0; o.dis = 0; o.alpha = cd2 > NEAR2 ? Math.max(0.05, 1 - (Math.sqrt(cd2) - FADE0) / 200) : 1;
       a3.draw(cr, a3.place(p.x, p.y, p.z)); drawn++;
     }
     this.drawn = drawn; this.culled = culled;

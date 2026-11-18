@@ -14,6 +14,16 @@ const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const hyp = (x, z) => Math.sqrt(x * x + z * z);   // Math.hypot 은 부를 때마다 임시 배열을 만든다 (requests.md core-verify) — 규칙은 틱마다 수십 번 부른다
 const RAD = Math.PI / 180;
 const NOINP = Object.freeze({ mx: 0, mz: 0 });
+/**
+ * 객체의 칸 차림을 태어날 때 굳힌다: 숫자 칸은 모두 실수 칸으로, 비어 있는(null) 칸은 무엇이든 담는 칸으로.
+ * 엔진(V8)은 칸에 처음으로 다른 종류의 값이 들어갈 때마다 객체의 "모양"을 바꾼다. 영웅 · 적처럼 칸이 백 개쯤인 객체가 놀이 도중에 모양을 수십 번 바꾸면
+ * 그 객체를 읽는 모든 코드가 느린 일반 경로로 떨어지고, 그 경로는 실수 칸을 읽을 때마다 16 바이트짜리 숫자 상자를 만든다 (틱마다 수 KB 의 쓰레기 — tools/v2/play_alloc.mjs).
+ * 만들자마자 한 번 굳혀 두면 모양이 끝까지 하나라 읽기 · 쓰기가 상자를 만들지 않는다.
+ */
+function settle(o) {
+  for (const k in o) { const v = o[k]; if (typeof v === 'number') { o[k] = 0.5; o[k] = v; } else if (v === null || v === undefined) { o[k] = 1; o[k] = v; } }
+  return o;
+}
 const REFLECT = Object.freeze({ id: 'reflect', kind: 'shot', str: 'H', weapon: 'arrow', kb: [200, 0], hitstop: 0.06, mv: 2, hit: [0, 0] });
 const SAFE_OFF = [30, 0, -30, 0, 0, 30, 0, -30];
 const TELE = { street: [260, 130], pillar: [640, 60], platform: [760, 190], pit: [1740, 100], corner: [2150, 150], alley: [2190, 380], stairs: [2190, 660], garden: [2190, 1250], yard: [2190, 1600] };   // 시범 구간(시범판 B 와 같은 자리)
@@ -49,6 +59,7 @@ export class Sim {
       anim: 'idle', animT: 0, t: 0, cut: false, landT: 0, landV: 0,
       safe: { x: W.start.x, z: W.start.z, y: W.start.y },
     };
+    settle(this.hero); settle(this.hero.roll); settle(this.hero.safe); settle(this._probe);
     this.enemies = [];
     for (const s of W.spawns ?? []) this.addEnemy(s);
     this.shots = [];
@@ -74,6 +85,7 @@ export class Sim {
     if (e.active) e.state = 'chase';
     else if ((s.rise ?? D.rise) && !D.fly && !D.floats) e.buried = true;   // 엎드려 누워 있다가 영웅이 다가오면 일어선다 (스테이지 spawns[].rise)
     e.y = e.gy + e.hover;
+    settle(e);
     this.enemies.push(e);
     return e;
   }
@@ -99,7 +111,7 @@ export class Sim {
     const s = this.W.sections?.find((q) => q.id === sec), P = this.W.tele?.[sec] ?? TELE[sec] ?? (s ? [(s.x0 + s.x1) / 2, (s.z0 + s.z1) / 2] : null);
     if (!P) return false;
     const h = this.hero, g = this.w.ground(P[0], P[1]); if (!Number.isFinite(g)) return false;
-    h.x = P[0]; h.z = P[1]; h.y = g; h.vx = h.vz = h.vy = 0; h.onGround = true; h.move = null; h.dashT = 0; h.guard = false; h.safe = { x: h.x, z: h.z, y: h.y };
+    h.x = P[0]; h.z = P[1]; h.y = g; h.vx = h.vz = h.vy = 0; h.onGround = true; h.move = null; h.dashT = 0; h.guard = false; h.act = null; h.charging = false; h.safe.x = h.x; h.safe.z = h.z; h.safe.y = h.y;
     this.section = this.w.section(h.x, h.z)?.id ?? this.section;
     return true;
   }
@@ -800,7 +812,7 @@ export class Sim {
     for (let i = 0; i < n; i++) {
       const an = n > 1 ? (i - (n - 1) / 2) * S.spread * RAD : 0, c = Math.cos(an), sn = Math.sin(an);
       const s = { x: sx, y: sy, z: sz, vx: (dx * c - dz * sn) * S.speed, vy, vz: (dx * sn + dz * c) * S.speed, life: S.life, dead: false, t: 0, dmg: a.dmg, kind: S.kind, element: S.element, r: S.r, owner: e.id, friendly: false };
-      this.shots.push(s); this.emit('shot', s, 'spawn');
+      this.shots.push(settle(s)); this.emit('shot', s, 'spawn');
     }
   }
   /**

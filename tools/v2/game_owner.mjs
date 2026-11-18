@@ -31,13 +31,15 @@ const fight = (page, kind, o = {}) => page.evaluate(([kind, o]) => {
   const e0 = E[0], hx = o.x ?? e0.x - (o.dx ?? 150), hz = o.z ?? e0.z + (o.dz ?? 0);
   h.x = hx; h.z = hz; h.y = (e0.gy ?? e0.y) + 200; h.vx = h.vz = h.vy = 0; h.onGround = false; if (h.safe) { h.safe.x = hx; h.safe.z = hz; }
   h.dirX = 1; h.dirZ = 0; sc.heroA.dx = 1; sc.heroA.dz = 0; sc.cam.snap = true;
+  if (o.solo) for (const e of sim.enemies) if (e.kind !== kind) e.dead = true;   // only this kind stays
   for (const e of sim.enemies) if (e.group === e0.group && !e.dead) { if (sim.wake) sim.wake(e); e.active = true; }
   B.opt.giveUp = 100000; let best = null, hits0 = sc.feelN;
   for (let i = 0; i < (o.ticks ?? 900); i++) {
     B.think(); g.tick(1 / 60);
-    if (i < (o.min ?? 50)) continue;
+    if (i < (o.min ?? 230)) continue;   // the area name banner is gone by then
     let ok = false;
-    for (const e of sim.enemies) { if (e.kind !== kind || e.dead || e.state === 'dead' || !e._a3?.vis) continue; const d = Math.hypot(e.x - h.x, e.z - h.z); if (d < (o.near ?? 230) && (o.any || (e.tele > (o.tele ?? 0.45) && e.tele < 0.95) || (o.hit && sc.feelN > hits0 + 1 && h.move))) ok = true; }
+    for (const e of sim.enemies) { if (e.kind !== kind || e.dead || e.state === 'dead' || !e._a3?.vis) continue; const d = Math.hypot(e.x - h.x, e.z - h.z); if (d < (o.near ?? 230) && (o.any || (e.tele > (o.tele ?? 0.45) && e.tele < 0.95) || (o.hit && sc.feelN > hits0 + 1 && h.move) || (o.shot && sim.shots.some((q) => !q.dead && Math.hypot(q.x - h.x, q.z - h.z) < 220)))) ok = true; }
+    if (ok && o.seen && sc._heroHid) ok = false;   // wait for a frame with the hero in the open
     if (ok) { best = i; break; }
   }
   B.act = {}; g.alpha = 1; g.render(); g.render();
@@ -48,8 +50,8 @@ try {
   if (want('soldier') || want('mage') || want('people') || want('fire')) {
     const page = await open('area=eshville_now');
     if (want('fire')) { await page.evaluate(() => { const g = window.__game, sc = window.__v2.scene, h = sc.sim.hero; g._pageHidden = true; h.x = 330; h.z = 170; h.dirX = 1; h.dirZ = 0.3; sc.cam.snap = true; for (let i = 0; i < 150; i++) g.tick(1 / 60); g.alpha = 1; g.render(); g.render(); }); await shot(page, 'fire'); info.fire = await page.evaluate(() => window.__v2.stats.anchors); }
-    if (want('soldier')) { info.soldier = await fight(page, 'skeleton_soldier', { hit: true, tele: 0.4 }); await shot(page, 'soldier'); }
-    if (want('mage')) { info.mage = await fight(page, 'skeleton_mage', { dx: 240, near: 420, tele: 0.55 }); await shot(page, 'mage'); }
+    if (want('soldier')) { info.soldier = await fight(page, 'skeleton_soldier', { hit: true, tele: 0.4, min: 60 }); await shot(page, 'soldier'); }
+    if (want('mage')) { info.mage = await fight(page, 'skeleton_mage', { dx: 250, near: 460, tele: 2, shot: true, solo: true, min: 60, ticks: 1500 }); await shot(page, 'mage'); }
     if (want('people')) {
       info.people = await page.evaluate(() => { const g = window.__game, v = window.__v2, sc = v.scene, sim = sc.sim, h = sim.hero; g._pageHidden = true; for (const e of sim.enemies) e.dead = true; const p = sc.people.byId('alberto'); h.x = p.x - 64; h.z = p.z - 30; h.y = p.y + 150; h.onGround = false; h.vx = h.vz = h.vy = 0; if (h.safe) { h.safe.x = h.x; h.safe.z = h.z; } h.dirX = 1; h.dirZ = 0.4; sc.cam.snap = true; for (let i = 0; i < 120; i++) g.tick(1 / 60); g.alpha = 1; g.render(); g.render(); return { prompt: v.prompt, people: v.people.filter((q) => q.drawn).map((q) => q.id + ':' + q.clip) }; });
       await shot(page, 'people_prompt');
@@ -63,9 +65,9 @@ try {
   if (want('corpse')) { const page = await open('area=eshville_past'); info.corpse = await fight(page, 'plague_corpse', { tele: 0.5, near: 240 }); await shot(page, 'corpse'); info.errsPast = page._errs.slice(0, 3); await page.context().close(); }
   if (want('bat') || want('elite') || want('ghost')) {
     const page = await open('area=graveyard_now');
-    if (want('bat')) { info.bat = await fight(page, 'bat', { x: 600, z: 520, tele: 0.3, near: 260, ticks: 1200 }); await shot(page, 'bat'); }
-    if (want('elite')) { info.elite = await fight(page, 'gravekeeper_armor', { dx: 170, tele: 0.5, near: 300, ticks: 1200 }); await shot(page, 'elite'); }
-    if (want('ghost')) { info.ghost = await fight(page, 'grave_ghost', { x: 600, z: 1480, tele: 0.5, near: 300, ticks: 1500 }); await shot(page, 'ghost'); }
+    if (want('bat')) { info.bat = await fight(page, 'bat', { x: 600, z: 520, tele: 0.3, near: 260, ticks: 1200, seen: true }); await shot(page, 'bat'); }
+    if (want('elite')) { info.elite = await fight(page, 'gravekeeper_armor', { x: 600, z: 850, tele: 0.5, near: 300, ticks: 1500, solo: true, seen: true }); await shot(page, 'elite'); }
+    if (want('ghost')) { info.ghost = await fight(page, 'grave_ghost', { x: 600, z: 1330, tele: 0.5, near: 300, ticks: 1800, solo: true, seen: true }); await shot(page, 'ghost'); info.hid = await page.evaluate(() => { const g = window.__game, sc = window.__v2.scene, h = sc.sim.hero; g._pageHidden = true; for (const e of sc.sim.enemies) e.dead = true; h.x = 430; h.z = 1050; h.y = 300; h.onGround = false; sc.cam.snap = true; for (let i = 0; i < 60; i++) g.tick(1 / 60); g.alpha = 1; g.render(); g.render(); return { hidden: sc._heroHid, x: Math.round(h.x), z: Math.round(h.z) }; }); await shot(page, 'hidden'); }
     info.errsGrave = page._errs.slice(0, 3); await page.context().close();
   }
   if (want('sharp')) {
