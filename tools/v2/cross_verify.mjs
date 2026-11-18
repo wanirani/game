@@ -198,7 +198,7 @@ try {
       const r = await cross(); const s = await until(done, 3000); await steps(page, 60);
       if (!r || !s || !done(s)) { fail(`cost: crossing ${i + 1} did not end: ${JSON.stringify(s)}`); break; }
       const m = await page.evaluate(() => { try { window.gc?.(); } catch { /* no gc */ } const s = window.__v2.stats; return { area: s.area, tex: s.gl.texBytes, buf: s.gl.bufBytes, fx: s.fx?.bytes ?? 0, canvases: document.querySelectorAll('canvas').length, heap: Math.round((performance.memory?.usedJSHeapSize ?? 0) / 1024), cx: window.__v2.scene.cx.bytes }; });
-      rows.push(m); await standAtBell(page); await steps(page, 6);
+      rows.push(m); say(`info crossing ${i + 1}: ${m.area} tex ${m.tex} buf ${m.buf} heap ${m.heap} KB copies ${m.cx}`); await standAtBell(page); await steps(page, 6);
     }
     const by = (a) => rows.filter((q) => q.area === a), areas = [...new Set(rows.map((q) => q.area))];
     for (const a of areas) { const L = by(a), tex = [...new Set(L.map((q) => q.tex))], buf = [...new Set(L.map((q) => q.buf))]; (tex.length === 1 && buf.length === 1 ? ok : fail)(`cost ${TIER || 'default tier'}: ${a} over ${L.length} visits: texture bytes ${tex.join('/')}, buffer bytes ${buf.join('/')}, canvases ${[...new Set(L.map((q) => q.canvases))].join('/')}, crossing copies left ${[...new Set(L.map((q) => q.cx))].join('/')}`); }
