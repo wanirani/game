@@ -70,10 +70,10 @@ export default class V2Chooser extends Scene {
     const total = headH + cardH * CARDS + backH + gap * gaps;
     let y = st + Math.max(6, (availH - hintH - total) / 2);
     this.layout = { tight, cardH, backH, headH, total, top: y, availH };
-    text(ctx, '리빌드 시범', W / 2, y + (tight ? 26 : 36), { size: tight ? 24 : 32, align: 'center', weight: 800, family: FONT.title, color: GOLD, ow: 5, maxWidth: w });
+    text(ctx, APP_3D ? '블러드 녹턴 3D' : '리빌드 시범', W / 2, y + (tight ? 26 : 36), { size: tight ? 24 : 32, align: 'center', weight: 800, family: FONT.title, color: GOLD, ow: 5, maxWidth: w });
     if (!tight) {
       ornament(ctx, W / 2, y + 50, Math.min(300, w * 0.6));
-      text(ctx, HEAD_NOTE, W / 2, y + headH - 18, { size: 15, align: 'center', color: BONE, ow: 3, maxWidth: w });
+      text(ctx, APP_3D ? '「본 게임」은 만드는 중입니다. 시범판과 성능 진단도 들어 있습니다.' : HEAD_NOTE, W / 2, y + headH - 18, { size: 15, align: 'center', color: BONE, ow: 3, maxWidth: w });
     }
     y += headH;
     this.menu.clearHits();
