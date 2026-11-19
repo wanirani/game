@@ -202,7 +202,7 @@ try {
     await beat('박쥐 떼 (group tower_bats) → 종에 금이 가고 떨어진다', async () => { const r = await clear('tower_bats', { budget: 3000 }); const s = await play(3600, { bot: false, pred: (q) => q.ready && q.area === 'eshville_past' && !q.busy && !q.modal, chunk: 120 }); await settle(3000); return { ok: (await st()).area === 'eshville_past', why: 'not in eshville_past: ' + JSON.stringify(s) }; });
     await shot('first15_08_past_wake');
     const P = await def('eshville_past'), ptrig = (ev) => center(P.triggers.find((t) => t.event === ev));
-    await beat('그 밤의 큰길 (trigger past.street)', async () => { const p = ptrig('past.street'); const w = await walk(p[0], p[1], { r: 70, budget: 4200 }); await settle(); return w; });
+    await beat('그 밤의 큰길 (trigger past.street)', async () => { const p = ptrig('past.street'); const w = await walk(p[0], p[1], { r: 70, budget: 9000 }); await settle(); return w; });   // (the way leads through the three plague corpses of the 1697 square, who wake as he comes near since 11-18: 3000-3800 ticks when it goes well, once over 6000 - 4200 ran out 160 px short of the trigger in the APK 12 chain)
     await beat('그 밤 큰길의 싸움 (group st_p) → 에드문트', async () => { const r = await clear('st_p', { budget: 3600 }); await settle(); return r; });
     await beat('에드문트의 식탁 (talk edmund.tavern, 첫 번째)', async () => useSpot('edmund', { budget: 3600 }));
     await shot('first15_09_table');
