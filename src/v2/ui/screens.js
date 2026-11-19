@@ -169,7 +169,7 @@ export function createScreens(env) {
   function bakeRow(i, sl) {
     const Z = sizes(), w = G.lw, h = rowH[i], c = canvasFor(sl, w, G.maxH, G.rs), r = rows[i], lay = LAY[i];
     const cw = cellW(), xL = G.cm, xR = G.colW + G.sp + G.cm, y = G.cm / 2, ch = h - G.cm, T = TX();
-    if (S.kind === 'chronicle' && r.kind === 'empty') text(c, T.chronicle?.empty ?? '', w / 2, y + ch / 2, Z.tB, DIM, 600, FONTS.body, 'center');
+    if (S.kind === 'chronicle' && r.kind === 'empty') text(c, T.chronicle?.empty ?? '', xR + cw / 2, y + ch / 2, Z.tB, DIM, 600, FONTS.body, 'center');   // POLISH (11-19): on tonight's page, where the first entry (the cracked bell) will be written - not across the fold
     else if (S.kind === 'chronicle') {
       const ty = y + Z.cp + Z.tT * 0.6, by = y + Z.cp + Z.tT * 1.4, line = r.kind === 'line' || r.kind === 'sealed';
       for (let k = 0; k < 2; k++) {
