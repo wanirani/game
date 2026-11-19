@@ -143,8 +143,8 @@ const GRAVEYARD = [
   I('nameless_a', 'sign', 'grave.nameless', { grave: 'a' }),
   I('nameless_b', 'sign', 'grave.nameless', { grave: 'b' }),
   I('valkrein_stones', 'sign', 'sign.valkrein'),
+  LOCKED('to_ossuary', 'story:ossuary'),      // (the whip landing lies inside the locked exit's margin: the threshold speaks first, as in play; the door's prompt then says its short line)
   I('ossuary_door', 'door', 'door.ossuary'),
-  LOCKED('to_ossuary', 'story:ossuary'),
   ['note', '마을로 돌아가 큰 종에서 그 밤으로 건넌다.'],
   ENTER('eshville_now'),
   BELL(),
@@ -265,6 +265,8 @@ const DUNGEON = (crate) => [
   ['note', '조종 넷을 채찍으로 쳐 노래를 깬다. 한 번 쓰러진다.'],
   ['ev', 'hero.dead', {}],
   ['ev', 'hero.respawn', {}],
+  ['note', '첫 막에는 방 안의 종이 답하지 않는다 — 여왕이 붙들고 있다 (장면이 건넘을 거절하고 bell.held 를 올린다).'],
+  ['ev', 'bell.held', {}],
   ['note', '절반에서 여왕이 방 안의 종을 찢고 그 밤으로 달아난다. 같은 종에서 쫓아 건넌다.'],
   ['ev', 'boss.phase', { boss: 'banshee_queen', phase: 'flee' }],
   ['save'],

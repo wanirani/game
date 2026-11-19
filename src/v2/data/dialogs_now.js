@@ -172,7 +172,7 @@ export const DIALOGS_NOW = {
       ['ghost_hanna', '…이름…. 제 이름이… 없어요….'],
       ['narrator', '비석에는 번호뿐이다. 유령이\n납골당 가는 샛길에 서 있다.'],
       ['kael', '(이름을 새길 수 있는 건 그 밤이다.)'],
-    ], then: [['setFlag', 'saw_ghosts'], ['objective', 'to_past_graves']] },
+    ], then: [['if', ['!saw_ghosts'], [['setFlag', 'saw_ghosts'], ['objective', 'to_past_graves']]]] },   // (the objective is set by whichever of the two graves and the door speaks first - once)
     { once: true, pages: [
       ['sign', '한나. 1697년.'],
       ['narrator', '이끼 낀 비석 앞에\n마른 꽃 한 송이가 놓여 있다.'],
@@ -184,7 +184,7 @@ export const DIALOGS_NOW = {
     { if: ['!carved_b'], pages: [
       ['ghost_til', '…누나…? 누나 어딨어….'],
       ['kael', '(번호뿐인 비석이 하나 더.)'],
-    ], then: [['setFlag', 'saw_ghosts'], ['objective', 'to_past_graves']] },
+    ], then: [['if', ['!saw_ghosts'], [['setFlag', 'saw_ghosts'], ['objective', 'to_past_graves']]]] },
     { once: true, pages: [
       ['sign', '틸. 1697년. 한나의 동생.'],
       ['til', '나 틸이야! 누나, 나 틸이래!'],
@@ -215,11 +215,11 @@ export const DIALOGS_NOW = {
     { pages: [['sign', '에드문트 발크레인.\n1697년, 넷째 붉은 달.']] },
   ],
   'door.ossuary.now': [
-    { if: ['!saw_ghosts'], ifAny: ['!carved_a', '!carved_b'], pages: [
+    { once: true, ifAny: ['!carved_a', '!carved_b'], pages: [
       ['narrator', '이름 없는 유령 둘이\n문 앞을 막아선다.'],
       ['kael', '(베어도 다시 선다.\n…이름을 찾는 거군.)'],
-    ], then: [['setFlag', 'saw_ghosts'], ['objective', 'to_past_graves']] },
-    // seen once: a second press says one short line and sets nothing again
+    ], then: [['if', ['!saw_ghosts'], [['setFlag', 'saw_ghosts'], ['objective', 'to_past_graves']]]] },
+    // said once (at the threshold or at the door's prompt, whichever comes first): after that one short line, and nothing is set again
     { ifAny: ['!carved_a', '!carved_b'], pages: [
       ['kael', '(유령 둘이 문 앞을 지킨다.\n그 밤에서 이름을 찾아 준다.)'],
     ] },

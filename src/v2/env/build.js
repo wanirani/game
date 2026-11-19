@@ -56,8 +56,8 @@ const wallHang = (P) => { const FS = { F: new Frame(P.x, P.z, 0, -1), L: new Fra
  * here with a counting pass (as slow as a second compile: tools and checks only); false = never fold.
  */
 export function compileEnv(S, opt = {}) {   // flames: 불길 잎을 굽는다 (입자 불이 없는 v2c 만 — props2.js flames)
-  const before = WEAR.age; WEAR.age = S.wear ?? null;   // DETAIL: relief and wear of walls in the night the stage names (stage.wear: 'now' | 'past'); a stage without it builds exactly as before
-  try { return compileEnv0(S, opt); } finally { WEAR.age = before; }
+  const before = WEAR.age, foot0 = WEAR.foot; WEAR.age = S.wear ?? null; WEAR.foot = S.skirtFoot ?? 0;   // DETAIL: relief and wear of walls in the night the stage names (stage.wear: 'now' | 'past'); a stage without it builds exactly as before
+  try { return compileEnv0(S, opt); } finally { WEAR.age = before; WEAR.foot = foot0; }
 }
 function compileEnv0(S, { cull = true, fold, flames = false } = {}) {
   const W = compileStage(toB(S));

@@ -32,12 +32,16 @@ export class Chapter {
     this.T = { e: null, t: 0, back: false, x0: 0, z0: 0, x1: 0, z1: 0, rang: false };
     this.grp = null;               // her spawn group while she is away (she is taken out of it so that no wake trigger finds her)
     this.endT = -1; this.endId = null; this.card = false;
+    this.seen = false;             // the ending card has been dismissed (kept in the save: a load brings the card up again until it has been)
+    this.pend = null;              // a loaded game whose story has ended while the card had not been dismissed: the end id, raised again once the area stands
   }
-  reset() { this.rest = null; this.bell = null; this.q.hp = 0; this.q.cur = 0; this.tear = null; this.endT = -1; this.endId = null; this.card = false; }
+  reset() { this.rest = null; this.bell = null; this.q.hp = 0; this.q.cur = 0; this.tear = null; this.endT = -1; this.endId = null; this.card = false; this.seen = false; this.pend = null; }
   // ───────── the save ─────────
-  out() { return { rest: this.rest, bell: this.bell, queen: { hp: this.q.hp, cur: this.q.cur } }; }
+  out() { return { rest: this.rest, bell: this.bell, queen: { hp: this.q.hp, cur: this.q.cur }, card: this.seen }; }
+  /** o = save.ch (an old save has none); o.end = the story's end id when the loaded story has ended and its card was never dismissed (storyhost.js restore) */
   load(o) {
     this.reset(); if (!o || typeof o !== 'object') return;
+    this.seen = !!o.card; this.pend = typeof o.end === 'string' && !this.seen ? o.end : null;
     this.rest = spotIn(o.rest); this.bell = spotIn(o.bell);
     const q = o.queen; if (q && typeof q === 'object') { this.q.hp = q.hp > 0 && Number.isFinite(q.hp) ? q.hp : 0; this.q.cur = q.cur > 0 && Number.isFinite(q.cur) ? q.cur : 0; }
   }
@@ -67,6 +71,12 @@ export class Chapter {
   _queen() { const E = this.sc.sim?.enemies; if (E) for (let i = 0; i < E.length; i++) { const e = E[i]; if (e.def.boss && !e.dead && e.state !== 'dead') return e; } return null; }
   /** 0 first act (tonight) · 1 she fled, the chase is on (she is in 1697) · 2 driven back (tonight, second act) · 3 sent */
   _stage() { const f = this.sc._flagFn; return f('queen_sent') ? 3 : f('queen_driven') ? 2 : f('queen_fled') ? 1 : 0; }
+  /** STORY (11-19): tonight, in her first act, the queen holds the bell of her hall - a long ring there carries nobody away while she is awake and the hero stands in the
+   *  hall (storyhost.js bellCross refuses and raises bell.held). It used to set him down in an empty 1697 hall whose bell is sealed, and she began again at full health. */
+  bellHeld() {
+    const sc = this.sc; if (!sc.sim || !sc.host || !sc.area || sc.area.test || sc.area.era !== 'now' || this._stage() !== 0 || this.tear) return false;
+    const e = this._queen(); return !!e && !!e.active && !e.fleeHold && this._near(e);
+  }
   _near(e) { const sc = this.sc, h = sc.sim.hero, a = sectionAt(sc.W, h.x, h.z), b = sectionAt(sc.W, e.homeX, e.homeZ); return !!a && a === b; }
   /** after every new Sim (first load, crossing, journey, rebuild, restart) */
   enter() {
@@ -136,6 +146,7 @@ export class Chapter {
     const sc = this.sc, sim = sc.sim;
     if (this.endT >= 0) this._ending(dt);
     if (!sim || !sc.host || !sc.area || sc.area.test) return;
+    if (this.pend && this.endT < 0 && sc.ready && !sc._go && !sc.xing && !sc.hud.modal && !sc.host.st.busy && sc.fadeA <= 0.01) { const id = this.pend; this.pend = null; try { sc.host.api.end(id); } catch (e) { console.warn('[v2g] the ending did not come back after the load:', String(e?.message ?? e)); } }   // a reload on the ending card: the card again, then the chooser
     const T = this.tear;
     if (T) {
       const e = T.e;
@@ -180,7 +191,7 @@ export class Chapter {
   /** after the ending: the save, then the 3D chooser (registered here when the game was opened straight into this scene) */
   leave() {
     const sc = this.sc, g = sc.game, H = sc.host; if (this.endT < 0) return;
-    this.endT = -1;
+    this.endT = -1; this.seen = true;
     if (H) { H.ended = null; try { H.saveNow('end'); } catch (e) { console.error('[v2g] save after the ending failed', e); } }
     const go = () => { if (g.top === sc) sc._leave(); };
     if (g.registry.v2pick) go();

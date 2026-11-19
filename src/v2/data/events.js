@@ -266,7 +266,7 @@ export const EVENTS = [
   ] },
   // (the threshold speaks only when it has something new to say - the ghosts the first time, Hanna when the road bell hangs; the door's own prompt says the rest.
   //  It used to say the door's two lines at the whip landing, and the prompt said them again a step later.)
-  { id: 'ev_ossuary_exit_now', minute: '45-58', on: 'exit.locked', match: { id: 'to_ossuary' }, if: ['era:now'], ifAny: ['!saw_ghosts', 'bell_hung'], once: false, steps: [
+  { id: 'ev_ossuary_exit_now', minute: '45-58', on: 'exit.locked', match: { id: 'to_ossuary' }, if: ['era:now'], ifAny: ['!seen:door.ossuary.now', 'bell_hung'], once: false, steps: [
     ['say', 'door.ossuary.now'],
   ] },
   // that night the threshold only says where the empty post stands: the road bell is hung by the player at the post (interact bell.hang).

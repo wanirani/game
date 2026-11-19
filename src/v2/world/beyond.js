@@ -8,12 +8,14 @@
 /** a tint that gives a surface drawn with the soil texture about this colour (the texture's average is 0.27, 0.24, 0.2) */
 const C = (r, g, b) => [r / 0.27, g / 0.24, b / 0.2];
 const far = (parts) => parts.map((p) => ({ t: 'deco', chunk: 'far', mat: 'soil', ...p }));
+/** DETAIL: how far under the street the meadow at the foot of the stage's front wall lies (Eshville, the graveyard): the areas pass it on as stage.skirtFoot */
+export const LOW_GROUND = 124;
 
 /** Eshville: fields and back gardens behind the house row, the road out of the west gate, the churchyard behind the church, the lane to the graveyard */
 export function beyondEshville(now, cold = false) {
   const warm = now && !cold, Y = -4;
   // DETAIL: everything out here is about half as bright again as it was (it melted into one dark band on the Fold), and the pieces have their parts - ENV_KIT 24
-  const tree = now ? C(0.2, 0.15, 0.14) : C(0.19, 0.22, 0.16), fir = now ? C(0.15, 0.165, 0.16) : C(0.12, 0.19, 0.18), wall = now ? C(0.3, 0.25, 0.25) : C(0.33, 0.33, 0.38), roof = now ? C(0.17, 0.14, 0.15) : C(0.25, 0.2, 0.15), hedge = now ? C(0.14, 0.16, 0.12) : C(0.12, 0.2, 0.14), LOW = -224;
+  const tree = now ? C(0.2, 0.15, 0.14) : C(0.19, 0.22, 0.16), fir = now ? C(0.15, 0.165, 0.16) : C(0.12, 0.19, 0.18), wall = now ? C(0.3, 0.25, 0.25) : C(0.33, 0.33, 0.38), roof = now ? C(0.17, 0.14, 0.15) : C(0.25, 0.2, 0.15), hedge = now ? C(0.14, 0.16, 0.12) : C(0.12, 0.2, 0.14), LOW = -LOW_GROUND;
   const kind = now ? 'bare' : 'round', lit = now ? 0.3 : 0.75, glow = warm ? [1, 0.42, 0.16] : [1, 0.62, 0.3];
   const H = (x, z, w, h, rh, seed, o = {}) => ({ mesh: 'farhouse', x, y: Y, z, w, d: 130, h, rh, tint: wall, roofTint: roof, lit, glow, emis: 5, seed, ...o });
   const out = far([
@@ -54,7 +56,7 @@ export function beyondEshville(now, cold = false) {
     { mesh: 'gravefield', x: 4720, y: Y, z: 1640, w: 260, d: 700, n: 12, h: 70, tint: wall, seed: 5 },
     { mesh: 'treeline', x: 4440, y: Y, z: 1560, x1: 4430, z1: 2500, n: 5, h: 300, hv: 0.3, wob: 24, kind: 'bare', tint: tree, seed: 43 },
     // DETAIL: the land at the foot of the stage's front wall (the wall itself: kit.js skirt). The square's corner views showed a third of the picture as the
-    // near-black front face of the stage; now it is a retaining wall with a foot, and below it a meadow with a path and bushes, 224 under the street
+    // near-black front face of the stage; now it is a retaining wall with a foot, and below it a meadow with a path and bushes, 124 under the street
     { mesh: 'apron', x: -2600, y: LOW, z: -1300, w: 10200, d: 1301, cell: 430, tile: 520, k: 0.86, tint: now ? [1.0, 0.94, 0.9] : [0.9, 1.0, 0.94], strips: [{ x0: 2000, x1: 8000, z0: 1080, z1: 1180, tint: [1.3, 1.22, 1.1], k: 0.98, cell: 500 }] },
     { mesh: 'bushes', x: -100, y: LOW, z: -420, w: 5000, d: 300, n: 11, h: 62, tint: hedge, seed: 5 }, { mesh: 'hedge', x: 300, y: LOW, z: -330, x1: 2300, z1: -390, h: 44, seg: 80, depth: 24, tint: hedge, seed: 15 }, { mesh: 'hedge', x: 3000, y: LOW, z: -400, x1: 4600, z1: -340, h: 44, seg: 80, depth: 24, tint: hedge, seed: 17 },
   ]);
@@ -69,7 +71,7 @@ export function beyondEshville(now, cold = false) {
 
 /** the Misty Graveyard: the cemetery goes on beyond its walls - more stones, bare trees, a far chapel, low hills */
 export function beyondGraveyard(now) {
-  const Y = -4, stone = now ? C(0.24, 0.28, 0.32) : C(0.28, 0.31, 0.39), tree = now ? C(0.12, 0.145, 0.17) : C(0.13, 0.15, 0.2), hill = now ? C(0.13, 0.16, 0.18) : C(0.12, 0.14, 0.2), lit = now ? 0 : 0.6, LOW = -224, bush = now ? C(0.12, 0.16, 0.15) : C(0.12, 0.17, 0.17);   // DETAIL: lighter (it was one dark band), twigs on the near trees
+  const Y = -4, stone = now ? C(0.24, 0.28, 0.32) : C(0.28, 0.31, 0.39), tree = now ? C(0.12, 0.145, 0.17) : C(0.13, 0.15, 0.2), hill = now ? C(0.13, 0.16, 0.18) : C(0.12, 0.14, 0.2), lit = now ? 0 : 0.6, LOW = -LOW_GROUND, bush = now ? C(0.12, 0.16, 0.15) : C(0.12, 0.17, 0.17);   // DETAIL: lighter (it was one dark band), twigs on the near trees
   return far([
     { mesh: 'apron', x: -2600, y: Y, z: -60, w: 2610, d: 3180, cell: 330, tile: 520, k: 0.84, skirt: 420, skirtK: 0.5 }, { mesh: 'apron', x: 1190, y: Y, z: -60, w: 2610, d: 3180, cell: 330, tile: 520, k: 0.84, skirt: 420, skirtK: 0.5 },
     { mesh: 'apron', x: -2600, y: LOW, z: -1300, w: 6400, d: 1241, cell: 430, tile: 520, k: 0.84 }, { mesh: 'bushes', x: -300, y: LOW, z: -420, w: 1800, d: 300, n: 7, h: 60, tint: bush, seed: 7 }, { mesh: 'gravefield', x: 100, y: LOW, z: -300, w: 1000, d: 200, n: 9, h: 70, tint: stone, seed: 31 },   // DETAIL: the ground at the foot of the front wall: the oldest graves lie down there

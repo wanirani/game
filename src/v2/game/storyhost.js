@@ -78,10 +78,14 @@ export class StoryHost {
     const s = this.st.state; if (!s.area) return null;
     this.objective = this.st.objectiveText?.() ?? ''; this.moon = s.moon; this.candleBonus = Math.max(0, (s.candles | 0) - 3);
     const same = o.area === s.area && o.pos && Number.isFinite(o.pos.x) && Number.isFinite(o.pos.z);   // otherwise the save was cut in the middle of an area change: the story's area and spawn decide
+    // STORY (11-19): has the story ended in this save (a finished sequence with an `end` step) while its card was never dismissed? Then the card comes up again after the
+    // load (chapter.js pend). `why: 'end'` is the save the card's own way out wrote in builds that did not keep `ch.card` yet.
+    let end = null;
+    if (o.why !== 'end' && !(o.ch && o.ch.card)) { const has = (L) => { for (const q of L ?? []) { if (!Array.isArray(q)) continue; if (q[0] === 'end') return String(q[1] ?? 'end'); if (q[0] === 'if') { const r = has(q[2]) ?? has(q[3]); if (r) return r; } } return null; }; for (const e of this.STORY.EVENTS ?? []) { if (!this.st.isDone(e.id)) continue; const r = has(e.steps); if (r) { end = r; break; } } }
     return { area: s.area, spawn: s.spawn ?? null, pos: same ? { x: o.pos.x, z: o.pos.z, y: Number.isFinite(o.pos.y) ? o.pos.y : undefined, face: Array.isArray(o.pos.face) ? o.pos.face : undefined } : null,
       hp: Number.isFinite(o.hp) && o.hp > 0 ? o.hp : null, reso: Number.isFinite(o.reso) ? o.reso : 0, nights: o.nights && typeof o.nights === 'object' ? o.nights : null,
       coins: Number.isFinite(o.coins) && o.coins > 0 ? Math.floor(o.coins) : 0, broken: same && Array.isArray(o.broken) ? o.broken : null,
-      ch: o.ch && typeof o.ch === 'object' ? o.ch : null };   // CHAPTER: the last rest spot, the last bell, the queen's health (chapter.js; an old save has none)   // BREAK: the coin count (an old save without it reads 0) and what was broken in the saved area
+      ch: o.ch && typeof o.ch === 'object' ? (end ? { ...o.ch, end } : o.ch) : end ? { end } : null };   // CHAPTER: the last rest spot, the last bell, the queen's health (chapter.js; an old save has none)   // BREAK: the coin count (an old save without it reads 0) and what was broken in the saved area
   }
   /** new game: forget everything (the scene clears its own memory and the stored save) */
   reset() { try { this.st.reset(); } catch (e) { console.error('[v2g] story reset failed', e); } this.objective = ''; this.pillOn = false; this.waits.length = 0; this.moves.length = 0; this.shot = null; this.shotT = 0; this.shotDone = null; this.shotLock = false; this.inputLock = false; this.restSpot = null; this.dirty = false; this.ended = null; this.moon = null; this.candleBonus = 0; this.lastSave = null; }
@@ -151,7 +155,11 @@ export class StoryHost {
       toast(text, o) { sc._toast(text, typeof o === 'string' ? o : o?.kind); },   // (the scene writes every notice into `seen`)
       lock(on) { H.inputLock = !!on; },
       gotoArea(id, spawn) { H.note('goto', id, spawn); if (!sc.travelTo(id, spawn ?? null)) throw new Error('area change refused: ' + id); },
-      bellCross(o) { if (!sc.cross(o ?? null)) { sc._toast(H.STORY.TEXT?.system?.dull ?? '', 'warn'); throw new Error('crossing refused'); } H.note('cross', sc.xing?.to ?? ''); },
+      bellCross(o) {
+        // STORY (11-19): the queen holds the bell of her hall while she is in her first act (chapter.js bellHeld) - the bell answers dull and the story says why (ev_bell_held)
+        if (sc.ch.bellHeld()) { sc._toast(H.STORY.TEXT?.system?.dull ?? '', 'warn'); H.story('bell.held', {}); throw new Error('crossing refused: the queen holds the bell'); }
+        if (!sc.cross(o ?? null)) { sc._toast(H.STORY.TEXT?.system?.dull ?? '', 'warn'); throw new Error('crossing refused'); } H.note('cross', sc.xing?.to ?? '');
+      },
       sound(name, pos) { try { if (feel.has(name)) feel.play(name, pos && typeof pos === 'object' ? pos : null); } catch { /* no audio */ } },
       fx(name, o) { const h = sc.sim?.hero; try { sc.fx?.play(name, o ?? (h ? { x: h.x, y: h.y + 50, z: h.z, dx: h.dirX ?? 1, dz: h.dirZ ?? 0 } : {})); } catch { /* unknown effect */ } },
       music(id) { H.musicId = id; try { if (id === 'quiet' || id == null) audio.stopMusic?.(1.5); else if (MUSIC[id]) audio.music(MUSIC[id], { fade: 1.5 }); } catch { /* no audio */ } },

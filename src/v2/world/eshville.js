@@ -4,7 +4,7 @@
 //   outskirts (x -60..1500) -> main street (1500..3300) -> square with the well (3300..4700, z 0..900)
 //   -> church front + bell tower door (z 900..1770)   and the graveyard road (x 4480..4700, z 900..1300)
 import { D, house, inChunk, rect } from './gen.js';
-import { beyondEshville } from './beyond.js';   // WORLD-LOOK: the land beyond the walls (AREA_FORMAT 16)
+import { beyondEshville, LOW_GROUND } from './beyond.js';   // WORLD-LOOK: the land beyond the walls (AREA_FORMAT 16)
 
 const BLACK = [0.14, 0.13, 0.16], RED = [0.62, 0.12, 0.14], BLUE = [0.2, 0.26, 0.5];
 const FIRE = (r = 420, i = 2.0) => ({ r, i, y: 30, c: [1, 0.5, 0.2] });
@@ -155,7 +155,7 @@ export function eshville(era, flags = {}) {
     for (const [x, z, g] of [[900, 150, 'out_p'], [980, 90, 'out_p'], [1070, 190, 'out_p'], [1800, 160, 'st_p'], [1890, 100, 'st_p'], [2620, 150, 'st_p'], [2700, 216, 'st_p'], [2790, 120, 'st_p'], [3760, 560, 'sq_p'], [4050, 330, 'sq_p'], [4150, 560, 'sq_p']]) enemies.push({ kind: 'plague_corpse', x, z, group: g, yard: g === 'sq_p' });
     // CHAPTER: the two keepers at the bell (GDD 9.1 minute 114-118: "the bell rope between them"). Once Elise is found Lotte waits at her bell, left of it; Elise comes
     // with the hero (she stands beside the spawn `bell`), walks to the right of the bell in the promise scene and stays there when it is made.
-    actors.push({ id: 'lotte', model: 'lotte', x: flags.elise_found ? 4104 : 3950, z: flags.elise_found ? 1436 : 1560, face: S, talk: 'lotte.fell', pose: 'idle', ...(flags.keepers_promised ? { look: [4296, 1436] } : null) },   // (STORY: once the promise is made the two look at each other across the bell) { id: 'edmund', model: 'edmund', x: 1800, z: 262, face: S, talk: 'edmund.tavern', pose: 'idle', when: 'past_street_clear' in flags ? 'past_street_clear' : 'street_clear' },   // street_clear has two meanings (tonight: Marta; 1697: Edmund). A caller that knows the new flag (passes the key, true or false) gets it; the old name keeps working
+    actors.push({ id: 'lotte', model: 'lotte', x: flags.elise_found ? 4104 : 3950, z: flags.elise_found ? 1436 : 1560, face: S, talk: 'lotte.fell', pose: 'idle', ...(flags.keepers_promised ? { look: [4296, 1436] } : null) }, { id: 'edmund', model: 'edmund', x: 1800, z: 262, face: S, talk: 'edmund.tavern', pose: 'idle', when: 'past_street_clear' in flags ? 'past_street_clear' : 'street_clear' },   // street_clear has two meanings (tonight: Marta; 1697: Edmund). A caller that knows the new flag (passes the key, true or false) gets it; the old name keeps working
       { id: 'elise', model: 'elise', x: flags.keepers_promised ? 4296 : 3996, z: flags.keepers_promised ? 1436 : 1380, face: S, talk: 'elise.past', pose: 'idle', when: 'elise_found', ...(flags.keepers_promised ? { look: [4104, 1436] } : null) },   // STORY: beside the hero where the two arrive (spawn `keepers`), then - walked there by ev_keepers - right of the bell   // near the big bell after the rescue (DATA_FORMAT 12)
       { id: 'hadwin1', model: 'hadwin1', x: 2640, z: 262, face: S, talk: 'hadwin1.smithy', pose: 'work' }, { id: 'stallkeeper', model: 'villager_f', x: 3500, z: 772, face: S, talk: 'villager.stall', pose: 'cower', tint: [1.05, 0.95, 0.85] }, { id: 'farmer', model: 'villager_m', x: 4300, z: 772, face: S, talk: 'villager.plague', pose: 'idle', tint: [1.05, 0.95, 0.85] });
     interact.push({ id: 'inn_door', kind: 'door', x: 1800, z: 284, r: 54, label: '작은 주막', event: 'door.tavern', locked: 'not_built' }, { id: 'smithy_door', kind: 'shop', x: 2580, z: 284, r: 54, label: '대장간', event: 'shop.smithy1', locked: 'not_built' });
@@ -178,7 +178,7 @@ export function eshville(era, flags = {}) {
     id: 'eshville_' + era, name: '에슈빌', era, twin: 'eshville_' + (now ? 'past' : 'now'),
     room: 'street', rooms: { outskirts: 'field', street: 'street', square: 'courtyard', church: 'courtyard', graveroad: 'alley' }, music: now ? 'village_burning' : 'village_past',
     stage: {
-      id: 'eshville_' + era, name: '에슈빌', wear: era,   // DETAIL: relief and wear of the walls in this night (ENV_KIT 24)
+      id: 'eshville_' + era, name: '에슈빌', wear: era, skirtFoot: LOW_GROUND,   // DETAIL: relief and wear of the walls in this night; the meadow below the front wall (ENV_KIT 24)
       sky: { img: 'bg/s01_village', crop: 0.66, span: 84 * D, bottom: -7 * D, top: now ? [0.1, 0.035, 0.045] : [0.03, 0.045, 0.08] },
       fog: out ? { color: [0.085, 0.09, 0.12], near: 800, far: 3400, max: 0.93 } : now ? { color: [0.15, 0.075, 0.075], near: 760, far: 3300, max: 0.94 } : { color: [0.06, 0.085, 0.135], near: 800, far: 3400, max: 0.93 },
       light: out ? { ambient: [0.3, 0.3, 0.4], moon: [0.56, 0.46, 0.52], moonDir: [-0.447, 0.745, -0.496], key: [0.22, 0.22, 0.3, 1.5], rimK: 1.6 } : now ? { ambient: [0.37, 0.28, 0.33], moon: [0.7, 0.38, 0.34], moonDir: [-0.447, 0.745, -0.496], key: [0.24, 0.2, 0.22, 1.5], rimK: 1.6 } : { ambient: [0.27, 0.31, 0.45], moon: [0.42, 0.48, 0.68], moonDir: [-0.447, 0.745, -0.496], key: [0.24, 0.28, 0.42, 1.5], rimK: 1.6 },   // key / rimK: WORLD-LOOK - a moon key and a cold light edge on the characters' dark side (charr.js)

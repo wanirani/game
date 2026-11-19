@@ -91,7 +91,7 @@ const KINDS = new Set(['key', 'tool', 'keepsake', 'food', 'letter']);
 const BANNERS = new Set(['area', 'section', 'night', 'clear', 'dead']);
 const ACTIONS = new Set(['attack', 'jump', 'dash', 'guard', 'skill1', 'ult', 'lock', 'confirm']);
 const ENGINE_EVENTS = new Set(['area.enter', 'section.enter', 'enemy.kill', 'area.clear', 'hero.dead', 'hero.respawn', 'trigger', 'exit', 'exit.locked', 'exit.missing',
-  'interact', 'talk', 'group.clear', 'bell.echo', 'boss.phase']);
+  'interact', 'talk', 'group.clear', 'bell.echo', 'boss.phase', 'bell.held']);
 const STEP_ARITY = { say: [1, 1], banner: [2, 3], toast: [1, 2], prompt: [1, 1], give: [1, 2], take: [1, 2], setFlag: [1, 2], clearFlag: [1, 1], unlockExit: [1, 2], lockExit: [1, 3],
   wakeGroup: [1, 1], spawn: [2, 3], moveActor: [2, 3], hideActor: [1, 2], showActor: [1, 2], camera: [1, 2], wait: [1, 1], sound: [1, 2], music: [1, 1], fx: [1, 2], objective: [1, 1],
   chronicle: [1, 1], candle: [1, 1], moon: [1, 1], ring: [1, 1], save: [0, 0], gotoArea: [1, 2], bellCross: [0, 1], lockInput: [1, 1], if: [2, 3], run: [1, 1], end: [1, 1] };

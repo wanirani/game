@@ -10,7 +10,7 @@
 // (the test strip slice0 and the env-kit test scene).
 import { Frame, hash, sm } from './geo.js';
 
-export const WEAR = { age: null };
+export const WEAR = { age: null, foot: 0 };   // foot (stage.skirtFoot): how far under the front edge the ground outside lies - the skirt's piers and battered foot stand there (0 = at the bottom of the floor slab)
 
 const ONE = [1, 1, 1];
 const slopeN = (F, k) => [F.nx * k, Math.sqrt(1 - k * k), F.nz * k];
@@ -102,20 +102,20 @@ export function wallRelief(G, F, len, y0, y1, o) {
  * piers with sloped heads, weep holes with a streak below them and a battered foot. 'plain' = kerb and courses only (the wall of a pit).
  */
 export function skirt(G, x0, x1, y, t, z0, seed = 1, plain = false) {
-  const F = new Frame(x0, z0, 0, -1), len = x1 - x0, yb = y - t, sh = (px, py) => 0.4 + 0.52 * sm(0, t, py - yb), so = { shade: sh, vary: 0.2 };
-  G.quad('stone', [x0, yb, z0], [len, 0, 0], [0, t, 0], [0, 0, -1], { cell: 64, ...so });
+  const F = new Frame(x0, z0, 0, -1), len = x1 - x0, vis = WEAR.foot && WEAR.foot < t ? WEAR.foot : t, yb = y - vis, sh = (px, py) => 0.56 + 0.38 * sm(0, vis, py - yb), so = { shade: sh, vary: 0.2 };
+  G.quad('stone', [x0, y - t, z0], [len, 0, 0], [0, t, 0], [0, 0, -1], { cell: 64, ...so });
   G.box('trimstone', x0, y - 10, z0 - 4.5, x1, y - 0.4, z0, { faces: 'FT', cell: 200, vary: 0.12 });                  // kerb stones: the edge of the street
-  const yc = y - t * 0.42;
+  const yc = y - vis * 0.42;
   G.box('trimstone', x0, yc - 4, z0 - 3, x1, yc + 4, z0, { faces: 'FT', cell: 280, vary: 0.08, k: 0.78 });
   if (plain) return;
-  for (let a = 0; a < len; a += 240) { const b = Math.min(len, a + 240); G.quad4('stone', F.pt(a, yb, 20), F.pt(b, yb, 20), F.pt(b, yb + 48, 0), F.pt(a, yb + 48, 0), [0, 0.38, -0.925], { vary: 0.18, k: 0.62 }); }   // the battered foot
+  for (let a = 0; a < len; a += 240) { const b = Math.min(len, a + 240); G.quad4('stone', F.pt(a, yb, 16), F.pt(b, yb, 16), F.pt(b, yb + 38, 0), F.pt(a, yb + 38, 0), [0, 0.38, -0.925], { vary: 0.18, k: 0.8 }); }   // the battered foot
   const n = Math.max(1, Math.round(len / 340));
   for (let i = 0; i < n; i++) {
     const u = len * (i + 0.5 + (hash(seed + i, 1.1) - 0.5) * 0.3) / n;
     F.box(G, 'stone', u - 17, u + 17, yb, y - 34, 0, 13, { faces: 'FLR', ...so });                              // a pier
     G.quad4('trimstone', F.pt(u - 17, y - 34, 13), F.pt(u + 17, y - 34, 13), F.pt(u + 17, y - 16, 0), F.pt(u - 17, y - 16, 0), [0, 0.6, -0.8], { vary: 0, k: 0.9 });
-    const wu = len * (i + 1) / n - 40 - 60 * hash(i, seed + 3), wy = y - 52 - 30 * hash(seed, i + 5);                     // a weep hole between two piers and what runs out of it
-    if (wu > 20 && wu < len - 20) { F.face(G, 'stone', wu - 4, wu + 4, wy - 5.5, wy + 5.5, 0.5, { k: 0.14, vary: 0 }); streak(G, F, 'stone', 0.4, wu, wy - 5, 70 + 50 * hash(i, 9), 9, 0.5, seed + i, so); }
+    const wu = len * (i + 1) / n - 40 - 60 * hash(i, seed + 3), wy = y - 40 - 22 * hash(seed, i + 5);                     // a weep hole between two piers and what runs out of it
+    if (wu > 20 && wu < len - 20) { F.face(G, 'stone', wu - 4, wu + 4, wy - 5.5, wy + 5.5, 0.5, { k: 0.14, vary: 0 }); streak(G, F, 'stone', 0.4, wu, wy - 5, Math.min(vis - 60, 50 + 40 * hash(i, 9)), 9, 0.5, seed + i, so); }
   }
-  damp(G, F, 'stone', 0.4, 0, len, yb + 40, 60, [0.6, 0.74, 0.6], seed + 11, so);
+  damp(G, F, 'stone', 0.4, 0, len, yb + 30, Math.min(60, vis * 0.4), [0.6, 0.74, 0.6], seed + 11, so);
 }
