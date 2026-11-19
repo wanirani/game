@@ -13,6 +13,7 @@
 // NOT honest play: the hero is put at a spot and the bell's interact event is raised (as chapter_cuts.mjs does). Honest: touches are pointer events on the pad's own
 // button, the pause panel's rows, the dialogue box and the stick zone; time is game ticks; every load is the game's own load of a stored save.
 import fs from 'node:fs';
+import { contextOptions } from '../qa/lib/viewports.mjs';
 export default function (T) {
   const { C, boot, until, idle, P, ev, still, after, put, page, OUT, dev } = T;
   const ok = (c, t) => { put(`${c ? 'ok  ' : 'FAIL'} [sv] ${t}`); return c; };
@@ -21,7 +22,7 @@ export default function (T) {
   const install = () => ev(() => {
     const g = window.__game, v = window.__v2;
     const fire = (type, x, y, id) => window.dispatchEvent(new PointerEvent(type, { pointerId: id ?? 41, pointerType: 'touch', isPrimary: false, clientX: x, clientY: y, bubbles: true, cancelable: true, button: 0, buttons: type === 'pointerup' ? 0 : 1, width: 12, height: 12, pressure: type === 'pointerup' ? 0 : 0.5 }));
-    const shotName = () => { const s = v.scene.host?.shot, SH = window.__cc.SH; if (!s) return null; for (const k in SH ?? {}) if (SH[k] === s) return k; return '?'; };
+    const shotName = () => { const s = v.scene.host?.shot, SH = window.__cc?.SH; if (!s) return null; for (const k in SH ?? {}) if (SH[k] === s) return k; return '?'; };
     const render = () => { try { g.alpha = 1; g.render(); } catch { /* between areas */ } };
     const css = (r) => { const rc = g.canvasRect; return { x: rc.x + (r.x + r.w / 2) * g.cssScale, y: rc.y + (r.y + r.h / 2) * g.cssScale }; };
     const S = (window.__sv = {
