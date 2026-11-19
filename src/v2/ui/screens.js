@@ -16,7 +16,8 @@ const TXT = '#eef0fa', DIM = 'rgba(196,206,235,0.74)', GOLD = '#fff2d2';
 export function createScreens(env) {
   const L = env.hud.layout, px = env.hud.px, tsz = env.hud.tsz;
   const S = { kind: null, o: null, t: 0, outT: 0, outKind: null, epoch: -1, rev: -1, vw: 0, vh: 0, scroll: 0, max: 0, v: 0, sel: -1, armT: 0, say: '', sayT: 0, shakeI: -1, shakeT: 0, coinN: -1, keyT: 0, still: 0 };
-  const G = { x0: 0, y0: 0, x1: 0, y1: 0, B: 56, hh: 0, lx: 0, ly: 0, lw: 0, lh: 0, colW: 0, sp: 0, cx: 0, cy: 0, cw: 0, sideW: 0, rs: 2, maxH: 0, body: null, fadeT: null, fadeB: null, spine: null };
+  // the frame's measures are whole logical px (rounded at layout): a whole number handed to a canvas call is not boxed, a fraction is - a still frame then makes nothing (UI_API 7)
+  const G = { x0: 0, y0: 0, x1: 0, y1: 0, B: 56, hh: 0, lx: 0, ly: 0, lw: 0, lh: 0, colW: 0, sp: 0, cx: 0, cy: 0, cw: 0, sideW: 0, rs: 2, maxH: 0, cut: 16, in4: 4, in6: 6, in10: 10, cm: 6, cellW: 0 };
   const D = { on: false, id: -1, y0: 0, s0: 0, ly: 0, acc: 0, moved: false, x: 0, y: 0 };
   const head = { c: null, w: 0, h: 0 }, closeP = { c: null, w: 0, h: 0 }, coinP = { c: null, w: 0, h: 0 }, sideP = { c: null, w: 0, h: 0 };
   let rows = [], N = 0, total = 0, shopD = null, portrait = null;
@@ -44,34 +45,36 @@ export function createScreens(env) {
   };
 
   // ───────────────────────── layout ─────────────────────────
-  function sizes() { return { tT: tsz(15.5, L.tmin + 3), tB: tsz(13.5, L.tmin + 2.2), cp: px(10), cm: px(6) }; }
+  function sizes() { return { tT: tsz(15.5, L.tmin + 3), tB: tsz(13.5, L.tmin + 2.2), cp: px(10), cm: G.cm }; }
   function layout(s) {
     const sf = s.safe ?? ZERO, vw = s.viewW, vh = s.viewH, m = px(12), M = model();
     S.epoch = L.epoch; S.rev = M ? M.rev : 0; S.vw = vw; S.vh = vh;
-    G.B = Math.max(56 / L.css, px(44));
-    G.x0 = sf.l + m; G.x1 = vw - sf.r - m; G.y0 = sf.t + px(8); G.y1 = vh - sf.b - px(8);
-    const wMax = px(1180); if (G.x1 - G.x0 > wMax) { const c = (G.x0 + G.x1) / 2; G.x0 = c - wMax / 2; G.x1 = c + wMax / 2; }
-    G.hh = Math.max(G.B, px(54)); G.rs = Math.min(L.s, 2);
-    G.cw = G.B; G.cx = G.x1 - G.B - px(4); G.cy = G.y0 + (G.hh - G.B) / 2 + px(2);
-    const two = S.kind !== 'shop', Z = sizes(), ph = two ? Z.tT * 2.1 : 0;
-    G.sp = two ? px(30) : 0; G.sideW = two ? 0 : clamp((G.x1 - G.x0) * 0.34, px(190), px(330));
-    G.lx = G.x0 + px(10) + G.sideW; G.lw = G.x1 - px(10) - G.lx; G.ly = G.y0 + G.hh + ph + px(8); G.lh = G.y1 - px(10) - G.ly;
-    G.colW = two ? (G.lw - G.sp) / 2 : G.lw;
+    const rd = Math.round;
+    G.B = Math.ceil(Math.max(56 / L.css, px(44)));
+    G.x0 = Math.ceil(sf.l + m); G.x1 = Math.floor(vw - sf.r - m); G.y0 = Math.ceil(sf.t + px(8)); G.y1 = Math.floor(vh - sf.b - px(8));
+    const wMax = rd(px(1180)); if (G.x1 - G.x0 > wMax) { const c = rd((G.x0 + G.x1) / 2); G.x0 = c - (wMax >> 1); G.x1 = G.x0 + wMax; }
+    G.hh = Math.max(G.B, rd(px(54))); G.rs = Math.min(L.s, 2);
+    G.cut = rd(px(16)); G.in4 = rd(px(4)); G.in6 = rd(px(6)); G.in10 = rd(px(10)); G.cm = rd(px(6));
+    G.cw = G.B; G.cx = G.x1 - G.B - G.in4; G.cy = G.y0 + ((G.hh - G.B) >> 1) + rd(px(2));
+    const two = S.kind !== 'shop', Z = sizes(), ph = two ? Math.ceil(Z.tT * 2.1) : 0;
+    G.sp = two ? rd(px(15)) * 2 : 0; G.sideW = two ? 0 : rd(clamp((G.x1 - G.x0) * 0.34, px(190), px(330)));
+    G.lx = G.x0 + G.in10 + G.sideW; G.lw = G.x1 - G.in10 - G.lx; if (two && (G.lw - G.sp) % 2) G.lw--; G.ly = G.y0 + G.hh + ph + rd(px(8)); G.lh = G.y1 - G.in10 - G.ly;
+    G.colW = two ? (G.lw - G.sp) / 2 : G.lw; G.cellW = G.colW - G.cm * 2;
     // the rows of this kind
     if (S.kind === 'chronicle') { rows = M ? M.book() : []; if (!rows.length) rows = EMPTY; }   // (nothing written yet: one line says so)
     else if (S.kind === 'bag') { const b = M ? M.bag() : { story: [], use: [] }; rows = []; const n = Math.max(b.story.length, b.use.length, 1); for (let i = 0; i < n; i++) rows.push({ L: b.story[i] ?? null, R: b.use[i] ?? null, empty: !b.story.length && !b.use.length }); }
     else { shopD = M ? M.shop(S.o?.shop ?? 'rook') : null; rows = shopD ? shopD.goods : []; }
     N = rows.length; grow(N); LAY.length = 0;
-    let y = px(4), maxH = 0;
+    let y = G.in4, maxH = 0;
     for (let i = 0; i < N; i++) {
       const lay = S.kind === 'chronicle' ? layBook(rows[i], Z) : S.kind === 'bag' ? layBag(rows[i], Z) : layShop(rows[i], Z);
-      LAY.push(lay); rowY[i] = y; rowH[i] = lay.h; y += lay.h; if (lay.h > maxH) maxH = lay.h;
+      lay.h = Math.ceil(lay.h); LAY.push(lay); rowY[i] = y; rowH[i] = lay.h; y += lay.h; if (lay.h > maxH) maxH = lay.h;   // (whole px: see G)
     }
-    total = y + px(6); G.maxH = maxH; S.max = Math.max(0, total - G.lh); S.scroll = clamp(S.scroll, 0, S.max);
+    total = y + G.in6; G.maxH = maxH; S.max = Math.max(0, total - G.lh); S.scroll = clamp(S.scroll, 0, S.max);
     for (const sl of slots) sl.i = -1; slotOf.fill(-1);
     bakeHead(s, Z, ph); bakeClose(); S.coinN = -1; if (S.kind === 'shop') bakeSide(Z);
   }
-  const cellW = () => G.colW - px(6) * 2;
+  const cellW = () => G.cellW;
   function layBook(r, Z) {
     if (r.kind === 'empty') return { h: px(90), Ll: null, Rl: null, hint: null };
     const w = cellW() - Z.cp * 2 - (r.kind === 'line' || r.kind === 'sealed' ? px(8) : 0), lh = Z.tB * 1.5;
@@ -100,7 +103,7 @@ export function createScreens(env) {
 
   // ───────────────────────── baked pieces ─────────────────────────
   function bakeHead(s, Z, ph) {
-    const w = G.x1 - G.x0, h = G.hh + ph + px(6), c = canvasFor(head, w, h, L.s), T = TX(), K = S.kind;
+    const w = G.x1 - G.x0, h = G.hh + ph + G.in6, c = canvasFor(head, w, h, L.s), T = TX(), K = S.kind;
     const title = K === 'chronicle' ? T.chronicle?.title ?? '연대기' : K === 'bag' ? T.bag?.title ?? '가방' : shopD?.title ?? '';
     const ts = tsz(23, L.tmin + 7), ic = G.hh * 0.72, tx = px(16) + ic + px(8);
     const ib = bakeIcon(K === 'chronicle' ? 'book' : K === 'bag' ? 'bag' : 'coin', ic, L.s); c.drawImage(ib.c, px(14) + ic / 2 - ib.w / 2, G.hh / 2 - ib.w / 2 + px(2), ib.w, ib.w);
@@ -128,7 +131,7 @@ export function createScreens(env) {
   }
   function bakeCoin(n) {
     const T = TX(), ts = tsz(16, L.tmin + 3.5), str = String(n), lab = S.kind === 'shop' ? T.shop?.silver ?? '' : T.bag?.silver ?? '', ls = tsz(12, L.tmin + 1.5);
-    const ih = px(26), tw = measure(str, ts, 800), lw = lab ? measure(lab, ls, 600) + px(8) : 0, w = lw + ih + px(8) + tw + px(22), h = Math.max(px(34), ts * 1.9);
+    const ih = px(26), tw = measure(str, ts, 800), lw = lab ? measure(lab, ls, 600) + px(8) : 0, w = Math.ceil(lw + ih + px(8) + tw + px(22)), h = Math.ceil(Math.max(px(34), ts * 1.9));
     const c = canvasFor(coinP, w + 6, h + 6, L.s);
     glassPanel(c, 3, 3, w, h, { cut: px(7), dense: 0.75, accent: 'gold', shadow: false });
     let x = 3 + px(10); if (lab) { text(c, lab, x, 3 + h / 2 + 1, ls, DIM, 600); x += lw; }
@@ -137,7 +140,7 @@ export function createScreens(env) {
   }
   /** the keeper beside his goods: the bust (when its image has arrived) and what he says */
   function bakeSide(Z) {
-    const w = G.sideW - px(6), h = G.y1 - px(10) - (G.y0 + G.hh + px(8)), c = canvasFor(sideP, w, h, L.s), d = shopD; if (!d) return;
+    const w = G.sideW - G.in6, h = G.y1 - G.in10 - (G.y0 + G.hh + G.in6), c = canvasFor(sideP, w, h, L.s), d = shopD; if (!d) return;
     glassPanel(c, 2, 2, w - 4, h - 4, { cut: px(10), dense: 0.5, shadow: false });
     const line = S.say || d.line, lines = wrapLines(line, w - px(28), Z.tB, 500), lh = Z.tB * 1.5, th = Z.tT * 1.6 + lines.length * lh + px(18);
     const fh = Math.max(px(60), h - th - px(22)), fw = Math.min(w - px(24), fh * 0.82), fx = (w - fw) / 2, fy = px(10);
@@ -165,7 +168,7 @@ export function createScreens(env) {
   function linesAt(c, lines, x, y, Z, col) { const lh = Z.tB * 1.5; if (lines) for (let i = 0; i < lines.length; i++) text(c, lines[i], x, y + lh * (i + 0.5), Z.tB, col, 500); }
   function bakeRow(i, sl) {
     const Z = sizes(), w = G.lw, h = rowH[i], c = canvasFor(sl, w, G.maxH, G.rs), r = rows[i], lay = LAY[i];
-    const cw = cellW(), xL = px(6), xR = G.colW + G.sp + px(6), y = Z.cm / 2, ch = h - Z.cm, T = TX();
+    const cw = cellW(), xL = G.cm, xR = G.colW + G.sp + G.cm, y = G.cm / 2, ch = h - G.cm, T = TX();
     if (S.kind === 'chronicle' && r.kind === 'empty') text(c, T.chronicle?.empty ?? '', w / 2, y + ch / 2, Z.tB, DIM, 600, FONTS.body, 'center');
     else if (S.kind === 'chronicle') {
       const ty = y + Z.cp + Z.tT * 0.6, by = y + Z.cp + Z.tT * 1.4, line = r.kind === 'line' || r.kind === 'sealed';
@@ -205,7 +208,7 @@ export function createScreens(env) {
         linesAt(c, k ? lay.Rl : lay.Ll, tx, y + Z.cp + Z.tT * 1.4, Z, DIM);
       }
     } else {   // a good of the shop
-      const sel = i === S.sel, st = r.state, ok = st === 'ok', ib = lay.ib, x = px(6), cwS = G.colW - px(12);
+      const sel = i === S.sel, st = r.state, ok = st === 'ok', ib = lay.ib, x = G.cm, cwS = G.colW - G.cm * 2;
       glassPanel(c, x, y, cwS, ch, { cut: px(9), dense: sel ? 0.7 : 0.42, accent: sel ? 'gold' : null, shadow: false });
       if (sel) { chamfer(c, x, y, cwS, ch, px(9)); c.lineWidth = 2; c.strokeStyle = COL.gold; c.stroke(); }
       c.globalAlpha = ok ? 1 : 0.55; thing(c, r.icon, x + Z.cp + ib / 2, y + ch / 2, ib, 'gold'); c.globalAlpha = 1;
@@ -298,7 +301,7 @@ export function createScreens(env) {
       if (D.on) { if (dt > 0) S.v = S.v * 0.5 - (D.acc / dt) * 0.5; D.acc = 0; }
       else {
         if (S.scroll < 0 || S.scroll > S.max) { const to = S.scroll < 0 ? 0 : S.max; S.scroll += (to - S.scroll) * Math.min(1, dt * 14); S.v = 0; if (Math.abs(to - S.scroll) < 0.4) S.scroll = to; }
-        else if (S.v !== 0) { S.scroll += S.v * dt; S.v *= Math.exp(-dt * 4.2); if (Math.abs(S.v) < 6) S.v = 0; if (S.scroll < -px(40)) { S.scroll = -px(40); S.v = 0; } else if (S.scroll > S.max + px(40)) { S.scroll = S.max + px(40); S.v = 0; } }
+        else if (S.v !== 0) { S.scroll += S.v * dt; S.v *= Math.exp(-dt * 4.2); if (Math.abs(S.v) < 6) { S.v = 0; S.scroll = Math.round(S.scroll); } if (S.scroll < -px(40)) { S.scroll = -px(40); S.v = 0; } else if (S.scroll > S.max + px(40)) { S.scroll = S.max + px(40); S.v = 0; } }   // (it comes to rest on a whole px: see G)
       }
       // new rows stop glowing once they have been on screen
       const top = S.scroll, bot = S.scroll + G.lh;
@@ -322,53 +325,54 @@ export function createScreens(env) {
       const K = S.kind ?? (S.outT > 0 ? S.outKind : null); if (!K) return;
       if (S.kind && (S.epoch !== L.epoch || S.vw !== s.viewW || S.vh !== s.viewH)) layout(s);
       if (!head.c) return;
-      const a = S.kind ? clamp(S.t / OPEN_T, 0, 1) : S.outT / OUT_T, rise = S.kind ? (1 - a) * px(10) : 0, vw = s.viewW, vh = s.viewH;
-      ctx.globalAlpha = 0.8 * a; ctx.fillStyle = '#04050c'; ctx.fillRect(0, 0, vw, vh);
+      const a = S.kind ? clamp(S.t / OPEN_T, 0, 1) : S.outT / OUT_T, rise = S.kind && a < 1 ? Math.round((1 - a) * G.in10) : 0, vw = s.viewW, vh = s.viewH;
+      if (a >= 1) ctx.globalAlpha = 0.8; else ctx.globalAlpha = 0.8 * a;
+      ctx.fillStyle = '#04050c'; ctx.fillRect(0, 0, vw, vh);
       ctx.globalAlpha = a;
       const x0 = G.x0, y0 = G.y0 + rise, w = G.x1 - G.x0, h = G.y1 - G.y0;
       // the frame: dark glass, a pale rim, a dark hairline
-      chamfer(ctx, x0, y0, w, h, px(16)); ctx.fillStyle = 'rgba(9,11,26,0.93)'; ctx.fill(); ctx.lineWidth = 1.4; ctx.strokeStyle = 'rgba(214,224,250,0.7)'; ctx.stroke();
-      chamfer(ctx, x0 + 3, y0 + 3, w - 6, h - 6, px(14)); ctx.lineWidth = 0.8; ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.stroke();
+      chamfer(ctx, x0, y0, w, h, G.cut); ctx.fillStyle = 'rgba(9,11,26,0.93)'; ctx.fill(); ctx.lineWidth = 1.4; ctx.strokeStyle = 'rgba(214,224,250,0.7)'; ctx.stroke();
+      chamfer(ctx, x0 + 3, y0 + 3, w - 6, h - 6, G.cut - 2); ctx.lineWidth = 0.8; ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.stroke();
       const two = K !== 'shop', ly = G.ly + rise;
       if (two) {   // the two pages and the fold between them
-        const book = K === 'chronicle', py = G.y0 + G.hh + px(4) + rise, ph = G.y1 - px(6) - (G.y0 + G.hh + px(4));
+        const book = K === 'chronicle', py = G.y0 + G.hh + G.in4 + rise, ph = G.y1 - G.in6 - (G.y0 + G.hh + G.in4);
         ctx.fillStyle = book ? PAST.page : NOW.page; ctx.fillRect(G.lx, py, G.colW, ph);
         ctx.fillStyle = NOW.page; ctx.fillRect(G.lx + G.colW + G.sp, py, G.colW, ph);
         const fx = G.lx + G.colW; ctx.fillStyle = 'rgba(2,3,10,0.55)'; ctx.fillRect(fx, py, G.sp, ph);
         ctx.fillStyle = 'rgba(214,224,250,0.22)'; ctx.fillRect(fx, py, 1, ph); ctx.fillRect(fx + G.sp - 1, py, 1, ph);
-        ctx.fillStyle = 'rgba(241,212,138,0.35)'; ctx.fillRect(fx + G.sp / 2 - 0.5, py, 1, ph);
+        ctx.fillStyle = 'rgba(241,212,138,0.35)'; ctx.fillRect(fx + (G.sp >> 1), py, 1, ph);
       }
       ctx.drawImage(head.c, x0, y0, head.w, head.h);
-      if (!two && sideP.c) { if (S.kind && !sideP.im && portrait && portrait.complete && portrait.naturalWidth) bakeSide(sizes()); ctx.drawImage(sideP.c, G.x0 + px(10), G.y0 + G.hh + px(8) + rise, sideP.w, sideP.h); }
+      if (!two && sideP.c) { if (S.kind && !sideP.im && portrait && portrait.complete && portrait.naturalWidth) bakeSide(sizes()); ctx.drawImage(sideP.c, G.x0 + G.in10, G.y0 + G.hh + G.in6 + rise, sideP.w, sideP.h); }
       // the rows in the window
       ctx.save(); ctx.beginPath(); ctx.rect(G.lx - 2, ly, G.lw + 4, G.lh); ctx.clip();
       const top = S.scroll, bot = S.scroll + G.lh, rs = G.rs;
       for (let i = 0; i < N; i++) {
         const ry = rowY[i], rh = rowH[i]; if (ry + rh < top || ry > bot) continue;
         let k = slotOf[i]; const sl = k >= 0 ? slots[k] : S.kind ? slotFor(i, top, bot) : null; if (!sl || !sl.c) continue;
-        const dx = i === S.shakeI && S.shakeT > 0 ? Math.sin(S.shakeT * 60) * px(4) * (S.shakeT / 0.3) : 0;
-        ctx.drawImage(sl.c, 0, 0, sl.c.width, Math.ceil(rh * rs), G.lx + dx, ly + ry - top, G.lw, Math.ceil(rh * rs) / rs);
+        const dx = i === S.shakeI && S.shakeT > 0 ? Math.round(Math.sin(S.shakeT * 60) * G.in4 * (S.shakeT / 0.3)) : 0, sh = Math.ceil(rh * rs);
+        ctx.drawImage(sl.c, 0, 0, sl.c.width, sh, G.lx + dx, ly + ry - top, G.lw, sh / rs);
         const gl = glow[i];
         if (gl > 0.01) {   // a new entry glows until it has been on screen
-          const pulse = rows[i].isNew ? 0.55 + 0.45 * Math.sin(S.t * 5) : 1, cm = px(6), gy = ly + ry - top + cm / 2, gh = rh - cm, cw = cellW(), r = rows[i];
+          const pulse = rows[i].isNew ? 0.55 + 0.45 * Math.sin(S.t * 5) : 1, cm = G.cm, gy = ly + ry - top + cm / 2, gh = rh - cm, cw = cellW(), r = rows[i];
           ctx.strokeStyle = COL.gold;
           for (let q = 0; q < 2; q++) {
-            if (!(q ? r.R : r.L)) continue; const gx = G.lx + (q ? G.colW + G.sp : 0) + px(6);
-            ctx.globalAlpha = a * gl * pulse * 0.28; ctx.lineWidth = px(6); chamfer(ctx, gx, gy, cw, gh, px(8)); ctx.stroke();
-            ctx.globalAlpha = a * gl * pulse; ctx.lineWidth = px(1.8); chamfer(ctx, gx, gy, cw, gh, px(8)); ctx.stroke();
+            if (!(q ? r.R : r.L)) continue; const gx = G.lx + (q ? G.colW + G.sp : 0) + cm;
+            ctx.globalAlpha = a * gl * pulse * 0.28; ctx.lineWidth = G.in6; chamfer(ctx, gx, gy, cw, gh, G.in6 + 2); ctx.stroke();
+            ctx.globalAlpha = a * gl * pulse; ctx.lineWidth = 2; chamfer(ctx, gx, gy, cw, gh, G.in6 + 2); ctx.stroke();
           }
           ctx.globalAlpha = a;
         }
       }
       ctx.restore();
       if (S.max > 0) {   // where the window is in the list: a small gold mark on the fold (or at the right edge)
-        const mx = two ? G.lx + G.colW + G.sp / 2 : G.x1 - px(7), k = clamp(S.scroll / S.max, 0, 1), th = Math.max(px(26), G.lh * G.lh / total), my = ly + px(4) + (G.lh - px(8) - th) * k;
-        ctx.fillStyle = COL.gold; ctx.globalAlpha = a * 0.85; ctx.fillRect(mx - px(1.5), my, px(3), th); ctx.globalAlpha = a;
+        const mx = two ? G.lx + G.colW + (G.sp >> 1) : G.x1 - G.in6, k = clamp(S.scroll / S.max, 0, 1), th = Math.max(26, Math.round(G.lh * G.lh / total)), my = ly + G.in4 + Math.round((G.lh - G.in4 * 2 - th) * k);
+        ctx.fillStyle = COL.gold; if (a >= 1) ctx.globalAlpha = 0.85; else ctx.globalAlpha = a * 0.85; ctx.fillRect(mx - 1, my, 3, th); ctx.globalAlpha = a;
       }
       // the silver: it stands on the bag and in the shop
       if (K !== 'chronicle') {
         const n = model() ? model().coins() : 0; if (S.kind && n !== S.coinN) bakeCoin(n);
-        if (coinP.c) ctx.drawImage(coinP.c, G.cx - px(10) - coinP.w, y0 + (G.hh - coinP.h) / 2 + px(2), coinP.w, coinP.h);
+        if (coinP.c) ctx.drawImage(coinP.c, G.cx - G.in10 - coinP.w, y0 + ((G.hh - coinP.h) >> 1) + 2, coinP.w, coinP.h);
       }
       if (closeP.c) ctx.drawImage(closeP.c, G.cx, G.cy + rise, closeP.w, closeP.h);
       ctx.globalAlpha = 1;
@@ -383,8 +387,8 @@ export function createScreens(env) {
     info() {
       if (!S.kind) return null;
       const vis = []; for (let i = 0; i < N; i++) { const y = G.ly + rowY[i] - S.scroll; vis.push({ i, id: rows[i].id ?? null, kind: rows[i].kind ?? null, state: rows[i].state ?? null, isNew: !!rows[i].isNew, x: G.lx, y, w: G.lw, h: rowH[i], on: y + rowH[i] > G.ly && y < G.ly + G.lh, baked: slotOf[i] >= 0 }); }
-      return { kind: S.kind, t: S.t, frame: { x: G.x0, y: G.y0, w: G.x1 - G.x0, h: G.y1 - G.y0 }, close: { x: G.cx, y: G.cy, w: G.cw, h: G.cw }, list: { x: G.lx, y: G.ly, w: G.lw, h: G.lh }, colW: G.colW, fold: G.sp, scroll: S.scroll, max: S.max, v: S.v, sel: S.sel, say: S.say, keeper: S.kind === 'shop' && shopD ? shopD.keeper : null, line: S.kind === 'shop' && shopD ? shopD.line : null, side: S.kind === 'shop' && sideP.c ? { x: G.x0 + px(10), y: G.y0 + G.hh + px(8), w: sideP.w, h: sideP.h, bust: !!sideP.im } : null, rows: vis, n: N, last: S.last ?? null,
-        coins: coinP.c && S.kind !== 'chronicle' ? { x: G.cx - px(10) - coinP.w, y: G.y0 + (G.hh - coinP.h) / 2 + px(2), w: coinP.w, h: coinP.h, n: S.coinN } : null, baked: slots.filter((q) => q.i >= 0).length, B: G.B };
+      return { kind: S.kind, t: S.t, frame: { x: G.x0, y: G.y0, w: G.x1 - G.x0, h: G.y1 - G.y0 }, close: { x: G.cx, y: G.cy, w: G.cw, h: G.cw }, list: { x: G.lx, y: G.ly, w: G.lw, h: G.lh }, colW: G.colW, fold: G.sp, scroll: S.scroll, max: S.max, v: S.v, sel: S.sel, say: S.say, keeper: S.kind === 'shop' && shopD ? shopD.keeper : null, line: S.kind === 'shop' && shopD ? shopD.line : null, side: S.kind === 'shop' && sideP.c ? { x: G.x0 + G.in10, y: G.y0 + G.hh + G.in6, w: sideP.w, h: sideP.h, bust: !!sideP.im } : null, rows: vis, n: N, last: S.last ?? null,
+        coins: coinP.c && S.kind !== 'chronicle' ? { x: G.cx - G.in10 - coinP.w, y: G.y0 + ((G.hh - coinP.h) >> 1) + 2, w: coinP.w, h: coinP.h, n: S.coinN } : null, baked: slots.filter((q) => q.i >= 0).length, B: G.B };
     },
     release() { for (const p of [head, closeP, coinP, sideP, ...slots]) if (p.c) { p.c.width = 1; p.c.height = 1; p.c = null; } rows = []; N = 0; S.kind = null; },
   };

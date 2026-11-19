@@ -401,6 +401,42 @@ try {
     ok(`roll untouchable ${TUNE.rollIfr} s (roll ${TUNE.rollT} s): started 0.1 s before the first active tick or on it, no enemy attack lands (${runs} rolls: 9 attacks x 7 start ticks x 8 directions x 3-5 distances)`, bad.length === 0, bad.slice(0, 6).join(' | ')); }
 }
 
+// ── 15. WHIP2 (2026-11-19): a skill press carried through a roll, a stun, the air · a queued combo hit kept against a later jump or skill (PLAY_API 1.1) ──
+{
+  const ring = (s) => s.hookPoints.push({ id: 'r1', x: 250, y: 0, z: 40, to: [300, 50] });
+  const T1 = (s, inp) => s.update(DT, inp);
+  { // the hook pressed on the tick after the roll starts: thrown on the tick the roll ends (it used to run out 0.19 s into the 0.35 s roll)
+    const s = mk(); ring(s); T1(s, {}); T1(s, { mx: 1, dash: true }); const r0 = s.hero.dashT > 0; T1(s, { mx: 1, skill: true }); let endTick = -1, hookTick = -1;
+    for (let i = 0; i < 40; i++) { const was = s.hero.dashT > 0; T1(s, { mx: 1 }); if (was && s.hero.dashT <= 0 && endTick < 0) endTick = s._tick; if (s.hero.act === 'hook' && hookTick < 0) hookTick = s._tick; }
+    ok('hook pressed at the start of a roll: thrown on the tick the roll ends', r0 && endTick > 0 && hookTick === endTick, `roll ended on tick ${endTick}, hook began on tick ${hookTick} (${endTick - 3} ticks after the press)`); }
+  { // attack, then skill, inside one roll: the newest press wins - the hook, not the sweep
+    const s = mk(); ring(s); const ids = []; s.hooks.attack = (h, mv) => ids.push(mv.id); T1(s, {}); T1(s, { mx: 1, dash: true }); T1(s, { mx: 1, attack: true }); T1(s, { mx: 1 }); T1(s, { mx: 1, skill: true });
+    run(s, 0.6, { mx: 1 }); ok('attack then skill inside one roll: the skill goes when the roll ends, no sweep', s.log.some((l) => l[0] === 'act' && l[2] === 'hook') && !ids.includes('sweep'), `moves ${ids.join(' ') || '-'}`); }
+  { // the hook pressed 25 ticks before landing: thrown on the first tick on the ground (11 ticks was the limit)
+    const s = mk(); ring(s); T1(s, {}); T1(s, { jump: true, jumpHeld: true }); for (let i = 0; i < 4; i++) T1(s, { jumpHeld: true }); T1(s, { jumpHeld: true, skill: true }); let landTick = -1, hookTick = -1, n = 0;
+    for (let i = 0; i < 60; i++) { const air = !s.hero.onGround; T1(s, { jumpHeld: i < 6 }); n++; if (air && s.hero.onGround && landTick < 0) landTick = n; if (s.hero.act === 'hook' && hookTick < 0) hookTick = n; }
+    ok('hook pressed in the air: thrown as he lands (carried up to 0.35 s beyond the 0.19 s)', landTick > 12 && hookTick > 0 && hookTick - landTick <= 1, `landed ${landTick} ticks after the press, hook began after ${hookTick}`); }
+  { // the hook pressed on the first tick of a heavy stun (0.39 s): thrown on the first free tick
+    const s = mk(); ring(s); T1(s, {}); s._hx = -1; s._hz = 0; s._hurt(5, { atk: { str: 'H' } }); const st = s.hero.hurtT; T1(s, { skill: true }); let freeTick = -1, hookTick = -1, n = 0;
+    for (let i = 0; i < 50; i++) { const was = s.hero.hurtT > 0; T1(s, {}); n++; if (was && !(s.hero.hurtT > 0) && freeTick < 0) freeTick = n; if (s.hero.act === 'hook' && hookTick < 0) hookTick = n; }
+    ok('hook pressed at the start of a heavy stun: thrown when the stun ends', st > 0.3 && hookTick > 0 && hookTick - freeTick <= 1, `stun ${st.toFixed(2)} s · free after ${freeTick} ticks, hook began after ${hookTick}`); }
+  { // the hold is bounded: a skill pressed in a fall that lasts longer than hold + buffer does nothing on landing
+    const s = mk(); ring(s); T1(s, {}); const h = s.hero; h.y = 900; h.onGround = false; h.vy = 0; T1(s, { skill: true }); let acted = false; for (let i = 0; i < 120; i++) { T1(s, {}); if (s.hero.act === 'hook') acted = true; }
+    ok('the carried skill is bounded: pressed at the top of a long fall it has run out before he lands', !acted && s.hero.onGround, `on the ground ${s.hero.onGround}`); }
+  { // dropPresses takes a held skill press with it
+    const s = mk(); ring(s); T1(s, {}); T1(s, { mx: 1, dash: true }); T1(s, { mx: 1, skill: true }); s.dropPresses(); run(s, 0.8, { mx: 1 });
+    ok('dropPresses() forgets a skill carried in a roll', !s.log.some((l) => l[0] === 'act' && l[2] === 'hook')); }
+  { // attack, attack, jump: the queued second hit comes out (since the buffer of 11-19 the later jump had taken its place)
+    const s = mk(); const ids = []; s.hooks.attack = (h, mv) => ids.push(mv.id); let jumps = 0; s.hooks.jump = () => jumps++; T1(s, {}); T1(s, { attack: true }); for (let i = 0; i < 3; i++) T1(s, {}); T1(s, { attack: true }); T1(s, {}); T1(s, {}); T1(s, { jump: true, jumpHeld: true }); run(s, 0.25, {});
+    ok('attack, attack, jump: the queued second hit is kept', ids.join(' ') === 'c1 c2', `moves ${ids.join(' ')} · jumps ${jumps}`); }
+  { // attack, attack, skill under a ring: the second hit comes out, the hook right after its window
+    const s = mk(); ring(s); const ids = []; s.hooks.attack = (h, mv) => ids.push(mv.id + '@' + s._tick); T1(s, {}); T1(s, { attack: true }); for (let i = 0; i < 3; i++) T1(s, {}); T1(s, { attack: true }); T1(s, {}); T1(s, { skill: true }); let hookTick = -1; for (let i = 0; i < 60; i++) { T1(s, {}); if (s.hero.act === 'hook' && hookTick < 0) hookTick = s._tick; }
+    ok('attack, attack, skill: the second hit comes out and the hook follows it', ids.length === 2 && ids[1].startsWith('c2@') && hookTick > Number(ids[1].split('@')[1]), `moves ${ids.join(' ')} · hook on tick ${hookTick}`); }
+  { // attack, attack, roll: the dodge still takes the queued hit's place
+    const s = mk(); const ids = []; s.hooks.attack = (h, mv) => ids.push(mv.id); let rolls = 0; s.hooks.roll = () => rolls++; T1(s, {}); T1(s, { attack: true }); for (let i = 0; i < 3; i++) T1(s, {}); T1(s, { attack: true }); T1(s, {}); T1(s, { mx: 1, dash: true }); run(s, 0.5, { mx: 1 });
+    ok('attack, attack, roll: the roll wins (no second hit)', ids.join(' ') === 'c1' && rolls === 1, `moves ${ids.join(' ')} · rolls ${rolls}`); }
+}
+
 Math.random = realRandom;
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) { console.log('FAILED:\n  ' + fails.join('\n  ')); process.exit(1); }

@@ -75,7 +75,7 @@ export class Sim {
       hp: T.heroHp, hpMax: T.heroHp, ifr: 0, hurtT: 0, dead: false, deadT: 0, flash: 0,
       dashT: 0, rollCd: 0, dashCd: 0, dvx: 0, dvz: 0, roll: { t: 0, dur: T.rollT, dx: 1, dz: 0, v0: 0 }, sweepWin: 0, sweepQ: false, dodged: false, heavyHurt: false,
       guard: false, guardT: 0, guardTap: 0, parryT: 0, parryCd: 0, parryOk: 0, blockT: 0,
-      move: null, moveT: 0, combo: 0, hitIds: new Set(), assist: null, queued: 0, bufD: 0, bufJ: 0, bufS: 0, swung: false, stepDist: 0, airAtk: false, plungeLand: null, plungeEta: 1,
+      move: null, moveT: 0, combo: 0, hitIds: new Set(), assist: null, queued: 0, bufD: 0, bufJ: 0, bufS: 0, bufSH: 0, swung: false, stepDist: 0, airAtk: false, plungeLand: null, plungeEta: 1,
       lock: null, lockT: 0, lockHold: 0, lockX: 0, lockY: 0, lockZ: 0, cutOn: 0,
       act: null, actT: 0, actDone: false, actP: null, charging: false, charge: 0, chargeFullT: 0, atkHold: 0, whipLv: 1, pullT: 0, pullX: 0, pullZ: 0, whipOn: 0, whipX: 0, whipY: 0, whipZ: 0,
       coins: 0, draughts: 0, reso: 0, resoMax: T.resoCells, callCd: 0, callCdMax: T.callCd, bellCd: 0, bellCdMax: T.bellCd, bellCharge: 0, bellDown: false, bellWait: false, bellHoldT: 0, bellOk: true, knellId: null, hookId: null, skillMode: 'call', hookFX: 0, hookFY: 0, hookFZ: 0, hookTX: 0, hookTY: 0, hookTZ: 0, hookDur: 0.3,
@@ -188,10 +188,17 @@ export class Sim {
     B.attack = B.dash = B.jump = B.lockNext = B.skill = B.bell = false;
     // 입력 기억 (input buffer — PLAY_API §1.1): 공격 · 구르기 · 점프 · 솜씨의 눌림은 T.bufT 초 동안 들고 있다가 영웅이 그 일을 할 수 있는 첫 틱에 쓴다.
     // 가장 새 눌림이 이긴다(새로 누르면 다른 단추의 묵은 눌림은 잊는다; 같은 틱의 눌림은 솜씨 > 구르기 > 공격 > 점프 순서로 본다) · 쓴 눌림은 그 자리에서 지운다(두 번 나가지 않는다). 종은 예전 그대로다
-    if (h.queued > 0) h.queued -= dt; if (h.bufD > 0) h.bufD -= dt; if (h.bufJ > 0) h.bufJ -= dt; if (h.bufS > 0) h.bufS -= dt;
+    if (h.queued > 0) h.queued -= dt; if (h.bufD > 0) h.bufD -= dt; if (h.bufJ > 0) h.bufJ -= dt;
+    // WHIP2 (PLAY_API 1.1): a carried skill press does not age while the hero cannot act for a reason that ends by itself - a roll, a stun, the air, a hit window still
+    // open, a plunge - for T.bufHold (0.35 s = one roll) at most; after that, and in every other case, it ages as before. A hook pressed early in a roll used to run out.
+    if (h.bufS > 0) { if (h.bufSH > 0 && (h.dashT > 0 || h.hurtT > 0 || !h.onGround || (h.move !== null && (h.move.kind === 'plunge' || h.moveT < h.move.hit[1] || (h.queued > 0 && h.move.kind === 'combo' && h.move.n < 2))))) h.bufSH -= dt; else h.bufS -= dt; }
     if (pAttack || pDash || pJump || pSkill) {
-      h.queued = pAttack ? (h.move !== null && h.move.kind === 'combo' && h.move.n < 2 ? T.queueT : T.bufT) : 0;   // 연타를 잇는 눌림은 예전 그대로 queueT
-      h.bufD = pDash ? T.bufT : 0; h.bufJ = pJump ? T.bufT : 0; h.bufS = pSkill ? T.bufT : 0;
+      // WHIP2: a combo hit that is already queued is kept against a later jump or skill press - they wait their turn (the skill comes right after that hit's window);
+      // a roll, the dodge, still takes its place. (Since the input buffer of 11-19 ANY later press forgot the queued hit: a stray thumb on jump cost the finishing hit.)
+      const keepQ = !pAttack && !pDash && h.queued > 0 && h.move !== null && h.move.kind === 'combo' && h.move.n < 2 && h.dashT <= 0;
+      if (!keepQ) h.queued = pAttack ? (h.move !== null && h.move.kind === 'combo' && h.move.n < 2 ? T.queueT : T.bufT) : 0;   // 연타를 잇는 눌림은 예전 그대로 queueT
+      h.bufD = pDash ? T.bufT : 0; h.bufJ = pJump ? T.bufT : 0; h.bufS = pSkill ? T.bufT : 0; h.bufSH = pSkill ? T.bufHold : 0;
+      if (pSkill && !pAttack && h.dashT > 0) h.sweepQ = false;   // (the newest press wins inside a roll too: a skill pressed after an attack takes the sweep's place)
     }
     h.callCd = Math.max(0, h.callCd - dt); h.bellCd = Math.max(0, h.bellCd - dt); h.whipOn = 0; h.cutOn = 0;
     h.t += dt; h.ifr = Math.max(0, h.ifr - dt); h.rollCd = Math.max(0, h.rollCd - dt); h.dashCd = h.rollCd; h.flash = Math.max(0, h.flash - dt * 5); h.landT = Math.max(0, h.landT - dt);
@@ -241,6 +248,7 @@ export class Sim {
         if (h.dashT <= 0) {
           h.dashT = 0; h.sweepWin = T.rollSweep;
           if (h.sweepQ && h.onGround) { h.sweepQ = false; this._startMove(h, MOVES.sweep, ux, uz, moving); }
+          else if (h.bufS > 0 && h.onGround && this._skillGo(h, this._hk, true)) { h.vx = 0; h.vz = 0; h.sweepWin = 0; }   // WHIP2: a skill carried through the roll goes on the tick the roll ends, as the sweep does (he comes up out of the roll throwing the hook)
           h.sweepQ = false;
         }
       } else if (h.move) {
@@ -265,7 +273,7 @@ export class Sim {
         const k = Math.min(1, 14 * dt); h.vx -= h.vx * k; h.vz -= h.vz * k;
       } else { this._locomote(h, moving, dt); loco = true; }
       // 점프 (공격은 끊을 수 있는 시각부터)
-      if (h.bufJ > 0 && (h.onGround || h.coyote > 0) && h.dashT <= 0 && (!h.move || (h.move.kind !== 'plunge' && h.moveT >= h.move.cancel))) {
+      if (h.bufJ > 0 && (h.onGround || h.coyote > 0) && h.dashT <= 0 && (!h.move || (h.move.kind !== 'plunge' && h.moveT >= h.move.cancel && !(h.queued > 0 && h.move.kind === 'combo' && h.move.n < 2)))) {   // (WHIP2: not ahead of a combo hit that is already queued)
         h.bufJ = 0; h.vy = T.jumpV; h.onGround = false; h.coyote = 0; h.cut = false; h.move = null; h.combo = 0; h.guard = false; h.guardTap = 0; h.parryOk = 0; h.blockT = 0; h.airAtk = false; if (inp !== NOINP) inp.jumpUsed = true;   // parryOk · blockT: a jump right after a parry must not keep the parry pose in the air
         this.emit('jump', h); this.hooks.sfx?.('jump'); this.hooks.spark?.(h.x, h.y + 4, h.z, 'dust');
       }
@@ -320,14 +328,15 @@ export class Sim {
     let hk = null, hd = T.hookRange * T.hookRange, kn = null;
     for (let i = 0; i < HP.length; i++) { const p = HP[i]; if (p.off) continue; const dx = p.x - h.x, dz = p.z - h.z, d = dx * dx + dz * dz, lx = (p.to ? p.to[0] : p.x) - h.x, lz = (p.to ? p.to[1] : p.z) - h.z; if (d < hd && lx * lx + lz * lz > 1600 && Math.abs((p.y ?? 0) - h.y) < T.hookRise) { hd = d; hk = p; } }   // 이미 그 고리의 내릴 자리에 서 있으면 걸지 않는다
     for (let i = 0; i < E.length; i++) { const e = E[i]; if (e.kneel > 0 && !e.dead && e.state !== 'dead') { const dx = e.x - h.x, dz = e.z - h.z; if (dx * dx + dz * dz < T.knellRange * T.knellRange) kn = e; } }
-    h.hookId = hk ? hk.id : null; h.skillMode = hk ? 'hook' : 'call'; h.knellId = kn ? kn.id : null;
+    h.hookId = hk ? hk.id : null; h.skillMode = hk ? 'hook' : 'call'; h.knellId = kn ? kn.id : null; this._hk = hk;
     const freeNow = h.onGround && h.dashT <= 0 && (!h.move || (h.move.kind !== 'plunge' && h.moveT >= h.move.hit[1]));
     h.bellOk = freeNow && h.bellCd <= 0 && !h.act && !h.charging;
     h.atkHold = inp.attackHeld ? h.atkHold + dt : 0;
     if (h.bellDown && !inp.bellHeld && (h.act || h.charging)) h.bellDown = false;   // released while another tool / the charge holds the hero: forget the press (it must not ring later on its own)
     if (!inp.bellHeld) h.bellWait = false; else if (pBell) h.bellWait = true;   // CHAPTER: a press of the bell that is still held is remembered until the bell is ready (it used to be dropped for as long as it was held when it began during the bell's rest, a move or a jump)
     if (h.act) return this._act(h, dt, inp, kn);
-    const sFire = h.bufS > 0 && freeNow && (hk ? true : h.reso >= 1 && h.callCd <= 0 && !!this.caller);   // 들고 있는 솜씨 눌림이 이 틱에 나갈 수 있는가
+    const freeS = freeNow && !(h.queued > 0 && h.move !== null && h.move.kind === 'combo' && h.move.n < 2);   // WHIP2: a combo hit that is already queued goes first - the skill follows it
+    const sFire = h.bufS > 0 && freeS && (hk ? true : h.reso >= 1 && h.callCd <= 0 && !!this.caller);   // 들고 있는 솜씨 눌림이 이 틱에 나갈 수 있는가
     if (h.charging && sFire) { h.charging = false; h.charge = 0; this.emit('charge', h, 'cancel', 0); }   // 모으던 것을 풀고 솜씨가 나간다 (공격 단추를 누르고 있는 동안 솜씨 눌림이 삼켜지던 것)
     if (h.charging) {   // 모으는 중: 제자리에서 스틱 쪽으로 돌 수 있다. 놓으면 휘감기, 구르기 · 솜씨로 끊을 수 있다
       if (h.bufD > 0 && moving) { h.charging = false; h.charge = 0; this.emit('charge', h, 'cancel', 0); return false; }
@@ -351,12 +360,7 @@ export class Sim {
     }
     // 솜씨: 빛나는 고리가 가까우면 채찍 걸기, 아니면 부름 (울림 한 칸)
     if (h.bufS > 0) {   // 들고 있는 솜씨 눌림 (바쁜 동안 누른 것은 bufT 안에 풀리는 첫 틱에 나간다 — 예전에는 그 자리에서 'busy' 로 버렸다)
-      if (hk && freeNow) {
-        const tx = hk.to ? hk.to[0] : hk.x, tz = hk.to ? hk.to[1] : hk.z, g = this.w.ground(tx, tz, (hk.y ?? 0) + 400), d = Math.sqrt((tx - h.x) * (tx - h.x) + (tz - h.z) * (tz - h.z));
-        h.hookFX = h.x; h.hookFY = h.y; h.hookFZ = h.z; h.hookTX = tx; h.hookTZ = tz; h.hookTY = Number.isFinite(g) ? g : hk.y ?? h.y; h.hookDur = clamp(d / T.hookSpeed, 0.22, 0.55); h.actP = hk;
-        this._face(h, hk.x - h.x, hk.z - h.z); this._startAct(h, 'hook'); this.emit('hook', h, hk, 'throw'); this.hooks.sfx?.('slash'); return true;
-      }
-      if (!hk && freeNow && h.reso >= 1 && h.callCd <= 0 && this.caller) { h.reso -= 1; h.callCd = h.callCdMax = T.callCd; this._startAct(h, 'call'); this.emit('call', h, this.caller, 'start'); return true; }
+      if (this._skillGo(h, hk, freeS)) return true;
       const why = hk ? 'busy' : h.reso < 1 ? 'reso' : h.callCd > 0 ? 'cd' : 'busy';
       if (why !== 'busy' || h.bufS <= dt) { h.bufS = 0; this.emit('deny', h, 'skill', why); }   // 울림이 모자라다 · 쉬는 중 = 곧바로 알린다. 바쁘다 = 들고 있다가 끝내 못 쓴 틱에만 알린다
     }
@@ -364,6 +368,17 @@ export class Sim {
     if (inp.attackHeld && h.atkHold >= T.chargeHold && h.onGround && h.dashT <= 0 && !h.guard && h.sweepWin <= 0 && (!h.move || (h.move.kind === 'combo' && h.moveT >= h.move.cancel))) {
       h.move = null; h.combo = 0; h.queued = 0; h.pivot = 0; h.charging = true; h.charge = 0; h.chargeFullT = 0; this.emit('charge', h, 'start', 0); return true;
     }
+    return false;
+  }
+  /** start the carried skill if it can go now: the hook when a ring is in reach (hk), else the call. -> true = started (the act holds the hero from here) */
+  _skillGo(h, hk, free) {
+    const T = TUNE;
+    if (hk && free) {
+      const tx = hk.to ? hk.to[0] : hk.x, tz = hk.to ? hk.to[1] : hk.z, g = this.w.ground(tx, tz, (hk.y ?? 0) + 400), d = Math.sqrt((tx - h.x) * (tx - h.x) + (tz - h.z) * (tz - h.z));
+      h.hookFX = h.x; h.hookFY = h.y; h.hookFZ = h.z; h.hookTX = tx; h.hookTZ = tz; h.hookTY = Number.isFinite(g) ? g : hk.y ?? h.y; h.hookDur = clamp(d / T.hookSpeed, 0.22, 0.55); h.actP = hk;
+      this._face(h, hk.x - h.x, hk.z - h.z); this._startAct(h, 'hook'); this.emit('hook', h, hk, 'throw'); this.hooks.sfx?.('slash'); return true;
+    }
+    if (!hk && free && h.reso >= 1 && h.callCd <= 0 && this.caller) { h.reso -= 1; h.callCd = h.callCdMax = T.callCd; this._startAct(h, 'call'); this.emit('call', h, this.caller, 'start'); return true; }
     return false;
   }
   _startAct(h, kind) { h.act = kind; h.actT = 0; h.actDone = false; h.move = null; h.combo = 0; h.queued = 0; if (kind === 'hook' || kind === 'call') h.bufS = 0; h.guard = false; h.guardTap = 0; h.pivot = 0; h.bellCharge = 0; this.emit('act', h, kind); }
@@ -518,7 +533,7 @@ export class Sim {
     else if (mv.kind === 'combo' && h.moveT >= mv.cancel && h.onGround && mv.n < 2) this._startMove(h, COMBO[mv.n + 1], ux, uz, moving);
   }
   /** 들고 있는 눌림을 모두 버린다. 장면이 영웅을 붙드는 동안(대화 · 건넘 · 일시정지 · 쓰러짐) 틱마다 부른다 — 그 전에 누른 것이 뒤늦게 나가면 안 된다 (ENGINE_API §12.3) */
-  dropPresses() { const B = this._buf, h = this.hero; B.attack = B.dash = B.jump = B.lockNext = B.skill = B.bell = false; h.queued = 0; h.bufD = 0; h.bufJ = 0; h.bufS = 0; h.sweepQ = false; h.guardTap = 0; }
+  dropPresses() { const B = this._buf, h = this.hero; B.attack = B.dash = B.jump = B.lockNext = B.skill = B.bell = false; h.queued = 0; h.bufD = 0; h.bufJ = 0; h.bufS = 0; h.bufSH = 0; h.sweepQ = false; h.guardTap = 0; }
   _startRoll(h, ux, uz) {
     const T = TUNE; h.bufD = 0;
     { const R = h.roll; R.t = 0; R.dur = T.rollT; R.dx = ux; R.dz = uz; R.v0 = T.rollDist / (T.rollT * 0.675); }   // (한 객체를 다시 쓴다)
@@ -697,6 +712,7 @@ export class Sim {
     }
     const heavy = !!atk && (atk.str === 'H' || atk.str === 'F' || !!atk.stunHero), kb = (atk?.knock ?? 240);
     h.act = null; h.charging = false; h.charge = 0; h.bellCharge = 0; h.bellDown = false; h.pullT = 0; if (!h.onGround && h.vy === 0) h.vy = -1;
+    h.bufS = 0; h.bufSH = 0;   // WHIP2: a skill press made BEFORE the hit does not come out after the stun (no press fires across a hit - PLAY_API 1.1); one made during the stun is carried to its end
     h.hp -= dmg; h.ifr = T.hurtIfr; h.hurtT = heavy ? T.hurtT * 1.5 : T.hurtT; h.vx = dirX * kb; h.vz = dirZ * kb * 0.67; h.move = null; h.combo = 0; h.dashT = 0; h.guard = false; h.guardTap = 0; h.flash = 1; h.plungeLand = null; h.heavyHurt = heavy;
     if (atk && atk.stunHero) h.hurtT = Math.max(h.hurtT, atk.stunHero);   // 비명에 귀를 막고 굳는다
     this.stop = Math.max(this.stop, 0.07);

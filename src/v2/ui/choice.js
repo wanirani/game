@@ -25,17 +25,17 @@ export function createChoiceCards(M) {
   /** sizes for this screen: the cards stand side by side, their lower edge at `bot` (the top of the dialogue box) or in the middle of the screen */
   function layout(s, bot) {
     const sf = s.safe ?? ZERO, vw = s.viewW, vh = s.viewH, B = 56 / (L.css || 1), availW = vw - sf.l - sf.r - px(40), top = sf.t + px(10);
-    C.vw = vw; C.vh = vh; C.bot = bot; G.gap = px(18);
+    C.vw = vw; C.vh = vh; C.bot = bot; G.gap = Math.round(px(18));
     const ts = tsz(19, (L.tmin ?? 9.5) + 5), ls = tsz(13, (L.tmin ?? 9.5) + 2);
     if (C.big) {
-      G.cw = clamp((availW - G.gap) / 2, px(150), px(264));
+      G.cw = Math.round(clamp((availW - G.gap) / 2, px(150), px(264)));
       const room = (bot > 0 ? bot : vh - sf.b) - top - px(10);
-      G.ch = clamp(px(196), Math.max(B, ts * 4), Math.max(B, room)); G.ic = clamp(G.ch - ts * 1.7 - ls * 4.6 - px(20), px(34), px(84));
+      G.ch = Math.round(clamp(px(196), Math.max(B, ts * 4), Math.max(B, room))); G.ic = clamp(G.ch - ts * 1.7 - ls * 4.6 - px(20), px(34), px(84));
     } else {
       let w = px(150); for (let i = 0; i < C.n; i++) w = Math.max(w, measure(C.labels[i], ts, 800, FONTS.title) + px(48));
-      G.cw = Math.min(w, (availW - G.gap) / 2); G.ch = Math.max(B, ts * 2.5 + ls * 1.6); G.ic = 0;
+      G.cw = Math.round(Math.min(w, (availW - G.gap) / 2)); G.ch = Math.ceil(Math.max(B, ts * 2.5 + ls * 1.6)); G.ic = 0;
     }
-    const tw = G.cw * C.n + G.gap * (C.n - 1), x0 = (vw - tw) / 2, y = bot > 0 ? Math.max(top, bot - px(12) - G.ch) : (vh - G.ch) / 2;
+    const tw = G.cw * C.n + G.gap * (C.n - 1), x0 = Math.round((vw - tw) / 2), y = Math.round(bot > 0 ? Math.max(top, bot - px(12) - G.ch) : (vh - G.ch) / 2);   // (whole px: a still frame hands the canvas no fractions)
     for (let i = 0; i < C.n; i++) { P[i].x = x0 + i * (G.cw + G.gap) - 8; P[i].y = y - 8; }
     for (let i = 0; i < C.n; i++) bake(i);
     C.key = L.epoch;
@@ -84,7 +84,7 @@ export function createChoiceCards(M) {
       if (!C.open) return;
       if (C.key !== L.epoch || C.vw !== s.viewW || C.vh !== s.viewH || C.bot !== bot) layout(s, bot);
       const k = clamp(C.t / 0.18, 0, 1), ga = ctx.globalAlpha;
-      for (let i = 0; i < C.n; i++) { const p = P[i], lift = i === C.sel ? px(7) * clamp(C.selT / 0.1, 0, 1) : 0; ctx.globalAlpha = a * k; ctx.drawImage(p.c, p.x, p.y + dy + (1 - k) * px(12) - lift, p.w, p.h); }
+      for (let i = 0; i < C.n; i++) { const p = P[i], lift = i === C.sel ? Math.round(px(7) * clamp(C.selT / 0.1, 0, 1)) : 0; ctx.globalAlpha = a * k; ctx.drawImage(p.c, p.x, p.y + Math.round(dy + (1 - k) * px(12)) - lift, p.w, p.h); }
       ctx.globalAlpha = ga;
     },
     rects() { const o = []; if (C.open) for (let i = 0; i < C.n; i++) o.push({ x: P[i].x + 8, y: P[i].y + 8, w: G.cw, h: G.ch }); return o; },

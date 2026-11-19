@@ -28,8 +28,8 @@ export function createCards(env) {
     p.w = w; p.h = h; const c = p.c.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cw, ch); c.setTransform(s, 0, 0, s, 0, 0); return c;
   }
   function bakeCard(o) {
-    const ts = tsz(14, L.tmin + 2.4), h = px(46), ih = px(34), maxT = Math.min(L.vw * 0.4, px(340));
-    const ft = fitText(o.text, ts, maxT, 700, FONTS.body, 0.82), tw = measure(ft.str, ft.size, 700), w = px(10) + ih + px(10) + tw + px(o.tap ? 30 : 16);
+    const ts = tsz(14, L.tmin + 2.4), h = Math.round(px(46)), ih = px(34), maxT = Math.min(L.vw * 0.4, px(340));   // (whole px: a whole number handed to drawImage is not boxed)
+    const ft = fitText(o.text, ts, maxT, 700, FONTS.body, 0.82), tw = measure(ft.str, ft.size, 700), w = Math.ceil(px(10) + ih + px(10) + tw + px(o.tap ? 30 : 16));
     const c = canvasFor(o, w + 8, h + 10);
     glassPanel(c, 4, 4, w, h, { cut: px(9), dense: 0.84, accent: o.tint === 'ruby' ? 'ruby' : o.tint === 'none' ? null : 'gold' });
     const ix = 4 + px(10) + ih / 2, iy = 4 + h / 2;
@@ -41,7 +41,7 @@ export function createCards(env) {
     c.textBaseline = 'alphabetic'; o.ep = L.epoch;
   }
   function bakeChip() {
-    const r = px(19), w = r * 2 + 14, c = canvasFor(chip, w, w);
+    const r = Math.round(px(19)), w = r * 2 + 14, c = canvasFor(chip, w, w);
     gem(c, w / 2, w / 2, r, { facets: 10 });
     const b = bakeIcon('book', r * 1.5, L.s || 2); c.drawImage(b.c, w / 2 - b.w / 2, w / 2 - b.w / 2 + 1, b.w, b.w);
     c.beginPath(); c.arc(w / 2 + r * 0.72, w / 2 - r * 0.72, px(4.4), 0, Math.PI * 2); c.fillStyle = COL.gold; c.fill(); c.lineWidth = 1.2; c.strokeStyle = 'rgba(4,5,14,0.9)'; c.stroke();
@@ -51,17 +51,18 @@ export function createCards(env) {
   /** where the cards and the chip stand this tick (logical px), from the pad's own measures (pad = the touch layer, or null) */
   function place(s, pad) {
     const sf = s.safe ?? ZERO, g = env.game, rect = g.canvasRect ?? null, css = L.css || 1;
-    R[RIGHT] = s.viewW - sf.r - px(12); R[RH] = px(46); R[GAP] = px(4); R[TOP] = sf.t + px(64); R[BOT] = s.viewH * 0.56; R[PX] = -1;
-    R[CB] = Math.max(56 / css, px(38));
+    const rd = Math.round;
+    R[RIGHT] = rd(s.viewW - sf.r - px(12)); R[RH] = rd(px(46)); R[GAP] = rd(px(4)); R[TOP] = rd(sf.t + px(64)); R[BOT] = rd(s.viewH * 0.56); R[PX] = -1;
+    R[CB] = Math.ceil(Math.max(56 / css, px(38)));
     if (pad && pad.shown && rect) {
       for (let i = 0, nb = pad.count; i < nb; i++) {
         if (!pad.at(i, BT)) break;
         const cx = (BT[0] - rect.x) / css, cy = (BT[1] - rect.y) / css, rr = BT[2] / 2 / css;
-        if (pad.idAt(i) === 'pause') { R[TOP] = cy + rr + px(12); R[PX] = cx - rr - (8 + 2) / css - R[CB] / 2; R[PY] = cy; }
+        if (pad.idAt(i) === 'pause') { R[TOP] = rd(cy + rr + px(12)); R[PX] = Math.floor(cx - rr - (8 + 2) / css - R[CB] / 2); R[PY] = rd(cy); }
         else if (!pad.cut && cx > s.viewW * 0.5 && cy - rr - 10 / css < R[BOT]) R[BOT] = cy - rr - 10 / css;   // the highest button on that side: the cards end above it
       }
     }
-    if (R[PX] < 0) { R[PX] = s.viewW - sf.r - px(14) - R[CB] / 2; R[PY] = sf.t + px(12) + R[CB] / 2; R[TOP] = R[PY] + R[CB] / 2 + px(6); }
+    if (R[PX] < 0) { R[PX] = rd(s.viewW - sf.r - px(14) - R[CB] / 2); R[PY] = rd(sf.t + px(12) + R[CB] / 2); R[TOP] = rd(R[PY] + R[CB] / 2 + px(6)); }
     R[MAX] = clamp(Math.floor((R[BOT] - R[TOP] + R[GAP]) / (R[RH] + 10 + R[GAP])), 1, SLOTS);
   }
 
@@ -111,7 +112,7 @@ export function createCards(env) {
         let o = null; for (let i = 0; i < SLOTS; i++) { const q = cards[i]; if (q.on && q.order > last && (!o || q.order < o.order)) o = q; }
         if (!o) break; last = o.order;
         if (o.ep !== L.epoch) bakeCard(o);
-        const a = clamp(Math.min(o.t / RISE, (o.dur - o.t) / FADE), 0, 1), rise = (1 - clamp(o.t / RISE, 0, 1)) * px(12);
+        const a = clamp(Math.min(o.t / RISE, (o.dur - o.t) / FADE), 0, 1), rise = o.t < RISE ? Math.round((1 - o.t / RISE) * px(12)) : 0;
         o.x = R[RIGHT] - o.w + 4; o.y = y;
         ctx.globalAlpha = a * k * (modal === 'pause' ? 0.5 : 1); ctx.drawImage(o.c, o.x, y + rise, o.w, o.h); ctx.globalAlpha = 1;
         y += o.h + R[GAP];

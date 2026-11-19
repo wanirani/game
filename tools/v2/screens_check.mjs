@@ -540,8 +540,8 @@ if (PAGE_PARTS.some(want)) {
           F.frames = (n) => { const S = sc.state; for (let i = 0; i < n; i++) { sc.hud.update(1 / 60, S); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); c.setTransform(2, 0, 0, 2, 0, 0); sc.hud.draw(c, S); } };
           F.timed = (n, raster = false) => { const S = sc.state, T = new Float32Array(n); for (let i = 0; i < n; i++) { const t0 = performance.now(); sc.hud.update(1 / 60, S); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); c.setTransform(2, 0, 0, 2, 0, 0); sc.hud.draw(c, S); if (raster) c.getImageData(0, 0, 1, 1); T[i] = performance.now() - t0; } return Array.from(T); }; });
         const MINE = /\/src\/v2\/ui\/(screens|cards|choice|model|icons)\.js/;
-        const measure = async (label, N = 1500) => {
-          await ev(() => window.__F.frames(300));
+        const measure = async (label, N = 3000) => {
+          await ev(() => window.__F.frames(2500));   // (warm: code that still runs in the baseline tiers boxes every fraction it computes)
           await cdp.send('HeapProfiler.enable'); await cdp.send('HeapProfiler.startSampling', { samplingInterval: 64, includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true });
           await ev((n) => window.__F.frames(n), N);
           const { profile } = await cdp.send('HeapProfiler.stopSampling');
@@ -559,7 +559,7 @@ if (PAGE_PARTS.some(want)) {
         await ev(() => { const F = window.__F, sc = window.__v2.scene; F.closeBtn(); F.tick(8); F.pauseRow('resume'); F.tick(6); sc.hud.openScreen('shop', { shop: 'rook' }); F.tick(60); }); A.shop = await measure('the shop open and still');
         await ev(() => { const F = window.__F, sc = window.__v2.scene; F.closeBtn(); F.tick(8); for (let i = 0; i < 3; i++) sc.hud.card('item', { name: '낡은 은 열쇠', icon: 'key_silver', time: 600 }); F.tick(30); }); A.cards = await measure('three cards up, the chip up');
         await ev(() => { const F = window.__F, sc = window.__v2.scene; sc.hud.showDialog({ speaker: '하드윈 1세', text: '쇠로 하겠소, 은으로 하겠소?', choices: ['은 열쇠', '쇠 열쇠'], choiceMeta: [{ icon: 'key_silver', line: '은은 백 년 뒤에도 그대로다' }, { icon: 'key_iron', line: '쇠는 백 년이면 녹슬어 굳는다' }], onChoice() {} }); F.tick(90); }); A.choice = await measure('the choice cards up and still');
-        for (const k of Object.keys(A)) ok(`${DEV}: ${k} open and still - the screens' own code makes no objects per frame (sampled bytes in its files: boxed numbers handed to canvas calls at most)`, A[k].mine <= 320, `${A[k].mine.toFixed(0)} B/frame in screens.js · cards.js · choice.js · model.js · icons.js; the whole HUD ${A[k].total.toFixed(0)} B/frame against ${base.total.toFixed(0)} alone`);
+        for (const k of Object.keys(A)) ok(`${DEV}: ${k} open and still - the screens' own code makes no objects per frame (sampled bytes in its files: boxed numbers handed to canvas calls at most)`, A[k].mine <= 64, `${A[k].mine.toFixed(0)} B/frame in screens.js · cards.js · choice.js · model.js · icons.js; the whole HUD ${A[k].total.toFixed(0)} B/frame against ${base.total.toFixed(0)} alone`);
         // thirty entries: drag, let go, momentum
         const perf = await ev(() => {
           const F = window.__F, sc = window.__v2.scene, M = sc.host.model, real = M.book(), R30 = [];
