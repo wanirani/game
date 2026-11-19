@@ -104,7 +104,7 @@ export function doorAt(G, F, s, w0, yb, wallMat, boxes) {
   F.box(G, 'trimstone', u0 - 9, u0, yb, yS, w0, w0 + 4, { faces: 'FLRT', vary: 0 }); F.box(G, 'trimstone', u1, u1 + 9, yb, yS, w0, w0 + 4, { faces: 'FLRT', vary: 0 });
   if (WEAR.age) {   // DETAIL: a threshold stone under a door that has no step (3.5 high: nothing to climb, nothing to catch on), pintles where the strap hinges turn
     if (!up) F.box(G, 'stone', u0 - 11, u1 + 11, yb, yb + 3.5, w0, w0 + 9, { faces: 'FLRT', top: 'trimstone', vary: 0.12 });
-    if (!s.open) for (const fy of [0.16, 0.5, 0.82]) F.box(G, 'metal', u0 - 1.2, u0 + 3.4, y0 + (yS - y0) * fy - 4.4, y0 + (yS - y0) * fy + 4.4, wp, wp + 3, { faces: 'FLRT', k: 0.6, vary: 0 });
+    if (!s.open) for (const fy of [0.16, 0.5, 0.82]) F.box(G, 'metal', u0 - 1.2, u0 + 3.4, y0 + (yS - y0) * fy - 4.4, y0 + (yS - y0) * fy + 4.4, wp, wp + 3, { faces: 'FT', k: 0.6, vary: 0 });
     if (s.mark === 'plague' && WEAR.age === 'past' && !s.open) {   // 1697: a red cross daubed on the door of a house the sickness is in, a white rag tied to the ring
       const cu = (u0 + u1) / 2, cy = y0 + s.h * 0.56, r = s.w * 0.3, q = { tint: [0.62, 0.1, 0.09], vary: 0.2, k: 1 };
       for (const sg of [-1, 1]) G.quad4('white', F.pt(cu - r - 3, cy - sg * r, wp + 1.7), F.pt(cu - r + 3, cy - sg * r - sg * 2, wp + 1.7), F.pt(cu + r + 3, cy + sg * r, wp + 1.7), F.pt(cu + r - 3, cy + sg * r + sg * 2, wp + 1.7), F.n, q);
@@ -249,7 +249,10 @@ function wallDetail(G, F, len, c) {
   const room = (u, half, ys, want, cap) => { let m = Math.min(want, cap - ys); for (const r of holes) if (u - half < r.u1 + 4 && u + half > r.u0 - 4 && r.y1 > ys) m = Math.min(m, r.y0 - 9 - ys); return m; };
   const planeOf = (y) => (yJ && y >= yJ ? [upper, jet, y1] : [lower, 0, topS]);
   const stone = lower !== 'plaster';
-  if (stone) wallRelief(G, F, len, y0, y1, { lower, base, ph, segs, holes, keep, top: topS, seed, every: K.house ? 190 : 150,
+  const plainWall = !K.house && !yJ && y1 - y0 >= 200 && (style === 'rubble' || style === 'stone') && !(K.windows ?? []).length;   // a boundary wall, a crypt wall
+  if (stone) wallRelief(G, F, len, y0, y1, { lower, base, ph, segs, holes, keep, top: topS, seed, every: K.house ? 190 : 170,
+    baseCourse: plainWall && ph ? 30 : 0, slit: plainWall ? (K.loculi ? { every: K.loculi.every ?? 210, w: 46, h: 26, y: K.loculi.y ?? 104, alt: K.loculi.alt ?? 66, dark: 0.1 } : K.slits === false ? null : { every: 330, w: 9, h: 50, y: (y1 - y0) * 0.66, jit: 16 }) : null,
+    mend: plainWall && K.mend !== false ? { every: 560, mat: lower === 'stone' ? 'trimstone' : 'stone', k: 0.92 } : null,
     course: style === 'rubble' && !K.house && !(K.courses ?? []).length && y1 - y0 >= 200 && !yJ ? Math.round(y0 + (y1 - y0) * 0.56) : 0,
     corbel: !yJ && (K.cornice ?? (style === 'stone' || style === 'rubble')) && y1 - y0 >= 200 });
   // damp and moss at the foot
@@ -267,8 +270,8 @@ function wallDetail(G, F, len, c) {
     const M = { k: 0.62, vary: 0, faces: 'FLR' }, u = h.u;
     if (yJ) { F.box(G, 'metal', u - 2.2, u + 2.2, yJ - 9, y1 - 8, jet, jet + 4.4, M); F.box(G, 'metal', u - 2.2, u + 2.2, base, yJ - 9, 0, 4.4, M); F.box(G, 'metal', u - 2.2, u + 2.2, yJ - 13, yJ - 9, 0, jet + 4.4, { ...M, faces: 'FLRT' }); }
     else F.box(G, 'metal', u - 2.2, u + 2.2, base, y1 - 8, 0, 4.4, M);
-    F.box(G, 'metal', u - 5.5, u + 5.5, y1 - 18, y1 - 5, yJ ? jet : 0, (yJ ? jet : 0) + 8, { k: 0.7, vary: 0, faces: 'FLRT' });
-    for (const fy of [0.3, 0.72]) { const yy = base + (y1 - base) * fy, w0 = yJ && yy >= yJ ? jet : 0; F.box(G, 'metal', u - 4, u + 4, yy - 2, yy + 2, w0, w0 + 5.2, { k: 0.45, vary: 0, faces: 'FLRT' }); }
+    F.box(G, 'metal', u - 5.5, u + 5.5, y1 - 18, y1 - 5, yJ ? jet : 0, (yJ ? jet : 0) + 8, { k: 0.7, vary: 0, faces: 'FLR' });
+    for (const fy of [0.3, 0.72]) { const yy = base + (y1 - base) * fy, w0 = yJ && yy >= yJ ? jet : 0; F.box(G, 'metal', u - 4, u + 4, yy - 2, yy + 2, w0, w0 + 5.2, { k: 0.45, vary: 0, faces: 'FT' }); }
   }
   // streaks of dirt under the cornice (tonight long and many)
   if (stone && !yJ && (K.cornice ?? (style === 'stone' || style === 'rubble'))) {
