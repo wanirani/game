@@ -528,6 +528,7 @@ export const EVENTS = [
     ['showActor', 'sera', 'eshville_now'],
     ['hideActor', 'sera', 'ossuary_now'],
     ['setFlag', 'elise_home'],
+    ['objective', null],                          // (STORY-VERIFY: the line under the section name read 「큰 종에서 오늘 밤으로 돌아간다」 through the whole last scene - he is home; the scene's end sets r1_end)
     ['music', 'dawn_bell'],
     // the same picture as the two keepers' cut, a hundred years later: Elise right of the bell where she stood, Lotte's place left of it empty
     ['lockInput', true],

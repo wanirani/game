@@ -39,7 +39,7 @@ function install() {
   const tapBox = () => { const sc = v.scene, b = sc.hud.metrics().dialog?.box, r = g.canvasRect ?? { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight }; if (!b) return; const x = r.x + ((b.x + b.w / 2) / g.viewW) * r.w, y = r.y + ((b.y + b.h / 2) / g.viewH) * r.h; fire('pointerdown', 21, x, y); fire('pointerup', 21, x, y); P.taps++; };
   const step = () => { const sc = v.scene; if (sc.hud?.modal === 'dialog') { if (P.fast) tapBox(); else if (P.adv > 0 && ++P.d >= P.adv) { P.d = 0; sc.hud.advanceDialog(); } } g.tick(1 / 60); };
   P.idle = () => { const sc = v.scene, H = sc.host; return !!v.ready && !!sc.sim && !sc.hud.modal && !H.st.busy && !H.locks() && !sc._go && !sc.xing && sc.fadeA <= 0.01; };
-  P.who = () => { const sc = v.scene, h = sc.sim.hero, o = { hero: [Math.round(h.x), Math.round(h.z)] }; for (const p of sc.people.list) if (p.on) o[p.id] = [Math.round(p.x), Math.round(p.z)]; return o; };
+  P.who = () => { const sc = v.scene; if (!sc.sim) return {}; const h = sc.sim.hero, o = { hero: [Math.round(h.x), Math.round(h.z)] }; for (const p of sc.people.list) if (p.on) o[p.id] = [Math.round(p.x), Math.round(p.z)]; return o; };
   P.state = () => {
     const sc = v.scene, sim = sc.sim, h = sim?.hero, H = sc.host, e = sim ? queen() : null, ready = !!v.ready && !!sim, M = ready ? sc.hud.metrics?.() ?? {} : {};
     return { ready, area: v.area, idle: ready && P.idle(), modal: sc.hud.modal ?? null, shot: ready ? shotName() : null, lock: !!H?.locks?.(), inputLock: !!H?.inputLock, busy: !!H?.st.busy, x: h ? Math.round(h.x) : 0, z: h ? Math.round(h.z) : 0, hp: h ? Math.round(h.hp) : 0, dead: !!h?.dead,
@@ -72,6 +72,7 @@ function install() {
   };
   P.run = (n) => { g._pageHidden = true; for (let i = 0; i < n; i++) step(); try { g.alpha = 1; g.render(); } catch { /* between areas */ } return P.state(); };
   P.set = (k, val) => { P[k] = val; return val; };
+  P.trig = (event) => { const sc = v.scene, t = (sc.area.triggers ?? []).find((q) => q.event === event); if (!t) return null; return P.putY((t.x0 + t.x1) / 2, (t.z0 + t.z1) / 2, t.y ?? 0); };
   P.putY = (x, z, y) => { const sc = v.scene; sc._enterAt(null, { x, z, y }); sc.cam.snap = true; const h = sc.sim.hero; return [Math.round(h.x), Math.round(h.z), Math.round(h.y)]; };
   P.spot = (id) => { const d = v.scene.area.interact.find((q) => q.id === id); return d ? { x: d.x, z: d.z, y: d.y ?? 0, r: d.r ?? 60, event: d.event } : null; };
   P.use = (want) => { const sc = v.scene, W = want ? String(want).split('|') : null, okT = () => { const t = sc.people.target; return !!t && (!W || W.includes(t.id)); }; step(); step(); step(); for (let i = 0; i < 60 && !okT(); i++) step(); const t = sc.people.target; if (!okT()) return { err: 'the prompt on offer is ' + (t ? t.id : 'none') }; v.use(); step(); step(); return { id: t.id }; };
@@ -116,6 +117,8 @@ async function until(spec, max = 60, soft = false) {
   throw new Error(`cut point ${JSON.stringify(spec)} not reached: ${JSON.stringify(s).slice(0, 500)}`);
 }
 const idle = () => until({ idle: true }, 80);
+/** the area is built again after a scene that changed a world flag (the screen reads 「불러오는 중…」 meanwhile): wall time until the game stands again */
+async function built() { const t0 = Date.now(); await page.waitForFunction(() => !!window.__v2?.ready && !!window.__v2.scene?.sim, null, { timeout: 60000 }); return Date.now() - t0; }
 const P = (name, ...a) => ev(([n, b]) => window.__sv[n](...b), [name, a]);
 async function still(id, text) {
   const dir = `${OUT}/${DEV}`; fs.mkdirSync(dir, { recursive: true });
@@ -168,7 +171,7 @@ C('keepers', async () => {
 
 C('keepers_fast', async () => {
   await toKeepers(); await P('set', 'fast', true);
-  const z = await until({ free: true, wait: 30 }, 300, true); const w = await P('who'), t = await ev(() => window.__sv.taps);
+  const z0 = await until({ free: true, wait: 30 }, 300, true); const ms = await built(); note('after the scene the area is built again: wall time of the loading screen on this machine', ms + ' ms'); await P('run', 30); const z = { ...(await P('state')), ok: z0.ok }; const w = await P('who'), t = await ev(() => window.__sv.taps);
   ok(z.ok && !z.lock && z.pad && z.flags.includes('keepers_promised'), `every page tapped every tick (${t} taps): the scene ends, hero free (ok ${z.ok}, lock ${z.lock}, pad ${z.pad})`);
   ok(!!w.elise && Math.abs(w.elise[0] - 4296) < 3 && Math.abs(w.elise[1] - 1436) < 3 && Math.abs(w.lotte[0] - 4104) < 3, `fast taps: Elise and Lotte at their places (${JSON.stringify(w)})`);
   await still('fast_end', 'after the scene tapped through'); await P('set', 'fast', false);
@@ -178,7 +181,7 @@ C('keepers_fast', async () => {
 C('keepers_fall', async () => {
   await toKeepers(); await until({ shot: 'two_keepers', last: true }); await P('die'); const s1 = await P('run', 2);
   note('felled at the last tick of the camera step', { dead: s1.dead, lock: s1.lock, modal: s1.modal });
-  const z = await until({ free: true, wait: 240 }, 400, true); const w = await P('who');
+  const z0 = await until({ free: true, wait: 240 }, 400, true); await built(); await P('run', 60); const z = { ...(await P('state')), ok: z0.ok }; const w = await P('who');
   ok(z.ok && !z.lock && !z.inputLock && !z.dead && z.pad, `a fall at the cut's last tick: the hero stands again, free, pad back (ok ${z.ok}, dead ${z.dead}, lock ${z.lock}, pad ${z.pad}, area ${z.area}, at ${z.x},${z.z})`);
   note('after the fall', { flags: z.flags, obj: z.obj, who: w, line: z.line.slice(0, 50) }); await still('fall_end', 'after a fall at the last tick of the cut');
 });
@@ -243,18 +246,19 @@ C('card', async () => {
 });
 
 C('held_bell', async () => {
-  await boot(after('ev_boss_intro')); await idle(); const b = await P('spot', 'bell_arena'); await P('putY', b.x, b.z - 44, b.y ?? 0); await P('run', 20);
-  const wq = await P('wakeQueen'); await P('run', 4);
-  const s0 = await P('state'); note('in the hall, first act', { awakeAfterLoad: wq, queen: s0.queen, at: [s0.x, s0.z], obj: s0.obj, pills: s0.pills, bell: b });
-  const w0 = s0.warn, n0 = s0.seen;
-  const t1 = await P('hold', 'bell', 4, true); await P('run', 30); note('the bell pressed short', { area: t1.area, modal: t1.modal, seen: await P('seenFrom', n0) });
-  const n1 = (await P('state')).seen; const h1 = await P('hold', 'bell', 240); const s1 = await P('state');
-  ok(s1.area === 'ossuary_now', `the bell held in her first act: the hero stays tonight (${s1.area})`); note('held', { held: h1.held, modal: s1.modal, seen: await P('seenFrom', n1), queen: s1.queen });
-  if (s1.modal === 'dialog') { await still('held_line', 'the line of the held bell'); const h2 = await P('hold', 'bell', 60, true); note('pressed again while the line is up', { modal: h2.modal, area: h2.area, seen: await P('seenFrom', n1) }); }
-  await ev(() => { window.__sv.adv = 6; }); const z = await until({ free: true, wait: 20 }, 120, true);
-  ok(z.ok && !z.lock && z.area === 'ossuary_now' && z.queen && z.queen.hp === s0.queen.hp, `after the line: hero free, queen as she was (ok ${z.ok}, queen ${JSON.stringify(z.queen)}, was ${s0.queen?.hp})`);
-  const n2 = z.seen; const h3 = await P('hold', 'bell', 240); await ev(() => { window.__sv.adv = 6; }); const z2 = await until({ free: true, wait: 20 }, 120, true);
-  note('held a second time', { held: h3.held, seen: await P('seenFrom', n2), area: z2.area, warnings: z2.warn - w0, last: await P('warnings') });
+  await boot(after('ev_boss_intro')); await P('run', 180);
+  const b = await P('spot', 'bell_arena'); await P('putY', b.x, b.z - 44, b.y ?? 0); await P('set', 'adv', 0); await P('run', 40);
+  const s0 = await P('state'); note('in the hall, first act', { queen: s0.queen, at: [s0.x, s0.z], hp: s0.hp, obj: s0.obj, pad: s0.pad, pills: s0.pills });
+  const w0 = s0.warn, n1 = s0.seen, h1 = await P('hold', 'bell', 320), s1 = await P('state'), shown1 = await P('seenFrom', n1);
+  note('the bell held', { held: h1.held, modal: s1.modal, area: s1.area, hp: s1.hp, shown: shown1, queen: s1.queen });
+  ok(s1.area === 'ossuary_now' && shown1.some((l) => l.includes('붙들고')), `the hall's bell held in her first act: he stays tonight and is told why (${s1.area}; ${shown1.length} shown)`);
+  if (s1.modal === 'dialog') { await still('held_line', 'the line of the held bell'); const h2 = await P('hold', 'bell', 90, true), s2 = await P('state'); note('the bell pressed again while the line is up', { press: h2.err ?? h2.held, modal: s2.modal, area: s2.area, shown: (await P('seenFrom', n1)).length }); ok(s2.area === 'ossuary_now' && (await P('seenFrom', n1)).filter((l) => l.includes('붙들고')).length === 1, 'pressed again while the line is up: nothing more is raised'); }
+  const z = await until({ free: true, wait: 20 }, 120, true);
+  ok(z.ok && !z.lock && z.area === 'ossuary_now' && !!z.queen && z.queen.hp === s0.queen.hp && z.queen.phase === 1, `after the line: hero free, queen as she was (ok ${z.ok}, queen ${JSON.stringify(z.queen)}, was ${s0.queen?.hp})`);
+  await P('set', 'adv', 0); const n2 = z.seen, t1 = await P('hold', 'bell', 5, true); await P('run', 50); note('the bell pressed short (a tap)', { shown: await P('seenFrom', n2), area: (await P('state')).area });
+  await ev(() => { window.__sv.adv = 6; }); await until({ free: true, wait: 20 }, 60, true); await P('set', 'adv', 0); void t1;
+  const n3 = (await P('state')).seen, h3 = await P('hold', 'bell', 320); await ev(() => { window.__sv.adv = 6; }); const z2 = await until({ free: true, wait: 20 }, 120, true);
+  note('held a second time', { held: h3.held, shown: await P('seenFrom', n3), area: z2.area, hp: z2.hp, warnings: z2.warn - w0, last: await P('warnings') });
   ok(z2.area === 'ossuary_now' && !z2.lock, `held again: still tonight, free (${z2.area})`);
 });
 
@@ -265,6 +269,7 @@ C('old_boss', async () => {
     ok(s.ok && !s.lock && s.pad, `${f}: loads and stands free (ok ${s.ok}, area ${s.area}, lock ${s.lock}, pad ${s.pad})`);
     note(f, { area: s.area, at: [s.x, s.z], hp: s.hp, obj: s.obj, queen: s.queen, kept: s.q, flags: s.flags, pills: s.pills, line: s.line.slice(0, 40), warn: s.warn });
     await still(f.replace(/\.json$/, ''), 'an old boss save, loaded');
+    if (/intro/.test(f)) { const n0 = s.seen; await P('trig', 'boss.enter'); const z = await until({ idle: true, wait: 30 }, 200, true); note(f + ': he steps into the hall', { shown: (await P('seenFrom', n0)).length, obj: z.obj, queen: z.queen }); }
   }
 });
 

@@ -216,7 +216,7 @@ C('keeper', "that night's graveyard: the keeper, Edmund at the grave, the road b
   await until({ line: '' }); await still('edmund_grave', '묘지의 에드문트 (ev_edmund_grave)', ['hero', 'edmund'], 'ev_edmund_grave');
 });
 C('sera', 'the ossuary: Sera at the lamp', async () => {
-  await boot(before('ev_oss_sera')); await idle(); await P('trig', 'oss.lamp');
+  await boot(before(FILES.some((x) => idOf(x) === 'ev_oss_lamp') ? 'ev_oss_lamp' : 'ev_oss_sera')); await idle(); await P('trig', 'oss.lamp');   // (STORY-VERIFY: when the bot's run has ev_oss_lamp and ev_oss_sera in one beat, the save before ev_oss_sera is already after the scene and the chain stopped)
   await until({ line: '' }); await still('sera_lamp', '등불대의 세라 (ev_oss_sera)', ['hero', 'sera'], 'ev_oss_sera');
 });
 C('queen', "the queen: her entrance, the tear", async () => {
