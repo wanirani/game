@@ -120,6 +120,9 @@ export function ossuary(era = 'now', flags = {}) {
     for (const [x, z, s] of [[600, 500, 2], [600, 1300, 2.4], [600, 1800, 2.4], [600, 2600, 2], [600, 3350, 3]]) anchors.push({ id: 'mist_' + z, kind: 'mist', x, y: 0, z, size: s });
     anchors.push({ id: 'gap_fog', kind: 'fog_bank', x: 600, y: -120, z: 1300, size: 4 });
   }
+  // DETAIL: the rest spot before the last hall is a place someone keeps (GDD: Lotte's bread) - a folded blanket and a kneeling board at the foot of the rail wall,
+  // the bread basket, a jug and a bowl on its top. Flat things inside the wall's own collision skin: nothing to catch on (ENV_KIT 24)
+  add('c3', { t: 'deco', mesh: 'keptplace', x: 322, z: 2966, w: 208, shelf: 62, back: 9, old: now });
   anchors.push({ id: 'door_fire_l', kind: 'fire', x: 450, y: 82, z: 2980, size: 0.65, light: true }, { id: 'door_fire_r', kind: 'fire', x: 750, y: 82, z: 2980, size: 0.65, light: true });   // size 0.65: a fire bowl on a pillar (the particle fire is the only flame here)
   add('c3', { t: 'deco', mesh: 'fire', x: 450, y: 80, z: 2978, w: 34, h: 44, n: 3, embers: false, light: { r: 420, i: 1.5, y: 20, c: now ? [0.7, 0.8, 1] : [1, 0.5, 0.2] } }, { t: 'deco', mesh: 'fire', x: 750, y: 80, z: 2978, w: 34, h: 44, n: 3, embers: false, light: { r: 420, i: 1.5, y: 20, c: now ? [0.7, 0.8, 1] : [1, 0.5, 0.2] } });
   // ───────────── people, enemies, hot spots ─────────────

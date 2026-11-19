@@ -48,7 +48,8 @@ export function graveyard(era = 'now', flags = {}) {
     LP(516, 300), LP(684, 620, { flip: true }));
   if (now) for (const [x, z] of [[600, 250], [600, 560], [600, 820]]) anchors.push({ id: 'mist_road_' + z, kind: 'mist', x, y: 0, z, size: 2 });
   // the keeper's hut behind the inner gate wall (same footprint both nights: lit and thatched in 1697, a roofless ruin tonight)
-  add('field', house({ x: 770, z: 1000, w: 260, h: now ? 120 : 132, d: 70, style: 'rubble', seed: 91, burnt: now, lit: 1, door: 200, roofMat: 'thatch', roofH: 30, roofKit: { chimneys: [] }, kit: { lower: 'fieldstone', plinth: 20 } }));   // kept low (ridge 162, no chimney): at 170 + 50 the hut hid the hero in a 375-deep patch of the field behind it
+  add('field', house({ hang: [{ type: 'tools', u: 128, y: 28, old: now }], x: 770, z: 1000, w: 260, h: now ? 120 : 132, d: 70, style: 'rubble', seed: 91, burnt: now, lit: 1, door: 200, roofMat: 'thatch', roofH: 30, roofKit: { chimneys: [] }, kit: { lower: 'fieldstone', plinth: 20 } }));   // kept low (ridge 162, no chimney): at 170 + 50 the hut hid the hero in a 375-deep patch of the field behind it
+  if (now) add('field', { t: 'deco', mesh: 'rafters', x: 900, y: 120, z: 1000, w: 250, d: 70, rh: 30, n: 4 });   // DETAIL: what the fire left of the hut's roof (thin charred rafters on the wall top); the keeper's tools hang on its front in both nights
   // the grave field: rows of solid stones with clear lanes (the middle path x 500..700 and the cross path z 1460..1580 stay empty)
   const stones = [];
   for (let row = 0; row < 7; row++) for (let col = 0; col < 8; col++) {

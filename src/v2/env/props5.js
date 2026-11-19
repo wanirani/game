@@ -42,6 +42,18 @@ Object.assign(WALLPROPS, {
       G.quad4('white', F.pt(uu, yy, 1.2), F.pt(uu + dx * 0.5 + px, yy + dy * 0.5 + py, 1.2 + out * 0.6), F.pt(uu + dx, yy + dy, 1.2 + out), F.pt(uu + dx * 0.5 - px, yy + dy * 0.5 - py, 1.2 + out * 0.6), [F.nx * 0.55, 0.83, F.nz * 0.55], q);
     }
   },
+  /** the gravekeeper's tools hung on a wall: a peg rail with a spade, a rake and a coil of rope: { u, y (foot of the tools), old (tonight: rust, the rope gone, the rake fallen askew) } */
+  tools(G, F, s) {
+    const u = s.u, y = s.y, old = !!s.old, Tn = old ? [0.56, 0.5, 0.46] : [0.9, 0.76, 0.58], iron = { vary: 0.1, k: old ? 0.6 : 0.85, tint: old ? [0.9, 0.62, 0.5] : [0.8, 0.82, 0.92] }, wd = { tint: Tn, vary: 0.2 };
+    F.box(G, 'timber', u - 44, u + 44, y + 64, y + 69, 0, 2.6, { faces: 'FLRT', ...wd });
+    F.box(G, 'timber', u - 27, u - 23.4, y + 16, y + 74, 2.6, 5.4, { faces: 'FLR', ...wd });                                                                    // spade
+    G.quad4('metal', F.pt(u - 32, y, 4.6), F.pt(u - 18.4, y, 4.6), F.pt(u - 17.4, y + 17, 4.6), F.pt(u - 33, y + 17, 4.6), F.n, iron);
+    const lean = old ? 9 : 0;                                                                                                                                  // rake: head up
+    G.quad4('timber', F.pt(u + 1 + lean, y + 2, 3.6), F.pt(u + 4.4 + lean, y + 2, 3.6), F.pt(u + 4.4, y + 84, 3.6), F.pt(u + 1, y + 84, 3.6), F.n, wd);
+    F.box(G, 'timber', u - 9, u + 14.4, y + 84, y + 88, 2.6, 5.6, { faces: 'FLRT', ...wd }); for (let i = 0; i < 5; i++) F.box(G, 'metal', u - 7.6 + i * 5, u - 6 + i * 5, y + 77, y + 84, 3.2, 4.6, { faces: 'F', ...iron });
+    if (!old) { const cu = u + 30, cy = y + 50, r0 = 11, r1 = 6.5; for (let i = 0; i < 6; i++) { const a = i * 1.0472, b = a + 1.0472; G.quad4('straw', F.pt(cu + Math.cos(a) * r1, cy + Math.sin(a) * r1, 3.2), F.pt(cu + Math.cos(a) * r0, cy + Math.sin(a) * r0, 3.2), F.pt(cu + Math.cos(b) * r0, cy + Math.sin(b) * r0, 3.2), F.pt(cu + Math.cos(b) * r1, cy + Math.sin(b) * r1, 3.2), F.n, { tint: [0.9, 0.78, 0.54], vary: 0.2, k: 0.9 + 0.2 * (i % 2) }); } }
+    else F.box(G, 'metal', u + 27, u + 33, y + 58, y + 64, 0, 4, { faces: 'FLR', ...iron });
+  },
   /** a washing line along a wall (1697): { u (middle), y (height of the hooks), w (span), sag, n (pieces), off (distance from the wall), seed } */
   washline(G, F, s) {
     const w = s.w ?? 200, sag = s.sag ?? 16, off = s.off ?? 10, n = s.n ?? 5, sd = s.seed ?? 1, seg = 8, yt = (t) => s.y - sag * 4 * t * (1 - t), ut = (t) => s.u - w / 2 + w * t;
@@ -72,54 +84,35 @@ const pole = (G, x, y, z, dx, top, dz, r, mat = 'timber', tint = [0.8, 0.68, 0.5
 
 Object.assign(PROPS, {
   /**
-   * the things of a place someone keeps (a rest spot): a folded blanket, a three-legged stool, a basket of loaves under a cloth, a jug and a bowl.
-   * o = { w (how wide the group lies, default 150), old (tonight: grey and dusty, the stool fallen), bread: false (no basket) }. x, z = the middle of the group; it
-   * lies along +x. Nothing is taller than 26.
+   * the things of a place someone keeps (a rest spot), set against the front of a low wall: on the floor a folded blanket and a kneeling board, both flat and
+   * within 9 of the wall (inside the wall's own collision skin: the hero's body never reaches them); on the wall top (o.shelf = its height above the floor,
+   * o.back = how far behind the group's line the top lies) a basket of loaves under a cloth, a jug and a bowl, and a cloth hanging over the coping.
+   * x, z = the middle of the group on the floor, right in front of the wall; it lies along x. o = { w (default 150), old (tonight: grey, dusty), bread: false }.
    */
   keptplace(G, x, y, z, o = {}) {
-    const old = !!o.old, w = o.w ?? 150, k = old ? 0.72 : 1, sd = Math.round(x + z);
-    // a blanket folded twice (cloth, a stripe along its edge)
-    const bx = x - w * 0.36, T = old ? [0.42, 0.4, 0.42] : [0.52, 0.2, 0.18];
-    G.box('cloth', bx - 21, y, z - 11, bx + 21, y + 6, z + 11, { faces: 'FLRT', tint: T, vary: 0.2, k }); G.box('cloth', bx - 19, y + 6, z - 10, bx + 16, y + 10.5, z + 9, { faces: 'FLRT', tint: [T[0] * 1.12, T[1] * 1.12, T[2] * 1.12], vary: 0.2, k });
-    G.quad('cloth', [bx - 19, y + 6.6, z - 10.2], [35, 0, 0], [0, 2.4, 0], [0, 0, -1], { tint: [0.9, 0.82, 0.6], vary: 0, k });
-    // a stool
-    const sx = x - w * 0.06, sz = z + 3;
-    if (old) { G.lathe('timber', sx, sz, [[9.5, y + 2], [9.5, y + 5]], 7, { tint: [0.6, 0.52, 0.46], vary: 0.2, cap: 'timber', sq: 0.9 }); pole(G, sx + 6, y, sz - 6, 16, 3, -4, 1.4); }
-    else { for (let i = 0; i < 3; i++) { const a = i * 2.094 + 0.5; pole(G, sx + Math.cos(a) * 8, y, sz + Math.sin(a) * 6, -Math.cos(a) * 3, 15, -Math.sin(a) * 2.5, 1.5); } G.lathe('timber', sx, sz, [[10, y + 15], [10.5, y + 18.5]], 8, { tint: [0.9, 0.76, 0.6], vary: 0.2, cap: 'timber', sq: 0.9 }); }
-    // a basket with loaves under a cloth (Lotte's bread)
+    const old = !!o.old, w = o.w ?? 150, k = old ? 0.74 : 1, ys = y + (o.shelf ?? 62), zs = z + (o.back ?? 12), T = old ? [0.42, 0.4, 0.42] : [0.52, 0.2, 0.18];
+    // floor: a blanket folded twice (a stripe along its edge), a kneeling board on two blocks
+    const bx = x - w * 0.3;   // (with w 208 at x 322 the blanket and the board lie in the two bays between the piers of the ossuary's rail wall)
+    G.box('cloth', bx - 22, y, z - 4.5, bx + 22, y + 6, z + 4.5, { faces: 'FLRT', tint: T, vary: 0.2, k }); G.box('cloth', bx - 20, y + 6, z - 4, bx + 17, y + 10.5, z + 4.5, { faces: 'FLRT', tint: [T[0] * 1.12, T[1] * 1.12, T[2] * 1.12], vary: 0.2, k });
+    G.quad('cloth', [bx - 20, y + 6.6, z - 4.2], [37, 0, 0], [0, 2.4, 0], [0, 0, -1], { tint: [0.9, 0.82, 0.6], vary: 0, k });
+    const kx = x + w * 0.22;
+    G.box('timber', kx - 26, y + 5, z - 4.5, kx + 26, y + 8.5, z + 4.5, { faces: 'FLRT', tint: [0.86, 0.72, 0.56], vary: 0.2, k }); for (const e of [-1, 1]) G.box('timber', kx + e * 20 - 3, y, z - 4, kx + e * 20 + 3, y + 5, z + 4, { faces: 'FLR', tint: [0.7, 0.58, 0.46], vary: 0.2, k });
+    // on the wall top: a basket with loaves under a cloth (Lotte's bread), a jug and a bowl
     if (o.bread !== false) {
-      const kx = x + w * 0.2, kz = z - 2;
-      pot(G, kx, y, kz, [[9, 0], [13.5, 5], [14.5, 12], [13.5, 13.5]], 'straw', old ? [0.62, 0.56, 0.44] : [1.0, 0.86, 0.56], 8, [0.16, 0.12, 0.08]);
-      for (const [dx, dz, r] of [[-4, -1, 6.4], [5, 1.5, 5.6], [0.5, 4.5, 5]]) G.lathe('white', kx + dx, kz + dz, [[r, y + 12], [r * 0.82, y + 16], [0, y + 18.4]], 6, { tint: old ? [0.5, 0.42, 0.3] : [0.86, 0.6, 0.3], vary: 0.2, sq: 0.8, k });
-      G.quad4('cloth', [kx - 15.5, y + 11, kz - 9], [kx + 2, y + 9.5, kz - 13.5], [kx + 4, y + 15.5, kz - 6], [kx - 13, y + 15, kz - 2], [0, 0.6, -0.8], { tint: [0.9, 0.88, 0.8], vary: 0.12, k });
+      const cx = x + w * 0.1, cz = zs;
+      pot(G, cx, ys, cz, [[7, 0], [10.5, 4], [11.5, 9], [10.5, 10.5]], 'straw', old ? [0.62, 0.56, 0.44] : [1.0, 0.86, 0.56], 8, [0.16, 0.12, 0.08]);
+      for (const [dx, dz, r] of [[-3, -1, 5.2], [4, 1, 4.6], [0.5, 3.4, 4.2]]) G.lathe('white', cx + dx, cz + dz, [[r, ys + 9], [r * 0.82, ys + 12.5], [0, ys + 14.6]], 6, { tint: old ? [0.5, 0.42, 0.3] : [0.86, 0.6, 0.3], vary: 0.2, sq: 0.8, k });
+      G.quad4('cloth', [cx - 12.5, ys + 8.5, cz - 7], [cx + 1.5, ys + 7.5, cz - 10.5], [cx + 3, ys + 12.4, cz - 4.5], [cx - 10.5, ys + 12, cz - 1.5], [0, 0.6, -0.8], { tint: [0.9, 0.88, 0.8], vary: 0.12, k });
     }
-    // a jug and a bowl
-    const jx = x + w * 0.4, jz = z + 4;
-    pot(G, jx, y, jz, [[5, 0], [8.5, 6], [8, 14], [4.2, 20], [5.2, 25]], 'white', old ? [0.36, 0.32, 0.3] : [0.56, 0.34, 0.24], 7, [0.07, 0.06, 0.06]);
-    G.tube('white', [jx + 5, y + 20, jz - 1], [jx + 10, y + 13, jz - 1], 1.4, 1.4, 3, { tint: [0.5, 0.3, 0.22], vary: 0, keep: true });
-    pot(G, jx - 19, y, jz - 8, [[4, 0], [8.5, 4.5], [9, 6]], 'timber', [0.8, 0.66, 0.5], 7, [0.18, 0.14, 0.1]);
-    shadow(G, x, y, z + 2, w * 0.56, 16, 0.42);
-  },
-  /**
-   * the gravekeeper's tools leaning against a wall: a spade, a rake and a pick, a wooden bucket, a coil of rope. x, z = the foot of the group; `lean` = [dx, dz]
-   * the way to the wall the handles rest on (unit vector, default [0, 1] = a wall behind it). o.old (tonight) = rust, the spade fallen, no rope.
-   */
-  tools(G, x, y, z, o = {}) {
-    const [lx, lz] = o.lean ?? [0, 1], ax = Math.abs(lz), az = Math.abs(lx), old = !!o.old, Tn = old ? [0.56, 0.5, 0.46] : [0.86, 0.72, 0.56], iron = { vary: 0.1, k: old ? 0.62 : 0.85, tint: old ? [0.9, 0.62, 0.5] : [0.8, 0.82, 0.92], keep: true };
-    const at = (s, t) => [x + ax * s + lx * t, z + az * s + lz * t];   // s along the wall, t toward it
-    // spade
-    if (old) { const [px, pz] = at(-30, -14), [qx, qz] = at(22, -4); G.tube('timber', [px, y + 2, pz], [qx, y + 3, qz], 1.7, 1.5, 4, { tint: Tn, vary: 0.15, keep: true }); G.quad4('metal', [qx - ax * 2, y + 0.8, qz - 7], [qx + ax * 13 + lx * 2, y + 0.8, qz - 5], [qx + ax * 13 + lx * 2, y + 1.6, qz + 6], [qx - ax * 2, y + 1.6, qz + 7], [0, 1, 0], iron); }
-    else { const [px, pz] = at(-22, -15), [qx, qz] = at(-18, -1); pole(G, px, y + 13, pz, qx - px, 62, qz - pz, 1.7, 'timber', Tn); G.quad4('metal', [px - ax * 6 - az * 6, y, pz], [px + ax * 6 + az * 6, y, pz], [px + ax * 6.5 + az * 6.5 + (qx - px) * 0.2, y + 15, pz + (qz - pz) * 0.2], [px - ax * 6.5 - az * 6.5 + (qx - px) * 0.2, y + 15, pz + (qz - pz) * 0.2], [-lx * 0.9, 0.3, -lz * 0.9], iron); }
-    // rake: teeth up
-    { const [px, pz] = at(2, -17), [qx, qz] = at(5, -1), top = old ? 64 : 80; pole(G, px, y, pz, qx - px, top, qz - pz, 1.6, 'timber', Tn);
-      G.box('timber', qx - ax * 11 - 1.4, y + top - 2, qz - az * 11 - 1.4, qx + ax * 11 + 1.4, y + top + 2, qz + az * 11 + 1.4, { faces: 'FLRT', tint: Tn, vary: 0.1 });
-      for (let i = -2; i <= 2; i++) G.tube('metal', [qx + ax * i * 4.6 - lx * 1.5, y + top + 1, qz + az * i * 4.6 - lz * 1.5], [qx + ax * i * 4.6 - lx * 7, y + top - 4, qz + az * i * 4.6 - lz * 7], 0.9, 0.5, 3, iron); }
-    // pick
-    { const [px, pz] = at(26, -13), [qx, qz] = at(24, -1), top = 58; pole(G, px, y, pz, qx - px, top, qz - pz, 1.8, 'timber', Tn); G.tube('metal', [qx - ax * 13, y + top - 4, qz - az * 13], [qx + ax * 13, y + top - 4, qz + az * 13], 1.2, 2.2, 4, iron); G.tube('metal', [qx - ax * 13, y + top - 4, qz - az * 13], [qx - ax * 17, y + top - 10, qz - az * 17], 1.2, 0.3, 3, iron); }
-    // bucket and rope
-    { const [bx, bz] = at(48, -9); pot(G, bx, y, bz, [[8, 0], [10.5, 17], [11, 18.5]], 'timber', old ? [0.5, 0.44, 0.4] : [0.84, 0.7, 0.54], 8, [0.1, 0.09, 0.09]); G.lathe('metal', bx, bz, [[10.2, y + 12], [10.5, y + 14]], 8, { vary: 0, k: 0.7 });
-      if (!old) { const [rx, rz] = at(-46, -9); for (let i = 0; i < 3; i++) G.lathe('straw', rx, rz, [[11 - i * 1.2, y + i * 3.2], [12 - i * 1.2, y + i * 3.2 + 1.6], [11 - i * 1.2, y + i * 3.2 + 3.2]], 8, { tint: [0.86, 0.74, 0.52], vary: 0.15, sq: 0.8 }); } }
-    shadow(G, x, y, z - 6, 62, 18, 0.4);
+    const jx = x + w * 0.24;
+    pot(G, jx, ys, zs, [[4.2, 0], [7, 5], [6.6, 12], [3.4, 17], [4.4, 21]], 'white', old ? [0.36, 0.32, 0.3] : [0.56, 0.34, 0.24], 7, [0.07, 0.06, 0.06]);
+    G.tube('white', [jx + 4, ys + 17, zs - 1], [jx + 8.5, ys + 11, zs - 1], 1.2, 1.2, 3, { tint: [0.5, 0.3, 0.22], vary: 0, keep: true });
+    pot(G, jx + 20, ys, zs - 1, [[3.4, 0], [7, 3.8], [7.4, 5]], 'timber', [0.8, 0.66, 0.5], 7, [0.18, 0.14, 0.1]);
+    // a cloth hanging over the coping, down the wall's face
+    const hx = x - w * 0.36, hz = z + 5.5;
+    G.quad4('cloth', [hx - 13, ys - 30, hz], [hx + 13, ys - 26, hz], [hx + 13, ys + 0.6, hz], [hx - 13, ys + 0.6, hz], [0, 0, -1], { tint: old ? [0.5, 0.5, 0.52] : [0.84, 0.8, 0.7], vary: 0.15, k });
+    G.quad4('cloth', [hx - 13, ys + 0.6, hz], [hx + 13, ys + 0.6, hz], [hx + 13, ys + 0.6, hz + 12], [hx - 13, ys + 0.6, hz + 12], [0, 1, 0], { tint: old ? [0.56, 0.56, 0.58] : [0.9, 0.86, 0.76], vary: 0.15, k });
+    shadow(G, x, y, z, w * 0.5, 9, 0.4);
   },
   /** split logs stacked against a wall: { w (length along x), h, d (depth), rows }. x, z = the middle of its front foot. Cut ends show at the front */
   woodpile(G, x, y, z, o = {}) {

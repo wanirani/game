@@ -96,11 +96,15 @@ function installCa() {
     // 600 px) an open exit he is not walking to (pushExit names the one he is: A.exitGoal) is a wall to him: a step or a roll that would carry him into its box (24 px around it) loses
     // its part toward the box. Only then and only that near: the belltower's stair begins 60 px beside the door, and a wider wall with no fight on stopped him at its foot for 7200 ticks.
     if (!A.passive && (o.mx || o.mz) && !sc.hud.modal) {
-      const X = sc.area?.exits ?? [], EN = sim.enemies; let fight = false;
-      for (let i = 0; i < EN.length; i++) { const e = EN[i]; if (e.active && !e.dead && e.state !== 'dead' && Math.abs(e.x - h.x) < 600 && Math.abs(e.z - h.z) < 600) { fight = true; break; } }
+      const X = sc.area?.exits ?? [], EN = sim.enemies; let fight = false, ne = null, nd = 1e9;
+      for (let i = 0; i < EN.length; i++) { const e = EN[i]; if (e.active && !e.dead && e.state !== 'dead' && Math.abs(e.x - h.x) < 600 && Math.abs(e.z - h.z) < 600) { fight = true; if (Math.abs((e.gy ?? e.y) - h.y) < 90) { const dd = Math.hypot(e.x - h.x, e.z - h.z); if (dd < nd) { nd = dd; ne = e; } } } }
+      // STORY (11-19): the 24 px wall kept his steps and rolls out of the exit's box, but a knock-back from its edge still carried him in (one run in nine on that night's graveyard
+      // road). A RETREAT - a move away from the nearest awake enemy on his own floor - now stops 200 px before the box: he stands his ground out of a knock-back's reach.
+      // Every other move (toward a way point, toward an enemy) keeps the 24 px, so the belltower's stair that begins 60 px beside the door is climbed as before.
+      const md = Math.hypot(o.mx, o.mz) || 1, retreat = !!ne && nd > 1 && (o.mx * (h.x - ne.x) + o.mz * (h.z - ne.z)) / (md * nd) > 0.3;
       for (let i = 0; fight && i < X.length; i++) {
         const q = X[i]; if (q.locked || q.id === A.exitGoal) continue;
-        const d = Math.hypot(o.mx, o.mz) || 1, far = o.dash ? 175 : 40, n = o.dash ? 4 : 1, m = 24; let into = false;
+        const d = Math.hypot(o.mx, o.mz) || 1, far = o.dash ? 175 : 40, n = o.dash ? 4 : 1, m = retreat ? 200 : 24; let into = false;
         for (let k = 1; k <= n && !into; k++) { const ex = h.x + (o.mx / d) * far * k / n, ez = h.z + (o.mz / d) * far * k / n; into = ex > q.x0 - m && ex < q.x1 + m && ez > q.z0 - m && ez < q.z1 + m; }
         if (!into) continue;
         const cx = Math.max(q.x0, Math.min(q.x1, h.x)) - h.x, cz = Math.max(q.z0, Math.min(q.z1, h.z)) - h.z, cl = Math.hypot(cx, cz); if (cl < 1) continue;   // (already inside the box: the scene takes him)
@@ -108,7 +112,7 @@ function installCa() {
         const rx = o.mx / d - nx * dot, rz = o.mz / d - nz * dot, rl = Math.hypot(rx, rz);
         if (rl > 0.25) { o.mx = (rx / rl) * d; o.mz = (rz / rl) * d; if (o.dash && !sc._spotOk({ x: h.x + (rx / rl) * 110, z: h.z + (rz / rl) * 110, y: h.y })) o.dash = false; }
         else { o.mx = 0; o.mz = 0; o.dash = false; }   // nothing of it is left: he stands his ground
-        A.doorTurns = (A.doorTurns ?? 0) + 1;
+        A.doorTurns = (A.doorTurns ?? 0) + 1; if (retreat) A.doorStands = (A.doorStands ?? 0) + 1;
       }
     }
     if (o.jump) { A.wantJump = true; o.jump = false; }
@@ -335,7 +339,8 @@ async function useSpot(what, { budget = 3000, data = null, how = 'pill' } = {}) 
   if (!t) return { ok: false, why: `no person or spot "${what}"${data ? JSON.stringify(data) : ''} in ${s0.area} in this state (${s0.flags.join('+') || 'base'})` };
   if (!t.on) return { ok: false, why: `"${what}" is in ${s0.area} but not shown in this state` };
   const want = t.id, w = await walk(t.x, t.z, { r: t.person ? 96 : Math.max(36, t.r * 0.7), budget, pred: (s) => s.prompt === want && how === 'pill' });
-  if (how === 'bell') { let rang = null; for (let i = 0; i < 3; i++) { rang = await ev(() => window.__ca.bell(260)); if (rang.rang) break; await play(140, { bot: true }); } const s = await settle(); return { ok: !!rang?.rang, rang, s, why: rang?.rang ? '' : `the long ring did nothing at "${what}" (hero ${s.x},${s.z},y${s.y}; spot ${Math.round(t.x)},${Math.round(t.z)},y${Math.round(t.y)}; ${JSON.stringify(rang)}; ${w.why ?? ''})` }; }
+  if (how === 'bell') { const s1 = await st(), far = Math.round(Math.hypot(s1.x - t.x, s1.z - t.z)); if (far > t.r + 60) return { ok: false, s: s1, why: `did not reach the bell "${what}": the hero stands ${far} px from it (its ring is heard within ${Math.round(t.r + 60)}); ${w.why ?? 'the walk ended there'}` };   // (a long ring in the air is not this beat: the scene takes the bell within r + 60)
+    let rang = null; for (let i = 0; i < 3; i++) { rang = await ev(() => window.__ca.bell(260)); if (rang.rang) break; await play(140, { bot: true }); } const s = await settle(); return { ok: !!rang?.rang, rang, s, why: rang?.rang ? '' : `the long ring did nothing at "${what}" (hero ${s.x},${s.z},y${s.y}; spot ${Math.round(t.x)},${Math.round(t.z)},y${Math.round(t.y)}; ${JSON.stringify(rang)}; ${w.why ?? ''})` }; }
   let got = null, offered = new Set();
   for (let i = 0; i < 10 && !got; i++) { const s = await play(24, { bot: true }); if (s.prompt) offered.add(s.prompt); if (s.prompt === want) got = await ev(() => window.__ca.pill()); else if (i % 3 === 2) await walk(t.x, t.z, { r: t.person ? 60 : 30, budget: 300, pred: (q) => q.prompt === want }); }
   for (let k = 0; k < 8 && !got; k++) { const an = k * Math.PI / 4, px = t.x + Math.cos(an) * (t.person ? 70 : t.r * 0.8), pz = t.z + Math.sin(an) * (t.person ? 70 : t.r * 0.8); await walk(px, pz, { r: 22, budget: 360, pred: (q) => q.prompt === want }); const s = await play(20, { bot: true }); if (s.prompt) offered.add(s.prompt); if (s.prompt === want) got = await ev(() => window.__ca.pill()); }
@@ -394,7 +399,14 @@ function writeTable() {
   EVENTS.forEach((e, i) => { const r = ST.rows[e.id]; const cut = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s).replace(/\|/g, '/');
     if (!r) L.push(`| ${i + 1} | ${e.id} (${e.minute}) | not reached | | | | |`);
     else L.push(`| ${i + 1} | ${e.id} (${e.minute}) | ${r.status === 'honest' ? 'honest play' : r.status === 'helped' ? 'WITH HELP: ' + cut(r.help ?? '', 160) : r.status} | ${r.dt} | ${cut(r.seen.slice(0, 3).join(' ▸ '), 150)} | ${cut([...r.errors, ...r.warnings].join(' ; '), 120)} | ${r.still ? r.still.split('/').pop() : ''} |`); });
-  fs.writeFileSync(`${OUT}/table.md`, L.join('\n') + '\n'); fs.writeFileSync(`${OUT}/table.json`, JSON.stringify({ rows: ST.rows, beats: ST.beats, helps: ST.helps, errors: ST.errors, lost: ST.lost, warnings: ST.warnings, num: ST.num, notes: ST.notes }, null, 1));
+  // what was not reached, with the reason of the beat that was meant to reach it (STORY, 11-19: an optional beat that reached nothing used to count as neither a help nor a failure)
+  const NR = EVENTS.filter((e) => !ST.rows[e.id]).map((e) => { const b = ST.beats.find((q) => !q.ok && ('ev_' + q.id === e.id || q.id === e.id)); return { id: e.id, safety: !!e.safety, beat: b ? b.id : null, why: b ? b.why : e.safety ? 'a safety net (not asked for)' : 'no beat of this run plays it (another branch, a fall, a locked door that was never pushed)' }; });
+  const failed = ST.beats.filter((q) => !q.ok);
+  L.push('', `not reached: ${NR.length} of ${EVENTS.length} sequences (${NR.filter((q) => q.beat).length} of them by a beat that failed) · beats that failed: ${failed.length} · helps: ${ST.helps.length}`);
+  for (const q of NR) L.push(`- ${q.id}: not reached — ${q.beat ? 'beat ' + q.beat + ': ' : ''}${String(q.why).slice(0, 300)}`);
+  for (const q of failed) if (!NR.some((n) => n.beat === q.id)) L.push(`- beat ${q.id} failed (its sequences were reached otherwise): ${String(q.why).slice(0, 300)}`);
+  ST.notReached = NR;
+  fs.writeFileSync(`${OUT}/table.md`, L.join('\n') + '\n'); fs.writeFileSync(`${OUT}/table.json`, JSON.stringify({ rows: ST.rows, beats: ST.beats, helps: ST.helps, errors: ST.errors, lost: ST.lost, warnings: ST.warnings, num: ST.num, notes: ST.notes, notReached: ST.notReached }, null, 1));
 }
 
 // ───────── the plan: one beat = one thing the player does; `fn` returns { ok, why } after honest play (and logged help where it failed) ─────────
@@ -609,6 +621,6 @@ try {
 } catch (e) { code = 1; log('FATAL ' + String(e?.stack ?? e).slice(0, 800)); ST.notes.push('fatal: ' + String(e?.message ?? e).slice(0, 400)); }
 for (const e of errs.splice(0)) ST.errors.push(e);
 saveState(); writeTable();
-log(`table: ${OUT}/table.md · rows reached ${Object.keys(ST.rows).length}/${EVENTS.length} · helps ${ST.helps.length} · page errors ${ST.errors.length} · context lost ${ST.lost.length} · saves ${ST.num.saves}`);
+log(`table: ${OUT}/table.md · rows reached ${Object.keys(ST.rows).length}/${EVENTS.length} · not reached ${(ST.notReached ?? []).length} (by a failed beat: ${(ST.notReached ?? []).filter((q) => q.beat).map((q) => q.id).join(' ') || 'none'}) · beats that failed ${ST.beats.filter((q) => !q.ok).length} · helps ${ST.helps.length} · page errors ${ST.errors.length} · context lost ${ST.lost.length} · saves ${ST.num.saves}`);
 await browser.close().catch(() => {}); srv.close?.();
 process.exit(code);
