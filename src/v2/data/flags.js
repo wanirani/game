@@ -120,7 +120,7 @@ export const FLAGS = {
   elise_found: { means: '그 밤의 납골당에서 엘리제를 깨웠다', world: true,
     set: ['ev_elise_wake'],
     read: ['area:eshville_past/elise', 'ev_elise_wake', 'ev_keepers', 'ev_ossuary_bridge', 'ev_ossuary_exit_now', 'retry.again', 'retry.line'] },
-  keepers_promised: { means: '로테와 엘리제가 종으로 약속했다',
+  keepers_promised: { means: '로테와 엘리제가 종으로 약속했다 (엘리제가 그 밤의 종 곁에 선다)', world: true,
     set: ['ev_keepers'],
     read: ['ev_bell_cross', 'ev_ending', 'ev_ending_home', 'ev_keepers', 'lotte.fell'] },
   elise_home: { means: '엘리제가 오늘 밤으로 돌아왔다',

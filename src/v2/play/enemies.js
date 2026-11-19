@@ -166,7 +166,7 @@ export const AI = {
     if (e.hp <= D.kneelAt * D.hp + 0.5) { if (e.state === 'attack') sim._cancelAttack(e, 1); e.kneel = 1; e.kneelT = 0; e.poiseHp = 0; e.staggerK = 0; e.solid = true; e.state = 'kneel'; sim.emit('kneel', e, 'down'); sim.setAnim(e, 'kneel', dt); return; }
     if (e.bphase === 1 && e.hp <= D.hp * D.phaseAt && e.state !== 'attack') { e.bphase = 2; e.fled = true; e.fleeT = 0; e.solid = false; e.poiseHp = 0; e.staggerK = 0; e.cd = 1.2; e.sumCd = 0.5; e.songCd = 5; sim.emit('bossFlee', e); }
     if (e.fled) {   // 그 밤으로 달아났다: 장면이 쫓아 건넌 뒤 sim.bossReturn(e) 를 부른다 (e.fleeHold 를 켜 두지 않으면 fleeAuto 초 뒤 스스로 돌아온다)
-      e.fleeT += dt; e.alpha = Math.max(0.12, e.alpha - 2.5 * dt); sim.setAnim(e, 'idle', dt);
+      e.fleeT += dt; e.alpha = Math.max(e.fleeHold ? 0 : 0.12, e.alpha - 2.5 * dt); sim.setAnim(e, 'idle', dt);   // (CHAPTER: 장면이 붙든 동안에는 끝까지 사라진다 — 이 밤에 없다)
       if (!e.fleeHold && D.fleeAuto != null && e.fleeT > D.fleeAuto) sim.bossReturn(e);
       return;
     }

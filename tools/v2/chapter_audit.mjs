@@ -1,6 +1,8 @@
 // CHAPTER-AUDIT (read-only lane): a bot plays 「본 게임」 (scene v2g, story on, new interface, fold_open, render size 0.5) from a clean
 // save towards the ending of chapter 1 and writes down, event by event, what a player can and cannot do today.
 //   node tools/v2/chapter_audit.mjs [--shots 1] [--to <event id>] [--from <event id | save file | last>] [--out <dir>] [--verbose 1]
+//                                   [--root <tree>]  serve the game from a snapshot of the tree (before / after)   [--die tonight | past]  one fall at the queen on purpose
+//                                   [--crate 1]  the wooden-crate branch of the wedge first (it has rotted away tonight), then the statue
 //                                   [--device fold_open] [--res 0.5] [--budget 1] (budget = multiplier on every honest-play budget)
 // HONEST PLAY: input goes in through the pad's own pointer handlers (stick drag, attack / roll / jump / skill / bell buttons), taps on the
 //   dialogue box, on choice rows and on prompt pills. Time is fast-forwarded by ticking the game. The bot reads the game's state to decide
@@ -19,10 +21,11 @@ import { installBot } from './game_bot.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => { if (v.startsWith('--')) a.push([v.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true]); return a; }, []));
 // --out is required since 2026-11-18: a run without --from clears the numbered saves and stills of its folder, and a bare call (or "--help") once wiped another run's saves.
-if (args.help || !args.out || args.out === true) { console.error('usage: node tools/v2/chapter_audit.mjs --out <dir> [--max-seconds 500] [--from last | <event id> | <save file>] [--to <event id>] [--shots 1] [--only <beat> --keep 1] [--device fold_open] [--res 0.5] [--budget 1]\n  --out is required: a run without --from CLEARS the numbered saves and stills in that folder.'); process.exit(2); }
+if (args.help || !args.out || args.out === true) { console.error('usage: node tools/v2/chapter_audit.mjs --out <dir> [--max-seconds 500] [--from last | <event id> | <save file>] [--to <event id>] [--shots 1] [--only <beat> --keep 1] [--device fold_open] [--res 0.5] [--budget 1] [--root <tree>] [--die tonight|past] [--crate 1]\n  --out is required: a run without --from CLEARS the numbered saves and stills in that folder.'); process.exit(2); }
 const OUT = String(args.out), DEV = String(args.device || 'fold_open'), RES = Number(args.res ?? 0.5), VERB = !!args.verbose;
 const MAXS = Number(args['max-seconds'] ?? 0), T0 = Date.now();
 const SHOTS = !!args.shots && String(args.shots) !== '0', FROM = args.from ? String(args.from) : null, TO = args.to ? String(args.to) : null, KB = Number(args.budget ?? 1);
+const DIE = args.die && args.die !== true ? String(args.die) : null, CRATE = !!args.crate && String(args.crate) !== '0';
 const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const GL_ARGS = ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'];
 const SAVES = `${OUT}/saves`, SHOTD = `${OUT}/shots`, SF = `${OUT}/state.json`;
@@ -85,6 +88,8 @@ function installCa() {
       for (const e of sim.enemies) { if (e.dead || e.state === 'dead') continue; const dd = Math.hypot(e.x - h.x, e.z - h.z); if (dd < bd) { bd = dd; be = e; } }
       if (be && bd > 46) { o.mx = (be.x - h.x) / bd; o.mz = (be.z - h.z) / bd; }
     }
+    // an attack that cannot be guarded (the plague corpse's grab) is rolled away from, as the roll tutorial teaches (CHAPTER lane: the bot used to guard it and be struck)
+    if (!A.passive && h.onGround && !(h.rollCd > 0) && !(h.dashT > 0) && !sc.hud.modal) { const E = sim.enemies; for (let i = 0; i < E.length; i++) { const e = E[i], a = e.atk; if (e.dead || e.state !== 'attack' || !a || a.guard !== 'break' || a.pulse || a.air || e.phase !== 'windup' || e.tele < 0.5) continue; const dx = h.x - e.x, dz = h.z - e.z, d = Math.hypot(dx, dz) || 1, reach = (a.box ? a.box.f1 : a.radius ? a.radius.r : 80) + (a.lunge ?? 0) + 30; if (d > reach) continue; o.mx = dx / d; o.mz = dz / d; o.dash = true; o.attack = false; o.guard = false; A.rolls = (A.rolls ?? 0) + 1; break; } }
     if (o.jump) { A.wantJump = true; o.jump = false; }
     if (!o.attack && !o.guard && !o.dash && (o.mx || o.mz) && h.onGround && A.mods) {
       const d = Math.hypot(o.mx, o.mz), ux = o.mx / d, uz = o.mz / d, W = sc.W, y0 = h.y, gnd = A.mods.world.groundAt;
@@ -122,7 +127,8 @@ function installCa() {
         if (d && d.choices && Array.isArray(d.choiceRects) && d.choiceRects.length && d.shown >= d.total && d.page >= d.pages - 1) { const r = d.choiceRects[A.choice] ?? d.choiceRects[0]; if (r) { x = r.x + r.w / 2; y = r.y + r.h / 2; } }
         const c = toClient(x, y); fire('pointerdown', 31, c[0], c[1]); fire('pointerup', 31, c[0], c[1]); A.taps++;
       }
-    } else if (bot && v.ready && !sc._go && !sc.xing && B.ts) { B.touchStep(); A.assist(); }
+    } else if (m === 'end') { if (B.ts) B.touchEnd(); A.relJump(); }   // the ending card: the beat end_card takes its still and taps it
+    else if (bot && v.ready && !sc._go && !sc.xing && B.ts) { B.touchStep(); A.assist(); }
     g.tick(1 / 60); A.ticks++; A.after();
   };
   A.u = {
@@ -130,6 +136,7 @@ function installCa() {
     busy: () => !!H.st.busy || !!v.scene.hud.modal,
     away: () => !v.ready || !!v.scene._go || !!v.scene.xing,
     dead: () => !!v.scene.sim?.hero?.dead,
+    tear: () => !!v.scene.ch?.tear,   // the queen is tearing through to the other night (src/v2/game/chapter.js)
     modal: () => !!v.scene.hud.modal,
   };
   A.run = (n, bot, until) => { g._pageHidden = true; let i = 0; for (; i < n; i++) { A.step(bot); if (i % 60 === 0) A.draw(); if (until && A.u[until]()) { i++; break; } } if (B.ts) B.touchEnd(); A.relJump(); A.draw(); return A.status(i); };
@@ -197,7 +204,11 @@ function installCa() {
   return import('/src/v2/world/reach.js').then((reach) => import('/src/v2/b/world.js').then((world) => { A.mods = { reach, world }; return true; }));
 }
 
-const port = 8200 + Math.floor(Math.random() * 700), srv = await start(port);
+// --root <dir>: the same bot, but the game is served from a snapshot of the tree - to tell a change of one lane from a change that was there before
+const http = await import('node:http'), path = await import('node:path');
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.ogg': 'audio/ogg', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.glb': 'model/gltf-binary', '.bin': 'application/octet-stream', '.m4a': 'audio/mp4', '.mp4': 'video/mp4', '.txt': 'text/plain; charset=utf-8' };
+const serveRoot = (root, p) => new Promise((r) => { const s = http.createServer((req, res) => { let u = decodeURIComponent(req.url.split('?')[0]); if (u === '/') u = '/index.html'; const f = path.join(root, u); if (!f.startsWith(root)) { res.writeHead(403); res.end(); return; } fs.readFile(f, (err, data) => { if (err) { res.writeHead(404); res.end('not found'); return; } res.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-cache' }); res.end(data); }); }); s.listen(p, () => r(s)); });
+const port = 8200 + Math.floor(Math.random() * 700), srv = args.root && args.root !== true ? await serveRoot(path.resolve(String(args.root)), port) : await start(port);
 const browser = await chromium.launch({ executablePath: EXE, args: GL_ARGS });
 const ctx = await browser.newContext(contextOptions(DEV)), page = await ctx.newPage(), errs = [];
 let BEAT = '(boot)';
@@ -289,7 +300,7 @@ async function useSpot(what, { budget = 3000, data = null, how = 'pill' } = {}) 
 }
 /** hold the bell button next to a bell: the long ring (crossing / hanging) */
 async function ring(spotId, o = {}) { return useSpot(spotId, { ...o, how: 'bell' }); }
-async function waitArea(id, max = 4200) { await play(max, { bot: false, pred: (q) => q.ready && q.area === id && !q.go && !q.xing, chunk: 60 }); const s = await settle(3600); return { ok: s.area === id, s, why: s.area === id ? '' : `still in ${s.area} (wanted ${id}); last events ${s.lr.slice(-5).join(' ')}` }; }
+async function waitArea(id, max = 4200, bot = true) { await play(max, { bot: false, pred: (q) => q.ready && q.area === id && !q.go && !q.xing, chunk: 60 }); const s = await settle(3600, bot); return { ok: s.area === id, s, why: s.area === id ? '' : `still in ${s.area} (wanted ${id}); last events ${s.lr.slice(-5).join(' ')}` }; }
 /** push the hero through / against an exit */
 async function pushExit(id, { budget = 3600, to = null } = {}) {
   const x = await ev((q) => window.__ca.exit(q), id), s0 = await st(); if (!x) return { ok: false, why: `no exit "${id}" in ${s0.area}` };
@@ -322,7 +333,7 @@ async function collect(beat, result, still) {
   const newErr = errs.splice(0); for (const e of newErr) ST.errors.push(e); for (const l of c.lost) ST.lost.push({ beat: beat.id, ...l });
   const warnNew = c.warnings.filter((w) => !ST.warnings.includes(w)); for (const w of warnNew) ST.warnings.push(w);
   const helpTxt = beatHelp.length ? beatHelp.join('; ') : null, evs = [];
-  const row = (id, o) => { const first = !ST.rows[id]; if (first || ST.rows[id].status === 'not reached') { ST.rows[id] = { id, status: helpTxt ? 'helped' : 'honest', help: helpTxt, beat: beat.id, dt: Math.max(0, (o.t1 ?? c.ticks) - lastEvT), ticks: o.t1 ?? c.ticks, seen: (o.seen ?? []).map(fmtSeen), on: o.on ?? null, area: o.area ?? c.status.area, errors: newErr.map((e) => e.text), warnings: warnNew, still, times: 1 }; lastEvT = o.t1 ?? c.ticks; evs.push(id); } else ST.rows[id].times = (ST.rows[id].times ?? 1) + 1; };
+  const row = (id, o) => { const first = !ST.rows[id]; if (first || ST.rows[id].status === 'not reached') { ST.rows[id] = { id, status: helpTxt ? 'helped' : 'honest', help: helpTxt, beat: beat.id, dt: Math.max(0, (o.t1 ?? c.ticks) - lastEvT), ticks: o.t1 ?? c.ticks, seen: (o.seen ?? []).map(fmtSeen), on: o.on ?? null, area: o.area ?? c.status.area, errors: newErr.map((e) => e.text), warnings: warnNew, still, times: 1 }; lastEvT = o.t1 ?? c.ticks; evs.push(id); } else { ST.rows[id].times = (ST.rows[id].times ?? 1) + 1; (ST.rows[id].all ??= [ST.rows[id].ticks]).push(o.t1 ?? c.ticks); } };   // all = every tick the sequence finished at (the report measures the stretches between save steps)
   for (const o of c.completed) row(o.id, { ...o, seen: c.seen.slice(Math.max(0, o.seen0 - base), Math.max(0, o.seen1 - base)) });
   for (const id of c.done) if (!ST.rows[id]) row(id, { on: '(run from another sequence, or before this run)', seen: [] });
   ST.num.ticks = c.ticks; ST.num.deaths = c.deaths; ST.num.storySaves = c.status.saves; ST.lastT = lastEvT;
@@ -394,6 +405,7 @@ add('to_graveyard', '묘지 문을 지난다 → 안개의 묘지', async () => 
 trigBeat('bats', '묘지 가는 길: 박쥐', 'bats.swoop', { budget: 3600 });
 trigBeat('elite', '정예 무덤지기 갑주 앞', 'elite.gravekeeper', { budget: 4200 });
 groupBeat('elite_fight', '무덤지기 갑주와 싸운다 (group gate) — honest budget 7200 ticks', 'gate', { budget: 7200 });
+add('rest_gate_now', '무덤지기 갑주를 쓰러뜨린 뒤 문 곁 촛불에서 쉰다', async () => { const r = await useSpot('gate_rest', { budget: 2400 }); if (!r.ok) note('the candle at the inner gate (tonight) was not used: ' + r.why); return { ok: true }; });
 trigBeat('echo_hint', '안개의 묘지: 메아리 안내', 'echo.hint', { budget: 3600 });
 add('echo_first', '「종」을 짧게 — 숨은 유령을 드러낸다', async () => { let r = null; for (let i = 0; i < 4; i++) { r = await ev(() => window.__ca.echo()); if (r.raised?.some((q) => q.startsWith('bell.echo'))) break; await play(150, { bot: true }); } await settle(); return { ok: !!r?.raised?.some((q) => q.startsWith('bell.echo')), why: 'no bell.echo was raised: ' + JSON.stringify(r) }; });
 add('ghosts', '유령들 (group ghosts) — 이야기에 필요 없지만 길에 있다', async () => { const r = await clear('ghosts', { budget: 3600 }); if (!r.ok) note('ghosts not cleared honestly: ' + r.why); await settle(); return { ok: true }; });
@@ -409,21 +421,32 @@ spotBeat('ossuary_door_now_1', '납골당 문 (오늘 밤, 이름을 새기기 �
 add('ossuary_exit_now', '납골당 문턱을 밀어 본다 (exit to_ossuary, 잠김)', async () => pushExit('to_ossuary', { budget: 900 }));
 add('back_to_eshville', '마을로 돌아간다 (exit to_eshville)', async () => pushExit('to_eshville', { to: 'eshville_now', budget: 7200 }));
 crossBeat('cross_to_past', '큰 종에서 길게 → 그 밤으로 (ev_bell_cross)', 'big_bell', 'eshville_past', { budget: 6000 });
+add('rest_church_past', '(다쳤으면) 그 밤의 성당 촛불에서 쉰다', async () => { const s = await st(); if (s.hp >= s.hpMax * 0.7) return { ok: true, skipped: true }; const r = await useSpot('church_rest', { budget: 3600 }); if (!r.ok) note('the church candle of that night was not used: ' + r.why); return { ok: true }; });
 add('gate_past', '그 밤의 묘지 문: 같은 열쇠로 연다', async () => { const r = await pushExit('to_graveyard', { budget: 4200 }); let s = await st(); if (!s.flags.includes('past_gate_open')) { ST.num.lostWay.push({ beat: 'gate_past', why: r.why }); s = await emitHelp('exit.locked', { id: 'to_graveyard', locked: 'past_gate' }, 'the locked gate did not answer the hero pushing against it: ' + (r.why ?? '') + ' ' + s.lr.slice(-4).join(' ')); } return { ok: s.flags.includes('past_gate_open'), why: 'past_gate_open not set (key in the bag: ' + !!s.items.key_silver + ')' }; });
 add('to_graveyard_past', '그 밤의 묘지로', async () => pushExit('to_graveyard', { to: 'graveyard_past' }));
 trigBeat('keeper', '그 밤의 묘지기', 'keeper.greets', { budget: 5400 });
+add('rest_gate_past', '그 밤 묘지 안쪽 문의 촛불에서 쉰다', async () => { const r = await useSpot('gate_rest', { budget: 2400 }); if (!r.ok) note('the candle at the inner gate (that night) was not used: ' + r.why); return { ok: true }; });
 spotBeat('carve_a', '이름을 새긴다 — 첫째 무덤', 'nameless_a');
 spotBeat('carve_b', '이름을 새긴다 — 둘째 무덤', 'nameless_b');
 trigBeat('edmund_grave', '묘지 깊은 곳: 에드문트와 다시 (길종을 받는다)', 'grave.edmund', { budget: 3600 });
 add('hook_past', '채찍 걸기 → 건너편 종대 (그 밤)', async () => { const r = await hookUp('graveyard_past'); const s = await st(); note(`after the hook landing the prompt on offer is "${s.prompt}" (hero ${s.x},${s.z},y${s.y})`); if (!r.ok) { ST.num.lostWay.push({ beat: 'hook_past', why: r.why }); await putNear(600, 1905, r.why, 'put the hero on the terrace before the ossuary door'); return { ok: true }; } return r; });
+add('at_post', '빈 종대 앞으로 걸어간다 (길종은 저절로 걸리지 않는다)', async () => { const s0 = await st(); const hung0 = s0.flags.includes('bell_hung'); const t = await ev(() => window.__ca.spot('road_bell')); if (!t) return { ok: false, why: 'no spot road_bell here' }; const w = await walk(t.x, t.z, { r: 40, budget: 1800, pred: (q) => q.prompt === 'road_bell' }); const s = await settle(); note(`at the empty post: bell_hung before walking there ${hung0}, now ${s.flags.includes('bell_hung')}; prompt on offer "${s.prompt}"; objective "${s.obj}"; road bell in the bag ${s.items.road_bell ?? 0}`); return { ok: !hung0 && !s.flags.includes('bell_hung') && s.prompt === 'road_bell', why: `the post did not offer its prompt, or the bell hung by itself (bell_hung ${s.flags.includes('bell_hung')}, prompt ${s.prompt}; ${w.why ?? ''})` }; });
 crossBeat('hang_bell', '빈 종대에 길종을 건다 (「종」 길게) → 백 년 → 오늘 밤', 'road_bell', 'graveyard_now', { budget: 1800, shot: 'hang_cross' });
-spotBeat('ossuary_door_now_2', '납골당 문 (오늘 밤, 길종을 건 뒤) → 열린다', 'ossuary_door', { budget: 1800 });
+add('rest_before_ossuary', '(다쳤으면) 납골당에 들기 전에 문 곁 촛불까지 내려가 쉰다', async () => { const s = await st(); if (s.hp >= s.hpMax * 0.7) return { ok: true, skipped: true }; const r = await useSpot('gate_rest', { budget: 4800 }); if (!r.ok) note('the candle at the inner gate was not reached before the ossuary: ' + r.why); return { ok: true }; });
+spotBeat('ossuary_door_now_2', '납골당 문 (오늘 밤, 길종을 건 뒤) → 열린다', 'ossuary_door', { budget: 3600 });
 add('enter_ossuary', '납골당으로 (exit to_ossuary)', async () => { const s = await st(); if (s.area === 'ossuary_now') { note('already inside the ossuary: the door opened under the hero and took him in'); return { ok: true }; } return pushExit('to_ossuary', { to: 'ossuary_now', budget: 2400 }); });
 trigBeat('oss_coffins', '관의 복도', 'oss.coffins', { budget: 3600 });
 groupBeat('oss_hall', '복도의 해골 (group oss_hall)', 'oss_hall', { budget: 3000 });
 add('oss_probe_1', '오늘 밤 관의 복도는 막혀 있는가 (걸어서 끝까지 가 본다)', async () => { const far = await ev(() => window.__ca.plan(600, 960, 60)); note(`tonight, a walking route from the hero to the far end of the coffin corridor (600,960): ${far ? 'EXISTS (' + far + ' way points) — the corridor is not shut tonight' : 'none (shut, as designed)'}`); return { ok: true }; });
 crossBeat('oss_cross_1', '어귀의 종에서 그 밤으로', 'bell_entry', 'ossuary_past');
-add('oss_wedge', '틈의 방 (그 밤): 석상을 밀어 둔다', async () => { const far = await ev(() => window.__ca.plan(600, 1450, 50)); note(`that night, a walking route over the gap to (600,1450): ${far ? 'EXISTS before anything is wedged' : 'none'}`); return spotOrHelp('oss_wedge', 'oss_wedge', { budget: 4800 }); });
+add('oss_wedge', '틈의 방 (그 밤): 석상을 밀어 둔다', async () => { const far = await ev(() => window.__ca.plan(600, 1450, 50)); note(`that night, a walking route over the gap to (600,1450): ${far ? 'EXISTS before anything is wedged' : 'none'}`); await ev((c) => { window.__ca.choice = c; }, CRATE ? 1 : 0); const r = await spotOrHelp('oss_wedge', 'oss_wedge', { budget: 4800 }); await ev(() => { window.__ca.choice = 0; }); const s = await st(); note(`wedged: ${s.flags.filter((f) => f.startsWith('wedge_')).join('+') || 'nothing'}`); return r; });
+if (CRATE) {   // --crate 1: the other branch of 「돌과 나무」 - the wooden crate has rotted away tonight, the hero goes back and pushes the statue
+  crossBeat('oss_crate_now', '(나무 상자) 복도 끝의 종에서 오늘 밤으로', 'bell_coffins', 'ossuary_now');
+  trigBeat('oss_gap_rot', '(나무 상자) 오늘 밤의 틈: 나무 부스러기뿐', 'oss.gap', { budget: 3600 });
+  add('oss_crate_probe', '(나무 상자) 오늘 밤 틈을 건널 수 있는가', async () => { const far = await ev(() => window.__ca.plan(600, 1450, 50)); note(`tonight with the crate rotted: a walking route over the gap to (600,1450): ${far ? 'EXISTS' : 'none (as designed)'}`); return { ok: !far, why: 'the gap can be crossed tonight on a rotted crate' }; });
+  crossBeat('oss_crate_past', '(나무 상자) 같은 종에서 그 밤으로 돌아간다', 'bell_coffins', 'ossuary_past');
+  add('oss_wedge_2', '(나무 상자) 이번에는 석상을 민다', async () => { await ev(() => { window.__ca.choice = 0; }); const r = await spotOrHelp('oss_wedge_2', 'oss_wedge', { budget: 4800 }); const s = await st(); return { ok: r.ok && s.flags.includes('wedge_stone'), why: 'wedge_stone not set after the second press: ' + (r.why ?? s.flags.join(' ')) }; });
+}
 crossBeat('oss_cross_2', '복도 끝의 종에서 오늘 밤으로', 'bell_coffins', 'ossuary_now');
 trigBeat('oss_gap', '틈 (오늘 밤): 백 년 묵은 석상을 딛고', 'oss.gap', { budget: 3600 });
 trigBeat('oss_arena', '곡하는 방', 'oss.arena', { budget: 3600 });
@@ -436,23 +459,29 @@ for (const k of [1, 2, 3, 4]) add('knell_' + k, `종대 ${k} 에 조종을 건�
 crossBeat('oss_cross_4', '석관의 방 종으로 돌아가 오늘 밤으로 (백 년) — 보스 방의 종으로 건너면 여왕의 방 안, 문턱 뒤에 선다(첫 판의 기록)', String(args.back || 'bell_riddle'), 'ossuary_now', { after: async () => { const s = await st(); note(`arrived tonight inside the boss room at (${s.x},${s.z}); boss ${JSON.stringify(s.boss)}; enemies awake ${s.awake}; ev_boss_intro done: ${ST.rows.ev_boss_intro ? 'yes' : 'no'}`); } });
 spotBeat('boss_rest', '보스 방 앞 쉼터: 로테의 빵', 'boss_rest', { budget: 4800 });
 trigBeat('boss_enter', '맨 안: 밴시 여왕 (노래)', 'boss.enter', { budget: 3600 });
-const bossFight = async (label, until, { budget = 9000, maxDeaths = 2 } = {}) => {
-  let s = await st(), used = 0; const d0 = s.deaths, t0 = s.ticks; await ev(() => { const B = window.__bot; B.opt.giveUp = 1e9; B.skipMap = {}; });
+/** stills of the queen's tear (0.9 s): every 8 ticks while it runs, and the moment after */
+const tearShots = async (tag) => { if (!SHOTS) return; for (let i = 0; i < 8; i++) { await shot(`${tag}_${i}`); await run(8, false); if (!(await ev(() => window.__ca.u.tear()))) break; } await run(20, false); await shot(`${tag}_gone`); };
+const bossFight = async (label, until, { budget = 9000, maxDeaths = 2, tag = null } = {}) => {
+  let s = await st(), used = 0, pics = 0; const d0 = s.deaths, t0 = s.ticks; await ev(() => { const B = window.__bot; B.opt.giveUp = 1e9; B.skipMap = {}; });
   while (used < budget * KB && !until(s) && s.deaths - d0 <= maxDeaths) {
     const q = await ev(() => { const sim = window.__v2.scene.sim; for (const e of sim.enemies) if (e.def?.boss && !e.dead) return [Math.round(e.x), Math.round(e.z)]; return null; });
     if (!q) break; if (Math.hypot(q[0] - s.x, q[1] - s.z) > 260) { const n = await ev(([x, z]) => window.__ca.plan(x, z, 120), q); if (!n) await ev((p) => window.__ca.route([p]), q); } else await ev((p) => window.__ca.route([p]), q);
-    s = await run(180, true); used += Math.max(1, s.i); if (!s.ready) { await page.waitForTimeout(350); s = await st(); }
+    s = await run(180, true, tag ? 'tear' : null); used += Math.max(1, s.i); if (!s.ready) { await page.waitForTimeout(350); s = await st(); }
+    if (tag && SHOTS && pics < 2 && s.boss && !s.boss.fled && used > 300 * (pics + 1)) { pics++; await shot(`${tag}_fight${pics}`); }
+    if (tag && (await ev(() => window.__ca.u.tear()).catch(() => false))) { await tearShots(tag); s = await st(); }
     if (s.modal || s.busy) s = await settle();
   }
   await ev(() => { window.__bot.opt.giveUp = 1500; });
   ST.num.fights.push({ beat: BEAT, group: 'boss:' + label, ticks: s.ticks - t0, hp: s.hp, deaths: s.deaths - d0, boss: s.boss });
   return { ok: until(s), s, used, deaths: s.deaths - d0, why: `${label}: not reached in ${used} ticks, ${s.deaths - d0} falls; boss ${JSON.stringify(s.boss)}; hero hp ${s.hp}` };
 };
-add('boss_1', '밴시 여왕 1막 — 절반까지 (honest: 9000 ticks or 3 falls)', async () => { let r = await bossFight('phase 1 to the flight', (s) => s.flags.includes('queen_fled')); if (!r.ok) { const hp = await ev(() => window.__ca.bossHp(0.52)); help(r.why, `set the queen's health to ${JSON.stringify(hp)} (just above half) by script`); r = await bossFight('phase 1 after help', (s) => s.flags.includes('queen_fled'), { budget: 3600, maxDeaths: 3 }); if (!r.ok) { await emitHelp('boss.phase', { boss: 'banshee_queen', phase: 'flee' }, r.why); } } await settle(); return { ok: true }; });
-crossBeat('boss_chase', '달아난 여왕을 쫓아 그 밤으로 (보스 방의 종)', 'bell_arena', 'ossuary_past');
-add('boss_past', '그 밤의 여왕을 몰아낸다 (honest: 9000 ticks or 3 falls)', async () => { let r = await bossFight('driven back that night', (s) => s.flags.includes('queen_driven')); if (!r.ok) { const hp = await ev(() => window.__ca.bossHp(0.52)); help(r.why, `set the queen's health to ${JSON.stringify(hp)} by script`); r = await bossFight('that night after help', (s) => s.flags.includes('queen_driven'), { budget: 3600, maxDeaths: 3 }); if (!r.ok) await emitHelp('boss.phase', { boss: 'banshee_queen', phase: 'driven' }, r.why); } await settle(); return { ok: true }; });
-crossBeat('boss_back', '오늘 밤으로 돌아온다 (--back2 로 고른 종; 기본은 보스 방의 종)', String(args.back2 || 'bell_arena'), 'ossuary_now', { after: async () => { const s = await st(); note(`back tonight: boss ${JSON.stringify(s.boss)}`); } });
-add('boss_die', '보스 앞에서 일부러 쓰러진다 (ev_retry_boss) — 이미 쓰러졌으면 건너뛴다', async () => { if (ST.rows.ev_retry_boss) return { ok: true, skipped: true }; const r = await dieOnPurpose('boss', 7200); return r; });
+add('boss_1', '밴시 여왕 1막 — 절반까지 (honest: 9000 ticks or 3 falls)', async () => { let r = await bossFight('phase 1 to the flight', (s) => s.flags.includes('queen_fled'), { tag: 'flee' }); if (!r.ok) { const hp = await ev(() => window.__ca.bossHp(0.52)); help(r.why, `set the queen's health to ${JSON.stringify(hp)} (just above half) by script`); r = await bossFight('phase 1 after help', (s) => s.flags.includes('queen_fled'), { budget: 3600, maxDeaths: 3 }); if (!r.ok) { await emitHelp('boss.phase', { boss: 'banshee_queen', phase: 'flee' }, r.why); } } await settle(); return { ok: true }; });
+add('boss_gone', '여왕이 사라진 오늘 밤 (그대로 끝낼 수 있는가)', async () => { const q = await ev(() => { const sc = window.__v2.scene, sim = sc.sim; const e = sim.enemies.find((x) => x.def?.boss && !x.dead); return e ? { active: !!e.active, alpha: +e.alpha.toFixed(2), solid: !!e.solid, fled: !!e.fled, hold: !!e.fleeHold, drawn: !!e._a3, hp: Math.round(e.hp), x: Math.round(e.x), z: Math.round(e.z), kept: sc.ch ? { ...sc.ch.q } : null } : null; }); const s = await play(600, { bot: true }); note(`tonight after the flight: queen ${JSON.stringify(q)}; ten seconds later the boss bar is ${JSON.stringify(s.boss)}, enemies awake ${s.awake}; objective "${s.obj}"`); return { ok: !!q && !q.active && !q.drawn && !s.boss, why: 'the queen is still in tonight after her flight: ' + JSON.stringify(q) + ' ' + JSON.stringify(s.boss) }; });
+crossBeat('boss_chase', '달아난 여왕을 쫓아 그 밤으로 (보스 방의 종)', 'bell_arena', 'ossuary_past', { shot: 'chase_cross', after: async () => { const s = await st(); note(`that night: boss ${JSON.stringify(s.boss)}; hero at (${s.x},${s.z})`); } });
+if (DIE === 'past') add('boss_die_past', '그 밤의 여왕 앞에서 일부러 쓰러진다 (--die past)', async () => { const r = await dieOnPurpose('boss', 7200); const s = await st(); note(`after the fall that night: the hero stands at (${s.x},${s.z}) in ${s.area} / ${s.sec}; boss ${JSON.stringify(s.boss)}; hp ${s.hp}`); return r; });
+add('boss_past', '그 밤의 여왕을 몰아낸다 (honest: 9000 ticks or 3 falls)', async () => { let r = await bossFight('driven back that night', (s) => s.flags.includes('queen_driven'), { tag: 'driven' }); if (!r.ok) { const hp = await ev(() => window.__ca.bossHp(0.52)); help(r.why, `set the queen's health to ${JSON.stringify(hp)} by script`); r = await bossFight('that night after help', (s) => s.flags.includes('queen_driven'), { budget: 3600, maxDeaths: 3 }); if (!r.ok) await emitHelp('boss.phase', { boss: 'banshee_queen', phase: 'driven' }, r.why); } await settle(); return { ok: true }; });
+crossBeat('boss_back', '오늘 밤으로 돌아온다 (--back2 로 고른 종; 기본은 보스 방의 종)', String(args.back2 || 'bell_arena'), 'ossuary_now', { shot: 'back_cross', after: async () => { const s = await st(); note(`back tonight: boss ${JSON.stringify(s.boss)}`); } });
+if (DIE === 'tonight') add('boss_die', '돌아온 여왕 앞에서 일부러 쓰러진다 (--die tonight)', async () => { const r = await dieOnPurpose('boss', 7200); const s = await st(); note(`after the fall tonight: the hero stands at (${s.x},${s.z}) in ${s.area} / ${s.sec}; boss ${JSON.stringify(s.boss)}; hp ${s.hp}`); return r; });
 add('boss_2', '밴시 여왕 2막 — 무릎 꿇을 때까지 (honest: 12000 ticks or 3 falls)', async () => { let r = await bossFight('to the kneel', (s) => !!s.boss?.kneel || s.flags.includes('queen_sent') || s.lr.includes('boss.phase:kneel'), { budget: 12000 }); if (!r.ok) { const hp = await ev(() => window.__ca.bossHp(0.06)); help(r.why, `set the queen's health to ${JSON.stringify(hp)} (just above the kneel) by script`); r = await bossFight('to the kneel after help', (s) => !!s.boss?.kneel || s.lr.includes('boss.phase:kneel'), { budget: 3600, maxDeaths: 3 }); } return r; });
 add('boss_knell', '무릎 꿇은 여왕 곁에서 「종」을 길게 — 조종', async () => { let s = await st(), ok = false, rang = null;
   for (let i = 0; i < 5 && !ok; i++) { const q = await ev(() => { const sim = window.__v2.scene.sim; for (const e of sim.enemies) if (e.def?.boss && !e.dead) return [Math.round(e.x), Math.round(e.z), !!e.kneel]; return null; }); if (!q) break; if (!q[2]) { await bossFight('kneel again', (x) => !!x.boss?.kneel, { budget: 2400 }); }
@@ -468,9 +497,15 @@ add('elise_wake', '잠든 엘리제를 깨운다 (interact oss.elise)', async ()
     note('at the sleeping girl: ' + tried.join(' | ') + ' ; spot search said: ' + (r.why ?? 'ok'));
     if (!s.flags.includes('elise_found')) { await emitHelp('interact', { id: 'oss_elise', kind: 'sign', event: 'oss.elise', data: null, locked: null }, 'the spot oss_elise is never offered: the girl (a person, talk elise.wake) always wins the prompt — ' + (r.why ?? '')); }
   }
-  return waitArea('eshville_past', 6000); });
+  return waitArea('eshville_past', 6000, false); });
 crossBeat('ending_bell', '두 종지기의 약속 뒤, 큰 종을 길게 → 오늘 밤', 'big_bell', 'eshville_now', { shot: 'ending_cross' });
-add('after_end', '맺음 뒤 (6초 뒤 저장하고 장면을 떠난다)', async () => { let s = null; try { s = await play(600, { bot: false, pred: (q) => !q.scene, chunk: 60 }); } catch (e) { return { ok: true, left: true, why: 'the scene was left: ' + String(e).slice(0, 120) }; } const sv = await ev(() => { try { const o = JSON.parse(localStorage.getItem('bn.v2.save')); return o ? { why: o.why, area: o.area, done: o.story?.done?.length } : null; } catch { return null; } }).catch(() => null); note(`after the end: scene active ${s?.scene}; ended flag ${s?.ended}; stored save ${JSON.stringify(sv)}`); return { ok: true }; });
+add('end_card', '맺음 카드: 제목 · 한 겹 넓어지는 동그라미 · 이어집니다', async () => { let m = null; for (let i = 0; i < 60; i++) { await play(30, { bot: false }); m = await ev(() => window.__v2?.scene?.hud?.metrics?.().end ?? null).catch(() => null); if (m && m.ready) break; } const s = await st(); note(`the ending card: ${JSON.stringify(m)}; ended ${s.ended}; modal ${s.modal}`); return { ok: !!m && m.open && m.ready, why: 'the ending card did not come up: ' + JSON.stringify(m) }; });
+P.push({ n: P.length, id: 'to_chooser', last: true, label: '카드를 누른다 → 3D 고르기 화면 (옛 2D 제목이 아니다)', fn: async () => {
+  await ev(() => { const g = window.__game, r = g.canvasRect, x = r.x + r.w / 2, y = r.y + r.h / 2; for (const t of ['pointerdown', 'pointerup']) window.dispatchEvent(new PointerEvent(t, { pointerId: 33, pointerType: 'touch', isPrimary: false, clientX: x, clientY: y, bubbles: true, cancelable: true, button: 0, buttons: t === 'pointerup' ? 0 : 1, width: 12, height: 12, pressure: t === 'pointerup' ? 0 : 0.5 })); });
+  let top = null; for (let i = 0; i < 80; i++) { await page.waitForTimeout(150); top = await ev(() => { const g = window.__game; try { for (let k = 0; k < 12; k++) g.tick(1 / 60); g.alpha = 1; g.render(); } catch { /* between scenes */ } return g.top?.constructor?.name ?? null; }).catch(() => null); if (top && top !== 'V2Game') break; }
+  const sv = await ev(() => { try { const o = JSON.parse(localStorage.getItem('bn.v2.save')); return o ? { why: o.why, area: o.area, done: o.story?.done?.length } : null; } catch { return null; } }).catch(() => null);
+  await shot('after_card'); note(`after the card: the scene on top is ${top}; stored save ${JSON.stringify(sv)}`);
+  return { ok: top === 'V2Chooser', why: 'after the ending card the scene on top is ' + top }; } });
 
 // side beats (only with --only): the past door of the ossuary after the road bell hangs
 P.push({ n: P.length, id: 'side_past_door', side: true, label: '곁가지: 길종을 건 뒤 그 밤의 납골당 문을 눌러 본다', fn: async () => { let r = await ring('road_bell', { budget: 2400 }); const a = await waitArea('graveyard_past', 6000); if (!a.ok) return { ok: false, why: 'could not cross at the road bell: ' + (r.why ?? a.why) }; ST.num.crossings++; const d = await useSpot('ossuary_door', { budget: 1500 }); const s = await st(); note(`past door after the bell hangs: ${d.ok ? 'pressed' : d.why}; last events ${s.lr.slice(-6).join(' ')}`); r = await ring('road_bell', { budget: 2400 }); const b = await waitArea('graveyard_now', 6000); if (b.ok) ST.num.crossings++; return { ok: d.ok, why: d.why }; } });
@@ -478,11 +513,12 @@ P.push({ n: P.length, id: 'side_gate_push', side: true, label: '곁가지: 은 �
 // the area each beat is played in: when an earlier beat failed and the hero is elsewhere, he is moved there by script (logged help) so the audit goes on
 const NEED = {};
 const need = (area, spawn, ids) => { for (const id of ids.split(' ')) NEED[id] = [area, spawn]; };
-need('graveyard_now', 'from_eshville', 'bats elite elite_fight echo_hint echo_first ghosts grave_now_a grave_now_b stones hook_now ossuary_door_now_1 ossuary_exit_now back_to_eshville');
-need('eshville_now', 'from_graveyard', 'cross_to_past'); need('eshville_past', 'bell', 'gate_past to_graveyard_past ending_bell');
-need('graveyard_past', 'from_eshville', 'keeper carve_a carve_b edmund_grave hook_past hang_bell'); need('graveyard_now', 'from_ossuary', 'ossuary_door_now_2');
+need('graveyard_now', 'from_eshville', 'bats elite elite_fight rest_gate_now echo_hint echo_first ghosts grave_now_a grave_now_b stones hook_now ossuary_door_now_1 ossuary_exit_now back_to_eshville');
+need('eshville_now', 'from_graveyard', 'cross_to_past'); need('eshville_past', 'bell', 'rest_church_past gate_past to_graveyard_past ending_bell');
+need('graveyard_past', 'from_eshville', 'keeper rest_gate_past carve_a carve_b edmund_grave hook_past hang_bell'); need('graveyard_now', 'from_ossuary', 'rest_before_ossuary ossuary_door_now_2');
 need('ossuary_now', 'entry', 'oss_coffins oss_hall oss_probe_1 oss_cross_1'); need('ossuary_past', 'entry', 'oss_wedge oss_cross_2'); need('ossuary_now', 'wedge_far', 'oss_gap oss_arena oss_arena_fight oss_lamp oss_riddle oss_riddle_echo oss_cross_3');
-need('ossuary_past', 'rest', 'knell_1 knell_2 knell_3 knell_4 oss_cross_4 boss_past boss_back elise_wake'); need('ossuary_now', 'rest', 'boss_rest boss_enter boss_1 boss_chase boss_die boss_2 boss_knell cross_to_elise');
+need('ossuary_past', 'rest', 'knell_1 knell_2 knell_3 knell_4 oss_cross_4 boss_die_past boss_past boss_back elise_wake'); need('ossuary_now', 'rest', 'boss_rest boss_enter boss_1 boss_gone boss_chase boss_die boss_2 boss_knell cross_to_elise');
+need('graveyard_past', 'from_eshville', 'at_post'); need('ossuary_now', 'entry', 'oss_crate_probe oss_crate_past'); need('ossuary_past', 'entry', 'oss_wedge_2');
 // ───────── run ─────────
 const SKIP = args.skip ? String(args.skip).split(',') : [];
 const ONLY = args.only ? String(args.only).split(',') : null, RB = resume ? Math.max(P.findIndex((b) => b.id === resume.beatId), -1) : -1;   // the beat we continue after is found by its id (the plan may have grown since the save was written)
@@ -505,6 +541,7 @@ try {
     await ev(() => { window.__ca.lr.length = 0; }).catch(() => {});
     if (NEED[b.id]) { const s0 = await st().catch(() => null); if (s0 && s0.ready && s0.area !== NEED[b.id][0]) { const okGo = await ev(([a, sp]) => window.__v2.scene.travelTo(a, sp), NEED[b.id]).catch(() => false); help(`the hero is in ${s0.area} but this beat is played in ${NEED[b.id][0]} (an earlier beat did not get him there)`, `moved the hero to ${NEED[b.id][0]} / spawn ${NEED[b.id][1]} with scene.travelTo (${okGo})`); await waitArea(NEED[b.id][0], 3000).catch(() => {}); } }
     try { r = await b.fn(); } catch (e) { r = { ok: false, why: 'tool error: ' + String(e?.message ?? e).slice(0, 300) }; if (/Target closed|crash|Execution context/.test(String(e))) { errs.push({ beat: b.id, text: '[tool] ' + String(e).slice(0, 200) }); } }
+    if (b.last) { ST.beats.push({ n: b.n, id: b.id, label: b.label, ok: !!r?.ok, why: r?.ok ? '' : String(r?.why ?? '?').slice(0, 700), help: null, events: [], raised: [], ticks: ST.num.ticks, at: ['(left)', 0, 0, 0], hp: 0, deaths: ST.num.deaths, still: null, errors: [], obj: '', flags: '', items: '' }); ST.end = { ok: !!r?.ok, why: r?.why ?? '' }; log(`${r?.ok ? 'ran ' : 'NOT '} ${b.n} ${b.id}${r?.ok ? '' : ' — ' + String(r?.why ?? '?').slice(0, 300)}`); break; }
     let still = null; try { still = await shot(b.id); } catch { /* no picture */ }
     let col = null; try { col = await collect(b, r, still); } catch (e) { log('  collect failed: ' + String(e).slice(0, 200)); errs.push({ beat: b.id, text: '[tool] collect: ' + String(e).slice(0, 200) }); }
     const s = col?.c.status;

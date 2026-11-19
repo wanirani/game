@@ -37,6 +37,7 @@ import { StoryHost, readSave, clearSave } from './storyhost.js';   // STORY HOOK
 import { elementOf, shotAttach, shotMove, shotDetach, shotImpact } from './magic.js';
 import { Breakables } from './breakables.js';   // BREAK: jars, crates, barrels, their pieces and what drops out of them (docs/v2/ENGINE_API.md 13)
 import { Crossing } from './crossing.js';   // CROSSING: the bell crossing as a staged moment — ring, passage, reveal (docs/v2/ENGINE_API.md 12.3)
+import { Chapter } from './chapter.js';   // CHAPTER: the last rest spot, the queen's flight · chase · return, the ending card (docs/v2/ENGINE_API.md 12.4)
 const WAKE_NEAR = 200;   // px: a sleeping enemy this close (in sight, on his level) sets off its group's wake trigger (see _sync)
 const SKY_CAP = 96;   // rows of the 512-row sky canvas above the painted picture: its top row melting into the area's sky.top (see _sky)
 
@@ -85,6 +86,7 @@ export default class V2Game extends Scene {
     // STORY HOOK (storyhost.js): the plugged-in story, what each night remembers (fallen enemies, fired triggers), the crossing in progress and its veil
     this.host = null; this.nights = new Map(); this.xing = null; this.veil = '#000'; this._veilUnder = false; this._carry = null; this._armT = 0; this._holdT = 0; this._quiet = false; this._lastArea = ''; this._refused = false; this._reraise = false; this._hostErr = false;
     this.cx = new Crossing(this);   // CROSSING: the staged bell crossing (crossing.js); state.cross is what the HUD reads while it runs
+    this.ch = new Chapter(this);    // CHAPTER: what the scene remembers and stages for chapter 1 (chapter.js)
     this.bridge = bindFxSound(feel); this.feelN = 0; this.lastFeel = null; this._actE = null; this._simSteps = false;
     this.shotL = new Array(32).fill(null); this.shotN = 0;
     // the whip Vigilia (src/v2/whip, docs/v2/WHIP.md 7): simulated from the hero's hand every tick, drawn right after the characters
@@ -512,6 +514,7 @@ export default class V2Game extends Scene {
       c.bell = !!(sim.caps?.bell ?? (hh.bellCd !== undefined || TUNE.bellCd !== undefined)); }                                 //       bell = echo (tap) / long ring (hold), hero.bellCd, bellCharge
     this._deaths = this.sim.deaths ?? 0; this._secId = ''; this.cam.snap = true; this.doneT = 0; this.fired.clear();
     this._applyNight();   // STORY HOOK: what this night remembers (the fallen stay fallen, fired triggers stay fired), candles and carried health
+    this.ch.enter();      // CHAPTER: the last rest spot and the queen's stretch are put back into the new rules object
     if (this.host) { this.applyCandles(); const c = this._carry, hh = this.sim.hero; this._carry = null; if (c) { if (c.hp > 0) hh.hp = Math.min(hh.hpMax, c.hp); if (c.reso !== undefined && hh.reso !== undefined) hh.reso = c.reso; } }
     this.state.area.id = area.id; this.state.area.name = area.name; this.state.area.era = area.era; this.state.night = area.era;
     // 6) warm everything behind the loading screen, then wait for the GPU
@@ -545,7 +548,7 @@ export default class V2Game extends Scene {
         if (at && !named && (at.area === TEST_AREA || !(await hasArea(at.area)))) at = null;   // the test route is never a saved place (it does not save: the player would be shut in it)
         if (sv && !at) host.reset();   // a save that cannot be used: new game
         if (at && !named) { area = at.area; spawn = at.spawn; keep = at.pos; this.nightsIn(at.nights); this._carry = { hp: at.hp, reso: at.reso }; this._reraise = true;
-          this.brk.restore(at.area, at.broken, at.coins); this._graceT = 2; }   // BREAK: coins and what was broken where the save was made; two untouchable seconds for the hero (an enemy beside the saved spot used to hit at once)
+          this.brk.restore(at.area, at.broken, at.coins); this.ch.load(at.ch); this._graceT = 2; }   // BREAK: coins and what was broken where the save was made; two untouchable seconds for the hero (an enemy beside the saved spot used to hit at once)
         this.setWorldFlags(host.worldFlags(), { reload: false });
       } catch (e) { console.warn('[v2g] the story did not load - playing without it:', String(e?.stack ?? e?.message ?? e)); this.host = null; this.story = null; this.storyFlag = null; }
     }
@@ -612,6 +615,7 @@ export default class V2Game extends Scene {
   /** the other side of a crossing (or the refusal: no floor near that spot in the other night - the bell rings dull and the hero stays, GDD 2.2) */
   _crossed(go, ok) {
     const staged = !go || this.cx.on;   // CROSSING: the staged moment owns the far side (the reveal, the second toll, the banner) and the picture of the refusal
+    if (ok && this.ready && this.sim) this.ch.arrived();   // CHAPTER: until a rest is taken here the hero stands up where the bell set him down; set down in the queen's hall, she wakes
     if (staged && ok) { this.cx.arrived(true); return; }
     const x = this.xing; this.xing = null; if (!staged) this._veilUnder = true;
     if (!ok) {
@@ -634,7 +638,7 @@ export default class V2Game extends Scene {
   /** new game: the save and every memory of the scene are erased, the first area loads */
   restart() {
     if (!this.host || this._go || this.xing) return false;
-    clearSave(); this.host.reset(); this.nights.clear(); this.lockOv.clear(); this.hidden.clear(); this.flags.clear(); this.worldFlags = {}; this._carry = null; this._lastArea = ''; this.brk.reset();
+    clearSave(); this.host.reset(); this.nights.clear(); this.lockOv.clear(); this.hidden.clear(); this.flags.clear(); this.worldFlags = {}; this._carry = null; this._lastArea = ''; this.brk.reset(); this.ch.reset();
     this._go = { to: DEFAULT_AREA, spawn: null, fresh: true }; this.fadeTo = 1; this.locked = true;
     return true;
   }
@@ -866,7 +870,7 @@ export default class V2Game extends Scene {
         else if (name === 'act') { if (b === 'ring' && a === sc.sim?.hero) sc.cx.prebuild(); }   // CROSSING: the long ring is being wound up in front of a bell - the other night is built now, so its answer is there when the bell sounds
         else if (!sc.story && (name === 'kneel' || name === 'bossFlee' || name === 'bossReturn' || name === 'bossDown')) sc._bossNote(name, a, b);
         if (sc.story) { sc.emit('play.' + name, [a, b, c, d]);
-          const ph = name === 'kneel' ? (b === 'down' ? 'kneel' : null) : name === 'bossFlee' ? 'flee' : name === 'bossReturn' ? 'driven' : name === 'bossDown' ? (b ? 'sent' : 'down') : null;   // STORY HOOK (DATA_FORMAT 6)
+          const ph = name === 'kneel' || name === 'bossFlee' || name === 'bossReturn' || name === 'bossDown' ? sc.ch.phase(name, a, b) : null;   // STORY HOOK (DATA_FORMAT 6). CHAPTER: the flight and the return are staged in chapter.js, which raises flee / driven itself when the tear is over
           if (ph) sc.emit('boss.phase', { boss: a?.kind ?? null, phase: ph }); if (name === 'bossDown') sc.emit('boss.down', { boss: a, knelled: !!b }); }
       },
       sound(name, pos) { snd(name, pos ?? null); },
@@ -898,7 +902,8 @@ export default class V2Game extends Scene {
     if (host !== null) {   // STORY HOOK: waits, camera shots, walking people, the rebuild after a changed area flag
       try { host.tick(dt); } catch (e) { if (!this._hostErr) { this._hostErr = true; console.error('[v2g] story host failed in its tick (play goes on):', e); } }
       // while the story holds the hero (a dialogue, a camera shot, the crossing) nothing may hurt him: the rules' own untouchable time is kept topped up
-      const hold = modal === 'dialog' || host.locks() || this.xing !== null, hh = sim.hero;
+      const hold = modal === 'dialog' || modal === 'end' || host.locks() || this.xing !== null, hh = sim.hero;
+      sim.hold = hold; this.ch.tick(dt);   // CHAPTER: enemies wait while the story holds the hero (PLAY: sim.hold); the queen's flight and the ending card run on the scene's clock
       if (hold) { if (!hh.dead && hh.ifr < 0.4) hh.ifr = 0.4; this._holdT = 0.5; } else if (this._holdT > 0) this._holdT -= dt;
       // a restored save: two seconds of the rules' untouchable time, without the blink, ended by his first attack (INTEGRATE-VERIFY found an enemy beside the saved spot hitting at once)
       if (this._graceT > 0) { this._graceT -= dt; if (hh.dead || hh.move || hh.charging) this._graceT = 0; else { if (hh.ifr < 0.15) hh.ifr = 0.15; if (this._holdT < 0.1) this._holdT = 0.1; } }
@@ -953,7 +958,7 @@ export default class V2Game extends Scene {
   _sync(pdt, dt) {
     const sim = this.sim, h = sim.hero, fx = this.fx, W = this.W, ha = this.heroA, P = PRESET_IDS;
     // respawn / reset
-    if ((sim.deaths ?? 0) !== this._deaths) { this._deaths = sim.deaths ?? 0; this.cam.snap = true; this.game.flash?.('#000', 0.7, 2.5); ha.dx = 1; ha.dz = 0; fx?.clear(); this._makeFxHandles(); this.emit('hero.respawn', {}); }   // (_makeFxHandles also asks the whip to start over)
+    if ((sim.deaths ?? 0) !== this._deaths) { this._deaths = sim.deaths ?? 0; this.cam.snap = true; this.game.flash?.('#000', 0.7, 2.5); ha.dx = 1; ha.dz = 0; fx?.clear(); this._makeFxHandles(); this.ch.revived(); this.emit('hero.respawn', {}); }   // (_makeFxHandles also asks the whip to start over; CHAPTER: the queen's stretch starts again)
     if (h._px === undefined) { h._px = h.x; h._py = h.y; h._pz = h.z; this.visY = this.visYP = h.y; }
     // section -> room reverb + story
     // real areas: the rules freeze their section at 'done' once the arena is cleared — the scene keeps reading the section under the hero's feet
@@ -1034,7 +1039,7 @@ export default class V2Game extends Scene {
       const SP = W.spawns;   // home section + group of every enemy (built-in "<name>_clear" flags, event group.clear)
       for (let i = 0; i < E.length; i++) { const e = E[i], sp = E.length === SP.length ? SP[i] : null, sec = sectionAt(W, sp ? sp.x : e.x, sp ? sp.z : e.z); e._sec = sec ? sec.id : ''; if (e.group === undefined && sp) e.group = sp.group ?? null; }
     }
-    for (let i = 0; i < E.length; i++) { const e = E[i]; if (!e._a3 && !e.dead && e.state !== 'dead') this._take(e); }
+    for (let i = 0; i < E.length; i++) { const e = E[i]; if (!e._a3 && !e.dead && e.state !== 'dead' && !(e.fleeHold && e.alpha <= 0)) this._take(e); }   // (CHAPTER: a boss that is away in the other night has no body here)
     const fdt = fx ? dt * fx.feel.fxScale : dt, cam = this.cam, tickN = pdt > 0 ? ++this.tickN : this.tickN;
     for (let i = L.length - 1; i >= 0; i--) {
       const a = L[i], e = a.e;
@@ -1118,7 +1123,7 @@ export default class V2Game extends Scene {
     { const H = this.host; if (H !== null) { s.objective = H.objective; if (H.pillOn && s.prompts === this.people.none) s.prompts = H.pills; } }   // STORY HOOK: the objective under the section name, the tutorial pill
     { const bs = sim.bossState ? sim.bossState() : null, B = this._bossS;   // the boss bar: name, health, stagger and act straight from the rules (PLAY_API 7)
       if (bs) { B.id = bs.id; B.name = bs.name; B.hp = bs.hp; B.hpMax = bs.hpMax; B.stagger = bs.stagger; B.phase = bs.phase; B.kneel = bs.kneel; B.fled = bs.fled; B.staggered = bs.staggered;
-        B.sub = bs.kneel ? '종을 길게 울려라' : bs.fled ? '그 밤으로 달아났다' : bs.staggered ? '비틀거린다' : bs.sub || (bs.phase === 2 ? '둘째 막' : ''); s.boss = B; }
+        B.sub = bs.kneel ? '종을 길게 울려라' : bs.fled ? (this.area.era === 'past' ? '오늘 밤으로 쫓겨났다' : '그 밤으로 달아났다') : bs.staggered ? '비틀거린다' : bs.sub || (bs.phase === 2 ? '둘째 막' : ''); s.boss = B; }
       else s.boss = null; }
     { const hh = sim.hero, pd = s.pad, sk = pd.skill, bl = pd.bell;
       sk.disabled = !this._caps.skill; bl.disabled = !this._caps.bell;

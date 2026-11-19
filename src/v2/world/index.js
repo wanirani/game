@@ -34,7 +34,7 @@ export async function ensureWorldAssets() {
 export function finishArea(a) {
   const st = a.stage, d = a.spawns.default;
   st.start = { x: d.x, z: d.z };
-  st.spawns = a.enemies.map((e) => ({ kind: e.kind, x: e.x, z: e.z, yard: !!e.yard, active: !!e.active, group: e.group ?? null, face: e.face ?? null, rise: !!e.rise }));   // rise: lies in the ground until the hero is near (PLAY_API)
+  st.spawns = a.enemies.map((e) => ({ kind: e.kind, x: e.x, z: e.z, yard: !!e.yard, active: !!e.active, group: e.group ?? null, face: e.face ?? null, rise: !!e.rise, ...(e.wake ? { wake: e.wake } : {}), ...(e.phase ? { phase: e.phase } : {}) }));   // rise: lies in the ground until the hero is near (PLAY_API)
   st.decals = st.decals ?? [];
   if (st.folds == null) st.folds = AREA_FOLDS[a.id] ?? null;   // small materials drawn with a look-alike texture of their chunk (fewer draw calls; ENV_KIT 18)
   // whip rings -> the rules' hook points (src/v2/play/sim.js reads W.hookPoints: { id, x, z, y, h, to: [x, z] })

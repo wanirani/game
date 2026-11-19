@@ -51,12 +51,12 @@ export function ossuary(era = 'now', flags = {}) {
     { t: 'wall', x: 158, z: 3846, w: 78, d: 54, h: 44, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'FLR', coping: true } }, { t: 'wall', x: 964, z: 3846, w: 78, d: 54, h: 44, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'FLR', coping: true } });   // waist-high fire posts (WORLD-3: 80, was 118 - seven cells of the fight floor behind each were hidden; nothing on or at the fight floor is taller than 104)
   // ───────────── things that stand in both nights at the same spots ─────────────
   const mute = past && woodW;   // WORLD-3 (AREA_FORMAT 14): the crate bridges the gap in 1697, but wood rots - the bells beyond it stay unlit and locked until the statue stands there
-  const bell = (chunk, id, x, z, h = 136, ox = 26, far = false) => {   // WORLD-3: 136 high (was 160: the strip hidden behind a post reached 140 into the next room)
+  const bell = (chunk, id, x, z, h = 136, ox = 26, far = false, seal = false) => {   // WORLD-3: 136 high (was 160: the strip hidden behind a post reached 140 into the next room)
     const off = far && mute;
     add(chunk, { t: 'prop', mesh: 'roadbell', x, z, h, solid: 14, solidZ: 12, solidH: h * 0.85, state: off ? 'empty' : now ? 'rusty' : 'hung', old: now || off, light: off ? null : { r: 190, i: 0.8, y: h * 0.7, c: now ? [0.6, 0.86, 0.9] : [1, 0.82, 0.5] } });
-    interact.push({ id, kind: 'bell', x: x + ox, z: z - 28, r: 76, label: '종 치기', event: off ? 'bell.locked' : 'bell.ring', ...(off ? { locked: 'wedge_stone' } : {}) });
+    interact.push({ id, kind: 'bell', x: x + ox, z: z - 28, r: 76, label: '종 치기', event: off ? 'bell.locked' : seal ? 'bell.sealed' : 'bell.ring', ...(off ? { locked: 'wedge_stone' } : {}) });   // CHAPTER: seal = the bell hangs and shines but the story answers its long ring with the dull toll (event bell.sealed)
   };
-  bell('c1', 'bell_entry', 880, 300); bell('c1', 'bell_coffins', 760, 950); bell('c3', 'bell_riddle', 890, 2570, 136, 26, true); bell('c4', 'bell_arena', 1082, 3250, 104, -30, true);   // three room bells and the arena bell. WORLD-3: the arena bell stands against the right wall of the last hall (it stood in the middle of the fight floor at (600, 3350)): a low standing bell between two piers, nothing behind it
+  bell('c1', 'bell_entry', 880, 300); bell('c1', 'bell_coffins', 760, 950); bell('c3', 'bell_riddle', 890, 2570, 136, 26, true); bell('c4', 'bell_arena', 1082, 3250, 104, -30, true, past && !flags.queen_fled);   // three room bells and the arena bell. CHAPTER: in 1697 the arena bell is sealed until the queen has fled through it - a crossing there used to set the hero down tonight inside her hall, behind the bread and her entrance (audit blocker 5). WORLD-3: the arena bell stands against the right wall of the last hall (it stood in the middle of the fight floor at (600, 3350)): a low standing bell between two piers, nothing behind it
   add('c1', { t: 'prop', mesh: 'mourner', x: 190, z: 350, h: 200, solid: 28, solidZ: 24 }, { t: 'prop', mesh: 'mourner', x: 1010, z: 350, h: 200, solid: 28, solidZ: 24, flip: true },
     { t: 'deco', mesh: 'skullwall', x: X0 + 8, z: 520, h: 170, rot: -Math.PI / 2 }, { t: 'deco', mesh: 'skullwall', x: X1 - 8, z: 780, h: 170, rot: Math.PI / 2 },   // skull niches set into the side walls above the banks (at the banks' far end they hid the hero in the room behind: 260 cells)
     { t: 'deco', mesh: 'cryptdoor', x: X0 + 4, z: 190, h: 200, rot: -Math.PI / 2 }, { t: 'deco', mesh: 'cryptdoor', x: X1 - 4, z: 150, h: 200, rot: Math.PI / 2 });
@@ -80,6 +80,12 @@ export function ossuary(era = 'now', flags = {}) {
   if (past) add('c2', woodW ? { t: 'prop', mesh: 'crate', x: 600, z: 1300, y: -200, w: 170, d: 180, h: 200, solid: 85, solidZ: 90, solidH: 200, walk: true, tint: [1.2, 0.98, 0.78] }
     : { t: 'prop', mesh: 'crate', x: 910, z: 1130, w: 120, d: 100, h: 104, solid: 60, solidZ: 50, solidH: 104 });
   else add('c2', woodW ? { t: 'deco', mesh: 'debris', x: 600, y: -240, z: 1300, w: 170 } : { t: 'deco', mesh: 'debris', x: 910, y: 0, z: 1130, w: 110 });   // a hundred years later the crate is a heap of rot (in the gap if it was pushed in)
+  // CHAPTER: in 1697 a wooden screen shuts the inner chapel off behind the gap (wood rots: tonight only its rot is left). Without it the whole dungeon could be
+  // walked in the empty night once the statue stood in the gap - past the wailing room's fight and Sera's lamp. The inner rooms of 1697 are reached by the bells beyond it.
+  // (Two stone stubs stand at the sides in both nights; the wooden middle is 680 long: with more the chunk's wood would no longer fold into its oak texture - mats.js FOLDS.)
+  add('c2', { t: 'wall', x: X0, z: 1484, w: 160, d: 20, h: 56, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'FR', coping: true } },
+    { t: 'wall', x: X1 - 160, z: 1484, w: 160, d: 20, h: 56, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'FL', coping: true } });
+  if (past) add('c2', { t: 'fence', kind: 'wood', x0: X0 + 160, z0: 1494, x1: X1 - 160, z1: 1494, h: 52 });
   if (past) interact.push({ id: 'oss_wedge', kind: 'pull', x: 600, z: 1150, r: 120, label: '밀어 넣기', event: 'oss.wedge' });
   else triggers.push({ id: 'oss_gap', ...rect(300, 1110, 600, 70), event: 'oss.gap', once: false });
   // ───────────── the two nights ─────────────
@@ -124,12 +130,12 @@ export function ossuary(era = 'now', flags = {}) {
     if (!flags.queen_sent) enemies.push({ kind: 'banshee_queen', x: 600, z: 3600, group: 'boss', yard: true, face: S });
     actors.push({ id: 'sera', model: 'sera', x: 716, z: 2296, face: S, talk: 'sera.ossuary', pose: 'lantern', when: 'sera_follows' });
     triggers.push({ id: 'oss_coffins', ...rect(380, 500, 440, 60), event: 'oss.coffins', wake: 'oss_hall' }, { id: 'oss_arena', ...rect(X0, 1510, 1000, 50), event: 'oss.arena', wake: 'oss_arena' },
-      { id: 'oss_lamp', ...rect(X0, 2110, 1000, 50), event: 'oss.lamp' }, ...(flags.queen_sent ? [] : [{ id: 'boss_enter', ...rect(478, 3010, 244, 60), event: 'boss.enter', wake: 'boss' }]));
+      { id: 'oss_lamp', ...rect(X0, 2110, 1000, 50), event: 'oss.lamp' }, ...(flags.queen_sent ? [] : [{ id: 'boss_enter', ...rect(X0, 3010, 1000, 690), event: 'boss.enter', wake: 'boss', once: false }]));   // CHAPTER: the whole hall, every time the hero comes in (it was the doorway only: a hero set down inside by the arena bell got no entrance, and a queen put back to sleep by a fall or a crossing was not woken)
     interact.push({ id: 'oss_riddle', kind: 'sign', x: 600, z: 2600, r: 80, label: '닳은 석관', event: 'oss.riddle' }, { id: 'boss_rest', kind: 'rest', x: 340, z: 2890, r: 70, label: '촛불', event: 'rest' });
   } else {
-    if (flags.queen_fled && !flags.queen_sent) enemies.push({ kind: 'banshee_queen', x: 600, z: 3600, group: 'boss', yard: true, active: true, face: S });
+    if (flags.queen_fled && !flags.queen_sent) { enemies.push({ kind: 'banshee_queen', x: 600, z: 3600, group: 'boss', yard: true, phase: 2, face: S }); triggers.push({ id: 'boss_hall', ...rect(X0, 3010, 1000, 690), event: 'boss.hall', wake: 'boss', once: false }); }   // CHAPTER: second act, asleep in her hall until the hero is there (she used to start awake and at full health: the scene carries her health over and takes her out again when she is driven - src/v2/game/chapter.js)
     interact.push(...KP.map(([x], i) => ({ id: 'knell_' + (i + 1), kind: 'bell', x, z: KZ, r: 110, label: '조종 걸기', event: 'oss.knell', data: { post: i + 1 } })), { id: 'past_rest', kind: 'rest', x: 340, z: 2890, r: 70, label: '촛불', event: 'rest' });
-    if (!flags.elise_found) { actors.push({ id: 'elise', model: 'elise', x: 600, z: 3836, face: S, talk: 'elise.wake', pose: 'sit', when: 'queen_sent', solid: false }); interact.push({ id: 'oss_elise', kind: 'sign', x: 600, z: 3810, r: 80, label: '엘리제', event: 'oss.elise' }); }
+    if (!flags.elise_found) { actors.push({ id: 'elise', model: 'elise', x: 600, z: 3836, face: S, talk: 'elise.asleep', pose: 'sit', label: '살핀다', solid: false }); interact.push({ id: 'oss_elise', kind: 'sign', x: 600, z: 3810, r: 80, label: '엘리제', event: 'oss.elise' }); }   // CHAPTER: she sleeps under the altar of 1697 from the first visit (she was shown only after the queen was sent, while the lines of the chase speak of her)
   }
   const cam = (o = {}) => ({ yaw: 0, pitch: 26 * D, dist: 860, lookY: 34, leadX: 0, leadZ: 70, minX: 420, maxX: 780, zFollow: 1, tallK: 0.12, ...o });
   const SEC = [['entry', '납골당 어귀', -100, 400], ['coffins', '관의 복도', 400, 1000], ['wedge', '틈의 방', 1000, 1500], ['arena', '곡하는 방', 1500, 2100], ['lamp', '등불대의 방', 2100, 2450], ['riddle', '석관의 방', 2450, 2800], ['rest', '문 앞', 2800, 3000], ['boss', '맨 안', 3000, 3700], ['posts', '종대의 회랑', 3700, 4000]];
@@ -162,6 +168,6 @@ export function ossuary(era = 'now', flags = {}) {
       { kind: 'pot', x: 1052, z: 2290 },
     ],
     knells: KP.map(([x, z], i) => ({ post: i + 1, x, z, y: 0, h: 120, hung: !!(now ? flags.knells_hung : flags['knell_' + (i + 1)]) })),   // the knell bells the whip strikes in the fight (PLAY / ENGINE)
-    entry: stone || (past && woodW) ? [] : ['wedge_far'],   // nothing in the gap yet (or only rot tonight): what lies beyond is reached by crossing at a bell further in, or not at all in this state
+    entry: stone ? [] : past ? (woodW ? ['lamp'] : ['wedge_far', 'lamp']) : ['wedge_far'],   // nothing in the gap yet (or only rot tonight): what lies beyond is reached by crossing at a bell further in, or not at all in this state. CHAPTER: in 1697 the rooms behind the wooden screen are reached only by those bells (with the statue in the gap the two nights' floods find them by themselves)
   };
 }

@@ -172,7 +172,7 @@ export const DIALOGS_NOW = {
       ['ghost_hanna', '…이름…. 제 이름이… 없어요….'],
       ['narrator', '비석에는 번호뿐이다. 유령이\n납골당 가는 샛길에 서 있다.'],
       ['kael', '(이름을 새길 수 있는 건 그 밤이다.)'],
-    ], then: [['setFlag', 'saw_ghosts'], ['objective', 'carve_names']] },
+    ], then: [['setFlag', 'saw_ghosts'], ['objective', 'to_past_graves']] },
     { once: true, pages: [
       ['sign', '한나. 1697년.'],
       ['narrator', '이끼 낀 비석 앞에\n마른 꽃 한 송이가 놓여 있다.'],
@@ -184,7 +184,7 @@ export const DIALOGS_NOW = {
     { if: ['!carved_b'], pages: [
       ['ghost_til', '…누나…? 누나 어딨어….'],
       ['kael', '(번호뿐인 비석이 하나 더.)'],
-    ], then: [['setFlag', 'saw_ghosts'], ['objective', 'carve_names']] },
+    ], then: [['setFlag', 'saw_ghosts'], ['objective', 'to_past_graves']] },
     { once: true, pages: [
       ['sign', '틸. 1697년. 한나의 동생.'],
       ['til', '나 틸이야! 누나, 나 틸이래!'],
@@ -218,7 +218,7 @@ export const DIALOGS_NOW = {
     { ifAny: ['!carved_a', '!carved_b'], pages: [
       ['narrator', '이름 없는 유령 둘이\n문 앞을 막아선다.'],
       ['kael', '(베어도 다시 선다.\n…이름을 찾는 거군.)'],
-    ], then: [['setFlag', 'saw_ghosts'], ['objective', 'carve_names']] },
+    ], then: [['setFlag', 'saw_ghosts'], ['objective', 'to_past_graves']] },
     { if: ['!bell_hung'], pages: [
       ['narrator', '유령은 비켜선다. 하지만\n문 앞 돌길이 끊겨 있다.'],
       ['kael', '(건너편 종대가 비어 있다.\n그 밤이라면 걸 수 있겠군.)'],

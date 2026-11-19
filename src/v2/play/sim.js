@@ -40,6 +40,7 @@ export class Sim {
     this.qx = 0.5; this.qz = 0.5; this.qy = 0.5; this.g = 0.5; this.ex = 0.5; this.ez = 0.5; this._sx = 0.5; this._sz = 0.5; this._sv = 0.5; this._tx = 0.5; this._tz = 0.5; this._tr = 0.5; this._hx = 0.5; this._hz = 0.5; this._sc = 0.5;   // 숫자를 주고받는 칸 (인자 · 반환값으로 실수를 넘기면 상자가 생긴다 — collide.js groundAtS)
     this._cg = typeof W.groundAt === 'function'; this._cm = typeof W.moveXZ === 'function'; this._cs = typeof W.sectionAt === 'function'; this._ra = 0.5;
     this.freezeSection = true; this.rest = null; this.here = null;
+    this.hold = false;   // CHAPTER: set by the scene while the story holds the hero (a dialogue, a camera shot, a crossing) - enemies wait (_wait)
     this.caps = { charge: true, skill: true, bell: true, boss: true, heal: true, rest: true };   // 장면이 무엇을 쓸 수 있는지 묻는 자리
     this.reset();
   }
@@ -77,7 +78,7 @@ export class Sim {
       move: null, moveT: 0, combo: 0, hitIds: new Set(), assist: null, queued: 0, swung: false, stepDist: 0, airAtk: false, plungeLand: null, plungeEta: 1,
       lock: null, lockT: 0, lockHold: 0, lockX: 0, lockY: 0, lockZ: 0, cutOn: 0,
       act: null, actT: 0, actDone: false, actP: null, charging: false, charge: 0, chargeFullT: 0, atkHold: 0, whipLv: 1, pullT: 0, pullX: 0, pullZ: 0, whipOn: 0, whipX: 0, whipY: 0, whipZ: 0,
-      coins: 0, reso: 0, resoMax: T.resoCells, callCd: 0, callCdMax: T.callCd, bellCd: 0, bellCdMax: T.bellCd, bellCharge: 0, bellDown: false, bellHoldT: 0, bellOk: true, knellId: null, hookId: null, skillMode: 'call', hookFX: 0, hookFY: 0, hookFZ: 0, hookTX: 0, hookTY: 0, hookTZ: 0, hookDur: 0.3,
+      coins: 0, reso: 0, resoMax: T.resoCells, callCd: 0, callCdMax: T.callCd, bellCd: 0, bellCdMax: T.bellCd, bellCharge: 0, bellDown: false, bellWait: false, bellHoldT: 0, bellOk: true, knellId: null, hookId: null, skillMode: 'call', hookFX: 0, hookFY: 0, hookFZ: 0, hookTX: 0, hookTY: 0, hookTZ: 0, hookDur: 0.3,
       gait: 0, gaitMode: 'run', wasMoving: false, pushed: false, pivot: 0, pivotT: 0, pivotA: 0, pivotV: 0, pivotG: 0.86, lastStep: 'L', wishX: 1, wishZ: 0, mx: 0, mz: 0, m: 0, ux: 0, uz: 0,
       anim: 'idle', animT: 0, t: 0, cut: false, landT: 0, landV: 0,
       safe: { x: sx, z: sz, y: sy },
@@ -324,6 +325,7 @@ export class Sim {
     h.bellOk = freeNow && h.bellCd <= 0 && !h.act && !h.charging;
     h.atkHold = inp.attackHeld ? h.atkHold + dt : 0;
     if (h.bellDown && !inp.bellHeld && (h.act || h.charging)) h.bellDown = false;   // released while another tool / the charge holds the hero: forget the press (it must not ring later on its own)
+    if (!inp.bellHeld) h.bellWait = false; else if (pBell) h.bellWait = true;   // CHAPTER: a press of the bell that is still held is remembered until the bell is ready (it used to be dropped for as long as it was held when it began during the bell's rest, a move or a jump)
     if (h.act) return this._act(h, dt, inp, kn);
     if (h.charging) {   // 모으는 중: 제자리에서 스틱 쪽으로 돌 수 있다. 놓으면 휘감기, 구르기로 끊을 수 있다
       if (pDash && moving) { h.charging = false; h.charge = 0; this.emit('charge', h, 'cancel', 0); return false; }
@@ -340,7 +342,7 @@ export class Sim {
       return true;
     }
     // 종: 짧게 = 메아리, 길게 = 장면의 일(건넘) 또는 조종 — 길게 누르는 동안 영웅은 종 조각을 들고 선다
-    if (pBell && h.bellOk && !h.bellDown) { if (inp.bellHeld === undefined) { this._startAct(h, 'echo'); return true; } h.bellDown = true; h.bellHoldT = 0; }
+    if ((pBell || h.bellWait) && h.bellOk && !h.bellDown) { h.bellWait = false; if (inp.bellHeld === undefined) { this._startAct(h, 'echo'); return true; } h.bellDown = true; h.bellHoldT = 0; }
     if (h.bellDown) {
       if (inp.bellHeld) { h.bellHoldT += dt; if (h.bellHoldT >= T.bellTap && freeNow) { h.bellDown = false; this._startAct(h, 'ring'); return true; } }
       else { h.bellDown = false; if (h.bellOk) { this._startAct(h, 'echo'); return true; } }
@@ -761,10 +763,25 @@ export class Sim {
     }
     if (e.stun > 0) { e.stun -= dt; this._fade(e, D, dt); this._place(e); this._anim(e, 'hurt', dt); return; }
     if (h.dead) { if (e.state === 'attack') this._cancelAttack(e, 1); this._fade(e, D, dt); this._place(e); this._anim(e, 'idle', dt); return; }
+    if (this.hold && this._wait(e, D, dist, dt)) return;   // CHAPTER: the story holds the hero - enemies wait
     e.stateT += dt;
     (AI[D.ai] ?? AI.melee)(this, e, dt, D);
     this._fade(e, D, dt);
     this._place(e);
+  }
+  /**
+   * CHAPTER: the story holds the hero (a dialogue, a camera shot, a crossing - the scene sets sim.hold): enemies wait. A wound-up attack is taken back,
+   * nobody starts an attack or a shot (cd is kept up, so they need a moment when the story lets go) and those who walk keep their distance: within 150
+   * they stop, within 120 they step back. Fliers circle on, a boss floats where she is (her kneel and her flight go on). -> true = done for this tick
+   */
+  _wait(e, D, dist, dt) {
+    if (e.state === 'attack' && !(e.kneel > 0)) this._cancelAttack(e, 0.8);
+    if (e.cd < 0.8) e.cd = 0.8;
+    if (D.boss || D.fly || dist >= 150) return false;
+    this.faceHero(e, dt);
+    if (dist < 120) { this.steerHero(e, -1, 0, 0.6, dt, true); this._anim(e, 'walk', dt); } else this._anim(e, 'idle', dt);
+    this._fade(e, D, dt); this._place(e);
+    return true;
   }
   /**
    * 잠든 적이 영웅을 알아채는가: 앞쪽(±sightArc) 은 sight 거리까지 보고, 등 뒤 · 옆은 near 거리 안에서만 느낀다. 벽(단단한 상자) 너머는 보지 못한다.

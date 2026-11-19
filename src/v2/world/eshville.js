@@ -148,8 +148,10 @@ export function eshville(era, flags = {}) {
     triggers.push({ id: 'first_bell', ...rect(260, 0, 60, 300), event: 'bell.toll' }, { id: 'street_enter', ...rect(1500, 0, 60, 300), event: 'tutorial.guard', wake: 'st_a' }, { id: 'square_enter', ...rect(3300, 0, 60, 300), event: 'square.enter', wake: 'sq' }, { id: 'church_steps', ...rect(3660, 1100, 480, 60), event: 'church.arrive' });
   } else {
     for (const [x, z, g] of [[900, 150, 'out_p'], [980, 90, 'out_p'], [1070, 190, 'out_p'], [1800, 160, 'st_p'], [1890, 100, 'st_p'], [2620, 150, 'st_p'], [2700, 216, 'st_p'], [2790, 120, 'st_p'], [3760, 560, 'sq_p'], [4050, 330, 'sq_p'], [4150, 560, 'sq_p']]) enemies.push({ kind: 'plague_corpse', x, z, group: g, yard: g === 'sq_p' });
-    actors.push({ id: 'lotte', model: 'lotte', x: 3950, z: 1560, face: S, talk: 'lotte.fell', pose: 'idle' }, { id: 'edmund', model: 'edmund', x: 1800, z: 262, face: S, talk: 'edmund.tavern', pose: 'idle', when: 'past_street_clear' in flags ? 'past_street_clear' : 'street_clear' },   // street_clear has two meanings (tonight: Marta; 1697: Edmund). A caller that knows the new flag (passes the key, true or false) gets it; the old name keeps working
-      { id: 'elise', model: 'elise', x: 4290, z: 1420, face: S, talk: 'keepers.promise', pose: 'idle', when: 'elise_found' },   // near the big bell after the rescue (DATA_FORMAT 12)
+    // CHAPTER: the two keepers at the bell (GDD 9.1 minute 114-118: "the bell rope between them"). Once Elise is found Lotte waits at her bell, left of it; Elise comes
+    // with the hero (she stands beside the spawn `bell`), walks to the right of the bell in the promise scene and stays there when it is made.
+    actors.push({ id: 'lotte', model: 'lotte', x: flags.elise_found ? 4104 : 3950, z: flags.elise_found ? 1436 : 1560, face: S, talk: 'lotte.fell', pose: 'idle' }, { id: 'edmund', model: 'edmund', x: 1800, z: 262, face: S, talk: 'edmund.tavern', pose: 'idle', when: 'past_street_clear' in flags ? 'past_street_clear' : 'street_clear' },   // street_clear has two meanings (tonight: Marta; 1697: Edmund). A caller that knows the new flag (passes the key, true or false) gets it; the old name keeps working
+      { id: 'elise', model: 'elise', x: flags.keepers_promised ? 4296 : 4250, z: flags.keepers_promised ? 1436 : 1372, face: S, talk: 'elise.past', pose: 'idle', when: 'elise_found' },   // near the big bell after the rescue (DATA_FORMAT 12)
       { id: 'hadwin1', model: 'hadwin1', x: 2640, z: 262, face: S, talk: 'hadwin1.smithy', pose: 'work' }, { id: 'stallkeeper', model: 'villager_f', x: 3500, z: 772, face: S, talk: 'villager.stall', pose: 'cower', tint: [1.05, 0.95, 0.85] }, { id: 'farmer', model: 'villager_m', x: 4300, z: 772, face: S, talk: 'villager.plague', pose: 'idle', tint: [1.05, 0.95, 0.85] });
     interact.push({ id: 'inn_door', kind: 'door', x: 1800, z: 284, r: 54, label: '작은 주막', event: 'door.tavern', locked: 'not_built' }, { id: 'smithy_door', kind: 'shop', x: 2580, z: 284, r: 54, label: '대장간', event: 'shop.smithy1', locked: 'not_built' });
     triggers.push({ id: 'past_street', ...rect(1500, 0, 60, 300), event: 'past.street', wake: 'st_p' }, { id: 'square_enter', ...rect(3300, 0, 60, 300), event: 'square.enter', wake: 'sq_p' }, { id: 'church_steps', ...rect(3660, 1100, 480, 60), event: 'church.arrive' });
@@ -180,7 +182,7 @@ export function eshville(era, flags = {}) {
     },
     spawns: {
       default: { x: 160, z: 150, face: E, section: 'outskirts' }, from_west: { x: 30, z: 150, face: E, section: 'outskirts' }, from_graveyard: { x: 4590, z: 1150, face: S, section: 'graveroad' },
-      from_belltower: { x: 3900, z: 1560, face: S, section: 'church' }, bell: { x: 4200, z: 1390, face: N, section: 'church' }, inn: { x: 1800, z: 250, face: S, section: 'street' }, square: { x: 3900, z: 250, face: N, section: 'square' },
+      from_belltower: { x: 3900, z: 1560, face: S, section: 'church' }, bell: { x: 4200, z: 1390, face: N, section: 'church' }, inn: { x: 1800, z: 196, face: S, section: 'street' }, square: { x: 3900, z: 250, face: N, section: 'square' },
     },
     exits: [
       // lockAt = where the lock is felt: the shut leaves, 210 px in front of the exit box at the end of the lane. The scene raises exit.locked there too

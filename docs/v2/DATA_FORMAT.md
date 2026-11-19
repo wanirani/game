@@ -4,6 +4,13 @@
 (The body is in English so that every lane can read it fast. Everything the player sees is Korean.)
 
 ## 바뀐 것
+- 11-18 23:50 **CHAPTER** (the chapter audit's blockers 3-6 and its unfinished list; scene side: ENGINE_API §12.4). Shapes and step vocabulary are unchanged.
+  - **No bridges are left** (every area is built): `ev_tower_bridge` and `ev_ossuary_bridge` are deleted; `ev_tower_locked`, `ev_ossuary_exit_now`, `ev_ossuary_exit_past` and `ev_ossuary_door_past` only say their line. The road bell is hung by the player at the empty post (`interact bell.hang` → `ev_hang_bell`): the threshold of the ossuary door, whose margin the whip landing lies in, no longer runs `ev_hang_bell` - it points to the post (`door.ossuary.past`, new variant `has:road_bell`). `story_check`'s route B is now the same chapter through the other branch of every choice (iron key; the wooden crate first, then the statue).
+  - **`boss.phase`**: `flee` is raised when the queen has torn through the hall's bell at half health and is gone from tonight, `driven` when the hero has brought her down to a quarter of her health in 1697 and she has torn back (the scene stages both - `src/v2/game/chapter.js`; the rules' `bossReturn` is not a phase any more). New sequences: `ev_boss_back` (`area.enter ossuary_now` with `queen_driven`), `ev_bell_sealed` (`interact bell.sealed`: the arena bell of 1697 before her flight answers dull), `ev_graveroad_past` (`trigger past.arrive`: `wait 3.5` → `wakeGroup road` - that night's graveyard gives the hero a breath). `ev_boss_kneel` is `once: false`.
+  - **Dialogue sets**: `keepers.found` (the first line of the promise; `ev_keepers` then walks Elise to the bell with `moveActor` and holds the hero's input with `lockInput`) · `elise.asleep` (the sleeping girl's talk key and what the spot `oss.elise` says; its first variant carries `elise_found`, the objective and the journey - it replaces `elise.wake`) · `elise.past` · `bell.sealed`. `ev_oss_enter` shows Sera at the lantern (`showActor sera ossuary_now`), so she is there when she speaks.
+  - **Save steps** were added wherever the bot's line of play went about three game minutes without one: `ev_square_clear`, `ev_church_arrive`, `ev_past_wake`, `ev_past_street_clear`, `ev_knot`, `ev_smithy_past`, `ev_smithy_now`, `ev_gate_now`, `ev_graveyard_enter`, `ev_elite_down`, `ev_gate_past`, `ev_keeper_greets`, `ev_carve_a/b`, `ev_oss_enter`, `ev_oss_past_first`, `ev_oss_wedge`, `ev_oss_sera`, `ev_oss_riddle_echo`, `ev_knell_take`, `ev_knell_1..4`, `ev_boss_flee`, `ev_boss_past`, `ev_boss_driven`, `ev_boss_back`.
+  - **Objectives say where** (still 16 characters or fewer); new ids `to_past_graves`, `fight_queen`, `drive_queen`, `back_queen`. **`TEXT.ending`** = the ending card (`title, sub, home, far[2], cont, hint`); the `end` step now brings up that card and leaves for the 3D chooser (§5 `end`). `FLAGS.keepers_promised` is `world: true` (the place of Elise in `eshville_past` is built from it).
+  - `candle 0` after a rest: the rest spot is the one whose `interact` raised the sequence (the host keeps it), no longer the prompt target - there is none while a dialogue is open, so the bread before the queen's door never became the place the hero stands up at.
 - 23:30 first version: shapes, key names, step vocabulary, the api the runner needs, save shape.
 - 00:00 second version, after writing and playing the whole script: `ifAny` on variants and events; `bridge` / `waiting` on events (§4); the `prompt` step also shows the tip as a notice; the dialogue object carries `who`; listeners of one event are all tested before any of them starts (§4); `save` may be the last step of a `run` chain; new §12 (hooks STORY expects from areas that are not built) and §13 (status, check, numbers).
 
@@ -155,7 +162,7 @@ When an event arrives, **all** its listeners are tested against the state of tha
 | `lockInput` | `on` | `api.lock(on)` |
 | `if` | `conds, steps, elseSteps?` | — |
 | `run` | `eventId` | runs another sequence's steps inline (ignores its `on` / `if`) |
-| `end` | `id` | `api.end?.(id)` — end of the first release (credits / back to title) |
+| `end` | `id` | `api.end?.(id)` — end of the first release: the closing banner, the ending card (`TEXT.ending`), then the 3D chooser |
 
 Anything the api does not have is **skipped with one warning** (`opts.warn`), and a waiting step continues at once — the story never blocks the game.
 

@@ -49,6 +49,7 @@ export const EVENTS = [
     ['prompt', null],
     ['say', 'sera.square.first'],
     ['objective', 'to_church'],
+    ['save'],
   ] },
   { id: 'ev_rook_shop', minute: '5-12', on: 'interact', match: { event: 'shop.rook' }, once: false, steps: [
     ['say', 'rook.shop'],
@@ -72,6 +73,7 @@ export const EVENTS = [
     ['unlockExit', 'to_belltower', 'eshville_now'],
     ['prompt', 'rest'],
     ['objective', 'climb_tower'],
+    ['save'],
   ] },
   // the bread before the boss door comes first so that it plays before the candles are relit
   { id: 'ev_boss_rest', minute: '100-104', on: 'interact', match: { event: 'rest', id: 'boss_rest' }, if: ['has:lotte_bread'], steps: [
@@ -113,15 +115,9 @@ export const EVENTS = [
     ['objective', null],
     ['gotoArea', 'eshville_past', 'from_belltower'],
   ] },
-  { id: 'ev_tower_bridge', minute: '15-20', bridge: true, on: 'exit.missing', match: { id: 'to_belltower' }, if: ['era:now', 'promise', '!fell'], once: false, steps: [
-    ['run', 'ev_tower_enter'],
-    ['run', 'ev_tower_top'],
-    ['run', 'ev_tower_crack'],
-  ] },
-
-  // the tower door while it is still locked (before the promise, or when the scene has no unlockExit yet)
-  { id: 'ev_tower_locked', minute: '15-20', bridge: true, on: 'exit.locked', match: { id: 'to_belltower' }, if: ['era:now', '!fell'], once: false, steps: [
-    ['if', ['promise'], [['run', 'ev_tower_enter'], ['run', 'ev_tower_top'], ['run', 'ev_tower_crack']], [['say', 'tower.door']]],
+  // the tower door while it is still locked (before the promise)
+  { id: 'ev_tower_locked', minute: '15-20', on: 'exit.locked', match: { id: 'to_belltower' }, if: ['era:now', '!fell'], once: false, steps: [
+    ['say', 'tower.door'],
   ] },
 
   // ═════════ 20–26 그 밤, 종탑 아래와 마을 ═════════
@@ -131,6 +127,7 @@ export const EVENTS = [
     ['say', 'past.wake'],
     ['camera', null],
     ['objective', 'find_key'],
+    ['save'],
   ] },
   { id: 'ev_past_street', minute: '20-26', on: 'trigger', match: { event: 'past.street' }, steps: [
     ['say', 'past.street'],
@@ -138,6 +135,8 @@ export const EVENTS = [
   { id: 'ev_past_street_clear', minute: '20-26', on: 'group.clear', match: { group: 'st_p' }, if: ['era:past'], steps: [
     ['setFlag', 'street_clear'],
     ['say', 'edmund.appears'],
+    ['objective', 'meet_edmund'],
+    ['save'],
   ] },
 
   // ═════════ 26–33 그 밤의 주막과 대장간 ═════════
@@ -160,6 +159,7 @@ export const EVENTS = [
     ['camera', null],
     ['music', 'village_past'],
     ['if', ['key_entrusted'], [['objective', 'ring_big_bell']], [['objective', 'find_key']]],
+    ['save'],
   ] },
   { id: 'ev_smithy_past', minute: '26-33', on: 'talk', match: { talk: 'hadwin1.smithy' }, if: ['!key_entrusted'], steps: [
     ['prompt', 'mark'],
@@ -170,6 +170,7 @@ export const EVENTS = [
     ['toast', '맡겼다 — 묘지 문 열쇠', 'info'],
     // what is still missing decides the next line under the section name
     ['if', ['has:valkrein_knot'], [['objective', 'ring_big_bell']], [['if', ['met_edmund'], [['objective', 'show_shard']], [['objective', 'meet_edmund']]]]],
+    ['save'],
   ] },
   // the crossing tip comes at the bell, not at the smithy (section `church` holds the big bell)
   { id: 'ev_cross_tip', minute: '33-36', on: 'section.enter', match: { id: 'church' }, if: ['era:past', 'has:valkrein_knot', 'key_entrusted', '!crossed'], steps: [
@@ -203,8 +204,9 @@ export const EVENTS = [
   { id: 'ev_bell_lost', minute: '33-36', safety: true, on: 'interact', match: BELL, if: ['era:now', 'fell', '!crossed'], once: false, steps: [
     ['bellCross', null],
   ] },
-  { id: 'ev_smithy_now', minute: '33-36', bridge: true, on: 'interact', match: { event: 'shop.smithy' }, if: ['era:now'], once: false, steps: [
+  { id: 'ev_smithy_now', minute: '33-36', on: 'interact', match: { event: 'shop.smithy' }, if: ['era:now'], once: false, steps: [
     ['say', 'hadwin.smithy.now'],
+    ['save'],
   ] },
   // every later crossing at any bell (the big bell, road bells, bells inside the dungeon)
   { id: 'ev_bell_cross', minute: '36-45', on: 'interact', match: BELL, if: ['has:valkrein_knot', 'crossed'], ifAny: ['!keepers_promised', 'elise_home'], once: false, steps: [
@@ -223,9 +225,11 @@ export const EVENTS = [
   // ═════════ 36–45 묘지 가는 길 ═════════
   { id: 'ev_gate_now', minute: '36-45', on: 'exit.locked', match: { id: 'to_graveyard' }, if: ['era:now'], once: false, steps: [
     ['say', 'gate.now'],
+    ['save'],
   ] },
   { id: 'ev_graveyard_enter', minute: '36-45', on: 'area.enter', match: { area: 'graveyard_now' }, steps: [
     ['banner', 'area', '2장 — 안개의 묘지', '열쇠와 이름과 길종'],
+    ['save'],
   ] },
   { id: 'ev_bats', minute: '36-45', on: 'trigger', match: { event: 'bats.swoop' }, steps: [
     ['prompt', 'wide'],
@@ -236,6 +240,7 @@ export const EVENTS = [
   ] },
   { id: 'ev_elite_down', minute: '36-45', on: 'group.clear', match: { group: 'gate' }, if: ['era:now'], steps: [
     ['prompt', null],
+    ['save'],
   ] },
   { id: 'ev_echo_hint', minute: '36-45', on: 'trigger', match: { event: 'echo.hint' }, steps: [
     ['say', 'echo.hint'],
@@ -259,15 +264,22 @@ export const EVENTS = [
   { id: 'ev_ossuary_door_now', minute: '45-58', on: 'interact', match: { event: 'door.ossuary' }, if: ['era:now'], once: false, steps: [
     ['say', 'door.ossuary.now'],
   ] },
-  // pressed again while the door is already open in the story = the scene could not unlock it or the area is missing: go on as text
   { id: 'ev_ossuary_exit_now', minute: '45-58', on: 'exit.locked', match: { id: 'to_ossuary' }, if: ['era:now'], once: false, steps: [
-    ['if', ['ossuary_open', '!elise_found'], [['run', 'ev_ossuary_bridge']], [['say', 'door.ossuary.now']]],
+    ['say', 'door.ossuary.now'],
   ] },
-  { id: 'ev_ossuary_exit_past', minute: '58-68', bridge: true, on: 'exit.locked', match: { id: 'to_ossuary' }, if: ['era:past'], once: false, steps: [
-    ['if', ['carved_a', 'carved_b', '!bell_hung'], [['run', 'ev_hang_bell']], [['say', 'door.ossuary.past']]],
+  // that night the threshold only says where the empty post stands: the road bell is hung by the player at the post (interact bell.hang).
+  // (The whip landing lies inside this exit's margin: a bridge that ran ev_hang_bell from here used to hang the bell the moment the hero landed.)
+  { id: 'ev_ossuary_exit_past', minute: '58-68', on: 'exit.locked', match: { id: 'to_ossuary' }, if: ['era:past'], once: false, steps: [
+    ['say', 'door.ossuary.past'],
   ] },
   { id: 'ev_gate_past', minute: '45-58', on: 'exit.locked', match: { id: 'to_graveyard' }, if: ['era:past'], once: false, steps: [
     ['say', 'gate.past'],
+    ['save'],
+  ] },
+  // that night's graveyard gives the hero a breath: the corpses on the road wake when he walks on (the world's trigger) or a few seconds after he arrived
+  { id: 'ev_graveroad_past', minute: '45-58', on: 'trigger', match: { event: 'past.arrive' }, once: false, steps: [
+    ['wait', 3.5],
+    ['wakeGroup', 'road'],
   ] },
   { id: 'ev_keeper_greets', minute: '45-58', on: 'trigger', match: { event: 'keeper.greets' }, steps: [
     ['say', 'keeper.greets'],
@@ -276,12 +288,15 @@ export const EVENTS = [
     ['give', 'chisel'],
     ['objective', 'carve_names'],
     ['prompt', 'carve'],
+    ['save'],
   ] },
   { id: 'ev_carve_a', minute: '45-58', on: 'interact', match: { event: 'grave.carve', 'data.grave': 'a' }, once: false, steps: [
     ['say', 'grave.carve.a'],
+    ['save'],
   ] },
   { id: 'ev_carve_b', minute: '45-58', on: 'interact', match: { event: 'grave.carve', 'data.grave': 'b' }, once: false, steps: [
     ['say', 'grave.carve.b'],
+    ['save'],
   ] },
 
   // ═════════ 58–68 묘지 깊은 곳 ═════════
@@ -309,16 +324,19 @@ export const EVENTS = [
     ['objective', 'enter_ossuary'],
     ['save'],
   ] },
-  { id: 'ev_ossuary_door_past', minute: '58-68', bridge: true, on: 'interact', match: { event: 'door.ossuary' }, if: ['era:past'], once: false, steps: [
-    ['if', ['carved_a', 'carved_b', '!bell_hung'], [['run', 'ev_hang_bell']], [['say', 'door.ossuary.past']]],
+  { id: 'ev_ossuary_door_past', minute: '58-68', on: 'interact', match: { event: 'door.ossuary' }, if: ['era:past'], once: false, steps: [
+    ['say', 'door.ossuary.past'],
   ] },
 
   // ═════════ 68–82 납골당 앞 절반 ═════════
   { id: 'ev_oss_enter', minute: '68-82', on: 'area.enter', match: { area: 'ossuary_now' }, steps: [
     ['banner', 'area', '3장 — 배웅하는 노래', '배웅의 납골당'],
     ['music', 'ossuary_now'],
+    ['showActor', 'sera', 'ossuary_now'],        // Sera stands at the lantern from the first step into the dungeon (she used to be there only after a talk in the square that nothing asks for)
+    ['hideActor', 'sera', 'eshville_now'],
     ['say', 'oss.enter'],
     ['objective', 'follow_song'],
+    ['save'],
   ] },
   { id: 'ev_oss_coffins', minute: '68-82', on: 'trigger', match: { event: 'oss.coffins' }, steps: [
     ['say', 'oss.coffins'],
@@ -328,10 +346,12 @@ export const EVENTS = [
     ['prompt', null],
     ['music', 'ossuary_past'],
     ['say', 'oss.past.first'],
+    ['save'],
   ] },
   { id: 'ev_oss_wedge', minute: '68-82', on: 'interact', match: { event: 'oss.wedge' }, once: false, steps: [
     ['if', ['!wedge_stone'], [['prompt', 'aging']]],
     ['say', 'oss.wedge'],
+    ['save'],
   ] },
   { id: 'ev_oss_gap', minute: '68-82', on: 'trigger', match: { event: 'oss.gap' }, once: false, steps: [
     ['say', 'oss.gap'],
@@ -342,8 +362,10 @@ export const EVENTS = [
 
   // ═════════ 82–100 납골당 뒤 절반 ═════════
   { id: 'ev_oss_sera', minute: '82-100', on: 'trigger', match: { event: 'oss.lamp' }, steps: [
+    ['showActor', 'sera', 'ossuary_now'],        // (a save from before she was shown at the dungeon's door: she is at the lantern now)
     ['say', 'sera.ossuary'],
     ['hideActor', 'sera', 'eshville_now'],       // she is here now, not in the square
+    ['save'],
   ] },
   { id: 'ev_oss_riddle', minute: '82-100', on: 'interact', match: { event: 'oss.riddle' }, once: false, steps: [
     ['say', 'oss.riddle'],
@@ -353,26 +375,32 @@ export const EVENTS = [
     ['say', 'oss.riddle.echo'],
     ['setFlag', 'riddle_done'],
     ['objective', 'hang_knells'],
+    ['save'],
   ] },
   { id: 'ev_knell_take', minute: '82-100', on: 'area.enter', match: { area: 'ossuary_past' }, if: ['riddle_done', '!knells_hung', '!has:knell_bell', '!knell_1', '!knell_2', '!knell_3', '!knell_4'], steps: [
     ['say', 'oss.knell.take'],
     ['give', 'knell_bell', 4],
+    ['save'],
   ] },
   { id: 'ev_knell_1', minute: '82-100', on: 'interact', match: { event: 'oss.knell', 'data.post': 1 }, if: ['has:knell_bell', '!knell_1'], steps: [
     ['take', 'knell_bell'], ['setFlag', 'knell_1'], ['toast', '걸었다 — 조종', 'info'],
     ['if', ['knell_1', 'knell_2', 'knell_3', 'knell_4'], [['run', 'ev_knells_done']]],
+    ['save'],
   ] },
   { id: 'ev_knell_2', minute: '82-100', on: 'interact', match: { event: 'oss.knell', 'data.post': 2 }, if: ['has:knell_bell', '!knell_2'], steps: [
     ['take', 'knell_bell'], ['setFlag', 'knell_2'], ['toast', '걸었다 — 조종', 'info'],
     ['if', ['knell_1', 'knell_2', 'knell_3', 'knell_4'], [['run', 'ev_knells_done']]],
+    ['save'],
   ] },
   { id: 'ev_knell_3', minute: '82-100', on: 'interact', match: { event: 'oss.knell', 'data.post': 3 }, if: ['has:knell_bell', '!knell_3'], steps: [
     ['take', 'knell_bell'], ['setFlag', 'knell_3'], ['toast', '걸었다 — 조종', 'info'],
     ['if', ['knell_1', 'knell_2', 'knell_3', 'knell_4'], [['run', 'ev_knells_done']]],
+    ['save'],
   ] },
   { id: 'ev_knell_4', minute: '82-100', on: 'interact', match: { event: 'oss.knell', 'data.post': 4 }, if: ['has:knell_bell', '!knell_4'], steps: [
     ['take', 'knell_bell'], ['setFlag', 'knell_4'], ['toast', '걸었다 — 조종', 'info'],
     ['if', ['knell_1', 'knell_2', 'knell_3', 'knell_4'], [['run', 'ev_knells_done']]],
+    ['save'],
   ] },
   { id: 'ev_knells_done', minute: '82-100', steps: [
     ['say', 'oss.knells.done'],
@@ -388,26 +416,42 @@ export const EVENTS = [
     ['say', 'boss.intro'],
     ['camera', null],
     ['if', ['knells_hung'], [['prompt', 'knellpost']]],
-    ['objective', 'face_queen'],
+    ['objective', 'fight_queen'],
   ] },
+  // The flight, the chase and the return are staged by the scene (src/v2/game/chapter.js): `flee` is raised when the queen has torn through the hall's bell at half
+  // health and is gone from tonight; `driven` when the hero has brought her down to a quarter in 1697 and she has torn back. Each stretch ends in a save.
   { id: 'ev_boss_flee', minute: '104-114', on: 'boss.phase', match: { phase: 'flee' }, if: ['area:ossuary_now'], steps: [
     ['say', 'boss.flee'],
     ['setFlag', 'queen_fled'],
     ['prompt', 'chase'],
     ['objective', 'chase_queen'],
+    ['save'],
   ] },
   { id: 'ev_boss_past', minute: '104-114', on: 'area.enter', match: { area: 'ossuary_past' }, if: ['queen_fled', '!queen_driven'], steps: [
     ['prompt', null],
     ['say', 'boss.past'],
+    ['objective', 'drive_queen'],
+    ['save'],
   ] },
   { id: 'ev_boss_driven', minute: '104-114', on: 'boss.phase', match: { phase: 'driven' }, if: ['area:ossuary_past'], steps: [
     ['say', 'boss.driven'],
     ['setFlag', 'queen_driven'],
     ['prompt', 'chaseback'],
-    ['objective', 'send_queen'],
+    ['objective', 'back_queen'],
+    ['save'],
   ] },
-  { id: 'ev_boss_kneel', minute: '104-114', on: 'boss.phase', match: { phase: 'kneel' }, if: ['area:ossuary_now'], steps: [
+  { id: 'ev_boss_back', minute: '104-114', on: 'area.enter', match: { area: 'ossuary_now' }, if: ['queen_driven', '!queen_sent'], steps: [
+    ['prompt', null],
+    ['objective', 'send_queen'],
+    ['save'],
+  ] },
+  { id: 'ev_boss_kneel', minute: '104-114', on: 'boss.phase', match: { phase: 'kneel' }, if: ['area:ossuary_now'], once: false, steps: [
     ['prompt', 'knell'],
+  ] },
+  // in 1697 the bell of the last hall answers dull until the queen has fled through it (the world gives it the event bell.sealed until then)
+  { id: 'ev_bell_sealed', minute: '100-104', on: 'interact', match: { event: 'bell.sealed' }, once: false, steps: [
+    ['say', 'bell.sealed'],
+    ['toast', '종이 둔하게 울린다', 'warn'],
   ] },
   { id: 'ev_boss_sent', minute: '104-114', on: 'boss.phase', match: { phase: 'sent' }, if: ['area:ossuary_now', '!queen_sent'], steps: [
     ['prompt', null],
@@ -422,30 +466,22 @@ export const EVENTS = [
     ['objective', 'wake_elise'],
     ['save'],
   ] },
-  { id: 'ev_elise_wake', minute: '104-114', on: 'interact', match: { event: 'oss.elise' }, if: ['queen_sent', '!elise_found'], steps: [
-    ['say', 'elise.wake'],
-    ['setFlag', 'elise_found'],
-    ['objective', 'to_lotte'],
-    ['gotoArea', 'eshville_past', 'bell'],
-  ] },
-  // where the ossuary is not built: the whole dungeon as text, in order
-  { id: 'ev_ossuary_bridge', minute: '68-114', bridge: true, on: 'exit.missing', match: { id: 'to_ossuary' }, if: ['ossuary_open', '!elise_found'], once: false, steps: [
-    ['run', 'ev_oss_enter'], ['run', 'ev_oss_coffins'], ['run', 'ev_oss_past_first'],
-    ['say', 'oss.gap'], ['run', 'ev_oss_wedge'], ['say', 'oss.gap'],
-    ['run', 'ev_oss_sera'], ['say', 'oss.riddle'], ['run', 'ev_oss_riddle_echo'], ['run', 'ev_knell_take'],
-    ['run', 'ev_knell_1'], ['run', 'ev_knell_2'], ['run', 'ev_knell_3'], ['run', 'ev_knell_4'],
-    ['run', 'ev_boss_rest'],
-    ['run', 'ev_boss_intro'], ['run', 'ev_boss_flee'], ['run', 'ev_boss_past'], ['run', 'ev_boss_driven'], ['run', 'ev_boss_kneel'],
-    ['setFlag', 'queen_sent'], ['say', 'boss.sent'], ['chronicle', 'four_knells'], ['chronicle', 'banshee'], ['candle', 1], ['say', 'lia.warn'], ['give', 'crow_feather'],
-    ['run', 'ev_elise_wake'],
+  // the spot beside the sleeping girl says what she herself says when pressed (talk elise.asleep): asleep until the queen is sent, then she wakes
+  // and the two go up to Lotte (the dialogue set carries the flag and the journey, so that both ways in do the same)
+  { id: 'ev_elise_wake', minute: '104-114', on: 'interact', match: { event: 'oss.elise' }, once: false, steps: [
+    ['say', 'elise.asleep'],
   ] },
 
   // ═════════ 114–118 그 밤의 종탑 (종탑이 지어지기 전에는 큰 종 앞) ═════════
   { id: 'ev_keepers', minute: '114-118', on: 'area.enter', match: { area: 'eshville_past' }, if: ['elise_found', '!keepers_promised'], steps: [
-    ['showActor', 'elise', 'eshville_past'],
+    ['lockInput', true],
+    ['showActor', 'elise', 'eshville_past'],     // she came with the hero and stands beside him; Lotte waits at her bell
+    ['say', 'keepers.found'],
+    ['moveActor', 'elise', [4296, 1436]],        // Elise walks to the bell: the two keepers stand with the bell between them
     ['camera', 'two_keepers', 3],
     ['say', 'keepers.promise'],
     ['camera', null],
+    ['lockInput', false],
     ['setFlag', 'keepers_promised'],
     ['prompt', 'cross'],
     ['objective', 'go_home'],
@@ -467,6 +503,7 @@ export const EVENTS = [
     ['hideActor', 'elise', 'eshville_past'],
     ['showActor', 'elise', 'eshville_now'],
     ['showActor', 'sera', 'eshville_now'],
+    ['hideActor', 'sera', 'ossuary_now'],
     ['setFlag', 'elise_home'],
     ['music', 'dawn_bell'],
     ['say', 'ending.bell'],

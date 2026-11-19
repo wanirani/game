@@ -1,5 +1,4 @@
 // Dialogue of the bell tower, the Ossuary of Farewell, the banshee queen and the ending.
-// These areas are not built yet (belltower_*, ossuary_*): the text is final, the hooks are listed in DATA_FORMAT section 12.
 
 export const DIALOGS_DUNGEON = {
   // ───────── 15–20 종탑 ─────────
@@ -113,6 +112,10 @@ export const DIALOGS_DUNGEON = {
   'boss.flee': [{ pages: [
     ['banshee_queen', '…그 밤이 좋았단다. 넷째 발크레인이\n아직 살아 있던 밤.'],
   ] }],
+  // the bell of the last hall in 1697, before the queen has fled through it (interact event bell.sealed)
+  'bell.sealed': [{ pages: [
+    ['kael', '(종이 답하지 않는다. 저쪽 방은\n노래로 가득 차 있다. 문으로 간다.)'],
+  ] }],
   'boss.past': [{ pages: [
     ['narrator', '그 밤의 예배실. 제단 아래\n엘리제가 잠들어 있다.'],
     ['kael', '엘리제! 조금만 기다려라.'],
@@ -130,15 +133,21 @@ export const DIALOGS_DUNGEON = {
     ['kael', '누구냐.'],
     ['narrator', '대답은 없다. 까마귀 깃털 하나가\n발치에 떨어진다.'],
   ] }],
-  'elise.wake': [{ pages: [
-    ['elise', '…아저씨? 저 꿈꿨어요. 누가 자꾸\n가지 말라고 노래했어요.'],
-    ['kael', '끝났다. 약속했잖아.\n집에 가자, 엘리제.'],
-    ['elise', '네! …근데 여기 종소리가 달라요.\n금 간 소리가 안 나요.', 'joy'],
-  ] }],
+  // the sleeping girl under the altar of 1697 (her talk key, and the spot beside her): she wakes only when the queen has been sent
+  'elise.asleep': [
+    { if: ['queen_sent', '!elise_found'], pages: [
+      ['elise', '…아저씨? 저 꿈꿨어요. 누가 자꾸\n가지 말라고 노래했어요.'],
+      ['kael', '끝났다. 약속했잖아.\n집에 가자, 엘리제.'],
+      ['elise', '네! …근데 여기 종소리가 달라요.\n금 간 소리가 안 나요.', 'joy'],
+    ], then: [['setFlag', 'elise_found'], ['objective', 'to_lotte'], ['gotoArea', 'eshville_past', 'bell']] },
+    { pages: [['kael', '(깊이 잠들었다.\n노래가 아직 붙들고 있다.)']] },
+  ],
 
   // ───────── 114–118 그 밤의 종탑 ─────────
-  'keepers.promise': [{ pages: [
+  'keepers.found': [{ pages: [
     ['lotte', '찾았네요! 그 애예요?'],
+  ] }],
+  'keepers.promise': [{ pages: [
     ['elise', '엘리제예요! 언니가\n여기 종지기예요?'],
     ['lotte', '응, 로테야. …너, 손에\n종 줄 자국이 있네.'],
     ['lotte', '있잖아, 내가 치면 네가 답해.\n약속!'],

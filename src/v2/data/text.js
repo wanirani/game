@@ -77,10 +77,17 @@ export const TEXT = {
     aging: { action: null, label: '묵는 표', tip: '돌과 은은 남는다. 쇠는 녹슬고 나무는 삭는다' },
     call: { action: 'skill1', label: '세라', tip: '등불대 가까이에서 「솜씨」 — 세라를 부른다' },
     knellpost: { action: 'attack', label: '공격', tip: '조종을 채찍으로 치면 노래가 깨진다' },
-    chase: { action: 'ult', label: '건넘', tip: '싸움터 한가운데 종에서 쫓아 건넌다' },
-    chaseback: { action: 'ult', label: '건넘', tip: '같은 종에서 오늘 밤으로 돌아간다' },
+    chase: { action: 'ult', label: '건넘', tip: '여왕이 사라진 종 앞에서 「종」을 길게 — 쫓아 건넌다' },
+    chaseback: { action: 'ult', label: '건넘', tip: '여왕이 사라진 그 종에서 오늘 밤으로 돌아간다' },
     knell: { action: 'ult', label: '조종', tip: '무릎 꿇은 여왕 앞에서 「종」을 길게 — 조종' },
     letter: { action: 'confirm', label: '종 편지', tip: '큰 종 앞에서 엘리제에게 종 편지를 청한다' },
+  },
+
+  // the ending card of the first release (hud.showEnd): the title, the bell-sound circle growing by one ring (GDD 9.2 cut 8), "to be continued"
+  ending: {
+    title: '블러드 녹턴', sub: '종소리가 한 겹 더 멀리 닿는다',
+    home: '에슈빌', far: ['장미 수녀원', '잠긴 수문'],
+    cont: '이야기는 다음 종소리로 이어집니다', hint: '화면을 누르면 처음으로 돌아갑니다',
   },
 
   // the "what keeps for a hundred years" card (shown only where the player chooses what to leave)

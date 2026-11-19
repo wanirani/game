@@ -2,7 +2,7 @@
 //   - the api object of DATA_FORMAT 5 (dialogue through the HUD, banners, notices, objective line, prompts, exits, actors, camera shots,
 //     waits, sound, music, candles, moon, chronicle, save, area changes, the bell crossing, the end)
 //   - story flags that areas are built from (FLAGS world: true, and every name in the world module's AREA_FLAGS) go on as area flags
-//   - the save: localStorage 'bn.v2.save' { v: 1, story: storyObj.save(), area, era, spawn, pos, hp, reso, nights, t } — written at the
+//   - the save: localStorage 'bn.v2.save' { v: 1, story: storyObj.save(), area, era, spawn, pos, hp, reso, nights, coins, broken, ch, t } — written at the
 //     story's save steps and on leaving; a broken or foreign value is ignored (new game)
 // Nothing here may stop the game: every call into the story and every api function is guarded.
 import { audio } from '../../core/audio.js';
@@ -37,12 +37,14 @@ export class StoryHost {
     this.st = mod.createStory(mod.STORY, { warn: (m) => { this.warnings.push(m); console.warn('[story]', m); } });
     this.objective = ''; this.pill = { action: 'confirm', label: '', icon: undefined }; this.pillOn = false; this.pillT = 0; this.pills = [this.pill];
     this.waits = []; this.moves = []; this.shot = null; this.shotT = 0; this.shotDone = null; this.shotLock = false;
+    this.restSpot = null;   // CHAPTER: the rest spot the hero last pressed ({ area, def }) - the `candle` step makes it the place he stands up at (chapter.js)
     this.inputLock = false; this.dirty = false; this.saves = 0; this.lastSave = null; this.ended = null; this.moon = null; this.ringN = 0; this.musicId = null; this.candleBonus = 0;
     const F = mod.STORY.FLAGS ?? {}; this.world = new Set();
     for (const k of Object.keys(F)) if (F[k] && F[k].world) this.world.add(k);
     for (const a of Object.keys(this.areaFlags)) for (const n of this.areaFlags[a]) if (F[n]) this.world.add(n);   // a name the story does not declare (past_street_clear) is not passed: the area then keeps its older condition
     this.api = this._api();
     this.story = (name, data) => {
+      if (name === 'interact' && data && data.kind === 'rest') this.restSpot = { area: this.sc.area?.id ?? null, def: data.spot ?? data };   // CHAPTER
       if (name === 'area.enter') { const id = this.sc.area?.music; if (id && MUSIC[id] && id !== this.musicId) this.api.music(id); }   // each night has its own tune (GDD 2.4 rule 1); a track the build does not ship is skipped by the audio module
       try { this.st.story(name, data, this.api); } catch (e) { console.error('[v2g] story failed on', name, e); }
     };
@@ -75,15 +77,16 @@ export class StoryHost {
     const same = o.area === s.area && o.pos && Number.isFinite(o.pos.x) && Number.isFinite(o.pos.z);   // otherwise the save was cut in the middle of an area change: the story's area and spawn decide
     return { area: s.area, spawn: s.spawn ?? null, pos: same ? { x: o.pos.x, z: o.pos.z, y: Number.isFinite(o.pos.y) ? o.pos.y : undefined, face: Array.isArray(o.pos.face) ? o.pos.face : undefined } : null,
       hp: Number.isFinite(o.hp) && o.hp > 0 ? o.hp : null, reso: Number.isFinite(o.reso) ? o.reso : 0, nights: o.nights && typeof o.nights === 'object' ? o.nights : null,
-      coins: Number.isFinite(o.coins) && o.coins > 0 ? Math.floor(o.coins) : 0, broken: same && Array.isArray(o.broken) ? o.broken : null };   // BREAK: the coin count (an old save without it reads 0) and what was broken in the saved area
+      coins: Number.isFinite(o.coins) && o.coins > 0 ? Math.floor(o.coins) : 0, broken: same && Array.isArray(o.broken) ? o.broken : null,
+      ch: o.ch && typeof o.ch === 'object' ? o.ch : null };   // CHAPTER: the last rest spot, the last bell, the queen's health (chapter.js; an old save has none)   // BREAK: the coin count (an old save without it reads 0) and what was broken in the saved area
   }
   /** new game: forget everything (the scene clears its own memory and the stored save) */
-  reset() { try { this.st.reset(); } catch (e) { console.error('[v2g] story reset failed', e); } this.objective = ''; this.pillOn = false; this.waits.length = 0; this.moves.length = 0; this.shot = null; this.shotT = 0; this.shotDone = null; this.shotLock = false; this.inputLock = false; this.dirty = false; this.ended = null; this.moon = null; this.candleBonus = 0; this.lastSave = null; }
+  reset() { try { this.st.reset(); } catch (e) { console.error('[v2g] story reset failed', e); } this.objective = ''; this.pillOn = false; this.waits.length = 0; this.moves.length = 0; this.shot = null; this.shotT = 0; this.shotDone = null; this.shotLock = false; this.inputLock = false; this.restSpot = null; this.dirty = false; this.ended = null; this.moon = null; this.candleBonus = 0; this.lastSave = null; }
   // ───────── save ─────────
   /** the save object for the state as it is (storyObj = st.save(): the copy from before a running sequence) */
   compose(storyObj) {
     const sc = this.sc, h = sc.sim?.hero, a = sc.area;
-    const o = { v: SAVE_V, t: Date.now(), story: storyObj, area: a?.id ?? storyObj.area ?? null, era: a?.era ?? storyObj.era ?? 'now', spawn: storyObj.spawn ?? null, pos: null, hp: null, reso: 0, nights: sc.nightsOut?.() ?? {}, coins: sc.brk?.coins ?? 0, broken: sc.brk && sc.ready && a && !a.test && sc.brk.brokenArea === a.id ? sc.brk.brokenOut() : [] };   // BREAK: coins + the breakables broken in this area (they stand again on a new arrival)
+    const o = { v: SAVE_V, t: Date.now(), story: storyObj, area: a?.id ?? storyObj.area ?? null, era: a?.era ?? storyObj.era ?? 'now', spawn: storyObj.spawn ?? null, pos: null, hp: null, reso: 0, nights: sc.nightsOut?.() ?? {}, coins: sc.brk?.coins ?? 0, broken: sc.brk && sc.ready && a && !a.test && sc.brk.brokenArea === a.id ? sc.brk.brokenOut() : [], ch: sc.ch ? sc.ch.out() : null };   // BREAK: coins + the breakables broken in this area (they stand again on a new arrival)
     if (h && sc.ready && a && !a.test) {
       const ok = h.onGround && !h.dead, p = ok ? h : h.safe ?? h;
       if (Number.isFinite(p.x) && Number.isFinite(p.z)) o.pos = { x: Math.round(p.x), z: Math.round(p.z), y: Math.round(p.y ?? 0), face: [h.dirX ?? 1, h.dirZ ?? 0] };
@@ -171,12 +174,19 @@ export class StoryHost {
         if (H.shot.shake) sc.fx?.feel.addTrauma(H.shot.shake); if (H.shot.flash) sc.fx?.feel.flash(1, 1, 1, 0.5);
       },
       wait(seconds, done) { if (!(seconds > 0)) { done?.(); return; } H.waits.push({ t: seconds, fn: done }); },
-      candle(n) { const sim = sc.sim; if (!sim) return; if (n > 0) H.candleBonus += n; sc.applyCandles(); if (sim.heal) sim.heal('full'); const s = sc.people.target; if (s && !s.a3 && s.def.kind === 'rest') sim.respawnAt?.(s.def.x, s.def.z, s.def.y); },
+      candle(n) {
+        const sim = sc.sim; if (!sim) return; if (n > 0) H.candleBonus += n; sc.applyCandles(); if (sim.heal) sim.heal('full');
+        // CHAPTER: the rest spot that was pressed is where the hero stands up after a fall - kept by the scene (chapter.js), so it outlives crossings, journeys and loads.
+        // (It used to be read from the prompt target: none while a dialogue is open, so the bread before the queen's door never set it.)
+        const r = H.restSpot, s = sc.people.target, d = r && r.area === sc.area?.id ? r.def : s && !s.a3 && s.def.kind === 'rest' ? s.def : null; H.restSpot = null;
+        if (d) sc.ch.restAt(d);
+      },
       moon(step) { H.moon = step; sc.state.moon = { phase: Math.max(0, Math.min(1, (step | 0) / 7)) }; },
       ring(n) { H.ringN = n; },
       chronicle(e) { const t = (H.STORY.TEXT?.system?.chronicle ?? '{title}').replace('{title}', e?.title ?? ''); sc._toast(t, 'info'); },
       save(obj) { const o = H.compose(obj); o.why = 'story'; H.lastSave = o; H.saves++; writeSave(o); },
-      end(id) { H.ended = id ?? 'end'; H.note('end', String(id ?? '')); const c = H.STORY.TEXT?.chapters?.end; if (c && sc.hud.banner) sc.hud.banner('clear', c.title, c.sub); H.waits.push({ t: 6, fn: () => { H.ended = null; H.saveNow('end'); sc._leave(); } }); },
+      // CHAPTER: the closing banner, then the 3D edition's ending card and the 3D chooser (chapter.js end / leave) - it used to drop to the old 2D title after six seconds
+      end(id) { H.ended = id ?? 'end'; H.note('end', String(id ?? '')); H.inputLock = true; const c = H.STORY.TEXT?.chapters?.end; if (c && sc.hud.banner) sc.hud.banner('clear', c.title, c.sub); sc.ch.end(id); },
     };
   }
   /** a world flag changed: hand all of them to the scene; when the area the hero stands in is built from it, rebuild once the story is idle */

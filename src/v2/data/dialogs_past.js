@@ -171,6 +171,7 @@ export const DIALOGS_PAST = {
   // ───────── 58–68 묘지 깊은 곳 ─────────
   'door.ossuary.past': [
     { if: ['bell_hung'], pages: [['narrator', '길종이 걸려 있다.\n납골당에서 촛불빛이 샌다.']] },
+    { if: ['has:road_bell'], pages: [['kael', '(문 왼쪽에 빈 종대가 서 있다.\n길종은 저기에 건다.)']] },
     { pages: [['narrator', '납골당 앞에서 돌길이 끊긴다.\n건너편에 빈 종대가 서 있다.']] },
   ],
   'grave.edmund': [{ pages: [
@@ -180,6 +181,10 @@ export const DIALOGS_PAST = {
     ['edmund', '그런 얼굴 마라. 발크레인은\n원래 가는 사람이다.', 'smile'],
     ['edmund', '길종이다. 누가 울면 누가 듣고\n달려오라고 거는 종이지.'],
     ['edmund', '건너편 종대가 비었더군. 네가 걸어라.\n고리에 채찍을 걸면 닿는다.'],
+  ] }],
+  // Elise beside the bell of 1697, after the rescue
+  'elise.past': [{ pages: [
+    ['elise', '언니 종은 금이 없어요.\n소리가 참 맑아요!', 'joy'],
   ] }],
   'grave.hang': [{ pages: [
     ['edmund', '잘 걸었다. 백 년은 가겠군.', 'smile'],
