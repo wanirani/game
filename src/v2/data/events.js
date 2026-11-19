@@ -276,12 +276,6 @@ export const EVENTS = [
     ['say', 'gate.past'],
     ['save'],
   ] },
-  // that night's graveyard gives the hero a breath: the corpses on the road wake when he walks on (the world's trigger) or a few seconds after he arrived.
-  // (Until the road bell hangs the road is the only way in; afterwards he may arrive on the terrace, and the road is left to its trigger.)
-  { id: 'ev_graveroad_past', minute: '45-58', on: 'area.enter', match: { area: 'graveyard_past' }, if: ['!bell_hung'], once: false, steps: [
-    ['wait', 3.5],
-    ['wakeGroup', 'road'],
-  ] },
   { id: 'ev_keeper_greets', minute: '45-58', on: 'trigger', match: { event: 'keeper.greets' }, steps: [
     ['say', 'keeper.greets'],
     ['setFlag', 'names_known'],

@@ -77,9 +77,10 @@ export function graveyard(era = 'now', flags = {}) {
   else anchors.push({ id: 'mist_low', kind: 'mist', x: 600, y: 0, z: 1500, size: 1.5 });
   P.push(...beyondGraveyard(now));   // WORLD-LOOK: more graves, bare trees and low hills beyond the walls - nothing of it is reachable
   const S = [0, -1], N = [0, 1];
-  // CHAPTER: that night's road gives the hero a breath. The three corpses stand further in (they stood 125-200 from the spawn, with the way back to the village right
-  // behind it) and wake only by the trigger at z 320 or when the story wakes them 3.5 s after the arrival (ev_graveroad_past) - wake: 'trigger', not by sight.
-  const enemies = !now ? [[540, 470], [660, 430], [600, 690]].map(([x, z]) => ({ kind: 'plague_corpse', x, z, group: 'road', wake: 'trigger' })) : [
+  // CHAPTER: that night's road gives the hero a breath. The three corpses stand far up the road (they stood 125-200 from the spawn, with the way back to the village right
+  // behind it: the road is a lane 204 wide, a fight there is pushed backwards and out of the area) and sleep until the hero has walked on - the trigger at z 420,
+  // or a sleeper he comes within 200 of (the scene's WAKE_NEAR) - wake: 'trigger', not by sight. Nothing wakes them while he stands at the gate.
+  const enemies = !now ? [[540, 640], [650, 560], [600, 800]].map(([x, z]) => ({ kind: 'plague_corpse', x, z, group: 'road', wake: 'trigger' })) : [
     ...[[540, 380], [660, 300]].map(([x, z]) => ({ kind: 'skeleton_soldier', x, z, group: 'road' })), ...[[600, 520], [560, 660], [650, 720]].map(([x, z]) => ({ kind: 'bat', x, z, group: 'bats' })),
     { kind: 'gravekeeper_armor', x: 600, z: 1090, group: 'gate', yard: true },
     ...[[340, 1510, 'carved_a'], [860, 1510, 'carved_b'], [600, 1700], [600, 1880]].filter(([, , f]) => !(f && flags[f])).map(([x, z]) => ({ kind: 'grave_ghost', x, z, group: 'ghosts', yard: true })),   // a named grave lets its ghost go (GDD 2.3 carve)
@@ -111,7 +112,7 @@ export function graveyard(era = 'now', flags = {}) {
       { id: 'edmund', model: 'edmund', x: 520, z: 1730, face: [0, -1], talk: 'grave.edmund', pose: 'idle', when: 'past_gate_open' }],   // at the foot of the broken stair, on the near side (DATA_FORMAT 12)
     enemies,
     triggers: now ? [{ id: 'road_bats', ...rect(490, 420, 220, 50), event: 'bats.swoop', wake: 'bats' }, { id: 'gate_keeper', ...rect(520, 960, 160, 50), event: 'elite.gravekeeper', wake: 'gate' }, { id: 'echo_hint', ...rect(100, 1380, 1000, 50), event: 'echo.hint', wake: 'ghosts' }]
-      : [{ id: 'road_corpses', ...rect(490, 320, 220, 50), event: 'past.graveroad', wake: 'road', once: false },   // (once: false - after a fall the corpses sleep again and must be woken again)
+      : [{ id: 'road_corpses', ...rect(490, 420, 220, 50), event: 'past.graveroad', wake: 'road', once: false },   // (once: false - after a fall the corpses sleep again and must be woken again)
       { id: 'keeper_greets', ...rect(520, 960, 160, 50), event: 'keeper.greets' }, { id: 'edmund_grave', ...rect(480, 1640, 240, 60), event: 'grave.edmund' }],
     interact: [
       { id: 'valkrein_stones', kind: 'sign', x: 500, z: 1730, r: 70, label: '발크레인의 비석', event: 'sign.valkrein' },
