@@ -91,6 +91,22 @@ function installCa() {
     }
     // an attack that cannot be guarded (the plague corpse's grab) is rolled away from, as the roll tutorial teaches (CHAPTER lane: the bot used to guard it and be struck)
     if (!A.passive && h.onGround && !(h.rollCd > 0) && !(h.dashT > 0) && !sc.hud.modal) { const E = sim.enemies; for (let i = 0; i < E.length; i++) { const e = E[i], a = e.atk; if (e.dead || e.state !== 'attack' || !a || a.guard !== 'break' || a.pulse || a.air || e.phase !== 'windup' || e.tele < 0.5) continue; const dx = h.x - e.x, dz = h.z - e.z, d = Math.hypot(dx, dz) || 1, reach = (a.box ? a.box.f1 : a.radius ? a.radius.r : 80) + (a.lunge ?? 0) + 30; if (d > reach) continue; let ux = dx / d, uz = dz / d; { const X = sc.area?.exits ?? [], nearExit = (x, z) => X.some((q) => x > q.x0 - 90 && x < q.x1 + 90 && z > q.z0 - 90 && z < q.z1 + 90), ok = (vx, vz) => !nearExit(h.x + vx * 140, h.z + vz * 140) && sc._spotOk({ x: h.x + vx * 110, z: h.z + vz * 110, y: h.y }); if (!ok(ux, uz)) { const c = [[uz, -ux], [-uz, ux], [-ux, -uz]].find((q) => ok(q[0], q[1])); if (c) { ux = c[0]; uz = c[1]; A.sideRolls = (A.sideRolls ?? 0) + 1; } } }   /* not out of the area through an exit behind him, not into a wall: sideways, else past the enemy */ o.mx = ux; o.mz = uz; o.dash = true; o.attack = false; o.guard = false; A.rolls = (A.rolls ?? 0) + 1; break; } }
+    // THE BACK DOOR (main session, 11-19): the brain steps and rolls straight away from every wind-up and knows no exits. On that night's graveyard road three corpses winding up in turns
+    // walked him 400 px back and out of the area - three runs in seven once the rules carried his roll presses (more of his rolls come out). An open exit he is not walking to
+    // (pushExit names the one he is: A.exitGoal) is a wall to him: a step or a roll that would end within 60 px of its box loses its part toward the box.
+    if (!A.passive && (o.mx || o.mz) && !sc.hud.modal) {
+      const X = sc.area?.exits ?? [], d = Math.hypot(o.mx, o.mz) || 1, far = o.dash ? 175 : 40, m = 60;
+      for (let i = 0; i < X.length; i++) {
+        const q = X[i]; if (q.locked || q.id === A.exitGoal) continue;
+        const ex = h.x + (o.mx / d) * far, ez = h.z + (o.mz / d) * far; if (!(ex > q.x0 - m && ex < q.x1 + m && ez > q.z0 - m && ez < q.z1 + m)) continue;
+        const cx = Math.max(q.x0, Math.min(q.x1, h.x)) - h.x, cz = Math.max(q.z0, Math.min(q.z1, h.z)) - h.z, cl = Math.hypot(cx, cz); if (cl < 1) continue;   // (already inside the box: the scene takes him)
+        const nx = cx / cl, nz = cz / cl, dot = (o.mx * nx + o.mz * nz) / d; if (dot <= 0) continue;
+        let rx = o.mx / d - nx * dot, rz = o.mz / d - nz * dot; const rl = Math.hypot(rx, rz);
+        if (rl > 0.25) { o.mx = (rx / rl) * d; o.mz = (rz / rl) * d; if (o.dash && !sc._spotOk({ x: h.x + (rx / rl) * 110, z: h.z + (rz / rl) * 110, y: h.y })) o.dash = false; }
+        else { o.mx = 0; o.mz = 0; o.dash = false; }   // nothing of it is left: he stands his ground
+        A.doorTurns = (A.doorTurns ?? 0) + 1;
+      }
+    }
     if (o.jump) { A.wantJump = true; o.jump = false; }
     if (!o.attack && !o.guard && !o.dash && (o.mx || o.mz) && h.onGround && A.mods) {
       const d = Math.hypot(o.mx, o.mz), ux = o.mx / d, uz = o.mz / d, W = sc.W, y0 = h.y, gnd = A.mods.world.groundAt;
@@ -311,7 +327,9 @@ async function waitArea(id, max = 4200, bot = true) { await play(max, { bot: fal
 /** push the hero through / against an exit */
 async function pushExit(id, { budget = 3600, to = null } = {}) {
   const x = await ev((q) => window.__ca.exit(q), id), s0 = await st(); if (!x) return { ok: false, why: `no exit "${id}" in ${s0.area}` };
+  await ev((q) => { window.__ca.exitGoal = q; }, id);   // the one exit the bot may walk into (every other open exit is a wall to it: THE BACK DOOR in the page part)
   const w = await walk(x.x, x.z, { r: 12, budget, planR: 70, direct: true, pred: (s) => s.go || s.area !== s0.area || s.lr.includes('exit.locked:' + id) || s.lr.includes('exit.missing:' + id) });
+  await ev(() => { if (window.__ca) window.__ca.exitGoal = null; });
   if (to) { const a = await waitArea(to); return { ...a, locked: x.locked }; }
   const s = await settle(); return { ok: w.ok || s.lr.includes('exit.locked:' + id), s, locked: x.locked, why: w.why };
 }
