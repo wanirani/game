@@ -103,7 +103,7 @@ export class Whip {
       const hit = (p && p.hit) || (mv && mv.hit) || (nm && nm.hit);
       sw.hit0 = hit ? hit[0] : 0.13; sw.hit1 = hit ? hit[1] : 0.25;
       sw.dur = (p && p.dur) || (mv && mv.dur) || (nm && nm.dur) || 0.44;
-      sw.str = (mv && mv.str) || 'M';
+      sw.str = (mv && (mv.strength || mv.str)) || 'M';   // the feel strength of the move (moves.js feel), the rules' str when it has none
     }
     sw.t = t; sw.landT = p && p.landT != null ? p.landT : -1;
     sw.hasT = !!(p && p.x != null); if (sw.hasT) { sw.tx = p.x; sw.ty = p.y; sw.tz = p.z; }

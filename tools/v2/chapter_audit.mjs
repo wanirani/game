@@ -3,6 +3,7 @@
 //   node tools/v2/chapter_audit.mjs [--shots 1] [--to <event id>] [--from <event id | save file | last>] [--out <dir>] [--verbose 1]
 //                                   [--root <tree>]  serve the game from a snapshot of the tree (before / after)   [--die tonight | past]  one fall at the queen on purpose
 //                                   [--crate 1]  the wooden-crate branch of the wedge first (it has rotted away tonight), then the statue
+//                                   [--door-past 1]  a second visit to that night's graveyard once the road bell hangs (ev_ossuary_door_past)
 //                                   [--device fold_open] [--res 0.5] [--budget 1] (budget = multiplier on every honest-play budget)
 // HONEST PLAY: input goes in through the pad's own pointer handlers (stick drag, attack / roll / jump / skill / bell buttons), taps on the
 //   dialogue box, on choice rows and on prompt pills. Time is fast-forwarded by ticking the game. The bot reads the game's state to decide
@@ -25,7 +26,7 @@ if (args.help || !args.out || args.out === true) { console.error('usage: node to
 const OUT = String(args.out), DEV = String(args.device || 'fold_open'), RES = Number(args.res ?? 0.5), VERB = !!args.verbose;
 const MAXS = Number(args['max-seconds'] ?? 0), T0 = Date.now();
 const SHOTS = !!args.shots && String(args.shots) !== '0', FROM = args.from ? String(args.from) : null, TO = args.to ? String(args.to) : null, KB = Number(args.budget ?? 1);
-const DIE = args.die && args.die !== true ? String(args.die) : null, CRATE = !!args.crate && String(args.crate) !== '0';
+const DIE = args.die && args.die !== true ? String(args.die) : null, CRATE = !!args.crate && String(args.crate) !== '0', DOORPAST = !!args['door-past'] && String(args['door-past']) !== '0';
 const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const GL_ARGS = ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'];
 const SAVES = `${OUT}/saves`, SHOTD = `${OUT}/shots`, SF = `${OUT}/state.json`;
@@ -137,6 +138,7 @@ function installCa() {
     away: () => !v.ready || !!v.scene._go || !!v.scene.xing,
     dead: () => !!v.scene.sim?.hero?.dead,
     tear: () => !!v.scene.ch?.tear,   // the queen is tearing through to the other night (src/v2/game/chapter.js)
+    line: () => v.scene.hud.modal === 'dialog' && !H.shot, cut: () => v.scene.hud.modal === 'dialog' && !!H.shot,   // a line outside a camera shot · a line inside one (the two keepers at the bell)
     modal: () => !!v.scene.hud.modal,
   };
   A.run = (n, bot, until) => { g._pageHidden = true; let i = 0; for (; i < n; i++) { A.step(bot); if (i % 60 === 0) A.draw(); if (until && A.u[until]()) { i++; break; } } if (B.ts) B.touchEnd(); A.relJump(); A.draw(); return A.status(i); };
@@ -432,6 +434,11 @@ trigBeat('edmund_grave', '묘지 깊은 곳: 에드문트와 다시 (길종을 �
 add('hook_past', '채찍 걸기 → 건너편 종대 (그 밤)', async () => { const r = await hookUp('graveyard_past'); const s = await st(); note(`after the hook landing the prompt on offer is "${s.prompt}" (hero ${s.x},${s.z},y${s.y})`); if (!r.ok) { ST.num.lostWay.push({ beat: 'hook_past', why: r.why }); await putNear(600, 1905, r.why, 'put the hero on the terrace before the ossuary door'); return { ok: true }; } return r; });
 add('at_post', '빈 종대 앞으로 걸어간다 (길종은 저절로 걸리지 않는다)', async () => { const s0 = await st(); const hung0 = s0.flags.includes('bell_hung'); const t = await ev(() => window.__ca.spot('road_bell')); if (!t) return { ok: false, why: 'no spot road_bell here' }; const w = await walk(t.x, t.z, { r: 40, budget: 1800, pred: (q) => q.prompt === 'road_bell' }); const s = await settle(); note(`at the empty post: bell_hung before walking there ${hung0}, now ${s.flags.includes('bell_hung')}; prompt on offer "${s.prompt}"; objective "${s.obj}"; road bell in the bag ${s.items.road_bell ?? 0}`); return { ok: !hung0 && !s.flags.includes('bell_hung') && s.prompt === 'road_bell', why: `the post did not offer its prompt, or the bell hung by itself (bell_hung ${s.flags.includes('bell_hung')}, prompt ${s.prompt}; ${w.why ?? ''})` }; });
 crossBeat('hang_bell', '빈 종대에 길종을 건다 (「종」 길게) → 백 년 → 오늘 밤', 'road_bell', 'graveyard_now', { budget: 1800, shot: 'hang_cross' });
+if (DOORPAST) {   // --door-past 1: the road bell is a crossing bell now - back to 1697 on the terrace, the door there, and home again
+  crossBeat('door_past_cross', '(두 번째 방문) 걸린 길종에서 그 밤으로', 'road_bell', 'graveyard_past', { budget: 1800 });
+  spotBeat('ossuary_door_past', '(두 번째 방문) 그 밤의 납골당 문', 'ossuary_door', { budget: 1800 });
+  crossBeat('door_past_back', '(두 번째 방문) 같은 종에서 오늘 밤으로', 'road_bell', 'graveyard_now', { budget: 1800 });
+}
 add('rest_before_ossuary', '(다쳤으면) 납골당에 들기 전에 문 곁 촛불까지 내려가 쉰다', async () => { const s = await st(); if (s.hp >= s.hpMax * 0.7) return { ok: true, skipped: true }; const r = await useSpot('gate_rest', { budget: 4800 }); if (!r.ok) note('the candle at the inner gate was not reached before the ossuary: ' + r.why); return { ok: true }; });
 spotBeat('ossuary_door_now_2', '납골당 문 (오늘 밤, 길종을 건 뒤) → 열린다', 'ossuary_door', { budget: 3600 });
 add('enter_ossuary', '납골당으로 (exit to_ossuary)', async () => { const s = await st(); if (s.area === 'ossuary_now') { note('already inside the ossuary: the door opened under the hero and took him in'); return { ok: true }; } return pushExit('to_ossuary', { to: 'ossuary_now', budget: 2400 }); });
@@ -497,6 +504,10 @@ add('elise_wake', '잠든 엘리제를 깨운다 (interact oss.elise)', async ()
     note('at the sleeping girl: ' + tried.join(' | ') + ' ; spot search said: ' + (r.why ?? 'ok'));
     if (!s.flags.includes('elise_found')) { await emitHelp('interact', { id: 'oss_elise', kind: 'sign', event: 'oss.elise', data: null, locked: null }, 'the spot oss_elise is never offered: the girl (a person, talk elise.wake) always wins the prompt — ' + (r.why ?? '')); }
   }
+  if (SHOTS) {   // the two keepers: Lotte's first line while Elise stands beside the hero, then the shot with the bell between the two
+    await play(6000, { bot: false, pred: (q) => q.ready && q.area === 'eshville_past' && !q.go && !q.xing, chunk: 60 });
+    await run(300, false, 'line'); await run(12, false); await shot('keepers_found'); await run(1200, false, 'cut'); await run(12, false); await shot('keepers_promise');
+  }
   return waitArea('eshville_past', 6000, false); });
 crossBeat('ending_bell', '두 종지기의 약속 뒤, 큰 종을 길게 → 오늘 밤', 'big_bell', 'eshville_now', { shot: 'ending_cross' });
 add('end_card', '맺음 카드: 제목 · 한 겹 넓어지는 동그라미 · 이어집니다', async () => { let m = null; for (let i = 0; i < 60; i++) { await play(30, { bot: false }); m = await ev(() => window.__v2?.scene?.hud?.metrics?.().end ?? null).catch(() => null); if (m && m.ready) break; } const s = await st(); note(`the ending card: ${JSON.stringify(m)}; ended ${s.ended}; modal ${s.modal}`); return { ok: !!m && m.open && m.ready, why: 'the ending card did not come up: ' + JSON.stringify(m) }; });
@@ -518,7 +529,7 @@ need('eshville_now', 'from_graveyard', 'cross_to_past'); need('eshville_past', '
 need('graveyard_past', 'from_eshville', 'keeper rest_gate_past carve_a carve_b edmund_grave hook_past hang_bell'); need('graveyard_now', 'from_ossuary', 'rest_before_ossuary ossuary_door_now_2');
 need('ossuary_now', 'entry', 'oss_coffins oss_hall oss_probe_1 oss_cross_1'); need('ossuary_past', 'entry', 'oss_wedge oss_cross_2'); need('ossuary_now', 'wedge_far', 'oss_gap oss_arena oss_arena_fight oss_lamp oss_riddle oss_riddle_echo oss_cross_3');
 need('ossuary_past', 'rest', 'knell_1 knell_2 knell_3 knell_4 oss_cross_4 boss_die_past boss_past boss_back elise_wake'); need('ossuary_now', 'rest', 'boss_rest boss_enter boss_1 boss_gone boss_chase boss_die boss_2 boss_knell cross_to_elise');
-need('graveyard_past', 'from_eshville', 'at_post'); need('ossuary_now', 'entry', 'oss_crate_probe oss_crate_past'); need('ossuary_past', 'entry', 'oss_wedge_2');
+need('graveyard_past', 'from_eshville', 'at_post'); need('graveyard_now', 'from_ossuary', 'door_past_cross'); need('graveyard_past', 'from_ossuary', 'ossuary_door_past door_past_back'); need('ossuary_now', 'entry', 'oss_crate_probe oss_crate_past'); need('ossuary_past', 'entry', 'oss_wedge_2');
 // ───────── run ─────────
 const SKIP = args.skip ? String(args.skip).split(',') : [];
 const ONLY = args.only ? String(args.only).split(',') : null, RB = resume ? Math.max(P.findIndex((b) => b.id === resume.beatId), -1) : -1;   // the beat we continue after is found by its id (the plan may have grown since the save was written)

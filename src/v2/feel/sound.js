@@ -19,7 +19,7 @@ export const BUS = Object.freeze({
   f3_swing: { max: 4, gap: 0.03, vary: 0, feel: true },
   f3_step: { max: 3, gap: 0.045, vary: 0, feel: true },
   f3_foley: { max: 4, gap: 0.02, vary: 0, feel: true },
-  f3_enemy: { max: 5, gap: 0.03, vary: 0, feel: true },
+  f3_enemy: { max: 5, gap: 0, vary: 0, feel: true },   // gap 0 (was 0.03): the engine's same-name filter dropped the second and third jar of one blow whenever their level was not louder than the first - play() spreads them instead
   f3_magic: { max: 5, gap: 0.02, vary: 0 },
   f3_big: { max: 3, gap: 0.05, vary: 0, feel: true, prio: true },
   f3_bell: { max: 3, gap: 0.05, vary: 0, feel: true, prio: true, rev: 0.2 },
@@ -205,7 +205,7 @@ export class FeelSound {
     this.timeScale = 1; this.qOverride = -1;
     this.filters = []; for (let i = 0; i < 24; i++) this.filters.push({ f: null, base: 20000, end: 0 }); this._fi = 0;
     this.loops = []; this._loopId = 0; this._upT = 0;
-    this._hitT = -1; this._hitN = 0;
+    this._hitT = -1; this._hitN = 0; this._evT = -1; this._evN = 0;
     this.miss = 0; this.starts = 0; this.layersPlayed = 0;
   }
   get eng() { return this.host.eng || null; }
@@ -292,21 +292,28 @@ export class FeelSound {
   play(name, pos, vol = 1, pitch = 1) {
     const rec = Object.hasOwn(EVENTS, name) ? EVENTS[name] : null;
     if (!rec || rec.loop) return null;
-    this.fire(rec, rec.bus, pos, vol, pitch, 0);
+    let delay = 0;
+    if (rec.bus === 'f3_enemy') {   // several things struck in one tick (three jars of one sweep, a group waking): up to five starts spread 28 ms apart, each a little softer - they sound like several, not like one (and not like a dropped press)
+      const e = this.eng, now = e ? e.ctx.currentTime : 0;
+      if (e && now - this._evT < 0.004) this._evN++; else { this._evT = now; this._evN = 0; }
+      const n = this._evN; if (n > 4) return rec;
+      if (n > 0) { delay = n * 0.028; vol *= Math.pow(0.86, n); }
+    }
+    this.fire(rec, rec.bus, pos, vol, pitch, delay);
     return rec;
   }
   /** 발소리 (애니메이션의 발 닿는 순간): speed 월드 단위/초 */
   step(speed, pos) { const rec = EVENTS[stepEvent(speed)]; this.fire(rec, rec.bus, pos, 1, 1, 0); return rec; }
   /** 휘두름: 닿기 lead 초 전에 부른다 → {lead, …} */
   swing(weapon, strength, pos) { const r = swingFeel(weapon, strength); this.fire(r, 'f3_swing', pos, 1, 1, 0); return r; }
-  /** 타격: 같은 순간에 여러 대상이 맞으면 3개까지 24 ms 씩 늦춰 겹친다 (한 덩어리로 뭉개지지 않게) → 타격 레시피 */
+  /** 타격: 같은 순간에 여러 대상이 맞으면 5개까지 24 ms 씩 늦춰 겹친다 (한 덩어리로 뭉개지지 않게) → 타격 레시피 */
   hit(weapon, material, strength, flags, pos) {
     const r = hitFeel(weapon, material, strength, flags), e = this.eng;
     if (!e) return r;
     const now = e.ctx.currentTime;
     if (now - this._hitT < 0.004) this._hitN++; else { this._hitT = now; this._hitN = 0; }
-    const n = this._hitN;
-    if (n < 3 || r.big) this.fire(r, r.big ? 'f3_big' : 'f3_hit', pos, n ? Math.pow(0.78, n) : 1, 1, n * 0.024);
+    const n = this._hitN;   // (up to five: a sweep through four skeletons is four cracks 24 ms apart, not three and a silence; the bus holds six voices)
+    if (n < 5 || r.big) this.fire(r, r.big ? 'f3_big' : 'f3_hit', pos, n ? Math.pow(0.8, n) : 1, 1, n * 0.024);
     return r;
   }
   // ── 고리 (횃불·밤거리·날아가는 마법) ──

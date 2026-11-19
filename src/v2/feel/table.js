@@ -79,7 +79,7 @@ export const FLAG = Object.freeze({ crit: 1, kill: 2, guard: 4, parry: 8, finish
 // ───────────────────────────── 진동 ─────────────────────────────
 // pad [강(저음 모터), 약(고음 모터), ms] · phone = navigator.vibrate 값 (ms | [진동, 쉼, …] | 0 = 없음). 세기 설정(vibeLevel)·60ms 제한은 core/haptics.js 가 맡는다
 export const HAPTIC = Object.freeze({
-  hitL: { pad: [0, 0.25, 40], phone: 0 }, hitM: { pad: [0.1, 0.4, 60], phone: 8 }, hitH: { pad: [0.35, 0.6, 90], phone: 15 }, hitF: { pad: [0.6, 0.8, 140], phone: [18, 22, 30] },
+  hitL: { pad: [0, 0.25, 40], phone: 5 }, hitM: { pad: [0.1, 0.4, 60], phone: 8 }, hitH: { pad: [0.35, 0.6, 90], phone: 15 }, hitF: { pad: [0.6, 0.8, 140], phone: [18, 22, 30] },
   crit: { pad: [0.25, 0.75, 80], phone: [10, 18, 14] }, guard: { pad: [0.5, 0.15, 55], phone: 10 }, parry: { pad: [0.2, 0.95, 120], phone: [10, 28, 26] },
   finisher: { pad: [1, 1, 320], phone: [32, 40, 80] }, hurt: { pad: [0.55, 0.25, 140], phone: 30 },
   dash: { pad: [0, 0.2, 35], phone: 0 }, land: { pad: [0.15, 0.1, 40], phone: 0 }, landHeavy: { pad: [0.45, 0.2, 100], phone: 14 },

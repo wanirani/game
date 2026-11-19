@@ -170,7 +170,8 @@ try {
   run(s, 0.2, { attack: true }); s.hero.x = e.x - 60; run(s, 0.3, { attack: true }); const untouched = e.hp === e.hpMax || e.active;   // 누워 있는 동안은 베이지 않는다(가까이 가면 곧 깨어난다)
   run(s, 2.2, {}, (q) => { if (seen[seen.length - 1] !== q.enemies[0].state) seen.push(q.enemies[0].state); s.hero.hp = 100; });
   ok('spawn flag rise: the enemy lies down until the hero comes near, gets up (state rise), then fights; other spawns are unchanged', lying && untouched && seen.includes('rise') && seen.indexOf('chase') > seen.indexOf('rise') && names(s).includes('wake'), seen.join('→')); }
-ok('moves carry strength (= str) for the scene', Object.values(MOVES).every((m) => m.strength === m.str && 'LMHF'.includes(m.strength)));
+// WHIP 2026-11-19: strength is the FEEL strength of a move (what the scene, the lash and the sound read); it may differ from the rules' str - the combo rises L > M > F and the charged coil is F, so that light, medium and heavy hits differ clearly (SOUND_FEEL 16). The rules still read str only.
+ok('moves carry strength for the scene (the feel strength: str unless the move sets feel)', Object.values(MOVES).every((m) => m.strength === (m.feel ?? m.str) && 'LMHF'.includes(m.strength) && 'LMHF'.includes(m.str)) && MOVES.c1.strength === 'L' && MOVES.c2.strength === 'M' && MOVES.c3.strength === 'F' && MOVES.whip.strength === 'F' && MOVES.c1.str === 'M' && MOVES.whip.str === 'H', Object.values(MOVES).map((m) => m.id + ' ' + m.str + '/' + m.strength).join(' · '));
 
 // ── 12. 본 게임 장면이 쓰는 세계(환경 키트 compileEnv)에서도 끼이지 않는다 ──
 // ── 깨어남: 볼 때만 (거리 · 앞쪽 · 벽 너머는 못 본다), 지역이 달리 정할 수 있다 ──
