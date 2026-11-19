@@ -60,8 +60,6 @@ const PX = new Uint8Array(4);
 // The whip module (src/v2/whip, another lane's folder) calls Math.hypot about 40 times per tick and per drawn frame; V8's built-in makes a
 // temporary array per call (measured in the page: 25-45 KB of garbage per frame). While the whip's own code runs, the scene lends it a
 // plain square-root version (same result for the 2 and 3 finite arguments the module passes) and puts the built-in back right after.
-const HYP0 = Math.hypot;
-function HYP3(x, y, z) { return arguments.length > 3 ? HYP0.apply(Math, arguments) : Math.sqrt(x * x + y * y + (z === undefined ? 0 : z * z)); }
 
 export default class V2Game extends Scene {
   constructor(game) {
@@ -1021,8 +1019,7 @@ export default class V2Game extends Scene {
       if (pe) { if (pe.pullT > 0 || h.pullT > 0) { P.x = pe.x; P.y = (pe.y ?? pe.gy) + (pe.h ?? 80) * 0.55; P.z = pe.z;   /* WHIP: the body's own foot height (ground + hover): winding at the ground height put the coil 96 px under a caught bat */ P.r = Math.max(8, (pe.r ?? 15) * 0.55); pull = P; } else this.whipPullE = null; }
       wp.resonance = h.resoMax ? h.reso / h.resoMax : 0;
       if (this._whipReset) { this._whipReset = false; this.whipPullE = null; pull = null; wp.reset(H); }   // new area / respawn / new chain: hang from the hand, no speed
-      Math.hypot = HYP3;
-      try { driveWhip(wp, h, TUNE, pull); wp.update(pdt, H); } finally { Math.hypot = HYP0; }
+      driveWhip(wp, h, TUNE, pull); wp.update(pdt, H);   // (WHIP 2026-11-19: the whip module no longer calls Math.hypot - it used to be swapped for a square root here; the lash is bit for bit what that swap computed: tools/v2/whip_bits.mjs)
     }
     if (fx) {
       if (h.dashT > 0 && !h.dead) { if (this._dashRb < 0) this._dashRb = fx.ribbons.start(DASH_TRAIL); if (pdt > 0) fx.ribbons.push(this._dashRb, h.x, h.y + 50, h.z, 0, 0, 0); }
@@ -1260,8 +1257,7 @@ export default class V2Game extends Scene {
       const wr = this.wr, o = this.heroA.opt, h = sim.hero, V = this._whipVp;
       wr.tint[0] = o.tint[0]; wr.tint[1] = o.tint[1]; wr.tint[2] = o.tint[2]; wr.flash = o.flash; wr.alpha = o.alpha ?? 1;
       this.env.lightPos = fx ? fx.lights.pos : null; this.env.lightCol = fx ? fx.lights.col : null; V[0] = w; V[1] = hgt; this.env.viewport = V;
-      Math.hypot = HYP3;
-      try { wr.draw(this.whip, this.env, Math.abs(h.x - h._px) > 250 || Math.abs(h.z - h._pz) > 250 ? 1 : a); } finally { Math.hypot = HYP0; }
+      wr.draw(this.whip, this.env, Math.abs(h.x - h._px) > 250 || Math.abs(h.z - h._pz) > 250 ? 1 : a);
     }
     this.c3.draws = cr.stats.draws; this.c3.tris = cr.stats.tris;
     gl.useProgram(glr.prog); gl.bindBuffer(gl.ARRAY_BUFFER, glr.dyn.buf); glr._attribs();

@@ -150,13 +150,13 @@ export class WhipRenderer {
     gl.useProgram(this.prog); gl.bindVertexArray(this.vao);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo); gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.vtx);
     const vp = env.vp, R = this._r, U = this._u;
-    let l = Math.hypot(vp[0], vp[4], vp[8]) || 1; R[0] = vp[0] / l; R[1] = vp[4] / l; R[2] = vp[8] / l;
-    l = Math.hypot(vp[1], vp[5], vp[9]) || 1; U[0] = vp[1] / l; U[1] = vp[5] / l; U[2] = vp[9] / l;
+    let l = Math.sqrt(vp[0] * vp[0] + vp[4] * vp[4] + vp[8] * vp[8]) || 1; R[0] = vp[0] / l; R[1] = vp[4] / l; R[2] = vp[8] / l;
+    l = Math.sqrt(vp[1] * vp[1] + vp[5] * vp[5] + vp[9] * vp[9]) || 1; U[0] = vp[1] / l; U[1] = vp[5] / l; U[2] = vp[9] / l;
     gl.uniformMatrix4fv(u.uVP, false, vp); gl.uniform3fv(u.uEye, env.eye); gl.uniform3fv(u.uCamR, R); gl.uniform3fv(u.uCamU, U);
     const vw = env.viewport ? env.viewport[0] : gl.drawingBufferWidth, vh = env.viewport ? env.viewport[1] : gl.drawingBufferHeight;
     gl.uniform4f(u.uView, vw, vh, this.minPx, whip.time);
     const f = env.fog; if (f) { gl.uniform3f(u.uFog, f.near, f.far, f.max); gl.uniform3fv(u.uFogCol, f.color); } else { gl.uniform3f(u.uFog, 1e9, 2e9, 0); gl.uniform3f(u.uFogCol, 0, 0, 0); }
-    const d = env.sunDir, dl = Math.hypot(d[0], d[1], d[2]) || 1;
+    const d = env.sunDir, dl = Math.sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]) || 1;
     gl.uniform3f(u.uSunDir, d[0] / dl, d[1] / dl, d[2] / dl); gl.uniform3fv(u.uSun, env.sun); gl.uniform3fv(u.uAmb, env.amb);
     if (env.lightPos !== this._lpS) { this._lpS = env.lightPos; this._lp = env.lightPos ? (env.lightPos.length > 16 ? env.lightPos.subarray(0, 16) : env.lightPos) : ZERO16; }   // views are made once per source array
     if (env.lightCol !== this._lcS) { this._lcS = env.lightCol; this._lc = env.lightCol ? (env.lightCol.length > 16 ? env.lightCol.subarray(0, 16) : env.lightCol) : ZERO16; }

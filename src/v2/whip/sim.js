@@ -45,7 +45,7 @@ export class Whip {
 
   /** fill hand {x,y,z,dx,dy,dz} from a weapon world matrix (origin = grip, +Y = out of the handle) */
   handFromMatrix(W, hand) {
-    const l = Math.hypot(W[4], W[5], W[6]) || 1;
+    const l = Math.sqrt(W[4] * W[4] + W[5] * W[5] + W[6] * W[6]) || 1;
     hand.x = W[12]; hand.y = W[13]; hand.z = W[14]; hand.dx = W[4] / l; hand.dy = W[5] / l; hand.dz = W[6] / l;
     return hand;
   }
@@ -62,7 +62,7 @@ export class Whip {
       this.flash = 1; this.kick = 1; this.sw.hitCrack = true;   // a hit voices the crack: the same swing does not crack in the air as well
       if (this.mode === 'swing' && p && p.x != null) { const sw = this.sw; sw.hasHit = true; sw.hx = p.x; sw.hy = p.y; sw.hz = p.z; sw.hs = sw.s; this.kick = 0; }   // and the lash lands ON what it hit (see _aimSwing)
       const n = this.n, V = this.vel, k = 260 * (p && p.strength != null ? +p.strength || 1 : 1), r = this.root, t = this.tip;
-      let dx = r.x - t.x, dy = r.y - t.y, dz = r.z - t.z; const l = Math.hypot(dx, dy, dz) || 1; dx /= l; dy /= l; dz /= l;
+      let dx = r.x - t.x, dy = r.y - t.y, dz = r.z - t.z; const l = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1; dx /= l; dy /= l; dz /= l;
       for (let i = (n * 0.6) | 0; i < n; i++) { const o = i * 3, q = i / (n - 1); V[o] += dx * k * q; V[o + 1] += (dy * k + 160) * q; V[o + 2] += dz * k * q; }
       this._emit('crack', p && p.x != null ? p.x : t.x, p && p.y != null ? p.y : t.y, p && p.z != null ? p.z : t.z, -dx, -dy, -dz, 'hit');
       return;
@@ -146,7 +146,7 @@ export class Whip {
       const cx = this.bx, cy = this.by + 70, cz = this.bz;
       let tx, ty, tz;
       if (sw.hasT) { tx = sw.tx; ty = sw.ty; tz = sw.tz; } else { const d = (sh.nominal && sh.nominal.reach ? sh.nominal.reach : 300) * 0.8; tx = cx + this.fx * d; ty = cy; tz = cz + this.fz * d; }
-      const dx = tx - cx, dz = tz - cz, hl = Math.hypot(dx, dz) || 1, rx = dz / hl, rz = -dx / hl;
+      const dx = tx - cx, dz = tz - cz, hl = Math.sqrt(dx * dx + dz * dz) || 1, rx = dz / hl, rz = -dx / hl;
       W[o] = cx + dx * f + rx * r; W[o + 1] = cy + (ty - cy) * f + y; W[o + 2] = cz + dz * f + rz * r;
     } else if (sh.frame === 'hand') {   // offsets from the lash root, hero axes (poses that must follow whatever the arm does)
       const R = this.root; W[o] = R.x + this.fx * f + this.fz * r; W[o + 1] = R.y + y; W[o + 2] = R.z + this.fz * f - this.fx * r;
@@ -161,19 +161,19 @@ export class Whip {
    */
   _curve(tx, ty, tz, sx, sy, sz, wave = 0) {
     const n = this.n, T = this.tgt, r = this.root, len = this.len;
-    const cx = tx - r.x, cy = ty - r.y, cz = tz - r.z, c = Math.hypot(cx, cy, cz);
+    const cx = tx - r.x, cy = ty - r.y, cz = tz - r.z, c = Math.sqrt(cx * cx + cy * cy + cz * cz);
     if (c >= len * 0.992 || c < 1e-3) {
       const k = c < 1e-3 ? 0 : Math.min(len, c) / c;
       for (let i = 0; i < n; i++) { const u = (i / (n - 1)) * k, o = i * 3; T[o] = r.x + cx * u; T[o + 1] = r.y + cy * u; T[o + 2] = r.z + cz * u; }
       return;
     }
-    const sl = Math.hypot(sx, sy, sz) || 1; sx /= sl; sy /= sl; sz /= sl;
+    const sl = Math.sqrt(sx * sx + sy * sy + sz * sz) || 1; sx /= sl; sy /= sl; sz /= sl;
     // where the lash leaves the root: along the handle; in a strike (wave > 0) along the chord, so the little slack that is left all
     // goes to the outer part: straight from the hand, then hooking over onto the target - a lash caught mid-crack, not a rod
     let hx = r.dx, hy = r.dy, hz = r.dz;
     if (wave > 0) {
       hx = hx * (1 - wave) + (cx / c) * wave; hy = hy * (1 - wave) + (cy / c) * wave; hz = hz * (1 - wave) + (cz / c) * wave;
-      const hl = Math.hypot(hx, hy, hz) || 1; hx /= hl; hy /= hl; hz /= hl;
+      const hl = Math.sqrt(hx * hx + hy * hy + hz * hz) || 1; hx /= hl; hy /= hl; hz /= hl;
     }
     const B = this._bz, L = this._bl, A = 0.55 - 0.3 * wave;
     let lo = 0, hi = len * 3, k = 0, tot = 0;
@@ -186,7 +186,7 @@ export class Whip {
       for (let j = 1; j < m; j++) {
         const u = j / (m - 1), v = 1 - u, b0 = v * v * v, b1 = 3 * v * v * u, b2 = 3 * v * u * u, b3 = u * u * u;
         const x = b0 * r.x + b1 * ax + b2 * bx + b3 * tx, y = b0 * r.y + b1 * ay + b2 * by + b3 * ty, z = b0 * r.z + b1 * az + b2 * bz + b3 * tz;
-        tot += Math.hypot(x - px, y - py, z - pz); px = x; py = y; pz = z;
+        tot += Math.sqrt((x - px) * (x - px) + (y - py) * (y - py) + (z - pz) * (z - pz)); px = x; py = y; pz = z;
         if (it === 10) { B[j * 3] = x; B[j * 3 + 1] = y; B[j * 3 + 2] = z; L[j] = tot; }
       }
       if (it < 10) { if (tot < len) lo = k; else hi = k; }
@@ -205,10 +205,10 @@ export class Whip {
     const sw = this.sw, sh = sw.shape, W = this._w, r = this.root, n = this.n, wn = this.wn;
     const s = this._phase(); sw.s = s;
     const P = this._key(sh.keys, sh.peak); this._toWorld(sh, P[0], P[1], P[2], 6);
-    const pk = Math.hypot(W[6] - r.x, W[7] - r.y, W[8] - r.z);
+    const pk = Math.sqrt((W[6] - r.x) * (W[6] - r.x) + (W[7] - r.y) * (W[7] - r.y) + (W[8] - r.z) * (W[8] - r.z));
     const K = this._key(sh.keys, s); this._toWorld(sh, K[0], K[1], K[2], 0);
     const w = K[3], lim = sh.len, lo = (lim ? lim[0] : 0.7) * this.L0, hi = (lim ? lim[1] : 1.5) * this.L0;
-    let chord = Math.hypot(W[0] - r.x, W[1] - r.y, W[2] - r.z);
+    let chord = Math.sqrt((W[0] - r.x) * (W[0] - r.x) + (W[1] - r.y) * (W[1] - r.y) + (W[2] - r.z) * (W[2] - r.z));
     // lash length for this move: what the peak needs. Long throws (far, hold-attack) pay the lash out as the tip flies
     // (BOW: even fully extended the lash keeps a slight bow, laid toward the key's slack direction - a dead straight lash reads as a stick)
     const pkL = pk / BOW, long = pkL > this.L0 * 1.5, near = long ? this.L0 * 1.1 : pkL;
@@ -232,10 +232,10 @@ export class Whip {
       else {
         // (the lash pays out a little past the move's own limit to land on what it hit: a plunge hits from high above - without this the
         // freeze frame showed the tip some 50 px off the hit point and it snapped on later, when the fall had brought the hand near enough)
-        const dh = Math.hypot(sw.hx - r.x, sw.hy - r.y, sw.hz - r.z), hiH = Math.max(hi, this.L0 * 2.1);
+        const dh = Math.sqrt((sw.hx - r.x) * (sw.hx - r.x) + (sw.hy - r.y) * (sw.hy - r.y) + (sw.hz - r.z) * (sw.hz - r.z)), hiH = Math.max(hi, this.L0 * 2.1);
         if (dh > 8 && dh < hiH * BOW * 1.02) {
           W[0] += (sw.hx - W[0]) * q; W[1] += (sw.hy - W[1]) * q; W[2] += (sw.hz - W[2]) * q;
-          chord = Math.hypot(W[0] - r.x, W[1] - r.y, W[2] - r.z);
+          chord = Math.sqrt((W[0] - r.x) * (W[0] - r.x) + (W[1] - r.y) * (W[1] - r.y) + (W[2] - r.z) * (W[2] - r.z));
           if (q > 0.5) { this.lenWant = clamp(chord / BOW, lo * 0.6, hiH); this.len = this.lenWant; this._pin = q; }
         }
       }
@@ -291,9 +291,9 @@ export class Whip {
     if (!g.ext) g.t += h;
     this.trail = 0;
     if (!g.caught) {
-      const u = clamp(g.t / g.throwT, 0, 1), e = 1 - (1 - u) * (1 - u), d0 = Math.hypot(g.x - g.sx, g.y - g.sy, g.z - g.sz);
+      const u = clamp(g.t / g.throwT, 0, 1), e = 1 - (1 - u) * (1 - u), d0 = Math.sqrt((g.x - g.sx) * (g.x - g.sx) + (g.y - g.sy) * (g.y - g.sy) + (g.z - g.sz) * (g.z - g.sz));
       const tx = g.sx + (g.x - g.sx) * e, ty = g.sy + (g.y - g.sy) * e + Math.sin(u * Math.PI) * d0 * 0.07, tz = g.sz + (g.z - g.sz) * e;
-      const chord = Math.hypot(tx - r.x, ty - r.y, tz - r.z);
+      const chord = Math.sqrt((tx - r.x) * (tx - r.x) + (ty - r.y) * (ty - r.y) + (tz - r.z) * (tz - r.z));
       this.lenWant = Math.max(this.L0 * 0.7, chord * 1.03); this.len = Math.max(this.len, chord * 1.01);
       this._curve(tx, ty, tz, -this.fx * 0.5, -1, -this.fz * 0.5);
       for (let i = 0; i < n; i++) wn[i] = 0.92;
@@ -303,17 +303,17 @@ export class Whip {
     }
     g.since += h;
     // taut line root -> target (+ winding for wrap). Nodes are placed directly (weight 1): no stretch, no sag
-    let dx = g.x - r.x, dy = g.y - r.y, dz = g.z - r.z; const dH = Math.hypot(dx, dz) || 1, d = Math.hypot(dx, dy, dz) || 1;
+    let dx = g.x - r.x, dy = g.y - r.y, dz = g.z - r.z; const dH = Math.sqrt(dx * dx + dz * dz) || 1, d = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
     const amp = 6 * Math.exp(-g.since * 7) + 0.5, ph = this.time * 46;
     // a direction across the line for the shiver
-    let px = -dz / dH, pz = dx / dH, py = 0.6; const pl = Math.hypot(px, py, pz); px /= pl; py /= pl; pz /= pl;
+    let px = -dz / dH, pz = dx / dH, py = 0.6; const pl = Math.sqrt(px * px + py * py + pz * pz); px /= pl; py /= pl; pz /= pl;
     const nw = hook ? 0 : Math.max(5, Math.round(n * 0.45)), nl = n - nw;
     let ex = g.x, ey = g.y, ez = g.z, a0 = 0, R = g.r;
     if (!hook) {   // tangent point on the target circle
       const aH = Math.atan2(r.z - g.z, r.x - g.x); a0 = aH + Math.acos(Math.min(1, R / dH));
       ex = g.x + Math.cos(a0) * R; ez = g.z + Math.sin(a0) * R; dx = ex - r.x; dy = ey - r.y; dz = ez - r.z;
     }
-    const lineLen = Math.hypot(dx, dy, dz), turns = 1.6;
+    const lineLen = Math.sqrt(dx * dx + dy * dy + dz * dz), turns = 1.6;
     for (let i = 0; i < nl; i++) {
       const u = i / Math.max(1, nl - (hook ? 1 : 0)), o = i * 3, wv = Math.sin(u * Math.PI) * amp * Math.sin(ph + u * 9);
       T[o] = r.x + dx * u + px * wv; T[o + 1] = r.y + dy * u + py * wv; T[o + 2] = r.z + dz * u + pz * wv; wn[i] = 1;
@@ -331,7 +331,7 @@ export class Whip {
     const n = this.n, P = this.nodes, S = this._s, V = this.vel;
     let tot = 0; S[0] = 0;
     const L = this.wn; L[0] = 0;
-    for (let i = 1; i < n; i++) { const o = i * 3; tot += Math.hypot(P[o] - P[o - 3], P[o + 1] - P[o - 2], P[o + 2] - P[o - 1]); L[i] = tot; }
+    for (let i = 1; i < n; i++) { const o = i * 3; tot += Math.sqrt((P[o] - P[o - 3]) * (P[o] - P[o - 3]) + (P[o + 1] - P[o - 2]) * (P[o + 1] - P[o - 2]) + (P[o + 2] - P[o - 1]) * (P[o + 2] - P[o - 1])); L[i] = tot; }
     const T = this.tgt; let j = 1;
     for (let i = 0; i < n; i++) {
       const want = (i / (n - 1)) * tot, o = i * 3;
@@ -365,7 +365,7 @@ export class Whip {
 
   _hand(hand) {
     const r = this.root, g = this.grip;
-    let dx = hand.dx ?? 0, dy = hand.dy ?? -1, dz = hand.dz ?? 0; const l = Math.hypot(dx, dy, dz) || 1; dx /= l; dy /= l; dz /= l;
+    let dx = hand.dx ?? 0, dy = hand.dy ?? -1, dz = hand.dz ?? 0; const l = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1; dx /= l; dy /= l; dz /= l;
     g.x = hand.x; g.y = hand.y; g.z = hand.z; r.dx = dx; r.dy = dy; r.dz = dz;
     r.x = hand.x + dx * HANDLE_FWD; r.y = hand.y + dy * HANDLE_FWD; r.z = hand.z + dz * HANDLE_FWD;
     if (hand.fx != null && !this._faceSet) { this.fx = hand.fx; this.fz = hand.fz; }
@@ -380,8 +380,8 @@ export class Whip {
 
   _tipState() {
     const n = this.n, P = this.nodes, V = this.vel, t = this.tip, o = (n - 1) * 3, r = this.root;
-    t.x = P[o]; t.y = P[o + 1]; t.z = P[o + 2]; t.vx = V[o]; t.vy = V[o + 1]; t.vz = V[o + 2]; t.speed = Math.hypot(t.vx, t.vy, t.vz);
-    this.ext = Math.hypot(t.x - r.x, t.y - r.y, t.z - r.z) / Math.max(1, this.len);
+    t.x = P[o]; t.y = P[o + 1]; t.z = P[o + 2]; t.vx = V[o]; t.vy = V[o + 1]; t.vz = V[o + 2]; t.speed = Math.sqrt(t.vx * t.vx + t.vy * t.vy + t.vz * t.vz);
+    this.ext = Math.sqrt((t.x - r.x) * (t.x - r.x) + (t.y - r.y) * (t.y - r.y) + (t.z - r.z) * (t.z - r.z)) / Math.max(1, this.len);
   }
 
   /** one tick. dt = 0 freezes the lash with the world (hit-stop); small dt (slow motion) and large dt are both fine */
@@ -398,7 +398,7 @@ export class Whip {
     for (let k = 0; k < steps; k++) this._step(h);
     this._tipState();
     {   // the streak: where the tip was, and how hard it was moving (frozen with the world: no tick, no shift)
-      const H = this.hist, t = this.tip, sp = Math.hypot(t.x - ox, t.y - oy, t.z - oz) / dt;
+      const H = this.hist, t = this.tip, sp = Math.sqrt((t.x - ox) * (t.x - ox) + (t.y - oy) * (t.y - oy) + (t.z - oz) * (t.z - oz)) / dt;
       H.copyWithin(4, 0, (TRAIL_N - 1) * 4);
       H[0] = t.x; H[1] = t.y; H[2] = t.z; H[3] = this.trail > 0 ? clamp((sp - 260) / 1100, 0, 1) : 0;
       let m = 0; for (let i = 3; i < TRAIL_N * 4; i += 4) if (H[i] > m) m = H[i];
@@ -414,7 +414,7 @@ export class Whip {
     const line = (this.mode === 'hook' || this.mode === 'wrap') && this.tg.caught;
     this.taut += ((line ? 1 : 0) - this.taut) * (1 - Math.pow(0.6, d60));
     if (this.dragT > 0) this.dragT -= dt;
-    else if (this.tip.y <= this._gy + 2 && Math.hypot(this.tip.vx, this.tip.vz) > 220) { this.dragT = 0.12; this._emit('drag', this.tip.x, this.tip.y, this.tip.z, 0, 1, 0, ''); }
+    else if (this.tip.y <= this._gy + 2 && Math.sqrt(this.tip.vx * this.tip.vx + this.tip.vz * this.tip.vz) > 220) { this.dragT = 0.12; this._emit('drag', this.tip.x, this.tip.y, this.tip.z, 0, 1, 0, ''); }
   }
 
   _step(h) {
@@ -441,13 +441,13 @@ export class Whip {
       for (let it = 0; it < 5; it++) {
         for (let i = 1; i < n; i++) {   // length: root is pinned, the rest share the correction
           const a = (i - 1) * 3, b = i * 3;
-          let dx = P[b] - P[a], dy = P[b + 1] - P[a + 1], dz = P[b + 2] - P[a + 2]; const d = Math.hypot(dx, dy, dz) || 1e-6, c = (d - seg) / d;
+          let dx = P[b] - P[a], dy = P[b + 1] - P[a + 1], dz = P[b + 2] - P[a + 2]; const d = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1e-6, c = (d - seg) / d;
           if (i === 1) { P[b] -= dx * c; P[b + 1] -= dy * c; P[b + 2] -= dz * c; }
           else { const k = c * 0.5; P[a] += dx * k; P[a + 1] += dy * k; P[a + 2] += dz * k; P[b] -= dx * k; P[b + 1] -= dy * k; P[b + 2] -= dz * k; }
         }
         for (let i = 0; i < n - 2; i++) {   // no sharp kinks: stiff by the handle, soft at the tip
           const a = i * 3, b = (i + 2) * 3, q = i / (n - 3), min = 2 * seg * (0.86 - 0.42 * q);
-          const dx = P[b] - P[a], dy = P[b + 1] - P[a + 1], dz = P[b + 2] - P[a + 2], d = Math.hypot(dx, dy, dz) || 1e-6;
+          const dx = P[b] - P[a], dy = P[b + 1] - P[a + 1], dz = P[b + 2] - P[a + 2], d = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1e-6;
           if (d < min) { const c = ((min - d) / d) * 0.5, ka = i === 0 ? 0 : 0.5, kb = i === 0 ? 1 : 0.5; P[a] -= dx * c * ka; P[a + 1] -= dy * c * ka; P[a + 2] -= dz * c * ka; P[b] += dx * c * kb; P[b + 1] += dy * c * kb; P[b + 2] += dz * c * kb; }
         }
         for (let i = 1; i < n; i++) {   // ground, body
@@ -460,7 +460,7 @@ export class Whip {
         }
       }
       for (let pass = 0; pass < 3; pass++) for (let i = 1; i < n; i++) {   // last word: the lash never stretches (follow the leader from the hand)
-        const a = (i - 1) * 3, b = i * 3, dx = P[b] - P[a], dy = P[b + 1] - P[a + 1], dz = P[b + 2] - P[a + 2], d = Math.hypot(dx, dy, dz), m = seg * 1.02;
+        const a = (i - 1) * 3, b = i * 3, dx = P[b] - P[a], dy = P[b + 1] - P[a + 1], dz = P[b + 2] - P[a + 2], d = Math.sqrt(dx * dx + dy * dy + dz * dz), m = seg * 1.02;
         if (d > m) { const k = m / d; P[b] = P[a] + dx * k; P[b + 1] = P[a + 1] + dy * k; P[b + 2] = P[a + 2] + dz * k; }
         if (P[b + 1] < gy) P[b + 1] = gy;
         if (body && i > 2 && P[b + 1] > y0 && P[b + 1] < y1) {   // and never ends inside the hero
@@ -473,7 +473,7 @@ export class Whip {
     for (let i = 0; i < n; i++) {
       const o = i * 3;
       let vx = (P[o] - S[o]) * ih, vy = (P[o + 1] - S[o + 1]) * ih, vz = (P[o + 2] - S[o + 2]) * ih;
-      const sp = Math.hypot(vx, vy, vz);
+      const sp = Math.sqrt(vx * vx + vy * vy + vz * vz);
       if (sp > MAXV) { const k = MAXV / sp; vx *= k; vy *= k; vz *= k; }
       if (P[o + 1] <= gy + 0.01) { vx *= 0.82; vz *= 0.82; }
       V[o] = vx; V[o + 1] = vy; V[o + 2] = vz;

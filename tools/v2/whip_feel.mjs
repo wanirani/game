@@ -52,7 +52,7 @@ async function measure(KINDS_WANT) {
     const un = hookHit(move), fr = [], held = new Set(); let simT = sim().time, drawn = 0;
     for (let i = 0; i < S.n; i++) {
       for (const q of S.ev) if (q[0] === i) { if (q[1] === 'down') { W.down(q[2]); held.add(q[2]); } else { W.up(q[2]); held.delete(q[2]); } }
-      if (S.stick) W.stick(1, 0);
+      if (S.stick) { W.stick(1, 0); if (i % 8 === 0 && !rec.hit && !rec.brk) { g.alpha = 1; g.render(); } }   // (the pad lets go of a held stick when the HUD is not drawn for a while)
       h.hp = h.hpMax; await pace(); g.tick(1 / 60);
       const moved = sim().time !== simT; simT = sim().time;
       for (const al of rate === 120 ? [0.25, 0.75] : [0.5]) {

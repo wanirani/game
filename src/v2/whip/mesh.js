@@ -49,7 +49,7 @@ export function writeWhipMesh(whip, vtx, alpha, tmp) {
   let o = 0;
   // total length first (u runs from the tip)
   let total = 0;
-  for (let i = 1; i < n; i++) { const p = i * 3; total += Math.hypot(N[p] - N[p - 3], N[p + 1] - N[p - 2], N[p + 2] - N[p - 1]); }
+  for (let i = 1; i < n; i++) { const p = i * 3; total += Math.sqrt((N[p] - N[p - 3]) * (N[p] - N[p - 3]) + (N[p + 1] - N[p - 2]) * (N[p + 1] - N[p - 2]) + (N[p + 2] - N[p - 1]) * (N[p + 2] - N[p - 1])); }
   const sections = (n - 1) * sub + 1;
   // crack ripple - drawn only (the simulation, the tip, the events and the checks never see it): for a moment after the crack a wave runs
   // down the lash toward the tip, zero at the handle and at the tip. A lash frozen by a hit-stop then reads as a whip mid-crack, not a rod.
@@ -65,16 +65,16 @@ export function writeWhipMesh(whip, vtx, alpha, tmp) {
     const d0 = -1.5 * u2 + 2 * u - 0.5, d1 = 4.5 * u2 - 5 * u, d2 = -4.5 * u2 + 4 * u + 0.5, d3 = 1.5 * u2 - u;
     let x = c0 * N[p0] + c1 * N[p1] + c2 * N[p2] + c3 * N[p3], y = c0 * N[p0 + 1] + c1 * N[p1 + 1] + c2 * N[p2 + 1] + c3 * N[p3 + 1], z = c0 * N[p0 + 2] + c1 * N[p1 + 2] + c2 * N[p2 + 2] + c3 * N[p3 + 2];
     let tx = d0 * N[p0] + d1 * N[p1] + d2 * N[p2] + d3 * N[p3], ty = d0 * N[p0 + 1] + d1 * N[p1 + 1] + d2 * N[p2 + 1] + d3 * N[p3 + 1], tz = d0 * N[p0 + 2] + d1 * N[p1 + 2] + d2 * N[p2 + 2] + d3 * N[p3 + 2];
-    const tl = Math.hypot(tx, ty, tz);
+    const tl = Math.sqrt(tx * tx + ty * ty + tz * tz);
     if (tl > 1e-5) { tx /= tl; ty /= tl; tz /= tl; ttx = tx; tty = ty; ttz = tz; } else { tx = ttx; ty = tty; tz = ttz; }
-    run += Math.hypot(x - lx, y - ly, z - lz); lx = x; ly = y; lz = z;   // arc length (and with it the braid pattern) is measured before the ripple
+    run += Math.sqrt((x - lx) * (x - lx) + (y - ly) * (y - ly) + (z - lz) * (z - lz)); lx = x; ly = y; lz = z;   // arc length (and with it the braid pattern) is measured before the ripple
     const q = j / (sections - 1), fromTip = Math.max(0, total - run);
     if (ripA > 0) {
       const nx = -ty * tx, ny = 1 - ty * ty, nz = -ty * tz;   // world up made square to the lash (not normalised: a lash that points up or down ripples less)
       const env = Math.sin(3.1416 * q), ph = ripK * q - ripP, sn = Math.sin(ph), d = ripA * env * sn;
       const dd = (ripA * (3.1416 * Math.cos(3.1416 * q) * sn + env * ripK * Math.cos(ph))) / ripT;
       x += nx * d; y += ny * d; z += nz * d;
-      tx += nx * dd; ty += ny * dd; tz += nz * dd; const l2 = Math.hypot(tx, ty, tz) || 1; tx /= l2; ty /= l2; tz /= l2;
+      tx += nx * dd; ty += ny * dd; tz += nz * dd; const l2 = Math.sqrt(tx * tx + ty * ty + tz * tz) || 1; tx /= l2; ty /= l2; tz /= l2;
     }
     const rad = 2.45 - 1.4 * Math.pow(q, 0.85) + 0.3 * Math.sin(Math.min(1, q * 5) * 3.1416);    // belly just past the handle, thin at the tip
     const metal = run < 3.2 ? 1 : fromTip < 4.5 ? 1 : fromTip < 6 ? (6 - fromTip) / 1.5 : run < 4.4 ? (4.4 - run) / 1.2 : 0;
@@ -86,10 +86,10 @@ export function writeWhipMesh(whip, vtx, alpha, tmp) {
   // handle: a lathe around the handle axis, interpolated like the nodes
   const g = whip.grip, r = whip.root, pg = whip.pg;
   const gx = pg[0] + (g.x - pg[0]) * a, gy = pg[1] + (g.y - pg[1]) * a, gz = pg[2] + (g.z - pg[2]) * a;
-  let dx = pg[3] + (r.dx - pg[3]) * a, dy = pg[4] + (r.dy - pg[4]) * a, dz = pg[5] + (r.dz - pg[5]) * a; const dl = Math.hypot(dx, dy, dz) || 1; dx /= dl; dy /= dl; dz /= dl;
+  let dx = pg[3] + (r.dx - pg[3]) * a, dy = pg[4] + (r.dy - pg[4]) * a, dz = pg[5] + (r.dz - pg[5]) * a; const dl = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1; dx /= dl; dy /= dl; dz /= dl;
   let ax, ay, az;
   if (Math.abs(dy) < 0.9) { ax = dz; ay = 0; az = -dx; } else { ax = 0; ay = -dz; az = dy; }   // cross(d, up) or cross(d, x)
-  const al = Math.hypot(ax, ay, az) || 1; ax /= al; ay /= al; az /= al;
+  const al = Math.sqrt(ax * ax + ay * ay + az * az) || 1; ax /= al; ay /= al; az /= al;
   const bx = dy * az - dz * ay, by = dz * ax - dx * az, bz = dx * ay - dy * ax;
   for (let k = 0; k < HANDLE.length; k++) {
     const H = HANDLE[k], s = H[0], rad = H[1], cx = gx + dx * s, cy = gy + dy * s, cz = gz + dz * s;
@@ -101,10 +101,10 @@ export function writeWhipMesh(whip, vtx, alpha, tmp) {
   }
   // bell shard on the tip, spinning slowly around the lash end so its facets catch the light
   const e = (n - 1) * 3, e1 = (n - 2) * 3;
-  let tx = N[e] - N[e1], ty = N[e + 1] - N[e1 + 1], tz = N[e + 2] - N[e1 + 2]; const tl = Math.hypot(tx, ty, tz) || 1; tx /= tl; ty /= tl; tz /= tl;
+  let tx = N[e] - N[e1], ty = N[e + 1] - N[e1 + 1], tz = N[e + 2] - N[e1 + 2]; const tl = Math.sqrt(tx * tx + ty * ty + tz * tz) || 1; tx /= tl; ty /= tl; tz /= tl;
   let px, py, pz;
   if (Math.abs(ty) < 0.9) { px = tz; py = 0; pz = -tx; } else { px = 0; py = -tz; pz = ty; }
-  const pl = Math.hypot(px, py, pz) || 1; px /= pl; py /= pl; pz /= pl;
+  const pl = Math.sqrt(px * px + py * py + pz * pz) || 1; px /= pl; py /= pl; pz /= pl;
   const qx = ty * pz - tz * py, qy = tz * px - tx * pz, qz = tx * py - ty * px;
   const cs = Math.cos(whip.spin), sn = Math.sin(whip.spin);
   const ux = px * cs + qx * sn, uy = py * cs + qy * sn, uz = pz * cs + qz * sn, wx = qx * cs - px * sn, wy = qy * cs - py * sn, wz = qz * cs - pz * sn;
@@ -115,7 +115,7 @@ export function writeWhipMesh(whip, vtx, alpha, tmp) {
     const x1 = ox + (tx * B[0] + ux * B[1] + wx * B[2]) * S, y1 = oy + (ty * B[0] + uy * B[1] + wy * B[2]) * S, z1 = oz + (tz * B[0] + uz * B[1] + wz * B[2]) * S;
     const x2 = ox + (tx * C[0] + ux * C[1] + wx * C[2]) * S, y2 = oy + (ty * C[0] + uy * C[1] + wy * C[2]) * S, z2 = oz + (tz * C[0] + uz * C[1] + wz * C[2]) * S;
     let nx = (y1 - y0) * (z2 - z0) - (z1 - z0) * (y2 - y0), ny = (z1 - z0) * (x2 - x0) - (x1 - x0) * (z2 - z0), nz = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0);
-    const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+    const nl = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1; nx /= nl; ny /= nl; nz /= nl;
     // facing outward: away from the shard axis point
     const mx = (x0 + x1 + x2) / 3 - (ox + tx * 5), my = (y0 + y1 + y2) / 3 - (oy + ty * 5), mz = (z0 + z1 + z2) / 3 - (oz + tz * 5);
     if (nx * mx + ny * my + nz * mz < 0) { nx = -nx; ny = -ny; nz = -nz; }
@@ -139,7 +139,7 @@ export function writeWhipMesh(whip, vtx, alpha, tmp) {
     const ax0 = p0 === 0 ? ox : H[p0], ay0 = p0 === 0 ? oy : H[p0 + 1], az0 = p0 === 0 ? oz : H[p0 + 2], ax1 = p1 === 0 ? ox : H[p1], ay1 = p1 === 0 ? oy : H[p1 + 1], az1 = p1 === 0 ? oz : H[p1 + 2];
     const x = c0 * ax0 + c1 * ax1 + c2 * H[p2] + c3 * H[p3], y = c0 * ay0 + c1 * ay1 + c2 * H[p2 + 1] + c3 * H[p3 + 1], z = c0 * az0 + c1 * az1 + c2 * H[p2 + 2] + c3 * H[p3 + 2];
     let kx = d0 * ax0 + d1 * ax1 + d2 * H[p2] + d3 * H[p3], ky = d0 * ay0 + d1 * ay1 + d2 * H[p2 + 1] + d3 * H[p3 + 1], kz = d0 * az0 + d1 * az1 + d2 * H[p2 + 2] + d3 * H[p3 + 2];
-    const kl = Math.hypot(kx, ky, kz); if (kl > 1e-5) { kx /= kl; ky /= kl; kz /= kl; } else { kx = tx; ky = ty; kz = tz; }
+    const kl = Math.sqrt(kx * kx + ky * ky + kz * kz); if (kl > 1e-5) { kx /= kl; ky /= kl; kz /= kl; } else { kx = tx; ky = ty; kz = tz; }
     const q = j / (TRAIL_SEC - 1), str = (H[p1 + 3] + (H[p2 + 3] - H[p1 + 3]) * u) * Math.pow(1 - q, 1.3), rad = w0 * (1 - 0.8 * q);
     for (let s = -1; s <= 1; s += 2) {
       vtx[o] = x; vtx[o + 1] = y; vtx[o + 2] = z; vtx[o + 3] = kx; vtx[o + 4] = ky; vtx[o + 5] = kz; vtx[o + 6] = str; vtx[o + 7] = s; vtx[o + 8] = rad; vtx[o + 9] = 7;

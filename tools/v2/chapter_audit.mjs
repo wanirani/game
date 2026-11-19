@@ -231,9 +231,12 @@ async function open() {
   const cdp = await page.context().newCDPSession(page), T = new Touch(cdp, page);
   await ensureTouchMode(T, page); await page.waitForTimeout(300);
   await ev(installBot, [[0, 0]]); await ev(installCa);
+  // the pad's buttons are laid out a moment after the scene is ready: measured too early they all sit at (0,0) and the bot's presses hit nothing (a resumed run then loses every fight - seen 2026-11-19)
+  await page.waitForFunction(() => { const m = window.__v2?.scene?.hud?.metrics?.(); return !!m?.pad?.buttons?.length && m.pad.buttons.every((b) => b.cx > 0 && b.cy > 0); }, null, { timeout: 30000 }).catch(() => log('WARNING: the pad buttons were not laid out after 30 s - presses will miss'));
   const pad = await ev(() => { const m = window.__v2.scene.hud.metrics?.(); if (!m?.pad) return null; const Bt = {}; for (const b of m.pad.buttons) Bt[b.id === 'roll' ? 'dash' : b.id] = { cx: b.cx, cy: b.cy, d: b.d, disabled: b.disabled }; return Bt; });
   const vp = await ev(() => [innerWidth, innerHeight]);
   await ev(([x0, y0, btn]) => { const B = window.__bot; B.opt.giveUp = 1500; B.touchSetup(x0, y0, 56, btn); }, [Math.round(vp[0] * 0.2), Math.round(vp[1] * 0.68), pad]);
+  if (VERB) log('pad buttons: ' + JSON.stringify(Object.fromEntries(Object.entries(pad ?? {}).map(([k, b]) => [k, [Math.round(b.cx), Math.round(b.cy), b.disabled ? 'off' : 'on']]))));
   return ev(() => ({ area: window.__v2.area, hud: window.__v2.stats.hud, story: !!window.__v2.scene.host, err: window.__v2.error ?? null, pad: Object.keys(window.__v2.scene.hud.metrics().pad.buttons.reduce((o, b) => { o[b.id] = 1; return o; }, {})).join(' '), view: [innerWidth, innerHeight, devicePixelRatio] }));
 }
 /** fast-forward; waits out area loads. -> last status */
@@ -281,7 +284,7 @@ async function clear(group, { budget = 3600 } = {}) {
   }
   await ev(() => { window.__bot.opt.giveUp = 1500; });
   q = await ev((gr) => window.__ca.group(gr), group); s = await st();
-  ST.num.fights.push({ beat: BEAT, group, ticks: s.ticks - t0, hp: [hp0, s.hp], deaths: s.deaths - d0, left: q.n });
+  ST.num.fights.push({ beat: BEAT, group, ticks: s.ticks - t0, hp: [hp0, s.hp], deaths: s.deaths - d0, left: q.n, presses: await ev(() => ({ ...(window.__bot.ts?.presses ?? {}) })) });   // presses = what the pad has taken from the bot since the page was opened (a fight with none is the tool's, not the game's)
   return { ok: !q.n, left: q.n, used, s, why: q.n ? `${q.n} of group "${group}" still stand after the honest budget of ${budget} ticks (nearest ${JSON.stringify(q.best)}, hidden ${q.hid}; hero hp ${s.hp}, deaths in the fight ${s.deaths - d0})` : '' };
 }
 async function clearOrHelp(group, o) { const r = await clear(group, o); if (!r.ok) { const n = await ev((g) => window.__ca.fell(g), group); help(r.why, `felled the last ${n} of group "${group}" by script`); } await settle(); return { ok: true, honest: r.ok }; }
