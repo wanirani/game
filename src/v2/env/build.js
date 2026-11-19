@@ -13,6 +13,7 @@ import { bakedDef, bakedProp } from './baked.js';
 import { BAKED_EXTRA, BAKED_ARGS, cemgateBoxes } from './props2.js';
 import './props5.js';                                     // DETAIL: wall hangings of the two nights (washing line, garland ...), the carpenter's screen, things of a kept place, better far land pieces (ENV_KIT 24)
 import { WEAR } from './wear.js';
+import './props6.js';                                     // THINGS: the stair stump and things with a footprint that people put down (ENV_KIT 25)
 import './props4.js';                                     // WORLD-LOOK: what lies beyond an area's edge (apron, ridge, treeline, farhouse, farwall, gravefield) + wall dressing (boards, crack, ivy, drape)
 import { GEN_ALIAS } from './props3.js';                  // WORLD-2: whip ring, road bell, bridges, crypt furniture stand-ins + names of generated second tries   // WORLD 구역의 소품을 PROPS 에 더한다 + 구운 소품에 덧붙이는 것
 

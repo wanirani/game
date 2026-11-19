@@ -79,7 +79,8 @@ export async function knockTest(areaId, flags, { n = 40, seed = 7 } = {}) {
   const terr = W.boxes.filter((b) => b.walk && b.part?.t === 'floor' && b.y1 >= 100).sort((a, b) => (b.x1 - b.x0) * (b.z1 - b.z0) - (a.x1 - a.x0) * (a.z1 - a.z0))[0];
   const res = [];
   for (let i = 0; i < n; i++) {
-    const sim = new Sim(W, {}), h = sim.hero, x = terr.x0 + 30 + (terr.x1 - terr.x0 - 60) * (i + 0.5) / n, z = terr.z0 + 15 + rnd() * 40;
+    const sim = new Sim(W, {}), h = sim.hero, z = terr.z0 + 2 + rnd() * 16; let x = terr.x0 + 30 + (terr.x1 - terr.x0 - 60) * (i + 0.5) / n;   // 2..18 px behind the edge: most blows carry him off
+    while (insideOf(W.boxes, x, z, terr.y1)) x += 30;   // (not from inside the ring's post)
     const ang = -Math.PI / 2 + (rnd() - 0.5) * 1.6, kb = [150, 240, 300, 320, 380][Math.floor(rnd() * 5)], str = kb >= 300 ? 'H' : 'M';
     h.x = x; h.z = z; h.y = terr.y1; h.vx = h.vz = h.vy = 0; h.onGround = true; h.ifr = 0; h.safe.x = x; h.safe.z = z; h.safe.y = terr.y1;
     for (let t = 0; t < 3; t++) sim.update(1 / 60);

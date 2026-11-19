@@ -13,9 +13,13 @@
 //        d. every other section of the ossuary and the bell tower: under 3 % of its cells
 //        e. the older areas keep what they had (no worse): LIMIT_AREA below, % of all cells of the area
 //   4. the last hall cannot trap and leaves room to roll round the boss (hallTest below)
+//   5. DROP-IN (THINGS, 2026-11-19; tools/v2/world_dropin.mjs, docs/v2/ENV_KIT.md 25): every place where a body that leaves a floor over an edge without a jump (walked,
+//      rolled or knocked off) can come down, within 160 px, INSIDE a solid that has no top to stand on - every area, every state whose collision differs. The list must
+//      be empty (slice0, the test strip, is printed only). Breakables a body can come down into are printed apart (the game's own dynamic solids).
 //   node tools/v2/world_verify_node.mjs [--areas a,b] [--json out.json]   exit 1 over a limit
 import fs from 'node:fs';
 import { loadPropsNode } from './world_node.mjs';
+import { dropIn } from './world_dropin.mjs';
 loadPropsNode();
 const { AREAS, areaStates, stateName } = await import('../../src/v2/world/index.js');
 const { reachGrid } = await import('../../src/v2/world/reach.js');
@@ -182,6 +186,8 @@ for (const id of LIST) {
     const st = stateName(flags), a2 = st === 'base' ? a : await AREAS[id](flags), W2 = st === 'base' ? W : compileEnv(a2.stage);
     const geo = W2.env.meshes.map((m) => m.count + ':' + m.tex).join('|') + '#' + W2.boxes.map((b) => [b.x0, b.x1, b.z0, b.z1, b.y0, b.y1, +b.solid, +b.walk].join(',')).join('|');
     if (seenGeo.has(geo)) continue; seenGeo.add(geo);
+    { const dr = dropIn(a2, W2, { groundAt, moveXZ, reachGrid }); (r.dropIn ??= {})[st] = dr;   // 5. drop-in
+      if (id !== 'slice0') for (const p of dr.places) over(`${id}@${st}: DROP-IN - a body that comes off (${p.from}) can come down inside ${p.what} (box x ${p.box[0]}..${p.box[1]} z ${p.box[2]}..${p.box[3]}, top ${p.top}; ${p.n} landings)`); }
     const bells = a2.interact.filter((it) => it.kind === 'bell' && it.event === 'bell.ring');
     const seeds = [...Object.values(a2.spawns).map((p) => [p.x, p.z]), ...(a2.stage.hookPoints ?? []).filter((h) => h.to).map((h) => h.to), ...bells.map((b) => [b.x, b.z])];
     const g = reachGrid(W2, 0, 0, 14, { noStart: true, seeds, hooks: a2.stage.hookPoints ?? [] }), TG = triGrid(W2); if (st === 'base') r.tris = TG.T.length;
@@ -217,7 +223,8 @@ for (const id of LIST) {
   console.log(`  lights under the floor: ${r.lightsUnder.join('; ') || 'none'}`);
   for (const [st, R] of Object.entries(r.occ)) for (const dev of Object.keys(R)) { const o = R[dev]; console.log(`  hero fully hidden @${st} ${dev}: ${o.hidden} of ${o.tested} cells (${(o.hidden / Math.max(1, o.tested) * 100).toFixed(1)} %; 2 of 3 rays: ${o.twoOfThree}; within 60 of a crossing bell: ${o.nearBell}) — ${Object.entries(o.bySec).map(([k, v]) => `${k} ${v.hidden}/${v.tested}`).join(' · ')}${o.clusters.length ? '\n      ' + o.clusters.map(fmt).join(' | ') : ''}`); }
   if (r.hall) for (const h of r.hall) console.log(`  last hall @${h.state}: ${h.line}`);
+  for (const [st, dr] of Object.entries(r.dropIn ?? {})) console.log(`  drop-in @${st}: ${dr.edges} edge spots, ${dr.flights} flights - ${dr.places.length ? dr.places.map((p) => `${p.what} top ${p.top} (${p.n})`).join('; ') + (id === 'slice0' ? '  [test strip: printed only]' : '') : 'none'}${dr.breakables.length ? ` · breakables a body can come down into (listed apart): ${dr.breakables.map((p) => p.what.replace('breakable ', '')).join(', ')}` : ''}`);
 }
 if (args.json) fs.writeFileSync(String(args.json), JSON.stringify(out, null, 1));
-console.log(overs.length ? `\nFAIL (${overs.length} over the limits)\n` + overs.map((m) => ' - ' + m).join('\n') : '\nALL OK (hidden-hero limits, the last hall)');
+console.log(overs.length ? `\nFAIL (${overs.length} over the limits)\n` + overs.map((m) => ' - ' + m).join('\n') : '\nALL OK (hidden-hero limits, the last hall, drop-in)');
 process.exit(overs.length ? 1 : 0);

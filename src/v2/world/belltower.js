@@ -55,15 +55,17 @@ export function belltower(era = 'now', flags = {}) {
   add('high', { t: 'wall', x: -90, z: ZT + 400, w: W + 180, d: 90, y: 0, h: TOP + 330, mat: 'facade', kit: { style: 'stone', cell: 70, faces: 'F', plinth: 0, quoins: false, battlement: true, courses: [TOP + 150],
     windows: [200, 450, 700].map((u) => ({ u, y: TOP + 44, w: 96, h: 190, arch: 'point', rows: 5, cols: 1, lit: 0 })) } });
   // ── dressing ──
-  add('low', { t: 'prop', mesh: 'goods', x: 150, z: 196, h: 88, solid: 60, solidZ: 36, solidH: 66 },   // (BREAK: the loose barrels and crates of the tower are breakables now - see breakables below)
-    { t: 'prop', mesh: 'stairs', x: 250, z: 176, h: 90, rot: 0.5, solid: 40, solidZ: 36, solidH: 70 },                                                                                      // a spare wooden flight leaning by the wall
+  // THINGS (11-19, ENV_KIT 25 drop-in): the three low props that stand within the reach below a floor edge are, to the rules, as tall as the floor a body can come off
+  // above them + a step (solidH 2 LV + 28 under floors 1 and 2, LV + 28 under the bell chamber): he meets their side in the air and comes down beside them, not inside
+  add('low', { t: 'prop', mesh: 'goods', x: 150, z: 196, h: 88, solid: 60, solidZ: 36, solidH: 2 * LV + 28 },   // (BREAK: the loose barrels and crates of the tower are breakables now - see breakables below)
+    { t: 'prop', mesh: 'stairs', x: 250, z: 176, h: 90, rot: 0.5, solid: 40, solidZ: 36, solidH: 2 * LV + 28 },                                                                                      // a spare wooden flight leaning by the wall
     { t: 'deco', mesh: 'candles', x: 330, z: 214, n: 4, light: { r: 200, i: 1.0, y: 20 } },
     { t: 'deco', mesh: 'candles', x: 120, y: LV, z: zOf(1) + 30, n: 3, light: { r: 180, i: 0.9, y: 20 } },
     // the bats' roost: a beam along the face under floor 3 (against the wall: it hides nothing) with the bats hanging from it
     { t: 'deco', mesh: 'beam', x: 0, y: 3 * LV - 34, z: zOf(3) - 9, len: 540, r: 8 }, { t: 'deco', mesh: 'roost', x: 250, y: 3 * LV - 42, z: zOf(3) - 12, n: 7 }, { t: 'deco', mesh: 'roost', x: 440, y: 3 * LV - 42, z: zOf(3) - 12, n: 5 });
   add('high', { t: 'deco', mesh: 'beam', x: 0, y: TOP - 34, z: ZT - 9, len: 520, r: 8 }, { t: 'deco', mesh: 'roost', x: 300, y: TOP - 42, z: ZT - 12, n: 6 },
     { t: 'deco', mesh: 'candles', x: 600, y: 3 * LV, z: zOf(3) + 30, n: 3, light: { r: 180, i: 0.9, y: 20 } },
-    { t: 'prop', mesh: 'goods', x: 120, z: zOf(4) + 116, y: 4 * LV, h: 80, solid: 52, solidZ: 30, solidH: 60, flip: true },
+    { t: 'prop', mesh: 'goods', x: 120, z: zOf(4) + 116, y: 4 * LV, h: 80, solid: 52, solidZ: 30, solidH: LV + 28, flip: true },
     // the bell chamber: the big bell in its oak frame against the back arches, the rope, braziers, the keeper's corner
     { t: 'prop', mesh: 'bell', x: 360, z: ZT + 300, y: TOP, h: 300, solid: 98, solidZ: 50, solidH: 240 },
     { t: 'deco', mesh: 'rope', x: 268, y: TOP + 34, z: ZT + 232, len: 262, r: 3.6 },                                                                       // the bell rope: from the top beam down to hand height, in front of the frame (Elise stands at it)

@@ -23,8 +23,11 @@ export function graveyard(era = 'now', flags = {}) {
     { t: 'deco', mesh: 'towerface', x: 600, y: 0, z: 1850, w: 200, h: TY, mat: 'ashlar', step: 1e6 },
     { t: 'blocker', x: 0, z: 1850, w: 100, d: 340, y: 0, h: 1200 }, { t: 'blocker', x: 1100, z: 1850, w: 100, d: 340, y: 0, h: 1200 });   // on the terrace the side walls stand only 110 above the feet: a jump would clear them
   if (now && hung) add('field', { t: 'stairs', x: 540, z: 1658, w: 120, d: 192, h: TY, dir: 'z+', steps: 12, mat: 'stone', state: 'bell_hung', kit: { cheeks: 'LR' } });   // tonight, a hundred years after the bell was hung: the stair is whole (WORLD-3: 12 steps, rise 11.7 on treads of 16 - the stick alone climbs it; rise 14 on treads of 11 stopped the hero at the foot)
-  else add('field', { t: 'prop', mesh: 'rubble', x: 600, z: 1800, w: 190, h: 78, solid: 84, solidZ: 46, solidH: 70 },                                               // the fallen stair: a heap of broken steps (solid, not climbable)
-    { t: 'deco', mesh: 'footbridge', kind: 'slab', x: 600, y: TY - 12, z: 1838, w: 110, len: 22, th: 12 });                                                           // the top step still hangs on the edge
+  // THINGS (11-19, ENV_KIT 25 drop-in): the fallen stair was a heap with a solid box 70 high and no top to stand on (x 516..684, z 1754..1846) - a body knocked or walked
+  // off the terrace above it came down INSIDE the box and stood half buried. Now the head of the stair still stands: a landing 6 under the terrace that a body steps
+  // onto (a solid WITH `walk`, 134 high - over the jump's 130, so it is no way up: the whip ring is), and goes off its broken end onto open ground; the fallen treads lie
+  // flat before it (drawn only, 5 high). STUMP_H must stay over 130 and within STEP_DOWN 20 of TY.
+  else add('field', { t: 'prop', mesh: 'stairstump', x: 600, z: 1828, w: 120, d: 44, h: TY - 6, solid: 60, solidZ: 22, solidH: TY - 6, walk: true, old: now });
   // walls
   add('road', { t: 'wall', x: 0, z: -60, w: 100, d: 960, h: 240, mat: 'facade', kit: { style: 'rubble', lower: 'fieldstone', faces: 'R', battlement: true, buttress: [200, 500, 800].map((u) => ({ side: 'R', u, h: 190, d: 20 })), hang: now ? [{ type: 'ivy', side: 'R', u: 350, y: 0, w: 100, h: 180, seed: 41 }, { type: 'ivy', side: 'R', u: 660, y: 0, w: 80, h: 140, seed: 43 }] : [{ type: 'ivy', side: 'R', u: 350, y: 0, w: 60, h: 100, seed: 41 }] } },
     { t: 'wall', x: 1100, z: -60, w: 100, d: 960, h: 240, mat: 'facade', kit: { style: 'rubble', lower: 'fieldstone', faces: 'L', battlement: true, buttress: [160, 460, 760].map((u) => ({ side: 'L', u, h: 190, d: 20 })) } },
@@ -51,12 +54,16 @@ export function graveyard(era = 'now', flags = {}) {
   add('field', house({ hang: [{ type: 'tools', u: 128, y: 28, old: now }], x: 770, z: 1000, w: 260, h: now ? 120 : 132, d: 70, style: 'rubble', seed: 91, burnt: now, lit: 1, door: 200, roofMat: 'thatch', roofH: 30, roofKit: { chimneys: [] }, kit: { lower: 'fieldstone', plinth: 20 } }));   // kept low (ridge 162, no chimney): at 170 + 50 the hut hid the hero in a 375-deep patch of the field behind it
   if (now) add('field', { t: 'deco', mesh: 'rafters', x: 900, y: 120, z: 1000, w: 250, d: 70, rh: 30, n: 4 });   // DETAIL: what the fire left of the hut's roof (thin charred rafters on the wall top); the keeper's tools hang on its front in both nights
   // the grave field: rows of solid stones with clear lanes (the middle path x 500..700 and the cross path z 1460..1580 stay empty)
+  // THINGS (ENV_KIT 25 drop-in): a low thing within the reach (160) below the terrace edge is, to the rules, as tall as the terrace + a step - a body that comes off the
+  // edge above it meets its side in the air and comes down BESIDE it, not inside it (a top with `walk` there would be a way up to the terrace past the whip ring)
+  const under = (z, hh) => (z > 1850 - 175 ? Math.max(hh, TY + 20) : hh);
   const stones = [];
   for (let row = 0; row < 7; row++) for (let col = 0; col < 8; col++) {
     const x = 170 + col * 110 + (row % 2) * 40 + r() * 24, z = 1090 + row * 130 + r() * 30;
     if ((x > 470 && x < 730) || (z > 1430 && z < 1610) || z > 1900 || r() < 0.22 || (x > 730 && z < 1130)) continue;
+    if (x > 395 && x < 500 && z > 1735) { r(); continue; }   // THINGS: the row stone at (435, 1752) is gone - it stood in the 46 px lane between the second and the third Valkrein stone (the r() keeps every other stone where it was)
     stones.push([Math.round(x), Math.round(z)]);
-    add('field', { t: 'prop', mesh: 'grave', kind: KINDS[(row * 3 + col) % KINDS.length], x: Math.round(x), z: Math.round(z), h: Math.round(72 + r() * 44), solid: 22, solidZ: 9, solidH: 60 });
+    add('field', { t: 'prop', mesh: 'grave', kind: KINDS[(row * 3 + col) % KINDS.length], x: Math.round(x), z: Math.round(z), h: Math.round(72 + r() * 44), solid: 22, solidZ: 9, solidH: under(z, 60) });
   }
   add('field', { t: 'prop', mesh: 'mausoleum', x: 600, z: 2040, w: 200, h: 150, d: 110, solid: 104, solidZ: 60, solidH: 200 },
     { t: 'prop', mesh: 'niche', x: 330, z: 2078, w: 170, h: 160, solid: 86, solidZ: 20 }, { t: 'prop', mesh: 'niche', x: 870, z: 2078, w: 170, h: 160, solid: 86, solidZ: 20 },
@@ -64,11 +71,11 @@ export function graveyard(era = 'now', flags = {}) {
     { t: 'prop', mesh: 'angel', x: 190, z: 1520, h: 196 }, { t: 'prop', mesh: 'angel', x: 1010, z: 1520, h: 196, flip: true },
     { t: 'deco', mesh: 'deadtree', x: -46, y: 0, z: 1090, h: 420 }, { t: 'deco', mesh: 'deadtree', x: 1250, y: 0, z: 1820, h: 400, flip: true }, { t: 'deco', mesh: 'deadtree', x: 1246, y: 0, z: 1130, h: 380 },   // the field's dead trees now stand OUTSIDE the side walls (crowns over the battlements): the generated tree has a wide root flare and hid the hero behind it
     { t: 'prop', mesh: 'cross', x: 400, z: 1700, h: 180, solid: 26, solidZ: 18 }, { t: 'prop', mesh: 'cross', x: 800, z: 1250, h: 170, solid: 26, solidZ: 18 },
-    { t: 'prop', mesh: 'coffin', x: 800, z: 1716, solid: 60, solidZ: 22, h: 62, solidH: 50 },   /* (770, 1730 left 26 px between its end and the fallen stair: a slot that looks open to a body of 28 - the story bot pushed into it for 3000 ticks, 11-19; now 56) */ { t: 'prop', mesh: 'coffin', x: 300, z: 1300, solid: 56, solidZ: 20, h: 58, solidH: 46, flip: true },
+    { t: 'prop', mesh: 'coffin', x: 800, z: 1716, solid: 60, solidZ: 22, h: 62, solidH: under(1716, 50) },   /* (770, 1730 left 26 px between its end and the fallen stair: a slot that looks open to a body of 28 - the story bot pushed into it for 3000 ticks, 11-19; now 56) */ { t: 'prop', mesh: 'coffin', x: 300, z: 1300, solid: 56, solidZ: 20, h: 58, solidH: 46, flip: true },
     { t: 'prop', mesh: 'chapel', x: 172, z: 2012, h: 220, solid: 60, solidZ: 72, solidH: 210 },   // a small tomb chapel in the back corner (generated model; against the back and side walls: nothing walkable behind it). It took the place of a dead tree
     LP(470, 1010), LP(730, 1010, { flip: true }), LP(470, 1520), LP(730, 1880, { flip: true }), LP(250, 1530), LP(950, 1530, { flip: true }),
     // the four Valkrein stones beside the middle path
-    ...[[452, 1640, 'point', 120], [452, 1730, 'round', 110], [452, 1820, 'round', 110], ...(now ? [[748, 1640, 'broken', 100]] : [])].map(([x, z, kind, h]) => ({ t: 'prop', mesh: 'grave', kind, x, z, h, solid: 26, solidZ: 10, solidH: 70 })),
+    ...[[452, 1640, 'point', 120], [452, 1730, 'round', 110], [452, 1796, 'round', 110] /* THINGS: was z 1820, 20 px from the terrace wall - a body that came off the edge above it stood wedged in that slot; now 44 clear of the wall and 46 of the second stone */, ...(now ? [[748, 1640, 'broken', 100]] : [])].map(([x, z, kind, h]) => ({ t: 'prop', mesh: 'grave', kind, x, z, h, solid: 26, solidZ: 10, solidH: under(z, 70) })),
     { t: 'deco', mesh: 'candles', x: 520, z: 1000, light: { r: 180, i: 1.0, y: 20 } },
     // WORLD-2: the road-bell post in front of the ossuary (empty until the bell is hung in 1697; a rusted bell tonight once it was) and the whip ring on the terrace edge
     { t: 'prop', mesh: 'roadbell', x: 500, z: 1940, h: 176, solid: 16, solidZ: 14, solidH: 150, state: hung ? (now ? 'rusty' : 'hung') : 'empty', old: now, light: hung ? { r: 170, i: 0.7, y: 120, c: now ? [0.6, 0.86, 0.9] : [1, 0.82, 0.5] } : null },
