@@ -262,6 +262,9 @@ C('ending', "the ending: the bread, the last crossing, tonight's bell, the widen
   await until({ modal: 'end' }, 200); await still('end_card', '맺음 카드', [], 'ev_ending_home');
 });
 
+// STORY2 (11-19): more chains from a module of the tools folder (--chains tools/v2/story_end_chains.mjs): export default (T) => { T.C(id, title, fn) }, with this tool's helpers
+if (args.chains && args.chains !== true) { const m = await import(new URL(String(args.chains), `file://${process.cwd()}/`).href); m.default({ C, boot, until, idle, P, ev, still, after, before, read, put, ringAt, bigBell, args, FILES, OUT, page: () => page, dev: () => DEV }); }
+
 const t00 = Date.now();
 for (DEV of DEVS) {
   nShot = 0;
