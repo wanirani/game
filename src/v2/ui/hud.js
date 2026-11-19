@@ -458,7 +458,7 @@ export function createCanvasHud(game, opts = {}) {
     const sh = bakeShelf(per, step); blit(ctx, sh, cx0 - px(18) - 2, baseY - px(4.5));
     for (let i = 0; i < per; i++) candle(ctx, i, cx0 + i * step, baseY, ch, litN, hurtK);
     const MD = opts.model ? opts.model() : null;
-    { const dr = MD ? MD.draughts | 0 : 0;   // SCREENS: the draughts carried, right of the candles (the boss bar keeps clear of it through T.statusR)
+    { const dr = MD ? MD.dr | 0 : 0;   // SCREENS: the draughts carried, right of the candles (the boss bar keeps clear of it through T.statusR)
       if (dr > 0) { const dp = bakeDraught(dr); blit(ctx, dp, T.statusR - px(8), baseY - dp.h + px(3)); T.drR = T.drR ?? { x: 0, y: 0, w: 0, h: 0, n: 0 }; T.drR.x = T.statusR - px(8); T.drR.y = baseY - dp.h + px(3); T.drR.w = dp.w; T.drR.h = dp.h; T.drR.n = dr; T.statusR += dp.w - px(6); }
       else if (T.drR) T.drR.n = 0; }
     // resonance cells

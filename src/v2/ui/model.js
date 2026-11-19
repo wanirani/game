@@ -118,7 +118,6 @@ export function createModel(env) {
   return Object.assign(M, {
     book, bag, shop, buy, touch,
     coins: () => (env.coins ? env.coins() | 0 : 0),
-    get draughts() { return M.dr; },
     /** the second line under the objective while the guide candle burns ('' = none) */
     guideLine() {
       if (!M.guide) return '';

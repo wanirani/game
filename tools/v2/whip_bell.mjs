@@ -1,9 +1,11 @@
 // WHIP lane — THE BELL THAT WILL NOT ANSWER, measured: the refusal of a long ring at three bells, on two screens (one browser, game advanced by ticks).
 //   node tools/v2/whip_bell.mjs [--tag after] [--devices fold_open,phone2] [--cases nofloor,sealed,held] [--out /tmp/claude-0/v2/whip2/bell] [--res 0.6]
 //                               [--saves /tmp/claude-0/v2/pre13/chapter/saves] [--base <commit>: crossing.js, the feel table and motion.js of that commit under today's scene]
-//   nofloor  no story: a bell of eshville_now whose other night is made to answer "nowhere to stand" (the crossing's own refusal)
+//   nofloor  no story: a bell of eshville_now whose other night is made to answer "nowhere to stand" (the crossing's own refusal; the answer is there when the
+//            bell is full, as it nearly always is - the twin is built while the ring is wound up). nofloor_late: the answer comes 30 ms after the full ring
 //   sealed   the story from the bot's save after ev_knells_done (= before ev_bell_sealed): the sealed bell of the 1697 arena
-//   held     the story from the bot's save after ev_boss_intro: the hall's bell tonight while the queen is in her first act - and awake, striking
+//   held     the story from the bot's save after ev_boss_intro: the hall's bell tonight while the queen is in her first act and awake (the first such ring: the
+//            story's line that says why follows). held2: the second ring, begun while she is in an attack within 420 px - no line, the hero on his own
 // The hero is set beside the bell and the pad's bell button is HELD through the pad's own pointer handlers until the long ring is full. From that tick on,
 // 40 ticks: every tick is drawn and compared - mean absolute change of the picture (0..255, all pixels of the 3D canvas, 480 px wide copy) against the tick
 // before ("step") and against the last picture before the bell was full ("off"); a still of every sixth frame goes onto a sheet. Also read from the game:
@@ -14,7 +16,7 @@ import { execSync } from 'node:child_process';
 import { launch, argsOf, install } from './whip_lib.mjs';
 
 const args = argsOf(process.argv), TAG = String(args.tag || 'now'), OUT = String(args.out || '/tmp/claude-0/v2/whip2/bell'), RES = String(args.res || '0.6'), SAVES = String(args.saves || '/tmp/claude-0/v2/pre13/chapter/saves');
-const DEVS = String(args.devices || 'fold_open,phone2').split(','), CASES = String(args.cases || 'nofloor,sealed,held').split(','), BASE = args.base ? String(args.base) : null;
+const DEVS = String(args.devices || 'fold_open,phone2').split(','), CASES = String(args.cases || 'nofloor,nofloor_late,sealed,held,held2').split(','), BASE = args.base ? String(args.base) : null;
 const T0 = Date.now(), log = (m) => console.log(`[${((Date.now() - T0) / 1000).toFixed(0)}s] ${m}`);
 let fails = 0; const ok = (name, cond, note = '') => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${name}${note ? '  (' + note + ')' : ''}`); if (!cond) fails++; };
 fs.mkdirSync(OUT, { recursive: true });
@@ -23,21 +25,31 @@ fs.mkdirSync(OUT, { recursive: true });
 async function ring(o) {
   const v = window.__v2, sc = v.scene, W = window.__W, g = window.__game, sim = sc.sim, h = sim.hero, cx = sc.cx, { feel } = await import('/src/v2/feel/index.js');
   cx.shutNow ??= () => false; cx.refuse ??= () => false;   // (--base: an older crossing.js under today's scene)
+  if (o.twice) {   // the line that says why is said once: ring once, tap it away, let the queen come - the measured ring is the second, with her striking
+    const first = await window.__ring({ ...o, twice: false }); if (first.skip) return first;
+    const tap = (t) => window.dispatchEvent(new PointerEvent(t, { pointerId: 77, pointerType: 'touch', isPrimary: true, clientX: innerWidth / 2, clientY: innerHeight * 0.3, bubbles: true, cancelable: true, button: 0, buttons: t === 'pointerup' ? 0 : 1 }));
+    for (let i = 0; i < 600 && (sc.hud.modal === 'dialog' || (sc.host && sc.host.locks())); i++) { if (i % 12 === 0) tap('pointerdown'); if (i % 12 === 3) tap('pointerup'); h.hp = h.hpMax; g.tick(1 / 60); if (i % 6 === 0) { g.alpha = 1; g.render(); } }
+    const q = sim.enemies.find((e) => e.def.boss && !e.dead);
+    for (let i = 0; i < 900 && q && !(q.state === 'attack' && Math.hypot(q.x - h.x, q.z - h.z) < 420); i++) { h.hp = h.hpMax; h.ifr = Math.max(h.ifr, 0.2); g.tick(1 / 60); if (i % 6 === 0) { g.alpha = 1; g.render(); } }
+    o = { ...o, twice: false, keep: true };
+  }
   W.drawEvery = 0; W.keepHp = false;
   // the bell: by its story event, else the nearest one
-  const S = sc.people.spots.filter((q) => q.def.kind === 'bell'); let bell = S.find((q) => o.event && q.def.event === o.event) ?? null;
+  const S = sc.people.spots.filter((q) => q.def.kind === 'bell'), boss = sim.enemies.find((e) => e.def.boss && !e.dead) ?? null; let bell = S.find((q) => o.event && q.def.event === o.event) ?? null;
+  if (o.strike && boss) { let best = 1e18; for (const q of S) { if (o.event && q.def.event !== o.event) continue; const d = (q.x - boss.homeX) ** 2 + (q.z - boss.homeZ) ** 2; if (d < best) { best = d; bell = q; } } }   // the bell of the queen's own hall
   if (!bell && o.id) bell = S.find((q) => q.id === o.id || q.def.id === o.id) ?? null;
   if (!bell) { let best = 1e18; for (const q of S) { const d = (q.x - h.x) ** 2 + (q.z - h.z) ** 2; if (d < best) { best = d; bell = q; } } }
   if (!bell) return { skip: 'no bell in ' + v.area + ' (bells: ' + S.map((q) => q.def.event).join(',') + ')' };
   // a free spot beside it (on the hero's present level when there is one)
   let spot = null; for (const d of [56, 70, 44, 90]) { for (let k = 0; k < 12 && !spot; k++) { const a = (k * Math.PI) / 6 + 0.26, x = bell.x + Math.cos(a) * d, z = bell.z + Math.sin(a) * d, gy = W.ground(x, z); if (!Number.isFinite(gy) || Math.abs(gy - bell.y) > 30) continue; if (sim.clearLine && !sim.clearLine(x, z, bell.x + Math.cos(a) * (bell.r ?? 20), bell.z + Math.sin(a) * (bell.r ?? 20), gy + 40)) continue; spot = [x, z]; } if (spot) break; }
   if (!spot) return { skip: 'no free spot beside the bell' };
+  const rec = { snd: [], hap: [], fxn: [], toast: [], ring: -1 };   // what the game is asked to do
   for (let i = 0; i < 30 && (sc.hud.modal || (sc.host && sc.host.locks())); i++) g.tick(1 / 60);
-  W.put(spot[0], spot[1], bell.x - spot[0], bell.z - spot[1]); h.bellCd = 0; h.hp = h.hpMax; h.ifr = 0;
-  if (o.noFloor) { const b = cx._build; cx._build = async function () { await this._yield(); cx._build = b; return { pre: null, spot: null }; }; cx.early = null; }
+  if (!o.keep) W.put(spot[0], spot[1], bell.x - spot[0], bell.z - spot[1]); else if (Math.hypot(h.x - bell.x, h.z - bell.z) > 100) W.put(spot[0], spot[1], bell.x - spot[0], bell.z - spot[1]);
+  h.bellCd = 0; h.hp = h.hpMax; h.ifr = 0; h.act = null; h.hurtT = 0;
+  if (o.noFloor) { const b = cx._build; cx.early = null; cx._build = async function () { await this._yield(); if (o.late) { while (rec.ring < 0) await new Promise((r) => setTimeout(r, 2)); await new Promise((r) => setTimeout(r, 30)); } cx._build = b; return { pre: null, spot: null }; }; }   // (late: the other night answers only after the bell is full - the gathering light shows first)
   for (let i = 0; i < 12; i++) g.tick(1 / 60);
-  // what the game is asked to do
-  const rec = { snd: [], hap: [], fxn: [], toast: [], ring: -1 }; let ti = 0;
+  let ti = 0;
   const fire0 = feel.sound.play.bind(feel.sound); feel.sound.play = (name, ...r) => { rec.snd.push([ti, name]); return fire0(name, ...r); };
   const hap0 = feel.haptics.play.bind(feel.haptics); feel.haptics.play = (n) => { rec.hap.push([ti, n]); return hap0(n); };
   const toast0 = sc._toast.bind(sc); sc._toast = (t, k) => { rec.toast.push([ti, String(t)]); return toast0(t, k); };
@@ -53,6 +65,7 @@ async function ring(o) {
   let hp0 = h.hp, off = null, prev = null, rows = [], cells = 0, hurt = 0, freeAt = -1, hurtTicks = [];
   for (let i = 0; i < 150; i++) {
     ti = i; const hpB = h.hp;
+    await new Promise((r) => setTimeout(r, 1));   // (the twin night is built in tasks of its own: they must get their turn between two ticks, as in a running game)
     if (rec.ring < 0 && i % 6 === 0) { g.alpha = 1; g.render(); }
     if (rec.ring < 0) { h.hp = h.hpMax; h.ifr = Math.max(h.ifr, 0.1); }   // (nothing may break the wind-up of the test's ring; from the full ring on the hero is on his own)
     if (rec.ring < 0) off = (i % 2 === 0 && h.act === 'ring' && h.bellCharge > 0.8) ? grab() : off;
@@ -76,8 +89,10 @@ async function ring(o) {
 
 const CASE = {
   nofloor: { area: 'eshville_now', o: { id: 'big_bell', noFloor: true } },
+  nofloor_late: { area: 'eshville_now', o: { id: 'big_bell', noFloor: true, late: true } },
   sealed: { save: '071_ev_knells_done.json', o: { event: 'bell.sealed' } },
   held: { save: '074_ev_boss_intro.json', o: { event: 'bell.ring', strike: true } },
+  held2: { save: '074_ev_boss_intro.json', o: { event: 'bell.ring', strike: true, twice: true } },
 };
 let baseDir = null;
 if (BASE) { baseDir = `${OUT}/base_${BASE}`; fs.rmSync(baseDir, { recursive: true, force: true }); fs.mkdirSync(baseDir, { recursive: true }); execSync(`git archive ${BASE} src/v2/game/crossing.js src/v2/feel src/v2/play/motion.js | tar -x -C ${baseDir}`, { cwd: new URL('../..', import.meta.url).pathname, shell: '/bin/bash' }); }
