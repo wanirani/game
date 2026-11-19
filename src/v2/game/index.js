@@ -1018,7 +1018,7 @@ export default class V2Game extends Scene {
       wp.handFromMatrix(ha.WM, H);
       H.bx = h.x; H.by = this.visY; H.bz = h.z; H.fx = h.dirX ?? ha.dx; H.fz = h.dirZ ?? ha.dz;
       if (h.onGround) H.ground = h.y; else { const gy = groundAt(W, h.x, h.z, h.y + 30); H.ground = Number.isFinite(gy) ? gy : h.y; }
-      if (pe) { if (pe.pullT > 0 || h.pullT > 0) { P.x = pe.x; P.y = (pe.gy ?? pe.y) + (pe.h ?? 80) * 0.55; P.z = pe.z; P.r = Math.max(8, (pe.r ?? 15) * 0.55); pull = P; } else this.whipPullE = null; }
+      if (pe) { if (pe.pullT > 0 || h.pullT > 0) { P.x = pe.x; P.y = (pe.y ?? pe.gy) + (pe.h ?? 80) * 0.55; P.z = pe.z;   /* WHIP: the body's own foot height (ground + hover): winding at the ground height put the coil 96 px under a caught bat */ P.r = Math.max(8, (pe.r ?? 15) * 0.55); pull = P; } else this.whipPullE = null; }
       wp.resonance = h.resoMax ? h.reso / h.resoMax : 0;
       if (this._whipReset) { this._whipReset = false; this.whipPullE = null; pull = null; wp.reset(H); }   // new area / respawn / new chain: hang from the hand, no speed
       Math.hypot = HYP3;

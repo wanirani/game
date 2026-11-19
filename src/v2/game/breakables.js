@@ -129,6 +129,8 @@ export class Breakables {
     let r = null; try { r = feel.play(name, b, vol, pitch); } catch { r = null; }
     const fx = sc.fx, F = fx ? fx.feel : null;
     if (F) { if (!roll) F.hitStop(r && r.stop > 0 ? r.stop : 0.03); fx.trauma(r && r.shake > 0 ? r.shake * (roll ? 0.7 : 1) : 0.06, dx, 0, dz); }
+    // WHIP (2026-11-19): a whip move broke it and no enemy was struck in this tick - the lash lands on the thing (like on an enemy) and the frames of this tick show the tick itself, so the tip, the burst and the tiny freeze share one frame
+    if (!roll && by !== 'area' && sc.whip && !sc._hitSnap) { const C = sc.whipCrack; C.x = b.x - dx * b.r * 0.5; C.y = b.y + b.h * 0.6; C.z = b.z - dz * b.r * 0.5; C.strength = 0.7; sc.whip.set('crack', C); sc._hitSnap = true; }
     if (PRESET_IDS['break.puff'] !== undefined) sc._fxp('break.puff', b.x, b.y, b.z, dx, dz, clay ? (b.kind === 'urn' ? 0.7 : 1) : b.mat === 'barrel' ? 3 : 2, true);
     else sc._fxp('move.land', b.x, b.y, b.z, dx, dz, 0.9, true);
     sc.feelN++;
