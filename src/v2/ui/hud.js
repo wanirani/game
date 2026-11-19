@@ -15,7 +15,7 @@ const PROMPT_ICON = { attack: 'attack', jump: 'jump', dash: 'roll', guard: 'guar
 export function createCanvasHud(game, opts = {}) {
   const input = opts.input ?? game.input;
   const L = { s: 0, hs: 1, css: 1, tk: 1, tmin: 9.5, textSize: 'normal', epoch: 1, vw: 0, vh: 0 };   // layout numbers shared by every piece
-  const T = { t: 0, hurt: 0, lit: -1, litShown: 0, max: 5, res: 0, bossShown: 1, bossId: '', lockId: null, lockPulse: 0, secId: null, areaId: null, flashLow: 0 };
+  const T = { t: 0, hurt: 0, lit: -1, litShown: 0, max: 5, res: 0, bossShown: 1, bossId: '', lockId: null, lockPulse: 0, secId: null, areaId: null, areaName: null, areaWait: 0, flashLow: 0 };
   const phase = new Float32Array(16), smoke = new Float32Array(16);
   for (let i = 0; i < 16; i++) phase[i] = (i * 2.399) % TAU;
 
@@ -336,7 +336,14 @@ export function createCanvasHud(game, opts = {}) {
     const aid = s.area?.id ?? null, sid = s.section?.id ?? null;
     if (!s.loading && !s.message) {
       const keep = banner.on && banner.kind === 'night';   // the night banner is never replaced by a place name
-      if (aid !== T.areaId) { T.areaId = aid; T.secId = sid; if (s.area?.name && !keep) setBanner('area', s.area.name, s.section?.label && s.section.label !== s.area.name ? s.section.label : ''); }
+      // STORY2 (11-19): the place name never sits over a scene. It is not shown at all on arriving in the other night of the same place (same name: the night badge, the
+      // year stamp and the night banner say it); otherwise it waits while the story holds the hero (state.story / state.cut) and comes up when the story lets go - or
+      // is dropped when the scene lasts longer than five seconds (the place has been looked at all that time; the story's own banner had the stage).
+      if (aid !== T.areaId) { const twin = !!s.area?.name && s.area.name === T.areaName; T.areaId = aid; T.secId = sid; T.areaName = s.area?.name ?? null; T.areaWait = s.area?.name && !twin ? 1e-4 : 0; }
+      if (T.areaWait > 0) {
+        if (s.story || s.cut) { if ((T.areaWait += dt) > 5) T.areaWait = 0; }
+        else { T.areaWait = 0; if (!keep && !(banner.on && banner.kind === 'area')) setBanner('area', s.area.name, s.section?.label && s.section.label !== s.area.name ? s.section.label : ''); }
+      }
       else if (sid !== T.secId) { T.secId = sid; if (s.section?.label && !keep && !(banner.on && banner.kind === 'area' && banner.t < 1.5)) setBanner('section', s.section.label); }
     }
     if (s.done && !(banner.on && banner.kind === 'clear')) setBanner('clear', s.doneTitle ?? opts.labels?.clear ?? '시범 구간 끝', s.doneSub ?? opts.labels?.clearSub ?? '공격 단추를 누르면 처음부터 다시 시작합니다');

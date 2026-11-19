@@ -22,9 +22,10 @@ export const SHOTS = {
   wake_past: { pitch: 0.1, dist: 480, lookY: 70 }, table: { pitch: 0.22, dist: 520, lookY: 80, yaw: 0.85 }, knot: { pitch: 0.16, dist: 360, lookY: 86, yaw: 0.85 },   // (from the side: the hero stands between the camera and whoever he speaks to)
   beside: { pitch: 0.26, dist: 500, lookY: 76, yaw: 0.85 },   // two people talking, seen from the side so that neither hides the other
   years: { pitch: 0.42, dist: 1040, lookY: 110 }, banshee_song: { pitch: 0.12, dist: 1100, lookY: 220 }, two_keepers: { pitch: 0.5, dist: 444, lookY: 80, at: [4186, 1436], yaw: 0, tallK: 0 },   // the big bell from the churchyard below the terrace: Lotte left of it, Elise right (both nights: the same picture a hundred years apart)
-  ring_widen: { pitch: 0.62, dist: 1500, lookY: 120, at: [4130, 1500], yaw: 0, tallK: 0 },
-  // STORY2 (11-19): the inn's lit window, for the narrator's last line (the house stands 2,200 px west of the bell: `cut` = the camera does not travel there and back, it cuts)
-  inn_window: { pitch: 0.05, dist: 250, lookY: 92, at: [1985, 300], yaw: -0.15, tallK: 0, cut: true },
+  ring_widen: { pitch: 0.48, dist: 1050, lookY: 140, at: [4050, 1480], yaw: 0, tallK: 0 },   // STORY2 (11-19): was pitch 0.62 from 1500 at (4130, 1500) - two thirds dark roofs and the unlit graveyard side (mean brightness 40 against 60 of the cut before it); now the lit church front, the bell and the stairs the town comes up
+  // STORY2 (11-19): the inn's lit window beside its door, for the narrator's last line. The house stands 2,200 px west of the bell: `cut` = the camera does not travel
+  // there and back, it cuts; `groundY` = the floor lookY counts from (the street - the hero stands on the terrace, 84 higher)
+  inn_window: { pitch: 0.04, dist: 270, lookY: 90, groundY: 0, at: [1706, 300], yaw: 0.13, tallK: 0, cut: true },
 };
 
 /** the saved game, or null (nothing saved, another version, broken data) */

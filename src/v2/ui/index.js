@@ -53,6 +53,7 @@ export function createHud(game, opts = {}) {
 
     banner: canvas.banner, toast: canvas.toast, callout: canvas.callout, number: canvas.number,
     showDialog(d) { dialog.show(d); }, advanceDialog() { dialog.advance(); }, closeDialog() { dialog.close(); },
+    preloadPortraits(ids) { return dialog.preload(ids); }, get portraitsReady() { return dialog.preloaded; },   // STORY2: the speakers' busts ahead of the first line (UI_API 2) -> a promise { n, ms }
     openPause(o) { pause.show(o); }, closePause() { pause.close(); },
     showEnd(o) { end.show(o); }, tapEnd() { return end.tap(); }, closeEnd() { end.close(); },   // CHAPTER: the ending card (endcard.js)
     setPad(p) { pad?.setState(p); },

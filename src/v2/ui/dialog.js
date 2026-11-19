@@ -168,6 +168,14 @@ export function createDialog(env) {   // env: { game, input, hud (canvas HUD: la
       ctx.globalAlpha = 1;
     },
     info() { return D.open ? { page: D.page, pages: D.pages.length, shown: Math.floor(D.shown), total: D.total, sel: D.sel, choices: D.d.choices ?? null, box: { x: box.x + 8, y: box.y + box.top, w: box.pw, h: box.ph, top: box.y }, text: { x: box.x + box.tx, y: box.y + box.ty, w: box.tw, h: box.lineH * MAX_LINES }, choiceRects: D.d.choices ? choiceC.slice(0, D.d.choices.length).map((p) => ({ x: p.x, y: p.y, w: p.w, h: p.h })) : [] } : null; },
+    /** STORY2 (11-19): the busts of everyone who can speak, loaded and decoded ahead (the scene calls it while its first area loads; nothing waits on the first
+     *  frame for it) - the first page of a speaker's first line of a session used to open with an empty frame. -> a promise: { n, ms } when all are ready (or failed) */
+    preload(ids) {
+      const t0 = performance.now(), P = [];
+      for (const id of ids ?? []) { const im = portraitOf(id); if (!im || (im.complete && im.naturalWidth > 0)) continue; P.push((im.decode ? im.decode() : new Promise((r) => { im.addEventListener('load', r, { once: true }); im.addEventListener('error', r, { once: true }); })).catch(() => {})); }
+      return Promise.all(P).then(() => { D.epoch = -1; return (D.pre = { n: portraits.size, ms: Math.round(performance.now() - t0) }); });
+    },
+    get preloaded() { return D.pre ?? null; },
     release() { for (const p of [box, pageC, ...choiceC]) if (p.c) { p.c.width = 1; p.c.height = 1; p.c = null; } portraits.clear(); },
   };
 }

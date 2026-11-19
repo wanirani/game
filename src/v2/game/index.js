@@ -157,7 +157,7 @@ export default class V2Game extends Scene {
     return UI_LOADER().then((m) => {
       if (!this.glr || g.top !== this || typeof m.createHud !== 'function') return;
       const h = m.createHud(g, { onPause: () => this._pause(), onDisabledPress: (id) => this._padOff(id) }); if (!h) return;
-      const old = this.hud; this.hud = h; this.hudKind = 'ui';
+      const old = this.hud; this.hud = h; this.hudKind = 'ui'; this._preBusts();   // (STORY2: the speakers' busts, ahead of the first line)
       try { if (old && old !== h) (old.release ?? old.dispose)?.call(old); } catch { /* built-in */ }
       if (h.padHideButtons) this.padHideButtons = h.padHideButtons;
       if (h.hidePad) { this.showPad = false; this.hidePad = true; }
@@ -523,6 +523,7 @@ export default class V2Game extends Scene {
     await this.cx.breath(10); if (!this.glr) return;
     this._warm(2);   // (CROSSING: under the passage this only clears the effects - the second, clean frame is the first frame of the reveal)
     this.cx.mark(11); await this.cx.hold(); if (!this.glr) return;   // CROSSING: the passage has its time (1.2 s; 3 s for the long form) even when the load was quicker
+    if (this._bustsP) { const p = this._bustsP, tb = performance.now(); this._bustsP = null; await Promise.race([p, new Promise((r) => setTimeout(r, 1200))]); this.bustsWaitMs = Math.round(performance.now() - tb); if (!this.glr) return; }   // STORY HOOK (STORY2): the first line never opens before the busts are decoded - they loaded beside the area, so this waits 0 ms as a rule (1.2 s at most)
     this.loadMs = Math.round(performance.now() - t0);
     this.ready = true; this.state.loading = false; this.sampleN = 0;
     const quiet = this._quiet; this._quiet = false;
@@ -541,6 +542,7 @@ export default class V2Game extends Scene {
         if (!this.glr) return;
         const host = new StoryHost(this, mod, info);
         this.host = host; this.story = host.story; this.storyFlag = (n) => host.flag(n);
+        { const L = [], PP = mod.STORY.PEOPLE ?? {}; for (const k in PP) { const p = PP[k]; if (p.portrait && !L.includes(p.portrait)) L.push(p.portrait); for (const m in p.moods ?? {}) if (p.moods[m] && !L.includes(p.moods[m])) L.push(p.moods[m]); } this._busts = L; this._preBusts(); }   // STORY HOOK (STORY2): the speakers' busts load and decode while the first area loads
         const sv = params?.fresh ? null : readSave();
         at = sv ? host.restore(sv) : null;
         if (at && !named && (at.area === TEST_AREA || !(await hasArea(at.area)))) at = null;   // the test route is never a saved place (it does not save: the player would be shut in it)
@@ -553,6 +555,8 @@ export default class V2Game extends Scene {
     if (!this.glr) return;
     await this._load(area, spawn, keep);
   }
+  /** STORY HOOK (STORY2): hand the list of the speakers' busts to the cut-glass HUD's dialogue box (whichever of the story and the HUD arrives second calls this) */
+  _preBusts() { const h = this.hud; if (!this._busts || this._bustsOn === h || typeof h.preloadPortraits !== 'function') return; this._bustsOn = h; try { this._bustsP = h.preloadPortraits(this._busts); } catch { this._bustsP = null; } }
   /** after loading a save: a fight that was already won raises its end again (group.clear; a boss that was sent off), so that a story scene the save
    *  cut off can play again from its start (DATA_FORMAT 10) — sequences that had finished ignore it. Triggers fire again by themselves (not saved). */
   _raiseCleared() {
@@ -1121,7 +1125,7 @@ export default class V2Game extends Scene {
     // what the cut-glass HUD shows (docs/v2/UI_API.md 1): candles from health, enemies of the fight at hand, which pad buttons work
     { const hp = sim.hero.hp > 0 ? sim.hero.hp : 0, c = s.candles; c.lit = hp / (s.heroHpMax || 1) * c.max; }
     s.left = this.area.test ? 0 : awake;
-    { const H = this.host; if (H !== null) { s.objective = H.objective; s.cut = H.locks(); if (H.pillOn && !s.cut && !this.hud.modal && s.prompts === this.people.none) s.prompts = H.pills; } }   // STORY HOOK: the objective under the section name, the tutorial pill; state.cut = a camera cut or a lockInput step holds the hero (no pill here, no pad in the HUD)
+    { const H = this.host; if (H !== null) { s.objective = H.objective; s.cut = H.locks(); s.story = H.st.busy; if (H.pillOn && !s.cut && !this.hud.modal && s.prompts === this.people.none) s.prompts = H.pills; } }   // STORY HOOK: the objective under the section name, the tutorial pill; state.cut = a camera cut or a lockInput step holds the hero (no pill here, no pad in the HUD)
     { const bs = sim.bossState ? sim.bossState() : null, B = this._bossS;   // the boss bar: name, health, stagger and act straight from the rules (PLAY_API 7)
       if (bs) { B.id = bs.id; B.name = bs.name; B.hp = bs.hp; B.hpMax = bs.hpMax; B.stagger = bs.stagger; B.phase = bs.phase; B.kneel = bs.kneel; B.fled = bs.fled; B.staggered = bs.staggered;
         B.sub = bs.kneel ? '종을 길게 울려라' : bs.fled ? (this.area.era === 'past' ? '오늘 밤으로 쫓겨났다' : '그 밤으로 달아났다') : bs.staggered ? '비틀거린다' : bs.sub || (bs.phase === 2 ? '둘째 막' : ''); s.boss = B; }
