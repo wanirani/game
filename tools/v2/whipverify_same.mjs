@@ -130,7 +130,7 @@ for (let i = 0; i < RA.length; i++) {
     let best = null; for (const p of P) if (p.k === k && !p.used && p.t <= e[0] && e[0] - p.t <= 40) best = p;   // the newest unused press of that kind
     if (!best) { if (k === 'dash') continue; /* a roll out of a held guard with the stick pushed has no press of its own */ C.orphan.push({ seed: i + 1, tick: e[0], what: e[2] ?? e[1], last: P.filter((p) => p.k === k && p.t <= e[0]).slice(-2).map((p) => `${p.t}${p.used ? 'u' : ''}`).join(',') }); continue; }
     best.used = true; let w = e[0] - best.t; const w0 = w; if (!REAL) for (let t = best.t + 1; t <= e[0]; t++) w -= R.fz[t]; const c = C[k]; if (w0 > 12) C.lateReal = (C.lateReal ?? 0) + 1; if (w0 > (C.maxReal ?? 0)) C.maxReal = w0; c.fired++; c.waits[w] = (c.waits[w] ?? 0) + 1; if (w > c.maxWait) c.maxWait = w;
-    const lim = e[2] === 'sweep' ? 99 : (e[2] === 'c2' || e[2] === 'c3') ? 15 : 12; if (w > lim) c.late++; if (e[2] === 'sweep' && w > 12) C.sweepLate++;
+    const lim = e[2] === 'sweep' ? 99 : k === 'skill' ? Math.ceil((NEW.TUNE.bufT + (NEW.TUNE.bufHold ?? 0)) * 60) : (e[2] === 'c2' || e[2] === 'c3') ? 15 : 12; if (w > lim) c.late++; if (e[2] === 'sweep' && w > 12) C.sweepLate++;   // (WHIP2-VERIFY: a skill press is carried through a roll, a stun, the air and an open hit window since WHIP2 - its limit is bufT + bufHold, 33 ticks; the line below failed by design with the old 12)
     if (hurts.some((t) => t >= best.t && t < e[0])) c.afterHurt++;
   }
 }
@@ -140,7 +140,7 @@ console.log(`   sweeps out of a roll later than 12 ticks after their press (old 
 console.log(`   actions with no press of their own: ${C.orphan.length} ${JSON.stringify(C.orphan.slice(0, 12))}`);
 res.C = C;
 ok('no attack, jump or skill fires without a press of its own (a press never fires twice)', C.orphan.length === 0, C.orphan.length + ' orphans');
-ok('no press fires later than 12 rule ticks after it was made (a chained second or third hit: 15 = queueT; sweeps out of a roll aside)', C.attack.late + C.dash.late + C.jump.late + C.skill.late === 0);
+ok('no press fires later than 12 rule ticks after it was made (a chained second or third hit: 15 = queueT; a carried skill: bufT + bufHold = 33; sweeps out of a roll aside)', C.attack.late + C.dash.late + C.jump.late + C.skill.late === 0, `attack ${C.attack.late} · roll ${C.dash.late} · jump ${C.jump.late} · skill ${C.skill.late} (longest skill wait ${C.skill.maxWait})`);
 fs.mkdirSync(OUT, { recursive: true }); fs.writeFileSync(`${OUT}/same.json`, JSON.stringify(res, null, 1));
 ok('no press made before or as a hit lands fires after it', C.attack.afterHurt + C.dash.afterHurt + C.jump.afterHurt + C.skill.afterHurt === 0);
 console.log(fails ? `FAILED ${fails}` : 'ALL OK');
