@@ -221,7 +221,146 @@ if (PAGE_PARTS.some(want)) {
           const after = await ev(() => { const F = window.__F; const h0 = F.hero(); F.tick(30); return { h0, h1: F.hero(), pad: F.M().pad?.shown }; });
           ok(`${DEV}: after the last close the game goes on, nothing was carried over (no swing, no roll, no jump)`, after.h1.t > after.h0.t && after.h1.move === null && after.h1.buf === '' && after.pad === true, JSON.stringify({ move: after.h1.move, buf: after.h1.buf, pad: after.pad }));
         }
+        // ───────────── the bag ─────────────
+        if (want('bag')) {
+          const g = await ev(() => { const F = window.__F, sc = window.__v2.scene; sc.brk.coins = 37; sc.state.coins = 37; F.tick(3); const okP = F.openPause(); F.tick(8); F.pauseRow('bag'); F.tick(12); const m = F.M(); return { okP, screen: sc.hud.screen, modal: sc.hud.modal, m: m.screen, safe: F.safe(), model: F.model(), pad: m.pad?.shown }; });
+          const S = g.safe, m = g.m;
+          ok(`${DEV}: the row 「가방」 (touch) opens the bag; the game is stopped the same way, the pad is gone`, g.okP && g.screen === 'bag' && g.modal === 'pause' && g.pad === false, `screen ${g.screen} modal ${g.modal}`);
+          ok(`${DEV}: the bag lies inside the safe area, its close button is a 56 px target`, !!m && inside(m.frame, S) && inside(m.close, S) && inside(m.list, m.frame) && m.close.w * S.css >= 55.5, m ? `frame ${R(m.frame)} · close ${Math.round(m.close.w * S.css)} CSS px` : '');
+          ok(`${DEV}: what he carries: four things of the story on the left, the bread among the things that are used up on the right`, g.model.bag === 'valkrein_knot wolfram_notice key_silver order_slip | lotte_bread' && !!m && m.n === 4, g.model.bag + ` · ${m?.n} rows`);
+          ok(`${DEV}: the silver count stands on the bag (37), inside the frame, clear of the close button`, !!m && !!m.coins && m.coins.n === 37 && inside(m.coins, m.frame) && !hits(m.coins, m.close), m ? R(m.coins) + ' n ' + m.coins?.n : '');
+          await shot('bag');
+          const cl = await ev(() => { const F = window.__F, sc = window.__v2.scene; F.closeBtn(); F.tick(10); const p = F.M().pause, a = { screen: sc.hud.screen, modal: sc.hud.modal, sel: p ? p.ids[p.sel] : null }; F.pauseRow('resume'); F.tick(6); const h0 = F.hero(); F.tick(30); return { a, modal: sc.hud.modal, h0, h1: F.hero() }; });
+          ok(`${DEV}: closed by its button the panel is back on 「가방」; 「이어 하기」 (touch) and the game goes on with nothing carried over`, cl.a.screen === null && cl.a.modal === 'pause' && cl.a.sel === 'bag' && cl.modal === null && cl.h1.t > cl.h0.t && cl.h1.move === null && cl.h1.buf === '', JSON.stringify(cl.a));
+        }
       }
+
+      // ───────────── the chip and the cards ─────────────
+      if (want('cards')) {
+        await open(32);
+        const c0 = await ev(() => { const F = window.__F; F.tick(20); const m = F.M(); return { chip: m.cards.chip, sounds: F.sounds.slice(), model: F.model(), pause: m.pad?.buttons?.find((q) => q.id === 'pause') ?? null, safe: F.safe(), rect: window.__game.canvasRect }; });
+        const S = c0.safe;
+        ok(`${DEV}: a save of an earlier build with written entries: the book chip is up after the load, without a chime`, !!c0.chip && c0.model.chip === true && !c0.sounds.includes('book.chime'), `model.chip ${c0.model.chip} sounds [${c0.sounds.join(' ')}]`);
+        if (c0.chip && c0.pause) {
+          const ch = c0.chip, px = (c0.pause.cx - c0.rect.x) / S.css, py = (c0.pause.cy - c0.rect.y) / S.css, pr = (c0.pause.d / 2 + 8) / S.css;
+          const dx = Math.max(ch.x - px, 0, px - (ch.x + ch.w)), dy = Math.max(ch.y - py, 0, py - (ch.y + ch.h)), gap = Math.hypot(dx, dy) - pr;
+          ok(`${DEV}: the chip is a 56 px target inside the safe area, clear of the pause button's touch circle`, ch.w * S.css >= 55.5 && ch.h * S.css >= 55.5 && inside(ch, S) && gap >= -0.01, `${Math.round(ch.w * S.css)} CSS px at ${R(ch)} · ${(gap * S.css).toFixed(1)} CSS px from the pause button's circle`);
+        }
+        await shot('chip');
+        const c1 = await ev(() => { const F = window.__F, sc = window.__v2.scene, h0 = F.hero(); F.tapRect(F.M().cards.chip); F.tick(12); const a = { screen: sc.hud.screen, modal: sc.hud.modal, chip: F.model().chip, panel: !!F.M().pause }; F.closeBtn(); F.tick(10); const b = { screen: sc.hud.screen, modal: sc.hud.modal, panel: !!F.M().pause }; F.tick(30); return { a, b, h0, h1: F.hero(), chipNow: !!F.M().cards.chip }; });
+        ok(`${DEV}: a touch on the chip opens the book and the chip is gone; closed, the game goes straight on (no panel) - no roll, no swing from either touch`, c1.a.screen === 'chronicle' && c1.a.modal === 'pause' && c1.a.chip === false && c1.b.screen === null && c1.b.modal === null && !c1.b.panel && !c1.chipNow && c1.h1.move === null && c1.h1.buf === '' && c1.h1.dashT <= 0, JSON.stringify({ a: c1.a, b: c1.b, move: c1.h1.move }));
+        // the story writes: the grandson's drawer (the spot's interact is raised as its pill would; every page is turned by a touch)
+        const run = await ev(() => {
+          const F = window.__F, sc = window.__v2.scene, H = sc.host, d = sc.area.interact.find((q) => q.id === 'smithy_door'), seen0 = H.seen.length, t0 = sc.sim.time;
+          const hitsR = (a, b) => a.x < b.x + b.w - 0.01 && b.x < a.x + a.w - 0.01 && a.y < b.y + b.h - 0.01 && b.y < a.y + a.h - 0.01;
+          sc.emit('interact', { id: d.id, kind: d.kind, event: d.event ?? null, data: d.data ?? null, locked: d.locked ?? null, spot: d });
+          const out = { maxUp: 0, maxWait: 0, onDialog: 0, onToast: 0, onBanner: 0, onPad: 0, outside: 0, left: 0, kinds: new Set(), cardWhilePlay: 0, tPlay0: 0, tPlay1: 0, pages: 0, rects: [], shotAt: -1 };
+          const S = F.safe(), rc = window.__game.canvasRect;
+          let dt = 0, tapT = null;
+          for (let i = 0; i < 1500; i++) {
+            const modal = sc.hud.modal;
+            if (modal === 'dialog') { if (++dt >= 9) { dt = 0; F.tap(S.vw / 2, S.vh * 0.3, 1); out.pages++; continue; } }
+            F.tick(1, i % 6 === 0);
+            const m = F.M(), up = m.cards.up;
+            out.maxUp = Math.max(out.maxUp, up.length); out.maxWait = Math.max(out.maxWait, m.cards.waiting);
+            for (const c of up) {
+              out.kinds.add(c.kind + (c.kind === 'item' ? ':' + c.icon : '')); if (out.rects.length < 6 && !out.rects.some((q) => q.text === c.text)) out.rects.push({ text: c.text, x: c.x, y: c.y, w: c.w, h: c.h });
+              if (!(c.x >= S.x && c.y >= S.y && c.x + c.w <= S.x + S.w && c.y + c.h <= S.y + S.h)) out.outside++;
+              if (c.x < S.vw * 0.5) out.left++;
+              if (m.dialog && (hitsR(c, m.dialog.box) || (m.dialog.cards && m.dialog.cards.rects.some((q) => hitsR(c, q))))) out.onDialog++;
+              for (const t of m.hud.toastRects ?? []) if (hitsR(c, t)) out.onToast++;
+              if (m.hud.bannerRect && hitsR(c, m.hud.bannerRect)) out.onBanner++;
+              if (m.pad && m.pad.shown) for (const b of m.pad.buttons) { if (m.pad.cut && b.id !== 'pause') continue; const bx = (b.cx - rc.x) / S.css, by = (b.cy - rc.y) / S.css, br = b.d / 2 / S.css; if (hitsR(c, { x: bx - br, y: by - br, w: br * 2, h: br * 2 })) out.onPad++; }
+              if (!modal) { out.cardWhilePlay++; if (!out.tPlay0) out.tPlay0 = sc.sim.time; out.tPlay1 = sc.sim.time; if (out.shotAt < 0 && c.kind === 'item') out.shotAt = i; }
+            }
+            if (out.shotAt === i) break;   // (a still is taken here; the loop goes on in the next call)
+            if (!modal && !H.st.busy && up.some((c) => c.tap && c.t > 0.2)) { tapT = up.find((c) => c.tap); break; }
+          }
+          return { ...out, kinds: [...out.kinds], seen: H.seen.slice(seen0).filter((e) => e[0] === 'notice').map((e) => e[1]), sounds: F.sounds.slice(), tapT, modal: sc.hud.modal, busy: H.st.busy, chip: F.model().chip, t0, t1: sc.sim.time };
+        });
+        if (run.shotAt >= 0) await shot('card_item');
+        // go on until the card 「연대기에 적혔다」 can be pressed
+        const run2 = run.tapT ? run : await ev(() => { const F = window.__F, sc = window.__v2.scene, H = sc.host; let tapT = null, n = 0, maxUp = 0, moved = 0; const t0 = sc.sim.time; for (let i = 0; i < 1500; i++) { if (sc.hud.modal === 'dialog') { if (i % 9 === 0) F.tap(F.safe().vw / 2, F.safe().vh * 0.3, 1); else F.tick(1, false); continue; } F.tick(1, i % 6 === 0); const up = F.M().cards.up; maxUp = Math.max(maxUp, up.length); if (!sc.hud.modal && !H.st.busy && up.some((c) => c.tap && c.t > 0.2)) { tapT = up.find((c) => c.tap); break; } } return { tapT, maxUp, t0, t1: sc.sim.time, chip: F.model().chip, seen: H.seen.filter((e) => e[0] === 'notice').map((e) => e[1]).slice(-8), sounds: F.sounds.slice() }; });
+        const seen = [...new Set([...(run.seen ?? []), ...(run2.seen ?? [])])], sounds = run2.sounds ?? run.sounds;
+        ok(`${DEV}: the story's give steps raise the cards 「얻었다 — …」 with the thing's own picture, its chronicle step the card 「연대기에 적혔다 — 묘지 문 열쇠」`, seen.includes('얻었다 — 낡은 은 열쇠') && seen.includes('얻었다 — 빈칸 주문서') && seen.includes('연대기에 적혔다 — 묘지 문 열쇠') && run.kinds.includes('item:key_silver'), seen.join(' · ') + ' · kinds ' + run.kinds.join(' '));
+        ok(`${DEV}: the runner adds no second notice for a thing the card has shown (one line each)`, seen.filter((x) => x === '얻었다 — 낡은 은 열쇠').length === 1);
+        ok(`${DEV}: the book's chime and the cards' rise go through the feel table`, sounds.includes('book.chime') && sounds.includes('card.rise'), sounds.join(' '));
+        ok(`${DEV}: the cards stand at the right under the pause button, inside the safe area: never on the dialogue box, the choice cards, a toast, the banner or a pad button`, run.outside === 0 && run.left === 0 && run.onDialog === 0 && run.onToast === 0 && run.onBanner === 0 && run.onPad === 0 && run.rects.length > 0, `${run.rects.map((r) => R(r)).join(' | ')} · up at once ${Math.max(run.maxUp, run2.maxUp ?? 0)} · waiting at most ${run.maxWait}`);
+        ok(`${DEV}: a card does not stop the game (cards were up in play while the rules' clock ran on, hud.modal null)`, run.cardWhilePlay > 0 && run.tPlay1 > run.tPlay0, `${run.cardWhilePlay} ticks with a card up in play, clock ${run.tPlay0.toFixed(2)} -> ${run.tPlay1.toFixed(2)}`);
+        ok(`${DEV}: the chip is up again`, run2.chip === true);
+        const T = run2.tapT;
+        ok(`${DEV}: the card 「연대기에 적혔다」 is up in play and its touch area is 56 px high`, !!T && T.hitH * S.css >= 55.5, T ? `${T.text} · ${R(T)} · touch ${Math.round(T.hitH * S.css)} CSS px` : 'never up');
+        if (T) {
+          await shot('card_chronicle');
+          const o = await ev((T) => { const F = window.__F, sc = window.__v2.scene, h0 = F.hero(); F.tap(T.x + T.w / 2, T.y + T.h / 2, 2); F.tick(12); const m = F.M().screen, row = m ? m.rows.find((r) => r.id === 'graveyard_key') : null; const a = { screen: sc.hud.screen, modal: sc.hud.modal, row, list: m ? m.list : null, chip: F.model().chip, cards: F.M().cards.up.filter((c) => c.tap).length }; return { a, h0, h1: F.hero() }; }, T);
+          const row = o.a.row, L = o.a.list;
+          ok(`${DEV}: a touch on that card opens the book AT that entry (its row in the window, new, a pair), the chip goes, the card is gone`, o.a.screen === 'chronicle' && !!row && row.on && row.kind === 'pair' && row.isNew && row.y >= L.y - 1 && row.y + row.h <= L.y + L.h + 1 && o.a.chip === false && o.a.cards === 0, row ? `row ${R(row)} in list ${R(L)}` : 'no row');
+          ok(`${DEV}: …and the touch did nothing in the game (no roll, no swing, the hero where he was)`, o.h1.x === o.h0.x && o.h1.move === null && o.h1.buf === '' && o.h1.dashT <= 0);
+          await shot('book_at_entry');
+          await ev(() => { const F = window.__F; F.closeBtn(); F.tick(10); });
+        }
+      }
+
+      // ───────────── a choice as cards ─────────────
+      if (want('choice')) {
+        await open(28);
+        const c = await ev(() => {
+          const F = window.__F, sc = window.__v2.scene, H = sc.host, S = F.safe();
+          const def = sc.area.actors.find((a) => a.talk === 'hadwin1.smithy') ?? { id: 'hadwin1', talk: 'hadwin1.smithy' };
+          sc.emit('talk', { id: def.id, talk: 'hadwin1.smithy', actor: def });
+          const flags = () => Object.keys(H.st.state.flags).filter((k) => k.startsWith('key_')).join(' ');
+          let n = 0, pages = 0; while (n++ < 1200) { const d = F.M().dialog; if (d && d.cards) break; if (sc.hud.modal === 'dialog' && n % 9 === 0) { F.tap(S.vw / 2, S.vh * 0.3, 1); pages++; } else F.tick(1, false); }
+          const d0 = F.M().dialog, r = d0.choiceRects;
+          // a stray tap meant for the dialogue, on the very place a card has come up, in the tick it came up
+          F.tap(r[0].x + r[0].w / 2, r[0].y + r[0].h / 2, 1); const stray = { sel: F.M().dialog?.sel, armed: F.M().dialog?.cards?.armed, flags: flags(), modal: sc.hud.modal };
+          F.tick(30); const d1 = F.M().dialog, box = d1.box, top = d1.box.top;
+          const lay = { rects: d1.choiceRects, box, top, big: d1.cards.big, safe: S, labels: d1.choices };
+          F.tap(r[1].x + r[1].w / 2, r[1].y + r[1].h / 2, 1); F.tick(2); const one = { sel: F.M().dialog?.sel, flags: flags(), modal: sc.hud.modal }; F.draw();
+          return { pages, stray, lay, one };
+        });
+        const S = c.lay.safe, rs = c.lay.rects;
+        ok(`${DEV}: the smith's question shows two cards (은 열쇠 · 쇠 열쇠) with picture and line`, rs.length === 2 && c.lay.big === true && c.lay.labels.join(' ') === '은 열쇠 쇠 열쇠', c.lay.labels.join(' / '));
+        ok(`${DEV}: a tap meant for the dialogue, landing on a card in the tick the cards come up, chooses nothing`, c.stray.sel === -1 && c.stray.flags === '' && c.stray.modal === 'dialog' && c.stray.armed === false, JSON.stringify(c.stray));
+        ok(`${DEV}: each card is 56 px or more both ways, inside the safe area, above the dialogue box, side by side`, rs.every((r) => r.w * S.css >= 56 && r.h * S.css >= 56 && inside(r, S) && r.y + r.h <= c.lay.top + 0.5) && rs[0].x + rs[0].w <= rs[1].x, rs.map((r) => `${Math.round(r.w * S.css)}x${Math.round(r.h * S.css)} CSS at ${R(r)}`).join(' | ') + ` · box top ${Math.round(c.lay.top)}`);
+        ok(`${DEV}: the first tap on a card only chooses it (the story has decided nothing)`, c.one.sel === 1 && c.one.flags === '' && c.one.modal === 'dialog', JSON.stringify(c.one));
+        await shot('choice');
+        const c2 = await ev(() => {
+          const F = window.__F, sc = window.__v2.scene, H = sc.host, S = F.safe(), r = F.M().dialog.choiceRects;
+          const flags = () => Object.keys(H.st.state.flags).filter((k) => k.startsWith('key_')).join(' ');
+          F.tap(S.vw / 2, S.y + 6, 1); F.tick(2); const off = { sel: F.M().dialog?.sel, flags: flags() };
+          F.tap(r[0].x + r[0].w / 2, r[0].y + r[0].h / 2, 1); F.tick(9); const a = { sel: F.M().dialog?.sel, flags: flags() };
+          F.tap(r[0].x + r[0].w / 2, r[0].y + r[0].h / 2, 1); F.tick(3); const b = { flags: flags(), modal: sc.hud.modal, cards: F.M().dialog?.cards ?? null };
+          let n = 0; while (n++ < 900 && (sc.hud.modal === 'dialog' || H.st.busy)) { if (sc.hud.modal === 'dialog' && n % 9 === 0) F.tap(S.vw / 2, S.vh * 0.3, 1); else F.tick(1, false); }
+          return { off, a, b, end: { flags: flags(), modal: sc.hud.modal, busy: H.st.busy, h: F.hero() } };
+        });
+        ok(`${DEV}: a tap beside the cards lets go of the chosen one`, c2.off.sel === -1 && c2.off.flags === '', JSON.stringify(c2.off));
+        ok(`${DEV}: a second tap on the same card decides - 은 열쇠: the story goes on with key_order_silver`, c2.a.sel === 0 && c2.a.flags === '' && c2.b.flags === 'key_order_silver' && c2.b.cards === null, JSON.stringify(c2.a) + ' -> ' + JSON.stringify(c2.b));
+        ok(`${DEV}: the scene ends as written (key_entrusted), nothing of the taps reaches the rules`, c2.end.flags === 'key_order_silver key_entrusted' && c2.end.modal === null && c2.end.h.move === null && c2.end.h.buf === '', JSON.stringify(c2.end.flags));
+        // the old pad's built-in HUD shows the same cards
+        const st = await open(28, '&v2ui=0');
+        const o = await ev(() => {
+          const F = window.__F, g = window.__game, sc = window.__v2.scene, H = sc.host, S = F.safe(), cv = g.canvas;
+          const cvTap = (lx, ly) => { const c = F.toClient(lx, ly), o = { pointerId: 44, pointerType: 'touch', isPrimary: true, clientX: c[0], clientY: c[1], bubbles: true, cancelable: true, button: 0, buttons: 1 }; cv.dispatchEvent(new PointerEvent('pointerdown', o)); F.tick(1, false); window.dispatchEvent(new PointerEvent('pointerup', { ...o, buttons: 0 })); F.tick(1, false); };
+          const flags = () => Object.keys(H.st.state.flags).filter((k) => k.startsWith('key_')).join(' ');
+          const def = sc.area.actors.find((a) => a.talk === 'hadwin1.smithy') ?? { id: 'hadwin1', talk: 'hadwin1.smithy' };
+          sc.emit('talk', { id: def.id, talk: 'hadwin1.smithy', actor: def });
+          let n = 0; while (n++ < 2400 && !(sc.hud.choiceCards && sc.hud.choiceCards.open)) { if (sc.hud.modal === 'dialog' && n % 20 === 0) cvTap(S.vw / 2, S.vh * 0.3); else F.tick(1, false); }
+          const C = sc.hud.choiceCards; if (!C || !C.open) return { err: 'the cards did not come up on the built-in HUD', kind: sc.hudKind, modal: sc.hud.modal, flags: flags() };
+          F.tick(2); const r = C.rects(); cvTap(r[1].x + r[1].w / 2, r[1].y + r[1].h / 2); const stray = { sel: C.sel, flags: flags() };
+          F.tick(30); F.draw(); cvTap(r[1].x + r[1].w / 2, r[1].y + r[1].h / 2); F.tick(2); const one = { sel: C.sel, flags: flags(), modal: sc.hud.modal };
+          return { kind: sc.hudKind, rects: r, stray, one, safe: S };
+        });
+        if (o.err) ok(`${DEV}: the old pad's built-in HUD shows the same cards`, false, JSON.stringify(o));
+        else {
+          await shot('choice_oldpad');
+          const o2 = await ev(() => { const F = window.__F, g = window.__game, sc = window.__v2.scene, H = sc.host, C = sc.hud.choiceCards, r = C.rects(), cv = g.canvas;
+            const cvTap = (lx, ly) => { const c = F.toClient(lx, ly), o = { pointerId: 44, pointerType: 'touch', isPrimary: true, clientX: c[0], clientY: c[1], bubbles: true, cancelable: true, button: 0, buttons: 1 }; cv.dispatchEvent(new PointerEvent('pointerdown', o)); F.tick(1, false); window.dispatchEvent(new PointerEvent('pointerup', { ...o, buttons: 0 })); F.tick(1, false); };
+            F.tick(9); cvTap(r[1].x + r[1].w / 2, r[1].y + r[1].h / 2); F.tick(3); return { open: C.open, flags: Object.keys(H.st.state.flags).filter((k) => k.startsWith('key_')).join(' '), modal: sc.hud.modal }; });
+          ok(`${DEV}: the old pad's built-in HUD (v2ui=0) asks on the same two cards: an early tap chooses nothing, the first tap chooses, the second decides (쇠 열쇠 -> key_order_iron)`, o.kind === 'builtin' && o.rects.length === 2 && o.stray.sel === -1 && o.stray.flags === '' && o.one.sel === 1 && o.one.flags === '' && o.one.modal === 'dialog' && !o2.open && o2.flags.includes('key_order_iron'), JSON.stringify({ stray: o.stray, one: o.one, two: o2 }));
+          ok(`${DEV}: …cards of 56 px inside the safe area there too`, o.rects.every((r) => r.w * o.safe.css >= 56 && r.h * o.safe.css >= 56 && inside(r, o.safe)), o.rects.map((r) => R(r)).join(' | '));
+        }
+      }
+      // @@PARTS3@@
       await ctx.close();
     }
   } catch (e) { errs.push('[tool] ' + String(e?.stack ?? e).slice(0, 600)); }
