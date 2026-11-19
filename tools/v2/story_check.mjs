@@ -62,6 +62,8 @@ const mod = await import(pathToFileURL(path.join(DIR, 'index.js')).href);
 const S = mod.STORY, createStory = mod.createStory;
 if (!S || typeof createStory !== 'function') { console.error('index.js must export STORY and createStory'); process.exit(1); }
 const { PEOPLE, DIALOGS, EVENTS, ITEMS, OBJECTIVES, CHRONICLE, FLAGS, TEXT } = S;
+const SHOP = S.SHOP || {};   // SCREENS (11-19): keepers' goods (DATA_FORMAT 7b)
+const ICONS = new Set((fs.readFileSync(path.join(ROOT, 'src/v2/ui/icons.js'), 'utf8').match(/^  ([a-z_]+)\(c\)/gm) || []).map((m) => m.trim().replace('(c)', '')));   // the pictures drawn in code
 
 // ───────────────────────── 2. the world (read only) ─────────────────────────
 const world = { areas: {}, ids: [] };
@@ -94,7 +96,7 @@ const ENGINE_EVENTS = new Set(['area.enter', 'section.enter', 'enemy.kill', 'are
   'interact', 'talk', 'group.clear', 'bell.echo', 'boss.phase', 'bell.held']);
 const STEP_ARITY = { say: [1, 1], banner: [2, 3], toast: [1, 2], prompt: [1, 1], give: [1, 2], take: [1, 2], setFlag: [1, 2], clearFlag: [1, 1], unlockExit: [1, 2], lockExit: [1, 3],
   wakeGroup: [1, 1], spawn: [2, 3], moveActor: [2, 3], moveHero: [1, 2], putActor: [2, 3], hideActor: [1, 2], showActor: [1, 2], camera: [1, 2], wait: [1, 1], sound: [1, 2], music: [1, 1], fx: [1, 2], objective: [1, 1],
-  chronicle: [1, 1], candle: [1, 1], moon: [1, 1], ring: [1, 1], save: [0, 0], gotoArea: [1, 2], bellCross: [0, 1], lockInput: [1, 1], if: [2, 3], run: [1, 1], end: [1, 1] };
+  chronicle: [1, 1], candle: [1, 1], moon: [1, 1], ring: [1, 1], save: [0, 0], gotoArea: [1, 2], bellCross: [0, 1], lockInput: [1, 1], if: [2, 3], run: [1, 1], end: [1, 1], shop: [1, 1] };
 
 const width = (line) => { let w = 0; for (const ch of line) { const c = ch.codePointAt(0); w += (c >= 0x1100 && c <= 0x11ff) || (c >= 0x2e80 && c <= 0xa4cf) || (c >= 0xac00 && c <= 0xd7a3) || (c >= 0xf900 && c <= 0xfaff) || (c >= 0xff00 && c <= 0xff60) ? 1 : 0.5; } return w; };
 const MAX_LINES = 2, MAX_W = 30;
@@ -180,6 +182,7 @@ function checkSteps(steps, who, ctx) {
       case 'music': if (!(TEXT.music && TEXT.music[a]) && !hooks.music.has(a)) err(`${w}: music "${a}" is neither an area music id nor in TEXT.music`); break;
       case 'objective': if (a != null && !OBJECTIVES[a]) err(`${w}: objective "${a}" unknown`); if (a != null) ctx.objectives.add(a); break;
       case 'chronicle': if (!CHRONICLE[a]) err(`${w}: chronicle "${a}" unknown`); ctx.chron.add(a); break;
+      case 'shop': if (!SHOP[a]) err(`${w}: shop "${a}" is not in SHOP`); break;
       case 'save': if (!(ctx.top && i === steps.length - 1)) err(`${w}: save must be the last step of a sequence`); break;
       case 'gotoArea': if (!built(a) && !ctx.waiting) err(`${w}: area "${a}" is not built (mark the sequence waiting)`); if (built(a) && b && !world.areas[a].spawns[b]) err(`${w}: area ${a} has no spawn "${b}"`); break;
       case 'if': useCond(a, who); checkSteps(b, who + ' if', { ...ctx, top: false }); if (c) checkSteps(c, who + ' else', { ...ctx, top: false }); break;
@@ -206,6 +209,8 @@ for (const [key, vs] of Object.entries(DIALOGS)) {
       if (!Array.isArray(o) || o.length !== 2) err(`${who}: a choice has exactly two options`);
       (o || []).forEach((op, k) => {
         if (typeof op.label !== 'string' || !op.label || width(op.label) > 8) err(`${who}: choice label ${k + 1} missing or wider than 8`);
+        if (op.icon != null && !ICONS.has(op.icon)) err(`${who}: choice ${k + 1} icon "${op.icon}" is not drawn in src/v2/ui/icons.js`);   // SCREENS: the choice card's picture and its one line
+        if (op.line != null && (typeof op.line !== 'string' || op.line.includes('\n') || width(op.line) > 18)) err(`${who}: choice ${k + 1} line must be one line, at most 18 wide`);
         (op.pages || []).forEach((p, j) => checkPage(p, `${who} option ${k + 1} page ${j + 1}`));
         if (op.then) checkSteps(op.then, key, { ...used, top: false });
       });
@@ -261,6 +266,9 @@ for (const [id, it] of Object.entries(ITEMS)) {
   if (!it.name || width(it.name) > 10) err(`ITEMS.${id}: name missing or wider than 10`);
   if (!it.desc || it.desc.includes('\n') || width(it.desc) > 40) err(`ITEMS.${id}: desc must be one line, at most 40 wide`);
   if (!itemGive.has(id)) err(`ITEMS.${id}: nothing gives it`);
+  if (!ICONS.has(it.icon)) err(`ITEMS.${id}: icon "${it.icon}" is not drawn in src/v2/ui/icons.js`);   // SCREENS: the bag and the item card
+  if (it.gone != null && (typeof it.gone !== 'string' || width(it.gone) > 10)) err(`ITEMS.${id}: gone must be a short phrase (at most 10 wide)`);
+  if (it.gone != null && !itemTake.has(id)) err(`ITEMS.${id}: gone is set but nothing takes the item`);
 }
 for (const [id, list] of itemTake) if (!itemGive.has(id)) err(`item ${id} is taken by ${list[0]} but never given`);
 for (const [id, list] of itemRead) if (!itemGive.has(id)) err(`item ${id} is tested by ${list[0]} but never given`);
@@ -279,7 +287,38 @@ for (const [id, c] of Object.entries(CHRONICLE)) {
   if (c.kind === 'blank' && !open && !(c.past && c.now)) err(`CHRONICLE.${id}: a filled blank needs past and now`);
   if (!open && !used.chron.has(id)) err(`CHRONICLE.${id}: no sequence writes it`);
   for (const t of [c.body, c.past, c.now]) if (t && width(t) > 90) err(`CHRONICLE.${id}: text wider than 90`);
+  // SCREENS (DATA_FORMAT 8): a written line names its page; a blank of this piece names its deed, the two titles joined across the fold, and where the deed is done
+  if (c.kind === 'line' && c.era !== 'now' && c.era !== 'past') err(`CHRONICLE.${id}: a line needs era 'now' | 'past' (the page it stands on)`);
+  if (c.kind === 'blank' && !open) {
+    if (!Array.isArray(c.did) || !c.did.length) err(`CHRONICLE.${id}: a blank of this piece needs did (the conditions of the deed)`); else useCond(c.did, 'chronicle:' + id);
+    for (const k of ['pastTitle', 'nowTitle']) if (!c[k] || width(c[k]) > 14) err(`CHRONICLE.${id}: ${k} missing or wider than 14`);
+    const pl = c.place;
+    if (!pl || !pl.at || width(pl.at) > 14 || !built(pl.area)) err(`CHRONICLE.${id}: place needs { area (a built area), at (at most 14 wide), if }`); else { useCond(pl.if, 'chronicle:' + id); if (world.areas[pl.area].era !== 'past') err(`CHRONICLE.${id}: place.area is not a 1697 area (a deed is done that night)`); }
+    for (const t of [c.past, c.now]) if (!/^(그 밤|오늘 밤) — /.test(t || '')) err(`CHRONICLE.${id}: past / now begin with 「그 밤 — 」 / 「오늘 밤 — 」 (the book strips it)`);
+  }
 }
+// SCREENS: shops (DATA_FORMAT 7b)
+const SHOP_USE = new Set(['draught', 'reso', 'guide']);
+for (const [id, sh] of Object.entries(SHOP)) {
+  if (sh.id !== id) err(`SHOP.${id}: id mismatch`);
+  if (!PEOPLE[sh.keeper]) err(`SHOP.${id}: keeper "${sh.keeper}" is not in PEOPLE`);
+  if (!sh.title || width(sh.title) > 12) err(`SHOP.${id}: title missing or wider than 12`);
+  for (const k of ['now', 'past']) { const t = sh.line && sh.line[k]; if (!t) err(`SHOP.${id}: line.${k} missing`); else t.split('\n').forEach((ln) => { if (width(ln) > MAX_W) err(`SHOP.${id}: line.${k} has a line wider than ${MAX_W}`); }); if (t && t.split('\n').length > MAX_LINES) err(`SHOP.${id}: line.${k} has more than ${MAX_LINES} lines`); }
+  for (const k of ['bought', 'poor', 'full', 'none']) if (!sh.say || !sh.say[k] || width(sh.say[k]) > MAX_W) err(`SHOP.${id}: say.${k} missing or wider than ${MAX_W}`);
+  if (!Array.isArray(sh.goods) || !sh.goods.length) err(`SHOP.${id}: no goods`);
+  const seenG = new Set();
+  for (const g of sh.goods || []) {
+    if (!g.id || seenG.has(g.id)) err(`SHOP.${id}: good id "${g.id}" missing or used twice`); seenG.add(g.id);
+    if (!g.name || width(g.name) > 10) err(`SHOP.${id}.${g.id}: name missing or wider than 10`);
+    if (!g.line || g.line.includes('\n') || width(g.line) > 40) err(`SHOP.${id}.${g.id}: line must be one line, at most 40 wide (${width(g.line || '')})`);
+    if (!Number.isInteger(g.price) || g.price < 1 || g.price > 999) err(`SHOP.${id}.${g.id}: price must be a whole number of silver`);
+    if (!Number.isInteger(g.limit) || g.limit < 0) err(`SHOP.${id}.${g.id}: limit must be 0 (none) or more`);
+    if (!ICONS.has(g.icon)) err(`SHOP.${id}.${g.id}: icon "${g.icon}" is not drawn in src/v2/ui/icons.js`);
+    if (!SHOP_USE.has(g.use)) err(`SHOP.${id}.${g.id}: use "${g.use}" (the scene knows ${[...SHOP_USE].join(' ')})`);
+  }
+  if (!EVENTS.some((e) => (e.steps || []).some((st) => st[0] === 'shop' && st[1] === id))) err(`SHOP.${id}: no sequence opens it`);
+}
+for (const k of ['close', 'pause', 'chronicle', 'bag', 'shop', 'choice', 'guide']) if (!(TEXT.screens && TEXT.screens[k])) err(`TEXT.screens.${k} missing (the screens' own words)`);
 for (const [id, p] of Object.entries(TEXT.prompts || {})) {
   if (p.action != null && !ACTIONS.has(p.action)) err(`TEXT.prompts.${id}: action "${p.action}" is not a pad action`);
   if (!p.tip || width(p.tip) > 30) err(`TEXT.prompts.${id}: tip missing or wider than 30 (${width(p.tip || '')})`);
@@ -301,7 +340,7 @@ for (const [id, p] of Object.entries(TEXT.prompts || {})) for (const m of (p.tip
 const YEAR_OK = new Set(['1797', '1697']);
 const allText = [];
 const walk = (v, where) => { if (typeof v === 'string') allText.push([where, v]); else if (Array.isArray(v)) v.forEach((x, i) => walk(x, where + '[' + i + ']')); else if (v && typeof v === 'object') for (const k of Object.keys(v)) walk(v[k], where + '.' + k); };
-walk({ DIALOGS, EVENTS, ITEMS, OBJECTIVES, CHRONICLE, TEXT: { ...TEXT, shots: null, music: null }, PEOPLE }, 'STORY');
+walk({ DIALOGS, EVENTS, ITEMS, OBJECTIVES, CHRONICLE, TEXT: { ...TEXT, shots: null, music: null }, PEOPLE, SHOP }, 'STORY');
 for (const [where, t] of allText) {
   for (const m of t.matchAll(/\d{4}/g)) if (!YEAR_OK.has(m[0])) err(`${where}: year ${m[0]} (only 1797 = 오늘 밤 and 1697 = 그 밤 are used)`);
   if (/1797[^·\n]{0,6}그 밤|1697[^·\n]{0,6}오늘 밤/.test(t)) err(`${where}: year and night do not match: ${t}`);
@@ -450,7 +489,8 @@ function play(route, policy, label, deferred) {
     unlockExit: (id, a) => out('unlock', a + '/' + id), lockExit: (id, k, a) => out('lock', a + '/' + id),
     objective: (text) => out('objective', text), chronicle: (e) => out('chronicle', e.title, e.kind === 'blank' ? e.past + ' → ' + e.now : e.body),
     candle: (n) => out('candle', n), moon: (n) => out('moon', n), ring: (n) => out('ring', n),
-    onFlag: (n, v) => { if (v) flagsSeen.add(n); }, onItem: (id, c) => { if (c > 0) itemsSeen.add(id); },
+    onFlag: (n, v) => { if (v) flagsSeen.add(n); }, onItem: (id, c) => { if (c > 0) itemsSeen.add(id); },   // (no answer: the runner's own notice 「얻었다 — …」 goes into the script as before)
+    shop: (id, done) => { out('shop', id, (SHOP[id] && SHOP[id].title) || ''); defer(done); },   // SCREENS: a keeper's goods - the screen is closed again at once
     save: (o) => { saves++; lastSave = JSON.stringify(o); out('save'); }, end: (id) => { endId = id; out('end', id); },
   };
   st = mk();
@@ -577,6 +617,7 @@ function transcript(r, title) {
       case 'prompt': L.push(`  〔단추 안내〕 ${x.a}`); break;
       case 'objective': L.push(`  〔목표〕 ${x.a || '(없음)'}`); break;
       case 'chronicle': L.push(`  〔연대기〕 ${x.a}: ${x.b}`); break;
+      case 'shop': L.push(`  〔가게〕 ${x.b || x.a}`); break;
       case 'goto': L.push(`  → ${x.a} (${x.b})`); break;
       case 'cross': L.push(`  ⇄ 종을 울려 건넌다 → ${x.a}${x.b ? ' (백 년이 흐르는 3초)' : ''}`); break;
       case 'camera': L.push(`  〔카메라〕 ${x.a}`); break;
@@ -639,6 +680,7 @@ function ownerScript() {
       case 'toast': L.push(`〔알림〕 ${x.b}  `); break;
       case 'objective': if (x.a) L.push(`〔목표〕 ${x.a}  `); break;
       case 'chronicle': L.push(`〔연대기〕 **${x.a}** — ${x.b}  `); break;
+      case 'shop': L.push(`〔가게: ${x.b || x.a} — 물건과 은화 값은 src/v2/data/shop.js〕  `); break;
       case 'cross': L.push('', x.b ? '〔종을 울려 건넌다 — 백 년이 3초에 흐른다〕  ' : '〔종을 울려 건넌다〕  '); break;
       case 'goto': L.push('', `〔${(TEXT.areas[x.a] || {}).name || x.a} — ${x.a.endsWith('_past') ? TEXT.night.past : TEXT.night.now}〕  `); break;
       case 'candle': if (x.a > 0) L.push('〔촛불이 한 자루 늘었다〕  '); break;

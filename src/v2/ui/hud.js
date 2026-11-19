@@ -26,9 +26,9 @@ export function createCanvasHud(game, opts = {}) {
   const bannerP = mkPiece(), bandP = mkPiece(), promptRow = mkPiece(), msgP = mkPiece(), msg2P = mkPiece(), dbgP = mkPiece(), resLabel = mkPiece();
   const nums = []; for (let i = 0; i < NUM_SLOTS; i++) nums.push({ c: null, w: 0, h: 0, str: null, color: null, big: false, ep: 0 });
   const calls = []; for (let i = 0; i < CALL_SLOTS; i++) calls.push({ c: null, w: 0, h: 0, on: false, t: 0, x: 0, y: 0, z: 0, kind: '', dur: 1 });
-  const toasts = []; for (let i = 0; i < TOAST_SLOTS; i++) toasts.push({ c: null, w: 0, h: 0, on: false, t: 0, dur: 2.6, y: 0, text: '', icon: null, kind: '', img: null });
+  const toasts = []; for (let i = 0; i < TOAST_SLOTS; i++) toasts.push({ c: null, w: 0, h: 0, on: false, t: 0, dur: 2.6, y: 0, text: '', icon: null, kind: '', img: null, rx: 0, ry: 0 });
   const wprompts = []; for (let i = 0; i < PROMPT_SLOTS; i++) wprompts.push({ c: null, w: 0, h: 0, key: '' });
-  const banner = { on: false, kind: '', t: 0, dur: 2.8, title: '', sub: '' };
+  const banner = { on: false, kind: '', t: 0, dur: 2.8, title: '', sub: '' }, BR = { x: 0, y: 0, w: 0, h: 0 };
   const icons = new Map();   // toast icon URL -> Image
   const taps = { n: 0, rect: new Float32Array(8 * 4), ref: [null, null, null, null, null, null, null, null] }, rowX = new Float32Array(8), rowW = new Float32Array(8);   // prompt chips that can be tapped (touch)
   const tapAdd = (p, x, y, w, h) => { if (taps.n >= 8) return; const i = taps.n++ * 4; taps.rect[i] = x; taps.rect[i + 1] = y; taps.rect[i + 2] = w; taps.rect[i + 3] = h; taps.ref[taps.n - 1] = p; };
@@ -443,7 +443,7 @@ export function createCanvasHud(game, opts = {}) {
       if (big && bandP.c) ctx.drawImage(bandP.c, 0, cy - bannerP.h * 0.85, vw, bannerP.h * 1.7);
       const rise = (1 - clamp(banner.t / 0.5, 0, 1)) * px(10);
       blit(ctx, bannerP, vw / 2 - bannerP.w / 2, cy - bannerP.h / 2 + rise);
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = 1; BR.x = vw / 2 - bannerP.w / 2; BR.y = cy - bannerP.h / 2; BR.w = bannerP.w; BR.h = bannerP.h;   // (QA: where the banner's own box is - the cards keep clear of it)
     }
     // 2) top left: night badge, candles on their ledge, resonance cells, moon cell, place name
     const x0 = sf.l + px(10), y0 = sf.t + px(8);
@@ -497,7 +497,7 @@ export function createCanvasHud(game, opts = {}) {
       const o = toasts[i]; if (!o.on) continue;
       if (o.dirty || o.ep !== L.epoch) { bakeToast(o); o.dirty = false; o.ep = L.epoch; }
       const a = clamp(Math.min(o.t / 0.22, (o.dur - o.t) / 0.4), 0, 1), slide = (1 - clamp(o.t / 0.22, 0, 1)) * -px(26);
-      ctx.globalAlpha = a; blit(ctx, o, x0 - 3 + slide, ty); ctx.globalAlpha = 1; ty += o.h + px(2);
+      ctx.globalAlpha = a; blit(ctx, o, x0 - 3 + slide, ty); ctx.globalAlpha = 1; o.rx = x0 - 3; o.ry = ty; ty += o.h + px(2);
     }
 
     // 4) top centre: boss, or the banner
@@ -569,7 +569,7 @@ export function createCanvasHud(game, opts = {}) {
     },
     promptRects() { const o = []; for (let k = 0; k < taps.n; k++) o.push({ action: taps.ref[k]?.action, x: taps.rect[k * 4], y: taps.rect[k * 4 + 1], w: taps.rect[k * 4 + 2], h: taps.rect[k * 4 + 3] }); return o; },
     layout: L, px, tsz,
-    info() { return { scale: L.s, hs: L.hs, textSize: L.textSize, epoch: L.epoch, banner: banner.on ? banner.kind : null, bannerTitle: banner.on ? banner.title : '', toasts: toasts.filter((q) => q.on).length, lit: T.lit, max: T.max, coins: T.coinR && T.coinR.a > 0 ? { ...T.coinR } : null, objective: T.objOn && T.objR ? { ...T.objR } : null, guide: T.guideOn && T.guideR ? { ...T.guideR } : null, draughts: T.drR && T.drR.n > 0 ? { ...T.drR } : null, statusR: T.statusR }; },
+    info() { return { scale: L.s, hs: L.hs, textSize: L.textSize, epoch: L.epoch, banner: banner.on ? banner.kind : null, bannerTitle: banner.on ? banner.title : '', toasts: toasts.filter((q) => q.on).length, lit: T.lit, max: T.max, coins: T.coinR && T.coinR.a > 0 ? { ...T.coinR } : null, bannerRect: banner.on ? { ...BR } : null, toastRects: toasts.filter((q) => q.on).map((q) => ({ x: q.rx, y: q.ry, w: q.w, h: q.h })), objective: T.objOn && T.objR ? { ...T.objR } : null, guide: T.guideOn && T.guideR ? { ...T.guideR } : null, draughts: T.drR && T.drR.n > 0 ? { ...T.drR } : null, statusR: T.statusR }; },
     release() { for (const p of [badge.now, badge.past, yearP, ...Object.values(shelves), moonP, bossP, bossFill, bannerP, bandP, promptRow, msgP, msg2P, dbgP, drP, guideP, ...nums, ...calls, ...toasts, ...wprompts]) if (p.c) { p.c.width = 1; p.c.height = 1; p.c = null; } icons.clear(); },
   };
 }
