@@ -58,7 +58,7 @@ export function createScreens(env) {
     G.lx = G.x0 + px(10) + G.sideW; G.lw = G.x1 - px(10) - G.lx; G.ly = G.y0 + G.hh + ph + px(8); G.lh = G.y1 - px(10) - G.ly;
     G.colW = two ? (G.lw - G.sp) / 2 : G.lw;
     // the rows of this kind
-    if (S.kind === 'chronicle') rows = M ? M.book() : [];
+    if (S.kind === 'chronicle') { rows = M ? M.book() : []; if (!rows.length) rows = EMPTY; }   // (nothing written yet: one line says so)
     else if (S.kind === 'bag') { const b = M ? M.bag() : { story: [], use: [] }; rows = []; const n = Math.max(b.story.length, b.use.length, 1); for (let i = 0; i < n; i++) rows.push({ L: b.story[i] ?? null, R: b.use[i] ?? null, empty: !b.story.length && !b.use.length }); }
     else { shopD = M ? M.shop(S.o?.shop ?? 'rook') : null; rows = shopD ? shopD.goods : []; }
     N = rows.length; grow(N); LAY.length = 0;
@@ -73,6 +73,7 @@ export function createScreens(env) {
   }
   const cellW = () => G.colW - px(6) * 2;
   function layBook(r, Z) {
+    if (r.kind === 'empty') return { h: px(90), Ll: null, Rl: null, hint: null };
     const w = cellW() - Z.cp * 2 - (r.kind === 'line' || r.kind === 'sealed' ? px(8) : 0), lh = Z.tB * 1.5;
     const lay = { h: 0, Ll: null, Rl: null, hint: null };
     if (r.L) lay.Ll = r.L.text ? wrapLines(r.L.text, w, Z.tB, 500) : [];
@@ -165,7 +166,8 @@ export function createScreens(env) {
   function bakeRow(i, sl) {
     const Z = sizes(), w = G.lw, h = rowH[i], c = canvasFor(sl, w, G.maxH, G.rs), r = rows[i], lay = LAY[i];
     const cw = cellW(), xL = px(6), xR = G.colW + G.sp + px(6), y = Z.cm / 2, ch = h - Z.cm, T = TX();
-    if (S.kind === 'chronicle') {
+    if (S.kind === 'chronicle' && r.kind === 'empty') text(c, T.chronicle?.empty ?? '', w / 2, y + ch / 2, Z.tB, DIM, 600, FONTS.body, 'center');
+    else if (S.kind === 'chronicle') {
       const ty = y + Z.cp + Z.tT * 0.6, by = y + Z.cp + Z.tT * 1.4, line = r.kind === 'line' || r.kind === 'sealed';
       for (let k = 0; k < 2; k++) {
         const x = k ? xR : xL, col = k ? NOW : PAST, cell = k ? r.R : r.L, ll = k ? lay.Rl : lay.Ll;
@@ -381,10 +383,10 @@ export function createScreens(env) {
     info() {
       if (!S.kind) return null;
       const vis = []; for (let i = 0; i < N; i++) { const y = G.ly + rowY[i] - S.scroll; vis.push({ i, id: rows[i].id ?? null, kind: rows[i].kind ?? null, state: rows[i].state ?? null, isNew: !!rows[i].isNew, x: G.lx, y, w: G.lw, h: rowH[i], on: y + rowH[i] > G.ly && y < G.ly + G.lh }); }
-      return { kind: S.kind, t: S.t, frame: { x: G.x0, y: G.y0, w: G.x1 - G.x0, h: G.y1 - G.y0 }, close: { x: G.cx, y: G.cy, w: G.cw, h: G.cw }, list: { x: G.lx, y: G.ly, w: G.lw, h: G.lh }, colW: G.colW, fold: G.sp, scroll: S.scroll, max: S.max, v: S.v, sel: S.sel, say: S.say, rows: vis, n: N, last: S.last ?? null,
+      return { kind: S.kind, t: S.t, frame: { x: G.x0, y: G.y0, w: G.x1 - G.x0, h: G.y1 - G.y0 }, close: { x: G.cx, y: G.cy, w: G.cw, h: G.cw }, list: { x: G.lx, y: G.ly, w: G.lw, h: G.lh }, colW: G.colW, fold: G.sp, scroll: S.scroll, max: S.max, v: S.v, sel: S.sel, say: S.say, keeper: S.kind === 'shop' && shopD ? shopD.keeper : null, line: S.kind === 'shop' && shopD ? shopD.line : null, side: S.kind === 'shop' && sideP.c ? { x: G.x0 + px(10), y: G.y0 + G.hh + px(8), w: sideP.w, h: sideP.h, bust: !!sideP.im } : null, rows: vis, n: N, last: S.last ?? null,
         coins: coinP.c && S.kind !== 'chronicle' ? { x: G.cx - px(10) - coinP.w, y: G.y0 + (G.hh - coinP.h) / 2 + px(2), w: coinP.w, h: coinP.h, n: S.coinN } : null, baked: slots.filter((q) => q.i >= 0).length, B: G.B };
     },
     release() { for (const p of [head, closeP, coinP, sideP, ...slots]) if (p.c) { p.c.width = 1; p.c.height = 1; p.c = null; } rows = []; N = 0; S.kind = null; },
   };
 }
-const ZERO = { l: 0, t: 0, r: 0, b: 0 };
+const ZERO = { l: 0, t: 0, r: 0, b: 0 }, EMPTY = [{ id: null, kind: 'empty', L: null, R: null, isNew: false, key: '' }];

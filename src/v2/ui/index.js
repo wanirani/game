@@ -118,8 +118,9 @@ export function createHud(game, opts = {}) {
     if (screens.open) { if (e.cancelable) e.preventDefault(); screens.down(q.x, q.y, e.pointerId); }   // a screen: the press begins a drag of its list, or a tap when the finger lifts where it came down
     else if (m === 'pause') pause.tap(q.x, q.y); else if (m === 'end') end.tap(); else dialog.tap(q.x, q.y);
   }
-  function onMove(e) { if (!last || !screens.open) return; const q = toLogical(e); e.stopPropagation(); screens.move(q.x, q.y, e.pointerId); }
-  function onUp(e) { if (!last || !screens.open) return; const q = toLogical(e); e.stopPropagation(); screens.up(q.x, q.y, e.pointerId, e.type === 'pointercancel'); }
+  // (a move or a lift is not kept from the shell: its own pointer state must come to rest; the press was never handed on, so there is nothing for it to finish)
+  function onMove(e) { if (!last || !screens.open) return; const q = toLogical(e); screens.move(q.x, q.y, e.pointerId); }
+  function onUp(e) { if (!last || !screens.open) return; const q = toLogical(e); screens.up(q.x, q.y, e.pointerId, e.type === 'pointercancel'); }
   window.addEventListener('pointerdown', onDown, true); window.addEventListener('pointermove', onMove, true); window.addEventListener('pointerup', onUp, true); window.addEventListener('pointercancel', onUp, true);
   return hud;
 }

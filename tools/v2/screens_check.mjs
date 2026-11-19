@@ -150,7 +150,7 @@ if (PAGE_PARTS.some(want)) {
     return { ready: v.ready, area: v.area, hud: v.stats?.hud };
   }
   const inside = (r, s, e = 0.5) => r.x >= s.x - e && r.y >= s.y - e && r.x + r.w <= s.x + s.w + e && r.y + r.h <= s.y + s.h + e;
-  const hits = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  const hits = (a, b, e = 0.01) => a.x < b.x + b.w - e && b.x < a.x + a.w - e && a.y < b.y + b.h - e && b.y < a.y + a.h - e;
   const R = (r) => (r ? `${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.w)}x${Math.round(r.h)}` : 'none');
 
   try {
@@ -158,7 +158,8 @@ if (PAGE_PARTS.some(want)) {
       console.log(`\n════ ${DEV} ════`);
       const ctx = await browser.newContext(contextOptions(DEV)), page = await ctx.newPage();
       page.on('pageerror', (e) => errs.push(`[${DEV} pageerror] ` + e.message + ' ' + (e.stack ?? '').split('\n').slice(1, 3).join(' | ')));
-      page.on('console', (m) => { if (m.type() === 'error') errs.push(`[${DEV} console] ` + m.text().slice(0, 300)); });
+      page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push(`[${DEV} console] ` + m.text().slice(0, 300)); });
+      page.on('response', (r) => { if (r.status() >= 400 && !/favicon/.test(r.url())) errs.push(`[${DEV} http ${r.status()}] ` + r.url()); });
       const ev = (fn, a) => page.evaluate(fn, a);
       const shot = async (name) => { if (!SHOTS) return; await ev(() => window.__F.draw()); await page.screenshot({ path: `${OUT}/${DEV}_${name}.png` }); };
       /** open the game on a save (a bot save number, an object, or null = whatever the page has stored) */
@@ -174,7 +175,8 @@ if (PAGE_PARTS.some(want)) {
         const st = await ev(install); await ev(() => window.__F.tick(30));
         return st;
       };
-      const touchMode = async () => { const cdp = await ctx.newCDPSession(page), T = new Touch(cdp, page); await ensureTouchMode(T, page); await ev(() => window.__F.tick(6)); };
+      // back to touch after a key (the shell's input follows the last device): one touch on an empty part of the screen, through the same handlers
+      const touchMode = () => ev(() => { const F = window.__F, c = window.__game.canvasRect; F.tapCss(c.x + c.w * 0.62, c.y + c.h * 0.36, 1, 60); F.tick(6); return window.__game.input.mode; });
 
       // ───────────── the pause panel: 「연대기」 「가방」 ─────────────
       if (want('pause') || want('book') || want('bag')) {
