@@ -53,7 +53,8 @@ function install() {
     g._pageHidden = true; P.adv = 6;
     for (let i = 0; i < max; i++) {
       const sc = v.scene;
-      if (v.ready && sc.sim) {
+      if (spec.top && (g.top?.constructor?.name ?? '') === spec.top) return { ok: true, ticks: i, top: spec.top };
+      if (v.ready && sc && sc.sim && g.top === sc) {
         const H = sc.host, m = sc.hud.modal ?? null;
         if (spec.shot && shotName() === spec.shot) { if (spec.first) { if (H.shotLock) return hit(i, 2); } else if (spec.mid) { if (H.shotLock) { if (H.shotT > P.top) P.top = H.shotT; if (H.shotT <= P.top * 0.5) return hit(i); } } else if (spec.last) { if (H.shotLock && H.shotT <= 1.5 / 60) return hit(i); } else if (m === 'dialog') return hit(i, 70); }
         if (spec.line !== undefined && m === 'dialog' && H.seen.length > P.mark && lastLine().includes(spec.line)) return hit(i, 70);
@@ -79,6 +80,7 @@ function install() {
   P.hold = (id, nTicks, through) => { const b = btn(id); if (!b) return { err: 'no pad button ' + id }; const a0 = v.area; fire('pointerdown', 15, b.cx, b.cy); let i = 0; for (; i < nTicks; i++) { step(); const sc = v.scene; if (!through && i > 3 && (sc.xing || sc._go || v.area !== a0 || sc.hud.modal)) break; } fire('pointerup', 15, b.cx, b.cy); return { held: i, ...P.state() }; };
   P.queenHp = (hp) => { const e = queen(); if (!e) return null; if (hp) e.hp = hp; return Math.round(e.hp); };
   P.die = () => { const sim = v.scene.sim; sim._die(sim.hero); return true; };
+  P.wakeQueen = () => { const e = queen(); if (!e) return null; const was = !!e.active; if (!was) v.scene.sim.wake(e); return { was, now: !!e.active }; };
   /** the page goes to the background and comes back: the game's own save on hiding (storyhost.js _onHide) - returns what it stored */
   P.hide = () => { const before = localStorage.getItem('bn.v2.save'); Object.defineProperty(document, 'visibilityState', { get: () => 'hidden', configurable: true }); document.dispatchEvent(new Event('visibilitychange')); const s = localStorage.getItem('bn.v2.save'); delete document.visibilityState; document.dispatchEvent(new Event('visibilitychange')); return { save: s, wrote: s !== before }; };
   P.saved = () => localStorage.getItem('bn.v2.save');
@@ -150,7 +152,7 @@ C('keepers', async () => {
   const g1 = await P('run', 60); const h = await still('after_1s', 'one second after the cut'); ok(h.pad && !h.lock && !h.inputLock, `one second after: pad back, hero free (pad ${h.pad}, lock ${h.lock})`); ok(h.pills.length > 0, `one second after: a pill tells what to do (${h.pills.join(', ') || 'none'}); objective "${h.obj}"`);
   void g1;
   // the hidden saves, loaded
-  for (const [what, sv] of hid) {
+  for (const [what, sv] of args.lite ? [] : hid) {
     if (!sv) { ok(false, `hidden during ${what}: nothing was stored`); continue; }
     const o = JSON.parse(sv); note(`hidden during ${what}: stored`, { why: o.why, area: o.area, storyArea: o.story.area, spawn: o.story.spawn, pos: o.pos, promised: !!o.story.flags?.keepers_promised, found: !!o.story.flags?.elise_found });
     await boot(sv); const s = await until({ line: '찾았네요' }, 200, true);
@@ -196,7 +198,8 @@ async function ending(tag, dx, dz, full) {
   if (full) hid.push(['ev_ending_home camera ring_widen', (await P('hide')).save]);
   await until({ line: '' }, 200); await still(`${tag}_town_first`, 'ending.town first page');
   await until({ line: '로테?' }, 200); const l = await still(`${tag}_lotte`, '「…로테?」 (last page)'); ok(!l.pad && l.lock, `${tag} last page: held, pad off`);
-  ok(!!l.who.alberto && Math.abs(l.who.alberto[0] - 4104) < 4 && !!l.who.elise && Math.abs(l.who.elise[0] - 4296) < 4, `${tag} last page: Alberto on Lotte's place, Elise right of the bell (${JSON.stringify(l.who)})`);
+  ok(!!l.who.alberto && Math.abs(l.who.alberto[0] - 4104) < 4 && !!l.who.elise && Math.abs(l.who.elise[0] - 4296) < 4, `${tag} 「…로테?」: Alberto on Lotte's place, Elise right of the bell (${JSON.stringify(l.who)})`);
+  await until({ line: '까마귀' }, 200); const l2 = await still(`${tag}_last`, 'the last page before the story lets go'); ok(!l2.pad && l2.lock && !l2.pills.length, `${tag} last page: held, pad off, no pill`);
   if (!full) return;
   await ev(() => { window.__sv.adv = 6; });
   const c = await until({ modal: 'end' }, 300); const cs = await still(`${tag}_card`, 'the ending card'); ok(cs.modal === 'end' && !cs.pad, `the card is up, pad off (modal ${cs.modal}, pad ${cs.pad})`); void c;
@@ -219,14 +222,15 @@ async function ending(tag, dx, dz, full) {
     await ev(() => { window.__sv.adv = 6; }); const c2 = await until({ modal: 'end' }, 400, true); ok(c2.ok, `loaded: the ending runs to its card (${c2.ok})`);
   }
 }
-C('ending_mid', () => ending('mid', 0, -18, true));
+C('ending_mid', () => ending('mid', 0, -18, !args.lite));
 C('ending_west', () => ending('west', -70, -6, false));
 C('ending_east', () => ending('east', 70, -6, false));
 C('ending_south', () => ending('south', 0, -72, false));
 
 C('held_bell', async () => {
   await boot(after('ev_boss_intro')); await idle(); const b = await P('spot', 'bell_arena'); await P('putY', b.x, b.z - 44, b.y ?? 0); await P('run', 20);
-  const s0 = await P('state'); note('in the hall, first act', { queen: s0.queen, at: [s0.x, s0.z], obj: s0.obj, pills: s0.pills, bell: b });
+  const wq = await P('wakeQueen'); await P('run', 4);
+  const s0 = await P('state'); note('in the hall, first act', { awakeAfterLoad: wq, queen: s0.queen, at: [s0.x, s0.z], obj: s0.obj, pills: s0.pills, bell: b });
   const w0 = s0.warn, n0 = s0.seen;
   const t1 = await P('hold', 'bell', 4, true); await P('run', 30); note('the bell pressed short', { area: t1.area, modal: t1.modal, seen: await P('seenFrom', n0) });
   const n1 = (await P('state')).seen; const h1 = await P('hold', 'bell', 240); const s1 = await P('state');
