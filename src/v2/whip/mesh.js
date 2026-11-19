@@ -140,17 +140,24 @@ export function writeWhipMesh(whip, vtx, alpha, tmp) {
     const p = i * 4, q = i * 3;
     if (i < TRAIL_PER && 1 - i / TRAIL_PER > fut + 1e-6) { TP[q] = ox; TP[q + 1] = oy; TP[q + 2] = oz; } else { TP[q] = H[p]; TP[q + 1] = H[p + 1]; TP[q + 2] = H[p + 2]; }
   }
+  TK[0] = 1; TK[TRAIL_N - 1] = 1;
+  for (let i = 1; i < TRAIL_N - 1; i++) {   // folds, from the path as it was walked
+    const q = i * 3, ax = TP[q - 3] - TP[q], ay = TP[q - 2] - TP[q + 1], az = TP[q - 1] - TP[q + 2], bx2 = TP[q] - TP[q + 3], by2 = TP[q + 1] - TP[q + 4], bz2 = TP[q + 2] - TP[q + 5];
+    const la = Math.sqrt(ax * ax + ay * ay + az * az), lb = Math.sqrt(bx2 * bx2 + by2 * by2 + bz2 * bz2);
+    TK[i] = 1; if (la > 2 && lb > 2) { const c = (ax * bx2 + ay * by2 + az * bz2) / (la * lb); if (c < 0.3) TK[i] = c < -0.2 ? 0 : (c + 0.2) / 0.5; }
+  }
+  // the tick's own corner (the tip follows the authored curve with a little lag and is then put on the target: the last two ticks of a strike meet at
+  // some 65 degrees) is rounded: two passes of a 1-2-1 mean over the inner points - the head (the tip) and the tail stay where they are
+  for (let pass = 0; pass < 2; pass++) {
+    let px = TP[0], py = TP[1], pz = TP[2];
+    for (let i = 1; i < TRAIL_N - 1; i++) { const q = i * 3, cx2 = TP[q], cy2 = TP[q + 1], cz2 = TP[q + 2]; TP[q] = 0.25 * px + 0.5 * cx2 + 0.25 * TP[q + 3]; TP[q + 1] = 0.25 * py + 0.5 * cy2 + 0.25 * TP[q + 4]; TP[q + 2] = 0.25 * pz + 0.5 * cz2 + 0.25 * TP[q + 5]; px = cx2; py = cy2; pz = cz2; }
+  }
   let lx2 = tx, ly2 = ty, lz2 = tz;
   for (let i = 0; i < TRAIL_N; i++) {
     const q = i * 3, a3 = i > 0 ? q - 3 : q, b3 = i < TRAIL_N - 1 ? q + 3 : q;
-    let x = TP[a3] - TP[b3], y = TP[a3 + 1] - TP[b3 + 1], z = TP[a3 + 2] - TP[b3 + 2]; const l = Math.sqrt(x * x + y * y + z * z);
+    const x = TP[a3] - TP[b3], y = TP[a3 + 1] - TP[b3 + 1], z = TP[a3 + 2] - TP[b3 + 2], l = Math.sqrt(x * x + y * y + z * z);
     if (l > 1e-3) { lx2 = x / l; ly2 = y / l; lz2 = z / l; }
-    TT[q] = lx2; TT[q + 1] = ly2; TT[q + 2] = lz2; TK[i] = 1;
-    if (i > 0 && i < TRAIL_N - 1) {
-      const ax = TP[q - 3] - TP[q], ay = TP[q - 2] - TP[q + 1], az = TP[q - 1] - TP[q + 2], bx2 = TP[q] - TP[q + 3], by2 = TP[q + 1] - TP[q + 4], bz2 = TP[q + 2] - TP[q + 5];
-      const la = Math.sqrt(ax * ax + ay * ay + az * az), lb = Math.sqrt(bx2 * bx2 + by2 * by2 + bz2 * bz2);
-      if (la > 2 && lb > 2) { const c = (ax * bx2 + ay * by2 + az * bz2) / (la * lb); TK[i] = c > 0.6 ? 1 : c < 0 ? 0 : c / 0.6; }
-    }
+    TT[q] = lx2; TT[q + 1] = ly2; TT[q + 2] = lz2;
   }
   for (let j = 0; j < TRAIL_SEC; j++) {
     const q3 = j * 3, q = j / (TRAIL_SEC - 1), str = H[j * 4 + 3] * TK[j] * Math.pow(1 - q, 1.3), rad = w0 * (1 - 0.8 * q);

@@ -127,8 +127,14 @@ export class Whip {
   _phase() {
     const sw = this.sw, sh = sw.shape; let t = sw.t;
     if (sh.hold != null && sw.hit1 > 5) {   // window open until landing (plunge)
-      if (t < sw.hit0) return -1 + t / Math.max(1e-3, sw.hit0);
-      const a = Math.min(sh.hold, ((t - sw.hit0) / 0.1) * sh.hold);
+      // (WHIP2: the way down runs on the rules' clock like a strike - see below. The lash used to be down and through an enemy under the hero two ticks before
+      //  the rules' first hit tick; now it is 85 % down on that tick and still above the enemy's head the tick before. The landing keeps its own time: landT)
+      const dt = this._dtTick, tr = t - dt;
+      if (sw.t0 < 0) {
+        if (tr < sw.hit0 - 1e-9) { const tq = tr + Math.ceil((sw.hit0 - tr) / dt - 1e-6) * dt; return -1 + tr / tq; }
+        sw.t0 = tr;
+      }
+      const a = Math.min(sh.hold, ((tr - sw.t0) / 0.1) * sh.hold);
       if (sw.landT < 0) return a;
       const b = sh.hold + ((t - sw.landT) / 0.1) * (1 - sh.hold);
       return b <= 1 ? Math.max(a, b) : Math.min(2, 1 + (t - sw.landT - 0.1) / 0.3);
