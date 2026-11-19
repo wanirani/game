@@ -63,6 +63,7 @@ const res = {};
 try {
   for (const side of ['before', 'after']) {
     const page = await L.page(DEV);
+    if (args.debug) { page.on('request', (r) => console.log('req', r.url().slice(-60))); page.on('requestfailed', (r) => console.log('reqfail', r.url().slice(-60), r.failure()?.errorText)); }
     if (side === 'before') for (const f of Object.keys(old)) await page.route('**/' + f, (r) => r.fulfill({ status: 200, contentType: 'text/javascript', body: old[f] }));
     await L.open(page, 'graveyard_now');
     res[side] = await page.evaluate(cases);

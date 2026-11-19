@@ -20,7 +20,7 @@ export async function launch(out) {
     return p;
   };
   const open = async (p, area, extra = '') => {
-    await p.goto(`http://localhost:${port}/index.html?scene=v2g&area=${area}&v2auto=0&v2story=0${extra}`);
+    await p.goto(`http://localhost:${port}/index.html?scene=v2g&area=${area}&v2auto=0&v2story=0${extra}`, { waitUntil: 'commit', timeout: 120000 });   // 'commit': with a route in place the page's load event can take longer than the default wait
     await p.waitForFunction(() => window.__v2 && (window.__v2.ready || window.__v2.error), null, { timeout: 180000 }).catch(() => {});
     const st = await p.evaluate(() => ({ ready: window.__v2?.ready, error: String(window.__v2?.error ?? '') }));
     if (!st.ready) throw new Error('scene not ready: ' + st.error);
