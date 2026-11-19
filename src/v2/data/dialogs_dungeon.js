@@ -139,7 +139,7 @@ export const DIALOGS_DUNGEON = {
       ['elise', '…아저씨? 저 꿈꿨어요. 누가 자꾸\n가지 말라고 노래했어요.'],
       ['kael', '끝났다. 약속했잖아.\n집에 가자, 엘리제.'],
       ['elise', '네! …근데 여기 종소리가 달라요.\n금 간 소리가 안 나요.', 'joy'],
-    ], then: [['setFlag', 'elise_found'], ['objective', 'to_lotte'], ['gotoArea', 'eshville_past', 'bell']] },
+    ], then: [['setFlag', 'elise_found'], ['objective', 'to_lotte'], ['gotoArea', 'eshville_past', 'keepers']] },   // (spawn `keepers`: left of the bell, out of the two keepers' picture)
     { pages: [['kael', '(깊이 잠들었다.\n노래가 아직 붙들고 있다.)']] },
   ],
 

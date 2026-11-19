@@ -12,11 +12,14 @@ export const SAVE_KEY = 'bn.v2.save';
 const SAVE_V = 1;
 // story / area music ids -> v1 tracks (assets/audio/music/<id>.m4a)
 const MUSIC = { village_burning: 's01', village_past: 'hub', graveyard_mist: 's02', table_warm: 'inn', ossuary_now: 's03', ossuary_past: 'church', boss_banshee: 'boss', dawn_bell: 'ending' };
-// camera shots of the `camera` step (TEXT.shots): what the section rig is bent to while the shot runs
+// camera shots of the `camera` step (TEXT.shots): what the section rig is bent to while the shot runs - pitch, distance and height; and, for a cut that is a picture of
+// a place (STORY, 11-19): `at: [x, z]` = what the camera looks at instead of the hero (the section's side limits do not hold then), `yaw` = from which side (0 = from
+// the south), `tallK` = how much a tall screen lifts the look point (0: the same picture on the Fold and on a phone).
 export const SHOTS = {
   moon_bell: { pitch: -0.2, dist: 1500, lookY: 420 }, bell_crack: { pitch: -0.3, dist: 900, lookY: 520, shake: 0.5 }, fall: { pitch: 0.9, dist: 1300, lookY: 40, shake: 0.6, flash: true },
   wake_past: { pitch: 0.1, dist: 480, lookY: 70 }, table: { pitch: 0.22, dist: 520, lookY: 80 }, knot: { pitch: 0.16, dist: 360, lookY: 86 },
-  years: { pitch: 0.42, dist: 1040, lookY: 110 }, banshee_song: { pitch: 0.12, dist: 1100, lookY: 220 }, two_keepers: { pitch: 0.2, dist: 560, lookY: 90 }, ring_widen: { pitch: 1.1, dist: 2400, lookY: 0 },
+  years: { pitch: 0.42, dist: 1040, lookY: 110 }, banshee_song: { pitch: 0.12, dist: 1100, lookY: 220 }, two_keepers: { pitch: 0.415, dist: 444, lookY: 67, at: [4200, 1436], yaw: 0, tallK: 0 },   // the big bell from the churchyard below the terrace: Lotte left of it, Elise right (both nights: the same picture a hundred years apart)
+  ring_widen: { pitch: 0.62, dist: 1500, lookY: 120, at: [4130, 1500], yaw: 0, tallK: 0 },
 };
 
 /** the saved game, or null (nothing saved, another version, broken data) */
@@ -164,7 +167,9 @@ export class StoryHost {
       moveActor(id, to, o, done) {
         const p = sc.people.byId(id), q = H._spot(to);
         if (!p || !q) { done?.(); return; }
-        H.moves.push({ p, x: q.x, z: q.z, t: 0, done, clip0: p.clip }); if (p.a3.asset.clips.walk) p.clip = 'walk';
+        // opts.face (STORY, 11-19): where she looks once she stands there - a spot, [x, z] or 'hero' (people.js `look`: kept until the area is built again; the area's own `look` takes over then)
+        const f = o && o.face !== undefined ? (o.face === 'hero' ? { hero: true } : H._spot(o.face)) : undefined, done2 = f === undefined ? done : () => { if (sc.people.list.indexOf(p) >= 0) p.look = f ? (f.hero ? f : { x: f.x, z: f.z }) : null; done?.(); };
+        H.moves.push({ p, x: q.x, z: q.z, t: 0, done: done2, clip0: p.clip }); if (p.a3.asset.clips.walk && (Math.abs(q.x - p.x) > 2 || Math.abs(q.z - p.z) > 2)) p.clip = 'walk';
       },
       camera(shot, seconds, done) {
         if (H.shot && H.shotDone) H._shotEnd();

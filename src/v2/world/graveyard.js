@@ -90,7 +90,7 @@ export function graveyard(era = 'now', flags = {}) {
     id: 'graveyard_' + era, name: '안개의 묘지', era, twin: 'graveyard_' + (era === 'now' ? 'past' : 'now'),
     room: 'field', rooms: { road: 'alley', field: 'field' }, music: 'graveyard_mist',
     stage: {
-      id: 'graveyard_' + era, name: '안개의 묘지',
+      id: 'graveyard_' + era, name: '안개의 묘지', wear: era,   // DETAIL: relief and wear of the walls in this night (ENV_KIT 24)
       sky: { img: 'bg/s02_graveyard', crop: 0.66, span: 84 * D, bottom: -7 * D, top: [0.04, 0.06, 0.075] },
       // WORLD-LOOK: the fog begins BEHIND the figures (near 380 put 44 % fog on the hero himself at the field camera's 830 px: figure and ground melted into one grey);
       // the characters get a cold moon key and a light edge on their dark side (light.key / light.rimK - src/v2/game/charr.js), the ground stays as dark as it was

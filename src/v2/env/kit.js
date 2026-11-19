@@ -296,12 +296,12 @@ function wallDetail(G, F, len, c) {
 export function fenceAt(G, P, boxes) {
   const y = P.y ?? 0, dx = P.x1 - P.x0, dz = P.z1 - P.z0, len = Math.hypot(dx, dz), nx = P.face?.[0] ?? dz / len, nz = P.face?.[1] ?? -dx / len, F = new Frame(P.x0, P.z0, nx, nz);
   const sgn = (F.ux * dx + F.uz * dz) >= 0 ? 1 : -1, F2 = sgn > 0 ? F : new Frame(P.x1, P.z1, nx, nz);
-  (P.kind === 'wood' ? woodFence : railing)(G, F2, 0, len, y, P.h ?? 44, 0);
+  (P.kind === 'wood' ? woodFence : P.kind === 'screen' ? woodScreen : railing)(G, F2, 0, len, y, P.h ?? 44, 0);   // 'screen' (DETAIL): a carpenter's panelled screen - the same collision as the wooden fence
   // FENCE (11-18): the fence itself collides where its posts and caps are drawn (half-width 3.6 iron / 3.5 wood, the end posts beyond the ends).
   // It was drawn only: the hero stopped at the area's edge 9 units behind it and the bars ran through his legs. As tall as a low wall's collision
   // (collideH 800), so no jump lands inside it. A slanted fence gets a chain of boxes 8 long.
   if (boxes) {
-    const hw = P.kind === 'wood' ? 3.5 : 3.6, n = Math.abs(F2.ux) < 1e-6 || Math.abs(F2.uz) < 1e-6 ? 1 : Math.ceil(len / 8);
+    const hw = P.kind === 'wood' || P.kind === 'screen' ? 3.5 : 3.6, n = Math.abs(F2.ux) < 1e-6 || Math.abs(F2.uz) < 1e-6 ? 1 : Math.ceil(len / 8);
     for (let i = 0; i < n; i++) {
       let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
       for (const u of [len * i / n - (i ? 0 : hw), len * (i + 1) / n + (i === n - 1 ? hw : 0)]) for (const w of [-hw, hw]) { const p = F2.pt(u, y, w); x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[2]); z1 = Math.max(z1, p[2]); }
@@ -329,6 +329,30 @@ export function woodFence(G, F, u0, u1, y, h, w = 0) {
     const hh = h * (0.92 + 0.14 * hash(u, i)), lean = (hash(i, u) - 0.5) * 3;
     G.quad4('wood', F.pt(u - 4, y, w + 2), F.pt(u + 4, y, w + 2), F.pt(u + 4 + lean, y + hh - 6, w + 2), F.pt(u - 4 + lean, y + hh - 6, w + 2), F.n, { ...T, k: 0.85 + 0.3 * hash(u, 3) });
     G.tri('wood', F.pt(u - 4 + lean, y + hh - 6, w + 2), F.pt(u + 4 + lean, y + hh - 6, w + 2), F.pt(u + lean, y + hh + 3, w + 2), F.n, T);
+  }
+}
+
+/**
+ * DETAIL (ENV_KIT 24): a carpenter's screen - the parclose of a chapel (1697): a sill beam, fielded panels between posts, an open gallery of
+ * balusters under a moulded top rail, every other post carried up into a carved finial. Everything lies within 3.5 of the line: the fence's collision.
+ */
+export function woodScreen(G, F, u0, u1, y, h, w = 0) {
+  const len = u1 - u0, nb = Math.max(1, Math.round(len / 86)), bay = len / nb, T = { tint: [0.92, 0.78, 0.62], vary: 0.25 }, hd = h * 0.56, c = { cell: 180 };
+  F.box(G, 'timber', u0, u1, y, y + 6, w - 3.5, w + 3.5, { ...T, ...c, faces: 'FT' });
+  F.box(G, 'timber', u0, u1, y + hd - 2.5, y + hd + 2.5, w - 3, w + 3, { ...T, ...c, faces: 'FT' });
+  F.box(G, 'timber', u0, u1, y + h - 5, y + h, w - 3.5, w + 3.5, { ...T, ...c, faces: 'FT', k: 1.08 });
+  F.box(G, 'timber', u0, u1, y + h, y + h + 2.5, w - 2, w + 2, { ...T, ...c, faces: 'FT', k: 1.16 });
+  for (let i = 0; i <= nb; i++) {
+    const u = u0 + bay * i, big = i % 2 === 0, ph = h + (big ? 15 : 6);
+    F.box(G, 'timber', u - 3.5, u + 3.5, y, y + ph, w - 3.5, w + 3.5, { ...T, faces: big ? 'FLR' : 'FLRT', k: 0.94 });
+    if (big) { const t = F.pt(u, y + ph + 10, w), a = F.pt(u - 3.5, y + ph, w + 3.5), b = F.pt(u + 3.5, y + ph, w + 3.5), d = F.pt(u + 3.5, y + ph, w - 3.5), e = F.pt(u - 3.5, y + ph, w - 3.5);
+      G.tri('timber', a, b, t, [F.nx * 0.7, 0.7, F.nz * 0.7], { ...T, k: 1.1 }); G.tri('timber', e, a, t, [-F.ux * 0.7, 0.7, -F.uz * 0.7], { ...T, keep: true }); G.tri('timber', b, d, t, [F.ux * 0.7, 0.7, F.uz * 0.7], { ...T, keep: true }); }
+    if (i === nb) break;
+    const a = u + 3.5, b = u + bay - 3.5;
+    F.face(G, 'timber', a, b, y + 6, y + hd - 2.5, w - 1.4, { tint: [0.6, 0.48, 0.38], vary: 0.25 });                                  // the panel's sunk ground
+    F.box(G, 'timber', a + 8, b - 8, y + 11, y + hd - 8, w - 1.4, w + 1.3, { ...T, faces: 'FLRT', k: 1.05 });                         // its raised field
+    const nbl = Math.max(2, Math.round((b - a) / 15));
+    for (let k = 0; k < nbl; k++) { const cu = a + (b - a) * (k + 0.5) / nbl; F.box(G, 'timber', cu - 1.7, cu + 1.7, y + hd + 2.5, y + h - 5, w - 1.7, w + 1.7, { ...T, faces: 'FLR', k: 0.9 }); }
   }
 }
 

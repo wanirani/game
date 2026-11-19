@@ -46,6 +46,7 @@ export class People {
         def: d, id: d.id, a3, x: d.x, y: Number.isFinite(gy) ? gy : d.y ?? 0, z: d.z, hx: a3.dx, hz: a3.dz, pose, clip, r: d.r ?? 16, solid: d.solid !== false, box,
         on: true, fresh: true, vis: false, turns: !!TURNS[pose], name: d.name ?? NAMES[d.id] ?? NAMES[d.model] ?? '', label: d.label ?? '말을 건다', talkT: 0, acc: 0,
         portrait: PORTRAITS[d.model] ? d.model : null,
+        look: Array.isArray(d.look) ? { x: d.look[0], z: d.look[1] } : null,   // STORY: a place she keeps looking at (the two keepers look at each other across the bell) - the story may set it too (moveActor opts.face)
       });
     }
     for (const s of area.interact) {
@@ -94,7 +95,10 @@ export class People {
       const dx = hero.x - p.x, dz = hero.z - p.z, dist = Math.sqrt(dx * dx + dz * dz), a3 = p.a3;
       // body direction: towards the hero when he is near (and this pose can turn), otherwise back to the home direction
       if (p.turns) {
-        const look = dist < NEAR && dist > 6 && !hero.dead, tx = look ? dx / dist : p.hx, tz = look ? dz / dist : p.hz;
+        // STORY: a person with a `look` keeps looking there; she turns to the hero only when he speaks to her or stands right before her ({ hero: true }: she follows him wherever he is)
+        const K = p.look, look = dist > 6 && !hero.dead && (K ? !!K.hero || this.talking === p || dist < 56 : dist < NEAR);
+        let tx = p.hx, tz = p.hz;
+        if (look) { tx = dx / dist; tz = dz / dist; } else if (K && !K.hero) { const lx = K.x - p.x, lz = K.z - p.z, ll = Math.sqrt(lx * lx + lz * lz); if (ll > 6) { tx = lx / ll; tz = lz / ll; } }
         const cur = Math.atan2(a3.dz, a3.dx), ang = cur + wrapPi(Math.atan2(tz, tx) - cur) * (1 - Math.exp(-dt * 5)); a3.dx = Math.cos(ang); a3.dz = Math.sin(ang);
       }
       const want = this.talking === p && a3.asset.clips.talk1 && p.turns ? 'talk1' : p.clip;

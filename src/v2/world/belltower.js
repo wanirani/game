@@ -81,7 +81,7 @@ export function belltower(era = 'now', flags = {}) {
   return {
     id: 'belltower_' + era, name: '종탑', era, twin: null, room: 'tower', rooms: { stairs: 'tower', top: 'tower' }, music: null,
     stage: {
-      id: 'belltower_' + era, name: '종탑',
+      id: 'belltower_' + era, name: '종탑', wear: era,   // DETAIL: relief and wear of the walls in this night (ENV_KIT 24)
       sky: { img: 'bg/s01_village', crop: 0.66, span: 84 * D, bottom: -7 * D, top: [0.1, 0.035, 0.045] },
       fog: { color: [0.07, 0.05, 0.06], near: 700, far: 2600, max: 0.9 },
       light: { ambient: [0.3, 0.27, 0.31], moon: [0.5, 0.36, 0.36], moonDir: [-0.447, 0.745, -0.496], key: [0.22, 0.2, 0.24, 1.5], rimK: 1.6 },   // key / rimK: WORLD-LOOK (charr.js)

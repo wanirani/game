@@ -143,7 +143,7 @@ export function ossuary(era = 'now', flags = {}) {
     id: 'ossuary_' + era, name: '배웅의 납골당', era, twin: 'ossuary_' + (now ? 'past' : 'now'),
     room: 'crypt', rooms: { boss: 'hall', posts: 'hall', arena: 'hall' }, music: 'ossuary_' + era,
     stage: {
-      id: 'ossuary_' + era, name: '배웅의 납골당',
+      id: 'ossuary_' + era, name: '배웅의 납골당', wear: era,   // DETAIL: relief and wear of the walls in this night (ENV_KIT 24)
       sky: { img: 'bg/s02_graveyard', crop: 0.66, span: 84 * D, bottom: -7 * D, top: now ? [0.012, 0.016, 0.022] : [0.03, 0.02, 0.016] },
       fog: now ? { color: [0.035, 0.05, 0.065], near: 500, far: 2200, max: 0.97 } : { color: [0.07, 0.045, 0.03], near: 700, far: 2800, max: 0.94 },
       light: now ? { ambient: [0.25, 0.31, 0.38], moon: [0.3, 0.4, 0.5], moonDir: [-0.3, 0.9, -0.3], key: [0.26, 0.34, 0.46, 1.6], rimK: 1.8 } : { ambient: [0.34, 0.28, 0.24], moon: [0.4, 0.33, 0.28], moonDir: [-0.3, 0.9, -0.3], key: [0.3, 0.26, 0.22, 1.5], rimK: 1.6 },   // key / rimK: WORLD-LOOK (charr.js)

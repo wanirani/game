@@ -470,10 +470,15 @@ export const EVENTS = [
   // ═════════ 114–118 그 밤의 종탑 (종탑이 지어지기 전에는 큰 종 앞) ═════════
   { id: 'ev_keepers', minute: '114-118', on: 'area.enter', match: { area: 'eshville_past' }, if: ['elise_found', '!keepers_promised'], steps: [
     ['lockInput', true],
-    ['showActor', 'elise', 'eshville_past'],     // she came with the hero and stands beside him; Lotte waits at her bell
+    ['showActor', 'elise', 'eshville_past'],     // she came with the hero and stands beside him (spawn `keepers`, left of the bell); Lotte waits at her bell
     ['say', 'keepers.found'],
-    ['moveActor', 'elise', [4296, 1436]],        // Elise walks to the bell: the two keepers stand with the bell between them
-    ['camera', 'two_keepers', 3],
+    // cut 7 (GDD 9.1 minute 114-118): the camera goes to the bell first, then Elise walks through the picture - past Lotte, in front of the bell - to its right side;
+    // the two keepers stand with the bell between them and look at each other, the hero at the picture's left edge
+    ['camera', 'two_keepers', 0.9],
+    ['moveActor', 'elise', [4200, 1386]],
+    ['moveActor', 'elise', [4296, 1436], { face: [4104, 1436] }],
+    ['moveActor', 'lotte', [4104, 1436], { face: [4296, 1436] }],
+    ['wait', 0.5],
     ['say', 'keepers.promise'],
     ['camera', null],
     ['lockInput', false],
@@ -486,6 +491,8 @@ export const EVENTS = [
   // ═════════ 118–120 오늘 밤의 에슈빌 ═════════
   { id: 'ev_ending', minute: '118-120', on: 'interact', match: BELL, if: ['era:past', 'keepers_promised', '!elise_home'], steps: [
     ['prompt', null],
+    ['moveActor', 'lotte', [4104, 1436], { face: 'hero' }],   // (she turns from Elise to the hunter for her last question)
+    ['camera', 'two_keepers', 0.8],
     ['say', 'ending.bread'],
     ['clearFlag', 'pending_change'],
     ['hideActor', 'elise', 'eshville_past'],
@@ -501,17 +508,23 @@ export const EVENTS = [
     ['hideActor', 'sera', 'ossuary_now'],
     ['setFlag', 'elise_home'],
     ['music', 'dawn_bell'],
+    // the same picture as the two keepers' cut, a hundred years later: Elise right of the bell where she stood, Lotte's place left of it empty
+    ['lockInput', true],
+    ['camera', 'two_keepers', 1.2],
     ['say', 'ending.bell'],
     ['setFlag', 'bells_answered'],
     ['banner', 'night', '오늘 밤이 달라졌다', '종소리가 제 울림을 되찾았다'],
     ['moon', 1],
     ['candle', 1],
     ['chronicle', 'two_keepers'],
-    ['camera', 'ring_widen', 4],
+    ['camera', 'ring_widen', 4],                  // the camera rises over the church front while the sound goes out (the valley map is the ending card's)
     ['ring', 1],
     ['toast', '종소리가 장미 수녀원과 잠긴 수문까지 닿는다', 'info'],
-    ['camera', null],
+    ['moveActor', 'alberto', [4104, 1436], { face: [4296, 1436] }],   // the old priest comes to the bell - and stands where Lotte stood - before her name is said
+    ['camera', 'two_keepers', 1],
     ['say', 'ending.town'],
+    ['camera', null],
+    ['lockInput', false],
     ['banner', 'clear', '달이 한 칸 기울었다', '종소리가 한 겹 더 멀리 닿는다'],
     ['prompt', 'letter'],
     ['objective', 'r1_end'],

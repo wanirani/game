@@ -74,9 +74,9 @@ function install() {
     try { g.alpha = 1; g.render(); } catch { /* between areas */ }
     return { ok: false, ...P.state() };
   };
-  P.putY = (x, z, y) => { const sc = v.scene; sc._enterAt(null, { x, z, y }); const h = sc.sim.hero; return [Math.round(h.x), Math.round(h.z), Math.round(h.y)]; };
+  P.putY = (x, z, y) => { const sc = v.scene; sc._enterAt(null, { x, z, y }); sc.cam.snap = true; const h = sc.sim.hero; return [Math.round(h.x), Math.round(h.z), Math.round(h.y)]; };   // (the camera is there at once: its side limits ease over two seconds, a walk's time)
   /** the hero into a trigger (its middle), beside a person, at a spot */
-  P.trig = (event) => { const sc = v.scene, t = (sc.area.triggers ?? []).find((q) => q.event === event); if (!t) return null; return P.putY((t.x0 + t.x1) / 2, (t.z0 + t.z1) / 2, t.y ?? 0); };
+  P.trig = (event, yOf) => { const sc = v.scene, t = (sc.area.triggers ?? []).find((q) => q.event === event); if (!t) return null; const q = yOf ? sc.people.byId(yOf) : null; return P.putY((t.x0 + t.x1) / 2, (t.z0 + t.z1) / 2, q ? q.y : t.y ?? 0); };   // (yOf: a person who stands on the floor the trigger is on - the top of the tower)
   P.beside = (id, dz) => { const sc = v.scene, p = sc.people.byId(id) ?? sc.people.spots.find((q) => q.id === id); if (!p) return null; for (const [ox, oz] of [[0, dz ?? -56], [0, -70], [-56, 0], [56, 0], [-44, -44], [44, -44], [0, 56]]) if (sc._spotOk({ x: p.x + ox, z: p.z + oz, y: p.y })) return P.putY(p.x + ox, p.z + oz, p.y); return null; };
   P.use = (want) => { const sc = v.scene, W = want ? String(want).split('|') : null, okT = () => { const t = sc.people.target; return !!t && (!W || W.includes(t.id)); }; step(); step(); step(); for (let i = 0; i < 60 && !okT(); i++) step(); const t = sc.people.target; if (!okT()) return { err: 'the prompt on offer is ' + (t ? t.id : 'none') + (want ? ', not ' + want : '') }; v.use(); step(); step(); return { id: t.id }; };
   /** the long ring at the bell the hero stands at: the same event the scene raises (index.js _ringLong) */
@@ -177,14 +177,14 @@ const C = (id, title, fn) => chains.push({ id, title, fn });
 
 C('opening', 'the opening: the red moon and the cracked bell (a new game)', async () => {
   await boot(null);
-  await until({ shot: 'moon_bell' }); await still('moon_bell', '서막 — 붉은 달과 종 (camera moon_bell)', ['hero'], 'ev_opening');
+  await until({ shot: 'moon_bell' }); await still('moon_bell', '서막 — 붉은 달과 종 (camera moon_bell)', [], 'ev_opening');
 });
 C('church', 'the church: Alberto and Elise, the promise', async () => {
   await boot(before('ev_church_arrive')); await idle(); await P('trig', 'church.arrive');
   await until({ line: '' }); await still('church_meet', '성당 앞 — 신부와 엘리제 (ev_church_arrive)', ['hero', 'alberto', 'elise'], 'ev_church_arrive');
 });
 C('tower', 'the bell tower: Elise at the rope, the crack, the fall, waking in 1697', async () => {
-  await boot(before('ev_tower_top')); await idle(); await P('trig', 'tower.top');
+  await boot(before('ev_tower_top')); await idle(); await P('trig', 'tower.top', 'elise');
   await until({ line: '' }); await still('tower_top', '종탑 꼭대기 — 엘리제 (ev_tower_top)', ['hero', 'elise'], 'ev_tower_top');
   await idle(); await P('fell', 'tower_bats');
   await until({ shot: 'bell_crack' }); await still('bell_crack', '종에 금이 간다 (camera bell_crack)', ['hero', 'elise'], 'ev_tower_crack');
@@ -245,8 +245,10 @@ C('keepers', 'the sleeping girl, the two keepers at the bell', async () => {
   await until({ line: '' }); await still('elise_asleep', '잠든 엘리제 (ev_elise_wake)', ['hero', 'elise'], 'ev_elise_wake');
   await until({ line: '찾았네요' }, 200); const s = await P('state');
   if (s.area === 'eshville_past') await still('keepers_found', '두 종지기가 만난다 (ev_keepers, first line)', ['hero', 'lotte', 'elise'], 'ev_keepers');
-  try { await until({ move: 40 }, 30); await still('keepers_walk', '엘리제가 종으로 걸어간다 (moveActor, lockInput)', ['hero', 'lotte', 'elise'], 'ev_keepers'); } catch (e) { put('     · no still of the walk: ' + String(e.message).slice(0, 90)); }
-  await until({ shot: 'two_keepers' }, 200); await still('two_keepers', '두 종지기 — 종을 사이에 두고 (camera two_keepers)', ['hero', 'lotte', 'elise'], 'ev_keepers');
+  const w = await until({ move: 50, shot: 'two_keepers' }, 60);
+  if (w.modal !== 'dialog') { await still('keepers_walk', '엘리제가 종으로 걸어간다 (moveActor, lockInput)', ['hero', 'lotte', 'elise'], 'ev_keepers'); await until({ shot: 'two_keepers' }, 200); }
+  await still('two_keepers', '두 종지기 — 종을 사이에 두고 (camera two_keepers)', ['hero', 'lotte', 'elise'], 'ev_keepers');
+  await until({ line: '약속!' }); await still('keepers_promise', '두 종지기 — 「약속!」', ['hero', 'lotte', 'elise'], 'ev_keepers');
   await idle(); await still('keepers_after', '약속 뒤 — 놓여난 순간', ['hero', 'lotte', 'elise'], 'ev_keepers');
 });
 C('ending', "the ending: the bread, the last crossing, tonight's bell, the widening ring, the card", async () => {
@@ -254,8 +256,9 @@ C('ending', "the ending: the bread, the last crossing, tonight's bell, the widen
   await until({ line: '' }); await still('ending_bread', '마지막 건넘 앞 (ev_ending)', ['hero', 'lotte', 'elise'], 'ev_ending');
   await until({ shot: 'years', mid: true }); await still('years_last', '백 년이 흐른다 — 마지막 (camera years)', ['hero'], 'ev_ending');
   await until({ line: '' }, 200); await still('ending_bell', '오늘 밤의 종 — 엘리제 (ev_ending_home)', ['hero', 'elise'], 'ev_ending_home');
-  await until({ shot: 'ring_widen', mid: true }, 200); await still('ring_widen', '종소리가 넓어진다 (camera ring_widen)', ['hero', 'elise'], 'ev_ending_home');
+  await until({ shot: 'ring_widen', mid: true }, 200); await still('ring_widen', '종소리가 넓어진다 (camera ring_widen)', [], 'ev_ending_home');
   await until({ line: '' }); await still('ending_town', '맺음 — 마을 (ev_ending_home, last lines)', ['hero', 'elise'], 'ev_ending_home');
+  await until({ line: '로테?' }); await still('ending_lotte', '맺음 — 「…로테?」 (ev_ending_home)', ['hero', 'elise', 'alberto'], 'ev_ending_home');
   await until({ modal: 'end' }, 200); await still('end_card', '맺음 카드', [], 'ev_ending_home');
 });
 
