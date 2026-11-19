@@ -64,15 +64,26 @@ Object.assign(WALLPROPS, {
   feather(G, F, s) {
     const L = s.len ?? 26, k = L / 26, a = (s.tilt ?? 50) * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a), w0 = s.w ?? 5, back = s.back ?? 6, lift = s.lift ?? 0.4, n = F.vec(0, ca, sa);
     // stations from the quill end to the tip: [t, the shaft's height up the leaning plane, wide (lower) vane, narrow (upper) vane, half the quill's width]
-    const S = [[0, 0.5, 0, 0, 0.5], [0.17, 1.7, 0, 0, 0.46], [0.32, 2.75, 1.9, 1.3, 0.4], [0.5, 3.5, 3.1, 1.9, 0.34], [0.68, 3.75, 3.4, 2.0, 0.27], [0.85, 3.35, 2.6, 1.6, 0.2], [1, 2.4, 0, 0, 0.03]];
+    const S = [[0, 0.5, 0, 0, 0.5], [0.17, 1.75, 0, 0, 0.46], [0.32, 2.95, 2.1, 1.0, 0.4], [0.5, 3.75, 3.3, 1.5, 0.34], [0.68, 3.95, 3.6, 1.6, 0.27], [0.85, 3.45, 2.8, 1.3, 0.2], [1, 2.3, 0, 0, 0.03]];
+    const NOTCH = { 3: [1, 0.42], 4: [-1, 0.52] };   // a split between the barbs: segment -> [the vane (1 narrow, -1 wide), where along the segment]
     const at = (t, v) => F.pt(s.u + (t - 0.5) * L, s.y + lift + v * k * sa, w0 - back * t - v * k * ca);
-    const CORE = [0.037, 0.063, 0.142], LO = [0.079, 0.149, 0.319], HI = [0.126, 0.179, 0.354], Q = (t) => [0.484 - 0.264 * t, 0.612 - 0.328 * t, 0.549 - 0.213 * t], o = { vary: 0 };
-    const piece = (A, B, C, D, cA, cB, cC, cD) => (A === D ? G.tri('white', A, B, C, n, { ...o, mul: [cA, cB, cC] }) : B === C ? G.tri('white', A, B, D, n, { ...o, mul: [cA, cB, cD] }) : G.quad4('white', A, B, C, D, n, { ...o, mul: [cA, cB, cC, cD] }));
+    const mix = (A, B, f) => [A[0] + (B[0] - A[0]) * f, A[1] + (B[1] - A[1]) * f, A[2] + (B[2] - A[2]) * f];
+    const CORE = [0.025, 0.041, 0.088], LO = [0.058, 0.112, 0.248], HI = [0.089, 0.142, 0.292], Q = (t) => mix([0.484, 0.612, 0.549], [0.22, 0.284, 0.336], t);
+    const fan = (P, C) => { for (let i = 1; i + 1 < P.length; i++) G.tri('white', P[0], P[i], P[i + 1], n, { vary: 0, mul: [C[0], C[i], C[i + 1]] }); };
     for (let i = 0; i + 1 < S.length; i++) {
-      const [t0, r0, l0, u0, q0] = S[i], [t1, r1, l1, u1, q1] = S[i + 1], a0 = at(t0, r0 - q0), a1 = at(t1, r1 - q1), b0 = at(t0, r0 + q0), b1 = at(t1, r1 + q1);
-      piece(a0, a1, b1, b0, Q(t0), Q(t1), Q(t1), Q(t0));                                                                              // the quill
-      if (l0 + l1 > 0) piece(l0 ? at(t0, r0 - q0 - l0) : a0, l1 ? at(t1, r1 - q1 - l1) : a1, a1, a0, l0 ? LO : CORE, l1 ? LO : CORE, CORE, CORE);   // the wide vane (on the ledge)
-      if (u0 + u1 > 0) piece(b0, b1, u1 ? at(t1, r1 + q1 + u1) : b1, u0 ? at(t0, r0 + q0 + u0) : b0, CORE, CORE, u1 ? HI : CORE, u0 ? HI : CORE);   // the narrow vane
+      const A = S[i], B = S[i + 1], st = (f) => A.map((v, j) => v + (B[j] - v) * f);                                                      // the station at f along this piece
+      const qe = (e, f) => { const [t, r, , , q] = st(f); return at(t, r + e * q); };                                                    // the quill's edge (e -1 below the shaft, 1 above)
+      const ve = (e, f) => { const [t, r, l, u, q] = st(f); return at(t, r + e * (q + (e < 0 ? l : u))); };                               // the vane's edge
+      fan([qe(-1, 0), qe(-1, 1), qe(1, 1), qe(1, 0)], [Q(A[0]), Q(B[0]), Q(B[0]), Q(A[0])]);
+      for (const e of [-1, 1]) {
+        const j = e < 0 ? 2 : 3, EDGE = e < 0 ? LO : HI, has0 = A[j] > 0, has1 = B[j] > 0, N = NOTCH[i];
+        if (!has0 && !has1) continue;
+        if (N && N[0] === e) {   // two five-cornered pieces with a slit between them, slanting back towards the quill end as the barbs lie
+          const f = N[1], fa = f - 0.14, sA = st(fa), apex = at(sA[0], sA[1] + e * (sA[4] + sA[j] * 0.28)), cA = mix(CORE, EDGE, 0.28);
+          fan([qe(e, 0), qe(e, fa), apex, ve(e, f - 0.06), ve(e, 0)], [CORE, CORE, cA, EDGE, EDGE]);
+          fan([qe(e, fa), qe(e, 1), ve(e, 1), ve(e, f + 0.06), apex], [CORE, CORE, EDGE, EDGE, cA]);
+        } else fan([qe(e, 0), qe(e, 1), ...(has1 ? [ve(e, 1)] : []), ...(has0 ? [ve(e, 0)] : [])], [CORE, CORE, ...(has1 ? [EDGE] : []), ...(has0 ? [EDGE] : [])]);
+      }
     }
   },
   /** a washing line along a wall (1697): { u (middle), y (height of the hooks), w (span), sag, n (pieces), off (distance from the wall), seed } */
