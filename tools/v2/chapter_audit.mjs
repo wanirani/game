@@ -138,7 +138,7 @@ function installCa() {
     away: () => !v.ready || !!v.scene._go || !!v.scene.xing,
     dead: () => !!v.scene.sim?.hero?.dead,
     tear: () => !!v.scene.ch?.tear,   // the queen is tearing through to the other night (src/v2/game/chapter.js)
-    line: () => v.scene.hud.modal === 'dialog' && !H.shot, cut: () => v.scene.hud.modal === 'dialog' && !!H.shot,   // a line outside a camera shot · a line inside one (the two keepers at the bell)
+    line: () => v.scene.hud.modal === 'dialog', cut: () => !!H.shotLock,   // a line is on the screen · a camera cut of the story holds the picture (the two keepers at the bell)
     modal: () => !!v.scene.hud.modal,
   };
   // the pad lays its buttons out when it is first shown. A run resumed into an open dialogue found them all at (0,0), every press of the bot hit nothing
@@ -512,7 +512,7 @@ add('elise_wake', '잠든 엘리제를 깨운다 (interact oss.elise)', async ()
   }
   if (SHOTS) {   // the two keepers: Lotte's first line while Elise stands beside the hero, then the shot with the bell between the two
     await play(6000, { bot: false, pred: (q) => q.ready && q.area === 'eshville_past' && !q.go && !q.xing, chunk: 60 });
-    await run(300, false, 'line'); await run(12, false); await shot('keepers_found'); await run(1200, false, 'cut'); await run(12, false); await shot('keepers_promise');
+    await run(300, false, 'line'); await run(12, false); await shot('keepers_found'); await run(1200, false, 'cut'); await run(70, false); await shot('keepers_cut'); await run(400, false, 'line'); await run(12, false); await shot('keepers_promise');
   }
   return waitArea('eshville_past', 6000, false); });
 crossBeat('ending_bell', '두 종지기의 약속 뒤, 큰 종을 길게 → 오늘 밤', 'big_bell', 'eshville_now', { shot: 'ending_cross' });

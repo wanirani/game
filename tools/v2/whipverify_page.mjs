@@ -18,14 +18,15 @@ const T0 = Date.now(), log = (m) => console.log(`[${((Date.now() - T0) / 1000).t
 function setup() {
   const v = window.__v2, sc = v.scene, W = window.__W, sim = sc.sim, h = sim.hero;
   W.drawEvery = 20; W.clear(); W.X0 = h.x; W.Z0 = h.z; W.ev = [];
+  for (const x of sc.area.exits ?? []) { x.locked = true; if (x._box) x._box.solid = true; }   // nobody walks out of the area in the middle of a measurement
   const ev0 = sim.hooks.event;
   sim.hooks.event = function (name, a, b, c, d, e, f, g2) {
     if (name === 'attack') W.ev.push([W.n, 'move', b && b.id]); else if (name === 'roll') W.ev.push([W.n, 'roll']); else if (name === 'jump') W.ev.push([W.n, 'jump']); else if (name === 'act') W.ev.push([W.n, 'act', b]);
     else if (name === 'heroHurt') W.ev.push([W.n, 'hurt']); else if (name === 'deny') W.ev.push([W.n, 'deny', c]); else if (name === 'guard' || name === 'parry') W.ev.push([W.n, name]);
     return ev0 ? ev0.call(this, name, a, b, c, d, e, f, g2) : undefined;
   };
-  W.snap = () => { const q = sc.sim.hero; return { n: W.n, hurt: q.hurtT > 0, air: !q.onGround, move: q.move ? q.move.id : null, act: q.act, roll: q.dashT > 0, chg: !!q.charging, rollCd: +q.rollCd.toFixed(2), hook: q.hookId, guard: !!q.guard, gt: q.guardTap > 0, dead: !!q.dead, stop: sc.fx.feel.stop > 0, mx: sc.inp.mx, mz: sc.inp.mz, airAtk: !!q.airAtk }; };
-  W.go = (n, o) => { const q = sc.sim.hero; if (o) { if (o.stick) W.stick(o.stick[0], o.stick[1]); if (o.reso) { q.reso = q.resoMax; q.callCd = 0; } if (o.home && Math.hypot(q.x - W.X0, q.z - W.Z0) > 300) { W.put(W.X0, W.Z0, 1, 0); W.tick(6); } } W.tick(n); return W.snap(); };
+  W.snap = () => { if (!sc.sim) return { gone: true, n: W.n, go: JSON.stringify(sc._go ?? null) }; const q = sc.sim.hero; return { n: W.n, hurt: q.hurtT > 0, air: !q.onGround, move: q.move ? q.move.id : null, act: q.act, roll: q.dashT > 0, chg: !!q.charging, rollCd: +q.rollCd.toFixed(2), hook: q.hookId, guard: !!q.guard, gt: q.guardTap > 0, dead: !!q.dead, stop: sc.fx.feel.stop > 0, mx: sc.inp.mx, mz: sc.inp.mz, airAtk: !!q.airAtk }; };
+  W.go = (n, o) => { const q = sc.sim.hero; if (o) { if (o.stick) W.stick(o.stick[0], o.stick[1]); if (o.reso) { q.reso = q.resoMax; q.callCd = 0; } if (o.home && Math.hypot(q.x - W.X0, q.z - W.Z0) > 230) { W.put(W.X0, W.Z0, 1, 0); W.tick(6); } } W.tick(n); return W.snap(); };
   W.fight = (kinds, at) => kinds.map((k, i) => W.enemy(k, W.X0 + at[i][0], W.Z0 + at[i][1], { awake: true, hp: 99999 }));
   W.ringSpot = () => { const P = sc.sim.hookPoints[0]; if (!P) return null; for (const d of [120, 90, 150, 60, 180, 210]) for (let k = 0; k < 8; k++) { const a = (k * Math.PI) / 4, x = P.x + Math.cos(a) * d, z = P.z + Math.sin(a) * d; if (!Number.isFinite(W.ground(x, z))) continue; W.put(x, z, 1, 0); W.tick(3); const q = sc.sim.hero; if (q.hookId != null && q.onGround) return { x, z, ring: P.id }; } return null; };
   const B = {}; for (const id of ['attack', 'roll', 'jump', 'skill']) { const b = W.btn(id); B[id] = b ? { cx: b.cx, cy: b.cy } : null; }
@@ -70,6 +71,7 @@ async function partPress(L) {
       const K = order[i], gap = 5 + Math.floor(R() * 30), hd = 2 + Math.floor(R() * 4); let st = null;
       if (K === 'roll') { if (R() < 0.85) { const a = R() * 6.2832; st = [Math.cos(a), Math.sin(a)]; } else st = [0, 0]; } else if (R() < 0.4) { if (R() < 0.25) st = [0, 0]; else { const a = R() * 6.2832; st = [Math.cos(a), Math.sin(a)]; } }
       const s0 = await page.evaluate(([n, o]) => window.__W.go(n, o), [gap, { stick: st, reso: K === 'skill', home: true }]);
+      if (s0.gone) { console.log(`   ${dev}: the scene let go of its rules at press ${i} (${s0.go}) — stopped`); break; }
       if (trustedSeen === null) trustedSeen = await page.evaluate(() => new Promise((r) => { window.addEventListener('pointerdown', (e) => r({ trusted: e.isTrusted, type: e.pointerType }), { once: true, capture: true }); setTimeout(() => r(null), 1500); window.__probe = 1; })).catch(() => null), 0;
       await down(info.btn[K]);
       const s1 = await page.evaluate((n) => window.__W.go(n), hd);
