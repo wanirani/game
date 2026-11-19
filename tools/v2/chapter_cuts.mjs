@@ -187,7 +187,7 @@ C('tower', 'the bell tower: Elise at the rope, the crack, the fall, waking in 16
   await boot(before('ev_tower_top')); await idle(); await P('trig', 'tower.top', 'elise');
   await until({ line: '' }); await still('tower_top', '종탑 꼭대기 — 엘리제 (ev_tower_top)', ['hero', 'elise'], 'ev_tower_top');
   await idle(); await P('fell', 'tower_bats');
-  await until({ shot: 'bell_crack' }); await still('bell_crack', '종에 금이 간다 (camera bell_crack)', ['hero', 'elise'], 'ev_tower_crack');
+  await until({ shot: 'bell_crack' }); await still('bell_crack', '종에 금이 간다 (camera bell_crack)', ['elise'], 'ev_tower_crack');   // (the cut is about the bell; Elise speaks)
   await until({ shot: 'fall', mid: true }); await still('fall', '금 사이로 떨어진다 (camera fall)', ['hero'], 'ev_tower_crack');
   await until({ shot: 'wake_past' }); await still('wake_past', '그 밤에서 깨어난다 — 로테 (camera wake_past)', ['hero', 'lotte'], 'ev_past_wake');
 });
