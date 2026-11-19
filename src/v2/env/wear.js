@@ -112,7 +112,7 @@ export function skirt(G, x0, x1, y, t, z0, seed = 1, plain = false) {
   const n = Math.max(1, Math.round(len / 340));
   for (let i = 0; i < n; i++) {
     const u = len * (i + 0.5 + (hash(seed + i, 1.1) - 0.5) * 0.3) / n;
-    F.box(G, 'stone', u - 17, u + 17, yb, y - 34, 0, 13, { faces: 'FLR', cell: 120, ...so });                              // a pier
+    F.box(G, 'stone', u - 17, u + 17, yb, y - 34, 0, 13, { faces: 'FLR', ...so });                              // a pier
     G.quad4('trimstone', F.pt(u - 17, y - 34, 13), F.pt(u + 17, y - 34, 13), F.pt(u + 17, y - 16, 0), F.pt(u - 17, y - 16, 0), [0, 0.6, -0.8], { vary: 0, k: 0.9 });
     const wu = len * (i + 1) / n - 40 - 60 * hash(i, seed + 3), wy = y - 52 - 30 * hash(seed, i + 5);                     // a weep hole between two piers and what runs out of it
     if (wu > 20 && wu < len - 20) { F.face(G, 'stone', wu - 4, wu + 4, wy - 5.5, wy + 5.5, 0.5, { k: 0.14, vary: 0 }); streak(G, F, 'stone', 0.4, wu, wy - 5, 70 + 50 * hash(i, 9), 9, 0.5, seed + i, so); }

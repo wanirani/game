@@ -30,8 +30,8 @@ export function ossuary(era = 'now', flags = {}) {
   // ───────────── walls (same in both nights) ─────────────
   const SCN = (side, us, len) => (past ? us.map((u) => ({ type: 'sconce', side, u: side === 'R' ? u : len - u, y: 140, lr: 300, li: 1.4 })) : []);
   const sideWalls = (chunk, z, d, butt, sc, B = { h: 230, d: 22, w: 44 }) => add(chunk,
-    { t: 'wall', x: 0, z, w: 100, d, h: HW, mat: 'facade', kit: { style: 'rubble', lower: 'fieldstone', cell: 70, faces: 'R', cornice: true, buttress: butt.map((u) => ({ side: 'R', u, ...B })), hang: SCN('R', sc, d) } },
-    { t: 'wall', x: X1, z, w: 100, d, h: HW, mat: 'facade', kit: { style: 'rubble', lower: 'fieldstone', cell: 70, faces: 'L', cornice: true, buttress: butt.map((u) => ({ side: 'L', u: d - u, ...B })), hang: SCN('L', sc, d) } });
+    { t: 'wall', x: 0, z, w: 100, d, h: HW, mat: 'facade', kit: { style: 'rubble', lower: 'fieldstone', cell: 70, faces: 'R', cornice: true, loculi: { every: 230 }, buttress: butt.map((u) => ({ side: 'R', u, ...B })), hang: SCN('R', sc, d) } },   // loculi (DETAIL): burial niches with dressed frames in the side walls
+    { t: 'wall', x: X1, z, w: 100, d, h: HW, mat: 'facade', kit: { style: 'rubble', lower: 'fieldstone', cell: 70, faces: 'L', cornice: true, loculi: { every: 230 }, buttress: butt.map((u) => ({ side: 'L', u: d - u, ...B })), hang: SCN('L', sc, d) } });
   // rock beyond the wall tops (drawn only): without it the raised camera looked over the side walls into black
   const rock = (chunk, z, d) => add(chunk, { t: 'floor', x: -1500, z, w: 1502, d, y: HW - 2, walk: false, mat: 'stone', kit: { mat: 'cellar', cell: 420 } }, { t: 'floor', x: X1 + 98, z, w: 1502, d, y: HW - 2, walk: false, mat: 'stone', kit: { mat: 'cellar', cell: 420 } });   // WORLD-LOOK: 1,500 wide (was 262: beyond it the picture was black)
   rock('c1', -60, 1060); rock('c2', 1000, 1100); rock('c3', 2100, 900); rock('c4', 3000, 990);
@@ -39,7 +39,7 @@ export function ossuary(era = 'now', flags = {}) {
   add('far', { t: 'deco', mesh: 'farwall', x: -1100, y: -520, z: -60, x1: X0, z1: -60, h: HW + 1200, mat: 'fieldstone', piers: 520, k: 1.5, cell: 300 }, { t: 'deco', mesh: 'farwall', x: X1, y: -520, z: -60, x1: X1 + 1200, z1: -60, h: HW + 1200, mat: 'fieldstone', piers: 520, k: 1.5, cell: 300 },
     { t: 'deco', mesh: 'apron', x: 0, y: -4, z: 0.6, w: X1 + X0, d: 3, mat: 'fieldstone', k: 0.5, skirt: 520 });   // (a chunk of its own with one texture: the hall's four chunks keep their boxes)
   sideWalls('c1', -60, 1060, [460, 1060], [250, 760]); sideWalls('c2', 1000, 1100, [500, 1100], [120, 800]); sideWalls('c3', 2100, 900, [350, 700], [180, 540]); sideWalls('c4', 3000, 990, [150, 350, 550, 750], past ? [100, 250, 450, 650, 850] : [250, 650], { h: 292, d: 14, w: 84 });   // the last hall: four flat wall piers a side. WORLD-3: 14 deep instead of 40 - the hero (r 14) stood hidden in the bay behind a 40-deep pier, and pier + heap made nooks
-  add('c4', { t: 'wall', x: 0, z: 3900, w: 1200, d: 90, h: HW + 60, mat: 'facade', kit: { style: 'stone', cell: 60, faces: 'F', plinth: 34, quoins: false, courses: [250], buttress: [{ u: 330, h: 300, d: 26, w: 40 }, { u: 870, h: 300, d: 26, w: 40 }] } });
+  add('c4', { t: 'wall', x: 0, z: 3900, w: 1200, d: 90, h: HW + 60, mat: 'facade', kit: { style: 'stone', cell: 60, faces: 'F', plinth: 34, quoins: false, courses: [250], slits: false, mend: false, buttress: [{ u: 330, h: 300, d: 26, w: 40 }, { u: 870, h: 300, d: 26, w: 40 }] } });
   // the coffin corridor: low banks left and right (same walls both nights: candles and new coffins on them in 1697, a hundred years of coffins tonight)
   add('c1', { t: 'wall', x: X0, z: 400, w: 280, d: 600, h: 56, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'FR', coping: true } },
     { t: 'wall', x: 820, z: 400, w: 280, d: 600, h: 56, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'FL', coping: true } });

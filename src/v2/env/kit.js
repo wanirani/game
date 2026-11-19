@@ -102,9 +102,8 @@ export function doorAt(G, F, s, w0, yb, wallMat, boxes) {
   if (rise) { spandrels(G, F, wallMat, s.u, hw, yS, rise, s.arch, w0, {}); archBand(G, F, 'trimstone', s.u, hw, yS, rise, s.arch, w0 + 0.8, 9); }
   else F.box(G, 'trimstone', u0 - 12, u1 + 12, y1, y1 + 11, w0, w0 + 4.5, { faces: 'FLRT', vary: 0 });
   F.box(G, 'trimstone', u0 - 9, u0, yb, yS, w0, w0 + 4, { faces: 'FLRT', vary: 0 }); F.box(G, 'trimstone', u1, u1 + 9, yb, yS, w0, w0 + 4, { faces: 'FLRT', vary: 0 });
-  if (WEAR.age) {   // DETAIL: a threshold stone under a door that has no step (3.5 high: nothing to climb, nothing to catch on), pintles where the strap hinges turn
-    if (!up) F.box(G, 'stone', u0 - 11, u1 + 11, yb, yb + 3.5, w0, w0 + 9, { faces: 'FLRT', top: 'trimstone', vary: 0.12 });
-    if (!s.open) for (const fy of [0.16, 0.5, 0.82]) F.box(G, 'metal', u0 - 1.2, u0 + 3.4, y0 + (yS - y0) * fy - 4.4, y0 + (yS - y0) * fy + 4.4, wp, wp + 3, { faces: 'FT', k: 0.6, vary: 0 });
+  if (WEAR.age) {   // DETAIL: a threshold stone under a door that has no step (3.5 high: nothing to climb, nothing to catch on)
+    if (!up) F.box(G, 'stone', u0 - 11, u1 + 11, yb, yb + 3.5, w0, w0 + 9, { faces: 'FT', top: 'trimstone', vary: 0.12 });
     if (s.mark === 'plague' && WEAR.age === 'past' && !s.open) {   // 1697: a red cross daubed on the door of a house the sickness is in, a white rag tied to the ring
       const cu = (u0 + u1) / 2, cy = y0 + s.h * 0.56, r = s.w * 0.3, q = { tint: [0.62, 0.1, 0.09], vary: 0.2, k: 1 };
       for (const sg of [-1, 1]) G.quad4('white', F.pt(cu - r - 3, cy - sg * r, wp + 1.7), F.pt(cu - r + 3, cy - sg * r - sg * 2, wp + 1.7), F.pt(cu + r + 3, cy + sg * r, wp + 1.7), F.pt(cu + r - 3, cy + sg * r + sg * 2, wp + 1.7), F.n, q);
@@ -386,7 +385,7 @@ export function dressRoof(G, P) {
   G.quad('timber', [x0, ye - 7, z0], [x1 - x0, 0, 0], [0, 7, 0], [0, 0, -1], { k: 0.7, vary: 0.2 });                        // 처마 널
   G.quad('timber', [x0, ye - 7, z0], [x1 - x0, 0, 0], [0, 0, ov], [0, -1, 0], { k: 0.35, vary: 0, keep: true, underY: 0 });   // 처마 밑
   if (WEAR.age && K.mat !== 'thatch') { const nt = Math.max(2, Math.round((x1 - x0) / 72)); for (let i = 0; i < nt; i++) { const cx = x0 + (x1 - x0) * (i + 0.5) / nt; G.box('timber', cx - 3.2, ye - 15, z0 + 1.5, cx + 3.2, ye - 7, z0 + ov, { faces: 'FLR', k: 0.62, vary: 0.1 }); } }   // DETAIL: beam ends under the eaves (rafter tails)
-  if (WEAR.age && K.mat === 'thatch') { const nt = Math.max(3, Math.round((x1 - x0) / 38)); for (let i = 0; i < nt; i++) { const a = x0 + (x1 - x0) * i / nt, b = x0 + (x1 - x0) * (i + 1) / nt, dr = 4 + 7 * hash(i, P.x + P.z); G.quad4('thatch', [a, ye - 7 - dr, z0 - 1.5], [b, ye - 7 - dr * (0.4 + 0.6 * hash(P.x, i)), z0 - 1.5], [b, ye + 2, z0 - 0.5], [a, ye + 2, z0 - 0.5], [0, 0.2, -0.98], { k: 0.8, vary: 0.3 }); } }   // DETAIL: the ragged fringe of a thatched eave
+  if (WEAR.age && K.mat === 'thatch') { const nt = Math.max(3, Math.round((x1 - x0) / 58)); for (let i = 0; i < nt; i++) { const a = x0 + (x1 - x0) * i / nt, b = x0 + (x1 - x0) * (i + 1) / nt, dr = 4 + 7 * hash(i, P.x + P.z); G.quad4('thatch', [a, ye - 7 - dr, z0 - 1.5], [b, ye - 7 - dr * (0.4 + 0.6 * hash(P.x, i)), z0 - 1.5], [b, ye + 2, z0 - 0.5], [a, ye + 2, z0 - 0.5], [0, 0.2, -0.98], { k: 0.8, vary: 0.3 }); } }   // DETAIL: the ragged fringe of a thatched eave
   G.box('stone', x0 - 2, y + h - 3, zm - 5, x1 + 2, y + h + 4, zm + 5, { faces: 'FLRT', k: 0.8, tint: [0.7, 0.72, 0.9], vary: 0 });   // 용마루
   for (const [gx, sx] of [[P.x, -1], [P.x + P.w, 1]]) {   // 박공 벽 + 박공널
     G.tri(K.gable ?? 'plaster', [gx, y, P.z], [gx, y, P.z + P.d], [gx, y + h, zm], [sx, 0, 0], { shade: (px, py) => 0.7 + 0.3 * sm(0, 40, y + h - py) });

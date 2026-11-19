@@ -6,7 +6,8 @@ export const rnd = (seed) => { let s = (seed >>> 0) || 1; return () => ((s = (Ma
  * A row house facing the camera: one wall part + one roof part (kit format).
  * o = { x, z, w, h, d = 90, y = 0, style: 'stone' | 'timber' | 'rubble' | 'plaster', seed, base (raised pavement height in front),
  *       lit (0..1 share of lit windows), door (u from the left end | false), doorOpt, shop (big ground-floor window), sign, banner (colour), sconce,
- *       burnt (true = roofless ruin with a ragged top), roof (false = none), roofMat ('slate' | 'thatch'), roofH, faces, tint, kit (overrides), chunk }
+ *       burnt (true = roofless ruin with a ragged top), roof (false = none), roofMat ('slate' | 'thatch'), roofH, faces, tint, kit (overrides), chunk,
+ *       hang (more entries for the wall's hang list), plague (share of doors with a plague cross in 1697, default 0.34) }
  */
 export function house(o) {
   const { x, z, w, h } = o, d = o.d ?? 90, y = o.y ?? 0, r = rnd(o.seed ?? ((x * 31 + w * 7 + h) | 0)), st = o.style ?? 'stone', base = o.base ?? 0;
@@ -30,6 +31,7 @@ export function house(o) {
   if (o.sign) hang.push({ type: 'sign', u: du ?? w / 2, y: 126, w: 78, h: 20, ...(typeof o.sign === 'object' ? o.sign : {}) });
   if (o.banner) hang.push({ type: 'banner', u: Math.round(w * 0.5 + (du != null && Math.abs(w * 0.5 - du) < 60 ? 90 : 0)), y: 62, len: 88, w: 34, c: o.banner });
   if (o.sconce) hang.push({ type: 'sconce', u: Math.round((du ?? w * 0.4) + 62), y: 118 });
+  if (o.hang) hang.push(...o.hang);   // DETAIL: more wall dressing from the area (soot, washing lines, garlands ... - ENV_KIT 24)
   const tint = o.burnt ? [0.52, 0.46, 0.46] : o.tint ?? [0.96 + 0.08 * r(), 0.95 + 0.06 * r(), 0.94 + 0.1 * r()];
   // DETAIL (ENV_KIT 24): what the wear pass of the kit reads (only a stage with `wear` draws any of it). A stream of its own, so the houses' windows, tints and roofs stay as they were
   const r2 = rnd((o.seed ?? 1) * 7919 + 13);
