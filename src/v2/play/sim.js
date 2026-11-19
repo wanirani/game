@@ -232,7 +232,8 @@ export class Sim {
       } else if (!canGuard && h.guard) h.guard = false;
       if (h.guard) h.guardT += dt;
       // 공격: 연타 3 · 공중 내려베기 · 구른 직후 훑기
-      if (h.queued > 0) this._attackNow(h, ux, uz, moving);   // 들고 있는 공격 눌림: 지금 쓸 수 있으면 쓴다 (아니면 남은 시간 동안 더 들고 있는다)
+      if (pAttack && h.dashT > 0) { h.sweepQ = true; h.queued = 0; }   // 구르는 중에(구르기와 같은 틱에도) 누른 공격 = 구른 뒤 훑기
+      else if (h.queued > 0) this._attackNow(h, ux, uz, moving);       // 들고 있는 공격 눌림: 지금 쓸 수 있으면 쓴다 (아니면 남은 시간 동안 더 들고 있는다)
       if (h.dashT > 0) {   // 구르는 중: 정해진 방향으로, 처음이 빠르고 끝이 느리게
         const R = h.roll; R.t += dt; h.dashT -= dt;
         const u = clamp(R.t / R.dur, 0, 1), v = R.v0 * (1 - 0.65 * u);

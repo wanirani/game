@@ -57,9 +57,12 @@ export function createEndCard(env) {
       { const w = px(150) * ta; ctx.globalAlpha = 0.7 * ta; ctx.fillStyle = COL.goldDeep; ctx.fillRect(cx - w, ty + ts * 0.74, w * 2, Math.max(1, px(1.5))); ctx.globalAlpha = 1; }
       line(ctx, o.head, cx, ty + ts * 1.32, tsz(17), { weight: 600, color: COL.silver, a: ease((t - T_TITLE - 0.5) / 0.9) });
       // the bell-sound circle: the ring that was, the new ring growing out to the places it now reaches, and what still lies beyond
-      const gy = top + H * 0.56, sq = 0.5, r1 = Math.min(vw * 0.3, H * 0.44), r0 = r1 * 0.5, ga = ease((t - 1.0) / 0.8), k = ease((t - T_RING0) / (T_RING1 - T_RING0)), r = r0 + (r1 - r0) * k;
-      ring(ctx, cx, gy, r1 * 1.42, sq, 0.16 * ga, px(1.2), COL.silverDim, [px(3), px(7)]);
-      ring(ctx, cx, gy, r1 * 1.9, sq, 0.1 * ga, px(1.2), COL.silverDim, [px(3), px(9)]);
+      // (laid out from both ends, so that nothing meets on a low screen: title and head above, "to be continued" and the hint below, the circle and its line in the room between)
+      const sq = 0.5, contY = bot - px(38), subS = tsz(15.5), g0 = top + H * 0.1 + ts * 1.32 + tsz(17) * 0.5 + px(14), g1 = contY - tsz(18) * 0.5 - px(22) - subS - px(14);
+      const gy = (g0 + g1) / 2, r1 = Math.max(px(36), Math.min(vw * 0.3, (g1 - g0) / 2 / sq)), r0 = r1 * 0.5, ga = ease((t - 1.0) / 0.8), k = ease((t - T_RING0) / (T_RING1 - T_RING0)), r = r0 + (r1 - r0) * k;
+      const kOut = Math.max(1.2, Math.min(1.9, (contY - tsz(18) * 0.5 - px(6) - gy) / (r1 * sq)));   // the outermost ring ends above "to be continued"
+      ring(ctx, cx, gy, r1 * Math.min(1.42, (1 + kOut) / 2), sq, 0.16 * ga, px(1.2), COL.silverDim, [px(3), px(7)]);
+      ring(ctx, cx, gy, r1 * kOut, sq, 0.1 * ga, px(1.2), COL.silverDim, [px(3), px(9)]);
       ring(ctx, cx, gy, r0, sq, 0.55 * ga, px(1.6), COL.goldDeep);
       if (k > 0) { ring(ctx, cx, gy, r, sq, 0.22 * ga, px(9), COL.gold); ring(ctx, cx, gy, r, sq, 0.95 * ga, px(2.4), COL.gold); }
       for (let i = 1; i <= 2; i++) { const q = (t * 0.45 + i * 0.5) % 1; ring(ctx, cx, gy, r * q, sq, 0.3 * ga * (1 - q), px(1.2), COL.gold); }   // the sound itself, running out from the bell
@@ -71,9 +74,9 @@ export function createEndCard(env) {
         ctx.globalAlpha = a; ctx.fillStyle = lit > 0.5 ? COL.gold : COL.silverDim; ctx.beginPath(); ctx.moveTo(x, y - d); ctx.lineTo(x + d, y); ctx.lineTo(x, y + d); ctx.lineTo(x - d, y); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
         line(ctx, far[i], x, y + (i ? px(21) : -px(21)), tsz(14.5), { weight: 700, color: lit > 0.5 ? COL.silver : COL.silverDim, a });
       }
-      line(ctx, o.sub, cx, gy + r1 * sq * 1.42 + px(30), tsz(15.5), { weight: 600, color: COL.gold, a: ease((t - T_RING1 + 0.4) / 0.8) });
+      line(ctx, o.sub, cx, gy + r1 * sq + px(14) + subS * 0.5, subS, { weight: 600, color: COL.gold, a: ease((t - T_RING1 + 0.4) / 0.8) });   // right under the circle
       // to be continued · the hint
-      line(ctx, o.cont, cx, bot - px(38), tsz(18), { weight: 700, family: FONTS.title, color: COL.silver, a: ease((t - T_CONT) / 0.8) });
+      line(ctx, o.cont, cx, contY, tsz(18), { weight: 700, family: FONTS.title, color: COL.silver, a: ease((t - T_CONT) / 0.8) });
       if (t >= READY) line(ctx, o.hint, cx, bot - px(8), tsz(12.5), { weight: 500, color: COL.silverDim, a: 0.55 + 0.35 * Math.sin((t - READY) * 3) });
       ctx.restore();
     },

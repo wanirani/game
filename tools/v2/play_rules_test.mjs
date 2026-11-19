@@ -334,6 +334,72 @@ try {
   { const s = mkB([{ kind: 'jar', x: 60, z: 0, drop: 'coin3' }]); run(s, 0.3, { attack: true }); const n1 = s.pickN; s.reset(); ok('sim.reset(): everything stands again, the pool is empty', n1 === 3 && s.brkLive === 1 && !s.breakables[0].broken && s.breakables[0].box.solid && s.pickN === 0); }
 }
 
+// ── 14. Input buffer (WHIP, 2026-11-19 — PLAY_API 1.1): a press is carried TUNE.bufT and fires on the first tick the hero may do it; the newest press wins; a press fires once ──
+{
+  const tick = (s, inp) => s.update(DT, inp || {}), N = Math.round(TUNE.bufT / DT) - 1;   // N = ticks after the press tick on which the press is still alive (10 at 60 Hz)
+  const until = (s, cond, inp, max = 200) => { let i = 0; while (i < max && !cond(s)) { tick(s, typeof inp === 'function' ? inp(i) : inp); i++; } return i; };
+  ok(`TUNE.bufT ${TUNE.bufT} s = the press tick + ${N} ticks`, N >= 9 && N <= 11);
+  { // roll pressed inside the hit window of hit 1: used to be dropped, now rolls on the first tick after the window
+    const s = mk(); const ev = []; s.hooks.roll = () => ev.push(s.hero.moveT); tick(s, { attack: true });
+    const k0 = Math.ceil((MOVES.c1.hit[1] - TUNE.bufT) / DT) + 2; for (let i = 0; i < k0; i++) tick(s, { mx: 1 }); tick(s, { mx: 1, dash: true }); const before = s.hero.dashT > 0, at = s.hero.moveT;
+    const n = until(s, (q) => q.hero.dashT > 0, { mx: 1 }, 30);
+    ok('roll pressed inside the hit window of hit 1 is carried and rolls on the first free tick', !before && s.hero.dashT > 0 && n <= N && names(s).filter((x) => x === 'roll').length === 1, `pressed at move time ${at.toFixed(3)} (window ends ${MOVES.c1.hit[1]}), rolled ${n} ticks later`); }
+  { // the same press made too early is not carried past bufT
+    const s = mk(); tick(s, { attack: true }); tick(s, { mx: 1, dash: true }); run(s, 0.6, { mx: 1 });
+    ok('a roll pressed more than bufT before the hero is free never fires', !names(s).includes('roll'), `roll events ${names(s).filter((x) => x === 'roll').length}`); }
+  { // attack pressed late in hit 3: a new hit 1 starts on the very tick hit 3 ends
+    const s = mk(); const ids = []; s.hooks.attack = (h, mv) => ids.push(mv.id + '@' + s._tick); let endT = -1;
+    for (let i = 0; i < 90; i++) { tick(s, { attack: i % 9 === 0 && ids.length < 3 }); if (endT < 0 && ids.length === 3 && s.hero.move !== MOVES.c3) endT = s._tick; }   // the tick on which hit 3 ends when nothing more is pressed
+    const s2 = mk(), ids2 = []; s2.hooks.attack = (h, mv) => ids2.push(mv.id + '@' + s2._tick);
+    for (let i = 0; i < 90; i++) { const c3 = s2.hero.move === MOVES.c3, press = c3 && s2.hero.moveT >= MOVES.c3.dur - 0.12 && s2.hero.moveT < MOVES.c3.dur - 0.12 + DT; tick(s2, { attack: (i % 9 === 0 && ids2.length < 3) || press }); }
+    ok('attack pressed 0.12 s before hit 3 ends: hit 1 starts on the tick hit 3 ends (it used to be dropped)', ids.length === 3 && ids2.length === 4 && ids2[3].startsWith('c1@') && Number(ids2[3].split('@')[1]) === endT, `without the late press ${ids.join(' ')} · with it ${ids2.join(' ')} · hit 3 ended on tick ${endT}`); }
+  { // one press, one attack
+    const s = mk(); let c = 0; s.hooks.attack = () => c++; tick(s, { attack: true }); run(s, 1.2, {});
+    ok('a press fires once: one attack press = one attack', c === 1, `attacks ${c}`); }
+  { // skill right after an attack began (a ring in reach): the hook is thrown when the hit window ends - no 'busy'
+    const s = mk(); s.hookPoints.push({ id: 'r1', x: 250, y: 0, z: 40, to: [300, 50] }); tick(s, {}); tick(s, { attack: true }); tick(s, {}); tick(s, { skill: true });
+    const n = until(s, (q) => q.hero.act === 'hook', {}, 30), denied = s.log.some((l) => l[0] === 'deny');
+    ok('skill pressed 2 ticks after an attack began: the hook is thrown on the first tick after the hit window, no "busy"', s.hero.act === 'hook' && !denied && n <= N, `thrown ${n} ticks after the press · deny ${denied}`); }
+  { // attack + skill on the same tick: the stated priority (skill > roll > attack > jump)
+    const s = mk(); s.hookPoints.push({ id: 'r1', x: 250, y: 0, z: 40, to: [300, 50] }); tick(s, {}); let atk = 0; s.hooks.attack = () => atk++; tick(s, { attack: true, skill: true }); const act = s.hero.act; run(s, 1.2, {});
+    ok('attack + skill on the same tick: the skill goes first (hook), the attack of that tick is dropped', act === 'hook' && atk === 0 && s.hero.onGround && !s.hero.act, `act ${act} · attacks ${atk}`); }
+  { // roll + attack on the same tick: both used, as before (roll, then the sweep)
+    const s = mk(); const ids = []; s.hooks.attack = (h, mv) => ids.push(mv.id); tick(s, { mx: 1, dash: true, attack: true }); run(s, 0.8, { mx: 1 });
+    ok('roll + attack on the same tick: the roll, then the sweep (unchanged)', names(s).includes('roll') && ids.join() === 'sweep', ids.join()); }
+  { // the newest press wins: an attack is being carried, then roll is pressed -> the roll fires and the older attack is forgotten
+    const s = mk(); let atk = 0; s.hooks.attack = () => atk++; s.hurtHero(1, -1, 0, {}); s.stop = 0; const t0 = s.hero.hurtT;
+    const kA = Math.round((t0 - 0.12) / DT), kD = kA + 3; let i = 0; while (s.hero.hurtT > 0 && i < 60) { tick(s, { mx: 1, attack: i === kA, dash: i === kD }); i++; }
+    run(s, 0.6, { mx: 1 });
+    ok('the newest press wins: attack then roll while stunned -> only the roll fires when the stun ends', names(s).filter((x) => x === 'roll').length === 1 && atk === 0, `rolls ${names(s).filter((x) => x === 'roll').length} · attacks ${atk}`); }
+  { // presses while stunned: the last bufT of the stun is carried, earlier presses are not
+    const a = mk(); a.hurtHero(1, -1, 0, {}); a.stop = 0; tick(a, { mx: 1, dash: true }); run(a, 0.8, { mx: 1 });
+    const b = mk(); b.hurtHero(1, -1, 0, {}); b.stop = 0; const kb = Math.round((b.hero.hurtT - 0.1) / DT); let i = 0, free = -1, rolled = -1; for (; i < 60; i++) { tick(b, { mx: 1, dash: i === kb }); if (free < 0 && b.hero.hurtT <= 0) free = i; if (rolled < 0 && b.hero.dashT > 0) rolled = i; }
+    ok('stunned: a roll pressed 0.1 s before the stun ends rolls on the first free tick; one pressed at its start does not', !names(a).includes('roll') && rolled >= 0 && rolled - free <= 1, `first free tick ${free}, rolled on tick ${rolled}`); }
+  { // jump pressed in the roll's last ticks: jumps on the first tick after the roll
+    const s = mk(); tick(s, { mx: 1, dash: true }); const k = Math.round(TUNE.rollT / DT) - 6; let jumped = -1, rollEnd = -1; for (let i = 0; i < 40; i++) { tick(s, { mx: 1, jump: i === k, jumpHeld: i >= k }); if (rollEnd < 0 && s.hero.dashT <= 0) rollEnd = i; if (jumped < 0 && !s.hero.onGround) jumped = i; }
+    ok('jump pressed 0.1 s before the roll ends: jumps on the first tick after the roll', jumped >= 0 && jumped - rollEnd <= 1 && names(s).filter((x) => x === 'jump').length === 1, `roll ended on tick ${rollEnd}, off the ground on tick ${jumped}`); }
+  { // a held attack (charging) no longer eats the skill press: the hook is thrown out of the charge
+    const s = mk(); s.hookPoints.push({ id: 'r1', x: 250, y: 0, z: 40, to: [300, 50] }); let i = 0; for (; i < 60 && !s.hero.charging; i++) tick(s, { attack: i === 0, attackHeld: true });
+    const was = s.hero.charging; tick(s, { attackHeld: true, skill: true });
+    ok('skill while charging (attack held) with a ring in reach: the charge is let go and the hook is thrown', was && s.hero.act === 'hook' && !s.hero.charging && s.log.some((l) => l[0] === 'charge' && l[2] === 'cancel'), `charging ${was} -> act ${s.hero.act}`); }
+  { // sim.dropPresses(): what the scene calls while it holds the hero
+    const s = mk(); let atk = 0; s.hooks.attack = () => atk++; tick(s, { mx: 1, dash: true }); tick(s, { mx: 1, attack: true, jump: true }); s.dropPresses(); run(s, 0.8, {});
+    ok('sim.dropPresses(): carried presses (attack queued behind a roll, a jump) never fire afterwards', atk === 0 && !names(s).includes('jump') && s.hero.queued === 0 && s.hero.bufJ === 0 && !s.hero.sweepQ, `attacks ${atk}`); }
+  { // the roll against every enemy attack: started on any tick from 0.1 s before the first active tick up to that tick, in 8 directions and 3-5 distances, the hero is never hurt
+    const CASES = [['skeleton_soldier', 'slash', [50, 70, 86]], ['skeleton_soldier', 'stab', [92, 120, 156]], ['plague_corpse', 'grab', [50, 80, 110, 150]], ['grave_ghost', 'swoop', [50, 80, 110, 140, 176]], ['gravekeeper_armor', 'slam', [60, 100, 132]], ['gravekeeper_armor', 'thrust', [136, 180, 226]], ['bat', 'dive', [60, 120, 180, 250]], ['banshee_queen', 'sweep', [80, 150, 205]], ['banshee_queen', 'scream', [80, 160, 240]]];
+    const bad = []; let runs = 0;
+    for (const [kind, id, dists] of CASES) {
+      const atk = KINDS[kind].attacks.find((a) => a.id === id), w = Math.ceil(atk.windup / DT - 1e-6) - 1;
+      for (let e = -6; e <= 0; e++) for (const dist of dists) for (let k = 0; k < 8; k++) {
+        const a = (k * Math.PI) / 4, s = new Sim(flatArena(900, 700, [{ kind, x: dist, z: 0, active: true }]), {}), en = s.enemies[0]; let got = false; s.hooks.heroHurt = () => { got = true; };
+        en.dirX = -1; en.dirZ = 0; en.cd = 99; en.solid = true; s.update(DT, {}); s.startAttack(en, atk);
+        for (let i = 0; i < w + Math.round((atk.strike + 0.5) / DT); i++) { s.update(DT, { mx: i >= w + e - 1 ? Math.cos(a) : 0, mz: i >= w + e - 1 ? Math.sin(a) : 0, dash: i === w + e }); if (en.state !== 'attack') break; }
+        runs++; if (got) bad.push(`${kind}.${id} ${e} ticks, ${dist} px, ${k * 45} deg`);
+      }
+    }
+    ok(`roll untouchable ${TUNE.rollIfr} s (roll ${TUNE.rollT} s): started 0.1 s before the first active tick or on it, no enemy attack lands (${runs} rolls: 9 attacks x 7 start ticks x 8 directions x 3-5 distances)`, bad.length === 0, bad.slice(0, 6).join(' | ')); }
+}
+
 Math.random = realRandom;
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) { console.log('FAILED:\n  ' + fails.join('\n  ')); process.exit(1); }
