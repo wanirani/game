@@ -128,7 +128,7 @@ async function staged() {
           S.resonance.value = (S.resonance.value + 0.22) % (S.resonance.cells + 0.6);
         }
         hud.update(1 / 60, S);
-      } else hud.update(0, S);
+      } else hud.update(hud.dialogOpen ? 1 / 60 : 0, S);   // (frozen: the demo holds still; an open dialogue keeps its own clock - its choice cards take a touch only 0.35 s after they come up)
       queue.clear();
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.setTransform(S.scale, 0, 0, S.scale, 0, 0);
