@@ -339,7 +339,7 @@ export function woodFence(G, F, u0, u1, y, h, w = 0) {
  * balusters under a moulded top rail, every other post carried up into a carved finial. Everything lies within 3.5 of the line: the fence's collision.
  */
 export function woodScreen(G, F, u0, u1, y, h, w = 0) {
-  const len = u1 - u0, nb = Math.max(1, Math.round(len / 86)), bay = len / nb, T = { tint: [0.92, 0.78, 0.62], vary: 0.25 }, hd = h * 0.56, c = { cell: 180 };
+  const len = u1 - u0, nb = Math.max(1, Math.round(len / 86)), bay = len / nb, T = { tint: [0.74, 0.62, 0.5], vary: 0.25 }, hd = h * 0.56, c = { cell: 180 };   // dark old oak: no lighter behind the hero than the fence it replaces (look_read)
   F.box(G, 'timber', u0, u1, y, y + 6, w - 3.5, w + 3.5, { ...T, ...c, faces: 'FT' });
   F.box(G, 'timber', u0, u1, y + hd - 2.5, y + hd + 2.5, w - 3, w + 3, { ...T, ...c, faces: 'FT' });
   F.box(G, 'timber', u0, u1, y + h - 5, y + h, w - 3.5, w + 3.5, { ...T, ...c, faces: 'FT', k: 1.08 });
@@ -351,7 +351,7 @@ export function woodScreen(G, F, u0, u1, y, h, w = 0) {
       G.tri('timber', a, b, t, [F.nx * 0.7, 0.7, F.nz * 0.7], { ...T, k: 1.1 }); G.tri('timber', e, a, t, [-F.ux * 0.7, 0.7, -F.uz * 0.7], { ...T, keep: true }); G.tri('timber', b, d, t, [F.ux * 0.7, 0.7, F.uz * 0.7], { ...T, keep: true }); }
     if (i === nb) break;
     const a = u + 3.5, b = u + bay - 3.5;
-    F.face(G, 'timber', a, b, y + 6, y + hd - 2.5, w - 1.4, { tint: [0.6, 0.48, 0.38], vary: 0.25 });                                  // the panel's sunk ground
+    F.face(G, 'timber', a, b, y + 6, y + hd - 2.5, w - 1.4, { tint: [0.5, 0.4, 0.32], vary: 0.25 });                                  // the panel's sunk ground
     F.box(G, 'timber', a + 8, b - 8, y + 11, y + hd - 8, w - 1.4, w + 1.3, { ...T, faces: 'FLRT', k: 1.05 });                         // its raised field
     const nbl = Math.max(2, Math.round((b - a) / 15));
     for (let k = 0; k < nbl; k++) { const cu = a + (b - a) * (k + 0.5) / nbl; F.box(G, 'timber', cu - 1.7, cu + 1.7, y + hd + 2.5, y + h - 5, w - 1.7, w + 1.7, { ...T, faces: 'FLR', k: 0.9 }); }
