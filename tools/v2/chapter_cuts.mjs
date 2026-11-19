@@ -119,7 +119,7 @@ function install() {
     }
     sc._heroHid = hid0; sc._gl(Wv, Hv, 1, false);
     const H = sc.host, pr = sc.state.prompts ?? [], c = sc.cam;
-    return { who: out, noise, view: [Wv, Hv], pad: !!M.pad?.shown && !M.pad?.back && !M.pad?.cut, pauseOnly: !!M.pad?.shown && !!M.pad?.cut, pills: Array.from(pr).map((p) => p.label), lock: !!H.locks(), modal: sc.hud.modal ?? null, dialogTop: dbox ? Math.round(dbox.y) : null, shot: shotName(),
+    return { who: out, noise, view: [Wv, Hv], pad: !!M.pad?.shown && !M.pad?.back && !M.pad?.cut, pauseOnly: !!M.pad?.shown && !!M.pad?.cut, banner: M.hud?.banner ?? null, bannerTitle: M.hud?.bannerTitle ?? '', pills: Array.from(pr).map((p) => p.label), lock: !!H.locks(), modal: sc.hud.modal ?? null, dialogTop: dbox ? Math.round(dbox.y) : null, shot: shotName(),
       cam: { x: Math.round(c.px), y: Math.round(c.py), z: Math.round(c.pz), look: [Math.round(c.tx), Math.round(c.tz)], pitch: +c.pitch.toFixed(2), dist: Math.round(c.dist) }, area: v.area, section: v.section, obj: H.objective, line: lastLine() };
   };
 }
@@ -162,7 +162,8 @@ async function still(id, title, about, what) {
   if (m.lock && m.pad) weak.push('the pad is on screen while the story holds the hero');
   if ((m.lock || m.modal) && m.pills.length) weak.push(`pill on screen: ${m.pills.join(', ')}`);
   const rec = { device: DEV, chain, id, title, what, about, file, weak, ...m }; CUTS.push(rec);
-  put(`${weak.length ? 'WEAK' : 'ok  '} [${DEV}] ${id} — ${title} (${m.area}/${m.section}${m.shot ? ', shot ' + m.shot : ''}; pad ${m.pad ? 'ON' : 'off'}, pills ${m.pills.length})`);
+  put(`${weak.length ? 'WEAK' : 'ok  '} [${DEV}] ${id} — ${title} (${m.area}/${m.section}${m.shot ? ', shot ' + m.shot : ''}; pad ${m.pad ? 'ON' : 'off'}${m.pauseOnly ? ' (pause button only)' : ''}, pills ${m.pills.length}, banner ${m.banner ? m.banner + ' 「' + m.bannerTitle + '」' : 'none'})`);
+  if ((m.lock || m.modal === 'dialog') && m.banner === 'area' && !/—/.test(m.bannerTitle)) weak.push('the place name is up over a scene: ' + m.bannerTitle);
   for (const p of m.who) if (about.includes(p.id) || (p.frame > 0 && p.tall >= 20)) put(`       ${about.includes(p.id) ? '*' : ' '} ${p.id.padEnd(10)} at (${p.x}, ${p.z})  head ${p.head.join(',')}  ${p.tall} px tall  frame ${p.frame.toFixed(2)}  seen ${p.seen.toFixed(2)} of ${p.px} px${p.box ? '  UNDER THE BOX' : ''}`);
   for (const w of weak) put(`       ! ${w}`);
   if (m.line) put(`         line: ${m.line.replace(/\n/g, ' / ').slice(0, 110)}`);

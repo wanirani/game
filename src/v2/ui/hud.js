@@ -541,7 +541,7 @@ export function createCanvasHud(game, opts = {}) {
     },
     promptRects() { const o = []; for (let k = 0; k < taps.n; k++) o.push({ action: taps.ref[k]?.action, x: taps.rect[k * 4], y: taps.rect[k * 4 + 1], w: taps.rect[k * 4 + 2], h: taps.rect[k * 4 + 3] }); return o; },
     layout: L, px, tsz,
-    info() { return { scale: L.s, hs: L.hs, textSize: L.textSize, epoch: L.epoch, banner: banner.on ? banner.kind : null, toasts: toasts.filter((q) => q.on).length, lit: T.lit, max: T.max, coins: T.coinR && T.coinR.a > 0 ? { ...T.coinR } : null }; },
+    info() { return { scale: L.s, hs: L.hs, textSize: L.textSize, epoch: L.epoch, banner: banner.on ? banner.kind : null, bannerTitle: banner.on ? banner.title : '', toasts: toasts.filter((q) => q.on).length, lit: T.lit, max: T.max, coins: T.coinR && T.coinR.a > 0 ? { ...T.coinR } : null }; },
     release() { for (const p of [badge.now, badge.past, yearP, ...Object.values(shelves), moonP, bossP, bossFill, bannerP, bandP, promptRow, msgP, msg2P, dbgP, ...nums, ...calls, ...toasts, ...wprompts]) if (p.c) { p.c.width = 1; p.c.height = 1; p.c = null; } icons.clear(); },
   };
 }
