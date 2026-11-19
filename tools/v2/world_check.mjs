@@ -37,7 +37,8 @@ const STATES = {
 /** walks besides "into every exit": [state, from (spawn name | [x, z]), to (spawn name | [x, z]), what it shows] */
 const WALKS = {
   belltower_now: [['', 'default', 'top', 'climbs the tower from the door to the bell chamber'], ['', 'top', [330, 1030], 'walks up to the bell']],
-  ossuary_past: [['wedge_stone', 'default', 'boss', 'walks from the entry over the statue plinth to the last hall'], ['wedge_stone', 'boss', [600, 3740], 'walks to the bell posts'], ['wedge_wood', 'default', 'wedge_far', 'crosses the gap on the crate']],
+  // (CHAPTER 2026-11-19: in 1697 a wooden screen at z 1494 shuts the inner rooms off behind the gap - they are reached by the bells beyond it, so the walk from the entry ends at the far side of the gap and the inner walk starts at the lantern room)
+  ossuary_past: [['wedge_stone', 'default', 'wedge_far', 'walks from the entry over the statue plinth to the far side of the gap'], ['wedge_stone', 'lamp', 'boss', 'walks from the lantern room behind the wooden screen to the last hall'], ['wedge_stone', 'boss', [600, 3740], 'walks to the bell posts'], ['wedge_wood', 'default', 'wedge_far', 'crosses the gap on the crate']],
   ossuary_now: [['wedge_stone', [700, 900], 'boss', 'walks from behind the coffin wall over the statue plinth to the last hall'], ['', 'lamp', [600, 3740], 'walks from the lantern stand to the bell posts']],
   graveyard_now: [['bell_hung,ossuary_open', 'default', 'from_ossuary', 'walks the rebuilt stair up to the ossuary door']],
 };

@@ -8,7 +8,7 @@ import fs from 'node:fs';
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => { if (v.startsWith('--')) a.push([v.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true]); return a; }, []));
 const ROOT = new URL('../..', import.meta.url).pathname, BASE = String(args.base || '/dev/shm/whipverify/base'), SEEDS = Number(args.seeds ?? 12), TICKS = Number(args.ticks ?? 6000), OUT = String(args.out || '/tmp/claude-0/v2/whipverify');
 const NEW = await import(ROOT + 'src/v2/play/index.js'), OLD = await import(BASE + '/src/v2/play/index.js');
-const DT = 1 / 60;
+const DT = 1 / 60, REAL = !!args.real;   // --real: waits counted in calls of update (frozen ticks of a hit-stop included); default: in rule ticks
 const rng = (s) => () => { s |= 0; s = (s + 0x6d2b79f5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 const KINDS = ['skeleton_soldier', 'skeleton_soldier', 'grave_ghost', 'plague_corpse', 'gravekeeper_armor', 'bat'];
 
@@ -52,7 +52,7 @@ function run(P, seed, n, { oldJump = false, tune = null, audit = false } = {}) {
     else if (name === 'jump') { M.jumps++; EV.push([tick, 'jump']); }
     else if (name === 'deny') M.denies++;
   };
-  const S = script(seed, n), trace = new Float64Array(n * 4), tags = new Array(n); let jb = 0, jUsed = false;
+  const S = script(seed, n), trace = new Float64Array(n * 4), tags = new Array(n), fz = new Uint8Array(n); let jb = 0, jUsed = false;
   const presses = [];
   for (tick = 0; tick < n; tick++) {
     const q = S[tick]; h.hp = h.hpMax;
@@ -60,7 +60,7 @@ function run(P, seed, n, { oldJump = false, tune = null, audit = false } = {}) {
     if (oldJump) { if (q.jumpPress) { jb = 8; jUsed = false; } jump = jb > 0 && !jUsed; if (jb > 0) jb--; }
     const inp = { mx: q.mx, mz: q.mz, attack: q.attack, attackHeld: q.attackHeld, dash: q.dash, guard: q.guard, jump, jumpHeld: q.jumpHeld, jumpUsed: false, skill: q.skill, skillHeld: false, bell: false, bellHeld: false, lockNext: false };
     if (q.attack) { M.press.attack++; presses.push([tick, 'attack']); } if (q.dash) { M.press.dash++; presses.push([tick, 'dash', q.mx !== 0 || q.mz !== 0]); } if (q.jumpPress) { M.press.jump++; presses.push([tick, 'jump']); } if (q.skill) { M.press.skill++; presses.push([tick, 'skill']); }
-    const x0 = h.x, z0 = h.z;
+    const x0 = h.x, z0 = h.z; fz[tick] = s.stop > 0 ? 1 : 0;
     s.update(DT, inp);
     if (inp.jumpUsed) jUsed = true;
     M.dist += Math.hypot(h.x - x0, h.z - z0);
@@ -73,7 +73,7 @@ function run(P, seed, n, { oldJump = false, tune = null, audit = false } = {}) {
   }
   Math.random = mr;
   if (tune) for (const k in keep) TUNE[k] = keep[k];
-  return { M, trace, tags, EV, presses, S };
+  return { M, trace, tags, EV, presses, S, fz };
 }
 const firstDiff = (A, B, n) => { for (let i = 0; i < n; i++) { if (A.tags[i] !== B.tags[i]) return i; for (let k = 0; k < 4; k++) if (A.trace[i * 4 + k] !== B.trace[i * 4 + k]) return i; } return -1; };
 const near = (R, i) => { const o = []; for (const p of R.presses) if (p[0] >= i - 20 && p[0] <= i) o.push(`${p[1]}@${p[0] - i}`); return o.join(' '); };
@@ -129,17 +129,19 @@ for (let i = 0; i < RA.length; i++) {
     let k = null; if (e[1] === 'move') { if (e[2] === 'whip') continue; k = 'attack'; } else if (e[1] === 'roll') k = 'dash'; else if (e[1] === 'jump') k = 'jump'; else if (e[1] === 'act') { if (e[2] === 'hook' || e[2] === 'call') k = 'skill'; else continue; } else continue;
     let best = null; for (const p of P) if (p.k === k && !p.used && p.t <= e[0] && e[0] - p.t <= 40) best = p;   // the newest unused press of that kind
     if (!best) { if (k === 'dash') continue; /* a roll out of a held guard with the stick pushed has no press of its own */ C.orphan.push({ seed: i + 1, tick: e[0], what: e[2] ?? e[1], last: P.filter((p) => p.k === k && p.t <= e[0]).slice(-2).map((p) => `${p.t}${p.used ? 'u' : ''}`).join(',') }); continue; }
-    best.used = true; const w = e[0] - best.t, c = C[k]; c.fired++; c.waits[w] = (c.waits[w] ?? 0) + 1; if (w > c.maxWait) c.maxWait = w;
-    const lim = e[2] === 'sweep' ? 99 : 12; if (w > lim) c.late++; if (e[2] === 'sweep' && w > 12) C.sweepLate++;
-    if (hurts.some((t) => t > best.t && t <= e[0])) c.afterHurt++;
+    best.used = true; let w = e[0] - best.t; const w0 = w; if (!REAL) for (let t = best.t + 1; t <= e[0]; t++) w -= R.fz[t]; const c = C[k]; if (w0 > 12) C.lateReal = (C.lateReal ?? 0) + 1; if (w0 > (C.maxReal ?? 0)) C.maxReal = w0; c.fired++; c.waits[w] = (c.waits[w] ?? 0) + 1; if (w > c.maxWait) c.maxWait = w;
+    const lim = e[2] === 'sweep' ? 99 : (e[2] === 'c2' || e[2] === 'c3') ? 15 : 12; if (w > lim) c.late++; if (e[2] === 'sweep' && w > 12) C.sweepLate++;
+    if (hurts.some((t) => t >= best.t && t < e[0])) c.afterHurt++;
   }
 }
 for (const k of ['attack', 'dash', 'jump', 'skill']) { const c = C[k]; console.log(`   ${k.padEnd(7)} presses ${String(c.n).padStart(5)} · fired ${String(c.fired).padStart(5)} · later than 12 ticks ${c.late} · longest wait ${c.maxWait} ticks · fired after a hit came in between ${c.afterHurt} · waits ${JSON.stringify(c.waits)}`); }
+console.log(`   in update calls (hit-stop ticks included): fires later than 12 calls ${C.lateReal ?? 0} · longest ${C.maxReal ?? 0} calls`);
 console.log(`   sweeps out of a roll later than 12 ticks after their press (old rule: roll, then sweep): ${C.sweepLate}`);
 console.log(`   actions with no press of their own: ${C.orphan.length} ${JSON.stringify(C.orphan.slice(0, 12))}`);
 res.C = C;
 ok('no attack, jump or skill fires without a press of its own (a press never fires twice)', C.orphan.length === 0, C.orphan.length + ' orphans');
-ok('no press fires later than 12 ticks (0.2 s) after it was made (sweeps out of a roll aside)', C.attack.late + C.dash.late + C.jump.late + C.skill.late === 0);
+ok('no press fires later than 12 rule ticks after it was made (a chained second or third hit: 15 = queueT; sweeps out of a roll aside)', C.attack.late + C.dash.late + C.jump.late + C.skill.late === 0);
 fs.mkdirSync(OUT, { recursive: true }); fs.writeFileSync(`${OUT}/same.json`, JSON.stringify(res, null, 1));
+ok('no press made before or as a hit lands fires after it', C.attack.afterHurt + C.dash.afterHurt + C.jump.afterHurt + C.skill.afterHurt === 0);
 console.log(fails ? `FAILED ${fails}` : 'ALL OK');
 process.exit(fails ? 1 : 0);
