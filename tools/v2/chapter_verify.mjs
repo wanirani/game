@@ -141,7 +141,8 @@ section('S0', 'the first act (save after ev_boss_intro)', async () => {
   s = await intoHall(); ok(!!s.queen?.active, 'he steps in again: she wakes');
   s = await boot(sv); s = await run(120); obs('the game\'s own save made in mid-fight (she was at 700), loaded', pick(s));
   ok(!!s.queen && s.queen.phase === 1 && s.queen.hp === 900 && s.flags.length === 0, `loaded: the first act starts again at ${s.queen?.hp}`);
-  const a = await ringAt('bell_arena', null, 1); obs("a long ring at the hall's bell while she is here (first act)", pick(a));
+  const nh = s.seen, a = await ringAt('bell_arena', null, 1), heldShown = await ev((i) => window.__cs.seenFrom(i), nh); obs("a long ring at the hall's bell while she is here (first act)", { ...pick(a), shown: heldShown });
+  ok(a.area === 'ossuary_now' && heldShown.some((l) => l.includes('붙들고')) && heldShown.some((l) => l.includes('둔하게')) && a.queen?.hp === 900 && a.flags.length === 0, `first act: the hall's bell answers dull, the hero stays tonight and is told why (she holds the bell); she is not reset (${a.area}, queen ${a.queen?.hp})`);
   if (a.area === 'ossuary_past') {
     ok(!a.queen, 'in 1697 before her flight there is no queen');
     const b = await ringAt('bell_arena', null, 1); obs('the same bell in 1697 (sealed until she has fled)', pick(b)); ok(b.area === 'ossuary_past', 'the sealed bell answers dull, he stays in 1697');
@@ -208,9 +209,14 @@ section('S4', 'the ending card, a reload on it, the ossuary after the ending', a
   const st1 = await ev(() => window.__cs.saved()), o1 = JSON.parse(st1); obs('what is stored while the card is up', { why: o1.why, area: o1.area, done: Array.isArray(o1.story?.done) ? o1.story.done.length : Object.keys(o1.story?.done ?? {}).length });
   const hid = await ev(() => window.__cs.hide()); s = await run(120); const st2 = await ev(() => window.__cs.saved()); obs('the page hidden and shown again during the card', { hid, storedSame: st2 === st1, modal: s.modal });
   ok(s.modal === 'end', 'the card is still up after the page was hidden and shown');
-  s = await boot(st2); s = await run(240); obs('a reload on the ending card', pick(s)); obs('shown after that reload', await ev(() => window.__cs.seenTail(4)));
-  ok(s.area === 'eshville_now' && !s.dead, `after a reload on the card: ${s.area}, modal ${s.modal}, input ${s.lock ? 'LOCKED' : 'free'}, idle ${s.idle}`);
-  ok(!s.lock && s.idle, 'the hero can be moved after that reload (no lock left over)');
+  s = await boot(st2); s = await wait((q) => q.modal === 'end', 60); obs('a reload on the ending card', pick(s)); obs('shown after that reload', await ev(() => window.__cs.seenTail(4)));
+  ok(s.area === 'eshville_now' && !s.dead && s.modal === 'end' && s.lock, `a reload on the card brings the card up again: ${s.area}, modal ${s.modal}, input ${s.lock ? 'held' : 'FREE'}`);
+  s = await run(420); const tapped = await ev(() => { const sc = window.__v2.scene, r = sc.hud.tapEnd?.(); for (let i = 0; i < 30; i++) window.__game.tick(1 / 60); return { r: r ?? null, top: window.__game.top?.constructor?.name ?? null, gone: window.__game.top !== sc }; });
+  await page.waitForTimeout(1500); const top = await ev(() => { for (let i = 0; i < 90; i++) window.__game.tick(1 / 60); return window.__game.top?.constructor?.name ?? null; }), st3 = await ev(() => localStorage.getItem('bn.v2.save')), o3 = JSON.parse(st3 ?? '{}');
+  obs('the card tapped after the reload', { tapped, top, stored: { why: o3.why, card: o3.ch?.card ?? null, area: o3.area } });
+  ok(top === 'V2Chooser' && o3.why === 'end' && o3.ch?.card === true, `the tap leaves for the 3D chooser and the save says the card was seen (${top}, why ${o3.why}, card ${o3.ch?.card})`);
+  s = await boot(st3); s = await run(240); obs('that save loaded (the game after the ending)', pick(s));
+  ok(s.area === 'eshville_now' && !s.lock && s.idle && s.modal === null, 'after the card was dismissed a load is the free game after the ending: no card, no lock');
   s = await travel('ossuary_now', 'entry'); obs('the ossuary tonight after the ending', { ...pick(s), sera: await ev(() => window.__cs.person('sera')) });
   ok(s.area === 'ossuary_now' && !s.queen, 'no queen in the ossuary after the ending');
   const n0 = s.seen; await ev(() => window.__cs.put(600, 3150)); s = await run(300); obs('five seconds in her hall', { bar: s.bar, shown: await ev((i) => window.__cs.seenFrom(i), n0) });
@@ -225,8 +231,10 @@ section('S5', 'the page hidden during a camera shot (the queen\'s entrance)', as
   const hid = await ev(() => window.__cs.hide()), stored = await ev(() => window.__cs.saved()); obs('hidden and shown during the shot', hid);
   await ev(() => { window.__cs.adv = 6; }); s = await wait((q) => q.idle && !!q.queen?.active, 200); obs('the scene after that', { ...pick(s), intro: await ev(() => window.__cs.done('ev_boss_intro')) });
   ok(!s.shot && !s.lock && !!s.queen?.active && (await ev(() => window.__cs.done('ev_boss_intro'))), 'the entrance ran to its end after the page came back: no lock left, she is awake');
-  s = await boot(stored); s = await wait((q) => q.idle && !!q.queen?.active, 200); obs('the save made while hidden, loaded', { ...pick(s), intro: await ev(() => window.__cs.done('ev_boss_intro')), shown: await ev(() => window.__cs.seenTail(3)) });
+  s = await boot(stored); const introAtLoad = await ev(() => window.__cs.done('ev_boss_intro')); s = await wait((q) => q.idle && !!q.queen?.active, 200); const all = await ev(() => window.__cs.seenFrom(0)), hers = all.filter((l) => l.startsWith('line | 밴시 여왕'));
+  obs('the save made while hidden, loaded', { ...pick(s), introDoneInTheSave: introAtLoad, intro: await ev(() => window.__cs.done('ev_boss_intro')), herLines: hers.length, shown: all.slice(0, 12) });
   ok(!!s.queen?.active && !s.lock, 'loaded: he is in her hall, she wakes, nothing is locked');
+  ok(!introAtLoad && hers.length >= 4, `the save made during her entrance does not count it as done, and the entrance is played again from its start after the load (her lines said: ${hers.length})`);
 });
 
 section('S6', 'the road bell a second time (save after ev_hung_now)', async () => {

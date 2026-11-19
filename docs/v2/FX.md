@@ -4,6 +4,8 @@
 소유자 지시(헌장 §2 마지막 줄): "3D 지만 타격감(효과, 음향 등) 최고로, 마법도 3D 로 화려하게, 최적화로 느리지 않고 경쾌하게".
 이 문서는 그 가운데 **그림 절반**(효과 엔진 + 효과 모음 + 화면·카메라 손맛)이다. 소리는 여기서 **사건 이름만** 내보내고 소리 담당이 받아 만든다.
 
+> **2026-11-19 DETAIL — §15**: the flame sheet has a pale tone (`flamebook.js TONE_PALE`, sprites `SPR.FIRE_PALE` 18 / `SPR.WISP_PALE` 19: the same frames, recoloured in the particle fragment shader) - the blue-white fire of `ossuary_now`; living flames on candle stands; the low tier lights every second wick.
+>
 > **2026-11-18 FIRE-2 — §13**: the particle atlas is 1024 x 1024 (the old 16 cells + a flame flipbook painted in code), `SPR.FIRE` / `SPR.WISP` flipbook quads, `amb` specs (not counted by the fill governor), the layered anchor fire and living candles of the game. §0 "입자 16칸" and §2 "512²" are the old sheet, still there as the atlas's top-left quarter.
 
 ## 0. 한눈에

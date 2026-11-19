@@ -4,6 +4,8 @@
 작성 2026-11-17. 소유자 의견("적과 모든 것들을 3D 로, 배경도 좀 더 디테일하게 — 사물이나 벽면 등도")에 대한 **배경 쪽 답**이다.
 숫자는 §5. 헤드리스 Chromium 은 소프트웨어 렌더러(SwiftShader)라 **프레임 시간은 실제 기기 값이 아니다** — 삼각형·그리기 호출·메모리만 믿을 수 있다.
 
+> **2026-11-19 07:00 UTC, DETAIL — §24**: relief and wear of walls in the stage's night (`stage.wear`, new file `src/v2/env/wear.js`), the stage front as a retaining wall with a foot (`skirt`), new file `src/v2/env/props5.js` (a sign that hangs from a bracket, ivy with leaves that stand off the wall, washing line, harvest garland, the keeper's tools, `keptplace`, `rafters`, `woodpile`), fence kind `'screen'`, far-land pieces with their parts (tiered firs, twigs, broken crowns, `hedge`, `bushes`, far houses with a lit window and a lean-to), living flames on candle stands. A stage without `wear` builds exactly as before (slice0: 29,993 triangles before and after).
+>
 > **2026-11-18 21:40 UTC, WORLD-LOOK — §23**: new file `src/v2/env/props4.js` — what lies beyond an area's edge (`apron ridge treeline farhouse farwall gravefield`: cheap static pieces, one material per backdrop) and wall dressing for a wall's `hang` list (`boards crack ivy drape`); `kit.merlonGaps` (no merlons under a wall-top fire); a brazier's collision is its bowl. Numbers and rules: `AREA_FORMAT.md` §16.
 >
 > **2026-11-18 17:00 UTC, FIRE-2 — §22**: candle groups bake no flame triangle in the game (a living flame per wick instead, `candleSpots`), the brazier's plate of angular flame shards is left out and a heap of glowing coals lies in its bowl, a brazier's fire is 50 wide. The fire itself: `docs/v2/FX.md` §13.
@@ -673,3 +675,70 @@ Wall dressing (a wall part's `kit.hang`, like `sign` / `banner` / `sconce`): `bo
 **Fire leftovers** (`src/v2/game/anchors.js`, the effects engine untouched): (a) merlons - above; (d) the blaze class of `kOf` is `1.24 + (size - 1.05) x 0.7` (was `1.3 + … x 1.35`: a wall-top fire k 1.5-1.62 -> 1.34-1.41), TONGUE speed 42-72k (was 50-92k), grav -76k (-110k), life 0.4-0.56 (0.42-0.62), size 36-48k (40-54k), HEAT size 84-104k (96-118k), 2.35 body quads per slot (2.6): tongues end about two hero heights above the wall; `fire2verify --mode look --devices phone2 --tiers mid`, eshville_now: fire-only overdraw of the two worst views 1.98 / 2.03 -> 1.64 / 1.48 screens, all effects 2.19 / 2.34 -> 2.14 / 1.79 (the rest is smoke, which varied 0.2-0.5 between runs). (c) NOT done - a blue tint was tried on the cold set and taken back: the flame sheet's own colour is orange at the rim, a tint turns it green-brown; it needs a hue term in the particle shader or a pale sheet (`src/v2/fx`). (b) NOT done (living flames on candelabra / chandeliers / the altar: the pack marks their flame vertices - `baked.js` `E` - so `candleSpots` could cluster them; the candle emission must be halved first).
 
 Checks on the final tree: see the WORLD-LOOK report (`world_validate` ALL OK, `world_folds --check` up to date and identical to the plan before, `world_verify_node` ALL OK, `world_fence_node` 112 pieces 0 fail, `world_check` ALL OK with budgets 43,000 / 32 / 42).
+
+## 24. DETAIL (2026-11-19 04:53–07:20 UTC) — walls with relief and wear, things that read as things, the land beyond with its parts
+
+Owner: "배경도 좀 더 디테일하게 표현해줘. 사물이나 벽면 등도". The survey that ranked the work (110 stills at the game camera, Fold size, every area and night; the worst 21 in the DETAIL report) found the same causes everywhere: a tall wall is a flat box with a texture, the stage's front face is a near-black slab over a third of the corner views, the land beyond is dark and angular, the places of the story (screen, rest spot, keeper's hut) are bare. Everything below is static geometry with baked light like the rest of the kit: no alpha, **no new texture, no new draw call** (static draws per chunk are what they were: `world_folds`), nothing collides unless said.
+
+### 24.1 The switch: `stage.wear` (and `stage.skirtFoot`)
+
+`compileEnv` sets `WEAR.age = stage.wear` (`'now'` = tonight 1797, `'past'` = 1697; `src/v2/env/wear.js`) for the length of one compile. **A stage without it builds exactly as before** - the test strip `slice0` and scene v2c are untouched. All four area files set `wear: era`; Eshville and the graveyard also set `skirtFoot` (how far under the front edge the ground outside lies: `beyond.js LOW_GROUND` = 124).
+
+### 24.2 Walls (`kit.js wallDetail`, called for every face of a wall that is not `style: 'low'` and at least 110 high; `kit.plain: true` switches it off)
+
+| piece | what | where it comes by itself | triangles |
+|---|---|---|---|
+| splayed footing | a sloped course under the plinth, 4.5 further out (9 at the ground): its top takes the moon - the wall stands on something | every stone lower storey | 2 per 170 of length |
+| string course / corbel course | a dressed band at 56 % of the height; a second, shallower band under the cornice | plain rubble walls >= 200 high without `courses` / walls with a cornice | 8 + 2 per 230 |
+| base course | a second step of big blocks over the plinth, 30 high, 2.4 out | boundary and crypt walls (no windows, not a house) | 4 per 230 |
+| proud stones, putlog holes | stones standing 2.4 proud (their tops lit), small dark square holes | every stone face, one per 150-190 of length (never on openings, buttresses, bands) | 8 / 2 |
+| arrow loops `kit.slits` | a dark slit 9 x 50 in a dressed frame that stands proud (lintel, sill, jambs) at 2/3 of the height, one per 330 | boundary walls; `slits: false` = none | 14 |
+| burial niches `kit.loculi: { every, y, alt }` | the same frame lying down (46 x 26) at two alternating heights | the ossuary's side walls | 14 |
+| mended masonry `kit.mend` | a big irregular patch of other stone standing 1 proud, one per 560 | boundary walls; `mend: false` = none | 8 |
+| damp at the foot | a band with a ragged top, darker and greener (highest on faces turned away from the moon: R 100, L 72, F 56; kept under the sills) | every wall | 2 per 118 |
+| soot | a teardrop licking up the wall, darkest just above its foot | above every wall lantern (`sconce`); `hang: [{ type: 'soot', u, y, w, h, dark }]` beside a burning neighbour, over a brazier; tonight above every opening of a burnt house (`kit.burnt`, set by `house()`) | 9 |
+| dirt streaks | under the cornice, tonight long and one per 240, in 1697 short and one per 520 | stone walls with a cornice | 5 |
+| cracks | thin dark slivers running up from the plinth | tonight, stone walls >= 200 high | 6-16 |
+| planks across windows | two or three nailed boards | tonight, 30 % of the dark ground-floor windows of a house (55 % of a burnt one) | 4 each |
+| stone under fallen plaster | an irregular patch of the house's stone on the plaster, its upper edge dark (the shadow of the plaster's lip) | tonight, plaster and timber storeys | 8 |
+| whitewash, fresh lime | a lighter patch (plaster on stone; lime on plaster) | 1697, `kit.whitewash` (70 % of stone houses) / every plaster storey | 8 |
+| downpipe `hang: [{ type: 'pipe', u }]` | an iron pipe from a hopper under the eaves to the ground, stepping back under a jetty, two brackets | every roofed house (`house()` puts one at an end of the front) | 16-34 |
+| shutter hanging from one hinge | the shutter dropped at its outer end, standing off the wall | tonight, 42 % of the shutters | 4 |
+| threshold stone | a 3.5-high slab under a door that has no flight of steps (drawn only) | every such door | 4 |
+| plague cross `door.mark: 'plague'` | a red cross daubed on the door and a white rag on its ring | 1697, a third of the doors `house()` makes (`plague` share) | 6 |
+| beam ends / thatch fringe (`dressRoof`) | rafter tails under a slate roof's eaves, one per 72; the ragged hanging edge of a thatched eave | every roof | 6 / 2 |
+
+How wear is drawn: **in the wall's own material, 0.45 in front of it, with a colour factor per vertex** (`Geo` option `mul: [[r, g, b], ...]`, tri / quad4 only). The factor is 1 at the rim, so the piece has exactly the wall's colour there (same texture projection, same shade, same tint) and no seam; inside it falls to dark. `wear.js`: `fan soot damp streak patch crackUp wallRelief skirt`. Rule kept: nothing is laid over an opening (`room()` clips a soot mark under the window above it).
+
+### 24.3 The stage front (`wear.js skirt`, `kit.js dressFloor`)
+
+The front face of a ground floor at z 0 (y 0, at least 200 wide; `kit.skirt: true | 'plain' | false` on any floor) is a **retaining wall**: lit like a house front (0.56 at its foot to 0.94 at the top; it was a flat 0.55), kerb stones at the street's edge, a course, piers with sloped heads every 340, weep holes with a streak below them, a battered foot and damp where it meets the ground. In Eshville and the graveyard a meadow lies at its foot (`beyond.js`: an `apron` 124 under the street with a path, `bushes`, hedges, the oldest graves), so the square's corner views show street, wall, meadow instead of a black slab; the bell tower and the ossuary are cut-open buildings: there the wall goes down into the dark as before, only dressed.
+
+### 24.4 Wall hangings and props (`src/v2/env/props5.js`)
+
+| name | what | notes |
+|---|---|---|
+| `sign` (hang) | with `wear`: the board hangs from an iron bracket 15 off the wall (two arms, stays, a bar, hangers); without: the flat board as before; `perp` unchanged | +34 triangles |
+| `ivy` (hang) | with `wear`: woody stems (ribbons of the oak piece) and leaves as kites that tilt out and down 3.5-9 off the wall; without: the flat pentagons | 2 per leaf, one leaf per 560 of area |
+| `washline { u, y, w, sag, n, off, seed }` (hang) | a line between two hooks 10 off the wall, n pieces of washing | about 30 |
+| `garland { u, y, w, sag, seed }` (hang) | a harvest swag of straw and leaves with fruit, bows at the hooks | about 30 |
+| `tools { u, y, old }` (hang) | the gravekeeper's peg rail: spade, rake, a coil of rope (`old`: rust, the rope gone) | about 40 |
+| `soot`, `pipe` (hang) | drawn by the wall itself (24.2) | |
+| `keptplace { w, shelf, back, old, bread }` (prop, `deco`) | a rest spot someone keeps, set against the front of a low wall: a folded blanket and a kneeling board on the floor (flat, within 9 of the wall = inside the wall's own collision skin), a basket of loaves under a cloth, a jug, a bowl and a hanging cloth on the wall top | about 150; ossuary (322, 2966) both nights |
+| `rafters { w, d, rh, n }` (prop, `deco`) | what a fire left of a roof: thin charred rafter pairs and a fallen ridge pole on a wall top | the keeper's hut tonight |
+| `woodpile { w, h, d, rows, side, face }` (prop) | split logs with their cut ends showing | not placed (see 24.7) |
+| fence `kind: 'screen'` (`kit.js woodScreen`) | a carpenter's panelled screen: sill beam, fielded panels between posts, an open gallery of balusters, a moulded top rail, every other post with a carved finial. **The same collision as `kind: 'wood'`** (half-width 3.5; all 90 boxes of `ossuary_past` identical - checked) | the 1697 screen across the ossuary hall |
+
+### 24.5 The land beyond (`props4.js`, `beyond.js`)
+
+`treeline` kinds: `fir` = a trunk and three tiers of boughs, each a skirt that hangs over the one below, lighter above (`detail: false` = the old two-tier cone, used for the far row); `bare` with `detail: true` = two twigs off every bough; `round` with `detail: true` = a broken crown (two masses and a bough between them). `hedge { x, z, x1, z1, h, seg, depth, to }` = a lumpy front and top whose crest goes up and down and bulges in and out (the west road, east of the east wall, the meadow); `bushes { w, d, n, h }` = low faceted domes. `farhouse`: at least one lit window when `lit > 0`, a cross in each lit window, a shadow under the eaves, a door, a lean-to against one gable. Everything out there is about half as bright again as it was. `apron.skirtK` = brightness of an apron's front face.
+
+### 24.6 Candle stands (`props2.js candleSpots`, `baked.js`)
+
+`candleSpots` also lists the wicks of the generated `candelabrum` (found from the model's glow-flagged vertices: `baked.js bakedFlagged`), `chandelier` (eight on its ring) and `altar` (two) when the part is lit; the game burns a living flame on each (`game/anchors.js`, FX.md 15). In the game the modelled candle tops of the candelabrum and the chandelier glow at half strength (`emisK` 1.45 -> 0.72): the flame is the light. Wall lanterns (`sconce`) are closed lanterns, not candles: they keep their glass and get soot above them.
+
+### 24.7 Rules learned
+
+- **Nothing new on the floor where the hero walks.** A thing he can walk through reads as the "담장을 뚫는" bug. Floor clutter goes (a) inside the collision skin of a low wall with piers (8 deep between the piers: `keptplace`), (b) onto wall tops and wall faces (hangings), (c) into ground nobody can reach. That is why the keeper's tools hang on the hut and no wood pile or ladder was placed.
+- No collision box was added, moved or resized in any area (the screen's boxes are byte-equal to the wooden fence's). `world_fence_node`: 125 pieces, 0 over 0.5.
+- Triangles are the budget in Eshville (43,000): the wear pass costs about 2,000 there; the floors' light grid went from 44 / 44 / 50 to 56 / 56 / 62 (-860) to pay for part of it.
