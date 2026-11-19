@@ -1,0 +1,21 @@
+{
+ "batch": "things",
+ "lane": "THINGS",
+ "cap_credits": 120,
+ "total_credits": 0,
+ "note": "THINGS lane, 2026-11-19. The first paid call (generate_image_batch, 10 design pictures, gpt_image_2_5 1k medium) was refused by the permission system at 16:41 UTC; per the lane's rules it was not retried and nothing else was submitted. 0 credits spent. What was wanted (10 pictures, 10 image-to-3D models, one wall texture) is written out with prompts in /tmp/claude-0/v2/things/gen_requests.json; every thing was built in code (src/v2/env/props6.js) and the masonry texture painted in code (tools/v2/world_tex.py). balance read before the call: 4102.57 credits.",
+ "jobs": [
+  {
+   "id": "things_design_batch_1",
+   "tool": "generate_image_batch",
+   "model": "gpt_image_2_5",
+   "items": 10,
+   "job_id": null,
+   "status": "refused_by_permission",
+   "credits": 0,
+   "file": null,
+   "kept": false,
+   "why": "permission denied before submission; no job was created"
+  }
+ ]
+}
