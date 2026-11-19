@@ -92,16 +92,20 @@ function installCa() {
     // an attack that cannot be guarded (the plague corpse's grab) is rolled away from, as the roll tutorial teaches (CHAPTER lane: the bot used to guard it and be struck)
     if (!A.passive && h.onGround && !(h.rollCd > 0) && !(h.dashT > 0) && !sc.hud.modal) { const E = sim.enemies; for (let i = 0; i < E.length; i++) { const e = E[i], a = e.atk; if (e.dead || e.state !== 'attack' || !a || a.guard !== 'break' || a.pulse || a.air || e.phase !== 'windup' || e.tele < 0.5) continue; const dx = h.x - e.x, dz = h.z - e.z, d = Math.hypot(dx, dz) || 1, reach = (a.box ? a.box.f1 : a.radius ? a.radius.r : 80) + (a.lunge ?? 0) + 30; if (d > reach) continue; let ux = dx / d, uz = dz / d; { const X = sc.area?.exits ?? [], nearExit = (x, z) => X.some((q) => x > q.x0 - 90 && x < q.x1 + 90 && z > q.z0 - 90 && z < q.z1 + 90), ok = (vx, vz) => !nearExit(h.x + vx * 140, h.z + vz * 140) && sc._spotOk({ x: h.x + vx * 110, z: h.z + vz * 110, y: h.y }); if (!ok(ux, uz)) { const c = [[uz, -ux], [-uz, ux], [-ux, -uz]].find((q) => ok(q[0], q[1])); if (c) { ux = c[0]; uz = c[1]; A.sideRolls = (A.sideRolls ?? 0) + 1; } } }   /* not out of the area through an exit behind him, not into a wall: sideways, else past the enemy */ o.mx = ux; o.mz = uz; o.dash = true; o.attack = false; o.guard = false; A.rolls = (A.rolls ?? 0) + 1; break; } }
     // THE BACK DOOR (main session, 11-19): the brain steps and rolls straight away from every wind-up and knows no exits. On that night's graveyard road three corpses winding up in turns
-    // walked him 400 px back and out of the area - three runs in seven once the rules carried his roll presses (more of his rolls come out). An open exit he is not walking to
-    // (pushExit names the one he is: A.exitGoal) is a wall to him: a step or a roll that would end within 60 px of its box loses its part toward the box.
+    // walked him 400 px back and out of the area - three runs in seven once the rules carried his roll presses (more of his rolls come out). While a fight is on (an enemy awake within
+    // 600 px) an open exit he is not walking to (pushExit names the one he is: A.exitGoal) is a wall to him: a step or a roll that would carry him into its box (24 px around it) loses
+    // its part toward the box. Only then and only that near: the belltower's stair begins 60 px beside the door, and a wider wall with no fight on stopped him at its foot for 7200 ticks.
     if (!A.passive && (o.mx || o.mz) && !sc.hud.modal) {
-      const X = sc.area?.exits ?? [], d = Math.hypot(o.mx, o.mz) || 1, far = o.dash ? 175 : 40, m = 60;
-      for (let i = 0; i < X.length; i++) {
+      const X = sc.area?.exits ?? [], EN = sim.enemies; let fight = false;
+      for (let i = 0; i < EN.length; i++) { const e = EN[i]; if (e.active && !e.dead && e.state !== 'dead' && Math.abs(e.x - h.x) < 600 && Math.abs(e.z - h.z) < 600) { fight = true; break; } }
+      for (let i = 0; fight && i < X.length; i++) {
         const q = X[i]; if (q.locked || q.id === A.exitGoal) continue;
-        const ex = h.x + (o.mx / d) * far, ez = h.z + (o.mz / d) * far; if (!(ex > q.x0 - m && ex < q.x1 + m && ez > q.z0 - m && ez < q.z1 + m)) continue;
+        const d = Math.hypot(o.mx, o.mz) || 1, far = o.dash ? 175 : 40, n = o.dash ? 4 : 1, m = 24; let into = false;
+        for (let k = 1; k <= n && !into; k++) { const ex = h.x + (o.mx / d) * far * k / n, ez = h.z + (o.mz / d) * far * k / n; into = ex > q.x0 - m && ex < q.x1 + m && ez > q.z0 - m && ez < q.z1 + m; }
+        if (!into) continue;
         const cx = Math.max(q.x0, Math.min(q.x1, h.x)) - h.x, cz = Math.max(q.z0, Math.min(q.z1, h.z)) - h.z, cl = Math.hypot(cx, cz); if (cl < 1) continue;   // (already inside the box: the scene takes him)
         const nx = cx / cl, nz = cz / cl, dot = (o.mx * nx + o.mz * nz) / d; if (dot <= 0) continue;
-        let rx = o.mx / d - nx * dot, rz = o.mz / d - nz * dot; const rl = Math.hypot(rx, rz);
+        const rx = o.mx / d - nx * dot, rz = o.mz / d - nz * dot, rl = Math.hypot(rx, rz);
         if (rl > 0.25) { o.mx = (rx / rl) * d; o.mz = (rz / rl) * d; if (o.dash && !sc._spotOk({ x: h.x + (rx / rl) * 110, z: h.z + (rz / rl) * 110, y: h.y })) o.dash = false; }
         else { o.mx = 0; o.mz = 0; o.dash = false; }   // nothing of it is left: he stands his ground
         A.doorTurns = (A.doorTurns ?? 0) + 1;
