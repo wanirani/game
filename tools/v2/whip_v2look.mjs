@@ -19,6 +19,11 @@ async function look(C) {
   if (W.X0 === undefined) {
     W.clear(); for (const x of sc.area.exits ?? []) { x.locked = true; if (x._box) x._box.solid = true; }
     let q = W.straight(sim.hero.x, sim.hero.z);
+    {   // a view from the side: a straight ACROSS the screen (+x or -x) of 320 px, level and clear, anywhere within 1500 px of the start
+      const y0 = W.ground(sim.hero.x, sim.hero.z), ok = (x, z, d) => { for (let r = -80; r <= 320; r += 20) { const gy = W.ground(x + d * r, z); if (!(Math.abs(gy - y0) < 3)) return false; } for (const sd of [-24, 0, 24]) if (sim.clearLine && !sim.clearLine(x - d * 80, z + sd, x + d * 320, z + sd, y0 + 40)) return false; return true; };
+      let found = null; for (let R = 0; R <= 1500 && !found; R += 40) for (let k = 0; k < (R ? 16 : 1) && !found; k++) { const a = (k * Math.PI) / 8, x = sim.hero.x + Math.cos(a) * R, z = sim.hero.z + Math.sin(a) * R; if (!(Math.abs(W.ground(x, z) - y0) < 3)) continue; for (const d of [1, -1]) if (ok(x, z, d)) { found = { x, z, dx: d, dz: 0 }; break; } }
+      if (found) q = found; W.sideView = !!found;
+    }
     if (C.fire) {   // a straight beside the brightest light of the area (the blaze), so the streak is seen against it
       const L = sc.fx?.lights, src = (sc.area.lights ?? sc.area.def?.lights ?? []).slice();
       let best = null; for (const l of src) { const p = l.pos ?? [l.x, l.y, l.z]; if (!p || !Number.isFinite(p[0])) continue; const s = (l.r ?? l.radius ?? 1) * (l.i ?? l.intensity ?? 1); if (!best || s > best.s) best = { x: p[0], z: p[2] ?? p[1], s }; }
@@ -51,9 +56,10 @@ async function look(C) {
     F.stop = 0; F.slowT = 0; hits.length = 0; brks.length = 0;
     let X = W.X0, Z = W.Z0, dx = DX, dz = DZ, B = null, foe = null;
     if (C.place === 'jar') {
-      const b = sim.breakables.find((q) => !q.broken); if (!b) return { skip: 'no whole breakable' };
-      X = b.x - S.front[0]; Z = b.z; dx = 1; dz = 0; B = { ex: b.x, ey: b.y, ez: b.z, er: b.r, eh: b.h };
-      if (!Number.isFinite(W.ground(X, Z))) return { skip: 'no ground in front of the jar' };
+      let b = null; const d0 = S.front[0];
+      for (const q of sim.breakables) { if (q.broken) continue; for (const d of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = q.x - d[0] * d0, z = q.z - d[1] * d0, gy = W.ground(x, z); if (!Number.isFinite(gy) || Math.abs(gy - q.y) > 3) continue; if (sim.clearLine && !sim.clearLine(x, z, q.x - d[0] * (q.r + 4), q.z - d[1] * (q.r + 4), gy + 40)) continue; b = q; dx = d[0]; dz = d[1]; X = x; Z = z; break; } if (b) break; }
+      if (!b) return { skip: 'no whole breakable with room in front' };
+      B = { ex: b.x, ey: b.y, ez: b.z, er: b.r, eh: b.h };
     }
     W.put(X, Z, dx, dz); sim.hero.reso = 0; for (let i = 0; i < 20; i++) g.tick(1 / 60);
     if (C.place !== 'jar') { const at = S[C.place]; foe = W.enemy(kind, X + at[0] * dx - at[1] * dz, Z + at[0] * dz + at[1] * dx, {}); B = { ex: foe.x, ey: foe.y, ez: foe.z, er: foe.r, eh: foe.h }; }
@@ -93,8 +99,8 @@ async function look(C) {
   };
   const p1 = one(false, null); if (p1.skip) { H.hit = h0; H.break = b0; return p1; }
   const c0 = p1.hitTick >= 0 ? p1.hitTick : p1.start >= 0 ? p1.start + 8 : 20;
-  const p2 = one(true, [c0 - 6, c0 + 8]); H.hit = h0; H.break = b0;
-  return { kind, pass1: { start: p1.start, hitTick: p1.hitTick, hits: p1.hits, brks: p1.brks }, ...p2, dir: W.dir, spot: [Math.round(W.X0), Math.round(W.Z0)], fireAt: W.fireAt ?? null };
+  const p2 = one(true, [c0 - 5, c0 + 6]); H.hit = h0; H.break = b0;
+  return { kind, pass1: { start: p1.start, hitTick: p1.hitTick, hits: p1.hits, brks: p1.brks }, ...p2, sideView: W.sideView, dir: W.dir, spot: [Math.round(W.X0), Math.round(W.Z0)], fireAt: W.fireAt ?? null };
 }
 
 fs.mkdirSync(OUT, { recursive: true });
