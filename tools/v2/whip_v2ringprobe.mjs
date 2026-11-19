@@ -23,9 +23,10 @@ try {
       W.stick(1, 0); W.tick(1); W.down('roll'); W.tick(2); W.up('roll'); W.stick(0, 0); W.tick(d);
       const at0 = { roll: h.dashT > 0, hurt: h.hurtT > 0, hook: h.hookId != null, air: !h.onGround };
       W.down('skill'); const tr = [];
-      for (let k = 0; k < 40; k++) { W.tick(1); if (k === 2) W.up('skill'); tr.push(`${h.dashT > 0 ? 'R' : '-'}${h.hurtT > 0 ? 'H' : '-'}${h.onGround ? 'g' : 'A'}${h.hookId != null ? 'k' : '.'}${h.bufS > 0 ? 's' : '.'}${h.bufSH > 0 ? 'h' : '.'}${h.act ? '+' + h.act : ''}${h.move ? '+' + h.move.id : ''}`); if (h.act === 'hook') break; }
+      for (let k = 0; k < 40; k++) { W.tick(1); if (k === 2) W.up('skill'); tr.push(`${h.dashT > 0 ? 'R' : '-'}${h.hurtT > 0 ? 'H' : '-'}${h.onGround ? 'g' : 'A'}${h.hookId != null ? 'k' : '.'}${h.bufS > 0 ? 's' : '.'}${h.bufSH > 0 ? 'h' : '.'}${h.act ? '+' + h.act : ''}${h.move ? '+' + h.move.id : ''}`); if (h.act === 'hook' && k >= 2) break; }
+      W.up('skill');
       out.n++; const ok = acts.includes('hook'); if (ok) out.thrown++;
-      if (!ok) out.trials.push({ i, d, at0, acts: acts.join(','), x: Math.round(h.x - S.x), z: Math.round(h.z - S.z), y: Math.round(h.y), tr: tr.slice(0, 30).join(' ') });
+      if (!ok) out.trials.push({ i, d, at0, rollEv: acts.join(','), acts: acts.join(','), x: Math.round(h.x - S.x), z: Math.round(h.z - S.z), y: Math.round(h.y), tr: tr.slice(0, 30).join(' ') });
       let k = 0; while (h.act && k++ < 90) W.tick(1);
     }
     sim.hooks.event = ev0;
