@@ -193,9 +193,10 @@ export class Sim {
     // open, a plunge - for T.bufHold (0.35 s = one roll) at most; after that, and in every other case, it ages as before. A hook pressed early in a roll used to run out.
     if (h.bufS > 0) { if (h.bufSH > 0 && (h.dashT > 0 || h.hurtT > 0 || !h.onGround || (h.move !== null && (h.move.kind === 'plunge' || h.moveT < h.move.hit[1] || (h.queued > 0 && h.move.kind === 'combo' && h.move.n < 2))))) h.bufSH -= dt; else h.bufS -= dt; }
     if (pAttack || pDash || pJump || pSkill) {
-      // WHIP2: a combo hit that is already queued is kept against a later jump or skill press - they wait their turn (the skill comes right after that hit's window);
-      // a roll, the dodge, still takes its place. (Since the input buffer of 11-19 ANY later press forgot the queued hit: a stray thumb on jump cost the finishing hit.)
-      const keepQ = !pAttack && !pDash && h.queued > 0 && h.move !== null && h.move.kind === 'combo' && h.move.n < 2 && h.dashT <= 0;
+      // WHIP2: a combo hit that is already queued is kept against a later SKILL press - the skill waits its turn (it comes right after that hit's window).
+      // JUMPFIX (11-19): the movement presses - the roll and the jump - take the queued hit's place: the newest movement press wins, as in the first buffer. (WHIP2 had
+      // kept the queued hit against a jump too: the jump then waited its 0.19 s behind that hit and ran out - 19 of 36 jumps pressed behind a queued hit did nothing.)
+      const keepQ = !pAttack && !pDash && !pJump && h.queued > 0 && h.move !== null && h.move.kind === 'combo' && h.move.n < 2 && h.dashT <= 0;
       if (!keepQ) h.queued = pAttack ? (h.move !== null && h.move.kind === 'combo' && h.move.n < 2 ? T.queueT : T.bufT) : 0;   // 연타를 잇는 눌림은 예전 그대로 queueT
       h.bufD = pDash ? T.bufT : 0; h.bufJ = pJump ? T.bufT : 0; h.bufS = pSkill ? T.bufT : 0; h.bufSH = pSkill ? T.bufHold : 0;
       if (pSkill && !pAttack && h.dashT > 0) h.sweepQ = false;   // (the newest press wins inside a roll too: a skill pressed after an attack takes the sweep's place)
