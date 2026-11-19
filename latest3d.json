@@ -1,16 +1,16 @@
 {
  "versionName": "1.0.0",
- "versionCode": 464346,
- "sha256": "044b06295b3cb705af705b98c8a483ed39a47cdd20ca884bc7e825b0c2febea3",
- "bytes": 26188442,
- "url": "downloads/BloodNocturne3D-1.0.0-464346.apk",
- "built": "2026-11-19T11:09:00Z",
+ "versionCode": 464585,
+ "sha256": "ae9436b1ca3c06f61b443c9140769bff796669edd1f2b33dce9184f4975a3737",
+ "bytes": 26217028,
+ "url": "downloads/BloodNocturne3D-1.0.0-464585.apk",
+ "built": "2026-11-19T16:18:00Z",
  "signingCertSha256": "efaee88b9ff54bf116c2aae40e358ec073d4a7729261b1b6ac2da5e7a24ed60f",
  "appId": "com.bloodnocturne.game3d",
  "label": "블러드 녹턴 3D",
- "note": "3D app update. Every scene of chapter 1 was looked at as a picture and restaged where its people could not be seen. In the last scene the two bell keepers stand left and right of the bell and face each other, and tonight's ending is the same picture a hundred years later; the hero walks to his own mark so that he covers nobody wherever the bell was rung from; Elise stays in the picture until the crossing; Marta comes to the bell on her own feet, the bell's sound is seen leaving the bell as rings, and the last line is said over the inn's lit window, where a crow feather now lies on the sill. During a camera cut the pad and the prompts step aside (the pause button stays and works), the area name waits until the scene is over, portraits are loaded before the first line, and the loading text after the promise is gone. Objectives and lines come in the right order: the road bell is named only once it is given, the ghosts' lines at the ossuary door play once, Sera's scene waits until the room is quiet, the sealed bell says which bell to use; in the queen's first act the hall's bell answers dull and says why; a reload on the ending card shows the card again. Walls have footings, courses, arrow loops, soot, cracks and ivy; 1697 has whitewash, washing lines, harvest garlands and plague marks; the square's black front face is a retaining wall over a meadow; firs and far houses have shapes; the 1697 ossuary has a carpenter's screen, the rest spot a blanket and a bread basket, every candle stand has living flames and tonight's ossuary burns a pale blue fire. No new texture and the same number of draw calls. Saves written by the previous two builds load and continue. Known: the widening-ring shot is a little darker than the cuts around it; during the three seconds of a crossing the pause button is shown but does not answer. The 2D app is unchanged (462996).",
+ "note": "3D app update. New screens in the kit's style: the chronicle is an open book of two pages - that night 1697 on the left, tonight 1797 on the right - where a deed and what became of it stand on one row, joined across the fold; the bag shows what the hero carries (things of the story, things that are used up, the silver); what he takes and what the chronicle writes come up as cards beside the game, and a book chip stays until the book is opened; a choice (the silver or the iron key, stone or wood) is two large cards confirmed by a second tap; Rook sells for the silver from jars: a draught that is used by itself when the hero would fall (two at most), bell oil and a guide candle. After the ending card the chronicle opens once. The whip: the lash now touches the enemy on the very tick the hit lands, together with the freeze, the flash and the sound; the streak no longer kinks, the lash leaves the hand without a gap, and a hit on an enemy beside the hero swings over instead of jumping there. A bell that will not answer is felt without reading: a grey ring, the hero thrown back, one dull toll and one heavy vibration, free again after half a second. A skill or hook pressed during a roll, a stun or in the air fires the moment the hero is free, and a queued combo hit is no longer wiped by a stray skill press (a jump or a roll still takes its place). Many enemies or jars struck in one tick sound like many, and the finishing blow sounds on its tick at full level. Fixed: the back key during a bell crossing no longer leaves the game; the place name no longer shows through the pause panel; the pause button is taken off during a crossing. Saves written by the previous three builds load and continue. Known: jars stand again when an area is entered again, so silver can be gathered without end (what can be bought is capped); the spark of a hit is drawn one frame after the contact; the hook under the graveyard ring during a fight answers about 84 presses of 100; the ending's closing banner is not seen for its time. The 2D app is unchanged (462996).",
  "web": {
-  "buildHash": "dd05aeee746d",
-  "version": "1.0.0+20261119T1107.78ba097b"
+  "buildHash": "b9219fbb8455",
+  "version": "1.0.0+20261119T1616.b2014d17"
  }
 }
