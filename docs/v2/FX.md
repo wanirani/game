@@ -548,3 +548,19 @@ Tools: `node tools/v2/fire2_shot.mjs` (spots, `--before <commit>`, `--stats 1`, 
 - New presets (group holy, no sound and no screen feel of their own): `cross.gather` · `cross.ring` · `cross.lift` · `cross.dull` · `cross.open` · `cross.spark` · `cross.arrive` · `cross.glow`. `dx > 0` = towards tonight (cold light), `< 0` = towards 1697 (warm); `pow` = height of the bell above its foot / 100.
 - Honest: the frame copy has no multisampling, so edges are rougher during the ring (0.5 s) and the reveal (0.9 s). Nothing was seen on a phone. On the software GPU of the test machine one passage frame costs 25-45 ms at render size 0.5.
 
+
+## 15. DETAIL (2026-11-19): the pale tone of the flame sheet, flames on candle stands
+
+Owner's eye: the fire posts of the cold crypt (`ossuary_now`) burned orange. WORLD-LOOK had tried a blue tint and taken it back: the flame sheet's own colour is a heat ramp with red at full strength everywhere, a particle's vertex colour only scales each channel, so the rim of every tuft stayed orange or went green-brown.
+
+### 15.1 The tone (`src/v2/fx/flamebook.js TONE_PALE`, `sprites.js SPR.FIRE_PALE` 18 / `SPR.WISP_PALE` 19)
+
+- The particle atlas is full (16 old cells, 16 FLAME frames, 8 WISP frames), and a second painted set would cost +5.6 MB of GPU memory for two bowls of fire. So the pale tone **reads the same frames through a matrix**: `TONE_PALE = [[0.30, 0, 0.92], [0.50, 0.52, 0], [1, 0, 0]]` (rows = the red, green and blue the picture takes from the sheet's r, g, b). Blue is the sheet's red (full everywhere), red is mostly the sheet's blue (only the hot core has it): a sky-blue rim (0.30, 0.58, 1.0), pale cyan in the middle, a white core. 0 bytes of texture, full resolution.
+- Engine, three lines in `engine.js` (all in the flame-flipbook path): the particle vertex shader maps sprite 18 / 19 onto 16 / 17 and hands `vTone` = 1 to the fragment shader (`vTone = step(17.5, si); si -= 2.0 * vTone;`); the fragment shader recolours the texel **only inside `if (vTone > 0.5)`**. For every other sprite `vTone` is 0, `si` is what it was and the fragment colour is computed by exactly the same expression as before.
+- **Proof that hits and magic are unchanged**: `node tools/v2/fire2verify.mjs --mode presets` (effects test page, seeded `Math.random`, mid tier, every preset at three times: 41 presets, 123 pictures, sha1 of the PNG + live particles + overdraw) on the tree before the engine change and after it - result in the DETAIL report (`/tmp/claude-0/v2/detail/presets_before/`, `presets_after3/`).
+- `game/anchors.js`: the cold set (`COLD.pale`) builds its BODY / CORE / TONGUE layers with the pale sprites; its vertex colours only set strength now (body 1.0, 1.02, 1.1), sparks, embers, haze and the fire's light are cold blue-white. A fire is cold when its stage part gives a blue light (the two door bowls of `ossuary_now`); `ossuary_past` keeps the warm fire.
+
+### 15.2 Candle stands
+
+- `candleSpots` (`env/props2.js`) lists the wicks of the generated `candelabrum` (6, from the model's glow-flagged vertices), `chandelier` (8) and `altar` (2) when lit; `anchors.js` burns the same small flipbook flame on each as on the floor candles (two quads alive per wick) and puts the group's halo at the wicks, not at the stand's foot. 0 draw calls: they ride in the particle batch. The stands' modelled candle tops glow at half strength in the game (`baked.js`: `emisK` 0.72).
+- **Low tier: every second wick of a group burns (at least two).** The particle ring keeps everything emitted within the longest life in view (mist: 7 s) - ten slots a wick - and the 1697 ossuary has about a hundred wicks in one view (173 in the area); the low ring holds 1,024.
