@@ -32,14 +32,7 @@ async function seq(S, o) {
   for (const e of sim.enemies) if (e._used) { e._used = false; e.x = e.homeX = -99999; e.z = e.homeZ = -99999; e._px = e.x; e._pz = e.z; e.active = false; e.state = 'idle'; e.atk = null; e.wakeBy = 'trigger'; e.stun = 0; e.kx = e.kz = 0; e.pullT = 0; }
   F.stop = 0; F.slowT = 0;
   const kind = ['skeleton_soldier', 'plague_corpse', 'skeleton_mage', 'grave_ghost', 'gravekeeper_armor'].find((k) => sim.enemies.some((q) => q.kid === k && !q.dead));
-  if (W.dir === undefined) {   // a straight of 330 px, on one level and with nothing solid in it: the sequences run along it (the roll of the sweep needs the room).
-    // Across the screen first (+x, then -x), from the nearest spot to the start that has such a straight; into the screen only when there is none within 700 px
-    const y0 = W.ground(W.X0, W.Z0), free = (x, z, d) => { for (let r = 0; r <= 300; r += 30) { const gy = W.ground(x + d[0] * r, z + d[1] * r); if (!(Math.abs(gy - y0) < 3)) return false; } for (const sd of [-18, 0, 18]) if (sim.clearLine && !sim.clearLine(x - d[1] * sd, z + d[0] * sd, x + d[0] * 300 - d[1] * sd, z + d[1] * 300 + d[0] * sd, y0 + 40)) return false; return true; };
-    W.dir = null;
-    for (const D of [[[1, 0], [-1, 0]], [[0.7071, 0.7071], [-0.7071, 0.7071], [0, 1], [0, -1]]]) { for (let R = 0; R <= 700 && !W.dir; R += 50) for (let k = 0; k < (R ? 12 : 1) && !W.dir; k++) { const a = (k * Math.PI) / 6, x = W.X0 + Math.cos(a) * R, z = W.Z0 + Math.sin(a) * R; if (!(Math.abs(W.ground(x, z) - y0) < 3)) continue; for (const d of D) if (free(x, z, d)) { W.dir = d; W.X0 = x; W.Z0 = z; break; } } if (W.dir) break; }
-    W.spot = [Math.round(W.X0), Math.round(W.Z0), W.dir, y0];
-    if (!W.dir) W.dir = [1, 0];
-  }
+  if (W.dir === undefined) { const q = W.straight(W.X0, W.Z0); W.X0 = q.x; W.Z0 = q.z; W.dir = [q.dx, q.dz]; W.spot = [Math.round(q.x), Math.round(q.z), W.dir]; }   // the sequences run along a free straight (whip_lib)
   const DX = W.dir[0], DZ = W.dir[1];
   let X = W.X0, Z = W.Z0, ring = null;
   if (S.skill) {   // under a whip ring: a spot from which the rules offer the hook

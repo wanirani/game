@@ -22,8 +22,9 @@ async function measure(KINDS_WANT) {
   const NAME = {}; for (const k in PRESET_IDS) NAME[PRESET_IDS[k]] = k;
   const sim = () => sc.sim, hero = () => sc.sim.hero, fx = sc.fx, F = fx.feel;
   W.clear(); W.drawEvery = 0;
-  // spot: where the hero stands now is free ground of the area; measure there
-  const X0 = hero().x, Z0 = hero().z;
+  // spot: a free straight near where the hero stands (whip_lib W.straight - the sweep's roll needs 175 px of room and then a target that can stand there;
+  // from the start spot along +x the roll ended in a wall and the sweep was never measured against an enemy)
+  const ST = W.straight(hero().x, hero().z), X0 = ST.x, Z0 = ST.z, DX = ST.dx, DZ = ST.dz;
   const rec = { frame: 0, hit: null, fxAt: [], snd: [], buzz: [], brk: null };
   const playAt0 = fx.playAt.bind(fx); fx.playAt = (id, x, y, z, ...r) => { rec.fxAt.push({ name: NAME[id] ?? String(id), x, y, z, frame: rec.frame }); return playAt0(id, x, y, z, ...r); };
   const fire0 = feel.sound.fire.bind(feel.sound); feel.sound.fire = (r, bus, pos, vol, pitch, delay) => { const st = fire0(r, bus, pos, vol, pitch, delay); rec.snd.push({ bus, delay: delay || 0, vol: +(+vol).toFixed(2), started: st, frame: rec.frame }); return st; };
@@ -39,27 +40,30 @@ async function measure(KINDS_WANT) {
     plunge: { ev: [[2, 'down', 'jump'], [5, 'up', 'jump'], [14, 'down', 'attack'], [17, 'up', 'attack']], d: 46, n: 90 },
   };
   /** the drawn lash against a body (axis ex,ez, radius er, from ey up eh): smallest distance of a drawn node to the body surface (0 = touching or inside) */
-  const lashOn = (a, C) => { const w = sc.whip, n = w.n, P = w.nodes, Q = w.prev; let m = 1e9; for (let i = 2; i < n; i++) { const o = i * 3, x = Q[o] + (P[o] - Q[o]) * a, y = Q[o + 1] + (P[o + 1] - Q[o + 1]) * a, z = Q[o + 2] + (P[o + 2] - Q[o + 2]) * a; const dh = Math.max(0, Math.hypot(x - C.ex, z - C.ez) - C.er - 2), dv = y < C.ey - 4 ? C.ey - 4 - y : y > C.ey + C.eh + 4 ? y - C.ey - C.eh - 4 : 0; const d = Math.hypot(dh, dv); if (d < m) m = d; } return m; };
-  const tipDrawn = (a) => { const w = sc.whip, n = w.n, o = (n - 1) * 3, P = w.nodes, Q = w.prev; return [Q[o] + (P[o] - Q[o]) * a, Q[o + 1] + (P[o + 1] - Q[o + 1]) * a, Q[o + 2] + (P[o + 2] - Q[o + 2]) * a]; };
+  const DRAWN = new Float32Array(sc.whip.n * 3), drawnLash = (a) => (sc.whip.drawn ? sc.whip.drawn(a, DRAWN) : sc.whip.sample(a, DRAWN));   // the centre line the mesh is built from (WHIP2: whip.drawn)
+  const lashOn = (a, C) => { const w = sc.whip, n = w.n, N = drawnLash(a); let m = 1e9; for (let i = 2; i < n; i++) { const o = i * 3, x = N[o], y = N[o + 1], z = N[o + 2]; const dh = Math.max(0, Math.hypot(x - C.ex, z - C.ez) - C.er - 2), dv = y < C.ey - 4 ? C.ey - 4 - y : y > C.ey + C.eh + 4 ? y - C.ey - C.eh - 4 : 0; const d = Math.hypot(dh, dv); if (d < m) m = d; } return m; };
+  const tipDrawn = (a) => { const w = sc.whip, o = (w.n - 1) * 3, N = drawnLash(a); return [N[o], N[o + 1], N[o + 2]]; };
   // the audio engine counts in its own clock (the 100 ms budget window, the same-instant spread): one tick must take one tick of real time around a hit
   let tReal = performance.now(); const pace = async () => { const w = tReal + 16.7 - performance.now(); if (w > 0.5) await new Promise((r) => setTimeout(r, w)); tReal = performance.now(); };
   const run = async (move, target, rate) => {
     const S = SCRIPT[move], h = hero(); let e = null, b = null;
-    W.put(X0, Z0, 1, 0); h.reso = 0; for (let i = 0; i < 20; i++) g.tick(1 / 60);
-    if (target === 'jar') { b = sim().breakables.find((q) => !q.broken); if (!b) return null; W.put(b.x - S.d - (move === 'sweep' ? 0 : 0), b.z, 1, 0); for (let i = 0; i < 20; i++) g.tick(1 / 60); }
-    else e = W.enemy(target, X0 + S.d, Z0, {});
+    W.put(X0, Z0, DX, DZ); h.reso = 0; for (let i = 0; i < 20; i++) g.tick(1 / 60);
+    let sx = DX, sz = DZ;
+    if (target === 'jar') { b = sim().breakables.find((q) => !q.broken); if (!b) return null; W.put(b.x - S.d - (move === 'sweep' ? 0 : 0), b.z, 1, 0); sx = 1; sz = 0; for (let i = 0; i < 20; i++) g.tick(1 / 60); }
+    else e = W.enemy(target, X0 + S.d * DX, Z0 + S.d * DZ, {});
+    const B0 = e ? { ex: e.x, ey: e.y, ez: e.z, er: e.r, eh: e.h } : b ? { ex: b.x, ey: b.y, ez: b.z, er: b.r, eh: b.h } : null;   // the target's body before it is struck: the lash is watched against it from the first frame (it used to be watched from the hit tick on - a lash that was through the enemy a tick early went unseen)
     rec.frame = 0; rec.hit = null; rec.brk = null; rec.fxAt.length = 0; rec.snd.length = 0; rec.buzz.length = 0;
     const un = hookHit(move), fr = [], held = new Set(); let simT = sim().time, drawn = 0;
     for (let i = 0; i < S.n; i++) {
       for (const q of S.ev) if (q[0] === i) { if (q[1] === 'down') { W.down(q[2]); held.add(q[2]); } else { W.up(q[2]); held.delete(q[2]); } }
-      if (S.stick) { W.stick(1, 0); if (i % 8 === 0 && !rec.hit && !rec.brk) { g.alpha = 1; g.render(); } }   // (the pad lets go of a held stick when the HUD is not drawn for a while)
+      if (S.stick) { W.stick(sx, sz); if (i % 8 === 0 && !rec.hit && !rec.brk) { g.alpha = 1; g.render(); } }   // (the pad lets go of a held stick when the HUD is not drawn for a while)
       h.hp = h.hpMax; await pace(); g.tick(1 / 60);
       const moved = sim().time !== simT; simT = sim().time;
       for (const al of rate === 120 ? [0.25, 0.75] : [0.5]) {
         rec.frame++; if ((rec.hit || rec.brk) && drawn < 4) { g.alpha = al; g.render(); drawn++; }   // only the frames of the hit tick and the next are really drawn (software WebGL is slow); every value below is state the draw reads
-        const hh = hero(), a = sc._hitSnap ? 1 : al, tp = tipDrawn(a), C = rec.hit ?? rec.brk, tg = rec.hit ? rec.hit.e : null;
+        const hh = hero(), a = sc._hitSnap ? 1 : al, tp = tipDrawn(a), C = rec.hit ?? rec.brk, tg = rec.hit ? rec.hit.e : null, CB = C ?? B0;
         fr.push({ f: rec.frame, tick: i, moved, key: [hh._px + (hh.x - hh._px) * a, tp[0], tp[1], tp[2], tg ? tg._px + (tg.x - tg._px) * a : 0].map((q) => Math.round(q * 100)).join(','),
-          tipD: C ? Math.hypot(tp[0] - C.x, tp[1] - C.y, tp[2] - C.z) : -1, bodyD: C ? lashOn(a, C) : -1, flash: tg && tg._a3 ? tg._a3.hitAge >= 0 && tg._a3.hitAge < 0.14 : false, pose: tg ? ['hurt', 'stagger', 'death'].includes(tg.anim) || tg.state === 'dead' : false,
+          tipD: C ? Math.hypot(tp[0] - C.x, tp[1] - C.y, tp[2] - C.z) : -1, bodyD: CB ? lashOn(a, CB) : -1, flash: tg && tg._a3 ? tg._a3.hitAge >= 0 && tg._a3.hitAge < 0.14 : false, pose: tg ? ['hurt', 'stagger', 'death'].includes(tg.anim) || tg.state === 'dead' : false,
           num: sc.numbers.some((q) => q.on && q.t < 0.05), stop: F.stop > 0 });
       }
       if (rec.hit && rec.frame - rec.hit.frame > (rate === 120 ? 36 : 18)) break;
@@ -70,7 +74,10 @@ async function measure(KINDS_WANT) {
     if (C) {
       const f0 = C.frame + 1;   // the first frame drawn after the tick of the hit (rec.frame counts drawn frames; the hit happened inside the tick before frame f0)
       const first = (p) => { const q = fr.find((x) => x.f >= f0 - 2 && p(x)); return q ? q.f : null; };
-      const reach = first((x) => x.f >= f0 && x.bodyD >= 0 && x.bodyD <= 1);   // a drawn node of the lash touches the target's body
+      // a drawn node of the lash touches the target's body: from the hit tick's first frame on - or EARLIER, when the lash was already on the body in the frames
+      // just before it (walked back over at most three ticks while it touches without a gap; the frames of an earlier hit of the same combo are not counted)
+      let reach = first((x) => x.f >= f0 && x.bodyD >= 0 && x.bodyD <= 1);
+      { const back = rate === 120 ? 6 : 3; let k = fr.findIndex((x) => x.f === f0); if (k >= 0 && fr[k].bodyD >= 0 && fr[k].bodyD <= 1) { let j = k; while (j > 0 && k - (j - 1) <= back && fr[j - 1].bodyD >= 0 && fr[j - 1].bodyD <= 1) j--; if (j < k && k - j < back) reach = fr[j].f; } }
       let freeze = null; for (let k = 1; k < fr.length; k++) if (fr[k].f >= f0 && fr[k].key === fr[k - 1].key) { freeze = fr[k - 1].f; break; }
       const sp = rec.fxAt.filter((q) => q.name.startsWith('hit.') && q.frame >= C.frame), tg = rec.hit ? rec.hit.e : null;
       const on = sp.length && tg ? sp.every((q) => Math.hypot(q.x - C.ex, q.z - C.ez) <= C.er + 6 && q.y >= C.ey - 2 && q.y <= C.ey + C.eh + 2) : null;   // against where the target stood when it was hit

@@ -182,11 +182,25 @@ export class Chapter {
     if (!this.card && this.endT >= END_CARD && !hud.modal && typeof hud.showEnd === 'function') {
       const T = H?.STORY.TEXT?.ending ?? {}, C = H?.STORY.TEXT?.chapters?.end ?? {};
       this.card = true;
-      try { hud.showEnd({ ...T, head: C.title ?? '', onDone: () => this.leave() }); } catch (e) { console.warn('[v2g] the ending card failed:', String(e?.message ?? e)); this.card = false; this.endT = END_LEAVE; }
+      try { hud.showEnd({ ...T, head: C.title ?? '', onDone: () => this._book() }); } catch (e) { console.warn('[v2g] the ending card failed:', String(e?.message ?? e)); this.card = false; this.endT = END_LEAVE; }
       if (H) H.note('card', T.title ?? '', T.cont ?? '');
     }
     if (this.card && typeof hud.tapEnd === 'function' && (input.pressed('confirm') || input.pressed('attack'))) hud.tapEnd();   // keyboard / pad: the same as a tap on the card
     if (!this.card && this.endT >= END_LEAVE && typeof hud.showEnd !== 'function') this.leave();   // the built-in HUD has no card: the closing banner, then out
+  }
+  /**
+   * SCREENS (11-19): the ending card has been dismissed - the chronicle opens once by itself on what this chapter wrote (its last entry in the middle), and closing
+   * it is the way out (leave(), exactly as before). Nothing is saved in between: a reload with the book open finds save.ch.card unset and brings the card up
+   * again, then the book - never a free hero at the bell. Where the book cannot open (the old pad's HUD, nothing written, a failure) the card leaves as it always did.
+   */
+  _book() {
+    const sc = this.sc, H = sc.host; let ok = false;
+    try {
+      const W = H ? H.st.state.chronicle : null;
+      ok = !!W && W.length > 0 && sc.hudKind === 'ui' && typeof sc.hud.openScreen === 'function' && sc.hud.openScreen('chronicle', { at: W[W.length - 1], onClose: () => this.leave() }) === true;
+      if (ok) H.note('book', 'after the card', String(W.length));
+    } catch (e) { ok = false; console.warn('[v2g] the chronicle after the ending card did not open:', String(e?.message ?? e)); }
+    if (!ok) this.leave();
   }
   /** after the ending: the save, then the 3D chooser (registered here when the game was opened straight into this scene) */
   leave() {

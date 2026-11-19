@@ -78,7 +78,7 @@ export class Sim {
       move: null, moveT: 0, combo: 0, hitIds: new Set(), assist: null, queued: 0, bufD: 0, bufJ: 0, bufS: 0, swung: false, stepDist: 0, airAtk: false, plungeLand: null, plungeEta: 1,
       lock: null, lockT: 0, lockHold: 0, lockX: 0, lockY: 0, lockZ: 0, cutOn: 0,
       act: null, actT: 0, actDone: false, actP: null, charging: false, charge: 0, chargeFullT: 0, atkHold: 0, whipLv: 1, pullT: 0, pullX: 0, pullZ: 0, whipOn: 0, whipX: 0, whipY: 0, whipZ: 0,
-      coins: 0, reso: 0, resoMax: T.resoCells, callCd: 0, callCdMax: T.callCd, bellCd: 0, bellCdMax: T.bellCd, bellCharge: 0, bellDown: false, bellWait: false, bellHoldT: 0, bellOk: true, knellId: null, hookId: null, skillMode: 'call', hookFX: 0, hookFY: 0, hookFZ: 0, hookTX: 0, hookTY: 0, hookTZ: 0, hookDur: 0.3,
+      coins: 0, draughts: 0, reso: 0, resoMax: T.resoCells, callCd: 0, callCdMax: T.callCd, bellCd: 0, bellCdMax: T.bellCd, bellCharge: 0, bellDown: false, bellWait: false, bellHoldT: 0, bellOk: true, knellId: null, hookId: null, skillMode: 'call', hookFX: 0, hookFY: 0, hookFZ: 0, hookTX: 0, hookTY: 0, hookTZ: 0, hookDur: 0.3,
       gait: 0, gaitMode: 'run', wasMoving: false, pushed: false, pivot: 0, pivotT: 0, pivotA: 0, pivotV: 0, pivotG: 0.86, lastStep: 'L', wishX: 1, wishZ: 0, mx: 0, mz: 0, m: 0, ux: 0, uz: 0,
       anim: 'idle', animT: 0, t: 0, cut: false, landT: 0, landV: 0,
       safe: { x: sx, z: sz, y: sy },
@@ -704,7 +704,12 @@ export class Sim {
     if (h.hp <= 0) this._die(h);
     return 'hurt';
   }
-  _die(h) { h.hp = 0; h.dead = true; h.deadT = 0; h.move = null; h.guard = false; h.dashT = 0; h.act = null; h.charging = false; h.charge = 0; this.dropPresses(); this.emit('heroDie', h); this.hooks.sfx?.('die'); }
+  _die(h) {
+    // SCREENS (11-19): a draught of holy water (Rook's shop; hero.draughts is set by the scene) is used by itself when he would fall: he stands where he is with one
+    // candle of health (a third of TUNE.heroHp - a candle at three candles), untouchable for 1.2 s. It is no fall: no heroDie, no count in sim.deaths, nothing starts over.
+    if ((h.draughts | 0) > 0) { h.draughts--; h.hp = Math.max(1, Math.min(h.hpMax, Math.round(TUNE.heroHp / 3))); if (h.ifr < 1.2) h.ifr = 1.2; h.flash = 1; this.emit('draught', h, h.draughts); return; }
+    h.hp = 0; h.dead = true; h.deadT = 0; h.move = null; h.guard = false; h.dashT = 0; h.act = null; h.charging = false; h.charge = 0; this.dropPresses(); this.emit('heroDie', h); this.hooks.sfx?.('die');
+  }
   /** 적을 비틀거리게 한다 (튕겨냄 · 종소리). 박쥐처럼 작은 것은 그대로 떨어진다 */
   staggerEnemy(e, t = 1.2, force = false) {
     if (e.dead || e.state === 'dead') return;

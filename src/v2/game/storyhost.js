@@ -2,12 +2,16 @@
 //   - the api object of DATA_FORMAT 5 (dialogue through the HUD, banners, notices, objective line, prompts, exits, actors, camera shots,
 //     waits, sound, music, candles, moon, chronicle, save, area changes, the bell crossing, the end)
 //   - story flags that areas are built from (FLAGS world: true, and every name in the world module's AREA_FLAGS) go on as area flags
-//   - the save: localStorage 'bn.v2.save' { v: 1, story: storyObj.save(), area, era, spawn, pos, hp, reso, nights, coins, broken, ch, t } — written at the
+//   - SCREENS (11-19): host.model (src/v2/ui/model.js) - the chronicle book, the bag, Rook's shop, the cards 「얻었다」 / 「연대기에 적혔다」, the book chip, the draughts
+//     and the guide candle. The HUD reads it (createHud opts.model); what it remembers itself is saved as `scr` (ENGINE_API 12.2)
+//   - the save: localStorage 'bn.v2.save' { v: 1, story: storyObj.save(), area, era, spawn, pos, hp, reso, nights, coins, broken, ch, scr, t } — written at the
 //     story's save steps and on leaving; a broken or foreign value is ignored (new game)
 // Nothing here may stop the game: every call into the story and every api function is guarded.
 import { audio } from '../../core/audio.js';
 import { feel } from '../feel/index.js';
 import { groundAt } from '../b/world.js';
+import { createModel } from '../ui/model.js';          // SCREENS: what the chronicle, the bag, the shop, the cards and the HUD's small marks show (pure; UI_API 10)
+import { attachChoiceCards } from '../ui/choice.js';   // SCREENS: the old pad's built-in HUD asks a choice on the same two cards
 
 export const SAVE_KEY = 'bn.v2.save';
 const SAVE_V = 1;
@@ -52,8 +56,16 @@ export class StoryHost {
     const F = mod.STORY.FLAGS ?? {}; this.world = new Set();
     for (const k of Object.keys(F)) if (F[k] && F[k].world) this.world.add(k);
     for (const a of Object.keys(this.areaFlags)) for (const n of this.areaFlags[a]) if (F[n]) this.world.add(n);   // a name the story does not declare (past_street_clear) is not passed: the area then keeps its older condition
+    // SCREENS: the screens' model. Silver is the scene's (brk.coins - the rules' hero.coins follows it every tick), the resonance gauge the rules'.
+    this.model = createModel({ STORY: mod.STORY, st: this.st,
+      coins: () => sc.brk?.coins ?? 0, setCoins: (n) => { n = Math.max(0, n | 0); if (sc.brk) sc.brk.coins = n; if (sc.state) sc.state.coins = n; const h = sc.sim?.hero; if (h) h.coins = n; },
+      area: () => sc.area ?? null, reso: () => { const h = sc.sim?.hero; return h ? { v: h.reso ?? 0, max: h.resoMax ?? 0 } : null; }, fillReso: () => { try { sc.sim?.addReso?.(99); } catch { /* rules */ } } });
+    this.model.sound = (name) => { try { if (feel.has(name)) feel.play(name, null); } catch { /* no audio */ } };
     this.api = this._api();
     this.story = (name, data) => {
+      // SCREENS: a draught was used by the rules (sim.js _die: the hero stays on his feet - no fall, nothing told to scene.ch); the guide candle goes out when he leaves the place
+      if (name === 'play.draught') { this.model.draughtUsed(); this._card('note', { text: this.model.T.bag?.draught ?? '', icon: 'draught' }); this.api.sound('draught.use'); this.api.fx('holy.bell'); return; }
+      if (name === 'area.enter' && !(data && data.refused)) this.model.enterArea(this.sc.area?.id ?? null);
       if (name === 'interact' && data && data.kind === 'rest') this.restSpot = { area: this.sc.area?.id ?? null, def: data.spot ?? data };   // CHAPTER
       if (name === 'area.enter' && !(data && data.refused)) this.dirty = false;   // STORY2 (11-19): this area has just been built from the flags as they are. (A flag set in the area he left - elise_found under the altar - stayed "to be shown" through the journey, and the village was built a second time right after the two keepers' scene: 「불러오는 중…」)
       if (name === 'area.enter') { const id = this.sc.area?.music; if (id && MUSIC[id] && id !== this.musicId) this.api.music(id); }   // each night has its own tune (GDD 2.4 rule 1); a track the build does not ship is skipped by the audio module
@@ -63,6 +75,13 @@ export class StoryHost {
     try { globalThis.document?.addEventListener('visibilitychange', this._onHide); } catch { /* no DOM */ }
   }
   release() { try { globalThis.document?.removeEventListener('visibilitychange', this._onHide); } catch { /* no DOM */ } this.waits.length = 0; this.moves.length = 0; this.walk = null; if (this.musicId) { try { audio.stopMusic?.(0.6); } catch { /* no audio */ } this.musicId = null; } }
+  /** SCREENS: a card through the cut-glass HUD (hud.card); with the old pad's HUD the same words as a notice. Either way `seen` gets the line (tools read it). */
+  _card(kind, o) {
+    const sc = this.sc, T = this.model.T, text = kind === 'chronicle' ? String(T.chronicle?.card ?? '{title}').replace('{title}', o.title ?? '') : kind === 'item' ? String(T.bag?.got ?? this.STORY.TEXT?.system?.got ?? '{name}').replace('{name}', o.name ?? '') + (o.n > 1 ? ' ×' + o.n : '') : String(o.text ?? '');
+    if (!text) return;
+    if (sc.hudKind === 'ui' && typeof sc.hud.card === 'function') { this.note('notice', text); try { sc.hud.card(kind, o); } catch (e) { console.warn('[v2g] card:', String(e?.message ?? e)); } }
+    else sc._toast(text, kind === 'item' ? 'item' : 'info');
+  }
   /** is the hero's input held by the story (a camera shot, a lockInput step)? */
   locks() { return this.shotLock || this.inputLock; }
   note(kind, a, b) { const S = this.seen; if (S.length < 4000) S.push([kind, a ?? '', b ?? '']); }
@@ -88,6 +107,7 @@ export class StoryHost {
     // it read 「석관 방 종으로 건너 여왕에게」 in the middle of her first act, 「방 안 종에서 쫓아 건넌다」 facing her in 1697, 「무릎 꿇리고…」 in the hall she had left. The stretch decides.
     try { const f = s.flags ?? {}, o = s.objective; if (!f.queen_sent) { if (o === 'face_queen' && this.st.isDone('ev_boss_intro') && !f.queen_fled) s.objective = 'fight_queen'; else if (o === 'chase_queen' && f.queen_fled && !f.queen_driven && s.area === 'ossuary_past' && this.st.isDone('ev_boss_past')) s.objective = 'drive_queen'; else if (o === 'send_queen' && f.queen_driven && s.area === 'ossuary_past' && !this.st.isDone('ev_boss_back')) s.objective = 'back_queen'; } } catch { /* an older runner */ }   // (ev_boss_back not done: the way back sets send_queen again; once it is done the line is this build's own)
     this.objective = this.st.objectiveText?.() ?? ''; this.moon = s.moon; this.candleBonus = Math.max(0, (s.candles | 0) - 3);
+    this.model.load(o.scr ?? null);   // SCREENS: which entries have been on screen, the book chip, the draughts, the guide candle (a save of an earlier build has none)
     const same = o.area === s.area && o.pos && Number.isFinite(o.pos.x) && Number.isFinite(o.pos.z);   // otherwise the save was cut in the middle of an area change: the story's area and spawn decide
     // STORY (11-19): has the story ended in this save (a finished sequence with an `end` step) while its card was never dismissed? Then the card comes up again after the
     // load (chapter.js pend). `why: 'end'` is the save the card's own way out wrote in builds that did not keep `ch.card` yet.
@@ -99,12 +119,12 @@ export class StoryHost {
       ch: o.ch && typeof o.ch === 'object' ? (end ? { ...o.ch, end } : o.ch) : end ? { end } : null };   // CHAPTER: the last rest spot, the last bell, the queen's health (chapter.js; an old save has none)   // BREAK: the coin count (an old save without it reads 0) and what was broken in the saved area
   }
   /** new game: forget everything (the scene clears its own memory and the stored save) */
-  reset() { try { this.st.reset(); } catch (e) { console.error('[v2g] story reset failed', e); } this.objective = ''; this.pillOn = false; this.waits.length = 0; this.moves.length = 0; this.walk = null; this.shot = null; this.shotT = 0; this.shotDone = null; this.shotLock = false; this.inputLock = false; this.restSpot = null; this.dirty = false; this.ended = null; this.moon = null; this.candleBonus = 0; this.lastSave = null; }
+  reset() { try { this.st.reset(); } catch (e) { console.error('[v2g] story reset failed', e); } this.model.reset(); this.objective = ''; this.pillOn = false; this.waits.length = 0; this.moves.length = 0; this.walk = null; this.shot = null; this.shotT = 0; this.shotDone = null; this.shotLock = false; this.inputLock = false; this.restSpot = null; this.dirty = false; this.ended = null; this.moon = null; this.candleBonus = 0; this.lastSave = null; }
   // ───────── save ─────────
   /** the save object for the state as it is (storyObj = st.save(): the copy from before a running sequence) */
   compose(storyObj) {
     const sc = this.sc, h = sc.sim?.hero, a = sc.area;
-    const o = { v: SAVE_V, t: Date.now(), story: storyObj, area: a?.id ?? storyObj.area ?? null, era: a?.era ?? storyObj.era ?? 'now', spawn: storyObj.spawn ?? null, pos: null, hp: null, reso: 0, nights: sc.nightsOut?.() ?? {}, coins: sc.brk?.coins ?? 0, broken: sc.brk && sc.ready && a && !a.test && sc.brk.brokenArea === a.id ? sc.brk.brokenOut() : [], ch: sc.ch ? sc.ch.out() : null };   // BREAK: coins + the breakables broken in this area (they stand again on a new arrival)
+    const o = { v: SAVE_V, t: Date.now(), story: storyObj, area: a?.id ?? storyObj.area ?? null, era: a?.era ?? storyObj.era ?? 'now', spawn: storyObj.spawn ?? null, pos: null, hp: null, reso: 0, nights: sc.nightsOut?.() ?? {}, coins: sc.brk?.coins ?? 0, broken: sc.brk && sc.ready && a && !a.test && sc.brk.brokenArea === a.id ? sc.brk.brokenOut() : [], ch: sc.ch ? sc.ch.out() : null, scr: this.model.out() };   // BREAK: coins + the breakables broken in this area (they stand again on a new arrival)
     if (h && sc.ready && a && !a.test) {
       const ok = h.onGround && !h.dead, p = ok ? h : h.safe ?? h;
       if (Number.isFinite(p.x) && Number.isFinite(p.z)) o.pos = { x: Math.round(p.x), z: Math.round(p.z), y: Math.round(p.y ?? 0), face: [h.dirX ?? 1, h.dirZ ?? 0] };
@@ -123,6 +143,7 @@ export class StoryHost {
   }
   // ───────── per tick ─────────
   tick(dt) {
+    { const h = this.sc.sim?.hero; if (h) h.draughts = this.model.dr; }   // SCREENS: the draughts the rules may use (a new Sim after every crossing, journey and load starts with none - like the silver)
     const W = this.waits;
     for (let i = W.length - 1; i >= 0; i--) { const w = W[i]; if ((w.t -= dt) > 0) continue; W.splice(i, 1); try { w.fn(); } catch (e) { console.error('[v2g] story wait', e); } }
     if (this.shot && this.shotT > 0 && (this.shotT -= dt) <= 0) this._shotEnd();
@@ -237,7 +258,8 @@ export class StoryHost {
       showDialog(d) {
         H.note('line', d.speaker || (d.who === 'sign' ? '(글씨)' : '(해설)'), d.text);
         if (d.choices) H.note('choice', d.choices.join(' / '));
-        if (d.choices && sc.hudKind !== 'ui') { const pick = d.onChoice; d = { ...d, choices: undefined, onDone: () => pick?.(0) }; }   // the built-in box (old pad, v2ui=0) cannot ask: it takes the first choice
+        // SCREENS (11-19): the built-in box of the old pad asks on the same two cards (src/v2/ui/choice.js extends that HUD once). It used to take the first choice unasked.
+        if (d.choices && sc.hudKind !== 'ui') { try { attachChoiceCards(sc.hud, sc.game, () => H.model.T, H.model.sound); } catch (e) { console.warn('[v2g] choice cards:', String(e?.message ?? e)); const pick = d.onChoice; d = { ...d, choices: undefined, onDone: () => pick?.(0) }; } }
         sc._say(d);
       },
       setDialog(d) { sc.ui.dialog = d ?? null; },
@@ -262,8 +284,22 @@ export class StoryHost {
       hideActor(id, area) { sc.setActor(id, area ?? sc.area?.id, 'hide'); }, showActor(id, area) { sc.setActor(id, area ?? sc.area?.id, 'show'); },
       prompt(p) { if (!p || !p.action) { H.pillOn = false; return; } H.pill.action = p.action; H.pill.label = p.label ?? ''; H.pillOn = true; H.pillT = 20; H.note('prompt', p.label, p.action); },
       objective(text, id) { H.objective = text || ''; if (text) H.note('objective', text); },
-      onFlag(name) { if (H.world.has(name)) H._worldChanged(name); },
-      onItem() { /* the bag screen is not built: the runner's own notice is what the player sees */ },
+      onFlag(name) { H.model.touch(); if (H.world.has(name)) H._worldChanged(name); },   // (SCREENS: a flag may list a blank or write the half of one)
+      // SCREENS: the bag. A thing given -> the card 「얻었다 — <name>」 with its picture (true = shown here: the runner adds no notice of its own); a thing taken ->
+      // 「<gone> — <name>」 where ITEMS[id].gone says the player should notice (the bread eaten, the shard tied into the knot)
+      onItem(id, count, change) {
+        H.model.touch(); const it = H.STORY.ITEMS?.[id]; if (!it || !change) return false;
+        if (change > 0) { H._card('item', { id, name: it.name, icon: it.icon ?? 'pouch', n: change }); return true; }
+        if (it.gone) H._card('note', { text: it.gone + ' — ' + it.name, icon: it.icon ?? 'pouch', kind: 'plain' });
+        return false;
+      },
+      // SCREENS: a keeper's goods (the step ['shop', id]). The screen stops the game like the pause panel; the step goes on when it is closed. The old pad's HUD has no screens: one notice.
+      shop(id, done) {
+        H.note('shop', String(id ?? ''));
+        if (sc.hudKind === 'ui' && typeof sc.hud.openScreen === 'function' && sc.hud.openScreen('shop', { shop: id, onClose: () => { try { done?.(); } catch (e) { console.error('[v2g] story shop', e); } } })) return;
+        if (sc.hudKind !== 'ui') sc._toast(H.model.T.shop?.old ?? '', 'info');
+        done?.();
+      },
       spawn(kind) { console.warn('[v2g] story spawn is not supported by the rules yet:', kind); },
       moveActor(id, to, o, done) {
         const p = sc.people.byId(id), q = H._spot(to);
@@ -322,7 +358,8 @@ export class StoryHost {
       },
       moon(step) { H.moon = step; sc.state.moon = { phase: Math.max(0, Math.min(1, (step | 0) / 7)) }; },
       ring(n) { H.ringN = n; },
-      chronicle(e) { const t = (H.STORY.TEXT?.system?.chronicle ?? '{title}').replace('{title}', e?.title ?? ''); sc._toast(t, 'info'); },
+      // SCREENS: an entry was written - the card 「연대기에 적혔다 — <title>」 (a tap opens the book there), the book chip and its chime
+      chronicle(e) { H.model.wrote(); H._card('chronicle', { id: e?.id ?? null, title: e?.title ?? '' }); H.api.sound('book.chime'); },
       save(obj) { const o = H.compose(obj); o.why = 'story'; H.lastSave = o; H.saves++; writeSave(o); },
       // CHAPTER: the closing banner, then the 3D edition's ending card and the 3D chooser (chapter.js end / leave) - it used to drop to the old 2D title after six seconds
       end(id) { H.ended = id ?? 'end'; H.note('end', String(id ?? '')); H.inputLock = true; const c = H.STORY.TEXT?.chapters?.end; if (c && sc.hud.banner) sc.hud.banner('clear', c.title, c.sub); sc.ch.end(id); },

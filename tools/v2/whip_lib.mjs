@@ -62,6 +62,17 @@ export function install() {
   W.up = (id) => { const b = W.btn(id); fire('pointerup', FING[id], b.cx, b.cy); };
   /** the stick held in a direction (dx right, dz into the screen), 0,0 = let go */
   W.stick = (dx, dz) => { const s = sc.hud.metrics().pad.stick, x0 = s.cx ?? s.x, y0 = s.cy ?? s.y, R = 56; if (!dx && !dz) { if (W._st) { fire('pointerup', 30, x0, y0); W._st = false; } return; } if (!W._st) { fire('pointerdown', 30, x0, y0); W._st = true; } fire('pointermove', 30, x0 + dx * R, y0 - dz * R); };
+  /** a straight of 300 px on one level with nothing solid in it, from the spot nearest to (x0, z0) that has one: across the screen first (+x, -x), into it only when
+   *  there is none within 700 px. Returns { x, z, dx, dz } (the sweep's roll needs the room; an attack along +x from a start spot often ends in a wall or a grave) */
+  W.straight = (x0, z0) => {
+    const sim = sc.sim, y0 = W.ground(x0, z0);
+    const free = (x, z, d) => { for (let r = 0; r <= 300; r += 30) { const gy = W.ground(x + d[0] * r, z + d[1] * r); if (!(Math.abs(gy - y0) < 3)) return false; } for (const sd of [-18, 0, 18]) if (sim.clearLine && !sim.clearLine(x - d[1] * sd, z + d[0] * sd, x + d[0] * 300 - d[1] * sd, z + d[1] * 300 + d[0] * sd, y0 + 40)) return false; return true; };
+    for (const D of [[[1, 0], [-1, 0]], [[0.7071, 0.7071], [-0.7071, 0.7071], [0, 1], [0, -1]]]) for (let R = 0; R <= 700; R += 50) for (let k = 0; k < (R ? 12 : 1); k++) {
+      const a = (k * Math.PI) / 6, x = x0 + Math.cos(a) * R, z = z0 + Math.sin(a) * R; if (!(Math.abs(W.ground(x, z) - y0) < 3)) continue;
+      for (const d of D) if (free(x, z, d)) return { x, z, dx: d[0], dz: d[1] };
+    }
+    return { x: x0, z: z0, dx: 1, dz: 0 };
+  };
   W.lost = () => sc.glr.gl.isContextLost();
   return { ready: v.ready, area: v.area };
 }

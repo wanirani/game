@@ -4,6 +4,7 @@
 // Cost rules: every static piece is baked once into an offscreen canvas (re-baked only when the scale, the text size or
 // a string changes) and blitted with drawImage; text is never laid out per frame; nothing is allocated per frame.
 import { sprite, spriteUp, spriteAspect, glassPanel, gem, plate, bakeText, fitText, makeCanvas, measure, chamfer, clamp, TAU, COL, FONTS, atlas, onAtlas } from './draw.js';
+import { bakeIcon } from './icons.js';   // SCREENS: the draught beside the candles, the guide candle's line
 
 const P = { x: 0, y: 0, w: 0 };
 const TEXT_K = { normal: 1, large: 1.15, xlarge: 1.3 }, TEXT_MIN = { normal: 9.5, large: 12, xlarge: 13.5 };
@@ -226,6 +227,27 @@ export function createCanvasHud(game, opts = {}) {
     c.textBaseline = 'alphabetic';
     return coinP;
   }
+  // SCREENS (11-19): the draughts the hero carries (Rook's holy water - model.draughts), a small bottle and its count right of the candles; and the line of the
+  // guide candle under the objective (model.guideLine()). Both are baked when their value changes and cost one drawImage a frame.
+  const drP = mkPiece(), guideP = mkPiece();
+  function bakeDraught(n) {
+    if (!stale(drP, n)) return drP;
+    const ts = tsz(13.5, L.tmin + 2), ih = px(27), str = '×' + n, tw = measure(str, ts, 800), w = ih + tw + px(6), h = px(34);
+    const c = ctxOf(drP, w + 4, h);
+    const b = bakeIcon('draught', ih, L.s); c.drawImage(b.c, 2 + ih / 2 - b.w / 2, h / 2 - b.w / 2, b.w, b.w);
+    c.font = `800 ${ts}px ${FONTS.body}`; c.textBaseline = 'middle'; c.textAlign = 'left'; c.lineWidth = 3; c.strokeStyle = 'rgba(4,4,12,0.85)'; c.lineJoin = 'round';
+    c.strokeText(str, 2 + ih + px(1), h / 2 + px(4)); c.fillStyle = '#dff0ff'; c.fillText(str, 2 + ih + px(1), h / 2 + px(4)); c.textBaseline = 'alphabetic';
+    return drP;
+  }
+  function bakeGuide(text, maxW) {
+    if (!stale(guideP, text, Math.round(maxW), 0)) return guideP;
+    const ih = px(17), ft = fitText(text, tsz(12.5), Math.max(px(60), maxW - ih - 12), 700, FONTS.body, 0.8), tw = measure(ft.str, ft.size, 700), h = Math.max(ih, ft.size * 1.5) + 4, w = ih + px(4) + tw + 8;
+    const c = ctxOf(guideP, w, h);
+    const b = bakeIcon('guide', ih, L.s); c.drawImage(b.c, ih / 2 - b.w / 2, h / 2 - b.w / 2, b.w, b.w);
+    c.font = `700 ${ft.size}px ${FONTS.body}`; c.textBaseline = 'middle'; c.textAlign = 'left'; c.lineWidth = 2.8; c.strokeStyle = 'rgba(8,6,16,0.86)'; c.lineJoin = 'round';
+    c.strokeText(ft.str, ih + px(4), h / 2 + 1); c.fillStyle = '#ffe9b8'; c.fillText(ft.str, ih + px(4), h / 2 + 1); c.textBaseline = 'alphabetic';
+    return guideP;
+  }
   // one prompt chip: [key cap | action icon] label
   function promptW(p, ts) { return measure(p.label ?? '', ts, 600) + px(18) + px(26); }
   function drawPrompt(c, p, x, y, ts, mode) {
@@ -435,6 +457,10 @@ export function createCanvasHud(game, opts = {}) {
     if (two) { const sh2 = bakeShelf(max - per, step); blit(ctx, sh2, cx0 + step / 2 - px(18) - 2, baseY - px(24) - px(4.5)); for (let i = per; i < max; i++) candle(ctx, i, cx0 + step / 2 + (i - per) * step, baseY - px(24), ch * 0.92, litN, hurtK); }
     const sh = bakeShelf(per, step); blit(ctx, sh, cx0 - px(18) - 2, baseY - px(4.5));
     for (let i = 0; i < per; i++) candle(ctx, i, cx0 + i * step, baseY, ch, litN, hurtK);
+    const MD = opts.model ? opts.model() : null;
+    { const dr = MD ? MD.draughts | 0 : 0;   // SCREENS: the draughts carried, right of the candles (the boss bar keeps clear of it through T.statusR)
+      if (dr > 0) { const dp = bakeDraught(dr); blit(ctx, dp, T.statusR - px(8), baseY - dp.h + px(3)); T.drR = T.drR ?? { x: 0, y: 0, w: 0, h: 0, n: 0 }; T.drR.x = T.statusR - px(8); T.drR.y = baseY - dp.h + px(3); T.drR.w = dp.w; T.drR.h = dp.h; T.drR.n = dr; T.statusR += dp.w - px(6); }
+      else if (T.drR) T.drR.n = 0; }
     // resonance cells
     const cells = clamp(Math.round(s.resonance?.cells ?? 3), 3, 5), gy = baseY + px(41), cellH = px(32), cstep = px(18), full = T.res >= cells - 0.02;
     for (let i = 0; i < cells; i++) {
@@ -455,8 +481,10 @@ export function createCanvasHud(game, opts = {}) {
     if (s.objective) {
       const op = bakeObjective(String(s.objective), vw * 0.46 - cx0), oy = gy + cellH / 2 + px(3);
       ctx.fillStyle = COL.gold; ctx.beginPath(); ctx.moveTo(cx0 + px(4), oy + op.h / 2 - px(4)); ctx.lineTo(cx0 + px(8), oy + op.h / 2); ctx.lineTo(cx0 + px(4), oy + op.h / 2 + px(4)); ctx.lineTo(cx0, oy + op.h / 2); ctx.closePath(); ctx.fill();
-      blit(ctx, op, cx0 + px(11), oy); objH = op.h + px(4); T.objR = { x: cx0, y: oy, w: op.w + px(11), h: op.h };
-    } else T.objR = null;
+      blit(ctx, op, cx0 + px(11), oy); objH = op.h + px(4); if (!T.objR) T.objR = { x: 0, y: 0, w: 0, h: 0 }; T.objR.x = cx0; T.objR.y = oy; T.objR.w = op.w + px(11); T.objR.h = op.h; T.objOn = true;
+    } else T.objOn = false;
+    { const gl = MD ? MD.guideLine() : '';   // SCREENS: the guide candle - where the nearest blank can be filled, one small line under the objective
+      if (gl) { const gp = bakeGuide(gl, vw * 0.46 - cx0), gy2 = gy + cellH / 2 + px(3) + objH; blit(ctx, gp, cx0, gy2); objH += gp.h + px(2); if (!T.guideR) T.guideR = { x: 0, y: 0, w: 0, h: 0 }; T.guideR.x = cx0; T.guideR.y = gy2; T.guideR.w = gp.w; T.guideR.h = gp.h; T.guideOn = true; } else T.guideOn = false; }
 
     // 3) toasts under the status block
     let ty = Math.max(y0 + bd.h + px(52), gy + cellH / 2 + px(3) + objH);
@@ -541,8 +569,8 @@ export function createCanvasHud(game, opts = {}) {
     },
     promptRects() { const o = []; for (let k = 0; k < taps.n; k++) o.push({ action: taps.ref[k]?.action, x: taps.rect[k * 4], y: taps.rect[k * 4 + 1], w: taps.rect[k * 4 + 2], h: taps.rect[k * 4 + 3] }); return o; },
     layout: L, px, tsz,
-    info() { return { scale: L.s, hs: L.hs, textSize: L.textSize, epoch: L.epoch, banner: banner.on ? banner.kind : null, bannerTitle: banner.on ? banner.title : '', toasts: toasts.filter((q) => q.on).length, lit: T.lit, max: T.max, coins: T.coinR && T.coinR.a > 0 ? { ...T.coinR } : null }; },
-    release() { for (const p of [badge.now, badge.past, yearP, ...Object.values(shelves), moonP, bossP, bossFill, bannerP, bandP, promptRow, msgP, msg2P, dbgP, ...nums, ...calls, ...toasts, ...wprompts]) if (p.c) { p.c.width = 1; p.c.height = 1; p.c = null; } icons.clear(); },
+    info() { return { scale: L.s, hs: L.hs, textSize: L.textSize, epoch: L.epoch, banner: banner.on ? banner.kind : null, bannerTitle: banner.on ? banner.title : '', toasts: toasts.filter((q) => q.on).length, lit: T.lit, max: T.max, coins: T.coinR && T.coinR.a > 0 ? { ...T.coinR } : null, objective: T.objOn && T.objR ? { ...T.objR } : null, guide: T.guideOn && T.guideR ? { ...T.guideR } : null, draughts: T.drR && T.drR.n > 0 ? { ...T.drR } : null, statusR: T.statusR }; },
+    release() { for (const p of [badge.now, badge.past, yearP, ...Object.values(shelves), moonP, bossP, bossFill, bannerP, bandP, promptRow, msgP, msg2P, dbgP, drP, guideP, ...nums, ...calls, ...toasts, ...wprompts]) if (p.c) { p.c.width = 1; p.c.height = 1; p.c = null; } icons.clear(); },
   };
 }
 const ZERO = { l: 0, t: 0, r: 0, b: 0 };

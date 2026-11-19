@@ -156,7 +156,7 @@ export default class V2Game extends Scene {
     const g = this.game;
     return UI_LOADER().then((m) => {
       if (!this.glr || g.top !== this || typeof m.createHud !== 'function') return;
-      const h = m.createHud(g, { onPause: () => this._pause(), onDisabledPress: (id) => this._padOff(id) }); if (!h) return;
+      const h = m.createHud(g, { onPause: () => this._pause(), onDisabledPress: (id) => this._padOff(id), model: () => this.host?.model ?? null }); if (!h) return;   // SCREENS: the screens' model (the chronicle, the bag, the shop, the cards) is the story host's - none without a story
       const old = this.hud; this.hud = h; this.hudKind = 'ui'; this._preBusts();   // (STORY2: the speakers' busts, ahead of the first line)
       try { if (old && old !== h) (old.release ?? old.dispose)?.call(old); } catch { /* built-in */ }
       if (h.padHideButtons) this.padHideButtons = h.padHideButtons;

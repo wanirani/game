@@ -237,6 +237,12 @@ export const EVENT = Object.freeze({
   'cross.arrive.past': ev('f3_bell', [n('bell_toll', 0, 0.42, 0.84), n('cross_tail_past', 0.03, 0.62, 1, 0, { pv: 0 }), s('drop', 0, 0.35, 0.8)], { duck: [0.5, 2.4], haptic: 'crossArrive' }),
   'cross.arrive.now': ev('f3_bell', [n('bell_toll', 0, 0.42, 1.19), n('cross_tail_now', 0.03, 0.55, 1, 0, { pv: 0 }), s('shimmer', 0.08, 0.3, 1.4, 1)], { duck: [0.5, 2.4], haptic: 'crossArrive' }),
   'cross.dull': ev('f3_bell', [n('bell_dull', 0, 0.9, 1, 0, { pv: 0.02 }), s('thud', 0, 0.45, 0.8)], { haptic: 'dull' }),
+  // 화면들 (SCREENS — docs/v2/UI_API.md 10): small, flat, never over a fight's sounds. book.chime = an entry was written (the book chip comes up)
+  'book.chime': ev('f3_ui', [n('bell_high', 0, 0.34, 1, 0, { pv: 0, gv: 0.03 }), n('bell_high', 0.16, 0.2, 1.498, 1, { pv: 0, gv: 0.03 })], { flat: true, gain: 0.5 }),
+  'card.rise': ev('f3_ui', [n('ui_open', 0, 0.42, 1.18), n('cloth', 0.01, 0.2, 1.3, 1)], { flat: true, gain: 0.5 }),   // a card 「얻었다 — …」 rises
+  'shop.buy': ev('f3_ui', [n('coin_clink', 0, 0.6, 1, 0, { pv: 0.06 }), n('coin_clink', 0.08, 0.42, 1.18, 0, { pv: 0.06 }), n('ui_ok', 0.03, 0.34)], { flat: true, gain: 0.65 }),   // a purchase: silver changes hands
+  'shop.deny': ev('f3_ui', [n('ui_deny', 0, 0.55), n('coin_clink', 0.02, 0.18, 0.7, 1)], { flat: true, gain: 0.6 }),   // a refusal: not enough silver, no room, no use for it now
+  'draught.use': ev('f3_bell', [n('bell_mid', 0, 0.5, 1.26, 0, { pv: 0, gv: 0.03 }), s('shimmer', 0.02, 0.4, 1.3), n('ring', 0.05, 0.25, 1.2, 1)], { gain: 0.8, haptic: 'chime' }),   // a draught of holy water keeps the hero on his feet
 });
 // 마법·종 가락·고리도 사건 이름으로 부를 수 있게 펼친다: magic.<원소>.<charge|release|impact>, loop.magic.<원소>, bell.<가락>
 const X = {};
