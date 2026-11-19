@@ -106,7 +106,7 @@ export function createScreens(env) {
     const w = G.x1 - G.x0, h = G.hh + ph + G.in6, c = canvasFor(head, w, h, L.s), T = TX(), K = S.kind;
     const title = K === 'chronicle' ? T.chronicle?.title ?? '연대기' : K === 'bag' ? T.bag?.title ?? '가방' : shopD?.title ?? '';
     const ts = tsz(23, L.tmin + 7), ic = G.hh * 0.72, tx = px(16) + ic + px(8);
-    const ib = bakeIcon(K === 'chronicle' ? 'book' : K === 'bag' ? 'bag' : 'coin', ic, L.s); c.drawImage(ib.c, px(14) + ic / 2 - ib.w / 2, G.hh / 2 - ib.w / 2 + px(2), ib.w, ib.w);
+    const ib = bakeIcon(K === 'chronicle' ? 'book' : K === 'bag' ? 'bag' : 'pack', ic, L.s); c.drawImage(ib.c, px(14) + ic / 2 - ib.w / 2, G.hh / 2 - ib.w / 2 + px(2), ib.w, ib.w);
     const f = fitText(title, ts, w * 0.4, 800, FONTS.title, 0.7), tb = bakeText(f.str, L.s, { size: f.size, family: FONTS.title, weight: 800, fill: ['#ffffff', '#cdd5f3'], lw: 3.5, stroke: 'rgba(6,6,18,0.86)' });
     c.drawImage(tb.c, tx - tb.w * 0.06, G.hh / 2 - tb.h / 2 + px(2), tb.w, tb.h);
     const subX = tx + tb.w * 0.92, room = w - subX - G.B - px(150);

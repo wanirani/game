@@ -2,7 +2,7 @@
 // it, one soft fill, a gold or ruby accent where the thing has one. No image is loaded. Bake time only: icon(ctx, name, cx, cy, size) draws into the
 // current units, bakeIcon(name, size, s) keeps one small canvas per (name, size, scale).
 //   the chronicle and the bag (pause rows, chip, headers): book bag            things of the story: shard knot notice key_silver key_rust slip bread
-//   chisel handbell knell feather            choices: key_silver key_iron statue crate            Rook's goods: draught oil guide            coin
+//   chisel handbell knell feather            choices: key_silver key_iron statue crate            Rook's pack (the shop's header) and goods: pack draught oil guide            coin
 import { makeCanvas, COL, TAU } from './draw.js';
 
 const INK = 'rgba(4,5,14,0.9)', LINE = '#eef2ff';
@@ -101,13 +101,17 @@ const DRAW = {
     c.beginPath(); c.moveTo(-38, 14); c.quadraticCurveTo(-42, -20, 0, -24); c.quadraticCurveTo(42, -20, 38, 14); c.quadraticCurveTo(0, 26, -38, 14); c.closePath(); done(c, ['#d09a58', '#6e4520'], '#ffe2b0', -24, 22);
     c.lineWidth = 3.4; c.strokeStyle = 'rgba(60,30,10,0.75)'; for (let i = -1; i <= 1; i++) { seg(c, i * 17 - 5, -12, i * 17 + 5, 6); c.stroke(); }
   },
-  // the grave keeper's chisel
+  // the grave keeper's chisel: a mason's cold chisel (POLISH 11-19: it read as a knife) - one flat bar of steel, the struck head mushroomed, the edge flared and
+  // bevelled - lying across his wooden mallet
   chisel(c) {
-    c.rotate(-0.7);
-    c.beginPath(); c.rect(-42, -7, 36, 14); done(c, ['#b98a55', '#5e3d1e'], '#f0d2a0', -7, 7);
-    c.beginPath(); c.rect(-8, -8.5, 7, 17); done(c, COL.gold, '#fff6d8', -8, 8, 2.6);
-    c.beginPath(); c.moveTo(-1, -5); c.lineTo(30, -5); c.lineTo(42, 0); c.lineTo(30, 9); c.lineTo(-1, 5); c.closePath(); done(c, ['#f4f7ff', '#8492bd'], LINE, -6, 9);
-    c.rotate(0.7);
+    c.rotate(-0.82);   // the mallet: the handle to the lower left, the head to the upper right
+    c.beginPath(); c.rect(-44, -4.5, 56, 9); done(c, ['#c9a070', '#6a4524'], '#f0d2a0', -5, 5, 3.4);
+    c.beginPath(); c.moveTo(10, -16); c.quadraticCurveTo(25, -20, 40, -16); c.lineTo(40, 16); c.quadraticCurveTo(25, 20, 10, 16); c.closePath(); done(c, ['#d2a56c', '#7a4f26'], '#ffe2b0', -18, 18);
+    c.rotate(1.64);    // the chisel across it: the head to the upper left, the edge to the lower right
+    c.beginPath(); c.moveTo(-34, -6.5); c.lineTo(-34, -11); c.quadraticCurveTo(-47, -12, -47, 0); c.quadraticCurveTo(-47, 12, -34, 11); c.lineTo(-34, 6.5);
+    c.lineTo(16, 6.5); c.lineTo(30, 14); c.lineTo(42, 14); c.lineTo(42, -14); c.lineTo(30, -14); c.lineTo(16, -6.5); c.closePath(); done(c, ['#f4f7ff', '#8492bd'], LINE, -14, 14);
+    c.lineWidth = 2.4; c.strokeStyle = 'rgba(40,48,90,0.62)'; seg(c, -33, -8, -33, 8); c.stroke(); seg(c, 33.5, -10.5, 33.5, 10.5); c.stroke();   // the lip of the head, the bevel
+    c.rotate(-0.82);
   },
   // a road bell: small, bronze, hung where someone should hear
   handbell(c) {
@@ -166,6 +170,15 @@ const DRAW = {
     c.beginPath(); c.rect(-9, -8, 18, 38); done(c, ['#fbf4e2', '#b8ab8c'], '#ffffff', -8, 30);
     c.beginPath(); c.moveTo(0, -42); c.quadraticCurveTo(13, -24, 0, -10); c.quadraticCurveTo(-13, -24, 0, -42); c.closePath(); done(c, ['#fff8dc', '#f1a23a'], '#fff6d8', -42, -10, 2.6);
     c.lineWidth = 3; c.strokeStyle = COL.gold; c.lineCap = 'round'; seg(c, 20, -34, 32, -42); c.stroke(); seg(c, 24, -22, 38, -22); c.stroke(); seg(c, -20, -34, -32, -42); c.stroke(); seg(c, -24, -22, -38, -22); c.stroke();
+  },
+  // a pedlar's pack (POLISH 11-19: the head of Rook's shop - the coin read as a bell token): a cloth bundle, its corners knotted at the top
+  pack(c) {
+    c.beginPath(); c.moveTo(-3, -17); c.quadraticCurveTo(-13, -42, -33, -39); c.quadraticCurveTo(-23, -24, -4, -12); c.closePath(); done(c, ['#e6c898', '#a67c4c'], '#fff0d0', -42, -12, 3.6);
+    c.beginPath(); c.moveTo(3, -17); c.quadraticCurveTo(13, -42, 33, -39); c.quadraticCurveTo(23, -24, 4, -12); c.closePath(); done(c, ['#e6c898', '#a67c4c'], '#fff0d0', -42, -12, 3.6);
+    c.beginPath(); c.moveTo(0, -14); c.quadraticCurveTo(35, -15, 39, 12); c.quadraticCurveTo(41, 38, 0, 38); c.quadraticCurveTo(-41, 38, -39, 12); c.quadraticCurveTo(-35, -15, 0, -14); c.closePath(); done(c, ['#d9b889', '#6e4a28'], '#ffe2b0', -14, 38);
+    c.lineWidth = 3; c.strokeStyle = 'rgba(60,30,10,0.6)'; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(-5, -6); c.quadraticCurveTo(-17, 4, -19, 20); c.stroke(); c.beginPath(); c.moveTo(5, -6); c.quadraticCurveTo(17, 4, 19, 20); c.stroke();
+    c.beginPath(); c.ellipse(0, -15, 10, 7.5, 0, 0, TAU); done(c, COL.gold, '#fff6d8', -22, -8, 2.8);
   },
   // a silver coin with the struck bell
   coin(c) {
