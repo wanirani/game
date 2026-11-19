@@ -5,6 +5,14 @@
 // A frame is 128 x 256 (flames are tall). RGB holds the heat colour (deep orange rim -> yellow -> near white core), A the density; the particle's
 // vertex colour multiplies it, so one sheet serves the warm fires, the candles and the pale fire of the cold crypt.
 export const FLIP = { W: 128, H: 256, FLAME: 16, WISP: 8 };
+/**
+ * DETAIL (docs/v2/FX.md 15): the pale tone of the flame sheet - the fire of the cold crypt (ossuary_now). The sheet's own colour is a heat ramp with red at
+ * full strength everywhere (deep red-orange rim -> yellow -> near white core); a particle's vertex colour can only scale each channel, so a blue tint left
+ * the rim orange or green-brown. The pale tone reads the same frames through this matrix (rows = the red, green and blue the picture gets from the sheet's
+ * r, g, b): blue is the sheet's red (full everywhere), red is mostly the sheet's blue (only the core has it) - a sky-blue rim (0.30, 0.58, 1), pale cyan
+ * in the middle, a white core. Sprites SPR.FIRE_PALE / SPR.WISP_PALE (sprites.js) play the flipbook in this tone; every other sprite is untouched.
+ */
+export const TONE_PALE = [[0.30, 0.0, 0.92], [0.50, 0.52, 0.0], [1.0, 0.0, 0.0]];
 
 function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 const T = 128;

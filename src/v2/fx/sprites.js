@@ -12,6 +12,7 @@ export const SPR = {
   GLOW: 0, CORE: 1, STREAK: 2, STAR: 3, SMOKE: 4, SHARD: 5, RING: 6, FLAME: 7,
   DROP: 8, BONE: 9, CRESCENT: 10, SNOW: 11, RUNE: 12, EMBER: 13, DUST: 14, FLAKE: 15,
   FIRE: 16, WISP: 17,   // flame flipbook (a loop of 16 frames / 8 frames played once): E({ sprite: SPR.FIRE, aspect, fps })
+  FIRE_PALE: 18, WISP_PALE: 19,   // DETAIL: the same two flipbooks in the sheet's pale tone (flamebook.js TONE_PALE): the blue-white fire of the cold crypt
 };
 export const DECAL = { HOLY: 0, BLOOD: 1, CRACK: 2, BELL: 3 };
 

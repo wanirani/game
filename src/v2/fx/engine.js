@@ -8,6 +8,7 @@
 //   Lights    — 잠깐 사는 점광 목록 (장면 셰이더가 읽는다)
 // 남의 GL 컨텍스트에 얹혀 돈다: 자기 VAO·프로그램만 쓰고 draw 가 끝나면 상태를 되돌린다 (index.js draw 참고).
 import { makeParticleAtlas, makeDecalAtlas, makeNoise } from './sprites.js';
+import { TONE_PALE } from './flamebook.js';   // DETAIL: the flame sheet's pale tone (sprites 18 / 19) - nothing else in this file reads it
 
 export function program(gl, vs, fs, name) {
   const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS) && !gl.isContextLost()) throw new Error(`[fx] GLSL ${name}: ${gl.getShaderInfoLog(s)}`); return s; };
@@ -52,7 +53,7 @@ const P_VS = `#version 300 es
 layout(location=0) in vec4 aP; layout(location=1) in vec4 aV; layout(location=2) in vec4 aS; layout(location=3) in vec4 aM;
 layout(location=4) in vec4 aF; layout(location=5) in vec4 aC0; layout(location=6) in vec4 aC1; layout(location=7) in vec2 aCorner;
 uniform mat4 uVP; uniform vec3 uRight; uniform vec3 uUp; uniform vec3 uFwd; uniform vec4 uTG; uniform vec4 uProt[4];
-out vec2 vUV; out vec4 vCol; out float vAdd;
+out vec2 vUV; out vec4 vCol; out float vAdd; out float vTone;
 void main() {
   float age = uTG.x - aP.w; float k = age / aV.w;
   if (age < 0.0 || k >= 1.0) { gl_Position = vec4(0.0, 0.0, -9.0, 1.0); return; }
@@ -64,6 +65,7 @@ void main() {
   if (aF.w > 0.5) { float h = p.y - aF.y; if (h < 0.0) { p.y = aF.y - h * (aF.w > 1.5 ? 0.32 : 0.0); vel.y = 0.0; } }
   float size = mix(aS.x, aS.y, 1.0 - (1.0 - k) * (1.0 - k));
   vec2 c = aCorner - 0.5; vec2 q; float si = aM.w;
+  vTone = step(17.5, si); si -= 2.0 * vTone;   // DETAIL: sprites 18 / 19 = the flame flipbook (16 / 17) in its pale tone - the same frames, recoloured in the fragment shader. 0 for every other sprite
   if (si > 15.5) {   // flame flipbook (16 = a loop of 16 frames, 17 = 8 frames once over the life): an upright quad standing on the particle, aM.z = height / width
     float lean = 0.10 * sin(uTG.x * 1.7 + aP.x * 0.004) + 0.05 * sin(uTG.x * 4.3 + aP.x * 0.013) + 0.07 * sin(age * 8.0 + aS.z);   // wind: a slow gust all flames share + each flame's own sway
     q = vec2(c.x + lean * aCorner.y * aM.z, aCorner.y * aM.z) * size;
@@ -101,8 +103,10 @@ void main() {
 }`;
 const P_FS = `#version 300 es
 precision mediump float;
-in highp vec2 vUV; in vec4 vCol; in float vAdd; uniform sampler2D uAtlas; out vec4 o;   // highp (FIRE-2): the atlas is 1024 wide now - a 16-bit mediump coordinate would step by half a texel in its far half
-void main() { vec4 t = texture(uAtlas, vUV); o = vec4(t.rgb * vCol.rgb * vCol.a, t.a * vCol.a * (1.0 - vAdd)); }`;
+in highp vec2 vUV; in vec4 vCol; in float vAdd; in float vTone; uniform sampler2D uAtlas; out vec4 o;   // highp (FIRE-2): the atlas is 1024 wide now - a 16-bit mediump coordinate would step by half a texel in its far half
+void main() { vec4 t = texture(uAtlas, vUV);
+  if (vTone > 0.5) t.rgb = vec3(dot(t.rgb, vec3(${TONE_PALE[0].map((v) => v.toFixed(3)).join(', ')})), dot(t.rgb, vec3(${TONE_PALE[1].map((v) => v.toFixed(3)).join(', ')})), dot(t.rgb, vec3(${TONE_PALE[2].map((v) => v.toFixed(3)).join(', ')})));   // DETAIL: the pale tone of the flame sheet (only sprites 18 / 19 take this branch: every other particle is computed exactly as before)
+  o = vec4(t.rgb * vCol.rgb * vCol.a, t.a * vCol.a * (1.0 - vAdd)); }`;
 
 /** 방출 명세의 기본값을 채운다 (모듈을 읽을 때 한 번). 실행 중에는 명세를 새로 만들지 않는다. */
 export function E(o) {
