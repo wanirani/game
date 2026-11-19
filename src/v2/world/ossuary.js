@@ -20,9 +20,9 @@ export function ossuary(era = 'now', flags = {}) {
   const add = (chunk, ...parts) => P.push(...inChunk(chunk, parts.flat()));
   const stone = !!flags.wedge_stone, woodW = !!flags.wedge_wood && !stone, WARM = [1, 0.66, 0.3], COLD = [0.55, 0.78, 1];
   // ───────────── floors (same in both nights) ─────────────
-  const FL = (z, d, strips = [], mat = 'cellar') => ({ t: 'floor', x: X0, z, w: X1 - X0, d, mat: 'stone', kit: { mat, cell: 44, rag: 26, strips } });
+  const FL = (z, d, strips = [], mat = 'cellar', skirt) => ({ t: 'floor', x: X0, z, w: X1 - X0, d, mat: 'stone', kit: { mat, cell: 44, rag: 26, strips, ...(skirt ? { skirt } : {}) } });   // skirt (DETAIL): the floor's front face dressed as masonry - 'plain' for the far wall of the gap (kerb and course, then it goes down into the dark)
   add('c1', FL(0, 400, [{ x0: 380, x1: 620, mat: 'flags' }]), FL(400, 600, [{ x0: 280, x1: 720, mat: 'slabs' }]), { t: 'blocker', x: 0, z: -60, w: 1200, d: 60, y: -300, h: 1500 });
-  add('c2', FL(1000, 200, [{ x0: 380, x1: 620, mat: 'flags' }]), FL(1400, 100, [{ x0: 380, x1: 620, mat: 'flags' }]),
+  add('c2', FL(1000, 200, [{ x0: 380, x1: 620, mat: 'flags' }]), FL(1400, 100, [{ x0: 380, x1: 620, mat: 'flags' }], 'cellar', 'plain'),
     { t: 'floor', x: X0, z: 1200, w: X1 - X0, d: 200, y: -240, walk: false, mat: 'stone', kit: { mat: 'slabs', cell: 60 } },   // the bottom of the gap (drawn only: a fall is the pit rule - 8 damage and back to the last safe ground)
     FL(1500, 600, [{ x0: 300, x1: 700, z0: 80, z1: 520, mat: 'flags' }]));
   add('c3', FL(2100, 350, [{ x0: 380, x1: 620, mat: 'flags' }]), FL(2450, 350, [{ x0: 300, x1: 700, z0: 60, z1: 300, mat: 'flags' }]), FL(2800, 200, [{ x0: 340, x1: 660, mat: 'slabs' }]));
