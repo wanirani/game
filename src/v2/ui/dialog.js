@@ -124,7 +124,7 @@ export function createDialog(env) {   // env: { game, input, hud (canvas HUD: la
       const inp = env.input;
       if (asking()) {   // the cards come up when the question has been read out; from then on every press belongs to them
         if (!cards.open) { const d = D.d; cards.show(d.choices, d.choiceMeta ?? null, (i) => { if (D.d === d) { D.sel = i; finish(i); } }); }
-        cards.update(dt); cards.keys(inp);
+        cards.update(dt, s, box.y); cards.keys(inp);
       } else if (inp?.pressed) {
         if (inp.pressed('confirm') || inp.pressed('attack') || inp.pressed('jump')) this.advance();
       }

@@ -162,11 +162,17 @@ try {
             ok(d.pages >= 1 && d.shown === d.total, `${tag}: dialogue text revealed (${d.shown}/${d.total}, ${d.pages} page)`);
             const cl = await ctx.newCDPSession(page);
             if (view === 'choice') {
+              // SCREENS (11-19): a choice is two cards and is confirmed by a second tap (src/v2/ui/choice.js)
               const q = d.choiceRects[1];
-              ok(q && q.h * c >= 40, `${tag}: choice button is ${(q?.h * c).toFixed(1)} px tall`);
+              ok(q && q.h * c >= 55.5 && q.w * c >= 56, `${tag}: choice card is ${(q?.w * c).toFixed(0)} x ${(q?.h * c).toFixed(1)} px (56 or more)`);
+              ok(q && q.y >= ins[1] / c - 0.5 && q.x >= ins[0] / c - 0.5 && (q.x + q.w) * c <= mt.win.w - ins[2] + 0.5 && q.y + q.h <= d.box.top + 0.5 && d.choiceRects[0].x + d.choiceRects[0].w <= q.x, `${tag}: choice cards inside the safe area, above the dialogue box, side by side ${JSON.stringify(d.choiceRects)}`);
+              await page.waitForTimeout(450);
+              await touch(cl, 'touchStart', [[(q.x + q.w / 2) * c, (q.y + q.h / 2) * c]]); await touch(cl, 'touchEnd', []); await page.waitForTimeout(300);
+              const l1 = await logOf(page), m1 = await metrics(page);
+              ok(!l1.some((e) => e[0] === 'dialog' && e[1] === 'choice') && m1.modal === 'dialog' && m1.dialog?.sel === 1, `${tag}: the first tap on a card only chooses it (sel ${m1.dialog?.sel}, modal ${m1.modal})`);
               await touch(cl, 'touchStart', [[(q.x + q.w / 2) * c, (q.y + q.h / 2) * c]]); await touch(cl, 'touchEnd', []); await page.waitForTimeout(250);
               const l2 = await logOf(page), m2 = await metrics(page);
-              ok(l2.some((e) => e[0] === 'dialog' && e[1] === 'choice' && e[2] === 1) && m2.modal === null && m2.pad.shown, `${tag}: tapping the second choice (${JSON.stringify(l2)}, modal ${m2.modal})`);
+              ok(l2.some((e) => e[0] === 'dialog' && e[1] === 'choice' && e[2] === 1) && m2.modal === null && m2.pad.shown, `${tag}: a second tap on the same card decides (${JSON.stringify(l2)}, modal ${m2.modal})`);
             } else {
               for (let i = 0; i < d.pages; i++) { await touch(cl, 'touchStart', [[mt.win.w / 2, mt.win.h / 2]]); await touch(cl, 'touchEnd', []); await page.waitForTimeout(120); }
               const l2 = await logOf(page), m2 = await metrics(page);

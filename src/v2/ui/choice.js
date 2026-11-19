@@ -8,7 +8,7 @@
 import { glassPanel, chamfer, fitText, wrapLines, measure, makeCanvas, clamp, COL, FONTS } from './draw.js';
 import { bakeIcon, hasIcon } from './icons.js';
 
-const ARM = 0.35, AGAIN = 0.15;
+const ARM = 0.35, AGAIN = 0.12;   // seconds: the cards take nothing at first · the least time between the tap that chooses and the tap that decides (a bounce is not a second tap)
 
 /** M = { px(v), tsz(base, min), L: { s, css, tmin, epoch }, text(): TEXT.screens | {}, sound(name) } */
 export function createChoiceCards(M) {
@@ -77,7 +77,8 @@ export function createChoiceCards(M) {
       if (inp.pressed('left') || inp.pressed('up')) choose(0); else if (inp.pressed('right') || inp.pressed('down')) choose(Math.min(1, C.n - 1));
       else if (inp.pressed('confirm') || inp.pressed('attack') || inp.pressed('jump')) { if (C.sel < 0) choose(0); else if (C.selT >= AGAIN) decide(C.sel); }
     },
-    update(dt) { if (C.open) { C.t += dt; C.selT += dt; } },
+    /** s = the HUD state, bot = the y the cards stand above: the cards are laid out here (not first in draw), so their rects are true from the tick they come up */
+    update(dt, s, bot = 0) { if (!C.open) return; C.t += dt; C.selT += dt; if (s && (C.key !== L.epoch || C.vw !== s.viewW || C.vh !== s.viewH || C.bot !== bot)) layout(s, bot); },
     /** bot = the y the cards stand above (0: the middle of the screen); dy / a = the dialogue box's own rise and fade */
     draw(ctx, s, bot = 0, dy = 0, a = 1) {
       if (!C.open) return;
@@ -113,7 +114,7 @@ export function attachChoiceCards(hud, game, texts, sound) {
     if (cards.open && modal0() !== 'pause') {
       const inp = game.input, sc = Math.min(3, Math.max(1, Math.round((s.scale ?? 2) * 4) / 4));
       if (sc !== L.s || (game.cssScale ?? 1) !== L.css) { L.s = sc; L.css = game.cssScale ?? 1; L.epoch++; }
-      cards.update(dt); cards.keys(inp);
+      cards.update(dt, s, 0); cards.keys(inp);
       if (cards.open && inp && inp.pointer && inp.pointer.tapped) cards.tap(inp.pointer.x, inp.pointer.y);
     }
     upd0(dt, s);

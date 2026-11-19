@@ -153,10 +153,15 @@ function installCa() {
       if (B.ts) B.touchEnd(); A.relJump();
       if (++A.dlgT >= 9) {
         A.dlgT = 0; const d = sc.hud.metrics?.().dialog; let x = sc.state.viewW / 2, y = sc.state.viewH * 0.3;
-        if (d && d.choices && Array.isArray(d.choiceRects) && d.choiceRects.length && d.shown >= d.total && d.page >= d.pages - 1) { const r = d.choiceRects[A.choice] ?? d.choiceRects[0]; if (r) { x = r.x + r.w / 2; y = r.y + r.h / 2; } }
+        // SCREENS (11-19): a choice is two cards and takes two taps on the same card - the first chooses it, the second (this loop's next tap, 9 ticks later) decides
+        if (d && d.choices && Array.isArray(d.choiceRects) && d.choiceRects.length && d.shown >= d.total && d.page >= d.pages - 1) { const r = d.choiceRects[A.choice] ?? d.choiceRects[0]; if (r) { x = r.x + r.w / 2; y = r.y + r.h / 2; A.cardTaps = (A.cardTaps ?? 0) + 1; } }
         const c = toClient(x, y); fire('pointerdown', 31, c[0], c[1]); fire('pointerup', 31, c[0], c[1]); A.taps++;
       }
     } else if (m === 'end') { if (B.ts) B.touchEnd(); A.relJump(); }   // the ending card: the beat end_card takes its still and taps it
+    else if (m === 'pause' && sc.hud.screen) {   // SCREENS (11-19): a screen is open (Rook's shop at his spot, the book after a card was touched): the bot closes it by its close button, an honest tap
+      if (B.ts) B.touchEnd(); A.relJump();
+      if (++A.dlgT >= 12) { A.dlgT = 0; const q = sc.hud.metrics?.().screen?.close; if (q) { const c = toClient(q.x + q.w / 2, q.y + q.h / 2); fire('pointerdown', 34, c[0], c[1]); fire('pointerup', 34, c[0], c[1]); A.taps++; A.screens = (A.screens ?? 0) + 1; } }
+    }
     else if (bot && v.ready && !sc._go && !sc.xing && B.ts) { B.touchStep(); A.assist(); }
     g.tick(1 / 60); A.ticks++; A.after();
   };
@@ -583,7 +588,8 @@ crossBeat('ending_bell', '두 종지기의 약속 뒤, 큰 종을 길게 → 오
 add('end_card', '맺음 카드: 제목 · 한 겹 넓어지는 동그라미 · 이어집니다', async () => { let m = null; for (let i = 0; i < 60; i++) { await play(30, { bot: false }); m = await ev(() => window.__v2?.scene?.hud?.metrics?.().end ?? null).catch(() => null); if (m && m.ready) break; } const s = await st(); note(`the ending card: ${JSON.stringify(m)}; ended ${s.ended}; modal ${s.modal}`); return { ok: !!m && m.open && m.ready, why: 'the ending card did not come up: ' + JSON.stringify(m) }; });
 P.push({ n: P.length, id: 'to_chooser', last: true, label: '카드를 누른다 → 3D 고르기 화면 (옛 2D 제목이 아니다)', fn: async () => {
   await ev(() => { const g = window.__game, r = g.canvasRect, x = r.x + r.w / 2, y = r.y + r.h / 2; for (const t of ['pointerdown', 'pointerup']) window.dispatchEvent(new PointerEvent(t, { pointerId: 33, pointerType: 'touch', isPrimary: false, clientX: x, clientY: y, bubbles: true, cancelable: true, button: 0, buttons: t === 'pointerup' ? 0 : 1, width: 12, height: 12, pressure: t === 'pointerup' ? 0 : 0.5 })); });
-  let top = null; for (let i = 0; i < 80; i++) { await page.waitForTimeout(150); top = await ev(() => { const g = window.__game; try { for (let k = 0; k < 12; k++) g.tick(1 / 60); g.alpha = 1; g.render(); } catch { /* between scenes */ } return g.top?.constructor?.name ?? null; }).catch(() => null); if (top && top !== 'V2Game') break; }
+  // SCREENS (11-19): after the card the chronicle opens once by itself on what this chapter wrote; the bot looks at it for a moment and closes it by its close button (an honest tap) - then the chooser
+  let top = null, book = null; for (let i = 0; i < 80; i++) { await page.waitForTimeout(150); top = await ev(() => { const g = window.__game, sc = window.__v2?.scene; try { const q = sc?.hud?.metrics?.().screen; if (q && q.t > 0.5) { window.__caBook = { kind: q.kind, rows: q.n, shown: q.rows.filter((r) => r.on).map((r) => r.id + ':' + r.kind).join(' ') }; const r = g.canvasRect, s = sc.state, x = r.x + (q.close.x + q.close.w / 2) / s.viewW * r.w, y = r.y + (q.close.y + q.close.h / 2) / s.viewH * r.h; for (const t of ['pointerdown', 'pointerup']) window.dispatchEvent(new PointerEvent(t, { pointerId: 35, pointerType: 'touch', isPrimary: false, clientX: x, clientY: y, bubbles: true, cancelable: true, button: 0, buttons: t === 'pointerup' ? 0 : 1, width: 12, height: 12, pressure: t === 'pointerup' ? 0 : 0.5 })); } for (let k = 0; k < 12; k++) g.tick(1 / 60); g.alpha = 1; g.render(); } catch { /* between scenes */ } return g.top?.constructor?.name ?? null; }).catch(() => null); if (!book) { book = await ev(() => window.__caBook ?? null).catch(() => null); if (book) { await shot('after_card_book'); note(`after the card the chronicle opened by itself: ${JSON.stringify(book)}`); } } if (top && top !== 'V2Game') break; }
   const sv = await ev(() => { try { const o = JSON.parse(localStorage.getItem('bn.v2.save')); return o ? { why: o.why, area: o.area, done: o.story?.done?.length } : null; } catch { return null; } }).catch(() => null);
   await shot('after_card'); note(`after the card: the scene on top is ${top}; stored save ${JSON.stringify(sv)}`);
   return { ok: top === 'V2Chooser', why: 'after the ending card the scene on top is ' + top }; } });
