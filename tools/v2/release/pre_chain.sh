@@ -53,9 +53,9 @@ node -e "const t=JSON.parse(require('fs').readFileSync('$C/table.json','utf8'));
 # 여왕의 구간 · 쉼터: 방금 봇이 쓴 「달아난 뒤」 저장에서 불러오기 · 건넘 · 나갔다 오기 · 쓰러짐 (28 검사)
 F=$(ls "$C"/saves/*_ev_boss_flee.json 2>/dev/null | tail -n 1)
 if [ -n "$F" ]; then run chapter_states node tools/v2/chapter_states.mjs --save "$F" --out "$L/states"; else echo "exit=9 (chapter_states: no save after ev_boss_flee in $C/saves)" >> "$L/steps.txt"; fi
-# 지난 판의 저장 여덟 개를 읽혀 45초씩 이어 플레이
+# 지난 판들의 저장 열두 개(APK 11 여섯 · APK 12 여섯)를 읽혀 45초씩 이어 플레이
 step "old saves start"
-SECS=${OLD_SECS:-45} bash tools/v2/release/old_saves.sh "$L/old_saves" ${OLD_LIST:-013 032 046 055 064 071 072 074} > "$L/old_saves.log" 2>&1; echo "exit=$? (old_saves)" >> "$L/steps.txt"
+SECS=${OLD_SECS:-45} bash tools/v2/release/old_saves.sh "$L/old_saves" ${OLD_LIST:-apk11:013 apk11:032 apk11:046 apk11:064 apk11:072 apk11:074 apk12:021 apk12:038 apk12:055 apk12:073 apk12:075 apk12:080} > "$L/old_saves.log" 2>&1; echo "exit=$? (old_saves)" >> "$L/steps.txt"
 tail -n 2 "$L/old_saves/summary.txt" | head -n 1 >> "$L/steps.txt"
 step "head-after $(git rev-parse --short HEAD) dirty=$(git status --porcelain | wc -l)"
 step "ALLDONE"
