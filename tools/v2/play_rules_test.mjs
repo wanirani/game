@@ -426,9 +426,28 @@ try {
   { // dropPresses takes a held skill press with it
     const s = mk(); ring(s); T1(s, {}); T1(s, { mx: 1, dash: true }); T1(s, { mx: 1, skill: true }); s.dropPresses(); run(s, 0.8, { mx: 1 });
     ok('dropPresses() forgets a skill carried in a roll', !s.log.some((l) => l[0] === 'act' && l[2] === 'hook')); }
-  { // attack, attack, jump: the queued second hit comes out (since the buffer of 11-19 the later jump had taken its place)
+  { // attack, attack, jump: the jump takes the queued second hit's place, as a roll does (JUMPFIX 11-19: the newest movement press wins. WHIP2 had expected 'c1 c2' here -
+    // the queued hit kept - and the jump then ran out behind that hit: 19 of 36 jumps pressed behind a queued hit did nothing)
     const s = mk(); const ids = []; s.hooks.attack = (h, mv) => ids.push(mv.id); let jumps = 0; s.hooks.jump = () => jumps++; T1(s, {}); T1(s, { attack: true }); for (let i = 0; i < 3; i++) T1(s, {}); T1(s, { attack: true }); T1(s, {}); T1(s, {}); T1(s, { jump: true, jumpHeld: true }); run(s, 0.25, {});
-    ok('attack, attack, jump: the queued second hit is kept', ids.join(' ') === 'c1 c2', `moves ${ids.join(' ')} · jumps ${jumps}`); }
+    ok('attack, attack, jump: the jump wins (no second hit)', ids.join(' ') === 'c1' && jumps === 1, `moves ${ids.join(' ')} · jumps ${jumps}`); }
+  { // JUMPFIX: a jump pressed on ANY tick while the second hit is queued comes out once, on the very tick it would with nothing queued, and the queued hit is gone for good
+    // (no second hit, and the forgotten attack press does not come back as a plunge in the air). Attack on rules tick 2, again on 6, the jump on tick p
+    const ref = mk(); let c2Ref = -1; ref.hooks.attack = (h, mv) => { if (mv.id === 'c2') c2Ref = ref._tick; }; for (let t = 1; t <= 30; t++) T1(ref, { attack: t === 2 || t === 6 });   // the tick the queued hit begins when nothing else is pressed
+    const go = (p, queue) => { const s = mk(), ids = [], jt = []; s.hooks.attack = (h, mv) => ids.push(mv.id); s.hooks.jump = () => jt.push(s._tick); let q = -1; for (let t = 1; t <= 110; t++) { T1(s, { attack: t === 2 || (queue && t === 6), jump: t === p, jumpHeld: t === p }); if (t === p) q = s.hero.queued; } return { ids: ids.join(' '), jt, q, down: s.hero.onGround }; };
+    const bad = []; let n = 0;
+    for (let p = 7; p <= c2Ref; p++) { const a = go(p, true), b = go(p, false); n++; if (!(a.ids === 'c1' && a.jt.length === 1 && b.jt.length === 1 && a.jt[0] === b.jt[0] && a.q === 0 && a.down)) bad.push(`jump on tick ${p}: moves ${a.ids} · jumped on ${a.jt.join(',') || 'NEVER'} (nothing queued: ${b.jt.join(',') || 'never'}) · queued after the press ${a.q}`); }
+    ok(`a jump pressed behind a queued second hit (every tick from that hit's press to the tick it would begin, ${n} cases): it comes out once, as early as with nothing queued, and the queued hit is gone`, c2Ref > 7 && n >= 8 && bad.length === 0, bad.slice(0, 4).join(' | ') || `the second hit would begin on tick ${c2Ref}`); }
+  { // WHIP2's rule for the skill, untouched by JUMPFIX: a skill pressed on ANY tick while the second hit is queued leaves that hit alone and is carried -
+    // the hit begins on its own tick, one hook follows on the first tick after its window (up to bufT + bufHold after the press), nothing jumps
+    const ref = mk(); let c2Ref = -1; ref.hooks.attack = (h, mv) => { if (mv.id === 'c2') c2Ref = ref._tick; }; for (let t = 1; t <= 30; t++) T1(ref, { attack: t === 2 || t === 6 });
+    const after = c2Ref + Math.ceil(MOVES.c2.hit[1] / DT - 1e-9), N = Math.ceil(TUNE.bufT / DT - 1e-9) - 1, bad = []; let n = 0, longest = 0;   // after = the first tick on which the second hit's window is over · N = ticks bufT alone carries a press (11)
+    for (let p = 7; p <= c2Ref; p++) {
+      const s = mk(); ring(s); const ids = []; s.hooks.attack = (h, mv) => ids.push(mv.id + '@' + s._tick); let q = -1, bs = -1, hookTick = -1;
+      for (let t = 1; t <= 90; t++) { T1(s, { attack: t === 2 || t === 6, skill: t === p }); if (t === p) { q = s.hero.queued; bs = s.hero.bufS; } if (s.hero.act === 'hook' && hookTick < 0) hookTick = s._tick; }
+      const hooks = s.log.filter((l) => l[0] === 'act' && l[2] === 'hook').length, held = p < c2Ref ? q > 0 && bs > 0 : bs > 0; n++; longest = Math.max(longest, hookTick - p);
+      if (!(ids.join(' ') === `c1@2 c2@${c2Ref}` && held && hooks === 1 && hookTick === after && !names(s).includes('jump'))) bad.push(`skill on tick ${p}: moves ${ids.join(' ')} · queued after the press ${q.toFixed(3)} · carried ${bs.toFixed(3)} · hooks ${hooks} (tick ${hookTick}, expected ${after})`);
+    }
+    ok(`a skill pressed behind a queued second hit (${n} cases): the hit is left and begins on its own tick, the press is carried and one hook follows the hit's window`, c2Ref > 7 && n >= 8 && bad.length === 0 && longest > N, bad.slice(0, 4).join(' | ') || `second hit on tick ${c2Ref}, hook on tick ${after}, longest carry ${longest} ticks (bufT alone = ${N})`); }
   { // attack, attack, skill under a ring: the second hit comes out, the hook right after its window
     const s = mk(); ring(s); const ids = []; s.hooks.attack = (h, mv) => ids.push(mv.id + '@' + s._tick); T1(s, {}); T1(s, { attack: true }); for (let i = 0; i < 3; i++) T1(s, {}); T1(s, { attack: true }); T1(s, {}); T1(s, { skill: true }); let hookTick = -1; for (let i = 0; i < 60; i++) { T1(s, {}); if (s.hero.act === 'hook' && hookTick < 0) hookTick = s._tick; }
     ok('attack, attack, skill: the second hit comes out and the hook follows it', ids.length === 2 && ids[1].startsWith('c2@') && hookTick > Number(ids[1].split('@')[1]), `moves ${ids.join(' ')} · hook on tick ${hookTick}`); }
