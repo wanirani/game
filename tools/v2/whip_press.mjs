@@ -19,8 +19,11 @@ const DT = 1 / 60, ROOT = new URL('../..', import.meta.url).pathname;
 
 // ── RULES: before (commit BASE) and after (today) ──
 const baseDir = `${OUT}/base_play`; fs.rmSync(baseDir, { recursive: true, force: true }); fs.mkdirSync(baseDir, { recursive: true });
-execSync(`git archive ${BASE} src/v2 | tar -x -C ${baseDir}`, { cwd: ROOT, maxBuffer: 1 << 28 });   // (the rules import ../char3d and friends)
-const NEW = await import(ROOT + 'src/v2/play/index.js'), OLD = await import(baseDir + '/src/v2/play/index.js');
+// (the release chain runs this tool in clones that may no longer hold commit BASE: then there is no "before" column and the judgement of today's rules stands alone - main session, 11-19)
+let OLD = null;
+try { execSync(`git archive ${BASE} src/v2 | tar -x -C ${baseDir}`, { cwd: ROOT, maxBuffer: 1 << 28, stdio: ['ignore', 'pipe', 'pipe'], shell: '/bin/bash' }); OLD = await import(baseDir + '/src/v2/play/index.js'); }   // (the rules import ../char3d and friends)
+catch (e) { console.log(`[rules] the rules of commit ${BASE} are not in this clone - no "before" column (${String(e?.message ?? e).split('\n')[0].slice(0, 140)})`); }
+const NEW = await import(ROOT + 'src/v2/play/index.js');
 function rules(P, oldJump) {
   const { Sim, TUNE, MOVES, flatArena } = P, mk = () => { const s = new Sim(flatArena(900, 500, []), {}); s.hookPoints.push({ id: 'r1', x: 250, y: 0, z: 40, to: [300, 50] }); s.update(DT, {}); return s; };
   const out = { bufT: TUNE.bufT ?? 0, rollIfr: TUNE.rollIfr, c1: MOVES.c1.hit, c3dur: MOVES.c3.dur, rollT: TUNE.rollT, skill: [], roll: [], c3: [], jump: [] };
@@ -38,7 +41,7 @@ function rules(P, oldJump) {
   }
   return out;
 }
-const RB = rules(OLD, true), RA = rules(NEW, false);
+const RB = OLD ? rules(OLD, true) : null, RA = rules(NEW, false);
 const cell = (q, okKey, wKey) => (q[okKey] ? String(q[wKey]) : '.').padStart(2), row = (a, k, w) => a.map((q) => cell(q, k, w)).join(' ');
 const table = (tag, B, A) => {
   console.log(`1 skill tapped d ticks after an attack tap, d = 0..14 (the hit window of hit 1 ends at ${A.c1[1]} s = tick ${Math.ceil(A.c1[1] * 60)}; number = ticks from the press to the throw)`);
@@ -60,7 +63,7 @@ const judge = (A, tag) => {
   ok(`${tag}: jump in the last ${N} ticks of a roll jumps as the roll ends`, A.jump.filter((q) => q.d >= rollN - N).every((q) => q.jumped && q.afterRoll <= 1), A.jump.filter((q) => q.jumped).length + ' of 8');
 };
 judge(RA, 'rules');
-console.log(`   carried presses, before -> after: skill ${RB.skill.filter((q) => q.thrown).length} -> ${RA.skill.filter((q) => q.thrown).length} of 15 · roll ${RB.roll.filter((q) => q.rolled).length} -> ${RA.roll.filter((q) => q.rolled).length} of 15 · attack after the third hit ${RB.c3.filter((q) => q.again).length} -> ${RA.c3.filter((q) => q.again).length} of 16 · jump out of a roll ${RB.jump.filter((q) => q.jumped).length} -> ${RA.jump.filter((q) => q.jumped).length} of 8`);
+if (RB) console.log(`   carried presses, before -> after: skill ${RB.skill.filter((q) => q.thrown).length} -> ${RA.skill.filter((q) => q.thrown).length} of 15 · roll ${RB.roll.filter((q) => q.rolled).length} -> ${RA.roll.filter((q) => q.rolled).length} of 15 · attack after the third hit ${RB.c3.filter((q) => q.again).length} -> ${RA.c3.filter((q) => q.again).length} of 16 · jump out of a roll ${RB.jump.filter((q) => q.jumped).length} -> ${RA.jump.filter((q) => q.jumped).length} of 8`);
 
 // ── PAGE: today's tree through the pad ──
 async function cases() {
