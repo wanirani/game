@@ -34,6 +34,8 @@ run cross_edge    node tools/v2/cross_edge.mjs --out "$L/cross_edge"
 run break_check   node tools/v2/break_check.mjs
 run owner_fix     node tools/v2/owner_fix_check.mjs --out "$L/ownerfix"   # the owner's reports of 2026-11-18: pieces at a full gauge, sleepers facing and waking
 run whip_press    node tools/v2/whip_press.mjs --out "$L/whip_press"        # 입력 기억: 규칙의 전 · 후 표 + 패드의 포인터 처리기로 게임 시간에 누름 (PLAY_API 1.1)
+run whip_many     node tools/v2/whip_many.mjs --out "$L/whip_many"          # 한 틱에 여럿을 쳤을 때의 소리: 시작 수 · 시각 · 세기 · 가장 큰 순간의 정점 (끝줄 ALL OK, 실패면 exit 1)
+run whip_feel     node tools/v2/whip_feel.mjs --out "$L/whip_feel"          # 타격감 끝에서 끝까지: 닿음 · 멈춤 · 불꽃 · 번쩍임 · 숫자 · 소리 · 진동이 한 화면 프레임 안 (fold_open, 실패면 exit 1)
 run smoke         node tools/smoke.mjs
 run p0_entry      node tools/v2/p0_entry_check.mjs
 run world_check   node tools/v2/world_check.mjs
@@ -53,6 +55,14 @@ node -e "const t=JSON.parse(require('fs').readFileSync('$C/table.json','utf8'));
 # 여왕의 구간 · 쉼터: 방금 봇이 쓴 「달아난 뒤」 저장에서 불러오기 · 건넘 · 나갔다 오기 · 쓰러짐 (28 검사)
 F=$(ls "$C"/saves/*_ev_boss_flee.json 2>/dev/null | tail -n 1)
 if [ -n "$F" ]; then run chapter_states node tools/v2/chapter_states.mjs --save "$F" --out "$L/states"; else echo "exit=9 (chapter_states: no save after ev_boss_flee in $C/saves)" >> "$L/steps.txt"; fi
+# 화면들(연대기 책 · 가방 · 카드 · 선택 · 로크의 가게, UI_API 10)과 대답하지 않는 종: 방금 봇이 맺음까지 쓴 저장들로, 기기 하나씩 (네 단계 모두 실패면 exit 1)
+F=$(ls "$C"/saves/*_ev_ending_home.json 2>/dev/null | tail -n 1)
+if [ -n "$F" ]; then
+  run screens_fold  node tools/v2/screens_check.mjs --devices fold_open --saves "$C/saves" --out "$L/screens"
+  run screens_phone node tools/v2/screens_check.mjs --devices phone2 --saves "$C/saves" --out "$L/screens"
+  run screens_cross node tools/v2/screens_verify.mjs --only cross --saves "$C/saves" --out "$L/screens_verify"   # 건너는 동안 뒤로 키는 아무것도 하지 않는다 (검증 갈래의 증명)
+  run whip_bell     node tools/v2/whip_bell.mjs --devices fold_open --saves "$C/saves" --out "$L/whip_bell"       # 긴 울림의 거절 다섯 경우 (바닥 없음 둘 · 봉인된 종 · 여왕이 깨어 있는 동안 둘)
+else echo "exit=9 (screens_fold screens_phone screens_cross whip_bell: no save after ev_ending_home in $C/saves)" >> "$L/steps.txt"; fi
 # 지난 판들의 저장 열두 개(APK 11 셋 · APK 12 넷 · APK 13 다섯)를 읽혀 45초씩 이어 플레이
 step "old saves start"
 SECS=${OLD_SECS:-45} bash tools/v2/release/old_saves.sh "$L/old_saves" ${OLD_LIST:-apk11:032 apk11:064 apk11:074 apk12:038 apk12:055 apk12:073 apk12:080 apk13:021 apk13:046 apk13:066 apk13:075 apk13:082} > "$L/old_saves.log" 2>&1; echo "exit=$? (old_saves)" >> "$L/steps.txt"

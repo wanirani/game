@@ -194,6 +194,10 @@ if (PAGE_PARTS.some(want)) {
           ok(`${DEV}: every row is a target of 56 px or more, inside the safe area, none on another`, P.rows.every((r) => r.h * S.css >= 55.5 && r.w * S.css >= 56 && inside(r, S)) && P.rows.every((a, i) => P.rows.every((b, j) => i === j || !hits(a, b))), P.rows.map((r) => Math.round(r.w * S.css) + 'x' + Math.round(r.h * S.css)).join(' ') + ' CSS px');
           ok(`${DEV}: the pad is gone while the panel is open`, p.pad === false && p.modal === 'pause');
           await shot('pause');
+          // POLISH (11-19): a banner that is up when the panel opens (the place name, seconds after arriving) is not drawn through the panel's glass and waits with its
+          // clock stopped; it goes on for the rest of its time when the panel closes (「이어 하기」). The panel is opened again for the parts below.
+          const bn = await ev(() => { const F = window.__F, h = window.__v2.scene.hud, a = h.stats(); F.tick(120, false); const b = h.stats(); F.pauseRow('resume'); F.tick(20); const c = h.stats(), modal = h.modal, re = F.openPause(); return { a: [a.banner, a.bannerShown, a.bannerT], b: [b.banner, b.bannerShown, b.bannerT], c: [c.banner, c.bannerShown, c.bannerT], modal, re }; });
+          ok(`${DEV}: no banner is drawn through the pause panel - one that is up waits with its clock stopped and goes on when the panel closes`, bn.a[1] === false && bn.b[1] === false && bn.modal === null && bn.re && (!bn.a[0] || (bn.b[0] === bn.a[0] && bn.b[2] === bn.a[2] && bn.c[1] === true && bn.c[2] > bn.a[2])), bn.a[0] ? `the ${bn.a[0]} banner held at ${bn.a[2].toFixed(2)} s over 120 ticks of the panel, at ${bn.c[2].toFixed(2)} s after 「이어 하기」` : 'no banner was up when the panel opened');
         }
         // ───────────── the chronicle ─────────────
         if (want('book')) {
