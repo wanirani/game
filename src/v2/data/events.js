@@ -264,7 +264,9 @@ export const EVENTS = [
   { id: 'ev_ossuary_door_now', minute: '45-58', on: 'interact', match: { event: 'door.ossuary' }, if: ['era:now'], once: false, steps: [
     ['say', 'door.ossuary.now'],
   ] },
-  { id: 'ev_ossuary_exit_now', minute: '45-58', on: 'exit.locked', match: { id: 'to_ossuary' }, if: ['era:now'], once: false, steps: [
+  // (the threshold speaks only when it has something new to say - the ghosts the first time, Hanna when the road bell hangs; the door's own prompt says the rest.
+  //  It used to say the door's two lines at the whip landing, and the prompt said them again a step later.)
+  { id: 'ev_ossuary_exit_now', minute: '45-58', on: 'exit.locked', match: { id: 'to_ossuary' }, if: ['era:now'], ifAny: ['!saw_ghosts', 'bell_hung'], once: false, steps: [
     ['say', 'door.ossuary.now'],
   ] },
   // that night the threshold only says where the empty post stands: the road bell is hung by the player at the post (interact bell.hang).
@@ -353,10 +355,21 @@ export const EVENTS = [
   ] },
   { id: 'ev_oss_arena', minute: '68-82', on: 'trigger', match: { event: 'oss.arena' }, steps: [
     ['wakeGroup', 'oss_arena'],
+    ['setFlag', 'arena_fight'],                  // (the fight of the wailing room is on: Sera's scene in the next room waits for its end)
+  ] },
+  { id: 'ev_oss_arena_clear', minute: '68-82', on: 'group.clear', match: { group: 'oss_arena' }, if: ['area:ossuary_now'], steps: [
+    ['clearFlag', 'arena_fight'],
+    ['if', ['at_lamp', '!sera_lamp'], [['run', 'ev_oss_sera']]],   // the hero went on into the lamp room with the ghosts behind him: the scene starts when the last of them has fallen
   ] },
 
   // ═════════ 82–100 납골당 뒤 절반 ═════════
-  { id: 'ev_oss_sera', minute: '82-100', on: 'trigger', match: { event: 'oss.lamp' }, steps: [
+  // Sera's scene waits until the room is quiet (STORY, 11-19: it used to start in the middle of the wailing-room fight, the ghosts standing by). The threshold of the
+  // lamp room (trigger oss.lamp, `once: false` in the area) plays it when no fight is on; while one is, it only remembers that the hero has come this far.
+  { id: 'ev_oss_lamp', minute: '82-100', on: 'trigger', match: { event: 'oss.lamp' }, if: ['!sera_lamp'], once: false, steps: [
+    ['setFlag', 'at_lamp'],
+    ['if', ['!arena_fight'], [['run', 'ev_oss_sera']]],
+  ] },
+  { id: 'ev_oss_sera', minute: '82-100', steps: [
     ['showActor', 'sera', 'ossuary_now'],        // (a save from before she was shown at the dungeon's door: she is at the lantern now)
     ['say', 'sera.ossuary'],
     ['hideActor', 'sera', 'eshville_now'],       // she is here now, not in the square
@@ -442,6 +455,11 @@ export const EVENTS = [
   ] },
   { id: 'ev_boss_kneel', minute: '104-114', on: 'boss.phase', match: { phase: 'kneel' }, if: ['area:ossuary_now'], once: false, steps: [
     ['prompt', 'knell'],
+  ] },
+  // tonight, while the queen is in her first act, the hall's bell does not carry the hero away: the scene refuses the crossing (chapter.js bellHeld) and raises bell.held.
+  // (It used to set him down in an empty 1697 hall whose own bell is sealed; he came back by the riddle-room bell and she started again from full health - untold.)
+  { id: 'ev_bell_held', minute: '104-114', on: 'bell.held', once: false, steps: [
+    ['say', 'bell.held'],
   ] },
   // in 1697 the bell of the last hall answers dull until the queen has fled through it (the world gives it the event bell.sealed until then)
   { id: 'ev_bell_sealed', minute: '100-104', on: 'interact', match: { event: 'bell.sealed' }, once: false, steps: [

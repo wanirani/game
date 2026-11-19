@@ -85,7 +85,7 @@ export function ossuary(era = 'now', flags = {}) {
   // (Two stone stubs stand at the sides in both nights; the wooden middle is 680 long: with more the chunk's wood would no longer fold into its oak texture - mats.js FOLDS.)
   add('c2', { t: 'wall', x: X0, z: 1484, w: 160, d: 20, h: 56, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'FR', coping: true } },
     { t: 'wall', x: X1 - 160, z: 1484, w: 160, d: 20, h: 56, collideH: 800, mat: 'stone', kit: { style: 'low', faces: 'FL', coping: true } });
-  if (past) add('c2', { t: 'fence', kind: 'wood', x0: X0 + 160, z0: 1494, x1: X1 - 160, z1: 1494, h: 52 });
+  if (past) add('c2', { t: 'fence', kind: 'screen', x0: X0 + 160, z0: 1494, x1: X1 - 160, z1: 1494, h: 52 });   // DETAIL: kind 'screen' = the carpenter's panelled screen (kit.js woodScreen) - the same line, height and collision box as the wooden fence it was
   if (past) interact.push({ id: 'oss_wedge', kind: 'pull', x: 600, z: 1150, r: 120, label: '밀어 넣기', event: 'oss.wedge' });
   else triggers.push({ id: 'oss_gap', ...rect(300, 1110, 600, 70), event: 'oss.gap', once: false });
   // ───────────── the two nights ─────────────
@@ -130,7 +130,7 @@ export function ossuary(era = 'now', flags = {}) {
     if (!flags.queen_sent) enemies.push({ kind: 'banshee_queen', x: 600, z: 3600, group: 'boss', yard: true, face: S });
     actors.push({ id: 'sera', model: 'sera', x: 716, z: 2296, face: S, talk: 'sera.ossuary', pose: 'lantern', when: 'sera_follows' });
     triggers.push({ id: 'oss_coffins', ...rect(380, 500, 440, 60), event: 'oss.coffins', wake: 'oss_hall' }, { id: 'oss_arena', ...rect(X0, 1510, 1000, 50), event: 'oss.arena', wake: 'oss_arena' },
-      { id: 'oss_lamp', ...rect(X0, 2110, 1000, 50), event: 'oss.lamp' }, ...(flags.queen_sent ? [] : [{ id: 'boss_enter', ...rect(X0, 3010, 1000, 690), event: 'boss.enter', wake: 'boss', once: false }]));   // CHAPTER: the whole hall, every time the hero comes in (it was the doorway only: a hero set down inside by the arena bell got no entrance, and a queen put back to sleep by a fall or a crossing was not woken)
+      { id: 'oss_lamp', ...rect(X0, 2110, 1000, 50), event: 'oss.lamp', once: false }, ...(flags.queen_sent ? [] : [{ id: 'boss_enter', ...rect(X0, 3010, 1000, 690), event: 'boss.enter', wake: 'boss', once: false }]));   // CHAPTER: the whole hall, every time the hero comes in (it was the doorway only: a hero set down inside by the arena bell got no entrance, and a queen put back to sleep by a fall or a crossing was not woken)
     interact.push({ id: 'oss_riddle', kind: 'sign', x: 600, z: 2600, r: 80, label: '닳은 석관', event: 'oss.riddle' }, { id: 'boss_rest', kind: 'rest', x: 340, z: 2890, r: 70, label: '촛불', event: 'rest' });
   } else {
     if (flags.queen_fled && !flags.queen_sent) { enemies.push({ kind: 'banshee_queen', x: 600, z: 3600, group: 'boss', yard: true, phase: 2, face: S }); triggers.push({ id: 'boss_hall', ...rect(X0, 3010, 1000, 690), event: 'boss.hall', wake: 'boss', once: false }); }   // CHAPTER: second act, asleep in her hall until the hero is there (she used to start awake and at full health: the scene carries her health over and takes her out again when she is driven - src/v2/game/chapter.js)

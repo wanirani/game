@@ -67,7 +67,7 @@ export const DIALOGS_DUNGEON = {
   // ───────── 82–100 납골당 뒤 절반 ─────────
   'sera.ossuary': [
     { once: true, pages: [
-      ['sera', '사냥꾼님! 다친 분을 옮기고\n따라왔어요.'],
+      ['sera', '사냥꾼님! 다친 분을 옮기고\n샛길로 먼저 와 있었어요.'],
       ['sera', '등불대는 제가 맡을게요.\n빛 안에서는 유령이 굳어요.', 'resolve'],
       ['kael', '부탁합니다.'],
     ], then: [['setFlag', 'sera_lamp'], ['prompt', 'call']] },
@@ -114,7 +114,12 @@ export const DIALOGS_DUNGEON = {
   ] }],
   // the bell of the last hall in 1697, before the queen has fled through it (interact event bell.sealed)
   'bell.sealed': [{ pages: [
-    ['kael', '(종이 답하지 않는다. 저쪽 방은\n노래로 가득 차 있다. 문으로 간다.)'],
+    ['kael', '(종이 답하지 않는다. 저쪽 방은\n노래로 가득 차 있다.)'],
+    ['kael', '(석관의 방 종으로 돌아가\n문으로 들어간다.)'],
+  ] }],
+  // tonight's bell of the last hall while the queen is in her first act (event bell.held): she holds it, nobody leaves that way
+  'bell.held': [{ pages: [
+    ['kael', '(종이 답하지 않는다.\n여왕의 노래가 종을 붙들고 있다.)'],
   ] }],
   'boss.past': [{ pages: [
     ['narrator', '그 밤의 예배실. 제단 아래\n엘리제가 잠들어 있다.'],

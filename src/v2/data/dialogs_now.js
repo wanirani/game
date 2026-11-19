@@ -215,14 +215,18 @@ export const DIALOGS_NOW = {
     { pages: [['sign', '에드문트 발크레인.\n1697년, 넷째 붉은 달.']] },
   ],
   'door.ossuary.now': [
-    { ifAny: ['!carved_a', '!carved_b'], pages: [
+    { if: ['!saw_ghosts'], ifAny: ['!carved_a', '!carved_b'], pages: [
       ['narrator', '이름 없는 유령 둘이\n문 앞을 막아선다.'],
       ['kael', '(베어도 다시 선다.\n…이름을 찾는 거군.)'],
     ], then: [['setFlag', 'saw_ghosts'], ['objective', 'to_past_graves']] },
+    // seen once: a second press says one short line and sets nothing again
+    { ifAny: ['!carved_a', '!carved_b'], pages: [
+      ['kael', '(유령 둘이 문 앞을 지킨다.\n그 밤에서 이름을 찾아 준다.)'],
+    ] },
     { if: ['!bell_hung'], pages: [
       ['narrator', '유령은 비켜선다. 하지만\n문 앞 돌길이 끊겨 있다.'],
       ['kael', '(건너편 종대가 비어 있다.\n그 밤이라면 걸 수 있겠군.)'],
-    ], then: [['objective', 'hang_bell']] },
+    ], then: [['if', ['has:road_bell'], [['objective', 'hang_bell']], [['objective', 'to_post']]]] },   // (the road bell is named only once Edmund has handed it over)
     { if: ['!ossuary_open'], pages: [
       ['hanna', '안에서 배웅하는 노래가 들려요.\n따라 부르면 안 돼요.'],
       ['kael', '고맙다. 조심하마.'],

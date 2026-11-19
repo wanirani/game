@@ -156,7 +156,7 @@ export const DIALOGS_PAST = {
     { if: ['!carved_a'], pages: [
       ['narrator', '새 비석에 작은 종 무늬가 있다.\n끌을 대고 이름을 새긴다.'],
     ], then: [['setFlag', 'carved_a'], ['setFlag', 'pending_change'], ['toast', '새겼다 — 한나', 'info'],
-      ['if', ['carved_b'], [['prompt', null], ['objective', 'hang_bell']]]] },
+      ['if', ['carved_b'], [['prompt', null], ['if', ['has:road_bell'], [['objective', 'hang_bell']], [['objective', 'to_deep']]]]]] },   // (the road bell is not named before Edmund has handed it over)
     { pages: [['sign', '한나. 1697년.']] },
   ],
   'grave.carve.b': [
@@ -164,7 +164,7 @@ export const DIALOGS_PAST = {
     { if: ['!carved_b'], pages: [
       ['narrator', '끌을 대고 이름을 새긴다.'],
     ], then: [['setFlag', 'carved_b'], ['setFlag', 'pending_change'], ['toast', '새겼다 — 틸', 'info'],
-      ['if', ['carved_a'], [['prompt', null], ['objective', 'hang_bell']]]] },
+      ['if', ['carved_a'], [['prompt', null], ['if', ['has:road_bell'], [['objective', 'hang_bell']], [['objective', 'to_deep']]]]]] },
     { pages: [['sign', '틸. 1697년. 한나의 동생.']] },
   ],
 

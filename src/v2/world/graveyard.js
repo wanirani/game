@@ -108,7 +108,7 @@ export function graveyard(era = 'now', flags = {}) {
       { id: 'to_eshville', ...rect(530, 0, 140, 56), to: 'eshville_' + era, spawn: 'from_graveyard', label: '에슈빌', locked: null },
       { id: 'to_ossuary', ...rect(556, 1932, 88, 34), to: 'ossuary_' + era, spawn: 'entry', label: '배웅의 납골당', locked: flags.ossuary_open ? null : 'story:ossuary' },
     ],
-    actors: now ? [] : [{ id: 'keeper', model: 'villager_m', x: 800, z: 1100, face: [0, -1], talk: 'keeper.graveyard', pose: 'idle', tint: [0.9, 0.9, 1.0] },
+    actors: now ? [] : [{ id: 'keeper', model: 'villager_m', x: 664, z: 1140, face: [0, -1], talk: 'keeper.graveyard', pose: 'idle', tint: [0.9, 0.9, 1.0] },
       { id: 'edmund', model: 'edmund', x: 520, z: 1730, face: [0, -1], talk: 'grave.edmund', pose: 'idle', when: 'past_gate_open' }],   // at the foot of the broken stair, on the near side (DATA_FORMAT 12)
     enemies,
     triggers: now ? [{ id: 'road_bats', ...rect(490, 420, 220, 50), event: 'bats.swoop', wake: 'bats' }, { id: 'gate_keeper', ...rect(520, 960, 160, 50), event: 'elite.gravekeeper', wake: 'gate' }, { id: 'echo_hint', ...rect(100, 1380, 1000, 50), event: 'echo.hint', wake: 'ghosts' }]

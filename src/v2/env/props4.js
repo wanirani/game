@@ -20,7 +20,14 @@ const TREE = {
   fir(G, x, y, z, h, s, o) {
     const mat = o.mat ?? 'white', T = o.tint ?? [0.2, 0.26, 0.24], r = h * (0.2 + 0.07 * hash(s, 3.3)), a0 = Math.PI / 4 + (hash(s, 9.1) - 0.5) * 0.5;
     G.lathe(mat, x, z, [[h * 0.035, y], [h * 0.03, y + h * 0.2]], 4, { a0, tint: [T[0] * 0.8, T[1] * 0.7, T[2] * 0.7], vary: 0, k: 0.8 });
-    G.lathe(mat, x, z, [[r, y + h * 0.16], [r * 0.4, y + h * 0.56], [r * 0.74, y + h * 0.54], [0, y + h]], 4, { a0, tint: T, vary: 0.3, flat: true, k: o.k ?? 1 });
+    if (o.detail === false) { G.lathe(mat, x, z, [[r, y + h * 0.16], [r * 0.4, y + h * 0.56], [r * 0.74, y + h * 0.54], [0, y + h]], 4, { a0, tint: T, vary: 0.3, flat: true, k: o.k ?? 1 }); return; }
+    // DETAIL: three tiers of boughs, each a skirt that widens downward and hangs over the tier below (lighter above, dark underneath), a leader on top
+    const lean = (hash(s, 6.1) - 0.5) * h * 0.05;
+    for (let i = 0; i < 3; i++) {
+      const y0 = y + h * (0.15 + 0.25 * i), y1 = y + h * (0.5 + 0.2 * i), ri = r * (1 - 0.27 * i) * (0.92 + 0.16 * hash(s + i, 2.2)), kk = (o.k ?? 1) * (0.82 + 0.16 * i);
+      G.lathe(mat, x + lean * i * 0.5, z, [[ri, y0], [ri * 0.3, y1]], 5, { a0: a0 + i * 0.63, tint: T, vary: 0.3, flat: true, k: kk, shade: (px, py) => 0.72 + 0.42 * Math.min(1, Math.max(0, (py - y0) / (y1 - y0))) });
+    }
+    G.lathe(mat, x + lean, z, [[r * 0.2, y + h * 0.8], [0, y + h]], 4, { a0, tint: T, vary: 0.2, flat: true, k: (o.k ?? 1) * 1.2 });
   },
   /** a bare tree: a leaning trunk and a few boughs */
   bare(G, x, y, z, h, s, o) {
@@ -33,12 +40,22 @@ const TREE = {
       G.tube(mat, from, [from[0] + Math.cos(a) * len * (1 - up * 0.4), from[1] + len * up, from[2] - Math.sin(a) * len * 0.25], h * 0.022, h * 0.006, 3, q);
     }
     G.tube(mat, top, [top[0] + lean * 0.5, y + h, z], h * 0.024, h * 0.005, 3, q);
+    if (o.detail) for (let i = 0; i < n; i++) {   // DETAIL: twigs off every bough - a crown, not a fork
+      const a = (i / n) * Math.PI + (hash(s + i, 2.2) - 0.5) * 0.9, up = 0.5 + 0.4 * hash(i, s * 1.3), len = h * (0.3 + 0.22 * hash(s * 3.1, i)), from = [x + lean * (0.55 + 0.15 * i), y + h * (0.4 + 0.075 * i), z];
+      const mid = [from[0] + Math.cos(a) * len * (1 - up * 0.4) * 0.6, from[1] + len * up * 0.6, from[2] - Math.sin(a) * len * 0.15], sg = hash(i, s) > 0.5 ? 1 : -1;
+      G.tube(mat, mid, [mid[0] + sg * len * 0.3, mid[1] + len * 0.34, mid[2]], h * 0.011, 0, 3, q); G.tube(mat, mid, [mid[0] - sg * len * 0.16, mid[1] + len * 0.4, mid[2]], h * 0.009, 0, 3, q);
+    }
   },
   /** a tree in leaf: a faceted crown on a trunk */
   round(G, x, y, z, h, s, o) {
     const mat = o.mat ?? 'white', T = o.tint ?? [0.22, 0.24, 0.18], r = h * (0.26 + 0.08 * hash(s, 4.4)), a0 = hash(s, 7.7) * 1.2;
     G.lathe(mat, x, z, [[h * 0.04, y], [h * 0.03, y + h * 0.42]], 4, { tint: [T[0] * 0.8, T[1] * 0.66, T[2] * 0.66], vary: 0, k: 0.8 });
-    G.lathe(mat, x, z, [[r * 0.45, y + h * 0.36], [r, y + h * 0.54], [r * 0.92, y + h * 0.74], [r * 0.5, y + h * 0.92], [0, y + h]], 5, { a0, tint: T, vary: 0.34, flat: true, k: o.k ?? 1, sq: 0.8 });
+    if (!o.detail) { G.lathe(mat, x, z, [[r * 0.45, y + h * 0.36], [r, y + h * 0.54], [r * 0.92, y + h * 0.74], [r * 0.5, y + h * 0.92], [0, y + h]], 5, { a0, tint: T, vary: 0.34, flat: true, k: o.k ?? 1, sq: 0.8 }); return; }
+    // DETAIL: a broken crown - a big mass and a smaller one beside and above it, a bough showing between them
+    const sg = hash(s, 1.9) > 0.5 ? 1 : -1, r2 = r * 0.62, x2 = x + sg * r * 0.74, sh = (y0, hh) => (px, py) => 0.74 + 0.4 * Math.min(1, Math.max(0, (py - y0) / hh));
+    G.tube(mat, [x, y + h * 0.36, z], [x2, y + h * 0.6, z], h * 0.02, h * 0.012, 3, { tint: [T[0] * 0.8, T[1] * 0.66, T[2] * 0.66], vary: 0, k: 0.8 });
+    G.lathe(mat, x - sg * r * 0.16, z, [[r * 0.5, y + h * 0.36], [r, y + h * 0.54], [r * 0.7, y + h * 0.8], [0, y + h * 0.94]], 4, { a0, tint: T, vary: 0.34, flat: true, k: o.k ?? 1, sq: 0.8, shade: sh(y + h * 0.36, h * 0.58) });
+    G.lathe(mat, x2, z + r * 0.1, [[r2 * 0.5, y + h * 0.52], [r2, y + h * 0.68], [r2 * 0.66, y + h * 0.9], [0, y + h]], 4, { a0: a0 + 0.7, tint: [T[0] * 1.12, T[1] * 1.1, T[2] * 1.02], vary: 0.34, flat: true, k: o.k ?? 1, sq: 0.8, shade: sh(y + h * 0.52, h * 0.48) });
   },
 };
 
@@ -47,7 +64,7 @@ Object.assign(PROPS, {
     plain(G, () => {
       const cell = o.cell ?? 320, mat = o.mat ?? 'soil';
       G.quad(mat, [x, y, z], [o.w, 0, 0], [0, 0, o.d], [0, 1, 0], { cell, vary: o.vary ?? 0.34, k: o.k ?? 0.8, tint: o.tint, tile: o.tile });
-      if (o.skirt) G.quad(mat, [x, y - o.skirt, z], [o.w, 0, 0], [0, o.skirt, 0], [0, 0, -1], { cell: 500, k: 0.3, vary: 0.2, tint: o.tint, tile: o.tile });   // the front of the land where it ends towards the camera (like the dark front of a floor slab)
+      if (o.skirt) G.quad(mat, [x, y - o.skirt, z], [o.w, 0, 0], [0, o.skirt, 0], [0, 0, -1], { cell: 500, k: o.skirtK ?? 0.3, vary: 0.2, tint: o.tint, tile: o.tile });   // the front of the land where it ends towards the camera (like the dark front of a floor slab)
       for (const s of o.strips ?? []) G.quad(s.mat ?? mat, [x + s.x0, y + 0.7, z + s.z0], [s.x1 - s.x0, 0, 0], [0, 0, s.z1 - s.z0], [0, 1, 0], { cell: s.cell ?? cell, vary: s.vary ?? 0.3, k: s.k ?? o.k ?? 0.8, tint: s.tint, tile: s.tile ?? o.tile });
     });
   },
@@ -83,9 +100,39 @@ Object.assign(PROPS, {
       const cx = x0 + w * (0.2 + 0.6 * hash(sd, 2.1));
       G.box(mat, cx - 11, yr - rh * 0.5, zm - 11, cx + 11, yr + 16, zm + 11, { faces: 'FLRT', tint: wall, k: 0.8, vary: 0.1 });
       const nw = Math.max(1, Math.round(w / 100));
+      const first = (o.lit ?? 0) > 0 ? Math.floor(hash(sd, 8.8) * nw) : -1, dark = { tint: [wall[0] * 0.3, wall[1] * 0.3, wall[2] * 0.34], vary: 0, k: 0.7 };
       for (let i = 0; i < nw; i++) {
-        const wx = x0 + w * (i + 0.5) / nw, on = (o.lit ?? 0) > hash(sd + i * 3.7, 5.1);
-        G.quad(mat, [wx - 11, y + h * 0.42, z - 0.9], [22, 0, 0], [0, Math.min(34, h * 0.3), 0], [0, 0, -1], on ? { emis: o.emis ?? 1.9, tint: o.glow ?? [1, 0.6, 0.26], fog: 0.55 } : { tint: [0.1, 0.1, 0.13], vary: 0, k: 0.6 });
+        const wx = x0 + w * (i + 0.5) / nw, on = i === first || (o.lit ?? 0) > hash(sd + i * 3.7, 5.1), wh = Math.min(34, h * 0.3), wy = y + h * 0.42;   // DETAIL: every lived-in house has at least one lit window
+        G.quad(mat, [wx - 11, wy, z - 0.9], [22, 0, 0], [0, wh, 0], [0, 0, -1], on ? { emis: o.emis ?? 1.9, tint: o.glow ?? [1, 0.6, 0.26], fog: 0.55 } : { tint: [0.1, 0.1, 0.13], vary: 0, k: 0.6 });
+        if (on) { G.quad(mat, [wx - 1.2, wy, z - 1.6], [2.4, 0, 0], [0, wh, 0], [0, 0, -1], dark); G.quad(mat, [wx - 11, wy + wh * 0.5 - 1.1, z - 1.6], [22, 0, 0], [0, 2.2, 0], [0, 0, -1], dark); }   // the window's cross
+      }
+      G.quad(mat, [x0, y + h - 12, z - 0.6], [w, 0, 0], [0, 12, 0], [0, 0, -1], { tint: wall, vary: 0.1, k: 0.5 });                                                          // the shadow under the eaves
+      const dx = x0 + w * (0.24 + 0.5 * hash(sd, 4.4)); G.quad(mat, [dx - 13, y, z - 0.9], [26, 0, 0], [0, Math.min(60, h * 0.42), 0], [0, 0, -1], dark);                     // a door
+      const sx = hash(sd, 6.6) > 0.5 ? 1 : -1, lx = sx > 0 ? x1 : x0 - w * 0.3;                                                                                              // a lean-to against one gable
+      G.box(mat, lx, y, z + d * 0.2, lx + w * 0.3, y + h * 0.5, z1, { faces: sx > 0 ? 'FR' : 'FL', tint: wall, vary: 0.2, k: 0.86 });
+      G.quad4(mat, [lx - 5, y + h * 0.48, z + d * 0.2 - 8], [lx + w * 0.3 + 5, y + h * 0.48, z + d * 0.2 - 8], [lx + w * 0.3 + 5, y + h * 0.7, z1], [lx - 5, y + h * 0.7, z1], [0, 0.8, -0.6], { tint: roof, vary: 0.3, keep: true });
+    });
+  },
+  /** DETAIL: a hedge along a line - a lumpy front and top whose crest goes up and down, bulging in and out (not a straight slope): { x, z, x1, z1, h, seg, depth, to, tint, seed } */
+  hedge(G, x, y, z, o = {}) {
+    plain(G, () => {
+      const dx = o.x1 - x, dz = o.z1 - z, [nx, nz, len] = facing(x, z, dx, dz, o.to), n = Math.max(2, Math.round(len / (o.seg ?? 56))), h = o.h ?? 46, dep = o.depth ?? 22, sd = o.seed ?? 1, mat = o.mat ?? 'white', tint = o.tint ?? [0.2, 0.3, 0.2];
+      const H = (i) => h * (0.62 + 0.5 * hash(i * 1.3 + sd, 2.2)), B = (i) => (i % 2 ? 0.55 : -0.25) * dep * (0.6 + 0.8 * hash(sd, i + 3.1));
+      for (let i = 0; i < n; i++) {
+        const a = i / n, b = (i + 1) / n, fa = [x + dx * a + nx * B(i), y, z + dz * a + nz * B(i)], fb = [x + dx * b + nx * B(i + 1), y, z + dz * b + nz * B(i + 1)];
+        const ta = [fa[0] - nx * 4, y + H(i), fa[2] - nz * 4], tb = [fb[0] - nx * 4, y + H(i + 1), fb[2] - nz * 4], kk = (o.k ?? 1) * (0.8 + 0.4 * hash(i, sd + 5));
+        G.quad4(mat, fa, fb, tb, ta, [nx * 0.94, 0.34, nz * 0.94], { keep: true, vary: 0.3, k: kk * 0.82, tint });
+        G.quad4(mat, ta, tb, [tb[0] - nx * dep, tb[1] - h * 0.12, tb[2] - nz * dep], [ta[0] - nx * dep, ta[1] - h * 0.12, ta[2] - nz * dep], [nx * 0.2, 0.98, nz * 0.2], { keep: true, vary: 0.3, k: kk * 1.16, tint });
+      }
+    });
+  },
+  /** DETAIL: bushes scattered over a patch (x, z = its near left corner): low faceted domes of two or three sizes: { w, d, n, h, tint, seed } */
+  bushes(G, x, y, z, o = {}) {
+    plain(G, () => {
+      const mat = o.mat ?? 'white', n = o.n ?? 8, sd = o.seed ?? 1, T = o.tint ?? [0.2, 0.3, 0.2];
+      for (let i = 0; i < n; i++) {
+        const px = x + o.w * hash(i * 1.37 + sd, 2.9), pz = z + o.d * hash(sd * 2.1, i * 3.1 + 1), h = (o.h ?? 50) * (0.55 + 0.7 * hash(i, sd + 8)), r = h * (0.7 + 0.4 * hash(sd, i + 2));
+        G.lathe(mat, px, pz, [[r, y], [r * 0.92, y + h * 0.5], [r * 0.5, y + h * 0.9], [0, y + h]], 5, { a0: hash(i, sd) * 1.2, tint: T, vary: 0.34, flat: true, k: (o.k ?? 1) * (0.8 + 0.4 * hash(i + 3, sd)), sq: 0.8, shade: (qx, qy) => 0.7 + 0.42 * Math.min(1, Math.max(0, (qy - y) / h)) });
       }
     });
   },
