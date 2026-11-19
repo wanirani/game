@@ -79,8 +79,9 @@ export default function (T) {
     const sv = await ev(() => localStorage.getItem('bn.v2.save')), o = sv ? JSON.parse(sv) : null;
     put(`     · the save left behind: ${o ? JSON.stringify({ why: o.why, area: o.area, done: o.story.done.length, pos: o.pos }) : 'none'}`);
     await boot(sv); await install();
-    const z = await S('until', "s.shot === 'moon_bell' && s.lock && s.shotT > 2.5", 600);
-    ok(z.n >= 0, `that save loads into the opening's start: the cut plays again from its first second (shot ${z.shot}, ${z.shotT} s left, hero at ${z.hero})`);
+    const z = await S('until', "s.shot === 'moon_bell' && (s.lock || s.modal === 'dialog')", 600), first = await ev(() => window.__v2.scene.host.seen.slice(0, 2).map((q) => q.join(' | ').replace(/\n/g, ' / ')));
+    // (the page ticks by itself between the load and this tool's first tick, so the cut may be at any second of its three - or already at its first line)
+    ok(z.n >= 0 && z.seen <= 2 && /서막/.test(first[0] ?? ''), `that save loads into the opening's start: the opening plays again from its banner (shown since the load: ${JSON.stringify(first)}; shot ${z.shot}, ${z.shotT} s left, modal ${z.modal}, hero at ${z.hero})`);
   });
 
   C('pause_keepers', "the pause button during Elise's walk (lockInput + moveActor) and during the wait step of the two keepers' scene", async () => {
