@@ -47,7 +47,17 @@ try {
   const st = await page.evaluate(() => ({ ready: window.__v2?.ready, error: String(window.__v2?.error ?? '') }));
   if (!st.ready) throw new Error('scene not ready: ' + st.error);
   await page.evaluate(install, FLAGS);
-  if (FLAGS.length) await page.evaluate(async () => { for (let i = 0; i < 40; i++) { window.__F.tick(6); await new Promise((r) => setTimeout(r, 50)); if (!window.__v2.scene.xing && !window.__v2.scene._rebuilding) break; } });
+  // THINGS (11-19): setWorldFlags starts a rebuild of the area behind a fade (scene._go, state.loading; the scene has no `_rebuilding`) - the old wait ended at once and
+  // the first still asked for sim.hero while the area was still loading ("reading 'hero' of null"). Wait until the area stands again in the asked flags.
+  if (FLAGS.length) {
+    const done = await page.evaluate(async (flags) => {
+      const sc = window.__v2.scene, busy = () => !!sc._go || !!sc.state?.loading || !!sc.xing || !sc.sim || !sc.sim.hero || !window.__v2.ready;
+      for (let i = 0; i < 600; i++) { try { if (sc.sim) window.__F.tick(4); else window.__game.tick(1 / 60); } catch (e) { /* between two worlds: tick again */ } await new Promise((r) => setTimeout(r, 50)); if (i > 4 && !busy()) break; }
+      return { busy: busy(), flags: Object.keys(sc.worldFlags || {}), built: Object.keys(sc.area?.flags || {}).filter((k) => sc.area.flags[k]), missing: flags.filter((f) => !sc.worldFlags?.[f]) };
+    }, FLAGS);
+    console.log(JSON.stringify({ flags: done }));
+    if (done.busy || done.missing.length) throw new Error('the area did not come back in the asked flags: ' + JSON.stringify(done));
+  }
   for (const s of SPOTS) {
     await page.evaluate(([x, z, dx, dz]) => { const F = window.__F; F.put(x, z, dx, dz); F.tick(50); }, [s.x, s.z, s.dx, s.dz]);
     for (let k = 0; k < FRAMES; k++) {
