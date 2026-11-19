@@ -54,12 +54,12 @@ export function createCards(env) {
     const rd = Math.round;
     R[RIGHT] = rd(s.viewW - sf.r - px(12)); R[RH] = rd(px(46)); R[GAP] = rd(px(4)); R[TOP] = rd(sf.t + px(64)); R[BOT] = rd(s.viewH * 0.56); R[PX] = -1;
     R[CB] = Math.ceil(Math.max(56 / css, px(38)));
-    if (pad && pad.shown && rect) {
+    if (pad && rect) {   // by the pad's layout whether or not it is on screen now (a dialogue or a cut hides buttons that are back a moment later: a card must not be found on one)
       for (let i = 0, nb = pad.count; i < nb; i++) {
         if (!pad.at(i, BT)) break;
         const cx = (BT[0] - rect.x) / css, cy = (BT[1] - rect.y) / css, rr = BT[2] / 2 / css;
         if (pad.idAt(i) === 'pause') { R[TOP] = rd(cy + rr + px(12)); R[PX] = Math.floor(cx - rr - (8 + 2) / css - R[CB] / 2); R[PY] = rd(cy); }
-        else if (!pad.cut && cx > s.viewW * 0.5 && cy - rr - 10 / css < R[BOT]) R[BOT] = cy - rr - 10 / css;   // the highest button on that side: the cards end above it
+        else if (cx > s.viewW * 0.5 && cy - rr - 10 / css < R[BOT]) R[BOT] = cy - rr - 10 / css;   // the highest button on that side: the cards end above it
       }
     }
     if (R[PX] < 0) { R[PX] = rd(s.viewW - sf.r - px(14) - R[CB] / 2); R[PY] = rd(sf.t + px(12) + R[CB] / 2); R[TOP] = rd(R[PY] + R[CB] / 2 + px(6)); }
