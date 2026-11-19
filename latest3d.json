@@ -1,16 +1,16 @@
 {
  "versionName": "1.0.0",
- "versionCode": 463964,
- "sha256": "5ae84301bbcaab3470d4385595e9b4abb52e4c0c425047514c72e156166b1c0f",
- "bytes": 26171886,
- "url": "downloads/BloodNocturne3D-1.0.0-463964.apk",
- "built": "2026-11-19T04:47:00Z",
+ "versionCode": 464346,
+ "sha256": "044b06295b3cb705af705b98c8a483ed39a47cdd20ca884bc7e825b0c2febea3",
+ "bytes": 26188442,
+ "url": "downloads/BloodNocturne3D-1.0.0-464346.apk",
+ "built": "2026-11-19T11:09:00Z",
  "signingCertSha256": "efaee88b9ff54bf116c2aae40e358ec073d4a7729261b1b6ac2da5e7a24ed60f",
  "appId": "com.bloodnocturne.game3d",
  "label": "블러드 녹턴 3D",
- "note": "3D app update. Chapter 1 can be played from its first line to an ending card: at half health the banshee queen tears through the bell of her hall into the night of 1697, the hero follows by ringing that bell, drives her back and sends her with the knell; her health is carried across the two nights; a fall at the queen stands him up at the bread before her door; after the last scene an ending card shows the bell's ring reaching two new places and the game returns to the 3D chooser. Enemies wait while the story holds the hero (a dialogue, a camera cut, a crossing). Buttons are no longer swallowed: a press of attack, roll, jump or skill made up to 0.19 s before the hero is free is carried and fires on the first free tick, and the roll is untouchable for nearly all of its length. Hits have four weights (light, medium, heavy, finishing) in stop, shake, sound and vibration, drawn on the very frame the lash lands, and several things struck at once sound like several. That night's graveyard road gives a breath before its three corpses, and the slot beside the fallen stair that looked open is open. Saves written by the previous build load and continue. Known, fixed in the next build: in the chapter's last scene one of the two girls stands half hidden behind a statue, and the pad stays on screen during camera cuts. The 2D app is unchanged (462996).",
+ "note": "3D app update. Every scene of chapter 1 was looked at as a picture and restaged where its people could not be seen. In the last scene the two bell keepers stand left and right of the bell and face each other, and tonight's ending is the same picture a hundred years later; the hero walks to his own mark so that he covers nobody wherever the bell was rung from; Elise stays in the picture until the crossing; Marta comes to the bell on her own feet, the bell's sound is seen leaving the bell as rings, and the last line is said over the inn's lit window, where a crow feather now lies on the sill. During a camera cut the pad and the prompts step aside (the pause button stays and works), the area name waits until the scene is over, portraits are loaded before the first line, and the loading text after the promise is gone. Objectives and lines come in the right order: the road bell is named only once it is given, the ghosts' lines at the ossuary door play once, Sera's scene waits until the room is quiet, the sealed bell says which bell to use; in the queen's first act the hall's bell answers dull and says why; a reload on the ending card shows the card again. Walls have footings, courses, arrow loops, soot, cracks and ivy; 1697 has whitewash, washing lines, harvest garlands and plague marks; the square's black front face is a retaining wall over a meadow; firs and far houses have shapes; the 1697 ossuary has a carpenter's screen, the rest spot a blanket and a bread basket, every candle stand has living flames and tonight's ossuary burns a pale blue fire. No new texture and the same number of draw calls. Saves written by the previous two builds load and continue. Known: the widening-ring shot is a little darker than the cuts around it; during the three seconds of a crossing the pause button is shown but does not answer. The 2D app is unchanged (462996).",
  "web": {
-  "buildHash": "58f3005b25ec",
-  "version": "1.0.0+20261119T0446.6ba79c0e"
+  "buildHash": "dd05aeee746d",
+  "version": "1.0.0+20261119T1107.78ba097b"
  }
 }
