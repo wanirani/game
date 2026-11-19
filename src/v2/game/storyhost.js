@@ -25,7 +25,7 @@ export const SHOTS = {
   ring_widen: { pitch: 0.48, dist: 1050, lookY: 140, at: [4050, 1480], yaw: 0, tallK: 0 },   // STORY2 (11-19): was pitch 0.62 from 1500 at (4130, 1500) - two thirds dark roofs and the unlit graveyard side (mean brightness 40 against 60 of the cut before it); now the lit church front, the bell and the stairs the town comes up
   // STORY2 (11-19): the inn's lit window beside its door, for the narrator's last line. The house stands 2,200 px west of the bell: `cut` = the camera does not travel
   // there and back, it cuts; `groundY` = the floor lookY counts from (the street - the hero stands on the terrace, 84 higher)
-  inn_window: { pitch: 0.04, dist: 270, lookY: 90, groundY: 0, at: [1706, 300], yaw: 0.13, tallK: 0, cut: true },
+  inn_window: { pitch: 0.04, dist: 270, lookY: 80, groundY: 0, at: [1706, 300], yaw: 0.13, tallK: 0, cut: true },
 };
 
 /** the saved game, or null (nothing saved, another version, broken data) */
