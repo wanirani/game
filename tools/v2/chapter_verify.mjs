@@ -62,6 +62,8 @@ function install() {
   /** a press of a pad button held for up to n ticks (pointer events on the pad's own handlers); stop = let go as soon as something answers */
   P.hold = (id, nTicks, stop) => { const b = btn(id); if (!b) return { err: 'no pad button ' + id }; const a0 = v.area; fire('pointerdown', 15, b.cx, b.cy); let i = 0; for (; i < nTicks; i++) { step(); const sc = v.scene; if (stop && i > 3 && (sc.xing || sc._go || v.area !== a0 || sc.hud.modal)) break; } fire('pointerup', 15, b.cx, b.cy); const sc = v.scene; return { held: i, xing: !!sc.xing, modal: sc.hud.modal ?? null, disabled: !!b.disabled }; };
   P.tap = (id) => { const b = btn(id); if (!b) return { err: 'no pad button ' + id }; fire('pointerdown', 15, b.cx, b.cy); for (let i = 0; i < 5; i++) step(); fire('pointerup', 15, b.cx, b.cy); for (let i = 0; i < 3; i++) step(); const h = v.scene.sim.hero; return { bellCd: +(h.bellCd ?? 0).toFixed(2), bellOk: !!h.bellOk, act: h.act ?? null }; };
+  /** a tap on the prompt pill that is on offer (the pill's own place on the screen) */
+  P.pill = () => { const sc = v.scene; try { g.alpha = 1; g.render(); } catch { /* between areas */ } const L = sc.hud.metrics?.().prompts ?? [], p = L.find((q) => q.action === 'confirm'); if (!p || !v.prompt) return { err: 'no prompt on offer', pills: L.length }; const id = v.prompt.id, r = g.canvasRect, st = sc.state, cx = r.x + (p.x + p.w / 2) / st.viewW * r.w, cy = r.y + (p.y + p.h / 2) / st.viewH * r.h; fire('pointerdown', 32, cx, cy); fire('pointerup', 32, cx, cy); step(); step(); return { id }; };
   /** stand beside the queen (wherever she is, seen or not) and press attack k times */
   P.strike = (k) => { const e = queen(); if (!e) return null; P.beside(52); const b = btn('attack'), hp0 = e.hp; if (!b) return { err: 'no attack button' }; for (let j = 0; j < k; j++) { fire('pointerdown', 16, b.cx, b.cy); for (let i = 0; i < 4; i++) step(); fire('pointerup', 16, b.cx, b.cy); for (let i = 0; i < 14; i++) step(); } return { hp0: Math.round(hp0), hp: Math.round(e.hp), active: !!e.active, alpha: e.alpha, solid: !!e.solid }; };
   /** n ticks: how close the awake enemies come, how many ticks any of them is in an attack, the hero's health, when he is first hurt */
@@ -239,6 +241,28 @@ section('S7', 'the road bell without Edmund (save after ev_carve_b, the hero set
   await ev(() => window.__cs.putY(502, 1880, 140)); await run(40); const h = await ev(() => window.__cs.hold('bell', 320, true)); s = await wait((q) => q.ready && q.idle && q.area === 'graveyard_now', 300);
   obs('a long ring at the empty post without the bell in the bag', { hold: h, area: s.area, shown: await ev((i) => window.__cs.seenFrom(i), n0) });
   ok(s.area === 'graveyard_now' && (await ev(() => window.__cs.test(['bell_hung']))) && s.warn === 0, 'Edmund hands the bell over first, then it is hung: the story goes on');
+});
+
+section('S9', 'Sera: at the lantern in the ossuary and in the square at the same time?', async () => {
+  let s = await boot(saveOf('ev_boss_flee')); const inOss = await ev(() => window.__cs.person('sera'));
+  obs('in the ossuary (after her scene at the lantern)', { area: s.area, sera: inOss, sera_follows: await ev(() => window.__cs.test(['sera_follows'])) });
+  s = await travel('eshville_now', 'default'); const inSq = await ev(() => window.__cs.person('sera'));
+  obs('in the village in the same state of the story', { area: s.area, sera: inSq });
+  ok(!(inOss && inSq), `Sera stands in one place only (ossuary ${J(inOss)}, village ${J(inSq)})`);
+});
+
+section('S10', 'the two keepers: a still taken during the camera cut', async () => {
+  // (the bot's save after ev_elise_wake already lies behind the scene: start from the sent queen, cross at the hall's bell and press the prompt at the sleeping girl)
+  let s = await boot(saveOf('ev_boss_sent')); obs('load (tonight, the queen sent)', pick(s));
+  const a = await ringAt('bell_arena', 'ossuary_past'); await ev(() => window.__cs.put(600, 3760)); await run(40);
+  obs('in 1697 beside the sleeping girl: the prompt pressed', { area: a.area, pill: await ev(() => window.__cs.pill()) });
+  s = await wait((q) => q.shot && q.area === 'eshville_past', 300); await run(70);
+  const who = await ev(() => ({ lotte: window.__cs.person('lotte'), elise: window.__cs.person('elise'), hero: [Math.round(window.__v2.scene.sim.hero.x), Math.round(window.__v2.scene.sim.hero.z)] }));
+  await page.screenshot({ path: `${OUT}/keepers_cut.png` }); obs('during the cut', { area: s.area, shot: s.shot, ...who, still: `${OUT}/keepers_cut.png` });
+  ok(s.shot && s.area === 'eshville_past' && !!who.lotte && !!who.elise, 'the cut runs with both keepers on the stage');
+  await ev(() => { window.__cs.adv = 0; }); s = await wait((q) => q.modal === 'dialog' && !q.shot, 40); await page.screenshot({ path: `${OUT}/keepers_promise.png` });
+  await ev(() => { window.__cs.adv = 6; }); s = await wait((q) => q.idle, 200); obs('after the scene', pick(s));
+  ok(s.idle && !s.lock && s.obj.length > 0, `the scene ends and lets the hero go (objective "${s.obj}")`);
 });
 
 for (const S of sections) {
