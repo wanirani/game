@@ -11,7 +11,7 @@ export function installBot(ROUTE0) {
   const waypoint = (h) => { let ni = B.wp, nd = 1e9; for (let i = B.wp; i < ROUTE.length; i++) { const d = Math.hypot(ROUTE[i][0] - h.x, ROUTE[i][1] - h.z); if (d < nd) { nd = d; ni = i; } } B.wp = ni; const w = ROUTE[B.wp]; if (Math.hypot(w[0] - h.x, w[1] - h.z) < 26 && B.wp < ROUTE.length - 1) B.wp++; return ROUTE[B.wp]; };
   input.setAutoSource(() => B.act);
   // options for real areas (tools/v2/game_walk.mjs): giveUp = rule ticks on one target before walking on, hunt() = true while the way ahead is shut and the arena must be cleared
-  B.opt = { giveUp: 0, hunt: null }; B.kinds = {}; B.tgId = null; B.tgT = 0; B.hunting = false; B.hb = null;
+  B.opt = { giveUp: 0, hunt: null, ring: null }; B.ringDone = false; B.kinds = {};   // ring = { x, y, z } landing spot of a whip ring on the route: the touch driver taps the skill button whenever the rules show the hook (hero.hookId) B.tgId = null; B.tgT = 0; B.hunting = false; B.hb = null;
   B.setRoute = (r) => { ROUTE.length = 0; for (const p of r) ROUTE.push([p[0], p[1]]); B.wp = 0; B.skipMap = {}; };
   // ── one brain for both input paths: decide() -> analog wishes { mx, mz, attack, dash(roll), guard, jump } ──
   //    tactics for the real rules: walk the route; guard an attack that is being wound up in front of the hero (the roll button
@@ -24,6 +24,7 @@ export function installBot(ROUTE0) {
     const sim = v.scene.sim, h = sim.hero, E = sim.enemies, now = B.now();
     B.minHp = Math.min(B.minHp, h.hp);
     if (h.dead || (sim.section === 'done' && !B.opt.giveUp)) return o;   // test route: the arena is the end. Real areas (giveUp set): play goes on
+    if (B.opt.ring) { const R = B.opt.ring; if (h.onGround && !h.act && Math.hypot(h.x - R.x, h.z - R.z) < 70 && Math.abs(h.y - R.y) < 40) B.ringDone = true; if (B.ringDone) return o; }   // WHIP: landed on the terrace behind the whip ring - the walk ends here
     const hdx = h.dirX ?? h.facing ?? 1, hdz = h.dirZ ?? 0;
     // 1) something is about to hit: an enemy winding up within its reach, or a shot close by
     let th = null, td = 1e9, tx0 = 0, tz0 = 0, canGuard = true;
@@ -100,14 +101,15 @@ export function installBot(ROUTE0) {
   B.status = () => { const h = v.hero; if (!h || !v.ready) return { loading: true, ticks: B.ticks, area: v.area }; return { area: v.area, kinds: B.kinds, ticks: B.ticks, sec: v.section, x: Math.round(h.x), z: Math.round(h.z), y: Math.round(h.y), hp: h.hp, left: v.enemies.length, yard: v.enemies.filter((e) => e.yard).length, wp: B.wp, t: B.t, deaths: v.scene.sim.deaths ?? 0, minHp: B.minHp, max: B.max, skips: B.skips, feelN: v.scene.feelN - B.feel0, simT: +(v.scene.sim.time ?? 0).toFixed(1) }; };
   // touch driver: the pilot's wishes go through the virtual pad's own pointer handlers (stick drag + button presses) every tick
   const fire = (type, id, x, y) => window.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: 'touch', isPrimary: id === 21, clientX: x, clientY: y, bubbles: true, cancelable: true, button: 0, buttons: type === 'pointerup' ? 0 : 1, width: 12, height: 12, pressure: type === 'pointerup' ? 0 : 0.5 }));
-  const COOL = { attack: 5, dash: 24, jump: 12 }, FINGER = { attack: 11, dash: 12, jump: 13 };
-  B.touchSetup = (x0, y0, R, btn) => { B.ts = { x0, y0, R, btn, stick: false, held: { attack: 0, dash: 0, jump: 0 }, presses: { attack: 0, dash: 0, jump: 0, guard: 0 }, moves: 0 }; input.setAutoSource(null); B.act = {}; };
+  const COOL = { attack: 5, dash: 24, jump: 12, skill: 8 }, FINGER = { attack: 11, dash: 12, jump: 13, skill: 14 };
+  B.touchSetup = (x0, y0, R, btn) => { B.ts = { x0, y0, R, btn, stick: false, held: { attack: 0, dash: 0, jump: 0, skill: 0 }, presses: { attack: 0, dash: 0, jump: 0, guard: 0, skill: 0 }, moves: 0, skillAt: [] }; input.setAutoSource(null); B.act = {}; };
   B.touchStep = () => {
     const S = B.ts; if (!ruleTick()) return;
     const w = B.decide(); watch();
+    { const h = v.scene.sim?.hero; w.skill = !!(B.opt.ring && !B.ringDone && h && h.hookId != null && h.act !== 'hook' && !h.dead); if (w.skill && S.held.skill === 0 && S.skillAt.length < 40) S.skillAt.push(h.hurtT > 0 ? 'stunned' : h.move ? h.move.id : h.dashT > 0 ? 'roll' : h.charging ? 'charging' : h.onGround ? 'free' : 'air'); }   // WHIP: under a whip ring a player taps the skill button, whatever he is doing - the rules carry the press (input buffer)
     if (!S.stick) { fire('pointerdown', 21, S.x0, S.y0); S.stick = true; }
     fire('pointermove', 21, S.x0 + w.mx * S.R, S.y0 - w.mz * S.R); S.moves++;
-    for (const k of ['attack', 'dash', 'jump']) {
+    for (const k of ['attack', 'dash', 'jump', 'skill']) {
       const b = S.btn[k]; let st = S.held[k]; if (!b) continue;
       if (k === 'dash' && st === 999) { if (!w.guard) { fire('pointerup', FINGER[k], b.cx, b.cy); st = -3; } }          // guarding: the roll button stays down
       else if (k === 'dash' && w.guard && st <= 0) { fire('pointerdown', FINGER[k], b.cx, b.cy); S.presses.guard++; st = 999; }
@@ -117,15 +119,15 @@ export function installBot(ROUTE0) {
       S.held[k] = st;
     }
   };
-  B.touchEnd = () => { const S = B.ts; if (!S) return; for (const k of ['attack', 'dash', 'jump']) if (S.held[k] > 0 && S.btn[k]) fire('pointerup', FINGER[k], S.btn[k].cx, S.btn[k].cy); if (S.stick) fire('pointerup', 21, S.x0, S.y0); S.stick = false; };
+  B.touchEnd = () => { const S = B.ts; if (!S) return; for (const k of ['attack', 'dash', 'jump', 'skill']) if (S.held[k] > 0 && S.btn[k]) fire('pointerup', FINGER[k], S.btn[k].cx, S.btn[k].cy); if (S.stick) fire('pointerup', 21, S.x0, S.y0); S.stick = false; };
   B.touchRun = (n, renderEvery) => {
     g._pageHidden = true;
     for (let i = 0; i < n; i++) { B.touchStep(); g.tick(1 / 60); if (renderEvery && i % renderEvery === 0) { g.alpha = 1; g.render(); watch(); } if (v.section === 'done' && !B.opt.giveUp) break; }
     g.alpha = 1; g.render();
     // lift every finger between calls: the new pad lets go of touches by itself when the HUD has not been drawn for about a second
     // (its watchdog), which happens between two calls of a slow headless run — the next call presses again
-    B.touchEnd(); B.ts.held.attack = 0; B.ts.held.dash = 0; B.ts.held.jump = 0;
-    const st = B.status(); st.presses = B.ts.presses; st.stickMoves = B.ts.moves; st.mode = input.mode; return st;
+    B.touchEnd(); B.ts.held.attack = 0; B.ts.held.dash = 0; B.ts.held.jump = 0; B.ts.held.skill = 0;
+    const st = B.status(); st.presses = B.ts.presses; st.stickMoves = B.ts.moves; st.mode = input.mode; st.ringDone = B.ringDone; st.skillAt = B.ts.skillAt; return st;
   };
   B.stop = () => { B.act = {}; input.setAutoSource(null); };
   return true;

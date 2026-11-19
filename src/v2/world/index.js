@@ -154,7 +154,7 @@ export function validateArea(a, twin = null) {
     if (!ENEMY_KINDS.includes(e.kind)) E(`enemies[${i}]: unknown kind ${e.kind}`);
     if (e.kind === 'bat') return;
     if (G.blocked(e.x, e.z, 14)) E(`enemies[${i}] ${e.kind} (${e.x},${e.z}): inside a wall or a prop, or no ground`); else if (!G.reachable(e.x, e.z)) E(`enemies[${i}] ${e.kind} (${e.x},${e.z}): not reachable`);
-    else if (G.blocked(e.x, e.z, 34)) Wn(`enemies[${i}] ${e.kind} (${e.x},${e.z}): something solid within 20 of its body`);   // CHAPTER: a box that came within 2 px of a corpse's start once wedged the story (AREA_FORMAT 16)
+    else if (G.blocked(e.x, e.z, 20)) E(`enemies[${i}] ${e.kind} (${e.x},${e.z}): something solid (or a drop) within 20 px of its start`);   // CHAPTER: a brazier box that came within 2 px of a corpse's start once wedged the story for two runs; no area state raised this when the rule was added (2026-11-19)
     if (!e.group) Wn(`enemies[${i}]: no group`);
   });
   const groups = new Set(a.enemies.map((e) => e.group));

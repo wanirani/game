@@ -336,16 +336,16 @@ try {
 
 // ── 14. Input buffer (WHIP, 2026-11-19 — PLAY_API 1.1): a press is carried TUNE.bufT and fires on the first tick the hero may do it; the newest press wins; a press fires once ──
 {
-  const tick = (s, inp) => s.update(DT, inp || {}), N = Math.round(TUNE.bufT / DT) - 1;   // N = ticks after the press tick on which the press is still alive (10 at 60 Hz)
+  const tick = (s, inp) => s.update(DT, inp || {}), N = Math.ceil(TUNE.bufT / DT - 1e-9) - 1;   // N = ticks after the press tick on which the press is still alive (11 at 60 Hz)
   const until = (s, cond, inp, max = 200) => { let i = 0; while (i < max && !cond(s)) { tick(s, typeof inp === 'function' ? inp(i) : inp); i++; } return i; };
-  ok(`TUNE.bufT ${TUNE.bufT} s = the press tick + ${N} ticks`, N >= 9 && N <= 11);
+  ok(`TUNE.bufT ${TUNE.bufT} s = the press tick + ${N} ticks`, N >= 10 && N <= 12);
   { // roll pressed inside the hit window of hit 1: used to be dropped, now rolls on the first tick after the window
     const s = mk(); const ev = []; s.hooks.roll = () => ev.push(s.hero.moveT); tick(s, { attack: true });
     const k0 = Math.ceil((MOVES.c1.hit[1] - TUNE.bufT) / DT) + 2; for (let i = 0; i < k0; i++) tick(s, { mx: 1 }); tick(s, { mx: 1, dash: true }); const before = s.hero.dashT > 0, at = s.hero.moveT;
     const n = until(s, (q) => q.hero.dashT > 0, { mx: 1 }, 30);
     ok('roll pressed inside the hit window of hit 1 is carried and rolls on the first free tick', !before && s.hero.dashT > 0 && n <= N && names(s).filter((x) => x === 'roll').length === 1, `pressed at move time ${at.toFixed(3)} (window ends ${MOVES.c1.hit[1]}), rolled ${n} ticks later`); }
   { // the same press made too early is not carried past bufT
-    const s = mk(); tick(s, { attack: true }); tick(s, { mx: 1, dash: true }); run(s, 0.6, { mx: 1 });
+    const s = mk(); s._startMove(s.hero, MOVES.c3, 1, 0, false); tick(s, { mx: 1, dash: true }); run(s, 0.6, { mx: 1 });   // the window of hit 3 ends 18 ticks later
     ok('a roll pressed more than bufT before the hero is free never fires', !names(s).includes('roll'), `roll events ${names(s).filter((x) => x === 'roll').length}`); }
   { // attack pressed late in hit 3: a new hit 1 starts on the very tick hit 3 ends
     const s = mk(); const ids = []; s.hooks.attack = (h, mv) => ids.push(mv.id + '@' + s._tick); let endT = -1;

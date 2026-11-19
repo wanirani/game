@@ -80,7 +80,7 @@ export function graveyard(era = 'now', flags = {}) {
   // CHAPTER: that night's road gives the hero a breath. The three corpses stand far up the road (they stood 125-200 from the spawn, with the way back to the village right
   // behind it: the road is a lane 204 wide, a fight there is pushed backwards and out of the area) and sleep until the hero has walked on - the trigger at z 420,
   // or a sleeper he comes within 200 of (the scene's WAKE_NEAR) - wake: 'trigger', not by sight. Nothing wakes them while he stands at the gate.
-  const enemies = !now ? [[540, 640], [650, 560], [600, 800]].map(([x, z]) => ({ kind: 'plague_corpse', x, z, group: 'road', wake: 'trigger' })) : [
+  const enemies = !now ? [[560, 660], [650, 560], [600, 800]].map(([x, z]) => ({ kind: 'plague_corpse', x, z, group: 'road', wake: 'trigger' })) : [
     ...[[540, 380], [660, 300]].map(([x, z]) => ({ kind: 'skeleton_soldier', x, z, group: 'road' })), ...[[600, 520], [560, 660], [650, 720]].map(([x, z]) => ({ kind: 'bat', x, z, group: 'bats' })),
     { kind: 'gravekeeper_armor', x: 600, z: 1090, group: 'gate', yard: true },
     ...[[340, 1510, 'carved_a'], [860, 1510, 'carved_b'], [600, 1700], [600, 1880]].filter(([, , f]) => !(f && flags[f])).map(([x, z]) => ({ kind: 'grave_ghost', x, z, group: 'ghosts', yard: true })),   // a named grave lets its ghost go (GDD 2.3 carve)

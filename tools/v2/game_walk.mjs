@@ -36,7 +36,8 @@ async function routeTo(areaId, spawn, pick, flags) {
 // WORLD-2 (11-18 01:20): areas are built from story flags. The cemetery gate of Eshville is shut geometry until flag gate_open — with no
 // story plugged in the scene rebuilds the area in that state when the square arena is cleared, so the route is planned in the open state.
 // The mausoleum (ossuary forecourt) stands on a terrace above the field, reached by the whip ring `depths_ring`: the route ends under the
-// ring and the bot presses the skill button there (the rules throw the whip and land the hero on the terrace).
+// ring and the bot's touch driver taps the skill button on every tick the rules show the hook (hero.hookId), whatever the hero is doing -
+// mid-swing, stunned, with the grave-keeper on him: the rules carry the press (input buffer, PLAY_API 1.1), throw the whip and land him on the terrace.
 const R1 = await routeTo('eshville_now', 'default', (g, a) => { const x = a.exits.find((q) => q.id === 'to_graveyard'); return g.anyIn(x.x0 + 40, x.x1 - 40, x.z0 + 12, x.z1) ?? g.anyIn(x.x0, x.x1, x.z0, x.z1); }, { gate_open: true });
 let RING = null;
 const R2 = await routeTo('graveyard_now', 'from_eshville', (g, a) => { RING = a.interact.find((q) => q.kind === 'ring' && q.landing) ?? null; return g.near(600, 1900, 50) ?? (RING ? g.near(RING.x, RING.z - 70, 150) : null); });
@@ -97,7 +98,7 @@ for (const dev of DEVICES) {
       const v = window.__v2, B = window.__bot; B.opt.giveUp = 1500; B.opt.hunt = () => { const x = v.exits.find((q) => q.id === 'to_graveyard'); return !!(x && x.locked); };
       B.seen = {}; B.touchSetup(x0, y0, 56, btn);
     }, [sx, sy, pad.buttons]);
-    const sections = [], cap = new Set(), t0 = Date.now(); let r = null, phase = 1, reached = false, lockedSeen = false, promptSeen = null, hooks = 0, back = 0;
+    const sections = [], cap = new Set(), t0 = Date.now(); let r = null, phase = 1, reached = false, lockedSeen = false, promptSeen = null, hooks = 0, back = 0, hookShot = false;
     for (let i = 0; i < 400 && Date.now() - t0 < 540000; i++) {
       r = await page.evaluate(() => { const B = window.__bot, v = window.__v2, o = B.touchRun(180, 45); if (v.ready) { o.hook = v.scene.sim.hero.hookId ?? null; o.flags = Object.keys(v.scene.worldFlags ?? {}).join('+'); o.exit = v.exits.map((x) => x.id + ':' + (x.locked ?? 'open')).join(' '); o.prompt = v.prompt?.id ?? null; o.near = (v.scene.area.exits.find((x) => x.id === 'to_ossuary') ?? {})._near ?? false; } return o; });
       if (r.loading) { await page.waitForTimeout(400); continue; }
@@ -105,41 +106,20 @@ for (const dev of DEVICES) {
       if (args.verbose) console.log('       ' + JSON.stringify({ a: r.area, sec: r.sec, x: r.x, z: r.z, hp: r.hp, left: r.left, deaths: r.deaths, wp: r.wp, kinds: r.kinds, exit: r.exit, skips: r.skips, hook: r.hook, y: r.y, flags: r.flags }));
       if (r.prompt && !promptSeen) promptSeen = r.prompt;
       for (const k of Object.keys(r.kinds ?? {})) if (r.kinds[k] >= 2 && !cap.has(r.area + k)) { cap.add(r.area + k); if (dev === DEVICES[0]) await shot(page, `walk_${dev}_fight_${r.area}_${k}`); }
-      if (phase === 1 && r.area === 'graveyard_now') { phase = 2; await page.evaluate((route) => { const B = window.__bot; B.setRoute(route); B.opt.hunt = null; B.opt.giveUp = 900; }, R2); await shot(page, `walk_${dev}_10_graveyard`); }
+      if (phase === 1 && r.area === 'graveyard_now') { phase = 2; await page.evaluate(([route, ring]) => { const B = window.__bot; B.setRoute(route); B.opt.hunt = null; B.opt.giveUp = 900; B.opt.ring = ring; B.ringDone = false; }, [R2, RING ? RING.landing : null]); await shot(page, `walk_${dev}_10_graveyard`); }   // WHIP: from here the bot taps the skill button whenever the rules show the hook, as a player does - also mid-swing, mid-roll or while the grave-keeper is hitting him
       if (phase === 2 && r.area === 'eshville_now') { phase = 1; back++; await page.evaluate((route) => { const B = window.__bot; B.setRoute(route); B.opt.giveUp = 1500; }, R1); continue; }   // fell, stood up at the road and backed into the way home while fighting: walk in again
       if (phase === 2 && r.near) { lockedSeen = true; }
+      hooks = r.presses?.skill ?? 0;
       if (phase === 2 && r.z > 1850 && Math.abs(r.x - 600) < 90) { reached = true; break; }
-      if (phase === 2 && r.hook && RING && r.z <= 1850) {   // under the whip ring: a real touch on the skill button (it shows the hook while a ring is in reach)
-        pad = await v2pad(page); const b = pad?.buttons.skill;
-        if (b) {   // pressed like the bot's other buttons: pointer events on the pad's own handlers, held over a few ticks (the page loop is stopped while the bot fast-forwards)
-          hooks++;
-          await page.evaluate(([cx, cy]) => {
-            const g = window.__game, v = window.__v2, fire = (type) => window.dispatchEvent(new PointerEvent(type, { pointerId: 14, pointerType: 'touch', isPrimary: false, clientX: cx, clientY: cy, bubbles: true, cancelable: true, button: 0, buttons: type === 'pointerup' ? 0 : 1, width: 12, height: 12, pressure: type === 'pointerup' ? 0 : 0.5 }));
-            const hero = () => v.scene.sim.hero;
-            g._pageHidden = true; g.alpha = 1; g.render();
-            // the rules take the hook only from a free stance (on the ground, not mid-swing or mid-roll): press again every 12 ticks until the throw starts
-            let thrown = false;
-            for (let i = 0; i < 150 && !thrown; i += 12) {
-              if (hero().hookId == null) break;
-              fire('pointerdown'); for (let k = 0; k < 4; k++) g.tick(1 / 60); fire('pointerup');
-              for (let k = 0; k < 8; k++) { g.tick(1 / 60); if (hero().act === 'hook') thrown = true; }
-              g.alpha = 1; g.render();
-            }
-            for (let i = 0; i < 120 && (hero().act === 'hook' || !hero().onGround); i++) { g.tick(1 / 60); if (i % 20 === 0) { g.alpha = 1; g.render(); } }
-            for (let i = 0; i < 12; i++) g.tick(1 / 60);
-            g.alpha = 1; g.render();
-          }, [b.cx, b.cy]);
-          if (hooks === 1 && dev === DEVICES[0]) await shot(page, `walk_${dev}_15_hook`);
-          // INTEGRATE-VERIFY: 12 presses without a throw = say why and stop (this used to burn the whole 72,000-tick budget silently)
-          if (hooks >= 12) { const dg = await page.evaluate(() => { const v = window.__v2, h = v.scene.sim.hero, B = window.__bot; return { act: h.act ?? null, move: h.move?.id ?? null, moveT: +(h.moveT ?? 0).toFixed(2), dashT: +(h.dashT ?? 0).toFixed(2), charging: !!h.charging, bellDown: !!h.bellDown, hurtT: +(h.hurtT ?? 0).toFixed(2), onGround: !!h.onGround, hookId: h.hookId ?? null, y: Math.round(h.y), hp: Math.round(h.hp), pad: JSON.stringify(v.scene.state.pad?.skill ?? null), locked: !!v.scene.locked, modal: v.scene.hud.modal ?? null, near: v.enemies.filter((e) => Math.hypot(e.x - h.x, e.z - h.z) < 260).map((e) => `${e.kind}@${Math.round(Math.hypot(e.x - h.x, e.z - h.z))}:${e.state}`).join(' '), botDown: JSON.stringify(B.ts?.down ?? null) }; }); const y1 = dg.y; if (y1 < 60) { r.hookDiag = dg; console.log('       hook not thrown after 12 presses: ' + JSON.stringify(dg)); await shot(page, `walk_${dev}_15_hook_refused`); break; } }
-        }
-      }
+      if (phase === 2 && hooks > 0 && !hookShot && dev === DEVICES[0]) { hookShot = true; await shot(page, `walk_${dev}_15_hook`); }
+      // WHIP: the skill button is pressed by the bot's touch driver (game_bot.mjs) on every tick the rules show the hook. 40 presses without a landing = say why and stop
+      if (phase === 2 && hooks >= 40 && !r.ringDone) { const dg = await page.evaluate(() => { const v = window.__v2, h = v.scene.sim.hero, B = window.__bot; return { act: h.act ?? null, move: h.move?.id ?? null, moveT: +(h.moveT ?? 0).toFixed(2), dashT: +(h.dashT ?? 0).toFixed(2), charging: !!h.charging, bellDown: !!h.bellDown, hurtT: +(h.hurtT ?? 0).toFixed(2), onGround: !!h.onGround, hookId: h.hookId ?? null, y: Math.round(h.y), hp: Math.round(h.hp), pad: JSON.stringify(v.scene.state.pad?.skill ?? null), locked: !!v.scene.locked, modal: v.scene.hud.modal ?? null, near: v.enemies.filter((e) => Math.hypot(e.x - h.x, e.z - h.z) < 260).map((e) => `${e.kind}@${Math.round(Math.hypot(e.x - h.x, e.z - h.z))}:${e.state}`).join(' '), pressedWhile: B.ts.skillAt.join(' ') }; }); r.hookDiag = dg; console.log('       hook not thrown after 40 presses: ' + JSON.stringify(dg)); await shot(page, `walk_${dev}_15_hook_refused`); break; }
     }
     await page.evaluate(() => window.__bot.touchEnd());
     await shot(page, `walk_${dev}_20_end`);
     R.walk = { ...r, sections, reached, lockedSeen, promptSeen, hooks, back, wallSec: +((Date.now() - t0) / 1000).toFixed(1) };
     const kinds = Object.keys(r?.kinds ?? {});
-    if (reached && phase === 2) ok(`walk through the new pad: eshville_now first spawn -> graveyard gate (opened by clearing the square: area state "${r.flags || 'base'}") -> graveyard_now -> whip ring (${hooks} skill press${hooks === 1 ? '' : 'es'}) -> mausoleum terrace at (${r.x}, ${r.z}); ${(r.ticks / 60).toFixed(0)} s of play, ${r.stickMoves} stick moves, presses attack ${r.presses.attack} · roll ${r.presses.dash} · guard ${r.presses.guard} · jump ${r.presses.jump}; fought ${kinds.map((k) => k + ' x' + r.kinds[k]).join(', ')}; fell ${r.deaths} times in the graveyard, hp ${r.hp}; sections ${sections.join(' > ')}`);
+    if (reached && phase === 2) ok(`walk through the new pad: eshville_now first spawn -> graveyard gate (opened by clearing the square: area state "${r.flags || 'base'}") -> graveyard_now -> whip ring (${hooks} skill press${hooks === 1 ? '' : 'es'}; the hero was: ${(r.skillAt ?? []).join(' ') || '-'}) -> mausoleum terrace at (${r.x}, ${r.z}); ${(r.ticks / 60).toFixed(0)} s of play, ${r.stickMoves} stick moves, presses attack ${r.presses.attack} · roll ${r.presses.dash} · guard ${r.presses.guard} · jump ${r.presses.jump}; fought ${kinds.map((k) => k + ' x' + r.kinds[k]).join(', ')}; fell ${r.deaths} times in the graveyard, hp ${r.hp}; sections ${sections.join(' > ')}`);
     else fail(`${dev}: the walk did not reach the mausoleum (phase ${phase}) ${JSON.stringify(R.walk)}`);
     if (reached) { if (lockedSeen) ok('the locked mausoleum door stopped the hero and said why (exit to_ossuary, once per approach)'); else console.log('       note: the hero stopped short of the locked mausoleum door (no notice needed yet)'); }
 
