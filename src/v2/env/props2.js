@@ -4,7 +4,7 @@
 import { Frame, hash } from './geo.js';
 import { PROPS } from './props.js';
 import { railing, wallGrid } from './kit.js';
-import { bakedDef, bakedProp } from './baked.js';
+import { bakedDef, bakedProp, bakedFlagged } from './baked.js';
 
 const fx = (G) => G.fx ?? (G.fx = { glows: [], pools: [], shadows: [] });
 const shadow = (G, x, y, z, rx, rz = rx * 0.62, a = 0.5) => fx(G).shadows.push({ x, y, z, rx, rz, a });
@@ -317,13 +317,34 @@ export function flameSpots(parts) {
 export function candleSpots(parts) {
   const out = [];
   for (const P of parts) {
-    if (P.mesh !== 'candles' || (P.t !== 'deco' && P.t !== 'prop')) continue;
+    if (P.t !== 'deco' && P.t !== 'prop') continue;
+    if (STAND_WICKS[P.mesh] && P.lit !== false && !P.code) {   // DETAIL: candle stands (the generated candelabrum, chandelier, altar): a living flame on every wick, like the floor candles
+      const d = bakedDef(P.mesh); if (!d) continue;
+      const W = standWicks(P.mesh, d), s = (P.h ?? d.h) / d.h, fl = P.flip ? -1 : 1, c = Math.cos(P.rot ?? 0), sn = Math.sin(P.rot ?? 0), pts = new Float32Array(W.length * 3);
+      for (let i = 0; i < W.length; i++) { const px = W[i][0] * fl * s, pz = W[i][2] * s; pts[i * 3] = c * px + sn * pz; pts[i * 3 + 1] = W[i][1] * s + 0.5; pts[i * 3 + 2] = -sn * px + c * pz - 1.5; }
+      out.push({ x: P.x, y: P.y ?? 0, z: P.z, ground: P.y == null, pts, part: P, stand: true });
+      continue;
+    }
+    if (P.mesh !== 'candles') continue;
     const n = P.n ?? 5, pts = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) { const a = i * 2.4, r = 4 + 9 * hash(i, P.x); pts[i * 3] = Math.cos(a) * r; pts[i * 3 + 1] = 8 + 14 * hash(P.x, i) + 0.5; pts[i * 3 + 2] = Math.sin(a) * r * 0.6 - 1.5; }
     out.push({ x: P.x, y: P.y ?? 0, z: P.z, ground: P.y == null, pts, part: P });
   }
   return out;
 }
+/**
+ * DETAIL: where the candles of a generated candle stand burn, in the model's own units. The candelabrum's wicks are found from its glow-flagged vertices (the
+ * highest of them, picked far apart); the chandelier's ring of candles and the altar's two candles were measured on the models (the pack flags too few of them).
+ */
+const STAND_WICKS = {
+  candelabrum: (d) => { const F = bakedFlagged('candelabrum'), top = Math.max(...F.map((p) => p[1]), 0), C = F.filter((p) => p[1] > top - 9), W = [];
+    for (let k = 0; k < 6 && C.length; k++) { let best = 0, bd = -1; for (let i = 0; i < C.length; i++) { let m = 1e9; for (const w of W) m = Math.min(m, Math.hypot(C[i][0] - w[0], C[i][2] - w[2])); if (!W.length) m = -Math.abs(C[i][0]) - Math.abs(C[i][2]); if (m > bd) { bd = m; best = i; } } if (W.length && bd < 9) break; W.push([C[best][0], C[best][1] - 1.5, C[best][2]]); }
+    return W.length ? W : [[0, d.h * 0.96, 0]]; },
+  chandelier: () => [0, 1, 2, 3, 4, 5, 6, 7].map((i) => [Math.cos(i * 0.7854 + 0.39) * 62, 33, Math.sin(i * 0.7854 + 0.39) * 62]),
+  altar: () => [[-47, 104, 0], [47, 104, 0]],
+};
+const WICKS = new Map();
+const standWicks = (name, d) => { let w = WICKS.get(name); if (!w) WICKS.set(name, w = STAND_WICKS[name](d)); return w; };
 /** FIRE-2: a low heap of coals - a dull red glowing dome with bright pieces lying on it (the bowl of a brazier, under the particle fire) */
 export function coalHeap(G, x, y, z, r, hgt, seed = 1) {
   G.lathe('coal', x, z, [[r, y], [r * 0.62, y + hgt * 0.72], [0, y + hgt]], 7, { tint: [0.95, 0.36, 0.14], emis: 0.5, fog: 0.5, vary: 0.35, keep: true });   // (21 triangles + 16 for the pieces: Eshville is close to its 35,000)

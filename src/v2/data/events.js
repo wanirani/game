@@ -163,7 +163,9 @@ export const EVENTS = [
   ] },
   { id: 'ev_smithy_past', minute: '26-33', on: 'talk', match: { talk: 'hadwin1.smithy' }, if: ['!key_entrusted'], steps: [
     ['prompt', 'mark'],
+    ['camera', 'beside', 0.5],
     ['say', 'smithy.entrust'],
+    ['camera', null],
     ['setFlag', 'key_entrusted'],
     ['setFlag', 'pending_change'],
     ['prompt', 'entrust'],
@@ -482,7 +484,9 @@ export const EVENTS = [
   // the spot beside the sleeping girl says what she herself says when pressed (talk elise.asleep): asleep until the queen is sent, then she wakes
   // and the two go up to Lotte (the dialogue set carries the flag and the journey, so that both ways in do the same)
   { id: 'ev_elise_wake', minute: '104-114', on: 'interact', match: { event: 'oss.elise' }, once: false, steps: [
+    ['camera', 'beside', 0.5],                   // (the hero stands between the camera and the sleeping girl)
     ['say', 'elise.asleep'],
+    ['camera', null],
   ] },
 
   // ═════════ 114–118 그 밤의 종탑 (종탑이 지어지기 전에는 큰 종 앞) ═════════

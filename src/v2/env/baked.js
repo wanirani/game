@@ -35,6 +35,15 @@ function decode(name) {
   }
   m = { d, V, I, E }; PACK.cache.set(name, m); return m;
 }
+/** DETAIL: the glow-flagged vertices of a prop in the model's own units -> [[x, y, z], ...] (where its candles burn: props2.js candleSpots clusters them into wicks) */
+export function bakedFlagged(name) {
+  if (!PACK || !PACK.head.props[name]) return [];
+  const { V, E } = decode(name), out = []; if (!E) return out;
+  for (let i = 0; i < E.length; i++) if (E[i]) out.push([V[i * 8], V[i * 8 + 1], V[i * 8 + 2]]);
+  return out;
+}
+/** candle stands: in the game a living flame burns on every wick (game/anchors.js), so the modelled candle tops glow at half strength - the flame is the light */
+const CANDLE_PROPS = new Set(['candelabrum', 'chandelier']);
 /** 소품 하나를 (x, y, z) 발밑에 세운다. o.h = 세계 높이, o.flip = 좌우 뒤집기, o.rot = y 축 회전(라디안), o.tint, o.k */
 export function bakedProp(G, name, x, y, z, o = {}) {
   if (!PACK || !PACK.head.props[name]) return false;
@@ -51,7 +60,7 @@ export function bakedProp(G, name, x, y, z, o = {}) {
   }
   if (fl < 0) { const S = J; J = new Uint16Array(S.length); for (let t = 0; t < S.length; t += 3) { J[t] = S[t]; J[t + 1] = S[t + 2]; J[t + 2] = S[t + 1]; } }
   const lit = o.lit !== false, gc = o.c ?? d.glow?.c ?? [1, 0.72, 0.36];
-  G.mesh('props', W, J, { tint: o.tint, k: o.k ?? 1, E, emisK: lit ? 1.45 : 0.22, emisTint: lit && o.c ? [0.55 + 0.45 * o.c[0], 0.55 + 0.45 * o.c[1], 0.55 + 0.45 * o.c[2]] : null });
+  G.mesh('props', W, J, { tint: o.tint, k: o.k ?? 1, E, emisK: lit ? (CANDLE_PROPS.has(name) && !G.flames ? 0.72 : 1.45) : 0.22, emisTint: lit && o.c ? [0.55 + 0.45 * o.c[0], 0.55 + 0.45 * o.c[1], 0.55 + 0.45 * o.c[2]] : null });
   if (lit && d.glow && d.glowAt) {   // glow sprite and light pool at the glowing part (the light itself is the part's `light`)
     const gx = d.glowAt[0] * fl * s, gz = d.glowAt[2] * s, F = G.fx ?? (G.fx = { glows: [], pools: [], shadows: [] });
     F.glows.push({ x: x + c * gx + sn * gz, y: y + d.glowAt[1] * s, z: z - sn * gx + c * gz - 6 * s, r: d.glow.r * s, c: gc, flicker: o.flicker ?? !!d.glow.flicker });

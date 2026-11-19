@@ -105,6 +105,7 @@ export const TEXT = {
     wake_past: 'low angle at the foot of the tower in warm candle light, Lotte looking down at the hero (cut 3)',
     table: 'the tavern table: three bowls, one empty chair, Edmund facing the hero (cut 4)',
     knot: 'close on the whip end as the bell shard is tied on (cut 4)',
+    beside: 'two people talking, seen from the side so that the hero does not hide the one he speaks to',
     years: 'the hundred years in three seconds: same camera, the dressing of the twin area fades over (cut 5, reused)',
     banshee_song: 'the queen rises behind the four bell posts; the song is visible as rings in the mist (cut 6)',
     two_keepers: 'Lotte and Elise on either side of the bell rope (cut 7)',
