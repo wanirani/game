@@ -1,28 +1,30 @@
 // Items, key things and objectives. Shape: docs/v2/DATA_FORMAT.md section 7.
 // kind: key (opens something) · tool (stays with the hero) · keepsake (story thing) · food · letter
+// SCREENS (11-19): `icon` = the picture of the thing (a name of src/v2/ui/icons.js, drawn in code) for the bag and the item card; `gone` = what the card says
+// when the story takes the thing away and means the player to notice (「<gone> — <name>」; without it a take is silent, as before).
 
 export const ITEMS = {
-  bell_shard: { id: 'bell_shard', name: '종 조각', kind: 'tool',
+  bell_shard: { id: 'bell_shard', name: '종 조각', kind: 'tool', icon: 'shard', gone: '매듭에 묶였다',
     desc: '금 간 종에서 떨어진 조각. 큰 종과 같은 소리가 난다.' },
-  valkrein_knot: { id: 'valkrein_knot', name: '발크레인 매듭', kind: 'tool',
+  valkrein_knot: { id: 'valkrein_knot', name: '발크레인 매듭', kind: 'tool', icon: 'knot',
     desc: '에드문트가 채찍 끝에 종 조각을 묶어 준 매듭. 풀리지 않는다.' },
-  wolfram_notice: { id: 'wolfram_notice', name: '빈칸 공고', kind: 'keepsake',
+  wolfram_notice: { id: 'wolfram_notice', name: '빈칸 공고', kind: 'keepsake', icon: 'notice',
     desc: '울프람이 쓴 사람 찾는 공고. 사례금 칸이 비어 있다.' },
-  key_silver: { id: 'key_silver', name: '낡은 은 열쇠', kind: 'key',
+  key_silver: { id: 'key_silver', name: '낡은 은 열쇠', kind: 'key', icon: 'key_silver',
     desc: '백 년을 서랍에서 기다린 묘지 문 열쇠. 은은 녹슬지 않는다.' },
-  key_rust: { id: 'key_rust', name: '녹슨 쇳덩이', kind: 'keepsake',
+  key_rust: { id: 'key_rust', name: '녹슨 쇳덩이', kind: 'keepsake', icon: 'key_rust',
     desc: '열쇠였던 것. 쇠는 백 년을 버티지 못한다.' },
-  order_slip: { id: 'order_slip', name: '빈칸 주문서', kind: 'keepsake',
+  order_slip: { id: 'order_slip', name: '빈칸 주문서', kind: 'keepsake', icon: 'slip',
     desc: '받을 이 「채찍 든 길손」. 백 년 비어 있던 이름 칸에 「카엘」.' },
-  lotte_bread: { id: 'lotte_bread', name: '로테의 빵', kind: 'food',
+  lotte_bread: { id: 'lotte_bread', name: '로테의 빵', kind: 'food', icon: 'bread', gone: '먹었다',
     desc: '딱딱한 호밀빵. 로테가 손에 쥐여 주었다.' },
-  chisel: { id: 'chisel', name: '묘지기의 끌', kind: 'tool',
+  chisel: { id: 'chisel', name: '묘지기의 끌', kind: 'tool', icon: 'chisel',
     desc: '비석에 이름을 새기는 끌. 묘지기가 빌려주었다.' },
-  road_bell: { id: 'road_bell', name: '길종', kind: 'key',
+  road_bell: { id: 'road_bell', name: '길종', kind: 'key', icon: 'handbell',
     desc: '누가 울면 누가 듣고 달려오라고 길목에 거는 작은 종.' },
-  knell_bell: { id: 'knell_bell', name: '조종', kind: 'key',
+  knell_bell: { id: 'knell_bell', name: '조종', kind: 'key', icon: 'knell',
     desc: '떠나는 이를 보내는 작은 종. 납골당의 빈 종대에 건다.' },
-  crow_feather: { id: 'crow_feather', name: '까마귀 깃털', kind: 'keepsake',
+  crow_feather: { id: 'crow_feather', name: '까마귀 깃털', kind: 'keepsake', icon: 'feather',
     desc: '납골당 맨 안에서 발치에 떨어졌다. 누구의 것일까.' },
 };
 

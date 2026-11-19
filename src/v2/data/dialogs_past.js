@@ -90,8 +90,8 @@ export const DIALOGS_PAST = {
     ['kael', '맡겨 두겠습니다.\n쓸 사람은 백 년 뒤에 옵니다.'],
     ['hadwin1', '허, 농도 잘하시는구려. 좋소, 선불이오.\n쇠로 하겠소, 은으로 하겠소?'],
   ], choice: { options: [
-    { label: '은 열쇠', pages: [['hadwin1', '은이라. 값은 나가도\n녹은 안 스오.']], then: [['setFlag', 'key_order_silver']] },
-    { label: '쇠 열쇠', pages: [['hadwin1', '쇠가 튼튼하긴 하오.\n녹만 안 슬면 말이오.']], then: [['setFlag', 'key_order_iron']] },
+    { label: '은 열쇠', icon: 'key_silver', line: '은은 백 년 뒤에도 그대로다', pages: [['hadwin1', '은이라. 값은 나가도\n녹은 안 스오.']], then: [['setFlag', 'key_order_silver']] },
+    { label: '쇠 열쇠', icon: 'key_iron', line: '쇠는 백 년이면 녹슬어 굳는다', pages: [['hadwin1', '쇠가 튼튼하긴 하오.\n녹만 안 슬면 말이오.']], then: [['setFlag', 'key_order_iron']] },
   ] }, then: [['say', 'smithy.slip']] }],
   'smithy.slip': [{ pages: [
     ['hadwin1', '주문서에 이름을 적어야 하오.\n허, 백 년 뒤 이름을 어찌 알겠소.'],

@@ -1,40 +1,49 @@
 // The chronicle of Father Alberto: written lines (cannot change) and blanks (the player fills them).
 // Shape: docs/v2/DATA_FORMAT.md section 8. Years: 1797 = tonight, 1697 = that night.
+// SCREENS (11-19), for the book of two pages (src/v2/ui/screens.js): a written line carries `era` (the page it stands on); a blank of the first piece carries
+// `did` (conditions: the deed of that night is done - the left cell is written, the right one waits until the story's chronicle step has written the entry),
+// `pastTitle` / `nowTitle` (the titles of the cause and of its consequence, joined across the fold) and `place` ({ area, at, if }: where the deed is done -
+// what Rook's guide candle names while `if` holds).
 
 export const CHRONICLE = {
   bell_cracked: { id: 'bell_cracked', order: 1, kind: 'line', title: '금 간 종',
     body: '1797년 붉은 달 밤, 박쥐 떼가 성당의 종에 금을 냈다. 종지기 엘리제와 사냥꾼 한 사람이 금 사이로 떨어졌다.',
-    unlock: ['fell'], show: ['fell'] },
+    era: 'now', unlock: ['fell'], show: ['fell'] },
   fourth_moon: { id: 'fourth_moon', order: 2, kind: 'line', title: '넷째 붉은 달',
     body: '1697년 붉은 달 밤, 에드문트 발크레인이 수녀 일곱과 총잡이 울프람을 데리고 성에 올랐다. 백작은 쓰러졌다. 일행은 돌아오지 못했다.',
-    unlock: ['crossed'], show: ['crossed'] },
+    era: 'past', unlock: ['crossed'], show: ['crossed'] },
   graveyard_key: { id: 'graveyard_key', order: 3, kind: 'blank', title: '묘지 문 열쇠',
     body: '묘지 문의 열쇠는 그 밤 뒤로 본 사람이 없다.',
     past: '그 밤 — 하드윈 1세에게 묘지 문 열쇠를 맡겼다.',
     now: '오늘 밤 — 손자 하드윈의 서랍에 은 열쇠와 빈칸 주문서가 있었다.',
+    pastTitle: '대장간에 맡긴 열쇠', nowTitle: '손자의 서랍', did: ['key_entrusted'], place: { area: 'eshville_past', at: '그 밤의 대장간', if: ['fell'] },
     unlock: ['got_key'], show: ['fell'] },
   nameless_graves: { id: 'nameless_graves', order: 4, kind: 'blank', title: '이름 없는 무덤 둘',
     body: '역병이 돌던 그해, 이름을 새기지 못한 무덤이 둘 있다.',
     past: '그 밤 — 남매의 이름을 새겼다. 누나 한나, 동생 틸.',
     now: '오늘 밤 — 이끼 낀 비석에 이름이 있고, 누가 두고 간 마른 꽃이 있다.',
+    pastTitle: '새긴 이름 둘', nowTitle: '이름이 선 비석', did: ['carved_a', 'carved_b'], place: { area: 'graveyard_past', at: '그 밤 묘지 안쪽 두 비석', if: ['saw_ghosts'] },
     unlock: ['carved_a', 'carved_b', 'saw_names'], show: ['saw_ghosts'] },
   road_bell: { id: 'road_bell', order: 5, kind: 'blank', title: '납골당 앞 길종',
     body: '납골당 앞 종대에는 종이 걸린 적이 없다.',
     past: '그 밤 — 빈 종대에 길종을 걸었다.',
     now: '오늘 밤 — 녹슨 길종이 백 년째 걸려 있다. 그 앞에서 건널 수 있다.',
+    pastTitle: '빈 종대에 건 길종', nowTitle: '백 년 걸린 길종', did: ['bell_hung'], place: { area: 'graveyard_past', at: '그 밤 납골당 앞 종대', if: ['past_gate_open'] },
     unlock: ['bell_hung'], show: ['gate_open'] },
   four_knells: { id: 'four_knells', order: 6, kind: 'blank', title: '조종 넷',
     body: '납골당 맨 안의 종대 넷은 비어 있다.',
     past: '그 밤 — 종대 넷에 조종을 걸었다.',
     now: '오늘 밤 — 조종이 울리자 여왕의 노래가 끊겼다.',
+    pastTitle: '종대 넷의 조종', nowTitle: '끊긴 노래', did: ['knells_hung'], place: { area: 'ossuary_past', at: '그 밤 납골당 맨 안 종대', if: ['riddle_done'] },
     unlock: ['knells_hung'], show: ['ossuary_open'] },
   banshee: { id: 'banshee', order: 7, kind: 'line', title: '배웅하는 노래',
     body: '납골당의 곡하는 이는 붉은 달마다 묘지에 묻히는 발크레인을 노래로 배웅했다. 백 년마다 또 한 사람이 와서 노래는 끝나지 않았다. 1797년, 다섯째 발크레인이 조종을 쳐 그 노래를 끝냈다.',
-    unlock: ['queen_sent'], show: ['ossuary_open'] },
+    era: 'now', unlock: ['queen_sent'], show: ['ossuary_open'] },
   two_keepers: { id: 'two_keepers', order: 8, kind: 'blank', title: '두 종지기',
     body: '금 간 종은 제 소리를 내지 못한다.',
     past: '그 밤 — 종지기 로테가 큰 종을 한 번 쳤다.',
     now: '오늘 밤 — 종지기 엘리제가 답했다. 금 간 종이 제 울림을 되찾았다.',
+    pastTitle: '로테가 친 종', nowTitle: '엘리제가 답한 종', did: ['bells_answered'], place: { area: 'eshville_past', at: '그 밤의 큰 종', if: ['elise_found'] },
     unlock: ['bells_answered'], show: ['fell'] },
 
   // blanks that stay open after the first release (GDD 9.1: five remain)

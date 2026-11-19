@@ -45,9 +45,9 @@ export const DIALOGS_DUNGEON = {
       ['narrator', '바닥이 갈라진 틈 앞에\n작은 종 무늬가 있다.'],
       ['kael', '(무엇을 밀어 둘까.)'],
     ], choice: { options: [
-      { label: '석상', pages: [['narrator', '석상을 틈에 밀어 둔다.']],
+      { label: '석상', icon: 'statue', line: '돌은 백 년 뒤에도 그대로다', pages: [['narrator', '석상을 틈에 밀어 둔다.']],
         then: [['setFlag', 'wedge_stone'], ['clearFlag', 'wedge_wood'], ['setFlag', 'pending_change']] },
-      { label: '나무 상자', pages: [['narrator', '나무 상자를 틈에 밀어 둔다.']],
+      { label: '나무 상자', icon: 'crate', line: '나무는 백 년이면 삭아 없어진다', pages: [['narrator', '나무 상자를 틈에 밀어 둔다.']],
         then: [['setFlag', 'wedge_wood'], ['setFlag', 'pending_change']] },
     ] } },
   ],
