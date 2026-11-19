@@ -163,7 +163,9 @@ for (const { id, mv, real } of table) {
   for (let i = 0; i < base.peak.nodes.length; i++) d = Math.max(d, Math.abs(base.peak.nodes[i] - st.peak.nodes[i]));
   ok('hit-stop (dt = 0 for 8 ticks inside the window): lash frozen, then continues to the same peak', !st.bad && d < 1e-3, `nodes moved while frozen: ${st.bad ? 'yes' : 'no'} · peak difference ${d.toExponential(1)} px`);
   // slow motion and a coarse tick
-  const slow = playMove('c1', mv, { dt: DT / 4, quiet: true }), sr = slow.rec.reduce((b, r) => (Math.abs(r.t - base.peak.t) < Math.abs(b.t - base.peak.t) ? r : b)), sd = Math.hypot(sr.L.f - base.peak.L.f, sr.L.r - base.peak.L.r, sr.L.y - base.peak.L.y);   // compared at the same move time
+  // (WHIP2: compared peak against peak. The lash is out on the tick the rules land the hit - the first tick at or past hit[0] - and with a four times finer tick that tick comes up to
+  //  three quarters of a tick sooner; "at the same move time" compared the peak of one run with the follow-through of the other. The tip must be on the same authored point in both.)
+  const slow = playMove('c1', mv, { dt: DT / 4, quiet: true }), sr = slow.peak, sd = Math.hypot(sr.L.f - base.peak.L.f, sr.L.r - base.peak.L.r, sr.L.y - base.peak.L.y);
   ok('slow motion (dt / 4): stable, same peak', !slow.bad && slow.maxStretch <= 1.035 && slow.peak.ext >= 0.93 && sd < 8, `peak difference ${f1(sd)} px · ext ${f2(slow.peak.ext)} · max segment ${f2(slow.maxStretch * 100)} %`);
   const coarse = playMove('c3', MOVES.c3, { dt: 1 / 20, quiet: true });
   ok('coarse tick (1/20 s, c3): stable', !coarse.bad && coarse.maxStretch <= 1.035, `max segment ${f2(coarse.maxStretch * 100)} %`);

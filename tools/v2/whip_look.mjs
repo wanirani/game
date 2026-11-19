@@ -1,6 +1,6 @@
 // WHIP lane — the LOOK of the lash: stills from the game camera at 120 samples a second (two per rule tick), one contact sheet per move.
 //   node tools/v2/whip_look.mjs [--tag before] [--areas graveyard_now,eshville_past] [--moves c1,c2,c3,c3_side,c3_three,sweep,sweep_side,whip,pull,plunge,hook]
-//                               [--device fold_open] [--res 0.75] [--out /tmp/claude-0/v2/whip2/look] [--nosheet]
+//                               [--device fold_open] [--res 0.75] [--out /tmp/claude-0/v2/whip2/look] [--nosheet] [--base <commit>: that commit's src/v2/whip under today's scene]
 // The game is advanced by ticks (g.tick) and every sample is drawn by the tool (g.alpha = 0.5, then 1; the scene itself draws a hit tick at 1 - _hitSnap).
 // Fingers go through the pad's own pointer handlers (whip_lib). Each cell of a sheet is the game picture cut around the hero with three marks:
 //   cyan ring = where the drawn hand holds the lash (the lash root of the posed skeleton, moved with the hero's drawn position)
@@ -14,10 +14,11 @@
 //   step     the largest move of the drawn tip between two samples (world px) and the move in the sample of the hit tick ("jump")
 // Writes <out>/<tag>_<area>_<move>.png and <out>/<tag>.json. Exit 1 on a page error.
 import fs from 'node:fs';
+import { execSync } from 'node:child_process';
 import { launch, argsOf } from './whip_lib.mjs';
 
 const args = argsOf(process.argv), TAG = String(args.tag || 'now'), DEV = String(args.device || 'fold_open'), OUT = String(args.out || '/tmp/claude-0/v2/whip2/look'), RES = String(args.res || '0.75');
-const AREAS = String(args.areas || 'graveyard_now,eshville_past').split(','), SHEET = !args.nosheet;
+const AREAS = String(args.areas || 'graveyard_now,eshville_past').split(','), SHEET = !args.nosheet, BASE = args.base ? String(args.base) : null;
 const ALL = ['c1', 'c2', 'c3', 'c3_side', 'c3_three', 'sweep', 'sweep_side', 'whip', 'pull', 'plunge', 'hook'], MOVES = args.moves ? String(args.moves).split(',') : ALL;
 const T0 = Date.now(), log = (m) => console.log(`[${((Date.now() - T0) / 1000).toFixed(0)}s] ${m}`);
 
@@ -110,7 +111,7 @@ const SEQ = {
   c1: { ev: TAP(2), at: [[70, 0]], move: 'c1', n: 60, after: 6 },
   c2: { ev: [...TAP(2), ...TAP(13)], at: [[74, 0]], move: 'c2', n: 70, after: 6 },
   c3: { ev: [...TAP(2), ...TAP(13), ...TAP(26)], at: [[80, 0]], move: 'c3', n: 100, from: 2, after: 9 },
-  c3_side: { ev: [...TAP(2), ...TAP(13), ...TAP(26)], at: [[150, 0], [-40, 96]], move: 'c3', n: 100, from: 2, after: 9, note: 'first two hits strike the one in front, the third only reaches the one beside and behind' },
+  c3_side: { ev: [...TAP(2), ...TAP(13), ...TAP(26)], at: [[-10, 100]], move: 'c3', n: 100, from: 2, after: 9, note: 'nobody in front: the first two hits cut the air, the third only reaches the one beside and behind' },
   c3_three: { ev: [...TAP(2), ...TAP(13), ...TAP(26)], at: [[84, 0], [6, 92], [-30, -88]], move: 'c3', n: 100, from: 2, after: 9, note: 'front, right and left-behind in one third hit' },
   sweep: { ev: [...TAP(2, 'roll'), ...TAP(12)], stick: [1, 0, 30], at: [[250, 0]], move: 'sweep', n: 90, after: 7 },
   sweep_side: { ev: [...TAP(2, 'roll'), ...TAP(12)], stick: [1, 0, 30], at: [[178, -96]], move: 'sweep', n: 90, after: 7, note: 'the only target stands to the left of where the roll ends' },
@@ -123,7 +124,12 @@ const SEQ = {
 fs.mkdirSync(OUT, { recursive: true });
 const L = await launch(OUT), all = {};
 try {
-  const page = await L.page(DEV);
+  const page = await L.page(DEV, BASE ? { serviceWorkers: 'block' } : {});
+  if (BASE) {   // the whip module of another commit under today's scene (the "before" sheets): its files are served in place of src/v2/whip/*.js
+    const dir = `${OUT}/base_${BASE}`; fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+    execSync(`git archive ${BASE} src/v2/whip | tar -x -C ${dir}`, { cwd: new URL('../..', import.meta.url).pathname, shell: '/bin/bash' });
+    await page.route('**/src/v2/whip/*.js', (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body: fs.readFileSync(dir + new URL(route.request().url()).pathname) }));
+  }
   for (const area of AREAS) {
     await L.open(page, area, `&v2res=${RES}`);
     await page.evaluate(`window.__seq = ${seq.toString()}`);

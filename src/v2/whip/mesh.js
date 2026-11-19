@@ -9,6 +9,7 @@ import { TRAIL_N } from './sim.js';
 export const WHIP_VERT = 10;
 const TRAIL_SUB = 3, TRAIL_SEC = (TRAIL_N - 1) * TRAIL_SUB + 1;
 const SHARD_LEN = 11.5;
+const TRAIL_P = new Float32Array(TRAIL_N * 3), TRAIL_T = new Float32Array(TRAIL_N * 3), TRAIL_L = new Float32Array(TRAIL_N), TRAIL_K = new Float32Array(TRAIL_N);   // the streak's points, unit tangents, piece lengths, fold dimming (scratch of writeWhipMesh - nothing is made per frame)
 
 // handle profile along its axis (px from the grip point; the lash leaves at +11): [s, radius, kind]
 const HANDLE = [
@@ -130,19 +131,33 @@ export function writeWhipMesh(whip, vtx, alpha, tmp) {
   for (let k = 0; k < 4; k++) {
     vtx[o] = cx; vtx[o + 1] = cy; vtx[o + 2] = cz; vtx[o + 3] = 0; vtx[o + 4] = 0; vtx[o + 5] = 0; vtx[o + 6] = k === 0 || k === 3 ? -1 : 1; vtx[o + 7] = k < 2 ? -1 : 1; vtx[o + 8] = size; vtx[o + 9] = 6; o += WHIP_VERT;
   }
-  // the streak behind the tip: Catmull-Rom through the tip's last positions (the newest = the tip as drawn)
-  const H = whip.hist, w0 = 4.4 * whip.trailW;
+  // the streak behind the tip: a curve through the tip's last positions (the newest = the tip as drawn).
+  // WHIP2: tangents by chord length (it was a uniform Catmull-Rom). The points are unevenly spaced - a 130 px tick of the strike next to the few px
+  // the tip moves while it rests on what it hit, and the head piece shrinks to nothing as the frame nears the previous tick - and a uniform spline
+  // answers that with a hook or a loop at the joint: the kink in the streak. Here every piece gets tangents of its own length, so it cannot overshoot.
+  // Where the path really folds (in to the hit, out again) the streak goes dark at the fold instead of drawing a corner (TK = cos of the turn).
+  const H = whip.hist, w0 = 4.4 * whip.trailW, TP = TRAIL_P, TT = TRAIL_T, TL = TRAIL_L, TK = TRAIL_K;
+  TP[0] = ox; TP[1] = oy; TP[2] = oz; for (let i = 1; i < TRAIL_N; i++) { const p = i * 4, q = i * 3; TP[q] = H[p]; TP[q + 1] = H[p + 1]; TP[q + 2] = H[p + 2]; }
+  for (let i = 0; i < TRAIL_N - 1; i++) { const q = i * 3, x = TP[q + 3] - TP[q], y = TP[q + 4] - TP[q + 1], z = TP[q + 5] - TP[q + 2]; TL[i] = Math.sqrt(x * x + y * y + z * z); }
+  for (let i = 0; i < TRAIL_N; i++) {
+    const q = i * 3, la = i > 0 ? TL[i - 1] : 0, lb = i < TRAIL_N - 1 ? TL[i] : 0;
+    let ax = 0, ay = 0, az = 0, bx2 = 0, by2 = 0, bz2 = 0;
+    if (la > 1e-3) { ax = (TP[q] - TP[q - 3]) / la; ay = (TP[q + 1] - TP[q - 2]) / la; az = (TP[q + 2] - TP[q - 1]) / la; }
+    if (lb > 1e-3) { bx2 = (TP[q + 3] - TP[q]) / lb; by2 = (TP[q + 4] - TP[q + 1]) / lb; bz2 = (TP[q + 5] - TP[q + 2]) / lb; }
+    if (la > 1e-3 && lb > 1e-3) {   // both sides: the shorter side counts more (non-uniform Catmull-Rom), and how sharp the turn is
+      const wa = lb / (la + lb), wb = la / (la + lb); let x = ax * wa + bx2 * wb, y = ay * wa + by2 * wb, z = az * wa + bz2 * wb; const l = Math.sqrt(x * x + y * y + z * z);
+      if (l > 1e-4) { x /= l; y /= l; z /= l; } else { x = bx2; y = by2; z = bz2; }
+      TT[q] = x; TT[q + 1] = y; TT[q + 2] = z; const c = ax * bx2 + ay * by2 + az * bz2; TK[i] = c > 0.7 ? 1 : c < -0.2 ? 0 : (c + 0.2) / 0.9;
+    } else if (lb > 1e-3) { TT[q] = bx2; TT[q + 1] = by2; TT[q + 2] = bz2; TK[i] = 1; } else if (la > 1e-3) { TT[q] = ax; TT[q + 1] = ay; TT[q + 2] = az; TK[i] = 1; } else { TT[q] = tx; TT[q + 1] = ty; TT[q + 2] = tz; TK[i] = 0; }
+  }
   for (let j = 0; j < TRAIL_SEC; j++) {
-    const i = Math.min(TRAIL_N - 2, (j / TRAIL_SUB) | 0), u = j / TRAIL_SUB - i;
-    const p0 = Math.max(0, i - 1) * 4, p1 = i * 4, p2 = (i + 1) * 4, p3 = Math.min(TRAIL_N - 1, i + 2) * 4;
-    const u2 = u * u, u3 = u2 * u;
-    const c0 = -0.5 * u3 + u2 - 0.5 * u, c1 = 1.5 * u3 - 2.5 * u2 + 1, c2 = -1.5 * u3 + 2 * u2 + 0.5 * u, c3 = 0.5 * u3 - 0.5 * u2;
-    const d0 = -1.5 * u2 + 2 * u - 0.5, d1 = 4.5 * u2 - 5 * u, d2 = -4.5 * u2 + 4 * u + 0.5, d3 = 1.5 * u2 - u;
-    const ax0 = p0 === 0 ? ox : H[p0], ay0 = p0 === 0 ? oy : H[p0 + 1], az0 = p0 === 0 ? oz : H[p0 + 2], ax1 = p1 === 0 ? ox : H[p1], ay1 = p1 === 0 ? oy : H[p1 + 1], az1 = p1 === 0 ? oz : H[p1 + 2];
-    const x = c0 * ax0 + c1 * ax1 + c2 * H[p2] + c3 * H[p3], y = c0 * ay0 + c1 * ay1 + c2 * H[p2 + 1] + c3 * H[p3 + 1], z = c0 * az0 + c1 * az1 + c2 * H[p2 + 2] + c3 * H[p3 + 2];
-    let kx = d0 * ax0 + d1 * ax1 + d2 * H[p2] + d3 * H[p3], ky = d0 * ay0 + d1 * ay1 + d2 * H[p2 + 1] + d3 * H[p3 + 1], kz = d0 * az0 + d1 * az1 + d2 * H[p2 + 2] + d3 * H[p3 + 2];
-    const kl = Math.sqrt(kx * kx + ky * ky + kz * kz); if (kl > 1e-5) { kx /= kl; ky /= kl; kz /= kl; } else { kx = tx; ky = ty; kz = tz; }
-    const q = j / (TRAIL_SEC - 1), str = (H[p1 + 3] + (H[p2 + 3] - H[p1 + 3]) * u) * Math.pow(1 - q, 1.3), rad = w0 * (1 - 0.8 * q);
+    const i = Math.min(TRAIL_N - 2, (j / TRAIL_SUB) | 0), u = j / TRAIL_SUB - i, p1 = i * 4, p2 = (i + 1) * 4, a3 = i * 3, b3 = a3 + 3, L = TL[i];
+    const u2 = u * u, u3 = u2 * u, h00 = 2 * u3 - 3 * u2 + 1, h10 = (u3 - 2 * u2 + u) * L, h01 = -2 * u3 + 3 * u2, h11 = (u3 - u2) * L;
+    const g00 = 6 * u2 - 6 * u, g10 = (3 * u2 - 4 * u + 1) * L, g01 = -g00, g11 = (3 * u2 - 2 * u) * L;
+    const x = h00 * TP[a3] + h10 * TT[a3] + h01 * TP[b3] + h11 * TT[b3], y = h00 * TP[a3 + 1] + h10 * TT[a3 + 1] + h01 * TP[b3 + 1] + h11 * TT[b3 + 1], z = h00 * TP[a3 + 2] + h10 * TT[a3 + 2] + h01 * TP[b3 + 2] + h11 * TT[b3 + 2];
+    let kx = g00 * TP[a3] + g10 * TT[a3] + g01 * TP[b3] + g11 * TT[b3], ky = g00 * TP[a3 + 1] + g10 * TT[a3 + 1] + g01 * TP[b3 + 1] + g11 * TT[b3 + 1], kz = g00 * TP[a3 + 2] + g10 * TT[a3 + 2] + g01 * TP[b3 + 2] + g11 * TT[b3 + 2];
+    const kl = Math.sqrt(kx * kx + ky * ky + kz * kz); if (kl > 1e-5) { kx /= kl; ky /= kl; kz /= kl; } else { kx = TT[a3]; ky = TT[a3 + 1]; kz = TT[a3 + 2]; }
+    const q = j / (TRAIL_SEC - 1), s1 = H[p1 + 3] * TK[i], s2 = H[p2 + 3] * TK[i + 1], str = (s1 + (s2 - s1) * u) * Math.pow(1 - q, 1.3), rad = w0 * (1 - 0.8 * q);
     for (let s = -1; s <= 1; s += 2) {
       vtx[o] = x; vtx[o + 1] = y; vtx[o + 2] = z; vtx[o + 3] = kx; vtx[o + 4] = ky; vtx[o + 5] = kz; vtx[o + 6] = str; vtx[o + 7] = s; vtx[o + 8] = rad; vtx[o + 9] = 7;
       o += WHIP_VERT;

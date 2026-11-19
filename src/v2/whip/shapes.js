@@ -25,7 +25,7 @@ const S = (pk, rows) => K(rows.map((r) => {
 
 export const WHIP_SHAPES = {
   // combo 1: flat cut from the right, across the front, to the left (clip atk1)
-  c1: { peak: PEAK, ev: 'crack', keys: S(0.6, [
+  c1: { peak: PEAK, ev: 'crack', len: [0.55, 1.5], keys: S(0.6, [   // (len: on the tick of the hit the hand is already well forward - a lash that could not be shorter than 0.7 of its base length overshot the hit box by 4 px)
     [-1.0, -34, 30, 36, 0.35, -1, 0, -1],
     [-0.55, -66, 48, 74, 0.6, -1, 0.3, 0.6],
     [-0.12, -44, 86, 66, 0.75, -1, 0.4, 0.5],
@@ -101,10 +101,10 @@ export const WHIP_SHAPES = {
   // plunge: the rules can land the hit as soon as the fall starts, so the lash is snapped straight down ahead of the hero at once and
   // held there (extended, tip leading the fall); the landing drives it forward along the ground.
   // The window stays open until the hero lands, so the phase is driven by set('swing', { landT }) - see sim.js _phase
-  plunge: { peak: PEAK, ev: 'crack', hold: 0.3, keys: K([
+  plunge: { peak: 0.08, ev: 'crack', hold: 0.3, keys: K([   // (its own clock - sim.js _phase, the hold branch: 0.08 of the way to the held pose, as before WHIP2)
     [-1.0, 4, 20, 64, 0.5, -1, 0, 0.5],
     [-0.45, 34, 12, 112, 0.8, -1, 0, 0.6],
-    [PEAK, 58, 0, -34, 1.0, -1, 0, 0.5],
+    [0.08, 58, 0, -34, 1.0, -1, 0, 0.5],
     [0.3, 60, 0, -36, 1.0, -1, 0, 0.5],
     [0.65, 76, 0, 2, 0.95, -1, 0, 0.6],
     [1.0, 88, -4, 3, 0.7, -1, 0, 0.8],
