@@ -11,6 +11,8 @@ import * as K from './kit.js';
 import { PROPS, WALLPROPS } from './props.js';
 import { bakedDef, bakedProp } from './baked.js';
 import { BAKED_EXTRA, BAKED_ARGS, cemgateBoxes } from './props2.js';
+import './props5.js';                                     // DETAIL: wall hangings of the two nights (washing line, garland ...), the carpenter's screen, things of a kept place, better far land pieces (ENV_KIT 24)
+import { WEAR } from './wear.js';
 import './props4.js';                                     // WORLD-LOOK: what lies beyond an area's edge (apron, ridge, treeline, farhouse, farwall, gravefield) + wall dressing (boards, crack, ivy, drape)
 import { GEN_ALIAS } from './props3.js';                  // WORLD-2: whip ring, road bell, bridges, crypt furniture stand-ins + names of generated second tries   // WORLD 구역의 소품을 PROPS 에 더한다 + 구운 소품에 덧붙이는 것
 
@@ -53,7 +55,11 @@ const wallHang = (P) => { const FS = { F: new Frame(P.x, P.z, 0, -1), L: new Fra
  * ({ chunk: { texture: material } }, written by tools/v2/world_folds.mjs into src/v2/world/folds.js) or nothing; 'auto' (or S.folds === 'auto') = plan it
  * here with a counting pass (as slow as a second compile: tools and checks only); false = never fold.
  */
-export function compileEnv(S, { cull = true, fold, flames = false } = {}) {   // flames: 불길 잎을 굽는다 (입자 불이 없는 v2c 만 — props2.js flames)
+export function compileEnv(S, opt = {}) {   // flames: 불길 잎을 굽는다 (입자 불이 없는 v2c 만 — props2.js flames)
+  const before = WEAR.age; WEAR.age = S.wear ?? null;   // DETAIL: relief and wear of walls in the night the stage names (stage.wear: 'now' | 'past'); a stage without it builds exactly as before
+  try { return compileEnv0(S, opt); } finally { WEAR.age = before; }
+}
+function compileEnv0(S, { cull = true, fold, flames = false } = {}) {
   const W = compileStage(toB(S));
   W.mesh = {};                                                           // B 의 납작한 메시는 쓰지 않는다
   W.sprites = W.sprites.filter((s) => s.kind === 'prop' && s.img !== '__mesh');   // 그림판으로 남긴 소품만

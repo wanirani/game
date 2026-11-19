@@ -38,7 +38,7 @@ export function createHud(game, opts = {}) {
       canvas.update(dt, s);
       const cross = s.cross ?? null;   // CROSSING: while the bell crossing runs the pad stays in place, faded out and deaf (it does not pop off for the load)
       pad?.setBack(!!(cross && cross.back));
-      pad?.tick(pause.open || dialog.open || end.open || !!s.message || (!!s.loading && !cross), s.pad);
+      pad?.tick(pause.open || dialog.open || end.open || !!s.cut || !!s.message || (!!s.loading && !cross), s.pad);   // STORY: state.cut = a camera cut or a lockInput step of the story holds the hero - the pad steps aside as it does for a dialogue, and is back the tick the story lets go
       perf.upd += performance.now() - t0; perf.updN++;
     },
     draw(ctx, s) {

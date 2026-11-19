@@ -31,8 +31,13 @@ export function house(o) {
   if (o.banner) hang.push({ type: 'banner', u: Math.round(w * 0.5 + (du != null && Math.abs(w * 0.5 - du) < 60 ? 90 : 0)), y: 62, len: 88, w: 34, c: o.banner });
   if (o.sconce) hang.push({ type: 'sconce', u: Math.round((du ?? w * 0.4) + 62), y: 118 });
   const tint = o.burnt ? [0.52, 0.46, 0.46] : o.tint ?? [0.96 + 0.08 * r(), 0.95 + 0.06 * r(), 0.94 + 0.1 * r()];
+  // DETAIL (ENV_KIT 24): what the wear pass of the kit reads (only a stage with `wear` draws any of it). A stream of its own, so the houses' windows, tints and roofs stay as they were
+  const r2 = rnd((o.seed ?? 1) * 7919 + 13);
+  if (o.roof !== false && !o.burnt) hang.push({ type: 'pipe', u: r2() < 0.5 ? 13 : w - 13 });          // a downpipe at one end of the front
+  for (const d of doors) if (r2() < (o.plague ?? 0.34)) d.mark = 'plague';                              // 1697: a red cross on some doors
+  const whitewash = (st === 'stone' || st === 'rubble') && !o.burnt && r2() < 0.7;
   const kit = {
-    style: st, faces: o.faces ?? 'F', base, tint, windows: wins, doors, hang,
+    style: st, faces: o.faces ?? 'F', base, tint, windows: wins, doors, hang, house: true, burnt: !!o.burnt, whitewash,
     ...(timber ? { storey, jetty: o.jetty ?? 12, mid: h > 300 ? storey + 104 : undefined } : st === 'stone' ? { quoins: r() < 0.6, courses: h > 240 ? [156] : [] } : { plinth: 26 }),
     ...(o.burnt ? { battlement: true, cornice: false, quoins: false } : {}), ...(o.kit ?? {}),
   };

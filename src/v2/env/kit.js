@@ -4,6 +4,7 @@
 //   dressFloor / dressBlock / dressStairs / dressPillar / arch / gate / pave / fence
 // 모든 조각은 "벽면 틀"(Frame: u 오른쪽 · y 위 · w 바깥) 위에서 짓기 때문에 벽이 어느 쪽을 보든 같은 코드다.
 import { Frame, sm, hash, vnoise } from './geo.js';
+import { WEAR, wallRelief, soot, damp, streak, patch, crackUp, skirt } from './wear.js';   // DETAIL: relief and wear (ENV_KIT 24) - only when the stage asks for it (stage.wear)
 
 const CELL = 40;   // 빛을 굽는 격자 (B 는 64)
 
@@ -67,6 +68,12 @@ export function windowAt(G, F, s, w0, wallMat) {
     const sw = hw * 0.94, t = s.shutterTint ?? [0.42, 0.56, 0.5];
     for (const sg of [-1, 1]) {
       const a = sg < 0 ? u0 - 6 - sw : u1 + 6, b = a + sw;
+      if (WEAR.age === 'now' && hash(s.u * 1.3 + sg, s.y) < 0.42) {   // DETAIL: tonight a shutter hangs from one hinge (dropped at its outer end, a little off the wall)
+        const dr = (yS - y0) * (0.1 + 0.12 * hash(s.u, sg * 3)), oa = sg < 0 ? dr : 0, ob = sg < 0 ? 0 : dr;
+        G.quad4('wood', F.pt(a, y0 + 1 - oa, w0 + 2.2 + oa * 0.2), F.pt(b, y0 + 1 - ob, w0 + 2.2 + ob * 0.2), F.pt(b, yS - 1 - ob, w0 + 2.2 + ob * 0.2), F.pt(a, yS - 1 - oa, w0 + 2.2 + oa * 0.2), F.n, { tint: [t[0] * 0.8, t[1] * 0.8, t[2] * 0.8], vary: 0.25 });
+        G.quad4('wood', F.pt(a, yS - 1 - oa, w0 + 2.2 + oa * 0.2), F.pt(b, yS - 1 - ob, w0 + 2.2 + ob * 0.2), F.pt(b, yS - 1 - ob, w0), F.pt(a, yS - 1 - oa, w0), [0, 1, 0], { tint: t, vary: 0.2 });
+        continue;
+      }
       F.box(G, 'wood', a, b, y0 + 1, yS - 1, w0 + 0.6, w0 + 3.4, { faces: 'FLRT', tint: t, vary: 0.2 });
       for (const fy of [0.2, 0.78]) F.face(G, 'metal', a + 1, b - 1, y0 + (yS - y0) * fy - 1.6, y0 + (yS - y0) * fy + 1.6, w0 + 3.7, { k: 0.8, vary: 0 });
     }
@@ -95,6 +102,15 @@ export function doorAt(G, F, s, w0, yb, wallMat, boxes) {
   if (rise) { spandrels(G, F, wallMat, s.u, hw, yS, rise, s.arch, w0, {}); archBand(G, F, 'trimstone', s.u, hw, yS, rise, s.arch, w0 + 0.8, 9); }
   else F.box(G, 'trimstone', u0 - 12, u1 + 12, y1, y1 + 11, w0, w0 + 4.5, { faces: 'FLRT', vary: 0 });
   F.box(G, 'trimstone', u0 - 9, u0, yb, yS, w0, w0 + 4, { faces: 'FLRT', vary: 0 }); F.box(G, 'trimstone', u1, u1 + 9, yb, yS, w0, w0 + 4, { faces: 'FLRT', vary: 0 });
+  if (WEAR.age) {   // DETAIL: a threshold stone under a door that has no step (3.5 high: nothing to climb, nothing to catch on), pintles where the strap hinges turn
+    if (!up) F.box(G, 'stone', u0 - 11, u1 + 11, yb, yb + 3.5, w0, w0 + 9, { faces: 'FLRT', top: 'trimstone', vary: 0.12 });
+    if (!s.open) for (const fy of [0.16, 0.5, 0.82]) F.box(G, 'metal', u0 - 1.2, u0 + 3.4, y0 + (yS - y0) * fy - 4.4, y0 + (yS - y0) * fy + 4.4, wp, wp + 3, { faces: 'FLRT', k: 0.6, vary: 0 });
+    if (s.mark === 'plague' && WEAR.age === 'past' && !s.open) {   // 1697: a red cross daubed on the door of a house the sickness is in, a white rag tied to the ring
+      const cu = (u0 + u1) / 2, cy = y0 + s.h * 0.56, r = s.w * 0.3, q = { tint: [0.62, 0.1, 0.09], vary: 0.2, k: 1 };
+      for (const sg of [-1, 1]) G.quad4('white', F.pt(cu - r - 3, cy - sg * r, wp + 1.7), F.pt(cu - r + 3, cy - sg * r - sg * 2, wp + 1.7), F.pt(cu + r + 3, cy + sg * r, wp + 1.7), F.pt(cu + r - 3, cy + sg * r + sg * 2, wp + 1.7), F.n, q);
+      G.quad4('cloth', F.pt(u1 - 14, y0 + s.h * 0.4 - 26, wp + 3), F.pt(u1 - 6, y0 + s.h * 0.4 - 24, wp + 3), F.pt(u1 - 8, y0 + s.h * 0.4 + 6, wp + 3), F.pt(u1 - 12, y0 + s.h * 0.4 + 6, wp + 3), F.n, { tint: [0.9, 0.88, 0.8], vary: 0.1 });
+    }
+  }
   const n = Math.round(up / 7);   // 계단: 위 칸일수록 얕다
   for (let i = 0; i < n; i++) {
     const top = yb + up - i * 7, dep = 13 * (i + 1), a = F.pt(u0 - 12 - i * 3, 0, w0), b = F.pt(u1 + 12 + i * 3, 0, w0 + dep);
@@ -165,8 +181,8 @@ export function dressWall(G, P, boxes) {
       if (style === 'timber') timberFrame(G, F, 0, len, yJ, y1, jet, hi, { mid: K.mid ? y0 + K.mid : undefined });
       else F.box(G, 'trimstone', 0, len, yJ - 5, yJ + 5, jet, jet + 3, { faces: 'FLRT', vary: 0 });
     } else if (style === 'plaster') timberFrame(G, F, 0, len, y0 + ph, y1, 0, lo, { bay: 110 });
+    const segs = []; { let a = 0; for (const d of [...dh].sort((p, q) => p.u0 - q.u0)) { segs.push([a, d.u0 - 9]); a = d.u1 + 9; } segs.push([a, len]); }
     if (ph) {   // 밑돌: 문 자리는 비운다
-      let a = 0; const segs = []; for (const d of [...dh].sort((p, q) => p.u0 - q.u0)) { segs.push([a, d.u0 - 9]); a = d.u1 + 9; } segs.push([a, len]);
       for (const [p, q] of segs) if (q - p > 2) F.box(G, 'stone', p, q, y0, base + ph, 0, 4.5, { faces: 'FLRT', top: 'trimstone', vary: 0.1 });
     }
     for (const cy of K.courses ?? []) F.box(G, 'trimstone', 0, len, y0 + cy - 4.5, y0 + cy + 4.5, 0, 3.2, { faces: 'FLRT', vary: 0 });
@@ -185,6 +201,7 @@ export function dressWall(G, P, boxes) {
     if (K.cornice ?? (style === 'stone' || style === 'rubble')) F.box(G, 'trimstone', -5, len + 5, y1 - 13, y1, 0, 6, { faces: 'FLRT', vary: 0.08 });
     if (K.coping) F.box(G, 'trimstone', -3, len + 3, y1, y1 + 6, -3, 3.5, { faces: 'FLRT', vary: 0.1 });
     for (const g of featsOf(K, 'gates', side)) gate(G, F, g, base, lower);
+    if (WEAR.age && style !== 'low' && !K.plain && y1 - y0 >= 110) wallDetail(G, F, len, { K, side, style, lower, upper, y0, y1, base, ph, yJ, jet, segs, holes: [...wins.map(hole), ...dh], lo, seed: Math.round(P.x * 0.37 + P.z * 0.113 + side.charCodeAt(0) * 3) });
   }
   G.shade = null;
   // 윗면 · 성가퀴
@@ -213,6 +230,66 @@ export function dressWall(G, P, boxes) {
     if (K.piers) for (const side of pierSides) env(FS[side][0], -3, FS[side][1] + 3, -(side === 'F' ? P.d : P.w) - 7, 8);
     if (ex0 < P.x || ex1 > P.x + P.w || ez0 < P.z || ez1 > P.z + P.d) boxes.push({ x0: ex0, x1: ex1, z0: ez0, z1: ez1, y0, y1: Math.max(y0 + (P.collideH ?? 0), y1 + (K.piers ? 22 : 6)), solid: true, walk: false, inv: true, kit: true, part: P });
   }
+}
+
+/**
+ * DETAIL (ENV_KIT 24): relief and wear of one face of a tall wall, in the night the stage names (WEAR.age). Called by dressWall while its shade and
+ * tint are still set, so what is laid over the wall takes exactly the wall's own colour at its rim.
+ *   every night: splayed footing, string course (plain rubble walls), corbel course, proud stones and putlog holes; damp at the foot (most on the faces
+ *                turned away from the moon); soot above every wall lantern; a downpipe (hang 'pipe'); soot where the area says so (hang 'soot')
+ *   tonight:     dirt streaks under the cornice, cracks, soot above the windows of a burnt house, planks across some dark windows, stone showing
+ *                where plaster fell
+ *   1697:        whitewash on stone houses (kit.whitewash), fresh patches on plaster, short streaks only
+ */
+function wallDetail(G, F, len, c) {
+  const { K, side, style, lower, upper, y0, y1, base, ph, yJ, jet, segs, holes, seed } = c, now = WEAR.age === 'now', topS = yJ ?? y1, hang = featsOf(K, 'hang', side);
+  const butt = featsOf(K, 'buttress', side).map((b) => [b.u - (b.w ?? 36) / 2 - 5, b.u + (b.w ?? 36) / 2 + 5]), gates = featsOf(K, 'gates', side).map((g) => [g.u - g.w / 2 - 48, g.u + g.w / 2 + 48]), keep = [...butt, ...gates];
+  const hit = (a, b, lo, hi) => holes.some((r) => a < r.u1 + 5 && b > r.u0 - 5 && lo < r.y1 + 5 && hi > r.y0 - 8) || gates.some(([p, q]) => a < q && b > p);
+  /** how high something that starts at (u +- half, ys) may rise before it meets an opening or the top of its wall plane */
+  const room = (u, half, ys, want, cap) => { let m = Math.min(want, cap - ys); for (const r of holes) if (u - half < r.u1 + 4 && u + half > r.u0 - 4 && r.y1 > ys) m = Math.min(m, r.y0 - 9 - ys); return m; };
+  const planeOf = (y) => (yJ && y >= yJ ? [upper, jet, y1] : [lower, 0, topS]);
+  const stone = lower !== 'plaster';
+  if (stone) wallRelief(G, F, len, y0, y1, { lower, base, ph, segs, holes, keep, top: topS, seed, every: K.house ? 190 : 150,
+    course: style === 'rubble' && !K.house && !(K.courses ?? []).length && y1 - y0 >= 200 && !yJ ? Math.round(y0 + (y1 - y0) * 0.56) : 0,
+    corbel: !yJ && (K.cornice ?? (style === 'stone' || style === 'rubble')) && y1 - y0 >= 200 });
+  // damp and moss at the foot
+  const sill = Math.min(1e9, ...c.lo.map((s) => s.y - 12)), dH = Math.min(side === 'R' ? 100 : side === 'L' ? 72 : 56, (sill - base - ph) / 1.2), D = now ? [0.55, 0.64, 0.55] : [0.6, 0.72, 0.58];
+  if (dH >= 14) for (const [p, q] of segs) { let a = p; for (const [g0, g1] of [...gates].sort((m, n) => m[0] - n[0])) { if (g0 > a && g0 < q) { if (g0 - a > 40) damp(G, F, lower, 0.45, a, g0, base + ph, dH, D, seed); a = Math.max(a, g1); } } if (q - a > 40) damp(G, F, lower, 0.45, a, q, base + ph, dH, D, seed + 1); }
+  // soot: above every wall lantern, where the area says (hang 'soot': beside a burning neighbour, over a brazier), above the windows of a burnt house
+  for (const h of hang) {
+    if (h.type !== 'sconce' && h.type !== 'soot') continue;
+    const ys = y0 + h.y + (h.type === 'sconce' ? 12 : 0), [m, w, cap] = planeOf(ys), wd = h.w ?? (now ? 40 : 30), hh = room(h.u, wd * 0.4, ys, h.h ?? (now ? 92 : 54), cap - 6);
+    if (hh > 20) soot(G, F, m, w + 0.45, h.u, ys, wd, hh, h.dark ?? (h.type === 'soot' ? 0.3 : now ? 0.4 : 0.6), seed + h.u);
+  }
+  if (K.burnt && now) for (const r of holes) { if (r.y0 <= base + 1) continue; const u = (r.u0 + r.u1) / 2, ys = r.y1 - 3, [m, w, cap] = planeOf(ys), hh = room(u, (r.u1 - r.u0) * 0.4, ys + 4, 70 + 60 * hash(u, seed), cap - 4); if (hh > 18) soot(G, F, m, w + 0.45, u, ys, (r.u1 - r.u0) + 30, hh, 0.26, seed + u); }
+  // a downpipe from the eaves to the ground (house fronts)
+  for (const h of hang) if (h.type === 'pipe') {
+    const M = { k: 0.62, vary: 0, faces: 'FLR' }, u = h.u;
+    if (yJ) { F.box(G, 'metal', u - 2.2, u + 2.2, yJ - 9, y1 - 8, jet, jet + 4.4, M); F.box(G, 'metal', u - 2.2, u + 2.2, base, yJ - 9, 0, 4.4, M); F.box(G, 'metal', u - 2.2, u + 2.2, yJ - 13, yJ - 9, 0, jet + 4.4, { ...M, faces: 'FLRT' }); }
+    else F.box(G, 'metal', u - 2.2, u + 2.2, base, y1 - 8, 0, 4.4, M);
+    F.box(G, 'metal', u - 5.5, u + 5.5, y1 - 18, y1 - 5, yJ ? jet : 0, (yJ ? jet : 0) + 8, { k: 0.7, vary: 0, faces: 'FLRT' });
+    for (const fy of [0.3, 0.72]) { const yy = base + (y1 - base) * fy, w0 = yJ && yy >= yJ ? jet : 0; F.box(G, 'metal', u - 4, u + 4, yy - 2, yy + 2, w0, w0 + 5.2, { k: 0.45, vary: 0, faces: 'FLRT' }); }
+  }
+  // streaks of dirt under the cornice (tonight long and many)
+  if (stone && !yJ && (K.cornice ?? (style === 'stone' || style === 'rubble'))) {
+    const n = Math.round(len / (now ? 240 : 520));
+    for (let i = 0; i < n; i++) { const u = len * (i + 0.2 + 0.6 * hash(seed + i * 2.7, 6.1)) / n, L = (now ? 80 : 46) + 70 * hash(i, seed + 4), wd = 10 + 8 * hash(seed, i + 9); if (!hit(u - wd, u + wd, y1 - 16 - L, y1 - 12) && !keep.some(([p, q]) => u - wd < q && u + wd > p)) streak(G, F, lower, 0.45, u, y1 - 13.5, L, wd, now ? 0.56 : 0.72, seed + i); }
+  }
+  if (!now) {
+    if (K.whitewash && stone) { const n = Math.max(1, Math.round(len / 240)); for (let i = 0; i < n; i++) { const wd = 80 + 60 * hash(seed, i + 2), hh = 60 + 50 * hash(i, seed + 5), u = len * (i + 0.2 + 0.6 * hash(seed + i, 2.2)) / n, y = base + ph + 16 + hh / 2 + hash(i * 1.7, seed) * Math.max(0, topS - base - ph - hh - 50); if (!hit(u - wd / 2, u + wd / 2, y - hh / 2, y + hh / 2) && !keep.some(([p, q]) => u - wd / 2 < q && u + wd / 2 > p)) patch(G, F, 'plaster', 0.9, u, y, wd, hh, seed + i * 5, { lip: 1.06, low: 0.9, k: 1.0, tint: [0.92, 0.9, 0.84] }); } }
+    if (upper === 'plaster') { const pb = yJ ?? base + ph, [m, w] = [upper, yJ ? jet : 0], n = Math.max(1, Math.round(len / 330)); for (let i = 0; i < n; i++) { const wd = 44 + 30 * hash(seed, i + 3), hh = 34 + 24 * hash(i, seed + 6), u = len * (i + 0.2 + 0.6 * hash(seed + i, 5.2)) / n, y = pb + 22 + hh / 2 + hash(i * 2.1, seed + 1) * Math.max(0, y1 - pb - hh - 60); if (!hit(u - wd / 2, u + wd / 2, y - hh / 2, y + hh / 2)) patch(G, F, m, w + 0.5, u, y, wd, hh, seed + i * 7, { lip: 1.1, low: 1.02, k: 1.13 }); } }   // a fresh patch of lime, lighter than the wall
+    return;
+  }
+  // tonight: cracks, boarded windows, stone under fallen plaster
+  if (stone && y1 - y0 >= 200) { const n = Math.round(len / (K.house ? 420 : 620)); for (let i = 0; i < n; i++) { const u = len * (i + 0.25 + 0.5 * hash(seed + i * 3.9, 8.3)) / n, ys = base + ph + 6, L = Math.min(110 + 130 * hash(i, seed + 2), topS - ys - 30); if (L > 60 && !hit(u - 26, u + 26, ys, ys + L) && !keep.some(([p, q]) => u - 20 < q && u + 20 > p)) crackUp(G, F, 0.7, u, ys, L, seed + i, (hash(seed, i) - 0.5) * 0.16); } }
+  if (K.house) for (const s of c.lo) if (!s.lit && !s.shutters && hash(s.u * 0.7, seed) < (K.burnt ? 0.55 : 0.3)) {   // planks nailed across a dark ground-floor window
+    const nb = 2 + (hash(seed, s.u) > 0.5 ? 1 : 0);
+    for (let i = 0; i < nb; i++) { const yy = s.y + s.h * (i + 0.5) / nb + (hash(i, s.u) - 0.5) * s.h * 0.14, sl = (hash(s.u, i + 3) - 0.5) * 0.3 * s.w, th = 5.5 + 2 * hash(i + 7, s.u), u0 = s.u - s.w / 2 - 8, u1 = s.u + s.w / 2 + 8, q = { tint: [0.7 + 0.2 * hash(i, 5), 0.6, 0.5], vary: 0.2, k: 0.9 };
+      G.quad4('timber', F.pt(u0, yy - th - sl / 2, 3.2), F.pt(u1, yy - th + sl / 2, 3.2), F.pt(u1, yy + th + sl / 2, 3.2), F.pt(u0, yy + th - sl / 2, 3.2), F.n, q);
+      G.quad4('timber', F.pt(u0, yy + th - sl / 2, 3.2), F.pt(u1, yy + th + sl / 2, 3.2), F.pt(u1, yy + th + sl / 2, 0), F.pt(u0, yy + th - sl / 2, 0), [0, 1, 0], { ...q, k: 1.1 }); }
+  }
+  if (upper === 'plaster') { const pb = yJ ?? base + ph, w = yJ ? jet : 0, bare = lower !== 'plaster' ? lower : 'stone', n = Math.max(1, Math.round(len / 280));
+    for (let i = 0; i < n; i++) { const wd = 46 + 36 * hash(seed, i + 3), hh = 38 + 30 * hash(i, seed + 6), u = len * (i + 0.2 + 0.6 * hash(seed + i, 5.2)) / n, y = pb + 20 + hh / 2 + hash(i * 2.1, seed + 1) * Math.max(0, y1 - pb - hh - 56); if (!hit(u - wd / 2, u + wd / 2, y - hh / 2, y + hh / 2)) patch(G, F, bare, w + 0.5, u, y, wd, hh, seed + i * 7, { lip: 0.5, low: 0.9, k: 0.86 }); } }
 }
 
 /** 스테이지 줄 t:'fence' 한 줄 (x0,z0 → x1,z1, y, h, kind 'iron'｜'wood', face): 쇠 난간 또는 나무 울타리 */
@@ -281,6 +358,8 @@ export function dressRoof(G, P) {
   G.quad(K.mat ?? 'slate', [x0, ye, z0], [x1 - x0, 0, 0], sl, nn, { cell: 56, vary: 0.3, shade: (px, py) => 0.82 + 0.18 * sm(0, 30, py - ye) });
   G.quad('timber', [x0, ye - 7, z0], [x1 - x0, 0, 0], [0, 7, 0], [0, 0, -1], { k: 0.7, vary: 0.2 });                        // 처마 널
   G.quad('timber', [x0, ye - 7, z0], [x1 - x0, 0, 0], [0, 0, ov], [0, -1, 0], { k: 0.35, vary: 0, keep: true, underY: 0 });   // 처마 밑
+  if (WEAR.age && K.mat !== 'thatch') { const nt = Math.max(2, Math.round((x1 - x0) / 72)); for (let i = 0; i < nt; i++) { const cx = x0 + (x1 - x0) * (i + 0.5) / nt; G.box('timber', cx - 3.2, ye - 15, z0 + 1.5, cx + 3.2, ye - 7, z0 + ov, { faces: 'FLR', k: 0.62, vary: 0.1 }); } }   // DETAIL: beam ends under the eaves (rafter tails)
+  if (WEAR.age && K.mat === 'thatch') { const nt = Math.max(3, Math.round((x1 - x0) / 38)); for (let i = 0; i < nt; i++) { const a = x0 + (x1 - x0) * i / nt, b = x0 + (x1 - x0) * (i + 1) / nt, dr = 4 + 7 * hash(i, P.x + P.z); G.quad4('thatch', [a, ye - 7 - dr, z0 - 1.5], [b, ye - 7 - dr * (0.4 + 0.6 * hash(P.x, i)), z0 - 1.5], [b, ye + 2, z0 - 0.5], [a, ye + 2, z0 - 0.5], [0, 0.2, -0.98], { k: 0.8, vary: 0.3 }); } }   // DETAIL: the ragged fringe of a thatched eave
   G.box('stone', x0 - 2, y + h - 3, zm - 5, x1 + 2, y + h + 4, zm + 5, { faces: 'FLRT', k: 0.8, tint: [0.7, 0.72, 0.9], vary: 0 });   // 용마루
   for (const [gx, sx] of [[P.x, -1], [P.x + P.w, 1]]) {   // 박공 벽 + 박공널
     G.tri(K.gable ?? 'plaster', [gx, y, P.z], [gx, y, P.z + P.d], [gx, y + h, zm], [sx, 0, 0], { shade: (px, py) => 0.7 + 0.3 * sm(0, 40, y + h - py) });
@@ -330,7 +409,9 @@ export function dressFloor(G, P, W) {
   }
   if (P.walk === false && !K.sides) return;
   const sd = { cell: 64, k: 0.55, vary: 0.1 }, t = P.thick ?? 220;
-  G.quad('stone', [x0, y - t, z0], [P.w, 0, 0], [0, t, 0], [0, 0, -1], sd);
+  const sk = WEAR.age ? K.skirt ?? (Math.abs(z0) < 1 && y === 0 && P.w >= 200) : false;   // DETAIL: the stage's front edge is a retaining wall with a foot (kit.skirt: true | 'plain' | false; by itself for ground floors at z 0)
+  if (sk) skirt(G, x0, x1, y, t, z0, Math.round(x0 * 0.13 + 7), sk === 'plain');
+  else G.quad('stone', [x0, y - t, z0], [P.w, 0, 0], [0, t, 0], [0, 0, -1], sd);
   G.quad('stone', [x0, y - t, z1], [0, 0, -P.d], [0, t, 0], [-1, 0, 0], sd);
   G.quad('stone', [x1, y - t, z0], [0, 0, P.d], [0, t, 0], [1, 0, 0], sd);
 }

@@ -1085,7 +1085,7 @@ export default class V2Game extends Scene {
     }
     // people and usable spots: who is here, who looks at the hero, the one prompt on offer (none while a fight is near)
     const modal = this.hud.modal ?? null;
-    this.state.prompts = this.people.tick(this, pdt > 0 ? pdt : 0, h, E, this._flagFn, this.hidden, this.locked || !!modal || h.dead || !!this._go);
+    this.state.prompts = this.people.tick(this, pdt > 0 ? pdt : 0, h, E, this._flagFn, this.hidden, this.locked || !!modal || h.dead || !!this._go || (this.host !== null && this.host.locks()));   // STORY HOOK: no prompt while a cut holds the hero
     if (this.people.talking) { if (modal === 'dialog' || this.ui.dialog) this._talkT = 0; else if ((this._talkT += dt) > 0.5) this.people.talking = null; }
     // fires, embers, smoke, mist of the area (effects engine), culled off screen
     if (fx) this.anchors.tick(this, fx, fdt, this.vp, cam.tx, cam.tz);
@@ -1120,7 +1120,7 @@ export default class V2Game extends Scene {
     // what the cut-glass HUD shows (docs/v2/UI_API.md 1): candles from health, enemies of the fight at hand, which pad buttons work
     { const hp = sim.hero.hp > 0 ? sim.hero.hp : 0, c = s.candles; c.lit = hp / (s.heroHpMax || 1) * c.max; }
     s.left = this.area.test ? 0 : awake;
-    { const H = this.host; if (H !== null) { s.objective = H.objective; if (H.pillOn && s.prompts === this.people.none) s.prompts = H.pills; } }   // STORY HOOK: the objective under the section name, the tutorial pill
+    { const H = this.host; if (H !== null) { s.objective = H.objective; s.cut = H.locks(); if (H.pillOn && !s.cut && !this.hud.modal && s.prompts === this.people.none) s.prompts = H.pills; } }   // STORY HOOK: the objective under the section name, the tutorial pill; state.cut = a camera cut or a lockInput step holds the hero (no pill here, no pad in the HUD)
     { const bs = sim.bossState ? sim.bossState() : null, B = this._bossS;   // the boss bar: name, health, stagger and act straight from the rules (PLAY_API 7)
       if (bs) { B.id = bs.id; B.name = bs.name; B.hp = bs.hp; B.hpMax = bs.hpMax; B.stagger = bs.stagger; B.phase = bs.phase; B.kneel = bs.kneel; B.fled = bs.fled; B.staggered = bs.staggered;
         B.sub = bs.kneel ? '종을 길게 울려라' : bs.fled ? (this.area.era === 'past' ? '오늘 밤으로 쫓겨났다' : '그 밤으로 달아났다') : bs.staggered ? '비틀거린다' : bs.sub || (bs.phase === 2 ? '둘째 막' : ''); s.boss = B; }
@@ -1140,23 +1140,24 @@ export default class V2Game extends Scene {
     const R = sec.cam, snap = c.snap, SH = this.host !== null ? this.host.shot : null;   // STORY HOOK: SH = a camera shot of the story (storyhost.js SHOTS) bends pitch, distance and height of the section rig
     const k = snap ? 1 : 1 - Math.exp(-dt * 2.3), kt = snap ? 1 : 1 - Math.exp(-dt * 8.5), kf = snap ? 1 : 1 - Math.exp(-dt * 2);   // kt 5.5 → 8.5: 달리는 영웅(410 px/초) 뒤로 처지는 거리 75 → 48 px(예전 275 px/초 때의 50 px 와 같게; 화면에서 82 → 54 px, 흔들림 0.1 px/틱) · kf 1.5 → 2: 앞쪽 여백이 방향을 조금 더 빨리 따른다
     c.face += (clamp(h.dirX ?? h.facing ?? 1, -1, 1) - c.face) * kf;   // lead follows the facing continuously (no flip when the stick reverses)
-    c.yaw += (R.yaw + (R.yawLead ?? 0.03) * c.face - c.yaw) * k;
+    c.yaw += ((SH && SH.yaw !== undefined ? SH.yaw : R.yaw + (R.yawLead ?? 0.03) * c.face) - c.yaw) * k;   // STORY HOOK: a shot may bring its own yaw (seen from the side)
     c.pitch += ((SH ? SH.pitch : R.pitch) - c.pitch) * k; c.dist += ((SH ? SH.dist : R.dist) - c.dist) * k; c.lookY += ((SH ? SH.lookY : R.lookY) - c.lookY) * k;
     c.leadX += ((R.leadX ?? 0) * c.face - c.leadX) * k; c.leadZ += ((R.leadZ ?? 0) - c.leadZ) * k;
     if (c.zf == null) c.zf = R.zFollow; c.zf += (R.zFollow - c.zf) * k;
     let tx = h.x + c.leadX, tz = 130 + (h.z - 130) * c.zf + c.leadZ;
     c.ck += ((R.center?.k ?? 0) - c.ck) * k;
     if (c.ck > 0.001) { const C = R.center ?? c.lastCenter; if (C) { c.lastCenter = C; tx += (C.x - tx) * c.ck; tz += (C.z - tz) * c.ck; } }
+    const SA = SH ? SH.at ?? null : null; if (SA) { tx = SA[0]; tz = SA[1]; }   // STORY HOOK: a shot that looks at a place (the bell between the two keepers), not at the hero - then without the section's side limits
     const gy = h.onGround ? h.y : Math.min(h.y, c.ty + 40 > h.y ? c.ty : h.y - 40);
     c.tx += (tx - c.tx) * kt; c.tz += (tz - c.tz) * kt; c.ty += (gy - c.ty) * (snap ? 1 : 1 - Math.exp(-dt * 4));
     const cp = Math.cos(c.pitch), sp = Math.sin(c.pitch);
     const tall = Math.max(0, this.game.viewH - 540);
-    c.tallK += ((R.tallK ?? 0.4) - c.tallK) * k;
+    c.tallK += ((SH && SH.tallK !== undefined ? SH.tallK : R.tallK ?? 0.4) - c.tallK) * k;
     const lx = c.tx, ly = c.ty + c.lookY + tall * c.tallK, lz = c.tz;
     let px = lx - Math.sin(c.yaw) * cp * c.dist; const py = ly + sp * c.dist, pz = lz - Math.cos(c.yaw) * cp * c.dist;
     const kx = snap ? 1 : 1 - Math.exp(-dt * 3);
     c.minX += ((R.minX ?? -1e5) - c.minX) * kx; c.maxX += ((R.maxX ?? 1e5) - c.maxX) * kx;
-    px = clamp(px, c.minX, c.maxX);
+    if (!SA) px = clamp(px, c.minX, c.maxX);
     const kp = snap ? 1 : 1 - Math.exp(-dt * 14);
     c.px += (px - c.px) * kp; c.py += (py - c.py) * kp; c.pz += (pz - c.pz) * kp;
     const fx = lx - c.px, fy = ly - c.py, fz = lz - c.pz, fl = hyp(fx, fy, fz) || 1;
