@@ -522,7 +522,9 @@ export const EVENTS = [
     ['wait', 0.25],
     ['say', 'ending.bread'],
     ['clearFlag', 'pending_change'],
-    ['hideActor', 'elise', 'eshville_past'],
+    // STORY2-VERIFY (11-19): Elise is no longer hidden here. She used to vanish from the close picture the tick the last line was turned, three seconds before the
+    // crossing (the hunter and Lotte still stood there). Now she stands right of the bell through the hundred years' shot and crosses with him: tonight's side
+    // (ev_ending_home, its second step) takes her out of that night, and a crossing that was refused leaves her where she is.
     ['setFlag', 'bells_answered'],                            // STORY2: tonight is built from it (the fires are out, the dead are gone) - set before the crossing, so that he arrives in the changed night; it used to be set in the middle of tonight's scene and the village was built a second time between the last line and the ending card
     ['camera', 'years', 3],
     ['bellCross', { years: true }],

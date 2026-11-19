@@ -342,29 +342,36 @@ export default function (T) {
     const z2 = await U("s.modal === 'end'", 400, 6); ok(z2.ticks >= 0 && z2.ended === 'r1', `played on from that save the card is reached (ended ${z2.ended}, host warnings ${z2.warn}, area ${z2.area})`);
   });
 
-  C('w_busts_cost', "the busts at load, measured at the network: a plain load, a load without them, a load where each takes 3 s - and the first page of the first speaker then", async () => {
+  // (the first try of this chain reloaded the harness page with a route on the busts: a reload takes them from the page's cache and the route sees nothing - 0 files in
+  //  every mode. Now: a new context of the same browser per load = a cold cache, the route set before the first request.)
+  C('w_busts_cost', "the busts at load, measured at the network with a cold cache: a plain load, a load without them, a load where each takes 3 s - and Lotte's first page then", async () => {
     await boot(after('ev_keepers')); await idle();
-    const pg = page(), sv = after('ev_keepers'), ready = () => pg.waitForFunction(() => window.__v2?.id === 'g' && (window.__v2.ready || window.__v2.error) && window.__v2?.stats?.hud === 'ui', null, { timeout: 120000 });
-    const ring = () => ev(() => { const sc = window.__v2.scene, d = sc.area.interact.find((q) => q.id === 'big_bell'); sc.emit('interact', { id: d.id, kind: d.kind, event: d.event ?? null, data: d.data ?? null, locked: d.locked ?? null, spot: d, ring: true }); return true; });
-    const load = async (mode) => {
-      const F = []; await pg.unroute('**/portraits/**').catch(() => {});
-      await pg.route('**/portraits/**', async (route) => { const t = Date.now(), q = { f: route.request().url().split('/').pop(), t0: t }; F.push(q); try { if (mode === 'none') { await route.abort(); q.t1 = Date.now(); return; } if (mode === 'slow') await new Promise((r) => setTimeout(r, 3000)); const r = await route.fetch(); const b = await r.body(); q.bytes = b.length; await route.fulfill({ response: r, body: b }); q.t1 = Date.now(); } catch (e) { q.err = String(e).slice(0, 60); } });
-      await ev((s) => { localStorage.setItem('bn.v2.save', s); }, sv);
-      const t0 = Date.now(); await pg.reload(); await ready(); const t1 = Date.now(); await install();
-      const B = await S('busts'), first = F.length ? Math.min(...F.map((q) => q.t0)) - t0 : null, last = F.filter((q) => q.t1).length ? Math.max(...F.filter((q) => q.t1).map((q) => q.t1)) - t0 : null;
-      return { mode, readyMs: t1 - t0, files: F.length, bytes: F.reduce((a, q) => a + (q.bytes ?? 0), 0), firstReqMs: first, lastDoneMs: last, pre: B.pre, waitMs: B.waitMs, loadMs: B.loadMs };
+    const url = page().url(), br = page().context().browser(), sv = after('ev_keepers'), dir = `${OUT}/${dev()}`; fs.mkdirSync(dir, { recursive: true });
+    const load = async (mode, then) => {
+      const cx = await br.newContext({ ...contextOptions(dev()) }), pg = await cx.newPage(), F = [];
+      try {
+        await pg.addInitScript((s) => { try { if (window.top !== window) return; if (sessionStorage.getItem('__sv_seeded')) return; sessionStorage.setItem('__sv_seeded', '1'); localStorage.setItem('bn.v2.save', s); } catch { /* storage */ } }, sv);
+        await pg.route('**/portraits/**', async (route) => { const q = { f: route.request().url().split('/').pop(), t0: Date.now() }; F.push(q); try { if (mode === 'none') { await route.abort(); q.t1 = Date.now(); return; } if (mode === 'slow') await new Promise((r) => setTimeout(r, 3000)); const r = await route.fetch(), b = await r.body(); q.bytes = b.length; await route.fulfill({ response: r, body: b }); q.t1 = Date.now(); } catch (e) { q.err = String(e).slice(0, 60); } });
+        const t0 = Date.now(); await pg.goto(url);
+        await pg.waitForFunction(() => window.__v2?.id === 'g' && (window.__v2.ready || window.__v2.error), null, { timeout: 180000 }); const t1 = Date.now();
+        const B = await pg.evaluate(() => { const sc = window.__v2.scene; return { pre: sc.hud.portraitsReady ?? null, waitMs: sc.bustsWaitMs ?? null, loadMs: sc.loadMs ?? null }; });
+        const done = F.filter((q) => q.t1), R = { mode, readyMs: t1 - t0, files: F.length, bytes: F.reduce((a, q) => a + (q.bytes ?? 0), 0), firstReqMs: F.length ? Math.min(...F.map((q) => q.t0)) - t0 : null, lastDoneMs: done.length ? Math.max(...done.map((q) => q.t1)) - t0 : null, ...B };
+        if (then) await then(pg, R);
+        return R;
+      } finally { await cx.close(); }
     };
-    const A1 = await load('plain'), N1 = await load('none'), A2 = await load('plain'), N2 = await load('none');
-    note(`plain load: ${J(A1)}`); note(`without the busts: ${J(N1)}`); note(`plain load again: ${J(A2)}`); note(`without again: ${J(N2)}`);
-    ok(A1.files >= 13 && A2.files >= 13, `a plain load asks for ${A1.files} / ${A2.files} bust files (${A1.bytes} bytes); ready after ${A1.readyMs} / ${A2.readyMs} ms against ${N1.readyMs} / ${N2.readyMs} ms without them; the scene's own wait for them: ${A1.waitMs} / ${A2.waitMs} ms`);
-    // every bust takes 3 s: what does the load wait, and what is in the frame on the first page?
-    const SL = await load('slow'); note(`each bust 3 s late: ${J(SL)}`);
-    await ring(); const b0 = await U("s.modal === 'dialog' && s.line.includes('빵은')", 30, 0); await shot('slowbust_t0'); await S('tick', 3); await shot('slowbust_t3');
-    const im0 = await ev(() => { const L = []; for (const e of performance.getEntriesByType('resource')) if (/portraits\//.test(e.name)) L.push(e.name.split('/').pop()); return L.length; });
-    ok(b0.ticks >= 0, `with every bust 3 s late the load took ${SL.readyMs} ms (the scene waited ${SL.waitMs} ms for them) and Lotte's first page opened ${b0.ticks} ticks after the ring (resource entries for busts by then: ${im0})`);
-    await pg.waitForTimeout(3500); await S('tick', 2); await shot('slowbust_later');
-    // and the plain case once more for the still of tick 0 and tick 3 of the box
-    await load('plain'); await ring(); const c0 = await U("s.modal === 'dialog' && s.line.includes('빵은')", 30, 0); await shot('plainbust_t0'); await S('tick', 3); await shot('plainbust_t3'); void c0;
-    await pg.unroute('**/portraits/**').catch(() => {});
+    const firstPage = (tag) => async (pg, R) => {
+      const n = await pg.evaluate(() => { const g = window.__game, v = window.__v2, sc = v.scene, d = sc.area.interact.find((q) => q.id === 'big_bell'); g._pageHidden = true; for (let i = 0; i < 240 && (sc.hud.modal || sc.host.locks() || sc._go || sc.fadeA > 0.01); i++) g.tick(1 / 60); sc.emit('interact', { id: d.id, kind: d.kind, event: d.event ?? null, data: d.data ?? null, locked: d.locked ?? null, spot: d, ring: true }); for (let i = 0; i < 1500; i++) { if (sc.hud.modal === 'dialog') { try { g.alpha = 1; g.render(); } catch { /* */ } return i; } g.tick(1 / 60); } return -1; });
+      R.firstPageAfterTicks = n; R.firstPageMsAfterReady = null; await pg.screenshot({ path: `${dir}/sv_${tag}_t0.png` });
+      await pg.evaluate(() => { const g = window.__game; for (let i = 0; i < 3; i++) g.tick(1 / 60); try { g.alpha = 1; g.render(); } catch { /* */ } }); await pg.screenshot({ path: `${dir}/sv_${tag}_t3.png` });
+      R.preAtFirstPage = await pg.evaluate(() => window.__v2.scene.hud.portraitsReady ?? null);
+      if (tag === 'slowbust') { await pg.waitForTimeout(3600); await pg.evaluate(() => { const g = window.__game; for (let i = 0; i < 2; i++) g.tick(1 / 60); try { g.alpha = 1; g.render(); } catch { /* */ } }); await pg.screenshot({ path: `${dir}/sv_${tag}_later.png` }); R.preLater = await pg.evaluate(() => window.__v2.scene.hud.portraitsReady ?? null); }
+      put(`     still ${dir}/sv_${tag}_t0.png · _t3.png${tag === 'slowbust' ? ' · _later.png' : ''}`);
+    };
+    const A1 = await load('plain', firstPage('plainbust')), N1 = await load('none'), A2 = await load('plain'), N2 = await load('none');
+    note(`plain load (cold): ${J(A1)}`); note(`without the busts: ${J(N1)}`); note(`plain load again: ${J(A2)}`); note(`without again: ${J(N2)}`);
+    ok(A1.files >= 13 && A2.files >= 13, `a plain cold load asks for ${A1.files} / ${A2.files} bust files (${A1.bytes} bytes): first request ${A1.firstReqMs} / ${A2.firstReqMs} ms, last one done ${A1.lastDoneMs} / ${A2.lastDoneMs} ms after the navigation began; the game ready after ${A1.readyMs} / ${A2.readyMs} ms against ${N1.readyMs} / ${N2.readyMs} ms without them; the scene's own wait for them: ${A1.waitMs} / ${A2.waitMs} ms`);
+    const SL = await load('slow', firstPage('slowbust')); note(`each bust 3 s late: ${J(SL)}`);
+    ok(SL.files >= 13 && SL.readyMs < A1.readyMs + 2500, `with every bust 3 s late the game is ready after ${SL.readyMs} ms (the scene waited ${SL.waitMs} ms: its cap is 1.2 s); Lotte's first page opened ${SL.firstPageAfterTicks} ticks after the ring; busts ready then: ${J(SL.preAtFirstPage)}, 3.6 s later: ${J(SL.preLater)}`);
   });
 }
