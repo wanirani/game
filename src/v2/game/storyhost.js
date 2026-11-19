@@ -55,6 +55,7 @@ export class StoryHost {
     this.api = this._api();
     this.story = (name, data) => {
       if (name === 'interact' && data && data.kind === 'rest') this.restSpot = { area: this.sc.area?.id ?? null, def: data.spot ?? data };   // CHAPTER
+      if (name === 'area.enter' && !(data && data.refused)) this.dirty = false;   // STORY2 (11-19): this area has just been built from the flags as they are. (A flag set in the area he left - elise_found under the altar - stayed "to be shown" through the journey, and the village was built a second time right after the two keepers' scene: 「불러오는 중…」)
       if (name === 'area.enter') { const id = this.sc.area?.music; if (id && MUSIC[id] && id !== this.musicId) this.api.music(id); }   // each night has its own tune (GDD 2.4 rule 1); a track the build does not ship is skipped by the audio module
       try { this.st.story(name, data, this.api); } catch (e) { console.error('[v2g] story failed on', name, e); }
     };
@@ -126,7 +127,7 @@ export class StoryHost {
     for (let i = W.length - 1; i >= 0; i--) { const w = W[i]; if ((w.t -= dt) > 0) continue; W.splice(i, 1); try { w.fn(); } catch (e) { console.error('[v2g] story wait', e); } }
     if (this.shot && this.shotT > 0 && (this.shotT -= dt) <= 0) this._shotEnd();
     if (this.pillOn && (this.pillT -= dt) <= 0) this.pillOn = false;
-    if (this.dirty && !this.st.busy && !this.sc._go && !this.sc.xing && !this.sc.hud.modal && this.sc.ready) { this.dirty = false; this.sc.rebuildArea(); }   // a flag this area is built from changed: show it once the scene is over
+    if (this.dirty && !this.ended && !this.st.busy && !this.sc._go && !this.sc.xing && !this.sc.hud.modal && this.sc.ready) { this.dirty = false; this.sc.rebuildArea(); }   // a flag this area is built from changed: show it once the scene is over (STORY2: never between the story's end step and its card - the next load shows it)
     const M = this.moves, sc = this.sc;
     if (this.walk !== null) this._walkTick(this.walk, dt);   // STORY2: the hero's walk to a mark
     for (let i = M.length - 1; i >= 0; i--) {
@@ -306,6 +307,7 @@ export class StoryHost {
         const was = H.shot;
         H.shot = shot && SHOTS[shot] ? SHOTS[shot] : null;
         if (was !== H.shot && ((was && was.cut) || (H.shot && H.shot.cut))) sc.cam.snap = true;   // STORY2: a shot marked `cut` is cut to and cut away from (no travel between two far places)
+        if (shot === 'years') { try { sc.cx?.prebuild?.(); } catch { /* the crossing builds it when it begins */ } }   // STORY2: the hundred years are the breath before a crossing - the other night is built meanwhile, from the flags as they are now and from where he stands now (his mark)
         if (!H.shot || !(seconds > 0)) { done?.(); return; }
         H.shotT = seconds; H.shotDone = done ?? null; H.shotLock = true;
         if (H.shot.shake) sc.fx?.feel.addTrauma(H.shot.shake); if (H.shot.flash) sc.fx?.feel.flash(1, 1, 1, 0.5);
@@ -328,8 +330,10 @@ export class StoryHost {
   }
   /** a world flag changed: hand all of them to the scene; when the area the hero stands in is built from it, rebuild once the story is idle */
   _worldChanged(name) {
-    const sc = this.sc;
+    // STORY2 (11-19): only a flag whose value really changed asks for the rebuild, and never one marked `quiet` in FLAGS (it only says where people stand, and the
+    // sequence that sets it has already walked them there - keepers_promised, elise_home: the next load builds the area from it all the same)
+    const sc = this.sc, was = !!sc.worldFlags?.[name];
     sc.setWorldFlags(this.worldFlags(), { reload: false });
-    const L = this.areaFlags[sc.area?.id]; if (L && L.includes(name)) this.dirty = true;
+    const L = this.areaFlags[sc.area?.id]; if (L && L.includes(name) && was !== !!sc.worldFlags?.[name] && !this.STORY.FLAGS?.[name]?.quiet) this.dirty = true;
   }
 }

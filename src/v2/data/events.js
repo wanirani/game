@@ -523,6 +523,7 @@ export const EVENTS = [
     ['say', 'ending.bread'],
     ['clearFlag', 'pending_change'],
     ['hideActor', 'elise', 'eshville_past'],
+    ['setFlag', 'bells_answered'],                            // STORY2: tonight is built from it (the fires are out, the dead are gone) - set before the crossing, so that he arrives in the changed night; it used to be set in the middle of tonight's scene and the village was built a second time between the last line and the ending card
     ['camera', 'years', 3],
     ['bellCross', { years: true }],
     ['lockInput', false],                                     // (tonight's side holds him again in the same tick - ev_ending_home; a crossing that was refused must not leave him held)
