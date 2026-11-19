@@ -189,3 +189,76 @@ hud.showDialog({
 - 연대기 · 지도 · 가게 · 종 편지 · 저장 화면(GDD §9.2)은 이 구역의 이번 범위 밖이다. `glassPanel` · `plate` · `bakeText` 로 같은 말투를 낼 수 있다.
 - 캔버스 HUD 는 게임 캔버스의 해상도를 따른다(화질 등급이 낮으면 조금 무르다). 단추 층은 늘 기기 해상도(최대 3배)다.
 - 아이콘은 「은 세공 + 서리 낀 수정」 한 벌(생성 그림, `tools/higgsfield/manifest_ui.json`)이고 밝기를 투명도로 바꿔 유리 위에 얹었다. 그림마다 어두운 그늘을 구워 넣어 밝은 불빛 위에서도 읽힌다. 새 아이콘은 같은 프롬프트 꼬리(`style_suffix`)로 만들고 `tools/v2/ui_atlas.py` 의 `SPRITES` 에 한 줄 더한다.
+
+## 10. 화면들 — 연대기 · 가방 · 가게 · 카드 (SCREENS, 2026-11-19; 영어)
+
+Files: `src/v2/ui/model.js` (what the screens show - pure, no DOM), `screens.js` (the three full screens), `cards.js` (the rising cards and the book chip), `choice.js` (the choice cards), `icons.js` (pictures drawn in code in the kit's style: `bakeIcon(name, size, scale)` → a cached canvas, `hasIcon(name)`). Words: `TEXT.screens` (`src/v2/data/text.js`). Nothing here is a DOM element or a new image file; the shop's bust is the dialogue's own portrait file.
+
+Rules all of them keep: laid out inside the safe area for fold_open first and phone2 second; every touch target is 56 CSS px or more; a screen opens in 0.16 s and closes in 0.12 s; while a screen is open `hud.modal === 'pause'` (the scene stops the rules as for the panel; story shot timers, walks and waits stand still and go on where they were), the pad is off and the HUD's window listeners take every press (a press begins a drag of the list, or is a tap when the finger lifts where it came down - nothing is handed on to the shell, so the tap that closes a screen swings no whip); `cancel` / `menu` closes the top screen; a screen cannot open while a crossing, a load or a message is up (`openScreen` → `false`). Cards and the chip stop nothing and hold nothing. Everything shown comes from the runner's state through the model, so a save and load, a crossing and a fall leave a screen exactly as it was.
+
+### 10.0 The model — `createHud(game, { model: () => scene.host?.model ?? null })`
+
+`createModel({ STORY, st, coins, setCoins, area, reso, fillReso })` (the story host makes one: `scene.host.model`). What the screens remember themselves is four small things, saved by the scene as `save.scr = { read, chip, dr, guide }` (ENGINE_API §12.2).
+
+| member | meaning |
+|---|---|
+| `rev` · `touch()` | `rev` changes whenever something a screen shows may have changed (a flag, an item, a purchase, an arrival); the screens bake again only then |
+| `book()` | the rows of the chronicle in `order`: `{ id, kind, era, title, L: { title, text } ｜ null, R: { title, text } ｜ null, hint, isNew, key }`. `kind`: `'line'` a written line on the page of its `era` · `'sealed'` a line the chronicle has not finished (title only) · `'blank'` nothing done (an empty frame, the hint) · `'half'` the deed of that night is done (`L`), tonight has not been seen · `'pair'` cause (`L`) and consequence (`R`) |
+| `seen(row)` · `unread()` | a new row has been on screen (it stops glowing; kept in `save.scr.read`) · how many still glow |
+| `chip` · `wrote()` · `opened()` | the book chip is up · the story's chronicle step wrote an entry · the book was opened |
+| `bag()` | `{ story: [...], use: [...] }`, a thing = `{ id, name, desc, icon, n, kind }` (`use` = `ITEMS` of kind `food` and the draughts) |
+| `shop(id)` · `buy(id, goodId)` | what the shop screen shows `{ id, title, keeper, portrait, line, say, goods: [{ id, name, line, price, icon, limit, have, state }] }`, `state` = `'ok'` or why not: `'poor' ｜ 'full' ｜ 'fullReso' ｜ 'lit' ｜ 'noBlank'` · buy one → `{ ok, why, good }` |
+| `dr` · `draughtUsed()` | draughts carried (the scene copies it to `sim.hero.draughts` after every new Sim) · the rules used one |
+| `guide` · `guideLine()` · `enterArea(id)` | the place (both its nights) the guide candle burns in · the line under the objective (`''` = none) · it goes out when the hero has left that place |
+| `coins()` | the silver (the scene's `brk.coins`) |
+| `out()` · `load(o)` · `reset()` | the save. A save of an earlier build has no `scr`: the chip is up when anything was ever written, every written row is new |
+| `T` · `sound(name)` | `TEXT.screens` · set by the host: plays a feel-table entry |
+
+### 10.1 연대기 — `hud.openScreen('chronicle', { at?: entryId, onClose? })`
+
+An open book of two pages: left **「그 밤 · 1697」**, right **「오늘 밤 · 1797」**, in the night badge's own colours (`night_past` red, `night_now` blue-silver; the two badge sprites stand beside the page heads). One row per `CHRONICLE` entry; an entry is a title and one or two lines. A consequence sits on the same row as its cause and a thin line joins the two cells across the fold (`pair`); a deed done whose consequence has not been seen tonight shows the left cell and an empty frame with 「오늘 밤에 가 보면 안다」 on the right (`half`); a blank is an empty frame and the entry's one hinting line (`blank`). A new row glows (a pulsing gold rim) until it has stood wholly inside the window for 0.8 s. The list is dragged with the finger and keeps moving when let go (momentum on the game's clock, a soft stop at both ends); `up` / `down` scroll by key. Rows are baked into a pool of 14 canvases, only those near the window, one a frame ahead of a fling.
+
+Opened by: the pause row 「연대기」 (closing it returns to the panel with that row chosen); the **book chip**; a tap on the card 「연대기에 적혔다 — …」 (`at` = that entry: it is centred and glows); and once by itself after the ending card (`src/v2/game/chapter.js` `_book()`: the card's `onDone` opens the book at the chapter's last entry, closing it is `ch.leave()` - ENGINE_API §12.4).
+
+### 10.2 가방 — `hud.openScreen('bag', { onClose? })`
+
+Two columns: **「이야기의 물건」** (keys, tools, keepsakes) and **「쓰는 것」** (food, the draughts). A thing is its picture (`ITEMS[id].icon`, drawn in code - the silver key is pale and whole, the iron one dark, rusted and bent), its name, `×n` where it has a count, and one line (`desc`). The silver stands in the header (「은화 N」). Opened by the pause row 「가방」.
+
+### 10.3 카드 — `hud.card(kind, o)`
+
+| call | shows |
+|---|---|
+| `hud.card('chronicle', { id, title })` | 「연대기에 적혔다 — <title>」 for 2.5 s, with a small arrow: **a tap opens the book at that entry** (a card that can be pressed waits for a dialogue box to close before it fades) |
+| `hud.card('item', { name, icon, n })` | 「얻었다 — <name>」 (`×n` above one) with the thing's picture, 2 s |
+| `hud.card('note', { text, icon, kind })` | one line with a picture: a thing the story took away (`ITEMS[id].gone`: 「먹었다 — 로테의 빵」), a draught used. `kind`: `'plain'` (no gold rim) · `'warn'` (red) |
+
+The cards stand at the right edge under the pause button (the place §6 keeps for item notices) - never on the banner's, the toasts' or the dialogue's box. As many as fit above the pad's buttons are up at once (three on the Fold, one on a phone); up to eight wait their turn. They rise in 0.18 s, are baked once and cost one `drawImage` a frame. They never stop the game and hold nothing. With the old pad's HUD the same words are a notice.
+
+### 10.4 책 조각 (the book chip)
+
+A small round book with a gold dot, **left of the pause button**, while `model.chip` is set: something was written and the book has not been opened since. It comes up with the chime `book.chime` and stays until the book is opened (through a save and load too). Its target is 56 CSS px; a tap opens the chronicle. The touch that opens it goes nowhere else (`createPad` `claims`) - no roll, no swing.
+
+### 10.5 갈래 카드 (§4 의 `choices`)
+
+Where a dialogue offers a choice, each option is a large card: its picture (`icon`), its name (`label`) and the one line the story gives it (`line`) - `d.choiceMeta = [{ icon, line }, …]` beside `d.choices` (DATA_FORMAT §3). **A choice is confirmed by a second tap**: the first press on a card chooses it (it lifts, its rim turns gold, 「한 번 더 누르면 정한다」 appears), the second press on the same card decides. Why not a hold: a hold cannot be seen, it is the bell's own gesture in this game (hold to cross), and a second tap works the same with a finger, a key and a pad button. A stray tap cannot choose: the cards take nothing for 0.35 s after they come up, none is chosen beforehand, a press beside the cards lets go of the chosen one, the press that turns the last page no longer finishes a choice, and at least 0.12 s must pass between the choosing and the deciding press. Keys: `left / up` · `right / down` choose, `confirm` (`attack`, `jump`) chooses the first card when none is chosen and otherwise decides. The built-in HUD of the old pad shows the same cards (`attachChoiceCards(hud, game, text, sound)` - the story host calls it when a choice comes up; that HUD used to take the first choice unasked).
+
+### 10.6 가게 — `hud.openScreen('shop', { shop: 'rook', onClose })`
+
+The keeper's bust, name and line of this night on the left (`SHOP[id].line.now / past`), his goods on the right - a picture, the name, one line, the price in silver - and the hero's silver in the header (「가진 은화 N」). **Buy = tap a row, then tap it again** (the first press chooses: 「한 번 더 누르면 산다」; a press elsewhere lets go). A row that cannot be bought says why on the row (「은화가 모자라다」 · 「더 들 수 없다」 · 「울림이 이미 가득하다」 · 「켜져 있다」 · 「지금은 일러 줄 빈칸이 없다」), and a press on it shakes the row, plays `shop.deny` and puts the keeper's own refusal in place of his greeting; a purchase plays `shop.buy` and his thanks. Keys: `up / down` choose, `confirm` buys (twice), `cancel` closes. The story's step `['shop', id]` opens it and waits until it is closed (DATA_FORMAT §7b); with the old pad's HUD there is no screen and one notice says so.
+
+### 10.7 HUD 의 작은 표시
+
+- **성수** (`model.dr` > 0): a small bottle and `×n` right of the candles (the boss bar keeps clear of it); `metrics().hud.draughts`. When the rules use one (`play.draught`) the card 「성수가 쓰였다 — 촛불 한 자루로 버틴다」 rises with `draught.use`.
+- **길잡이 초** (`model.guideLine()`): one small golden line with a candle under the objective - 「빈칸 — <where>」; `metrics().hud.guide`.
+- `metrics().hud.bannerRect` · `toastRects` · `objective` are the boxes the cards and the check keep clear of.
+
+### 10.8 일시정지 판의 줄
+
+`resume · chronicle · bag · settings · (extra…) · leave` - the two rows of the screens are there whenever `opts.model()` answers a model. Rows are 56 CSS px high; when they do not fit one above the other (phone2 with the scene's extra rows) they stand in two columns, down the first then down the second - the order of `metrics().pause.ids` and of the keys is the same either way, 「나가기」 is last. The panel can be opened in the middle of a story cut (§1 `cut`), and so can both screens: the story's shot timers, walks and waits stand still while `hud.modal` is `'pause'` and go on exactly where they were.
+
+### 10.9 검사 · 잰 값 (2026-11-19, headless Chromium, software canvas - not a device)
+
+`node tools/v2/screens_check.mjs [--devices fold_open,phone2] [--only node,pause,book,cards,bag,choice,shop,persist,cut,ending,alloc] [--out <dir>]`: the model on the story's own saves and the draught in the rules without a browser (35 lines), then every screen and card opened by touch through the pointer handlers in game time (87 lines a device): layout inside the safe area, nothing on the HUD's boxes, targets of 56 px, the game standing still behind a screen, no touch falling through, back / ESC, a save and load, a crossing and a fall with each screen's state, a purchase, an unaffordable one, the draught saving the hero once, a screen opened during a story cut, the book after the ending card and a reload there, allocation per frame. **fold_open 122 / 0, phone2 122 / 0** on the tree of 11-19 12:40.
+- Allocation with a screen open and still: 0 objects a frame in these files (sampled bytes: 5-12 B/frame, boxed numbers handed to canvas calls).
+- Thirty entries flung: 306 frames, script time median 0.0-0.1 ms, longest 1.0-1.3 ms, none over 8 ms; with every frame rastered by a read-back the median is 10-13 ms on this machine's software canvas (longest 27 ms) - a device with a GPU has to be measured on the device.
+- Not done on a real Fold: nobody has pressed these with a finger yet.
