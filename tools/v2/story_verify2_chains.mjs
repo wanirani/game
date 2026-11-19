@@ -355,6 +355,7 @@ export default function (T) {
         await pg.route('**/portraits/**', async (route) => { const q = { f: route.request().url().split('/').pop(), t0: Date.now() }; F.push(q); try { if (mode === 'none') { await route.abort(); q.t1 = Date.now(); return; } if (mode === 'slow') await new Promise((r) => setTimeout(r, 3000)); const r = await route.fetch(), b = await r.body(); q.bytes = b.length; await route.fulfill({ response: r, body: b }); q.t1 = Date.now(); } catch (e) { q.err = String(e).slice(0, 60); } });
         const t0 = Date.now(); await pg.goto(url);
         await pg.waitForFunction(() => window.__v2?.id === 'g' && (window.__v2.ready || window.__v2.error), null, { timeout: 180000 }); const t1 = Date.now();
+        await pg.waitForFunction(() => window.__v2?.stats?.hud === 'ui', null, { timeout: 30000 }).catch(() => {});
         const B = await pg.evaluate(() => { const sc = window.__v2.scene; return { pre: sc.hud.portraitsReady ?? null, waitMs: sc.bustsWaitMs ?? null, loadMs: sc.loadMs ?? null }; });
         const done = F.filter((q) => q.t1), R = { mode, readyMs: t1 - t0, files: F.length, bytes: F.reduce((a, q) => a + (q.bytes ?? 0), 0), firstReqMs: F.length ? Math.min(...F.map((q) => q.t0)) - t0 : null, lastDoneMs: done.length ? Math.max(...done.map((q) => q.t1)) - t0 : null, ...B };
         if (then) await then(pg, R);
