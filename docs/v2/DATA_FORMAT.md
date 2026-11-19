@@ -126,6 +126,7 @@ Special ids: `narrator` (no name plate = 해설), `kael` (the hero), `sign` (글
 ],
 ```
 
+- **Choice cards (SCREENS, 11-19):** an option may carry `icon` (a name of `src/v2/ui/icons.js`) and `line` (the one line the card shows under the name): `{ label: '은 열쇠', icon: 'key_silver', line: '은은 백 년 뒤에도 그대로다', pages: […], then: […] }`. The runner hands them on as `choiceMeta: [{ icon, line }, …]` beside `choices`; a choice is confirmed by a second tap on its card (UI_API §10.5).
 - **Page rule: at most 2 lines, each at most 30 Hangul-width characters** (`\n` between the lines). Longer speech = more pages. The check enforces it.
 - `who` is a `PEOPLE` id; `mood` picks `PEOPLE[who].moods[mood]` as the portrait. The object given to `showDialog` is the UI_API §4 shape plus `who` (the id — `narrator` and `sign` have an empty `speaker`; the UI may style `sign` as written text).
 - Kael's inner voice is written in round brackets `(…)`; the UI may draw it dimmer. He has no bust yet (`portrait: null`).
@@ -270,6 +271,18 @@ key_silver: {
   show: [],                                             // conditions for the entry to be listed at all (missing = always)
 }
 ```
+
+**Since 11-19 (SCREENS) - fields for the book of two pages** (UI_API §10.1), filled for every entry of the first piece:
+
+```js
+bell_cracked:  { …, kind: 'line', era: 'now' },        // a written line: the page it stands on - 'past' (그 밤 · 1697) | 'now' (오늘 밤 · 1797); missing = 'now'
+graveyard_key: { …, kind: 'blank',
+  did: ['key_entrusted'],                              // conditions: the deed of that night is done -> the left cell is written (`past`, under `pastTitle`)
+  pastTitle: '대장간에 맡긴 열쇠', nowTitle: '손자의 서랍', // the titles of the cause and of its consequence, joined across the fold
+  place: { area: 'eshville_past', at: '그 밤의 대장간', if: ['fell'] } },   // where the deed is done: what Rook's guide candle names while `if` holds
+```
+
+A blank's row goes `blank` (nothing done: an empty frame and `body` as the one hinting line) → `half` (`did` holds: the left cell is written, the right one waits) → `pair` (the story's `chronicle` step has written the entry: `now` under `nowTitle`). The words 「그 밤 — 」 / 「오늘 밤 — 」 at the start of `past` / `now` are not shown in the book - the page says it. A blank without `did` goes from `blank` straight to `pair`. A written line whose `unlock` does not hold yet shows its title only.
 
 ## 9. Flags — `FLAGS[name]`
 
