@@ -27,7 +27,7 @@ export function graveyard(era = 'now', flags = {}) {
   // off the terrace above it came down INSIDE the box and stood half buried. Now the head of the stair still stands: a landing 6 under the terrace that a body steps
   // onto (a solid WITH `walk`, 134 high - over the jump's 130, so it is no way up: the whip ring is), and goes off its broken end onto open ground; the fallen treads lie
   // flat before it (drawn only, 5 high). STUMP_H must stay over 130 and within STEP_DOWN 20 of TY.
-  else add('field', { t: 'prop', mesh: 'stairstump', x: 600, z: 1828, w: 120, d: 44, h: TY - 6, solid: 60, solidZ: 22, solidH: TY - 6, walk: true, old: now });
+  else add('field', { t: 'prop', mesh: 'stairstump', x: 600, y: 0, z: 1828, w: 120, d: 44, h: TY - 6, solid: 60, solidZ: 22, solidH: TY - 6, walk: true, old: now });   // (y: 0 - without it the prop is drawn on the ground it finds there: its own top)
   // walls
   add('road', { t: 'wall', x: 0, z: -60, w: 100, d: 960, h: 240, mat: 'facade', kit: { style: 'rubble', lower: 'fieldstone', faces: 'R', battlement: true, buttress: [200, 500, 800].map((u) => ({ side: 'R', u, h: 190, d: 20 })), hang: now ? [{ type: 'ivy', side: 'R', u: 350, y: 0, w: 100, h: 180, seed: 41 }, { type: 'ivy', side: 'R', u: 660, y: 0, w: 80, h: 140, seed: 43 }] : [{ type: 'ivy', side: 'R', u: 350, y: 0, w: 60, h: 100, seed: 41 }] } },
     { t: 'wall', x: 1100, z: -60, w: 100, d: 960, h: 240, mat: 'facade', kit: { style: 'rubble', lower: 'fieldstone', faces: 'L', battlement: true, buttress: [160, 460, 760].map((u) => ({ side: 'L', u, h: 190, d: 20 })) } },
