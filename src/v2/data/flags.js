@@ -1,6 +1,7 @@
 // Story flags: what each one means, who sets it, who reads it. Shape: docs/v2/DATA_FORMAT.md section 9.
 // `set` / `read` are recomputed by `node tools/v2/story_check.mjs --sync-flags` (ids of sequences, talk keys, area:<id>/<actor>, chronicle:<id>).
 // world: true = an area actor uses the flag in `when` (AREA_FORMAT section 4).
+// quiet: true = the flag only says where people stand and the sequence that sets it has already walked them there: the area the hero stands in is not built again for it (the next load builds from it).
 
 export const FLAGS = {
   promise: { means: '성당에서 엘리제와 약속했다 (종탑 문이 열린다)',
@@ -126,14 +127,14 @@ export const FLAGS = {
   elise_found: { means: '그 밤의 납골당에서 엘리제를 깨웠다', world: true,
     set: ['elise.asleep'],
     read: ['area:eshville_past/elise', 'elise.asleep', 'ev_keepers', 'retry.again', 'retry.line'] },
-  keepers_promised: { means: '로테와 엘리제가 종으로 약속했다 (엘리제가 그 밤의 종 곁에 선다)', world: true,
+  keepers_promised: { means: '로테와 엘리제가 종으로 약속했다 (엘리제가 그 밤의 종 곁에 선다)', world: true, quiet: true,
     set: ['ev_keepers'],
     read: ['ev_bell_cross', 'ev_ending', 'ev_ending_home', 'ev_keepers', 'lotte.fell'] },
-  elise_home: { means: '엘리제가 오늘 밤으로 돌아왔다',
+  elise_home: { means: '엘리제가 오늘 밤으로 돌아왔다', quiet: true,
     set: ['ev_ending_home'],
     read: ['alberto.church', 'door.inn', 'elise.promise', 'ev_bell_cross', 'ev_ending', 'ev_ending_home', 'lotte.fell', 'marta.inn.now', 'sera.square.now', 'trapped.freed'] },
   bells_answered: { means: '두 종지기가 종으로 답했다 (금 간 종이 제 울림을 되찾았다)',
-    set: ['ev_ending_home'],
+    set: ['ev_ending', 'ev_ending_home'],
     read: ['chronicle:two_keepers'] },
   never: { means: '첫 출시에서는 서지 않는다 (뒤 조각에서 채울 빈칸)', reserved: true,
     set: [],

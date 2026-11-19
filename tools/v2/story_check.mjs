@@ -317,11 +317,11 @@ for (const name of new Set([...flagSet.keys(), ...flagRead.keys()])) if (!FLAGS[
 if (argv.includes('--sync-flags')) {
   const lines = ['// Story flags: what each one means, who sets it, who reads it. Shape: docs/v2/DATA_FORMAT.md section 9.',
     '// `set` / `read` are recomputed by `node tools/v2/story_check.mjs --sync-flags` (ids of sequences, talk keys, area:<id>/<actor>, chronicle:<id>).',
-    '// world: true = an area actor uses the flag in `when` (AREA_FORMAT section 4).', '', 'export const FLAGS = {'];
+    '// world: true = an area actor uses the flag in `when` (AREA_FORMAT section 4).', '// quiet: true = the flag only says where people stand and the sequence that sets it has already walked them there: the area the hero stands in is not built again for it (the next load builds from it).', '', 'export const FLAGS = {'];
   const q = (s) => "'" + s.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
   for (const [name, f] of Object.entries(FLAGS)) {
     const u = flagUse(name);
-    const extra = (f.world ? ' world: true,' : '') + (f.reserved ? ' reserved: true,' : '');
+    const extra = (f.world ? ' world: true,' : '') + (f.quiet ? ' quiet: true,' : '') + (f.reserved ? ' reserved: true,' : '');
     lines.push(`  ${name}: { means: ${q(f.means)},${extra}`, `    set: [${u.set.map(q).join(', ')}],`, `    read: [${u.read.map(q).join(', ')}] },`);
     f.set = u.set; f.read = u.read;
   }
