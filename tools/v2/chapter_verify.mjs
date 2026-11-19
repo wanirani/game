@@ -53,7 +53,7 @@ function install() {
   P.saveNow = () => { v.scene.host.saveNow('probe'); return localStorage.getItem('bn.v2.save'); };
   P.bread = () => { const d = v.scene.area.interact.find((q) => q.id === 'boss_rest'); return d ? [d.x, d.z] : null; };
   P.spot = (id) => { const d = v.scene.area.interact.find((q) => q.id === id); return d ? { event: d.event, x: d.x, z: d.z, label: d.label } : null; };
-  P.person = (id) => { const p = v.scene.people.byId?.(id); return p ? { x: Math.round(p.x), z: Math.round(p.z) } : null; };
+  P.person = (id) => { const p = v.scene.people.byId?.(id); return p && p.on ? { x: Math.round(p.x), z: Math.round(p.z) } : null; };   // on the stage = shown (the list also holds the people the story hides: byId alone called Sera "in two places" - main session, 11-19)
   P.test = (c) => { try { return !!v.scene.host.st.test(c, null); } catch (e) { return String(e); } };
   P.done = (id) => !!v.scene.host.st.isDone(id);
   P.seenTail = (k) => v.scene.host.seen.slice(-k).map((q) => q.join(' | '));
