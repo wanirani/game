@@ -101,7 +101,7 @@ for (const r of rows) {
     const wantH = Math.min(r.struck.f3_hit, caps.hit[qi] + (H.some((x) => x.big) ? 1 : 0)), wantE = Math.min(r.struck.f3_enemy, caps.enemy[qi]);
     if (r.struck.f3_hit) ok(`${r.id} ${r.q}: ${r.struck.f3_hit} struck start ${H.length} hit sounds`, H.length === wantH, `cap ${caps.hit[qi]} a flurry at ${r.q}`);
     if (r.struck.f3_enemy && r.id !== 'two_ticks') ok(`${r.id} ${r.q}: ${r.struck.f3_enemy} things start ${E.length} sounds on the enemy bus`, E.length === wantE, `cap ${caps.enemy[qi]}`);
-    if (r.id === 'two_ticks') ok(`${r.id} ${r.q}: six breaks over two ticks start ${E.length}, one slot apart`, E.length === Math.min(6, caps.enemy[qi]) && E.every((x, i) => i === 0 || x.ms + (x.tick ? 17 : 0) - (E[i - 1].ms + (E[i - 1].tick ? 17 : 0)) >= 20), E.map((x) => x.ms + (x.tick ? 17 : 0)).join(' / ') + ' ms');
+    if (r.id === 'two_ticks') ok(`${r.id} ${r.q}: six breaks over two ticks start ${E.length} (the queue holds ${caps.enemy[qi]} slots ahead), one slot apart`, E.length === 3 + Math.min(3, caps.enemy[qi] - 2) && E.every((x, i) => i === 0 || x.ms + (x.tick ? 17 : 0) - (E[i - 1].ms + (E[i - 1].tick ? 17 : 0)) >= 20), E.map((x) => x.ms + (x.tick ? 17 : 0)).join(' / ') + ' ms');
     const small = H.filter((x) => !x.big);
     if (small.length > 1) ok(`${r.id} ${r.q}: the hit sounds are spread and each quieter`, small.every((x, i) => i === 0 || (x.ms > small[i - 1].ms && x.vol < small[i - 1].vol)), small.map((x) => `${x.ms} ms x${x.vol}`).join(', '));
     const big = H.find((x) => x.big); if (big) ok(`${r.id} ${r.q}: the finishing blow sounds on the tick at full level`, big.ms <= 1 && big.vol >= 1, `${big.ms} ms x${big.vol}`);

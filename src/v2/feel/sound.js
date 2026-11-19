@@ -19,7 +19,7 @@ export const BUS = Object.freeze({
   f3_swing: { max: 4, gap: 0.03, vary: 0, feel: true },
   f3_step: { max: 3, gap: 0.045, vary: 0, feel: true },
   f3_foley: { max: 4, gap: 0.02, vary: 0, feel: true },
-  f3_enemy: { max: 6, gap: 0, vary: 0, feel: true },   // max 6 (was 5: a flurry of six, FLURRY) · gap 0 (was 0.03): the engine's same-name filter dropped the second and third jar of one blow whenever their level was not louder than the first - play() spreads them instead
+  f3_enemy: { max: 6, gap: 0, vary: 0, feel: true, prio: true },   // max 6 (was 5: a flurry of six, FLURRY) · prio (WHIP2): play() gives this bus one start per 28 ms slot and at most six slots ahead - that queue is its limit, so the engine's count at the instant of asking no longer silences the jars of a tick in which six soldiers were struck · gap 0 (was 0.03): the engine's same-name filter dropped the second and third jar of one blow whenever their level was not louder than the first - play() spreads them instead
   f3_magic: { max: 5, gap: 0.02, vary: 0 },
   f3_big: { max: 3, gap: 0.05, vary: 0, feel: true, prio: true },
   f3_bell: { max: 3, gap: 0.05, vary: 0, feel: true, prio: true, rev: 0.2 },
@@ -28,7 +28,7 @@ export const BUS = Object.freeze({
 });
 
 /** several things struck in one tick are ONE flurry (WHIP2, tools/v2/whip_many.mjs): how many voices of it start on a bus at [low, medium, high] quality, how far apart (s) and how much softer each (level factor per place). A finishing blow (the big bus) is no member: it sounds at once at full level. */
-export const FLURRY = Object.freeze({ hit: Object.freeze([4, 5, 6]), enemy: Object.freeze([4, 5, 6]), hitGap: 0.024, enemyGap: 0.028, hitK: 0.8, enemyK: 0.86, win: 0.012 });
+export const FLURRY = Object.freeze({ hit: Object.freeze([4, 5, 6]), enemy: Object.freeze([4, 5, 6]), hitGap: 0.024, enemyGap: 0.028, hitK: 0.8, enemyK: 0.86, win: 0.012, under: 0.6 });   // under: the level of the tick's other voices when a finishing blow sounds in it (it carries the moment; three full-level starts on one instant ran the mix 3 dB into the limiter)
 
 // ───────────────────────────── 공간: 방 울림 4종 ─────────────────────────────
 // sec 길이 · refl 초기 반사 수 · slap 첫 반사까지(초) · damp 고역 감쇠(클수록 밝다) · send 보내는 양
@@ -209,6 +209,7 @@ export class FeelSound {
     this.filters = []; for (let i = 0; i < 24; i++) this.filters.push({ f: null, base: 20000, end: 0 }); this._fi = 0;
     this.loops = []; this._loopId = 0; this._upT = 0;
     this._hitS = { t0: -1, next: -1, n: 0 }; this._evS = { t0: -1, next: -1, n: 0 }; this._slotD = 0;   // flurries (FLURRY): first ask, next free slot, members so far
+    this._fl = []; this._flT = -1; this._bigT = -1;   // the engine voices of this tick's flurries (they step under a finishing blow of the same tick) · when the last finishing blow sounded
     this.miss = 0; this.starts = 0; this.layersPlayed = 0;
   }
   get eng() { return this.host.eng || null; }
@@ -298,7 +299,13 @@ export class FeelSound {
     let delay = 0;
     if (rec.bus === 'f3_enemy') {   // several things struck in one tick (jars of one sweep, a group waking): a flurry - up to six starts (five, four on the lower qualities) 28 ms apart, each a little softer - they sound like several, not like one (and not like a dropped press)
       const e = this.eng;
-      if (e) { const n = this._slot(this._evS, e.ctx.currentTime, FLURRY.enemyGap, FLURRY.enemy[this.q]); if (n < 0) return rec; if (n > 0) { delay = this._slotD; vol *= Math.pow(FLURRY.enemyK, n); } }
+      if (e) {
+        const now = e.ctx.currentTime, n = this._queue(this._evS, now, FLURRY.enemyGap, FLURRY.enemy[this.q]); if (n < 0) return rec;
+        if (n > 0) { delay = this._slotD; vol *= Math.pow(FLURRY.enemyK, n); }
+        if (now - this._bigT < FLURRY.win) vol *= FLURRY.under;
+        if (this.fire(rec, rec.bus, pos, vol, pitch, delay)) this._note(e, now);
+        return rec;
+      }
     }
     this.fire(rec, rec.bus, pos, vol, pitch, delay);
     return rec;
@@ -316,13 +323,25 @@ export class FeelSound {
     if (now - S.t0 >= FLURRY.win || S.next <= now) { S.t0 = now; S.n = 0; S.next = now; } else if (S.n >= cap) return -1;
     this._slotD = S.next - now; S.next += gap; return S.n++;
   }
+  /** remember the engine voice just started as one of this tick's flurry (hit() turns them down when a finishing blow follows in the tick) */
+  _note(e, now) { if (now - this._flT >= FLURRY.win) { this._flT = now; this._fl.length = 0; } if (this._fl.length < 16) this._fl.push(e.live[e.live.length - 1]); }
+  /** The enemy bus (breaks, rattles, calls): one start per slot whatever the tick - an ask takes the next free slot (28 ms after the one before it), at most cap slots ahead → how many sound before it (0 = at once), -1 = the queue is full. Jars broken over two ticks run on as one clatter instead of two full-level starts 17 ms apart. */
+  _queue(S, now, gap, cap) {
+    let d = S.next - now; if (d < 0.003) d = 0;
+    const n = Math.round(d / gap); if (n >= cap) return -1;
+    this._slotD = d; S.next = now + d + gap; return n;
+  }
   /** 타격: 같은 순간에 여러 대상이 맞으면 6개까지(품질 중간 5 · 낮음 4) 24 ms 씩 늦춰 겹친다, 뒤로 갈수록 x0.8 (한 덩어리로 뭉개지지 않게) → 타격 레시피 */
   hit(weapon, material, strength, flags, pos) {
     const r = hitFeel(weapon, material, strength, flags), e = this.eng;
     if (!e) return r;
-    if (r.big) { this.fire(r, 'f3_big', pos, 1, 1, 0); return r; }   // a finishing blow sounds on its tick at full level wherever the rules struck it in the tick (was: the sixth of six came 120 ms late at a third of its level)
-    const n = this._slot(this._hitS, e.ctx.currentTime, FLURRY.hitGap, FLURRY.hit[this.q]);   // (six: a first hit through six soldiers is six cracks 24 ms apart; the bus holds six voices)
-    if (n >= 0) this.fire(r, 'f3_hit', pos, n ? Math.pow(FLURRY.hitK, n) : 1, 1, this._slotD);
+    const now = e.ctx.currentTime;
+    if (r.big) {   // a finishing blow sounds on its tick at full level wherever the rules struck it in the tick (was: the sixth of six came 120 ms late at a third of its level) - and the tick's other voices step under it
+      if (now - this._flT < FLURRY.win) { const A = this._fl; for (let i = 0; i < A.length; i++) { const x = A[i]; if (x && !x.stolen) x.out.gain.setTargetAtTime(FLURRY.under, now, 0.003); } }
+      this._bigT = now; this.fire(r, 'f3_big', pos, 1, 1, 0); return r;
+    }
+    const n = this._slot(this._hitS, now, FLURRY.hitGap, FLURRY.hit[this.q]);   // (six: a first hit through six soldiers is six cracks 24 ms apart; the bus holds six voices)
+    if (n >= 0 && this.fire(r, 'f3_hit', pos, (n ? Math.pow(FLURRY.hitK, n) : 1) * (now - this._bigT < FLURRY.win ? FLURRY.under : 1), 1, this._slotD)) this._note(e, now);
     return r;
   }
   // ── 고리 (횃불·밤거리·날아가는 마법) ──
