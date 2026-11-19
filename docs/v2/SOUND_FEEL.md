@@ -422,5 +422,26 @@ feel.release();                       // 고리 정지 + 엔진의 방 울림을
 
   A full combo freezes 0.232 s in all (was 0.252 s). The sweep was not measured against an enemy by the tool (its finger script does not land it); it uses the same code with strength H.
 - **Several things struck in one tick sound like several**: hits - up to five starts 24 ms apart, level x0.8 each (was three, the fourth silent); events of the enemy bus (`break.*`, wake rattles) - up to five starts 28 ms apart, level x0.86 each, and the bus' same-name gap is 0 (was 0.03 s: the engine dropped the second and third jar of one blow unless their random level happened to be louder than the first). Measured: three soldiers in one third hit = 3 starts at 0 / 24 / 48 ms; three breakables in one tick = 3 starts at 0 / 28 / 56 ms. All inside the engine's budget (10 feel starts per 100 ms, six voices on the hit bus, five on the enemy bus).
-- Not done: the refusal of a crossing (`cross.dull`) is as it was.
+- (The refusal of a crossing, `cross.dull`, was not touched by this pass - done by WHIP2: §17, which also replaces the bullet above.)
 
+
+## 17. Many at once, and the bell that stays shut (WHIP2, 2026-11-19) — `node tools/v2/whip_many.mjs` · `node tools/v2/whip_bell.mjs`
+
+(English. Supersedes the last two bullets of §16.)
+
+- **A flurry** (`src/v2/feel/sound.js` `FLURRY`). Things struck in one rule tick are one flurry. Hits: up to **6 / 5 / 4** voices (quality high / medium / low) 24 ms apart, each x0.8 of the one before. One flurry = the asks within 12 ms of its first ask while a slot is still to come - so a tick that straddles a step of the audio clock is still one flurry (the old test, 4 ms from the first ask, split it into two full-level starts). The enemy bus (`break.*`, wake rattles, calls) is a **queue**: one start per 28 ms slot whatever the tick, at most 6 / 5 / 4 slots ahead, each x0.86 - jars broken over two ticks run on as one clatter. The bus holds six voices (was five).
+- **Why the count was wrong before.** The engine's budget (10 / 8 / 6 feel starts per 100 ms) counts every ask of a tick at the instant of asking, although the flurry is spread over 120-140 ms. Six sleeping soldiers struck by the first hit asked for 6 hits + 6 rattles on one instant: 4 + 4 started at high, 4 + 3 at medium, 3 + 2 at low. Both buses are now `prio` (exempt from that count, still counted against steps and foley); their own limit is the flurry: one start per slot, 6 / 5 / 4 a flurry.
+- **A finishing blow** (the big bus) is no member of the flurry: it sounds on its tick at full level wherever the rules struck it in the tick - it used to come as the sixth of six, 120 ms late at a third of its level - and the tick's other voices step under it (x0.6: the ones already started are turned down in 3 ms, the later ones start there). Without that the three full-level starts on one instant ran the mix 3 dB into the limiter.
+- **Measured** (offline, the game's engine with the phone's sample rates; struck → started at high / medium / low):
+
+  | one tick | before | after |
+  |---|---|---|
+  | first hit (light) through 6 soldiers | 5 / 5 / 5 | 6 / 5 / 4 |
+  | the same, soldiers asleep (hit + rattle each) | hits 5 / 4 / 3 · rattles 4 / 3 / 2 | hits 6 / 5 / 4 · rattles 6 / 5 / 4 |
+  | 7 breakables | 5 / 5 / 5 | 6 / 5 / 4 |
+  | finishing third hit through 6 + 7 breakables (the loudest moment) | finisher at 120 ms x0.33 (struck last) · other hits 5 · breaks 3 / 1 / 0 | finisher at 0 ms x1 · other hits 5 / 5 / 4 · breaks 6 / 5 / 4 |
+  | its peak after the limiter (before it), dBFS | -0.50 … -1.01 (+0.81 … -3.03) · 0 clipped samples | -0.51 … -0.87 (+0.28 … -2.14) · 0 clipped samples (three runs) |
+
+  The lower qualities start FEWER voices than before in the plain cases (five → four): their cap now belongs to the flurry instead of being whatever the engine's budget left.
+- **The bell that stays shut** (`cross.dull`, `src/v2/game/crossing.js` phase dull and `refuse()`): on the big bus, flat, no room send (a refusal has no tail): `bell_dull` at pitch 0.8 + thud + sub + knock; haptic `dull` = the low motor alone 0.8 for 120 ms, one 36 ms pulse on a phone (it was a light double tick that read as a notification). With it: a thick grey ring from the foot of the bell that gutters at two metres (116 px), the colour drained inside it, the hero thrown back (`hero.recoil`, picture only), one thump of the camera straight down, the night badge beating twice; free again after 0.52 s. `feel.tap('cross.dull', fn)` lets the scene stage all of it whoever plays the sound (the story's own refusal at the hall's bell). At a sealed bell and in the queen's first act the long ring's golden toll and light are kept back (`cx.shutNow()`). `whip_bell`: 12-20 of 255 over 30-40 % of the picture (it was under 2), on fold_open and phone2, at a bell with nowhere to stand, the sealed bell of 1697 and the hall's bell.
+- Honest: levels and counts only - nobody has heard a flurry of six or the dull toll on a phone speaker. `under: 0.6` and the two level factors are first guesses by measurement.

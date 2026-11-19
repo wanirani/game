@@ -15,7 +15,7 @@ const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 // ───────────────────────────── 엔진 효과음 묶음 ─────────────────────────────
 // max 같은 묶음 동시 수 · gap 중복 억제(초) · feel 체감 예산(100ms 에 10/8/6개) 대상 · prio 예산 제외 · rev 대성당 잔향 송신(엔진에 원래 있는 것)
 export const BUS = Object.freeze({
-  f3_hit: { max: 6, gap: 0, vary: 0, feel: true, prio: true },   // prio (WHIP2): a hit is never dropped by the engine's count of starts per 100 ms - that count takes every ask of one tick at one instant, though a flurry is spread 24 ms apart (FLURRY below is its limit: 4 / 5 / 6 voices); the hits still count against steps and foley
+  f3_hit: { max: 6, gap: 0, vary: 0, feel: true, prio: true },   // prio (WHIP2): a hit is never dropped by the engine's count of starts per 100 ms - that count takes every ask of one tick at one instant, though a flurry is spread 24 ms apart (FLURRY below is its limit: 5 / 5 / 6 voices - never fewer than the five it was); the hits still count against steps and foley
   f3_swing: { max: 4, gap: 0.03, vary: 0, feel: true },
   f3_step: { max: 3, gap: 0.045, vary: 0, feel: true },
   f3_foley: { max: 4, gap: 0.02, vary: 0, feel: true },
@@ -28,7 +28,7 @@ export const BUS = Object.freeze({
 });
 
 /** several things struck in one tick are ONE flurry (WHIP2, tools/v2/whip_many.mjs): how many voices of it start on a bus at [low, medium, high] quality, how far apart (s) and how much softer each (level factor per place). A finishing blow (the big bus) is no member: it sounds at once at full level. */
-export const FLURRY = Object.freeze({ hit: Object.freeze([4, 5, 6]), enemy: Object.freeze([4, 5, 6]), hitGap: 0.024, enemyGap: 0.028, hitK: 0.8, enemyK: 0.86, win: 0.012, under: 0.6 });   // under: the level of the tick's other voices when a finishing blow sounds in it (it carries the moment; three full-level starts on one instant ran the mix 3 dB into the limiter)
+export const FLURRY = Object.freeze({ hit: Object.freeze([5, 5, 6]), enemy: Object.freeze([5, 5, 6]), hitGap: 0.024, enemyGap: 0.028, hitK: 0.8, enemyK: 0.86, win: 0.012, under: 0.6 });   // under: the level of the tick's other voices when a finishing blow sounds in it (it carries the moment; three full-level starts on one instant ran the mix 3 dB into the limiter)
 
 // ───────────────────────────── 공간: 방 울림 4종 ─────────────────────────────
 // sec 길이 · refl 초기 반사 수 · slap 첫 반사까지(초) · damp 고역 감쇠(클수록 밝다) · send 보내는 양
@@ -297,7 +297,7 @@ export class FeelSound {
     const rec = Object.hasOwn(EVENTS, name) ? EVENTS[name] : null;
     if (!rec || rec.loop) return null;
     let delay = 0;
-    if (rec.bus === 'f3_enemy') {   // several things struck in one tick (jars of one sweep, a group waking): a flurry - up to six starts (five, four on the lower qualities) 28 ms apart, each a little softer - they sound like several, not like one (and not like a dropped press)
+    if (rec.bus === 'f3_enemy') {   // several things struck in one tick (jars of one sweep, a group waking): a flurry - up to six starts (five on the lower qualities) 28 ms apart, each a little softer - they sound like several, not like one (and not like a dropped press)
       const e = this.eng;
       if (e) {
         const now = e.ctx.currentTime, n = this._queue(this._evS, now, FLURRY.enemyGap, FLURRY.enemy[this.q]); if (n < 0) return rec;
@@ -331,7 +331,7 @@ export class FeelSound {
     const n = Math.round(d / gap); if (n >= cap) return -1;
     this._slotD = d; S.next = now + d + gap; return n;
   }
-  /** 타격: 같은 순간에 여러 대상이 맞으면 6개까지(품질 중간 5 · 낮음 4) 24 ms 씩 늦춰 겹친다, 뒤로 갈수록 x0.8 (한 덩어리로 뭉개지지 않게) → 타격 레시피 */
+  /** 타격: 같은 순간에 여러 대상이 맞으면 6개까지(품질 중간 · 낮음은 5) 24 ms 씩 늦춰 겹친다, 뒤로 갈수록 x0.8 (한 덩어리로 뭉개지지 않게) → 타격 레시피 */
   hit(weapon, material, strength, flags, pos) {
     const r = hitFeel(weapon, material, strength, flags), e = this.eng;
     if (!e) return r;
