@@ -459,7 +459,8 @@ export const EVENTS = [
   ] },
   // tonight, while the queen is in her first act, the hall's bell does not carry the hero away: the scene refuses the crossing (chapter.js bellHeld) and raises bell.held.
   // (It used to set him down in an empty 1697 hall whose own bell is sealed; he came back by the riddle-room bell and she started again from full health - untold.)
-  { id: 'ev_bell_held', minute: '104-114', on: 'bell.held', once: false, steps: [
+  // STORY2 (11-19): the scene gives the dull answer at every such ring (the dull toll, the notice 「종이 둔하게 울린다」); this line says why - once.
+  { id: 'ev_bell_held', minute: '104-114', on: 'bell.held', steps: [
     ['say', 'bell.held'],
   ] },
   // in 1697 the bell of the last hall answers dull until the queen has fled through it (the world gives it the event bell.sealed until then)

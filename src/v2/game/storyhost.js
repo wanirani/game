@@ -141,6 +141,13 @@ export class StoryHost {
     const b = p.box; if (b) { const r = (b.x1 - b.x0) / 2; b.x0 = x - r; b.x1 = x + r; b.z0 = z - r; b.z1 = z + r; } p.x = x; p.z = z;
     const W = this.sc.W; if (W) { const gy = groundAt(W, x, z, p.y + 40); if (Number.isFinite(gy)) p.y = gy; }   // STORY2: her feet follow the floor (a walk up the church stairs)
   }
+  /** STORY2: the bell answers dull (a crossing the queen does not allow): the dull toll, its grey puff at the bell the hero stands at, the notice */
+  _dull() {
+    const sc = this.sc, h = sc.sim?.hero, S = sc.people.spots; let x = h?.x ?? 0, y = h?.y ?? 0, z = h?.z ?? 0, best = 1e12;
+    if (h) for (let i = 0; i < S.length; i++) { const q = S[i]; if (q.def.kind !== 'bell') continue; const dx = q.x - h.x, dz = q.z - h.z, d = dx * dx + dz * dz; if (d < best) { best = d; x = q.x; y = q.y; z = q.z; } }
+    this.api.sound('cross.dull'); this.api.fx('cross.dull', { x, y, z, dx: -1, dz: 0, pow: 1 });
+    sc._toast(this.STORY.TEXT?.system?.dull ?? '', 'warn');
+  }
   // ───────── STORY2: the hero on a mark (api.moveHero) ─────────
   /** one tick of the walk: the stick the scene hands to the rules this tick (w.mx, w.mz) - the rules walk him: collision, steps, sound */
   _walkTick(w, dt) {
@@ -239,8 +246,11 @@ export class StoryHost {
       gotoArea(id, spawn) { H.note('goto', id, spawn); if (!sc.travelTo(id, spawn ?? null)) throw new Error('area change refused: ' + id); },
       bellCross(o) {
         // STORY (11-19): the queen holds the bell of her hall while she is in her first act (chapter.js bellHeld) - the bell answers dull and the story says why (ev_bell_held)
-        if (sc.ch.bellHeld()) { sc._toast(H.STORY.TEXT?.system?.dull ?? '', 'warn'); H.story('bell.held', {}); throw new Error('crossing refused: the queen holds the bell'); }
-        if (!sc.cross(o ?? null)) { sc._toast(H.STORY.TEXT?.system?.dull ?? '', 'warn'); throw new Error('crossing refused'); } H.note('cross', sc.xing?.to ?? '');
+        // STORY2 (11-19): a refusal is an answer, not a fault - the step gets `false` (run.js goes on without a warning). Every long ring at the held bell gets the dull
+        // answer: the dull toll (sound cross.dull + its grey puff at the bell), the notice; the line that says why is said once (ev_bell_held is a once-sequence).
+        if (sc.ch.bellHeld()) { H._dull(); H.story('bell.held', {}); return false; }
+        if (!sc.cross(o ?? null)) { sc._toast(H.STORY.TEXT?.system?.dull ?? '', 'warn'); return false; } H.note('cross', sc.xing?.to ?? '');
+        return true;
       },
       sound(name, pos) { try { if (feel.has(name)) feel.play(name, pos && typeof pos === 'object' ? pos : null); } catch { /* no audio */ } },
       fx(name, o) { const h = sc.sim?.hero; try { sc.fx?.play(name, o ?? (h ? { x: h.x, y: h.y + 50, z: h.z, dx: h.dirX ?? 1, dz: h.dirZ ?? 0 } : {})); } catch { /* unknown effect */ } },

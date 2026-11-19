@@ -235,6 +235,7 @@ export default class V2Game extends Scene {
   rebuildArea() {
     if (!this.ready || !this.area || this.area.test || this._go || this.xing) return false;
     this._go = { to: this.area.id, spawn: null, keep: true, same: true }; this.fadeTo = 1; this.locked = true;
+    this.state.loading = true;   // STORY HOOK (STORY2): the controls step aside as the veil rises (the HUD takes the pad off while state.loading; _load puts it back) - the pad used to stay drawn over the black screen of the rebuild
     return true;
   }
   /** open / close an exit (the story decides; overrides are kept for the whole visit of the scene). areaId defaults to this area. */
@@ -1210,6 +1211,7 @@ export default class V2Game extends Scene {
       if (off === 2 && this.cx.on && this.cx.phase === 'passage') { this.cx.passage(ctx, hctx); this._lastDraw = 0; return; }   // CROSSING: the frozen picture of the night being left, with time running over it, while the twin loads
       if (this.mode === 'layer') this._show(false);
       if (off === 2 && this.xing && this.fadeA > 0.5) { ctx.fillStyle = this.veil; ctx.fillRect(0, 0, Wv, Hv); this._lastDraw = 0; return; }   // STORY HOOK: (WebGL1 only) a crossing keeps its veil while the twin loads
+      if (off === 2 && this._quiet) { ctx.fillStyle = this.veil; ctx.fillRect(0, 0, Wv, Hv); this._lastDraw = 0; return; }   // STORY HOOK (STORY2): the same area built again in place (a gate opened, a stair mended): the veil stays as it is - no 「불러오는 중…」, no HUD - for the second the build takes
       s.message = off === 1 ? 'WebGL 을 쓸 수 없어 게임을 열 수 없습니다' : off === 2 ? '불러오는 중…' : '화면을 되살리는 중…'; s.message2 = off === 1 ? String(this.glError || '') : '';
       try { this.hud.draw(ctx, s); } catch (e) { this._hudFail(e); } s.message = '';
       this._lastDraw = 0;

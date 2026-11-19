@@ -332,8 +332,12 @@ export function createStory(data, opts) {
         break;
       }
       case 'bellCross': {
-        const t = hold('area');
-        if (!call(api, 'bellCross', s[1] || null)) resume(t);
+        // STORY2 (11-19): api.bellCross may answer `false` = the crossing was refused (the bell rang dull: the queen holds it, there is no floor over there, a
+        // journey is under way). That is an answer, not a fault: no warning, the sequence goes on with its next step. Any other value: the step waits for the far side.
+        const t = hold('area'), o = find(api, 'bellCross');
+        if (!o) { warn('api.bellCross is missing — step skipped'); resume(t); break; }
+        let r; try { r = o.bellCross(s[1] || null); } catch (e) { warn('api.bellCross threw: ' + (e && e.message)); r = false; }
+        if (r === false) resume(t);
         break;
       }
       case 'if': pushFrame(holds(compileConds(s[1]), null) ? s[2] : s[3]); break;
