@@ -406,3 +406,21 @@ feel.release();                       // 고리 정지 + 엔진의 방 울림을
 - New samples (`python3 tools/v2/audio/build_cross_audio.py`, synthesis by formula, 66.9 KB together): `cross_rush_1` 12.6 KB · `cross_swell_1` 5.8 KB · `cross_tail_past_1` 18.4 KB (lazy) · `cross_tail_now_1` 23.4 KB (lazy) · `bell_dull_1` 6.7 KB.
 - Honest: judged by level and envelope only - nobody has heard them, in this container or on a phone. While the rules run slowed (the ring), sounds are low-passed and pitched down by the existing time-scale rule; the passage sets the time scale back to 1.
 
+## 16. Hit feel end to end (WHIP, 2026-11-19) — `node tools/v2/whip_feel.mjs`
+
+(English.) The tool plays every hero hit type on the pad's own pointer handlers against every enemy kind an area holds and against a breakable, at 60 Hz (one frame per tick) and 120 Hz (two frames per tick), and records the display frame of: the drawn lash touching the target, the picture freezing, the hit preset in the effect engine (and whether its point lies on the target's body), the hit flash, the hurt pose, the damage number, the request to the audio engine (its start is 4 ms later, plus the spread below) and the vibration request.
+
+- **Measured (graveyard_now, phone-size screen; soldier, ghost, grave-keeper, bat, jar; 45 hits):** every one of those is on the contact frame itself at both rates (offset 0). Before this change the lash was drawn interpolated, one tick behind the rules: spark, number, flash and sound came one frame (60 Hz) or two frames (120 Hz) before the lash was seen on the enemy, and the freeze one tick later. Now the frames of a hit tick draw the tick itself (`scene._hitSnap`), and the freeze starts on that frame.
+- **Light, medium, heavy** — the feel strength of a move is `MOVES[id].strength` (`feel` in `moves.js`; the rules' `str` is unchanged). Measured on a skeleton soldier (whip x0.9, bone x1.05):
+
+| move | feel | frozen ticks | hit-stop | shake | kick | zoom | vibration (phone) | sound layers |
+|---|---|---|---|---|---|---|---|---|
+| hit 1 | L (was M) | 3 | 0.043 s | 0.10 | 3 | - | `hitL` 5 ms (was none) | 3 |
+| hit 2 | M | 4 | 0.063 s | 0.16 | 5 | - | `hitM` 8 ms | 6 |
+| sweep, plunge | H | 6 | 0.095 s | 0.26 | 9 | 1.02 | `hitH` 15 ms | 7 |
+| hit 3, charged coil | F (coil was H) | 8 | 0.126 s | 0.36 | 13 | 1.035 | `hitF` 18-22-30 ms | 8 |
+
+  A full combo freezes 0.232 s in all (was 0.252 s). The sweep was not measured against an enemy by the tool (its finger script does not land it); it uses the same code with strength H.
+- **Several things struck in one tick sound like several**: hits - up to five starts 24 ms apart, level x0.8 each (was three, the fourth silent); events of the enemy bus (`break.*`, wake rattles) - up to five starts 28 ms apart, level x0.86 each, and the bus' same-name gap is 0 (was 0.03 s: the engine dropped the second and third jar of one blow unless their random level happened to be louder than the first). Measured: three soldiers in one third hit = 3 starts at 0 / 24 / 48 ms; three breakables in one tick = 3 starts at 0 / 28 / 56 ms. All inside the engine's budget (10 feel starts per 100 ms, six voices on the hit bus, five on the enemy bus).
+- Not done: the refusal of a crossing (`cross.dull`) is as it was.
+
