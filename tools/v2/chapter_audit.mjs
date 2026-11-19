@@ -141,7 +141,10 @@ function installCa() {
     line: () => v.scene.hud.modal === 'dialog' && !H.shot, cut: () => v.scene.hud.modal === 'dialog' && !!H.shot,   // a line outside a camera shot · a line inside one (the two keepers at the bell)
     modal: () => !!v.scene.hud.modal,
   };
-  A.run = (n, bot, until) => { g._pageHidden = true; let i = 0; for (; i < n; i++) { A.step(bot); if (i % 60 === 0) A.draw(); if (until && A.u[until]()) { i++; break; } } if (B.ts) B.touchEnd(); A.relJump(); A.draw(); return A.status(i); };
+  // the pad lays its buttons out when it is first shown. A run resumed into an open dialogue found them all at (0,0), every press of the bot hit nothing
+  // and it lost every fight (2026-11-19): the buttons are measured again whenever a stretch of play begins.
+  A.padNow = () => { const m = v.scene.hud?.metrics?.(); if (!B.ts || !m?.pad?.buttons) return; if (!B.ts.btn) B.ts.btn = {}; for (const b of m.pad.buttons) if (b.cx > 0 && b.cy > 0) B.ts.btn[b.id === 'roll' ? 'dash' : b.id] = { cx: b.cx, cy: b.cy, d: b.d, disabled: b.disabled }; };
+  A.run = (n, bot, until) => { g._pageHidden = true; A.padNow(); let i = 0; for (; i < n; i++) { A.step(bot); if (i % 60 === 0) A.draw(); if (until && A.u[until]()) { i++; break; } } if (B.ts) B.touchEnd(); A.relJump(); A.draw(); return A.status(i); };
   A.status = (i) => {
     const sc = v.scene, sim = sc.sim, h = sim?.hero, bs = sim?.bossState?.() ?? null; let awake = 0; if (sim) for (const e of sim.enemies) if (!e.dead && e.state !== 'dead' && e.active) awake++;
     return { i, ticks: A.ticks, ready: !!v.ready, area: v.area, sec: v.section, x: h ? Math.round(h.x) : 0, y: h ? Math.round(h.y) : 0, z: h ? Math.round(h.z) : 0, hp: h ? Math.round(h.hp) : 0, hpMax: h?.hpMax ?? 0, dead: !!h?.dead, onGround: !!h?.onGround, act: h?.act ?? null, hook: h?.hookId ?? null,
@@ -231,8 +234,7 @@ async function open() {
   const cdp = await page.context().newCDPSession(page), T = new Touch(cdp, page);
   await ensureTouchMode(T, page); await page.waitForTimeout(300);
   await ev(installBot, [[0, 0]]); await ev(installCa);
-  // the pad's buttons are laid out a moment after the scene is ready: measured too early they all sit at (0,0) and the bot's presses hit nothing (a resumed run then loses every fight - seen 2026-11-19)
-  await page.waitForFunction(() => { const m = window.__v2?.scene?.hud?.metrics?.(); return !!m?.pad?.buttons?.length && m.pad.buttons.every((b) => b.cx > 0 && b.cy > 0); }, null, { timeout: 30000 }).catch(() => log('WARNING: the pad buttons were not laid out after 30 s - presses will miss'));
+  // (the pad lays its buttons out when it is first shown: a run resumed into a dialogue measures them all at (0,0) here - A.run measures again, see padNow)
   const pad = await ev(() => { const m = window.__v2.scene.hud.metrics?.(); if (!m?.pad) return null; const Bt = {}; for (const b of m.pad.buttons) Bt[b.id === 'roll' ? 'dash' : b.id] = { cx: b.cx, cy: b.cy, d: b.d, disabled: b.disabled }; return Bt; });
   const vp = await ev(() => [innerWidth, innerHeight]);
   await ev(([x0, y0, btn]) => { const B = window.__bot; B.opt.giveUp = 1500; B.touchSetup(x0, y0, 56, btn); }, [Math.round(vp[0] * 0.2), Math.round(vp[1] * 0.68), pad]);
