@@ -19,6 +19,7 @@ function setup() {
   const v = window.__v2, sc = v.scene, W = window.__W, sim = sc.sim, h = sim.hero;
   W.drawEvery = 20; W.clear(); W.X0 = h.x; W.Z0 = h.z; W.ev = [];
   for (const x of sc.area.exits ?? []) { x.locked = true; if (x._box) x._box.solid = true; }   // nobody walks out of the area in the middle of a measurement
+  window.__pd = { trusted: 0, untrusted: 0, types: {} }; window.addEventListener('pointerdown', (e) => { const P = window.__pd; if (e.isTrusted) P.trusted++; else P.untrusted++; P.types[e.pointerType] = (P.types[e.pointerType] ?? 0) + 1; }, { capture: true });
   const ev0 = sim.hooks.event;
   sim.hooks.event = function (name, a, b, c, d, e, f, g2) {
     if (name === 'attack') W.ev.push([W.n, 'move', b && b.id]); else if (name === 'roll') W.ev.push([W.n, 'roll']); else if (name === 'jump') W.ev.push([W.n, 'jump']); else if (name === 'act') W.ev.push([W.n, 'act', b]);
@@ -72,7 +73,6 @@ async function partPress(L) {
       if (K === 'roll') { if (R() < 0.85) { const a = R() * 6.2832; st = [Math.cos(a), Math.sin(a)]; } else st = [0, 0]; } else if (R() < 0.4) { if (R() < 0.25) st = [0, 0]; else { const a = R() * 6.2832; st = [Math.cos(a), Math.sin(a)]; } }
       const s0 = await page.evaluate(([n, o]) => window.__W.go(n, o), [gap, { stick: st, reso: K === 'skill', home: true }]);
       if (s0.gone) { console.log(`   ${dev}: the scene let go of its rules at press ${i} (${s0.go}) — stopped`); break; }
-      if (trustedSeen === null) trustedSeen = await page.evaluate(() => new Promise((r) => { window.addEventListener('pointerdown', (e) => r({ trusted: e.isTrusted, type: e.pointerType }), { once: true, capture: true }); setTimeout(() => r(null), 1500); window.__probe = 1; })).catch(() => null), 0;
       await down(info.btn[K]);
       const s1 = await page.evaluate((n) => window.__W.go(n), hd);
       await up();
@@ -80,6 +80,7 @@ async function partPress(L) {
       if (i % 200 === 199) log(`${dev}: ${i + 1} presses`);
     }
     const tail = await page.evaluate(() => { const W = window.__W; W.stick(0, 0); W.go(60); const ev = W.ev; W.ev = []; return { ev, lost: W.lost() }; });
+    trustedSeen = await page.evaluate(() => window.__pd);
     console.log(`[press] ${dev}: fight, ${presses.length} trusted presses`);
     const J = judge(presses, tail.ev, dev);
     // b: the hook under a ring, a grave-keeper striking, the hero busy in different ways
@@ -124,7 +125,7 @@ async function partPress(L) {
     console.log(`[press] ${dev}: mash 3600 ticks — ticks by state ${JSON.stringify(mash.seen)} · longest unbroken run ${JSON.stringify(mash.worst)} · events ${JSON.stringify(mash.events)} · 4 s after letting go ${JSON.stringify(mash.end)}`);
     const E = mash.end, free = !E.move && !E.act && !E.chg && !E.roll && !E.hurt && !E.guard && !E.air && !E.dead && !E.queued && !E.bufD && !E.bufJ && !E.bufS;
     const longMove = Object.entries(mash.worst).filter(([k, n]) => (k.startsWith('move:') && k !== 'move:plunge' && n > 60) || (k === 'roll' && n > 30) || (k === 'charging' && n > 90) || (k.startsWith('act:') && n > 150));
-    ok(`${dev}: trusted touches reach the pad (first pointerdown seen in the page)`, !trustedSeen || trustedSeen.trusted !== false, JSON.stringify(trustedSeen));
+    ok(`${dev}: the button presses reached the page as trusted touch pointerdowns`, !!trustedSeen && trustedSeen.trusted >= presses.length, JSON.stringify(trustedSeen));
     ok(`${dev}: fight — no action without a press of its own (no press fires twice)`, J.orphans.length === 0, J.orphans.length + ' orphans');
     ok(`${dev}: fight — no press fires across a hit`, Object.values(J.C).every((c) => c.acrossHit === 0));
     ok(`${dev}: fight — no press fires later than 12 ticks (frozen ticks counted; a sweep out of a roll aside)`, Object.values(J.C).every((c) => c.late === 0), Object.entries(J.C).map(([k, c]) => `${k} ${c.late}`).join(' · '));
