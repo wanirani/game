@@ -54,6 +54,7 @@ export const AREA_FOLDS = {
       "k_flag": "slabs"
     },
     "c2": {
+      "wood": "timber",
       "dirt": "flags",
       "flag": "flags",
       "k_ashlar": "stone"

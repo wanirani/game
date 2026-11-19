@@ -214,7 +214,7 @@ function breakables(now) {
     put('pot', 172, 270); put('jar', 212, 266); put('barrel', 536, 262, { rot: 0.3 }); put('jar', 585, 266); put('jar', 940, 268); put('crate', 1392, 262, { rot: 0.12 });   // outskirts
     put('barrel', 1632, 254); put('jar', 1676, 260); put('urn', 1706, 246); put('crate', 2150, 250, { rot: -0.08 }); put('jar', 2198, 260); put('barrel', 2420, 254); put('pot', 2462, 258); put('pot', 1938, 258); put('jar', 2992, 260);   // street: inn front, the house, the smithy side
     put('jar', 3340, 846); put('barrel', 3390, 852, { rot: 0.5 }); put('barrel', 4168, 856); put('crate', 4222, 858, { rot: 0.2 }); put('jar', 4268, 866); put('pot', 4664, 470);   // the square: corners of its north wall, the east wall
-    put('urn', 3478, 1420); put('urn', 4322, 1420);   // offering urns on the church terrace
+    put('urn', 3478, 1420); put('urn', 4322, 1500);   // offering urns on the church terrace (STORY, 11-19: the east one stood at 4322, 1420 - on tonight's place of Elise beside the bell; it stands where 1697 has it now)
   } else {
     put('jar', 212, 266); put('pot', 250, 270); put('barrel', 536, 262, { rot: 0.3 }); put('jar', 585, 266); put('jar', 940, 268); put('crate', 1392, 262, { rot: 0.12 });   // outskirts: the harvest road
     put('barrel', 1632, 254); put('jar', 1676, 260); put('jar', 1946, 260); put('pot', 1986, 258); put('urn', 1966, 226); put('barrel', 2420, 254); put('pot', 2376, 258); put('jar', 2992, 260); put('pot', 2954, 258);   // street: the tavern side, the jars that were sacks, the smithy side
