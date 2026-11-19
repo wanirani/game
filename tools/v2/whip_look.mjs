@@ -31,6 +31,15 @@ async function seq(S, o) {
   for (const e of sim.enemies) if (e._used) { e._used = false; e.x = e.homeX = -99999; e.z = e.homeZ = -99999; e._px = e.x; e._pz = e.z; e.active = false; e.state = 'idle'; e.atk = null; e.wakeBy = 'trigger'; e.stun = 0; e.kx = e.kz = 0; e.pullT = 0; }
   F.stop = 0; F.slowT = 0;
   const kind = ['skeleton_soldier', 'plague_corpse', 'skeleton_mage', 'grave_ghost', 'gravekeeper_armor'].find((k) => sim.enemies.some((q) => q.kid === k && !q.dead));
+  if (W.dir === undefined) {   // a straight of 330 px from the spot, on one level and with nothing solid in it: the sequences run along it (the roll of the sweep needs the room)
+    const y0 = W.ground(W.X0, W.Z0); W.dir = [1, 0];
+    for (const d of [[1, 0], [-1, 0], [0.7071, 0.7071], [-0.7071, 0.7071], [0.7071, -0.7071], [-0.7071, -0.7071], [0, 1], [0, -1]]) {
+      let ok = true; for (let r = 30; r <= 330 && ok; r += 30) { const gy = W.ground(W.X0 + d[0] * r, W.Z0 + d[1] * r); if (!(Math.abs(gy - y0) < 3)) ok = false; }
+      if (ok && sim.clearLine && !sim.clearLine(W.X0, W.Z0, W.X0 + d[0] * 330, W.Z0 + d[1] * 330, y0 + 40)) ok = false;
+      if (ok) { W.dir = d; break; }
+    }
+  }
+  const DX = W.dir[0], DZ = W.dir[1];
   let X = W.X0, Z = W.Z0, ring = null;
   if (S.skill) {   // under a whip ring: a spot from which the rules offer the hook
     const P = sim.hookPoints[0]; if (!P) return { skip: 'no whip ring in this area' };
@@ -39,8 +48,8 @@ async function seq(S, o) {
     if (!found) return { skip: 'no spot under the ring' };
     ring = { x: P.x, y: (P.y ?? 0) + (P.h ?? 150), z: P.z };
   }
-  W.put(X, Z, 1, 0); sim.hero.reso = 0; for (let i = 0; i < 20; i++) g.tick(1 / 60);
-  const foes = []; if (!S.skill) for (let k = 0; k < S.at.length; k++) foes.push(W.enemy(kind, X + S.at[k][0], Z + S.at[k][1], { fresh: k > 0 && !sim.enemies.some((q) => q.kid === kind && !q.dead && !q._used) }));
+  if (!S.skill) W.put(X, Z, DX, DZ); sim.hero.reso = 0; for (let i = 0; i < 20; i++) g.tick(1 / 60);
+  const foes = []; if (!S.skill) for (let k = 0; k < S.at.length; k++) foes.push(W.enemy(kind, X + S.at[k][0] * DX - S.at[k][1] * DZ, Z + S.at[k][0] * DZ + S.at[k][1] * DX, { fresh: k > 0 && !sim.enemies.some((q) => q.kid === kind && !q.dead && !q._used) }));
   const hits = []; let ti = 0;
   const H = sim.hooks, h0 = H.hit; H.hit = function (e, dmg, mv, x, y, z, info) { hits.push({ tick: ti, id: mv.id, e, x, y, z, ex: e.x, ey: e.y, ez: e.z, er: e.r, eh: e.h }); return h0.call(this, e, dmg, mv, x, y, z, info); };
   const I = meshInfo(wp), vtx = new Float32Array(I.floats), tmp = new Float32Array(wp.n * 3), tmp2 = new Float32Array(wp.n * 3), TS = (I.nTrail / 6) + 1, trail0 = (I.verts - TS * 2) * 10;
@@ -54,7 +63,7 @@ async function seq(S, o) {
   for (let i = 0; i < S.n && i <= endAt; i++) {
     ti = i;
     for (const q of S.ev) if (q[0] === i) { if (q[1] === 'down') { W.down(q[2]); held.add(q[2]); } else { W.up(q[2]); held.delete(q[2]); } }
-    if (S.stick) { if (i <= S.stick[2]) W.stick(S.stick[0], S.stick[1]); else W.stick(0, 0); }
+    if (S.stick) { if (i <= S.stick[2]) W.stick(DX, DZ); else W.stick(0, 0); }
     const h = sim.hero; h.hp = h.hpMax; g.tick(1 / 60);
     const moved = sim.time !== simT; simT = sim.time;
     const mvId = h.move ? h.move.id : h.act === 'hook' ? 'hook' : null;
@@ -71,11 +80,12 @@ async function seq(S, o) {
       const rx = R.x - (h.x - h._px) * k1, ry = R.y - (sc.visY - sc.visYP) * k1, rz = R.z - (h.z - h._pz) * k1;   // the hand of the posed skeleton as the character draw places it
       const o3 = (wp.n - 1) * 3, tip = [N[o3], N[o3 + 1], N[o3 + 2]], C = tgt();
       // the streak's centre line as the mesh has it (visible part only), on the screen
-      const sp = []; for (let j = 0; j < TS; j++) { const q = trail0 + j * 20; if (vtx[q + 6] < 0.06) continue; const p2 = proj(vtx[q], vtx[q + 1], vtx[q + 2]); sp.push([p2[0], p2[1], vtx[q + 6]]); }
-      let kink = 0; const live = wp.trailLive > 0.01;
-      if (live) for (let j = 1; j < sp.length - 1; j++) { const ax = sp[j][0] - sp[j - 1][0], ay = sp[j][1] - sp[j - 1][1], bx = sp[j + 1][0] - sp[j][0], by = sp[j + 1][1] - sp[j][1], la = Math.hypot(ax, ay), lb = Math.hypot(bx, by); if (la < 1.2 || lb < 1.2) continue; const ang = Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by) / (la * lb)))) * 57.2958; if (ang > kink) kink = ang; }
+      const sp = []; let nv = 0; for (let j = 0; j < TS; j++) { const q = trail0 + j * 20, p2 = proj(vtx[q], vtx[q + 1], vtx[q + 2]); sp.push([p2[0], p2[1], vtx[q + 6]]); if (vtx[q + 6] >= 0.06) nv++; }
+      let kink = 0; const live = wp.trailLive > 0.01;   // a corner counts where the streak is lit on both sides of it (three neighbouring sections at 6 % strength or more, pieces of 1.2 px or more)
+      if (live) for (let j = 1; j < sp.length - 1; j++) { if (sp[j - 1][2] < 0.06 || sp[j][2] < 0.06 || sp[j + 1][2] < 0.06) continue; const ax = sp[j][0] - sp[j - 1][0], ay = sp[j][1] - sp[j - 1][1], bx = sp[j + 1][0] - sp[j][0], by = sp[j + 1][1] - sp[j][1], la = Math.hypot(ax, ay), lb = Math.hypot(bx, by); if (la < 1.2 || lb < 1.2) continue; const ang = Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by) / (la * lb)))) * 57.2958; if (ang > kink) kink = ang; }
+      if (kink > (W._kw ?? 0) || !rows.length) { if (!rows.length) W._kw = 0; if (kink > W._kw) { W._kw = kink; W._kp = { tick: i, al, hero: [h.x, h.y, h.z, h.dirX, h.dirZ].map((q) => +q.toFixed(1)), dir: W.dir, pts: sp.map((q) => [Math.round(q[0]), Math.round(q[1]), +q[2].toFixed(2)]), hist: Array.from(wp.hist).map((q) => +q.toFixed(1)), tip: Array.from(N.slice((wp.n - 1) * 3)).map((q) => +q.toFixed(1)) }; } }
       const step = lastTip ? Math.hypot(tip[0] - lastTip[0], tip[1] - lastTip[1], tip[2] - lastTip[2]) : 0; lastTip = tip;
-      const row = { tick: i, s: al === 1 ? 'b' : 'a', a, mv: mvId, moveT: +(h.moveT ?? 0).toFixed(4), hit: i === hitTick, ice: !moved, ext: +wp.ext.toFixed(3), root: +Math.hypot(N[0] - rx, N[1] - ry, N[2] - rz).toFixed(1), kink: +kink.toFixed(0), streak: live ? sp.length : 0, step: +step.toFixed(1), body: C ? +lashOn(N, C).toFixed(1) : -1, tipHit: hit0 ? +Math.hypot(tip[0] - hit0.x, tip[1] - hit0.y, tip[2] - hit0.z).toFixed(1) : -1 };
+      const row = { tick: i, s: al === 1 ? 'b' : 'a', a, mv: mvId, moveT: +(h.moveT ?? 0).toFixed(4), hit: i === hitTick, ice: !moved, ext: +wp.ext.toFixed(3), root: +Math.hypot(N[0] - rx, N[1] - ry, N[2] - rz).toFixed(1), kink: +kink.toFixed(0), streak: live ? nv : 0, step: +step.toFixed(1), body: C ? +lashOn(N, C).toFixed(1) : -1, tipHit: hit0 ? +Math.hypot(tip[0] - hit0.x, tip[1] - hit0.y, tip[2] - hit0.z).toFixed(1) : -1 };
       rows.push(row);
       if (o.sheet && cells < maxCells) {
         const k = glc.width / g.viewW, c = proj(hx + (C ? (C.ex - hx) * 0.35 : 0), hy + 62, hz), sw = CW * (o.zoom ?? 1.9) * (k / 2.0), sh = sw * CH / CW, sx = c[0] * k - sw / 2, sy = c[1] * k - sh / 2;
@@ -101,7 +111,7 @@ async function seq(S, o) {
   const hitA = rows.find((r) => r.hit), vis = rows.filter((r) => r.streak >= 3);
   const out = { kind, start: startTick, hitTick, hitRel: hitTick >= 0 ? hitTick - startTick : null, hits: hits.map((q) => `${q.tick - startTick}:${q.id}`), touch: firstTouch && hitTick >= 0 ? firstTouch.tick - hitTick : null,
     out: hitRow ? hitRow.ext : null, bodyAtHit: hitRow ? hitRow.body : null, root: Math.max(0, ...rows.map((r) => r.root)), kink: Math.max(0, ...vis.map((r) => r.kink)), kinkAt: (vis.slice().sort((p, q) => q.kink - p.kink)[0] ?? {}).tick - startTick,
-    step: Math.max(0, ...rows.map((r) => r.step)), jump: hitA ? hitA.step : null, rows, everyFrame: !!sc.everyFrame };
+    step: Math.max(0, ...rows.map((r) => r.step)), jump: hitA ? hitA.step : null, rows, everyFrame: !!sc.everyFrame, worst: o.debug ? W._kp : undefined };
   if (o.sheet) { const used = Math.ceil(cells / COLS) * CH, c2 = document.createElement('canvas'); c2.width = cv.width; c2.height = Math.max(CH, used); c2.getContext('2d').drawImage(cv, 0, 0); out.png = c2.toDataURL('image/png'); out.cells = cells; }
   return out;
 }
@@ -136,10 +146,10 @@ try {
     all[area] = {};
     for (const m of MOVES) {
       const S = SEQ[m]; if (!S) continue;
-      const r = await page.evaluate(([S, o]) => window.__seq(S, o).catch((e) => ({ skip: 'error: ' + (e?.stack ?? e) })), [S, { sheet: SHEET }]).catch((e) => ({ skip: 'evaluate: ' + e.message }));
+      const r = await page.evaluate(([S, o]) => window.__seq(S, o).catch((e) => ({ skip: 'error: ' + (e?.stack ?? e) })), [S, { sheet: SHEET, debug: !!args.debug }]).catch((e) => ({ skip: 'evaluate: ' + e.message }));
       if (r.skip) { log(`${area} ${m}: skipped (${r.skip})`); all[area][m] = { skip: r.skip }; continue; }
       if (r.png) { fs.writeFileSync(`${OUT}/${TAG}_${area}_${m}.png`, Buffer.from(r.png.split(',')[1], 'base64')); delete r.png; }
-      all[area][m] = r;
+      all[area][m] = r; if (args.debug && r.worst) console.log('   worst kink sample: ' + JSON.stringify(r.worst));
       log(`${area} ${m.padEnd(10)} hit t${r.hitRel} (${r.hits.join(' ')}) · touch ${r.touch == null ? '-' : (r.touch > 0 ? '+' : '') + r.touch} · out ${r.out} · lash to body on the hit tick ${r.bodyAtHit} px · root gap ${r.root} px · kink ${r.kink} deg (t${r.kinkAt}) · tip step max ${r.step} px, in the hit sample ${r.jump} px · ${r.cells ?? 0} cells`);
     }
   }

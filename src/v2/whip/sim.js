@@ -258,7 +258,8 @@ export class Whip {
         // jump there in one tick: it starts on the authored bearing and swings over during the first frames of the hit-stop (drawn(); 20 degrees and up)
         const ax = W[0] - r.x, az = W[2] - r.z, bx = sw.hx - r.x, bz = sw.hz - r.z, pn = this.pin;
         const an = ax * ax + az * az > 400 && bx * bx + bz * bz > 400 ? Math.atan2(bx * az - bz * ax, bx * ax + bz * az) : 0;
-        if (an > 0.35 || an < -0.35) { pn.ang = an; pn.e = pn.e0 = 0; } else pn.e = pn.e0 = 1;
+        if (an > 0.35 || an < -0.35) { pn.ang = an; pn.e = pn.e0 = 0; const H = this.hist; for (let i = 3; i < TRAIL_N * 4; i += 4) H[i] = 0; }   // (the streak of the strike that went elsewhere is put out: it would be drawn as one straight band from there to the moving tip)
+        else pn.e = pn.e0 = 1;
       }
       const q = clamp(1 - (s - sw.hs - 0.3) / 0.3, 0, 1);
       if (q <= 0) sw.hasHit = false;
@@ -438,7 +439,7 @@ export class Whip {
     {   // the streak: where the tip was, and how hard it was moving (frozen with the world: no tick, no shift)
       const H = this.hist, t = this.tip, sp = Math.sqrt((t.x - ox) * (t.x - ox) + (t.y - oy) * (t.y - oy) + (t.z - oz) * (t.z - oz)) / dt;
       H.copyWithin(4, 0, (TRAIL_N - 1) * 4);
-      H[0] = t.x; H[1] = t.y; H[2] = t.z; H[3] = this.trail > 0 ? clamp((sp - 260) / 1100, 0, 1) : 0;
+      H[0] = t.x; H[1] = t.y; H[2] = t.z; H[3] = this.trail > 0 && this.pin.e >= 1 ? clamp((sp - 260) / 1100, 0, 1) : 0;
       let m = 0; for (let i = 3; i < TRAIL_N * 4; i += 4) if (H[i] > m) m = H[i];
       this.trailLive = m; this.trailW = this.mode === 'swing' && (this.sw.str === 'F' || this.sw.str === 'H') ? 1.5 : 1;
     }
