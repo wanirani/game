@@ -217,7 +217,7 @@ async function partAlloc(L) {
   const page = await L.page(DEVS[0]), cdp = await page.context().newCDPSession(page), rows = [];
   await cdp.send('HeapProfiler.enable');
   for (const area of AREAS) for (const tier of TIERS) for (const scen of SCENS) {
-    await L.open(page, area, `&v2res=0.5&v2tier=${tier}`);
+    await L.open(page, area, `&v2res=0.4&v2aa=0&v2tier=${tier}`);
     const info = await page.evaluate((scen) => {
       const sc = window.__v2.scene, W = window.__W, g = window.__game, sim = sc.sim, h = sim.hero; W.drawEvery = 0; W.clear(); W.X0 = h.x; W.Z0 = h.z; let note = '';
       if (scen === 'fight') { const have = [...new Set(sim.enemies.map((q) => q.kid))], K = []; for (let i = 0; i < 6; i++) K.push(have[i % have.length]); const at = [[110, 0], [-110, 30], [30, 120], [50, -120], [150, 90], [-140, -80]]; K.forEach((k, i) => W.enemy(k, W.X0 + at[i][0], W.Z0 + at[i][1], { awake: true, hp: 99999 })); note = '6 awake: ' + K.join(','); }
@@ -226,20 +226,21 @@ async function partAlloc(L) {
         if (best) { W.put(best.x - 70, best.z, 1, 0); W.X0 = best.x - 70; W.Z0 = best.z; } note += `breakables ${B.length}, fires ${fires.length}, nearest fire to the jar ${bf ? Math.round(bd) + ' px' : 'none'}`; }
       W.brk0 = (sim.breakables ?? []).filter((q) => q.broken).length;
       W.frames = (n, scen) => { const q = sc.sim.hero, inp = sc.inp; for (let i = 0; i < n; i++) { q.hp = q.hpMax; if (scen !== 'stand' && (W.fn = (W.fn | 0) + 1) % 11 === 0) inp.attack = true; g.tick(1 / 60); g.alpha = 0.5; g.render(); } };
-      const t0 = performance.now(); W.frames(40, scen); const ms = (performance.now() - t0) / 40; W.frames(200, scen);   // warm up
+      const t0 = performance.now(); W.frames(20, scen); const ms = (performance.now() - t0) / 20; W.frames(60, scen);   // warm up
       return { ms, note, tier: sc.perf.tier, lost: W.lost() };
     }, scen);
-    const frames = Math.max(BATCH * 5, Math.min(MAXF, Math.round((SECS * 1000) / info.ms / BATCH) * BATCH));
-    await cdp.send('HeapProfiler.collectGarbage'); const uA = (await cdp.send('Runtime.getHeapUsage')).usedSize;
-    await cdp.send('HeapProfiler.startSampling', { samplingInterval: 512, includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true });
+    log(`${area} ${tier} ${scen}: ${info.ms.toFixed(0)} ms a frame here · ${info.note}`);
+    const frames = Math.max(BATCH * 4, Math.min(MAXF, Math.round((SECS * 1000) / info.ms / BATCH) * BATCH));
+    await page.evaluate(() => { if (window.gc) { window.gc(); window.gc(); } }); const uA = (await cdp.send('Runtime.getHeapUsage')).usedSize;
+    if (!args.nosample) await cdp.send('HeapProfiler.startSampling', { samplingInterval: 2048, includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true });
     const diffs = []; let dropped = 0;
     for (let f = 0; f < frames; f += BATCH) {
-      await cdp.send('HeapProfiler.collectGarbage'); const u0 = (await cdp.send('Runtime.getHeapUsage')).usedSize;
+      await page.evaluate(() => { if (window.gc) { window.gc(); window.gc(); } }); const u0 = (await cdp.send('Runtime.getHeapUsage')).usedSize;
       await page.evaluate(([n, s]) => { window.__W.frames(n, s); }, [BATCH, scen]);
       const u1 = (await cdp.send('Runtime.getHeapUsage')).usedSize; if (u1 - u0 < 0) dropped++; else diffs.push((u1 - u0) / BATCH);
     }
-    const prof = (await cdp.send('HeapProfiler.stopSampling')).profile;
-    await cdp.send('HeapProfiler.collectGarbage'); const uB = (await cdp.send('Runtime.getHeapUsage')).usedSize;
+    const prof = args.nosample ? { head: { callFrame: { url: '' }, selfSize: 0, children: [] } } : (await cdp.send('HeapProfiler.stopSampling')).profile;
+    await page.evaluate(() => { if (window.gc) { window.gc(); window.gc(); } }); const uB = (await cdp.send('Runtime.getHeapUsage')).usedSize;
     const own = { v2: 0, core: 0, other: 0 }, fn = {}; const walk = (nd) => { const u = nd.callFrame.url || '', o = u.includes('/src/v2/') ? 'v2' : u.includes('/src/core/') ? 'core' : 'other'; own[o] += nd.selfSize; if (nd.selfSize > 0) { const k = `${u.replace(/^.*\/src\//, '').replace(/\?.*$/, '') || '(page)'}:${nd.callFrame.functionName || '(anon)'}:${nd.callFrame.lineNumber + 1}`; fn[k] = (fn[k] ?? 0) + nd.selfSize; } for (const c of nd.children ?? []) walk(c); }; walk(prof.head);
     diffs.sort((a, b) => a - b); const med = diffs.length ? diffs[diffs.length >> 1] : NaN, mean = diffs.reduce((a, b) => a + b, 0) / Math.max(1, diffs.length), end = await page.evaluate(() => ({ brk: (window.__v2.scene.sim.breakables ?? []).filter((q) => q.broken).length - window.__W.brk0, lost: window.__W.lost() }));
     const top = Object.entries(fn).sort((a, b) => b[1] - a[1]).slice(0, 7).map(([k, b]) => `${k} ${(b / frames / 1024).toFixed(2)}`);
