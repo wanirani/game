@@ -198,6 +198,7 @@ export default class V2Game extends Scene {
     for (let i = 0; i < S.length; i++) { const q = S[i]; if (q.def.kind !== 'bell') continue; const dx = q.x - h.x, dz = q.z - h.z; if (dx * dx + dz * dz < (q.r + 60) * (q.r + 60)) spot = q; }
     this.emit('bell.long', { boss, spot: spot ? spot.id : null, twin: this.area.twin ?? null });
     if (this.story && spot && !boss) { const d = spot.def; this.emit('interact', { id: d.id, kind: d.kind, event: d.event ?? null, data: d.data ?? null, locked: d.locked ?? null, spot: d, ring: true }); }   // STORY HOOK (DATA_FORMAT 6)
+    if (this.story && spot && !boss && spot.def.event === 'bell.sealed') this.cx.refuse(true);   // WHIP2: a long ring at a sealed bell is felt as the bell that stays shut (crossing.js refuse) - the story's line and notice follow; the held bell is cued by the story's own dull toll
     if (this.story || boss || !spot || !this.area.twin || this._go) return;   // the story decides when it is plugged in (api.bellCross)
     this.cross(null);   // without a story the long ring next to a bell is the same crossing the story uses (veil, toll, the nearest free spot over there, a clean refusal) - it used to be a plain dark fade onto the very same x, z, even into something solid (INTEGRATE-VERIFY)
   }
@@ -866,7 +867,7 @@ export default class V2Game extends Scene {
       enemySwing(e) { sc._actE = e; },
       cast(e, phase) { if (phase === 'charge') { try { feel.magic(elementOf(sc.pos, KINDS[e.kind]?.element).sound, 'charge', e); } catch { /* no audio */ } } },
       // a full effect preset by name (magic, shield, pickup ...): the preset brings its own sound events and screen feel
-      fx(name, x, y, z, dx = 1, dz = 0, pow = 1, tx = x + dx * 320, ty = y, tz = z + dz * 320) { const id = PRESET_IDS[name]; if (sc.fx && id !== undefined) sc.fx.playAt(id, x, y, z, dx, dz, pow, tx, ty, tz); },
+      fx(name, x, y, z, dx = 1, dz = 0, pow = 1, tx = x + dx * 320, ty = y, tz = z + dz * 320) { if (name === 'holy.bell' && sc.cx.shutNow()) return; const id = PRESET_IDS[name]; if (sc.fx && id !== undefined) sc.fx.playAt(id, x, y, z, dx, dz, pow, tx, ty, tz); },   // (WHIP2: no golden light from a bell that has just stayed shut)
       event(name, a, b, c, d) {
         if (name === 'bell') sc.emit('bell.echo', { r: c });                       // short ring (echo)
         else if (name === 'ringLong') sc._ringLong(b ?? null);                     // long ring: b = the kneeling boss to be sent off, or null = the scene decides (crossing)
@@ -877,7 +878,7 @@ export default class V2Game extends Scene {
           const ph = name === 'kneel' || name === 'bossFlee' || name === 'bossReturn' || name === 'bossDown' ? sc.ch.phase(name, a, b) : null;   // STORY HOOK (DATA_FORMAT 6). CHAPTER: the flight and the return are staged in chapter.js, which raises flee / driven itself when the tear is over
           if (ph) sc.emit('boss.phase', { boss: a?.kind ?? null, phase: ph }); if (name === 'bossDown') sc.emit('boss.down', { boss: a, knelled: !!b }); }
       },
-      sound(name, pos) { snd(name, pos ?? null); },
+      sound(name, pos) { if (name === 'bell.toll' && sc.cx.shutNow()) return; snd(name, pos ?? null); },   // (WHIP2: the long ring's toll is kept back when the bell has just stayed shut - the dull toll is the whole answer, with no tail)
     };
   }
   // ───────────────────────── tick ─────────────────────────

@@ -20,7 +20,9 @@ export { FeelSound, ROOMS, BUS, SYN, NEW_DIR } from './sound.js';
 export { feelHaptics } from './haptics.js';
 
 class Feel {
-  constructor(sound = new FeelSound()) { this.sound = sound; this.haptics = feelHaptics; this.vibrate = true; }
+  constructor(sound = new FeelSound()) { this.sound = sound; this.haptics = feelHaptics; this.vibrate = true; this.taps = null; }
+  /** one listener for one event name, called before that event sounds (set again = replaced; fn null = removed). The scene stages what goes with a sound whoever asks for it: the bell that stays shut with 'cross.dull' (src/v2/game/crossing.js) */
+  tap(name, fn) { if (!this.taps) this.taps = {}; if (fn) this.taps[name] = fn; else delete this.taps[name]; }
   /** 스테이지 로딩 때 한 번 (첫 입력 뒤): 샘플을 미리 받는다 */
   preload() { return this.sound.preload(); }
   setListener(px, py, pz, fx, fy, fz, ref, tan) { this.sound.setListener(px, py, pz, fx, fy, fz, ref, tan); }
@@ -38,7 +40,10 @@ class Feel {
   parry(weapon, pos) { return this.hit(weapon, 'armor', 'H', FLAG.parry, pos); }
   step(speed, pos) { return this.sound.step(speed, pos); }
   /** 사건 이름으로 (EVENT_NAMES) → 레시피 | null */
-  play(name, pos = null, vol = 1, pitch = 1) { const r = this.sound.play(name, pos, vol, pitch); if (r) this._hap(r.haptic); return r; }
+  play(name, pos = null, vol = 1, pitch = 1) {
+    if (this.taps !== null) { const t = this.taps[name]; if (t !== undefined) { try { t(pos); } catch (e) { console.warn('[feel] tap ' + name + ':', String(e?.message ?? e)); } } }
+    const r = this.sound.play(name, pos, vol, pitch); if (r) this._hap(r.haptic); return r;
+  }
   /** 마법: phase = 'charge' | 'release' | 'impact' */
   magic(element, phase, pos) { const m = MAGIC_EVENT[element]; return m && m[phase] ? this.play(m[phase], pos) : null; }
   /** 종 가락: 'dawn' | 'dusk' | 'bloodmoon' | 'return' | 'still' · 깊은 종 = 'toll' */

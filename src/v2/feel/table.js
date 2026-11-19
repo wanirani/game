@@ -87,7 +87,7 @@ export const HAPTIC = Object.freeze({
   chime: { pad: [0, 0.3, 50], phone: 8 }, toll: { pad: [0.9, 0.35, 480], phone: [60, 50, 120] }, ui: { pad: [0, 0, 0], phone: 0 },
   breakL: { pad: [0.05, 0.3, 45], phone: 6 },   // BREAK: a jar, crate or barrel breaking — lighter than the lightest blow that lands on an enemy (hitM: 8 ms)
   // CROSSING (the bell crossing): one heartbeat of the passage, the second toll on the far side, the dull toll of a refusal
-  crossBeat: { pad: [0.22, 0.1, 60], phone: 8 }, crossArrive: { pad: [0.8, 0.5, 320], phone: [40, 40, 90] }, dull: { pad: [0.3, 0.05, 80], phone: [14, 40, 10] },
+  crossBeat: { pad: [0.22, 0.1, 60], phone: 8 }, crossArrive: { pad: [0.8, 0.5, 320], phone: [40, 40, 90] }, dull: { pad: [0.8, 0, 120], phone: 36 },   // (WHIP2: one low thud - the low motor only, one 36 ms pulse on a phone. It was a light double tick that read as a notification)
 });
 
 // ───────────────────────────── 타격 조합 ─────────────────────────────
@@ -236,7 +236,8 @@ export const EVENT = Object.freeze({
   'loop.cross': ev('f3_loop', [], { loop: 'holy', gain: 0.2, life: 9, flat: true }),
   'cross.arrive.past': ev('f3_bell', [n('bell_toll', 0, 0.42, 0.84), n('cross_tail_past', 0.03, 0.62, 1, 0, { pv: 0 }), s('drop', 0, 0.35, 0.8)], { duck: [0.5, 2.4], haptic: 'crossArrive' }),
   'cross.arrive.now': ev('f3_bell', [n('bell_toll', 0, 0.42, 1.19), n('cross_tail_now', 0.03, 0.55, 1, 0, { pv: 0 }), s('shimmer', 0.08, 0.3, 1.4, 1)], { duck: [0.5, 2.4], haptic: 'crossArrive' }),
-  'cross.dull': ev('f3_bell', [n('bell_dull', 0, 0.9, 1, 0, { pv: 0.02 }), s('thud', 0, 0.45, 0.8)], { haptic: 'dull' }),
+  // (WHIP2 - the bell that will not answer: lower and heavier, on the big bus - the bell bus sends to the hall reverb and a refusal has NO tail -, flat, with a sub thump under it)
+  'cross.dull': ev('f3_big', [n('bell_dull', 0, 1, 0.8, 0, { pv: 0.01 }), s('thud', 0, 0.7, 0.62), s('sub', 0.005, 0.55, 0.9), s('knock', 0.03, 0.22, 0.6, 1)], { haptic: 'dull', flat: true, roomK: 0 }),
   // 화면들 (SCREENS — docs/v2/UI_API.md 10): small, flat, never over a fight's sounds. book.chime = an entry was written (the book chip comes up)
   'book.chime': ev('f3_ui', [n('bell_high', 0, 0.34, 1, 0, { pv: 0, gv: 0.03 }), n('bell_high', 0.16, 0.2, 1.498, 1, { pv: 0, gv: 0.03 })], { flat: true, gain: 0.5 }),
   'card.rise': ev('f3_ui', [n('ui_open', 0, 0.42, 1.18), n('cloth', 0.01, 0.2, 1.3, 1)], { flat: true, gain: 0.5 }),   // a card 「얻었다 — …」 rises

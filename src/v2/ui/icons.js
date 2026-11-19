@@ -85,7 +85,7 @@ const DRAW = {
   // the silver key: a round bow, bright, it has not changed in a hundred years
   key_silver(c) { c.rotate(-0.62); keyPath(c, false); done(c, ['#ffffff', '#93a1cb'], '#ffffff', -16, 16); c.rotate(0.62); glint(c, -30, 2, 11); glint(c, 30, -30, 6); },
   // an iron key as the smith would make it today: a four-cornered bow, dark
-  key_iron(c) { c.rotate(-0.62); keyPath(c, true); done(c, ['#6a7088', '#22253a'], '#b9c2de', -16, 16); c.rotate(0.62); },
+  key_iron(c) { c.rotate(-0.62); keyPath(c, true); done(c, ['#4c5270', '#15172a'], '#8f99bc', -16, 16); c.rotate(0.62); },
   // what an iron key is after a hundred years: a rusted lump, the bit broken off
   key_rust(c) {
     c.rotate(-0.62);

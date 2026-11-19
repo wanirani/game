@@ -80,7 +80,7 @@ export class Sim {
       act: null, actT: 0, actDone: false, actP: null, charging: false, charge: 0, chargeFullT: 0, atkHold: 0, whipLv: 1, pullT: 0, pullX: 0, pullZ: 0, whipOn: 0, whipX: 0, whipY: 0, whipZ: 0,
       coins: 0, draughts: 0, reso: 0, resoMax: T.resoCells, callCd: 0, callCdMax: T.callCd, bellCd: 0, bellCdMax: T.bellCd, bellCharge: 0, bellDown: false, bellWait: false, bellHoldT: 0, bellOk: true, knellId: null, hookId: null, skillMode: 'call', hookFX: 0, hookFY: 0, hookFZ: 0, hookTX: 0, hookTY: 0, hookTZ: 0, hookDur: 0.3,
       gait: 0, gaitMode: 'run', wasMoving: false, pushed: false, pivot: 0, pivotT: 0, pivotA: 0, pivotV: 0, pivotG: 0.86, lastStep: 'L', wishX: 1, wishZ: 0, mx: 0, mz: 0, m: 0, ux: 0, uz: 0,
-      anim: 'idle', animT: 0, t: 0, cut: false, landT: 0, landV: 0,
+      anim: 'idle', animT: 0, t: 0, cut: false, landT: 0, landV: 0, recoil: 0,   // recoil: picture only (the bell that stays shut - written by the scene's crossing, read by motion.js; the rules never read it)
       safe: { x: sx, z: sz, y: sy },
     };
     settle(h); settle(h.roll); settle(h.safe);

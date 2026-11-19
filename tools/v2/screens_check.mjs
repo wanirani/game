@@ -274,19 +274,18 @@ if (PAGE_PARTS.some(want)) {
               if (!modal) { out.cardWhilePlay++; if (!out.tPlay0) out.tPlay0 = sc.sim.time; out.tPlay1 = sc.sim.time; if (out.shotAt < 0 && c.kind === 'item') out.shotAt = i; }
             }
             if (out.shotAt === i) break;   // (a still is taken here; the loop goes on in the next call)
-            if (!modal && !H.st.busy && up.some((c) => c.tap && c.t > 0.2)) { tapT = up.find((c) => c.tap); break; }
           }
           return { ...out, kinds: [...out.kinds], seen: H.seen.slice(seen0).filter((e) => e[0] === 'notice').map((e) => e[1]), sounds: F.sounds.slice(), tapT, modal: sc.hud.modal, busy: H.st.busy, chip: F.model().chip, t0, t1: sc.sim.time };
         });
         if (run.shotAt >= 0) await shot('card_item');
         // go on until the card 「연대기에 적혔다」 can be pressed
-        const run2 = run.tapT ? run : await ev(() => { const F = window.__F, sc = window.__v2.scene, H = sc.host; let tapT = null, n = 0, maxUp = 0, moved = 0; const t0 = sc.sim.time; for (let i = 0; i < 1500; i++) { if (sc.hud.modal === 'dialog') { if (i % 9 === 0) F.tap(F.safe().vw / 2, F.safe().vh * 0.3, 1); else F.tick(1, false); continue; } F.tick(1, i % 6 === 0); const up = F.M().cards.up; maxUp = Math.max(maxUp, up.length); if (!sc.hud.modal && !H.st.busy && up.some((c) => c.tap && c.t > 0.2)) { tapT = up.find((c) => c.tap); break; } } return { tapT, maxUp, t0, t1: sc.sim.time, chip: F.model().chip, seen: H.seen.filter((e) => e[0] === 'notice').map((e) => e[1]).slice(-8), sounds: F.sounds.slice() }; });
+        const run2 = await ev(() => { const F = window.__F, sc = window.__v2.scene, H = sc.host; let tapT = null, maxUp = 0, play = 0, tA = 0, tB = 0; for (let i = 0; i < 1500; i++) { if (sc.hud.modal === 'dialog') { if (i % 9 === 0) F.tap(F.safe().vw / 2, F.safe().vh * 0.3, 1); else F.tick(1, false); continue; } F.tick(1, i % 6 === 0); const up = F.M().cards.up; maxUp = Math.max(maxUp, up.length); if (!sc.hud.modal && up.length) { play++; if (!tA) tA = sc.sim.time; tB = sc.sim.time; } if (play >= 20 && !sc.hud.modal && !H.st.busy && up.some((c) => c.tap && c.t > 0.2)) { tapT = up.find((c) => c.tap); break; } } return { tapT, maxUp, play, tA, tB, chip: F.model().chip, seen: H.seen.filter((e) => e[0] === 'notice').map((e) => e[1]).slice(-8), sounds: F.sounds.slice() }; });
         const seen = [...new Set([...(run.seen ?? []), ...(run2.seen ?? [])])], sounds = run2.sounds ?? run.sounds;
         ok(`${DEV}: the story's give steps raise the cards 「얻었다 — …」 with the thing's own picture, its chronicle step the card 「연대기에 적혔다 — 묘지 문 열쇠」`, seen.includes('얻었다 — 낡은 은 열쇠') && seen.includes('얻었다 — 빈칸 주문서') && seen.includes('연대기에 적혔다 — 묘지 문 열쇠') && run.kinds.includes('item:key_silver'), seen.join(' · ') + ' · kinds ' + run.kinds.join(' '));
         ok(`${DEV}: the runner adds no second notice for a thing the card has shown (one line each)`, seen.filter((x) => x === '얻었다 — 낡은 은 열쇠').length === 1);
         ok(`${DEV}: the book's chime and the cards' rise go through the feel table`, sounds.includes('book.chime') && sounds.includes('card.rise'), sounds.join(' '));
         ok(`${DEV}: the cards stand at the right under the pause button, inside the safe area: never on the dialogue box, the choice cards, a toast, the banner or a pad button`, run.outside === 0 && run.left === 0 && run.onDialog === 0 && run.onToast === 0 && run.onBanner === 0 && run.onPad === 0 && run.rects.length > 0, `${run.rects.map((r) => R(r)).join(' | ')} · up at once ${Math.max(run.maxUp, run2.maxUp ?? 0)} · waiting at most ${run.maxWait}`);
-        ok(`${DEV}: a card does not stop the game (cards were up in play while the rules' clock ran on, hud.modal null)`, run.cardWhilePlay > 0 && run.tPlay1 > run.tPlay0, `${run.cardWhilePlay} ticks with a card up in play, clock ${run.tPlay0.toFixed(2)} -> ${run.tPlay1.toFixed(2)}`);
+        ok(`${DEV}: a card does not stop the game (cards were up in play while the rules' clock ran on, hud.modal null)`, run2.play >= 20 && run2.tB - run2.tA > 0.25, `${run2.play} ticks with a card up in play, the rules' clock ${run2.tA.toFixed(2)} -> ${run2.tB.toFixed(2)}`);
         ok(`${DEV}: the chip is up again`, run2.chip === true);
         const T = run2.tapT;
         ok(`${DEV}: the card 「연대기에 적혔다」 is up in play and its touch area is 56 px high`, !!T && T.hitH * S.css >= 55.5, T ? `${T.text} · ${R(T)} · touch ${Math.round(T.hitH * S.css)} CSS px` : 'never up');
@@ -329,12 +328,12 @@ if (PAGE_PARTS.some(want)) {
           const flags = () => Object.keys(H.st.state.flags).filter((k) => k.startsWith('key_')).join(' ');
           F.tap(S.vw / 2, S.y + 6, 1); F.tick(2); const off = { sel: F.M().dialog?.sel, flags: flags() };
           F.tap(r[0].x + r[0].w / 2, r[0].y + r[0].h / 2, 1); F.tick(9); const a = { sel: F.M().dialog?.sel, flags: flags() };
-          F.tap(r[0].x + r[0].w / 2, r[0].y + r[0].h / 2, 1); F.tick(3); const b = { flags: flags(), modal: sc.hud.modal, cards: F.M().dialog?.cards ?? null };
+          F.tap(r[0].x + r[0].w / 2, r[0].y + r[0].h / 2, 1); F.tick(3); let line = ''; for (let i = H.seen.length - 1; i >= 0; i--) if (H.seen[i][0] === 'line') { line = H.seen[i][2]; break; } const b = { flags: flags(), modal: sc.hud.modal, cards: F.M().dialog?.cards ?? null, line };
           let n = 0; while (n++ < 900 && (sc.hud.modal === 'dialog' || H.st.busy)) { if (sc.hud.modal === 'dialog' && n % 9 === 0) F.tap(S.vw / 2, S.vh * 0.3, 1); else F.tick(1, false); }
           return { off, a, b, end: { flags: flags(), modal: sc.hud.modal, busy: H.st.busy, h: F.hero() } };
         });
         ok(`${DEV}: a tap beside the cards lets go of the chosen one`, c2.off.sel === -1 && c2.off.flags === '', JSON.stringify(c2.off));
-        ok(`${DEV}: a second tap on the same card decides - 은 열쇠: the story goes on with key_order_silver`, c2.a.sel === 0 && c2.a.flags === '' && c2.b.flags === 'key_order_silver' && c2.b.cards === null, JSON.stringify(c2.a) + ' -> ' + JSON.stringify(c2.b));
+        ok(`${DEV}: a second tap on the same card decides - 은 열쇠: the cards go and the smith answers the silver (「은이라. …」)`, c2.a.sel === 0 && c2.a.flags === '' && c2.b.cards === null && c2.b.modal === 'dialog' && /^은이라/.test(c2.b.line), JSON.stringify(c2.a) + ' -> ' + c2.b.line.replace(/\n/g, ' / '));
         ok(`${DEV}: the scene ends as written (key_entrusted), nothing of the taps reaches the rules`, c2.end.flags === 'key_order_silver key_entrusted' && c2.end.modal === null && c2.end.h.move === null && c2.end.h.buf === '', JSON.stringify(c2.end.flags));
         // the old pad's built-in HUD shows the same cards
         const st = await open(28, '&v2ui=0');
@@ -355,12 +354,101 @@ if (PAGE_PARTS.some(want)) {
           await shot('choice_oldpad');
           const o2 = await ev(() => { const F = window.__F, g = window.__game, sc = window.__v2.scene, H = sc.host, C = sc.hud.choiceCards, r = C.rects(), cv = g.canvas;
             const cvTap = (lx, ly) => { const c = F.toClient(lx, ly), o = { pointerId: 44, pointerType: 'touch', isPrimary: true, clientX: c[0], clientY: c[1], bubbles: true, cancelable: true, button: 0, buttons: 1 }; cv.dispatchEvent(new PointerEvent('pointerdown', o)); F.tick(1, false); window.dispatchEvent(new PointerEvent('pointerup', { ...o, buttons: 0 })); F.tick(1, false); };
-            F.tick(9); cvTap(r[1].x + r[1].w / 2, r[1].y + r[1].h / 2); F.tick(3); return { open: C.open, flags: Object.keys(H.st.state.flags).filter((k) => k.startsWith('key_')).join(' '), modal: sc.hud.modal }; });
-          ok(`${DEV}: the old pad's built-in HUD (v2ui=0) asks on the same two cards: an early tap chooses nothing, the first tap chooses, the second decides (쇠 열쇠 -> key_order_iron)`, o.kind === 'builtin' && o.rects.length === 2 && o.stray.sel === -1 && o.stray.flags === '' && o.one.sel === 1 && o.one.flags === '' && o.one.modal === 'dialog' && !o2.open && o2.flags.includes('key_order_iron'), JSON.stringify({ stray: o.stray, one: o.one, two: o2 }));
+            F.tick(9); cvTap(r[1].x + r[1].w / 2, r[1].y + r[1].h / 2); F.tick(3); const open = C.open, S = F.safe(); let n = 0; while (n++ < 2400 && (sc.hud.modal === 'dialog' || H.st.busy)) { if (sc.hud.modal === 'dialog' && n % 20 === 0) cvTap(S.vw / 2, S.vh * 0.3); else F.tick(1, false); }
+            return { open, flags: Object.keys(H.st.state.flags).filter((k) => k.startsWith('key_')).join(' '), modal: sc.hud.modal }; });
+          ok(`${DEV}: the old pad's built-in HUD (v2ui=0) asks on the same two cards: an early tap chooses nothing, the first tap chooses, the second decides (쇠 열쇠 -> key_order_iron)`, o.kind === 'builtin' && o.rects.length === 2 && o.stray.sel === -1 && o.stray.flags === '' && o.one.sel === 1 && o.one.flags === '' && o.one.modal === 'dialog' && !o2.open && o2.flags === 'key_order_iron key_entrusted' && o2.modal === null, JSON.stringify({ stray: o.stray, one: o.one, two: o2 }));
           ok(`${DEV}: …cards of 56 px inside the safe area there too`, o.rects.every((r) => r.w * o.safe.css >= 56 && r.h * o.safe.css >= 56 && inside(r, o.safe)), o.rects.map((r) => R(r)).join(' | '));
         }
       }
-      // @@PARTS3@@
+      // ───────────── Rook's shop ─────────────
+      if (want('shop') || want('persist')) {
+        await open(33);
+        const s0 = await ev(() => { const F = window.__F, sc = window.__v2.scene; sc.brk.coins = 5; sc.state.coins = 5; F.put(3476, 150, -1, 0); F.tick(40); const P = F.M().prompts, p = P.find((q) => q.action === 'confirm') ?? null, t = sc.people.target; return { pill: p, target: t ? t.def.id : null, safe: F.safe() }; });
+        const S = s0.safe;
+        ok(`${DEV}: before Rook's pack the pill offers his spot (rook_shop)`, !!s0.pill && s0.target === 'rook_shop', `target ${s0.target}`);
+        const s1 = await ev((p) => { const F = window.__F, sc = window.__v2.scene; F.tapRect(p); F.tick(16); const m = F.M(); return { screen: sc.hud.screen, modal: sc.hud.modal, m: m.screen, running: sc.host.st.running, pad: m.pad?.shown, sounds: F.sounds.slice() }; }, s0.pill);
+        const m = s1.m, SH = (await import(ROOT + 'src/v2/data/shop.js')).SHOP.rook;
+        ok(`${DEV}: a touch on the pill opens Rook's shop (the story's step shop: ev_rook_shop waits behind it); the game is stopped, the pad is gone`, s1.screen === 'shop' && s1.modal === 'pause' && s1.running === 'ev_rook_shop' && s1.pad === false, `screen ${s1.screen} modal ${s1.modal} running ${s1.running}`);
+        if (m) {
+          ok(`${DEV}: the shop lies inside the safe area; close and every good are targets of 56 px or more`, inside(m.frame, S) && inside(m.close, S) && m.close.w * S.css >= 55.5 && m.rows.length === 3 && m.rows.every((r) => r.h * S.css >= 55.5 && r.on && r.y >= m.list.y - 1 && r.y + r.h <= m.list.y + m.list.h + 1), m.rows.map((r) => `${r.id} ${Math.round(r.w * S.css)}x${Math.round(r.h * S.css)}`).join(' · ') + ' CSS px');
+          ok(`${DEV}: Rook, his line of tonight, his three goods with a price; the hero's silver (5) stands on it`, m.keeper === '로크' && m.line === SH.line.now && !!m.coins && m.coins.n === 5 && !!m.side && inside(m.side, m.frame) && !hits(m.side, m.list), `${m.keeper}: ${String(m.line).replace(/\n/g, ' / ')} · silver ${m.coins?.n}`);
+        }
+        await ev(() => window.__F.tick(20)); await shot('shop');
+        const bust = await ev(() => window.__F.M().screen?.side?.bust);
+        ok(`${DEV}: his bust is drawn from an image that has arrived (it was loaded with the scene)`, bust === true);
+        const s2 = await ev(() => { const F = window.__F, sc = window.__v2.scene, n0 = F.sounds.length; F.tapRect(F.M().screen.rows[0]); F.tick(3); const a = F.M().screen; return { say: a.say, sel: a.sel, model: F.model(), sounds: F.sounds.slice(n0) }; });
+        ok(`${DEV}: a good he cannot afford (성수 20, silver 5): Rook says so, nothing is chosen or sold, the refusal sounds`, s2.say === SH.say.poor && s2.sel === -1 && s2.model.dr === 0 && s2.model.coins === 5 && s2.sounds.includes('shop.deny'), `${s2.say} · sounds ${s2.sounds.join(' ')}`);
+        await shot('shop_poor');
+        const s3 = await ev(() => {
+          const F = window.__F, sc = window.__v2.scene, M = sc.host.model, row = (i) => F.M().screen.rows[i], coins = (n) => { sc.brk.coins = n; sc.state.coins = n; M.touch(); F.tick(2); };
+          coins(45); const n0 = F.sounds.length;
+          F.tapRect(row(0)); F.tick(3); const one = { sel: F.M().screen.sel, dr: M.dr, coins: M.coins() }; F.draw();
+          return { one, n0 };
+        });
+        ok(`${DEV}: with 45 silver the first touch on 성수 한 병 only chooses it (「한 번 더 누르면 산다」)`, s3.one.sel === 0 && s3.one.dr === 0 && s3.one.coins === 45, JSON.stringify(s3.one));
+        await shot('shop_chosen');
+        const s4 = await ev((n0) => {
+          const F = window.__F, sc = window.__v2.scene, M = sc.host.model, row = (i) => F.M().screen.rows[i], coins = (n) => { sc.brk.coins = n; sc.state.coins = n; M.touch(); F.tick(2); };
+          F.tick(8); F.tapRect(row(0)); F.tick(3); const two = { sel: F.M().screen.sel, dr: M.dr, coins: M.coins(), say: F.M().screen.say, sounds: F.sounds.slice(n0) };
+          F.tick(10); F.tapRect(row(0)); F.tick(10); F.tapRect(row(0)); F.tick(3); const three = { dr: M.dr, coins: M.coins(), state: row(0).state };
+          coins(45); F.tapRect(row(0)); F.tick(3); const full = { say: F.M().screen.say, dr: M.dr, coins: M.coins(), state: row(0).state };
+          sc.sim.hero.reso = 0; M.touch(); F.tick(2); F.tapRect(row(1)); F.tick(10); F.tapRect(row(1)); F.tick(3); const oil = { reso: sc.sim.hero.reso, max: sc.sim.hero.resoMax, coins: M.coins(), state: row(1).state };
+          F.tapRect(row(2)); F.tick(3); const guide = { state: row(2).state, say: F.M().screen.say, guide: M.guide, coins: M.coins() };
+          return { two, three, full, oil, guide };
+        }, s3.n0);
+        ok(`${DEV}: a second touch buys: one draught, 20 silver less, Rook thanks, the purchase sounds`, s4.two.dr === 1 && s4.two.coins === 25 && s4.two.say === SH.say.bought && s4.two.sounds.includes('shop.buy') && s4.two.sel === -1, JSON.stringify(s4.two));
+        ok(`${DEV}: a second draught (two touches again), then no more: two at most - the row says so and Rook refuses`, s4.three.dr === 2 && s4.three.coins === 5 && s4.three.state === 'full' && s4.full.dr === 2 && s4.full.coins === 45 && s4.full.say === SH.say.full, JSON.stringify(s4.three) + ' ' + JSON.stringify(s4.full));
+        ok(`${DEV}: 종 기름 fills the resonance gauge at once (12 silver) and is refused while it is full`, s4.oil.reso === s4.oil.max && s4.oil.max > 0 && s4.oil.coins === 33 && s4.oil.state === 'fullReso', JSON.stringify(s4.oil));
+        ok(`${DEV}: 길잡이 초 is refused while no blank can be filled (this save): nothing is taken`, s4.guide.state === 'noBlank' && s4.guide.guide === null && s4.guide.coins === 33 && s4.guide.say === SH.say.none, JSON.stringify(s4.guide));
+        const s5 = await ev(() => { const F = window.__F, sc = window.__v2.scene; F.closeBtn(); F.tick(12); const a = { screen: sc.hud.screen, modal: sc.hud.modal, busy: sc.host.st.busy }; const h0 = F.hero(); F.tick(40); const m = F.M(); return { a, h0, h1: F.hero(), pad: m.pad?.shown, dr: m.hud.draughts, coinsChip: m.hud.coins, safe: F.safe(), statusR: m.hud.statusR, boss: null }; });
+        ok(`${DEV}: closed by its button the story's step is over and the game goes on - nothing carried over, the pad is back`, s5.a.screen === null && s5.a.modal === null && s5.a.busy === false && s5.h1.t > s5.h0.t && s5.h1.move === null && s5.h1.buf === '' && s5.pad === true, JSON.stringify(s5.a));
+        ok(`${DEV}: the HUD shows the two draughts beside the candles (inside the safe area), the rules carry them (hero.draughts 2)`, !!s5.dr && s5.dr.n === 2 && inside(s5.dr, s5.safe) && s5.h1.draughts === 2, s5.dr ? `${R(s5.dr)} n ${s5.dr.n} · hero.draughts ${s5.h1.draughts}` : 'no mark');
+        await shot('hud_draught');
+
+        // ───────────── a save and load, a crossing and a fall with the screens' state ─────────────
+        if (want('persist')) {
+          const p0 = await ev(() => { const F = window.__F, sc = window.__v2.scene; F.openPause(); F.pauseRow('chronicle'); F.tick(70); F.closeBtn(); F.tick(8); F.pauseRow('resume'); F.tick(6); const ok = sc.host.saveNow('test'); const o = JSON.parse(localStorage.getItem('bn.v2.save')); return { ok, scr: o.scr, coins: o.coins, model: F.model() }; });
+          ok(`${DEV}: the save keeps what the screens remember (save.scr: read rows, the chip, the draughts, the guide candle) and the silver`, p0.ok && p0.scr && p0.scr.dr === 2 && p0.scr.chip === false && p0.scr.read.length === 3 && p0.coins === 33, JSON.stringify(p0.scr) + ' coins ' + p0.coins);
+          await open(undefined);
+          const p1 = await ev(() => { const F = window.__F; F.tick(10); const m = F.M(); return { model: F.model(), hero: F.hero(), dr: m.hud.draughts, chip: !!m.cards.chip }; });
+          ok(`${DEV}: after the load everything is as it was: the book's rows and marks, the bag, two draughts (HUD and rules), 33 silver, no chip`, p1.model.book === p0.model.book && p1.model.bag === p0.model.bag && p1.model.dr === 2 && p1.model.coins === 33 && p1.model.unread === 0 && !p1.chip && p1.hero.draughts === 2 && !!p1.dr && p1.dr.n === 2, `${p1.model.book} | ${p1.model.bag} | dr ${p1.model.dr} coins ${p1.model.coins}`);
+          // a crossing (the scene's own, as a long ring at the big bell without a sequence listening would)
+          const x0 = await ev(() => { const F = window.__F, sc = window.__v2.scene; F.put(4200, 1392, 0, -1); F.tick(20); return { ok: sc.cross({}), area: window.__v2.area }; });
+          let x1 = null; for (let i = 0; i < 90; i++) { x1 = await ev(() => { const F = window.__F, sc = window.__v2.scene; try { for (let k = 0; k < 20; k++) window.__game.tick(1 / 60); F.draw(); } catch { /* between areas */ } return { area: window.__v2.area, ready: window.__v2.ready, xing: !!sc.xing, go: !!sc._go }; }).catch(() => null); if (x1 && x1.ready && !x1.xing && !x1.go && x1.area !== x0.area) break; await page.waitForTimeout(120); }
+          const x2 = await ev(() => { const F = window.__F; F.tick(90); const m = F.M(); return { model: F.model(), hero: F.hero(), dr: m.hud.draughts, area: window.__v2.area, busy: window.__v2.scene.host.st.busy }; });
+          ok(`${DEV}: after a bell crossing (to ${x2.area}) the screens' state is the same - rows, marks, bag, silver - and the new rules object carries the draughts again`, x0.ok === true && x2.area === 'eshville_past' && x2.model.bag === p0.model.bag && x2.model.dr === 2 && x2.model.coins === 33 && x2.model.unread === 0 && x2.hero.draughts === 2 && !!x2.dr && x2.dr.n === 2, `${x2.model.book} | dr ${x2.model.dr} hero.draughts ${x2.hero.draughts}`);
+          // the draught saves the hero once, is gone; with none left he falls; the fall leaves the screens' state alone
+          const d1 = await ev(() => { const F = window.__F, sc = window.__v2.scene, sim = sc.sim, h = sim.hero, n0 = F.sounds.length, seen0 = sc.host.seen.length, deaths0 = sim.deaths, scD = sc._deaths, x0 = h.x, z0 = h.z;
+            h.ifr = 0; sc._graceT = 0; h.hp = 3; const r = sim.hurtHero(50, -1, 0, {}); const a = { r, dead: h.dead, hp: h.hp, ifr: h.ifr, draughts: h.draughts, deaths: sim.deaths - deaths0, moved: Math.round(Math.hypot(h.x - x0, h.z - z0)) };
+            F.tick(30); const m = F.M(); return { a, modelDr: sc.host.model.dr, hud: m.hud.draughts, sounds: F.sounds.slice(n0), notices: sc.host.seen.slice(seen0).filter((e) => e[0] === 'notice').map((e) => e[1]), scDeaths: sc._deaths === scD, cards: m.cards.up.map((c) => c.text), candle: Math.round(sim.hero.hpMax / (sc.state.candles?.max ?? 3)), modal: sc.hud.modal }; });
+          ok(`${DEV}: the draught saves the hero once: he stands with one candle of health, untouchable for 1.2 s, where he was struck`, d1.a.r === 'hurt' && d1.a.dead === false && Math.abs(d1.a.hp - d1.candle) <= 1 && d1.a.ifr >= 1.19 && d1.a.moved < 300, JSON.stringify(d1.a) + ` · a candle = ${d1.candle}`);
+          ok(`${DEV}: …it is no fall (sim.deaths unchanged, scene.ch not told), one draught is gone from the HUD, the bag and the rules, and a card says what happened`, d1.a.deaths === 0 && d1.scDeaths && d1.modelDr === 1 && d1.a.draughts === 1 && !!d1.hud && d1.hud.n === 1 && d1.sounds.includes('draught.use') && d1.notices.some((t) => t.startsWith('성수가 쓰였다')) && d1.modal === null, `notices ${d1.notices.join(' · ')} · sounds ${d1.sounds.join(' ')}`);
+          await shot('draught_used');
+          const d2 = await ev(() => { const F = window.__F, sc = window.__v2.scene, sim = sc.sim, h = sim.hero; F.tick(80); h.ifr = 0; h.hp = 3; sim.hurtHero(50, -1, 0, {}); F.tick(80); const one = { dead: h.dead, dr: sc.host.model.dr }; sim.hero.ifr = 0; sim.hero.hp = 3; const d0 = sim.deaths; sim.hurtHero(50, -1, 0, {}); const fell = sim.hero.dead; let n = 0; while (n++ < 600 && sim.deaths === d0) F.tick(1, false); F.tick(60); return { one, fell, deaths: sc.sim.deaths - d0, model: F.model(), hero: F.hero(), hud: F.M().hud.draughts }; });
+          ok(`${DEV}: the second draught saves him again and is gone; the next blow fells him as before (the fall is counted)`, d2.one.dead === false && d2.one.dr === 0 && d2.fell === true && d2.deaths === 1 && d2.hud === null && d2.hero.draughts === 0, JSON.stringify(d2.one) + ` fell ${d2.fell} deaths +${d2.deaths}`);
+          ok(`${DEV}: after the fall the screens' state is as it was (rows, marks, bag, silver)`, d2.model.bag === p0.model.bag && d2.model.book === x2.model.book && d2.model.coins === 33 && d2.model.unread === 0 && d2.hero.dead === false, `${d2.model.book} | ${d2.model.bag} | coins ${d2.model.coins}`);
+        }
+
+        // ───────────── the guide candle (a save in which a blank can be filled: the two keepers, 082) ─────────────
+        await open(82);
+        const g0 = await ev(() => { const F = window.__F, sc = window.__v2.scene; sc.brk.coins = 20; sc.state.coins = 20; F.put(3476, 150, -1, 0); F.tick(40); const P = F.M().prompts, p = P.find((q) => q.action === 'confirm') ?? null, t = sc.people.target; return { pill: p, target: t ? t.def.id : null, area: window.__v2.area, left: sc.state.left }; });
+        if (!g0.pill || g0.target !== 'rook_shop') ok(`${DEV}: (1697) the pill at Rook's pack`, false, JSON.stringify({ target: g0.target, area: g0.area, awake: g0.left }));
+        else {
+          const g1 = await ev((p) => { const F = window.__F, sc = window.__v2.scene, M = sc.host.model; F.tapRect(p); F.tick(16); const m0 = F.M().screen, row = () => F.M().screen.rows[2]; const st0 = row().state; F.tapRect(row()); F.tick(10); F.tapRect(row()); F.tick(4); const a = { line: m0.line, st0, state: row().state, guide: M.guide, coins: M.coins() }; F.draw(); return a; }, g0.pill);
+          const SH = (await import(ROOT + 'src/v2/data/shop.js')).SHOP.rook, CH = (await import(ROOT + 'src/v2/data/chronicle.js')).CHRONICLE;
+          ok(`${DEV}: in 1697 Rook has that night's line; 길잡이 초 can be bought now (a blank can be filled: 두 종지기) - 8 silver, lit`, g1.line === SH.line.past && g1.st0 === 'ok' && g1.state === 'lit' && g1.guide === 'eshville' && g1.coins === 12, JSON.stringify(g1).slice(0, 200));
+          await shot('shop_guide');
+          const g2 = await ev(() => { const F = window.__F, sc = window.__v2.scene; F.closeBtn(); F.tick(30); const m = F.M(); return { guide: m.hud.guide, obj: m.hud.objective, toasts: m.hud.toastRects, line: F.model().guideLine, safe: F.safe(), objective: sc.host.objective }; });
+          ok(`${DEV}: the objective keeps its own line and a second line under it names where the nearest blank is filled (「${g2.line}」), inside the safe area, on nothing`, g2.line === '빈칸 — ' + CH.two_keepers.place.at && !!g2.guide && inside(g2.guide, g2.safe) && (!g2.obj || !hits(g2.guide, g2.obj)) && g2.toasts.every((t) => !hits(t, g2.guide)), `objective "${g2.objective}" ${R(g2.obj)} · guide ${R(g2.guide)}`);
+          await shot('hud_guide');
+          if (want('persist')) {
+            await ev(() => window.__v2.scene.host.saveNow('test')); await open(undefined);
+            const g3 = await ev(() => { const F = window.__F; F.tick(20); return { line: F.model().guideLine, guide: F.M().hud.guide, coins: F.model().coins }; });
+            ok(`${DEV}: the guide candle burns on through a save and load`, g3.line === g2.line && !!g3.guide && g3.coins === 12, g3.line);
+          }
+        }
+      }
+      // @@PARTS4@@
       await ctx.close();
     }
   } catch (e) { errs.push('[tool] ' + String(e?.stack ?? e).slice(0, 600)); }

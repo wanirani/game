@@ -311,6 +311,10 @@ export function driveHero(ch, h, dt, T = TUNE) {
   const coil = st === 'charge' && !h.dead ? Math.min(1, h.charge ?? 0) : 0;
   S.coil = (S.coil ?? 0) + (coil - (S.coil ?? 0)) * Math.min(1, dt * 14);
   if (S.coil > 0.02) { const cd = (T.chargeCoil ?? 12) * S.coil; PB.deg = cd * 0.6; pitchBoneS(ch.rig, 'spine', 0); PB.deg = cd * 0.4; pitchBoneS(ch.rig, 'spine2', 0); }
+  // the bell that will not answer (WHIP2; hero.recoil 1 -> 0 over 0.3 s, written by src/v2/game/crossing.js - the rules do not read it): thrown back from the bell -
+  // the upper body rocks back 15 degrees and the ringing arm is jerked back and down, then both ease home. Picture only.
+  const rec = h.recoil > 0 && !h.dead ? h.recoil : 0;
+  if (rec > 0.02) { const k = rec * rec * (3 - 2 * rec); PB.deg = -9 * k; pitchBoneS(ch.rig, 'spine', 0); PB.deg = -6 * k; pitchBoneS(ch.rig, 'spine2', 0); PB.deg = 38 * k; pitchBoneS(ch.rig, 'armR', 0); PB.deg = -5 * k; pitchBoneS(ch.rig, 'head', 0); }
   // 락온한 적을 고개로 본다 (서 있거나 걷고 달릴 때만; 공격 · 구르기 중에는 몸이 이미 그쪽을 본다)
   let look = 0;
   if (h.lock != null && !h.dead && (st === 'idle' || st === 'run' || st === 'walk' || st === 'guard' || st === 'land')) {
@@ -336,7 +340,7 @@ export function driveHero(ch, h, dt, T = TUNE) {
       legIK(ch.rig, S.ikSide, -ch.dz * ex + ch.dx * ez, S.ikY, ch.dx * ex + ch.dz * ez, w * w * (3 - 2 * w)); stepped = true;
     }
   } else S.ikMove = null;
-  const posed = S.lean > 0.02 || S.brace > 0.02 || S.coil > 0.02 || readyOn || stepped, looking = Math.abs(S.look) > 0.5;
+  const posed = S.lean > 0.02 || S.brace > 0.02 || S.coil > 0.02 || rec > 0.02 || readyOn || stepped, looking = Math.abs(S.look) > 0.5;
   if (looking) { PB.deg = S.look * 0.4; pitchBoneS(ch.rig, 'neck', 1); PB.deg = S.look * 0.45; pitchBoneS(ch.rig, 'head', 1); PB.deg = S.look * 0.15; pitchBoneS(ch.rig, 'spine2', 1); }
   if (posed || looking) ch.rig.pose();
 }

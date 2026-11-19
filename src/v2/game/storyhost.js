@@ -64,7 +64,7 @@ export class StoryHost {
     this.api = this._api();
     this.story = (name, data) => {
       // SCREENS: a draught was used by the rules (sim.js _die: the hero stays on his feet - no fall, nothing told to scene.ch); the guide candle goes out when he leaves the place
-      if (name === 'play.draught') { this.model.draughtUsed(); this._card('note', { text: this.model.T.bag?.draught ?? '', icon: 'draught' }); this.api.sound('draught.use'); this.api.fx('holy.bell'); return; }
+      if (name === 'play.draught') { this.model.draughtUsed(); this._card('note', { text: this.model.T.bag?.draught ?? '', icon: 'draught' }); this.model.sound('draught.use'); this.api.fx('holy.bell'); return; }
       if (name === 'area.enter' && !(data && data.refused)) this.model.enterArea(this.sc.area?.id ?? null);
       if (name === 'interact' && data && data.kind === 'rest') this.restSpot = { area: this.sc.area?.id ?? null, def: data.spot ?? data };   // CHAPTER
       if (name === 'area.enter' && !(data && data.refused)) this.dirty = false;   // STORY2 (11-19): this area has just been built from the flags as they are. (A flag set in the area he left - elise_found under the altar - stayed "to be shown" through the journey, and the village was built a second time right after the two keepers' scene: 「불러오는 중…」)
@@ -359,7 +359,7 @@ export class StoryHost {
       moon(step) { H.moon = step; sc.state.moon = { phase: Math.max(0, Math.min(1, (step | 0) / 7)) }; },
       ring(n) { H.ringN = n; },
       // SCREENS: an entry was written - the card 「연대기에 적혔다 — <title>」 (a tap opens the book there), the book chip and its chime
-      chronicle(e) { H.model.wrote(); H._card('chronicle', { id: e?.id ?? null, title: e?.title ?? '' }); H.api.sound('book.chime'); },
+      chronicle(e) { H.model.wrote(); H._card('chronicle', { id: e?.id ?? null, title: e?.title ?? '' }); H.model.sound('book.chime'); },
       save(obj) { const o = H.compose(obj); o.why = 'story'; H.lastSave = o; H.saves++; writeSave(o); },
       // CHAPTER: the closing banner, then the 3D edition's ending card and the 3D chooser (chapter.js end / leave) - it used to drop to the old 2D title after six seconds
       end(id) { H.ended = id ?? 'end'; H.note('end', String(id ?? '')); H.inputLock = true; const c = H.STORY.TEXT?.chapters?.end; if (c && sc.hud.banner) sc.hud.banner('clear', c.title, c.sub); sc.ch.end(id); },

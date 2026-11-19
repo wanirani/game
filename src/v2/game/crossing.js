@@ -6,7 +6,10 @@
 //            (>= 1.2 s, 3 s with the year count for `years`); one full-screen pass, nothing of the world is drawn
 //   reveal   the new night opens as a ring from the bell: old picture outside, live night inside (0.9 s), then the second toll
 //   glow     the badge turns over, the controls come back, light settles on hero and bell
-//   dull     the refusal: a ring that gutters out after a metre or two, a grey puff, the dull toll - nothing changes
+//   dull     the refusal - THE BELL THAT WILL NOT ANSWER (WHIP2, 2026-11-19): a thick grey ring that rises from the foot of the bell and gutters within two
+//            metres, the colour drained inside it, the hero thrown back from the bell with the shard gone dark, one heavy thump of the camera, the dull toll
+//            with no tail and its dull haptic, the night badge beating twice - 0.45 s, nothing changes. It is also staged ALONE (refuse()): when the story
+//            answers a long ring with the dull toll (its sound call 'cross.dull' is the cue - the queen holds her hall's bell) and at a sealed bell
 // Picture: while gather / ring / reveal run, the scene is drawn into a copy of the frame (colour + depth texture) and one pass
 // composes the screen from it. The textures exist only while a crossing runs (allocated in begin(), freed when it has ended).
 // Nothing is allocated per frame: uniforms are written into arrays made once, the HUD reads one object (state.cross).
@@ -17,7 +20,7 @@ import { feel } from '../feel/index.js';
 import { input } from '../../core/input.js';
 import { loadArea, freeSpot } from './area.js';
 
-export const CROSS_T = { gather: 0.1, ring: 0.5, dull: 0.5, pass: 1.2, years: 3.0, reveal: 0.9, glow: 1.1, back: 0.22, turn: 0.7 };
+export const CROSS_T = { gather: 0.1, ring: 0.5, dull: 0.45, pass: 1.2, years: 3.0, reveal: 0.9, glow: 1.1, back: 0.22, turn: 0.7 };
 const YEAR = { past: 1697, now: 1797 };
 const BUDGET = 22;         // ms of loading work in one go before the load lets a frame through (breath()): short enough for 40 frames a second, long enough that drawing those frames does not double the load on a slow GPU
 const R_END = 6600;        // world units: a ring this wide has left every picture
@@ -136,6 +139,7 @@ void main() {
   if (sky) d = 1500.0 + length(sq) * 2600.0;      // the sky has no place in the world: the ring reaches it last, from the bell's side
   float fw = sky ? 30.0 : min(fwidth(d), 30.0);
   float R = uBellW.w, x = d - R, wd = 6.0 + R * 0.02, wl = clamp(fw * 3.5, 2.5, wd);   // a line a few pixels wide on any surface (a wall the ring only grazes does not flood)
+  if (uRing.w > 0.5) { wd = 9.0; wl = clamp(fw * 6.0, 5.0, 12.0); }   // the refusal: a short ring, a thick dull band (it was the crossing's hairline in grey: under 2 of 255 on a phone)
   float rim = exp(-x * x / (wl * wl)), halo = exp(-abs(x) / (wd * 6.0)) * 0.22, tail = x < 0.0 ? exp(x / (40.0 + R * 0.06)) : 0.0;
   float x2 = x + 230.0, x3 = x + 460.0;           // two fainter rings follow the first, as from a bell
   float echo = (R > 230.0 ? exp(-x2 * x2 / (wl * wl)) * 0.5 : 0.0) + (R > 460.0 ? exp(-x3 * x3 / (wl * wl)) * 0.28 : 0.0);
@@ -144,11 +148,12 @@ void main() {
   float tw = step(0.84, h21(floor(P.xz / 9.0) + floor(P.y / 9.0) * 3.1 + floor(uRing.z * 26.0)));
   vec3 add;
   if (uRing.x < 0.5) {
-    float fl = 1.0 - uRing.w * (0.45 + 0.55 * sin(uRing.z * 53.0) * sin(uRing.z * 31.0 + 1.3));
-    vec3 gl = mix(uGlow, vec3(0.5, 0.52, 0.56), uRing.w);
+    float fl = 1.0 - uRing.w * (0.3 + 0.3 * sin(uRing.z * 53.0) * sin(uRing.z * 31.0 + 1.3));
+    vec3 gl = mix(uGlow, vec3(0.66, 0.68, 0.74), uRing.w);
     float behind = smoothstep(wd * 3.0, -wd * 3.0, x) * (1.0 - uRing.w);
     c = mix(c, gradeTo(c), behind * 0.35 * min(1.0, uRing.y));       // what the ring leaves behind has begun to turn
-    add = gl * (rim * (1.0 + tw * 0.9) + (echo + tail * 0.16) * (1.0 - uRing.w) + halo) * uRing.y * fl;
+    if (uRing.w > 0.5) { float ins = smoothstep(wd * 2.0, -wd * 2.0, x) * min(1.0, uRing.y * 1.4), lum = dot(c, vec3(0.3, 0.59, 0.11)); c = mix(c, vec3(lum * 0.6, lum * 0.61, lum * 0.66), ins * 0.72); }   // inside the refusal's ring the colour drains and the picture sinks for a blink
+    add = gl * (rim * (1.0 + tw * 0.9) * (1.0 + uRing.w * 1.1) + (echo + tail * 0.16) * (1.0 - uRing.w) + halo) * uRing.y * fl;
   } else {
     c = mix(aged(vUV), c, smoothstep(wl, -wl, x));
     add = uGlow * (rim * (1.15 + tw * 1.3) + echo * 0.8 + halo * 0.6 + tail * 0.14) * uRing.y;
@@ -164,7 +169,9 @@ export class Crossing {
     this.tintTo = new Float32Array([1, 1, 1]); this.fogTo = new Float32Array([0.08, 0.08, 0.1]);
     this.bell = new Float32Array(3); this.bellH = 120; this.bellS = new Float32Array([0.5, 0.4, 1, 2.6]); this.R = 0; this.base = new Float32Array([0.1, 0.1, 0.14]);
     this.pulse = new Float32Array([-1, -1, -1, 1]); this.nextPulse = 0; this.beat = 0.4; this.pulseN = 0;
-    this.hud = { on: false, k: 1, back: false, turn: 0, year: 0, from: 'now', to: 'past', beat: 0 };   // what the HUD reads (state.cross): k = how much of the controls is shown
+    this.hud = { on: false, k: 1, back: false, turn: 0, year: 0, from: 'now', to: 'past', beat: 0, no: 0 };   // what the HUD reads (state.cross): k = how much of the controls is shown · no = 0..1 through a refusal (the badge's shake of the head - the HUD may read it; today it sees the two beats)
+    this.solo = false; this.shutAt = -1e9; this._own = false; this._no2 = false;   // the refusal staged alone · when the bell last stayed shut (performance.now) · this object is playing the dull toll itself
+    feel.tap('cross.dull', () => { if (!this._own) this.refuse(false); });   // whoever plays the dull toll (the story's refusal of a crossing) gets the bell that stays shut
     this.kTo = 1; this.turnOn = false; this.padHid = false;
     // GL (made in begin(), gone after the crossing; the two programs stay until the scene is left)
     this.pPass = null; this.pWorld = null; this.pField = null; this.vao = null; this.glGen = -1;
@@ -241,10 +248,11 @@ export class Crossing {
     if (sc.hudKind !== 'ui' && sc.showPad) { sc.showPad = false; this.padHid = true; }   // the old pad steps back too
     L.begin = performance.now(); L.answer = L.toll = L.freeze = L.loaded = L.reveal = L.land = L.end = 0; L.refused = false; L.frames = 0; L.gap = 0; L.last = 0; L.yields = 0; L.n++;
     try { this._programs(); } catch (e) { console.warn('[v2g] crossing shaders:', String(e?.message ?? e)); }
-    this._play('cross.gather', 1);
-    this._fx('cross.gather');
     const gen = this.gen, E = this.early, near = E && E.to === to && E.flags === this._sig() && performance.now() - E.at < 20000 && (E.x - h.x) * (E.x - h.x) + (E.z - h.z) * (E.z - h.z) < 60 * 60;
     this.early = null;   // (the twin built while the hero wound up the long ring, when he still stands where he stood)
+    if (near && E.res && E.res.pre === null) { this.pre = null; L.answer = L.begin; this._dullOn(true, true); return true; }   // the other night answered while he wound up the ring - nowhere to stand: the bell stays shut at once, without the gathering light
+    this._play('cross.gather', 1);
+    this._fx('cross.gather');
     (near ? E.job : this._build(to, h.x, h.z)).then((r) => { if (this.gen === gen && this.on) { this.pre = r.pre; this.spot = r.spot; this.log.answer = performance.now(); } });
     return true;
   }
@@ -259,7 +267,8 @@ export class Crossing {
     if (!near) return;
     const E = this.early;
     if (E && E.to === a.twin && E.flags === this._sig() && performance.now() - E.at < 20000 && (E.x - h.x) * (E.x - h.x) + (E.z - h.z) * (E.z - h.z) < 60 * 60) return;
-    this.early = { to: a.twin, flags: this._sig(), x: h.x, z: h.z, at: performance.now(), job: this._build(a.twin, h.x, h.z) };
+    const N = (this.early = { to: a.twin, flags: this._sig(), x: h.x, z: h.z, at: performance.now(), job: this._build(a.twin, h.x, h.z), res: null });
+    N.job.then((r) => { N.res = r; });   // (begin() reads the answer when it is already there)
   }
   /** the twin night, built in steps (its definition | the compile | the free spot), each in a task of its own.
    *  -> { pre: area | null (nowhere to stand over there: refused), spot } */
@@ -291,6 +300,39 @@ export class Crossing {
     for (let i = 0; i < S.length; i++) { const q = S[i]; if (q.def.kind !== 'bell') continue; const dx = q.x - h.x, dz = q.z - h.z, d2 = dx * dx + dz * dz; if (d2 < best) { best = d2; B[0] = q.x; B[1] = q.y; B[2] = q.z; this.bellH = 120; } }
   }
   _play(name, vol, pitch) { try { if (feel.has(name)) feel.play(name, null, vol ?? 1, pitch ?? 1); } catch { /* no audio */ } }
+  /** WHIP2 - the bell stays shut: enter the dull phase (from the gather of a crossing, at once from begin(), or alone from refuse()). snd / puff: play the dull toll / the grey puff here (false when the story's own calls are the cue) */
+  _dullOn(snd, puff) {
+    const sc = this.sc, H = this.hud, fx = sc.fx, h = sc.sim?.hero, w = sc.whip;
+    this.phase = 'dull'; this.t = 0; this.R = 16; this.log.refused = true; this.kTo = 1; H.back = false; H.beat = 1; H.no = 0; this._no2 = false; this.shutAt = performance.now();
+    if (snd) { this._own = true; this._play('cross.dull', 1); this._own = false; }   // the dull toll: low, short, no tail - and its dull haptic (feel table)
+    if (puff) this._fx('cross.dull');
+    if (fx) { try { const F = fx.feel; F.kick(0, -1, 0, 9); F.addTrauma(0.3); F.vignette(0.3, 0.32, 0.38, 0.34, 4.5); } catch { /* effect */ } }   // one short heavy shake: a thump straight down; the edges of the picture go grey for a blink
+    if (h) h.recoil = 1;                         // the hand and the body are thrown back from the bell (src/v2/play/motion.js)
+    if (w) { w.pulse = 0; w.kick = 1; }          // the shard he rang with goes dark and drops out of its halo
+  }
+  /** has the bell just stayed shut (this tick's long ring was refused)? The scene keeps the golden toll and its light to itself then */
+  shutNow() { return performance.now() - this.shutAt < 60; }
+  /**
+   * WHIP2 - the refusal staged alone: the same 0.45 s as the dull phase of a crossing, without a crossing (nothing is locked, nothing is loaded).
+   * Cues: the story plays the dull toll (feel.tap in the constructor - snd false: its own sound and puff follow) · the scene, at a sealed bell (snd true).
+   */
+  refuse(snd = true) {
+    const sc = this.sc, h = sc.sim?.hero, a = sc.area, now = performance.now();
+    if (this.on || !h || !a || !sc.ready || now - this.shutAt < 700) return false;   // (a crossing being staged shows its own answer; one answer a ring)
+    if (!this.usable) {   // WebGL1: no ring, the rest as it is
+      this.shutAt = now; if (snd) { this._own = true; this._play('cross.dull', 1); this._own = false; this._fx('cross.dull'); }
+      try { sc.fx?.feel.addTrauma(0.3); } catch { /* effect */ } return true;
+    }
+    const H = this.hud, L = this.log;
+    try { this._programs(); } catch { /* the ring is left out */ }
+    this.gen++; this.on = true; this.solo = true; this.pre = undefined; this.spot = null; this.frozen = false; this.mode = 0; this.slicing = false; this.years = false; this.tk = 0; this.shotTk = -9; this.dir = a.era === 'past' ? 1 : -1;
+    this.pulse[0] = this.pulse[1] = this.pulse[2] = -1; this.pulse[3] = 1; this.pulseN = 0;
+    this._findBell(h, 420);
+    H.on = true; H.turn = 0; H.year = 0; H.from = a.era; H.to = a.era; H.k = 1; this.turnOn = false; sc.state.cross = H;
+    L.begin = now; L.answer = now; L.toll = L.freeze = L.loaded = L.reveal = L.land = L.end = 0; L.frames = 0; L.gap = 0; L.last = 0;
+    this._dullOn(snd, snd);
+    return true;
+  }
   /** an effect of the crossing at the foot of the bell (or at x, y, z); the presets read the direction of the crossing from dx and the bell's height from pow */
   _fx(name, x, y, z) { const fx = this.sc.fx, id = PRESET_IDS[name], B = this.bell; if (!fx || id === undefined) return; const px = x ?? B[0], py = y ?? B[1], pz = z ?? B[2]; try { fx.playAt(id, px, py, pz, this.dir, 0, this.bellH / 100, px, py, pz); } catch { /* effect */ } }
 
@@ -306,7 +348,7 @@ export class Crossing {
       case 'gather': {
         this.R = 60 + 95 * (1 - Math.exp(-this.t * 9)) + 10 * Math.sin(this.t * 21);
         if (this.pre === undefined || this.t < T.gather) break;
-        if (this.pre === null) { this.phase = 'dull'; this.t = 0; this.log.refused = true; this.kTo = 1; H.back = false; this._play('cross.dull', 1); this._fx('cross.dull'); try { sc.fx?.feel.addTrauma(0.1); } catch { /* effect */ } break; }
+        if (this.pre === null) { this._dullOn(true, true); break; }
         this.phase = 'ring'; this.t = 0; this.log.toll = performance.now(); this._tint(this.pre);
         { const fx = sc.fx, h = sc.sim?.hero; if (fx) { const F = fx.feel; F.slowMo(0.3, T.ring + 0.05); F.zoomPunch(0.07, 0.5); F.addTrauma(0.22); }
           this._fx('cross.ring'); if (h) this._fx('cross.lift', h.x, h.y, h.z);
@@ -320,9 +362,13 @@ export class Crossing {
         if (k >= 1) this._depart();
         break;
       }
-      case 'dull': {
-        this.R += dt * 70;
-        if (this.t >= T.dull) { this._end(); sc._refused = true; sc._crossed(null, false); }
+      case 'dull': {   // the ring rises from the foot of the bell to two metres (116 px) in 0.3 s and gutters there; the badge beats a second time; the hero's recoil eases off
+        const u = Math.min(1, this.t / 0.3), h = sc.sim?.hero;
+        this.R = 16 + 100 * (1 - (1 - u) * (1 - u));
+        H.no = Math.min(1, this.t / T.dull);
+        if (!this._no2 && this.t >= 0.17) { this._no2 = true; H.beat = 0.85; }
+        if (h) h.recoil = Math.max(0, 1 - this.t / 0.3);
+        if (this.t >= T.dull) { const solo = this.solo; if (h) h.recoil = 0; this._end(); if (!solo) { sc._refused = true; sc._crossed(null, false); } }
         break;
       }
       case 'passage': {
@@ -416,7 +462,7 @@ export class Crossing {
     if (this.loopId) { try { feel.loopStop(this.loopId, 0.1); } catch { /* no audio */ } this.loopId = 0; }
     if (this.padHid) { sc.showPad = true; this.padHid = false; }
     if (sc.xing) { sc.xing = null; sc.locked = false; }
-    H.on = false; H.k = 1; H.back = false; H.turn = 0; H.year = 0; H.beat = 0; this.kTo = 1; this.turnOn = false; if (sc.state) sc.state.cross = null;
+    H.on = false; H.k = 1; H.back = false; H.turn = 0; H.year = 0; H.beat = 0; H.no = 0; this.solo = false; this.kTo = 1; this.turnOn = false; if (sc.state) sc.state.cross = null;
     this._dropTex(true);
   }
 
@@ -450,8 +496,8 @@ export class Crossing {
     gl.uniform3fv(u.uEye, e); V3[0] = R[0] / sx; V3[1] = R[1] / sx; V3[2] = R[2] / sx; gl.uniform3fv(u.uR, V3);
     V3[0] = U[0] / sy; V3[1] = U[1] / sy; V3[2] = U[2] / sy; gl.uniform3fv(u.uU, V3); gl.uniform3fv(u.uF, F);
     V2[0] = A; V2[1] = m[14] - A * m[15]; gl.uniform2fv(u.uAB, V2);
-    V[0] = B[0]; V[1] = B[1] + this.bellH; V[2] = B[2]; V[3] = this.R; gl.uniform4fv(u.uBellW, V);
-    V[0] = reveal ? 1 : 0; V[1] = dull ? Math.max(0, 1 - this.t / CROSS_T.dull) * 0.85 : ph === 'gather' ? 0.55 + 0.25 * Math.min(1, this.t * 6) : 1; V[2] = this.t; V[3] = dull ? 1 : 0; gl.uniform4fv(u.uRing, V);
+    V[0] = B[0]; V[1] = B[1] + (dull ? 12 : this.bellH); V[2] = B[2]; V[3] = this.R; gl.uniform4fv(u.uBellW, V);   // (the refusal's ring runs along the ground from the foot of the bell: a 2 m ring about the bell's head would never reach the floor)
+    V[0] = reveal ? 1 : 0; V[1] = dull ? (this.t < 0.2 ? 1 : Math.max(0, 1 - (this.t - 0.2) / (CROSS_T.dull - 0.2))) : ph === 'gather' ? 0.55 + 0.25 * Math.min(1, this.t * 6) : 1; V[2] = this.t; V[3] = dull ? 1 : 0; gl.uniform4fv(u.uRing, V);
     if (!reveal) {   // the ring over the old night: where the bell is on the screen now (the sky needs it)
       const P = this._p, S = this.bellS; sc.project(B[0], B[1] + this.bellH, B[2], P);
       if (P.w > 1) { S[0] = P.x / g.viewW; S[1] = 1 - P.y / g.viewH; } S[2] = g.viewW / g.viewH;

@@ -43,7 +43,7 @@ export function createChoiceCards(M) {
   function bake(i) {
     const p = P[i], w = G.cw, h = G.ch, sel = i === C.sel, c = canvasFor(p, w + 16, h + 16), m = C.meta && C.meta[i] ? C.meta[i] : null;
     const ts = tsz(19, (L.tmin ?? 9.5) + 5), ls = tsz(13, (L.tmin ?? 9.5) + 2), cx = 8 + w / 2;
-    glassPanel(c, 8, 8, w, h, { cut: px(13), dense: sel ? 0.9 : 0.78, accent: sel ? 'gold' : null });
+    glassPanel(c, 8, 8, w, h, { cut: px(13), top: sel ? 'rgba(34,32,50,0.95)' : 'rgba(22,26,50,0.92)', bot: 'rgba(7,8,20,0.95)', accent: sel ? 'gold' : null });   // (dense: a choice is read against a busy street)
     chamfer(c, 8, 8, w, h, px(13)); c.lineWidth = sel ? 2.4 : 1; c.strokeStyle = sel ? COL.gold : 'rgba(214,224,250,0.25)'; c.stroke();
     let y = 8 + px(12);
     if (C.big && G.ic > 0) {
