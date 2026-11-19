@@ -272,4 +272,99 @@ export default function (T) {
     }
     ok(got.length >= 5, `first pages of first-time speakers captured: ${got.join(', ')}`);
   });
+
+  // ───────── the continuation (the second run of this lane, 09:04 UTC): more places to ring from, Elise at the years shot, the whole card, the busts' cost ─────────
+  /** free cells (the scene's own _spotOk, 8 px lattice) within the bell spot's own reach r + the hero's 14 px */
+  const reach = () => ev(() => { const sc = window.__v2.scene, d = sc.area.interact.find((q) => q.id === 'big_bell'), R = (d.r ?? 60) + 14, L = []; for (let x = d.x - R; x <= d.x + R; x += 8) for (let z = d.z - R; z <= d.z + R; z += 8) if (Math.hypot(x - d.x, z - d.z) <= R && sc._spotOk({ x, z, y: d.y ?? 0 })) L.push([x, z]); return { R, d: [d.x, d.z, d.y ?? 0], L }; });
+  const PICK = {
+    rail: (L) => L.filter((q) => Math.abs(q[0] - 4200) <= 8).sort((a, b) => a[1] - b[1])[0],                                   // the southmost free cell before the bell: at the terrace rail
+    lotte: (L) => L.slice().sort((a, b) => Math.hypot(a[0] - 4104, a[1] - 1436) - Math.hypot(b[0] - 4104, b[1] - 1436))[0],      // the free cell nearest to Lotte: he touches her
+    elise: (L) => L.slice().sort((a, b) => Math.hypot(a[0] - 4296, a[1] - 1436) - Math.hypot(b[0] - 4296, b[1] - 1436))[0],      // nearest to Elise (and to the jar behind her)
+    north: (L) => L.slice().sort((a, b) => b[1] - a[1] || Math.abs(a[0] - 4200) - Math.abs(b[0] - 4200))[0],                     // the northmost free cell: behind the bell, between its posts and the church wall
+    se: (L) => L.slice().sort((a, b) => (a[1] - a[0]) - (b[1] - b[0]))[0],                                                       // the south-east corner of the reach: the rail's corner on Elise's side
+  };
+  for (const tag of Object.keys(PICK)) C('w_end_' + tag, `the ending rung from the reach's own edge: ${tag}`, async () => {
+    await boot(after('ev_keepers')); await idle(); await install();
+    const R = await reach(), p = PICK[tag](R.L); if (!p) throw new Error('no free cell for ' + tag);
+    const at = await P('putY', p[0], p[1], R.d[2]); await ev(() => window.__cc.until({ idle: true }, 30));
+    note(`${tag}: ${R.L.length} free cells within ${R.R} px of the bell's spot ${J(R.d)}; he stands at ${J(at)} (${Math.round(Math.hypot(at[0] - R.d[0], at[1] - R.d[1]))} px from the spot; Lotte ${Math.round(Math.hypot(at[0] - 4104, at[1] - 1436))} px, Elise ${Math.round(Math.hypot(at[0] - 4296, at[1] - 1436))} px away)`);
+    await still(`${tag}_before`, `종을 울리기 전 (${tag})`, ['hero', 'lotte', 'elise'], 'ev_ending');
+    await P('ring', 'big_bell');
+    const w = await S('walk', 500);
+    ok(w.began >= 0 && w.over && !w.notes.some((q) => q.startsWith('placed')) && w.maxStep < 9 && near(w.to, 4200, 1390, 10), `${tag}: he walks to the mark - ${w.ticks} ticks, ${w.len} px, longest step of a tick ${w.maxStep} px, ${J(w.from)} -> ${J(w.to)}, facing ${J(w.face)}; ${J(w.notes)}`);
+    await until({ line: '빵은' }, 200); await still(`${tag}_bread`, '로테의 물음 (ev_ending)', ['hero', 'lotte', 'elise'], 'ev_ending');
+    if (tag === 'rail') {
+      // the last page of Lotte's lines, then the camera rises for the hundred years: who is in the picture while it is still close?
+      await U("s.modal === 'dialog' && s.line.includes('거짓말')", 20, 6);
+      const y0 = await U("s.shot === 'years'", 20, 6), y1 = await S('tick', 2);
+      await still(`${tag}_years_t2`, '백 년이 흐른다 - 마지막 줄을 넘긴 뒤 2틱', ['hero', 'lotte', 'elise'], 'ev_ending');
+      const y2 = await S('tick', 28); await still(`${tag}_years_t30`, '백 년이 흐른다 - 30틱', ['hero', 'lotte', 'elise'], 'ev_ending');
+      ok(!!y1.who.elise && !!y2.who.elise, `the years shot: Elise is in the 1697 picture until the crossing (2 ticks in: ${J(y1.who.elise ?? null)}; 30 ticks in: ${J(y2.who.elise ?? null)}; shot time left ${y0.shotT} -> ${y2.shotT})`);
+    }
+    await until({ line: '엘리제가 답한다' }, 300); await still(`${tag}_home_first`, '오늘 밤의 첫 줄 (ev_ending_home)', ['hero', 'elise'], 'ev_ending_home');
+    await until({ line: '엘리제! 이 녀석' }, 400); await still(`${tag}_town1`, '마을 1 — 마르타 「엘리제! 이 녀석」', ['hero', 'elise', 'alberto', 'marta'], 'ev_ending_home');
+    if (tag !== 'rail') return;
+    const z = await U("s.modal === 'end'", 200, 6); await shot('card_t0'); const z1 = await S('tick', 150); await shot('card_t150'); const z2 = await S('tick', 300); await shot('card_t450');
+    const M = await ev(() => { try { return window.__v2.scene.hud.metrics().end ?? null; } catch { return null; } });
+    note(`the card: reached ${z.ticks >= 0}, ended ${z.ended}; 150 ticks later modal ${z1.modal}, 450 ticks later modal ${z2.modal}, pad pieces ${z2.vis.length}, banner ${z2.banner ?? 'none'} ${z2.bannerTitle}; metrics ${J(M).slice(0, 500)}`);
+  });
+
+  /** tick (pages turned every 6 ticks) until the crossing itself is under way (scene.xing), then n ticks more */
+  const intoCrossing = (n) => ev((k) => { const g = window.__game, v = window.__v2; g._pageHidden = true; let d = 0, at = -1; for (let i = 0; i < 3000; i++) { if (v.scene.xing) { at = i; break; } if (v.scene.hud.modal === 'dialog' && ++d >= 6) { d = 0; v.scene.hud.advanceDialog(); } g.tick(1 / 60); } if (at < 0) return null; for (let i = 0; i < k; i++) g.tick(1 / 60); const x = v.scene.xing; return { at, still: !!x, keys: x ? Object.keys(x).slice(0, 14) : [], area: v.area, ready: !!v.ready }; }, n);
+  C('w_pause_xing', 'the pause panel by touch in the middle of the last crossing itself: held 300 ticks, closed, played to the card; then 「나가기」 there and the save it leaves', async () => {
+    await toRing(-70, -6); await P('ring', 'big_bell');
+    const x = await intoCrossing(12), a = await S('st');
+    ok(!!x && x.still, `the last crossing is under way (12 ticks in): ${J(x)}; area ${a.area}, on screen of the pad: ${a.vis.join(' ') || 'none'}, lock ${a.lock}, modal ${a.modal}`);
+    await shot('xing_12');
+    const t = await S('tapPause'), b = await S('tick', 1);
+    note(`a touch on 「멈춤」 in the crossing: ${J(t)} -> modal ${b.modal}, area ${b.area}, ready ${b.ready}`);
+    if (b.modal === 'pause') {
+      const c = await S('tick', 300); await shot('xing_paused');
+      ok(c.modal === 'pause' && c.area === b.area && J(c.hero) === J(b.hero) && c.seen === b.seen, `300 ticks with the panel open in the crossing: nothing ran (area ${b.area} -> ${c.area}, hero ${J(b.hero)} -> ${J(c.hero)}, shown ${b.seen} -> ${c.seen})`);
+      const r = await S('tapRow', 'resume'), d = await S('tick', 1); ok(!r.err && d.modal !== 'pause', `「계속」 closes it (modal ${d.modal}, lock ${d.lock}, area ${d.area})`);
+    }
+    const f = await U("s.modal === 'dialog' && s.line.includes('엘리제가 답한다')", 200, 6);
+    ok(f.ticks >= 0 && near(f.hero, 4200, 1390, 12) && f.area === 'eshville_now', `tonight's first line follows: area ${f.area}, the hero ${J(f.hero)}, Elise ${J(f.who.elise ?? null)}, banner ${f.banner ?? 'none'} ${f.bannerTitle}`);
+    const z = await U("s.modal === 'end'", 240, 6); ok(z.ticks >= 0 && z.ended === 'r1' && z.warn === 0, `the card is reached (ended ${z.ended}, host warnings ${z.warn})`);
+    // leave from the panel in the middle of the crossing
+    await toRing(-70, -6); await chooser(); await P('ring', 'big_bell');
+    const x2 = await intoCrossing(12); await S('tapPause'); const l1 = await S('tick', 1);
+    if (l1.modal !== 'pause') { note(`second run: no pause panel in the crossing (modal ${l1.modal}) - 「나가기」 not tried here`); return; }
+    const r2 = await S('tapRow', 'leave'); let top = '';
+    for (let i = 0; i < 40 && top !== 'V2Chooser'; i++) { top = await ev(() => { const g = window.__game; g._pageHidden = true; for (let k = 0; k < 20; k++) g.tick(1 / 60); return g.top?.constructor?.name ?? ''; }); if (top !== 'V2Chooser') await page().waitForTimeout(200); }
+    const sv = await ev(() => localStorage.getItem('bn.v2.save')), o = sv ? JSON.parse(sv) : null;
+    ok(!!x2 && !r2.err && top === 'V2Chooser' && !!o, `「나가기」 in the middle of the crossing: the chooser is on top (${top}); the save: ${o ? J({ why: o.why, area: o.area, pos: o.pos, promised: !!o.story.flags?.keepers_promised, home: !!o.story.flags?.elise_home, answered: !!o.story.flags?.bells_answered }) : 'none'}`);
+    await boot(sv); await install();
+    const g1 = await U("(s.ready && !s.lock && !s.busy && s.modal === null && !s.go) || (s.modal === 'dialog')", 80, 0);
+    note(`that save loads: area ${g1.area}, modal ${g1.modal}, lock ${g1.lock}, the hero ${J(g1.hero)}, line ${g1.line.replace(/\n/g, ' / ').slice(0, 40)}, Lotte ${J(g1.who.lotte ?? null)}, Elise ${J(g1.who.elise ?? null)}`);
+    await shot('xing_leave_loaded');
+    if (g1.area === 'eshville_past' && g1.modal === null) await P('ring', 'big_bell');
+    const z2 = await U("s.modal === 'end'", 400, 6); ok(z2.ticks >= 0 && z2.ended === 'r1', `played on from that save the card is reached (ended ${z2.ended}, host warnings ${z2.warn}, area ${z2.area})`);
+  });
+
+  C('w_busts_cost', "the busts at load, measured at the network: a plain load, a load without them, a load where each takes 3 s - and the first page of the first speaker then", async () => {
+    await boot(after('ev_keepers')); await idle();
+    const pg = page(), sv = after('ev_keepers'), ready = () => pg.waitForFunction(() => window.__v2?.id === 'g' && (window.__v2.ready || window.__v2.error) && window.__v2?.stats?.hud === 'ui', null, { timeout: 120000 });
+    const ring = () => ev(() => { const sc = window.__v2.scene, d = sc.area.interact.find((q) => q.id === 'big_bell'); sc.emit('interact', { id: d.id, kind: d.kind, event: d.event ?? null, data: d.data ?? null, locked: d.locked ?? null, spot: d, ring: true }); return true; });
+    const load = async (mode) => {
+      const F = []; await pg.unroute('**/portraits/**').catch(() => {});
+      await pg.route('**/portraits/**', async (route) => { const t = Date.now(), q = { f: route.request().url().split('/').pop(), t0: t }; F.push(q); try { if (mode === 'none') { await route.abort(); q.t1 = Date.now(); return; } if (mode === 'slow') await new Promise((r) => setTimeout(r, 3000)); const r = await route.fetch(); const b = await r.body(); q.bytes = b.length; await route.fulfill({ response: r, body: b }); q.t1 = Date.now(); } catch (e) { q.err = String(e).slice(0, 60); } });
+      await ev((s) => { localStorage.setItem('bn.v2.save', s); }, sv);
+      const t0 = Date.now(); await pg.reload(); await ready(); const t1 = Date.now(); await install();
+      const B = await S('busts'), first = F.length ? Math.min(...F.map((q) => q.t0)) - t0 : null, last = F.filter((q) => q.t1).length ? Math.max(...F.filter((q) => q.t1).map((q) => q.t1)) - t0 : null;
+      return { mode, readyMs: t1 - t0, files: F.length, bytes: F.reduce((a, q) => a + (q.bytes ?? 0), 0), firstReqMs: first, lastDoneMs: last, pre: B.pre, waitMs: B.waitMs, loadMs: B.loadMs };
+    };
+    const A1 = await load('plain'), N1 = await load('none'), A2 = await load('plain'), N2 = await load('none');
+    note(`plain load: ${J(A1)}`); note(`without the busts: ${J(N1)}`); note(`plain load again: ${J(A2)}`); note(`without again: ${J(N2)}`);
+    ok(A1.files >= 13 && A2.files >= 13, `a plain load asks for ${A1.files} / ${A2.files} bust files (${A1.bytes} bytes); ready after ${A1.readyMs} / ${A2.readyMs} ms against ${N1.readyMs} / ${N2.readyMs} ms without them; the scene's own wait for them: ${A1.waitMs} / ${A2.waitMs} ms`);
+    // every bust takes 3 s: what does the load wait, and what is in the frame on the first page?
+    const SL = await load('slow'); note(`each bust 3 s late: ${J(SL)}`);
+    await ring(); const b0 = await U("s.modal === 'dialog' && s.line.includes('빵은')", 30, 0); await shot('slowbust_t0'); await S('tick', 3); await shot('slowbust_t3');
+    const im0 = await ev(() => { const L = []; for (const e of performance.getEntriesByType('resource')) if (/portraits\//.test(e.name)) L.push(e.name.split('/').pop()); return L.length; });
+    ok(b0.ticks >= 0, `with every bust 3 s late the load took ${SL.readyMs} ms (the scene waited ${SL.waitMs} ms for them) and Lotte's first page opened ${b0.ticks} ticks after the ring (resource entries for busts by then: ${im0})`);
+    await pg.waitForTimeout(3500); await S('tick', 2); await shot('slowbust_later');
+    // and the plain case once more for the still of tick 0 and tick 3 of the box
+    await load('plain'); await ring(); const c0 = await U("s.modal === 'dialog' && s.line.includes('빵은')", 30, 0); await shot('plainbust_t0'); await S('tick', 3); await shot('plainbust_t3'); void c0;
+    await pg.unroute('**/portraits/**').catch(() => {});
+  });
 }
