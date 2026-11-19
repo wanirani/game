@@ -184,7 +184,7 @@ function installCa() {
         off: for (const dist of [opt.R + 8, opt.R + 22]) for (let a = 0; a < 8; a++) {
           const sx = h.x + Math.cos(a * Math.PI / 4) * dist, sz = h.z + Math.sin(a * Math.PI / 4) * dist; let clear = true;
           for (let t = 0.25; t <= 1; t += 0.25) if (!free(h.x + (sx - h.x) * t, h.z + (sz - h.z) * t)) { clear = false; break; }
-          if (!clear) continue;
+          const gy = gnd(W, sx, sz, h.y + 30); if (!clear || !Number.isFinite(gy) || Math.abs(gy - h.y) > 12) continue;   // on his own floor: a step sideways onto a flight he leans against is no start (the belltower's stone stair: the plan began on the stair and he pushed at its side for 7200 ticks)
           const g2 = RG(W, sx, sz, opt.R, { onFoot: opt.onFoot }); if (g2.cells) { G = g2; A.offWall = (A.offWall ?? 0) + 1; break off; }
         }
       }

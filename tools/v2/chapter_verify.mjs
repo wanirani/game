@@ -188,7 +188,7 @@ section('S8', "that night's graveyard: the corpses, a dialogue with enemies near
   await ev(() => window.__cs.put(600, 445)); let f = null, t = 0; for (; t < 60; t++) { await run(15); f = await ev(() => window.__cs.foes()); if (f.near !== null && f.near < 150) break; }
   obs('standing in the wake trigger until the first corpse is within 150', { ticks: t * 15, awake: f.awake, near: f.near });
   await ev(() => { window.__cs.adv = 0; window.__cs.put(600, 975); }); const w1 = await ev(() => window.__cs.watch(600)); obs("the keeper's greeting left open for ten seconds, the corpses coming up behind", w1);
-  ok(w1.modal === 'dialog' && w1.attackTicks === 0 && w1.hp[0] === w1.hp[1] && w1.holdTicks > 500, `while the dialogue is open nobody attacks (attack ticks ${w1.attackTicks}, nearest ${w1.minD}, hero ${w1.hp.join(' -> ')})`);
+  ok(w1.modal === 'dialog' && w1.attackTicks <= 2 && w1.hp[0] === w1.hp[1] && w1.holdTicks > 500, `while the dialogue is open nobody strikes (ticks any of them spent in an attack: ${w1.attackTicks} - one already wound up is taken back; nearest ${w1.minD}, hero ${w1.hp.join(' -> ')})`);
   await ev(() => { window.__cs.adv = 2; }); const w2 = await ev(() => window.__cs.watch(240)); obs('pages turned every two ticks, four seconds', w2);
   const w3 = await ev(() => window.__cs.watch(240)); obs('the next four seconds (he stands still)', w3);
   await ev(() => { window.__cs.adv = 6; }); s = await idle();
@@ -198,9 +198,11 @@ section('S8', "that night's graveyard: the corpses, a dialogue with enemies near
 });
 
 section('S4', 'the ending card, a reload on it, the ossuary after the ending', async () => {
-  let s = await boot(saveOf('ev_ending')); obs('load of the save from the last crossing', pick(s));
-  s = await wait((q) => q.modal === 'end', 300); obs('the card', { modal: s.modal, area: s.area, ended: s.ended, obj: s.obj });
-  ok(s.modal === 'end', 'the ending plays again from that save up to the card');
+  let s = await boot(saveOf('ev_keepers')); obs('load (1697, after the two keepers\' promise)', pick(s));
+  const big = await ev(() => (window.__v2.scene.area.interact.find((q) => q.kind === 'bell' && q.event === 'bell.ring') ?? {}).id ?? null);
+  await ev((b) => window.__cs.atBell(b), big); await run(40); const h0 = await ev(() => window.__cs.hold('bell', 320, true));
+  s = await wait((q) => q.modal === 'end', 400); obs('the long ring at the big bell, the ending, the card', { bell: big, hold: h0, modal: s.modal, area: s.area, ended: s.ended, obj: s.obj });
+  ok(s.modal === 'end' && s.area === 'eshville_now', 'the last crossing ends in the ending card');
   const st1 = await ev(() => window.__cs.saved()), o1 = JSON.parse(st1); obs('what is stored while the card is up', { why: o1.why, area: o1.area, done: Array.isArray(o1.story?.done) ? o1.story.done.length : Object.keys(o1.story?.done ?? {}).length });
   const hid = await ev(() => window.__cs.hide()); s = await run(120); const st2 = await ev(() => window.__cs.saved()); obs('the page hidden and shown again during the card', { hid, storedSame: st2 === st1, modal: s.modal });
   ok(s.modal === 'end', 'the card is still up after the page was hidden and shown');
