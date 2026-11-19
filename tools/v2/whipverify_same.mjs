@@ -94,9 +94,13 @@ for (let sd = 1; sd <= SEEDS; sd++) {
 console.log('   kinds: ' + JSON.stringify(kindsA));
 
 // ── B: as shipped ──
-console.log(`[B] base commit (jump as its scene gave it: held 0.12 s) against today as shipped, same finger scripts`);
+// JUMPFIX (11-19): the base gets the HELD jump (true for 0.12 s until used) only when its rules have no input buffer of their own (9468e00 and older - that is what its scene
+// gave). A base that already carries presses (TUNE.bufT) got the jump as one press from its scene; held for eight ticks it is eight fresh presses - each renews the 0.19 s
+// carry and forgets the other carried presses - and the start commit of WHIP2 (6f77240) read 375 jumps and 210 plunges where its own scene's input gives 265 and 168.
+const OLDJ = OLD.TUNE.bufT === undefined;
+console.log(`[B] base commit (jump as its scene gave it: ${OLDJ ? 'held 0.12 s' : 'one press - its rules carry it'}) against today as shipped, same finger scripts`);
 const sum = (rs, f) => rs.reduce((t, r) => t + f(r.M), 0), RB = [], RA = [];
-for (let sd = 1; sd <= SEEDS; sd++) { const a = run(OLD, sd, TICKS, { oldJump: true }), b = run(NEW, sd, TICKS, {}); RB.push(a); RA.push(b); const d = firstDiff(a, b, TICKS); res.B.push({ seed: sd, firstDiff: d, old: a.tags[d], now: b.tags[d], presses: d >= 0 ? near(a, d) : '' }); }
+for (let sd = 1; sd <= SEEDS; sd++) { const a = run(OLD, sd, TICKS, { oldJump: OLDJ }), b = run(NEW, sd, TICKS, {}); RB.push(a); RA.push(b); const d = firstDiff(a, b, TICKS); res.B.push({ seed: sd, firstDiff: d, old: a.tags[d], now: b.tags[d], presses: d >= 0 ? near(a, d) : '' }); }
 const line = (name, f, digits = 0) => { const o = sum(RB, f), n = sum(RA, f); console.log(`   ${name.padEnd(34)} before ${o.toFixed(digits).padStart(9)}   today ${n.toFixed(digits).padStart(9)}   ${o ? ((n / o - 1) * 100).toFixed(1) + ' %' : ''}`); return [o, n]; };
 const T = {};
 T.press = line('presses (attack+roll+jump+skill)', (m) => m.press.attack + m.press.dash + m.press.jump + m.press.skill);
