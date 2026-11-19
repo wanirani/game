@@ -4,12 +4,12 @@
 //          The vertex shader turns it to the camera and widens it to the minimum on-screen thickness; the fragment shader shades it as a round braid.
 //   solid  (kind 2 grip leather, 3 bronze, 4 bell shard): pos = final position, aux = normal, u = along the handle axis, v = around 0..1
 //   glow   (kind 6): pos = centre, u v = corner -1..1, radius = half size (billboard, additive)
-//   streak (kind 7): the path of the tip over the last ticks, smoothed; pos = centre line, aux = tangent, u = strength, v = -1 | +1, radius (additive)
-import { TRAIL_N } from './sim.js';
+//   streak (kind 7): the path of the tip over the last ticks (three points a tick); pos = centre line, aux = tangent, u = strength, v = -1 | +1, radius (additive)
+import { TRAIL_N, TRAIL_PER } from './sim.js';
 export const WHIP_VERT = 10;
-const TRAIL_SUB = 3, TRAIL_SEC = (TRAIL_N - 1) * TRAIL_SUB + 1;
+const TRAIL_SEC = TRAIL_N;   // one section per remembered point (28, as before: it was 10 points with 3 curve pieces between each)
 const SHARD_LEN = 11.5;
-const TRAIL_P = new Float32Array(TRAIL_N * 3), TRAIL_T = new Float32Array(TRAIL_N * 3), TRAIL_L = new Float32Array(TRAIL_N), TRAIL_K = new Float32Array(TRAIL_N);   // the streak's points, unit tangents, piece lengths, fold dimming (scratch of writeWhipMesh - nothing is made per frame)
+const TRAIL_P = new Float32Array(TRAIL_N * 3), TRAIL_T = new Float32Array(TRAIL_N * 3), TRAIL_K = new Float32Array(TRAIL_N);   // the streak's points, unit tangents, fold dimming (scratch of writeWhipMesh - nothing is made per frame)
 
 // handle profile along its axis (px from the grip point; the lash leaves at +11): [s, radius, kind]
 const HANDLE = [
@@ -131,35 +131,31 @@ export function writeWhipMesh(whip, vtx, alpha, tmp) {
   for (let k = 0; k < 4; k++) {
     vtx[o] = cx; vtx[o + 1] = cy; vtx[o + 2] = cz; vtx[o + 3] = 0; vtx[o + 4] = 0; vtx[o + 5] = 0; vtx[o + 6] = k === 0 || k === 3 ? -1 : 1; vtx[o + 7] = k < 2 ? -1 : 1; vtx[o + 8] = size; vtx[o + 9] = 6; o += WHIP_VERT;
   }
-  // the streak behind the tip: a curve through the tip's last positions (the newest = the tip as drawn).
-  // WHIP2: tangents by chord length (it was a uniform Catmull-Rom). The points are unevenly spaced - a 130 px tick of the strike next to the few px
-  // the tip moves while it rests on what it hit, and the head piece shrinks to nothing as the frame nears the previous tick - and a uniform spline
-  // answers that with a hook or a loop at the joint: the kink in the streak. Here every piece gets tangents of its own length, so it cannot overshoot.
-  // Where the path really folds (in to the hit, out again) the streak goes dark at the fold instead of drawing a corner (TK = cos of the turn).
-  const H = whip.hist, w0 = 4.4 * whip.trailW, TP = TRAIL_P, TT = TRAIL_T, TL = TRAIL_L, TK = TRAIL_K;
-  TP[0] = ox; TP[1] = oy; TP[2] = oz; for (let i = 1; i < TRAIL_N; i++) { const p = i * 4, q = i * 3; TP[q] = H[p]; TP[q + 1] = H[p + 1]; TP[q + 2] = H[p + 2]; }
-  for (let i = 0; i < TRAIL_N - 1; i++) { const q = i * 3, x = TP[q + 3] - TP[q], y = TP[q + 4] - TP[q + 1], z = TP[q + 5] - TP[q + 2]; TL[i] = Math.sqrt(x * x + y * y + z * z); }
+  // the streak behind the tip: the tip's path, three points a tick (sim.js hist), drawn as it is - the points are dense enough to need no curve.
+  // The head is the tip as drawn; of the newest tick only what lies behind the drawn moment is used (the rest is folded onto the tip).
+  // Where the path really folds (in to the hit, out again) the streak goes dark at the fold instead of drawing a corner (TK from the cos of the turn).
+  const H = whip.hist, w0 = 4.4 * whip.trailW, TP = TRAIL_P, TT = TRAIL_T, TK = TRAIL_K, fut = whip._arc ? a : 1;
+  TP[0] = ox; TP[1] = oy; TP[2] = oz;
+  for (let i = 1; i < TRAIL_N; i++) {
+    const p = i * 4, q = i * 3;
+    if (i < TRAIL_PER && 1 - i / TRAIL_PER > fut + 1e-6) { TP[q] = ox; TP[q + 1] = oy; TP[q + 2] = oz; } else { TP[q] = H[p]; TP[q + 1] = H[p + 1]; TP[q + 2] = H[p + 2]; }
+  }
+  let lx2 = tx, ly2 = ty, lz2 = tz;
   for (let i = 0; i < TRAIL_N; i++) {
-    const q = i * 3, la = i > 0 ? TL[i - 1] : 0, lb = i < TRAIL_N - 1 ? TL[i] : 0;
-    let ax = 0, ay = 0, az = 0, bx2 = 0, by2 = 0, bz2 = 0;
-    if (la > 1e-3) { ax = (TP[q] - TP[q - 3]) / la; ay = (TP[q + 1] - TP[q - 2]) / la; az = (TP[q + 2] - TP[q - 1]) / la; }
-    if (lb > 1e-3) { bx2 = (TP[q + 3] - TP[q]) / lb; by2 = (TP[q + 4] - TP[q + 1]) / lb; bz2 = (TP[q + 5] - TP[q + 2]) / lb; }
-    if (la > 1e-3 && lb > 1e-3) {   // both sides: the shorter side counts more (non-uniform Catmull-Rom), and how sharp the turn is
-      const wa = lb / (la + lb), wb = la / (la + lb); let x = ax * wa + bx2 * wb, y = ay * wa + by2 * wb, z = az * wa + bz2 * wb; const l = Math.sqrt(x * x + y * y + z * z);
-      if (l > 1e-4) { x /= l; y /= l; z /= l; } else { x = bx2; y = by2; z = bz2; }
-      TT[q] = x; TT[q + 1] = y; TT[q + 2] = z; const c = ax * bx2 + ay * by2 + az * bz2; TK[i] = c > 0.7 ? 1 : c < -0.2 ? 0 : (c + 0.2) / 0.9;
-    } else if (lb > 1e-3) { TT[q] = bx2; TT[q + 1] = by2; TT[q + 2] = bz2; TK[i] = 1; } else if (la > 1e-3) { TT[q] = ax; TT[q + 1] = ay; TT[q + 2] = az; TK[i] = 1; } else { TT[q] = tx; TT[q + 1] = ty; TT[q + 2] = tz; TK[i] = 0; }
+    const q = i * 3, a3 = i > 0 ? q - 3 : q, b3 = i < TRAIL_N - 1 ? q + 3 : q;
+    let x = TP[a3] - TP[b3], y = TP[a3 + 1] - TP[b3 + 1], z = TP[a3 + 2] - TP[b3 + 2]; const l = Math.sqrt(x * x + y * y + z * z);
+    if (l > 1e-3) { lx2 = x / l; ly2 = y / l; lz2 = z / l; }
+    TT[q] = lx2; TT[q + 1] = ly2; TT[q + 2] = lz2; TK[i] = 1;
+    if (i > 0 && i < TRAIL_N - 1) {
+      const ax = TP[q - 3] - TP[q], ay = TP[q - 2] - TP[q + 1], az = TP[q - 1] - TP[q + 2], bx2 = TP[q] - TP[q + 3], by2 = TP[q + 1] - TP[q + 4], bz2 = TP[q + 2] - TP[q + 5];
+      const la = Math.sqrt(ax * ax + ay * ay + az * az), lb = Math.sqrt(bx2 * bx2 + by2 * by2 + bz2 * bz2);
+      if (la > 2 && lb > 2) { const c = (ax * bx2 + ay * by2 + az * bz2) / (la * lb); TK[i] = c > 0.6 ? 1 : c < 0 ? 0 : c / 0.6; }
+    }
   }
   for (let j = 0; j < TRAIL_SEC; j++) {
-    const i = Math.min(TRAIL_N - 2, (j / TRAIL_SUB) | 0), u = j / TRAIL_SUB - i, p1 = i * 4, p2 = (i + 1) * 4, a3 = i * 3, b3 = a3 + 3, L = TL[i];
-    const u2 = u * u, u3 = u2 * u, h00 = 2 * u3 - 3 * u2 + 1, h10 = (u3 - 2 * u2 + u) * L, h01 = -2 * u3 + 3 * u2, h11 = (u3 - u2) * L;
-    const g00 = 6 * u2 - 6 * u, g10 = (3 * u2 - 4 * u + 1) * L, g01 = -g00, g11 = (3 * u2 - 2 * u) * L;
-    const x = h00 * TP[a3] + h10 * TT[a3] + h01 * TP[b3] + h11 * TT[b3], y = h00 * TP[a3 + 1] + h10 * TT[a3 + 1] + h01 * TP[b3 + 1] + h11 * TT[b3 + 1], z = h00 * TP[a3 + 2] + h10 * TT[a3 + 2] + h01 * TP[b3 + 2] + h11 * TT[b3 + 2];
-    let kx = g00 * TP[a3] + g10 * TT[a3] + g01 * TP[b3] + g11 * TT[b3], ky = g00 * TP[a3 + 1] + g10 * TT[a3 + 1] + g01 * TP[b3 + 1] + g11 * TT[b3 + 1], kz = g00 * TP[a3 + 2] + g10 * TT[a3 + 2] + g01 * TP[b3 + 2] + g11 * TT[b3 + 2];
-    const kl = Math.sqrt(kx * kx + ky * ky + kz * kz); if (kl > 1e-5) { kx /= kl; ky /= kl; kz /= kl; } else { kx = TT[a3]; ky = TT[a3 + 1]; kz = TT[a3 + 2]; }
-    const q = j / (TRAIL_SEC - 1), s1 = H[p1 + 3] * TK[i], s2 = H[p2 + 3] * TK[i + 1], str = (s1 + (s2 - s1) * u) * Math.pow(1 - q, 1.3), rad = w0 * (1 - 0.8 * q);
+    const q3 = j * 3, q = j / (TRAIL_SEC - 1), str = H[j * 4 + 3] * TK[j] * Math.pow(1 - q, 1.3), rad = w0 * (1 - 0.8 * q);
     for (let s = -1; s <= 1; s += 2) {
-      vtx[o] = x; vtx[o + 1] = y; vtx[o + 2] = z; vtx[o + 3] = kx; vtx[o + 4] = ky; vtx[o + 5] = kz; vtx[o + 6] = str; vtx[o + 7] = s; vtx[o + 8] = rad; vtx[o + 9] = 7;
+      vtx[o] = TP[q3]; vtx[o + 1] = TP[q3 + 1]; vtx[o + 2] = TP[q3 + 2]; vtx[o + 3] = TT[q3]; vtx[o + 4] = TT[q3 + 1]; vtx[o + 5] = TT[q3 + 2]; vtx[o + 6] = str; vtx[o + 7] = s; vtx[o + 8] = rad; vtx[o + 9] = 7;
       o += WHIP_VERT;
     }
   }

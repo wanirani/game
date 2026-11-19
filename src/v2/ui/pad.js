@@ -324,6 +324,9 @@ export function createPad(game, opts = {}) {
       for (const b of B) { b.cv.style.transition = 'opacity 240ms ease-out'; b.cv.style.opacity = v ? '0' : String(S.op); }
       moveStick();
     },
+    /** SCREENS: where button i stands (CSS px), written into `out` - nothing is made (the cards and the book chip place themselves by it every tick) */
+    at(i, out) { const b = B[i]; if (!S.L || !b) return false; out.cx = b.cx; out.cy = b.cy; out.d = b.d; out.id = b.id; return true; },
+    get count() { return B.length; }, get cut() { return !!S.cut; }, get back() { return !!S.back; },
     /** QA: geometry in CSS px. */
     metrics() {
       return {

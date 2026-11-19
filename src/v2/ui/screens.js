@@ -107,7 +107,8 @@ export function createScreens(env) {
     c.drawImage(tb.c, tx - tb.w * 0.06, G.hh / 2 - tb.h / 2 + px(2), tb.w, tb.h);
     const subX = tx + tb.w * 0.92, room = w - subX - G.B - px(150);
     if (K === 'chronicle' && T.chronicle?.sub && room > px(120)) { const fs = fitText(T.chronicle.sub, tsz(12.5), room, 600); text(c, fs.str, subX + px(6), G.hh / 2 + px(5), fs.size, DIM, 600); }
-    sprite(c, 'orn_div', w / 2, G.hh + px(1), Math.min(w * 0.5, px(420)), Math.min(w * 0.5, px(420)) * 64 / 480);
+    c.fillStyle = 'rgba(214,224,250,0.3)'; c.fillRect(px(12), G.hh + px(1), w - px(24), 1);
+    if (ph > 0) sprite(c, 'orn_div', G.lx - G.x0 + G.colW + G.sp / 2, G.hh + ph / 2 + px(3), px(132), px(132) * 64 / 480);   // a small ornament where the fold begins
     if (ph > 0) {   // the two page heads: that night on the left, tonight on the right (the bag: story things · things that are used up)
       const lx = G.lx - G.x0, hy = G.hh + ph / 2 + px(3), hs = Z.tT, book = K === 'chronicle';
       const a = book ? T.chronicle?.past ?? '그 밤 · 1697' : T.bag?.story ?? '', b = book ? T.chronicle?.now ?? '오늘 밤 · 1797' : T.bag?.use ?? '';
@@ -115,7 +116,7 @@ export function createScreens(env) {
         const col = book ? (k ? NOW : PAST) : NOW, cx = lx + (k ? G.colW + G.sp : 0) + G.colW / 2, str = k ? b : a, tw = measure(str, hs, 800, FONTS.title);
         if (book) sprite(c, k ? 'night_now' : 'night_past', cx - tw / 2 - hs * 1.05, hy, hs * 1.7, hs * 1.7);
         text(c, str, cx, hy, hs, col.head, 800, FONTS.title, 'center');
-        const lw = G.colW * 0.36; c.fillStyle = col.rim; c.fillRect(cx - tw / 2 - hs * 2 - lw, hy, lw, 1); c.fillRect(cx + tw / 2 + hs * 0.9, hy, lw, 1);
+        const lw = Math.max(0, Math.min(G.colW * 0.2, G.colW / 2 - tw / 2 - hs * 2.4 - px(70))); c.fillStyle = col.rim; c.fillRect(cx - tw / 2 - hs * 2 - lw, hy, lw, 1); c.fillRect(cx + tw / 2 + hs * 0.9, hy, lw, 1);
       }
     }
   }
@@ -311,7 +312,7 @@ export function createScreens(env) {
           const d = inp.pressed('down') ? 1 : -1;
           if (S.kind === 'shop') { if (N > 0) { S.sel = S.sel < 0 ? (d > 0 ? 0 : N - 1) : (S.sel + d + N) % N; S.armT = 1; S.epoch = -1; } }
           else S.v = d * px(520);
-        } else if (inp.pressed('confirm') || inp.pressed('attack')) { if (S.kind === 'shop' && S.sel >= 0) { const i = S.sel; if (rows[i].state === 'ok') { S.armT = 1; S.sel = i; const M2 = model(); const r = M2.buy(shopD.id, rows[i].id); S.sel = -1; S.say = r.ok ? shopD.say.bought ?? '' : ''; S.sayT = 2.4; sound(r.ok ? 'shop.buy' : 'shop.deny'); S.epoch = -1; } else press(i); } else if (S.kind === 'shop' && N > 0) { S.sel = 0; S.armT = 1; S.epoch = -1; } }
+        } else if (inp.pressed('confirm') || inp.pressed('attack')) { if (S.kind === 'shop' && N > 0) { if (S.sel < 0) { S.sel = 0; S.armT = 0; S.epoch = -1; } else { S.armT = 1; press(S.sel); } } }   // (a key press is one press: choose, then buy)
         else if (inp.pressed('cancel') || inp.pressed('menu')) close();
       }
     },
@@ -370,7 +371,11 @@ export function createScreens(env) {
       if (closeP.c) ctx.drawImage(closeP.c, G.cx, G.cy + rise, closeP.w, closeP.h);
       ctx.globalAlpha = 1;
       // rows near the window are baked ahead, one a frame (a fling never meets an unbaked row)
-      if (S.kind && !D.on) { for (let i = 0; i < N; i++) { if (slotOf[i] >= 0) continue; const ry = rowY[i]; if (ry + rowH[i] >= top - G.lh * 0.6 && ry <= bot + G.lh * 0.6) { slotFor(i, top - G.lh * 0.6, bot + G.lh * 0.6); break; } } }
+      if (S.kind && !D.on) {
+        const t2 = top - G.lh * 0.5, b2 = bot + G.lh * 0.5; let room = false;   // (only into a slot that is free or holds a row outside that margin: the pool never churns)
+        for (let k = 0; k < slots.length && !room; k++) { const q = slots[k].i; if (q < 0 || rowY[q] + rowH[q] < t2 || rowY[q] > b2) room = true; }
+        if (room) for (let i = 0; i < N; i++) { if (slotOf[i] >= 0) continue; const ry = rowY[i]; if (ry + rowH[i] >= t2 && ry <= b2) { slotFor(i, t2, b2); break; } }
+      }
     },
     /** QA: geometry in logical px */
     info() {

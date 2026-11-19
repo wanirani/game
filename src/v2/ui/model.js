@@ -24,7 +24,7 @@ export function createModel(env) {
     chip: false,       // something was written and the book has not been opened since
     T,
   };
-  let bookC = null, bookRev = 0, bagC = null, bagRev = 0, guideC = '', guideKey = '';
+  let bookC = null, bookRev = 0, bagC = null, bagRev = 0, guideC = '', guideRev = -1, guideArea = null;
   const test = (conds) => { try { return !conds || !conds.length ? true : !!st.test(conds); } catch { return false; } };
   const written = (id) => st.state.chronicle.indexOf(id) >= 0;
   const touch = () => { M.rev++; };
@@ -122,8 +122,8 @@ export function createModel(env) {
     /** the second line under the objective while the guide candle burns ('' = none) */
     guideLine() {
       if (!M.guide) return '';
-      const a = env.area ? env.area() : null, key = M.rev + ':' + (a ? a.id : '');
-      if (key !== guideKey) { guideKey = key; const p = nearestBlank(); guideC = p ? String(T.guide ?? '{at}').replace('{at}', p.at) : ''; }
+      const a = env.area ? env.area() : null, id = a ? a.id : null;
+      if (M.rev !== guideRev || id !== guideArea) { guideRev = M.rev; guideArea = id; const p = nearestBlank(); guideC = p ? String(T.guide ?? '{at}').replace('{at}', p.at) : ''; }   // (made again only when something changed: nothing is built per frame)
       return guideC;
     },
     /** a row has been on screen: it stops glowing */

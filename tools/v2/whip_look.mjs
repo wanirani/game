@@ -10,7 +10,8 @@
 //   touch    the tick on which a drawn node of the lash first touches the target's body, relative to the tick of the rules' hit (0 = the same tick)
 //   out      how far the lash is out on the hit tick (whip.ext, 1 = straight)
 //   root     the largest gap between the lash root as drawn and the hand as drawn (world px)
-//   kink     the sharpest corner of the visible streak, degrees between two neighbouring pieces on the screen (a smooth arc at this sampling stays under 35)
+//   kink     the sharpest corner of the lit streak: degrees of turn between two neighbouring pieces of its centre line, in the world (on the screen a smooth
+//            arc seen edge-on folds over by itself). An arc of the strike turns about 22 degrees a piece; a hook or a corner is 60 and more
 //   step     the largest move of the drawn tip between two samples (world px) and the move in the sample of the hit tick ("jump")
 // Writes <out>/<tag>_<area>_<move>.png and <out>/<tag>.json. Exit 1 on a page error.
 import fs from 'node:fs';
@@ -31,13 +32,13 @@ async function seq(S, o) {
   for (const e of sim.enemies) if (e._used) { e._used = false; e.x = e.homeX = -99999; e.z = e.homeZ = -99999; e._px = e.x; e._pz = e.z; e.active = false; e.state = 'idle'; e.atk = null; e.wakeBy = 'trigger'; e.stun = 0; e.kx = e.kz = 0; e.pullT = 0; }
   F.stop = 0; F.slowT = 0;
   const kind = ['skeleton_soldier', 'plague_corpse', 'skeleton_mage', 'grave_ghost', 'gravekeeper_armor'].find((k) => sim.enemies.some((q) => q.kid === k && !q.dead));
-  if (W.dir === undefined) {   // a straight of 330 px from the spot, on one level and with nothing solid in it: the sequences run along it (the roll of the sweep needs the room)
-    const y0 = W.ground(W.X0, W.Z0); W.dir = [1, 0];
-    for (const d of [[1, 0], [-1, 0], [0.7071, 0.7071], [-0.7071, 0.7071], [0.7071, -0.7071], [-0.7071, -0.7071], [0, 1], [0, -1]]) {
-      let ok = true; for (let r = 30; r <= 330 && ok; r += 30) { const gy = W.ground(W.X0 + d[0] * r, W.Z0 + d[1] * r); if (!(Math.abs(gy - y0) < 3)) ok = false; }
-      if (ok && sim.clearLine && !sim.clearLine(W.X0, W.Z0, W.X0 + d[0] * 330, W.Z0 + d[1] * 330, y0 + 40)) ok = false;
-      if (ok) { W.dir = d; break; }
-    }
+  if (W.dir === undefined) {   // a straight of 330 px, on one level and with nothing solid in it: the sequences run along it (the roll of the sweep needs the room).
+    // Across the screen first (+x, then -x), from the nearest spot to the start that has such a straight; into the screen only when there is none within 700 px
+    const y0 = W.ground(W.X0, W.Z0), free = (x, z, d) => { for (let r = 0; r <= 300; r += 30) { const gy = W.ground(x + d[0] * r, z + d[1] * r); if (!(Math.abs(gy - y0) < 3)) return false; } for (const sd of [-18, 0, 18]) if (sim.clearLine && !sim.clearLine(x - d[1] * sd, z + d[0] * sd, x + d[0] * 300 - d[1] * sd, z + d[1] * 300 + d[0] * sd, y0 + 40)) return false; return true; };
+    W.dir = null;
+    for (const D of [[[1, 0], [-1, 0]], [[0.7071, 0.7071], [-0.7071, 0.7071], [0, 1], [0, -1]]]) { for (let R = 0; R <= 700 && !W.dir; R += 50) for (let k = 0; k < (R ? 12 : 1) && !W.dir; k++) { const a = (k * Math.PI) / 6, x = W.X0 + Math.cos(a) * R, z = W.Z0 + Math.sin(a) * R; if (!(Math.abs(W.ground(x, z) - y0) < 3)) continue; for (const d of D) if (free(x, z, d)) { W.dir = d; W.X0 = x; W.Z0 = z; break; } } if (W.dir) break; }
+    W.spot = [Math.round(W.X0), Math.round(W.Z0), W.dir, y0];
+    if (!W.dir) W.dir = [1, 0];
   }
   const DX = W.dir[0], DZ = W.dir[1];
   let X = W.X0, Z = W.Z0, ring = null;
@@ -80,10 +81,10 @@ async function seq(S, o) {
       const rx = R.x - (h.x - h._px) * k1, ry = R.y - (sc.visY - sc.visYP) * k1, rz = R.z - (h.z - h._pz) * k1;   // the hand of the posed skeleton as the character draw places it
       const o3 = (wp.n - 1) * 3, tip = [N[o3], N[o3 + 1], N[o3 + 2]], C = tgt();
       // the streak's centre line as the mesh has it (visible part only), on the screen
-      const sp = []; let nv = 0; for (let j = 0; j < TS; j++) { const q = trail0 + j * 20, p2 = proj(vtx[q], vtx[q + 1], vtx[q + 2]); sp.push([p2[0], p2[1], vtx[q + 6]]); if (vtx[q + 6] >= 0.06) nv++; }
-      let kink = 0; const live = wp.trailLive > 0.01;   // a corner counts where the streak is lit on both sides of it (three neighbouring sections at 6 % strength or more, pieces of 1.2 px or more)
-      if (live) for (let j = 1; j < sp.length - 1; j++) { if (sp[j - 1][2] < 0.06 || sp[j][2] < 0.06 || sp[j + 1][2] < 0.06) continue; const ax = sp[j][0] - sp[j - 1][0], ay = sp[j][1] - sp[j - 1][1], bx = sp[j + 1][0] - sp[j][0], by = sp[j + 1][1] - sp[j][1], la = Math.hypot(ax, ay), lb = Math.hypot(bx, by); if (la < 1.2 || lb < 1.2) continue; const ang = Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by) / (la * lb)))) * 57.2958; if (ang > kink) kink = ang; }
-      if (kink > (W._kw ?? 0) || !rows.length) { if (!rows.length) W._kw = 0; if (kink > W._kw) { W._kw = kink; W._kp = { tick: i, al, hero: [h.x, h.y, h.z, h.dirX, h.dirZ].map((q) => +q.toFixed(1)), dir: W.dir, pts: sp.map((q) => [Math.round(q[0]), Math.round(q[1]), +q[2].toFixed(2)]), hist: Array.from(wp.hist).map((q) => +q.toFixed(1)), tip: Array.from(N.slice((wp.n - 1) * 3)).map((q) => +q.toFixed(1)) }; } }
+      const sp = []; let nv = 0; for (let j = 0; j < TS; j++) { const q = trail0 + j * 20; sp.push([vtx[q], vtx[q + 1], vtx[q + 2], vtx[q + 6]]); if (vtx[q + 6] >= 0.06) nv++; }
+      let kink = 0; const live = wp.trailLive > 0.01;   // a corner counts where the streak is lit on both sides of it (three neighbouring sections at 6 % strength or more, pieces of 2 px or more), measured in the world: the turn between two neighbouring pieces
+      if (live) for (let j = 1; j < sp.length - 1; j++) { if (sp[j - 1][3] < 0.06 || sp[j][3] < 0.06 || sp[j + 1][3] < 0.06) continue; const ax = sp[j][0] - sp[j - 1][0], ay = sp[j][1] - sp[j - 1][1], az = sp[j][2] - sp[j - 1][2], bx = sp[j + 1][0] - sp[j][0], by = sp[j + 1][1] - sp[j][1], bz = sp[j + 1][2] - sp[j][2], la = Math.hypot(ax, ay, az), lb = Math.hypot(bx, by, bz); if (la < 2 || lb < 2) continue; const ang = Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by + az * bz) / (la * lb)))) * 57.2958; if (ang > kink) kink = ang; }
+      if (kink > (W._kw ?? 0) || !rows.length) { if (!rows.length) W._kw = 0; if (kink > W._kw) { W._kw = kink; W._kp = { tick: i, al, hero: [h.x, h.y, h.z, h.dirX, h.dirZ].map((q) => +q.toFixed(1)), dir: W.dir, pts: sp.map((q) => [Math.round(q[0]), Math.round(q[1]), Math.round(q[2]), +q[3].toFixed(2)]), hist: Array.from(wp.hist).map((q) => +q.toFixed(1)), tip: Array.from(N.slice((wp.n - 1) * 3)).map((q) => +q.toFixed(1)) }; } }
       const step = lastTip ? Math.hypot(tip[0] - lastTip[0], tip[1] - lastTip[1], tip[2] - lastTip[2]) : 0; lastTip = tip;
       const row = { tick: i, s: al === 1 ? 'b' : 'a', a, mv: mvId, moveT: +(h.moveT ?? 0).toFixed(4), hit: i === hitTick, ice: !moved, ext: +wp.ext.toFixed(3), root: +Math.hypot(N[0] - rx, N[1] - ry, N[2] - rz).toFixed(1), kink: +kink.toFixed(0), streak: live ? nv : 0, step: +step.toFixed(1), body: C ? +lashOn(N, C).toFixed(1) : -1, tipHit: hit0 ? +Math.hypot(tip[0] - hit0.x, tip[1] - hit0.y, tip[2] - hit0.z).toFixed(1) : -1 };
       rows.push(row);
@@ -111,7 +112,7 @@ async function seq(S, o) {
   const hitA = rows.find((r) => r.hit), vis = rows.filter((r) => r.streak >= 3);
   const out = { kind, start: startTick, hitTick, hitRel: hitTick >= 0 ? hitTick - startTick : null, hits: hits.map((q) => `${q.tick - startTick}:${q.id}`), touch: firstTouch && hitTick >= 0 ? firstTouch.tick - hitTick : null,
     out: hitRow ? hitRow.ext : null, bodyAtHit: hitRow ? hitRow.body : null, root: Math.max(0, ...rows.map((r) => r.root)), kink: Math.max(0, ...vis.map((r) => r.kink)), kinkAt: (vis.slice().sort((p, q) => q.kink - p.kink)[0] ?? {}).tick - startTick,
-    step: Math.max(0, ...rows.map((r) => r.step)), jump: hitA ? hitA.step : null, rows, everyFrame: !!sc.everyFrame, worst: o.debug ? W._kp : undefined };
+    step: Math.max(0, ...rows.map((r) => r.step)), jump: hitA ? hitA.step : null, rows, everyFrame: !!sc.everyFrame, spot: W.spot, worst: o.debug ? W._kp : undefined };
   if (o.sheet) { const used = Math.ceil(cells / COLS) * CH, c2 = document.createElement('canvas'); c2.width = cv.width; c2.height = Math.max(CH, used); c2.getContext('2d').drawImage(cv, 0, 0); out.png = c2.toDataURL('image/png'); out.cells = cells; }
   return out;
 }

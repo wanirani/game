@@ -4,7 +4,10 @@
 import { MOVES } from '../play/moves.js';
 import { shapeOf } from './shapes.js';
 
-export const TRAIL_N = 10;
+// The streak's memory: the tip's path, TRAIL_PER points per tick, newest first (WHIP2: it was one point per tick, 10 ticks - at 60 Hz the last tick of a
+// strike is a 130 px arc of some 65 degrees, and one chord for it gave the streak its corner. The points between two ticks follow the authored arc of the
+// move; the mesh has as many sections as before: 28).
+export const TRAIL_N = 28, TRAIL_PER = 3;
 export const WHIP_TIERS = { low: { n: 12, sub: 2, sides: 6 }, mid: { n: 16, sub: 3, sides: 8 }, high: { n: 20, sub: 4, sides: 10 } };
 const GRAV = -1400, MAXV = 3400, NS = 25, HANDLE_FWD = 11, BOW = 0.945, SLACK = 0.78;   // gravity px/s2, speed cap px/s, curve samples, grip -> lash root along the handle
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -25,9 +28,10 @@ export class Whip {
     this._s = new Float32Array(n * 3);         // positions before the step
     this._bz = new Float32Array(NS * 3); this._bl = new Float32Array(NS);
     this._k = new Float32Array(8);             // one evaluated key: f r y w bf br by
-    this._w = new Float32Array(9);             // scratch: world tip xyz, slack xyz, peak xyz
+    this._w = new Float32Array(21);            // scratch: world tip xyz, slack xyz, peak xyz, then the authored tip at 1/3 and 2/3 of the tick, at its start and at its end
+    this._arc = 0; this._bow = 0;              // _arc: the last update moved the lash (0 while frozen) · _bow: this tick has an authored arc for the streak's in-between points
     this.tip = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, speed: 0 };
-    this.hist = new Float32Array(TRAIL_N * 4);   // tip path of the last ticks, newest first: x y z strength (the streak behind the tip - mesh.js draws it)
+    this.hist = new Float32Array(TRAIL_N * 4);   // tip path, TRAIL_PER points per tick, newest first: x y z strength (the streak behind the tip - mesh.js draws it)
     this.trailLive = 0; this.trailW = 1;
     this.root = { x: 0, y: 0, z: 0, dx: 0, dy: 1, dz: 0 };   // where the lash leaves the handle + handle direction
     this.grip = { x: 0, y: 0, z: 0 };
@@ -227,6 +231,13 @@ export class Whip {
   _aimSwing() {
     const sw = this.sw, sh = sw.shape, W = this._w, r = this.root, n = this.n, wn = this.wn;
     const s = this._phase(); sw.s = s;
+    // the authored tip at the start of this tick, at 1/3, at 2/3 and at its end: update() bends the streak's in-between points (and drawn() the tip) along this arc
+    this._bow = 0;
+    if (sw.ps >= -1 && s > sw.ps && s - sw.ps < 0.6) {
+      const ps = sw.ps, ds = s - ps; let k = this._key(sh.keys, ps); this._toWorld(sh, k[0], k[1], k[2], 15);
+      k = this._key(sh.keys, ps + ds / 3); this._toWorld(sh, k[0], k[1], k[2], 9); k = this._key(sh.keys, ps + ds * 2 / 3); this._toWorld(sh, k[0], k[1], k[2], 12);
+      k = this._key(sh.keys, s); this._toWorld(sh, k[0], k[1], k[2], 18); this._bow = 1;
+    }
     const P = this._key(sh.keys, sh.peak); this._toWorld(sh, P[0], P[1], P[2], 6);
     const pk = Math.sqrt((W[6] - r.x) * (W[6] - r.x) + (W[7] - r.y) * (W[7] - r.y) + (W[8] - r.z) * (W[8] - r.z));
     const K = this._key(sh.keys, s); this._toWorld(sh, K[0], K[1], K[2], 0);
@@ -392,7 +403,7 @@ export class Whip {
     for (let i = 0; i < n; i++) { const o = i * 3; P[o] = r.x + this.fx * i * 0.4; P[o + 1] = Math.max(gy, r.y - i * seg); P[o + 2] = r.z + this.fz * i * 0.4; }
     this.prev.set(P); this.vel.fill(0); this.len = this.L0; this.mode = 'rest'; this.restT = 9; this.ready = true;
     this._lx = hand.x; this._ly = hand.y; this._lz = hand.z; this.flash = 0; this.kick = 0; this.taut = 0; this.trail = 0;
-    this._tipState(); this._keepGrip(); this.pin.e = this.pin.e0 = 1; this._hn = 0;
+    this._tipState(); this._keepGrip(); this.pin.e = this.pin.e0 = 1; this._hn = 0; this._arc = 0; this._bow = 0;
     const H = this.hist; for (let i = 0; i < TRAIL_N * 4; i += 4) { H[i] = this.tip.x; H[i + 1] = this.tip.y; H[i + 2] = this.tip.z; H[i + 3] = 0; }
     this.trailLive = 0;
   }
@@ -425,7 +436,7 @@ export class Whip {
   update(dt, hand, rdt) {
     if (!this.ready) { this.reset(hand); if (!(dt > 0)) return; }
     { const pn = this.pin; pn.e0 = pn.e; if (pn.e < 1) { pn.e += (rdt > 0 ? rdt : dt > 0 ? dt : 1 / 60) / 0.07; if (pn.e > 1) pn.e = 1; } }
-    if (!(dt > 0)) { this.prev.set(this.nodes); this._keepGrip(); return; }
+    if (!(dt > 0)) { this.prev.set(this.nodes); this._keepGrip(); this._arc = 0; return; }
     this._dtTick = dt;
     const jx = hand.x - this._lx, jy = hand.y - this._ly, jz = hand.z - this._lz;
     if (jx * jx + jy * jy + jz * jz > this.teleport * this.teleport) this.warp(jx, jy, jz);
@@ -437,9 +448,20 @@ export class Whip {
     for (let k = 0; k < steps; k++) this._step(h);
     this._tipState();
     {   // the streak: where the tip was, and how hard it was moving (frozen with the world: no tick, no shift)
-      const H = this.hist, t = this.tip, sp = Math.sqrt((t.x - ox) * (t.x - ox) + (t.y - oy) * (t.y - oy) + (t.z - oz) * (t.z - oz)) / dt;
-      H.copyWithin(4, 0, (TRAIL_N - 1) * 4);
-      H[0] = t.x; H[1] = t.y; H[2] = t.z; H[3] = this.trail > 0 && this.pin.e >= 1 ? clamp((sp - 260) / 1100, 0, 1) : 0;
+      const H = this.hist, t = this.tip, ch = Math.sqrt((t.x - ox) * (t.x - ox) + (t.y - oy) * (t.y - oy) + (t.z - oz) * (t.z - oz)), sp = ch / dt, W = this._w;
+      H.copyWithin(TRAIL_PER * 4, 0, (TRAIL_N - TRAIL_PER) * 4);
+      const st = this.trail > 0 && this.pin.e >= 1 ? clamp((sp - 260) / 1100, 0, 1) : 0;
+      H[0] = t.x; H[1] = t.y; H[2] = t.z; H[3] = st;
+      // the two points between the last tick and this one: on the chord, bent by as much as the authored arc bends away from ITS chord (scaled down when
+      // the real tip moved less than the authored one - slack cap, a hit that stopped it short)
+      let bk = 0;
+      if (this._bow && this.mode === 'swing' && steps === 1) { const ax = W[18] - W[15], ay = W[19] - W[16], az = W[20] - W[17], al = Math.sqrt(ax * ax + ay * ay + az * az); bk = al > 1 ? Math.min(1, ch / al) : 0; }
+      for (let j = 1; j < TRAIL_PER; j++) {
+        const u = 1 - j / TRAIL_PER, o = j * 4, a = u > 0.5 ? 12 : 9;   // j = 1 -> 2/3 of the tick (scratch 12), j = 2 -> 1/3 (scratch 9)
+        H[o] = ox + (t.x - ox) * u; H[o + 1] = oy + (t.y - oy) * u; H[o + 2] = oz + (t.z - oz) * u; H[o + 3] = st;
+        if (bk > 0) { H[o] += (W[a] - (W[15] + (W[18] - W[15]) * u)) * bk; H[o + 1] += (W[a + 1] - (W[16] + (W[19] - W[16]) * u)) * bk; H[o + 2] += (W[a + 2] - (W[17] + (W[20] - W[17]) * u)) * bk; }
+      }
+      this._arc = 1;
       let m = 0; for (let i = 3; i < TRAIL_N * 4; i += 4) if (H[i] > m) m = H[i];
       this.trailLive = m; this.trailW = this.mode === 'swing' && (this.sw.str === 'F' || this.sw.str === 'H') ? 1.5 : 1;
     }
@@ -541,6 +563,11 @@ export class Whip {
     if (k1 > 0) {
       const B = this.pb, cx = (P[0] - Q[0] - (this.bx - B[0])) * k1, cy = (P[1] - Q[1] - (this.by - B[1])) * k1, cz = (P[2] - Q[2] - (this.bz - B[2])) * k1, inv = 1 / (n - 1);
       if (cx * cx + cy * cy + cz * cz < 3600) for (let i = 0; i < n; i++) { const o = i * 3, w = 1 - i * inv, w2 = w * w; out[o] += cx * w2; out[o + 1] += cy * w2; out[o + 2] += cz * w2; }
+    }
+    if (k1 > 0 && this._arc) {   // 3 the tip rides the arc the streak remembers for this tick (hist: tip now, at 2/3, at 1/3, tip of the tick before), not the chord
+      const H = this.hist, P3 = TRAIL_PER * 4, f = a * TRAIL_PER, j = f >= TRAIL_PER ? TRAIL_PER - 1 : f | 0, u = f - j, p = P3 - j * 4, q = p - 4, e3 = m - 3, inv = 1 / (n - 1);
+      const dx = H[p] + (H[q] - H[p]) * u - out[e3], dy = H[p + 1] + (H[q + 1] - H[p + 1]) * u - out[e3 + 1], dz = H[p + 2] + (H[q + 2] - H[p + 2]) * u - out[e3 + 2];
+      if (dx * dx + dy * dy + dz * dz < 2500) for (let i = 1; i < n; i++) { const o = i * 3, w = i * inv, w2 = w * w; out[o] += dx * w2; out[o + 1] += dy * w2; out[o + 2] += dz * w2; }
     }
     const pn = this.pin;
     if (pn.e0 < 1) {
