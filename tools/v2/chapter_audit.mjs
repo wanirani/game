@@ -175,7 +175,20 @@ function installCa() {
     const inside = sc.W.boxes.filter((b) => b.actor != null && b.solid && h.x > b.x0 - 34 && h.x < b.x1 + 34 && h.z > b.z0 - 34 && h.z < b.z1 + 34);
     const W = inside.length ? { ...sc.W, boxes: sc.W.boxes.filter((b) => !inside.includes(b)) } : sc.W; A.inPerson = inside.map((b) => b.actor);
     for (const opt of [{ R: 26, onFoot: true }, { R: 14, onFoot: true }, { R: 14, onFoot: false }, { R: 6, onFoot: false }]) {
-      const G = RG(W, h.x, h.z, opt.R, { onFoot: opt.onFoot }), p = G.near(tx, tz, r) ?? G.near(tx, tz, r * 2.2);
+      let G = RG(W, h.x, h.z, opt.R, { onFoot: opt.onFoot });
+      // LEANING ON A WALL (main session, 11-19): the grid floods from the centre of the hero's cell, and a hero pressed against a solid thing stands in a cell that is "too close" for a
+      // wide body - no flood at all, every wide body failed and only the 6-px body planned, through gaps he cannot pass (east of the fallen stair in graveyard_now he pushed
+      // into the 26-px gap between the rubble and the coffin for 3000 ticks: CHAPTER-VERIFY's help at grave_now_a). Flood from one step off the wall instead.
+      if (!G.cells && opt.R > 6) {
+        const free = (x, z) => { for (const b of W.boxes) if (b.solid && !b.walk && x + 10 > b.x0 && x - 10 < b.x1 && z + 10 > b.z0 && z - 10 < b.z1 && b.y1 > h.y + 18 && b.y0 < h.y + 60) return false; return true; };
+        off: for (const dist of [opt.R + 8, opt.R + 22]) for (let a = 0; a < 8; a++) {
+          const sx = h.x + Math.cos(a * Math.PI / 4) * dist, sz = h.z + Math.sin(a * Math.PI / 4) * dist; let clear = true;
+          for (let t = 0.25; t <= 1; t += 0.25) if (!free(h.x + (sx - h.x) * t, h.z + (sz - h.z) * t)) { clear = false; break; }
+          if (!clear) continue;
+          const g2 = RG(W, sx, sz, opt.R, { onFoot: opt.onFoot }); if (g2.cells) { G = g2; A.offWall = (A.offWall ?? 0) + 1; break off; }
+        }
+      }
+      const p = G.near(tx, tz, r) ?? G.near(tx, tz, r * 2.2);
       if (p) { const path = G.path(p[0], p[1], true); if (path && path.length) {
         if (direct) path.push([tx, tz]);
         let lo = 1e9, hi = -1e9; for (const q of path) { const y = gnd(sc.W, q[0], q[1]); if (Number.isFinite(y)) { lo = Math.min(lo, y); hi = Math.max(hi, y); } }

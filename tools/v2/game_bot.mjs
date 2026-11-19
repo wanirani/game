@@ -11,7 +11,7 @@ export function installBot(ROUTE0) {
   const waypoint = (h) => { let ni = B.wp, nd = 1e9; for (let i = B.wp; i < ROUTE.length; i++) { const d = Math.hypot(ROUTE[i][0] - h.x, ROUTE[i][1] - h.z); if (d < nd) { nd = d; ni = i; } } B.wp = ni; const w = ROUTE[B.wp]; if (Math.hypot(w[0] - h.x, w[1] - h.z) < 26 && B.wp < ROUTE.length - 1) B.wp++; return ROUTE[B.wp]; };
   input.setAutoSource(() => B.act);
   // options for real areas (tools/v2/game_walk.mjs): giveUp = rule ticks on one target before walking on, hunt() = true while the way ahead is shut and the arena must be cleared
-  B.opt = { giveUp: 0, hunt: null, ring: null }; B.ringDone = false; B.kinds = {};   // ring = { x, y, z } landing spot of a whip ring on the route: the touch driver taps the skill button whenever the rules show the hook (hero.hookId) B.tgId = null; B.tgT = 0; B.hunting = false; B.hb = null;
+  B.opt = { giveUp: 0, hunt: null, ring: null }; B.ringDone = false; B.kinds = {}; B.tgId = null; B.tgT = 0; B.hunting = false; B.hb = null;   // ring = { x, y, z } landing spot of a whip ring on the route: the touch driver taps the skill button whenever the rules show the hook (hero.hookId)
   B.setRoute = (r) => { ROUTE.length = 0; for (const p of r) ROUTE.push([p[0], p[1]]); B.wp = 0; B.skipMap = {}; };
   // ── one brain for both input paths: decide() -> analog wishes { mx, mz, attack, dash(roll), guard, jump } ──
   //    tactics for the real rules: walk the route; guard an attack that is being wound up in front of the hero (the roll button

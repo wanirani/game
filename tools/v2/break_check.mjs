@@ -65,10 +65,15 @@ try {
       for (let i = 0; i < 40; i++) g.tick(1 / 60); r.after = +h.ifr.toFixed(3); r.graceEnd = sc._graceT; r.held = !!(sc.host && sc.host.locks()) || !!sc.hud.modal; return r; });
     ok('load: same area, the two stay broken, coins 7, the hero stands at the saved spot (not thrown back to the spawn)', s1.area === s0.area && s1.broken.join() === '2,3' && s1.coins === 7 && s1.state === 7 && !s1.atSpawn && Math.abs(s1.pos[0] - (s0.jar[0] - 2)) < 3, JSON.stringify(s1));
     ok('after the load the hero is untouchable for 2 s without blinking (rules\' own time kept up), then not', s1.grace0 > 1.5 && s1.minIfr > 0.05 && s1.blink === 0 && s1.graceEnd <= 0 && (s1.held || s1.after <= 0.16), `grace ${s1.grace0} · lowest ifr in the first 1.6 s ${s1.minIfr} · blink frames ${s1.blink} · grace left after 2.3 s ${s1.graceEnd} · ifr then ${s1.after}${s1.held ? ' (the story itself holds the hero here: its own 0.4 s top-up)' : ''}`);
-    // the first attack ends the grace
+    // the first attack ends the grace. A held hero cannot swing: since 11-19 the scene drops every press while the story holds him (WHIP: nothing pressed before a dialogue
+    // may fire after it), and the save above was made inside the opening's own lines - there the press used to go through. So: read the lines out, save where he is free, load that, press.
     await page.reload(); await ready(page); await T(page, 5);
-    const s2 = await page.evaluate(() => { const sc = window.__v2.scene, g = window.__game, h = sc.sim.hero; const g0 = sc._graceT; sc.inp.attack = true; for (let i = 0; i < 6; i++) g.tick(1 / 60); return { g0, g1: sc._graceT, move: h.move ? h.move.id : null }; });
-    ok('his first attack ends the grace at once', s2.g0 > 1.5 && s2.g1 === 0 && s2.move === 'c1', JSON.stringify(s2));
+    const s2a = await page.evaluate(() => { const sc = window.__v2.scene, g = window.__game, H = sc.host, held = () => !!sc.hud.modal || !!(H && (H.locks() || H.st.busy)); let n = 0, d = 0;
+      while (n < 3000 && held()) { if (sc.hud.modal === 'dialog' && ++d >= 6) { d = 0; sc.hud.advanceDialog(); } g.tick(1 / 60); n++; }
+      const free = !held(); return { n, free, okS: free && !!H.saveNow('test') }; });
+    await page.reload(); await ready(page); await T(page, 5);
+    const s2 = await page.evaluate(() => { const sc = window.__v2.scene, g = window.__game, h = sc.sim.hero, H = sc.host; const g0 = sc._graceT, held = !!sc.hud.modal || !!(H && H.locks()); sc.inp.attack = true; for (let i = 0; i < 6; i++) g.tick(1 / 60); return { g0, held, g1: sc._graceT, move: h.move ? h.move.id : null }; });
+    ok('his first attack ends the grace at once (loaded from a save made where the story does not hold him)', s2a.free && s2a.okS && !s2.held && s2.g0 > 1.5 && s2.g1 === 0 && s2.move === 'c1', JSON.stringify([s2a, s2]));
     // an old save: no coins, no broken list, and a saved spot inside a jar that stands again
     const s3pre = await page.evaluate(() => { const sc = window.__v2.scene, sv = JSON.parse(localStorage.getItem('bn.v2.save')), b = sc.sim.breakables[0]; delete sv.coins; delete sv.broken; sv.pos = { x: Math.round(b.x), z: Math.round(b.z - 8), y: Math.round(b.y), face: [1, 0] }; window.__noSave = true; sc.host.saveNow = () => false; localStorage.setItem('bn.v2.save', JSON.stringify(sv)); return { jar: [b.x, b.z], id: b.id }; });
     await page.reload(); await ready(page); await T(page, 5);
