@@ -900,6 +900,7 @@ export default class V2Game extends Scene {
     if (locked) { mx = 0; mz = 0; this._dropPresses(); }   // WHIP: a press the rules still carry (their input buffer) when a dialogue, a crossing, a journey or the pause begins is dropped, never fired afterwards
     if (host !== null) {   // STORY HOOK: waits, camera shots, walking people, the rebuild after a changed area flag
       try { host.tick(dt); } catch (e) { if (!this._hostErr) { this._hostErr = true; console.error('[v2g] story host failed in its tick (play goes on):', e); } }
+      if (host.walk !== null) { mx = host.walk.mx; mz = host.walk.mz; }   // STORY HOOK (STORY2): the story walks the hero to a mark (step moveHero) - the stick of this tick comes from the host, the rules do the walking
       // while the story holds the hero (a dialogue, a camera shot, the crossing) nothing may hurt him: the rules' own untouchable time is kept topped up
       const hold = modal === 'dialog' || modal === 'end' || host.locks() || this.xing !== null, hh = sim.hero;
       sim.hold = hold; this.ch.tick(dt);   // CHAPTER: enemies wait while the story holds the hero (PLAY: sim.hold); the queen's flight and the ending card run on the scene's clock

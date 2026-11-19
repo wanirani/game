@@ -143,16 +143,49 @@ export class StoryHost {
   _walkTick(w, dt) {
     const sc = this.sc, h = sc.sim?.hero; w.mx = 0; w.mz = 0;
     if (!h || h.dead || !sc.ready) { this._walkEnd(false); return; }
-    const dx = w.x - h.x, dz = w.z - h.z, d = Math.sqrt(dx * dx + dz * dz);
+    const ex = w.x - h.x, ez = w.z - h.z, de = Math.sqrt(ex * ex + ez * ez);
     if (w.at > 0) { if ((w.at += dt) > 0.3) this._walkEnd(false); return; }   // on the mark: he comes to rest and turns, then the story goes on
-    if (d <= 8) { w.at = dt; this._look(w); return; }
-    if ((w.t += dt) > w.cap) { this._walkEnd(true); return; }                 // the time is up (a wall he cannot get round): he is set on the mark
-    // nothing to walk into on the straight way: he walks it. When he stops getting nearer (a wall, the bell's frame) he steps sideways for a moment - one way round, then the other
+    if (de <= 8) { w.at = dt; this._look(w); return; }
+    if ((w.t += dt) > w.cap) { this._walkEnd(true); return; }                 // the time is up (a way he could not find or finish): he is set on the mark
+    // the way: straight when nothing stands between (w.path null), else the corners of the way round (_route) one after the other
+    const P = w.path; let tx = w.x, tz = w.z, last = true;
+    if (P !== null && w.pi < P.length - 1) { tx = P[w.pi][0]; tz = P[w.pi][1]; last = false; const qx = tx - h.x, qz = tz - h.z; if (qx * qx + qz * qz < 144) { w.pi++; w.best = 1e9; tx = P[w.pi][0]; tz = P[w.pi][1]; last = w.pi >= P.length - 1; } }
+    const dx = tx - h.x, dz = tz - h.z, d = Math.sqrt(dx * dx + dz * dz) || 1;
+    // when he stops getting nearer all the same (something the way did not know of) he steps sideways for a moment - one way round, then the other
     if (d < w.best - 2) { w.best = d; w.stuck = 0; } else if ((w.stuck += dt) > 0.25 && w.sideT <= 0) { w.side = w.side > 0 ? -1 : 1; w.sideT = 0.4 + 0.2 * w.turns++; w.stuck = 0; }
     let ux = dx / d, uz = dz / d;
     if (w.sideT > 0) { const sx = -uz * w.side, sz = ux * w.side; ux = sx * 0.94 + ux * 0.34; uz = sz * 0.94 + uz * 0.34; if ((w.sideT -= dt) <= 0) w.best = 1e9; }
-    const m = d > 80 ? 0.66 : Math.max(0.3, 0.66 * d / 80);                   // a walk, slower over the last steps (the rules' own stick: 0.15 is their dead zone, 1 a run)
+    const m = !last || de > 80 ? 0.66 : Math.max(0.3, 0.66 * de / 80);        // a walk, slower over the last steps (the rules' own stick: 0.15 is their dead zone, 1 a run)
     w.mx = ux * m; w.mz = uz * m;
+  }
+  /** a way round what stands between him and the mark (the bell's frame, a person): a coarse grid over the floor he stands on (20 px), breadth first, then every corner he
+   *  can cut is cut. -> [[x, z], …] ending on the mark, or null = the straight way is free (or no way was found: he walks straight and the time cap sets him there) */
+  _route(h, tx, tz) {
+    const W = this.sc.W; if (!W) return null;
+    const R = 17, C = 20, x0 = Math.min(h.x, tx) - 260, z0 = Math.min(h.z, tz) - 260, nx = Math.ceil((Math.abs(h.x - tx) + 520) / C), nz = Math.ceil((Math.abs(h.z - tz) + 520) / C);
+    if (nx * nz > 8000) return null;
+    const B = [], WB = W.boxes;
+    for (let i = 0; i < WB.length; i++) { const b = WB[i]; if (b.solid && !b.walk && b.x1 > x0 - R && b.x0 < x0 + nx * C + R && b.z1 > z0 - R && b.z0 < z0 + nz * C + R && h.y + 50 > b.y0 && h.y + 10 < b.y1) B.push(b); }
+    const free = (x, z) => { const gy = groundAt(W, x, z, h.y + 30); if (!Number.isFinite(gy) || Math.abs(gy - h.y) > 30) return false; for (let i = 0; i < B.length; i++) { const b = B[i]; if (x > b.x0 - R && x < b.x1 + R && z > b.z0 - R && z < b.z1 + R) return false; } return true; };
+    const clear = (ax, az, bx, bz) => { const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 8)); for (let i = 1; i <= n; i++) if (!free(ax + (bx - ax) * i / n, az + (bz - az) * i / n)) return false; return true; };
+    if (clear(h.x, h.z, tx, tz)) return null;
+    const ci = (x) => Math.max(0, Math.min(nx - 1, Math.round((x - x0) / C))), cj = (z) => Math.max(0, Math.min(nz - 1, Math.round((z - z0) / C)));
+    const s = ci(h.x) + cj(h.z) * nx, e = ci(tx) + cj(tz) * nx, from = new Int32Array(nx * nz).fill(-1), Q = [s], DI = [1, -1, 0, 0, 1, 1, -1, -1], DJ = [0, 0, 1, -1, 1, -1, 1, -1]; from[s] = s;
+    for (let qi = 0; qi < Q.length && from[e] < 0; qi++) {
+      const c = Q[qi], i = c % nx, j = (c - i) / nx;
+      for (let k = 0; k < 8; k++) {
+        const a = i + DI[k], b = j + DJ[k]; if (a < 0 || b < 0 || a >= nx || b >= nz) continue;
+        const n = a + b * nx; if (from[n] >= 0) continue;
+        if (n !== e && !free(x0 + a * C, z0 + b * C)) continue;
+        if (k > 3 && (!free(x0 + a * C, z0 + j * C) || !free(x0 + i * C, z0 + b * C))) continue;   // no cutting through a corner
+        from[n] = c; Q.push(n);
+      }
+    }
+    if (from[e] < 0) return null;
+    const P = [[tx, tz]]; for (let c = from[e]; c !== s; c = from[c]) P.push([x0 + (c % nx) * C, z0 + Math.floor(c / nx) * C]); P.reverse();
+    const out = []; let ax = h.x, az = h.z, i = 0;
+    while (i < P.length) { let j = P.length - 1; while (j > i && !clear(ax, az, P[j][0], P[j][1])) j--; out.push(P[j]); ax = P[j][0]; az = P[j][1]; i = j + 1; }
+    return out;
   }
   /** where he looks on the mark (set as a spawn's `face` is: the rules' facing; the body turns there by the scene's own turn rule) */
   _look(w) {
@@ -237,6 +270,7 @@ export class StoryHost {
         const p = sc.people.byId(id), q = H._spot(to); if (!p || !q) return;
         for (let i = H.moves.length - 1; i >= 0; i--) if (H.moves[i].p === p) { p.clip = H.moves[i].clip0; H.moves.splice(i, 1); }
         p.y = Number.isFinite(q.y) ? q.y : 1e5; H._place(p, q.x, q.z); if (p.y > 9e4) p.y = 0;   // (her feet: the highest floor at that place when the place names no height)
+        p.put = true;   // (people.js: when she is shown after this she stays where she was put)
         if (o && o.face !== undefined) { const f = o.face === 'hero' ? { hero: true } : H._spot(o.face); p.look = f ? (f.hero ? f : { x: f.x, z: f.z }) : null; if (f && !f.hero) { const lx = f.x - p.x, lz = f.z - p.z, l = Math.sqrt(lx * lx + lz * lz); if (l > 4) { p.a3.dx = lx / l; p.a3.dz = lz / l; p.hx = p.a3.dx; p.hz = p.a3.dz; } } }
       },
       // STORY2 (11-19): the hero walks to a mark. The scene feeds the rules a stick (index.js update: host.walk.mx / mz), the rules walk him - nothing moves him behind their back.
@@ -248,9 +282,11 @@ export class StoryHost {
         if (H.walk) H._walkEnd(false);
         if (!q || !h || h.dead) { done?.(); return; }
         const cap = o && Number.isFinite(o.cap) ? Math.max(0, o.cap) : 3;
-        H.walk = { x: q.x, z: q.z, t: 0, cap, face: o && o.face !== undefined ? o.face : null, done: done ?? null, mx: 0, mz: 0, best: 1e9, stuck: 0, side: 0, sideT: 0, turns: 0, at: 0 };
+        const w = (H.walk = { x: q.x, z: q.z, t: 0, cap, face: o && o.face !== undefined ? o.face : null, done: done ?? null, mx: 0, mz: 0, best: 1e9, stuck: 0, side: 0, sideT: 0, turns: 0, at: 0, path: null, pi: 0 });
         H.note('hero', 'to ' + Math.round(q.x) + ', ' + Math.round(q.z));
-        if (cap <= 0) { const dx = q.x - h.x, dz = q.z - h.z; if (dx * dx + dz * dz <= 256) { H._look(H.walk); H._walkEnd(false); } else H._walkEnd(true); }
+        if (cap <= 0) { const dx = q.x - h.x, dz = q.z - h.z; if (dx * dx + dz * dz <= 256) { H._look(w); H._walkEnd(false); } else H._walkEnd(true); return; }
+        try { w.path = H._route(h, q.x, q.z); } catch (e) { console.warn('[v2g] story moveHero: no way worked out -', String(e?.message ?? e)); w.path = null; }
+        if (w.path) { let len = 0, ax = h.x, az = h.z; for (const p of w.path) { len += Math.hypot(p[0] - ax, p[1] - az); ax = p[0]; az = p[1]; } if (!(o && Number.isFinite(o.cap))) w.cap = Math.max(cap, len / 200 + 1.5); }   // a long way round has its time
       },
       camera(shot, seconds, done) {
         if (H.shot && H.shotDone) H._shotEnd();

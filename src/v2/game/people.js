@@ -89,7 +89,7 @@ export class People {
     let best = null, bd = 1e9, bestSpot = null;
     for (let i = 0; i < L.length; i++) {
       const p = L[i], d = p.def, ov = hidden ? hidden.get(p.id) : undefined, on = ov ? ov === 'show' : (!d.when || flag(d.when));   // a story override (hide / show) wins over `when`
-      if (on !== p.on || p.fresh) { const came = on && (!p.on || p.fresh); p.on = on; p.fresh = false; if (came) this._stand(sc, p, hero); }   // WORLD-LOOK: where a person stands when shown
+      if (on !== p.on || p.fresh) { const came = on && (!p.on || p.fresh); p.on = on; p.fresh = false; if (came && !p.put) this._stand(sc, p, hero); }   // WORLD-LOOK: where a person stands when shown (STORY2: not one the story has just set down somewhere - storyhost.js putActor)
       if (p.box) p.box.solid = on && p.solid;
       if (!on) continue;
       const dx = hero.x - p.x, dz = hero.z - p.z, dist = Math.sqrt(dx * dx + dz * dz), a3 = p.a3;

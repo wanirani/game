@@ -512,13 +512,19 @@ export const EVENTS = [
   // ═════════ 118–120 오늘 밤의 에슈빌 ═════════
   { id: 'ev_ending', minute: '118-120', on: 'interact', match: BELL, if: ['era:past', 'keepers_promised', '!elise_home'], steps: [
     ['prompt', null],
+    ['lockInput', true],
     ['moveActor', 'lotte', [4104, 1436], { face: 'hero' }],   // (she turns from Elise to the hunter for her last question)
-    ['camera', 'two_keepers', 0.8],
+    ['camera', 'two_keepers', 0.4],
+    // STORY2 (11-19): wherever he rang from, the hunter steps before the bell - the spawn `bell`, between the two keepers, in front of neither - and turns to Lotte.
+    // The crossing keeps his place, so tonight's ending begins on the same mark. (Rung from the west he used to stand on Lotte's place, from the east in front of Elise.)
+    ['moveHero', 'bell', { face: 'lotte' }],
+    ['wait', 0.25],
     ['say', 'ending.bread'],
     ['clearFlag', 'pending_change'],
     ['hideActor', 'elise', 'eshville_past'],
     ['camera', 'years', 3],
     ['bellCross', { years: true }],
+    ['lockInput', false],                                     // (tonight's side holds him again in the same tick - ev_ending_home; a crossing that was refused must not leave him held)
   ] },
   // tonight's side of the last crossing (its own sequence — see ev_return_first)
   { id: 'ev_ending_home', minute: '118-120', on: 'area.enter', match: { area: 'eshville_now' }, if: ['keepers_promised', '!elise_home'], steps: [
