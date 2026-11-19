@@ -230,7 +230,7 @@ export const DIALOGS_NOW = {
     { if: ['!ossuary_open'], pages: [
       ['hanna', '안에서 배웅하는 노래가 들려요.\n따라 부르면 안 돼요.'],
       ['kael', '고맙다. 조심하마.'],
-    ], then: [['unlockExit', 'to_ossuary', 'graveyard_now'], ['setFlag', 'ossuary_open'], ['objective', 'enter_ossuary']] },
+    ], then: [['unlockExit', 'to_ossuary', 'graveyard_now'], ['setFlag', 'ossuary_open'], ['if', ['!done:ev_hung_now'], [['objective', 'enter_ossuary']]]] },   // (ev_hung_now has set it on arriving)
     { pages: [['narrator', '배웅의 납골당. 문이 열려 있다.']] },
   ],
 

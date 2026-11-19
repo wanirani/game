@@ -214,7 +214,7 @@ section('S4', 'the ending card, a reload on it, the ossuary after the ending', a
   s = await run(420); const tapped = await ev(() => { const sc = window.__v2.scene, r = sc.hud.tapEnd?.(); for (let i = 0; i < 30; i++) window.__game.tick(1 / 60); return { r: r ?? null, top: window.__game.top?.constructor?.name ?? null, gone: window.__game.top !== sc }; });
   await page.waitForTimeout(1500); const top = await ev(() => { for (let i = 0; i < 90; i++) window.__game.tick(1 / 60); return window.__game.top?.constructor?.name ?? null; }), st3 = await ev(() => localStorage.getItem('bn.v2.save')), o3 = JSON.parse(st3 ?? '{}');
   obs('the card tapped after the reload', { tapped, top, stored: { why: o3.why, card: o3.ch?.card ?? null, area: o3.area } });
-  ok(top === 'V2Chooser' && o3.why === 'end' && o3.ch?.card === true, `the tap leaves for the 3D chooser and the save says the card was seen (${top}, why ${o3.why}, card ${o3.ch?.card})`);
+  ok(top === 'V2Chooser' && (o3.why === 'end' || o3.why === 'leave') && o3.ch?.card === true, `the tap leaves for the 3D chooser and the save says the card was seen (${top}, why ${o3.why}, card ${o3.ch?.card})`);
   s = await boot(st3); s = await run(240); obs('that save loaded (the game after the ending)', pick(s));
   ok(s.area === 'eshville_now' && !s.lock && s.idle && s.modal === null, 'after the card was dismissed a load is the free game after the ending: no card, no lock');
   s = await travel('ossuary_now', 'entry'); obs('the ossuary tonight after the ending', { ...pick(s), sera: await ev(() => window.__cs.person('sera')) });

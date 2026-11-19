@@ -94,7 +94,6 @@ export const EVENTS = [
   { id: 'ev_tower_enter', minute: '15-20', on: 'area.enter', match: { area: 'belltower_now' }, if: ['promise', '!fell'], steps: [
     ['say', 'tower.enter'],
     ['prompt', 'jump'],
-    ['objective', 'climb_tower'],
   ] },
   { id: 'ev_tower_top', minute: '15-20', on: 'trigger', match: { event: 'tower.top' }, if: ['promise', '!fell'], steps: [
     ['prompt', null],
