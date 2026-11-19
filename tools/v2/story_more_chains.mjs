@@ -78,9 +78,9 @@ export default function (T) {
     const pr = await ev(() => ({ pre: window.__v2.scene.hud.portraitsReady ?? null, wait: window.__v2.scene.bustsWaitMs ?? null, loadMs: window.__v2.scene.loadMs }));
     ok(!!pr.pre && pr.pre.n >= 13, `the busts were loaded and decoded while the area loaded: ${JSON.stringify(pr.pre)}; the load waited ${pr.wait} ms for them; the area's load took ${pr.loadMs} ms`);
     await idle(); await P('putY', 4130, 1402, 84); await ev(() => window.__cc.until({ idle: true }, 30)); await P('ring', 'big_bell');
-    const a = await S('until', "s.modal === 'dialog'", 600); await shot('bust_lotte_first_tick', 'Lotte\'s bread line, the tick the box opens'); ok(a.n >= 0 && a.line.includes('빵은'), `Lotte's first line of this session is open (${a.line.slice(0, 30)})`);
+    const a = await S('until', "s.modal === 'dialog'", 600); await S('tick', 9); await shot('bust_lotte_first_tick', 'Lotte\'s bread line, 0.15 s after the box opened (the box has faded in)'); ok(a.n >= 0 && a.line.includes('빵은'), `Lotte's first line of this session is open (${a.line.slice(0, 30)})`);
     await boot(before('ev_church_arrive')); await install(); await idle(); await P('trig', 'church.arrive');
-    const b = await S('until', "s.modal === 'dialog'", 600); await shot('bust_alberto_first_tick', 'the church: the first page, the tick the box opens'); ok(b.n >= 0, `the church scene's first page is open (${b.line.replace(/\n/g, ' / ').slice(0, 40)})`);
+    const b = await S('until', "s.modal === 'dialog'", 600); await S('tick', 9); await shot('bust_alberto_first_tick', 'the church: the first page, 0.15 s after the box opened'); ok(b.n >= 0, `the church scene's first page is open (${b.line.replace(/\n/g, ' / ').slice(0, 40)})`);
   });
 
   C('banners', 'the first line of ev_return_first (the first crossing back): no place name over it', async () => {
@@ -127,6 +127,8 @@ export default function (T) {
     await S('tick', 160);
     // 3) and 4) two more long rings with the hero untouchable (the tool's hand), so that the rules let each ring complete
     for (const k of [3, 4]) {
+      // (the hero is made untouchable first and the tool waits until the rules have him standing free: a press that begins while he is knocked back is dropped by the rules - see hold 2's log and the report)
+      await ev(() => { const g = window.__game, h = window.__v2.scene.sim.hero; g._pageHidden = true; for (let i = 0; i < 400; i++) { h.ifr = 1; g.tick(1 / 60); if (i > 30 && !(h.hurtT > 0) && h.bellOk) break; } });
       const h3 = await hold(320, true); put(`     · hold ${k} (the hero untouchable): ` + JSON.stringify(h3));
       ok(h3.ev.includes('play.ringLong') && h3.snd.includes('cross.dull') && h3.shown.filter((l) => l.startsWith('notice') && l.includes('둔하게')).length === 1 && !h3.shown.some((l) => l.includes('붙들고')) && h3.modal === null && h3.area === 'ossuary_now', `long ring ${k}: the dull toll and the notice again, the line not again (sounds ${h3.snd.filter((n) => /dull|toll/.test(n)).join(', ')}; shown ${JSON.stringify(h3.shown)})`);
       await S('tick', 200);
