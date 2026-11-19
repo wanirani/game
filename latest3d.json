@@ -1,16 +1,16 @@
 {
  "versionName": "1.0.0",
- "versionCode": 463407,
- "sha256": "025a2efe0ea1da6326d2039b1d153bc25818fc4c159fc60f30d3d515e8a8ee7a",
- "bytes": 26081320,
- "url": "downloads/BloodNocturne3D-1.0.0-463407.apk",
- "built": "2026-11-18T19:29:00Z",
+ "versionCode": 463663,
+ "sha256": "fe4fb83b5c123d0daf61827bffbe5a5e721ed4b3b42fbb8cef08ce1a0bf4bd97",
+ "bytes": 26167790,
+ "url": "downloads/BloodNocturne3D-1.0.0-463663.apk",
+ "built": "2026-11-19T00:29:00Z",
  "signingCertSha256": "efaee88b9ff54bf116c2aae40e358ec073d4a7729261b1b6ac2da5e7a24ed60f",
  "appId": "com.bloodnocturne.game3d",
  "label": "블러드 녹턴 3D",
- "note": "3D app update. Fire is redone: one continuous blaze on burning walls, roofs and wrecks instead of rows of separate flames, braziers burn over glowing coals, floor candles carry small living flames. Jars, pots, urns, crates and barrels stand in every area and break in one hit (clay also when rolled through) with 3D pieces and their own sounds; they drop silver coins, healing and resonance, and the coin count shows on screen and is kept in the save. Fixed: the cemetery gate did not open in either night even with the key, which stopped the story after the first return to tonight; it opens now. The 2D app is unchanged (462996).",
+ "note": "3D app update. Ringing a bell to cross between the two nights is a staged scene now: the bell's light gathers, a ring of light runs over ground, walls and people, time runs over the frozen picture while the other night loads, and the other night opens as a ring from the bell (the long form counts the years 1697-1797 at the night badge); a bell that cannot answer tolls dull and nothing changes. The hero reads clearly in the dark graveyard (fog starts behind him, a moon key and a rim light on characters only), the empty space beyond the walls of every area is filled with land, roads, trees and far houses, the church front really differs between the two nights, braziers can no longer be stood in. Fixed after reports from the device: a healing piece or a resonance piece dropped by a jar is always picked up now (with a full gauge it turns into two silver coins), the resonance piece is an upright blue crystal, sleeping enemies no longer all face one way, and a sleeping group wakes when the hero comes close from any side (the corpses of the 1697 square stood still when he came down from the church). The 2D app is unchanged (462996).",
  "web": {
-  "buildHash": "e08af7284bdf",
-  "version": "1.0.0+20261118T1927.917a92e1"
+  "buildHash": "ae169aa144c3",
+  "version": "1.0.0+20261119T0027.55448b35"
  }
 }
