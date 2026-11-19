@@ -70,6 +70,7 @@ export class Geo {
     const wr = this._wr(M.tex), fog = o.fog != null ? Math.round(o.fog * 255) : o.emis ? 190 : 255, n1 = Array.isArray(N[0]) ? null : N;
     let b = this.bounds.get(this.chunk); if (!b) { b = [1e9, 1e9, 1e9, -1e9, -1e9, -1e9]; this.bounds.set(this.chunk, b); }
     const C = P.map((p, i) => this._col(M, p, n1 ?? N[i], o));
+    if (o.mul) for (let i = 0; i < C.length; i++) { const m = o.mul[i]; C[i][0] *= m[0]; C[i][1] *= m[1]; C[i][2] *= m[2]; }   // DETAIL: a colour factor per vertex (tri / quad4 only) - wear laid over a wall in the wall's own material: 1 at the rim = no seam, darker inside (soot, damp)
     const idx = P.length === 3 ? (flip ? [0, 2, 1] : [0, 1, 2]) : (flip ? [0, 2, 1, 0, 3, 2] : [0, 1, 2, 0, 2, 3]);
     for (const i of idx) {
       const p = P[i], c = C[i]; wr.vert(p[0], p[1], p[2], UV[i][0], UV[i][1], c[0], c[1], c[2], fog);
