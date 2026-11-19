@@ -90,7 +90,7 @@ export default class V2Game extends Scene {
     this.bridge = bindFxSound(feel); this.feelN = 0; this.lastFeel = null; this._actE = null; this._simSteps = false;
     this.shotL = new Array(32).fill(null); this.shotN = 0;
     // the whip Vigilia (src/v2/whip, docs/v2/WHIP.md 7): simulated from the hero's hand every tick, drawn right after the characters
-    this.whip = null; this.wr = null; this.whipLink = null; this._whipTier = ''; this._whipReset = true; this._whipVp = [0, 0];
+    this.whip = null; this.wr = null; this.whipLink = null; this._whipTier = ''; this._whipReset = true; this._whipVp = [0, 0]; this._hitSnap = false;
     this.whipHand = { x: 0, y: 0, z: 0, dx: 0, dy: 1, dz: 0, bx: 0, by: 0, bz: 0, br: 12, bh: 104, fx: 1, fz: 0, ground: 0 };
     this.whipPullE = null; this.whipPull = { x: 0, y: 0, z: 0, r: 12 }; this.whipCrack = { x: 0, y: 0, z: 0, strength: 1 };
     this._whipEv = (n, e) => { const L = this.whipLink; if (!L) return; if (n === 'ring') { const s = L.sound; L.sound = false; L.onEvent(n, e); L.sound = s; } else L.onEvent(n, e); };   // the bell's sound comes from the rules (holy.bell / bell.toll): only the picture of the whip's ring here
@@ -815,6 +815,7 @@ export default class V2Game extends Scene {
         const dx = info?.dirX ?? h.dirX ?? h.facing ?? 1, dz = info?.dirZ ?? h.dirZ ?? 0;
         const wpn = mv?.weapon ?? 'whip';
         if (sc.whip && wpn === 'whip') { const C = sc.whipCrack; C.x = x; C.y = y; C.z = z; C.strength = CRACK_K[st] ?? 1; sc.whip.set('crack', C); }   // the tip lands on the hit point in this tick; the hit-stop freezes it there
+        sc._hitSnap = true;   // WHIP: the frames of this tick show the tick itself (no interpolation lag) - lash on the enemy, spark, number and flinch share one frame and the freeze starts on it (tools/v2/whip_feel.mjs)
         const r = sc._strike(wpn, info?.material ?? K?.material ?? 'bone', st, flags, x, y, z, dx, dz);
         if (!blocked) sc._fxp('enemy.hurt', x, y, z, dx, dz, 1, true);
         if (e._a3) e._a3.hitAge = 0;
@@ -925,7 +926,7 @@ export default class V2Game extends Scene {
       this.doneT += dt;
       if (this.area.test && this.doneT > 1.2 && (inp.attack || input.pressed('confirm') || input.pointer.tapped)) { sim.reset(); this.cam.snap = true; fx?.clear(); this._makeFxHandles(); for (const n of this.numbers) n.on = false; inp.attack = false; g.flash?.('#000', 0.6, 3); this.emit('hero.respawn', {}); return; }
     }
-    this._savePrev();
+    this._savePrev(); this._hitSnap = false;
     const pdt = fx ? fx.update(dt) : dt;
     if (fx) { const F = fx.feel, ts = F.stop <= 0 && F.slowT > 0 ? F.slowScale : 1; if (ts !== this._ts) { this._ts = ts; try { feel.setTimeScale(ts); } catch { /* no audio */ } } }
     if (pdt > 0) {
@@ -1217,7 +1218,7 @@ export default class V2Game extends Scene {
     if (this._lastDraw > 0 && !this.hud.modal && this.res.frame(t0 - this._lastDraw)) L.force = true;   // render size governor (res.js): measured on real frame intervals
     this._lastDraw = t0;
     this._place();
-    const a = this.everyFrame ? clamp(g.alpha ?? 1, 0, 1) : 1;
+    const a = this.everyFrame && !this._hitSnap ? clamp(g.alpha ?? 1, 0, 1) : 1;   // (_hitSnap: a hero hit landed in the last tick - see the hit hook)
     this._gl(Wv, Hv, a, false);
     if (hctx !== ctx) { hctx.setTransform(1, 0, 0, 1, 0, 0); hctx.clearRect(0, 0, L.hud.width, L.hud.height); hctx.setTransform(g.scale, 0, 0, g.scale, 0, 0); }
     const under = this._veilUnder && this.fadeA > 0.004;
