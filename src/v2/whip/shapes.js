@@ -103,7 +103,7 @@ export const WHIP_SHAPES = {
   // The window stays open until the hero lands, so the phase is driven by set('swing', { landT }) - see sim.js _phase
   plunge: { peak: 0.08, ev: 'crack', hold: 0.3, keys: K([   // (its own clock - sim.js _phase, the hold branch: 0.08 of the way to the held pose, as before WHIP2)
     [-1.0, 4, 20, 64, 0.5, -1, 0, 0.5],
-    [-0.45, 34, 12, 112, 0.8, -1, 0, 0.6],
+    [-0.2, 34, 12, 112, 0.8, -1, 0, 0.6],   // (WHIP2: held high until the last wind-up tick - it was at -0.45, and the lash came down through an enemy under the hero before the rules' hit tick)
     [0.08, 58, 0, -34, 1.0, -1, 0, 0.5],
     [0.3, 60, 0, -36, 1.0, -1, 0, 0.5],
     [0.65, 76, 0, 2, 0.95, -1, 0, 0.6],
