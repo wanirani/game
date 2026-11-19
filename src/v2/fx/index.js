@@ -90,6 +90,27 @@ class Fx {
     this.particles.gov = 1 - over * 0.75; fr[1] += ((1 - over * 0.45) - fr[1]) * Math.min(1, realDt * 8);
     if (prof) { const S = this.stats; S.coverage = cov; S.gain = this.gain; S.seqs = this.seqs.live; S.lights = this.lights.count; S.spawned = this.particles.spawned; S.dropped = this.particles.dropped; S.cpuUpdate = performance.now() - t0; }   // 통계는 profile 일 때만 (평소 경로에는 숫자 쓰기도 없다)
   }
+  /**
+   * MAGIC (2026-11-19) - the tick in two halves, for a game whose RULES ask for effects (docs/v2/FX.md 16.1):
+   *   const dt = fx.begin(realDt);   // the screen feel only (hit-stop, slow motion) -> the play dt, exactly what update() returns
+   *   rules.update(dt);              // hits, magic: fx.playAt(...) - born at the effect clock of the tick's start
+   *   fx.advance();                  // the effect clock and the pools move on: what the rules asked for in this tick is one tick old in the frame of
+   *                                  // this tick (with update() BEFORE the rules it was 0 s old = drawn with alpha 0, first seen a tick later)
+   * The clock runs exactly as with update(): the same step per tick (the effect scale is the one the feel had at begin(), before this tick's hit-stop).
+   * update() / tick() are untouched (the test page and the benches keep their order).
+   */
+  begin(realDt) { this.dtIn = realDt; const F = this.feel; F.dtIn = realDt; F.step(); this.dt = F.dtOut; this._fs = F.fxScale; return this.dt; }
+  advance() {
+    const realDt = this.dtIn, prof = this.profile, t0 = prof ? performance.now() : 0, fr = this.fr;
+    const fdt = realDt * this._fs; fr[0] += fdt; fr[3] = fdt;
+    this.particles.update(); this.quads.update(); this.ribbons.update(); this.meshes.update();
+    this.seqs.update(this);
+    this.lights.update();
+    const cov = this.particles.liveArea / REF_AREA, T = this.T;
+    const over = Math.min(1, Math.max(0, (cov - T.coverSoft) / (T.coverHard - T.coverSoft)));
+    this.particles.gov = 1 - over * 0.75; fr[1] += ((1 - over * 0.45) - fr[1]) * Math.min(1, realDt * 8);
+    if (prof) { const S = this.stats; S.coverage = cov; S.gain = this.gain; S.seqs = this.seqs.live; S.lights = this.lights.count; S.spawned = this.particles.spawned; S.dropped = this.particles.dropped; S.cpuUpdate = performance.now() - t0; }
+  }
   /** 효과를 그린다 (불투명 장면·캐릭터 뒤에). cam = { vp: Float32Array(16) 열 우선 view·projection, eye, right, up, fwd: [x,y,z] } */
   draw(cam) {
     const prof = this.profile, t0 = prof ? performance.now() : 0, gl = this.gl, C = this.cam;
