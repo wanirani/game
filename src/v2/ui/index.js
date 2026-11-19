@@ -40,6 +40,7 @@ export function createHud(game, opts = {}) {
       if (s.dialog !== undefined) dialog.sync(s.dialog);
       const scr = !!screens.open; screens.update(dt, s);   // (a screen that closes in this tick hands nothing on: the key that closed it is not read by the panel under it)
       if (!scr) { if (pause.open) pause.update(dt, s); else if (dialog.open) dialog.update(dt, s); else if (end.open) end.update(dt); }
+      canvas.veil(pause.open || !!screens.open);   // POLISH: no banner through the pause panel or a screen - it waits with its clock stopped (hud.js veil)
       canvas.update(dt, s); cards.update(dt, s, hud.modal, pad);
       const cross = s.cross ?? null;   // CROSSING: while the bell crossing runs the pad stays in place, faded out and deaf (it does not pop off for the load)
       pad?.setBack(!!(cross && cross.back));
@@ -50,6 +51,7 @@ export function createHud(game, opts = {}) {
     draw(ctx, s) {
       const t0 = performance.now();
       last = s; pad?.alive();
+      canvas.veil(pause.open || !!screens.open);   // (a panel opened by a touch since the last tick: the frame drawn before the next tick has no banner either)
       canvas.draw(ctx, s); cards.draw(ctx, s, hud.modal);
       if (!s.message) { end.draw(ctx, s); dialog.draw(ctx, s); pause.draw(ctx, s); screens.draw(ctx, s); }
       perf.draw[perf.i] = performance.now() - t0; perf.i = (perf.i + 1) % perf.draw.length; if (perf.n < perf.draw.length) perf.n++;

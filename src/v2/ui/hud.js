@@ -16,7 +16,7 @@ const PROMPT_ICON = { attack: 'attack', jump: 'jump', dash: 'roll', guard: 'guar
 export function createCanvasHud(game, opts = {}) {
   const input = opts.input ?? game.input;
   const L = { s: 0, hs: 1, css: 1, tk: 1, tmin: 9.5, textSize: 'normal', epoch: 1, vw: 0, vh: 0 };   // layout numbers shared by every piece
-  const T = { t: 0, hurt: 0, lit: -1, litShown: 0, max: 5, res: 0, bossShown: 1, bossId: '', lockId: null, lockPulse: 0, secId: null, areaId: null, areaName: null, areaWait: 0, flashLow: 0 };
+  const T = { t: 0, hurt: 0, lit: -1, litShown: 0, max: 5, res: 0, bossShown: 1, bossId: '', lockId: null, lockPulse: 0, secId: null, areaId: null, areaName: null, areaWait: 0, flashLow: 0, veil: false, bv: 1 };
   const phase = new Float32Array(16), smoke = new Float32Array(16);
   for (let i = 0; i < 16; i++) phase[i] = (i * 2.399) % TAU;
 
@@ -372,7 +372,10 @@ export function createCanvasHud(game, opts = {}) {
     else if (!s.done && banner.on && banner.kind === 'clear') banner.on = false;
     if (hero.dead && !(banner.on && banner.kind === 'dead')) setBanner('dead', opts.labels?.dead ?? '촛불이 꺼졌다');
     else if (!hero.dead && banner.on && banner.kind === 'dead') banner.on = false;
-    if (banner.on) { banner.t += dt; if (banner.t >= banner.dur) banner.on = false; }
+    // POLISH (11-19): while the pause panel or one of its screens is up (T.veil, set by the glue) no banner is drawn and its clock stands - it does not run out unseen
+    // behind a long pause; when the panel closes the banner comes back over a third of a second and goes on for the rest of its time
+    if (T.veil) T.bv = 0; else if (T.bv < 1) T.bv = Math.min(1, T.bv + dt / 0.32);
+    if (banner.on && !T.veil) { banner.t += dt; if (banner.t >= banner.dur) banner.on = false; }
     for (let i = 0; i < TOAST_SLOTS; i++) { const o = toasts[i]; if (o.on) { o.t += dt; if (o.t >= o.dur) o.on = false; } }
     for (let i = 0; i < CALL_SLOTS; i++) { const o = calls[i]; if (o.on) { o.t += dt; if (o.t >= o.dur) o.on = false; } }
   }
@@ -435,9 +438,9 @@ export function createCanvasHud(game, opts = {}) {
     if (PR) { let j = 0; for (let i = 0; i < PR.length && j < PROMPT_SLOTS; i++) { const p = PR[i]; if (p.x == null) continue; const slot = wprompts[j++]; bakeWorldPrompt(slot, p, mode); s.project(p.x, p.y ?? 0, p.z ?? 0, P); if (P.w > 1) { const wx = clamp(P.x - slot.w / 2, sf.l + 4, vw - sf.r - slot.w - 4), wy = P.y - slot.h - 8; blit(ctx, slot, wx, wy + Math.sin(T.t * 3) * 2); tapAdd(p, wx, wy, slot.w, slot.h); } } }
 
     // the banner goes under the status block and the toasts (its soft dark band spans the screen)
-    if (banner.on) {
+    if (banner.on && !T.veil) {
       if (banner.dirty || bannerP.key2 !== L.epoch) { bakeBanner(); banner.dirty = false; bannerP.key2 = L.epoch; }
-      const hold = banner.dur > 1e8, a = clamp(hold ? banner.t / 0.5 : Math.min(banner.t / 0.4, (banner.dur - banner.t) / 0.8), 0, 1);
+      const hold = banner.dur > 1e8, a = clamp(hold ? banner.t / 0.5 : Math.min(banner.t / 0.4, (banner.dur - banner.t) / 0.8), 0, 1) * T.bv;
       const big = banner.kind !== 'section', cy = banner.kind === 'section' ? sf.t + vh * 0.2 : vh * (banner.kind === 'night' ? 0.36 : 0.33);
       ctx.globalAlpha = a;
       if (big && bandP.c) ctx.drawImage(bandP.c, 0, cy - bannerP.h * 0.85, vw, bannerP.h * 1.7);
@@ -557,6 +560,8 @@ export function createCanvasHud(game, opts = {}) {
   return {
     update, banner: setBanner, toast: addToast, callout: addCallout,
     draw,
+    /** POLISH: the pause panel or one of its screens is up (index.js says so before every update and draw) - the banner is not drawn and its clock stands */
+    veil(on) { T.veil = !!on; },
     number(x, y, z, str, o) { addCallout(x, y, z, String(str), 'num', !!o?.big); },
     resize() { L.epoch++; L.s = 0; },
     /** touch: the prompt chip under a logical point (hit area grown to 44 CSS px), or null */
@@ -569,7 +574,7 @@ export function createCanvasHud(game, opts = {}) {
     },
     promptRects() { const o = []; for (let k = 0; k < taps.n; k++) o.push({ action: taps.ref[k]?.action, x: taps.rect[k * 4], y: taps.rect[k * 4 + 1], w: taps.rect[k * 4 + 2], h: taps.rect[k * 4 + 3] }); return o; },
     layout: L, px, tsz,
-    info() { return { scale: L.s, hs: L.hs, textSize: L.textSize, epoch: L.epoch, banner: banner.on ? banner.kind : null, bannerTitle: banner.on ? banner.title : '', toasts: toasts.filter((q) => q.on).length, lit: T.lit, max: T.max, coins: T.coinR && T.coinR.a > 0 ? { ...T.coinR } : null, bannerRect: banner.on ? { ...BR } : null, toastRects: toasts.filter((q) => q.on).map((q) => ({ x: q.rx, y: q.ry, w: q.w, h: q.h })), objective: T.objOn && T.objR ? { ...T.objR } : null, guide: T.guideOn && T.guideR ? { ...T.guideR } : null, draughts: T.drR && T.drR.n > 0 ? { ...T.drR } : null, statusR: T.statusR }; },
+    info() { return { scale: L.s, hs: L.hs, textSize: L.textSize, epoch: L.epoch, banner: banner.on ? banner.kind : null, bannerTitle: banner.on ? banner.title : '', bannerShown: banner.on && !T.veil, bannerT: banner.on ? banner.t : 0, toasts: toasts.filter((q) => q.on).length, lit: T.lit, max: T.max, coins: T.coinR && T.coinR.a > 0 ? { ...T.coinR } : null, bannerRect: banner.on ? { ...BR } : null, toastRects: toasts.filter((q) => q.on).map((q) => ({ x: q.rx, y: q.ry, w: q.w, h: q.h })), objective: T.objOn && T.objR ? { ...T.objR } : null, guide: T.guideOn && T.guideR ? { ...T.guideR } : null, draughts: T.drR && T.drR.n > 0 ? { ...T.drR } : null, statusR: T.statusR }; },
     release() { for (const p of [badge.now, badge.past, yearP, ...Object.values(shelves), moonP, bossP, bossFill, bannerP, bandP, promptRow, msgP, msg2P, dbgP, drP, guideP, ...nums, ...calls, ...toasts, ...wprompts]) if (p.c) { p.c.width = 1; p.c.height = 1; p.c = null; } icons.clear(); },
   };
 }
