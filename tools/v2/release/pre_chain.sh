@@ -65,7 +65,7 @@ if [ -n "$F" ]; then
 else echo "exit=9 (screens_fold screens_phone screens_cross whip_bell: no save after ev_ending_home in $C/saves)" >> "$L/steps.txt"; fi
 # 지난 판들의 저장 열두 개(APK 11 셋 · APK 12 넷 · APK 13 다섯)를 읽혀 45초씩 이어 플레이
 step "old saves start"
-SECS=${OLD_SECS:-45} bash tools/v2/release/old_saves.sh "$L/old_saves" ${OLD_LIST:-apk11:032 apk11:064 apk11:074 apk12:038 apk12:055 apk12:073 apk12:080 apk13:021 apk13:046 apk13:066 apk13:075 apk13:082} > "$L/old_saves.log" 2>&1; echo "exit=$? (old_saves)" >> "$L/steps.txt"
+SECS=${OLD_SECS:-45} bash tools/v2/release/old_saves.sh "$L/old_saves" ${OLD_LIST:-apk11:074 apk12:038 apk12:055 apk12:080 apk13:021 apk13:046 apk13:066 apk13:082 apk14:021 apk14:046 apk14:066 apk14:082} > "$L/old_saves.log" 2>&1; echo "exit=$? (old_saves)" >> "$L/steps.txt"
 tail -n 2 "$L/old_saves/summary.txt" | head -n 1 >> "$L/steps.txt"
 step "head-after $(git rev-parse --short HEAD) dirty=$(git status --porcelain | wc -l)"
 step "ALLDONE"
