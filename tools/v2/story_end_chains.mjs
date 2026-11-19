@@ -6,7 +6,7 @@
 export default function (T) {
   const { C, boot, until, idle, P, ev, still, after, put } = T;
   // dx, dz from the bell's spot (4200, 1408; the long ring reaches r + 60 = 140 px): west and east of it, south of it at the rail, and the farthest points a ring still counts from
-  const POS = { west: [-70, -6], east: [70, -6], south: [0, -72], mid: [0, -18], far: [-134, 30], farE: [120, 66], farS: [-40, -128] };
+  const POS = { west: [-70, -6], east: [70, -6], south: [0, -72], mid: [0, -18], farW: [-137, 0], farN: [0, 137], farE: [137, 0], farS: [0, -108], farNE: [96, 96], farNW: [-96, 96] };
   const who = () => ev(() => { const sc = window.__v2.scene, h = sc.sim.hero, o = { hero: [Math.round(h.x), Math.round(h.z), +(h.dirX ?? 0).toFixed(2), +(h.dirZ ?? 0).toFixed(2)] }; for (const p of sc.people.list) if (p.on) o[p.id] = [Math.round(p.x), Math.round(p.z)]; return o; });
   for (const tag of Object.keys(POS)) C('end_' + tag, `the ending, rung from ${tag} of the bell (${POS[tag]})`, async () => {
     const [dx, dz] = POS[tag];
@@ -15,7 +15,8 @@ export default function (T) {
     const at = await P('putY', b.x + dx, b.z + dz, b.y); await ev(() => window.__cc.until({ idle: true }, 30));
     put(`     · ${tag}: the hero rings from ${JSON.stringify(at)} (wanted ${b.x + dx}, ${b.z + dz}); ${Math.round(Math.hypot(at[0] - b.x, at[1] - b.z))} px from the bell's spot`);
     await P('ring', 'big_bell');
-    await until({ line: '빵은' }, 200); await still(`${tag}_bread`, '로테의 물음 — 「참, 빵은 맛있었어요?」 (ev_ending)', ['hero', 'lotte', 'elise'], 'ev_ending'); put('       who ' + JSON.stringify(await who()));
+    await until({ line: '빵은' }, 200); put('       walk ' + JSON.stringify(await ev(() => window.__v2.scene.host.seen.filter((q) => q[0] === 'hero' || q[0] === 'placed').map((q) => q[0] + ' ' + q[1]))));
+    await still(`${tag}_bread`, '로테의 물음 — 「참, 빵은 맛있었어요?」 (ev_ending)', ['hero', 'lotte', 'elise'], 'ev_ending'); put('       who ' + JSON.stringify(await who()));
     await until({ line: '엘리제가 답한다' }, 300); await still(`${tag}_home_first`, '오늘 밤의 첫 줄 (ev_ending_home)', ['hero', 'elise'], 'ev_ending_home'); put('       who ' + JSON.stringify(await who()));
     await until({ shot: 'ring_widen', mid: true }, 300); await still(`${tag}_ring`, '종소리가 넓어진다 (camera ring_widen, middle)', [], 'ev_ending_home');
     const about = await ev(() => (window.__v2.scene.people.byId('marta')?.on ? 1 : 0));

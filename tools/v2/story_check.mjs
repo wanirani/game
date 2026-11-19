@@ -93,7 +93,7 @@ const ACTIONS = new Set(['attack', 'jump', 'dash', 'guard', 'skill1', 'ult', 'lo
 const ENGINE_EVENTS = new Set(['area.enter', 'section.enter', 'enemy.kill', 'area.clear', 'hero.dead', 'hero.respawn', 'trigger', 'exit', 'exit.locked', 'exit.missing',
   'interact', 'talk', 'group.clear', 'bell.echo', 'boss.phase', 'bell.held']);
 const STEP_ARITY = { say: [1, 1], banner: [2, 3], toast: [1, 2], prompt: [1, 1], give: [1, 2], take: [1, 2], setFlag: [1, 2], clearFlag: [1, 1], unlockExit: [1, 2], lockExit: [1, 3],
-  wakeGroup: [1, 1], spawn: [2, 3], moveActor: [2, 3], hideActor: [1, 2], showActor: [1, 2], camera: [1, 2], wait: [1, 1], sound: [1, 2], music: [1, 1], fx: [1, 2], objective: [1, 1],
+  wakeGroup: [1, 1], spawn: [2, 3], moveActor: [2, 3], moveHero: [1, 2], putActor: [2, 3], hideActor: [1, 2], showActor: [1, 2], camera: [1, 2], wait: [1, 1], sound: [1, 2], music: [1, 1], fx: [1, 2], objective: [1, 1],
   chronicle: [1, 1], candle: [1, 1], moon: [1, 1], ring: [1, 1], save: [0, 0], gotoArea: [1, 2], bellCross: [0, 1], lockInput: [1, 1], if: [2, 3], run: [1, 1], end: [1, 1] };
 
 const width = (line) => { let w = 0; for (const ch of line) { const c = ch.codePointAt(0); w += (c >= 0x1100 && c <= 0x11ff) || (c >= 0x2e80 && c <= 0xa4cf) || (c >= 0xac00 && c <= 0xd7a3) || (c >= 0xf900 && c <= 0xfaff) || (c >= 0xff00 && c <= 0xff60) ? 1 : 0.5; } return w; };
@@ -445,7 +445,7 @@ function play(route, policy, label, deferred) {
     gotoArea: (id, spawn) => { out('goto', id, spawn || 'default'); defer(() => { area = id; st.story('area.enter', { area: id }, api); }); },
     bellCross: (o) => { const to = twinOf(area); out('cross', to, o && o.years ? 'years' : ''); defer(() => { area = to; st.story('area.enter', { area: to }, api); }); },
     sound: (n) => out('sound', n), fx: () => {}, music: (id) => out('music', id),
-    wakeGroup: (g) => out('wake', g), spawn: () => {}, moveActor: (id, to, o, done) => defer(done), hideActor: (id, a) => out('actor', 'hide', a + '/' + id), showActor: (id, a) => out('actor', 'show', a + '/' + id),
+    wakeGroup: (g) => out('wake', g), spawn: () => {}, moveActor: (id, to, o, done) => defer(done), moveHero: (to, o, done) => defer(done), putActor: () => {}, hideActor: (id, a) => out('actor', 'hide', a + '/' + id), showActor: (id, a) => out('actor', 'show', a + '/' + id),
     camera: (shot, sec, done) => { if (shot) out('camera', shot, TEXT.shots[shot]); defer(done); }, wait: (s, done) => defer(done),
     unlockExit: (id, a) => out('unlock', a + '/' + id), lockExit: (id, k, a) => out('lock', a + '/' + id),
     objective: (text) => out('objective', text), chronicle: (e) => out('chronicle', e.title, e.kind === 'blank' ? e.past + ' → ' + e.now : e.body),

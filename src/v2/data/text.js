@@ -110,6 +110,7 @@ export const TEXT = {
     banshee_song: 'the queen rises behind the four bell posts; the song is visible as rings in the mist (cut 6)',
     two_keepers: 'Lotte and Elise on either side of the bell rope (cut 7)',
     ring_widen: 'pull up to the valley map: the bell-sound circle grows one ring; the convent and the sluice appear (cut 8)',
+    inn_window: 'the lit window of the inn, close: a crow feather lies on its sill (the last line of the chapter)',
   },
 
   // music ids used by the `music` step (areas carry their own id: village_burning · village_past · graveyard_mist)

@@ -23,7 +23,7 @@ function game(opts) {
     banner(kind, t, s) { g.log.push('banner ' + t); }, toast(t) { g.log.push('toast ' + t); }, lock() {}, sound() {}, fx() {}, wakeGroup() {},
     prompt(p) { g.log.push('prompt ' + (p ? p.label : 'null')); }, objective(t) { g.log.push('objective ' + t); },
     unlockExit(id, a) { g.log.push('unlock ' + a + '/' + id); }, lockExit() {}, hideActor(id, a) { g.log.push('hide ' + a + '/' + id); }, showActor(id, a) { g.log.push('show ' + a + '/' + id); },
-    camera(shot, s, done) { done(); }, wait(s, done) { done(); }, music() {}, candle() {}, moon() {}, ring() {}, spawn() {}, moveActor(a, b, c, done) { done(); },
+    camera(shot, s, done) { done(); }, wait(s, done) { done(); }, music() {}, candle() {}, moon() {}, ring() {}, spawn() {}, moveActor(a, b, c, done) { done(); }, moveHero(a, b, done) { done(); }, putActor() {},
     save(obj) { g.saves.push(JSON.parse(JSON.stringify(obj))); }, end(id) { g.log.push('end ' + id); },
     gotoArea(id) { if (o.holdArea) { g.pendingArea = id; return; } g.enter(id); },
     bellCross(opt) { const to = (opt && opt.to) || twin[g.area]; if (o.holdArea) { g.pendingArea = to; return; } g.enter(to); },

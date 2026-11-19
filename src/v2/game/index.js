@@ -1149,7 +1149,7 @@ export default class V2Game extends Scene {
     c.ck += ((R.center?.k ?? 0) - c.ck) * k;
     if (c.ck > 0.001) { const C = R.center ?? c.lastCenter; if (C) { c.lastCenter = C; tx += (C.x - tx) * c.ck; tz += (C.z - tz) * c.ck; } }
     const SA = SH ? SH.at ?? null : null; if (SA) { tx = SA[0]; tz = SA[1]; }   // STORY HOOK: a shot that looks at a place (the bell between the two keepers), not at the hero - then without the section's side limits
-    const gy = h.onGround ? h.y : Math.min(h.y, c.ty + 40 > h.y ? c.ty : h.y - 40);
+    const gy = SA && SH.groundY !== undefined ? SH.groundY : h.onGround ? h.y : Math.min(h.y, c.ty + 40 > h.y ? c.ty : h.y - 40);   // STORY HOOK (STORY2): a picture of a place may name the floor its lookY counts from (the inn's window from the street, while the hero stands on the church terrace)
     c.tx += (tx - c.tx) * kt; c.tz += (tz - c.tz) * kt; c.ty += (gy - c.ty) * (snap ? 1 : 1 - Math.exp(-dt * 4));
     const cp = Math.cos(c.pitch), sp = Math.sin(c.pitch);
     const tall = Math.max(0, this.game.viewH - 540);

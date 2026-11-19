@@ -173,9 +173,12 @@ export const DIALOGS_DUNGEON = {
   'ending.town': [{ pages: [
     ['marta', '엘리제! 이 녀석,\n어디 갔다 이제 와!'],
     ['elise', '이모! 저 백 년 전에 다녀왔어요!\n로테 언니도 만났어요!', 'joy'],
-    ['marta', '하하, 그래그래. 수프부터 먹어.\n사냥꾼 양반도 앉아!'],
+    ['marta', '하하, 그래그래. 수프 식겠다, 가자.\n저녁상은 세 벌이야. 사냥꾼 양반도 와!'],   // (she has come up to the bell: nobody is told to sit down here - she scolds, she feeds, she is glad; "세 벌" is her own promise at the inn)
     ['alberto', '…로테? 방금 로테라고 했나.'],
     ['alberto', '…아닐세. 오래된 이름이라서.'],
+  ] }],
+  // the narrator's last line, over the inn's lit window (camera inn_window): the hook for what comes after this chapter
+  'ending.feather': [{ pages: [
     ['narrator', '여관 창가에도 까마귀 깃털 하나가\n놓여 있다.'],
   ] }],
 };

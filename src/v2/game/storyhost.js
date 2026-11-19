@@ -23,6 +23,8 @@ export const SHOTS = {
   beside: { pitch: 0.26, dist: 500, lookY: 76, yaw: 0.85 },   // two people talking, seen from the side so that neither hides the other
   years: { pitch: 0.42, dist: 1040, lookY: 110 }, banshee_song: { pitch: 0.12, dist: 1100, lookY: 220 }, two_keepers: { pitch: 0.5, dist: 444, lookY: 80, at: [4186, 1436], yaw: 0, tallK: 0 },   // the big bell from the churchyard below the terrace: Lotte left of it, Elise right (both nights: the same picture a hundred years apart)
   ring_widen: { pitch: 0.62, dist: 1500, lookY: 120, at: [4130, 1500], yaw: 0, tallK: 0 },
+  // STORY2 (11-19): the inn's lit window, for the narrator's last line (the house stands 2,200 px west of the bell: `cut` = the camera does not travel there and back, it cuts)
+  inn_window: { pitch: 0.05, dist: 250, lookY: 92, at: [1985, 300], yaw: -0.15, tallK: 0, cut: true },
 };
 
 /** the saved game, or null (nothing saved, another version, broken data) */
@@ -290,7 +292,9 @@ export class StoryHost {
       },
       camera(shot, seconds, done) {
         if (H.shot && H.shotDone) H._shotEnd();
+        const was = H.shot;
         H.shot = shot && SHOTS[shot] ? SHOTS[shot] : null;
+        if (was !== H.shot && ((was && was.cut) || (H.shot && H.shot.cut))) sc.cam.snap = true;   // STORY2: a shot marked `cut` is cut to and cut away from (no travel between two far places)
         if (!H.shot || !(seconds > 0)) { done?.(); return; }
         H.shotT = seconds; H.shotDone = done ?? null; H.shotLock = true;
         if (H.shot.shake) sc.fx?.feel.addTrauma(H.shot.shake); if (H.shot.flash) sc.fx?.feel.flash(1, 1, 1, 0.5);

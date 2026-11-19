@@ -538,6 +538,9 @@ export const EVENTS = [
     ['music', 'dawn_bell'],
     // the same picture as the two keepers' cut, a hundred years later: Elise right of the bell where she stood, Lotte's place left of it empty
     ['lockInput', true],
+    ['moveHero', 'bell', { face: [4104, 1436], cap: 0 }],   // STORY2: he stands on the mark he crossed from (a save of an earlier build made in this scene has him wherever he rang: set there behind the load's fade)
+    ['showActor', 'marta', 'eshville_now'],
+    ['putActor', 'marta', [3900, 800]],           // STORY2: Marta is set down in the square below the church stairs - behind the camera of the bell's picture, under the edge of the wide one
     ['camera', 'two_keepers', 1.2],
     ['say', 'ending.bell'],
     ['setFlag', 'bells_answered'],
@@ -545,12 +548,23 @@ export const EVENTS = [
     ['moon', 1],
     ['candle', 1],
     ['chronicle', 'two_keepers'],
-    ['camera', 'ring_widen', 4],                  // the camera rises over the church front while the sound goes out (the valley map is the ending card's)
+    // cut 8 (GDD 9.1 minute 118-120): the camera rises over the church front while the sound goes out (the valley map is the ending card's) - the bell tolls its three
+    // rings of light (the hunter's own long ring: fx holy.bell, at the big bell), and the town comes: the old priest to the place where Lotte stood, Marta up the stairs
+    ['moveActor', 'alberto', [4104, 1436], { face: [4296, 1436], wait: false }],
+    ['moveActor', 'marta', [4046, 1396], { face: [4296, 1436], wait: false }],
+    ['fx', 'holy.bell', { x: 4200, y: 84, z: 1450, dx: 0, dz: -1 }],
+    ['camera', 'ring_widen', 2],
+    ['fx', 'holy.bell', { x: 4200, y: 84, z: 1450, dx: 0, dz: -1 }],
+    ['camera', 'ring_widen', 2],
     ['ring', 1],
     ['toast', '종소리가 장미 수녀원과 잠긴 수문까지 닿는다', 'info'],
-    ['moveActor', 'alberto', [4104, 1436], { face: [4296, 1436] }],   // the old priest comes to the bell - and stands where Lotte stood - before her name is said
-    ['camera', 'two_keepers', 1],
+    ['camera', 'two_keepers', 0.9],
+    ['moveActor', 'alberto', [4104, 1436], { face: [4296, 1436] }],   // (both are there by now, or the lines wait for them: he before her name is said, she before she speaks)
+    ['moveActor', 'marta', [4046, 1396], { face: [4296, 1436] }],     // she walks into the bell's picture from its left edge
     ['say', 'ending.town'],
+    ['camera', 'inn_window', 1.3],                // the hook for what comes after: the inn's lit window (a cut, not a pan - it is 2,200 px west)
+    ['say', 'ending.feather'],
+    ['camera', 'two_keepers', 0.9],               // and back to the bell, where everyone stands, for the end
     ['camera', null],
     ['lockInput', false],
     ['banner', 'clear', '달이 한 칸 기울었다', '종소리가 한 겹 더 멀리 닿는다'],
