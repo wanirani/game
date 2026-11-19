@@ -3,6 +3,7 @@
 2026-11-18 (3차) · 담당 PLAY · 공개 면은 `src/v2/play/index.js` 하나 · 검사 `node tools/v2/play_rules_test.mjs` · `node tools/v2/play_motion_check.mjs` · `node tools/v2/play_alloc.mjs` · 보기 `tools/v2/play_view.html`
 
 **바뀐 것**
+- 2026-11-19 (WHIP · 주인: "경쾌한 움직임", 검증: "솜씨 단추가 가끔 아무 일도 하지 않는다") **입력 기억(input buffer) — §1.1, 구르기 무적 0.26 → 0.34초 — §4.1.** 공격 · 구르기 · 점프 · 솜씨의 눌림을 `TUNE.bufT`(0.19 = 누른 틱 + 11틱) 동안 들고 있다가 영웅이 그 일을 할 수 있는 첫 틱에 쓴다. 가장 새 눌림이 이기고(다른 단추의 묵은 눌림은 잊는다), 같은 틱의 눌림은 솜씨 > 구르기 > 공격 > 점프, 쓴 눌림은 다시 쓰지 않는다. 종은 그대로(CHAPTER). 바뀐 끊기 규칙은 하나: **모으는 중(공격을 누르고 있는 동안)의 솜씨 눌림은 모으기를 풀고 나간다**(예전에는 삼켜졌다). 맞아서 밀리는 동안의 눌림도 마지막 0.18초 것은 풀리는 틱에 나간다(예전: 모두 버림). 셋째 타 · 훑기 · 휘감기 · 내려베기가 끝나기 전에 누른 공격은 그 기술이 끝나는 틱에 새 연타로 나간다(예전: 버림). 점프는 이제 장면이 "눌린 틱"만 준다(예전: 셸의 0.12초 기억). 새 영웅 칸 `bufD · bufJ · bufS`(공격은 `queued`), 새 함수 `sim.dropPresses()`(장면이 영웅을 붙드는 동안 부른다). 재는 도구 `node tools/v2/whip_press.mjs`(규칙의 전 · 후 + 패드의 포인터 처리기로 게임 시간에), `play_rules_test` 145 → 159.
 - 2026-11-18 23:50 (CHAPTER · 1장 점검의 막힘 4 · 6과 「말하는 사람을 때린다」) 더하기만 했다. **`sim.hold`**(장면이 이야기가 영웅을 붙드는 동안 켠다 — 대화 · 카메라 컷 · 건넘): 적은 기다린다 — 예고 중이던 공격을 거두고(`_cancelAttack`), 새 공격 · 탄을 시작하지 않고(`cd` 를 0.8초로 채워 둔다), 걷는 적은 150 px 안에서 멈추고 120 px 안이면 물러선다(나는 것은 맴돌고, 보스는 제자리에서 떠 있다 — 무릎 꿇음 · 달아남은 그대로 흐른다). 놓으면 0.8초 뒤부터 다시 싸운다(`Sim._wait`). **`hero.bellWait`**: 종이 쉬는 중 · 기술 · 점프 도중에 시작한 긴 누름을, 누르고 있는 동안 기억했다가 종이 준비되면(`bellOk`) 그때부터 길게 누른 것으로 친다(전에는 누르고 있는 내내 무시됐다 — 무릎 꿇은 여왕 앞에서 260틱). 떼면 잊는다(뒤늦게 울리지 않는다). **보스의 달아남**: 장면이 붙든 동안(`e.fleeHold`)에는 `alpha` 가 0 까지 내려간다(전에는 0.12 에서 멈췄다) — 장면이 그 밤에 없는 것으로 다룬다(ENGINE_API §12.4). 검사: `node tools/v2/chapter_reach.mjs`(적 다섯 종의 기다림 · 종 누름 둘).
 - 2026-11-18 17:20 (BREAK · 주인: "항아리 같은것들은 쨍그랑 소리와 함께 깨지고 랜덤으로 아이템, 돈 등이 나오면") **더하기만 했다 — §13.** 새 파일 `src/v2/play/breakables.js`. 세계의 `W.breakables` → `sim.breakables[]`(멀쩡할 때는 단단한 상자) · `sim.pickups[]`(40칸 풀) · `sim.brkLive` · `sim.pickN`. 영웅의 모든 판정 모양(연타 1·2·3 · 훑기 · 모아 휘감기 · 내려베기와 그 착지 원)이 한 번에 깬다. **구르기는 도기(jar · pot · urn)만 깨고 속도를 잃지 않는다**(나무 상자 · 술통은 구르기를 막는다). 적 · 적의 탄은 깨지 못한다. 새 사건 `break` · `drop` · `pickup` · `pickupLand`, 새 영웅 칸 `hero.coins`, 새 함수 `sim.seedDrops(seed)` · `sim.breakAt(x, z, r, by)`. 내보내는 이름: `BREAK_KINDS` · `DROP_TABLE` · `PICK` · `WHAT` · `seedBreak` · `breakOne` · `breakSilent` · `spawnPickup`. `sim.js` 에 고친 자리는 여덟 줄(`BREAK` 로 찾는다). `play_rules_test` 113 → 145.
 - 2026-11-18 11:55 (SPEED-FIRE · 주인: "움직임이 느린 느낌") 숫자만 바뀌었다 — 이름 · 모양 · 규칙은 그대로. `tune.js`: 달리기 275 · 208 → **410 · 310** · accel 20 → 28 · airAccel 9 → 12 · turnRate/pivotRate 14.8 → **17.4**(한 프레임 17° 아래 — 툭 꺾이지 않는 한계) · turnEase 30 → 36 · brake 18 → 26 · walkBelow 120 → 150(1.25배만: 걷기 보폭이 짧아 더 올리면 종종걸음) · 구르기 0.46초/150/쉼 0.62 → **0.35초/175/0.48**(무적 0.3 → 0.26, 훑기 받기 0.26 → 0.24) · 점프 720/2300 → 822/3000(높이 113 그대로, 공중 0.62 → 0.53초) · landT 0.12 → 0.1 · 모으기 0.3/0.55 → 0.25/0.44 · 새 `stopSkidT` 0.25(미끄러져 서는 그림 길이, 예전 0.3 고정) · 새 `enemyPace` 1.2(적의 걷기 빠르기 배수 — `KINDS[k].speed` 는 곱한 값, 표의 숫자는 `speed0`; 예고 windup 은 그대로). `moves.js`: 규칙 시간(dur · hit · cancel · free · step · recover)을 모두 0.78배(1.28배 빠름), 클립 초(strike · lead · tail)는 그대로 → 같은 클립을 빨리 튼다(판정은 여전히 칼이 지나는 구간 위). 내려베기 fallV −520 → −600. 돌아서기 뒤 박차는 발 = 마지막으로 디딘 발의 반대(`hero.pivotG` · `hero.lastStep`; 예전엔 늘 오른발이라 발소리가 R R 로 겹칠 수 있었다). `motion.js`: 걷던 빠르기로 돌아서면 제자리걸음으로 도는 경계 150 고정 → `walkBelow + 30`(180). 시간표: `node tools/v2/speedfire_times.mjs`.
@@ -70,7 +71,25 @@ for (const e of sim.enemies) if (!e.dead) driveActor(charOf(e), e, dt);   // 적
 | `lockNext` (눌린 틱) | 락온 대상을 다음 적으로 (4초 동안 저절로 바뀌지 않는다) |
 
 `dash` 와 `guard` 는 같은 단추에서 나와도 된다(눌린 틱에 `dash`, 누르는 동안 `guard`). 단추: 공격(`attack`) · 점프(`jump`) · 구르기/막기(`dash` + `guard`) · 솜씨(`skill1` → `inp.skill`) · 종(`ult` → `inp.bell` · `inp.bellHeld`) · 다음 적(`lock` → `inp.lockNext`).
-눌림 입력(`attack dash jump lockNext skill bell`)은 타격 멈춤 중에 와도 잃지 않는다(규칙이 기억했다가 멈춤이 풀린 틱에 쓴다). 맞아서 밀리는 동안(0.26초)의 눌림은 버린다.
+눌림 입력(`attack dash jump lockNext skill bell`)은 타격 멈춤 중에 와도 잃지 않는다(규칙이 기억했다가 멈춤이 풀린 틱에 쓴다). 공격 · 구르기 · 점프 · 솜씨의 눌림은 영웅이 바쁠 때 와도 0.18초 동안 들고 있다가 풀리는 첫 틱에 쓴다 — §1.1.
+
+### 1.1 Input buffer (WHIP, 2026-11-19) — no dropped presses
+
+(English.) A press of **attack, roll (`dash`), jump or skill** is carried for `TUNE.bufT` = 0.19 s (the press tick + 11 rule ticks; the timers run in rule time, so a hit-stop does not use them up) and fires on **the first tick the hero may do that thing** under the unchanged cancel rules. The bell is not buffered here (its long press is the chapter's code and stays as it was).
+
+| press | carried in | fires when | what it used to do |
+|---|---|---|---|
+| attack | `hero.queued` (0.25 s `queueT` when pressed during hit 1 or 2 — the combo chain, as before; `bufT` otherwise) | no move → hit 1 (air: plunge, within `rollSweep` of a roll: sweep) · hit 1 / 2 past `cancel` → the next hit · a move ends (`dur`, or `free` with the stick pushed) → hit 1 **on that same tick** · mid-roll (also the tick the roll starts) → the sweep after the roll | pressed late in hit 3, the sweep, the whip or the plunge: dropped |
+| roll | `hero.bufD` | stick pushed, roll rest over, the hit window of the running move over. With no stick on the ground it is a guard tap at once (and is used up — a tap, a release and then the stick still does not roll) | pressed inside a hit window or during the roll's rest: dropped |
+| jump | `hero.bufJ` | on the ground (or coyote time), not rolling, the move past `cancel` | the shell kept it 0.12 s |
+| skill | `hero.bufS` | on the ground, not rolling, the hit window over (`freeNow`) — hook if a ring is in reach, else the call. `deny` with `'reso'` / `'cd'` is said at once; `'busy'` only on the tick a carried press runs out | `deny 'busy'` on the press tick |
+
+- **The newest press wins**: a fresh press of any of the four forgets the older carried presses of the other three. **Same tick**: skill > roll > attack > jump (skill + attack: the skill goes, the attack of that tick is dropped; roll + attack: the roll, then the sweep — as before).
+- **A press fires once**: whatever uses it zeroes it (`_startMove`, `_startRoll`, the jump, `_startAct('hook'｜'call')`, the guard tap).
+- **Stunned** (`hurtT`): presses are carried like any other, so the last 0.18 s of a stun is not dead input (a roll pressed there rolls on the first free tick). Presses at the start of the stun run out as before.
+- **One cancel rule changed**: a skill press that can fire (ring in reach, or resonance for the call) **lets go of the charge** (attack held) and goes. Everything else cancels as before.
+- **The scene holds the hero** (dialogue, crossing, journey, the pause menu): `sim.dropPresses()` every such tick — it clears the hit-stop latch, the four carried presses, the queued sweep and the guard tap, so nothing pressed before fires afterwards (ENGINE_API 12.3). The rules call it themselves when the hero falls (dies) or drops into a pit.
+- Measured (`node tools/v2/whip_press.mjs`, rules of commit 9468e00 against today, and today's tree again through the pad's own pointer handlers in game time on the phone-size screen — same ticks): skill tapped 0–14 ticks after an attack tap: 4 → 15 of 15 throw the hook · roll the same: 4 → 15 of 15 · attack in the last 16 ticks of hit 3: 0 → 12 of 16 start a new hit 1 on the tick hit 3 ends · jump 6–20 ticks into a roll: 4 → 6 of 8 · the hook under the graveyard ring while the grave-keeper strikes: thrown at the first or second press from 8 starts.
 
 ## 2. 영웅 상태 `sim.hero` (읽기 전용으로 쓴다)
 
@@ -163,7 +182,8 @@ for (const e of sim.enemies) if (!e.dead) driveActor(charOf(e), e, dt);   // 적
 | `pivotAt 100` · `pivotEnd 45` · `pivotRate 14.8` · `brake 18` · `sideDamp 24` | 돌아서기: 시작하는 각 · 끝나는 각(도) · 도는 빠르기(rad/초; 180° = 0.21초) · 멈추는 빠르기 · 몸이 보는 쪽이 아닌 속도(밀림 뒤)가 스러지는 빠르기 |
 | `strideRun 222` · `strideWalk 74` | 한 걸음 주기에 나아가는 거리 — 달리기 · 걷기 클립의 실제 보폭(발이 미끄러지지 않게; `play_motion_check --stride` 로 다시 잰다) |
 | `jumpV 720` · `gravity 2300` · `jumpCut 0.42` · `coyote 0.09` | 점프 (높이 112 px) |
-| `rollT 0.46` · `rollDist 150` · `rollIfr 0.3` · `rollCd 0.62` · `rollSweep 0.26` | 구르기 |
+| `rollT 0.35` · `rollDist 175` · `rollIfr 0.34` · `rollCd 0.48` · `rollSweep 0.24` | 구르기 (무적 0.34 — §4.1) |
+| `bufT 0.19` · `queueT 0.25` | 입력 기억 (§1.1) · 연타를 잇는 눌림 |
 | `parryWin 0.2` · `guardArc 100` · `guardTap 0.3` · `guardPush 130` | 막기 · 튕겨내기 |
 | `lockRange 380` · `lockKeep 470` · `lockAim 230` · `aimCone 55` · `lungeMax 42` | 락온 · 조준 보정 |
 | `chargeHold 0.3` · `chargeT 0.55` · `chargeMin 0.35` · `chargeKeep 0.6` · `pullT 0.2` | 모아 휘감기: 누르고 있어야 하는 시간 · 다 모으는 시간 · 이보다 덜 모으면 그냥 푼다 · 다 모은 채 버티는 시간 · 끌어오는 시간 |
@@ -174,6 +194,24 @@ for (const e of sim.enemies) if (!e.dead) driveActor(charOf(e), e, dt);   // 적
 | `heroHp 100` · `hurtIfr 0.95` · `hurtT 0.26` · `deadT 2.1` | 몸 |
 | `runLeanFix 12` · `pivotLean 9` · `chargeCoil 12` · `runBank 1.1` · `lookMax 58` · `stopSkidAbove 130` | 그림만 바뀌는 값: 달리기 클립의 숙임(26°)을 이만큼 세운다 · 돌아서며 버티는 자세의 젖힘을 이만큼 앞으로 당긴다 · 모으는 동안 윗몸을 이만큼까지 웅크린다 · 달리며 돌 때 도는 쪽으로 기우는 정도(최대 11°) · 락온한 적을 고개로 보는 최대 각도 · 이 속도 넘게 달리다 놓으면 미끄러져 서는 동작 |
 | `stepL { run 0.54, walk 0.46 }` | 걸음 주기에서 왼발이 닿는 때(오른발 = 0) — 클립의 발 사건 자리. `step` 사건이 이때 난다 |
+
+### 4.1 The roll against every enemy attack (WHIP, 2026-11-19)
+
+(English.) The roll: no start-up — untouchable from the tick it starts (`hero.ifr`) for `rollIfr` **0.34 s** of its 0.35 s (was 0.26), 175 px, next roll 0.48 s after its start. An enemy attack tests the hero on every tick of its active window (`strike`), so a roll that is to pass *through* an attack must outlast the window. Table: `play_rules_test` section 14 rolls 1,736 times (each attack × roll started 6 … 0 ticks before the first active tick × 8 directions × 3–5 distances); "hurt" = rolls of that row that were hit, before (0.26) → now (0.34).
+
+| attack | wind-up | active | meant answer | hurt at 0.26 s | hurt at 0.34 s |
+|---|---|---|---|---|---|
+| soldier `slash` | 0.46 | 0.14 | guard / parry / roll | 0 | 0 |
+| soldier `stab` | 0.52 | 0.16 | guard / parry / roll | 0 | 0 |
+| corpse `grab` (cannot be guarded) | 0.80 | **0.30** | roll | 2 of 224 (roll on the last wind-up tick or the first active tick) | 0 |
+| ghost `swoop` | 0.62 | **0.30** | roll / parry | 4 of 280 (roll 3 … 0 ticks early) | 0 |
+| grave-keeper `slam` (chips through a guard) | 1.00 | 0.16 | roll / parry | 0 | 0 |
+| grave-keeper `thrust` | 0.72 | 0.18 | roll to his back / parry | 0 | 0 |
+| bat `dive` | 0.36 | 0.50 (a 24 px body flying 215 px) | parry / step aside | 7 of 224 | 0 |
+| queen `sweep` | 0.90 | 0.20 | parry / roll | 24 of 168 (roll 5–6 ticks early) | 0 |
+| queen `scream` (cannot be guarded) | 1.15 | **0.25** | echo / roll | 80 of 168 (only a roll on the last wind-up tick or the first active tick passed) | 0 |
+
+Shots (`bolt`, `wail`) are instant bodies and the queen's `song` pulses once every 0.7 s — any roll passes them. A roll started *after* the first active tick is late by definition (the hit has landed). `rollCd` is unchanged, so two rolls in a row leave 0.14 s open between them (was 0.22).
 
 ## 5. 사건 (hooks)
 
