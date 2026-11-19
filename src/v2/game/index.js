@@ -897,8 +897,8 @@ export default class V2Game extends Scene {
     let mx = input.analogX || input.axisX, mz = -(input.analogY || input.axisY);
     { const T = input.touchStick ?? input._touchVec; if (input.mode === 'touch' && T && T.mag > 0.1) { mx = T.x; mz = -T.y; } }   // touch stick: raw 360 degrees
     const modal = this.hud.modal ?? null, host = this.host, locked = this.locked || modal === 'dialog' || (host !== null && host.locks());   // UI_API 2: 'pause' freezes the rules, 'dialog' locks the hero; STORY HOOK: a camera shot or a lockInput step of the story locks him too
-    if (modal === 'pause') { this._state(); try { this.hud.update(dt, this.state); } catch (e) { this._hudFail(e); } this.updMs += performance.now() - t0; return; }
-    if (locked) { mx = 0; mz = 0; }
+    if (modal === 'pause') { this._dropPresses(); this._state(); try { this.hud.update(dt, this.state); } catch (e) { this._hudFail(e); } this.updMs += performance.now() - t0; return; }
+    if (locked) { mx = 0; mz = 0; this._dropPresses(); }   // WHIP: a press the rules still carry (their input buffer) when a dialogue, a crossing, a journey or the pause begins is dropped, never fired afterwards
     if (host !== null) {   // STORY HOOK: waits, camera shots, walking people, the rebuild after a changed area flag
       try { host.tick(dt); } catch (e) { if (!this._hostErr) { this._hostErr = true; console.error('[v2g] story host failed in its tick (play goes on):', e); } }
       // while the story holds the hero (a dialogue, a camera shot, the crossing) nothing may hurt him: the rules' own untouchable time is kept topped up
@@ -909,7 +909,7 @@ export default class V2Game extends Scene {
       if (this._graceT > 0) { this._graceT -= dt; if (hh.dead || hh.move || hh.charging) this._graceT = 0; else { if (hh.ifr < 0.15) hh.ifr = 0.15; if (this._holdT < 0.1) this._holdT = 0.1; } }
     }
     if (!this.ready || !this.sim) return;   // (a story step may have started a journey)
-    inp.mx = mx; inp.mz = mz; inp.jump = !locked && input.buffered('jump', 0.12); inp.jumpHeld = input.down('jump'); inp.jumpUsed = false;
+    inp.mx = mx; inp.mz = mz; if (!locked && input.pressed('jump')) inp.jump = true; inp.jumpHeld = input.down('jump'); inp.jumpUsed = false;   // WHIP: the jump is a press like the others now - the rules carry it (TUNE.bufT) instead of the shell's 0.12 s
     inp.attackHeld = input.down('attack'); inp.guard = !locked && (input.down('guard') || input.down('dash'));
     if (!locked) { if (input.pressed('attack')) inp.attack = true; if (input.pressed('dash')) inp.dash = true; if (input.pressed('lock')) inp.lockNext = true; }   // latched until a rule step consumes them (hit-stop)
     // skill (skill1) and bell (ult): handed to the rules that read them; while the rules cannot use them the pad shows them as not usable and a press says so
@@ -932,7 +932,7 @@ export default class V2Game extends Scene {
       this._fallV = sim.hero.vy ?? 0;
       sim.update(pdt, inp);
       if (inp.jumpUsed) input.consume('jump');
-      inp.attack = false; inp.dash = false; inp.lockNext = false; inp.skill = false; inp.bell = false;
+      inp.attack = false; inp.dash = false; inp.lockNext = false; inp.skill = false; inp.bell = false; inp.jump = false;
       if (sim.stop > 0) sim.stop = 0;   // hit-stop is owned by the feel table (ENGINE_API 1)
     }
     this.brk.tick(pdt);   // BREAK: pieces fly, pickups are followed, the coin count goes to the HUD state
@@ -945,6 +945,8 @@ export default class V2Game extends Scene {
     this.updMs += performance.now() - t0;
   }
   _makeFxHandles() { this._dashRb = -1; this.shotN = 0; this._whipReset = true; }
+  /** WHIP: forget every press still waiting - the scene's latches and the rules' input buffer (docs/v2/PLAY_API.md 1.1) */
+  _dropPresses() { const i = this.inp, s = this.sim; i.attack = false; i.dash = false; i.lockNext = false; i.skill = false; i.bell = false; i.jump = false; if (s && s.dropPresses) s.dropPresses(); }
   _savePrev() {
     const sim = this.sim, h = sim.hero, c = this.cam, q = this.camP;
     h._px = h.x; h._py = h.y; h._pz = h.z; this.visYP = this.visY;
