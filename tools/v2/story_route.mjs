@@ -6,8 +6,7 @@
 //   ['talk', key]           the hero talks to the actor carrying this talk key
 //   ['note', '…']           a stage direction for the owner script (Korean)
 //   ['save']                save → load into a fresh runner → continue (round-trip test)
-// Route A walks the areas as designed (the bell tower and the ossuary are simulated: their hooks are in DATA_FORMAT section 12).
-// Route B walks only what is built today and crosses the gaps through the bridge sequences (exit.missing).
+// Route A walks the chapter as designed. Route B walks it through the other branch of every choice (the iron key; the wooden crate first, then the statue).
 
 export const MINUTES = [
   { m: '0-5', place: '오늘 밤, 마을 외곽', does: '붉은 달, 불타는 길, 종소리. 해골 병사', learn: '이동, 공격, 저절로 걸리는 락온' },
@@ -207,36 +206,38 @@ const ENDING = [
   ['talk', 'edmund.tavern'],
 ];
 
-// ───────────────────────── route A: as designed ─────────────────────────
-export const ROUTE_A = [
-  ...VILLAGE_NOW,
+// ───────────────────────── the stretches both routes walk ─────────────────────────
+const TOWER = [
   ['m', '15-20'],
-  ['note', '종탑 안을 오른다 (지역 belltower_now — 아직 짓지 않음).'],
+  ['note', '종탑 안을 오른다.'],
   ['ev', 'exit', { id: 'to_belltower', to: 'belltower_now', spawn: 'bottom' }],
   ENTER('belltower_now'),
   T('tower_top', 'tower.top'),
   ['note', '박쥐 떼를 막는다.'],
   G('tower_bats'),
-  ...PAST_VILLAGE,
-  ...GRAVEYARD,
+];
+const HANG = [
   ['m', '58-68'],
-  ['note', '납골당 앞, 끊긴 돌길. 이쪽에 에드문트, 건너편에 빈 종대 (자리 grave.edmund · road_bell — 아직 없음).'],
+  ['note', '납골당 앞, 끊긴 돌길. 이쪽에 에드문트, 건너편에 빈 종대.'],
   T('edmund_grave', 'grave.edmund'),
-  ['note', '고리에 채찍을 걸어 건너가 빈 종대에 길종을 건다.'],
+  ['note', '고리에 채찍을 걸어 건너가면 문턱이 빈 종대를 가리킨다.'],
+  LOCKED('to_ossuary', 'story:ossuary'),
+  I('ossuary_door', 'door', 'door.ossuary'),
+  ['note', '빈 종대 앞에서 길종을 건다.'],
   I('road_bell', 'bell', 'bell.hang'),
-  ...AFTER_HANG,
+];
+/** the dungeon. crate = the other branch of 「돌과 나무」: the wooden crate first (it has rotted away tonight), then the statue */
+const DUNGEON = (crate) => [
   ['m', '68-82'],
-  ['note', '배웅의 납골당 (지역 ossuary_now · ossuary_past — 아직 짓지 않음).'],
+  ['note', '배웅의 납골당.'],
   ENTER('ossuary_now'),
   T('oss_coffins', 'oss.coffins'),
-  BELL('oss_bell_1'),
-  BELL('oss_bell_1'),
-  T('oss_gap', 'oss.gap'),
-  BELL('oss_bell_2'),
+  BELL('bell_entry'),
   ['note', '「돌과 나무」 — 둘째 고르기.'],
   I('oss_wedge', 'pull', 'oss.wedge'),
+  ...(crate ? [BELL('bell_coffins'), ['note', '오늘 밤의 틈에는 나무 부스러기뿐이다. 그 밤으로 돌아가 석상을 민다.'], T('oss_gap', 'oss.gap'), BELL('bell_coffins'), I('oss_wedge', 'pull', 'oss.wedge')] : []),
   I('oss_wedge', 'pull', 'oss.wedge'),
-  BELL('oss_bell_2'),
+  BELL('bell_coffins'),
   T('oss_gap', 'oss.gap'),
   T('oss_gap', 'oss.gap'),
   T('oss_arena', 'oss.arena'),
@@ -248,13 +249,15 @@ export const ROUTE_A = [
   I('oss_riddle', 'sign', 'oss.riddle'),
   ['ev', 'bell.echo', {}],
   I('oss_riddle', 'sign', 'oss.riddle'),
-  BELL('oss_bell_3'),
-  ['note', '그 밤의 보스 방 둘레. 종대 넷에 조종을 건다.'],
-  I('oss_knell_1', 'bell', 'oss.knell', { post: 1 }),
-  I('oss_knell_2', 'bell', 'oss.knell', { post: 2 }),
-  I('oss_knell_3', 'bell', 'oss.knell', { post: 3 }),
-  I('oss_knell_4', 'bell', 'oss.knell', { post: 4 }),
-  BELL('oss_bell_3'),
+  BELL('bell_riddle'),
+  ['note', '그 밤의 맨 안. 종대 넷에 조종을 건다.'],
+  I('knell_1', 'bell', 'oss.knell', { post: 1 }),
+  I('knell_2', 'bell', 'oss.knell', { post: 2 }),
+  I('knell_3', 'bell', 'oss.knell', { post: 3 }),
+  I('knell_4', 'bell', 'oss.knell', { post: 4 }),
+  ['note', '그 밤, 맨 안의 종은 아직 답하지 않는다. 석관의 방 종으로 돌아간다.'],
+  I('bell_arena', 'bell', 'bell.sealed'),
+  BELL('bell_riddle'),
   ['m', '100-104'],
   I('boss_rest', 'rest', 'rest'),
   ['m', '104-114'],
@@ -262,36 +265,33 @@ export const ROUTE_A = [
   ['note', '조종 넷을 채찍으로 쳐 노래를 깬다. 한 번 쓰러진다.'],
   ['ev', 'hero.dead', {}],
   ['ev', 'hero.respawn', {}],
+  ['note', '절반에서 여왕이 방 안의 종을 찢고 그 밤으로 달아난다. 같은 종에서 쫓아 건넌다.'],
   ['ev', 'boss.phase', { boss: 'banshee_queen', phase: 'flee' }],
-  BELL('boss_bell'),
+  ['save'],
+  BELL('bell_arena'),
+  ['talk', 'elise.asleep'],
+  ['note', '그 밤의 여왕을 몰아낸다. 여왕이 같은 종으로 쫓겨난다.'],
   ['ev', 'boss.phase', { boss: 'banshee_queen', phase: 'driven' }],
-  BELL('boss_bell'),
+  ['save'],
+  BELL('bell_arena'),
   ['ev', 'boss.phase', { boss: 'banshee_queen', phase: 'kneel' }],
   ['note', '무릎 꿇은 여왕 앞에서 「종」을 길게 — 조종.'],
   ['ev', 'boss.phase', { boss: 'banshee_queen', phase: 'sent' }],
   ['save'],
-  BELL('boss_bell'),
-  I('oss_elise', 'pull', 'oss.elise'),
-  ...ENDING,
+  BELL('bell_arena'),
+  crate ? ['talk', 'elise.asleep'] : I('oss_elise', 'sign', 'oss.elise'),
+];
+const KEEPERS = [
+  ['m', '114-118'],
+  ['talk', 'elise.past'],
 ];
 
-// ───────────────────────── route B: only what is built, through the bridges ─────────────────────────
-export const ROUTE_B = [
-  ...VILLAGE_NOW,
-  ['m', '15-20'],
-  ['note', '종탑 문으로 들어선다 — 종탑이 아직 없어 장면이 글로 이어진다.'],
-  ['ev', 'exit.missing', { id: 'to_belltower', to: 'belltower_now' }],
-  ...PAST_VILLAGE,
-  ...GRAVEYARD,
-  ['m', '58-68'],
-  ['note', '납골당 문 앞 — 길종을 거는 자리가 아직 없어 문에서 장면이 시작된다.'],
-  LOCKED('to_ossuary', 'not_built'),
-  ...AFTER_HANG,
-  ['m', '68-82'],
-  ['note', '납골당으로 들어선다 — 납골당이 아직 없어 던전 전체가 글로 이어진다.'],
-  ['ev', 'exit.missing', { id: 'to_ossuary', to: 'ossuary_now' }],
-  ...ENDING,
-];
+// ───────────────────────── route A: as designed ─────────────────────────
+export const ROUTE_A = [...VILLAGE_NOW, ...TOWER, ...PAST_VILLAGE, ...GRAVEYARD, ...HANG, ...AFTER_HANG, ...DUNGEON(false), ...KEEPERS, ...ENDING];
+
+// ───────────────────────── route B: the same chapter through the other branch of every choice (iron key; the wooden crate first) ─────────────────────────
+// (Until 2026-11-18 route B crossed the areas that were not built through bridge sequences. Every area is built now and the bridges are gone.)
+export const ROUTE_B = [...VILLAGE_NOW, ...TOWER, ...PAST_VILLAGE, ...GRAVEYARD, ...HANG, ...AFTER_HANG, ...DUNGEON(true), ...KEEPERS, ...ENDING];
 
 // unknown names must never throw
 export const NOISE = [

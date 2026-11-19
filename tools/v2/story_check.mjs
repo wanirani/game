@@ -497,9 +497,9 @@ function play(route, policy, label, deferred) {
 
 const A = play(ROUTE_A, [0], 'A');
 const A2 = play(ROUTE_A, [0], 'A again');
-const B = play(ROUTE_B, [1], 'B');
+const B = play(ROUTE_B, [1, 1, 0], 'B');   // the iron key · the wooden crate · then the statue
 const AD = play(ROUTE_A, [0], 'A deferred', true);     // the same route with every dialogue, camera and area change answered later
-const BD = play(ROUTE_B, [1], 'B deferred', true);
+const BD = play(ROUTE_B, [1, 1, 0], 'B deferred', true);
 for (const r of [A, B, AD, BD]) {
   for (const w of r.runWarn) err(`play ${r.label}: ${w}`);
   const s = r.st.state;
