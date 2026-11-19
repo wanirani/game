@@ -106,11 +106,12 @@ try {
     // the settings (the options scene pushed from the panel)
     const se = await ev(() => { const F = window.__F, g = window.__game; const r = F.pauseRow('settings'); F.tick(20); const names = (g.stack ?? g.scenes ?? []).map?.((q) => q?.constructor?.name ?? q?.id ?? '?') ?? null; return { r, names, cur: g.current?.constructor?.name ?? g.scene?.constructor?.name ?? null, keys: Object.keys(g).filter((k) => /scene|stack|top|cur/i.test(k)) }; });
     console.log('  settings: ' + JSON.stringify(se)); const n2 = await B('the settings over the panel'); await shot('night_settings');
-    ok(`${DEV}: the settings from the panel: no banner drawn, the clock stands`, n2.shown === false && n2.t === n1.t, `clock ${n1.t} -> ${n2.t} s`);
+    // (the settings row closes the panel and pushes the options scene - src/v2/ui/dialog.js pick: the game under it does not tick; whether a banner can be seen through it is for the eye: the still night_settings)
+    ok(`${DEV}: the settings from the panel: the options scene is on top, the game under it stands and so does the banner's clock`, n2.top === 'OptionsScene' && n2.t === n1.t && n2.simT === n1.simT, `top ${n2.top}, clock ${n1.t} -> ${n2.t} s`);
     await ev(() => { const F = window.__F; F.key('Escape'); F.tick(20); }); const n3 = await B('back from the settings (ESC)'); await shot('night_settings_back');
-    ok(`${DEV}: back from the settings the panel is up again and the banner still waits`, n3.modal === 'pause' && n3.shown === false && n3.banner === 'night' && n3.t === n1.t, `modal ${n3.modal}, clock ${n3.t} s`);
-    await ev(() => { const F = window.__F; F.pauseRow('resume'); F.tick(24); }); const n4 = await B('「이어 하기」'); await shot('night_resumed');
-    ok(`${DEV}: …and goes on after 「이어 하기」`, n4.modal === null && n4.shown === true && n4.banner === 'night' && n4.t > n1.t, `clock ${n4.t} s`);
+    ok(`${DEV}: back from the settings (ESC) the game goes on (no panel: as before this lane) - the banner is drawn again and its clock runs on from where it stood`, n3.top === 'V2Game' && n3.modal === null && n3.shown === true && n3.banner === 'night' && n3.t > n1.t && n3.t < n1.t + 0.5, `modal ${n3.modal}, clock ${n1.t} -> ${n3.t} s`);
+    const n4 = await ev(() => { const F = window.__F, sc = window.__v2.scene; const t0 = sc.hud.stats().bannerT; let n = 0; while (n < 600 && sc.hud.stats().banner) { F.tick(1, false); n++; } return { t0, n }; });
+    ok(`${DEV}: …and the night banner goes out when its 3.6 s are over`, Math.abs(n4.t0 + n4.n / 60 - 3.6) < 0.06, `it stood at ${n4.t0.toFixed(2)} s and went out ${n4.n} ticks later = ${(n4.t0 + n4.n / 60).toFixed(2)} s`);
   }
 
   // ───────────── the empty book on a fresh save ─────────────
