@@ -231,7 +231,8 @@ section('S5', 'the page hidden during a camera shot (the queen\'s entrance)', as
   const hid = await ev(() => window.__cs.hide()), stored = await ev(() => window.__cs.saved()); obs('hidden and shown during the shot', hid);
   await ev(() => { window.__cs.adv = 6; }); s = await wait((q) => q.idle && !!q.queen?.active, 200); obs('the scene after that', { ...pick(s), intro: await ev(() => window.__cs.done('ev_boss_intro')) });
   ok(!s.shot && !s.lock && !!s.queen?.active && (await ev(() => window.__cs.done('ev_boss_intro'))), 'the entrance ran to its end after the page came back: no lock left, she is awake');
-  s = await boot(stored); const introAtLoad = await ev(() => window.__cs.done('ev_boss_intro')); s = await wait((q) => q.idle && !!q.queen?.active, 200); const all = await ev(() => window.__cs.seenFrom(0)), hers = all.filter((l) => l.startsWith('line | 밴시 여왕'));
+  const introAtLoad = (JSON.parse(stored).story?.done ?? []).includes('ev_boss_intro');   // (read from the stored save itself: by the time the loaded game is idle the entrance has been played again)
+  s = await boot(stored); s = await wait((q) => q.idle && !!q.queen?.active, 200); const all = await ev(() => window.__cs.seenFrom(0)), hers = all.filter((l) => l.startsWith('line | 밴시 여왕'));
   obs('the save made while hidden, loaded', { ...pick(s), introDoneInTheSave: introAtLoad, intro: await ev(() => window.__cs.done('ev_boss_intro')), herLines: hers.length, shown: all.slice(0, 12) });
   ok(!!s.queen?.active && !s.lock, 'loaded: he is in her hall, she wakes, nothing is locked');
   ok(!introAtLoad && hers.length >= 4, `the save made during her entrance does not count it as done, and the entrance is played again from its start after the load (her lines said: ${hers.length})`);
