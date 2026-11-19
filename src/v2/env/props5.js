@@ -54,6 +54,27 @@ Object.assign(WALLPROPS, {
     if (!old) { const cu = u + 30, cy = y + 50, r0 = 11, r1 = 6.5; for (let i = 0; i < 6; i++) { const a = i * 1.0472, b = a + 1.0472; G.quad4('straw', F.pt(cu + Math.cos(a) * r1, cy + Math.sin(a) * r1, 3.2), F.pt(cu + Math.cos(a) * r0, cy + Math.sin(a) * r0, 3.2), F.pt(cu + Math.cos(b) * r0, cy + Math.sin(b) * r0, 3.2), F.pt(cu + Math.cos(b) * r1, cy + Math.sin(b) * r1, 3.2), F.n, { tint: [0.9, 0.78, 0.54], vary: 0.2, k: 0.9 + 0.2 * (i % 2) }); } }
     else F.box(G, 'metal', u + 27, u + 33, y + 58, y + 64, 0, 4, { faces: 'FLR', ...iron });
   },
+  /**
+   * STORY2: a crow's flight feather left on a ledge (the inn's window sill - the chapter's last picture, ENV_KIT 25): { u (the middle of its length), y (the
+   * ledge's top), w (how far out of the wall face its quill end lies - it may reach over the ledge's front edge), len (26), back (how much nearer the wall
+   * its tip lies), tilt (degrees its vane leans back from the ledge: flat it is a line three pixels high to a camera eight degrees above the ledge),
+   * lift (0.4 clear of the ledge: nothing of it lies in the ledge's plane) }. Quill end at -u, tip at +u. The wide vane rests on the ledge, the shaft bows up.
+   * The kit's white with a colour per vertex (blue-black vanes with a sheen at their edges, a pale quill) in the baked light of its spot: 32 triangles.
+   */
+  feather(G, F, s) {
+    const L = s.len ?? 26, k = L / 26, a = (s.tilt ?? 50) * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a), w0 = s.w ?? 5, back = s.back ?? 6, lift = s.lift ?? 0.4, n = F.vec(0, ca, sa);
+    // stations from the quill end to the tip: [t, the shaft's height up the leaning plane, wide (lower) vane, narrow (upper) vane, half the quill's width]
+    const S = [[0, 0.5, 0, 0, 0.5], [0.17, 1.7, 0, 0, 0.46], [0.32, 2.75, 1.9, 1.3, 0.4], [0.5, 3.5, 3.1, 1.9, 0.34], [0.68, 3.75, 3.4, 2.0, 0.27], [0.85, 3.35, 2.6, 1.6, 0.2], [1, 2.4, 0, 0, 0.03]];
+    const at = (t, v) => F.pt(s.u + (t - 0.5) * L, s.y + lift + v * k * sa, w0 - back * t - v * k * ca);
+    const CORE = [0.037, 0.063, 0.142], LO = [0.079, 0.149, 0.319], HI = [0.126, 0.179, 0.354], Q = (t) => [0.484 - 0.264 * t, 0.612 - 0.328 * t, 0.549 - 0.213 * t], o = { vary: 0 };
+    const piece = (A, B, C, D, cA, cB, cC, cD) => (A === D ? G.tri('white', A, B, C, n, { ...o, mul: [cA, cB, cC] }) : B === C ? G.tri('white', A, B, D, n, { ...o, mul: [cA, cB, cD] }) : G.quad4('white', A, B, C, D, n, { ...o, mul: [cA, cB, cC, cD] }));
+    for (let i = 0; i + 1 < S.length; i++) {
+      const [t0, r0, l0, u0, q0] = S[i], [t1, r1, l1, u1, q1] = S[i + 1], a0 = at(t0, r0 - q0), a1 = at(t1, r1 - q1), b0 = at(t0, r0 + q0), b1 = at(t1, r1 + q1);
+      piece(a0, a1, b1, b0, Q(t0), Q(t1), Q(t1), Q(t0));                                                                              // the quill
+      if (l0 + l1 > 0) piece(l0 ? at(t0, r0 - q0 - l0) : a0, l1 ? at(t1, r1 - q1 - l1) : a1, a1, a0, l0 ? LO : CORE, l1 ? LO : CORE, CORE, CORE);   // the wide vane (on the ledge)
+      if (u0 + u1 > 0) piece(b0, b1, u1 ? at(t1, r1 + q1 + u1) : b1, u0 ? at(t0, r0 + q0 + u0) : b0, CORE, CORE, u1 ? HI : CORE, u0 ? HI : CORE);   // the narrow vane
+    }
+  },
   /** a washing line along a wall (1697): { u (middle), y (height of the hooks), w (span), sag, n (pieces), off (distance from the wall), seed } */
   washline(G, F, s) {
     const w = s.w ?? 200, sag = s.sag ?? 16, off = s.off ?? 10, n = s.n ?? 5, sd = s.seed ?? 1, seg = 8, yt = (t) => s.y - sag * 4 * t * (1 - t), ut = (t) => s.u - w / 2 + w * t;
