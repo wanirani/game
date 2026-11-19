@@ -84,7 +84,7 @@ for (const e of sim.enemies) if (!e.dead) driveActor(charOf(e), e, dt);   // 적
 | jump | `hero.bufJ` | on the ground (or coyote time), not rolling, the move past `cancel` | the shell kept it 0.12 s |
 | skill | `hero.bufS` | on the ground, not rolling, the hit window over (`freeNow`) — hook if a ring is in reach, else the call. `deny` with `'reso'` / `'cd'` is said at once; `'busy'` only on the tick a carried press runs out | `deny 'busy'` on the press tick |
 
-- **The newest press wins**: a fresh press of any of the four forgets the older carried presses of the other three. **Same tick**: skill > roll > attack > jump (skill + attack: the skill goes, the attack of that tick is dropped; roll + attack: the roll, then the sweep — as before).
+- **The newest press wins**: a fresh press of any of the four forgets the older carried presses of the other three (WHIP2: except a **queued next combo hit**, which a later jump or skill press no longer forgets — see the WHIP2 bullet below). **Same tick**: skill > roll > attack > jump (skill + attack: the skill goes, the attack of that tick is dropped; roll + attack: the roll, then the sweep — as before).
 - **A press fires once**: whatever uses it zeroes it (`_startMove`, `_startRoll`, the jump, `_startAct('hook'｜'call')`, the guard tap).
 - **Stunned** (`hurtT`): presses are carried like any other, so the last 0.18 s of a stun is not dead input (a roll pressed there rolls on the first free tick). Presses at the start of the stun run out as before.
 - **One cancel rule changed**: a skill press that can fire (ring in reach, or resonance for the call) **lets go of the charge** (attack held) and goes. Everything else cancels as before.
