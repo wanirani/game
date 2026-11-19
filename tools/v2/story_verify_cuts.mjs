@@ -43,7 +43,7 @@ function install() {
   P.state = () => {
     const sc = v.scene, sim = sc.sim, h = sim?.hero, H = sc.host, e = sim ? queen() : null, ready = !!v.ready && !!sim, M = ready ? sc.hud.metrics?.() ?? {} : {};
     return { ready, area: v.area, idle: ready && P.idle(), modal: sc.hud.modal ?? null, shot: ready ? shotName() : null, lock: !!H?.locks?.(), inputLock: !!H?.inputLock, busy: !!H?.st.busy, x: h ? Math.round(h.x) : 0, z: h ? Math.round(h.z) : 0, hp: h ? Math.round(h.hp) : 0, dead: !!h?.dead,
-      pad: !!M.pad?.shown && !M.pad?.back, pills: ready ? Array.from(sc.state.prompts ?? []).map((p) => p.label) : [], line: H ? lastLine() : '', obj: H?.objective ?? '', ended: H?.ended ?? null, card: ready ? !!sc.ch?.card : false, seenCard: ready ? !!sc.ch?.seen : false,
+      pad: !!M.pad?.shown && !M.pad?.back && !M.pad?.cut, pauseOnly: !!M.pad?.shown && !!M.pad?.cut, pills: ready ? Array.from(sc.state.prompts ?? []).map((p) => p.label) : [], line: H ? lastLine() : '', obj: H?.objective ?? '', ended: H?.ended ?? null, card: ready ? !!sc.ch?.card : false, seenCard: ready ? !!sc.ch?.seen : false,
       queen: e ? { hp: Math.round(e.hp), max: e.hpMax, active: !!e.active, alpha: +(+e.alpha).toFixed(2), phase: e.bphase, hold: !!e.fleeHold, kneel: e.kneel > 0 } : null, q: ready ? { hp: sc.ch.q.hp, cur: Math.round(sc.ch.q.cur) } : null,
       flags: ready ? ['queen_fled', 'queen_driven', 'queen_sent', 'elise_found', 'keepers_promised', 'elise_home'].filter((f) => sc._flagFn(f)) : [], seen: H?.seen.length ?? 0, warn: H?.warnings.length ?? 0, top: g.top?.constructor?.name ?? '' };
   };

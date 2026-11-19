@@ -204,7 +204,7 @@ export function createPad(game, opts = {}) {
   }
   function hit(x, y) {
     let best = null, bd = 1e9;
-    for (const b of B) { const d = Math.hypot(x - b.cx, y - b.cy) - b.d / 2; if (d <= HIT_PAD && d < bd) { bd = d; best = b; } }
+    for (const b of B) { if (S.cut && b.id !== 'pause') continue; const d = Math.hypot(x - b.cx, y - b.cy) - b.d / 2; if (d <= HIT_PAD && d < bd) { bd = d; best = b; } }   // (STORY: during a cut only the pause button is there)
     return best;
   }
   function stickSet(dx, dy) {
@@ -234,7 +234,7 @@ export function createPad(game, opts = {}) {
     const x = e.clientX, y = e.clientY, b = hit(x, y);
     if (b) { claim(e); press(b, true, e.pointerId); paint(); return; }
     const z = S.L.stick.zone, st = S.stick;
-    if (st.ptr < 0 && x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h) {
+    if (!S.cut && st.ptr < 0 && x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h) {
       claim(e); st.ptr = e.pointerId; st.live = true;
       const R = S.L.stick.r, bd = S.bounds;
       st.ox = clamp(x, bd.l + R + 6, bd.r - R - 6); st.oy = clamp(y, bd.t + R + 6, bd.b - R - 6);
@@ -305,6 +305,16 @@ export function createPad(game, opts = {}) {
       }
     },
     setWanted(v) { S.want = !!v; },
+    /** STORY (state.cut, UI_API 2): a camera cut or a lockInput step of the story holds the hero - the stick and every button but 「멈춤」 leave the screen and take no
+     *  touch; the pause button stays where it is and works (a player can stop and leave from the first second, by touch as by key). Held buttons and the stick are let go. */
+    setCut(v) {
+      v = !!v; if (!!S.cut === v) return; S.cut = v;
+      if (v) { for (const b of B) if (b.id !== 'pause') press(b, false, -1, true); stickEnd(); }
+      const d = v ? 'none' : '';
+      for (const b of B) if (b.id !== 'pause') b.cv.style.display = d;
+      baseCv.style.display = d; knobCv.style.display = d;
+      if (S.shown) paint();
+    },
     /** CROSSING (state.cross.back, src/v2/game/crossing.js): the controls step back - the buttons and the stick fade out and take no new touch - and come
      *  back. Held buttons are let go; a finger that already holds the stick keeps it, so the hero walks on when the controls return. */
     setBack(v) {
@@ -317,7 +327,7 @@ export function createPad(game, opts = {}) {
     /** QA: geometry in CSS px. */
     metrics() {
       return {
-        k: S.L?.k, labelPx: S.L?.labelPx, bounds: { ...S.bounds }, shown: S.shown, back: !!S.back, repaints: S.repaints,
+        k: S.L?.k, labelPx: S.L?.labelPx, bounds: { ...S.bounds }, shown: S.shown, back: !!S.back, cut: !!S.cut, repaints: S.repaints,
         buttons: B.map((b) => ({ id: b.id, cx: b.cx, cy: b.cy, d: b.d, label: b.label, labelW: b.lw, labelRect: { x: b.cx - b.lw / 2, y: b.cy + b.d / 2 + (S.L?.labelPx ?? 0) * 0.12 - (S.L?.labelPx ?? 0) * 0.75, w: b.lw, h: (S.L?.labelPx ?? 0) * 1.5 }, down: b.down, cd: b.cd, disabled: b.disabled, icon: b.icon })),
         stick: S.L ? { ...S.L.stick, live: S.stick.live } : null,
       };

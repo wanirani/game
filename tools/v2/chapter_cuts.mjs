@@ -119,7 +119,7 @@ function install() {
     }
     sc._heroHid = hid0; sc._gl(Wv, Hv, 1, false);
     const H = sc.host, pr = sc.state.prompts ?? [], c = sc.cam;
-    return { who: out, noise, view: [Wv, Hv], pad: !!M.pad?.shown && !M.pad?.back, pills: Array.from(pr).map((p) => p.label), lock: !!H.locks(), modal: sc.hud.modal ?? null, dialogTop: dbox ? Math.round(dbox.y) : null, shot: shotName(),
+    return { who: out, noise, view: [Wv, Hv], pad: !!M.pad?.shown && !M.pad?.back && !M.pad?.cut, pauseOnly: !!M.pad?.shown && !!M.pad?.cut, pills: Array.from(pr).map((p) => p.label), lock: !!H.locks(), modal: sc.hud.modal ?? null, dialogTop: dbox ? Math.round(dbox.y) : null, shot: shotName(),
       cam: { x: Math.round(c.px), y: Math.round(c.py), z: Math.round(c.pz), look: [Math.round(c.tx), Math.round(c.tz)], pitch: +c.pitch.toFixed(2), dist: Math.round(c.dist) }, area: v.area, section: v.section, obj: H.objective, line: lastLine() };
   };
 }
