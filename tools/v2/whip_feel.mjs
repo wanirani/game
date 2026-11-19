@@ -96,7 +96,7 @@ async function measure(KINDS_WANT) {
   const targets = [...have]; if (sim().breakables && sim().breakables.some((q) => !q.broken)) targets.push('jar');
   for (const target of targets) for (const move of Object.keys(SCRIPT)) for (const rate of [60, 120]) { const r = await run(move, target, rate); if (r) rows.push(r); else rows.push({ move, target, rate, miss: true }); }
   // several things struck in one tick: four soldiers (or whatever the area has most of) around the hero in the third hit; every whole breakable within 400 px broken at once
-  const multi = {};
+  const multi = {}; { const SND = await import('/src/v2/feel/sound.js'), qi = feel.sound.q; multi.cap = { hit: SND.FLURRY.hit[qi], enemy: SND.FLURRY.enemy[qi] }; }
   { const kind = have[0]; if (kind) { W.put(X0, Z0, 1, 0); for (let i = 0; i < 10; i++) g.tick(1 / 60); const es = []; for (let k = 0; k < 4; k++) { const a = (k * Math.PI) / 2 + 0.4; es.push(W.enemy(kind, X0 + Math.cos(a) * 78, Z0 + Math.sin(a) * 60, { fresh: k > 0 && !sim().enemies.some((q) => q.kid === kind && !q.dead && !q._used) })); }
       rec.snd.length = 0; rec.frame = 0; let n = 0; const H = sim().hooks, h0 = H.hit; H.hit = function (...A) { if (A[2].id === 'c3') n++; return h0.apply(this, A); };
       const ev = SCRIPT.c3.ev; for (let i = 0; i < 70; i++) { for (const q of ev) if (q[0] === i) { if (q[1] === 'down') W.down(q[2]); else W.up(q[2]); } hero().hp = hero().hpMax; await pace(); g.tick(1 / 60); rec.frame++; }
@@ -147,8 +147,8 @@ const hv = cls('sweep') || cls('plunge');   // the H class: the sweep when it wa
 if (!cls('sweep')) console.log('NOTE the sweep was not measured against an enemy: this tool\'s finger script (roll, attack) did not land it on the standing target - it is the same swing code with strength H (like the plunge)');
 ok('light < medium < heavy: the first hit freezes fewer ticks than the second, the second fewer than the sweep / plunge, those fewer than the third hit and the charged coil', cls('c1') < cls('c2') && cls('c2') < hv && hv < cls('c3') && cls('whip') >= cls('c3'), ['c1', 'c2', 'sweep', 'plunge', 'c3', 'whip'].map((m) => m + ' ' + cls(m)).join(' · '));
 for (const A of all) {
-  if (A.multi.enemies) { const q = A.multi.enemies; ok(`${A.area}: ${q.struck} x ${q.kind} struck by one third hit start ${q.started} hit sounds, spread ${q.delaysMs.join(' / ')} ms`, q.struck >= 2 && q.started === Math.min(q.struck, 5), `asked ${q.asked}, levels ${q.vols.join(' / ')}`); }
-  if (A.multi.jars) { const q = A.multi.jars; ok(`${A.area}: ${q.broken} breakables broken in one tick start ${q.started} break sounds, spread ${q.delaysMs.join(' / ')} ms`, q.broken >= 2 && q.started === Math.min(q.broken, 5), `asked ${q.asked}, levels ${q.vols.join(' / ')}`); }
+  if (A.multi.enemies) { const q = A.multi.enemies; ok(`${A.area}: ${q.struck} x ${q.kind} struck by one third hit start ${q.started} hit sounds, spread ${q.delaysMs.join(' / ')} ms`, q.struck >= 2 && q.started >= Math.min(q.struck, A.multi.cap.hit) && q.started <= Math.min(q.struck, A.multi.cap.hit + 1), `asked ${q.asked}, levels ${q.vols.join(' / ')}; a flurry holds ${A.multi.cap.hit} at this quality, a finishing blow sounds beside it - src/v2/feel/sound.js FLURRY`); }
+  if (A.multi.jars) { const q = A.multi.jars; ok(`${A.area}: ${q.broken} breakables broken in one tick start ${q.started} break sounds, spread ${q.delaysMs.join(' / ')} ms`, q.broken >= 2 && q.started === Math.min(q.broken, A.multi.cap.enemy), `asked ${q.asked}, levels ${q.vols.join(' / ')}; the queue holds ${A.multi.cap.enemy}`); }
 }
 fs.writeFileSync(`${OUT}/feel.json`, JSON.stringify({ device: DEV, areas: all, rows }, null, 1));
 for (const e of L.errs) { console.log('ERR ' + e); fails++; }
