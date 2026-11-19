@@ -322,6 +322,9 @@ export function createPad(game, opts = {}) {
       if (!S.L) return;
       if (v) { for (const b of B) press(b, false, -1, true); paint(); }
       for (const b of B) { b.cv.style.transition = 'opacity 240ms ease-out'; b.cv.style.opacity = v ? '0' : String(S.op); }
+      // SCREENS (11-19): the pause button is gone at once, not faded - the scene takes no pause while a crossing runs, and a button that cannot answer is not drawn
+      // (a crossing inside a story cut used to leave it on screen, alone and deaf, while it faded). It comes back with the others, fading in, when it works again.
+      if (v) { const pb = byId.pause; pb.cv.style.transition = 'none'; pb.cv.style.opacity = '0'; }
       moveStick();
     },
     /** SCREENS: where button i stands (CSS px), written into `out` - nothing is made (the cards and the book chip place themselves by it every tick) */

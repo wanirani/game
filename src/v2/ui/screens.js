@@ -382,7 +382,7 @@ export function createScreens(env) {
     /** QA: geometry in logical px */
     info() {
       if (!S.kind) return null;
-      const vis = []; for (let i = 0; i < N; i++) { const y = G.ly + rowY[i] - S.scroll; vis.push({ i, id: rows[i].id ?? null, kind: rows[i].kind ?? null, state: rows[i].state ?? null, isNew: !!rows[i].isNew, x: G.lx, y, w: G.lw, h: rowH[i], on: y + rowH[i] > G.ly && y < G.ly + G.lh }); }
+      const vis = []; for (let i = 0; i < N; i++) { const y = G.ly + rowY[i] - S.scroll; vis.push({ i, id: rows[i].id ?? null, kind: rows[i].kind ?? null, state: rows[i].state ?? null, isNew: !!rows[i].isNew, x: G.lx, y, w: G.lw, h: rowH[i], on: y + rowH[i] > G.ly && y < G.ly + G.lh, baked: slotOf[i] >= 0 }); }
       return { kind: S.kind, t: S.t, frame: { x: G.x0, y: G.y0, w: G.x1 - G.x0, h: G.y1 - G.y0 }, close: { x: G.cx, y: G.cy, w: G.cw, h: G.cw }, list: { x: G.lx, y: G.ly, w: G.lw, h: G.lh }, colW: G.colW, fold: G.sp, scroll: S.scroll, max: S.max, v: S.v, sel: S.sel, say: S.say, keeper: S.kind === 'shop' && shopD ? shopD.keeper : null, line: S.kind === 'shop' && shopD ? shopD.line : null, side: S.kind === 'shop' && sideP.c ? { x: G.x0 + px(10), y: G.y0 + G.hh + px(8), w: sideP.w, h: sideP.h, bust: !!sideP.im } : null, rows: vis, n: N, last: S.last ?? null,
         coins: coinP.c && S.kind !== 'chronicle' ? { x: G.cx - px(10) - coinP.w, y: G.y0 + (G.hh - coinP.h) / 2 + px(2), w: coinP.w, h: coinP.h, n: S.coinN } : null, baked: slots.filter((q) => q.i >= 0).length, B: G.B };
     },

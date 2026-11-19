@@ -30,6 +30,7 @@ export class Whip {
     this._k = new Float32Array(8);             // one evaluated key: f r y w bf br by
     this._w = new Float32Array(21);            // scratch: world tip xyz, slack xyz, peak xyz, then the authored tip at 1/3 and 2/3 of the tick, at its start and at its end
     this._arc = 0; this._bow = 0;              // _arc: the last update moved the lash (0 while frozen) · _bow: this tick has an authored arc for the streak's in-between points
+    this.dull = 0;                             // seconds left of "the bell stayed shut" (set by the scene's crossing): the shard does not light up and no ring event goes out
     this.tip = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, speed: 0 };
     this.hist = new Float32Array(TRAIL_N * 4);   // tip path, TRAIL_PER points per tick, newest first: x y z strength (the streak behind the tip - mesh.js draws it)
     this.trailLive = 0; this.trailW = 1;
@@ -304,7 +305,7 @@ export class Whip {
     const pe = sh.ev === 'ring' || sh.hold == null ? sh.peak : sh.peak + 0.2;   // (a strike on the rules' clock: this tick's hits were reported before the lash moved, so the crack in the air needs no wait any more)
     if (sw.ps < pe && s >= pe) {
       const t = this.tip, sp = t.speed || 1;
-      if (sh.ev === 'ring') { this.pulse = 1; this._emit('ring', W[0], W[1], W[2], 0, 1, 0, sh.kind); } else if (!sw.hitCrack) { this.flash = Math.max(this.flash, 0.7); this._emit('crack', t.x, t.y, t.z, t.vx / sp, t.vy / sp, t.vz / sp, 'air'); }
+      if (sh.ev === 'ring') { if (!(this.dull > 0)) { this.pulse = 1; this._emit('ring', W[0], W[1], W[2], 0, 1, 0, sh.kind); } } else if (!sw.hitCrack) { this.flash = Math.max(this.flash, 0.7); this._emit('crack', t.x, t.y, t.z, t.vx / sp, t.vy / sp, t.vz / sp, 'air'); }
     }
     sw.ps = s;
     this.trail = sh.trail !== false && s > -0.35 && s < 1.25 ? 1 : 0;
@@ -442,6 +443,7 @@ export class Whip {
   update(dt, hand, rdt) {
     if (!this.ready) { this.reset(hand); if (!(dt > 0)) return; }
     { const pn = this.pin; pn.e0 = pn.e; if (pn.e < 1) { pn.e += (rdt > 0 ? rdt : dt > 0 ? dt : 1 / 60) / 0.07; if (pn.e > 1) pn.e = 1; } }
+    if (this.dull > 0) this.dull -= rdt > 0 ? rdt : dt > 0 ? dt : 1 / 60;
     if (!(dt > 0)) { this.prev.set(this.nodes); this._keepGrip(); this._arc = 0; return; }
     this._dtTick = dt;
     const jx = hand.x - this._lx, jy = hand.y - this._ly, jz = hand.z - this._lz;

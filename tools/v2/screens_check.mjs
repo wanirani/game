@@ -1,5 +1,5 @@
 // SCREENS lane check (docs/v2/UI_API.md 10): the chronicle book, the bag, the item and chronicle cards, the choice cards, Rook's shop.
-//   node tools/v2/screens_check.mjs [--out /tmp/claude-0/v2/screens] [--devices fold_open,phone2] [--only node,pause,book,cards,bag,choice,shop,persist,cut,alloc] [--saves <bot saves>] [--shots 1]
+//   node tools/v2/screens_check.mjs [--out /tmp/claude-0/v2/screens] [--devices fold_open,phone2] [--only node,pause,book,cards,bag,choice,shop,persist,cut,ending,alloc] [--saves <bot saves>] [--shots 1]
 // NODE (no browser): the model on the story's own saves (rows of the book: blank -> half -> pair, the marks of new rows, the bag, the shop's states
 //   and purchases, the guide candle), the draught in the rules (sim.js _die), the silver of the village's jars against the prices.
 // PAGE (scene v2g with the story, one browser, each device in turn): every screen and card is opened BY TOUCH through the pointer handlers in game
@@ -107,7 +107,7 @@ if (want('node')) {
 }
 
 // ════════════════════════════ PAGE ════════════════════════════
-const PAGE_PARTS = ['pause', 'book', 'cards', 'bag', 'choice', 'shop', 'persist', 'cut', 'alloc'];
+const PAGE_PARTS = ['pause', 'book', 'cards', 'bag', 'choice', 'shop', 'persist', 'cut', 'ending', 'alloc'];
 if (PAGE_PARTS.some(want)) {
   const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
   const port = 8200 + Math.floor(Math.random() * 700), srv = await start(port);
@@ -164,11 +164,16 @@ if (PAGE_PARTS.some(want)) {
       const ev = (fn, a) => page.evaluate(fn, a);
       const shot = async (name) => { if (!SHOTS) return; await ev(() => window.__F.draw()); await page.screenshot({ path: `${OUT}/${DEV}_${name}.png` }); };
       /** open the game on a save (a bot save number, an object, or null = whatever the page has stored) */
-      const open = async (sv, q = '') => {
+      const open = async (sv, q = '', early = false) => {
         const o = typeof sv === 'number' ? saveOf(sv) : sv;
         await page.goto(`http://localhost:${port}/tools/v2/fx_view.css`).catch(() => {});
         if (o !== undefined) await ev((s) => { if (s === null) localStorage.removeItem('bn.v2.save'); else localStorage.setItem('bn.v2.save', JSON.stringify(s)); localStorage.removeItem('bn.v2.ui'); }, o ?? null);
         await page.goto(`http://localhost:${port}/index.html?scene=v2g&v2auto=0&v2res=0.5${q}`);
+        if (early) {   // the game is stopped the moment the area stands and the new interface is in (a scene that begins at once - the opening's cut - is then met at its start)
+          await page.waitForFunction(() => { const v = window.__v2; if (v?.id === 'g' && v.ready && v.stats?.hud === 'ui') { window.__game._pageHidden = true; return true; } return !!v?.error; }, null, { timeout: 180000, polling: 30 });
+          const st = await ev(install); await ev(() => { const F = window.__F, c = window.__game.canvasRect; F.tapCss(c.x + c.w * 0.62, c.y + c.h * 0.36, 1, 60); F.tick(2); });
+          return st;
+        }
         await page.waitForFunction(() => window.__v2?.id === 'g' && (window.__v2.ready || window.__v2.error), null, { timeout: 180000 });
         await page.waitForFunction(() => window.__v2?.stats?.hud === 'ui' || /v2ui=0/.test(location.search), null, { timeout: 20000 }).catch(() => {});
         const cdp = await ctx.newCDPSession(page), T = new Touch(cdp, page);
@@ -449,7 +454,133 @@ if (PAGE_PARTS.some(want)) {
           }
         }
       }
-      // @@PARTS4@@
+      // ───────────── a screen opened from the panel during a story cut; 「나가기」 from there ─────────────
+      if (want('cut')) {
+        const reg = () => ev(async () => { const g = window.__game; if (!g.registry.v2pick) { const m = await import('/src/v2/chooser.js'); g.register('v2pick', m.default); } return true; });
+        const toCut = () => ev(() => { const F = window.__F, sc = window.__v2.scene, H = sc.host; let n = 0; while (n++ < 900 && !(H.shot && H.shotLock && H.shotT > 0.5 && H.shotT < 2.7 && !sc.hud.modal)) F.tick(1, false); F.draw(); const m = F.M(); return { n, shotT: H.shotT, lock: H.locks(), modal: sc.hud.modal, pad: m.pad ? { shown: m.pad.shown, cut: m.pad.cut } : null, pills: (sc.state.prompts ?? []).length }; });
+        await open(null, '', true);
+        const c0 = await toCut();
+        ok(`${DEV}: a new game: the opening's camera cut holds the hero (${c0.shotT.toFixed(2)} s left), the pad shows the pause button only, no pill`, c0.lock && c0.modal === null && !!c0.pad && c0.pad.shown && c0.pad.cut && c0.pills === 0, JSON.stringify(c0));
+        const c1 = await ev(() => { const F = window.__F, sc = window.__v2.scene; const a = F.openPause(), ids = F.M().pause?.ids.join(' ') ?? '', w0 = F.world(); F.pauseRow('chronicle'); F.tick(12); const s1 = sc.hud.screen, rows = F.M().screen?.rows.map((r) => r.kind).join(' '); F.tick(120); const w1 = F.world(); F.draw(); return { a, ids, s1, rows, w0, w1, modal: sc.hud.modal }; });
+        const same = (a, b) => a.t === b.t && a.shotT === b.shotT && a.waits === b.waits && a.seen === b.seen && a.hero === b.hero && a.moves === b.moves && a.walk === b.walk && a.E === b.E;
+        ok(`${DEV}: during the cut the pause button (touch) opens the panel and 「연대기」 the book (nothing written yet: one line says so)`, c1.a && c1.ids.includes('chronicle bag') && c1.s1 === 'chronicle' && c1.rows === 'empty' && c1.modal === 'pause', `${c1.ids} · ${c1.s1} · rows ${c1.rows}`);
+        ok(`${DEV}: two seconds with the book open in the cut: the shot's timer, the rules' clock and what was shown stand still`, same(c1.w0, c1.w1), `shotT ${c1.w0.shotT.toFixed(4)} -> ${c1.w1.shotT.toFixed(4)} · clock ${c1.w0.t.toFixed(3)} -> ${c1.w1.t.toFixed(3)} · seen ${c1.w0.seen} -> ${c1.w1.seen}`);
+        await shot('cut_book');
+        const c2 = await ev(() => { const F = window.__F, sc = window.__v2.scene, H = sc.host, w0 = F.world(); F.closeBtn(); F.tick(10); const p = F.M().pause, back = { modal: sc.hud.modal, sel: p ? p.ids[p.sel] : null }; F.pauseRow('bag'); F.tick(12); const s1 = sc.hud.screen; F.tick(120); const w1 = F.world(); F.closeBtn(); F.tick(10); F.pauseRow('resume'); F.tick(1); const modal = sc.hud.modal, left = H.shotT, seenA = H.seen.length; let n = 0; while (n++ < 600 && sc.hud.modal !== 'dialog') F.tick(1, false); F.draw(); const m = F.M(); return { back, s1, w0, w1, modal, left, n, seenA, seenB: H.seen.length, pad: m.pad?.shown, line: H.seen[H.seen.length - 1] }; });
+        ok(`${DEV}: closed, the panel is back; 「가방」 opens the bag in the same cut and two more seconds pass without the scene moving`, c2.back.modal === 'pause' && c2.back.sel === 'chronicle' && c2.s1 === 'bag' && same(c2.w0, c2.w1), `shotT ${c2.w0.shotT.toFixed(4)} -> ${c2.w1.shotT.toFixed(4)}`);
+        const want2 = Math.round(c2.left * 60);
+        ok(`${DEV}: 「이어 하기」: the shot runs out exactly its remaining time (${c2.left.toFixed(2)} s = ${want2} ticks) and the first line follows; nothing was skipped`, c2.modal === null && Math.abs(c2.n - want2) <= 3 && c2.seenB === c2.seenA + 1, `the line opened after ${c2.n} ticks · seen ${c2.seenA} -> ${c2.seenB}`);
+        // 「나가기」 from the panel in the cut, after a screen was opened and closed there
+        await open(null, '', true); await reg();
+        const l0 = await toCut();
+        const l1 = await ev(() => { const F = window.__F, sc = window.__v2.scene; F.openPause(); F.pauseRow('chronicle'); F.tick(20); F.closeBtn(); F.tick(10); const a = sc.hud.modal; F.pauseRow('leave'); return { a, lock: sc.host.locks() }; });
+        let top = ''; for (let i = 0; i < 60 && top !== 'V2Chooser'; i++) { top = await ev(() => { const g = window.__game; g._pageHidden = true; try { for (let k = 0; k < 20; k++) g.tick(1 / 60); g.alpha = 1; g.render(); } catch { /* between scenes */ } return g.top?.constructor?.name ?? ''; }).catch(() => ''); if (top !== 'V2Chooser') await page.waitForTimeout(150); }
+        const sv = await ev(() => localStorage.getItem('bn.v2.save'));
+        ok(`${DEV}: 「나가기」 from the panel in the cut (after the book was opened and closed there): the 3D chooser is on top`, l0.lock && l1.a === 'pause' && top === 'V2Chooser', `top ${top} · the save left behind: ${sv ? JSON.stringify((({ why, area, story }) => ({ why, area, done: story.done.length }))(JSON.parse(sv))) : 'none (nothing had happened yet)'}`);
+      }
+
+      // ───────────── the ending: a screen during its walk, the crossing in the cut, the card, the book, a reload, the way out ─────────────
+      if (want('ending')) {
+        await open(82);
+        const reg = () => ev(async () => { const g = window.__game; if (!g.registry.v2pick) { const m = await import('/src/v2/chooser.js'); g.register('v2pick', m.default); } return true; });
+        await ev(() => {
+          const F = window.__F, g = window.__game, v = window.__v2;
+          /** ticks with the dialogue pages turned by touch; stops when pred(name) holds */
+          F.go = (max, pred) => { let n = 0, d = 0; for (; n < max; n++) { const sc = v.scene, H = sc.host; if (pred && F.preds[pred](sc, H)) break; if (sc.hud.modal === 'dialog') { if (++d >= 9) { d = 0; const S = F.safe(); F.tap(S.vw / 2, S.vh * 0.3, 1); continue; } } try { g.tick(1 / 60); } catch { /* between areas */ } } try { F.draw(); } catch { /* */ } const sc = v.scene, H = sc.host, m = sc.hud.metrics(); return { n, area: v.area, ready: v.ready, modal: sc.hud.modal, busy: H.st.busy, running: H.st.running, xing: !!sc.xing, walk: H.walk ? H.walk.t : -1, lock: H.locks(), end: m.end, screen: sc.hud.screen, endT: sc.ch.endT }; };
+          F.preds = { walk: (sc, H) => H.walk !== null && H.walk.t > 0.1, xing: (sc) => !!sc.xing, home: (sc) => v.ready && !sc.xing && !sc._go && v.area === 'eshville_now', end: (sc) => sc.hud.modal === 'end' && !!sc.hud.metrics().end?.ready, card: (sc) => sc.hud.metrics().cards.up.some((c) => c.kind === 'chronicle') };
+          F.vis = () => { const out = []; for (const c of document.querySelectorAll('#v2pad canvas')) { const cs = getComputedStyle(c); if (cs.display !== 'none' && Number(cs.opacity) > 0.05 && getComputedStyle(c.parentNode).display !== 'none') out.push(c.dataset.id ?? c.className); } return out; };
+        });
+        const e0 = await ev(() => { const F = window.__F, sc = window.__v2.scene; F.put(4320, 1400, -1, 0); F.tick(30); sc._ringLong(null); return F.go(600, 'walk'); });
+        ok(`${DEV}: the ending begins (the long ring at the big bell in 1697): the story walks the hero to his mark`, e0.running === 'ev_ending' && e0.walk > 0 && e0.lock, JSON.stringify({ running: e0.running, walk: e0.walk, lock: e0.lock }));
+        const e1 = await ev(() => { const F = window.__F, sc = window.__v2.scene, H = sc.host, vis = F.vis().join(' '); const a = F.openPause(), w0 = F.world(); F.pauseRow('chronicle'); F.tick(12); const s1 = sc.hud.screen; F.tick(90); const w1 = F.world(); F.closeBtn(); F.tick(8); F.pauseRow('resume'); F.tick(2); const w2 = F.world(); return { a, vis, s1, w0, w1, w2, modal: sc.hud.modal }; });
+        ok(`${DEV}: during his walk (moveHero) the pause button is the only thing of the pad on screen; the panel and the book open by touch and the walk stands still (walk time, his place, the people's walks)`, e1.vis === 'pause' && e1.a && e1.s1 === 'chronicle' && e1.w0.walk === e1.w1.walk && e1.w0.hero === e1.w1.hero && e1.w0.moves === e1.w1.moves && e1.w0.t === e1.w1.t, `walk ${e1.w0.walk.toFixed(3)} -> ${e1.w1.walk.toFixed(3)} · hero ${e1.w0.hero} -> ${e1.w1.hero}`);
+        ok(`${DEV}: …and goes on from there when the panel is closed`, e1.modal === null && e1.w2.walk > e1.w1.walk, `walk ${e1.w1.walk.toFixed(3)} -> ${e1.w2.walk.toFixed(3)}`);
+        // the last crossing, inside the cut: is the pause button there, and does it answer?
+        const x0 = await ev(() => window.__F.go(2400, 'xing'));
+        const X = []; let home = null;
+        for (let i = 0; i < 140; i++) {
+          const q = await ev((i) => { const F = window.__F, sc = window.__v2.scene, g = window.__game; let tapped = null, touched = false; if (sc.xing && (i === 2 || i === 8)) { touched = true; const b = F.pauseBtn(); if (b) { F.fire('pointerdown', 46, b[0], b[1]); try { g.tick(1 / 60); } catch { /* */ } F.fire('pointerup', 46, b[0], b[1]); try { g.tick(1 / 60); } catch { /* */ } tapped = sc.hud.modal; if (sc.hud.modal === 'pause') { sc.hud.closePause(); } } } const r = F.go(6, null); const m = sc.hud.metrics(); return { ...r, vis: F.vis().join(' '), pad: m.pad ? { shown: m.pad.shown, cut: m.pad.cut, back: m.pad.back } : null, phase: sc.cx?.phase ?? null, tapped, touched }; }, i).catch(() => null);
+          if (!q) { await page.waitForTimeout(150); continue; }
+          if (q.xing) X.push(q); else if (q.ready && q.area === 'eshville_now') { home = q; break; }
+          await page.waitForTimeout(60);
+        }
+        const seenBtn = X.filter((q) => q.vis.split(' ').includes('pause')).length, taps = X.filter((q) => q.tapped !== null);
+        console.log(`     the crossing in the cut: ${X.length} samples · phases ${[...new Set(X.map((q) => q.phase))].join(' ')} · pause button visible in ${seenBtn} · pad ${JSON.stringify(X[0]?.pad)} · touches where it stands: ${X.filter((q) => q.tapped !== undefined && q.touched).length} -> opened ${taps.length ? taps.map((q) => String(q.tapped)).join(', ') : 'nothing'}`);
+        ok(`${DEV}: while the last crossing runs inside the cut the pause button is not on screen (it could not answer there: the scene takes no pause during a crossing)`, x0.xing && X.length > 0 && seenBtn === 0 && taps.length === 0 && X.some((q) => q.touched), `${seenBtn} of ${X.length} samples showed it`);
+        ok(`${DEV}: the crossing lands tonight and the last scene plays`, !!home && home.area === 'eshville_now', JSON.stringify(home && { area: home.area, running: home.running }));
+        // tonight's side: the chronicle card rises in the scene, the ending card, then the book
+        const h1 = await ev(() => { const F = window.__F; const a = F.go(3000, 'card'); const m = F.M(); return { a, cards: m.cards.up, chip: !!m.cards.chip, vis: F.vis().join(' '), banner: m.hud.bannerRect, toasts: m.hud.toastRects }; });
+        const cc = h1.cards.find((c) => c.kind === 'chronicle');
+        ok(`${DEV}: in the last scene the story's chronicle step raises its card (「${cc?.text ?? ''}」) clear of the banner and the toasts`, !!cc && (!h1.banner || !hits(cc, h1.banner)) && h1.toasts.every((t) => !hits(cc, t)), cc ? R(cc) + ` · banner ${R(h1.banner)}` : JSON.stringify(h1.a));
+        await shot('ending_card_chronicle');
+        const h2 = await ev(() => window.__F.go(4000, 'end'));
+        ok(`${DEV}: the ending card comes up and is ready`, h2.modal === 'end' && h2.end?.ready, JSON.stringify(h2.end));
+        await shot('end_card');
+        await reg();
+        const b1 = await ev(() => { const F = window.__F, sc = window.__v2.scene, S = F.safe(); F.tap(S.vw / 2, S.vh / 2, 1); F.tick(14); const m = F.M(), row = m.screen?.rows.find((r) => r.id === 'two_keepers') ?? null; const o = JSON.parse(localStorage.getItem('bn.v2.save') ?? 'null'); return { screen: sc.hud.screen, modal: sc.hud.modal, row, list: m.screen?.list, top: window.__game.top?.constructor?.name, save: o ? { why: o.why, card: o.ch?.card ?? null, done: o.story.done.includes('ev_ending_home') } : null, book: sc.host.seen.filter((e) => e[0] === 'book').length, endT: sc.ch.endT }; });
+        ok(`${DEV}: a touch on the ending card opens the chronicle by itself on what the chapter wrote (두 종지기 in the window, cause and consequence joined); the scene has not left`, b1.screen === 'chronicle' && b1.modal === 'pause' && !!b1.row && b1.row.on && b1.row.kind === 'pair' && b1.top === 'V2Game' && b1.book === 1, b1.row ? `row ${R(b1.row)} in ${R(b1.list)}` : JSON.stringify(b1));
+        ok(`${DEV}: nothing was saved by the card's touch: the stored save still says the card was not dismissed`, !!b1.save && b1.save.done === true && !b1.save.card && b1.save.why !== 'end', JSON.stringify(b1.save));
+        await ev(() => window.__F.tick(60)); await shot('end_book');
+        // a reload with the book open: the card again (then the book) - never a free hero at the bell
+        await open(undefined); await reg();
+        await ev(() => { const F = window.__F, g = window.__game, v = window.__v2; F.go2 = (max) => { let n = 0, free = 0, firstLock = -1; for (; n < max; n++) { const sc = v.scene, H = sc.host; if (sc.hud.modal === 'end' && sc.hud.metrics().end?.ready) break; const held = H.locks() || !!sc.hud.modal || sc.ch.endT >= 0 || !!sc.ch.pend || !!H.ended; if (held && firstLock < 0) firstLock = n; if (!held) free++; g.tick(1 / 60); } F.draw(); const sc = v.scene; return { n, free, firstLock, modal: sc.hud.modal, end: sc.hud.metrics().end, pend: sc.ch.pend, endT: sc.ch.endT }; }; });
+        const r1 = await ev(() => window.__F.go2(1500));
+        ok(`${DEV}: reloaded with the book open: the ending card comes back (the hero is never free: the story holds him from the first tick)`, r1.modal === 'end' && r1.end?.ready && r1.free === 0, JSON.stringify({ ticks: r1.n, free: r1.free, modal: r1.modal }));
+        const r2 = await ev(() => { const F = window.__F, sc = window.__v2.scene, S = F.safe(); F.tap(S.vw / 2, S.vh / 2, 1); F.tick(40); const a = { screen: sc.hud.screen, rows: F.M().screen?.n }; F.closeBtn(); return a; });
+        let top = ''; for (let i = 0; i < 80 && top !== 'V2Chooser'; i++) { top = await ev(() => { const g = window.__game; g._pageHidden = true; try { for (let k = 0; k < 12; k++) g.tick(1 / 60); g.alpha = 1; g.render(); } catch { /* between scenes */ } return g.top?.constructor?.name ?? ''; }).catch(() => ''); if (top !== 'V2Chooser') await page.waitForTimeout(150); }
+        const sv = await ev(() => { const o = JSON.parse(localStorage.getItem('bn.v2.save') ?? 'null'); return o ? { why: o.why, card: o.ch?.card ?? null, read: o.scr?.read?.length ?? 0, chip: o.scr?.chip } : null; });
+        ok(`${DEV}: the card again, the book again; closed by its button the game leaves as it always did - the 3D chooser, the save written with the card dismissed`, r2.screen === 'chronicle' && top === 'V2Chooser' && !!sv && (sv.why === 'end' || sv.why === 'leave') && sv.card === true && sv.chip === false, `book rows ${r2.rows} · top ${top} · save ${JSON.stringify(sv)}`);
+      }
+
+      // ───────────── allocation per frame with each screen open and still; thirty entries flung ─────────────
+      if (want('alloc')) {
+        await open(33);
+        const cdp = await ctx.newCDPSession(page);
+        await ev(() => { const F = window.__F, sc = window.__v2.scene; const cv = document.createElement('canvas'), S = sc.state; cv.width = Math.round(S.viewW * 2); cv.height = Math.round(S.viewH * 2); const c = cv.getContext('2d');
+          F.frames = (n) => { const S = sc.state; for (let i = 0; i < n; i++) { sc.hud.update(1 / 60, S); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); c.setTransform(2, 0, 0, 2, 0, 0); sc.hud.draw(c, S); } };
+          F.timed = (n) => { const S = sc.state, T = new Float32Array(n); for (let i = 0; i < n; i++) { const t0 = performance.now(); sc.hud.update(1 / 60, S); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); c.setTransform(2, 0, 0, 2, 0, 0); sc.hud.draw(c, S); T[i] = performance.now() - t0; } return Array.from(T); }; });
+        const MINE = /\/src\/v2\/ui\/(screens|cards|choice|model|icons)\.js/;
+        const measure = async (label, N = 1500) => {
+          await ev(() => window.__F.frames(300));
+          await cdp.send('HeapProfiler.enable'); await cdp.send('HeapProfiler.startSampling', { samplingInterval: 64, includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true });
+          await ev((n) => window.__F.frames(n), N);
+          const { profile } = await cdp.send('HeapProfiler.stopSampling');
+          let total = 0, mine = 0; const rows = [];
+          (function walk(n) { const f = n.callFrame; if (n.selfSize > 0) { total += n.selfSize; const own = MINE.test(f.url); if (own) mine += n.selfSize; rows.push([n.selfSize, `${f.functionName || '(anon)'} ${f.url.split('/').slice(-1)[0]}:${f.lineNumber + 1}`, own]); } for (const c of n.children || []) walk(c); })(profile.head);
+          rows.sort((a, b) => b[0] - a[0]);
+          const top = rows.filter((r) => r[2]).slice(0, 3).map((r) => `${(r[0] / N).toFixed(0)} B ${r[1]}`).join(' · ');
+          console.log(`     ${label}: ${(total / N).toFixed(0)} B/frame in all, ${(mine / N).toFixed(0)} B/frame in the screens' own files${top ? ' (' + top + ')' : ''}`);
+          return { total: total / N, mine: mine / N };
+        };
+        const base = await measure('the HUD alone (no screen)');
+        const A = {};
+        await ev(() => { const F = window.__F; F.openPause(); F.pauseRow('chronicle'); F.tick(90); }); A.book = await measure('the book open and still');
+        await ev(() => { const F = window.__F; F.closeBtn(); F.tick(8); F.pauseRow('bag'); F.tick(60); }); A.bag = await measure('the bag open and still');
+        await ev(() => { const F = window.__F, sc = window.__v2.scene; F.closeBtn(); F.tick(8); F.pauseRow('resume'); F.tick(6); sc.hud.openScreen('shop', { shop: 'rook' }); F.tick(60); }); A.shop = await measure('the shop open and still');
+        await ev(() => { const F = window.__F, sc = window.__v2.scene; F.closeBtn(); F.tick(8); for (let i = 0; i < 3; i++) sc.hud.card('item', { name: '낡은 은 열쇠', icon: 'key_silver', time: 600 }); F.tick(30); }); A.cards = await measure('three cards up, the chip up');
+        await ev(() => { const F = window.__F, sc = window.__v2.scene; sc.hud.showDialog({ speaker: '하드윈 1세', text: '쇠로 하겠소, 은으로 하겠소?', choices: ['은 열쇠', '쇠 열쇠'], choiceMeta: [{ icon: 'key_silver', line: '은은 백 년 뒤에도 그대로다' }, { icon: 'key_iron', line: '쇠는 백 년이면 녹슬어 굳는다' }], onChoice() {} }); F.tick(90); }); A.choice = await measure('the choice cards up and still');
+        for (const k of Object.keys(A)) ok(`${DEV}: ${k} open and still - the screens' own code makes no objects per frame (sampled bytes in its files: boxed numbers handed to canvas calls at most)`, A[k].mine <= 400, `${A[k].mine.toFixed(0)} B/frame in screens.js · cards.js · choice.js · model.js · icons.js; the whole HUD ${A[k].total.toFixed(0)} B/frame against ${base.total.toFixed(0)} alone`);
+        // thirty entries: drag, let go, momentum
+        const perf = await ev(() => {
+          const F = window.__F, sc = window.__v2.scene, M = sc.host.model, real = M.book(), R30 = [];
+          sc.hud.closeDialog(); F.tick(4);
+          for (let i = 0; i < 30; i++) { const src = real[i % real.length], k = i % 3; R30.push(k === 0 ? { id: 'p' + i, kind: 'pair', era: 'past', title: '묘지 문 열쇠 ' + (i + 1), hint: '', L: { title: '대장간에 맡긴 열쇠', text: '하드윈 1세에게 묘지 문 열쇠를 맡겼다.' }, R: { title: '손자의 서랍', text: '손자 하드윈의 서랍에 은 열쇠와 빈칸 주문서가 있었다.' }, key: 'p' + i, isNew: i < 3 } : k === 1 ? { id: 'l' + i, kind: 'line', era: i % 2 ? 'now' : 'past', title: '넷째 붉은 달 ' + (i + 1), hint: '', L: i % 2 ? null : { title: '넷째 붉은 달', text: '1697년 붉은 달 밤, 에드문트 발크레인이 수녀 일곱과 총잡이 울프람을 데리고 성에 올랐다. 백작은 쓰러졌다. 일행은 돌아오지 못했다.' }, R: i % 2 ? { title: '금 간 종', text: '1797년 붉은 달 밤, 박쥐 떼가 성당의 종에 금을 냈다. 종지기 엘리제와 사냥꾼 한 사람이 금 사이로 떨어졌다.' } : null, key: 'l' + i, isNew: false } : { id: 'b' + i, kind: 'blank', era: 'past', title: '식탁의 빈 의자 ' + (i + 1), hint: '그 밤 주막의 식탁에는 의자가 하나 비어 있었다. 누구의 자리였는지 적혀 있지 않다.', L: null, R: null, key: 'b' + i, isNew: false }); }
+          M.book = () => R30; M.touch();
+          F.openPause(); F.pauseRow('chronicle'); F.tick(20);
+          const m0 = F.M().screen, L = m0.list, cx = L.x + L.w * 0.3, cy = L.y + L.h * 0.7, id = 71, c0 = F.toClient(cx, cy);
+          F.fire('pointerdown', id, c0[0], c0[1]); F.frames(1);
+          const T = []; for (let k = 1; k <= 6; k++) { const c = F.toClient(cx, cy - k * 80); F.fire('pointermove', id, c[0], c[1]); T.push(...F.timed(1)); }
+          const c1 = F.toClient(cx, cy - 480); F.fire('pointerup', id, c1[0], c1[1]);
+          const m1 = F.M().screen, drag = m1.scroll, v0 = m1.v;
+          let unbaked = 0, maxV = 0; for (let k = 0; k < 300; k++) { T.push(...F.timed(1)); const m = F.M().screen; if (m.rows.some((r) => r.on && !r.baked)) unbaked++; maxV = Math.max(maxV, Math.abs(m.v)); }
+          const m2 = F.M().screen; T.sort((a, b) => a - b);
+          const still = F.timed(120).sort((a, b) => a - b);
+          return { n: m0.n, max: m0.max, drag, v0, end: m2.scroll, vEnd: m2.v, maxV, unbaked, baked: m2.baked, ms: { p50: T[T.length >> 1], p95: T[Math.floor(T.length * 0.95)], max: T[T.length - 1], over8: T.filter((t) => t > 8).length, over16: T.filter((t) => t > 16.7).length, frames: T.length }, still: { p50: still[60], max: still[119] } };
+        });
+        ok(`${DEV}: thirty entries: a drag moves the list with the finger, letting go keeps it moving and it comes to rest (momentum on the game's clock)`, perf.n === 30 && perf.max > 0 && perf.drag > 300 && perf.v0 > 500 && perf.end > perf.drag + 100 && perf.vEnd === 0 && perf.end <= perf.max + 0.5, `dragged ${Math.round(perf.drag)} px, let go at ${Math.round(perf.v0)} px/s, came to rest at ${Math.round(perf.end)} of ${Math.round(perf.max)}`);
+        ok(`${DEV}: …no row in the window was ever without its picture, and no frame of the fling took a 60 Hz frame's time (HUD update + draw; this machine, software canvas)`, perf.unbaked === 0 && perf.ms.over16 === 0, `${perf.ms.frames} frames: median ${perf.ms.p50.toFixed(2)} ms · p95 ${perf.ms.p95.toFixed(2)} · longest ${perf.ms.max.toFixed(2)} · over 8 ms ${perf.ms.over8} · at rest median ${perf.still.p50.toFixed(2)} ms · rows kept baked ${perf.baked}`);
+        await shot('book30');
+      }
       await ctx.close();
     }
   } catch (e) { errs.push('[tool] ' + String(e?.stack ?? e).slice(0, 600)); }

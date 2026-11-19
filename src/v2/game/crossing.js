@@ -153,7 +153,7 @@ void main() {
     float behind = smoothstep(wd * 3.0, -wd * 3.0, x) * (1.0 - uRing.w);
     c = mix(c, gradeTo(c), behind * 0.35 * min(1.0, uRing.y));       // what the ring leaves behind has begun to turn
     if (uRing.w > 0.5) { float ins = smoothstep(wd * 2.0, -wd * 2.0, x) * min(1.0, uRing.y * 1.4), lum = dot(c, vec3(0.3, 0.59, 0.11)); c = mix(c, vec3(lum * 0.6, lum * 0.61, lum * 0.66), ins * 0.72); }   // inside the refusal's ring the colour drains and the picture sinks for a blink
-    add = gl * (rim * (1.0 + tw * 0.9) * (1.0 + uRing.w * 1.1) + (echo + tail * 0.16) * (1.0 - uRing.w) + halo) * uRing.y * fl;
+    add = gl * (rim * (1.0 + tw * 0.9) * (1.0 - uRing.w * 0.25) + (echo + tail * 0.16) * (1.0 - uRing.w) + halo) * uRing.y * fl;   // (the refusal's band is wide, not bright: grey on stone, never white)
   } else {
     c = mix(aged(vUV), c, smoothstep(wl, -wl, x));
     add = uGlow * (rim * (1.15 + tw * 1.3) + echo * 0.8 + halo * 0.6 + tail * 0.14) * uRing.y;
@@ -308,7 +308,7 @@ export class Crossing {
     if (puff) this._fx('cross.dull');
     if (fx) { try { const F = fx.feel; F.kick(0, -1, 0, 9); F.addTrauma(0.3); F.vignette(0.3, 0.32, 0.38, 0.34, 4.5); } catch { /* effect */ } }   // one short heavy shake: a thump straight down; the edges of the picture go grey for a blink
     if (h) h.recoil = 1;                         // the hand and the body are thrown back from the bell (src/v2/play/motion.js)
-    if (w) { w.pulse = 0; w.kick = 1; }          // the shard he rang with goes dark and drops out of its halo
+    if (w) { w.pulse = 0; w.kick = 1; w.dull = 0.6; }   // the shard he rang with goes dark and drops out of its halo; its golden ring and chime stay out (src/v2/whip/sim.js: no ring event while dull)
   }
   /** has the bell just stayed shut (this tick's long ring was refused)? The scene keeps the golden toll and its light to itself then */
   shutNow() { return performance.now() - this.shutAt < 60; }
