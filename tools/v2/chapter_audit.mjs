@@ -121,8 +121,12 @@ function installCa() {
         else if (e.def?.boss && dd < 420 && e.atk && (e.atk.id === 'scream' || e.atk.id === 'song') && e.state === 'attack') want = true; }
       if (want) A.wantEcho = true;
     }
+    A.lastO = (o.mx || o.mz ? 'stick ' + o.mx.toFixed(2) + ',' + o.mz.toFixed(2) : 'no stick') + (o.attack ? ' attack' : '') + (o.guard ? ' guard' : '') + (o.dash ? ' roll' : '') + (A.wantJump ? ' jump' : '');
     return o;
   };
+  /** what the bot was doing when a walk ran out of its budget (main session, 11-19: 'budget used' alone never said why) */
+  A.why = () => { try { const sc = v.scene, sim = sc.sim, h = sim.hero, P = A.path, tg = sim.enemies.find((e) => e.id === B.tgId && !e.dead && e.state !== 'dead'); let nb = null, nd = 1e9; for (const e of sim.enemies) { if (e.dead || e.state === 'dead') continue; const d = Math.hypot(e.x - h.x, e.z - h.z); if (d < nd) { nd = d; nb = e; } }
+    return 'bot: ' + (P ? 'way point ' + A.wi + '/' + P.length + ' (' + Math.round(P[A.wi][0]) + ',' + Math.round(P[A.wi][1]) + ')' : 'flat route') + '; last decision ' + (A.lastO ?? '-') + '; target ' + (tg ? tg.kind + '@' + Math.round(tg.x) + ',' + Math.round(tg.z) + ',y' + Math.round(tg.y) + ' ' + tg.state + (tg.active ? ' awake' : ' asleep') : 'none') + '; nearest enemy ' + (nb ? nb.kind + ' ' + Math.round(nd) + ' px y' + Math.round(nb.y) + ' ' + nb.state + (nb.active ? ' awake' : ' asleep') : 'none') + '; hero ' + (h.onGround ? 'on the ground' : 'in the air') + (h.move ? ' in ' + h.move.id : '') + (h.act ? ' act ' + h.act : '') + (h.guard ? ' guarding' : '') + '; off-wall starts ' + (A.offWall ?? 0) + ', door turns ' + (A.doorTurns ?? 0); } catch (e) { return 'bot: (state not readable: ' + (e?.message ?? e) + ')'; } };
   A.assist = () => {
     const sc = v.scene, h = sc.sim?.hero; if (!h) return;
     if (A.jumpCd > 0) A.jumpCd--; if (A.echoCd > 0) A.echoCd--;
@@ -301,7 +305,7 @@ async function walk(tx, tz, { r = 60, budget = 3600, pred = null, planR = null, 
     if (used - planAt >= 420 || s.deaths !== deaths0) { deaths0 = s.deaths; const n = await ev(([x, z, rr, dr]) => window.__ca.plan(x, z, rr, dr), [tx, tz, planR ?? Math.max(20, r * 0.7), direct]); planAt = used; if (!n) { if (++noPath >= 3) return { ok: false, s, used, why: `no route on the scene's own collision world from (${s.x},${s.z},y${s.y}) to (${tx},${tz})` }; } else noPath = 0; }
     s = await run(150, true); used += Math.max(1, s.i);
   }
-  return { ok: false, s, used, why: `honest budget of ${budget} ticks used; hero at (${s.x},${s.z},y${s.y}), target (${tx},${tz})` };
+  return { ok: false, s, used, why: `honest budget of ${budget} ticks used; hero at (${s.x},${s.z},y${s.y}), target (${tx},${tz}); ${await ev(() => window.__ca.why())}` };
 }
 /** fight until a group has fallen (honest budget), -> { ok, left } */
 async function clear(group, { budget = 3600 } = {}) {
