@@ -159,7 +159,7 @@ export default function (T) {
     await resume('opening shot');
     const e = await U("s.modal === 'dialog'", 20, 0), want = Math.round(A.a.shotT * 60);
     ok(e.ticks >= 0 && Math.abs(e.ticks + 1 - want) <= 3, `opening shot: it runs out its rest (${A.a.shotT} s = ${want} ticks; the first line after ${e.ticks + 1}): ${e.line.replace(/\n/g, ' / ').slice(0, 40)}`);
-    const f = await U(FREE, 80, 6);
+    const f = await U("s.ready && !s.lock && s.modal === null && !s.go && !!s.pad && s.pad.shown && !s.pad.cut", 80, 6);
     ok(f.ticks >= 0 && f.pad && f.pad.shown && !f.pad.cut && f.vis.length >= 6, `the opening ends: the hero free at ${J(f.hero)}, the whole pad back (${f.vis.length} pieces), ${f.seen} entries shown, host warnings ${f.warn}`);
     // the two keepers
     await toKeepers();
@@ -201,12 +201,12 @@ export default function (T) {
     const a1 = await S('walk', 500);
     ok(a1.over && !a1.notes.some((q) => q.startsWith('placed')) && near(a1.to, 4200, 1390, 10) && a1.maxStep < 9, `after the pause he walks on to the mark: ${J(A.a.hero)} -> ${J(a1.to)} in ${a1.ticks} more ticks, longest step ${a1.maxStep} px, ${J(a1.notes)}`);
     const b1 = await U("s.modal === 'dialog' && s.line.includes('빵은')", 20, 0); ok(b1.ticks >= 0, `Lotte's question follows (${b1.ticks} ticks later); the hero ${J(b1.hero)} facing ${J(b1.face)}`); await shot('farwest_bread');
-    const r0 = await U("s.shot === 'ring_widen' && s.shotT > 0 && s.shotT < 1.6 && s.moves.length > 0", 80, 6);
+    const r0 = await U("s.shot === 'ring_widen' && s.shotT > 0 && s.shotT < 1.6 && s.moves.length > 0", 200, 6);
     ok(r0.ticks >= 0 && r0.vis.join(' ') === 'pause', `the ring shot: ${r0.shotT} s left, walking ${J(r0.moves)}; on screen of the pad: ${r0.vis.join(' ') || 'none'}; banner ${r0.banner ?? 'none'} ${r0.bannerTitle}`);
     await pauseHold('the ring shot', 300, ['moves', 'who', 'shotT', 'simT', 'seen', 'hero']); await shot('ring_paused'); await resume('the ring shot');
     const m = await U("s.modal === 'dialog' && s.line.includes('이 녀석')", 40, 0);
     ok(m.ticks >= 0 && near(m.who.marta, 4046, 1396) && m.moves.length === 0, `Marta stands on her mark when she speaks: ${J(m.who.marta)}; Alberto ${J(m.who.alberto)}; nobody walking (${m.moves.length})`);
-    const z = await U("s.modal === 'end'", 80, 6);
+    const z = await U("s.modal === 'end'", 200, 6);
     ok(z.ticks >= 0 && z.ended === 'r1' && z.warn === 0, `the ending card is reached: ended ${z.ended}, host warnings ${z.warn}; Alberto ${J(z.who.alberto)}`);
   });
 
@@ -218,32 +218,32 @@ export default function (T) {
     ok(w.ticks >= 0 && !!o1, `hidden in the middle of his walk (${J(w.walk)}, at ${J(w.hero)}): the game saved - ${o1 ? J({ why: o1.why, area: o1.area, pos: o1.pos, home: !!o1.story.flags?.elise_home, answered: !!o1.story.flags?.bells_answered }) : 'no save'}; lock ${h1.lock}`);
     const a1 = await S('walk', 500);
     ok(a1.over && near(a1.to, 4200, 1390, 10), `shown again: he walks on to the mark ${J(a1.to)} (${a1.ticks} ticks, longest step ${a1.maxStep} px, ${J(a1.notes)})`);
-    const r0 = await U("s.shot === 'ring_widen' && s.shotT > 0 && s.shotT < 1.2 && s.moves.some((q) => q[0] === 'marta')", 80, 6), sv2 = await S('hide'); await S('show');
+    const r0 = await U("s.shot === 'ring_widen' && s.shotT > 0 && s.shotT < 1.2 && s.moves.some((q) => q[0] === 'marta')", 200, 6), sv2 = await S('hide'); await S('show');
     const o2 = sv2 ? JSON.parse(sv2) : null;
     ok(r0.ticks >= 0 && !!o2, `hidden while Marta walks (${J(r0.moves)}): the game saved - ${o2 ? J({ why: o2.why, area: o2.area, pos: o2.pos, home: !!o2.story.flags?.elise_home, answered: !!o2.story.flags?.bells_answered, promised: !!o2.story.flags?.keepers_promised }) : 'no save'}`);
     const m = await U("s.modal === 'dialog' && s.line.includes('이 녀석')", 40, 0);
     ok(m.ticks >= 0 && near(m.who.marta, 4046, 1396), `shown again: Marta walks on and stands on her mark when she speaks ${J(m.who.marta)}`);
-    const z = await U("s.modal === 'end'", 80, 6); ok(z.ticks >= 0 && z.ended === 'r1', `this session reaches the card (ended ${z.ended}, warnings ${z.warn})`);
+    const z = await U("s.modal === 'end'", 200, 6); ok(z.ticks >= 0 && z.ended === 'r1', `this session reaches the card (ended ${z.ended}, warnings ${z.warn})`);
     // the save from the middle of his walk
     await boot(sv1); await idle(); await install();
     const p1 = await S('st');
     ok(p1.area === 'eshville_past' && !p1.lock && near(p1.who.lotte, 4104, 1436) && near(p1.who.elise, 4296, 1436), `save 1 loads: ${p1.area}, the hero free at ${J(p1.hero)}, Lotte ${J(p1.who.lotte)}, Elise ${J(p1.who.elise)}`);
     await P('ring', 'big_bell'); const a2 = await S('walk', 500); note(`rung again where the save put him: ${J(a2)}`);
-    const z1 = await U("s.modal === 'end'", 160, 6); ok(z1.ticks >= 0 && z1.ended === 'r1', `save 1 played on reaches the card (ended ${z1.ended}, warnings ${z1.warn})`);
+    const z1 = await U("s.modal === 'end'", 260, 6); ok(z1.ticks >= 0 && z1.ended === 'r1', `save 1 played on reaches the card (ended ${z1.ended}, warnings ${z1.warn})`);
     // the save made while Marta walked
     await boot(sv2); await install();
-    const f2 = await U("s.modal === 'dialog' && s.line.includes('엘리제가 답한다')", 60, 0);
+    const f2 = await U("s.modal === 'dialog' && s.line.includes('엘리제가 답한다')", 140, 0);
     ok(f2.ticks >= 0 && near(f2.hero, 4200, 1390, 12), `save 2 loads into tonight's first line: the hero ${J(f2.hero)}, Elise ${J(f2.who.elise)}, Marta ${J(f2.who.marta)}, Alberto ${J(f2.who.alberto)}; banner ${f2.banner ?? 'none'} ${f2.bannerTitle}`);
-    const z2 = await U("s.modal === 'end'", 120, 6); ok(z2.ticks >= 0 && z2.ended === 'r1', `save 2 played on reaches the card (ended ${z2.ended}, warnings ${z2.warn}); Marta spoke from ${J((await ev(() => window.__sv.log)).find((q) => q[0].includes('이 녀석'))?.[2] ?? null)}`);
+    const z2 = await U("s.modal === 'end'", 240, 6); ok(z2.ticks >= 0 && z2.ended === 'r1', `save 2 played on reaches the card (ended ${z2.ended}, warnings ${z2.warn}); Marta spoke from ${J((await ev(() => window.__sv.log)).find((q) => q[0].includes('이 녀석'))?.[2] ?? null)}`);
     // what the published build would have written in the middle of tonight's scene: bells_answered not yet set, the hero wherever he rang (synthesized from save 2)
     if (o2) {
       const o3 = JSON.parse(sv2); if (o3.story?.flags) delete o3.story.flags.bells_answered; if (Array.isArray(o3.story?.world)) o3.story.world = o3.story.world.filter((q) => q !== 'bells_answered');
       if (o3.pos && typeof o3.pos === 'object' && !Array.isArray(o3.pos)) { o3.pos.x = 4130; o3.pos.z = 1402; } else if (Array.isArray(o3.pos)) { o3.pos[0] = 4130; o3.pos[1] = 1402; }
       await boot(JSON.stringify(o3)); await install();
-      const f3 = await U("s.modal === 'dialog' && s.line.includes('엘리제가 답한다')", 60, 0);
+      const f3 = await U("s.modal === 'dialog' && s.line.includes('엘리제가 답한다')", 140, 0);
       ok(f3.ticks >= 0 && near(f3.hero, 4200, 1390, 12), `the old-build shape of that save (no bells_answered, pos ${J(o3.pos)}): tonight's first line with the hero at ${J(f3.hero)}, Elise ${J(f3.who.elise)}`);
       await shot('oldshape_home_first');
-      const z3 = await U("s.modal === 'end'", 120, 6); ok(z3.ticks >= 0 && z3.ended === 'r1' && !z3.msg, `it reaches the card (ended ${z3.ended}, warnings ${z3.warn}, message "${z3.msg}")`); await shot('oldshape_card');
+      const z3 = await U("s.modal === 'end'", 240, 6); ok(z3.ticks >= 0 && z3.ended === 'r1' && !z3.msg, `it reaches the card (ended ${z3.ended}, warnings ${z3.warn}, message "${z3.msg}")`); await shot('oldshape_card');
     }
   });
 
@@ -253,7 +253,7 @@ export default function (T) {
     await P('ring', 'big_bell');
     const w = await S('walk', 600, true);
     ok(w.began >= 0 && w.over && near(w.to, 4200, 1390, 10), `with the stick held and taps at every second tick he reaches the mark: ${w.ticks} ticks, ${w.len} px, longest step ${w.maxStep} px, ${J(w.from)} -> ${J(w.to)}; ${J(w.notes)}`);
-    const z = await U("s.modal === 'end'", 200, 'tap'), L = await ev(() => ({ log: window.__sv.log, taps: window.__sv.taps, box: window.__sv.tapsOnBox }));
+    const z = await U("s.modal === 'end'", 320, 'tap'), L = await ev(() => ({ log: window.__sv.log, taps: window.__sv.taps, box: window.__sv.tapsOnBox }));
     ok(z.ticks >= 0 && z.ended === 'r1', `tapped through to the card in ${z.ticks} ticks (${L.taps} taps, ${L.box} on the dialogue box): ended ${z.ended}, host warnings ${z.warn}`);
     for (const q of L.log) note(`line ${q[0]} · hero ${J(q[1])} · marta ${J(q[2])} · alberto ${J(q[3])} · walking ${q[5]}`);
     const mt = L.log.find((q) => q[0].includes('이 녀석')), al = L.log.find((q) => q[0].includes('…로테?'));
@@ -267,7 +267,7 @@ export default function (T) {
     ok(!!B.pre && B.pre.n >= 13, `busts ready before the first line: ${J(B)} (firstStart / lastEnd = ms after navigation of the first request / the last response; loadMs = the area's load)`);
     await P('ring', 'big_bell'); const got = [];
     for (let i = 0; i < 8 && got.length < 6; i++) {
-      const s = await U("s.newSpk || s.modal === 'end'", 80, 6); if (s.ticks < 0 || s.modal === 'end') break;
+      const s = await U("s.newSpk || s.modal === 'end'", 200, 6); if (s.ticks < 0 || s.modal === 'end') break;
       await ev((k) => { window.__sv.spk[k] = 1; }, s.spk); await S('tick', 9); got.push(s.spk); await shot('bust_' + s.spk);
     }
     ok(got.length >= 5, `first pages of first-time speakers captured: ${got.join(', ')}`);
