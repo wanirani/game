@@ -131,7 +131,8 @@ if (PAGE_PARTS.some(want)) {
     F.pauseBtn = () => { const b = F.M().pad?.buttons?.find((q) => q.id === 'pause'); return b ? [b.cx, b.cy] : null; };
     F.btn = (id) => { const b = F.M().pad?.buttons?.find((q) => q.id === id); return b ? [b.cx, b.cy] : null; };
     /** the pause button, then a row of the panel by id - all by touch */
-    F.openPause = () => { const p = F.pauseBtn(); if (!p) return false; F.tapCss(p[0], p[1]); F.tick(4); return sc.hud.modal === 'pause' && !!F.M().pause; };
+    // (a still takes seconds of real time: the pad's watchdog has taken the pad off meanwhile - two game ticks bring it back, as on a device where the game never stops ticking)
+    F.openPause = () => { F.tick(2, false); const p = F.pauseBtn(); if (!p) return false; F.tapCss(p[0], p[1]); F.tick(4); return sc.hud.modal === 'pause' && !!F.M().pause; };
     F.pauseRow = (id) => { const m = F.M().pause; if (!m) return false; const i = m.ids.indexOf(id); if (i < 0) return false; F.tapRect(m.rows[i]); F.tick(3); return true; };
     F.closeBtn = () => { const m = F.M().screen; if (!m) return false; F.tapRect(m.close); F.tick(2); return true; };
     F.put = (x, z, dx = 1, dz = 0) => {

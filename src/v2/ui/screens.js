@@ -256,7 +256,7 @@ export function createScreens(env) {
   function press(i) {
     const M = model(), g = rows[i]; if (!M || !g || S.kind !== 'shop') return;
     if (g.state !== 'ok') { S.sel = -1; S.say = shopD.say[g.state === 'poor' ? 'poor' : g.state === 'full' ? 'full' : 'none'] ?? ''; S.sayT = 2.4; S.shakeI = i; S.shakeT = 0.3; sound('shop.deny'); S.epoch = -1; return; }
-    if (S.sel !== i) { S.sel = i; S.armT = 0; sound('ui.move'); S.epoch = -1; return; }
+    if (S.sel !== i) { S.sel = i; S.armT = 0; S.say = ''; S.sayT = 0; sound('ui.move'); S.epoch = -1; return; }
     if (S.armT < 0.12) return;   // (the same press, doubled by a bounce)
     const r = M.buy(shopD.id, g.id);
     S.sel = -1; S.say = r.ok ? shopD.say.bought ?? '' : shopD.say.none ?? ''; S.sayT = 2.4; sound(r.ok ? 'shop.buy' : 'shop.deny'); S.epoch = -1;
