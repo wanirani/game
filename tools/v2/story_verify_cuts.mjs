@@ -59,7 +59,7 @@ function install() {
         if (spec.shot && shotName() === spec.shot) { if (spec.first) { if (H.shotLock) return hit(i, 2); } else if (spec.mid) { if (H.shotLock) { if (H.shotT > P.top) P.top = H.shotT; if (H.shotT <= P.top * 0.5) return hit(i); } } else if (spec.last) { if (H.shotLock && H.shotT <= 1.5 / 60) return hit(i); } else if (m === 'dialog') return hit(i, 70); }
         if (spec.line !== undefined && m === 'dialog' && H.seen.length > P.mark && lastLine().includes(spec.line)) return hit(i, 70);
         if (spec.move && H.moves.length > 0 && ++P.mv >= spec.move) return hit(i);
-        if (spec.modal && m === spec.modal && (spec.modal !== 'end' || (sc.hud.metrics().end?.t ?? 0) > 3)) return hit(i);
+        if (spec.modal && m === spec.modal && (spec.modal !== 'end' || !!sc.hud.metrics().end?.ready)) return hit(i);   // (the card takes a tap once it is ready: 5.6 s)
         if (spec.idle && i > 8 && P.idle()) return hit(i, spec.wait | 0);
         if (spec.free && i > 2 && !H.locks() && !m && !H.st.busy) return hit(i, spec.wait | 0);
         if (spec.area && v.area === spec.area && P.idle()) return hit(i);
@@ -226,6 +226,21 @@ C('ending_mid', () => ending('mid', 0, -18, !args.lite));
 C('ending_west', () => ending('west', -70, -6, false));
 C('ending_east', () => ending('east', 70, -6, false));
 C('ending_south', () => ending('south', 0, -72, false));
+
+/** a save made while the card was up (the story has ended, the card was never dismissed), loaded: the card, the chooser, and a reload a second after it */
+C('card', async () => {
+  await boot(after('ev_ending_home')); const r = await until({ modal: 'end' }, 400, true);
+  ok(r.ok && r.modal === 'end', `a save from the ending card, loaded: the card comes up again (ok ${r.ok}, modal ${r.modal}, area ${r.area})`);
+  const cs = await still('card_loaded', 'the card after a load'); note('behind the card', { who: cs.who, obj: cs.obj, lock: cs.lock, pad: cs.pad, pills: cs.pills });
+  const tp = await P('tapEnd'), t = await until({ top: 'V2Chooser' }, 200, true); ok(tp === true && t.ok, `the card tapped: the 3D chooser is on top (tap ${tp}, ${JSON.stringify(t).slice(0, 100)})`);
+  await page.waitForTimeout(1000);
+  const s1 = await ev(() => localStorage.getItem('bn.v2.save')), o1 = s1 ? JSON.parse(s1) : null; note('stored save one second after the card', o1 ? { why: o1.why, area: o1.area, card: o1.ch?.card, pos: o1.pos } : null);
+  await reload(); const r2 = await until({ idle: true, wait: 200 }, 200, true), r2s = await still('after_card_reload', 'a reload one second after the card');
+  ok(r2.ok && r2s.modal !== 'end' && !r2s.lock && !r2s.inputLock && r2s.pad, `a reload one second after the card: no card again, hero free, pad on (ok ${r2.ok}, modal ${r2s.modal}, lock ${r2s.lock}, pad ${r2s.pad}, area ${r2s.area})`);
+  note('after the card, reloaded', { obj: r2s.obj, who: r2s.who, pills: r2s.pills, ended: r2s.ended, seenCard: r2s.seenCard });
+  const b = await P('spot', 'big_bell'); await P('putY', b.x, b.z - 18, b.y); await P('run', 20); const n0 = (await P('state')).seen; await P('ring', 'big_bell'); const z = await until({ idle: true, wait: 60 }, 200, true);
+  note('the big bell rung after the ending', { area: z.area, obj: z.obj, seen: await P('seenFrom', n0), modal: z.modal, lock: z.lock });
+});
 
 C('held_bell', async () => {
   await boot(after('ev_boss_intro')); await idle(); const b = await P('spot', 'bell_arena'); await P('putY', b.x, b.z - 44, b.y ?? 0); await P('run', 20);
