@@ -50,7 +50,8 @@ function install() {
     return { ready, area: v.area, idle: ready && P.idle(), modal: sc.hud.modal ?? null, shot: ready ? shotName() : null, shotLock: !!H?.shotLock, lock: !!H?.locks?.(), x: h ? Math.round(h.x) : 0, z: h ? Math.round(h.z) : 0,
       line: H ? lastLine() : '', tear: !!sc.ch?.tear, queen: e ? { hp: Math.round(e.hp), active: !!e.active, alpha: +(+e.alpha).toFixed(2), kneel: e.kneel > 0, hold: !!e.fleeHold } : null, ended: H?.ended ?? null, obj: H?.objective ?? '', seen: H?.seen.length ?? 0 };
   };
-  const hit = (i) => { P.adv = 0; P.mark = v.scene.host?.seen.length ?? 0; try { g.alpha = 1; g.render(); } catch { /* between areas */ } return { ok: true, ticks: i, ...P.state() }; };
+  const hit = (i, wait) => { P.adv = 0; P.mark = v.scene.host?.seen.length ?? 0; for (let k = 0; k < (wait | 0); k++) step();   // (a dialogue page: the box has come up, the line is typed out, the fade of an arrival is over)
+    try { g.alpha = 1; g.render(); } catch { /* between areas */ } return { ok: true, ticks: i, ...P.state() }; };
   /** tick (dialogue pages are turned) until the cut point: { shot, mid } a camera shot (mid: half of its seconds gone; else the dialogue after it is open) · { line } a dialogue page whose
    *  speaker and text contain this · { tear } seconds into the queen's tear · { kneel } · { modal } · { idle } */
   P.until = (spec, max) => {
@@ -59,10 +60,11 @@ function install() {
       const sc = v.scene;
       if (v.ready && sc.sim) {
         const H = sc.host, m = sc.hud.modal ?? null;
-        if (spec.shot && shotName() === spec.shot) { if (spec.mid) { if (H.shotLock) { if (H.shotT > P.top) P.top = H.shotT; if (H.shotT <= P.top * 0.5) return hit(i); } } else if (m === 'dialog') return hit(i); }
-        if (spec.line !== undefined && m === 'dialog' && H.seen.length > P.mark && lastLine().includes(spec.line)) return hit(i);   // (a page shown since the last cut point)
+        if (spec.shot && shotName() === spec.shot) { if (spec.mid) { if (H.shotLock) { if (H.shotT > P.top) P.top = H.shotT; if (H.shotT <= P.top * 0.5) return hit(i); } } else if (m === 'dialog') return hit(i, 70); }
+        if (spec.line !== undefined && m === 'dialog' && H.seen.length > P.mark && lastLine().includes(spec.line)) return hit(i, 70);   // (a page shown since the last cut point)
         if (spec.tear && sc.ch.tear && sc.ch.tear.t >= spec.tear) return hit(i);
-        if (spec.kneel && queen()?.kneel > 0) return hit(i);
+        if (spec.kneel && queen()?.kneel > 0) return hit(i, 40);
+        if (spec.move && H.moves.length > 0 && ++P.mv >= spec.move) return hit(i);
         if (spec.modal && m === spec.modal && (spec.modal !== 'end' || (sc.hud.metrics().end?.t ?? 0) > 3)) return hit(i);
         if (spec.idle && i > 8 && P.idle()) return hit(i);
         if (spec.area && v.area === spec.area && P.idle()) return hit(i);
@@ -137,7 +139,7 @@ async function boot(saveStr) {
 }
 /** tick until the cut point (returning to the page's own tasks while an area loads) */
 async function until(spec, max = 60) {
-  await ev(() => { window.__cc.top = 0; }); let s = null;
+  await ev(() => { window.__cc.top = 0; window.__cc.mv = 0; }); let s = null;
   for (let i = 0; i < max; i++) { s = await ev((q) => window.__cc.until(q, 45), spec); if (s.ok) return s; if (!s.ready) await page.waitForTimeout(250); }
   throw new Error(`cut point ${JSON.stringify(spec)} not reached: ${JSON.stringify(s)}`);
 }
@@ -243,6 +245,7 @@ C('keepers', 'the sleeping girl, the two keepers at the bell', async () => {
   await until({ line: '' }); await still('elise_asleep', '잠든 엘리제 (ev_elise_wake)', ['hero', 'elise'], 'ev_elise_wake');
   await until({ line: '찾았네요' }, 200); const s = await P('state');
   if (s.area === 'eshville_past') await still('keepers_found', '두 종지기가 만난다 (ev_keepers, first line)', ['hero', 'lotte', 'elise'], 'ev_keepers');
+  try { await until({ move: 40 }, 30); await still('keepers_walk', '엘리제가 종으로 걸어간다 (moveActor, lockInput)', ['hero', 'lotte', 'elise'], 'ev_keepers'); } catch (e) { put('     · no still of the walk: ' + String(e.message).slice(0, 90)); }
   await until({ shot: 'two_keepers' }, 200); await still('two_keepers', '두 종지기 — 종을 사이에 두고 (camera two_keepers)', ['hero', 'lotte', 'elise'], 'ev_keepers');
   await idle(); await still('keepers_after', '약속 뒤 — 놓여난 순간', ['hero', 'lotte', 'elise'], 'ev_keepers');
 });
