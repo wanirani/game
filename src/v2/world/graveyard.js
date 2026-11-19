@@ -63,7 +63,7 @@ export function graveyard(era = 'now', flags = {}) {
     { t: 'prop', mesh: 'angel', x: 190, z: 1520, h: 196 }, { t: 'prop', mesh: 'angel', x: 1010, z: 1520, h: 196, flip: true },
     { t: 'deco', mesh: 'deadtree', x: -46, y: 0, z: 1090, h: 420 }, { t: 'deco', mesh: 'deadtree', x: 1250, y: 0, z: 1820, h: 400, flip: true }, { t: 'deco', mesh: 'deadtree', x: 1246, y: 0, z: 1130, h: 380 },   // the field's dead trees now stand OUTSIDE the side walls (crowns over the battlements): the generated tree has a wide root flare and hid the hero behind it
     { t: 'prop', mesh: 'cross', x: 400, z: 1700, h: 180, solid: 26, solidZ: 18 }, { t: 'prop', mesh: 'cross', x: 800, z: 1250, h: 170, solid: 26, solidZ: 18 },
-    { t: 'prop', mesh: 'coffin', x: 770, z: 1730, solid: 60, solidZ: 22, h: 62, solidH: 50 }, { t: 'prop', mesh: 'coffin', x: 300, z: 1300, solid: 56, solidZ: 20, h: 58, solidH: 46, flip: true },
+    { t: 'prop', mesh: 'coffin', x: 800, z: 1716, solid: 60, solidZ: 22, h: 62, solidH: 50 },   /* (770, 1730 left 26 px between its end and the fallen stair: a slot that looks open to a body of 28 - the story bot pushed into it for 3000 ticks, 11-19; now 56) */ { t: 'prop', mesh: 'coffin', x: 300, z: 1300, solid: 56, solidZ: 20, h: 58, solidH: 46, flip: true },
     { t: 'prop', mesh: 'chapel', x: 172, z: 2012, h: 220, solid: 60, solidZ: 72, solidH: 210 },   // a small tomb chapel in the back corner (generated model; against the back and side walls: nothing walkable behind it). It took the place of a dead tree
     LP(470, 1010), LP(730, 1010, { flip: true }), LP(470, 1520), LP(730, 1880, { flip: true }), LP(250, 1530), LP(950, 1530, { flip: true }),
     // the four Valkrein stones beside the middle path
@@ -128,7 +128,7 @@ export function graveyard(era = 'now', flags = {}) {
       { kind: 'urn', x: 512, z: 590 }, { kind: 'urn', x: 688, z: 820 },
       { kind: 'barrel', x: 740, z: 1048, rot: 0.2 }, { kind: 'crate', x: 980, z: 1102, rot: -0.1 }, { kind: 'jar', x: 916, z: 1100 },
       { kind: 'urn', x: 224, z: 1096 }, { kind: 'urn', x: 341, z: 1104 }, { kind: 'urn', x: 742, z: 1229 }, { kind: 'urn', x: 228, z: 1362 }, { kind: 'urn', x: 870, z: 1364 }, { kind: 'urn', x: 982, z: 1624 }, { kind: 'urn', x: 256, z: 1765 },
-      { kind: 'pot', x: 378, z: 1296 }, { kind: 'jar', x: 850, z: 1722 }, { kind: 'pot', x: 1040, z: 1740 },
+      { kind: 'pot', x: 378, z: 1296 }, { kind: 'jar', x: 894, z: 1716 }, { kind: 'pot', x: 1040, z: 1740 },
       { kind: 'urn', x: 876, z: 1884 }, { kind: 'urn', x: 322, z: 1890 },
     ],
   };
