@@ -13,8 +13,8 @@ export async function launch(out) {
   const port = 8200 + Math.floor(Math.random() * 700), srv = await start(port);
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required', '--js-flags=--expose-gc'] });
   const errs = [];
-  const page = async (dev = 'fold_open') => {
-    const ctx = await browser.newContext(contextOptions(dev)), p = await ctx.newPage();
+  const page = async (dev = 'fold_open', extra = {}) => {   // extra: { serviceWorkers: 'block' } when a page.route must see the module requests (the app's service worker hides them from routes)
+    const ctx = await browser.newContext(contextOptions(dev, extra)), p = await ctx.newPage();
     p.on('pageerror', (e) => errs.push('[pageerror] ' + e.message + ' ' + (e.stack ?? '').split('\n').slice(1, 3).join(' | ')));
     p.on('console', (m) => { if (m.type() === 'error') errs.push('[console] ' + m.text().slice(0, 300)); });
     return p;

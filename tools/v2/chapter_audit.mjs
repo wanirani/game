@@ -391,7 +391,7 @@ add('tower_door', '종탑 문 → 종탑', async () => pushExit('to_belltower', 
 add('tower_climb', '종탑을 오른다 (trigger tower.top) — honest budget 7200 ticks', async () => { let w = await walkTrig('tower.top', { budget: 7200 }); const s = await st(); if (!w.ok && s.area === 'belltower_now' && w.p) { ST.num.lostWay.push({ beat: 'tower_climb', why: w.why }); await putNear(w.p[0], w.p[1], w.why, 'put the hero on the top floor inside trigger tower.top'); await settle(); w = { ok: true }; } return w; });
 add('tower_bats', '박쥐 떼 (group tower_bats) → 종에 금이 가고 떨어진다', async () => { await clearOrHelp('tower_bats', { budget: 4200 }); return waitArea('eshville_past', 6000); });
 add('bell_past_no', '그 밤의 큰 종: 매듭도 열쇠도 없이 길게 울린다', async () => ring('big_bell'));
-trigBeat('past_street', '그 밤의 큰길', 'past.street', { budget: 6000 });
+trigBeat('past_street', '그 밤의 큰길', 'past.street', { budget: 9000 });   // (the way leads through the three plague corpses of the 1697 square: 3000-3800 ticks when it goes well, once over 6000)
 groupBeat('st_p', '그 밤 큰길의 싸움 (group st_p)', 'st_p', { budget: 4800 });
 spotBeat('tavern_door', '주막 문 (그 밤)', 'inn_door', { budget: 1500 });
 spotBeat('edmund_1', '에드문트의 식탁 (첫 번째)', 'edmund', { budget: 3600 });
@@ -407,7 +407,7 @@ trigBeat('elite', '정예 무덤지기 갑주 앞', 'elite.gravekeeper', { budge
 groupBeat('elite_fight', '무덤지기 갑주와 싸운다 (group gate) — honest budget 7200 ticks', 'gate', { budget: 7200 });
 add('rest_gate_now', '무덤지기 갑주를 쓰러뜨린 뒤 문 곁 촛불에서 쉰다', async () => { const r = await useSpot('gate_rest', { budget: 2400 }); if (!r.ok) note('the candle at the inner gate (tonight) was not used: ' + r.why); return { ok: true }; });
 trigBeat('echo_hint', '안개의 묘지: 메아리 안내', 'echo.hint', { budget: 3600 });
-add('echo_first', '「종」을 짧게 — 숨은 유령을 드러낸다', async () => { let r = null; for (let i = 0; i < 4; i++) { r = await ev(() => window.__ca.echo()); if (r.raised?.some((q) => q.startsWith('bell.echo'))) break; await play(150, { bot: true }); } await settle(); return { ok: !!r?.raised?.some((q) => q.startsWith('bell.echo')), why: 'no bell.echo was raised: ' + JSON.stringify(r) }; });
+add('echo_first', '「종」을 짧게 — 숨은 유령을 드러낸다', async () => { if (ST.rows.ev_echo_first) return { ok: true, skipped: true };   /* (the echo was already rung on the way to the hint) */ let r = null; for (let i = 0; i < 4; i++) { r = await ev(() => window.__ca.echo()); if (r.raised?.some((q) => q.startsWith('bell.echo'))) break; await play(150, { bot: true }); } await settle(); return { ok: !!r?.raised?.some((q) => q.startsWith('bell.echo')), why: 'no bell.echo was raised: ' + JSON.stringify(r) }; });
 add('ghosts', '유령들 (group ghosts) — 이야기에 필요 없지만 길에 있다', async () => { const r = await clear('ghosts', { budget: 3600 }); if (!r.ok) note('ghosts not cleared honestly: ' + r.why); await settle(); return { ok: true }; });
 spotBeat('grave_now_a', '이름 없는 무덤 (첫째, 오늘 밤)', 'nameless_a');
 spotBeat('grave_now_b', '이름 없는 무덤 (둘째, 오늘 밤)', 'nameless_b');
@@ -418,7 +418,7 @@ const hookUp = async (label) => { const t = await ev(() => window.__ca.spot('dep
   s = await st(); return { ok: s.y > 100, s, why: `the whip hook did not carry the hero up (${label}): hero ${s.x},${s.z},y${s.y}; last press ${JSON.stringify(k)}; ${w.why ?? ''}` }; };
 add('hook_now', '채찍 걸기 → 납골당 앞 단 (오늘 밤)', async () => { const r = await hookUp('graveyard_now'); if (!r.ok) { ST.num.lostWay.push({ beat: 'hook_now', why: r.why }); await putNear(600, 1905, r.why, 'put the hero on the terrace before the ossuary door'); return { ok: true }; } return r; });
 spotBeat('ossuary_door_now_1', '납골당 문 (오늘 밤, 이름을 새기기 전)', 'ossuary_door');
-add('ossuary_exit_now', '납골당 문턱을 밀어 본다 (exit to_ossuary, 잠김)', async () => pushExit('to_ossuary', { budget: 900 }));
+add('ossuary_exit_now', '납골당 문턱을 밀어 본다 (exit to_ossuary, 잠김)', async () => (ST.rows.ev_ossuary_exit_now ? { ok: true, skipped: true } : pushExit('to_ossuary', { budget: 900 })));   // (the whip landing lies inside the exit's margin: the threshold has usually spoken already)
 add('back_to_eshville', '마을로 돌아간다 (exit to_eshville)', async () => pushExit('to_eshville', { to: 'eshville_now', budget: 7200 }));
 crossBeat('cross_to_past', '큰 종에서 길게 → 그 밤으로 (ev_bell_cross)', 'big_bell', 'eshville_past', { budget: 6000 });
 add('rest_church_past', '(다쳤으면) 그 밤의 성당 촛불에서 쉰다', async () => { const s = await st(); if (s.hp >= s.hpMax * 0.7) return { ok: true, skipped: true }; const r = await useSpot('church_rest', { budget: 3600 }); if (!r.ok) note('the church candle of that night was not used: ' + r.why); return { ok: true }; });
