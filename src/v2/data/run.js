@@ -289,6 +289,8 @@ export function createStory(data, opts) {
       case 'hideActor': state.actors[exitKey(s[2], s[1])] = 'hide'; call(api, 'hideActor', s[1], s[2] || state.area); break;
       case 'showActor': state.actors[exitKey(s[2], s[1])] = 'show'; call(api, 'showActor', s[1], s[2] || state.area); break;
       case 'moveActor': { const t = hold('cb'); if (!call(api, 'moveActor', s[1], s[2], s[3] || null, waiter(t))) resume(t); break; }
+      case 'moveHero': { const t = hold('cb'); if (!call(api, 'moveHero', s[1], s[2] || null, waiter(t))) resume(t); break; }   // the hero walks to a mark (DATA_FORMAT 5)
+      case 'putActor': call(api, 'putActor', s[1], s[2], s[3] || null); break;                                                   // a person is set down somewhere at once (out of the picture)
       case 'camera': { const t = hold('cb'); if (!call(api, 'camera', s[1], s[2] == null ? 0 : s[2], waiter(t))) resume(t); break; }
       case 'wait': { const t = hold('cb'); if (!call(api, 'wait', s[1], waiter(t))) resume(t); break; }
       case 'sound': call(api, 'sound', s[1], s[2]); break;

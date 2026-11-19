@@ -7,6 +7,7 @@
 // Nothing here may stop the game: every call into the story and every api function is guarded.
 import { audio } from '../../core/audio.js';
 import { feel } from '../feel/index.js';
+import { groundAt } from '../b/world.js';
 
 export const SAVE_KEY = 'bn.v2.save';
 const SAVE_V = 1;
@@ -42,6 +43,7 @@ export class StoryHost {
     this.st = mod.createStory(mod.STORY, { warn: (m) => { this.warnings.push(m); console.warn('[story]', m); } });
     this.objective = ''; this.pill = { action: 'confirm', label: '', icon: undefined }; this.pillOn = false; this.pillT = 0; this.pills = [this.pill];
     this.waits = []; this.moves = []; this.shot = null; this.shotT = 0; this.shotDone = null; this.shotLock = false;
+    this.walk = null;       // STORY2: the hero's walk to a mark (api.moveHero): { x, z, mx, mz, ... } - the scene hands walk.mx / walk.mz to the rules as the stick of this tick
     this.restSpot = null;   // CHAPTER: the rest spot the hero last pressed ({ area, def }) - the `candle` step makes it the place he stands up at (chapter.js)
     this.inputLock = false; this.dirty = false; this.saves = 0; this.lastSave = null; this.ended = null; this.moon = null; this.ringN = 0; this.musicId = null; this.candleBonus = 0;
     const F = mod.STORY.FLAGS ?? {}; this.world = new Set();
@@ -56,7 +58,7 @@ export class StoryHost {
     this._onHide = () => { if (globalThis.document?.visibilityState === 'hidden') this.saveNow('hidden'); };
     try { globalThis.document?.addEventListener('visibilitychange', this._onHide); } catch { /* no DOM */ }
   }
-  release() { try { globalThis.document?.removeEventListener('visibilitychange', this._onHide); } catch { /* no DOM */ } this.waits.length = 0; this.moves.length = 0; if (this.musicId) { try { audio.stopMusic?.(0.6); } catch { /* no audio */ } this.musicId = null; } }
+  release() { try { globalThis.document?.removeEventListener('visibilitychange', this._onHide); } catch { /* no DOM */ } this.waits.length = 0; this.moves.length = 0; this.walk = null; if (this.musicId) { try { audio.stopMusic?.(0.6); } catch { /* no audio */ } this.musicId = null; } }
   /** is the hero's input held by the story (a camera shot, a lockInput step)? */
   locks() { return this.shotLock || this.inputLock; }
   note(kind, a, b) { const S = this.seen; if (S.length < 4000) S.push([kind, a ?? '', b ?? '']); }
@@ -93,7 +95,7 @@ export class StoryHost {
       ch: o.ch && typeof o.ch === 'object' ? (end ? { ...o.ch, end } : o.ch) : end ? { end } : null };   // CHAPTER: the last rest spot, the last bell, the queen's health (chapter.js; an old save has none)   // BREAK: the coin count (an old save without it reads 0) and what was broken in the saved area
   }
   /** new game: forget everything (the scene clears its own memory and the stored save) */
-  reset() { try { this.st.reset(); } catch (e) { console.error('[v2g] story reset failed', e); } this.objective = ''; this.pillOn = false; this.waits.length = 0; this.moves.length = 0; this.shot = null; this.shotT = 0; this.shotDone = null; this.shotLock = false; this.inputLock = false; this.restSpot = null; this.dirty = false; this.ended = null; this.moon = null; this.candleBonus = 0; this.lastSave = null; }
+  reset() { try { this.st.reset(); } catch (e) { console.error('[v2g] story reset failed', e); } this.objective = ''; this.pillOn = false; this.waits.length = 0; this.moves.length = 0; this.walk = null; this.shot = null; this.shotT = 0; this.shotDone = null; this.shotLock = false; this.inputLock = false; this.restSpot = null; this.dirty = false; this.ended = null; this.moon = null; this.candleBonus = 0; this.lastSave = null; }
   // ───────── save ─────────
   /** the save object for the state as it is (storyObj = st.save(): the copy from before a running sequence) */
   compose(storyObj) {
@@ -123,15 +125,54 @@ export class StoryHost {
     if (this.pillOn && (this.pillT -= dt) <= 0) this.pillOn = false;
     if (this.dirty && !this.st.busy && !this.sc._go && !this.sc.xing && !this.sc.hud.modal && this.sc.ready) { this.dirty = false; this.sc.rebuildArea(); }   // a flag this area is built from changed: show it once the scene is over
     const M = this.moves, sc = this.sc;
+    if (this.walk !== null) this._walkTick(this.walk, dt);   // STORY2: the hero's walk to a mark
     for (let i = M.length - 1; i >= 0; i--) {
-      const m = M[i], p = m.p, dx = m.x - p.x, dz = m.z - p.z, d = Math.sqrt(dx * dx + dz * dz), st = 130 * dt;
+      const m = M[i], p = m.p, dx = m.x - p.x, dz = m.z - p.z, d = Math.sqrt(dx * dx + dz * dz), st = (m.v ?? 130) * dt;
       if (d <= st || (m.t += dt) > 20 || sc.people.list.indexOf(p) < 0) {
         if (sc.people.list.indexOf(p) >= 0) { this._place(p, m.x, m.z); if (m.clip0) p.clip = m.clip0; }
         M.splice(i, 1); try { m.done?.(); } catch (e) { console.error('[v2g] story move', e); }
       } else { this._place(p, p.x + dx / d * st, p.z + dz / d * st); p.a3.dx = dx / d; p.a3.dz = dz / d; p.hx = dx / d; p.hz = dz / d; }
     }
   }
-  _place(p, x, z) { const b = p.box; if (b) { const r = (b.x1 - b.x0) / 2; b.x0 = x - r; b.x1 = x + r; b.z0 = z - r; b.z1 = z + r; } p.x = x; p.z = z; }
+  _place(p, x, z) {
+    const b = p.box; if (b) { const r = (b.x1 - b.x0) / 2; b.x0 = x - r; b.x1 = x + r; b.z0 = z - r; b.z1 = z + r; } p.x = x; p.z = z;
+    const W = this.sc.W; if (W) { const gy = groundAt(W, x, z, p.y + 40); if (Number.isFinite(gy)) p.y = gy; }   // STORY2: her feet follow the floor (a walk up the church stairs)
+  }
+  // ───────── STORY2: the hero on a mark (api.moveHero) ─────────
+  /** one tick of the walk: the stick the scene hands to the rules this tick (w.mx, w.mz) - the rules walk him: collision, steps, sound */
+  _walkTick(w, dt) {
+    const sc = this.sc, h = sc.sim?.hero; w.mx = 0; w.mz = 0;
+    if (!h || h.dead || !sc.ready) { this._walkEnd(false); return; }
+    const dx = w.x - h.x, dz = w.z - h.z, d = Math.sqrt(dx * dx + dz * dz);
+    if (w.at > 0) { if ((w.at += dt) > 0.3) this._walkEnd(false); return; }   // on the mark: he comes to rest and turns, then the story goes on
+    if (d <= 8) { w.at = dt; this._look(w); return; }
+    if ((w.t += dt) > w.cap) { this._walkEnd(true); return; }                 // the time is up (a wall he cannot get round): he is set on the mark
+    // nothing to walk into on the straight way: he walks it. When he stops getting nearer (a wall, the bell's frame) he steps sideways for a moment - one way round, then the other
+    if (d < w.best - 2) { w.best = d; w.stuck = 0; } else if ((w.stuck += dt) > 0.25 && w.sideT <= 0) { w.side = w.side > 0 ? -1 : 1; w.sideT = 0.4 + 0.2 * w.turns++; w.stuck = 0; }
+    let ux = dx / d, uz = dz / d;
+    if (w.sideT > 0) { const sx = -uz * w.side, sz = ux * w.side; ux = sx * 0.94 + ux * 0.34; uz = sz * 0.94 + uz * 0.34; if ((w.sideT -= dt) <= 0) w.best = 1e9; }
+    const m = d > 80 ? 0.66 : Math.max(0.3, 0.66 * d / 80);                   // a walk, slower over the last steps (the rules' own stick: 0.15 is their dead zone, 1 a run)
+    w.mx = ux * m; w.mz = uz * m;
+  }
+  /** where he looks on the mark (set as a spawn's `face` is: the rules' facing; the body turns there by the scene's own turn rule) */
+  _look(w) {
+    const sc = this.sc, h = sc.sim?.hero, f = w.face; if (!h || f == null) return;
+    const q = typeof f === 'string' ? sc.people.byId(f) ?? this._spot(f) : this._spot(f); if (!q) return;
+    const lx = q.x - h.x, lz = q.z - h.z, l = Math.sqrt(lx * lx + lz * lz); if (l < 4) return;
+    h.dirX = lx / l; h.dirZ = lz / l; if (h.facing !== undefined && Math.abs(h.dirX) > 0.25) h.facing = h.dirX < 0 ? -1 : 1;
+  }
+  /** the walk is over. place = he did not get there: he is set on the mark, or on the nearest free spot beside it (the scene's own way of standing him somewhere) */
+  _walkEnd(place) {
+    const w = this.walk, sc = this.sc; if (!w) return; this.walk = null;
+    const h = sc.sim?.hero;
+    if (place && h && !h.dead && sc.ready) {
+      let at = null;
+      for (let r = 0; r <= 96 && !at; r += 24) for (let k = 0; k < (r ? 8 : 1) && !at; k++) { const a = k * Math.PI / 4, q = { x: w.x + Math.cos(a) * r, z: w.z + Math.sin(a) * r, y: h.y }; if (sc._spotOk(q)) at = q; }
+      if (at) { sc._enterAt(null, at); this.note('placed', Math.round(at.x) + ', ' + Math.round(at.z)); }
+      this._look(w);
+    }
+    const d = w.done; if (d) { try { d(); } catch (e) { console.error('[v2g] story moveHero', e); } }
+  }
   _shotEnd() { const d = this.shotDone; this.shotDone = null; this.shotT = 0; this.shotLock = false; if (d) { try { d(); } catch (e) { console.error('[v2g] story camera', e); } } }
   /** where a step points: a spawn name, an interact or actor id, or [x, z] */
   _spot(at) {
@@ -181,8 +222,35 @@ export class StoryHost {
         const p = sc.people.byId(id), q = H._spot(to);
         if (!p || !q) { done?.(); return; }
         // opts.face (STORY, 11-19): where she looks once she stands there - a spot, [x, z] or 'hero' (people.js `look`: kept until the area is built again; the area's own `look` takes over then)
-        const f = o && o.face !== undefined ? (o.face === 'hero' ? { hero: true } : H._spot(o.face)) : undefined, done2 = f === undefined ? done : () => { if (sc.people.list.indexOf(p) >= 0) p.look = f ? (f.hero ? f : { x: f.x, z: f.z }) : null; done?.(); };
-        H.moves.push({ p, x: q.x, z: q.z, t: 0, done: done2, clip0: p.clip }); if (p.a3.asset.clips.walk && (Math.abs(q.x - p.x) > 2 || Math.abs(q.z - p.z) > 2)) p.clip = 'walk';
+        const f = o && o.face !== undefined ? (o.face === 'hero' ? { hero: true } : H._spot(o.face)) : undefined, look = f === undefined ? null : () => { if (sc.people.list.indexOf(p) >= 0) p.look = f ? (f.hero ? f : { x: f.x, z: f.z }) : null; };
+        // STORY2 (11-19): opts.wait === false - the step does not wait for her (she walks on while the next steps run: a camera shot, another person's walk);
+        // opts.speed = px a second (130). A new walk of the same person takes over from the one under way (from where she is; the clip she had before the first walk comes back at the end).
+        let clip0 = p.clip;
+        for (let i = H.moves.length - 1; i >= 0; i--) if (H.moves[i].p === p) { clip0 = H.moves[i].clip0; H.moves.splice(i, 1); }
+        const free = !!o && o.wait === false, done2 = () => { look?.(); if (!free) done?.(); };
+        H.moves.push({ p, x: q.x, z: q.z, t: 0, done: done2, clip0, v: o && o.speed > 0 ? o.speed : undefined }); if (p.a3.asset.clips.walk && (Math.abs(q.x - p.x) > 2 || Math.abs(q.z - p.z) > 2)) p.clip = 'walk';
+        if (free) done?.();
+      },
+      // STORY2 (11-19): a person is set down at a place at once - for a place OUTSIDE the picture (she then walks in with moveActor); to = a spawn name, a spot or actor id, [x, z].
+      // opts.face as for moveActor. Kept until the area is built again (the area's own place takes over then); a person the area does not show is not shown by this.
+      putActor(id, to, o) {
+        const p = sc.people.byId(id), q = H._spot(to); if (!p || !q) return;
+        for (let i = H.moves.length - 1; i >= 0; i--) if (H.moves[i].p === p) { p.clip = H.moves[i].clip0; H.moves.splice(i, 1); }
+        p.y = Number.isFinite(q.y) ? q.y : 1e5; H._place(p, q.x, q.z); if (p.y > 9e4) p.y = 0;   // (her feet: the highest floor at that place when the place names no height)
+        if (o && o.face !== undefined) { const f = o.face === 'hero' ? { hero: true } : H._spot(o.face); p.look = f ? (f.hero ? f : { x: f.x, z: f.z }) : null; if (f && !f.hero) { const lx = f.x - p.x, lz = f.z - p.z, l = Math.sqrt(lx * lx + lz * lz); if (l > 4) { p.a3.dx = lx / l; p.a3.dz = lz / l; p.hx = p.a3.dx; p.hz = p.a3.dz; } } }
+      },
+      // STORY2 (11-19): the hero walks to a mark. The scene feeds the rules a stick (index.js update: host.walk.mx / mz), the rules walk him - nothing moves him behind their back.
+      // to = a spawn name, a spot or actor id, [x, z]; opts.face = where he looks once he stands there (an actor id: where she is at that moment · a spawn / spot · [x, z]);
+      // opts.cap = seconds (3): when he has not arrived by then (a wall in the way that his side steps do not get him round) he is set on the mark - on the nearest free spot of it.
+      // cap 0 = no walk: set there at once (the first step of a scene that begins behind a fade), unless he already stands within 16 px.
+      moveHero(to, o, done) {
+        const q = H._spot(to), h = sc.sim?.hero;
+        if (H.walk) H._walkEnd(false);
+        if (!q || !h || h.dead) { done?.(); return; }
+        const cap = o && Number.isFinite(o.cap) ? Math.max(0, o.cap) : 3;
+        H.walk = { x: q.x, z: q.z, t: 0, cap, face: o && o.face !== undefined ? o.face : null, done: done ?? null, mx: 0, mz: 0, best: 1e9, stuck: 0, side: 0, sideT: 0, turns: 0, at: 0 };
+        H.note('hero', 'to ' + Math.round(q.x) + ', ' + Math.round(q.z));
+        if (cap <= 0) { const dx = q.x - h.x, dz = q.z - h.z; if (dx * dx + dz * dz <= 256) { H._look(H.walk); H._walkEnd(false); } else H._walkEnd(true); }
       },
       camera(shot, seconds, done) {
         if (H.shot && H.shotDone) H._shotEnd();
