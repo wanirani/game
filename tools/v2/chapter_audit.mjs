@@ -199,6 +199,18 @@ function installCa() {
           const gy = gnd(W, sx, sz, h.y + 30); if (!clear || !Number.isFinite(gy) || Math.abs(gy - h.y) > 12) continue;   // on his own floor: a step sideways onto a flight he leans against is no start (the belltower's stone stair: the plan began on the stair and he pushed at its side for 7200 ticks)
           const g2 = RG(W, sx, sz, opt.R, { onFoot: opt.onFoot }); if (g2.cells) { G = g2; A.offWall = (A.offWall ?? 0) + 1; break off; }
         }
+        // INSIDE A SOLID (main session, 11-19 evening): a knock-back off the ossuary terrace drops him into the fallen stair's rubble (graveyard_now 616,1836: 10 px inside its
+        // south face, the terrace wall 4 px behind) - no cell near him is free, so the step-off above finds no start and three beats in a row read "no route". The rules let a body
+        // that stands inside a solid walk out of it (probed: 150 ticks of stick in any direction carry him out), so flood from the nearest free spot on his own floor, whatever
+        // lies between: the walk's first leg goes straight there.
+        if (!G.cells && !free(h.x, h.z)) {
+          ins: for (const dist of [40, 64, 90, 120, 150]) for (let a = 0; a < 16; a++) {
+            const sx = h.x + Math.cos(a * Math.PI / 8) * dist, sz = h.z + Math.sin(a * Math.PI / 8) * dist;
+            if (!free(sx, sz) || !sc._spotOk({ x: sx, z: sz, y: h.y })) continue;
+            const gy = gnd(W, sx, sz, h.y + 30); if (!Number.isFinite(gy) || Math.abs(gy - h.y) > 12) continue;
+            const g2 = RG(W, sx, sz, opt.R, { onFoot: opt.onFoot }); if (g2.cells) { G = g2; A.inSolid = (A.inSolid ?? 0) + 1; break ins; }
+          }
+        }
       }
       const p = G.near(tx, tz, r) ?? G.near(tx, tz, r * 2.2);
       if (p) { const path = G.path(p[0], p[1], true); if (path && path.length) {
