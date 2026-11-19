@@ -328,7 +328,8 @@ export function createPad(game, opts = {}) {
       moveStick();
     },
     /** SCREENS: where button i stands (CSS px), written into `out` - nothing is made (the cards and the book chip place themselves by it every tick) */
-    at(i, out) { const b = B[i]; if (!S.L || !b) return false; out.cx = b.cx; out.cy = b.cy; out.d = b.d; out.id = b.id; return true; },
+    at(i, out) { const b = B[i]; if (!S.L || !b) return false; out[0] = b.cx; out[1] = b.cy; out[2] = b.d; return true; },   // out = a Float64Array(3): cx, cy, d
+    idAt(i) { return B[i] ? B[i].id : ''; },
     get count() { return B.length; }, get cut() { return !!S.cut; }, get back() { return !!S.back; },
     /** QA: geometry in CSS px. */
     metrics() {

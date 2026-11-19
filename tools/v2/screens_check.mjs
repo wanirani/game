@@ -538,7 +538,7 @@ if (PAGE_PARTS.some(want)) {
         const cdp = await ctx.newCDPSession(page);
         await ev(() => { const F = window.__F, sc = window.__v2.scene; const cv = document.createElement('canvas'), S = sc.state; cv.width = Math.round(S.viewW * 2); cv.height = Math.round(S.viewH * 2); const c = cv.getContext('2d');
           F.frames = (n) => { const S = sc.state; for (let i = 0; i < n; i++) { sc.hud.update(1 / 60, S); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); c.setTransform(2, 0, 0, 2, 0, 0); sc.hud.draw(c, S); } };
-          F.timed = (n) => { const S = sc.state, T = new Float32Array(n); for (let i = 0; i < n; i++) { const t0 = performance.now(); sc.hud.update(1 / 60, S); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); c.setTransform(2, 0, 0, 2, 0, 0); sc.hud.draw(c, S); T[i] = performance.now() - t0; } return Array.from(T); }; });
+          F.timed = (n, raster = false) => { const S = sc.state, T = new Float32Array(n); for (let i = 0; i < n; i++) { const t0 = performance.now(); sc.hud.update(1 / 60, S); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); c.setTransform(2, 0, 0, 2, 0, 0); sc.hud.draw(c, S); if (raster) c.getImageData(0, 0, 1, 1); T[i] = performance.now() - t0; } return Array.from(T); }; });
         const MINE = /\/src\/v2\/ui\/(screens|cards|choice|model|icons)\.js/;
         const measure = async (label, N = 1500) => {
           await ev(() => window.__F.frames(300));
@@ -559,7 +559,7 @@ if (PAGE_PARTS.some(want)) {
         await ev(() => { const F = window.__F, sc = window.__v2.scene; F.closeBtn(); F.tick(8); F.pauseRow('resume'); F.tick(6); sc.hud.openScreen('shop', { shop: 'rook' }); F.tick(60); }); A.shop = await measure('the shop open and still');
         await ev(() => { const F = window.__F, sc = window.__v2.scene; F.closeBtn(); F.tick(8); for (let i = 0; i < 3; i++) sc.hud.card('item', { name: '낡은 은 열쇠', icon: 'key_silver', time: 600 }); F.tick(30); }); A.cards = await measure('three cards up, the chip up');
         await ev(() => { const F = window.__F, sc = window.__v2.scene; sc.hud.showDialog({ speaker: '하드윈 1세', text: '쇠로 하겠소, 은으로 하겠소?', choices: ['은 열쇠', '쇠 열쇠'], choiceMeta: [{ icon: 'key_silver', line: '은은 백 년 뒤에도 그대로다' }, { icon: 'key_iron', line: '쇠는 백 년이면 녹슬어 굳는다' }], onChoice() {} }); F.tick(90); }); A.choice = await measure('the choice cards up and still');
-        for (const k of Object.keys(A)) ok(`${DEV}: ${k} open and still - the screens' own code makes no objects per frame (sampled bytes in its files: boxed numbers handed to canvas calls at most)`, A[k].mine <= 400, `${A[k].mine.toFixed(0)} B/frame in screens.js · cards.js · choice.js · model.js · icons.js; the whole HUD ${A[k].total.toFixed(0)} B/frame against ${base.total.toFixed(0)} alone`);
+        for (const k of Object.keys(A)) ok(`${DEV}: ${k} open and still - the screens' own code makes no objects per frame (sampled bytes in its files: boxed numbers handed to canvas calls at most)`, A[k].mine <= 320, `${A[k].mine.toFixed(0)} B/frame in screens.js · cards.js · choice.js · model.js · icons.js; the whole HUD ${A[k].total.toFixed(0)} B/frame against ${base.total.toFixed(0)} alone`);
         // thirty entries: drag, let go, momentum
         const perf = await ev(() => {
           const F = window.__F, sc = window.__v2.scene, M = sc.host.model, real = M.book(), R30 = [];
@@ -575,10 +575,13 @@ if (PAGE_PARTS.some(want)) {
           let unbaked = 0, maxV = 0; for (let k = 0; k < 300; k++) { T.push(...F.timed(1)); const m = F.M().screen; if (m.rows.some((r) => r.on && !r.baked)) unbaked++; maxV = Math.max(maxV, Math.abs(m.v)); }
           const m2 = F.M().screen; T.sort((a, b) => a - b);
           const still = F.timed(120).sort((a, b) => a - b);
-          return { n: m0.n, max: m0.max, drag, v0, end: m2.scroll, vEnd: m2.v, maxV, unbaked, baked: m2.baked, ms: { p50: T[T.length >> 1], p95: T[Math.floor(T.length * 0.95)], max: T[T.length - 1], over8: T.filter((t) => t > 8).length, over16: T.filter((t) => t > 16.7).length, frames: T.length }, still: { p50: still[60], max: still[119] } };
+          // the same fling once more with every frame rastered (one pixel read back): what a software canvas of twice the logical size costs here
+          F.fire('pointerdown', id, c0[0], c0[1]); F.frames(1); for (let k = 1; k <= 6; k++) { const c = F.toClient(cx, cy + k * 80); F.fire('pointermove', id, c[0], c[1]); F.frames(1); } F.fire('pointerup', id, c0[0], c0[1]);
+          const TR = F.timed(240, true).sort((a, b) => a - b);
+          return { raster: { p50: TR[120], p95: TR[228], max: TR[239] }, n: m0.n, max: m0.max, drag, v0, end: m2.scroll, vEnd: m2.v, maxV, unbaked, baked: m2.baked, ms: { p50: T[T.length >> 1], p95: T[Math.floor(T.length * 0.95)], max: T[T.length - 1], over8: T.filter((t) => t > 8).length, over16: T.filter((t) => t > 16.7).length, frames: T.length }, still: { p50: still[60], max: still[119] } };
         });
         ok(`${DEV}: thirty entries: a drag moves the list with the finger, letting go keeps it moving and it comes to rest (momentum on the game's clock)`, perf.n === 30 && perf.max > 0 && perf.drag > 300 && perf.v0 > 500 && perf.end > perf.drag + 100 && perf.vEnd === 0 && perf.end <= perf.max + 0.5, `dragged ${Math.round(perf.drag)} px, let go at ${Math.round(perf.v0)} px/s, came to rest at ${Math.round(perf.end)} of ${Math.round(perf.max)}`);
-        ok(`${DEV}: …no row in the window was ever without its picture, and no frame of the fling took a 60 Hz frame's time (HUD update + draw; this machine, software canvas)`, perf.unbaked === 0 && perf.ms.over16 === 0, `${perf.ms.frames} frames: median ${perf.ms.p50.toFixed(2)} ms · p95 ${perf.ms.p95.toFixed(2)} · longest ${perf.ms.max.toFixed(2)} · over 8 ms ${perf.ms.over8} · at rest median ${perf.still.p50.toFixed(2)} ms · rows kept baked ${perf.baked}`);
+        ok(`${DEV}: …no row in the window was ever without its picture, and no frame of the fling took a 60 Hz frame's time (HUD update + draw; this machine, software canvas)`, perf.unbaked === 0 && perf.ms.over16 === 0, `${perf.ms.frames} frames: median ${perf.ms.p50.toFixed(2)} ms · p95 ${perf.ms.p95.toFixed(2)} · longest ${perf.ms.max.toFixed(2)} · over 8 ms ${perf.ms.over8} · at rest median ${perf.still.p50.toFixed(2)} ms · rows kept baked ${perf.baked} · with every frame rastered (read-back) median ${perf.raster.p50.toFixed(1)} ms, p95 ${perf.raster.p95.toFixed(1)}, longest ${perf.raster.max.toFixed(1)}`);
         await shot('book30');
       }
       await ctx.close();
