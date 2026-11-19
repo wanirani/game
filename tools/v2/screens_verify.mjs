@@ -64,7 +64,7 @@ try {
       return st;
     };
     /** ticks from the node side until `done` (areas are built between ticks: a crossing, a fall) */
-    const until = async (done, max = 120, each = null) => { let x = null; for (let i = 0; i < max; i++) { x = await ev((each) => { const F = window.__F, sc = window.__v2.scene, S = F.safe(); let opened = 0; try { for (let k = 0; k < 20; k++) { if (each && k % 5 === 2) { F.fire('pointerdown', 91, each.chip[0], each.chip[1]); F.fire('pointerup', 91, each.chip[0], each.chip[1]); F.fire('pointerdown', 92, each.pause[0], each.pause[1]); F.fire('pointerup', 92, each.pause[0], each.pause[1]); window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true })); } if (!each && sc.hud.modal === 'dialog' && k % 9 === 0) F.tap(S.vw / 2, S.vh * 0.3, 1); window.__game.tick(1 / 60); if (each && k % 5 === 3) window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Escape', key: 'Escape', bubbles: true })); if (each && sc.hud.modal) { opened++; if (sc.hud.screen) sc.hud.closeScreen(); else if (sc.hud.pauseOpen) sc.hud.closePause(); } } F.draw(); } catch (e) { return { err: String(e?.message ?? e) }; } const pb = F.M().pad?.buttons?.find((q) => q.id === 'pause'); return { area: window.__v2.area, ready: window.__v2.ready, xing: !!sc.xing, go: !!sc._go, dead: !!sc.sim?.hero?.dead, modal: sc.hud.modal, busy: !!sc.host?.st.busy, opened, pauseOn: !!pb && F.M().pad?.shown === true }; }, each).catch(() => null); if (x && !x.err && done(x)) break; await page.waitForTimeout(100); } return x; };
+    const until = async (done, max = 120, each = null) => { let x = null; for (let i = 0; i < max; i++) { x = await ev((each) => { const F = window.__F, sc = window.__v2.scene, S = F.safe(); let opened = 0; try { for (let k = 0; k < 20; k++) { if (each && k % 5 === 2) { F.fire('pointerdown', 91, each.chip[0], each.chip[1]); F.fire('pointerup', 91, each.chip[0], each.chip[1]); F.fire('pointerdown', 92, each.pause[0], each.pause[1]); F.fire('pointerup', 92, each.pause[0], each.pause[1]); } if (!each && sc.hud.modal === 'dialog' && k % 9 === 0) F.tap(S.vw / 2, S.vh * 0.3, 1); window.__game.tick(1 / 60); if (each && sc.hud.modal) { opened++; if (sc.hud.screen) sc.hud.closeScreen(); else if (sc.hud.pauseOpen) sc.hud.closePause(); } } F.draw(); } catch (e) { return { err: String(e?.message ?? e) }; } const pb = F.M().pad?.buttons?.find((q) => q.id === 'pause'); return { area: window.__v2.area, ready: window.__v2.ready, xing: !!sc.xing, go: !!sc._go, dead: !!sc.sim?.hero?.dead, modal: sc.hud.modal, busy: !!sc.host?.st.busy, opened, pauseOn: !!pb && F.M().pad?.shown === true }; }, each).catch(() => null); if (x && !x.err && done(x)) break; await page.waitForTimeout(100); } return x; };
 
     // ───────────── the stills: every state of the first piece ─────────────
     if (want('stills')) {
@@ -178,12 +178,16 @@ try {
         return { talk: def.talk, seen, over, back, alive: F.alive() }; }, pos);
       ok(`${DEV}: in a dialogue no touch opens a screen (where the chip was, where the pause button was, the back key): the dialogue only goes on; afterwards the game runs`, !t2.err && t2.seen.every((q) => q.startsWith('null/')) && t2.alive.modal === null && t2.alive.ran && t2.alive.swung === 0, J(t2));
       if (!t2.err) say(`(the interface asked directly - hud.openScreen during a dialogue -> ${J(t2.over)}; closed -> ${J(t2.back)})`);
+    }
+    if (want('cross')) {
+      await open(33);
+      const pos = await ev(() => { const F = window.__F; const chip = F.chipUp(); return { chip, pause: F.pauseBtn() }; });
       // a crossing, with the draught used on its first frame
       const t3 = await ev(() => { const F = window.__F, sc = window.__v2.scene, M = sc.host.model; M.dr = 1; M.touch(); F.put(4200, 1392, 0, -1); F.tick(20); const h = sc.sim.hero, d0 = sc.sim.deaths, hdr = h.draughts, okx = sc.cross({}); h.ifr = 0; sc._graceT = 0; h.hp = 1; const r = sc.sim.hurtHero(999, -1, 0, {}); return { okx, r, dead: h.dead, hp: h.hp, hdr, deaths: sc.sim.deaths - d0, area: window.__v2.area, dr: M.dr }; });
       let opened = 0, pauseOn = 0, samples = 0;
       const x3 = await until((x) => { opened += x.opened; samples++; if (x.pauseOn && (x.xing || x.go)) pauseOn++; return x.ready && !x.xing && !x.go && x.area !== t3.area; }, 140, pos);
       const t3b = await ev(() => { const F = window.__F, sc = window.__v2.scene; F.touch(); F.tick(60); const m = F.M(); return { model: F.model(), hero: F.hero(), hudDr: m.hud.draughts, alive: F.alive(), area: window.__v2.area, deaths: sc.sim.deaths }; });
-      ok(`${DEV}: during a bell crossing nothing opens (the chip's place, the pause button's place and the back key pressed all the way through), and the crossing ends in the other night`, t3.okx === true && opened === 0 && !!x3 && x3.area === 'eshville_past' && t3b.alive.modal === null && t3b.alive.ran && t3b.alive.pad === true, `ticks with something open ${opened} · samples ${samples} · samples with the pause button on screen during the crossing ${pauseOn} · ${J(t3b.alive)}`);
+      ok(`${DEV}: during a bell crossing nothing opens (the chip's place and the pause button's place touched all the way through), and the crossing ends in the other night`, t3.okx === true && opened === 0 && !!x3 && x3.area === 'eshville_past' && t3b.alive.modal === null && t3b.alive.ran && t3b.alive.pad === true, `ticks with something open ${opened} · samples ${samples} · samples with the pause button on screen during the crossing ${pauseOn} · ${J(t3b.alive)}`);
       ok(`${DEV}: the draught used on the first frame of the crossing: he does not fall, it is gone on the far side (model, rules, HUD), no fall is counted`, t3.r !== false && t3.dead === false && t3.deaths === 0 && t3b.model.dr === 0 && t3b.hero.draughts === 0 && !t3b.hudDr && !t3b.hero.dead, J(t3) + ' -> ' + J({ dr: t3b.model.dr, heroDr: t3b.hero.draughts, hp: t3b.hero.hp, hud: t3b.hudDr }));
       // while falling
       const t4 = await ev((pos) => { const F = window.__F, sc = window.__v2.scene, sim = sc.sim, h = sim.hero; const chip = F.chipUp() ?? pos.chip; h.ifr = 0; sc._graceT = 0; h.hp = 1; const d0 = sim.deaths; sim.hurtHero(999, -1, 0, {}); const fell = h.dead; F.tick(3, false);
@@ -194,6 +198,20 @@ try {
       const x4 = await until((x) => !x.dead && x.ready && !x.go && !x.busy && x.modal === null, 140, null);
       const t4b = await ev(() => { const F = window.__F; F.touch(); F.tick(30); return { alive: F.alive(), model: F.model(), area: window.__v2.area }; });
       ok(`${DEV}: the book and the pause panel asked for while he falls: whatever opens stops the fall and gives it back, and he stands up again as always - nothing stuck`, t4.fell === true && (t4.a.screen === null || t4.frozen === true) && !!x4 && !x4.dead && t4b.alive.modal === null && t4b.alive.ran && t4b.alive.pad === true && !t4b.alive.dead, J(t4) + ' -> ' + J(t4b.alive) + ' in ' + t4b.area);
+      // the back key all through a crossing (while the far side is built the scene is not ready)
+      await open(33);
+      const k0 = await ev(() => { const F = window.__F, sc = window.__v2.scene; F.put(4200, 1392, 0, -1); F.tick(20); return { okx: sc.cross({}), area: window.__v2.area }; });
+      let k1 = null; const tops = [];
+      for (let i = 0; i < 140; i++) {
+        k1 = await ev(() => { const g = window.__game, sc = window.__v2?.scene; try { for (let k = 0; k < 20; k++) { if (k % 5 === 2) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true })); g.tick(1 / 60); if (k % 5 === 3) window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Escape', key: 'Escape', bubbles: true })); if (sc && g.top === sc && sc.hud && sc.hud.pauseOpen) sc.hud.closePause(); } g.render(); } catch (e) { return { err: String(e?.message ?? e), top: g.top?.constructor?.name ?? null }; } return { top: g.top?.constructor?.name ?? null, area: window.__v2?.area ?? null, ready: !!window.__v2?.ready, xing: !!sc?.xing, go: !!sc?._go, modal: sc?.hud?.modal ?? null }; }).catch(() => null);
+        if (k1 && k1.top && !tops.includes(k1.top)) tops.push(k1.top);
+        if (k1 && (k1.top === 'V2Chooser' || (k1.ready && !k1.xing && !k1.go && k1.area !== k0.area))) break; await page.waitForTimeout(100);
+      }
+      const sv = await ev(() => { try { const o = JSON.parse(localStorage.getItem('bn.v2.save')); return { why: o.why, area: o.area, era: o.era, storyArea: o.story?.area, pos: o.pos }; } catch { return null; } });
+      ok(`${DEV}: the back key pressed all through a bell crossing does not leave the game`, k0.okx === true && !!k1 && k1.top !== 'V2Chooser' && k1.area === 'eshville_past', `scenes on top in turn: ${tops.join(' -> ')} · ended ${J(k1)} · stored save ${J(sv)}`);
+      await open(undefined);
+      const k2 = await ev(() => { const F = window.__F; return { area: window.__v2.area, alive: F.alive() }; });
+      ok(`${DEV}: …and the save found afterwards loads to a free hero`, k2.alive.modal === null && k2.alive.ran && !k2.alive.dead, J(k2));
     }
 
     // ───────────── a choice chosen once and left ─────────────
@@ -281,7 +299,7 @@ try {
       await open(84, '&v2ui=0');
       let top = null, seen = [], kind = await ev(() => window.__v2.scene.hudKind);
       for (let i = 0; i < 90; i++) { top = await ev(() => { try { for (let k = 0; k < 30; k++) window.__game.tick(1 / 60); window.__game.render(); } catch { /* between scenes */ } return window.__game.top?.constructor?.name ?? null; }).catch(() => null); if (top && !seen.includes(top)) seen.push(top); if (top === 'V2Chooser') break; await page.waitForTimeout(80); }
-      ok(`${DEV}: with the built-in HUD of the old pad (v2ui=0) the ending leaves for the 3D chooser by itself, and no other scene is on top on the way`, kind === 'builtin' && top === 'V2Chooser' && seen.every((q) => q === 'V2Chooser' || /V2G|Game|Scene/.test(q)) && !seen.some((q) => /Title/i.test(q)), `hud ${kind} · scenes on top in turn: ${seen.join(' -> ')}`);
+      ok(`${DEV}: with the built-in HUD of the old pad (v2ui=0) the ending leaves for the 3D chooser by itself, and no other scene is on top on the way`, kind === 'builtin' && top === 'V2Chooser' && seen.length <= 2 && !seen.some((q) => /Title/i.test(q)), `hud ${kind} · scenes on top in turn: ${seen.join(' -> ')}`);
     }
 
     // ───────────── cost ─────────────

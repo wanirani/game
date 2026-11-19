@@ -24,10 +24,11 @@ async function look(C) {
       let found = null; for (let R = 0; R <= 1500 && !found; R += 40) for (let k = 0; k < (R ? 16 : 1) && !found; k++) { const a = (k * Math.PI) / 8, x = sim.hero.x + Math.cos(a) * R, z = sim.hero.z + Math.sin(a) * R; if (!(Math.abs(W.ground(x, z) - y0) < 3)) continue; for (const d of [1, -1]) if (ok(x, z, d)) { found = { x, z, dx: d, dz: 0 }; break; } }
       if (found) q = found; W.sideView = !!found;
     }
-    if (C.fire) {   // a straight beside the brightest light of the area (the blaze), so the streak is seen against it
-      const L = sc.fx?.lights, src = (sc.area.lights ?? sc.area.def?.lights ?? []).slice();
-      let best = null; for (const l of src) { const p = l.pos ?? [l.x, l.y, l.z]; if (!p || !Number.isFinite(p[0])) continue; const s = (l.r ?? l.radius ?? 1) * (l.i ?? l.intensity ?? 1); if (!best || s > best.s) best = { x: p[0], z: p[2] ?? p[1], s }; }
-      W.fireAt = best; if (best) q = W.straight(best.x, best.z + 60);
+    if (C.fire) {   // a straight across the screen just in FRONT of the biggest blaze of the area (nearer to the camera than the fire), so the streak is seen against the flames
+      const fires = (sc.anchors?.list ?? []).filter((a) => a.kind === 'fire').sort((a, b) => b.size - a.size); let found = null;
+      const okF = (x, z, d, y0) => { for (let r = -40; r <= 200; r += 20) { const gy = W.ground(x + d * r, z); if (!(Math.abs(gy - y0) < 3)) return false; } for (const sd of [-20, 0, 20]) if (sim.clearLine && !sim.clearLine(x - d * 40, z + sd, x + d * 200, z + sd, y0 + 40)) return false; return true; };
+      for (const f of fires) { for (const oz of [80, 110, 140, 60, 170, 200]) { for (const ox of [-90, 90, -40, 40, -140, 140]) { const x = f.x + ox, z = f.z - oz, y0 = W.ground(x, z); if (!Number.isFinite(y0)) continue; const d = ox < 0 ? 1 : -1; if (okF(x, z, d, y0)) { found = { x, z, dx: d, dz: 0, fire: [Math.round(f.x), Math.round(f.y), Math.round(f.z), f.size] }; break; } } if (found) break; } if (found) break; }
+      W.fireAt = found ? found.fire : 'none of ' + fires.length; if (found) q = found;
     }
     W.X0 = q.x; W.Z0 = q.z; W.dir = [q.dx, q.dz];
   }
