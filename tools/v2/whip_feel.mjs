@@ -5,7 +5,8 @@
 // display frame on which (the frames of the hit tick and of the tick after it are really drawn; the values are read from the state those draws use)
 //   reach   a drawn node of the lash touches the target's body (what the frame shows: the scene's own interpolation; a crack puts the tip on the contact point, the charged coil winds round the body)
 //   freeze  the picture stops (the first frame after which hero, enemy and lash are drawn where they were drawn the frame before)
-//   spark   the hit preset is in the effect engine when a frame is drawn, and whether its point lies ON the target's body
+//   spark   the first frame in which the particles of the hit preset are DRAWN: their age at the effect clock of that frame is above 0 (at age 0 the particle shader
+//           gives alpha 0 - MAGIC 2026-11-19: this column used to be the frame after the REQUEST), and whether its point lies ON the target's body
 //   flash   the enemy's hit flash is drawn (actor.hitAge)   pose  the rules put it in its hurt / stagger / death state (the clip follows on that tick)
 //   number  the damage number is on        sound  the audio engine was asked to start (+ its own 4 ms and the spread delay)   buzz  the vibration was asked for
 // all as frames relative to `reach`. Pass = every one within one display frame of reach at both rates.
@@ -26,7 +27,7 @@ async function measure(KINDS_WANT) {
   // from the start spot along +x the roll ended in a wall and the sweep was never measured against an enemy)
   const ST = W.straight(hero().x, hero().z), X0 = ST.x, Z0 = ST.z, DX = ST.dx, DZ = ST.dz;
   const rec = { frame: 0, hit: null, fxAt: [], snd: [], buzz: [], brk: null };
-  const playAt0 = fx.playAt.bind(fx); fx.playAt = (id, x, y, z, ...r) => { rec.fxAt.push({ name: NAME[id] ?? String(id), x, y, z, frame: rec.frame }); return playAt0(id, x, y, z, ...r); };
+  const playAt0 = fx.playAt.bind(fx); fx.playAt = (id, x, y, z, ...r) => { const t = fx.time, s0 = fx.particles.spawned, ret = playAt0(id, x, y, z, ...r); rec.fxAt.push({ name: NAME[id] ?? String(id), x, y, z, frame: rec.frame, t, n: fx.particles.spawned - s0 }); return ret; };   // t = the effect clock the particles are born at, n = how many
   const fire0 = feel.sound.fire.bind(feel.sound); feel.sound.fire = (r, bus, pos, vol, pitch, delay) => { const st = fire0(r, bus, pos, vol, pitch, delay); rec.snd.push({ bus, delay: delay || 0, vol: +(+vol).toFixed(2), started: st, frame: rec.frame }); return st; };
   const hap0 = feel.haptics.play.bind(feel.haptics); feel.haptics.play = (n) => { rec.buzz.push({ name: n, frame: rec.frame }); return hap0(n); };
   const hookHit = (want) => { const H = sim().hooks, h0 = H.hit, b0 = H.break; H.hit = function (e, dmg, mv, x, y, z, info) { if (!rec.hit && mv.id === want) rec.hit = { e, x, y, z, frame: rec.frame, str: mv.strength, stop0: F.stop, tr0: F.trauma, ex: e.x, ey: e.y, ez: e.z, er: e.r, eh: e.h }; const r = h0.call(this, e, dmg, mv, x, y, z, info); if (rec.hit && rec.hit.e === e && rec.hit.stop == null) { rec.hit.stop = F.stop; rec.hit.shake = +(F.trauma - rec.hit.tr0).toFixed(3); rec.hit.feel = r ? { stop: r.stop, shake: r.shake, kick: r.kick, zoom: r.zoom, haptic: r.haptic, layers: r.layers ? r.layers.length : null } : null; } return r; };
@@ -64,7 +65,7 @@ async function measure(KINDS_WANT) {
         const hh = hero(), a = sc._hitSnap ? 1 : al, tp = tipDrawn(a), C = rec.hit ?? rec.brk, tg = rec.hit ? rec.hit.e : null, CB = C ?? B0;
         fr.push({ f: rec.frame, tick: i, moved, key: [hh._px + (hh.x - hh._px) * a, tp[0], tp[1], tp[2], tg ? tg._px + (tg.x - tg._px) * a : 0].map((q) => Math.round(q * 100)).join(','),
           tipD: C ? Math.hypot(tp[0] - C.x, tp[1] - C.y, tp[2] - C.z) : -1, bodyD: CB ? lashOn(a, CB) : -1, flash: tg && tg._a3 ? tg._a3.hitAge >= 0 && tg._a3.hitAge < 0.14 : false, pose: tg ? ['hurt', 'stagger', 'death'].includes(tg.anim) || tg.state === 'dead' : false,
-          num: sc.numbers.some((q) => q.on && q.t < 0.05), stop: F.stop > 0 });
+          num: sc.numbers.some((q) => q.on && q.t < 0.05), stop: F.stop > 0, fxT: fx.time });
       }
       if (rec.hit && rec.frame - rec.hit.frame > (rate === 120 ? 36 : 18)) break;
       if (rec.brk && !rec.hit && rec.frame - rec.brk.frame > (rate === 120 ? 24 : 12)) break;
@@ -84,7 +85,7 @@ async function measure(KINDS_WANT) {
       const snd = rec.snd.filter((q) => q.frame >= C.frame && (q.bus === 'f3_hit' || q.bus === 'f3_big' || q.bus === 'f3_enemy')), bz = rec.buzz.filter((q) => q.frame >= C.frame);
       const frozenTicks = (() => { const t = new Set(); for (const x of fr) if (x.f >= f0 && !x.moved) t.add(x.tick); let n = 0; const first0 = fr.find((x) => x.f >= f0 && !x.moved); if (!first0) return 0; for (let k = first0.tick; t.has(k); k++) n++; return n; })();
       const tipMin = Math.min(...fr.filter((x) => x.f >= f0 && x.bodyD >= 0).map((x) => x.bodyD)), tipAt = fr.find((x) => x.f === f0)?.tipD ?? -1;
-      out = { move, target, rate, strength: rec.hit ? rec.hit.str : null, contact: f0, reach, freeze, spark: sp.length ? sp[0].frame + 1 : null, sparkOn: on, fxNames: [...new Set(rec.fxAt.filter((q) => q.frame >= C.frame && q.frame <= C.frame + 1).map((q) => q.name))].join('+'),
+      out = { move, target, rate, strength: rec.hit ? rec.hit.str : null, contact: f0, reach, freeze, spark: sp.length ? first((x) => x.f >= f0 && x.fxT > sp[0].t + 1e-7) : null, sparkAsked: sp.length ? sp[0].frame + 1 : null, sparkN: sp.length ? sp[0].n : 0, sparkOn: on, fxNames: [...new Set(rec.fxAt.filter((q) => q.frame >= C.frame && q.frame <= C.frame + 1).map((q) => q.name))].join('+'),
         flash: first((x) => x.flash), pose: first((x) => x.pose), number: first((x) => x.num), sound: snd.length ? snd[0].frame + 1 : null, soundStarted: snd.length ? snd[0].started : null, soundMs: snd.length ? 4 + Math.round(snd[0].delay * 1000) : null, buzz: bz.length ? bz[0].frame + 1 : null, buzzName: bz.length ? bz[0].name : null,
         frozenTicks, stop: rec.hit ? +(rec.hit.stop ?? 0).toFixed(3) : null, shake: rec.hit ? rec.hit.shake : null, feel: rec.hit ? rec.hit.feel : null, tipMin: +tipMin.toFixed(1), tipAt: +tipAt.toFixed(1) };
     }
