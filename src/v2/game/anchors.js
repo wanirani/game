@@ -54,7 +54,7 @@ const RANGE2 = 2100 * 2100, GOLD = 0.6180339887, CANDLE_BEAT = 0.65, CANDLE_RANG
 const frac = (v) => v - Math.floor(v);
 
 export class Anchors {
-  constructor() { this.list = []; this.lightMax = 2; this.fireK = 1; this.softK = 1; this.live = 0; this.lit = 0; this._round = 1; }
+  constructor() { this.list = []; this.lightMax = 2; this.fireK = 1; this.softK = 1; this.smokeK = 1; this.live = 0; this.lit = 0; this._round = 1; }
   build(area, tier, gAt = null) {   // gAt(x, z) = floor height there: an anchor with ground: true stands on the floor (world/index.js finishArea - a brazier on a raised terrace)
     this.list.length = 0;
     const parts = (area.def?.stage ?? area.stage)?.parts ?? [];   // the game's area object keeps the world's area as .def (game/area.js loadArea)
@@ -86,6 +86,7 @@ export class Anchors {
     this.lightMax = tier === 'high' ? 3 : tier === 'low' ? 1 : 2;
     this.fireK = tier === 'high' ? 1 : tier === 'low' ? 0.62 : 0.85;   // flame layers: fewer quads on the lower tiers (their size stays: the fire keeps its shape)
     this.softK = tier === 'high' ? 1 : tier === 'low' ? 0.4 : 0.75;    // heat glow, sparks, embers, smoke
+    this.smokeK = tier === 'mid' ? 0.6 : 1;   // DETAIL: the smoke of the big fires on the mid tier - with it at full rate all effects covered 1.7 - 2.1 phone screens at the two outskirts fire views (the aim is 1.8; the puffs grow to 2.3 x their size)
   }
   /** once per tick. dt = effect time step, m = view-projection, (cx, cz) = where the camera looks */
   tick(sc, fx, dt, m, cx, cz) {
@@ -106,7 +107,7 @@ export class Anchors {
         A[3] += R[3] * ks; for (let n = 0; A[3] >= 1 && n < 2; n++) { A[3] -= 1; P.emit(F.HEAT, x0 + frac(++Q[3] * GOLD) * sp, y, z - 4, 0, 1, 0, 0, y); }
         A[4] += R[4] * ks; for (let n = 0; A[4] >= 1 && n < 3; n++) { A[4] -= 1; P.emit(F.SPARK, x0 + frac(++Q[4] * GOLD) * sp, y + F.bh * 0.3, z, WIND, 0.98, 0, 0, y); }
         A[5] += R[5] * ks; for (let n = 0; A[5] >= 1 && n < 2; n++) { A[5] -= 1; P.emit(F.EMBER, x0 + frac(++Q[5] * GOLD) * sp, y + F.bh * 0.5, z, WIND * 1.6, 0.95, 0, 0, y); }
-        A[6] += R[6] * ks; for (let n = 0; A[6] >= 1 && n < 2; n++) { A[6] -= 1; P.emit(F.SMOKE, x0 + frac(++Q[6] * GOLD) * sp, y + F.bh * 1.15, z + 6, WIND, 0.98, 0, 0, y); }
+        A[6] += R[6] * ks * this.smokeK; for (let n = 0; A[6] >= 1 && n < 2; n++) { A[6] -= 1; P.emit(F.SMOKE, x0 + frac(++Q[6] * GOLD) * sp, y + F.bh * 1.15, z + 6, WIND, 0.98, 0, 0, y); }
       }
       else if (a.kind === 'candles') { if (a.d2 > CANDLE_RANGE2) continue;   // round robin: every wick gets a new flame quad each beat, the wicks one after the other; the halo twice a beat
         a.t += dt * a.n / CANDLE_BEAT;
@@ -117,7 +118,7 @@ export class Anchors {
         }
       }
       else if (a.kind === 'embers') P.emit(SPARK, a.x, a.y, a.z, 0, 1, 0, 9 * s * k, a.y);
-      else if (a.kind === 'smoke') P.emit(COLUMN, a.x, a.y, a.z, 0, 1, 0, 4 * s * k, a.y);
+      else if (a.kind === 'smoke') P.emit(COLUMN, a.x, a.y, a.z, 0, 1, 0, 4 * s * k * this.smokeK, a.y);
       else if (a.kind === 'mist' || a.kind === 'fog_bank') P.emit(MIST, a.x, a.y, a.z, 0, 1, 0, (a.kind === 'fog_bank' ? 2.2 : 1.1) * s * k, a.y);
       else if (a.kind === 'candle') { a.t = (a.t ?? 0) + dt * 2 / CANDLE_BEAT; if (a.t >= 1) { a.t -= 1; P.emit(CANDLE, a.x, a.y, a.z, 0, 1, 0, 0, a.y); } }
       else if (a.kind === 'glow_red') P.emit(MOTE, a.x, a.y, a.z, 0, 1, 0, 5 * s * k, a.y);
