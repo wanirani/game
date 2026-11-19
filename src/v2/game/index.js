@@ -896,7 +896,7 @@ export default class V2Game extends Scene {
       });
       return;
     }
-    if (input.pressed('menu') && g.registry.title && !this.hud.modal && !(this.ready && this.xing)) { if (this.ready) this._pause(); else this._leave(); if (!this.hud.modal) return; }   // ESC / START: the pause menu (leaving is one of its rows)
+    if (input.pressed('menu') && g.registry.title && !this.hud.modal && !(this.xing && (this.ready || !this.glError))) { if (this.ready) this._pause(); else this._leave(); if (!this.hud.modal) return; }   // ESC / START: the pause menu (leaving is one of its rows). SCREENS-VERIFY (11-19): while a bell crossing runs the key does nothing at all - it used to LEAVE the game during the seconds the far side is built (not ready); a far side that failed to build can still be left
     if (!this.ready || !this.glr || this.glr.lost) return;
     const sim = this.sim, inp = this.inp, fx = this.fx;
     let mx = input.analogX || input.axisX, mz = -(input.analogY || input.axisY);

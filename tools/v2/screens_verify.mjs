@@ -53,8 +53,9 @@ try {
     const shot = async (name) => { await ev(() => window.__F.draw()); await page.screenshot({ path: `${OUT}/stills/${DEV}_${name}.png` }); };
     const open = async (sv, q = '') => {
       const o = typeof sv === 'number' ? saveOf(sv) : sv;
-      await page.goto(`http://localhost:${port}/tools/v2/fx_view.css`).catch(() => {});
-      if (o !== undefined) await ev((s) => { if (s === null) localStorage.removeItem('bn.v2.save'); else localStorage.setItem('bn.v2.save', JSON.stringify(s)); localStorage.removeItem('bn.v2.ui'); }, o ?? null);
+      for (let k = 0; k < 4; k++) {   // (a scene that is just leaving may still move the page: once more then)
+        try { await page.goto(`http://localhost:${port}/tools/v2/fx_view.css`).catch(() => {}); if (o !== undefined) await ev((s) => { if (s === null) localStorage.removeItem('bn.v2.save'); else localStorage.setItem('bn.v2.save', JSON.stringify(s)); localStorage.removeItem('bn.v2.ui'); }, o ?? null); break; } catch (e) { if (k === 3) throw e; await page.waitForTimeout(400); }
+      }
       await page.goto(`http://localhost:${port}/index.html?scene=v2g&v2auto=0&v2res=0.5${q}`);
       await page.waitForFunction(() => window.__v2?.id === 'g' && (window.__v2.ready || window.__v2.error), null, { timeout: 180000 });
       await page.waitForFunction(() => window.__v2?.stats?.hud === 'ui' || /v2ui=0/.test(location.search), null, { timeout: 20000 }).catch(() => {});
@@ -64,7 +65,7 @@ try {
       return st;
     };
     /** ticks from the node side until `done` (areas are built between ticks: a crossing, a fall) */
-    const until = async (done, max = 120, each = null) => { let x = null; for (let i = 0; i < max; i++) { x = await ev((each) => { const F = window.__F, sc = window.__v2.scene, S = F.safe(); let opened = 0; try { for (let k = 0; k < 20; k++) { if (each && k % 5 === 2) { F.fire('pointerdown', 91, each.chip[0], each.chip[1]); F.fire('pointerup', 91, each.chip[0], each.chip[1]); F.fire('pointerdown', 92, each.pause[0], each.pause[1]); F.fire('pointerup', 92, each.pause[0], each.pause[1]); } if (!each && sc.hud.modal === 'dialog' && k % 9 === 0) F.tap(S.vw / 2, S.vh * 0.3, 1); window.__game.tick(1 / 60); if (each && sc.hud.modal) { opened++; if (sc.hud.screen) sc.hud.closeScreen(); else if (sc.hud.pauseOpen) sc.hud.closePause(); } } F.draw(); } catch (e) { return { err: String(e?.message ?? e) }; } const pb = F.M().pad?.buttons?.find((q) => q.id === 'pause'); return { area: window.__v2.area, ready: window.__v2.ready, xing: !!sc.xing, go: !!sc._go, dead: !!sc.sim?.hero?.dead, modal: sc.hud.modal, busy: !!sc.host?.st.busy, opened, pauseOn: !!pb && F.M().pad?.shown === true }; }, each).catch(() => null); if (x && !x.err && done(x)) break; await page.waitForTimeout(100); } return x; };
+    const until = async (done, max = 120, each = null) => { let x = null; for (let i = 0; i < max; i++) { x = await ev((each) => { const F = window.__F, sc = window.__v2.scene, S = F.safe(); let opened = 0, openedX = 0; try { for (let k = 0; k < 20; k++) { if (each && k % 5 === 2) { F.fire('pointerdown', 91, each.chip[0], each.chip[1]); F.fire('pointerup', 91, each.chip[0], each.chip[1]); F.fire('pointerdown', 92, each.pause[0], each.pause[1]); F.fire('pointerup', 92, each.pause[0], each.pause[1]); } if (!each && sc.hud.modal === 'dialog' && k % 9 === 0) F.tap(S.vw / 2, S.vh * 0.3, 1); window.__game.tick(1 / 60); if (each && sc.hud.modal) { opened++; if (sc.xing || sc._go || !window.__v2.ready) openedX++; if (sc.hud.screen) sc.hud.closeScreen(); else if (sc.hud.pauseOpen) sc.hud.closePause(); } } F.draw(); } catch (e) { return { err: String(e?.message ?? e) }; } const pb = F.M().pad?.buttons?.find((q) => q.id === 'pause'); return { area: window.__v2.area, ready: window.__v2.ready, xing: !!sc.xing, go: !!sc._go, dead: !!sc.sim?.hero?.dead, modal: sc.hud.modal, busy: !!sc.host?.st.busy, opened, openedX }; }, each).catch(() => null); if (x && !x.err && done(x)) break; await page.waitForTimeout(100); } return x; };
 
     // ───────────── the stills: every state of the first piece ─────────────
     if (want('stills')) {
@@ -184,10 +185,10 @@ try {
       const pos = await ev(() => { const F = window.__F; const chip = F.chipUp(); return { chip, pause: F.pauseBtn() }; });
       // a crossing, with the draught used on its first frame
       const t3 = await ev(() => { const F = window.__F, sc = window.__v2.scene, M = sc.host.model; M.dr = 1; M.touch(); F.put(4200, 1392, 0, -1); F.tick(20); const h = sc.sim.hero, d0 = sc.sim.deaths, hdr = h.draughts, okx = sc.cross({}); h.ifr = 0; sc._graceT = 0; h.hp = 1; const r = sc.sim.hurtHero(999, -1, 0, {}); return { okx, r, dead: h.dead, hp: h.hp, hdr, deaths: sc.sim.deaths - d0, area: window.__v2.area, dr: M.dr }; });
-      let opened = 0, pauseOn = 0, samples = 0;
-      const x3 = await until((x) => { opened += x.opened; samples++; if (x.pauseOn && (x.xing || x.go)) pauseOn++; return x.ready && !x.xing && !x.go && x.area !== t3.area; }, 140, pos);
+      let opened = 0, openedX = 0, samples = 0;
+      const x3 = await until((x) => { opened += x.opened; openedX += x.openedX; samples++; return x.ready && !x.xing && !x.go && x.area !== t3.area; }, 140, pos);
       const t3b = await ev(() => { const F = window.__F, sc = window.__v2.scene; F.touch(); F.tick(60); const m = F.M(); return { model: F.model(), hero: F.hero(), hudDr: m.hud.draughts, alive: F.alive(), area: window.__v2.area, deaths: sc.sim.deaths }; });
-      ok(`${DEV}: during a bell crossing nothing opens (the chip's place and the pause button's place touched all the way through), and the crossing ends in the other night`, t3.okx === true && opened === 0 && !!x3 && x3.area === 'eshville_past' && t3b.alive.modal === null && t3b.alive.ran && t3b.alive.pad === true, `ticks with something open ${opened} · samples ${samples} · samples with the pause button on screen during the crossing ${pauseOn} · ${J(t3b.alive)}`);
+      ok(`${DEV}: during a bell crossing nothing opens (the chip's place and the pause button's place touched all the way through), and the crossing ends in the other night`, t3.okx === true && openedX === 0 && !!x3 && x3.area === 'eshville_past' && t3b.alive.modal === null && t3b.alive.ran && t3b.alive.pad === true, `ticks with something open while the crossing ran ${openedX} (after it had ended, in the same batch of ticks: ${opened - openedX} - the pause button works again there) · batches of 20 ticks ${samples} · ${J(t3b.alive)}`);
       ok(`${DEV}: the draught used on the first frame of the crossing: he does not fall, it is gone on the far side (model, rules, HUD), no fall is counted`, t3.r !== false && t3.dead === false && t3.deaths === 0 && t3b.model.dr === 0 && t3b.hero.draughts === 0 && !t3b.hudDr && !t3b.hero.dead, J(t3) + ' -> ' + J({ dr: t3b.model.dr, heroDr: t3b.hero.draughts, hp: t3b.hero.hp, hud: t3b.hudDr }));
       // while falling
       const t4 = await ev((pos) => { const F = window.__F, sc = window.__v2.scene, sim = sc.sim, h = sim.hero; const chip = F.chipUp() ?? pos.chip; h.ifr = 0; sc._graceT = 0; h.hp = 1; const d0 = sim.deaths; sim.hurtHero(999, -1, 0, {}); const fell = h.dead; F.tick(3, false);
@@ -268,7 +269,7 @@ try {
         await open(undefined);
         const b = await ev(() => { const F = window.__F, sc = window.__v2.scene; F.tick(10); const m = F.M(); return { dr: sc.host.model.dr, coins: sc.host.model.coins(), hero: F.hero().draughts, hud: m.hud.draughts ? m.hud.draughts.n : 0, alive: F.alive() }; });
         const pair = b.coins + '/' + b.dr;
-        ok(`${DEV}: the shop, a draught bought, the page reloaded with the shop open (${hide ? 'the page was hidden first: the purchase is in the save' : 'no save in between: the purchase never happened'}): silver and draughts agree, the game is free`, a.bought.dr === 1 && a.bought.coins === 25 && a.screen === 'shop' && (hide ? pair === '25/1' : pair === '45/0') && b.hero === b.dr && b.hud === b.dr && b.alive.modal === null && b.alive.ran && !b.alive.busy, `bought ${J(a.bought)} · stored ${J(a.saved)} · after the reload silver/draughts ${pair} (rules ${b.hero}, HUD ${b.hud})`);
+        ok(`${DEV}: the shop, a draught bought, the page reloaded with the shop open (${hide ? 'the page was hidden first: the purchase is in the save' : 'left at once: the page\'s own leaving saves, or the purchase never happened'}): silver and draughts agree, the game is free`, a.bought.dr === 1 && a.bought.coins === 25 && a.screen === 'shop' && (hide ? pair === '25/1' : pair === '45/0' || pair === '25/1') && b.hero === b.dr && b.hud === b.dr && b.alive.modal === null && b.alive.ran && !b.alive.busy, `bought ${J(a.bought)} · stored ${J(a.saved)} · after the reload silver/draughts ${pair} (rules ${b.hero}, HUD ${b.hud})`);
       }
     }
 
@@ -323,12 +324,12 @@ try {
           if (m.max > 0) { const cx = m.list.x + m.list.w * 0.3, y0 = m.list.y + m.list.h / 2, c0 = F.toClient(cx, y0); F.fire('pointerdown', 88, c0[0], c0[1]); F.tick(2, false); o.scroll = heap(300, (i) => { const k = (i % 120) / 120, c = F.toClient(cx, y0 - Math.sin(k * Math.PI * 2) * m.list.h * 0.45); F.fire('pointermove', 88, c[0], c[1]); }); F.fire('pointerup', 88, c0[0], c0[1]); F.rest(); o.scrollMax = Math.round(m.max); }
           o.bytes = bytes() - b1; o.baked = F.M().screen.baked; out[kind] = o; sc.hud.closeScreen(); F.tick(20);
         }
-        out.bytesAll = bytes() - b0; out.canvases = made.length;
+        out.bytesAll = bytes() - b0; out.canvases = made.length; out.bytesTotal = bytes(); out.biggest = made.map((c) => c.width + 'x' + c.height).sort((a, b) => { const p = (s) => s.split('x').reduce((x, y) => x * y, 1); return p(b) - p(a); }).slice(0, 6).join(' ');
         document.createElement = dc; if (OC) window.OffscreenCanvas = OC; for (const n of names) P[n] = orig[n];
         return out; });
       say(`${DEV} cost (whole frame = game tick + render; the pause panel open is the base): base ${J(cost.base)}`);
       for (const k of ['chronicle', 'bag', 'shop']) say(`${DEV} cost ${k}: ${J(cost[k])}`);
-      say(`${DEV} cost: canvases baked by the three screens ${(cost.bytesAll / 1048576).toFixed(1)} MB of pixels`);
+      say(`${DEV} cost: canvases made while the three screens were opened and dragged: ${cost.canvases}, ${(cost.bytesTotal / 1048576).toFixed(1)} MB of pixels in all (the pause panel's own included; the largest: ${cost.biggest})`);
       const lim = 64;
       ok(`${DEV}: with a screen open and still a frame allocates no more than the frame with the pause panel open (+${lim} B)`, ['chronicle', 'bag', 'shop'].every((k) => !cost[k].err && cost[k].still <= cost.base.alloc + lim), `base ${cost.base.alloc} B/frame · book ${cost.chronicle.still} · bag ${cost.bag.still} · shop ${cost.shop.still}${cost.chronicle.scroll !== undefined ? ' · book while dragged ' + cost.chronicle.scroll + ' (the test\'s own pointer events included)' : ''}`);
       // the game's own frame with every card and chip up
