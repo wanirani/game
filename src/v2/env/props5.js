@@ -55,11 +55,12 @@ Object.assign(WALLPROPS, {
     else F.box(G, 'metal', u + 27, u + 33, y + 58, y + 64, 0, 4, { faces: 'FLR', ...iron });
   },
   /**
-   * STORY2: a crow's flight feather left on a ledge (the inn's window sill - the chapter's last picture, ENV_KIT 25): { u (the middle of its length), y (the
+   * STORY2: a crow's flight feather left on a ledge (the inn's window sill - the chapter's last picture, ENV_KIT 24.4): { u (the middle of its length), y (the
    * ledge's top), w (how far out of the wall face its quill end lies - it may reach over the ledge's front edge), len (26), back (how much nearer the wall
    * its tip lies), tilt (degrees its vane leans back from the ledge: flat it is a line three pixels high to a camera eight degrees above the ledge),
    * lift (0.4 clear of the ledge: nothing of it lies in the ledge's plane) }. Quill end at -u, tip at +u. The wide vane rests on the ledge, the shaft bows up.
-   * The kit's white with a colour per vertex (blue-black vanes with a sheen at their edges, a pale quill) in the baked light of its spot: 32 triangles.
+   * The kit's white with a colour per vertex (blue-black vanes with a sheen at their edges, a pale quill, a split in each vane) in the baked light of its
+   * spot: 36 triangles, no collision. The colours are set for a warm spot (light about 1.9, 1.3, 1.1 at the inn's sill): the vane's blue leans against it.
    */
   feather(G, F, s) {
     const L = s.len ?? 26, k = L / 26, a = (s.tilt ?? 50) * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a), w0 = s.w ?? 5, back = s.back ?? 6, lift = s.lift ?? 0.4, n = F.vec(0, ca, sa);
