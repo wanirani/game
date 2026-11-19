@@ -32,10 +32,14 @@ export class Whip {
     this.root = { x: 0, y: 0, z: 0, dx: 0, dy: 1, dz: 0 };   // where the lash leaves the handle + handle direction
     this.grip = { x: 0, y: 0, z: 0 };
     this.pg = new Float32Array(6);            // grip + handle direction of the previous tick (display interpolation)
+    this.pb = new Float32Array(3);            // the hero's feet on the previous tick: the character is drawn in THIS tick's pose at an interpolated place, and the hand end of the lash goes with it (drawn())
+    this.pin = { e: 1, e0: 1, ang: 0 };       // a hit beside or behind: the drawn lash swings over to it during the first frames of the hit-stop (drawn() - the simulation itself lands at once and freezes)
+    this._hc = new Float32Array(12); this._hn = 0;   // the hit points reported in this tick (up to 4): the lash lands on the one nearest to where it is going
+    this._dtTick = 1 / 60;
     this.glowCol = new Float32Array([1.0, 0.84, 0.48]);
     this.ev = { x: 0, y: 0, z: 0, dx: 0, dy: 0, dz: 0, strength: 'M', move: '', kind: '' };
     this.mode = 'rest'; this.style = 'coil'; this.restT = 9;
-    this.sw = { id: '', shape: null, hitCrack: false, hasHit: false, hx: 0, hy: 0, hz: 0, hs: 0, t: 0, hit0: 0.13, hit1: 0.25, dur: 0.44, s: -1, ps: -1, landT: -1, hasT: false, tx: 0, ty: 0, tz: 0, str: 'M', started: false };
+    this.sw = { id: '', shape: null, hitCrack: false, hasHit: false, hx: 0, hy: 0, hz: 0, hs: 0, t: 0, t0: -1, hit0: 0.13, hit1: 0.25, dur: 0.44, s: -1, ps: -1, landT: -1, hasT: false, tx: 0, ty: 0, tz: 0, str: 'M', started: false };
     this.tg = { x: 0, y: 0, z: 0, r: 14, phase: 'throw', t: 0, throwT: 0.13, caught: false, since: 0, sx: 0, sy: 0, sz: 0, kind: 'hook', pull: false };
     this.fx = 1; this.fz = 0; this.bx = 0; this.by = 0; this.bz = 0; this.br = 12; this.bh = 104; this.hasBody = false;
     this.time = 0; this.flash = 0; this.kick = 0; this.taut = 0; this.ext = 0; this.trail = 0; this.spin = 0; this.resonance = 0; this.glow = 0; this.pulse = 0; this.dragT = 0;
@@ -60,7 +64,12 @@ export class Whip {
   set(mode, p) {
     if (mode === 'crack') {
       this.flash = 1; this.kick = 1; this.sw.hitCrack = true;   // a hit voices the crack: the same swing does not crack in the air as well
-      if (this.mode === 'swing' && p && p.x != null) { const sw = this.sw; sw.hasHit = true; sw.hx = p.x; sw.hy = p.y; sw.hz = p.z; sw.hs = sw.s; this.kick = 0; }   // and the lash lands ON what it hit (see _aimSwing)
+      if (this.mode === 'swing' && p && p.x != null) {   // and the lash lands ON what it hit (see _aimSwing)
+        const sw = this.sw, C = this._hc;
+        if (this._hn === 0) { sw.hasHit = true; sw.hx = p.x; sw.hy = p.y; sw.hz = p.z; sw.hs = sw.s; }
+        if (this._hn < 4) { const o = this._hn * 3; C[o] = p.x; C[o + 1] = p.y; C[o + 2] = p.z; this._hn++; }   // several struck in one tick: _aimSwing picks the one the lash is laid toward (it used to be whichever came last - a jump to the side)
+        this.kick = 0;
+      }
       const n = this.n, V = this.vel, k = 260 * (p && p.strength != null ? +p.strength || 1 : 1), r = this.root, t = this.tip;
       let dx = r.x - t.x, dy = r.y - t.y, dz = r.z - t.z; const l = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1; dx /= l; dy /= l; dz /= l;
       for (let i = (n * 0.6) | 0; i < n; i++) { const o = i * 3, q = i / (n - 1); V[o] += dx * k * q; V[o + 1] += (dy * k + 160) * q; V[o + 2] += dz * k * q; }
@@ -99,7 +108,7 @@ export class Whip {
     if (this.mode !== 'swing' || id !== sw.id || t < sw.t - 1e-4) {
       if (this.mode === 'wrap' || this.mode === 'hook') this._leaveLine();
       const sh = shapeOf(id), mv = MOVES[id], nm = sh.nominal;
-      sw.id = id; sw.shape = sh; sw.ps = -1.001; sw.started = false; sw.hitCrack = false; sw.hasHit = false; this.mode = 'swing';
+      sw.id = id; sw.shape = sh; sw.ps = -1.001; sw.t0 = -1; sw.started = false; sw.hitCrack = false; sw.hasHit = false; this._hn = 0; this.mode = 'swing';
       const hit = (p && p.hit) || (mv && mv.hit) || (nm && nm.hit);
       sw.hit0 = hit ? hit[0] : 0.13; sw.hit1 = hit ? hit[1] : 0.25;
       sw.dur = (p && p.dur) || (mv && mv.dur) || (nm && nm.dur) || 0.44;
@@ -112,14 +121,28 @@ export class Whip {
 
   /** phase s of the running move: -1..0 wind-up, 0..1 hit window, 1..2 recovery */
   _phase() {
-    const sw = this.sw, t = sw.t, sh = sw.shape;
-    if (t < sw.hit0) return -1 + t / Math.max(1e-3, sw.hit0);
+    const sw = this.sw, sh = sw.shape; let t = sw.t;
     if (sh.hold != null && sw.hit1 > 5) {   // window open until landing (plunge)
+      if (t < sw.hit0) return -1 + t / Math.max(1e-3, sw.hit0);
       const a = Math.min(sh.hold, ((t - sw.hit0) / 0.1) * sh.hold);
       if (sw.landT < 0) return a;
       const b = sh.hold + ((t - sw.landT) / 0.1) * (1 - sh.hold);
       return b <= 1 ? Math.max(a, b) : Math.min(2, 1 + (t - sw.landT - 0.1) / 0.3);
     }
+    if (sh.ev === 'crack') {
+      // A strike runs on the RULES' clock (WHIP2, 2026-11-19). The rules test a move's hit with the move time before the tick's step and land it on the
+      // first tick at or past hit[0]; the lash used to count from the stepped time and from hit[0] itself, so it was out and through the enemy one tick
+      // (the first hit: two) before the freeze, the spark and the sound. Now: the wind-up lasts until exactly that tick, and ON it the lash is fully out
+      // (phase 0 = the peak); the tick before, it is one whole tick of travel away. Slow motion changes dt: the tick is found again every tick.
+      const dt = this._dtTick; t -= dt;
+      if (sw.t0 < 0) {
+        if (t < sw.hit0 - 1e-9) { const tq = t + Math.ceil((sw.hit0 - t) / dt - 1e-6) * dt; return -1 + t / tq; }
+        sw.t0 = t;
+      }
+      if (t < sw.hit1) return (t - sw.t0) / Math.max(1e-3, sw.hit1 - sw.t0);
+      return Math.min(2, 1 + (t - sw.hit1) / Math.max(0.05, sw.dur - sw.hit1));
+    }
+    if (t < sw.hit0) return -1 + t / Math.max(1e-3, sw.hit0);
     if (t < sw.hit1) return (t - sw.hit0) / Math.max(1e-3, sw.hit1 - sw.hit0);
     return Math.min(2, 1 + (t - sw.hit1) / Math.max(0.05, sw.dur - sw.hit1));
   }
@@ -227,6 +250,16 @@ export class Whip {
     // the rules reported a hit: for a moment the tip stays on the hit point (nearer or a little farther than the authored end) and the lash
     // is taken in to fit, then it lets go into the follow-through. Without this the lash would sweep on through the enemy
     if (sw.hasHit) {
+      if (this._hn > 0) {   // the tick of the hit: of everything struck in it the lash lands on what lies nearest to where it was going ...
+        const C = this._hc; let bd = 1e30;
+        for (let i = 0; i < this._hn; i++) { const o = i * 3, d = (C[o] - W[0]) * (C[o] - W[0]) + (C[o + 1] - W[1]) * (C[o + 1] - W[1]) + (C[o + 2] - W[2]) * (C[o + 2] - W[2]); if (d < bd) { bd = d; sw.hx = C[o]; sw.hy = C[o + 1]; sw.hz = C[o + 2]; } }
+        this._hn = 0;
+        // ... and when that lies to the side of the authored strike (a wide third hit that only reaches someone beside or behind), the DRAWN lash does not
+        // jump there in one tick: it starts on the authored bearing and swings over during the first frames of the hit-stop (drawn(); 20 degrees and up)
+        const ax = W[0] - r.x, az = W[2] - r.z, bx = sw.hx - r.x, bz = sw.hz - r.z, pn = this.pin;
+        const an = ax * ax + az * az > 400 && bx * bx + bz * bz > 400 ? Math.atan2(bx * az - bz * ax, bx * ax + bz * az) : 0;
+        if (an > 0.35 || an < -0.35) { pn.ang = an; pn.e = pn.e0 = 0; } else pn.e = pn.e0 = 1;
+      }
       const q = clamp(1 - (s - sw.hs - 0.3) / 0.3, 0, 1);
       if (q <= 0) sw.hasHit = false;
       else {
@@ -250,7 +283,7 @@ export class Whip {
     if (!sw.started && s >= -0.5) { sw.started = true; this._emit('swing', r.x, r.y, r.z, this.fx, 0, this.fz, ''); }
     // the bell rings exactly at the peak; the crack in the air comes a moment after full extension (0.2 of the window, one or two ticks)
     // so that a hit the rules report in between voices the crack instead
-    const pe = sh.ev === 'ring' ? sh.peak : sh.peak + 0.2;
+    const pe = sh.ev === 'ring' || sh.hold == null ? sh.peak : sh.peak + 0.2;   // (a strike on the rules' clock: this tick's hits were reported before the lash moved, so the crack in the air needs no wait any more)
     if (sw.ps < pe && s >= pe) {
       const t = this.tip, sp = t.speed || 1;
       if (sh.ev === 'ring') { this.pulse = 1; this._emit('ring', W[0], W[1], W[2], 0, 1, 0, sh.kind); } else if (!sw.hitCrack) { this.flash = Math.max(this.flash, 0.7); this._emit('crack', t.x, t.y, t.z, t.vx / sp, t.vy / sp, t.vz / sp, 'air'); }
@@ -346,7 +379,7 @@ export class Whip {
   warp(dx, dy, dz) {
     const P = this.nodes, Q = this.prev, n = this.n;
     for (let i = 0; i < n; i++) { const o = i * 3; P[o] += dx; P[o + 1] += dy; P[o + 2] += dz; Q[o] += dx; Q[o + 1] += dy; Q[o + 2] += dz; }
-    this.tg.sx += dx; this.tg.sy += dy; this.tg.sz += dz;
+    this.tg.sx += dx; this.tg.sy += dy; this.tg.sz += dz; this.pb[0] += dx; this.pb[1] += dy; this.pb[2] += dz;
     const H = this.hist; for (let i = 0; i < TRAIL_N * 4; i += 4) { H[i] += dx; H[i + 1] += dy; H[i + 2] += dz; }
   }
 
@@ -358,7 +391,7 @@ export class Whip {
     for (let i = 0; i < n; i++) { const o = i * 3; P[o] = r.x + this.fx * i * 0.4; P[o + 1] = Math.max(gy, r.y - i * seg); P[o + 2] = r.z + this.fz * i * 0.4; }
     this.prev.set(P); this.vel.fill(0); this.len = this.L0; this.mode = 'rest'; this.restT = 9; this.ready = true;
     this._lx = hand.x; this._ly = hand.y; this._lz = hand.z; this.flash = 0; this.kick = 0; this.taut = 0; this.trail = 0;
-    this._tipState(); this._keepGrip();
+    this._tipState(); this._keepGrip(); this.pin.e = this.pin.e0 = 1; this._hn = 0;
     const H = this.hist; for (let i = 0; i < TRAIL_N * 4; i += 4) { H[i] = this.tip.x; H[i + 1] = this.tip.y; H[i + 2] = this.tip.z; H[i + 3] = 0; }
     this.trailLive = 0;
   }
@@ -376,7 +409,7 @@ export class Whip {
     this._gy = hand.ground ?? (this.hasBody ? Math.min(this.by, this.groundY) : this.groundY);
   }
 
-  _keepGrip() { const g = this.grip, r = this.root, p = this.pg; p[0] = g.x; p[1] = g.y; p[2] = g.z; p[3] = r.dx; p[4] = r.dy; p[5] = r.dz; }
+  _keepGrip() { const g = this.grip, r = this.root, p = this.pg, b = this.pb; p[0] = g.x; p[1] = g.y; p[2] = g.z; p[3] = r.dx; p[4] = r.dy; p[5] = r.dz; b[0] = this.bx; b[1] = this.by; b[2] = this.bz; }
 
   _tipState() {
     const n = this.n, P = this.nodes, V = this.vel, t = this.tip, o = (n - 1) * 3, r = this.root;
@@ -384,10 +417,15 @@ export class Whip {
     this.ext = Math.sqrt((t.x - r.x) * (t.x - r.x) + (t.y - r.y) * (t.y - r.y) + (t.z - r.z) * (t.z - r.z)) / Math.max(1, this.len);
   }
 
-  /** one tick. dt = 0 freezes the lash with the world (hit-stop); small dt (slow motion) and large dt are both fine */
-  update(dt, hand) {
+  /**
+   * one tick. dt = 0 freezes the lash with the world (hit-stop); small dt (slow motion) and large dt are both fine.
+   * rdt (optional) = the real length of the tick: it only runs the drawn swing-over of a side hit, which plays while the world is frozen (default dt, or 1/60 when dt is 0)
+   */
+  update(dt, hand, rdt) {
     if (!this.ready) { this.reset(hand); if (!(dt > 0)) return; }
+    { const pn = this.pin; pn.e0 = pn.e; if (pn.e < 1) { pn.e += (rdt > 0 ? rdt : dt > 0 ? dt : 1 / 60) / 0.07; if (pn.e > 1) pn.e = 1; } }
     if (!(dt > 0)) { this.prev.set(this.nodes); this._keepGrip(); return; }
+    this._dtTick = dt;
     const jx = hand.x - this._lx, jy = hand.y - this._ly, jz = hand.z - this._lz;
     if (jx * jx + jy * jy + jz * jz > this.teleport * this.teleport) this.warp(jx, jy, jz);
     this._lx = hand.x; this._ly = hand.y; this._lz = hand.z;
@@ -480,10 +518,37 @@ export class Whip {
     }
   }
 
-  /** node positions for display, between the previous tick and this one. out: Float32Array(n * 3) */
+  /** node positions between the previous tick and this one (plain interpolation). out: Float32Array(n * 3) */
   sample(alpha, out) {
     const P = this.nodes, Q = this.prev, m = this.n * 3, a = alpha == null ? 1 : alpha;
     for (let i = 0; i < m; i++) out[i] = Q[i] + (P[i] - Q[i]) * a;
+    return out;
+  }
+
+  /**
+   * The centre line AS DRAWN (mesh.js builds the lash from this; tools measure it). sample() plus two things that are display only:
+   *  1 the hand end goes with the drawn hand. The scene draws the hero in this tick's pose at a place interpolated between the ticks, so the hand is at
+   *    "this tick's hand, moved back by the part of the step not yet shown" - not half way between the two hands. Interpolating the root like the other
+   *    nodes left the lash up to 18 px off the hand on in-between frames of a fast arm (seen as "the lash is a frame behind the hand" in the third hit).
+   *    The correction is all of it at the root and fades out along the lash (square), so the tip keeps its own smooth path.
+   *  2 a hit that landed to the side of the authored strike (pin): the lash is turned about the hand from the bearing it had toward the bearing of
+   *    what it hit, eased over 0.07 s of real time - it gets there by moving while the hit-stop holds the world, not by a jump in the tick of the hit.
+   */
+  drawn(alpha, out) {
+    const P = this.nodes, Q = this.prev, n = this.n, m = n * 3, a = alpha == null ? 1 : alpha, k1 = 1 - a;
+    for (let i = 0; i < m; i++) out[i] = Q[i] + (P[i] - Q[i]) * a;
+    if (k1 > 0) {
+      const B = this.pb, cx = (P[0] - Q[0] - (this.bx - B[0])) * k1, cy = (P[1] - Q[1] - (this.by - B[1])) * k1, cz = (P[2] - Q[2] - (this.bz - B[2])) * k1, inv = 1 / (n - 1);
+      if (cx * cx + cy * cy + cz * cz < 3600) for (let i = 0; i < n; i++) { const o = i * 3, w = 1 - i * inv, w2 = w * w; out[o] += cx * w2; out[o + 1] += cy * w2; out[o + 2] += cz * w2; }
+    }
+    const pn = this.pin;
+    if (pn.e0 < 1) {
+      const e = pn.e0 + (pn.e - pn.e0) * a, k = (1 - e) * (1 - e);
+      if (k > 1e-4) {
+        const rx = out[0], rz = out[2], c = Math.cos(pn.ang * k), s = Math.sin(pn.ang * k);
+        for (let i = 1; i < n; i++) { const o = i * 3, x = out[o] - rx, z = out[o + 2] - rz; out[o] = rx + x * c - z * s; out[o + 2] = rz + x * s + z * c; }
+      }
+    }
     return out;
   }
 }

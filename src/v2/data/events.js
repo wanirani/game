@@ -51,8 +51,9 @@ export const EVENTS = [
     ['objective', 'to_church'],
     ['save'],
   ] },
+  // SCREENS (11-19): Rook's goods for silver (SHOP.rook - shop.js). The screen shows his line; with the old pad there is no screen and one notice says so.
   { id: 'ev_rook_shop', minute: '5-12', on: 'interact', match: { event: 'shop.rook' }, once: false, steps: [
-    ['say', 'rook.shop'],
+    ['shop', 'rook'],
   ] },
   { id: 'ev_well', minute: '5-12', on: 'interact', match: { event: 'sign.well' }, once: false, steps: [
     ['say', 'sign.well'],

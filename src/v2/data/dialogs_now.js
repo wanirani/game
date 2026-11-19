@@ -70,9 +70,6 @@ export const DIALOGS_NOW = {
     ] },
     { pages: [['rook', '필요한 게 있으면 말씀만 하십쇼.\n헤헤.']] },
   ],
-  'rook.shop': [{ pages: [
-    ['rook', '짐을 아직 못 풀었습죠.\n다음에 들러 주십쇼. 헤헤.'],
-  ] }],
   'sign.well': [
     { if: ['era:past'], pages: [['sign', '역병. 물은 끓여서 마실 것.']] },
     { pages: [['narrator', '우물. 두레박 줄이 타서 끊겼다.']] },

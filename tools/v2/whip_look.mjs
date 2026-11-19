@@ -48,7 +48,8 @@ async function seq(S, o) {
   const P = {}, proj = (x, y, z) => { sc.project(x, y, z, P); return [P.x, P.y]; };
   const lashOn = (N, C) => { let m = 1e9; for (let i = 2; i < wp.n; i++) { const o3 = i * 3, dh = Math.max(0, Math.hypot(N[o3] - C.ex, N[o3 + 2] - C.ez) - C.er - 2), y = N[o3 + 1], dv = y < C.ey - 4 ? C.ey - 4 - y : y > C.ey + C.eh + 4 ? y - C.ey - C.eh - 4 : 0, d = Math.hypot(dh, dv); if (d < m) m = d; } return m; };
   const rows = [], held = new Set(); let cells = 0, lastTip = null, hitTick = -1, startTick = -1, endAt = S.n, simT = sim.time;
-  const tgt = () => (hits.length ? hits[0] : foes.length ? { e: foes[0], ex: foes[0].x, ey: foes[0].y, ez: foes[0].z, er: foes[0].r, eh: foes[0].h, x: foes[0].x, y: foes[0].y + 60, z: foes[0].z } : null);
+  const want = S.move === 'pull' ? 'whip' : S.move; let hit0 = null;
+  const tgt = () => (hit0 ? hit0 : foes.length ? { e: foes[0], ex: foes[0].x, ey: foes[0].y, ez: foes[0].z, er: foes[0].r, eh: foes[0].h, x: foes[0].x, y: foes[0].y + 60, z: foes[0].z } : null);
   for (let i = 0; i < S.n && i <= endAt; i++) {
     ti = i;
     for (const q of S.ev) if (q[0] === i) { if (q[1] === 'down') { W.down(q[2]); held.add(q[2]); } else { W.up(q[2]); held.delete(q[2]); } }
@@ -57,7 +58,7 @@ async function seq(S, o) {
     const moved = sim.time !== simT; simT = sim.time;
     const mvId = h.move ? h.move.id : h.act === 'hook' ? 'hook' : null;
     if (startTick < 0 && (mvId === S.move || (S.move === 'pull' && mvId === 'whip'))) startTick = i;
-    if (hitTick < 0 && hits.length && (hits[0].id === S.move || (S.move === 'pull' && hits[0].id === 'whip'))) { hitTick = i; endAt = i + (S.after ?? 7); }
+    if (hitTick < 0) { const q = hits.find((x) => x.id === want); if (q) { hit0 = q; hitTick = i; endAt = i + (S.after ?? 7); } }
     if (S.skill && startTick >= 0 && endAt === S.n) endAt = startTick + (S.after ?? 16);
     const cap = startTick >= 0 && i >= startTick + (S.from ?? 0) && (S.move !== 'pull' || hitTick >= 0);
     if (!cap) { if (i % 6 === 0) { g.alpha = 1; g.render(); } continue; }
@@ -73,10 +74,10 @@ async function seq(S, o) {
       let kink = 0; const live = wp.trailLive > 0.01;
       if (live) for (let j = 1; j < sp.length - 1; j++) { const ax = sp[j][0] - sp[j - 1][0], ay = sp[j][1] - sp[j - 1][1], bx = sp[j + 1][0] - sp[j][0], by = sp[j + 1][1] - sp[j][1], la = Math.hypot(ax, ay), lb = Math.hypot(bx, by); if (la < 1.2 || lb < 1.2) continue; const ang = Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by) / (la * lb)))) * 57.2958; if (ang > kink) kink = ang; }
       const step = lastTip ? Math.hypot(tip[0] - lastTip[0], tip[1] - lastTip[1], tip[2] - lastTip[2]) : 0; lastTip = tip;
-      const row = { tick: i, s: al === 1 ? 'b' : 'a', a, mv: mvId, moveT: +(h.moveT ?? 0).toFixed(4), hit: i === hitTick, ice: !moved, ext: +wp.ext.toFixed(3), root: +Math.hypot(N[0] - rx, N[1] - ry, N[2] - rz).toFixed(1), kink: +kink.toFixed(0), streak: live ? sp.length : 0, step: +step.toFixed(1), body: C ? +lashOn(N, C).toFixed(1) : -1, tipHit: hits.length ? +Math.hypot(tip[0] - hits[0].x, tip[1] - hits[0].y, tip[2] - hits[0].z).toFixed(1) : -1 };
+      const row = { tick: i, s: al === 1 ? 'b' : 'a', a, mv: mvId, moveT: +(h.moveT ?? 0).toFixed(4), hit: i === hitTick, ice: !moved, ext: +wp.ext.toFixed(3), root: +Math.hypot(N[0] - rx, N[1] - ry, N[2] - rz).toFixed(1), kink: +kink.toFixed(0), streak: live ? sp.length : 0, step: +step.toFixed(1), body: C ? +lashOn(N, C).toFixed(1) : -1, tipHit: hit0 ? +Math.hypot(tip[0] - hit0.x, tip[1] - hit0.y, tip[2] - hit0.z).toFixed(1) : -1 };
       rows.push(row);
       if (o.sheet && cells < maxCells) {
-        const k = glc.width / g.viewW, c = proj(hx + (C ? (C.ex - hx) * 0.35 : 0), hy + 62, hz), sw = CW * (o.zoom ?? 1.35) * (k / 2.0), sh = sw * CH / CW, sx = c[0] * k - sw / 2, sy = c[1] * k - sh / 2;
+        const k = glc.width / g.viewW, c = proj(hx + (C ? (C.ex - hx) * 0.35 : 0), hy + 62, hz), sw = CW * (o.zoom ?? 1.9) * (k / 2.0), sh = sw * CH / CW, sx = c[0] * k - sw / 2, sy = c[1] * k - sh / 2;
         const X0 = (cells % COLS) * CW, Y0 = Math.floor(cells / COLS) * CH, f = CW / sw;
         cx.save(); cx.beginPath(); cx.rect(X0, Y0, CW, CH); cx.clip();
         cx.drawImage(glc, sx, sy, sw, sh, X0, Y0, CW, CH);

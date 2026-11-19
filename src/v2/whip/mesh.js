@@ -45,7 +45,7 @@ export function meshInfo(whip) {
  */
 export function writeWhipMesh(whip, vtx, alpha, tmp) {
   const n = whip.n, sub = whip.sub, sides = whip.sides, a = alpha == null ? 1 : alpha;
-  const N = whip.sample(a, tmp);
+  const N = whip.drawn(a, tmp);   // (sim.js drawn(): interpolation between the ticks + the hand end kept in the drawn hand + the swing-over of a side hit)
   let o = 0;
   // total length first (u runs from the tip)
   let total = 0;
@@ -84,9 +84,11 @@ export function writeWhipMesh(whip, vtx, alpha, tmp) {
     }
   }
   // handle: a lathe around the handle axis, interpolated like the nodes
-  const g = whip.grip, r = whip.root, pg = whip.pg;
-  const gx = pg[0] + (g.x - pg[0]) * a, gy = pg[1] + (g.y - pg[1]) * a, gz = pg[2] + (g.z - pg[2]) * a;
-  let dx = pg[3] + (r.dx - pg[3]) * a, dy = pg[4] + (r.dy - pg[4]) * a, dz = pg[5] + (r.dz - pg[5]) * a; const dl = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1; dx /= dl; dy /= dl; dz /= dl;
+  // (WHIP2: in the drawn hand - this tick's grip and direction, moved with the hero's drawn place. It used to be half way between the two ticks' hands while the arm was drawn in this tick's pose)
+  const g = whip.grip, r = whip.root, pb = whip.pb, k1 = a - 1;
+  let jx = (whip.bx - pb[0]) * k1, jy = (whip.by - pb[1]) * k1, jz = (whip.bz - pb[2]) * k1; if (jx * jx + jy * jy + jz * jz > 3600) { jx = 0; jy = 0; jz = 0; }
+  const gx = g.x + jx, gy = g.y + jy, gz = g.z + jz;
+  let dx = r.dx, dy = r.dy, dz = r.dz; const dl = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1; dx /= dl; dy /= dl; dz /= dl;
   let ax, ay, az;
   if (Math.abs(dy) < 0.9) { ax = dz; ay = 0; az = -dx; } else { ax = 0; ay = -dz; az = dy; }   // cross(d, up) or cross(d, x)
   const al = Math.sqrt(ax * ax + ay * ay + az * az) || 1; ax /= al; ay /= al; az /= al;

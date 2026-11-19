@@ -1025,7 +1025,7 @@ export default class V2Game extends Scene {
       if (pe) { if (pe.pullT > 0 || h.pullT > 0) { P.x = pe.x; P.y = (pe.y ?? pe.gy) + (pe.h ?? 80) * 0.55; P.z = pe.z;   /* WHIP: the body's own foot height (ground + hover): winding at the ground height put the coil 96 px under a caught bat */ P.r = Math.max(8, (pe.r ?? 15) * 0.55); pull = P; } else this.whipPullE = null; }
       wp.resonance = h.resoMax ? h.reso / h.resoMax : 0;
       if (this._whipReset) { this._whipReset = false; this.whipPullE = null; pull = null; wp.reset(H); }   // new area / respawn / new chain: hang from the hand, no speed
-      driveWhip(wp, h, TUNE, pull); wp.update(pdt, H);   // (WHIP 2026-11-19: the whip module no longer calls Math.hypot - it used to be swapped for a square root here; the lash is bit for bit what that swap computed: tools/v2/whip_bits.mjs)
+      driveWhip(wp, h, TUNE, pull); wp.update(pdt, H, dt);   // (dt = the real tick: it only runs the drawn swing-over of a side hit while the hit-stop holds the world - WHIP.md 3. WHIP 2026-11-19: the whip module no longer calls Math.hypot; tools/v2/whip_bits.mjs)
     }
     if (fx) {
       if (h.dashT > 0 && !h.dead) { if (this._dashRb < 0) this._dashRb = fx.ribbons.start(DASH_TRAIL); if (pdt > 0) fx.ribbons.push(this._dashRb, h.x, h.y + 50, h.z, 0, 0, 0); }

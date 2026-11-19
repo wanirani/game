@@ -10,6 +10,7 @@ import { ITEMS, OBJECTIVES } from './items.js';
 import { CHRONICLE } from './chronicle.js';
 import { FLAGS } from './flags.js';
 import { TEXT } from './text.js';
+import { SHOP } from './shop.js';
 import { createStory } from './run.js';
 
 export const STORY = {
@@ -22,6 +23,7 @@ export const STORY = {
   CHRONICLE,
   FLAGS,
   TEXT,
+  SHOP,
 };
 
 export { createStory };

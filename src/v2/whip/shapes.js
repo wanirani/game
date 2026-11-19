@@ -14,8 +14,9 @@
 const K = (rows) => { const a = new Float32Array(rows.length * 8); rows.forEach((r, i) => a.set(r, i * 8)); return a; };
 // The rules land a hit on the first tick of the hit window, so the lash has to ARRIVE as the window opens: the keys below are written
 // with the full extension at phase pk (easy to read: wind-up, strike, follow-through) and S() squeezes them so that the extension falls at
-// PEAK, just inside the window. What was "the strike" plays in the last part of the wind-up, the follow-through fills the window.
-export const PEAK = 0.08;
+// PEAK. What was "the strike" plays in the last part of the wind-up, the follow-through fills the window.
+// PEAK = 0 (WHIP2, 2026-11-19; it was 0.08): sim.js _phase now counts a strike on the rules' own clock - phase 0 IS the tick the rules land the hit on.
+export const PEAK = 0;
 // The squeeze is eased so the tip keeps accelerating into the extension and slows after it (fastest as the window opens).
 const S = (pk, rows) => K(rows.map((r) => {
   const s = r[0], q = s <= pk ? -1 + (1 + PEAK) * (1 - Math.pow(1 - (s + 1) / (pk + 1), 1.2)) : s <= 1 ? PEAK + (0.62 - PEAK) * Math.pow((s - pk) / (1 - pk), 1.2) : 0.62 + (s - 1) * 1.38;

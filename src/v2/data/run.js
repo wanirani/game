@@ -80,7 +80,8 @@ export function createStory(data, opts) {
   }
   function compileChoice(ch) {
     if (!ch || !Array.isArray(ch.options)) return null;
-    return { labels: ch.options.map((o) => o.label), frames: ch.options.map((o) => compilePages(o.pages, null, o.then)) };
+    // SCREENS (11-19): `meta` = what a choice card shows beside the label: the option's `icon` (src/v2/ui/icons.js) and its one `line` (DATA_FORMAT 3)
+    return { labels: ch.options.map((o) => o.label), meta: ch.options.map((o) => ({ icon: o.icon || null, line: o.line || '' })), frames: ch.options.map((o) => compilePages(o.pages, null, o.then)) };
   }
   const dialogs = new Map();   // key → [{ all, any, once, tag, steps }]
   for (const key in DIALOGS) {
@@ -155,8 +156,10 @@ export function createStory(data, opts) {
     if (n < 0 && (state.items[id] | 0) < -n) warn('take: "' + id + '" is not in the bag');
     const c = Math.max(0, (state.items[id] | 0) + n);
     if (c) state.items[id] = c; else delete state.items[id];
-    callOpt(api, 'onItem', id, c);
-    if (n > 0 && !quiet) {
+    // SCREENS (11-19): api.onItem(id, count, change) - an answer of `true` means the game has shown the thing itself (the item card): no notice then
+    let shown = false;
+    { const o = find(api, 'onItem'); if (o) { try { shown = o.onItem(id, c, n) === true; } catch (e) { warn('api.onItem threw: ' + (e && e.message)); } } }
+    if (n > 0 && !quiet && !shown) {
       const fmt = (TEXT.system && TEXT.system.got) || '{name}';
       call(api, 'toast', fmt.replace('{name}', it ? it.name : id), TOAST_ITEM);
     }
@@ -234,7 +237,7 @@ export function createStory(data, opts) {
     if (mood && p && !(p.moods && p.moods[mood])) warn('mood "' + mood + '" of "' + who + '" has no portrait');
     const tok = hold('dialog');
     if (choice) {
-      d.choices = choice.labels;
+      d.choices = choice.labels; d.choiceMeta = choice.meta;
       d.onChoice = (i) => {
         if (!cur || cur.token !== tok) return;
         const k = i === 1 ? 1 : 0;
@@ -293,6 +296,7 @@ export function createStory(data, opts) {
       case 'putActor': call(api, 'putActor', s[1], s[2], s[3] || null); break;                                                   // a person is set down somewhere at once (out of the picture)
       case 'camera': { const t = hold('cb'); if (!call(api, 'camera', s[1], s[2] == null ? 0 : s[2], waiter(t))) resume(t); break; }
       case 'wait': { const t = hold('cb'); if (!call(api, 'wait', s[1], waiter(t))) resume(t); break; }
+      case 'shop': { const t = hold('cb'); if (!call(api, 'shop', s[1], waiter(t))) resume(t); break; }   // SCREENS: a keeper's goods (SHOP[id]); the step waits until the screen is closed
       case 'sound': call(api, 'sound', s[1], s[2]); break;
       case 'music': call(api, 'music', s[1]); break;
       case 'fx': call(api, 'fx', s[1], s[2]); break;

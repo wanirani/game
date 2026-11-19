@@ -54,6 +54,28 @@ export const TEXT = {
     notBuilt: '아직 갈 수 없다',
   },
 
+  // SCREENS (11-19): the chronicle book, the bag, the item and chronicle cards, the choice cards and the shop (src/v2/ui/screens.js, cards.js, choice.js)
+  screens: {
+    close: '닫기',
+    pause: { chronicle: '연대기', bag: '가방' },
+    chronicle: {
+      title: '연대기', sub: '알베르토 신부의 연대기', past: '그 밤 · 1697', now: '오늘 밤 · 1797',
+      blank: '빈칸', unseen: '오늘 밤에 가 보면 안다', empty: '아직 적힌 것이 없다',
+      card: '연대기에 적혔다 — {title}',
+    },
+    bag: {
+      title: '가방', story: '이야기의 물건', use: '쓰는 것', empty: '가방이 비어 있다', silver: '은화',
+      got: '얻었다 — {name}', draught: '성수가 쓰였다 — 촛불 한 자루로 버틴다',
+    },
+    shop: {
+      silver: '가진 은화', again: '한 번 더 누르면 산다', have: '가진 것', lit: '켜져 있다',
+      poor: '은화가 모자라다', full: '더 들 수 없다', fullReso: '울림이 이미 가득하다', noBell: '종 조각이 있어야 쓴다', noBlank: '지금은 일러 줄 빈칸이 없다',
+      bought: '샀다 — {name}', old: '가게는 새 단추에서 열린다',
+    },
+    choice: { again: '한 번 더 누르면 정한다' },
+    guide: '빈칸 — {at}',
+  },
+
   // tutorial prompts: prompt step → api.prompt({action, label}) + the tip as a small notice.
   // action = an input action of the touch pad (UI_API section 3) or null (no pill, tip only). Button names as on the screen.
   prompts: {
